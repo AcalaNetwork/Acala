@@ -10,7 +10,7 @@ name = "acala"
 path = "src/main.rs"
 
 [dependencies]
-futures = "0.3.4"
+futures = "0.3.15"
 parity-util-mem = { version = "0.9.0", default-features = false, features = ["jemalloc-global"] }
 acala-cli = { path = "cli" }
 acala-service = { path = "service" }

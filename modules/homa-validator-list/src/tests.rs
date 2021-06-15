@@ -130,13 +130,13 @@ fn freeze_work() {
 				.is_frozen,
 			true
 		);
-		System::assert_has_event(mock::Event::homa_validator_list(crate::Event::FreezeValidator(
+		System::assert_has_event(mock::Event::HomaValidatorListModule(crate::Event::FreezeValidator(
 			VALIDATOR_1,
 		)));
-		System::assert_has_event(mock::Event::homa_validator_list(crate::Event::FreezeValidator(
+		System::assert_has_event(mock::Event::HomaValidatorListModule(crate::Event::FreezeValidator(
 			VALIDATOR_2,
 		)));
-		System::assert_has_event(mock::Event::homa_validator_list(crate::Event::FreezeValidator(
+		System::assert_has_event(mock::Event::HomaValidatorListModule(crate::Event::FreezeValidator(
 			VALIDATOR_3,
 		)));
 	});
@@ -195,10 +195,10 @@ fn thaw_work() {
 				.is_frozen,
 			false
 		);
-		System::assert_has_event(mock::Event::homa_validator_list(crate::Event::ThawValidator(
+		System::assert_has_event(mock::Event::HomaValidatorListModule(crate::Event::ThawValidator(
 			VALIDATOR_1,
 		)));
-		System::assert_has_event(mock::Event::homa_validator_list(crate::Event::ThawValidator(
+		System::assert_has_event(mock::Event::HomaValidatorListModule(crate::Event::ThawValidator(
 			VALIDATOR_2,
 		)));
 	});
@@ -235,7 +235,7 @@ fn bond_work() {
 		assert_eq!(SHARES.with(|v| *v.borrow().get(&(ALICE, VALIDATOR_1)).unwrap_or(&0)), 0);
 
 		assert_ok!(HomaValidatorListModule::bond(Origin::signed(ALICE), VALIDATOR_1, 100));
-		System::assert_last_event(mock::Event::homa_validator_list(crate::Event::BondGuarantee(
+		System::assert_last_event(mock::Event::HomaValidatorListModule(crate::Event::BondGuarantee(
 			ALICE,
 			VALIDATOR_1,
 			100,
@@ -286,7 +286,7 @@ fn bond_work() {
 		assert_eq!(SHARES.with(|v| *v.borrow().get(&(BOB, VALIDATOR_1)).unwrap_or(&0)), 0);
 
 		assert_ok!(HomaValidatorListModule::bond(Origin::signed(BOB), VALIDATOR_1, 300));
-		System::assert_last_event(mock::Event::homa_validator_list(crate::Event::BondGuarantee(
+		System::assert_last_event(mock::Event::HomaValidatorListModule(crate::Event::BondGuarantee(
 			BOB,
 			VALIDATOR_1,
 			300,
@@ -334,7 +334,7 @@ fn bond_work() {
 		assert_eq!(SHARES.with(|v| *v.borrow().get(&(BOB, VALIDATOR_2)).unwrap_or(&0)), 0);
 
 		assert_ok!(HomaValidatorListModule::bond(Origin::signed(BOB), VALIDATOR_2, 200));
-		System::assert_last_event(mock::Event::homa_validator_list(crate::Event::BondGuarantee(
+		System::assert_last_event(mock::Event::HomaValidatorListModule(crate::Event::BondGuarantee(
 			BOB,
 			VALIDATOR_2,
 			200,
@@ -398,7 +398,7 @@ fn unbond_work() {
 		);
 
 		assert_ok!(HomaValidatorListModule::unbond(Origin::signed(ALICE), VALIDATOR_1, 100));
-		System::assert_last_event(mock::Event::homa_validator_list(crate::Event::UnbondGuarantee(
+		System::assert_last_event(mock::Event::HomaValidatorListModule(crate::Event::UnbondGuarantee(
 			ALICE,
 			VALIDATOR_1,
 			100,
@@ -561,7 +561,7 @@ fn withdraw_unbonded_work() {
 			Origin::signed(ALICE),
 			VALIDATOR_1
 		));
-		System::assert_last_event(mock::Event::homa_validator_list(crate::Event::WithdrawnGuarantee(
+		System::assert_last_event(mock::Event::HomaValidatorListModule(crate::Event::WithdrawnGuarantee(
 			ALICE,
 			VALIDATOR_1,
 			100,
@@ -694,17 +694,17 @@ fn slash_work() {
 				},
 			]
 		));
-		System::assert_has_event(mock::Event::homa_validator_list(crate::Event::SlashGuarantee(
+		System::assert_has_event(mock::Event::HomaValidatorListModule(crate::Event::SlashGuarantee(
 			ALICE,
 			VALIDATOR_1,
 			59,
 		)));
-		System::assert_has_event(mock::Event::homa_validator_list(crate::Event::SlashGuarantee(
+		System::assert_has_event(mock::Event::HomaValidatorListModule(crate::Event::SlashGuarantee(
 			BOB,
 			VALIDATOR_1,
 			119,
 		)));
-		System::assert_has_event(mock::Event::homa_validator_list(crate::Event::SlashGuarantee(
+		System::assert_has_event(mock::Event::HomaValidatorListModule(crate::Event::SlashGuarantee(
 			BOB,
 			VALIDATOR_2,
 			100,

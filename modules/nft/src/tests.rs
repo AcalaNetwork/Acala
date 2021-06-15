@@ -49,7 +49,10 @@ fn create_class_should_work() {
 			vec![1],
 			Default::default()
 		));
-		System::assert_last_event(Event::nft(crate::Event::CreatedClass(class_id_account(), CLASS_ID)));
+		System::assert_last_event(Event::NFTModule(crate::Event::CreatedClass(
+			class_id_account(),
+			CLASS_ID,
+		)));
 		assert_eq!(
 			reserved_balance(&class_id_account()),
 			<Runtime as Config>::CreateClassDeposit::get() + Proxy::deposit(1u32)
@@ -79,7 +82,10 @@ fn mint_should_work() {
 			vec![1],
 			Properties(ClassProperty::Transferable | ClassProperty::Burnable)
 		));
-		System::assert_last_event(Event::nft(crate::Event::CreatedClass(class_id_account(), CLASS_ID)));
+		System::assert_last_event(Event::NFTModule(crate::Event::CreatedClass(
+			class_id_account(),
+			CLASS_ID,
+		)));
 		assert_eq!(
 			Balances::deposit_into_existing(&class_id_account(), 2 * <Runtime as Config>::CreateTokenDeposit::get())
 				.is_ok(),
@@ -92,7 +98,7 @@ fn mint_should_work() {
 			vec![2],
 			2
 		));
-		System::assert_last_event(Event::nft(crate::Event::MintedToken(
+		System::assert_last_event(Event::NFTModule(crate::Event::MintedToken(
 			class_id_account(),
 			BOB,
 			CLASS_ID,
@@ -194,7 +200,7 @@ fn transfer_should_work() {
 		);
 
 		assert_ok!(NFTModule::transfer(Origin::signed(BOB), ALICE, (CLASS_ID, TOKEN_ID)));
-		System::assert_last_event(Event::nft(crate::Event::TransferredToken(
+		System::assert_last_event(Event::NFTModule(crate::Event::TransferredToken(
 			BOB, ALICE, CLASS_ID, TOKEN_ID,
 		)));
 		assert_eq!(
@@ -207,7 +213,7 @@ fn transfer_should_work() {
 		);
 
 		assert_ok!(NFTModule::transfer(Origin::signed(ALICE), BOB, (CLASS_ID, TOKEN_ID)));
-		System::assert_last_event(Event::nft(crate::Event::TransferredToken(
+		System::assert_last_event(Event::NFTModule(crate::Event::TransferredToken(
 			ALICE, BOB, CLASS_ID, TOKEN_ID,
 		)));
 		assert_eq!(
@@ -298,7 +304,7 @@ fn burn_should_work() {
 			1
 		));
 		assert_ok!(NFTModule::burn(Origin::signed(BOB), (CLASS_ID, TOKEN_ID)));
-		System::assert_last_event(Event::nft(crate::Event::BurnedToken(BOB, CLASS_ID, TOKEN_ID)));
+		System::assert_last_event(Event::NFTModule(crate::Event::BurnedToken(BOB, CLASS_ID, TOKEN_ID)));
 		assert_eq!(
 			reserved_balance(&class_id_account()),
 			<Runtime as Config>::CreateClassDeposit::get() + Proxy::deposit(1u32)
@@ -398,7 +404,7 @@ fn burn_with_remark_should_work() {
 			(CLASS_ID, TOKEN_ID),
 			remark
 		));
-		System::assert_last_event(Event::nft(crate::Event::BurnedTokenWithRemark(
+		System::assert_last_event(Event::NFTModule(crate::Event::BurnedTokenWithRemark(
 			BOB,
 			CLASS_ID,
 			TOKEN_ID,
@@ -437,7 +443,10 @@ fn destroy_class_should_work() {
 			CLASS_ID,
 			ALICE
 		));
-		System::assert_last_event(Event::nft(crate::Event::DestroyedClass(class_id_account(), CLASS_ID)));
+		System::assert_last_event(Event::NFTModule(crate::Event::DestroyedClass(
+			class_id_account(),
+			CLASS_ID,
+		)));
 		assert_eq!(free_balance(&class_id_account()), 0);
 		assert_eq!(reserved_balance(&class_id_account()), 0);
 		assert_eq!(free_balance(&ALICE), 100000);
