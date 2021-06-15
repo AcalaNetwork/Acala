@@ -94,7 +94,7 @@ runtime_benchmarks! {
 		let collateral_amount = Price::saturating_from_rational(dollar(currency_id), dollar(AUSD)).saturating_mul_int(collateral_value);
 
 		// set balance
-		set_balance(currency_id, &caller, collateral_amount+ ExistentialDeposits::get(&currency_id));
+		set_balance(currency_id, &caller, collateral_amount + ExistentialDeposits::get(&currency_id));
 
 		// feed price
 		AcalaOracle::feed_values(RawOrigin::Root.into(), vec![(currency_id, collateral_price)])?;

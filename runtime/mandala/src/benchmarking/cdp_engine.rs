@@ -93,7 +93,7 @@ runtime_benchmarks! {
 			let collateral_amount = Price::saturating_from_rational(dollar(currency_id), dollar(AUSD)).saturating_mul_int(collateral_value);
 
 			// set balance
-			set_balance(currency_id, &owner, collateral_amount+ ExistentialDeposits::get(&currency_id));
+			set_balance(currency_id, &owner, collateral_amount + ExistentialDeposits::get(&currency_id));
 
 			CdpEngine::set_collateral_params(
 				RawOrigin::Root.into(),
