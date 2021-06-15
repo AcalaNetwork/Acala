@@ -17,8 +17,8 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-	dollar, AccountId, Amount, CdpEngine, CollateralCurrencyIds, CurrencyId, DepositPerAuthorization, Dex, Honzon,
-	Price, Rate, Ratio, Runtime, KAR, KSM, KUSD,
+	dollar, AccountId, Amount, CdpEngine, CollateralCurrencyIds, CurrencyId, DepositPerAuthorization, Dex,
+	ExistentialDeposits, Honzon, Price, Rate, Ratio, Runtime, KAR, KSM, KUSD,
 };
 
 use super::utils::feed_price;
@@ -27,7 +27,7 @@ use core::convert::TryInto;
 use frame_benchmarking::{account, whitelisted_caller};
 use frame_system::RawOrigin;
 use orml_benchmarking::runtime_benchmarks;
-use orml_traits::Change;
+use orml_traits::{Change, GetByKey};
 use sp_runtime::{
 	traits::{AccountIdLookup, One, StaticLookup, UniqueSaturatedInto},
 	FixedPointNumber,
@@ -95,7 +95,7 @@ runtime_benchmarks! {
 		let collateral_amount = Price::saturating_from_rational(dollar(currency_id), dollar(KUSD)).saturating_mul_int(collateral_value);
 
 		// set balance
-		set_balance(currency_id, &caller, collateral_amount);
+		set_balance(currency_id, &caller, collateral_amount + ExistentialDeposits::get(&currency_id));
 
 		// feed price
 		feed_price(currency_id, collateral_price)?;
@@ -127,7 +127,7 @@ runtime_benchmarks! {
 		let collateral_amount = Price::saturating_from_rational(dollar(currency_id), dollar(KUSD)).saturating_mul_int(collateral_value);
 
 		// set balance
-		set_balance(currency_id, &sender, collateral_amount);
+		set_balance(currency_id, &sender, collateral_amount + ExistentialDeposits::get(&currency_id));
 		set_balance(KAR, &sender, DepositPerAuthorization::get());
 
 		// feed price
@@ -172,7 +172,7 @@ runtime_benchmarks! {
 		let collateral_amount = Price::saturating_from_rational(dollar(currency_id), dollar(KUSD)).saturating_mul_int(collateral_value);
 
 		// set balance
-		set_balance(currency_id, &sender, collateral_amount);
+		set_balance(currency_id, &sender, collateral_amount + ExistentialDeposits::get(&currency_id));
 		set_balance(currency_id, &maker, collateral_amount);
 		set_balance(KUSD, &maker, debit_value * 100);
 
