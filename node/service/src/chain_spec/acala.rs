@@ -228,7 +228,7 @@ fn acala_genesis(
 		pallet_democracy: Default::default(),
 		pallet_treasury: Default::default(),
 		orml_tokens: TokensConfig {
-			endowed_accounts: vec![
+			balances: vec![
 				(root_key.clone(), DOT, initial_balance),
 				(root_key, RENBTC, initial_balance),
 			],

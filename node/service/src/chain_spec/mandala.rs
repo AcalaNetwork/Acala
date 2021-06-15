@@ -305,7 +305,7 @@ fn testnet_genesis(
 		pallet_democracy: Default::default(),
 		pallet_treasury: Default::default(),
 		orml_tokens: TokensConfig {
-			endowed_accounts: endowed_accounts
+			balances: endowed_accounts
 				.iter()
 				.flat_map(|x| vec![(x.clone(), DOT, initial_balance), (x.clone(), AUSD, initial_balance)])
 				.collect(),
@@ -501,7 +501,7 @@ fn mandala_genesis(
 		pallet_democracy: Default::default(),
 		pallet_treasury: Default::default(),
 		orml_tokens: TokensConfig {
-			endowed_accounts: vec![(root_key.clone(), DOT, initial_balance)],
+			balances: vec![(root_key.clone(), DOT, initial_balance)],
 		},
 		orml_vesting: VestingConfig { vesting: vec![] },
 		module_cdp_treasury: CdpTreasuryConfig {

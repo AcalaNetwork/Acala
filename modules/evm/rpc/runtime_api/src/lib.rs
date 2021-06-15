@@ -31,6 +31,7 @@ sp_api::decl_runtime_apis! {
 	pub trait EVMRuntimeRPCApi<Balance> where
 		Balance: Codec + MaybeDisplay + MaybeFromStr,
 	{
+		#[skip_initialize_block]
 		fn call(
 			from: H160,
 			to: H160,
@@ -41,6 +42,7 @@ sp_api::decl_runtime_apis! {
 			estimate: bool,
 		) -> Result<CallInfo, sp_runtime::DispatchError>;
 
+		#[skip_initialize_block]
 		fn create(
 			from: H160,
 			data: Vec<u8>,
