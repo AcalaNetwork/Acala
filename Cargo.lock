@@ -5640,6 +5640,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "module-starport"
+version = "1.0.0"
+dependencies = [
+ "acala-primitives",
+ "frame-support",
+ "frame-system",
+ "module-support",
+ "orml-traits",
+ "parity-scale-codec",
+ "serde",
+ "serde_json",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "module-support"
 version = "1.0.0"
 dependencies = [
@@ -9563,10 +9581,10 @@ dependencies = [
 [[package]]
 name = "sc-consensus-uncles"
 version = "0.9.0"
-source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.4#ea5d3570673d125dfe0b7da33b345c3c13195380"
+source = "git+https://github.com/paritytech//substrate?rev=1d04678e20555e623c974ee1127bc8a45abcf3d6#1d04678e20555e623c974ee1127bc8a45abcf3d6"
 dependencies = [
  "sc-client-api",
- "sp-authorship 3.0.0 (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.4)",
+ "sp-authorship 3.0.0 (git+https://github.com/paritytech//substrate?rev=1d04678e20555e623c974ee1127bc8a45abcf3d6)",
  "sp-runtime",
  "thiserror",
 ]
@@ -9574,10 +9592,10 @@ dependencies = [
 [[package]]
 name = "sc-consensus-uncles"
 version = "0.9.0"
-source = "git+https://github.com/paritytech//substrate?rev=1d04678e20555e623c974ee1127bc8a45abcf3d6#1d04678e20555e623c974ee1127bc8a45abcf3d6"
+source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.4#ea5d3570673d125dfe0b7da33b345c3c13195380"
 dependencies = [
  "sc-client-api",
- "sp-authorship 3.0.0 (git+https://github.com/paritytech//substrate?rev=1d04678e20555e623c974ee1127bc8a45abcf3d6)",
+ "sp-authorship 3.0.0 (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.4)",
  "sp-runtime",
  "thiserror",
 ]
@@ -10709,7 +10727,7 @@ dependencies = [
 [[package]]
 name = "sp-authorship"
 version = "3.0.0"
-source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.4#ea5d3570673d125dfe0b7da33b345c3c13195380"
+source = "git+https://github.com/paritytech//substrate?rev=1d04678e20555e623c974ee1127bc8a45abcf3d6#1d04678e20555e623c974ee1127bc8a45abcf3d6"
 dependencies = [
  "async-trait",
  "parity-scale-codec",
@@ -10721,7 +10739,7 @@ dependencies = [
 [[package]]
 name = "sp-authorship"
 version = "3.0.0"
-source = "git+https://github.com/paritytech//substrate?rev=1d04678e20555e623c974ee1127bc8a45abcf3d6#1d04678e20555e623c974ee1127bc8a45abcf3d6"
+source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.4#ea5d3570673d125dfe0b7da33b345c3c13195380"
 dependencies = [
  "async-trait",
  "parity-scale-codec",
@@ -13162,3 +13180,8 @@ dependencies = [
  "cc",
  "libc",
 ]
+
+[[patch.unused]]
+name = "librocksdb-sys"
+version = "6.11.4"
+source = "git+https://github.com/hdevalence/rust-rocksdb?branch=master#33cd4281570b229b628d6d827fa0053cff57000a"
