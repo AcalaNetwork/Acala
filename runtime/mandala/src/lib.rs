@@ -37,7 +37,7 @@ pub use frame_support::{
 	construct_runtime, log, parameter_types,
 	traits::{
 		All, ContainsLengthBound, EnsureOrigin, Filter, Get, InstanceFilter, IsType, KeyOwnerProofSystem,
-		LockIdentifier, Randomness, SortedMembers, U128CurrencyToVote, WithdrawReasons,
+		LockIdentifier, MaxEncodedLen, Randomness, SortedMembers, U128CurrencyToVote, WithdrawReasons,
 	},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight, WEIGHT_PER_SECOND},
