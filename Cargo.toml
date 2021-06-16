@@ -1,8 +1,5 @@
 cargo-features = ["resolver"]
 
-[patch.crates-io]
-librocksdb-sys = { git = "https://github.com/hdevalence/rust-rocksdb", branch = "master" }
-
 [workspace]
 members = [
 	"node",

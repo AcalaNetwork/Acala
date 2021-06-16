@@ -13187,8 +13187,3 @@ dependencies = [
  "cc",
  "libc",
 ]
-
-[[patch.unused]]
-name = "librocksdb-sys"
-version = "6.11.4"
-source = "git+https://github.com/hdevalence/rust-rocksdb?branch=master#33cd4281570b229b628d6d827fa0053cff57000a"
