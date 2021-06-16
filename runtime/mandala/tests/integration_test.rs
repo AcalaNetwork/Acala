@@ -68,6 +68,7 @@ const ORACLE3: [u8; 32] = [2u8; 32];
 
 const ALICE: [u8; 32] = [4u8; 32];
 const BOB: [u8; 32] = [5u8; 32];
+const CHARLIE: [u8; 32] = [6u8; 32];
 const LPTOKEN: CurrencyId =
 	CurrencyId::DexShare(DexShare::Token(TokenSymbol::AUSD), DexShare::Token(TokenSymbol::RENBTC));
 
@@ -1161,10 +1162,32 @@ fn test_nft_module() {
 #[test]
 fn test_evm_accounts_module() {
 	ExtBuilder::default()
-		.balances(vec![(bob(), ACA, 1_000 * dollar(ACA))])
+		.balances(vec![
+			(AccountId::from(ALICE), AUSD, 1_000 * dollar(AUSD)),
+			(AccountId::from(CHARLIE), AUSD, 1_000 * dollar(AUSD)),
+			(AccountId::from(CHARLIE), ACA, 1_000 * dollar(ACA)),
+			(bob(), ACA, 1_000 * dollar(ACA)),
+		])
 		.build()
 		.execute_with(|| {
+			assert_ok!(set_oracle_price(vec![
+				(ACA, Price::saturating_from_rational(2, 1)) // 2 usd
+			]));
+
+			assert_ok!(DexModule::add_liquidity(
+				origin_of(AccountId::from(CHARLIE)),
+				ACA,
+				AUSD,
+				500 * dollar(ACA),
+				1000 * dollar(AUSD),
+				0,
+				false,
+			));
 			assert_eq!(Balances::free_balance(AccountId::from(ALICE)), 0);
+			assert_eq!(
+				Currencies::free_balance(AUSD, &AccountId::from(ALICE)),
+				1_000 * dollar(AUSD)
+			);
 			assert_eq!(Balances::free_balance(bob()), 1_000 * dollar(ACA));
 			assert_ok!(EvmAccounts::claim_account(
 				Origin::signed(AccountId::from(ALICE)),
@@ -1175,6 +1198,11 @@ fn test_evm_accounts_module() {
 				AccountId::from(ALICE),
 				EvmAccounts::eth_address(&alice_key()),
 			)));
+			assert_eq!(
+				Balances::free_balance(AccountId::from(ALICE)),
+				NativeTokenExistentialDeposit::get()
+			);
+			assert_eq!(Currencies::free_balance(AUSD, &AccountId::from(ALICE)), 999999999979979);
 
 			// claim another eth address
 			assert_noop!(
@@ -1193,6 +1221,21 @@ fn test_evm_accounts_module() {
 				),
 				module_evm_accounts::Error::<Runtime>::EthAddressHasMapped
 			);
+
+			// evm padded address will transfer_all to origin.
+			assert_eq!(Balances::free_balance(bob()), 1_000 * dollar(ACA));
+			assert_eq!(Balances::free_balance(&AccountId::from(BOB)), 0);
+			assert_eq!(System::providers(&bob()), 1);
+			assert_eq!(System::providers(&AccountId::from(BOB)), 0);
+			assert_ok!(EvmAccounts::claim_account(
+				Origin::signed(AccountId::from(BOB)),
+				EvmAccounts::eth_address(&bob_key()),
+				EvmAccounts::eth_sign(&bob_key(), &AccountId::from(BOB).encode(), &[][..])
+			));
+			assert_eq!(System::providers(&bob()), 0);
+			assert_eq!(System::providers(&AccountId::from(BOB)), 1);
+			assert_eq!(Balances::free_balance(bob()), 0);
+			assert_eq!(Balances::free_balance(&AccountId::from(BOB)), 1_000 * dollar(ACA));
 		});
 }
 

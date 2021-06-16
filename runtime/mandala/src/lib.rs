@@ -36,8 +36,9 @@ use codec::{Decode, Encode};
 pub use frame_support::{
 	construct_runtime, log, parameter_types,
 	traits::{
-		ContainsLengthBound, EnsureOrigin, Filter, Get, InstanceFilter, IsType, KeyOwnerProofSystem, LockIdentifier,
-		MaxEncodedLen, Randomness, SortedMembers, U128CurrencyToVote, WithdrawReasons,
+		ContainsLengthBound, Currency as PalletCurrency, EnsureOrigin, Filter, Get, InstanceFilter, IsType,
+		KeyOwnerProofSystem, LockIdentifier, MaxEncodedLen, Randomness, SortedMembers, U128CurrencyToVote,
+		WithdrawReasons,
 	},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight, WEIGHT_PER_SECOND},
@@ -1146,9 +1147,9 @@ impl module_transaction_payment::Config for Runtime {
 pub struct EvmAccountsOnClaimHandler;
 impl Handler<AccountId> for EvmAccountsOnClaimHandler {
 	fn handle(who: &AccountId) -> DispatchResult {
-		if System::providers(who) == 0 {
-			// no provider. i.e. no native tokens
-			// ensure there are some native tokens, which will add provider
+		if Balances::total_balance(who).is_zero() {
+			// If `who` don't have native tokens,
+			// ensure there are some native tokens
 			TransactionPayment::ensure_can_charge_fee(
 				who,
 				NativeTokenExistentialDeposit::get(),
