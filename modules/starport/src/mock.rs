@@ -16,38 +16,64 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-//! Mocks for example module.
+//! Mocks for the Starport module.
 
 #![cfg(test)]
 
-use crate as example;
-use frame_support::pallet_prelude::GenesisBuild;
+use super::*;
 use frame_support::{construct_runtime, parameter_types};
+use frame_system::EnsureSignedBy;
+use module_support::mocks::MockAddressMapping;
+use orml_traits::parameter_type_with_key;
+use primitives::{Amount, TokenSymbol};
+use sp_core::{H160, H256};
+use sp_runtime::{
+	testing::Header,
+	traits::{IdentityLookup, One as OneT, Zero},
+	AccountId32, DispatchError, FixedPointNumber,
+};
 
-parameter_types!(
-	pub const SomeConst: u64 = 10;
-	pub const BlockHashCount: u32 = 250;
-);
+pub type AccountId = AccountId32;
+pub type BlockNumber = u64;
+use crate as module_starport;
+
+mod starport {
+	pub use super::super::*;
+}
+
+pub const ADMIN_ACCOUNT: AccountId = AccountId32::new([10u8; 32]);
+pub const GATEWAY_ACCOUNT: AccountId = AccountId32::new([11u8; 32]);
+pub const ALICE: AccountId = AccountId32::new([1u8; 32]);
+pub const BOB: AccountId = AccountId32::new([2u8; 32]);
+pub const CHARLIE: AccountId = AccountId32::new([3u8; 32]);
+pub const ACALA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
+pub const KSM: CurrencyId = CurrencyId::Token(TokenSymbol::KSM);
+pub const CASH: CurrencyId = CurrencyId::Token(TokenSymbol::CASH);
+pub const INITIAL_BALANCE: Balance = 1000000;
+
+parameter_types! {
+	pub const BlockHashCount: u64 = 250;
+}
 
 impl frame_system::Config for Runtime {
 	type BaseCallFilter = ();
-	type Origin = Origin;
-	type Index = u64;
-	type BlockNumber = u64;
-	type Call = Call;
-	type Hash = sp_runtime::testing::H256;
-	type Hashing = sp_runtime::traits::BlakeTwo256;
-	type AccountId = u64;
-	type Lookup = sp_runtime::traits::IdentityLookup<Self::AccountId>;
-	type Header = sp_runtime::testing::Header;
-	type Event = Event;
-	type BlockHashCount = BlockHashCount;
 	type BlockWeights = ();
 	type BlockLength = ();
+	type Origin = Origin;
+	type Call = Call;
+	type Index = u64;
+	type BlockNumber = BlockNumber;
+	type Hash = H256;
+	type Hashing = ::sp_runtime::traits::BlakeTwo256;
+	type AccountId = AccountId;
+	type Lookup = IdentityLookup<Self::AccountId>;
+	type Header = Header;
+	type Event = Event;
+	type BlockHashCount = BlockHashCount;
 	type DbWeight = ();
 	type Version = ();
 	type PalletInfo = PalletInfo;
-	type AccountData = ();
+	type AccountData = pallet_balances::AccountData<Balance>;
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
 	type SystemWeightInfo = ();
@@ -55,10 +81,82 @@ impl frame_system::Config for Runtime {
 	type OnSetCode = ();
 }
 
-impl example::Config for Runtime {
+parameter_type_with_key! {
+	pub ExistentialDeposits: |_currency_id: CurrencyId| -> Balance {
+		Default::default()
+	};
+}
+
+impl orml_tokens::Config for Runtime {
 	type Event = Event;
-	type SomeConst = SomeConst;
-	type Balance = u64;
+	type Balance = Balance;
+	type Amount = Amount;
+	type CurrencyId = CurrencyId;
+	type WeightInfo = ();
+	type ExistentialDeposits = ExistentialDeposits;
+	type OnDust = ();
+	type MaxLocks = ();
+}
+
+parameter_types! {
+	pub const NativeTokenExistentialDeposit: Balance = 0;
+}
+
+impl pallet_balances::Config for Runtime {
+	type Balance = Balance;
+	type DustRemoval = ();
+	type Event = Event;
+	type ExistentialDeposit = NativeTokenExistentialDeposit;
+	type AccountStore = frame_system::Pallet<Runtime>;
+	type MaxLocks = ();
+	type WeightInfo = ();
+}
+
+pub type AdaptedBasicCurrency = module_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Amount, BlockNumber>;
+
+parameter_types! {
+	pub const GetNativeCurrencyId: CurrencyId = ACALA;
+}
+
+impl module_currencies::Config for Runtime {
+	type Event = Event;
+	type MultiCurrency = Tokens;
+	type NativeCurrency = AdaptedBasicCurrency;
+	type GetNativeCurrencyId = GetNativeCurrencyId;
+	type WeightInfo = ();
+	type AddressMapping = MockAddressMapping;
+	type EVMBridge = ();
+}
+
+pub struct MockCashModule;
+impl CompoundCash<Balance, u64> for MockCashModule {
+	fn set_future_yield(_next_cash_yield: u128, _yield_index: u128, _timestamp_effective: u64) -> DispatchResult {
+		Ok(().into())
+	}
+}
+
+pub const MAX_GATEWAY_AUTHORITIES: u32 = 5;
+pub const PERCENT_THRESHOLD_FOR_AUTHORITY_SIGNATURE: Perbill = Perbill::from_percent(50);
+
+parameter_types! {
+	pub const AdminAccount: AccountId = ADMIN_ACCOUNT;
+	pub const GatewayAccount: AccountId = GATEWAY_ACCOUNT;
+	pub const CashCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::CASH);
+	pub const StarportPalletId: PalletId = PalletId(*b"aca/stpt");
+	pub const MaxGatewayAuthorities: u32 = MAX_GATEWAY_AUTHORITIES;
+	pub const PercentThresholdForAuthoritySignature: Perbill = PERCENT_THRESHOLD_FOR_AUTHORITY_SIGNATURE;
+}
+
+impl Config for Runtime {
+	type Event = Event;
+	type Currency = Currencies;
+	type AdminAccount = AdminAccount;
+	type GatewayAccount = GatewayAccount;
+	type CashCurrencyId = CashCurrencyId;
+	type PalletId = StarportPalletId;
+	type MaxGatewayAuthorities = MaxGatewayAuthorities;
+	type PercentThresholdForAuthoritySignature = PercentThresholdForAuthoritySignature;
+	type Cash = MockCashModule;
 }
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
@@ -70,23 +168,45 @@ construct_runtime!(
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic
 	{
-		System: frame_system::{Pallet, Call, Event<T>},
-		// NOTE: name Example here is needed in order to have same module prefix
-		Example: example::{Pallet, Call, Event<T>, Config<T>, Storage},
+		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+		Starport: module_starport::{Pallet, Call, Storage, Event<T>},
+		PalletBalances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
+		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
+		Currencies: module_currencies::{Pallet, Call, Event<T>},
 	}
 );
+pub struct ExtBuilder {
+	tokens_balances: Vec<(AccountId, CurrencyId, Balance)>,
+	native_balances: Vec<(AccountId, Balance)>,
+}
 
-pub fn new_test_ext() -> sp_io::TestExternalities {
-	let mut t = frame_system::GenesisConfig::default()
-		.build_storage::<Runtime>()
-		.unwrap();
-	example::GenesisConfig::<Runtime> {
-		bar: vec![(1, 100), (2, 200)],
-		..Default::default()
+impl Default for ExtBuilder {
+	fn default() -> Self {
+		Self {
+			tokens_balances: vec![(ALICE, KSM, INITIAL_BALANCE), (ALICE, CASH, INITIAL_BALANCE)],
+			native_balances: vec![(ALICE, INITIAL_BALANCE)],
+		}
 	}
-	.assimilate_storage(&mut t)
-	.unwrap();
-	let mut ext = sp_io::TestExternalities::new(t);
-	ext.execute_with(|| System::set_block_number(1));
-	ext
+}
+
+impl ExtBuilder {
+	pub fn build(self) -> sp_io::TestExternalities {
+		let mut t = frame_system::GenesisConfig::default()
+			.build_storage::<Runtime>()
+			.unwrap();
+
+		pallet_balances::GenesisConfig::<Runtime> {
+			balances: self.native_balances,
+		}
+		.assimilate_storage(&mut t)
+		.unwrap();
+
+		orml_tokens::GenesisConfig::<Runtime> {
+			balances: self.tokens_balances,
+		}
+		.assimilate_storage(&mut t)
+		.unwrap();
+
+		t.into()
+	}
 }

@@ -16,28 +16,39 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-//! Unit tests for example module.
+//! Unit tests for the Starport Module
 
 #![cfg(test)]
 
-use crate::mock::*;
-use frame_support::assert_ok;
+use super::*;
+use frame_support::{assert_noop, assert_ok};
+use mock::{
+	Currencies, Event, ExtBuilder, Origin, Runtime, Starport, System, Tokens, ACALA, ADMIN_ACCOUNT, ALICE, BOB, CASH,
+	GATEWAY_ACCOUNT, INITIAL_BALANCE, KSM, MAX_GATEWAY_AUTHORITIES, PERCENT_THRESHOLD_FOR_AUTHORITY_SIGNATURE,
+};
 
-#[test]
-fn set_dummy_work() {
-	new_test_ext().execute_with(|| {
-		assert_eq!(Example::dummy(), None);
-		assert_ok!(Example::set_dummy(Origin::root(), 20));
-		assert_eq!(Example::dummy(), Some(20));
-		System::assert_last_event(Event::example(crate::Event::Dummy(20)));
-	});
-}
+/// lock/lock_to:
+/// lock works
+/// lock_to works
+/// lock_to Fails with insufficient Balance
+/// lock_to Fails with insufficient SupplyCap
 
+/// Invoke
+/// can set supply cap via notice invocation
+/// can change authorities via notice invocation
+/// invocation fails with too many authorities
+/// can unlock asset via notice invocation
+/// unlock fails with insufficient asset
+/// can set future yield via notice invocation
+///
+/// notices cannot be invoked more than once
+/// Only gateway account can invoke notices
+/// notices cannot be invoked with insufficient signatures
 #[test]
-fn do_set_bar_work() {
-	new_test_ext().execute_with(|| {
-		assert_eq!(Example::bar(2), 200);
-		Example::do_set_bar(&2, 10);
-		assert_eq!(Example::bar(2), 10);
+fn initialize_token_works() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_eq!(Currencies::free_balance(KSM, &ALICE), INITIAL_BALANCE);
+		assert_eq!(Currencies::free_balance(CASH, &ALICE), INITIAL_BALANCE);
+		assert_eq!(Currencies::free_balance(ACALA, &ALICE), INITIAL_BALANCE);
 	});
 }

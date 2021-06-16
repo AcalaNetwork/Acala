@@ -24,9 +24,6 @@
 //! * Uploading Assets: User can lock assets native to Acala to "upload" them onto the Compound
 //!   chain.
 //!
-//! * Relay transactions to Compound chain via their Gateway: User can send signed Transactions to
-//!   the Compound Gateway through Acala.
-//!
 //! * CASH asset management: User can transfer CASH asset freely between Acala and Compound Chain.
 //!   While the CASH is on Acala, the yield is identical to those that are on the Compound Chain.
 //!
@@ -36,11 +33,11 @@
 //! * Receive Notices from Compound chain: Receive, verify and execute "Notices", or actionable
 //!   requests from the Compound chain.
 #![cfg_attr(not(feature = "std"), no_std)]
-#![allow(clippy::unused_unit)]
-use frame_support::{pallet_prelude::*, transactional, BoundedVec, PalletId};
 
-// mod mock;
-// mod tests;
+mod mock;
+mod tests;
+
+use frame_support::{pallet_prelude::*, transactional, BoundedVec, PalletId};
 use frame_system::{ensure_signed, pallet_prelude::*};
 use module_support::CompoundCash;
 use orml_traits::MultiCurrency;

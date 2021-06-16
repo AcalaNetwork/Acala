@@ -19,6 +19,9 @@ module-support = { path = "../support", default-features = false }
 
 [dev-dependencies]
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.4" }
+module-currencies = { path = "../currencies", default-features = false }
+orml-tokens = { path = "../../orml/tokens" }
+pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.4" }
 
 [features]
 default = ["std"]
