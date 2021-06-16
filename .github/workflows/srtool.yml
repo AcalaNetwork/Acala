@@ -48,7 +48,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: install
-          args: "--git https://gitlab.com/chevdor/subwasm"
+          args: "--git https://github.com/chevdor/subwasm"
       - name: Show Runtime information
         shell: bash
         run: |
