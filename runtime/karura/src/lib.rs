@@ -187,7 +187,7 @@ impl Filter<Call> for BaseCallFilter {
 			// Core
 			Call::System(_) | Call::Timestamp(_) | Call::ParachainSystem(_) |
 			// Utility
-			Call::Scheduler(_) | Call::Utility(_) | Call::Multisig(_) |
+			Call::Scheduler(_) | Call::Utility(_) | Call::Multisig(_) | Call::Proxy(_) |
 			// Sudo
 			Call::Sudo(_) |
 			// PoA
