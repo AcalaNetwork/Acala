@@ -257,6 +257,17 @@ impl sc_client_api::BlockBackend<Block> for Client {
 			Self::Acala(client) => client.has_indexed_transaction(hash),
 		}
 	}
+
+	fn block_indexed_body(&self, id: &BlockId<Block>) -> sp_blockchain::Result<Option<Vec<Vec<u8>>>> {
+		match self {
+			#[cfg(feature = "with-mandala-runtime")]
+			Self::Mandala(client) => client.block_indexed_body(id),
+			#[cfg(feature = "with-karura-runtime")]
+			Self::Karura(client) => client.block_indexed_body(id),
+			#[cfg(feature = "with-acala-runtime")]
+			Self::Acala(client) => client.block_indexed_body(id),
+		}
+	}
 }
 
 impl sc_client_api::StorageProvider<Block, crate::FullBackend> for Client {
