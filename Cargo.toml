@@ -39,6 +39,7 @@ members = [
 
 	"ecosystem-modules/ren/renvm-bridge",
 	"ecosystem-modules/chainsafe",
+	"ecosystem-modules/starport",
 ]
 
 resolver = "2"

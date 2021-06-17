@@ -37,7 +37,7 @@
 mod mock;
 mod tests;
 
-use frame_support::{pallet_prelude::*, transactional, BoundedVec, PalletId};
+use frame_support::{pallet_prelude::*, require_transactional, transactional, BoundedVec, PalletId};
 use frame_system::{ensure_signed, pallet_prelude::*};
 use module_support::CompoundCash;
 use orml_traits::MultiCurrency;
@@ -92,8 +92,6 @@ pub mod module {
 	#[pallet::error]
 	pub enum Error<T> {
 		/// Acala -> Compound Gateway
-		/// Account has insufficient asset for the operation.
-		InsufficientBalance,
 		/// There are not enough supply on the Compound chain for the lock operation.
 		InsufficientAssetSupplyCap,
 
@@ -289,7 +287,7 @@ pub mod module {
 }
 
 impl<T: Config> Pallet<T> {
-	#[transactional]
+	#[require_transactional]
 	fn do_lock_to(
 		from: T::AccountId,
 		to: T::AccountId,
@@ -297,14 +295,12 @@ impl<T: Config> Pallet<T> {
 		locked_amount: Balance,
 	) -> DispatchResultWithPostInfo {
 		// Ensure the user has sufficient balance
-		ensure!(
-			T::Currency::ensure_can_withdraw(currency_id.clone(), &from, locked_amount.clone()).is_ok(),
-			Error::<T>::InsufficientBalance
-		);
+		T::Currency::ensure_can_withdraw(currency_id.clone(), &from, locked_amount.clone())?;
 
+		let mut current_supply_cap = Self::supply_caps(currency_id);
 		// Ensure there are enough supplies on Compound.
 		ensure!(
-			Self::supply_caps(currency_id) >= locked_amount,
+			current_supply_cap >= locked_amount,
 			Error::<T>::InsufficientAssetSupplyCap
 		);
 
@@ -315,13 +311,16 @@ impl<T: Config> Pallet<T> {
 			_ => T::Currency::transfer(currency_id, &from, &T::AdminAccount::get(), locked_amount),
 		}?;
 
+		// Fund locked. Now reduce the supply caps
+		SupplyCaps::<T>::insert(&currency_id, current_supply_cap - locked_amount);
+
 		// Emmit an event
 		Self::deposit_event(Event::<T>::AssetLockedTo(currency_id, locked_amount, to));
 
 		Ok(().into())
 	}
 
-	#[transactional]
+	#[require_transactional]
 	fn do_unlock(currency_id: CurrencyId, unlock_amount: Balance, to: T::AccountId) -> DispatchResultWithPostInfo {
 		// If the currency is CASH, mint into the user's account
 		// All other tokens are transferred from the admin's account.

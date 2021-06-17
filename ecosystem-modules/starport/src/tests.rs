@@ -27,8 +27,6 @@ use mock::{
 	GATEWAY_ACCOUNT, INITIAL_BALANCE, KSM, MAX_GATEWAY_AUTHORITIES, PERCENT_THRESHOLD_FOR_AUTHORITY_SIGNATURE,
 };
 
-/// lock/lock_to:
-/// lock works
 /// lock_to works
 /// lock_to Fails with insufficient Balance
 /// lock_to Fails with insufficient SupplyCap
@@ -45,10 +43,30 @@ use mock::{
 /// Only gateway account can invoke notices
 /// notices cannot be invoked with insufficient signatures
 #[test]
-fn initialize_token_works() {
+fn mock_initialize_token_works() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_eq!(Currencies::free_balance(KSM, &ALICE), INITIAL_BALANCE);
 		assert_eq!(Currencies::free_balance(CASH, &ALICE), INITIAL_BALANCE);
 		assert_eq!(Currencies::free_balance(ACALA, &ALICE), INITIAL_BALANCE);
+	});
+}
+
+/// Test lock/lock_to function
+#[test]
+fn lock_works() {
+	ExtBuilder::default().build().execute_with(|| {
+		// Setup supply caps
+		SupplyCaps::<Runtime>::insert(ACALA, INITIAL_BALANCE);
+		SupplyCaps::<Runtime>::insert(CASH, INITIAL_BALANCE);
+
+		// Lock some ACALA
+		assert_ok!(Starport::lock(Origin::signed(ALICE), ACALA, INITIAL_BALANCE));
+
+		// Locked ACALA are transferred from the user's account into Admin's account.
+		assert_eq!(Currencies::free_balance(ACALA, &ALICE), 0);
+		assert_eq!(Currencies::free_balance(ACALA, &ADMIN_ACCOUNT), INITIAL_BALANCE);
+		// Supply caps are reduced accordingly.
+		assert_eq!(SupplyCaps::<Runtime>::get(ACALA), 0);
+		assert_eq!(SupplyCaps::<Runtime>::get(CASH), INITIAL_BALANCE);
 	});
 }

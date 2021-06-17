@@ -1,5 +1,5 @@
 [package]
-name = "module-starport"
+name = "ecosystem-starport"
 version = "1.0.0"
 authors = ["Acala Developers"]
 edition = "2018"
@@ -15,11 +15,11 @@ sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-
 sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.4", default-features = false  }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 orml-traits = { path = "../../orml/traits", default-features = false }
-module-support = { path = "../support", default-features = false }
+module-support = { path = "../../modules/support", default-features = false }
 
 [dev-dependencies]
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.4" }
-module-currencies = { path = "../currencies", default-features = false }
+module-currencies = { path = "../../modules/currencies", default-features = false }
 orml-tokens = { path = "../../orml/tokens" }
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.4" }
 
@@ -32,8 +32,8 @@ std = [
 	"frame-system/std",
 	"sp-runtime/std",
 	"sp-core/std",
-    "sp-io/std",
-    "sp-std/std",
+	"sp-io/std",
+	"sp-std/std",
 	"primitives/std",
 	"orml-traits/std",
 	"module-support/std",
