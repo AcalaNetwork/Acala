@@ -34,8 +34,17 @@ pub type ChainSpec = sc_service::GenericChainSpec<mandala_runtime::GenesisConfig
 
 pub const PARA_ID: u32 = 1000;
 
-/// Development testnet config (single validator Alice)
-pub fn development_testnet_config() -> Result<ChainSpec, String> {
+/// Development testnet config (single validator Alice), non-parachain
+pub fn dev_testnet_config() -> Result<ChainSpec, String> {
+	dev_testnet_config_from_chain_id("mandala-dev")
+}
+
+/// Parachain development testnet config (single collator Alice)
+pub fn parachain_dev_testnet_config() -> Result<ChainSpec, String> {
+	dev_testnet_config_from_chain_id("mandala-pc-dev")
+}
+
+fn dev_testnet_config_from_chain_id(chain_id: &str) -> Result<ChainSpec, String> {
 	let mut properties = Map::new();
 	let mut token_symbol: Vec<String> = vec![];
 	let mut token_decimals: Vec<u32> = vec![];
@@ -50,7 +59,7 @@ pub fn development_testnet_config() -> Result<ChainSpec, String> {
 
 	Ok(ChainSpec::from_genesis(
 		"Mandala Dev",
-		"mandala-dev",
+		chain_id,
 		ChainType::Development,
 		move || {
 			testnet_genesis(
