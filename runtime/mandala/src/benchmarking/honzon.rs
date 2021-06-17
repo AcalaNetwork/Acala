@@ -18,7 +18,7 @@
 
 use crate::{
 	dollar, AcalaOracle, AccountId, Amount, CdpEngine, CollateralCurrencyIds, CurrencyId, DepositPerAuthorization, Dex,
-	Honzon, Indices, Price, Rate, Ratio, Runtime, ACA, AUSD, DOT,
+	ExistentialDeposits, Honzon, Indices, Price, Rate, Ratio, Runtime, ACA, AUSD, DOT,
 };
 
 use super::utils::set_balance;
@@ -26,7 +26,7 @@ use core::convert::TryInto;
 use frame_benchmarking::{account, whitelisted_caller};
 use frame_system::RawOrigin;
 use orml_benchmarking::runtime_benchmarks;
-use orml_traits::Change;
+use orml_traits::{Change, GetByKey};
 use sp_runtime::{
 	traits::{One, StaticLookup, UniqueSaturatedInto},
 	FixedPointNumber,
@@ -94,7 +94,7 @@ runtime_benchmarks! {
 		let collateral_amount = Price::saturating_from_rational(dollar(currency_id), dollar(AUSD)).saturating_mul_int(collateral_value);
 
 		// set balance
-		set_balance(currency_id, &caller, collateral_amount);
+		set_balance(currency_id, &caller, collateral_amount + ExistentialDeposits::get(&currency_id));
 
 		// feed price
 		AcalaOracle::feed_values(RawOrigin::Root.into(), vec![(currency_id, collateral_price)])?;
@@ -126,7 +126,7 @@ runtime_benchmarks! {
 		let collateral_amount = Price::saturating_from_rational(dollar(currency_id), dollar(AUSD)).saturating_mul_int(collateral_value);
 
 		// set balance
-		set_balance(currency_id, &sender, collateral_amount);
+		set_balance(currency_id, &sender, collateral_amount + ExistentialDeposits::get(&currency_id));
 		set_balance(ACA, &sender, DepositPerAuthorization::get());
 
 		// feed price
@@ -172,7 +172,7 @@ runtime_benchmarks! {
 		let collateral_amount = Price::saturating_from_rational(dollar(currency_id), dollar(AUSD)).saturating_mul_int(collateral_value);
 
 		// set balance
-		set_balance(currency_id, &sender, collateral_amount);
+		set_balance(currency_id, &sender, collateral_amount + ExistentialDeposits::get(&currency_id));
 		set_balance(currency_id, &maker, collateral_amount);
 		set_balance(AUSD, &maker, debit_value * 100);
 

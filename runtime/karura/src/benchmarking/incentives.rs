@@ -118,7 +118,7 @@ runtime_benchmarks! {
 		let caller: AccountId = whitelisted_caller();
 		set_balance(LKSM, &caller, 10_000 * dollar(KUSD));
 		let pool_id = PoolId::HomaValidatorAllowance(caller.clone());
-	}: _(RawOrigin::Signed(caller), pool_id, 1_000)
+	}: _(RawOrigin::Signed(caller), pool_id, 1 * dollar(LKSM))
 }
 
 #[cfg(test)]

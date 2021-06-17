@@ -28,10 +28,11 @@ use mock::{Event, *};
 fn debits_key() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_eq!(LoansModule::positions(BTC, &ALICE).debit, 0);
-		assert_ok!(LoansModule::adjust_position(&ALICE, BTC, 100, 100));
-		assert_eq!(LoansModule::positions(BTC, &ALICE).debit, 100);
+		assert_ok!(LoansModule::adjust_position(&ALICE, BTC, 200, 200));
+		assert_eq!(LoansModule::positions(BTC, &ALICE).debit, 200);
+		assert_eq!(Currencies::free_balance(BTC, &LoansModule::account_id()), 200);
 		assert_ok!(LoansModule::adjust_position(&ALICE, BTC, -100, -100));
-		assert_eq!(LoansModule::positions(BTC, &ALICE).debit, 0);
+		assert_eq!(LoansModule::positions(BTC, &ALICE).debit, 100);
 	});
 }
 
@@ -67,6 +68,12 @@ fn adjust_position_should_work() {
 		// mock exceed debit value cap
 		assert_eq!(LoansModule::adjust_position(&ALICE, BTC, 1000, 1000).is_ok(), false);
 
+		// collateral_adjustment is positive
+		assert_noop!(
+			LoansModule::adjust_position(&ALICE, BTC, 1000, 0),
+			orml_tokens::Error::<Runtime>::KeepAlive,
+		);
+
 		assert_eq!(Currencies::free_balance(BTC, &ALICE), 1000);
 		assert_eq!(Currencies::free_balance(BTC, &LoansModule::account_id()), 0);
 		assert_eq!(LoansModule::total_positions(BTC).debit, 0);
@@ -85,6 +92,14 @@ fn adjust_position_should_work() {
 		assert_eq!(LoansModule::positions(BTC, &ALICE).collateral, 500);
 		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 150);
 		System::assert_last_event(Event::loans(crate::Event::PositionUpdated(ALICE, BTC, 500, 300)));
+
+		// collateral_adjustment is negatives
+		// remove module account.
+		assert_eq!(Currencies::total_balance(BTC, &LoansModule::account_id()), 500);
+		assert_eq!(System::account_exists(&LoansModule::account_id()), true);
+		assert_ok!(LoansModule::adjust_position(&ALICE, BTC, -500, 0));
+		assert_eq!(Currencies::free_balance(BTC, &LoansModule::account_id()), 0);
+		assert_eq!(System::account_exists(&LoansModule::account_id()), false);
 	});
 }
 
