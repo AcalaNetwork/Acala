@@ -190,8 +190,7 @@ yarn run start generate
 # start relaychain and parachain
 cd output
 # NOTE: If regenerate the output directory, need to rebuild the images.
-docker-compose build
-docker-compose up -d
+docker-compose up -d --build
 
 # list all of the containers.
 docker ps -a
