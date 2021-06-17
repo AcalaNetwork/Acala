@@ -209,7 +209,7 @@ const generateParachainGenesisFile = (id, image, chain, output, yes) => {
   const endowed = []
 
   if (chain.sudo && runtime.palletSudo) {
-    runtime.palletSudo.key = getAddress(chain.sudo)
+    runtime.palletSudo.key = getAddress(chain.sudo[0])
     endowed.push(runtime.palletSudo.key)
   }
 
