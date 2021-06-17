@@ -1573,18 +1573,18 @@ impl ecosystem_chainsafe::Config for Runtime {
 }
 
 parameter_types! {
-	pub ReservedDmpWeight: Weight = RuntimeBlockWeights::get().max_block / 4;
 	pub ReservedXcmpWeight: Weight = RuntimeBlockWeights::get().max_block / 4;
+	pub ReservedDmpWeight: Weight = RuntimeBlockWeights::get().max_block / 4;
 }
 
 impl cumulus_pallet_parachain_system::Config for Runtime {
 	type Event = Event;
 	type OnValidationData = ();
 	type SelfParaId = ParachainInfo;
-	type DmpMessageHandler = ();
+	type DmpMessageHandler = DmpQueue;
 	type ReservedDmpWeight = ReservedDmpWeight;
-	type OutboundXcmpMessageSource = ();
-	type XcmpMessageHandler = ();
+	type OutboundXcmpMessageSource = XcmpQueue;
+	type XcmpMessageHandler = XcmpQueue;
 	type ReservedXcmpWeight = ReservedXcmpWeight;
 }
 

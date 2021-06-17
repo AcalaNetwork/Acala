@@ -41,7 +41,8 @@ pub mod time {
 /// Fee-related
 pub mod fee {
 	use frame_support::weights::{
-		constants::ExtrinsicBaseWeight, WeightToFeeCoefficient, WeightToFeeCoefficients, WeightToFeePolynomial,
+		constants::{ExtrinsicBaseWeight, WEIGHT_PER_SECOND},
+		WeightToFeeCoefficient, WeightToFeeCoefficients, WeightToFeePolynomial,
 	};
 	use primitives::Balance;
 	use runtime_common::{cent, KAR};
@@ -50,6 +51,10 @@ pub mod fee {
 
 	/// The block saturation level. Fees will be updates based on this value.
 	pub const TARGET_BLOCK_FULLNESS: Perbill = Perbill::from_percent(25);
+
+	fn base_tx_in_kar() -> Balance {
+		cent(KAR) / 10
+	}
 
 	/// Handles converting a weight scalar to a fee value, based on the scale
 	/// and granularity of the node's balance type.
@@ -67,7 +72,7 @@ pub mod fee {
 		type Balance = Balance;
 		fn polynomial() -> WeightToFeeCoefficients<Self::Balance> {
 			// in Karura, extrinsic base weight (smallest non-zero weight) is mapped to 1/10 CENT:
-			let p = cent(KAR) / 10;
+			let p = base_tx_in_kar();
 			let q = Balance::from(ExtrinsicBaseWeight::get());
 			smallvec![WeightToFeeCoefficient {
 				degree: 1,
@@ -76,5 +81,12 @@ pub mod fee {
 				coeff_integer: p / q,
 			}]
 		}
+	}
+
+	pub fn ksm_per_second() -> u128 {
+		let base_weight = Balance::from(ExtrinsicBaseWeight::get());
+		let base_tx_per_second = (WEIGHT_PER_SECOND as u128) / base_weight;
+		let kar_per_second = base_tx_per_second * base_tx_in_kar();
+		kar_per_second / 100
 	}
 }
