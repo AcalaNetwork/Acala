@@ -57,18 +57,24 @@ impl<T: frame_system::Config> ecosystem_chainsafe::WeightInfo for WeightInfo<T> 
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
-	fn transfer_origin_chain_token_to_bridge() -> Weight {
+	fn transfer_origin_chain_token_to_bridge(b: u32, ) -> Weight {
 		(128_000_000 as Weight)
+			// Standard Error: 0
+			.saturating_add((1_000 as Weight).saturating_mul(b as Weight))
 			.saturating_add(T::DbWeight::get().reads(5 as Weight))
 			.saturating_add(T::DbWeight::get().writes(4 as Weight))
 	}
-	fn transfer_other_chain_token_to_bridge() -> Weight {
+	fn transfer_other_chain_token_to_bridge(b: u32, ) -> Weight {
 		(103_000_000 as Weight)
+			// Standard Error: 0
+			.saturating_add((1_000 as Weight).saturating_mul(b as Weight))
 			.saturating_add(T::DbWeight::get().reads(4 as Weight))
 			.saturating_add(T::DbWeight::get().writes(3 as Weight))
 	}
-	fn transfer_native_to_bridge() -> Weight {
+	fn transfer_native_to_bridge(b: u32, ) -> Weight {
 		(139_000_000 as Weight)
+			// Standard Error: 0
+			.saturating_add((1_000 as Weight).saturating_mul(b as Weight))
 			.saturating_add(T::DbWeight::get().reads(4 as Weight))
 			.saturating_add(T::DbWeight::get().writes(3 as Weight))
 	}

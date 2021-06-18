@@ -129,7 +129,7 @@ pub mod module {
 			Ok(().into())
 		}
 
-		#[pallet::weight(<T as Config>::WeightInfo::transfer_origin_chain_token_to_bridge())]
+		#[pallet::weight(<T as Config>::WeightInfo::transfer_origin_chain_token_to_bridge(recipient.len() as u32))]
 		#[transactional]
 		pub fn transfer_to_bridge(
 			origin: OriginFor<T>,
@@ -143,7 +143,7 @@ pub mod module {
 			Ok(().into())
 		}
 
-		#[pallet::weight(<T as Config>::WeightInfo::transfer_native_to_bridge())]
+		#[pallet::weight(<T as Config>::WeightInfo::transfer_native_to_bridge(recipient.len() as u32))]
 		#[transactional]
 		pub fn transfer_native_to_bridge(
 			origin: OriginFor<T>,
