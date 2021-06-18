@@ -57,7 +57,7 @@ fn deploy_contract(caller: AccountId) -> Result<H160, DispatchError> {
 	EVM::create(Origin::signed(caller), contract, 0, 1000000000, 1000000000)
 		.map_or_else(|e| Err(e.error), |_| Ok(()))?;
 
-	System::assert_last_event(Event::module_evm(module_evm::Event::Created(contract_addr())));
+	System::assert_last_event(Event::EVM(module_evm::Event::Created(contract_addr())));
 	Ok(contract_addr())
 }
 

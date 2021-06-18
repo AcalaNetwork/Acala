@@ -212,13 +212,6 @@ pub enum CurrencyId {
 	ChainSafe(chainbridge::ResourceId),
 }
 
-// TODO: remove after https://github.com/open-web3-stack/open-runtime-module-library/issues/519
-impl Default for CurrencyId {
-	fn default() -> Self {
-		CurrencyId::Token(TokenSymbol::ACA)
-	}
-}
-
 impl CurrencyId {
 	pub fn is_token_currency_id(&self) -> bool {
 		matches!(self, CurrencyId::Token(_))

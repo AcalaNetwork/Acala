@@ -193,7 +193,7 @@ where
 		config.transaction_pool.clone(),
 		config.role.is_authority().into(),
 		registry,
-		task_manager.spawn_handle(),
+		task_manager.spawn_essential_handle(),
 		client.clone(),
 	);
 
@@ -663,7 +663,7 @@ fn inner_mandala_dev(config: Configuration, instant_sealing: bool) -> Result<Tas
 			// aura
 			let can_author_with = sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone());
 			let slot_duration = sc_consensus_aura::slot_duration(&*client)?.slot_duration();
-			let aura = sc_consensus_aura::start_aura::<AuraPair, _, _, _, _, _, _, _, _, _, _>(StartAuraParams {
+			let aura = sc_consensus_aura::start_aura::<AuraPair, _, _, _, _, _, _, _, _, _, _, _>(StartAuraParams {
 				slot_duration: sc_consensus_aura::slot_duration(&*client)?,
 				client: client.clone(),
 				select_chain,
@@ -684,6 +684,7 @@ fn inner_mandala_dev(config: Configuration, instant_sealing: bool) -> Result<Tas
 				keystore: keystore_container.sync_keystore(),
 				can_author_with,
 				sync_oracle: network.clone(),
+				justification_sync_link: network.clone(),
 				block_proposal_slot_portion: SlotProportion::new(2f32 / 3f32),
 				telemetry: telemetry.as_ref().map(|x| x.handle()),
 			})?;
