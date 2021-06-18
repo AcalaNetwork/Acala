@@ -68,6 +68,13 @@ impl<T: frame_system::Config> module_collator_selection::WeightInfo for WeightIn
 			.saturating_add(T::DbWeight::get().reads(5 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
+	fn register_candidate(c: u32, ) -> Weight {
+		(28_453_000 as Weight)
+		// Standard Error: 0
+			.saturating_add((230_000 as Weight).saturating_mul(c as Weight))
+			.saturating_add(T::DbWeight::get().reads(5 as Weight))
+			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+	}
 	fn leave_intent(c: u32, ) -> Weight {
 		(18_813_000 as Weight)
 			// Standard Error: 0

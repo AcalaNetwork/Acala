@@ -295,7 +295,7 @@ pub mod pallet {
 			Ok(Some(T::WeightInfo::register_as_candidate(bounded_candidates_len as u32)).into())
 		}
 
-		#[pallet::weight(T::WeightInfo::register_as_candidate(T::MaxCandidates::get()))]
+		#[pallet::weight(T::WeightInfo::register_candidate(T::MaxCandidates::get()))]
 		pub fn register_candidate(origin: OriginFor<T>, new_candidate: T::AccountId) -> DispatchResultWithPostInfo {
 			T::UpdateOrigin::ensure_origin(origin)?;
 
@@ -303,7 +303,7 @@ pub mod pallet {
 			let bounded_candidates_len = Self::do_register_as_candidate(&new_candidate, deposit)?;
 
 			Self::deposit_event(Event::CandidateAdded(new_candidate, deposit));
-			Ok(Some(T::WeightInfo::register_as_candidate(bounded_candidates_len as u32)).into())
+			Ok(Some(T::WeightInfo::register_candidate(bounded_candidates_len as u32)).into())
 		}
 
 		#[pallet::weight(T::WeightInfo::leave_intent(T::MaxCandidates::get()))]
