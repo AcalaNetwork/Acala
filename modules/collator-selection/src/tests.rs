@@ -180,7 +180,7 @@ fn cannot_register_as_candidate_if_poor() {
 		// poor
 		assert_noop!(
 			CollatorSelection::register_as_candidate(Origin::signed(33)),
-			Error::<Test>::NotSetSessionKey,
+			Error::<Test>::RequireSessionKey,
 		);
 
 		assert_ok!(Session::set_keys(
@@ -296,7 +296,7 @@ fn leave_intent() {
 
 		assert_noop!(
 			CollatorSelection::leave_intent(Origin::signed(4)),
-			Error::<Test>::MinCandidatesExceeded
+			Error::<Test>::BelowCandidatesMin
 		);
 	});
 }

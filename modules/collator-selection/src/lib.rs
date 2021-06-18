@@ -83,7 +83,10 @@ pub mod pallet {
 		BoundedVec, PalletId,
 	};
 	use frame_support::{
-		sp_runtime::{traits::AccountIdConversion, RuntimeDebug},
+		sp_runtime::{
+			traits::{AccountIdConversion, Zero},
+			RuntimeDebug,
+		},
 		weights::DispatchClass,
 	};
 	use frame_system::pallet_prelude::*;
@@ -239,12 +242,12 @@ pub mod pallet {
 	#[pallet::error]
 	pub enum Error<T> {
 		MaxCandidatesExceeded,
-		MinCandidatesExceeded,
+		BelowCandidatesMin,
 		Unknown,
 		Permission,
 		AlreadyCandidate,
 		NotCandidate,
-		NotSetSessionKey,
+		RequireSessionKey,
 		AlreadyInvulnerable,
 		InvalidProof,
 		MaxInvulnerablesExceeded,
@@ -289,7 +292,7 @@ pub mod pallet {
 			let who = ensure_signed(origin)?;
 
 			let deposit = Self::candidacy_bond();
-			let bounded_candidates_len = Self::do_register_as_candidate(&who, deposit)?;
+			let bounded_candidates_len = Self::do_register_candidate(&who, deposit)?;
 
 			Self::deposit_event(Event::CandidateAdded(who, deposit));
 			Ok(Some(T::WeightInfo::register_as_candidate(bounded_candidates_len as u32)).into())
@@ -299,10 +302,9 @@ pub mod pallet {
 		pub fn register_candidate(origin: OriginFor<T>, new_candidate: T::AccountId) -> DispatchResultWithPostInfo {
 			T::UpdateOrigin::ensure_origin(origin)?;
 
-			let deposit: BalanceOf<T> = Default::default();
-			let bounded_candidates_len = Self::do_register_as_candidate(&new_candidate, deposit)?;
+			let bounded_candidates_len = Self::do_register_candidate(&new_candidate, Zero::zero())?;
 
-			Self::deposit_event(Event::CandidateAdded(new_candidate, deposit));
+			Self::deposit_event(Event::CandidateAdded(new_candidate, Zero::zero()));
 			Ok(Some(T::WeightInfo::register_candidate(bounded_candidates_len as u32)).into())
 		}
 
@@ -327,7 +329,7 @@ pub mod pallet {
 				// prevent collator count drop below minimal count
 				ensure!(
 					candidates.len() > T::MinCandidates::get() as usize,
-					Error::<T>::MinCandidatesExceeded
+					Error::<T>::BelowCandidatesMin
 				);
 
 				let index = candidates
@@ -351,7 +353,7 @@ pub mod pallet {
 			collators
 		}
 
-		pub fn do_register_as_candidate(who: &T::AccountId, deposit: BalanceOf<T>) -> Result<usize, DispatchError> {
+		pub fn do_register_candidate(who: &T::AccountId, deposit: BalanceOf<T>) -> Result<usize, DispatchError> {
 			// ensure we are below limit.
 			let length = <Candidates<T>>::decode_len().unwrap_or_default();
 			ensure!(
@@ -359,7 +361,7 @@ pub mod pallet {
 				Error::<T>::MaxCandidatesExceeded
 			);
 			ensure!(!Self::invulnerables().contains(&who), Error::<T>::AlreadyInvulnerable);
-			ensure!(T::ValidatorSet::is_registered(&who), Error::<T>::NotSetSessionKey);
+			ensure!(T::ValidatorSet::is_registered(&who), Error::<T>::RequireSessionKey);
 
 			let incoming = CandidateInfo {
 				who: who.clone(),
