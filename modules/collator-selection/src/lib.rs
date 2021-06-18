@@ -79,7 +79,7 @@ pub mod pallet {
 		dispatch::DispatchResultWithPostInfo,
 		inherent::Vec,
 		pallet_prelude::*,
-		traits::{Currency, EnsureOrigin, MaxEncodedLen, ReservableCurrency, ValidatorSet},
+		traits::{Currency, EnsureOrigin, MaxEncodedLen, ReservableCurrency, ValidatorRegistration, ValidatorSet},
 		BoundedVec, PalletId,
 	};
 	use frame_support::{
@@ -113,13 +113,17 @@ pub mod pallet {
 		type Currency: ReservableCurrency<Self::AccountId>;
 
 		/// A type for retrieving the validators supposed to be online in a session.
-		type ValidatorSet: ValidatorSet<Self::AccountId, ValidatorId = Self::AccountId>;
+		type ValidatorSet: ValidatorSet<Self::AccountId, ValidatorId = Self::AccountId>
+			+ ValidatorRegistration<Self::AccountId>;
 
 		/// Origin that can dictate updating parameters of this pallet.
 		type UpdateOrigin: EnsureOrigin<Self::Origin>;
 
 		/// Account Identifier from which the internal Pot is generated.
 		type PotId: Get<PalletId>;
+
+		/// Maximum number of invulnerables.
+		type MinCandidates: Get<u32>;
 
 		/// Maximum number of candidates that we should have. This is used for benchmarking and is
 		/// not enforced.
@@ -235,10 +239,12 @@ pub mod pallet {
 	#[pallet::error]
 	pub enum Error<T> {
 		MaxCandidatesExceeded,
+		MinCandidatesExceeded,
 		Unknown,
 		Permission,
 		AlreadyCandidate,
 		NotCandidate,
+		NotSetSessionKey,
 		AlreadyInvulnerable,
 		InvalidProof,
 		MaxInvulnerablesExceeded,
@@ -282,34 +288,22 @@ pub mod pallet {
 		pub fn register_as_candidate(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 
-			// ensure we are below limit.
-			let length = <Candidates<T>>::decode_len().unwrap_or_default();
-			ensure!(
-				(length as u32) < Self::desired_candidates(),
-				Error::<T>::MaxCandidatesExceeded
-			);
-			ensure!(!Self::invulnerables().contains(&who), Error::<T>::AlreadyInvulnerable);
-
 			let deposit = Self::candidacy_bond();
-			let incoming = CandidateInfo {
-				who: who.clone(),
-				deposit,
-			};
-
-			let mut bounded_candidates = Self::candidates();
-
-			if bounded_candidates.iter().any(|candidate| candidate.who == who) {
-				Err(Error::<T>::AlreadyCandidate)?;
-			} else {
-				bounded_candidates
-					.try_push(incoming)
-					.map_err(|_| Error::<T>::MaxCandidatesExceeded)?;
-				T::Currency::reserve(&who, deposit)?;
-				<Candidates<T>>::put(&bounded_candidates);
-			}
+			let bounded_candidates_len = Self::do_register_as_candidate(&who, deposit)?;
 
 			Self::deposit_event(Event::CandidateAdded(who, deposit));
-			Ok(Some(T::WeightInfo::register_as_candidate(bounded_candidates.len() as u32)).into())
+			Ok(Some(T::WeightInfo::register_as_candidate(bounded_candidates_len as u32)).into())
+		}
+
+		#[pallet::weight(T::WeightInfo::register_as_candidate(T::MaxCandidates::get()))]
+		pub fn register_candidate(origin: OriginFor<T>, new_candidate: T::AccountId) -> DispatchResultWithPostInfo {
+			T::UpdateOrigin::ensure_origin(origin)?;
+
+			let deposit: BalanceOf<T> = Default::default();
+			let bounded_candidates_len = Self::do_register_as_candidate(&new_candidate, deposit)?;
+
+			Self::deposit_event(Event::CandidateAdded(new_candidate, deposit));
+			Ok(Some(T::WeightInfo::register_as_candidate(bounded_candidates_len as u32)).into())
 		}
 
 		#[pallet::weight(T::WeightInfo::leave_intent(T::MaxCandidates::get()))]
@@ -330,6 +324,12 @@ pub mod pallet {
 		/// Removes a candidate if they exist and sends them back their deposit
 		fn try_remove_candidate(who: &T::AccountId) -> Result<usize, DispatchError> {
 			let current_count = <Candidates<T>>::try_mutate(|candidates| -> Result<usize, DispatchError> {
+				// prevent collator count drop below minimal count
+				ensure!(
+					candidates.len() > T::MinCandidates::get() as usize,
+					Error::<T>::MinCandidatesExceeded
+				);
+
 				let index = candidates
 					.iter()
 					.position(|candidate| candidate.who == *who)
@@ -349,6 +349,36 @@ pub mod pallet {
 			let mut collators = Self::invulnerables().into_inner();
 			collators.extend(candidates.into_iter().collect::<Vec<_>>());
 			collators
+		}
+
+		pub fn do_register_as_candidate(who: &T::AccountId, deposit: BalanceOf<T>) -> Result<usize, DispatchError> {
+			// ensure we are below limit.
+			let length = <Candidates<T>>::decode_len().unwrap_or_default();
+			ensure!(
+				(length as u32) < Self::desired_candidates(),
+				Error::<T>::MaxCandidatesExceeded
+			);
+			ensure!(!Self::invulnerables().contains(&who), Error::<T>::AlreadyInvulnerable);
+			ensure!(T::ValidatorSet::is_registered(&who), Error::<T>::NotSetSessionKey);
+
+			let incoming = CandidateInfo {
+				who: who.clone(),
+				deposit,
+			};
+
+			let mut bounded_candidates = Self::candidates();
+
+			if bounded_candidates.iter().any(|candidate| candidate.who == *who) {
+				Err(Error::<T>::AlreadyCandidate)?;
+			} else {
+				bounded_candidates
+					.try_push(incoming)
+					.map_err(|_| Error::<T>::MaxCandidatesExceeded)?;
+				T::Currency::reserve(&who, deposit)?;
+				<Candidates<T>>::put(&bounded_candidates);
+			}
+
+			Ok(bounded_candidates.len())
 		}
 	}
 
