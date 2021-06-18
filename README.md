@@ -184,12 +184,13 @@ yarn
 
 # generate docker-compose.yml and genesis
 # NOTE: If the docker image is not the latest, need to download it manually.
-# bash: docker pull acala/karura-node:latest
+# e.g.: docker pull acala/karura-node:latest
 yarn run start generate
 
 # start relaychain and parachain
 cd output
-docker-compose up -d
+# NOTE: If regenerate the output directory, need to rebuild the images.
+docker-compose up -d --build
 
 # list all of the containers.
 docker ps -a
@@ -203,7 +204,7 @@ docker-compose stop
 # remove all of the containers. 
 docker-compose rm
 
-# If you want to clear the data and restart, you need to clear the volumes.
+# NOTE: If you want to clear the data and restart, you need to clear the volumes.
 # remove volume 
 docker volume ls
 docker volume rm [volume_name]

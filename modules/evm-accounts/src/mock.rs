@@ -116,7 +116,6 @@ impl Config for Runtime {
 	type Currency = Balances;
 	type AddressMapping = EvmAddressMapping<Runtime>;
 	type TransferAll = Currencies;
-	type OnClaim = ();
 	type WeightInfo = ();
 }
 

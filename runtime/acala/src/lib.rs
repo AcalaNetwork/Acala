@@ -1137,7 +1137,6 @@ impl module_evm_accounts::Config for Runtime {
 	type Currency = Balances;
 	type AddressMapping = EvmAddressMapping<Runtime>;
 	type TransferAll = Currencies;
-	type OnClaim = (); // TODO: update implementation to something similar to Mandala
 	type WeightInfo = weights::module_evm_accounts::WeightInfo<Runtime>;
 }
 
