@@ -35,7 +35,7 @@ use sp_runtime::{
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
-use crate as module_starport;
+use crate as ecosystem_starport;
 
 mod starport {
 	pub use super::super::*;
@@ -169,7 +169,7 @@ construct_runtime!(
 		UncheckedExtrinsic = UncheckedExtrinsic
 	{
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-		Starport: module_starport::{Pallet, Call, Storage, Event<T>},
+		Starport: ecosystem_starport::{Pallet, Call, Storage, Event<T>},
 		PalletBalances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
 		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
 		Currencies: module_currencies::{Pallet, Call, Event<T>},
@@ -207,6 +207,23 @@ impl ExtBuilder {
 		.assimilate_storage(&mut t)
 		.unwrap();
 
-		t.into()
+		ecosystem_starport::GenesisConfig {
+			initial_authorities: get_mock_signatures(),
+		}
+		.assimilate_storage::<Runtime>(&mut t)
+		.unwrap();
+
+		let mut ext = sp_io::TestExternalities::new(t);
+		ext.execute_with(|| System::set_block_number(1));
+		ext
 	}
+}
+
+/// Returns a Vec of mock signatures
+pub fn get_mock_signatures() -> Vec<CompoundAuthoritySignature> {
+	vec![
+		"Mock signature 1".to_string(),
+		"Mock Signature 2".to_string(),
+		"Mock Signature 3".to_string(),
+	]
 }

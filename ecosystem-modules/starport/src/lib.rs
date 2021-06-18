@@ -106,6 +106,8 @@ pub mod module {
 		InsufficientValidNoticeSignatures,
 		/// Too many Authorities.
 		ExceededMaxNumberOfAuthorities,
+		/// Authorities cannot be empty
+		AuthoritiesListCannotBeEmpty,
 	}
 
 	#[pallet::event]
@@ -131,13 +133,25 @@ pub mod module {
 	}
 
 	#[derive(Clone, Debug, Serialize, Deserialize, Encode, Decode, PartialEq, Eq)]
-	pub enum GatewayNotice<AccountId> {
+	pub struct GatewayNotice<AccountId> {
+		pub id: u64,
+		pub payload: GatewayNoticePayload<AccountId>,
+	}
+
+	impl<AccountId> GatewayNotice<AccountId> {
+		pub fn new(id: u64, payload: GatewayNoticePayload<AccountId>) -> Self {
+			Self { id, payload }
+		}
+	}
+
+	#[derive(Clone, Debug, Serialize, Deserialize, Encode, Decode, PartialEq, Eq)]
+	pub enum GatewayNoticePayload<AccountId> {
 		/// Update the current supply cap for an asset. Only assets that have spare supplies.
 		/// can be locked or uploaded to the Compound chain.
 		SetSupplyCap(CurrencyId, Balance),
 
 		/// Update the current set of authorities who sign Notices.
-		ChangeAuthorities(Vec<String>),
+		ChangeAuthorities(Vec<CompoundAuthoritySignature>),
 
 		/// Unlock or download assets from Compound chain back into Acala chain.
 		Unlock(CurrencyId, Balance, AccountId),
@@ -162,7 +176,56 @@ pub mod module {
 	/// given Notice.
 	#[pallet::storage]
 	#[pallet::getter(fn gateway_authorities)]
-	pub type GatewayAuthorities<T: Config> = StorageValue<_, BoundedVec<String, T::MaxGatewayAuthorities>, ValueQuery>;
+	pub type GatewayAuthorities<T: Config> =
+		StorageValue<_, BoundedVec<CompoundAuthoritySignature, T::MaxGatewayAuthorities>, ValueQuery>;
+
+	#[pallet::genesis_config]
+	pub struct GenesisConfig {
+		pub initial_authorities: Vec<CompoundAuthoritySignature>,
+	}
+
+	#[cfg(feature = "std")]
+	impl GenesisConfig {
+		/// Direct implementation of `GenesisBuild::build_storage`.
+		///
+		/// Kept in order not to break dependency.
+		pub fn build_storage<T: Config>(&self) -> Result<sp_runtime::Storage, String> {
+			<Self as frame_support::traits::GenesisBuild<T>>::build_storage(self)
+		}
+
+		/// Direct implementation of `GenesisBuild::assimilate_storage`.
+		///
+		/// Kept in order not to break dependency.
+		pub fn assimilate_storage<T: Config>(&self, storage: &mut sp_runtime::Storage) -> Result<(), String> {
+			<Self as frame_support::traits::GenesisBuild<T>>::assimilate_storage(self, storage)
+		}
+	}
+
+	#[cfg(feature = "std")]
+	impl Default for GenesisConfig {
+		fn default() -> Self {
+			GenesisConfig {
+				initial_authorities: vec!["DEFAULT_AUTHORITY_SIGNATURE_STRING".to_string()],
+			}
+		}
+	}
+
+	#[pallet::genesis_build]
+	impl<T: Config> GenesisBuild<T> for GenesisConfig {
+		fn build(&self) {
+			// ensure no duplicates exist.
+			let unique_authorities = self
+				.initial_authorities
+				.iter()
+				.collect::<std::collections::BTreeSet<_>>();
+			assert!(
+				unique_authorities.len() == self.initial_authorities.len(),
+				"duplicate initial authorities signatures in genesis."
+			);
+			let bounded_vec = BoundedVec::try_from(self.initial_authorities.clone()).unwrap();
+			GatewayAuthorities::<T>::put(bounded_vec);
+		}
+	}
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
@@ -244,26 +307,28 @@ pub mod module {
 				Error::<T>::InsufficientValidNoticeSignatures
 			);
 
-			match notice {
-				GatewayNotice::SetSupplyCap(currency_id, amount) => {
+			match notice.payload {
+				GatewayNoticePayload::SetSupplyCap(currency_id, amount) => {
 					SupplyCaps::<T>::insert(&currency_id, amount.clone());
 					Self::deposit_event(Event::<T>::SupplyCapSet(currency_id, amount));
 					Ok(().into())
 				}
-				GatewayNotice::ChangeAuthorities(new_authorities) => {
+				GatewayNoticePayload::ChangeAuthorities(new_authorities) => {
 					ensure!(
 						new_authorities.len() <= (T::MaxGatewayAuthorities::get() as usize),
 						Error::<T>::ExceededMaxNumberOfAuthorities
 					);
+					ensure!(new_authorities.len() > 0, Error::<T>::AuthoritiesListCannotBeEmpty);
+
 					let bounded_vec = BoundedVec::try_from(new_authorities).unwrap();
 					GatewayAuthorities::<T>::put(bounded_vec);
 					Self::deposit_event(Event::<T>::GatewayAuthoritiesChanged);
 					Ok(().into())
 				}
-				GatewayNotice::Unlock(currency_id, amount, who) => {
+				GatewayNoticePayload::Unlock(currency_id, amount, who) => {
 					Self::do_unlock(currency_id.clone(), amount.clone(), who.clone())
 				}
-				GatewayNotice::SetFutureYield(next_cash_yield, yield_index, timestamp_effective) => {
+				GatewayNoticePayload::SetFutureYield(next_cash_yield, yield_index, timestamp_effective) => {
 					T::Cash::set_future_yield(
 						next_cash_yield.clone(),
 						yield_index.clone(),
@@ -297,7 +362,7 @@ impl<T: Config> Pallet<T> {
 		// Ensure the user has sufficient balance
 		T::Currency::ensure_can_withdraw(currency_id.clone(), &from, locked_amount.clone())?;
 
-		let mut current_supply_cap = Self::supply_caps(currency_id);
+		let current_supply_cap = Self::supply_caps(currency_id);
 		// Ensure there are enough supplies on Compound.
 		ensure!(
 			current_supply_cap >= locked_amount,
@@ -358,6 +423,6 @@ impl<T: Config> Pallet<T> {
 		}
 
 		// check if enough signatures has been acquired.
-		Perbill::from_rational(count, signatures.len() as u32) > T::PercentThresholdForAuthoritySignature::get()
+		Perbill::from_rational(count, signatures.len() as u32) >= T::PercentThresholdForAuthoritySignature::get()
 	}
 }

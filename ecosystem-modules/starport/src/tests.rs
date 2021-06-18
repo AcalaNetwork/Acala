@@ -27,16 +27,6 @@ use mock::{
 	GATEWAY_ACCOUNT, INITIAL_BALANCE, KSM, MAX_GATEWAY_AUTHORITIES, PERCENT_THRESHOLD_FOR_AUTHORITY_SIGNATURE,
 };
 
-/// lock_to works
-/// lock_to Fails with insufficient Balance
-/// lock_to Fails with insufficient SupplyCap
-
-/// Invoke
-/// can set supply cap via notice invocation
-/// can change authorities via notice invocation
-/// invocation fails with too many authorities
-/// can unlock asset via notice invocation
-/// unlock fails with insufficient asset
 /// can set future yield via notice invocation
 ///
 /// notices cannot be invoked more than once
@@ -51,7 +41,6 @@ fn mock_initialize_token_works() {
 	});
 }
 
-/// Test lock/lock_to function
 #[test]
 fn lock_works() {
 	ExtBuilder::default().build().execute_with(|| {
@@ -65,8 +54,253 @@ fn lock_works() {
 		// Locked ACALA are transferred from the user's account into Admin's account.
 		assert_eq!(Currencies::free_balance(ACALA, &ALICE), 0);
 		assert_eq!(Currencies::free_balance(ACALA, &ADMIN_ACCOUNT), INITIAL_BALANCE);
+
 		// Supply caps are reduced accordingly.
 		assert_eq!(SupplyCaps::<Runtime>::get(ACALA), 0);
 		assert_eq!(SupplyCaps::<Runtime>::get(CASH), INITIAL_BALANCE);
+
+		// Verify the event deposited for Gateway is correct.
+		assert_eq!(
+			System::events().iter().last().unwrap().event,
+			Event::ecosystem_starport(crate::Event::AssetLockedTo(ACALA, INITIAL_BALANCE, ALICE))
+		);
+
+		// Locked CASH assets are burned instead
+		assert_ok!(Starport::lock(Origin::signed(ALICE), CASH, INITIAL_BALANCE));
+
+		// Locked ACALA are transferred from the user's account into Admin's account.
+		assert_eq!(Currencies::free_balance(CASH, &ALICE), 0);
+		assert_eq!(Currencies::free_balance(CASH, &ADMIN_ACCOUNT), 0);
+
+		// Supply caps are reduced accordingly.
+		assert_eq!(SupplyCaps::<Runtime>::get(CASH), 0);
+
+		// Verify the event deposited for Gateway is correct.
+		assert_eq!(
+			System::events().iter().last().unwrap().event,
+			Event::ecosystem_starport(crate::Event::AssetLockedTo(CASH, INITIAL_BALANCE, ALICE))
+		)
+	});
+}
+
+#[test]
+fn lock_to_works() {
+	ExtBuilder::default().build().execute_with(|| {
+		// Setup supply caps
+		SupplyCaps::<Runtime>::insert(ACALA, INITIAL_BALANCE);
+
+		// Lock some ACALA into BOB's account
+		assert_ok!(Starport::lock_to(Origin::signed(ALICE), BOB, ACALA, INITIAL_BALANCE));
+
+		// Locked ACALA are transferred from the user's account into Admin's account.
+		assert_eq!(Currencies::free_balance(ACALA, &ALICE), 0);
+		assert_eq!(Currencies::free_balance(ACALA, &ADMIN_ACCOUNT), INITIAL_BALANCE);
+		// Supply caps are reduced accordingly.
+		assert_eq!(SupplyCaps::<Runtime>::get(ACALA), 0);
+
+		// Verify the event deposited for Gateway is correct.
+		assert_eq!(
+			System::events().iter().last().unwrap().event,
+			Event::ecosystem_starport(crate::Event::AssetLockedTo(ACALA, INITIAL_BALANCE, BOB))
+		);
+	});
+}
+
+#[test]
+fn lock_to_fails_with_insufficient_balance() {
+	ExtBuilder::default().build().execute_with(|| {
+		// Setup supply caps
+		SupplyCaps::<Runtime>::insert(ACALA, INITIAL_BALANCE);
+
+		// Lock some ACALA into BOB's account
+		assert_noop!(
+			Starport::lock_to(Origin::signed(BOB), ALICE, ACALA, INITIAL_BALANCE),
+			module_currencies::Error::<Runtime>::BalanceTooLow
+		);
+	});
+}
+
+#[test]
+fn lock_to_fails_with_insufficient_supply_caps() {
+	ExtBuilder::default().build().execute_with(|| {
+		// Setup supply caps
+		SupplyCaps::<Runtime>::insert(ACALA, INITIAL_BALANCE);
+		SupplyCaps::<Runtime>::insert(KSM, INITIAL_BALANCE - 1);
+
+		// Lock works if the amount is below the market cap
+		assert_ok!(Starport::lock(Origin::signed(ALICE), ACALA, INITIAL_BALANCE - 1));
+
+		// Lock fails due to insufficient Market cap
+		assert_noop!(
+			Starport::lock(Origin::signed(ALICE), KSM, INITIAL_BALANCE),
+			Error::<Runtime>::InsufficientAssetSupplyCap
+		);
+	});
+}
+
+#[test]
+fn invoke_can_set_supply_cap() {
+	ExtBuilder::default().build().execute_with(|| {
+		// Setup initial caps
+		SupplyCaps::<Runtime>::insert(ACALA, 100);
+
+		// Lock some ACALA so the supply cap is spent.
+		assert_ok!(Starport::lock(Origin::signed(ALICE), ACALA, 100));
+		// Verify the event deposited for Gateway is correct.
+		assert_eq!(
+			System::events().iter().last().unwrap().event,
+			Event::ecosystem_starport(crate::Event::AssetLockedTo(ACALA, 100, ALICE))
+		);
+
+		// Lock fails due to insufficient Market cap
+		assert_noop!(
+			Starport::lock(Origin::signed(ALICE), ACALA, 100),
+			Error::<Runtime>::InsufficientAssetSupplyCap
+		);
+
+		// Increase the supply cap via Notice invoke.
+		let notice = GatewayNotice::new(0, GatewayNoticePayload::SetSupplyCap(ACALA, 100));
+		assert_ok!(Starport::invoke(
+			Origin::signed(GATEWAY_ACCOUNT),
+			notice.clone(),
+			mock::get_mock_signatures()
+		));
+		assert_eq!(
+			System::events().iter().last().unwrap().event,
+			Event::ecosystem_starport(crate::Event::SupplyCapSet(ACALA, 100))
+		);
+
+		// Lock will now work
+		assert_ok!(Starport::lock(Origin::signed(ALICE), ACALA, 100));
+		assert_eq!(
+			System::events().iter().last().unwrap().event,
+			Event::ecosystem_starport(crate::Event::AssetLockedTo(ACALA, 100, ALICE))
+		);
+	});
+}
+
+#[test]
+fn invoke_can_set_authorities() {
+	ExtBuilder::default().build().execute_with(|| {
+		// Setup initial caps
+		SupplyCaps::<Runtime>::insert(ACALA, 1000);
+
+		// Lock some ACALA so the supply cap is spent.
+		assert_ok!(Starport::lock(Origin::signed(ALICE), ACALA, 100));
+		// Verify the event deposited for Gateway is correct.
+		assert_eq!(
+			System::events().iter().last().unwrap().event,
+			Event::ecosystem_starport(crate::Event::AssetLockedTo(ACALA, 100, ALICE))
+		);
+
+		let new_authorities = vec!["NEW AUTH 1".to_string(), "NEW AUTH 2".to_string()];
+
+		let mut notice = GatewayNotice::new(0, GatewayNoticePayload::ChangeAuthorities(new_authorities.clone()));
+		let bad_notice = GatewayNotice::new(1, GatewayNoticePayload::ChangeAuthorities(vec![]));
+
+		// Incorrect authority signatures will fail the Invoke call
+		assert_noop!(
+			Starport::invoke(Origin::signed(GATEWAY_ACCOUNT), notice.clone(), new_authorities.clone()),
+			Error::<Runtime>::InsufficientValidNoticeSignatures
+		);
+
+		// Empty authority will fail
+		assert_noop!(
+			Starport::invoke(Origin::signed(GATEWAY_ACCOUNT), bad_notice, mock::get_mock_signatures()),
+			Error::<Runtime>::AuthoritiesListCannotBeEmpty
+		);
+
+		// Change authority via Notice invoke.
+		assert_ok!(Starport::invoke(
+			Origin::signed(GATEWAY_ACCOUNT),
+			notice.clone(),
+			mock::get_mock_signatures()
+		));
+		assert_eq!(
+			System::events().iter().last().unwrap().event,
+			Event::ecosystem_starport(crate::Event::GatewayAuthoritiesChanged)
+		);
+
+		// Notices now uses the new set of authority for verification.
+		notice.id = 2;
+		assert_ok!(Starport::invoke(
+			Origin::signed(GATEWAY_ACCOUNT),
+			notice,
+			new_authorities.clone()
+		));
+		assert_eq!(
+			System::events().iter().last().unwrap().event,
+			Event::ecosystem_starport(crate::Event::GatewayAuthoritiesChanged)
+		);
+
+		// invocation fails with too many authorities
+		notice = GatewayNotice::new(
+			3,
+			GatewayNoticePayload::ChangeAuthorities(vec![
+				"1".to_string(),
+				"2".to_string(),
+				"3".to_string(),
+				"4".to_string(),
+				"5".to_string(),
+				"6".to_string(),
+			]),
+		);
+		assert_noop!(
+			Starport::invoke(Origin::signed(GATEWAY_ACCOUNT), notice, new_authorities),
+			Error::<Runtime>::ExceededMaxNumberOfAuthorities
+		);
+	});
+}
+
+#[test]
+fn invoke_can_unlock_asset() {
+	ExtBuilder::default().build().execute_with(|| {
+		// Setup initial caps
+		SupplyCaps::<Runtime>::insert(ACALA, 1000);
+
+		// Lock some ACALA so the supply cap is spent.
+		assert_ok!(Starport::lock(Origin::signed(ALICE), ACALA, 500));
+		// Verify the event deposited for Gateway is correct.
+		assert_eq!(
+			System::events().iter().last().unwrap().event,
+			Event::ecosystem_starport(crate::Event::AssetLockedTo(ACALA, 500, ALICE))
+		);
+
+		// Unlock the locked asset
+		let mut notice = GatewayNotice::new(0, GatewayNoticePayload::Unlock(ACALA, 500, ALICE));
+		assert_ok!(Starport::invoke(
+			Origin::signed(GATEWAY_ACCOUNT),
+			notice.clone(),
+			mock::get_mock_signatures()
+		));
+		assert_eq!(
+			System::events().iter().last().unwrap().event,
+			Event::ecosystem_starport(crate::Event::AssetUnlocked(ACALA, 500, ALICE))
+		);
+
+		// Unlock will fail with insufficient asset
+		notice.id = 1;
+		assert_noop!(
+			Starport::invoke(Origin::signed(GATEWAY_ACCOUNT), notice, mock::get_mock_signatures()),
+			Error::<Runtime>::InsufficientAssetToUnlock
+		);
+
+		let notice_fail = GatewayNotice::new(0, GatewayNoticePayload::Unlock(KSM, 100, ALICE));
+		assert_noop!(
+			Starport::invoke(
+				Origin::signed(GATEWAY_ACCOUNT),
+				notice_fail,
+				mock::get_mock_signatures()
+			),
+			Error::<Runtime>::InsufficientAssetToUnlock
+		);
+
+		// CASH asset is Minted
+		let notice_cash = GatewayNotice::new(0, GatewayNoticePayload::Unlock(CASH, 100000, ALICE));
+		assert_ok!(Starport::invoke(
+			Origin::signed(GATEWAY_ACCOUNT),
+			notice_cash,
+			mock::get_mock_signatures()
+		));
 	});
 }
