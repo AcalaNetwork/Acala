@@ -54,9 +54,7 @@ use module_evm_accounts::EvmAddressMapping;
 pub use module_evm_manager::EvmCurrencyIdMapping;
 use module_transaction_payment::{Multiplier, TargetedFeeAdjustment};
 use orml_tokens::CurrencyAdapter;
-use orml_traits::{
-	create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended, Handler,
-};
+use orml_traits::{create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended};
 use pallet_transaction_payment::{FeeDetails, RuntimeDispatchInfo};
 use sp_api::impl_runtime_apis;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
@@ -1144,28 +1142,11 @@ impl module_transaction_payment::Config for Runtime {
 	type WeightInfo = weights::module_transaction_payment::WeightInfo<Runtime>;
 }
 
-pub struct EvmAccountsOnClaimHandler;
-impl Handler<AccountId> for EvmAccountsOnClaimHandler {
-	fn handle(who: &AccountId) -> DispatchResult {
-		if Balances::total_balance(who).is_zero() {
-			// If `who` don't have native tokens,
-			// ensure there are some native tokens
-			TransactionPayment::ensure_can_charge_fee(
-				who,
-				NativeTokenExistentialDeposit::get(),
-				WithdrawReasons::TRANSACTION_PAYMENT,
-			);
-		}
-		Ok(())
-	}
-}
-
 impl module_evm_accounts::Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
 	type AddressMapping = EvmAddressMapping<Runtime>;
 	type TransferAll = Currencies;
-	type OnClaim = EvmAccountsOnClaimHandler;
 	type WeightInfo = weights::module_evm_accounts::WeightInfo<Runtime>;
 }
 
