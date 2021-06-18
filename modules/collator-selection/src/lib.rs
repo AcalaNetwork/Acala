@@ -122,7 +122,7 @@ pub mod pallet {
 		/// Account Identifier from which the internal Pot is generated.
 		type PotId: Get<PalletId>;
 
-		/// Maximum number of invulnerables.
+		/// Minimum number of candidates.
 		type MinCandidates: Get<u32>;
 
 		/// Maximum number of candidates that we should have. This is used for benchmarking and is
