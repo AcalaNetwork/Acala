@@ -133,7 +133,7 @@ fn lock_price_call_work() {
 		System::set_block_number(1);
 		assert_noop!(PricesModule::lock_price(Origin::signed(5), BTC), BadOrigin,);
 		assert_ok!(PricesModule::lock_price(Origin::signed(1), BTC));
-		System::assert_last_event(Event::prices(crate::Event::LockPrice(
+		System::assert_last_event(Event::PricesModule(crate::Event::LockPrice(
 			BTC,
 			Price::saturating_from_integer(50000),
 		)));
@@ -151,7 +151,7 @@ fn unlock_price_call_work() {
 		LockedPrice::<Runtime>::insert(BTC, Price::saturating_from_integer(80000));
 		assert_noop!(PricesModule::unlock_price(Origin::signed(5), BTC), BadOrigin,);
 		assert_ok!(PricesModule::unlock_price(Origin::signed(1), BTC));
-		System::assert_last_event(Event::prices(crate::Event::UnlockPrice(BTC)));
+		System::assert_last_event(Event::PricesModule(crate::Event::UnlockPrice(BTC)));
 		assert_eq!(PricesModule::locked_price(BTC), None);
 	});
 }

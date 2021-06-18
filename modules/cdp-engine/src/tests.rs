@@ -127,7 +127,7 @@ fn set_global_params_work() {
 			Origin::signed(1),
 			Rate::saturating_from_rational(1, 10000),
 		));
-		System::assert_last_event(Event::cdp_engine(crate::Event::GlobalInterestRatePerSecUpdated(
+		System::assert_last_event(Event::CDPEngineModule(crate::Event::GlobalInterestRatePerSecUpdated(
 			Rate::saturating_from_rational(1, 10000),
 		)));
 		assert_eq!(
@@ -175,23 +175,23 @@ fn set_collateral_params_work() {
 			Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
 			Change::NewValue(10000),
 		));
-		System::assert_has_event(Event::cdp_engine(crate::Event::InterestRatePerSec(
+		System::assert_has_event(Event::CDPEngineModule(crate::Event::InterestRatePerSec(
 			BTC,
 			Some(Rate::saturating_from_rational(1, 100000)),
 		)));
-		System::assert_has_event(Event::cdp_engine(crate::Event::LiquidationRatioUpdated(
+		System::assert_has_event(Event::CDPEngineModule(crate::Event::LiquidationRatioUpdated(
 			BTC,
 			Some(Ratio::saturating_from_rational(3, 2)),
 		)));
-		System::assert_has_event(Event::cdp_engine(crate::Event::LiquidationPenaltyUpdated(
+		System::assert_has_event(Event::CDPEngineModule(crate::Event::LiquidationPenaltyUpdated(
 			BTC,
 			Some(Rate::saturating_from_rational(2, 10)),
 		)));
-		System::assert_has_event(Event::cdp_engine(crate::Event::RequiredCollateralRatioUpdated(
+		System::assert_has_event(Event::CDPEngineModule(crate::Event::RequiredCollateralRatioUpdated(
 			BTC,
 			Some(Ratio::saturating_from_rational(9, 5)),
 		)));
-		System::assert_has_event(Event::cdp_engine(crate::Event::MaximumTotalDebitValueUpdated(
+		System::assert_has_event(Event::CDPEngineModule(crate::Event::MaximumTotalDebitValueUpdated(
 			BTC, 10000,
 		)));
 
@@ -431,7 +431,7 @@ fn liquidate_unsafe_cdp_by_collateral_auction() {
 			Change::NoChange,
 		));
 		assert_ok!(CDPEngineModule::liquidate_unsafe_cdp(ALICE, BTC));
-		System::assert_last_event(Event::cdp_engine(crate::Event::LiquidateUnsafeCDP(
+		System::assert_last_event(Event::CDPEngineModule(crate::Event::LiquidateUnsafeCDP(
 			BTC,
 			ALICE,
 			100,
@@ -601,7 +601,7 @@ fn settle_cdp_has_debit_work() {
 		assert_eq!(CDPTreasuryModule::debit_pool(), 0);
 		assert_eq!(CDPTreasuryModule::total_collaterals(BTC), 0);
 		assert_ok!(CDPEngineModule::settle_cdp_has_debit(ALICE, BTC));
-		System::assert_last_event(Event::cdp_engine(crate::Event::SettleCDPInDebit(BTC, ALICE)));
+		System::assert_last_event(Event::CDPEngineModule(crate::Event::SettleCDPInDebit(BTC, ALICE)));
 		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 0);
 		assert_eq!(CDPTreasuryModule::debit_pool(), 50);
 		assert_eq!(CDPTreasuryModule::total_collaterals(BTC), 50);
@@ -679,7 +679,7 @@ fn close_cdp_has_debit_by_dex_work() {
 			Change::NoChange,
 		));
 		assert_ok!(CDPEngineModule::close_cdp_has_debit_by_dex(ALICE, BTC, None));
-		System::assert_last_event(Event::cdp_engine(crate::Event::CloseCDPInDebitByDEX(
+		System::assert_last_event(Event::CDPEngineModule(crate::Event::CloseCDPInDebitByDEX(
 			BTC, ALICE, 6, 94, 50,
 		)));
 		assert_eq!(Currencies::free_balance(BTC, &ALICE), 994);

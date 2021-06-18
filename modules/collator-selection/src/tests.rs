@@ -17,13 +17,13 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate as collator_selection;
-use crate::{mock::*, CandidateInfo, Error};
+use crate::{mock::*, CandidateInfo, Error, RESERVE_ID};
 use frame_support::{
 	assert_noop, assert_ok,
-	traits::{Currency, GenesisBuild, OnInitialize},
+	traits::{Currency, GenesisBuild, NamedReservableCurrency, OnInitialize},
 };
 use pallet_balances::Error as BalancesError;
-use sp_runtime::traits::BadOrigin;
+use sp_runtime::{testing::UintAuthorityId, traits::BadOrigin};
 
 #[test]
 fn basic_setup_works() {
@@ -101,6 +101,20 @@ fn set_candidacy_bond() {
 #[test]
 fn cannot_register_candidate_if_too_many() {
 	new_test_ext().execute_with(|| {
+		assert_ok!(Session::set_keys(
+			Origin::signed(3),
+			MockSessionKeys {
+				aura: UintAuthorityId(3)
+			},
+			vec![]
+		));
+		assert_ok!(Session::set_keys(
+			Origin::signed(4),
+			MockSessionKeys {
+				aura: UintAuthorityId(4)
+			},
+			vec![]
+		));
 		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(3)));
 		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(4)));
 		assert_noop!(
@@ -126,12 +140,19 @@ fn cannot_register_as_candidate_if_invulnerable() {
 #[test]
 fn cannot_register_dupe_candidate() {
 	new_test_ext().execute_with(|| {
+		assert_ok!(Session::set_keys(
+			Origin::signed(3),
+			MockSessionKeys {
+				aura: UintAuthorityId(3)
+			},
+			vec![]
+		));
 		// can add 3 as candidate
 		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(3)));
 		let addition = CandidateInfo { who: 3 };
 		assert_eq!(CollatorSelection::candidates(), vec![addition]);
 		assert_eq!(Balances::free_balance(3), 90);
-		assert_eq!(Balances::reserved_balance_named(RESERVE_ID, 3), 90);
+		assert_eq!(Balances::reserved_balance_named(&RESERVE_ID, &3), 10);
 
 		// but no more
 		assert_noop!(
@@ -145,12 +166,31 @@ fn cannot_register_dupe_candidate() {
 fn cannot_register_as_candidate_if_poor() {
 	new_test_ext().execute_with(|| {
 		assert_eq!(Balances::free_balance(&3), 100);
-		assert_eq!(Balances::free_balance(&33), 0);
+		assert_eq!(Balances::free_balance(&33), 5);
 
 		// works
+		assert_ok!(Session::set_keys(
+			Origin::signed(3),
+			MockSessionKeys {
+				aura: UintAuthorityId(3)
+			},
+			vec![]
+		));
 		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(3)));
 
 		// poor
+		assert_noop!(
+			CollatorSelection::register_as_candidate(Origin::signed(33)),
+			Error::<Test>::RequireSessionKey,
+		);
+
+		assert_ok!(Session::set_keys(
+			Origin::signed(33),
+			MockSessionKeys {
+				aura: UintAuthorityId(33)
+			},
+			vec![]
+		));
 		assert_noop!(
 			CollatorSelection::register_as_candidate(Origin::signed(33)),
 			BalancesError::<Test>::InsufficientBalance,
@@ -171,6 +211,20 @@ fn register_as_candidate_works() {
 		assert_eq!(Balances::free_balance(&3), 100);
 		assert_eq!(Balances::free_balance(&4), 100);
 
+		assert_ok!(Session::set_keys(
+			Origin::signed(3),
+			MockSessionKeys {
+				aura: UintAuthorityId(3)
+			},
+			vec![]
+		));
+		assert_ok!(Session::set_keys(
+			Origin::signed(4),
+			MockSessionKeys {
+				aura: UintAuthorityId(4)
+			},
+			vec![]
+		));
 		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(3)));
 		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(4)));
 
@@ -182,21 +236,69 @@ fn register_as_candidate_works() {
 }
 
 #[test]
+fn register_candidate_works() {
+	new_test_ext().execute_with(|| {
+		// given
+		assert_eq!(CollatorSelection::desired_candidates(), 2);
+		assert_eq!(CollatorSelection::candidacy_bond(), 10);
+		assert_eq!(CollatorSelection::candidates(), vec![]);
+		assert_eq!(CollatorSelection::invulnerables(), vec![1, 2]);
+
+		// take two endowed, non-invulnerables accounts.
+		assert_eq!(Balances::free_balance(&33), 5);
+
+		assert_ok!(Session::set_keys(
+			Origin::signed(33),
+			MockSessionKeys {
+				aura: UintAuthorityId(33)
+			},
+			vec![]
+		));
+		assert_ok!(CollatorSelection::register_candidate(
+			Origin::signed(RootAccount::get()),
+			33
+		));
+		assert_eq!(Balances::free_balance(&33), 5);
+	});
+}
+
+#[test]
 fn leave_intent() {
 	new_test_ext().execute_with(|| {
+		assert_ok!(Session::set_keys(
+			Origin::signed(3),
+			MockSessionKeys {
+				aura: UintAuthorityId(3)
+			},
+			vec![]
+		));
+		assert_ok!(Session::set_keys(
+			Origin::signed(4),
+			MockSessionKeys {
+				aura: UintAuthorityId(4)
+			},
+			vec![]
+		));
 		// register a candidate.
 		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(3)));
+		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(4)));
 		assert_eq!(Balances::free_balance(3), 90);
+		assert_eq!(Balances::free_balance(4), 90);
 
 		// cannot leave if not candidate.
 		assert_noop!(
-			CollatorSelection::leave_intent(Origin::signed(4)),
+			CollatorSelection::leave_intent(Origin::signed(5)),
 			Error::<Test>::NotCandidate
 		);
 
 		// bond is returned
 		assert_ok!(CollatorSelection::leave_intent(Origin::signed(3)));
 		assert_eq!(Balances::free_balance(3), 100);
+
+		assert_noop!(
+			CollatorSelection::leave_intent(Origin::signed(4)),
+			Error::<Test>::BelowCandidatesMin
+		);
 	});
 }
 
@@ -209,11 +311,18 @@ fn fees_edgecases() {
 		Balances::make_free_balance_be(&CollatorSelection::account_id(), 5);
 		// 4 is the default author.
 		assert_eq!(Balances::free_balance(4), 100);
+		assert_ok!(Session::set_keys(
+			Origin::signed(4),
+			MockSessionKeys {
+				aura: UintAuthorityId(4)
+			},
+			vec![]
+		));
 		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(4)));
 		// triggers `note_author`
 		Authorship::on_initialize(1);
 
-		let collator = CandidateInfo { who: 4, deposit: 10 };
+		let collator = CandidateInfo { who: 4 };
 
 		assert_eq!(CollatorSelection::candidates(), vec![collator]);
 
@@ -240,6 +349,13 @@ fn session_management_works() {
 		assert_eq!(SessionHandlerCollators::get(), vec![1, 2]);
 
 		// add a new collator
+		assert_ok!(Session::set_keys(
+			Origin::signed(3),
+			MockSessionKeys {
+				aura: UintAuthorityId(3)
+			},
+			vec![]
+		));
 		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(3)));
 
 		// session won't see this.
@@ -267,6 +383,20 @@ fn session_management_works() {
 fn kick_mechanism() {
 	new_test_ext().execute_with(|| {
 		// add a new collator
+		assert_ok!(Session::set_keys(
+			Origin::signed(3),
+			MockSessionKeys {
+				aura: UintAuthorityId(3)
+			},
+			vec![]
+		));
+		assert_ok!(Session::set_keys(
+			Origin::signed(4),
+			MockSessionKeys {
+				aura: UintAuthorityId(4)
+			},
+			vec![]
+		));
 		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(3)));
 		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(4)));
 		assert_eq!(CollatorSelection::candidates().len(), 2);
@@ -274,10 +404,7 @@ fn kick_mechanism() {
 		assert_eq!(SessionChangeBlock::get(), 20);
 		assert_eq!(CollatorSelection::candidates().len(), 2);
 		assert_eq!(SessionHandlerCollators::get(), vec![1, 2, 3, 4]);
-		let collators = vec![
-			CandidateInfo { who: 3, deposit: 10 },
-			CandidateInfo { who: 4, deposit: 10 },
-		];
+		let collators = vec![CandidateInfo { who: 3 }, CandidateInfo { who: 4 }];
 		assert_eq!(CollatorSelection::candidates(), collators);
 
 		initialize_to_block(31);
@@ -285,7 +412,7 @@ fn kick_mechanism() {
 		assert_eq!(SessionChangeBlock::get(), 30);
 		assert_eq!(CollatorSelection::candidates().len(), 1);
 		assert_eq!(SessionHandlerCollators::get(), vec![1, 2, 3, 4]);
-		let collators = vec![CandidateInfo { who: 4, deposit: 10 }];
+		let collators = vec![CandidateInfo { who: 4 }];
 		assert_eq!(CollatorSelection::candidates(), collators);
 		// kicked collator gets funds back
 		assert_eq!(Balances::free_balance(3), 100);

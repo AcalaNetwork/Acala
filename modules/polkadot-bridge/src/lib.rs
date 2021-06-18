@@ -185,7 +185,7 @@ pub mod module {
 
 		#[pallet::weight(10_000)]
 		#[transactional]
-		fn simulate_transfer_to_sub_account(
+		pub fn simulate_transfer_to_sub_account(
 			origin: OriginFor<T>,
 			account_index: u32,
 			amount: Balance,

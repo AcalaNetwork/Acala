@@ -18,8 +18,8 @@
 
 use crate::{
 	dollar, AccountId, Address, Amount, Balance, CdpEngine, CollateralCurrencyIds, CurrencyId,
-	DefaultDebitExchangeRate, Dex, EmergencyShutdown, GetStableCurrencyId, MaxSlippageSwapWithDEX, MinimumDebitValue,
-	Price, Rate, Ratio, Runtime, KSM, KUSD, MILLISECS_PER_BLOCK,
+	DefaultDebitExchangeRate, Dex, EmergencyShutdown, ExistentialDeposits, GetStableCurrencyId, MaxSlippageSwapWithDEX,
+	MinimumDebitValue, Price, Rate, Ratio, Runtime, KSM, KUSD, MILLISECS_PER_BLOCK,
 };
 
 use super::utils::{feed_price, set_balance};
@@ -29,7 +29,7 @@ use frame_support::traits::OnInitialize;
 use frame_system::RawOrigin;
 use module_support::DEXManager;
 use orml_benchmarking::runtime_benchmarks;
-use orml_traits::Change;
+use orml_traits::{Change, GetByKey};
 use sp_runtime::{
 	traits::{AccountIdLookup, One, StaticLookup, UniqueSaturatedInto},
 	FixedPointNumber,
@@ -91,7 +91,7 @@ runtime_benchmarks! {
 			let collateral_amount = Price::saturating_from_rational(dollar(currency_id), dollar(KUSD)).saturating_mul_int(collateral_value);
 
 			// set balance
-			set_balance(currency_id, &owner, collateral_amount);
+			set_balance(currency_id, &owner, collateral_amount + ExistentialDeposits::get(&currency_id));
 
 			CdpEngine::set_collateral_params(
 				RawOrigin::Root.into(),
@@ -150,7 +150,7 @@ runtime_benchmarks! {
 		let collateral_amount = Price::saturating_from_rational(dollar(KSM), dollar(KUSD)).saturating_mul_int(collateral_value);
 
 		// set balance
-		set_balance(currency_id, &owner, collateral_amount);
+		set_balance(currency_id, &owner, collateral_amount + ExistentialDeposits::get(&currency_id));
 
 		// feed price
 		feed_price(currency_id, collateral_price)?;
@@ -201,7 +201,7 @@ runtime_benchmarks! {
 		inject_liquidity(funder.clone(), KSM, base_amount_in_dex, collateral_amount_in_dex)?;
 
 		// set balance
-		set_balance(KSM, &owner, collateral_amount);
+		set_balance(KSM, &owner, collateral_amount + ExistentialDeposits::get(&KSM));
 
 		// feed price
 		feed_price(KSM, collateral_price)?;
@@ -250,7 +250,7 @@ runtime_benchmarks! {
 		let collateral_amount = Price::saturating_from_rational(dollar(KSM), dollar(KUSD)).saturating_mul_int(collateral_value);
 
 		// set balance
-		set_balance(currency_id, &owner, collateral_amount);
+		set_balance(currency_id, &owner, collateral_amount + ExistentialDeposits::get(&currency_id));
 
 		// feed price
 		feed_price(currency_id, collateral_price)?;

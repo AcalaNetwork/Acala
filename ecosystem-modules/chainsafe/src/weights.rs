@@ -49,9 +49,9 @@ use sp_std::marker::PhantomData;
 pub trait WeightInfo {
 	fn register_resource_id() -> Weight;
 	fn remove_resource_id() -> Weight;
-	fn transfer_origin_chain_token_to_bridge() -> Weight;
-	fn transfer_other_chain_token_to_bridge() -> Weight;
-	fn transfer_native_to_bridge() -> Weight;
+	fn transfer_origin_chain_token_to_bridge(b: u32, ) -> Weight;
+	fn transfer_other_chain_token_to_bridge(b: u32, ) -> Weight;
+	fn transfer_native_to_bridge(b: u32, ) -> Weight;
 	fn transfer_origin_chain_token_from_bridge() -> Weight;
 	fn transfer_other_chain_token_from_bridge() -> Weight;
 }
@@ -69,18 +69,24 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
             .saturating_add(T::DbWeight::get().reads(1 as Weight))
             .saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
-	fn transfer_origin_chain_token_to_bridge() -> Weight {
+	fn transfer_origin_chain_token_to_bridge(b: u32, ) -> Weight {
 		(128_000_000 as Weight)
+			// Standard Error: 0
+			.saturating_add((1_000 as Weight).saturating_mul(b as Weight))
 			.saturating_add(T::DbWeight::get().reads(5 as Weight))
 			.saturating_add(T::DbWeight::get().writes(4 as Weight))
 	}
-	fn transfer_other_chain_token_to_bridge() -> Weight {
+	fn transfer_other_chain_token_to_bridge(b: u32, ) -> Weight {
 		(103_000_000 as Weight)
+			// Standard Error: 0
+			.saturating_add((1_000 as Weight).saturating_mul(b as Weight))
 			.saturating_add(T::DbWeight::get().reads(4 as Weight))
 			.saturating_add(T::DbWeight::get().writes(3 as Weight))
 	}
-	fn transfer_native_to_bridge() -> Weight {
+	fn transfer_native_to_bridge(b: u32, ) -> Weight {
 		(139_000_000 as Weight)
+			// Standard Error: 0
+			.saturating_add((1_000 as Weight).saturating_mul(b as Weight))
 			.saturating_add(T::DbWeight::get().reads(4 as Weight))
 			.saturating_add(T::DbWeight::get().writes(3 as Weight))
 
@@ -109,18 +115,24 @@ impl WeightInfo for () {
             .saturating_add(RocksDbWeight::get().reads(1 as Weight))
             .saturating_add(RocksDbWeight::get().writes(2 as Weight))
 	}
-	fn transfer_origin_chain_token_to_bridge() -> Weight {
+	fn transfer_origin_chain_token_to_bridge(b: u32, ) -> Weight {
 		(128_000_000 as Weight)
+			// Standard Error: 0
+			.saturating_add((1_000 as Weight).saturating_mul(b as Weight))
 			.saturating_add(RocksDbWeight::get().reads(5 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(4 as Weight))
 	}
-	fn transfer_other_chain_token_to_bridge() -> Weight {
+	fn transfer_other_chain_token_to_bridge(b: u32, ) -> Weight {
 		(103_000_000 as Weight)
+			// Standard Error: 0
+			.saturating_add((1_000 as Weight).saturating_mul(b as Weight))
 			.saturating_add(RocksDbWeight::get().reads(4 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(3 as Weight))
 	}
-	fn transfer_native_to_bridge() -> Weight {
+	fn transfer_native_to_bridge(b: u32, ) -> Weight {
 		(139_000_000 as Weight)
+			// Standard Error: 0
+			.saturating_add((1_000 as Weight).saturating_mul(b as Weight))
 			.saturating_add(RocksDbWeight::get().reads(4 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(3 as Weight))
 

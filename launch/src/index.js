@@ -200,6 +200,8 @@ const generateParachainGenesisFile = (id, image, chain, output, yes) => {
 
   const spec = getChainspec(image, chain.base);
 
+  spec.bootNodes = [];
+
   const runtime = spec.genesis.runtime;
 
   runtime.parachainInfo.parachainId = id;
@@ -239,6 +241,30 @@ const generateParachainGenesisFile = (id, image, chain, output, yes) => {
   fs.writeFileSync(filepath, JSON.stringify(spec, null, 2));
 }
 
+const generateDockerfiles = (config, output, yes) => {
+  const relaychainDockerfilePath = path.join(output, 'relaychain.Dockerfile');
+  checkOverrideFile(relaychainDockerfilePath, yes);
+
+  const relaychainDockerfile = [
+    `FROM ${config.relaychain.image}`,
+    'COPY . /app'
+  ];
+
+  fs.writeFileSync(relaychainDockerfilePath, relaychainDockerfile.join('\n'));
+
+  for (const para of config.paras) {
+    const parachainDockerfilePath = path.join(output, `parachain-${para.id}.Dockerfile`);
+    checkOverrideFile(parachainDockerfilePath, yes);
+
+    const parachainDockerfile = [
+      `FROM ${para.image}`,
+      'COPY . /app'
+    ];
+
+    fs.writeFileSync(parachainDockerfilePath, parachainDockerfile.join('\n'));
+  }
+}
+
 const generate = async (config, { output, yes }) => {
   await cryptoWaitReady();
 
@@ -259,6 +285,8 @@ const generate = async (config, { output, yes }) => {
   }
 
   generateRelaychainGenesisFile(config, relaychainGenesisFilePath, output);
+
+  generateDockerfiles(config, output, yes);
 
   const dockerCompose = {
     version: '3.7',
@@ -282,8 +310,11 @@ const generate = async (config, { output, yes }) => {
         `${node.rpcPort || 9933 + idx}:9933`,
         `${node.port || 30333 + idx}:30333`,
       ],
-      volumes: [`${name}:/data`, '.:/app'],
-      image: config.relaychain.image,
+      volumes: [`${name}:/data`],
+      build: {
+        context: '.',
+        dockerfile: 'relaychain.Dockerfile'
+      },
       command: [
         '--base-path=/data',
         `--chain=/app/${config.relaychain.chain}.json`,
@@ -319,8 +350,11 @@ const generate = async (config, { output, yes }) => {
           `${paraNode.rpcPort || 9933 + idx}:9933`,
           `${paraNode.port || 30333 + idx}:30333`,
         ],
-        volumes: [`${name}:/acala/data`, '.:/app'],
-        image: para.image,
+        volumes: [`${name}:/acala/data`],
+        build: {
+          context: '.',
+          dockerfile: `parachain-${para.id}.Dockerfile`
+        },
         command: [
           '--base-path=/acala/data',
           `--chain=/app/${para.chain.base || para.chain}-${para.id}.json`,

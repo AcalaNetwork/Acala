@@ -17,8 +17,8 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-	dollar, AccountId, Amount, CdpEngine, CollateralCurrencyIds, CurrencyId, DepositPerAuthorization, Dex, Honzon,
-	Price, Rate, Ratio, Runtime, KAR, KSM, KUSD,
+	dollar, AccountId, Amount, CdpEngine, CollateralCurrencyIds, CurrencyId, DepositPerAuthorization, Dex,
+	ExistentialDeposits, Honzon, Price, Rate, Ratio, Runtime, TradingPathLimit, KAR, KSM, KUSD,
 };
 
 use super::utils::feed_price;
@@ -27,7 +27,7 @@ use core::convert::TryInto;
 use frame_benchmarking::{account, whitelisted_caller};
 use frame_system::RawOrigin;
 use orml_benchmarking::runtime_benchmarks;
-use orml_traits::Change;
+use orml_traits::{Change, GetByKey};
 use sp_runtime::{
 	traits::{AccountIdLookup, One, StaticLookup, UniqueSaturatedInto},
 	FixedPointNumber,
@@ -95,7 +95,7 @@ runtime_benchmarks! {
 		let collateral_amount = Price::saturating_from_rational(dollar(currency_id), dollar(KUSD)).saturating_mul_int(collateral_value);
 
 		// set balance
-		set_balance(currency_id, &caller, collateral_amount);
+		set_balance(currency_id, &caller, collateral_amount + ExistentialDeposits::get(&currency_id));
 
 		// feed price
 		feed_price(currency_id, collateral_price)?;
@@ -127,7 +127,7 @@ runtime_benchmarks! {
 		let collateral_amount = Price::saturating_from_rational(dollar(currency_id), dollar(KUSD)).saturating_mul_int(collateral_value);
 
 		// set balance
-		set_balance(currency_id, &sender, collateral_amount);
+		set_balance(currency_id, &sender, collateral_amount + ExistentialDeposits::get(&currency_id));
 		set_balance(KAR, &sender, DepositPerAuthorization::get());
 
 		// feed price
@@ -161,6 +161,7 @@ runtime_benchmarks! {
 	}: _(RawOrigin::Signed(receiver), currency_id, sender_lookup)
 
 	close_loan_has_debit_by_dex {
+		let u in 2 .. TradingPathLimit::get() as u32;
 		let currency_id: CurrencyId = CollateralCurrencyIds::get()[0];
 		let sender: AccountId = whitelisted_caller();
 		let maker: AccountId = account("maker", 0, SEED);
@@ -172,12 +173,15 @@ runtime_benchmarks! {
 		let collateral_amount = Price::saturating_from_rational(dollar(currency_id), dollar(KUSD)).saturating_mul_int(collateral_value);
 
 		// set balance
-		set_balance(currency_id, &sender, collateral_amount);
-		set_balance(currency_id, &maker, collateral_amount);
-		set_balance(KUSD, &maker, debit_value * 100);
+		set_balance(currency_id, &sender, collateral_amount + ExistentialDeposits::get(&currency_id));
+		set_balance(currency_id, &maker, collateral_amount * 2);
+		set_balance(KAR, &maker, collateral_amount * 2);
+		set_balance(KUSD, &maker, debit_value * 200);
 
 		// inject liquidity
 		let _ = Dex::enable_trading_pair(RawOrigin::Root.into(), currency_id, KUSD);
+		let _ = Dex::enable_trading_pair(RawOrigin::Root.into(), currency_id, KAR);
+		let _ = Dex::enable_trading_pair(RawOrigin::Root.into(), KAR, KUSD);
 		Dex::add_liquidity(
 			RawOrigin::Signed(maker.clone()).into(),
 			currency_id,
@@ -187,6 +191,34 @@ runtime_benchmarks! {
 			Default::default(),
 			false,
 		)?;
+		Dex::add_liquidity(
+			RawOrigin::Signed(maker.clone()).into(),
+			currency_id,
+			KAR,
+			collateral_amount,
+			collateral_amount,
+			Default::default(),
+			false,
+		)?;
+		Dex::add_liquidity(
+			RawOrigin::Signed(maker.clone()).into(),
+			KAR,
+			KUSD,
+			collateral_amount,
+			debit_value * 100,
+			Default::default(),
+			false,
+		)?;
+
+		let mut path = vec![currency_id];
+		for i in 2 .. u {
+			if i % 2 == 0 {
+				path.push(KAR);
+			} else {
+				path.push(currency_id);
+			}
+		}
+		path.push(KUSD);
 
 		// feed price
 		feed_price(currency_id, Price::one())?;
@@ -209,7 +241,7 @@ runtime_benchmarks! {
 			collateral_amount.try_into().unwrap(),
 			debit_amount,
 		)?;
-	}: _(RawOrigin::Signed(sender), currency_id, None)
+	}: _(RawOrigin::Signed(sender), currency_id, Some(path))
 }
 
 #[cfg(test)]

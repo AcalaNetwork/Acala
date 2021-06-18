@@ -162,6 +162,8 @@ pub mod module {
 		UnacceptableShareIncrement,
 		/// The liquidity withdrawn is unacceptable
 		UnacceptableLiquidityWithdrawn,
+		/// The swap dosen't meet the invariant check
+		InvariantCheckFailed,
 	}
 
 	#[pallet::event]
@@ -305,7 +307,7 @@ pub mod module {
 		/// - `path`: trading path.
 		/// - `supply_amount`: exact supply amount.
 		/// - `min_target_amount`: acceptable minimum target amount.
-		#[pallet::weight(<T as Config>::WeightInfo::swap_with_exact_supply(path.len().try_into().unwrap()))]
+		#[pallet::weight(<T as Config>::WeightInfo::swap_with_exact_supply(path.len() as u32))]
 		#[transactional]
 		pub fn swap_with_exact_supply(
 			origin: OriginFor<T>,
@@ -323,7 +325,7 @@ pub mod module {
 		/// - `path`: trading path.
 		/// - `target_amount`: exact target amount.
 		/// - `max_supply_amount`: acceptable maximum supply amount.
-		#[pallet::weight(<T as Config>::WeightInfo::swap_with_exact_target(path.len().try_into().unwrap()))]
+		#[pallet::weight(<T as Config>::WeightInfo::swap_with_exact_target(path.len() as u32))]
 		#[transactional]
 		pub fn swap_with_exact_target(
 			origin: OriginFor<T>,
@@ -956,6 +958,15 @@ impl<T: Config> Pallet<T> {
 			let target_amount = Self::get_target_amount(supply_pool, target_pool, target_amounts[i]);
 			ensure!(!target_amount.is_zero(), Error::<T>::ZeroTargetAmount);
 
+			// invariant check to ensure the constant product formulas (k = x * y)
+			let invariant_before_swap: U256 = U256::from(supply_pool).saturating_mul(U256::from(target_pool));
+			let invariant_after_swap: U256 = U256::from(supply_pool.saturating_add(target_amounts[i]))
+				.saturating_mul(U256::from(target_pool.saturating_sub(target_amount)));
+			ensure!(
+				invariant_after_swap >= invariant_before_swap,
+				Error::<T>::InvariantCheckFailed,
+			);
+
 			// check price impact if limit exists
 			if let Some(limit) = price_impact_limit {
 				let price_impact = Ratio::checked_from_rational(target_amount, target_pool).unwrap_or_else(Ratio::zero);
@@ -998,6 +1009,15 @@ impl<T: Config> Pallet<T> {
 			);
 			let supply_amount = Self::get_supply_amount(supply_pool, target_pool, supply_amounts[i]);
 			ensure!(!supply_amount.is_zero(), Error::<T>::ZeroSupplyAmount);
+
+			// invariant check to ensure the constant product formulas (k = x * y)
+			let invariant_before_swap: U256 = U256::from(supply_pool).saturating_mul(U256::from(target_pool));
+			let invariant_after_swap: U256 = U256::from(supply_pool.saturating_add(supply_amount))
+				.saturating_mul(U256::from(target_pool.saturating_sub(supply_amounts[i])));
+			ensure!(
+				invariant_after_swap >= invariant_before_swap,
+				Error::<T>::InvariantCheckFailed,
+			);
 
 			// check price impact if limit exists
 			if let Some(limit) = price_impact_limit {
