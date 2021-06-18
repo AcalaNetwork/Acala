@@ -1193,6 +1193,21 @@ fn test_evm_accounts_module() {
 				),
 				module_evm_accounts::Error::<Runtime>::EthAddressHasMapped
 			);
+
+			// evm padded address will transfer_all to origin.
+			assert_eq!(Balances::free_balance(bob()), 1_000 * dollar(ACA));
+			assert_eq!(Balances::free_balance(&AccountId::from(BOB)), 0);
+			assert_eq!(System::providers(&bob()), 1);
+			assert_eq!(System::providers(&AccountId::from(BOB)), 0);
+			assert_ok!(EvmAccounts::claim_account(
+				Origin::signed(AccountId::from(BOB)),
+				EvmAccounts::eth_address(&bob_key()),
+				EvmAccounts::eth_sign(&bob_key(), &AccountId::from(BOB).encode(), &[][..])
+			));
+			assert_eq!(System::providers(&bob()), 0);
+			assert_eq!(System::providers(&AccountId::from(BOB)), 1);
+			assert_eq!(Balances::free_balance(bob()), 0);
+			assert_eq!(Balances::free_balance(&AccountId::from(BOB)), 1_000 * dollar(ACA));
 		});
 }
 
