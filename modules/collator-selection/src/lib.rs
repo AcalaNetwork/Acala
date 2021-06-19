@@ -389,7 +389,7 @@ pub mod pallet {
 	/// Play the role of the session manager.
 	impl<T: Config> SessionManager<T::AccountId> for Pallet<T> {
 		fn new_session(index: SessionIndex) -> Option<Vec<T::AccountId>> {
-			let candidates = Self::candidates().iter().cloned().collect::<Vec<_>>();
+			let candidates = Self::candidates().into_iter().collect::<Vec<_>>();
 			let result = Self::assemble_collators(candidates);
 
 			log::debug!(
