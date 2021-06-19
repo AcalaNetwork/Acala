@@ -17,10 +17,11 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate as collator_selection;
-use crate::{mock::*, CandidateInfo, Error};
+use crate::{mock::*, Error, RESERVE_ID};
 use frame_support::{
 	assert_noop, assert_ok,
-	traits::{Currency, GenesisBuild, OnInitialize},
+	storage::bounded_btree_set::BoundedBTreeSet,
+	traits::{Currency, GenesisBuild, NamedReservableCurrency, OnInitialize},
 };
 use pallet_balances::Error as BalancesError;
 use sp_runtime::{testing::UintAuthorityId, traits::BadOrigin};
@@ -149,9 +150,11 @@ fn cannot_register_dupe_candidate() {
 		));
 		// can add 3 as candidate
 		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(3)));
-		let addition = CandidateInfo { who: 3, deposit: 10 };
-		assert_eq!(CollatorSelection::candidates(), vec![addition]);
+		let mut collators = BoundedBTreeSet::new();
+		assert_ok!(collators.try_insert(3));
+		assert_eq!(CollatorSelection::candidates(), collators);
 		assert_eq!(Balances::free_balance(3), 90);
+		assert_eq!(Balances::reserved_balance_named(&RESERVE_ID, &3), 10);
 
 		// but no more
 		assert_noop!(
@@ -203,7 +206,7 @@ fn register_as_candidate_works() {
 		// given
 		assert_eq!(CollatorSelection::desired_candidates(), 2);
 		assert_eq!(CollatorSelection::candidacy_bond(), 10);
-		assert_eq!(CollatorSelection::candidates(), vec![]);
+		assert_eq!(CollatorSelection::candidates(), BoundedBTreeSet::new());
 		assert_eq!(CollatorSelection::invulnerables(), vec![1, 2]);
 
 		// take two endowed, non-invulnerables accounts.
@@ -240,7 +243,7 @@ fn register_candidate_works() {
 		// given
 		assert_eq!(CollatorSelection::desired_candidates(), 2);
 		assert_eq!(CollatorSelection::candidacy_bond(), 10);
-		assert_eq!(CollatorSelection::candidates(), vec![]);
+		assert_eq!(CollatorSelection::candidates(), BoundedBTreeSet::new());
 		assert_eq!(CollatorSelection::invulnerables(), vec![1, 2]);
 
 		// take two endowed, non-invulnerables accounts.
@@ -258,6 +261,7 @@ fn register_candidate_works() {
 			33
 		));
 		assert_eq!(Balances::free_balance(&33), 5);
+		assert_eq!(Balances::reserved_balance_named(&RESERVE_ID, &33), 0);
 	});
 }
 
@@ -321,9 +325,10 @@ fn fees_edgecases() {
 		// triggers `note_author`
 		Authorship::on_initialize(1);
 
-		let collator = CandidateInfo { who: 4, deposit: 10 };
-
-		assert_eq!(CollatorSelection::candidates(), vec![collator]);
+		let mut collators = BoundedBTreeSet::new();
+		assert_ok!(collators.try_insert(4));
+		assert_eq!(CollatorSelection::candidates(), collators);
+		assert_eq!(Balances::reserved_balance_named(&RESERVE_ID, &4), 10);
 
 		// Nothing received
 		assert_eq!(Balances::free_balance(4), 90);
@@ -403,18 +408,20 @@ fn kick_mechanism() {
 		assert_eq!(SessionChangeBlock::get(), 20);
 		assert_eq!(CollatorSelection::candidates().len(), 2);
 		assert_eq!(SessionHandlerCollators::get(), vec![1, 2, 3, 4]);
-		let collators = vec![
-			CandidateInfo { who: 3, deposit: 10 },
-			CandidateInfo { who: 4, deposit: 10 },
-		];
+		let mut collators = BoundedBTreeSet::new();
+		assert_ok!(collators.try_insert(3));
+		assert_ok!(collators.try_insert(4));
 		assert_eq!(CollatorSelection::candidates(), collators);
+		assert_eq!(Balances::reserved_balance_named(&RESERVE_ID, &3), 10);
+		assert_eq!(Balances::reserved_balance_named(&RESERVE_ID, &4), 10);
 
 		initialize_to_block(31);
 		// 4 authored this block, gets to stay 3 was kicked
 		assert_eq!(SessionChangeBlock::get(), 30);
 		assert_eq!(CollatorSelection::candidates().len(), 1);
 		assert_eq!(SessionHandlerCollators::get(), vec![1, 2, 3, 4]);
-		let collators = vec![CandidateInfo { who: 4, deposit: 10 }];
+		let mut collators = BoundedBTreeSet::new();
+		assert_ok!(collators.try_insert(4));
 		assert_eq!(CollatorSelection::candidates(), collators);
 		// kicked collator gets funds back
 		assert_eq!(Balances::free_balance(3), 100);

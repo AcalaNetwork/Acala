@@ -12,25 +12,27 @@ log = { version = "0.4.0", default-features = false }
 codec = { default-features = false, features = ['derive'], package = 'parity-scale-codec', version = '2.0.0' }
 serde = { version = "1.0.119", default-features = false }
 max-encoded-len = { git = "https://github.com/paritytech/substrate", branch = "rh-v0.9.5-missing-companions", default-features = false }
-sp-std = { git = "https://github.com/paritytech/substrate", branch = "rh-v0.9.5-missing-companions", default-features = false }
-sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "rh-v0.9.5-missing-companions", default-features = false }
-sp-staking = { git = "https://github.com/paritytech/substrate", branch = "rh-v0.9.5-missing-companions", default-features = false }
+
+frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "rh-v0.9.5-missing-companions", default-features = false, optional = true }
 frame-support = { git = "https://github.com/paritytech/substrate", branch = "rh-v0.9.5-missing-companions", default-features = false }
 frame-system = { git = "https://github.com/paritytech/substrate", branch = "rh-v0.9.5-missing-companions", default-features = false }
 pallet-authorship = { git = "https://github.com/paritytech/substrate", branch = "rh-v0.9.5-missing-companions", default-features = false }
 pallet-session = { git = "https://github.com/paritytech/substrate", branch = "rh-v0.9.5-missing-companions", default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "rh-v0.9.5-missing-companions", default-features = false }
+sp-staking = { git = "https://github.com/paritytech/substrate", branch = "rh-v0.9.5-missing-companions", default-features = false }
+sp-std = { git = "https://github.com/paritytech/substrate", branch = "rh-v0.9.5-missing-companions", default-features = false }
 
-frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "rh-v0.9.5-missing-companions", default-features = false, optional = true }
+primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 
 [dev-dependencies]
-sp-core = { git = "https://github.com/paritytech/substrate", branch = "rh-v0.9.5-missing-companions" }
-sp-io = { git = "https://github.com/paritytech/substrate", branch = "rh-v0.9.5-missing-companions" }
-sp-tracing = { git = "https://github.com/paritytech/substrate", branch = "rh-v0.9.5-missing-companions" }
-sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "rh-v0.9.5-missing-companions" }
+pallet-aura = { git = "https://github.com/paritytech/substrate", branch = "rh-v0.9.5-missing-companions" }
+pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "rh-v0.9.5-missing-companions" }
 pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "rh-v0.9.5-missing-companions" }
 sp-consensus-aura = { git = "https://github.com/paritytech/substrate", branch = "rh-v0.9.5-missing-companions" }
-pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "rh-v0.9.5-missing-companions" }
-pallet-aura = { git = "https://github.com/paritytech/substrate", branch = "rh-v0.9.5-missing-companions" }
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "rh-v0.9.5-missing-companions" }
+sp-io = { git = "https://github.com/paritytech/substrate", branch = "rh-v0.9.5-missing-companions" }
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "rh-v0.9.5-missing-companions" }
+sp-tracing = { git = "https://github.com/paritytech/substrate", branch = "rh-v0.9.5-missing-companions" }
 
 [features]
 default = ['std']
@@ -42,13 +44,14 @@ runtime-benchmarks = [
 std = [
 	'codec/std',
 	'log/std',
+	'frame-benchmarking/std',
+	'frame-support/std',
+	'frame-system/std',
+	'pallet-authorship/std',
+	'pallet-session/std',
 	'sp-runtime/std',
 	'sp-staking/std',
 	'sp-std/std',
-	'frame-support/std',
-	'frame-system/std',
-	'frame-benchmarking/std',
-	'pallet-authorship/std',
-	'pallet-session/std',
+	"primitives/std",
 ]
 try-runtime = ["frame-support/try-runtime"]
