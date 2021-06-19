@@ -350,19 +350,15 @@ pub mod pallet {
 			ensure!(!Self::invulnerables().contains(&who), Error::<T>::AlreadyInvulnerable);
 			ensure!(T::ValidatorSet::is_registered(&who), Error::<T>::RequireSessionKey);
 
-			let mut bounded_candidates = Self::candidates();
+			<Candidates<T>>::try_mutate(|candidates| -> Result<usize, DispatchError> {
+				ensure!(!candidates.contains(who), Error::<T>::AlreadyCandidate);
 
-			if bounded_candidates.iter().any(|candidate| candidate == who) {
-				Err(Error::<T>::AlreadyCandidate)?;
-			} else {
-				bounded_candidates
+				candidates
 					.try_insert(who.clone())
 					.map_err(|_| Error::<T>::MaxCandidatesExceeded)?;
 				T::Currency::ensure_reserved_named(&RESERVE_ID, &who, deposit)?;
-				<Candidates<T>>::put(&bounded_candidates);
-			}
-
-			Ok(bounded_candidates.len())
+				Ok(candidates.len())
+			})
 		}
 	}
 
