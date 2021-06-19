@@ -137,7 +137,7 @@ runtime_benchmarks! {
 		module_collator_selection::DesiredCandidates::<Runtime>::put(c);
 		register_candidates(c);
 
-		let leaving = module_collator_selection::Candidates::<Runtime>::get().last().unwrap().who.clone();
+		let leaving = module_collator_selection::Candidates::<Runtime>::get().into_iter().last().unwrap();
 		whitelist_account!(leaving);
 	}: _(RawOrigin::Signed(leaving.clone()))
 	verify {
@@ -214,9 +214,9 @@ runtime_benchmarks! {
 		candidates.iter().for_each(|candidate| {
 			if count < removals {
 				// point = 0, will be removed.
-				module_collator_selection::SessionPoints::<Runtime>::insert(&candidate.who, 0);
+				module_collator_selection::SessionPoints::<Runtime>::insert(&candidate, 0);
 			} else {
-				module_collator_selection::SessionPoints::<Runtime>::insert(&candidate.who, 1);
+				module_collator_selection::SessionPoints::<Runtime>::insert(&candidate, 1);
 			}
 			count += 1;
 		});
