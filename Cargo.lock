@@ -72,6 +72,7 @@ dependencies = [
  "chainbridge",
  "evm",
  "frame-support",
+ "max-encoded-len",
  "parity-scale-codec",
  "serde",
  "serde_json",
@@ -5259,6 +5260,7 @@ dependencies = [
 name = "module-collator-selection"
 version = "1.0.0"
 dependencies = [
+ "acala-primitives",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
