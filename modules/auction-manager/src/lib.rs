@@ -348,6 +348,8 @@ impl<T: Config> Pallet<T> {
 
 		// start iterations to cancel collateral auctions
 		let mut iterator = <CollateralAuctions<T> as IterableStorageMapExtended<_, _>>::iter(max_iterations, start_key);
+
+		#[allow(clippy::while_let_on_iterator)]
 		while let Some((collateral_auction_id, _)) = iterator.next() {
 			if let (Some(collateral_auction), Some((_, last_bid_price))) = (
 				Self::collateral_auctions(collateral_auction_id),

@@ -2,7 +2,7 @@ FROM rust as planner
 WORKDIR app
 # We only pay the installation cost once,
 # it will be cached from the second build onwards
-RUN rustup default nightly-2021-03-15
+RUN rustup default nightly-2021-06-01
 RUN cargo install cargo-chef
 COPY . .
 RUN cargo chef prepare  --recipe-path recipe.json
@@ -11,8 +11,8 @@ RUN cargo chef prepare  --recipe-path recipe.json
 
 FROM rust as cacher
 WORKDIR app
-RUN rustup default nightly-2021-03-15 && \
-	rustup target add wasm32-unknown-unknown --toolchain nightly-2021-03-15
+RUN rustup default nightly-2021-06-01 && \
+	rustup target add wasm32-unknown-unknown --toolchain nightly-2021-06-01
 RUN cargo install cargo-chef
 RUN apt-get update && \
 	apt-get dist-upgrade -y -o Dpkg::Options::="--force-confold" && \
@@ -28,8 +28,8 @@ WORKDIR app
 
 COPY --from=cacher $CARGO_HOME $CARGO_HOME
 
-RUN rustup default nightly-2021-03-15 && \
-	rustup target add wasm32-unknown-unknown --toolchain nightly-2021-03-15
+RUN rustup default nightly-2021-06-01 && \
+	rustup target add wasm32-unknown-unknown --toolchain nightly-2021-06-01
 
 RUN apt-get update && \
 	apt-get dist-upgrade -y -o Dpkg::Options::="--force-confold" && \
