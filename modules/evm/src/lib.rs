@@ -834,7 +834,7 @@ impl<T: Config> Pallet<T> {
 				}
 			});
 
-			AccountStorages::<T>::remove_prefix(address);
+			AccountStorages::<T>::remove_prefix(address, None);
 
 			let size = ContractStorageSizes::<T>::take(address);
 
