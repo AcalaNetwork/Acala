@@ -9,14 +9,14 @@ log = "0.4.8"
 structopt = "0.3.8"
 codec = { package = "parity-scale-codec", version = "2.0.0" }
 
-sp-core = { git = "https://github.com/paritytech/substrate", branch = "rh-v0.9.5-missing-companions", optional = true }
-sc-cli = { git = "https://github.com/paritytech/substrate", branch = "rh-v0.9.5-missing-companions", optional = true }
-sc-service = { git = "https://github.com/paritytech/substrate", branch = "rh-v0.9.5-missing-companions", optional = true }
-sc-tracing = { git = "https://github.com/paritytech/substrate", branch = "rh-v0.9.5-missing-companions" }
-sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "rh-v0.9.5-missing-companions" }
-sc-telemetry = { git = "https://github.com/paritytech/substrate", branch = "rh-v0.9.5-missing-companions" }
-frame-benchmarking-cli = { git = "https://github.com/paritytech/substrate", branch = "rh-v0.9.5-missing-companions", optional = true }
-try-runtime-cli = { git = "https://github.com/paritytech/substrate", branch = "rh-v0.9.5-missing-companions", optional = true }
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.5", optional = true }
+sc-cli = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.5", optional = true }
+sc-service = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.5", optional = true }
+sc-tracing = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.5" }
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.5" }
+sc-telemetry = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.5" }
+frame-benchmarking-cli = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.5", optional = true }
+try-runtime-cli = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.5", optional = true }
 
 cumulus-client-service = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.5" }
 cumulus-client-cli = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.5" }
