@@ -734,17 +734,11 @@ pub mod module {
 		#[transactional]
 		pub fn enable_contract_development(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
-			let address = T::AddressMapping::get_or_create_evm_address(&who);
 			ensure!(
 				T::Currency::reserved_balance_named(&RESERVE_ID_DEVELOPER_DEPOSIT, &who).is_zero(),
 				Error::<T>::ContractDevelopmentAlreadyEnabled
 			);
 			T::Currency::ensure_reserved_named(&RESERVE_ID_DEVELOPER_DEPOSIT, &who, T::DeveloperDeposit::get())?;
-			Accounts::<T>::mutate(address, |maybe_account_info| {
-				if maybe_account_info.is_none() {
-					*maybe_account_info = Some(AccountInfo::<T>::new(Default::default(), None));
-				}
-			});
 			Pallet::<T>::deposit_event(Event::<T>::ContractDevelopmentEnabled(who));
 			Ok(().into())
 		}
