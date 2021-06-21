@@ -30,7 +30,7 @@ use codec::Encode;
 use frame_support::{
 	ensure,
 	pallet_prelude::*,
-	traits::{Currency, IsType, OnKilledAccount, ReservableCurrency},
+	traits::{Currency, IsType, OnKilledAccount},
 	transactional,
 };
 use frame_system::{ensure_signed, pallet_prelude::*};
@@ -66,7 +66,7 @@ pub mod module {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
 		/// The Currency for managing Evm account assets.
-		type Currency: Currency<Self::AccountId> + ReservableCurrency<Self::AccountId>;
+		type Currency: Currency<Self::AccountId>;
 
 		/// Mapping from address to account id.
 		type AddressMapping: AddressMapping<Self::AccountId>;
