@@ -52,7 +52,7 @@ fn enable_new_trading_pair_work() {
 			DexModule::trading_pair_statuses(AUSD_DOT_PAIR),
 			TradingPairStatus::<_, _>::Enabled
 		);
-		System::assert_last_event(Event::dex(crate::Event::EnableTradingPair(AUSD_DOT_PAIR)));
+		System::assert_last_event(Event::DexModule(crate::Event::EnableTradingPair(AUSD_DOT_PAIR)));
 
 		assert_noop!(
 			DexModule::enable_trading_pair(Origin::signed(ListingOrigin::get()), DOT, AUSD),
@@ -103,7 +103,7 @@ fn list_new_trading_pair_work() {
 				not_before: 10,
 			})
 		);
-		System::assert_last_event(Event::dex(crate::Event::ListTradingPair(AUSD_DOT_PAIR)));
+		System::assert_last_event(Event::DexModule(crate::Event::ListTradingPair(AUSD_DOT_PAIR)));
 
 		assert_noop!(
 			DexModule::list_trading_pair(
@@ -164,7 +164,7 @@ fn disable_enabled_trading_pair_work() {
 			DexModule::trading_pair_statuses(AUSD_DOT_PAIR),
 			TradingPairStatus::<_, _>::NotEnabled
 		);
-		System::assert_last_event(Event::dex(crate::Event::DisableTradingPair(AUSD_DOT_PAIR)));
+		System::assert_last_event(Event::DexModule(crate::Event::DisableTradingPair(AUSD_DOT_PAIR)));
 
 		assert_noop!(
 			DexModule::disable_trading_pair(Origin::signed(ListingOrigin::get()), AUSD, DOT),
@@ -323,7 +323,7 @@ fn add_provision_work() {
 			assert_eq!(Tokens::free_balance(DOT, &DexModule::account_id()), 0);
 			let alice_ref_count_1 = System::consumers(&ALICE);
 			assert_eq!(alice_ref_count_1, alice_ref_count_0 + 1);
-			System::assert_last_event(Event::dex(crate::Event::AddProvision(
+			System::assert_last_event(Event::DexModule(crate::Event::AddProvision(
 				ALICE,
 				AUSD,
 				5_000_000_000_000u128,
@@ -371,7 +371,7 @@ fn add_provision_work() {
 			);
 			let bob_ref_count_1 = System::consumers(&BOB);
 			assert_eq!(bob_ref_count_1, bob_ref_count_0 + 1);
-			System::assert_last_event(Event::dex(crate::Event::AddProvision(
+			System::assert_last_event(Event::DexModule(crate::Event::AddProvision(
 				BOB,
 				AUSD,
 				0,
@@ -434,7 +434,7 @@ fn add_provision_work() {
 				DexModule::trading_pair_statuses(AUSD_DOT_PAIR),
 				TradingPairStatus::<_, _>::Enabled
 			);
-			System::assert_last_event(Event::dex(crate::Event::ProvisioningToEnabled(
+			System::assert_last_event(Event::DexModule(crate::Event::ProvisioningToEnabled(
 				AUSD_DOT_PAIR,
 				1_000_000_000_000_000u128,
 				2_000_000_000_000_000u128,
@@ -670,7 +670,7 @@ fn add_liquidity_work() {
 				0,
 				false,
 			));
-			System::assert_last_event(Event::dex(crate::Event::AddLiquidity(
+			System::assert_last_event(Event::DexModule(crate::Event::AddLiquidity(
 				ALICE,
 				AUSD,
 				5_000_000_000_000,
@@ -726,7 +726,7 @@ fn add_liquidity_work() {
 				80_000_000_000_000,
 				true,
 			));
-			System::assert_last_event(Event::dex(crate::Event::AddLiquidity(
+			System::assert_last_event(Event::DexModule(crate::Event::AddLiquidity(
 				BOB,
 				AUSD,
 				40_000_000_000_000,
@@ -829,7 +829,7 @@ fn remove_liquidity_work() {
 				800_000_000_000,
 				false,
 			));
-			System::assert_last_event(Event::dex(crate::Event::RemoveLiquidity(
+			System::assert_last_event(Event::DexModule(crate::Event::RemoveLiquidity(
 				ALICE,
 				AUSD,
 				4_000_000_000_000,
@@ -859,7 +859,7 @@ fn remove_liquidity_work() {
 				0,
 				false,
 			));
-			System::assert_last_event(Event::dex(crate::Event::RemoveLiquidity(
+			System::assert_last_event(Event::DexModule(crate::Event::RemoveLiquidity(
 				ALICE,
 				AUSD,
 				1_000_000_000_000,
@@ -995,7 +995,7 @@ fn do_swap_with_exact_supply_work() {
 				200_000_000_000_000,
 				None
 			));
-			System::assert_last_event(Event::dex(crate::Event::Swap(
+			System::assert_last_event(Event::DexModule(crate::Event::Swap(
 				BOB,
 				vec![DOT, AUSD],
 				100_000_000_000_000,
@@ -1026,7 +1026,7 @@ fn do_swap_with_exact_supply_work() {
 				1,
 				None
 			));
-			System::assert_last_event(Event::dex(crate::Event::Swap(
+			System::assert_last_event(Event::DexModule(crate::Event::Swap(
 				BOB,
 				vec![DOT, AUSD, RENBTC],
 				200_000_000_000_000,
@@ -1139,7 +1139,7 @@ fn do_swap_with_exact_target_work() {
 				200_000_000_000_000,
 				None
 			));
-			System::assert_last_event(Event::dex(crate::Event::Swap(
+			System::assert_last_event(Event::DexModule(crate::Event::Swap(
 				BOB,
 				vec![DOT, AUSD],
 				101_010_101_010_102,
@@ -1170,7 +1170,7 @@ fn do_swap_with_exact_target_work() {
 				2_000_000_000_000_000,
 				None
 			));
-			System::assert_last_event(Event::dex(crate::Event::Swap(
+			System::assert_last_event(Event::DexModule(crate::Event::Swap(
 				BOB,
 				vec![DOT, AUSD, RENBTC],
 				137_654_580_386_993,

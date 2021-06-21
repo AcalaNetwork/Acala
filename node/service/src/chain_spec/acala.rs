@@ -189,59 +189,59 @@ fn acala_genesis(
 	);
 
 	acala_runtime::GenesisConfig {
-		frame_system: SystemConfig {
+		system: SystemConfig {
 			// Add Wasm runtime to storage.
 			code: wasm_binary.to_vec(),
 			changes_trie_config: Default::default(),
 		},
-		pallet_indices: IndicesConfig { indices: vec![] },
-		pallet_balances: BalancesConfig { balances },
-		pallet_sudo: SudoConfig { key: root_key.clone() },
-		pallet_collective_Instance1: Default::default(),
-		pallet_membership_Instance1: GeneralCouncilMembershipConfig {
+		indices: IndicesConfig { indices: vec![] },
+		balances: BalancesConfig { balances },
+		sudo: SudoConfig { key: root_key.clone() },
+		general_council: Default::default(),
+		general_council_membership: GeneralCouncilMembershipConfig {
 			members: vec![root_key.clone()],
 			phantom: Default::default(),
 		},
-		pallet_collective_Instance2: Default::default(),
-		pallet_membership_Instance2: FinancialCouncilMembershipConfig {
+		financial_council: Default::default(),
+		financial_council_membership: FinancialCouncilMembershipConfig {
 			members: vec![root_key.clone()],
 			phantom: Default::default(),
 		},
-		pallet_collective_Instance3: Default::default(),
-		pallet_membership_Instance3: HomaCouncilMembershipConfig {
+		homa_council: Default::default(),
+		homa_council_membership: HomaCouncilMembershipConfig {
 			members: vec![root_key.clone()],
 			phantom: Default::default(),
 		},
-		pallet_collective_Instance4: Default::default(),
-		pallet_membership_Instance4: TechnicalCommitteeMembershipConfig {
+		technical_committee: Default::default(),
+		technical_committee_membership: TechnicalCommitteeMembershipConfig {
 			members: vec![root_key.clone()],
 			phantom: Default::default(),
 		},
-		pallet_membership_Instance5: OperatorMembershipAcalaConfig {
+		operator_membership_acala: OperatorMembershipAcalaConfig {
 			members: endowed_accounts.clone(),
 			phantom: Default::default(),
 		},
-		pallet_membership_Instance6: OperatorMembershipBandConfig {
+		operator_membership_band: OperatorMembershipBandConfig {
 			members: endowed_accounts,
 			phantom: Default::default(),
 		},
-		pallet_democracy: Default::default(),
-		pallet_treasury: Default::default(),
-		orml_tokens: TokensConfig {
+		democracy: Default::default(),
+		acala_treasury: Default::default(),
+		tokens: TokensConfig {
 			balances: vec![
 				(root_key.clone(), DOT, initial_balance),
 				(root_key, RENBTC, initial_balance),
 			],
 		},
-		orml_vesting: VestingConfig { vesting: vesting_list },
-		module_cdp_treasury: CdpTreasuryConfig {
+		vesting: VestingConfig { vesting: vesting_list },
+		cdp_treasury: CdpTreasuryConfig {
 			expected_collateral_auction_size: vec![
 				(DOT, dollar(DOT)), // (currency_id, max size of a collateral auction)
 				(RENBTC, 5 * cent(RENBTC)),
 				(RENBTC, 5 * cent(RENBTC)),
 			],
 		},
-		module_cdp_engine: CdpEngineConfig {
+		cdp_engine: CdpEngineConfig {
 			collaterals_params: vec![
 				(
 					DOT,
@@ -281,8 +281,8 @@ fn acala_genesis(
 				1_000_000_000_000_000_000u128,
 			), /* 5% APR */
 		},
-		module_evm: Default::default(),
-		module_staking_pool: StakingPoolConfig {
+		evm: Default::default(),
+		staking_pool: StakingPoolConfig {
 			staking_pool_params: module_staking_pool::Params {
 				target_max_free_unbonded_ratio: FixedU128::saturating_from_rational(10, 100),
 				target_min_free_unbonded_ratio: FixedU128::saturating_from_rational(5, 100),
@@ -291,7 +291,7 @@ fn acala_genesis(
 				base_fee_rate: FixedU128::saturating_from_rational(2, 100),
 			},
 		},
-		module_dex: DexConfig {
+		dex: DexConfig {
 			initial_listing_trading_pairs: vec![],
 			initial_enabled_trading_pairs: EnabledTradingPairs::get(),
 			initial_added_liquidity_pools: vec![],
@@ -299,16 +299,16 @@ fn acala_genesis(
 		parachain_info: ParachainInfoConfig {
 			parachain_id: PARA_ID.into(),
 		},
-		ecosystem_renvm_bridge: RenVmBridgeConfig {
+		ren_vm_bridge: RenVmBridgeConfig {
 			ren_vm_public_key: hex!["4b939fc8ade87cb50b78987b1dda927460dc456a"],
 		},
 		orml_nft: OrmlNFTConfig { tokens: vec![] },
-		module_collator_selection: CollatorSelectionConfig {
+		collator_selection: CollatorSelectionConfig {
 			invulnerables: initial_authorities.iter().cloned().map(|(acc, _, _, _)| acc).collect(),
 			candidacy_bond: initial_staking,
 			..Default::default()
 		},
-		pallet_session: SessionConfig {
+		session: SessionConfig {
 			keys: initial_authorities
 				.iter()
 				.cloned()
@@ -323,7 +323,8 @@ fn acala_genesis(
 		},
 		// no need to pass anything to aura, in fact it will panic if we do. Session will take care
 		// of this.
-		pallet_aura: Default::default(),
-		cumulus_pallet_parachain_system: Default::default(),
+		aura: Default::default(),
+		aura_ext: Default::default(),
+		parachain_system: Default::default(),
 	}
 }

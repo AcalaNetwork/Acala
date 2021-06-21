@@ -117,7 +117,7 @@ pub fn deploy_erc20_contracts() {
 		100000
 	));
 
-	let event = Event::module_evm(module_evm::Event::Created(erc20_address_0()));
+	let event = Event::EVM(module_evm::Event::<Runtime>::Created(erc20_address_0()));
 	assert_eq!(System::events().iter().last().unwrap().event, event);
 
 	assert_ok!(EVM::deploy_free(
@@ -133,7 +133,7 @@ pub fn deploy_erc20_contracts() {
 		100000
 	));
 
-	let event = Event::module_evm(module_evm::Event::Created(erc20_address_1()));
+	let event = Event::EVM(module_evm::Event::<Runtime>::Created(erc20_address_1()));
 	assert_eq!(System::events().iter().last().unwrap().event, event);
 
 	assert_ok!(EVM::deploy_free(
@@ -297,7 +297,7 @@ fn deploy_contract(account: AccountId) -> Result<H160, DispatchError> {
 	EVM::create(Origin::signed(account), contract, 0, 1000000000, 1000000000)
 		.map_or_else(|e| Err(e.error), |_| Ok(()))?;
 
-	if let Event::module_evm(module_evm::Event::Created(address)) = System::events().iter().last().unwrap().event {
+	if let Event::EVM(module_evm::Event::<Runtime>::Created(address)) = System::events().iter().last().unwrap().event {
 		Ok(address)
 	} else {
 		Err("deploy_contract failed".into())
@@ -440,14 +440,13 @@ fn liquidate_cdp() {
 
 			assert_ok!(CdpEngineModule::liquidate_unsafe_cdp(AccountId::from(ALICE), RENBTC));
 
-			let liquidate_alice_xbtc_cdp_event =
-				Event::module_cdp_engine(module_cdp_engine::Event::LiquidateUnsafeCDP(
-					RENBTC,
-					AccountId::from(ALICE),
-					10 * dollar(RENBTC),
-					50_000 * dollar(AUSD),
-					LiquidationStrategy::Auction,
-				));
+			let liquidate_alice_xbtc_cdp_event = Event::CdpEngine(module_cdp_engine::Event::LiquidateUnsafeCDP(
+				RENBTC,
+				AccountId::from(ALICE),
+				10 * dollar(RENBTC),
+				50_000 * dollar(AUSD),
+				LiquidationStrategy::Auction,
+			));
 			assert!(SystemModule::events()
 				.iter()
 				.any(|record| record.event == liquidate_alice_xbtc_cdp_event));
@@ -459,7 +458,7 @@ fn liquidate_cdp() {
 
 			assert_ok!(CdpEngineModule::liquidate_unsafe_cdp(AccountId::from(BOB), RENBTC));
 
-			let liquidate_bob_xbtc_cdp_event = Event::module_cdp_engine(module_cdp_engine::Event::LiquidateUnsafeCDP(
+			let liquidate_bob_xbtc_cdp_event = Event::CdpEngine(module_cdp_engine::Event::LiquidateUnsafeCDP(
 				RENBTC,
 				AccountId::from(BOB),
 				dollar(RENBTC),
@@ -520,7 +519,7 @@ fn test_dex_module() {
 				false,
 			));
 
-			let add_liquidity_event = Event::module_dex(module_dex::Event::AddLiquidity(
+			let add_liquidity_event = Event::Dex(module_dex::Event::AddLiquidity(
 				AccountId::from(ALICE),
 				AUSD,
 				10000000,
@@ -878,7 +877,7 @@ fn test_cdp_engine_module() {
 			assert_eq!(CdpTreasuryModule::total_collaterals(RENBTC), 0);
 			assert_ok!(CdpEngineModule::settle_cdp_has_debit(AccountId::from(ALICE), RENBTC));
 
-			let settle_cdp_in_debit_event = Event::module_cdp_engine(module_cdp_engine::Event::SettleCDPInDebit(
+			let settle_cdp_in_debit_event = Event::CdpEngine(module_cdp_engine::Event::SettleCDPInDebit(
 				RENBTC,
 				AccountId::from(ALICE),
 			));
@@ -962,8 +961,8 @@ fn test_authority_module() {
 				true,
 				Box::new(call.clone())
 			));
-			System::assert_last_event(Event::orml_authority(orml_authority::Event::Scheduled(
-				OriginCaller::orml_authority(DelayedOrigin {
+			System::assert_last_event(Event::Authority(orml_authority::Event::Scheduled(
+				OriginCaller::Authority(DelayedOrigin {
 					delay: 1,
 					origin: Box::new(OriginCaller::system(RawOrigin::Root)),
 				}),
@@ -981,7 +980,7 @@ fn test_authority_module() {
 			);
 
 			// delay < SevenDays
-			System::assert_last_event(Event::pallet_scheduler(pallet_scheduler::Event::<Runtime>::Dispatched(
+			System::assert_last_event(Event::Scheduler(pallet_scheduler::Event::<Runtime>::Dispatched(
 				(2, 1),
 				Some([AUTHORITY_ORIGIN_ID, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0].to_vec()),
 				Err(DispatchError::BadOrigin),
@@ -997,7 +996,7 @@ fn test_authority_module() {
 			));
 
 			run_to_block(SevenDays::get() + 2);
-			System::assert_last_event(Event::pallet_scheduler(pallet_scheduler::Event::<Runtime>::Dispatched(
+			System::assert_last_event(Event::Scheduler(pallet_scheduler::Event::<Runtime>::Dispatched(
 				(100802, 0),
 				Some([AUTHORITY_ORIGIN_ID, 192, 137, 1, 0, 0, 0, 2, 0, 0, 0].to_vec()),
 				Ok(()),
@@ -1011,13 +1010,13 @@ fn test_authority_module() {
 				false,
 				Box::new(call.clone())
 			));
-			System::assert_last_event(Event::orml_authority(orml_authority::Event::Scheduled(
+			System::assert_last_event(Event::Authority(orml_authority::Event::Scheduled(
 				OriginCaller::system(RawOrigin::Root),
 				3,
 			)));
 
 			run_to_block(SevenDays::get() + 3);
-			System::assert_last_event(Event::pallet_scheduler(pallet_scheduler::Event::<Runtime>::Dispatched(
+			System::assert_last_event(Event::Scheduler(pallet_scheduler::Event::<Runtime>::Dispatched(
 				(100803, 0),
 				Some([0, 0, 3, 0, 0, 0].to_vec()),
 				Ok(()),
@@ -1055,8 +1054,8 @@ fn test_authority_module() {
 				true,
 				Box::new(call.clone())
 			));
-			System::assert_last_event(Event::orml_authority(orml_authority::Event::Scheduled(
-				OriginCaller::orml_authority(DelayedOrigin {
+			System::assert_last_event(Event::Authority(orml_authority::Event::Scheduled(
+				OriginCaller::Authority(DelayedOrigin {
 					delay: 1,
 					origin: Box::new(OriginCaller::system(RawOrigin::Root)),
 				}),
@@ -1081,8 +1080,8 @@ fn test_authority_module() {
 				pallets_origin,
 				5
 			));
-			System::assert_last_event(Event::orml_authority(orml_authority::Event::Cancelled(
-				OriginCaller::orml_authority(DelayedOrigin {
+			System::assert_last_event(Event::Authority(orml_authority::Event::Cancelled(
+				OriginCaller::Authority(DelayedOrigin {
 					delay: 1,
 					origin: Box::new(OriginCaller::system(RawOrigin::Root)),
 				}),
@@ -1096,7 +1095,7 @@ fn test_authority_module() {
 				false,
 				Box::new(call.clone())
 			));
-			System::assert_last_event(Event::orml_authority(orml_authority::Event::Scheduled(
+			System::assert_last_event(Event::Authority(orml_authority::Event::Scheduled(
 				OriginCaller::system(RawOrigin::Root),
 				6,
 			)));
@@ -1106,7 +1105,7 @@ fn test_authority_module() {
 				frame_system::RawOrigin::Root.into(),
 				6
 			));
-			System::assert_last_event(Event::orml_authority(orml_authority::Event::Cancelled(
+			System::assert_last_event(Event::Authority(orml_authority::Event::Cancelled(
 				OriginCaller::system(RawOrigin::Root),
 				6,
 			)));
@@ -1171,7 +1170,7 @@ fn test_evm_accounts_module() {
 				EvmAccounts::eth_address(&alice_key()),
 				EvmAccounts::eth_sign(&alice_key(), &AccountId::from(ALICE).encode(), &[][..])
 			));
-			System::assert_last_event(Event::module_evm_accounts(module_evm_accounts::Event::ClaimAccount(
+			System::assert_last_event(Event::EvmAccounts(module_evm_accounts::Event::ClaimAccount(
 				AccountId::from(ALICE),
 				EvmAccounts::eth_address(&alice_key()),
 			)));
@@ -1228,10 +1227,10 @@ fn test_evm_module() {
 			let bob_address = EvmAccounts::eth_address(&bob_key());
 
 			let contract = deploy_contract(alice()).unwrap();
-			System::assert_last_event(Event::module_evm(module_evm::Event::Created(contract)));
+			System::assert_last_event(Event::EVM(module_evm::Event::Created(contract)));
 
 			assert_ok!(EVM::transfer_maintainer(Origin::signed(alice()), contract, bob_address));
-			System::assert_last_event(Event::module_evm(module_evm::Event::TransferredMaintainer(
+			System::assert_last_event(Event::EVM(module_evm::Event::TransferredMaintainer(
 				contract,
 				bob_address,
 			)));
@@ -1286,7 +1285,7 @@ fn test_evm_module() {
 				assert_ok!(EVM::create(Origin::signed(alice()), bytecode, 0, u64::MAX, u32::MAX));
 
 				match System::events().iter().last().unwrap().event {
-					Event::module_evm(module_evm::Event::Created(_)) => {}
+					Event::EVM(module_evm::Event::Created(_)) => {}
 					_ => {
 						println!(
 							"contract {:?} create failed, event: {:?}",
@@ -1445,7 +1444,7 @@ fn should_not_kill_contract_on_transfer_all() {
 
 			assert_ok!(EVM::create(Origin::signed(alice()), code, 2 * dollar(ACA), 1000000000, 1000000000));
 
-			let contract = if let Event::module_evm(module_evm::Event::Created(address)) = System::events().iter().last().unwrap().event {
+			let contract = if let Event::EVM(module_evm::Event::Created(address)) = System::events().iter().last().unwrap().event {
 				address
 			} else {
 				panic!("deploy contract failed");
@@ -1501,7 +1500,7 @@ fn should_not_kill_contract_on_transfer_all_tokens() {
 			// }
 			let code = hex_literal::hex!("608060405260848060116000396000f3fe6080604052348015600f57600080fd5b506004361060285760003560e01c806341c0e1b514602d575b600080fd5b60336035565b005b600073ffffffffffffffffffffffffffffffffffffffff16fffea265627a7a72315820ed64a7551098c4afc823bee1663309079d9cb8798a6bdd71be2cd3ccee52d98e64736f6c63430005110032").to_vec();
 			assert_ok!(EVM::create(Origin::signed(alice()), code, 0, 1000000000, 1000000000));
-			let contract = if let Event::module_evm(module_evm::Event::Created(address)) = System::events().iter().last().unwrap().event {
+			let contract = if let Event::EVM(module_evm::Event::Created(address)) = System::events().iter().last().unwrap().event {
 				address
 			} else {
 				panic!("deploy contract failed");

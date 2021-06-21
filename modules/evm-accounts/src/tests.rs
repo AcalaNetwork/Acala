@@ -33,7 +33,7 @@ fn claim_account_work() {
 			EvmAccountsModule::eth_address(&alice()),
 			EvmAccountsModule::eth_sign(&alice(), &ALICE.encode(), &[][..])
 		));
-		System::assert_last_event(Event::evm_accounts(crate::Event::ClaimAccount(
+		System::assert_last_event(Event::EvmAccountsModule(crate::Event::ClaimAccount(
 			ALICE,
 			EvmAccountsModule::eth_address(&alice()),
 		)));

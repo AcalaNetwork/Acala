@@ -53,7 +53,7 @@ pub trait WeightInfo {
 	fn unbond() -> Weight;
 	fn rebond() -> Weight;
 	fn withdraw_unbonded() -> Weight;
-	fn freeze() -> Weight;
+	fn freeze(u: u32) -> Weight;
 	fn thaw() -> Weight;
 	fn slash() -> Weight;
 }
@@ -72,7 +72,7 @@ impl WeightInfo for () {
 	fn withdraw_unbonded() -> Weight {
 		10_000
 	}
-	fn freeze() -> Weight {
+	fn freeze(_u: u32) -> Weight {
 		10_000
 	}
 	fn thaw() -> Weight {
@@ -335,7 +335,7 @@ pub mod module {
 			Ok(().into())
 		}
 
-		#[pallet::weight(T::WeightInfo::freeze())]
+		#[pallet::weight(T::WeightInfo::freeze(validators.len() as u32))]
 		#[transactional]
 		pub fn freeze(origin: OriginFor<T>, validators: Vec<T::RelaychainAccountId>) -> DispatchResultWithPostInfo {
 			T::FreezeOrigin::ensure_origin(origin)?;

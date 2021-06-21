@@ -25,6 +25,7 @@ pub mod evm;
 
 use codec::{Decode, Encode};
 use core::ops::Range;
+use max_encoded_len::MaxEncodedLen;
 use sp_runtime::{
 	generic,
 	traits::{BlakeTwo256, IdentifyAccount, Verify},
@@ -145,6 +146,11 @@ impl TradingPair {
 	pub fn get_dex_share_currency_id(&self) -> Option<CurrencyId> {
 		CurrencyId::join_dex_share_currency_id(self.0, self.1)
 	}
+}
+
+#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord, MaxEncodedLen)]
+pub enum ReserveIdentifier {
+	CollatorSelection,
 }
 
 /// Ethereum precompiles

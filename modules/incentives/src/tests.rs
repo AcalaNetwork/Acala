@@ -67,7 +67,7 @@ fn deposit_dex_share_works() {
 			BTC_AUSD_LP,
 			10000
 		));
-		System::assert_last_event(Event::incentives(crate::Event::DepositDexShare(
+		System::assert_last_event(Event::IncentivesModule(crate::Event::DepositDexShare(
 			ALICE,
 			BTC_AUSD_LP,
 			10000,
@@ -155,7 +155,7 @@ fn withdraw_dex_share_works() {
 			BTC_AUSD_LP,
 			8000
 		));
-		System::assert_last_event(Event::incentives(crate::Event::WithdrawDexShare(
+		System::assert_last_event(Event::IncentivesModule(crate::Event::WithdrawDexShare(
 			ALICE,
 			BTC_AUSD_LP,
 			8000,

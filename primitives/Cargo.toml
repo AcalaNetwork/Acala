@@ -8,15 +8,16 @@ edition = "2018"
 bstringify = "0.1.2"
 serde = { version = "1.0.124", optional = true }
 codec = { package = "parity-scale-codec", version = "2.0.0", default-features = false }
-sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.4", default-features = false }
-sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.4", default-features = false }
-sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.4", default-features = false }
+max-encoded-len = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.5", default-features = false }
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.5", default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.5", default-features = false }
+sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.5", default-features = false }
 evm = { version = "0.26.0", default-features = false, features = ["with-codec"] }
 chainbridge = { git = "https://github.com/AcalaNetwork/chainbridge-substrate", default-features = false }
 
 [dev-dependencies]
 serde_json = { version = "1.0.64" }
-frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.4" }
+frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.5" }
 
 [features]
 default = ["std"]
@@ -29,6 +30,7 @@ std = [
 	"evm/std",
 	"evm/with-serde",
 	"chainbridge/std",
+	"max-encoded-len/std",
 ]
 runtime-benchmarks = [
 	"chainbridge/runtime-benchmarks",

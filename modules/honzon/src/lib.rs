@@ -140,7 +140,9 @@ pub mod module {
 			Ok(().into())
 		}
 
-		#[pallet::weight(<T as Config>::WeightInfo::close_loan_has_debit_by_dex())]
+		#[pallet::weight(<T as Config>::WeightInfo::close_loan_has_debit_by_dex(
+			maybe_path.clone().map(|p| p.len() as u32).unwrap_or(2)
+		))]
 		#[transactional]
 		pub fn close_loan_has_debit_by_dex(
 			origin: OriginFor<T>,

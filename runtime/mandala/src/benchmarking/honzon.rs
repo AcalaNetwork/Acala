@@ -18,7 +18,7 @@
 
 use crate::{
 	dollar, AcalaOracle, AccountId, Amount, CdpEngine, CollateralCurrencyIds, CurrencyId, DepositPerAuthorization, Dex,
-	ExistentialDeposits, Honzon, Indices, Price, Rate, Ratio, Runtime, ACA, AUSD, DOT,
+	ExistentialDeposits, Honzon, Indices, Price, Rate, Ratio, Runtime, TradingPathLimit, ACA, AUSD, DOT,
 };
 
 use super::utils::set_balance;
@@ -160,6 +160,7 @@ runtime_benchmarks! {
 	}: _(RawOrigin::Signed(receiver), currency_id, sender_lookup)
 
 	close_loan_has_debit_by_dex {
+		let u in 2 .. TradingPathLimit::get() as u32;
 		let collateral_currency_ids = CollateralCurrencyIds::get();
 		let currency_id: CurrencyId = *collateral_currency_ids.last().unwrap();
 		let sender: AccountId = whitelisted_caller();
@@ -173,11 +174,14 @@ runtime_benchmarks! {
 
 		// set balance
 		set_balance(currency_id, &sender, collateral_amount + ExistentialDeposits::get(&currency_id));
-		set_balance(currency_id, &maker, collateral_amount);
-		set_balance(AUSD, &maker, debit_value * 100);
+		set_balance(currency_id, &maker, collateral_amount * 2);
+		set_balance(ACA, &maker, collateral_amount * 2);
+		set_balance(AUSD, &maker, debit_value * 200);
 
 		// inject liquidity
 		let _ = Dex::enable_trading_pair(RawOrigin::Root.into(), currency_id, AUSD);
+		let _ = Dex::enable_trading_pair(RawOrigin::Root.into(), currency_id, ACA);
+		let _ = Dex::enable_trading_pair(RawOrigin::Root.into(), ACA, AUSD);
 		Dex::add_liquidity(
 			RawOrigin::Signed(maker.clone()).into(),
 			currency_id,
@@ -187,6 +191,34 @@ runtime_benchmarks! {
 			Default::default(),
 			false,
 		)?;
+		Dex::add_liquidity(
+			RawOrigin::Signed(maker.clone()).into(),
+			currency_id,
+			ACA,
+			collateral_amount,
+			collateral_amount,
+			Default::default(),
+			false,
+		)?;
+		Dex::add_liquidity(
+			RawOrigin::Signed(maker.clone()).into(),
+			ACA,
+			AUSD,
+			collateral_amount,
+			debit_value * 100,
+			Default::default(),
+			false,
+		)?;
+
+		let mut path = vec![currency_id];
+		for i in 2 .. u {
+			if i % 2 == 0 {
+				path.push(ACA);
+			} else {
+				path.push(currency_id);
+			}
+		}
+		path.push(AUSD);
 
 		// feed price
 		AcalaOracle::feed_values(RawOrigin::Root.into(), vec![(currency_id, Price::one())])?;
@@ -209,7 +241,7 @@ runtime_benchmarks! {
 			collateral_amount.try_into().unwrap(),
 			debit_amount,
 		)?;
-	}: _(RawOrigin::Signed(sender), currency_id, None)
+	}: _(RawOrigin::Signed(sender), currency_id, Some(path))
 }
 
 #[cfg(test)]

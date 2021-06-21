@@ -594,7 +594,7 @@ fn create_network_contract_works() {
 			Pallet::<Test>::account_basic(&NetworkContractSource::get()).nonce,
 			2.into()
 		);
-		System::assert_last_event(Event::evm_mod(crate::Event::Created(H160::from_low_u64_be(
+		System::assert_last_event(Event::EVM(crate::Event::Created(H160::from_low_u64_be(
 			MIRRORED_NFT_ADDRESS_START,
 		))));
 		assert_eq!(EVM::network_contract_index(), MIRRORED_NFT_ADDRESS_START + 1);
@@ -666,10 +666,7 @@ fn should_transfer_maintainer() {
 			result.address,
 			bob()
 		));
-		System::assert_last_event(Event::evm_mod(crate::Event::TransferredMaintainer(
-			result.address,
-			bob(),
-		)));
+		System::assert_last_event(Event::EVM(crate::Event::TransferredMaintainer(result.address, bob())));
 		assert_eq!(balance(bob()), INITIAL_BALANCE);
 
 		assert_noop!(
