@@ -23,15 +23,10 @@
 use super::*;
 use frame_support::{assert_noop, assert_ok};
 use mock::{
-	Currencies, Event, ExtBuilder, Origin, Runtime, Starport, System, Tokens, ACALA, ADMIN_ACCOUNT, ALICE, BOB, CASH,
-	GATEWAY_ACCOUNT, INITIAL_BALANCE, KSM, MAX_GATEWAY_AUTHORITIES, PERCENT_THRESHOLD_FOR_AUTHORITY_SIGNATURE,
+	Currencies, Event, ExtBuilder, Origin, Runtime, Starport, System, ACALA, ADMIN_ACCOUNT, ALICE, BOB, CASH,
+	GATEWAY_ACCOUNT, INITIAL_BALANCE, KSM,
 };
 
-/// can set future yield via notice invocation
-///
-/// notices cannot be invoked more than once
-/// Only gateway account can invoke notices
-/// notices cannot be invoked with insufficient signatures
 #[test]
 fn mock_initialize_token_works() {
 	ExtBuilder::default().build().execute_with(|| {
@@ -302,5 +297,97 @@ fn invoke_can_unlock_asset() {
 			notice_cash,
 			mock::get_mock_signatures()
 		));
+		assert_eq!(
+			System::events().iter().last().unwrap().event,
+			Event::ecosystem_starport(crate::Event::AssetUnlocked(CASH, 100000, ALICE))
+		);
+	});
+}
+
+#[test]
+fn invoke_can_set_future_cash_yield() {
+	ExtBuilder::default().build().execute_with(|| {
+		let notice = GatewayNotice::new(0, GatewayNoticePayload::SetFutureYield(1000, 0, 0));
+		assert_ok!(Starport::invoke(
+			Origin::signed(GATEWAY_ACCOUNT),
+			notice.clone(),
+			mock::get_mock_signatures()
+		));
+		assert_eq!(
+			System::events().iter().last().unwrap().event,
+			Event::ecosystem_starport(crate::Event::FutureYieldSet(1000, 0, 0))
+		);
+	});
+}
+
+#[test]
+fn notices_cannot_be_invoked_twice() {
+	ExtBuilder::default().build().execute_with(|| {
+		let notice = GatewayNotice::new(0, GatewayNoticePayload::SetFutureYield(1000, 0, 0));
+		assert_ok!(Starport::invoke(
+			Origin::signed(GATEWAY_ACCOUNT),
+			notice.clone(),
+			mock::get_mock_signatures()
+		));
+		assert_eq!(
+			System::events().iter().last().unwrap().event,
+			Event::ecosystem_starport(crate::Event::FutureYieldSet(1000, 0, 0))
+		);
+
+		assert_noop!(
+			Starport::invoke(Origin::signed(GATEWAY_ACCOUNT), notice, mock::get_mock_signatures()),
+			Error::<Runtime>::NoticeAlreadyInvoked
+		);
+	});
+}
+
+#[test]
+fn notices_can_only_be_invoked_by_gateway_account() {
+	ExtBuilder::default().build().execute_with(|| {
+		let notice = GatewayNotice::new(0, GatewayNoticePayload::SetFutureYield(1000, 0, 0));
+		assert_noop!(
+			Starport::invoke(Origin::signed(ALICE), notice.clone(), mock::get_mock_signatures()),
+			Error::<Runtime>::InvalidNoticeInvoker
+		);
+
+		assert_ok!(Starport::invoke(
+			Origin::signed(GATEWAY_ACCOUNT),
+			notice.clone(),
+			mock::get_mock_signatures()
+		));
+		assert_eq!(
+			System::events().iter().last().unwrap().event,
+			Event::ecosystem_starport(crate::Event::FutureYieldSet(1000, 0, 0))
+		);
+	});
+}
+
+/// notices cannot be invoked with insufficient signatures
+
+#[test]
+fn notices_can_only_be_invoked_with_enough_signatures() {
+	ExtBuilder::default().build().execute_with(|| {
+		let mut notice = GatewayNotice::new(0, GatewayNoticePayload::SetFutureYield(1000, 0, 0));
+		let mut signer = mock::get_mock_signatures();
+		signer.pop();
+
+		// Mock requires atleast 50% of the 3 signers - so 2 signatures is sufficient.
+		assert_ok!(Starport::invoke(
+			Origin::signed(GATEWAY_ACCOUNT),
+			notice.clone(),
+			mock::get_mock_signatures()
+		));
+		assert_eq!(
+			System::events().iter().last().unwrap().event,
+			Event::ecosystem_starport(crate::Event::FutureYieldSet(1000, 0, 0))
+		);
+
+		// 1 signer is insufficient authorisation
+		notice.id = 1;
+		signer.pop();
+		assert_noop!(
+			Starport::invoke(Origin::signed(GATEWAY_ACCOUNT), notice, signer),
+			Error::<Runtime>::InsufficientValidNoticeSignatures
+		);
 	});
 }

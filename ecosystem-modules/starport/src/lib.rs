@@ -423,6 +423,7 @@ impl<T: Config> Pallet<T> {
 		}
 
 		// check if enough signatures has been acquired.
-		Perbill::from_rational(count, signatures.len() as u32) >= T::PercentThresholdForAuthoritySignature::get()
+		Perbill::from_rational(count, Self::gateway_authorities().len() as u32)
+			>= T::PercentThresholdForAuthoritySignature::get()
 	}
 }

@@ -22,16 +22,11 @@
 
 use super::*;
 use frame_support::{construct_runtime, parameter_types};
-use frame_system::EnsureSignedBy;
 use module_support::mocks::MockAddressMapping;
 use orml_traits::parameter_type_with_key;
 use primitives::{Amount, TokenSymbol};
-use sp_core::{H160, H256};
-use sp_runtime::{
-	testing::Header,
-	traits::{IdentityLookup, One as OneT, Zero},
-	AccountId32, DispatchError, FixedPointNumber,
-};
+use sp_core::H256;
+use sp_runtime::{testing::Header, traits::IdentityLookup, AccountId32};
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
@@ -45,7 +40,6 @@ pub const ADMIN_ACCOUNT: AccountId = AccountId32::new([10u8; 32]);
 pub const GATEWAY_ACCOUNT: AccountId = AccountId32::new([11u8; 32]);
 pub const ALICE: AccountId = AccountId32::new([1u8; 32]);
 pub const BOB: AccountId = AccountId32::new([2u8; 32]);
-pub const CHARLIE: AccountId = AccountId32::new([3u8; 32]);
 pub const ACALA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const KSM: CurrencyId = CurrencyId::Token(TokenSymbol::KSM);
 pub const CASH: CurrencyId = CurrencyId::Token(TokenSymbol::CASH);
