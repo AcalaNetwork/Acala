@@ -1920,6 +1920,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "cumulus-pallet-dmp-queue"
+version = "0.1.0"
+source = "git+https://github.com/paritytech//cumulus?rev=05ab7a377d2c3b73566c0c3bd41b003486d6913b#05ab7a377d2c3b73566c0c3bd41b003486d6913b"
+dependencies = [
+ "cumulus-primitives-core",
+ "frame-support",
+ "frame-system",
+ "log",
+ "parity-scale-codec",
+ "rand 0.8.3",
+ "rand_chacha 0.3.0",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "xcm",
+ "xcm-executor",
+]
+
+[[package]]
 name = "cumulus-pallet-parachain-system"
 version = "0.1.0"
 source = "git+https://github.com/paritytech//cumulus?rev=05ab7a377d2c3b73566c0c3bd41b003486d6913b#05ab7a377d2c3b73566c0c3bd41b003486d6913b"
@@ -1956,6 +1975,40 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "cumulus-pallet-xcm"
+version = "0.1.0"
+source = "git+https://github.com/paritytech//cumulus?rev=05ab7a377d2c3b73566c0c3bd41b003486d6913b#05ab7a377d2c3b73566c0c3bd41b003486d6913b"
+dependencies = [
+ "cumulus-primitives-core",
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "serde",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "xcm",
+]
+
+[[package]]
+name = "cumulus-pallet-xcmp-queue"
+version = "0.1.0"
+source = "git+https://github.com/paritytech//cumulus?rev=05ab7a377d2c3b73566c0c3bd41b003486d6913b#05ab7a377d2c3b73566c0c3bd41b003486d6913b"
+dependencies = [
+ "cumulus-primitives-core",
+ "frame-support",
+ "frame-system",
+ "log",
+ "parity-scale-codec",
+ "rand 0.8.3",
+ "rand_chacha 0.3.0",
+ "sp-runtime",
+ "sp-std",
+ "xcm",
+ "xcm-executor",
 ]
 
 [[package]]
@@ -1999,12 +2052,30 @@ dependencies = [
 [[package]]
 name = "cumulus-primitives-timestamp"
 version = "0.1.0"
-source = "git+https://github.com/paritytech/cumulus?branch=polkadot-v0.9.5#05ab7a377d2c3b73566c0c3bd41b003486d6913b"
+source = "git+https://github.com/paritytech//cumulus?rev=05ab7a377d2c3b73566c0c3bd41b003486d6913b#05ab7a377d2c3b73566c0c3bd41b003486d6913b"
 dependencies = [
  "cumulus-primitives-core",
  "sp-inherents",
  "sp-std",
  "sp-timestamp",
+]
+
+[[package]]
+name = "cumulus-primitives-utility"
+version = "0.1.0"
+source = "git+https://github.com/paritytech//cumulus?rev=05ab7a377d2c3b73566c0c3bd41b003486d6913b#05ab7a377d2c3b73566c0c3bd41b003486d6913b"
+dependencies = [
+ "cumulus-primitives-core",
+ "frame-support",
+ "impl-trait-for-tuples 0.2.1",
+ "parity-scale-codec",
+ "polkadot-core-primitives",
+ "polkadot-parachain",
+ "polkadot-primitives",
+ "sp-runtime",
+ "sp-std",
+ "sp-trie",
+ "xcm",
 ]
 
 [[package]]
@@ -3950,9 +4021,13 @@ version = "1.0.0"
 dependencies = [
  "acala-primitives",
  "cumulus-pallet-aura-ext",
+ "cumulus-pallet-dmp-queue",
  "cumulus-pallet-parachain-system",
+ "cumulus-pallet-xcm",
+ "cumulus-pallet-xcmp-queue",
  "cumulus-primitives-core",
  "cumulus-primitives-timestamp",
+ "cumulus-primitives-utility",
  "frame-benchmarking",
  "frame-executive",
  "frame-support",
@@ -3997,7 +4072,10 @@ dependencies = [
  "orml-rewards",
  "orml-tokens",
  "orml-traits",
+ "orml-unknown-tokens",
  "orml-vesting",
+ "orml-xcm-support",
+ "orml-xtokens",
  "pallet-aura",
  "pallet-authorship",
  "pallet-balances",
@@ -4018,6 +4096,7 @@ dependencies = [
  "pallet-transaction-payment-rpc-runtime-api",
  "pallet-treasury",
  "pallet-utility",
+ "pallet-xcm",
  "parachain-info",
  "parity-scale-codec",
  "polkadot-parachain",
@@ -4039,6 +4118,9 @@ dependencies = [
  "sp-transaction-pool",
  "sp-version",
  "substrate-wasm-builder 4.0.0",
+ "xcm",
+ "xcm-builder",
+ "xcm-executor",
 ]
 
 [[package]]
@@ -4802,9 +4884,13 @@ dependencies = [
  "acala-service",
  "chainbridge",
  "cumulus-pallet-aura-ext",
+ "cumulus-pallet-dmp-queue",
  "cumulus-pallet-parachain-system",
+ "cumulus-pallet-xcm",
+ "cumulus-pallet-xcmp-queue",
  "cumulus-primitives-core",
  "cumulus-primitives-timestamp",
+ "cumulus-primitives-utility",
  "ecosystem-chainsafe",
  "ecosystem-renvm-bridge",
  "evm",
@@ -4854,7 +4940,10 @@ dependencies = [
  "orml-rewards",
  "orml-tokens",
  "orml-traits",
+ "orml-unknown-tokens",
  "orml-vesting",
+ "orml-xcm-support",
+ "orml-xtokens",
  "pallet-aura",
  "pallet-authorship",
  "pallet-balances",
@@ -4877,6 +4966,7 @@ dependencies = [
  "pallet-transaction-payment-rpc-runtime-api",
  "pallet-treasury",
  "pallet-utility",
+ "pallet-xcm",
  "parachain-info",
  "parity-scale-codec",
  "polkadot-parachain",
@@ -4899,6 +4989,9 @@ dependencies = [
  "sp-transaction-pool",
  "sp-version",
  "substrate-wasm-builder 4.0.0",
+ "xcm",
+ "xcm-builder",
+ "xcm-executor",
 ]
 
 [[package]]
@@ -6267,6 +6360,23 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
+ "xcm",
+]
+
+[[package]]
+name = "orml-unknown-tokens"
+version = "0.4.1-dev"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "orml-xcm-support",
+ "parity-scale-codec",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "xcm",
 ]
 
 [[package]]
@@ -6314,6 +6424,37 @@ dependencies = [
  "sp-std",
  "spin 0.7.1",
  "weight-meter-procedural",
+]
+
+[[package]]
+name = "orml-xcm-support"
+version = "0.4.1-dev"
+dependencies = [
+ "frame-support",
+ "orml-traits",
+ "parity-scale-codec",
+ "sp-runtime",
+ "sp-std",
+ "xcm",
+ "xcm-executor",
+]
+
+[[package]]
+name = "orml-xtokens"
+version = "0.4.1-dev"
+dependencies = [
+ "cumulus-primitives-core",
+ "frame-support",
+ "frame-system",
+ "orml-traits",
+ "orml-xcm-support",
+ "parity-scale-codec",
+ "serde",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "xcm",
+ "xcm-executor",
 ]
 
 [[package]]
@@ -12388,7 +12529,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "04f8ab788026715fa63b31960869617cba39117e520eb415b0139543e325ab59"
 dependencies = [
  "cfg-if 0.1.10",
- "rand 0.7.3",
+ "rand 0.3.23",
  "static_assertions",
 ]
 

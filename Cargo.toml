@@ -33,9 +33,9 @@ members = [
 	"orml/vesting",
 	"orml/weight-gen",
 	"orml/weight-meter",
-	# "orml/xtokens",
-	# "orml/xcm-support",
-	# "orml/unknown-tokens",
+	"orml/xtokens",
+	"orml/xcm-support",
+	"orml/unknown-tokens",
 
 	"ecosystem-modules/ren/renvm-bridge",
 	"ecosystem-modules/chainsafe",
@@ -253,6 +253,7 @@ sp-authorship = { git = "https://github.com/paritytech//substrate", rev = "9c572
 xcm = { git = "https://github.com/paritytech//polkadot", rev = "3ce09da502dd74d88f24d76f579d19fd4e6c5624" }
 xcm-executor = { git = "https://github.com/paritytech//polkadot", rev = "3ce09da502dd74d88f24d76f579d19fd4e6c5624" }
 xcm-builder = { git = "https://github.com/paritytech//polkadot", rev = "3ce09da502dd74d88f24d76f579d19fd4e6c5624" }
+pallet-xcm = { git = "https://github.com/paritytech//polkadot", rev = "3ce09da502dd74d88f24d76f579d19fd4e6c5624" }
 polkadot-parachain = { git = "https://github.com/paritytech//polkadot", rev = "3ce09da502dd74d88f24d76f579d19fd4e6c5624" }
 polkadot-primitives = { git = "https://github.com/paritytech//polkadot", rev = "3ce09da502dd74d88f24d76f579d19fd4e6c5624" }
 polkadot-core-primitives = { git = "https://github.com/paritytech//polkadot", rev = "3ce09da502dd74d88f24d76f579d19fd4e6c5624" }
@@ -268,12 +269,17 @@ polkadot-statement-table = { git = "https://github.com/paritytech//polkadot", re
 polkadot-overseer = { git = "https://github.com/paritytech//polkadot", rev = "3ce09da502dd74d88f24d76f579d19fd4e6c5624" }
 polkadot-node-primitives = { git = "https://github.com/paritytech//polkadot", rev = "3ce09da502dd74d88f24d76f579d19fd4e6c5624" }
 polkadot-service = { git = "https://github.com/paritytech//polkadot", rev = "3ce09da502dd74d88f24d76f579d19fd4e6c5624" }
-polkadot-client = { git = "https://github.com/paritytech//polkadot", rev = "3ce09da502dd74d88f24d76f579d19fd4e6c5624" }
 polkadot-cli = { git = "https://github.com/paritytech//polkadot", rev = "3ce09da502dd74d88f24d76f579d19fd4e6c5624" }
 polkadot-node-core-pvf = { git = "https://github.com/paritytech//polkadot", rev = "3ce09da502dd74d88f24d76f579d19fd4e6c5624" }
+polkadot-client = { git = "https://github.com/paritytech//polkadot", rev = "3ce09da502dd74d88f24d76f579d19fd4e6c5624" }
 
 [patch."https://github.com/paritytech/cumulus"]
 cumulus-primitives-core = { git = "https://github.com/paritytech//cumulus", rev = "05ab7a377d2c3b73566c0c3bd41b003486d6913b" }
+cumulus-primitives-utility = { git = "https://github.com/paritytech//cumulus", rev = "05ab7a377d2c3b73566c0c3bd41b003486d6913b" }
+cumulus-primitives-timestamp = { git = "https://github.com/paritytech//cumulus", rev = "05ab7a377d2c3b73566c0c3bd41b003486d6913b" }
+cumulus-pallet-dmp-queue = { git = "https://github.com/paritytech//cumulus", rev = "05ab7a377d2c3b73566c0c3bd41b003486d6913b" }
+cumulus-pallet-xcmp-queue = { git = "https://github.com/paritytech//cumulus", rev = "05ab7a377d2c3b73566c0c3bd41b003486d6913b" }
+cumulus-pallet-xcm = { git = "https://github.com/paritytech//cumulus", rev = "05ab7a377d2c3b73566c0c3bd41b003486d6913b" }
 cumulus-pallet-parachain-system  = { git = "https://github.com/paritytech//cumulus", rev = "05ab7a377d2c3b73566c0c3bd41b003486d6913b" }
 cumulus-pallet-aura-ext = { git = "https://github.com/paritytech//cumulus", rev = "05ab7a377d2c3b73566c0c3bd41b003486d6913b" }
 parachain-info  = { git = "https://github.com/paritytech//cumulus", rev = "05ab7a377d2c3b73566c0c3bd41b003486d6913b" }
