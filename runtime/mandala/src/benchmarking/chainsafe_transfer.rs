@@ -17,13 +17,13 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-	dollar, AccountId, ChainBridge, ChainSafeTransfer, CurrencyId, GetNativeCurrencyId, LocalChainId, Runtime, ACA,
-	AUSD,
+	dollar, AccountId, ChainBridge, ChainSafeTransfer, CurrencyId, GetNativeCurrencyId, LocalChainId, Runtime,
+	RuntimeBlockLength, ACA, AUSD,
 };
 
 use super::utils::set_balance;
 use frame_benchmarking::account;
-use frame_support::traits::EnsureOrigin;
+use frame_support::{traits::EnsureOrigin, weights::DispatchClass};
 use frame_system::RawOrigin;
 use orml_benchmarking::runtime_benchmarks;
 use sp_std::vec;
@@ -46,6 +46,8 @@ runtime_benchmarks! {
 	}: _(RawOrigin::Root, resource_id)
 
 	transfer_origin_chain_token_to_bridge {
+		let b in 0 .. *RuntimeBlockLength::get().max.get(DispatchClass::Normal) as u32;
+		let dest = vec![1; b as usize];
 		let sender: AccountId = account("sender", 0, SEED);
 		let currency_id: CurrencyId = AUSD;
 		let resource_id: chainbridge::ResourceId = chainbridge::derive_resource_id(LocalChainId::get(), b"ausd");
@@ -54,9 +56,11 @@ runtime_benchmarks! {
 		ChainBridge::whitelist_chain(RawOrigin::Root.into(), dest_chain_id)?;
 		ChainSafeTransfer::register_resource_id(RawOrigin::Root.into(), resource_id, currency_id)?;
 		set_balance(currency_id, &sender, dollar(currency_id) * 100);
-	}: transfer_to_bridge(RawOrigin::Signed(sender), currency_id, dest_chain_id, vec![0], dollar(currency_id) * 10)
+	}: transfer_to_bridge(RawOrigin::Signed(sender), currency_id, dest_chain_id, dest, dollar(currency_id) * 10)
 
 	transfer_other_chain_token_to_bridge {
+		let b in 0 .. *RuntimeBlockLength::get().max.get(DispatchClass::Normal) as u32;
+		let dest = vec![1; b as usize];
 		let sender: AccountId = account("sender", 0, SEED);
 		let resource_id: chainbridge::ResourceId = chainbridge::derive_resource_id(0, b"weth");
 		let currency_id: CurrencyId = CurrencyId::ChainSafe(resource_id);
@@ -65,9 +69,11 @@ runtime_benchmarks! {
 		ChainBridge::whitelist_chain(RawOrigin::Root.into(), dest_chain_id)?;
 		ChainSafeTransfer::register_resource_id(RawOrigin::Root.into(), resource_id, currency_id)?;
 		set_balance(currency_id, &sender, 10_000_000_000_000_000_000u128);
-	}: transfer_to_bridge(RawOrigin::Signed(sender), currency_id, dest_chain_id, vec![0], 1_000_000_000_000_000_000u128)
+	}: transfer_to_bridge(RawOrigin::Signed(sender), currency_id, dest_chain_id, dest, 1_000_000_000_000_000_000u128)
 
 	transfer_native_to_bridge {
+		let b in 0 .. *RuntimeBlockLength::get().max.get(DispatchClass::Normal) as u32;
+		let dest = vec![1; b as usize];
 		let sender: AccountId = account("sender", 0, SEED);
 		let currency_id: CurrencyId = GetNativeCurrencyId::get();
 		let resource_id: chainbridge::ResourceId = chainbridge::derive_resource_id(LocalChainId::get(), b"native");
@@ -76,7 +82,7 @@ runtime_benchmarks! {
 		ChainBridge::whitelist_chain(RawOrigin::Root.into(), dest_chain_id)?;
 		ChainSafeTransfer::register_resource_id(RawOrigin::Root.into(), resource_id, currency_id)?;
 		set_balance(currency_id, &sender, dollar(currency_id) * 100);
-	}: _(RawOrigin::Signed(sender), dest_chain_id, vec![0], dollar(currency_id) * 10)
+	}: _(RawOrigin::Signed(sender), dest_chain_id, dest, dollar(currency_id) * 10)
 
 	transfer_origin_chain_token_from_bridge {
 		let sender: AccountId = account("sender", 0, SEED);

@@ -780,7 +780,7 @@ fn mint_work() {
 				to_unbond_next_era: (0, 0)
 			}
 		);
-		System::assert_last_event(Event::staking_pool(crate::Event::MintLiquid(ALICE, 500, 5000)));
+		System::assert_last_event(Event::StakingPoolModule(crate::Event::MintLiquid(ALICE, 500, 5000)));
 
 		RebalancePhase::<Runtime>::put(Phase::Started);
 		assert_noop!(
@@ -850,7 +850,7 @@ fn redeem_by_unbond_work() {
 		assert_eq!(StakingPoolModule::next_era_unbonds(&ALICE), 0);
 
 		assert_ok!(StakingPoolModule::redeem_by_unbond(&ALICE, 1000));
-		System::assert_last_event(Event::staking_pool(crate::Event::RedeemByUnbond(ALICE, 1000, 100)));
+		System::assert_last_event(Event::StakingPoolModule(crate::Event::RedeemByUnbond(ALICE, 1000, 100)));
 		assert_eq!(CurrenciesModule::total_issuance(LDOT), 9000);
 		assert_eq!(CurrenciesModule::free_balance(LDOT, &ALICE), 0);
 		assert_eq!(
@@ -869,7 +869,7 @@ fn redeem_by_unbond_work() {
 		assert_eq!(StakingPoolModule::next_era_unbonds(&BOB), 0);
 
 		assert_ok!(StakingPoolModule::redeem_by_unbond(&BOB, 9000));
-		System::assert_last_event(Event::staking_pool(crate::Event::RedeemByUnbond(BOB, 4000, 400)));
+		System::assert_last_event(Event::StakingPoolModule(crate::Event::RedeemByUnbond(BOB, 4000, 400)));
 		assert_eq!(CurrenciesModule::total_issuance(LDOT), 5000);
 		assert_eq!(CurrenciesModule::free_balance(LDOT, &BOB), 5000);
 		assert_eq!(
@@ -922,7 +922,7 @@ fn redeem_by_free_unbonded_work() {
 		assert_eq!(CurrenciesModule::total_issuance(LDOT), 10000);
 
 		assert_ok!(StakingPoolModule::redeem_by_free_unbonded(&ALICE, 1000));
-		System::assert_last_event(Event::staking_pool(crate::Event::RedeemByFreeUnbonded(
+		System::assert_last_event(Event::StakingPoolModule(crate::Event::RedeemByFreeUnbonded(
 			ALICE, 1000, 80, 20,
 		)));
 		assert_eq!(StakingPoolModule::staking_pool_ledger().free_pool, 420);
@@ -938,7 +938,7 @@ fn redeem_by_free_unbonded_work() {
 
 		// when overflow available
 		assert_ok!(StakingPoolModule::redeem_by_free_unbonded(&BOB, 9000));
-		System::assert_last_event(Event::staking_pool(crate::Event::RedeemByFreeUnbonded(
+		System::assert_last_event(Event::StakingPoolModule(crate::Event::RedeemByFreeUnbonded(
 			BOB, 3662, 300, 74,
 		)));
 		assert_eq!(StakingPoolModule::staking_pool_ledger().free_pool, 120);
@@ -998,7 +998,7 @@ fn redeem_by_claim_unbonding_work() {
 		);
 
 		assert_ok!(StakingPoolModule::redeem_by_claim_unbonding(&ALICE, 1000, 4));
-		System::assert_last_event(Event::staking_pool(crate::Event::RedeemByClaimUnbonding(
+		System::assert_last_event(Event::StakingPoolModule(crate::Event::RedeemByClaimUnbonding(
 			ALICE, 4, 1000, 80, 20,
 		)));
 		assert_eq!(
@@ -1017,7 +1017,7 @@ fn redeem_by_claim_unbonding_work() {
 
 		// when overflow available
 		assert_ok!(StakingPoolModule::redeem_by_claim_unbonding(&BOB, 10000, 4));
-		System::assert_last_event(Event::staking_pool(crate::Event::RedeemByClaimUnbonding(
+		System::assert_last_event(Event::StakingPoolModule(crate::Event::RedeemByClaimUnbonding(
 			BOB, 4, 3910, 316, 79,
 		)));
 		assert_eq!(

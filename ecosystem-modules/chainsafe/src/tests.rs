@@ -62,7 +62,7 @@ fn register_resource_id_work() {
 			ACA::get()
 		));
 		let register_event =
-			Event::ecosystem_chainsafe(crate::Event::RegisterResourceId(ACAResourceId::get(), ACA::get()));
+			Event::ChainSafeTransfer(crate::Event::RegisterResourceId(ACAResourceId::get(), ACA::get()));
 		assert!(System::events().iter().any(|record| record.event == register_event));
 
 		assert_eq!(ChainSafeTransfer::resource_ids(ACA::get()), Some(ACAResourceId::get()));
@@ -102,7 +102,7 @@ fn remove_resource_id_work() {
 			ACAResourceId::get()
 		));
 		let unregister_event =
-			Event::ecosystem_chainsafe(crate::Event::UnregisterResourceId(ACAResourceId::get(), ACA::get()));
+			Event::ChainSafeTransfer(crate::Event::UnregisterResourceId(ACAResourceId::get(), ACA::get()));
 		assert!(System::events().iter().any(|record| record.event == unregister_event));
 	});
 }

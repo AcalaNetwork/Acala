@@ -10,8 +10,8 @@ codec = { package = "parity-scale-codec", version = "2.0.0" }
 jsonrpc-core = "15.0.0"
 jsonrpc-core-client = "15.0.0"
 jsonrpc-derive = "15.0.0"
-sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.4" }
-sp-api = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.4" }
-sp-blockchain = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.4" }
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.5" }
+sp-api = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.5" }
+sp-blockchain = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.5" }
 module-staking-pool-rpc-runtime-api = { path = "runtime-api" }
 module-support = { path = "../../support" }

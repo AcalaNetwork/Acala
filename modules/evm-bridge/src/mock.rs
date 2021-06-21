@@ -78,8 +78,10 @@ impl pallet_balances::Config for Runtime {
 	type Event = Event;
 	type ExistentialDeposit = ExistentialDeposit;
 	type AccountStore = System;
-	type WeightInfo = ();
 	type MaxLocks = ();
+	type MaxReserves = ();
+	type ReserveIdentifier = [u8; 8];
+	type WeightInfo = ();
 }
 
 parameter_types! {
@@ -193,7 +195,7 @@ pub fn deploy_contracts() {
 		10000
 	));
 
-	let event = Event::module_evm(module_evm::Event::Created(erc20_address()));
+	let event = Event::EVM(module_evm::Event::Created(erc20_address()));
 	assert_eq!(System::events().iter().last().unwrap().event, event);
 
 	assert_ok!(EVM::deploy_free(Origin::signed(CouncilAccount::get()), erc20_address()));

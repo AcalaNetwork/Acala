@@ -238,52 +238,52 @@ fn karura_genesis(
 	general_councils: Vec<AccountId>,
 ) -> karura_runtime::GenesisConfig {
 	karura_runtime::GenesisConfig {
-		frame_system: SystemConfig {
+		system: SystemConfig {
 			// Add Wasm runtime to storage.
 			code: wasm_binary.to_vec(),
 			changes_trie_config: Default::default(),
 		},
-		pallet_balances: BalancesConfig {
+		balances: BalancesConfig {
 			balances: initial_allocation,
 		},
-		pallet_sudo: SudoConfig { key: root_key },
-		pallet_collective_Instance1: Default::default(),
-		pallet_membership_Instance1: GeneralCouncilMembershipConfig {
+		sudo: SudoConfig { key: root_key },
+		general_council: Default::default(),
+		general_council_membership: GeneralCouncilMembershipConfig {
 			members: general_councils,
 			phantom: Default::default(),
 		},
-		pallet_collective_Instance2: Default::default(),
-		pallet_membership_Instance2: FinancialCouncilMembershipConfig {
+		financial_council: Default::default(),
+		financial_council_membership: FinancialCouncilMembershipConfig {
 			members: vec![],
 			phantom: Default::default(),
 		},
-		pallet_collective_Instance3: Default::default(),
-		pallet_membership_Instance3: HomaCouncilMembershipConfig {
+		homa_council: Default::default(),
+		homa_council_membership: HomaCouncilMembershipConfig {
 			members: vec![],
 			phantom: Default::default(),
 		},
-		pallet_collective_Instance4: Default::default(),
-		pallet_membership_Instance4: TechnicalCommitteeMembershipConfig {
+		technical_committee: Default::default(),
+		technical_committee_membership: TechnicalCommitteeMembershipConfig {
 			members: vec![],
 			phantom: Default::default(),
 		},
-		pallet_membership_Instance5: OperatorMembershipAcalaConfig {
+		operator_membership_acala: OperatorMembershipAcalaConfig {
 			members: vec![],
 			phantom: Default::default(),
 		},
-		pallet_democracy: Default::default(),
-		pallet_treasury: Default::default(),
-		orml_tokens: TokensConfig { balances: vec![] },
-		orml_vesting: VestingConfig { vesting: vesting_list },
-		module_cdp_treasury: CdpTreasuryConfig {
+		democracy: Default::default(),
+		treasury: Default::default(),
+		tokens: TokensConfig { balances: vec![] },
+		vesting: VestingConfig { vesting: vesting_list },
+		cdp_treasury: CdpTreasuryConfig {
 			expected_collateral_auction_size: vec![],
 		},
-		module_cdp_engine: CdpEngineConfig {
+		cdp_engine: CdpEngineConfig {
 			collaterals_params: vec![],
 			global_interest_rate_per_sec: Default::default(),
 		},
-		module_evm: Default::default(),
-		module_dex: DexConfig {
+		evm: Default::default(),
+		dex: DexConfig {
 			initial_listing_trading_pairs: vec![],
 			initial_enabled_trading_pairs: vec![],
 			initial_added_liquidity_pools: vec![],
@@ -292,12 +292,12 @@ fn karura_genesis(
 			parachain_id: PARA_ID.into(),
 		},
 		orml_nft: OrmlNFTConfig { tokens: vec![] },
-		module_collator_selection: CollatorSelectionConfig {
+		collator_selection: CollatorSelectionConfig {
 			invulnerables: initial_authorities.iter().cloned().map(|(acc, _)| acc).collect(),
 			candidacy_bond: Zero::zero(),
 			..Default::default()
 		},
-		pallet_session: SessionConfig {
+		session: SessionConfig {
 			keys: initial_authorities
 				.iter()
 				.cloned()
@@ -312,8 +312,8 @@ fn karura_genesis(
 		},
 		// no need to pass anything to aura, in fact it will panic if we do. Session will take care
 		// of this.
-		pallet_aura: Default::default(),
-		cumulus_pallet_aura_ext: Default::default(),
-		cumulus_pallet_parachain_system: Default::default(),
+		aura: Default::default(),
+		aura_ext: Default::default(),
+		parachain_system: Default::default(),
 	}
 }

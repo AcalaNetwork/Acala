@@ -36,8 +36,9 @@ use codec::{Decode, Encode};
 pub use frame_support::{
 	construct_runtime, log, parameter_types,
 	traits::{
-		All, ContainsLengthBound, EnsureOrigin, Filter, Get, InstanceFilter, IsType, KeyOwnerProofSystem,
-		LockIdentifier, MaxEncodedLen, Randomness, SortedMembers, U128CurrencyToVote, WithdrawReasons,
+		All, ContainsLengthBound, Currency as PalletCurrency, EnsureOrigin, Filter, Get, InstanceFilter, IsType,
+		KeyOwnerProofSystem, LockIdentifier, MaxEncodedLen, Randomness, SortedMembers, U128CurrencyToVote,
+		WithdrawReasons,
 	},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight, WEIGHT_PER_SECOND},
@@ -53,9 +54,7 @@ use module_evm_accounts::EvmAddressMapping;
 pub use module_evm_manager::EvmCurrencyIdMapping;
 use module_transaction_payment::{Multiplier, TargetedFeeAdjustment};
 use orml_tokens::CurrencyAdapter;
-use orml_traits::{
-	create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended, Handler,
-};
+use orml_traits::{create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended};
 use pallet_transaction_payment::{FeeDetails, RuntimeDispatchInfo};
 use sp_api::impl_runtime_apis;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
@@ -110,8 +109,8 @@ pub use authority::AuthorityConfigImpl;
 pub use constants::{fee::*, time::*};
 pub use primitives::{
 	evm::EstimateResourcesRequest, AccountId, AccountIndex, AirDropCurrencyId, Amount, AuctionId, AuthoritysOriginId,
-	Balance, BlockNumber, CurrencyId, DataProviderId, EraIndex, Hash, Moment, Nonce, Share, Signature, TokenSymbol,
-	TradingPair,
+	Balance, BlockNumber, CurrencyId, DataProviderId, EraIndex, Hash, Moment, Nonce, ReserveIdentifier, Share,
+	Signature, TokenSymbol, TradingPair,
 };
 pub use runtime_common::{
 	cent, dollar, microcent, millicent, CurveFeeModel, ExchangeRate, GasToWeight, OffchainSolutionWeightLimit, Price,
@@ -263,6 +262,7 @@ impl pallet_session::Config for Runtime {
 
 parameter_types! {
 	pub const PotId: PalletId = PalletId(*b"PotStake");
+	pub const MinCandidates: u32 = 5;
 	pub const MaxCandidates: u32 = 200;
 	pub const MaxInvulnerables: u32 = 50;
 }
@@ -273,6 +273,7 @@ impl module_collator_selection::Config for Runtime {
 	type ValidatorSet = Session;
 	type UpdateOrigin = EnsureRootOrHalfGeneralCouncil;
 	type PotId = PotId;
+	type MinCandidates = MinCandidates;
 	type MaxCandidates = MaxCandidates;
 	type MaxInvulnerables = MaxInvulnerables;
 	type WeightInfo = weights::module_collator_selection::WeightInfo<Runtime>;
@@ -307,6 +308,7 @@ parameter_types! {
 	// For weight estimation, we assume that the most locks on an individual account will be 50.
 	// This number may need to be adjusted in the future if this assumption no longer holds true.
 	pub const MaxLocks: u32 = 50;
+	pub const MaxReserves: u32 = 50;
 }
 
 impl pallet_balances::Config for Runtime {
@@ -316,6 +318,8 @@ impl pallet_balances::Config for Runtime {
 	type ExistentialDeposit = NativeTokenExistentialDeposit;
 	type AccountStore = frame_system::Pallet<Runtime>;
 	type MaxLocks = MaxLocks;
+	type MaxReserves = MaxReserves;
+	type ReserveIdentifier = ReserveIdentifier;
 	type WeightInfo = ();
 }
 
@@ -1147,28 +1151,11 @@ impl module_transaction_payment::Config for Runtime {
 	type WeightInfo = weights::module_transaction_payment::WeightInfo<Runtime>;
 }
 
-pub struct EvmAccountsOnClaimHandler;
-impl Handler<AccountId> for EvmAccountsOnClaimHandler {
-	fn handle(who: &AccountId) -> DispatchResult {
-		if System::providers(who) == 0 {
-			// no provider. i.e. no native tokens
-			// ensure there are some native tokens, which will add provider
-			TransactionPayment::ensure_can_charge_fee(
-				who,
-				NativeTokenExistentialDeposit::get(),
-				WithdrawReasons::TRANSACTION_PAYMENT,
-			);
-		}
-		Ok(())
-	}
-}
-
 impl module_evm_accounts::Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
 	type AddressMapping = EvmAddressMapping<Runtime>;
 	type TransferAll = Currencies;
-	type OnClaim = EvmAccountsOnClaimHandler;
 	type WeightInfo = weights::module_evm_accounts::WeightInfo<Runtime>;
 }
 
@@ -1788,6 +1775,8 @@ impl orml_unknown_tokens::Config for Runtime {
 	type Event = Event;
 }
 
+impl cumulus_pallet_aura_ext::Config for Runtime {}
+
 /// The address format for describing accounts.
 pub type Address = sp_runtime::MultiAddress<AccountId, AccountIndex>;
 /// Block header type as expected by this runtime.
@@ -1931,6 +1920,7 @@ construct_runtime! {
 		CollatorSelection: module_collator_selection::{Pallet, Call, Storage, Event<T>, Config<T>} = 191,
 		Session: pallet_session::{Pallet, Call, Storage, Event, Config<T>} = 192,
 		Aura: pallet_aura::{Pallet, Storage, Config<T>} = 193,
+		AuraExt: cumulus_pallet_aura_ext::{Pallet, Storage, Config} = 194,
 
 		// Dev
 		Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>} = 255,
@@ -2237,8 +2227,34 @@ impl_runtime_apis! {
 	}
 }
 
+struct CheckInherents;
+
+impl cumulus_pallet_parachain_system::CheckInherents<Block> for CheckInherents {
+	fn check_inherents(
+		block: &Block,
+		relay_state_proof: &cumulus_pallet_parachain_system::RelayChainStateProof,
+	) -> sp_inherents::CheckInherentsResult {
+		let relay_chain_slot = relay_state_proof
+			.read_slot()
+			.expect("Could not read the relay chain slot from the proof");
+
+		let inherent_data = cumulus_primitives_timestamp::InherentDataProvider::from_relay_chain_slot_and_duration(
+			relay_chain_slot,
+			sp_std::time::Duration::from_secs(6),
+		)
+		.create_inherent_data()
+		.expect("Could not create the timestamp inherent data");
+
+		inherent_data.check_extrinsics(&block)
+	}
+}
+
 #[cfg(not(feature = "standalone"))]
-cumulus_pallet_parachain_system::register_validate_block!(Runtime, Executive);
+cumulus_pallet_parachain_system::register_validate_block!(
+	Runtime = Runtime,
+	BlockExecutor = cumulus_pallet_aura_ext::BlockExecutor::<Runtime, Executive>,
+	CheckInherents = CheckInherents,
+);
 
 #[cfg(test)]
 mod tests {

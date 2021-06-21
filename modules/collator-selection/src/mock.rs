@@ -25,6 +25,7 @@ use frame_support::{
 };
 use frame_system as system;
 use frame_system::EnsureSignedBy;
+use primitives::ReserveIdentifier;
 use sp_core::H256;
 use sp_runtime::{
 	testing::{Header, UintAuthorityId},
@@ -85,6 +86,7 @@ impl system::Config for Test {
 
 parameter_types! {
 	pub const ExistentialDeposit: u64 = 5;
+	pub const MaxReserves: u32 = 50;
 }
 
 impl pallet_balances::Config for Test {
@@ -93,8 +95,10 @@ impl pallet_balances::Config for Test {
 	type DustRemoval = ();
 	type ExistentialDeposit = ExistentialDeposit;
 	type AccountStore = System;
-	type WeightInfo = ();
 	type MaxLocks = ();
+	type MaxReserves = MaxReserves;
+	type ReserveIdentifier = ReserveIdentifier;
+	type WeightInfo = ();
 }
 
 pub struct Author4;
@@ -187,6 +191,7 @@ ord_parameter_types! {
 
 parameter_types! {
 	pub const PotId: PalletId = PalletId(*b"PotStake");
+	pub const MinCandidates: u32 = 1;
 	pub const MaxCandidates: u32 = 4;
 	pub const MaxInvulnerables: u32 = 4;
 }
@@ -197,6 +202,7 @@ impl Config for Test {
 	type ValidatorSet = Session;
 	type UpdateOrigin = EnsureSignedBy<RootAccount, u64>;
 	type PotId = PotId;
+	type MinCandidates = MinCandidates;
 	type MaxCandidates = MaxCandidates;
 	type MaxInvulnerables = MaxInvulnerables;
 	type WeightInfo = ();
@@ -220,7 +226,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		.collect::<Vec<_>>();
 
 	let balances = pallet_balances::GenesisConfig::<Test> {
-		balances: vec![(1, 100), (2, 100), (3, 100), (4, 100), (5, 100)],
+		balances: vec![(1, 100), (2, 100), (3, 100), (4, 100), (5, 100), (33, 5)],
 	};
 	let collator_selection = collator_selection::GenesisConfig::<Test> {
 		desired_candidates: 2,

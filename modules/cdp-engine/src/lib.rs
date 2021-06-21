@@ -639,6 +639,8 @@ impl<T: Config> Pallet<T> {
 
 		let mut iteration_count = 0;
 		let iteration_start_time = sp_io::offchain::timestamp();
+
+		#[allow(clippy::while_let_on_iterator)]
 		while let Some((who, Position { collateral, debit })) = map_iterator.next() {
 			if !is_shutdown && Self::is_cdp_unsafe(currency_id, collateral, debit) {
 				// liquidate unsafe CDPs before emergency shutdown occurs

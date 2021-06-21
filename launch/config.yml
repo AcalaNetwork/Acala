@@ -26,8 +26,7 @@ paras:
       - alice
       - bob
       - charlie
-    sudo:
-      - alice
+    sudo: alice
   id: 2000
   parachain: true
   flags:
