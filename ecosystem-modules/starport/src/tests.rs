@@ -57,7 +57,7 @@ fn lock_works() {
 		// Verify the event deposited for Gateway is correct.
 		assert_eq!(
 			System::events().iter().last().unwrap().event,
-			Event::ecosystem_starport(crate::Event::AssetLockedTo(ACALA, INITIAL_BALANCE, ALICE))
+			Event::Starport(crate::Event::AssetLockedTo(ACALA, INITIAL_BALANCE, ALICE))
 		);
 
 		// Locked CASH assets are burned instead
@@ -73,7 +73,7 @@ fn lock_works() {
 		// Verify the event deposited for Gateway is correct.
 		assert_eq!(
 			System::events().iter().last().unwrap().event,
-			Event::ecosystem_starport(crate::Event::AssetLockedTo(CASH, INITIAL_BALANCE, ALICE))
+			Event::Starport(crate::Event::AssetLockedTo(CASH, INITIAL_BALANCE, ALICE))
 		)
 	});
 }
@@ -96,7 +96,7 @@ fn lock_to_works() {
 		// Verify the event deposited for Gateway is correct.
 		assert_eq!(
 			System::events().iter().last().unwrap().event,
-			Event::ecosystem_starport(crate::Event::AssetLockedTo(ACALA, INITIAL_BALANCE, BOB))
+			Event::Starport(crate::Event::AssetLockedTo(ACALA, INITIAL_BALANCE, BOB))
 		);
 	});
 }
@@ -144,7 +144,7 @@ fn invoke_can_set_supply_cap() {
 		// Verify the event deposited for Gateway is correct.
 		assert_eq!(
 			System::events().iter().last().unwrap().event,
-			Event::ecosystem_starport(crate::Event::AssetLockedTo(ACALA, 100, ALICE))
+			Event::Starport(crate::Event::AssetLockedTo(ACALA, 100, ALICE))
 		);
 
 		// Lock fails due to insufficient Market cap
@@ -162,14 +162,14 @@ fn invoke_can_set_supply_cap() {
 		));
 		assert_eq!(
 			System::events().iter().last().unwrap().event,
-			Event::ecosystem_starport(crate::Event::SupplyCapSet(ACALA, 100))
+			Event::Starport(crate::Event::SupplyCapSet(ACALA, 100))
 		);
 
 		// Lock will now work
 		assert_ok!(Starport::lock(Origin::signed(ALICE), ACALA, 100));
 		assert_eq!(
 			System::events().iter().last().unwrap().event,
-			Event::ecosystem_starport(crate::Event::AssetLockedTo(ACALA, 100, ALICE))
+			Event::Starport(crate::Event::AssetLockedTo(ACALA, 100, ALICE))
 		);
 	});
 }
@@ -185,7 +185,7 @@ fn invoke_can_set_authorities() {
 		// Verify the event deposited for Gateway is correct.
 		assert_eq!(
 			System::events().iter().last().unwrap().event,
-			Event::ecosystem_starport(crate::Event::AssetLockedTo(ACALA, 100, ALICE))
+			Event::Starport(crate::Event::AssetLockedTo(ACALA, 100, ALICE))
 		);
 
 		let new_authorities = vec!["NEW AUTH 1".to_string(), "NEW AUTH 2".to_string()];
@@ -213,7 +213,7 @@ fn invoke_can_set_authorities() {
 		));
 		assert_eq!(
 			System::events().iter().last().unwrap().event,
-			Event::ecosystem_starport(crate::Event::GatewayAuthoritiesChanged)
+			Event::Starport(crate::Event::GatewayAuthoritiesChanged)
 		);
 
 		// Notices now uses the new set of authority for verification.
@@ -225,7 +225,7 @@ fn invoke_can_set_authorities() {
 		));
 		assert_eq!(
 			System::events().iter().last().unwrap().event,
-			Event::ecosystem_starport(crate::Event::GatewayAuthoritiesChanged)
+			Event::Starport(crate::Event::GatewayAuthoritiesChanged)
 		);
 
 		// invocation fails with too many authorities
@@ -258,7 +258,7 @@ fn invoke_can_unlock_asset() {
 		// Verify the event deposited for Gateway is correct.
 		assert_eq!(
 			System::events().iter().last().unwrap().event,
-			Event::ecosystem_starport(crate::Event::AssetLockedTo(ACALA, 500, ALICE))
+			Event::Starport(crate::Event::AssetLockedTo(ACALA, 500, ALICE))
 		);
 
 		// Unlock the locked asset
@@ -270,7 +270,7 @@ fn invoke_can_unlock_asset() {
 		));
 		assert_eq!(
 			System::events().iter().last().unwrap().event,
-			Event::ecosystem_starport(crate::Event::AssetUnlocked(ACALA, 500, ALICE))
+			Event::Starport(crate::Event::AssetUnlocked(ACALA, 500, ALICE))
 		);
 
 		// Unlock will fail with insufficient asset
@@ -299,7 +299,7 @@ fn invoke_can_unlock_asset() {
 		));
 		assert_eq!(
 			System::events().iter().last().unwrap().event,
-			Event::ecosystem_starport(crate::Event::AssetUnlocked(CASH, 100000, ALICE))
+			Event::Starport(crate::Event::AssetUnlocked(CASH, 100000, ALICE))
 		);
 	});
 }
@@ -315,7 +315,7 @@ fn invoke_can_set_future_cash_yield() {
 		));
 		assert_eq!(
 			System::events().iter().last().unwrap().event,
-			Event::ecosystem_starport(crate::Event::FutureYieldSet(1000, 0, 0))
+			Event::Starport(crate::Event::FutureYieldSet(1000, 0, 0))
 		);
 	});
 }
@@ -331,7 +331,7 @@ fn notices_cannot_be_invoked_twice() {
 		));
 		assert_eq!(
 			System::events().iter().last().unwrap().event,
-			Event::ecosystem_starport(crate::Event::FutureYieldSet(1000, 0, 0))
+			Event::Starport(crate::Event::FutureYieldSet(1000, 0, 0))
 		);
 
 		assert_noop!(
@@ -357,7 +357,7 @@ fn notices_can_only_be_invoked_by_gateway_account() {
 		));
 		assert_eq!(
 			System::events().iter().last().unwrap().event,
-			Event::ecosystem_starport(crate::Event::FutureYieldSet(1000, 0, 0))
+			Event::Starport(crate::Event::FutureYieldSet(1000, 0, 0))
 		);
 	});
 }
@@ -379,7 +379,7 @@ fn notices_can_only_be_invoked_with_enough_signatures() {
 		));
 		assert_eq!(
 			System::events().iter().last().unwrap().event,
-			Event::ecosystem_starport(crate::Event::FutureYieldSet(1000, 0, 0))
+			Event::Starport(crate::Event::FutureYieldSet(1000, 0, 0))
 		);
 
 		// 1 signer is insufficient authorisation

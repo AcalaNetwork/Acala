@@ -104,6 +104,8 @@ impl pallet_balances::Config for Runtime {
 	type AccountStore = frame_system::Pallet<Runtime>;
 	type MaxLocks = ();
 	type WeightInfo = ();
+	type MaxReserves = ();
+	type ReserveIdentifier = ();
 }
 
 pub type AdaptedBasicCurrency = module_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Amount, BlockNumber>;
