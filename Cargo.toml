@@ -271,6 +271,7 @@ polkadot-node-primitives = { git = "https://github.com/paritytech//polkadot", re
 polkadot-service = { git = "https://github.com/paritytech//polkadot", rev = "3ce09da502dd74d88f24d76f579d19fd4e6c5624" }
 polkadot-cli = { git = "https://github.com/paritytech//polkadot", rev = "3ce09da502dd74d88f24d76f579d19fd4e6c5624" }
 polkadot-node-core-pvf = { git = "https://github.com/paritytech//polkadot", rev = "3ce09da502dd74d88f24d76f579d19fd4e6c5624" }
+polkadot-client = { git = "https://github.com/paritytech//polkadot", rev = "3ce09da502dd74d88f24d76f579d19fd4e6c5624" }
 
 [patch."https://github.com/paritytech/cumulus"]
 cumulus-primitives-core = { git = "https://github.com/paritytech//cumulus", rev = "05ab7a377d2c3b73566c0c3bd41b003486d6913b" }

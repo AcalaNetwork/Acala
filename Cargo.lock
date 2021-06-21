@@ -1760,7 +1760,7 @@ dependencies = [
  "futures 0.3.15",
  "parity-scale-codec",
  "parking_lot 0.10.2",
- "polkadot-client 0.9.3 (git+https://github.com/paritytech/polkadot?branch=release-v0.9.5)",
+ "polkadot-client",
  "sc-client-api",
  "sc-consensus-aura",
  "sc-consensus-slots",
@@ -1814,7 +1814,7 @@ dependencies = [
  "futures 0.3.15",
  "parity-scale-codec",
  "parking_lot 0.10.2",
- "polkadot-client 0.9.3 (git+https://github.com/paritytech/polkadot?branch=release-v0.9.5)",
+ "polkadot-client",
  "sc-client-api",
  "sp-api",
  "sp-block-builder",
@@ -1837,7 +1837,7 @@ dependencies = [
  "futures-timer 3.0.2",
  "parity-scale-codec",
  "parking_lot 0.10.2",
- "polkadot-client 0.9.3 (git+https://github.com/paritytech/polkadot?branch=release-v0.9.5)",
+ "polkadot-client",
  "polkadot-node-primitives",
  "polkadot-parachain",
  "polkadot-primitives",
@@ -2037,7 +2037,7 @@ dependencies = [
  "async-trait",
  "cumulus-primitives-core",
  "parity-scale-codec",
- "polkadot-client 0.9.3 (git+https://github.com/paritytech/polkadot?branch=release-v0.9.5)",
+ "polkadot-client",
  "sc-client-api",
  "sp-api",
  "sp-core",
@@ -7698,35 +7698,6 @@ dependencies = [
 [[package]]
 name = "polkadot-client"
 version = "0.9.3"
-source = "git+https://github.com/paritytech/polkadot?branch=release-v0.9.5#3ce09da502dd74d88f24d76f579d19fd4e6c5624"
-dependencies = [
- "beefy-primitives",
- "frame-benchmarking",
- "frame-system-rpc-runtime-api",
- "pallet-mmr-primitives",
- "pallet-transaction-payment-rpc-runtime-api",
- "polkadot-primitives",
- "polkadot-runtime",
- "sc-client-api",
- "sc-executor",
- "sc-service",
- "sp-api",
- "sp-authority-discovery",
- "sp-block-builder",
- "sp-blockchain",
- "sp-consensus",
- "sp-consensus-babe",
- "sp-finality-grandpa",
- "sp-offchain",
- "sp-runtime",
- "sp-session",
- "sp-storage",
- "sp-transaction-pool",
-]
-
-[[package]]
-name = "polkadot-client"
-version = "0.9.3"
 source = "git+https://github.com/paritytech//polkadot?rev=3ce09da502dd74d88f24d76f579d19fd4e6c5624#3ce09da502dd74d88f24d76f579d19fd4e6c5624"
 dependencies = [
  "beefy-primitives",
@@ -8459,7 +8430,7 @@ dependencies = [
  "polkadot-availability-bitfield-distribution",
  "polkadot-availability-distribution",
  "polkadot-availability-recovery",
- "polkadot-client 0.9.3 (git+https://github.com/paritytech//polkadot?rev=3ce09da502dd74d88f24d76f579d19fd4e6c5624)",
+ "polkadot-client",
  "polkadot-collator-protocol",
  "polkadot-gossip-support",
  "polkadot-network-bridge",
