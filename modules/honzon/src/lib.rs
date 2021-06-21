@@ -29,9 +29,9 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
 
-use frame_support::{pallet_prelude::*, traits::ReservableCurrency, transactional};
+use frame_support::{pallet_prelude::*, traits::NamedReservableCurrency, transactional};
 use frame_system::pallet_prelude::*;
-use primitives::{Amount, Balance, CurrencyId};
+use primitives::{Amount, Balance, CurrencyId, ReserveIdentifier};
 use sp_runtime::{
 	traits::{StaticLookup, Zero},
 	DispatchResult,
@@ -50,12 +50,18 @@ pub use weights::WeightInfo;
 pub mod module {
 	use super::*;
 
+	pub const RESERVE_ID: ReserveIdentifier = ReserveIdentifier::Honzon;
+
 	#[pallet::config]
 	pub trait Config: frame_system::Config + cdp_engine::Config {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
 		/// Currency for authorization reserved.
-		type Currency: ReservableCurrency<Self::AccountId, Balance = Balance>;
+		type Currency: NamedReservableCurrency<
+			Self::AccountId,
+			Balance = Balance,
+			ReserveIdentifier = ReserveIdentifier,
+		>;
 
 		/// Reserved amount per authorization.
 		type DepositPerAuthorization: Get<Balance>;
@@ -196,7 +202,7 @@ pub mod module {
 			Authorization::<T>::try_mutate_exists(&from, (currency_id, &to), |maybe_reserved| -> DispatchResult {
 				if maybe_reserved.is_none() {
 					let reserve_amount = T::DepositPerAuthorization::get();
-					<T as Config>::Currency::reserve(&from, reserve_amount)?;
+					<T as Config>::Currency::reserve_named(&RESERVE_ID, &from, reserve_amount)?;
 					*maybe_reserved = Some(reserve_amount);
 					Self::deposit_event(Event::Authorization(from.clone(), to.clone(), currency_id));
 					Ok(())
@@ -222,7 +228,7 @@ pub mod module {
 			let to = T::Lookup::lookup(to)?;
 			let reserved =
 				Authorization::<T>::take(&from, (currency_id, &to)).ok_or(Error::<T>::AuthorizationNotExists)?;
-			<T as Config>::Currency::unreserve(&from, reserved);
+			<T as Config>::Currency::unreserve_named(&RESERVE_ID, &from, reserved);
 			Self::deposit_event(Event::UnAuthorization(from, to, currency_id));
 			Ok(().into())
 		}
@@ -232,11 +238,8 @@ pub mod module {
 		#[transactional]
 		pub fn unauthorize_all(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
 			let from = ensure_signed(origin)?;
-			let total_reserved: Balance = Authorization::<T>::drain_prefix(&from)
-				.fold(Zero::zero(), |total_reserved, (_, reserved)| {
-					total_reserved.saturating_add(reserved)
-				});
-			<T as Config>::Currency::unreserve(&from, total_reserved);
+			Authorization::<T>::remove_prefix(&from);
+			<T as Config>::Currency::unreserve_all_named(&RESERVE_ID, &from);
 			Self::deposit_event(Event::UnAuthorizationAll(from));
 			Ok(().into())
 		}
