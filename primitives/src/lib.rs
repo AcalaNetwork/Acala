@@ -151,6 +151,11 @@ impl TradingPair {
 #[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord, MaxEncodedLen)]
 pub enum ReserveIdentifier {
 	CollatorSelection,
+	EvmStorageDeposit,
+	EvmDeveloperDeposit,
+	Honzon,
+	Nft,
+	TransactionPayment,
 }
 
 /// Ethereum precompiles

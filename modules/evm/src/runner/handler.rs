@@ -22,14 +22,14 @@ use crate::{
 	precompiles::Precompiles,
 	runner::storage_meter::{StorageMeter, StorageMeterHandler},
 	AccountInfo, AccountStorages, Accounts, AddressMapping, Codes, Config, ContractInfo, Error, Event, Log, Pallet,
-	Vicinity,
+	Vicinity, RESERVE_ID_DEVELOPER_DEPOSIT, RESERVE_ID_STORAGE_DEPOSIT,
 };
 use evm::{Capture, Context, CreateScheme, ExitError, ExitReason, Opcode, Runtime, Stack, Transfer};
 use evm_gasometer::{self as gasometer, Gasometer};
 use evm_runtime::{Config as EvmRuntimeConfig, Handler as HandlerT};
 use frame_support::{
 	log,
-	traits::{BalanceStatus, Currency, ExistenceRequirement, Get, ReservableCurrency},
+	traits::{BalanceStatus, Currency, ExistenceRequirement, Get, NamedReservableCurrency},
 };
 use primitive_types::{H160, H256, U256};
 use primitives::{H160_PREFIX_DEXSHARE, H160_PREFIX_TOKEN, PREDEPLOY_ADDRESS_START, SYSTEM_CONTRACT_ADDRESS_PREFIX};
@@ -257,13 +257,10 @@ impl<'vicinity, 'config, 'meter, T: Config> Handler<'vicinity, 'config, 'meter, 
 	}
 
 	pub fn is_developer_or_contract(caller: &H160) -> bool {
-		if let Some(AccountInfo {
-			contract_info,
-			developer_deposit,
-			..
-		}) = Accounts::<T>::get(caller)
-		{
-			contract_info.is_some() || developer_deposit.is_some()
+		if let Some(AccountInfo { contract_info, .. }) = Accounts::<T>::get(caller) {
+			let account_id = T::AddressMapping::get_account_id(&caller);
+			contract_info.is_some()
+				|| !T::Currency::reserved_balance_named(&RESERVE_ID_DEVELOPER_DEPOSIT, &account_id).is_zero()
 		} else {
 			false
 		}
@@ -725,7 +722,7 @@ impl<T: Config> StorageMeterHandler for StorageMeterHandlerImpl<T> {
 
 		let amount = T::StorageDepositPerByte::get().saturating_mul(limit.into());
 
-		T::Currency::reserve(&user, amount)
+		T::Currency::reserve_named(&RESERVE_ID_STORAGE_DEPOSIT, &user, amount)
 	}
 
 	fn unreserve_storage(&mut self, limit: u32, used: u32, refunded: u32) -> DispatchResult {
@@ -745,8 +742,8 @@ impl<T: Config> StorageMeterHandler for StorageMeterHandlerImpl<T> {
 		let amount = T::StorageDepositPerByte::get().saturating_mul(unused.into());
 
 		// should always be able to unreserve the amount
-		// but otherwise we will just ignore the issue here
-		let err_amount = T::Currency::unreserve(&user, amount);
+		// but otherwise we will just ignore the issue here.
+		let err_amount = T::Currency::unreserve_named(&RESERVE_ID_STORAGE_DEPOSIT, &user, amount);
 		debug_assert!(err_amount.is_zero());
 		Ok(())
 	}
@@ -769,18 +766,27 @@ impl<T: Config> StorageMeterHandler for StorageMeterHandlerImpl<T> {
 			let storage = used - refunded;
 			let amount = T::StorageDepositPerByte::get().saturating_mul(storage.into());
 
-			// repatriate_reserved requires beneficiary is an existing account but
+			// `repatriate_reserved` requires beneficiary is an existing account but
 			// contract_acc could be a new account so we need to do
-			// unreserve/transfer/reserve
-			T::Currency::unreserve(&user, amount);
+			// unreserve/transfer/reserve.
+			// should always be able to unreserve the amount
+			// but otherwise we will just ignore the issue here.
+			let err_amount = T::Currency::unreserve_named(&RESERVE_ID_STORAGE_DEPOSIT, &user, amount);
+			debug_assert!(err_amount.is_zero());
 			T::Currency::transfer(&user, &contract_acc, amount, ExistenceRequirement::AllowDeath)?;
-			T::Currency::reserve(&contract_acc, amount)?;
+			T::Currency::reserve_named(&RESERVE_ID_STORAGE_DEPOSIT, &contract_acc, amount)?;
 		} else {
 			let storage = refunded - used;
 			let amount = T::StorageDepositPerByte::get().saturating_mul(storage.into());
 
 			// user can't be a dead account
-			let val = T::Currency::repatriate_reserved(&contract_acc, &user, amount, BalanceStatus::Reserved)?;
+			let val = T::Currency::repatriate_reserved_named(
+				&RESERVE_ID_STORAGE_DEPOSIT,
+				&contract_acc,
+				&user,
+				amount,
+				BalanceStatus::Reserved,
+			)?;
 			debug_assert!(val.is_zero());
 		};
 
