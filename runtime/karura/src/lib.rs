@@ -1351,7 +1351,7 @@ pub type XcmOriginToCallOrigin = (
 );
 
 parameter_types! {
-	// One XCM operation is 200_000_000 weight, ~= 2x of transfer.
+	// One XCM operation is 200_000_000 weight, cross-chain transfer ~= 2x of transfer.
 	pub const UnitWeightCost: Weight = 200_000_000;
 	pub KsmPerSecond: (MultiLocation, u128) = (X1(Parent), ksm_per_second());
 }
