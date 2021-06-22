@@ -32,17 +32,17 @@
 //!
 //! * Receive Notices from Compound chain: Receive, verify and execute "Notices", or actionable
 //!   requests from the Compound chain.
+
 #![cfg_attr(not(feature = "std"), no_std)]
+#![allow(clippy::unused_unit)]
 
 mod mock;
 mod tests;
-
 use frame_support::{pallet_prelude::*, require_transactional, transactional, BoundedVec, PalletId};
 use frame_system::{ensure_signed, pallet_prelude::*};
 use module_support::CompoundCashTrait;
 use orml_traits::MultiCurrency;
-use primitives::{Balance, CurrencyId, Moment, TokenSymbol};
-use serde::{Deserialize, Serialize};
+use primitives::{Balance, CashYieldIndex, CurrencyId, Moment, TokenSymbol};
 use sp_core::H256;
 use sp_runtime::{
 	traits::{BlakeTwo256, Hash},
@@ -52,7 +52,7 @@ use sp_std::{convert::TryFrom, prelude::*};
 
 pub use module::*;
 
-pub type CompoundAuthoritySignature = String;
+pub type CompoundAuthoritySignature = Vec<u8>;
 
 #[frame_support::pallet]
 pub mod module {
@@ -129,10 +129,10 @@ pub mod module {
 		SupplyCapSet(CurrencyId, Balance),
 
 		/// The future yield for CASH is set.
-		FutureYieldSet(Balance, u128, Moment),
+		FutureYieldSet(Balance, CashYieldIndex, Moment),
 	}
 
-	#[derive(Clone, Debug, Serialize, Deserialize, Encode, Decode, PartialEq, Eq)]
+	#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq)]
 	pub struct GatewayNotice<AccountId> {
 		pub id: u64,
 		pub payload: GatewayNoticePayload<AccountId>,
@@ -144,7 +144,7 @@ pub mod module {
 		}
 	}
 
-	#[derive(Clone, Debug, Serialize, Deserialize, Encode, Decode, PartialEq, Eq)]
+	#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq)]
 	pub enum GatewayNoticePayload<AccountId> {
 		/// Update the current supply cap for an asset. Only assets that have spare supplies.
 		/// can be locked or uploaded to the Compound chain.
@@ -158,7 +158,7 @@ pub mod module {
 
 		/// Set the future yield for the Cash asset.
 		/// Parameters: uint128 nextCashYield, uint128 nextCashYieldIndex, uint nextCashYieldStart
-		SetFutureYield(Balance, u128, Moment),
+		SetFutureYield(Balance, CashYieldIndex, Moment),
 	}
 
 	/// Stores the amount of supplies that are still available to be uploaded for each asset type.
@@ -205,7 +205,7 @@ pub mod module {
 	impl Default for GenesisConfig {
 		fn default() -> Self {
 			GenesisConfig {
-				initial_authorities: vec!["DEFAULT_AUTHORITY_SIGNATURE_STRING".to_string()],
+				initial_authorities: vec![b"DEFAULT_AUTHORITY_SIGNATURE_STRING".to_vec()],
 			}
 		}
 	}
@@ -294,7 +294,7 @@ pub mod module {
 			ensure!(T::GatewayAccount::get() == from, Error::<T>::InvalidNoticeInvoker);
 
 			// Calculate the hash for this notice, and ensure it is only invoked once.
-			let hash = BlakeTwo256::hash(&(serde_json::to_string(&notice).unwrap().as_bytes())[..]);
+			let hash = BlakeTwo256::hash(&notice.encode());
 
 			ensure!(
 				!InvokedNoticeHashes::<T>::contains_key(&hash),

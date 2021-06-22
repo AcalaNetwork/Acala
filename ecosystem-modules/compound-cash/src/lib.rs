@@ -81,7 +81,7 @@ pub mod module {
 	#[pallet::hooks]
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
 		fn on_initialize(_n: T::BlockNumber) -> Weight {
-			/// check if the Yield rate needs to be updated
+			// check if the Yield rate needs to be updated
 			0
 		}
 
@@ -106,5 +106,15 @@ impl<T: Config> Pallet<T> {
 		FutureYield::<T>::insert(yield_index, (next_cash_yield, timestamp_effective));
 
 		Ok(().into())
+	}
+}
+
+impl<T: Config> CompoundCashTrait<Balance, Moment> for Pallet<T> {
+	fn set_future_yield(
+		next_cash_yield: Balance,
+		yield_index: u128,
+		timestamp_effective: Moment,
+	) -> DispatchResultWithPostInfo {
+		Self::set_future_yield(next_cash_yield, yield_index, timestamp_effective)
 	}
 }

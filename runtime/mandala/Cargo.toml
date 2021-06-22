@@ -238,6 +238,8 @@ std = [
 
 	"ecosystem-renvm-bridge/std",
 	"ecosystem-chainsafe/std",
+	"ecosystem-starport/std",
+	"ecosystem-compound-cash/std",
 	"chainbridge/std",
 ]
 runtime-benchmarks = [
@@ -330,4 +332,6 @@ try-runtime = [
 
 	"ecosystem-renvm-bridge/try-runtime",
 	"ecosystem-chainsafe/try-runtime",
+	"ecosystem-starport/try-runtime",
+	"ecosystem-compound-cash/try-runtime",
 ]

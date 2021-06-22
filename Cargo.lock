@@ -2265,8 +2265,6 @@ dependencies = [
  "orml-traits",
  "pallet-balances",
  "parity-scale-codec",
- "serde",
- "serde_json",
  "sp-core",
  "sp-io",
  "sp-runtime",
