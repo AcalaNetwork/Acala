@@ -199,11 +199,7 @@ pub fn karura_dev_config() -> Result<ChainSpec, String> {
 			karura_genesis(
 				wasm_binary,
 				// Initial PoA authorities
-				vec![
-					get_karura_authority_keys_from_seed("Alice"),
-					get_karura_authority_keys_from_seed("Bob"),
-					get_karura_authority_keys_from_seed("Charlie"),
-				],
+				vec![get_karura_authority_keys_from_seed("Alice")],
 				// Sudo account
 				get_account_id_from_seed::<sr25519::Public>("Alice"),
 				vec![
