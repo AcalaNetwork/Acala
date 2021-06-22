@@ -188,7 +188,7 @@ fn invoke_can_set_authorities() {
 			Event::Starport(crate::Event::AssetLockedTo(ACALA, 100, ALICE))
 		);
 
-		let new_authorities = vec!["NEW AUTH 1".to_string(), "NEW AUTH 2".to_string()];
+		let new_authorities = vec![vec![0x99, 0x99, 0x99], vec![0xff, 0xff, 0xff]];
 
 		let mut notice = GatewayNotice::new(0, GatewayNoticePayload::ChangeAuthorities(new_authorities.clone()));
 		let bad_notice = GatewayNotice::new(1, GatewayNoticePayload::ChangeAuthorities(vec![]));
@@ -232,12 +232,12 @@ fn invoke_can_set_authorities() {
 		notice = GatewayNotice::new(
 			3,
 			GatewayNoticePayload::ChangeAuthorities(vec![
-				"1".to_string(),
-				"2".to_string(),
-				"3".to_string(),
-				"4".to_string(),
-				"5".to_string(),
-				"6".to_string(),
+				vec![0x00],
+				vec![0x01],
+				vec![0x02],
+				vec![0x03],
+				vec![0x04],
+				vec![0x05],
 			]),
 		);
 		assert_noop!(

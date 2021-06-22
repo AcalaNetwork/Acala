@@ -125,8 +125,12 @@ impl module_currencies::Config for Runtime {
 }
 
 pub struct MockCashModule;
-impl CompoundCashTrait<Balance, u64> for MockCashModule {
-	fn set_future_yield(_next_cash_yield: u128, _yield_index: u128, _timestamp_effective: u64) -> DispatchResult {
+impl CompoundCashTrait<Balance, Moment> for MockCashModule {
+	fn set_future_yield(
+		_next_cash_yield: Balance,
+		_yield_index: CashYieldIndex,
+		_timestamp_effective: Moment,
+	) -> DispatchResultWithPostInfo {
 		Ok(().into())
 	}
 }
@@ -218,8 +222,8 @@ impl ExtBuilder {
 /// Returns a Vec of mock signatures
 pub fn get_mock_signatures() -> Vec<CompoundAuthoritySignature> {
 	vec![
-		"Mock signature 1".to_string(),
-		"Mock Signature 2".to_string(),
-		"Mock Signature 3".to_string(),
+		vec![0x00, 0x00, 0x00, 0x00, 0x00],
+		vec![0x00, 0x00, 0x00, 0x00, 0x02],
+		vec![0x00, 0x00, 0x00, 0x00, 0x03],
 	]
 }
