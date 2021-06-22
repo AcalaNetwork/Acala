@@ -326,9 +326,9 @@ pub mod pallet {
 				candidates.take(who).ok_or(Error::<T>::NotCandidate)?;
 				T::Currency::unreserve_all_named(&RESERVE_ID, &who);
 				Ok(candidates.len())
-			});
+			})?;
 			Self::deposit_event(Event::CandidateRemoved(who.clone()));
-			current_count
+			Ok(current_count)
 		}
 
 		/// Assemble the current set of candidates and invulnerables into the next collator set.

@@ -93,7 +93,7 @@ const generateRelaychainGenesisFile = (config, relaychainGenesisFilePath, output
 
   const runtime = spec.genesis.runtime.runtime_genesis_config || spec.genesis.runtime;
 
-  const sessionKeys = runtime.palletSession.keys;
+  const sessionKeys = runtime.session.keys;
   sessionKeys.length = 0;
 
   // add authorities from config
@@ -143,7 +143,7 @@ const generateRelaychainGenesisFile = (config, relaychainGenesisFilePath, output
         parachain: parachain.parachain,
       },
     ];
-    runtime.parachainsParas.paras.push(para);
+    runtime.paras.paras.push(para);
   }
 
   let tmpfile = `${shell.tempdir()}/${config.relaychain.chain}.json`
@@ -208,26 +208,26 @@ const generateParachainGenesisFile = (id, image, chain, output, yes) => {
 
   const endowed = []
 
-  if (chain.sudo && runtime.palletSudo) {
-    runtime.palletSudo.key = getAddress(chain.sudo)
-    endowed.push(runtime.palletSudo.key)
+  if (chain.sudo && runtime.sudo) {
+    runtime.sudo.key = getAddress(chain.sudo)
+    endowed.push(runtime.sudo.key)
   }
 
   if (chain.collators) {
-    runtime.moduleCollatorSelection.invulnerables = chain.collators.map(getAddress)
-    runtime.palletSession.keys = chain.collators.map(x => {
+    runtime.collatorSelection.invulnerables = chain.collators.map(getAddress)
+    runtime.session.keys = chain.collators.map(x => {
       const addr = getAddress(x);
       return [
         addr, addr, { aura: addr }
       ]
     })
 
-    endowed.push(...runtime.moduleCollatorSelection.invulnerables)
+    endowed.push(...runtime.collatorSelection.invulnerables)
   }
 
   if (endowed.length) {
     const decimals = _.get(spec, 'properties.tokenDecimals[0]') || _.get(spec, 'properties.tokenDecimals') || 15
-    const balances = runtime.palletBalances.balances
+    const balances = runtime.balances.balances
     const balObj = {}
     for (const [addr, val] of balances) {
       balObj[addr] = val
@@ -235,7 +235,7 @@ const generateParachainGenesisFile = (id, image, chain, output, yes) => {
     for (const addr of endowed) {
       balObj[addr] = (balObj[addr] || 0) + Math.pow(10, decimals)
     }
-    runtime.palletBalances.balances = Object.entries(balObj).map(x => x)
+    runtime.balances.balances = Object.entries(balObj).map(x => x)
   }
 
   fs.writeFileSync(filepath, JSON.stringify(spec, null, 2));
