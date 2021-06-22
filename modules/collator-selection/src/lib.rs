@@ -124,18 +124,22 @@ pub mod pallet {
 		type UpdateOrigin: EnsureOrigin<Self::Origin>;
 
 		/// Account Identifier from which the internal Pot is generated.
+		#[pallet::constant]
 		type PotId: Get<PalletId>;
 
 		/// Minimum number of candidates.
+		#[pallet::constant]
 		type MinCandidates: Get<u32>;
 
 		/// Maximum number of candidates that we should have. This is used for benchmarking and is
 		/// not enforced.
 		///
 		/// This does not take into account the invulnerables.
+		#[pallet::constant]
 		type MaxCandidates: Get<u32>;
 
 		/// Maximum number of invulnerables.
+		#[pallet::constant]
 		type MaxInvulnerables: Get<u32>;
 
 		/// The weight information of this pallet.

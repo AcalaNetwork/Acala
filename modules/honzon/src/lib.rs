@@ -64,6 +64,7 @@ pub mod module {
 		>;
 
 		/// Reserved amount per authorization.
+		#[pallet::constant]
 		type DepositPerAuthorization: Get<Balance>;
 
 		/// Weight information for the extrinsics in this module.
