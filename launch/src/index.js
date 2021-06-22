@@ -214,20 +214,20 @@ const generateParachainGenesisFile = (id, image, chain, output, yes) => {
   }
 
   if (chain.collators) {
-    runtime.moduleCollatorSelection.invulnerables = chain.collators.map(getAddress)
-    runtime.palletSession.keys = chain.collators.map(x => {
+    runtime.collatorSelection.invulnerables = chain.collators.map(getAddress)
+    runtime.session.keys = chain.collators.map(x => {
       const addr = getAddress(x);
       return [
         addr, addr, { aura: addr }
       ]
     })
 
-    endowed.push(...runtime.moduleCollatorSelection.invulnerables)
+    endowed.push(...runtime.collatorSelection.invulnerables)
   }
 
   if (endowed.length) {
     const decimals = _.get(spec, 'properties.tokenDecimals[0]') || _.get(spec, 'properties.tokenDecimals') || 15
-    const balances = runtime.palletBalances.balances
+    const balances = runtime.balances.balances
     const balObj = {}
     for (const [addr, val] of balances) {
       balObj[addr] = val
@@ -235,7 +235,7 @@ const generateParachainGenesisFile = (id, image, chain, output, yes) => {
     for (const addr of endowed) {
       balObj[addr] = (balObj[addr] || 0) + Math.pow(10, decimals)
     }
-    runtime.palletBalances.balances = Object.entries(balObj).map(x => x)
+    runtime.balances.balances = Object.entries(balObj).map(x => x)
   }
 
   fs.writeFileSync(filepath, JSON.stringify(spec, null, 2));
