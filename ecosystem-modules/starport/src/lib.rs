@@ -39,7 +39,7 @@ mod tests;
 
 use frame_support::{pallet_prelude::*, require_transactional, transactional, BoundedVec, PalletId};
 use frame_system::{ensure_signed, pallet_prelude::*};
-use module_support::CompoundCash;
+use module_support::CompoundCashTrait;
 use orml_traits::MultiCurrency;
 use primitives::{Balance, CurrencyId, Moment, TokenSymbol};
 use serde::{Deserialize, Serialize};
@@ -48,7 +48,7 @@ use sp_runtime::{
 	traits::{BlakeTwo256, Hash},
 	Perbill,
 };
-use sp_std::convert::TryFrom;
+use sp_std::{convert::TryFrom, prelude::*};
 
 pub use module::*;
 
@@ -86,7 +86,7 @@ pub mod module {
 		type PercentThresholdForAuthoritySignature: Get<Perbill>;
 
 		/// The pallet handling Compound's Cash tokens
-		type Cash: CompoundCash<Balance, Moment>;
+		type Cash: CompoundCashTrait<Balance, Moment>;
 	}
 
 	#[pallet::error]

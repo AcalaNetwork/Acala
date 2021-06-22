@@ -125,7 +125,7 @@ impl module_currencies::Config for Runtime {
 }
 
 pub struct MockCashModule;
-impl CompoundCash<Balance, u64> for MockCashModule {
+impl CompoundCashTrait<Balance, u64> for MockCashModule {
 	fn set_future_yield(_next_cash_yield: u128, _yield_index: u128, _timestamp_effective: u64) -> DispatchResult {
 		Ok(().into())
 	}

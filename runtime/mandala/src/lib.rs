@@ -46,7 +46,7 @@ pub use frame_support::{
 	},
 	PalletId, RuntimeDebug, StorageValue,
 };
-use frame_system::{EnsureOneOf, EnsureRoot, RawOrigin};
+use frame_system::{Config, EnsureOneOf, EnsureRoot, RawOrigin};
 use hex_literal::hex;
 use module_currencies::{BasicCurrencyAdapter, Currency};
 use module_evm::{CallInfo, CreateInfo};
@@ -54,7 +54,9 @@ use module_evm_accounts::EvmAddressMapping;
 pub use module_evm_manager::EvmCurrencyIdMapping;
 use module_transaction_payment::{Multiplier, TargetedFeeAdjustment};
 use orml_tokens::CurrencyAdapter;
-use orml_traits::{create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended};
+use orml_traits::{
+	create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended, MultiCurrency,
+};
 use pallet_transaction_payment::{FeeDetails, RuntimeDispatchInfo};
 use sp_api::impl_runtime_apis;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
@@ -103,6 +105,9 @@ pub use sp_runtime::{Perbill, Percent, Permill, Perquintill};
 
 pub use authority::AuthorityConfigImpl;
 pub use constants::{fee::*, time::*};
+use ecosystem_starport::Event;
+use module_support::CompoundCashTrait;
+use orml_benchmarking::frame_support::traits::UnixTime;
 pub use primitives::{
 	evm::EstimateResourcesRequest, AccountId, AccountIndex, AirDropCurrencyId, Amount, AuctionId, AuthoritysOriginId,
 	Balance, BlockNumber, CurrencyId, DataProviderId, EraIndex, Hash, Moment, Nonce, ReserveIdentifier, Share,
@@ -161,6 +166,9 @@ parameter_types! {
 	pub const ElectionsPhragmenPalletId: LockIdentifier = *b"aca/phre";
 	pub const NftPalletId: PalletId = PalletId(*b"aca/aNFT");
 	pub UnreleasedNativeVaultAccountId: AccountId = PalletId(*b"aca/urls").into_account();
+	// Ecosystem modules
+	pub const StarportPalletId: PalletId = PalletId(*b"aca/stpt");
+	pub const GatewayAccount: AccountId =  PalletId(*b"aca/gtwy").into_account();
 }
 
 pub fn get_all_module_accounts() -> Vec<AccountId> {
@@ -175,6 +183,8 @@ pub fn get_all_module_accounts() -> Vec<AccountId> {
 		IncentivesPalletId::get().into_account(),
 		TreasuryReservePalletId::get().into_account(),
 		ZeroAccountId::get(),
+		StarportPalletId::get().into_account(),
+		GatewayAccount::get(),
 	]
 }
 
@@ -1440,6 +1450,30 @@ impl ecosystem_renvm_bridge::Config for Runtime {
 }
 
 parameter_types! {
+	pub const StarportAdminAccount: AccountId = StarportPalletId::get().into_account();
+	pub const CashCurrencyId: CurrencyId = CurrencyId::Tokens(TokenSymbol::CASH);
+	pub const MaxGatewayAuthorityCount: u32 = 8;
+	pub const PercentThresholdForGatewayAuthoritySignature = Perbill::from_percent(50);
+}
+
+impl ecosystem_starport::Config for Runtime {
+	type Event = Event;
+	type Currency = Currencies;
+	type AdminAccount = StarportAdminAccount;
+	type GatewayAccount = GatewayAccount;
+	type CashCurrencyId = CashCurrencyId;
+	type PalletId = StarportPalletId;
+	type MaxGatewayAuthorities = MaxGatewayAuthorityCount;
+	type PercentThresholdForAuthoritySignature = PercentThresholdForGatewayAuthoritySignature;
+	type Cash = CompoundCash;
+}
+
+impl ecosystem_compound_cash::Config for Runtime {
+	type Event = Event;
+	type UnixTime = Timestamp;
+}
+
+parameter_types! {
 	pub const ChainId: u64 = 595;
 	pub NetworkContractSource: H160 = H160::from_low_u64_be(0);
 }
@@ -1836,6 +1870,8 @@ construct_runtime! {
 		RenVmBridge: ecosystem_renvm_bridge::{Pallet, Call, Config, Storage, Event<T>, ValidateUnsigned} = 150,
 		ChainBridge: chainbridge::{Pallet, Call, Storage, Event<T>} = 151,
 		ChainSafeTransfer: ecosystem_chainsafe::{Pallet, Call, Storage, Event<T>} = 152,
+		Starport: ecosystem_starport::{Pallet, Call, Storage, Event<T>} = 153,
+		CompoundCash: ecosystem_compound_cash::{Pallet, Storage, Event<T>} = 154,
 
 		// Parachain
 		ParachainSystem: cumulus_pallet_parachain_system::{Pallet, Call, Storage, Inherent, Config, Event<T>} = 160,

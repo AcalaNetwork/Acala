@@ -2217,6 +2217,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "ecosystem-compound-cash"
+version = "1.0.0"
+dependencies = [
+ "acala-primitives",
+ "frame-support",
+ "frame-system",
+ "module-support",
+ "parity-scale-codec",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+]
+
+[[package]]
 name = "ecosystem-renvm-bridge"
 version = "1.0.0"
 dependencies = [
@@ -4827,7 +4842,9 @@ dependencies = [
  "cumulus-primitives-core",
  "cumulus-primitives-timestamp",
  "ecosystem-chainsafe",
+ "ecosystem-compound-cash",
  "ecosystem-renvm-bridge",
+ "ecosystem-starport",
  "evm",
  "frame-benchmarking",
  "frame-executive",

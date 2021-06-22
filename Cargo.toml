@@ -40,6 +40,7 @@ members = [
 	"ecosystem-modules/ren/renvm-bridge",
 	"ecosystem-modules/chainsafe",
 	"ecosystem-modules/starport",
+	"ecosystem-modules/compound-cash",
 ]
 
 resolver = "2"

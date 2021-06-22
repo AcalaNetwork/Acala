@@ -118,6 +118,8 @@ module-evm-rpc-runtime-api = { path = "../../modules/evm/rpc/runtime_api",  defa
 
 ecosystem-renvm-bridge = { path = "../../ecosystem-modules/ren/renvm-bridge", default-features = false }
 ecosystem-chainsafe = { path = "../../ecosystem-modules/chainsafe", default-features = false }
+ecosystem-starport = { path = "../../ecosystem-modules/starport", default-features = false }
+ecosystem-compound-cash = { path = "../../ecosystem-modules/compound-cash", default-features = false }
 chainbridge = { git = "https://github.com/AcalaNetwork/chainbridge-substrate", default-features = false }
 
 [build-dependencies]
