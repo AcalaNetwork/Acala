@@ -93,7 +93,7 @@ const generateRelaychainGenesisFile = (config, relaychainGenesisFilePath, output
 
   const runtime = spec.genesis.runtime.runtime_genesis_config || spec.genesis.runtime;
 
-  const sessionKeys = runtime.palletSession.keys;
+  const sessionKeys = runtime.session.keys;
   sessionKeys.length = 0;
 
   // add authorities from config
@@ -143,7 +143,7 @@ const generateRelaychainGenesisFile = (config, relaychainGenesisFilePath, output
         parachain: parachain.parachain,
       },
     ];
-    runtime.parachainsParas.paras.push(para);
+    runtime.paras.paras.push(para);
   }
 
   let tmpfile = `${shell.tempdir()}/${config.relaychain.chain}.json`
@@ -208,9 +208,9 @@ const generateParachainGenesisFile = (id, image, chain, output, yes) => {
 
   const endowed = []
 
-  if (chain.sudo && runtime.palletSudo) {
-    runtime.palletSudo.key = getAddress(chain.sudo)
-    endowed.push(runtime.palletSudo.key)
+  if (chain.sudo && runtime.sudo) {
+    runtime.sudo.key = getAddress(chain.sudo)
+    endowed.push(runtime.sudo.key)
   }
 
   if (chain.collators) {
