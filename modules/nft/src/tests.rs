@@ -44,9 +44,10 @@ fn class_id_account() -> AccountId {
 #[test]
 fn create_class_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
+		let metadata = vec![1];
 		assert_ok!(NFTModule::create_class(
 			Origin::signed(ALICE),
-			vec![1],
+			metadata.clone(),
 			Default::default()
 		));
 		System::assert_last_event(Event::NFTModule(crate::Event::CreatedClass(
@@ -55,7 +56,9 @@ fn create_class_should_work() {
 		)));
 		assert_eq!(
 			reserved_balance(&class_id_account()),
-			<Runtime as Config>::CreateClassDeposit::get() + Proxy::deposit(1u32)
+			<Runtime as Config>::CreateClassDeposit::get()
+				+ Proxy::deposit(1u32)
+				+ <Runtime as Config>::DataDepositPerByte::get() * (metadata.len() as u128)
 		);
 	});
 }
