@@ -1457,7 +1457,6 @@ impl ecosystem_renvm_bridge::Config for Runtime {
 // 	type Event = Event;
 // 	type Currency = Currencies;
 // 	type AdminAccount = StarportAdminAccount;
-// 	type GatewayAccount = GatewayAccount;
 // 	type CashCurrencyId = CashCurrencyId;
 // 	type PalletId = StarportPalletId;
 // 	type MaxGatewayAuthorities = MaxGatewayAuthorityCount;

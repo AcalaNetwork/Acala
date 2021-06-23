@@ -21,7 +21,7 @@
 #![cfg(test)]
 
 use super::*;
-use frame_support::{construct_runtime, parameter_types};
+use frame_support::parameter_types;
 use module_support::mocks::MockAddressMapping;
 use orml_traits::parameter_type_with_key;
 use primitives::{Amount, TokenSymbol};
@@ -151,7 +151,6 @@ impl Config for Runtime {
 	type Event = Event;
 	type Currency = Currencies;
 	type AdminAccount = AdminAccount;
-	type GatewayAccount = GatewayAccount;
 	type CashCurrencyId = CashCurrencyId;
 	type PalletId = StarportPalletId;
 	type MaxGatewayAuthorities = MaxGatewayAuthorities;
@@ -162,7 +161,7 @@ impl Config for Runtime {
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
-construct_runtime!(
+frame_support::construct_runtime!(
 	pub enum Runtime where
 		Block = Block,
 		NodeBlock = Block,
@@ -175,6 +174,7 @@ construct_runtime!(
 		Currencies: module_currencies::{Pallet, Call, Event<T>},
 	}
 );
+
 pub struct ExtBuilder {
 	tokens_balances: Vec<(AccountId, CurrencyId, Balance)>,
 	native_balances: Vec<(AccountId, Balance)>,
@@ -207,10 +207,11 @@ impl ExtBuilder {
 		.assimilate_storage(&mut t)
 		.unwrap();
 
-		ecosystem_starport::GenesisConfig {
+		ecosystem_starport::GenesisConfig::<Runtime> {
 			initial_authorities: get_mock_signatures(),
+			initial_gateway_account: GATEWAY_ACCOUNT,
 		}
-		.assimilate_storage::<Runtime>(&mut t)
+		.assimilate_storage(&mut t)
 		.unwrap();
 
 		let mut ext = sp_io::TestExternalities::new(t);

@@ -68,9 +68,6 @@ pub mod module {
 		/// The Admin account that executes Notices from Compound chain
 		type AdminAccount: Get<Self::AccountId>;
 
-		/// The Compound Gateway account that is used to issue Notices
-		type GatewayAccount: Get<Self::AccountId>;
-
 		/// The ID for the CASH asset
 		#[pallet::constant]
 		type CashCurrencyId: Get<CurrencyId>;
@@ -108,6 +105,8 @@ pub mod module {
 		ExceededMaxNumberOfAuthorities,
 		/// Authorities cannot be empty
 		AuthoritiesListCannotBeEmpty,
+		/// Only the current Gateway Admin can change the current Gateway Admin.
+		InvalidGatewayAdminUpdateCaller,
 	}
 
 	#[pallet::event]
@@ -130,6 +129,9 @@ pub mod module {
 
 		/// The future yield for CASH is set.
 		FutureYieldSet(Balance, CashYieldIndex, Moment),
+
+		/// Gateway's Admin has been updated.
+		GatewayAdminUpdated(T::AccountId),
 	}
 
 	#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq)]
@@ -179,39 +181,30 @@ pub mod module {
 	pub type GatewayAuthorities<T: Config> =
 		StorageValue<_, BoundedVec<CompoundAuthoritySignature, T::MaxGatewayAuthorities>, ValueQuery>;
 
+	/// Stores the current Gateway admin's account ID. Can be updated with Extrinsics Call by the
+	/// Current Admin.
+	#[pallet::storage]
+	#[pallet::getter(fn gateway_admin_account_id)]
+	pub type GatewayAdminAccountId<T: Config> = StorageValue<_, T::AccountId, ValueQuery>;
+
 	#[pallet::genesis_config]
-	pub struct GenesisConfig {
+	pub struct GenesisConfig<T: Config> {
 		pub initial_authorities: Vec<CompoundAuthoritySignature>,
+		pub initial_gateway_account: T::AccountId,
 	}
 
 	#[cfg(feature = "std")]
-	impl GenesisConfig {
-		/// Direct implementation of `GenesisBuild::build_storage`.
-		///
-		/// Kept in order not to break dependency.
-		pub fn build_storage<T: Config>(&self) -> Result<sp_runtime::Storage, String> {
-			<Self as frame_support::traits::GenesisBuild<T>>::build_storage(self)
-		}
-
-		/// Direct implementation of `GenesisBuild::assimilate_storage`.
-		///
-		/// Kept in order not to break dependency.
-		pub fn assimilate_storage<T: Config>(&self, storage: &mut sp_runtime::Storage) -> Result<(), String> {
-			<Self as frame_support::traits::GenesisBuild<T>>::assimilate_storage(self, storage)
-		}
-	}
-
-	#[cfg(feature = "std")]
-	impl Default for GenesisConfig {
+	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
 			GenesisConfig {
 				initial_authorities: vec![b"DEFAULT_AUTHORITY_SIGNATURE_STRING".to_vec()],
+				initial_gateway_account: T::AccountId::default(),
 			}
 		}
 	}
 
 	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig {
+	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
 		fn build(&self) {
 			// ensure no duplicates exist.
 			let unique_authorities = self
@@ -224,6 +217,7 @@ pub mod module {
 			);
 			let bounded_vec = BoundedVec::try_from(self.initial_authorities.clone()).unwrap();
 			GatewayAuthorities::<T>::put(bounded_vec);
+			GatewayAdminAccountId::<T>::put(self.initial_gateway_account.clone());
 		}
 	}
 
@@ -291,7 +285,10 @@ pub mod module {
 			let from = ensure_signed(origin)?;
 
 			// Invoke can only be called from specific Gateway admin account
-			ensure!(T::GatewayAccount::get() == from, Error::<T>::InvalidNoticeInvoker);
+			ensure!(
+				Self::gateway_admin_account_id() == from,
+				Error::<T>::InvalidNoticeInvoker
+			);
 
 			// Calculate the hash for this notice, and ensure it is only invoked once.
 			let hash = BlakeTwo256::hash(&notice.encode());
@@ -346,6 +343,26 @@ pub mod module {
 			// After its invocation, store the hash.
 			InvokedNoticeHashes::<T>::insert(&hash, ());
 
+			Ok(().into())
+		}
+
+		/// Update the current Gateway Admin's AccountId. Must be signed by the current Admin.
+		///
+		/// Parameters:
+		/// - `admin`: The account ID of the new Gateway Admin.
+		//#[pallet::weight(< T as Config >::WeightInfo::update_gateway_admin())]
+		#[pallet::weight(0)]
+		#[transactional]
+		pub fn update_gateway_admin(origin: OriginFor<T>, admin: T::AccountId) -> DispatchResultWithPostInfo {
+			let from = ensure_signed(origin)?;
+			ensure!(
+				from == Self::gateway_admin_account_id(),
+				Error::<T>::InvalidGatewayAdminUpdateCaller
+			);
+			GatewayAdminAccountId::<T>::set(admin.clone());
+
+			// Emmit an event
+			Self::deposit_event(Event::<T>::GatewayAdminUpdated(admin));
 			Ok(().into())
 		}
 	}
