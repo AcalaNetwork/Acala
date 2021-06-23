@@ -928,7 +928,7 @@ fn test_authority_module() {
 			assert_noop!(
 				AuthorityModule::dispatch_as(
 					Origin::signed(AccountId::from(BOB)),
-					AuthoritysOriginId::AcalaTreasury,
+					AuthoritysOriginId::Treasury,
 					Box::new(ensure_root_call.clone())
 				),
 				BadOrigin
