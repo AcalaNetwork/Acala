@@ -1372,6 +1372,7 @@ impl Config for XcmConfig {
 	type Barrier = Barrier;
 	type Weigher = FixedWeightBounds<UnitWeightCost, Call>;
 	// Only receiving KSM is handled, and all fees must be paid in KSM.
+	//TODO: make treasury take revenue
 	type Trader = FixedRateOfConcreteFungible<KsmPerSecond, ()>;
 	type ResponseHandler = (); // Don't handle responses for now.
 }
