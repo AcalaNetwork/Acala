@@ -46,7 +46,7 @@ benchmarks! {
 		let caller: T::AccountId = account("caller", 0, SEED);
 		let base_currency_amount = dollar(1000);
 
-		T::Currency::make_free_balance_be(&caller, base_currency_amount.unique_saturated_into());
+		<T as module::Config>::Currency::make_free_balance_be(&caller, base_currency_amount.unique_saturated_into());
 	}: _(RawOrigin::Signed(caller), vec![1], Properties(ClassProperty::Transferable | ClassProperty::Burnable))
 
 	// mint NFT token
@@ -58,11 +58,11 @@ benchmarks! {
 		let to_lookup = T::Lookup::unlookup(to);
 
 		let base_currency_amount = dollar(1000);
-		T::Currency::make_free_balance_be(&caller, base_currency_amount.unique_saturated_into());
+		<T as module::Config>::Currency::make_free_balance_be(&caller, base_currency_amount.unique_saturated_into());
 
 		let module_account: T::AccountId = T::PalletId::get().into_sub_account(orml_nft::Pallet::<T>::next_class_id());
 		crate::Pallet::<T>::create_class(RawOrigin::Signed(caller).into(), vec![1], Properties(ClassProperty::Transferable | ClassProperty::Burnable))?;
-		T::Currency::make_free_balance_be(&module_account, base_currency_amount.unique_saturated_into());
+		<T as module::Config>::Currency::make_free_balance_be(&module_account, base_currency_amount.unique_saturated_into());
 	}: _(RawOrigin::Signed(module_account), to_lookup, 0u32.into(), vec![1], i)
 
 	// transfer NFT token to another account
@@ -73,11 +73,11 @@ benchmarks! {
 		let to_lookup = T::Lookup::unlookup(to.clone());
 
 		let base_currency_amount = dollar(1000);
-		T::Currency::make_free_balance_be(&caller, base_currency_amount.unique_saturated_into());
+		<T as module::Config>::Currency::make_free_balance_be(&caller, base_currency_amount.unique_saturated_into());
 
 		let module_account: T::AccountId = T::PalletId::get().into_sub_account(orml_nft::Pallet::<T>::next_class_id());
 		crate::Pallet::<T>::create_class(RawOrigin::Signed(caller).into(), vec![1], Properties(ClassProperty::Transferable | ClassProperty::Burnable))?;
-		T::Currency::make_free_balance_be(&module_account, base_currency_amount.unique_saturated_into());
+		<T as module::Config>::Currency::make_free_balance_be(&module_account, base_currency_amount.unique_saturated_into());
 		crate::Pallet::<T>::mint(RawOrigin::Signed(module_account).into(), to_lookup, 0u32.into(), vec![1], 1)?;
 	}: _(RawOrigin::Signed(to), caller_lookup, (0u32.into(), 0u32.into()))
 
@@ -88,11 +88,11 @@ benchmarks! {
 		let to_lookup = T::Lookup::unlookup(to.clone());
 
 		let base_currency_amount = dollar(1000);
-		T::Currency::make_free_balance_be(&caller, base_currency_amount.unique_saturated_into());
+		<T as module::Config>::Currency::make_free_balance_be(&caller, base_currency_amount.unique_saturated_into());
 
 		let module_account: T::AccountId = T::PalletId::get().into_sub_account(orml_nft::Pallet::<T>::next_class_id());
 		crate::Pallet::<T>::create_class(RawOrigin::Signed(caller).into(), vec![1], Properties(ClassProperty::Transferable | ClassProperty::Burnable))?;
-		T::Currency::make_free_balance_be(&module_account, base_currency_amount.unique_saturated_into());
+		<T as module::Config>::Currency::make_free_balance_be(&module_account, base_currency_amount.unique_saturated_into());
 		crate::Pallet::<T>::mint(RawOrigin::Signed(module_account).into(), to_lookup, 0u32.into(), vec![1], 1)?;
 	}: _(RawOrigin::Signed(to), (0u32.into(), 0u32.into()))
 
@@ -105,11 +105,11 @@ benchmarks! {
 		let to_lookup = T::Lookup::unlookup(to.clone());
 
 		let base_currency_amount = dollar(1000);
-		T::Currency::make_free_balance_be(&caller, base_currency_amount.unique_saturated_into());
+		<T as module::Config>::Currency::make_free_balance_be(&caller, base_currency_amount.unique_saturated_into());
 
 		let module_account: T::AccountId = T::PalletId::get().into_sub_account(orml_nft::Pallet::<T>::next_class_id());
 		crate::Pallet::<T>::create_class(RawOrigin::Signed(caller).into(), vec![1], Properties(ClassProperty::Transferable | ClassProperty::Burnable))?;
-		T::Currency::make_free_balance_be(&module_account, base_currency_amount.unique_saturated_into());
+		<T as module::Config>::Currency::make_free_balance_be(&module_account, base_currency_amount.unique_saturated_into());
 		crate::Pallet::<T>::mint(RawOrigin::Signed(module_account).into(), to_lookup, 0u32.into(), vec![1], 1)?;
 	}: _(RawOrigin::Signed(to), (0u32.into(), 0u32.into()), remark_message)
 
@@ -120,7 +120,7 @@ benchmarks! {
 
 		let base_currency_amount = dollar(1000);
 
-		T::Currency::make_free_balance_be(&caller, base_currency_amount.unique_saturated_into());
+		<T as module::Config>::Currency::make_free_balance_be(&caller, base_currency_amount.unique_saturated_into());
 
 		let module_account: T::AccountId = T::PalletId::get().into_sub_account(orml_nft::Pallet::<T>::next_class_id());
 		crate::Pallet::<T>::create_class(RawOrigin::Signed(caller).into(), vec![1], Properties(ClassProperty::Transferable | ClassProperty::Burnable))?;
@@ -182,6 +182,7 @@ mod mock {
 	}
 	parameter_types! {
 		pub const ExistentialDeposit: u64 = 1;
+		pub const MaxReserves: u32 = 50;
 	}
 	impl pallet_balances::Config for Runtime {
 		type Balance = Balance;
@@ -190,8 +191,8 @@ mod mock {
 		type ExistentialDeposit = ExistentialDeposit;
 		type AccountStore = frame_system::Pallet<Runtime>;
 		type MaxLocks = ();
-		type MaxReserves = ();
-		type ReserveIdentifier = [u8; 8];
+		type MaxReserves = MaxReserves;
+		type ReserveIdentifier = ReserveIdentifier;
 		type WeightInfo = ();
 	}
 	impl pallet_utility::Config for Runtime {
@@ -259,12 +260,15 @@ mod mock {
 	parameter_types! {
 		pub const CreateClassDeposit: Balance = 200;
 		pub const CreateTokenDeposit: Balance = 100;
+		pub const DataDepositPerByte: Balance = 10;
 		pub const NftPalletId: PalletId = PalletId(*b"aca/aNFT");
 	}
 	impl crate::Config for Runtime {
 		type Event = ();
+		type Currency = Balances;
 		type CreateClassDeposit = CreateClassDeposit;
 		type CreateTokenDeposit = CreateTokenDeposit;
+		type DataDepositPerByte = DataDepositPerByte;
 		type PalletId = NftPalletId;
 		type WeightInfo = ();
 	}

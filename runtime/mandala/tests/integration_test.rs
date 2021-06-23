@@ -28,9 +28,10 @@ use frame_support::{
 use frame_system::RawOrigin;
 use mandala_runtime::{
 	dollar, get_all_module_accounts, AccountId, AuthoritysOriginId, Balance, Balances, BlockNumber, Call,
-	CreateTokenDeposit, CurrencyId, EVMBridge, EnabledTradingPairs, Event, EvmAccounts, EvmCurrencyIdMapping,
-	GetNativeCurrencyId, NativeTokenExistentialDeposit, NftPalletId, Origin, OriginCaller, Perbill, Runtime, SevenDays,
-	System, TokenSymbol, TreasuryReservePalletId, ACA, AUSD, DOT, EVM, LDOT, NFT, RENBTC,
+	CreateClassDeposit, CreateTokenDeposit, CurrencyId, DataDepositPerByte, EVMBridge, EnabledTradingPairs, Event,
+	EvmAccounts, EvmCurrencyIdMapping, GetNativeCurrencyId, NativeTokenExistentialDeposit, NftPalletId, Origin,
+	OriginCaller, Perbill, Proxy, Runtime, SevenDays, System, TokenSymbol, TreasuryReservePalletId, ACA, AUSD, DOT,
+	EVM, LDOT, NFT, RENBTC,
 };
 use module_cdp_engine::LiquidationStrategy;
 use module_evm_accounts::EvmAddressMapping;
@@ -1118,12 +1119,26 @@ fn test_nft_module() {
 		.balances(vec![(AccountId::from(ALICE), ACA, 1_000 * dollar(ACA))])
 		.build()
 		.execute_with(|| {
+			let metadata = vec![1];
 			assert_eq!(Balances::free_balance(AccountId::from(ALICE)), 1_000 * dollar(ACA));
+			assert_eq!(Balances::reserved_balance(AccountId::from(ALICE)), 0);
 			assert_ok!(NFT::create_class(
 				origin_of(AccountId::from(ALICE)),
-				vec![1],
+				metadata.clone(),
 				module_nft::Properties(module_nft::ClassProperty::Transferable | module_nft::ClassProperty::Burnable)
 			));
+			let deposit =
+				Proxy::deposit(1u32) + CreateClassDeposit::get() + DataDepositPerByte::get() * (metadata.len() as u128);
+			assert_eq!(Balances::free_balance(&NftPalletId::get().into_sub_account(0)), 0);
+			assert_eq!(
+				Balances::reserved_balance(&NftPalletId::get().into_sub_account(0)),
+				deposit
+			);
+			assert_eq!(
+				Balances::free_balance(AccountId::from(ALICE)),
+				1_000 * dollar(ACA) - deposit
+			);
+			assert_eq!(Balances::reserved_balance(AccountId::from(ALICE)), 0);
 			assert_eq!(
 				Balances::deposit_into_existing(&NftPalletId::get().into_sub_account(0), 1 * CreateTokenDeposit::get())
 					.is_ok(),
@@ -1133,7 +1148,7 @@ fn test_nft_module() {
 				origin_of(NftPalletId::get().into_sub_account(0)),
 				MultiAddress::Id(AccountId::from(BOB)),
 				0,
-				vec![1],
+				metadata.clone(),
 				1
 			));
 			assert_ok!(NFT::burn(origin_of(AccountId::from(BOB)), (0, 0)));
@@ -1154,6 +1169,7 @@ fn test_nft_module() {
 			assert_eq!(Balances::free_balance(AccountId::from(BOB)), CreateTokenDeposit::get());
 			assert_eq!(Balances::reserved_balance(AccountId::from(BOB)), 0);
 			assert_eq!(Balances::free_balance(AccountId::from(ALICE)), 1_000 * dollar(ACA));
+			assert_eq!(Balances::reserved_balance(AccountId::from(ALICE)), 0);
 		});
 }
 

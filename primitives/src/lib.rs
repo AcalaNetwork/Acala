@@ -154,7 +154,7 @@ pub enum ReserveIdentifier {
 	EvmStorageDeposit,
 	EvmDeveloperDeposit,
 	Honzon,
-	// Nft, TODO: https://github.com/paritytech/substrate/blob/d03a91a181d0b22d00a6b9ba2a8007dc254779e3/frame/proxy/src/lib.rs#L109
+	Nft,
 	TransactionPayment,
 }
 

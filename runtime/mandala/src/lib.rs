@@ -1283,8 +1283,10 @@ parameter_types! {
 
 impl module_nft::Config for Runtime {
 	type Event = Event;
+	type Currency = Balances;
 	type CreateClassDeposit = CreateClassDeposit;
 	type CreateTokenDeposit = CreateTokenDeposit;
+	type DataDepositPerByte = DataDepositPerByte;
 	type PalletId = NftPalletId;
 	type WeightInfo = weights::module_nft::WeightInfo<Runtime>;
 }
