@@ -200,24 +200,18 @@ pub mod module {
 
 			let data_deposit = T::DataDepositPerByte::get().saturating_mul((metadata.len() as u32).into());
 			let proxy_deposit = <pallet_proxy::Pallet<T>>::deposit(1u32);
-			let total_deposit = proxy_deposit.saturating_add(class_deposit).saturating_add(data_deposit);
+			let deposit = class_deposit.saturating_add(data_deposit);
+			let total_deposit = proxy_deposit.saturating_add(deposit);
 
-			// ensure enough token for proxy deposit + class deposit
+			// ensure enough token for proxy deposit + class deposit + data deposit
 			<T as module::Config>::Currency::transfer(&who, &owner, total_deposit, KeepAlive)?;
 
-			<T as module::Config>::Currency::reserve_named(
-				&RESERVE_ID,
-				&owner,
-				class_deposit.saturating_add(data_deposit),
-			)?;
+			<T as module::Config>::Currency::reserve_named(&RESERVE_ID, &owner, deposit)?;
 
 			// owner add proxy delegate to origin
 			<pallet_proxy::Pallet<T>>::add_proxy_delegate(&owner, who, Default::default(), Zero::zero())?;
 
-			let data = ClassData {
-				deposit: class_deposit,
-				properties,
-			};
+			let data = ClassData { deposit, properties };
 			orml_nft::Pallet::<T>::create_class(&owner, metadata, data)?;
 
 			Self::deposit_event(Event::CreatedClass(owner, next_id));
