@@ -167,10 +167,14 @@ If modify the storage, should test the data migration before upgrade the runtime
 ```bash
 # Use a live chain to run the migration test and save state snapshot to file `snapshot.bin`.
 # Add `-m module_name` can specify the module.
-cargo run --features with-mandala-runtime --features with-ethereum-compatibility --features try-runtime -- try-runtime --wasm-execution=compiled live "http://localhost:9933" -s snapshot.bin [-m module_name]
+cargo run --features with-mandala-runtime --features with-ethereum-compatibility --features try-runtime -- try-runtime --chain= --wasm-execution=compiled on-runtime-upgrade live "http://localhost:9933" -s snapshot.bin [-m module_name]
+cargo run --features with-karura-runtime --features try-runtime -- try-runtime --chain=karura --wasm-execution=compiled on-runtime-upgrade live "wss://karura.api.onfinality.io/public-ws" -s snapshot.bin
 
-# Use a state snapshot as state to run the migration test.
-cargo run --features with-mandala-runtime --features with-ethereum-compatibility --features try-runtime -- try-runtime --wasm-execution=compiled snap snapshot.bin
+ # Use a state snapshot as state to run the migration test.
+cargo run --features with-mandala-runtime --features with-ethereum-compatibility --features try-runtime -- try-runtime --wasm-execution=compiled on-runtime-upgradesnap snap snapshot.bin
+cargo run --features with-karura-runtime --features try-runtime -- try-runtime --wasm-execution=compiled on-runtime-upgradesnap snap snapshot.bin
+
+# Offchain worker
 ```
 
 # 8. Run local testnet with `Relaychain` and `Parachain`
@@ -198,14 +202,14 @@ docker ps -a
 # track container logs
 docker logs -f [container_id/container_name]
 
-# stop all of the containers. 
+# stop all of the containers.
 docker-compose stop
 
-# remove all of the containers. 
+# remove all of the containers.
 docker-compose rm
 
 # NOTE: If you want to clear the data and restart, you need to clear the volumes.
-# remove volume 
+# remove volume
 docker volume ls
 docker volume rm [volume_name]
 # prune all volumes
