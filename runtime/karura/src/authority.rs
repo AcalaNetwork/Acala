@@ -84,9 +84,7 @@ impl orml_authority::AsOriginId<Origin, OriginCaller> for AuthoritysOriginId {
 	fn into_origin(self) -> OriginCaller {
 		match self {
 			AuthoritysOriginId::Root => Origin::root().caller().clone(),
-			AuthoritysOriginId::AcalaTreasury => {
-				Origin::signed(TreasuryPalletId::get().into_account()).caller().clone()
-			}
+			AuthoritysOriginId::Treasury => Origin::signed(TreasuryPalletId::get().into_account()).caller().clone(),
 			AuthoritysOriginId::HonzonTreasury => Origin::signed(HonzonTreasuryPalletId::get().into_account())
 				.caller()
 				.clone(),
@@ -109,7 +107,7 @@ impl orml_authority::AsOriginId<Origin, OriginCaller> for AuthoritysOriginId {
 					OriginCaller,
 				> as EnsureOrigin<Origin>>::ensure_origin(origin)
 				.map_or_else(|_| Err(BadOrigin.into()), |_| Ok(())),
-				AuthoritysOriginId::AcalaTreasury => {
+				AuthoritysOriginId::Treasury => {
 					<EnsureDelayed<OneDay, EnsureRootOrHalfGeneralCouncil, BlockNumber, OriginCaller> as EnsureOrigin<
 						Origin,
 					>>::ensure_origin(origin)
