@@ -33,5 +33,9 @@ std = [
 	"primitives/std",
 	"orml-traits/std",
 	"module-support/std",
+	"sp-io/std",
+	"pallet-balances/std",
+	"module-currencies/std",
+	"orml-tokens/std",
 ]
 try-runtime = ["frame-support/try-runtime"]
