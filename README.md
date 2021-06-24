@@ -167,14 +167,14 @@ If modify the storage, should test the data migration before upgrade the runtime
 ```bash
 # Use a live chain to run the migration test and save state snapshot to file `snapshot.bin`.
 # Add `-m module_name` can specify the module.
-cargo run --features with-mandala-runtime --features with-ethereum-compatibility --features try-runtime -- try-runtime --chain= --wasm-execution=compiled on-runtime-upgrade live "http://localhost:9933" -s snapshot.bin [-m module_name]
 cargo run --features with-karura-runtime --features try-runtime -- try-runtime --chain=karura --wasm-execution=compiled on-runtime-upgrade live "wss://karura.api.onfinality.io/public-ws" -s snapshot.bin
 
  # Use a state snapshot as state to run the migration test.
-cargo run --features with-mandala-runtime --features with-ethereum-compatibility --features try-runtime -- try-runtime --wasm-execution=compiled on-runtime-upgradesnap snap snapshot.bin
-cargo run --features with-karura-runtime --features try-runtime -- try-runtime --wasm-execution=compiled on-runtime-upgradesnap snap snapshot.bin
+cargo run --features with-karura-runtime --features try-runtime -- try-runtime --chain=karura --wasm-execution=compiled on-runtime-upgrade snap snapshot.bin
 
 # Offchain worker
+cargo run --features with-karura-runtime --features try-runtime -- try-runtime --chain=karura --wasm-execution=compiled offchain-worker --header-at=0x00 live "wss://karura.api.onfinality.io/public-ws" -s snapshot2.bin
+cargo run --features with-karura-runtime --features try-runtime -- try-runtime --chain=karura --wasm-execution=compiled offchain-worker --header-at=0x00 snap snapshot2.bin
 ```
 
 # 8. Run local testnet with `Relaychain` and `Parachain`
