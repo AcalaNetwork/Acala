@@ -140,7 +140,3 @@ srtool-build-wasm-karura:
 .PHONY: generate-tokens
 generate-tokens:
 	./scripts/generate-tokens-and-predeploy-contracts.sh
-
-.PHONY: verify-bootnodes-karura
-verify-bootnodes-karura:
-	./scripts/verify-bootnodes.sh karura
