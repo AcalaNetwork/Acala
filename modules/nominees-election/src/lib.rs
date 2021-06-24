@@ -185,7 +185,7 @@ pub mod module {
 
 	/// The nomination bonding ledger.
 	///
-	/// Ledger: map => AccountId, BondingLedger
+	/// Ledger: map AccountId => BondingLedger
 	#[pallet::storage]
 	#[pallet::getter(fn ledger)]
 	pub type Ledger<T: Config<I>, I: 'static = ()> =
