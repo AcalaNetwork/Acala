@@ -223,8 +223,8 @@ impl ExtBuilder {
 /// Returns a Vec of mock signatures
 pub fn get_mock_signatures() -> Vec<CompoundAuthoritySignature> {
 	vec![
-		vec![0x00, 0x00, 0x00, 0x00, 0x00],
-		vec![0x00, 0x00, 0x00, 0x00, 0x02],
-		vec![0x00, 0x00, 0x00, 0x00, 0x03],
+		AccountId::new([0xF1; 32]),
+		AccountId::new([0xF2; 32]),
+		AccountId::new([0xF3; 32]),
 	]
 }

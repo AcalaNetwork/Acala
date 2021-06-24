@@ -23,8 +23,8 @@
 use super::*;
 use frame_support::{assert_noop, assert_ok};
 use mock::{
-	Currencies, Event, ExtBuilder, Origin, Runtime, Starport, System, ACALA, ADMIN_ACCOUNT, ALICE, BOB, CASH,
-	GATEWAY_ACCOUNT, INITIAL_BALANCE, KSM,
+	AccountId, Currencies, Event, ExtBuilder, Origin, Runtime, Starport, System, ACALA, ADMIN_ACCOUNT, ALICE, BOB,
+	CASH, GATEWAY_ACCOUNT, INITIAL_BALANCE, KSM,
 };
 
 #[test]
@@ -188,7 +188,7 @@ fn invoke_can_set_authorities() {
 			Event::Starport(crate::Event::AssetLockedTo(ACALA, 100, ALICE))
 		);
 
-		let new_authorities = vec![vec![0x99, 0x99, 0x99], vec![0xff, 0xff, 0xff]];
+		let new_authorities = vec![AccountId::new([0xA0; 32]), AccountId::new([0xA1; 32])];
 
 		let mut notice = GatewayNotice::new(0, GatewayNoticePayload::ChangeAuthorities(new_authorities.clone()));
 		let bad_notice = GatewayNotice::new(1, GatewayNoticePayload::ChangeAuthorities(vec![]));
@@ -232,12 +232,12 @@ fn invoke_can_set_authorities() {
 		notice = GatewayNotice::new(
 			3,
 			GatewayNoticePayload::ChangeAuthorities(vec![
-				vec![0x00],
-				vec![0x01],
-				vec![0x02],
-				vec![0x03],
-				vec![0x04],
-				vec![0x05],
+				AccountId::new([0x00; 32]),
+				AccountId::new([0x01; 32]),
+				AccountId::new([0x02; 32]),
+				AccountId::new([0x03; 32]),
+				AccountId::new([0x04; 32]),
+				AccountId::new([0x05; 32]),
 			]),
 		);
 		assert_noop!(

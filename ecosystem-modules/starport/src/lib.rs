@@ -46,13 +46,13 @@ use primitives::{Balance, CashYieldIndex, CurrencyId, Moment, TokenSymbol};
 use sp_core::H256;
 use sp_runtime::{
 	traits::{BlakeTwo256, Hash},
-	Perbill,
+	AccountId32, Perbill,
 };
 use sp_std::{convert::TryFrom, prelude::*};
 
 pub use module::*;
 
-pub type CompoundAuthoritySignature = Vec<u8>;
+pub type CompoundAuthoritySignature = AccountId32;
 
 #[frame_support::pallet]
 pub mod module {
@@ -197,7 +197,7 @@ pub mod module {
 	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
 			GenesisConfig {
-				initial_authorities: vec![b"DEFAULT_AUTHORITY_SIGNATURE_STRING".to_vec()],
+				initial_authorities: vec![AccountId32::default()],
 				initial_gateway_account: T::AccountId::default(),
 			}
 		}

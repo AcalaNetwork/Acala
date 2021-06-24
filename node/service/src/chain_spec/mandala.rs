@@ -236,7 +236,7 @@ fn testnet_genesis(
 		CollatorSelectionConfig, DexConfig, EVMConfig, EnabledTradingPairs, FinancialCouncilMembershipConfig,
 		GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig, IndicesConfig, NativeTokenExistentialDeposit,
 		OperatorMembershipAcalaConfig, OperatorMembershipBandConfig, OrmlNFTConfig, ParachainInfoConfig,
-		RenVmBridgeConfig, SessionConfig, SessionKeys, StakingPoolConfig, SudoConfig, SystemConfig,
+		RenVmBridgeConfig, SessionConfig, SessionKeys, StakingPoolConfig, StarportConfig, SudoConfig, SystemConfig,
 		TechnicalCommitteeMembershipConfig, TokensConfig, TradingPair, VestingConfig, ACA, AUSD, DOT, LDOT, RENBTC,
 	};
 	#[cfg(feature = "std")]
@@ -363,7 +363,7 @@ fn testnet_genesis(
 		},
 		evm: EVMConfig {
 			accounts: evm_genesis_accounts,
-			treasury: root_key,
+			treasury: root_key.clone(),
 		},
 		staking_pool: StakingPoolConfig {
 			staking_pool_params: module_staking_pool::Params {
@@ -415,6 +415,10 @@ fn testnet_genesis(
 		aura: Default::default(),
 		aura_ext: Default::default(),
 		parachain_system: Default::default(),
+		starport: StarportConfig {
+			initial_authorities: initial_authorities.iter().cloned().map(|(acc, _, _, _)| acc).collect(),
+			initial_gateway_account: root_key.clone(),
+		},
 	}
 }
 
@@ -429,9 +433,9 @@ fn mandala_genesis(
 		CdpEngineConfig, CdpTreasuryConfig, CollatorSelectionConfig, DexConfig, EVMConfig, EnabledTradingPairs,
 		FinancialCouncilMembershipConfig, GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig, IndicesConfig,
 		NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OperatorMembershipBandConfig, OrmlNFTConfig,
-		ParachainInfoConfig, RenVmBridgeConfig, SessionConfig, SessionKeys, StakingPoolConfig, SudoConfig,
-		SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, UnreleasedNativeVaultAccountId, VestingConfig,
-		ACA, AUSD, DOT, LDOT, RENBTC,
+		ParachainInfoConfig, RenVmBridgeConfig, SessionConfig, SessionKeys, StakingPoolConfig, StarportConfig,
+		SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, UnreleasedNativeVaultAccountId,
+		VestingConfig, ACA, AUSD, DOT, LDOT, RENBTC,
 	};
 	#[cfg(feature = "std")]
 	use sp_std::collections::btree_map::BTreeMap;
@@ -574,7 +578,7 @@ fn mandala_genesis(
 		},
 		evm: EVMConfig {
 			accounts: evm_genesis_accounts,
-			treasury: root_key,
+			treasury: root_key.clone(),
 		},
 		staking_pool: StakingPoolConfig {
 			staking_pool_params: module_staking_pool::Params {
@@ -649,5 +653,9 @@ fn mandala_genesis(
 		aura: Default::default(),
 		aura_ext: Default::default(),
 		parachain_system: Default::default(),
+		starport: StarportConfig {
+			initial_authorities: initial_authorities.iter().cloned().map(|(acc, _, _, _)| acc).collect(),
+			initial_gateway_account: root_key.clone(),
+		},
 	}
 }
