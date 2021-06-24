@@ -42,8 +42,6 @@ mod tests;
 
 pub use module::*;
 
-pub const NOMINEES_ELECTION_ID: LockIdentifier = *b"nomelect";
-
 /// Just a Balance/BlockNumber tuple to encode when a chunk of funds will be
 /// unlocked.
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, MaxEncodedLen)]
@@ -142,6 +140,8 @@ pub mod module {
 		type Currency: BasicLockableCurrency<Self::AccountId, Moment = Self::BlockNumber, Balance = Balance>;
 		type NomineeId: Parameter + Member + MaybeSerializeDeserialize + Debug + MaybeDisplay + Ord + Default;
 		#[pallet::constant]
+		type PalletId: Get<LockIdentifier>;
+		#[pallet::constant]
 		type MinBondThreshold: Get<Balance>;
 		#[pallet::constant]
 		type BondingDuration: Get<EraIndex>;
@@ -149,7 +149,7 @@ pub mod module {
 		type NominateesCount: Get<u32>;
 		#[pallet::constant]
 		type MaxUnlockingChunks: Get<u32>;
-		type RelaychainValidatorFilter: Contains<Self::NomineeId>;
+		type NomineeFilter: Contains<Self::NomineeId>;
 	}
 
 	#[pallet::error]
@@ -159,7 +159,7 @@ pub mod module {
 		MaxUnlockChunksExceeded,
 		NoBonded,
 		NoUnlockChunk,
-		InvalidRelaychainValidator,
+		InvalidNominee,
 		NominateesCountExceeded,
 	}
 
@@ -335,10 +335,7 @@ pub mod module {
 			ensure!(!ledger.total.is_zero(), Error::<T, I>::NoBonded);
 
 			for validator in bounded_targets.iter() {
-				ensure!(
-					T::RelaychainValidatorFilter::contains(&validator),
-					Error::<T, I>::InvalidRelaychainValidator
-				);
+				ensure!(T::NomineeFilter::contains(&validator), Error::<T, I>::InvalidNominee);
 			}
 
 			let old_nominations = Self::nominations(&who);
@@ -366,7 +363,7 @@ pub mod module {
 
 impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	fn update_ledger(who: &T::AccountId, ledger: &BondingLedger<T::MaxUnlockingChunks>) {
-		let res = T::Currency::set_lock(NOMINEES_ELECTION_ID, who, ledger.total);
+		let res = T::Currency::set_lock(T::PalletId::get(), who, ledger.total);
 		if let Err(e) = res {
 			log::warn!(
 				target: "nominees-election",
@@ -381,7 +378,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	}
 
 	fn remove_ledger(who: &T::AccountId) {
-		let res = T::Currency::remove_lock(NOMINEES_ELECTION_ID, who);
+		let res = T::Currency::remove_lock(T::PalletId::get(), who);
 		if let Err(e) = res {
 			log::warn!(
 				target: "nominees-election",

@@ -163,6 +163,7 @@ parameter_types! {
 	pub const TreasuryReservePalletId: PalletId = PalletId(*b"aca/reve");
 	pub const ElectionsPhragmenPalletId: LockIdentifier = *b"aca/phre";
 	pub const NftPalletId: PalletId = PalletId(*b"aca/aNFT");
+	pub const NomineesElectionId: LockIdentifier = *b"aca/nome";
 	pub UnreleasedNativeVaultAccountId: AccountId = PalletId(*b"aca/urls").into_account();
 }
 
@@ -1248,6 +1249,7 @@ impl module_nominees_election::Config for Runtime {
 	type Event = Event;
 	type Currency = Currency<Runtime, GetLiquidCurrencyId>;
 	type NomineeId = AccountId;
+	type PalletId = NomineesElectionId;
 	type MinBondThreshold = MinCouncilBondThreshold;
 	type BondingDuration = NomineesElectionBondingDuration;
 	type NominateesCount = NominateesCount;
