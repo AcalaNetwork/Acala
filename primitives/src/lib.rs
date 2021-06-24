@@ -108,7 +108,7 @@ pub enum AirDropCurrencyId {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum AuthoritysOriginId {
 	Root,
-	AcalaTreasury,
+	Treasury,
 	HonzonTreasury,
 	HomaTreasury,
 	TreasuryReserve,
@@ -151,6 +151,11 @@ impl TradingPair {
 #[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord, MaxEncodedLen)]
 pub enum ReserveIdentifier {
 	CollatorSelection,
+	EvmStorageDeposit,
+	EvmDeveloperDeposit,
+	Honzon,
+	Nft,
+	TransactionPayment,
 }
 
 /// Ethereum precompiles

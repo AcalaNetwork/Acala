@@ -52,16 +52,22 @@ sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v
 sp-transaction-pool = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.5", default-features = false }
 sp-version = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.5", default-features = false }
 
-cumulus-pallet-parachain-system = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.5", default-features = false }
+# cumulus
 cumulus-pallet-aura-ext = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.5", default-features = false }
 cumulus-primitives-core = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.5", default-features = false }
+cumulus-primitives-utility = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.5", default-features = false }
 cumulus-primitives-timestamp = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.5", default-features = false }
+cumulus-pallet-parachain-system = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.5", default-features = false }
+cumulus-pallet-dmp-queue = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.5", default-features = false }
+cumulus-pallet-xcmp-queue = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.5", default-features = false }
+cumulus-pallet-xcm = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.5", default-features = false }
 parachain-info = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.5", default-features = false }
+# polkadot
 polkadot-parachain = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.5", default-features = false }
-# xcm = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.5", default-features = false }
-# xcm-executor = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.5", default-features = false }
-# xcm-builder = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.5", default-features = false }
-# cumulus-pallet-xcm-handler = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.5", default-features = false }
+xcm = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.5", default-features = false }
+xcm-executor = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.5", default-features = false }
+xcm-builder = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.5", default-features = false }
+pallet-xcm = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.5", default-features = false }
 
 orml-auction = { path = "../../orml/auction", default-features = false }
 orml-authority = { path = "../../orml/authority", default-features = false }
@@ -73,9 +79,9 @@ orml-traits = { path = "../../orml/traits", default-features = false }
 orml-vesting = { path = "../../orml/vesting", default-features = false }
 orml-rewards = { path = "../../orml/rewards", default-features = false }
 orml-nft= { path = "../../orml/nft", default-features = false }
-# orml-xtokens = { path = "../../orml/xtokens", default-features = false }
-# orml-xcm-support = { path = "../../orml/xcm-support", default-features = false }
-# orml-unknown-tokens = { path = "../../orml/unknown-tokens", default-features = false }
+orml-xtokens = { path = "../../orml/xtokens", default-features = false }
+orml-xcm-support = { path = "../../orml/xcm-support", default-features = false }
+orml-unknown-tokens = { path = "../../orml/unknown-tokens", default-features = false }
 
 module-transaction-payment = { path = "../../modules/transaction-payment", default-features = false }
 module-airdrop = { path = "../../modules/airdrop", default-features = false }
@@ -163,17 +169,21 @@ std = [
 	"pallet-bounties/std",
 	"pallet-tips/std",
 
-	"cumulus-pallet-parachain-system/std",
 	"cumulus-pallet-aura-ext/std",
 	"cumulus-primitives-core/std",
+	"cumulus-primitives-utility/std",
+	"cumulus-pallet-parachain-system/std",
+	"cumulus-pallet-dmp-queue/std",
+	"cumulus-pallet-xcmp-queue/std",
+	"cumulus-pallet-xcm/std",
 	"cumulus-primitives-timestamp/std",
 	"parachain-info/std",
+
 	"polkadot-parachain/std",
-	"cumulus-pallet-aura-ext/std",
-	# "xcm/std",
-	# "xcm-executor/std",
-	# "xcm-builder/std",
-	# "cumulus-pallet-xcm-handler/std",
+	"xcm/std",
+	"xcm-executor/std",
+	"xcm-builder/std",
+	"pallet-xcm/std",
 
 	"orml-auction/std",
 	"orml-authority/std",
@@ -185,9 +195,9 @@ std = [
 	"orml-vesting/std",
 	"orml-rewards/std",
 	"orml-nft/std",
-	# "orml-xtokens/std",
-	# "orml-xcm-support/std",
-	# "orml-unknown-tokens/std",
+	"orml-xtokens/std",
+	"orml-xcm-support/std",
+	"orml-unknown-tokens/std",
 
 	"module-transaction-payment/std",
 	"module-airdrop/std",
@@ -232,6 +242,8 @@ runtime-benchmarks = [
 	"orml-tokens/runtime-benchmarks",
 	"pallet-timestamp/runtime-benchmarks",
 	"primitives/runtime-benchmarks",
+	"xcm-builder/runtime-benchmarks",
+	"pallet-xcm/runtime-benchmarks",
 
 	"module-nft/runtime-benchmarks",
 

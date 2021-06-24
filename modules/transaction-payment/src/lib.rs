@@ -30,7 +30,7 @@ use frame_support::{
 	dispatch::{DispatchResult, Dispatchable},
 	pallet_prelude::*,
 	traits::{
-		Currency, ExistenceRequirement, Imbalance, OnUnbalanced, ReservableCurrency, SameOrOther, WithdrawReasons,
+		Currency, ExistenceRequirement, Imbalance, NamedReservableCurrency, OnUnbalanced, SameOrOther, WithdrawReasons,
 	},
 	weights::{DispatchInfo, GetDispatchInfo, Pays, PostDispatchInfo, WeightToFeePolynomial},
 };
@@ -38,7 +38,7 @@ use frame_system::pallet_prelude::*;
 use orml_traits::MultiCurrency;
 use pallet_transaction_payment_rpc_runtime_api::RuntimeDispatchInfo;
 use pallet_transaction_payment_rpc_runtime_api::{FeeDetails, InclusionFee};
-use primitives::{Balance, CurrencyId};
+use primitives::{Balance, CurrencyId, ReserveIdentifier};
 use sp_runtime::{
 	traits::{
 		CheckedSub, Convert, DispatchInfoOf, PostDispatchInfoOf, SaturatedConversion, Saturating, SignedExtension,
@@ -215,6 +215,8 @@ where
 pub mod module {
 	use super::*;
 
+	pub const RESERVE_ID: ReserveIdentifier = ReserveIdentifier::TransactionPayment;
+
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
 		/// All non-native currency ids in Acala.
@@ -231,7 +233,10 @@ pub mod module {
 		type StableCurrencyId: Get<CurrencyId>;
 
 		/// The currency type in which fees will be paid.
-		type Currency: Currency<Self::AccountId> + ReservableCurrency<Self::AccountId> + Send + Sync;
+		type Currency: Currency<Self::AccountId>
+			+ NamedReservableCurrency<Self::AccountId, ReserveIdentifier = ReserveIdentifier>
+			+ Send
+			+ Sync;
 
 		/// Currency to transfer, reserve/unreserve, lock/unlock assets
 		type MultiCurrency: MultiCurrency<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
@@ -780,12 +785,12 @@ where
 	fn reserve_fee(who: &T::AccountId, weight: Weight) -> Result<PalletBalanceOf<T>, DispatchError> {
 		let fee = Pallet::<T>::weight_to_fee(weight);
 		Pallet::<T>::ensure_can_charge_fee(who, fee, WithdrawReasons::TRANSACTION_PAYMENT);
-		<T as Config>::Currency::reserve(&who, fee)?;
+		<T as Config>::Currency::reserve_named(&RESERVE_ID, &who, fee)?;
 		Ok(fee)
 	}
 
 	fn unreserve_fee(who: &T::AccountId, fee: PalletBalanceOf<T>) {
-		<T as Config>::Currency::unreserve(&who, fee);
+		<T as Config>::Currency::unreserve_named(&RESERVE_ID, &who, fee);
 	}
 
 	fn unreserve_and_charge_fee(
@@ -793,7 +798,7 @@ where
 		weight: Weight,
 	) -> Result<(PalletBalanceOf<T>, NegativeImbalanceOf<T>), TransactionValidityError> {
 		let fee = Pallet::<T>::weight_to_fee(weight);
-		<T as Config>::Currency::unreserve(&who, fee);
+		<T as Config>::Currency::unreserve_named(&RESERVE_ID, &who, fee);
 
 		match <T as Config>::Currency::withdraw(
 			who,

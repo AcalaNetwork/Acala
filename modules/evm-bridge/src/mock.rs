@@ -23,7 +23,7 @@
 use super::*;
 use frame_support::{assert_ok, construct_runtime, ord_parameter_types, parameter_types};
 use frame_system::EnsureSignedBy;
-use primitives::evm::EvmAddress;
+use primitives::{evm::EvmAddress, ReserveIdentifier};
 use sha3::{Digest, Keccak256};
 use sp_core::{bytes::from_hex, crypto::AccountId32, H256};
 use sp_runtime::{testing::Header, traits::IdentityLookup};
@@ -70,6 +70,7 @@ impl frame_system::Config for Runtime {
 
 parameter_types! {
 	pub const ExistentialDeposit: u64 = 1;
+	pub const MaxReserves: u32 = 50;
 }
 
 impl pallet_balances::Config for Runtime {
@@ -79,8 +80,8 @@ impl pallet_balances::Config for Runtime {
 	type ExistentialDeposit = ExistentialDeposit;
 	type AccountStore = System;
 	type MaxLocks = ();
-	type MaxReserves = ();
-	type ReserveIdentifier = [u8; 8];
+	type MaxReserves = MaxReserves;
+	type ReserveIdentifier = ReserveIdentifier;
 	type WeightInfo = ();
 }
 

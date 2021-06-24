@@ -34,8 +34,8 @@ use frame_support::{
 	error::BadOrigin,
 	pallet_prelude::*,
 	traits::{
-		BalanceStatus, Currency, EnsureOrigin, ExistenceRequirement, Get, MaxEncodedLen, OnKilledAccount,
-		ReservableCurrency,
+		BalanceStatus, Currency, EnsureOrigin, ExistenceRequirement, Get, MaxEncodedLen, NamedReservableCurrency,
+		OnKilledAccount,
 	},
 	transactional,
 	weights::{Pays, PostDispatchInfo, Weight},
@@ -65,7 +65,7 @@ pub use evm::{Context, ExitError, ExitFatal, ExitReason, ExitRevert, ExitSucceed
 pub use orml_traits::currency::TransferAll;
 pub use primitives::{
 	evm::{Account, CallInfo, CreateInfo, EvmAddress, Log, Vicinity},
-	MIRRORED_NFT_ADDRESS_START,
+	ReserveIdentifier, MIRRORED_NFT_ADDRESS_START,
 };
 
 pub mod precompiles;
@@ -82,6 +82,8 @@ pub use weights::WeightInfo;
 pub type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 pub type NegativeImbalanceOf<T> =
 	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::NegativeImbalance;
+pub const RESERVE_ID_STORAGE_DEPOSIT: ReserveIdentifier = ReserveIdentifier::EvmStorageDeposit;
+pub const RESERVE_ID_DEVELOPER_DEPOSIT: ReserveIdentifier = ReserveIdentifier::EvmDeveloperDeposit;
 
 // Initially based on Istanbul hard fork configuration.
 static ACALA_CONFIG: EvmConfig = EvmConfig {
@@ -135,7 +137,8 @@ pub mod module {
 		type AddressMapping: AddressMapping<Self::AccountId>;
 
 		/// Currency type for withdraw and balance storage.
-		type Currency: Currency<Self::AccountId> + ReservableCurrency<Self::AccountId>;
+		type Currency: Currency<Self::AccountId>
+			+ NamedReservableCurrency<Self::AccountId, ReserveIdentifier = ReserveIdentifier>;
 
 		/// Merge free balance from source to dest.
 		type TransferAll: TransferAll<Self::AccountId>;
@@ -209,16 +212,11 @@ pub mod module {
 	pub struct AccountInfo<T: Config> {
 		pub nonce: T::Index,
 		pub contract_info: Option<ContractInfo>,
-		pub developer_deposit: Option<BalanceOf<T>>,
 	}
 
 	impl<T: Config> AccountInfo<T> {
 		pub fn new(nonce: T::Index, contract_info: Option<ContractInfo>) -> Self {
-			Self {
-				nonce,
-				contract_info,
-				developer_deposit: None,
-			}
+			Self { nonce, contract_info }
 		}
 	}
 
@@ -736,22 +734,11 @@ pub mod module {
 		#[transactional]
 		pub fn enable_contract_development(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
-			let address = T::AddressMapping::get_or_create_evm_address(&who);
-			T::Currency::reserve(&who, T::DeveloperDeposit::get())?;
-			Accounts::<T>::mutate(address, |maybe_account_info| -> DispatchResult {
-				if let Some(account_info) = maybe_account_info.as_mut() {
-					ensure!(
-						account_info.developer_deposit.is_none(),
-						Error::<T>::ContractDevelopmentAlreadyEnabled
-					);
-					account_info.developer_deposit = Some(T::DeveloperDeposit::get());
-				} else {
-					let mut account_info = AccountInfo::<T>::new(Default::default(), None);
-					account_info.developer_deposit = Some(T::DeveloperDeposit::get());
-					*maybe_account_info = Some(account_info);
-				}
-				Ok(())
-			})?;
+			ensure!(
+				T::Currency::reserved_balance_named(&RESERVE_ID_DEVELOPER_DEPOSIT, &who).is_zero(),
+				Error::<T>::ContractDevelopmentAlreadyEnabled
+			);
+			T::Currency::ensure_reserved_named(&RESERVE_ID_DEVELOPER_DEPOSIT, &who, T::DeveloperDeposit::get())?;
 			Pallet::<T>::deposit_event(Event::<T>::ContractDevelopmentEnabled(who));
 			Ok(().into())
 		}
@@ -762,17 +749,11 @@ pub mod module {
 		#[transactional]
 		pub fn disable_contract_development(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
-			let address = T::AddressMapping::get_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
-			let deposit = Accounts::<T>::mutate(address, |maybe_account_info| -> Result<BalanceOf<T>, Error<T>> {
-				let account_info = maybe_account_info
-					.as_mut()
-					.ok_or(Error::<T>::ContractDevelopmentNotEnabled)?;
-				account_info
-					.developer_deposit
-					.take()
-					.ok_or(Error::<T>::ContractDevelopmentNotEnabled)
-			})?;
-			T::Currency::unreserve(&who, deposit);
+			ensure!(
+				!T::Currency::reserved_balance_named(&RESERVE_ID_DEVELOPER_DEPOSIT, &who).is_zero(),
+				Error::<T>::ContractDevelopmentNotEnabled
+			);
+			T::Currency::unreserve_all_named(&RESERVE_ID_DEVELOPER_DEPOSIT, &who);
 			Pallet::<T>::deposit_event(Event::<T>::ContractDevelopmentDisabled(who));
 			Ok(().into())
 		}
@@ -1091,7 +1072,13 @@ impl<T: Config> Pallet<T> {
 		let contract_account = T::AddressMapping::get_account_id(&contract);
 
 		let amount = T::StorageDepositPerByte::get().saturating_mul(storage.into());
-		let val = T::Currency::repatriate_reserved(&contract_account, &who, amount, BalanceStatus::Free)?;
+		let val = T::Currency::repatriate_reserved_named(
+			&RESERVE_ID_STORAGE_DEPOSIT,
+			&contract_account,
+			&who,
+			amount,
+			BalanceStatus::Free,
+		)?;
 		debug_assert!(val.is_zero());
 
 		Ok(())

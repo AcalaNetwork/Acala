@@ -160,11 +160,11 @@ pub mod module {
 		/// The price source of all types of currencies related to CDP
 		type PriceSource: PriceProvider<CurrencyId>;
 
-		#[pallet::constant]
 		/// A configuration for base priority of unsigned transactions.
 		///
 		/// This is exposed so that it can be tuned for particular runtime, when
 		/// multiple modules send unsigned transactions.
+		#[pallet::constant]
 		type UnsignedPriority: Get<TransactionPriority>;
 
 		/// Emergency shutdown.

@@ -27,13 +27,13 @@ use frame_support::{
 	traits::{
 		Currency,
 		ExistenceRequirement::{AllowDeath, KeepAlive},
-		ReservableCurrency,
+		NamedReservableCurrency,
 	},
 	transactional, PalletId,
 };
 use frame_system::pallet_prelude::*;
 use orml_traits::NFT;
-use primitives::NFTBalance;
+use primitives::{NFTBalance, ReserveIdentifier};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_runtime::{
@@ -105,6 +105,8 @@ pub type BalanceOf<T> =
 pub mod module {
 	use super::*;
 
+	pub const RESERVE_ID: ReserveIdentifier = ReserveIdentifier::Nft;
+
 	#[pallet::config]
 	pub trait Config:
 		frame_system::Config
@@ -113,6 +115,13 @@ pub mod module {
 	{
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
+		/// Currency type for reserve balance.
+		type Currency: NamedReservableCurrency<
+			Self::AccountId,
+			Balance = BalanceOf<Self>,
+			ReserveIdentifier = ReserveIdentifier,
+		>;
+
 		/// The minimum balance to create class
 		#[pallet::constant]
 		type CreateClassDeposit: Get<BalanceOf<Self>>;
@@ -120,6 +129,10 @@ pub mod module {
 		/// The minimum balance to create token
 		#[pallet::constant]
 		type CreateTokenDeposit: Get<BalanceOf<Self>>;
+
+		/// Deposit required for per byte.
+		#[pallet::constant]
+		type DataDepositPerByte: Get<BalanceOf<Self>>;
 
 		/// The NFT's module id
 		#[pallet::constant]
@@ -185,21 +198,20 @@ pub mod module {
 			let owner: T::AccountId = T::PalletId::get().into_sub_account(next_id);
 			let class_deposit = T::CreateClassDeposit::get();
 
+			let data_deposit = T::DataDepositPerByte::get().saturating_mul((metadata.len() as u32).into());
 			let proxy_deposit = <pallet_proxy::Pallet<T>>::deposit(1u32);
-			let total_deposit = proxy_deposit.saturating_add(class_deposit);
+			let deposit = class_deposit.saturating_add(data_deposit);
+			let total_deposit = proxy_deposit.saturating_add(deposit);
 
-			// ensure enough token for proxy deposit + class deposit
-			T::Currency::transfer(&who, &owner, total_deposit, KeepAlive)?;
+			// ensure enough token for proxy deposit + class deposit + data deposit
+			<T as module::Config>::Currency::transfer(&who, &owner, total_deposit, KeepAlive)?;
 
-			T::Currency::reserve(&owner, class_deposit)?;
+			<T as module::Config>::Currency::reserve_named(&RESERVE_ID, &owner, deposit)?;
 
 			// owner add proxy delegate to origin
 			<pallet_proxy::Pallet<T>>::add_proxy_delegate(&owner, who, Default::default(), Zero::zero())?;
 
-			let data = ClassData {
-				deposit: class_deposit,
-				properties,
-			};
+			let data = ClassData { deposit, properties };
 			orml_nft::Pallet::<T>::create_class(&owner, metadata, data)?;
 
 			Self::deposit_event(Event::CreatedClass(owner, next_id));
@@ -231,8 +243,8 @@ pub mod module {
 
 			// `repatriate_reserved` will check `to` account exist and may return
 			// `DeadAccount`.
-			T::Currency::transfer(&who, &to, total_deposit, KeepAlive)?;
-			T::Currency::reserve(&to, total_deposit)?;
+			<T as module::Config>::Currency::transfer(&who, &to, total_deposit, KeepAlive)?;
+			<T as module::Config>::Currency::reserve_named(&RESERVE_ID, &to, total_deposit)?;
 
 			let data = TokenData { deposit };
 			for _ in 0..quantity {
@@ -313,14 +325,19 @@ pub mod module {
 
 			let data = class_info.data;
 
-			T::Currency::unreserve(&who, data.deposit);
+			<T as module::Config>::Currency::unreserve_named(&RESERVE_ID, &who, data.deposit);
 
 			orml_nft::Pallet::<T>::destroy_class(&who, class_id)?;
 
 			// this should unresere proxy deposit
 			pallet_proxy::Pallet::<T>::remove_proxy_delegate(&who, dest.clone(), Default::default(), Zero::zero())?;
 
-			T::Currency::transfer(&who, &dest, T::Currency::free_balance(&who), AllowDeath)?;
+			<T as module::Config>::Currency::transfer(
+				&who,
+				&dest,
+				<T as module::Config>::Currency::free_balance(&who),
+				AllowDeath,
+			)?;
 
 			Self::deposit_event(Event::DestroyedClass(who, class_id));
 			Ok(().into())
@@ -343,9 +360,9 @@ impl<T: Config> Pallet<T> {
 
 		orml_nft::Pallet::<T>::transfer(from, to, token)?;
 
-		T::Currency::unreserve(&from, token_info.data.deposit);
-		T::Currency::transfer(&from, &to, token_info.data.deposit, AllowDeath)?;
-		T::Currency::reserve(&to, token_info.data.deposit)?;
+		<T as module::Config>::Currency::unreserve_named(&RESERVE_ID, &from, token_info.data.deposit);
+		<T as module::Config>::Currency::transfer(&from, &to, token_info.data.deposit, AllowDeath)?;
+		<T as module::Config>::Currency::reserve_named(&RESERVE_ID, &to, token_info.data.deposit)?;
 
 		Self::deposit_event(Event::TransferredToken(from.clone(), to.clone(), token.0, token.1));
 		Ok(())
@@ -366,7 +383,7 @@ impl<T: Config> Pallet<T> {
 
 		orml_nft::Pallet::<T>::burn(&who, token)?;
 
-		T::Currency::unreserve(&who, token_info.data.deposit);
+		<T as module::Config>::Currency::unreserve_named(&RESERVE_ID, &who, token_info.data.deposit);
 		Ok(())
 	}
 }

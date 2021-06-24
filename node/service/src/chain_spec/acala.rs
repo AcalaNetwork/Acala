@@ -226,7 +226,7 @@ fn acala_genesis(
 			phantom: Default::default(),
 		},
 		democracy: Default::default(),
-		acala_treasury: Default::default(),
+		treasury: Default::default(),
 		tokens: TokensConfig {
 			balances: vec![
 				(root_key.clone(), DOT, initial_balance),
