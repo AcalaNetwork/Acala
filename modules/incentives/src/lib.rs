@@ -27,24 +27,27 @@
 //! rewards and distributes rewards to users based on their shares.
 //!
 //! Pool types:
-//! 	1. LoansIncentive: this is platform‘s reward to users of Honzon protocol, reward currency type
-//! is native currency. 	2. DexIncentive: this is platform‘s reward to makers of DEX, reward currency
-//! type is native currency. 	3. HomaIncentive: this is platform‘s reward to users of Homa protocol,
-//! reward currency type is native currency. 		4. DexSaving: this is Honzon protocol's extra reward to
-//! makers of DEX because they participate in the liquidation of unsafe CDP, reward currency type is
-//! stable currency. 		5. HomaValidatorAllowance: this is third party's allowance to guarantor of Homa
-//! protocol, reward currency type is liquid currency.
+//! 1. LoansIncentive: this is platform‘s reward to users of Honzon protocol, reward currency type
+//! 	is native currency.
+//!	2. DexIncentive: this is platform‘s reward to makers of DEX, reward currency type is native
+//! currency. 	3. HomaIncentive: this is platform‘s reward to users of Homa protocol, reward currency
+//! type is 		native currency.
+//!	4. DexSaving: this is Honzon protocol's extra reward to makers of DEX because they participate
+//! in the 	liquidation of unsafe CDP, reward currency type is stable currency.
+//!	5. HomaValidatorAllowance: this is third party's allowance to guarantor of Homa protocol, reward
+//!		currency type is liquid currency.
 //!
 //!	Reward sources:
-//! 	1. Native currency(ACA/KAR): reward comes from unreleased reservation because the economic
-//! mechanism of Acala is not an inflation model. 	2. Stable currency(AUSD/KUSD): reward comes from
-//! debit pool of CDP treasury. 	3. Liquid currency(LDOT/LKSM): reward comes from the transfer of
-//! other accounts(Usually are the validators on the relay chain).
+//! 1. Native currency(ACA/KAR): reward comes from unreleased reservation because the economic
+//! mechanism 		of Acala is not an inflation model.
+//!	2. Stable currency(AUSD/KUSD): reward comes from debit pool of CDP treasury.
+//!	3. Liquid currency(LDOT/LKSM): reward comes from the transfer of other accounts(Usually are the
+//!		validators on the relay chain).
 //!
 //!	Reward accumulation:
-//!		1. LoansIncentive/DexIncentive/HomaIncentive/DexSaving: the fixed blocks is
-//! period(AccumulatePeriod), and on the beginning of each period will accumulate reward.
-//! 		2. HomaValidatorAllowance: transfer rewards into the vault account at any time.
+//!	1. LoansIncentive/DexIncentive/HomaIncentive/DexSaving: the fixed blocks is
+//! period(AccumulatePeriod), 		and on the beginning of each period will accumulate reward.
+//! 2. HomaValidatorAllowance: transfer rewards into the vault account.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
@@ -540,19 +543,19 @@ impl<T: Config> RewardHandler<T::AccountId> for Pallet<T> {
 			PoolId::HomaValidatorAllowance(_) => T::LiquidCurrencyId::get(),
 		};
 
-		// calculate actual payout and deduction amount,
-		// accumulate deduction to rewards pool if deduction amount is not zero.
+		// calculate actual payout and deduction amount
 		let (actual_payout, deduction_amount) = {
 			let deduction_amount = Self::payout_deduction_rates(pool_id)
 				.saturating_mul_int(payout_amount)
 				.min(payout_amount);
 			if !deduction_amount.is_zero() {
+				// re-accumulate deduction to rewards pool if deduction amount is not zero
 				<orml_rewards::Pallet<T>>::accumulate_reward(pool_id, deduction_amount);
 			}
 			(payout_amount.saturating_sub(deduction_amount), deduction_amount)
 		};
 
-		// payout the reward to user from the pool. it should not affect the
+		// payout the reward(exclude deduction) to user from the pool. it should not affect the
 		// process, ignore the result to continue. if it fails, just the user will not
 		// be rewarded, there will not increase user balance.
 		let res = T::Currency::transfer(currency_id, &T::RewardsVaultAccountId::get(), &who, actual_payout);
