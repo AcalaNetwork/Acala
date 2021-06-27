@@ -114,6 +114,17 @@ runtime_benchmarks! {
 		}
 	}: _(RawOrigin::Root, values)
 
+	update_payout_deduction_rates {
+		let c in 0 .. CollateralCurrencyIds::get().len().saturating_sub(1) as u32;
+		let currency_ids = CollateralCurrencyIds::get();
+		let mut values = vec![];
+
+		for i in 0 .. c {
+			let currency_id = currency_ids[i as usize];
+			values.push((PoolId::LoansIncentive(currency_id), Rate::default()));
+		}
+	}: _(RawOrigin::Root, values)
+
 	add_allowance {
 		let caller: AccountId = whitelisted_caller();
 		set_balance(LDOT, &caller, 10_000 * dollar(AUSD));
