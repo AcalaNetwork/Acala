@@ -775,6 +775,7 @@ parameter_types! {
 	pub const MinimumCount: u32 = 1;
 	pub const ExpiresIn: Moment = 1000 * 60 * 60; // 60 mins
 	pub ZeroAccountId: AccountId = AccountId::from([0u8; 32]);
+	pub const MaxHasDispatchedSize: u32 = 40;
 }
 
 type AcalaDataProvider = orml_oracle::Instance1;
@@ -787,6 +788,7 @@ impl orml_oracle::Config<AcalaDataProvider> for Runtime {
 	type OracleValue = Price;
 	type RootOperatorAccountId = ZeroAccountId;
 	type Members = OperatorMembershipAcala;
+	type MaxHasDispatchedSize = MaxHasDispatchedSize;
 	type WeightInfo = weights::orml_oracle::WeightInfo<Runtime>;
 }
 
@@ -800,6 +802,7 @@ impl orml_oracle::Config<BandDataProvider> for Runtime {
 	type OracleValue = Price;
 	type RootOperatorAccountId = ZeroAccountId;
 	type Members = OperatorMembershipBand;
+	type MaxHasDispatchedSize = MaxHasDispatchedSize;
 	type WeightInfo = weights::orml_oracle::WeightInfo<Runtime>;
 }
 
@@ -1252,7 +1255,7 @@ impl module_nominees_election::Config for Runtime {
 	type BondingDuration = NomineesElectionBondingDuration;
 	type NominateesCount = NominateesCount;
 	type MaxUnlockingChunks = MaxUnlockingChunks;
-	type RelaychainValidatorFilter = runtime_common::RelaychainValidatorFilter;
+	type RelaychainValidatorFilter = runtime_common::DummyRelaychainValidatorFilter;
 }
 
 parameter_types! {
