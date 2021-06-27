@@ -16,6 +16,36 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+//! # Incentives Module
+//!
+//! ## Overview
+//!
+//! Acala platform need support different types of rewards for some other protocol.
+//! Each type of reward has a pool with its own reward currency type and reward accumulation
+//! mechanism. ORML rewards module records the total shares, total rewards anduser shares of
+//! specific pool. Incentives module provides hooks to other protocals to manage shares, accumulates
+//! rewards and distributes rewards to users based on their shares.
+//!
+//! Pool types:
+//! 	1. LoansIncentive: this is platform‘s reward to users of Honzon protocol, reward currency type
+//! is native currency. 	2. DexIncentive: this is platform‘s reward to makers of DEX, reward currency
+//! type is native currency. 	3. HomaIncentive: this is platform‘s reward to users of Homa protocol,
+//! reward currency type is native currency. 		4. DexSaving: this is Honzon protocol's extra reward to
+//! makers of DEX because they participate in the liquidation of unsafe CDP, reward currency type is
+//! stable currency. 		5. HomaValidatorAllowance: this is third party's allowance to guarantor of Homa
+//! protocol, reward currency type is liquid currency.
+//!
+//!	Reward sources:
+//! 	1. Native currency(ACA/KAR): reward comes from unreleased reservation because the economic
+//! mechanism of Acala is not an inflation model. 	2. Stable currency(AUSD/KUSD): reward comes from
+//! debit pool of CDP treasury. 	3. Liquid currency(LDOT/LKSM): reward comes from the transfer of
+//! other accounts(Usually are the validators on the relay chain).
+//!
+//!	Reward accumulation:
+//!		1. LoansIncentive/DexIncentive/HomaIncentive/DexSaving: the fixed blocks is
+//! period(AccumulatePeriod), and on the beginning of each period will accumulate reward.
+//! 		2. HomaValidatorAllowance: transfer rewards into the vault account at any time.
+
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
 #![allow(clippy::upper_case_acronyms)]
