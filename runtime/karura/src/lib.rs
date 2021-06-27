@@ -110,7 +110,8 @@ pub use primitives::{
 };
 pub use runtime_common::{
 	cent, dollar, microcent, millicent, CurveFeeModel, ExchangeRate, GasToWeight, Price, Rate, Ratio,
-	RuntimeBlockLength, RuntimeBlockWeights, SystemContractsFilter, TimeStampedPrice, KAR, KSM, KUSD, LKSM, RENBTC,
+	RelaychainBlockNumberProvider, RuntimeBlockLength, RuntimeBlockWeights, SystemContractsFilter, TimeStampedPrice,
+	KAR, KSM, KUSD, LKSM, RENBTC,
 };
 
 mod authority;
@@ -891,6 +892,7 @@ impl orml_vesting::Config for Runtime {
 	type VestedTransferOrigin = EnsureKaruraFoundation;
 	type WeightInfo = weights::orml_vesting::WeightInfo<Runtime>;
 	type MaxVestingSchedules = MaxVestingSchedules;
+	type BlockNumberProvider = RelaychainBlockNumberProvider<Runtime>;
 }
 
 parameter_types! {

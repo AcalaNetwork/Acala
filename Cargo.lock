@@ -9240,6 +9240,7 @@ version = "1.0.0"
 dependencies = [
  "acala-primitives",
  "acala-service",
+ "cumulus-pallet-parachain-system",
  "frame-support",
  "frame-system",
  "hex-literal 0.3.1",
