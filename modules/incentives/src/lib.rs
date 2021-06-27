@@ -29,24 +29,24 @@
 //! Pool types:
 //! 1. LoansIncentive: this is platform‘s reward to users of Honzon protocol, reward currency type
 //! is native currency.
-//!	2. DexIncentive: this is platform‘s reward to makers of DEX, reward currency type is native
+//! 2. DexIncentive: this is platform‘s reward to makers of DEX, reward currency type is native
 //! currency.
 //! 3. HomaIncentive: this is platform‘s reward to users of Homa protocol, reward currency
 //! type is native currency.
-//!	4. DexSaving: this is Honzon protocol's extra reward to makers of DEX because they participate
+//! 4. DexSaving: this is Honzon protocol's extra reward to makers of DEX because they participate
 //! in the liquidation of unsafe CDP, reward currency type is stable currency.
-//!	5. HomaValidatorAllowance: this is third party's allowance to guarantor of Homa protocol, reward
-//!	currency type is liquid currency.
+//! 5. HomaValidatorAllowance: this is third party's allowance to guarantor of Homa protocol, reward
+//! currency type is liquid currency.
 //!
-//!	Reward sources:
+//! Reward sources:
 //! 1. Native currency(ACA/KAR): reward comes from unreleased reservation because the economic
 //! mechanism of Acala is not an inflation model.
-//!	2. Stable currency(AUSD/KUSD): reward comes from debit pool of CDP treasury.
-//!	3. Liquid currency(LDOT/LKSM): reward comes from the transfer of other accounts(Usually are the
-//!	validators on the relay chain).
+//! 2. Stable currency(AUSD/KUSD): reward comes from debit pool of CDP treasury.
+//! 3. Liquid currency(LDOT/LKSM): reward comes from the transfer of other accounts(Usually are the
+//! validators on the relay chain).
 //!
-//!	Reward accumulation:
-//!	1. LoansIncentive/DexIncentive/HomaIncentive/DexSaving: the fixed blocks is
+//! Reward accumulation:
+//! 1. LoansIncentive/DexIncentive/HomaIncentive/DexSaving: the fixed blocks is
 //! period(AccumulatePeriod), and on the beginning of each period will accumulate reward.
 //! 2. HomaValidatorAllowance: transfer rewards into the vault account.
 
