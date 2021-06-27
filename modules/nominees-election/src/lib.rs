@@ -23,12 +23,11 @@ use codec::Encode;
 use frame_support::{
 	log,
 	pallet_prelude::*,
-	traits::Get,
-	traits::{LockIdentifier, MaxEncodedLen},
+	traits::{Contains, Get, LockIdentifier, MaxEncodedLen},
 	transactional, BoundedVec,
 };
 use frame_system::pallet_prelude::*;
-use orml_traits::{BasicCurrency, BasicLockableCurrency, Contains};
+use orml_traits::{BasicCurrency, BasicLockableCurrency};
 use primitives::{Balance, EraIndex};
 use sp_runtime::{
 	traits::{MaybeDisplay, MaybeSerializeDeserialize, Member, Zero},
