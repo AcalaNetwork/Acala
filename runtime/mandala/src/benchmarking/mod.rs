@@ -30,6 +30,7 @@ pub mod evm_accounts;
 pub mod homa;
 pub mod honzon;
 pub mod incentives;
+pub mod nominees_election;
 pub mod prices;
 pub mod transaction_payment;
 

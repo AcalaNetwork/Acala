@@ -138,8 +138,8 @@ parameter_types! {
 		.saturating_sub(BlockExecutionWeight::get());
 }
 
-pub struct DummyRelaychainValidatorFilter;
-impl<AccountId> Contains<AccountId> for DummyRelaychainValidatorFilter {
+pub struct DummyNomineeFilter;
+impl<AccountId> Contains<AccountId> for DummyNomineeFilter {
 	fn contains(_: &AccountId) -> bool {
 		true
 	}

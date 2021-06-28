@@ -38,10 +38,10 @@ use support::{NomineesProvider, OnNewEra};
 
 mod mock;
 mod tests;
+pub mod weights;
 
 pub use module::*;
-
-pub const NOMINEES_ELECTION_ID: LockIdentifier = *b"nomelect";
+pub use weights::WeightInfo;
 
 /// Just a Balance/BlockNumber tuple to encode when a chunk of funds will be
 /// unlocked.
@@ -141,6 +141,8 @@ pub mod module {
 		type Currency: BasicLockableCurrency<Self::AccountId, Moment = Self::BlockNumber, Balance = Balance>;
 		type NomineeId: Parameter + Member + MaybeSerializeDeserialize + Debug + MaybeDisplay + Ord + Default;
 		#[pallet::constant]
+		type PalletId: Get<LockIdentifier>;
+		#[pallet::constant]
 		type MinBondThreshold: Get<Balance>;
 		#[pallet::constant]
 		type BondingDuration: Get<EraIndex>;
@@ -148,7 +150,9 @@ pub mod module {
 		type NominateesCount: Get<u32>;
 		#[pallet::constant]
 		type MaxUnlockingChunks: Get<u32>;
-		type RelaychainValidatorFilter: Contains<Self::NomineeId>;
+		type NomineeFilter: Contains<Self::NomineeId>;
+		/// Weight information for the extrinsics in this module.
+		type WeightInfo: WeightInfo;
 	}
 
 	#[pallet::error]
@@ -158,7 +162,7 @@ pub mod module {
 		MaxUnlockChunksExceeded,
 		NoBonded,
 		NoUnlockChunk,
-		InvalidRelaychainValidator,
+		InvalidNominee,
 		NominateesCountExceeded,
 	}
 
@@ -221,7 +225,7 @@ pub mod module {
 
 	#[pallet::call]
 	impl<T: Config<I>, I: 'static> Pallet<T, I> {
-		#[pallet::weight(10000)]
+		#[pallet::weight(T::WeightInfo::bond())]
 		#[transactional]
 		pub fn bond(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
@@ -245,7 +249,7 @@ pub mod module {
 			Ok(().into())
 		}
 
-		#[pallet::weight(10000)]
+		#[pallet::weight(T::WeightInfo::bond())]
 		#[transactional]
 		pub fn unbond(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
@@ -277,27 +281,30 @@ pub mod module {
 			Ok(().into())
 		}
 
-		#[pallet::weight(10000)]
+		#[pallet::weight(T::WeightInfo::rebond(T::MaxUnlockingChunks::get()))]
 		#[transactional]
 		pub fn rebond(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 			let ledger = Self::ledger(&who);
 			ensure!(!ledger.unlocking.is_empty(), Error::<T, I>::NoUnlockChunk);
 			let old_active = ledger.active;
+			let old_ledger_unlocking = ledger.unlocking.len();
 			let old_nominations = Self::nominations(&who);
 			let ledger = ledger.rebond(amount);
 
 			Self::update_votes(old_active, &old_nominations, ledger.active, &old_nominations);
 			Self::update_ledger(&who, &ledger);
 			Self::deposit_event(Event::Rebond(who, amount));
-			Ok(().into())
+			let removed_len = old_ledger_unlocking - ledger.unlocking.len();
+			Ok(Some(T::WeightInfo::rebond(removed_len as u32)).into())
 		}
 
-		#[pallet::weight(10000)]
+		#[pallet::weight(T::WeightInfo::withdraw_unbonded(T::MaxUnlockingChunks::get()))]
 		#[transactional]
 		pub fn withdraw_unbonded(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 			let mut ledger = Self::ledger(&who);
+			let old_ledger_unlocking = ledger.unlocking.len();
 			ledger.consolidate_unlocked(Self::current_era());
 
 			if ledger.unlocking.is_empty() && ledger.active.is_zero() {
@@ -307,10 +314,11 @@ pub mod module {
 				// on.
 				Self::update_ledger(&who, &ledger);
 			}
-			Ok(().into())
+			let removed_len = old_ledger_unlocking - ledger.unlocking.len();
+			Ok(Some(T::WeightInfo::withdraw_unbonded(removed_len as u32)).into())
 		}
 
-		#[pallet::weight(10000)]
+		#[pallet::weight(T::WeightInfo::nominate(targets.len() as u32))]
 		#[transactional]
 		pub fn nominate(origin: OriginFor<T>, targets: Vec<T::NomineeId>) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
@@ -334,10 +342,7 @@ pub mod module {
 			ensure!(!ledger.total.is_zero(), Error::<T, I>::NoBonded);
 
 			for validator in bounded_targets.iter() {
-				ensure!(
-					T::RelaychainValidatorFilter::contains(&validator),
-					Error::<T, I>::InvalidRelaychainValidator
-				);
+				ensure!(T::NomineeFilter::contains(&validator), Error::<T, I>::InvalidNominee);
 			}
 
 			let old_nominations = Self::nominations(&who);
@@ -348,7 +353,7 @@ pub mod module {
 			Ok(().into())
 		}
 
-		#[pallet::weight(10000)]
+		#[pallet::weight(T::WeightInfo::chill(T::NominateesCount::get()))]
 		#[transactional]
 		pub fn chill(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
@@ -358,14 +363,14 @@ pub mod module {
 
 			Self::update_votes(old_active, &old_nominations, Zero::zero(), &[]);
 			Nominations::<T, I>::remove(&who);
-			Ok(().into())
+			Ok(Some(T::WeightInfo::chill(old_nominations.len() as u32)).into())
 		}
 	}
 }
 
 impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	fn update_ledger(who: &T::AccountId, ledger: &BondingLedger<T::MaxUnlockingChunks>) {
-		let res = T::Currency::set_lock(NOMINEES_ELECTION_ID, who, ledger.total);
+		let res = T::Currency::set_lock(T::PalletId::get(), who, ledger.total);
 		if let Err(e) = res {
 			log::warn!(
 				target: "nominees-election",
@@ -380,7 +385,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	}
 
 	fn remove_ledger(who: &T::AccountId) {
-		let res = T::Currency::remove_lock(NOMINEES_ELECTION_ID, who);
+		let res = T::Currency::remove_lock(T::PalletId::get(), who);
 		if let Err(e) = res {
 			log::warn!(
 				target: "nominees-election",

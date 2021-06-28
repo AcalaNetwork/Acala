@@ -125,10 +125,11 @@ parameter_types! {
 	pub const BondingDuration: EraIndex = 4;
 	pub const NominateesCount: u32 = 5;
 	pub const MaxUnlockingChunks: u32 = 3;
+	pub const PalletId: LockIdentifier = *b"1       ";
 }
 
-pub struct MockRelaychainValidatorFilter;
-impl Contains<AccountId> for MockRelaychainValidatorFilter {
+pub struct MockNomineeFilter;
+impl Contains<AccountId> for MockNomineeFilter {
 	fn contains(a: &AccountId) -> bool {
 		match a {
 			0..=6 => true,
@@ -141,11 +142,13 @@ impl Config for Runtime {
 	type Event = Event;
 	type Currency = LDOTCurrency;
 	type NomineeId = AccountId;
+	type PalletId = PalletId;
 	type MinBondThreshold = MinBondThreshold;
 	type BondingDuration = BondingDuration;
 	type NominateesCount = NominateesCount;
 	type MaxUnlockingChunks = MaxUnlockingChunks;
-	type RelaychainValidatorFilter = MockRelaychainValidatorFilter;
+	type NomineeFilter = MockNomineeFilter;
+	type WeightInfo = ();
 }
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
