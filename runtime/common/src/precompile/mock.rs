@@ -87,6 +87,7 @@ parameter_types! {
 	pub const ExpiresIn: u32 = 600;
 	pub const RootOperatorAccountId: AccountId = ALICE;
 	pub static OracleMembers: Vec<AccountId> = vec![ALICE, BOB, EVA];
+	pub const MaxHasDispatchedSize: u32 = 40;
 }
 
 pub struct Members;
@@ -106,6 +107,7 @@ impl orml_oracle::Config for Test {
 	type OracleValue = Price;
 	type RootOperatorAccountId = RootOperatorAccountId;
 	type Members = Members;
+	type MaxHasDispatchedSize = MaxHasDispatchedSize;
 	type WeightInfo = ();
 }
 

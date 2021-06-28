@@ -22,6 +22,7 @@
 
 use frame_support::{
 	parameter_types,
+	traits::Contains,
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, WEIGHT_PER_MILLIS},
 		DispatchClass, Weight,
@@ -131,8 +132,8 @@ parameter_types! {
 		.saturating_sub(BlockExecutionWeight::get());
 }
 
-pub struct NomineeFilter;
-impl<AccountId> orml_traits::Contains<AccountId> for NomineeFilter {
+pub struct DummyNomineeFilter;
+impl<AccountId> Contains<AccountId> for DummyNomineeFilter {
 	fn contains(_: &AccountId) -> bool {
 		true
 	}
