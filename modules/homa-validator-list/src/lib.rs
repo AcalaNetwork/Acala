@@ -39,6 +39,7 @@ use primitives::Balance;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_runtime::{
+	offchain::storage_lock::BlockNumberProvider,
 	traits::{MaybeDisplay, MaybeSerializeDeserialize, Member, Zero},
 	DispatchResult, FixedPointNumber, RuntimeDebug,
 };
@@ -175,6 +176,9 @@ pub mod module {
 		type WeightInfo: WeightInfo;
 		type OnIncreaseGuarantee: Happened<(Self::AccountId, Self::RelaychainAccountId, Balance)>;
 		type OnDecreaseGuarantee: Happened<(Self::AccountId, Self::RelaychainAccountId, Balance)>;
+
+		// The block number provider
+		type BlockNumberProvider: BlockNumberProvider<BlockNumber = Self::BlockNumber>;
 	}
 
 	#[pallet::error]
@@ -281,7 +285,7 @@ pub mod module {
 						guarantee.bonded.is_zero() || guarantee.bonded >= T::MinBondAmount::get(),
 						Error::<T>::BelowMinBondAmount,
 					);
-					let expired_block = <frame_system::Pallet<T>>::block_number() + T::BondingDuration::get();
+					let expired_block = T::BlockNumberProvider::current_block_number() + T::BondingDuration::get();
 					guarantee.unbonding = Some((amount, expired_block));
 
 					Self::deposit_event(Event::UnbondGuarantee(guarantor.clone(), validator.clone(), amount));
@@ -322,7 +326,7 @@ pub mod module {
 			);
 			Self::update_guarantee(&guarantor, &validator, |guarantee| -> DispatchResult {
 				let old_total = guarantee.total;
-				*guarantee = guarantee.consolidate_unbonding(<frame_system::Pallet<T>>::block_number());
+				*guarantee = guarantee.consolidate_unbonding(T::BlockNumberProvider::current_block_number());
 				let new_total = guarantee
 					.bonded
 					.saturating_add(guarantee.unbonding.unwrap_or_default().0);
