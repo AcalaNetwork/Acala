@@ -10,13 +10,13 @@ codec = { package = "parity-scale-codec", version = "2.0.0", default-features = 
 sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.5", default-features = false }
 frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.5", default-features = false }
 frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.5", default-features = false }
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.5", default-features = false }
 sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.5", default-features = false }
 orml-traits = { package = "orml-traits", path = "../../orml/traits", default-features = false }
 support = { package = "module-support", path = "../support", default-features = false }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 
 [dev-dependencies]
-sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.5" }
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.5" }
 orml-tokens = { path = "../../orml/tokens" }
 
@@ -28,6 +28,7 @@ std = [
 	"sp-runtime/std",
 	"frame-support/std",
 	"frame-system/std",
+	"sp-core/std",
 	"sp-std/std",
 	"orml-traits/std",
 	"support/std",

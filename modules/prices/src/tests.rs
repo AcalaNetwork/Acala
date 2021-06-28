@@ -24,9 +24,111 @@ use super::*;
 use frame_support::{assert_noop, assert_ok};
 use mock::{Event, *};
 use sp_runtime::{
-	traits::{BadOrigin, Zero},
+	traits::{BadOrigin, Bounded, Zero},
 	FixedPointNumber,
 };
+
+#[test]
+fn integer_sqrt_works() {
+	assert_eq!(
+		integer_sqrt(U256::from(u128::MAX).saturating_mul(U256::from(u128::MAX))),
+		U256::from(u128::MAX)
+	);
+	assert_eq!(integer_sqrt(U256::from(5)), U256::from(2));
+	assert_eq!(integer_sqrt(U256::from(4)), U256::from(2));
+	assert_eq!(integer_sqrt(U256::from(3)), U256::from(1));
+	assert_eq!(integer_sqrt(U256::from(2)), U256::from(1));
+	assert_eq!(integer_sqrt(U256::from(1)), U256::from(1));
+	assert_eq!(integer_sqrt(U256::from(0)), U256::from(0));
+}
+
+#[test]
+fn lp_token_fair_price_works() {
+	let lp_token_fair_price_0 = lp_token_fair_price(
+		10000,
+		20000,
+		10000,
+		Price::saturating_from_integer(100),
+		Price::saturating_from_integer(200),
+	)
+	.unwrap();
+	assert!(
+		lp_token_fair_price_0 <= Price::saturating_from_integer(400)
+			&& lp_token_fair_price_0 >= Price::saturating_from_integer(399)
+	);
+
+	assert_eq!(
+		lp_token_fair_price(
+			0,
+			20000,
+			10000,
+			Price::saturating_from_integer(100),
+			Price::saturating_from_integer(200)
+		),
+		None
+	);
+	assert_eq!(
+		lp_token_fair_price(
+			10000,
+			0,
+			10000,
+			Price::saturating_from_integer(100),
+			Price::saturating_from_integer(200)
+		),
+		Some(Price::from_inner(0))
+	);
+	assert_eq!(
+		lp_token_fair_price(
+			10000,
+			20000,
+			0,
+			Price::saturating_from_integer(100),
+			Price::saturating_from_integer(200)
+		),
+		Some(Price::from_inner(0))
+	);
+	assert_eq!(
+		lp_token_fair_price(
+			10000,
+			20000,
+			10000,
+			Price::saturating_from_integer(100),
+			Price::from_inner(0)
+		),
+		Some(Price::from_inner(0))
+	);
+	assert_eq!(
+		lp_token_fair_price(
+			10000,
+			20000,
+			10000,
+			Price::from_inner(0),
+			Price::saturating_from_integer(200)
+		),
+		Some(Price::from_inner(0))
+	);
+
+	assert_eq!(
+		lp_token_fair_price(
+			Balance::max_value(),
+			Balance::max_value(),
+			Balance::max_value(),
+			Price::max_value() / Price::saturating_from_integer(2),
+			Price::max_value() / Price::saturating_from_integer(2)
+		),
+		Some(Price::max_value() - Price::from_inner(1))
+	);
+	assert_eq!(
+		lp_token_fair_price(
+			Balance::max_value(),
+			Balance::max_value(),
+			Balance::max_value(),
+			Price::max_value(),
+			Price::max_value()
+		),
+		None
+	);
+}
 
 #[test]
 fn get_price_from_oracle() {
@@ -67,23 +169,26 @@ fn get_price_of_liquid_currency_id() {
 fn get_price_of_lp_token_currency_id() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_eq!(MockDEX::get_liquidity_pool(AUSD, DOT), (10000, 200));
-		assert_eq!(
-			PricesModule::get_price(LP_AUSD_DOT),
-			None
-		);
+		assert_eq!(PricesModule::get_price(LP_AUSD_DOT), None);
 		assert_ok!(Tokens::deposit(LP_AUSD_DOT, &1, 100));
 		assert_eq!(Tokens::total_issuance(LP_AUSD_DOT), 100);
-		assert_eq!(PricesModule::get_price(AUSD), Some(Price::saturating_from_rational(1000000u128, 1)));
+		assert_eq!(
+			PricesModule::get_price(AUSD),
+			Some(Price::saturating_from_rational(1000000u128, 1))
+		);
 		assert_eq!(
 			PricesModule::get_price(LP_AUSD_DOT),
-			Some(Price::saturating_from_rational(200000000u128, 1))	// 10000/100 * Price::saturating_from_rational(1000000u128, 1) * 2
+			lp_token_fair_price(
+				Tokens::total_issuance(LP_AUSD_DOT),
+				MockDEX::get_liquidity_pool(AUSD, DOT).0,
+				MockDEX::get_liquidity_pool(AUSD, DOT).1,
+				PricesModule::get_price(AUSD).unwrap(),
+				PricesModule::get_price(DOT).unwrap()
+			)
 		);
 
 		assert_eq!(MockDEX::get_liquidity_pool(BTC, AUSD), (0, 0));
-		assert_eq!(
-			PricesModule::get_price(LP_BTC_AUSD),
-			None
-		);
+		assert_eq!(PricesModule::get_price(LP_BTC_AUSD), None);
 	});
 }
 
