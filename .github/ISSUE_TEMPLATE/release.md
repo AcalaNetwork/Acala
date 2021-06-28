@@ -1,5 +1,5 @@
 ---
-name: release
+name: New Release
 about: Tracking issue for new releases
 title: Release checklist
 labels: a-release
