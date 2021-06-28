@@ -4892,6 +4892,7 @@ dependencies = [
  "cumulus-primitives-parachain-inherent",
  "cumulus-primitives-timestamp",
  "cumulus-primitives-utility",
+ "cumulus-test-relay-sproof-builder",
  "ecosystem-chainsafe",
  "ecosystem-renvm-bridge",
  "evm",

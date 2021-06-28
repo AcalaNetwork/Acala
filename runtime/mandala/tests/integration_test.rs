@@ -44,6 +44,7 @@ use orml_traits::{Change, MultiCurrency};
 use orml_vesting::VestingSchedule;
 // use polkadot_parachain::primitives::Sibling;
 use acala_service::chain_spec::evm_genesis;
+use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
 pub use primitives::{evm::EvmAddress, DexShare, TradingPair};
 use sp_core::{bytes::from_hex, H160};
 use sp_io::hashing::keccak_256;
@@ -93,20 +94,21 @@ fn run_to_block(n: u32) {
 	}
 }
 
-fn set_relaychain_block_number(number: BlockNumber, first: bool) {
-	if !first {
-		ParachainSystem::on_finalize(number - 1)
-	}
+fn set_relaychain_block_number(number: BlockNumber) {
+	ParachainSystem::on_initialize(number);
+
+	let (relay_storage_root, proof) = RelayStateSproofBuilder::default().into_state_root_and_proof();
+
 	assert_ok!(ParachainSystem::set_validation_data(
-		Origin::root(),
+		Origin::none(),
 		cumulus_primitives_parachain_inherent::ParachainInherentData {
 			validation_data: cumulus_primitives_core::PersistedValidationData {
 				parent_head: Default::default(),
 				relay_parent_number: number,
-				relay_parent_storage_root: Default::default(),
+				relay_parent_storage_root: relay_storage_root,
 				max_pov_size: Default::default(),
 			},
-			relay_chain_state: sp_trie::StorageProof::empty(),
+			relay_chain_state: proof,
 			downward_messages: Default::default(),
 			horizontal_messages: Default::default(),
 		}
@@ -1589,27 +1591,27 @@ fn test_vesting_use_relaychain_block_number() {
 		assert_eq!(Balances::free_balance(&alice()), 15 * dollar(ACA));
 		assert_eq!(Balances::usable_balance(&alice()), 0);
 
-		set_relaychain_block_number(10, true);
+		set_relaychain_block_number(10);
 
 		assert_ok!(Vesting::claim(Origin::signed(alice())));
 		assert_eq!(Balances::usable_balance(&alice()), 0);
 
-		set_relaychain_block_number(12, false);
+		set_relaychain_block_number(12);
 
 		assert_ok!(Vesting::claim(Origin::signed(alice())));
 		assert_eq!(Balances::usable_balance(&alice()), 3 * dollar(ACA));
 
-		set_relaychain_block_number(15, false);
+		set_relaychain_block_number(15);
 
 		assert_ok!(Vesting::claim(Origin::signed(alice())));
 		assert_eq!(Balances::usable_balance(&alice()), 6 * dollar(ACA));
 
-		set_relaychain_block_number(20, false);
+		set_relaychain_block_number(20);
 
 		assert_ok!(Vesting::claim(Origin::signed(alice())));
 		assert_eq!(Balances::usable_balance(&alice()), 15 * dollar(ACA));
 
-		set_relaychain_block_number(22, false);
+		set_relaychain_block_number(22);
 
 		assert_ok!(Vesting::claim(Origin::signed(alice())));
 		assert_eq!(Balances::usable_balance(&alice()), 15 * dollar(ACA));
