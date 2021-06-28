@@ -25,7 +25,6 @@
 #![allow(clippy::unused_unit)]
 
 use frame_support::{pallet_prelude::*, traits::UnixTime};
-use frame_system::pallet_prelude::*;
 use module_support::CompoundCashTrait;
 use primitives::{Balance, CashYieldIndex, CurrencyId, Moment, TokenSymbol};
 

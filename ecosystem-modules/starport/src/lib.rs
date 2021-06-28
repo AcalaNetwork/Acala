@@ -306,7 +306,7 @@ pub mod module {
 
 			match notice.payload {
 				GatewayNoticePayload::SetSupplyCap(currency_id, amount) => {
-					SupplyCaps::<T>::insert(&currency_id, amount.clone());
+					SupplyCaps::<T>::insert(&currency_id, amount);
 					Self::deposit_event(Event::<T>::SupplyCapSet(currency_id, amount));
 					Ok(().into())
 				}
@@ -315,22 +315,16 @@ pub mod module {
 						new_authorities.len() <= (T::MaxGatewayAuthorities::get() as usize),
 						Error::<T>::ExceededMaxNumberOfAuthorities
 					);
-					ensure!(new_authorities.len() > 0, Error::<T>::AuthoritiesListCannotBeEmpty);
+					ensure!(!new_authorities.is_empty(), Error::<T>::AuthoritiesListCannotBeEmpty);
 
 					let bounded_vec = BoundedVec::try_from(new_authorities).unwrap();
 					GatewayAuthorities::<T>::put(bounded_vec);
 					Self::deposit_event(Event::<T>::GatewayAuthoritiesChanged);
 					Ok(().into())
 				}
-				GatewayNoticePayload::Unlock(currency_id, amount, who) => {
-					Self::do_unlock(currency_id.clone(), amount.clone(), who.clone())
-				}
+				GatewayNoticePayload::Unlock(currency_id, amount, who) => Self::do_unlock(currency_id, amount, who),
 				GatewayNoticePayload::SetFutureYield(next_cash_yield, yield_index, timestamp_effective) => {
-					T::Cash::set_future_yield(
-						next_cash_yield.clone(),
-						yield_index.clone(),
-						timestamp_effective.clone(),
-					)?;
+					T::Cash::set_future_yield(next_cash_yield, yield_index, timestamp_effective)?;
 					Self::deposit_event(Event::<T>::FutureYieldSet(
 						next_cash_yield,
 						yield_index,
@@ -377,7 +371,7 @@ impl<T: Config> Pallet<T> {
 		locked_amount: Balance,
 	) -> DispatchResultWithPostInfo {
 		// Ensure the user has sufficient balance
-		T::Currency::ensure_can_withdraw(currency_id.clone(), &from, locked_amount.clone())?;
+		T::Currency::ensure_can_withdraw(currency_id, &from, locked_amount)?;
 
 		let current_supply_cap = Self::supply_caps(currency_id);
 		// Ensure there are enough supplies on Compound.
@@ -411,15 +405,10 @@ impl<T: Config> Pallet<T> {
 			_ => {
 				// Ensure the admin has sufficient balance for the transfer
 				ensure!(
-					T::Currency::ensure_can_withdraw(
-						currency_id.clone(),
-						&T::AdminAccount::get(),
-						unlock_amount.clone()
-					)
-					.is_ok(),
+					T::Currency::ensure_can_withdraw(currency_id, &T::AdminAccount::get(), unlock_amount).is_ok(),
 					Error::<T>::InsufficientAssetToUnlock
 				);
-				T::Currency::transfer(currency_id, &T::AdminAccount::get(), &to.clone(), unlock_amount)
+				T::Currency::transfer(currency_id, &T::AdminAccount::get(), &to, unlock_amount)
 			}
 		}?;
 
