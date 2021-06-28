@@ -130,10 +130,16 @@ chainbridge = { git = "https://github.com/AcalaNetwork/chainbridge-substrate", d
 substrate-wasm-builder = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.5" }
 
 [dev-dependencies]
-sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.5" }
 libsecp256k1 = "0.3.4"
 hex = "0.4.0"
-acala-service = {  path = "../../node/service" }
+
+sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.5" }
+sp-trie = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.5" }
+
+cumulus-primitives-parachain-inherent = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.5" }
+cumulus-test-relay-sproof-builder = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.5" }
+
+acala-service = { path = "../../node/service", features = ["with-mandala-runtime"] }
 
 [features]
 default = ["std"]
