@@ -280,6 +280,10 @@ fn testnet_genesis(
 			code: wasm_binary.to_vec(),
 			changes_trie_config: Default::default(),
 		},
+		starport: StarportConfig {
+			initial_authorities: vec![get_account_id_from_seed::<sr25519::Public>("Alice")],
+			initial_gateway_account: get_account_id_from_seed::<sr25519::Public>("Alice"),
+		},
 		indices: IndicesConfig { indices: vec![] },
 		balances: BalancesConfig { balances },
 		sudo: SudoConfig { key: root_key.clone() },
@@ -415,10 +419,6 @@ fn testnet_genesis(
 		aura: Default::default(),
 		aura_ext: Default::default(),
 		parachain_system: Default::default(),
-		starport: StarportConfig {
-			initial_authorities: initial_authorities.iter().cloned().map(|(acc, _, _, _)| acc).collect(),
-			initial_gateway_account: root_key.clone(),
-		},
 	}
 }
 
@@ -480,6 +480,10 @@ fn mandala_genesis(
 			// Add Wasm runtime to storage.
 			code: wasm_binary.to_vec(),
 			changes_trie_config: Default::default(),
+		},
+		starport: StarportConfig {
+			initial_authorities: vec![get_account_id_from_seed::<sr25519::Public>("Alice")],
+			initial_gateway_account: get_account_id_from_seed::<sr25519::Public>("Alice"),
 		},
 		indices: IndicesConfig { indices: vec![] },
 		balances: BalancesConfig { balances },
@@ -653,9 +657,5 @@ fn mandala_genesis(
 		aura: Default::default(),
 		aura_ext: Default::default(),
 		parachain_system: Default::default(),
-		starport: StarportConfig {
-			initial_authorities: initial_authorities.iter().cloned().map(|(acc, _, _, _)| acc).collect(),
-			initial_gateway_account: root_key.clone(),
-		},
 	}
 }
