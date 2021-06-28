@@ -87,19 +87,19 @@ runtime_benchmarks! {
 	update_incentive_rewards {
 		let c in 0 .. CollateralCurrencyIds::get().len().saturating_sub(1) as u32;
 		let currency_ids = CollateralCurrencyIds::get();
-		let mut values = vec![];
+		let mut updates = vec![];
 
 		for i in 0 .. c {
 			let currency_id = currency_ids[i as usize];
-			values.push((PoolId::LoansIncentive(currency_id), 100 * dollar(KAR)));
+			updates.push((PoolId::LoansIncentive(currency_id), 100 * dollar(KAR)));
 		}
-	}: _(RawOrigin::Root, values)
+	}: _(RawOrigin::Root, updates)
 
 	update_dex_saving_rewards {
 		let c in 0 .. CollateralCurrencyIds::get().len().saturating_sub(1) as u32;
 		let currency_ids = CollateralCurrencyIds::get();
 		let caller: AccountId = account("caller", 0, SEED);
-		let mut values = vec![];
+		let mut updates = vec![];
 		let base_currency_id = GetStableCurrencyId::get();
 
 		for i in 0 .. c {
@@ -110,9 +110,20 @@ runtime_benchmarks! {
 				}
 				_ => return Err("invalid currency id"),
 			};
-			values.push((PoolId::DexSaving(lp_share_currency_id), Rate::default()));
+			updates.push((PoolId::DexSaving(lp_share_currency_id), Rate::default()));
 		}
-	}: _(RawOrigin::Root, values)
+	}: _(RawOrigin::Root, updates)
+
+	update_payout_deduction_rates {
+		let c in 0 .. CollateralCurrencyIds::get().len().saturating_sub(1) as u32;
+		let currency_ids = CollateralCurrencyIds::get();
+		let mut updates = vec![];
+
+		for i in 0 .. c {
+			let currency_id = currency_ids[i as usize];
+			updates.push((PoolId::LoansIncentive(currency_id), Rate::default()));
+		}
+	}: _(RawOrigin::Root, updates)
 
 	add_allowance {
 		let caller: AccountId = whitelisted_caller();

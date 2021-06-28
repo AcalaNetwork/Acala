@@ -195,6 +195,7 @@ fn withdraw_dex_share_works() {
 #[test]
 fn update_incentive_rewards_works() {
 	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
 		assert_noop!(
 			IncentivesModule::update_incentive_rewards(Origin::signed(ALICE), vec![]),
 			BadOrigin
@@ -218,6 +219,18 @@ fn update_incentive_rewards_works() {
 				(PoolId::LoansIncentive(DOT), 500),
 			],
 		));
+		System::assert_has_event(Event::IncentivesModule(crate::Event::IncentiveRewardAmountUpdated(
+			PoolId::HomaIncentive,
+			200,
+		)));
+		System::assert_has_event(Event::IncentivesModule(crate::Event::IncentiveRewardAmountUpdated(
+			PoolId::DexIncentive(DOT_AUSD_LP),
+			1000,
+		)));
+		System::assert_has_event(Event::IncentivesModule(crate::Event::IncentiveRewardAmountUpdated(
+			PoolId::LoansIncentive(DOT),
+			500,
+		)));
 		assert_eq!(IncentivesModule::incentive_reward_amount(PoolId::HomaIncentive), 200);
 		assert_eq!(
 			IncentivesModule::incentive_reward_amount(PoolId::DexIncentive(DOT_AUSD_LP)),
@@ -246,6 +259,7 @@ fn update_incentive_rewards_works() {
 #[test]
 fn update_dex_saving_rewards_works() {
 	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
 		assert_noop!(
 			IncentivesModule::update_dex_saving_rewards(Origin::signed(ALICE), vec![]),
 			BadOrigin
@@ -273,8 +287,61 @@ fn update_dex_saving_rewards_works() {
 			Origin::signed(4),
 			vec![(PoolId::DexSaving(DOT_AUSD_LP), Rate::saturating_from_rational(1, 100)),]
 		));
+		System::assert_has_event(Event::IncentivesModule(crate::Event::SavingRewardRateUpdated(
+			PoolId::DexSaving(DOT_AUSD_LP),
+			Rate::saturating_from_rational(1, 100),
+		)));
 		assert_eq!(
 			IncentivesModule::dex_saving_reward_rate(PoolId::DexSaving(DOT_AUSD_LP)),
+			Rate::saturating_from_rational(1, 100)
+		);
+	});
+}
+
+#[test]
+fn update_payout_deduction_rates_works() {
+	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
+		assert_noop!(
+			IncentivesModule::update_payout_deduction_rates(Origin::signed(ALICE), vec![]),
+			BadOrigin
+		);
+		assert_noop!(
+			IncentivesModule::update_payout_deduction_rates(
+				Origin::signed(4),
+				vec![(PoolId::DexIncentive(DOT), Rate::zero())]
+			),
+			Error::<Runtime>::InvalidCurrencyId
+		);
+		assert_noop!(
+			IncentivesModule::update_payout_deduction_rates(
+				Origin::signed(4),
+				vec![(PoolId::DexSaving(DOT), Rate::zero())]
+			),
+			Error::<Runtime>::InvalidCurrencyId
+		);
+		assert_noop!(
+			IncentivesModule::update_payout_deduction_rates(
+				Origin::signed(4),
+				vec![(PoolId::DexSaving(DOT_AUSD_LP), Rate::saturating_from_rational(101, 100)),]
+			),
+			Error::<Runtime>::InvalidRate,
+		);
+
+		assert_eq!(
+			IncentivesModule::payout_deduction_rates(PoolId::DexSaving(DOT_AUSD_LP)),
+			Rate::zero()
+		);
+		assert_ok!(IncentivesModule::update_payout_deduction_rates(
+			Origin::signed(4),
+			vec![(PoolId::DexSaving(DOT_AUSD_LP), Rate::saturating_from_rational(1, 100)),]
+		));
+		System::assert_last_event(Event::IncentivesModule(crate::Event::PayoutDeductionRateUpdated(
+			PoolId::DexSaving(DOT_AUSD_LP),
+			Rate::saturating_from_rational(1, 100),
+		)));
+		assert_eq!(
+			IncentivesModule::payout_deduction_rates(PoolId::DexSaving(DOT_AUSD_LP)),
 			Rate::saturating_from_rational(1, 100)
 		);
 	});
@@ -435,36 +502,82 @@ fn guarantee_hooks_works() {
 }
 
 #[test]
-fn pay_out_works_works() {
+fn payout_works() {
 	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
 		assert_ok!(TokensModule::deposit(ACA, &VAULT, 10000));
 		assert_ok!(TokensModule::deposit(AUSD, &VAULT, 10000));
 		assert_ok!(TokensModule::deposit(LDOT, &VAULT, 10000));
+		assert_ok!(IncentivesModule::update_payout_deduction_rates(
+			Origin::signed(4),
+			vec![
+				(
+					PoolId::DexIncentive(DOT_AUSD_LP),
+					Rate::saturating_from_rational(50, 100)
+				),
+				(PoolId::HomaIncentive, Rate::saturating_from_rational(50, 100)),
+			]
+		));
 
 		assert_eq!(TokensModule::free_balance(ACA, &VAULT), 10000);
 		assert_eq!(TokensModule::free_balance(ACA, &ALICE), 0);
 		IncentivesModule::payout(&ALICE, &PoolId::LoansIncentive(BTC), 1000);
+		System::assert_last_event(Event::IncentivesModule(crate::Event::PayoutRewards(
+			ALICE,
+			PoolId::LoansIncentive(BTC),
+			ACA,
+			1000,
+			0,
+		)));
 		assert_eq!(TokensModule::free_balance(ACA, &VAULT), 9000);
 		assert_eq!(TokensModule::free_balance(ACA, &ALICE), 1000);
 
 		assert_eq!(TokensModule::free_balance(ACA, &BOB), 0);
 		IncentivesModule::payout(&BOB, &PoolId::DexIncentive(DOT_AUSD_LP), 1000);
-		assert_eq!(TokensModule::free_balance(ACA, &VAULT), 8000);
-		assert_eq!(TokensModule::free_balance(ACA, &BOB), 1000);
+		System::assert_last_event(Event::IncentivesModule(crate::Event::PayoutRewards(
+			BOB,
+			PoolId::DexIncentive(DOT_AUSD_LP),
+			ACA,
+			500,
+			500,
+		)));
+		assert_eq!(TokensModule::free_balance(ACA, &VAULT), 8500);
+		assert_eq!(TokensModule::free_balance(ACA, &BOB), 500);
 
 		IncentivesModule::payout(&BOB, &PoolId::HomaIncentive, 2000);
-		assert_eq!(TokensModule::free_balance(ACA, &VAULT), 6000);
-		assert_eq!(TokensModule::free_balance(ACA, &BOB), 3000);
+		System::assert_last_event(Event::IncentivesModule(crate::Event::PayoutRewards(
+			BOB,
+			PoolId::HomaIncentive,
+			ACA,
+			1000,
+			1000,
+		)));
+		assert_eq!(TokensModule::free_balance(ACA, &VAULT), 7500);
+		assert_eq!(TokensModule::free_balance(ACA, &BOB), 1500);
 
 		assert_eq!(TokensModule::free_balance(AUSD, &VAULT), 10000);
 		assert_eq!(TokensModule::free_balance(AUSD, &ALICE), 0);
 		IncentivesModule::payout(&ALICE, &PoolId::DexSaving(DOT_AUSD_LP), 1000);
+		System::assert_last_event(Event::IncentivesModule(crate::Event::PayoutRewards(
+			ALICE,
+			PoolId::DexSaving(DOT_AUSD_LP),
+			AUSD,
+			1000,
+			0,
+		)));
 		assert_eq!(TokensModule::free_balance(AUSD, &VAULT), 9000);
 		assert_eq!(TokensModule::free_balance(AUSD, &ALICE), 1000);
 
 		assert_eq!(TokensModule::free_balance(LDOT, &VAULT), 10000);
 		assert_eq!(TokensModule::free_balance(LDOT, &BOB), 0);
 		IncentivesModule::payout(&BOB, &PoolId::HomaValidatorAllowance(VALIDATOR), 3000);
+		System::assert_last_event(Event::IncentivesModule(crate::Event::PayoutRewards(
+			BOB,
+			PoolId::HomaValidatorAllowance(VALIDATOR),
+			LDOT,
+			3000,
+			0,
+		)));
 		assert_eq!(TokensModule::free_balance(LDOT, &VAULT), 7000);
 		assert_eq!(TokensModule::free_balance(LDOT, &BOB), 3000);
 	});

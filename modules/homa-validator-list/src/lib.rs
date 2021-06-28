@@ -28,9 +28,13 @@
 #![allow(clippy::unused_unit)]
 #![allow(clippy::collapsible_if)]
 
-use frame_support::{pallet_prelude::*, traits::MaxEncodedLen, transactional};
+use frame_support::{
+	pallet_prelude::*,
+	traits::{Contains, MaxEncodedLen},
+	transactional,
+};
 use frame_system::pallet_prelude::*;
-use orml_traits::{BasicCurrency, BasicLockableCurrency, Contains, Happened, LockIdentifier};
+use orml_traits::{BasicCurrency, BasicLockableCurrency, Happened, LockIdentifier};
 use primitives::Balance;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};

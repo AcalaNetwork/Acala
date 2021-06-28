@@ -30,8 +30,8 @@ use mandala_runtime::{
 	dollar, get_all_module_accounts, AccountId, AuthoritysOriginId, Balance, Balances, BlockNumber, Call,
 	CreateClassDeposit, CreateTokenDeposit, CurrencyId, DataDepositPerByte, EVMBridge, EnabledTradingPairs, Event,
 	EvmAccounts, EvmCurrencyIdMapping, GetNativeCurrencyId, NativeTokenExistentialDeposit, NftPalletId, Origin,
-	OriginCaller, Perbill, Proxy, Runtime, SevenDays, System, TokenSymbol, TreasuryReservePalletId, ACA, AUSD, DOT,
-	EVM, LDOT, NFT, RENBTC,
+	OriginCaller, ParachainSystem, Perbill, Proxy, Runtime, SevenDays, System, TokenSymbol, TreasuryPalletId,
+	TreasuryReservePalletId, Vesting, ACA, AUSD, DOT, EVM, LDOT, NFT, RENBTC,
 };
 use module_cdp_engine::LiquidationStrategy;
 use module_evm_accounts::EvmAddressMapping;
@@ -41,8 +41,10 @@ use module_support::{
 };
 use orml_authority::DelayedOrigin;
 use orml_traits::{Change, MultiCurrency};
+use orml_vesting::VestingSchedule;
 // use polkadot_parachain::primitives::Sibling;
 use acala_service::chain_spec::evm_genesis;
+use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
 pub use primitives::{evm::EvmAddress, DexShare, TradingPair};
 use sp_core::{bytes::from_hex, H160};
 use sp_io::hashing::keccak_256;
@@ -92,6 +94,27 @@ fn run_to_block(n: u32) {
 	}
 }
 
+fn set_relaychain_block_number(number: BlockNumber) {
+	ParachainSystem::on_initialize(number);
+
+	let (relay_storage_root, proof) = RelayStateSproofBuilder::default().into_state_root_and_proof();
+
+	assert_ok!(ParachainSystem::set_validation_data(
+		Origin::none(),
+		cumulus_primitives_parachain_inherent::ParachainInherentData {
+			validation_data: cumulus_primitives_core::PersistedValidationData {
+				parent_head: Default::default(),
+				relay_parent_number: number,
+				relay_parent_storage_root: relay_storage_root,
+				max_pov_size: Default::default(),
+			},
+			relay_chain_state: proof,
+			downward_messages: Default::default(),
+			horizontal_messages: Default::default(),
+		}
+	));
+}
+
 pub fn erc20_address_0() -> EvmAddress {
 	EvmAddress::from_str("0000000000000000000000000000000002000000").unwrap()
 }
@@ -111,7 +134,7 @@ pub fn lp_erc20_evm_address() -> EvmAddress {
 pub fn deploy_erc20_contracts() {
 	let code = from_hex(include!("../../../modules/evm-bridge/src/erc20_demo_contract")).unwrap();
 	assert_ok!(EVM::create_network_contract(
-		<Runtime as frame_system::Config>::Origin::root(),
+		Origin::root(),
 		code.clone(),
 		0,
 		2100_000,
@@ -121,26 +144,14 @@ pub fn deploy_erc20_contracts() {
 	let event = Event::EVM(module_evm::Event::<Runtime>::Created(erc20_address_0()));
 	assert_eq!(System::events().iter().last().unwrap().event, event);
 
-	assert_ok!(EVM::deploy_free(
-		<Runtime as frame_system::Config>::Origin::root(),
-		erc20_address_0()
-	));
+	assert_ok!(EVM::deploy_free(Origin::root(), erc20_address_0()));
 
-	assert_ok!(EVM::create_network_contract(
-		<Runtime as frame_system::Config>::Origin::root(),
-		code,
-		0,
-		2100_000,
-		100000
-	));
+	assert_ok!(EVM::create_network_contract(Origin::root(), code, 0, 2100_000, 100000));
 
 	let event = Event::EVM(module_evm::Event::<Runtime>::Created(erc20_address_1()));
 	assert_eq!(System::events().iter().last().unwrap().event, event);
 
-	assert_ok!(EVM::deploy_free(
-		<Runtime as frame_system::Config>::Origin::root(),
-		erc20_address_1()
-	));
+	assert_ok!(EVM::deploy_free(Origin::root(), erc20_address_1()));
 }
 
 pub struct ExtBuilder {
@@ -229,21 +240,20 @@ impl ExtBuilder {
 	}
 }
 
-pub fn origin_of(account_id: AccountId) -> <Runtime as frame_system::Config>::Origin {
-	<Runtime as frame_system::Config>::Origin::signed(account_id)
-}
-
 fn set_oracle_price(prices: Vec<(CurrencyId, Price)>) -> DispatchResult {
 	OracleModule::on_finalize(0);
 	assert_ok!(OracleModule::feed_values(
-		origin_of(AccountId::from(ORACLE1)),
+		Origin::signed(AccountId::from(ORACLE1)),
 		prices.clone(),
 	));
 	assert_ok!(OracleModule::feed_values(
-		origin_of(AccountId::from(ORACLE2)),
+		Origin::signed(AccountId::from(ORACLE2)),
 		prices.clone(),
 	));
-	assert_ok!(OracleModule::feed_values(origin_of(AccountId::from(ORACLE3)), prices,));
+	assert_ok!(OracleModule::feed_values(
+		Origin::signed(AccountId::from(ORACLE3)),
+		prices,
+	));
 	Ok(())
 }
 
@@ -337,17 +347,13 @@ fn emergency_shutdown_and_cdp_treasury() {
 			assert_eq!(CdpTreasuryModule::total_collaterals(LDOT), 40_000_000);
 
 			assert_noop!(
-				EmergencyShutdownModule::refund_collaterals(origin_of(AccountId::from(ALICE)), 1_000_000),
+				EmergencyShutdownModule::refund_collaterals(Origin::signed(AccountId::from(ALICE)), 1_000_000),
 				module_emergency_shutdown::Error::<Runtime>::CanNotRefund,
 			);
-			assert_ok!(EmergencyShutdownModule::emergency_shutdown(
-				<Runtime as frame_system::Config>::Origin::root()
-			));
-			assert_ok!(EmergencyShutdownModule::open_collateral_refund(
-				<Runtime as frame_system::Config>::Origin::root()
-			));
+			assert_ok!(EmergencyShutdownModule::emergency_shutdown(Origin::root()));
+			assert_ok!(EmergencyShutdownModule::open_collateral_refund(Origin::root()));
 			assert_ok!(EmergencyShutdownModule::refund_collaterals(
-				origin_of(AccountId::from(ALICE)),
+				Origin::signed(AccountId::from(ALICE)),
 				1_000_000
 			));
 
@@ -377,7 +383,7 @@ fn liquidate_cdp() {
 			)])); // 10000 usd
 
 			assert_ok!(DexModule::add_liquidity(
-				origin_of(AccountId::from(BOB)),
+				Origin::signed(AccountId::from(BOB)),
 				RENBTC,
 				AUSD,
 				100 * dollar(RENBTC),
@@ -387,7 +393,7 @@ fn liquidate_cdp() {
 			));
 
 			assert_ok!(CdpEngineModule::set_collateral_params(
-				<Runtime as frame_system::Config>::Origin::root(),
+				Origin::root(),
 				RENBTC,
 				Change::NewValue(Some(Rate::zero())),
 				Change::NewValue(Some(Ratio::saturating_from_rational(200, 100))),
@@ -430,7 +436,7 @@ fn liquidate_cdp() {
 			assert_eq!(AuctionManagerModule::collateral_auctions(0), None);
 
 			assert_ok!(CdpEngineModule::set_collateral_params(
-				<Runtime as frame_system::Config>::Origin::root(),
+				Origin::root(),
 				RENBTC,
 				Change::NoChange,
 				Change::NewValue(Some(Ratio::saturating_from_rational(400, 100))),
@@ -506,12 +512,20 @@ fn test_dex_module() {
 			assert_eq!(Currencies::free_balance(LPTOKEN, &AccountId::from(ALICE)), 0);
 
 			assert_noop!(
-				DexModule::add_liquidity(origin_of(AccountId::from(ALICE)), RENBTC, AUSD, 0, 10000000, 0, false,),
+				DexModule::add_liquidity(
+					Origin::signed(AccountId::from(ALICE)),
+					RENBTC,
+					AUSD,
+					0,
+					10000000,
+					0,
+					false,
+				),
 				module_dex::Error::<Runtime>::InvalidLiquidityIncrement,
 			);
 
 			assert_ok!(DexModule::add_liquidity(
-				origin_of(AccountId::from(ALICE)),
+				Origin::signed(AccountId::from(ALICE)),
 				RENBTC,
 				AUSD,
 				10000,
@@ -536,7 +550,7 @@ fn test_dex_module() {
 			assert_eq!(Currencies::total_issuance(LPTOKEN), 20000000);
 			assert_eq!(Currencies::free_balance(LPTOKEN, &AccountId::from(ALICE)), 20000000);
 			assert_ok!(DexModule::add_liquidity(
-				origin_of(AccountId::from(BOB)),
+				Origin::signed(AccountId::from(BOB)),
 				RENBTC,
 				AUSD,
 				1,
@@ -548,14 +562,14 @@ fn test_dex_module() {
 			assert_eq!(Currencies::total_issuance(LPTOKEN), 20002000);
 			assert_eq!(Currencies::free_balance(LPTOKEN, &AccountId::from(BOB)), 2000);
 			assert_noop!(
-				DexModule::add_liquidity(origin_of(AccountId::from(BOB)), RENBTC, AUSD, 1, 999, 0, false,),
+				DexModule::add_liquidity(Origin::signed(AccountId::from(BOB)), RENBTC, AUSD, 1, 999, 0, false,),
 				module_dex::Error::<Runtime>::InvalidLiquidityIncrement,
 			);
 			assert_eq!(DexModule::get_liquidity_pool(RENBTC, AUSD), (10001, 10001000));
 			assert_eq!(Currencies::total_issuance(LPTOKEN), 20002000);
 			assert_eq!(Currencies::free_balance(LPTOKEN, &AccountId::from(BOB)), 2000);
 			assert_ok!(DexModule::add_liquidity(
-				origin_of(AccountId::from(BOB)),
+				Origin::signed(AccountId::from(BOB)),
 				RENBTC,
 				AUSD,
 				2,
@@ -565,7 +579,7 @@ fn test_dex_module() {
 			));
 			assert_eq!(DexModule::get_liquidity_pool(RENBTC, AUSD), (10002, 10002000));
 			assert_ok!(DexModule::add_liquidity(
-				origin_of(AccountId::from(BOB)),
+				Origin::signed(AccountId::from(BOB)),
 				RENBTC,
 				AUSD,
 				1,
@@ -586,7 +600,7 @@ fn test_dex_module() {
 
 			// CurrencyId::DexShare(Erc20, Erc20)
 			assert_ok!(DexModule::list_trading_pair(
-				<Runtime as frame_system::Config>::Origin::root(),
+				Origin::root(),
 				CurrencyId::Erc20(erc20_address_0()),
 				CurrencyId::Erc20(erc20_address_1()),
 				10,
@@ -598,7 +612,7 @@ fn test_dex_module() {
 
 			<EVM as EVMTrait<AccountId>>::set_origin(MockAddressMapping::get_account_id(&alice_evm_addr()));
 			assert_ok!(DexModule::add_liquidity(
-				origin_of(MockAddressMapping::get_account_id(&alice_evm_addr())),
+				Origin::signed(MockAddressMapping::get_account_id(&alice_evm_addr())),
 				CurrencyId::Erc20(erc20_address_0()),
 				CurrencyId::Erc20(erc20_address_1()),
 				10,
@@ -639,7 +653,7 @@ fn test_dex_module() {
 			<EVM as EVMTrait<AccountId>>::set_origin(EvmAddressMapping::<Runtime>::get_account_id(&alice_evm_addr()));
 
 			assert_ok!(DexModule::add_liquidity(
-				origin_of(EvmAddressMapping::<Runtime>::get_account_id(&alice_evm_addr())),
+				Origin::signed(EvmAddressMapping::<Runtime>::get_account_id(&alice_evm_addr())),
 				CurrencyId::Erc20(erc20_address_0()),
 				CurrencyId::Erc20(erc20_address_1()),
 				100,
@@ -672,7 +686,7 @@ fn test_dex_module() {
 			);
 
 			assert_ok!(DexModule::remove_liquidity(
-				origin_of(EvmAddressMapping::<Runtime>::get_account_id(&alice_evm_addr())),
+				Origin::signed(EvmAddressMapping::<Runtime>::get_account_id(&alice_evm_addr())),
 				CurrencyId::Erc20(erc20_address_0()),
 				CurrencyId::Erc20(erc20_address_1()),
 				1,
@@ -716,7 +730,7 @@ fn test_honzon_module() {
 			assert_ok!(set_oracle_price(vec![(RENBTC, Price::saturating_from_rational(1, 1))]));
 
 			assert_ok!(CdpEngineModule::set_collateral_params(
-				<Runtime as frame_system::Config>::Origin::root(),
+				Origin::root(),
 				RENBTC,
 				Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
 				Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
@@ -747,16 +761,11 @@ fn test_honzon_module() {
 				100 * dollar(RENBTC)
 			);
 			assert_eq!(
-				CdpEngineModule::liquidate(
-					<Runtime as frame_system::Config>::Origin::none(),
-					RENBTC,
-					MultiAddress::Id(AccountId::from(ALICE))
-				)
-				.is_ok(),
+				CdpEngineModule::liquidate(Origin::none(), RENBTC, MultiAddress::Id(AccountId::from(ALICE))).is_ok(),
 				false
 			);
 			assert_ok!(CdpEngineModule::set_collateral_params(
-				<Runtime as frame_system::Config>::Origin::root(),
+				Origin::root(),
 				RENBTC,
 				Change::NoChange,
 				Change::NewValue(Some(Ratio::saturating_from_rational(3, 1))),
@@ -765,7 +774,7 @@ fn test_honzon_module() {
 				Change::NoChange,
 			));
 			assert_ok!(CdpEngineModule::liquidate(
-				<Runtime as frame_system::Config>::Origin::none(),
+				Origin::none(),
 				RENBTC,
 				MultiAddress::Id(AccountId::from(ALICE))
 			));
@@ -793,7 +802,7 @@ fn test_cdp_engine_module() {
 		.build()
 		.execute_with(|| {
 			assert_ok!(CdpEngineModule::set_collateral_params(
-				<Runtime as frame_system::Config>::Origin::root(),
+				Origin::root(),
 				RENBTC,
 				Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
 				Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
@@ -1123,7 +1132,7 @@ fn test_nft_module() {
 			assert_eq!(Balances::free_balance(AccountId::from(ALICE)), 1_000 * dollar(ACA));
 			assert_eq!(Balances::reserved_balance(AccountId::from(ALICE)), 0);
 			assert_ok!(NFT::create_class(
-				origin_of(AccountId::from(ALICE)),
+				Origin::signed(AccountId::from(ALICE)),
 				metadata.clone(),
 				module_nft::Properties(module_nft::ClassProperty::Transferable | module_nft::ClassProperty::Burnable)
 			));
@@ -1145,24 +1154,24 @@ fn test_nft_module() {
 				true
 			);
 			assert_ok!(NFT::mint(
-				origin_of(NftPalletId::get().into_sub_account(0)),
+				Origin::signed(NftPalletId::get().into_sub_account(0)),
 				MultiAddress::Id(AccountId::from(BOB)),
 				0,
 				metadata.clone(),
 				1
 			));
-			assert_ok!(NFT::burn(origin_of(AccountId::from(BOB)), (0, 0)));
+			assert_ok!(NFT::burn(Origin::signed(AccountId::from(BOB)), (0, 0)));
 			assert_eq!(Balances::free_balance(AccountId::from(BOB)), CreateTokenDeposit::get());
 			assert_noop!(
 				NFT::destroy_class(
-					origin_of(NftPalletId::get().into_sub_account(0)),
+					Origin::signed(NftPalletId::get().into_sub_account(0)),
 					0,
 					MultiAddress::Id(AccountId::from(BOB))
 				),
 				pallet_proxy::Error::<Runtime>::NotFound
 			);
 			assert_ok!(NFT::destroy_class(
-				origin_of(NftPalletId::get().into_sub_account(0)),
+				Origin::signed(NftPalletId::get().into_sub_account(0)),
 				0,
 				MultiAddress::Id(AccountId::from(ALICE))
 			));
@@ -1347,7 +1356,7 @@ fn test_multicurrency_precompile_module() {
 				EvmAccounts::eth_sign(&alice_key(), &AccountId::from(ALICE).encode(), &[][..])
 			));
 			assert_ok!(DexModule::list_trading_pair(
-				<Runtime as frame_system::Config>::Origin::root(),
+				Origin::root(),
 				CurrencyId::Erc20(erc20_address_0()),
 				CurrencyId::Erc20(erc20_address_1()),
 				10,
@@ -1360,7 +1369,7 @@ fn test_multicurrency_precompile_module() {
 			// CurrencyId::DexShare(Erc20, Erc20)
 			<EVM as EVMTrait<AccountId>>::set_origin(MockAddressMapping::get_account_id(&alice_evm_addr()));
 			assert_ok!(DexModule::add_liquidity(
-				origin_of(MockAddressMapping::get_account_id(&alice_evm_addr())),
+				Origin::signed(MockAddressMapping::get_account_id(&alice_evm_addr())),
 				CurrencyId::Erc20(erc20_address_0()),
 				CurrencyId::Erc20(erc20_address_1()),
 				100,
@@ -1554,6 +1563,59 @@ fn should_not_kill_contract_on_transfer_all_tokens() {
 			// should be gone
 			assert!(!System::account_exists(&contract_account_id));
 		});
+}
+
+#[test]
+fn test_vesting_use_relaychain_block_number() {
+	ExtBuilder::default().build().execute_with(|| {
+		let treasury: AccountId = TreasuryPalletId::get().into_account();
+
+		assert_ok!(Balances::set_balance(
+			Origin::root(),
+			treasury.clone().into(),
+			1_000 * dollar(ACA),
+			0
+		));
+
+		assert_ok!(Vesting::vested_transfer(
+			Origin::signed(treasury),
+			alice().into(),
+			VestingSchedule {
+				start: 10,
+				period: 2,
+				period_count: 5,
+				per_period: 3 * dollar(ACA),
+			}
+		));
+
+		assert_eq!(Balances::free_balance(&alice()), 15 * dollar(ACA));
+		assert_eq!(Balances::usable_balance(&alice()), 0);
+
+		set_relaychain_block_number(10);
+
+		assert_ok!(Vesting::claim(Origin::signed(alice())));
+		assert_eq!(Balances::usable_balance(&alice()), 0);
+
+		set_relaychain_block_number(12);
+
+		assert_ok!(Vesting::claim(Origin::signed(alice())));
+		assert_eq!(Balances::usable_balance(&alice()), 3 * dollar(ACA));
+
+		set_relaychain_block_number(15);
+
+		assert_ok!(Vesting::claim(Origin::signed(alice())));
+		assert_eq!(Balances::usable_balance(&alice()), 6 * dollar(ACA));
+
+		set_relaychain_block_number(20);
+
+		assert_ok!(Vesting::claim(Origin::signed(alice())));
+		assert_eq!(Balances::usable_balance(&alice()), 15 * dollar(ACA));
+
+		set_relaychain_block_number(22);
+
+		assert_ok!(Vesting::claim(Origin::signed(alice())));
+		assert_eq!(Balances::usable_balance(&alice()), 15 * dollar(ACA));
+	});
 }
 
 // #[test]

@@ -22,6 +22,7 @@
 
 use frame_support::{
 	parameter_types,
+	traits::Contains,
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, WEIGHT_PER_MILLIS},
 		DispatchClass, Weight,
@@ -30,10 +31,16 @@ use frame_support::{
 use frame_system::limits;
 pub use module_support::{ExchangeRate, PrecompileCallerFilter, Price, Rate, Ratio};
 use primitives::{
-	Balance, CurrencyId, PRECOMPILE_ADDRESS_START, PREDEPLOY_ADDRESS_START, SYSTEM_CONTRACT_ADDRESS_PREFIX,
+	Balance, BlockNumber, CurrencyId, PRECOMPILE_ADDRESS_START, PREDEPLOY_ADDRESS_START, SYSTEM_CONTRACT_ADDRESS_PREFIX,
 };
 use sp_core::H160;
-use sp_runtime::{traits::Convert, transaction_validity::TransactionPriority, Perbill};
+use sp_runtime::{
+	// TODO: move after https://github.com/paritytech/substrate/pull/9209
+	offchain::storage_lock::BlockNumberProvider,
+	traits::Convert,
+	transaction_validity::TransactionPriority,
+	Perbill,
+};
 use static_assertions::const_assert;
 
 mod homa;
@@ -131,8 +138,8 @@ parameter_types! {
 		.saturating_sub(BlockExecutionWeight::get());
 }
 
-pub struct RelaychainValidatorFilter;
-impl<AccountId> orml_traits::Contains<AccountId> for RelaychainValidatorFilter {
+pub struct DummyNomineeFilter;
+impl<AccountId> Contains<AccountId> for DummyNomineeFilter {
 	fn contains(_: &AccountId) -> bool {
 		true
 	}
@@ -153,6 +160,18 @@ pub fn millicent(currency_id: CurrencyId) -> Balance {
 
 pub fn microcent(currency_id: CurrencyId) -> Balance {
 	millicent(currency_id) / 1000
+}
+
+pub struct RelaychainBlockNumberProvider<T>(sp_std::marker::PhantomData<T>);
+
+impl<T: cumulus_pallet_parachain_system::Config> BlockNumberProvider for RelaychainBlockNumberProvider<T> {
+	type BlockNumber = BlockNumber;
+
+	fn current_block_number() -> Self::BlockNumber {
+		cumulus_pallet_parachain_system::Pallet::<T>::validation_data()
+			.map(|d| d.relay_parent_number)
+			.unwrap_or_default()
+	}
 }
 
 #[cfg(test)]
