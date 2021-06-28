@@ -16,6 +16,40 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+//! # Incentives Module
+//!
+//! ## Overview
+//!
+//! Acala platform need support different types of rewards for some other protocol.
+//! Each type of reward has a pool with its own reward currency type and reward accumulation
+//! mechanism. ORML rewards module records the total shares, total rewards anduser shares of
+//! specific pool. Incentives module provides hooks to other protocals to manage shares, accumulates
+//! rewards and distributes rewards to users based on their shares.
+//!
+//! Pool types:
+//! 1. LoansIncentive: this is platform‘s reward to users of Honzon protocol, reward currency type
+//! is native currency.
+//! 2. DexIncentive: this is platform‘s reward to makers of DEX, reward currency type is native
+//! currency.
+//! 3. HomaIncentive: this is platform‘s reward to users of Homa protocol, reward currency
+//! type is native currency.
+//! 4. DexSaving: this is Honzon protocol's extra reward to makers of DEX because they participate
+//! in the liquidation of unsafe CDP, reward currency type is stable currency.
+//! 5. HomaValidatorAllowance: this is third party's allowance to guarantor of Homa protocol, reward
+//! currency type is liquid currency.
+//!
+//! Reward sources:
+//! 1. Native currency(ACA/KAR): reward comes from unreleased reservation because the economic
+//! mechanism of Acala is not an inflation model.
+//! 2. Stable currency(AUSD/KUSD): reward comes from debit pool of CDP treasury.
+//! 3. Liquid currency(LDOT/LKSM): reward comes from the transfer of other accounts(Usually are the
+//! validators on the relay chain).
+//!
+//! Reward accumulation:
+//! 1. LoansIncentive/DexIncentive/HomaIncentive/DexSaving: the fixed blocks is
+//! period(AccumulatePeriod), and on the beginning of each period will accumulate reward.
+//! 2. HomaValidatorAllowance: transfer rewards into the vault account.
+
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
 #![allow(clippy::upper_case_acronyms)]
@@ -25,7 +59,7 @@ use frame_system::pallet_prelude::*;
 use orml_traits::{Happened, MultiCurrency, RewardHandler};
 use primitives::{Amount, Balance, CurrencyId};
 use sp_runtime::{
-	traits::{AccountIdConversion, MaybeDisplay, UniqueSaturatedInto, Zero},
+	traits::{AccountIdConversion, MaybeDisplay, One, UniqueSaturatedInto, Zero},
 	DispatchResult, FixedPointNumber, RuntimeDebug,
 };
 use sp_std::{fmt::Debug, vec::Vec};
@@ -129,6 +163,8 @@ pub mod module {
 		InvalidCurrencyId,
 		/// Invalid pool id
 		InvalidPoolId,
+		/// Invalid rate
+		InvalidRate,
 	}
 
 	#[pallet::event]
@@ -138,8 +174,20 @@ pub mod module {
 		DepositDexShare(T::AccountId, CurrencyId, Balance),
 		/// Withdraw DEX share. \[who, dex_share_type, withdraw_amount\]
 		WithdrawDexShare(T::AccountId, CurrencyId, Balance),
-		/// Claim rewards. \[who, pool_id\]
-		ClaimRewards(T::AccountId, PoolId<T::RelaychainAccountId>),
+		/// Payout rewards. \[who, pool_id, reward_currency_type, actual_payout, deduction_amount\]
+		PayoutRewards(
+			T::AccountId,
+			PoolId<T::RelaychainAccountId>,
+			CurrencyId,
+			Balance,
+			Balance,
+		),
+		/// Incentive reward amount updated. \[pool_id, reward_amount_per_period\]
+		IncentiveRewardAmountUpdated(PoolId<T::RelaychainAccountId>, Balance),
+		/// Saving reward rate updated. \[pool_id, reward_rate_per_period\]
+		SavingRewardRateUpdated(PoolId<T::RelaychainAccountId>, Rate),
+		/// Payout deduction rate updated. \[pool_id, deduction_rate\]
+		PayoutDeductionRateUpdated(PoolId<T::RelaychainAccountId>, Rate),
 	}
 
 	/// Mapping from pool to its fixed reward amount per period.
@@ -156,6 +204,14 @@ pub mod module {
 	#[pallet::storage]
 	#[pallet::getter(fn dex_saving_reward_rate)]
 	pub type DexSavingRewardRate<T: Config> =
+		StorageMap<_, Twox64Concat, PoolId<T::RelaychainAccountId>, Rate, ValueQuery>;
+
+	/// Mapping from pool to its payout deduction rate.
+	///
+	/// PayoutDeductionRates: map PoolId => Rate
+	#[pallet::storage]
+	#[pallet::getter(fn payout_deduction_rates)]
+	pub type PayoutDeductionRates<T: Config> =
 		StorageMap<_, Twox64Concat, PoolId<T::RelaychainAccountId>, Rate, ValueQuery>;
 
 	#[pallet::pallet]
@@ -296,7 +352,6 @@ pub mod module {
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 			<orml_rewards::Pallet<T>>::claim_rewards(&who, &pool_id);
-			Self::deposit_event(Event::ClaimRewards(who, pool_id));
 			Ok(().into())
 		}
 
@@ -317,8 +372,8 @@ pub mod module {
 						return Err(Error::<T>::InvalidPoolId.into());
 					}
 				}
-
-				IncentiveRewardAmount::<T>::insert(pool_id, amount);
+				IncentiveRewardAmount::<T>::insert(&pool_id, amount);
+				Self::deposit_event(Event::IncentiveRewardAmountUpdated(pool_id, amount));
 			}
 			Ok(().into())
 		}
@@ -339,7 +394,29 @@ pub mod module {
 						return Err(Error::<T>::InvalidPoolId.into());
 					}
 				}
-				DexSavingRewardRate::<T>::insert(pool_id, rate);
+				DexSavingRewardRate::<T>::insert(&pool_id, rate);
+				Self::deposit_event(Event::SavingRewardRateUpdated(pool_id, rate));
+			}
+			Ok(().into())
+		}
+
+		#[pallet::weight(<T as Config>::WeightInfo::update_payout_deduction_rates(updates.len() as u32))]
+		#[transactional]
+		pub fn update_payout_deduction_rates(
+			origin: OriginFor<T>,
+			updates: Vec<(PoolId<T::RelaychainAccountId>, Rate)>,
+		) -> DispatchResultWithPostInfo {
+			T::UpdateOrigin::ensure_origin(origin)?;
+			for (pool_id, deduction_rate) in updates {
+				match pool_id {
+					PoolId::DexSaving(currency_id) | PoolId::DexIncentive(currency_id) => {
+						ensure!(currency_id.is_dex_share_currency_id(), Error::<T>::InvalidCurrencyId);
+					}
+					_ => {}
+				}
+				ensure!(deduction_rate <= Rate::one(), Error::<T>::InvalidRate);
+				PayoutDeductionRates::<T>::insert(&pool_id, deduction_rate);
+				Self::deposit_event(Event::PayoutDeductionRateUpdated(pool_id, deduction_rate));
 			}
 			Ok(().into())
 		}
@@ -459,25 +536,49 @@ impl<T: Config> RewardHandler<T::AccountId> for Pallet<T> {
 	type Balance = Balance;
 	type PoolId = PoolId<T::RelaychainAccountId>;
 
-	fn payout(who: &T::AccountId, pool_id: &Self::PoolId, amount: Self::Balance) {
+	fn payout(who: &T::AccountId, pool_id: &Self::PoolId, payout_amount: Self::Balance) {
+		if payout_amount.is_zero() {
+			return;
+		}
+
 		let currency_id = match pool_id {
 			PoolId::LoansIncentive(_) | PoolId::DexIncentive(_) | PoolId::HomaIncentive => T::NativeCurrencyId::get(),
 			PoolId::DexSaving(_) => T::StableCurrencyId::get(),
 			PoolId::HomaValidatorAllowance(_) => T::LiquidCurrencyId::get(),
 		};
 
-		// payout the reward to user from the pool. it should not affect the
+		// calculate actual payout and deduction amount
+		let (actual_payout, deduction_amount) = {
+			let deduction_amount = Self::payout_deduction_rates(pool_id)
+				.saturating_mul_int(payout_amount)
+				.min(payout_amount);
+			if !deduction_amount.is_zero() {
+				// re-accumulate deduction to rewards pool if deduction amount is not zero
+				<orml_rewards::Pallet<T>>::accumulate_reward(pool_id, deduction_amount);
+			}
+			(payout_amount.saturating_sub(deduction_amount), deduction_amount)
+		};
+
+		// payout the reward(exclude deduction) to user from the pool. it should not affect the
 		// process, ignore the result to continue. if it fails, just the user will not
 		// be rewarded, there will not increase user balance.
-		let res = T::Currency::transfer(currency_id, &T::RewardsVaultAccountId::get(), &who, amount);
+		let res = T::Currency::transfer(currency_id, &T::RewardsVaultAccountId::get(), &who, actual_payout);
 		if let Err(e) = res {
 			log::warn!(
 				target: "incentives",
 				"transfer: failed to transfer {:?} {:?} from {:?} to {:?}: {:?}. \
 				This is unexpected but should be safe",
-				amount, currency_id, T::RewardsVaultAccountId::get(), who, e
+				actual_payout, currency_id, T::RewardsVaultAccountId::get(), who, e
 			);
 			debug_assert!(false);
 		}
+
+		Self::deposit_event(Event::PayoutRewards(
+			who.clone(),
+			pool_id.clone(),
+			currency_id,
+			actual_payout,
+			deduction_amount,
+		));
 	}
 }
