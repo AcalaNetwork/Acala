@@ -84,7 +84,10 @@ pub mod pallet {
 		BoundedVec, PalletId,
 	};
 	use frame_support::{
-		sp_runtime::traits::{AccountIdConversion, Zero},
+		sp_runtime::{
+			traits::{AccountIdConversion, Zero},
+			Permill,
+		},
 		weights::DispatchClass,
 	};
 	use frame_system::pallet_prelude::*;
@@ -95,6 +98,7 @@ pub mod pallet {
 	use sp_std::{convert::TryInto, vec};
 
 	pub const RESERVE_ID: ReserveIdentifier = ReserveIdentifier::CollatorSelection;
+	pub const POINT_PER_BLOCK: u32 = 10;
 
 	type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as SystemConfig>::AccountId>>::Balance;
 
@@ -141,6 +145,14 @@ pub mod pallet {
 		/// Maximum number of invulnerables.
 		#[pallet::constant]
 		type MaxInvulnerables: Get<u32>;
+
+		/// Blocks number per session.
+		#[pallet::constant]
+		type BlocksPerSession: Get<Self::BlockNumber>;
+
+		/// Will be kicked if block is not produced in threshold.
+		#[pallet::constant]
+		type CollatorKickThreshold: Get<Permill>;
 
 		/// The weight information of this pallet.
 		type WeightInfo: WeightInfo;
@@ -378,7 +390,7 @@ pub mod pallet {
 				<frame_system::Pallet<T>>::block_number(),
 			);
 			if <SessionPoints<T>>::contains_key(&author) {
-				<SessionPoints<T>>::mutate(author, |point| *point += 1);
+				<SessionPoints<T>>::mutate(author, |point| *point += POINT_PER_BLOCK);
 			}
 
 			frame_system::Pallet::<T>::register_extra_weight_unchecked(
@@ -437,15 +449,22 @@ pub mod pallet {
 		}
 
 		fn end_session(index: SessionIndex) {
-			let mut candidates_len = 0;
 			let mut removed_len = 0;
-			<SessionPoints<T>>::drain().for_each(|(who, point)| {
-				if point == 0 {
+			let session_points = <SessionPoints<T>>::drain().collect::<Vec<_>>();
+			let candidates_len: u32 = session_points.len() as u32;
+			for (who, point) in session_points {
+				let blocks_per_session: u32 = TryInto::try_into(T::BlocksPerSession::get()).unwrap_or_default();
+				let total_session_point: u32 = blocks_per_session.checked_mul(POINT_PER_BLOCK).unwrap_or_default();
+				let average_session_point: u32 = total_session_point.checked_div(candidates_len).unwrap_or_default();
+				let required_point: u32 = T::CollatorKickThreshold::get().mul_floor(average_session_point);
+				if point < required_point {
 					log::debug!(
-						"end session {:?} at #{:?}, remove candidate: {:?}",
+						"end session {:?} at #{:?}, remove candidate: {:?}, point: {:?}, required_point: {:?}",
 						index,
 						<frame_system::Pallet<T>>::block_number(),
 						who,
+						point,
+						required_point,
 					);
 					removed_len += 1;
 
@@ -455,11 +474,10 @@ pub mod pallet {
 						debug_assert!(false, "failed to remove candidate {:?}", why);
 					}
 				}
-				candidates_len += 1;
-			});
+			}
 
 			frame_system::Pallet::<T>::register_extra_weight_unchecked(
-				T::WeightInfo::end_session(candidates_len as u32, removed_len as u32),
+				T::WeightInfo::end_session(candidates_len, removed_len as u32),
 				DispatchClass::Mandatory,
 			);
 		}
