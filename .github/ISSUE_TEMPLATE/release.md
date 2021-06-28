@@ -1,7 +1,7 @@
 ---
 name: New Release
 about: Tracking issue for new releases
-title: Release checklist: VERSION
+title: "Release Checklist: VERSION"
 labels: a-release
 assignees: qwer951123, ntduan, shaunxw, wangjj9219
 
