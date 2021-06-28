@@ -49,6 +49,10 @@ assignees: qwer951123, ntduan, shaunxw, wangjj9219
 
 - [ ] Check new Github release is created with release logs.
 
+## Post Release
+
+- [ ] Notify Discord announcement channel
+
 ## Compatibility Checklist
 
 ### SDK & Tools
