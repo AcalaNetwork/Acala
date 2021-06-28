@@ -367,7 +367,7 @@ fn testnet_genesis(
 		},
 		evm: EVMConfig {
 			accounts: evm_genesis_accounts,
-			treasury: root_key.clone(),
+			treasury: root_key,
 		},
 		staking_pool: StakingPoolConfig {
 			staking_pool_params: module_staking_pool::Params {
@@ -582,7 +582,7 @@ fn mandala_genesis(
 		},
 		evm: EVMConfig {
 			accounts: evm_genesis_accounts,
-			treasury: root_key.clone(),
+			treasury: root_key,
 		},
 		staking_pool: StakingPoolConfig {
 			staking_pool_params: module_staking_pool::Params {
