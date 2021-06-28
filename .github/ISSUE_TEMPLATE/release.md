@@ -1,7 +1,7 @@
 ---
 name: New Release
 about: Tracking issue for new releases
-title: Release checklist
+title: Release checklist: VERSION
 labels: a-release
 assignees: qwer951123, ntduan, shaunxw, wangjj9219
 
@@ -15,8 +15,11 @@ assignees: qwer951123, ntduan, shaunxw, wangjj9219
 - Network: (Mandala | Karura | Acala | All)
 - Substrate version:
 - ORML version:
+  - Diff:
 - Cumulus version:
+  - Diff:
 - Polkadot version:
+  - Diff:
 
 ## Client Release
 
