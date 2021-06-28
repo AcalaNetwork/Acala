@@ -320,6 +320,13 @@ fn update_payout_deduction_rates_works() {
 			),
 			Error::<Runtime>::InvalidCurrencyId
 		);
+		assert_noop!(
+			IncentivesModule::update_payout_deduction_rates(
+				Origin::signed(4),
+				vec![(PoolId::DexSaving(DOT_AUSD_LP), Rate::saturating_from_rational(101, 100)),]
+			),
+			Error::<Runtime>::InvalidRate,
+		);
 
 		assert_eq!(
 			IncentivesModule::payout_deduction_rates(PoolId::DexSaving(DOT_AUSD_LP)),

@@ -59,7 +59,7 @@ use frame_system::pallet_prelude::*;
 use orml_traits::{Happened, MultiCurrency, RewardHandler};
 use primitives::{Amount, Balance, CurrencyId};
 use sp_runtime::{
-	traits::{AccountIdConversion, MaybeDisplay, UniqueSaturatedInto, Zero},
+	traits::{AccountIdConversion, MaybeDisplay, One, UniqueSaturatedInto, Zero},
 	DispatchResult, FixedPointNumber, RuntimeDebug,
 };
 use sp_std::{fmt::Debug, vec::Vec};
@@ -163,6 +163,8 @@ pub mod module {
 		InvalidCurrencyId,
 		/// Invalid pool id
 		InvalidPoolId,
+		/// Invalid rate
+		InvalidRate,
 	}
 
 	#[pallet::event]
@@ -412,6 +414,7 @@ pub mod module {
 					}
 					_ => {}
 				}
+				ensure!(deduction_rate <= Rate::one(), Error::<T>::InvalidRate);
 				PayoutDeductionRates::<T>::insert(&pool_id, deduction_rate);
 				Self::deposit_event(Event::PayoutDeductionRateUpdated(pool_id, deduction_rate));
 			}
