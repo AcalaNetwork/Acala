@@ -14,6 +14,7 @@ assignees: qwer951123, ntduan, shaunxw, wangjj9219
 - Scope: (Client only | Runtime only | Full release)
 - Network: (Mandala | Karura | Acala | All)
 - Substrate version:
+  - Diff:
 - ORML version:
   - Diff:
 - Cumulus version:
@@ -34,16 +35,19 @@ assignees: qwer951123, ntduan, shaunxw, wangjj9219
 - [ ] Verify extrinsic ordering has stayed the same. Bump `transaction_version` if not.
   - [ ] ORML
   - [ ] Substrate
+  - [ ] Cumulus
   - [ ] Acala
-- [ ] Verify new extrinsics have been correctly whitelisted/blacklisted for proxy filters
-- [ ] Verify benchmarks & weights have been updated for any modified runtime logics
-- [ ] Verify SDK & dApp compatibility with new runtime
-- [ ] Verify we included all the necessary migrations
+- [ ] Verify new extrinsics have been correctly whitelisted/blacklisted for proxy filters.
+- [ ] Verify benchmarks & weights have been updated for any modified runtime logics.
+- [ ] Verify SDK & dApp compatibility with new runtime.
+- [ ] Verify we included all the necessary migrations.
   - [ ] ORML
   - [ ] Substrate
+  - [ ] Cumulus
   - [ ] Acala
-- [ ] Verify new migrations complete successfully and the runtime state is correctly updated for any public networks
-  - [ ] Verify the execution time to perform runtime upgrade with Karura/Acala onchain data
+- [ ] Verify new migrations complete successfully and the runtime state is correctly updated for any public networks.
+  - [ ] Verify the execution time to perform runtime upgrade with Karura/Acala onchain data.
+- [ ] Verify the release log includes the hash of the wasm runtime and it is reproducible using `srtool`.
 
 ## All Releases
 
@@ -51,7 +55,7 @@ assignees: qwer951123, ntduan, shaunxw, wangjj9219
 
 ## Post Release
 
-- [ ] Notify Discord announcement channel
+- [ ] Notify Discord announcement channel.
 
 ## Compatibility Checklist
 
@@ -67,7 +71,7 @@ assignees: qwer951123, ntduan, shaunxw, wangjj9219
 - [ ] polkadot apps
 - [ ] Acala dApp
 
-### Wallet
+### Wallets
 
 - [ ] Polkawallet
 - [ ] Feareless
