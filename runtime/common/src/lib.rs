@@ -131,8 +131,8 @@ parameter_types! {
 		.saturating_sub(BlockExecutionWeight::get());
 }
 
-pub struct RelaychainValidatorFilter;
-impl<AccountId> orml_traits::Contains<AccountId> for RelaychainValidatorFilter {
+pub struct NomineeFilter;
+impl<AccountId> orml_traits::Contains<AccountId> for NomineeFilter {
 	fn contains(_: &AccountId) -> bool {
 		true
 	}

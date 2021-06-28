@@ -1254,7 +1254,8 @@ impl module_nominees_election::Config for Runtime {
 	type BondingDuration = NomineesElectionBondingDuration;
 	type NominateesCount = NominateesCount;
 	type MaxUnlockingChunks = MaxUnlockingChunks;
-	type RelaychainValidatorFilter = runtime_common::RelaychainValidatorFilter;
+	type NomineeFilter = runtime_common::NomineeFilter;
+	type WeightInfo = weights::module_nominees_election::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -2204,6 +2205,7 @@ impl_runtime_apis! {
 			orml_add_benchmark!(params, batches, module_auction_manager, benchmarking::auction_manager);
 			orml_add_benchmark!(params, batches, module_cdp_engine, benchmarking::cdp_engine);
 			orml_add_benchmark!(params, batches, module_collator_selection, benchmarking::collator_selection);
+			orml_add_benchmark!(params, batches, module_nominees_election, benchmarking::nominees_election);
 			orml_add_benchmark!(params, batches, module_emergency_shutdown, benchmarking::emergency_shutdown);
 			orml_add_benchmark!(params, batches, module_evm, benchmarking::evm);
 			orml_add_benchmark!(params, batches, module_honzon, benchmarking::honzon);
