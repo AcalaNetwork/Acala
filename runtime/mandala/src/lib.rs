@@ -907,7 +907,7 @@ impl EnsureOrigin<Origin> for EnsureRootOrTreasury {
 }
 
 parameter_types! {
-	pub MinVestedTransfer: Balance = 100 * dollar(ACA);
+	pub MinVestedTransfer: Balance = 0;
 	pub const MaxVestingSchedules: u32 = 100;
 }
 

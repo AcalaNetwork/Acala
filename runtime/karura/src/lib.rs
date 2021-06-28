@@ -881,7 +881,7 @@ impl EnsureOrigin<Origin> for EnsureKaruraFoundation {
 }
 
 parameter_types! {
-	pub MinVestedTransfer: Balance = 100 * dollar(KAR);
+	pub MinVestedTransfer: Balance = 0;
 	pub const MaxVestingSchedules: u32 = 100;
 }
 
