@@ -65,6 +65,7 @@ assignees: qwer951123, ntduan, shaunxw, wangjj9219
 - [ ] txwrapper
 - [ ] sidecar
 - [ ] acala-subql
+- [ ] oracle dispatcher
 
 ### dApps
 
