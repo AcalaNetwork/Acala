@@ -49,7 +49,7 @@ assignees: qwer951123, ntduan, shaunxw, wangjj9219
 
 - [ ] Check new Github release is created with release logs.
 
-## Compatibility checking list
+## Compatibility Checklist
 
 ### SDK & Tools
 
