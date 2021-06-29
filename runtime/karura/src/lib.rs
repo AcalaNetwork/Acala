@@ -1380,7 +1380,7 @@ construct_runtime!(
 		Tips: pallet_tips::{Pallet, Call, Storage, Event<T>} = 22,
 
 		// Parachain
-		ParachainSystem: cumulus_pallet_parachain_system::{Pallet, Call, Storage, Inherent, Event<T>} = 30,
+		ParachainSystem: cumulus_pallet_parachain_system::{Pallet, Call, Storage, Inherent, Config, Event<T>} = 30,
 		ParachainInfo: parachain_info::{Pallet, Storage, Config} = 31,
 
 		// Collator. The order of the 4 below are important and shall not change.

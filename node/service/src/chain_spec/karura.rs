@@ -39,7 +39,7 @@ use runtime_common::TokenInfo;
 
 pub type ChainSpec = sc_service::GenericChainSpec<karura_runtime::GenesisConfig, Extensions>;
 
-pub const PARA_ID: u32 = 2000;
+pub const PARA_ID: u32 = 2046;
 
 pub fn karura_config() -> Result<ChainSpec, String> {
 	ChainSpec::from_json_bytes(&include_bytes!("../../../../resources/karura-dist.json")[..])
@@ -316,5 +316,6 @@ fn karura_genesis(
 		// of this.
 		pallet_aura: Default::default(),
 		cumulus_pallet_aura_ext: Default::default(),
+		cumulus_pallet_parachain_system: Default::default(),
 	}
 }
