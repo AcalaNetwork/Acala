@@ -113,11 +113,9 @@ pub mod module {
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	#[pallet::metadata(Balance = "Balance", T::AccountId = "AccountId")]
 	pub enum Event<T: Config> {
-		/// Event for Compound Gateway
 		/// User has locked some asset and uploaded them into Compound.
 		AssetLockedTo(CurrencyId, Balance, T::AccountId),
 
-		/// Event for Acala
 		/// The user has unlocked some asset and downloaded them back into Acala.
 		AssetUnlocked(CurrencyId, Balance, T::AccountId),
 
@@ -130,7 +128,7 @@ pub mod module {
 		/// The future yield for CASH is set.
 		FutureYieldSet(Balance, CashYieldIndex, Moment),
 
-		/// Gateway's Admin has been updated.
+		/// Gateway's Admin Account has been updated.
 		GatewayAdminUpdated(T::AccountId),
 	}
 
