@@ -459,7 +459,8 @@ pub mod pallet {
 			let average_session_point: u32 = total_session_point.checked_div(candidates_len).unwrap_or_default();
 			let required_point: u32 = T::CollatorKickThreshold::get().mul_floor(average_session_point);
 			for (who, point) in session_points {
-				if point < required_point {
+				// required_point maybe is zero
+				if point < required_point || point.is_zero() {
 					log::debug!(
 						target: "collator-selection",
 						"end session {:?} at #{:?}, remove candidate: {:?}, point: {:?}, required_point: {:?}",
