@@ -219,6 +219,7 @@ impl<T: Config> PriceProvider<CurrencyId> for Pallet<T> {
 }
 
 /// https://en.wikipedia.org/wiki/Integer_square_root
+/// TODO: use https://github.com/paritytech/parity-common/pull/554 after it released
 fn integer_sqrt(n: U256) -> U256 {
 	if n < 2.into() {
 		return n;
