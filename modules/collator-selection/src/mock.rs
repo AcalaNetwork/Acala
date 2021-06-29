@@ -206,7 +206,6 @@ impl Config for Test {
 	type MinCandidates = MinCandidates;
 	type MaxCandidates = MaxCandidates;
 	type MaxInvulnerables = MaxInvulnerables;
-	type BlocksPerSession = Period;
 	type CollatorKickThreshold = CollatorKickThreshold;
 	type WeightInfo = ();
 }

@@ -146,10 +146,6 @@ pub mod pallet {
 		#[pallet::constant]
 		type MaxInvulnerables: Get<u32>;
 
-		/// Blocks number per session.
-		#[pallet::constant]
-		type BlocksPerSession: Get<Self::BlockNumber>;
-
 		/// Will be kicked if block is not produced in threshold.
 		#[pallet::constant]
 		type CollatorKickThreshold: Get<Permill>;
@@ -385,6 +381,7 @@ pub mod pallet {
 	{
 		fn note_author(author: T::AccountId) {
 			log::debug!(
+				target: "collator-selection",
 				"note author {:?} authored a block at #{:?}",
 				author,
 				<frame_system::Pallet<T>>::block_number(),
@@ -409,6 +406,7 @@ pub mod pallet {
 			let result = Self::assemble_collators(candidates);
 
 			log::debug!(
+				target: "collator-selection",
 				"assembling new collators for new session {:?} at #{:?}, candidates: {:?}",
 				index,
 				<frame_system::Pallet<T>>::block_number(),
@@ -436,6 +434,7 @@ pub mod pallet {
 			});
 
 			log::debug!(
+				target: "collator-selection",
 				"start session {:?} at #{:?}, candidates: {:?}",
 				index,
 				<frame_system::Pallet<T>>::block_number(),
@@ -452,13 +451,17 @@ pub mod pallet {
 			let mut removed_len = 0;
 			let session_points = <SessionPoints<T>>::drain().collect::<Vec<_>>();
 			let candidates_len: u32 = session_points.len() as u32;
+
+			let total_session_point: u32 = session_points.iter().fold(0, |mut sum, (_, point)| {
+				sum += point;
+				sum
+			});
+			let average_session_point: u32 = total_session_point.checked_div(candidates_len).unwrap_or_default();
+			let required_point: u32 = T::CollatorKickThreshold::get().mul_floor(average_session_point);
 			for (who, point) in session_points {
-				let blocks_per_session: u32 = TryInto::try_into(T::BlocksPerSession::get()).unwrap_or_default();
-				let total_session_point: u32 = blocks_per_session.checked_mul(POINT_PER_BLOCK).unwrap_or_default();
-				let average_session_point: u32 = total_session_point.checked_div(candidates_len).unwrap_or_default();
-				let required_point: u32 = T::CollatorKickThreshold::get().mul_floor(average_session_point);
 				if point < required_point {
 					log::debug!(
+						target: "collator-selection",
 						"end session {:?} at #{:?}, remove candidate: {:?}, point: {:?}, required_point: {:?}",
 						index,
 						<frame_system::Pallet<T>>::block_number(),
@@ -470,7 +473,9 @@ pub mod pallet {
 
 					let outcome = Self::try_remove_candidate(&who);
 					if let Err(why) = outcome {
-						log::warn!("Failed to remove candidate {:?}", why);
+						log::warn!(
+							target: "collator-selection",
+							"Failed to remove candidate {:?}", why);
 						debug_assert!(false, "failed to remove candidate {:?}", why);
 					}
 				}
