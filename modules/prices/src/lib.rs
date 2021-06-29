@@ -33,10 +33,12 @@ use frame_support::{pallet_prelude::*, transactional};
 use frame_system::pallet_prelude::*;
 use orml_traits::{DataFeeder, DataProvider, MultiCurrency};
 use primitives::{currency::DexShare, Balance, CurrencyId};
+use sp_core::U256;
 use sp_runtime::{
 	traits::{CheckedDiv, CheckedMul},
 	FixedPointNumber,
 };
+use sp_std::convert::TryInto;
 use support::{CurrencyIdMapping, DEXManager, ExchangeRateProvider, Price, PriceProvider};
 
 mod mock;
@@ -178,17 +180,12 @@ impl<T: Config> PriceProvider<CurrencyId> for Pallet<T> {
 				DexShare::Token(token) => CurrencyId::Token(token),
 				DexShare::Erc20(address) => CurrencyId::Erc20(address),
 			};
-			let (pool_0, _) = T::DEX::get_liquidity_pool(token_0, token_1);
-			let total_shares = T::Currency::total_issuance(currency_id);
 
 			return {
-				if let (Some(ratio), Some(price_0)) = (
-					Price::checked_from_rational(pool_0, total_shares),
-					Self::get_price(token_0),
-				) {
-					ratio
-						.checked_mul(&price_0)
-						.and_then(|n| n.checked_mul(&Price::saturating_from_integer(2)))
+				if let (Some(price_0), Some(price_1)) = (Self::get_price(token_0), Self::get_price(token_1)) {
+					let (pool_0, pool_1) = T::DEX::get_liquidity_pool(token_0, token_1);
+					let total_shares = T::Currency::total_issuance(currency_id);
+					lp_token_fair_price(total_shares, pool_0, pool_1, price_0, price_1)
 				} else {
 					None
 				}
@@ -197,6 +194,7 @@ impl<T: Config> PriceProvider<CurrencyId> for Pallet<T> {
 			// if locked price exists, return it, otherwise return latest price from oracle.
 			Self::locked_price(currency_id).or_else(|| T::Source::get(&currency_id))
 		};
+
 		let maybe_adjustment_multiplier = 10u128.checked_pow(T::CurrencyIdMapping::decimals(currency_id)?.into());
 
 		if let (Some(feed_price), Some(adjustment_multiplier)) = (maybe_feed_price, maybe_adjustment_multiplier) {
@@ -218,4 +216,42 @@ impl<T: Config> PriceProvider<CurrencyId> for Pallet<T> {
 		LockedPrice::<T>::remove(currency_id);
 		<Pallet<T>>::deposit_event(Event::UnlockPrice(currency_id));
 	}
+}
+
+/// https://en.wikipedia.org/wiki/Integer_square_root
+/// TODO: use https://github.com/paritytech/parity-common/pull/554 after it released
+fn integer_sqrt(n: U256) -> U256 {
+	if n < 2.into() {
+		return n;
+	}
+
+	let small_candidate = integer_sqrt(n >> 2) << 1;
+
+	let large_candidate = small_candidate + 1;
+
+	if large_candidate * large_candidate > n {
+		small_candidate
+	} else {
+		large_candidate
+	}
+}
+
+/// The fair price is determined by the external feed price and the size of the liquidity pool:
+/// https://blog.alphafinance.io/fair-lp-token-pricing/
+/// fair_price = (pool_0 * pool_1)^0.5 * (price_0 * price_1)^0.5 / total_shares * 2
+fn lp_token_fair_price(
+	total_shares: Balance,
+	pool_a: Balance,
+	pool_b: Balance,
+	price_a: Price,
+	price_b: Price,
+) -> Option<Price> {
+	integer_sqrt(U256::from(pool_a).saturating_mul(U256::from(pool_b)))
+		.saturating_mul(integer_sqrt(
+			U256::from(price_a.into_inner()).saturating_mul(U256::from(price_b.into_inner())),
+		))
+		.checked_div(U256::from(total_shares))
+		.and_then(|n| n.checked_mul(U256::from(2)))
+		.and_then(|r| TryInto::<u128>::try_into(r).ok())
+		.map(Price::from_inner)
 }

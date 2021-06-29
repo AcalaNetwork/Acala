@@ -70,7 +70,7 @@ do
 	docker rm -f bootnotes > /dev/null
 done
 
-if [ -n $FAIL ]; then
+if [ -n "$FAIL" ]; then
 	echo "Bootnotes need to be checked."
 	exit 1
 fi

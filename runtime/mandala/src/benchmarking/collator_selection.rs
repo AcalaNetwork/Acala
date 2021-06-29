@@ -17,13 +17,14 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-	AccountId, Balance, Balances, CollatorSelection, Event, MaxCandidates, MaxInvulnerables, MinCandidates, Runtime,
-	Session, SessionKeys, System,
+	AccountId, Balance, Balances, CollatorKickThreshold, CollatorSelection, Event, MaxCandidates, MaxInvulnerables,
+	MinCandidates, Period, Runtime, Session, SessionKeys, System,
 };
 
 use frame_benchmarking::{account, whitelisted_caller};
 use frame_support::{assert_ok, pallet_prelude::Decode, traits::Currency};
 use frame_system::RawOrigin;
+use module_collator_selection::POINT_PER_BLOCK;
 use orml_benchmarking::{runtime_benchmarks, whitelist_account};
 use pallet_authorship::EventHandler;
 use pallet_session::SessionManager;
@@ -96,7 +97,8 @@ runtime_benchmarks! {
 	// worse case is when we have all the max-candidate slots filled except one, and we fill that
 	// one.
 	register_as_candidate {
-		let c in 1 .. MaxCandidates::get();
+		// MinCandidates = 5, so begin with 5.
+		let c in 5 .. MaxCandidates::get();
 
 		module_collator_selection::CandidacyBond::<Runtime>::put(Balances::minimum_balance());
 		module_collator_selection::DesiredCandidates::<Runtime>::put(c);
@@ -216,7 +218,7 @@ runtime_benchmarks! {
 				// point = 0, will be removed.
 				module_collator_selection::SessionPoints::<Runtime>::insert(&candidate, 0);
 			} else {
-				module_collator_selection::SessionPoints::<Runtime>::insert(&candidate, 1);
+				module_collator_selection::SessionPoints::<Runtime>::insert(&candidate, CollatorKickThreshold::get().mul_floor(Period::get() * POINT_PER_BLOCK));
 			}
 			count += 1;
 		});

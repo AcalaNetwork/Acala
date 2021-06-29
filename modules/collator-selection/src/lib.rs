@@ -84,7 +84,10 @@ pub mod pallet {
 		BoundedVec, PalletId,
 	};
 	use frame_support::{
-		sp_runtime::traits::{AccountIdConversion, Zero},
+		sp_runtime::{
+			traits::{AccountIdConversion, Zero},
+			Permill,
+		},
 		weights::DispatchClass,
 	};
 	use frame_system::pallet_prelude::*;
@@ -95,6 +98,7 @@ pub mod pallet {
 	use sp_std::{convert::TryInto, vec};
 
 	pub const RESERVE_ID: ReserveIdentifier = ReserveIdentifier::CollatorSelection;
+	pub const POINT_PER_BLOCK: u32 = 10;
 
 	type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as SystemConfig>::AccountId>>::Balance;
 
@@ -141,6 +145,10 @@ pub mod pallet {
 		/// Maximum number of invulnerables.
 		#[pallet::constant]
 		type MaxInvulnerables: Get<u32>;
+
+		/// Will be kicked if block is not produced in threshold.
+		#[pallet::constant]
+		type CollatorKickThreshold: Get<Permill>;
 
 		/// The weight information of this pallet.
 		type WeightInfo: WeightInfo;
@@ -373,12 +381,13 @@ pub mod pallet {
 	{
 		fn note_author(author: T::AccountId) {
 			log::debug!(
+				target: "collator-selection",
 				"note author {:?} authored a block at #{:?}",
 				author,
 				<frame_system::Pallet<T>>::block_number(),
 			);
 			if <SessionPoints<T>>::contains_key(&author) {
-				<SessionPoints<T>>::mutate(author, |point| *point += 1);
+				<SessionPoints<T>>::mutate(author, |point| *point += POINT_PER_BLOCK);
 			}
 
 			frame_system::Pallet::<T>::register_extra_weight_unchecked(
@@ -397,6 +406,7 @@ pub mod pallet {
 			let result = Self::assemble_collators(candidates);
 
 			log::debug!(
+				target: "collator-selection",
 				"assembling new collators for new session {:?} at #{:?}, candidates: {:?}",
 				index,
 				<frame_system::Pallet<T>>::block_number(),
@@ -424,6 +434,7 @@ pub mod pallet {
 			});
 
 			log::debug!(
+				target: "collator-selection",
 				"start session {:?} at #{:?}, candidates: {:?}",
 				index,
 				<frame_system::Pallet<T>>::block_number(),
@@ -437,29 +448,42 @@ pub mod pallet {
 		}
 
 		fn end_session(index: SessionIndex) {
-			let mut candidates_len = 0;
 			let mut removed_len = 0;
-			<SessionPoints<T>>::drain().for_each(|(who, point)| {
-				if point == 0 {
+			let session_points = <SessionPoints<T>>::drain().collect::<Vec<_>>();
+			let candidates_len: u32 = session_points.len() as u32;
+
+			let total_session_point: u32 = session_points.iter().fold(0, |mut sum, (_, point)| {
+				sum += point;
+				sum
+			});
+			let average_session_point: u32 = total_session_point.checked_div(candidates_len).unwrap_or_default();
+			let required_point: u32 = T::CollatorKickThreshold::get().mul_floor(average_session_point);
+			for (who, point) in session_points {
+				// required_point maybe is zero
+				if point <= required_point {
 					log::debug!(
-						"end session {:?} at #{:?}, remove candidate: {:?}",
+						target: "collator-selection",
+						"end session {:?} at #{:?}, remove candidate: {:?}, point: {:?}, required_point: {:?}",
 						index,
 						<frame_system::Pallet<T>>::block_number(),
 						who,
+						point,
+						required_point,
 					);
 					removed_len += 1;
 
 					let outcome = Self::try_remove_candidate(&who);
 					if let Err(why) = outcome {
-						log::warn!("Failed to remove candidate {:?}", why);
+						log::warn!(
+							target: "collator-selection",
+							"Failed to remove candidate {:?}", why);
 						debug_assert!(false, "failed to remove candidate {:?}", why);
 					}
 				}
-				candidates_len += 1;
-			});
+			}
 
 			frame_system::Pallet::<T>::register_extra_weight_unchecked(
-				T::WeightInfo::end_session(candidates_len as u32, removed_len as u32),
+				T::WeightInfo::end_session(candidates_len, removed_len as u32),
 				DispatchClass::Mandatory,
 			);
 		}
