@@ -188,7 +188,7 @@ create_currency_id! {
 		// Reserve for RENBTC = 132
 
 		// External Ecosystem
-		CASH("Compound CASH", 8) = 5,
+		CASH("Compound CASH", 8) = 140,
 	}
 }
 
