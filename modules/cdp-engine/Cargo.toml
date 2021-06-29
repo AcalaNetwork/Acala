@@ -18,6 +18,7 @@ sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v
 support = { package = "module-support", path = "../support", default-features = false }
 loans = { package = "module-loans", path = "../loans", default-features = false }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
+rand_chacha = { version = "0.2", default-features = false }
 
 [dev-dependencies]
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.5" }

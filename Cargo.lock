@@ -5322,6 +5322,7 @@ dependencies = [
  "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec",
+ "rand_chacha 0.2.2",
  "serde",
  "sp-application-crypto",
  "sp-core",
