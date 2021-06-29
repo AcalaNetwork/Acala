@@ -621,10 +621,7 @@ impl<T: Config> Pallet<T> {
 				(last_collateral_position, maybe_last_iterator_previous_key)
 			} else {
 				let mut rng = ChaChaRng::from_seed(sp_io::offchain::random_seed());
-				(
-					pick_u32(&mut rng, collateral_currency_ids.len().saturating_sub(1) as u32),
-					None,
-				)
+				(pick_u32(&mut rng, collateral_currency_ids.len() as u32), None)
 			};
 
 		// get the max iterationns config
@@ -945,7 +942,7 @@ impl<T: Config> RiskManager<T::AccountId, CurrencyId, Balance, Balance> for Pall
 	}
 }
 
-/// Pick a new PRN, in the range [0, `max`] (inclusive).
+/// Pick a new PRN, in the range [0, `max`) (exclusive).
 fn pick_u32<R: RngCore>(rng: &mut R, max: u32) -> u32 {
-	rng.next_u32() % (max + 1)
+	rng.next_u32() % max
 }
