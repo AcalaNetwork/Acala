@@ -16,10 +16,10 @@ orml-traits = { path = "../../orml/traits", default-features = false }
 module-support = { path = "../../modules/support", default-features = false }
 
 [dev-dependencies]
-sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.5", default-features = false }
-pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.5", default-features = false }
-module-currencies = { path = "../../modules/currencies", default-features = false }
-orml-tokens = { path = "../../orml/tokens", default-features = false}
+sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.5" }
+pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.5" }
+module-currencies = { path = "../../modules/currencies" }
+orml-tokens = { path = "../../orml/tokens"}
 
 [features]
 default = ["std"]
@@ -33,9 +33,5 @@ std = [
 	"primitives/std",
 	"orml-traits/std",
 	"module-support/std",
-	"sp-io/std",
-	"pallet-balances/std",
-	"module-currencies/std",
-	"orml-tokens/std",
 ]
 try-runtime = ["frame-support/try-runtime"]
