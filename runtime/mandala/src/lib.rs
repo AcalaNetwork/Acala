@@ -1154,10 +1154,11 @@ impl OnUnbalanced<NegativeImbalance> for DealWithFees {
 			let split = fees.ration(80, 20);
 			Treasury::on_unbalanced(split.0);
 
-			let numeric_amount = split.1.peek();
-			let staking_pot = CollatorSelection::account_id();
-			Balances::resolve_creating(&staking_pot, split.1);
-			System::deposit_event(pallet_balances::Event::Deposit(staking_pot, numeric_amount));
+			Balances::resolve_creating(&CollatorSelection::account_id(), split.1);
+			// Due to performance consideration remove the event.
+			// let numeric_amount = split.1.peek();
+			// let staking_pot = CollatorSelection::account_id();
+			// System::deposit_event(pallet_balances::Event::Deposit(staking_pot, numeric_amount));
 		}
 	}
 }
