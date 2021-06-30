@@ -274,24 +274,24 @@ polkadot-node-core-pvf = { git = "https://github.com/paritytech//polkadot", rev 
 polkadot-client = { git = "https://github.com/paritytech//polkadot", rev = "5d35bac7408a4cb12a578764217d06f3920b36aa" }
 
 [patch."https://github.com/paritytech/cumulus"]
-cumulus-primitives-core = { git = "https://github.com/paritytech//cumulus", rev = "87863098c78611d22edf51913b72dc92c04b4726" }
-cumulus-primitives-utility = { git = "https://github.com/paritytech//cumulus", rev = "87863098c78611d22edf51913b72dc92c04b4726" }
-cumulus-primitives-timestamp = { git = "https://github.com/paritytech//cumulus", rev = "87863098c78611d22edf51913b72dc92c04b4726" }
-cumulus-pallet-dmp-queue = { git = "https://github.com/paritytech//cumulus", rev = "87863098c78611d22edf51913b72dc92c04b4726" }
-cumulus-pallet-xcmp-queue = { git = "https://github.com/paritytech//cumulus", rev = "87863098c78611d22edf51913b72dc92c04b4726" }
-cumulus-pallet-xcm = { git = "https://github.com/paritytech//cumulus", rev = "87863098c78611d22edf51913b72dc92c04b4726" }
-cumulus-pallet-parachain-system  = { git = "https://github.com/paritytech//cumulus", rev = "87863098c78611d22edf51913b72dc92c04b4726" }
-cumulus-pallet-aura-ext = { git = "https://github.com/paritytech//cumulus", rev = "87863098c78611d22edf51913b72dc92c04b4726" }
-parachain-info  = { git = "https://github.com/paritytech//cumulus", rev = "87863098c78611d22edf51913b72dc92c04b4726" }
-cumulus-client-cli = { git = "https://github.com/paritytech//cumulus", rev = "87863098c78611d22edf51913b72dc92c04b4726" }
-cumulus-client-network = { git = "https://github.com/paritytech//cumulus", rev = "87863098c78611d22edf51913b72dc92c04b4726" }
-cumulus-client-service = { git = "https://github.com/paritytech//cumulus", rev = "87863098c78611d22edf51913b72dc92c04b4726" }
-cumulus-client-consensus-relay-chain = { git = "https://github.com/paritytech//cumulus", rev = "87863098c78611d22edf51913b72dc92c04b4726" }
-cumulus-client-consensus-aura = { git = "https://github.com/paritytech//cumulus", rev = "87863098c78611d22edf51913b72dc92c04b4726" }
-cumulus-client-consensus-common = { git = "https://github.com/paritytech//cumulus", rev = "87863098c78611d22edf51913b72dc92c04b4726" }
-# cumulus-pallet-xcm-handler = { git = "https://github.com/paritytech//cumulus", rev = "87863098c78611d22edf51913b72dc92c04b4726" }
-cumulus-primitives-parachain-inherent = { git = "https://github.com/paritytech//cumulus", rev = "87863098c78611d22edf51913b72dc92c04b4726" }
-cumulus-test-relay-sproof-builder = { git = "https://github.com/paritytech//cumulus", rev = "87863098c78611d22edf51913b72dc92c04b4726" }
+cumulus-primitives-core = { git = "https://github.com/paritytech//cumulus", rev = "c5c3abf7eb9d4fdfb588d6560efaa8dca66a8dbc" }
+cumulus-primitives-utility = { git = "https://github.com/paritytech//cumulus", rev = "c5c3abf7eb9d4fdfb588d6560efaa8dca66a8dbc" }
+cumulus-primitives-timestamp = { git = "https://github.com/paritytech//cumulus", rev = "c5c3abf7eb9d4fdfb588d6560efaa8dca66a8dbc" }
+cumulus-pallet-dmp-queue = { git = "https://github.com/paritytech//cumulus", rev = "c5c3abf7eb9d4fdfb588d6560efaa8dca66a8dbc" }
+cumulus-pallet-xcmp-queue = { git = "https://github.com/paritytech//cumulus", rev = "c5c3abf7eb9d4fdfb588d6560efaa8dca66a8dbc" }
+cumulus-pallet-xcm = { git = "https://github.com/paritytech//cumulus", rev = "c5c3abf7eb9d4fdfb588d6560efaa8dca66a8dbc" }
+cumulus-pallet-parachain-system  = { git = "https://github.com/paritytech//cumulus", rev = "c5c3abf7eb9d4fdfb588d6560efaa8dca66a8dbc" }
+cumulus-pallet-aura-ext = { git = "https://github.com/paritytech//cumulus", rev = "c5c3abf7eb9d4fdfb588d6560efaa8dca66a8dbc" }
+parachain-info  = { git = "https://github.com/paritytech//cumulus", rev = "c5c3abf7eb9d4fdfb588d6560efaa8dca66a8dbc" }
+cumulus-client-cli = { git = "https://github.com/paritytech//cumulus", rev = "c5c3abf7eb9d4fdfb588d6560efaa8dca66a8dbc" }
+cumulus-client-network = { git = "https://github.com/paritytech//cumulus", rev = "c5c3abf7eb9d4fdfb588d6560efaa8dca66a8dbc" }
+cumulus-client-service = { git = "https://github.com/paritytech//cumulus", rev = "c5c3abf7eb9d4fdfb588d6560efaa8dca66a8dbc" }
+cumulus-client-consensus-relay-chain = { git = "https://github.com/paritytech//cumulus", rev = "c5c3abf7eb9d4fdfb588d6560efaa8dca66a8dbc" }
+cumulus-client-consensus-aura = { git = "https://github.com/paritytech//cumulus", rev = "c5c3abf7eb9d4fdfb588d6560efaa8dca66a8dbc" }
+cumulus-client-consensus-common = { git = "https://github.com/paritytech//cumulus", rev = "c5c3abf7eb9d4fdfb588d6560efaa8dca66a8dbc" }
+# cumulus-pallet-xcm-handler = { git = "https://github.com/paritytech//cumulus", rev = "c5c3abf7eb9d4fdfb588d6560efaa8dca66a8dbc" }
+cumulus-primitives-parachain-inherent = { git = "https://github.com/paritytech//cumulus", rev = "c5c3abf7eb9d4fdfb588d6560efaa8dca66a8dbc" }
+cumulus-test-relay-sproof-builder = { git = "https://github.com/paritytech//cumulus", rev = "c5c3abf7eb9d4fdfb588d6560efaa8dca66a8dbc" }
 
 [patch."https://github.com/paritytech/grandpa-bridge-gadget"]
 pallet-beefy = { git = "https://github.com/paritytech//grandpa-bridge-gadget", rev = "299dd5fd3fabd99c3c919f1312001283ddc5b365" }
