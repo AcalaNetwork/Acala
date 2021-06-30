@@ -158,7 +158,11 @@ runtime_benchmarks! {
 			Balances::minimum_balance().checked_mul(2u32.into()).unwrap()
 		);
 		let author = account("author", 0, SEED);
-		assert!(Balances::free_balance(&author) == 0u32.into());
+		Balances::make_free_balance_be(
+			&author,
+			Balances::minimum_balance()
+		);
+		assert!(Balances::free_balance(&author) == Balances::minimum_balance());
 	}: {
 		CollatorSelection::note_author(author.clone())
 	}

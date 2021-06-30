@@ -80,12 +80,15 @@ pub mod pallet {
 		inherent::Vec,
 		pallet_prelude::*,
 		storage::bounded_btree_set::BoundedBTreeSet,
-		traits::{Currency, EnsureOrigin, NamedReservableCurrency, ValidatorRegistration, ValidatorSet},
+		traits::{
+			Currency, EnsureOrigin, ExistenceRequirement::KeepAlive, NamedReservableCurrency, ValidatorRegistration,
+			ValidatorSet,
+		},
 		BoundedVec, PalletId,
 	};
 	use frame_support::{
 		sp_runtime::{
-			traits::{AccountIdConversion, Zero},
+			traits::{AccountIdConversion, CheckedSub, Zero},
 			Permill,
 		},
 		weights::DispatchClass,
@@ -95,7 +98,7 @@ pub mod pallet {
 	use pallet_session::SessionManager;
 	use primitives::ReserveIdentifier;
 	use sp_staking::SessionIndex;
-	use sp_std::{convert::TryInto, vec};
+	use sp_std::{convert::TryInto, ops::Div, vec};
 
 	pub const RESERVE_ID: ReserveIdentifier = ReserveIdentifier::CollatorSelection;
 	pub const POINT_PER_BLOCK: u32 = 10;
@@ -386,6 +389,16 @@ pub mod pallet {
 				author,
 				<frame_system::Pallet<T>>::block_number(),
 			);
+			let pot = Self::account_id();
+			// assumes an ED will be sent to pot.
+			let reward = T::Currency::free_balance(&pot)
+				.checked_sub(&T::Currency::minimum_balance())
+				.unwrap_or_default()
+				.div(2u32.into());
+			// `reward` is half of pot account minus ED, this should never fail.
+			let _success = T::Currency::transfer(&pot, &author, reward, KeepAlive);
+			debug_assert!(_success.is_ok());
+
 			if <SessionPoints<T>>::contains_key(&author) {
 				<SessionPoints<T>>::mutate(author, |point| *point += POINT_PER_BLOCK);
 			}
