@@ -27,7 +27,7 @@ use frame_support::{
 };
 use mock::{
 	AccountId, BlockWeights, Call, Currencies, DEXModule, ExtBuilder, Origin, Runtime, TransactionPayment, ACA, ALICE,
-	AUSD, BOB, DOT,
+	AUSD, BOB, CHARLIE, DOT, FEE_UNBALANCED_AMOUNT, TIP_UNBALANCED_AMOUNT,
 };
 use orml_traits::MultiCurrency;
 use sp_runtime::{testing::TestXt, traits::One};
@@ -74,6 +74,46 @@ fn charges_fee() {
 			Currencies::free_balance(ACA, &ALICE),
 			(100000 - fee - fee2).unique_saturated_into()
 		);
+	});
+}
+
+#[test]
+fn signed_extension_transaction_payment_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		let fee = 23 * 2 + 1000; // len * byte + weight
+		let pre = ChargeTransactionPayment::<Runtime>::from(0)
+			.pre_dispatch(&ALICE, CALL, &INFO, 23)
+			.unwrap();
+		assert_eq!(Currencies::free_balance(ACA, &ALICE), 100000 - fee);
+		assert_ok!(ChargeTransactionPayment::<Runtime>::post_dispatch(
+			pre,
+			&INFO,
+			&POST_INFO,
+			23,
+			&Ok(())
+		));
+
+		let refund = 200; // 1000 - 800
+		assert_eq!(Currencies::free_balance(ACA, &ALICE), 100000 - fee + refund);
+		assert_eq!(FEE_UNBALANCED_AMOUNT.with(|a| a.borrow().clone()), fee - refund);
+		assert_eq!(TIP_UNBALANCED_AMOUNT.with(|a| a.borrow().clone()), 0);
+
+		FEE_UNBALANCED_AMOUNT.with(|a| *a.borrow_mut() = 0);
+
+		let pre = ChargeTransactionPayment::<Runtime>::from(5 /* tipped */)
+			.pre_dispatch(&CHARLIE, CALL, &INFO, 23)
+			.unwrap();
+		assert_eq!(Currencies::free_balance(ACA, &CHARLIE), 100000 - fee - 5);
+		assert_ok!(ChargeTransactionPayment::<Runtime>::post_dispatch(
+			pre,
+			&INFO,
+			&POST_INFO,
+			23,
+			&Ok(())
+		));
+		assert_eq!(Currencies::free_balance(ACA, &CHARLIE), 100000 - fee - 5 + refund);
+		assert_eq!(FEE_UNBALANCED_AMOUNT.with(|a| a.borrow().clone()), fee - refund);
+		assert_eq!(TIP_UNBALANCED_AMOUNT.with(|a| a.borrow().clone()), 5);
 	});
 }
 
