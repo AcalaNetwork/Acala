@@ -42,6 +42,7 @@ pub type BlockNumber = u64;
 
 pub const ALICE: AccountId = AccountId::new([1u8; 32]);
 pub const BOB: AccountId = AccountId::new([2u8; 32]);
+pub const CHARLIE: AccountId = AccountId::new([3u8; 32]);
 pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
 pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
@@ -176,13 +177,30 @@ parameter_types! {
 	pub static TransactionByteFee: u128 = 1;
 }
 
+thread_local! {
+	pub static TIP_UNBALANCED_AMOUNT: RefCell<u128> = RefCell::new(0);
+	pub static FEE_UNBALANCED_AMOUNT: RefCell<u128> = RefCell::new(0);
+}
+
+pub struct DealWithFees;
+impl OnUnbalanced<pallet_balances::NegativeImbalance<Runtime>> for DealWithFees {
+	fn on_unbalanceds<B>(mut fees_then_tips: impl Iterator<Item = pallet_balances::NegativeImbalance<Runtime>>) {
+		if let Some(fees) = fees_then_tips.next() {
+			FEE_UNBALANCED_AMOUNT.with(|a| *a.borrow_mut() += fees.peek());
+			if let Some(tips) = fees_then_tips.next() {
+				TIP_UNBALANCED_AMOUNT.with(|a| *a.borrow_mut() += tips.peek());
+			}
+		}
+	}
+}
+
 impl Config for Runtime {
 	type AllNonNativeCurrencyIds = AllNonNativeCurrencyIds;
 	type NativeCurrencyId = GetNativeCurrencyId;
 	type StableCurrencyId = StableCurrencyId;
 	type Currency = PalletBalances;
 	type MultiCurrency = Currencies;
-	type OnTransactionPayment = ();
+	type OnTransactionPayment = DealWithFees;
 	type TransactionByteFee = TransactionByteFee;
 	type WeightToFee = WeightToFee;
 	type FeeMultiplierUpdate = ();
@@ -270,7 +288,7 @@ impl ExtBuilder {
 			.unwrap();
 
 		pallet_balances::GenesisConfig::<Runtime> {
-			balances: vec![(ALICE, 100000)],
+			balances: vec![(ALICE, 100000), (CHARLIE, 100000)],
 		}
 		.assimilate_storage(&mut t)
 		.unwrap();

@@ -9,7 +9,8 @@ assignees: qwer951123, ntduan, shaunxw, wangjj9219
 
 ## New Release Details:
 
-- Version:
+- Client Version:
+- Runtime Version:
 - RC Branch:
 - Scope: (Client only | Runtime only | Full release)
 - Network: (Mandala | Karura | Acala | All)
@@ -21,17 +22,23 @@ assignees: qwer951123, ntduan, shaunxw, wangjj9219
   - Diff:
 - Polkadot version:
   - Diff:
+- wasm srtool details:
 
 ## Client Release
 
 - [ ] Verify client `Cargo.toml` version has been incremented since the last release.
+  - Current version:
+  - Last version:
 - [ ] Check the new client have run on the network without issue for at lease 12 hours.
 - [ ] Check new docker image has been published.
 
 ## Runtime Release
 
 - [ ] Verify `spec_version` has been incremented since the last release.
+  - Current version:
+  - Last version:
 - [ ] Verify completed migrations are removed from any public networks.
+- [ ] Review [subwasm diff](#subwasm-diff)
 - [ ] Verify extrinsic ordering has stayed the same. Bump `transaction_version` if not.
   - [ ] ORML
   - [ ] Substrate
@@ -82,3 +89,15 @@ assignees: qwer951123, ntduan, shaunxw, wangjj9219
 - [ ] Exchanges
 - [ ] Gauntlet
 - [ ] Faucet (for Mandala)
+
+# Notes
+
+## subwasm diff
+
+[subwasm](https://github.com/chevdor/subwasm/) can be used to verify wasm and check diff
+
+```bash
+$ subwasm karura_runtime.compact.compressed.wasm wss://karura-rpc-2.aca-api.network/ws
+```
+
+Review the output and make sure 
