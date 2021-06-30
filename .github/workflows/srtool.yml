@@ -17,9 +17,12 @@ on:
     tags:
       - "*"
 
+env:
+  srtool_tag: 1.53.0-0.9.15
+
 jobs:
   build:
-    name: Build ${{ matrix.chain }} ${{ github.event.inputs.ref }}
+    name: Build ${{ matrix.chain }} ${{ github.event.inputs.ref || github.ref }}
     strategy:
       matrix:
         chain: ["karura"]
@@ -37,7 +40,7 @@ jobs:
         uses: chevdor/srtool-actions@v0.2.0
         with:
           chain: ${{ matrix.chain }}
-          tag: ${{ github.event.inputs.srtool_tag }}
+          tag: ${{ github.event.inputs.srtool_tag || env.srtool_tag }}
 
       - name: Summary
         run: |
