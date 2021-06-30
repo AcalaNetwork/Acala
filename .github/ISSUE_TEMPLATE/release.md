@@ -9,7 +9,8 @@ assignees: qwer951123, ntduan, shaunxw, wangjj9219
 
 ## New Release Details:
 
-- Version:
+- Client Version:
+- Runtime Version:
 - RC Branch:
 - Scope: (Client only | Runtime only | Full release)
 - Network: (Mandala | Karura | Acala | All)
