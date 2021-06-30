@@ -27,12 +27,16 @@ assignees: qwer951123, ntduan, shaunxw, wangjj9219
 ## Client Release
 
 - [ ] Verify client `Cargo.toml` version has been incremented since the last release.
+  - Current version:
+  - Last version:
 - [ ] Check the new client have run on the network without issue for at lease 12 hours.
 - [ ] Check new docker image has been published.
 
 ## Runtime Release
 
 - [ ] Verify `spec_version` has been incremented since the last release.
+  - Current version:
+  - Last version:
 - [ ] Verify completed migrations are removed from any public networks.
 - [ ] Review [subwasm diff](#subwasm-diff)
 - [ ] Verify extrinsic ordering has stayed the same. Bump `transaction_version` if not.
