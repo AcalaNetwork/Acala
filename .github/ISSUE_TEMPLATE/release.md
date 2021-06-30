@@ -21,6 +21,7 @@ assignees: qwer951123, ntduan, shaunxw, wangjj9219
   - Diff:
 - Polkadot version:
   - Diff:
+- wasm srtool details:
 
 ## Client Release
 
@@ -32,6 +33,7 @@ assignees: qwer951123, ntduan, shaunxw, wangjj9219
 
 - [ ] Verify `spec_version` has been incremented since the last release.
 - [ ] Verify completed migrations are removed from any public networks.
+- [ ] Review [subwasm diff](#subwasm-diff)
 - [ ] Verify extrinsic ordering has stayed the same. Bump `transaction_version` if not.
   - [ ] ORML
   - [ ] Substrate
@@ -82,3 +84,15 @@ assignees: qwer951123, ntduan, shaunxw, wangjj9219
 - [ ] Exchanges
 - [ ] Gauntlet
 - [ ] Faucet (for Mandala)
+
+# Notes
+
+## subwasm diff
+
+[subwasm](https://github.com/chevdor/subwasm/) can be used to verify wasm and check diff
+
+```bash
+$ subwasm karura_runtime.compact.compressed.wasm wss://karura-rpc-2.aca-api.network/ws
+```
+
+Review the output and make sure 
