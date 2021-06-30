@@ -1,6 +1,6 @@
 [package]
 name = "module-homa-validator-list"
-version = "1.0.0"
+version = "1.1.0"
 authors = ["Acala Developers"]
 edition = "2018"
 
