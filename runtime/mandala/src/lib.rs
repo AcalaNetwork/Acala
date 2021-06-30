@@ -78,7 +78,7 @@ use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 
 pub use cumulus_primitives_core::ParaId;
-pub use orml_xcm_support::{ExecuteXcm as ExecuteXcmT, IsNativeConcrete, MultiCurrencyAdapter, MultiNativeAsset};
+pub use orml_xcm_support::{IsNativeConcrete, MultiCurrencyAdapter, MultiNativeAsset};
 use pallet_xcm::XcmPassthrough;
 pub use polkadot_parachain::primitives::Sibling;
 pub use xcm::v0::{

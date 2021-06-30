@@ -65,7 +65,7 @@ use orml_traits::{create_median_value_data_provider, parameter_type_with_key, Da
 use pallet_transaction_payment::RuntimeDispatchInfo;
 
 pub use cumulus_primitives_core::ParaId;
-pub use orml_xcm_support::{ExecuteXcm as ExecuteXcmT, IsNativeConcrete, MultiCurrencyAdapter, MultiNativeAsset};
+pub use orml_xcm_support::{IsNativeConcrete, MultiCurrencyAdapter, MultiNativeAsset};
 use pallet_xcm::XcmPassthrough;
 pub use polkadot_parachain::primitives::Sibling;
 pub use xcm::v0::{
