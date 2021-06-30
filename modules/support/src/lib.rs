@@ -20,7 +20,7 @@
 #![allow(clippy::upper_case_acronyms)]
 
 use codec::{Decode, Encode, FullCodec, HasCompact};
-use frame_support::pallet_prelude::{DispatchClass, DispatchResultWithPostInfo, Pays, Weight};
+use frame_support::pallet_prelude::{DispatchClass, Pays, Weight};
 use primitives::{
 	evm::{CallInfo, EvmAddress},
 	CurrencyId,
@@ -571,9 +571,5 @@ impl CurrencyIdMapping for () {
 
 /// Used to interface with the Compound's Cash module
 pub trait CompoundCashTrait<Balance, Moment> {
-	fn set_future_yield(
-		next_cash_yield: Balance,
-		yield_index: u128,
-		timestamp_effective: Moment,
-	) -> DispatchResultWithPostInfo;
+	fn set_future_yield(next_cash_yield: Balance, yield_index: u128, timestamp_effective: Moment) -> DispatchResult;
 }

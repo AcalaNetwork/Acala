@@ -45,7 +45,7 @@ use orml_traits::MultiCurrency;
 use primitives::{Balance, CashYieldIndex, CurrencyId, Moment, TokenSymbol};
 use sp_core::H256;
 use sp_runtime::{
-	traits::{BlakeTwo256, Hash},
+	traits::{AccountIdConversion, BlakeTwo256, Hash},
 	AccountId32, Perbill,
 };
 use sp_std::{convert::TryFrom, prelude::*};
@@ -65,14 +65,15 @@ pub mod module {
 		/// Multi-currency support for asset management
 		type Currency: MultiCurrency<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
 
-		/// The Admin account that executes Notices from Compound chain
-		type AdminAccount: Get<Self::AccountId>;
+		/// The pallet handling Compound's Cash tokens
+		type Cash: CompoundCashTrait<Balance, Moment>;
 
 		/// The ID for the CASH asset
 		#[pallet::constant]
 		type CashCurrencyId: Get<CurrencyId>;
 
 		/// The ID for this pallet
+		#[pallet::constant]
 		type PalletId: Get<PalletId>;
 
 		/// The max number authorities that are stored
@@ -80,10 +81,8 @@ pub mod module {
 		type MaxGatewayAuthorities: Get<u32>;
 
 		/// The percentage threshold of authorities signatures required for Notices to take effect.
+		#[pallet::constant]
 		type PercentThresholdForAuthoritySignature: Get<Perbill>;
-
-		/// The pallet handling Compound's Cash tokens
-		type Cash: CompoundCashTrait<Balance, Moment>;
 	}
 
 	#[pallet::error]
@@ -113,22 +112,23 @@ pub mod module {
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	#[pallet::metadata(Balance = "Balance", T::AccountId = "AccountId")]
 	pub enum Event<T: Config> {
-		/// User has locked some asset and uploaded them into Compound.
+		/// User has locked some asset and uploaded them into Compound. [currency_id, amount, user]
 		AssetLockedTo(CurrencyId, Balance, T::AccountId),
 
-		/// The user has unlocked some asset and downloaded them back into Acala.
+		/// The user has unlocked some asset and downloaded them back into Acala. [currency_id,
+		/// amount, user]
 		AssetUnlocked(CurrencyId, Balance, T::AccountId),
 
 		/// The list of authorities has been updated.
 		GatewayAuthoritiesChanged,
 
-		/// The supply cap for an asset has been updated.
+		/// The supply cap for an asset has been updated. [currency_id, new_cap]
 		SupplyCapSet(CurrencyId, Balance),
 
-		/// The future yield for CASH is set.
+		/// The future yield for CASH is set. [yield, yield_index, timestamp]
 		FutureYieldSet(Balance, CashYieldIndex, Moment),
 
-		/// Gateway's Admin Account has been updated.
+		/// Gateway's Admin Account has been updated. [authorities]
 		GatewayAdminUpdated(T::AccountId),
 	}
 
@@ -154,11 +154,19 @@ pub mod module {
 		ChangeAuthorities(Vec<CompoundAuthoritySignature>),
 
 		/// Unlock or download assets from Compound chain back into Acala chain.
-		Unlock(CurrencyId, Balance, AccountId),
+		Unlock {
+			currency_id: CurrencyId,
+			amount: Balance,
+			who: AccountId,
+		},
 
 		/// Set the future yield for the Cash asset.
 		/// Parameters: uint128 nextCashYield, uint128 nextCashYieldIndex, uint nextCashYieldStart
-		SetFutureYield(Balance, CashYieldIndex, Moment),
+		SetFutureYield {
+			next_cash_yield: Balance,
+			next_cash_yield_index: CashYieldIndex,
+			next_cash_yield_start: Moment,
+		},
 	}
 
 	/// Stores the amount of supplies that are still available to be uploaded for each asset type.
@@ -170,7 +178,7 @@ pub mod module {
 	/// double-invocation.
 	#[pallet::storage]
 	#[pallet::getter(fn invoked_notice_hashes)]
-	pub type InvokedNoticeHashes<T: Config> = StorageMap<_, Identity, H256, (), ValueQuery>;
+	pub type InvokedNoticeHashes<T: Config> = StorageMap<_, Identity, H256, (), OptionQuery>;
 
 	/// Stores the current authorities on the Compound chain. Used to verify the signatures on a
 	/// given Notice.
@@ -320,13 +328,21 @@ pub mod module {
 					Self::deposit_event(Event::<T>::GatewayAuthoritiesChanged);
 					Ok(().into())
 				}
-				GatewayNoticePayload::Unlock(currency_id, amount, who) => Self::do_unlock(currency_id, amount, who),
-				GatewayNoticePayload::SetFutureYield(next_cash_yield, yield_index, timestamp_effective) => {
-					T::Cash::set_future_yield(next_cash_yield, yield_index, timestamp_effective)?;
+				GatewayNoticePayload::Unlock {
+					currency_id,
+					amount,
+					who,
+				} => Self::do_unlock(currency_id, amount, who),
+				GatewayNoticePayload::SetFutureYield {
+					next_cash_yield,
+					next_cash_yield_index,
+					next_cash_yield_start,
+				} => {
+					T::Cash::set_future_yield(next_cash_yield, next_cash_yield_index, next_cash_yield_start)?;
 					Self::deposit_event(Event::<T>::FutureYieldSet(
 						next_cash_yield,
-						yield_index,
-						timestamp_effective,
+						next_cash_yield_index,
+						next_cash_yield_start,
 					));
 					Ok(().into())
 				}
@@ -382,7 +398,7 @@ impl<T: Config> Pallet<T> {
 		// All other tokens are transferred to the admin's account.
 		match currency_id {
 			CurrencyId::Token(TokenSymbol::CASH) => T::Currency::withdraw(currency_id, &from, locked_amount),
-			_ => T::Currency::transfer(currency_id, &from, &T::AdminAccount::get(), locked_amount),
+			_ => T::Currency::transfer(currency_id, &from, &T::PalletId::get().into_account(), locked_amount),
 		}?;
 
 		// Fund locked. Now reduce the supply caps
@@ -403,10 +419,11 @@ impl<T: Config> Pallet<T> {
 			_ => {
 				// Ensure the admin has sufficient balance for the transfer
 				ensure!(
-					T::Currency::ensure_can_withdraw(currency_id, &T::AdminAccount::get(), unlock_amount).is_ok(),
+					T::Currency::ensure_can_withdraw(currency_id, &T::PalletId::get().into_account(), unlock_amount)
+						.is_ok(),
 					Error::<T>::InsufficientAssetToUnlock
 				);
-				T::Currency::transfer(currency_id, &T::AdminAccount::get(), &to, unlock_amount)
+				T::Currency::transfer(currency_id, &T::PalletId::get().into_account(), &to, unlock_amount)
 			}
 		}?;
 

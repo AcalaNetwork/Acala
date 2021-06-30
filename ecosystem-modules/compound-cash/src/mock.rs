@@ -16,13 +16,13 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-//! Mocks for example module.
+//! Mocks for CompoundCash module.
 
 #![cfg(test)]
 
-use crate as example;
-use frame_support::pallet_prelude::GenesisBuild;
+use crate as CompoundCash;
 use frame_support::{construct_runtime, parameter_types};
+use primitives::Moment;
 
 parameter_types!(
 	pub const SomeConst: u64 = 10;
@@ -55,10 +55,20 @@ impl frame_system::Config for Runtime {
 	type OnSetCode = ();
 }
 
-impl example::Config for Runtime {
+impl CompoundCash::Config for Runtime {
 	type Event = Event;
-	type SomeConst = SomeConst;
-	type Balance = u64;
+	type UnixTime = Timestamp;
+}
+
+parameter_types! {
+	pub const MinimumPeriod: u64 = 6000 / 2;
+}
+impl pallet_timestamp::Config for Runtime {
+	/// A timestamp: milliseconds since the unix epoch.
+	type Moment = Moment;
+	type OnTimestampSet = ();
+	type MinimumPeriod = MinimumPeriod;
+	type WeightInfo = ();
 }
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
@@ -71,22 +81,17 @@ construct_runtime!(
 		UncheckedExtrinsic = UncheckedExtrinsic
 	{
 		System: frame_system::{Pallet, Call, Event<T>},
-		// NOTE: name Example here is needed in order to have same module prefix
-		Example: example::{Pallet, Call, Event<T>, Config<T>, Storage},
+		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
+		Cash: CompoundCash::{Pallet, Storage, Event<T>},
 	}
 );
 
-pub fn new_test_ext() -> sp_io::TestExternalities {
-	let mut t = frame_system::GenesisConfig::default()
-		.build_storage::<Runtime>()
-		.unwrap();
-	example::GenesisConfig::<Runtime> {
-		bar: vec![(1, 100), (2, 200)],
-		..Default::default()
-	}
-	.assimilate_storage(&mut t)
-	.unwrap();
-	let mut ext = sp_io::TestExternalities::new(t);
-	ext.execute_with(|| System::set_block_number(1));
-	ext
-}
+//
+// pub fn new_test_ext() -> sp_io::TestExternalities {
+// 	let t = frame_system::GenesisConfig::default()
+// 		.build_storage::<Runtime>()
+// 		.unwrap();
+// 	let mut ext = sp_io::TestExternalities::new(t);
+// 	ext.execute_with(|| System::set_block_number(1));
+// 	ext
+// }

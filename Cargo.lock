@@ -2295,6 +2295,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "module-support",
+ "pallet-timestamp",
  "parity-scale-codec",
  "serde",
  "sp-core",

@@ -1457,7 +1457,6 @@ impl ecosystem_renvm_bridge::Config for Runtime {
 }
 
 parameter_types! {
-	pub StarportAdminAccount: AccountId = StarportPalletId::get().into_account();
 	pub const CashCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::CASH);
 	pub const MaxGatewayAuthorityCount: u32 = 8;
 	pub const PercentThresholdForGatewayAuthoritySignature: Perbill = Perbill::from_percent(50);
@@ -1466,7 +1465,6 @@ parameter_types! {
 impl ecosystem_starport::Config for Runtime {
 	type Event = Event;
 	type Currency = Currencies;
-	type AdminAccount = StarportAdminAccount;
 	type CashCurrencyId = CashCurrencyId;
 	type PalletId = StarportPalletId;
 	type MaxGatewayAuthorities = MaxGatewayAuthorityCount;

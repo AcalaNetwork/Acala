@@ -23,7 +23,7 @@
 use super::*;
 use frame_support::{assert_noop, assert_ok};
 use mock::{
-	AccountId, Currencies, Event, ExtBuilder, Origin, Runtime, Starport, System, ACALA, ADMIN_ACCOUNT, ALICE, BOB,
+	AccountId, Currencies, Event, ExtBuilder, Origin, Runtime, Starport, StarportPalletId, System, ACALA, ALICE, BOB,
 	CASH, GATEWAY_ACCOUNT, INITIAL_BALANCE, KSM,
 };
 
@@ -48,7 +48,10 @@ fn lock_works() {
 
 		// Locked ACALA are transferred from the user's account into Admin's account.
 		assert_eq!(Currencies::free_balance(ACALA, &ALICE), 0);
-		assert_eq!(Currencies::free_balance(ACALA, &ADMIN_ACCOUNT), INITIAL_BALANCE);
+		assert_eq!(
+			Currencies::free_balance(ACALA, &StarportPalletId::get().into_account()),
+			INITIAL_BALANCE
+		);
 
 		// Supply caps are reduced accordingly.
 		assert_eq!(SupplyCaps::<Runtime>::get(ACALA), 0);
@@ -65,7 +68,10 @@ fn lock_works() {
 
 		// Locked ACALA are transferred from the user's account into Admin's account.
 		assert_eq!(Currencies::free_balance(CASH, &ALICE), 0);
-		assert_eq!(Currencies::free_balance(CASH, &ADMIN_ACCOUNT), 0);
+		assert_eq!(
+			Currencies::free_balance(CASH, &StarportPalletId::get().into_account()),
+			0
+		);
 
 		// Supply caps are reduced accordingly.
 		assert_eq!(SupplyCaps::<Runtime>::get(CASH), 0);
@@ -89,7 +95,10 @@ fn lock_to_works() {
 
 		// Locked ACALA are transferred from the user's account into Admin's account.
 		assert_eq!(Currencies::free_balance(ACALA, &ALICE), 0);
-		assert_eq!(Currencies::free_balance(ACALA, &ADMIN_ACCOUNT), INITIAL_BALANCE);
+		assert_eq!(
+			Currencies::free_balance(ACALA, &StarportPalletId::get().into_account()),
+			INITIAL_BALANCE
+		);
 		// Supply caps are reduced accordingly.
 		assert_eq!(SupplyCaps::<Runtime>::get(ACALA), 0);
 
@@ -262,7 +271,14 @@ fn invoke_can_unlock_asset() {
 		);
 
 		// Unlock the locked asset
-		let mut notice = GatewayNotice::new(0, GatewayNoticePayload::Unlock(ACALA, 500, ALICE));
+		let mut notice = GatewayNotice::new(
+			0,
+			GatewayNoticePayload::Unlock {
+				currency_id: ACALA,
+				amount: 500,
+				who: ALICE,
+			},
+		);
 		assert_ok!(Starport::invoke(
 			Origin::signed(GATEWAY_ACCOUNT),
 			notice.clone(),
@@ -280,7 +296,14 @@ fn invoke_can_unlock_asset() {
 			Error::<Runtime>::InsufficientAssetToUnlock
 		);
 
-		let notice_fail = GatewayNotice::new(0, GatewayNoticePayload::Unlock(KSM, 100, ALICE));
+		let notice_fail = GatewayNotice::new(
+			0,
+			GatewayNoticePayload::Unlock {
+				currency_id: KSM,
+				amount: 100,
+				who: ALICE,
+			},
+		);
 		assert_noop!(
 			Starport::invoke(
 				Origin::signed(GATEWAY_ACCOUNT),
@@ -291,7 +314,14 @@ fn invoke_can_unlock_asset() {
 		);
 
 		// CASH asset is Minted
-		let notice_cash = GatewayNotice::new(0, GatewayNoticePayload::Unlock(CASH, 100000, ALICE));
+		let notice_cash = GatewayNotice::new(
+			0,
+			GatewayNoticePayload::Unlock {
+				currency_id: CASH,
+				amount: 100000,
+				who: ALICE,
+			},
+		);
 		assert_ok!(Starport::invoke(
 			Origin::signed(GATEWAY_ACCOUNT),
 			notice_cash,
@@ -307,7 +337,14 @@ fn invoke_can_unlock_asset() {
 #[test]
 fn invoke_can_set_future_cash_yield() {
 	ExtBuilder::default().build().execute_with(|| {
-		let notice = GatewayNotice::new(0, GatewayNoticePayload::SetFutureYield(1000, 0, 0));
+		let notice = GatewayNotice::new(
+			0,
+			GatewayNoticePayload::SetFutureYield {
+				next_cash_yield: 1000,
+				next_cash_yield_index: 0,
+				next_cash_yield_start: 0,
+			},
+		);
 		assert_ok!(Starport::invoke(
 			Origin::signed(GATEWAY_ACCOUNT),
 			notice.clone(),
@@ -323,7 +360,14 @@ fn invoke_can_set_future_cash_yield() {
 #[test]
 fn notices_cannot_be_invoked_twice() {
 	ExtBuilder::default().build().execute_with(|| {
-		let notice = GatewayNotice::new(0, GatewayNoticePayload::SetFutureYield(1000, 0, 0));
+		let notice = GatewayNotice::new(
+			0,
+			GatewayNoticePayload::SetFutureYield {
+				next_cash_yield: 1000,
+				next_cash_yield_index: 0,
+				next_cash_yield_start: 0,
+			},
+		);
 		assert_ok!(Starport::invoke(
 			Origin::signed(GATEWAY_ACCOUNT),
 			notice.clone(),
@@ -344,7 +388,14 @@ fn notices_cannot_be_invoked_twice() {
 #[test]
 fn notices_can_only_be_invoked_by_gateway_account() {
 	ExtBuilder::default().build().execute_with(|| {
-		let notice = GatewayNotice::new(0, GatewayNoticePayload::SetFutureYield(1000, 0, 0));
+		let notice = GatewayNotice::new(
+			0,
+			GatewayNoticePayload::SetFutureYield {
+				next_cash_yield: 1000,
+				next_cash_yield_index: 0,
+				next_cash_yield_start: 0,
+			},
+		);
 		assert_noop!(
 			Starport::invoke(Origin::signed(ALICE), notice.clone(), mock::get_mock_signatures()),
 			Error::<Runtime>::InvalidNoticeInvoker
@@ -365,7 +416,14 @@ fn notices_can_only_be_invoked_by_gateway_account() {
 #[test]
 fn notices_can_only_be_invoked_with_enough_signatures() {
 	ExtBuilder::default().build().execute_with(|| {
-		let mut notice = GatewayNotice::new(0, GatewayNoticePayload::SetFutureYield(1000, 0, 0));
+		let mut notice = GatewayNotice::new(
+			0,
+			GatewayNoticePayload::SetFutureYield {
+				next_cash_yield: 1000,
+				next_cash_yield_index: 0,
+				next_cash_yield_start: 0,
+			},
+		);
 		let mut signer = mock::get_mock_signatures();
 		signer.pop();
 
@@ -408,7 +466,14 @@ fn can_update_gateway_admin() {
 			Event::Starport(crate::Event::GatewayAdminUpdated(new_admin.clone()))
 		);
 
-		let notice = GatewayNotice::new(0, GatewayNoticePayload::Unlock(CASH, 500, ALICE));
+		let notice = GatewayNotice::new(
+			0,
+			GatewayNoticePayload::Unlock {
+				currency_id: CASH,
+				amount: 500,
+				who: ALICE,
+			},
+		);
 		assert_noop!(
 			Starport::invoke(
 				Origin::signed(GATEWAY_ACCOUNT),

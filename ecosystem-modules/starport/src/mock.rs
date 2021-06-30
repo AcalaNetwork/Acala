@@ -36,7 +36,6 @@ mod starport {
 	pub use super::super::*;
 }
 
-pub const ADMIN_ACCOUNT: AccountId = AccountId32::new([10u8; 32]);
 pub const GATEWAY_ACCOUNT: AccountId = AccountId32::new([11u8; 32]);
 pub const ALICE: AccountId = AccountId32::new([1u8; 32]);
 pub const BOB: AccountId = AccountId32::new([2u8; 32]);
@@ -130,8 +129,8 @@ impl CompoundCashTrait<Balance, Moment> for MockCashModule {
 		_next_cash_yield: Balance,
 		_yield_index: CashYieldIndex,
 		_timestamp_effective: Moment,
-	) -> DispatchResultWithPostInfo {
-		Ok(().into())
+	) -> DispatchResult {
+		Ok(())
 	}
 }
 
@@ -139,7 +138,6 @@ pub const MAX_GATEWAY_AUTHORITIES: u32 = 5;
 pub const PERCENT_THRESHOLD_FOR_AUTHORITY_SIGNATURE: Perbill = Perbill::from_percent(50);
 
 parameter_types! {
-	pub const AdminAccount: AccountId = ADMIN_ACCOUNT;
 	pub const GatewayAccount: AccountId = GATEWAY_ACCOUNT;
 	pub const CashCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::CASH);
 	pub const StarportPalletId: PalletId = PalletId(*b"aca/stpt");
@@ -150,7 +148,6 @@ parameter_types! {
 impl Config for Runtime {
 	type Event = Event;
 	type Currency = Currencies;
-	type AdminAccount = AdminAccount;
 	type CashCurrencyId = CashCurrencyId;
 	type PalletId = StarportPalletId;
 	type MaxGatewayAuthorities = MaxGatewayAuthorities;

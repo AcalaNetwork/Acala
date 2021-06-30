@@ -28,8 +28,8 @@ use frame_support::{pallet_prelude::*, traits::UnixTime};
 use module_support::CompoundCashTrait;
 use primitives::{Balance, CashYieldIndex, CurrencyId, Moment, TokenSymbol};
 
-// mod mock;
-// mod tests;
+mod mock;
+mod tests;
 
 pub const CASH_CURRENCY_ID: CurrencyId = CurrencyId::Token(TokenSymbol::CASH);
 
@@ -80,11 +80,10 @@ pub mod module {
 	#[pallet::hooks]
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
 		fn on_initialize(_n: T::BlockNumber) -> Weight {
-			// check if the Yield rate needs to be updated
+			// Use timestamp to check if the current Yield rate needs to be updated
+			// To be completed once the spec is confirmed.
 			0
 		}
-
-		fn on_finalize(_n: T::BlockNumber) {}
 	}
 
 	#[pallet::call]
@@ -96,7 +95,7 @@ impl<T: Config> Pallet<T> {
 		next_cash_yield: Balance,
 		yield_index: CashYieldIndex,
 		timestamp_effective: Moment,
-	) -> DispatchResultWithPostInfo {
+	) -> DispatchResult {
 		ensure!(
 			timestamp_effective >= Self::current_yield().2,
 			Error::<T>::YieldIsOlderThanCurrent
@@ -109,11 +108,8 @@ impl<T: Config> Pallet<T> {
 }
 
 impl<T: Config> CompoundCashTrait<Balance, Moment> for Pallet<T> {
-	fn set_future_yield(
-		next_cash_yield: Balance,
-		yield_index: u128,
-		timestamp_effective: Moment,
-	) -> DispatchResultWithPostInfo {
-		Self::set_future_yield(next_cash_yield, yield_index, timestamp_effective)
+	fn set_future_yield(next_cash_yield: Balance, yield_index: u128, timestamp_effective: Moment) -> DispatchResult {
+		Self::set_future_yield(next_cash_yield, yield_index, timestamp_effective)?;
+		Ok(())
 	}
 }
