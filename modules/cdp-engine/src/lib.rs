@@ -37,17 +37,21 @@ use loans::Position;
 use orml_traits::Change;
 use orml_utilities::{IterableStorageDoubleMapExtended, OffchainErr};
 use primitives::{Amount, Balance, CurrencyId};
+use rand_chacha::{
+	rand_core::{RngCore, SeedableRng},
+	ChaChaRng,
+};
 use sp_runtime::{
 	offchain::{
 		storage::StorageValueRef,
 		storage_lock::{StorageLock, Time},
 		Duration,
 	},
-	traits::{BlakeTwo256, Bounded, Convert, Hash, One, Saturating, StaticLookup, UniqueSaturatedInto, Zero},
+	traits::{Bounded, Convert, One, Saturating, StaticLookup, UniqueSaturatedInto, Zero},
 	transaction_validity::{
 		InvalidTransaction, TransactionPriority, TransactionSource, TransactionValidity, ValidTransaction,
 	},
-	DispatchError, DispatchResult, FixedPointNumber, RandomNumberGenerator, RuntimeDebug,
+	DispatchError, DispatchResult, FixedPointNumber, RuntimeDebug,
 };
 use sp_std::prelude::*;
 use support::{
@@ -616,12 +620,8 @@ impl<T: Config> Pallet<T> {
 			{
 				(last_collateral_position, maybe_last_iterator_previous_key)
 			} else {
-				let random_seed = sp_io::offchain::random_seed();
-				let mut rng = RandomNumberGenerator::<BlakeTwo256>::new(BlakeTwo256::hash(&random_seed[..]));
-				(
-					rng.pick_u32(collateral_currency_ids.len().saturating_sub(1) as u32),
-					None,
-				)
+				let mut rng = ChaChaRng::from_seed(sp_io::offchain::random_seed());
+				(pick_u32(&mut rng, collateral_currency_ids.len() as u32), None)
 			};
 
 		// get the max iterationns config
@@ -629,7 +629,7 @@ impl<T: Config> Pallet<T> {
 			.get::<u32>()
 			.unwrap_or(Some(DEFAULT_MAX_ITERATIONS));
 
-		let currency_id = collateral_currency_ids[(collateral_position as usize)];
+		let currency_id = collateral_currency_ids[collateral_position as usize];
 		let is_shutdown = T::EmergencyShutdown::is_shutdown();
 		let mut map_iterator = <loans::Positions<T> as IterableStorageDoubleMapExtended<_, _, _>>::iter_prefix(
 			currency_id,
@@ -940,4 +940,9 @@ impl<T: Config> RiskManager<T::AccountId, CurrencyId, Balance, Balance> for Pall
 
 		Ok(())
 	}
+}
+
+/// Pick a new PRN, in the range [0, `max`) (exclusive).
+fn pick_u32<R: RngCore>(rng: &mut R, max: u32) -> u32 {
+	rng.next_u32() % max
 }
