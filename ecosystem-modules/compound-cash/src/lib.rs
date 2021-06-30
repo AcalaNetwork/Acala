@@ -103,7 +103,7 @@ impl<T: Config> Pallet<T> {
 
 		FutureYield::<T>::insert(yield_index, (next_cash_yield, timestamp_effective));
 
-		Ok(().into())
+		Ok(())
 	}
 }
 
