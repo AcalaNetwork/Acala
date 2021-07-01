@@ -166,6 +166,8 @@ pub mod module {
 		InvariantCheckFailed,
 		/// The Provision is unqualified to be converted to `Enabled`
 		UnqualifiedProvision,
+		/// Trading pair is still provisioning
+		StillProvisioning,
 	}
 
 	#[pallet::event]
@@ -219,7 +221,7 @@ pub mod module {
 	pub type ProvisioningPool<T: Config> =
 		StorageDoubleMap<_, Twox64Concat, TradingPair, Twox64Concat, T::AccountId, (Balance, Balance), ValueQuery>;
 
-	/// Initial exchange rate for provision to lp share.
+	/// Initial exchange rate, used to calculate the lp amount for founders of provisioning
 	///
 	/// InitialShareExchangeRates: map TradingPair => (ExchangeRate, ExchangeRate)
 	#[pallet::storage]
@@ -361,7 +363,7 @@ pub mod module {
 		/// - `stake_increment_share`: indicates whether to stake increased lp shares to earn
 		///   incentives
 		#[pallet::weight(if *stake_increment_share {
-			<T as Config>::WeightInfo::add_liquidity_and_deposit()
+			<T as Config>::WeightInfo::add_liquidity_and_stake()
 		} else {
 			<T as Config>::WeightInfo::add_liquidity()
 		})]
@@ -414,7 +416,7 @@ pub mod module {
 		///
 		/// - `currency_id_a`: currency id A.
 		/// - `currency_id_b`: currency id B.
-		#[pallet::weight(<T as Config>::WeightInfo::add_provision())]
+		#[pallet::weight(<T as Config>::WeightInfo::claim_dex_share())]
 		#[transactional]
 		pub fn claim_dex_share(
 			origin: OriginFor<T>,
@@ -424,6 +426,13 @@ pub mod module {
 			let who = ensure_signed(origin)?;
 			let trading_pair = TradingPair::from_token_currency_ids(currency_id_a, currency_id_b)
 				.ok_or(Error::<T>::InvalidCurrencyId)?;
+			ensure!(
+				!matches!(
+					Self::trading_pair_statuses(trading_pair),
+					TradingPairStatus::<_, _>::Provisioning(_)
+				),
+				Error::<T>::StillProvisioning
+			);
 
 			ProvisioningPool::<T>::try_mutate_exists(trading_pair, &who, |maybe_contribution| -> DispatchResult {
 				if let Some((contribution_0, contribution_1)) = maybe_contribution.take() {
@@ -433,8 +442,8 @@ pub mod module {
 						.saturating_add(exchange_rate_1.saturating_mul_int(contribution_1));
 					T::Currency::transfer(
 						trading_pair.get_dex_share_currency_id().expect("shouldn't be invalid!"),
-						&who,
 						&Self::account_id(),
+						&who,
 						share_to_claim,
 					)?;
 
@@ -654,7 +663,7 @@ pub mod module {
 						// inject provision to liquidity pool
 						LiquidityPool::<T>::mutate(trading_pair, |(pool_0, pool_1)| {
 							*pool_0 = pool_0.saturating_add(total_provision_0);
-							*pool_1 = pool_1.saturating_sub(total_provision_1);
+							*pool_1 = pool_1.saturating_add(total_provision_1);
 						});
 
 						// update trading_pair to Enabled status

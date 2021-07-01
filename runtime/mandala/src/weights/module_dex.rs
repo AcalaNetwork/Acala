@@ -67,7 +67,7 @@ impl<T: frame_system::Config> module_dex::WeightInfo for WeightInfo<T> {
 			.saturating_add(T::DbWeight::get().reads(7 as Weight))
 			.saturating_add(T::DbWeight::get().writes(6 as Weight))
 	}
-	fn add_liquidity_and_deposit() -> Weight {
+	fn add_liquidity_and_stake() -> Weight {
 		(296_722_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(12 as Weight))
 			.saturating_add(T::DbWeight::get().writes(11 as Weight))
@@ -77,7 +77,7 @@ impl<T: frame_system::Config> module_dex::WeightInfo for WeightInfo<T> {
 			.saturating_add(T::DbWeight::get().reads(6 as Weight))
 			.saturating_add(T::DbWeight::get().writes(6 as Weight))
 	}
-	fn remove_liquidity_by_withdraw() -> Weight {
+	fn remove_liquidity_by_unstake() -> Weight {
 		(340_536_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(11 as Weight))
 			.saturating_add(T::DbWeight::get().writes(11 as Weight))
@@ -95,5 +95,20 @@ impl<T: frame_system::Config> module_dex::WeightInfo for WeightInfo<T> {
 			.saturating_add((2_330_000 as Weight).saturating_mul(u as Weight))
 			.saturating_add(T::DbWeight::get().reads(9 as Weight))
 			.saturating_add(T::DbWeight::get().writes(8 as Weight))
+	}
+	fn update_provisioning_parameters() -> Weight {
+		(34_463_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(2 as Weight))
+			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+	}
+	fn add_provision() -> Weight {
+		(231_364_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(9 as Weight))
+			.saturating_add(T::DbWeight::get().writes(7 as Weight))
+	}
+	fn claim_dex_share() -> Weight {
+		(231_364_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(9 as Weight))
+			.saturating_add(T::DbWeight::get().writes(7 as Weight))
 	}
 }
