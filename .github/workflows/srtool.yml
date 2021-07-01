@@ -54,17 +54,20 @@ jobs:
           name: ${{ matrix.chain }}-runtime
           path: |
             ${{ steps.srtool_build.outputs.wasm }}
+            ${{ steps.srtool_build.outputs.wasm_compressed }}
             ${{ matrix.chain }}-srtool-digest.json
       # We now get extra information thanks to subwasm,
       - name: Install subwasm
         run: |
-          wget https://github.com/chevdor/subwasm/releases/download/v0.11.0/subwasm_linux_amd64_v0.11.0.deb
-          sudo dpkg -i subwasm_linux_amd64_v0.11.0.deb
+          wget https://github.com/chevdor/subwasm/releases/download/v0.12.0/subwasm_linux_amd64_v0.12.0.deb
+          sudo dpkg -i subwasm_linux_amd64_v0.12.0.deb
           subwasm --version
       - name: Show Runtime information
         run: |
           subwasm info ${{ steps.srtool_build.outputs.wasm }}
+          subwasm info ${{ steps.srtool_build.outputs.wasm_compressed }}
           subwasm --json info ${{ steps.srtool_build.outputs.wasm }} > ${{ matrix.chain }}-info.json
+          subwasm --json info ${{ steps.srtool_build.outputs.wasm_compressed }} > ${{ matrix.chain }}-info_compressed.json
       - name: Extract the metadata
         run: |
           subwasm meta ${{ steps.srtool_build.outputs.wasm }}
@@ -79,5 +82,6 @@ jobs:
           name: ${{ matrix.chain }}-runtime
           path: |
             ${{ matrix.chain }}-info.json
+            ${{ matrix.chain }}-info_compressed.json
             ${{ matrix.chain }}-metadata.json
             ${{ matrix.chain }}-diff.txt
