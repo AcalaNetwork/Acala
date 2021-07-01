@@ -16,12 +16,16 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{dollar, AccountId, Balance, Currencies, CurrencyId, Dex, EnabledTradingPairs, Runtime, TradingPathLimit};
+use crate::{dollar, AccountId, Balance, Currencies, CurrencyId, Dex, Runtime, TradingPathLimit};
 
 use frame_benchmarking::{account, whitelisted_caller};
 use frame_system::RawOrigin;
 use orml_benchmarking::runtime_benchmarks;
 use orml_traits::MultiCurrencyExtended;
+use primitives::{
+	currency::{AUSD, RENBTC},
+	TradingPair,
+};
 use sp_runtime::traits::UniqueSaturatedInto;
 use sp_std::prelude::*;
 
@@ -67,25 +71,25 @@ runtime_benchmarks! {
 
 	// enable a Disabled trading pair
 	enable_trading_pair {
-		let trading_pair = EnabledTradingPairs::get()[0];
+		let trading_pair = TradingPair::new(AUSD, RENBTC);
 		let _ = Dex::disable_trading_pair(RawOrigin::Root.into(), trading_pair.0, trading_pair.1);
 	}: _(RawOrigin::Root, trading_pair.0, trading_pair.1)
 
 	// disable a Enabled trading pair
 	disable_trading_pair {
-		let trading_pair = EnabledTradingPairs::get()[0];
+		let trading_pair = TradingPair::new(AUSD, RENBTC);
 		let _ = Dex::enable_trading_pair(RawOrigin::Root.into(), trading_pair.0, trading_pair.1);
 	}: _(RawOrigin::Root, trading_pair.0, trading_pair.1)
 
 	// list a Disabled trading pair
 	list_trading_pair {
-		let trading_pair = EnabledTradingPairs::get()[0];
+		let trading_pair = TradingPair::new(AUSD, RENBTC);
 		let _ = Dex::disable_trading_pair(RawOrigin::Root.into(), trading_pair.0, trading_pair.1);
 	}: _(RawOrigin::Root, trading_pair.0, trading_pair.1, dollar(trading_pair.0), dollar(trading_pair.1), dollar(trading_pair.0), dollar(trading_pair.1), 10)
 
 	// update parameters of a Provisioning trading pair
 	update_provisioning_parameters {
-		let trading_pair = EnabledTradingPairs::get()[0];
+		let trading_pair = TradingPair::new(AUSD, RENBTC);
 		let _ = Dex::disable_trading_pair(RawOrigin::Root.into(), trading_pair.0, trading_pair.1);
 		Dex::list_trading_pair(
 			RawOrigin::Root.into(),
@@ -101,7 +105,7 @@ runtime_benchmarks! {
 
 	add_provision {
 		let founder: AccountId = whitelisted_caller();
-		let trading_pair = EnabledTradingPairs::get()[0];
+		let trading_pair = TradingPair::new(AUSD, RENBTC);
 		let _ = Dex::disable_trading_pair(RawOrigin::Root.into(), trading_pair.0, trading_pair.1);
 		Dex::list_trading_pair(
 			RawOrigin::Root.into(),
@@ -121,7 +125,7 @@ runtime_benchmarks! {
 
 	claim_dex_share {
 		let founder: AccountId = whitelisted_caller();
-		let trading_pair = EnabledTradingPairs::get()[0];
+		let trading_pair = TradingPair::new(AUSD, RENBTC);
 		let _ = Dex::disable_trading_pair(RawOrigin::Root.into(), trading_pair.0, trading_pair.1);
 		Dex::list_trading_pair(
 			RawOrigin::Root.into(),
@@ -156,7 +160,7 @@ runtime_benchmarks! {
 	add_liquidity {
 		let first_maker: AccountId = account("first_maker", 0, SEED);
 		let second_maker: AccountId = whitelisted_caller();
-		let trading_pair = EnabledTradingPairs::get()[0];
+		let trading_pair = TradingPair::new(AUSD, RENBTC);
 		let amount_a = 100 * dollar(trading_pair.0);
 		let amount_b = 10_000 * dollar(trading_pair.1);
 
@@ -172,7 +176,7 @@ runtime_benchmarks! {
 	add_liquidity_and_stake {
 		let first_maker: AccountId = account("first_maker", 0, SEED);
 		let second_maker: AccountId = whitelisted_caller();
-		let trading_pair = EnabledTradingPairs::get()[0];
+		let trading_pair = TradingPair::new(AUSD, RENBTC);
 		let amount_a = 100 * dollar(trading_pair.0);
 		let amount_b = 10_000 * dollar(trading_pair.1);
 
@@ -187,21 +191,21 @@ runtime_benchmarks! {
 	// remove liquidity by liquid lp share
 	remove_liquidity {
 		let maker: AccountId = whitelisted_caller();
-		let trading_pair = EnabledTradingPairs::get()[0];
+		let trading_pair = TradingPair::new(AUSD, RENBTC);
 		inject_liquidity(maker.clone(), trading_pair.0, trading_pair.1, 100 * dollar(trading_pair.0), 10_000 * dollar(trading_pair.1), false)?;
 	}: remove_liquidity(RawOrigin::Signed(maker), trading_pair.0, trading_pair.1, 50 * dollar(trading_pair.0), Default::default(), Default::default(), false)
 
 	// remove liquidity by withdraw staking lp share
 	remove_liquidity_by_unstake {
 		let maker: AccountId = whitelisted_caller();
-		let trading_pair = EnabledTradingPairs::get()[0];
+		let trading_pair = TradingPair::new(AUSD, RENBTC);
 		inject_liquidity(maker.clone(), trading_pair.0, trading_pair.1, 100 * dollar(trading_pair.0), 10_000 * dollar(trading_pair.1), true)?;
 	}: remove_liquidity(RawOrigin::Signed(maker), trading_pair.0, trading_pair.1, 50 * dollar(trading_pair.0), Default::default(), Default::default(), true)
 
 	swap_with_exact_supply {
 		let u in 2 .. TradingPathLimit::get() as u32;
 
-		let trading_pair = EnabledTradingPairs::get()[0];
+		let trading_pair = TradingPair::new(AUSD, RENBTC);
 		let mut path: Vec<CurrencyId> = vec![];
 		for i in 1 .. u {
 			if i == 1 {
@@ -226,7 +230,7 @@ runtime_benchmarks! {
 	swap_with_exact_target {
 		let u in 2 .. TradingPathLimit::get() as u32;
 
-		let trading_pair = EnabledTradingPairs::get()[0];
+		let trading_pair = TradingPair::new(AUSD, RENBTC);
 		let mut path: Vec<CurrencyId> = vec![];
 		for i in 1 .. u {
 			if i == 1 {
