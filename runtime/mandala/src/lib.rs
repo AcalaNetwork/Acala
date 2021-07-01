@@ -165,6 +165,8 @@ parameter_types! {
 	pub const NftPalletId: PalletId = PalletId(*b"aca/aNFT");
 	pub const NomineesElectionId: LockIdentifier = *b"aca/nome";
 	pub UnreleasedNativeVaultAccountId: AccountId = PalletId(*b"aca/urls").into_account();
+	// Ecosystem modules
+	pub const StarportPalletId: PalletId = PalletId(*b"aca/stpt");
 }
 
 pub fn get_all_module_accounts() -> Vec<AccountId> {
@@ -179,6 +181,7 @@ pub fn get_all_module_accounts() -> Vec<AccountId> {
 		IncentivesPalletId::get().into_account(),
 		TreasuryReservePalletId::get().into_account(),
 		ZeroAccountId::get(),
+		StarportPalletId::get().into_account(),
 	]
 }
 
@@ -1475,6 +1478,27 @@ impl ecosystem_renvm_bridge::Config for Runtime {
 }
 
 parameter_types! {
+	pub const CashCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::CASH);
+	pub const MaxGatewayAuthorityCount: u32 = 8;
+	pub const PercentThresholdForGatewayAuthoritySignature: Perbill = Perbill::from_percent(50);
+}
+
+impl ecosystem_starport::Config for Runtime {
+	type Event = Event;
+	type Currency = Currencies;
+	type CashCurrencyId = CashCurrencyId;
+	type PalletId = StarportPalletId;
+	type MaxGatewayAuthorities = MaxGatewayAuthorityCount;
+	type PercentThresholdForAuthoritySignature = PercentThresholdForGatewayAuthoritySignature;
+	type Cash = CompoundCash;
+}
+
+impl ecosystem_compound_cash::Config for Runtime {
+	type Event = Event;
+	type UnixTime = Timestamp;
+}
+
+parameter_types! {
 	pub const ChainId: u64 = 595;
 	pub NetworkContractSource: H160 = H160::from_low_u64_be(0);
 }
@@ -1929,6 +1953,8 @@ construct_runtime! {
 		RenVmBridge: ecosystem_renvm_bridge::{Pallet, Call, Config, Storage, Event<T>, ValidateUnsigned} = 150,
 		ChainBridge: chainbridge::{Pallet, Call, Storage, Event<T>} = 151,
 		ChainSafeTransfer: ecosystem_chainsafe::{Pallet, Call, Storage, Event<T>} = 152,
+		Starport: ecosystem_starport::{Pallet, Call, Storage, Event<T>, Config} = 153,
+		CompoundCash: ecosystem_compound_cash::{Pallet, Storage, Event<T>} = 154,
 
 		// Parachain
 		ParachainSystem: cumulus_pallet_parachain_system::{Pallet, Call, Storage, Inherent, Config, Event<T>} = 160,

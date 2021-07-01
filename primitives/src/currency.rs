@@ -186,6 +186,9 @@ create_currency_id! {
 		KSM("Kusama", 12) = 130,
 		LKSM("Liquid KSM", 12) = 131,
 		// Reserve for RENBTC = 132
+
+		// External Ecosystem
+		CASH("Compound CASH", 8) = 140,
 	}
 }
 
