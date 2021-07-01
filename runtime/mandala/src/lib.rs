@@ -1953,7 +1953,7 @@ construct_runtime! {
 		RenVmBridge: ecosystem_renvm_bridge::{Pallet, Call, Config, Storage, Event<T>, ValidateUnsigned} = 150,
 		ChainBridge: chainbridge::{Pallet, Call, Storage, Event<T>} = 151,
 		ChainSafeTransfer: ecosystem_chainsafe::{Pallet, Call, Storage, Event<T>} = 152,
-		Starport: ecosystem_starport::{Pallet, Call, Storage, Event<T>, Config<T>} = 153,
+		Starport: ecosystem_starport::{Pallet, Call, Storage, Event<T>, Config} = 153,
 		CompoundCash: ecosystem_compound_cash::{Pallet, Storage, Event<T>} = 154,
 
 		// Parachain

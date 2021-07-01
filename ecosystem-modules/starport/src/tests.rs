@@ -386,9 +386,9 @@ fn notices_cannot_be_invoked_twice() {
 }
 
 #[test]
-fn notices_can_only_be_invoked_by_gateway_account() {
+fn notices_are_invoked_by_any_account() {
 	ExtBuilder::default().build().execute_with(|| {
-		let notice = GatewayNotice::new(
+		let mut notice = GatewayNotice::new(
 			0,
 			GatewayNoticePayload::SetFutureYield {
 				next_cash_yield: 1000,
@@ -396,13 +396,30 @@ fn notices_can_only_be_invoked_by_gateway_account() {
 				next_cash_yield_start: 0,
 			},
 		);
-		assert_noop!(
-			Starport::invoke(Origin::signed(ALICE), notice.clone(), mock::get_mock_signatures()),
-			Error::<Runtime>::InvalidNoticeInvoker
+		assert_ok!(Starport::invoke(
+			Origin::signed(ALICE),
+			notice.clone(),
+			mock::get_mock_signatures()
+		));
+		assert_eq!(
+			System::events().iter().last().unwrap().event,
+			Event::Starport(crate::Event::FutureYieldSet(1000, 0, 0))
 		);
 
+		notice.id = 1;
 		assert_ok!(Starport::invoke(
 			Origin::signed(GATEWAY_ACCOUNT),
+			notice.clone(),
+			mock::get_mock_signatures()
+		));
+		assert_eq!(
+			System::events().iter().last().unwrap().event,
+			Event::Starport(crate::Event::FutureYieldSet(1000, 0, 0))
+		);
+
+		notice.id = 2;
+		assert_ok!(Starport::invoke(
+			Origin::signed(BOB),
 			notice.clone(),
 			mock::get_mock_signatures()
 		));
@@ -444,52 +461,6 @@ fn notices_can_only_be_invoked_with_enough_signatures() {
 		assert_noop!(
 			Starport::invoke(Origin::signed(GATEWAY_ACCOUNT), notice, signer),
 			Error::<Runtime>::InsufficientValidNoticeSignatures
-		);
-	});
-}
-
-#[test]
-fn can_update_gateway_admin() {
-	ExtBuilder::default().build().execute_with(|| {
-		let new_admin = BOB;
-		assert_noop!(
-			Starport::update_gateway_admin(Origin::signed(ALICE), new_admin.clone()),
-			Error::<Runtime>::InvalidGatewayAdminUpdateCaller
-		);
-
-		assert_ok!(Starport::update_gateway_admin(
-			Origin::signed(GATEWAY_ACCOUNT),
-			new_admin.clone()
-		));
-		assert_eq!(
-			System::events().iter().last().unwrap().event,
-			Event::Starport(crate::Event::GatewayAdminUpdated(new_admin.clone()))
-		);
-
-		let notice = GatewayNotice::new(
-			0,
-			GatewayNoticePayload::Unlock {
-				currency_id: CASH,
-				amount: 500,
-				who: ALICE,
-			},
-		);
-		assert_noop!(
-			Starport::invoke(
-				Origin::signed(GATEWAY_ACCOUNT),
-				notice.clone(),
-				mock::get_mock_signatures()
-			),
-			Error::<Runtime>::InvalidNoticeInvoker
-		);
-		assert_ok!(Starport::invoke(
-			Origin::signed(new_admin),
-			notice.clone(),
-			mock::get_mock_signatures()
-		));
-		assert_eq!(
-			System::events().iter().last().unwrap().event,
-			Event::Starport(crate::Event::AssetUnlocked(CASH, 500, ALICE))
 		);
 	});
 }

@@ -282,7 +282,6 @@ fn testnet_genesis(
 		},
 		starport: StarportConfig {
 			initial_authorities: vec![get_account_id_from_seed::<sr25519::Public>("Alice")],
-			initial_gateway_account: get_account_id_from_seed::<sr25519::Public>("Alice"),
 		},
 		indices: IndicesConfig { indices: vec![] },
 		balances: BalancesConfig { balances },
@@ -483,7 +482,6 @@ fn mandala_genesis(
 		},
 		starport: StarportConfig {
 			initial_authorities: vec![get_account_id_from_seed::<sr25519::Public>("Alice")],
-			initial_gateway_account: get_account_id_from_seed::<sr25519::Public>("Alice"),
 		},
 		indices: IndicesConfig { indices: vec![] },
 		balances: BalancesConfig { balances },
