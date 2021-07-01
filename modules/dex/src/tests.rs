@@ -41,7 +41,7 @@ fn enable_new_trading_pair_work() {
 
 		assert_eq!(
 			DexModule::trading_pair_statuses(AUSD_DOT_PAIR),
-			TradingPairStatus::<_, _>::NotEnabled
+			TradingPairStatus::<_, _>::Disabled
 		);
 		assert_ok!(DexModule::enable_trading_pair(
 			Origin::signed(ListingOrigin::get()),
@@ -56,7 +56,7 @@ fn enable_new_trading_pair_work() {
 
 		assert_noop!(
 			DexModule::enable_trading_pair(Origin::signed(ListingOrigin::get()), DOT, AUSD),
-			Error::<Runtime>::MustBeNotEnabled
+			Error::<Runtime>::MustBeDisabled
 		);
 	});
 }
@@ -82,7 +82,7 @@ fn list_new_trading_pair_work() {
 
 		assert_eq!(
 			DexModule::trading_pair_statuses(AUSD_DOT_PAIR),
-			TradingPairStatus::<_, _>::NotEnabled
+			TradingPairStatus::<_, _>::Disabled
 		);
 		assert_ok!(DexModule::list_trading_pair(
 			Origin::signed(ListingOrigin::get()),
@@ -96,7 +96,7 @@ fn list_new_trading_pair_work() {
 		));
 		assert_eq!(
 			DexModule::trading_pair_statuses(AUSD_DOT_PAIR),
-			TradingPairStatus::<_, _>::Provisioning(TradingPairProvisionParameters {
+			TradingPairStatus::<_, _>::Provisioning(ProvisioningParameters {
 				min_contribution: (1_000_000_000_000u128, 1_000_000_000_000u128),
 				target_provision: (5_000_000_000_000u128, 2_000_000_000_000u128),
 				accumulated_provision: (0, 0),
@@ -130,7 +130,7 @@ fn list_new_trading_pair_work() {
 				2_000_000_000_000u128,
 				10,
 			),
-			Error::<Runtime>::MustBeNotEnabled
+			Error::<Runtime>::MustBeDisabled
 		);
 	});
 }
@@ -162,13 +162,13 @@ fn disable_enabled_trading_pair_work() {
 		));
 		assert_eq!(
 			DexModule::trading_pair_statuses(AUSD_DOT_PAIR),
-			TradingPairStatus::<_, _>::NotEnabled
+			TradingPairStatus::<_, _>::Disabled
 		);
 		System::assert_last_event(Event::DexModule(crate::Event::DisableTradingPair(AUSD_DOT_PAIR)));
 
 		assert_noop!(
 			DexModule::disable_trading_pair(Origin::signed(ListingOrigin::get()), AUSD, DOT),
-			Error::<Runtime>::NotEnabledTradingPair
+			Error::<Runtime>::DisabledTradingPair
 		);
 	});
 }
@@ -222,7 +222,7 @@ fn disable_provisioning_trading_pair_work() {
 			);
 			assert_eq!(
 				DexModule::trading_pair_statuses(AUSD_DOT_PAIR),
-				TradingPairStatus::<_, _>::Provisioning(TradingPairProvisionParameters {
+				TradingPairStatus::<_, _>::Provisioning(ProvisioningParameters {
 					min_contribution: (5_000_000_000_000u128, 1_000_000_000_000u128),
 					target_provision: (5_000_000_000_000_000u128, 1_000_000_000_000_000u128),
 					accumulated_provision: (10_000_000_000_000u128, 1_000_000_000_000u128),
@@ -247,7 +247,7 @@ fn disable_provisioning_trading_pair_work() {
 			assert_eq!(DexModule::provisioning_pool(AUSD_DOT_PAIR, BOB), (0, 0));
 			assert_eq!(
 				DexModule::trading_pair_statuses(AUSD_DOT_PAIR),
-				TradingPairStatus::<_, _>::NotEnabled
+				TradingPairStatus::<_, _>::Disabled
 			);
 			assert_eq!(System::consumers(&ALICE), alice_ref_count_0 - 1);
 			assert_eq!(System::consumers(&BOB), bob_ref_count_0 - 1);
@@ -278,7 +278,7 @@ fn add_provision_work() {
 			// alice add provision
 			assert_eq!(
 				DexModule::trading_pair_statuses(AUSD_DOT_PAIR),
-				TradingPairStatus::<_, _>::Provisioning(TradingPairProvisionParameters {
+				TradingPairStatus::<_, _>::Provisioning(ProvisioningParameters {
 					min_contribution: (5_000_000_000_000u128, 1_000_000_000_000u128),
 					target_provision: (5_000_000_000_000_000u128, 1_000_000_000_000_000u128),
 					accumulated_provision: (0, 0),
@@ -303,7 +303,7 @@ fn add_provision_work() {
 			));
 			assert_eq!(
 				DexModule::trading_pair_statuses(AUSD_DOT_PAIR),
-				TradingPairStatus::<_, _>::Provisioning(TradingPairProvisionParameters {
+				TradingPairStatus::<_, _>::Provisioning(ProvisioningParameters {
 					min_contribution: (5_000_000_000_000u128, 1_000_000_000_000u128),
 					target_provision: (5_000_000_000_000_000u128, 1_000_000_000_000_000u128),
 					accumulated_provision: (5_000_000_000_000u128, 0),
@@ -348,7 +348,7 @@ fn add_provision_work() {
 			));
 			assert_eq!(
 				DexModule::trading_pair_statuses(AUSD_DOT_PAIR),
-				TradingPairStatus::<_, _>::Provisioning(TradingPairProvisionParameters {
+				TradingPairStatus::<_, _>::Provisioning(ProvisioningParameters {
 					min_contribution: (5_000_000_000_000u128, 1_000_000_000_000u128),
 					target_provision: (5_000_000_000_000_000u128, 1_000_000_000_000_000u128),
 					accumulated_provision: (5_000_000_000_000u128, 1_000_000_000_000_000u128),
@@ -640,7 +640,7 @@ fn add_liquidity_work() {
 
 			assert_noop!(
 				DexModule::add_liquidity(Origin::signed(ALICE), ACA, AUSD, 100_000_000, 100_000_000, 0, false),
-				Error::<Runtime>::NotEnabledTradingPair
+				Error::<Runtime>::DisabledTradingPair
 			);
 			assert_noop!(
 				DexModule::add_liquidity(Origin::signed(ALICE), AUSD, DOT, 0, 100_000_000, 0, false),
