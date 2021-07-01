@@ -348,8 +348,8 @@ where
 					Err(err) => {
 						log::debug!(
 							target: "evm",
-							"calculate_gas_used err, lower: {:?}, upper: {:?}, mid: {:?}",
-							lower, upper, mid
+							"calculate_gas_used err: {:?}, lower: {:?}, upper: {:?}, mid: {:?}",
+							err, lower, upper, mid
 						);
 
 						// if Err == OutofGas, we need more gas
