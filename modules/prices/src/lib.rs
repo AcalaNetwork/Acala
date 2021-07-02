@@ -228,11 +228,13 @@ fn lp_token_fair_price(
 	price_a: Price,
 	price_b: Price,
 ) -> Option<Price> {
-	U256::from(pool_a).saturating_mul(U256::from(pool_b))
+	U256::from(pool_a)
+		.saturating_mul(U256::from(pool_b))
 		.integer_sqrt()
 		.saturating_mul(
-			U256::from(price_a.into_inner()).saturating_mul(U256::from(price_b.into_inner()))
-				.integer_sqrt()
+			U256::from(price_a.into_inner())
+				.saturating_mul(U256::from(price_b.into_inner()))
+				.integer_sqrt(),
 		)
 		.checked_div(U256::from(total_shares))
 		.and_then(|n| n.checked_mul(U256::from(2)))
