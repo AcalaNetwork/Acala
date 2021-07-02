@@ -29,20 +29,6 @@ use sp_runtime::{
 };
 
 #[test]
-fn integer_sqrt_works() {
-	assert_eq!(
-		integer_sqrt(U256::from(u128::MAX).saturating_mul(U256::from(u128::MAX))),
-		U256::from(u128::MAX)
-	);
-	assert_eq!(integer_sqrt(U256::from(5)), U256::from(2));
-	assert_eq!(integer_sqrt(U256::from(4)), U256::from(2));
-	assert_eq!(integer_sqrt(U256::from(3)), U256::from(1));
-	assert_eq!(integer_sqrt(U256::from(2)), U256::from(1));
-	assert_eq!(integer_sqrt(U256::from(1)), U256::from(1));
-	assert_eq!(integer_sqrt(U256::from(0)), U256::from(0));
-}
-
-#[test]
 fn lp_token_fair_price_works() {
 	let lp_token_fair_price_0 = lp_token_fair_price(
 		10000,

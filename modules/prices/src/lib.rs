@@ -218,24 +218,6 @@ impl<T: Config> PriceProvider<CurrencyId> for Pallet<T> {
 	}
 }
 
-/// https://en.wikipedia.org/wiki/Integer_square_root
-/// TODO: use https://github.com/paritytech/parity-common/pull/554 after it released
-fn integer_sqrt(n: U256) -> U256 {
-	if n < 2.into() {
-		return n;
-	}
-
-	let small_candidate = integer_sqrt(n >> 2) << 1;
-
-	let large_candidate = small_candidate + 1;
-
-	if large_candidate * large_candidate > n {
-		small_candidate
-	} else {
-		large_candidate
-	}
-}
-
 /// The fair price is determined by the external feed price and the size of the liquidity pool:
 /// https://blog.alphafinance.io/fair-lp-token-pricing/
 /// fair_price = (pool_0 * pool_1)^0.5 * (price_0 * price_1)^0.5 / total_shares * 2
@@ -246,10 +228,14 @@ fn lp_token_fair_price(
 	price_a: Price,
 	price_b: Price,
 ) -> Option<Price> {
-	integer_sqrt(U256::from(pool_a).saturating_mul(U256::from(pool_b)))
-		.saturating_mul(integer_sqrt(
-			U256::from(price_a.into_inner()).saturating_mul(U256::from(price_b.into_inner())),
-		))
+	U256::from(pool_a)
+		.saturating_mul(U256::from(pool_b))
+		.integer_sqrt()
+		.saturating_mul(
+			U256::from(price_a.into_inner())
+				.saturating_mul(U256::from(price_b.into_inner()))
+				.integer_sqrt(),
+		)
 		.checked_div(U256::from(total_shares))
 		.and_then(|n| n.checked_mul(U256::from(2)))
 		.and_then(|r| TryInto::<u128>::try_into(r).ok())
