@@ -49,8 +49,9 @@ use sp_std::marker::PhantomData;
 pub trait WeightInfo {
 	fn enable_trading_pair() -> Weight;
 	fn disable_trading_pair() -> Weight;
-	fn list_trading_pair() -> Weight;
+	fn list_provisioning() -> Weight;
 	fn update_provisioning_parameters() -> Weight;
+	fn end_provisioning() -> Weight;
 	fn add_liquidity() -> Weight;
 	fn add_liquidity_and_stake() -> Weight;
 	fn add_provision() -> Weight;
@@ -74,12 +75,17 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
-	fn list_trading_pair() -> Weight {
+	fn list_provisioning() -> Weight {
 		(36_413_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn update_provisioning_parameters() -> Weight {
+		(36_413_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(2 as Weight))
+			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+	}
+	fn end_provisioning() -> Weight {
 		(36_413_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
@@ -142,12 +148,17 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
-	fn list_trading_pair() -> Weight {
+	fn list_provisioning() -> Weight {
 		(36_413_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(2 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
 	fn update_provisioning_parameters() -> Weight {
+		(36_413_000 as Weight)
+			.saturating_add(RocksDbWeight::get().reads(2 as Weight))
+			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
+	}
+	fn end_provisioning() -> Weight {
 		(36_413_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(2 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))

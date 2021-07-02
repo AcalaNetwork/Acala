@@ -599,7 +599,7 @@ fn test_dex_module() {
 			));
 
 			// CurrencyId::DexShare(Erc20, Erc20)
-			assert_ok!(DexModule::list_trading_pair(
+			assert_ok!(DexModule::list_provisioning(
 				Origin::root(),
 				CurrencyId::Erc20(erc20_address_0()),
 				CurrencyId::Erc20(erc20_address_1()),
@@ -657,8 +657,8 @@ fn test_dex_module() {
 				100,
 				1000,
 			));
-			assert_ok!(DexModule::enable_trading_pair(
-				Origin::root(),
+			assert_ok!(DexModule::end_provisioning(
+				Origin::signed(AccountId::from(BOB)),
 				CurrencyId::Erc20(erc20_address_0()),
 				CurrencyId::Erc20(erc20_address_1()),
 			));
@@ -1361,7 +1361,7 @@ fn test_multicurrency_precompile_module() {
 				EvmAccounts::eth_address(&alice_key()),
 				EvmAccounts::eth_sign(&alice_key(), &AccountId::from(ALICE).encode(), &[][..])
 			));
-			assert_ok!(DexModule::list_trading_pair(
+			assert_ok!(DexModule::list_provisioning(
 				Origin::root(),
 				CurrencyId::Erc20(erc20_address_0()),
 				CurrencyId::Erc20(erc20_address_1()),
@@ -1381,8 +1381,8 @@ fn test_multicurrency_precompile_module() {
 				100,
 				1000,
 			));
-			assert_ok!(DexModule::enable_trading_pair(
-				Origin::root(),
+			assert_ok!(DexModule::end_provisioning(
+				Origin::signed(AccountId::from(ALICE)),
 				CurrencyId::Erc20(erc20_address_0()),
 				CurrencyId::Erc20(erc20_address_1()),
 			));

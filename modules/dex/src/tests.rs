@@ -30,12 +30,12 @@ use orml_traits::MultiReservableCurrency;
 use sp_runtime::traits::BadOrigin;
 
 #[test]
-fn list_new_trading_pair_work() {
+fn list_provisioning_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
 
 		assert_noop!(
-			DexModule::list_trading_pair(
+			DexModule::list_provisioning(
 				Origin::signed(ALICE),
 				AUSD,
 				DOT,
@@ -52,7 +52,7 @@ fn list_new_trading_pair_work() {
 			DexModule::trading_pair_statuses(AUSD_DOT_PAIR),
 			TradingPairStatus::<_, _>::Disabled
 		);
-		assert_ok!(DexModule::list_trading_pair(
+		assert_ok!(DexModule::list_provisioning(
 			Origin::signed(ListingOrigin::get()),
 			AUSD,
 			DOT,
@@ -71,10 +71,10 @@ fn list_new_trading_pair_work() {
 				not_before: 10,
 			})
 		);
-		System::assert_last_event(Event::DexModule(crate::Event::ListTradingPair(AUSD_DOT_PAIR)));
+		System::assert_last_event(Event::DexModule(crate::Event::ListProvisioning(AUSD_DOT_PAIR)));
 
 		assert_noop!(
-			DexModule::list_trading_pair(
+			DexModule::list_provisioning(
 				Origin::signed(ListingOrigin::get()),
 				AUSD,
 				AUSD,
@@ -88,7 +88,7 @@ fn list_new_trading_pair_work() {
 		);
 
 		assert_noop!(
-			DexModule::list_trading_pair(
+			DexModule::list_provisioning(
 				Origin::signed(ListingOrigin::get()),
 				AUSD,
 				DOT,
@@ -136,7 +136,7 @@ fn update_provisioning_parameters_work() {
 			Error::<Runtime>::MustBeProvisioning
 		);
 
-		assert_ok!(DexModule::list_trading_pair(
+		assert_ok!(DexModule::list_provisioning(
 			Origin::signed(ListingOrigin::get()),
 			AUSD,
 			DOT,
@@ -211,11 +211,71 @@ fn enable_diabled_trading_pair_work() {
 }
 
 #[test]
-fn enable_provisioning_trading_pair_work() {
+fn enable_provisioning_without_provision_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
 
-		assert_ok!(DexModule::list_trading_pair(
+		assert_ok!(DexModule::list_provisioning(
+			Origin::signed(ListingOrigin::get()),
+			AUSD,
+			DOT,
+			1_000_000_000_000u128,
+			1_000_000_000_000u128,
+			5_000_000_000_000u128,
+			2_000_000_000_000u128,
+			10,
+		));
+		assert_ok!(DexModule::list_provisioning(
+			Origin::signed(ListingOrigin::get()),
+			AUSD,
+			BTC,
+			1_000_000_000_000u128,
+			1_000_000_000_000u128,
+			5_000_000_000_000u128,
+			2_000_000_000_000u128,
+			10,
+		));
+		assert_ok!(DexModule::add_provision(
+			Origin::signed(ALICE),
+			AUSD,
+			BTC,
+			1_000_000_000_000u128,
+			1_000_000_000_000u128
+		));
+
+		assert_eq!(
+			DexModule::trading_pair_statuses(AUSD_DOT_PAIR),
+			TradingPairStatus::<_, _>::Provisioning(ProvisioningParameters {
+				min_contribution: (1_000_000_000_000u128, 1_000_000_000_000u128),
+				target_provision: (5_000_000_000_000u128, 2_000_000_000_000u128),
+				accumulated_provision: (0, 0),
+				not_before: 10,
+			})
+		);
+		assert_ok!(DexModule::enable_trading_pair(
+			Origin::signed(ListingOrigin::get()),
+			AUSD,
+			DOT
+		));
+		assert_eq!(
+			DexModule::trading_pair_statuses(AUSD_DOT_PAIR),
+			TradingPairStatus::<_, _>::Enabled
+		);
+		System::assert_last_event(Event::DexModule(crate::Event::EnableTradingPair(AUSD_DOT_PAIR)));
+
+		assert_noop!(
+			DexModule::enable_trading_pair(Origin::signed(ListingOrigin::get()), AUSD, BTC),
+			Error::<Runtime>::StillProvisioning
+		);
+	});
+}
+
+#[test]
+fn end_provisioning_trading_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
+
+		assert_ok!(DexModule::list_provisioning(
 			Origin::signed(ListingOrigin::get()),
 			AUSD,
 			DOT,
@@ -235,19 +295,7 @@ fn enable_provisioning_trading_pair_work() {
 			})
 		);
 
-		// enable Provisioning trading pair without provision
-		assert_ok!(DexModule::enable_trading_pair(
-			Origin::signed(ListingOrigin::get()),
-			AUSD,
-			DOT
-		));
-		assert_eq!(
-			DexModule::trading_pair_statuses(AUSD_DOT_PAIR),
-			TradingPairStatus::<_, _>::Enabled
-		);
-		System::assert_last_event(Event::DexModule(crate::Event::EnableTradingPair(AUSD_DOT_PAIR)));
-
-		assert_ok!(DexModule::list_trading_pair(
+		assert_ok!(DexModule::list_provisioning(
 			Origin::signed(ListingOrigin::get()),
 			AUSD,
 			BTC,
@@ -266,7 +314,7 @@ fn enable_provisioning_trading_pair_work() {
 		));
 
 		assert_noop!(
-			DexModule::enable_trading_pair(Origin::signed(ListingOrigin::get()), AUSD, BTC),
+			DexModule::end_provisioning(Origin::signed(ListingOrigin::get()), AUSD, BTC),
 			Error::<Runtime>::UnqualifiedProvision
 		);
 		System::set_block_number(10);
@@ -297,7 +345,7 @@ fn enable_provisioning_trading_pair_work() {
 			0
 		);
 
-		assert_ok!(DexModule::enable_trading_pair(
+		assert_ok!(DexModule::end_provisioning(
 			Origin::signed(ListingOrigin::get()),
 			AUSD,
 			BTC
@@ -370,7 +418,7 @@ fn disable_trading_pair_work() {
 			Error::<Runtime>::MustBeEnabled
 		);
 
-		assert_ok!(DexModule::list_trading_pair(
+		assert_ok!(DexModule::list_provisioning(
 			Origin::signed(ListingOrigin::get()),
 			AUSD,
 			BTC,
@@ -403,7 +451,7 @@ fn add_provision_work() {
 			Error::<Runtime>::MustBeProvisioning
 		);
 
-		assert_ok!(DexModule::list_trading_pair(
+		assert_ok!(DexModule::list_provisioning(
 			Origin::signed(ListingOrigin::get()),
 			AUSD,
 			DOT,
@@ -485,7 +533,7 @@ fn claim_dex_share_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
 
-		assert_ok!(DexModule::list_trading_pair(
+		assert_ok!(DexModule::list_provisioning(
 			Origin::signed(ListingOrigin::get()),
 			AUSD,
 			DOT,
@@ -516,7 +564,7 @@ fn claim_dex_share_work() {
 			Error::<Runtime>::StillProvisioning
 		);
 
-		assert_ok!(DexModule::enable_trading_pair(
+		assert_ok!(DexModule::end_provisioning(
 			Origin::signed(ListingOrigin::get()),
 			AUSD,
 			DOT
