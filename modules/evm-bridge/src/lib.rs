@@ -25,7 +25,9 @@ use frame_support::{
 	pallet_prelude::*,
 };
 use module_evm::{ExitReason, ExitSucceed};
+use num_enum::{IntoPrimitive, TryFromPrimitive};
 use primitive_types::H256;
+use primitives::create_function_selector;
 use sp_core::{H160, U256};
 use sp_runtime::SaturatedConversion;
 use sp_std::vec::Vec;
@@ -34,12 +36,18 @@ use support::{EVMBridge as EVMBridgeTrait, ExecutionMode, InvokeContext, EVM};
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 type BalanceOf<T> = <<T as Config>::EVM as EVM<AccountIdOf<T>>>::Balance;
 
-pub const METHOD_NAME: u32 = 0x06fdde03;
-pub const METHOD_SYMBOL: u32 = 0x95d89b41;
-pub const METHOD_DECIMALS: u32 = 0x313ce567;
-pub const METHOD_TOTAL_SUPPLY: u32 = 0x18160ddd;
-pub const METHOD_BALANCE_OF: u32 = 0x70a08231;
-pub const METHOD_TRANSFER: u32 = 0xa9059cbb;
+create_function_selector! {
+	#[derive(Debug, Eq, PartialEq, TryFromPrimitive, IntoPrimitive)]
+	#[repr(u32)]
+	pub enum Action {
+		Name("name()") = 0x06fdde03_u32,
+		Symbol("symbol()") = 0x95d89b41_u32,
+		Decimals("decimals()") = 0x313ce567_u32,
+		TotalSupply("totalSupply()") = 0x18160ddd_u32,
+		BalanceOf("balanceOf(address)") = 0x70a08231_u32,
+		Transfer("transfer(address,uint256)") = 0xa9059cbb_u32,
+	}
+}
 
 mod mock;
 mod tests;
@@ -85,7 +93,7 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for Pallet<T> {
 	// and returns the token name.
 	fn name(context: InvokeContext) -> Result<Vec<u8>, DispatchError> {
 		// ERC20.name method hash
-		let input = METHOD_NAME.to_be_bytes().to_vec();
+		let input = Into::<u32>::into(Action::Name).to_be_bytes().to_vec();
 
 		let info = T::EVM::execute(context, input, Default::default(), 2_100_000, 0, ExecutionMode::View)?;
 
@@ -97,7 +105,7 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for Pallet<T> {
 	// and returns the token symbol.
 	fn symbol(context: InvokeContext) -> Result<Vec<u8>, DispatchError> {
 		// ERC20.symbol method hash
-		let input = METHOD_SYMBOL.to_be_bytes().to_vec();
+		let input = Into::<u32>::into(Action::Symbol).to_be_bytes().to_vec();
 
 		let info = T::EVM::execute(context, input, Default::default(), 2_100_000, 0, ExecutionMode::View)?;
 
@@ -109,7 +117,7 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for Pallet<T> {
 	// and returns the decimals.
 	fn decimals(context: InvokeContext) -> Result<u8, DispatchError> {
 		// ERC20.decimals method hash
-		let input = METHOD_DECIMALS.to_be_bytes().to_vec();
+		let input = Into::<u32>::into(Action::Decimals).to_be_bytes().to_vec();
 
 		let info = T::EVM::execute(context, input, Default::default(), 2_100_000, 0, ExecutionMode::View)?;
 
@@ -124,7 +132,7 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for Pallet<T> {
 	// and returns the total supply.
 	fn total_supply(context: InvokeContext) -> Result<BalanceOf<T>, DispatchError> {
 		// ERC20.totalSupply method hash
-		let input = METHOD_TOTAL_SUPPLY.to_be_bytes().to_vec();
+		let input = Into::<u32>::into(Action::TotalSupply).to_be_bytes().to_vec();
 
 		let info = T::EVM::execute(context, input, Default::default(), 2_100_000, 0, ExecutionMode::View)?;
 
@@ -139,7 +147,7 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for Pallet<T> {
 	// and returns the address's balance.
 	fn balance_of(context: InvokeContext, address: H160) -> Result<BalanceOf<T>, DispatchError> {
 		// ERC20.balanceOf method hash
-		let mut input = METHOD_BALANCE_OF.to_be_bytes().to_vec();
+		let mut input = Into::<u32>::into(Action::BalanceOf).to_be_bytes().to_vec();
 		// append address
 		input.extend_from_slice(H256::from(address).as_bytes());
 
@@ -155,7 +163,7 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for Pallet<T> {
 	// Calls the transfer method on an ERC20 contract using the given context.
 	fn transfer(context: InvokeContext, to: H160, value: BalanceOf<T>) -> DispatchResult {
 		// ERC20.transfer method hash
-		let mut input = METHOD_TRANSFER.to_be_bytes().to_vec();
+		let mut input = Into::<u32>::into(Action::Transfer).to_be_bytes().to_vec();
 		// append receiver address
 		input.extend_from_slice(H256::from(to).as_bytes());
 		// append amount to be transferred

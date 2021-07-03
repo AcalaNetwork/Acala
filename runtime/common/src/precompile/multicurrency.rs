@@ -26,7 +26,7 @@ use orml_traits::MultiCurrency as MultiCurrencyT;
 
 use super::input::{Input, InputT};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
-use primitives::{Balance, CurrencyId};
+use primitives::{create_function_selector, Balance, CurrencyId};
 
 /// The `MultiCurrency` impl precompile.
 ///
@@ -41,15 +41,17 @@ pub struct MultiCurrencyPrecompile<AccountId, AddressMapping, CurrencyIdMapping,
 	PhantomData<(AccountId, AddressMapping, CurrencyIdMapping, MultiCurrency)>,
 );
 
-#[derive(Debug, Eq, PartialEq, TryFromPrimitive, IntoPrimitive)]
-#[repr(u32)]
-pub enum Action {
-	QueryName = 0x06fdde03,
-	QuerySymbol = 0x95d89b41,
-	QueryDecimals = 0x313ce567,
-	QueryTotalIssuance = 0x18160ddd,
-	QueryBalance = 0x70a08231,
-	Transfer = 0xbeabacc8,
+create_function_selector! {
+	#[derive(Debug, Eq, PartialEq, TryFromPrimitive, IntoPrimitive)]
+	#[repr(u32)]
+	pub enum Action {
+		QueryName("name()") = 0x06fdde03_u32,
+		QuerySymbol("symbol()") = 0x95d89b41_u32,
+		QueryDecimals("decimals()") = 0x313ce567_u32,
+		QueryTotalIssuance("totalSupply()") = 0x18160ddd_u32,
+		QueryBalance("balanceOf(address)") = 0x70a08231_u32,
+		Transfer("transfer(address,address,uint256)") = 0xbeabacc8_u32,
+	}
 }
 
 impl<AccountId, AddressMapping, CurrencyIdMapping, MultiCurrency> Precompile
@@ -152,43 +154,4 @@ fn vec_u8_from_str(b: &[u8]) -> Vec<u8> {
 	let mut be_bytes = [0u8; 32];
 	U256::from_big_endian(b).to_big_endian(&mut be_bytes[..]);
 	be_bytes.to_vec()
-}
-
-#[cfg(test)]
-mod tests {
-	use super::*;
-	use crate::precompile::mock::get_function_selector;
-
-	#[test]
-	fn function_selector_match() {
-		assert_eq!(
-			u32::from_be_bytes(get_function_selector("name()")),
-			Into::<u32>::into(Action::QueryName)
-		);
-
-		assert_eq!(
-			u32::from_be_bytes(get_function_selector("symbol()")),
-			Into::<u32>::into(Action::QuerySymbol)
-		);
-
-		assert_eq!(
-			u32::from_be_bytes(get_function_selector("decimals()")),
-			Into::<u32>::into(Action::QueryDecimals)
-		);
-
-		assert_eq!(
-			u32::from_be_bytes(get_function_selector("totalSupply()")),
-			Into::<u32>::into(Action::QueryTotalIssuance)
-		);
-
-		assert_eq!(
-			u32::from_be_bytes(get_function_selector("balanceOf(address)")),
-			Into::<u32>::into(Action::QueryBalance)
-		);
-
-		assert_eq!(
-			u32::from_be_bytes(get_function_selector("transfer(address,address,uint256)")),
-			Into::<u32>::into(Action::Transfer)
-		);
-	}
 }

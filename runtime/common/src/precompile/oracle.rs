@@ -19,7 +19,7 @@
 use frame_support::{log, sp_runtime::FixedPointNumber};
 use module_evm::{Context, ExitError, ExitSucceed, Precompile};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
-use primitives::CurrencyId;
+use primitives::{create_function_selector, CurrencyId};
 use sp_core::U256;
 use sp_std::{fmt::Debug, marker::PhantomData, prelude::*, result};
 
@@ -39,10 +39,12 @@ pub struct OraclePrecompile<AccountId, AddressMapping, CurrencyIdMapping, PriceP
 	PhantomData<(AccountId, AddressMapping, CurrencyIdMapping, PriceProvider)>,
 );
 
-#[derive(Debug, Eq, PartialEq, TryFromPrimitive, IntoPrimitive)]
-#[repr(u32)]
-pub enum Action {
-	GetPrice = 0x41976e09,
+create_function_selector! {
+	#[derive(Debug, Eq, PartialEq, TryFromPrimitive, IntoPrimitive)]
+	#[repr(u32)]
+	pub enum Action {
+		GetPrice("getPrice(address)") = 0x41976e09_u32,
+	}
 }
 
 impl<AccountId, AddressMapping, CurrencyIdMapping, PriceProvider> Precompile
@@ -108,18 +110,4 @@ fn vec_u8_from_price(price: Price, adjustment_multiplier: u128) -> Vec<u8> {
 	let mut be_bytes = [0u8; 32];
 	U256::from(price.into_inner().wrapping_div(adjustment_multiplier)).to_big_endian(&mut be_bytes[..32]);
 	be_bytes.to_vec()
-}
-
-#[cfg(test)]
-mod tests {
-	use super::*;
-	use crate::precompile::mock::get_function_selector;
-
-	#[test]
-	fn function_selector_match() {
-		assert_eq!(
-			u32::from_be_bytes(get_function_selector("getPrice(address)")),
-			Into::<u32>::into(Action::GetPrice)
-		);
-	}
 }

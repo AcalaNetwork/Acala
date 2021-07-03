@@ -23,33 +23,8 @@
 use super::*;
 use frame_support::{assert_err, assert_ok};
 use mock::{
-	alice, alice_evm_addr, bob, bob_evm_addr, deploy_contracts, erc20_address, get_function_selector, EvmBridgeModule,
-	ExtBuilder, Runtime,
+	alice, alice_evm_addr, bob, bob_evm_addr, deploy_contracts, erc20_address, EvmBridgeModule, ExtBuilder, Runtime,
 };
-
-#[test]
-fn method_hash_works() {
-	assert_eq!(u32::from_be_bytes(get_function_selector("name()")), METHOD_NAME);
-
-	assert_eq!(u32::from_be_bytes(get_function_selector("symbol()")), METHOD_SYMBOL);
-
-	assert_eq!(u32::from_be_bytes(get_function_selector("decimals()")), METHOD_DECIMALS);
-
-	assert_eq!(
-		u32::from_be_bytes(get_function_selector("totalSupply()")),
-		METHOD_TOTAL_SUPPLY
-	);
-
-	assert_eq!(
-		u32::from_be_bytes(get_function_selector("balanceOf(address)")),
-		METHOD_BALANCE_OF
-	);
-
-	assert_eq!(
-		u32::from_be_bytes(get_function_selector("transfer(address,uint256)")),
-		METHOD_TRANSFER
-	);
-}
 
 #[test]
 fn should_read_name() {

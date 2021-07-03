@@ -29,7 +29,7 @@ use frame_support::{
 };
 use module_evm::{Context, ExitError, ExitSucceed, Precompile};
 use module_support::{AddressMapping as AddressMappingT, CurrencyIdMapping as CurrencyIdMappingT, TransactionPayment};
-use primitives::{Balance, BlockNumber};
+use primitives::{create_function_selector, Balance, BlockNumber};
 use sp_core::{H160, U256};
 use sp_runtime::RuntimeDebug;
 use sp_std::{fmt::Debug, marker::PhantomData, prelude::*, result};
@@ -84,12 +84,14 @@ pub struct ScheduleCallPrecompile<
 	)>,
 );
 
-#[derive(Debug, Eq, PartialEq, TryFromPrimitive, IntoPrimitive)]
-#[repr(u32)]
-pub enum Action {
-	Schedule = 0x64c91905,
-	Cancel = 0x93e32661,
-	Reschedule = 0x28302f34,
+create_function_selector! {
+	#[derive(Debug, Eq, PartialEq, TryFromPrimitive, IntoPrimitive)]
+	#[repr(u32)]
+	pub enum Action {
+		Schedule("scheduleCall(address,address,uint256,uint256,uint256,bytes)") = 0x64c91905_u32,
+		Cancel("cancelCall(address,bytes)") = 0x93e32661_u32,
+		Reschedule("rescheduleCall(address,uint256,bytes)") = 0x28302f34_u32,
+	}
 }
 
 type PalletBalanceOf<T> =
@@ -283,31 +285,5 @@ impl<
 				Ok((ExitSucceed::Returned, vec![], 0))
 			}
 		}
-	}
-}
-
-#[cfg(test)]
-mod tests {
-	use super::*;
-	use crate::precompile::mock::get_function_selector;
-
-	#[test]
-	fn function_selector_match() {
-		assert_eq!(
-			u32::from_be_bytes(get_function_selector(
-				"scheduleCall(address,address,uint256,uint256,uint256,bytes)"
-			)),
-			Into::<u32>::into(Action::Schedule)
-		);
-
-		assert_eq!(
-			u32::from_be_bytes(get_function_selector("cancelCall(address,bytes)")),
-			Into::<u32>::into(Action::Cancel)
-		);
-
-		assert_eq!(
-			u32::from_be_bytes(get_function_selector("rescheduleCall(address,uint256,bytes)")),
-			Into::<u32>::into(Action::Reschedule)
-		);
 	}
 }

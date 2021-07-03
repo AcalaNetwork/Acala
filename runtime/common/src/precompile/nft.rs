@@ -26,7 +26,7 @@ use orml_traits::NFT as NFTT;
 
 use super::input::{Input, InputT};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
-use primitives::NFTBalance;
+use primitives::{create_function_selector, NFTBalance};
 
 /// The `NFT` impl precompile.
 ///
@@ -40,12 +40,14 @@ pub struct NFTPrecompile<AccountId, AddressMapping, CurrencyIdMapping, NFT>(
 	PhantomData<(AccountId, AddressMapping, CurrencyIdMapping, NFT)>,
 );
 
-#[derive(Debug, Eq, PartialEq, TryFromPrimitive, IntoPrimitive)]
-#[repr(u32)]
-pub enum Action {
-	QueryBalance = 0x70a08231,
-	QueryOwner = 0xd9dad80d,
-	Transfer = 0x411b252,
+create_function_selector! {
+	#[derive(Debug, Eq, PartialEq, TryFromPrimitive, IntoPrimitive)]
+	#[repr(u32)]
+	pub enum Action {
+		QueryBalance("balanceOf(address)") = 0x70a08231_u32,
+		QueryOwner("ownerOf(uint256,uint256)") = 0xd9dad80d_u32,
+		Transfer("transfer(address,address,uint256,uint256)") = 0x411b252_u32,
+	}
 }
 
 impl<AccountId, AddressMapping, CurrencyIdMapping, NFT> Precompile
@@ -116,28 +118,4 @@ fn vec_u8_from_balance(b: NFTBalance) -> Vec<u8> {
 	let mut be_bytes = [0u8; 32];
 	U256::from(b).to_big_endian(&mut be_bytes[..]);
 	be_bytes.to_vec()
-}
-
-#[cfg(test)]
-mod tests {
-	use super::*;
-	use crate::precompile::mock::get_function_selector;
-
-	#[test]
-	fn function_selector_match() {
-		assert_eq!(
-			u32::from_be_bytes(get_function_selector("balanceOf(address)")),
-			Into::<u32>::into(Action::QueryBalance)
-		);
-
-		assert_eq!(
-			u32::from_be_bytes(get_function_selector("ownerOf(uint256,uint256)")),
-			Into::<u32>::into(Action::QueryOwner)
-		);
-
-		assert_eq!(
-			u32::from_be_bytes(get_function_selector("transfer(address,address,uint256,uint256)")),
-			Into::<u32>::into(Action::Transfer)
-		);
-	}
 }

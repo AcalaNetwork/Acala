@@ -22,6 +22,7 @@ ethereum-types = { version = "0.11.0", default-features = false }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 support = { package = "module-support", path = "../support", default-features = false }
 module-evm = { path = "../evm", default-features = false }
+num_enum = { version = "0.5.1", default-features = false }
 
 [dev-dependencies]
 sha3 = { version = "0.9.1" }
@@ -33,6 +34,7 @@ default = ["std"]
 std = [
 	"serde",
 	"codec/std",
+	"num_enum/std",
 	"sp-core/std",
 	"sp-runtime/std",
 	"frame-support/std",
