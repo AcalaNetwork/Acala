@@ -114,10 +114,7 @@ macro_rules! create_function_selector {
 
 			#[test]
 			fn method_hash_works() {
-				$(if get_function_selector($method) != $val {
-					println!("method: {:?}, selector: {:?}, expected: {:?}", $method, get_function_selector($method), $val);
-					assert!(false);
-				})*
+				$(assert_eq!(get_function_selector($method), $val, "method: {:?}", $method);)*
 			}
 		}
     }
