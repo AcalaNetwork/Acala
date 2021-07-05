@@ -206,9 +206,11 @@ impl Filter<Call> for BaseCallFilter {
 			// Oracle
 			Call::AcalaOracle(_) | Call::OperatorMembershipAcala(_) |
 			// Democracy
-			Call::Democracy(_) |
+			Call::Democracy(_) | Call::Treasury(_) | Call::Bounties(_) | Call::Tips(_) |
 			// Collactor Selection
-			Call::CollatorSelection(_) | Call::Session(_)
+			Call::CollatorSelection(_) | Call::Session(_) |
+			// Vesting
+			Call::Vesting(_)
 		)
 	}
 }
