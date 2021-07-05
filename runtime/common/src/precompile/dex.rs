@@ -23,6 +23,7 @@ use module_support::{AddressMapping as AddressMappingT, CurrencyIdMapping as Cur
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use primitives::{Balance, CurrencyId};
 use sp_core::U256;
+use sp_runtime::RuntimeDebug;
 use sp_std::{fmt::Debug, marker::PhantomData, prelude::*, result};
 
 /// The `DEX` impl precompile.
@@ -39,7 +40,7 @@ pub struct DexPrecompile<AccountId, AddressMapping, CurrencyIdMapping, Dex>(
 );
 
 #[primitives_proc_macro::generate_function_selector]
-#[derive(Debug, Eq, PartialEq, TryFromPrimitive, IntoPrimitive)]
+#[derive(RuntimeDebug, Eq, PartialEq, TryFromPrimitive, IntoPrimitive)]
 #[repr(u32)]
 pub enum Action {
 	GetLiquidityPool = "getLiquidityPool(address,address)",

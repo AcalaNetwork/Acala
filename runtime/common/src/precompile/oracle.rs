@@ -21,6 +21,7 @@ use module_evm::{Context, ExitError, ExitSucceed, Precompile};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use primitives::CurrencyId;
 use sp_core::U256;
+use sp_runtime::RuntimeDebug;
 use sp_std::{fmt::Debug, marker::PhantomData, prelude::*, result};
 
 use super::input::{Input, InputT};
@@ -40,7 +41,7 @@ pub struct OraclePrecompile<AccountId, AddressMapping, CurrencyIdMapping, PriceP
 );
 
 #[primitives_proc_macro::generate_function_selector]
-#[derive(Debug, Eq, PartialEq, TryFromPrimitive, IntoPrimitive)]
+#[derive(RuntimeDebug, Eq, PartialEq, TryFromPrimitive, IntoPrimitive)]
 #[repr(u32)]
 pub enum Action {
 	GetPrice = "getPrice(address)",

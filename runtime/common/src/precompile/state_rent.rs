@@ -20,6 +20,7 @@ use frame_support::log;
 use module_evm::{Context, ExitError, ExitSucceed, Precompile};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use sp_core::U256;
+use sp_runtime::RuntimeDebug;
 use sp_std::{borrow::Cow, fmt::Debug, marker::PhantomData, prelude::*, result};
 
 use module_support::{AddressMapping as AddressMappingT, CurrencyIdMapping as CurrencyIdMappingT, EVMStateRentTrait};
@@ -43,7 +44,7 @@ pub struct StateRentPrecompile<AccountId, AddressMapping, CurrencyIdMapping, EVM
 );
 
 #[primitives_proc_macro::generate_function_selector]
-#[derive(Debug, Eq, PartialEq, TryFromPrimitive, IntoPrimitive)]
+#[derive(RuntimeDebug, Eq, PartialEq, TryFromPrimitive, IntoPrimitive)]
 #[repr(u32)]
 pub enum Action {
 	QueryNewContractExtraBytes = "newContractExtraBytes()",

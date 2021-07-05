@@ -20,6 +20,7 @@ use frame_support::log;
 use module_evm::{Context, ExitError, ExitSucceed, Precompile};
 use module_support::{AddressMapping as AddressMappingT, CurrencyIdMapping as CurrencyIdMappingT};
 use sp_core::{H160, U256};
+use sp_runtime::RuntimeDebug;
 use sp_std::{borrow::Cow, fmt::Debug, marker::PhantomData, prelude::*, result};
 
 use orml_traits::NFT as NFTT;
@@ -41,7 +42,7 @@ pub struct NFTPrecompile<AccountId, AddressMapping, CurrencyIdMapping, NFT>(
 );
 
 #[primitives_proc_macro::generate_function_selector]
-#[derive(Debug, Eq, PartialEq, TryFromPrimitive, IntoPrimitive)]
+#[derive(RuntimeDebug, Eq, PartialEq, TryFromPrimitive, IntoPrimitive)]
 #[repr(u32)]
 pub enum Action {
 	QueryBalance = "balanceOf(address)",

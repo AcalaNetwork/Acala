@@ -85,7 +85,7 @@ pub struct ScheduleCallPrecompile<
 );
 
 #[primitives_proc_macro::generate_function_selector]
-#[derive(Debug, Eq, PartialEq, TryFromPrimitive, IntoPrimitive)]
+#[derive(RuntimeDebug, Eq, PartialEq, TryFromPrimitive, IntoPrimitive)]
 #[repr(u32)]
 pub enum Action {
 	Schedule = "scheduleCall(address,address,uint256,uint256,uint256,bytes)",
