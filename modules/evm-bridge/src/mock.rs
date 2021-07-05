@@ -24,10 +24,9 @@ use super::*;
 use frame_support::{assert_ok, construct_runtime, ord_parameter_types, parameter_types};
 use frame_system::EnsureSignedBy;
 use primitives::{evm::EvmAddress, ReserveIdentifier};
-use sha3::{Digest, Keccak256};
 use sp_core::{bytes::from_hex, crypto::AccountId32, H256};
 use sp_runtime::{testing::Header, traits::IdentityLookup};
-use sp_std::{convert::TryInto, str::FromStr};
+use sp_std::str::FromStr;
 use support::{mocks::MockAddressMapping, AddressMapping};
 
 pub type AccountId = AccountId32;
@@ -200,16 +199,6 @@ pub fn deploy_contracts() {
 	assert_eq!(System::events().iter().last().unwrap().event, event);
 
 	assert_ok!(EVM::deploy_free(Origin::signed(CouncilAccount::get()), erc20_address()));
-}
-
-pub fn get_function_selector(s: &str) -> [u8; 4] {
-	// create a SHA3-256 object
-	let mut hasher = Keccak256::new();
-	// write input message
-	hasher.update(s);
-	// read hash digest
-	let result = hasher.finalize();
-	result[..4].try_into().unwrap()
 }
 
 impl ExtBuilder {

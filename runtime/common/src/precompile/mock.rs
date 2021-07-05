@@ -36,17 +36,12 @@ pub use primitives::{
 	evm::EvmAddress, Amount, BlockNumber, CurrencyId, DexShare, Header, Nonce, ReserveIdentifier, TokenSymbol,
 	TradingPair,
 };
-use sha3::{Digest, Keccak256};
 use sp_core::{crypto::AccountId32, H160, H256};
 use sp_runtime::{
 	traits::{BlakeTwo256, Convert, IdentityLookup, One as OneT},
 	DispatchResult, FixedPointNumber, FixedU128, Perbill,
 };
-use sp_std::{
-	collections::btree_map::BTreeMap,
-	convert::{TryFrom, TryInto},
-	str::FromStr,
-};
+use sp_std::{collections::btree_map::BTreeMap, convert::TryFrom, str::FromStr};
 
 pub type AccountId = AccountId32;
 type Key = CurrencyId;
@@ -590,14 +585,4 @@ pub fn get_task_id(output: Vec<u8>) -> Vec<u8> {
 	num[..].copy_from_slice(&output[32 - 4..32]);
 	let task_id_len: u32 = u32::from_be_bytes(num);
 	return output[32..32 + task_id_len as usize].to_vec();
-}
-
-pub fn get_function_selector(s: &str) -> [u8; 4] {
-	// create a SHA3-256 object
-	let mut hasher = Keccak256::new();
-	// write input message
-	hasher.update(s);
-	// read hash digest
-	let result = hasher.finalize();
-	result[..4].try_into().unwrap()
 }

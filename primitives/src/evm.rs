@@ -85,3 +85,47 @@ pub struct EstimateResourcesRequest {
 	/// Data
 	pub data: Option<Vec<u8>>,
 }
+
+#[macro_export]
+macro_rules! create_function_selector {
+    ($(#[$meta:meta])*
+	$vis:vis enum Action {
+		$($(#[$vmeta:meta])* $symbol:ident($method:expr) = $val:literal,)*
+    }) => {
+		$(#[$meta])*
+		$vis enum Action {
+			$($(#[$vmeta])* $symbol = $val,)*
+		}
+
+		#[cfg(test)]
+		mod function_selector_tests {
+			use sha3::{Digest, Keccak256};
+			use sp_std::convert::TryInto;
+
+			fn get_function_selector(s: &str) -> u32 {
+				// create a SHA3-256 object
+				let mut hasher = Keccak256::new();
+				// write input message
+				hasher.update(s);
+				// read hash digest
+				let result = hasher.finalize();
+				u32::from_be_bytes(result[..4].try_into().unwrap())
+			}
+
+			#[test]
+			fn method_hash_works() {
+				$(assert_eq!(get_function_selector($method), $val, "method: {:?}", $method);)*
+			}
+		}
+    }
+}
+
+#[cfg(test)]
+create_function_selector! {
+	#[derive(Debug, Eq, PartialEq)]
+	#[repr(u32)]
+	pub enum Action {
+		QueryName("name()") = 0x06fdde03_u32,
+		QuerySymbol("symbol()") = 0x95d89b41_u32,
+	}
+}

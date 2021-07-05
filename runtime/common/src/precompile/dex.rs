@@ -21,7 +21,7 @@ use frame_support::log;
 use module_evm::{Context, ExitError, ExitSucceed, Precompile};
 use module_support::{AddressMapping as AddressMappingT, CurrencyIdMapping as CurrencyIdMappingT, DEXManager};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
-use primitives::{Balance, CurrencyId};
+use primitives::{create_function_selector, Balance, CurrencyId};
 use sp_core::U256;
 use sp_std::{fmt::Debug, marker::PhantomData, prelude::*, result};
 
@@ -38,17 +38,19 @@ pub struct DexPrecompile<AccountId, AddressMapping, CurrencyIdMapping, Dex>(
 	PhantomData<(AccountId, AddressMapping, CurrencyIdMapping, Dex)>,
 );
 
-#[derive(Debug, Eq, PartialEq, TryFromPrimitive, IntoPrimitive)]
-#[repr(u32)]
-pub enum Action {
-	GetLiquidityPool = 0xf4f31ede,
-	GetLiquidityTokenAddress = 0xffd73c4a,
-	GetSwapTargetAmount = 0x4d60beb1,
-	GetSwapSupplyAmount = 0xdbcd19a2,
-	SwapWithExactSupply = 0x579baa18,
-	SwapWithExactTarget = 0x9782ac81,
-	AddLiquidity = 0x67088D59,
-	RemoveLiquidity = 0x35315332,
+create_function_selector! {
+	#[derive(Debug, Eq, PartialEq, TryFromPrimitive, IntoPrimitive)]
+	#[repr(u32)]
+	pub enum Action {
+		GetLiquidityPool("getLiquidityPool(address,address)") = 0xf4f31ede_u32,
+		GetLiquidityTokenAddress("getLiquidityTokenAddress(address,address)") = 0xffd73c4a_u32,
+		GetSwapTargetAmount("getSwapTargetAmount(address[],uint256)") = 0x4d60beb1_u32,
+		GetSwapSupplyAmount("getSwapSupplyAmount(address[],uint256)") = 0xdbcd19a2_u32,
+		SwapWithExactSupply("swapWithExactSupply(address,address[],uint256,uint256)") = 0x579baa18_u32,
+		SwapWithExactTarget("swapWithExactTarget(address,address[],uint256,uint256)") = 0x9782ac81_u32,
+		AddLiquidity("addLiquidity(address,address,address,uint256,uint256,uint256)") = 0x67088D59_u32,
+		RemoveLiquidity("removeLiquidity(address,address,address,uint256,uint256,uint256)") = 0x35315332_u32,
+	}
 }
 
 impl<AccountId, AddressMapping, CurrencyIdMapping, Dex> Precompile
@@ -272,62 +274,5 @@ where
 				Ok((ExitSucceed::Returned, vec![], 0))
 			}
 		}
-	}
-}
-
-#[cfg(test)]
-mod tests {
-	use super::*;
-	use crate::precompile::mock::get_function_selector;
-
-	#[test]
-	fn function_selector_match() {
-		assert_eq!(
-			u32::from_be_bytes(get_function_selector("getLiquidityPool(address,address)")),
-			Into::<u32>::into(Action::GetLiquidityPool)
-		);
-
-		assert_eq!(
-			u32::from_be_bytes(get_function_selector("getLiquidityTokenAddress(address,address)")),
-			Into::<u32>::into(Action::GetLiquidityTokenAddress)
-		);
-
-		assert_eq!(
-			u32::from_be_bytes(get_function_selector("getSwapTargetAmount(address[],uint256)")),
-			Into::<u32>::into(Action::GetSwapTargetAmount)
-		);
-
-		assert_eq!(
-			u32::from_be_bytes(get_function_selector("getSwapSupplyAmount(address[],uint256)")),
-			Into::<u32>::into(Action::GetSwapSupplyAmount)
-		);
-
-		assert_eq!(
-			u32::from_be_bytes(get_function_selector(
-				"swapWithExactSupply(address,address[],uint256,uint256)"
-			)),
-			Into::<u32>::into(Action::SwapWithExactSupply)
-		);
-
-		assert_eq!(
-			u32::from_be_bytes(get_function_selector(
-				"swapWithExactTarget(address,address[],uint256,uint256)"
-			)),
-			Into::<u32>::into(Action::SwapWithExactTarget)
-		);
-
-		assert_eq!(
-			u32::from_be_bytes(get_function_selector(
-				"addLiquidity(address,address,address,uint256,uint256,uint256)"
-			)),
-			Into::<u32>::into(Action::AddLiquidity)
-		);
-
-		assert_eq!(
-			u32::from_be_bytes(get_function_selector(
-				"removeLiquidity(address,address,address,uint256,uint256,uint256)"
-			)),
-			Into::<u32>::into(Action::RemoveLiquidity)
-		);
 	}
 }
