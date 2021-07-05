@@ -21,8 +21,9 @@ use frame_support::log;
 use module_evm::{Context, ExitError, ExitSucceed, Precompile};
 use module_support::{AddressMapping as AddressMappingT, CurrencyIdMapping as CurrencyIdMappingT, DEXManager};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
-use primitives::{create_function_selector, Balance, CurrencyId};
+use primitives::{Balance, CurrencyId};
 use sp_core::U256;
+use sp_runtime::RuntimeDebug;
 use sp_std::{fmt::Debug, marker::PhantomData, prelude::*, result};
 
 /// The `DEX` impl precompile.
@@ -38,19 +39,18 @@ pub struct DexPrecompile<AccountId, AddressMapping, CurrencyIdMapping, Dex>(
 	PhantomData<(AccountId, AddressMapping, CurrencyIdMapping, Dex)>,
 );
 
-create_function_selector! {
-	#[derive(Debug, Eq, PartialEq, TryFromPrimitive, IntoPrimitive)]
-	#[repr(u32)]
-	pub enum Action {
-		GetLiquidityPool("getLiquidityPool(address,address)") = 0xf4f31ede_u32,
-		GetLiquidityTokenAddress("getLiquidityTokenAddress(address,address)") = 0xffd73c4a_u32,
-		GetSwapTargetAmount("getSwapTargetAmount(address[],uint256)") = 0x4d60beb1_u32,
-		GetSwapSupplyAmount("getSwapSupplyAmount(address[],uint256)") = 0xdbcd19a2_u32,
-		SwapWithExactSupply("swapWithExactSupply(address,address[],uint256,uint256)") = 0x579baa18_u32,
-		SwapWithExactTarget("swapWithExactTarget(address,address[],uint256,uint256)") = 0x9782ac81_u32,
-		AddLiquidity("addLiquidity(address,address,address,uint256,uint256,uint256)") = 0x67088D59_u32,
-		RemoveLiquidity("removeLiquidity(address,address,address,uint256,uint256,uint256)") = 0x35315332_u32,
-	}
+#[primitives_proc_macro::generate_function_selector]
+#[derive(RuntimeDebug, Eq, PartialEq, TryFromPrimitive, IntoPrimitive)]
+#[repr(u32)]
+pub enum Action {
+	GetLiquidityPool = "getLiquidityPool(address,address)",
+	GetLiquidityTokenAddress = "getLiquidityTokenAddress(address,address)",
+	GetSwapTargetAmount = "getSwapTargetAmount(address[],uint256)",
+	GetSwapSupplyAmount = "getSwapSupplyAmount(address[],uint256)",
+	SwapWithExactSupply = "swapWithExactSupply(address,address[],uint256,uint256)",
+	SwapWithExactTarget = "swapWithExactTarget(address,address[],uint256,uint256)",
+	AddLiquidity = "addLiquidity(address,address,address,uint256,uint256,uint256)",
+	RemoveLiquidity = "removeLiquidity(address,address,address,uint256,uint256,uint256)",
 }
 
 impl<AccountId, AddressMapping, CurrencyIdMapping, Dex> Precompile

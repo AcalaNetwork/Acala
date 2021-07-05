@@ -9,6 +9,7 @@ members = [
 	"modules/*",
 	"inspect",
 	"primitives",
+	"primitives/proc-macro",
 	"rpc",
 
 	"runtime/common",

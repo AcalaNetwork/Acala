@@ -20,13 +20,14 @@ use frame_support::log;
 use module_evm::{Context, ExitError, ExitSucceed, Precompile};
 use module_support::{AddressMapping as AddressMappingT, CurrencyIdMapping as CurrencyIdMappingT};
 use sp_core::{H160, U256};
+use sp_runtime::RuntimeDebug;
 use sp_std::{borrow::Cow, fmt::Debug, marker::PhantomData, prelude::*, result};
 
 use orml_traits::NFT as NFTT;
 
 use super::input::{Input, InputT};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
-use primitives::{create_function_selector, NFTBalance};
+use primitives::NFTBalance;
 
 /// The `NFT` impl precompile.
 ///
@@ -40,14 +41,13 @@ pub struct NFTPrecompile<AccountId, AddressMapping, CurrencyIdMapping, NFT>(
 	PhantomData<(AccountId, AddressMapping, CurrencyIdMapping, NFT)>,
 );
 
-create_function_selector! {
-	#[derive(Debug, Eq, PartialEq, TryFromPrimitive, IntoPrimitive)]
-	#[repr(u32)]
-	pub enum Action {
-		QueryBalance("balanceOf(address)") = 0x70a08231_u32,
-		QueryOwner("ownerOf(uint256,uint256)") = 0xd9dad80d_u32,
-		Transfer("transfer(address,address,uint256,uint256)") = 0x411b252_u32,
-	}
+#[primitives_proc_macro::generate_function_selector]
+#[derive(RuntimeDebug, Eq, PartialEq, TryFromPrimitive, IntoPrimitive)]
+#[repr(u32)]
+pub enum Action {
+	QueryBalance = "balanceOf(address)",
+	QueryOwner = "ownerOf(uint256,uint256)",
+	Transfer = "transfer(address,address,uint256,uint256)",
 }
 
 impl<AccountId, AddressMapping, CurrencyIdMapping, NFT> Precompile

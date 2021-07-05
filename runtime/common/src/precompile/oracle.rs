@@ -19,8 +19,9 @@
 use frame_support::{log, sp_runtime::FixedPointNumber};
 use module_evm::{Context, ExitError, ExitSucceed, Precompile};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
-use primitives::{create_function_selector, CurrencyId};
+use primitives::CurrencyId;
 use sp_core::U256;
+use sp_runtime::RuntimeDebug;
 use sp_std::{fmt::Debug, marker::PhantomData, prelude::*, result};
 
 use super::input::{Input, InputT};
@@ -39,12 +40,11 @@ pub struct OraclePrecompile<AccountId, AddressMapping, CurrencyIdMapping, PriceP
 	PhantomData<(AccountId, AddressMapping, CurrencyIdMapping, PriceProvider)>,
 );
 
-create_function_selector! {
-	#[derive(Debug, Eq, PartialEq, TryFromPrimitive, IntoPrimitive)]
-	#[repr(u32)]
-	pub enum Action {
-		GetPrice("getPrice(address)") = 0x41976e09_u32,
-	}
+#[primitives_proc_macro::generate_function_selector]
+#[derive(RuntimeDebug, Eq, PartialEq, TryFromPrimitive, IntoPrimitive)]
+#[repr(u32)]
+pub enum Action {
+	GetPrice = "getPrice(address)",
 }
 
 impl<AccountId, AddressMapping, CurrencyIdMapping, PriceProvider> Precompile

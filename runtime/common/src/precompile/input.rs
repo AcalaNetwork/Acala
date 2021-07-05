@@ -195,11 +195,12 @@ mod tests {
 	use frame_support::{assert_err, assert_ok};
 	use num_enum::TryFromPrimitive;
 	use sp_core::H160;
+	use sp_runtime::RuntimeDebug;
 
 	use module_support::mocks::{MockAddressMapping, MockCurrencyIdMapping};
 	use primitives::{AccountId, CurrencyId, TokenSymbol};
 
-	#[derive(Debug, PartialEq, Eq, TryFromPrimitive)]
+	#[derive(RuntimeDebug, PartialEq, Eq, TryFromPrimitive)]
 	#[repr(u32)]
 	pub enum Action {
 		QueryBalance = 0,

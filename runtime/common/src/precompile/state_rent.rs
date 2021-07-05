@@ -20,12 +20,13 @@ use frame_support::log;
 use module_evm::{Context, ExitError, ExitSucceed, Precompile};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use sp_core::U256;
+use sp_runtime::RuntimeDebug;
 use sp_std::{borrow::Cow, fmt::Debug, marker::PhantomData, prelude::*, result};
 
 use module_support::{AddressMapping as AddressMappingT, CurrencyIdMapping as CurrencyIdMappingT, EVMStateRentTrait};
 
 use super::input::{Input, InputT};
-use primitives::{create_function_selector, Balance};
+use primitives::Balance;
 
 /// The `EVM` impl precompile.
 ///
@@ -42,17 +43,16 @@ pub struct StateRentPrecompile<AccountId, AddressMapping, CurrencyIdMapping, EVM
 	PhantomData<(AccountId, AddressMapping, CurrencyIdMapping, EVM)>,
 );
 
-create_function_selector! {
-	#[derive(Debug, Eq, PartialEq, TryFromPrimitive, IntoPrimitive)]
-	#[repr(u32)]
-	pub enum Action {
-		QueryNewContractExtraBytes("newContractExtraBytes()") = 0xa23e8b82_u32,
-		QueryStorageDepositPerByte("storageDepositPerByte()") = 0x6e043998_u32,
-		QueryMaintainer("maintainerOf(address)") = 0x06ad1355_u32,
-		QueryDeveloperDeposit("developerDeposit()") = 0x68a18855_u32,
-		QueryDeploymentFee("deploymentFee()") = 0xf2cff57f_u32,
-		TransferMaintainer("transferMaintainer(address,address,address)") = 0xee0d2e12_u32,
-	}
+#[primitives_proc_macro::generate_function_selector]
+#[derive(RuntimeDebug, Eq, PartialEq, TryFromPrimitive, IntoPrimitive)]
+#[repr(u32)]
+pub enum Action {
+	QueryNewContractExtraBytes = "newContractExtraBytes()",
+	QueryStorageDepositPerByte = "storageDepositPerByte()",
+	QueryMaintainer = "maintainerOf(address)",
+	QueryDeveloperDeposit = "developerDeposit()",
+	QueryDeploymentFee = "deploymentFee()",
+	TransferMaintainer = "transferMaintainer(address,address,address)",
 }
 
 impl<AccountId, AddressMapping, CurrencyIdMapping, EVM> Precompile

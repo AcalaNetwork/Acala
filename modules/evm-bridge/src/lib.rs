@@ -27,7 +27,6 @@ use frame_support::{
 use module_evm::{ExitReason, ExitSucceed};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use primitive_types::H256;
-use primitives::create_function_selector;
 use sp_core::{H160, U256};
 use sp_runtime::SaturatedConversion;
 use sp_std::vec::Vec;
@@ -36,17 +35,16 @@ use support::{EVMBridge as EVMBridgeTrait, ExecutionMode, InvokeContext, EVM};
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 type BalanceOf<T> = <<T as Config>::EVM as EVM<AccountIdOf<T>>>::Balance;
 
-create_function_selector! {
-	#[derive(Debug, Eq, PartialEq, TryFromPrimitive, IntoPrimitive)]
-	#[repr(u32)]
-	pub enum Action {
-		Name("name()") = 0x06fdde03_u32,
-		Symbol("symbol()") = 0x95d89b41_u32,
-		Decimals("decimals()") = 0x313ce567_u32,
-		TotalSupply("totalSupply()") = 0x18160ddd_u32,
-		BalanceOf("balanceOf(address)") = 0x70a08231_u32,
-		Transfer("transfer(address,uint256)") = 0xa9059cbb_u32,
-	}
+#[primitives_proc_macro::generate_function_selector]
+#[derive(RuntimeDebug, Eq, PartialEq, TryFromPrimitive, IntoPrimitive)]
+#[repr(u32)]
+pub enum Action {
+	Name = "name()",
+	Symbol = "symbol()",
+	Decimals = "decimals()",
+	TotalSupply = "totalSupply()",
+	BalanceOf = "balanceOf(address)",
+	Transfer = "transfer(address,uint256)",
 }
 
 mod mock;

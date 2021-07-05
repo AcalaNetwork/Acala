@@ -29,7 +29,7 @@ use frame_support::{
 };
 use module_evm::{Context, ExitError, ExitSucceed, Precompile};
 use module_support::{AddressMapping as AddressMappingT, CurrencyIdMapping as CurrencyIdMappingT, TransactionPayment};
-use primitives::{create_function_selector, Balance, BlockNumber};
+use primitives::{Balance, BlockNumber};
 use sp_core::{H160, U256};
 use sp_runtime::RuntimeDebug;
 use sp_std::{fmt::Debug, marker::PhantomData, prelude::*, result};
@@ -84,14 +84,13 @@ pub struct ScheduleCallPrecompile<
 	)>,
 );
 
-create_function_selector! {
-	#[derive(Debug, Eq, PartialEq, TryFromPrimitive, IntoPrimitive)]
-	#[repr(u32)]
-	pub enum Action {
-		Schedule("scheduleCall(address,address,uint256,uint256,uint256,bytes)") = 0x64c91905_u32,
-		Cancel("cancelCall(address,bytes)") = 0x93e32661_u32,
-		Reschedule("rescheduleCall(address,uint256,bytes)") = 0x28302f34_u32,
-	}
+#[primitives_proc_macro::generate_function_selector]
+#[derive(RuntimeDebug, Eq, PartialEq, TryFromPrimitive, IntoPrimitive)]
+#[repr(u32)]
+pub enum Action {
+	Schedule = "scheduleCall(address,address,uint256,uint256,uint256,bytes)",
+	Cancel = "cancelCall(address,bytes)",
+	Reschedule = "rescheduleCall(address,uint256,bytes)",
 }
 
 type PalletBalanceOf<T> =
