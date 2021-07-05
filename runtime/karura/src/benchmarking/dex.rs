@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{dollar, AccountId, Balance, BlockNumber, Currencies, CurrencyId, Dex, Runtime, TradingPathLimit};
+use crate::{dollar, AccountId, Balance, Currencies, CurrencyId, Dex, Runtime, TradingPathLimit};
 
 use frame_benchmarking::{account, whitelisted_caller};
 use frame_system::RawOrigin;
@@ -39,8 +39,6 @@ fn inject_liquidity(
 	max_amount_b: Balance,
 	deposit: bool,
 ) -> Result<(), &'static str> {
-	let _ = Dex::enable_trading_pair(RawOrigin::Root.into(), currency_id_a, currency_id_b);
-
 	// set balance
 	<Currencies as MultiCurrencyExtended<_>>::update_balance(
 		currency_id_a,
@@ -71,39 +69,122 @@ fn inject_liquidity(
 runtime_benchmarks! {
 	{ Runtime, module_dex }
 
-	// enable a new trading pair
+	// enable a Disabled trading pair
 	enable_trading_pair {
 		let trading_pair = TradingPair::new(KUSD, KAR);
-		let currency_id_a = trading_pair.0;
-		let currency_id_b = trading_pair.1;
-		let _ = Dex::disable_trading_pair(RawOrigin::Root.into(), currency_id_a, currency_id_b);
-	}: _(RawOrigin::Root, currency_id_a, currency_id_b)
+		let _ = Dex::disable_trading_pair(RawOrigin::Root.into(), trading_pair.0, trading_pair.1);
+	}: _(RawOrigin::Root, trading_pair.0, trading_pair.1)
 
 	// disable a Enabled trading pair
 	disable_trading_pair {
 		let trading_pair = TradingPair::new(KUSD, KAR);
-		let currency_id_a = trading_pair.0;
-		let currency_id_b = trading_pair.1;
-		let _ = Dex::enable_trading_pair(RawOrigin::Root.into(), currency_id_a, currency_id_b);
-	}: _(RawOrigin::Root, currency_id_a, currency_id_b)
+		let _ = Dex::enable_trading_pair(RawOrigin::Root.into(), trading_pair.0, trading_pair.1);
+	}: _(RawOrigin::Root, trading_pair.0, trading_pair.1)
 
-	// list a Enabled trading pair
-	list_trading_pair {
+	// list a Provisioning trading pair
+	list_provisioning {
 		let trading_pair = TradingPair::new(KUSD, KAR);
-		let currency_id_a = trading_pair.0;
-		let currency_id_b = trading_pair.1;
-		let min_contribution_a = dollar(currency_id_a);
-		let min_contribution_b = dollar(currency_id_b);
-		let target_provision_a = 200 * dollar(currency_id_a);
-		let target_provision_b = 1_000 * dollar(currency_id_b);
-		let not_before: BlockNumber = Default::default();
-		let _ = Dex::disable_trading_pair(RawOrigin::Root.into(), currency_id_a, currency_id_b);
-	}: _(RawOrigin::Root, currency_id_a, currency_id_b, min_contribution_a, min_contribution_b, target_provision_a, target_provision_b, not_before)
+		let _ = Dex::disable_trading_pair(RawOrigin::Root.into(), trading_pair.0, trading_pair.1);
+	}: _(RawOrigin::Root, trading_pair.0, trading_pair.1, dollar(trading_pair.0), dollar(trading_pair.1), dollar(trading_pair.0), dollar(trading_pair.1), 10)
 
-	// TODO:
-	// add tests for following situation:
-	// 1. disable a provisioning trading pair
-	// 2. add provision
+	// update parameters of a Provisioning trading pair
+	update_provisioning_parameters {
+		let trading_pair = TradingPair::new(KUSD, KAR);
+		let _ = Dex::disable_trading_pair(RawOrigin::Root.into(), trading_pair.0, trading_pair.1);
+		Dex::list_provisioning(
+			RawOrigin::Root.into(),
+			trading_pair.0,
+			trading_pair.1,
+			dollar(trading_pair.0),
+			dollar(trading_pair.1),
+			100 * dollar(trading_pair.0),
+			1000 * dollar(trading_pair.1),
+			100
+		)?;
+	}: _(RawOrigin::Root, trading_pair.0, trading_pair.1, 2 * dollar(trading_pair.0), 2 * dollar(trading_pair.1), 10 * dollar(trading_pair.0), 100 * dollar(trading_pair.1), 200)
+
+	// end a Provisioning trading pair
+	end_provisioning {
+		let founder: AccountId = whitelisted_caller();
+		let trading_pair = TradingPair::new(KUSD, KAR);
+		let _ = Dex::disable_trading_pair(RawOrigin::Root.into(), trading_pair.0, trading_pair.1);
+		Dex::list_provisioning(
+			RawOrigin::Root.into(),
+			trading_pair.0,
+			trading_pair.1,
+			dollar(trading_pair.0),
+			dollar(trading_pair.1),
+			100 * dollar(trading_pair.0),
+			100 * dollar(trading_pair.1),
+			0
+		)?;
+
+		// set balance
+		<Currencies as MultiCurrencyExtended<_>>::update_balance(trading_pair.0, &founder, (100 * dollar(trading_pair.0)).unique_saturated_into())?;
+		<Currencies as MultiCurrencyExtended<_>>::update_balance(trading_pair.1, &founder, (100 * dollar(trading_pair.1)).unique_saturated_into())?;
+
+		// add enough provision
+		Dex::add_provision(
+			RawOrigin::Signed(founder.clone()).into(),
+			trading_pair.0,
+			trading_pair.1,
+			100 * dollar(trading_pair.0),
+			100 * dollar(trading_pair.1),
+		)?;
+	}: _(RawOrigin::Signed(founder), trading_pair.0, trading_pair.1)
+
+	add_provision {
+		let founder: AccountId = whitelisted_caller();
+		let trading_pair = TradingPair::new(KUSD, KAR);
+		let _ = Dex::disable_trading_pair(RawOrigin::Root.into(), trading_pair.0, trading_pair.1);
+		Dex::list_provisioning(
+			RawOrigin::Root.into(),
+			trading_pair.0,
+			trading_pair.1,
+			dollar(trading_pair.0),
+			dollar(trading_pair.1),
+			100 * dollar(trading_pair.0),
+			1000 * dollar(trading_pair.1),
+			0
+		)?;
+
+		// set balance
+		<Currencies as MultiCurrencyExtended<_>>::update_balance(trading_pair.0, &founder, (10 * dollar(trading_pair.0)).unique_saturated_into())?;
+		<Currencies as MultiCurrencyExtended<_>>::update_balance(trading_pair.1, &founder, (10 * dollar(trading_pair.1)).unique_saturated_into())?;
+	}: _(RawOrigin::Signed(founder), trading_pair.0, trading_pair.1, dollar(trading_pair.0), dollar(trading_pair.1))
+
+	claim_dex_share {
+		let founder: AccountId = whitelisted_caller();
+		let trading_pair = TradingPair::new(KUSD, KAR);
+		let _ = Dex::disable_trading_pair(RawOrigin::Root.into(), trading_pair.0, trading_pair.1);
+		Dex::list_provisioning(
+			RawOrigin::Root.into(),
+			trading_pair.0,
+			trading_pair.1,
+			dollar(trading_pair.0),
+			dollar(trading_pair.1),
+			10 * dollar(trading_pair.0),
+			10 * dollar(trading_pair.1),
+			0
+		)?;
+
+		// set balance
+		<Currencies as MultiCurrencyExtended<_>>::update_balance(trading_pair.0, &founder, (100 * dollar(trading_pair.0)).unique_saturated_into())?;
+		<Currencies as MultiCurrencyExtended<_>>::update_balance(trading_pair.1, &founder, (100 * dollar(trading_pair.1)).unique_saturated_into())?;
+
+		Dex::add_provision(
+			RawOrigin::Signed(founder.clone()).into(),
+			trading_pair.0,
+			trading_pair.1,
+			dollar(trading_pair.0),
+			20 * dollar(trading_pair.1)
+		)?;
+		Dex::end_provisioning(
+			RawOrigin::Signed(founder.clone()).into(),
+			trading_pair.0,
+			trading_pair.1,
+		)?;
+	}: _(RawOrigin::Signed(founder), trading_pair.0, trading_pair.1)
 
 	// add liquidity but don't staking lp
 	add_liquidity {
@@ -122,7 +203,7 @@ runtime_benchmarks! {
 	}: add_liquidity(RawOrigin::Signed(second_maker), trading_pair.0, trading_pair.1, amount_a, amount_b, Default::default(), false)
 
 	// worst: add liquidity and stake lp
-	add_liquidity_and_deposit {
+	add_liquidity_and_stake {
 		let first_maker: AccountId = account("first_maker", 0, SEED);
 		let second_maker: AccountId = whitelisted_caller();
 		let trading_pair = TradingPair::new(KUSD, KAR);
@@ -145,7 +226,7 @@ runtime_benchmarks! {
 	}: remove_liquidity(RawOrigin::Signed(maker), trading_pair.0, trading_pair.1, 50 * dollar(trading_pair.0), Default::default(), Default::default(), false)
 
 	// remove liquidity by withdraw staking lp share
-	remove_liquidity_by_withdraw {
+	remove_liquidity_by_unstake {
 		let maker: AccountId = whitelisted_caller();
 		let trading_pair = TradingPair::new(KUSD, KAR);
 		inject_liquidity(maker.clone(), trading_pair.0, trading_pair.1, 100 * dollar(trading_pair.0), 10_000 * dollar(trading_pair.1), true)?;

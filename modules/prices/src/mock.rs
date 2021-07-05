@@ -162,7 +162,7 @@ impl DEXManager<AccountId, CurrencyId, Balance> for MockDEX {
 		_max_amount_a: Balance,
 		_max_amount_b: Balance,
 		_min_share_increment: Balance,
-		_deposit_increment_share: bool,
+		_stake_increment_share: bool,
 	) -> DispatchResult {
 		unimplemented!()
 	}
@@ -174,7 +174,7 @@ impl DEXManager<AccountId, CurrencyId, Balance> for MockDEX {
 		_remove_share: Balance,
 		_min_withdrawn_a: Balance,
 		_min_withdrawn_b: Balance,
-		_by_withdraw: bool,
+		_by_unstake: bool,
 	) -> DispatchResult {
 		unimplemented!()
 	}

@@ -34,12 +34,12 @@ pub type AccountId = u128;
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
 pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
-pub const RENBTC: CurrencyId = CurrencyId::Token(TokenSymbol::RENBTC);
+pub const BTC: CurrencyId = CurrencyId::Token(TokenSymbol::RENBTC);
 pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
 pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
-pub const AUSD_XBTC_PAIR: TradingPair = TradingPair(AUSD, RENBTC);
+pub const AUSD_BTC_PAIR: TradingPair = TradingPair(AUSD, BTC);
 pub const AUSD_DOT_PAIR: TradingPair = TradingPair(AUSD, DOT);
-pub const DOT_XBTC_PAIR: TradingPair = TradingPair(DOT, RENBTC);
+pub const DOT_BTC_PAIR: TradingPair = TradingPair(DOT, BTC);
 
 mod dex {
 	pub use super::super::*;
@@ -154,8 +154,8 @@ impl Default for ExtBuilder {
 			balances: vec![
 				(ALICE, AUSD, 1_000_000_000_000_000_000u128),
 				(BOB, AUSD, 1_000_000_000_000_000_000u128),
-				(ALICE, RENBTC, 1_000_000_000_000_000_000u128),
-				(BOB, RENBTC, 1_000_000_000_000_000_000u128),
+				(ALICE, BTC, 1_000_000_000_000_000_000u128),
+				(BOB, BTC, 1_000_000_000_000_000_000u128),
 				(ALICE, DOT, 1_000_000_000_000_000_000u128),
 				(BOB, DOT, 1_000_000_000_000_000_000u128),
 			],
@@ -167,32 +167,8 @@ impl Default for ExtBuilder {
 }
 
 impl ExtBuilder {
-	pub fn initialize_listing_trading_pairs(mut self) -> Self {
-		self.initial_listing_trading_pairs = vec![
-			(
-				AUSD_DOT_PAIR,
-				(5_000_000_000_000u128, 1_000_000_000_000u128),
-				(5_000_000_000_000_000u128, 1_000_000_000_000_000u128),
-				10,
-			),
-			(
-				AUSD_XBTC_PAIR,
-				(20_000_000_000_000u128, 1_000_000_000u128),
-				(20_000_000_000_000_000u128, 1_000_000_000_000u128),
-				10,
-			),
-			(
-				DOT_XBTC_PAIR,
-				(4_000_000_000_000u128, 1_000_000_000u128),
-				(4_000_000_000_000_000u128, 1_000_000_000_000u128),
-				20,
-			),
-		];
-		self
-	}
-
 	pub fn initialize_enabled_trading_pairs(mut self) -> Self {
-		self.initial_enabled_trading_pairs = vec![AUSD_DOT_PAIR, AUSD_XBTC_PAIR, DOT_XBTC_PAIR];
+		self.initial_enabled_trading_pairs = vec![AUSD_DOT_PAIR, AUSD_BTC_PAIR, DOT_BTC_PAIR];
 		self
 	}
 
@@ -201,8 +177,8 @@ impl ExtBuilder {
 			who,
 			vec![
 				(AUSD_DOT_PAIR, (1_000_000u128, 2_000_000u128)),
-				(AUSD_XBTC_PAIR, (1_000_000u128, 2_000_000u128)),
-				(DOT_XBTC_PAIR, (1_000_000u128, 2_000_000u128)),
+				(AUSD_BTC_PAIR, (1_000_000u128, 2_000_000u128)),
+				(DOT_BTC_PAIR, (1_000_000u128, 2_000_000u128)),
 			],
 		)];
 		self

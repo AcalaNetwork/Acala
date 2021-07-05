@@ -599,7 +599,7 @@ fn test_dex_module() {
 			));
 
 			// CurrencyId::DexShare(Erc20, Erc20)
-			assert_ok!(DexModule::list_trading_pair(
+			assert_ok!(DexModule::list_provisioning(
 				Origin::root(),
 				CurrencyId::Erc20(erc20_address_0()),
 				CurrencyId::Erc20(erc20_address_1()),
@@ -611,14 +611,12 @@ fn test_dex_module() {
 			));
 
 			<EVM as EVMTrait<AccountId>>::set_origin(MockAddressMapping::get_account_id(&alice_evm_addr()));
-			assert_ok!(DexModule::add_liquidity(
+			assert_ok!(DexModule::add_provision(
 				Origin::signed(MockAddressMapping::get_account_id(&alice_evm_addr())),
 				CurrencyId::Erc20(erc20_address_0()),
 				CurrencyId::Erc20(erc20_address_1()),
 				10,
 				100,
-				0,
-				false,
 			));
 			assert_eq!(
 				DexModule::get_liquidity_pool(
@@ -652,21 +650,24 @@ fn test_dex_module() {
 			// CurrencyId::DexShare(Erc20, Erc20)
 			<EVM as EVMTrait<AccountId>>::set_origin(EvmAddressMapping::<Runtime>::get_account_id(&alice_evm_addr()));
 
-			assert_ok!(DexModule::add_liquidity(
+			assert_ok!(DexModule::add_provision(
 				Origin::signed(EvmAddressMapping::<Runtime>::get_account_id(&alice_evm_addr())),
 				CurrencyId::Erc20(erc20_address_0()),
 				CurrencyId::Erc20(erc20_address_1()),
 				100,
 				1000,
-				0,
-				false,
+			));
+			assert_ok!(DexModule::end_provisioning(
+				Origin::signed(AccountId::from(BOB)),
+				CurrencyId::Erc20(erc20_address_0()),
+				CurrencyId::Erc20(erc20_address_1()),
 			));
 			assert_eq!(
 				DexModule::get_liquidity_pool(
 					CurrencyId::Erc20(erc20_address_0()),
 					CurrencyId::Erc20(erc20_address_1())
 				),
-				(110, 0)
+				(110, 1100)
 			);
 
 			assert_eq!(
@@ -677,6 +678,11 @@ fn test_dex_module() {
 				2200
 			);
 
+			assert_ok!(DexModule::claim_dex_share(
+				Origin::signed(EvmAddressMapping::<Runtime>::get_account_id(&alice_evm_addr())),
+				CurrencyId::Erc20(erc20_address_0()),
+				CurrencyId::Erc20(erc20_address_1()),
+			));
 			assert_eq!(
 				Currencies::free_balance(
 					CurrencyId::DexShare(DexShare::Erc20(erc20_address_0()), DexShare::Erc20(erc20_address_1())),
@@ -700,7 +706,7 @@ fn test_dex_module() {
 					CurrencyId::Erc20(erc20_address_0()),
 					CurrencyId::Erc20(erc20_address_1())
 				),
-				(110, 0)
+				(110, 1100)
 			);
 
 			assert_eq!(
@@ -1355,7 +1361,7 @@ fn test_multicurrency_precompile_module() {
 				EvmAccounts::eth_address(&alice_key()),
 				EvmAccounts::eth_sign(&alice_key(), &AccountId::from(ALICE).encode(), &[][..])
 			));
-			assert_ok!(DexModule::list_trading_pair(
+			assert_ok!(DexModule::list_provisioning(
 				Origin::root(),
 				CurrencyId::Erc20(erc20_address_0()),
 				CurrencyId::Erc20(erc20_address_1()),
@@ -1368,21 +1374,24 @@ fn test_multicurrency_precompile_module() {
 
 			// CurrencyId::DexShare(Erc20, Erc20)
 			<EVM as EVMTrait<AccountId>>::set_origin(MockAddressMapping::get_account_id(&alice_evm_addr()));
-			assert_ok!(DexModule::add_liquidity(
+			assert_ok!(DexModule::add_provision(
 				Origin::signed(MockAddressMapping::get_account_id(&alice_evm_addr())),
 				CurrencyId::Erc20(erc20_address_0()),
 				CurrencyId::Erc20(erc20_address_1()),
 				100,
 				1000,
-				0,
-				false,
+			));
+			assert_ok!(DexModule::end_provisioning(
+				Origin::signed(AccountId::from(ALICE)),
+				CurrencyId::Erc20(erc20_address_0()),
+				CurrencyId::Erc20(erc20_address_1()),
 			));
 			assert_eq!(
 				DexModule::get_liquidity_pool(
 					CurrencyId::Erc20(erc20_address_0()),
 					CurrencyId::Erc20(erc20_address_1())
 				),
-				(100, 0)
+				(100, 1000)
 			);
 
 			assert_eq!(
@@ -1393,6 +1402,11 @@ fn test_multicurrency_precompile_module() {
 				2000
 			);
 
+			assert_ok!(DexModule::claim_dex_share(
+				Origin::signed(MockAddressMapping::get_account_id(&alice_evm_addr())),
+				CurrencyId::Erc20(erc20_address_0()),
+				CurrencyId::Erc20(erc20_address_1()),
+			));
 			assert_eq!(
 				Currencies::free_balance(
 					CurrencyId::DexShare(DexShare::Erc20(erc20_address_0()), DexShare::Erc20(erc20_address_1())),
