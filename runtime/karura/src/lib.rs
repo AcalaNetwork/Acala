@@ -210,7 +210,7 @@ impl Filter<Call> for BaseCallFilter {
 			// Collactor Selection
 			Call::CollatorSelection(_) | Call::Session(_) |
 			// Vesting
-			Call:Vesting(_)
+			Call::Vesting(_)
 		)
 	}
 }
