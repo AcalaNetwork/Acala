@@ -19,6 +19,7 @@ chainbridge = { git = "https://github.com/AcalaNetwork/chainbridge-substrate", d
 [dev-dependencies]
 sha3 = { version = "0.9.1" }
 serde_json = { version = "1.0.64" }
+primitives-proc-macro = { version = "1.1.0", path = "./proc-macro" }
 frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.7" }
 
 [features]

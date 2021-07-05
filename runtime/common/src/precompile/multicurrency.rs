@@ -26,7 +26,7 @@ use orml_traits::MultiCurrency as MultiCurrencyT;
 
 use super::input::{Input, InputT};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
-use primitives::{create_function_selector, Balance, CurrencyId};
+use primitives::{Balance, CurrencyId};
 
 /// The `MultiCurrency` impl precompile.
 ///
@@ -41,17 +41,16 @@ pub struct MultiCurrencyPrecompile<AccountId, AddressMapping, CurrencyIdMapping,
 	PhantomData<(AccountId, AddressMapping, CurrencyIdMapping, MultiCurrency)>,
 );
 
-create_function_selector! {
-	#[derive(Debug, Eq, PartialEq, TryFromPrimitive, IntoPrimitive)]
-	#[repr(u32)]
-	pub enum Action {
-		QueryName("name()") = 0x06fdde03_u32,
-		QuerySymbol("symbol()") = 0x95d89b41_u32,
-		QueryDecimals("decimals()") = 0x313ce567_u32,
-		QueryTotalIssuance("totalSupply()") = 0x18160ddd_u32,
-		QueryBalance("balanceOf(address)") = 0x70a08231_u32,
-		Transfer("transfer(address,address,uint256)") = 0xbeabacc8_u32,
-	}
+#[primitives_proc_macro::generate_function_selector]
+#[derive(Debug, Eq, PartialEq, TryFromPrimitive, IntoPrimitive)]
+#[repr(u32)]
+pub enum Action {
+	QueryName = "name()",
+	QuerySymbol = "symbol()",
+	QueryDecimals = "decimals()",
+	QueryTotalIssuance = "totalSupply()",
+	QueryBalance = "balanceOf(address)",
+	Transfer = "transfer(address,address,uint256)",
 }
 
 impl<AccountId, AddressMapping, CurrencyIdMapping, MultiCurrency> Precompile

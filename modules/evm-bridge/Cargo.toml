@@ -20,12 +20,12 @@ primitive-types = { version = "0.9.0", default-features = false, features = ["rl
 impl-trait-for-tuples = "0.2.1"
 ethereum-types = { version = "0.11.0", default-features = false }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
+primitives-proc-macro = { path = "../../primitives/proc-macro" }
 support = { package = "module-support", path = "../support", default-features = false }
 module-evm = { path = "../evm", default-features = false }
 num_enum = { version = "0.5.1", default-features = false }
 
 [dev-dependencies]
-sha3 = { version = "0.9.1" }
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.7" }
 pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.7" }
 

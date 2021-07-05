@@ -75,6 +75,7 @@ dependencies = [
  "max-encoded-len",
  "num_enum",
  "parity-scale-codec",
+ "primitives-proc-macro",
  "serde",
  "serde_json",
  "sha3 0.9.1",
@@ -5512,8 +5513,8 @@ dependencies = [
  "pallet-timestamp",
  "parity-scale-codec",
  "primitive-types",
+ "primitives-proc-macro",
  "serde",
- "sha3 0.9.1",
  "sp-core",
  "sp-io",
  "sp-runtime",
@@ -8609,6 +8610,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "primitives-proc-macro"
+version = "1.1.1"
+dependencies = [
+ "proc-macro-crate 1.0.0",
+ "proc-macro2",
+ "quote",
+ "sha3 0.9.1",
+ "syn",
+]
+
+[[package]]
 name = "proc-macro-crate"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -9291,9 +9303,9 @@ dependencies = [
  "pallet-timestamp",
  "pallet-utility",
  "parity-scale-codec",
+ "primitives-proc-macro",
  "serde",
  "serde_json",
- "sha3 0.9.1",
  "sp-core",
  "sp-io",
  "sp-runtime",
