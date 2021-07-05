@@ -25,6 +25,45 @@ use std::{
 };
 
 #[test]
+fn trading_pair_works() {
+	let aca = CurrencyId::Token(TokenSymbol::ACA);
+	let ausd = CurrencyId::Token(TokenSymbol::AUSD);
+	let erc20 = CurrencyId::Erc20(EvmAddress::from_str("0x0000000000000000000000000000000000000000").unwrap());
+	let aca_ausd_lp = CurrencyId::DexShare(DexShare::Token(TokenSymbol::ACA), DexShare::Token(TokenSymbol::AUSD));
+	let erc20_aca_lp = CurrencyId::DexShare(
+		DexShare::Token(TokenSymbol::ACA),
+		DexShare::Erc20(EvmAddress::from_str("0x0000000000000000000000000000000000000000").unwrap()),
+	);
+
+	assert_eq!(
+		TradingPair::from_currency_ids(ausd, aca).unwrap(),
+		TradingPair(aca, ausd)
+	);
+	assert_eq!(
+		TradingPair::from_currency_ids(aca, ausd).unwrap(),
+		TradingPair(aca, ausd)
+	);
+	assert_eq!(
+		TradingPair::from_currency_ids(erc20, aca).unwrap(),
+		TradingPair(aca, erc20)
+	);
+	assert_eq!(TradingPair::from_currency_ids(aca, aca), None);
+
+	assert_eq!(
+		TradingPair::from_currency_ids(ausd, aca)
+			.unwrap()
+			.dex_share_currency_id(),
+		aca_ausd_lp
+	);
+	assert_eq!(
+		TradingPair::from_currency_ids(aca, erc20)
+			.unwrap()
+			.dex_share_currency_id(),
+		erc20_aca_lp
+	);
+}
+
+#[test]
 fn currency_id_try_from_vec_u8_works() {
 	assert_ok!(
 		"ACA".as_bytes().to_vec().try_into(),

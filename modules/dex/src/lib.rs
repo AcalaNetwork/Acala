@@ -252,10 +252,6 @@ pub mod module {
 		fn build(&self) {
 			self.initial_listing_trading_pairs.iter().for_each(
 				|(trading_pair, min_contribution, target_provision, not_before)| {
-					assert!(
-						trading_pair.get_dex_share_currency_id().is_some(),
-						"the trading pair is invalid!",
-					);
 					TradingPairStatuses::<T>::insert(
 						trading_pair,
 						TradingPairStatus::Provisioning(ProvisioningParameters {
@@ -269,10 +265,6 @@ pub mod module {
 			);
 
 			self.initial_enabled_trading_pairs.iter().for_each(|trading_pair| {
-				assert!(
-					trading_pair.get_dex_share_currency_id().is_some(),
-					"the trading pair is invalid!",
-				);
 				TradingPairStatuses::<T>::insert(trading_pair, TradingPairStatus::<_, _>::Enabled);
 			});
 
@@ -282,16 +274,11 @@ pub mod module {
 					trading_pairs_data
 						.iter()
 						.for_each(|(trading_pair, (deposit_amount_0, deposit_amount_1))| {
-							assert!(
-								trading_pair.get_dex_share_currency_id().is_some(),
-								"the trading pair is invalid!",
-							);
-
 							let result = match <Pallet<T>>::trading_pair_statuses(trading_pair) {
 								TradingPairStatus::<_, _>::Enabled => <Pallet<T>>::do_add_liquidity(
 									&who,
-									trading_pair.0,
-									trading_pair.1,
+									trading_pair.first(),
+									trading_pair.second(),
 									*deposit_amount_0,
 									*deposit_amount_1,
 									Default::default(),
@@ -482,13 +469,8 @@ pub mod module {
 		) -> DispatchResultWithPostInfo {
 			T::ListingOrigin::ensure_origin(origin)?;
 
-			ensure!(currency_id_a != currency_id_b, Error::<T>::NotAllowedList);
-
-			let trading_pair = TradingPair::from_token_currency_ids(currency_id_a, currency_id_b)
-				.ok_or(Error::<T>::InvalidCurrencyId)?;
-			let dex_share_currency_id = trading_pair
-				.get_dex_share_currency_id()
-				.ok_or(Error::<T>::InvalidCurrencyId)?;
+			let trading_pair =
+				TradingPair::from_currency_ids(currency_id_a, currency_id_b).ok_or(Error::<T>::InvalidCurrencyId)?;
 			ensure!(
 				matches!(
 					Self::trading_pair_statuses(trading_pair),
@@ -497,7 +479,7 @@ pub mod module {
 				Error::<T>::MustBeDisabled
 			);
 			ensure!(
-				T::Currency::total_issuance(dex_share_currency_id).is_zero(),
+				T::Currency::total_issuance(trading_pair.dex_share_currency_id()).is_zero(),
 				Error::<T>::NotAllowedList
 			);
 
@@ -508,7 +490,7 @@ pub mod module {
 				T::CurrencyIdMapping::set_erc20_mapping(address)?;
 			}
 
-			let (min_contribution, target_provision) = if currency_id_a == trading_pair.0 {
+			let (min_contribution, target_provision) = if currency_id_a == trading_pair.first() {
 				(
 					(min_contribution_a, min_contribution_b),
 					(target_provision_a, target_provision_b),
@@ -548,12 +530,12 @@ pub mod module {
 			not_before: T::BlockNumber,
 		) -> DispatchResultWithPostInfo {
 			T::ListingOrigin::ensure_origin(origin)?;
-			let trading_pair = TradingPair::from_token_currency_ids(currency_id_a, currency_id_b)
-				.ok_or(Error::<T>::InvalidCurrencyId)?;
+			let trading_pair =
+				TradingPair::from_currency_ids(currency_id_a, currency_id_b).ok_or(Error::<T>::InvalidCurrencyId)?;
 
 			match Self::trading_pair_statuses(trading_pair) {
 				TradingPairStatus::Provisioning(provisioning_parameters) => {
-					let (min_contribution, target_provision) = if currency_id_a == trading_pair.0 {
+					let (min_contribution, target_provision) = if currency_id_a == trading_pair.first() {
 						(
 							(min_contribution_a, min_contribution_b),
 							(target_provision_a, target_provision_b),
@@ -590,8 +572,8 @@ pub mod module {
 		) -> DispatchResultWithPostInfo {
 			let _ = ensure_signed(origin)?;
 
-			let trading_pair = TradingPair::from_token_currency_ids(currency_id_a, currency_id_b)
-				.ok_or(Error::<T>::InvalidCurrencyId)?;
+			let trading_pair =
+				TradingPair::from_currency_ids(currency_id_a, currency_id_b).ok_or(Error::<T>::InvalidCurrencyId)?;
 
 			match Self::trading_pair_statuses(trading_pair) {
 				TradingPairStatus::<_, _>::Provisioning(provisioning_parameters) => {
@@ -606,8 +588,6 @@ pub mod module {
 					);
 
 					// end provisioning and convert trading pair to `Enabled`
-					let dex_share_currency_id =
-						trading_pair.get_dex_share_currency_id().expect("shouldn't be invalid!");
 					let (share_exchange_rate_0, share_exchange_rate_1) = if total_provision_0 > total_provision_1 {
 						(
 							ExchangeRate::one(),
@@ -626,7 +606,11 @@ pub mod module {
 						.saturating_add(share_exchange_rate_1.saturating_mul_int(total_provision_1));
 
 					// issue total shares to module account
-					T::Currency::deposit(dex_share_currency_id, &Self::account_id(), total_shares_to_issue)?;
+					T::Currency::deposit(
+						trading_pair.dex_share_currency_id(),
+						&Self::account_id(),
+						total_shares_to_issue,
+					)?;
 
 					// inject provision to liquidity pool
 					LiquidityPool::<T>::mutate(trading_pair, |(pool_0, pool_1)| {
@@ -667,8 +651,8 @@ pub mod module {
 			currency_id_b: CurrencyId,
 		) -> DispatchResultWithPostInfo {
 			T::ListingOrigin::ensure_origin(origin)?;
-			let trading_pair = TradingPair::from_token_currency_ids(currency_id_a, currency_id_b)
-				.ok_or(Error::<T>::InvalidCurrencyId)?;
+			let trading_pair =
+				TradingPair::from_currency_ids(currency_id_a, currency_id_b).ok_or(Error::<T>::InvalidCurrencyId)?;
 			match Self::trading_pair_statuses(trading_pair) {
 				TradingPairStatus::<_, _>::Disabled => {}
 				TradingPairStatus::<_, _>::Provisioning(provisioning_parameters) => {
@@ -695,8 +679,8 @@ pub mod module {
 			currency_id_b: CurrencyId,
 		) -> DispatchResultWithPostInfo {
 			T::ListingOrigin::ensure_origin(origin)?;
-			let trading_pair = TradingPair::from_token_currency_ids(currency_id_a, currency_id_b)
-				.ok_or(Error::<T>::InvalidCurrencyId)?;
+			let trading_pair =
+				TradingPair::from_currency_ids(currency_id_a, currency_id_b).ok_or(Error::<T>::InvalidCurrencyId)?;
 			ensure!(
 				matches!(
 					Self::trading_pair_statuses(trading_pair),
@@ -719,7 +703,7 @@ impl<T: Config> Pallet<T> {
 
 	fn do_claim_dex_share(who: &T::AccountId, currency_id_a: CurrencyId, currency_id_b: CurrencyId) -> DispatchResult {
 		let trading_pair =
-			TradingPair::from_token_currency_ids(currency_id_a, currency_id_b).ok_or(Error::<T>::InvalidCurrencyId)?;
+			TradingPair::from_currency_ids(currency_id_a, currency_id_b).ok_or(Error::<T>::InvalidCurrencyId)?;
 		ensure!(
 			!matches!(
 				Self::trading_pair_statuses(trading_pair),
@@ -735,7 +719,7 @@ impl<T: Config> Pallet<T> {
 					.saturating_mul_int(contribution_0)
 					.saturating_add(exchange_rate_1.saturating_mul_int(contribution_1));
 				T::Currency::transfer(
-					trading_pair.get_dex_share_currency_id().expect("shouldn't be invalid!"),
+					trading_pair.dex_share_currency_id(),
 					&Self::account_id(),
 					who,
 					share_to_claim,
@@ -755,12 +739,13 @@ impl<T: Config> Pallet<T> {
 		contribution_a: Balance,
 		contribution_b: Balance,
 	) -> DispatchResult {
-		let trading_pair = TradingPair::new(currency_id_a, currency_id_b);
+		let trading_pair =
+			TradingPair::from_currency_ids(currency_id_a, currency_id_b).ok_or(Error::<T>::InvalidCurrencyId)?;
 		let mut provision_parameters = match Self::trading_pair_statuses(trading_pair) {
 			TradingPairStatus::<_, _>::Provisioning(provision_parameters) => provision_parameters,
 			_ => return Err(Error::<T>::MustBeProvisioning.into()),
 		};
-		let (contribution_0, contribution_1) = if currency_id_a == trading_pair.0 {
+		let (contribution_0, contribution_1) = if currency_id_a == trading_pair.first() {
 			(contribution_a, contribution_b)
 		} else {
 			(contribution_b, contribution_a)
@@ -779,8 +764,8 @@ impl<T: Config> Pallet<T> {
 			pool.1 = pool.1.saturating_add(contribution_1);
 
 			let module_account_id = Self::account_id();
-			T::Currency::transfer(trading_pair.0, &who, &module_account_id, contribution_0)?;
-			T::Currency::transfer(trading_pair.1, &who, &module_account_id, contribution_1)?;
+			T::Currency::transfer(trading_pair.first(), &who, &module_account_id, contribution_0)?;
+			T::Currency::transfer(trading_pair.second(), &who, &module_account_id, contribution_1)?;
 
 			*maybe_pool = Some(pool);
 
@@ -812,9 +797,9 @@ impl<T: Config> Pallet<T> {
 
 			Self::deposit_event(Event::AddProvision(
 				who.clone(),
-				trading_pair.0,
+				trading_pair.first(),
 				contribution_0,
-				trading_pair.1,
+				trading_pair.second(),
 				contribution_1,
 			));
 			Ok(())
@@ -830,10 +815,8 @@ impl<T: Config> Pallet<T> {
 		min_share_increment: Balance,
 		stake_increment_share: bool,
 	) -> DispatchResult {
-		let trading_pair = TradingPair::new(currency_id_a, currency_id_b);
-		let dex_share_currency_id = trading_pair
-			.get_dex_share_currency_id()
-			.ok_or(Error::<T>::InvalidCurrencyId)?;
+		let trading_pair =
+			TradingPair::from_currency_ids(currency_id_a, currency_id_b).ok_or(Error::<T>::InvalidCurrencyId)?;
 		ensure!(
 			matches!(
 				Self::trading_pair_statuses(trading_pair),
@@ -843,8 +826,9 @@ impl<T: Config> Pallet<T> {
 		);
 
 		LiquidityPool::<T>::try_mutate(trading_pair, |(pool_0, pool_1)| -> DispatchResult {
+			let dex_share_currency_id = trading_pair.dex_share_currency_id();
 			let total_shares = T::Currency::total_issuance(dex_share_currency_id);
-			let (max_amount_0, max_amount_1) = if currency_id_a == trading_pair.0 {
+			let (max_amount_0, max_amount_1) = if currency_id_a == trading_pair.first() {
 				(max_amount_a, max_amount_b)
 			} else {
 				(max_amount_b, max_amount_a)
@@ -901,8 +885,8 @@ impl<T: Config> Pallet<T> {
 			);
 
 			let module_account_id = Self::account_id();
-			T::Currency::transfer(trading_pair.0, who, &module_account_id, pool_0_increment)?;
-			T::Currency::transfer(trading_pair.1, who, &module_account_id, pool_1_increment)?;
+			T::Currency::transfer(trading_pair.first(), who, &module_account_id, pool_0_increment)?;
+			T::Currency::transfer(trading_pair.second(), who, &module_account_id, pool_1_increment)?;
 			T::Currency::deposit(dex_share_currency_id, who, share_increment)?;
 
 			*pool_0 = pool_0.saturating_add(pool_0_increment);
@@ -914,9 +898,9 @@ impl<T: Config> Pallet<T> {
 
 			Self::deposit_event(Event::AddLiquidity(
 				who.clone(),
-				trading_pair.0,
+				trading_pair.first(),
 				pool_0_increment,
-				trading_pair.1,
+				trading_pair.second(),
 				pool_1_increment,
 				share_increment,
 			));
@@ -938,13 +922,11 @@ impl<T: Config> Pallet<T> {
 			return Ok(());
 		}
 		let trading_pair =
-			TradingPair::from_token_currency_ids(currency_id_a, currency_id_b).ok_or(Error::<T>::InvalidCurrencyId)?;
-		let dex_share_currency_id = trading_pair
-			.get_dex_share_currency_id()
-			.ok_or(Error::<T>::InvalidCurrencyId)?;
+			TradingPair::from_currency_ids(currency_id_a, currency_id_b).ok_or(Error::<T>::InvalidCurrencyId)?;
+		let dex_share_currency_id = trading_pair.dex_share_currency_id();
 
 		LiquidityPool::<T>::try_mutate(trading_pair, |(pool_0, pool_1)| -> DispatchResult {
-			let (min_withdrawn_0, min_withdrawn_1) = if currency_id_a == trading_pair.0 {
+			let (min_withdrawn_0, min_withdrawn_1) = if currency_id_a == trading_pair.first() {
 				(min_withdrawn_a, min_withdrawn_b)
 			} else {
 				(min_withdrawn_b, min_withdrawn_a)
@@ -964,17 +946,17 @@ impl<T: Config> Pallet<T> {
 				T::DEXIncentives::do_withdraw_dex_share(who, dex_share_currency_id, remove_share)?;
 			}
 			T::Currency::withdraw(dex_share_currency_id, &who, remove_share)?;
-			T::Currency::transfer(trading_pair.0, &module_account_id, &who, pool_0_decrement)?;
-			T::Currency::transfer(trading_pair.1, &module_account_id, &who, pool_1_decrement)?;
+			T::Currency::transfer(trading_pair.first(), &module_account_id, &who, pool_0_decrement)?;
+			T::Currency::transfer(trading_pair.second(), &module_account_id, &who, pool_1_decrement)?;
 
 			*pool_0 = pool_0.saturating_sub(pool_0_decrement);
 			*pool_1 = pool_1.saturating_sub(pool_1_decrement);
 
 			Self::deposit_event(Event::RemoveLiquidity(
 				who.clone(),
-				trading_pair.0,
+				trading_pair.first(),
 				pool_0_decrement,
-				trading_pair.1,
+				trading_pair.second(),
 				pool_1_decrement,
 				remove_share,
 			));
@@ -983,12 +965,15 @@ impl<T: Config> Pallet<T> {
 	}
 
 	fn get_liquidity(currency_id_a: CurrencyId, currency_id_b: CurrencyId) -> (Balance, Balance) {
-		let trading_pair = TradingPair::new(currency_id_a, currency_id_b);
-		let (pool_0, pool_1) = Self::liquidity_pool(trading_pair);
-		if currency_id_a == trading_pair.0 {
-			(pool_0, pool_1)
+		if let Some(trading_pair) = TradingPair::from_currency_ids(currency_id_a, currency_id_b) {
+			let (pool_0, pool_1) = Self::liquidity_pool(trading_pair);
+			if currency_id_a == trading_pair.first() {
+				(pool_0, pool_1)
+			} else {
+				(pool_1, pool_0)
+			}
 		} else {
-			(pool_1, pool_0)
+			(Zero::zero(), Zero::zero())
 		}
 	}
 
@@ -1048,9 +1033,11 @@ impl<T: Config> Pallet<T> {
 
 		let mut i: usize = 0;
 		while i + 1 < path_length {
+			let trading_pair =
+				TradingPair::from_currency_ids(path[i], path[i + 1]).ok_or(Error::<T>::InvalidCurrencyId)?;
 			ensure!(
 				matches!(
-					Self::trading_pair_statuses(TradingPair::new(path[i], path[i + 1])),
+					Self::trading_pair_statuses(trading_pair),
 					TradingPairStatus::<_, _>::Enabled
 				),
 				Error::<T>::MustBeEnabled
@@ -1100,9 +1087,11 @@ impl<T: Config> Pallet<T> {
 
 		let mut i: usize = path_length - 1;
 		while i > 0 {
+			let trading_pair =
+				TradingPair::from_currency_ids(path[i - 1], path[i]).ok_or(Error::<T>::InvalidCurrencyId)?;
 			ensure!(
 				matches!(
-					Self::trading_pair_statuses(TradingPair::new(path[i - 1], path[i])),
+					Self::trading_pair_statuses(trading_pair),
 					TradingPairStatus::<_, _>::Enabled
 				),
 				Error::<T>::MustBeEnabled
@@ -1144,9 +1133,9 @@ impl<T: Config> Pallet<T> {
 		supply_increment: Balance,
 		target_decrement: Balance,
 	) {
-		if let Some(trading_pair) = TradingPair::from_token_currency_ids(supply_currency_id, target_currency_id) {
+		if let Some(trading_pair) = TradingPair::from_currency_ids(supply_currency_id, target_currency_id) {
 			LiquidityPool::<T>::mutate(trading_pair, |(pool_0, pool_1)| {
-				if supply_currency_id == trading_pair.0 {
+				if supply_currency_id == trading_pair.first() {
 					*pool_0 = pool_0.saturating_add(supply_increment);
 					*pool_1 = pool_1.saturating_sub(target_decrement);
 				} else {
@@ -1236,9 +1225,8 @@ impl<T: Config> DEXManager<T::AccountId, CurrencyId, Balance> for Pallet<T> {
 	}
 
 	fn get_liquidity_token_address(currency_id_a: CurrencyId, currency_id_b: CurrencyId) -> Option<H160> {
-		let trading_pair = TradingPair::from_token_currency_ids(currency_id_a, currency_id_b)?;
-		let dex_share_currency_id = trading_pair.get_dex_share_currency_id()?;
-		T::CurrencyIdMapping::encode_evm_address(dex_share_currency_id)
+		let trading_pair = TradingPair::from_currency_ids(currency_id_a, currency_id_b)?;
+		T::CurrencyIdMapping::encode_evm_address(trading_pair.dex_share_currency_id())
 	}
 
 	fn get_swap_target_amount(

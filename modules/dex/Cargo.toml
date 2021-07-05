@@ -19,6 +19,7 @@ support = { package = "module-support", path = "../support", default-features = 
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 
 [dev-dependencies]
+lazy_static = "1.4.0"
 orml-tokens = { path = "../../orml/tokens" }
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.7" }
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.7" }
