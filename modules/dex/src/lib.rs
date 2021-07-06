@@ -481,7 +481,8 @@ pub mod module {
 				Error::<T>::MustBeDisabled
 			);
 			ensure!(
-				T::Currency::total_issuance(trading_pair.dex_share_currency_id()).is_zero(),
+				T::Currency::total_issuance(trading_pair.dex_share_currency_id()).is_zero()
+					&& ProvisioningPool::<T>::iter_prefix(trading_pair).count().is_zero(),
 				Error::<T>::NotAllowedList
 			);
 
