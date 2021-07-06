@@ -1090,10 +1090,10 @@ parameter_types! {
 	pub const GetExchangeFee: (u32, u32) = (1, 1000);	// 0.1%
 	pub const TradingPathLimit: u32 = 3;
 	pub EnabledTradingPairs: Vec<TradingPair> = vec![
-		TradingPair::new(AUSD, ACA),
-		TradingPair::new(AUSD, DOT),
-		TradingPair::new(AUSD, LDOT),
-		TradingPair::new(AUSD, RENBTC),
+		TradingPair::from_currency_ids(AUSD, ACA).unwrap(),
+		TradingPair::from_currency_ids(AUSD, DOT).unwrap(),
+		TradingPair::from_currency_ids(AUSD, LDOT).unwrap(),
+		TradingPair::from_currency_ids(AUSD, RENBTC).unwrap(),
 	];
 }
 
