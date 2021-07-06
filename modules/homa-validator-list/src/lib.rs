@@ -88,10 +88,14 @@ impl WeightInfo for () {
 	}
 }
 
+/// Insurance for a validator from a single address
 #[derive(Encode, Decode, Clone, Copy, RuntimeDebug, Default, PartialEq, MaxEncodedLen)]
 pub struct Guarantee<BlockNumber> {
+	/// The total tokens the validator has in insurance
 	total: Balance,
+	/// The number of tokens that are actively bonded for insurance
 	bonded: Balance,
+	/// The number of tokens that are in the process of unbonding for insurance
 	unbonding: Option<(Balance, BlockNumber)>,
 }
 
@@ -141,15 +145,20 @@ impl<BlockNumber: PartialOrd> Guarantee<BlockNumber> {
 	}
 }
 
+/// Information on a relay chain validator's slash
 #[derive(Encode, Decode, Clone, RuntimeDebug, Eq, PartialEq, MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct SlashInfo<Balance, RelaychainAccountId> {
+	/// Address of a validator on the relay chain
 	validator: RelaychainAccountId,
+	/// The amount of tokens a validator has in backing on the relay chain
 	relaychain_token_amount: Balance,
 }
 
+/// Validator insurance and frozen status
 #[derive(Encode, Decode, Clone, Copy, RuntimeDebug, Default, MaxEncodedLen)]
 pub struct ValidatorBacking {
+	/// Total insurance from all guarantors
 	total_insurance: Balance,
 	is_frozen: bool,
 }
@@ -160,21 +169,33 @@ pub mod module {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
+		/// The overarching event type.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		/// The AccountId of a relay chain account.
 		type RelaychainAccountId: Parameter + Member + MaybeSerializeDeserialize + Debug + MaybeDisplay + Ord + Default;
+		/// The liquid representation of the staking token on the relay chain.
 		type LiquidTokenCurrency: BasicLockableCurrency<Self::AccountId, Balance = Balance>;
 		#[pallet::constant]
+		/// The minimum amount of tokens that can be bonded to a validator.
 		type MinBondAmount: Get<Balance>;
 		#[pallet::constant]
+		/// The number of blocks a token is bonded to a validator for.
 		type BondingDuration: Get<Self::BlockNumber>;
 		#[pallet::constant]
+		/// The minimum amount of insurance a validator needs.
 		type ValidatorInsuranceThreshold: Get<Balance>;
+		/// The AccountId that can perform a freeze.
 		type FreezeOrigin: EnsureOrigin<Self::Origin>;
+		/// The AccountId that can perform a slash.
 		type SlashOrigin: EnsureOrigin<Self::Origin>;
+		/// Callback to be called when a slash occurs.
 		type OnSlash: Happened<Balance>;
+		/// Exchange rate between staked token and liquid token equivalent.
 		type LiquidStakingExchangeRateProvider: ExchangeRateProvider;
 		type WeightInfo: WeightInfo;
+		/// Callback to be called when a validator's insurance increases.
 		type OnIncreaseGuarantee: Happened<(Self::AccountId, Self::RelaychainAccountId, Balance)>;
+		/// Callback to be called when a validator's insurance decreases.
 		type OnDecreaseGuarantee: Happened<(Self::AccountId, Self::RelaychainAccountId, Balance)>;
 
 		// The block number provider
@@ -237,6 +258,11 @@ pub mod module {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
+		/// Bond tokens to a validator on the relay chain.
+		/// Ensures the amount to bond is greater than the minimum bond amount.
+		///
+		/// - `validator`: the AccountId of a validator on the relay chain to bond to
+		/// - `amount`: the number of tokens to bond to the given validator
 		#[pallet::weight(T::WeightInfo::bond())]
 		#[transactional]
 		pub fn bond(
@@ -267,6 +293,11 @@ pub mod module {
 			Ok(().into())
 		}
 
+		/// Unbond tokens from a validator on the relay chain.
+		/// Ensures the bonded amount is zero or greater than the minimum bond amount.
+		///
+		/// - `validator`: the AccountId of a validator on the relay chain to unbond from
+		/// - `amount`: the number of tokens to unbond from the given validator
 		#[pallet::weight(T::WeightInfo::unbond())]
 		#[transactional]
 		pub fn unbond(
@@ -295,6 +326,10 @@ pub mod module {
 			Ok(().into())
 		}
 
+		/// Rebond tokens to a validator on the relay chain.
+		///
+		/// - `validator`: The AccountId of a validator on the relay chain to rebond to
+		/// - `amount`: The amount of tokens to to rebond to the given validator
 		#[pallet::weight(T::WeightInfo::rebond())]
 		#[transactional]
 		pub fn rebond(
@@ -313,6 +348,10 @@ pub mod module {
 			Ok(().into())
 		}
 
+		/// Withdraw the unbonded tokens from a validator on the relay chain.
+		/// Ensures the validator is not frozen.
+		///
+		/// - `validator`: The AccountId of a validator on the relay chain to withdraw from
 		#[pallet::weight(T::WeightInfo::withdraw_unbonded())]
 		#[transactional]
 		pub fn withdraw_unbonded(
@@ -343,6 +382,10 @@ pub mod module {
 			Ok(().into())
 		}
 
+		/// Freezes validators on the relay chain if they are not already frozen.
+		/// Ensures the caller can freeze validators.
+		///
+		/// - `validators`: The AccountIds of the validators on the relay chain to freeze
 		#[pallet::weight(T::WeightInfo::freeze(validators.len() as u32))]
 		#[transactional]
 		pub fn freeze(origin: OriginFor<T>, validators: Vec<T::RelaychainAccountId>) -> DispatchResultWithPostInfo {
@@ -360,9 +403,15 @@ pub mod module {
 			Ok(().into())
 		}
 
+		/// Unfreezes validators on the relay chain if they are frozen.
+		/// Ensures the caller can perform a slash.
+		///
+		/// - `validators`: The AccountIds of the validators on the relay chain to unfreeze
 		#[pallet::weight(T::WeightInfo::thaw())]
 		#[transactional]
 		pub fn thaw(origin: OriginFor<T>, validators: Vec<T::RelaychainAccountId>) -> DispatchResultWithPostInfo {
+			// Using SlashOrigin instead of FreezeOrigin so that un-freezing requires more council members than
+			// freezing
 			T::SlashOrigin::ensure_origin(origin)?;
 			validators.iter().for_each(|validator| {
 				ValidatorBackings::<T>::mutate_exists(validator, |maybe_validator| {
@@ -377,6 +426,10 @@ pub mod module {
 			Ok(().into())
 		}
 
+		/// Slash validators on the relay chain.
+		/// Ensures the the caller can perform a slash.
+		///
+		/// - `slashes`: The SlashInfos of the validators to be slashed
 		#[pallet::weight(T::WeightInfo::slash())]
 		#[transactional]
 		pub fn slash(
