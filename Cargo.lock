@@ -5408,7 +5408,6 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "lazy_static",
  "max-encoded-len",
  "module-support",
  "orml-tokens",

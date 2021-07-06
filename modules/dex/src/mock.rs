@@ -38,10 +38,10 @@ pub const BTC: CurrencyId = CurrencyId::Token(TokenSymbol::RENBTC);
 pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
 pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 
-lazy_static::lazy_static! {
-	pub static ref AUSD_BTC_PAIR: TradingPair = TradingPair::from_currency_ids(AUSD, BTC).unwrap();
-	pub static ref AUSD_DOT_PAIR: TradingPair = TradingPair::from_currency_ids(AUSD, DOT).unwrap();
-	pub static ref DOT_BTC_PAIR: TradingPair = TradingPair::from_currency_ids(DOT, BTC).unwrap();
+parameter_types! {
+	pub static AUSDBTCPair: TradingPair = TradingPair::from_currency_ids(AUSD, BTC).unwrap();
+	pub static AUSDDOTPair: TradingPair = TradingPair::from_currency_ids(AUSD, DOT).unwrap();
+	pub static DOTBTCPair: TradingPair = TradingPair::from_currency_ids(DOT, BTC).unwrap();
 }
 
 mod dex {
@@ -171,7 +171,7 @@ impl Default for ExtBuilder {
 
 impl ExtBuilder {
 	pub fn initialize_enabled_trading_pairs(mut self) -> Self {
-		self.initial_enabled_trading_pairs = vec![*AUSD_DOT_PAIR, *AUSD_BTC_PAIR, *DOT_BTC_PAIR];
+		self.initial_enabled_trading_pairs = vec![AUSDDOTPair::get(), AUSDBTCPair::get(), DOTBTCPair::get()];
 		self
 	}
 
@@ -179,9 +179,9 @@ impl ExtBuilder {
 		self.initial_added_liquidity_pools = vec![(
 			who,
 			vec![
-				(*AUSD_DOT_PAIR, (1_000_000u128, 2_000_000u128)),
-				(*AUSD_BTC_PAIR, (1_000_000u128, 2_000_000u128)),
-				(*DOT_BTC_PAIR, (1_000_000u128, 2_000_000u128)),
+				(AUSDDOTPair::get(), (1_000_000u128, 2_000_000u128)),
+				(AUSDBTCPair::get(), (1_000_000u128, 2_000_000u128)),
+				(DOTBTCPair::get(), (1_000_000u128, 2_000_000u128)),
 			],
 		)];
 		self
