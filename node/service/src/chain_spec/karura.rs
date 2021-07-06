@@ -143,12 +143,13 @@ pub fn latest_karura_config() -> Result<ChainSpec, String> {
 				.into_iter()
 				.collect::<Vec<(AccountId, Balance)>>();
 
-			// check total allocated
-			assert_eq!(
-				total_allocated,
-				100_000_000 * dollar(KAR), // 100 million KAR
-				"total allocation must be equal to 100 million KAR"
-			);
+			// no longer needed after genesis is generated, this no longer holds after new changes
+			// // check total allocated
+			// assert_eq!(
+			// 	total_allocated,
+			// 	100_000_000 * dollar(KAR), // 100 million KAR
+			// 	"total allocation must be equal to 100 million KAR"
+			// );
 
 			let vesting_list_json = &include_bytes!("../../../../resources/karura-vesting-KAR.json")[..];
 			let vesting_list: Vec<(AccountId, BlockNumber, BlockNumber, u32, Balance)> =
