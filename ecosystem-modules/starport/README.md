@@ -20,8 +20,11 @@ Currently the Starport module is integrated into the Mandala Runtime.
 
 ### Local node
 1. Pull the Master branch of the Acala codebase
-2. Open a console, run the command:
-   `make run`
+2. Open a console, run the following commands:
+   ```shell
+   make init
+   make run
+    ```
    This should launch a local test Mandala node
 3. Open a new web browser, go to `https://polkadot.js.org/apps/#/explorer`
 4. On the left top corner, select `DEVELOPMENT` -> `Local Node`. Click "Switch" to confirm connection.
