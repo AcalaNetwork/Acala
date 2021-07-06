@@ -184,7 +184,7 @@ runtime_benchmarks! {
 			trading_pair.first(),
 			trading_pair.second(),
 		)?;
-	}: _(RawOrigin::Signed(founder), trading_pair.first(), trading_pair.second())
+	}: _(RawOrigin::Signed(whitelisted_caller()), founder, trading_pair.first(), trading_pair.second())
 
 	// add liquidity but don't staking lp
 	add_liquidity {
