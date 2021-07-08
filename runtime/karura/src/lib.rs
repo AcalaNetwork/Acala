@@ -198,7 +198,7 @@ impl Filter<Call> for BaseCallFilter {
 			Call::Scheduler(_) | Call::Utility(_) | Call::Multisig(_) | Call::Proxy(_) |
 			// Sudo
 			Call::Sudo(_) |
-			// PoA
+			// Councils
 			Call::Authority(_) | Call::GeneralCouncil(_) | Call::GeneralCouncilMembership(_) |
 			Call::FinancialCouncil(_) | Call::FinancialCouncilMembership(_) |
 			Call::HomaCouncil(_) | Call::HomaCouncilMembership(_) |
@@ -210,7 +210,11 @@ impl Filter<Call> for BaseCallFilter {
 			// Collactor Selection
 			Call::CollatorSelection(_) | Call::Session(_) |
 			// Vesting
-			Call::Vesting(_)
+			Call::Vesting(_) |
+			// TransactionPayment
+			Call::TransactionPayment(_) |
+			// XCM
+			Call::XcmpQueue(_) | Call::PolkadotXcm(_) | Call::DmpQueue(_) | Call::XTokens(_)
 		)
 	}
 }
