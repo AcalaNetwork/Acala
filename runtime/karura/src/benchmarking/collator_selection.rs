@@ -50,7 +50,7 @@ fn register_candidates(count: u32) {
 				.unwrap(),
 		);
 		let mut keys = [1u8; 128];
-		keys[0..8].copy_from_slice(&index.to_be_bytes());
+		keys[0..4].copy_from_slice(&(index as u32).to_be_bytes());
 		let keys: SessionKeys = Decode::decode(&mut &keys[..]).unwrap();
 		Session::set_keys(RawOrigin::Signed(who.clone()).into(), keys, vec![]).unwrap();
 		CollatorSelection::register_as_candidate(RawOrigin::Signed(who.clone()).into()).unwrap();
