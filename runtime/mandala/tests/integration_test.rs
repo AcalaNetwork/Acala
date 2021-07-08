@@ -680,6 +680,7 @@ fn test_dex_module() {
 
 			assert_ok!(DexModule::claim_dex_share(
 				Origin::signed(EvmAddressMapping::<Runtime>::get_account_id(&alice_evm_addr())),
+				EvmAddressMapping::<Runtime>::get_account_id(&alice_evm_addr()),
 				CurrencyId::Erc20(erc20_address_0()),
 				CurrencyId::Erc20(erc20_address_1()),
 			));
@@ -1404,6 +1405,7 @@ fn test_multicurrency_precompile_module() {
 
 			assert_ok!(DexModule::claim_dex_share(
 				Origin::signed(MockAddressMapping::get_account_id(&alice_evm_addr())),
+				MockAddressMapping::get_account_id(&alice_evm_addr()),
 				CurrencyId::Erc20(erc20_address_0()),
 				CurrencyId::Erc20(erc20_address_1()),
 			));

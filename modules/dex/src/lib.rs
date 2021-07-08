@@ -402,17 +402,19 @@ pub mod module {
 
 		/// Claim dex share for founders who have participated in trading pair provision.
 		///
+		/// - `owner`: founder account.
 		/// - `currency_id_a`: currency id A.
 		/// - `currency_id_b`: currency id B.
 		#[pallet::weight(<T as Config>::WeightInfo::claim_dex_share())]
 		#[transactional]
 		pub fn claim_dex_share(
 			origin: OriginFor<T>,
+			owner: T::AccountId,
 			currency_id_a: CurrencyId,
 			currency_id_b: CurrencyId,
 		) -> DispatchResultWithPostInfo {
-			let who = ensure_signed(origin)?;
-			Self::do_claim_dex_share(&who, currency_id_a, currency_id_b)?;
+			let _ = ensure_signed(origin)?;
+			Self::do_claim_dex_share(&owner, currency_id_a, currency_id_b)?;
 			Ok(().into())
 		}
 
@@ -479,7 +481,8 @@ pub mod module {
 				Error::<T>::MustBeDisabled
 			);
 			ensure!(
-				T::Currency::total_issuance(trading_pair.dex_share_currency_id()).is_zero(),
+				T::Currency::total_issuance(trading_pair.dex_share_currency_id()).is_zero()
+					&& ProvisioningPool::<T>::iter_prefix(trading_pair).next().is_none(),
 				Error::<T>::NotAllowedList
 			);
 
@@ -729,7 +732,14 @@ impl<T: Config> Pallet<T> {
 				frame_system::Pallet::<T>::dec_consumers(who);
 			}
 			Ok(())
-		})
+		})?;
+
+		// clear InitialShareExchangeRates once it is all claimed
+		if ProvisioningPool::<T>::iter_prefix(trading_pair).next().is_none() {
+			InitialShareExchangeRates::<T>::remove(trading_pair);
+		}
+
+		Ok(())
 	}
 
 	fn do_add_provision(

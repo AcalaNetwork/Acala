@@ -551,7 +551,7 @@ fn claim_dex_share_work() {
 		));
 
 		assert_noop!(
-			DexModule::claim_dex_share(Origin::signed(ALICE), AUSD, DOT),
+			DexModule::claim_dex_share(Origin::signed(ALICE), ALICE, AUSD, DOT),
 			Error::<Runtime>::StillProvisioning
 		);
 
@@ -563,6 +563,10 @@ fn claim_dex_share_work() {
 
 		let lp_currency_id = AUSDDOTPair::get().dex_share_currency_id();
 
+		assert_eq!(
+			InitialShareExchangeRates::<Runtime>::contains_key(AUSDDOTPair::get()),
+			true
+		);
 		assert_eq!(
 			DexModule::initial_share_exchange_rates(AUSDDOTPair::get()),
 			(ExchangeRate::one(), ExchangeRate::saturating_from_rational(5, 1))
@@ -585,7 +589,7 @@ fn claim_dex_share_work() {
 		let alice_ref_count_0 = System::consumers(&ALICE);
 		let bob_ref_count_0 = System::consumers(&BOB);
 
-		assert_ok!(DexModule::claim_dex_share(Origin::signed(ALICE), AUSD, DOT));
+		assert_ok!(DexModule::claim_dex_share(Origin::signed(ALICE), ALICE, AUSD, DOT));
 		assert_eq!(
 			Tokens::free_balance(lp_currency_id, &DexModule::account_id()),
 			8_000_000_000_000_000u128
@@ -593,17 +597,25 @@ fn claim_dex_share_work() {
 		assert_eq!(DexModule::provisioning_pool(AUSDDOTPair::get(), ALICE), (0, 0));
 		assert_eq!(Tokens::free_balance(lp_currency_id, &ALICE), 2_000_000_000_000_000u128);
 		assert_eq!(System::consumers(&ALICE), alice_ref_count_0 - 1);
+		assert_eq!(
+			InitialShareExchangeRates::<Runtime>::contains_key(AUSDDOTPair::get()),
+			true
+		);
 
 		assert_ok!(DexModule::disable_trading_pair(
 			Origin::signed(ListingOrigin::get()),
 			AUSD,
 			DOT
 		));
-		assert_ok!(DexModule::claim_dex_share(Origin::signed(BOB), AUSD, DOT));
+		assert_ok!(DexModule::claim_dex_share(Origin::signed(BOB), BOB, AUSD, DOT));
 		assert_eq!(Tokens::free_balance(lp_currency_id, &DexModule::account_id()), 0);
 		assert_eq!(DexModule::provisioning_pool(AUSDDOTPair::get(), BOB), (0, 0));
 		assert_eq!(Tokens::free_balance(lp_currency_id, &BOB), 8_000_000_000_000_000u128);
 		assert_eq!(System::consumers(&BOB), bob_ref_count_0 - 1);
+		assert_eq!(
+			InitialShareExchangeRates::<Runtime>::contains_key(AUSDDOTPair::get()),
+			false
+		);
 	});
 }
 
