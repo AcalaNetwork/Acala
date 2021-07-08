@@ -32,7 +32,7 @@ use frame_support::{
 	traits::{
 		Currency, ExistenceRequirement, Imbalance, NamedReservableCurrency, OnUnbalanced, SameOrOther, WithdrawReasons,
 	},
-	weights::{DispatchInfo, GetDispatchInfo, Pays, PostDispatchInfo, WeightToFeePolynomial},
+	weights::{DispatchInfo, GetDispatchInfo, Pays, PostDispatchInfo, WeightToFeeCoefficient, WeightToFeePolynomial},
 };
 use frame_system::pallet_prelude::*;
 use orml_traits::MultiCurrency;
@@ -267,6 +267,16 @@ pub mod module {
 
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
+	}
+
+	#[pallet::extra_constants]
+	impl<T: Config> Pallet<T> {
+		//TODO: rename to snake case after https://github.com/paritytech/substrate/issues/8826 fixed.
+		#[allow(non_snake_case)]
+		/// The polynomial that is applied in order to derive fee from weight.
+		fn WeightToFee() -> Vec<WeightToFeeCoefficient<PalletBalanceOf<T>>> {
+			T::WeightToFee::polynomial().to_vec()
+		}
 	}
 
 	#[pallet::type_value]
