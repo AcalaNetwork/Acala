@@ -121,30 +121,44 @@ pub enum DataProviderId {
 	Acala = 1,
 }
 
-#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord)]
+#[derive(Encode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct TradingPair(pub CurrencyId, pub CurrencyId);
+pub struct TradingPair(CurrencyId, CurrencyId);
 
 impl TradingPair {
-	pub fn new(currency_id_a: CurrencyId, currency_id_b: CurrencyId) -> Self {
-		if currency_id_a > currency_id_b {
-			TradingPair(currency_id_b, currency_id_a)
-		} else {
-			TradingPair(currency_id_a, currency_id_b)
-		}
-	}
-
-	pub fn from_token_currency_ids(currency_id_0: CurrencyId, currency_id_1: CurrencyId) -> Option<Self> {
-		match (currency_id_0.is_token_currency_id() || currency_id_0.is_erc20_currency_id())
-			&& (currency_id_1.is_token_currency_id() || currency_id_1.is_erc20_currency_id())
+	pub fn from_currency_ids(currency_id_a: CurrencyId, currency_id_b: CurrencyId) -> Option<Self> {
+		if (currency_id_a.is_token_currency_id() || currency_id_a.is_erc20_currency_id())
+			&& (currency_id_b.is_token_currency_id() || currency_id_b.is_erc20_currency_id())
+			&& currency_id_a != currency_id_b
 		{
-			true => Some(TradingPair::new(currency_id_1, currency_id_0)),
-			_ => None,
+			if currency_id_a > currency_id_b {
+				Some(TradingPair(currency_id_b, currency_id_a))
+			} else {
+				Some(TradingPair(currency_id_a, currency_id_b))
+			}
+		} else {
+			None
 		}
 	}
 
-	pub fn get_dex_share_currency_id(&self) -> Option<CurrencyId> {
-		CurrencyId::join_dex_share_currency_id(self.0, self.1)
+	pub fn first(&self) -> CurrencyId {
+		self.0
+	}
+
+	pub fn second(&self) -> CurrencyId {
+		self.1
+	}
+
+	pub fn dex_share_currency_id(&self) -> CurrencyId {
+		CurrencyId::join_dex_share_currency_id(self.first(), self.second())
+			.expect("shouldn't be invalid! guaranteed by construction")
+	}
+}
+
+impl Decode for TradingPair {
+	fn decode<I: codec::Input>(input: &mut I) -> sp_std::result::Result<Self, codec::Error> {
+		let (first, second): (CurrencyId, CurrencyId) = Decode::decode(input)?;
+		TradingPair::from_currency_ids(first, second).ok_or_else(|| codec::Error::from("invalid currency id"))
 	}
 }
 

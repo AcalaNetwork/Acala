@@ -383,8 +383,14 @@ fn testnet_genesis(
 			initial_added_liquidity_pools: vec![(
 				get_account_id_from_seed::<sr25519::Public>("Alice"),
 				vec![
-					(TradingPair::new(AUSD, DOT), (1_000_000u128, 2_000_000u128)),
-					(TradingPair::new(AUSD, ACA), (1_000_000u128, 2_000_000u128)),
+					(
+						TradingPair::from_currency_ids(AUSD, DOT).unwrap(),
+						(1_000_000u128, 2_000_000u128),
+					),
+					(
+						TradingPair::from_currency_ids(AUSD, ACA).unwrap(),
+						(1_000_000u128, 2_000_000u128),
+					),
 				],
 			)],
 		},
