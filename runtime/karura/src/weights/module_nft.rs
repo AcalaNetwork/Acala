@@ -48,37 +48,37 @@ use sp_std::marker::PhantomData;
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> module_nft::WeightInfo for WeightInfo<T> {
 	fn create_class() -> Weight {
-		(152_046_000 as Weight)
+		(153_288_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(4 as Weight))
 			.saturating_add(T::DbWeight::get().writes(5 as Weight))
 	}
 	fn mint(i: u32, ) -> Weight {
-		(63_964_000 as Weight)
-			// Standard Error: 12_000
-			.saturating_add((15_743_000 as Weight).saturating_mul(i as Weight))
+		(84_737_000 as Weight)
+			// Standard Error: 8_000
+			.saturating_add((15_803_000 as Weight).saturating_mul(i as Weight))
 			.saturating_add(T::DbWeight::get().reads(5 as Weight))
 			.saturating_add(T::DbWeight::get().writes(5 as Weight))
 			.saturating_add(T::DbWeight::get().writes((2 as Weight).saturating_mul(i as Weight)))
 	}
 	fn transfer() -> Weight {
-		(180_809_000 as Weight)
+		(184_433_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(7 as Weight))
 			.saturating_add(T::DbWeight::get().writes(7 as Weight))
 	}
 	fn burn() -> Weight {
-		(84_148_000 as Weight)
+		(86_623_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(4 as Weight))
 			.saturating_add(T::DbWeight::get().writes(5 as Weight))
 	}
 	fn burn_with_remark(b: u32, ) -> Weight {
-		(95_525_000 as Weight)
+		(88_907_000 as Weight)
 			// Standard Error: 0
 			.saturating_add((2_000 as Weight).saturating_mul(b as Weight))
 			.saturating_add(T::DbWeight::get().reads(4 as Weight))
 			.saturating_add(T::DbWeight::get().writes(5 as Weight))
 	}
 	fn destroy_class() -> Weight {
-		(168_697_000 as Weight)
+		(169_976_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(6 as Weight))
 			.saturating_add(T::DbWeight::get().writes(6 as Weight))
 	}

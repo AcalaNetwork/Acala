@@ -48,30 +48,30 @@ use sp_std::marker::PhantomData;
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> orml_authority::WeightInfo for WeightInfo<T> {
 	fn dispatch_as() -> Weight {
-		(23_232_000 as Weight)
+		(23_806_000 as Weight)
 	}
 	fn schedule_dispatch_without_delay() -> Weight {
-		(59_431_000 as Weight)
+		(60_766_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes(3 as Weight))
 	}
 	fn schedule_dispatch_with_delay() -> Weight {
-		(62_242_000 as Weight)
+		(63_172_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes(3 as Weight))
 	}
 	fn fast_track_scheduled_dispatch() -> Weight {
-		(85_584_000 as Weight)
+		(86_295_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes(3 as Weight))
 	}
 	fn delay_scheduled_dispatch() -> Weight {
-		(85_104_000 as Weight)
+		(85_457_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes(3 as Weight))
 	}
 	fn cancel_scheduled_dispatch() -> Weight {
-		(60_408_000 as Weight)
+		(60_716_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}

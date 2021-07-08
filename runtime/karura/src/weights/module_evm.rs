@@ -48,37 +48,37 @@ use sp_std::marker::PhantomData;
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> module_evm::WeightInfo for WeightInfo<T> {
 	fn transfer_maintainer() -> Weight {
-		(124_942_000 as Weight)
+		(125_158_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn deploy() -> Weight {
-		(169_138_000 as Weight)
+		(169_329_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
 	fn deploy_free() -> Weight {
-		(33_930_000 as Weight)
+		(35_208_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn enable_contract_development() -> Weight {
-		(141_646_000 as Weight)
+		(140_720_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn disable_contract_development() -> Weight {
-		(143_203_000 as Weight)
+		(141_779_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn set_code() -> Weight {
-		(360_386_000 as Weight)
+		(364_787_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(10 as Weight))
 			.saturating_add(T::DbWeight::get().writes(7 as Weight))
 	}
 	fn selfdestruct() -> Weight {
-		(267_590_000 as Weight)
+		(268_918_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(11 as Weight))
 			.saturating_add(T::DbWeight::get().writes(7 as Weight))
 	}

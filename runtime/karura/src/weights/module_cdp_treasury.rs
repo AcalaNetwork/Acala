@@ -48,16 +48,16 @@ use sp_std::marker::PhantomData;
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> module_cdp_treasury::WeightInfo for WeightInfo<T> {
 	fn auction_collateral() -> Weight {
-		(73_741_000 as Weight)
+		(75_275_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(6 as Weight))
 			.saturating_add(T::DbWeight::get().writes(6 as Weight))
 	}
 	fn set_expected_collateral_auction_size() -> Weight {
-		(22_755_000 as Weight)
+		(23_442_000 as Weight)
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn extract_surplus_to_treasury() -> Weight {
-		(80_293_000 as Weight)
+		(81_337_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(4 as Weight))
 			.saturating_add(T::DbWeight::get().writes(3 as Weight))
 	}

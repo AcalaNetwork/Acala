@@ -48,47 +48,47 @@ use sp_std::marker::PhantomData;
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> module_incentives::WeightInfo for WeightInfo<T> {
 	fn on_initialize(c: u32, ) -> Weight {
-		(12_263_000 as Weight)
-			// Standard Error: 58_000
-			.saturating_add((33_463_000 as Weight).saturating_mul(c as Weight))
+		(13_074_000 as Weight)
+			// Standard Error: 68_000
+			.saturating_add((33_188_000 as Weight).saturating_mul(c as Weight))
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().reads((4 as Weight).saturating_mul(c as Weight)))
 	}
 	fn deposit_dex_share() -> Weight {
-		(152_612_000 as Weight)
+		(153_456_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(9 as Weight))
 			.saturating_add(T::DbWeight::get().writes(8 as Weight))
 	}
 	fn withdraw_dex_share() -> Weight {
-		(159_483_000 as Weight)
+		(173_522_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(7 as Weight))
 			.saturating_add(T::DbWeight::get().writes(6 as Weight))
 	}
 	fn claim_rewards() -> Weight {
-		(120_334_000 as Weight)
+		(121_850_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(4 as Weight))
 			.saturating_add(T::DbWeight::get().writes(3 as Weight))
 	}
 	fn update_incentive_rewards(c: u32, ) -> Weight {
-		(2_047_000 as Weight)
-			// Standard Error: 45_000
-			.saturating_add((21_067_000 as Weight).saturating_mul(c as Weight))
+		(2_143_000 as Weight)
+			// Standard Error: 35_000
+			.saturating_add((21_591_000 as Weight).saturating_mul(c as Weight))
 			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(c as Weight)))
 	}
 	fn update_dex_saving_rewards(c: u32, ) -> Weight {
-		(1_794_000 as Weight)
-			// Standard Error: 16_000
-			.saturating_add((21_152_000 as Weight).saturating_mul(c as Weight))
+		(1_881_000 as Weight)
+			// Standard Error: 31_000
+			.saturating_add((21_495_000 as Weight).saturating_mul(c as Weight))
 			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(c as Weight)))
 	}
 	fn update_payout_deduction_rates(c: u32, ) -> Weight {
-		(1_786_000 as Weight)
-			// Standard Error: 25_000
-			.saturating_add((21_015_000 as Weight).saturating_mul(c as Weight))
+		(1_866_000 as Weight)
+			// Standard Error: 120_000
+			.saturating_add((21_824_000 as Weight).saturating_mul(c as Weight))
 			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(c as Weight)))
 	}
 	fn add_allowance() -> Weight {
-		(87_355_000 as Weight)
+		(87_447_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(4 as Weight))
 			.saturating_add(T::DbWeight::get().writes(4 as Weight))
 	}

@@ -48,21 +48,21 @@ use sp_std::marker::PhantomData;
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> module_emergency_shutdown::WeightInfo for WeightInfo<T> {
 	fn emergency_shutdown(c: u32, ) -> Weight {
-		(69_760_000 as Weight)
-			// Standard Error: 168_000
-			.saturating_add((1_994_000 as Weight).saturating_mul(c as Weight))
+		(67_983_000 as Weight)
+			// Standard Error: 90_000
+			.saturating_add((4_331_000 as Weight).saturating_mul(c as Weight))
 			.saturating_add(T::DbWeight::get().reads(9 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn open_collateral_refund() -> Weight {
-		(44_946_000 as Weight)
+		(44_208_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(5 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn refund_collaterals(c: u32, ) -> Weight {
-		(126_868_000 as Weight)
-			// Standard Error: 136_000
-			.saturating_add((72_358_000 as Weight).saturating_mul(c as Weight))
+		(128_887_000 as Weight)
+			// Standard Error: 250_000
+			.saturating_add((71_785_000 as Weight).saturating_mul(c as Weight))
 			.saturating_add(T::DbWeight::get().reads(7 as Weight))
 			.saturating_add(T::DbWeight::get().reads((2 as Weight).saturating_mul(c as Weight)))
 			.saturating_add(T::DbWeight::get().writes(3 as Weight))

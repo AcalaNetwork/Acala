@@ -48,12 +48,12 @@ use sp_std::marker::PhantomData;
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> module_evm_accounts::WeightInfo for WeightInfo<T> {
 	fn claim_account() -> Weight {
-		(572_956_000 as Weight)
+		(567_674_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
 	fn claim_default_account() -> Weight {
-		(34_466_000 as Weight)
+		(35_042_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
