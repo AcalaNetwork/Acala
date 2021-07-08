@@ -482,7 +482,7 @@ pub mod module {
 			);
 			ensure!(
 				T::Currency::total_issuance(trading_pair.dex_share_currency_id()).is_zero()
-					&& ProvisioningPool::<T>::iter_prefix(trading_pair).count().is_zero(),
+					&& ProvisioningPool::<T>::iter_prefix(trading_pair).next().is_none(),
 				Error::<T>::NotAllowedList
 			);
 
@@ -735,7 +735,7 @@ impl<T: Config> Pallet<T> {
 		})?;
 
 		// clear InitialShareExchangeRates once it is all claimed
-		if ProvisioningPool::<T>::iter_prefix(trading_pair).count().is_zero() {
+		if ProvisioningPool::<T>::iter_prefix(trading_pair).next().is_none() {
 			InitialShareExchangeRates::<T>::remove(trading_pair);
 		}
 
