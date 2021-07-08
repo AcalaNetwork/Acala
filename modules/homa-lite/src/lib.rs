@@ -1,0 +1,252 @@
+// This file is part of Acala.
+
+// Copyright (C) 2020-2021 Acala Foundation.
+// SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
+
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+//! # Homa Lite Module
+//! The Homa Lite module handles logic that allows the users to lock in KSM tokens on the Karura
+//! Acala Chain, and mint LKSM tokens from the liquidity. The locked KSM are then used for Staking -
+//! they will be used to nominate our partner Validators on the Kusama Chain.
+//!
+//! As the first draft, this module currently does not support Redeem function from LKSM to KSM.
+//!
+//! General workflow:
+//! 1. User moves KSM cross-chain into the Karura chain
+//! 2. User "Lock" their KSM on the Karura chain
+//! 3. Karura send XCM back into Kusama chain, and Nominate these KSMs against our partner
+//! Validators. 4. Karura mint LKSM on the Karura chain
+
+#![cfg_attr(not(feature = "std"), no_std)]
+#![allow(clippy::unused_unit)]
+
+// mod mock;
+// mod tests;
+use frame_support::{pallet_prelude::*, transactional, PalletId};
+use frame_system::{ensure_signed, pallet_prelude::*};
+use orml_traits::MultiCurrency;
+use primitives::{Balance, CurrencyId, EraIndex};
+use sp_std::prelude::*;
+
+pub use module::*;
+
+#[frame_support::pallet]
+pub mod module {
+	use super::*;
+
+	#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq)]
+	pub struct TotalIssuanceInfo {
+		pub staking_total: Balance,
+		pub liquid_total: Balance,
+	}
+
+	#[pallet::config]
+	pub trait Config: frame_system::Config {
+		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+
+		/// Multi-currency support for asset management
+		type Currency: MultiCurrency<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
+
+		/// The Currency ID for the Staking asset
+		#[pallet::constant]
+		type StakingCurrencyId: Get<CurrencyId>;
+
+		/// The Currency ID for the Liquid asset
+		#[pallet::constant]
+		type LiquidCurrencyId: Get<CurrencyId>;
+
+		/// The ID for this pallet
+		#[pallet::constant]
+		type PalletId: Get<PalletId>;
+
+		/// Origin used to Issue LKSM
+		type IssuerOrigin: EnsureOrigin<Self::Origin>;
+
+		/// Origin represented by the Root or Governance
+		type GovernanceOrigin: EnsureOrigin<Self::Origin>;
+	}
+
+	#[pallet::error]
+	pub enum Error<T> {
+		/// The current Era has not finished, therefore the Liquid currency have not been issued
+		/// yet.
+		LiquidCurrencyNotIssuedForThisEra,
+		/// The user doesn't have enough balance in their account.
+		InsufficientBalance,
+		/// Mathematical error occurred during calculation.
+		ArithmeticError,
+		/// The relaychain's stash account have not been set.
+		RelaychainStashAccountNotSet,
+		/// The total issuance for the Staking currency must be more than zero.
+		InvalidStakedCurrencyTotalIssuance,
+	}
+
+	#[pallet::event]
+	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
+	#[pallet::metadata(Balance = "Balance", T::AccountId = "AccountId")]
+	pub enum Event<T: Config> {
+		/// The user has requested some Staking currency to be used to mint Liquid Currency. [era,
+		/// user, amount]
+		MintRequested(EraIndex, T::AccountId, Balance),
+
+		/// The current Era has ended. Mint requests can now be processed. [era,
+		/// staking_total_issuance, liquid_total_issuance]
+		EraTotalRecorded(EraIndex, Balance, Balance),
+
+		/// The user has claimed some Liquid Currency. [era, user, amount]
+		LiquidCurrencyClaimed(EraIndex, T::AccountId, Balance),
+
+		/// The relay-chain's stash account ID has been updated.
+		RelaychainStashAccountUpdated(T::AccountId),
+	}
+
+	#[pallet::storage]
+	#[pallet::getter(fn pending_amount)]
+	pub type PendingAmount<T: Config> =
+		StorageDoubleMap<_, Blake2_128Concat, EraIndex, Blake2_128Concat, T::AccountId, Balance, ValueQuery>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn era_total_issuance_info)]
+	pub type EraTotalIssuanceInfo<T: Config> =
+		StorageMap<_, Blake2_128Concat, EraIndex, TotalIssuanceInfo, OptionQuery>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn current_era)]
+	pub type CurrentEra<T: Config> = StorageValue<_, EraIndex, ValueQuery>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn relaychain_stash_account)]
+	pub type RelaychainStashAccount<T: Config> = StorageValue<_, T::AccountId, OptionQuery>;
+
+	#[pallet::pallet]
+	pub struct Pallet<T>(_);
+
+	#[pallet::call]
+	impl<T: Config> Pallet<T> {
+		/// Request to mint some Liquid currency, by locking up the given amount of Staking
+		/// currency. The exchange does not happen immediately, but on Era switch on the Relay
+		/// chain. The user needs to manually claim the Liquid currency once it is ready.
+		///
+		/// Parameters:
+		/// - `amount`: The amount of Staking currency to be exchanged.
+		//#[pallet::weight(< T as Config >::WeightInfo::request_mint())]
+		#[pallet::weight(0)]
+		#[transactional]
+		pub fn request_mint(origin: OriginFor<T>, amount: Balance) -> DispatchResultWithPostInfo {
+			let who = ensure_signed(origin)?;
+			let current_era = Self::current_era();
+			let liquid_currency_id = T::LiquidCurrencyId::get();
+
+			let stash_account = &Self::relaychain_stash_account();
+			ensure!(stash_account.is_some(), Error::<T>::RelaychainStashAccountNotSet);
+
+			// TODO: Cross-chain transfer to the Relaychain via XCM
+			T::Currency::transfer(liquid_currency_id, &who, &stash_account.clone().unwrap(), amount)?;
+
+			let current = PendingAmount::<T>::get(current_era, &who);
+			let new_value = current.checked_add(amount);
+			ensure!(new_value.is_some(), Error::<T>::ArithmeticError);
+			PendingAmount::<T>::insert(current_era, &who, new_value.unwrap());
+
+			Self::deposit_event(Event::<T>::MintRequested(current_era, who, amount));
+			Ok(().into())
+		}
+
+		/// Upon Era change on the Relay chain, all the transferred Staking currency is activated
+		/// for staking. It is then that we can issue Liquid currencies.
+		///
+		/// Parameters:
+		/// - `staking_total_issuance`:
+		//#[pallet::weight(< T as Config >::WeightInfo::issue())]
+		#[pallet::weight(0)]
+		#[transactional]
+		pub fn issue(origin: OriginFor<T>, staking_total_issuance: Balance) -> DispatchResultWithPostInfo {
+			T::IssuerOrigin::ensure_origin(origin)?;
+			let current_era = Self::current_era();
+
+			ensure!(
+				staking_total_issuance > 0,
+				Error::<T>::InvalidStakedCurrencyTotalIssuance
+			);
+
+			let total_liquid_issuance = T::Currency::total_issuance(T::LiquidCurrencyId::get());
+			let total_on_era = TotalIssuanceInfo {
+				staking_total: staking_total_issuance,
+				liquid_total: total_liquid_issuance,
+			};
+
+			EraTotalIssuanceInfo::<T>::insert(&current_era, total_on_era);
+			CurrentEra::<T>::put(current_era + 1);
+
+			Self::deposit_event(Event::<T>::EraTotalRecorded(
+				current_era,
+				staking_total_issuance,
+				total_liquid_issuance,
+			));
+
+			Ok(().into())
+		}
+
+		/// A function that allows the user to claim the Liquid currencies minted.
+		/// The amount of liquid currency minted is
+		///
+		/// Parameters:
+		/// - `who`: The user the claimed Liquid currency is for.
+		/// - `era`: The Era index the user Staked their tokens.
+		//#[pallet::weight(< T as Config >::WeightInfo::claim())]
+		#[pallet::weight(0)]
+		#[transactional]
+		pub fn claim(origin: OriginFor<T>, who: T::AccountId, era: EraIndex) -> DispatchResultWithPostInfo {
+			ensure_signed(origin)?;
+			let staked_amount = PendingAmount::<T>::get(&era, &who);
+			match Self::era_total_issuance_info(era) {
+				None => {
+					ensure!(false, Error::<T>::LiquidCurrencyNotIssuedForThisEra);
+				}
+				Some(total_info) => {
+					let mul_res = staked_amount.checked_mul(total_info.liquid_total);
+					ensure!(mul_res.is_some(), Error::<T>::ArithmeticError);
+					let liquid_res = mul_res.unwrap().checked_div(total_info.staking_total);
+					ensure!(liquid_res.is_some(), Error::<T>::ArithmeticError);
+					let liquid_to_mint = liquid_res.unwrap();
+
+					// Mint the liquid currency into the user's account.
+					T::Currency::deposit(T::LiquidCurrencyId::get(), &who, liquid_to_mint)?;
+
+					Self::deposit_event(Event::<T>::LiquidCurrencyClaimed(era, who, liquid_to_mint));
+				}
+			}
+
+			Ok(().into())
+		}
+
+		/// Updates the Relaychain Stash Account ID.
+		/// Requires ROOT or Governance.
+		///
+		/// Parameters:
+		/// - `new_account_id`: The new relay chain stash account.
+		//#[pallet::weight(< T as Config >::WeightInfo::set_stash_account_id())]
+		#[pallet::weight(0)]
+		#[transactional]
+		pub fn set_stash_account_id(origin: OriginFor<T>, new_account_id: T::AccountId) -> DispatchResultWithPostInfo {
+			// This can only be called by Governance or ROOT.
+			T::GovernanceOrigin::ensure_origin(origin)?;
+
+			RelaychainStashAccount::<T>::put(new_account_id.clone());
+			Self::deposit_event(Event::<T>::RelaychainStashAccountUpdated(new_account_id));
+			Ok(().into())
+		}
+	}
+}
