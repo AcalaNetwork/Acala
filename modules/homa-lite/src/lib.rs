@@ -32,8 +32,9 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
 
-// mod mock;
-// mod tests;
+mod mock;
+mod tests;
+
 use frame_support::{pallet_prelude::*, transactional, PalletId};
 use frame_system::{ensure_signed, pallet_prelude::*};
 use orml_traits::MultiCurrency;
@@ -83,8 +84,6 @@ pub mod module {
 		/// The current Era has not finished, therefore the Liquid currency have not been issued
 		/// yet.
 		LiquidCurrencyNotIssuedForThisEra,
-		/// The user doesn't have enough balance in their account.
-		InsufficientBalance,
 		/// Mathematical error occurred during calculation.
 		ArithmeticError,
 		/// The relaychain's stash account have not been set.
@@ -147,18 +146,18 @@ pub mod module {
 		pub fn request_mint(origin: OriginFor<T>, amount: Balance) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 			let current_era = Self::current_era();
-			let liquid_currency_id = T::LiquidCurrencyId::get();
+			let staking_currency_id = T::StakingCurrencyId::get();
 
 			let stash_account = &Self::relaychain_stash_account();
 			ensure!(stash_account.is_some(), Error::<T>::RelaychainStashAccountNotSet);
 
 			// TODO: Cross-chain transfer to the Relaychain via XCM
-			T::Currency::transfer(liquid_currency_id, &who, &stash_account.clone().unwrap(), amount)?;
+			T::Currency::transfer(staking_currency_id, &who, &stash_account.clone().unwrap(), amount)?;
 
 			let current = PendingAmount::<T>::get(current_era, &who);
-			let new_value = current.checked_add(amount);
-			ensure!(new_value.is_some(), Error::<T>::ArithmeticError);
-			PendingAmount::<T>::insert(current_era, &who, new_value.unwrap());
+			// Due to the math on Total Issuance, it is literally impossible to overflow here.
+			let new_value = current + amount;
+			PendingAmount::<T>::insert(current_era, &who, new_value);
 
 			Self::deposit_event(Event::<T>::MintRequested(current_era, who, amount));
 			Ok(().into())
@@ -224,6 +223,8 @@ pub mod module {
 
 					// Mint the liquid currency into the user's account.
 					T::Currency::deposit(T::LiquidCurrencyId::get(), &who, liquid_to_mint)?;
+					// Remove the pending request from storage
+					PendingAmount::<T>::remove(&era, &who);
 
 					Self::deposit_event(Event::<T>::LiquidCurrencyClaimed(era, who, liquid_to_mint));
 				}

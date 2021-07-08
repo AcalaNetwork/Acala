@@ -21,7 +21,8 @@
 #![cfg(test)]
 
 use super::*;
-use frame_support::parameter_types;
+use frame_support::{ord_parameter_types, parameter_types};
+use frame_system::EnsureSignedBy;
 use module_support::mocks::MockAddressMapping;
 use orml_traits::parameter_type_with_key;
 use primitives::{Amount, TokenSymbol};
@@ -30,11 +31,20 @@ use sp_runtime::{testing::Header, traits::IdentityLookup, AccountId32};
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
-use crate as ecosystem_starport;
+use crate as module_homa_lite;
 
-mod Homa-Lite {
+mod homa_lite {
 	pub use super::super::*;
 }
+
+pub const RELAYCHAIN_STASH: AccountId = AccountId32::new([11u8; 32]);
+pub const ROOT: AccountId = AccountId32::new([255u8; 32]);
+pub const ALICE: AccountId = AccountId32::new([1u8; 32]);
+pub const BOB: AccountId = AccountId32::new([2u8; 32]);
+pub const ACALA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
+pub const KSM: CurrencyId = CurrencyId::Token(TokenSymbol::KSM);
+pub const LKSM: CurrencyId = CurrencyId::Token(TokenSymbol::LKSM);
+pub const INITIAL_BALANCE: Balance = 1000000;
 
 parameter_types! {
 	pub const BlockHashCount: u64 = 250;
@@ -66,6 +76,74 @@ impl frame_system::Config for Runtime {
 	type OnSetCode = ();
 }
 
+parameter_type_with_key! {
+	pub ExistentialDeposits: |_currency_id: CurrencyId| -> Balance {
+		Default::default()
+	};
+}
+
+impl orml_tokens::Config for Runtime {
+	type Event = Event;
+	type Balance = Balance;
+	type Amount = Amount;
+	type CurrencyId = CurrencyId;
+	type WeightInfo = ();
+	type ExistentialDeposits = ExistentialDeposits;
+	type OnDust = ();
+	type MaxLocks = ();
+}
+
+parameter_types! {
+	pub const NativeTokenExistentialDeposit: Balance = 0;
+}
+
+impl pallet_balances::Config for Runtime {
+	type Balance = Balance;
+	type DustRemoval = ();
+	type Event = Event;
+	type ExistentialDeposit = NativeTokenExistentialDeposit;
+	type AccountStore = frame_system::Pallet<Runtime>;
+	type MaxLocks = ();
+	type WeightInfo = ();
+	type MaxReserves = ();
+	type ReserveIdentifier = ();
+}
+
+pub type AdaptedBasicCurrency = module_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Amount, BlockNumber>;
+
+parameter_types! {
+	pub const GetNativeCurrencyId: CurrencyId = ACALA;
+}
+
+impl module_currencies::Config for Runtime {
+	type Event = Event;
+	type MultiCurrency = Tokens;
+	type NativeCurrency = AdaptedBasicCurrency;
+	type GetNativeCurrencyId = GetNativeCurrencyId;
+	type WeightInfo = ();
+	type AddressMapping = MockAddressMapping;
+	type EVMBridge = ();
+}
+
+parameter_types! {
+	pub const StakingCurrencyId: CurrencyId = KSM;
+	pub const LiquidCurrencyId: CurrencyId = LKSM;
+	pub const HomaLitePalletId: PalletId = PalletId(*b"aca/hmlt");
+}
+ord_parameter_types! {
+	pub const Root: AccountId = ROOT;
+}
+
+impl Config for Runtime {
+	type Event = Event;
+	type Currency = Currencies;
+	type StakingCurrencyId = StakingCurrencyId;
+	type LiquidCurrencyId = LiquidCurrencyId;
+	type PalletId = HomaLitePalletId;
+	type IssuerOrigin = EnsureSignedBy<Root, AccountId>;
+	type GovernanceOrigin = EnsureSignedBy<Root, AccountId>;
+}
+
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
@@ -76,14 +154,57 @@ frame_support::construct_runtime!(
 		UncheckedExtrinsic = UncheckedExtrinsic
 	{
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+		HomaLite: module_homa_lite::{Pallet, Call, Storage, Event<T>},
+		PalletBalances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
+		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
+		Currencies: module_currencies::{Pallet, Call, Event<T>},
 	}
 );
+
+pub struct ExtBuilder {
+	tokens_balances: Vec<(AccountId, CurrencyId, Balance)>,
+	native_balances: Vec<(AccountId, Balance)>,
+}
+
+impl ExtBuilder {
+	pub fn new_empty() -> Self {
+		ExtBuilder {
+			tokens_balances: vec![],
+			native_balances: vec![],
+		}
+	}
+}
+
+impl Default for ExtBuilder {
+	fn default() -> Self {
+		Self {
+			tokens_balances: vec![(ALICE, KSM, INITIAL_BALANCE), (BOB, LKSM, INITIAL_BALANCE)],
+			native_balances: vec![
+				(ALICE, INITIAL_BALANCE),
+				(BOB, INITIAL_BALANCE),
+				(ROOT, INITIAL_BALANCE),
+			],
+		}
+	}
+}
 
 impl ExtBuilder {
 	pub fn build(self) -> sp_io::TestExternalities {
 		let mut t = frame_system::GenesisConfig::default()
 			.build_storage::<Runtime>()
 			.unwrap();
+
+		pallet_balances::GenesisConfig::<Runtime> {
+			balances: self.native_balances,
+		}
+		.assimilate_storage(&mut t)
+		.unwrap();
+
+		orml_tokens::GenesisConfig::<Runtime> {
+			balances: self.tokens_balances,
+		}
+		.assimilate_storage(&mut t)
+		.unwrap();
 
 		let mut ext = sp_io::TestExternalities::new(t);
 		ext.execute_with(|| System::set_block_number(1));
