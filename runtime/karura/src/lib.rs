@@ -214,7 +214,7 @@ impl Filter<Call> for BaseCallFilter {
 			// TransactionPayment
 			Call::TransactionPayment(_) |
 			// XCM
-			Call::XcmpQueue(_) | Call::PolkadotXcm(_) | Call::DmpQueue(_) | Call::XTokens(_)
+			Call::XTokens(_)
 		)
 	}
 }
