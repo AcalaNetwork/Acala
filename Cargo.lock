@@ -4080,6 +4080,7 @@ dependencies = [
  "orml-traits",
  "orml-unknown-tokens",
  "orml-vesting",
+ "orml-xcm",
  "orml-xcm-support",
  "orml-xtokens",
  "pallet-aura",
@@ -6450,6 +6451,17 @@ dependencies = [
  "sp-std",
  "spin 0.7.1",
  "weight-meter-procedural",
+]
+
+[[package]]
+name = "orml-xcm"
+version = "0.4.1-dev"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "pallet-xcm",
+ "parity-scale-codec",
+ "xcm",
 ]
 
 [[package]]

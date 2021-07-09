@@ -1538,6 +1538,11 @@ impl orml_unknown_tokens::Config for Runtime {
 	type Event = Event;
 }
 
+impl orml_xcm::Config for Runtime {
+	type Event = Event;
+	type SovereignOrigin = EnsureRootOrHalfGeneralCouncil;
+}
+
 #[allow(clippy::large_enum_variant)]
 construct_runtime!(
 	pub enum Runtime where
@@ -1583,6 +1588,7 @@ construct_runtime!(
 		DmpQueue: cumulus_pallet_dmp_queue::{Pallet, Call, Storage, Event<T>} = 53,
 		XTokens: orml_xtokens::{Pallet, Storage, Call, Event<T>} = 54,
 		UnknownTokens: orml_unknown_tokens::{Pallet, Storage, Event} = 55,
+		OrmlXcm: orml_xcm::{Pallet, Call, Event<T>} = 56,
 
 		// Governance
 		Authority: orml_authority::{Pallet, Call, Storage, Event<T>, Origin<T>} = 60,
