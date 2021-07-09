@@ -33,7 +33,7 @@ use frame_system::pallet_prelude::*;
 use orml_traits::{MultiCurrency, MultiCurrencyExtended};
 use primitives::{Balance, CurrencyId};
 use sp_runtime::{
-	traits::{AccountIdConversion, One, Zero},
+	traits::{AccountIdConversion, Bounded, One, Zero},
 	ArithmeticError, DispatchError, DispatchResult, FixedPointNumber,
 };
 use support::{AuctionManager, CDPTreasury, CDPTreasuryExtended, DEXManager, Ratio};
@@ -285,7 +285,7 @@ impl<T: Config> CDPTreasury<T::AccountId> for Pallet<T> {
 
 	fn get_debit_proportion(amount: Self::Balance) -> Ratio {
 		let stable_total_supply = T::Currency::total_issuance(T::GetStableCurrencyId::get());
-		Ratio::checked_from_rational(amount, stable_total_supply).unwrap_or_default()
+		Ratio::checked_from_rational(amount, stable_total_supply).unwrap_or_else(Ratio::max_value)
 	}
 
 	fn on_system_debit(amount: Self::Balance) -> DispatchResult {

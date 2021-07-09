@@ -40,7 +40,7 @@ use primitives::Balance;
 use serde::{Deserialize, Serialize};
 use sp_runtime::{
 	offchain::storage_lock::BlockNumberProvider,
-	traits::{MaybeDisplay, MaybeSerializeDeserialize, Member, Zero},
+	traits::{Bounded, MaybeDisplay, MaybeSerializeDeserialize, Member, Zero},
 	DispatchResult, FixedPointNumber, RuntimeDebug,
 };
 use sp_std::{fmt::Debug, vec::Vec};
@@ -455,7 +455,7 @@ pub mod module {
 					// NOTE: ignoring result because the closure will not throw err.
 					let res = Self::update_guarantee(&guarantor, &validator, |guarantee| -> DispatchResult {
 						let should_slashing = Ratio::checked_from_rational(guarantee.total, total_insurance)
-							.unwrap_or_default()
+							.unwrap_or_else(Ratio::max_value)
 							.saturating_mul_int(insurance_loss);
 						let gap = T::LiquidTokenCurrency::slash(&guarantor, should_slashing);
 						let actual_slashing = should_slashing.saturating_sub(gap);

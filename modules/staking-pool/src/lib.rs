@@ -26,7 +26,7 @@ use primitives::{Balance, CurrencyId, EraIndex};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_runtime::{
-	traits::{AccountIdConversion, CheckedDiv, Saturating, Zero},
+	traits::{AccountIdConversion, Bounded, CheckedDiv, Saturating, Zero},
 	ArithmeticError, DispatchError, DispatchResult, FixedPointNumber, RuntimeDebug,
 };
 use sp_std::prelude::*;
@@ -113,13 +113,15 @@ impl Ledger {
 
 	/// The ratio of `free_pool` in `total_belong_to_liquid_holders`.
 	fn free_pool_ratio(&self) -> Ratio {
-		Ratio::checked_from_rational(self.free_pool, self.total_belong_to_liquid_holders()).unwrap_or_default()
+		Ratio::checked_from_rational(self.free_pool, self.total_belong_to_liquid_holders())
+			.unwrap_or_else(Ratio::max_value)
 	}
 
 	/// The ratio of `unbonding_to_free` in
 	/// `total_belong_to_liquid_holders`.
 	fn unbonding_to_free_ratio(&self) -> Ratio {
-		Ratio::checked_from_rational(self.unbonding_to_free, self.total_belong_to_liquid_holders()).unwrap_or_default()
+		Ratio::checked_from_rational(self.unbonding_to_free, self.total_belong_to_liquid_holders())
+			.unwrap_or_else(Ratio::max_value)
 	}
 }
 
@@ -827,7 +829,7 @@ impl<T: Config> HomaProtocol<T::AccountId, Balance, EraIndex> for Pallet<T> {
 				// if available_free_pool is not enough, need re-calculate
 				if demand_staking_amount > available_free_pool {
 					let ratio = Ratio::checked_from_rational(available_free_pool, demand_staking_amount)
-						.expect("demand_staking_amount is not zero; qed");
+						.expect("demand_staking_amount is gt available_free_pool and not zero; qed");
 					liquid_amount_to_burn = ratio.saturating_mul_int(liquid_amount_to_burn);
 					demand_staking_amount = available_free_pool;
 				}
@@ -912,7 +914,7 @@ impl<T: Config> HomaProtocol<T::AccountId, Balance, EraIndex> for Pallet<T> {
 				// if available_unclaimed_unbonding is not enough, need re-calculate
 				if demand_staking_amount > available_unclaimed_unbonding {
 					let ratio = Ratio::checked_from_rational(available_unclaimed_unbonding, demand_staking_amount)
-						.expect("staking_amount_to_claim is not zero; qed");
+						.expect("demand_staking_amount is gt available_unclaimed_unbonding and not zero; qed");
 					liquid_amount_to_burn = ratio.saturating_mul_int(liquid_amount_to_burn);
 					demand_staking_amount = available_unclaimed_unbonding;
 				}

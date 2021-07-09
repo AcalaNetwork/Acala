@@ -780,10 +780,14 @@ fn _swap_work() {
 			LiquidityPool::<Runtime>::insert(AUSDDOTPair::get(), (50000, 10000));
 
 			assert_eq!(DexModule::get_liquidity(AUSD, DOT), (50000, 10000));
-			DexModule::_swap(AUSD, DOT, 1000, 1000);
-			assert_eq!(DexModule::get_liquidity(AUSD, DOT), (51000, 9000));
-			DexModule::_swap(DOT, AUSD, 100, 800);
-			assert_eq!(DexModule::get_liquidity(AUSD, DOT), (50200, 9100));
+			assert_noop!(
+				DexModule::_swap(AUSD, DOT, 50000, 5001),
+				Error::<Runtime>::InvariantCheckFailed
+			);
+			assert_ok!(DexModule::_swap(AUSD, DOT, 50000, 5000));
+			assert_eq!(DexModule::get_liquidity(AUSD, DOT), (100000, 5000));
+			assert_ok!(DexModule::_swap(DOT, AUSD, 100, 800));
+			assert_eq!(DexModule::get_liquidity(AUSD, DOT), (99200, 5100));
 		});
 }
 
@@ -798,11 +802,11 @@ fn _swap_by_path_work() {
 
 			assert_eq!(DexModule::get_liquidity(AUSD, DOT), (50000, 10000));
 			assert_eq!(DexModule::get_liquidity(AUSD, BTC), (100000, 10));
-			DexModule::_swap_by_path(&vec![DOT, AUSD], &vec![10000, 25000]);
+			assert_ok!(DexModule::_swap_by_path(&vec![DOT, AUSD], &vec![10000, 25000]));
 			assert_eq!(DexModule::get_liquidity(AUSD, DOT), (25000, 20000));
-			DexModule::_swap_by_path(&vec![DOT, AUSD, BTC], &vec![4000, 10000, 2]);
-			assert_eq!(DexModule::get_liquidity(AUSD, DOT), (15000, 24000));
-			assert_eq!(DexModule::get_liquidity(AUSD, BTC), (110000, 8));
+			assert_ok!(DexModule::_swap_by_path(&vec![DOT, AUSD, BTC], &vec![100000, 20000, 1]));
+			assert_eq!(DexModule::get_liquidity(AUSD, DOT), (5000, 120000));
+			assert_eq!(DexModule::get_liquidity(AUSD, BTC), (120000, 9));
 		});
 }
 

@@ -39,8 +39,8 @@ use orml_traits::{MultiCurrency, MultiCurrencyExtended};
 use primitives::{Balance, CurrencyId, TradingPair};
 use sp_core::{H160, U256};
 use sp_runtime::{
-	traits::{AccountIdConversion, One, UniqueSaturatedInto, Zero},
-	DispatchError, DispatchResult, FixedPointNumber, RuntimeDebug, SaturatedConversion,
+	traits::{AccountIdConversion, Bounded, One, Zero},
+	ArithmeticError, DispatchError, DispatchResult, FixedPointNumber, RuntimeDebug, SaturatedConversion,
 };
 use sp_std::{convert::TryInto, prelude::*, vec};
 use support::{CurrencyIdMapping, DEXIncentives, DEXManager, ExchangeRate, Ratio};
@@ -595,18 +595,25 @@ pub mod module {
 						(
 							ExchangeRate::one(),
 							ExchangeRate::checked_from_rational(total_provision_0, total_provision_1)
-								.unwrap_or_default(),
+								.ok_or(ArithmeticError::Overflow)?,
 						)
 					} else {
 						(
 							ExchangeRate::checked_from_rational(total_provision_1, total_provision_0)
-								.unwrap_or_default(),
+								.ok_or(ArithmeticError::Overflow)?,
 							ExchangeRate::one(),
 						)
 					};
-					let total_shares_to_issue = share_exchange_rate_0
-						.saturating_mul_int(total_provision_0)
-						.saturating_add(share_exchange_rate_1.saturating_mul_int(total_provision_1));
+
+					let shares_from_provision_0 = share_exchange_rate_0
+						.checked_mul_int(total_provision_0)
+						.ok_or(ArithmeticError::Overflow)?;
+					let shares_from_provision_1 = share_exchange_rate_1
+						.checked_mul_int(total_provision_1)
+						.ok_or(ArithmeticError::Overflow)?;
+					let total_shares_to_issue = shares_from_provision_0
+						.checked_add(shares_from_provision_1)
+						.ok_or(ArithmeticError::Overflow)?;
 
 					// issue total shares to module account
 					T::Currency::deposit(
@@ -616,10 +623,11 @@ pub mod module {
 					)?;
 
 					// inject provision to liquidity pool
-					LiquidityPool::<T>::mutate(trading_pair, |(pool_0, pool_1)| {
-						*pool_0 = pool_0.saturating_add(total_provision_0);
-						*pool_1 = pool_1.saturating_add(total_provision_1);
-					});
+					LiquidityPool::<T>::try_mutate(trading_pair, |(pool_0, pool_1)| -> DispatchResult {
+						*pool_0 = pool_0.checked_add(total_provision_0).ok_or(ArithmeticError::Overflow)?;
+						*pool_1 = pool_1.checked_add(total_provision_1).ok_or(ArithmeticError::Overflow)?;
+						Ok(())
+					})?;
 
 					// update trading_pair to Enabled status
 					TradingPairStatuses::<T>::insert(trading_pair, TradingPairStatus::<_, _>::Enabled);
@@ -718,14 +726,21 @@ impl<T: Config> Pallet<T> {
 		ProvisioningPool::<T>::try_mutate_exists(trading_pair, who, |maybe_contribution| -> DispatchResult {
 			if let Some((contribution_0, contribution_1)) = maybe_contribution.take() {
 				let (exchange_rate_0, exchange_rate_1) = Self::initial_share_exchange_rates(trading_pair);
-				let share_to_claim = exchange_rate_0
-					.saturating_mul_int(contribution_0)
-					.saturating_add(exchange_rate_1.saturating_mul_int(contribution_1));
+				let shares_from_provision_0 = exchange_rate_0
+					.checked_mul_int(contribution_0)
+					.ok_or(ArithmeticError::Overflow)?;
+				let shares_from_provision_1 = exchange_rate_1
+					.checked_mul_int(contribution_1)
+					.ok_or(ArithmeticError::Overflow)?;
+				let shares_to_claim = shares_from_provision_0
+					.checked_add(shares_from_provision_1)
+					.ok_or(ArithmeticError::Overflow)?;
+
 				T::Currency::transfer(
 					trading_pair.dex_share_currency_id(),
 					&Self::account_id(),
 					who,
-					share_to_claim,
+					shares_to_claim,
 				)?;
 
 				// decrease ref count
@@ -770,8 +785,8 @@ impl<T: Config> Pallet<T> {
 		ProvisioningPool::<T>::try_mutate_exists(trading_pair, &who, |maybe_pool| -> DispatchResult {
 			let existed = maybe_pool.is_some();
 			let mut pool = maybe_pool.unwrap_or_default();
-			pool.0 = pool.0.saturating_add(contribution_0);
-			pool.1 = pool.1.saturating_add(contribution_1);
+			pool.0 = pool.0.checked_add(contribution_0).ok_or(ArithmeticError::Overflow)?;
+			pool.1 = pool.1.checked_add(contribution_1).ok_or(ArithmeticError::Overflow)?;
 
 			let module_account_id = Self::account_id();
 			T::Currency::transfer(trading_pair.first(), &who, &module_account_id, contribution_0)?;
@@ -794,11 +809,13 @@ impl<T: Config> Pallet<T> {
 			provision_parameters.accumulated_provision.0 = provision_parameters
 				.accumulated_provision
 				.0
-				.saturating_add(contribution_0);
+				.checked_add(contribution_0)
+				.ok_or(ArithmeticError::Overflow)?;
 			provision_parameters.accumulated_provision.1 = provision_parameters
 				.accumulated_provision
 				.1
-				.saturating_add(contribution_1);
+				.checked_add(contribution_1)
+				.ok_or(ArithmeticError::Overflow)?;
 
 			TradingPairStatuses::<T>::insert(
 				trading_pair,
@@ -835,6 +852,11 @@ impl<T: Config> Pallet<T> {
 			Error::<T>::MustBeEnabled,
 		);
 
+		ensure!(
+			!max_amount_a.is_zero() && !max_amount_b.is_zero(),
+			Error::<T>::InvalidLiquidityIncrement
+		);
+
 		LiquidityPool::<T>::try_mutate(trading_pair, |(pool_0, pool_1)| -> DispatchResult {
 			let dex_share_currency_id = trading_pair.dex_share_currency_id();
 			let total_shares = T::Currency::total_issuance(dex_share_currency_id);
@@ -843,47 +865,61 @@ impl<T: Config> Pallet<T> {
 			} else {
 				(max_amount_b, max_amount_a)
 			};
-			let (pool_0_increment, pool_1_increment, share_increment): (Balance, Balance, Balance) = if total_shares
-				.is_zero()
-			{
-				let (exchange_rate_0, exchange_rate_1) = if max_amount_0 > max_amount_1 {
-					(
-						ExchangeRate::one(),
-						ExchangeRate::checked_from_rational(max_amount_0, max_amount_1).unwrap_or_default(),
-					)
+			let (pool_0_increment, pool_1_increment, share_increment): (Balance, Balance, Balance) =
+				if total_shares.is_zero() {
+					let (exchange_rate_0, exchange_rate_1) = if max_amount_0 > max_amount_1 {
+						(
+							ExchangeRate::one(),
+							ExchangeRate::checked_from_rational(max_amount_0, max_amount_1)
+								.ok_or(ArithmeticError::Overflow)?,
+						)
+					} else {
+						(
+							ExchangeRate::checked_from_rational(max_amount_1, max_amount_0)
+								.ok_or(ArithmeticError::Overflow)?,
+							ExchangeRate::one(),
+						)
+					};
+
+					let shares_from_token_0 = exchange_rate_0
+						.checked_mul_int(max_amount_0)
+						.ok_or(ArithmeticError::Overflow)?;
+					let shares_from_token_1 = exchange_rate_1
+						.checked_mul_int(max_amount_1)
+						.ok_or(ArithmeticError::Overflow)?;
+					let initial_shares = shares_from_token_0
+						.checked_add(shares_from_token_1)
+						.ok_or(ArithmeticError::Overflow)?;
+
+					(max_amount_0, max_amount_1, initial_shares)
 				} else {
-					(
-						ExchangeRate::checked_from_rational(max_amount_1, max_amount_0).unwrap_or_default(),
-						ExchangeRate::one(),
-					)
+					let exchange_rate_0_1 =
+						ExchangeRate::checked_from_rational(*pool_1, *pool_0).ok_or(ArithmeticError::Overflow)?;
+					let input_exchange_rate_0_1 = ExchangeRate::checked_from_rational(max_amount_1, max_amount_0)
+						.ok_or(ArithmeticError::Overflow)?;
+
+					if input_exchange_rate_0_1 <= exchange_rate_0_1 {
+						// max_amount_0 may be too much, calculate the actual amount_0
+						let exchange_rate_1_0 =
+							ExchangeRate::checked_from_rational(*pool_0, *pool_1).ok_or(ArithmeticError::Overflow)?;
+						let amount_0 = exchange_rate_1_0
+							.checked_mul_int(max_amount_1)
+							.ok_or(ArithmeticError::Overflow)?;
+						let share_increment = Ratio::checked_from_rational(amount_0, *pool_0)
+							.and_then(|n| n.checked_mul_int(total_shares))
+							.ok_or(ArithmeticError::Overflow)?;
+						(amount_0, max_amount_1, share_increment)
+					} else {
+						// max_amount_1 is too much, calculate the actual amount_1
+						let amount_1 = exchange_rate_0_1
+							.checked_mul_int(max_amount_0)
+							.ok_or(ArithmeticError::Overflow)?;
+						let share_increment = Ratio::checked_from_rational(amount_1, *pool_1)
+							.and_then(|n| n.checked_mul_int(total_shares))
+							.ok_or(ArithmeticError::Overflow)?;
+						(max_amount_0, amount_1, share_increment)
+					}
 				};
-				let initial_share = exchange_rate_0
-					.saturating_mul_int(max_amount_0)
-					.saturating_add(exchange_rate_1.saturating_mul_int(max_amount_1));
-
-				(max_amount_0, max_amount_1, initial_share)
-			} else {
-				let exchange_rate_0_1 = ExchangeRate::checked_from_rational(*pool_1, *pool_0).unwrap_or_default();
-				let input_exchange_rate_0_1 =
-					ExchangeRate::checked_from_rational(max_amount_1, max_amount_0).unwrap_or_default();
-
-				if input_exchange_rate_0_1 <= exchange_rate_0_1 {
-					// max_amount_0 may be too much, calculate the actual amount_0
-					let exchange_rate_1_0 = ExchangeRate::checked_from_rational(*pool_0, *pool_1).unwrap_or_default();
-					let amount_0 = exchange_rate_1_0.saturating_mul_int(max_amount_1);
-					let share_increment = Ratio::checked_from_rational(amount_0, *pool_0)
-						.and_then(|n| n.checked_mul_int(total_shares))
-						.unwrap_or_default();
-					(amount_0, max_amount_1, share_increment)
-				} else {
-					// max_amount_1 is too much, calculate the actual amount_1
-					let amount_1 = exchange_rate_0_1.saturating_mul_int(max_amount_0);
-					let share_increment = Ratio::checked_from_rational(amount_1, *pool_1)
-						.and_then(|n| n.checked_mul_int(total_shares))
-						.unwrap_or_default();
-					(max_amount_0, amount_1, share_increment)
-				}
-			};
 
 			ensure!(
 				!share_increment.is_zero() && !pool_0_increment.is_zero() && !pool_1_increment.is_zero(),
@@ -899,8 +935,8 @@ impl<T: Config> Pallet<T> {
 			T::Currency::transfer(trading_pair.second(), who, &module_account_id, pool_1_increment)?;
 			T::Currency::deposit(dex_share_currency_id, who, share_increment)?;
 
-			*pool_0 = pool_0.saturating_add(pool_0_increment);
-			*pool_1 = pool_1.saturating_add(pool_1_increment);
+			*pool_0 = pool_0.checked_add(pool_0_increment).ok_or(ArithmeticError::Overflow)?;
+			*pool_1 = pool_1.checked_add(pool_1_increment).ok_or(ArithmeticError::Overflow)?;
 
 			if stake_increment_share {
 				T::DEXIncentives::do_deposit_dex_share(who, dex_share_currency_id, share_increment)?;
@@ -942,9 +978,10 @@ impl<T: Config> Pallet<T> {
 				(min_withdrawn_b, min_withdrawn_a)
 			};
 			let total_shares = T::Currency::total_issuance(dex_share_currency_id);
-			let proportion = Ratio::checked_from_rational(remove_share, total_shares).unwrap_or_default();
-			let pool_0_decrement = proportion.saturating_mul_int(*pool_0);
-			let pool_1_decrement = proportion.saturating_mul_int(*pool_1);
+			let proportion =
+				Ratio::checked_from_rational(remove_share, total_shares).ok_or(ArithmeticError::Overflow)?;
+			let pool_0_decrement = proportion.checked_mul_int(*pool_0).ok_or(ArithmeticError::Overflow)?;
+			let pool_1_decrement = proportion.checked_mul_int(*pool_1).ok_or(ArithmeticError::Overflow)?;
 			let module_account_id = Self::account_id();
 
 			ensure!(
@@ -959,8 +996,8 @@ impl<T: Config> Pallet<T> {
 			T::Currency::transfer(trading_pair.first(), &module_account_id, &who, pool_0_decrement)?;
 			T::Currency::transfer(trading_pair.second(), &module_account_id, &who, pool_1_decrement)?;
 
-			*pool_0 = pool_0.saturating_sub(pool_0_decrement);
-			*pool_1 = pool_1.saturating_sub(pool_1_decrement);
+			*pool_0 = pool_0.checked_sub(pool_0_decrement).ok_or(ArithmeticError::Underflow)?;
+			*pool_1 = pool_1.checked_sub(pool_1_decrement).ok_or(ArithmeticError::Underflow)?;
 
 			Self::deposit_event(Event::RemoveLiquidity(
 				who.clone(),
@@ -993,12 +1030,12 @@ impl<T: Config> Pallet<T> {
 			Zero::zero()
 		} else {
 			let (fee_numerator, fee_denominator) = T::GetExchangeFee::get();
-			let supply_amount_with_fee =
-				supply_amount.saturating_mul(fee_denominator.saturating_sub(fee_numerator).unique_saturated_into());
-			let numerator: U256 = U256::from(supply_amount_with_fee).saturating_mul(U256::from(target_pool));
+			let supply_amount_with_fee: U256 =
+				U256::from(supply_amount).saturating_mul(U256::from(fee_denominator.saturating_sub(fee_numerator)));
+			let numerator: U256 = supply_amount_with_fee.saturating_mul(U256::from(target_pool));
 			let denominator: U256 = U256::from(supply_pool)
 				.saturating_mul(U256::from(fee_denominator))
-				.saturating_add(U256::from(supply_amount_with_fee));
+				.saturating_add(supply_amount_with_fee);
 
 			numerator
 				.checked_div(denominator)
@@ -1060,18 +1097,10 @@ impl<T: Config> Pallet<T> {
 			let target_amount = Self::get_target_amount(supply_pool, target_pool, target_amounts[i]);
 			ensure!(!target_amount.is_zero(), Error::<T>::ZeroTargetAmount);
 
-			// invariant check to ensure the constant product formulas (k = x * y)
-			let invariant_before_swap: U256 = U256::from(supply_pool).saturating_mul(U256::from(target_pool));
-			let invariant_after_swap: U256 = U256::from(supply_pool.saturating_add(target_amounts[i]))
-				.saturating_mul(U256::from(target_pool.saturating_sub(target_amount)));
-			ensure!(
-				invariant_after_swap >= invariant_before_swap,
-				Error::<T>::InvariantCheckFailed,
-			);
-
 			// check price impact if limit exists
 			if let Some(limit) = price_impact_limit {
-				let price_impact = Ratio::checked_from_rational(target_amount, target_pool).unwrap_or_else(Ratio::zero);
+				let price_impact =
+					Ratio::checked_from_rational(target_amount, target_pool).unwrap_or_else(Ratio::max_value);
 				ensure!(price_impact <= limit, Error::<T>::ExceedPriceImpactLimit);
 			}
 
@@ -1114,19 +1143,10 @@ impl<T: Config> Pallet<T> {
 			let supply_amount = Self::get_supply_amount(supply_pool, target_pool, supply_amounts[i]);
 			ensure!(!supply_amount.is_zero(), Error::<T>::ZeroSupplyAmount);
 
-			// invariant check to ensure the constant product formulas (k = x * y)
-			let invariant_before_swap: U256 = U256::from(supply_pool).saturating_mul(U256::from(target_pool));
-			let invariant_after_swap: U256 = U256::from(supply_pool.saturating_add(supply_amount))
-				.saturating_mul(U256::from(target_pool.saturating_sub(supply_amounts[i])));
-			ensure!(
-				invariant_after_swap >= invariant_before_swap,
-				Error::<T>::InvariantCheckFailed,
-			);
-
 			// check price impact if limit exists
 			if let Some(limit) = price_impact_limit {
 				let price_impact =
-					Ratio::checked_from_rational(supply_amounts[i], target_pool).unwrap_or_else(Ratio::zero);
+					Ratio::checked_from_rational(supply_amounts[i], target_pool).unwrap_or_else(Ratio::max_value);
 				ensure!(price_impact <= limit, Error::<T>::ExceedPriceImpactLimit);
 			};
 
@@ -1142,21 +1162,32 @@ impl<T: Config> Pallet<T> {
 		target_currency_id: CurrencyId,
 		supply_increment: Balance,
 		target_decrement: Balance,
-	) {
+	) -> DispatchResult {
 		if let Some(trading_pair) = TradingPair::from_currency_ids(supply_currency_id, target_currency_id) {
-			LiquidityPool::<T>::mutate(trading_pair, |(pool_0, pool_1)| {
+			LiquidityPool::<T>::try_mutate(trading_pair, |(pool_0, pool_1)| -> DispatchResult {
+				let invariant_before_swap: U256 = U256::from(*pool_0).saturating_mul(U256::from(*pool_1));
+
 				if supply_currency_id == trading_pair.first() {
-					*pool_0 = pool_0.saturating_add(supply_increment);
-					*pool_1 = pool_1.saturating_sub(target_decrement);
+					*pool_0 = pool_0.checked_add(supply_increment).ok_or(ArithmeticError::Overflow)?;
+					*pool_1 = pool_1.checked_sub(target_decrement).ok_or(ArithmeticError::Underflow)?;
 				} else {
-					*pool_0 = pool_0.saturating_sub(target_decrement);
-					*pool_1 = pool_1.saturating_add(supply_increment);
+					*pool_0 = pool_0.checked_sub(target_decrement).ok_or(ArithmeticError::Underflow)?;
+					*pool_1 = pool_1.checked_add(supply_increment).ok_or(ArithmeticError::Overflow)?;
 				}
-			});
+
+				// invariant check to ensure the constant product formulas (k = x * y)
+				let invariant_after_swap: U256 = U256::from(*pool_0).saturating_mul(U256::from(*pool_1));
+				ensure!(
+					invariant_after_swap >= invariant_before_swap,
+					Error::<T>::InvariantCheckFailed,
+				);
+				Ok(())
+			})?;
 		}
+		Ok(())
 	}
 
-	fn _swap_by_path(path: &[CurrencyId], amounts: &[Balance]) {
+	fn _swap_by_path(path: &[CurrencyId], amounts: &[Balance]) -> DispatchResult {
 		let mut i: usize = 0;
 		while i + 1 < path.len() {
 			let (supply_currency_id, target_currency_id) = (path[i], path[i + 1]);
@@ -1166,9 +1197,10 @@ impl<T: Config> Pallet<T> {
 				target_currency_id,
 				supply_increment,
 				target_decrement,
-			);
+			)?;
 			i += 1;
 		}
+		Ok(())
 	}
 
 	/// Ensured atomic.
@@ -1189,7 +1221,7 @@ impl<T: Config> Pallet<T> {
 		let actual_target_amount = amounts[amounts.len() - 1];
 
 		T::Currency::transfer(path[0], who, &module_account_id, supply_amount)?;
-		Self::_swap_by_path(&path, &amounts);
+		Self::_swap_by_path(&path, &amounts)?;
 		T::Currency::transfer(path[path.len() - 1], &module_account_id, who, actual_target_amount)?;
 
 		Self::deposit_event(Event::Swap(
@@ -1216,7 +1248,7 @@ impl<T: Config> Pallet<T> {
 		let actual_supply_amount = amounts[0];
 
 		T::Currency::transfer(path[0], who, &module_account_id, actual_supply_amount)?;
-		Self::_swap_by_path(&path, &amounts);
+		Self::_swap_by_path(&path, &amounts)?;
 		T::Currency::transfer(path[path.len() - 1], &module_account_id, who, target_amount)?;
 
 		Self::deposit_event(Event::Swap(
