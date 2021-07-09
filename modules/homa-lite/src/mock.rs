@@ -166,19 +166,14 @@ pub struct ExtBuilder {
 	native_balances: Vec<(AccountId, Balance)>,
 }
 
-impl ExtBuilder {
-	pub fn new_empty() -> Self {
-		ExtBuilder {
-			tokens_balances: vec![],
-			native_balances: vec![],
-		}
-	}
-}
-
 impl Default for ExtBuilder {
 	fn default() -> Self {
 		Self {
-			tokens_balances: vec![(ALICE, KSM, INITIAL_BALANCE), (BOB, LKSM, INITIAL_BALANCE)],
+			tokens_balances: vec![
+				(ALICE, KSM, INITIAL_BALANCE),
+				(BOB, KSM, INITIAL_BALANCE),
+				(ROOT, LKSM, INITIAL_BALANCE),
+			],
 			native_balances: vec![
 				(ALICE, INITIAL_BALANCE),
 				(BOB, INITIAL_BALANCE),

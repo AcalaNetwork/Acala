@@ -23,18 +23,20 @@
 use super::*;
 use frame_support::{assert_noop, assert_ok};
 use mock::{
-	AccountId, Currencies, Event, ExtBuilder, HomaLite, Origin, Runtime, System, ACALA, ALICE, BOB, INITIAL_BALANCE,
-	KSM, LKSM, RELAYCHAIN_STASH, ROOT,
+	Currencies, Event, ExtBuilder, HomaLite, Origin, Runtime, System, ACALA, ALICE, BOB, INITIAL_BALANCE, KSM, LKSM,
+	RELAYCHAIN_STASH, ROOT,
 };
-use primitives::Balance;
 use sp_runtime::traits::BadOrigin;
 
 #[test]
 fn mock_initialize_token_works() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_eq!(Currencies::free_balance(KSM, &ALICE), INITIAL_BALANCE);
-		assert_eq!(Currencies::free_balance(LKSM, &BOB), INITIAL_BALANCE);
+		assert_eq!(Currencies::free_balance(KSM, &BOB), INITIAL_BALANCE);
+		assert_eq!(Currencies::free_balance(LKSM, &ROOT), INITIAL_BALANCE);
 		assert_eq!(Currencies::free_balance(ACALA, &ALICE), INITIAL_BALANCE);
+		assert_eq!(Currencies::free_balance(ACALA, &BOB), INITIAL_BALANCE);
+		assert_eq!(Currencies::free_balance(ACALA, &ROOT), INITIAL_BALANCE);
 	});
 }
 
@@ -64,7 +66,7 @@ fn request_mint_works() {
 		let current_era = HomaLite::current_era();
 
 		assert_noop!(
-			HomaLite::request_mint(Origin::signed(BOB), 1000),
+			HomaLite::request_mint(Origin::signed(ROOT), 1000),
 			orml_tokens::Error::<Runtime>::BalanceTooLow
 		);
 
@@ -110,21 +112,130 @@ fn can_request_mint_more_than_once_in_an_era() {
 	});
 }
 
-// can_request_mint
-// * insufficient balance
-// * stash account not set
-//
-// issue
-// can_issue
-// * 0 total
-// * can_issue multiple eras
-// * wrong caller
-// * current era incremented
-//
-// claim
-// * can claim
-// * amount is correct
-// * if total staked is 0
-// * if era total is not set
-// * repeated claims
-//
+#[test]
+fn issue_works() {
+	ExtBuilder::default().build().execute_with(|| {
+		// Setup the Relaychain's stash account.
+		assert_ok!(HomaLite::set_stash_account_id(Origin::signed(ROOT), RELAYCHAIN_STASH));
+		let current_era = HomaLite::current_era();
+		assert_eq!(current_era, 0);
+
+		let lksm_issuance = Currencies::total_issuance(LKSM);
+		assert_ok!(HomaLite::request_mint(Origin::signed(ALICE), 1000));
+		assert_ok!(HomaLite::request_mint(Origin::signed(BOB), 500));
+
+		assert_ok!(HomaLite::issue(Origin::signed(ROOT), 3000));
+		assert_eq!(
+			System::events().iter().last().unwrap().event,
+			Event::HomaLite(crate::Event::EraTotalRecorded(0, 3000, lksm_issuance))
+		);
+
+		assert_eq!(
+			EraTotalIssuanceInfo::<Runtime>::get(0),
+			Some(TotalIssuanceInfo {
+				staking_total: 3000,
+				liquid_total: lksm_issuance,
+			})
+		);
+		assert_eq!(EraTotalIssuanceInfo::<Runtime>::get(1), None);
+		assert_eq!(HomaLite::current_era(), 1);
+
+		assert_ok!(HomaLite::issue(Origin::signed(ROOT), 1));
+		assert_eq!(
+			System::events().iter().last().unwrap().event,
+			Event::HomaLite(crate::Event::EraTotalRecorded(1, 1, lksm_issuance))
+		);
+		assert_eq!(HomaLite::current_era(), 2);
+	});
+}
+
+#[test]
+fn issue_can_handle_failed_cases() {
+	ExtBuilder::default().build().execute_with(|| {
+		// Total issuance cannot be set to zero
+		assert_noop!(
+			HomaLite::issue(Origin::signed(ROOT), 0),
+			Error::<Runtime>::InvalidStakedCurrencyTotalIssuance
+		);
+
+		// Only Issuer Origin is allowed to make issue call.
+		assert_noop!(HomaLite::issue(Origin::signed(ALICE), 0), BadOrigin);
+
+		assert_eq!(HomaLite::current_era(), 0);
+	});
+}
+
+#[test]
+fn claim_works() {
+	ExtBuilder::default().build().execute_with(|| {
+		// Setup the Relaychain's stash account.
+		assert_ok!(HomaLite::set_stash_account_id(Origin::signed(ROOT), RELAYCHAIN_STASH));
+
+		let lksm_issuance = Currencies::total_issuance(LKSM);
+		let ksm_issuance = lksm_issuance * 5;
+		assert_ok!(HomaLite::request_mint(Origin::signed(ALICE), 1000));
+		assert_ok!(HomaLite::request_mint(Origin::signed(BOB), 5000));
+
+		let alice_yield = 1000 * lksm_issuance / ksm_issuance;
+		let bob_yield = 5000 * lksm_issuance / ksm_issuance;
+
+		assert_ok!(HomaLite::issue(Origin::signed(ROOT), ksm_issuance));
+
+		// Now that the liquid currency for Era 0 is issued, users can claim them.
+		assert_ok!(HomaLite::claim(Origin::signed(ALICE), ALICE, 0));
+		assert_eq!(
+			System::events().iter().last().unwrap().event,
+			Event::HomaLite(crate::Event::LiquidCurrencyClaimed(0, ALICE, alice_yield))
+		);
+		assert_eq!(Currencies::free_balance(LKSM, &ALICE), alice_yield);
+
+		assert_ok!(HomaLite::claim(Origin::signed(ALICE), BOB, 0));
+		assert_eq!(
+			System::events().iter().last().unwrap().event,
+			Event::HomaLite(crate::Event::LiquidCurrencyClaimed(0, BOB, bob_yield))
+		);
+		assert_eq!(Currencies::free_balance(LKSM, &BOB), bob_yield);
+	});
+}
+
+#[test]
+fn claim_can_handle_math_errors() {
+	ExtBuilder::default().build().execute_with(|| {
+		// Setup the Relaychain's stash account.
+		assert_ok!(HomaLite::set_stash_account_id(Origin::signed(ROOT), RELAYCHAIN_STASH));
+
+		// Creates zero total issuance to trigger divide by zero error
+		let zero_issuance = TotalIssuanceInfo {
+			staking_total: 0,
+			liquid_total: 0,
+		};
+		EraTotalIssuanceInfo::<Runtime>::insert(0, zero_issuance);
+
+		assert_ok!(HomaLite::request_mint(Origin::signed(ALICE), 1000));
+
+		// Now that the liquid currency for Era 0 is issued, users can claim them.
+		assert_noop!(
+			HomaLite::claim(Origin::signed(ALICE), ALICE, 0),
+			Error::<Runtime>::ArithmeticError
+		);
+	});
+}
+
+#[test]
+fn repeated_claims_has_no_effect() {
+	ExtBuilder::default().build().execute_with(|| {
+		// Setup the Relaychain's stash account.
+		assert_ok!(HomaLite::set_stash_account_id(Origin::signed(ROOT), RELAYCHAIN_STASH));
+
+		assert_ok!(HomaLite::request_mint(Origin::signed(ALICE), 1000));
+		assert_ok!(HomaLite::issue(Origin::signed(ROOT), 10000));
+		assert_ok!(HomaLite::claim(Origin::signed(ALICE), ALICE, 0));
+
+		let alice_balance = Currencies::free_balance(LKSM, &ALICE);
+
+		// The mint has already been claimed. claiming again does nothing.
+		assert_ok!(HomaLite::claim(Origin::signed(ALICE), ALICE, 0));
+
+		assert_eq!(Currencies::free_balance(LKSM, &ALICE), alice_balance);
+	});
+}
