@@ -96,6 +96,7 @@ pub mod module {
 		pub session_duration: T::BlockNumber,
 	}
 
+	#[cfg(feature = "std")]
 	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
 			GenesisConfig {

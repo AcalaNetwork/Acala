@@ -32,8 +32,8 @@ use karura_runtime::{
 	dollar, get_all_module_accounts, Balance, BalancesConfig, BlockNumber, CdpEngineConfig, CdpTreasuryConfig,
 	CollatorSelectionConfig, DexConfig, FinancialCouncilMembershipConfig, GeneralCouncilMembershipConfig,
 	HomaCouncilMembershipConfig, NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OrmlNFTConfig,
-	ParachainInfoConfig, SS58Prefix, SessionConfig, SessionKeys, SudoConfig, SystemConfig,
-	TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig, KAR, KSM, KUSD, LKSM,
+	ParachainInfoConfig, Period, SS58Prefix, SessionConfig, SessionKeys, SessionManagerConfig, SudoConfig,
+	SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig, KAR, KSM, KUSD, LKSM,
 };
 use runtime_common::TokenInfo;
 
@@ -307,6 +307,9 @@ fn karura_genesis(
 					)
 				})
 				.collect(),
+		},
+		session_manager: SessionManagerConfig {
+			session_duration: Period::get(),
 		},
 		// no need to pass anything to aura, in fact it will panic if we do. Session will take care
 		// of this.

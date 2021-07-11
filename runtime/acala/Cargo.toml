@@ -103,6 +103,7 @@ module-support = { path = "../../modules/support", default-features = false }
 module-homa = { path = "../../modules/homa", default-features = false }
 module-homa-validator-list = { path = "../../modules/homa-validator-list", default-features = false }
 module-nominees-election = { path = "../../modules/nominees-election", default-features = false }
+module-session-manager = { path = "../../modules/session-manager", default-features = false }
 module-staking-pool = { path = "../../modules/staking-pool", default-features = false }
 module-staking-pool-rpc-runtime-api = { path = "../../modules/staking-pool/rpc/runtime-api", default-features = false }
 module-polkadot-bridge = { path = "../../modules/polkadot-bridge", default-features = false }
@@ -213,6 +214,7 @@ std = [
 	"module-support/std",
 	"module-homa/std",
 	"module-nominees-election/std",
+	"module-session-manager/std",
 	"module-staking-pool/std",
 	"module-staking-pool-rpc-runtime-api/std",
 	"module-polkadot-bridge/std",
@@ -312,6 +314,7 @@ try-runtime = [
 	"module-incentives/try-runtime",
 	"module-homa/try-runtime",
 	"module-nominees-election/try-runtime",
+	"module-session-manager/try-runtime",
 	"module-staking-pool/try-runtime",
 	"module-polkadot-bridge/try-runtime",
 	"ecosystem-renvm-bridge/try-runtime",
