@@ -171,7 +171,7 @@ pub mod module {
 	#[pallet::getter(fn supply_caps)]
 	pub type SupplyCaps<T: Config> = StorageMap<_, Twox64Concat, CurrencyId, Balance, ValueQuery>;
 
-	/// Stores the Hash of Notices that have already been invoked. PrevenTwox64Concatts
+	/// Stores the Hash of Notices that have already been invoked. Prevents
 	/// double-invocation.
 	#[pallet::storage]
 	#[pallet::getter(fn invoked_notice_hashes)]

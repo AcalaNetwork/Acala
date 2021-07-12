@@ -125,7 +125,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("karura"),
 	impl_name: create_runtime_str!("karura"),
 	authoring_version: 1,
-	spec_version: 1002,
+	spec_version: 1003,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -198,7 +198,7 @@ impl Filter<Call> for BaseCallFilter {
 			Call::Scheduler(_) | Call::Utility(_) | Call::Multisig(_) | Call::Proxy(_) |
 			// Sudo
 			Call::Sudo(_) |
-			// PoA
+			// Councils
 			Call::Authority(_) | Call::GeneralCouncil(_) | Call::GeneralCouncilMembership(_) |
 			Call::FinancialCouncil(_) | Call::FinancialCouncilMembership(_) |
 			Call::HomaCouncil(_) | Call::HomaCouncilMembership(_) |
@@ -206,9 +206,15 @@ impl Filter<Call> for BaseCallFilter {
 			// Oracle
 			Call::AcalaOracle(_) | Call::OperatorMembershipAcala(_) |
 			// Democracy
-			Call::Democracy(_) |
+			Call::Democracy(_) | Call::Treasury(_) | Call::Bounties(_) | Call::Tips(_) |
 			// Collactor Selection
-			Call::CollatorSelection(_) | Call::Session(_)
+			Call::CollatorSelection(_) | Call::Session(_) |
+			// Vesting
+			Call::Vesting(_) |
+			// TransactionPayment
+			Call::TransactionPayment(_) |
+			// XCM
+			Call::XTokens(_)
 		)
 	}
 }
@@ -279,7 +285,7 @@ impl pallet_session::Config for Runtime {
 }
 
 parameter_types! {
-	pub const MinCandidates: u32 = 5;
+	pub const MinCandidates: u32 = 4;
 	pub const MaxCandidates: u32 = 50;
 	pub const MaxInvulnerables: u32 = 10;
 	pub const CollatorKickThreshold: Permill = Permill::from_percent(30);
@@ -315,7 +321,7 @@ parameter_types! {
 	// For weight estimation, we assume that the most locks on an individual account will be 50.
 	// This number may need to be adjusted in the future if this assumption no longer holds true.
 	pub const MaxLocks: u32 = 50;
-	pub const MaxReserves: u32 = 50;
+	pub const MaxReserves: u32 = ReserveIdentifier::Count as u32;
 }
 
 impl pallet_balances::Config for Runtime {
@@ -355,7 +361,7 @@ impl pallet_sudo::Config for Runtime {
 type EnsureRootOrAllGeneralCouncil = EnsureOneOf<
 	AccountId,
 	EnsureRoot<AccountId>,
-	pallet_collective::EnsureProportionMoreThan<_1, _1, AccountId, GeneralCouncilInstance>,
+	pallet_collective::EnsureProportionAtLeast<_1, _1, AccountId, GeneralCouncilInstance>,
 >;
 
 type EnsureRootOrHalfGeneralCouncil = EnsureOneOf<
@@ -379,19 +385,19 @@ type EnsureRootOrHalfHomaCouncil = EnsureOneOf<
 type EnsureRootOrTwoThirdsGeneralCouncil = EnsureOneOf<
 	AccountId,
 	EnsureRoot<AccountId>,
-	pallet_collective::EnsureProportionMoreThan<_2, _3, AccountId, GeneralCouncilInstance>,
+	pallet_collective::EnsureProportionAtLeast<_2, _3, AccountId, GeneralCouncilInstance>,
 >;
 
 type EnsureRootOrThreeFourthsGeneralCouncil = EnsureOneOf<
 	AccountId,
 	EnsureRoot<AccountId>,
-	pallet_collective::EnsureProportionMoreThan<_3, _4, AccountId, GeneralCouncilInstance>,
+	pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, GeneralCouncilInstance>,
 >;
 
 type EnsureRootOrAllTechnicalCommittee = EnsureOneOf<
 	AccountId,
 	EnsureRoot<AccountId>,
-	pallet_collective::EnsureProportionMoreThan<_1, _1, AccountId, TechnicalCommitteeInstance>,
+	pallet_collective::EnsureProportionAtLeast<_1, _1, AccountId, TechnicalCommitteeInstance>,
 >;
 
 type EnsureRootOrOneThirdsTechnicalCommittee = EnsureOneOf<
@@ -403,7 +409,7 @@ type EnsureRootOrOneThirdsTechnicalCommittee = EnsureOneOf<
 type EnsureRootOrTwoThirdsTechnicalCommittee = EnsureOneOf<
 	AccountId,
 	EnsureRoot<AccountId>,
-	pallet_collective::EnsureProportionMoreThan<_2, _3, AccountId, TechnicalCommitteeInstance>,
+	pallet_collective::EnsureProportionAtLeast<_2, _3, AccountId, TechnicalCommitteeInstance>,
 >;
 
 parameter_types! {
@@ -601,7 +607,7 @@ impl ContainsLengthBound for GeneralCouncilProvider {
 
 parameter_types! {
 	pub const ProposalBond: Permill = Permill::from_percent(5);
-	pub ProposalBondMinimum: Balance = 2 * dollar(KAR);
+	pub ProposalBondMinimum: Balance = 5 * dollar(KAR);
 	pub const SpendPeriod: BlockNumber = 7 * DAYS;
 	pub const Burn: Permill = Permill::from_percent(0);
 
@@ -659,11 +665,11 @@ impl pallet_tips::Config for Runtime {
 }
 
 parameter_types! {
-	pub const LaunchPeriod: BlockNumber = 7 * DAYS;
-	pub const VotingPeriod: BlockNumber = 7 * DAYS;
+	pub const LaunchPeriod: BlockNumber = 2 * DAYS;
+	pub const VotingPeriod: BlockNumber = 2 * DAYS;
 	pub const FastTrackVotingPeriod: BlockNumber = 3 * HOURS;
 	pub MinimumDeposit: Balance = 1000 * dollar(KAR);
-	pub const EnactmentPeriod: BlockNumber = 8 * DAYS;
+	pub const EnactmentPeriod: BlockNumber = DAYS;
 	pub const CooloffPeriod: BlockNumber = 7 * DAYS;
 	pub PreimageByteDeposit: Balance = deposit(0, 1);
 	pub const InstantAllowed: bool = true;

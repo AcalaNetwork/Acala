@@ -315,7 +315,7 @@ parameter_types! {
 	// For weight estimation, we assume that the most locks on an individual account will be 50.
 	// This number may need to be adjusted in the future if this assumption no longer holds true.
 	pub const MaxLocks: u32 = 50;
-	pub const MaxReserves: u32 = 50;
+	pub const MaxReserves: u32 = ReserveIdentifier::Count as u32;
 }
 
 impl pallet_balances::Config for Runtime {
@@ -369,13 +369,13 @@ type EnsureRootOrHalfHomaCouncil = EnsureOneOf<
 type EnsureRootOrTwoThirdsGeneralCouncil = EnsureOneOf<
 	AccountId,
 	EnsureRoot<AccountId>,
-	pallet_collective::EnsureProportionMoreThan<_2, _3, AccountId, GeneralCouncilInstance>,
+	pallet_collective::EnsureProportionAtLeast<_2, _3, AccountId, GeneralCouncilInstance>,
 >;
 
 type EnsureRootOrThreeFourthsGeneralCouncil = EnsureOneOf<
 	AccountId,
 	EnsureRoot<AccountId>,
-	pallet_collective::EnsureProportionMoreThan<_3, _4, AccountId, GeneralCouncilInstance>,
+	pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, GeneralCouncilInstance>,
 >;
 
 type EnsureRootOrAllTechnicalCommittee = EnsureOneOf<
@@ -393,7 +393,7 @@ type EnsureRootOrOneThirdsTechnicalCommittee = EnsureOneOf<
 type EnsureRootOrTwoThirdsTechnicalCommittee = EnsureOneOf<
 	AccountId,
 	EnsureRoot<AccountId>,
-	pallet_collective::EnsureProportionMoreThan<_2, _3, AccountId, TechnicalCommitteeInstance>,
+	pallet_collective::EnsureProportionAtLeast<_2, _3, AccountId, TechnicalCommitteeInstance>,
 >;
 
 parameter_types! {
@@ -1105,10 +1105,10 @@ parameter_types! {
 	pub const GetExchangeFee: (u32, u32) = (1, 1000);	// 0.1%
 	pub const TradingPathLimit: u32 = 3;
 	pub EnabledTradingPairs: Vec<TradingPair> = vec![
-		TradingPair::new(AUSD, ACA),
-		TradingPair::new(AUSD, DOT),
-		TradingPair::new(AUSD, LDOT),
-		TradingPair::new(AUSD, RENBTC),
+		TradingPair::from_currency_ids(AUSD, ACA).unwrap(),
+		TradingPair::from_currency_ids(AUSD, DOT).unwrap(),
+		TradingPair::from_currency_ids(AUSD, LDOT).unwrap(),
+		TradingPair::from_currency_ids(AUSD, RENBTC).unwrap(),
 	];
 }
 
