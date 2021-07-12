@@ -121,6 +121,9 @@ pub use runtime_common::{
 	TechnicalCommitteeMembershipInstance, TimeStampedPrice, ACA, AUSD, DOT, LDOT, RENBTC,
 };
 
+/// Import the stable_asset pallet.
+pub use nutsfinance_stable_asset;
+
 mod authority;
 mod benchmarking;
 mod constants;
@@ -172,6 +175,7 @@ parameter_types! {
 	pub UnreleasedNativeVaultAccountId: AccountId = PalletId(*b"aca/urls").into_account();
 	// Ecosystem modules
 	pub const StarportPalletId: PalletId = PalletId(*b"aca/stpt");
+	pub const StableAssetPalletId: PalletId = PalletId(*b"nuts/sta");
 	pub const HomaLitePalletId: PalletId = PalletId(*b"aca/hmlt");
 }
 
@@ -189,6 +193,7 @@ pub fn get_all_module_accounts() -> Vec<AccountId> {
 		CollatorPotId::get().into_account(),
 		ZeroAccountId::get(),
 		StarportPalletId::get().into_account(),
+		StableAssetPalletId::get().into_account(),
 	]
 }
 
@@ -1817,6 +1822,47 @@ impl orml_xcm::Config for Runtime {
 	type SovereignOrigin = EnsureRootOrHalfGeneralCouncil;
 }
 
+parameter_types! {
+	pub Precision: u128 = 1000000000000000000u128;
+	pub FeePrecision: u128 = 10000000000u128;
+}
+
+pub struct AccountIdConvert;
+
+impl Convert<(AccountId, u32), AccountId> for AccountIdConvert {
+	fn convert(a: (AccountId, u32)) -> AccountId {
+		match a {
+			(pallet_id, pool_id) => {
+				let pallet_id_bytes: [u8; 32] = pallet_id.into();
+				let bytes: [u8; 4] = pool_id.to_be_bytes();
+				let mut res: [u8; 36] = [0; 36];
+				for idx in 0..pallet_id_bytes.len() {
+					res[idx] = pallet_id_bytes[idx];
+				}
+				for idx in 0..bytes.len() {
+					res[idx + 32] = bytes[idx];
+				}
+				let hash: [u8; 32] = sp_io::hashing::blake2_256(&res);
+				hash.into()
+			}
+		}
+	}
+}
+
+impl nutsfinance_stable_asset::Config for Runtime {
+	type Event = Event;
+	type AssetId = CurrencyId;
+	type Balance = Balance;
+	type Assets = orml_tokens::Pallet<Runtime>;
+	//type Assets = FrameAssets;
+	type PalletId = StableAssetPalletId;
+
+	type AtLeast64BitUnsigned = u128;
+	type Precision = Precision;
+	type FeePrecision = FeePrecision;
+	type AccountIdConvert = AccountIdConvert;
+}
+
 impl cumulus_pallet_aura_ext::Config for Runtime {}
 
 /// The address format for describing accounts.
@@ -1968,6 +2014,9 @@ construct_runtime! {
 		Aura: pallet_aura::{Pallet, Storage, Config<T>} = 193,
 		AuraExt: cumulus_pallet_aura_ext::{Pallet, Storage, Config} = 194,
 		SessionManager: module_session_manager::{Pallet, Call, Storage, Event<T>, Config<T>} = 195,
+
+		// Stable asset
+		StableAsset: nutsfinance_stable_asset::{Pallet, Call, Storage, Event<T>} = 200,
 
 		// Dev
 		Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>} = 255,
@@ -2273,6 +2322,7 @@ impl_runtime_apis! {
 			orml_add_benchmark!(params, batches, orml_oracle, benchmarking::oracle);
 
 			orml_add_benchmark!(params, batches, ecosystem_chainsafe, benchmarking::chainsafe_transfer);
+			orml_add_benchmark!(params, batches, nutsfinance_stable_asset, benchmarking::nutsfinance_stable_asset);
 
 			if batches.is_empty() { return Err("Benchmark not found for this module.".into()) }
 			Ok(batches)
