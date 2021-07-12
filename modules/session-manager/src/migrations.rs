@@ -23,27 +23,24 @@ use sp_runtime::traits::Zero;
 pub mod v1 {
 	use super::*;
 
-	pub fn pre_migrate<T: Config>(session_duration: T::BlockNumber) -> Result<(), &'static str> {
-		assert!(!session_duration.is_zero(), "session_duration is zero.");
+	pub fn pre_migrate<T: Config>() -> Result<(), &'static str> {
 		assert!(SessionDuration::<T>::get().is_zero(), "SessionDuration already set.");
 		assert!(DurationOffset::<T>::get().is_zero(), "SessionDuration already set.");
 		Ok(())
 	}
 
-	pub fn post_migrate<T: Config>(session_duration: T::BlockNumber) -> Result<(), &'static str> {
-		assert!(
-			SessionDuration::<T>::get() == session_duration,
-			"SessionDuration not set."
-		);
+	pub fn post_migrate<T: Config>() -> Result<(), &'static str> {
+		assert!(!SessionDuration::<T>::get().is_zero(), "SessionDuration not set.");
 		assert!(DurationOffset::<T>::get().is_zero(), "DurationOffset has been set.");
 		Ok(())
 	}
 
-	pub fn migrate<T: Config>(session_duration: T::BlockNumber) -> Weight {
+	pub fn migrate<T: Config>() -> Weight {
 		log::info!(target: "session-manager", "Migrating session-manager v1");
 
-		if SessionDuration::<T>::get().is_zero() && !session_duration.is_zero() {
-			SessionDuration::<T>::put(session_duration);
+		if SessionDuration::<T>::get().is_zero() {
+			// https://github.com/AcalaNetwork/Acala/blob/ea218feb68bfce954513cf61d754b0a9ddb36c2c/runtime/karura/src/lib.rs#L268
+			SessionDuration::<T>::put(Into::<T::BlockNumber>::into(1800u32));
 		}
 		log::info!(target: "session-manager", "Completed session-manager migration to v1");
 
