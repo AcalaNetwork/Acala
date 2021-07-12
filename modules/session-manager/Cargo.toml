@@ -16,9 +16,7 @@ frame-system = { git = "https://github.com/paritytech/substrate", branch = "polk
 pallet-session = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.7", default-features = false }
 
 [dev-dependencies]
-sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.7" }
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.7" }
-sp-consensus-aura = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.7" }
 
 [features]
 default = ["std"]

@@ -2045,6 +2045,7 @@ impl_runtime_apis! {
 			// orml_add_benchmark!(params, batches, transaction_payment, benchmarking::transaction_payment);
 			// orml_add_benchmark!(params, batches, incentives, benchmarking::incentives);
 			// orml_add_benchmark!(params, batches, prices, benchmarking::prices);
+			// orml_add_benchmark!(params, batches, module_session_manager, benchmarking::session_manager);
 
 			// orml_add_benchmark!(params, batches, orml_tokens, benchmarking::tokens);
 			// orml_add_benchmark!(params, batches, orml_vesting, benchmarking::vesting);
