@@ -39,6 +39,7 @@ use frame_support::{pallet_prelude::*, transactional, PalletId};
 use frame_system::{ensure_signed, pallet_prelude::*};
 use orml_traits::MultiCurrency;
 use primitives::{Balance, CurrencyId, EraIndex};
+use sp_runtime::ArithmeticError;
 use sp_std::prelude::*;
 
 pub use module::*;
@@ -81,11 +82,9 @@ pub mod module {
 
 	#[pallet::error]
 	pub enum Error<T> {
-		/// The current Era has not finished, therefore the Liquid currency have not been issued
-		/// yet.
-		LiquidCurrencyNotIssuedForThisEra,
-		/// Mathematical error occurred during calculation.
-		ArithmeticError,
+		/// The current Batch has not been processed, therefore the Liquid currency have not
+		/// been issued yet.
+		LiquidCurrencyNotIssuedForThisBatch,
 		/// The relaychain's stash account have not been set.
 		RelaychainStashAccountNotSet,
 		/// The total issuance for the Staking currency must be more than zero.
@@ -96,35 +95,40 @@ pub mod module {
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	#[pallet::metadata(Balance = "Balance", T::AccountId = "AccountId")]
 	pub enum Event<T: Config> {
-		/// The user has requested some Staking currency to be used to mint Liquid Currency. [era,
+		/// The user has requested some Staking currency to be used to mint Liquid Currency. [batch,
 		/// user, amount]
 		MintRequested(EraIndex, T::AccountId, Balance),
 
-		/// The current Era has ended. Mint requests can now be processed. [era,
+		/// The current batch has been processed. Mint requests can now be completed. [batch,
 		/// staking_total_issuance, liquid_total_issuance]
-		EraTotalRecorded(EraIndex, Balance, Balance),
+		BatchProcessed(EraIndex, Balance, Balance),
 
-		/// The user has claimed some Liquid Currency. [era, user, amount]
+		/// The user has claimed some Liquid Currency. [batch, user, amount]
 		LiquidCurrencyClaimed(EraIndex, T::AccountId, Balance),
 
 		/// The relay-chain's stash account ID has been updated.
 		RelaychainStashAccountUpdated(T::AccountId),
 	}
 
+	/// Stores the amount of Staking currency the user has exchanged.
+	/// PendingAmount: double_map: (batch: EraIndex, user: T::AccountId) -> amount: Balance
 	#[pallet::storage]
 	#[pallet::getter(fn pending_amount)]
 	pub type PendingAmount<T: Config> =
 		StorageDoubleMap<_, Blake2_128Concat, EraIndex, Blake2_128Concat, T::AccountId, Balance, ValueQuery>;
 
+	/// The total issuance info for each batch. Used to calculate Staking to Liquid exchange rate.
 	#[pallet::storage]
-	#[pallet::getter(fn era_total_issuance_info)]
-	pub type EraTotalIssuanceInfo<T: Config> =
+	#[pallet::getter(fn batch_total_issuance_info)]
+	pub type BatchTotalIssuanceInfo<T: Config> =
 		StorageMap<_, Blake2_128Concat, EraIndex, TotalIssuanceInfo, OptionQuery>;
 
+	/// The batch that is currency active
 	#[pallet::storage]
-	#[pallet::getter(fn current_era)]
-	pub type CurrentEra<T: Config> = StorageValue<_, EraIndex, ValueQuery>;
+	#[pallet::getter(fn current_batch)]
+	pub type CurrentBatch<T: Config> = StorageValue<_, EraIndex, ValueQuery>;
 
+	/// The account in which the staking currency goes into to be transferred to the Relay chain.
 	#[pallet::storage]
 	#[pallet::getter(fn relaychain_stash_account)]
 	pub type RelaychainStashAccount<T: Config> = StorageValue<_, T::AccountId, OptionQuery>;
@@ -135,8 +139,8 @@ pub mod module {
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		/// Request to mint some Liquid currency, by locking up the given amount of Staking
-		/// currency. The exchange does not happen immediately, but on Era switch on the Relay
-		/// chain. The user needs to manually claim the Liquid currency once it is ready.
+		/// currency. The exchange does not happen immediately, but on when the batch is processed
+		/// The user then needs to manually claim the Liquid currency once it is ready.
 		///
 		/// Parameters:
 		/// - `amount`: The amount of Staking currency to be exchanged.
@@ -145,26 +149,25 @@ pub mod module {
 		#[transactional]
 		pub fn request_mint(origin: OriginFor<T>, amount: Balance) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
-			let current_era = Self::current_era();
+			let current_batch = Self::current_batch();
 			let staking_currency_id = T::StakingCurrencyId::get();
 
-			let stash_account = &Self::relaychain_stash_account();
-			ensure!(stash_account.is_some(), Error::<T>::RelaychainStashAccountNotSet);
+			let stash_account = &Self::relaychain_stash_account().ok_or(Error::<T>::RelaychainStashAccountNotSet)?;
 
 			// TODO: Cross-chain transfer to the Relaychain via XCM
-			T::Currency::transfer(staking_currency_id, &who, &stash_account.clone().unwrap(), amount)?;
+			T::Currency::transfer(staking_currency_id, &who, &stash_account.clone(), amount)?;
 
-			let current = PendingAmount::<T>::get(current_era, &who);
+			let current = PendingAmount::<T>::get(current_batch, &who);
 			// Due to the math on Total Issuance, it is literally impossible to overflow here.
 			let new_value = current + amount;
-			PendingAmount::<T>::insert(current_era, &who, new_value);
+			PendingAmount::<T>::insert(current_batch, &who, new_value);
 
-			Self::deposit_event(Event::<T>::MintRequested(current_era, who, amount));
+			Self::deposit_event(Event::<T>::MintRequested(current_batch, who, amount));
 			Ok(().into())
 		}
 
-		/// Upon Era change on the Relay chain, all the transferred Staking currency is activated
-		/// for staking. It is then that we can issue Liquid currencies.
+		/// Process a batch.
+		/// It is then that we can issue Liquid currencies.
 		///
 		/// Parameters:
 		/// - `staking_total_issuance`:
@@ -173,7 +176,7 @@ pub mod module {
 		#[transactional]
 		pub fn issue(origin: OriginFor<T>, staking_total_issuance: Balance) -> DispatchResultWithPostInfo {
 			T::IssuerOrigin::ensure_origin(origin)?;
-			let current_era = Self::current_era();
+			let current_batch = Self::current_batch();
 
 			ensure!(
 				staking_total_issuance > 0,
@@ -181,16 +184,16 @@ pub mod module {
 			);
 
 			let total_liquid_issuance = T::Currency::total_issuance(T::LiquidCurrencyId::get());
-			let total_on_era = TotalIssuanceInfo {
+			let total_for_batch = TotalIssuanceInfo {
 				staking_total: staking_total_issuance,
 				liquid_total: total_liquid_issuance,
 			};
 
-			EraTotalIssuanceInfo::<T>::insert(&current_era, total_on_era);
-			CurrentEra::<T>::put(current_era + 1);
+			BatchTotalIssuanceInfo::<T>::insert(&current_batch, total_for_batch);
+			CurrentBatch::<T>::put(current_batch + 1);
 
-			Self::deposit_event(Event::<T>::EraTotalRecorded(
-				current_era,
+			Self::deposit_event(Event::<T>::BatchProcessed(
+				current_batch,
 				staking_total_issuance,
 				total_liquid_issuance,
 			));
@@ -203,32 +206,30 @@ pub mod module {
 		///
 		/// Parameters:
 		/// - `who`: The user the claimed Liquid currency is for.
-		/// - `era`: The Era index the user Staked their tokens.
+		/// - `batch`: The batch index the user Staked their tokens.
 		//#[pallet::weight(< T as Config >::WeightInfo::claim())]
 		#[pallet::weight(0)]
 		#[transactional]
-		pub fn claim(origin: OriginFor<T>, who: T::AccountId, era: EraIndex) -> DispatchResultWithPostInfo {
+		pub fn claim(origin: OriginFor<T>, who: T::AccountId, batch: EraIndex) -> DispatchResultWithPostInfo {
 			ensure_signed(origin)?;
-			let staked_amount = PendingAmount::<T>::get(&era, &who);
-			match Self::era_total_issuance_info(era) {
-				None => {
-					ensure!(false, Error::<T>::LiquidCurrencyNotIssuedForThisEra);
-				}
-				Some(total_info) => {
-					let mul_res = staked_amount.checked_mul(total_info.liquid_total);
-					ensure!(mul_res.is_some(), Error::<T>::ArithmeticError);
-					let liquid_res = mul_res.unwrap().checked_div(total_info.staking_total);
-					ensure!(liquid_res.is_some(), Error::<T>::ArithmeticError);
-					let liquid_to_mint = liquid_res.unwrap();
+			let staked_amount = PendingAmount::<T>::get(&batch, &who);
+			let total_info =
+				Self::batch_total_issuance_info(batch).ok_or(Error::<T>::LiquidCurrencyNotIssuedForThisBatch)?;
 
-					// Mint the liquid currency into the user's account.
-					T::Currency::deposit(T::LiquidCurrencyId::get(), &who, liquid_to_mint)?;
-					// Remove the pending request from storage
-					PendingAmount::<T>::remove(&era, &who);
+			let mul_res = staked_amount
+				.checked_mul(total_info.liquid_total)
+				.ok_or(ArithmeticError::Overflow)?;
+			let liquid_res = mul_res
+				.checked_div(total_info.staking_total)
+				.ok_or(ArithmeticError::Overflow)?;
+			let liquid_to_mint = liquid_res;
 
-					Self::deposit_event(Event::<T>::LiquidCurrencyClaimed(era, who, liquid_to_mint));
-				}
-			}
+			// Mint the liquid currency into the user's account.
+			T::Currency::deposit(T::LiquidCurrencyId::get(), &who, liquid_to_mint)?;
+			// Remove the pending request from storage
+			PendingAmount::<T>::remove(&batch, &who);
+
+			Self::deposit_event(Event::<T>::LiquidCurrencyClaimed(batch, who, liquid_to_mint));
 
 			Ok(().into())
 		}

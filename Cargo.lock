@@ -4928,6 +4928,7 @@ dependencies = [
  "module-evm-manager",
  "module-evm-rpc-runtime-api",
  "module-homa",
+ "module-homa-lite",
  "module-homa-validator-list",
  "module-honzon",
  "module-incentives",

@@ -168,6 +168,7 @@ parameter_types! {
 	pub UnreleasedNativeVaultAccountId: AccountId = PalletId(*b"aca/urls").into_account();
 	// Ecosystem modules
 	pub const StarportPalletId: PalletId = PalletId(*b"aca/stpt");
+	pub const HomaLitePalletId: PalletId = PalletId(*b"aca/hmlt");
 }
 
 pub fn get_all_module_accounts() -> Vec<AccountId> {
@@ -1270,6 +1271,20 @@ impl module_homa::Config for Runtime {
 }
 
 parameter_types! {
+	pub const KSM: CurrencyId = CurrencyId::Token(TokenSymbol::KSM);
+	pub const LKSM: CurrencyId = CurrencyId::Token(TokenSymbol::LKSM);
+}
+impl module_homa_lite::Config for Runtime {
+	type Event = Event;
+	type Currency = Currencies;
+	type StakingCurrencyId = KSM;
+	type LiquidCurrencyId = LKSM;
+	type PalletId = HomaLitePalletId;
+	type IssuerOrigin = EnsureRootOrHalfGeneralCouncil;
+	type GovernanceOrigin = EnsureRootOrHalfGeneralCouncil;
+}
+
+parameter_types! {
 	pub MinCouncilBondThreshold: Balance = dollar(LDOT);
 	pub const NominateesCount: u32 = 7;
 	pub const MaxUnlockingChunks: u32 = 7;
@@ -1944,6 +1959,7 @@ construct_runtime! {
 		StakingPool: module_staking_pool::{Pallet, Call, Storage, Event<T>, Config} = 132,
 		PolkadotBridge: module_polkadot_bridge::{Pallet, Call, Storage} = 133,
 		HomaValidatorListModule: module_homa_validator_list::{Pallet, Call, Storage, Event<T>} = 134,
+		HomaLite: module_homa_lite::{Pallet, Call, Storage, Event<T>} = 135,
 
 		// Acala Other
 		Incentives: module_incentives::{Pallet, Storage, Call, Event<T>} = 140,
