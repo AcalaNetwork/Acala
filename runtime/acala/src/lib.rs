@@ -1454,6 +1454,7 @@ impl module_evm_bridge::Config for Runtime {
 impl module_session_manager::Config for Runtime {
 	type Event = Event;
 	type ValidatorSet = Session;
+	type WeightInfo = weights::module_session_manager::WeightInfo<Runtime>;
 }
 
 parameter_types! {

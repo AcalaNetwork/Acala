@@ -115,20 +115,20 @@ fn estimate_current_session_progress_work() {
 		assert_eq!(SessionManager::duration_offset(), 0);
 
 		assert_eq!(
-			SessionManager::estimate_current_session_progress(0),
-			(Some(Permill::from_rational(1u32, 10u32)), 0)
+			SessionManager::estimate_current_session_progress(0).0,
+			Some(Permill::from_rational(1u32, 10u32))
 		);
 		assert_eq!(
-			SessionManager::estimate_current_session_progress(8),
-			(Some(Permill::from_rational(9u32, 10u32)), 0)
+			SessionManager::estimate_current_session_progress(8).0,
+			Some(Permill::from_rational(9u32, 10u32))
 		);
 		assert_eq!(
-			SessionManager::estimate_current_session_progress(9),
-			(Some(Permill::from_rational(10u32, 10u32)), 0)
+			SessionManager::estimate_current_session_progress(9).0,
+			Some(Permill::from_rational(10u32, 10u32))
 		);
 		assert_eq!(
-			SessionManager::estimate_current_session_progress(10),
-			(Some(Permill::from_rational(1u32, 10u32)), 0)
+			SessionManager::estimate_current_session_progress(10).0,
+			Some(Permill::from_rational(1u32, 10u32))
 		);
 
 		assert_ok!(SessionManager::schedule_session_duration(Origin::root(), 1, 11));
@@ -136,33 +136,27 @@ fn estimate_current_session_progress_work() {
 		assert_eq!(SessionManager::session_duration(), 11);
 		assert_eq!(SessionManager::duration_offset(), 10);
 
+		assert_eq!(SessionManager::estimate_current_session_progress(8).0, None);
+		assert_eq!(SessionManager::estimate_current_session_progress(9).0, None);
 		assert_eq!(
-			SessionManager::estimate_current_session_progress(8),
-			(Some(Permill::from_rational(9u32, 10u32)), 0)
+			SessionManager::estimate_current_session_progress(10).0,
+			Some(Permill::from_rational(1u32, 11u32))
 		);
 		assert_eq!(
-			SessionManager::estimate_current_session_progress(9),
-			(Some(Permill::from_rational(10u32, 10u32)), 0)
+			SessionManager::estimate_current_session_progress(11).0,
+			Some(Permill::from_rational(2u32, 11u32))
 		);
 		assert_eq!(
-			SessionManager::estimate_current_session_progress(10),
-			(Some(Permill::from_rational(1u32, 11u32)), 0)
+			SessionManager::estimate_current_session_progress(12).0,
+			Some(Permill::from_rational(3u32, 11u32))
 		);
 		assert_eq!(
-			SessionManager::estimate_current_session_progress(11),
-			(Some(Permill::from_rational(2u32, 11u32)), 0)
+			SessionManager::estimate_current_session_progress(30).0,
+			Some(Permill::from_rational(10u32, 11u32))
 		);
 		assert_eq!(
-			SessionManager::estimate_current_session_progress(12),
-			(Some(Permill::from_rational(3u32, 11u32)), 0)
-		);
-		assert_eq!(
-			SessionManager::estimate_current_session_progress(30),
-			(Some(Permill::from_rational(10u32, 11u32)), 0)
-		);
-		assert_eq!(
-			SessionManager::estimate_current_session_progress(31),
-			(Some(Permill::from_rational(11u32, 11u32)), 0)
+			SessionManager::estimate_current_session_progress(31).0,
+			Some(Permill::from_rational(11u32, 11u32))
 		);
 	});
 }
@@ -174,21 +168,21 @@ fn estimate_next_session_rotation_work() {
 		assert_eq!(SessionManager::session_duration(), 10);
 		assert_eq!(SessionManager::duration_offset(), 0);
 
-		assert_eq!(SessionManager::estimate_next_session_rotation(0), (Some(0), 0));
-		assert_eq!(SessionManager::estimate_next_session_rotation(8), (Some(10), 0));
-		assert_eq!(SessionManager::estimate_next_session_rotation(9), (Some(10), 0));
-		assert_eq!(SessionManager::estimate_next_session_rotation(10), (Some(20), 0));
+		assert_eq!(SessionManager::estimate_next_session_rotation(0).0, Some(0));
+		assert_eq!(SessionManager::estimate_next_session_rotation(8).0, Some(10));
+		assert_eq!(SessionManager::estimate_next_session_rotation(9).0, Some(10));
+		assert_eq!(SessionManager::estimate_next_session_rotation(10).0, Some(20));
 
 		assert_ok!(SessionManager::schedule_session_duration(Origin::root(), 1, 11));
 		SessionManager::on_initialize(10);
 		assert_eq!(SessionManager::session_duration(), 11);
 		assert_eq!(SessionManager::duration_offset(), 10);
 
-		assert_eq!(SessionManager::estimate_next_session_rotation(8), (Some(10), 0));
-		assert_eq!(SessionManager::estimate_next_session_rotation(9), (Some(10), 0));
-		assert_eq!(SessionManager::estimate_next_session_rotation(10), (Some(10), 0));
-		assert_eq!(SessionManager::estimate_next_session_rotation(11), (Some(21), 0));
-		assert_eq!(SessionManager::estimate_next_session_rotation(12), (Some(21), 0));
-		assert_eq!(SessionManager::estimate_next_session_rotation(21), (Some(32), 0));
+		assert_eq!(SessionManager::estimate_next_session_rotation(8).0, Some(10));
+		assert_eq!(SessionManager::estimate_next_session_rotation(9).0, Some(10));
+		assert_eq!(SessionManager::estimate_next_session_rotation(10).0, Some(10));
+		assert_eq!(SessionManager::estimate_next_session_rotation(11).0, Some(21));
+		assert_eq!(SessionManager::estimate_next_session_rotation(12).0, Some(21));
+		assert_eq!(SessionManager::estimate_next_session_rotation(21).0, Some(32));
 	});
 }

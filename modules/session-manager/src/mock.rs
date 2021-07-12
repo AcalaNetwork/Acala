@@ -100,6 +100,7 @@ impl pallet_session::Config for Runtime {
 impl session_manager::Config for Runtime {
 	type Event = Event;
 	type ValidatorSet = Session;
+	type WeightInfo = ();
 }
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;

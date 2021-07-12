@@ -1325,6 +1325,7 @@ impl module_evm_bridge::Config for Runtime {
 impl module_session_manager::Config for Runtime {
 	type Event = Event;
 	type ValidatorSet = Session;
+	type WeightInfo = weights::module_session_manager::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -1966,6 +1967,7 @@ impl_runtime_apis! {
 			orml_add_benchmark!(params, batches, module_evm_accounts, benchmarking::evm_accounts);
 			// orml_add_benchmark!(params, batches, module_homa, benchmarking::homa);
 			orml_add_benchmark!(params, batches, module_currencies, benchmarking::currencies);
+			orml_add_benchmark!(params, batches, module_session_manager, benchmarking::session_manager);
 
 			orml_add_benchmark!(params, batches, orml_tokens, benchmarking::tokens);
 			orml_add_benchmark!(params, batches, orml_vesting, benchmarking::vesting);

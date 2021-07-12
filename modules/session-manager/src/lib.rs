@@ -38,8 +38,10 @@ use sp_staking::SessionIndex;
 
 mod mock;
 mod tests;
+pub mod weights;
 
 pub use module::*;
+pub use weights::WeightInfo;
 
 #[frame_support::pallet]
 pub mod module {
@@ -50,6 +52,8 @@ pub mod module {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 		/// A type for retrieving the validators supposed to be online in a session.
 		type ValidatorSet: ValidatorSet<Self::AccountId, ValidatorId = Self::AccountId>;
+		/// Weight information for the extrinsics in this module.
+		type WeightInfo: WeightInfo;
 	}
 
 	#[pallet::error]
@@ -74,14 +78,14 @@ pub mod module {
 	/// SessionDuration: SessionDuration
 	#[pallet::storage]
 	#[pallet::getter(fn session_duration)]
-	type SessionDuration<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
+	pub type SessionDuration<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
 
 	/// The current session duration offset.
 	///
 	/// DurationOffset: DurationOffset
 	#[pallet::storage]
 	#[pallet::getter(fn duration_offset)]
-	type DurationOffset<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
+	pub type DurationOffset<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
 
 	/// Mapping from block number to new session index and duration.
 	///
@@ -119,19 +123,26 @@ pub mod module {
 	#[pallet::hooks]
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
 		fn on_initialize(n: T::BlockNumber) -> Weight {
+			let mut skip = true;
 			SessionDurationChanges::<T>::mutate_exists(n, |maybe_changes| {
 				if let Some((_, duration)) = maybe_changes.take() {
+					skip = false;
 					SessionDuration::<T>::put(duration);
 					DurationOffset::<T>::put(n);
 				}
 			});
-			10000
+
+			if skip {
+				T::WeightInfo::on_initialize_skip()
+			} else {
+				T::WeightInfo::on_initialize()
+			}
 		}
 	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		#[pallet::weight(10000)]
+		#[pallet::weight(T::WeightInfo::schedule_session_duration())]
 		pub fn schedule_session_duration(
 			origin: OriginFor<T>,
 			start_session: SessionIndex,
@@ -202,14 +213,10 @@ impl<T: Config> EstimateNextSessionRotation<T::BlockNumber> for Pallet<T> {
 			let current = (now - offset) % period + One::one();
 			Some(Permill::from_rational(current, period))
 		} else {
-			Some(Permill::from_rational(now + One::one(), offset))
+			None
 		};
 
-		// Weight note: `estimate_current_session_progress` has no storage reads and trivial
-		// computational overhead. There should be no risk to the chain having this weight value be
-		// zero for now. However, this value of zero was not properly calculated, and so it would be
-		// reasonable to come back here and properly calculate the weight of this function.
-		(progress, Zero::zero())
+		(progress, T::WeightInfo::estimate_next_session_rotation())
 	}
 
 	fn estimate_next_session_rotation(now: T::BlockNumber) -> (Option<T::BlockNumber>, Weight) {
@@ -231,10 +238,6 @@ impl<T: Config> EstimateNextSessionRotation<T::BlockNumber> for Pallet<T> {
 			offset
 		};
 
-		// Weight note: `estimate_next_session_rotation` has no storage reads and trivial
-		// computational overhead. There should be no risk to the chain having this weight value be
-		// zero for now. However, this value of zero was not properly calculated, and so it would be
-		// reasonable to come back here and properly calculate the weight of this function.
-		(Some(next_session), Zero::zero())
+		(Some(next_session), T::WeightInfo::estimate_next_session_rotation())
 	}
 }
