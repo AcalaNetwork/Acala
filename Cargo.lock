@@ -5764,6 +5764,7 @@ version = "1.1.2"
 dependencies = [
  "frame-support",
  "frame-system",
+ "log",
  "pallet-session",
  "parity-scale-codec",
  "serde",

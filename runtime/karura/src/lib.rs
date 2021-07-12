@@ -1679,8 +1679,31 @@ pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExtra>;
 /// Executive: handles dispatch to the various modules.
-pub type Executive =
-	frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllPallets, ()>;
+pub type Executive = frame_executive::Executive<
+	Runtime,
+	Block,
+	frame_system::ChainContext<Runtime>,
+	Runtime,
+	AllPallets,
+	SessionManagerMigration,
+>;
+
+pub struct SessionManagerMigration;
+impl frame_support::traits::OnRuntimeUpgrade for SessionManagerMigration {
+	fn on_runtime_upgrade() -> frame_support::weights::Weight {
+		module_session_manager::migrations::v1::migrate::<Runtime>(Period::get())
+	}
+
+	#[cfg(feature = "try-runtime")]
+	fn pre_upgrade() -> Result<(), &'static str> {
+		module_session_manager::migrations::v1::pre_migrate::<Runtime>(Period::get())
+	}
+
+	#[cfg(feature = "try-runtime")]
+	fn post_upgrade() -> Result<(), &'static str> {
+		module_session_manager::migrations::v1::post_migrate::<Runtime>(Period::get())
+	}
+}
 
 #[cfg(not(feature = "disable-runtime-api"))]
 impl_runtime_apis! {
