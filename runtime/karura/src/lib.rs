@@ -793,7 +793,11 @@ parameter_type_with_key! {
 
 				// initial dex share amount is calculated based on currency_id_0,
 				// use the ED of currency_id_0 as the ED of lp token.
-				Self::get(&currency_id_0)
+				if currency_id_0 == GetNativeCurrencyId::get() {
+					NativeTokenExistentialDeposit::get()
+				} else {
+					Self::get(&currency_id_0)
+				}
 			},
 			CurrencyId::Erc20(_) => Balance::max_value(), // not handled by orml-tokens
 			CurrencyId::ChainSafe(_) => Balance::max_value(), // TODO: update this before we enable ChainSafe bridge
