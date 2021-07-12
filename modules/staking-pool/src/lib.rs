@@ -26,7 +26,7 @@ use primitives::{Balance, CurrencyId, EraIndex};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_runtime::{
-	traits::{AccountIdConversion, Bounded, CheckedDiv, Saturating, Zero},
+	traits::{AccountIdConversion, CheckedDiv, Saturating, Zero},
 	ArithmeticError, DispatchError, DispatchResult, FixedPointNumber, RuntimeDebug,
 };
 use sp_std::prelude::*;
@@ -113,15 +113,13 @@ impl Ledger {
 
 	/// The ratio of `free_pool` in `total_belong_to_liquid_holders`.
 	fn free_pool_ratio(&self) -> Ratio {
-		Ratio::checked_from_rational(self.free_pool, self.total_belong_to_liquid_holders())
-			.unwrap_or_else(Ratio::max_value)
+		Ratio::checked_from_rational(self.free_pool, self.total_belong_to_liquid_holders()).unwrap_or_default()
 	}
 
 	/// The ratio of `unbonding_to_free` in
 	/// `total_belong_to_liquid_holders`.
 	fn unbonding_to_free_ratio(&self) -> Ratio {
-		Ratio::checked_from_rational(self.unbonding_to_free, self.total_belong_to_liquid_holders())
-			.unwrap_or_else(Ratio::max_value)
+		Ratio::checked_from_rational(self.unbonding_to_free, self.total_belong_to_liquid_holders()).unwrap_or_default()
 	}
 }
 
