@@ -348,7 +348,7 @@ fn end_provisioning_trading_work() {
 			AUSDBTCPair::get(),
 			1_000_000_000_000u128,
 			2_000_000_000_000u128,
-			4_000_000_000_000u128,
+			2_000_000_000_000u128,
 		)));
 		assert_eq!(
 			DexModule::trading_pair_statuses(AUSDBTCPair::get()),
@@ -356,7 +356,7 @@ fn end_provisioning_trading_work() {
 		);
 		assert_eq!(
 			DexModule::initial_share_exchange_rates(AUSDBTCPair::get()),
-			(ExchangeRate::checked_from_rational(2, 1).unwrap(), ExchangeRate::one())
+			(ExchangeRate::one(), ExchangeRate::checked_from_rational(1, 2).unwrap())
 		);
 		assert_eq!(
 			DexModule::liquidity_pool(AUSDBTCPair::get()),
@@ -364,11 +364,11 @@ fn end_provisioning_trading_work() {
 		);
 		assert_eq!(
 			Tokens::total_issuance(AUSDBTCPair::get().dex_share_currency_id()),
-			4_000_000_000_000u128
+			2_000_000_000_000u128
 		);
 		assert_eq!(
 			Tokens::free_balance(AUSDBTCPair::get().dex_share_currency_id(), &DexModule::account_id()),
-			4_000_000_000_000u128
+			2_000_000_000_000u128
 		);
 	});
 }
@@ -1396,7 +1396,7 @@ fn initialize_added_liquidity_pools_genesis_work() {
 			assert_eq!(Tokens::free_balance(DOT, &DexModule::account_id()), 3000000);
 			assert_eq!(
 				Tokens::free_balance(AUSDDOTPair::get().dex_share_currency_id(), &ALICE),
-				4000000
+				2000000
 			);
 		});
 }
