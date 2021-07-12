@@ -118,17 +118,20 @@ pub mod module {
 		StorageDoubleMap<_, Blake2_128Concat, EraIndex, Blake2_128Concat, T::AccountId, Balance, ValueQuery>;
 
 	/// The total issuance info for each batch. Used to calculate Staking to Liquid exchange rate.
+	/// BatchTotalIssuanceInfo: map: batch: EraIndex -> batch_total: TotalIssuanceInfo
 	#[pallet::storage]
 	#[pallet::getter(fn batch_total_issuance_info)]
 	pub type BatchTotalIssuanceInfo<T: Config> =
 		StorageMap<_, Blake2_128Concat, EraIndex, TotalIssuanceInfo, OptionQuery>;
 
 	/// The batch that is currency active
+	/// CurrentBatch: value: batch: EraIndex
 	#[pallet::storage]
 	#[pallet::getter(fn current_batch)]
 	pub type CurrentBatch<T: Config> = StorageValue<_, EraIndex, ValueQuery>;
 
 	/// The account in which the staking currency goes into to be transferred to the Relay chain.
+	/// RelaychainStashAccount: value: stash_account: AccountId
 	#[pallet::storage]
 	#[pallet::getter(fn relaychain_stash_account)]
 	pub type RelaychainStashAccount<T: Config> = StorageValue<_, T::AccountId, OptionQuery>;
