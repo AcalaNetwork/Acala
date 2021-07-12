@@ -886,6 +886,11 @@ fn add_liquidity_work() {
 			assert_eq!(Tokens::free_balance(DOT, &BOB), 1_000_000_000_000_000_000);
 
 			assert_noop!(
+				DexModule::add_liquidity(Origin::signed(BOB), AUSD, DOT, 4, 1, 0, true,),
+				Error::<Runtime>::InvalidLiquidityIncrement,
+			);
+
+			assert_noop!(
 				DexModule::add_liquidity(
 					Origin::signed(BOB),
 					AUSD,
@@ -897,6 +902,7 @@ fn add_liquidity_work() {
 				),
 				Error::<Runtime>::UnacceptableShareIncrement
 			);
+
 			assert_ok!(DexModule::add_liquidity(
 				Origin::signed(BOB),
 				AUSD,
