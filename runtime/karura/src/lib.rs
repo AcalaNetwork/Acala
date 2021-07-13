@@ -1527,6 +1527,10 @@ impl Convert<AccountId, MultiLocation> for AccountIdToMultiLocation {
 	}
 }
 
+parameter_types! {
+	pub const BaseXcmWeight: Weight = 100_000_000;
+}
+
 impl orml_xtokens::Config for Runtime {
 	type Event = Event;
 	type Balance = Balance;
@@ -1536,6 +1540,7 @@ impl orml_xtokens::Config for Runtime {
 	type SelfLocation = SelfLocation;
 	type XcmExecutor = XcmExecutor<XcmConfig>;
 	type Weigher = FixedWeightBounds<UnitWeightCost, Call>;
+	type BaseXcmWeight = BaseXcmWeight;
 }
 
 impl orml_unknown_tokens::Config for Runtime {
