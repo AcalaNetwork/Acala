@@ -1701,7 +1701,7 @@ construct_runtime!(
 		RenVmBridge: ecosystem_renvm_bridge::{Pallet, Call, Config, Storage, Event<T>, ValidateUnsigned} = 150,
 
 		// Parachain
-		ParachainSystem: cumulus_pallet_parachain_system::{Pallet, Call, Storage, Inherent, Config, Event<T>} = 161,
+		ParachainSystem: cumulus_pallet_parachain_system::{Pallet, Call, Storage, Inherent, Config, Event<T>, ValidateUnsigned} = 161,
 		ParachainInfo: parachain_info::{Pallet, Storage, Config} = 162,
 
 		// // XCM
