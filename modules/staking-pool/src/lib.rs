@@ -827,7 +827,7 @@ impl<T: Config> HomaProtocol<T::AccountId, Balance, EraIndex> for Pallet<T> {
 				// if available_free_pool is not enough, need re-calculate
 				if demand_staking_amount > available_free_pool {
 					let ratio = Ratio::checked_from_rational(available_free_pool, demand_staking_amount)
-						.expect("demand_staking_amount is not zero; qed");
+						.expect("demand_staking_amount is gt available_free_pool and not zero; qed");
 					liquid_amount_to_burn = ratio.saturating_mul_int(liquid_amount_to_burn);
 					demand_staking_amount = available_free_pool;
 				}
@@ -912,7 +912,7 @@ impl<T: Config> HomaProtocol<T::AccountId, Balance, EraIndex> for Pallet<T> {
 				// if available_unclaimed_unbonding is not enough, need re-calculate
 				if demand_staking_amount > available_unclaimed_unbonding {
 					let ratio = Ratio::checked_from_rational(available_unclaimed_unbonding, demand_staking_amount)
-						.expect("staking_amount_to_claim is not zero; qed");
+						.expect("demand_staking_amount is gt available_unclaimed_unbonding and not zero; qed");
 					liquid_amount_to_burn = ratio.saturating_mul_int(liquid_amount_to_burn);
 					demand_staking_amount = available_unclaimed_unbonding;
 				}

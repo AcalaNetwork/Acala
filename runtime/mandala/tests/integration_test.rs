@@ -29,10 +29,11 @@ use frame_system::RawOrigin;
 use mandala_runtime::{
 	dollar, get_all_module_accounts, AcalaOracle, AccountId, AuctionManager, Authority, AuthoritysOriginId, Balance,
 	Balances, BlockNumber, Call, CdpEngine, CdpTreasury, CreateClassDeposit, CreateTokenDeposit, Currencies,
-	CurrencyId, DataDepositPerByte, Dex, EVMBridge, EmergencyShutdown, EnabledTradingPairs, Event, EvmAccounts,
-	EvmCurrencyIdMapping, GetNativeCurrencyId, Loans, NativeTokenExistentialDeposit, NftPalletId, Origin, OriginCaller,
-	ParachainSystem, Perbill, Proxy, Runtime, Scheduler, Session, SessionManager, SevenDays, System, TokenSymbol,
-	TreasuryPalletId, TreasuryReservePalletId, Vesting, ACA, AUSD, DOT, EVM, LDOT, NFT, RENBTC,
+	CurrencyId, CurrencyIdConvert, DataDepositPerByte, Dex, EVMBridge, EmergencyShutdown, EnabledTradingPairs, Event,
+	EvmAccounts, EvmCurrencyIdMapping, Get, GetNativeCurrencyId, Loans, NativeTokenExistentialDeposit, NftPalletId,
+	Origin, OriginCaller, ParachainInfo, ParachainSystem, Perbill, Proxy, Runtime, Scheduler, Session, SessionManager,
+	SevenDays, System, TokenSymbol, TreasuryPalletId, TreasuryReservePalletId, Vesting, ACA, AUSD, DOT, EVM, LDOT, NFT,
+	RENBTC,
 };
 use module_cdp_engine::LiquidationStrategy;
 use module_evm_accounts::EvmAddressMapping;
@@ -50,21 +51,13 @@ pub use primitives::{evm::EvmAddress, DexShare, TradingPair};
 use sp_core::{bytes::from_hex, H160};
 use sp_io::hashing::keccak_256;
 use sp_runtime::{
-	traits::{AccountIdConversion, BadOrigin, Zero},
+	traits::{AccountIdConversion, BadOrigin, Convert, Zero},
 	DispatchError, DispatchResult, FixedPointNumber, MultiAddress,
 };
 use std::str::FromStr;
-// use xcm::{
-// 	v0::{
-// 		Junction::{self, *},
-// 		MultiAsset,
-// 		MultiLocation::{self, *},
-// 		NetworkId, Order, Xcm,
-// 	},
-// 	VersionedXcm,
-// };
+use xcm::v0::{Junction::*, MultiAsset, MultiLocation::*};
 
-// use primitives::currency::*;
+use primitives::currency::*;
 
 const ORACLE1: [u8; 32] = [0u8; 32];
 const ORACLE2: [u8; 32] = [1u8; 32];
@@ -663,7 +656,7 @@ fn test_dex_module() {
 					DexShare::Erc20(erc20_address_0()),
 					DexShare::Erc20(erc20_address_1())
 				)),
-				2200
+				220
 			);
 
 			assert_ok!(Dex::claim_dex_share(
@@ -677,7 +670,7 @@ fn test_dex_module() {
 					CurrencyId::DexShare(DexShare::Erc20(erc20_address_0()), DexShare::Erc20(erc20_address_1())),
 					&EvmAddressMapping::<Runtime>::get_account_id(&alice_evm_addr())
 				),
-				2200
+				220
 			);
 
 			assert_ok!(Dex::remove_liquidity(
@@ -695,7 +688,7 @@ fn test_dex_module() {
 					CurrencyId::Erc20(erc20_address_0()),
 					CurrencyId::Erc20(erc20_address_1())
 				),
-				(110, 1100)
+				(110, 1096)
 			);
 
 			assert_eq!(
@@ -703,7 +696,7 @@ fn test_dex_module() {
 					DexShare::Erc20(erc20_address_0()),
 					DexShare::Erc20(erc20_address_1())
 				)),
-				2199
+				219
 			);
 
 			assert_eq!(
@@ -711,7 +704,7 @@ fn test_dex_module() {
 					CurrencyId::DexShare(DexShare::Erc20(erc20_address_0()), DexShare::Erc20(erc20_address_1())),
 					&EvmAddressMapping::<Runtime>::get_account_id(&alice_evm_addr())
 				),
-				2199
+				219
 			);
 		});
 }
@@ -1384,7 +1377,7 @@ fn test_multicurrency_precompile_module() {
 					DexShare::Erc20(erc20_address_0()),
 					DexShare::Erc20(erc20_address_1())
 				)),
-				2000
+				200
 			);
 
 			assert_ok!(Dex::claim_dex_share(
@@ -1398,7 +1391,7 @@ fn test_multicurrency_precompile_module() {
 					CurrencyId::DexShare(DexShare::Erc20(erc20_address_0()), DexShare::Erc20(erc20_address_1())),
 					&MockAddressMapping::get_account_id(&alice_evm_addr())
 				),
-				2000
+				200
 			);
 
 			let invoke_context = module_support::InvokeContext {
@@ -1421,31 +1414,31 @@ fn test_multicurrency_precompile_module() {
 			);
 			assert_eq!(
 				EVMBridge::total_supply(invoke_context),
-				Ok(2000)
+				Ok(200)
 			);
 			assert_eq!(
 				EVMBridge::balance_of(invoke_context, alice_evm_addr()),
-				Ok(2000)
+				Ok(200)
 			);
 			assert_eq!(
 				EVMBridge::total_supply(invoke_context),
-				Ok(2000)
+				Ok(200)
 			);
 			assert_eq!(
 				EVMBridge::balance_of(invoke_context, alice_evm_addr()),
-				Ok(2000)
+				Ok(200)
 			);
 			assert_eq!(
-				EVMBridge::transfer(invoke_context, bob_evm_addr(), 10),
+				EVMBridge::transfer(invoke_context, bob_evm_addr(), 1),
 				Ok(())
 			);
 			assert_eq!(
 				EVMBridge::balance_of(invoke_context, alice_evm_addr()),
-				Ok(1990)
+				Ok(199)
 			);
 			assert_eq!(
 				EVMBridge::balance_of(invoke_context, bob_evm_addr()),
-				Ok(10)
+				Ok(1)
 			);
 		});
 }
@@ -1715,78 +1708,78 @@ fn test_session_manager_module() {
 // 	});
 // }
 
-// #[test]
-// fn currency_id_convert() {
-// 	ExtBuilder::default().build().execute_with(|| {
-// 		let id: u32 = ParachainInfo::get().into();
+#[test]
+fn currency_id_convert() {
+	ExtBuilder::default().build().execute_with(|| {
+		let id: u32 = ParachainInfo::get().into();
 
-// 		assert_eq!(CurrencyIdConvert::convert(DOT), Some(X1(Parent)));
-// 		assert_eq!(
-// 			CurrencyIdConvert::convert(ACA),
-// 			Some(X3(Parent, Parachain { id }, GeneralKey(ACA.encode())))
-// 		);
-// 		assert_eq!(
-// 			CurrencyIdConvert::convert(AUSD),
-// 			Some(X3(Parent, Parachain { id }, GeneralKey(AUSD.encode())))
-// 		);
-// 		assert_eq!(
-// 			CurrencyIdConvert::convert(LDOT),
-// 			Some(X3(Parent, Parachain { id }, GeneralKey(LDOT.encode())))
-// 		);
-// 		assert_eq!(
-// 			CurrencyIdConvert::convert(RENBTC),
-// 			Some(X3(Parent, Parachain { id }, GeneralKey(RENBTC.encode())))
-// 		);
-// 		assert_eq!(CurrencyIdConvert::convert(KAR), None);
-// 		assert_eq!(CurrencyIdConvert::convert(KUSD), None);
-// 		assert_eq!(CurrencyIdConvert::convert(KSM), None);
-// 		assert_eq!(CurrencyIdConvert::convert(LKSM), None);
+		assert_eq!(CurrencyIdConvert::convert(DOT), Some(X1(Parent)));
+		assert_eq!(
+			CurrencyIdConvert::convert(ACA),
+			Some(X3(Parent, Parachain(id), GeneralKey(ACA.encode())))
+		);
+		assert_eq!(
+			CurrencyIdConvert::convert(AUSD),
+			Some(X3(Parent, Parachain(id), GeneralKey(AUSD.encode())))
+		);
+		assert_eq!(
+			CurrencyIdConvert::convert(LDOT),
+			Some(X3(Parent, Parachain(id), GeneralKey(LDOT.encode())))
+		);
+		assert_eq!(
+			CurrencyIdConvert::convert(RENBTC),
+			Some(X3(Parent, Parachain(id), GeneralKey(RENBTC.encode())))
+		);
+		assert_eq!(CurrencyIdConvert::convert(KAR), None);
+		assert_eq!(CurrencyIdConvert::convert(KUSD), None);
+		assert_eq!(CurrencyIdConvert::convert(KSM), None);
+		assert_eq!(CurrencyIdConvert::convert(LKSM), None);
 
-// 		assert_eq!(CurrencyIdConvert::convert(X1(Parent)), Some(DOT));
-// 		assert_eq!(
-// 			CurrencyIdConvert::convert(X3(Parent, Parachain { id }, GeneralKey(ACA.encode()))),
-// 			Some(ACA)
-// 		);
-// 		assert_eq!(
-// 			CurrencyIdConvert::convert(X3(Parent, Parachain { id }, GeneralKey(AUSD.encode()))),
-// 			Some(AUSD)
-// 		);
-// 		assert_eq!(
-// 			CurrencyIdConvert::convert(X3(Parent, Parachain { id }, GeneralKey(LDOT.encode()))),
-// 			Some(LDOT)
-// 		);
-// 		assert_eq!(
-// 			CurrencyIdConvert::convert(X3(Parent, Parachain { id }, GeneralKey(RENBTC.encode()))),
-// 			Some(RENBTC)
-// 		);
-// 		assert_eq!(
-// 			CurrencyIdConvert::convert(X3(Parent, Parachain { id }, GeneralKey(KAR.encode()))),
-// 			None
-// 		);
-// 		assert_eq!(
-// 			CurrencyIdConvert::convert(X3(Parent, Parachain { id }, GeneralKey(KUSD.encode()))),
-// 			None
-// 		);
-// 		assert_eq!(
-// 			CurrencyIdConvert::convert(X3(Parent, Parachain { id }, GeneralKey(KSM.encode()))),
-// 			None
-// 		);
-// 		assert_eq!(
-// 			CurrencyIdConvert::convert(X3(Parent, Parachain { id }, GeneralKey(LKSM.encode()))),
-// 			None
-// 		);
+		assert_eq!(CurrencyIdConvert::convert(X1(Parent)), Some(DOT));
+		assert_eq!(
+			CurrencyIdConvert::convert(X3(Parent, Parachain(id), GeneralKey(ACA.encode()))),
+			Some(ACA)
+		);
+		assert_eq!(
+			CurrencyIdConvert::convert(X3(Parent, Parachain(id), GeneralKey(AUSD.encode()))),
+			Some(AUSD)
+		);
+		assert_eq!(
+			CurrencyIdConvert::convert(X3(Parent, Parachain(id), GeneralKey(LDOT.encode()))),
+			Some(LDOT)
+		);
+		assert_eq!(
+			CurrencyIdConvert::convert(X3(Parent, Parachain(id), GeneralKey(RENBTC.encode()))),
+			Some(RENBTC)
+		);
+		assert_eq!(
+			CurrencyIdConvert::convert(X3(Parent, Parachain(id), GeneralKey(KAR.encode()))),
+			None
+		);
+		assert_eq!(
+			CurrencyIdConvert::convert(X3(Parent, Parachain(id), GeneralKey(KUSD.encode()))),
+			None
+		);
+		assert_eq!(
+			CurrencyIdConvert::convert(X3(Parent, Parachain(id), GeneralKey(KSM.encode()))),
+			None
+		);
+		assert_eq!(
+			CurrencyIdConvert::convert(X3(Parent, Parachain(id), GeneralKey(LKSM.encode()))),
+			None
+		);
 
-// 		assert_eq!(
-// 			CurrencyIdConvert::convert(X3(Parent, Parachain { id: id + 1 }, GeneralKey(ACA.encode()))),
-// 			None
-// 		);
+		assert_eq!(
+			CurrencyIdConvert::convert(X3(Parent, Parachain(id + 1), GeneralKey(ACA.encode()))),
+			None
+		);
 
-// 		assert_eq!(
-// 			CurrencyIdConvert::convert(MultiAsset::ConcreteFungible {
-// 				id: X3(Parent, Parachain { id }, GeneralKey(ACA.encode())),
-// 				amount: 1
-// 			}),
-// 			Some(ACA)
-// 		);
-// 	});
-// }
+		assert_eq!(
+			CurrencyIdConvert::convert(MultiAsset::ConcreteFungible {
+				id: X3(Parent, Parachain(id), GeneralKey(ACA.encode())),
+				amount: 1
+			}),
+			Some(ACA)
+		);
+	});
+}

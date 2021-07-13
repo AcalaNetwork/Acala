@@ -32,8 +32,8 @@ use primitives::DexShare;
 use sp_std::prelude::*;
 
 const SEED: u32 = 0;
-const BTC_AUSD_LP: CurrencyId =
-	CurrencyId::DexShare(DexShare::Token(TokenSymbol::RENBTC), DexShare::Token(TokenSymbol::AUSD));
+const ACA_AUSD_LP: CurrencyId =
+	CurrencyId::DexShare(DexShare::Token(TokenSymbol::ACA), DexShare::Token(TokenSymbol::AUSD));
 
 runtime_benchmarks! {
 	{ Runtime, module_incentives }
@@ -61,18 +61,18 @@ runtime_benchmarks! {
 
 	deposit_dex_share {
 		let caller: AccountId = whitelisted_caller();
-		set_balance(BTC_AUSD_LP, &caller, 10_000 * dollar(AUSD));
-	}: _(RawOrigin::Signed(caller), BTC_AUSD_LP, 10_000 * dollar(AUSD))
+		set_balance(ACA_AUSD_LP, &caller, 10_000 * dollar(AUSD));
+	}: _(RawOrigin::Signed(caller), ACA_AUSD_LP, 10_000 * dollar(AUSD))
 
 	withdraw_dex_share {
 		let caller: AccountId = whitelisted_caller();
-		set_balance(BTC_AUSD_LP, &caller, 10_000 * dollar(AUSD));
+		set_balance(ACA_AUSD_LP, &caller, 10_000 * dollar(AUSD));
 		Incentives::deposit_dex_share(
 			RawOrigin::Signed(caller.clone()).into(),
-			BTC_AUSD_LP,
+			ACA_AUSD_LP,
 			10_000 * dollar(AUSD)
 		)?;
-	}: _(RawOrigin::Signed(caller), BTC_AUSD_LP, 8000 * dollar(AUSD))
+	}: _(RawOrigin::Signed(caller), ACA_AUSD_LP, 8000 * dollar(AUSD))
 
 	claim_rewards {
 		let caller: AccountId = whitelisted_caller();
