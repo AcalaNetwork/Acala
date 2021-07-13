@@ -376,6 +376,7 @@ pub mod module {
 	/// EVM events
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
+	#[pallet::metadata(T::AccountId = "AccountId")]
 	pub enum Event<T: Config> {
 		/// Ethereum events from contracts.
 		Log(Log),
