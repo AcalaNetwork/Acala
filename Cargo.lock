@@ -6469,18 +6469,30 @@ dependencies = [
 name = "orml-xtokens"
 version = "0.4.1-dev"
 dependencies = [
+ "cumulus-pallet-dmp-queue",
+ "cumulus-pallet-xcm",
+ "cumulus-pallet-xcmp-queue",
  "cumulus-primitives-core",
  "frame-support",
  "frame-system",
+ "orml-tokens",
  "orml-traits",
  "orml-xcm-support",
+ "pallet-balances",
+ "pallet-xcm",
+ "parachain-info",
  "parity-scale-codec",
+ "polkadot-parachain",
+ "polkadot-runtime-parachains",
  "serde",
+ "sp-core",
  "sp-io",
  "sp-runtime",
  "sp-std",
  "xcm",
+ "xcm-builder",
  "xcm-executor",
+ "xcm-simulator",
 ]
 
 [[package]]
@@ -13434,6 +13446,24 @@ dependencies = [
  "sp-runtime",
  "sp-std",
  "xcm",
+]
+
+[[package]]
+name = "xcm-simulator"
+version = "0.1.0"
+source = "git+https://github.com/shaunxw/xcm-simulator.git?branch=polkadot-v0.9.7#fcebc2a0308aad3d8cab0081881530cd0a0a3d69"
+dependencies = [
+ "cumulus-pallet-dmp-queue",
+ "cumulus-pallet-xcmp-queue",
+ "cumulus-primitives-core",
+ "frame-support",
+ "parity-scale-codec",
+ "paste",
+ "polkadot-runtime-parachains",
+ "sp-io",
+ "sp-std",
+ "xcm",
+ "xcm-executor",
 ]
 
 [[package]]
