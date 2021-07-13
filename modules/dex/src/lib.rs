@@ -590,21 +590,12 @@ pub mod module {
 						Error::<T>::UnqualifiedProvision
 					);
 
-					// end provisioning and convert trading pair to `Enabled`
-					let (share_exchange_rate_0, share_exchange_rate_1) = if total_provision_0 > total_provision_1 {
-						(
-							ExchangeRate::one(),
-							ExchangeRate::checked_from_rational(total_provision_0, total_provision_1)
-								.ok_or(ArithmeticError::Overflow)?,
-						)
-					} else {
-						(
-							ExchangeRate::checked_from_rational(total_provision_1, total_provision_0)
-								.ok_or(ArithmeticError::Overflow)?,
-							ExchangeRate::one(),
-						)
-					};
-
+					// directly use token_0 as base to calculate initial dex share amount.
+					let (share_exchange_rate_0, share_exchange_rate_1) = (
+						ExchangeRate::one(),
+						ExchangeRate::checked_from_rational(total_provision_0, total_provision_1)
+							.ok_or(ArithmeticError::Overflow)?,
+					);
 					let shares_from_provision_0 = share_exchange_rate_0
 						.checked_mul_int(total_provision_0)
 						.ok_or(ArithmeticError::Overflow)?;
@@ -865,61 +856,54 @@ impl<T: Config> Pallet<T> {
 			} else {
 				(max_amount_b, max_amount_a)
 			};
-			let (pool_0_increment, pool_1_increment, share_increment): (Balance, Balance, Balance) =
-				if total_shares.is_zero() {
-					let (exchange_rate_0, exchange_rate_1) = if max_amount_0 > max_amount_1 {
-						(
-							ExchangeRate::one(),
-							ExchangeRate::checked_from_rational(max_amount_0, max_amount_1)
-								.ok_or(ArithmeticError::Overflow)?,
-						)
-					} else {
-						(
-							ExchangeRate::checked_from_rational(max_amount_1, max_amount_0)
-								.ok_or(ArithmeticError::Overflow)?,
-							ExchangeRate::one(),
-						)
-					};
+			let (pool_0_increment, pool_1_increment, share_increment): (Balance, Balance, Balance) = if total_shares
+				.is_zero()
+			{
+				// directly use token_0 as base to calculate initial dex share amount.
+				let (exchange_rate_0, exchange_rate_1) = (
+					ExchangeRate::one(),
+					ExchangeRate::checked_from_rational(max_amount_0, max_amount_1).ok_or(ArithmeticError::Overflow)?,
+				);
 
-					let shares_from_token_0 = exchange_rate_0
-						.checked_mul_int(max_amount_0)
-						.ok_or(ArithmeticError::Overflow)?;
-					let shares_from_token_1 = exchange_rate_1
+				let shares_from_token_0 = exchange_rate_0
+					.checked_mul_int(max_amount_0)
+					.ok_or(ArithmeticError::Overflow)?;
+				let shares_from_token_1 = exchange_rate_1
+					.checked_mul_int(max_amount_1)
+					.ok_or(ArithmeticError::Overflow)?;
+				let initial_shares = shares_from_token_0
+					.checked_add(shares_from_token_1)
+					.ok_or(ArithmeticError::Overflow)?;
+
+				(max_amount_0, max_amount_1, initial_shares)
+			} else {
+				let exchange_rate_0_1 =
+					ExchangeRate::checked_from_rational(*pool_1, *pool_0).ok_or(ArithmeticError::Overflow)?;
+				let input_exchange_rate_0_1 =
+					ExchangeRate::checked_from_rational(max_amount_1, max_amount_0).ok_or(ArithmeticError::Overflow)?;
+
+				if input_exchange_rate_0_1 <= exchange_rate_0_1 {
+					// max_amount_0 may be too much, calculate the actual amount_0
+					let exchange_rate_1_0 =
+						ExchangeRate::checked_from_rational(*pool_0, *pool_1).ok_or(ArithmeticError::Overflow)?;
+					let amount_0 = exchange_rate_1_0
 						.checked_mul_int(max_amount_1)
 						.ok_or(ArithmeticError::Overflow)?;
-					let initial_shares = shares_from_token_0
-						.checked_add(shares_from_token_1)
+					let share_increment = Ratio::checked_from_rational(amount_0, *pool_0)
+						.and_then(|n| n.checked_mul_int(total_shares))
 						.ok_or(ArithmeticError::Overflow)?;
-
-					(max_amount_0, max_amount_1, initial_shares)
+					(amount_0, max_amount_1, share_increment)
 				} else {
-					let exchange_rate_0_1 =
-						ExchangeRate::checked_from_rational(*pool_1, *pool_0).ok_or(ArithmeticError::Overflow)?;
-					let input_exchange_rate_0_1 = ExchangeRate::checked_from_rational(max_amount_1, max_amount_0)
+					// max_amount_1 is too much, calculate the actual amount_1
+					let amount_1 = exchange_rate_0_1
+						.checked_mul_int(max_amount_0)
 						.ok_or(ArithmeticError::Overflow)?;
-
-					if input_exchange_rate_0_1 <= exchange_rate_0_1 {
-						// max_amount_0 may be too much, calculate the actual amount_0
-						let exchange_rate_1_0 =
-							ExchangeRate::checked_from_rational(*pool_0, *pool_1).ok_or(ArithmeticError::Overflow)?;
-						let amount_0 = exchange_rate_1_0
-							.checked_mul_int(max_amount_1)
-							.ok_or(ArithmeticError::Overflow)?;
-						let share_increment = Ratio::checked_from_rational(amount_0, *pool_0)
-							.and_then(|n| n.checked_mul_int(total_shares))
-							.ok_or(ArithmeticError::Overflow)?;
-						(amount_0, max_amount_1, share_increment)
-					} else {
-						// max_amount_1 is too much, calculate the actual amount_1
-						let amount_1 = exchange_rate_0_1
-							.checked_mul_int(max_amount_0)
-							.ok_or(ArithmeticError::Overflow)?;
-						let share_increment = Ratio::checked_from_rational(amount_1, *pool_1)
-							.and_then(|n| n.checked_mul_int(total_shares))
-							.ok_or(ArithmeticError::Overflow)?;
-						(max_amount_0, amount_1, share_increment)
-					}
-				};
+					let share_increment = Ratio::checked_from_rational(amount_1, *pool_1)
+						.and_then(|n| n.checked_mul_int(total_shares))
+						.ok_or(ArithmeticError::Overflow)?;
+					(max_amount_0, amount_1, share_increment)
+				}
+			};
 
 			ensure!(
 				!share_increment.is_zero() && !pool_0_increment.is_zero() && !pool_1_increment.is_zero(),

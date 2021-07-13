@@ -209,21 +209,15 @@ impl<T: Config> CurrencyIdMapping for EvmCurrencyIdMapping<T> {
 	fn decimals(currency_id: CurrencyId) -> Option<u8> {
 		match currency_id {
 			CurrencyId::Token(_) => currency_id.decimals(),
-			CurrencyId::DexShare(symbol_0, symbol_1) => {
-				let decimals_0 = match symbol_0 {
+			CurrencyId::DexShare(symbol_0, _) => {
+				// initial dex share amount is calculated based on currency_id_0,
+				// use the decimals of currency_id_0 as the decimals of lp token.
+				match symbol_0 {
 					DexShare::Token(symbol) => CurrencyId::Token(symbol).decimals(),
 					DexShare::Erc20(address) => CurrencyIdMap::<T>::get(Into::<u32>::into(symbol_0))
 						.filter(|v| v.address == address)
 						.map(|v| v.decimals),
-				}?;
-				let decimals_1 = match symbol_1 {
-					DexShare::Token(symbol) => CurrencyId::Token(symbol).decimals(),
-					DexShare::Erc20(address) => CurrencyIdMap::<T>::get(Into::<u32>::into(symbol_1))
-						.filter(|v| v.address == address)
-						.map(|v| v.decimals),
-				}?;
-
-				Some(sp_std::cmp::max(decimals_0, decimals_1))
+				}
 			}
 			CurrencyId::Erc20(address) => CurrencyIdMap::<T>::get(Into::<u32>::into(DexShare::Erc20(address)))
 				.filter(|v| v.address == address)

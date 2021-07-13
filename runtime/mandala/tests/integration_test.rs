@@ -667,7 +667,7 @@ fn test_dex_module() {
 					DexShare::Erc20(erc20_address_0()),
 					DexShare::Erc20(erc20_address_1())
 				)),
-				2200
+				220
 			);
 
 			assert_ok!(DexModule::claim_dex_share(
@@ -681,7 +681,7 @@ fn test_dex_module() {
 					CurrencyId::DexShare(DexShare::Erc20(erc20_address_0()), DexShare::Erc20(erc20_address_1())),
 					&EvmAddressMapping::<Runtime>::get_account_id(&alice_evm_addr())
 				),
-				2200
+				220
 			);
 
 			assert_ok!(DexModule::remove_liquidity(
@@ -699,7 +699,7 @@ fn test_dex_module() {
 					CurrencyId::Erc20(erc20_address_0()),
 					CurrencyId::Erc20(erc20_address_1())
 				),
-				(110, 1100)
+				(110, 1096)
 			);
 
 			assert_eq!(
@@ -707,7 +707,7 @@ fn test_dex_module() {
 					DexShare::Erc20(erc20_address_0()),
 					DexShare::Erc20(erc20_address_1())
 				)),
-				2199
+				219
 			);
 
 			assert_eq!(
@@ -715,7 +715,7 @@ fn test_dex_module() {
 					CurrencyId::DexShare(DexShare::Erc20(erc20_address_0()), DexShare::Erc20(erc20_address_1())),
 					&EvmAddressMapping::<Runtime>::get_account_id(&alice_evm_addr())
 				),
-				2199
+				219
 			);
 		});
 }
@@ -1392,7 +1392,7 @@ fn test_multicurrency_precompile_module() {
 					DexShare::Erc20(erc20_address_0()),
 					DexShare::Erc20(erc20_address_1())
 				)),
-				2000
+				200
 			);
 
 			assert_ok!(DexModule::claim_dex_share(
@@ -1406,7 +1406,7 @@ fn test_multicurrency_precompile_module() {
 					CurrencyId::DexShare(DexShare::Erc20(erc20_address_0()), DexShare::Erc20(erc20_address_1())),
 					&MockAddressMapping::get_account_id(&alice_evm_addr())
 				),
-				2000
+				200
 			);
 
 			let invoke_context = module_support::InvokeContext {
@@ -1429,31 +1429,31 @@ fn test_multicurrency_precompile_module() {
 			);
 			assert_eq!(
 				EVMBridge::total_supply(invoke_context),
-				Ok(2000)
+				Ok(200)
 			);
 			assert_eq!(
 				EVMBridge::balance_of(invoke_context, alice_evm_addr()),
-				Ok(2000)
+				Ok(200)
 			);
 			assert_eq!(
 				EVMBridge::total_supply(invoke_context),
-				Ok(2000)
+				Ok(200)
 			);
 			assert_eq!(
 				EVMBridge::balance_of(invoke_context, alice_evm_addr()),
-				Ok(2000)
+				Ok(200)
 			);
 			assert_eq!(
-				EVMBridge::transfer(invoke_context, bob_evm_addr(), 10),
+				EVMBridge::transfer(invoke_context, bob_evm_addr(), 1),
 				Ok(())
 			);
 			assert_eq!(
 				EVMBridge::balance_of(invoke_context, alice_evm_addr()),
-				Ok(1990)
+				Ok(199)
 			);
 			assert_eq!(
 				EVMBridge::balance_of(invoke_context, bob_evm_addr()),
-				Ok(10)
+				Ok(1)
 			);
 		});
 }
