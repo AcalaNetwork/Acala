@@ -213,6 +213,7 @@ pub mod module {
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
+	#[pallet::metadata(T::AccountId = "AccountId", Option<Rate> = "OptionRate", Option<Ratio> = "OptionRatio")]
 	pub enum Event<T: Config> {
 		/// Liquidate the unsafe CDP. \[collateral_type, owner,
 		/// collateral_amount, bad_debt_value, liquidation_strategy\]

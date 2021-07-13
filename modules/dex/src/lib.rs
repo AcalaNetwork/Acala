@@ -172,6 +172,7 @@ pub mod module {
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
+	#[pallet::metadata(T::AccountId = "AccountId")]
 	pub enum Event<T: Config> {
 		/// add provision success \[who, currency_id_0, contribution_0,
 		/// currency_id_1, contribution_1\]

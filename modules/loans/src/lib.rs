@@ -94,6 +94,7 @@ pub mod module {
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
+	#[pallet::metadata(T::AccountId = "AccountId")]
 	pub enum Event<T: Config> {
 		/// Position updated. \[owner, collateral_type, collateral_adjustment,
 		/// debit_adjustment\]

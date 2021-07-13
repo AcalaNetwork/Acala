@@ -211,6 +211,7 @@ pub mod module {
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
+	#[pallet::metadata(T::AccountId = "AccountId", T::RelaychainAccountId = "RelaychainAccountId")]
 	pub enum Event<T: Config> {
 		FreezeValidator(T::RelaychainAccountId),
 		ThawValidator(T::RelaychainAccountId),
