@@ -195,8 +195,6 @@ impl Filter<Call> for BaseCallFilter {
 			Call::System(_) | Call::Timestamp(_) | Call::ParachainSystem(_) |
 			// Utility
 			Call::Scheduler(_) | Call::Utility(_) | Call::Multisig(_) | Call::Proxy(_) |
-			// Sudo
-			Call::Sudo(_) |
 			// Councils
 			Call::Authority(_) | Call::GeneralCouncil(_) | Call::GeneralCouncilMembership(_) |
 			Call::FinancialCouncil(_) | Call::FinancialCouncilMembership(_) |
@@ -212,8 +210,14 @@ impl Filter<Call> for BaseCallFilter {
 			Call::Vesting(_) |
 			// TransactionPayment
 			Call::TransactionPayment(_) |
-			// XCM
-			Call::XTokens(_)
+			// Tokens
+			Call::XTokens(_) | Call::Balances(_) | Call::Currencies(_) |
+			// NFT
+			Call::NFT(_) |
+			// DEX
+			Call::Dex(_) |
+			// Incentives
+			Call::Incentives(_)
 		)
 	}
 }
