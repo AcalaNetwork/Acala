@@ -23,6 +23,9 @@ use sp_runtime::traits::Zero;
 pub mod v1 {
 	use super::*;
 
+	// https://github.com/AcalaNetwork/Acala/blob/ea218feb68bfce954513cf61d754b0a9ddb36c2c/runtime/karura/src/lib.rs#L268
+	const PERIOD: u32 = 1800u32;
+
 	pub fn pre_migrate<T: Config>() -> Result<(), &'static str> {
 		assert!(SessionDuration::<T>::get().is_zero(), "SessionDuration already set.");
 		assert!(DurationOffset::<T>::get().is_zero(), "SessionDuration already set.");
@@ -30,7 +33,10 @@ pub mod v1 {
 	}
 
 	pub fn post_migrate<T: Config>() -> Result<(), &'static str> {
-		assert!(!SessionDuration::<T>::get().is_zero(), "SessionDuration not set.");
+		assert!(
+			SessionDuration::<T>::get() == Into::<T::BlockNumber>::into(PERIOD),
+			"SessionDuration not set."
+		);
 		assert!(DurationOffset::<T>::get().is_zero(), "DurationOffset has been set.");
 		Ok(())
 	}
@@ -39,8 +45,7 @@ pub mod v1 {
 		log::info!(target: "session-manager", "Migrating session-manager v1");
 
 		if SessionDuration::<T>::get().is_zero() {
-			// https://github.com/AcalaNetwork/Acala/blob/ea218feb68bfce954513cf61d754b0a9ddb36c2c/runtime/karura/src/lib.rs#L268
-			SessionDuration::<T>::put(Into::<T::BlockNumber>::into(1800u32));
+			SessionDuration::<T>::put(Into::<T::BlockNumber>::into(PERIOD));
 		}
 		log::info!(target: "session-manager", "Completed session-manager migration to v1");
 
