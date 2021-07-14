@@ -23,15 +23,17 @@ use codec::Encode;
 // XcmpMessageHandler};
 use frame_support::{
 	assert_noop, assert_ok,
-	traits::{schedule::DispatchTime, Currency, GenesisBuild, Get, OnFinalize, OnInitialize, OriginTrait},
+	traits::{schedule::DispatchTime, Currency, GenesisBuild, OnFinalize, OnInitialize, OriginTrait, ValidatorSet},
 };
 use frame_system::RawOrigin;
 use mandala_runtime::{
-	dollar, get_all_module_accounts, AccountId, AuthoritysOriginId, Balance, Balances, BlockNumber, Call,
-	CreateClassDeposit, CreateTokenDeposit, CurrencyId, CurrencyIdConvert, DataDepositPerByte, EVMBridge,
-	EnabledTradingPairs, Event, EvmAccounts, EvmCurrencyIdMapping, GetNativeCurrencyId, NativeTokenExistentialDeposit,
-	NftPalletId, Origin, OriginCaller, ParachainInfo, ParachainSystem, Perbill, Proxy, Runtime, SevenDays, System,
-	TokenSymbol, TreasuryPalletId, TreasuryReservePalletId, Vesting, ACA, AUSD, DOT, EVM, LDOT, NFT, RENBTC,
+	dollar, get_all_module_accounts, AcalaOracle, AccountId, AuctionManager, Authority, AuthoritysOriginId, Balance,
+	Balances, BlockNumber, Call, CdpEngine, CdpTreasury, CreateClassDeposit, CreateTokenDeposit, Currencies,
+	CurrencyId, CurrencyIdConvert, DataDepositPerByte, Dex, EVMBridge, EmergencyShutdown, EnabledTradingPairs, Event,
+	EvmAccounts, EvmCurrencyIdMapping, Get, GetNativeCurrencyId, Loans, NativeTokenExistentialDeposit, NftPalletId,
+	Origin, OriginCaller, ParachainInfo, ParachainSystem, Perbill, Proxy, Runtime, Scheduler, Session, SessionManager,
+	SevenDays, System, TokenSymbol, TreasuryPalletId, TreasuryReservePalletId, Vesting, ACA, AUSD, DOT, EVM, LDOT, NFT,
+	RENBTC,
 };
 use module_cdp_engine::LiquidationStrategy;
 use module_evm_accounts::EvmAddressMapping;
@@ -66,23 +68,14 @@ const BOB: [u8; 32] = [5u8; 32];
 const LPTOKEN: CurrencyId =
 	CurrencyId::DexShare(DexShare::Token(TokenSymbol::AUSD), DexShare::Token(TokenSymbol::RENBTC));
 
-pub type OracleModule = orml_oracle::Pallet<Runtime, orml_oracle::Instance1>;
-pub type DexModule = module_dex::Pallet<Runtime>;
-pub type CdpEngineModule = module_cdp_engine::Pallet<Runtime>;
-pub type LoansModule = module_loans::Pallet<Runtime>;
-pub type CdpTreasuryModule = module_cdp_treasury::Pallet<Runtime>;
-pub type SystemModule = frame_system::Pallet<Runtime>;
-pub type EmergencyShutdownModule = module_emergency_shutdown::Pallet<Runtime>;
-pub type AuctionManagerModule = module_auction_manager::Pallet<Runtime>;
-pub type AuthorityModule = orml_authority::Pallet<Runtime>;
-pub type Currencies = module_currencies::Pallet<Runtime>;
-pub type SchedulerModule = pallet_scheduler::Pallet<Runtime>;
-
 fn run_to_block(n: u32) {
-	while SystemModule::block_number() < n {
-		SchedulerModule::on_finalize(SystemModule::block_number());
-		SystemModule::set_block_number(SystemModule::block_number() + 1);
-		SchedulerModule::on_initialize(SystemModule::block_number());
+	while System::block_number() < n {
+		Scheduler::on_finalize(System::block_number());
+		System::set_block_number(System::block_number() + 1);
+		Scheduler::on_initialize(System::block_number());
+		Scheduler::on_initialize(System::block_number());
+		Session::on_initialize(System::block_number());
+		SessionManager::on_initialize(System::block_number());
 	}
 }
 
@@ -226,23 +219,27 @@ impl ExtBuilder {
 		.assimilate_storage(&mut t)
 		.unwrap();
 
+		module_session_manager::GenesisConfig::<Runtime> { session_duration: 10 }
+			.assimilate_storage(&mut t)
+			.unwrap();
+
 		let mut ext = sp_io::TestExternalities::new(t);
-		ext.execute_with(|| SystemModule::set_block_number(1));
+		ext.execute_with(|| System::set_block_number(1));
 		ext
 	}
 }
 
 fn set_oracle_price(prices: Vec<(CurrencyId, Price)>) -> DispatchResult {
-	OracleModule::on_finalize(0);
-	assert_ok!(OracleModule::feed_values(
+	AcalaOracle::on_finalize(0);
+	assert_ok!(AcalaOracle::feed_values(
 		Origin::signed(AccountId::from(ORACLE1)),
 		prices.clone(),
 	));
-	assert_ok!(OracleModule::feed_values(
+	assert_ok!(AcalaOracle::feed_values(
 		Origin::signed(AccountId::from(ORACLE2)),
 		prices.clone(),
 	));
-	assert_ok!(OracleModule::feed_values(
+	assert_ok!(AcalaOracle::feed_values(
 		Origin::signed(AccountId::from(ORACLE3)),
 		prices,
 	));
@@ -319,39 +316,31 @@ fn emergency_shutdown_and_cdp_treasury() {
 		])
 		.build()
 		.execute_with(|| {
-			assert_ok!(CdpTreasuryModule::deposit_collateral(
+			assert_ok!(CdpTreasury::deposit_collateral(
 				&AccountId::from(BOB),
 				RENBTC,
 				1_000_000
 			));
-			assert_ok!(CdpTreasuryModule::deposit_collateral(
-				&AccountId::from(BOB),
-				DOT,
-				200_000_000
-			));
-			assert_ok!(CdpTreasuryModule::deposit_collateral(
-				&AccountId::from(BOB),
-				LDOT,
-				40_000_000
-			));
-			assert_eq!(CdpTreasuryModule::total_collaterals(RENBTC), 1_000_000);
-			assert_eq!(CdpTreasuryModule::total_collaterals(DOT), 200_000_000);
-			assert_eq!(CdpTreasuryModule::total_collaterals(LDOT), 40_000_000);
+			assert_ok!(CdpTreasury::deposit_collateral(&AccountId::from(BOB), DOT, 200_000_000));
+			assert_ok!(CdpTreasury::deposit_collateral(&AccountId::from(BOB), LDOT, 40_000_000));
+			assert_eq!(CdpTreasury::total_collaterals(RENBTC), 1_000_000);
+			assert_eq!(CdpTreasury::total_collaterals(DOT), 200_000_000);
+			assert_eq!(CdpTreasury::total_collaterals(LDOT), 40_000_000);
 
 			assert_noop!(
-				EmergencyShutdownModule::refund_collaterals(Origin::signed(AccountId::from(ALICE)), 1_000_000),
+				EmergencyShutdown::refund_collaterals(Origin::signed(AccountId::from(ALICE)), 1_000_000),
 				module_emergency_shutdown::Error::<Runtime>::CanNotRefund,
 			);
-			assert_ok!(EmergencyShutdownModule::emergency_shutdown(Origin::root()));
-			assert_ok!(EmergencyShutdownModule::open_collateral_refund(Origin::root()));
-			assert_ok!(EmergencyShutdownModule::refund_collaterals(
+			assert_ok!(EmergencyShutdown::emergency_shutdown(Origin::root()));
+			assert_ok!(EmergencyShutdown::open_collateral_refund(Origin::root()));
+			assert_ok!(EmergencyShutdown::refund_collaterals(
 				Origin::signed(AccountId::from(ALICE)),
 				1_000_000
 			));
 
-			assert_eq!(CdpTreasuryModule::total_collaterals(RENBTC), 900_000);
-			assert_eq!(CdpTreasuryModule::total_collaterals(DOT), 180_000_000);
-			assert_eq!(CdpTreasuryModule::total_collaterals(LDOT), 36_000_000);
+			assert_eq!(CdpTreasury::total_collaterals(RENBTC), 900_000);
+			assert_eq!(CdpTreasury::total_collaterals(DOT), 180_000_000);
+			assert_eq!(CdpTreasury::total_collaterals(LDOT), 36_000_000);
 			assert_eq!(Currencies::free_balance(AUSD, &AccountId::from(ALICE)), 1_000_000);
 			assert_eq!(Currencies::free_balance(RENBTC, &AccountId::from(ALICE)), 100_000);
 			assert_eq!(Currencies::free_balance(DOT, &AccountId::from(ALICE)), 20_000_000);
@@ -374,7 +363,7 @@ fn liquidate_cdp() {
 				Price::saturating_from_rational(10000, 1)
 			)])); // 10000 usd
 
-			assert_ok!(DexModule::add_liquidity(
+			assert_ok!(Dex::add_liquidity(
 				Origin::signed(AccountId::from(BOB)),
 				RENBTC,
 				AUSD,
@@ -384,7 +373,7 @@ fn liquidate_cdp() {
 				false,
 			));
 
-			assert_ok!(CdpEngineModule::set_collateral_params(
+			assert_ok!(CdpEngine::set_collateral_params(
 				Origin::root(),
 				RENBTC,
 				Change::NewValue(Some(Rate::zero())),
@@ -394,14 +383,14 @@ fn liquidate_cdp() {
 				Change::NewValue(1_000_000 * dollar(AUSD)),
 			));
 
-			assert_ok!(CdpEngineModule::adjust_position(
+			assert_ok!(CdpEngine::adjust_position(
 				&AccountId::from(ALICE),
 				RENBTC,
 				(10 * dollar(RENBTC)) as i128,
 				(500_000 * dollar(AUSD)) as i128,
 			));
 
-			assert_ok!(CdpEngineModule::adjust_position(
+			assert_ok!(CdpEngine::adjust_position(
 				&AccountId::from(BOB),
 				RENBTC,
 				dollar(RENBTC) as i128,
@@ -409,25 +398,25 @@ fn liquidate_cdp() {
 			));
 
 			assert_eq!(
-				LoansModule::positions(RENBTC, AccountId::from(ALICE)).debit,
+				Loans::positions(RENBTC, AccountId::from(ALICE)).debit,
 				500_000 * dollar(AUSD)
 			);
 			assert_eq!(
-				LoansModule::positions(RENBTC, AccountId::from(ALICE)).collateral,
+				Loans::positions(RENBTC, AccountId::from(ALICE)).collateral,
 				10 * dollar(RENBTC)
 			);
 			assert_eq!(
-				LoansModule::positions(RENBTC, AccountId::from(BOB)).debit,
+				Loans::positions(RENBTC, AccountId::from(BOB)).debit,
 				50_000 * dollar(AUSD)
 			);
 			assert_eq!(
-				LoansModule::positions(RENBTC, AccountId::from(BOB)).collateral,
+				Loans::positions(RENBTC, AccountId::from(BOB)).collateral,
 				dollar(RENBTC)
 			);
-			assert_eq!(CdpTreasuryModule::debit_pool(), 0);
-			assert_eq!(AuctionManagerModule::collateral_auctions(0), None);
+			assert_eq!(CdpTreasury::debit_pool(), 0);
+			assert_eq!(AuctionManager::collateral_auctions(0), None);
 
-			assert_ok!(CdpEngineModule::set_collateral_params(
+			assert_ok!(CdpEngine::set_collateral_params(
 				Origin::root(),
 				RENBTC,
 				Change::NoChange,
@@ -437,7 +426,7 @@ fn liquidate_cdp() {
 				Change::NoChange,
 			));
 
-			assert_ok!(CdpEngineModule::liquidate_unsafe_cdp(AccountId::from(ALICE), RENBTC));
+			assert_ok!(CdpEngine::liquidate_unsafe_cdp(AccountId::from(ALICE), RENBTC));
 
 			let liquidate_alice_xbtc_cdp_event = Event::CdpEngine(module_cdp_engine::Event::LiquidateUnsafeCDP(
 				RENBTC,
@@ -446,16 +435,16 @@ fn liquidate_cdp() {
 				50_000 * dollar(AUSD),
 				LiquidationStrategy::Auction,
 			));
-			assert!(SystemModule::events()
+			assert!(System::events()
 				.iter()
 				.any(|record| record.event == liquidate_alice_xbtc_cdp_event));
 
-			assert_eq!(LoansModule::positions(RENBTC, AccountId::from(ALICE)).debit, 0);
-			assert_eq!(LoansModule::positions(RENBTC, AccountId::from(ALICE)).collateral, 0);
-			assert_eq!(AuctionManagerModule::collateral_auctions(0).is_some(), true);
-			assert_eq!(CdpTreasuryModule::debit_pool(), 50_000 * dollar(AUSD));
+			assert_eq!(Loans::positions(RENBTC, AccountId::from(ALICE)).debit, 0);
+			assert_eq!(Loans::positions(RENBTC, AccountId::from(ALICE)).collateral, 0);
+			assert_eq!(AuctionManager::collateral_auctions(0).is_some(), true);
+			assert_eq!(CdpTreasury::debit_pool(), 50_000 * dollar(AUSD));
 
-			assert_ok!(CdpEngineModule::liquidate_unsafe_cdp(AccountId::from(BOB), RENBTC));
+			assert_ok!(CdpEngine::liquidate_unsafe_cdp(AccountId::from(BOB), RENBTC));
 
 			let liquidate_bob_xbtc_cdp_event = Event::CdpEngine(module_cdp_engine::Event::LiquidateUnsafeCDP(
 				RENBTC,
@@ -464,14 +453,14 @@ fn liquidate_cdp() {
 				5_000 * dollar(AUSD),
 				LiquidationStrategy::Exchange,
 			));
-			assert!(SystemModule::events()
+			assert!(System::events()
 				.iter()
 				.any(|record| record.event == liquidate_bob_xbtc_cdp_event));
 
-			assert_eq!(LoansModule::positions(RENBTC, AccountId::from(BOB)).debit, 0);
-			assert_eq!(LoansModule::positions(RENBTC, AccountId::from(BOB)).collateral, 0);
-			assert_eq!(CdpTreasuryModule::debit_pool(), 55_000 * dollar(AUSD));
-			assert!(CdpTreasuryModule::surplus_pool() >= 5_000 * dollar(AUSD));
+			assert_eq!(Loans::positions(RENBTC, AccountId::from(BOB)).debit, 0);
+			assert_eq!(Loans::positions(RENBTC, AccountId::from(BOB)).collateral, 0);
+			assert_eq!(CdpTreasury::debit_pool(), 55_000 * dollar(AUSD));
+			assert!(CdpTreasury::surplus_pool() >= 5_000 * dollar(AUSD));
 		});
 }
 
@@ -499,12 +488,12 @@ fn test_dex_module() {
 		.build()
 		.execute_with(|| {
 			deploy_erc20_contracts();
-			assert_eq!(DexModule::get_liquidity_pool(RENBTC, AUSD), (0, 0));
+			assert_eq!(Dex::get_liquidity_pool(RENBTC, AUSD), (0, 0));
 			assert_eq!(Currencies::total_issuance(LPTOKEN), 0);
 			assert_eq!(Currencies::free_balance(LPTOKEN, &AccountId::from(ALICE)), 0);
 
 			assert_noop!(
-				DexModule::add_liquidity(
+				Dex::add_liquidity(
 					Origin::signed(AccountId::from(ALICE)),
 					RENBTC,
 					AUSD,
@@ -516,7 +505,7 @@ fn test_dex_module() {
 				module_dex::Error::<Runtime>::InvalidLiquidityIncrement,
 			);
 
-			assert_ok!(DexModule::add_liquidity(
+			assert_ok!(Dex::add_liquidity(
 				Origin::signed(AccountId::from(ALICE)),
 				RENBTC,
 				AUSD,
@@ -534,14 +523,14 @@ fn test_dex_module() {
 				10000,
 				20000000,
 			));
-			assert!(SystemModule::events()
+			assert!(System::events()
 				.iter()
 				.any(|record| record.event == add_liquidity_event));
 
-			assert_eq!(DexModule::get_liquidity_pool(RENBTC, AUSD), (10000, 10000000));
+			assert_eq!(Dex::get_liquidity_pool(RENBTC, AUSD), (10000, 10000000));
 			assert_eq!(Currencies::total_issuance(LPTOKEN), 20000000);
 			assert_eq!(Currencies::free_balance(LPTOKEN, &AccountId::from(ALICE)), 20000000);
-			assert_ok!(DexModule::add_liquidity(
+			assert_ok!(Dex::add_liquidity(
 				Origin::signed(AccountId::from(BOB)),
 				RENBTC,
 				AUSD,
@@ -550,17 +539,17 @@ fn test_dex_module() {
 				0,
 				false,
 			));
-			assert_eq!(DexModule::get_liquidity_pool(RENBTC, AUSD), (10001, 10001000));
+			assert_eq!(Dex::get_liquidity_pool(RENBTC, AUSD), (10001, 10001000));
 			assert_eq!(Currencies::total_issuance(LPTOKEN), 20002000);
 			assert_eq!(Currencies::free_balance(LPTOKEN, &AccountId::from(BOB)), 2000);
 			assert_noop!(
-				DexModule::add_liquidity(Origin::signed(AccountId::from(BOB)), RENBTC, AUSD, 1, 999, 0, false,),
+				Dex::add_liquidity(Origin::signed(AccountId::from(BOB)), RENBTC, AUSD, 1, 999, 0, false,),
 				module_dex::Error::<Runtime>::InvalidLiquidityIncrement,
 			);
-			assert_eq!(DexModule::get_liquidity_pool(RENBTC, AUSD), (10001, 10001000));
+			assert_eq!(Dex::get_liquidity_pool(RENBTC, AUSD), (10001, 10001000));
 			assert_eq!(Currencies::total_issuance(LPTOKEN), 20002000);
 			assert_eq!(Currencies::free_balance(LPTOKEN, &AccountId::from(BOB)), 2000);
-			assert_ok!(DexModule::add_liquidity(
+			assert_ok!(Dex::add_liquidity(
 				Origin::signed(AccountId::from(BOB)),
 				RENBTC,
 				AUSD,
@@ -569,8 +558,8 @@ fn test_dex_module() {
 				0,
 				false,
 			));
-			assert_eq!(DexModule::get_liquidity_pool(RENBTC, AUSD), (10002, 10002000));
-			assert_ok!(DexModule::add_liquidity(
+			assert_eq!(Dex::get_liquidity_pool(RENBTC, AUSD), (10002, 10002000));
+			assert_ok!(Dex::add_liquidity(
 				Origin::signed(AccountId::from(BOB)),
 				RENBTC,
 				AUSD,
@@ -579,7 +568,7 @@ fn test_dex_module() {
 				0,
 				false,
 			));
-			assert_eq!(DexModule::get_liquidity_pool(RENBTC, AUSD), (10003, 10003000));
+			assert_eq!(Dex::get_liquidity_pool(RENBTC, AUSD), (10003, 10003000));
 
 			assert_eq!(Currencies::total_issuance(LPTOKEN), 20005998);
 
@@ -591,7 +580,7 @@ fn test_dex_module() {
 			));
 
 			// CurrencyId::DexShare(Erc20, Erc20)
-			assert_ok!(DexModule::list_provisioning(
+			assert_ok!(Dex::list_provisioning(
 				Origin::root(),
 				CurrencyId::Erc20(erc20_address_0()),
 				CurrencyId::Erc20(erc20_address_1()),
@@ -603,7 +592,7 @@ fn test_dex_module() {
 			));
 
 			<EVM as EVMTrait<AccountId>>::set_origin(MockAddressMapping::get_account_id(&alice_evm_addr()));
-			assert_ok!(DexModule::add_provision(
+			assert_ok!(Dex::add_provision(
 				Origin::signed(MockAddressMapping::get_account_id(&alice_evm_addr())),
 				CurrencyId::Erc20(erc20_address_0()),
 				CurrencyId::Erc20(erc20_address_1()),
@@ -611,7 +600,7 @@ fn test_dex_module() {
 				100,
 			));
 			assert_eq!(
-				DexModule::get_liquidity_pool(
+				Dex::get_liquidity_pool(
 					CurrencyId::Erc20(erc20_address_0()),
 					CurrencyId::Erc20(erc20_address_1())
 				),
@@ -642,20 +631,20 @@ fn test_dex_module() {
 			// CurrencyId::DexShare(Erc20, Erc20)
 			<EVM as EVMTrait<AccountId>>::set_origin(EvmAddressMapping::<Runtime>::get_account_id(&alice_evm_addr()));
 
-			assert_ok!(DexModule::add_provision(
+			assert_ok!(Dex::add_provision(
 				Origin::signed(EvmAddressMapping::<Runtime>::get_account_id(&alice_evm_addr())),
 				CurrencyId::Erc20(erc20_address_0()),
 				CurrencyId::Erc20(erc20_address_1()),
 				100,
 				1000,
 			));
-			assert_ok!(DexModule::end_provisioning(
+			assert_ok!(Dex::end_provisioning(
 				Origin::signed(AccountId::from(BOB)),
 				CurrencyId::Erc20(erc20_address_0()),
 				CurrencyId::Erc20(erc20_address_1()),
 			));
 			assert_eq!(
-				DexModule::get_liquidity_pool(
+				Dex::get_liquidity_pool(
 					CurrencyId::Erc20(erc20_address_0()),
 					CurrencyId::Erc20(erc20_address_1())
 				),
@@ -670,7 +659,7 @@ fn test_dex_module() {
 				220
 			);
 
-			assert_ok!(DexModule::claim_dex_share(
+			assert_ok!(Dex::claim_dex_share(
 				Origin::signed(EvmAddressMapping::<Runtime>::get_account_id(&alice_evm_addr())),
 				EvmAddressMapping::<Runtime>::get_account_id(&alice_evm_addr()),
 				CurrencyId::Erc20(erc20_address_0()),
@@ -684,7 +673,7 @@ fn test_dex_module() {
 				220
 			);
 
-			assert_ok!(DexModule::remove_liquidity(
+			assert_ok!(Dex::remove_liquidity(
 				Origin::signed(EvmAddressMapping::<Runtime>::get_account_id(&alice_evm_addr())),
 				CurrencyId::Erc20(erc20_address_0()),
 				CurrencyId::Erc20(erc20_address_1()),
@@ -695,7 +684,7 @@ fn test_dex_module() {
 			));
 
 			assert_eq!(
-				DexModule::get_liquidity_pool(
+				Dex::get_liquidity_pool(
 					CurrencyId::Erc20(erc20_address_0()),
 					CurrencyId::Erc20(erc20_address_1())
 				),
@@ -728,7 +717,7 @@ fn test_honzon_module() {
 		.execute_with(|| {
 			assert_ok!(set_oracle_price(vec![(RENBTC, Price::saturating_from_rational(1, 1))]));
 
-			assert_ok!(CdpEngineModule::set_collateral_params(
+			assert_ok!(CdpEngine::set_collateral_params(
 				Origin::root(),
 				RENBTC,
 				Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
@@ -737,7 +726,7 @@ fn test_honzon_module() {
 				Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
 				Change::NewValue(10_000 * dollar(AUSD)),
 			));
-			assert_ok!(CdpEngineModule::adjust_position(
+			assert_ok!(CdpEngine::adjust_position(
 				&AccountId::from(ALICE),
 				RENBTC,
 				(100 * dollar(RENBTC)) as i128,
@@ -752,18 +741,18 @@ fn test_honzon_module() {
 				50 * dollar(AUSD)
 			);
 			assert_eq!(
-				LoansModule::positions(RENBTC, AccountId::from(ALICE)).debit,
+				Loans::positions(RENBTC, AccountId::from(ALICE)).debit,
 				500 * dollar(AUSD)
 			);
 			assert_eq!(
-				LoansModule::positions(RENBTC, AccountId::from(ALICE)).collateral,
+				Loans::positions(RENBTC, AccountId::from(ALICE)).collateral,
 				100 * dollar(RENBTC)
 			);
 			assert_eq!(
-				CdpEngineModule::liquidate(Origin::none(), RENBTC, MultiAddress::Id(AccountId::from(ALICE))).is_ok(),
+				CdpEngine::liquidate(Origin::none(), RENBTC, MultiAddress::Id(AccountId::from(ALICE))).is_ok(),
 				false
 			);
-			assert_ok!(CdpEngineModule::set_collateral_params(
+			assert_ok!(CdpEngine::set_collateral_params(
 				Origin::root(),
 				RENBTC,
 				Change::NoChange,
@@ -772,7 +761,7 @@ fn test_honzon_module() {
 				Change::NoChange,
 				Change::NoChange,
 			));
-			assert_ok!(CdpEngineModule::liquidate(
+			assert_ok!(CdpEngine::liquidate(
 				Origin::none(),
 				RENBTC,
 				MultiAddress::Id(AccountId::from(ALICE))
@@ -786,8 +775,8 @@ fn test_honzon_module() {
 				Currencies::free_balance(AUSD, &AccountId::from(ALICE)),
 				50 * dollar(AUSD)
 			);
-			assert_eq!(LoansModule::positions(RENBTC, AccountId::from(ALICE)).debit, 0);
-			assert_eq!(LoansModule::positions(RENBTC, AccountId::from(ALICE)).collateral, 0);
+			assert_eq!(Loans::positions(RENBTC, AccountId::from(ALICE)).debit, 0);
+			assert_eq!(Loans::positions(RENBTC, AccountId::from(ALICE)).collateral, 0);
 		});
 }
 
@@ -800,7 +789,7 @@ fn test_cdp_engine_module() {
 		])
 		.build()
 		.execute_with(|| {
-			assert_ok!(CdpEngineModule::set_collateral_params(
+			assert_ok!(CdpEngine::set_collateral_params(
 				Origin::root(),
 				RENBTC,
 				Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
@@ -810,7 +799,7 @@ fn test_cdp_engine_module() {
 				Change::NewValue(10_000 * dollar(AUSD)),
 			));
 
-			let new_collateral_params = CdpEngineModule::collateral_params(RENBTC);
+			let new_collateral_params = CdpEngine::collateral_params(RENBTC);
 
 			assert_eq!(
 				new_collateral_params.interest_rate_per_sec,
@@ -831,7 +820,7 @@ fn test_cdp_engine_module() {
 			assert_eq!(new_collateral_params.maximum_total_debit_value, 10_000 * dollar(AUSD));
 
 			assert_eq!(
-				CdpEngineModule::calculate_collateral_ratio(
+				CdpEngine::calculate_collateral_ratio(
 					RENBTC,
 					100 * dollar(RENBTC),
 					50 * dollar(AUSD),
@@ -840,13 +829,13 @@ fn test_cdp_engine_module() {
 				Ratio::saturating_from_rational(100 * 10, 50)
 			);
 
-			assert_ok!(CdpEngineModule::check_debit_cap(RENBTC, 99_999 * dollar(AUSD)));
+			assert_ok!(CdpEngine::check_debit_cap(RENBTC, 99_999 * dollar(AUSD)));
 			assert_eq!(
-				CdpEngineModule::check_debit_cap(RENBTC, 100_001 * dollar(AUSD)).is_ok(),
+				CdpEngine::check_debit_cap(RENBTC, 100_001 * dollar(AUSD)).is_ok(),
 				false
 			);
 
-			assert_ok!(CdpEngineModule::adjust_position(
+			assert_ok!(CdpEngine::adjust_position(
 				&AccountId::from(ALICE),
 				RENBTC,
 				(100 * dollar(RENBTC)) as i128,
@@ -856,14 +845,14 @@ fn test_cdp_engine_module() {
 				Currencies::free_balance(RENBTC, &AccountId::from(ALICE)),
 				900 * dollar(RENBTC)
 			);
-			assert_eq!(LoansModule::positions(RENBTC, AccountId::from(ALICE)).debit, 0);
+			assert_eq!(Loans::positions(RENBTC, AccountId::from(ALICE)).debit, 0);
 			assert_eq!(
-				LoansModule::positions(RENBTC, AccountId::from(ALICE)).collateral,
+				Loans::positions(RENBTC, AccountId::from(ALICE)).collateral,
 				100 * dollar(RENBTC)
 			);
 
 			assert_noop!(
-				CdpEngineModule::settle_cdp_has_debit(AccountId::from(ALICE), RENBTC),
+				CdpEngine::settle_cdp_has_debit(AccountId::from(ALICE), RENBTC),
 				module_cdp_engine::Error::<Runtime>::NoDebitValue,
 			);
 
@@ -872,31 +861,31 @@ fn test_cdp_engine_module() {
 				(RENBTC, Price::saturating_from_rational(3, 1))
 			]));
 
-			assert_ok!(CdpEngineModule::adjust_position(
+			assert_ok!(CdpEngine::adjust_position(
 				&AccountId::from(ALICE),
 				RENBTC,
 				0,
 				(100 * dollar(AUSD)) as i128
 			));
 			assert_eq!(
-				LoansModule::positions(RENBTC, AccountId::from(ALICE)).debit,
+				Loans::positions(RENBTC, AccountId::from(ALICE)).debit,
 				100 * dollar(AUSD)
 			);
-			assert_eq!(CdpTreasuryModule::debit_pool(), 0);
-			assert_eq!(CdpTreasuryModule::total_collaterals(RENBTC), 0);
-			assert_ok!(CdpEngineModule::settle_cdp_has_debit(AccountId::from(ALICE), RENBTC));
+			assert_eq!(CdpTreasury::debit_pool(), 0);
+			assert_eq!(CdpTreasury::total_collaterals(RENBTC), 0);
+			assert_ok!(CdpEngine::settle_cdp_has_debit(AccountId::from(ALICE), RENBTC));
 
 			let settle_cdp_in_debit_event = Event::CdpEngine(module_cdp_engine::Event::SettleCDPInDebit(
 				RENBTC,
 				AccountId::from(ALICE),
 			));
-			assert!(SystemModule::events()
+			assert!(System::events()
 				.iter()
 				.any(|record| record.event == settle_cdp_in_debit_event));
 
-			assert_eq!(LoansModule::positions(RENBTC, AccountId::from(ALICE)).debit, 0);
-			assert_eq!(CdpTreasuryModule::debit_pool(), 10 * dollar(AUSD));
-			assert_eq!(CdpTreasuryModule::total_collaterals(RENBTC), 333_333_333);
+			assert_eq!(Loans::positions(RENBTC, AccountId::from(ALICE)).debit, 0);
+			assert_eq!(CdpTreasury::debit_pool(), 10 * dollar(AUSD));
+			assert_eq!(CdpTreasury::total_collaterals(RENBTC), 333_333_333);
 		});
 }
 
@@ -919,14 +908,14 @@ fn test_authority_module() {
 			));
 
 			// dispatch_as
-			assert_ok!(AuthorityModule::dispatch_as(
+			assert_ok!(Authority::dispatch_as(
 				Origin::root(),
 				AuthoritysOriginId::Root,
 				Box::new(ensure_root_call.clone())
 			));
 
 			assert_noop!(
-				AuthorityModule::dispatch_as(
+				Authority::dispatch_as(
 					Origin::signed(AccountId::from(BOB)),
 					AuthoritysOriginId::Root,
 					Box::new(ensure_root_call.clone())
@@ -935,7 +924,7 @@ fn test_authority_module() {
 			);
 
 			assert_noop!(
-				AuthorityModule::dispatch_as(
+				Authority::dispatch_as(
 					Origin::signed(AccountId::from(BOB)),
 					AuthoritysOriginId::Treasury,
 					Box::new(ensure_root_call.clone())
@@ -955,7 +944,7 @@ fn test_authority_module() {
 				AuthoritysOriginId::TreasuryReserve,
 				Box::new(transfer_call.clone()),
 			));
-			assert_ok!(AuthorityModule::schedule_dispatch(
+			assert_ok!(Authority::schedule_dispatch(
 				Origin::root(),
 				DispatchTime::At(2),
 				0,
@@ -963,7 +952,7 @@ fn test_authority_module() {
 				Box::new(treasury_reserve_call.clone())
 			));
 
-			assert_ok!(AuthorityModule::schedule_dispatch(
+			assert_ok!(Authority::schedule_dispatch(
 				Origin::root(),
 				DispatchTime::At(2),
 				0,
@@ -996,7 +985,7 @@ fn test_authority_module() {
 			)));
 
 			// delay = SevenDays
-			assert_ok!(AuthorityModule::schedule_dispatch(
+			assert_ok!(Authority::schedule_dispatch(
 				Origin::root(),
 				DispatchTime::At(SevenDays::get() + 2),
 				0,
@@ -1012,7 +1001,7 @@ fn test_authority_module() {
 			)));
 
 			// with_delayed_origin = false
-			assert_ok!(AuthorityModule::schedule_dispatch(
+			assert_ok!(Authority::schedule_dispatch(
 				Origin::root(),
 				DispatchTime::At(SevenDays::get() + 3),
 				0,
@@ -1031,7 +1020,7 @@ fn test_authority_module() {
 				Ok(()),
 			)));
 
-			assert_ok!(AuthorityModule::schedule_dispatch(
+			assert_ok!(Authority::schedule_dispatch(
 				Origin::root(),
 				DispatchTime::At(SevenDays::get() + 4),
 				0,
@@ -1040,7 +1029,7 @@ fn test_authority_module() {
 			));
 
 			// fast_track_scheduled_dispatch
-			assert_ok!(AuthorityModule::fast_track_scheduled_dispatch(
+			assert_ok!(Authority::fast_track_scheduled_dispatch(
 				Origin::root(),
 				frame_system::RawOrigin::Root.into(),
 				4,
@@ -1048,7 +1037,7 @@ fn test_authority_module() {
 			));
 
 			// delay_scheduled_dispatch
-			assert_ok!(AuthorityModule::delay_scheduled_dispatch(
+			assert_ok!(Authority::delay_scheduled_dispatch(
 				Origin::root(),
 				frame_system::RawOrigin::Root.into(),
 				4,
@@ -1056,7 +1045,7 @@ fn test_authority_module() {
 			));
 
 			// cancel_scheduled_dispatch
-			assert_ok!(AuthorityModule::schedule_dispatch(
+			assert_ok!(Authority::schedule_dispatch(
 				Origin::root(),
 				DispatchTime::At(SevenDays::get() + 4),
 				0,
@@ -1084,11 +1073,7 @@ fn test_authority_module() {
 			};
 
 			let pallets_origin = schedule_origin.caller().clone();
-			assert_ok!(AuthorityModule::cancel_scheduled_dispatch(
-				Origin::root(),
-				pallets_origin,
-				5
-			));
+			assert_ok!(Authority::cancel_scheduled_dispatch(Origin::root(), pallets_origin, 5));
 			System::assert_last_event(Event::Authority(orml_authority::Event::Cancelled(
 				OriginCaller::Authority(DelayedOrigin {
 					delay: 1,
@@ -1097,7 +1082,7 @@ fn test_authority_module() {
 				5,
 			)));
 
-			assert_ok!(AuthorityModule::schedule_dispatch(
+			assert_ok!(Authority::schedule_dispatch(
 				Origin::root(),
 				DispatchTime::At(SevenDays::get() + 5),
 				0,
@@ -1109,7 +1094,7 @@ fn test_authority_module() {
 				6,
 			)));
 
-			assert_ok!(AuthorityModule::cancel_scheduled_dispatch(
+			assert_ok!(Authority::cancel_scheduled_dispatch(
 				Origin::root(),
 				frame_system::RawOrigin::Root.into(),
 				6
@@ -1354,7 +1339,7 @@ fn test_multicurrency_precompile_module() {
 				EvmAccounts::eth_address(&alice_key()),
 				EvmAccounts::eth_sign(&alice_key(), &AccountId::from(ALICE).encode(), &[][..])
 			));
-			assert_ok!(DexModule::list_provisioning(
+			assert_ok!(Dex::list_provisioning(
 				Origin::root(),
 				CurrencyId::Erc20(erc20_address_0()),
 				CurrencyId::Erc20(erc20_address_1()),
@@ -1367,20 +1352,20 @@ fn test_multicurrency_precompile_module() {
 
 			// CurrencyId::DexShare(Erc20, Erc20)
 			<EVM as EVMTrait<AccountId>>::set_origin(MockAddressMapping::get_account_id(&alice_evm_addr()));
-			assert_ok!(DexModule::add_provision(
+			assert_ok!(Dex::add_provision(
 				Origin::signed(MockAddressMapping::get_account_id(&alice_evm_addr())),
 				CurrencyId::Erc20(erc20_address_0()),
 				CurrencyId::Erc20(erc20_address_1()),
 				100,
 				1000,
 			));
-			assert_ok!(DexModule::end_provisioning(
+			assert_ok!(Dex::end_provisioning(
 				Origin::signed(AccountId::from(ALICE)),
 				CurrencyId::Erc20(erc20_address_0()),
 				CurrencyId::Erc20(erc20_address_1()),
 			));
 			assert_eq!(
-				DexModule::get_liquidity_pool(
+				Dex::get_liquidity_pool(
 					CurrencyId::Erc20(erc20_address_0()),
 					CurrencyId::Erc20(erc20_address_1())
 				),
@@ -1395,7 +1380,7 @@ fn test_multicurrency_precompile_module() {
 				200
 			);
 
-			assert_ok!(DexModule::claim_dex_share(
+			assert_ok!(Dex::claim_dex_share(
 				Origin::signed(MockAddressMapping::get_account_id(&alice_evm_addr())),
 				MockAddressMapping::get_account_id(&alice_evm_addr()),
 				CurrencyId::Erc20(erc20_address_0()),
@@ -1623,6 +1608,45 @@ fn test_vesting_use_relaychain_block_number() {
 
 		assert_ok!(Vesting::claim(Origin::signed(alice())));
 		assert_eq!(Balances::usable_balance(&alice()), 15 * dollar(ACA));
+	});
+}
+
+#[test]
+fn test_session_manager_module() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_eq!(Session::session_index(), 0);
+		assert_eq!(SessionManager::session_duration(), 10);
+		run_to_block(10);
+		assert_eq!(Session::session_index(), 1);
+		assert_eq!(SessionManager::session_duration(), 10);
+
+		assert_ok!(SessionManager::schedule_session_duration(RawOrigin::Root.into(), 2, 11));
+
+		run_to_block(19);
+		assert_eq!(Session::session_index(), 1);
+		assert_eq!(SessionManager::session_duration(), 10);
+
+		run_to_block(20);
+		assert_eq!(Session::session_index(), 2);
+		assert_eq!(SessionManager::session_duration(), 11);
+
+		run_to_block(31);
+		assert_eq!(Session::session_index(), 3);
+		assert_eq!(SessionManager::session_duration(), 11);
+
+		assert_ok!(SessionManager::schedule_session_duration(RawOrigin::Root.into(), 4, 9));
+
+		run_to_block(42);
+		assert_eq!(Session::session_index(), 4);
+		assert_eq!(SessionManager::session_duration(), 9);
+
+		run_to_block(50);
+		assert_eq!(Session::session_index(), 4);
+		assert_eq!(SessionManager::session_duration(), 9);
+
+		run_to_block(51);
+		assert_eq!(Session::session_index(), 5);
+		assert_eq!(SessionManager::session_duration(), 9);
 	});
 }
 
