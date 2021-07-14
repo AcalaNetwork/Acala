@@ -77,14 +77,14 @@ pub mod module {
 
 	/// The current session duration.
 	///
-	/// SessionDuration: SessionDuration
+	/// SessionDuration: T::BlockNumber
 	#[pallet::storage]
 	#[pallet::getter(fn session_duration)]
 	pub type SessionDuration<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
 
 	/// The current session duration offset.
 	///
-	/// DurationOffset: DurationOffset
+	/// DurationOffset: T::BlockNumber
 	#[pallet::storage]
 	#[pallet::getter(fn duration_offset)]
 	pub type DurationOffset<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
@@ -158,12 +158,16 @@ pub mod module {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
+		/// Schedule a new session duration in the specified session index.
+		///
+		/// - `start_session`: the session index that the new change become effective.
+		/// - `duration`:  new session duration.
 		#[pallet::weight(T::WeightInfo::schedule_session_duration())]
 		pub fn schedule_session_duration(
 			origin: OriginFor<T>,
 			start_session: SessionIndex,
 			duration: T::BlockNumber,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			ensure_root(origin)?;
 
 			let target_block_number = Self::do_schedule_session_duration(start_session, duration)?;
@@ -173,7 +177,7 @@ pub mod module {
 				start_session,
 				duration,
 			));
-			Ok(().into())
+			Ok(())
 		}
 	}
 }
@@ -196,9 +200,10 @@ impl<T: Config> Pallet<T> {
 		let next_session = Self::estimate_next_session_rotation(block_number)
 			.0
 			.ok_or(Error::<T>::EstimateNextSessionFailed)?;
-		let target_block_number = Into::<T::BlockNumber>::into(start_session - current_session - 1)
-			.saturating_mul(Self::session_duration())
-			.saturating_add(next_session);
+		let target_block_number =
+			Into::<T::BlockNumber>::into(start_session.saturating_sub(current_session).saturating_sub(1))
+				.saturating_mul(Self::session_duration())
+				.saturating_add(next_session);
 
 		SessionDurationChanges::<T>::insert(target_block_number, (start_session, duration));
 
@@ -209,7 +214,7 @@ impl<T: Config> Pallet<T> {
 impl<T: Config> ShouldEndSession<T::BlockNumber> for Pallet<T> {
 	fn should_end_session(now: T::BlockNumber) -> bool {
 		let offset = Self::duration_offset();
-		now >= offset && ((now - offset) % Self::session_duration()).is_zero()
+		now >= offset && (now.saturating_sub(offset) % Self::session_duration()).is_zero()
 	}
 }
 
@@ -222,11 +227,15 @@ impl<T: Config> EstimateNextSessionRotation<T::BlockNumber> for Pallet<T> {
 		let offset = Self::duration_offset();
 		let period = Self::session_duration();
 
+		if period.is_zero() {
+			return (None, T::WeightInfo::estimate_next_session_rotation());
+		}
+
 		// NOTE: we add one since we assume that the current block has already elapsed,
 		// i.e. when evaluating the last block in the session the progress should be 100%
 		// (0% is never returned).
 		let progress = if now >= offset {
-			let current = (now - offset) % period + One::one();
+			let current = (now.saturating_sub(offset) % period).saturating_add(One::one());
 			Some(Permill::from_rational(current, period))
 		} else {
 			None
@@ -239,8 +248,12 @@ impl<T: Config> EstimateNextSessionRotation<T::BlockNumber> for Pallet<T> {
 		let offset = Self::duration_offset();
 		let period = Self::session_duration();
 
+		if period.is_zero() {
+			return (None, T::WeightInfo::estimate_next_session_rotation());
+		}
+
 		let next_session = if now > offset {
-			let block_after_last_session = (now - offset) % period;
+			let block_after_last_session = now.saturating_sub(offset) % period;
 			if block_after_last_session > Zero::zero() {
 				now.saturating_add(period.saturating_sub(block_after_last_session))
 			} else {
@@ -248,7 +261,7 @@ impl<T: Config> EstimateNextSessionRotation<T::BlockNumber> for Pallet<T> {
 				// block (depending on being called before or after `session::on_initialize`). Here,
 				// we assume the latter, namely that this is called after `session::on_initialize`,
 				// and thus we add period to it as well.
-				now + period
+				now.saturating_add(period)
 			}
 		} else {
 			offset

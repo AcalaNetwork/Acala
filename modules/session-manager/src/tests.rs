@@ -44,6 +44,12 @@ fn schedule_session_duration_work() {
 		System::assert_last_event(Event::SessionManager(crate::Event::ScheduledSessionDuration(1, 1, 10)));
 		assert_ok!(SessionManager::schedule_session_duration(Origin::root(), 1, 11));
 		System::assert_last_event(Event::SessionManager(crate::Event::ScheduledSessionDuration(10, 1, 11)));
+
+		SessionDuration::<Runtime>::put(0);
+		assert_noop!(
+			SessionManager::schedule_session_duration(Origin::root(), 1, 12),
+			Error::<Runtime>::EstimateNextSessionFailed
+		);
 	});
 }
 
