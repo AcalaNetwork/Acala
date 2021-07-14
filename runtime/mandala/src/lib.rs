@@ -247,7 +247,6 @@ impl pallet_authorship::Config for Runtime {
 parameter_types! {
 	pub const DisabledValidatorsThreshold: Perbill = Perbill::from_percent(33);
 	pub const Period: BlockNumber = DAYS;
-	pub const Offset: BlockNumber = 0;
 }
 
 impl pallet_session::Config for Runtime {
@@ -255,8 +254,8 @@ impl pallet_session::Config for Runtime {
 	type ValidatorId = <Self as frame_system::Config>::AccountId;
 	// we don't have stash and controller, thus we don't need the convert as well.
 	type ValidatorIdOf = module_collator_selection::IdentityCollator;
-	type ShouldEndSession = pallet_session::PeriodicSessions<Period, Offset>;
-	type NextSessionRotation = pallet_session::PeriodicSessions<Period, Offset>;
+	type ShouldEndSession = SessionManager;
+	type NextSessionRotation = SessionManager;
 	type SessionManager = CollatorSelection;
 	// Essentially just Aura, but lets be pedantic.
 	type SessionHandler = <SessionKeys as sp_runtime::traits::OpaqueKeys>::KeyTypeIdProviders;
@@ -1593,6 +1592,12 @@ impl module_evm_bridge::Config for Runtime {
 	type EVM = EVM;
 }
 
+impl module_session_manager::Config for Runtime {
+	type Event = Event;
+	type ValidatorSet = Session;
+	type WeightInfo = weights::module_session_manager::WeightInfo<Runtime>;
+}
+
 parameter_types! {
 	pub const LocalChainId: chainbridge::ChainId = 2;
 	pub const ProposalLifetime: BlockNumber = 15 * MINUTES;
@@ -1986,6 +1991,7 @@ construct_runtime! {
 		Session: pallet_session::{Pallet, Call, Storage, Event, Config<T>} = 192,
 		Aura: pallet_aura::{Pallet, Storage, Config<T>} = 193,
 		AuraExt: cumulus_pallet_aura_ext::{Pallet, Storage, Config} = 194,
+		SessionManager: module_session_manager::{Pallet, Call, Storage, Event<T>, Config<T>} = 195,
 
 		// Dev
 		Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>} = 255,
@@ -2276,6 +2282,7 @@ impl_runtime_apis! {
 			orml_add_benchmark!(params, batches, module_evm_accounts, benchmarking::evm_accounts);
 			orml_add_benchmark!(params, batches, module_homa, benchmarking::homa);
 			orml_add_benchmark!(params, batches, module_currencies, benchmarking::currencies);
+			orml_add_benchmark!(params, batches, module_session_manager, benchmarking::session_manager);
 
 			orml_add_benchmark!(params, batches, orml_tokens, benchmarking::tokens);
 			orml_add_benchmark!(params, batches, orml_vesting, benchmarking::vesting);

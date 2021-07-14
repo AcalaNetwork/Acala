@@ -127,10 +127,10 @@ fn acala_genesis(
 		cent, dollar, get_all_module_accounts, Balance, BalancesConfig, BlockNumber, CdpEngineConfig,
 		CdpTreasuryConfig, CollatorSelectionConfig, DexConfig, EnabledTradingPairs, FinancialCouncilMembershipConfig,
 		GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig, IndicesConfig, NativeTokenExistentialDeposit,
-		OperatorMembershipAcalaConfig, OperatorMembershipBandConfig, OrmlNFTConfig, ParachainInfoConfig,
-		RenVmBridgeConfig, SessionConfig, SessionKeys, StakingPoolConfig, SudoConfig, SystemConfig,
-		TechnicalCommitteeMembershipConfig, TokensConfig, UnreleasedNativeVaultAccountId, VestingConfig, ACA, AUSD,
-		DOT, LDOT, RENBTC,
+		OperatorMembershipAcalaConfig, OperatorMembershipBandConfig, OrmlNFTConfig, ParachainInfoConfig, Period,
+		RenVmBridgeConfig, SessionConfig, SessionKeys, SessionManagerConfig, StakingPoolConfig, SudoConfig,
+		SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, UnreleasedNativeVaultAccountId, VestingConfig,
+		ACA, AUSD, DOT, LDOT, RENBTC,
 	};
 	#[cfg(feature = "std")]
 	use sp_std::collections::btree_map::BTreeMap;
@@ -320,6 +320,9 @@ fn acala_genesis(
 					)
 				})
 				.collect(),
+		},
+		session_manager: SessionManagerConfig {
+			session_duration: Period::get(),
 		},
 		// no need to pass anything to aura, in fact it will panic if we do. Session will take care
 		// of this.

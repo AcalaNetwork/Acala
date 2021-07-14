@@ -148,6 +148,7 @@ dependencies = [
  "module-nominees-election",
  "module-polkadot-bridge",
  "module-prices",
+ "module-session-manager",
  "module-staking-pool",
  "module-staking-pool-rpc-runtime-api",
  "module-support",
@@ -4065,6 +4066,7 @@ dependencies = [
  "module-nominees-election",
  "module-polkadot-bridge",
  "module-prices",
+ "module-session-manager",
  "module-staking-pool",
  "module-staking-pool-rpc-runtime-api",
  "module-support",
@@ -4936,6 +4938,7 @@ dependencies = [
  "module-nominees-election",
  "module-polkadot-bridge",
  "module-prices",
+ "module-session-manager",
  "module-staking-pool",
  "module-staking-pool-rpc-runtime-api",
  "module-support",
@@ -5752,6 +5755,22 @@ dependencies = [
  "sp-core",
  "sp-io",
  "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "module-session-manager"
+version = "1.1.2"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "log",
+ "pallet-session",
+ "parity-scale-codec",
+ "serde",
+ "sp-io",
+ "sp-runtime",
+ "sp-staking",
  "sp-std",
 ]
 
