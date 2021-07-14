@@ -34,7 +34,7 @@
 // --wasm-execution=compiled
 // --heap-pages=4096
 // --template=./templates/runtime-weight-template.hbs
-// --output=./runtime/mandala/src/weights/
+// --output=./
 
 
 #![cfg_attr(rustfmt, rustfmt_skip)]
@@ -58,7 +58,7 @@ impl<T: frame_system::Config> module_homa_lite::WeightInfo for WeightInfo<T> {
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
 	fn claim() -> Weight {
-		(36_000_000 as Weight)
+		(37_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(4 as Weight))
 			.saturating_add(T::DbWeight::get().writes(3 as Weight))
 	}

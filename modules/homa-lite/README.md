@@ -3,13 +3,11 @@
 ## Overview
 The Homa Lite module allows users to upload some Staking currency, and mint some Liquid currency.
 
-### User Functions
-Users can:
+### Signed origin dispatchable calls
 * Request Mint: Request to upload Staking currency.  
 * Claim: After a batch has been processed, the user can claim the Liquid currency minted from the Staking currency uploaded.
 
-### Root Functions 
-The following functions requires ROOT, or more than Half of General Council.
+### Governance origin dispatchable calls 
 * Set Relaychain Stash account: Set the account ID where Uploaded assets are transferred to, to be uploaded onto the Relay chain.
 * issue: For a batch, set the Total issuance of the Staking currency. This will be used to calculate the exchange rate for the Liquid currency.
 
