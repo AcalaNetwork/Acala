@@ -259,12 +259,7 @@ pub struct ExtBuilder {
 impl Default for ExtBuilder {
 	fn default() -> Self {
 		Self {
-			balances: vec![
-				(ALICE, AUSD, 10000),
-				(ALICE, DOT, 1000),
-				(CHARLIE, AUSD, 10000),
-				(CHARLIE, DOT, 1000),
-			],
+			balances: vec![(ALICE, AUSD, 10000), (ALICE, DOT, 1000)],
 			base_weight: 0,
 			byte_fee: 2,
 			weight_to_fee: 1,
