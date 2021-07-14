@@ -136,6 +136,7 @@ ord_parameter_types! {
 
 impl Config for Runtime {
 	type Event = Event;
+	type WeightInfo = ();
 	type Currency = Currencies;
 	type StakingCurrencyId = StakingCurrencyId;
 	type LiquidCurrencyId = LiquidCurrencyId;

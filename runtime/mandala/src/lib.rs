@@ -1276,6 +1276,7 @@ parameter_types! {
 }
 impl module_homa_lite::Config for Runtime {
 	type Event = Event;
+	type WeightInfo = weights::module_homa_lite::WeightInfo<Runtime>;
 	type Currency = Currencies;
 	type StakingCurrencyId = KSM;
 	type LiquidCurrencyId = LKSM;
@@ -2250,6 +2251,8 @@ impl_runtime_apis! {
 			use orml_benchmarking::{add_benchmark as orml_add_benchmark};
 
 			use module_nft::benchmarking::Pallet as NftBench;
+			use module_homa_lite::benchmarking::Pallet as HomaLiteBench;
+
 
 			let whitelist: Vec<TrackedStorageKey> = vec![
 				// Block Number
@@ -2272,6 +2275,7 @@ impl_runtime_apis! {
 			let params = (&config, &whitelist);
 
 			add_benchmark!(params, batches, module_nft, NftBench::<Runtime>);
+			add_benchmark!(params, batches, module_homa_lite, HomaLiteBench::<Runtime>);
 			orml_add_benchmark!(params, batches, module_dex, benchmarking::dex);
 			orml_add_benchmark!(params, batches, module_auction_manager, benchmarking::auction_manager);
 			orml_add_benchmark!(params, batches, module_cdp_engine, benchmarking::cdp_engine);

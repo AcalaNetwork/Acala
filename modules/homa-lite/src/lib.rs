@@ -32,8 +32,10 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
 
+pub mod benchmarking;
 mod mock;
 mod tests;
+pub mod weights;
 
 use frame_support::{pallet_prelude::*, transactional, PalletId};
 use frame_system::{ensure_signed, pallet_prelude::*};
@@ -43,6 +45,7 @@ use sp_runtime::ArithmeticError;
 use sp_std::prelude::*;
 
 pub use module::*;
+pub use weights::WeightInfo;
 
 #[frame_support::pallet]
 pub mod module {
@@ -57,6 +60,9 @@ pub mod module {
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+
+		/// Weight information for the extrinsics in this module.
+		type WeightInfo: WeightInfo;
 
 		/// Multi-currency support for asset management
 		type Currency: MultiCurrency<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
@@ -147,8 +153,7 @@ pub mod module {
 		///
 		/// Parameters:
 		/// - `amount`: The amount of Staking currency to be exchanged.
-		//#[pallet::weight(< T as Config >::WeightInfo::request_mint())]
-		#[pallet::weight(0)]
+		#[pallet::weight(< T as Config >::WeightInfo::request_mint())]
 		#[transactional]
 		pub fn request_mint(origin: OriginFor<T>, amount: Balance) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
@@ -174,8 +179,7 @@ pub mod module {
 		///
 		/// Parameters:
 		/// - `staking_total_issuance`:
-		//#[pallet::weight(< T as Config >::WeightInfo::issue())]
-		#[pallet::weight(0)]
+		#[pallet::weight(< T as Config >::WeightInfo::issue())]
 		#[transactional]
 		pub fn issue(origin: OriginFor<T>, staking_total_issuance: Balance) -> DispatchResultWithPostInfo {
 			T::IssuerOrigin::ensure_origin(origin)?;
@@ -210,8 +214,7 @@ pub mod module {
 		/// Parameters:
 		/// - `who`: The user the claimed Liquid currency is for.
 		/// - `batch`: The batch index the user Staked their tokens.
-		//#[pallet::weight(< T as Config >::WeightInfo::claim())]
-		#[pallet::weight(0)]
+		#[pallet::weight(< T as Config >::WeightInfo::claim())]
 		#[transactional]
 		pub fn claim(origin: OriginFor<T>, who: T::AccountId, batch: EraIndex) -> DispatchResultWithPostInfo {
 			ensure_signed(origin)?;
@@ -242,8 +245,7 @@ pub mod module {
 		///
 		/// Parameters:
 		/// - `new_account_id`: The new relay chain stash account.
-		//#[pallet::weight(< T as Config >::WeightInfo::set_stash_account_id())]
-		#[pallet::weight(0)]
+		#[pallet::weight(< T as Config >::WeightInfo::set_stash_account_id())]
 		#[transactional]
 		pub fn set_stash_account_id(origin: OriginFor<T>, new_account_id: T::AccountId) -> DispatchResultWithPostInfo {
 			// This can only be called by Governance or ROOT.

@@ -5591,6 +5591,7 @@ name = "module-homa-lite"
 version = "1.0.0"
 dependencies = [
  "acala-primitives",
+ "frame-benchmarking",
  "frame-support",
  "frame-system",
  "module-currencies",
