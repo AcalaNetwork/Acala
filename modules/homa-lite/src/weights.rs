@@ -55,7 +55,7 @@ pub trait WeightInfo {
 /// Weight functions for module_homa_lite. Benchmarked using Mandala.
 impl WeightInfo for () {
 	fn request_mint() -> Weight {
-		(20_000_000 as Weight)
+		(19_000_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(3 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
@@ -70,7 +70,7 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().writes(3 as Weight))
 	}
 	fn set_stash_account_id() -> Weight {
-		(12_000_000 as Weight)
+		(11_000_000 as Weight)
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
 }
