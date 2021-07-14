@@ -39,23 +39,26 @@ pub mod weights;
 
 use frame_support::{pallet_prelude::*, transactional, PalletId};
 use frame_system::{ensure_signed, pallet_prelude::*};
+use module_support::Ratio;
 use orml_traits::MultiCurrency;
 use primitives::{Balance, CurrencyId, EraIndex};
-use sp_runtime::ArithmeticError;
+use sp_runtime::{ArithmeticError, FixedPointNumber};
 use sp_std::prelude::*;
 
 pub use module::*;
 pub use weights::WeightInfo;
 
+/// Used to record the total issuance of the currencies during a batch.
+/// This info is used to calculate exchange rate between Staking and Liquid currencies.
+#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq)]
+pub struct TotalIssuanceInfo {
+	pub staking_total: Balance,
+	pub liquid_total: Balance,
+}
+
 #[frame_support::pallet]
 pub mod module {
 	use super::*;
-
-	#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq)]
-	pub struct TotalIssuanceInfo {
-		pub staking_total: Balance,
-		pub liquid_total: Balance,
-	}
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
@@ -91,29 +94,29 @@ pub mod module {
 		/// The current Batch has not been processed, therefore the Liquid currency have not
 		/// been issued yet.
 		LiquidCurrencyNotIssuedForThisBatch,
-		/// The relaychain's stash account have not been set.
-		RelaychainStashAccountNotSet,
+		/// The relay chain's stash account have not been set.
+		RelayChainStashAccountNotSet,
 		/// The total issuance for the Staking currency must be more than zero.
 		InvalidStakedCurrencyTotalIssuance,
 	}
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
-	#[pallet::metadata(Balance = "Balance", T::AccountId = "AccountId")]
+	#[pallet::metadata(T::AccountId = "AccountId")]
 	pub enum Event<T: Config> {
-		/// The user has requested some Staking currency to be used to mint Liquid Currency. [batch,
-		/// user, amount]
+		/// The user has requested some Staking currency to be used to mint Liquid Currency.
+		/// \[batch, user, amount\]
 		MintRequested(EraIndex, T::AccountId, Balance),
 
-		/// The current batch has been processed. Mint requests can now be completed. [batch,
-		/// staking_total_issuance, liquid_total_issuance]
+		/// The current batch has been processed. Mint requests can now be completed. \[batch,
+		/// staking_total_issuance, liquid_total_issuance\]
 		BatchProcessed(EraIndex, Balance, Balance),
 
-		/// The user has claimed some Liquid Currency. [batch, user, amount]
+		/// The user has claimed some Liquid Currency. \[batch, user, amount\]
 		LiquidCurrencyClaimed(EraIndex, T::AccountId, Balance),
 
-		/// The relay-chain's stash account ID has been updated.
-		RelaychainStashAccountUpdated(T::AccountId),
+		/// The relay chain's stash account ID has been updated.\[new_stash_account\]
+		RelayChainStashAccountUpdated(T::AccountId),
 	}
 
 	/// Stores the amount of Staking currency the user has exchanged.
@@ -121,14 +124,13 @@ pub mod module {
 	#[pallet::storage]
 	#[pallet::getter(fn pending_amount)]
 	pub type PendingAmount<T: Config> =
-		StorageDoubleMap<_, Blake2_128Concat, EraIndex, Blake2_128Concat, T::AccountId, Balance, ValueQuery>;
+		StorageDoubleMap<_, Twox64Concat, EraIndex, Blake2_128Concat, T::AccountId, Balance, ValueQuery>;
 
 	/// The total issuance info for each batch. Used to calculate Staking to Liquid exchange rate.
 	/// BatchTotalIssuanceInfo: map: batch: EraIndex -> batch_total: TotalIssuanceInfo
 	#[pallet::storage]
 	#[pallet::getter(fn batch_total_issuance_info)]
-	pub type BatchTotalIssuanceInfo<T: Config> =
-		StorageMap<_, Blake2_128Concat, EraIndex, TotalIssuanceInfo, OptionQuery>;
+	pub type BatchTotalIssuanceInfo<T: Config> = StorageMap<_, Twox64Concat, EraIndex, TotalIssuanceInfo, OptionQuery>;
 
 	/// The batch that is currency active
 	/// CurrentBatch: value: batch: EraIndex
@@ -137,10 +139,10 @@ pub mod module {
 	pub type CurrentBatch<T: Config> = StorageValue<_, EraIndex, ValueQuery>;
 
 	/// The account in which the staking currency goes into to be transferred to the Relay chain.
-	/// RelaychainStashAccount: value: stash_account: AccountId
+	/// RelayChainStashAccount: value: stash_account: AccountId
 	#[pallet::storage]
-	#[pallet::getter(fn relaychain_stash_account)]
-	pub type RelaychainStashAccount<T: Config> = StorageValue<_, T::AccountId, OptionQuery>;
+	#[pallet::getter(fn relay_chain_stash_account)]
+	pub type RelayChainStashAccount<T: Config> = StorageValue<_, T::AccountId, OptionQuery>;
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
@@ -155,80 +157,74 @@ pub mod module {
 		/// - `amount`: The amount of Staking currency to be exchanged.
 		#[pallet::weight(< T as Config >::WeightInfo::request_mint())]
 		#[transactional]
-		pub fn request_mint(origin: OriginFor<T>, amount: Balance) -> DispatchResultWithPostInfo {
+		pub fn request_mint(origin: OriginFor<T>, amount: Balance) -> DispatchResult {
+			let stash_account = Self::relay_chain_stash_account().ok_or(Error::<T>::RelayChainStashAccountNotSet)?;
+
 			let who = ensure_signed(origin)?;
 			let current_batch = Self::current_batch();
 			let staking_currency_id = T::StakingCurrencyId::get();
 
-			let stash_account = &Self::relaychain_stash_account().ok_or(Error::<T>::RelaychainStashAccountNotSet)?;
+			// TODO: Cross-chain transfer to the relay chain via XCM
+			T::Currency::transfer(staking_currency_id, &who, &stash_account, amount)?;
 
-			// TODO: Cross-chain transfer to the Relaychain via XCM
-			T::Currency::transfer(staking_currency_id, &who, &stash_account.clone(), amount)?;
-
-			let current = PendingAmount::<T>::get(current_batch, &who);
-			// Due to the math on Total Issuance, it is literally impossible to overflow here.
-			let new_value = current + amount;
-			PendingAmount::<T>::insert(current_batch, &who, new_value);
+			PendingAmount::<T>::mutate(current_batch, &who, |current| {
+				*current = current.checked_add(amount).expect("Amount should not cause overflow.")
+			});
 
 			Self::deposit_event(Event::<T>::MintRequested(current_batch, who, amount));
-			Ok(().into())
+			Ok(())
 		}
 
 		/// Process a batch.
 		/// It is then that we can issue Liquid currencies.
+		/// Requires `T::IssuerOrigin`
 		///
 		/// Parameters:
-		/// - `staking_total_issuance`:
+		/// - `staking_total`:
 		#[pallet::weight(< T as Config >::WeightInfo::issue())]
 		#[transactional]
-		pub fn issue(origin: OriginFor<T>, staking_total_issuance: Balance) -> DispatchResultWithPostInfo {
+		pub fn issue(origin: OriginFor<T>, staking_total: Balance) -> DispatchResult {
 			T::IssuerOrigin::ensure_origin(origin)?;
+			ensure!(staking_total != 0, Error::<T>::InvalidStakedCurrencyTotalIssuance);
+
 			let current_batch = Self::current_batch();
 
-			ensure!(
-				staking_total_issuance > 0,
-				Error::<T>::InvalidStakedCurrencyTotalIssuance
-			);
-
-			let total_liquid_issuance = T::Currency::total_issuance(T::LiquidCurrencyId::get());
+			let liquid_total = T::Currency::total_issuance(T::LiquidCurrencyId::get());
 			let total_for_batch = TotalIssuanceInfo {
-				staking_total: staking_total_issuance,
-				liquid_total: total_liquid_issuance,
+				staking_total,
+				liquid_total,
 			};
 
 			BatchTotalIssuanceInfo::<T>::insert(&current_batch, total_for_batch);
-			CurrentBatch::<T>::put(current_batch + 1);
+			CurrentBatch::<T>::put(current_batch.checked_add(1).expect("Batch Index should not overflow."));
 
-			Self::deposit_event(Event::<T>::BatchProcessed(
-				current_batch,
-				staking_total_issuance,
-				total_liquid_issuance,
-			));
+			Self::deposit_event(Event::<T>::BatchProcessed(current_batch, staking_total, liquid_total));
 
-			Ok(().into())
+			Ok(())
 		}
 
 		/// A function that allows the user to claim the Liquid currencies minted.
-		/// The amount of liquid currency minted is
+		/// The amount of liquid currency minted is proportional to the ratio of the total issuance
+		/// of the staking and liquid currency.
 		///
 		/// Parameters:
 		/// - `who`: The user the claimed Liquid currency is for.
 		/// - `batch`: The batch index the user Staked their tokens.
 		#[pallet::weight(< T as Config >::WeightInfo::claim())]
 		#[transactional]
-		pub fn claim(origin: OriginFor<T>, who: T::AccountId, batch: EraIndex) -> DispatchResultWithPostInfo {
+		pub fn claim(origin: OriginFor<T>, who: T::AccountId, batch: EraIndex) -> DispatchResult {
 			ensure_signed(origin)?;
-			let staked_amount = PendingAmount::<T>::get(&batch, &who);
+			let staked_amount = Self::pending_amount(&batch, &who);
 			let total_info =
 				Self::batch_total_issuance_info(batch).ok_or(Error::<T>::LiquidCurrencyNotIssuedForThisBatch)?;
 
-			let mul_res = staked_amount
-				.checked_mul(total_info.liquid_total)
+			// liquid_to_mint = staked_amount * liquid_total / staked_total
+			let exchange_ratio = Ratio::checked_from_rational(total_info.liquid_total, total_info.staking_total)
 				.ok_or(ArithmeticError::Overflow)?;
-			let liquid_res = mul_res
-				.checked_div(total_info.staking_total)
+
+			let liquid_to_mint = exchange_ratio
+				.checked_mul_int(staked_amount)
 				.ok_or(ArithmeticError::Overflow)?;
-			let liquid_to_mint = liquid_res;
 
 			// Mint the liquid currency into the user's account.
 			T::Currency::deposit(T::LiquidCurrencyId::get(), &who, liquid_to_mint)?;
@@ -237,23 +233,23 @@ pub mod module {
 
 			Self::deposit_event(Event::<T>::LiquidCurrencyClaimed(batch, who, liquid_to_mint));
 
-			Ok(().into())
+			Ok(())
 		}
 
-		/// Updates the Relaychain Stash Account ID.
-		/// Requires ROOT or Governance.
+		/// Updates the relay chain Stash Account ID.
+		/// Requires `T::GovernanceOrigin`
 		///
 		/// Parameters:
 		/// - `new_account_id`: The new relay chain stash account.
 		#[pallet::weight(< T as Config >::WeightInfo::set_stash_account_id())]
 		#[transactional]
-		pub fn set_stash_account_id(origin: OriginFor<T>, new_account_id: T::AccountId) -> DispatchResultWithPostInfo {
+		pub fn set_stash_account_id(origin: OriginFor<T>, new_account_id: T::AccountId) -> DispatchResult {
 			// This can only be called by Governance or ROOT.
 			T::GovernanceOrigin::ensure_origin(origin)?;
 
-			RelaychainStashAccount::<T>::put(new_account_id.clone());
-			Self::deposit_event(Event::<T>::RelaychainStashAccountUpdated(new_account_id));
-			Ok(().into())
+			RelayChainStashAccount::<T>::put(new_account_id.clone());
+			Self::deposit_event(Event::<T>::RelayChainStashAccountUpdated(new_account_id));
+			Ok(())
 		}
 	}
 }

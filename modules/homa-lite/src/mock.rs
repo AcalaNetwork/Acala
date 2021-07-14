@@ -37,14 +37,19 @@ mod homa_lite {
 	pub use super::super::*;
 }
 
-pub const RELAYCHAIN_STASH: AccountId = AccountId32::new([11u8; 32]);
+pub const RELAY_CHAIN_STASH: AccountId = AccountId32::new([11u8; 32]);
 pub const ROOT: AccountId = AccountId32::new([255u8; 32]);
 pub const ALICE: AccountId = AccountId32::new([1u8; 32]);
 pub const BOB: AccountId = AccountId32::new([2u8; 32]);
 pub const ACALA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const KSM: CurrencyId = CurrencyId::Token(TokenSymbol::KSM);
 pub const LKSM: CurrencyId = CurrencyId::Token(TokenSymbol::LKSM);
-pub const INITIAL_BALANCE: Balance = 1000000;
+pub const INITIAL_BALANCE: Balance = 1_000_000;
+
+/// For testing only. Does not check for overflow.
+pub fn dollar(b: Balance) -> Balance {
+	b * 1_000_000_000_000
+}
 
 parameter_types! {
 	pub const BlockHashCount: u64 = 250;
@@ -169,17 +174,10 @@ pub struct ExtBuilder {
 
 impl Default for ExtBuilder {
 	fn default() -> Self {
+		let initial = dollar(INITIAL_BALANCE);
 		Self {
-			tokens_balances: vec![
-				(ALICE, KSM, INITIAL_BALANCE),
-				(BOB, KSM, INITIAL_BALANCE),
-				(ROOT, LKSM, INITIAL_BALANCE),
-			],
-			native_balances: vec![
-				(ALICE, INITIAL_BALANCE),
-				(BOB, INITIAL_BALANCE),
-				(ROOT, INITIAL_BALANCE),
-			],
+			tokens_balances: vec![(ALICE, KSM, initial), (BOB, KSM, initial), (ROOT, LKSM, initial)],
+			native_balances: vec![(ALICE, initial), (BOB, initial), (ROOT, initial)],
 		}
 	}
 }

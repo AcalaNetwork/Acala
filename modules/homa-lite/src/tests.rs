@@ -23,37 +23,38 @@
 use super::*;
 use frame_support::{assert_noop, assert_ok};
 use mock::{
-	Currencies, Event, ExtBuilder, HomaLite, Origin, Runtime, System, ACALA, ALICE, BOB, INITIAL_BALANCE, KSM, LKSM,
-	RELAYCHAIN_STASH, ROOT,
+	dollar, Currencies, Event, ExtBuilder, HomaLite, Origin, Runtime, System, ACALA, ALICE, BOB, INITIAL_BALANCE, KSM,
+	LKSM, RELAY_CHAIN_STASH, ROOT,
 };
 use sp_runtime::{traits::BadOrigin, ArithmeticError};
 
 #[test]
 fn mock_initialize_token_works() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_eq!(Currencies::free_balance(KSM, &ALICE), INITIAL_BALANCE);
-		assert_eq!(Currencies::free_balance(KSM, &BOB), INITIAL_BALANCE);
-		assert_eq!(Currencies::free_balance(LKSM, &ROOT), INITIAL_BALANCE);
-		assert_eq!(Currencies::free_balance(ACALA, &ALICE), INITIAL_BALANCE);
-		assert_eq!(Currencies::free_balance(ACALA, &BOB), INITIAL_BALANCE);
-		assert_eq!(Currencies::free_balance(ACALA, &ROOT), INITIAL_BALANCE);
+		let initial_dollar = dollar(INITIAL_BALANCE);
+		assert_eq!(Currencies::free_balance(KSM, &ALICE), initial_dollar);
+		assert_eq!(Currencies::free_balance(KSM, &BOB), initial_dollar);
+		assert_eq!(Currencies::free_balance(LKSM, &ROOT), initial_dollar);
+		assert_eq!(Currencies::free_balance(ACALA, &ALICE), initial_dollar);
+		assert_eq!(Currencies::free_balance(ACALA, &BOB), initial_dollar);
+		assert_eq!(Currencies::free_balance(ACALA, &ROOT), initial_dollar);
 	});
 }
 
 #[test]
-fn set_relaychain_stash_works() {
+fn set_relay_chain_stash_works() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_eq!(HomaLite::relaychain_stash_account(), None);
+		assert_eq!(HomaLite::relay_chain_stash_account(), None);
 
 		// Only root/governance can set Stash account.
 		assert_noop!(HomaLite::set_stash_account_id(Origin::signed(ALICE), BOB), BadOrigin);
 
-		assert_ok!(HomaLite::set_stash_account_id(Origin::signed(ROOT), RELAYCHAIN_STASH));
-		assert_eq!(HomaLite::relaychain_stash_account(), Some(RELAYCHAIN_STASH));
+		assert_ok!(HomaLite::set_stash_account_id(Origin::signed(ROOT), RELAY_CHAIN_STASH));
+		assert_eq!(HomaLite::relay_chain_stash_account(), Some(RELAY_CHAIN_STASH));
 
 		assert_eq!(
 			System::events().iter().last().unwrap().event,
-			Event::HomaLite(crate::Event::RelaychainStashAccountUpdated(RELAYCHAIN_STASH))
+			Event::HomaLite(crate::Event::RelayChainStashAccountUpdated(RELAY_CHAIN_STASH))
 		);
 	});
 }
@@ -61,30 +62,32 @@ fn set_relaychain_stash_works() {
 #[test]
 fn request_mint_works() {
 	ExtBuilder::default().build().execute_with(|| {
-		// Setup the Relaychain's stash account.
-		assert_ok!(HomaLite::set_stash_account_id(Origin::signed(ROOT), RELAYCHAIN_STASH));
+		// Setup the relay chain's stash account.
+		assert_ok!(HomaLite::set_stash_account_id(Origin::signed(ROOT), RELAY_CHAIN_STASH));
 		let current_batch = HomaLite::current_batch();
 
+		let amount = dollar(1000);
+
 		assert_noop!(
-			HomaLite::request_mint(Origin::signed(ROOT), 1000),
+			HomaLite::request_mint(Origin::signed(ROOT), amount),
 			orml_tokens::Error::<Runtime>::BalanceTooLow
 		);
 
-		assert_ok!(HomaLite::request_mint(Origin::signed(ALICE), 1000));
-		assert_eq!(PendingAmount::<Runtime>::get(&current_batch, &ALICE), 1000);
+		assert_ok!(HomaLite::request_mint(Origin::signed(ALICE), amount));
+		assert_eq!(PendingAmount::<Runtime>::get(&current_batch, &ALICE), amount);
 		assert_eq!(
 			System::events().iter().last().unwrap().event,
-			Event::HomaLite(crate::Event::MintRequested(current_batch, ALICE, 1000))
+			Event::HomaLite(crate::Event::MintRequested(current_batch, ALICE, amount))
 		);
 	});
 }
 
 #[test]
-fn request_mint_fails_without_relaychain_stash_set() {
+fn request_mint_fails_without_relay_chain_stash_set() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_noop!(
-			HomaLite::request_mint(Origin::signed(ALICE), 1000),
-			Error::<Runtime>::RelaychainStashAccountNotSet
+			HomaLite::request_mint(Origin::signed(ALICE), dollar(1000)),
+			Error::<Runtime>::RelayChainStashAccountNotSet
 		);
 	});
 }
@@ -92,58 +95,58 @@ fn request_mint_fails_without_relaychain_stash_set() {
 #[test]
 fn can_request_mint_more_than_once_in_an_batch() {
 	ExtBuilder::default().build().execute_with(|| {
-		// Setup the Relaychain's stash account.
-		assert_ok!(HomaLite::set_stash_account_id(Origin::signed(ROOT), RELAYCHAIN_STASH));
+		// Setup the relay chain's stash account.
+		assert_ok!(HomaLite::set_stash_account_id(Origin::signed(ROOT), RELAY_CHAIN_STASH));
 		let current_batch = HomaLite::current_batch();
 
-		assert_ok!(HomaLite::request_mint(Origin::signed(ALICE), 1000));
+		assert_ok!(HomaLite::request_mint(Origin::signed(ALICE), dollar(1000)));
 		assert_eq!(
 			System::events().iter().last().unwrap().event,
-			Event::HomaLite(crate::Event::MintRequested(current_batch, ALICE, 1000))
+			Event::HomaLite(crate::Event::MintRequested(current_batch, ALICE, dollar(1000)))
 		);
 
-		assert_ok!(HomaLite::request_mint(Origin::signed(ALICE), 500));
+		assert_ok!(HomaLite::request_mint(Origin::signed(ALICE), dollar(500)));
 		assert_eq!(
 			System::events().iter().last().unwrap().event,
-			Event::HomaLite(crate::Event::MintRequested(current_batch, ALICE, 500))
+			Event::HomaLite(crate::Event::MintRequested(current_batch, ALICE, dollar(500)))
 		);
 
-		assert_eq!(PendingAmount::<Runtime>::get(&current_batch, &ALICE), 1500);
+		assert_eq!(PendingAmount::<Runtime>::get(&current_batch, &ALICE), dollar(1500));
 	});
 }
 
 #[test]
 fn issue_works() {
 	ExtBuilder::default().build().execute_with(|| {
-		// Setup the Relaychain's stash account.
-		assert_ok!(HomaLite::set_stash_account_id(Origin::signed(ROOT), RELAYCHAIN_STASH));
+		// Setup the relay chain's stash account.
+		assert_ok!(HomaLite::set_stash_account_id(Origin::signed(ROOT), RELAY_CHAIN_STASH));
 		let current_batch = HomaLite::current_batch();
 		assert_eq!(current_batch, 0);
 
 		let lksm_issuance = Currencies::total_issuance(LKSM);
-		assert_ok!(HomaLite::request_mint(Origin::signed(ALICE), 1000));
-		assert_ok!(HomaLite::request_mint(Origin::signed(BOB), 500));
+		assert_ok!(HomaLite::request_mint(Origin::signed(ALICE), dollar(1000)));
+		assert_ok!(HomaLite::request_mint(Origin::signed(BOB), dollar(500)));
 
-		assert_ok!(HomaLite::issue(Origin::signed(ROOT), 3000));
+		assert_ok!(HomaLite::issue(Origin::signed(ROOT), dollar(3000)));
 		assert_eq!(
 			System::events().iter().last().unwrap().event,
-			Event::HomaLite(crate::Event::BatchProcessed(0, 3000, lksm_issuance))
+			Event::HomaLite(crate::Event::BatchProcessed(0, dollar(3000), lksm_issuance))
 		);
 
 		assert_eq!(
 			BatchTotalIssuanceInfo::<Runtime>::get(0),
 			Some(TotalIssuanceInfo {
-				staking_total: 3000,
+				staking_total: dollar(3000),
 				liquid_total: lksm_issuance,
 			})
 		);
 		assert_eq!(BatchTotalIssuanceInfo::<Runtime>::get(1), None);
 		assert_eq!(HomaLite::current_batch(), 1);
 
-		assert_ok!(HomaLite::issue(Origin::signed(ROOT), 1));
+		assert_ok!(HomaLite::issue(Origin::signed(ROOT), dollar(1)));
 		assert_eq!(
 			System::events().iter().last().unwrap().event,
-			Event::HomaLite(crate::Event::BatchProcessed(1, 1, lksm_issuance))
+			Event::HomaLite(crate::Event::BatchProcessed(1, dollar(1), lksm_issuance))
 		);
 		assert_eq!(HomaLite::current_batch(), 2);
 	});
@@ -168,16 +171,16 @@ fn issue_can_handle_failed_cases() {
 #[test]
 fn claim_works() {
 	ExtBuilder::default().build().execute_with(|| {
-		// Setup the Relaychain's stash account.
-		assert_ok!(HomaLite::set_stash_account_id(Origin::signed(ROOT), RELAYCHAIN_STASH));
+		// Setup the relay chain's stash account.
+		assert_ok!(HomaLite::set_stash_account_id(Origin::signed(ROOT), RELAY_CHAIN_STASH));
 
 		let lksm_issuance = Currencies::total_issuance(LKSM);
 		let ksm_issuance = lksm_issuance * 5;
-		assert_ok!(HomaLite::request_mint(Origin::signed(ALICE), 1000));
-		assert_ok!(HomaLite::request_mint(Origin::signed(BOB), 5000));
+		assert_ok!(HomaLite::request_mint(Origin::signed(ALICE), dollar(1000)));
+		assert_ok!(HomaLite::request_mint(Origin::signed(BOB), dollar(5000)));
 
-		let alice_yield = 1000 * lksm_issuance / ksm_issuance;
-		let bob_yield = 5000 * lksm_issuance / ksm_issuance;
+		let alice_yield = dollar(1000) * lksm_issuance / ksm_issuance;
+		let bob_yield = dollar(5000) * lksm_issuance / ksm_issuance;
 
 		// Trying to claim without "issue" call will fail
 		assert_noop!(
@@ -207,8 +210,8 @@ fn claim_works() {
 #[test]
 fn claim_can_handle_math_errors() {
 	ExtBuilder::default().build().execute_with(|| {
-		// Setup the Relaychain's stash account.
-		assert_ok!(HomaLite::set_stash_account_id(Origin::signed(ROOT), RELAYCHAIN_STASH));
+		// Setup the relay chain's stash account.
+		assert_ok!(HomaLite::set_stash_account_id(Origin::signed(ROOT), RELAY_CHAIN_STASH));
 
 		// Creates zero total issuance to trigger divide by zero error
 		let zero_issuance = TotalIssuanceInfo {
@@ -217,7 +220,7 @@ fn claim_can_handle_math_errors() {
 		};
 		BatchTotalIssuanceInfo::<Runtime>::insert(0, zero_issuance);
 
-		assert_ok!(HomaLite::request_mint(Origin::signed(ALICE), 1000));
+		assert_ok!(HomaLite::request_mint(Origin::signed(ALICE), dollar(1000)));
 
 		// Now that the liquid currency for Batch 0 is issued, users can claim them.
 		assert_noop!(
@@ -230,11 +233,11 @@ fn claim_can_handle_math_errors() {
 #[test]
 fn repeated_claims_has_no_effect() {
 	ExtBuilder::default().build().execute_with(|| {
-		// Setup the Relaychain's stash account.
-		assert_ok!(HomaLite::set_stash_account_id(Origin::signed(ROOT), RELAYCHAIN_STASH));
+		// Setup the relay chain's stash account.
+		assert_ok!(HomaLite::set_stash_account_id(Origin::signed(ROOT), RELAY_CHAIN_STASH));
 
-		assert_ok!(HomaLite::request_mint(Origin::signed(ALICE), 1000));
-		assert_ok!(HomaLite::issue(Origin::signed(ROOT), 10000));
+		assert_ok!(HomaLite::request_mint(Origin::signed(ALICE), dollar(1000)));
+		assert_ok!(HomaLite::issue(Origin::signed(ROOT), dollar(10000)));
 		assert_ok!(HomaLite::claim(Origin::signed(ALICE), ALICE, 0));
 
 		let alice_balance = Currencies::free_balance(LKSM, &ALICE);
