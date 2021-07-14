@@ -233,13 +233,18 @@ pub mod pallet {
 	}
 
 	#[pallet::event]
-	#[pallet::metadata(T::AccountId = "AccountId", BalanceOf<T> = "Balance")]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
+	#[pallet::metadata(T::AccountId = "AccountId", Vec<T::AccountId> = "Vec<AccountId>", BalanceOf<T> = "Balance")]
 	pub enum Event<T: Config> {
+		/// Invulnurable was updated. \[new_invulnerables\]
 		NewInvulnerables(Vec<T::AccountId>),
+		/// Desired candidates was updated. \[new_desired_candidates\]
 		NewDesiredCandidates(u32),
+		/// Candidacy bond was updated. \[new_candidacy_bond\]
 		NewCandidacyBond(BalanceOf<T>),
+		/// A candidate was added. \[who, bond\]
 		CandidateAdded(T::AccountId, BalanceOf<T>),
+		/// A candidate was removed. \[who\]
 		CandidateRemoved(T::AccountId),
 	}
 

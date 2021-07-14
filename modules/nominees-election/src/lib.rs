@@ -168,8 +168,9 @@ pub mod module {
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
+	#[pallet::metadata(T::AccountId = "AccountId")]
 	pub enum Event<T: Config<I>, I: 'static = ()> {
-		/// rebond. [who, amount]
+		/// rebond. \[who, amount\]
 		Rebond(T::AccountId, Balance),
 	}
 

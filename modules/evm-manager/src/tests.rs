@@ -259,7 +259,7 @@ fn decimals_works() {
 					DexShare::Erc20(erc20_address()),
 					DexShare::Erc20(erc20_address_not_exists())
 				)),
-				None
+				Some(17)
 			);
 		});
 }

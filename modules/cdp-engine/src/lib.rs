@@ -213,6 +213,7 @@ pub mod module {
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
+	#[pallet::metadata(T::AccountId = "AccountId", Option<Rate> = "OptionRate", Option<Ratio> = "OptionRatio")]
 	pub enum Event<T: Config> {
 		/// Liquidate the unsafe CDP. \[collateral_type, owner,
 		/// collateral_amount, bad_debt_value, liquidation_strategy\]
@@ -750,7 +751,7 @@ impl<T: Config> Pallet<T> {
 		let locked_collateral_value = price.saturating_mul_int(collateral_balance);
 		let debit_value = Self::get_debit_value(currency_id, debit_balance);
 
-		Ratio::checked_from_rational(locked_collateral_value, debit_value).unwrap_or_else(Rate::max_value)
+		Ratio::checked_from_rational(locked_collateral_value, debit_value).unwrap_or_else(Ratio::max_value)
 	}
 
 	pub fn adjust_position(

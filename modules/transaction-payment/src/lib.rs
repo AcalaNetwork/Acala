@@ -567,17 +567,24 @@ where
 		charge_fee_order.dedup();
 
 		let price_impact_limit = Some(T::MaxSlippageSwapWithDEX::get());
+		let native_existential_deposit = <T as Config>::Currency::minimum_balance();
+		let total_native = <T as Config>::Currency::total_balance(who);
+		// add the gap amount to keep account alive and have enough fee
+		let fee_and_alive_gap = if total_native < native_existential_deposit {
+			fee.saturating_add(native_existential_deposit.saturating_sub(total_native))
+		} else {
+			fee
+		};
 
 		// iterator charge fee order to get enough fee
 		for currency_id in charge_fee_order {
 			if currency_id == native_currency_id {
 				// check native balance if is enough
-				let native_is_enough =
-					<T as Config>::Currency::free_balance(who)
-						.checked_sub(&fee)
-						.map_or(false, |new_free_balance| {
-							<T as Config>::Currency::ensure_can_withdraw(who, fee, reason, new_free_balance).is_ok()
-						});
+				let native_is_enough = <T as Config>::Currency::free_balance(who)
+					.checked_sub(&fee_and_alive_gap)
+					.map_or(false, |new_free_balance| {
+						<T as Config>::Currency::ensure_can_withdraw(who, fee, reason, new_free_balance).is_ok()
+					});
 				if native_is_enough {
 					// native balance is enough, break iteration
 					break;
@@ -593,7 +600,7 @@ where
 				if T::DEX::swap_with_exact_target(
 					who,
 					&trading_path,
-					fee.unique_saturated_into(),
+					fee_and_alive_gap.unique_saturated_into(),
 					<T as Config>::MultiCurrency::free_balance(currency_id, who),
 					price_impact_limit,
 				)

@@ -9,7 +9,7 @@ assignees: qwer951123, ntduan, shaunxw, wangjj9219
 
 ## New Release Details:
 
-- Scope: (Client only | Runtime only | Full release)
+- Scope: (Client Only | Runtime Only | Full Release)
 - Network: (Mandala | Karura | Acala | All)
 - Client Version: XXX
 - Runtime Version: XXX
@@ -17,11 +17,11 @@ assignees: qwer951123, ntduan, shaunxw, wangjj9219
   -  Diff: https://github.com/AcalaNetwork/Acala/compare/release-karura-XXX...release-karura-XXX
 - Substrate version: [XXX](https://github.com/paritytech/substrate/tree/XXX)
   - Diff: https://github.com/paritytech/substrate/compare/polkadot-vXXX...polkadot-vXXX
-- ORML version: [XXX ](https://github.com/open-web3-stack/open-runtime-module-library/tree/XXX)
+- ORML version: [XXX](https://github.com/open-web3-stack/open-runtime-module-library/tree/XXX)
   - Diff: https://github.com/open-web3-stack/open-runtime-module-library/compare/XXX...XXX
-- Cumulus version: [XXX ](https://github.com/paritytech/cumulus/tree/XXX)
+- Cumulus version: [XXX](https://github.com/paritytech/cumulus/tree/XXX)
   - Diff: https://github.com/paritytech/cumulus/compare/polkadot-vXXX...polkadot-vXXX
-- Polkadot version: [XXX ](https://github.com/paritytech/polkadot/tree/XXX)
+- Polkadot version: [XXX](https://github.com/paritytech/polkadot/tree/XXX)
   - Diff: https://github.com/paritytech/polkadot/compare/release-vXXX...release-vXXX
 - srtool details:
 
@@ -34,6 +34,9 @@ XXX
 ```
 XXX
 ```
+
+- Previous Release: https://github.com/AcalaNetwork/Acala/releases/tag/XXX
+  - Checklist: https://github.com/AcalaNetwork/Acala/issues/XXX
 
 ## Client Release
 
@@ -53,7 +56,7 @@ XXX
   - Last version: XXX
 - [ ] Verify completed migrations are removed from any public networks.
 - [ ] Review subwasm diff
-  - `subwasm diff karura_runtime.compact.compressed.wasm wss://karura-rpc-2.aca-api.network/ws`
+  - `subwasm diff wss://karura-rpc-2.aca-api.network/ws karura_runtime.compact.compressed.wasm`
 - [ ] Verify extrinsic ordering has stayed the same. Bump `transaction_version` if not.
   - [ ] ORML
   - [ ] Substrate
@@ -91,15 +94,11 @@ XXX
 - [ ] acala-subql
 - [ ] oracle dispatcher
 
-### dApps
+### dApps & Wallets
 
 - [ ] polkadot apps
 - [ ] Acala dApp
-
-### Wallets
-
 - [ ] Polkawallet
-- [ ] Feareless
 
 ### Other
 
