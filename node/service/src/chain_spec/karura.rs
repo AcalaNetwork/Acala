@@ -32,8 +32,8 @@ use karura_runtime::{
 	dollar, get_all_module_accounts, Balance, BalancesConfig, BlockNumber, CdpEngineConfig, CdpTreasuryConfig,
 	CollatorSelectionConfig, DexConfig, FinancialCouncilMembershipConfig, GeneralCouncilMembershipConfig,
 	HomaCouncilMembershipConfig, NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OrmlNFTConfig,
-	ParachainInfoConfig, SS58Prefix, SessionConfig, SessionKeys, SudoConfig, SystemConfig,
-	TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig, KAR, KSM, KUSD, LKSM,
+	ParachainInfoConfig, Period, SS58Prefix, SessionConfig, SessionKeys, SessionManagerConfig, SudoConfig,
+	SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig, KAR, KSM, KUSD, LKSM,
 };
 use runtime_common::TokenInfo;
 
@@ -143,12 +143,13 @@ pub fn latest_karura_config() -> Result<ChainSpec, String> {
 				.into_iter()
 				.collect::<Vec<(AccountId, Balance)>>();
 
-			// check total allocated
-			assert_eq!(
-				total_allocated,
-				100_000_000 * dollar(KAR), // 100 million KAR
-				"total allocation must be equal to 100 million KAR"
-			);
+			// no longer needed after genesis is generated, this no longer holds after new changes
+			// // check total allocated
+			// assert_eq!(
+			// 	total_allocated,
+			// 	100_000_000 * dollar(KAR), // 100 million KAR
+			// 	"total allocation must be equal to 100 million KAR"
+			// );
 
 			let vesting_list_json = &include_bytes!("../../../../resources/karura-vesting-KAR.json")[..];
 			let vesting_list: Vec<(AccountId, BlockNumber, BlockNumber, u32, Balance)> =
@@ -306,6 +307,9 @@ fn karura_genesis(
 					)
 				})
 				.collect(),
+		},
+		session_manager: SessionManagerConfig {
+			session_duration: Period::get(),
 		},
 		// no need to pass anything to aura, in fact it will panic if we do. Session will take care
 		// of this.

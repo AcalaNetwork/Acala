@@ -111,7 +111,7 @@ impl orml_tokens::Config for Runtime {
 }
 
 parameter_types! {
-	pub const NativeTokenExistentialDeposit: Balance = 0;
+	pub const NativeTokenExistentialDeposit: Balance = 10;
 	pub const MaxReserves: u32 = 50;
 }
 
@@ -253,6 +253,7 @@ pub struct ExtBuilder {
 	base_weight: u64,
 	byte_fee: u128,
 	weight_to_fee: u128,
+	native_balances: Vec<(AccountId, Balance)>,
 }
 
 impl Default for ExtBuilder {
@@ -262,6 +263,7 @@ impl Default for ExtBuilder {
 			base_weight: 0,
 			byte_fee: 2,
 			weight_to_fee: 1,
+			native_balances: vec![],
 		}
 	}
 }
@@ -279,6 +281,10 @@ impl ExtBuilder {
 		self.weight_to_fee = weight_to_fee;
 		self
 	}
+	pub fn one_hundred_thousand_for_alice_n_charlie(mut self) -> Self {
+		self.native_balances = vec![(ALICE, 100000), (CHARLIE, 100000)];
+		self
+	}
 	fn set_constants(&self) {
 		EXTRINSIC_BASE_WEIGHT.with(|v| *v.borrow_mut() = self.base_weight);
 		TRANSACTION_BYTE_FEE.with(|v| *v.borrow_mut() = self.byte_fee);
@@ -291,7 +297,7 @@ impl ExtBuilder {
 			.unwrap();
 
 		pallet_balances::GenesisConfig::<Runtime> {
-			balances: vec![(ALICE, 100000), (CHARLIE, 100000)],
+			balances: self.native_balances,
 		}
 		.assimilate_storage(&mut t)
 		.unwrap();

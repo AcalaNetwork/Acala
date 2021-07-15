@@ -348,7 +348,7 @@ fn end_provisioning_trading_work() {
 			AUSDBTCPair::get(),
 			1_000_000_000_000u128,
 			2_000_000_000_000u128,
-			4_000_000_000_000u128,
+			2_000_000_000_000u128,
 		)));
 		assert_eq!(
 			DexModule::trading_pair_statuses(AUSDBTCPair::get()),
@@ -356,7 +356,7 @@ fn end_provisioning_trading_work() {
 		);
 		assert_eq!(
 			DexModule::initial_share_exchange_rates(AUSDBTCPair::get()),
-			(ExchangeRate::checked_from_rational(2, 1).unwrap(), ExchangeRate::one())
+			(ExchangeRate::one(), ExchangeRate::checked_from_rational(1, 2).unwrap())
 		);
 		assert_eq!(
 			DexModule::liquidity_pool(AUSDBTCPair::get()),
@@ -364,11 +364,11 @@ fn end_provisioning_trading_work() {
 		);
 		assert_eq!(
 			Tokens::total_issuance(AUSDBTCPair::get().dex_share_currency_id()),
-			4_000_000_000_000u128
+			2_000_000_000_000u128
 		);
 		assert_eq!(
 			Tokens::free_balance(AUSDBTCPair::get().dex_share_currency_id(), &DexModule::account_id()),
-			4_000_000_000_000u128
+			2_000_000_000_000u128
 		);
 	});
 }
@@ -551,7 +551,7 @@ fn claim_dex_share_work() {
 		));
 
 		assert_noop!(
-			DexModule::claim_dex_share(Origin::signed(ALICE), AUSD, DOT),
+			DexModule::claim_dex_share(Origin::signed(ALICE), ALICE, AUSD, DOT),
 			Error::<Runtime>::StillProvisioning
 		);
 
@@ -563,6 +563,10 @@ fn claim_dex_share_work() {
 
 		let lp_currency_id = AUSDDOTPair::get().dex_share_currency_id();
 
+		assert_eq!(
+			InitialShareExchangeRates::<Runtime>::contains_key(AUSDDOTPair::get()),
+			true
+		);
 		assert_eq!(
 			DexModule::initial_share_exchange_rates(AUSDDOTPair::get()),
 			(ExchangeRate::one(), ExchangeRate::saturating_from_rational(5, 1))
@@ -585,7 +589,7 @@ fn claim_dex_share_work() {
 		let alice_ref_count_0 = System::consumers(&ALICE);
 		let bob_ref_count_0 = System::consumers(&BOB);
 
-		assert_ok!(DexModule::claim_dex_share(Origin::signed(ALICE), AUSD, DOT));
+		assert_ok!(DexModule::claim_dex_share(Origin::signed(ALICE), ALICE, AUSD, DOT));
 		assert_eq!(
 			Tokens::free_balance(lp_currency_id, &DexModule::account_id()),
 			8_000_000_000_000_000u128
@@ -593,17 +597,25 @@ fn claim_dex_share_work() {
 		assert_eq!(DexModule::provisioning_pool(AUSDDOTPair::get(), ALICE), (0, 0));
 		assert_eq!(Tokens::free_balance(lp_currency_id, &ALICE), 2_000_000_000_000_000u128);
 		assert_eq!(System::consumers(&ALICE), alice_ref_count_0 - 1);
+		assert_eq!(
+			InitialShareExchangeRates::<Runtime>::contains_key(AUSDDOTPair::get()),
+			true
+		);
 
 		assert_ok!(DexModule::disable_trading_pair(
 			Origin::signed(ListingOrigin::get()),
 			AUSD,
 			DOT
 		));
-		assert_ok!(DexModule::claim_dex_share(Origin::signed(BOB), AUSD, DOT));
+		assert_ok!(DexModule::claim_dex_share(Origin::signed(BOB), BOB, AUSD, DOT));
 		assert_eq!(Tokens::free_balance(lp_currency_id, &DexModule::account_id()), 0);
 		assert_eq!(DexModule::provisioning_pool(AUSDDOTPair::get(), BOB), (0, 0));
 		assert_eq!(Tokens::free_balance(lp_currency_id, &BOB), 8_000_000_000_000_000u128);
 		assert_eq!(System::consumers(&BOB), bob_ref_count_0 - 1);
+		assert_eq!(
+			InitialShareExchangeRates::<Runtime>::contains_key(AUSDDOTPair::get()),
+			false
+		);
 	});
 }
 
@@ -768,10 +780,14 @@ fn _swap_work() {
 			LiquidityPool::<Runtime>::insert(AUSDDOTPair::get(), (50000, 10000));
 
 			assert_eq!(DexModule::get_liquidity(AUSD, DOT), (50000, 10000));
-			DexModule::_swap(AUSD, DOT, 1000, 1000);
-			assert_eq!(DexModule::get_liquidity(AUSD, DOT), (51000, 9000));
-			DexModule::_swap(DOT, AUSD, 100, 800);
-			assert_eq!(DexModule::get_liquidity(AUSD, DOT), (50200, 9100));
+			assert_noop!(
+				DexModule::_swap(AUSD, DOT, 50000, 5001),
+				Error::<Runtime>::InvariantCheckFailed
+			);
+			assert_ok!(DexModule::_swap(AUSD, DOT, 50000, 5000));
+			assert_eq!(DexModule::get_liquidity(AUSD, DOT), (100000, 5000));
+			assert_ok!(DexModule::_swap(DOT, AUSD, 100, 800));
+			assert_eq!(DexModule::get_liquidity(AUSD, DOT), (99200, 5100));
 		});
 }
 
@@ -786,11 +802,11 @@ fn _swap_by_path_work() {
 
 			assert_eq!(DexModule::get_liquidity(AUSD, DOT), (50000, 10000));
 			assert_eq!(DexModule::get_liquidity(AUSD, BTC), (100000, 10));
-			DexModule::_swap_by_path(&vec![DOT, AUSD], &vec![10000, 25000]);
+			assert_ok!(DexModule::_swap_by_path(&vec![DOT, AUSD], &vec![10000, 25000]));
 			assert_eq!(DexModule::get_liquidity(AUSD, DOT), (25000, 20000));
-			DexModule::_swap_by_path(&vec![DOT, AUSD, BTC], &vec![4000, 10000, 2]);
-			assert_eq!(DexModule::get_liquidity(AUSD, DOT), (15000, 24000));
-			assert_eq!(DexModule::get_liquidity(AUSD, BTC), (110000, 8));
+			assert_ok!(DexModule::_swap_by_path(&vec![DOT, AUSD, BTC], &vec![100000, 20000, 1]));
+			assert_eq!(DexModule::get_liquidity(AUSD, DOT), (5000, 120000));
+			assert_eq!(DexModule::get_liquidity(AUSD, BTC), (120000, 9));
 		});
 }
 
@@ -870,6 +886,11 @@ fn add_liquidity_work() {
 			assert_eq!(Tokens::free_balance(DOT, &BOB), 1_000_000_000_000_000_000);
 
 			assert_noop!(
+				DexModule::add_liquidity(Origin::signed(BOB), AUSD, DOT, 4, 1, 0, true,),
+				Error::<Runtime>::InvalidLiquidityIncrement,
+			);
+
+			assert_noop!(
 				DexModule::add_liquidity(
 					Origin::signed(BOB),
 					AUSD,
@@ -881,6 +902,7 @@ fn add_liquidity_work() {
 				),
 				Error::<Runtime>::UnacceptableShareIncrement
 			);
+
 			assert_ok!(DexModule::add_liquidity(
 				Origin::signed(BOB),
 				AUSD,
@@ -1374,7 +1396,7 @@ fn initialize_added_liquidity_pools_genesis_work() {
 			assert_eq!(Tokens::free_balance(DOT, &DexModule::account_id()), 3000000);
 			assert_eq!(
 				Tokens::free_balance(AUSDDOTPair::get().dex_share_currency_id(), &ALICE),
-				4000000
+				2000000
 			);
 		});
 }

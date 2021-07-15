@@ -163,6 +163,7 @@ impl Decode for TradingPair {
 }
 
 #[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord, MaxEncodedLen)]
+#[repr(u8)]
 pub enum ReserveIdentifier {
 	CollatorSelection,
 	EvmStorageDeposit,
@@ -170,6 +171,9 @@ pub enum ReserveIdentifier {
 	Honzon,
 	Nft,
 	TransactionPayment,
+
+	// always the last, indicate number of variants
+	Count,
 }
 
 /// Ethereum precompiles

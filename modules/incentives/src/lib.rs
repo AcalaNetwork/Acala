@@ -169,6 +169,7 @@ pub mod module {
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
+	#[pallet::metadata(T::AccountId = "AccountId", PoolId<T::RelaychainAccountId> = "PoolId")]
 	pub enum Event<T: Config> {
 		/// Deposit DEX share. \[who, dex_share_type, deposit_amount\]
 		DepositDexShare(T::AccountId, CurrencyId, Balance),
