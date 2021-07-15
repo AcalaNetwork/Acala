@@ -2,9 +2,8 @@ name: coverage
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - master
+  schedule:
+    - cron: "00 06 * * 1" # 6AM weekly on monday
 
 jobs:
   test:
