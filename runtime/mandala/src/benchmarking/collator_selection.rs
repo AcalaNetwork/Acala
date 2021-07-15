@@ -157,6 +157,7 @@ runtime_benchmarks! {
 		module_collator_selection::DesiredCandidates::<Runtime>::put(c);
 		register_candidates(c);
 
+		module_session_manager::SessionDuration::<Runtime>::put(Period::get());
 		let leaving = module_collator_selection::Candidates::<Runtime>::get().into_iter().last().unwrap();
 		whitelist_account!(leaving);
 		CollatorSelection::leave_intent(RawOrigin::Signed(leaving.clone()).into())?;
@@ -210,6 +211,7 @@ runtime_benchmarks! {
 		System::set_block_number(0u32.into());
 		register_candidates(c);
 
+		module_session_manager::SessionDuration::<Runtime>::put(Period::get());
 		System::set_block_number(20u32.into());
 		Session::on_initialize(Period::get());
 		Session::on_initialize(2*Period::get());
