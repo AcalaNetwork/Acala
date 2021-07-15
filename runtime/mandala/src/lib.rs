@@ -1968,7 +1968,7 @@ construct_runtime! {
 		CompoundCash: ecosystem_compound_cash::{Pallet, Storage, Event<T>} = 154,
 
 		// Parachain
-		ParachainSystem: cumulus_pallet_parachain_system::{Pallet, Call, Storage, Inherent, Config, Event<T>, ValidateUnsigned} = 160,
+		ParachainSystem: cumulus_pallet_parachain_system::{Pallet, Call, Storage, Inherent, Config, Event<T>} = 160,
 		ParachainInfo: parachain_info::{Pallet, Storage, Config} = 161,
 
 		// XCM
@@ -2045,8 +2045,9 @@ impl_runtime_apis! {
 		fn validate_transaction(
 			source: TransactionSource,
 			tx: <Block as BlockT>::Extrinsic,
+			block_hash: <Block as BlockT>::Hash,
 		) -> TransactionValidity {
-			Executive::validate_transaction(source, tx)
+			Executive::validate_transaction(source, tx, block_hash)
 		}
 	}
 

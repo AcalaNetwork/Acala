@@ -334,7 +334,7 @@ impl<T: Config> Pallet<T> {
 
 		// get to_be_continue record,
 		// if it exsits, iterator map storage start with previous key
-		let start_key = to_be_continue.get::<Vec<u8>>().flatten();
+		let start_key = to_be_continue.get::<Vec<u8>>().unwrap_or_default();
 
 		// get the max iterationns config
 		let max_iterations = StorageValueRef::persistent(&OFFCHAIN_WORKER_MAX_ITERATIONS)

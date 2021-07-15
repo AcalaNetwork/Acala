@@ -616,7 +616,7 @@ impl<T: Config> Pallet<T> {
 
 		// get to_be_continue record
 		let (collateral_position, start_key) =
-			if let Some(Some((last_collateral_position, maybe_last_iterator_previous_key))) =
+			if let Ok(Some((last_collateral_position, maybe_last_iterator_previous_key))) =
 				to_be_continue.get::<(u32, Option<Vec<u8>>)>()
 			{
 				(last_collateral_position, maybe_last_iterator_previous_key)
