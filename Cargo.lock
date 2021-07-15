@@ -9349,6 +9349,8 @@ dependencies = [
  "orml-tokens",
  "orml-traits",
  "pallet-balances",
+ "pallet-collective",
+ "pallet-membership",
  "pallet-proxy",
  "pallet-scheduler",
  "pallet-timestamp",
