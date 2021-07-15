@@ -14,6 +14,12 @@ jobs:
     env:
       SCCACHE_CACHE_SIZE: "50G"
     steps:
+    - name: Cancel Previous Runs
+      # Only cancel non-master branch runs
+      if: ${{ github.ref != 'refs/heads/master' }}
+      uses: styfle/cancel-workflow-action@0.9.0
+      with:
+        access_token: ${{ github.token }}
     - uses: actions/checkout@v2
       with:
         submodules: recursive
