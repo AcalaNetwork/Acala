@@ -386,7 +386,7 @@ impl<T: Config> Pallet<T> {
 		// Fund locked. Now reduce the supply caps
 		SupplyCaps::<T>::insert(&currency_id, current_supply_cap - locked_amount);
 
-		// Emmit an event
+		// emit an event
 		Self::deposit_event(Event::<T>::AssetLockedTo(currency_id, locked_amount, to));
 
 		Ok(().into())
@@ -409,7 +409,7 @@ impl<T: Config> Pallet<T> {
 			}
 		}?;
 
-		// Emmit an event
+		// emit an event
 		Self::deposit_event(Event::<T>::AssetUnlocked(currency_id, unlock_amount, to));
 
 		Ok(().into())

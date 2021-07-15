@@ -168,6 +168,7 @@ parameter_types! {
 	pub UnreleasedNativeVaultAccountId: AccountId = PalletId(*b"aca/urls").into_account();
 	// Ecosystem modules
 	pub const StarportPalletId: PalletId = PalletId(*b"aca/stpt");
+	pub const HomaLitePalletId: PalletId = PalletId(*b"aca/hmlt");
 }
 
 pub fn get_all_module_accounts() -> Vec<AccountId> {
@@ -1269,6 +1270,21 @@ impl module_homa::Config for Runtime {
 }
 
 parameter_types! {
+	pub const KSM: CurrencyId = CurrencyId::Token(TokenSymbol::KSM);
+	pub const LKSM: CurrencyId = CurrencyId::Token(TokenSymbol::LKSM);
+}
+impl module_homa_lite::Config for Runtime {
+	type Event = Event;
+	type WeightInfo = weights::module_homa_lite::WeightInfo<Runtime>;
+	type Currency = Currencies;
+	type StakingCurrencyId = KSM;
+	type LiquidCurrencyId = LKSM;
+	type PalletId = HomaLitePalletId;
+	type IssuerOrigin = EnsureRootOrHalfGeneralCouncil;
+	type GovernanceOrigin = EnsureRootOrHalfGeneralCouncil;
+}
+
+parameter_types! {
 	pub MinCouncilBondThreshold: Balance = dollar(LDOT);
 	pub const NominateesCount: u32 = 7;
 	pub const MaxUnlockingChunks: u32 = 7;
@@ -1959,6 +1975,7 @@ construct_runtime! {
 		StakingPool: module_staking_pool::{Pallet, Call, Storage, Event<T>, Config} = 132,
 		PolkadotBridge: module_polkadot_bridge::{Pallet, Call, Storage} = 133,
 		HomaValidatorListModule: module_homa_validator_list::{Pallet, Call, Storage, Event<T>} = 134,
+		HomaLite: module_homa_lite::{Pallet, Call, Storage, Event<T>} = 135,
 
 		// Acala Other
 		Incentives: module_incentives::{Pallet, Storage, Call, Event<T>} = 140,
@@ -2252,6 +2269,8 @@ impl_runtime_apis! {
 			use orml_benchmarking::{add_benchmark as orml_add_benchmark};
 
 			use module_nft::benchmarking::Pallet as NftBench;
+			use module_homa_lite::benchmarking::Pallet as HomaLiteBench;
+
 
 			let whitelist: Vec<TrackedStorageKey> = vec![
 				// Block Number
@@ -2274,6 +2293,7 @@ impl_runtime_apis! {
 			let params = (&config, &whitelist);
 
 			add_benchmark!(params, batches, module_nft, NftBench::<Runtime>);
+			add_benchmark!(params, batches, module_homa_lite, HomaLiteBench::<Runtime>);
 			orml_add_benchmark!(params, batches, module_dex, benchmarking::dex);
 			orml_add_benchmark!(params, batches, module_auction_manager, benchmarking::auction_manager);
 			orml_add_benchmark!(params, batches, module_cdp_engine, benchmarking::cdp_engine);

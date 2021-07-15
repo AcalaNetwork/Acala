@@ -4921,6 +4921,7 @@ dependencies = [
  "module-evm-manager",
  "module-evm-rpc-runtime-api",
  "module-homa",
+ "module-homa-lite",
  "module-homa-validator-list",
  "module-honzon",
  "module-incentives",
@@ -5576,6 +5577,26 @@ dependencies = [
  "module-support",
  "parity-scale-codec",
  "serde",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "module-homa-lite"
+version = "1.0.0"
+dependencies = [
+ "acala-primitives",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "module-currencies",
+ "module-support",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "parity-scale-codec",
+ "sp-core",
+ "sp-io",
  "sp-runtime",
  "sp-std",
 ]
