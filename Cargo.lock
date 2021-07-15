@@ -2267,7 +2267,7 @@ dependencies = [
 
 [[package]]
 name = "ecosystem-compound-cash"
-version = "1.0.0"
+version = "1.2.0"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -2304,7 +2304,7 @@ dependencies = [
 
 [[package]]
 name = "ecosystem-starport"
-version = "1.0.0"
+version = "1.2.0"
 dependencies = [
  "acala-primitives",
  "frame-support",
