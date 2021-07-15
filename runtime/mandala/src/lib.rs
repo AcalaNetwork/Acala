@@ -1843,6 +1843,11 @@ impl orml_unknown_tokens::Config for Runtime {
 	type Event = Event;
 }
 
+impl orml_xcm::Config for Runtime {
+	type Event = Event;
+	type SovereignOrigin = EnsureRootOrHalfGeneralCouncil;
+}
+
 impl cumulus_pallet_aura_ext::Config for Runtime {}
 
 /// The address format for describing accounts.
@@ -1978,6 +1983,7 @@ construct_runtime! {
 		DmpQueue: cumulus_pallet_dmp_queue::{Pallet, Call, Storage, Event<T>} = 173,
 		XTokens: orml_xtokens::{Pallet, Storage, Call, Event<T>} = 174,
 		UnknownTokens: orml_unknown_tokens::{Pallet, Storage, Event} = 175,
+		OrmlXcm: orml_xcm::{Pallet, Call, Event<T>} = 176,
 
 		// Smart contracts
 		EVM: module_evm::{Pallet, Config<T>, Call, Storage, Event<T>} = 180,
