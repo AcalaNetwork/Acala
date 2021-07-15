@@ -34,6 +34,7 @@ members = [
 	"orml/vesting",
 	"orml/weight-gen",
 	"orml/weight-meter",
+	"orml/xcm",
 	"orml/xtokens",
 	"orml/xcm-support",
 	"orml/unknown-tokens",
