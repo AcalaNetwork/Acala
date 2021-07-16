@@ -128,10 +128,6 @@ pub mod module {
 		#[pallet::constant]
 		type NativeRewardsSource: Get<Self::AccountId>;
 
-		/// The vault account to keep rewards.
-		#[pallet::constant]
-		type RewardsVaultAccountId: Get<Self::AccountId>;
-
 		/// The origin which may update incentive related params
 		type UpdateOrigin: EnsureOrigin<Self::Origin>;
 
@@ -238,7 +234,7 @@ pub mod module {
 									let res = T::Currency::transfer(
 										native_currency_id,
 										&T::NativeRewardsSource::get(),
-										&T::RewardsVaultAccountId::get(),
+										&Self::account_id(),
 										incentive_reward_amount,
 									);
 									match res {
@@ -253,7 +249,7 @@ pub mod module {
 												target: "incentives",
 												"transfer: failed to transfer {:?} {:?} from {:?} to {:?}: {:?}. \
 												This is unexpected but should be safe",
-												incentive_reward_amount, native_currency_id, T::NativeRewardsSource::get(), T::RewardsVaultAccountId::get(), e
+												incentive_reward_amount, native_currency_id, T::NativeRewardsSource::get(), Self::account_id(), e
 											);
 										}
 									}
@@ -282,7 +278,7 @@ pub mod module {
 										// issue stable coin without backing.
 										if !dex_saving_reward_amount.is_zero() {
 											let res = T::CDPTreasury::issue_debit(
-												&T::RewardsVaultAccountId::get(),
+												&Self::account_id(),
 												dex_saving_reward_amount,
 												false,
 											);
@@ -298,7 +294,7 @@ pub mod module {
 														target: "incentives",
 														"issue_debit: failed to issue {:?} unbacked stable to {:?}: {:?}. \
 														This is unexpected but should be safe",
-														dex_saving_reward_amount, T::RewardsVaultAccountId::get(), e
+														dex_saving_reward_amount, Self::account_id(), e
 													);
 												}
 											}
@@ -433,12 +429,7 @@ pub mod module {
 
 			match pool_id {
 				PoolId::HomaValidatorAllowance(_) => {
-					T::Currency::transfer(
-						T::LiquidCurrencyId::get(),
-						&who,
-						&T::RewardsVaultAccountId::get(),
-						amount,
-					)?;
+					T::Currency::transfer(T::LiquidCurrencyId::get(), &who, &Self::account_id(), amount)?;
 					<orml_rewards::Pallet<T>>::accumulate_reward(&pool_id, amount);
 				}
 				_ => {
@@ -563,13 +554,13 @@ impl<T: Config> RewardHandler<T::AccountId> for Pallet<T> {
 		// payout the reward(exclude deduction) to user from the pool. it should not affect the
 		// process, ignore the result to continue. if it fails, just the user will not
 		// be rewarded, there will not increase user balance.
-		let res = T::Currency::transfer(currency_id, &T::RewardsVaultAccountId::get(), &who, actual_payout);
+		let res = T::Currency::transfer(currency_id, &Self::account_id(), &who, actual_payout);
 		if let Err(e) = res {
 			log::warn!(
 				target: "incentives",
 				"transfer: failed to transfer {:?} {:?} from {:?} to {:?}: {:?}. \
 				This is unexpected but should be safe",
-				actual_payout, currency_id, T::RewardsVaultAccountId::get(), who, e
+				actual_payout, currency_id, Self::account_id(), who, e
 			);
 			debug_assert!(false);
 		}
