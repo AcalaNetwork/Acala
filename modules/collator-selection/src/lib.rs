@@ -76,7 +76,6 @@ pub mod weights;
 pub mod pallet {
 	pub use crate::weights::WeightInfo;
 	use frame_support::{
-		dispatch::DispatchResultWithPostInfo,
 		inherent::Vec,
 		pallet_prelude::*,
 		storage::bounded_btree_set::BoundedBTreeSet,
@@ -294,32 +293,32 @@ pub mod pallet {
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight(T::WeightInfo::set_invulnerables(new.len() as u32))]
-		pub fn set_invulnerables(origin: OriginFor<T>, new: Vec<T::AccountId>) -> DispatchResultWithPostInfo {
+		pub fn set_invulnerables(origin: OriginFor<T>, new: Vec<T::AccountId>) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
 			let bounded_new: BoundedVec<T::AccountId, T::MaxInvulnerables> =
 				new.try_into().map_err(|_| Error::<T>::MaxInvulnerablesExceeded)?;
 			<Invulnerables<T>>::put(&bounded_new);
 			Self::deposit_event(Event::NewInvulnerables(bounded_new.into_inner()));
-			Ok(().into())
+			Ok(())
 		}
 
 		#[pallet::weight(T::WeightInfo::set_desired_candidates())]
-		pub fn set_desired_candidates(origin: OriginFor<T>, max: u32) -> DispatchResultWithPostInfo {
+		pub fn set_desired_candidates(origin: OriginFor<T>, max: u32) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
 			if max > T::MaxCandidates::get() {
 				Err(Error::<T>::MaxCandidatesExceeded)?;
 			}
 			<DesiredCandidates<T>>::put(&max);
 			Self::deposit_event(Event::NewDesiredCandidates(max));
-			Ok(().into())
+			Ok(())
 		}
 
 		#[pallet::weight(T::WeightInfo::set_candidacy_bond())]
-		pub fn set_candidacy_bond(origin: OriginFor<T>, bond: BalanceOf<T>) -> DispatchResultWithPostInfo {
+		pub fn set_candidacy_bond(origin: OriginFor<T>, bond: BalanceOf<T>) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
 			<CandidacyBond<T>>::put(&bond);
 			Self::deposit_event(Event::NewCandidacyBond(bond));
-			Ok(().into())
+			Ok(())
 		}
 
 		#[pallet::weight(T::WeightInfo::register_as_candidate(T::MaxCandidates::get()))]

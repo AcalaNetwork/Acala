@@ -83,10 +83,10 @@ pub mod module {
 		/// - `amount`: the DOT amount to inject into staking pool.
 		#[pallet::weight(<T as Config>::WeightInfo::mint())]
 		#[transactional]
-		pub fn mint(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResultWithPostInfo {
+		pub fn mint(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			T::Homa::mint(&who, amount)?;
-			Ok(().into())
+			Ok(())
 		}
 
 		/// Burn LDOT and redeem DOT from staking pool.
@@ -103,7 +103,7 @@ pub mod module {
 			origin: OriginFor<T>,
 			#[pallet::compact] amount: Balance,
 			strategy: RedeemStrategy,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			match strategy {
 				RedeemStrategy::Immediately => {
@@ -116,16 +116,16 @@ pub mod module {
 					T::Homa::redeem_by_unbond(&who, amount)?;
 				}
 			}
-			Ok(().into())
+			Ok(())
 		}
 
 		/// Get back those DOT that have been unbonded.
 		#[pallet::weight(<T as Config>::WeightInfo::withdraw_redemption())]
 		#[transactional]
-		pub fn withdraw_redemption(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
+		pub fn withdraw_redemption(origin: OriginFor<T>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			T::Homa::withdraw_redemption(&who)?;
-			Ok(().into())
+			Ok(())
 		}
 	}
 }

@@ -129,7 +129,7 @@ pub mod module {
 		/// The dispatch origin of this call must be `ShutdownOrigin`.
 		#[pallet::weight((T::WeightInfo::emergency_shutdown(T::CollateralCurrencyIds::get().len() as u32), DispatchClass::Operational))]
 		#[transactional]
-		pub fn emergency_shutdown(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
+		pub fn emergency_shutdown(origin: OriginFor<T>) -> DispatchResult {
 			T::ShutdownOrigin::ensure_origin(origin)?;
 			ensure!(!Self::is_shutdown(), Error::<T>::AlreadyShutdown);
 
@@ -143,7 +143,7 @@ pub mod module {
 
 			IsShutdown::<T>::put(true);
 			Self::deposit_event(Event::Shutdown(<frame_system::Pallet<T>>::block_number()));
-			Ok(().into())
+			Ok(())
 		}
 
 		/// Open final redemption if settlement is completed.
@@ -151,7 +151,7 @@ pub mod module {
 		/// The dispatch origin of this call must be `ShutdownOrigin`.
 		#[pallet::weight((T::WeightInfo::open_collateral_refund(), DispatchClass::Operational))]
 		#[transactional]
-		pub fn open_collateral_refund(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
+		pub fn open_collateral_refund(origin: OriginFor<T>) -> DispatchResult {
 			T::ShutdownOrigin::ensure_origin(origin)?;
 			ensure!(Self::is_shutdown(), Error::<T>::MustAfterShutdown); // must after shutdown
 
@@ -176,7 +176,7 @@ pub mod module {
 			// Open refund stage
 			CanRefund::<T>::put(true);
 			Self::deposit_event(Event::OpenRefund(<frame_system::Pallet<T>>::block_number()));
-			Ok(().into())
+			Ok(())
 		}
 
 		/// Refund a basket of remaining collateral assets to caller
@@ -184,10 +184,7 @@ pub mod module {
 		/// - `amount`: stable currency amount used to refund.
 		#[pallet::weight(T::WeightInfo::refund_collaterals(T::CollateralCurrencyIds::get().len() as u32))]
 		#[transactional]
-		pub fn refund_collaterals(
-			origin: OriginFor<T>,
-			#[pallet::compact] amount: Balance,
-		) -> DispatchResultWithPostInfo {
+		pub fn refund_collaterals(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			ensure!(Self::can_refund(), Error::<T>::CanNotRefund);
 
@@ -210,7 +207,7 @@ pub mod module {
 			}
 
 			Self::deposit_event(Event::Refund(who, amount, refund_assets));
-			Ok(().into())
+			Ok(())
 		}
 	}
 }

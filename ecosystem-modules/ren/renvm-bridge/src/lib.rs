@@ -178,7 +178,7 @@ pub mod module {
 			#[pallet::compact] amount: Balance,
 			_n_hash: [u8; 32],
 			sig: EcdsaSignature,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			ensure_none(origin)?;
 			Self::do_mint(&who, amount, &sig)?;
 
@@ -196,16 +196,12 @@ pub mod module {
 			);
 			Self::deposit_event(Event::Minted(who, amount));
 
-			Ok(().into())
+			Ok(())
 		}
 
 		/// Allow a user to burn assets.
 		#[pallet::weight(10_000)]
-		pub fn burn(
-			origin: OriginFor<T>,
-			to: DestAddress,
-			#[pallet::compact] amount: Balance,
-		) -> DispatchResultWithPostInfo {
+		pub fn burn(origin: OriginFor<T>, to: DestAddress, #[pallet::compact] amount: Balance) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
 
 			NextBurnEventId::<T>::try_mutate(|id| -> DispatchResult {
@@ -219,7 +215,7 @@ pub mod module {
 				Ok(())
 			})?;
 
-			Ok(().into())
+			Ok(())
 		}
 
 		/// Allow RenVm rotate the public key.
@@ -228,12 +224,12 @@ pub mod module {
 		///
 		/// Verify input by `validate_unsigned`
 		#[pallet::weight(10_000)]
-		pub fn rotate_key(origin: OriginFor<T>, new_key: PublicKey, sig: EcdsaSignature) -> DispatchResultWithPostInfo {
+		pub fn rotate_key(origin: OriginFor<T>, new_key: PublicKey, sig: EcdsaSignature) -> DispatchResult {
 			ensure_none(origin)?;
 			Self::do_rotate_key(new_key, sig);
 			Self::deposit_event(Event::RotatedKey(new_key));
 
-			Ok(().into())
+			Ok(())
 		}
 	}
 

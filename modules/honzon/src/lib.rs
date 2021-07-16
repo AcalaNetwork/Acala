@@ -137,7 +137,7 @@ pub mod module {
 			currency_id: CurrencyId,
 			collateral_adjustment: Amount,
 			debit_adjustment: Amount,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
 			// not allowed to adjust the debit after system shutdown
@@ -145,7 +145,7 @@ pub mod module {
 				ensure!(!T::EmergencyShutdown::is_shutdown(), Error::<T>::AlreadyShutdown);
 			}
 			<cdp_engine::Pallet<T>>::adjust_position(&who, currency_id, collateral_adjustment, debit_adjustment)?;
-			Ok(().into())
+			Ok(())
 		}
 
 		#[pallet::weight(<T as Config>::WeightInfo::close_loan_has_debit_by_dex(
@@ -156,11 +156,11 @@ pub mod module {
 			origin: OriginFor<T>,
 			currency_id: CurrencyId,
 			maybe_path: Option<Vec<CurrencyId>>,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			ensure!(!T::EmergencyShutdown::is_shutdown(), Error::<T>::AlreadyShutdown);
 			<cdp_engine::Pallet<T>>::close_cdp_has_debit_by_dex(who, currency_id, maybe_path.as_deref())?;
-			Ok(().into())
+			Ok(())
 		}
 
 		/// Transfer the whole CDP of `from` under `currency_id` to caller's CDP
@@ -175,13 +175,13 @@ pub mod module {
 			origin: OriginFor<T>,
 			currency_id: CurrencyId,
 			from: <T::Lookup as StaticLookup>::Source,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			let to = ensure_signed(origin)?;
 			let from = T::Lookup::lookup(from)?;
 			ensure!(!T::EmergencyShutdown::is_shutdown(), Error::<T>::AlreadyShutdown);
 			Self::check_authorization(&from, &to, currency_id)?;
 			<loans::Pallet<T>>::transfer_loan(&from, &to, currency_id)?;
-			Ok(().into())
+			Ok(())
 		}
 
 		/// Authorize `to` to manipulate the loan under `currency_id`
@@ -194,11 +194,11 @@ pub mod module {
 			origin: OriginFor<T>,
 			currency_id: CurrencyId,
 			to: <T::Lookup as StaticLookup>::Source,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			let from = ensure_signed(origin)?;
 			let to = T::Lookup::lookup(to)?;
 			if from == to {
-				return Ok(().into());
+				return Ok(());
 			}
 
 			Authorization::<T>::try_mutate_exists(&from, (currency_id, &to), |maybe_reserved| -> DispatchResult {
@@ -212,7 +212,7 @@ pub mod module {
 					Err(Error::<T>::AlreadyAuthorized.into())
 				}
 			})?;
-			Ok(().into())
+			Ok(())
 		}
 
 		/// Cancel the authorization for `to` under `currency_id`
@@ -225,25 +225,25 @@ pub mod module {
 			origin: OriginFor<T>,
 			currency_id: CurrencyId,
 			to: <T::Lookup as StaticLookup>::Source,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			let from = ensure_signed(origin)?;
 			let to = T::Lookup::lookup(to)?;
 			let reserved =
 				Authorization::<T>::take(&from, (currency_id, &to)).ok_or(Error::<T>::AuthorizationNotExists)?;
 			<T as Config>::Currency::unreserve_named(&RESERVE_ID, &from, reserved);
 			Self::deposit_event(Event::UnAuthorization(from, to, currency_id));
-			Ok(().into())
+			Ok(())
 		}
 
 		/// Cancel all authorization of caller
 		#[pallet::weight(<T as Config>::WeightInfo::unauthorize_all(<T as cdp_engine::Config>::CollateralCurrencyIds::get().len() as u32))]
 		#[transactional]
-		pub fn unauthorize_all(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
+		pub fn unauthorize_all(origin: OriginFor<T>) -> DispatchResult {
 			let from = ensure_signed(origin)?;
 			Authorization::<T>::remove_prefix(&from, None);
 			<T as Config>::Currency::unreserve_all_named(&RESERVE_ID, &from);
 			Self::deposit_event(Event::UnAuthorizationAll(from));
-			Ok(().into())
+			Ok(())
 		}
 	}
 }

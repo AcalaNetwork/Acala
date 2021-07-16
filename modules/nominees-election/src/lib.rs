@@ -228,7 +228,7 @@ pub mod module {
 	impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		#[pallet::weight(T::WeightInfo::bond())]
 		#[transactional]
-		pub fn bond(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResultWithPostInfo {
+		pub fn bond(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
 			let mut ledger = Self::ledger(&who);
@@ -247,12 +247,12 @@ pub mod module {
 				Self::update_votes(old_active, &old_nominations, ledger.active, &old_nominations);
 				Self::update_ledger(&who, &ledger);
 			}
-			Ok(().into())
+			Ok(())
 		}
 
 		#[pallet::weight(T::WeightInfo::bond())]
 		#[transactional]
-		pub fn unbond(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResultWithPostInfo {
+		pub fn unbond(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
 			let mut ledger = Self::ledger(&who);
@@ -279,7 +279,7 @@ pub mod module {
 				Self::update_votes(old_active, &old_nominations, ledger.active, &old_nominations);
 				Self::update_ledger(&who, &ledger);
 			}
-			Ok(().into())
+			Ok(())
 		}
 
 		#[pallet::weight(T::WeightInfo::rebond(T::MaxUnlockingChunks::get()))]
@@ -321,7 +321,7 @@ pub mod module {
 
 		#[pallet::weight(T::WeightInfo::nominate(targets.len() as u32))]
 		#[transactional]
-		pub fn nominate(origin: OriginFor<T>, targets: Vec<T::NomineeId>) -> DispatchResultWithPostInfo {
+		pub fn nominate(origin: OriginFor<T>, targets: Vec<T::NomineeId>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
 			let bounded_targets: BoundedVec<<T as Config<I>>::NomineeId, <T as Config<I>>::NominateesCount> = {
@@ -351,7 +351,7 @@ pub mod module {
 
 			Self::update_votes(old_active, &old_nominations, old_active, &bounded_targets);
 			Nominations::<T, I>::insert(&who, &bounded_targets);
-			Ok(().into())
+			Ok(())
 		}
 
 		#[pallet::weight(T::WeightInfo::chill(T::NominateesCount::get()))]

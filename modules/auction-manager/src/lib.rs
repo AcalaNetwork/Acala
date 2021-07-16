@@ -266,12 +266,12 @@ pub mod module {
 		/// The dispatch origin of this call must be _None_.
 		#[pallet::weight(T::WeightInfo::cancel_collateral_auction())]
 		#[transactional]
-		pub fn cancel(origin: OriginFor<T>, id: AuctionId) -> DispatchResultWithPostInfo {
+		pub fn cancel(origin: OriginFor<T>, id: AuctionId) -> DispatchResult {
 			ensure_none(origin)?;
 			ensure!(T::EmergencyShutdown::is_shutdown(), Error::<T>::MustAfterShutdown);
 			<Self as AuctionManager<T::AccountId>>::cancel_auction(id)?;
 			Self::deposit_event(Event::CancelAuction(id));
-			Ok(().into())
+			Ok(())
 		}
 	}
 
