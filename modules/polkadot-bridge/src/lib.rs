@@ -114,73 +114,53 @@ pub mod module {
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight(10_000)]
 		#[transactional]
-		pub fn set_mock_reward_rate(
-			origin: OriginFor<T>,
-			account_index: u32,
-			reward_rate: Rate,
-		) -> DispatchResultWithPostInfo {
+		pub fn set_mock_reward_rate(origin: OriginFor<T>, account_index: u32, reward_rate: Rate) -> DispatchResult {
 			ensure_root(origin)?;
 			SubAccounts::<T>::mutate(account_index, |status| {
 				status.mock_reward_rate = reward_rate;
 			});
-			Ok(().into())
+			Ok(())
 		}
 
 		#[pallet::weight(10_000)]
 		#[transactional]
-		pub fn simulate_bond_extra(
-			origin: OriginFor<T>,
-			account_index: u32,
-			amount: Balance,
-		) -> DispatchResultWithPostInfo {
+		pub fn simulate_bond_extra(origin: OriginFor<T>, account_index: u32, amount: Balance) -> DispatchResult {
 			ensure_root(origin)?;
 			Self::sub_account_bond_extra(account_index, amount)?;
-			Ok(().into())
+			Ok(())
 		}
 
 		#[pallet::weight(10_000)]
 		#[transactional]
-		pub fn simulate_unbond(
-			origin: OriginFor<T>,
-			account_index: u32,
-			amount: Balance,
-		) -> DispatchResultWithPostInfo {
+		pub fn simulate_unbond(origin: OriginFor<T>, account_index: u32, amount: Balance) -> DispatchResult {
 			ensure_root(origin)?;
 			Self::sub_account_unbond(account_index, amount)?;
-			Ok(().into())
+			Ok(())
 		}
 
 		#[pallet::weight(10_000)]
 		#[transactional]
-		pub fn simulate_rebond(
-			origin: OriginFor<T>,
-			account_index: u32,
-			amount: Balance,
-		) -> DispatchResultWithPostInfo {
+		pub fn simulate_rebond(origin: OriginFor<T>, account_index: u32, amount: Balance) -> DispatchResult {
 			ensure_signed(origin)?;
 			Self::sub_account_rebond(account_index, amount)?;
-			Ok(().into())
+			Ok(())
 		}
 
 		#[pallet::weight(10_000)]
 		#[transactional]
-		pub fn simulate_withdraw_unbonded(origin: OriginFor<T>, account_index: u32) -> DispatchResultWithPostInfo {
+		pub fn simulate_withdraw_unbonded(origin: OriginFor<T>, account_index: u32) -> DispatchResult {
 			// ignore because we don't care who send the message
 			let _ = ensure_signed(origin)?;
 			Self::sub_account_withdraw_unbonded(account_index);
-			Ok(().into())
+			Ok(())
 		}
 
 		#[pallet::weight(10_000)]
 		#[transactional]
-		pub fn simulate_payout_stakers(
-			origin: OriginFor<T>,
-			account_index: u32,
-			era: EraIndex,
-		) -> DispatchResultWithPostInfo {
+		pub fn simulate_payout_stakers(origin: OriginFor<T>, account_index: u32, era: EraIndex) -> DispatchResult {
 			ensure_signed(origin)?;
 			Self::payout_stakers(account_index, era);
-			Ok(().into())
+			Ok(())
 		}
 
 		#[pallet::weight(10_000)]
@@ -189,10 +169,10 @@ pub mod module {
 			origin: OriginFor<T>,
 			account_index: u32,
 			amount: Balance,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			Self::transfer_to_sub_account(account_index, &who, amount)?;
-			Ok(().into())
+			Ok(())
 		}
 
 		#[pallet::weight(10_000)]
@@ -202,35 +182,31 @@ pub mod module {
 			account_index: u32,
 			to: <T::Lookup as StaticLookup>::Source,
 			amount: Balance,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			ensure_root(origin)?;
 			let to = T::Lookup::lookup(to)?;
 			Self::receive_from_sub_account(account_index, &to, amount)?;
-			Ok(().into())
+			Ok(())
 		}
 
 		#[pallet::weight(10_000)]
 		#[transactional]
-		pub fn simulate_slash_sub_account(
-			origin: OriginFor<T>,
-			account_index: u32,
-			amount: Balance,
-		) -> DispatchResultWithPostInfo {
+		pub fn simulate_slash_sub_account(origin: OriginFor<T>, account_index: u32, amount: Balance) -> DispatchResult {
 			ensure_root(origin)?;
 			SubAccounts::<T>::mutate(account_index, |status| {
 				status.bonded = status.bonded.saturating_sub(amount);
 			});
-			Ok(().into())
+			Ok(())
 		}
 
 		#[pallet::weight(10_000)]
 		#[transactional]
-		pub fn force_era(origin: OriginFor<T>, at: T::BlockNumber) -> DispatchResultWithPostInfo {
+		pub fn force_era(origin: OriginFor<T>, at: T::BlockNumber) -> DispatchResult {
 			ensure_root(origin)?;
 			if at > <frame_system::Pallet<T>>::block_number() {
 				ForcedEra::<T>::put(at);
 			}
-			Ok(().into())
+			Ok(())
 		}
 	}
 }

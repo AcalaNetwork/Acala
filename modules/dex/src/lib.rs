@@ -314,10 +314,10 @@ pub mod module {
 			path: Vec<CurrencyId>,
 			#[pallet::compact] supply_amount: Balance,
 			#[pallet::compact] min_target_amount: Balance,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			Self::do_swap_with_exact_supply(&who, &path, supply_amount, min_target_amount, None)?;
-			Ok(().into())
+			Ok(())
 		}
 
 		/// Trading with DEX, swap with exact target amount
@@ -332,10 +332,10 @@ pub mod module {
 			path: Vec<CurrencyId>,
 			#[pallet::compact] target_amount: Balance,
 			#[pallet::compact] max_supply_amount: Balance,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			Self::do_swap_with_exact_target(&who, &path, target_amount, max_supply_amount, None)?;
-			Ok(().into())
+			Ok(())
 		}
 
 		/// Add liquidity to Enabled trading pair.
@@ -365,7 +365,7 @@ pub mod module {
 			#[pallet::compact] max_amount_b: Balance,
 			#[pallet::compact] min_share_increment: Balance,
 			stake_increment_share: bool,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			Self::do_add_liquidity(
 				&who,
@@ -376,7 +376,7 @@ pub mod module {
 				min_share_increment,
 				stake_increment_share,
 			)?;
-			Ok(().into())
+			Ok(())
 		}
 
 		/// Add provision to Provisioning trading pair.
@@ -395,10 +395,10 @@ pub mod module {
 			currency_id_b: CurrencyId,
 			#[pallet::compact] amount_a: Balance,
 			#[pallet::compact] amount_b: Balance,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			Self::do_add_provision(&who, currency_id_a, currency_id_b, amount_a, amount_b)?;
-			Ok(().into())
+			Ok(())
 		}
 
 		/// Claim dex share for founders who have participated in trading pair provision.
@@ -413,10 +413,10 @@ pub mod module {
 			owner: T::AccountId,
 			currency_id_a: CurrencyId,
 			currency_id_b: CurrencyId,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			let _ = ensure_signed(origin)?;
 			Self::do_claim_dex_share(&owner, currency_id_a, currency_id_b)?;
-			Ok(().into())
+			Ok(())
 		}
 
 		/// Remove liquidity from specific liquidity pool in the form of burning
@@ -443,7 +443,7 @@ pub mod module {
 			#[pallet::compact] min_withdrawn_a: Balance,
 			#[pallet::compact] min_withdrawn_b: Balance,
 			by_unstake: bool,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			Self::do_remove_liquidity(
 				&who,
@@ -454,7 +454,7 @@ pub mod module {
 				min_withdrawn_b,
 				by_unstake,
 			)?;
-			Ok(().into())
+			Ok(())
 		}
 
 		/// List a new provisioning trading pair.
@@ -469,7 +469,7 @@ pub mod module {
 			target_provision_a: Balance,
 			target_provision_b: Balance,
 			not_before: T::BlockNumber,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			T::ListingOrigin::ensure_origin(origin)?;
 
 			let trading_pair =
@@ -516,7 +516,7 @@ pub mod module {
 				}),
 			);
 			Self::deposit_event(Event::ListProvisioning(trading_pair));
-			Ok(().into())
+			Ok(())
 		}
 
 		/// List a new trading pair, trading pair will become Enabled status
@@ -532,7 +532,7 @@ pub mod module {
 			target_provision_a: Balance,
 			target_provision_b: Balance,
 			not_before: T::BlockNumber,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			T::ListingOrigin::ensure_origin(origin)?;
 			let trading_pair =
 				TradingPair::from_currency_ids(currency_id_a, currency_id_b).ok_or(Error::<T>::InvalidCurrencyId)?;
@@ -563,7 +563,7 @@ pub mod module {
 				_ => return Err(Error::<T>::MustBeProvisioning.into()),
 			}
 
-			Ok(().into())
+			Ok(())
 		}
 
 		/// Enable a Provisioning trading pair if meet the condition.
@@ -573,7 +573,7 @@ pub mod module {
 			origin: OriginFor<T>,
 			currency_id_a: CurrencyId,
 			currency_id_b: CurrencyId,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			let _ = ensure_signed(origin)?;
 
 			let trading_pair =
@@ -640,7 +640,7 @@ pub mod module {
 				_ => return Err(Error::<T>::MustBeProvisioning.into()),
 			}
 
-			Ok(().into())
+			Ok(())
 		}
 
 		/// Enable a trading pair
@@ -652,7 +652,7 @@ pub mod module {
 			origin: OriginFor<T>,
 			currency_id_a: CurrencyId,
 			currency_id_b: CurrencyId,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			T::ListingOrigin::ensure_origin(origin)?;
 			let trading_pair =
 				TradingPair::from_currency_ids(currency_id_a, currency_id_b).ok_or(Error::<T>::InvalidCurrencyId)?;
@@ -670,7 +670,7 @@ pub mod module {
 
 			TradingPairStatuses::<T>::insert(trading_pair, TradingPairStatus::Enabled);
 			Self::deposit_event(Event::EnableTradingPair(trading_pair));
-			Ok(().into())
+			Ok(())
 		}
 
 		/// Disable a `Enabled` trading pair.
@@ -680,7 +680,7 @@ pub mod module {
 			origin: OriginFor<T>,
 			currency_id_a: CurrencyId,
 			currency_id_b: CurrencyId,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			T::ListingOrigin::ensure_origin(origin)?;
 			let trading_pair =
 				TradingPair::from_currency_ids(currency_id_a, currency_id_b).ok_or(Error::<T>::InvalidCurrencyId)?;
@@ -694,7 +694,7 @@ pub mod module {
 
 			TradingPairStatuses::<T>::insert(trading_pair, TradingPairStatus::Disabled);
 			Self::deposit_event(Event::DisableTradingPair(trading_pair));
-			Ok(().into())
+			Ok(())
 		}
 	}
 }

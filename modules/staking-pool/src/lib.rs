@@ -333,7 +333,7 @@ pub mod module {
 			target_unbonding_to_free_ratio: ChangeRatio,
 			unbonding_to_free_adjustment: ChangeRate,
 			base_fee_rate: ChangeRate,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
 			StakingPoolParams::<T>::try_mutate(|params| -> DispatchResult {
 				if let Change::NewValue(update) = target_max_free_unbonded_ratio {
@@ -358,7 +358,7 @@ pub mod module {
 				);
 				Ok(())
 			})?;
-			Ok(().into())
+			Ok(())
 		}
 	}
 }

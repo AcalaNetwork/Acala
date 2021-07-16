@@ -381,12 +381,12 @@ pub mod module {
 			origin: OriginFor<T>,
 			currency_id: CurrencyId,
 			who: <T::Lookup as StaticLookup>::Source,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			ensure_none(origin)?;
 			let who = T::Lookup::lookup(who)?;
 			ensure!(!T::EmergencyShutdown::is_shutdown(), Error::<T>::AlreadyShutdown);
 			Self::liquidate_unsafe_cdp(who, currency_id)?;
-			Ok(().into())
+			Ok(())
 		}
 
 		/// Settle CDP has debit after system shutdown
@@ -401,12 +401,12 @@ pub mod module {
 			origin: OriginFor<T>,
 			currency_id: CurrencyId,
 			who: <T::Lookup as StaticLookup>::Source,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			ensure_none(origin)?;
 			let who = T::Lookup::lookup(who)?;
 			ensure!(T::EmergencyShutdown::is_shutdown(), Error::<T>::MustAfterShutdown);
 			Self::settle_cdp_has_debit(who, currency_id)?;
-			Ok(().into())
+			Ok(())
 		}
 
 		/// Update global parameters related to risk management of CDP
@@ -416,14 +416,11 @@ pub mod module {
 		/// - `global_interest_rate_per_sec`: global interest rate per sec.
 		#[pallet::weight((<T as Config>::WeightInfo::set_global_params(), DispatchClass::Operational))]
 		#[transactional]
-		pub fn set_global_params(
-			origin: OriginFor<T>,
-			global_interest_rate_per_sec: Rate,
-		) -> DispatchResultWithPostInfo {
+		pub fn set_global_params(origin: OriginFor<T>, global_interest_rate_per_sec: Rate) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
 			GlobalInterestRatePerSec::<T>::put(global_interest_rate_per_sec);
 			Self::deposit_event(Event::GlobalInterestRatePerSecUpdated(global_interest_rate_per_sec));
-			Ok(().into())
+			Ok(())
 		}
 
 		/// Update parameters related to risk management of CDP under specific
@@ -451,7 +448,7 @@ pub mod module {
 			liquidation_penalty: ChangeOptionRate,
 			required_collateral_ratio: ChangeOptionRatio,
 			maximum_total_debit_value: ChangeBalance,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
 			ensure!(
 				T::CollateralCurrencyIds::get().contains(&currency_id),
@@ -480,7 +477,7 @@ pub mod module {
 				Self::deposit_event(Event::MaximumTotalDebitValueUpdated(currency_id, val));
 			}
 			CollateralParams::<T>::insert(currency_id, collateral_params);
-			Ok(().into())
+			Ok(())
 		}
 	}
 

@@ -233,7 +233,7 @@ pub mod module {
 			class_id: ClassIdOf<T>,
 			metadata: CID,
 			quantity: u32,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			let to = T::Lookup::lookup(to)?;
 			ensure!(quantity >= 1, Error::<T>::InvalidQuantity);
@@ -253,7 +253,7 @@ pub mod module {
 			}
 
 			Self::deposit_event(Event::MintedToken(who, to, class_id, quantity));
-			Ok(().into())
+			Ok(())
 		}
 
 		/// Transfer NFT token to another account
@@ -266,11 +266,11 @@ pub mod module {
 			origin: OriginFor<T>,
 			to: <T::Lookup as StaticLookup>::Source,
 			token: (ClassIdOf<T>, TokenIdOf<T>),
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			let to = T::Lookup::lookup(to)?;
 			Self::do_transfer(&who, &to, token)?;
-			Ok(().into())
+			Ok(())
 		}
 
 		/// Burn NFT token
@@ -278,11 +278,11 @@ pub mod module {
 		/// - `token`: (class_id, token_id)
 		#[pallet::weight(<T as Config>::WeightInfo::burn())]
 		#[transactional]
-		pub fn burn(origin: OriginFor<T>, token: (ClassIdOf<T>, TokenIdOf<T>)) -> DispatchResultWithPostInfo {
+		pub fn burn(origin: OriginFor<T>, token: (ClassIdOf<T>, TokenIdOf<T>)) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			Self::do_burn(&who, token)?;
 			Self::deposit_event(Event::BurnedToken(who, token.0, token.1));
-			Ok(().into())
+			Ok(())
 		}
 
 		/// Burn NFT token
@@ -295,12 +295,12 @@ pub mod module {
 			origin: OriginFor<T>,
 			token: (ClassIdOf<T>, TokenIdOf<T>),
 			remark: Vec<u8>,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			Self::do_burn(&who, token)?;
 			let hash = T::Hashing::hash(&remark[..]);
 			Self::deposit_event(Event::BurnedTokenWithRemark(who, token.0, token.1, hash));
-			Ok(().into())
+			Ok(())
 		}
 
 		/// Destroy NFT class, remove dest from proxy, and send all the free

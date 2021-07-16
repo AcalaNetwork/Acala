@@ -136,11 +136,11 @@ pub mod module {
 			dest: <T::Lookup as StaticLookup>::Source,
 			currency_id: CurrencyIdOf<T>,
 			#[pallet::compact] amount: BalanceOf<T>,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			let from = ensure_signed(origin)?;
 			let to = T::Lookup::lookup(dest)?;
 			<Self as MultiCurrency<T::AccountId>>::transfer(currency_id, &from, &to, amount)?;
-			Ok(().into())
+			Ok(())
 		}
 
 		/// Transfer some native currency to another account.
@@ -152,13 +152,13 @@ pub mod module {
 			origin: OriginFor<T>,
 			dest: <T::Lookup as StaticLookup>::Source,
 			#[pallet::compact] amount: BalanceOf<T>,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			let from = ensure_signed(origin)?;
 			let to = T::Lookup::lookup(dest)?;
 			T::NativeCurrency::transfer(&from, &to, amount)?;
 
 			Self::deposit_event(Event::Transferred(T::GetNativeCurrencyId::get(), from, to, amount));
-			Ok(().into())
+			Ok(())
 		}
 
 		/// update amount of account `who` under `currency_id`.
@@ -170,11 +170,11 @@ pub mod module {
 			who: <T::Lookup as StaticLookup>::Source,
 			currency_id: CurrencyIdOf<T>,
 			amount: AmountOf<T>,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			ensure_root(origin)?;
 			let dest = T::Lookup::lookup(who)?;
 			<Self as MultiCurrencyExtended<T::AccountId>>::update_balance(currency_id, &dest, amount)?;
-			Ok(().into())
+			Ok(())
 		}
 	}
 }

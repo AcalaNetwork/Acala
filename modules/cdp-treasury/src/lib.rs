@@ -166,7 +166,7 @@ pub mod module {
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight(T::WeightInfo::extract_surplus_to_treasury())]
 		#[transactional]
-		pub fn extract_surplus_to_treasury(origin: OriginFor<T>, amount: Balance) -> DispatchResultWithPostInfo {
+		pub fn extract_surplus_to_treasury(origin: OriginFor<T>, amount: Balance) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
 			T::Currency::transfer(
 				T::GetStableCurrencyId::get(),
@@ -174,7 +174,7 @@ pub mod module {
 				&T::TreasuryAccount::get(),
 				amount,
 			)?;
-			Ok(().into())
+			Ok(())
 		}
 
 		#[pallet::weight(T::WeightInfo::auction_collateral())]
@@ -185,7 +185,7 @@ pub mod module {
 			amount: Balance,
 			target: Balance,
 			splited: bool,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
 			<Self as CDPTreasuryExtended<T::AccountId>>::create_collateral_auctions(
 				currency_id,
@@ -194,7 +194,7 @@ pub mod module {
 				Self::account_id(),
 				splited,
 			)?;
-			Ok(().into())
+			Ok(())
 		}
 
 		/// Update parameters related to collateral auction under specific
@@ -210,11 +210,11 @@ pub mod module {
 			origin: OriginFor<T>,
 			currency_id: CurrencyId,
 			size: Balance,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
 			ExpectedCollateralAuctionSize::<T>::insert(currency_id, size);
 			Self::deposit_event(Event::ExpectedCollateralAuctionSizeUpdated(currency_id, size));
-			Ok(().into())
+			Ok(())
 		}
 	}
 }
