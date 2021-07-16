@@ -169,14 +169,14 @@ pub mod pallet {
 
 	/// The invulnerable, fixed collators.
 	///
-	/// Invulnerables: vec[Invulnerables]
+	/// Invulnerables: Vec<AccountId>
 	#[pallet::storage]
 	#[pallet::getter(fn invulnerables)]
 	pub type Invulnerables<T: Config> = StorageValue<_, BoundedVec<T::AccountId, T::MaxInvulnerables>, ValueQuery>;
 
 	/// The (community, limited) collation candidates.
 	///
-	/// Candidates: BTreeSet Candidates
+	/// Candidates: BTreeSet<AccountId>
 	#[pallet::storage]
 	#[pallet::getter(fn candidates)]
 	pub type Candidates<T: Config> = StorageValue<_, BoundedBTreeSet<T::AccountId, T::MaxCandidates>, ValueQuery>;
@@ -275,12 +275,13 @@ pub mod pallet {
 	pub enum Error<T> {
 		MaxCandidatesExceeded,
 		BelowCandidatesMin,
-		BelowSessonIndex,
+		StillLocked,
 		Unknown,
 		Permission,
 		AlreadyCandidate,
 		NotCandidate,
 		NotNonCandidate,
+		NothingToWithdraw,
 		RequireSessionKey,
 		AlreadyInvulnerable,
 		InvalidProof,
@@ -327,7 +328,7 @@ pub mod pallet {
 
 			<NonCandidates<T>>::try_mutate_exists(&who, |maybe_index| -> DispatchResult {
 				if let Some(index) = maybe_index.take() {
-					ensure!(T::ValidatorSet::session_index() >= index, Error::<T>::BelowSessonIndex);
+					ensure!(T::ValidatorSet::session_index() >= index, Error::<T>::StillLocked);
 				}
 				Ok(())
 			})?;
@@ -365,11 +366,11 @@ pub mod pallet {
 
 			<NonCandidates<T>>::try_mutate_exists(&who, |maybe_index| -> DispatchResult {
 				if let Some(index) = maybe_index.take() {
-					ensure!(T::ValidatorSet::session_index() >= index, Error::<T>::BelowSessonIndex);
+					ensure!(T::ValidatorSet::session_index() >= index, Error::<T>::StillLocked);
 					T::Currency::unreserve_all_named(&RESERVE_ID, &who);
 					Ok(())
 				} else {
-					Err(Error::<T>::NotNonCandidate.into())
+					Err(Error::<T>::NothingToWithdraw.into())
 				}
 			})
 		}

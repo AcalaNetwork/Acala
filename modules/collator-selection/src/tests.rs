@@ -342,7 +342,7 @@ fn withdraw_bond() {
 
 		assert_noop!(
 			CollatorSelection::withdraw_bond(Origin::signed(3)),
-			Error::<Test>::NotNonCandidate
+			Error::<Test>::NothingToWithdraw
 		);
 
 		// bond is not returned
@@ -353,17 +353,17 @@ fn withdraw_bond() {
 
 		assert_noop!(
 			CollatorSelection::withdraw_bond(Origin::signed(3)),
-			Error::<Test>::BelowSessonIndex
+			Error::<Test>::StillLocked
 		);
 		initialize_to_block(Period::get());
 		assert_noop!(
 			CollatorSelection::withdraw_bond(Origin::signed(3)),
-			Error::<Test>::BelowSessonIndex
+			Error::<Test>::StillLocked
 		);
 		initialize_to_block(2 * Period::get() - 1);
 		assert_noop!(
 			CollatorSelection::withdraw_bond(Origin::signed(3)),
-			Error::<Test>::BelowSessonIndex
+			Error::<Test>::StillLocked
 		);
 		initialize_to_block(2 * Period::get());
 		// bond is returned
@@ -507,7 +507,7 @@ fn kick_mechanism() {
 		assert_eq!(Balances::free_balance(3), 90);
 		assert_noop!(
 			CollatorSelection::register_as_candidate(Origin::signed(3)),
-			Error::<Test>::BelowSessonIndex
+			Error::<Test>::StillLocked
 		);
 	});
 }
