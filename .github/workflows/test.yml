@@ -22,7 +22,7 @@ jobs:
     runs-on: [self-hosted, linux]
     env:
       SCCACHE_CACHE_SIZE: "50G"
-    needs: cancel
+    needs: clean-up-actions
     steps:
     - uses: actions/checkout@v2
       with:
