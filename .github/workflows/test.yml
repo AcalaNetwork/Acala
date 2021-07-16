@@ -3,10 +3,14 @@ name: Test
 on:
   pull_request:
     branches:
-    - master
+      - master
+    paths-ignore:
+      - '**/README.md'
   push:
     branches:
-    - master
+      - master
+    paths-ignore:
+      - '**/README.md'
 
 jobs:
   cancel:
@@ -55,3 +59,12 @@ jobs:
       run: make test-benchmarking
     - name: Check benchmarks
       run: make check-benchmarks
+    - name: Generate code coverage
+      run: |
+        cargo install cargo-tarpaulin
+        cargo tarpaulin --verbose --features with-mandala-runtime --no-fail-fast --workspace --timeout 300 --out Xml
+    - name: Upload to codecov.io
+      uses: codecov/codecov-action@v1
+      with:
+        # token: ${{secrets.CODECOV_TOKEN}} # not required for public repos
+        fail_ci_if_error: true
