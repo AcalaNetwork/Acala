@@ -64,13 +64,22 @@ Currently the Starport module is integrated into the Mandala Runtime.
 ```
 7. You can now send Extrinsics to the Starport Module for testing, or query the chain state.
 
-### Example: Lock Tokens
+### Example 1: Lock Tokens / Upload Assets 
 To lock tokens, we must first set the supply cap of that token.
 1. Open the Extrinsics tab. Select `Starport` -> `invoke`
 2. Select `SetSupplyCap` -> Select your Token of choice -> Add the amount
 3. For `Signatures`, add `Alice`, because `Alice` is the default Gateway Authority.
 4. Submit the transaction.
-We can now lock the token of your choice.
-5. In the Extrinsics Tab, select `Starport` -> `lock` -> Select your token and set an amount
-6. Submit the transaction.
-7. If you go to the "Explorer" tab, you should see the correct events have been deposited.
+   
+We can now lock/upload the token of your choice.
+1. In the Extrinsics Tab, select `Starport` -> `lock` -> Select your token e.g. DOT and set an amount
+2. Submit the transaction.
+3. If you go to the "Explorer" tab, you should see the correct events have been deposited.
+
+### Example 2: Unlock Tokens / Download Assets 
+1. Open the Extrinsics tab. Select `Starport` -> `invoke`
+2. Select `payload` as `Unlock`
+3. Then select token e.g. CASH and set an amount to download
+4. 3. For `Signatures`, add `Alice`, as `Alice` is the default Gateway Authority.
+5. Submit the transaction.
+6. You should see the correct events deposited in the `Explorer` tab.
