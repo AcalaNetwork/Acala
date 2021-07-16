@@ -1,4 +1,4 @@
-name: coverage
+name: Tests Coverage
 
 on:
   workflow_dispatch:
@@ -11,7 +11,7 @@ on:
 
 jobs:
   test:
-    name: coverage
+    name: Coverage Report
     runs-on: ubuntu-latest
     steps:
       - name: Cancel Previous Runs
