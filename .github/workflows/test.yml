@@ -26,7 +26,7 @@ jobs:
     runs-on: [self-hosted, linux]
     env:
       SCCACHE_CACHE_SIZE: "50G"
-      CARGO_INCREMENTAL: 0
+      # CARGO_INCREMENTAL: 0
     needs: clean-up-actions
     steps:
     - uses: actions/checkout@v2
