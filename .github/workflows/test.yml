@@ -42,9 +42,7 @@ jobs:
     - name: Check format
       run: cargo fmt --all -- --check
     - name: Build
-      run: |
-        cargo clean
-        make build-all
+      run: make build-all
     - name: Install clippy
       run: rustup component add clippy
     - name: Run mandala-runtime clippy
