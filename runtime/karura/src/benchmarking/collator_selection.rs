@@ -22,7 +22,11 @@ use crate::{
 };
 
 use frame_benchmarking::{account, whitelisted_caller};
-use frame_support::{assert_ok, pallet_prelude::Decode, traits::Currency};
+use frame_support::{
+	assert_ok,
+	pallet_prelude::Decode,
+	traits::{Currency, OnInitialize},
+};
 use frame_system::RawOrigin;
 use module_collator_selection::POINT_PER_BLOCK;
 use orml_benchmarking::{runtime_benchmarks, whitelist_account};
@@ -146,6 +150,21 @@ runtime_benchmarks! {
 		assert_last_event(module_collator_selection::Event::CandidateRemoved(leaving).into());
 	}
 
+	withdraw_bond {
+		// MinCandidates = 5, so begin with 6.
+		let c = MaxCandidates::get();
+		module_collator_selection::CandidacyBond::<Runtime>::put(Balances::minimum_balance());
+		module_collator_selection::DesiredCandidates::<Runtime>::put(c);
+		register_candidates(c);
+
+		module_session_manager::SessionDuration::<Runtime>::put(Period::get());
+		let leaving = module_collator_selection::Candidates::<Runtime>::get().into_iter().last().unwrap();
+		whitelist_account!(leaving);
+		CollatorSelection::leave_intent(RawOrigin::Signed(leaving.clone()).into())?;
+		Session::on_initialize(Period::get());
+		Session::on_initialize(2*Period::get());
+	}: _(RawOrigin::Signed(leaving))
+
 	// worse case is paying a non-existing candidate account.
 	note_author {
 		let c = MaxCandidates::get();
@@ -192,11 +211,10 @@ runtime_benchmarks! {
 		System::set_block_number(0u32.into());
 		register_candidates(c);
 
-		// TODO: https://github.com/paritytech/substrate/pull/8815
-		// for i in 0..r {
-		//     pallet_session::Validators::insert()
-		// }
+		module_session_manager::SessionDuration::<Runtime>::put(Period::get());
 		System::set_block_number(20u32.into());
+		Session::on_initialize(Period::get());
+		Session::on_initialize(2*Period::get());
 
 		assert!(module_collator_selection::Candidates::<Runtime>::get().len() == c as usize);
 	}: {

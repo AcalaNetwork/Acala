@@ -102,6 +102,7 @@ pub mod pallet {
 
 	pub const RESERVE_ID: ReserveIdentifier = ReserveIdentifier::CollatorSelection;
 	pub const POINT_PER_BLOCK: u32 = 10;
+	pub const SESSION_DELAY: SessionIndex = 2;
 
 	type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as SystemConfig>::AccountId>>::Balance;
 
@@ -149,6 +150,11 @@ pub mod pallet {
 		#[pallet::constant]
 		type MaxInvulnerables: Get<u32>;
 
+		/// The Kicked candidate cannot register candidate or withdraw bond until
+		/// `KickPenaltySessionLength` ends.
+		#[pallet::constant]
+		type KickPenaltySessionLength: Get<u32>;
+
 		/// Will be kicked if block is not produced in threshold.
 		#[pallet::constant]
 		type CollatorKickThreshold: Get<Permill>;
@@ -162,11 +168,15 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	/// The invulnerable, fixed collators.
+	///
+	/// Invulnerables: Vec<AccountId>
 	#[pallet::storage]
 	#[pallet::getter(fn invulnerables)]
 	pub type Invulnerables<T: Config> = StorageValue<_, BoundedVec<T::AccountId, T::MaxInvulnerables>, ValueQuery>;
 
 	/// The (community, limited) collation candidates.
+	///
+	/// Candidates: BTreeSet<AccountId>
 	#[pallet::storage]
 	#[pallet::getter(fn candidates)]
 	pub type Candidates<T: Config> = StorageValue<_, BoundedBTreeSet<T::AccountId, T::MaxCandidates>, ValueQuery>;
@@ -174,19 +184,31 @@ pub mod pallet {
 	/// Desired number of candidates.
 	///
 	/// This should ideally always be less than [`Config::MaxCandidates`] for weights to be correct.
+	/// DesiredCandidates: u32
 	#[pallet::storage]
 	#[pallet::getter(fn desired_candidates)]
 	pub type DesiredCandidates<T> = StorageValue<_, u32, ValueQuery>;
 
 	/// Fixed deposit bond for each candidate.
+	///
+	/// CandidacyBond: Balance
 	#[pallet::storage]
 	#[pallet::getter(fn candidacy_bond)]
 	pub type CandidacyBond<T> = StorageValue<_, BalanceOf<T>, ValueQuery>;
 
 	/// Session points for each candidate.
+	///
+	/// SessionPoints: map AccountId => u32
 	#[pallet::storage]
 	#[pallet::getter(fn session_points)]
 	pub type SessionPoints<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, u32, ValueQuery>;
+
+	/// Mapping from the kicked candidate or the left candidate to session index.
+	///
+	/// NonCandidates: map AccountId => SessionIndex
+	#[pallet::storage]
+	#[pallet::getter(fn non_candidates)]
+	pub type NonCandidates<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, SessionIndex, ValueQuery>;
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
@@ -253,10 +275,13 @@ pub mod pallet {
 	pub enum Error<T> {
 		MaxCandidatesExceeded,
 		BelowCandidatesMin,
+		StillLocked,
 		Unknown,
 		Permission,
 		AlreadyCandidate,
 		NotCandidate,
+		NotNonCandidate,
+		NothingToWithdraw,
 		RequireSessionKey,
 		AlreadyInvulnerable,
 		InvalidProof,
@@ -301,10 +326,17 @@ pub mod pallet {
 		pub fn register_as_candidate(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 
+			<NonCandidates<T>>::try_mutate_exists(&who, |maybe_index| -> DispatchResult {
+				if let Some(index) = maybe_index.take() {
+					ensure!(T::ValidatorSet::session_index() >= index, Error::<T>::StillLocked);
+				}
+				Ok(())
+			})?;
+
 			let deposit = Self::candidacy_bond();
 			let bounded_candidates_len = Self::do_register_candidate(&who, deposit)?;
-
 			Self::deposit_event(Event::CandidateAdded(who, deposit));
+
 			Ok(Some(T::WeightInfo::register_as_candidate(bounded_candidates_len as u32)).into())
 		}
 
@@ -323,8 +355,24 @@ pub mod pallet {
 			let who = ensure_signed(origin)?;
 
 			let current_count = Self::try_remove_candidate(&who)?;
+			<NonCandidates<T>>::insert(who, T::ValidatorSet::session_index().saturating_add(SESSION_DELAY));
 
 			Ok(Some(T::WeightInfo::leave_intent(current_count as u32)).into())
+		}
+
+		#[pallet::weight(T::WeightInfo::withdraw_bond())]
+		pub fn withdraw_bond(origin: OriginFor<T>) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+
+			<NonCandidates<T>>::try_mutate_exists(&who, |maybe_index| -> DispatchResult {
+				if let Some(index) = maybe_index.take() {
+					ensure!(T::ValidatorSet::session_index() >= index, Error::<T>::StillLocked);
+					T::Currency::unreserve_all_named(&RESERVE_ID, &who);
+					Ok(())
+				} else {
+					Err(Error::<T>::NothingToWithdraw.into())
+				}
+			})
 		}
 	}
 
@@ -344,7 +392,6 @@ pub mod pallet {
 				);
 
 				candidates.take(who).ok_or(Error::<T>::NotCandidate)?;
-				T::Currency::unreserve_all_named(&RESERVE_ID, &who);
 				Ok(candidates.len())
 			})?;
 			Self::deposit_event(Event::CandidateRemoved(who.clone()));
@@ -496,6 +543,11 @@ pub mod pallet {
 							target: "collator-selection",
 							"Failed to remove candidate {:?}", why);
 						debug_assert!(false, "failed to remove candidate {:?}", why);
+					} else {
+						<NonCandidates<T>>::insert(
+							who,
+							T::ValidatorSet::session_index().saturating_add(T::KickPenaltySessionLength::get()),
+						);
 					}
 				}
 			}
