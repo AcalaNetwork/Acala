@@ -42,7 +42,7 @@ jobs:
     - name: Check format
       run: cargo fmt --all -- --check
     - name: Build
-      run:
+      run: |
         cargo clean
         make build-all
     - name: Install clippy
