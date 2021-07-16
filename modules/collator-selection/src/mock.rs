@@ -194,6 +194,7 @@ parameter_types! {
 	pub const MinCandidates: u32 = 1;
 	pub const MaxCandidates: u32 = 4;
 	pub const MaxInvulnerables: u32 = 4;
+	pub const KickPenaltySessionLength: u32 = 8;
 	pub const CollatorKickThreshold: Permill = Permill::from_percent(100);
 }
 
@@ -206,6 +207,7 @@ impl Config for Test {
 	type MinCandidates = MinCandidates;
 	type MaxCandidates = MaxCandidates;
 	type MaxInvulnerables = MaxInvulnerables;
+	type KickPenaltySessionLength = KickPenaltySessionLength;
 	type CollatorKickThreshold = CollatorKickThreshold;
 	type WeightInfo = ();
 }

@@ -1,17 +1,21 @@
-name: coverage
+name: Tests Coverage
 
 on:
   workflow_dispatch:
   pull_request:
     branches:
       - master
+    paths-ignore:
+      - '**/README.md'
   push:
     branches:
       - master
+    paths-ignore:
+      - '**/README.md'
 
 jobs:
   test:
-    name: coverage
+    name: Coverage Report
     runs-on: ubuntu-latest
     steps:
       - name: Cancel Previous Runs
