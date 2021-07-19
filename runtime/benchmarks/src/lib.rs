@@ -34,6 +34,7 @@ mod incentives;
 mod nominees_election;
 mod oracle;
 mod prices;
+mod session_manager;
 mod tokens;
 mod transaction_payment;
 mod vesting;
