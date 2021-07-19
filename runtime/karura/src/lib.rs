@@ -1349,7 +1349,7 @@ impl TakeRevenue for ToTreasury {
 			if let Some(currency_id) = CurrencyIdConvert::convert(id) {
 				// ensure KaruraTreasuryAccount have ed for all of the cross-chain asset.
 				// Ignore the result.
-				let _ = Tokens::deposit(currency_id, &KaruraTreasuryAccount::get(), amount);
+				let _ = Currencies::deposit(currency_id, &KaruraTreasuryAccount::get(), amount);
 			}
 		}
 	}
