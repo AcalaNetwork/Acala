@@ -1647,10 +1647,10 @@ pub struct ToTreasury;
 impl TakeRevenue for ToTreasury {
 	fn take_revenue(revenue: MultiAsset) {
 		if let MultiAsset::ConcreteFungible { id, amount } = revenue {
-			if CurrencyIdConvert::convert(id).is_some() {
-				// ensure KaruraTreasuryAccount have ed for DOT.
+			if let Some(currency_id) = CurrencyIdConvert::convert(id) {
+				// ensure KaruraTreasuryAccount have ed for all of the cross-chain asset.
 				// Ignore the result.
-				let _ = Tokens::deposit(DOT, &TreasuryAccount::get(), amount);
+				let _ = Tokens::deposit(currency_id, &TreasuryAccount::get(), amount);
 			}
 		}
 	}
