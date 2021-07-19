@@ -137,7 +137,7 @@ pub trait DEXManager<AccountId, CurrencyId, Balance> {
 		max_amount_a: Balance,
 		max_amount_b: Balance,
 		min_share_increment: Balance,
-		deposit_increment_share: bool,
+		stake_increment_share: bool,
 	) -> DispatchResult;
 
 	fn remove_liquidity(
@@ -147,7 +147,7 @@ pub trait DEXManager<AccountId, CurrencyId, Balance> {
 		remove_share: Balance,
 		min_withdrawn_a: Balance,
 		min_withdrawn_b: Balance,
-		by_withdraw: bool,
+		by_unstake: bool,
 	) -> DispatchResult;
 }
 
@@ -206,7 +206,7 @@ where
 		_max_amount_a: Balance,
 		_max_amount_b: Balance,
 		_min_share_increment: Balance,
-		_deposit_increment_share: bool,
+		_stake_increment_share: bool,
 	) -> DispatchResult {
 		Ok(())
 	}
@@ -218,7 +218,7 @@ where
 		_remove_share: Balance,
 		_min_withdrawn_a: Balance,
 		_min_withdrawn_b: Balance,
-		_by_withdraw: bool,
+		_by_unstake: bool,
 	) -> DispatchResult {
 		Ok(())
 	}
@@ -567,4 +567,9 @@ impl CurrencyIdMapping for () {
 	fn decode_evm_address(_v: EvmAddress) -> Option<CurrencyId> {
 		None
 	}
+}
+
+/// Used to interface with the Compound's Cash module
+pub trait CompoundCashTrait<Balance, Moment> {
+	fn set_future_yield(next_cash_yield: Balance, yield_index: u128, timestamp_effective: Moment) -> DispatchResult;
 }

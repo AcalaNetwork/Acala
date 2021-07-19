@@ -186,6 +186,15 @@ parameter_types! {
 	pub const MinBondAmount: Balance = 100;
 	pub const BondingDuration: BlockNumber = 100;
 	pub const ValidatorInsuranceThreshold: Balance = 200;
+	pub static MockBlockNumberProvider: u64 = 0;
+}
+
+impl BlockNumberProvider for MockBlockNumberProvider {
+	type BlockNumber = u64;
+
+	fn current_block_number() -> Self::BlockNumber {
+		Self::get()
+	}
 }
 
 ord_parameter_types! {
@@ -206,6 +215,7 @@ impl Config for Runtime {
 	type WeightInfo = ();
 	type OnIncreaseGuarantee = MockOnIncreaseGuarantee;
 	type OnDecreaseGuarantee = MockOnDecreaseGuarantee;
+	type BlockNumberProvider = MockBlockNumberProvider;
 }
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;

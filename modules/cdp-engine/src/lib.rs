@@ -37,17 +37,21 @@ use loans::Position;
 use orml_traits::Change;
 use orml_utilities::{IterableStorageDoubleMapExtended, OffchainErr};
 use primitives::{Amount, Balance, CurrencyId};
+use rand_chacha::{
+	rand_core::{RngCore, SeedableRng},
+	ChaChaRng,
+};
 use sp_runtime::{
 	offchain::{
 		storage::StorageValueRef,
 		storage_lock::{StorageLock, Time},
 		Duration,
 	},
-	traits::{BlakeTwo256, Bounded, Convert, Hash, One, Saturating, StaticLookup, UniqueSaturatedInto, Zero},
+	traits::{Bounded, Convert, One, Saturating, StaticLookup, UniqueSaturatedInto, Zero},
 	transaction_validity::{
 		InvalidTransaction, TransactionPriority, TransactionSource, TransactionValidity, ValidTransaction,
 	},
-	DispatchError, DispatchResult, FixedPointNumber, RandomNumberGenerator, RuntimeDebug,
+	DispatchError, DispatchResult, FixedPointNumber, RuntimeDebug,
 };
 use sp_std::prelude::*;
 use support::{
@@ -209,6 +213,7 @@ pub mod module {
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
+	#[pallet::metadata(T::AccountId = "AccountId", Option<Rate> = "OptionRate", Option<Ratio> = "OptionRatio")]
 	pub enum Event<T: Config> {
 		/// Liquidate the unsafe CDP. \[collateral_type, owner,
 		/// collateral_amount, bad_debt_value, liquidation_strategy\]
@@ -376,12 +381,12 @@ pub mod module {
 			origin: OriginFor<T>,
 			currency_id: CurrencyId,
 			who: <T::Lookup as StaticLookup>::Source,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			ensure_none(origin)?;
 			let who = T::Lookup::lookup(who)?;
 			ensure!(!T::EmergencyShutdown::is_shutdown(), Error::<T>::AlreadyShutdown);
 			Self::liquidate_unsafe_cdp(who, currency_id)?;
-			Ok(().into())
+			Ok(())
 		}
 
 		/// Settle CDP has debit after system shutdown
@@ -396,12 +401,12 @@ pub mod module {
 			origin: OriginFor<T>,
 			currency_id: CurrencyId,
 			who: <T::Lookup as StaticLookup>::Source,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			ensure_none(origin)?;
 			let who = T::Lookup::lookup(who)?;
 			ensure!(T::EmergencyShutdown::is_shutdown(), Error::<T>::MustAfterShutdown);
 			Self::settle_cdp_has_debit(who, currency_id)?;
-			Ok(().into())
+			Ok(())
 		}
 
 		/// Update global parameters related to risk management of CDP
@@ -411,14 +416,11 @@ pub mod module {
 		/// - `global_interest_rate_per_sec`: global interest rate per sec.
 		#[pallet::weight((<T as Config>::WeightInfo::set_global_params(), DispatchClass::Operational))]
 		#[transactional]
-		pub fn set_global_params(
-			origin: OriginFor<T>,
-			global_interest_rate_per_sec: Rate,
-		) -> DispatchResultWithPostInfo {
+		pub fn set_global_params(origin: OriginFor<T>, global_interest_rate_per_sec: Rate) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
 			GlobalInterestRatePerSec::<T>::put(global_interest_rate_per_sec);
 			Self::deposit_event(Event::GlobalInterestRatePerSecUpdated(global_interest_rate_per_sec));
-			Ok(().into())
+			Ok(())
 		}
 
 		/// Update parameters related to risk management of CDP under specific
@@ -446,7 +448,7 @@ pub mod module {
 			liquidation_penalty: ChangeOptionRate,
 			required_collateral_ratio: ChangeOptionRatio,
 			maximum_total_debit_value: ChangeBalance,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
 			ensure!(
 				T::CollateralCurrencyIds::get().contains(&currency_id),
@@ -475,7 +477,7 @@ pub mod module {
 				Self::deposit_event(Event::MaximumTotalDebitValueUpdated(currency_id, val));
 			}
 			CollateralParams::<T>::insert(currency_id, collateral_params);
-			Ok(().into())
+			Ok(())
 		}
 	}
 
@@ -611,17 +613,13 @@ impl<T: Config> Pallet<T> {
 
 		// get to_be_continue record
 		let (collateral_position, start_key) =
-			if let Some(Some((last_collateral_position, maybe_last_iterator_previous_key))) =
+			if let Ok(Some((last_collateral_position, maybe_last_iterator_previous_key))) =
 				to_be_continue.get::<(u32, Option<Vec<u8>>)>()
 			{
 				(last_collateral_position, maybe_last_iterator_previous_key)
 			} else {
-				let random_seed = sp_io::offchain::random_seed();
-				let mut rng = RandomNumberGenerator::<BlakeTwo256>::new(BlakeTwo256::hash(&random_seed[..]));
-				(
-					rng.pick_u32(collateral_currency_ids.len().saturating_sub(1) as u32),
-					None,
-				)
+				let mut rng = ChaChaRng::from_seed(sp_io::offchain::random_seed());
+				(pick_u32(&mut rng, collateral_currency_ids.len() as u32), None)
 			};
 
 		// get the max iterationns config
@@ -629,7 +627,7 @@ impl<T: Config> Pallet<T> {
 			.get::<u32>()
 			.unwrap_or(Some(DEFAULT_MAX_ITERATIONS));
 
-		let currency_id = collateral_currency_ids[(collateral_position as usize)];
+		let currency_id = collateral_currency_ids[collateral_position as usize];
 		let is_shutdown = T::EmergencyShutdown::is_shutdown();
 		let mut map_iterator = <loans::Positions<T> as IterableStorageDoubleMapExtended<_, _, _>>::iter_prefix(
 			currency_id,
@@ -750,7 +748,7 @@ impl<T: Config> Pallet<T> {
 		let locked_collateral_value = price.saturating_mul_int(collateral_balance);
 		let debit_value = Self::get_debit_value(currency_id, debit_balance);
 
-		Ratio::checked_from_rational(locked_collateral_value, debit_value).unwrap_or_else(Rate::max_value)
+		Ratio::checked_from_rational(locked_collateral_value, debit_value).unwrap_or_else(Ratio::max_value)
 	}
 
 	pub fn adjust_position(
@@ -940,4 +938,9 @@ impl<T: Config> RiskManager<T::AccountId, CurrencyId, Balance, Balance> for Pall
 
 		Ok(())
 	}
+}
+
+/// Pick a new PRN, in the range [0, `max`) (exclusive).
+fn pick_u32<R: RngCore>(rng: &mut R, max: u32) -> u32 {
+	rng.next_u32() % max
 }

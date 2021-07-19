@@ -32,7 +32,9 @@ pub mod module_homa;
 pub mod module_honzon;
 pub mod module_incentives;
 pub mod module_nft;
+pub mod module_nominees_election;
 pub mod module_prices;
+pub mod module_session_manager;
 pub mod module_transaction_payment;
 
 pub mod orml_auction;

@@ -31,8 +31,8 @@ pub use evm::Config;
 /// Evm Address.
 pub type EvmAddress = sp_core::H160;
 
-#[derive(Clone, Eq, PartialEq, Encode, Decode, Default)]
-#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+#[derive(Clone, Eq, PartialEq, Encode, Decode, Default, RuntimeDebug)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 /// External input from the transaction.
 pub struct Vicinity {
 	/// Current transaction gas price.

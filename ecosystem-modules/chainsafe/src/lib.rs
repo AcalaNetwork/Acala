@@ -95,7 +95,7 @@ pub mod module {
 			origin: OriginFor<T>,
 			resource_id: ResourceId,
 			currency_id: CurrencyId,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			T::RegistorOrigin::ensure_origin(origin)?;
 			ensure!(
 				!ResourceIds::<T>::contains_key(currency_id) && !CurrencyIds::<T>::contains_key(resource_id),
@@ -115,18 +115,18 @@ pub mod module {
 			ResourceIds::<T>::insert(currency_id, resource_id);
 			CurrencyIds::<T>::insert(resource_id, currency_id);
 			Self::deposit_event(Event::RegisterResourceId(resource_id, currency_id));
-			Ok(().into())
+			Ok(())
 		}
 
 		#[pallet::weight(<T as Config>::WeightInfo::remove_resource_id())]
 		#[transactional]
-		pub fn remove_resource_id(origin: OriginFor<T>, resource_id: ResourceId) -> DispatchResultWithPostInfo {
+		pub fn remove_resource_id(origin: OriginFor<T>, resource_id: ResourceId) -> DispatchResult {
 			T::RegistorOrigin::ensure_origin(origin)?;
 			if let Some(currency_id) = CurrencyIds::<T>::take(resource_id) {
 				ResourceIds::<T>::remove(currency_id);
 				Self::deposit_event(Event::UnregisterResourceId(resource_id, currency_id));
 			}
-			Ok(().into())
+			Ok(())
 		}
 
 		#[pallet::weight(<T as Config>::WeightInfo::transfer_origin_chain_token_to_bridge(recipient.len() as u32))]
@@ -137,10 +137,10 @@ pub mod module {
 			dest_chain_id: chainbridge::ChainId,
 			recipient: Vec<u8>,
 			amount: Balance,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			Self::do_transfer_to_bridge(&who, currency_id, dest_chain_id, recipient, amount)?;
-			Ok(().into())
+			Ok(())
 		}
 
 		#[pallet::weight(<T as Config>::WeightInfo::transfer_native_to_bridge(recipient.len() as u32))]
@@ -150,10 +150,10 @@ pub mod module {
 			dest_chain_id: chainbridge::ChainId,
 			recipient: Vec<u8>,
 			amount: Balance,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			Self::do_transfer_to_bridge(&who, T::NativeCurrencyId::get(), dest_chain_id, recipient, amount)?;
-			Ok(().into())
+			Ok(())
 		}
 
 		#[pallet::weight(<T as Config>::WeightInfo::transfer_origin_chain_token_from_bridge())]
@@ -163,7 +163,7 @@ pub mod module {
 			to: T::AccountId,
 			amount: Balance,
 			resource_id: ResourceId,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			let bridge_account_id = T::BridgeOrigin::ensure_origin(origin)?;
 			let currency_id = Self::currency_ids(resource_id).ok_or(Error::<T>::ResourceIdNotRegistered)?;
 
@@ -175,7 +175,7 @@ pub mod module {
 				T::Currency::deposit(currency_id, &to, amount)?;
 			}
 
-			Ok(().into())
+			Ok(())
 		}
 	}
 }

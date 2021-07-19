@@ -84,12 +84,13 @@ pub struct ScheduleCallPrecompile<
 	)>,
 );
 
-#[derive(Debug, Eq, PartialEq, TryFromPrimitive, IntoPrimitive)]
+#[primitives_proc_macro::generate_function_selector]
+#[derive(RuntimeDebug, Eq, PartialEq, TryFromPrimitive, IntoPrimitive)]
 #[repr(u32)]
 pub enum Action {
-	Schedule = 0x64c91905,
-	Cancel = 0x93e32661,
-	Reschedule = 0x28302f34,
+	Schedule = "scheduleCall(address,address,uint256,uint256,uint256,bytes)",
+	Cancel = "cancelCall(address,bytes)",
+	Reschedule = "rescheduleCall(address,uint256,bytes)",
 }
 
 type PalletBalanceOf<T> =
@@ -283,31 +284,5 @@ impl<
 				Ok((ExitSucceed::Returned, vec![], 0))
 			}
 		}
-	}
-}
-
-#[cfg(test)]
-mod tests {
-	use super::*;
-	use crate::precompile::mock::get_function_selector;
-
-	#[test]
-	fn function_selector_match() {
-		assert_eq!(
-			u32::from_be_bytes(get_function_selector(
-				"scheduleCall(address,address,uint256,uint256,uint256,bytes)"
-			)),
-			Into::<u32>::into(Action::Schedule)
-		);
-
-		assert_eq!(
-			u32::from_be_bytes(get_function_selector("cancelCall(address,bytes)")),
-			Into::<u32>::into(Action::Cancel)
-		);
-
-		assert_eq!(
-			u32::from_be_bytes(get_function_selector("rescheduleCall(address,uint256,bytes)")),
-			Into::<u32>::into(Action::Reschedule)
-		);
 	}
 }

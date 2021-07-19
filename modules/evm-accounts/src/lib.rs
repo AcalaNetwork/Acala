@@ -80,6 +80,7 @@ pub mod module {
 
 	#[pallet::event]
 	#[pallet::generate_deposit(fn deposit_event)]
+	#[pallet::metadata(T::AccountId = "AccountId")]
 	pub enum Event<T: Config> {
 		/// Mapping between Substrate accounts and EVM accounts
 		/// claim account. \[account_id, evm_address\]
@@ -134,7 +135,7 @@ pub mod module {
 			origin: OriginFor<T>,
 			eth_address: EvmAddress,
 			eth_signature: EcdsaSignature,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
 			// ensure account_id and eth_address has not been mapped
@@ -161,14 +162,14 @@ pub mod module {
 
 			Self::deposit_event(Event::ClaimAccount(who, eth_address));
 
-			Ok(().into())
+			Ok(())
 		}
 
 		/// Claim account mapping between Substrate accounts and a generated EVM
 		/// address based off of those accounts.
 		/// Ensure eth_address has not been mapped
 		#[pallet::weight(T::WeightInfo::claim_default_account())]
-		pub fn claim_default_account(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
+		pub fn claim_default_account(origin: OriginFor<T>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
 			// ensure account_id has not been mapped
@@ -178,7 +179,7 @@ pub mod module {
 
 			Self::deposit_event(Event::ClaimAccount(who, eth_address));
 
-			Ok(().into())
+			Ok(())
 		}
 	}
 }

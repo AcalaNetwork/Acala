@@ -126,13 +126,13 @@ pub mod module {
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight(<T::Balance as Into<Weight>>::into(new_value.clone()))]
-		pub fn set_dummy(origin: OriginFor<T>, #[pallet::compact] new_value: T::Balance) -> DispatchResultWithPostInfo {
+		pub fn set_dummy(origin: OriginFor<T>, #[pallet::compact] new_value: T::Balance) -> DispatchResult {
 			ensure_root(origin)?;
 
 			Dummy::<T>::put(&new_value);
 			Self::deposit_event(Event::Dummy(new_value));
 
-			Ok(().into())
+			Ok(())
 		}
 	}
 }

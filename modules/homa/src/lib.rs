@@ -42,9 +42,11 @@ pub use weights::WeightInfo;
 /// Redemption modes:
 /// 1. Immediately: User will immediately get back DOT from the free pool,
 /// which is a liquid pool operated by staking pool, but they have to pay
-/// extra fee. 2. Target: User can claim the unclaimed unbonding DOT of
+/// extra fee.
+/// 2. Target: User can claim the unclaimed unbonding DOT of
 /// specific era, after the remaining unbinding period has passed, users can
-/// get back the DOT. 3. WaitForUnbonding: User request unbond, the staking
+/// get back the DOT.
+/// 3. WaitFor Unbonding: User request unbond, the staking
 /// pool will process unbonding in the next era, and user needs to wait for
 /// the complete unbonding era which determined by Polkadot.
 #[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, MaxEncodedLen)]
@@ -81,10 +83,10 @@ pub mod module {
 		/// - `amount`: the DOT amount to inject into staking pool.
 		#[pallet::weight(<T as Config>::WeightInfo::mint())]
 		#[transactional]
-		pub fn mint(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResultWithPostInfo {
+		pub fn mint(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			T::Homa::mint(&who, amount)?;
-			Ok(().into())
+			Ok(())
 		}
 
 		/// Burn LDOT and redeem DOT from staking pool.
@@ -101,7 +103,7 @@ pub mod module {
 			origin: OriginFor<T>,
 			#[pallet::compact] amount: Balance,
 			strategy: RedeemStrategy,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			match strategy {
 				RedeemStrategy::Immediately => {
@@ -114,16 +116,16 @@ pub mod module {
 					T::Homa::redeem_by_unbond(&who, amount)?;
 				}
 			}
-			Ok(().into())
+			Ok(())
 		}
 
 		/// Get back those DOT that have been unbonded.
 		#[pallet::weight(<T as Config>::WeightInfo::withdraw_redemption())]
 		#[transactional]
-		pub fn withdraw_redemption(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
+		pub fn withdraw_redemption(origin: OriginFor<T>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			T::Homa::withdraw_redemption(&who)?;
-			Ok(().into())
+			Ok(())
 		}
 	}
 }

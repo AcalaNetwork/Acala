@@ -1,7 +1,7 @@
 relaychain:
-  image: parity/polkadot:v0.9.5
+  image: parity/polkadot:v0.9.7
   chain: rococo-local
-  runtime_genesis_config:
+  runtimeGenesisConfig:
     parachainsConfiguration:
       config:
         validation_upgrade_frequency: 1
@@ -18,8 +18,8 @@ relaychain:
     - name: bob
     - name: charlie
 
-paras:
-- image: acala/karura-node:1.0.1
+parachains:
+- image: acala/karura-node:1.1.0
   chain:
     base: karura-latest
     collators:

@@ -32,7 +32,7 @@ use frame_support::{
 	traits::{
 		Currency, ExistenceRequirement, Imbalance, NamedReservableCurrency, OnUnbalanced, SameOrOther, WithdrawReasons,
 	},
-	weights::{DispatchInfo, GetDispatchInfo, Pays, PostDispatchInfo, WeightToFeePolynomial},
+	weights::{DispatchInfo, GetDispatchInfo, Pays, PostDispatchInfo, WeightToFeeCoefficient, WeightToFeePolynomial},
 };
 use frame_system::pallet_prelude::*;
 use orml_traits::MultiCurrency;
@@ -269,6 +269,16 @@ pub mod module {
 		type WeightInfo: WeightInfo;
 	}
 
+	#[pallet::extra_constants]
+	impl<T: Config> Pallet<T> {
+		//TODO: rename to snake case after https://github.com/paritytech/substrate/issues/8826 fixed.
+		#[allow(non_snake_case)]
+		/// The polynomial that is applied in order to derive fee from weight.
+		fn WeightToFee() -> Vec<WeightToFeeCoefficient<PalletBalanceOf<T>>> {
+			T::WeightToFee::polynomial().to_vec()
+		}
+	}
+
 	#[pallet::type_value]
 	pub fn DefaultFeeMultiplier() -> Multiplier {
 		Multiplier::saturating_from_integer(1)
@@ -351,10 +361,7 @@ pub mod module {
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight(<T as Config>::WeightInfo::set_default_fee_token())]
 		/// Set default fee token
-		pub fn set_default_fee_token(
-			origin: OriginFor<T>,
-			fee_token: Option<CurrencyId>,
-		) -> DispatchResultWithPostInfo {
+		pub fn set_default_fee_token(origin: OriginFor<T>, fee_token: Option<CurrencyId>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
 			if let Some(currency_id) = fee_token {
@@ -362,7 +369,7 @@ pub mod module {
 			} else {
 				DefaultFeeCurrencyId::<T>::remove(&who);
 			}
-			Ok(().into())
+			Ok(())
 		}
 	}
 }
@@ -557,17 +564,24 @@ where
 		charge_fee_order.dedup();
 
 		let price_impact_limit = Some(T::MaxSlippageSwapWithDEX::get());
+		let native_existential_deposit = <T as Config>::Currency::minimum_balance();
+		let total_native = <T as Config>::Currency::total_balance(who);
+		// add the gap amount to keep account alive and have enough fee
+		let fee_and_alive_gap = if total_native < native_existential_deposit {
+			fee.saturating_add(native_existential_deposit.saturating_sub(total_native))
+		} else {
+			fee
+		};
 
 		// iterator charge fee order to get enough fee
 		for currency_id in charge_fee_order {
 			if currency_id == native_currency_id {
 				// check native balance if is enough
-				let native_is_enough =
-					<T as Config>::Currency::free_balance(who)
-						.checked_sub(&fee)
-						.map_or(false, |new_free_balance| {
-							<T as Config>::Currency::ensure_can_withdraw(who, fee, reason, new_free_balance).is_ok()
-						});
+				let native_is_enough = <T as Config>::Currency::free_balance(who)
+					.checked_sub(&fee_and_alive_gap)
+					.map_or(false, |new_free_balance| {
+						<T as Config>::Currency::ensure_can_withdraw(who, fee, reason, new_free_balance).is_ok()
+					});
 				if native_is_enough {
 					// native balance is enough, break iteration
 					break;
@@ -583,7 +597,7 @@ where
 				if T::DEX::swap_with_exact_target(
 					who,
 					&trading_path,
-					fee.unique_saturated_into(),
+					fee_and_alive_gap.unique_saturated_into(),
 					<T as Config>::MultiCurrency::free_balance(currency_id, who),
 					price_impact_limit,
 				)

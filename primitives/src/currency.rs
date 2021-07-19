@@ -186,6 +186,9 @@ create_currency_id! {
 		KSM("Kusama", 12) = 130,
 		LKSM("Liquid KSM", 12) = 131,
 		// Reserve for RENBTC = 132
+
+		// External Ecosystem
+		CASH("Compound CASH", 8) = 140,
 	}
 }
 
@@ -227,27 +230,27 @@ impl CurrencyId {
 
 	pub fn split_dex_share_currency_id(&self) -> Option<(Self, Self)> {
 		match self {
-			CurrencyId::DexShare(token_symbol_0, token_symbol_1) => {
-				let symbol_0: CurrencyId = (*token_symbol_0).into();
-				let symbol_1: CurrencyId = (*token_symbol_1).into();
-				Some((symbol_0, symbol_1))
+			CurrencyId::DexShare(dex_share_0, dex_share_1) => {
+				let currency_id_0: CurrencyId = (*dex_share_0).into();
+				let currency_id_1: CurrencyId = (*dex_share_1).into();
+				Some((currency_id_0, currency_id_1))
 			}
 			_ => None,
 		}
 	}
 
 	pub fn join_dex_share_currency_id(currency_id_0: Self, currency_id_1: Self) -> Option<Self> {
-		let token_symbol_0 = match currency_id_0 {
+		let dex_share_0 = match currency_id_0 {
 			CurrencyId::Token(symbol) => DexShare::Token(symbol),
 			CurrencyId::Erc20(address) => DexShare::Erc20(address),
 			_ => return None,
 		};
-		let token_symbol_1 = match currency_id_1 {
+		let dex_share_1 = match currency_id_1 {
 			CurrencyId::Token(symbol) => DexShare::Token(symbol),
 			CurrencyId::Erc20(address) => DexShare::Erc20(address),
 			_ => return None,
 		};
-		Some(CurrencyId::DexShare(token_symbol_0, token_symbol_1))
+		Some(CurrencyId::DexShare(dex_share_0, dex_share_1))
 	}
 }
 

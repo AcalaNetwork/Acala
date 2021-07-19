@@ -20,6 +20,7 @@ use frame_support::log;
 use module_evm::{Context, ExitError, ExitSucceed, Precompile};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use sp_core::U256;
+use sp_runtime::RuntimeDebug;
 use sp_std::{borrow::Cow, fmt::Debug, marker::PhantomData, prelude::*, result};
 
 use module_support::{AddressMapping as AddressMappingT, CurrencyIdMapping as CurrencyIdMappingT, EVMStateRentTrait};
@@ -42,15 +43,16 @@ pub struct StateRentPrecompile<AccountId, AddressMapping, CurrencyIdMapping, EVM
 	PhantomData<(AccountId, AddressMapping, CurrencyIdMapping, EVM)>,
 );
 
-#[derive(Debug, Eq, PartialEq, TryFromPrimitive, IntoPrimitive)]
+#[primitives_proc_macro::generate_function_selector]
+#[derive(RuntimeDebug, Eq, PartialEq, TryFromPrimitive, IntoPrimitive)]
 #[repr(u32)]
 pub enum Action {
-	QueryNewContractExtraBytes = 0xa23e8b82,
-	QueryStorageDepositPerByte = 0x6e043998,
-	QueryMaintainer = 0x06ad1355,
-	QueryDeveloperDeposit = 0x68a18855,
-	QueryDeploymentFee = 0xf2cff57f,
-	TransferMaintainer = 0xee0d2e12,
+	QueryNewContractExtraBytes = "newContractExtraBytes()",
+	QueryStorageDepositPerByte = "storageDepositPerByte()",
+	QueryMaintainer = "maintainerOf(address)",
+	QueryDeveloperDeposit = "developerDeposit()",
+	QueryDeploymentFee = "deploymentFee()",
+	TransferMaintainer = "transferMaintainer(address,address,address)",
 }
 
 impl<AccountId, AddressMapping, CurrencyIdMapping, EVM> Precompile
@@ -129,43 +131,4 @@ fn vec_u8_from_u32(b: u32) -> Vec<u8> {
 	let mut be_bytes = [0u8; 32];
 	U256::from(b).to_big_endian(&mut be_bytes[..]);
 	be_bytes.to_vec()
-}
-
-#[cfg(test)]
-mod tests {
-	use super::*;
-	use crate::precompile::mock::get_function_selector;
-
-	#[test]
-	fn function_selector_match() {
-		assert_eq!(
-			u32::from_be_bytes(get_function_selector("newContractExtraBytes()")),
-			Into::<u32>::into(Action::QueryNewContractExtraBytes)
-		);
-
-		assert_eq!(
-			u32::from_be_bytes(get_function_selector("storageDepositPerByte()")),
-			Into::<u32>::into(Action::QueryStorageDepositPerByte)
-		);
-
-		assert_eq!(
-			u32::from_be_bytes(get_function_selector("maintainerOf(address)")),
-			Into::<u32>::into(Action::QueryMaintainer)
-		);
-
-		assert_eq!(
-			u32::from_be_bytes(get_function_selector("developerDeposit()")),
-			Into::<u32>::into(Action::QueryDeveloperDeposit)
-		);
-
-		assert_eq!(
-			u32::from_be_bytes(get_function_selector("deploymentFee()")),
-			Into::<u32>::into(Action::QueryDeploymentFee)
-		);
-
-		assert_eq!(
-			u32::from_be_bytes(get_function_selector("transferMaintainer(address,address,address)")),
-			Into::<u32>::into(Action::TransferMaintainer)
-		);
-	}
 }

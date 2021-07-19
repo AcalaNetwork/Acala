@@ -1,0 +1,16 @@
+name: Verify bootnotes
+
+on:
+  schedule:
+    - cron: "00 04 * * 1" # 4AM weekly on monday
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+      - name: verify bootnotes
+        run: |
+          ./scripts/verify-bootnodes.sh karura

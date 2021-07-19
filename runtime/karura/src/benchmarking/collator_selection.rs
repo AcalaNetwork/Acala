@@ -17,13 +17,18 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-	AccountId, Balance, Balances, CollatorSelection, Event, MaxCandidates, MaxInvulnerables, MinCandidates, Runtime,
-	Session, SessionKeys, System,
+	AccountId, Balance, Balances, CollatorKickThreshold, CollatorSelection, Event, MaxCandidates, MaxInvulnerables,
+	MinCandidates, Period, Runtime, Session, SessionKeys, System,
 };
 
 use frame_benchmarking::{account, whitelisted_caller};
-use frame_support::{assert_ok, pallet_prelude::Decode, traits::Currency};
+use frame_support::{
+	assert_ok,
+	pallet_prelude::Decode,
+	traits::{Currency, OnInitialize},
+};
 use frame_system::RawOrigin;
+use module_collator_selection::POINT_PER_BLOCK;
 use orml_benchmarking::{runtime_benchmarks, whitelist_account};
 use pallet_authorship::EventHandler;
 use pallet_session::SessionManager;
@@ -49,7 +54,7 @@ fn register_candidates(count: u32) {
 				.unwrap(),
 		);
 		let mut keys = [1u8; 128];
-		keys[0..8].copy_from_slice(&index.to_be_bytes());
+		keys[0..4].copy_from_slice(&(index as u32).to_be_bytes());
 		let keys: SessionKeys = Decode::decode(&mut &keys[..]).unwrap();
 		Session::set_keys(RawOrigin::Signed(who.clone()).into(), keys, vec![]).unwrap();
 		CollatorSelection::register_as_candidate(RawOrigin::Signed(who.clone()).into()).unwrap();
@@ -145,6 +150,21 @@ runtime_benchmarks! {
 		assert_last_event(module_collator_selection::Event::CandidateRemoved(leaving).into());
 	}
 
+	withdraw_bond {
+		// MinCandidates = 5, so begin with 6.
+		let c = MaxCandidates::get();
+		module_collator_selection::CandidacyBond::<Runtime>::put(Balances::minimum_balance());
+		module_collator_selection::DesiredCandidates::<Runtime>::put(c);
+		register_candidates(c);
+
+		module_session_manager::SessionDuration::<Runtime>::put(Period::get());
+		let leaving = module_collator_selection::Candidates::<Runtime>::get().into_iter().last().unwrap();
+		whitelist_account!(leaving);
+		CollatorSelection::leave_intent(RawOrigin::Signed(leaving.clone()).into())?;
+		Session::on_initialize(Period::get());
+		Session::on_initialize(2*Period::get());
+	}: _(RawOrigin::Signed(leaving))
+
 	// worse case is paying a non-existing candidate account.
 	note_author {
 		let c = MaxCandidates::get();
@@ -157,7 +177,11 @@ runtime_benchmarks! {
 			Balances::minimum_balance().checked_mul(2u32.into()).unwrap()
 		);
 		let author = account("author", 0, SEED);
-		assert!(Balances::free_balance(&author) == 0u32.into());
+		Balances::make_free_balance_be(
+			&author,
+			Balances::minimum_balance()
+		);
+		assert!(Balances::free_balance(&author) == Balances::minimum_balance());
 	}: {
 		CollatorSelection::note_author(author.clone())
 	}
@@ -187,11 +211,10 @@ runtime_benchmarks! {
 		System::set_block_number(0u32.into());
 		register_candidates(c);
 
-		// TODO: https://github.com/paritytech/substrate/pull/8815
-		// for i in 0..r {
-		//     pallet_session::Validators::insert()
-		// }
+		module_session_manager::SessionDuration::<Runtime>::put(Period::get());
 		System::set_block_number(20u32.into());
+		Session::on_initialize(Period::get());
+		Session::on_initialize(2*Period::get());
 
 		assert!(module_collator_selection::Candidates::<Runtime>::get().len() == c as usize);
 	}: {
@@ -217,7 +240,7 @@ runtime_benchmarks! {
 				// point = 0, will be removed.
 				module_collator_selection::SessionPoints::<Runtime>::insert(&candidate, 0);
 			} else {
-				module_collator_selection::SessionPoints::<Runtime>::insert(&candidate, 1);
+				module_collator_selection::SessionPoints::<Runtime>::insert(&candidate, CollatorKickThreshold::get().mul_floor(Period::get() * POINT_PER_BLOCK));
 			}
 			count += 1;
 		});

@@ -125,7 +125,11 @@ parameter_types! {
 	pub const GetStableCurrencyId: CurrencyId = AUSD;
 	pub const GetExchangeFee: (u32, u32) = (0, 100);
 	pub const TradingPathLimit: u32 = 3;
-	pub EnabledTradingPairs : Vec<TradingPair> = vec![TradingPair::new(AUSD, BTC), TradingPair::new(AUSD, DOT), TradingPair::new(BTC, DOT)];
+	pub EnabledTradingPairs: Vec<TradingPair> = vec![
+		TradingPair::from_currency_ids(AUSD, BTC).unwrap(),
+		TradingPair::from_currency_ids(AUSD, DOT).unwrap(),
+		TradingPair::from_currency_ids(BTC, DOT).unwrap(),
+	];
 	pub const DEXPalletId: PalletId = PalletId(*b"aca/dexm");
 }
 

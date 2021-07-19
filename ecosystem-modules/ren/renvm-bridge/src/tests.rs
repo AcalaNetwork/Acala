@@ -33,7 +33,7 @@ fn mint_ren_btc(
 	amount: Balance,
 	n_hash: [u8; 32],
 	sig: EcdsaSignature,
-) -> Result<DispatchResultWithPostInfo, TransactionValidityError> {
+) -> Result<DispatchResult, TransactionValidityError> {
 	<RenVmBridge as ValidateUnsigned>::validate_unsigned(
 		TransactionSource::External,
 		&Call::mint(who.clone(), p_hash, amount, n_hash, sig.clone()),
@@ -42,7 +42,7 @@ fn mint_ren_btc(
 	Ok(RenVmBridge::mint(Origin::none(), who, p_hash, amount, n_hash, sig))
 }
 
-fn rotate_key(new_key: PublicKey, sig: EcdsaSignature) -> Result<DispatchResultWithPostInfo, TransactionValidityError> {
+fn rotate_key(new_key: PublicKey, sig: EcdsaSignature) -> Result<DispatchResult, TransactionValidityError> {
 	<RenVmBridge as ValidateUnsigned>::validate_unsigned(
 		TransactionSource::External,
 		&Call::rotate_key(new_key, sig.clone()),

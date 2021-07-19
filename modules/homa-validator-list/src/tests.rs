@@ -130,6 +130,7 @@ fn freeze_work() {
 				.is_frozen,
 			true
 		);
+
 		System::assert_has_event(mock::Event::HomaValidatorListModule(crate::Event::FreezeValidator(
 			VALIDATOR_1,
 		)));
@@ -366,6 +367,7 @@ fn bond_work() {
 fn unbond_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
+		MockBlockNumberProvider::set(1);
 
 		assert_ok!(HomaValidatorListModule::bond(Origin::signed(ALICE), VALIDATOR_1, 200));
 		assert_eq!(
@@ -438,6 +440,7 @@ fn unbond_work() {
 fn rebond_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
+		MockBlockNumberProvider::set(1);
 
 		assert_ok!(HomaValidatorListModule::bond(Origin::signed(ALICE), VALIDATOR_1, 200));
 		assert_ok!(HomaValidatorListModule::unbond(Origin::signed(ALICE), VALIDATOR_1, 100));
@@ -497,6 +500,7 @@ fn rebond_work() {
 fn withdraw_unbonded_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
+		MockBlockNumberProvider::set(1);
 
 		assert_ok!(HomaValidatorListModule::bond(Origin::signed(ALICE), VALIDATOR_1, 200));
 		assert_ok!(HomaValidatorListModule::unbond(Origin::signed(ALICE), VALIDATOR_1, 100));
@@ -527,7 +531,7 @@ fn withdraw_unbonded_work() {
 			200
 		);
 
-		System::set_block_number(100);
+		MockBlockNumberProvider::set(100);
 		assert_ok!(HomaValidatorListModule::withdraw_unbonded(
 			Origin::signed(ALICE),
 			VALIDATOR_1
@@ -556,7 +560,7 @@ fn withdraw_unbonded_work() {
 			200
 		);
 
-		System::set_block_number(101);
+		MockBlockNumberProvider::set(101);
 		assert_ok!(HomaValidatorListModule::withdraw_unbonded(
 			Origin::signed(ALICE),
 			VALIDATOR_1
@@ -771,7 +775,7 @@ fn slash_work() {
 #[test]
 fn contains_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		System::set_block_number(1);
+		MockBlockNumberProvider::set(1);
 
 		assert_ok!(HomaValidatorListModule::bond(Origin::signed(ALICE), VALIDATOR_1, 100));
 		assert_eq!(
