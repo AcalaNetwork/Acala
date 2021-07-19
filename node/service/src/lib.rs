@@ -77,8 +77,8 @@ mod client;
 fn default_mock_parachain_inherent_data_provider() -> MockValidationDataInherentDataProvider {
 	MockValidationDataInherentDataProvider {
 		current_para_block: 0,
-		relay_offset: 0,
-		relay_blocks_per_para_block: 0,
+		relay_offset: 1000,
+		relay_blocks_per_para_block: 2,
 	}
 }
 
