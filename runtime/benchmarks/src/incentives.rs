@@ -18,11 +18,11 @@
 
 #[macro_export]
 macro_rules! incentives_benchmarks {
-    () => {
+	() => {
 		use crate::{
-			benchmarking::utils::set_balance,
-			dollar, AccountId, AccumulatePeriod, CollateralCurrencyIds, Currencies, CurrencyId, GetNativeCurrencyId,
-			GetStableCurrencyId, Incentives, Rate, Rewards, Runtime, System, TokenSymbol, GetStakingCurrencyId, GetLiquidCurrencyId
+			benchmarking::utils::set_balance, dollar, AccountId, AccumulatePeriod, CollateralCurrencyIds, Currencies,
+			CurrencyId, GetLiquidCurrencyId, GetNativeCurrencyId, GetStableCurrencyId, GetStakingCurrencyId,
+			Incentives, Rate, Rewards, Runtime, System, TokenSymbol,
 		};
 
 		use frame_benchmarking::{account, whitelisted_caller};
@@ -88,7 +88,7 @@ macro_rules! incentives_benchmarks {
 				let native_currency_id = GetNativeCurrencyId::get();
 
 				Rewards::add_share(&caller, &pool_id, 100);
-				Currencies::deposit(native_currency_id, &<Runtime as module_incentives::Config>::RewardsVaultAccountId::get(), 80 * dollar(native_currency_id))?;
+				Currencies::deposit(native_currency_id, &Incentives::account_id(), 80 * dollar(native_currency_id))?;
 				Rewards::accumulate_reward(&pool_id, 80 * dollar(native_currency_id));
 			}: _(RawOrigin::Signed(caller), pool_id)
 
@@ -148,5 +148,5 @@ macro_rules! incentives_benchmarks {
 
 			impl_benchmark_test_suite!(new_test_ext(),);
 		}
-	}
+	};
 }

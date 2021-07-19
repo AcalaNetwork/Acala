@@ -266,12 +266,12 @@ pub mod module {
 		/// The dispatch origin of this call must be _None_.
 		#[pallet::weight(T::WeightInfo::cancel_collateral_auction())]
 		#[transactional]
-		pub fn cancel(origin: OriginFor<T>, id: AuctionId) -> DispatchResultWithPostInfo {
+		pub fn cancel(origin: OriginFor<T>, id: AuctionId) -> DispatchResult {
 			ensure_none(origin)?;
 			ensure!(T::EmergencyShutdown::is_shutdown(), Error::<T>::MustAfterShutdown);
 			<Self as AuctionManager<T::AccountId>>::cancel_auction(id)?;
 			Self::deposit_event(Event::CancelAuction(id));
-			Ok(().into())
+			Ok(())
 		}
 	}
 
@@ -334,7 +334,7 @@ impl<T: Config> Pallet<T> {
 
 		// get to_be_continue record,
 		// if it exsits, iterator map storage start with previous key
-		let start_key = to_be_continue.get::<Vec<u8>>().flatten();
+		let start_key = to_be_continue.get::<Vec<u8>>().unwrap_or_default();
 
 		// get the max iterationns config
 		let max_iterations = StorageValueRef::persistent(&OFFCHAIN_WORKER_MAX_ITERATIONS)

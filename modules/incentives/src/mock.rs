@@ -30,18 +30,13 @@ use frame_system::EnsureSignedBy;
 use orml_traits::parameter_type_with_key;
 use primitives::{DexShare, TokenSymbol};
 use sp_core::{H160, H256};
-use sp_runtime::{testing::Header, traits::IdentityLookup};
+use sp_runtime::{testing::Header, traits::IdentityLookup, AccountId32};
 use sp_std::cell::RefCell;
 pub use support::{CDPTreasury, DEXManager, Price, Ratio};
 
-pub type AccountId = u128;
+pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
 
-pub const ALICE: AccountId = 1;
-pub const BOB: AccountId = 2;
-pub const VAULT: AccountId = 10;
-pub const UNRELEASED: AccountId = 11;
-pub const VALIDATOR: AccountId = 3;
 pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
 pub const LDOT: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
@@ -54,6 +49,15 @@ pub const DOT_AUSD_LP: CurrencyId =
 
 mod incentives {
 	pub use super::super::*;
+}
+
+ord_parameter_types! {
+	pub const ALICE: AccountId = AccountId::from([1u8; 32]);
+	pub const BOB: AccountId = AccountId::from([2u8; 32]);
+	pub const VAULT: AccountId = IncentivesModule::account_id();
+	pub const UNRELEASED: AccountId = AccountId::from([3u8; 32]);
+	pub const VALIDATOR: AccountId = AccountId::from([4u8; 32]);
+	pub const ROOT: AccountId = AccountId32::new([255u8; 32]);
 }
 
 parameter_types! {
@@ -245,8 +249,7 @@ impl orml_rewards::Config for Runtime {
 }
 
 parameter_types! {
-	pub const RewardsVaultAccountId: AccountId = VAULT;
-	pub const NativeRewardsSource: AccountId = UNRELEASED;
+	pub NativeRewardsSource: AccountId = UNRELEASED::get();
 	pub const AccumulatePeriod: BlockNumber = 10;
 	pub const NativeCurrencyId: CurrencyId = ACA;
 	pub const StableCurrencyId: CurrencyId = AUSD;
@@ -255,19 +258,18 @@ parameter_types! {
 }
 
 ord_parameter_types! {
-	pub const Four: AccountId = 4;
+	pub const Root: AccountId = ROOT::get();
 }
 
 impl Config for Runtime {
 	type Event = Event;
 	type RelaychainAccountId = AccountId;
-	type RewardsVaultAccountId = RewardsVaultAccountId;
 	type NativeRewardsSource = NativeRewardsSource;
 	type AccumulatePeriod = AccumulatePeriod;
 	type NativeCurrencyId = NativeCurrencyId;
 	type StableCurrencyId = StableCurrencyId;
 	type LiquidCurrencyId = LiquidCurrencyId;
-	type UpdateOrigin = EnsureSignedBy<Four, AccountId>;
+	type UpdateOrigin = EnsureSignedBy<Root, AccountId>;
 	type CDPTreasury = MockCDPTreasury;
 	type Currency = TokensModule;
 	type DEX = MockDEX;
@@ -299,7 +301,7 @@ pub struct ExtBuilder {
 impl Default for ExtBuilder {
 	fn default() -> Self {
 		Self {
-			balances: vec![(UNRELEASED, ACA, 10_000)],
+			balances: vec![(UNRELEASED::get(), ACA, 10_000)],
 		}
 	}
 }

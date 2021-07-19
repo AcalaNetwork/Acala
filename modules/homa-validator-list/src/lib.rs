@@ -270,7 +270,7 @@ pub mod module {
 			origin: OriginFor<T>,
 			validator: T::RelaychainAccountId,
 			#[pallet::compact] amount: Balance,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			let guarantor = ensure_signed(origin)?;
 			let free_balance = T::LiquidTokenCurrency::free_balance(&guarantor);
 			let total_should_locked = Self::total_locked_by_guarantor(&guarantor).unwrap_or_default();
@@ -291,7 +291,7 @@ pub mod module {
 					})?;
 				}
 			}
-			Ok(().into())
+			Ok(())
 		}
 
 		/// Unbond tokens from a validator on the relay chain.
@@ -305,7 +305,7 @@ pub mod module {
 			origin: OriginFor<T>,
 			validator: T::RelaychainAccountId,
 			#[pallet::compact] amount: Balance,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			let guarantor = ensure_signed(origin)?;
 
 			if !amount.is_zero() {
@@ -324,7 +324,7 @@ pub mod module {
 					Ok(())
 				})?;
 			}
-			Ok(().into())
+			Ok(())
 		}
 
 		/// Rebond tokens to a validator on the relay chain.
@@ -337,7 +337,7 @@ pub mod module {
 			origin: OriginFor<T>,
 			validator: T::RelaychainAccountId,
 			#[pallet::compact] amount: Balance,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			let guarantor = ensure_signed(origin)?;
 
 			if !amount.is_zero() {
@@ -346,7 +346,7 @@ pub mod module {
 					Ok(())
 				})?;
 			}
-			Ok(().into())
+			Ok(())
 		}
 
 		/// Withdraw the unbonded tokens from a validator on the relay chain.
@@ -355,10 +355,7 @@ pub mod module {
 		/// - `validator`: The AccountId of a validator on the relay chain to withdraw from
 		#[pallet::weight(T::WeightInfo::withdraw_unbonded())]
 		#[transactional]
-		pub fn withdraw_unbonded(
-			origin: OriginFor<T>,
-			validator: T::RelaychainAccountId,
-		) -> DispatchResultWithPostInfo {
+		pub fn withdraw_unbonded(origin: OriginFor<T>, validator: T::RelaychainAccountId) -> DispatchResult {
 			let guarantor = ensure_signed(origin)?;
 			ensure!(
 				!Self::validator_backings(&validator).unwrap_or_default().is_frozen,
@@ -380,7 +377,7 @@ pub mod module {
 				}
 				Ok(())
 			})?;
-			Ok(().into())
+			Ok(())
 		}
 
 		/// Freezes validators on the relay chain if they are not already frozen.
@@ -389,7 +386,7 @@ pub mod module {
 		/// - `validators`: The AccountIds of the validators on the relay chain to freeze
 		#[pallet::weight(T::WeightInfo::freeze(validators.len() as u32))]
 		#[transactional]
-		pub fn freeze(origin: OriginFor<T>, validators: Vec<T::RelaychainAccountId>) -> DispatchResultWithPostInfo {
+		pub fn freeze(origin: OriginFor<T>, validators: Vec<T::RelaychainAccountId>) -> DispatchResult {
 			T::FreezeOrigin::ensure_origin(origin)?;
 			validators.iter().for_each(|validator| {
 				ValidatorBackings::<T>::mutate_exists(validator, |maybe_validator| {
@@ -401,7 +398,7 @@ pub mod module {
 					*maybe_validator = Some(v);
 				});
 			});
-			Ok(().into())
+			Ok(())
 		}
 
 		/// Unfreezes validators on the relay chain if they are frozen.
@@ -410,7 +407,7 @@ pub mod module {
 		/// - `validators`: The AccountIds of the validators on the relay chain to unfreeze
 		#[pallet::weight(T::WeightInfo::thaw())]
 		#[transactional]
-		pub fn thaw(origin: OriginFor<T>, validators: Vec<T::RelaychainAccountId>) -> DispatchResultWithPostInfo {
+		pub fn thaw(origin: OriginFor<T>, validators: Vec<T::RelaychainAccountId>) -> DispatchResult {
 			// Using SlashOrigin instead of FreezeOrigin so that un-freezing requires more council members than
 			// freezing
 			T::SlashOrigin::ensure_origin(origin)?;
@@ -424,7 +421,7 @@ pub mod module {
 					*maybe_validator = Some(v);
 				});
 			});
-			Ok(().into())
+			Ok(())
 		}
 
 		/// Slash validators on the relay chain.
@@ -433,10 +430,7 @@ pub mod module {
 		/// - `slashes`: The SlashInfos of the validators to be slashed
 		#[pallet::weight(T::WeightInfo::slash())]
 		#[transactional]
-		pub fn slash(
-			origin: OriginFor<T>,
-			slashes: Vec<SlashInfo<Balance, T::RelaychainAccountId>>,
-		) -> DispatchResultWithPostInfo {
+		pub fn slash(origin: OriginFor<T>, slashes: Vec<SlashInfo<Balance, T::RelaychainAccountId>>) -> DispatchResult {
 			T::SlashOrigin::ensure_origin(origin)?;
 			let liquid_staking_exchange_rate = T::LiquidStakingExchangeRateProvider::get_exchange_rate();
 			let staking_liquid_exchange_rate = liquid_staking_exchange_rate.reciprocal().unwrap_or_default();
@@ -474,7 +468,7 @@ pub mod module {
 			}
 
 			T::OnSlash::happened(&actual_total_slashing);
-			Ok(().into())
+			Ok(())
 		}
 	}
 }

@@ -128,10 +128,6 @@ pub mod module {
 		#[pallet::constant]
 		type NativeRewardsSource: Get<Self::AccountId>;
 
-		/// The vault account to keep rewards.
-		#[pallet::constant]
-		type RewardsVaultAccountId: Get<Self::AccountId>;
-
 		/// The origin which may update incentive related params
 		type UpdateOrigin: EnsureOrigin<Self::Origin>;
 
@@ -238,7 +234,7 @@ pub mod module {
 									let res = T::Currency::transfer(
 										native_currency_id,
 										&T::NativeRewardsSource::get(),
-										&T::RewardsVaultAccountId::get(),
+										&Self::account_id(),
 										incentive_reward_amount,
 									);
 									match res {
@@ -253,7 +249,7 @@ pub mod module {
 												target: "incentives",
 												"transfer: failed to transfer {:?} {:?} from {:?} to {:?}: {:?}. \
 												This is unexpected but should be safe",
-												incentive_reward_amount, native_currency_id, T::NativeRewardsSource::get(), T::RewardsVaultAccountId::get(), e
+												incentive_reward_amount, native_currency_id, T::NativeRewardsSource::get(), Self::account_id(), e
 											);
 										}
 									}
@@ -282,7 +278,7 @@ pub mod module {
 										// issue stable coin without backing.
 										if !dex_saving_reward_amount.is_zero() {
 											let res = T::CDPTreasury::issue_debit(
-												&T::RewardsVaultAccountId::get(),
+												&Self::account_id(),
 												dex_saving_reward_amount,
 												false,
 											);
@@ -298,7 +294,7 @@ pub mod module {
 														target: "incentives",
 														"issue_debit: failed to issue {:?} unbacked stable to {:?}: {:?}. \
 														This is unexpected but should be safe",
-														dex_saving_reward_amount, T::RewardsVaultAccountId::get(), e
+														dex_saving_reward_amount, Self::account_id(), e
 													);
 												}
 											}
@@ -323,37 +319,26 @@ pub mod module {
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight(<T as Config>::WeightInfo::deposit_dex_share())]
 		#[transactional]
-		pub fn deposit_dex_share(
-			origin: OriginFor<T>,
-			lp_currency_id: CurrencyId,
-			amount: Balance,
-		) -> DispatchResultWithPostInfo {
+		pub fn deposit_dex_share(origin: OriginFor<T>, lp_currency_id: CurrencyId, amount: Balance) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			Self::do_deposit_dex_share(&who, lp_currency_id, amount)?;
-			Ok(().into())
+			Ok(())
 		}
 
 		#[pallet::weight(<T as Config>::WeightInfo::withdraw_dex_share())]
 		#[transactional]
-		pub fn withdraw_dex_share(
-			origin: OriginFor<T>,
-			lp_currency_id: CurrencyId,
-			amount: Balance,
-		) -> DispatchResultWithPostInfo {
+		pub fn withdraw_dex_share(origin: OriginFor<T>, lp_currency_id: CurrencyId, amount: Balance) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			Self::do_withdraw_dex_share(&who, lp_currency_id, amount)?;
-			Ok(().into())
+			Ok(())
 		}
 
 		#[pallet::weight(<T as Config>::WeightInfo::claim_rewards())]
 		#[transactional]
-		pub fn claim_rewards(
-			origin: OriginFor<T>,
-			pool_id: PoolId<T::RelaychainAccountId>,
-		) -> DispatchResultWithPostInfo {
+		pub fn claim_rewards(origin: OriginFor<T>, pool_id: PoolId<T::RelaychainAccountId>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			<orml_rewards::Pallet<T>>::claim_rewards(&who, &pool_id);
-			Ok(().into())
+			Ok(())
 		}
 
 		#[pallet::weight(<T as Config>::WeightInfo::update_incentive_rewards(updates.len() as u32))]
@@ -361,7 +346,7 @@ pub mod module {
 		pub fn update_incentive_rewards(
 			origin: OriginFor<T>,
 			updates: Vec<(PoolId<T::RelaychainAccountId>, Balance)>,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
 			for (pool_id, amount) in updates {
 				match pool_id {
@@ -376,7 +361,7 @@ pub mod module {
 				IncentiveRewardAmount::<T>::insert(&pool_id, amount);
 				Self::deposit_event(Event::IncentiveRewardAmountUpdated(pool_id, amount));
 			}
-			Ok(().into())
+			Ok(())
 		}
 
 		#[pallet::weight(<T as Config>::WeightInfo::update_dex_saving_rewards(updates.len() as u32))]
@@ -384,7 +369,7 @@ pub mod module {
 		pub fn update_dex_saving_rewards(
 			origin: OriginFor<T>,
 			updates: Vec<(PoolId<T::RelaychainAccountId>, Rate)>,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
 			for (pool_id, rate) in updates {
 				match pool_id {
@@ -398,7 +383,7 @@ pub mod module {
 				DexSavingRewardRate::<T>::insert(&pool_id, rate);
 				Self::deposit_event(Event::SavingRewardRateUpdated(pool_id, rate));
 			}
-			Ok(().into())
+			Ok(())
 		}
 
 		#[pallet::weight(<T as Config>::WeightInfo::update_payout_deduction_rates(updates.len() as u32))]
@@ -406,7 +391,7 @@ pub mod module {
 		pub fn update_payout_deduction_rates(
 			origin: OriginFor<T>,
 			updates: Vec<(PoolId<T::RelaychainAccountId>, Rate)>,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
 			for (pool_id, deduction_rate) in updates {
 				match pool_id {
@@ -419,7 +404,7 @@ pub mod module {
 				PayoutDeductionRates::<T>::insert(&pool_id, deduction_rate);
 				Self::deposit_event(Event::PayoutDeductionRateUpdated(pool_id, deduction_rate));
 			}
-			Ok(().into())
+			Ok(())
 		}
 
 		#[pallet::weight(<T as Config>::WeightInfo::add_allowance())]
@@ -428,17 +413,12 @@ pub mod module {
 			origin: OriginFor<T>,
 			pool_id: PoolId<T::RelaychainAccountId>,
 			amount: Balance,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
 			match pool_id {
 				PoolId::HomaValidatorAllowance(_) => {
-					T::Currency::transfer(
-						T::LiquidCurrencyId::get(),
-						&who,
-						&T::RewardsVaultAccountId::get(),
-						amount,
-					)?;
+					T::Currency::transfer(T::LiquidCurrencyId::get(), &who, &Self::account_id(), amount)?;
 					<orml_rewards::Pallet<T>>::accumulate_reward(&pool_id, amount);
 				}
 				_ => {
@@ -446,7 +426,7 @@ pub mod module {
 				}
 			}
 
-			Ok(().into())
+			Ok(())
 		}
 	}
 }
@@ -563,13 +543,13 @@ impl<T: Config> RewardHandler<T::AccountId> for Pallet<T> {
 		// payout the reward(exclude deduction) to user from the pool. it should not affect the
 		// process, ignore the result to continue. if it fails, just the user will not
 		// be rewarded, there will not increase user balance.
-		let res = T::Currency::transfer(currency_id, &T::RewardsVaultAccountId::get(), &who, actual_payout);
+		let res = T::Currency::transfer(currency_id, &Self::account_id(), &who, actual_payout);
 		if let Err(e) = res {
 			log::warn!(
 				target: "incentives",
 				"transfer: failed to transfer {:?} {:?} from {:?} to {:?}: {:?}. \
 				This is unexpected but should be safe",
-				actual_payout, currency_id, T::RewardsVaultAccountId::get(), who, e
+				actual_payout, currency_id, Self::account_id(), who, e
 			);
 			debug_assert!(false);
 		}

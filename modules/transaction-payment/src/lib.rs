@@ -361,10 +361,7 @@ pub mod module {
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight(<T as Config>::WeightInfo::set_default_fee_token())]
 		/// Set default fee token
-		pub fn set_default_fee_token(
-			origin: OriginFor<T>,
-			fee_token: Option<CurrencyId>,
-		) -> DispatchResultWithPostInfo {
+		pub fn set_default_fee_token(origin: OriginFor<T>, fee_token: Option<CurrencyId>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
 			if let Some(currency_id) = fee_token {
@@ -372,7 +369,7 @@ pub mod module {
 			} else {
 				DefaultFeeCurrencyId::<T>::remove(&who);
 			}
-			Ok(().into())
+			Ok(())
 		}
 	}
 }

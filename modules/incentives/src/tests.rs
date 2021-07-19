@@ -31,8 +31,8 @@ use sp_runtime::{traits::BadOrigin, FixedPointNumber};
 fn deposit_dex_share_works() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
-		assert_ok!(TokensModule::deposit(BTC_AUSD_LP, &ALICE, 10000));
-		assert_eq!(TokensModule::free_balance(BTC_AUSD_LP, &ALICE), 10000);
+		assert_ok!(TokensModule::deposit(BTC_AUSD_LP, &ALICE::get(), 10000));
+		assert_eq!(TokensModule::free_balance(BTC_AUSD_LP, &ALICE::get()), 10000);
 		assert_eq!(
 			TokensModule::free_balance(BTC_AUSD_LP, &IncentivesModule::account_id()),
 			0
@@ -54,25 +54,25 @@ fn deposit_dex_share_works() {
 			}
 		);
 		assert_eq!(
-			RewardsModule::share_and_withdrawn_reward(PoolId::DexIncentive(BTC_AUSD_LP), ALICE),
+			RewardsModule::share_and_withdrawn_reward(PoolId::DexIncentive(BTC_AUSD_LP), ALICE::get()),
 			(0, 0)
 		);
 		assert_eq!(
-			RewardsModule::share_and_withdrawn_reward(PoolId::DexSaving(BTC_AUSD_LP), ALICE),
+			RewardsModule::share_and_withdrawn_reward(PoolId::DexSaving(BTC_AUSD_LP), ALICE::get()),
 			(0, 0)
 		);
 
 		assert_ok!(IncentivesModule::deposit_dex_share(
-			Origin::signed(ALICE),
+			Origin::signed(ALICE::get()),
 			BTC_AUSD_LP,
 			10000
 		));
 		System::assert_last_event(Event::IncentivesModule(crate::Event::DepositDexShare(
-			ALICE,
+			ALICE::get(),
 			BTC_AUSD_LP,
 			10000,
 		)));
-		assert_eq!(TokensModule::free_balance(BTC_AUSD_LP, &ALICE), 0);
+		assert_eq!(TokensModule::free_balance(BTC_AUSD_LP, &ALICE::get()), 0);
 		assert_eq!(
 			TokensModule::free_balance(BTC_AUSD_LP, &IncentivesModule::account_id()),
 			10000
@@ -94,11 +94,11 @@ fn deposit_dex_share_works() {
 			}
 		);
 		assert_eq!(
-			RewardsModule::share_and_withdrawn_reward(PoolId::DexIncentive(BTC_AUSD_LP), ALICE),
+			RewardsModule::share_and_withdrawn_reward(PoolId::DexIncentive(BTC_AUSD_LP), ALICE::get()),
 			(10000, 0)
 		);
 		assert_eq!(
-			RewardsModule::share_and_withdrawn_reward(PoolId::DexSaving(BTC_AUSD_LP), ALICE),
+			RewardsModule::share_and_withdrawn_reward(PoolId::DexSaving(BTC_AUSD_LP), ALICE::get()),
 			(10000, 0)
 		);
 	});
@@ -108,19 +108,19 @@ fn deposit_dex_share_works() {
 fn withdraw_dex_share_works() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
-		assert_ok!(TokensModule::deposit(BTC_AUSD_LP, &ALICE, 10000));
+		assert_ok!(TokensModule::deposit(BTC_AUSD_LP, &ALICE::get(), 10000));
 
 		assert_noop!(
-			IncentivesModule::withdraw_dex_share(Origin::signed(BOB), BTC_AUSD_LP, 10000),
+			IncentivesModule::withdraw_dex_share(Origin::signed(BOB::get()), BTC_AUSD_LP, 10000),
 			Error::<Runtime>::NotEnough,
 		);
 
 		assert_ok!(IncentivesModule::deposit_dex_share(
-			Origin::signed(ALICE),
+			Origin::signed(ALICE::get()),
 			BTC_AUSD_LP,
 			10000
 		));
-		assert_eq!(TokensModule::free_balance(BTC_AUSD_LP, &ALICE), 0);
+		assert_eq!(TokensModule::free_balance(BTC_AUSD_LP, &ALICE::get()), 0);
 		assert_eq!(
 			TokensModule::free_balance(BTC_AUSD_LP, &IncentivesModule::account_id()),
 			10000
@@ -142,25 +142,25 @@ fn withdraw_dex_share_works() {
 			}
 		);
 		assert_eq!(
-			RewardsModule::share_and_withdrawn_reward(PoolId::DexIncentive(BTC_AUSD_LP), ALICE),
+			RewardsModule::share_and_withdrawn_reward(PoolId::DexIncentive(BTC_AUSD_LP), ALICE::get()),
 			(10000, 0)
 		);
 		assert_eq!(
-			RewardsModule::share_and_withdrawn_reward(PoolId::DexSaving(BTC_AUSD_LP), ALICE),
+			RewardsModule::share_and_withdrawn_reward(PoolId::DexSaving(BTC_AUSD_LP), ALICE::get()),
 			(10000, 0)
 		);
 
 		assert_ok!(IncentivesModule::withdraw_dex_share(
-			Origin::signed(ALICE),
+			Origin::signed(ALICE::get()),
 			BTC_AUSD_LP,
 			8000
 		));
 		System::assert_last_event(Event::IncentivesModule(crate::Event::WithdrawDexShare(
-			ALICE,
+			ALICE::get(),
 			BTC_AUSD_LP,
 			8000,
 		)));
-		assert_eq!(TokensModule::free_balance(BTC_AUSD_LP, &ALICE), 8000);
+		assert_eq!(TokensModule::free_balance(BTC_AUSD_LP, &ALICE::get()), 8000);
 		assert_eq!(
 			TokensModule::free_balance(BTC_AUSD_LP, &IncentivesModule::account_id()),
 			2000
@@ -182,11 +182,11 @@ fn withdraw_dex_share_works() {
 			}
 		);
 		assert_eq!(
-			RewardsModule::share_and_withdrawn_reward(PoolId::DexIncentive(BTC_AUSD_LP), ALICE),
+			RewardsModule::share_and_withdrawn_reward(PoolId::DexIncentive(BTC_AUSD_LP), ALICE::get()),
 			(2000, 0)
 		);
 		assert_eq!(
-			RewardsModule::share_and_withdrawn_reward(PoolId::DexSaving(BTC_AUSD_LP), ALICE),
+			RewardsModule::share_and_withdrawn_reward(PoolId::DexSaving(BTC_AUSD_LP), ALICE::get()),
 			(2000, 0)
 		);
 	});
@@ -197,7 +197,7 @@ fn update_incentive_rewards_works() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
 		assert_noop!(
-			IncentivesModule::update_incentive_rewards(Origin::signed(ALICE), vec![]),
+			IncentivesModule::update_incentive_rewards(Origin::signed(ALICE::get()), vec![]),
 			BadOrigin
 		);
 
@@ -212,7 +212,7 @@ fn update_incentive_rewards_works() {
 		);
 
 		assert_ok!(IncentivesModule::update_incentive_rewards(
-			Origin::signed(4),
+			Origin::signed(Root::get()),
 			vec![
 				(PoolId::HomaIncentive, 200),
 				(PoolId::DexIncentive(DOT_AUSD_LP), 1000),
@@ -242,14 +242,17 @@ fn update_incentive_rewards_works() {
 		);
 
 		assert_noop!(
-			IncentivesModule::update_incentive_rewards(Origin::signed(4), vec![(PoolId::DexIncentive(DOT), 800)],),
+			IncentivesModule::update_incentive_rewards(
+				Origin::signed(Root::get()),
+				vec![(PoolId::DexIncentive(DOT), 800)],
+			),
 			Error::<Runtime>::InvalidCurrencyId
 		);
 
 		assert_noop!(
 			IncentivesModule::update_incentive_rewards(
-				Origin::signed(4),
-				vec![(PoolId::HomaValidatorAllowance(VALIDATOR), 300)],
+				Origin::signed(Root::get()),
+				vec![(PoolId::HomaValidatorAllowance(VALIDATOR::get()), 300)],
 			),
 			Error::<Runtime>::InvalidPoolId
 		);
@@ -261,19 +264,19 @@ fn update_dex_saving_rewards_works() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
 		assert_noop!(
-			IncentivesModule::update_dex_saving_rewards(Origin::signed(ALICE), vec![]),
+			IncentivesModule::update_dex_saving_rewards(Origin::signed(ALICE::get()), vec![]),
 			BadOrigin
 		);
 		assert_noop!(
 			IncentivesModule::update_dex_saving_rewards(
-				Origin::signed(4),
+				Origin::signed(Root::get()),
 				vec![(PoolId::DexIncentive(DOT_AUSD_LP), Rate::zero())]
 			),
 			Error::<Runtime>::InvalidPoolId
 		);
 		assert_noop!(
 			IncentivesModule::update_dex_saving_rewards(
-				Origin::signed(4),
+				Origin::signed(Root::get()),
 				vec![(PoolId::DexSaving(DOT), Rate::zero())]
 			),
 			Error::<Runtime>::InvalidCurrencyId
@@ -284,7 +287,7 @@ fn update_dex_saving_rewards_works() {
 			Rate::zero()
 		);
 		assert_ok!(IncentivesModule::update_dex_saving_rewards(
-			Origin::signed(4),
+			Origin::signed(Root::get()),
 			vec![(PoolId::DexSaving(DOT_AUSD_LP), Rate::saturating_from_rational(1, 100)),]
 		));
 		System::assert_has_event(Event::IncentivesModule(crate::Event::SavingRewardRateUpdated(
@@ -303,26 +306,26 @@ fn update_payout_deduction_rates_works() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
 		assert_noop!(
-			IncentivesModule::update_payout_deduction_rates(Origin::signed(ALICE), vec![]),
+			IncentivesModule::update_payout_deduction_rates(Origin::signed(ALICE::get()), vec![]),
 			BadOrigin
 		);
 		assert_noop!(
 			IncentivesModule::update_payout_deduction_rates(
-				Origin::signed(4),
+				Origin::signed(Root::get()),
 				vec![(PoolId::DexIncentive(DOT), Rate::zero())]
 			),
 			Error::<Runtime>::InvalidCurrencyId
 		);
 		assert_noop!(
 			IncentivesModule::update_payout_deduction_rates(
-				Origin::signed(4),
+				Origin::signed(Root::get()),
 				vec![(PoolId::DexSaving(DOT), Rate::zero())]
 			),
 			Error::<Runtime>::InvalidCurrencyId
 		);
 		assert_noop!(
 			IncentivesModule::update_payout_deduction_rates(
-				Origin::signed(4),
+				Origin::signed(Root::get()),
 				vec![(PoolId::DexSaving(DOT_AUSD_LP), Rate::saturating_from_rational(101, 100)),]
 			),
 			Error::<Runtime>::InvalidRate,
@@ -333,7 +336,7 @@ fn update_payout_deduction_rates_works() {
 			Rate::zero()
 		);
 		assert_ok!(IncentivesModule::update_payout_deduction_rates(
-			Origin::signed(4),
+			Origin::signed(Root::get()),
 			vec![(PoolId::DexSaving(DOT_AUSD_LP), Rate::saturating_from_rational(1, 100)),]
 		));
 		System::assert_last_event(Event::IncentivesModule(crate::Event::PayoutDeductionRateUpdated(
@@ -351,27 +354,27 @@ fn update_payout_deduction_rates_works() {
 fn add_allowance_works() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_noop!(
-			IncentivesModule::add_allowance(Origin::signed(ALICE), PoolId::HomaIncentive, 200),
+			IncentivesModule::add_allowance(Origin::signed(ALICE::get()), PoolId::HomaIncentive, 200),
 			Error::<Runtime>::InvalidPoolId
 		);
 
-		assert_ok!(TokensModule::deposit(LDOT, &ALICE, 10000));
-		assert_eq!(TokensModule::free_balance(LDOT, &VAULT), 0);
-		assert_eq!(TokensModule::free_balance(LDOT, &ALICE), 10000);
+		assert_ok!(TokensModule::deposit(LDOT, &ALICE::get(), 10000));
+		assert_eq!(TokensModule::free_balance(LDOT, &VAULT::get()), 0);
+		assert_eq!(TokensModule::free_balance(LDOT, &ALICE::get()), 10000);
 		assert_eq!(
-			RewardsModule::pools(PoolId::HomaValidatorAllowance(VALIDATOR)).total_rewards,
+			RewardsModule::pools(PoolId::HomaValidatorAllowance(VALIDATOR::get())).total_rewards,
 			0
 		);
 
 		assert_ok!(IncentivesModule::add_allowance(
-			Origin::signed(ALICE),
-			PoolId::HomaValidatorAllowance(VALIDATOR),
+			Origin::signed(ALICE::get()),
+			PoolId::HomaValidatorAllowance(VALIDATOR::get()),
 			1000
 		));
-		assert_eq!(TokensModule::free_balance(LDOT, &VAULT), 1000);
-		assert_eq!(TokensModule::free_balance(LDOT, &ALICE), 9000);
+		assert_eq!(TokensModule::free_balance(LDOT, &VAULT::get()), 1000);
+		assert_eq!(TokensModule::free_balance(LDOT, &ALICE::get()), 9000);
 		assert_eq!(
-			RewardsModule::pools(PoolId::HomaValidatorAllowance(VALIDATOR)).total_rewards,
+			RewardsModule::pools(PoolId::HomaValidatorAllowance(VALIDATOR::get())).total_rewards,
 			1000
 		);
 	});
@@ -389,15 +392,15 @@ fn on_update_loan_works() {
 			}
 		);
 		assert_eq!(
-			RewardsModule::share_and_withdrawn_reward(PoolId::LoansIncentive(BTC), ALICE),
+			RewardsModule::share_and_withdrawn_reward(PoolId::LoansIncentive(BTC), ALICE::get()),
 			(0, 0)
 		);
 		assert_eq!(
-			RewardsModule::share_and_withdrawn_reward(PoolId::LoansIncentive(BTC), BOB),
+			RewardsModule::share_and_withdrawn_reward(PoolId::LoansIncentive(BTC), BOB::get()),
 			(0, 0)
 		);
 
-		OnUpdateLoan::<Runtime>::happened(&(ALICE, BTC, 100, 0));
+		OnUpdateLoan::<Runtime>::happened(&(ALICE::get(), BTC, 100, 0));
 		assert_eq!(
 			RewardsModule::pools(PoolId::LoansIncentive(BTC)),
 			PoolInfo {
@@ -407,11 +410,11 @@ fn on_update_loan_works() {
 			}
 		);
 		assert_eq!(
-			RewardsModule::share_and_withdrawn_reward(PoolId::LoansIncentive(BTC), ALICE),
+			RewardsModule::share_and_withdrawn_reward(PoolId::LoansIncentive(BTC), ALICE::get()),
 			(100, 0)
 		);
 
-		OnUpdateLoan::<Runtime>::happened(&(BOB, BTC, 100, 500));
+		OnUpdateLoan::<Runtime>::happened(&(BOB::get(), BTC, 100, 500));
 		assert_eq!(
 			RewardsModule::pools(PoolId::LoansIncentive(BTC)),
 			PoolInfo {
@@ -421,11 +424,11 @@ fn on_update_loan_works() {
 			}
 		);
 		assert_eq!(
-			RewardsModule::share_and_withdrawn_reward(PoolId::LoansIncentive(BTC), BOB),
+			RewardsModule::share_and_withdrawn_reward(PoolId::LoansIncentive(BTC), BOB::get()),
 			(600, 0)
 		);
 
-		OnUpdateLoan::<Runtime>::happened(&(ALICE, BTC, -50, 100));
+		OnUpdateLoan::<Runtime>::happened(&(ALICE::get(), BTC, -50, 100));
 		assert_eq!(
 			RewardsModule::pools(PoolId::LoansIncentive(BTC)),
 			PoolInfo {
@@ -435,11 +438,11 @@ fn on_update_loan_works() {
 			}
 		);
 		assert_eq!(
-			RewardsModule::share_and_withdrawn_reward(PoolId::LoansIncentive(BTC), ALICE),
+			RewardsModule::share_and_withdrawn_reward(PoolId::LoansIncentive(BTC), ALICE::get()),
 			(50, 0)
 		);
 
-		OnUpdateLoan::<Runtime>::happened(&(BOB, BTC, -650, 600));
+		OnUpdateLoan::<Runtime>::happened(&(BOB::get(), BTC, -650, 600));
 		assert_eq!(
 			RewardsModule::pools(PoolId::LoansIncentive(BTC)),
 			PoolInfo {
@@ -449,7 +452,7 @@ fn on_update_loan_works() {
 			}
 		);
 		assert_eq!(
-			RewardsModule::share_and_withdrawn_reward(PoolId::LoansIncentive(BTC), BOB),
+			RewardsModule::share_and_withdrawn_reward(PoolId::LoansIncentive(BTC), BOB::get()),
 			(0, 0)
 		);
 	});
@@ -459,7 +462,7 @@ fn on_update_loan_works() {
 fn guarantee_hooks_works() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_eq!(
-			RewardsModule::pools(PoolId::HomaValidatorAllowance(VALIDATOR)),
+			RewardsModule::pools(PoolId::HomaValidatorAllowance(VALIDATOR::get())),
 			PoolInfo {
 				total_shares: 0,
 				total_rewards: 0,
@@ -467,13 +470,13 @@ fn guarantee_hooks_works() {
 			}
 		);
 		assert_eq!(
-			RewardsModule::share_and_withdrawn_reward(PoolId::HomaValidatorAllowance(VALIDATOR), ALICE),
+			RewardsModule::share_and_withdrawn_reward(PoolId::HomaValidatorAllowance(VALIDATOR::get()), ALICE::get()),
 			(0, 0)
 		);
 
-		OnIncreaseGuarantee::<Runtime>::happened(&(ALICE, VALIDATOR, 100));
+		OnIncreaseGuarantee::<Runtime>::happened(&(ALICE::get(), VALIDATOR::get(), 100));
 		assert_eq!(
-			RewardsModule::pools(PoolId::HomaValidatorAllowance(VALIDATOR)),
+			RewardsModule::pools(PoolId::HomaValidatorAllowance(VALIDATOR::get())),
 			PoolInfo {
 				total_shares: 100,
 				total_rewards: 0,
@@ -481,13 +484,13 @@ fn guarantee_hooks_works() {
 			}
 		);
 		assert_eq!(
-			RewardsModule::share_and_withdrawn_reward(PoolId::HomaValidatorAllowance(VALIDATOR), ALICE),
+			RewardsModule::share_and_withdrawn_reward(PoolId::HomaValidatorAllowance(VALIDATOR::get()), ALICE::get()),
 			(100, 0)
 		);
 
-		OnDecreaseGuarantee::<Runtime>::happened(&(ALICE, VALIDATOR, 10));
+		OnDecreaseGuarantee::<Runtime>::happened(&(ALICE::get(), VALIDATOR::get(), 10));
 		assert_eq!(
-			RewardsModule::pools(PoolId::HomaValidatorAllowance(VALIDATOR)),
+			RewardsModule::pools(PoolId::HomaValidatorAllowance(VALIDATOR::get())),
 			PoolInfo {
 				total_shares: 90,
 				total_rewards: 0,
@@ -495,7 +498,7 @@ fn guarantee_hooks_works() {
 			}
 		);
 		assert_eq!(
-			RewardsModule::share_and_withdrawn_reward(PoolId::HomaValidatorAllowance(VALIDATOR), ALICE),
+			RewardsModule::share_and_withdrawn_reward(PoolId::HomaValidatorAllowance(VALIDATOR::get()), ALICE::get()),
 			(90, 0)
 		);
 	});
@@ -505,11 +508,11 @@ fn guarantee_hooks_works() {
 fn payout_works() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
-		assert_ok!(TokensModule::deposit(ACA, &VAULT, 10000));
-		assert_ok!(TokensModule::deposit(AUSD, &VAULT, 10000));
-		assert_ok!(TokensModule::deposit(LDOT, &VAULT, 10000));
+		assert_ok!(TokensModule::deposit(ACA, &VAULT::get(), 10000));
+		assert_ok!(TokensModule::deposit(AUSD, &VAULT::get(), 10000));
+		assert_ok!(TokensModule::deposit(LDOT, &VAULT::get(), 10000));
 		assert_ok!(IncentivesModule::update_payout_deduction_rates(
-			Origin::signed(4),
+			Origin::signed(Root::get()),
 			vec![
 				(
 					PoolId::DexIncentive(DOT_AUSD_LP),
@@ -519,67 +522,67 @@ fn payout_works() {
 			]
 		));
 
-		assert_eq!(TokensModule::free_balance(ACA, &VAULT), 10000);
-		assert_eq!(TokensModule::free_balance(ACA, &ALICE), 0);
-		IncentivesModule::payout(&ALICE, &PoolId::LoansIncentive(BTC), 1000);
+		assert_eq!(TokensModule::free_balance(ACA, &VAULT::get()), 10000);
+		assert_eq!(TokensModule::free_balance(ACA, &ALICE::get()), 0);
+		IncentivesModule::payout(&ALICE::get(), &PoolId::LoansIncentive(BTC), 1000);
 		System::assert_last_event(Event::IncentivesModule(crate::Event::PayoutRewards(
-			ALICE,
+			ALICE::get(),
 			PoolId::LoansIncentive(BTC),
 			ACA,
 			1000,
 			0,
 		)));
-		assert_eq!(TokensModule::free_balance(ACA, &VAULT), 9000);
-		assert_eq!(TokensModule::free_balance(ACA, &ALICE), 1000);
+		assert_eq!(TokensModule::free_balance(ACA, &VAULT::get()), 9000);
+		assert_eq!(TokensModule::free_balance(ACA, &ALICE::get()), 1000);
 
-		assert_eq!(TokensModule::free_balance(ACA, &BOB), 0);
-		IncentivesModule::payout(&BOB, &PoolId::DexIncentive(DOT_AUSD_LP), 1000);
+		assert_eq!(TokensModule::free_balance(ACA, &BOB::get()), 0);
+		IncentivesModule::payout(&BOB::get(), &PoolId::DexIncentive(DOT_AUSD_LP), 1000);
 		System::assert_last_event(Event::IncentivesModule(crate::Event::PayoutRewards(
-			BOB,
+			BOB::get(),
 			PoolId::DexIncentive(DOT_AUSD_LP),
 			ACA,
 			500,
 			500,
 		)));
-		assert_eq!(TokensModule::free_balance(ACA, &VAULT), 8500);
-		assert_eq!(TokensModule::free_balance(ACA, &BOB), 500);
+		assert_eq!(TokensModule::free_balance(ACA, &VAULT::get()), 8500);
+		assert_eq!(TokensModule::free_balance(ACA, &BOB::get()), 500);
 
-		IncentivesModule::payout(&BOB, &PoolId::HomaIncentive, 2000);
+		IncentivesModule::payout(&BOB::get(), &PoolId::HomaIncentive, 2000);
 		System::assert_last_event(Event::IncentivesModule(crate::Event::PayoutRewards(
-			BOB,
+			BOB::get(),
 			PoolId::HomaIncentive,
 			ACA,
 			1000,
 			1000,
 		)));
-		assert_eq!(TokensModule::free_balance(ACA, &VAULT), 7500);
-		assert_eq!(TokensModule::free_balance(ACA, &BOB), 1500);
+		assert_eq!(TokensModule::free_balance(ACA, &VAULT::get()), 7500);
+		assert_eq!(TokensModule::free_balance(ACA, &BOB::get()), 1500);
 
-		assert_eq!(TokensModule::free_balance(AUSD, &VAULT), 10000);
-		assert_eq!(TokensModule::free_balance(AUSD, &ALICE), 0);
-		IncentivesModule::payout(&ALICE, &PoolId::DexSaving(DOT_AUSD_LP), 1000);
+		assert_eq!(TokensModule::free_balance(AUSD, &VAULT::get()), 10000);
+		assert_eq!(TokensModule::free_balance(AUSD, &ALICE::get()), 0);
+		IncentivesModule::payout(&ALICE::get(), &PoolId::DexSaving(DOT_AUSD_LP), 1000);
 		System::assert_last_event(Event::IncentivesModule(crate::Event::PayoutRewards(
-			ALICE,
+			ALICE::get(),
 			PoolId::DexSaving(DOT_AUSD_LP),
 			AUSD,
 			1000,
 			0,
 		)));
-		assert_eq!(TokensModule::free_balance(AUSD, &VAULT), 9000);
-		assert_eq!(TokensModule::free_balance(AUSD, &ALICE), 1000);
+		assert_eq!(TokensModule::free_balance(AUSD, &VAULT::get()), 9000);
+		assert_eq!(TokensModule::free_balance(AUSD, &ALICE::get()), 1000);
 
-		assert_eq!(TokensModule::free_balance(LDOT, &VAULT), 10000);
-		assert_eq!(TokensModule::free_balance(LDOT, &BOB), 0);
-		IncentivesModule::payout(&BOB, &PoolId::HomaValidatorAllowance(VALIDATOR), 3000);
+		assert_eq!(TokensModule::free_balance(LDOT, &VAULT::get()), 10000);
+		assert_eq!(TokensModule::free_balance(LDOT, &BOB::get()), 0);
+		IncentivesModule::payout(&BOB::get(), &PoolId::HomaValidatorAllowance(VALIDATOR::get()), 3000);
 		System::assert_last_event(Event::IncentivesModule(crate::Event::PayoutRewards(
-			BOB,
-			PoolId::HomaValidatorAllowance(VALIDATOR),
+			BOB::get(),
+			PoolId::HomaValidatorAllowance(VALIDATOR::get()),
 			LDOT,
 			3000,
 			0,
 		)));
-		assert_eq!(TokensModule::free_balance(LDOT, &VAULT), 7000);
-		assert_eq!(TokensModule::free_balance(LDOT, &BOB), 3000);
+		assert_eq!(TokensModule::free_balance(LDOT, &VAULT::get()), 7000);
+		assert_eq!(TokensModule::free_balance(LDOT, &BOB::get()), 3000);
 	});
 }
 
@@ -587,7 +590,7 @@ fn payout_works() {
 fn on_initialize_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(IncentivesModule::update_incentive_rewards(
-			Origin::signed(4),
+			Origin::signed(Root::get()),
 			vec![
 				(PoolId::LoansIncentive(BTC), 1000),
 				(PoolId::LoansIncentive(DOT), 2000),
@@ -597,20 +600,20 @@ fn on_initialize_should_work() {
 			],
 		));
 		assert_ok!(IncentivesModule::update_dex_saving_rewards(
-			Origin::signed(4),
+			Origin::signed(Root::get()),
 			vec![
 				(PoolId::DexSaving(BTC_AUSD_LP), Rate::saturating_from_rational(1, 100)),
 				(PoolId::DexSaving(DOT_AUSD_LP), Rate::saturating_from_rational(1, 100)),
 			],
 		));
 
-		RewardsModule::add_share(&ALICE, &PoolId::LoansIncentive(BTC), 1);
-		RewardsModule::add_share(&ALICE, &PoolId::DexIncentive(BTC_AUSD_LP), 1);
-		RewardsModule::add_share(&ALICE, &PoolId::DexIncentive(DOT_AUSD_LP), 1);
-		RewardsModule::add_share(&ALICE, &PoolId::DexSaving(BTC_AUSD_LP), 1);
-		RewardsModule::add_share(&ALICE, &PoolId::DexSaving(DOT_AUSD_LP), 1);
-		assert_eq!(TokensModule::free_balance(ACA, &VAULT), 0);
-		assert_eq!(TokensModule::free_balance(AUSD, &VAULT), 0);
+		RewardsModule::add_share(&ALICE::get(), &PoolId::LoansIncentive(BTC), 1);
+		RewardsModule::add_share(&ALICE::get(), &PoolId::DexIncentive(BTC_AUSD_LP), 1);
+		RewardsModule::add_share(&ALICE::get(), &PoolId::DexIncentive(DOT_AUSD_LP), 1);
+		RewardsModule::add_share(&ALICE::get(), &PoolId::DexSaving(BTC_AUSD_LP), 1);
+		RewardsModule::add_share(&ALICE::get(), &PoolId::DexSaving(DOT_AUSD_LP), 1);
+		assert_eq!(TokensModule::free_balance(ACA, &VAULT::get()), 0);
+		assert_eq!(TokensModule::free_balance(AUSD, &VAULT::get()), 0);
 		assert_eq!(RewardsModule::pools(PoolId::LoansIncentive(BTC)).total_rewards, 0);
 		assert_eq!(RewardsModule::pools(PoolId::LoansIncentive(DOT)).total_rewards, 0);
 		assert_eq!(RewardsModule::pools(PoolId::DexIncentive(BTC_AUSD_LP)).total_rewards, 0);
@@ -620,8 +623,8 @@ fn on_initialize_should_work() {
 		assert_eq!(RewardsModule::pools(PoolId::DexSaving(DOT_AUSD_LP)).total_rewards, 0);
 
 		IncentivesModule::on_initialize(9);
-		assert_eq!(TokensModule::free_balance(ACA, &VAULT), 0);
-		assert_eq!(TokensModule::free_balance(AUSD, &VAULT), 0);
+		assert_eq!(TokensModule::free_balance(ACA, &VAULT::get()), 0);
+		assert_eq!(TokensModule::free_balance(AUSD, &VAULT::get()), 0);
 		assert_eq!(RewardsModule::pools(PoolId::LoansIncentive(BTC)).total_rewards, 0);
 		assert_eq!(RewardsModule::pools(PoolId::LoansIncentive(DOT)).total_rewards, 0);
 		assert_eq!(RewardsModule::pools(PoolId::DexIncentive(BTC_AUSD_LP)).total_rewards, 0);
@@ -631,8 +634,8 @@ fn on_initialize_should_work() {
 		assert_eq!(RewardsModule::pools(PoolId::DexSaving(DOT_AUSD_LP)).total_rewards, 0);
 
 		IncentivesModule::on_initialize(10);
-		assert_eq!(TokensModule::free_balance(ACA, &VAULT), 1300);
-		assert_eq!(TokensModule::free_balance(AUSD, &VAULT), 9);
+		assert_eq!(TokensModule::free_balance(ACA, &VAULT::get()), 1300);
+		assert_eq!(TokensModule::free_balance(AUSD, &VAULT::get()), 9);
 		assert_eq!(RewardsModule::pools(PoolId::LoansIncentive(BTC)).total_rewards, 1000);
 		assert_eq!(RewardsModule::pools(PoolId::LoansIncentive(DOT)).total_rewards, 0);
 		assert_eq!(
@@ -647,11 +650,11 @@ fn on_initialize_should_work() {
 		assert_eq!(RewardsModule::pools(PoolId::DexSaving(BTC_AUSD_LP)).total_rewards, 5);
 		assert_eq!(RewardsModule::pools(PoolId::DexSaving(DOT_AUSD_LP)).total_rewards, 4);
 
-		RewardsModule::add_share(&ALICE, &PoolId::LoansIncentive(DOT), 1);
-		RewardsModule::add_share(&ALICE, &PoolId::HomaIncentive, 1);
+		RewardsModule::add_share(&ALICE::get(), &PoolId::LoansIncentive(DOT), 1);
+		RewardsModule::add_share(&ALICE::get(), &PoolId::HomaIncentive, 1);
 		IncentivesModule::on_initialize(20);
-		assert_eq!(TokensModule::free_balance(ACA, &VAULT), 4630);
-		assert_eq!(TokensModule::free_balance(AUSD, &VAULT), 18);
+		assert_eq!(TokensModule::free_balance(ACA, &VAULT::get()), 4630);
+		assert_eq!(TokensModule::free_balance(AUSD, &VAULT::get()), 18);
 		assert_eq!(RewardsModule::pools(PoolId::LoansIncentive(BTC)).total_rewards, 2000);
 		assert_eq!(RewardsModule::pools(PoolId::LoansIncentive(DOT)).total_rewards, 2000);
 		assert_eq!(
@@ -668,8 +671,8 @@ fn on_initialize_should_work() {
 
 		mock_shutdown();
 		IncentivesModule::on_initialize(30);
-		assert_eq!(TokensModule::free_balance(ACA, &VAULT), 4630);
-		assert_eq!(TokensModule::free_balance(AUSD, &VAULT), 18);
+		assert_eq!(TokensModule::free_balance(ACA, &VAULT::get()), 4630);
+		assert_eq!(TokensModule::free_balance(AUSD, &VAULT::get()), 18);
 		assert_eq!(RewardsModule::pools(PoolId::LoansIncentive(BTC)).total_rewards, 2000);
 		assert_eq!(RewardsModule::pools(PoolId::LoansIncentive(DOT)).total_rewards, 2000);
 		assert_eq!(

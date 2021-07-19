@@ -47,7 +47,7 @@ XXX
 - [ ] Check new docker image has been published.
   - [acala/karura-node:XXX](https://hub.docker.com/layers/acala/karura-node/XXX)
 - [ ] Check new client is able to sync from scratch
-  -  `docker run --rm acala/karura-node:1.1.0 --chain=karura -- --chain=dev`
+  -  `docker run --rm acala/karura-node:latest --chain=karura -- --chain=dev`
 
 ## Runtime Release
 
@@ -82,7 +82,6 @@ XXX
 
 - [ ] Notify Discord announcement channel.
 - [ ] Ensure our own nodes are updated
-- [ ] Update [wiki](https://wiki.acala.network/karura/integration)
 
 ## Compatibility Checklist
 

@@ -126,10 +126,10 @@ pub mod module {
 		/// - `currency_id`: currency type.
 		#[pallet::weight((T::WeightInfo::lock_price(), DispatchClass::Operational))]
 		#[transactional]
-		pub fn lock_price(origin: OriginFor<T>, currency_id: CurrencyId) -> DispatchResultWithPostInfo {
+		pub fn lock_price(origin: OriginFor<T>, currency_id: CurrencyId) -> DispatchResult {
 			T::LockOrigin::ensure_origin(origin)?;
 			<Pallet<T> as PriceProvider<CurrencyId>>::lock_price(currency_id);
-			Ok(().into())
+			Ok(())
 		}
 
 		/// Unlock the price and get the price from `PriceProvider` again
@@ -139,10 +139,10 @@ pub mod module {
 		/// - `currency_id`: currency type.
 		#[pallet::weight((T::WeightInfo::unlock_price(), DispatchClass::Operational))]
 		#[transactional]
-		pub fn unlock_price(origin: OriginFor<T>, currency_id: CurrencyId) -> DispatchResultWithPostInfo {
+		pub fn unlock_price(origin: OriginFor<T>, currency_id: CurrencyId) -> DispatchResult {
 			T::LockOrigin::ensure_origin(origin)?;
 			<Pallet<T> as PriceProvider<CurrencyId>>::unlock_price(currency_id);
-			Ok(().into())
+			Ok(())
 		}
 	}
 }

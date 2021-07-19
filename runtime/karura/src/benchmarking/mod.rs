@@ -57,6 +57,7 @@ pub mod prices {
 pub mod transaction_payment {
 	benchmarks::transaction_payment_benchmarks!();
 }
+pub mod session_manager;
 
 // orml benchmarking
 pub mod auction {

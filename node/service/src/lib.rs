@@ -510,6 +510,8 @@ where
 					slot_duration,
 					// We got around 500ms for proposing
 					block_proposal_slot_portion: SlotProportion::new(1f32 / 24f32),
+					// And a maximum of 750ms if slots are skipped
+					max_block_proposal_slot_portion: Some(SlotProportion::new(1f32 / 16f32)),
 					telemetry,
 				},
 			))
@@ -685,7 +687,10 @@ fn inner_mandala_dev(config: Configuration, instant_sealing: bool) -> Result<Tas
 				can_author_with,
 				sync_oracle: network.clone(),
 				justification_sync_link: network.clone(),
-				block_proposal_slot_portion: SlotProportion::new(2f32 / 3f32),
+				// We got around 500ms for proposing
+				block_proposal_slot_portion: SlotProportion::new(1f32 / 24f32),
+				// And a maximum of 750ms if slots are skipped
+				max_block_proposal_slot_portion: Some(SlotProportion::new(1f32 / 16f32)),
 				telemetry: telemetry.as_ref().map(|x| x.handle()),
 			})?;
 

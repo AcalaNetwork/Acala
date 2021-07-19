@@ -248,11 +248,7 @@ pub mod module {
 		//#[pallet::weight(< T as Config >::WeightInfo::lock())]
 		#[pallet::weight(0)]
 		#[transactional]
-		pub fn lock(
-			origin: OriginFor<T>,
-			currency_id: CurrencyId,
-			locked_amount: Balance,
-		) -> DispatchResultWithPostInfo {
+		pub fn lock(origin: OriginFor<T>, currency_id: CurrencyId, locked_amount: Balance) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			Self::do_lock_to(who.clone(), who, currency_id, locked_amount)
 		}
@@ -274,7 +270,7 @@ pub mod module {
 			to: T::AccountId,
 			currency_id: CurrencyId,
 			locked_amount: Balance,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			let from = ensure_signed(origin)?;
 			Self::do_lock_to(from, to, currency_id, locked_amount)
 		}
@@ -313,7 +309,7 @@ pub mod module {
 				GatewayNoticePayload::SetSupplyCap(currency_id, amount) => {
 					SupplyCaps::<T>::insert(&currency_id, amount);
 					Self::deposit_event(Event::<T>::SupplyCapSet(currency_id, amount));
-					Ok(().into())
+					Ok(())
 				}
 				GatewayNoticePayload::ChangeAuthorities(new_authorities) => {
 					ensure!(
@@ -325,7 +321,7 @@ pub mod module {
 					let bounded_vec = BoundedVec::try_from(new_authorities).unwrap();
 					GatewayAuthorities::<T>::put(bounded_vec);
 					Self::deposit_event(Event::<T>::GatewayAuthoritiesChanged);
-					Ok(().into())
+					Ok(())
 				}
 				GatewayNoticePayload::Unlock {
 					currency_id,
@@ -343,7 +339,7 @@ pub mod module {
 						next_cash_yield_index,
 						next_cash_yield_start,
 					));
-					Ok(().into())
+					Ok(())
 				}
 			}?;
 
@@ -365,7 +361,7 @@ impl<T: Config> Pallet<T> {
 		to: T::AccountId,
 		currency_id: CurrencyId,
 		locked_amount: Balance,
-	) -> DispatchResultWithPostInfo {
+	) -> DispatchResult {
 		// Ensure the user has sufficient balance
 		T::Currency::ensure_can_withdraw(currency_id, &from, locked_amount)?;
 
@@ -386,14 +382,14 @@ impl<T: Config> Pallet<T> {
 		// Fund locked. Now reduce the supply caps
 		SupplyCaps::<T>::insert(&currency_id, current_supply_cap - locked_amount);
 
-		// Emmit an event
+		// emit an event
 		Self::deposit_event(Event::<T>::AssetLockedTo(currency_id, locked_amount, to));
 
-		Ok(().into())
+		Ok(())
 	}
 
 	#[require_transactional]
-	fn do_unlock(currency_id: CurrencyId, unlock_amount: Balance, to: T::AccountId) -> DispatchResultWithPostInfo {
+	fn do_unlock(currency_id: CurrencyId, unlock_amount: Balance, to: T::AccountId) -> DispatchResult {
 		// If the currency is CASH, mint into the user's account
 		// All other tokens are transferred from the admin's account.
 		match currency_id {
@@ -409,10 +405,10 @@ impl<T: Config> Pallet<T> {
 			}
 		}?;
 
-		// Emmit an event
+		// emit an event
 		Self::deposit_event(Event::<T>::AssetUnlocked(currency_id, unlock_amount, to));
 
-		Ok(().into())
+		Ok(())
 	}
 
 	/// Verifies if the given signature is sufficient to prove the authenticity of the Notice.

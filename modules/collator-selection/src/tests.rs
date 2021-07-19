@@ -17,7 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate as collator_selection;
-use crate::{mock::*, Error, RESERVE_ID};
+use crate::{mock::*, Error, NonCandidates, RESERVE_ID};
 use frame_support::{
 	assert_noop, assert_ok,
 	storage::bounded_btree_set::BoundedBTreeSet,
@@ -294,14 +294,94 @@ fn leave_intent() {
 			Error::<Test>::NotCandidate
 		);
 
-		// bond is returned
+		// bond is not returned
 		assert_ok!(CollatorSelection::leave_intent(Origin::signed(3)));
-		assert_eq!(Balances::free_balance(3), 100);
+		assert_eq!(Balances::free_balance(3), 90);
 
 		assert_noop!(
 			CollatorSelection::leave_intent(Origin::signed(4)),
 			Error::<Test>::BelowCandidatesMin
 		);
+	});
+}
+
+#[test]
+fn withdraw_bond() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(Session::set_keys(
+			Origin::signed(3),
+			MockSessionKeys {
+				aura: UintAuthorityId(3)
+			},
+			vec![]
+		));
+		assert_ok!(Session::set_keys(
+			Origin::signed(4),
+			MockSessionKeys {
+				aura: UintAuthorityId(4)
+			},
+			vec![]
+		));
+		assert_ok!(Session::set_keys(
+			Origin::signed(5),
+			MockSessionKeys {
+				aura: UintAuthorityId(5)
+			},
+			vec![]
+		));
+		assert_ok!(CollatorSelection::set_desired_candidates(
+			Origin::signed(RootAccount::get()),
+			4
+		));
+		// register a candidate.
+		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(3)));
+		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(4)));
+		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(5)));
+		assert_eq!(Balances::free_balance(3), 90);
+		assert_eq!(Balances::free_balance(4), 90);
+
+		assert_noop!(
+			CollatorSelection::withdraw_bond(Origin::signed(3)),
+			Error::<Test>::NothingToWithdraw
+		);
+
+		// bond is not returned
+		assert_ok!(CollatorSelection::leave_intent(Origin::signed(3)));
+		assert_ok!(CollatorSelection::leave_intent(Origin::signed(4)));
+		assert_eq!(Balances::free_balance(3), 90);
+		assert_eq!(Balances::free_balance(4), 90);
+
+		assert_noop!(
+			CollatorSelection::withdraw_bond(Origin::signed(3)),
+			Error::<Test>::StillLocked
+		);
+		initialize_to_block(Period::get());
+		assert_noop!(
+			CollatorSelection::withdraw_bond(Origin::signed(3)),
+			Error::<Test>::StillLocked
+		);
+		initialize_to_block(2 * Period::get() - 1);
+		assert_noop!(
+			CollatorSelection::withdraw_bond(Origin::signed(3)),
+			Error::<Test>::StillLocked
+		);
+		initialize_to_block(2 * Period::get());
+		// bond is returned
+		assert_eq!(NonCandidates::<Test>::contains_key(3), true);
+		assert_ok!(CollatorSelection::withdraw_bond(Origin::signed(3)));
+		assert_eq!(Balances::free_balance(3), 100);
+		assert_eq!(NonCandidates::<Test>::contains_key(3), false);
+
+		assert_ok!(CollatorSelection::set_candidacy_bond(
+			Origin::signed(RootAccount::get()),
+			20
+		));
+		assert_eq!(NonCandidates::<Test>::contains_key(4), true);
+		assert_eq!(CollatorSelection::candidates().contains(&4), false);
+		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(4)));
+		assert_eq!(Balances::free_balance(4), 80);
+		assert_eq!(NonCandidates::<Test>::contains_key(4), false);
+		assert_eq!(CollatorSelection::candidates().contains(&4), true);
 	});
 }
 
@@ -423,8 +503,12 @@ fn kick_mechanism() {
 		let mut collators = BoundedBTreeSet::new();
 		assert_ok!(collators.try_insert(4));
 		assert_eq!(CollatorSelection::candidates(), collators);
-		// kicked collator gets funds back
-		assert_eq!(Balances::free_balance(3), 100);
+		// kicked collator without funds back
+		assert_eq!(Balances::free_balance(3), 90);
+		assert_noop!(
+			CollatorSelection::register_as_candidate(Origin::signed(3)),
+			Error::<Test>::StillLocked
+		);
 	});
 }
 
