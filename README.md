@@ -168,14 +168,17 @@ If modify the storage, should test the data migration before upgrade the runtime
 ```bash
 # Use a live chain to run the migration test and save state snapshot to file `snapshot.bin`.
 # Add `-m module_name` can specify the module.
-cargo run --features with-karura-runtime --features try-runtime -- try-runtime --chain=karura --wasm-execution=compiled on-runtime-upgrade live "wss://karura.api.onfinality.io/public-ws" -s snapshot.bin
+cargo run --features with-mandala-runtime --features try-runtime -- try-runtime --wasm-execution=compiled --block-at=0x9def608d5674f6d16574f53849218fe13d80ec1042ef7c2d4de7d4c50abab806 --url="wss://karura.api.onfinality.io/public-ws" on-runtime-upgrade live -s snapshot.bin
 
- # Use a state snapshot as state to run the migration test.
-cargo run --features with-karura-runtime --features try-runtime -- try-runtime --chain=karura --wasm-execution=compiled on-runtime-upgrade snap snapshot.bin
+ # Use a state snapshot to run the migration test.
+cargo run --features with-mandala-runtime --features try-runtime -- try-runtime --wasm-execution=compiled --block-at=0x9def608d5674f6d16574f53849218fe13d80ec1042ef7c2d4de7d4c50abab806 on-runtime-upgrade snap -s snapshot.bin
 
-# Offchain worker
-cargo run --features with-karura-runtime --features try-runtime -- try-runtime --chain=karura --wasm-execution=compiled offchain-worker --header-at=0x00 live "wss://karura.api.onfinality.io/public-ws" -s snapshot2.bin
-cargo run --features with-karura-runtime --features try-runtime -- try-runtime --chain=karura --wasm-execution=compiled offchain-worker --header-at=0x00 snap snapshot2.bin
+# Off-Chain worker
+# Use a live chain to run the off-chain migration test and save state snapshot to file `snapshot.bin`.
+cargo run --features with-mandala-runtime --features try-runtime -- try-runtime --wasm-execution=compiled --block-at=0x9def608d5674f6d16574f53849218fe13d80ec1042ef7c2d4de7d4c50abab806 --url="wss://karura.api.onfinality.io/public-ws" offchain-worker live -s snapshot.bin
+
+ # Use a state snapshot to run the offchain migration test.
+cargo run --features with-mandala-runtime --features try-runtime -- try-runtime --wasm-execution=compiled --block-at=0x9def608d5674f6d16574f53849218fe13d80ec1042ef7c2d4de7d4c50abab806 offchain-worker snap -s snapshot.bin
 ```
 
 # 8. Run local testnet with `Relaychain` and `Parachain`
