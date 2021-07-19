@@ -56,7 +56,9 @@ use module_evm::{CallInfo, CreateInfo};
 use module_evm_accounts::EvmAddressMapping;
 use module_evm_manager::EvmCurrencyIdMapping;
 use module_transaction_payment::{Multiplier, TargetedFeeAdjustment};
-use orml_traits::{create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended};
+use orml_traits::{
+	create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended, MultiCurrency,
+};
 use pallet_transaction_payment::RuntimeDispatchInfo;
 
 pub use cumulus_primitives_core::ParaId;
@@ -1063,7 +1065,9 @@ impl OnUnbalanced<NegativeImbalance> for DealWithFees {
 impl TakeRevenue for DealWithFees {
 	fn take_revenue(revenue: MultiAsset) {
 		if let MultiAsset::ConcreteFungible { amount, .. } = revenue {
-			Treasury::on_unbalanced(NegativeImbalance::new(amount));
+			// ensure KaruraTreasuryAccount have ed for KSM.
+			// Ignore the result.
+			let _ = Tokens::deposit(KSM, &KaruraTreasuryAccount::get(), amount);
 		}
 	}
 }
