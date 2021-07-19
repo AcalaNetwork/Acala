@@ -1108,15 +1108,6 @@ impl OnUnbalanced<NegativeImbalance> for DealWithFees {
 		}
 	}
 }
-impl TakeRevenue for DealWithFees {
-	fn take_revenue(revenue: MultiAsset) {
-		if let MultiAsset::ConcreteFungible { amount, .. } = revenue {
-			// ensure KaruraTreasuryAccount have ed for DOT.
-			// Ignore the result.
-			let _ = Tokens::deposit(AUSD, &TreasuryAccount::get(), amount);
-		}
-	}
-}
 
 impl module_transaction_payment::Config for Runtime {
 	type AllNonNativeCurrencyIds = AllNonNativeCurrencyIds;
@@ -1652,6 +1643,19 @@ parameter_types! {
 
 pub type Barrier = (TakeWeightCredit, AllowTopLevelPaidExecutionFrom<All<MultiLocation>>);
 
+pub struct ToTreasury;
+impl TakeRevenue for ToTreasury {
+	fn take_revenue(revenue: MultiAsset) {
+		if let MultiAsset::ConcreteFungible { id, amount } = revenue {
+			if CurrencyIdConvert::convert(id).is_some() {
+				// ensure KaruraTreasuryAccount have ed for DOT.
+				// Ignore the result.
+				let _ = Tokens::deposit(DOT, &TreasuryAccount::get(), amount);
+			}
+		}
+	}
+}
+
 pub struct XcmConfig;
 impl Config for XcmConfig {
 	type Call = Call;
@@ -1666,7 +1670,7 @@ impl Config for XcmConfig {
 	type Barrier = Barrier;
 	type Weigher = FixedWeightBounds<UnitWeightCost, Call>;
 	// Only receiving DOT is handled, and all fees must be paid in DOT.
-	type Trader = FixedRateOfConcreteFungible<DotPerSecond, DealWithFees>;
+	type Trader = FixedRateOfConcreteFungible<DotPerSecond, ToTreasury>;
 	type ResponseHandler = (); // Don't handle responses for now.
 }
 
