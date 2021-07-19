@@ -13,6 +13,7 @@ members = [
 	"rpc",
 
 	"runtime/common",
+	"runtime/benchmarks",
 	"runtime/mandala",
 	"runtime/karura",
 	"runtime/acala",

@@ -789,6 +789,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "benchmarks"
+version = "1.1.3"
+dependencies = [
+ "acala-primitives",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "module-support",
+ "orml-benchmarking",
+ "orml-traits",
+ "runtime-common",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "bincode"
 version = "1.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4026,6 +4043,7 @@ name = "karura-runtime"
 version = "1.1.3"
 dependencies = [
  "acala-primitives",
+ "benchmarks",
  "cumulus-pallet-aura-ext",
  "cumulus-pallet-dmp-queue",
  "cumulus-pallet-parachain-system",
@@ -4888,6 +4906,7 @@ version = "1.1.3"
 dependencies = [
  "acala-primitives",
  "acala-service",
+ "benchmarks",
  "chainbridge",
  "cumulus-pallet-aura-ext",
  "cumulus-pallet-dmp-queue",
@@ -5678,6 +5697,7 @@ name = "module-nft"
 version = "1.1.3"
 dependencies = [
  "acala-primitives",
+ "chainbridge",
  "enumflags2",
  "frame-benchmarking",
  "frame-support",

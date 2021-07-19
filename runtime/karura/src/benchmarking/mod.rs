@@ -18,31 +18,66 @@
 
 #![cfg(feature = "runtime-benchmarks")]
 
-// NOTE: These benchmarks are the same as mandala benchmarks,
-// the only difference is currency ids: ACA -> KAR, AUSD -> KUSD, DOT -> KSM
-//
-// TODO: Make sure to keep those files up-to-date with mandala benchmarks
-// until we implement a better solution
+pub mod utils;
 
 // module benchmarking
-pub mod auction_manager;
-pub mod cdp_engine;
-pub mod cdp_treasury;
-pub mod collator_selection;
-pub mod dex;
-pub mod emergency_shutdown;
-pub mod evm;
-pub mod evm_accounts;
-pub mod honzon;
-pub mod incentives;
-pub mod prices;
-pub mod transaction_payment;
+pub mod auction_manager {
+	benchmarks::auction_manager_benchmarks!();
+}
+pub mod cdp_engine {
+	benchmarks::cdp_engine_benchmarks!();
+}
+pub mod cdp_treasury {
+	benchmarks::cdp_treasury_benchmarks!();
+}
+pub mod collator_selection {
+	benchmarks::collator_selection_benchmarks!();
+}
+pub mod dex {
+	benchmarks::dex_benchmarks!();
+}
+pub mod emergency_shutdown {
+	benchmarks::emergency_shutdown_benchmarks!();
+}
+pub mod evm {
+	benchmarks::evm_benchmarks!();
+}
+pub mod evm_accounts {
+	benchmarks::evm_accounts_benchmarks!();
+}
+pub mod honzon {
+	benchmarks::honzon_benchmarks!();
+}
+pub mod incentives {
+	benchmarks::incentives_benchmarks!();
+}
+pub mod prices {
+	benchmarks::prices_benchmarks!();
+}
+pub mod transaction_payment {
+	benchmarks::transaction_payment_benchmarks!();
+}
 
 // orml benchmarking
-pub mod auction;
-pub mod authority;
-pub mod currencies;
-pub mod oracle;
-pub mod tokens;
-pub mod utils;
-pub mod vesting;
+pub mod auction {
+	benchmarks::auction_benchmarks!();
+}
+pub mod authority {
+	benchmarks::authority_benchmarks!();
+}
+pub mod currencies {
+	benchmarks::currencies_benchmarks!();
+}
+pub mod oracle {
+	benchmarks::oracle_benchmarks!();
+}
+pub mod tokens {
+	benchmarks::tokens_benchmarks!();
+}
+pub mod vesting {
+	benchmarks::vesting_benchmarks!();
+}
+
+pub fn get_treasury_account() -> super::AccountId {
+	super::KaruraFoundationAccounts::get()[0].clone()
+}

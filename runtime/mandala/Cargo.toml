@@ -119,6 +119,7 @@ module-staking-pool-rpc-runtime-api = { path = "../../modules/staking-pool/rpc/r
 module-polkadot-bridge = { path = "../../modules/polkadot-bridge", default-features = false }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 runtime-common = { path = "../common", default-features = false }
+benchmarks = { path = "../benchmarks", default-features = false, optional = true }
 
 module-evm-rpc-runtime-api = { path = "../../modules/evm/rpc/runtime_api",  default-features = false }
 
@@ -250,6 +251,7 @@ std = [
 	"module-polkadot-bridge/std",
 	"primitives/std",
 	"runtime-common/std",
+	"benchmarks/std",
 
 	"module-evm-rpc-runtime-api/std",
 
@@ -262,6 +264,7 @@ std = [
 runtime-benchmarks = [
 	"frame-benchmarking",
 	"orml-benchmarking",
+	"benchmarks",
 	"libsecp256k1/hmac",
 
 	"frame-support/runtime-benchmarks",

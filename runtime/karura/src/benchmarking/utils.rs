@@ -18,7 +18,6 @@
 
 use crate::{
 	AcalaOracle, AccountId, Balance, Currencies, CurrencyId, MinimumCount, OperatorMembershipAcala, Price, Runtime,
-	TokenSymbol,
 };
 
 use frame_benchmarking::account;
@@ -29,7 +28,7 @@ use sp_runtime::{
 	traits::{SaturatedConversion, StaticLookup},
 	DispatchResult,
 };
-use sp_std::vec;
+use sp_std::prelude::*;
 
 pub fn lookup_of_account(who: AccountId) -> <<Runtime as frame_system::Config>::Lookup as StaticLookup>::Source {
 	<Runtime as frame_system::Config>::Lookup::unlookup(who)
@@ -43,21 +42,13 @@ pub fn set_balance(currency_id: CurrencyId, who: &AccountId, balance: Balance) {
 	));
 }
 
-pub fn set_ausd_balance(who: &AccountId, balance: Balance) {
-	set_balance(CurrencyId::Token(TokenSymbol::KUSD), who, balance)
-}
-
-pub fn set_aca_balance(who: &AccountId, balance: Balance) {
-	set_balance(CurrencyId::Token(TokenSymbol::KAR), who, balance)
-}
-
-pub fn feed_price(currency_id: CurrencyId, price: Price) -> DispatchResult {
+pub fn feed_price(prices: Vec<(CurrencyId, Price)>) -> DispatchResult {
 	for i in 0..MinimumCount::get() {
 		let oracle: AccountId = account("oracle", 0, i);
 		if !OperatorMembershipAcala::contains(&oracle) {
 			OperatorMembershipAcala::add_member(RawOrigin::Root.into(), oracle.clone())?;
 		}
-		AcalaOracle::feed_values(RawOrigin::Signed(oracle).into(), vec![(currency_id, price)])
+		AcalaOracle::feed_values(RawOrigin::Signed(oracle).into(), prices.to_vec())
 			.map_or_else(|e| Err(e.error), |_| Ok(()))?;
 	}
 

@@ -17,6 +17,7 @@ pallet-proxy = { git = "https://github.com/paritytech/substrate", branch = "polk
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.7", default-features = false }
 sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.7", default-features = false }
+chainbridge = { git = "https://github.com/AcalaNetwork/chainbridge-substrate", default-features = false, optional = true }
 
 orml-nft = { path = "../../orml/nft", default-features = false }
 orml-traits = { path = "../../orml/traits", default-features = false }
@@ -46,10 +47,12 @@ std = [
 	"orml-traits/std",
 	"orml-nft/std",
 	"enumflags2/serde",
+	"chainbridge/std",
 ]
 runtime-benchmarks = [
 	"frame-benchmarking",
 	"frame-support/runtime-benchmarks",
 	"frame-system/runtime-benchmarks",
+	"chainbridge/runtime-benchmarks",
 ]
 try-runtime = ["frame-support/try-runtime"]
