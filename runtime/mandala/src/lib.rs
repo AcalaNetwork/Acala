@@ -87,7 +87,7 @@ pub use xcm_builder::{
 	AccountId32Aliases, AllowTopLevelPaidExecutionFrom, AllowUnpaidExecutionFrom, EnsureXcmOrigin,
 	FixedRateOfConcreteFungible, FixedWeightBounds, IsConcrete, LocationInverter, NativeAsset, ParentAsSuperuser,
 	ParentIsDefault, RelayChainAsNative, SiblingParachainAsNative, SiblingParachainConvertsVia,
-	SignedAccountId32AsNative, SignedToAccountId32, SovereignSignedViaLocation, TakeWeightCredit,
+	SignedAccountId32AsNative, SignedToAccountId32, SovereignSignedViaLocation, TakeRevenue, TakeWeightCredit,
 };
 pub use xcm_executor::{Config, XcmExecutor};
 
@@ -1106,6 +1106,13 @@ impl OnUnbalanced<NegativeImbalance> for DealWithFees {
 		}
 	}
 }
+impl TakeRevenue for DealWithFees {
+	fn take_revenue(revenue: MultiAsset) {
+		if let MultiAsset::ConcreteFungible { amount, .. } = revenue {
+			Treasury::on_unbalanced(NegativeImbalance::new(amount));
+		}
+	}
+}
 
 impl module_transaction_payment::Config for Runtime {
 	type AllNonNativeCurrencyIds = AllNonNativeCurrencyIds;
@@ -1655,8 +1662,7 @@ impl Config for XcmConfig {
 	type Barrier = Barrier;
 	type Weigher = FixedWeightBounds<UnitWeightCost, Call>;
 	// Only receiving DOT is handled, and all fees must be paid in DOT.
-	//TODO: make treasury take revenue
-	type Trader = FixedRateOfConcreteFungible<DotPerSecond, ()>;
+	type Trader = FixedRateOfConcreteFungible<DotPerSecond, DealWithFees>;
 	type ResponseHandler = (); // Don't handle responses for now.
 }
 
