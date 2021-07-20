@@ -48,67 +48,67 @@ use sp_std::marker::PhantomData;
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> module_dex::WeightInfo for WeightInfo<T> {
 	fn enable_trading_pair() -> Weight {
-		(30_099_000 as Weight)
+		(29_522_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn disable_trading_pair() -> Weight {
-		(31_860_000 as Weight)
+		(30_607_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn list_provisioning() -> Weight {
-		(43_874_000 as Weight)
+		(42_166_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn update_provisioning_parameters() -> Weight {
-		(15_346_000 as Weight)
+		(13_841_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn end_provisioning() -> Weight {
-		(101_623_000 as Weight)
+		(98_589_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(5 as Weight))
 			.saturating_add(T::DbWeight::get().writes(6 as Weight))
 	}
 	fn add_provision() -> Weight {
-		(166_851_000 as Weight)
+		(163_953_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(5 as Weight))
 			.saturating_add(T::DbWeight::get().writes(5 as Weight))
 	}
 	fn claim_dex_share() -> Weight {
-		(141_868_000 as Weight)
+		(138_360_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(7 as Weight))
 			.saturating_add(T::DbWeight::get().writes(5 as Weight))
 	}
 	fn add_liquidity() -> Weight {
-		(243_570_000 as Weight)
+		(238_750_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(9 as Weight))
 			.saturating_add(T::DbWeight::get().writes(7 as Weight))
 	}
 	fn add_liquidity_and_stake() -> Weight {
-		(357_947_000 as Weight)
+		(350_593_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(14 as Weight))
 			.saturating_add(T::DbWeight::get().writes(12 as Weight))
 	}
 	fn remove_liquidity() -> Weight {
-		(213_940_000 as Weight)
+		(209_273_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(6 as Weight))
 			.saturating_add(T::DbWeight::get().writes(6 as Weight))
 	}
 	fn remove_liquidity_by_unstake() -> Weight {
-		(405_467_000 as Weight)
+		(392_475_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(14 as Weight))
 			.saturating_add(T::DbWeight::get().writes(12 as Weight))
 	}
 	fn swap_with_exact_supply(_u: u32, ) -> Weight {
-		(169_507_000 as Weight)
+		(168_304_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(9 as Weight))
 			.saturating_add(T::DbWeight::get().writes(8 as Weight))
 	}
 	fn swap_with_exact_target(_u: u32, ) -> Weight {
-		(172_319_000 as Weight)
+		(167_987_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(9 as Weight))
 			.saturating_add(T::DbWeight::get().writes(8 as Weight))
 	}

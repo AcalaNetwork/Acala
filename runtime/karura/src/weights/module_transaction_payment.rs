@@ -48,11 +48,11 @@ use sp_std::marker::PhantomData;
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> module_transaction_payment::WeightInfo for WeightInfo<T> {
 	fn set_default_fee_token() -> Weight {
-		(5_288_000 as Weight)
+		(4_711_000 as Weight)
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn on_finalize() -> Weight {
-		(16_077_000 as Weight)
+		(15_607_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}

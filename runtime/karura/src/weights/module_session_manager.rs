@@ -48,26 +48,26 @@ use sp_std::marker::PhantomData;
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> module_session_manager::WeightInfo for WeightInfo<T> {
 	fn schedule_session_duration() -> Weight {
-		(40_129_000 as Weight)
+		(37_842_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn on_initialize_skip() -> Weight {
-		(12_582_000 as Weight)
+		(7_941_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn on_initialize() -> Weight {
-		(10_434_000 as Weight)
+		(9_401_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(3 as Weight))
 	}
 	fn estimate_current_session_progress() -> Weight {
-		(16_188_000 as Weight)
+		(7_862_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 	}
 	fn estimate_next_session_rotation() -> Weight {
-		(16_300_000 as Weight)
+		(7_885_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 	}
 }

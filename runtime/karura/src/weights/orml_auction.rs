@@ -48,14 +48,14 @@ use sp_std::marker::PhantomData;
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> orml_auction::WeightInfo for WeightInfo<T> {
 	fn bid_collateral_auction() -> Weight {
-		(218_027_000 as Weight)
+		(213_458_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(8 as Weight))
 			.saturating_add(T::DbWeight::get().writes(9 as Weight))
 	}
 	fn on_finalize(c: u32, ) -> Weight {
-		(166_630_000 as Weight)
-			// Standard Error: 76_000
-			.saturating_add((98_149_000 as Weight).saturating_mul(c as Weight))
+		(72_808_000 as Weight)
+			// Standard Error: 48_000
+			.saturating_add((100_155_000 as Weight).saturating_mul(c as Weight))
 			.saturating_add(T::DbWeight::get().reads(9 as Weight))
 			.saturating_add(T::DbWeight::get().reads((3 as Weight).saturating_mul(c as Weight)))
 			.saturating_add(T::DbWeight::get().writes(7 as Weight))
