@@ -163,6 +163,7 @@ mod benchmark_mock {
 		pub const StakingCurrencyId: CurrencyId = KSM;
 		pub const LiquidCurrencyId: CurrencyId = LKSM;
 		pub const HomaLitePalletId: PalletId = PalletId(*b"aca/hmlt");
+		pub const MinimumMintThreshold: Balance = 1_000_000_000;
 	}
 	ord_parameter_types! {
 		pub const Root: AccountId = ROOT;
@@ -177,6 +178,7 @@ mod benchmark_mock {
 		type PalletId = HomaLitePalletId;
 		type IssuerOrigin = EnsureRoot<AccountId>;
 		type GovernanceOrigin = EnsureRoot<AccountId>;
+		type MinimumMintThreshold = MinimumMintThreshold;
 	}
 
 	type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;

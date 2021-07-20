@@ -116,6 +116,38 @@ fn can_request_mint_more_than_once_in_an_batch() {
 }
 
 #[test]
+fn request_mint_fails_when_below_minimum() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(HomaLite::set_stash_account_id(Origin::signed(ROOT), RELAY_CHAIN_STASH));
+
+		assert_noop!(
+			HomaLite::request_mint(Origin::signed(ALICE), 1_000),
+			Error::<Runtime>::MintAmountBelowMinimumThreshold
+		);
+	});
+}
+
+#[test]
+fn request_mint_fails_when_cap_is_exceeded() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(HomaLite::set_stash_account_id(Origin::signed(ROOT), RELAY_CHAIN_STASH));
+		assert_ok!(HomaLite::set_staking_currency_cap(Origin::signed(ROOT), dollar(1_000)));
+
+		assert_noop!(
+			HomaLite::request_mint(Origin::signed(ALICE), dollar(1_001)),
+			Error::<Runtime>::ExceededStakingCurrencyMintCap
+		);
+
+		assert_ok!(HomaLite::request_mint(Origin::signed(ALICE), dollar(1_000)));
+
+		assert_noop!(
+			HomaLite::request_mint(Origin::signed(ALICE), dollar(1)),
+			Error::<Runtime>::ExceededStakingCurrencyMintCap
+		);
+	});
+}
+
+#[test]
 fn issue_works() {
 	ExtBuilder::default().build().execute_with(|| {
 		// Setup the relay chain's stash account.
@@ -246,5 +278,32 @@ fn repeated_claims_has_no_effect() {
 		assert_ok!(HomaLite::claim(Origin::signed(ALICE), ALICE, 0));
 
 		assert_eq!(Currencies::free_balance(LKSM, &ALICE), alice_balance);
+	});
+}
+
+#[test]
+fn can_set_mint_cap() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(HomaLite::set_stash_account_id(Origin::signed(ROOT), RELAY_CHAIN_STASH));
+
+		// Current cap is not set
+		assert_eq!(StakingCurrencyMintCap::<Runtime>::get(), None);
+
+		// Requires Root previlege.
+		assert_noop!(
+			HomaLite::set_staking_currency_cap(Origin::signed(ALICE), dollar(1_000)),
+			BadOrigin
+		);
+
+		// Set the cap.
+		assert_ok!(HomaLite::set_staking_currency_cap(Origin::signed(ROOT), dollar(1_000)));
+
+		// Cap should be set now.
+		assert_eq!(StakingCurrencyMintCap::<Runtime>::get(), Some(dollar(1_000)));
+
+		assert_eq!(
+			System::events().iter().last().unwrap().event,
+			Event::HomaLite(crate::Event::StakingCurrencyMintCapUpdated(dollar(1_000)))
+		);
 	});
 }

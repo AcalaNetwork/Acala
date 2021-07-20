@@ -1211,6 +1211,7 @@ impl module_homa::Config for Runtime {
 parameter_types! {
 	pub const KSM: CurrencyId = CurrencyId::Token(TokenSymbol::KSM);
 	pub const LKSM: CurrencyId = CurrencyId::Token(TokenSymbol::LKSM);
+	pub const MinimumMintThreshold: Balance = 1_000_000_000;
 }
 impl module_homa_lite::Config for Runtime {
 	type Event = Event;
@@ -1221,6 +1222,7 @@ impl module_homa_lite::Config for Runtime {
 	type PalletId = HomaLitePalletId;
 	type IssuerOrigin = EnsureRootOrHalfGeneralCouncil;
 	type GovernanceOrigin = EnsureRootOrHalfGeneralCouncil;
+	type MinimumMintThreshold = MinimumMintThreshold;
 }
 
 parameter_types! {

@@ -134,6 +134,7 @@ parameter_types! {
 	pub const StakingCurrencyId: CurrencyId = KSM;
 	pub const LiquidCurrencyId: CurrencyId = LKSM;
 	pub const HomaLitePalletId: PalletId = PalletId(*b"aca/hmlt");
+	pub const MinimumMintThreshold: Balance = 1_000_000_000;
 }
 ord_parameter_types! {
 	pub const Root: AccountId = ROOT;
@@ -148,6 +149,7 @@ impl Config for Runtime {
 	type PalletId = HomaLitePalletId;
 	type IssuerOrigin = EnsureSignedBy<Root, AccountId>;
 	type GovernanceOrigin = EnsureSignedBy<Root, AccountId>;
+	type MinimumMintThreshold = MinimumMintThreshold;
 }
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;

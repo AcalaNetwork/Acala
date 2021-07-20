@@ -87,6 +87,9 @@ pub mod module {
 
 		/// Origin represented by the Root or Governance
 		type GovernanceOrigin: EnsureOrigin<Self::Origin>;
+
+		/// The minimal amount of KSM to be locked
+		type MinimumMintThreshold: Get<Balance>;
 	}
 
 	#[pallet::error]
@@ -98,6 +101,10 @@ pub mod module {
 		RelayChainStashAccountNotSet,
 		/// The total issuance for the Staking currency must be more than zero.
 		InvalidStakedCurrencyTotalIssuance,
+		/// The amount to be minted is below the minimum threshold allowed.
+		MintAmountBelowMinimumThreshold,
+		/// The amount of Staking currency used has exceeded the cap allowed.
+		ExceededStakingCurrencyMintCap,
 	}
 
 	#[pallet::event]
@@ -117,6 +124,9 @@ pub mod module {
 
 		/// The relay chain's stash account ID has been updated.\[new_stash_account\]
 		RelayChainStashAccountUpdated(T::AccountId),
+
+		/// The mint cap for Staking currency is updated.\[new_cap\]
+		StakingCurrencyMintCapUpdated(Balance),
 	}
 
 	/// Stores the amount of Staking currency the user has exchanged.
@@ -144,6 +154,18 @@ pub mod module {
 	#[pallet::getter(fn relay_chain_stash_account)]
 	pub type RelayChainStashAccount<T: Config> = StorageValue<_, T::AccountId, OptionQuery>;
 
+	/// The maximum amount of total staking currency that is allowed to mint Liquid currency.
+	/// StakingCurrencyMintCap: value: mint_cap: Balance
+	#[pallet::storage]
+	#[pallet::getter(fn staking_currency_mint_cap)]
+	pub type StakingCurrencyMintCap<T: Config> = StorageValue<_, Balance, OptionQuery>;
+
+	/// The total amount of staking currency that have used to mint Liquid currency.
+	/// TotalStakedAmount: value: staked_total: Balance
+	#[pallet::storage]
+	#[pallet::getter(fn total_staked_amount)]
+	pub type TotalStakedAmount<T: Config> = StorageValue<_, Balance, ValueQuery>;
+
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
 
@@ -160,6 +182,22 @@ pub mod module {
 		pub fn request_mint(origin: OriginFor<T>, amount: Balance) -> DispatchResult {
 			let stash_account = Self::relay_chain_stash_account().ok_or(Error::<T>::RelayChainStashAccountNotSet)?;
 
+			// Ensure the amount is above the minimum
+			ensure!(
+				amount >= T::MinimumMintThreshold::get(),
+				Error::<T>::MintAmountBelowMinimumThreshold
+			);
+
+			// Ensure the total amount staked doesn't exceed the cap.
+			let new_total_staked = Self::total_staked_amount()
+				.checked_add(amount)
+				.ok_or(ArithmeticError::Overflow)?;
+			let mint_cap = Self::staking_currency_mint_cap();
+			ensure!(
+				mint_cap.is_none() || new_total_staked <= mint_cap.unwrap(),
+				Error::<T>::ExceededStakingCurrencyMintCap
+			);
+
 			let who = ensure_signed(origin)?;
 			let current_batch = Self::current_batch();
 			let staking_currency_id = T::StakingCurrencyId::get();
@@ -170,6 +208,7 @@ pub mod module {
 			PendingAmount::<T>::mutate(current_batch, &who, |current| {
 				*current = current.checked_add(amount).expect("Amount should not cause overflow.")
 			});
+			TotalStakedAmount::<T>::put(new_total_staked);
 
 			Self::deposit_event(Event::<T>::MintRequested(current_batch, who, amount));
 			Ok(())
@@ -180,7 +219,8 @@ pub mod module {
 		/// Requires `T::IssuerOrigin`
 		///
 		/// Parameters:
-		/// - `staking_total`:
+		/// - `staking_total`: The currenct issuance of the Staking currency. Used to calculate
+		///   conversion rate.
 		#[pallet::weight(< T as Config >::WeightInfo::issue())]
 		#[transactional]
 		pub fn issue(origin: OriginFor<T>, staking_total: Balance) -> DispatchResult {
@@ -249,6 +289,23 @@ pub mod module {
 
 			RelayChainStashAccount::<T>::put(new_account_id.clone());
 			Self::deposit_event(Event::<T>::RelayChainStashAccountUpdated(new_account_id));
+			Ok(())
+		}
+
+		/// Updates the cap for how much Staking currency can be used to Mint liquid currency.
+		/// Requires `T::GovernanceOrigin`
+		///
+		/// Parameters:
+		/// - `new_cap`: The new cap for staking currency.
+		/// #[pallet::weight(< T as Config >::WeightInfo::set_staking_currency_cap())]
+		#[pallet::weight(0)]
+		#[transactional]
+		pub fn set_staking_currency_cap(origin: OriginFor<T>, new_cap: Balance) -> DispatchResult {
+			// This can only be called by Governance or ROOT.
+			T::GovernanceOrigin::ensure_origin(origin)?;
+
+			StakingCurrencyMintCap::<T>::put(new_cap.clone());
+			Self::deposit_event(Event::<T>::StakingCurrencyMintCapUpdated(new_cap));
 			Ok(())
 		}
 	}
