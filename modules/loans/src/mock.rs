@@ -196,16 +196,16 @@ impl RiskManager<AccountId, CurrencyId, Balance, Balance> for MockRiskManager {
 		_debit_balance: Balance,
 	) -> DispatchResult {
 		match currency_id {
-			DOT => Err(sp_runtime::DispatchError::Other("mock error")),
+			DOT => Err(sp_runtime::DispatchError::Other("mock invalid position error")),
 			BTC => Ok(()),
-			_ => Err(sp_runtime::DispatchError::Other("mock error")),
+			_ => Err(sp_runtime::DispatchError::Other("mock invalid position error")),
 		}
 	}
 
 	fn check_debit_cap(currency_id: CurrencyId, total_debit_balance: Balance) -> DispatchResult {
 		match (currency_id, total_debit_balance) {
-			(DOT, 1000) => Err(sp_runtime::DispatchError::Other("mock error")),
-			(BTC, 1000) => Err(sp_runtime::DispatchError::Other("mock error")),
+			(DOT, 1000) => Err(sp_runtime::DispatchError::Other("mock exceed debit value cap error")),
+			(BTC, 1000) => Err(sp_runtime::DispatchError::Other("mock exceed debit value cap error")),
 			(_, _) => Ok(()),
 		}
 	}
