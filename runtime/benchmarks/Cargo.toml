@@ -1,5 +1,0 @@
-[package]
-name = "benchmarks"
-version = "1.2.0"
-authors = ["Acala Developers"]
-edition = "2018"

@@ -22,63 +22,63 @@ pub mod utils;
 
 // module benchmarking
 pub mod auction_manager {
-	benchmarks::auction_manager_benchmarks!();
+	include!("../../../mandala/src/benchmarking/auction_manager.rs");
 }
 pub mod cdp_engine {
-	benchmarks::cdp_engine_benchmarks!();
+	include!("../../../mandala/src/benchmarking/cdp_engine.rs");
 }
 pub mod cdp_treasury {
-	benchmarks::cdp_treasury_benchmarks!();
+	include!("../../../mandala/src/benchmarking/cdp_treasury.rs");
 }
 pub mod collator_selection {
-	benchmarks::collator_selection_benchmarks!();
+	include!("../../../mandala/src/benchmarking/collator_selection.rs");
+}
+pub mod currencies {
+	include!("../../../mandala/src/benchmarking/currencies.rs");
 }
 pub mod dex {
-	benchmarks::dex_benchmarks!();
+	include!("../../../mandala/src/benchmarking/dex.rs");
 }
 pub mod emergency_shutdown {
-	benchmarks::emergency_shutdown_benchmarks!();
+	include!("../../../mandala/src/benchmarking/emergency_shutdown.rs");
 }
 pub mod evm {
-	benchmarks::evm_benchmarks!();
+	include!("../../../mandala/src/benchmarking/evm.rs");
 }
 pub mod evm_accounts {
-	benchmarks::evm_accounts_benchmarks!();
+	include!("../../../mandala/src/benchmarking/evm_accounts.rs");
 }
 pub mod honzon {
-	benchmarks::honzon_benchmarks!();
+	include!("../../../mandala/src/benchmarking/honzon.rs");
 }
 pub mod incentives {
-	benchmarks::incentives_benchmarks!();
+	include!("../../../mandala/src/benchmarking/incentives.rs");
 }
 pub mod prices {
-	benchmarks::prices_benchmarks!();
+	include!("../../../mandala/src/benchmarking/prices.rs");
 }
 pub mod transaction_payment {
-	benchmarks::transaction_payment_benchmarks!();
+	include!("../../../mandala/src/benchmarking/transaction_payment.rs");
 }
 pub mod session_manager {
-	benchmarks::session_manager_benchmarks!();
+	include!("../../../mandala/src/benchmarking/session_manager.rs");
 }
 
 // orml benchmarking
 pub mod auction {
-	benchmarks::auction_benchmarks!();
+	include!("../../../mandala/src/benchmarking/auction.rs");
 }
 pub mod authority {
-	benchmarks::authority_benchmarks!();
-}
-pub mod currencies {
-	benchmarks::currencies_benchmarks!();
+	include!("../../../mandala/src/benchmarking/authority.rs");
 }
 pub mod oracle {
-	benchmarks::oracle_benchmarks!();
+	include!("../../../mandala/src/benchmarking/oracle.rs");
 }
 pub mod tokens {
-	benchmarks::tokens_benchmarks!();
+	include!("../../../mandala/src/benchmarking/tokens.rs");
 }
 pub mod vesting {
-	benchmarks::vesting_benchmarks!();
+	include!("../../../mandala/src/benchmarking/vesting.rs");
 }
 
 pub fn get_treasury_account() -> super::AccountId {

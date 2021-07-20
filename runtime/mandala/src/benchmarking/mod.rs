@@ -23,70 +23,30 @@ use sp_runtime::traits::AccountIdConversion;
 pub mod utils;
 
 // module benchmarking
-pub mod auction_manager {
-	benchmarks::auction_manager_benchmarks!();
-}
-pub mod cdp_engine {
-	benchmarks::cdp_engine_benchmarks!();
-}
-pub mod cdp_treasury {
-	benchmarks::cdp_treasury_benchmarks!();
-}
-pub mod collator_selection {
-	benchmarks::collator_selection_benchmarks!();
-}
-pub mod dex {
-	benchmarks::dex_benchmarks!();
-}
-pub mod emergency_shutdown {
-	benchmarks::emergency_shutdown_benchmarks!();
-}
-pub mod evm {
-	benchmarks::evm_benchmarks!();
-}
-pub mod evm_accounts {
-	benchmarks::evm_accounts_benchmarks!();
-}
+pub mod auction_manager;
+pub mod cdp_engine;
+pub mod cdp_treasury;
+pub mod collator_selection;
+pub mod currencies;
+pub mod dex;
+pub mod emergency_shutdown;
+pub mod evm;
+pub mod evm_accounts;
 pub mod homa;
-pub mod honzon {
-	benchmarks::honzon_benchmarks!();
-}
-pub mod incentives {
-	benchmarks::incentives_benchmarks!();
-}
-pub mod nominees_election {
-	benchmarks::nominees_election_benchmarks!();
-}
-pub mod prices {
-	benchmarks::prices_benchmarks!();
-}
-pub mod transaction_payment {
-	benchmarks::transaction_payment_benchmarks!();
-}
-pub mod session_manager {
-	benchmarks::session_manager_benchmarks!();
-}
+pub mod honzon;
+pub mod incentives;
+pub mod nominees_election;
+pub mod prices;
+pub mod session_manager;
+pub mod transaction_payment;
 
 // orml benchmarking
-pub mod auction {
-	benchmarks::auction_benchmarks!();
-}
-pub mod authority {
-	benchmarks::authority_benchmarks!();
-}
-pub mod currencies {
-	benchmarks::currencies_benchmarks!();
-}
+pub mod auction;
+pub mod authority;
 pub mod gradually_update;
-pub mod oracle {
-	benchmarks::oracle_benchmarks!();
-}
-pub mod tokens {
-	benchmarks::tokens_benchmarks!();
-}
-pub mod vesting {
-	benchmarks::vesting_benchmarks!();
-}
+pub mod oracle;
+pub mod tokens;
+pub mod vesting;
 
 // ecosystem benchmarking
 pub mod chainsafe_transfer;
