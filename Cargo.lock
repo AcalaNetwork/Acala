@@ -792,19 +792,6 @@ dependencies = [
 [[package]]
 name = "benchmarks"
 version = "1.2.0"
-dependencies = [
- "acala-primitives",
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "module-support",
- "orml-benchmarking",
- "orml-traits",
- "runtime-common",
- "sp-io",
- "sp-runtime",
- "sp-std",
-]
 
 [[package]]
 name = "bincode"

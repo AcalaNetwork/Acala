@@ -3,32 +3,3 @@ name = "benchmarks"
 version = "1.2.0"
 authors = ["Acala Developers"]
 edition = "2018"
-
-[dependencies]
-sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.8", default-features = false }
-sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.8", default-features = false }
-frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.8", default-features = false }
-frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.8", default-features = false }
-frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.8", default-features = false }
-sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.8", default-features = false }
-module-support = { path = "../../modules/support", default-features = false }
-orml-benchmarking = { path = "../../orml/benchmarking", default-features = false }
-primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
-runtime-common = { path = "../common", default-features = false }
-orml-traits = { path = "../../orml/traits", default-features = false }
-
-[features]
-default = ["std"]
-std = [
-    "sp-io/std",
-    "sp-std/std",
-    "frame-benchmarking/std",
-    "frame-support/std",
-    "frame-system/std",
-    "sp-runtime/std",
-    "module-support/std",
-    "orml-benchmarking/std",
-    "primitives/std",
-    "runtime-common/std",
-    "orml-traits/std",
-]

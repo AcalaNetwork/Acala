@@ -230,7 +230,6 @@ std = [
 	"module-polkadot-bridge/std",
 	"primitives/std",
 	"runtime-common/std",
-	"benchmarks/std",
 
 	"module-evm-rpc-runtime-api/std",
 ]
