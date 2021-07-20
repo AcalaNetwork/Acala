@@ -5713,7 +5713,6 @@ name = "module-nft"
 version = "1.2.0"
 dependencies = [
  "acala-primitives",
- "chainbridge",
  "enumflags2",
  "frame-benchmarking",
  "frame-support",
