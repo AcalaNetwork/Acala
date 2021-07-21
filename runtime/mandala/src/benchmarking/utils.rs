@@ -16,11 +16,19 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AccountId, Balance, Currencies, CurrencyId, Runtime, TokenSymbol};
+use crate::{
+	AcalaOracle, AccountId, Balance, Currencies, CurrencyId, MinimumCount, OperatorMembershipAcala, Price, Runtime,
+};
 
-use frame_support::assert_ok;
+use frame_benchmarking::account;
+use frame_support::{assert_ok, traits::Contains};
+use frame_system::RawOrigin;
 use orml_traits::MultiCurrencyExtended;
-use sp_runtime::traits::{SaturatedConversion, StaticLookup};
+use sp_runtime::{
+	traits::{SaturatedConversion, StaticLookup},
+	DispatchResult,
+};
+use sp_std::prelude::*;
 
 pub fn lookup_of_account(who: AccountId) -> <<Runtime as frame_system::Config>::Lookup as StaticLookup>::Source {
 	<Runtime as frame_system::Config>::Lookup::unlookup(who)
@@ -34,12 +42,17 @@ pub fn set_balance(currency_id: CurrencyId, who: &AccountId, balance: Balance) {
 	));
 }
 
-pub fn set_ausd_balance(who: &AccountId, balance: Balance) {
-	set_balance(CurrencyId::Token(TokenSymbol::AUSD), who, balance)
-}
+pub fn feed_price(prices: Vec<(CurrencyId, Price)>) -> DispatchResult {
+	for i in 0..MinimumCount::get() {
+		let oracle: AccountId = account("oracle", 0, i);
+		if !OperatorMembershipAcala::contains(&oracle) {
+			OperatorMembershipAcala::add_member(RawOrigin::Root.into(), oracle.clone())?;
+		}
+		AcalaOracle::feed_values(RawOrigin::Signed(oracle).into(), prices.to_vec())
+			.map_or_else(|e| Err(e.error), |_| Ok(()))?;
+	}
 
-pub fn set_aca_balance(who: &AccountId, balance: Balance) {
-	set_balance(CurrencyId::Token(TokenSymbol::ACA), who, balance)
+	Ok(())
 }
 
 #[cfg(test)]

@@ -16,22 +16,23 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AccountId, CurrencyId, Runtime, System, TokenSymbol, TransactionPayment};
+use crate::{AccountId, CurrencyId, GetStableCurrencyId, Runtime, System, TransactionPayment};
 use frame_benchmarking::whitelisted_caller;
 use frame_support::traits::OnFinalize;
 use frame_system::RawOrigin;
 use orml_benchmarking::runtime_benchmarks;
 use sp_std::prelude::*;
 
+const STABLECOIN: CurrencyId = GetStableCurrencyId::get();
+
 runtime_benchmarks! {
 	{ Runtime, module_transaction_payment }
 
 	set_default_fee_token {
 		let caller: AccountId = whitelisted_caller();
-		let currency_id = CurrencyId::Token(TokenSymbol::AUSD);
-	}: _(RawOrigin::Signed(caller.clone()), Some(currency_id))
+	}: _(RawOrigin::Signed(caller.clone()), Some(STABLECOIN))
 	verify {
-		assert_eq!(TransactionPayment::default_fee_currency_id(&caller), Some(currency_id));
+		assert_eq!(TransactionPayment::default_fee_currency_id(&caller), Some(STABLECOIN));
 	}
 
 	on_finalize {

@@ -16,15 +16,17 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{dollar, AccountId, Event, EvmAccounts, Origin, Runtime, System, ACA, EVM};
+use crate::{dollar, AccountId, CurrencyId, Event, EvmAccounts, GetNativeCurrencyId, Origin, Runtime, System, EVM};
 
-use super::utils::set_aca_balance;
+use super::utils::set_balance;
 use frame_support::dispatch::DispatchError;
 use frame_system::RawOrigin;
 use orml_benchmarking::{runtime_benchmarks, whitelist_account};
 use sp_core::H160;
 use sp_io::hashing::keccak_256;
 use sp_std::str::FromStr;
+
+const NATIVE: CurrencyId = GetNativeCurrencyId::get();
 
 fn contract_addr() -> H160 {
 	H160::from_str("0x5e0b4bfa0b55932a3587e648c3552a6515ba56b1").unwrap()
@@ -83,8 +85,8 @@ runtime_benchmarks! {
 	transfer_maintainer {
 		let alice_account = alice_account_id();
 
-		set_aca_balance(&alice_account, 1_000 * dollar(ACA));
-		set_aca_balance(&bob_account_id(), 1_000 * dollar(ACA));
+		set_balance(NATIVE, &alice_account, 1_000_000 * dollar(NATIVE));
+		set_balance(NATIVE, &bob_account_id(), 1_000 * dollar(NATIVE));
 		let contract = deploy_contract(alice_account_id())?;
 		let bob_address = EvmAccounts::eth_address(&bob());
 
@@ -94,8 +96,8 @@ runtime_benchmarks! {
 	deploy {
 		let alice_account = alice_account_id();
 
-		set_aca_balance(&alice_account, 1_000 * dollar(ACA));
-		set_aca_balance(&bob_account_id(), 1_000 * dollar(ACA));
+		set_balance(NATIVE, &alice_account, 1_000_000 * dollar(NATIVE));
+		set_balance(NATIVE, &bob_account_id(), 1_000 * dollar(NATIVE));
 		let contract = deploy_contract(alice_account_id())?;
 
 		whitelist_account!(alice_account);
@@ -104,15 +106,15 @@ runtime_benchmarks! {
 	deploy_free {
 		let alice_account = alice_account_id();
 
-		set_aca_balance(&alice_account, 1_000 * dollar(ACA));
-		set_aca_balance(&bob_account_id(), 1_000 * dollar(ACA));
+		set_balance(NATIVE, &alice_account, 1_000_000 * dollar(NATIVE));
+		set_balance(NATIVE, &bob_account_id(), 1_000 * dollar(NATIVE));
 		let contract = deploy_contract(alice_account_id())?;
 	}: _(RawOrigin::Root, contract)
 
 	enable_contract_development {
 		let alice_account = alice_account_id();
 
-		set_aca_balance(&alice_account, 1_000 * dollar(ACA));
+		set_balance(NATIVE, &alice_account, 1_000 * dollar(NATIVE));
 
 		whitelist_account!(alice_account);
 	}: _(RawOrigin::Signed(alice_account_id()))
@@ -120,7 +122,7 @@ runtime_benchmarks! {
 	disable_contract_development {
 		let alice_account = alice_account_id();
 
-		set_aca_balance(&alice_account, 1_000 * dollar(ACA));
+		set_balance(NATIVE, &alice_account, 1_000 * dollar(NATIVE));
 		EVM::enable_contract_development(Origin::signed(alice_account_id()))?;
 
 		whitelist_account!(alice_account);
@@ -129,7 +131,7 @@ runtime_benchmarks! {
 	set_code {
 		let alice_account = alice_account_id();
 
-		set_aca_balance(&alice_account, 1_000 * dollar(ACA));
+		set_balance(NATIVE, &alice_account, 1_000_000 * dollar(NATIVE));
 		let contract = deploy_contract(alice_account_id())?;
 
 		let new_contract = hex_literal::hex!("608060405234801561001057600080fd5b5061016f806100206000396000f3fe608060405260043610610041576000357c0100000000000000000000000000000000000000000000000000000000900463ffffffff168063412a5a6d14610046575b600080fd5b61004e610050565b005b600061005a6100e2565b604051809103906000f080158015610076573d6000803e3d6000fd5b50905060008190806001815401808255809150509060018203906000526020600020016000909192909190916101000a81548173ffffffffffffffffffffffffffffffffffffffff021916908373ffffffffffffffffffffffffffffffffffffffff1602179055505050565b6040516052806100f28339019056fe6080604052348015600f57600080fd5b50603580601d6000396000f3fe6080604052600080fdfea165627a7a7230582092dc1966a8880ddf11e067f9dd56a632c11a78a4afd4a9f05924d427367958cc0029a165627a7a723058202b2cc7384e11c452cdbf39b68dada2d5e10a632cc0174a354b8b8c83237e28a400291234").to_vec();
@@ -140,7 +142,7 @@ runtime_benchmarks! {
 	selfdestruct {
 		let alice_account = alice_account_id();
 
-		set_aca_balance(&alice_account, 1_000 * dollar(ACA));
+		set_balance(NATIVE, &alice_account, 1_000_000 * dollar(NATIVE));
 		let contract = deploy_contract(alice_account_id())?;
 
 		whitelist_account!(alice_account);

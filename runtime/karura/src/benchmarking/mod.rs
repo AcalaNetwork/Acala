@@ -18,32 +18,69 @@
 
 #![cfg(feature = "runtime-benchmarks")]
 
-// NOTE: These benchmarks are the same as mandala benchmarks,
-// the only difference is currency ids: ACA -> KAR, AUSD -> KUSD, DOT -> KSM
-//
-// TODO: Make sure to keep those files up-to-date with mandala benchmarks
-// until we implement a better solution
+pub mod utils;
 
 // module benchmarking
-pub mod auction_manager;
-pub mod cdp_engine;
-pub mod cdp_treasury;
-pub mod collator_selection;
-pub mod dex;
-pub mod emergency_shutdown;
-pub mod evm;
-pub mod evm_accounts;
-pub mod honzon;
-pub mod incentives;
-pub mod prices;
-pub mod session_manager;
-pub mod transaction_payment;
+pub mod auction_manager {
+	include!("../../../mandala/src/benchmarking/auction_manager.rs");
+}
+pub mod cdp_engine {
+	include!("../../../mandala/src/benchmarking/cdp_engine.rs");
+}
+pub mod cdp_treasury {
+	include!("../../../mandala/src/benchmarking/cdp_treasury.rs");
+}
+pub mod collator_selection {
+	include!("../../../mandala/src/benchmarking/collator_selection.rs");
+}
+pub mod currencies {
+	include!("../../../mandala/src/benchmarking/currencies.rs");
+}
+pub mod dex {
+	include!("../../../mandala/src/benchmarking/dex.rs");
+}
+pub mod emergency_shutdown {
+	include!("../../../mandala/src/benchmarking/emergency_shutdown.rs");
+}
+pub mod evm {
+	include!("../../../mandala/src/benchmarking/evm.rs");
+}
+pub mod evm_accounts {
+	include!("../../../mandala/src/benchmarking/evm_accounts.rs");
+}
+pub mod honzon {
+	include!("../../../mandala/src/benchmarking/honzon.rs");
+}
+pub mod incentives {
+	include!("../../../mandala/src/benchmarking/incentives.rs");
+}
+pub mod prices {
+	include!("../../../mandala/src/benchmarking/prices.rs");
+}
+pub mod transaction_payment {
+	include!("../../../mandala/src/benchmarking/transaction_payment.rs");
+}
+pub mod session_manager {
+	include!("../../../mandala/src/benchmarking/session_manager.rs");
+}
 
 // orml benchmarking
-pub mod auction;
-pub mod authority;
-pub mod currencies;
-pub mod oracle;
-pub mod tokens;
-pub mod utils;
-pub mod vesting;
+pub mod auction {
+	include!("../../../mandala/src/benchmarking/auction.rs");
+}
+pub mod authority {
+	include!("../../../mandala/src/benchmarking/authority.rs");
+}
+pub mod oracle {
+	include!("../../../mandala/src/benchmarking/oracle.rs");
+}
+pub mod tokens {
+	include!("../../../mandala/src/benchmarking/tokens.rs");
+}
+pub mod vesting {
+	include!("../../../mandala/src/benchmarking/vesting.rs");
+}
+
+pub fn get_treasury_account() -> super::AccountId {
+	super::KaruraFoundationAccounts::get()[0].clone()
+}

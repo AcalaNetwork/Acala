@@ -16,8 +16,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use super::utils::{lookup_of_account, set_ausd_balance};
-use crate::{dollar, AccountId, Balance, Runtime, Tokens, AUSD};
+use super::utils::{lookup_of_account, set_balance};
+use crate::{dollar, AccountId, Balance, CurrencyId, GetStableCurrencyId, Runtime, Tokens};
 
 use sp_std::prelude::*;
 
@@ -29,33 +29,35 @@ use orml_traits::MultiCurrency;
 
 const SEED: u32 = 0;
 
+const STABLECOIN: CurrencyId = GetStableCurrencyId::get();
+
 runtime_benchmarks! {
 	{ Runtime, orml_tokens }
 
 	transfer {
-		let amount: Balance = dollar(AUSD);
+		let amount: Balance = dollar(STABLECOIN);
 
 		let from: AccountId = whitelisted_caller();
-		set_ausd_balance(&from, amount);
+		set_balance(STABLECOIN, &from, amount);
 
 		let to: AccountId = account("to", 0, SEED);
 		let to_lookup = lookup_of_account(to.clone());
-	}: _(RawOrigin::Signed(from), to_lookup, AUSD, amount)
+	}: _(RawOrigin::Signed(from), to_lookup, STABLECOIN, amount)
 	verify {
-		assert_eq!(<Tokens as MultiCurrency<_>>::total_balance(AUSD, &to), amount);
+		assert_eq!(<Tokens as MultiCurrency<_>>::total_balance(STABLECOIN, &to), amount);
 	}
 
 	transfer_all {
-		let amount: Balance = dollar(AUSD);
+		let amount: Balance = dollar(STABLECOIN);
 
 		let from: AccountId = whitelisted_caller();
-		set_ausd_balance(&from, amount);
+		set_balance(STABLECOIN, &from, amount);
 
 		let to: AccountId = account("to", 0, SEED);
 		let to_lookup = lookup_of_account(to);
-	}: _(RawOrigin::Signed(from.clone()), to_lookup, AUSD)
+	}: _(RawOrigin::Signed(from.clone()), to_lookup, STABLECOIN)
 	verify {
-		assert_eq!(<Tokens as MultiCurrency<_>>::total_balance(AUSD, &from), 0);
+		assert_eq!(<Tokens as MultiCurrency<_>>::total_balance(STABLECOIN, &from), 0);
 	}
 }
 

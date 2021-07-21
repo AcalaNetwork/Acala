@@ -381,6 +381,9 @@ fn testnet_genesis(
 		dex: DexConfig {
 			initial_listing_trading_pairs: vec![],
 			initial_enabled_trading_pairs: EnabledTradingPairs::get(),
+			#[cfg(feature = "runtime-benchmarks")]
+			initial_added_liquidity_pools: vec![],
+			#[cfg(not(feature = "runtime-benchmarks"))]
 			initial_added_liquidity_pools: vec![(
 				get_account_id_from_seed::<sr25519::Public>("Alice"),
 				vec![
@@ -613,6 +616,9 @@ fn mandala_genesis(
 			ren_vm_public_key: hex!["4b939fc8ade87cb50b78987b1dda927460dc456a"],
 		},
 		orml_nft: OrmlNFTConfig {
+			#[cfg(feature = "runtime-benchmarks")]
+			tokens: vec![],
+			#[cfg(not(feature = "runtime-benchmarks"))]
 			tokens: {
 				let nft_airdrop_json = &include_bytes!("../../../../resources/mandala-airdrop-NFT.json")[..];
 				let nft_airdrop: Vec<(

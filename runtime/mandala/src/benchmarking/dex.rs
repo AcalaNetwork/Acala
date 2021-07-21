@@ -16,20 +16,24 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{dollar, AccountId, Balance, Currencies, CurrencyId, Dex, Runtime, TradingPathLimit};
+use crate::{
+	dollar, AccountId, Balance, Currencies, CurrencyId, Dex, GetNativeCurrencyId, GetStableCurrencyId, Runtime,
+	TradingPathLimit,
+};
 
 use frame_benchmarking::{account, whitelisted_caller};
 use frame_system::RawOrigin;
+use module_dex::TradingPairStatus;
 use orml_benchmarking::runtime_benchmarks;
 use orml_traits::MultiCurrencyExtended;
-use primitives::{
-	currency::{AUSD, RENBTC},
-	TradingPair,
-};
+use primitives::TradingPair;
 use sp_runtime::traits::UniqueSaturatedInto;
 use sp_std::prelude::*;
 
 const SEED: u32 = 0;
+
+const NATIVE: CurrencyId = GetNativeCurrencyId::get();
+const STABLECOIN: CurrencyId = GetStableCurrencyId::get();
 
 fn inject_liquidity(
 	maker: AccountId,
@@ -71,26 +75,34 @@ runtime_benchmarks! {
 
 	// enable a Disabled trading pair
 	enable_trading_pair {
-		let trading_pair = TradingPair::from_currency_ids(AUSD, RENBTC).unwrap();
-		let _ = Dex::disable_trading_pair(RawOrigin::Root.into(), trading_pair.first(), trading_pair.second());
+		let trading_pair = TradingPair::from_currency_ids(STABLECOIN, NATIVE).unwrap();
+		if let TradingPairStatus::Enabled = Dex::trading_pair_statuses(trading_pair) {
+			Dex::disable_trading_pair(RawOrigin::Root.into(), trading_pair.first(), trading_pair.second())?;
+		}
 	}: _(RawOrigin::Root, trading_pair.first(), trading_pair.second())
 
 	// disable a Enabled trading pair
 	disable_trading_pair {
-		let trading_pair = TradingPair::from_currency_ids(AUSD, RENBTC).unwrap();
-		let _ = Dex::enable_trading_pair(RawOrigin::Root.into(), trading_pair.first(), trading_pair.second());
+		let trading_pair = TradingPair::from_currency_ids(STABLECOIN, NATIVE).unwrap();
+		if let TradingPairStatus::Disabled = Dex::trading_pair_statuses(trading_pair) {
+			Dex::enable_trading_pair(RawOrigin::Root.into(), trading_pair.first(), trading_pair.second())?;
+		}
 	}: _(RawOrigin::Root, trading_pair.first(), trading_pair.second())
 
 	// list a Provisioning trading pair
 	list_provisioning {
-		let trading_pair = TradingPair::from_currency_ids(AUSD, RENBTC).unwrap();
-		let _ = Dex::disable_trading_pair(RawOrigin::Root.into(), trading_pair.first(), trading_pair.second());
+		let trading_pair = TradingPair::from_currency_ids(STABLECOIN, NATIVE).unwrap();
+		if let TradingPairStatus::Enabled = Dex::trading_pair_statuses(trading_pair) {
+			Dex::disable_trading_pair(RawOrigin::Root.into(), trading_pair.first(), trading_pair.second())?;
+		}
 	}: _(RawOrigin::Root, trading_pair.first(), trading_pair.second(), dollar(trading_pair.first()), dollar(trading_pair.second()), dollar(trading_pair.first()), dollar(trading_pair.second()), 10)
 
 	// update parameters of a Provisioning trading pair
 	update_provisioning_parameters {
-		let trading_pair = TradingPair::from_currency_ids(AUSD, RENBTC).unwrap();
-		let _ = Dex::disable_trading_pair(RawOrigin::Root.into(), trading_pair.first(), trading_pair.second());
+		let trading_pair = TradingPair::from_currency_ids(STABLECOIN, NATIVE).unwrap();
+		if let TradingPairStatus::Enabled = Dex::trading_pair_statuses(trading_pair) {
+			Dex::disable_trading_pair(RawOrigin::Root.into(), trading_pair.first(), trading_pair.second())?;
+		}
 		Dex::list_provisioning(
 			RawOrigin::Root.into(),
 			trading_pair.first(),
@@ -106,8 +118,10 @@ runtime_benchmarks! {
 	// end a Provisioning trading pair
 	end_provisioning {
 		let founder: AccountId = whitelisted_caller();
-		let trading_pair = TradingPair::from_currency_ids(AUSD, RENBTC).unwrap();
-		let _ = Dex::disable_trading_pair(RawOrigin::Root.into(), trading_pair.first(), trading_pair.second());
+		let trading_pair = TradingPair::from_currency_ids(STABLECOIN, NATIVE).unwrap();
+		if let TradingPairStatus::Enabled = Dex::trading_pair_statuses(trading_pair) {
+			Dex::disable_trading_pair(RawOrigin::Root.into(), trading_pair.first(), trading_pair.second())?;
+		}
 		Dex::list_provisioning(
 			RawOrigin::Root.into(),
 			trading_pair.first(),
@@ -135,8 +149,10 @@ runtime_benchmarks! {
 
 	add_provision {
 		let founder: AccountId = whitelisted_caller();
-		let trading_pair = TradingPair::from_currency_ids(AUSD, RENBTC).unwrap();
-		let _ = Dex::disable_trading_pair(RawOrigin::Root.into(), trading_pair.first(), trading_pair.second());
+		let trading_pair = TradingPair::from_currency_ids(STABLECOIN, NATIVE).unwrap();
+		if let TradingPairStatus::Enabled = Dex::trading_pair_statuses(trading_pair) {
+			Dex::disable_trading_pair(RawOrigin::Root.into(), trading_pair.first(), trading_pair.second())?;
+		}
 		Dex::list_provisioning(
 			RawOrigin::Root.into(),
 			trading_pair.first(),
@@ -155,8 +171,10 @@ runtime_benchmarks! {
 
 	claim_dex_share {
 		let founder: AccountId = whitelisted_caller();
-		let trading_pair = TradingPair::from_currency_ids(AUSD, RENBTC).unwrap();
-		let _ = Dex::disable_trading_pair(RawOrigin::Root.into(), trading_pair.first(), trading_pair.second());
+		let trading_pair = TradingPair::from_currency_ids(STABLECOIN, NATIVE).unwrap();
+		if let TradingPairStatus::Enabled = Dex::trading_pair_statuses(trading_pair) {
+			Dex::disable_trading_pair(RawOrigin::Root.into(), trading_pair.first(), trading_pair.second())?;
+		}
 		Dex::list_provisioning(
 			RawOrigin::Root.into(),
 			trading_pair.first(),
@@ -190,7 +208,7 @@ runtime_benchmarks! {
 	add_liquidity {
 		let first_maker: AccountId = account("first_maker", 0, SEED);
 		let second_maker: AccountId = whitelisted_caller();
-		let trading_pair = TradingPair::from_currency_ids(AUSD, RENBTC).unwrap();
+		let trading_pair = TradingPair::from_currency_ids(STABLECOIN, NATIVE).unwrap();
 		let amount_a = 100 * dollar(trading_pair.first());
 		let amount_b = 10_000 * dollar(trading_pair.second());
 
@@ -206,7 +224,7 @@ runtime_benchmarks! {
 	add_liquidity_and_stake {
 		let first_maker: AccountId = account("first_maker", 0, SEED);
 		let second_maker: AccountId = whitelisted_caller();
-		let trading_pair = TradingPair::from_currency_ids(AUSD, RENBTC).unwrap();
+		let trading_pair = TradingPair::from_currency_ids(STABLECOIN, NATIVE).unwrap();
 		let amount_a = 100 * dollar(trading_pair.first());
 		let amount_b = 10_000 * dollar(trading_pair.second());
 
@@ -221,21 +239,21 @@ runtime_benchmarks! {
 	// remove liquidity by liquid lp share
 	remove_liquidity {
 		let maker: AccountId = whitelisted_caller();
-		let trading_pair = TradingPair::from_currency_ids(AUSD, RENBTC).unwrap();
+		let trading_pair = TradingPair::from_currency_ids(STABLECOIN, NATIVE).unwrap();
 		inject_liquidity(maker.clone(), trading_pair.first(), trading_pair.second(), 100 * dollar(trading_pair.first()), 10_000 * dollar(trading_pair.second()), false)?;
 	}: remove_liquidity(RawOrigin::Signed(maker), trading_pair.first(), trading_pair.second(), 50 * dollar(trading_pair.first()), Default::default(), Default::default(), false)
 
 	// remove liquidity by withdraw staking lp share
 	remove_liquidity_by_unstake {
 		let maker: AccountId = whitelisted_caller();
-		let trading_pair = TradingPair::from_currency_ids(AUSD, RENBTC).unwrap();
+		let trading_pair = TradingPair::from_currency_ids(STABLECOIN, NATIVE).unwrap();
 		inject_liquidity(maker.clone(), trading_pair.first(), trading_pair.second(), 100 * dollar(trading_pair.first()), 10_000 * dollar(trading_pair.second()), true)?;
 	}: remove_liquidity(RawOrigin::Signed(maker), trading_pair.first(), trading_pair.second(), 50 * dollar(trading_pair.first()), Default::default(), Default::default(), true)
 
 	swap_with_exact_supply {
 		let u in 2 .. TradingPathLimit::get() as u32;
 
-		let trading_pair = TradingPair::from_currency_ids(AUSD, RENBTC).unwrap();
+		let trading_pair = TradingPair::from_currency_ids(STABLECOIN, NATIVE).unwrap();
 		let mut path: Vec<CurrencyId> = vec![];
 		for i in 1 .. u {
 			if i == 1 {
@@ -260,7 +278,7 @@ runtime_benchmarks! {
 	swap_with_exact_target {
 		let u in 2 .. TradingPathLimit::get() as u32;
 
-		let trading_pair = TradingPair::from_currency_ids(AUSD, RENBTC).unwrap();
+		let trading_pair = TradingPair::from_currency_ids(STABLECOIN, NATIVE).unwrap();
 		let mut path: Vec<CurrencyId> = vec![];
 		for i in 1 .. u {
 			if i == 1 {
