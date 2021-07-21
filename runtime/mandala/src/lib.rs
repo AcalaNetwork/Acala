@@ -1210,7 +1210,7 @@ impl module_homa::Config for Runtime {
 
 parameter_types! {
 	pub const DotCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
-	pub const LdotCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
+	pub const LdotCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
 	pub const MinimumMintThreshold: Balance = 1_000_000_000;
 	pub RelaychainSovereignSubAccount: MultiLocation = MultiLocation::X2( Junction::Parent, Junction::AccountId32 {
 		network: RelayNetwork::get(),
