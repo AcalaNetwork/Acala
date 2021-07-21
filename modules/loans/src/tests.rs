@@ -60,18 +60,27 @@ fn adjust_position_should_work() {
 		assert_eq!(Currencies::free_balance(BTC, &ALICE), 1000);
 
 		// balance too low
-		assert_eq!(LoansModule::adjust_position(&ALICE, BTC, 2000, 0).is_ok(), false);
+		assert_noop!(
+			LoansModule::adjust_position(&ALICE, BTC, 2000, 0),
+			orml_tokens::Error::<Runtime>::BalanceTooLow
+		);
 
 		// mock can't pass position valid check
-		assert_eq!(LoansModule::adjust_position(&ALICE, DOT, 500, 0).is_ok(), false);
+		assert_noop!(
+			LoansModule::adjust_position(&ALICE, DOT, 500, 0),
+			sp_runtime::DispatchError::Other("mock invalid position error")
+		);
 
 		// mock exceed debit value cap
-		assert_eq!(LoansModule::adjust_position(&ALICE, BTC, 1000, 1000).is_ok(), false);
-
-		// collateral_adjustment is positive
 		assert_noop!(
-			LoansModule::adjust_position(&ALICE, BTC, 1000, 0),
-			orml_tokens::Error::<Runtime>::KeepAlive,
+			LoansModule::adjust_position(&ALICE, BTC, 1000, 1000),
+			sp_runtime::DispatchError::Other("mock exceed debit value cap error")
+		);
+
+		// failed because ED of collateral
+		assert_noop!(
+			LoansModule::adjust_position(&ALICE, BTC, 99, 0),
+			orml_tokens::Error::<Runtime>::ExistentialDeposit,
 		);
 
 		assert_eq!(Currencies::free_balance(BTC, &ALICE), 1000);
