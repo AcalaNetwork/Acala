@@ -41,12 +41,16 @@ use frame_support::{pallet_prelude::*, transactional, PalletId};
 use frame_system::{ensure_signed, pallet_prelude::*};
 use module_support::Ratio;
 use orml_traits::MultiCurrency;
+use orml_traits::XcmTransfer;
 use primitives::{Balance, CurrencyId, EraIndex};
 use sp_runtime::{ArithmeticError, FixedPointNumber};
 use sp_std::prelude::*;
+use xcm::opaque::v0::{MultiLocation, Outcome};
 
 pub use module::*;
 pub use weights::WeightInfo;
+
+pub type XcmExecutionResult = sp_std::result::Result<Outcome, DispatchError>;
 
 /// Used to record the total issuance of the currencies during a batch.
 /// This info is used to calculate exchange rate between Staking and Liquid currencies.
@@ -89,7 +93,15 @@ pub mod module {
 		type GovernanceOrigin: EnsureOrigin<Self::Origin>;
 
 		/// The minimal amount of KSM to be locked
+		#[pallet::constant]
 		type MinimumMintThreshold: Get<Balance>;
+
+		/// The interface to Cross-chain transfer.
+		type CrossChainTransfer: XcmTransfer<Self::AccountId, Balance, CurrencyId>;
+
+		/// The sovereign sub-account for where the staking currencies are sent to.
+		#[pallet::constant]
+		type XcmSovereignSubAccount: Get<MultiLocation>;
 	}
 
 	#[pallet::error]
@@ -97,14 +109,14 @@ pub mod module {
 		/// The current Batch has not been processed, therefore the Liquid currency have not
 		/// been issued yet.
 		LiquidCurrencyNotIssuedForThisBatch,
-		/// The relay chain's stash account have not been set.
-		RelayChainStashAccountNotSet,
 		/// The total issuance for the Staking currency must be more than zero.
 		InvalidStakedCurrencyTotalIssuance,
 		/// The amount to be minted is below the minimum threshold allowed.
 		MintAmountBelowMinimumThreshold,
 		/// The amount of Staking currency used has exceeded the cap allowed.
 		ExceededStakingCurrencyMintCap,
+		/// Error has occurred during Cross-chain transfer.
+		XCMTransferError,
 	}
 
 	#[pallet::event]
@@ -121,9 +133,6 @@ pub mod module {
 
 		/// The user has claimed some Liquid Currency. \[batch, user, amount\]
 		LiquidCurrencyClaimed(EraIndex, T::AccountId, Balance),
-
-		/// The relay chain's stash account ID has been updated.\[new_stash_account\]
-		RelayChainStashAccountUpdated(T::AccountId),
 
 		/// The mint cap for Staking currency is updated.\[new_cap\]
 		StakingCurrencyMintCapUpdated(Balance),
@@ -148,12 +157,6 @@ pub mod module {
 	#[pallet::getter(fn current_batch)]
 	pub type CurrentBatch<T: Config> = StorageValue<_, EraIndex, ValueQuery>;
 
-	/// The account in which the staking currency goes into to be transferred to the Relay chain.
-	/// RelayChainStashAccount: value: stash_account: AccountId
-	#[pallet::storage]
-	#[pallet::getter(fn relay_chain_stash_account)]
-	pub type RelayChainStashAccount<T: Config> = StorageValue<_, T::AccountId, OptionQuery>;
-
 	/// The maximum amount of total staking currency that is allowed to mint Liquid currency.
 	/// StakingCurrencyMintCap: value: mint_cap: Balance
 	#[pallet::storage]
@@ -177,10 +180,11 @@ pub mod module {
 		///
 		/// Parameters:
 		/// - `amount`: The amount of Staking currency to be exchanged.
+		/// - `xcm_dest_weight`: The weight to be paid to the destination for the XCM transfer.
 		#[pallet::weight(< T as Config >::WeightInfo::request_mint())]
 		#[transactional]
-		pub fn request_mint(origin: OriginFor<T>, amount: Balance) -> DispatchResult {
-			let stash_account = Self::relay_chain_stash_account().ok_or(Error::<T>::RelayChainStashAccountNotSet)?;
+		pub fn request_mint(origin: OriginFor<T>, amount: Balance, xcm_dest_weight: Weight) -> DispatchResult {
+			let who = ensure_signed(origin)?;
 
 			// Ensure the amount is above the minimum
 			ensure!(
@@ -198,12 +202,24 @@ pub mod module {
 				Error::<T>::ExceededStakingCurrencyMintCap
 			);
 
-			let who = ensure_signed(origin)?;
 			let current_batch = Self::current_batch();
-			let staking_currency_id = T::StakingCurrencyId::get();
+			let staking_currency = T::StakingCurrencyId::get();
 
-			// TODO: Cross-chain transfer to the relay chain via XCM
-			T::Currency::transfer(staking_currency_id, &who, &stash_account, amount)?;
+			// ensure the user has enough funds on their account.
+			T::Currency::ensure_can_withdraw(staking_currency, &who, amount)?;
+
+			// Cross-chain transfers the staking assets.
+			let xcm_result = T::CrossChainTransfer::transfer(
+				who.clone(),
+				staking_currency,
+				amount,
+				T::XcmSovereignSubAccount::get(),
+				xcm_dest_weight,
+			)?;
+			match xcm_result {
+				Outcome::Complete(_) => Ok(()),
+				_ => Err(Error::<T>::XCMTransferError),
+			}?;
 
 			PendingAmount::<T>::mutate(current_batch, &who, |current| {
 				*current = current.checked_add(amount).expect("Amount should not cause overflow.")
@@ -273,22 +289,6 @@ pub mod module {
 
 			Self::deposit_event(Event::<T>::LiquidCurrencyClaimed(batch, who, liquid_to_mint));
 
-			Ok(())
-		}
-
-		/// Updates the relay chain Stash Account ID.
-		/// Requires `T::GovernanceOrigin`
-		///
-		/// Parameters:
-		/// - `new_account_id`: The new relay chain stash account.
-		#[pallet::weight(< T as Config >::WeightInfo::set_stash_account_id())]
-		#[transactional]
-		pub fn set_stash_account_id(origin: OriginFor<T>, new_account_id: T::AccountId) -> DispatchResult {
-			// This can only be called by Governance or ROOT.
-			T::GovernanceOrigin::ensure_origin(origin)?;
-
-			RelayChainStashAccount::<T>::put(new_account_id.clone());
-			Self::deposit_event(Event::<T>::RelayChainStashAccountUpdated(new_account_id));
 			Ok(())
 		}
 

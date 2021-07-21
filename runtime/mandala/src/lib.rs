@@ -78,7 +78,7 @@ pub use orml_xcm_support::{IsNativeConcrete, MultiCurrencyAdapter, MultiNativeAs
 use pallet_xcm::XcmPassthrough;
 pub use polkadot_parachain::primitives::Sibling;
 pub use xcm::v0::{
-	Junction::{AccountId32, GeneralKey, Parachain, Parent},
+	Junction::{self, AccountId32, GeneralKey, Parachain, Parent},
 	MultiAsset,
 	MultiLocation::{self, X1, X2, X3},
 	NetworkId, Xcm,
@@ -1209,20 +1209,26 @@ impl module_homa::Config for Runtime {
 }
 
 parameter_types! {
-	pub const KSM: CurrencyId = CurrencyId::Token(TokenSymbol::KSM);
-	pub const LKSM: CurrencyId = CurrencyId::Token(TokenSymbol::LKSM);
+	pub const DotCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
+	pub const LdotCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
 	pub const MinimumMintThreshold: Balance = 1_000_000_000;
+	pub RelaychainSovereignSubAccount: MultiLocation = MultiLocation::X2( Junction::Parent, Junction::AccountId32 {
+		network: RelayNetwork::get(),
+		id: ParachainInfo::get().into_account(),
+	});
 }
 impl module_homa_lite::Config for Runtime {
 	type Event = Event;
 	type WeightInfo = weights::module_homa_lite::WeightInfo<Runtime>;
 	type Currency = Currencies;
-	type StakingCurrencyId = KSM;
-	type LiquidCurrencyId = LKSM;
+	type StakingCurrencyId = DotCurrencyId;
+	type LiquidCurrencyId = LdotCurrencyId;
 	type PalletId = HomaLitePalletId;
 	type IssuerOrigin = EnsureRootOrHalfGeneralCouncil;
 	type GovernanceOrigin = EnsureRootOrHalfGeneralCouncil;
 	type MinimumMintThreshold = MinimumMintThreshold;
+	type CrossChainTransfer = XTokens;
+	type XcmSovereignSubAccount = RelaychainSovereignSubAccount;
 }
 
 parameter_types! {
