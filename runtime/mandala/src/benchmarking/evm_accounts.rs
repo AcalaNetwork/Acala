@@ -16,9 +16,9 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{dollar, AccountId, EvmAccounts, Runtime, ACA};
+use crate::{dollar, AccountId, CurrencyId, EvmAccounts, GetNativeCurrencyId, Runtime};
 
-use super::utils::set_aca_balance;
+use super::utils::set_balance;
 use codec::Encode;
 use frame_benchmarking::{account, whitelisted_caller};
 use frame_system::RawOrigin;
@@ -26,6 +26,8 @@ use orml_benchmarking::runtime_benchmarks;
 use sp_io::hashing::keccak_256;
 
 const SEED: u32 = 0;
+
+const NATIVE: CurrencyId = GetNativeCurrencyId::get();
 
 fn alice() -> secp256k1::SecretKey {
 	secp256k1::SecretKey::parse(&keccak_256(b"Alice")).unwrap()
@@ -49,12 +51,12 @@ runtime_benchmarks! {
 	claim_account {
 		let caller: AccountId = whitelisted_caller();
 		let eth: AccountId = account("eth", 0, SEED);
-		set_aca_balance(&bob_account_id(), 1_000 * dollar(ACA));
+		set_balance(NATIVE, &bob_account_id(), 1_000 * dollar(NATIVE));
 	}: _(RawOrigin::Signed(caller), EvmAccounts::eth_address(&alice()), EvmAccounts::eth_sign(&alice(), &caller.encode(), &[][..]))
 
 	claim_default_account {
 		let caller = whitelisted_caller();
-  }: _(RawOrigin::Signed(caller))
+	}: _(RawOrigin::Signed(caller))
 }
 
 #[cfg(test)]

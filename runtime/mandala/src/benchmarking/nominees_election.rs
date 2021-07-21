@@ -17,8 +17,8 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-	AccountId, MaxUnlockingChunks, MinCouncilBondThreshold, NominateesCount, NomineesElection, PolkadotBondingDuration,
-	Runtime, LDOT,
+	AccountId, CurrencyId, GetLiquidCurrencyId, MaxUnlockingChunks, MinCouncilBondThreshold, NominateesCount,
+	NomineesElection, PolkadotBondingDuration, Runtime,
 };
 
 use super::utils::set_balance;
@@ -30,17 +30,19 @@ use sp_std::prelude::*;
 
 const SEED: u32 = 0;
 
+const LIQUID: CurrencyId = GetLiquidCurrencyId::get();
+
 runtime_benchmarks! {
 	{ Runtime, module_nominees_election }
 
 	bond {
 		let caller: AccountId = whitelisted_caller();
-		set_balance(LDOT, &caller, 2*MinCouncilBondThreshold::get());
+		set_balance(LIQUID, &caller, 2 * MinCouncilBondThreshold::get());
 	}: _(RawOrigin::Signed(caller), MinCouncilBondThreshold::get())
 
 	unbond {
 		let caller: AccountId = whitelisted_caller();
-		set_balance(LDOT, &caller, 2*MinCouncilBondThreshold::get());
+		set_balance(LIQUID, &caller, 2 * MinCouncilBondThreshold::get());
 		NomineesElection::bond(RawOrigin::Signed(caller.clone()).into(), MinCouncilBondThreshold::get())?;
 	}: _(RawOrigin::Signed(caller), MinCouncilBondThreshold::get())
 
@@ -48,8 +50,8 @@ runtime_benchmarks! {
 		let c in 1 .. MaxUnlockingChunks::get();
 
 		let caller: AccountId = whitelisted_caller();
-		set_balance(LDOT, &caller, 2*MinCouncilBondThreshold::get());
-		NomineesElection::bond(RawOrigin::Signed(caller.clone()).into(), 2*MinCouncilBondThreshold::get())?;
+		set_balance(LIQUID, &caller, 2 * MinCouncilBondThreshold::get());
+		NomineesElection::bond(RawOrigin::Signed(caller.clone()).into(), 2 * MinCouncilBondThreshold::get())?;
 		for _ in 0..c {
 			NomineesElection::unbond(RawOrigin::Signed(caller.clone()).into(), MinCouncilBondThreshold::get()/c as u128)?;
 		}
@@ -59,8 +61,8 @@ runtime_benchmarks! {
 		let c in 1 .. MaxUnlockingChunks::get();
 
 		let caller: AccountId = whitelisted_caller();
-		set_balance(LDOT, &caller, 2*MinCouncilBondThreshold::get());
-		NomineesElection::bond(RawOrigin::Signed(caller.clone()).into(), 2*MinCouncilBondThreshold::get())?;
+		set_balance(LIQUID, &caller, 2 * MinCouncilBondThreshold::get());
+		NomineesElection::bond(RawOrigin::Signed(caller.clone()).into(), 2 * MinCouncilBondThreshold::get())?;
 		for _ in 0..c {
 			NomineesElection::unbond(RawOrigin::Signed(caller.clone()).into(), MinCouncilBondThreshold::get()/c as u128)?;
 		}
@@ -72,7 +74,7 @@ runtime_benchmarks! {
 		let targets = (0..c).map(|c| account("nominatees", c, SEED)).collect::<Vec<_>>();
 
 		let caller: AccountId = whitelisted_caller();
-		set_balance(LDOT, &caller, 2*MinCouncilBondThreshold::get());
+		set_balance(LIQUID, &caller, 2 * MinCouncilBondThreshold::get());
 		NomineesElection::bond(RawOrigin::Signed(caller.clone()).into(), MinCouncilBondThreshold::get())?;
 	}: _(RawOrigin::Signed(caller), targets)
 
@@ -81,7 +83,7 @@ runtime_benchmarks! {
 		let targets = (0..c).map(|c| account("nominatees", c, SEED)).collect::<Vec<_>>();
 
 		let caller: AccountId = whitelisted_caller();
-		set_balance(LDOT, &caller, 2*MinCouncilBondThreshold::get());
+		set_balance(LIQUID, &caller, 2 * MinCouncilBondThreshold::get());
 		NomineesElection::bond(RawOrigin::Signed(caller.clone()).into(), MinCouncilBondThreshold::get())?;
 		NomineesElection::nominate(RawOrigin::Signed(caller.clone()).into(), targets)?;
 	}: _(RawOrigin::Signed(caller))

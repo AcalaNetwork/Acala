@@ -17,7 +17,10 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use super::utils::{lookup_of_account, set_balance};
-use crate::{dollar, AccountId, Amount, Balance, Currencies, NativeTokenExistentialDeposit, Runtime, ACA, DOT};
+use crate::{
+	dollar, AccountId, Amount, Balance, Currencies, CurrencyId, GetNativeCurrencyId, GetStakingCurrencyId,
+	NativeTokenExistentialDeposit, Runtime,
+};
 
 use sp_std::prelude::*;
 
@@ -30,21 +33,23 @@ use orml_traits::MultiCurrency;
 
 const SEED: u32 = 0;
 
+const NATIVE: CurrencyId = GetNativeCurrencyId::get();
+const STAKING: CurrencyId = GetStakingCurrencyId::get();
+
 runtime_benchmarks! {
 	{ Runtime, module_currencies }
 
 	// `transfer` non-native currency
 	transfer_non_native_currency {
-		let currency_id = DOT;
-		let amount: Balance = 1_000 * dollar(currency_id);
+		let amount: Balance = 1_000 * dollar(STAKING);
 		let from: AccountId = whitelisted_caller();
-		set_balance(currency_id, &from, amount);
+		set_balance(STAKING, &from, amount);
 
 		let to: AccountId = account("to", 0, SEED);
 		let to_lookup = lookup_of_account(to.clone());
-	}: transfer(RawOrigin::Signed(from), to_lookup, currency_id, amount)
+	}: transfer(RawOrigin::Signed(from), to_lookup, STAKING, amount)
 	verify {
-		assert_eq!(<Currencies as MultiCurrency<_>>::total_balance(currency_id, &to), amount);
+		assert_eq!(<Currencies as MultiCurrency<_>>::total_balance(STAKING, &to), amount);
 	}
 
 	// `transfer` native currency and in worst case
@@ -52,15 +57,14 @@ runtime_benchmarks! {
 	transfer_native_currency_worst_case {
 		let existential_deposit = NativeTokenExistentialDeposit::get();
 		let amount: Balance = existential_deposit.saturating_mul(1000);
-		let native_currency_id = ACA;
 		let from: AccountId = whitelisted_caller();
-		set_balance(native_currency_id, &from, amount);
+		set_balance(NATIVE, &from, amount);
 
 		let to: AccountId = account("to", 0, SEED);
 		let to_lookup = lookup_of_account(to.clone());
-	}: transfer(RawOrigin::Signed(from), to_lookup, native_currency_id, amount)
+	}: transfer(RawOrigin::Signed(from), to_lookup, NATIVE, amount)
 	verify {
-		assert_eq!(<Currencies as MultiCurrency<_>>::total_balance(native_currency_id, &to), amount);
+		assert_eq!(<Currencies as MultiCurrency<_>>::total_balance(NATIVE, &to), amount);
 	}
 
 	// `transfer_native_currency` in worst case
@@ -69,27 +73,25 @@ runtime_benchmarks! {
 	transfer_native_currency {
 		let existential_deposit = NativeTokenExistentialDeposit::get();
 		let amount: Balance = existential_deposit.saturating_mul(1000);
-		let native_currency_id = ACA;
 		let from: AccountId = whitelisted_caller();
-		set_balance(native_currency_id, &from, amount);
+		set_balance(NATIVE, &from, amount);
 
 		let to: AccountId = account("to", 0, SEED);
 		let to_lookup = lookup_of_account(to.clone());
 	}: _(RawOrigin::Signed(from), to_lookup, amount)
 	verify {
-		assert_eq!(<Currencies as MultiCurrency<_>>::total_balance(native_currency_id, &to), amount);
+		assert_eq!(<Currencies as MultiCurrency<_>>::total_balance(NATIVE, &to), amount);
 	}
 
 	// `update_balance` for non-native currency
 	update_balance_non_native_currency {
-		let currency_id = DOT;
-		let balance: Balance = 2 * dollar(currency_id);
+		let balance: Balance = 2 * dollar(STAKING);
 		let amount: Amount = balance.unique_saturated_into();
 		let who: AccountId = account("who", 0, SEED);
 		let who_lookup = lookup_of_account(who.clone());
-	}: update_balance(RawOrigin::Root, who_lookup, currency_id, amount)
+	}: update_balance(RawOrigin::Root, who_lookup, STAKING, amount)
 	verify {
-		assert_eq!(<Currencies as MultiCurrency<_>>::total_balance(currency_id, &who), balance);
+		assert_eq!(<Currencies as MultiCurrency<_>>::total_balance(STAKING, &who), balance);
 	}
 
 	// `update_balance` for native currency
@@ -98,12 +100,11 @@ runtime_benchmarks! {
 		let existential_deposit = NativeTokenExistentialDeposit::get();
 		let balance: Balance = existential_deposit.saturating_mul(1000);
 		let amount: Amount = balance.unique_saturated_into();
-		let native_currency_id = ACA;
 		let who: AccountId = account("who", 0, SEED);
 		let who_lookup = lookup_of_account(who.clone());
-	}: update_balance(RawOrigin::Root, who_lookup, native_currency_id, amount)
+	}: update_balance(RawOrigin::Root, who_lookup, NATIVE, amount)
 	verify {
-		assert_eq!(<Currencies as MultiCurrency<_>>::total_balance(native_currency_id, &who), balance);
+		assert_eq!(<Currencies as MultiCurrency<_>>::total_balance(NATIVE, &who), balance);
 	}
 
 	// `update_balance` for native currency
@@ -112,13 +113,12 @@ runtime_benchmarks! {
 		let existential_deposit = NativeTokenExistentialDeposit::get();
 		let balance: Balance = existential_deposit.saturating_mul(1000);
 		let amount: Amount = balance.unique_saturated_into();
-		let native_currency_id = ACA;
 		let who: AccountId = account("who", 0, SEED);
 		let who_lookup = lookup_of_account(who.clone());
-		set_balance(native_currency_id, &who, balance);
-	}: update_balance(RawOrigin::Root, who_lookup, native_currency_id, -amount)
+		set_balance(NATIVE, &who, balance);
+	}: update_balance(RawOrigin::Root, who_lookup, NATIVE, -amount)
 	verify {
-		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(native_currency_id, &who), 0);
+		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(NATIVE, &who), 0);
 	}
 }
 

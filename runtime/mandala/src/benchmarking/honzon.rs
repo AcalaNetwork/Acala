@@ -17,23 +17,30 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-	dollar, AcalaOracle, AccountId, Amount, CdpEngine, CollateralCurrencyIds, CurrencyId, DepositPerAuthorization, Dex,
-	ExistentialDeposits, Honzon, Indices, Price, Rate, Ratio, Runtime, TradingPathLimit, ACA, AUSD, DOT,
+	dollar, AccountId, Amount, CdpEngine, CollateralCurrencyIds, CurrencyId, DepositPerAuthorization, Dex,
+	ExistentialDeposits, GetNativeCurrencyId, GetStableCurrencyId, GetStakingCurrencyId, Honzon, Price, Rate, Ratio,
+	Runtime, TradingPathLimit,
 };
 
-use super::utils::set_balance;
+use super::utils::{feed_price, set_balance};
 use core::convert::TryInto;
 use frame_benchmarking::{account, whitelisted_caller};
 use frame_system::RawOrigin;
+use module_dex::TradingPairStatus;
 use orml_benchmarking::runtime_benchmarks;
 use orml_traits::{Change, GetByKey};
+use primitives::TradingPair;
 use sp_runtime::{
-	traits::{One, StaticLookup, UniqueSaturatedInto},
+	traits::{AccountIdLookup, One, StaticLookup, UniqueSaturatedInto},
 	FixedPointNumber,
 };
 use sp_std::prelude::*;
 
 const SEED: u32 = 0;
+
+const NATIVE: CurrencyId = GetNativeCurrencyId::get();
+const STABLECOIN: CurrencyId = GetStableCurrencyId::get();
+const STAKING: CurrencyId = GetStakingCurrencyId::get();
 
 runtime_benchmarks! {
 	{ Runtime, module_honzon }
@@ -41,25 +48,25 @@ runtime_benchmarks! {
 	authorize {
 		let caller: AccountId = whitelisted_caller();
 		let to: AccountId = account("to", 0, SEED);
-		let to_lookup = Indices::unlookup(to);
+		let to_lookup = AccountIdLookup::unlookup(to);
 
 		// set balance
-		set_balance(ACA, &caller, DepositPerAuthorization::get());
-	}: _(RawOrigin::Signed(caller), DOT, to_lookup)
+		set_balance(NATIVE, &caller, DepositPerAuthorization::get());
+	}: _(RawOrigin::Signed(caller), STAKING, to_lookup)
 
 	unauthorize {
 		let caller: AccountId = whitelisted_caller();
 		let to: AccountId = account("to", 0, SEED);
-		let to_lookup = Indices::unlookup(to);
+		let to_lookup = AccountIdLookup::unlookup(to);
 
 		// set balance
-		set_balance(ACA, &caller, DepositPerAuthorization::get());
+		set_balance(NATIVE, &caller, DepositPerAuthorization::get());
 		Honzon::authorize(
 			RawOrigin::Signed(caller.clone()).into(),
-			DOT,
+			STAKING,
 			to_lookup.clone()
 		)?;
-	}: _(RawOrigin::Signed(caller), DOT, to_lookup)
+	}: _(RawOrigin::Signed(caller), STAKING, to_lookup)
 
 	unauthorize_all {
 		let c in 0 .. CollateralCurrencyIds::get().len().saturating_sub(1) as u32;
@@ -67,10 +74,10 @@ runtime_benchmarks! {
 		let caller: AccountId = whitelisted_caller();
 		let currency_ids = CollateralCurrencyIds::get();
 		let to: AccountId = account("to", 0, SEED);
-		let to_lookup = Indices::unlookup(to);
+		let to_lookup = AccountIdLookup::unlookup(to);
 
 		// set balance
-		set_balance(ACA, &caller, DepositPerAuthorization::get().saturating_mul(c.into()));
+		set_balance(NATIVE, &caller, DepositPerAuthorization::get().saturating_mul(c.into()));
 		for i in 0 .. c {
 			Honzon::authorize(
 				RawOrigin::Signed(caller.clone()).into(),
@@ -86,18 +93,18 @@ runtime_benchmarks! {
 		let caller: AccountId = whitelisted_caller();
 		let currency_id: CurrencyId = CollateralCurrencyIds::get()[0];
 		let collateral_price = Price::one();		// 1 USD
-		let debit_value = 100 * dollar(AUSD);
+		let debit_value = 100 * dollar(STABLECOIN);
 		let debit_exchange_rate = CdpEngine::get_debit_exchange_rate(currency_id);
 		let debit_amount = debit_exchange_rate.reciprocal().unwrap().saturating_mul_int(debit_value);
 		let debit_amount: Amount = debit_amount.unique_saturated_into();
 		let collateral_value = 10 * debit_value;
-		let collateral_amount = Price::saturating_from_rational(dollar(currency_id), dollar(AUSD)).saturating_mul_int(collateral_value);
+		let collateral_amount = Price::saturating_from_rational(dollar(currency_id), dollar(STABLECOIN)).saturating_mul_int(collateral_value);
 
 		// set balance
 		set_balance(currency_id, &caller, collateral_amount + ExistentialDeposits::get(&currency_id));
 
 		// feed price
-		AcalaOracle::feed_values(RawOrigin::Root.into(), vec![(currency_id, collateral_price)])?;
+		feed_price(vec![(currency_id, collateral_price)])?;
 
 		// set risk params
 		CdpEngine::set_collateral_params(
@@ -114,23 +121,23 @@ runtime_benchmarks! {
 	transfer_loan_from {
 		let currency_id: CurrencyId = CollateralCurrencyIds::get()[0];
 		let sender: AccountId = account("sender", 0, SEED);
-		let sender_lookup = Indices::unlookup(sender.clone());
+		let sender_lookup = AccountIdLookup::unlookup(sender.clone());
 		let receiver: AccountId = whitelisted_caller();
-		let receiver_lookup = Indices::unlookup(receiver.clone());
+		let receiver_lookup = AccountIdLookup::unlookup(receiver.clone());
 
-		let debit_value = 100 * dollar(AUSD);
+		let debit_value = 100 * dollar(STABLECOIN);
 		let debit_exchange_rate = CdpEngine::get_debit_exchange_rate(currency_id);
 		let debit_amount = debit_exchange_rate.reciprocal().unwrap().saturating_mul_int(debit_value);
 		let debit_amount: Amount = debit_amount.unique_saturated_into();
 		let collateral_value = 10 * debit_value;
-		let collateral_amount = Price::saturating_from_rational(dollar(currency_id), dollar(AUSD)).saturating_mul_int(collateral_value);
+		let collateral_amount = Price::saturating_from_rational(dollar(currency_id), dollar(STABLECOIN)).saturating_mul_int(collateral_value);
 
 		// set balance
 		set_balance(currency_id, &sender, collateral_amount + ExistentialDeposits::get(&currency_id));
-		set_balance(ACA, &sender, DepositPerAuthorization::get());
+		set_balance(NATIVE, &sender, DepositPerAuthorization::get());
 
 		// feed price
-		AcalaOracle::feed_values(RawOrigin::Root.into(), vec![(currency_id, Price::one())])?;
+		feed_price(vec![(currency_id, Price::one())])?;
 
 		// set risk params
 		CdpEngine::set_collateral_params(
@@ -161,31 +168,40 @@ runtime_benchmarks! {
 
 	close_loan_has_debit_by_dex {
 		let u in 2 .. TradingPathLimit::get() as u32;
-		let collateral_currency_ids = CollateralCurrencyIds::get();
-		let currency_id: CurrencyId = *collateral_currency_ids.last().unwrap();
+		let currency_id: CurrencyId = CollateralCurrencyIds::get()[0];
 		let sender: AccountId = whitelisted_caller();
 		let maker: AccountId = account("maker", 0, SEED);
-		let debit_value = 100 * dollar(AUSD);
+		let debit_value = 100 * dollar(STABLECOIN);
 		let debit_exchange_rate = CdpEngine::get_debit_exchange_rate(currency_id);
 		let debit_amount = debit_exchange_rate.reciprocal().unwrap().saturating_mul_int(debit_value);
 		let debit_amount: Amount = debit_amount.unique_saturated_into();
 		let collateral_value = 10 * debit_value;
-		let collateral_amount = Price::saturating_from_rational(dollar(currency_id), dollar(AUSD)).saturating_mul_int(collateral_value);
+		let collateral_amount = Price::saturating_from_rational(dollar(currency_id), dollar(STABLECOIN)).saturating_mul_int(collateral_value);
 
 		// set balance
 		set_balance(currency_id, &sender, collateral_amount + ExistentialDeposits::get(&currency_id));
 		set_balance(currency_id, &maker, collateral_amount * 2);
-		set_balance(ACA, &maker, collateral_amount * 2);
-		set_balance(AUSD, &maker, debit_value * 200);
+		set_balance(NATIVE, &maker, collateral_amount * 2);
+		set_balance(STABLECOIN, &maker, debit_value * 200);
 
+		// disable first
+		if let TradingPairStatus::Enabled = Dex::trading_pair_statuses(TradingPair::from_currency_ids(currency_id, STABLECOIN).unwrap()) {
+			Dex::disable_trading_pair(RawOrigin::Root.into(), currency_id, STABLECOIN)?;
+		}
+		if let TradingPairStatus::Enabled = Dex::trading_pair_statuses(TradingPair::from_currency_ids(currency_id, NATIVE).unwrap()) {
+			Dex::disable_trading_pair(RawOrigin::Root.into(), currency_id, NATIVE)?;
+		}
+		if let TradingPairStatus::Enabled = Dex::trading_pair_statuses(TradingPair::from_currency_ids(NATIVE, STABLECOIN).unwrap()) {
+			Dex::disable_trading_pair(RawOrigin::Root.into(), NATIVE, STABLECOIN)?;
+		}
 		// inject liquidity
-		let _ = Dex::enable_trading_pair(RawOrigin::Root.into(), currency_id, AUSD);
-		let _ = Dex::enable_trading_pair(RawOrigin::Root.into(), currency_id, ACA);
-		let _ = Dex::enable_trading_pair(RawOrigin::Root.into(), ACA, AUSD);
+		Dex::enable_trading_pair(RawOrigin::Root.into(), currency_id, STABLECOIN)?;
+		Dex::enable_trading_pair(RawOrigin::Root.into(), currency_id, NATIVE)?;
+		Dex::enable_trading_pair(RawOrigin::Root.into(), NATIVE, STABLECOIN)?;
 		Dex::add_liquidity(
 			RawOrigin::Signed(maker.clone()).into(),
 			currency_id,
-			AUSD,
+			STABLECOIN,
 			collateral_amount,
 			debit_value * 100,
 			Default::default(),
@@ -194,7 +210,7 @@ runtime_benchmarks! {
 		Dex::add_liquidity(
 			RawOrigin::Signed(maker.clone()).into(),
 			currency_id,
-			ACA,
+			NATIVE,
 			collateral_amount,
 			collateral_amount,
 			Default::default(),
@@ -202,8 +218,8 @@ runtime_benchmarks! {
 		)?;
 		Dex::add_liquidity(
 			RawOrigin::Signed(maker.clone()).into(),
-			ACA,
-			AUSD,
+			NATIVE,
+			STABLECOIN,
 			collateral_amount,
 			debit_value * 100,
 			Default::default(),
@@ -213,15 +229,15 @@ runtime_benchmarks! {
 		let mut path = vec![currency_id];
 		for i in 2 .. u {
 			if i % 2 == 0 {
-				path.push(ACA);
+				path.push(NATIVE);
 			} else {
 				path.push(currency_id);
 			}
 		}
-		path.push(AUSD);
+		path.push(STABLECOIN);
 
 		// feed price
-		AcalaOracle::feed_values(RawOrigin::Root.into(), vec![(currency_id, Price::one())])?;
+		feed_price(vec![(currency_id, Price::one())])?;
 
 		// set risk params
 		CdpEngine::set_collateral_params(

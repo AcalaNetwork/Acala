@@ -17,10 +17,11 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-	dollar, AcalaOracle, AccountId, CdpTreasury, CollateralCurrencyIds, EmergencyShutdown, Price, Runtime, AUSD,
+	dollar, AccountId, CdpTreasury, CollateralCurrencyIds, CurrencyId, EmergencyShutdown, GetStableCurrencyId, Price,
+	Runtime,
 };
 
-use super::utils::set_balance;
+use super::utils::{feed_price, set_balance};
 use frame_benchmarking::{account, whitelisted_caller};
 use frame_system::RawOrigin;
 use module_support::CDPTreasury;
@@ -29,6 +30,8 @@ use sp_runtime::traits::One;
 use sp_std::vec;
 
 const SEED: u32 = 0;
+
+const STABLECOIN: CurrencyId = GetStableCurrencyId::get();
 
 runtime_benchmarks! {
 	{ Runtime, module_emergency_shutdown }
@@ -41,7 +44,7 @@ runtime_benchmarks! {
 		for i in 0 .. c {
 			values.push((currency_ids[i as usize], Price::one()));
 		}
-		AcalaOracle::feed_values(RawOrigin::Root.into(), values)?;
+		feed_price(values)?;
 	}: _(RawOrigin::Root)
 
 	open_collateral_refund {
@@ -61,14 +64,14 @@ runtime_benchmarks! {
 			set_balance(currency_id, &funder, 100 * dollar(currency_id));
 			CdpTreasury::deposit_collateral(&funder, currency_id, 100 * dollar(currency_id))?;
 		}
-		AcalaOracle::feed_values(RawOrigin::Root.into(), values)?;
+		feed_price(values)?;
 
-		CdpTreasury::issue_debit(&caller, 1_000 * dollar(AUSD), true)?;
-		CdpTreasury::issue_debit(&funder, 1_000 * dollar(AUSD), true)?;
+		CdpTreasury::issue_debit(&caller, 1_000 * dollar(STABLECOIN), true)?;
+		CdpTreasury::issue_debit(&funder, 1_000 * dollar(STABLECOIN), true)?;
 
 		EmergencyShutdown::emergency_shutdown(RawOrigin::Root.into())?;
 		EmergencyShutdown::open_collateral_refund(RawOrigin::Root.into())?;
-	}: _(RawOrigin::Signed(caller),  1_000 * dollar(AUSD))
+	}: _(RawOrigin::Signed(caller),  1_000 * dollar(STABLECOIN))
 }
 
 #[cfg(test)]

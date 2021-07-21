@@ -41,9 +41,9 @@ pub use mandala_runtime;
 use sc_consensus_aura::StartAuraParams;
 
 use acala_primitives::{Block, Hash};
+use cumulus_primitives_parachain_inherent::MockValidationDataInherentDataProvider;
 #[cfg(feature = "with-mandala-runtime")]
 use futures::stream::StreamExt;
-use mock_inherent_data_provider::MockParachainInherentDataProvider;
 use sc_client_api::ExecutorProvider;
 use sc_consensus::LongestChain;
 use sc_consensus_aura::ImportQueueParams;
@@ -73,7 +73,14 @@ pub use sp_api::ConstructRuntimeApi;
 
 pub mod chain_spec;
 mod client;
-mod mock_inherent_data_provider;
+
+fn default_mock_parachain_inherent_data_provider() -> MockValidationDataInherentDataProvider {
+	MockValidationDataInherentDataProvider {
+		current_para_block: 0,
+		relay_offset: 1000,
+		relay_blocks_per_para_block: 2,
+	}
+}
 
 #[cfg(feature = "with-mandala-runtime")]
 native_executor_instance!(
@@ -227,7 +234,7 @@ where
 						slot_duration,
 					);
 
-					Ok((timestamp, slot, MockParachainInherentDataProvider))
+					Ok((timestamp, slot, default_mock_parachain_inherent_data_provider()))
 				},
 				spawner: &task_manager.spawn_essential_handle(),
 				registry,
@@ -653,7 +660,7 @@ fn inner_mandala_dev(config: Configuration, instant_sealing: bool) -> Result<Tas
 					create_inherent_data_providers: |_, _| async {
 						Ok((
 							sp_timestamp::InherentDataProvider::from_system_time(),
-							MockParachainInherentDataProvider,
+							default_mock_parachain_inherent_data_provider(),
 						))
 					},
 				});
@@ -679,7 +686,7 @@ fn inner_mandala_dev(config: Configuration, instant_sealing: bool) -> Result<Tas
 						slot_duration,
 					);
 
-					Ok((timestamp, slot, MockParachainInherentDataProvider))
+					Ok((timestamp, slot, default_mock_parachain_inherent_data_provider()))
 				},
 				force_authoring,
 				backoff_authoring_blocks,

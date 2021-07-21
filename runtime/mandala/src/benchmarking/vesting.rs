@@ -16,10 +16,13 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use super::utils::{lookup_of_account, set_aca_balance};
+use super::{
+	get_treasury_account,
+	utils::{lookup_of_account, set_balance},
+};
 use crate::{
-	dollar, AccountId, AccountIdConversion, Balance, BlockNumber, Currencies, MaxVestingSchedules, MinVestedTransfer,
-	Runtime, System, TreasuryPalletId, Vesting, ACA,
+	dollar, AccountId, Balance, BlockNumber, Currencies, CurrencyId, GetNativeCurrencyId, MaxVestingSchedules,
+	MinVestedTransfer, Runtime, System, Vesting,
 };
 
 use sp_std::prelude::*;
@@ -35,6 +38,8 @@ pub type Schedule = VestingSchedule<BlockNumber, Balance>;
 
 const SEED: u32 = 0;
 
+const NATIVE: CurrencyId = GetNativeCurrencyId::get();
+
 runtime_benchmarks! {
 	{ Runtime, orml_vesting }
 
@@ -47,15 +52,15 @@ runtime_benchmarks! {
 		};
 
 		// extra 1 dollar to pay fees
-		let from: AccountId = TreasuryPalletId::get().into_account();
-		set_aca_balance(&from, schedule.total_amount().unwrap() + dollar(ACA));
+		let from: AccountId = get_treasury_account();
+		set_balance(NATIVE, &from, schedule.total_amount().unwrap() + dollar(NATIVE));
 
 		let to: AccountId = account("to", 0, SEED);
 		let to_lookup = lookup_of_account(to.clone());
 	}: _(RawOrigin::Signed(from), to_lookup, schedule.clone())
 	verify {
 		assert_eq!(
-			<Currencies as MultiCurrency<_>>::total_balance(ACA, &to),
+			<Currencies as MultiCurrency<_>>::total_balance(NATIVE, &to),
 			schedule.total_amount().unwrap()
 		);
 	}
@@ -70,9 +75,9 @@ runtime_benchmarks! {
 			per_period: MinVestedTransfer::get(),
 		};
 
-		let from: AccountId = TreasuryPalletId::get().into_account();
+		let from: AccountId = get_treasury_account();
 		// extra 1 dollar to pay fees
-		set_aca_balance(&from, schedule.total_amount().unwrap() * i as u128 + dollar(ACA));
+		set_balance(NATIVE, &from, schedule.total_amount().unwrap() * i as u128 + dollar(NATIVE));
 
 		let to: AccountId = whitelisted_caller();
 		let to_lookup = lookup_of_account(to.clone());
@@ -85,7 +90,7 @@ runtime_benchmarks! {
 	}: _(RawOrigin::Signed(to.clone()))
 	verify {
 		assert_eq!(
-			<Currencies as MultiCurrency<_>>::free_balance(ACA, &to),
+			<Currencies as MultiCurrency<_>>::free_balance(NATIVE, &to),
 			schedule.total_amount().unwrap() * i as u128,
 		);
 	}
@@ -101,7 +106,7 @@ runtime_benchmarks! {
 		};
 
 		let to: AccountId = account("to", 0, SEED);
-		set_aca_balance(&to, schedule.total_amount().unwrap() * i as u128);
+		set_balance(NATIVE, &to, schedule.total_amount().unwrap() * i as u128);
 		let to_lookup = lookup_of_account(to.clone());
 
 		let mut schedules = vec![];
@@ -112,7 +117,7 @@ runtime_benchmarks! {
 	}: _(RawOrigin::Root, to_lookup, schedules)
 	verify {
 		assert_eq!(
-			<Currencies as MultiCurrency<_>>::free_balance(ACA, &to),
+			<Currencies as MultiCurrency<_>>::free_balance(NATIVE, &to),
 			schedule.total_amount().unwrap() * i as u128
 		);
 	}
