@@ -5,5 +5,5 @@
 	path = predeploy-contracts
 	url = https://github.com/AcalaNetwork/predeploy-contracts.git
 [submodule "stable-asset"]
-	path = stable-asset
+	path = ecosystem-modules/stable-asset
 	url = https://github.com/nutsfinance/stable-asset.git
