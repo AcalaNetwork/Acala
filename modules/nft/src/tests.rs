@@ -140,6 +140,10 @@ fn mint_should_work() {
 				}
 			}
 		);
+		assert_eq!(
+			orml_nft::TokensByOwner::<Runtime>::iter_prefix((BOB,)).collect::<Vec<_>>(),
+			vec![((0, 1), ()), ((0, 0), ())]
+		);
 	});
 }
 
