@@ -214,7 +214,13 @@ impl<T: Config> Pallet<T> {
 impl<T: Config> ShouldEndSession<T::BlockNumber> for Pallet<T> {
 	fn should_end_session(now: T::BlockNumber) -> bool {
 		let offset = Self::duration_offset();
-		now >= offset && (now.saturating_sub(offset) % Self::session_duration()).is_zero()
+		let period = Self::session_duration();
+
+		if period.is_zero() {
+			return false;
+		}
+
+		now >= offset && (now.saturating_sub(offset) % period).is_zero()
 	}
 }
 
@@ -228,7 +234,7 @@ impl<T: Config> EstimateNextSessionRotation<T::BlockNumber> for Pallet<T> {
 		let period = Self::session_duration();
 
 		if period.is_zero() {
-			return (None, T::WeightInfo::estimate_next_session_rotation());
+			return (None, T::WeightInfo::estimate_current_session_progress());
 		}
 
 		// NOTE: we add one since we assume that the current block has already elapsed,
