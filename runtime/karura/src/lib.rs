@@ -56,7 +56,9 @@ use module_evm::{CallInfo, CreateInfo};
 use module_evm_accounts::EvmAddressMapping;
 use module_evm_manager::EvmCurrencyIdMapping;
 use module_transaction_payment::{Multiplier, TargetedFeeAdjustment};
-use orml_traits::{create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended};
+use orml_traits::{
+	create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended, MultiCurrency,
+};
 use pallet_transaction_payment::RuntimeDispatchInfo;
 
 pub use cumulus_primitives_core::ParaId;
@@ -73,7 +75,7 @@ pub use xcm_builder::{
 	AccountId32Aliases, AllowTopLevelPaidExecutionFrom, AllowUnpaidExecutionFrom, EnsureXcmOrigin,
 	FixedRateOfConcreteFungible, FixedWeightBounds, IsConcrete, LocationInverter, NativeAsset, ParentAsSuperuser,
 	ParentIsDefault, RelayChainAsNative, SiblingParachainAsNative, SiblingParachainConvertsVia,
-	SignedAccountId32AsNative, SignedToAccountId32, SovereignSignedViaLocation, TakeWeightCredit,
+	SignedAccountId32AsNative, SignedToAccountId32, SovereignSignedViaLocation, TakeRevenue, TakeWeightCredit,
 };
 pub use xcm_executor::{Config, XcmExecutor};
 
@@ -1340,8 +1342,21 @@ parameter_types! {
 
 pub type Barrier = (TakeWeightCredit, AllowTopLevelPaidExecutionFrom<All<MultiLocation>>);
 
+pub struct ToTreasury;
+impl TakeRevenue for ToTreasury {
+	fn take_revenue(revenue: MultiAsset) {
+		if let MultiAsset::ConcreteFungible { id, amount } = revenue {
+			if let Some(currency_id) = CurrencyIdConvert::convert(id) {
+				// ensure KaruraTreasuryAccount have ed for all of the cross-chain asset.
+				// Ignore the result.
+				let _ = Currencies::deposit(currency_id, &KaruraTreasuryAccount::get(), amount);
+			}
+		}
+	}
+}
+
 pub struct XcmConfig;
-impl Config for XcmConfig {
+impl xcm_executor::Config for XcmConfig {
 	type Call = Call;
 	type XcmSender = XcmRouter;
 	// How to withdraw and deposit an asset.
@@ -1354,8 +1369,7 @@ impl Config for XcmConfig {
 	type Barrier = Barrier;
 	type Weigher = FixedWeightBounds<UnitWeightCost, Call>;
 	// Only receiving KSM is handled, and all fees must be paid in KSM.
-	//TODO: make treasury take revenue
-	type Trader = FixedRateOfConcreteFungible<KsmPerSecond, ()>;
+	type Trader = FixedRateOfConcreteFungible<KsmPerSecond, ToTreasury>;
 	type ResponseHandler = (); // Don't handle responses for now.
 }
 
