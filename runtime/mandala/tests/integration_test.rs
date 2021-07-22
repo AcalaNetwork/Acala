@@ -20,6 +20,8 @@
 
 use acala_service::chain_spec::evm_genesis;
 use codec::Encode;
+// use cumulus_primitives_core::{DownwardMessageHandler, InboundDownwardMessage,
+// XcmpMessageHandler};
 use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
 use frame_support::{
 	assert_noop, assert_ok,
@@ -45,7 +47,7 @@ use module_support::{
 use orml_authority::DelayedOrigin;
 use orml_traits::{Change, GetByKey, MultiCurrency};
 use orml_vesting::VestingSchedule;
-use polkadot_parachain::primitives::Sibling;
+// use polkadot_parachain::primitives::Sibling;
 pub use primitives::{evm::EvmAddress, DexShare, TradingPair};
 use sp_core::{bytes::from_hex, H160};
 use sp_io::hashing::keccak_256;
@@ -1659,7 +1661,7 @@ fn test_session_manager_module() {
 }
 
 #[test]
-fn receive_cross_chain_assets() {
+fn treasury_should_take_xcm_execution_revenue() {
 	ExtBuilder::default().build().execute_with(|| {
 		let dot_amount = 1000 * dollar(DOT);
 		let actual_amount = 9999999760000;
@@ -1717,55 +1719,66 @@ fn receive_cross_chain_assets() {
 			Tokens::free_balance(DOT, &TreasuryAccount::get()),
 			ExistentialDeposits::get(&DOT) + dot_amount - actual_amount
 		);
-
-		// receive owned token
-		let sibling_para_id = 5000;
-		let sibling_parachain_acc: AccountId = Sibling::from(sibling_para_id).into_account();
-		let origin = MultiLocation::X1(Junction::AccountId32 {
-			network: NetworkId::Any,
-			id: sibling_parachain_acc.clone().into(),
-		});
-
-		let aca_amount = 1000 * dollar(ACA);
-		assert_ok!(Currencies::deposit(ACA, &sibling_parachain_acc, 1100 * dollar(ACA)));
-
-		let para_id: u32 = ParachainInfo::get().into();
-		let mut msg1 = Xcm::<Call>::WithdrawAsset {
-			assets: vec![MultiAsset::ConcreteFungible {
-				id: MultiLocation::X3(
-					Junction::Parent,
-					Junction::Parachain(para_id),
-					Junction::GeneralKey(CurrencyId::Token(TokenSymbol::ACA).encode()),
-				),
-				amount: aca_amount,
-			}],
-			effects: vec![
-				BuyExecution {
-					fees: MultiAsset::All,
-					weight: 0,
-					debt: shallow_weight,
-					halt_on_error: true,
-					xcm: vec![],
-				},
-				DepositAsset {
-					assets: vec![MultiAsset::All],
-					dest: MultiLocation::X1(Junction::AccountId32 {
-						network: NetworkId::Any,
-						id: ALICE,
-					}),
-				},
-			],
-		};
-		let debt = <XcmConfig as xcm_executor::Config>::Weigher::shallow(&mut msg1).unwrap_or_default();
-		let deep = <XcmConfig as xcm_executor::Config>::Weigher::deep(&mut msg1).unwrap_or_default();
-		// println!("debt = {:?}, deep = {:?}", debt, deep);
-		//assert_eq!(debt, shallow_weight);
-		//let weight_limit = debt + deep + 1;
-		//assert_eq!(XcmExecutor::<XcmConfig>::execute_xcm(origin, msg1, weight_limit),
-		// Outcome::Complete(10)); assert_eq!(Currencies::free_balance(ACA, &sibling_parachain_acc),
-		// 100 * dollar(ACA)); assert_eq!(Currencies::free_balance(ACA, &ALICE.into()), aca_amount);
 	});
 }
+
+// #[test]
+// fn receive_cross_chain_assets() {
+// 	ExtBuilder::default().build().execute_with(|| {
+// 		let dot_amount = 1000 * dollar(DOT);
+
+// 		// receive relay chain token
+// 		let msg: VersionedXcm = Xcm::ReserveAssetDeposit {
+// 			assets: vec![MultiAsset::ConcreteFungible {
+// 				id: MultiLocation::X1(Junction::Parent),
+// 				amount: dot_amount,
+// 			}],
+// 			effects: vec![Order::DepositAsset {
+// 				assets: vec![MultiAsset::All],
+// 				dest: MultiLocation::X1(Junction::AccountId32 {
+// 					network: NetworkId::Named("acala".into()),
+// 					id: ALICE,
+// 				}),
+// 			}],
+// 		}
+// 		.into();
+// 		XcmHandler::handle_downward_message(InboundDownwardMessage {
+// 			sent_at: 10,
+// 			msg: msg.encode(),
+// 		});
+// 		assert_eq!(Tokens::free_balance(DOT, &ALICE.into()), dot_amount);
+
+// 		let sibling_para_id = 5000;
+// 		let sibling_parachain_acc: AccountId = Sibling::from(sibling_para_id).into_account();
+
+// 		// receive owned token
+// 		let aca_amount = 1000 * dollar(ACA);
+// 		assert_ok!(Currencies::deposit(ACA, &sibling_parachain_acc, 1100 * dollar(ACA)));
+
+// 		let para_id: u32 = ParachainInfo::get().into();
+// 		let msg1: VersionedXcm = Xcm::WithdrawAsset {
+// 			assets: vec![MultiAsset::ConcreteFungible {
+// 				id: MultiLocation::X3(
+// 					Junction::Parent,
+// 					Junction::Parachain { id: para_id },
+// 					Junction::GeneralKey(CurrencyId::Token(TokenSymbol::ACA).encode()),
+// 				),
+// 				amount: aca_amount,
+// 			}],
+// 			effects: vec![Order::DepositAsset {
+// 				assets: vec![MultiAsset::All],
+// 				dest: MultiLocation::X1(Junction::AccountId32 {
+// 					network: NetworkId::Named("acala".into()),
+// 					id: ALICE,
+// 				}),
+// 			}],
+// 		}
+// 		.into();
+// 		XcmHandler::handle_xcm_message(sibling_para_id.into(), 10, msg1);
+// 		assert_eq!(Currencies::free_balance(ACA, &sibling_parachain_acc), 100 * dollar(ACA));
+// 		assert_eq!(Currencies::free_balance(ACA, &ALICE.into()), aca_amount);
+// 	});
+// }
 
 #[test]
 fn currency_id_convert() {
