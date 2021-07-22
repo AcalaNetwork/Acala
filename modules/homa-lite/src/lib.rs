@@ -92,7 +92,7 @@ pub mod module {
 		/// Origin represented by the Root or Governance
 		type GovernanceOrigin: EnsureOrigin<Self::Origin>;
 
-		/// The minimal amount of KSM to be locked
+		/// The minimal amount of Staking currency to be locked
 		#[pallet::constant]
 		type MinimumMintThreshold: Get<Balance>;
 
@@ -111,7 +111,7 @@ pub mod module {
 		LiquidCurrencyNotIssuedForThisBatch,
 		/// The total issuance for the Staking currency must be more than zero.
 		InvalidStakedCurrencyTotalIssuance,
-		/// The amount to be minted is below the minimum threshold allowed.
+		/// The mint amount is below the minimum threshold allowed.
 		MintAmountBelowMinimumThreshold,
 		/// The amount of Staking currency used has exceeded the cap allowed.
 		ExceededStakingCurrencyMintCap,
@@ -157,13 +157,13 @@ pub mod module {
 	#[pallet::getter(fn current_batch)]
 	pub type CurrentBatch<T: Config> = StorageValue<_, EraIndex, ValueQuery>;
 
-	/// The maximum amount of total staking currency that is allowed to mint Liquid currency.
+	/// The cap on the total amount of staking currency allowed to mint Liquid currency.
 	/// StakingCurrencyMintCap: value: mint_cap: Balance
 	#[pallet::storage]
 	#[pallet::getter(fn staking_currency_mint_cap)]
 	pub type StakingCurrencyMintCap<T: Config> = StorageValue<_, Balance, OptionQuery>;
 
-	/// The total amount of staking currency that have used to mint Liquid currency.
+	/// The total amount of staking currency that have been used to mint Liquid currency.
 	/// TotalStakedAmount: value: staked_total: Balance
 	#[pallet::storage]
 	#[pallet::getter(fn total_staked_amount)]
@@ -297,8 +297,7 @@ pub mod module {
 		///
 		/// Parameters:
 		/// - `new_cap`: The new cap for staking currency.
-		/// #[pallet::weight(< T as Config >::WeightInfo::set_staking_currency_cap())]
-		#[pallet::weight(0)]
+		#[pallet::weight(< T as Config >::WeightInfo::set_staking_currency_cap())]
 		#[transactional]
 		pub fn set_staking_currency_cap(origin: OriginFor<T>, new_cap: Balance) -> DispatchResult {
 			// This can only be called by Governance or ROOT.
