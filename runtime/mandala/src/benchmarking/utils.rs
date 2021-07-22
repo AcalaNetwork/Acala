@@ -21,9 +21,9 @@ use crate::{
 };
 
 use frame_benchmarking::account;
+use frame_support::traits::tokens::fungibles;
 use frame_support::{assert_ok, traits::Contains};
 use frame_system::RawOrigin;
-use frame_support::traits::tokens::fungibles;
 use orml_traits::MultiCurrencyExtended;
 use sp_runtime::{
 	traits::{SaturatedConversion, StaticLookup},
