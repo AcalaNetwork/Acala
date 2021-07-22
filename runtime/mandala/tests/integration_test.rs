@@ -18,9 +18,11 @@
 
 #![cfg(test)]
 
+use acala_service::chain_spec::evm_genesis;
 use codec::Encode;
 // use cumulus_primitives_core::{DownwardMessageHandler, InboundDownwardMessage,
 // XcmpMessageHandler};
+use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
 use frame_support::{
 	assert_noop, assert_ok,
 	traits::{schedule::DispatchTime, Currency, GenesisBuild, OnFinalize, OnInitialize, OriginTrait, ValidatorSet},
@@ -30,10 +32,11 @@ use mandala_runtime::{
 	dollar, get_all_module_accounts, AcalaOracle, AccountId, AuctionManager, Authority, AuthoritysOriginId, Balance,
 	Balances, BlockNumber, Call, CdpEngine, CdpTreasury, CreateClassDeposit, CreateTokenDeposit, Currencies,
 	CurrencyId, CurrencyIdConvert, DataDepositPerByte, Dex, EVMBridge, EmergencyShutdown, EnabledTradingPairs, Event,
-	EvmAccounts, EvmCurrencyIdMapping, Get, GetNativeCurrencyId, Loans, NativeTokenExistentialDeposit, NftPalletId,
-	Origin, OriginCaller, ParachainInfo, ParachainSystem, Perbill, Proxy, Runtime, Scheduler, Session, SessionManager,
-	SevenDays, System, TokenSymbol, TreasuryPalletId, TreasuryReservePalletId, Vesting, ACA, AUSD, DOT, EVM, LDOT, NFT,
-	RENBTC,
+	EvmAccounts, EvmCurrencyIdMapping, ExistentialDeposits, Get, GetNativeCurrencyId, Loans, MultiLocation,
+	NativeTokenExistentialDeposit, NetworkId, NftPalletId, Origin, OriginCaller, ParachainInfo, ParachainSystem,
+	Perbill, Proxy, Runtime, Scheduler, Session, SessionManager, SevenDays, System, TokenSymbol, Tokens,
+	TreasuryAccount, TreasuryPalletId, TreasuryReservePalletId, Vesting, XcmConfig, XcmExecutor, ACA, AUSD, DOT, EVM,
+	LDOT, NFT, RENBTC,
 };
 use module_cdp_engine::LiquidationStrategy;
 use module_evm_accounts::EvmAddressMapping;
@@ -42,11 +45,9 @@ use module_support::{
 	Price, Rate, Ratio, RiskManager, EVM as EVMTrait,
 };
 use orml_authority::DelayedOrigin;
-use orml_traits::{Change, MultiCurrency};
+use orml_traits::{Change, GetByKey, MultiCurrency};
 use orml_vesting::VestingSchedule;
 // use polkadot_parachain::primitives::Sibling;
-use acala_service::chain_spec::evm_genesis;
-use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
 pub use primitives::{evm::EvmAddress, DexShare, TradingPair};
 use sp_core::{bytes::from_hex, H160};
 use sp_io::hashing::keccak_256;
@@ -55,7 +56,16 @@ use sp_runtime::{
 	DispatchError, DispatchResult, FixedPointNumber, MultiAddress,
 };
 use std::str::FromStr;
-use xcm::v0::{Junction::*, MultiAsset, MultiLocation::*};
+use xcm::{
+	opaque::v0::prelude::{BuyExecution, DepositAsset},
+	v0::{
+		ExecuteXcm,
+		Junction::{self, *},
+		MultiAsset,
+		MultiLocation::*,
+		Outcome, Xcm,
+	},
+};
 
 use primitives::currency::*;
 
@@ -1647,6 +1657,68 @@ fn test_session_manager_module() {
 		run_to_block(51);
 		assert_eq!(Session::session_index(), 5);
 		assert_eq!(SessionManager::session_duration(), 9);
+	});
+}
+
+#[test]
+fn treasury_should_take_xcm_execution_revenue() {
+	ExtBuilder::default().build().execute_with(|| {
+		let dot_amount = 1000 * dollar(DOT);
+		let actual_amount = 9999999760000;
+		let shallow_weight = 3000000;
+		let origin = MultiLocation::X1(Junction::Parent);
+
+		// receive relay chain token
+		let mut msg = Xcm::<Call>::ReserveAssetDeposit {
+			assets: vec![MultiAsset::ConcreteFungible {
+				id: MultiLocation::X1(Junction::Parent),
+				amount: dot_amount,
+			}],
+			effects: vec![
+				BuyExecution {
+					fees: MultiAsset::All,
+					weight: 0,
+					debt: shallow_weight,
+					halt_on_error: true,
+					xcm: vec![],
+				},
+				DepositAsset {
+					assets: vec![MultiAsset::All],
+					dest: MultiLocation::X1(Junction::AccountId32 {
+						network: NetworkId::Any,
+						id: ALICE,
+					}),
+				},
+			],
+		};
+		use xcm_executor::traits::WeightBounds;
+		let debt = <XcmConfig as xcm_executor::Config>::Weigher::shallow(&mut msg).unwrap_or_default();
+		let deep = <XcmConfig as xcm_executor::Config>::Weigher::deep(&mut msg).unwrap_or_default();
+		// println!("debt = {:?}, deep = {:?}", debt, deep);
+		assert_eq!(debt, shallow_weight);
+
+		assert_eq!(Tokens::free_balance(DOT, &ALICE.into()), 0);
+		assert_ok!(Currencies::deposit(
+			DOT,
+			&TreasuryAccount::get(),
+			ExistentialDeposits::get(&DOT)
+		));
+		assert_eq!(
+			Tokens::free_balance(DOT, &TreasuryAccount::get()),
+			ExistentialDeposits::get(&DOT)
+		);
+
+		let weight_limit = debt + deep + 1;
+		assert_eq!(
+			XcmExecutor::<XcmConfig>::execute_xcm(origin, msg, weight_limit),
+			Outcome::Complete(shallow_weight)
+		);
+
+		assert_eq!(Tokens::free_balance(DOT, &ALICE.into()), actual_amount);
+		assert_eq!(
+			Tokens::free_balance(DOT, &TreasuryAccount::get()),
+			ExistentialDeposits::get(&DOT) + dot_amount - actual_amount
+		);
 	});
 }
 

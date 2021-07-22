@@ -1459,7 +1459,7 @@ impl cumulus_pallet_aura_ext::Config for Runtime {}
 // );
 
 // pub struct XcmConfig;
-// impl Config for XcmConfig {
+// impl xcm_executor::Config for XcmConfig {
 // 	type Call = Call;
 // 	type XcmSender = XcmHandler;
 // 	type AssetTransactor = LocalAssetTransactor;
