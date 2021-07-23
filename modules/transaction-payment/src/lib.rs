@@ -367,8 +367,11 @@ pub mod module {
 
 		// remove after runtime upgraded
 		fn on_runtime_upgrade() -> Weight {
-			DefaultFeeCurrencyId::<T>::remove_all(None);
-			T::DbWeight::get().reads_writes(0, 1)
+			let remove_count = match DefaultFeeCurrencyId::<T>::remove_all(None) {
+				sp_io::KillStorageResult::AllRemoved(n) => n,
+				sp_io::KillStorageResult::SomeRemaining(n) => n,
+			};
+			T::DbWeight::get().reads_writes(0, remove_count.into())
 		}
 	}
 
