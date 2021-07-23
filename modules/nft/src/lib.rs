@@ -21,8 +21,6 @@
 #![allow(clippy::unused_unit)]
 #![allow(clippy::upper_case_acronyms)]
 
-use std::collections::BTreeMap;
-
 use enumflags2::BitFlags;
 use frame_support::{
 	pallet_prelude::*,
@@ -43,7 +41,7 @@ use sp_runtime::{
 	traits::{AccountIdConversion, Hash, Saturating, StaticLookup, Zero},
 	DispatchResult, RuntimeDebug,
 };
-use sp_std::vec::Vec;
+use sp_std::{collections::btree_map::BTreeMap, prelude::*};
 
 pub mod benchmarking;
 mod mock;
