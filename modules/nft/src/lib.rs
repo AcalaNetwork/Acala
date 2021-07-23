@@ -175,6 +175,8 @@ pub mod module {
 		/// Can not destroy class
 		/// Total issuance is not 0
 		CannotDestroyClass,
+		/// Cannot perform mutable action
+		Immutable,
 	}
 
 	#[pallet::event]
@@ -209,13 +211,18 @@ pub mod module {
 		/// - `properties`: class property, include `Transferable` `Burnable`
 		#[pallet::weight(<T as Config>::WeightInfo::create_class())]
 		#[transactional]
-		pub fn create_class(origin: OriginFor<T>, metadata: CID, properties: Properties) -> DispatchResultWithPostInfo {
+		pub fn create_class(
+			origin: OriginFor<T>,
+			metadata: CID,
+			properties: Properties,
+			attributes: Attributes,
+		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 			let next_id = orml_nft::Pallet::<T>::next_class_id();
 			let owner: T::AccountId = T::PalletId::get().into_sub_account(next_id);
 			let class_deposit = T::CreateClassDeposit::get();
 
-			let data_deposit = T::DataDepositPerByte::get().saturating_mul((metadata.len() as u32).into());
+			let data_deposit = Self::data_deposit(&metadata, &attributes);
 			let proxy_deposit = <pallet_proxy::Pallet<T>>::deposit(1u32);
 			let deposit = class_deposit.saturating_add(data_deposit);
 			let total_deposit = proxy_deposit.saturating_add(deposit);
@@ -231,7 +238,7 @@ pub mod module {
 			let data = ClassData {
 				deposit,
 				properties,
-				attributes: Default::default(),
+				attributes,
 			};
 			orml_nft::Pallet::<T>::create_class(&owner, metadata, data)?;
 
@@ -252,11 +259,12 @@ pub mod module {
 			to: <T::Lookup as StaticLookup>::Source,
 			class_id: ClassIdOf<T>,
 			metadata: CID,
+			attributes: Attributes,
 			quantity: u32,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			let to = T::Lookup::lookup(to)?;
-			Self::do_mint(who, to, class_id, metadata, quantity)
+			Self::do_mint(who, to, class_id, metadata, attributes, quantity)
 		}
 
 		/// Transfer NFT token to another account
@@ -340,6 +348,83 @@ pub mod module {
 			Self::deposit_event(Event::DestroyedClass(who, class_id));
 			Ok(().into())
 		}
+
+		#[pallet::weight(0)]
+		#[transactional]
+		pub fn update_class_properties(
+			origin: OriginFor<T>,
+			class_id: ClassIdOf<T>,
+			properties: Properties,
+		) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+			orml_nft::Classes::<T>::try_mutate(class_id, |class_info| {
+				let class_info = class_info.as_mut().ok_or(Error::<T>::ClassIdNotFound)?;
+				ensure!(who == class_info.owner, Error::<T>::NoPermission);
+
+				let mut data = &mut class_info.data;
+				ensure!(
+					data.properties.0.contains(ClassProperty::ClassPropertiesMutable),
+					Error::<T>::Immutable
+				);
+
+				data.properties = properties;
+
+				Ok(())
+			})
+		}
+
+		#[pallet::weight(0)]
+		#[transactional]
+		pub fn update_class_attributes(
+			origin: OriginFor<T>,
+			class_id: ClassIdOf<T>,
+			attributes: Attributes,
+		) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+			orml_nft::Classes::<T>::try_mutate(class_id, |class_info| {
+				let class_info = class_info.as_mut().ok_or(Error::<T>::ClassIdNotFound)?;
+				ensure!(who == class_info.owner, Error::<T>::NoPermission);
+
+				let mut data = &mut class_info.data;
+				ensure!(
+					data.properties.0.contains(ClassProperty::ClassAttributesMutable),
+					Error::<T>::Immutable
+				);
+
+				data.attributes = attributes;
+
+				Ok(())
+			})
+		}
+
+		#[pallet::weight(0)]
+		#[transactional]
+		pub fn update_token_attributes(
+			origin: OriginFor<T>,
+			token: (ClassIdOf<T>, TokenIdOf<T>),
+			attributes: Attributes,
+		) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+			orml_nft::Tokens::<T>::try_mutate(token.0, token.1, |token_info| {
+				let token_info = token_info.as_mut().ok_or(Error::<T>::TokenIdNotFound)?;
+
+				let class_info = orml_nft::Pallet::<T>::classes(token.0).ok_or(Error::<T>::ClassIdNotFound)?;
+				ensure!(who == class_info.owner, Error::<T>::NoPermission);
+
+				ensure!(
+					class_info
+						.data
+						.properties
+						.0
+						.contains(ClassProperty::TokenAttributesMutable),
+					Error::<T>::Immutable
+				);
+
+				token_info.data.attributes = attributes;
+
+				Ok(())
+			})
+		}
 	}
 }
 
@@ -369,12 +454,15 @@ impl<T: Config> Pallet<T> {
 		to: T::AccountId,
 		class_id: ClassIdOf<T>,
 		metadata: CID,
+		attributes: Attributes,
 		quantity: u32,
 	) -> DispatchResult {
 		ensure!(quantity >= 1, Error::<T>::InvalidQuantity);
 		let class_info = orml_nft::Pallet::<T>::classes(class_id).ok_or(Error::<T>::ClassIdNotFound)?;
 		ensure!(who == class_info.owner, Error::<T>::NoPermission);
-		let deposit = T::CreateTokenDeposit::get();
+
+		let data_deposit = Self::data_deposit(&metadata, &attributes);
+		let deposit = T::CreateTokenDeposit::get().saturating_add(data_deposit);
 		let total_deposit = deposit.saturating_mul(quantity.into());
 
 		// `repatriate_reserved` will check `to` account exist and may return
@@ -382,10 +470,7 @@ impl<T: Config> Pallet<T> {
 		<T as module::Config>::Currency::transfer(&who, &to, total_deposit, KeepAlive)?;
 		<T as module::Config>::Currency::reserve_named(&RESERVE_ID, &to, total_deposit)?;
 
-		let data = TokenData {
-			deposit,
-			attributes: Default::default(),
-		};
+		let data = TokenData { deposit, attributes };
 		for _ in 0..quantity {
 			orml_nft::Pallet::<T>::mint(&to, class_id, metadata.clone(), data.clone())?;
 		}
@@ -417,6 +502,14 @@ impl<T: Config> Pallet<T> {
 		}
 
 		Ok(())
+	}
+
+	fn data_deposit(metadata: &CID, attributes: &Attributes) -> BalanceOf<T> {
+		// Addition can't overflow because we will be out of memory before that
+		let total_data_len = attributes
+			.iter()
+			.fold(metadata.len() as u32, |acc, (k, v)| (v.len() + k.len()) as u32 + acc);
+		T::DataDepositPerByte::get().saturating_mul(total_data_len.into())
 	}
 }
 
