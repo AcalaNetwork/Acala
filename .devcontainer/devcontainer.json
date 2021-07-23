@@ -25,5 +25,6 @@
 		},
 		"rust-analyzer.server.path": "/usr/local/cargo/bin/rust-analyzer"
 	},
+	// Note: comment out if you would like to run as root instead
 	"remoteUser": "vscode"
 }
