@@ -101,7 +101,7 @@ pub use sp_runtime::BuildStorage;
 pub use sp_runtime::{Perbill, Percent, Permill, Perquintill};
 
 pub use authority::AuthorityConfigImpl;
-pub use constants::{fee::*, time::*};
+pub use constants::{fee::*, homa::*, time::*};
 pub use primitives::{
 	evm::EstimateResourcesRequest, AccountId, AccountIndex, Amount, AuctionId, AuthoritysOriginId, Balance,
 	BlockNumber, CurrencyId, DataProviderId, EraIndex, Hash, Moment, Nonce, ReserveIdentifier, Share, Signature,
@@ -165,7 +165,6 @@ parameter_types! {
 	// Treasury reserve
 	pub const TreasuryReservePalletId: PalletId = PalletId(*b"aca/reve");
 	pub const NftPalletId: PalletId = PalletId(*b"aca/aNFT");
-	pub const HomaLitePalletId: PalletId = PalletId(*b"aca/hmlt");
 	// Vault all unrleased native token.
 	pub UnreleasedNativeVaultAccountId: AccountId = PalletId(*b"aca/urls").into_account();
 }
@@ -1425,7 +1424,7 @@ parameter_types! {
 	pub const MinimumMintThreshold: Balance = 1_000_000_000;
 	pub RelaychainSovereignSubAccount: MultiLocation = MultiLocation::X2( Junction::Parent, Junction::AccountId32 {
 		network: RelayNetwork::get(),
-		id: ParachainInfo::get().into_account(),
+		id: Utility::derivative_account_id(ParachainInfo::get().into_account(), RELAYCHAIN_SUB_ACCOUNT_ID).into(),
 	});
 }
 impl module_homa_lite::Config for Runtime {
@@ -1434,12 +1433,11 @@ impl module_homa_lite::Config for Runtime {
 	type Currency = Currencies;
 	type StakingCurrencyId = KSMCurrencyId;
 	type LiquidCurrencyId = LKSMCurrencyId;
-	type PalletId = HomaLitePalletId;
 	type IssuerOrigin = EnsureRootOrHalfGeneralCouncil;
 	type GovernanceOrigin = EnsureRootOrHalfGeneralCouncil;
 	type MinimumMintThreshold = MinimumMintThreshold;
-	type CrossChainTransfer = XTokens;
-	type XcmSovereignSubAccount = RelaychainSovereignSubAccount;
+	type XcmTransfer = XTokens;
+	type SovereignSubAccountLocation = RelaychainSovereignSubAccount;
 }
 
 pub type LocalAssetTransactor = MultiCurrencyAdapter<

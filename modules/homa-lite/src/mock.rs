@@ -24,8 +24,7 @@ use super::*;
 use frame_support::{ord_parameter_types, parameter_types};
 use frame_system::EnsureSignedBy;
 use module_support::mocks::MockAddressMapping;
-use orml_traits::parameter_type_with_key;
-use orml_traits::XcmTransfer;
+use orml_traits::{parameter_type_with_key, XcmExecutionResult, XcmTransfer};
 use primitives::{Amount, TokenSymbol};
 use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, AccountId32};
@@ -167,7 +166,6 @@ impl module_currencies::Config for Runtime {
 parameter_types! {
 	pub const StakingCurrencyId: CurrencyId = KSM;
 	pub const LiquidCurrencyId: CurrencyId = LKSM;
-	pub const HomaLitePalletId: PalletId = PalletId(*b"aca/hmlt");
 	pub const MinimumMintThreshold: Balance = 1_000_000_000;
 	pub const MockXcmDestination: MultiLocation = MOCK_XCM_DESTINATION;
 }
@@ -181,12 +179,11 @@ impl Config for Runtime {
 	type Currency = Currencies;
 	type StakingCurrencyId = StakingCurrencyId;
 	type LiquidCurrencyId = LiquidCurrencyId;
-	type PalletId = HomaLitePalletId;
 	type IssuerOrigin = EnsureSignedBy<Root, AccountId>;
 	type GovernanceOrigin = EnsureSignedBy<Root, AccountId>;
 	type MinimumMintThreshold = MinimumMintThreshold;
-	type CrossChainTransfer = MockXcm;
-	type XcmSovereignSubAccount = MockXcmDestination;
+	type XcmTransfer = MockXcm;
+	type SovereignSubAccountLocation = MockXcmDestination;
 }
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;

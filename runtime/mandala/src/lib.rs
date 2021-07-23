@@ -103,7 +103,7 @@ pub use sp_runtime::BuildStorage;
 pub use sp_runtime::{Perbill, Percent, Permill, Perquintill};
 
 pub use authority::AuthorityConfigImpl;
-pub use constants::{fee::*, time::*};
+pub use constants::{fee::*, homa::*, time::*};
 pub use primitives::{
 	evm::EstimateResourcesRequest, AccountId, AccountIndex, AirDropCurrencyId, Amount, AuctionId, AuthoritysOriginId,
 	Balance, BlockNumber, CurrencyId, DataProviderId, EraIndex, Hash, Moment, Nonce, ReserveIdentifier, Share,
@@ -172,7 +172,6 @@ parameter_types! {
 	pub UnreleasedNativeVaultAccountId: AccountId = PalletId(*b"aca/urls").into_account();
 	// Ecosystem modules
 	pub const StarportPalletId: PalletId = PalletId(*b"aca/stpt");
-	pub const HomaLitePalletId: PalletId = PalletId(*b"aca/hmlt");
 }
 
 pub fn get_all_module_accounts() -> Vec<AccountId> {
@@ -1216,7 +1215,7 @@ parameter_types! {
 	pub const MinimumMintThreshold: Balance = 1_000_000_000;
 	pub RelaychainSovereignSubAccount: MultiLocation = MultiLocation::X2( Junction::Parent, Junction::AccountId32 {
 		network: RelayNetwork::get(),
-		id: ParachainInfo::get().into_account(),
+		id: Utility::derivative_account_id(ParachainInfo::get().into_account(), RELAYCHAIN_SUB_ACCOUNT_ID).into(),
 	});
 }
 impl module_homa_lite::Config for Runtime {
@@ -1225,12 +1224,11 @@ impl module_homa_lite::Config for Runtime {
 	type Currency = Currencies;
 	type StakingCurrencyId = DotCurrencyId;
 	type LiquidCurrencyId = LdotCurrencyId;
-	type PalletId = HomaLitePalletId;
 	type IssuerOrigin = EnsureRootOrHalfGeneralCouncil;
 	type GovernanceOrigin = EnsureRootOrHalfGeneralCouncil;
 	type MinimumMintThreshold = MinimumMintThreshold;
-	type CrossChainTransfer = XTokens;
-	type XcmSovereignSubAccount = RelaychainSovereignSubAccount;
+	type XcmTransfer = XTokens;
+	type SovereignSubAccountLocation = RelaychainSovereignSubAccount;
 }
 
 parameter_types! {

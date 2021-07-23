@@ -37,11 +37,10 @@ mod mock;
 mod tests;
 pub mod weights;
 
-use frame_support::{pallet_prelude::*, transactional, PalletId};
+use frame_support::{pallet_prelude::*, transactional};
 use frame_system::{ensure_signed, pallet_prelude::*};
 use module_support::Ratio;
-use orml_traits::MultiCurrency;
-use orml_traits::XcmTransfer;
+use orml_traits::{MultiCurrency, XcmTransfer};
 use primitives::{Balance, CurrencyId, EraIndex};
 use sp_runtime::{ArithmeticError, FixedPointNumber};
 use sp_std::prelude::*;
@@ -49,8 +48,6 @@ use xcm::opaque::v0::{MultiLocation, Outcome};
 
 pub use module::*;
 pub use weights::WeightInfo;
-
-pub type XcmExecutionResult = sp_std::result::Result<Outcome, DispatchError>;
 
 /// Used to record the total issuance of the currencies during a batch.
 /// This info is used to calculate exchange rate between Staking and Liquid currencies.
@@ -82,10 +79,6 @@ pub mod module {
 		#[pallet::constant]
 		type LiquidCurrencyId: Get<CurrencyId>;
 
-		/// The ID for this pallet
-		#[pallet::constant]
-		type PalletId: Get<PalletId>;
-
 		/// Origin used to Issue LKSM
 		type IssuerOrigin: EnsureOrigin<Self::Origin>;
 
@@ -97,11 +90,11 @@ pub mod module {
 		type MinimumMintThreshold: Get<Balance>;
 
 		/// The interface to Cross-chain transfer.
-		type CrossChainTransfer: XcmTransfer<Self::AccountId, Balance, CurrencyId>;
+		type XcmTransfer: XcmTransfer<Self::AccountId, Balance, CurrencyId>;
 
 		/// The sovereign sub-account for where the staking currencies are sent to.
 		#[pallet::constant]
-		type XcmSovereignSubAccount: Get<MultiLocation>;
+		type SovereignSubAccountLocation: Get<MultiLocation>;
 	}
 
 	#[pallet::error]
@@ -116,7 +109,7 @@ pub mod module {
 		/// The amount of Staking currency used has exceeded the cap allowed.
 		ExceededStakingCurrencyMintCap,
 		/// Error has occurred during Cross-chain transfer.
-		XCMTransferError,
+		XcmTransferFailed,
 	}
 
 	#[pallet::event]
@@ -161,7 +154,7 @@ pub mod module {
 	/// StakingCurrencyMintCap: value: mint_cap: Balance
 	#[pallet::storage]
 	#[pallet::getter(fn staking_currency_mint_cap)]
-	pub type StakingCurrencyMintCap<T: Config> = StorageValue<_, Balance, OptionQuery>;
+	pub type StakingCurrencyMintCap<T: Config> = StorageValue<_, Balance, ValueQuery>;
 
 	/// The total amount of staking currency that have been used to mint Liquid currency.
 	/// TotalStakedAmount: value: staked_total: Balance
@@ -196,9 +189,8 @@ pub mod module {
 			let new_total_staked = Self::total_staked_amount()
 				.checked_add(amount)
 				.ok_or(ArithmeticError::Overflow)?;
-			let mint_cap = Self::staking_currency_mint_cap();
 			ensure!(
-				mint_cap.is_none() || new_total_staked <= mint_cap.unwrap(),
+				new_total_staked <= Self::staking_currency_mint_cap(),
 				Error::<T>::ExceededStakingCurrencyMintCap
 			);
 
@@ -209,17 +201,17 @@ pub mod module {
 			T::Currency::ensure_can_withdraw(staking_currency, &who, amount)?;
 
 			// Cross-chain transfers the staking assets.
-			let xcm_result = T::CrossChainTransfer::transfer(
+			let xcm_result = T::XcmTransfer::transfer(
 				who.clone(),
 				staking_currency,
 				amount,
-				T::XcmSovereignSubAccount::get(),
+				T::SovereignSubAccountLocation::get(),
 				xcm_dest_weight,
 			)?;
-			match xcm_result {
-				Outcome::Complete(_) => Ok(()),
-				_ => Err(Error::<T>::XCMTransferError),
-			}?;
+			ensure!(
+				matches!(xcm_result, Outcome::Complete(_)),
+				Error::<T>::XcmTransferFailed
+			);
 
 			PendingAmount::<T>::mutate(current_batch, &who, |current| {
 				*current = current.checked_add(amount).expect("Amount should not cause overflow.")
@@ -303,7 +295,7 @@ pub mod module {
 			// This can only be called by Governance or ROOT.
 			T::GovernanceOrigin::ensure_origin(origin)?;
 
-			StakingCurrencyMintCap::<T>::put(new_cap.clone());
+			StakingCurrencyMintCap::<T>::put(new_cap);
 			Self::deposit_event(Event::<T>::StakingCurrencyMintCapUpdated(new_cap));
 			Ok(())
 		}

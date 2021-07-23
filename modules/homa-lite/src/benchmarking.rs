@@ -36,6 +36,7 @@ benchmarks! {
 		let amount = 1_000_000_000_000;
 		let caller: T::AccountId = account("caller", 0, SEED);
 		<T as module::Config>::Currency::deposit(T::StakingCurrencyId::get(), &caller, amount)?;
+		module::Pallet::<T>::set_staking_currency_cap(RawOrigin::Root.into(), amount)?;
 	}: _(RawOrigin::Signed(caller), amount, 0)
 
 	issue {}: _(RawOrigin::Root, 1_000_000_000_000)
@@ -45,6 +46,7 @@ benchmarks! {
 		let caller: T::AccountId = account("caller", 0, SEED);
 		<T as module::Config>::Currency::deposit(T::LiquidCurrencyId::get(), &caller, amount)?;
 		<T as module::Config>::Currency::deposit(T::StakingCurrencyId::get(), &caller, amount)?;
+		module::Pallet::<T>::set_staking_currency_cap(RawOrigin::Root.into(), amount)?;
 		module::Pallet::<T>::request_mint(RawOrigin::Signed(caller.clone()).into(), amount, 0)?;
 		module::Pallet::<T>::issue(RawOrigin::Root.into(), amount)?;
 	}: _(RawOrigin::Signed(caller), caller.clone(), 0)
@@ -155,7 +157,6 @@ mod benchmark_mock {
 	parameter_types! {
 		pub const StakingCurrencyId: CurrencyId = KSM;
 		pub const LiquidCurrencyId: CurrencyId = LKSM;
-		pub const HomaLitePalletId: PalletId = PalletId(*b"aca/hmlt");
 		pub const MinimumMintThreshold: Balance = 1_000_000_000;
 		pub const MockXcmDestination: MultiLocation = MOCK_XCM_DESTINATION;
 	}
@@ -169,12 +170,11 @@ mod benchmark_mock {
 		type Currency = Currencies;
 		type StakingCurrencyId = StakingCurrencyId;
 		type LiquidCurrencyId = LiquidCurrencyId;
-		type PalletId = HomaLitePalletId;
 		type IssuerOrigin = EnsureRoot<AccountId>;
 		type GovernanceOrigin = EnsureRoot<AccountId>;
 		type MinimumMintThreshold = MinimumMintThreshold;
-		type CrossChainTransfer = MockXcm;
-		type XcmSovereignSubAccount = MockXcmDestination;
+		type XcmTransfer = MockXcm;
+		type SovereignSubAccountLocation = MockXcmDestination;
 	}
 
 	type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;

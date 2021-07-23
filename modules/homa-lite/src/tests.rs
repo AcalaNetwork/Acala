@@ -44,9 +44,10 @@ fn mock_initialize_token_works() {
 #[test]
 fn request_mint_works() {
 	ExtBuilder::default().build().execute_with(|| {
-		let current_batch = HomaLite::current_batch();
-
 		let amount = dollar(1000);
+
+		assert_ok!(HomaLite::set_staking_currency_cap(Origin::signed(ROOT), dollar(1_000)));
+		let current_batch = HomaLite::current_batch();
 
 		assert_noop!(
 			HomaLite::request_mint(Origin::signed(ROOT), amount, 0),
@@ -63,9 +64,10 @@ fn request_mint_works() {
 }
 
 #[test]
-fn can_request_mint_more_than_once_in_an_batch() {
+fn can_request_mint_more_than_once_in_a_batch() {
 	ExtBuilder::default().build().execute_with(|| {
 		let current_batch = HomaLite::current_batch();
+		assert_ok!(HomaLite::set_staking_currency_cap(Origin::signed(ROOT), dollar(10_000)));
 
 		assert_ok!(HomaLite::request_mint(Origin::signed(ALICE), dollar(1000), 0));
 		assert_eq!(
@@ -86,6 +88,7 @@ fn can_request_mint_more_than_once_in_an_batch() {
 #[test]
 fn request_mint_fails_when_below_minimum() {
 	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(HomaLite::set_staking_currency_cap(Origin::signed(ROOT), dollar(1_000)));
 		assert_noop!(
 			HomaLite::request_mint(Origin::signed(ALICE), 1_000, 0),
 			Error::<Runtime>::MintAmountBelowMinimumThreshold
@@ -120,7 +123,7 @@ fn failed_xcm_transfer_is_handled() {
 		// XCM transfer fails if it is called by INVALID_CALLER.
 		assert_noop!(
 			HomaLite::request_mint(Origin::signed(INVALID_CALLER), dollar(1), 0),
-			Error::<Runtime>::XCMTransferError
+			Error::<Runtime>::XcmTransferFailed
 		);
 	});
 }
@@ -129,6 +132,7 @@ fn failed_xcm_transfer_is_handled() {
 fn issue_works() {
 	ExtBuilder::default().build().execute_with(|| {
 		let current_batch = HomaLite::current_batch();
+		assert_ok!(HomaLite::set_staking_currency_cap(Origin::signed(ROOT), dollar(10_000)));
 		assert_eq!(current_batch, 0);
 
 		let lksm_issuance = Currencies::total_issuance(LKSM);
@@ -179,6 +183,8 @@ fn issue_can_handle_failed_cases() {
 #[test]
 fn claim_works() {
 	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(HomaLite::set_staking_currency_cap(Origin::signed(ROOT), dollar(10_000)));
+
 		let lksm_issuance = Currencies::total_issuance(LKSM);
 		let ksm_issuance = lksm_issuance * 5;
 		assert_ok!(HomaLite::request_mint(Origin::signed(ALICE), dollar(1000), 0));
@@ -215,6 +221,8 @@ fn claim_works() {
 #[test]
 fn claim_can_handle_math_errors() {
 	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(HomaLite::set_staking_currency_cap(Origin::signed(ROOT), dollar(1_000)));
+
 		// Creates zero total issuance to trigger divide by zero error
 		let zero_issuance = TotalIssuanceInfo {
 			staking_total: 0,
@@ -235,6 +243,8 @@ fn claim_can_handle_math_errors() {
 #[test]
 fn repeated_claims_has_no_effect() {
 	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(HomaLite::set_staking_currency_cap(Origin::signed(ROOT), dollar(20_000)));
+
 		assert_ok!(HomaLite::request_mint(Origin::signed(ALICE), dollar(1000), 0));
 		assert_ok!(HomaLite::issue(Origin::signed(ROOT), dollar(10000)));
 		assert_ok!(HomaLite::claim(Origin::signed(ALICE), ALICE, 0));
@@ -252,7 +262,7 @@ fn repeated_claims_has_no_effect() {
 fn can_set_mint_cap() {
 	ExtBuilder::default().build().execute_with(|| {
 		// Current cap is not set
-		assert_eq!(StakingCurrencyMintCap::<Runtime>::get(), None);
+		assert_eq!(StakingCurrencyMintCap::<Runtime>::get(), 0);
 
 		// Requires Root previlege.
 		assert_noop!(
@@ -264,7 +274,7 @@ fn can_set_mint_cap() {
 		assert_ok!(HomaLite::set_staking_currency_cap(Origin::signed(ROOT), dollar(1_000)));
 
 		// Cap should be set now.
-		assert_eq!(StakingCurrencyMintCap::<Runtime>::get(), Some(dollar(1_000)));
+		assert_eq!(StakingCurrencyMintCap::<Runtime>::get(), dollar(1_000));
 
 		assert_eq!(
 			System::events().iter().last().unwrap().event,
