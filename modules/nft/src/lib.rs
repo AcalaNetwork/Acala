@@ -21,9 +21,12 @@
 #![allow(clippy::unused_unit)]
 #![allow(clippy::upper_case_acronyms)]
 
+use std::collections::BTreeMap;
+
 use enumflags2::BitFlags;
 use frame_support::{
 	pallet_prelude::*,
+	require_transactional,
 	traits::{
 		Currency,
 		ExistenceRequirement::{AllowDeath, KeepAlive},
@@ -51,14 +54,23 @@ pub use module::*;
 pub use weights::WeightInfo;
 
 pub type CID = Vec<u8>;
+pub type Attributes = BTreeMap<Vec<u8>, Vec<u8>>;
 
 #[repr(u8)]
 #[derive(Encode, Decode, Clone, Copy, BitFlags, RuntimeDebug, PartialEq, Eq)]
 pub enum ClassProperty {
-	/// Token can be transferred
+	/// Is token transferable
 	Transferable = 0b00000001,
-	/// Token can be burned
+	/// Is token burnable
 	Burnable = 0b00000010,
+	/// Allow mint new tokens
+	Mintable = 0b00000100,
+	/// Is class properties mutable
+	ClassPropertiesMutable = 0b00001000,
+	/// Is class attributes mutable
+	ClassAttributesMutable = 0b00010000,
+	/// Is token attributes mutable
+	TokenAttributesMutable = 0b00100000,
 }
 
 #[derive(Clone, Copy, PartialEq, Default, RuntimeDebug)]
@@ -83,17 +95,21 @@ impl Decode for Properties {
 #[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct ClassData<Balance> {
-	/// The minimum balance to create class
+	/// Deposit reserved to create token class
 	pub deposit: Balance,
-	/// Property of token
+	/// Class properties
 	pub properties: Properties,
+	/// Class attributes
+	pub attributes: Attributes,
 }
 
 #[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct TokenData<Balance> {
-	/// The minimum balance to create token
+	/// Deposit reserved to create token
 	pub deposit: Balance,
+	/// Token attributes
+	pub attributes: Attributes,
 }
 
 pub type TokenIdOf<T> = <T as orml_nft::Config>::TokenId;
@@ -212,7 +228,11 @@ pub mod module {
 			// owner add proxy delegate to origin
 			<pallet_proxy::Pallet<T>>::add_proxy_delegate(&owner, who, Default::default(), Zero::zero())?;
 
-			let data = ClassData { deposit, properties };
+			let data = ClassData {
+				deposit,
+				properties,
+				attributes: Default::default(),
+			};
 			orml_nft::Pallet::<T>::create_class(&owner, metadata, data)?;
 
 			Self::deposit_event(Event::CreatedClass(owner, next_id));
@@ -236,24 +256,7 @@ pub mod module {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			let to = T::Lookup::lookup(to)?;
-			ensure!(quantity >= 1, Error::<T>::InvalidQuantity);
-			let class_info = orml_nft::Pallet::<T>::classes(class_id).ok_or(Error::<T>::ClassIdNotFound)?;
-			ensure!(who == class_info.owner, Error::<T>::NoPermission);
-			let deposit = T::CreateTokenDeposit::get();
-			let total_deposit = deposit.saturating_mul(quantity.into());
-
-			// `repatriate_reserved` will check `to` account exist and may return
-			// `DeadAccount`.
-			<T as module::Config>::Currency::transfer(&who, &to, total_deposit, KeepAlive)?;
-			<T as module::Config>::Currency::reserve_named(&RESERVE_ID, &to, total_deposit)?;
-
-			let data = TokenData { deposit };
-			for _ in 0..quantity {
-				orml_nft::Pallet::<T>::mint(&to, class_id, metadata.clone(), data.clone())?;
-			}
-
-			Self::deposit_event(Event::MintedToken(who, to, class_id, quantity));
-			Ok(())
+			Self::do_mint(who, to, class_id, metadata, quantity)
 		}
 
 		/// Transfer NFT token to another account
@@ -269,8 +272,7 @@ pub mod module {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			let to = T::Lookup::lookup(to)?;
-			Self::do_transfer(&who, &to, token)?;
-			Ok(())
+			Self::do_transfer(&who, &to, token)
 		}
 
 		/// Burn NFT token
@@ -280,9 +282,7 @@ pub mod module {
 		#[transactional]
 		pub fn burn(origin: OriginFor<T>, token: (ClassIdOf<T>, TokenIdOf<T>)) -> DispatchResult {
 			let who = ensure_signed(origin)?;
-			Self::do_burn(&who, token)?;
-			Self::deposit_event(Event::BurnedToken(who, token.0, token.1));
-			Ok(())
+			Self::do_burn(who, token, None)
 		}
 
 		/// Burn NFT token
@@ -297,10 +297,7 @@ pub mod module {
 			remark: Vec<u8>,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
-			Self::do_burn(&who, token)?;
-			let hash = T::Hashing::hash(&remark[..]);
-			Self::deposit_event(Event::BurnedTokenWithRemark(who, token.0, token.1, hash));
-			Ok(())
+			Self::do_burn(who, token, Some(remark))
 		}
 
 		/// Destroy NFT class, remove dest from proxy, and send all the free
@@ -347,8 +344,6 @@ pub mod module {
 }
 
 impl<T: Config> Pallet<T> {
-	/// Ensured atomic.
-	#[transactional]
 	fn do_transfer(from: &T::AccountId, to: &T::AccountId, token: (ClassIdOf<T>, TokenIdOf<T>)) -> DispatchResult {
 		let class_info = orml_nft::Pallet::<T>::classes(token.0).ok_or(Error::<T>::ClassIdNotFound)?;
 		let data = class_info.data;
@@ -369,9 +364,37 @@ impl<T: Config> Pallet<T> {
 		Ok(())
 	}
 
-	/// Ensured atomic.
-	#[transactional]
-	fn do_burn(who: &T::AccountId, token: (ClassIdOf<T>, TokenIdOf<T>)) -> DispatchResult {
+	fn do_mint(
+		who: T::AccountId,
+		to: T::AccountId,
+		class_id: ClassIdOf<T>,
+		metadata: CID,
+		quantity: u32,
+	) -> DispatchResult {
+		ensure!(quantity >= 1, Error::<T>::InvalidQuantity);
+		let class_info = orml_nft::Pallet::<T>::classes(class_id).ok_or(Error::<T>::ClassIdNotFound)?;
+		ensure!(who == class_info.owner, Error::<T>::NoPermission);
+		let deposit = T::CreateTokenDeposit::get();
+		let total_deposit = deposit.saturating_mul(quantity.into());
+
+		// `repatriate_reserved` will check `to` account exist and may return
+		// `DeadAccount`.
+		<T as module::Config>::Currency::transfer(&who, &to, total_deposit, KeepAlive)?;
+		<T as module::Config>::Currency::reserve_named(&RESERVE_ID, &to, total_deposit)?;
+
+		let data = TokenData {
+			deposit,
+			attributes: Default::default(),
+		};
+		for _ in 0..quantity {
+			orml_nft::Pallet::<T>::mint(&to, class_id, metadata.clone(), data.clone())?;
+		}
+
+		Self::deposit_event(Event::MintedToken(who, to, class_id, quantity));
+		Ok(())
+	}
+
+	fn do_burn(who: T::AccountId, token: (ClassIdOf<T>, TokenIdOf<T>), remark: Option<Vec<u8>>) -> DispatchResult {
 		let class_info = orml_nft::Pallet::<T>::classes(token.0).ok_or(Error::<T>::ClassIdNotFound)?;
 		let data = class_info.data;
 		ensure!(
@@ -380,11 +403,19 @@ impl<T: Config> Pallet<T> {
 		);
 
 		let token_info = orml_nft::Pallet::<T>::tokens(token.0, token.1).ok_or(Error::<T>::TokenIdNotFound)?;
-		ensure!(*who == token_info.owner, Error::<T>::NoPermission);
+		ensure!(who == token_info.owner, Error::<T>::NoPermission);
 
 		orml_nft::Pallet::<T>::burn(&who, token)?;
 
 		<T as module::Config>::Currency::unreserve_named(&RESERVE_ID, &who, token_info.data.deposit);
+
+		if let Some(remark) = remark {
+			let hash = T::Hashing::hash(&remark[..]);
+			Self::deposit_event(Event::BurnedTokenWithRemark(who, token.0, token.1, hash));
+		} else {
+			Self::deposit_event(Event::BurnedToken(who, token.0, token.1));
+		}
+
 		Ok(())
 	}
 }
@@ -402,6 +433,7 @@ impl<T: Config> NFT<T::AccountId> for Pallet<T> {
 		orml_nft::Pallet::<T>::tokens(token.0, token.1).map(|t| t.owner)
 	}
 
+	#[require_transactional]
 	fn transfer(from: &T::AccountId, to: &T::AccountId, token: (Self::ClassId, Self::TokenId)) -> DispatchResult {
 		Self::do_transfer(from, to, token)
 	}
