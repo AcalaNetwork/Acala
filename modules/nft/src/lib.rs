@@ -65,10 +65,6 @@ pub enum ClassProperty {
 	Mintable = 0b00000100,
 	/// Is class properties mutable
 	ClassPropertiesMutable = 0b00001000,
-	/// Is class attributes mutable
-	ClassAttributesMutable = 0b00010000,
-	/// Is token attributes mutable
-	TokenAttributesMutable = 0b00100000,
 }
 
 #[derive(Clone, Copy, PartialEq, Default, RuntimeDebug)]
@@ -152,6 +148,10 @@ pub mod module {
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
 
+		/// Maximum number of bytes in attributes
+		#[pallet::constant]
+		type MaxAttributesBytes: Get<u32>;
+
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
 	}
@@ -175,6 +175,8 @@ pub mod module {
 		CannotDestroyClass,
 		/// Cannot perform mutable action
 		Immutable,
+		/// Attributes too large
+		AttributesTooLarge,
 	}
 
 	#[pallet::event]
@@ -220,7 +222,7 @@ pub mod module {
 			let owner: T::AccountId = T::PalletId::get().into_sub_account(next_id);
 			let class_deposit = T::CreateClassDeposit::get();
 
-			let data_deposit = Self::data_deposit(&metadata, &attributes);
+			let data_deposit = Self::data_deposit(&metadata, &attributes)?;
 			let proxy_deposit = <pallet_proxy::Pallet<T>>::deposit(1u32);
 			let deposit = class_deposit.saturating_add(data_deposit);
 			let total_deposit = proxy_deposit.saturating_add(deposit);
@@ -347,6 +349,11 @@ pub mod module {
 			Ok(().into())
 		}
 
+		/// Update NFT class properties. The current class properties must contains
+		/// ClassPropertiesMutable.
+		///
+		/// - `class_id`: The class ID to update
+		/// - `properties`: The new properties
 		#[pallet::weight(0)]
 		#[transactional]
 		pub fn update_class_properties(
@@ -366,59 +373,6 @@ pub mod module {
 				);
 
 				data.properties = properties;
-
-				Ok(())
-			})
-		}
-
-		#[pallet::weight(0)]
-		#[transactional]
-		pub fn update_class_attributes(
-			origin: OriginFor<T>,
-			class_id: ClassIdOf<T>,
-			attributes: Attributes,
-		) -> DispatchResult {
-			let who = ensure_signed(origin)?;
-			orml_nft::Classes::<T>::try_mutate(class_id, |class_info| {
-				let class_info = class_info.as_mut().ok_or(Error::<T>::ClassIdNotFound)?;
-				ensure!(who == class_info.owner, Error::<T>::NoPermission);
-
-				let mut data = &mut class_info.data;
-				ensure!(
-					data.properties.0.contains(ClassProperty::ClassAttributesMutable),
-					Error::<T>::Immutable
-				);
-
-				data.attributes = attributes;
-
-				Ok(())
-			})
-		}
-
-		#[pallet::weight(0)]
-		#[transactional]
-		pub fn update_token_attributes(
-			origin: OriginFor<T>,
-			token: (ClassIdOf<T>, TokenIdOf<T>),
-			attributes: Attributes,
-		) -> DispatchResult {
-			let who = ensure_signed(origin)?;
-			orml_nft::Tokens::<T>::try_mutate(token.0, token.1, |token_info| {
-				let token_info = token_info.as_mut().ok_or(Error::<T>::TokenIdNotFound)?;
-
-				let class_info = orml_nft::Pallet::<T>::classes(token.0).ok_or(Error::<T>::ClassIdNotFound)?;
-				ensure!(who == class_info.owner, Error::<T>::NoPermission);
-
-				ensure!(
-					class_info
-						.data
-						.properties
-						.0
-						.contains(ClassProperty::TokenAttributesMutable),
-					Error::<T>::Immutable
-				);
-
-				token_info.data.attributes = attributes;
 
 				Ok(())
 			})
@@ -459,7 +413,7 @@ impl<T: Config> Pallet<T> {
 		let class_info = orml_nft::Pallet::<T>::classes(class_id).ok_or(Error::<T>::ClassIdNotFound)?;
 		ensure!(who == class_info.owner, Error::<T>::NoPermission);
 
-		let data_deposit = Self::data_deposit(&metadata, &attributes);
+		let data_deposit = Self::data_deposit(&metadata, &attributes)?;
 		let deposit = T::CreateTokenDeposit::get().saturating_add(data_deposit);
 		let total_deposit = deposit.saturating_mul(quantity.into());
 
@@ -502,12 +456,19 @@ impl<T: Config> Pallet<T> {
 		Ok(())
 	}
 
-	fn data_deposit(metadata: &CID, attributes: &Attributes) -> BalanceOf<T> {
+	fn data_deposit(metadata: &[u8], attributes: &Attributes) -> Result<BalanceOf<T>, DispatchError> {
 		// Addition can't overflow because we will be out of memory before that
-		let total_data_len = attributes
+		let attributes_len = attributes
 			.iter()
-			.fold(metadata.len() as u32, |acc, (k, v)| (v.len() + k.len()) as u32 + acc);
-		T::DataDepositPerByte::get().saturating_mul(total_data_len.into())
+			.fold(0, |acc, (k, v)| (v.len() + k.len()) as u32 + acc);
+
+		ensure!(
+			attributes_len <= T::MaxAttributesBytes::get(),
+			Error::<T>::AttributesTooLarge
+		);
+
+		let total_data_len = metadata.len() as u32 + attributes_len;
+		Ok(T::DataDepositPerByte::get().saturating_mul(total_data_len.into()))
 	}
 }
 
