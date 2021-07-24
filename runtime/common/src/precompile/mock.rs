@@ -183,6 +183,7 @@ parameter_types! {
 	pub const CreateTokenDeposit: Balance = 100;
 	pub const DataDepositPerByte: Balance = 10;
 	pub const NftPalletId: PalletId = PalletId(*b"aca/aNFT");
+	pub MaxAttributesBytes: u32 = 2048;
 }
 impl module_nft::Config for Test {
 	type Event = Event;
@@ -191,6 +192,7 @@ impl module_nft::Config for Test {
 	type CreateTokenDeposit = CreateTokenDeposit;
 	type DataDepositPerByte = DataDepositPerByte;
 	type PalletId = NftPalletId;
+	type MaxAttributesBytes = MaxAttributesBytes;
 	type WeightInfo = ();
 }
 

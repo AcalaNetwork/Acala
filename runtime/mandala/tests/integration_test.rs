@@ -1128,7 +1128,8 @@ fn test_nft_module() {
 			assert_ok!(NFT::create_class(
 				Origin::signed(AccountId::from(ALICE)),
 				metadata.clone(),
-				module_nft::Properties(module_nft::ClassProperty::Transferable | module_nft::ClassProperty::Burnable)
+				module_nft::Properties(module_nft::ClassProperty::Transferable | module_nft::ClassProperty::Burnable),
+				Default::default(),
 			));
 			let deposit =
 				Proxy::deposit(1u32) + CreateClassDeposit::get() + DataDepositPerByte::get() * (metadata.len() as u128);
@@ -1152,6 +1153,7 @@ fn test_nft_module() {
 				MultiAddress::Id(AccountId::from(BOB)),
 				0,
 				metadata.clone(),
+				Default::default(),
 				1
 			));
 			assert_ok!(NFT::burn(Origin::signed(AccountId::from(BOB)), (0, 0)));
