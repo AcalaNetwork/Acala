@@ -40,6 +40,14 @@ fn dollar(d: u32) -> Balance {
 	d.saturating_mul(1_000_000_000_000_000_000)
 }
 
+fn test_attr() -> Attributes {
+	let mut attr: Attributes = BTreeMap::new();
+	for i in 0..30 {
+		attr.insert(vec![i], vec![0; 64]);
+	}
+	attr
+}
+
 benchmarks! {
 	// create NFT class
 	create_class {
@@ -47,7 +55,7 @@ benchmarks! {
 		let base_currency_amount = dollar(1000);
 
 		<T as module::Config>::Currency::make_free_balance_be(&caller, base_currency_amount.unique_saturated_into());
-	}: _(RawOrigin::Signed(caller), vec![1], Properties(ClassProperty::Transferable | ClassProperty::Burnable))
+	}: _(RawOrigin::Signed(caller), vec![1], Properties(ClassProperty::Transferable | ClassProperty::Burnable), test_attr())
 
 	// mint NFT token
 	mint {
@@ -61,9 +69,9 @@ benchmarks! {
 		<T as module::Config>::Currency::make_free_balance_be(&caller, base_currency_amount.unique_saturated_into());
 
 		let module_account: T::AccountId = T::PalletId::get().into_sub_account(orml_nft::Pallet::<T>::next_class_id());
-		crate::Pallet::<T>::create_class(RawOrigin::Signed(caller).into(), vec![1], Properties(ClassProperty::Transferable | ClassProperty::Burnable))?;
+		crate::Pallet::<T>::create_class(RawOrigin::Signed(caller).into(), vec![1], Properties(ClassProperty::Transferable | ClassProperty::Burnable), test_attr())?;
 		<T as module::Config>::Currency::make_free_balance_be(&module_account, base_currency_amount.unique_saturated_into());
-	}: _(RawOrigin::Signed(module_account), to_lookup, 0u32.into(), vec![1], i)
+	}: _(RawOrigin::Signed(module_account), to_lookup, 0u32.into(), vec![1], test_attr(), i)
 
 	// transfer NFT token to another account
 	transfer {
@@ -76,9 +84,9 @@ benchmarks! {
 		<T as module::Config>::Currency::make_free_balance_be(&caller, base_currency_amount.unique_saturated_into());
 
 		let module_account: T::AccountId = T::PalletId::get().into_sub_account(orml_nft::Pallet::<T>::next_class_id());
-		crate::Pallet::<T>::create_class(RawOrigin::Signed(caller).into(), vec![1], Properties(ClassProperty::Transferable | ClassProperty::Burnable))?;
+		crate::Pallet::<T>::create_class(RawOrigin::Signed(caller).into(), vec![1], Properties(ClassProperty::Transferable | ClassProperty::Burnable), test_attr())?;
 		<T as module::Config>::Currency::make_free_balance_be(&module_account, base_currency_amount.unique_saturated_into());
-		crate::Pallet::<T>::mint(RawOrigin::Signed(module_account).into(), to_lookup, 0u32.into(), vec![1], 1)?;
+		crate::Pallet::<T>::mint(RawOrigin::Signed(module_account).into(), to_lookup, 0u32.into(), vec![1], test_attr(), 1)?;
 	}: _(RawOrigin::Signed(to), caller_lookup, (0u32.into(), 0u32.into()))
 
 	// burn NFT token
@@ -91,9 +99,9 @@ benchmarks! {
 		<T as module::Config>::Currency::make_free_balance_be(&caller, base_currency_amount.unique_saturated_into());
 
 		let module_account: T::AccountId = T::PalletId::get().into_sub_account(orml_nft::Pallet::<T>::next_class_id());
-		crate::Pallet::<T>::create_class(RawOrigin::Signed(caller).into(), vec![1], Properties(ClassProperty::Transferable | ClassProperty::Burnable))?;
+		crate::Pallet::<T>::create_class(RawOrigin::Signed(caller).into(), vec![1], Properties(ClassProperty::Transferable | ClassProperty::Burnable), test_attr())?;
 		<T as module::Config>::Currency::make_free_balance_be(&module_account, base_currency_amount.unique_saturated_into());
-		crate::Pallet::<T>::mint(RawOrigin::Signed(module_account).into(), to_lookup, 0u32.into(), vec![1], 1)?;
+		crate::Pallet::<T>::mint(RawOrigin::Signed(module_account).into(), to_lookup, 0u32.into(), vec![1], test_attr(), 1)?;
 	}: _(RawOrigin::Signed(to), (0u32.into(), 0u32.into()))
 
 	// burn NFT token with remark
@@ -108,9 +116,9 @@ benchmarks! {
 		<T as module::Config>::Currency::make_free_balance_be(&caller, base_currency_amount.unique_saturated_into());
 
 		let module_account: T::AccountId = T::PalletId::get().into_sub_account(orml_nft::Pallet::<T>::next_class_id());
-		crate::Pallet::<T>::create_class(RawOrigin::Signed(caller).into(), vec![1], Properties(ClassProperty::Transferable | ClassProperty::Burnable))?;
+		crate::Pallet::<T>::create_class(RawOrigin::Signed(caller).into(), vec![1], Properties(ClassProperty::Transferable | ClassProperty::Burnable), test_attr())?;
 		<T as module::Config>::Currency::make_free_balance_be(&module_account, base_currency_amount.unique_saturated_into());
-		crate::Pallet::<T>::mint(RawOrigin::Signed(module_account).into(), to_lookup, 0u32.into(), vec![1], 1)?;
+		crate::Pallet::<T>::mint(RawOrigin::Signed(module_account).into(), to_lookup, 0u32.into(), vec![1], test_attr(), 1)?;
 	}: _(RawOrigin::Signed(to), (0u32.into(), 0u32.into()), remark_message)
 
 	// destroy NFT class
@@ -123,8 +131,11 @@ benchmarks! {
 		<T as module::Config>::Currency::make_free_balance_be(&caller, base_currency_amount.unique_saturated_into());
 
 		let module_account: T::AccountId = T::PalletId::get().into_sub_account(orml_nft::Pallet::<T>::next_class_id());
-		crate::Pallet::<T>::create_class(RawOrigin::Signed(caller).into(), vec![1], Properties(ClassProperty::Transferable | ClassProperty::Burnable))?;
+		crate::Pallet::<T>::create_class(RawOrigin::Signed(caller).into(), vec![1], Properties(ClassProperty::Transferable | ClassProperty::Burnable), test_attr())?;
 	}: _(RawOrigin::Signed(module_account), 0u32.into(), caller_lookup)
+
+	// update_class_properties {
+	// }
 }
 
 #[cfg(test)]
@@ -262,7 +273,9 @@ mod mock {
 		pub const CreateTokenDeposit: Balance = 100;
 		pub const DataDepositPerByte: Balance = 10;
 		pub const NftPalletId: PalletId = PalletId(*b"aca/aNFT");
+		pub MaxAttributesBytes: u32 = 2048;
 	}
+
 	impl crate::Config for Runtime {
 		type Event = ();
 		type Currency = Balances;
@@ -270,6 +283,7 @@ mod mock {
 		type CreateTokenDeposit = CreateTokenDeposit;
 		type DataDepositPerByte = DataDepositPerByte;
 		type PalletId = NftPalletId;
+		type MaxAttributesBytes = MaxAttributesBytes;
 		type WeightInfo = ();
 	}
 

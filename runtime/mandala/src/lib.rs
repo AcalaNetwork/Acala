@@ -1270,6 +1270,7 @@ impl module_homa_validator_list::Config for Runtime {
 parameter_types! {
 	pub CreateClassDeposit: Balance = 500 * millicent(ACA);
 	pub CreateTokenDeposit: Balance = 100 * millicent(ACA);
+	pub MaxAttributesBytes: u32 = 2048;
 }
 
 impl module_nft::Config for Runtime {
@@ -1279,6 +1280,7 @@ impl module_nft::Config for Runtime {
 	type CreateTokenDeposit = CreateTokenDeposit;
 	type DataDepositPerByte = DataDepositPerByte;
 	type PalletId = NftPalletId;
+	type MaxAttributesBytes = MaxAttributesBytes;
 	type WeightInfo = weights::module_nft::WeightInfo<Runtime>;
 }
 
