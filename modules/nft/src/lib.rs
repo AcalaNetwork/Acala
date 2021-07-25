@@ -467,16 +467,16 @@ impl<T: Config> Pallet<T> {
 
 	fn data_deposit(metadata: &[u8], attributes: &Attributes) -> Result<BalanceOf<T>, DispatchError> {
 		// Addition can't overflow because we will be out of memory before that
-		let attributes_len = attributes
-			.iter()
-			.fold(0, |acc, (k, v)| (v.len() + k.len()) as u32 + acc);
+		let attributes_len = attributes.iter().fold(0, |acc, (k, v)| {
+			acc.saturating_add(v.len().saturating_add(k.len()) as u32)
+		});
 
 		ensure!(
 			attributes_len <= T::MaxAttributesBytes::get(),
 			Error::<T>::AttributesTooLarge
 		);
 
-		let total_data_len = metadata.len() as u32 + attributes_len;
+		let total_data_len = attributes_len.saturating_add(metadata.len() as u32);
 		Ok(T::DataDepositPerByte::get().saturating_mul(total_data_len.into()))
 	}
 }
