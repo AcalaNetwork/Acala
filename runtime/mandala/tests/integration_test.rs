@@ -1143,11 +1143,10 @@ fn test_nft_module() {
 				1_000 * dollar(ACA) - deposit
 			);
 			assert_eq!(Balances::reserved_balance(AccountId::from(ALICE)), 0);
-			assert_eq!(
-				Balances::deposit_into_existing(&NftPalletId::get().into_sub_account(0), 1 * CreateTokenDeposit::get())
-					.is_ok(),
-				true
-			);
+			assert_ok!(Balances::deposit_into_existing(
+				&NftPalletId::get().into_sub_account(0),
+				1 * (CreateTokenDeposit::get() + DataDepositPerByte::get())
+			));
 			assert_ok!(NFT::mint(
 				Origin::signed(NftPalletId::get().into_sub_account(0)),
 				MultiAddress::Id(AccountId::from(BOB)),
@@ -1157,7 +1156,10 @@ fn test_nft_module() {
 				1
 			));
 			assert_ok!(NFT::burn(Origin::signed(AccountId::from(BOB)), (0, 0)));
-			assert_eq!(Balances::free_balance(AccountId::from(BOB)), CreateTokenDeposit::get());
+			assert_eq!(
+				Balances::free_balance(AccountId::from(BOB)),
+				CreateTokenDeposit::get() + DataDepositPerByte::get()
+			);
 			assert_noop!(
 				NFT::destroy_class(
 					Origin::signed(NftPalletId::get().into_sub_account(0)),
@@ -1171,7 +1173,10 @@ fn test_nft_module() {
 				0,
 				MultiAddress::Id(AccountId::from(ALICE))
 			));
-			assert_eq!(Balances::free_balance(AccountId::from(BOB)), CreateTokenDeposit::get());
+			assert_eq!(
+				Balances::free_balance(AccountId::from(BOB)),
+				CreateTokenDeposit::get() + DataDepositPerByte::get()
+			);
 			assert_eq!(Balances::reserved_balance(AccountId::from(BOB)), 0);
 			assert_eq!(Balances::free_balance(AccountId::from(ALICE)), 1_000 * dollar(ACA));
 			assert_eq!(Balances::reserved_balance(AccountId::from(ALICE)), 0);
