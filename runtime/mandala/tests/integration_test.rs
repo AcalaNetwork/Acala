@@ -1860,12 +1860,12 @@ fn currency_id_convert() {
 fn parachain_subaccounts_are_unique() {
 	ExtBuilder::default().build().execute_with(|| {
 		let parachain: AccountId = ParachainInfo::parachain_id().into_account();
-		let relaychain = Utility::derivative_account_id(ParachainInfo::get().into_account(), 0);
-		let relaychain_subaccount_1 = Utility::derivative_account_id(ParachainInfo::get().into_account(), 1);
-		let relaychain_subaccount_2 = Utility::derivative_account_id(ParachainInfo::get().into_account(), 2);
-		assert_ne!(parachain, relaychain);
-		assert_ne!(parachain, relaychain_subaccount_1);
-		assert_ne!(parachain, relaychain_subaccount_2);
-		assert_ne!(relaychain, relaychain_subaccount_1);
+		let relaychain: AccountId = Utility::derivative_account_id(ParachainInfo::get().into_account(), 0);
+		let account1: AccountId =
+			hex_literal::hex!["7061726164000000000000000000000000000000000000000000000000000000"].into();
+		let account2: AccountId =
+			hex_literal::hex!["00465d6ab005c2fd8c4e0bf22a60fe3ce5ff035072ec74679f4babb4c6f00833"].into();
+		assert_eq!(parachain, account1);
+		assert_eq!(relaychain, account2);
 	});
 }
