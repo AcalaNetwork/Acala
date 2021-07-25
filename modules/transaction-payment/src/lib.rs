@@ -594,18 +594,17 @@ where
 				<T as Config>::Currency::ensure_can_withdraw(who, fee, reason, new_free_balance).is_ok()
 			});
 
-		// native is enough, try swap native to pay fee
+		// native is not enough, try swap native to pay fee
 		if !native_is_enough {
 			let price_impact_limit = Some(T::MaxSlippageSwapWithDEX::get());
 			let native_currency_id = T::NativeCurrencyId::get();
 			let default_fee_swap_path_list = T::DefaultFeeSwapPathList::get();
-			let mut fee_swap_path_list: Vec<Vec<CurrencyId>> =
+			let fee_swap_path_list: Vec<Vec<CurrencyId>> =
 				if let Some(trading_path) = AlternativeFeeSwapPath::<T>::get(who) {
 					vec![vec![trading_path], default_fee_swap_path_list].concat()
 				} else {
 					default_fee_swap_path_list
 				};
-			fee_swap_path_list.dedup();
 
 			for trading_path in fee_swap_path_list {
 				match trading_path.last() {
