@@ -38,7 +38,7 @@ do
 		   -- \
 		   --chain=dev \
 		> /dev/null
-	sleep 3s
+	sleep 10s
 
 	echo ""
 	echo "Try to connect to $node"
