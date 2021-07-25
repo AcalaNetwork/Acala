@@ -1860,12 +1860,20 @@ fn currency_id_convert() {
 fn parachain_subaccounts_are_unique() {
 	ExtBuilder::default().build().execute_with(|| {
 		let parachain: AccountId = ParachainInfo::parachain_id().into_account();
-		let relaychain: AccountId = Utility::derivative_account_id(ParachainInfo::get().into_account(), 0);
-		let account1: AccountId =
-			hex_literal::hex!["7061726164000000000000000000000000000000000000000000000000000000"].into();
-		let account2: AccountId =
-			hex_literal::hex!["00465d6ab005c2fd8c4e0bf22a60fe3ce5ff035072ec74679f4babb4c6f00833"].into();
-		assert_eq!(parachain, account1);
-		assert_eq!(relaychain, account2);
+		let subaccount_0: AccountId = Utility::derivative_account_id(ParachainInfo::get().into_account(), 0);
+		let subaccount_1: AccountId = Utility::derivative_account_id(ParachainInfo::get().into_account(), 1);
+
+		assert_eq!(
+			parachain,
+			hex_literal::hex!["7061726164000000000000000000000000000000000000000000000000000000"].into()
+		);
+		assert_eq!(
+			subaccount_0,
+			hex_literal::hex!["00465d6ab005c2fd8c4e0bf22a60fe3ce5ff035072ec74679f4babb4c6f00833"].into()
+		);
+		assert_eq!(
+			subaccount_1,
+			hex_literal::hex!["f0516bdbb7c54cac650736b9891b59242dd8e4e1c14df46dc39550fbb407dbe9"].into()
+		);
 	});
 }
