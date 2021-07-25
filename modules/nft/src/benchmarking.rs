@@ -134,8 +134,17 @@ benchmarks! {
 		crate::Pallet::<T>::create_class(RawOrigin::Signed(caller).into(), vec![1], Properties(ClassProperty::Transferable | ClassProperty::Burnable), test_attr())?;
 	}: _(RawOrigin::Signed(module_account), 0u32.into(), caller_lookup)
 
-	// update_class_properties {
-	// }
+	update_class_properties {
+		let caller: T::AccountId = account("caller", 0, SEED);
+		let to: T::AccountId = account("to", 0, SEED);
+		let to_lookup = T::Lookup::unlookup(to);
+
+		let base_currency_amount = dollar(1000);
+		<T as module::Config>::Currency::make_free_balance_be(&caller, base_currency_amount.unique_saturated_into());
+
+		let module_account: T::AccountId = T::PalletId::get().into_sub_account(orml_nft::Pallet::<T>::next_class_id());
+		crate::Pallet::<T>::create_class(RawOrigin::Signed(caller).into(), vec![1], Properties(ClassProperty::ClassPropertiesMutable.into()), test_attr())?;
+	}: _(RawOrigin::Signed(module_account), 0u32.into(), Properties(ClassProperty::Transferable.into()))
 }
 
 #[cfg(test)]

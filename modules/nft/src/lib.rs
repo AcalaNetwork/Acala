@@ -354,7 +354,7 @@ pub mod module {
 		///
 		/// - `class_id`: The class ID to update
 		/// - `properties`: The new properties
-		#[pallet::weight(0)]
+		#[pallet::weight(<T as Config>::WeightInfo::update_class_properties())]
 		#[transactional]
 		pub fn update_class_properties(
 			origin: OriginFor<T>,
