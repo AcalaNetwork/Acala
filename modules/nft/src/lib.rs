@@ -381,6 +381,7 @@ pub mod module {
 }
 
 impl<T: Config> Pallet<T> {
+	#[require_transactional]
 	fn do_transfer(from: &T::AccountId, to: &T::AccountId, token: (ClassIdOf<T>, TokenIdOf<T>)) -> DispatchResult {
 		let class_info = orml_nft::Pallet::<T>::classes(token.0).ok_or(Error::<T>::ClassIdNotFound)?;
 		let data = class_info.data;
@@ -401,6 +402,7 @@ impl<T: Config> Pallet<T> {
 		Ok(())
 	}
 
+	#[require_transactional]
 	fn do_mint(
 		who: T::AccountId,
 		to: T::AccountId,
@@ -485,7 +487,6 @@ impl<T: Config> NFT<T::AccountId> for Pallet<T> {
 		orml_nft::Pallet::<T>::tokens(token.0, token.1).map(|t| t.owner)
 	}
 
-	#[require_transactional]
 	fn transfer(from: &T::AccountId, to: &T::AccountId, token: (Self::ClassId, Self::TokenId)) -> DispatchResult {
 		Self::do_transfer(from, to, token)
 	}
