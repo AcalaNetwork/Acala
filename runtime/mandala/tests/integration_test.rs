@@ -1128,7 +1128,11 @@ fn test_nft_module() {
 			assert_ok!(NFT::create_class(
 				Origin::signed(AccountId::from(ALICE)),
 				metadata.clone(),
-				module_nft::Properties(module_nft::ClassProperty::Transferable | module_nft::ClassProperty::Burnable),
+				module_nft::Properties(
+					module_nft::ClassProperty::Transferable
+						| module_nft::ClassProperty::Burnable
+						| module_nft::ClassProperty::Mintable
+				),
 				Default::default(),
 			));
 			let deposit =
