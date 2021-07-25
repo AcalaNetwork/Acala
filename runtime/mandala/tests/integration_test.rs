@@ -35,8 +35,8 @@ use mandala_runtime::{
 	EvmAccounts, EvmCurrencyIdMapping, ExistentialDeposits, Get, GetNativeCurrencyId, Loans, MultiLocation,
 	NativeTokenExistentialDeposit, NetworkId, NftPalletId, Origin, OriginCaller, ParachainInfo, ParachainSystem,
 	Perbill, Proxy, Runtime, Scheduler, Session, SessionManager, SevenDays, System, TokenSymbol, Tokens,
-	TreasuryAccount, TreasuryPalletId, TreasuryReservePalletId, Vesting, XcmConfig, XcmExecutor, ACA, AUSD, DOT, EVM,
-	LDOT, NFT, RENBTC,
+	TreasuryAccount, TreasuryPalletId, TreasuryReservePalletId, Utility, Vesting, XcmConfig, XcmExecutor, ACA, AUSD,
+	DOT, EVM, LDOT, NFT, RENBTC,
 };
 use module_cdp_engine::LiquidationStrategy;
 use module_evm_accounts::EvmAddressMapping;
@@ -1853,5 +1853,19 @@ fn currency_id_convert() {
 			}),
 			Some(ACA)
 		);
+	});
+}
+
+#[test]
+fn parachain_subaccounts_are_unique() {
+	ExtBuilder::default().build().execute_with(|| {
+		let parachain: AccountId = ParachainInfo::parachain_id().into_account();
+		let relaychain = Utility::derivative_account_id(ParachainInfo::get().into_account(), 0);
+		let relaychain_subaccount_1 = Utility::derivative_account_id(ParachainInfo::get().into_account(), 1);
+		let relaychain_subaccount_2 = Utility::derivative_account_id(ParachainInfo::get().into_account(), 2);
+		assert_ne!(parachain, relaychain);
+		assert_ne!(parachain, relaychain_subaccount_1);
+		assert_ne!(parachain, relaychain_subaccount_2);
+		assert_ne!(relaychain, relaychain_subaccount_1);
 	});
 }
