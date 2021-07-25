@@ -122,7 +122,7 @@ fn mint_should_work() {
 		assert_ok!(NFTModule::create_class(
 			Origin::signed(ALICE),
 			metadata.clone(),
-			Properties(ClassProperty::Transferable | ClassProperty::Burnable),
+			Properties(ClassProperty::Transferable | ClassProperty::Burnable | ClassProperty::Mintable),
 			test_attr(1),
 		));
 		System::assert_last_event(Event::NFTModule(crate::Event::CreatedClass(
@@ -195,7 +195,7 @@ fn mint_should_fail() {
 		assert_ok!(NFTModule::create_class(
 			Origin::signed(ALICE),
 			metadata.clone(),
-			Properties(ClassProperty::Transferable | ClassProperty::Burnable),
+			Properties(ClassProperty::Transferable | ClassProperty::Burnable | ClassProperty::Mintable),
 			Default::default(),
 		));
 		assert_noop!(
@@ -256,13 +256,38 @@ fn mint_should_fail() {
 }
 
 #[test]
+fn mint_should_fail_without_mintable() {
+	ExtBuilder::default().build().execute_with(|| {
+		let metadata = vec![1];
+		assert_ok!(NFTModule::create_class(
+			Origin::signed(ALICE),
+			metadata.clone(),
+			Default::default(),
+			Default::default(),
+		));
+
+		assert_noop!(
+			NFTModule::mint(
+				Origin::signed(class_id_account()),
+				BOB,
+				CLASS_ID,
+				metadata.clone(),
+				Default::default(),
+				2
+			),
+			Error::<Runtime>::NonMintable
+		);
+	});
+}
+
+#[test]
 fn transfer_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		let metadata = vec![1];
 		assert_ok!(NFTModule::create_class(
 			Origin::signed(ALICE),
 			metadata.clone(),
-			Properties(ClassProperty::Transferable | ClassProperty::Burnable),
+			Properties(ClassProperty::Transferable | ClassProperty::Burnable | ClassProperty::Mintable),
 			Default::default(),
 		));
 		assert_ok!(Balances::deposit_into_existing(
@@ -315,7 +340,7 @@ fn transfer_should_fail() {
 		assert_ok!(NFTModule::create_class(
 			Origin::signed(ALICE),
 			metadata.clone(),
-			Properties(ClassProperty::Transferable | ClassProperty::Burnable),
+			Properties(ClassProperty::Transferable | ClassProperty::Burnable | ClassProperty::Mintable),
 			Default::default(),
 		));
 		assert_ok!(Balances::deposit_into_existing(
@@ -349,7 +374,7 @@ fn transfer_should_fail() {
 		assert_ok!(NFTModule::create_class(
 			Origin::signed(ALICE),
 			metadata.clone(),
-			Default::default(),
+			Properties(ClassProperty::Mintable.into()),
 			Default::default(),
 		));
 		assert_ok!(Balances::deposit_into_existing(
@@ -378,7 +403,7 @@ fn burn_should_work() {
 		assert_ok!(NFTModule::create_class(
 			Origin::signed(ALICE),
 			metadata.clone(),
-			Properties(ClassProperty::Transferable | ClassProperty::Burnable),
+			Properties(ClassProperty::Transferable | ClassProperty::Burnable | ClassProperty::Mintable),
 			Default::default(),
 		));
 		assert_ok!(Balances::deposit_into_existing(
@@ -409,7 +434,7 @@ fn burn_should_fail() {
 		assert_ok!(NFTModule::create_class(
 			Origin::signed(ALICE),
 			metadata.clone(),
-			Properties(ClassProperty::Transferable | ClassProperty::Burnable),
+			Properties(ClassProperty::Transferable | ClassProperty::Burnable | ClassProperty::Mintable),
 			Default::default(),
 		));
 		assert_ok!(Balances::deposit_into_existing(
@@ -448,7 +473,7 @@ fn burn_should_fail() {
 		assert_ok!(NFTModule::create_class(
 			Origin::signed(ALICE),
 			metadata.clone(),
-			Default::default(),
+			Properties(ClassProperty::Mintable.into()),
 			Default::default(),
 		));
 		assert_ok!(Balances::deposit_into_existing(
@@ -477,7 +502,7 @@ fn burn_with_remark_should_work() {
 		assert_ok!(NFTModule::create_class(
 			Origin::signed(ALICE),
 			metadata.clone(),
-			Properties(ClassProperty::Transferable | ClassProperty::Burnable),
+			Properties(ClassProperty::Transferable | ClassProperty::Burnable | ClassProperty::Mintable),
 			Default::default(),
 		));
 		assert_ok!(Balances::deposit_into_existing(
@@ -521,7 +546,7 @@ fn destroy_class_should_work() {
 		assert_ok!(NFTModule::create_class(
 			Origin::signed(ALICE),
 			metadata.clone(),
-			Properties(ClassProperty::Transferable | ClassProperty::Burnable),
+			Properties(ClassProperty::Transferable | ClassProperty::Burnable | ClassProperty::Mintable),
 			Default::default(),
 		));
 
@@ -574,7 +599,7 @@ fn destroy_class_should_fail() {
 		assert_ok!(NFTModule::create_class(
 			Origin::signed(ALICE),
 			metadata.clone(),
-			Properties(ClassProperty::Transferable | ClassProperty::Burnable),
+			Properties(ClassProperty::Transferable | ClassProperty::Burnable | ClassProperty::Mintable),
 			Default::default(),
 		));
 		assert_ok!(Balances::deposit_into_existing(
@@ -627,7 +652,7 @@ fn update_class_properties_should_work() {
 		assert_ok!(NFTModule::create_class(
 			Origin::signed(ALICE),
 			metadata.clone(),
-			Properties(ClassProperty::Transferable | ClassProperty::ClassPropertiesMutable),
+			Properties(ClassProperty::Transferable | ClassProperty::ClassPropertiesMutable | ClassProperty::Mintable),
 			Default::default(),
 		));
 
@@ -669,6 +694,18 @@ fn update_class_properties_should_work() {
 		assert_noop!(
 			NFTModule::update_class_properties(Origin::signed(class_id_account()), CLASS_ID, Default::default()),
 			Error::<Runtime>::Immutable
+		);
+
+		assert_noop!(
+			NFTModule::mint(
+				Origin::signed(class_id_account()),
+				BOB,
+				CLASS_ID,
+				metadata.clone(),
+				Default::default(),
+				1
+			),
+			Error::<Runtime>::NonMintable
 		);
 	});
 }

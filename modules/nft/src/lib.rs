@@ -170,6 +170,8 @@ pub mod module {
 		NonTransferable,
 		/// Property of class don't support burn
 		NonBurnable,
+		/// Property of class don't support mint
+		NonMintable,
 		/// Can not destroy class
 		/// Total issuance is not 0
 		CannotDestroyClass,
@@ -414,6 +416,11 @@ impl<T: Config> Pallet<T> {
 		ensure!(quantity >= 1, Error::<T>::InvalidQuantity);
 		let class_info = orml_nft::Pallet::<T>::classes(class_id).ok_or(Error::<T>::ClassIdNotFound)?;
 		ensure!(who == class_info.owner, Error::<T>::NoPermission);
+
+		ensure!(
+			class_info.data.properties.0.contains(ClassProperty::Mintable),
+			Error::<T>::NonMintable
+		);
 
 		let data_deposit = Self::data_deposit(&metadata, &attributes)?;
 		let deposit = T::CreateTokenDeposit::get().saturating_add(data_deposit);
