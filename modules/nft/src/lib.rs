@@ -61,7 +61,7 @@ pub enum ClassProperty {
 	Transferable = 0b00000001,
 	/// Is token burnable
 	Burnable = 0b00000010,
-	/// Allow mint new tokens
+	/// Is minting new tokens allowed
 	Mintable = 0b00000100,
 	/// Is class properties mutable
 	ClassPropertiesMutable = 0b00001000,
