@@ -565,8 +565,8 @@ parameter_types! {
 	pub const BountyCuratorDeposit: Permill = Permill::from_percent(50);
 	pub BountyValueMinimum: Balance = 5 * dollar(KAR);
 	pub DataDepositPerByte: Balance = deposit(0, 1);
-	pub const MaximumReasonLength: u32 = 16384;
-	pub const MaxApprovals: u32 = 100;
+	pub const MaximumReasonLength: u32 = 8192;
+	pub const MaxApprovals: u32 = 30;
 }
 
 impl pallet_treasury::Config for Runtime {
@@ -575,7 +575,7 @@ impl pallet_treasury::Config for Runtime {
 	type ApproveOrigin = EnsureRootOrHalfGeneralCouncil;
 	type RejectOrigin = EnsureRootOrHalfGeneralCouncil;
 	type Event = Event;
-	type OnSlash = ();
+	type OnSlash = Treasury;
 	type ProposalBond = ProposalBond;
 	type ProposalBondMinimum = ProposalBondMinimum;
 	type SpendPeriod = SpendPeriod;
