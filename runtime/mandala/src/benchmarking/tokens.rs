@@ -55,9 +55,41 @@ runtime_benchmarks! {
 
 		let to: AccountId = account("to", 0, SEED);
 		let to_lookup = lookup_of_account(to);
-	}: _(RawOrigin::Signed(from.clone()), to_lookup, STABLECOIN)
+	}: _(RawOrigin::Signed(from.clone()), to_lookup, STABLECOIN, false)
 	verify {
 		assert_eq!(<Tokens as MultiCurrency<_>>::total_balance(STABLECOIN, &from), 0);
+	}
+
+	transfer_keep_alive {
+		let from: AccountId = whitelisted_caller();
+		set_balance(STABLECOIN, &from, 2 * dollar(STABLECOIN));
+
+		let to: AccountId = account("to", 0, SEED);
+		let to_lookup = lookup_of_account(to.clone());
+	}: _(RawOrigin::Signed(from), to_lookup, STABLECOIN, dollar(STABLECOIN))
+	verify {
+		assert_eq!(<Tokens as MultiCurrency<_>>::total_balance(STABLECOIN, &to), dollar(STABLECOIN));
+	}
+
+	force_transfer {
+		let from: AccountId = account("from", 0, SEED);
+		let from_lookup = lookup_of_account(from.clone());
+		set_balance(STABLECOIN, &from, 2 * dollar(STABLECOIN));
+
+		let to: AccountId = account("to", 0, SEED);
+		let to_lookup = lookup_of_account(to.clone());
+	}: _(RawOrigin::Root, from_lookup, to_lookup, STABLECOIN, dollar(STABLECOIN))
+	verify {
+		assert_eq!(<Tokens as MultiCurrency<_>>::total_balance(STABLECOIN, &to), dollar(STABLECOIN));
+	}
+
+	root_set_balance {
+		let who: AccountId = account("who", 0, SEED);
+		let who_lookup = lookup_of_account(who.clone());
+
+	}: set_balance(RawOrigin::Root, who_lookup, STABLECOIN, dollar(STABLECOIN), dollar(STABLECOIN))
+	verify {
+		assert_eq!(<Tokens as MultiCurrency<_>>::total_balance(STABLECOIN, &who), 2 * dollar(STABLECOIN));
 	}
 }
 

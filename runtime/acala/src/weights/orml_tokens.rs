@@ -55,4 +55,19 @@ impl<T: frame_system::Config> orml_tokens::WeightInfo for WeightInfo<T> {
 			.saturating_add(T::DbWeight::get().reads(6 as Weight))
 			.saturating_add(T::DbWeight::get().writes(6 as Weight))
 	}
+	fn transfer_keep_alive() -> Weight {
+		(65_000_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(6 as Weight))
+			.saturating_add(T::DbWeight::get().writes(6 as Weight))
+	}
+	fn force_transfer() -> Weight {
+		(65_000_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(6 as Weight))
+			.saturating_add(T::DbWeight::get().writes(6 as Weight))
+	}
+	fn set_balance() -> Weight {
+		(65_000_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(6 as Weight))
+			.saturating_add(T::DbWeight::get().writes(6 as Weight))
+	}
 }
