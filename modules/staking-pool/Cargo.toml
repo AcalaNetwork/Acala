@@ -1,6 +1,6 @@
 [package]
 name = "module-staking-pool"
-version = "1.2.1"
+version = "1.2.2"
 authors = ["Acala Developers"]
 edition = "2018"
 
