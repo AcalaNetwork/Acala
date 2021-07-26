@@ -1418,14 +1418,21 @@ impl cumulus_pallet_dmp_queue::Config for Runtime {
 	type ExecuteOverweightOrigin = EnsureRoot<AccountId>;
 }
 
+pub fn create_x2_parachain_multilocation(index: u16) -> MultiLocation {
+	MultiLocation::X2(
+		Junction::Parent,
+		Junction::AccountId32 {
+			network: RelayNetwork::get(),
+			id: Utility::derivative_account_id(ParachainInfo::get().into_account(), index).into(),
+		},
+	)
+}
+
 parameter_types! {
 	pub const KSMCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::KSM);
 	pub const LKSMCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::LKSM);
-	pub const MinimumMintThreshold: Balance = 1_000_000_000;
-	pub RelaychainSovereignSubAccount: MultiLocation = MultiLocation::X2( Junction::Parent, Junction::AccountId32 {
-		network: RelayNetwork::get(),
-		id: Utility::derivative_account_id(ParachainInfo::get().into_account(), RELAYCHAIN_SUB_ACCOUNT_ID).into(),
-	});
+	pub MinimumMintThreshold: Balance = 10 * millicent(KSM);
+	pub RelaychainSovereignSubAccount: MultiLocation = create_x2_parachain_multilocation(RELAYCHAIN_SUB_ACCOUNT_ID);
 }
 impl module_homa_lite::Config for Runtime {
 	type Event = Event;
