@@ -226,6 +226,7 @@ impl module_transaction_payment::Config for Test {
 	type FeeMultiplierUpdate = ();
 	type DEX = ();
 	type MaxSlippageSwapWithDEX = MaxSlippageSwapWithDEX;
+	type TradingPathLimit = TradingPathLimit;
 	type WeightInfo = ();
 }
 pub type ChargeTransactionPayment = module_transaction_payment::ChargeTransactionPayment<Test>;

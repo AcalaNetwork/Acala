@@ -1096,6 +1096,7 @@ impl module_transaction_payment::Config for Runtime {
 	type FeeMultiplierUpdate = TargetedFeeAdjustment<Self, TargetBlockFullness, AdjustmentVariable, MinimumMultiplier>;
 	type DEX = Dex;
 	type MaxSlippageSwapWithDEX = MaxSlippageSwapWithDEX;
+	type TradingPathLimit = TradingPathLimit;
 	type WeightInfo = weights::module_transaction_payment::WeightInfo<Runtime>;
 }
 

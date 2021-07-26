@@ -33,6 +33,7 @@ use frame_support::{
 		Currency, ExistenceRequirement, Imbalance, NamedReservableCurrency, OnUnbalanced, SameOrOther, WithdrawReasons,
 	},
 	weights::{DispatchInfo, GetDispatchInfo, Pays, PostDispatchInfo, WeightToFeeCoefficient, WeightToFeePolynomial},
+	BoundedVec,
 };
 use frame_system::pallet_prelude::*;
 use orml_traits::MultiCurrency;
@@ -49,7 +50,7 @@ use sp_runtime::{
 	},
 	FixedPointNumber, FixedPointOperand, FixedU128, Perquintill,
 };
-use sp_std::{prelude::*, vec};
+use sp_std::{convert::TryInto, prelude::*, vec};
 use support::{DEXManager, Ratio, TransactionPayment};
 
 mod mock;
@@ -261,6 +262,10 @@ pub mod module {
 		#[pallet::constant]
 		type MaxSlippageSwapWithDEX: Get<Ratio>;
 
+		/// The limit for length of trading path
+		#[pallet::constant]
+		type TradingPathLimit: Get<u32>;
+
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
 	}
@@ -305,7 +310,7 @@ pub mod module {
 	#[pallet::storage]
 	#[pallet::getter(fn alternative_fee_swap_path)]
 	pub type AlternativeFeeSwapPath<T: Config> =
-		StorageMap<_, Twox64Concat, T::AccountId, Vec<CurrencyId>, OptionQuery>;
+		StorageMap<_, Twox64Concat, T::AccountId, BoundedVec<CurrencyId, T::TradingPathLimit>, OptionQuery>;
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
@@ -388,7 +393,9 @@ pub mod module {
 			if let Some(path) = fee_swap_path {
 				match path.last() {
 					Some(target_currency_id) if path.len() > 1 && *target_currency_id == T::NativeCurrencyId::get() => {
-						AlternativeFeeSwapPath::<T>::insert(&who, path);
+						let path: BoundedVec<CurrencyId, T::TradingPathLimit> =
+							path.try_into().map_err(|_| Error::<T>::InvalidSwapPath)?;
+						AlternativeFeeSwapPath::<T>::insert(&who, &path);
 					}
 					_ => return Err(Error::<T>::InvalidSwapPath.into()),
 				}
@@ -601,7 +608,7 @@ where
 			let default_fee_swap_path_list = T::DefaultFeeSwapPathList::get();
 			let fee_swap_path_list: Vec<Vec<CurrencyId>> =
 				if let Some(trading_path) = AlternativeFeeSwapPath::<T>::get(who) {
-					vec![vec![trading_path], default_fee_swap_path_list].concat()
+					vec![vec![trading_path.into_inner()], default_fee_swap_path_list].concat()
 				} else {
 					default_fee_swap_path_list
 				};

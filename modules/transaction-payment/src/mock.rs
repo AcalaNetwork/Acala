@@ -207,6 +207,7 @@ impl Config for Runtime {
 	type FeeMultiplierUpdate = ();
 	type DEX = DEXModule;
 	type MaxSlippageSwapWithDEX = MaxSlippageSwapWithDEX;
+	type TradingPathLimit = TradingPathLimit;
 	type WeightInfo = ();
 }
 

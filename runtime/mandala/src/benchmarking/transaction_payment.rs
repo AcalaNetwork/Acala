@@ -33,7 +33,7 @@ runtime_benchmarks! {
 		let caller: AccountId = whitelisted_caller();
 	}: _(RawOrigin::Signed(caller.clone()), Some(vec![STABLECOIN, NATIVECOIN]))
 	verify {
-		assert_eq!(TransactionPayment::alternative_fee_swap_path(&caller), Some(vec![STABLECOIN, NATIVECOIN]));
+		assert_eq!(TransactionPayment::alternative_fee_swap_path(&caller).unwrap().into_inner(), vec![STABLECOIN, NATIVECOIN]);
 	}
 
 	on_finalize {

@@ -238,8 +238,8 @@ fn set_alternative_fee_swap_path_work() {
 			Some(vec![AUSD, ACA])
 		));
 		assert_eq!(
-			TransactionPayment::alternative_fee_swap_path(&ALICE),
-			Some(vec![AUSD, ACA])
+			TransactionPayment::alternative_fee_swap_path(&ALICE).unwrap(),
+			vec![AUSD, ACA]
 		);
 		assert_ok!(TransactionPayment::set_alternative_fee_swap_path(
 			Origin::signed(ALICE),
@@ -291,8 +291,8 @@ fn charge_fee_by_default_swap_path() {
 				Some(vec![DOT, ACA])
 			));
 			assert_eq!(
-				TransactionPayment::alternative_fee_swap_path(&BOB),
-				Some(vec![DOT, ACA])
+				TransactionPayment::alternative_fee_swap_path(&BOB).unwrap(),
+				vec![DOT, ACA]
 			);
 			assert_ok!(<Currencies as MultiCurrency<_>>::transfer(DOT, &ALICE, &BOB, 100));
 			assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(ACA, &BOB), 0);
