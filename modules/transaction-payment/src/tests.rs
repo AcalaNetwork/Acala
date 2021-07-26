@@ -230,21 +230,37 @@ fn charges_fee_when_validate_and_native_is_not_enough() {
 }
 
 #[test]
-fn set_default_fee_token_work() {
+fn set_alternative_fee_swap_path_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_eq!(TransactionPayment::default_fee_currency_id(&ALICE), None);
-		assert_ok!(TransactionPayment::set_default_fee_token(
+		assert_eq!(TransactionPayment::alternative_fee_swap_path(&ALICE), None);
+		assert_ok!(TransactionPayment::set_alternative_fee_swap_path(
 			Origin::signed(ALICE),
-			Some(AUSD)
+			Some(vec![AUSD, ACA])
 		));
-		assert_eq!(TransactionPayment::default_fee_currency_id(&ALICE), Some(AUSD));
-		assert_ok!(TransactionPayment::set_default_fee_token(Origin::signed(ALICE), None));
-		assert_eq!(TransactionPayment::default_fee_currency_id(&ALICE), None);
+		assert_eq!(
+			TransactionPayment::alternative_fee_swap_path(&ALICE).unwrap(),
+			vec![AUSD, ACA]
+		);
+		assert_ok!(TransactionPayment::set_alternative_fee_swap_path(
+			Origin::signed(ALICE),
+			None
+		));
+		assert_eq!(TransactionPayment::alternative_fee_swap_path(&ALICE), None);
+
+		assert_noop!(
+			TransactionPayment::set_alternative_fee_swap_path(Origin::signed(ALICE), Some(vec![ACA])),
+			Error::<Runtime>::InvalidSwapPath
+		);
+
+		assert_noop!(
+			TransactionPayment::set_alternative_fee_swap_path(Origin::signed(ALICE), Some(vec![AUSD, DOT])),
+			Error::<Runtime>::InvalidSwapPath
+		);
 	});
 }
 
 #[test]
-fn charge_fee_by_default_fee_token() {
+fn charge_fee_by_default_swap_path() {
 	ExtBuilder::default()
 		.one_hundred_thousand_for_alice_n_charlie()
 		.build()
@@ -270,11 +286,14 @@ fn charge_fee_by_default_fee_token() {
 			));
 			assert_eq!(DEXModule::get_liquidity_pool(ACA, AUSD), (10000, 1000));
 			assert_eq!(DEXModule::get_liquidity_pool(DOT, AUSD), (100, 1000));
-			assert_ok!(TransactionPayment::set_default_fee_token(
+			assert_ok!(TransactionPayment::set_alternative_fee_swap_path(
 				Origin::signed(BOB),
-				Some(DOT)
+				Some(vec![DOT, ACA])
 			));
-			assert_eq!(TransactionPayment::default_fee_currency_id(&BOB), Some(DOT));
+			assert_eq!(
+				TransactionPayment::alternative_fee_swap_path(&BOB).unwrap(),
+				vec![DOT, ACA]
+			);
 			assert_ok!(<Currencies as MultiCurrency<_>>::transfer(DOT, &ALICE, &BOB, 100));
 			assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(ACA, &BOB), 0);
 			assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(AUSD, &BOB), 0);

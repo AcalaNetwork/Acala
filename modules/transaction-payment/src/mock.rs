@@ -174,10 +174,9 @@ impl module_dex::Config for Runtime {
 }
 
 parameter_types! {
-	pub AllNonNativeCurrencyIds: Vec<CurrencyId> = vec![AUSD, DOT];
 	pub MaxSlippageSwapWithDEX: Ratio = Ratio::one();
-	pub const StableCurrencyId: CurrencyId = AUSD;
 	pub static TransactionByteFee: u128 = 1;
+	pub DefaultFeeSwapPathList: Vec<Vec<CurrencyId>> = vec![vec![AUSD, ACA], vec![DOT, AUSD, ACA]];
 }
 
 thread_local! {
@@ -198,9 +197,8 @@ impl OnUnbalanced<pallet_balances::NegativeImbalance<Runtime>> for DealWithFees 
 }
 
 impl Config for Runtime {
-	type AllNonNativeCurrencyIds = AllNonNativeCurrencyIds;
 	type NativeCurrencyId = GetNativeCurrencyId;
-	type StableCurrencyId = StableCurrencyId;
+	type DefaultFeeSwapPathList = DefaultFeeSwapPathList;
 	type Currency = PalletBalances;
 	type MultiCurrency = Currencies;
 	type OnTransactionPayment = DealWithFees;
@@ -209,6 +207,7 @@ impl Config for Runtime {
 	type FeeMultiplierUpdate = ();
 	type DEX = DEXModule;
 	type MaxSlippageSwapWithDEX = MaxSlippageSwapWithDEX;
+	type TradingPathLimit = TradingPathLimit;
 	type WeightInfo = ();
 }
 
