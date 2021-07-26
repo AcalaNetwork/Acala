@@ -2,6 +2,7 @@
 	"name": "acala",
 	"build": { 
 		"dockerfile": "../scripts/Dockerfile"
+		"context": "../",
 	},
 	"runArgs": [
 		"--privileged",
@@ -20,11 +21,17 @@
 	],
 	"settings": {
 		"lldb.executable": "/usr/bin/lldb",
+		"terminal.integrated.shell.linux": "/bin/bash",
 		"files.watcherExclude": {
 			"**/target/**": true
 		},
 		"rust-analyzer.server.path": "/usr/local/cargo/bin/rust-analyzer"
 	},
+	"forwardPorts": [
+		30333,
+		9933,
+		9944
+	]
 	// Note: comment out if you would like to run as root instead
 	"remoteUser": "vscode"
 }

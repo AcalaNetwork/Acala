@@ -1,16 +1,16 @@
 FROM rust as planner
-WORKDIR app
+WORKDIR /app
 # We only pay the installation cost once,
 # it will be cached from the second build onwards
 RUN rustup default nightly-2021-06-01
 RUN cargo install cargo-chef
 COPY . .
-RUN cargo chef prepare  --recipe-path recipe.json
+RUN cargo chef prepare --recipe-path recipe.json
 
 # =============
 
 FROM rust as cacher
-WORKDIR app
+WORKDIR /app
 RUN rustup default nightly-2021-06-01 && \
 	rustup target add wasm32-unknown-unknown --toolchain nightly-2021-06-01
 RUN cargo install cargo-chef
@@ -24,7 +24,7 @@ RUN cargo chef cook --recipe-path recipe.json --release
 # =============
 
 FROM rust as builder
-WORKDIR app
+WORKDIR /app
 
 COPY --from=cacher $CARGO_HOME $CARGO_HOME
 
