@@ -1122,6 +1122,7 @@ impl module_incentives::Config for Runtime {
 parameter_types! {
 	pub CreateClassDeposit: Balance = 20 * dollar(KAR);
 	pub CreateTokenDeposit: Balance = 2 * dollar(KAR);
+	pub MaxAttributesBytes: u32 = 2048;
 }
 
 impl module_nft::Config for Runtime {
@@ -1131,6 +1132,7 @@ impl module_nft::Config for Runtime {
 	type CreateTokenDeposit = CreateTokenDeposit;
 	type DataDepositPerByte = DataDepositPerByte;
 	type PalletId = NftPalletId;
+	type MaxAttributesBytes = MaxAttributesBytes;
 	type WeightInfo = weights::module_nft::WeightInfo<Runtime>;
 }
 

@@ -184,6 +184,7 @@ parameter_types! {
 	pub const CreateTokenDeposit: Balance = 100;
 	pub const DataDepositPerByte: Balance = 10;
 	pub const NftPalletId: PalletId = PalletId(*b"aca/aNFT");
+	pub MaxAttributesBytes: u32 = 10;
 }
 impl Config for Runtime {
 	type Event = Event;
@@ -192,6 +193,7 @@ impl Config for Runtime {
 	type CreateTokenDeposit = CreateTokenDeposit;
 	type DataDepositPerByte = DataDepositPerByte;
 	type PalletId = NftPalletId;
+	type MaxAttributesBytes = MaxAttributesBytes;
 	type WeightInfo = ();
 }
 
