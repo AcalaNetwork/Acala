@@ -48,36 +48,36 @@ use sp_std::marker::PhantomData;
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> module_honzon::WeightInfo for WeightInfo<T> {
 	fn authorize() -> Weight {
-		(66_675_000 as Weight)
+		(67_480_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
 	fn unauthorize() -> Weight {
-		(68_561_000 as Weight)
+		(69_046_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
 	fn unauthorize_all(c: u32, ) -> Weight {
-		(32_654_000 as Weight)
-			// Standard Error: 94_000
-			.saturating_add((39_834_000 as Weight).saturating_mul(c as Weight))
+		(34_088_000 as Weight)
+			// Standard Error: 80_000
+			.saturating_add((39_048_000 as Weight).saturating_mul(c as Weight))
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes((2 as Weight).saturating_mul(c as Weight)))
 	}
 	fn adjust_loan() -> Weight {
-		(515_963_000 as Weight)
+		(288_738_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(21 as Weight))
 			.saturating_add(T::DbWeight::get().writes(11 as Weight))
 	}
 	fn transfer_loan_from() -> Weight {
-		(182_523_000 as Weight)
+		(180_016_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(14 as Weight))
 			.saturating_add(T::DbWeight::get().writes(7 as Weight))
 	}
 	fn close_loan_has_debit_by_dex(u: u32, ) -> Weight {
-		(373_375_000 as Weight)
-			// Standard Error: 5_287_000
-			.saturating_add((29_128_000 as Weight).saturating_mul(u as Weight))
+		(386_969_000 as Weight)
+			// Standard Error: 428_000
+			.saturating_add((19_237_000 as Weight).saturating_mul(u as Weight))
 			.saturating_add(T::DbWeight::get().reads(19 as Weight))
 			.saturating_add(T::DbWeight::get().reads((2 as Weight).saturating_mul(u as Weight)))
 			.saturating_add(T::DbWeight::get().writes(12 as Weight))
