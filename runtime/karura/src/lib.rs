@@ -221,7 +221,10 @@ impl Filter<Call> for BaseCallFilter {
 			// DEX
 			Call::Dex(_) |
 			// Incentives
-			Call::Incentives(_)
+			Call::Incentives(_) |
+			// Honzon
+			Call::Auction(_) | Call::AuctionManager(_) | Call::Honzon(_) | Call::Loans(_) | Call::Prices(_) |
+			Call::CdpTreasury(_) | Call::CdpEngine(_) | Call::EmergencyShutdown(_)
 		)
 	}
 }
