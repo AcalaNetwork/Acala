@@ -10,7 +10,7 @@ on:
       srtool_tag:
         description: The SRTOOL tag to use
         # keep the same as `env.SRTOOL_TAG`
-        default: ${{ env.SRTOOL_TAG }}
+        default: 1.53.0-0.9.16
         required: false
       ref:
         description: The ref to be used for the repo
