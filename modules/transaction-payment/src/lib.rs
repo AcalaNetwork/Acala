@@ -587,22 +587,19 @@ where
 	pub fn ensure_can_charge_fee(who: &T::AccountId, fee: PalletBalanceOf<T>, reason: WithdrawReasons) {
 		let native_existential_deposit = <T as Config>::Currency::minimum_balance();
 		let total_native = <T as Config>::Currency::total_balance(who);
-		// add the gap amount to keep account alive and have enough fee
-		let fee_and_alive_gap = if total_native < native_existential_deposit {
-			fee.saturating_add(native_existential_deposit.saturating_sub(total_native))
-		} else {
-			fee
-		};
 
 		// check native balance if is enough
-		let native_is_enough = <T as Config>::Currency::free_balance(who)
-			.checked_sub(&fee_and_alive_gap)
-			.map_or(false, |new_free_balance| {
-				<T as Config>::Currency::ensure_can_withdraw(who, fee, reason, new_free_balance).is_ok()
-			});
+		let native_is_enough = fee.saturating_add(native_existential_deposit) <= total_native
+			&& <T as Config>::Currency::free_balance(who)
+				.checked_sub(&fee)
+				.map_or(false, |new_free_balance| {
+					<T as Config>::Currency::ensure_can_withdraw(who, fee, reason, new_free_balance).is_ok()
+				});
 
-		// native is not enough, try swap native to pay fee
+		// native is not enough, try swap native to pay fee and gap
 		if !native_is_enough {
+			// add extra gap to keep alive after swap
+			let amount = fee.saturating_add(native_existential_deposit.saturating_sub(total_native));
 			let price_impact_limit = Some(T::MaxSlippageSwapWithDEX::get());
 			let native_currency_id = T::NativeCurrencyId::get();
 			let default_fee_swap_path_list = T::DefaultFeeSwapPathList::get();
@@ -619,7 +616,7 @@ where
 						if T::DEX::swap_with_exact_target(
 							who,
 							&trading_path,
-							fee_and_alive_gap.unique_saturated_into(),
+							amount.unique_saturated_into(),
 							<T as Config>::MultiCurrency::free_balance(
 								*trading_path.first().expect("these's first guaranteed by match"),
 								who,

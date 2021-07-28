@@ -198,10 +198,6 @@ fn charges_fee_when_validate_and_native_is_not_enough() {
 		.one_hundred_thousand_for_alice_n_charlie()
 		.build()
 		.execute_with(|| {
-			assert_ok!(<Currencies as MultiCurrency<_>>::transfer(AUSD, &ALICE, &BOB, 1000));
-			assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(ACA, &BOB), 0);
-			assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(AUSD, &BOB), 1000);
-
 			// add liquidity to DEX
 			assert_ok!(DEXModule::add_liquidity(
 				Origin::signed(ALICE),
@@ -212,8 +208,14 @@ fn charges_fee_when_validate_and_native_is_not_enough() {
 				0,
 				false
 			));
-			assert_eq!(DEXModule::get_liquidity_pool(ACA, AUSD), (10000, 1000));
+			assert_ok!(<Currencies as MultiCurrency<_>>::transfer(AUSD, &ALICE, &BOB, 1000));
 
+			assert_eq!(DEXModule::get_liquidity_pool(ACA, AUSD), (10000, 1000));
+			assert_eq!(Currencies::total_balance(ACA, &BOB), 0);
+			assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(ACA, &BOB), 0);
+			assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(AUSD, &BOB), 1000);
+
+			// total balance is lt ED, will swap fee and ED
 			let fee = 500 * 2 + 1000; // len * byte + weight
 			assert_eq!(
 				ChargeTransactionPayment::<Runtime>::from(0)
@@ -222,10 +224,28 @@ fn charges_fee_when_validate_and_native_is_not_enough() {
 					.priority,
 				fee
 			);
-
-			assert_eq!(Currencies::free_balance(ACA, &BOB), Currencies::minimum_balance(ACA));
+			assert_eq!(Currencies::total_balance(ACA, &BOB), 10);
+			assert_eq!(Currencies::free_balance(ACA, &BOB), 10);
 			assert_eq!(Currencies::free_balance(AUSD, &BOB), 748);
-			assert_eq!(DEXModule::get_liquidity_pool(ACA, AUSD), (10000 - 2000 - 10, 1252));
+			assert_eq!(
+				DEXModule::get_liquidity_pool(ACA, AUSD),
+				(10000 - 2000 - 10, 1000 + 252)
+			);
+
+			// total balance is gte ED, but cannot keep alive after charge,
+			// will swap extra gap to keep alive
+			let fee_2 = 100 * 2 + 1000; // len * byte + weight
+			assert_eq!(
+				ChargeTransactionPayment::<Runtime>::from(0)
+					.validate(&BOB, CALL2, &INFO, 100)
+					.unwrap()
+					.priority,
+				fee_2
+			);
+			assert_eq!(Currencies::total_balance(ACA, &BOB), 10);
+			assert_eq!(Currencies::free_balance(ACA, &BOB), 10);
+			assert_eq!(Currencies::free_balance(AUSD, &BOB), 526);
+			assert_eq!(DEXModule::get_liquidity_pool(ACA, AUSD), (7990 - 1200, 1252 + 222));
 		});
 }
 
