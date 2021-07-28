@@ -25,6 +25,7 @@ use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_core::{crypto::UncheckedInto, sr25519};
 use sp_finality_grandpa::AuthorityId as GrandpaId;
 use sp_runtime::{traits::Zero, FixedPointNumber, FixedU128};
+use sp_std::collections::btree_map::BTreeMap;
 
 use crate::chain_spec::{
 	evm_genesis, get_account_id_from_seed, get_authority_keys_from_seed, Extensions, TELEMETRY_URL,
@@ -240,8 +241,6 @@ fn testnet_genesis(
 		SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, TradingPair, VestingConfig, ACA,
 		AUSD, DOT, LDOT, RENBTC,
 	};
-	#[cfg(feature = "std")]
-	use sp_std::collections::btree_map::BTreeMap;
 
 	let existential_deposit = NativeTokenExistentialDeposit::get();
 
@@ -449,8 +448,6 @@ fn mandala_genesis(
 		StakingPoolConfig, StarportConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig,
 		UnreleasedNativeVaultAccountId, VestingConfig, ACA, AUSD, DOT, LDOT, RENBTC,
 	};
-	#[cfg(feature = "std")]
-	use sp_std::collections::btree_map::BTreeMap;
 
 	let existential_deposit = NativeTokenExistentialDeposit::get();
 
