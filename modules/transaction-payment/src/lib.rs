@@ -587,13 +587,9 @@ where
 	pub fn ensure_can_charge_fee(who: &T::AccountId, fee: PalletBalanceOf<T>, reason: WithdrawReasons) {
 		let native_existential_deposit = <T as Config>::Currency::minimum_balance();
 		let total_native = <T as Config>::Currency::total_balance(who);
-		let is_alive_after_charge = fee
-			.saturating_add(native_existential_deposit)
-			.saturating_sub(total_native)
-			.is_zero();
 
 		// check native balance if is enough
-		let native_is_enough = is_alive_after_charge
+		let native_is_enough = fee.saturating_add(native_existential_deposit) <= total_native
 			&& <T as Config>::Currency::free_balance(who)
 				.checked_sub(&fee)
 				.map_or(false, |new_free_balance| {
@@ -602,6 +598,7 @@ where
 
 		// native is not enough, try swap native to pay fee and gap
 		if !native_is_enough {
+			// add extra gap to keep alive after swap
 			let amount = fee.saturating_add(native_existential_deposit.saturating_sub(total_native));
 			let price_impact_limit = Some(T::MaxSlippageSwapWithDEX::get());
 			let native_currency_id = T::NativeCurrencyId::get();
