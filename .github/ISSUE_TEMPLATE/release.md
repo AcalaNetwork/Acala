@@ -61,6 +61,7 @@ XXX
   - [ ] ORML
   - [ ] Substrate
   - [ ] Cumulus
+  - [ ] Polkadot
   - [ ] Acala
 - [ ] Verify new extrinsics have been correctly whitelisted/blacklisted for proxy filters.
 - [ ] Verify benchmarks & weights have been updated for any modified runtime logics.
@@ -68,6 +69,7 @@ XXX
   - [ ] ORML
   - [ ] Substrate
   - [ ] Cumulus
+  - [ ] Polkadot
   - [ ] Acala
 - [ ] Verify new migrations complete successfully and the runtime state is correctly updated for any public networks.
   - [ ] Verify the execution time to perform runtime upgrade with Karura/Acala onchain data.
