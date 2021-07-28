@@ -970,7 +970,7 @@ parameter_types! {
 	pub DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
 	pub DefaultLiquidationPenalty: Rate = Rate::saturating_from_rational(8, 100);
 	pub MinimumDebitValue: Balance = 20 * dollar(KUSD);
-	pub MaxSlippageSwapWithDEX: Ratio = Ratio::saturating_from_rational(15, 100);
+	pub MaxSlippageSwapWithDEX: Ratio = Ratio::saturating_from_rational(1, 100);
 }
 
 impl module_cdp_engine::Config for Runtime {
