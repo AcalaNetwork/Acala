@@ -966,10 +966,10 @@ where
 
 parameter_types! {
 	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![KSM, LKSM];
-	pub DefaultLiquidationRatio: Ratio = Ratio::saturating_from_rational(130, 100);
+	pub DefaultLiquidationRatio: Ratio = Ratio::saturating_from_rational(150, 100);
 	pub DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
 	pub DefaultLiquidationPenalty: Rate = Rate::saturating_from_rational(8, 100);
-	pub MinimumDebitValue: Balance = dollar(KUSD);
+	pub MinimumDebitValue: Balance = 20 * dollar(KUSD);
 	pub MaxSlippageSwapWithDEX: Ratio = Ratio::saturating_from_rational(15, 100);
 }
 
