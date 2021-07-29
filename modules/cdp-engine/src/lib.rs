@@ -688,8 +688,8 @@ impl<T: Config> Pallet<T> {
 
 	pub fn is_cdp_unsafe(currency_id: CurrencyId, collateral: Balance, debit: Balance) -> bool {
 		let stable_currency_id = T::GetStableCurrencyId::get();
-
-		if let Some(feed_price) = T::PriceSource::get_relative_price(currency_id, stable_currency_id) {
+		// price may have been locked already after emergency shutdown
+		if let Some(feed_price) = T::PriceSource::get_relative_price(currency_id, true, stable_currency_id, true) {
 			let collateral_ratio = Self::calculate_collateral_ratio(currency_id, collateral, debit, feed_price);
 			collateral_ratio < Self::get_liquidation_ratio(currency_id)
 		} else {
@@ -772,8 +772,10 @@ impl<T: Config> Pallet<T> {
 
 		// confiscate collateral in cdp to cdp treasury
 		// and decrease CDP's debit to zero
-		let settle_price: Price = T::PriceSource::get_relative_price(T::GetStableCurrencyId::get(), currency_id)
-			.ok_or(Error::<T>::InvalidFeedPrice)?;
+		// settle price should be a locked price
+		let settle_price: Price =
+			T::PriceSource::get_relative_price(T::GetStableCurrencyId::get(), true, currency_id, true)
+				.ok_or(Error::<T>::InvalidFeedPrice)?;
 		let bad_debt_value = Self::get_debit_value(currency_id, debit);
 		let confiscate_collateral_amount =
 			sp_std::cmp::min(settle_price.saturating_mul_int(bad_debt_value), collateral);
@@ -844,7 +846,7 @@ impl<T: Config> Pallet<T> {
 		let bad_debt_value = Self::get_debit_value(currency_id, debit);
 		let target_stable_amount = Self::get_liquidation_penalty(currency_id).saturating_mul_acc_int(bad_debt_value);
 
-		// try use collateral to swap enough native token in DEX when the price impact
+		// try use collateral to swap enough stable token in DEX when the price impact
 		// is below the limit, otherwise create collateral auctions.
 		let liquidation_strategy = (|| -> Result<LiquidationStrategy, DispatchError> {
 			// swap exact stable with DEX in limit of price impact
@@ -901,8 +903,10 @@ impl<T: Config> RiskManager<T::AccountId, CurrencyId, Balance, Balance> for Pall
 	) -> DispatchResult {
 		if !debit_balance.is_zero() {
 			let debit_value = Self::get_debit_value(currency_id, debit_balance);
-			let feed_price = <T as Config>::PriceSource::get_relative_price(currency_id, T::GetStableCurrencyId::get())
-				.ok_or(Error::<T>::InvalidFeedPrice)?;
+			// price may have been locked already after emergency shutdown
+			let feed_price =
+				<T as Config>::PriceSource::get_relative_price(currency_id, true, T::GetStableCurrencyId::get(), true)
+					.ok_or(Error::<T>::InvalidFeedPrice)?;
 			let collateral_ratio =
 				Self::calculate_collateral_ratio(currency_id, collateral_balance, debit_balance, feed_price);
 

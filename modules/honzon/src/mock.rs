@@ -143,11 +143,16 @@ impl loans::Config for Runtime {
 
 pub struct MockPriceSource;
 impl PriceProvider<CurrencyId> for MockPriceSource {
-	fn get_relative_price(_base: CurrencyId, _quote: CurrencyId) -> Option<Price> {
+	fn get_relative_price(
+		_base: CurrencyId,
+		_priority_locked_for_base: bool,
+		_quote: CurrencyId,
+		_priority_locked_for_quote: bool,
+	) -> Option<Price> {
 		Some(Price::one())
 	}
 
-	fn get_price(_currency_id: CurrencyId) -> Option<Price> {
+	fn get_price(_currency_id: CurrencyId, _priority_locked: bool) -> Option<Price> {
 		Some(Price::one())
 	}
 

@@ -71,7 +71,8 @@ where
 		match action {
 			Action::GetPrice => {
 				let currency_id = input.currency_id_at(1)?;
-				let mut price = PriceProvider::get_price(currency_id).unwrap_or_default();
+				// get the real-time price
+				let mut price = PriceProvider::get_price(currency_id, false).unwrap_or_default();
 
 				let maybe_decimals = CurrencyIdMapping::decimals(currency_id);
 				let decimals = match maybe_decimals {

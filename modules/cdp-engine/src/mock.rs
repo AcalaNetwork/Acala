@@ -151,7 +151,12 @@ impl MockPriceSource {
 	}
 }
 impl PriceProvider<CurrencyId> for MockPriceSource {
-	fn get_relative_price(base: CurrencyId, quote: CurrencyId) -> Option<Price> {
+	fn get_relative_price(
+		base: CurrencyId,
+		_priority_locked_for_base: bool,
+		quote: CurrencyId,
+		_priority_locked_for_quote: bool,
+	) -> Option<Price> {
 		match (base, quote) {
 			(AUSD, BTC) => RELATIVE_PRICE.with(|v| *v.borrow_mut()),
 			(BTC, AUSD) => RELATIVE_PRICE.with(|v| *v.borrow_mut()),
@@ -159,7 +164,7 @@ impl PriceProvider<CurrencyId> for MockPriceSource {
 		}
 	}
 
-	fn get_price(_currency_id: CurrencyId) -> Option<Price> {
+	fn get_price(_currency_id: CurrencyId, _priority_locked: bool) -> Option<Price> {
 		Some(Price::one())
 	}
 

@@ -294,8 +294,13 @@ pub trait CDPTreasuryExtended<AccountId>: CDPTreasury<AccountId> {
 }
 
 pub trait PriceProvider<CurrencyId> {
-	fn get_relative_price(base: CurrencyId, quote: CurrencyId) -> Option<Price>;
-	fn get_price(currency_id: CurrencyId) -> Option<Price>;
+	fn get_relative_price(
+		base: CurrencyId,
+		_priority_locked_for_base: bool,
+		quote: CurrencyId,
+		_priority_locked_for_quote: bool,
+	) -> Option<Price>;
+	fn get_price(currency_id: CurrencyId, priority_locked: bool) -> Option<Price>;
 	fn lock_price(currency_id: CurrencyId);
 	fn unlock_price(currency_id: CurrencyId);
 }
