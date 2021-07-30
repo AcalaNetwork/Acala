@@ -1228,7 +1228,7 @@ pub type OraclePrecompile = runtime_common::OraclePrecompile<
 	AccountId,
 	EvmAddressMapping<Runtime>,
 	EvmCurrencyIdMapping<Runtime>,
-	module_prices::PriorityLockedPriceProvider<Runtime>,
+	module_prices::RealTimePriceProvider<Runtime>,
 >;
 pub type ScheduleCallPrecompile = runtime_common::ScheduleCallPrecompile<
 	AccountId,
