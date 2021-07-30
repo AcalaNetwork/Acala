@@ -34,12 +34,9 @@ use frame_system::pallet_prelude::*;
 use orml_traits::{DataFeeder, DataProvider, MultiCurrency};
 use primitives::{Balance, CurrencyId};
 use sp_core::U256;
-use sp_runtime::{
-	traits::{CheckedDiv, CheckedMul},
-	FixedPointNumber,
-};
-use sp_std::convert::TryInto;
-use support::{CurrencyIdMapping, DEXManager, ExchangeRateProvider, Price, PriceProvider};
+use sp_runtime::{traits::CheckedMul, FixedPointNumber};
+use sp_std::{convert::TryInto, marker::PhantomData};
+use support::{CurrencyIdMapping, DEXManager, ExchangeRateProvider, LockablePrice, Price, PriceProvider};
 
 mod mock;
 mod tests;
@@ -95,6 +92,14 @@ pub mod module {
 		type WeightInfo: WeightInfo;
 	}
 
+	#[pallet::error]
+	pub enum Error<T> {
+		/// Failed to access price
+		AccessPriceFailed,
+		/// There's no locked price
+		NoLockedPrice,
+	}
+
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
@@ -128,7 +133,7 @@ pub mod module {
 		#[transactional]
 		pub fn lock_price(origin: OriginFor<T>, currency_id: CurrencyId) -> DispatchResult {
 			T::LockOrigin::ensure_origin(origin)?;
-			<Pallet<T> as PriceProvider<CurrencyId>>::lock_price(currency_id);
+			<Pallet<T> as LockablePrice<CurrencyId>>::lock_price(currency_id)?;
 			Ok(())
 		}
 
@@ -141,49 +146,24 @@ pub mod module {
 		#[transactional]
 		pub fn unlock_price(origin: OriginFor<T>, currency_id: CurrencyId) -> DispatchResult {
 			T::LockOrigin::ensure_origin(origin)?;
-			<Pallet<T> as PriceProvider<CurrencyId>>::unlock_price(currency_id);
+			<Pallet<T> as LockablePrice<CurrencyId>>::unlock_price(currency_id)?;
 			Ok(())
 		}
 	}
 }
 
-impl<T: Config> PriceProvider<CurrencyId> for Pallet<T> {
-	/// Get exchange rate between two currency,
-	/// if priority_locked is true, will try to get the frozen price first
-	/// instead of get the real-time price directly.
+impl<T: Config> Pallet<T> {
+	/// access the exchange rate of specific currency to USD,
+	/// it always access the real-time price directly.
 	///
 	/// Note: this returns the price for 1 basic unit
-	fn get_relative_price(
-		base_currency_id: CurrencyId,
-		priority_locked_for_base: bool,
-		quote_currency_id: CurrencyId,
-		priority_locked_for_quote: bool,
-	) -> Option<Price> {
-		if let (Some(base_price), Some(quote_price)) = (
-			Self::get_price(base_currency_id, priority_locked_for_base),
-			Self::get_price(quote_currency_id, priority_locked_for_quote),
-		) {
-			base_price.checked_div(&quote_price)
-		} else {
-			None
-		}
-	}
-
-	/// Get the exchange rate of specific currency to USD,
-	/// if priority_locked is true, will try to get the frozen price first
-	/// instead of get the real-time price directly.
-	///
-	/// Note: this returns the price for 1 basic unit
-	fn get_price(currency_id: CurrencyId, priority_locked: bool) -> Option<Price> {
+	fn access_price(currency_id: CurrencyId) -> Option<Price> {
 		let maybe_price = if currency_id == T::GetStableCurrencyId::get() {
 			// if is stable currency, use fixed price
 			Some(T::StableCurrencyFixedPrice::get())
-		} else if let (true, Some(locked_price)) = (priority_locked, Self::locked_price(currency_id)) {
-			// if priority_locked and locked price is some, directly return locked price
-			return Some(locked_price);
 		} else if currency_id == T::GetLiquidCurrencyId::get() {
 			// directly return real-time the multiple of the price of StakingCurrencyId and the exchange rate
-			return Self::get_price(T::GetStakingCurrencyId::get(), false)
+			return Self::access_price(T::GetStakingCurrencyId::get())
 				.and_then(|n| n.checked_mul(&T::LiquidStakingExchangeRateProvider::get_exchange_rate()));
 		} else if let CurrencyId::DexShare(symbol_0, symbol_1) = currency_id {
 			let token_0: CurrencyId = symbol_0.into();
@@ -191,9 +171,7 @@ impl<T: Config> PriceProvider<CurrencyId> for Pallet<T> {
 
 			// directly return the fair price
 			return {
-				if let (Some(price_0), Some(price_1)) =
-					(Self::get_price(token_0, false), Self::get_price(token_1, false))
-				{
+				if let (Some(price_0), Some(price_1)) = (Self::access_price(token_0), Self::access_price(token_1)) {
 					let (pool_0, pool_1) = T::DEX::get_liquidity_pool(token_0, token_1);
 					let total_shares = T::Currency::total_issuance(currency_id);
 					lp_token_fair_price(total_shares, pool_0, pool_1, price_0, price_1)
@@ -215,19 +193,47 @@ impl<T: Config> PriceProvider<CurrencyId> for Pallet<T> {
 			None
 		}
 	}
+}
 
-	fn lock_price(currency_id: CurrencyId) {
-		// lock real-time price
-		if let Some(val) = Self::get_price(currency_id, false) {
-			LockedPrice::<T>::insert(currency_id, val);
-			<Pallet<T>>::deposit_event(Event::LockPrice(currency_id, val));
-		}
+impl<T: Config> LockablePrice<CurrencyId> for Pallet<T> {
+	/// Record the real-time price from oracle as the locked price
+	fn lock_price(currency_id: CurrencyId) -> DispatchResult {
+		let price = Self::access_price(currency_id).ok_or(Error::<T>::AccessPriceFailed)?;
+		LockedPrice::<T>::insert(currency_id, price);
+		Pallet::<T>::deposit_event(Event::LockPrice(currency_id, price));
+		Ok(())
 	}
 
-	fn unlock_price(currency_id: CurrencyId) {
-		if LockedPrice::<T>::take(currency_id).is_some() {
-			<Pallet<T>>::deposit_event(Event::UnlockPrice(currency_id));
-		}
+	/// Unlock the locked price
+	fn unlock_price(currency_id: CurrencyId) -> DispatchResult {
+		let _ = LockedPrice::<T>::take(currency_id).ok_or(Error::<T>::NoLockedPrice)?;
+		Pallet::<T>::deposit_event(Event::UnlockPrice(currency_id));
+		Ok(())
+	}
+}
+
+/// PriceProvider that always provider real-time prices from oracle
+pub struct RealTimePriceProvider<T>(PhantomData<T>);
+impl<T: Config> PriceProvider<CurrencyId> for RealTimePriceProvider<T> {
+	fn get_price(currency_id: CurrencyId) -> Option<Price> {
+		Pallet::<T>::access_price(currency_id)
+	}
+}
+
+/// PriceProvider that priority access to the locked price, if it is none,
+/// will access to real-time price
+pub struct PriorityLockedPriceProvider<T>(PhantomData<T>);
+impl<T: Config> PriceProvider<CurrencyId> for PriorityLockedPriceProvider<T> {
+	fn get_price(currency_id: CurrencyId) -> Option<Price> {
+		Pallet::<T>::locked_price(currency_id).or_else(|| Pallet::<T>::access_price(currency_id))
+	}
+}
+
+/// PriceProvider that always provider locked prices from prices module
+pub struct LockedPriceProvider<T>(PhantomData<T>);
+impl<T: Config> PriceProvider<CurrencyId> for LockedPriceProvider<T> {
+	fn get_price(currency_id: CurrencyId) -> Option<Price> {
+		Pallet::<T>::locked_price(currency_id)
 	}
 }
 

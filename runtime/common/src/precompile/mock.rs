@@ -346,7 +346,12 @@ pub type MultiCurrencyPrecompile =
 pub type NFTPrecompile = crate::NFTPrecompile<AccountId, MockAddressMapping, EvmCurrencyIdMapping, NFTModule>;
 pub type StateRentPrecompile =
 	crate::StateRentPrecompile<AccountId, MockAddressMapping, EvmCurrencyIdMapping, ModuleEVM>;
-pub type OraclePrecompile = crate::OraclePrecompile<AccountId, MockAddressMapping, EvmCurrencyIdMapping, Prices>;
+pub type OraclePrecompile = crate::OraclePrecompile<
+	AccountId,
+	MockAddressMapping,
+	EvmCurrencyIdMapping,
+	module_prices::PriorityLockedPriceProvider<Test>,
+>;
 pub type ScheduleCallPrecompile = crate::ScheduleCallPrecompile<
 	AccountId,
 	MockAddressMapping,

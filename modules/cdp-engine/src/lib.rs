@@ -688,8 +688,7 @@ impl<T: Config> Pallet<T> {
 
 	pub fn is_cdp_unsafe(currency_id: CurrencyId, collateral: Balance, debit: Balance) -> bool {
 		let stable_currency_id = T::GetStableCurrencyId::get();
-		// price may have been locked already after emergency shutdown
-		if let Some(feed_price) = T::PriceSource::get_relative_price(currency_id, true, stable_currency_id, true) {
+		if let Some(feed_price) = T::PriceSource::get_relative_price(currency_id, stable_currency_id) {
 			let collateral_ratio = Self::calculate_collateral_ratio(currency_id, collateral, debit, feed_price);
 			collateral_ratio < Self::get_liquidation_ratio(currency_id)
 		} else {
@@ -772,10 +771,8 @@ impl<T: Config> Pallet<T> {
 
 		// confiscate collateral in cdp to cdp treasury
 		// and decrease CDP's debit to zero
-		// settle price should be a locked price
-		let settle_price: Price =
-			T::PriceSource::get_relative_price(T::GetStableCurrencyId::get(), true, currency_id, true)
-				.ok_or(Error::<T>::InvalidFeedPrice)?;
+		let settle_price: Price = T::PriceSource::get_relative_price(T::GetStableCurrencyId::get(), currency_id)
+			.ok_or(Error::<T>::InvalidFeedPrice)?;
 		let bad_debt_value = Self::get_debit_value(currency_id, debit);
 		let confiscate_collateral_amount =
 			sp_std::cmp::min(settle_price.saturating_mul_int(bad_debt_value), collateral);
@@ -903,10 +900,8 @@ impl<T: Config> RiskManager<T::AccountId, CurrencyId, Balance, Balance> for Pall
 	) -> DispatchResult {
 		if !debit_balance.is_zero() {
 			let debit_value = Self::get_debit_value(currency_id, debit_balance);
-			// price may have been locked already after emergency shutdown
-			let feed_price =
-				<T as Config>::PriceSource::get_relative_price(currency_id, true, T::GetStableCurrencyId::get(), true)
-					.ok_or(Error::<T>::InvalidFeedPrice)?;
+			let feed_price = <T as Config>::PriceSource::get_relative_price(currency_id, T::GetStableCurrencyId::get())
+				.ok_or(Error::<T>::InvalidFeedPrice)?;
 			let collateral_ratio =
 				Self::calculate_collateral_ratio(currency_id, collateral_balance, debit_balance, feed_price);
 

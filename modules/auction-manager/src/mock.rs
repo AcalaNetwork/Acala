@@ -138,22 +138,13 @@ impl MockPriceSource {
 	}
 }
 impl PriceProvider<CurrencyId> for MockPriceSource {
-	fn get_relative_price(
-		_base: CurrencyId,
-		_priority_locked_for_base: bool,
-		_quote: CurrencyId,
-		_priority_locked_for_quote: bool,
-	) -> Option<Price> {
+	fn get_relative_price(_base: CurrencyId, _quote: CurrencyId) -> Option<Price> {
 		RELATIVE_PRICE.with(|v| *v.borrow_mut())
 	}
 
-	fn get_price(_currency_id: CurrencyId, _allow_frozen: bool) -> Option<Price> {
+	fn get_price(_currency_id: CurrencyId) -> Option<Price> {
 		None
 	}
-
-	fn lock_price(_currency_id: CurrencyId) {}
-
-	fn unlock_price(_currency_id: CurrencyId) {}
 }
 
 parameter_types! {

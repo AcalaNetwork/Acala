@@ -394,10 +394,8 @@ impl<T: Config> Pallet<T> {
 
 		// calculate how much collateral to offset target in settle price
 		let stable_currency_id = T::GetStableCurrencyId::get();
-		// settle price should be a locked price
-		let settle_price =
-			T::PriceSource::get_relative_price(stable_currency_id, true, collateral_auction.currency_id, true)
-				.ok_or(Error::<T>::InvalidFeedPrice)?;
+		let settle_price = T::PriceSource::get_relative_price(stable_currency_id, collateral_auction.currency_id)
+			.ok_or(Error::<T>::InvalidFeedPrice)?;
 		let confiscate_collateral_amount = if collateral_auction.always_forward() {
 			collateral_auction.amount
 		} else {
