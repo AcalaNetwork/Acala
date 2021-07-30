@@ -889,7 +889,7 @@ impl module_auction_manager::Config for Runtime {
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type CDPTreasury = CdpTreasury;
 	type DEX = Dex;
-	type PriceSource = Prices;
+	type PriceSource = module_prices::PriorityLockedPriceProvider<Runtime>;
 	type UnsignedPriority = runtime_common::AuctionManagerUnsignedPriority;
 	type EmergencyShutdown = EmergencyShutdown;
 	type WeightInfo = weights::module_auction_manager::WeightInfo<Runtime>;
@@ -975,7 +975,7 @@ parameter_types! {
 
 impl module_cdp_engine::Config for Runtime {
 	type Event = Event;
-	type PriceSource = Prices;
+	type PriceSource = module_prices::PriorityLockedPriceProvider<Runtime>;
 	type CollateralCurrencyIds = CollateralCurrencyIds;
 	type DefaultLiquidationRatio = DefaultLiquidationRatio;
 	type DefaultDebitExchangeRate = DefaultDebitExchangeRate;
@@ -1224,8 +1224,12 @@ pub type NFTPrecompile =
 	runtime_common::NFTPrecompile<AccountId, EvmAddressMapping<Runtime>, EvmCurrencyIdMapping<Runtime>, NFT>;
 pub type StateRentPrecompile =
 	runtime_common::StateRentPrecompile<AccountId, EvmAddressMapping<Runtime>, EvmCurrencyIdMapping<Runtime>, EVM>;
-pub type OraclePrecompile =
-	runtime_common::OraclePrecompile<AccountId, EvmAddressMapping<Runtime>, EvmCurrencyIdMapping<Runtime>, Prices>;
+pub type OraclePrecompile = runtime_common::OraclePrecompile<
+	AccountId,
+	EvmAddressMapping<Runtime>,
+	EvmCurrencyIdMapping<Runtime>,
+	module_prices::RealTimePriceProvider<Runtime>,
+>;
 pub type ScheduleCallPrecompile = runtime_common::ScheduleCallPrecompile<
 	AccountId,
 	EvmAddressMapping<Runtime>,

@@ -27,7 +27,7 @@ use primitives::{
 };
 use sp_core::H160;
 use sp_runtime::{
-	traits::{AtLeast32BitUnsigned, MaybeSerializeDeserialize},
+	traits::{AtLeast32BitUnsigned, CheckedDiv, MaybeSerializeDeserialize},
 	transaction_validity::TransactionValidityError,
 	DispatchError, DispatchResult, FixedU128, RuntimeDebug,
 };
@@ -294,10 +294,19 @@ pub trait CDPTreasuryExtended<AccountId>: CDPTreasury<AccountId> {
 }
 
 pub trait PriceProvider<CurrencyId> {
-	fn get_relative_price(base: CurrencyId, quote: CurrencyId) -> Option<Price>;
 	fn get_price(currency_id: CurrencyId) -> Option<Price>;
-	fn lock_price(currency_id: CurrencyId);
-	fn unlock_price(currency_id: CurrencyId);
+	fn get_relative_price(base: CurrencyId, quote: CurrencyId) -> Option<Price> {
+		if let (Some(base_price), Some(quote_price)) = (Self::get_price(base), Self::get_price(quote)) {
+			base_price.checked_div(&quote_price)
+		} else {
+			None
+		}
+	}
+}
+
+pub trait LockablePrice<CurrencyId> {
+	fn lock_price(currency_id: CurrencyId) -> DispatchResult;
+	fn unlock_price(currency_id: CurrencyId) -> DispatchResult;
 }
 
 pub trait ExchangeRateProvider {

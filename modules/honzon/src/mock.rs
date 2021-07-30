@@ -150,10 +150,6 @@ impl PriceProvider<CurrencyId> for MockPriceSource {
 	fn get_price(_currency_id: CurrencyId) -> Option<Price> {
 		Some(Price::one())
 	}
-
-	fn lock_price(_currency_id: CurrencyId) {}
-
-	fn unlock_price(_currency_id: CurrencyId) {}
 }
 
 pub struct MockAuctionManager;

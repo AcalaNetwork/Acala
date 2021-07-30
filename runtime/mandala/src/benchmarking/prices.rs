@@ -16,30 +16,27 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AcalaOracle, CollateralCurrencyIds, CurrencyId, GetStakingCurrencyId, Origin, Price, Prices, Runtime};
+use crate::{CurrencyId, GetStableCurrencyId, Origin, Price, Prices, Runtime};
 
+use super::utils::feed_price;
 use frame_system::RawOrigin;
 use orml_benchmarking::runtime_benchmarks;
 use sp_runtime::traits::One;
 use sp_std::vec;
 
-const STAKING: CurrencyId = GetStakingCurrencyId::get();
+const STAKING: CurrencyId = GetStableCurrencyId::get();
 
 runtime_benchmarks! {
 	{ Runtime, module_prices }
 
 	lock_price {
-		let currency_id: CurrencyId = CollateralCurrencyIds::get()[0];
-
 		// feed price
-		AcalaOracle::feed_values(RawOrigin::Root.into(), vec![(currency_id, Price::one())])?;
+		feed_price(vec![(STAKING, Price::one())])?;
 	}: _(RawOrigin::Root, STAKING)
 
 	unlock_price {
-		let currency_id: CurrencyId = CollateralCurrencyIds::get()[0];
-
 		// feed price
-		AcalaOracle::feed_values(RawOrigin::Root.into(), vec![(currency_id, Price::one())])?;
+		feed_price(vec![(STAKING, Price::one())])?;
 		Prices::lock_price(Origin::root(), STAKING)?;
 	}: _(RawOrigin::Root, STAKING)
 }
