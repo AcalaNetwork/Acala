@@ -77,12 +77,6 @@ fn check_acala_allocation() {
 }
 
 #[test]
-fn check_karura_airdrop() {
-	let airdrop_json = &include_bytes!("../../../../resources/mandala-airdrop-KAR.json")[..];
-	let _: Vec<(AccountId, Balance)> = serde_json::from_slice(airdrop_json).unwrap();
-}
-
-#[test]
 fn check_acala_airdrop() {
 	let airdrop_json = &include_bytes!("../../../../resources/mandala-airdrop-ACA.json")[..];
 	let _: Vec<(AccountId, Balance)> = serde_json::from_slice(airdrop_json).unwrap();

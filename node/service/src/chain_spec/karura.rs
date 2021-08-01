@@ -71,8 +71,6 @@ pub fn latest_karura_config() -> Result<ChainSpec, String> {
 			let existential_deposit = NativeTokenExistentialDeposit::get();
 			let mut total_allocated: Balance = Zero::zero();
 
-			let airdrop_accounts_json = &include_bytes!("../../../../resources/mandala-airdrop-KAR.json")[..];
-			let airdrop_accounts: Vec<(AccountId, Balance)> = serde_json::from_slice(airdrop_accounts_json).unwrap();
 			let other_allocation_json = &include_bytes!("../../../../resources/karura-allocation-KAR.json")[..];
 			let other_allocation: Vec<(AccountId, Balance)> = serde_json::from_slice(other_allocation_json).unwrap();
 
@@ -115,7 +113,6 @@ pub fn latest_karura_config() -> Result<ChainSpec, String> {
 			let initial_allocation = initial_authorities
 				.iter()
 				.map(|x| (x.0.clone(), existential_deposit))
-				.chain(airdrop_accounts)
 				.chain(other_allocation)
 				.chain(
 					get_all_module_accounts()
