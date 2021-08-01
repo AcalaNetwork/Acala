@@ -128,7 +128,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("karura"),
 	impl_name: create_runtime_str!("karura"),
 	authoring_version: 1,
-	spec_version: 1005,
+	spec_version: 1006,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -617,7 +617,7 @@ parameter_types! {
 	pub const VotingPeriod: BlockNumber = 2 * DAYS;
 	pub const FastTrackVotingPeriod: BlockNumber = 3 * HOURS;
 	pub MinimumDeposit: Balance = 1000 * dollar(KAR);
-	pub const EnactmentPeriod: BlockNumber = DAYS;
+	pub const EnactmentPeriod: BlockNumber = 36 * HOURS;
 	pub const CooloffPeriod: BlockNumber = 7 * DAYS;
 	pub PreimageByteDeposit: Balance = deposit(0, 1);
 	pub const InstantAllowed: bool = true;
@@ -687,10 +687,10 @@ impl orml_authority::Config for Runtime {
 }
 
 parameter_types! {
-	pub const MinimumCount: u32 = 3;
-	pub const ExpiresIn: Moment = 1000 * 60 * 60 * 2; // 2 hours
+	pub const MinimumCount: u32 = 5;
+	pub const ExpiresIn: Moment = 1000 * 60 * 60; // 1 hours
 	pub ZeroAccountId: AccountId = AccountId::from([0u8; 32]);
-	pub const MaxHasDispatchedSize: u32 = 40;
+	pub const MaxHasDispatchedSize: u32 = 20;
 }
 
 type AcalaDataProvider = orml_oracle::Instance1;
