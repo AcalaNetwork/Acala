@@ -33,27 +33,26 @@ const SEED: u32 = 0;
 benchmarks! {
 	// Benchmark request_mint
 	request_mint {
-		let amount = 1_000_000_000;
+		let amount = 1_000_000_000_000;
 		let caller: T::AccountId = account("caller", 0, SEED);
 		<T as module::Config>::Currency::deposit(T::StakingCurrencyId::get(), &caller, amount)?;
-		module::Pallet::<T>::set_stash_account_id(RawOrigin::Root.into(), caller.clone())?;
-	}: _(RawOrigin::Signed(caller), amount)
+		module::Pallet::<T>::set_staking_currency_cap(RawOrigin::Root.into(), amount)?;
+	}: _(RawOrigin::Signed(caller), amount, 0)
 
-	issue {}: _(RawOrigin::Root, 1_000_000_000)
+	issue {}: _(RawOrigin::Root, 1_000_000_000_000)
 
-	claim{
-		let amount = 1_000_000_000;
+	claim {
+		let amount = 1_000_000_000_000;
 		let caller: T::AccountId = account("caller", 0, SEED);
 		<T as module::Config>::Currency::deposit(T::LiquidCurrencyId::get(), &caller, amount)?;
 		<T as module::Config>::Currency::deposit(T::StakingCurrencyId::get(), &caller, amount)?;
-		module::Pallet::<T>::set_stash_account_id(RawOrigin::Root.into(), caller.clone())?;
-		module::Pallet::<T>::request_mint(RawOrigin::Signed(caller.clone()).into(), amount)?;
+		module::Pallet::<T>::set_staking_currency_cap(RawOrigin::Root.into(), amount)?;
+		module::Pallet::<T>::request_mint(RawOrigin::Signed(caller.clone()).into(), amount, 0)?;
 		module::Pallet::<T>::issue(RawOrigin::Root.into(), amount)?;
 	}: _(RawOrigin::Signed(caller), caller.clone(), 0)
 
-	set_stash_account_id{
-		let caller: T::AccountId = account("caller", 0, SEED);
-	}: _(RawOrigin::Root, caller)
+	set_staking_currency_cap {
+	}: _(RawOrigin::Root, 1_000_000_000_000_000_000)
 }
 
 #[cfg(test)]
@@ -64,20 +63,16 @@ mod benchmark_mock {
 	use crate as module_homa_lite;
 	use frame_support::{ord_parameter_types, parameter_types};
 	use frame_system::EnsureRoot;
+	use mock::{MockXcm, ACALA, KSM, LKSM, MOCK_XCM_DESTINATION, ROOT};
 	use module_support::mocks::MockAddressMapping;
 	use orml_traits::parameter_type_with_key;
-	use primitives::{Amount, TokenSymbol};
+	use primitives::Amount;
 	use sp_core::H256;
 	use sp_runtime::{testing::Header, traits::IdentityLookup, AccountId32};
 
 	mod homa_lite {
 		pub use super::super::*;
 	}
-
-	pub const ROOT: AccountId = AccountId32::new([255u8; 32]);
-	pub const ACALA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
-	pub const KSM: CurrencyId = CurrencyId::Token(TokenSymbol::KSM);
-	pub const LKSM: CurrencyId = CurrencyId::Token(TokenSymbol::LKSM);
 
 	parameter_types! {
 		pub const BlockHashCount: u64 = 250;
@@ -162,7 +157,8 @@ mod benchmark_mock {
 	parameter_types! {
 		pub const StakingCurrencyId: CurrencyId = KSM;
 		pub const LiquidCurrencyId: CurrencyId = LKSM;
-		pub const HomaLitePalletId: PalletId = PalletId(*b"aca/hmlt");
+		pub const MinimumMintThreshold: Balance = 1_000_000_000;
+		pub const MockXcmDestination: MultiLocation = MOCK_XCM_DESTINATION;
 	}
 	ord_parameter_types! {
 		pub const Root: AccountId = ROOT;
@@ -174,9 +170,11 @@ mod benchmark_mock {
 		type Currency = Currencies;
 		type StakingCurrencyId = StakingCurrencyId;
 		type LiquidCurrencyId = LiquidCurrencyId;
-		type PalletId = HomaLitePalletId;
 		type IssuerOrigin = EnsureRoot<AccountId>;
 		type GovernanceOrigin = EnsureRoot<AccountId>;
+		type MinimumMintThreshold = MinimumMintThreshold;
+		type XcmTransfer = MockXcm;
+		type SovereignSubAccountLocation = MockXcmDestination;
 	}
 
 	type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
@@ -242,9 +240,9 @@ mod tests {
 		});
 	}
 	#[test]
-	fn test_set_stash_account_id() {
+	fn test_set_staking_currency_cap() {
 		ExtBuilder::default().build().execute_with(|| {
-			assert_ok!(test_benchmark_set_stash_account_id::<Runtime>());
+			assert_ok!(test_benchmark_set_staking_currency_cap::<Runtime>());
 		});
 	}
 }

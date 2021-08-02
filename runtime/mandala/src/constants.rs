@@ -91,3 +91,7 @@ pub mod fee {
 		aca_per_second / 100
 	}
 }
+
+pub mod homa {
+	pub const RELAYCHAIN_SUB_ACCOUNT_ID: u16 = 0u16;
+}

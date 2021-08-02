@@ -24,10 +24,11 @@ use super::*;
 use frame_support::{ord_parameter_types, parameter_types};
 use frame_system::EnsureSignedBy;
 use module_support::mocks::MockAddressMapping;
-use orml_traits::parameter_type_with_key;
+use orml_traits::{parameter_type_with_key, XcmExecutionResult, XcmTransfer};
 use primitives::{Amount, TokenSymbol};
 use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, AccountId32};
+use xcm::opaque::v0::{Junction, MultiAsset, MultiLocation, NetworkId, Outcome};
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
@@ -37,14 +38,18 @@ mod homa_lite {
 	pub use super::super::*;
 }
 
-pub const RELAY_CHAIN_STASH: AccountId = AccountId32::new([11u8; 32]);
 pub const ROOT: AccountId = AccountId32::new([255u8; 32]);
 pub const ALICE: AccountId = AccountId32::new([1u8; 32]);
 pub const BOB: AccountId = AccountId32::new([2u8; 32]);
+pub const INVALID_CALLER: AccountId = AccountId32::new([254u8; 32]);
 pub const ACALA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const KSM: CurrencyId = CurrencyId::Token(TokenSymbol::KSM);
 pub const LKSM: CurrencyId = CurrencyId::Token(TokenSymbol::LKSM);
 pub const INITIAL_BALANCE: Balance = 1_000_000;
+pub const MOCK_XCM_DESTINATION: MultiLocation = MultiLocation::X1(Junction::AccountId32 {
+	network: NetworkId::Kusama,
+	id: [1u8; 32],
+});
 
 /// For testing only. Does not check for overflow.
 pub fn dollar(b: Balance) -> Balance {
@@ -53,6 +58,34 @@ pub fn dollar(b: Balance) -> Balance {
 
 parameter_types! {
 	pub const BlockHashCount: u64 = 250;
+}
+
+/// A mock XCM transfer.
+/// Only fails if it is called by "INVALID_CALLER". Otherwise returns OK with 0 weight.
+pub struct MockXcm;
+impl XcmTransfer<AccountId, Balance, CurrencyId> for MockXcm {
+	fn transfer(
+		who: AccountId,
+		_currency_id: CurrencyId,
+		_amount: Balance,
+		_dest: MultiLocation,
+		_dest_weight: Weight,
+	) -> XcmExecutionResult {
+		match who {
+			INVALID_CALLER => Ok(Outcome::Error(xcm::opaque::v0::Error::Undefined)),
+			_ => Ok(Outcome::Complete(0)),
+		}
+	}
+
+	/// Transfer `MultiAsset`
+	fn transfer_multi_asset(
+		_who: AccountId,
+		_asset: MultiAsset,
+		_dest: MultiLocation,
+		_dest_weight: Weight,
+	) -> XcmExecutionResult {
+		Ok(Outcome::Complete(0))
+	}
 }
 
 impl frame_system::Config for Runtime {
@@ -133,7 +166,8 @@ impl module_currencies::Config for Runtime {
 parameter_types! {
 	pub const StakingCurrencyId: CurrencyId = KSM;
 	pub const LiquidCurrencyId: CurrencyId = LKSM;
-	pub const HomaLitePalletId: PalletId = PalletId(*b"aca/hmlt");
+	pub const MinimumMintThreshold: Balance = 1_000_000_000;
+	pub const MockXcmDestination: MultiLocation = MOCK_XCM_DESTINATION;
 }
 ord_parameter_types! {
 	pub const Root: AccountId = ROOT;
@@ -145,9 +179,11 @@ impl Config for Runtime {
 	type Currency = Currencies;
 	type StakingCurrencyId = StakingCurrencyId;
 	type LiquidCurrencyId = LiquidCurrencyId;
-	type PalletId = HomaLitePalletId;
 	type IssuerOrigin = EnsureSignedBy<Root, AccountId>;
 	type GovernanceOrigin = EnsureSignedBy<Root, AccountId>;
+	type MinimumMintThreshold = MinimumMintThreshold;
+	type XcmTransfer = MockXcm;
+	type SovereignSubAccountLocation = MockXcmDestination;
 }
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
@@ -176,8 +212,18 @@ impl Default for ExtBuilder {
 	fn default() -> Self {
 		let initial = dollar(INITIAL_BALANCE);
 		Self {
-			tokens_balances: vec![(ALICE, KSM, initial), (BOB, KSM, initial), (ROOT, LKSM, initial)],
-			native_balances: vec![(ALICE, initial), (BOB, initial), (ROOT, initial)],
+			tokens_balances: vec![
+				(ALICE, KSM, initial),
+				(BOB, KSM, initial),
+				(ROOT, LKSM, initial),
+				(INVALID_CALLER, KSM, initial),
+			],
+			native_balances: vec![
+				(ALICE, initial),
+				(BOB, initial),
+				(ROOT, initial),
+				(INVALID_CALLER, initial),
+			],
 		}
 	}
 }

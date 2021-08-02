@@ -29,14 +29,14 @@ use frame_support::{
 };
 use frame_system::RawOrigin;
 use mandala_runtime::{
-	dollar, get_all_module_accounts, AcalaOracle, AccountId, AuctionManager, Authority, AuthoritysOriginId, Balance,
-	Balances, BlockNumber, Call, CdpEngine, CdpTreasury, CreateClassDeposit, CreateTokenDeposit, Currencies,
-	CurrencyId, CurrencyIdConvert, DataDepositPerByte, Dex, EVMBridge, EmergencyShutdown, EnabledTradingPairs, Event,
-	EvmAccounts, EvmCurrencyIdMapping, ExistentialDeposits, Get, GetNativeCurrencyId, Loans, MultiLocation,
-	NativeTokenExistentialDeposit, NetworkId, NftPalletId, Origin, OriginCaller, ParachainInfo, ParachainSystem,
-	Perbill, Proxy, Runtime, Scheduler, Session, SessionManager, SevenDays, System, TokenSymbol, Tokens,
-	TreasuryAccount, TreasuryPalletId, TreasuryReservePalletId, Vesting, XcmConfig, XcmExecutor, ACA, AUSD, DOT, EVM,
-	LDOT, NFT, RENBTC,
+	create_x2_parachain_multilocation, dollar, get_all_module_accounts, AcalaOracle, AccountId, AuctionManager,
+	Authority, AuthoritysOriginId, Balance, Balances, BlockNumber, Call, CdpEngine, CdpTreasury, CreateClassDeposit,
+	CreateTokenDeposit, Currencies, CurrencyId, CurrencyIdConvert, DataDepositPerByte, Dex, EVMBridge,
+	EmergencyShutdown, EnabledTradingPairs, Event, EvmAccounts, EvmCurrencyIdMapping, ExistentialDeposits, Get,
+	GetNativeCurrencyId, Loans, MultiLocation, NativeTokenExistentialDeposit, NetworkId, NftPalletId, Origin,
+	OriginCaller, ParachainInfo, ParachainSystem, Perbill, Proxy, Runtime, Scheduler, Session, SessionManager,
+	SevenDays, System, TokenSymbol, Tokens, TreasuryAccount, TreasuryPalletId, TreasuryReservePalletId, Vesting,
+	XcmConfig, XcmExecutor, ACA, AUSD, DOT, EVM, LDOT, NFT, RENBTC,
 };
 use module_cdp_engine::LiquidationStrategy;
 use module_evm_accounts::EvmAddressMapping;
@@ -1863,6 +1863,38 @@ fn currency_id_convert() {
 				amount: 1
 			}),
 			Some(ACA)
+		);
+	});
+}
+
+#[test]
+fn parachain_subaccounts_are_unique() {
+	ExtBuilder::default().build().execute_with(|| {
+		let parachain: AccountId = ParachainInfo::parachain_id().into_account();
+		assert_eq!(
+			parachain,
+			hex_literal::hex!["7061726164000000000000000000000000000000000000000000000000000000"].into()
+		);
+
+		assert_eq!(
+			create_x2_parachain_multilocation(0),
+			MultiLocation::X2(
+				Junction::Parent,
+				Junction::AccountId32 {
+					network: NetworkId::Polkadot,
+					id: hex_literal::hex!["00465d6ab005c2fd8c4e0bf22a60fe3ce5ff035072ec74679f4babb4c6f00833"].into(),
+				}
+			)
+		);
+		assert_eq!(
+			create_x2_parachain_multilocation(1),
+			MultiLocation::X2(
+				Junction::Parent,
+				Junction::AccountId32 {
+					network: NetworkId::Polkadot,
+					id: hex_literal::hex!["f0516bdbb7c54cac650736b9891b59242dd8e4e1c14df46dc39550fbb407dbe9"].into(),
+				}
+			)
 		);
 	});
 }

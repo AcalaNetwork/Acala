@@ -20,12 +20,12 @@
 //!
 //! THIS FILE WAS AUTO-GENERATED USING THE SUBSTRATE BENCHMARK CLI VERSION 3.0.0
 //! DATE: 2021-07-21, STEPS: `[50, ]`, REPEAT: 20, LOW RANGE: `[]`, HIGH RANGE: `[]`
-//! EXECUTION: Some(Wasm), WASM-EXECUTION: Compiled, CHAIN: Some("dev"), DB CACHE: 128
+//! EXECUTION: Some(Wasm), WASM-EXECUTION: Compiled, CHAIN: Some("karura-latest"), DB CACHE: 128
 
 // Executed Command:
 // target/release/acala
 // benchmark
-// --chain=dev
+// --chain=karura-latest
 // --steps=50
 // --repeat=20
 // --pallet=module-homa-lite
@@ -33,69 +33,37 @@
 // --execution=wasm
 // --wasm-execution=compiled
 // --heap-pages=4096
-// --template=./templates/module-weight-template.hbs
-// --output=./modules/homa-lite/src/
+// --template=./templates/runtime-weight-template.hbs
+// --output=./runtime/karura/src/weights/
 
 
 #![cfg_attr(rustfmt, rustfmt_skip)]
 #![allow(unused_parens)]
 #![allow(unused_imports)]
-#![allow(clippy::unnecessary_cast)]
 
-use frame_support::{traits::Get, weights::{Weight, constants::RocksDbWeight}};
+use frame_support::{traits::Get, weights::Weight};
 use sp_std::marker::PhantomData;
 
-/// Weight functions needed for module_homa_lite.
-pub trait WeightInfo {
-	fn request_mint() -> Weight;
-	fn issue() -> Weight;
-	fn claim() -> Weight;
-	fn set_staking_currency_cap() -> Weight;
-}
-
-/// Weights for module_homa_lite using the Acala node and recommended hardware.
-pub struct AcalaWeight<T>(PhantomData<T>);
-impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
+/// Weight functions for module_homa_lite.
+pub struct WeightInfo<T>(PhantomData<T>);
+impl<T: frame_system::Config> module_homa_lite::WeightInfo for WeightInfo<T> {
 	fn request_mint() -> Weight {
-		(108_000_000 as Weight)
+		(105_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(12 as Weight))
 			.saturating_add(T::DbWeight::get().writes(6 as Weight))
 	}
 	fn issue() -> Weight {
-		(19_000_000 as Weight)
+		(18_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
 	fn claim() -> Weight {
-		(38_000_000 as Weight)
+		(37_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(4 as Weight))
 			.saturating_add(T::DbWeight::get().writes(3 as Weight))
 	}
 	fn set_staking_currency_cap() -> Weight {
-		(12_000_000 as Weight)
+		(11_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
-	}
-}
-
-// For backwards compatibility and tests
-impl WeightInfo for () {
-	fn request_mint() -> Weight {
-		(108_000_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(12 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(6 as Weight))
-	}
-	fn issue() -> Weight {
-		(19_000_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(2 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(2 as Weight))
-	}
-	fn claim() -> Weight {
-		(38_000_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(4 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(3 as Weight))
-	}
-	fn set_staking_currency_cap() -> Weight {
-		(12_000_000 as Weight)
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
 }
