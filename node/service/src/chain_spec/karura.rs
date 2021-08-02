@@ -17,23 +17,20 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use acala_primitives::AccountId;
-use hex_literal::hex;
 use sc_chain_spec::{ChainType, Properties};
-use sc_telemetry::TelemetryEndpoints;
 use serde_json::map::Map;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
-use sp_core::{crypto::UncheckedInto, sr25519};
+use sp_core::sr25519;
 use sp_runtime::traits::Zero;
-use sp_std::collections::btree_map::BTreeMap;
 
-use crate::chain_spec::{get_account_id_from_seed, get_karura_authority_keys_from_seed, Extensions, TELEMETRY_URL};
+use crate::chain_spec::{get_account_id_from_seed, get_karura_authority_keys_from_seed, Extensions};
 
 use karura_runtime::{
-	dollar, get_all_module_accounts, Balance, BalancesConfig, BlockNumber, CdpEngineConfig, CdpTreasuryConfig,
-	CollatorSelectionConfig, DexConfig, FinancialCouncilMembershipConfig, GeneralCouncilMembershipConfig,
-	HomaCouncilMembershipConfig, NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OrmlNFTConfig,
-	ParachainInfoConfig, Period, SS58Prefix, SessionConfig, SessionKeys, SessionManagerConfig, SudoConfig,
-	SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig, KAR, KSM, KUSD, LKSM,
+	dollar, Balance, BalancesConfig, BlockNumber, CdpEngineConfig, CdpTreasuryConfig, CollatorSelectionConfig,
+	DexConfig, FinancialCouncilMembershipConfig, GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig,
+	OperatorMembershipAcalaConfig, OrmlNFTConfig, ParachainInfoConfig, Period, SS58Prefix, SessionConfig, SessionKeys,
+	SessionManagerConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig,
+	KAR, KSM, KUSD, LKSM,
 };
 use runtime_common::TokenInfo;
 
