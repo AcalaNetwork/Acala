@@ -16,6 +16,7 @@ members = [
 	"runtime/mandala",
 	"runtime/karura",
 	"runtime/acala",
+	"runtime/integration-test",
 
 	"orml/auction",
 	"orml/authority",

@@ -120,7 +120,7 @@ pub use runtime_common::{
 
 mod authority;
 mod benchmarking;
-mod constants;
+pub mod constants;
 
 /// This runtime version.
 #[sp_version::runtime_version]

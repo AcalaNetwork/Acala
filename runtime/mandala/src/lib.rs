@@ -64,7 +64,7 @@ use sp_core::{crypto::KeyTypeId, OpaqueMetadata, H160};
 use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{
-		AccountIdConversion, BadOrigin, BlakeTwo256, Block as BlockT, Convert, SaturatedConversion, StaticLookup, Zero,
+		AccountIdConversion, BadOrigin, BlakeTwo256, Block as BlockT, Convert, SaturatedConversion, StaticLookup,
 	},
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, DispatchResult, FixedPointNumber,
@@ -123,7 +123,7 @@ pub use runtime_common::{
 
 mod authority;
 mod benchmarking;
-mod constants;
+pub mod constants;
 
 /// This runtime version.
 #[sp_version::runtime_version]
@@ -770,8 +770,35 @@ impl DataFeeder<CurrencyId, Price, AccountId> for AggregatedDataProvider {
 }
 
 parameter_type_with_key! {
-	pub ExistentialDeposits: |_currency_id: CurrencyId| -> Balance {
-		Zero::zero()
+	pub ExistentialDeposits: |currency_id: CurrencyId| -> Balance {
+		match currency_id {
+			CurrencyId::Token(symbol) => match symbol {
+				TokenSymbol::AUSD => cent(*currency_id),
+				TokenSymbol::DOT => 10 * millicent(*currency_id),
+				TokenSymbol::LDOT => 50 * millicent(*currency_id),
+
+				TokenSymbol::KAR |
+				TokenSymbol::KUSD |
+				TokenSymbol::KSM |
+				TokenSymbol::LKSM |
+				TokenSymbol::RENBTC |
+				TokenSymbol::ACA |
+				TokenSymbol::CASH => Balance::max_value() // unsupported
+			},
+			CurrencyId::DexShare(dex_share_0, _) => {
+				let currency_id_0: CurrencyId = (*dex_share_0).into();
+
+				// initial dex share amount is calculated based on currency_id_0,
+				// use the ED of currency_id_0 as the ED of lp token.
+				if currency_id_0 == GetNativeCurrencyId::get() {
+					NativeTokenExistentialDeposit::get()
+				} else {
+					Self::get(&currency_id_0)
+				}
+			},
+			CurrencyId::Erc20(_) => Balance::max_value(), // not handled by orml-tokens
+			CurrencyId::ChainSafe(_) => Balance::max_value(), // TODO: update this before we enable ChainSafe bridge
+		}
 	};
 }
 
@@ -1474,7 +1501,7 @@ parameter_types! {
 
 #[cfg(not(feature = "with-ethereum-compatibility"))]
 parameter_types! {
-	pub NativeTokenExistentialDeposit: Balance = microcent(ACA);
+	pub NativeTokenExistentialDeposit: Balance = 10 * cent(ACA); // 0.1 ACA
 	pub const NewContractExtraBytes: u32 = 10_000;
 	pub StorageDepositPerByte: Balance = microcent(ACA);
 	pub const MaxCodeSize: u32 = 60 * 1024;
