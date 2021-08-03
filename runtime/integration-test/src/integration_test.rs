@@ -70,9 +70,9 @@ use mandala_runtime::{
 	BlockNumber, Call, CdpEngine, CdpTreasury, CreateClassDeposit, CreateTokenDeposit, Currencies, CurrencyId,
 	CurrencyIdConvert, DataDepositPerByte, Dex, EVMBridge, EmergencyShutdown, EnabledTradingPairs, Event, EvmAccounts,
 	ExistentialDeposits, Get, GetNativeCurrencyId, Loans, MultiLocation, NativeTokenExistentialDeposit, NetworkId,
-	NftPalletId, Origin, OriginCaller, ParachainInfo, ParachainSystem, Perbill, Proxy, Runtime, Scheduler, Session,
-	SessionManager, SevenDays, System, TokenSymbol, Tokens, TreasuryAccount, TreasuryPalletId, TreasuryReservePalletId,
-	Vesting, XcmConfig, XcmExecutor, EVM, NFT,
+	NftPalletId, OneDay, Origin, OriginCaller, ParachainInfo, ParachainSystem, Perbill, Proxy, Runtime, Scheduler,
+	Session, SessionManager, SevenDays, System, TokenSymbol, Tokens, TreasuryAccount, TreasuryPalletId, Vesting,
+	XcmConfig, XcmExecutor, EVM, NFT,
 };
 
 #[cfg(feature = "with-mandala-runtime")]
@@ -88,13 +88,12 @@ const LPTOKEN: CurrencyId = CurrencyId::DexShare(DexShare::Token(TokenSymbol::AU
 
 #[cfg(feature = "with-karura-runtime")]
 use karura_runtime::{
-	constants::time::*, get_all_module_accounts, AcalaOracle, AccountId, AuctionManager, Authority, AuthoritysOriginId,
-	Balance, Balances, BlockNumber, Call, CdpEngine, CdpTreasury, CreateClassDeposit, CreateTokenDeposit, Currencies,
-	CurrencyId, CurrencyIdConvert, DataDepositPerByte, Dex, EVMBridge, EmergencyShutdown, Event, EvmAccounts,
-	ExistentialDeposits, Get, GetNativeCurrencyId, Loans, MultiLocation, NativeTokenExistentialDeposit, NetworkId,
-	NftPalletId, Origin, OriginCaller, ParachainInfo, ParachainSystem, Perbill, Proxy, Runtime, Scheduler, Session,
-	SessionManager, System, TokenSymbol, Tokens, TreasuryPalletId, TreasuryReservePalletId, Vesting, XcmConfig,
-	XcmExecutor, EVM, NFT,
+	get_all_module_accounts, AcalaOracle, AccountId, AuctionManager, Authority, AuthoritysOriginId, Balance, Balances,
+	BlockNumber, Call, CdpEngine, CdpTreasury, CreateClassDeposit, CreateTokenDeposit, Currencies, CurrencyId,
+	CurrencyIdConvert, DataDepositPerByte, Dex, EVMBridge, EmergencyShutdown, Event, EvmAccounts, ExistentialDeposits,
+	Get, GetNativeCurrencyId, Loans, MultiLocation, NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay,
+	Origin, OriginCaller, ParachainInfo, ParachainSystem, Perbill, Proxy, Runtime, Scheduler, Session, SessionManager,
+	SevenDays, System, TokenSymbol, Tokens, TreasuryPalletId, Vesting, XcmConfig, XcmExecutor, EVM, NFT,
 };
 
 #[cfg(feature = "with-karura-runtime")]
@@ -104,7 +103,6 @@ parameter_types! {
 		TradingPair::from_currency_ids(USD_CURRENCY, RELAY_CHAIN_CURRENCY).unwrap(),
 		TradingPair::from_currency_ids(USD_CURRENCY, LIQUID_CURRENCY).unwrap(),
 	];
-	pub const SevenDays: BlockNumber = 7 * DAYS;
 	pub TreasuryAccount: AccountId = TreasuryPalletId::get().into_account();
 }
 #[cfg(feature = "with-karura-runtime")]
@@ -178,7 +176,7 @@ pub fn deploy_erc20_contracts() {
 	assert_ok!(EVM::create_network_contract(
 		Origin::root(),
 		code.clone(),
-		0,
+		NativeTokenExistentialDeposit::get(),
 		2100_000,
 		100000
 	));
@@ -188,7 +186,13 @@ pub fn deploy_erc20_contracts() {
 
 	assert_ok!(EVM::deploy_free(Origin::root(), erc20_address_0()));
 
-	assert_ok!(EVM::create_network_contract(Origin::root(), code, 0, 2100_000, 100000));
+	assert_ok!(EVM::create_network_contract(
+		Origin::root(),
+		code,
+		NativeTokenExistentialDeposit::get(),
+		2100_000,
+		100000
+	));
 
 	let event = Event::EVM(module_evm::Event::<Runtime>::Created(erc20_address_1()));
 	assert_eq!(System::events().iter().last().unwrap().event, event);
@@ -581,25 +585,29 @@ fn test_dex_module() {
 				// NetworkContractSource
 				MockAddressMapping::get_account_id(&H160::from_low_u64_be(0)),
 				NATIVE_CURRENCY,
-				(1_000_000_000_000_000_000u128),
+				1_000_000 * dollar(NATIVE_CURRENCY),
 			),
 			(
 				// evm alice
 				MockAddressMapping::get_account_id(&alice_evm_addr()),
 				NATIVE_CURRENCY,
-				(1_000_000_000_000_000_000u128),
+				1_000_000 * dollar(NATIVE_CURRENCY),
 			),
-			(AccountId::from(ALICE), USD_CURRENCY, (1_000_000_000_000_000_000u128)),
+			(
+				AccountId::from(ALICE),
+				USD_CURRENCY,
+				1_000_000 * dollar(NATIVE_CURRENCY),
+			),
 			(
 				AccountId::from(ALICE),
 				RELAY_CHAIN_CURRENCY,
-				(1_000_000_000_000_000_000u128),
+				1_000_000 * dollar(NATIVE_CURRENCY),
 			),
-			(AccountId::from(BOB), USD_CURRENCY, (1_000_000_000_000_000_000u128)),
+			(AccountId::from(BOB), USD_CURRENCY, 1_000_000 * dollar(NATIVE_CURRENCY)),
 			(
 				AccountId::from(BOB),
 				RELAY_CHAIN_CURRENCY,
-				(1_000_000_000_000_000_000u128),
+				1_000_000 * dollar(NATIVE_CURRENCY),
 			),
 		])
 		.build()
@@ -1073,11 +1081,7 @@ fn test_authority_module() {
 				RELAY_CHAIN_CURRENCY,
 				1_000 * dollar(RELAY_CHAIN_CURRENCY),
 			),
-			(
-				TreasuryReservePalletId::get().into_account(),
-				USD_CURRENCY,
-				1_000 * dollar(USD_CURRENCY),
-			),
+			(TreasuryAccount::get(), USD_CURRENCY, 1_000 * dollar(USD_CURRENCY)),
 		])
 		.build()
 		.execute_with(|| {
@@ -1114,19 +1118,22 @@ fn test_authority_module() {
 
 			// schedule_dispatch
 			run_to_block(1);
-			// TreasuryReserve transfer
+			// Treasury transfer
 			let transfer_call = Call::Currencies(module_currencies::Call::transfer(
 				AccountId::from(BOB).into(),
 				USD_CURRENCY,
 				500 * dollar(USD_CURRENCY),
 			));
 			let treasury_reserve_call = Call::Authority(orml_authority::Call::dispatch_as(
-				AuthoritysOriginId::TreasuryReserve,
+				AuthoritysOriginId::Treasury,
 				Box::new(transfer_call.clone()),
 			));
+
+			let one_day_later = OneDay::get() + 1;
+
 			assert_ok!(Authority::schedule_dispatch(
 				Origin::root(),
-				DispatchTime::At(2),
+				DispatchTime::At(one_day_later),
 				0,
 				true,
 				Box::new(treasury_reserve_call.clone())
@@ -1134,25 +1141,23 @@ fn test_authority_module() {
 
 			assert_ok!(Authority::schedule_dispatch(
 				Origin::root(),
-				DispatchTime::At(2),
+				DispatchTime::At(one_day_later),
 				0,
 				true,
 				Box::new(call.clone())
 			));
 			System::assert_last_event(Event::Authority(orml_authority::Event::Scheduled(
 				OriginCaller::Authority(DelayedOrigin {
-					delay: 1,
+					delay: one_day_later - 1,
 					origin: Box::new(OriginCaller::system(RawOrigin::Root)),
 				}),
 				1,
 			)));
 
-			run_to_block(2);
-
-			// println!("{:?}", System::events());
+			run_to_block(one_day_later);
 
 			assert_eq!(
-				Currencies::free_balance(USD_CURRENCY, &TreasuryReservePalletId::get().into_account()),
+				Currencies::free_balance(USD_CURRENCY, &TreasuryPalletId::get().into_account()),
 				500 * dollar(USD_CURRENCY)
 			);
 			assert_eq!(
@@ -1161,32 +1166,50 @@ fn test_authority_module() {
 			);
 
 			// delay < SevenDays
+			#[cfg(feature = "with-mandala-runtime")]
 			System::assert_last_event(Event::Scheduler(pallet_scheduler::Event::<Runtime>::Dispatched(
-				(2, 1),
-				Some([AUTHORITY_ORIGIN_ID, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0].to_vec()),
+				(OneDay::get() + 1, 1),
+				Some([AUTHORITY_ORIGIN_ID, 64, 56, 0, 0, 0, 0, 1, 0, 0, 0].to_vec()),
 				Err(DispatchError::BadOrigin),
 			)));
+			#[cfg(feature = "with-karura-runtime")]
+			System::assert_last_event(Event::Scheduler(pallet_scheduler::Event::<Runtime>::Dispatched(
+				(OneDay::get() + 1, 1),
+				Some([AUTHORITY_ORIGIN_ID, 32, 28, 0, 0, 0, 0, 1, 0, 0, 0].to_vec()),
+				Err(DispatchError::BadOrigin),
+			)));
+
+			let seven_days_later = one_day_later + SevenDays::get() + 1;
 
 			// delay = SevenDays
 			assert_ok!(Authority::schedule_dispatch(
 				Origin::root(),
-				DispatchTime::At(SevenDays::get() + 2),
+				DispatchTime::At(seven_days_later),
 				0,
 				true,
 				Box::new(call.clone())
 			));
 
-			run_to_block(SevenDays::get() + 2);
+			run_to_block(seven_days_later);
+
+			#[cfg(feature = "with-mandala-runtime")]
 			System::assert_last_event(Event::Scheduler(pallet_scheduler::Event::<Runtime>::Dispatched(
-				(100802, 0),
-				Some([AUTHORITY_ORIGIN_ID, 192, 137, 1, 0, 0, 0, 2, 0, 0, 0].to_vec()),
+				(seven_days_later, 0),
+				Some([AUTHORITY_ORIGIN_ID, 193, 137, 1, 0, 0, 0, 2, 0, 0, 0].to_vec()),
+				Ok(()),
+			)));
+
+			#[cfg(feature = "with-karura-runtime")]
+			System::assert_last_event(Event::Scheduler(pallet_scheduler::Event::<Runtime>::Dispatched(
+				(seven_days_later, 0),
+				Some([AUTHORITY_ORIGIN_ID, 225, 196, 0, 0, 0, 0, 2, 0, 0, 0].to_vec()),
 				Ok(()),
 			)));
 
 			// with_delayed_origin = false
 			assert_ok!(Authority::schedule_dispatch(
 				Origin::root(),
-				DispatchTime::At(SevenDays::get() + 3),
+				DispatchTime::At(seven_days_later + 1),
 				0,
 				false,
 				Box::new(call.clone())
@@ -1196,16 +1219,16 @@ fn test_authority_module() {
 				3,
 			)));
 
-			run_to_block(SevenDays::get() + 3);
+			run_to_block(seven_days_later + 1);
 			System::assert_last_event(Event::Scheduler(pallet_scheduler::Event::<Runtime>::Dispatched(
-				(100803, 0),
+				(seven_days_later + 1, 0),
 				Some([0, 0, 3, 0, 0, 0].to_vec()),
 				Ok(()),
 			)));
 
 			assert_ok!(Authority::schedule_dispatch(
 				Origin::root(),
-				DispatchTime::At(SevenDays::get() + 4),
+				DispatchTime::At(seven_days_later + 2),
 				0,
 				false,
 				Box::new(call.clone())
@@ -1216,7 +1239,7 @@ fn test_authority_module() {
 				Origin::root(),
 				frame_system::RawOrigin::Root.into(),
 				4,
-				DispatchTime::At(SevenDays::get() + 5),
+				DispatchTime::At(seven_days_later + 3),
 			));
 
 			// delay_scheduled_dispatch
@@ -1230,7 +1253,7 @@ fn test_authority_module() {
 			// cancel_scheduled_dispatch
 			assert_ok!(Authority::schedule_dispatch(
 				Origin::root(),
-				DispatchTime::At(SevenDays::get() + 4),
+				DispatchTime::At(seven_days_later + 2),
 				0,
 				true,
 				Box::new(call.clone())
@@ -1267,7 +1290,7 @@ fn test_authority_module() {
 
 			assert_ok!(Authority::schedule_dispatch(
 				Origin::root(),
-				DispatchTime::At(SevenDays::get() + 5),
+				DispatchTime::At(seven_days_later + 3),
 				0,
 				false,
 				Box::new(call.clone())
@@ -1681,10 +1704,10 @@ fn should_not_kill_contract_on_transfer_all() {
 			assert_eq!(Balances::free_balance(EvmAddressMapping::<Runtime>::get_account_id(&contract)), 2 * dollar(NATIVE_CURRENCY));
 
 			#[cfg(not(feature = "with-ethereum-compatibility"))]
-			assert_eq!(Balances::free_balance(alice()), 997_999_899_380_000);
+			assert_eq!(Balances::free_balance(alice()), 1_997_999_899_380_000);
 
 			#[cfg(feature = "with-ethereum-compatibility")]
-			assert_eq!(Balances::free_balance(alice()), 998 * dollar(NATIVE_CURRENCY));
+			assert_eq!(Balances::free_balance(alice()), 1_998 * dollar(NATIVE_CURRENCY));
 
 			assert_ok!(Currencies::transfer(
 				Origin::signed(EvmAddressMapping::<Runtime>::get_account_id(&contract)),

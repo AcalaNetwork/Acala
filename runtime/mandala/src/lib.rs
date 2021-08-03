@@ -1491,7 +1491,7 @@ parameter_types! {
 
 #[cfg(feature = "with-ethereum-compatibility")]
 parameter_types! {
-	pub const NativeTokenExistentialDeposit: Balance = 1;
+	pub const NativeTokenExistentialDeposit: Balance = 10 * cent(ACA);
 	pub const NewContractExtraBytes: u32 = 0;
 	pub const StorageDepositPerByte: Balance = 0;
 	pub const MaxCodeSize: u32 = 0x6000;
@@ -1501,7 +1501,7 @@ parameter_types! {
 
 #[cfg(not(feature = "with-ethereum-compatibility"))]
 parameter_types! {
-	pub NativeTokenExistentialDeposit: Balance = 10 * cent(ACA); // 0.1 ACA
+	pub NativeTokenExistentialDeposit: Balance = 10 * cent(ACA);
 	pub const NewContractExtraBytes: u32 = 10_000;
 	pub StorageDepositPerByte: Balance = microcent(ACA);
 	pub const MaxCodeSize: u32 = 60 * 1024;

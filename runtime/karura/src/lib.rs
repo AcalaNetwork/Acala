@@ -567,6 +567,9 @@ parameter_types! {
 	pub DataDepositPerByte: Balance = deposit(0, 1);
 	pub const MaximumReasonLength: u32 = 8192;
 	pub const MaxApprovals: u32 = 30;
+
+	pub const SevenDays: BlockNumber = 7 * DAYS;
+	pub const OneDay: BlockNumber = DAYS;
 }
 
 impl pallet_treasury::Config for Runtime {
