@@ -558,34 +558,40 @@ impl<T: Config> Pallet<T> {
 		collateral_auction: CollateralAuctionItem<T::AccountId, T::BlockNumber>,
 		winner: Option<(T::AccountId, Balance)>,
 	) {
-		if let Some((bidder, bid_price)) = winner {
-			let mut should_deal = true;
+		let (maybe_bidder, bid_price) = if let Some((bidder, bid_price)) = winner {
+			(Some(bidder), bid_price)
+		} else {
+			(None, Zero::zero())
+		};
+		let mut should_deal = maybe_bidder.is_some();
 
-			// if bid_price doesn't reach target and trading with DEX will get better result
-			if !collateral_auction.in_reverse_stage(bid_price)
+		// if there's no bid or bid_price doesn't reach target and trading with DEX will get better result
+		if maybe_bidder.is_none()
+			|| (!collateral_auction.in_reverse_stage(bid_price)
 				&& bid_price
 					< T::DEX::get_swap_target_amount(
 						&[collateral_auction.currency_id, T::GetStableCurrencyId::get()],
 						collateral_auction.amount,
 						None,
 					)
-					.unwrap_or_default()
-			{
-				// try swap collateral in auction with DEX to get stable
-				if let Ok(stable_amount) = T::CDPTreasury::swap_exact_collateral_to_stable(
-					collateral_auction.currency_id,
-					collateral_auction.amount,
-					Zero::zero(),
-					None,
-					None,
-					true,
-				) {
-					// swap successfully, will not deal
-					should_deal = false;
+					.unwrap_or_default())
+		{
+			// try swap collateral in auction with DEX to get stable
+			if let Ok(stable_amount) = T::CDPTreasury::swap_exact_collateral_to_stable(
+				collateral_auction.currency_id,
+				collateral_auction.amount,
+				Zero::zero(),
+				None,
+				None,
+				true,
+			) {
+				// swap successfully, will not deal
+				should_deal = false;
 
-					// refund stable currency to the last bidder, it shouldn't fail and affect the
-					// process. but even it failed, just the winner did not get the bid price. it
-					// can be fixed by treasury council.
+				// refund stable currency to the last bidder, it shouldn't fail and affect the
+				// process. but even it failed, just the winner did not get the bid price. it
+				// can be fixed by treasury council.
+				if let Some(bidder) = maybe_bidder.clone() {
 					let res = T::CDPTreasury::issue_debit(&bidder, bid_price, false);
 					if let Err(e) = res {
 						log::warn!(
@@ -596,67 +602,63 @@ impl<T: Config> Pallet<T> {
 						);
 						debug_assert!(false);
 					}
+				}
 
-					if collateral_auction.in_reverse_stage(stable_amount) {
-						// refund extra stable currency to recipient
-						let refund_amount = stable_amount
-							.checked_sub(collateral_auction.target)
-							.expect("ensured stable_amount > target; qed");
-						// it shouldn't fail and affect the process.
-						// but even it failed, just the winner did not get the refund amount. it can be
-						// fixed by treasury council.
-						let res =
-							T::CDPTreasury::issue_debit(&collateral_auction.refund_recipient, refund_amount, false);
-						if let Err(e) = res {
-							log::warn!(
-								target: "auction-manager",
-								"issue_debit: failed to issue stable {:?} to {:?}: {:?}. \
-								This is unexpected but should be safe",
-								refund_amount, collateral_auction.refund_recipient, e
-							);
-							debug_assert!(false);
-						}
+				if collateral_auction.in_reverse_stage(stable_amount) {
+					// refund extra stable currency to recipient
+					let refund_amount = stable_amount
+						.checked_sub(collateral_auction.target)
+						.expect("ensured stable_amount > target; qed");
+					// it shouldn't fail and affect the process.
+					// but even it failed, just the winner did not get the refund amount. it can be
+					// fixed by treasury council.
+					let res = T::CDPTreasury::issue_debit(&collateral_auction.refund_recipient, refund_amount, false);
+					if let Err(e) = res {
+						log::warn!(
+							target: "auction-manager",
+							"issue_debit: failed to issue stable {:?} to {:?}: {:?}. \
+							This is unexpected but should be safe",
+							refund_amount, collateral_auction.refund_recipient, e
+						);
+						debug_assert!(false);
 					}
-
-					Self::deposit_event(Event::DEXTakeCollateralAuction(
-						auction_id,
-						collateral_auction.currency_id,
-						collateral_auction.amount,
-						stable_amount,
-					));
-				}
-			}
-
-			if should_deal {
-				// transfer collateral to winner from CDP treasury, it shouldn't fail and affect
-				// the process. but even it failed, just the winner did not get the amount. it
-				// can be fixed by treasury council.
-				let res = T::CDPTreasury::withdraw_collateral(
-					&bidder,
-					collateral_auction.currency_id,
-					collateral_auction.amount,
-				);
-				if let Err(e) = res {
-					log::warn!(
-						target: "auction-manager",
-						"withdraw_collateral: failed to withdraw {:?} {:?} from CDP treasury to {:?}: {:?}. \
-						This is unexpected but should be safe",
-						collateral_auction.amount, collateral_auction.currency_id, bidder, e
-					);
-					debug_assert!(false);
 				}
 
-				let payment_amount = collateral_auction.payment_amount(bid_price);
-				Self::deposit_event(Event::CollateralAuctionDealt(
+				Self::deposit_event(Event::DEXTakeCollateralAuction(
 					auction_id,
 					collateral_auction.currency_id,
 					collateral_auction.amount,
-					bidder,
-					payment_amount,
+					stable_amount,
 				));
 			}
-		} else {
-			Self::deposit_event(Event::CancelAuction(auction_id));
+		}
+
+		if should_deal {
+			let bidder = maybe_bidder.expect("guaranteed by previous check");
+
+			// transfer collateral to winner from CDP treasury, it shouldn't fail and affect
+			// the process. but even it failed, just the winner did not get the amount. it
+			// can be fixed by treasury council.
+			let res =
+				T::CDPTreasury::withdraw_collateral(&bidder, collateral_auction.currency_id, collateral_auction.amount);
+			if let Err(e) = res {
+				log::warn!(
+					target: "auction-manager",
+					"withdraw_collateral: failed to withdraw {:?} {:?} from CDP treasury to {:?}: {:?}. \
+					This is unexpected but should be safe",
+					collateral_auction.amount, collateral_auction.currency_id, bidder, e
+				);
+				debug_assert!(false);
+			}
+
+			let payment_amount = collateral_auction.payment_amount(bid_price);
+			Self::deposit_event(Event::CollateralAuctionDealt(
+				auction_id,
+				collateral_auction.currency_id,
+				collateral_auction.amount,
+				bidder,
+				payment_amount,
+			));
 		}
 
 		// decrement recipient account reference
@@ -749,9 +751,9 @@ impl<T: Config> AuctionManager<T::AccountId> for Pallet<T> {
 		}
 
 		let start_time = <frame_system::Pallet<T>>::block_number();
-
-		// do not set end time for collateral auction
-		let auction_id = T::Auction::new_auction(start_time, None)?;
+		// use start_time + AuctionDurationSoftCap as the initial end-time of collateral auction.
+		let end_time = start_time.saturating_add(T::AuctionDurationSoftCap::get());
+		let auction_id = T::Auction::new_auction(start_time, Some(end_time))?;
 
 		<CollateralAuctions<T>>::insert(
 			auction_id,
