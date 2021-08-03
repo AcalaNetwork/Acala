@@ -600,7 +600,6 @@ where
 		if !native_is_enough {
 			// add extra gap to keep alive after swap
 			let amount = fee.saturating_add(native_existential_deposit.saturating_sub(total_native));
-			let price_impact_limit = Some(T::MaxSlippageSwapWithDEX::get());
 			let native_currency_id = T::NativeCurrencyId::get();
 			let default_fee_swap_path_list = T::DefaultFeeSwapPathList::get();
 			let fee_swap_path_list: Vec<Vec<CurrencyId>> =
@@ -613,6 +612,8 @@ where
 			for trading_path in fee_swap_path_list {
 				match trading_path.last() {
 					Some(target_currency_id) if *target_currency_id == native_currency_id => {
+						// TODO: get price from oracle, set max_supply in limit
+
 						if T::DEX::swap_with_exact_target(
 							who,
 							&trading_path,
@@ -621,7 +622,6 @@ where
 								*trading_path.first().expect("these's first guaranteed by match"),
 								who,
 							),
-							price_impact_limit,
 						)
 						.is_ok()
 						{

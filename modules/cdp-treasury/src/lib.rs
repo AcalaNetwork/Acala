@@ -333,7 +333,6 @@ impl<T: Config> CDPTreasuryExtended<T::AccountId> for Pallet<T> {
 		currency_id: CurrencyId,
 		supply_amount: Balance,
 		min_target_amount: Balance,
-		price_impact_limit: Option<Ratio>,
 		maybe_path: Option<&[CurrencyId]>,
 		collateral_in_auction: bool,
 	) -> sp_std::result::Result<Balance, DispatchError> {
@@ -364,13 +363,7 @@ impl<T: Config> CDPTreasuryExtended<T::AccountId> for Pallet<T> {
 			}
 		};
 
-		T::DEX::swap_with_exact_supply(
-			&Self::account_id(),
-			swap_path,
-			supply_amount,
-			min_target_amount,
-			price_impact_limit,
-		)
+		T::DEX::swap_with_exact_supply(&Self::account_id(), swap_path, supply_amount, min_target_amount)
 	}
 
 	/// swap collateral which not in auction to get exact stable,
@@ -379,7 +372,6 @@ impl<T: Config> CDPTreasuryExtended<T::AccountId> for Pallet<T> {
 		currency_id: CurrencyId,
 		max_supply_amount: Balance,
 		target_amount: Balance,
-		price_impact_limit: Option<Ratio>,
 		maybe_path: Option<&[CurrencyId]>,
 		collateral_in_auction: bool,
 	) -> sp_std::result::Result<Balance, DispatchError> {
@@ -410,13 +402,7 @@ impl<T: Config> CDPTreasuryExtended<T::AccountId> for Pallet<T> {
 			}
 		};
 
-		T::DEX::swap_with_exact_target(
-			&Self::account_id(),
-			swap_path,
-			target_amount,
-			max_supply_amount,
-			price_impact_limit,
-		)
+		T::DEX::swap_with_exact_target(&Self::account_id(), swap_path, target_amount, max_supply_amount)
 	}
 
 	fn create_collateral_auctions(

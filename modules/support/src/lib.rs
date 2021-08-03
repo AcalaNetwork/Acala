@@ -250,7 +250,6 @@ pub trait CDPTreasuryExtended<AccountId>: CDPTreasury<AccountId> {
 		currency_id: Self::CurrencyId,
 		supply_amount: Self::Balance,
 		min_target_amount: Self::Balance,
-		price_impact_limit: Option<Ratio>,
 		maybe_path: Option<&[Self::CurrencyId]>,
 		collateral_in_auction: bool,
 	) -> sp_std::result::Result<Self::Balance, DispatchError>;
@@ -259,7 +258,6 @@ pub trait CDPTreasuryExtended<AccountId>: CDPTreasury<AccountId> {
 		currency_id: Self::CurrencyId,
 		max_supply_amount: Self::Balance,
 		target_amount: Self::Balance,
-		price_impact_limit: Option<Ratio>,
 		path: Option<&[Self::CurrencyId]>,
 		collateral_in_auction: bool,
 	) -> sp_std::result::Result<Self::Balance, DispatchError>;

@@ -806,7 +806,6 @@ impl<T: Config> Pallet<T> {
 			currency_id,
 			collateral,
 			debit_value,
-			None,
 			maybe_path,
 			false,
 		)?;
@@ -846,12 +845,13 @@ impl<T: Config> Pallet<T> {
 		// try use collateral to swap enough stable token in DEX when the price impact
 		// is below the limit, otherwise create collateral auctions.
 		let liquidation_strategy = (|| -> Result<LiquidationStrategy, DispatchError> {
+			// TODO: get price from oracle, set max_supply in limit
+
 			// swap exact stable with DEX in limit of price impact
 			if let Ok(actual_supply_collateral) = <T as Config>::CDPTreasury::swap_collateral_to_exact_stable(
 				currency_id,
 				collateral,
 				target_stable_amount,
-				Some(T::MaxSlippageSwapWithDEX::get()),
 				None,
 				false,
 			) {
