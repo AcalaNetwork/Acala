@@ -374,14 +374,15 @@ pub mod module {
 			let who = ensure_signed(origin)?;
 
 			if let Some(path) = fee_swap_path {
-				match path.last() {
-					Some(target_currency_id) if path.len() > 1 && *target_currency_id == T::NativeCurrencyId::get() => {
-						let path: BoundedVec<CurrencyId, T::TradingPathLimit> =
-							path.try_into().map_err(|_| Error::<T>::InvalidSwapPath)?;
-						AlternativeFeeSwapPath::<T>::insert(&who, &path);
-					}
-					_ => return Err(Error::<T>::InvalidSwapPath.into()),
-				}
+				let path: BoundedVec<CurrencyId, T::TradingPathLimit> =
+					path.try_into().map_err(|_| Error::<T>::InvalidSwapPath)?;
+				ensure!(
+					path.len() > 1
+						&& path[0] != T::NativeCurrencyId::get()
+						&& path[path.len() - 1] == T::NativeCurrencyId::get(),
+					Error::<T>::InvalidSwapPath
+				);
+				AlternativeFeeSwapPath::<T>::insert(&who, &path);
 			} else {
 				AlternativeFeeSwapPath::<T>::remove(&who);
 			}
