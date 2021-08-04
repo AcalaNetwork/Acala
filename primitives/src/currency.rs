@@ -171,7 +171,6 @@ create_currency_id! {
 	// Bit 6 - 1 : The token ID
 	#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord)]
 	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-	#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 	#[repr(u8)]
 	pub enum TokenSymbol {
 		// Polkadot Ecosystem
