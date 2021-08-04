@@ -276,6 +276,11 @@ fn set_alternative_fee_swap_path_work() {
 			TransactionPayment::set_alternative_fee_swap_path(Origin::signed(ALICE), Some(vec![AUSD, DOT])),
 			Error::<Runtime>::InvalidSwapPath
 		);
+
+		assert_noop!(
+			TransactionPayment::set_alternative_fee_swap_path(Origin::signed(ALICE), Some(vec![ACA, ACA])),
+			Error::<Runtime>::InvalidSwapPath
+		);
 	});
 }
 
