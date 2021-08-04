@@ -842,18 +842,15 @@ impl<T: Config> Pallet<T> {
 		let target_stable_amount = Self::get_liquidation_penalty(currency_id).saturating_mul_acc_int(bad_debt_value);
 		let liquidation_strategy = (|| -> Result<LiquidationStrategy, DispatchError> {
 			// calculate the supply limit by slippage limit for the price of oracle,
-			// if oracle price is not avalible, do not limit
-			let max_supply_limit = if let Some(stable_price) =
-				T::PriceSource::get_relative_price(T::GetStableCurrencyId::get(), currency_id)
-			{
-				Ratio::one()
-					.saturating_sub(T::MaxSwapSlippageCompareToOracle::get())
-					.reciprocal()
-					.unwrap_or_else(Ratio::max_value)
-					.saturating_mul_int(stable_price.saturating_mul_int(target_stable_amount))
-			} else {
-				Balance::max_value()
-			};
+			let max_supply_limit = Ratio::one()
+				.saturating_sub(T::MaxSwapSlippageCompareToOracle::get())
+				.reciprocal()
+				.unwrap_or_else(Ratio::max_value)
+				.saturating_mul_int(
+					T::PriceSource::get_relative_price(T::GetStableCurrencyId::get(), currency_id)
+						.expect("the oracle price should be avalible because liquidation are triggered by it.")
+						.saturating_mul_int(target_stable_amount),
+				);
 
 			// try use collateral to swap enough stable token in DEX.
 			if let Ok(actual_supply_collateral) = <T as Config>::CDPTreasury::swap_collateral_to_exact_stable(
