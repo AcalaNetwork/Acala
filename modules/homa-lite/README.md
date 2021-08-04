@@ -15,15 +15,15 @@ Currently, the Homa Lite module is integrated into the Mandala Runtime.
 The Staking currency is set as "KSM"
 The Liquid currency is set as "LKSM"
 
-Homa-lite usees Xcm transfer to upload Staking currecny into the Relaychain. Therefore a setup that allows successful Xcm transfer to the relaychain is required for the Homa-lite module to work.
+Homa-lite uses Xcm transfer to upload Staking currency into the Relaychain. Therefore a setup that allows successful Xcm transfer to the relaychain is required for the Homa-lite module to work.
 
 ### Local node
 1. Pull the Master branch of the Acala codebase
 2. Follow the README.md to setup local Relaychain and parachains.
 
-   This should launch a local test node running Karura
+   This should launch some local test nodes running Karura(parachain) and Rococo(relaychain)
 3. Open a new web browser, go to `https://polkadot.js.org/apps/#/explorer`
-4. On the left top corner, select `DEVELOPMENT` -> `Local Node`. Click "Switch" to confirm connection.
+4. Connect to a parachain node.
 5. On the top bar, select `Settings` -> `Developer`
 6. Add the following metadata into the field:
 ``` JSON
