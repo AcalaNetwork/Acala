@@ -140,20 +140,6 @@ pub mod module {
 				T::WeightInfo::on_initialize()
 			}
 		}
-
-		#[cfg(feature = "try-runtime")]
-		fn pre_upgrade() -> Result<(), &'static str> {
-			migrations::v1::pre_migrate::<T>()
-		}
-
-		#[cfg(feature = "try-runtime")]
-		fn post_upgrade() -> Result<(), &'static str> {
-			migrations::v1::post_migrate::<T>()
-		}
-
-		fn on_runtime_upgrade() -> Weight {
-			migrations::v1::migrate::<T>()
-		}
 	}
 
 	#[pallet::call]
