@@ -324,6 +324,9 @@ pub enum ProxyType {
 	Any,
 	CancelProxy,
 	Governance,
+	Auction,
+	Swap,
+	Loan,
 }
 impl Default for ProxyType {
 	fn default() -> Self {

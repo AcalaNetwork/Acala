@@ -1337,10 +1337,22 @@ impl InstanceFilter<Call> for ProxyType {
 						| Call::HomaCouncil(..) | Call::TechnicalCommittee(..)
 						| Call::Treasury(..) | Call::Bounties(..)
 						| Call::Tips(..) | Call::Utility(..)
-						| Call::Auction(orml_auction::Call::bid(..))
-						| Call::Dex(module_dex::Call::swap_with_exact_supply(..))
+				)
+			}
+			ProxyType::Auction => {
+				matches!(c, Call::Auction(orml_auction::Call::bid(..)))
+			}
+			ProxyType::Swap => {
+				matches!(
+					c,
+					Call::Dex(module_dex::Call::swap_with_exact_supply(..))
 						| Call::Dex(module_dex::Call::swap_with_exact_target(..))
-						| Call::Honzon(module_honzon::Call::adjust_loan(..))
+				)
+			}
+			ProxyType::Loan => {
+				matches!(
+					c,
+					Call::Honzon(module_honzon::Call::adjust_loan(..))
 						| Call::Honzon(module_honzon::Call::close_loan_has_debit_by_dex(..))
 				)
 			}

@@ -1170,11 +1170,44 @@ impl InstanceFilter<Call> for ProxyType {
 		match self {
 			ProxyType::Any => true,
 			ProxyType::CancelProxy => matches!(c, Call::Proxy(pallet_proxy::Call::reject_announcement(..))),
-			_ => false,
+			ProxyType::Governance => {
+				matches!(
+					c,
+					Call::Authority(..)
+						| Call::Democracy(..) | Call::PhragmenElection(..)
+						| Call::GeneralCouncil(..)
+						| Call::FinancialCouncil(..)
+						| Call::HomaCouncil(..) | Call::TechnicalCommittee(..)
+						| Call::Treasury(..) | Call::Bounties(..)
+						| Call::Tips(..) | Call::Utility(..)
+				)
+			}
+			ProxyType::Auction => {
+				matches!(c, Call::Auction(orml_auction::Call::bid(..)))
+			}
+			ProxyType::Swap => {
+				matches!(
+					c,
+					Call::Dex(module_dex::Call::swap_with_exact_supply(..))
+						| Call::Dex(module_dex::Call::swap_with_exact_target(..))
+				)
+			}
+			ProxyType::Loan => {
+				matches!(
+					c,
+					Call::Honzon(module_honzon::Call::adjust_loan(..))
+						| Call::Honzon(module_honzon::Call::close_loan_has_debit_by_dex(..))
+				)
+			}
 		}
 	}
 	fn is_superset(&self, o: &Self) -> bool {
-		matches!((self, o), (ProxyType::Any, _))
+		match (self, o) {
+			(x, y) if x == y => true,
+			(ProxyType::Any, _) => true,
+			(_, ProxyType::Any) => false,
+			_ => false,
+		}
 	}
 }
 
