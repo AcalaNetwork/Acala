@@ -4,7 +4,7 @@
 The Homa Lite module allows users to upload some Staking currency, and mint some Liquid currency.
 
 ### Signed origin dispatchable calls
-* Request Mint: Request to upload Staking currency to the relaychain via Xcm transfer.  
+* Request Mint: Request to upload Staking currency to the relaychain via XCM transfer.  
 * Claim: After a batch has been processed, the user can claim the Liquid currency minted from the Staking currency uploaded.
 
 ### Governance origin dispatchable calls 
@@ -15,7 +15,7 @@ Currently, the Homa Lite module is integrated into the Mandala Runtime.
 The Staking currency is set as "KSM"
 The Liquid currency is set as "LKSM"
 
-Homa-lite uses Xcm transfer to upload Staking currency into the Relaychain. Therefore a setup that allows successful Xcm transfer to the relaychain is required for the Homa-lite module to work.
+Homa-lite uses XCM transfer to upload Staking currency into the Relaychain. Therefore a setup that allows successful XCM transfer to the relaychain is required for the Homa-lite module to work.
 
 ### Local node
 1. Pull the Master branch of the Acala codebase
