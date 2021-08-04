@@ -235,11 +235,11 @@ fn testnet_genesis(
 	use mandala_runtime::{
 		dollar, get_all_module_accounts, AirDropConfig, Balance, BalancesConfig, CdpEngineConfig, CdpTreasuryConfig,
 		CollatorSelectionConfig, DexConfig, EVMConfig, EnabledTradingPairs, FinancialCouncilMembershipConfig,
-		GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig, IndicesConfig, NativeTokenExistentialDeposit,
-		OperatorMembershipAcalaConfig, OperatorMembershipBandConfig, OrmlNFTConfig, ParachainInfoConfig, Period,
-		RenVmBridgeConfig, SessionConfig, SessionKeys, SessionManagerConfig, StakingPoolConfig, StarportConfig,
-		SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, TradingPair, VestingConfig, ACA,
-		AUSD, DOT, LDOT, RENBTC,
+		GeneralCouncilMembershipConfig, GrandpaConfig, HomaCouncilMembershipConfig, IndicesConfig,
+		NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OperatorMembershipBandConfig, OrmlNFTConfig,
+		ParachainInfoConfig, Period, RenVmBridgeConfig, SessionConfig, SessionKeys, SessionManagerConfig,
+		StakingPoolConfig, StarportConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig,
+		TradingPair, VestingConfig, ACA, AUSD, DOT, LDOT, RENBTC,
 	};
 
 	let existential_deposit = NativeTokenExistentialDeposit::get();
@@ -305,6 +305,13 @@ fn testnet_genesis(
 		technical_committee_membership: TechnicalCommitteeMembershipConfig {
 			members: vec![root_key.clone()],
 			phantom: Default::default(),
+		},
+		grandpa: GrandpaConfig {
+			authorities: initial_authorities
+				.iter()
+				.cloned()
+				.map(|(_, _, grandpa_id, _)| (grandpa_id, 1))
+				.collect(),
 		},
 		operator_membership_acala: OperatorMembershipAcalaConfig {
 			members: vec![root_key.clone()],
@@ -442,11 +449,12 @@ fn mandala_genesis(
 	use mandala_runtime::{
 		cent, dollar, get_all_module_accounts, AirDropConfig, AirDropCurrencyId, Balance, BalancesConfig,
 		CdpEngineConfig, CdpTreasuryConfig, CollatorSelectionConfig, DexConfig, EVMConfig, EnabledTradingPairs,
-		FinancialCouncilMembershipConfig, GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig, IndicesConfig,
-		NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OperatorMembershipBandConfig, OrmlNFTConfig,
-		ParachainInfoConfig, Period, RenVmBridgeConfig, SessionConfig, SessionKeys, SessionManagerConfig,
-		StakingPoolConfig, StarportConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig,
-		UnreleasedNativeVaultAccountId, VestingConfig, ACA, AUSD, DOT, LDOT, RENBTC,
+		FinancialCouncilMembershipConfig, GeneralCouncilMembershipConfig, GrandpaConfig, HomaCouncilMembershipConfig,
+		IndicesConfig, NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OperatorMembershipBandConfig,
+		OrmlNFTConfig, ParachainInfoConfig, Period, RenVmBridgeConfig, SessionConfig, SessionKeys,
+		SessionManagerConfig, StakingPoolConfig, StarportConfig, SudoConfig, SystemConfig,
+		TechnicalCommitteeMembershipConfig, TokensConfig, UnreleasedNativeVaultAccountId, VestingConfig, ACA, AUSD,
+		DOT, LDOT, RENBTC,
 	};
 
 	let existential_deposit = NativeTokenExistentialDeposit::get();
@@ -515,6 +523,13 @@ fn mandala_genesis(
 		technical_committee_membership: TechnicalCommitteeMembershipConfig {
 			members: vec![root_key.clone()],
 			phantom: Default::default(),
+		},
+		grandpa: GrandpaConfig {
+			authorities: initial_authorities
+				.iter()
+				.cloned()
+				.map(|(_, _, grandpa_id, _)| (grandpa_id, 1))
+				.collect(),
 		},
 		operator_membership_acala: OperatorMembershipAcalaConfig {
 			members: endowed_accounts.clone(),

@@ -74,7 +74,7 @@ pub use sp_api::ConstructRuntimeApi;
 pub mod chain_spec;
 mod client;
 
-fn default_mock_parachain_inherent_data_provider() -> MockValidationDataInherentDataProvider {
+pub fn default_mock_parachain_inherent_data_provider() -> MockValidationDataInherentDataProvider {
 	MockValidationDataInherentDataProvider {
 		current_para_block: 0,
 		relay_offset: 1000,
