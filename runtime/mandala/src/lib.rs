@@ -1327,63 +1327,6 @@ impl InstanceFilter<Call> for ProxyType {
 		match self {
 			ProxyType::Any => true,
 			ProxyType::CancelProxy => matches!(c, Call::Proxy(pallet_proxy::Call::reject_announcement(..))),
-			ProxyType::NonTransfer => matches!(
-				c,
-				Call::System(..) |
-				Call::Timestamp(..) |
-				Call::Scheduler(..) |
-				Call::Utility(..) |
-				Call::Multisig(..) |
-				Call::Proxy(..) |
-				// Specifically omitting the entire Balances, Tokens and Currencies pallet
-				Call::Vesting(orml_vesting::Call::claim(..)) |
-				Call::Vesting(orml_vesting::Call::update_vesting_schedules(..)) |
-				// Specifically omitting Vesting `vested_transfer`
-				Call::TransactionPayment(..) |
-				Call::Treasury(..) |
-				Call::Bounties(..) |
-				Call::Tips(..) |
-				Call::ParachainSystem(..) |
-				Call::Authorship(..) |
-				Call::CollatorSelection(..) |
-				Call::Session(..) |
-				Call::Indices(..) |
-				Call::GraduallyUpdate(..) |
-				Call::Authority(..) |
-				Call::PhragmenElection(..) |
-				Call::GeneralCouncil(..) |
-				Call::GeneralCouncilMembership(..) |
-				Call::FinancialCouncil(..) |
-				Call::FinancialCouncilMembership(..) |
-				Call::HomaCouncil(..) |
-				Call::HomaCouncilMembership(..) |
-				Call::TechnicalCommittee(..) |
-				Call::TechnicalCommitteeMembership(..) |
-				Call::AcalaOracle(..) |
-				Call::OperatorMembershipAcala(..) |
-				Call::BandOracle(..) |
-				Call::OperatorMembershipBand(..) |
-				Call::Auction(orml_auction::Call::bid(..)) |
-				Call::Rewards(..) |
-				Call::Prices(..) |
-				Call::Dex(module_dex::Call::swap_with_exact_supply(..)) |
-				Call::Dex(module_dex::Call::swap_with_exact_target(..)) |
-				Call::AuctionManager(..) |
-				Call::Loans(..) |
-				Call::Honzon(module_honzon::Call::adjust_loan(..)) |
-				Call::Honzon(module_honzon::Call::close_loan_has_debit_by_dex(..)) |
-				Call::CdpTreasury(..) |
-				Call::CdpEngine(..) |
-				Call::EmergencyShutdown(..) |
-				Call::Homa(..) |
-				Call::NomineesElection(..) |
-				Call::StakingPool(..) |
-				Call::PolkadotBridge(..) |
-				Call::HomaValidatorListModule(..) |
-				Call::Incentives(..) |
-				Call::AirDrop(..) |
-				Call::EvmAccounts(..)
-			),
 			ProxyType::Governance => {
 				matches!(
 					c,
@@ -1394,9 +1337,13 @@ impl InstanceFilter<Call> for ProxyType {
 						| Call::HomaCouncil(..) | Call::TechnicalCommittee(..)
 						| Call::Treasury(..) | Call::Bounties(..)
 						| Call::Tips(..) | Call::Utility(..)
+						| Call::Auction(orml_auction::Call::bid(..))
+						| Call::Dex(module_dex::Call::swap_with_exact_supply(..))
+						| Call::Dex(module_dex::Call::swap_with_exact_target(..))
+						| Call::Honzon(module_honzon::Call::adjust_loan(..))
+						| Call::Honzon(module_honzon::Call::close_loan_has_debit_by_dex(..))
 				)
 			}
-			ProxyType::Staking => matches!(c, Call::CollatorSelection(..) | Call::Session(..) | Call::Utility(..)),
 		}
 	}
 	fn is_superset(&self, o: &Self) -> bool {
@@ -1404,7 +1351,6 @@ impl InstanceFilter<Call> for ProxyType {
 			(x, y) if x == y => true,
 			(ProxyType::Any, _) => true,
 			(_, ProxyType::Any) => false,
-			(ProxyType::NonTransfer, _) => true,
 			_ => false,
 		}
 	}

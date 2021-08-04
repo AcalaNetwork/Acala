@@ -323,9 +323,7 @@ pub type EnsureRootOrThreeFourthsTechnicalCommittee = EnsureOneOf<
 pub enum ProxyType {
 	Any,
 	CancelProxy,
-	NonTransfer,
 	Governance,
-	Staking,
 }
 impl Default for ProxyType {
 	fn default() -> Self {
