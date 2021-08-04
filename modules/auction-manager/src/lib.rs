@@ -572,7 +572,6 @@ impl<T: Config> Pallet<T> {
 					< T::DEX::get_swap_target_amount(
 						&[collateral_auction.currency_id, T::GetStableCurrencyId::get()],
 						collateral_auction.amount,
-						None,
 					)
 					.unwrap_or_default())
 		{
@@ -581,7 +580,6 @@ impl<T: Config> Pallet<T> {
 				collateral_auction.currency_id,
 				collateral_auction.amount,
 				Zero::zero(),
-				None,
 				None,
 				true,
 			) {

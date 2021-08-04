@@ -42,8 +42,8 @@ use pallet_transaction_payment_rpc_runtime_api::{FeeDetails, InclusionFee};
 use primitives::{Balance, CurrencyId, ReserveIdentifier};
 use sp_runtime::{
 	traits::{
-		CheckedSub, Convert, DispatchInfoOf, PostDispatchInfoOf, SaturatedConversion, Saturating, SignedExtension,
-		UniqueSaturatedInto, Zero,
+		Bounded, CheckedSub, Convert, DispatchInfoOf, One, PostDispatchInfoOf, SaturatedConversion, Saturating,
+		SignedExtension, UniqueSaturatedInto, Zero,
 	},
 	transaction_validity::{
 		InvalidTransaction, TransactionPriority, TransactionValidity, TransactionValidityError, ValidTransaction,
@@ -51,7 +51,7 @@ use sp_runtime::{
 	FixedPointNumber, FixedPointOperand, FixedU128, Perquintill,
 };
 use sp_std::{convert::TryInto, prelude::*, vec};
-use support::{DEXManager, Ratio, TransactionPayment};
+use support::{DEXManager, PriceProvider, Ratio, TransactionPayment};
 
 mod mock;
 mod tests;
@@ -258,13 +258,16 @@ pub mod module {
 		/// DEX to exchange currencies.
 		type DEX: DEXManager<Self::AccountId, CurrencyId, Balance>;
 
-		/// The max slippage allowed when swap fee with DEX
+		/// When swap with DEX, the acceptable max slippage for the price from oracle.
 		#[pallet::constant]
-		type MaxSlippageSwapWithDEX: Get<Ratio>;
+		type MaxSwapSlippageCompareToOracle: Get<Ratio>;
 
 		/// The limit for length of trading path
 		#[pallet::constant]
 		type TradingPathLimit: Get<u32>;
+
+		/// The price source to provider external market price.
+		type PriceSource: PriceProvider<CurrencyId>;
 
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
@@ -584,7 +587,6 @@ where
 		if !native_is_enough {
 			// add extra gap to keep alive after swap
 			let amount = fee.saturating_add(native_existential_deposit.saturating_sub(total_native));
-			let price_impact_limit = Some(T::MaxSlippageSwapWithDEX::get());
 			let native_currency_id = T::NativeCurrencyId::get();
 			let default_fee_swap_path_list = T::DefaultFeeSwapPathList::get();
 			let fee_swap_path_list: Vec<Vec<CurrencyId>> =
@@ -597,15 +599,27 @@ where
 			for trading_path in fee_swap_path_list {
 				match trading_path.last() {
 					Some(target_currency_id) if *target_currency_id == native_currency_id => {
+						let supply_currency_id = *trading_path.first().expect("these's first guaranteed by match");
+						// calculate the supply limit according to oracle price and the slippage limit,
+						// if oracle price is not avalible, do not limit
+						let max_supply_limit = if let Some(target_price) =
+							T::PriceSource::get_relative_price(*target_currency_id, supply_currency_id)
+						{
+							Ratio::one()
+								.saturating_sub(T::MaxSwapSlippageCompareToOracle::get())
+								.reciprocal()
+								.unwrap_or_else(Ratio::max_value)
+								.saturating_mul_int(target_price.saturating_mul_int(amount))
+						} else {
+							PalletBalanceOf::<T>::max_value()
+						};
+
 						if T::DEX::swap_with_exact_target(
 							who,
 							&trading_path,
 							amount.unique_saturated_into(),
-							<T as Config>::MultiCurrency::free_balance(
-								*trading_path.first().expect("these's first guaranteed by match"),
-								who,
-							),
-							price_impact_limit,
+							<T as Config>::MultiCurrency::free_balance(supply_currency_id, who)
+								.min(max_supply_limit.unique_saturated_into()),
 						)
 						.is_ok()
 						{

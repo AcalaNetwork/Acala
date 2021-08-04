@@ -32,7 +32,7 @@ use sp_runtime::{
 	DispatchError, FixedPointNumber,
 };
 use sp_std::cell::RefCell;
-use support::{mocks::MockCurrencyIdMapping, ExchangeRate, Ratio};
+use support::{mocks::MockCurrencyIdMapping, ExchangeRate};
 
 pub type AccountId = u128;
 pub type BlockNumber = u64;
@@ -143,19 +143,11 @@ impl DEXManager<AccountId, CurrencyId, Balance> for MockDEX {
 		unimplemented!()
 	}
 
-	fn get_swap_target_amount(
-		_path: &[CurrencyId],
-		_supply_amount: Balance,
-		_price_impact_limit: Option<Ratio>,
-	) -> Option<Balance> {
+	fn get_swap_target_amount(_path: &[CurrencyId], _supply_amount: Balance) -> Option<Balance> {
 		unimplemented!()
 	}
 
-	fn get_swap_supply_amount(
-		_path: &[CurrencyId],
-		_target_amount: Balance,
-		_price_impact_limit: Option<Ratio>,
-	) -> Option<Balance> {
+	fn get_swap_supply_amount(_path: &[CurrencyId], _target_amount: Balance) -> Option<Balance> {
 		unimplemented!()
 	}
 
@@ -164,7 +156,6 @@ impl DEXManager<AccountId, CurrencyId, Balance> for MockDEX {
 		_path: &[CurrencyId],
 		_supply_amount: Balance,
 		_min_target_amount: Balance,
-		_price_impact_limit: Option<Ratio>,
 	) -> sp_std::result::Result<Balance, DispatchError> {
 		unimplemented!()
 	}
@@ -174,7 +165,6 @@ impl DEXManager<AccountId, CurrencyId, Balance> for MockDEX {
 		_path: &[CurrencyId],
 		_target_amount: Balance,
 		_max_supply_amount: Balance,
-		_price_impact_limit: Option<Ratio>,
 	) -> sp_std::result::Result<Balance, DispatchError> {
 		unimplemented!()
 	}

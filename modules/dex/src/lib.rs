@@ -39,7 +39,7 @@ use orml_traits::{MultiCurrency, MultiCurrencyExtended};
 use primitives::{Balance, CurrencyId, TradingPair};
 use sp_core::{H160, U256};
 use sp_runtime::{
-	traits::{AccountIdConversion, Bounded, One, Zero},
+	traits::{AccountIdConversion, One, Zero},
 	ArithmeticError, DispatchError, DispatchResult, FixedPointNumber, RuntimeDebug, SaturatedConversion,
 };
 use sp_std::{convert::TryInto, prelude::*, vec};
@@ -150,8 +150,6 @@ pub mod module {
 		InsufficientTargetAmount,
 		/// Supply amount is more than max_supply_amount
 		ExcessiveSupplyAmount,
-		/// The swap will cause unacceptable price impact
-		ExceedPriceImpactLimit,
 		/// Liquidity is not enough
 		InsufficientLiquidity,
 		/// The supply amount is zero
@@ -316,7 +314,7 @@ pub mod module {
 			#[pallet::compact] min_target_amount: Balance,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
-			Self::do_swap_with_exact_supply(&who, &path, supply_amount, min_target_amount, None)?;
+			Self::do_swap_with_exact_supply(&who, &path, supply_amount, min_target_amount)?;
 			Ok(())
 		}
 
@@ -334,7 +332,7 @@ pub mod module {
 			#[pallet::compact] max_supply_amount: Balance,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
-			Self::do_swap_with_exact_target(&who, &path, target_amount, max_supply_amount, None)?;
+			Self::do_swap_with_exact_target(&who, &path, target_amount, max_supply_amount)?;
 			Ok(())
 		}
 
@@ -1053,7 +1051,6 @@ impl<T: Config> Pallet<T> {
 	fn get_target_amounts(
 		path: &[CurrencyId],
 		supply_amount: Balance,
-		price_impact_limit: Option<Ratio>,
 	) -> sp_std::result::Result<Vec<Balance>, DispatchError> {
 		let path_length = path.len();
 		ensure!(
@@ -1082,13 +1079,6 @@ impl<T: Config> Pallet<T> {
 			let target_amount = Self::get_target_amount(supply_pool, target_pool, target_amounts[i]);
 			ensure!(!target_amount.is_zero(), Error::<T>::ZeroTargetAmount);
 
-			// check price impact if limit exists
-			if let Some(limit) = price_impact_limit {
-				let price_impact =
-					Ratio::checked_from_rational(target_amount, target_pool).unwrap_or_else(Ratio::max_value);
-				ensure!(price_impact <= limit, Error::<T>::ExceedPriceImpactLimit);
-			}
-
 			target_amounts[i + 1] = target_amount;
 			i += 1;
 		}
@@ -1099,7 +1089,6 @@ impl<T: Config> Pallet<T> {
 	fn get_supply_amounts(
 		path: &[CurrencyId],
 		target_amount: Balance,
-		price_impact_limit: Option<Ratio>,
 	) -> sp_std::result::Result<Vec<Balance>, DispatchError> {
 		let path_length = path.len();
 		ensure!(
@@ -1127,13 +1116,6 @@ impl<T: Config> Pallet<T> {
 			);
 			let supply_amount = Self::get_supply_amount(supply_pool, target_pool, supply_amounts[i]);
 			ensure!(!supply_amount.is_zero(), Error::<T>::ZeroSupplyAmount);
-
-			// check price impact if limit exists
-			if let Some(limit) = price_impact_limit {
-				let price_impact =
-					Ratio::checked_from_rational(supply_amounts[i], target_pool).unwrap_or_else(Ratio::max_value);
-				ensure!(price_impact <= limit, Error::<T>::ExceedPriceImpactLimit);
-			};
 
 			supply_amounts[i - 1] = supply_amount;
 			i -= 1;
@@ -1195,9 +1177,8 @@ impl<T: Config> Pallet<T> {
 		path: &[CurrencyId],
 		supply_amount: Balance,
 		min_target_amount: Balance,
-		price_impact_limit: Option<Ratio>,
 	) -> sp_std::result::Result<Balance, DispatchError> {
-		let amounts = Self::get_target_amounts(&path, supply_amount, price_impact_limit)?;
+		let amounts = Self::get_target_amounts(&path, supply_amount)?;
 		ensure!(
 			amounts[amounts.len() - 1] >= min_target_amount,
 			Error::<T>::InsufficientTargetAmount
@@ -1225,9 +1206,8 @@ impl<T: Config> Pallet<T> {
 		path: &[CurrencyId],
 		target_amount: Balance,
 		max_supply_amount: Balance,
-		price_impact_limit: Option<Ratio>,
 	) -> sp_std::result::Result<Balance, DispatchError> {
-		let amounts = Self::get_supply_amounts(&path, target_amount, price_impact_limit)?;
+		let amounts = Self::get_supply_amounts(&path, target_amount)?;
 		ensure!(amounts[0] <= max_supply_amount, Error::<T>::ExcessiveSupplyAmount);
 		let module_account_id = Self::account_id();
 		let actual_supply_amount = amounts[0];
@@ -1256,22 +1236,14 @@ impl<T: Config> DEXManager<T::AccountId, CurrencyId, Balance> for Pallet<T> {
 		T::CurrencyIdMapping::encode_evm_address(trading_pair.dex_share_currency_id())
 	}
 
-	fn get_swap_target_amount(
-		path: &[CurrencyId],
-		supply_amount: Balance,
-		price_impact_limit: Option<Ratio>,
-	) -> Option<Balance> {
-		Self::get_target_amounts(&path, supply_amount, price_impact_limit)
+	fn get_swap_target_amount(path: &[CurrencyId], supply_amount: Balance) -> Option<Balance> {
+		Self::get_target_amounts(&path, supply_amount)
 			.ok()
 			.map(|amounts| amounts[amounts.len() - 1])
 	}
 
-	fn get_swap_supply_amount(
-		path: &[CurrencyId],
-		target_amount: Balance,
-		price_impact_limit: Option<Ratio>,
-	) -> Option<Balance> {
-		Self::get_supply_amounts(&path, target_amount, price_impact_limit)
+	fn get_swap_supply_amount(path: &[CurrencyId], target_amount: Balance) -> Option<Balance> {
+		Self::get_supply_amounts(&path, target_amount)
 			.ok()
 			.map(|amounts| amounts[0])
 	}
@@ -1281,9 +1253,8 @@ impl<T: Config> DEXManager<T::AccountId, CurrencyId, Balance> for Pallet<T> {
 		path: &[CurrencyId],
 		supply_amount: Balance,
 		min_target_amount: Balance,
-		price_impact_limit: Option<Ratio>,
 	) -> sp_std::result::Result<Balance, DispatchError> {
-		Self::do_swap_with_exact_supply(who, path, supply_amount, min_target_amount, price_impact_limit)
+		Self::do_swap_with_exact_supply(who, path, supply_amount, min_target_amount)
 	}
 
 	fn swap_with_exact_target(
@@ -1291,9 +1262,8 @@ impl<T: Config> DEXManager<T::AccountId, CurrencyId, Balance> for Pallet<T> {
 		path: &[CurrencyId],
 		target_amount: Balance,
 		max_supply_amount: Balance,
-		price_impact_limit: Option<Ratio>,
 	) -> sp_std::result::Result<Balance, DispatchError> {
-		Self::do_swap_with_exact_target(who, path, target_amount, max_supply_amount, price_impact_limit)
+		Self::do_swap_with_exact_target(who, path, target_amount, max_supply_amount)
 	}
 
 	// `do_add_liquidity` is used in genesis_build,
