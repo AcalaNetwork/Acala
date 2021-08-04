@@ -57,6 +57,7 @@ Use SUDO to:
 1. Mint 1_000_000 Staking to Alice
 2. Mint 1_000_000 Staking to Bob
 3. Mint 1_000_000_000 Liquid to Ferdie
+4. Call set_staking_currency_cap to set a large enough cap.
 
 #### Use the normal Extrinsic to Request Mint
 5. Request to mint 1000 as Alice
