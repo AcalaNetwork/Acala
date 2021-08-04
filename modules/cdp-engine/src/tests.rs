@@ -643,7 +643,7 @@ fn close_cdp_has_debit_by_dex_work() {
 		assert_eq!(LoansModule::positions(BTC, ALICE).collateral, 100);
 
 		assert_noop!(
-			CDPEngineModule::close_cdp_has_debit_by_dex(ALICE, BTC, None),
+			CDPEngineModule::close_cdp_has_debit_by_dex(ALICE, BTC, 100, None),
 			Error::<Runtime>::NoDebitValue
 		);
 
@@ -665,7 +665,7 @@ fn close_cdp_has_debit_by_dex_work() {
 			Change::NoChange,
 		));
 		assert_noop!(
-			CDPEngineModule::close_cdp_has_debit_by_dex(ALICE, BTC, None),
+			CDPEngineModule::close_cdp_has_debit_by_dex(ALICE, BTC, 100, None),
 			Error::<Runtime>::IsUnsafe
 		);
 
@@ -678,7 +678,14 @@ fn close_cdp_has_debit_by_dex_work() {
 			Change::NoChange,
 			Change::NoChange,
 		));
-		assert_ok!(CDPEngineModule::close_cdp_has_debit_by_dex(ALICE, BTC, None));
+
+		// max collateral amount limit swap
+		assert_eq!(
+			CDPEngineModule::close_cdp_has_debit_by_dex(ALICE, BTC, 5, None).is_err(),
+			true
+		);
+
+		assert_ok!(CDPEngineModule::close_cdp_has_debit_by_dex(ALICE, BTC, 6, None));
 		System::assert_last_event(Event::CDPEngineModule(crate::Event::CloseCDPInDebitByDEX(
 			BTC, ALICE, 6, 94, 50,
 		)));
