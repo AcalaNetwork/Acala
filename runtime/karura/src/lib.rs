@@ -210,7 +210,7 @@ impl Filter<Call> for BaseCallFilter {
 			// Democracy
 			Call::Democracy(_) | Call::Treasury(_) | Call::Bounties(_) | Call::Tips(_) |
 			// Collactor Selection
-			Call::CollatorSelection(_) | Call::Session(_) |
+			Call::CollatorSelection(_) | Call::Session(_) | Call::SessionManager(_) |
 			// Vesting
 			Call::Vesting(_) |
 			// TransactionPayment
