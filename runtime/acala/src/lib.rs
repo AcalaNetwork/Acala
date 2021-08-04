@@ -983,7 +983,7 @@ parameter_types! {
 	pub DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
 	pub DefaultLiquidationPenalty: Rate = Rate::saturating_from_rational(5, 100);
 	pub MinimumDebitValue: Balance = dollar(AUSD);
-	pub MaxSwapSlippageCompareToOracle: Rate = Rate::saturating_from_rational(5, 100);
+	pub MaxSwapSlippageCompareToOracle: Ratio = Ratio::saturating_from_rational(5, 100);
 }
 
 impl module_cdp_engine::Config for Runtime {

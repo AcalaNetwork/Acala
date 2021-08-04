@@ -51,7 +51,7 @@ use sp_runtime::{
 	FixedPointNumber, FixedPointOperand, FixedU128, Perquintill,
 };
 use sp_std::{convert::TryInto, prelude::*, vec};
-use support::{DEXManager, PriceProvider, Rate, TransactionPayment};
+use support::{DEXManager, PriceProvider, Ratio, TransactionPayment};
 
 mod mock;
 mod tests;
@@ -258,9 +258,9 @@ pub mod module {
 		/// DEX to exchange currencies.
 		type DEX: DEXManager<Self::AccountId, CurrencyId, Balance>;
 
-		/// When swap with DEX, the acceptable max slippage according to price from oracle.
+		/// When swap with DEX, the acceptable max slippage for the price from oracle.
 		#[pallet::constant]
-		type MaxSwapSlippageCompareToOracle: Get<Rate>;
+		type MaxSwapSlippageCompareToOracle: Get<Ratio>;
 
 		/// The limit for length of trading path
 		#[pallet::constant]
@@ -621,10 +621,10 @@ where
 						let max_supply_limit = if let Some(target_price) =
 							T::PriceSource::get_relative_price(*target_currency_id, supply_currency_id)
 						{
-							Rate::one()
+							Ratio::one()
 								.saturating_sub(T::MaxSwapSlippageCompareToOracle::get())
 								.reciprocal()
-								.unwrap_or_else(Rate::max_value)
+								.unwrap_or_else(Ratio::max_value)
 								.saturating_mul_int(target_price.saturating_mul_int(amount))
 						} else {
 							PalletBalanceOf::<T>::max_value()

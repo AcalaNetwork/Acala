@@ -235,7 +235,7 @@ parameter_types! {
 	pub DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::one();
 	pub DefaultLiquidationPenalty: Rate = Rate::saturating_from_rational(10, 100);
 	pub const MinimumDebitValue: Balance = 2;
-	pub MaxSwapSlippageCompareToOracle: Rate = Rate::saturating_from_rational(50, 100);
+	pub MaxSwapSlippageCompareToOracle: Ratio = Ratio::saturating_from_rational(50, 100);
 	pub const UnsignedPriority: u64 = 1 << 20;
 }
 

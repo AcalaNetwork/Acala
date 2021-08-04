@@ -170,7 +170,7 @@ impl module_dex::Config for Runtime {
 }
 
 parameter_types! {
-	pub MaxSwapSlippageCompareToOracle: Rate = Rate::saturating_from_rational(1, 2);
+	pub MaxSwapSlippageCompareToOracle: Ratio = Ratio::saturating_from_rational(1, 2);
 	pub static TransactionByteFee: u128 = 1;
 	pub DefaultFeeSwapPathList: Vec<Vec<CurrencyId>> = vec![vec![AUSD, ACA], vec![DOT, AUSD, ACA]];
 }

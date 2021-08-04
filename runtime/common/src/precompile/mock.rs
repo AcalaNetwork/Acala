@@ -18,7 +18,7 @@
 
 #![cfg(test)]
 
-use crate::{AllPrecompiles, Rate, RuntimeBlockWeights, SystemContractsFilter, Weight};
+use crate::{AllPrecompiles, Ratio, RuntimeBlockWeights, SystemContractsFilter, Weight};
 use acala_service::chain_spec::evm_genesis;
 use codec::{Decode, Encode};
 use frame_support::{
@@ -214,7 +214,7 @@ parameter_types! {
 	pub const TransactionByteFee: Balance = 10;
 	pub const GetStableCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
 	pub DefaultFeeSwapPathList: Vec<Vec<CurrencyId>> = vec![vec![CurrencyId::Token(TokenSymbol::AUSD), CurrencyId::Token(TokenSymbol::ACA)]];
-	pub MaxSwapSlippageCompareToOracle: Rate = Rate::one();
+	pub MaxSwapSlippageCompareToOracle: Ratio = Ratio::one();
 }
 
 impl module_transaction_payment::Config for Test {
