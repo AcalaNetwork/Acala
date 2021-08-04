@@ -42,8 +42,8 @@ use pallet_transaction_payment_rpc_runtime_api::{FeeDetails, InclusionFee};
 use primitives::{Balance, CurrencyId, ReserveIdentifier};
 use sp_runtime::{
 	traits::{
-		CheckedSub, Convert, DispatchInfoOf, PostDispatchInfoOf, SaturatedConversion, Saturating, SignedExtension,
-		UniqueSaturatedInto, Zero,
+		Bounded, CheckedSub, Convert, DispatchInfoOf, One, PostDispatchInfoOf, SaturatedConversion, Saturating,
+		SignedExtension, UniqueSaturatedInto, Zero,
 	},
 	transaction_validity::{
 		InvalidTransaction, TransactionPriority, TransactionValidity, TransactionValidityError, ValidTransaction,
@@ -51,7 +51,7 @@ use sp_runtime::{
 	FixedPointNumber, FixedPointOperand, FixedU128, Perquintill,
 };
 use sp_std::{convert::TryInto, prelude::*, vec};
-use support::{DEXManager, Ratio, TransactionPayment};
+use support::{DEXManager, PriceProvider, Rate, TransactionPayment};
 
 mod mock;
 mod tests;
@@ -258,13 +258,16 @@ pub mod module {
 		/// DEX to exchange currencies.
 		type DEX: DEXManager<Self::AccountId, CurrencyId, Balance>;
 
-		/// The max slippage allowed when swap fee with DEX
+		/// When swap with DEX, the acceptable max slippage according to price from oracle.
 		#[pallet::constant]
-		type MaxSlippageSwapWithDEX: Get<Ratio>;
+		type MaxSwapSlippageCompareToOracle: Get<Rate>;
 
 		/// The limit for length of trading path
 		#[pallet::constant]
 		type TradingPathLimit: Get<u32>;
+
+		/// The price source to provider external market price.
+		type PriceSource: PriceProvider<CurrencyId>;
 
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
@@ -612,16 +615,27 @@ where
 			for trading_path in fee_swap_path_list {
 				match trading_path.last() {
 					Some(target_currency_id) if *target_currency_id == native_currency_id => {
-						// TODO: get price from oracle, set max_supply in limit
+						let supply_currency_id = *trading_path.first().expect("these's first guaranteed by match");
+						// calculate the supply limit according to oracle price and the slippage limit,
+						// if oracle price is not avalible, do not limit
+						let max_supply_limit = if let Some(target_price) =
+							T::PriceSource::get_relative_price(*target_currency_id, supply_currency_id)
+						{
+							Rate::one()
+								.saturating_sub(T::MaxSwapSlippageCompareToOracle::get())
+								.reciprocal()
+								.unwrap_or_else(Rate::max_value)
+								.saturating_mul_int(target_price.saturating_mul_int(amount))
+						} else {
+							PalletBalanceOf::<T>::max_value()
+						};
 
 						if T::DEX::swap_with_exact_target(
 							who,
 							&trading_path,
 							amount.unique_saturated_into(),
-							<T as Config>::MultiCurrency::free_balance(
-								*trading_path.first().expect("these's first guaranteed by match"),
-								who,
-							),
+							<T as Config>::MultiCurrency::free_balance(supply_currency_id, who)
+								.min(max_supply_limit.unique_saturated_into()),
 						)
 						.is_ok()
 						{
