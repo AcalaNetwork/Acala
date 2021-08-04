@@ -298,14 +298,6 @@ pub mod module {
 	#[pallet::getter(fn next_fee_multiplier)]
 	pub type NextFeeMultiplier<T: Config> = StorageValue<_, Multiplier, ValueQuery, DefaultFeeMultiplier>;
 
-	/// TODO: remove it after migrate
-	/// The default fee currency for accounts.
-	///
-	/// DefaultFeeCurrencyId: AccountId => Option<CurrencyId>
-	#[pallet::storage]
-	#[pallet::getter(fn default_fee_currency_id)]
-	pub type DefaultFeeCurrencyId<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, CurrencyId, OptionQuery>;
-
 	/// The alternative fee swap path of accounts.
 	#[pallet::storage]
 	#[pallet::getter(fn alternative_fee_swap_path)]
@@ -368,15 +360,6 @@ pub mod module {
 					the multiplier doesn't increase."
 				);
 			})
-		}
-
-		// remove after runtime upgraded
-		fn on_runtime_upgrade() -> Weight {
-			let remove_count = match DefaultFeeCurrencyId::<T>::remove_all(None) {
-				sp_io::KillStorageResult::AllRemoved(n) => n,
-				sp_io::KillStorageResult::SomeRemaining(n) => n,
-			};
-			T::DbWeight::get().reads_writes(0, remove_count.into())
 		}
 	}
 
