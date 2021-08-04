@@ -371,7 +371,7 @@ pub mod module {
 			updates: Vec<(PoolId<T::RelaychainAccountId>, Rate)>,
 		) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
-			for (pool_id, rate) in updates {
+			for (pool_id, saving_rate) in updates {
 				match pool_id {
 					PoolId::DexSaving(currency_id) => {
 						ensure!(currency_id.is_dex_share_currency_id(), Error::<T>::InvalidCurrencyId);
@@ -380,8 +380,9 @@ pub mod module {
 						return Err(Error::<T>::InvalidPoolId.into());
 					}
 				}
-				DexSavingRewardRate::<T>::insert(&pool_id, rate);
-				Self::deposit_event(Event::SavingRewardRateUpdated(pool_id, rate));
+				ensure!(saving_rate <= Rate::one(), Error::<T>::InvalidRate);
+				DexSavingRewardRate::<T>::insert(&pool_id, saving_rate);
+				Self::deposit_event(Event::SavingRewardRateUpdated(pool_id, saving_rate));
 			}
 			Ok(())
 		}

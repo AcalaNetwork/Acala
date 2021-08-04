@@ -281,6 +281,13 @@ fn update_dex_saving_rewards_works() {
 			),
 			Error::<Runtime>::InvalidCurrencyId
 		);
+		assert_noop!(
+			IncentivesModule::update_dex_saving_rewards(
+				Origin::signed(Root::get()),
+				vec![(PoolId::DexSaving(DOT_AUSD_LP), Rate::saturating_from_rational(101, 100)),]
+			),
+			Error::<Runtime>::InvalidRate,
+		);
 
 		assert_eq!(
 			IncentivesModule::dex_saving_reward_rate(PoolId::DexSaving(DOT_AUSD_LP)),
