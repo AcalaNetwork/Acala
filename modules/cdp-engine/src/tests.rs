@@ -680,9 +680,9 @@ fn close_cdp_has_debit_by_dex_work() {
 		));
 
 		// max collateral amount limit swap
-		assert_eq!(
-			CDPEngineModule::close_cdp_has_debit_by_dex(ALICE, BTC, 5, None).is_err(),
-			true
+		assert_noop!(
+			CDPEngineModule::close_cdp_has_debit_by_dex(ALICE, BTC, 5, None),
+			dex::Error::<Runtime>::ExcessiveSupplyAmount
 		);
 
 		assert_ok!(CDPEngineModule::close_cdp_has_debit_by_dex(ALICE, BTC, 6, None));
