@@ -1174,8 +1174,7 @@ impl InstanceFilter<Call> for ProxyType {
 				matches!(
 					c,
 					Call::Authority(..)
-						| Call::Democracy(..) | Call::PhragmenElection(..)
-						| Call::GeneralCouncil(..)
+						| Call::Democracy(..) | Call::GeneralCouncil(..)
 						| Call::FinancialCouncil(..)
 						| Call::HomaCouncil(..) | Call::TechnicalCommittee(..)
 						| Call::Treasury(..) | Call::Bounties(..)
