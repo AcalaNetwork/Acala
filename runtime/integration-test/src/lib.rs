@@ -17,4 +17,4 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 #[cfg(test)]
-mod integration_test;
+mod integration_tests;
