@@ -25,7 +25,7 @@ sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.8" }
 pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.8" }
 orml-currencies = { path = "../../orml/currencies" }
-module-dex = { path = "../dex" }
+dex = { package = "module-dex", path = "../dex"}
 cdp-treasury = { package = "module-cdp-treasury", path = "../cdp-treasury" }
 orml-tokens = { path = "../../orml/tokens" }
 

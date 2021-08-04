@@ -148,6 +148,13 @@ pub mod module {
 			Ok(())
 		}
 
+		/// Close caller's CDP which has debit but still in safe by use collateral to swap
+		/// stable token on DEX for clearing debit.
+		///
+		/// - `currency_id`: collateral currency id.
+		/// - `max_collateral_amount`: the max collateral amount which is used to swap enough
+		/// 	stable token to clear debit.
+		/// - `maybe_path`: the custom swap path.
 		#[pallet::weight(<T as Config>::WeightInfo::close_loan_has_debit_by_dex(
 			maybe_path.clone().map(|p| p.len() as u32).unwrap_or(2)
 		))]
@@ -155,11 +162,17 @@ pub mod module {
 		pub fn close_loan_has_debit_by_dex(
 			origin: OriginFor<T>,
 			currency_id: CurrencyId,
+			max_collateral_amount: Balance,
 			maybe_path: Option<Vec<CurrencyId>>,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			ensure!(!T::EmergencyShutdown::is_shutdown(), Error::<T>::AlreadyShutdown);
-			<cdp_engine::Pallet<T>>::close_cdp_has_debit_by_dex(who, currency_id, maybe_path.as_deref())?;
+			<cdp_engine::Pallet<T>>::close_cdp_has_debit_by_dex(
+				who,
+				currency_id,
+				max_collateral_amount,
+				maybe_path.as_deref(),
+			)?;
 			Ok(())
 		}
 

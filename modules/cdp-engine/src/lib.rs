@@ -784,9 +784,11 @@ impl<T: Config> Pallet<T> {
 	}
 
 	// close cdp has debit by swap collateral to exact debit
+	#[transactional]
 	pub fn close_cdp_has_debit_by_dex(
 		who: T::AccountId,
 		currency_id: CurrencyId,
+		max_collateral_amount: Balance,
 		maybe_path: Option<&[CurrencyId]>,
 	) -> DispatchResult {
 		let Position { collateral, debit } = <LoansOf<T>>::positions(currency_id, &who);
@@ -803,7 +805,7 @@ impl<T: Config> Pallet<T> {
 		let debit_value = Self::get_debit_value(currency_id, debit);
 		let actual_supply_collateral = <T as Config>::CDPTreasury::swap_collateral_to_exact_stable(
 			currency_id,
-			collateral,
+			collateral.min(max_collateral_amount),
 			debit_value,
 			maybe_path,
 			false,
