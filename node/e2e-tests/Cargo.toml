@@ -1,12 +1,11 @@
 [package]
 name = "e2e-tests"
-version = "0.1.0"
-authors = ["Parity Technologies <admin@parity.io>"]
+version = "1.2.2"
+authors = ["Acala Developers"]
 edition = "2018"
-publish = false
 
 [dependencies]
-test-runner = { path = "./test-runner", version = "0.9.0" }
+test-runner = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.8" }
 
 frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.8" }
 frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.8" }
@@ -42,5 +41,7 @@ sp-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polk
 sp-api = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.8" }
 sp-inherents = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.8" }
 sp-keystore = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.8" }
+
+cumulus-primitives-parachain-inherent = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.8" }
 
 log = "0.4.14"

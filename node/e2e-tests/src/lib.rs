@@ -1,6 +1,6 @@
-// This file is part of Substrate.
+// This file is part of Acala.
 
-// Copyright (C) 2021 Parity Technologies (UK) Ltd.
+// Copyright (C) 2020-2021 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -16,9 +16,10 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-//! Basic example of end to end runtime tests.
+//! End to end runtime tests.
 
 use node_service::chain_spec::mandala::dev_testnet_config;
+use node_service::default_mock_parachain_inherent_data_provider;
 use pallet_balances::Call as BalancesCall;
 use sc_consensus_manual_seal::ConsensusDataProvider;
 use sc_service::{new_full_parts, Configuration, TFullBackend, TFullClient, TaskExecutor, TaskManager};
@@ -52,16 +53,11 @@ impl ChainInfo for NodeTemplateChainInfo {
 	type Runtime = node_runtime::Runtime;
 	type RuntimeApi = node_runtime::RuntimeApi;
 	type SelectChain = sc_consensus::LongestChain<TFullBackend<Self::Block>, Self::Block>;
-	type BlockImport = sc_finality_grandpa::GrandpaBlockImport<
-		TFullBackend<Self::Block>,
-		Self::Block,
-		TFullClient<Self::Block, Self::RuntimeApi, Self::Executor>,
-		Self::SelectChain,
-	>;
+	type BlockImport = Arc<TFullClient<Self::Block, Self::RuntimeApi, Self::Executor>>;
 	type SignedExtras = node_runtime::SignedExtra;
 	type InherentDataProviders = (
 		sp_timestamp::InherentDataProvider,
-		sp_consensus_aura::inherents::InherentDataProvider,
+		cumulus_primitives_parachain_inherent::MockValidationDataInherentDataProvider,
 	);
 
 	fn signed_extras(from: <Self::Runtime as frame_system::Config>::AccountId) -> Self::SignedExtras {
@@ -112,36 +108,20 @@ impl ChainInfo for NodeTemplateChainInfo {
 
 		let select_chain = sc_consensus::LongestChain::new(backend.clone());
 
-		let (grandpa_block_import, ..) =
-			sc_finality_grandpa::block_import(client.clone(), &(client.clone() as Arc<_>), select_chain.clone(), None)?;
-
-		let slot_duration = sc_consensus_aura::slot_duration(&*client)?.slot_duration();
-
-		//let consensus_data_provider = BabeConsensusDataProvider::new(
-		//	client.clone(),
-		//	keystore.sync_keystore(),
-		//	grandpa_link.epoch_changes().clone(),
-		//	vec![(AuthorityId::from(Alice.public()), 1000)],
-		//)
-		//.expect("failed to create ConsensusDataProvider");
-
 		Ok((
 			client.clone(),
 			backend,
 			keystore.sync_keystore(),
 			task_manager,
 			Box::new(move |_, _| async move {
-				let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
-				let slot = sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_duration(
-					*timestamp,
-					slot_duration,
-				);
-				Ok((timestamp, slot))
+				Ok((
+					sp_timestamp::InherentDataProvider::from_system_time(),
+					default_mock_parachain_inherent_data_provider(),
+				))
 			}),
-			//Some(Box::new(consensus_data_provider)),
 			None,
 			select_chain,
-			grandpa_block_import.clone(),
+			client.clone(),
 		))
 	}
 
@@ -181,7 +161,7 @@ mod tests {
 				("sc_peerset", LevelFilter::Off),
 				("rpc", LevelFilter::Off),
 				("runtime", LevelFilter::Trace),
-				("babe", LevelFilter::Debug),
+				("aura", LevelFilter::Debug),
 			],
 		};
 		let mut node = Node::<NodeTemplateChainInfo>::new(config).unwrap();
@@ -208,27 +188,27 @@ mod tests {
 		let (alice, bob) = (MultiSigner::from(Alice.public()), MultiSigner::from(Bob.public()));
 		let (alice_account_id, bob_acount_id) = (alice.into_account(), bob.into_account());
 
-		/// the function with_state allows us to read state, pretty cool right? :D
+		// the function with_state allows us to read state, pretty cool right? :D
 		let old_balance = node.with_state(|| Balances::free_balance(alice_account_id.clone()));
 
 		// 70 dots
 		let amount = 70_000_000_000_000;
 
-		/// Send extrinsic in action.
+		// Send extrinsic in action.
 		node.submit_extrinsic(
 			pallet_balances::Call::transfer(MultiAddress::from(bob_acount_id.clone()), amount),
 			alice_account_id.clone(),
 		);
 
-		/// Produce blocks in action, Powered by manual-seal™.
+		// Produce blocks in action, Powered by manual-seal™.
 		node.seal_blocks(1);
 
-		/// we can check the new state :D
+		// we can check the new state :D
 		let new_balance = node.with_state(|| Balances::free_balance(alice_account_id));
 		let events = node.with_state(|| frame_system::Pallet::<node_runtime::Runtime>::events());
-		panic!("{:?}", events);
+		println!("events1 = {:?}", events);
 
-		/// we can now make assertions on how state has changed.
-		assert_eq!(old_balance + amount, new_balance);
+		// we can now make assertions on how state has changed.
+		assert_eq!(old_balance - amount, new_balance);
 	}
 }

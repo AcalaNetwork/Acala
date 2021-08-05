@@ -2248,11 +2248,12 @@ checksum = "ee2626afccd7561a06cf1367e2950c4718ea04565e20fb5029b6c7d8ad09abcf"
 
 [[package]]
 name = "e2e-tests"
-version = "0.1.0"
+version = "1.2.2"
 dependencies = [
  "acala-cli",
  "acala-primitives",
  "acala-service",
+ "cumulus-primitives-parachain-inherent",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -4996,7 +4997,6 @@ dependencies = [
  "pallet-collective",
  "pallet-democracy",
  "pallet-elections-phragmen",
- "pallet-grandpa",
  "pallet-indices",
  "pallet-membership",
  "pallet-multisig",
@@ -12163,6 +12163,7 @@ dependencies = [
 [[package]]
 name = "test-runner"
 version = "0.9.0"
+source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.8#74101dc21cfffb4c2d014fcc28edc166d5ca1b16"
 dependencies = [
  "env_logger 0.7.1",
  "frame-system",

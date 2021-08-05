@@ -57,8 +57,6 @@ use orml_tokens::CurrencyAdapter;
 use orml_traits::{
 	create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended, MultiCurrency,
 };
-use pallet_grandpa::fg_primitives;
-use pallet_grandpa::{AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList};
 use pallet_transaction_payment::{FeeDetails, RuntimeDispatchInfo};
 use sp_api::impl_runtime_apis;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
@@ -239,22 +237,6 @@ impl frame_system::Config for Runtime {
 
 impl pallet_aura::Config for Runtime {
 	type AuthorityId = AuraId;
-}
-
-impl pallet_grandpa::Config for Runtime {
-	type Event = Event;
-	type Call = Call;
-
-	type KeyOwnerProofSystem = ();
-
-	type KeyOwnerProof = <Self::KeyOwnerProofSystem as KeyOwnerProofSystem<(KeyTypeId, GrandpaId)>>::Proof;
-
-	type KeyOwnerIdentification =
-		<Self::KeyOwnerProofSystem as KeyOwnerProofSystem<(KeyTypeId, GrandpaId)>>::IdentificationTuple;
-
-	type HandleEquivocation = ();
-
-	type WeightInfo = ();
 }
 
 parameter_types! {
@@ -1989,7 +1971,6 @@ construct_runtime! {
 		Aura: pallet_aura::{Pallet, Storage, Config<T>} = 193,
 		AuraExt: cumulus_pallet_aura_ext::{Pallet, Storage, Config} = 194,
 		SessionManager: module_session_manager::{Pallet, Call, Storage, Event<T>, Config<T>} = 195,
-		Grandpa: pallet_grandpa::{Pallet, Call, Storage, Config, Event} = 196,
 
 		// Dev
 		Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>} = 255,
@@ -2064,32 +2045,6 @@ impl_runtime_apis! {
 			Aura::authorities()
 		}
 	}
-
-//	impl fg_primitives::GrandpaApi<Block> for Runtime {
-//		fn grandpa_authorities() -> GrandpaAuthorityList {
-//			Grandpa::grandpa_authorities()
-//		}
-//
-//		fn submit_report_equivocation_unsigned_extrinsic(
-//			_equivocation_proof: fg_primitives::EquivocationProof<
-//					<Block as BlockT>::Hash,
-//				NumberFor<Block>,
-//				>,
-//			_key_owner_proof: fg_primitives::OpaqueKeyOwnershipProof,
-//		) -> Option<()> {
-//			None
-//		}
-//
-//		fn generate_key_ownership_proof(
-//			_set_id: fg_primitives::SetId,
-//			_authority_id: GrandpaId,
-//		) -> Option<fg_primitives::OpaqueKeyOwnershipProof> {
-//			// NOTE: this is the only implementation possible since we've
-//			// defined our key owner proof type as a bottom type (i.e. a type
-//			// with no values).
-//			None
-//		}
-//	}
 
 	impl sp_session::SessionKeys<Block> for Runtime {
 		fn generate_session_keys(seed: Option<Vec<u8>>) -> Vec<u8> {
