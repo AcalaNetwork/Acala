@@ -734,6 +734,17 @@ where
 		final_fee
 			.saturating_mul(coefficient)
 			.saturated_into::<TransactionPriority>()
+		//match info.class {
+		//	// Normal transaction.
+		//	DispatchClass::Normal =>
+		//		FrameTransactionPriority::Normal(info.weight.into()).into(),
+		//	// Don't use up the whole priority space, to allow things like `tip` to be taken into
+		//	// account as well.
+		//	DispatchClass::Operational =>
+		//		FrameTransactionPriority::Operational(info.weight.into()).into(),
+		//	// Mandatory extrinsics are only for inherents; never transactions.
+		//	DispatchClass::Mandatory => TransactionPriority::min_value(),
+		//}
 	}
 }
 

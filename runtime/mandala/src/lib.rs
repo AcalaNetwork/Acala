@@ -2065,31 +2065,31 @@ impl_runtime_apis! {
 		}
 	}
 
-	impl fg_primitives::GrandpaApi<Block> for Runtime {
-		fn grandpa_authorities() -> GrandpaAuthorityList {
-			Grandpa::grandpa_authorities()
-		}
-
-		fn submit_report_equivocation_unsigned_extrinsic(
-			_equivocation_proof: fg_primitives::EquivocationProof<
-					<Block as BlockT>::Hash,
-				NumberFor<Block>,
-				>,
-			_key_owner_proof: fg_primitives::OpaqueKeyOwnershipProof,
-		) -> Option<()> {
-			None
-		}
-
-		fn generate_key_ownership_proof(
-			_set_id: fg_primitives::SetId,
-			_authority_id: GrandpaId,
-		) -> Option<fg_primitives::OpaqueKeyOwnershipProof> {
-			// NOTE: this is the only implementation possible since we've
-			// defined our key owner proof type as a bottom type (i.e. a type
-			// with no values).
-			None
-		}
-	}
+//	impl fg_primitives::GrandpaApi<Block> for Runtime {
+//		fn grandpa_authorities() -> GrandpaAuthorityList {
+//			Grandpa::grandpa_authorities()
+//		}
+//
+//		fn submit_report_equivocation_unsigned_extrinsic(
+//			_equivocation_proof: fg_primitives::EquivocationProof<
+//					<Block as BlockT>::Hash,
+//				NumberFor<Block>,
+//				>,
+//			_key_owner_proof: fg_primitives::OpaqueKeyOwnershipProof,
+//		) -> Option<()> {
+//			None
+//		}
+//
+//		fn generate_key_ownership_proof(
+//			_set_id: fg_primitives::SetId,
+//			_authority_id: GrandpaId,
+//		) -> Option<fg_primitives::OpaqueKeyOwnershipProof> {
+//			// NOTE: this is the only implementation possible since we've
+//			// defined our key owner proof type as a bottom type (i.e. a type
+//			// with no values).
+//			None
+//		}
+//	}
 
 	impl sp_session::SessionKeys<Block> for Runtime {
 		fn generate_session_keys(seed: Option<Vec<u8>>) -> Vec<u8> {
