@@ -61,7 +61,6 @@ use pallet_transaction_payment::{FeeDetails, RuntimeDispatchInfo};
 use sp_api::impl_runtime_apis;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_core::{crypto::KeyTypeId, OpaqueMetadata, H160};
-use sp_runtime::traits::NumberFor;
 use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{

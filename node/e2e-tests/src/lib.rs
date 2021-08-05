@@ -20,17 +20,12 @@
 
 use node_service::chain_spec::mandala::dev_testnet_config;
 use node_service::default_mock_parachain_inherent_data_provider;
-use pallet_balances::Call as BalancesCall;
 use sc_consensus_manual_seal::ConsensusDataProvider;
 use sc_service::{new_full_parts, Configuration, TFullBackend, TFullClient, TaskExecutor, TaskManager};
-use sp_consensus::BlockImport;
-use sp_consensus::SlotData;
 use sp_inherents::CreateInherentDataProviders;
 use sp_keyring::sr25519::Keyring::{Alice, Bob};
 use sp_keystore::SyncCryptoStorePtr;
-use sp_runtime::traits::NumberFor;
-use sp_runtime::MultiAddress;
-use sp_runtime::{generic::Era, traits::IdentifyAccount, MultiSigner};
+use sp_runtime::{generic::Era, traits::IdentifyAccount, MultiAddress, MultiSigner};
 use std::sync::Arc;
 use test_runner::{default_config, ChainInfo, Node, SignatureVerificationOverride};
 
@@ -186,29 +181,50 @@ mod tests {
 		type Balances = pallet_balances::Pallet<node_runtime::Runtime>;
 
 		let (alice, bob) = (MultiSigner::from(Alice.public()), MultiSigner::from(Bob.public()));
-		let (alice_account_id, bob_acount_id) = (alice.into_account(), bob.into_account());
+		let (alice_account_id, bob_account_id) = (alice.into_account(), bob.into_account());
 
 		// the function with_state allows us to read state, pretty cool right? :D
-		let old_balance = node.with_state(|| Balances::free_balance(alice_account_id.clone()));
+		let old_balance = node.with_state(|| Balances::free_balance(bob_account_id.clone()));
 
-		// 70 dots
 		let amount = 70_000_000_000_000;
 
 		// Send extrinsic in action.
-		node.submit_extrinsic(
-			pallet_balances::Call::transfer(MultiAddress::from(bob_acount_id.clone()), amount),
-			alice_account_id.clone(),
-		);
+		let tx = pallet_balances::Call::transfer(MultiAddress::from(bob_account_id.clone()), amount);
+		node.submit_extrinsic(tx.clone(), alice_account_id.clone());
 
 		// Produce blocks in action, Powered by manual-seal™.
 		node.seal_blocks(1);
 
 		// we can check the new state :D
-		let new_balance = node.with_state(|| Balances::free_balance(alice_account_id));
-		let events = node.with_state(|| frame_system::Pallet::<node_runtime::Runtime>::events());
-		println!("events1 = {:?}", events);
+		let new_balance = node.with_state(|| Balances::free_balance(bob_account_id.clone()));
 
 		// we can now make assertions on how state has changed.
-		assert_eq!(old_balance - amount, new_balance);
+		assert_eq!(old_balance + amount, new_balance);
+	}
+
+	#[test]
+	fn transaction_pool_test() {
+		// given
+		let config = NodeConfig { log_targets: vec![] };
+		let mut node = Node::<NodeTemplateChainInfo>::new(config).unwrap();
+
+		type Balances = pallet_balances::Pallet<node_runtime::Runtime>;
+
+		let (alice, bob) = (MultiSigner::from(Alice.public()), MultiSigner::from(Bob.public()));
+		let (alice_account_id, bob_account_id) = (alice.into_account(), bob.into_account());
+
+		// Send extrinsic in action.
+		node.submit_extrinsic(
+			pallet_balances::Call::transfer(MultiAddress::from(bob_account_id.clone()), 70_000_000_000_000),
+			alice_account_id.clone(),
+		);
+
+		node.submit_extrinsic(
+			pallet_balances::Call::transfer(MultiAddress::from(bob_account_id.clone()), 70_000_000_000_000),
+			alice_account_id.clone(),
+		);
+
+		let mut a = node.pool.ready();
+		println!("{:?}", a.next());
 	}
 }
