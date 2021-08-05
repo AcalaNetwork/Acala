@@ -37,7 +37,7 @@ pub use frame_support::{
 	construct_runtime, log, parameter_types,
 	traits::{
 		All, ContainsLengthBound, Currency as PalletCurrency, EnsureOrigin, Filter, Get, Imbalance, InstanceFilter,
-		IsType, KeyOwnerProofSystem, LockIdentifier, MaxEncodedLen, OnUnbalanced, Randomness, SortedMembers,
+		IsSubType, IsType, KeyOwnerProofSystem, LockIdentifier, MaxEncodedLen, OnUnbalanced, Randomness, SortedMembers,
 		U128CurrencyToVote, WithdrawReasons,
 	},
 	weights::{
@@ -1325,6 +1325,10 @@ parameter_types! {
 impl InstanceFilter<Call> for ProxyType {
 	fn filter(&self, c: &Call) -> bool {
 		match self {
+			// Always allowed Call::Utility no matter type.
+			// Only transactions allowed by Proxy.filter can be executed,
+			// otherwise `BadOrigin` will be returned in Call::Utility.
+			_ if matches!(c, Call::Utility(..)) => true,
 			ProxyType::Any => true,
 			ProxyType::CancelProxy => matches!(c, Call::Proxy(pallet_proxy::Call::reject_announcement(..))),
 			ProxyType::Governance => {
@@ -1336,7 +1340,7 @@ impl InstanceFilter<Call> for ProxyType {
 						| Call::FinancialCouncil(..)
 						| Call::HomaCouncil(..) | Call::TechnicalCommittee(..)
 						| Call::Treasury(..) | Call::Bounties(..)
-						| Call::Tips(..) | Call::Utility(..)
+						| Call::Tips(..)
 				)
 			}
 			ProxyType::Auction => {
