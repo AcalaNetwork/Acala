@@ -37,7 +37,7 @@ pub use frame_support::{
 	construct_runtime, log, parameter_types,
 	traits::{
 		All, ContainsLengthBound, Currency as PalletCurrency, EnsureOrigin, Filter, Get, Imbalance, InstanceFilter,
-		IsType, KeyOwnerProofSystem, LockIdentifier, MaxEncodedLen, OnUnbalanced, Randomness, SortedMembers,
+		IsSubType, IsType, KeyOwnerProofSystem, LockIdentifier, MaxEncodedLen, OnUnbalanced, Randomness, SortedMembers,
 		U128CurrencyToVote, WithdrawReasons,
 	},
 	weights::{
@@ -116,9 +116,9 @@ pub use runtime_common::{
 	EnsureRootOrTwoThirdsGeneralCouncil, EnsureRootOrTwoThirdsTechnicalCommittee, ExchangeRate,
 	FinancialCouncilInstance, FinancialCouncilMembershipInstance, GasToWeight, GeneralCouncilInstance,
 	GeneralCouncilMembershipInstance, HomaCouncilInstance, HomaCouncilMembershipInstance, OffchainSolutionWeightLimit,
-	OperatorMembershipInstanceAcala, OperatorMembershipInstanceBand, Price, Rate, Ratio, RelaychainBlockNumberProvider,
-	RuntimeBlockLength, RuntimeBlockWeights, SystemContractsFilter, TechnicalCommitteeInstance,
-	TechnicalCommitteeMembershipInstance, TimeStampedPrice, ACA, AUSD, DOT, LDOT, RENBTC,
+	OperatorMembershipInstanceAcala, OperatorMembershipInstanceBand, Price, ProxyType, Rate, Ratio,
+	RelaychainBlockNumberProvider, RuntimeBlockLength, RuntimeBlockWeights, SystemContractsFilter,
+	TechnicalCommitteeInstance, TechnicalCommitteeMembershipInstance, TimeStampedPrice, ACA, AUSD, DOT, LDOT, RENBTC,
 };
 
 mod authority;
@@ -166,7 +166,7 @@ parameter_types! {
 	pub const CollatorPotId: PalletId = PalletId(*b"aca/cpot");
 	// Treasury reserve
 	pub const TreasuryReservePalletId: PalletId = PalletId(*b"aca/reve");
-	pub const ElectionsPhragmenPalletId: LockIdentifier = *b"aca/phre";
+	pub const PhragmenElectionPalletId: LockIdentifier = *b"aca/phre";
 	pub const NftPalletId: PalletId = PalletId(*b"aca/aNFT");
 	pub const NomineesElectionId: LockIdentifier = *b"aca/nome";
 	pub UnreleasedNativeVaultAccountId: AccountId = PalletId(*b"aca/urls").into_account();
@@ -702,7 +702,7 @@ parameter_types! {
 }
 
 impl pallet_elections_phragmen::Config for Runtime {
-	type PalletId = ElectionsPhragmenPalletId;
+	type PalletId = PhragmenElectionPalletId;
 	type Event = Event;
 	type Currency = CurrencyAdapter<Runtime, GetLiquidCurrencyId>;
 	type CurrencyToVote = U128CurrencyToVote;
@@ -1323,91 +1323,44 @@ parameter_types! {
 	pub const MaxPending: u16 = 32;
 }
 
-/// The type used to represent the kinds of proxying allowed.
-#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Encode, Decode, RuntimeDebug, MaxEncodedLen)]
-pub enum ProxyType {
-	Any,
-	CancelProxy,
-	NonTransfer,
-	Governance,
-	Staking,
-}
-impl Default for ProxyType {
-	fn default() -> Self {
-		Self::Any
-	}
-}
 impl InstanceFilter<Call> for ProxyType {
 	fn filter(&self, c: &Call) -> bool {
 		match self {
+			// Always allowed Call::Utility no matter type.
+			// Only transactions allowed by Proxy.filter can be executed,
+			// otherwise `BadOrigin` will be returned in Call::Utility.
+			_ if matches!(c, Call::Utility(..)) => true,
 			ProxyType::Any => true,
 			ProxyType::CancelProxy => matches!(c, Call::Proxy(pallet_proxy::Call::reject_announcement(..))),
-			ProxyType::NonTransfer => matches!(
-				c,
-				Call::System(..) |
-				Call::Timestamp(..) |
-				Call::Scheduler(..) |
-				Call::Utility(..) |
-				Call::Multisig(..) |
-				Call::Proxy(..) |
-				// Specifically omitting the entire Balances, Tokens and Currencies pallet
-				Call::Vesting(orml_vesting::Call::claim(..)) |
-				Call::Vesting(orml_vesting::Call::update_vesting_schedules(..)) |
-				// Specifically omitting Vesting `vested_transfer`
-				Call::TransactionPayment(..) |
-				Call::Treasury(..) |
-				Call::Bounties(..) |
-				Call::Tips(..) |
-				Call::ParachainSystem(..) |
-				Call::Authorship(..) |
-				Call::CollatorSelection(..) |
-				Call::Session(..) |
-				Call::Indices(..) |
-				Call::GraduallyUpdate(..) |
-				Call::Authority(..) |
-				Call::ElectionsPhragmen(..) |
-				Call::GeneralCouncil(..) |
-				Call::GeneralCouncilMembership(..) |
-				Call::FinancialCouncil(..) |
-				Call::FinancialCouncilMembership(..) |
-				Call::HomaCouncil(..) |
-				Call::HomaCouncilMembership(..) |
-				Call::TechnicalCommittee(..) |
-				Call::TechnicalCommitteeMembership(..) |
-				Call::AcalaOracle(..) |
-				Call::OperatorMembershipAcala(..) |
-				Call::BandOracle(..) |
-				Call::OperatorMembershipBand(..) |
-				Call::Auction(..) |
-				Call::Rewards(..) |
-				Call::Prices(..) |
-				Call::Dex(..) |
-				Call::AuctionManager(..) |
-				Call::Loans(..) |
-				Call::Honzon(..) |
-				Call::CdpTreasury(..) |
-				Call::CdpEngine(..) |
-				Call::EmergencyShutdown(..) |
-				Call::Homa(..) |
-				Call::NomineesElection(..) |
-				Call::StakingPool(..) |
-				Call::PolkadotBridge(..) |
-				Call::HomaValidatorListModule(..) |
-				Call::Incentives(..) |
-				Call::AirDrop(..) |
-				Call::EvmAccounts(..)
-			),
-			ProxyType::Governance => matches!(
-				c,
-				Call::Authority(..)
-					| Call::GeneralCouncil(..)
-					| Call::FinancialCouncil(..)
-					| Call::HomaCouncil(..)
-					| Call::TechnicalCommittee(..)
-					| Call::Treasury(..) | Call::Bounties(..)
-					| Call::Tips(..) | Call::Utility(..)
-			),
-			ProxyType::Staking => matches!(c, Call::CollatorSelection(..) | Call::Session(..) | Call::Utility(..)),
+			ProxyType::Governance => {
+				matches!(
+					c,
+					Call::Authority(..)
+						| Call::Democracy(..) | Call::PhragmenElection(..)
+						| Call::GeneralCouncil(..)
+						| Call::FinancialCouncil(..)
+						| Call::HomaCouncil(..) | Call::TechnicalCommittee(..)
+						| Call::Treasury(..) | Call::Bounties(..)
+						| Call::Tips(..)
+				)
+			}
+			ProxyType::Auction => {
+				matches!(c, Call::Auction(orml_auction::Call::bid(..)))
+			}
+			ProxyType::Swap => {
+				matches!(
+					c,
+					Call::Dex(module_dex::Call::swap_with_exact_supply(..))
+						| Call::Dex(module_dex::Call::swap_with_exact_target(..))
+				)
+			}
+			ProxyType::Loan => {
+				matches!(
+					c,
+					Call::Honzon(module_honzon::Call::adjust_loan(..))
+						| Call::Honzon(module_honzon::Call::close_loan_has_debit_by_dex(..))
+				)
+			}
 		}
 	}
 	fn is_superset(&self, o: &Self) -> bool {
@@ -1415,7 +1368,6 @@ impl InstanceFilter<Call> for ProxyType {
 			(x, y) if x == y => true,
 			(ProxyType::Any, _) => true,
 			(_, ProxyType::Any) => false,
-			(ProxyType::NonTransfer, _) => true,
 			_ => false,
 		}
 	}
@@ -1914,7 +1866,7 @@ construct_runtime! {
 		TechnicalCommitteeMembership: pallet_membership::<Instance4>::{Pallet, Call, Storage, Event<T>, Config<T>} = 57,
 
 		Authority: orml_authority::{Pallet, Call, Storage, Event<T>, Origin<T>} = 70,
-		ElectionsPhragmen: pallet_elections_phragmen::{Pallet, Call, Storage, Event<T>} = 71,
+		PhragmenElection: pallet_elections_phragmen::{Pallet, Call, Storage, Event<T>} = 71,
 		Democracy: pallet_democracy::{Pallet, Call, Storage, Config<T>, Event<T>} = 72,
 
 		// Oracle
