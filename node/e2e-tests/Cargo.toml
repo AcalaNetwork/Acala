@@ -6,6 +6,7 @@ edition = "2018"
 
 [dependencies]
 log = "0.4.14"
+hex-literal = "0.3.1"
 cumulus-primitives-parachain-inherent = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.8" }
 frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.8" }
 frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.8" }
@@ -28,6 +29,7 @@ sc-network-test = { git = "https://github.com/paritytech/substrate", branch = "p
 sc-informant = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.8" }
 sc-consensus = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.8" }
 
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.8" }
 sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.8" }
 sp-keyring = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.8" }
 sp-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.8" }
@@ -38,9 +40,12 @@ sp-keystore = { git = "https://github.com/paritytech/substrate", branch = "polka
 # TODO: change after https://github.com/paritytech/substrate/issues/9505
 test-runner = { path = "./test-runner" }
 
-module-evm = { path = "../../modules/evm", version = "1.2.2" }
-module-transaction-payment = { path = "../../modules/transaction-payment", version = "1.2.2" }
-node-runtime = { package = "mandala-runtime", path = "../../runtime/mandala", version = "1.2.2" }
-node-primitives = { package = "acala-primitives", version = "1.2.2", path = "../../primitives" }
-node-cli = { package = "acala-cli", path = "../cli", version = "1.2.2", features = ["with-mandala-runtime"] }
-node-service = { package = "acala-service", path = "../service", version = "1.2.2", features = ["with-mandala-runtime"] }
+module-evm = { path = "../../modules/evm" }
+module-transaction-payment = { path = "../../modules/transaction-payment" }
+module-emergency-shutdown = { path = "../../modules/emergency-shutdown" }
+module-cdp-engine = { path = "../../modules/cdp-engine" }
+ecosystem-renvm-bridge = { path = "../../ecosystem-modules/ren/renvm-bridge" }
+node-runtime = { package = "mandala-runtime", path = "../../runtime/mandala" }
+node-primitives = { package = "acala-primitives", path = "../../primitives" }
+node-cli = { package = "acala-cli", path = "../cli", features = ["with-mandala-runtime"] }
+node-service = { package = "acala-service", path = "../service", features = ["with-mandala-runtime"] }

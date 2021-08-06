@@ -18,21 +18,23 @@
 
 //! End to end runtime tests.
 
+use node_primitives::Block;
+use node_runtime::{api, native_version, Runtime, RuntimeApi, SignedExtra};
 use node_service::chain_spec::mandala::dev_testnet_config;
 use node_service::default_mock_parachain_inherent_data_provider;
 use sc_consensus_manual_seal::ConsensusDataProvider;
 use sc_service::{new_full_parts, Configuration, TFullBackend, TFullClient, TaskExecutor, TaskManager};
 use sp_inherents::CreateInherentDataProviders;
-use sp_keyring::sr25519::Keyring::{Alice, Bob};
+use sp_keyring::sr25519::Keyring::Alice;
 use sp_keystore::SyncCryptoStorePtr;
-use sp_runtime::{generic::Era, traits::IdentifyAccount, MultiAddress, MultiSigner};
+use sp_runtime::{generic::Era, traits::IdentifyAccount, MultiSigner};
 use std::sync::Arc;
 use test_runner::{default_config, ChainInfo, Node, SignatureVerificationOverride};
 
 sc_executor::native_executor_instance!(
 	pub Executor,
-	node_runtime::api::dispatch,
-	node_runtime::native_version,
+	api::dispatch,
+	native_version,
 	(
 		frame_benchmarking::benchmarking::HostFunctions,
 		SignatureVerificationOverride,
@@ -43,13 +45,13 @@ sc_executor::native_executor_instance!(
 struct NodeTemplateChainInfo;
 
 impl ChainInfo for NodeTemplateChainInfo {
-	type Block = node_primitives::Block;
+	type Block = Block;
 	type Executor = Executor;
-	type Runtime = node_runtime::Runtime;
-	type RuntimeApi = node_runtime::RuntimeApi;
+	type Runtime = Runtime;
+	type RuntimeApi = RuntimeApi;
 	type SelectChain = sc_consensus::LongestChain<TFullBackend<Self::Block>, Self::Block>;
 	type BlockImport = Arc<TFullClient<Self::Block, Self::RuntimeApi, Self::Executor>>;
-	type SignedExtras = node_runtime::SignedExtra;
+	type SignedExtras = SignedExtra;
 	type InherentDataProviders = (
 		sp_timestamp::InherentDataProvider,
 		cumulus_primitives_parachain_inherent::MockValidationDataInherentDataProvider,
@@ -123,7 +125,7 @@ impl ChainInfo for NodeTemplateChainInfo {
 	fn dispatch_with_root(call: <Self::Runtime as frame_system::Config>::Call, node: &mut Node<Self>) {
 		let alice = MultiSigner::from(Alice.public()).into_account();
 		let call = pallet_sudo::Call::sudo(Box::new(call));
-		node.submit_extrinsic(call, alice);
+		node.submit_extrinsic(call, Some(alice));
 		node.seal_blocks(1);
 	}
 }
@@ -131,7 +133,11 @@ impl ChainInfo for NodeTemplateChainInfo {
 #[cfg(test)]
 mod tests {
 	use super::*;
+	use ecosystem_renvm_bridge::EcdsaSignature;
+	use hex_literal::hex;
 	use log::LevelFilter;
+	use sp_keyring::sr25519::Keyring::Bob;
+	use sp_runtime::{AccountId32, MultiAddress};
 	use test_runner::NodeConfig;
 
 	#[test]
@@ -164,21 +170,20 @@ mod tests {
 		node.seal_blocks(1);
 		// submit extrinsics
 		let alice = MultiSigner::from(Alice.public()).into_account();
-		node.submit_extrinsic(frame_system::Call::remark((b"hello world").to_vec()), alice);
+		node.submit_extrinsic(frame_system::Call::remark((b"hello world").to_vec()), Some(alice));
 
 		// look ma, I can read state.
-		let _events = node.with_state(|| frame_system::Pallet::<node_runtime::Runtime>::events());
+		let _events = node.with_state(|| frame_system::Pallet::<Runtime>::events());
 		// get access to the underlying client.
 		let _client = node.client();
 	}
 
 	#[test]
 	fn simple_balances_test() {
-		// given
 		let config = NodeConfig { log_targets: vec![] };
 		let mut node = Node::<NodeTemplateChainInfo>::new(config).unwrap();
 
-		type Balances = pallet_balances::Pallet<node_runtime::Runtime>;
+		type Balances = pallet_balances::Pallet<Runtime>;
 
 		let (alice, bob) = (MultiSigner::from(Alice.public()), MultiSigner::from(Bob.public()));
 		let (alice_account_id, bob_account_id) = (alice.into_account(), bob.into_account());
@@ -190,7 +195,7 @@ mod tests {
 
 		// Send extrinsic in action.
 		let tx = pallet_balances::Call::transfer(MultiAddress::from(bob_account_id.clone()), amount);
-		node.submit_extrinsic(tx.clone(), alice_account_id.clone());
+		node.submit_extrinsic(tx.clone(), Some(alice_account_id.clone()));
 
 		// Produce blocks in action, Powered by manual-seal™.
 		node.seal_blocks(1);
@@ -203,28 +208,54 @@ mod tests {
 	}
 
 	#[test]
-	fn transaction_pool_test() {
-		// given
+	fn transaction_pool_priority_order_test() {
 		let config = NodeConfig { log_targets: vec![] };
 		let mut node = Node::<NodeTemplateChainInfo>::new(config).unwrap();
-
-		type Balances = pallet_balances::Pallet<node_runtime::Runtime>;
 
 		let (alice, bob) = (MultiSigner::from(Alice.public()), MultiSigner::from(Bob.public()));
 		let (alice_account_id, bob_account_id) = (alice.into_account(), bob.into_account());
 
-		// Send extrinsic in action.
-		node.submit_extrinsic(
-			pallet_balances::Call::transfer(MultiAddress::from(bob_account_id.clone()), 70_000_000_000_000),
-			alice_account_id.clone(),
+		// send operational extrinsic
+		let operational_tx_hash = node.submit_extrinsic(
+			pallet_sudo::Call::sudo(Box::new(module_emergency_shutdown::Call::emergency_shutdown().into())),
+			Some(alice_account_id.clone()),
 		);
 
-		node.submit_extrinsic(
-			pallet_balances::Call::transfer(MultiAddress::from(bob_account_id.clone()), 70_000_000_000_000),
-			alice_account_id.clone(),
+		// send normal extrinsic
+		let normal_tx_hash = node.submit_extrinsic(
+			pallet_balances::Call::transfer(MultiAddress::from(bob_account_id.clone()), 80_000),
+			Some(bob_account_id.clone()),
 		);
 
-		let mut a = node.pool.ready();
-		println!("{:?}", a.next());
+		// send unsigned extrinsic
+		let to: AccountId32 = hex!["d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d"].into();
+		let unsigned_tx_hash = node.submit_extrinsic(
+			ecosystem_renvm_bridge::Call::mint(
+				to,
+				hex!["67028f26328144de6ef80b8cd3b05e0cefb488762c340d1574c0542f752996cb"],
+				93963,
+				hex!["f6a75cc370a2dda6dfc8d016529766bb6099d7fa0d787d9fe5d3a7e60c9ac2a0"],
+				EcdsaSignature::from_slice(&hex!["defda6eef01da2e2a90ce30ba73e90d32204ae84cae782b485f01d16b69061e0381a69cafed3deb6112af044c42ed0f7c73ee0eec7b533334d31a06db50fc40e1b"]),
+			),
+			None,
+		);
+
+		assert_eq!(node.pool.ready().count(), 3);
+
+		// Ensure tx priority order:
+		// Inherent -> Operational tx -> Unsigned tx -> Signed normal tx
+		let mut txs = node.pool.ready();
+		let tx1 = txs.next().unwrap();
+		let tx2 = txs.next().unwrap();
+		let tx3 = txs.next().unwrap();
+
+		assert_eq!(tx1.hash, operational_tx_hash);
+		assert_eq!(tx1.priority, 13835064928601523711);
+
+		assert_eq!(tx2.hash, unsigned_tx_hash);
+		assert_eq!(tx2.priority, 1844674407370965161);
+
+		assert_eq!(tx3.hash, normal_tx_hash);
+		assert_eq!(tx3.priority, 42570167292000);
 	}
 }

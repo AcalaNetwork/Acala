@@ -267,7 +267,7 @@ impl<T: ChainInfo> Node<T> {
 	pub fn submit_extrinsic(
 		&mut self,
 		call: impl Into<<T::Runtime as frame_system::Config>::Call>,
-		from: <T::Runtime as frame_system::Config>::AccountId,
+		from: Option<<T::Runtime as frame_system::Config>::AccountId>,
 	) -> <T::Block as BlockT>::Hash
 	where
 		<T::Block as BlockT>::Extrinsic: From<
@@ -282,8 +282,12 @@ impl<T: ChainInfo> Node<T> {
 			>,
 		>,
 	{
-		let extra = self.with_state(|| T::signed_extras(from.clone()));
-		let signed_data = Some((from.into(), MultiSignature::Sr25519(Default::default()), extra));
+		let signed_data = if let Some(from) = from {
+			let extra = self.with_state(|| T::signed_extras(from.clone()));
+			Some((from.into(), MultiSignature::Sr25519(Default::default()), extra))
+		} else {
+			None
+		};
 		let ext = UncheckedExtrinsic::<
 			MultiAddress<<T::Runtime as frame_system::Config>::AccountId, <T::Runtime as frame_system::Config>::Index>,
 			<T::Runtime as frame_system::Config>::Call,

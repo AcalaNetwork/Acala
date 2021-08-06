@@ -2254,11 +2254,15 @@ dependencies = [
  "acala-primitives",
  "acala-service",
  "cumulus-primitives-parachain-inherent",
+ "ecosystem-renvm-bridge",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "hex-literal 0.3.1",
  "log",
  "mandala-runtime",
+ "module-cdp-engine",
+ "module-emergency-shutdown",
  "module-evm",
  "module-transaction-payment",
  "pallet-balances",
@@ -2278,6 +2282,7 @@ dependencies = [
  "sp-consensus",
  "sp-consensus-aura",
  "sp-consensus-babe",
+ "sp-core",
  "sp-inherents",
  "sp-keyring 3.0.0 (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.8)",
  "sp-keystore",
@@ -12837,7 +12842,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "04f8ab788026715fa63b31960869617cba39117e520eb415b0139543e325ab59"
 dependencies = [
  "cfg-if 0.1.10",
- "rand 0.3.23",
+ "rand 0.7.3",
  "static_assertions",
 ]
 
