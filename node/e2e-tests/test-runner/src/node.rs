@@ -16,6 +16,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+#![allow(clippy::all)]
+
 use std::sync::Arc;
 
 use futures::{
@@ -55,17 +57,17 @@ use log::LevelFilter;
 /// also holds logs from the process.
 pub struct Node<T: ChainInfo> {
 	/// rpc handler for communicating with the node over rpc.
-	pub rpc_handler: Arc<MetaIoHandler<sc_rpc::Metadata, sc_rpc_server::RpcMiddleware>>,
+	rpc_handler: Arc<MetaIoHandler<sc_rpc::Metadata, sc_rpc_server::RpcMiddleware>>,
 	/// Stream of log lines
-	pub log_stream: mpsc::UnboundedReceiver<String>,
+	log_stream: mpsc::UnboundedReceiver<String>,
 	/// node tokio runtime
-	pub _runtime: tokio::runtime::Runtime,
+	_runtime: tokio::runtime::Runtime,
 	/// handle to the running node.
-	pub _task_manager: Option<TaskManager>,
+	_task_manager: Option<TaskManager>,
 	/// client instance
-	pub client: Arc<TFullClient<T::Block, T::RuntimeApi, T::Executor>>,
+	client: Arc<TFullClient<T::Block, T::RuntimeApi, T::Executor>>,
 	/// transaction pool
-	pub pool: Arc<
+	pool: Arc<
 		dyn TransactionPool<
 			Block = T::Block,
 			Hash = <T::Block as BlockT>::Hash,
@@ -77,11 +79,11 @@ pub struct Node<T: ChainInfo> {
 		>,
 	>,
 	/// channel to communicate with manual seal on.
-	pub manual_seal_command_sink: mpsc::Sender<EngineCommand<<T::Block as BlockT>::Hash>>,
+	manual_seal_command_sink: mpsc::Sender<EngineCommand<<T::Block as BlockT>::Hash>>,
 	/// backend type.
-	pub backend: Arc<TFullBackend<T::Block>>,
+	backend: Arc<TFullBackend<T::Block>>,
 	/// Block number at initialization of this Node.
-	pub initial_block_number: NumberFor<T::Block>,
+	initial_block_number: NumberFor<T::Block>,
 }
 
 /// Configuration options for the node.
@@ -234,6 +236,22 @@ impl<T: ChainInfo> Node<T> {
 		self.client.clone()
 	}
 
+	pub fn pool(
+		&self,
+	) -> Arc<
+		dyn TransactionPool<
+			Block = T::Block,
+			Hash = <T::Block as BlockT>::Hash,
+			Error = sc_transaction_pool::error::Error,
+			InPoolTransaction = sc_transaction_graph::base_pool::Transaction<
+				<T::Block as BlockT>::Hash,
+				<T::Block as BlockT>::Extrinsic,
+			>,
+		>,
+	> {
+		self.pool.clone()
+	}
+
 	/// Executes closure in an externalities provided environment.
 	pub fn with_state<R>(&self, closure: impl FnOnce() -> R) -> R
 	where
@@ -339,7 +357,7 @@ impl<T: ChainInfo> Node<T> {
 			});
 
 			tokio.block_on(async {
-				const ERROR: &'static str = "manual-seal authorship task is shutting down";
+				const ERROR: &str = "manual-seal authorship task is shutting down";
 				future.await.expect(ERROR);
 
 				match future_block.await.expect(ERROR) {

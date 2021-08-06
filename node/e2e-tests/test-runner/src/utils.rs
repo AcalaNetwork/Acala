@@ -16,6 +16,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+#![allow(clippy::all)]
+
 use futures::{Sink, SinkExt};
 use log::LevelFilter;
 use sc_client_api::execution_extensions::ExecutionStrategies;

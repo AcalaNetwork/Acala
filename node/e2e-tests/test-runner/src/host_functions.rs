@@ -16,6 +16,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+#![allow(clippy::all)]
+
 #[macro_export]
 macro_rules! override_host_functions {
     ($($fn_name:expr, $name:ident,)*) => {{

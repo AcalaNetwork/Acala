@@ -18,6 +18,8 @@
 
 //! End to end runtime tests.
 
+#![allow(clippy::type_complexity)]
+
 use node_primitives::Block;
 use node_runtime::{api, native_version, Runtime, RuntimeApi, SignedExtra};
 use node_service::chain_spec::mandala::dev_testnet_config;
@@ -118,7 +120,7 @@ impl ChainInfo for NodeTemplateChainInfo {
 			}),
 			None,
 			select_chain,
-			client.clone(),
+			client,
 		))
 	}
 
@@ -240,11 +242,11 @@ mod tests {
 			None,
 		);
 
-		assert_eq!(node.pool.ready().count(), 3);
+		assert_eq!(node.pool().ready().count(), 3);
 
 		// Ensure tx priority order:
 		// Inherent -> Operational tx -> Unsigned tx -> Signed normal tx
-		let mut txs = node.pool.ready();
+		let mut txs = node.pool().ready();
 		let tx1 = txs.next().unwrap();
 		let tx2 = txs.next().unwrap();
 		let tx3 = txs.next().unwrap();

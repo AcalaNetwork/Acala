@@ -16,6 +16,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+#![allow(clippy::all)]
+
 use manual_seal::consensus::ConsensusDataProvider;
 use sc_executor::NativeExecutionDispatch;
 use sc_service::{Configuration, TFullBackend, TFullClient, TaskExecutor, TaskManager};
