@@ -37,7 +37,6 @@ sp-api = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v
 sp-inherents = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.8" }
 sp-keystore = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.8" }
 
-# TODO: change after https://github.com/paritytech/substrate/issues/9505
 test-runner = { path = "./test-runner" }
 
 module-evm = { path = "../../modules/evm" }
