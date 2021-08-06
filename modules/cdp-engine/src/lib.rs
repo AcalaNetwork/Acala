@@ -225,7 +225,7 @@ pub mod module {
 		CloseCDPInDebitByDEX(CurrencyId, T::AccountId, Balance, Balance, Balance),
 		/// The interest rate per sec for specific collateral type updated.
 		/// \[collateral_type, new_interest_rate_per_sec\]
-		InterestRatePerSec(CurrencyId, Option<Rate>),
+		InterestRatePerSecUpdated(CurrencyId, Option<Rate>),
 		/// The liquidation fee for specific collateral type updated.
 		/// \[collateral_type, new_liquidation_ratio\]
 		LiquidationRatioUpdated(CurrencyId, Option<Ratio>),
@@ -457,7 +457,7 @@ pub mod module {
 			let mut collateral_params = Self::collateral_params(currency_id);
 			if let Change::NewValue(update) = interest_rate_per_sec {
 				collateral_params.interest_rate_per_sec = update;
-				Self::deposit_event(Event::InterestRatePerSec(currency_id, update));
+				Self::deposit_event(Event::InterestRatePerSecUpdated(currency_id, update));
 			}
 			if let Change::NewValue(update) = liquidation_ratio {
 				collateral_params.liquidation_ratio = update;
@@ -535,9 +535,7 @@ impl<T: Config> Pallet<T> {
 				if !rate_to_accumulate.is_zero() && !total_debits.is_zero() {
 					let debit_exchange_rate = Self::get_debit_exchange_rate(currency_id);
 					let debit_exchange_rate_increment = debit_exchange_rate.saturating_mul(rate_to_accumulate);
-					let total_debit_value = Self::get_debit_value(currency_id, total_debits);
-					let issued_stable_coin_balance =
-						debit_exchange_rate_increment.saturating_mul_int(total_debit_value);
+					let issued_stable_coin_balance = debit_exchange_rate_increment.saturating_mul_int(total_debits);
 
 					// issue stablecoin to surplus pool
 					let res = <T as Config>::CDPTreasury::on_system_surplus(issued_stable_coin_balance);
