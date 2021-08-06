@@ -39,23 +39,15 @@ pub mod weights;
 
 use frame_support::{pallet_prelude::*, transactional};
 use frame_system::{ensure_signed, pallet_prelude::*};
-use module_support::Ratio;
+use module_support::{ExchangeRate, Ratio};
 use orml_traits::{MultiCurrency, XcmTransfer};
-use primitives::{Balance, CurrencyId, EraIndex};
-use sp_runtime::{ArithmeticError, FixedPointNumber};
-use sp_std::prelude::*;
+use primitives::{Balance, CurrencyId};
+use sp_runtime::{traits::Zero, ArithmeticError, FixedPointNumber, Permill};
+use sp_std::{ops::Mul, prelude::*};
 use xcm::opaque::v0::{MultiLocation, Outcome};
 
 pub use module::*;
 pub use weights::WeightInfo;
-
-/// Used to record the total issuance of the currencies during a batch.
-/// This info is used to calculate exchange rate between Staking and Liquid currencies.
-#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq)]
-pub struct TotalIssuanceInfo {
-	pub staking_total: Balance,
-	pub liquid_total: Balance,
-}
 
 #[frame_support::pallet]
 pub mod module {
@@ -95,15 +87,24 @@ pub mod module {
 		/// The sovereign sub-account for where the staking currencies are sent to.
 		#[pallet::constant]
 		type SovereignSubAccountLocation: Get<MultiLocation>;
+
+		/// The default exchange rate for liquid currency to staking currency.
+		#[pallet::constant]
+		type DefaultExchangeRate: Get<ExchangeRate>;
+
+		/// The maximum rewards that are earned on the relaychain.
+		#[pallet::constant]
+		type MaxRewardPerEra: Get<Permill>;
+
+		/// The fixed cost of transaction fee for XCM transfers.
+		#[pallet::constant]
+		type MintFee: Get<Balance>;
 	}
 
 	#[pallet::error]
 	pub enum Error<T> {
-		/// The current Batch has not been processed, therefore the Liquid currency have not
-		/// been issued yet.
-		LiquidCurrencyNotIssuedForThisBatch,
 		/// The total issuance for the Staking currency must be more than zero.
-		InvalidStakedCurrencyTotalIssuance,
+		InvalidStakingCurrencyTotalIssuance,
 		/// The mint amount is below the minimum threshold allowed.
 		MintAmountBelowMinimumThreshold,
 		/// The amount of Staking currency used has exceeded the cap allowed.
@@ -117,38 +118,23 @@ pub mod module {
 	#[pallet::metadata(T::AccountId = "AccountId")]
 	pub enum Event<T: Config> {
 		/// The user has requested some Staking currency to be used to mint Liquid Currency.
-		/// \[batch, user, amount\]
-		MintRequested(EraIndex, T::AccountId, Balance),
+		/// \[user, amount_staked, amount_minted\]
+		Minted(T::AccountId, Balance, Balance),
 
-		/// The current batch has been processed. Mint requests can now be completed. \[batch,
-		/// staking_total_issuance, liquid_total_issuance\]
-		BatchProcessed(EraIndex, Balance, Balance),
-
-		/// The user has claimed some Liquid Currency. \[batch, user, amount\]
-		LiquidCurrencyClaimed(EraIndex, T::AccountId, Balance),
+		/// The total issuance of the staking currency on the relaychain has been
+		/// set.\[staking_total_issuance\]
+		StakingTotalIssuanceSet(Balance),
 
 		/// The mint cap for Staking currency is updated.\[new_cap\]
 		StakingCurrencyMintCapUpdated(Balance),
 	}
 
-	/// Stores the amount of Staking currency the user has exchanged.
-	/// PendingAmount: double_map: (batch: EraIndex, user: T::AccountId) -> amount: Balance
+	/// The total issuance of the staking currency on the relaychain.
+	/// This info is used to calculate the exchange rate between Staking and Liquid currencies.
+	/// StakingTotalIssuance: value: total_issuance: Balance
 	#[pallet::storage]
-	#[pallet::getter(fn pending_amount)]
-	pub type PendingAmount<T: Config> =
-		StorageDoubleMap<_, Twox64Concat, EraIndex, Blake2_128Concat, T::AccountId, Balance, ValueQuery>;
-
-	/// The total issuance info for each batch. Used to calculate Staking to Liquid exchange rate.
-	/// BatchTotalIssuanceInfo: map: batch: EraIndex -> batch_total: TotalIssuanceInfo
-	#[pallet::storage]
-	#[pallet::getter(fn batch_total_issuance_info)]
-	pub type BatchTotalIssuanceInfo<T: Config> = StorageMap<_, Twox64Concat, EraIndex, TotalIssuanceInfo, OptionQuery>;
-
-	/// The batch that is currency active
-	/// CurrentBatch: value: batch: EraIndex
-	#[pallet::storage]
-	#[pallet::getter(fn current_batch)]
-	pub type CurrentBatch<T: Config> = StorageValue<_, EraIndex, ValueQuery>;
+	#[pallet::getter(fn staking_total_issuance)]
+	pub type StakingTotalIssuance<T: Config> = StorageValue<_, Balance, ValueQuery>;
 
 	/// The cap on the total amount of staking currency allowed to mint Liquid currency.
 	/// StakingCurrencyMintCap: value: mint_cap: Balance
@@ -167,21 +153,65 @@ pub mod module {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		/// Request to mint some Liquid currency, by locking up the given amount of Staking
-		/// currency. The exchange does not happen immediately, but on when the batch is processed
-		/// The user then needs to manually claim the Liquid currency once it is ready.
+		/// Mint some Liquid currency, by locking up the given amount of Staking currency.
+		/// The exchange rate is calculated using the ratio of the total issuance of the staking and
+		/// liquid currency. A portion is reducted (calculated by MaxRewardPerEra) to make up for
+		/// the fact that staking is only effective from the next era on (on the relaychain).
 		///
 		/// Parameters:
 		/// - `amount`: The amount of Staking currency to be exchanged.
 		/// - `xcm_dest_weight`: The weight to be paid to the destination for the XCM transfer.
-		#[pallet::weight(< T as Config >::WeightInfo::request_mint())]
+		#[pallet::weight(< T as Config >::WeightInfo::mint())]
 		#[transactional]
-		pub fn request_mint(origin: OriginFor<T>, amount: Balance, xcm_dest_weight: Weight) -> DispatchResult {
+		pub fn mint(origin: OriginFor<T>, amount: Balance, xcm_dest_weight: Weight) -> DispatchResult {
 			let who = ensure_signed(origin)?;
+			Self::do_mint(&who, amount, xcm_dest_weight)?;
+			Ok(())
+		}
 
-			// Ensure the amount is above the minimum
+		/// Sets the total issuance of the Staking currency that are currenctly on the relaychain.
+		/// Requires `T::IssuerOrigin`
+		///
+		/// Parameters:
+		/// - `staking_total`: The currenct issuance of the Staking currency. Used to calculate
+		///   conversion rate.
+		#[pallet::weight(< T as Config >::WeightInfo::set_staking_total_issuance())]
+		#[transactional]
+		pub fn set_staking_total_issuance(origin: OriginFor<T>, staking_total: Balance) -> DispatchResult {
+			T::IssuerOrigin::ensure_origin(origin)?;
 			ensure!(
-				amount >= T::MinimumMintThreshold::get(),
+				!staking_total.is_zero(),
+				Error::<T>::InvalidStakingCurrencyTotalIssuance
+			);
+
+			StakingTotalIssuance::<T>::put(staking_total);
+			Self::deposit_event(Event::<T>::StakingTotalIssuanceSet(staking_total));
+
+			Ok(())
+		}
+
+		/// Updates the cap for how much Staking currency can be used to Mint liquid currency.
+		/// Requires `T::GovernanceOrigin`
+		///
+		/// Parameters:
+		/// - `new_cap`: The new cap for staking currency.
+		#[pallet::weight(< T as Config >::WeightInfo::set_minting_cap())]
+		#[transactional]
+		pub fn set_minting_cap(origin: OriginFor<T>, new_cap: Balance) -> DispatchResult {
+			// This can only be called by Governance or ROOT.
+			T::GovernanceOrigin::ensure_origin(origin)?;
+
+			StakingCurrencyMintCap::<T>::put(new_cap);
+			Self::deposit_event(Event::<T>::StakingCurrencyMintCapUpdated(new_cap));
+			Ok(())
+		}
+	}
+
+	impl<T: Config> Pallet<T> {
+		pub fn do_mint(who: &T::AccountId, amount: Balance, xcm_dest_weight: Weight) -> DispatchResult {
+			// Ensure the amount is above the minimum, after the MintFee is deducted.
+			ensure!(
+				amount > T::MinimumMintThreshold::get() + T::MintFee::get(),
 				Error::<T>::MintAmountBelowMinimumThreshold
 			);
 
@@ -194,13 +224,31 @@ pub mod module {
 				Error::<T>::ExceededStakingCurrencyMintCap
 			);
 
-			let current_batch = Self::current_batch();
 			let staking_currency = T::StakingCurrencyId::get();
 
 			// ensure the user has enough funds on their account.
 			T::Currency::ensure_can_withdraw(staking_currency, &who, amount)?;
 
-			// Cross-chain transfers the staking assets.
+			// Calculate how much Liquid currency is to be minted.
+			// Gets the current exchange rate
+			let staking_total = Self::staking_total_issuance();
+			let exchange_rate = match staking_total.is_zero() {
+				true => Ok(T::DefaultExchangeRate::get()),
+				false => {
+					let liquid_total = T::Currency::total_issuance(T::LiquidCurrencyId::get());
+					Ratio::checked_from_rational(liquid_total, staking_total).ok_or(ArithmeticError::Overflow)
+				}
+			}?;
+
+			// liquid_to_mint = ( (staked_amount - MintFee) * liquid_total / staked_total ) * (1 -
+			// MaxRewardPerEra)
+			let mut liquid_to_mint = exchange_rate
+				.checked_mul_int(amount - T::MintFee::get())
+				.ok_or(ArithmeticError::Overflow)?;
+
+			liquid_to_mint = liquid_to_mint - T::MaxRewardPerEra::get().mul(liquid_to_mint);
+
+			// All checks pass. Proceed with Xcm transfer.
 			let xcm_result = T::XcmTransfer::transfer(
 				who.clone(),
 				staking_currency,
@@ -213,90 +261,13 @@ pub mod module {
 				Error::<T>::XcmTransferFailed
 			);
 
-			PendingAmount::<T>::mutate(current_batch, &who, |current| {
-				*current = current.checked_add(amount).expect("Amount should not cause overflow.")
-			});
-			TotalStakedAmount::<T>::put(new_total_staked);
-
-			Self::deposit_event(Event::<T>::MintRequested(current_batch, who, amount));
-			Ok(())
-		}
-
-		/// Process a batch.
-		/// It is then that we can issue Liquid currencies.
-		/// Requires `T::IssuerOrigin`
-		///
-		/// Parameters:
-		/// - `staking_total`: The currenct issuance of the Staking currency. Used to calculate
-		///   conversion rate.
-		#[pallet::weight(< T as Config >::WeightInfo::issue())]
-		#[transactional]
-		pub fn issue(origin: OriginFor<T>, staking_total: Balance) -> DispatchResult {
-			T::IssuerOrigin::ensure_origin(origin)?;
-			ensure!(staking_total != 0, Error::<T>::InvalidStakedCurrencyTotalIssuance);
-
-			let current_batch = Self::current_batch();
-
-			let liquid_total = T::Currency::total_issuance(T::LiquidCurrencyId::get());
-			let total_for_batch = TotalIssuanceInfo {
-				staking_total,
-				liquid_total,
-			};
-
-			BatchTotalIssuanceInfo::<T>::insert(&current_batch, total_for_batch);
-			CurrentBatch::<T>::put(current_batch.checked_add(1).expect("Batch Index should not overflow."));
-
-			Self::deposit_event(Event::<T>::BatchProcessed(current_batch, staking_total, liquid_total));
-
-			Ok(())
-		}
-
-		/// A function that allows the user to claim the Liquid currencies minted.
-		/// The amount of liquid currency minted is proportional to the ratio of the total issuance
-		/// of the staking and liquid currency.
-		///
-		/// Parameters:
-		/// - `who`: The user the claimed Liquid currency is for.
-		/// - `batch`: The batch index the user Staked their tokens.
-		#[pallet::weight(< T as Config >::WeightInfo::claim())]
-		#[transactional]
-		pub fn claim(origin: OriginFor<T>, who: T::AccountId, batch: EraIndex) -> DispatchResult {
-			ensure_signed(origin)?;
-			let staked_amount = Self::pending_amount(&batch, &who);
-			let total_info =
-				Self::batch_total_issuance_info(batch).ok_or(Error::<T>::LiquidCurrencyNotIssuedForThisBatch)?;
-
-			// liquid_to_mint = staked_amount * liquid_total / staked_total
-			let exchange_ratio = Ratio::checked_from_rational(total_info.liquid_total, total_info.staking_total)
-				.ok_or(ArithmeticError::Overflow)?;
-
-			let liquid_to_mint = exchange_ratio
-				.checked_mul_int(staked_amount)
-				.ok_or(ArithmeticError::Overflow)?;
-
 			// Mint the liquid currency into the user's account.
 			T::Currency::deposit(T::LiquidCurrencyId::get(), &who, liquid_to_mint)?;
-			// Remove the pending request from storage
-			PendingAmount::<T>::remove(&batch, &who);
 
-			Self::deposit_event(Event::<T>::LiquidCurrencyClaimed(batch, who, liquid_to_mint));
+			TotalStakedAmount::<T>::put(new_total_staked);
 
-			Ok(())
-		}
+			Self::deposit_event(Event::<T>::Minted(who.clone(), amount, liquid_to_mint));
 
-		/// Updates the cap for how much Staking currency can be used to Mint liquid currency.
-		/// Requires `T::GovernanceOrigin`
-		///
-		/// Parameters:
-		/// - `new_cap`: The new cap for staking currency.
-		#[pallet::weight(< T as Config >::WeightInfo::set_staking_currency_cap())]
-		#[transactional]
-		pub fn set_staking_currency_cap(origin: OriginFor<T>, new_cap: Balance) -> DispatchResult {
-			// This can only be called by Governance or ROOT.
-			T::GovernanceOrigin::ensure_origin(origin)?;
-
-			StakingCurrencyMintCap::<T>::put(new_cap);
-			Self::deposit_event(Event::<T>::StakingCurrencyMintCapUpdated(new_cap));
 			Ok(())
 		}
 	}

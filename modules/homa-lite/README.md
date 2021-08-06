@@ -68,7 +68,7 @@ Use SUDO to:
 #### Use Sudo to Issue
 7. Issue Liquid currency for Batch 0, use 1_000_000 as the total Issuance for KSM
 This will make the KSM to LKSM ratio to be 1:1000
-8. Check the chain stain: `HomaLite` -> `batchTotalIssuanceInfo` -> `batch 0` should have an entry.
+8. Check the chain stain: `HomaLite` -> `StakingTotalIssuance` -> `batch 0` should have an entry.
 the Staking total issuance should be 1_000_000, and the Liquid total issuance should be 1_000_000_000
 
 #### Use the normal Extrinsic to claim the liquid currency
