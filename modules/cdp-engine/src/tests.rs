@@ -484,7 +484,7 @@ fn liquidate_unsafe_cdp_by_collateral_auction_when_limited_by_slippage() {
 
 		assert_ok!(CDPEngineModule::adjust_position(&ALICE, BTC, 100, 50));
 		assert_eq!(Currencies::free_balance(BTC, &ALICE), 900);
-		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 50);
+		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 5);
 		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 50);
 		assert_eq!(LoansModule::positions(BTC, ALICE).collateral, 100);
 
@@ -507,14 +507,14 @@ fn liquidate_unsafe_cdp_by_collateral_auction_when_limited_by_slippage() {
 			BTC,
 			ALICE,
 			100,
-			50,
-			LiquidationStrategy::Auction,
+			5,
+			LiquidationStrategy::Exchange,
 		)));
 
-		assert_eq!(DEXModule::get_liquidity_pool(BTC, AUSD), (100, 121));
-		assert_eq!(CDPTreasuryModule::debit_pool(), 50);
-		assert_eq!(Currencies::free_balance(BTC, &ALICE), 900);
-		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 50);
+		assert_eq!(DEXModule::get_liquidity_pool(BTC, AUSD), (106, 115));
+		assert_eq!(CDPTreasuryModule::debit_pool(), 5);
+		assert_eq!(Currencies::free_balance(BTC, &ALICE), 994);
+		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 5);
 		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 0);
 		assert_eq!(LoansModule::positions(BTC, ALICE).collateral, 0);
 	});
@@ -546,7 +546,7 @@ fn liquidate_unsafe_cdp_by_swap() {
 
 		assert_ok!(CDPEngineModule::adjust_position(&ALICE, BTC, 100, 50));
 		assert_eq!(Currencies::free_balance(BTC, &ALICE), 900);
-		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 50);
+		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 5);
 		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 50);
 		assert_eq!(LoansModule::positions(BTC, ALICE).collateral, 100);
 
@@ -565,14 +565,14 @@ fn liquidate_unsafe_cdp_by_swap() {
 			BTC,
 			ALICE,
 			100,
-			50,
+			5,
 			LiquidationStrategy::Exchange,
 		)));
 
-		assert_eq!(DEXModule::get_liquidity_pool(BTC, AUSD), (199, 61));
-		assert_eq!(CDPTreasuryModule::debit_pool(), 50);
-		assert_eq!(Currencies::free_balance(BTC, &ALICE), 901);
-		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 50);
+		assert_eq!(DEXModule::get_liquidity_pool(BTC, AUSD), (106, 115));
+		assert_eq!(CDPTreasuryModule::debit_pool(), 5);
+		assert_eq!(Currencies::free_balance(BTC, &ALICE), 994);
+		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 5);
 		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 0);
 		assert_eq!(LoansModule::positions(BTC, ALICE).collateral, 0);
 	});
