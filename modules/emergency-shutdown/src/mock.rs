@@ -28,10 +28,10 @@ use primitives::{Amount, TokenSymbol};
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
-	traits::{AccountIdConversion, Convert, IdentityLookup, One as OneT},
+	traits::{AccountIdConversion, Convert, IdentityLookup},
 	DispatchResult,
 };
-use support::{AuctionManager, Price, PriceProvider};
+use support::{AuctionManager, LockablePrice};
 
 pub type AccountId = u128;
 pub type AuctionId = u32;
@@ -146,19 +146,15 @@ impl loans::Config for Runtime {
 	type OnUpdateLoan = ();
 }
 
-pub struct MockPriceSource;
-impl PriceProvider<CurrencyId> for MockPriceSource {
-	fn get_relative_price(_base: CurrencyId, _quote: CurrencyId) -> Option<Price> {
-		Some(Price::one())
+pub struct MockLockablePrice;
+impl LockablePrice<CurrencyId> for MockLockablePrice {
+	fn lock_price(_currency_id: CurrencyId) -> DispatchResult {
+		Ok(())
 	}
 
-	fn get_price(_currency_id: CurrencyId) -> Option<Price> {
-		Some(Price::one())
+	fn unlock_price(_currency_id: CurrencyId) -> DispatchResult {
+		Ok(())
 	}
-
-	fn lock_price(_currency_id: CurrencyId) {}
-
-	fn unlock_price(_currency_id: CurrencyId) {}
 }
 
 pub struct MockAuctionManager;
@@ -220,7 +216,7 @@ ord_parameter_types! {
 impl Config for Runtime {
 	type Event = Event;
 	type CollateralCurrencyIds = CollateralCurrencyIds;
-	type PriceSource = MockPriceSource;
+	type PriceSource = MockLockablePrice;
 	type CDPTreasury = CDPTreasuryModule;
 	type AuctionManagerHandler = MockAuctionManager;
 	type ShutdownOrigin = EnsureSignedBy<One, AccountId>;

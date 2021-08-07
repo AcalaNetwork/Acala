@@ -688,7 +688,6 @@ impl<T: Config> Pallet<T> {
 
 	pub fn is_cdp_unsafe(currency_id: CurrencyId, collateral: Balance, debit: Balance) -> bool {
 		let stable_currency_id = T::GetStableCurrencyId::get();
-
 		if let Some(feed_price) = T::PriceSource::get_relative_price(currency_id, stable_currency_id) {
 			let collateral_ratio = Self::calculate_collateral_ratio(currency_id, collateral, debit, feed_price);
 			collateral_ratio < Self::get_liquidation_ratio(currency_id)
@@ -844,7 +843,7 @@ impl<T: Config> Pallet<T> {
 		let bad_debt_value = Self::get_debit_value(currency_id, debit);
 		let target_stable_amount = Self::get_liquidation_penalty(currency_id).saturating_mul_acc_int(bad_debt_value);
 
-		// try use collateral to swap enough native token in DEX when the price impact
+		// try use collateral to swap enough stable token in DEX when the price impact
 		// is below the limit, otherwise create collateral auctions.
 		let liquidation_strategy = (|| -> Result<LiquidationStrategy, DispatchError> {
 			// swap exact stable with DEX in limit of price impact

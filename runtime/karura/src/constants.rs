@@ -34,7 +34,7 @@ pub mod time {
 	pub const SLOT_DURATION: Moment = MILLISECS_PER_BLOCK;
 
 	pub fn deposit(items: u32, bytes: u32) -> Balance {
-		items as Balance * 2 * dollar(KAR) + (bytes as Balance) * 10 * millicent(KAR)
+		items as Balance * 2 * dollar(KAR) + (bytes as Balance) * 30 * millicent(KAR)
 	}
 }
 
@@ -89,4 +89,8 @@ pub mod fee {
 		let kar_per_second = base_tx_per_second * base_tx_in_kar();
 		kar_per_second / 100
 	}
+}
+
+pub mod homa {
+	pub const RELAYCHAIN_SUB_ACCOUNT_ID: u16 = 0u16;
 }

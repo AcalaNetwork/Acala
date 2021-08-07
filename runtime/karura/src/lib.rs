@@ -66,11 +66,12 @@ pub use orml_xcm_support::{IsNativeConcrete, MultiCurrencyAdapter, MultiNativeAs
 use pallet_xcm::XcmPassthrough;
 pub use polkadot_parachain::primitives::Sibling;
 pub use xcm::v0::{
-	Junction::{AccountId32, GeneralKey, Parachain, Parent},
+	Junction::{self, AccountId32, GeneralKey, Parachain, Parent},
 	MultiAsset,
 	MultiLocation::{self, X1, X2, X3},
 	NetworkId, Xcm,
 };
+
 pub use xcm_builder::{
 	AccountId32Aliases, AllowTopLevelPaidExecutionFrom, AllowUnpaidExecutionFrom, EnsureXcmOrigin,
 	FixedRateOfConcreteFungible, FixedWeightBounds, IsConcrete, LocationInverter, NativeAsset, ParentAsSuperuser,
@@ -100,7 +101,7 @@ pub use sp_runtime::BuildStorage;
 pub use sp_runtime::{Perbill, Percent, Permill, Perquintill};
 
 pub use authority::AuthorityConfigImpl;
-pub use constants::{fee::*, time::*};
+pub use constants::{fee::*, homa::*, time::*};
 pub use primitives::{
 	evm::EstimateResourcesRequest, AccountId, AccountIndex, Amount, AuctionId, AuthoritysOriginId, Balance,
 	BlockNumber, CurrencyId, DataProviderId, EraIndex, Hash, Moment, Nonce, ReserveIdentifier, Share, Signature,
@@ -128,7 +129,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("karura"),
 	impl_name: create_runtime_str!("karura"),
 	authoring_version: 1,
-	spec_version: 1005,
+	spec_version: 1006,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -617,7 +618,7 @@ parameter_types! {
 	pub const VotingPeriod: BlockNumber = 2 * DAYS;
 	pub const FastTrackVotingPeriod: BlockNumber = 3 * HOURS;
 	pub MinimumDeposit: Balance = 1000 * dollar(KAR);
-	pub const EnactmentPeriod: BlockNumber = DAYS;
+	pub const EnactmentPeriod: BlockNumber = 36 * HOURS;
 	pub const CooloffPeriod: BlockNumber = 7 * DAYS;
 	pub PreimageByteDeposit: Balance = deposit(0, 1);
 	pub const InstantAllowed: bool = true;
@@ -687,10 +688,10 @@ impl orml_authority::Config for Runtime {
 }
 
 parameter_types! {
-	pub const MinimumCount: u32 = 3;
-	pub const ExpiresIn: Moment = 1000 * 60 * 60 * 2; // 2 hours
+	pub const MinimumCount: u32 = 5;
+	pub const ExpiresIn: Moment = 1000 * 60 * 60; // 1 hours
 	pub ZeroAccountId: AccountId = AccountId::from([0u8; 32]);
-	pub const MaxHasDispatchedSize: u32 = 40;
+	pub const MaxHasDispatchedSize: u32 = 20;
 }
 
 type AcalaDataProvider = orml_oracle::Instance1;
@@ -889,7 +890,7 @@ impl module_auction_manager::Config for Runtime {
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type CDPTreasury = CdpTreasury;
 	type DEX = Dex;
-	type PriceSource = Prices;
+	type PriceSource = module_prices::PriorityLockedPriceProvider<Runtime>;
 	type UnsignedPriority = runtime_common::AuctionManagerUnsignedPriority;
 	type EmergencyShutdown = EmergencyShutdown;
 	type WeightInfo = weights::module_auction_manager::WeightInfo<Runtime>;
@@ -975,7 +976,7 @@ parameter_types! {
 
 impl module_cdp_engine::Config for Runtime {
 	type Event = Event;
-	type PriceSource = Prices;
+	type PriceSource = module_prices::PriorityLockedPriceProvider<Runtime>;
 	type CollateralCurrencyIds = CollateralCurrencyIds;
 	type DefaultLiquidationRatio = DefaultLiquidationRatio;
 	type DefaultDebitExchangeRate = DefaultDebitExchangeRate;
@@ -1224,8 +1225,12 @@ pub type NFTPrecompile =
 	runtime_common::NFTPrecompile<AccountId, EvmAddressMapping<Runtime>, EvmCurrencyIdMapping<Runtime>, NFT>;
 pub type StateRentPrecompile =
 	runtime_common::StateRentPrecompile<AccountId, EvmAddressMapping<Runtime>, EvmCurrencyIdMapping<Runtime>, EVM>;
-pub type OraclePrecompile =
-	runtime_common::OraclePrecompile<AccountId, EvmAddressMapping<Runtime>, EvmCurrencyIdMapping<Runtime>, Prices>;
+pub type OraclePrecompile = runtime_common::OraclePrecompile<
+	AccountId,
+	EvmAddressMapping<Runtime>,
+	EvmCurrencyIdMapping<Runtime>,
+	module_prices::RealTimePriceProvider<Runtime>,
+>;
 pub type ScheduleCallPrecompile = runtime_common::ScheduleCallPrecompile<
 	AccountId,
 	EvmAddressMapping<Runtime>,
@@ -1422,6 +1427,35 @@ impl cumulus_pallet_dmp_queue::Config for Runtime {
 	type ExecuteOverweightOrigin = EnsureRoot<AccountId>;
 }
 
+pub fn create_x2_parachain_multilocation(index: u16) -> MultiLocation {
+	MultiLocation::X2(
+		Junction::Parent,
+		Junction::AccountId32 {
+			network: RelayNetwork::get(),
+			id: Utility::derivative_account_id(ParachainInfo::get().into_account(), index).into(),
+		},
+	)
+}
+
+parameter_types! {
+	pub const KSMCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::KSM);
+	pub const LKSMCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::LKSM);
+	pub MinimumMintThreshold: Balance = 10 * millicent(KSM);
+	pub RelaychainSovereignSubAccount: MultiLocation = create_x2_parachain_multilocation(RELAYCHAIN_SUB_ACCOUNT_ID);
+}
+impl module_homa_lite::Config for Runtime {
+	type Event = Event;
+	type WeightInfo = weights::module_homa_lite::WeightInfo<Runtime>;
+	type Currency = Currencies;
+	type StakingCurrencyId = KSMCurrencyId;
+	type LiquidCurrencyId = LKSMCurrencyId;
+	type IssuerOrigin = EnsureRootOrHalfGeneralCouncil;
+	type GovernanceOrigin = EnsureRootOrHalfGeneralCouncil;
+	type MinimumMintThreshold = MinimumMintThreshold;
+	type XcmTransfer = XTokens;
+	type SovereignSubAccountLocation = RelaychainSovereignSubAccount;
+}
+
 pub type LocalAssetTransactor = MultiCurrencyAdapter<
 	Currencies,
 	UnknownTokens,
@@ -1609,6 +1643,7 @@ construct_runtime!(
 		// StakingPool: module_staking_pool::{Pallet, Call, Storage, Event<T>, Config} = 112,
 		// PolkadotBridge: module_polkadot_bridge::{Pallet, Call, Storage} = 113,
 		// HomaValidatorListModule: module_homa_validator_list::{Pallet, Call, Storage, Event<T>} = 114,
+		HomaLite: module_homa_lite::{Pallet, Call, Storage, Event<T>} = 115,
 
 		// Karura Other
 		Incentives: module_incentives::{Pallet, Storage, Call, Event<T>} = 120,
@@ -1905,6 +1940,7 @@ impl_runtime_apis! {
 			use orml_benchmarking::{add_benchmark as orml_add_benchmark};
 
 			use module_nft::benchmarking::Pallet as NftBench;
+			use module_homa_lite::benchmarking::Pallet as HomaLiteBench;
 
 			let whitelist: Vec<TrackedStorageKey> = vec![
 				// Block Number
@@ -1927,6 +1963,7 @@ impl_runtime_apis! {
 			let params = (&config, &whitelist);
 
 			add_benchmark!(params, batches, module_nft, NftBench::<Runtime>);
+			add_benchmark!(params, batches, module_homa_lite, HomaLiteBench::<Runtime>);
 			orml_add_benchmark!(params, batches, module_dex, benchmarking::dex);
 			orml_add_benchmark!(params, batches, module_auction_manager, benchmarking::auction_manager);
 			orml_add_benchmark!(params, batches, module_cdp_engine, benchmarking::cdp_engine);

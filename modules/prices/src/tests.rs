@@ -24,7 +24,7 @@ use super::*;
 use frame_support::{assert_noop, assert_ok};
 use mock::{Event, *};
 use sp_runtime::{
-	traits::{BadOrigin, Bounded, Zero},
+	traits::{BadOrigin, Bounded},
 	FixedPointNumber,
 };
 
@@ -117,132 +117,394 @@ fn lp_token_fair_price_works() {
 }
 
 #[test]
-fn get_price_from_oracle() {
+fn access_price_of_stable_currency() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_eq!(
-			PricesModule::get_price(BTC),
-			Some(Price::saturating_from_integer(500000000000000u128))
-		); // 50000 USD, right shift the decimal point (18-8) places
-		assert_eq!(
-			PricesModule::get_price(DOT),
-			Some(Price::saturating_from_integer(10000000000u128))
-		); // 100 USD, right shift the decimal point (18-10) places
-		assert_eq!(PricesModule::get_price(ACA), Some(Price::zero()));
-	});
-}
-
-#[test]
-fn get_price_of_stable_currency_id() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_eq!(
-			PricesModule::get_price(AUSD),
+			PricesModule::access_price(AUSD),
 			Some(Price::saturating_from_integer(1000000u128))
 		); // 1 USD, right shift the decimal point (18-12) places
+
+		mock_oracle_update();
+		assert_eq!(
+			PricesModule::access_price(AUSD),
+			Some(Price::saturating_from_integer(1000000u128))
+		);
 	});
 }
 
 #[test]
-fn get_price_of_liquid_currency_id() {
+fn access_price_of_liquid_currency() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_eq!(
-			PricesModule::get_price(LDOT),
+			PricesModule::access_price(DOT),
+			Some(Price::saturating_from_integer(10000000000u128))
+		); // 100 USD, right shift the decimal point (18-12) places
+		assert_eq!(
+			PricesModule::access_price(LDOT),
 			Some(Price::saturating_from_integer(5000000000u128))
-		); // 50 USD, right shift the decimal point (18-10) places
+		); // dot_price * 1/2
+
+		mock_oracle_update();
+		assert_eq!(
+			PricesModule::access_price(DOT),
+			Some(Price::saturating_from_integer(1000000000u128))
+		); // 10 USD, right shift the decimal point (18-12) places
+		assert_eq!(
+			PricesModule::access_price(LDOT),
+			Some(Price::saturating_from_integer(600000000u128))
+		); // dot_price * 3/5
 	});
 }
 
 #[test]
-fn get_price_of_lp_token_currency_id() {
+fn access_price_of_dex_share_currency() {
 	ExtBuilder::default().build().execute_with(|| {
+		assert_eq!(
+			PricesModule::access_price(DOT),
+			Some(Price::saturating_from_integer(10000000000u128))
+		); // 100 USD, right shift the decimal point (18-12) places
+		assert_eq!(
+			PricesModule::access_price(AUSD),
+			Some(Price::saturating_from_integer(1000000u128))
+		);
+		assert_eq!(Tokens::total_issuance(LP_AUSD_DOT), 0);
 		assert_eq!(MockDEX::get_liquidity_pool(AUSD, DOT), (10000, 200));
-		assert_eq!(PricesModule::get_price(LP_AUSD_DOT), None);
+
+		// when the total issuance of dex share currency is zero
+		assert_eq!(PricesModule::access_price(LP_AUSD_DOT), None);
+
+		// issue LP
 		assert_ok!(Tokens::deposit(LP_AUSD_DOT, &1, 100));
 		assert_eq!(Tokens::total_issuance(LP_AUSD_DOT), 100);
-		assert_eq!(
-			PricesModule::get_price(AUSD),
-			Some(Price::saturating_from_rational(1000000u128, 1))
-		);
-		assert_eq!(
-			PricesModule::get_price(LP_AUSD_DOT),
-			lp_token_fair_price(
-				Tokens::total_issuance(LP_AUSD_DOT),
-				MockDEX::get_liquidity_pool(AUSD, DOT).0,
-				MockDEX::get_liquidity_pool(AUSD, DOT).1,
-				PricesModule::get_price(AUSD).unwrap(),
-				PricesModule::get_price(DOT).unwrap()
-			)
-		);
 
-		assert_eq!(MockDEX::get_liquidity_pool(BTC, AUSD), (0, 0));
-		assert_eq!(PricesModule::get_price(LP_BTC_AUSD), None);
+		let lp_price_1 = lp_token_fair_price(
+			Tokens::total_issuance(LP_AUSD_DOT),
+			MockDEX::get_liquidity_pool(AUSD, DOT).0,
+			MockDEX::get_liquidity_pool(AUSD, DOT).1,
+			PricesModule::access_price(AUSD).unwrap(),
+			PricesModule::access_price(DOT).unwrap(),
+		);
+		assert_eq!(PricesModule::access_price(LP_AUSD_DOT), lp_price_1);
+
+		// issue more LP
+		assert_ok!(Tokens::deposit(LP_AUSD_DOT, &1, 100));
+		assert_eq!(Tokens::total_issuance(LP_AUSD_DOT), 200);
+
+		let lp_price_2 = lp_token_fair_price(
+			Tokens::total_issuance(LP_AUSD_DOT),
+			MockDEX::get_liquidity_pool(AUSD, DOT).0,
+			MockDEX::get_liquidity_pool(AUSD, DOT).1,
+			PricesModule::access_price(AUSD).unwrap(),
+			PricesModule::access_price(DOT).unwrap(),
+		);
+		assert_eq!(PricesModule::access_price(LP_AUSD_DOT), lp_price_2);
+
+		mock_oracle_update();
+
+		let lp_price_3 = lp_token_fair_price(
+			Tokens::total_issuance(LP_AUSD_DOT),
+			MockDEX::get_liquidity_pool(AUSD, DOT).0,
+			MockDEX::get_liquidity_pool(AUSD, DOT).1,
+			PricesModule::access_price(AUSD).unwrap(),
+			PricesModule::access_price(DOT).unwrap(),
+		);
+		assert_eq!(PricesModule::access_price(LP_AUSD_DOT), lp_price_3);
 	});
 }
 
 #[test]
-fn get_relative_price_work() {
+fn access_price_of_other_currency() {
 	ExtBuilder::default().build().execute_with(|| {
+		assert_eq!(PricesModule::access_price(ACA), Some(Price::saturating_from_integer(0)));
+		assert_eq!(PricesModule::access_price(KSM), None);
+
+		mock_oracle_update();
+
 		assert_eq!(
-			PricesModule::get_relative_price(DOT, AUSD),
-			Some(Price::saturating_from_rational(10000, 1)) /* 1DOT = 100AUSD, right shift the decimal point (12-10)
-			                                                 * places */
-		);
+			PricesModule::access_price(ACA),
+			Some(Price::saturating_from_integer(30000000u128))
+		); // 30 USD, right shift the decimal point (18-12) places
 		assert_eq!(
-			PricesModule::get_relative_price(BTC, AUSD),
-			Some(Price::saturating_from_rational(500000000, 1)) /* 1BTC = 50000AUSD, right shift the decimal point
-			                                                     * (12-8) places */
-		);
-		assert_eq!(
-			PricesModule::get_relative_price(LDOT, DOT),
-			Some(Price::saturating_from_rational(1, 2)) // 1LDOT = 1/2DOT, right shift the decimal point (10-10) places
-		);
-		assert_eq!(
-			PricesModule::get_relative_price(AUSD, AUSD),
-			Some(Price::saturating_from_rational(1, 1)) // 1AUSD = 1AUSD, right shift the decimal point (10-10) places
-		);
-		assert_eq!(PricesModule::get_relative_price(AUSD, ACA), None);
+			PricesModule::access_price(KSM),
+			Some(Price::saturating_from_integer(200000000u128))
+		); // 200 USD, right shift the decimal point (18-12) places
 	});
 }
 
 #[test]
 fn lock_price_work() {
 	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
+
+		assert_noop!(PricesModule::unlock_price(Origin::signed(5), BTC), BadOrigin);
+
+		// lock the price of BTC
 		assert_eq!(
-			PricesModule::get_price(BTC),
+			PricesModule::access_price(BTC),
 			Some(Price::saturating_from_integer(500000000000000u128))
 		);
-		LockedPrice::<Runtime>::insert(BTC, Price::saturating_from_integer(80000));
-		assert_eq!(
-			PricesModule::get_price(BTC),
-			Some(Price::saturating_from_integer(800000000000000u128))
-		);
-	});
-}
-
-#[test]
-fn lock_price_call_work() {
-	ExtBuilder::default().build().execute_with(|| {
-		System::set_block_number(1);
-		assert_noop!(PricesModule::lock_price(Origin::signed(5), BTC), BadOrigin,);
+		assert_eq!(PricesModule::locked_price(BTC), None);
 		assert_ok!(PricesModule::lock_price(Origin::signed(1), BTC));
 		System::assert_last_event(Event::PricesModule(crate::Event::LockPrice(
 			BTC,
-			Price::saturating_from_integer(50000),
+			Price::saturating_from_integer(500000000000000u128),
 		)));
 		assert_eq!(
 			PricesModule::locked_price(BTC),
-			Some(Price::saturating_from_integer(50000))
+			Some(Price::saturating_from_integer(500000000000000u128))
+		);
+
+		// cannot lock the price of KSM when the price from oracle is None
+		assert_eq!(PricesModule::access_price(KSM), None);
+		assert_eq!(PricesModule::locked_price(KSM), None);
+		assert_noop!(
+			PricesModule::lock_price(Origin::signed(1), KSM),
+			Error::<Runtime>::AccessPriceFailed
+		);
+		assert_eq!(PricesModule::locked_price(KSM), None);
+
+		mock_oracle_update();
+
+		// lock the price of KSM when the price of KSM from oracle is some
+		assert_eq!(
+			PricesModule::access_price(KSM),
+			Some(Price::saturating_from_integer(200000000u128))
+		);
+		assert_eq!(PricesModule::locked_price(KSM), None);
+		assert_ok!(PricesModule::lock_price(Origin::signed(1), KSM));
+		System::assert_last_event(Event::PricesModule(crate::Event::LockPrice(
+			KSM,
+			Price::saturating_from_integer(200000000u128),
+		)));
+		assert_eq!(
+			PricesModule::locked_price(KSM),
+			Some(Price::saturating_from_integer(200000000u128))
 		);
 	});
 }
 
 #[test]
-fn unlock_price_call_work() {
+fn unlock_price_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
-		LockedPrice::<Runtime>::insert(BTC, Price::saturating_from_integer(80000));
-		assert_noop!(PricesModule::unlock_price(Origin::signed(5), BTC), BadOrigin,);
+
+		assert_noop!(PricesModule::unlock_price(Origin::signed(5), BTC), BadOrigin);
+
+		// unlock failed when there's no locked price
+		assert_noop!(
+			PricesModule::unlock_price(Origin::signed(1), BTC),
+			Error::<Runtime>::NoLockedPrice
+		);
+
+		assert_ok!(PricesModule::lock_price(Origin::signed(1), BTC));
+		assert_eq!(
+			PricesModule::locked_price(BTC),
+			Some(Price::saturating_from_integer(500000000000000u128))
+		);
 		assert_ok!(PricesModule::unlock_price(Origin::signed(1), BTC));
 		System::assert_last_event(Event::PricesModule(crate::Event::UnlockPrice(BTC)));
 		assert_eq!(PricesModule::locked_price(BTC), None);
+	});
+}
+
+#[test]
+fn price_providers_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		// issue LP
+		assert_ok!(Tokens::deposit(LP_AUSD_DOT, &1, 100));
+		assert_eq!(Tokens::total_issuance(LP_AUSD_DOT), 100);
+		let lp_price_1 = lp_token_fair_price(
+			Tokens::total_issuance(LP_AUSD_DOT),
+			MockDEX::get_liquidity_pool(AUSD, DOT).0,
+			MockDEX::get_liquidity_pool(AUSD, DOT).1,
+			PricesModule::access_price(AUSD).unwrap(),
+			PricesModule::access_price(DOT).unwrap(),
+		);
+
+		assert_eq!(
+			RealTimePriceProvider::<Runtime>::get_price(AUSD),
+			Some(Price::saturating_from_integer(1000000u128))
+		);
+		assert_eq!(
+			RealTimePriceProvider::<Runtime>::get_price(BTC),
+			Some(Price::saturating_from_integer(500000000000000u128))
+		);
+		assert_eq!(
+			RealTimePriceProvider::<Runtime>::get_price(LDOT),
+			Some(Price::saturating_from_integer(5000000000u128))
+		);
+		assert_eq!(RealTimePriceProvider::<Runtime>::get_price(KSM), None);
+		assert_eq!(RealTimePriceProvider::<Runtime>::get_price(LP_AUSD_DOT), lp_price_1);
+		assert_eq!(RealTimePriceProvider::<Runtime>::get_relative_price(BTC, KSM), None);
+
+		assert_eq!(
+			PriorityLockedPriceProvider::<Runtime>::get_price(AUSD),
+			Some(Price::saturating_from_integer(1000000u128))
+		);
+		assert_eq!(
+			PriorityLockedPriceProvider::<Runtime>::get_price(BTC),
+			Some(Price::saturating_from_integer(500000000000000u128))
+		);
+		assert_eq!(
+			PriorityLockedPriceProvider::<Runtime>::get_price(LDOT),
+			Some(Price::saturating_from_integer(5000000000u128))
+		);
+		assert_eq!(PriorityLockedPriceProvider::<Runtime>::get_price(KSM), None);
+		assert_eq!(
+			PriorityLockedPriceProvider::<Runtime>::get_price(LP_AUSD_DOT),
+			lp_price_1
+		);
+		assert_eq!(
+			PriorityLockedPriceProvider::<Runtime>::get_relative_price(BTC, KSM),
+			None
+		);
+
+		assert_eq!(LockedPriceProvider::<Runtime>::get_price(AUSD), None);
+		assert_eq!(LockedPriceProvider::<Runtime>::get_price(BTC), None);
+		assert_eq!(LockedPriceProvider::<Runtime>::get_price(LDOT), None);
+		assert_eq!(LockedPriceProvider::<Runtime>::get_price(KSM), None);
+		assert_eq!(LockedPriceProvider::<Runtime>::get_price(LP_AUSD_DOT), None);
+		assert_eq!(LockedPriceProvider::<Runtime>::get_relative_price(BTC, KSM), None);
+
+		// lock price
+		assert_ok!(PricesModule::lock_price(Origin::signed(1), AUSD));
+		assert_ok!(PricesModule::lock_price(Origin::signed(1), BTC));
+		assert_ok!(PricesModule::lock_price(Origin::signed(1), LDOT));
+		assert_noop!(
+			PricesModule::lock_price(Origin::signed(1), KSM),
+			Error::<Runtime>::AccessPriceFailed
+		);
+		assert_ok!(PricesModule::lock_price(Origin::signed(1), LP_AUSD_DOT));
+
+		assert_eq!(
+			LockedPriceProvider::<Runtime>::get_price(AUSD),
+			Some(Price::saturating_from_integer(1000000u128))
+		);
+		assert_eq!(
+			LockedPriceProvider::<Runtime>::get_price(BTC),
+			Some(Price::saturating_from_integer(500000000000000u128))
+		);
+		assert_eq!(
+			LockedPriceProvider::<Runtime>::get_price(LDOT),
+			Some(Price::saturating_from_integer(5000000000u128))
+		);
+		assert_eq!(LockedPriceProvider::<Runtime>::get_price(KSM), None);
+		assert_eq!(LockedPriceProvider::<Runtime>::get_price(LP_AUSD_DOT), lp_price_1);
+		assert_eq!(LockedPriceProvider::<Runtime>::get_relative_price(BTC, KSM), None);
+
+		// mock oracle update
+		mock_oracle_update();
+		let lp_price_2 = lp_token_fair_price(
+			Tokens::total_issuance(LP_AUSD_DOT),
+			MockDEX::get_liquidity_pool(AUSD, DOT).0,
+			MockDEX::get_liquidity_pool(AUSD, DOT).1,
+			PricesModule::access_price(AUSD).unwrap(),
+			PricesModule::access_price(DOT).unwrap(),
+		);
+
+		assert_eq!(
+			RealTimePriceProvider::<Runtime>::get_price(AUSD),
+			Some(Price::saturating_from_integer(1000000u128))
+		);
+		assert_eq!(
+			RealTimePriceProvider::<Runtime>::get_price(BTC),
+			Some(Price::saturating_from_integer(400000000000000u128))
+		);
+		assert_eq!(
+			RealTimePriceProvider::<Runtime>::get_price(LDOT),
+			Some(Price::saturating_from_integer(600000000u128))
+		);
+		assert_eq!(
+			RealTimePriceProvider::<Runtime>::get_price(KSM),
+			Some(Price::saturating_from_integer(200000000u128))
+		);
+		assert_eq!(RealTimePriceProvider::<Runtime>::get_price(LP_AUSD_DOT), lp_price_2);
+		assert_eq!(
+			RealTimePriceProvider::<Runtime>::get_relative_price(BTC, KSM),
+			Some(Price::saturating_from_integer(2000000u128))
+		);
+
+		assert_eq!(
+			PriorityLockedPriceProvider::<Runtime>::get_price(AUSD),
+			Some(Price::saturating_from_integer(1000000u128))
+		);
+		assert_eq!(
+			PriorityLockedPriceProvider::<Runtime>::get_price(BTC),
+			Some(Price::saturating_from_integer(500000000000000u128))
+		);
+		assert_eq!(
+			PriorityLockedPriceProvider::<Runtime>::get_price(LDOT),
+			Some(Price::saturating_from_integer(5000000000u128))
+		);
+		assert_eq!(
+			PriorityLockedPriceProvider::<Runtime>::get_price(KSM),
+			Some(Price::saturating_from_integer(200000000u128))
+		);
+		assert_eq!(
+			PriorityLockedPriceProvider::<Runtime>::get_price(LP_AUSD_DOT),
+			lp_price_1
+		);
+		assert_eq!(
+			PriorityLockedPriceProvider::<Runtime>::get_relative_price(BTC, KSM),
+			Some(Price::saturating_from_integer(2500000u128))
+		);
+
+		assert_eq!(
+			LockedPriceProvider::<Runtime>::get_price(AUSD),
+			Some(Price::saturating_from_integer(1000000u128))
+		);
+		assert_eq!(
+			LockedPriceProvider::<Runtime>::get_price(BTC),
+			Some(Price::saturating_from_integer(500000000000000u128))
+		);
+		assert_eq!(
+			LockedPriceProvider::<Runtime>::get_price(LDOT),
+			Some(Price::saturating_from_integer(5000000000u128))
+		);
+		assert_eq!(LockedPriceProvider::<Runtime>::get_price(KSM), None);
+		assert_eq!(LockedPriceProvider::<Runtime>::get_price(LP_AUSD_DOT), lp_price_1);
+		assert_eq!(LockedPriceProvider::<Runtime>::get_relative_price(BTC, KSM), None);
+
+		// unlock price
+		assert_ok!(PricesModule::unlock_price(Origin::signed(1), AUSD));
+		assert_ok!(PricesModule::unlock_price(Origin::signed(1), BTC));
+		assert_ok!(PricesModule::unlock_price(Origin::signed(1), LDOT));
+		assert_noop!(
+			PricesModule::unlock_price(Origin::signed(1), KSM),
+			Error::<Runtime>::NoLockedPrice
+		);
+		assert_ok!(PricesModule::unlock_price(Origin::signed(1), LP_AUSD_DOT));
+
+		assert_eq!(
+			PriorityLockedPriceProvider::<Runtime>::get_price(AUSD),
+			Some(Price::saturating_from_integer(1000000u128))
+		);
+		assert_eq!(
+			PriorityLockedPriceProvider::<Runtime>::get_price(BTC),
+			Some(Price::saturating_from_integer(400000000000000u128))
+		);
+		assert_eq!(
+			PriorityLockedPriceProvider::<Runtime>::get_price(LDOT),
+			Some(Price::saturating_from_integer(600000000u128))
+		);
+		assert_eq!(
+			PriorityLockedPriceProvider::<Runtime>::get_price(KSM),
+			Some(Price::saturating_from_integer(200000000u128))
+		);
+		assert_eq!(
+			PriorityLockedPriceProvider::<Runtime>::get_price(LP_AUSD_DOT),
+			lp_price_2
+		);
+		assert_eq!(
+			PriorityLockedPriceProvider::<Runtime>::get_relative_price(BTC, KSM),
+			Some(Price::saturating_from_integer(2000000u128))
+		);
+
+		assert_eq!(LockedPriceProvider::<Runtime>::get_price(AUSD), None);
+		assert_eq!(LockedPriceProvider::<Runtime>::get_price(BTC), None);
+		assert_eq!(LockedPriceProvider::<Runtime>::get_price(LDOT), None);
+		assert_eq!(LockedPriceProvider::<Runtime>::get_price(KSM), None);
+		assert_eq!(LockedPriceProvider::<Runtime>::get_price(LP_AUSD_DOT), None);
+		assert_eq!(LockedPriceProvider::<Runtime>::get_relative_price(BTC, KSM), None);
 	});
 }

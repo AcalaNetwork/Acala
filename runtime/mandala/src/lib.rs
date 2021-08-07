@@ -80,7 +80,7 @@ pub use orml_xcm_support::{IsNativeConcrete, MultiCurrencyAdapter, MultiNativeAs
 use pallet_xcm::XcmPassthrough;
 pub use polkadot_parachain::primitives::Sibling;
 pub use xcm::v0::{
-	Junction::{AccountId32, GeneralKey, Parachain, Parent},
+	Junction::{self, AccountId32, GeneralKey, Parachain, Parent},
 	MultiAsset,
 	MultiLocation::{self, X1, X2, X3},
 	NetworkId, Xcm,
@@ -103,7 +103,7 @@ pub use sp_runtime::BuildStorage;
 pub use sp_runtime::{Perbill, Percent, Permill, Perquintill};
 
 pub use authority::AuthorityConfigImpl;
-pub use constants::{fee::*, time::*};
+pub use constants::{fee::*, homa::*, time::*};
 pub use primitives::{
 	evm::EstimateResourcesRequest, AccountId, AccountIndex, AirDropCurrencyId, Amount, AuctionId, AuthoritysOriginId,
 	Balance, BlockNumber, CurrencyId, DataProviderId, EraIndex, Hash, Moment, Nonce, ReserveIdentifier, Share,
@@ -131,7 +131,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("mandala"),
 	impl_name: create_runtime_str!("mandala"),
 	authoring_version: 1,
-	spec_version: 801,
+	spec_version: 1006,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -172,7 +172,6 @@ parameter_types! {
 	pub UnreleasedNativeVaultAccountId: AccountId = PalletId(*b"aca/urls").into_account();
 	// Ecosystem modules
 	pub const StarportPalletId: PalletId = PalletId(*b"aca/stpt");
-	pub const HomaLitePalletId: PalletId = PalletId(*b"aca/hmlt");
 }
 
 pub fn get_all_module_accounts() -> Vec<AccountId> {
@@ -919,7 +918,7 @@ impl module_auction_manager::Config for Runtime {
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type CDPTreasury = CdpTreasury;
 	type DEX = Dex;
-	type PriceSource = Prices;
+	type PriceSource = module_prices::PriorityLockedPriceProvider<Runtime>;
 	type UnsignedPriority = runtime_common::AuctionManagerUnsignedPriority;
 	type EmergencyShutdown = EmergencyShutdown;
 	type WeightInfo = weights::module_auction_manager::WeightInfo<Runtime>;
@@ -1005,7 +1004,7 @@ parameter_types! {
 
 impl module_cdp_engine::Config for Runtime {
 	type Event = Event;
-	type PriceSource = Prices;
+	type PriceSource = module_prices::PriorityLockedPriceProvider<Runtime>;
 	type CollateralCurrencyIds = CollateralCurrencyIds;
 	type DefaultLiquidationRatio = DefaultLiquidationRatio;
 	type DefaultDebitExchangeRate = DefaultDebitExchangeRate;
@@ -1210,19 +1209,33 @@ impl module_homa::Config for Runtime {
 	type WeightInfo = weights::module_homa::WeightInfo<Runtime>;
 }
 
+pub fn create_x2_parachain_multilocation(index: u16) -> MultiLocation {
+	MultiLocation::X2(
+		Junction::Parent,
+		Junction::AccountId32 {
+			network: RelayNetwork::get(),
+			id: Utility::derivative_account_id(ParachainInfo::get().into_account(), index).into(),
+		},
+	)
+}
+
 parameter_types! {
-	pub const KSM: CurrencyId = CurrencyId::Token(TokenSymbol::KSM);
-	pub const LKSM: CurrencyId = CurrencyId::Token(TokenSymbol::LKSM);
+	pub const DotCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
+	pub const LdotCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
+	pub MinimumMintThreshold: Balance = 10 * cent(DOT);
+	pub RelaychainSovereignSubAccount: MultiLocation = create_x2_parachain_multilocation(RELAYCHAIN_SUB_ACCOUNT_ID);
 }
 impl module_homa_lite::Config for Runtime {
 	type Event = Event;
 	type WeightInfo = weights::module_homa_lite::WeightInfo<Runtime>;
 	type Currency = Currencies;
-	type StakingCurrencyId = KSM;
-	type LiquidCurrencyId = LKSM;
-	type PalletId = HomaLitePalletId;
+	type StakingCurrencyId = DotCurrencyId;
+	type LiquidCurrencyId = LdotCurrencyId;
 	type IssuerOrigin = EnsureRootOrHalfGeneralCouncil;
 	type GovernanceOrigin = EnsureRootOrHalfGeneralCouncil;
+	type MinimumMintThreshold = MinimumMintThreshold;
+	type XcmTransfer = XTokens;
+	type SovereignSubAccountLocation = RelaychainSovereignSubAccount;
 }
 
 parameter_types! {
@@ -1493,8 +1506,12 @@ pub type NFTPrecompile =
 	runtime_common::NFTPrecompile<AccountId, EvmAddressMapping<Runtime>, EvmCurrencyIdMapping<Runtime>, NFT>;
 pub type StateRentPrecompile =
 	runtime_common::StateRentPrecompile<AccountId, EvmAddressMapping<Runtime>, EvmCurrencyIdMapping<Runtime>, EVM>;
-pub type OraclePrecompile =
-	runtime_common::OraclePrecompile<AccountId, EvmAddressMapping<Runtime>, EvmCurrencyIdMapping<Runtime>, Prices>;
+pub type OraclePrecompile = runtime_common::OraclePrecompile<
+	AccountId,
+	EvmAddressMapping<Runtime>,
+	EvmCurrencyIdMapping<Runtime>,
+	module_prices::RealTimePriceProvider<Runtime>,
+>;
 pub type ScheduleCallPrecompile = runtime_common::ScheduleCallPrecompile<
 	AccountId,
 	EvmAddressMapping<Runtime>,
