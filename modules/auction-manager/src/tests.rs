@@ -187,7 +187,7 @@ fn collateral_auction_end_handler_without_bid() {
 			0,
 			false
 		));
-		assert_eq!(DEXModule::get_swap_target_amount(&[BTC, AUSD], 100, None).unwrap(), 500);
+		assert_eq!(DEXModule::get_swap_target_amount(&[BTC, AUSD], 100).unwrap(), 500);
 
 		assert_ok!(AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 100, 200));
 		assert_eq!(CDPTreasuryModule::total_collaterals(BTC), 100);
@@ -318,7 +318,7 @@ fn collateral_auction_end_handler_by_dex_which_target_not_zero() {
 			0,
 			false
 		));
-		assert_eq!(DEXModule::get_swap_target_amount(&[BTC, AUSD], 100, None).unwrap(), 500);
+		assert_eq!(DEXModule::get_swap_target_amount(&[BTC, AUSD], 100).unwrap(), 500);
 
 		assert_eq!(CDPTreasuryModule::total_collaterals(BTC), 100);
 		assert_eq!(AuctionManagerModule::total_target_in_auction(), 200);

@@ -257,7 +257,7 @@ runtime_benchmarks! {
 			collateral_amount.try_into().unwrap(),
 			debit_amount,
 		)?;
-	}: _(RawOrigin::Signed(sender), currency_id, Some(path))
+	}: _(RawOrigin::Signed(sender), currency_id, collateral_amount, Some(path))
 }
 
 #[cfg(test)]
