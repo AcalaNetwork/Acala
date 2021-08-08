@@ -736,6 +736,7 @@ parameter_type_with_key! {
 				TokenSymbol::LDOT |
 				TokenSymbol::RENBTC |
 				TokenSymbol::KAR |
+				TokenSymbol::MA |
 				TokenSymbol::CASH => Balance::max_value() // unsupported
 			},
 			CurrencyId::DexShare(dex_share_0, _) => {
@@ -1375,6 +1376,10 @@ parameter_types! {
 	// One XCM operation is 200_000_000 weight, cross-chain transfer ~= 2x of transfer.
 	pub const UnitWeightCost: Weight = 200_000_000;
 	pub KsmPerSecond: (MultiLocation, u128) = (X1(Parent), ksm_per_second());
+	pub MantaLocation: (MultiLocation, u128) = (
+		X3(Parent, Parachain(2084), GeneralKey(CurrencyId::Token(TokenSymbol::MA).encode())),
+		ksm_per_second()
+	);
 }
 
 pub type Barrier = (TakeWeightCredit, AllowTopLevelPaidExecutionFrom<All<MultiLocation>>);
@@ -1406,7 +1411,7 @@ impl xcm_executor::Config for XcmConfig {
 	type Barrier = Barrier;
 	type Weigher = FixedWeightBounds<UnitWeightCost, Call>;
 	// Only receiving KSM is handled, and all fees must be paid in KSM.
-	type Trader = FixedRateOfConcreteFungible<KsmPerSecond, ToTreasury>;
+	type Trader = FixedRateOfConcreteFungible<MantaLocation, ToTreasury>;
 	type ResponseHandler = (); // Don't handle responses for now.
 }
 
@@ -1505,7 +1510,7 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 		use TokenSymbol::*;
 		match id {
 			Token(KSM) => Some(X1(Parent)),
-			Token(KAR) | Token(KUSD) | Token(LKSM) | Token(RENBTC) => Some(native_currency_location(id)),
+			Token(KAR) | Token(KUSD) | Token(LKSM) | Token(RENBTC) | Token(MA) => Some(native_currency_location(id)),
 			_ => None,
 		}
 	}
@@ -1521,7 +1526,7 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 				if let Ok(currency_id) = CurrencyId::decode(&mut &key[..]) {
 					// check `currency_id` is cross-chain asset
 					match currency_id {
-						Token(KAR) | Token(KUSD) | Token(LKSM) | Token(RENBTC) => Some(currency_id),
+						Token(KAR) | Token(KUSD) | Token(LKSM) | Token(RENBTC) | Token(MA) => Some(currency_id),
 						_ => None,
 					}
 				} else {

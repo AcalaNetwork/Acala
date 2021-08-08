@@ -189,6 +189,9 @@ create_currency_id! {
 
 		// External Ecosystem
 		CASH("Compound CASH", 8) = 140,
+
+		// Manta Parachain
+		MA("Manta", 12) = 5,
 	}
 }
 
