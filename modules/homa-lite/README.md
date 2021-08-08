@@ -1,21 +1,30 @@
 # Homa Lite Module
 
 ## Overview
-The Homa Lite module allows users to upload some Staking currency, and mint some Liquid currency.
+The Homa Lite module allows users to upload some Staking currency into the relaychain, and mint some Liquid currency on the parachain.
+
+The amount exchanged is calculated as the following:
+``` liquid_to_mint = ( (staked_amount - MintFee) * liquid_total / staked_total ) * (1 - MaxRewardPerEra) ```
 
 ### Signed origin dispatchable calls
-* Request Mint: Request to upload Staking currency to the relaychain via XCM transfer.  
-* Claim: After a batch has been processed, the user can claim the Liquid currency minted from the Staking currency uploaded.
+* Mint: Upload Staking currency to the relaychain via XCM transfe, and mint some Liquid currency.
 
 ### Governance origin dispatchable calls 
-* issue: For a batch, set the Total issuance of the Staking currency. This will be used to calculate the exchange rate for the Liquid currency.
+* set_staking_total_issuance: For a batch, set the Total issuance of the Staking currency. This will be used to calculate the exchange rate for the Liquid currency.
+* set_minting_cap: Sets the maximum amount of staking currency that can be used to mint Liqid currency.
+
+#### Runtime Integration
+Currently the Homa-lite module is integrated into both the Mandala and the Karura rnutime.
+For Mandala network (default with `make run`):
+* Staking currency: DOT
+* Liquid currency: LDOT
+
+For Karura network:
+* Staking currency: KSM
+* Liquid currency: LKSM
 
 ## Test
-Currently, the Homa Lite module is integrated into the Mandala Runtime. 
-The Staking currency is set as "KSM"
-The Liquid currency is set as "LKSM"
-
-Homa-lite uses XCM transfer to upload Staking currency into the Relaychain. Therefore a setup that allows successful XCM transfer to the relaychain is required for the Homa-lite module to work.
+Homa-lite uses XCM transfer to upload Staking currency into the Relaychain. Therefore a setup that allows successful XCM transfer to the relaychain is required for full end-to-end test of the Homa-lite module.
 
 ### Local node
 1. Pull the Master branch of the Acala codebase
@@ -24,17 +33,7 @@ Homa-lite uses XCM transfer to upload Staking currency into the Relaychain. Ther
    This should launch some local test nodes running Karura(parachain) and Rococo(relaychain)
 3. Open a new web browser, go to `https://polkadot.js.org/apps/#/explorer`
 4. Connect to a parachain node.
-5. On the top bar, select `Settings` -> `Developer`
-6. Add the following metadata into the field:
-``` JSON
-{
-  "TotalIssuanceInfo": {
-    "staking_total": "Balance",
-    "liquid_total": "Balance"
-  }
-}
-```
-7. You can now send Extrinsic to the Homa Lite Module for testing.
+5. You can now send Extrinsic to the Homa Lite Module for testing.
 
 ### Reference on how  to use the Pokadot.js app
 #### To submit an extrinsics as ROOT
@@ -59,30 +58,11 @@ Use SUDO to:
 3. Mint 1_000_000_000 Liquid to Ferdie
 4. Call set_staking_currency_cap to set a large enough cap.
 
-#### Use the normal Extrinsic to Request Mint
-5. Request to mint 1000 as Alice
-6. Request to mint 2000 as Bob
-
 #### Use Sudo to Issue
-7. Issue Liquid currency for Batch 0, use 1_000_000 as the total Issuance for Staking
-This will make the Staking to Liquid ratio to be 1:1000
-8. Check the chain stain: `HomaLite` -> `batchTotalIssuanceInfo` -> `batch 0` should have an entry.
-the Staking total issuance should be 1_000_000, and the Liquid total issuance should be 1_000_000_000
+1. Set the total issuance for the staking currency. Use 1_000_000, as this will make the Staking to Liquid ratio to be 1:1000
+2. Check the chain stain: `HomaLite` -> `StakingTotalIssuance` should have the right amount.
 
-#### Use the normal Extrinsic to claim the liquid currency
-9. Use Alice (It doesn't matter who claims. We use Alice since she has lots of ACA) to claim for Alice for Batch 0
-10. Claim for Bob for batch 0
-
-#### Now verify the liquid currency has been minted
-11. Use Chain state query to check: Tokens -> accounts -> Alice -> Token -> Liquid should now have 1_000_000 Liquid
-12. Verify Bob should have  2_000_000 Liquid.
-Formula for amount of Liquid currency to mint is: amount * Liquid Total / StakingTotal
-
-#### Note: Currency configurations
-For Mandala network (default with `make run`):
-* Staking currency: DOT
-* Liquid currency: LDOT
-
-For Karura network:
-* Staking currency: KSM
-* Liquid currency: LKSM
+#### Use the normal Extrinsic to Request Mint
+1. Mint 1000 as Alice
+2. Verify some amount of liquid currency is minted into Alice's account.
+3. For full e2e testing, also verify the correct amount of staking currency is received on the relaychain.
