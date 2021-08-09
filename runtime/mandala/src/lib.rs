@@ -1295,8 +1295,8 @@ impl module_homa_validator_list::Config for Runtime {
 }
 
 parameter_types! {
-	pub CreateClassDeposit: Balance = 500 * millicent(ACA);
-	pub CreateTokenDeposit: Balance = 100 * millicent(ACA);
+	pub CreateClassDeposit: Balance = 20 * dollar(ACA);
+	pub CreateTokenDeposit: Balance = 2 * dollar(ACA);
 	pub MaxAttributesBytes: u32 = 2048;
 }
 
