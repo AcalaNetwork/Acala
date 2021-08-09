@@ -23,8 +23,8 @@
 use super::*;
 use frame_support::{assert_noop, assert_ok};
 use mock::{
-	AUSDBTCPair, AUSDDOTPair, DexModule, Event, ExtBuilder, ListingOrigin, Origin, Runtime, System, Tokens, ACA, ALICE,
-	AUSD, BOB, BTC, DOT,
+	AUSDBTCPair, AUSDDOTPair, DOTBTCPair, DexModule, Event, ExtBuilder, ListingOrigin, Origin, Runtime, System, Tokens,
+	ACA, ALICE, AUSD, BOB, BTC, DOT,
 };
 use orml_traits::MultiReservableCurrency;
 use sp_runtime::traits::BadOrigin;
@@ -1348,6 +1348,36 @@ fn initialize_added_liquidity_pools_genesis_work() {
 			assert_eq!(
 				Tokens::free_balance(AUSDDOTPair::get().dex_share_currency_id(), &ALICE),
 				2000000
+			);
+		});
+}
+
+fn sorted_vec<T: Ord>(mut vec: Vec<T>) -> Vec<T> {
+	vec.sort();
+	vec
+}
+
+#[test]
+fn get_active_pools_works() {
+	ExtBuilder::default()
+		.initialize_enabled_trading_pairs()
+		.initialize_added_liquidity_pools(ALICE)
+		.build()
+		.execute_with(|| {
+			System::set_block_number(1);
+
+			assert_ok!(DexModule::disable_trading_pair(
+				Origin::signed(ListingOrigin::get()),
+				AUSD,
+				DOT
+			));
+
+			assert_eq!(
+				sorted_vec(DexModule::get_active_pools()),
+				sorted_vec(vec![
+					AvailablePool(AvailableAmm::Dex, AUSDBTCPair::get()),
+					AvailablePool(AvailableAmm::Dex, DOTBTCPair::get())
+				])
 			);
 		});
 }

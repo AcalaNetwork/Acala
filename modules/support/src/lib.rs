@@ -23,7 +23,7 @@ use codec::{Decode, Encode, FullCodec, HasCompact};
 use frame_support::pallet_prelude::{DispatchClass, Pays, Weight};
 use primitives::{
 	evm::{CallInfo, EvmAddress},
-	CurrencyId,
+	CurrencyId, TradingPair,
 };
 use sp_core::H160;
 use sp_runtime::{
@@ -95,6 +95,38 @@ pub trait AuctionManager<AccountId> {
 	fn cancel_auction(id: Self::AuctionId) -> DispatchResult;
 	fn get_total_collateral_in_auction(id: Self::CurrencyId) -> Self::Balance;
 	fn get_total_target_in_auction() -> Self::Balance;
+}
+
+/// Enum of all possible AMM (Automated Market Maker) pallets for use in dex-aggregator.
+/// used as a flag to show what liquidity pool a trading pair corresponds to (needed for multiple
+/// pools of the same trading pair)
+#[derive(Clone, Copy, Encode, Decode, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum AvailableAmm {
+	Dex,
+}
+
+/// Tuple Struct with first entry representing the module name and second entry available trading
+/// pair
+#[derive(Clone, Copy, Encode, Decode, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord)]
+pub struct AvailablePool(pub AvailableAmm, pub TradingPair);
+
+/// super trait to be used in runtimes to activate dex-aggregator pallet
+pub trait AggregatorSuper<TradingPair, Balance> {
+	fn all_active_pairs() -> Vec<AvailablePool>;
+
+	fn get_swap_supply_amount(path: Vec<AvailablePool>, target_amount: Balance) -> Option<Balance>;
+}
+
+/// required trait for pallets with  to implement to be used by dex aggregator
+pub trait AggregatorManager<TradingPair, Balance> {
+	/// Retrieve all active trading pairs for the pallet
+	fn get_active_pools() -> Vec<AvailablePool>;
+
+	/// Returns supply balance given a target  noop returns None
+	fn aggregator_swap_supply_amount(pair: TradingPair, target_amount: Balance) -> Option<Balance>;
+
+	/// Returns target balance given a supply, noop returns None
+	fn aggregator_swap_target_amount(pair: TradingPair, supply_amount: Balance) -> Option<Balance>;
 }
 
 pub trait DEXManager<AccountId, CurrencyId, Balance> {

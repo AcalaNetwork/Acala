@@ -149,6 +149,10 @@ impl TradingPair {
 		self.1
 	}
 
+	pub fn swap(&self) -> TradingPair {
+		TradingPair(self.second(), self.first())
+	}
+
 	pub fn dex_share_currency_id(&self) -> CurrencyId {
 		CurrencyId::join_dex_share_currency_id(self.first(), self.second())
 			.expect("shouldn't be invalid! guaranteed by construction")
