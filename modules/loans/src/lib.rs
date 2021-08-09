@@ -214,7 +214,12 @@ impl<T: Config> Pallet<T> {
 
 		// ensure pass risk check
 		let Position { collateral, debit } = Self::positions(currency_id, who);
-		T::RiskManager::check_position_valid(currency_id, collateral, debit)?;
+		T::RiskManager::check_position_valid(
+			currency_id,
+			collateral,
+			debit,
+			collateral_adjustment.is_negative() || debit_adjustment.is_positive(),
+		)?;
 
 		Self::deposit_event(Event::PositionUpdated(
 			who.clone(),
@@ -242,7 +247,7 @@ impl<T: Config> Pallet<T> {
 			.expect("existing debit balance cannot overflow; qed");
 
 		// check new position
-		T::RiskManager::check_position_valid(currency_id, new_to_collateral_balance, new_to_debit_balance)?;
+		T::RiskManager::check_position_valid(currency_id, new_to_collateral_balance, new_to_debit_balance, true)?;
 
 		// balance -> amount
 		let collateral_adjustment = Self::amount_try_from_balance(collateral)?;
