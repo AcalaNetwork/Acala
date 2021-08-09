@@ -167,8 +167,8 @@ pub mod module {
 			// Gets the current exchange rate
 			let staking_total = Self::total_staking_currency();
 			let liquid_total = T::Currency::total_issuance(T::LiquidCurrencyId::get());
-			let exchange_rate = Ratio::checked_from_rational(liquid_total, staking_total)
-				.unwrap_or_else(|| T::DefaultExchangeRate::get());
+			let exchange_rate =
+				Ratio::checked_from_rational(liquid_total, staking_total).unwrap_or_else(T::DefaultExchangeRate::get);
 
 			// liquid_to_mint = ( (staked_amount - MintFee) * liquid_total / staked_total ) * (1 -
 			// MaxRewardPerEra)
