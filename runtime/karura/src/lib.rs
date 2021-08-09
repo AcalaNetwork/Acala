@@ -1510,7 +1510,7 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 		use TokenSymbol::*;
 		match id {
 			Token(KSM) => Some(X1(Parent)),
-			Token(KAR) | Token(KUSD) | Token(LKSM) | Token(RENBTC) | Token(MA) => Some(native_currency_location(id)),
+			Token(KAR) | Token(KUSD) | Token(LKSM) | Token(RENBTC) | Token(MA) | Token(KMA) => Some(native_currency_location(id)),
 			_ => None,
 		}
 	}
@@ -1526,7 +1526,7 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 				if let Ok(currency_id) = CurrencyId::decode(&mut &key[..]) {
 					// check `currency_id` is cross-chain asset
 					match currency_id {
-						Token(KAR) | Token(KUSD) | Token(LKSM) | Token(RENBTC) | Token(MA) => Some(currency_id),
+						Token(KAR) | Token(KUSD) | Token(LKSM) | Token(RENBTC) | Token(MA) | Token(KMA) => Some(currency_id),
 						_ => None,
 					}
 				} else {

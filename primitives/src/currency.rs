@@ -179,6 +179,7 @@ create_currency_id! {
 		DOT("Polkadot", 10) = 2,
 		LDOT("Liquid DOT", 10) = 3,
 		RENBTC("Ren Protocol BTC", 8) = 4,
+		MA("Manta", 12) = 5,
 
 		// Kusama Ecosystem
 		KAR("Karura", 12) = 128,
@@ -186,12 +187,10 @@ create_currency_id! {
 		KSM("Kusama", 12) = 130,
 		LKSM("Liquid KSM", 12) = 131,
 		// Reserve for RENBTC = 132
+		KMA("Calamari", 12) = 133,
 
 		// External Ecosystem
 		CASH("Compound CASH", 8) = 140,
-
-		// Manta Parachain
-		MA("Manta", 12) = 5,
 	}
 }
 
