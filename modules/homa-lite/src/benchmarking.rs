@@ -36,7 +36,6 @@ benchmarks! {
 		let amount = 1_000_000_000_000;
 		let caller: T::AccountId = account("caller", 0, SEED);
 		<T as module::Config>::Currency::deposit(T::StakingCurrencyId::get(), &caller, amount)?;
-		<T as module::Config>::Currency::deposit(T::StakingCurrencyId::get(), &caller, amount)?;
 		module::Pallet::<T>::set_minting_cap(RawOrigin::Root.into(), amount)?;
 	}: _(RawOrigin::Signed(caller), amount, 0)
 
@@ -151,8 +150,8 @@ mod benchmark_mock {
 		pub const MinimumMintThreshold: Balance = 1_000_000_000;
 		pub const MockXcmDestination: MultiLocation = MOCK_XCM_DESTINATION;
 		pub DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
-		pub const MaxRewardPerEra: Permill = Permill::from_percent(1);
-		pub const MintFee: Balance = 10_000_000_000;
+		pub MaxRewardPerEra: Permill = Permill::from_rational(411u32, 1_000_000u32);
+		pub const MintFee: Balance = 10_000_000;
 	}
 	ord_parameter_types! {
 		pub const Root: AccountId = ROOT;
@@ -164,7 +163,6 @@ mod benchmark_mock {
 		type Currency = Currencies;
 		type StakingCurrencyId = StakingCurrencyId;
 		type LiquidCurrencyId = LiquidCurrencyId;
-		type IssuerOrigin = EnsureRoot<AccountId>;
 		type GovernanceOrigin = EnsureRoot<AccountId>;
 		type MinimumMintThreshold = MinimumMintThreshold;
 		type XcmTransfer = MockXcm;
