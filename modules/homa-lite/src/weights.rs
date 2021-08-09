@@ -48,7 +48,7 @@ use sp_std::marker::PhantomData;
 /// Weight functions needed for module_homa_lite.
 pub trait WeightInfo {
 	fn mint() -> Weight;
-	fn set_staking_total_issuance() -> Weight;
+	fn set_total_staking_currency() -> Weight;
 	fn set_minting_cap() -> Weight;
 }
 
@@ -60,7 +60,7 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(11 as Weight))
 			.saturating_add(T::DbWeight::get().writes(6 as Weight))
 	}
-	fn set_staking_total_issuance() -> Weight {
+	fn set_total_staking_currency() -> Weight {
 		(20_733_000 as Weight)
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
@@ -77,7 +77,7 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().reads(11 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(6 as Weight))
 	}
-	fn set_staking_total_issuance() -> Weight {
+	fn set_total_staking_currency() -> Weight {
 		(20_733_000 as Weight)
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}

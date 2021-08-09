@@ -52,7 +52,7 @@ impl<T: frame_system::Config> module_homa_lite::WeightInfo for WeightInfo<T> {
 			.saturating_add(T::DbWeight::get().reads(11 as Weight))
 			.saturating_add(T::DbWeight::get().writes(6 as Weight))
 	}
-	fn set_staking_total_issuance() -> Weight {
+	fn set_total_staking_currency() -> Weight {
 		(10_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}

@@ -46,14 +46,17 @@ fn mint_works() {
 	ExtBuilder::default().build().execute_with(|| {
 		let amount = dollar(1000);
 
-		assert_ok!(HomaLite::set_minting_cap(Origin::signed(ROOT), 5 * amount));
+		assert_ok!(HomaLite::set_minting_cap(
+			Origin::signed(ROOT),
+			5 * dollar(INITIAL_BALANCE)
+		));
 
 		assert_noop!(
 			HomaLite::mint(Origin::signed(ROOT), amount, 0),
 			orml_tokens::Error::<Runtime>::BalanceTooLow
 		);
 
-		// Since the exchange rate is not set for the current era, use the default 1:10 ratio
+		// Since the exchange rate is not set, use the default 1:10 ratio
 		// liquid = (amount - MintFee) * 10 * (1 - MaxRewardPerEra)
 		let mut liquid = Permill::from_percent(90).mul((amount - MintFee::get()) * 10);
 		assert_ok!(HomaLite::mint(Origin::signed(ALICE), amount, 0));
@@ -63,15 +66,15 @@ fn mint_works() {
 			Event::HomaLite(crate::Event::Minted(ALICE, amount, liquid))
 		);
 
-		// Set the total issuance for the current era
+		// Set the total staking amount
 		let lksm_issuance = Currencies::total_issuance(LKSM);
 		// Set the exchange rate to 1(S) : 5(L)
-		assert_ok!(HomaLite::set_staking_total_issuance(
+		assert_ok!(HomaLite::set_total_staking_currency(
 			Origin::signed(ROOT),
 			lksm_issuance / 5
 		));
 
-		// Since this era is "issued", the exchange rage is 1:5 ratio
+		// The exchange rate is now 1:5 ratio
 		liquid = Permill::from_percent(90).mul((amount - MintFee::get()) * 5);
 		assert_ok!(HomaLite::mint(Origin::signed(BOB), amount, 0));
 		assert_eq!(Currencies::free_balance(LKSM, &BOB), liquid);
@@ -134,26 +137,26 @@ fn failed_xcm_transfer_is_handled() {
 }
 
 #[test]
-fn cannot_set_staking_total_issuance_to_zero() {
+fn cannot_set_total_staking_currency_to_zero() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_noop!(
-			HomaLite::set_staking_total_issuance(Origin::signed(ROOT), 0),
-			Error::<Runtime>::InvalidStakingCurrencyTotalIssuance
+			HomaLite::set_total_staking_currency(Origin::signed(ROOT), 0),
+			Error::<Runtime>::InvalidTotalStakingCurrency
 		);
-		assert_ok!(HomaLite::set_staking_total_issuance(Origin::signed(ROOT), 1));
-		assert_eq!(StakingTotalIssuance::<Runtime>::get(), 1);
+		assert_ok!(HomaLite::set_total_staking_currency(Origin::signed(ROOT), 1));
+		assert_eq!(TotalStakingCurrency::<Runtime>::get(), 1);
 		assert_eq!(
 			System::events().iter().last().unwrap().event,
-			Event::HomaLite(crate::Event::StakingTotalIssuanceSet(1))
+			Event::HomaLite(crate::Event::TotalStakingCurrencySet(1))
 		);
 	});
 }
 
 #[test]
-fn requires_root_to_set_staking_total_issuance() {
+fn requires_root_to_set_total_staking_currency() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_noop!(
-			HomaLite::set_staking_total_issuance(Origin::signed(ALICE), 0),
+			HomaLite::set_total_staking_currency(Origin::signed(ALICE), 0),
 			BadOrigin
 		);
 	});

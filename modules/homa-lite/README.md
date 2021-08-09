@@ -10,7 +10,7 @@ The amount exchanged is calculated as the following:
 * Mint: Upload Staking currency to the relaychain via XCM transfer, and mint some Liquid currency.
 
 ### Governance origin dispatchable calls 
-* set_staking_total_issuance: Set the Total issuance of the Staking currency. This will be used to calculate the exchange rate for the Liquid currency.
+* set_total_staking_currency: Set the Total amount of the Staking currency. This will be used to calculate the exchange rate for the Liquid currency.
 * set_minting_cap: Sets the maximum amount of staking currency allowed to be used to mint Liqid currency.
 
 #### Runtime Integration
@@ -59,8 +59,8 @@ Use SUDO to:
 4. Call set_staking_currency_cap to set a large enough cap.
 
 #### Use Sudo to Issue
-1. Set the total issuance for the staking currency. Use 1_000_000, as this will make the Staking to Liquid ratio to be 1:1000
-2. Check the chain stain: `HomaLite` -> `StakingTotalIssuance` should have the right amount.
+1. Set the total amount for the staking currency. Use 1_000_000, as this will make the Staking to Liquid ratio to be 1:1000
+2. Check the chain stain: `HomaLite` -> `TotalStakingCurrency` should have the right amount.
 
 #### Use the normal Extrinsic to Request Mint
 1. Mint 1000 as Alice

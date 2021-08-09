@@ -39,7 +39,7 @@ benchmarks! {
 		module::Pallet::<T>::set_minting_cap(RawOrigin::Root.into(), amount)?;
 	}: _(RawOrigin::Signed(caller), amount, 0)
 
-	set_staking_total_issuance {}: _(RawOrigin::Root, 1_000_000_000_000)
+	set_total_staking_currency {}: _(RawOrigin::Root, 1_000_000_000_000)
 
 	set_minting_cap {
 	}: _(RawOrigin::Root, 1_000_000_000_000_000_000)
@@ -223,9 +223,9 @@ mod tests {
 		});
 	}
 	#[test]
-	fn test_set_staking_total_issuance() {
+	fn test_set_total_staking_currency() {
 		ExtBuilder::default().build().execute_with(|| {
-			assert_ok!(test_benchmark_set_staking_total_issuance::<Runtime>());
+			assert_ok!(test_benchmark_set_total_staking_currency::<Runtime>());
 		});
 	}
 	#[test]

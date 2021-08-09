@@ -16,19 +16,6 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-//! # Homa Lite Module
-//! The Homa Lite module handles logic that allows the users to lock in KSM tokens on the Karura
-//! Acala Chain, and mint LKSM tokens from the liquidity. The locked KSM are then used for Staking -
-//! they will be used to nominate our partner Validators on the Kusama Chain.
-//!
-//! As the first draft, this module currently does not support Redeem function from LKSM to KSM.
-//!
-//! General workflow:
-//! 1. User moves KSM cross-chain into the Karura chain
-//! 2. User "Lock" their KSM on the Karura chain
-//! 3. Karura send XCM back into Kusama chain, and Nominate these KSMs against our partner
-//! Validators. 4. Karura mint LKSM on the Karura chain
-
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
 
@@ -100,8 +87,8 @@ pub mod module {
 
 	#[pallet::error]
 	pub enum Error<T> {
-		/// The total issuance for the Staking currency must be more than zero.
-		InvalidStakingCurrencyTotalIssuance,
+		/// The total amount for the Staking currency must be more than zero.
+		InvalidTotalStakingCurrency,
 		/// The mint amount is below the minimum threshold allowed.
 		MintAmountBelowMinimumThreshold,
 		/// The amount of Staking currency used has exceeded the cap allowed.
@@ -118,32 +105,26 @@ pub mod module {
 		/// \[user, amount_staked, amount_minted\]
 		Minted(T::AccountId, Balance, Balance),
 
-		/// The total issuance of the staking currency on the relaychain has been
-		/// set.\[staking_total_issuance\]
-		StakingTotalIssuanceSet(Balance),
+		/// The total amount of the staking currency on the relaychain has been
+		/// set.\[total_staking_currency\]
+		TotalStakingCurrencySet(Balance),
 
 		/// The mint cap for Staking currency is updated.\[new_cap\]
 		StakingCurrencyMintCapUpdated(Balance),
 	}
 
-	/// The total issuance of the staking currency on the relaychain.
+	/// The total amount of the staking currency on the relaychain.
 	/// This info is used to calculate the exchange rate between Staking and Liquid currencies.
-	/// StakingTotalIssuance: value: total_issuance: Balance
+	/// TotalStakingCurrency: value: Balance
 	#[pallet::storage]
-	#[pallet::getter(fn staking_total_issuance)]
-	pub type StakingTotalIssuance<T: Config> = StorageValue<_, Balance, ValueQuery>;
+	#[pallet::getter(fn total_staking_currency)]
+	pub type TotalStakingCurrency<T: Config> = StorageValue<_, Balance, ValueQuery>;
 
 	/// The cap on the total amount of staking currency allowed to mint Liquid currency.
-	/// StakingCurrencyMintCap: value: mint_cap: Balance
+	/// StakingCurrencyMintCap: value: Balance
 	#[pallet::storage]
 	#[pallet::getter(fn staking_currency_mint_cap)]
 	pub type StakingCurrencyMintCap<T: Config> = StorageValue<_, Balance, ValueQuery>;
-
-	/// The total amount of staking currency that have been used to mint Liquid currency.
-	/// TotalStakedAmount: value: staked_total: Balance
-	#[pallet::storage]
-	#[pallet::getter(fn total_staked_amount)]
-	pub type TotalStakedAmount<T: Config> = StorageValue<_, Balance, ValueQuery>;
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
@@ -151,7 +132,7 @@ pub mod module {
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		/// Mint some Liquid currency, by locking up the given amount of Staking currency.
-		/// The exchange rate is calculated using the ratio of the total issuance of the staking and
+		/// The exchange rate is calculated using the ratio of the total amount of the staking and
 		/// liquid currency. A portion is reducted (defined as T::MaxRewardPerEra) to make up for
 		/// the fact that staking is only effective from the next era on (on the relaychain).
 		///
@@ -169,7 +150,7 @@ pub mod module {
 			);
 
 			// Ensure the total amount staked doesn't exceed the cap.
-			let new_total_staked = Self::total_staked_amount()
+			let new_total_staked = Self::total_staking_currency()
 				.checked_add(amount)
 				.ok_or(ArithmeticError::Overflow)?;
 			ensure!(
@@ -184,10 +165,10 @@ pub mod module {
 
 			// Calculate how much Liquid currency is to be minted.
 			// Gets the current exchange rate
-			let staking_total = Self::staking_total_issuance();
+			let staking_total = Self::total_staking_currency();
 			let liquid_total = T::Currency::total_issuance(T::LiquidCurrencyId::get());
-			let exchange_rate =
-				Ratio::checked_from_rational(liquid_total, staking_total).unwrap_or(T::DefaultExchangeRate::get());
+			let exchange_rate = Ratio::checked_from_rational(liquid_total, staking_total)
+				.unwrap_or_else(|| T::DefaultExchangeRate::get());
 
 			// liquid_to_mint = ( (staked_amount - MintFee) * liquid_total / staked_total ) * (1 -
 			// MaxRewardPerEra)
@@ -219,30 +200,27 @@ pub mod module {
 			// Mint the liquid currency into the user's account.
 			T::Currency::deposit(T::LiquidCurrencyId::get(), &who, liquid_to_mint)?;
 
-			TotalStakedAmount::<T>::put(new_total_staked);
+			TotalStakingCurrency::<T>::put(new_total_staked);
 
-			Self::deposit_event(Event::<T>::Minted(who.clone(), amount, liquid_to_mint));
+			Self::deposit_event(Event::<T>::Minted(who, amount, liquid_to_mint));
 
 			Ok(())
 		}
 
-		/// Sets the total issuance of the Staking currency that are currently on the relaychain.
+		/// Sets the total amount of the Staking currency that are currently on the relaychain.
 		/// Requires `T::GovernanceOrigin`
 		///
 		/// Parameters:
-		/// - `staking_total`: The currenct issuance of the Staking currency. Used to calculate
+		/// - `staking_total`: The current amount of the Staking currency. Used to calculate
 		///   conversion rate.
-		#[pallet::weight(< T as Config >::WeightInfo::set_staking_total_issuance())]
+		#[pallet::weight(< T as Config >::WeightInfo::set_total_staking_currency())]
 		#[transactional]
-		pub fn set_staking_total_issuance(origin: OriginFor<T>, staking_total: Balance) -> DispatchResult {
+		pub fn set_total_staking_currency(origin: OriginFor<T>, staking_total: Balance) -> DispatchResult {
 			T::GovernanceOrigin::ensure_origin(origin)?;
-			ensure!(
-				!staking_total.is_zero(),
-				Error::<T>::InvalidStakingCurrencyTotalIssuance
-			);
+			ensure!(!staking_total.is_zero(), Error::<T>::InvalidTotalStakingCurrency);
 
-			StakingTotalIssuance::<T>::put(staking_total);
-			Self::deposit_event(Event::<T>::StakingTotalIssuanceSet(staking_total));
+			TotalStakingCurrency::<T>::put(staking_total);
+			Self::deposit_event(Event::<T>::TotalStakingCurrencySet(staking_total));
 
 			Ok(())
 		}
