@@ -65,10 +65,16 @@ fn adjust_position_should_work() {
 			orml_tokens::Error::<Runtime>::BalanceTooLow
 		);
 
-		// mock can't pass position valid check
+		// mock can't pass liquidation ratio check
 		assert_noop!(
 			LoansModule::adjust_position(&ALICE, DOT, 500, 0),
-			sp_runtime::DispatchError::Other("mock invalid position error")
+			sp_runtime::DispatchError::Other("mock below liquidation ratio error")
+		);
+
+		// mock can't pass required ratio check
+		assert_noop!(
+			LoansModule::adjust_position(&ALICE, DOT, 500, 1),
+			sp_runtime::DispatchError::Other("mock below required collateral ratio error")
 		);
 
 		// mock exceed debit value cap
@@ -103,12 +109,9 @@ fn adjust_position_should_work() {
 		System::assert_last_event(Event::LoansModule(crate::Event::PositionUpdated(ALICE, BTC, 500, 300)));
 
 		// collateral_adjustment is negatives
-		// remove module account.
 		assert_eq!(Currencies::total_balance(BTC, &LoansModule::account_id()), 500);
-		assert_eq!(System::account_exists(&LoansModule::account_id()), true);
 		assert_ok!(LoansModule::adjust_position(&ALICE, BTC, -500, 0));
 		assert_eq!(Currencies::free_balance(BTC, &LoansModule::account_id()), 0);
-		assert_eq!(System::account_exists(&LoansModule::account_id()), false);
 	});
 }
 

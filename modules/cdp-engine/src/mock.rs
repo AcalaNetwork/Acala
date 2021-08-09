@@ -160,7 +160,7 @@ impl PriceProvider<CurrencyId> for MockPriceSource {
 	}
 
 	fn get_price(_currency_id: CurrencyId) -> Option<Price> {
-		Some(Price::one())
+		unimplemented!()
 	}
 }
 
