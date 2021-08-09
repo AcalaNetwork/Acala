@@ -7,11 +7,11 @@ The amount exchanged is calculated as the following:
 ``` liquid_to_mint = ( (staked_amount - MintFee) * liquid_total / staked_total ) * (1 - MaxRewardPerEra) ```
 
 ### Signed origin dispatchable calls
-* Mint: Upload Staking currency to the relaychain via XCM transfe, and mint some Liquid currency.
+* Mint: Upload Staking currency to the relaychain via XCM transfer, and mint some Liquid currency.
 
 ### Governance origin dispatchable calls 
-* set_staking_total_issuance: For a batch, set the Total issuance of the Staking currency. This will be used to calculate the exchange rate for the Liquid currency.
-* set_minting_cap: Sets the maximum amount of staking currency that can be used to mint Liqid currency.
+* set_staking_total_issuance: Set the Total issuance of the Staking currency. This will be used to calculate the exchange rate for the Liquid currency.
+* set_minting_cap: Sets the maximum amount of staking currency allowed to be used to mint Liqid currency.
 
 #### Runtime Integration
 Currently the Homa-lite module is integrated into both the Mandala and the Karura rnutime.
@@ -33,9 +33,9 @@ Homa-lite uses XCM transfer to upload Staking currency into the Relaychain. Ther
    This should launch some local test nodes running Karura(parachain) and Rococo(relaychain)
 3. Open a new web browser, go to `https://polkadot.js.org/apps/#/explorer`
 4. Connect to a parachain node.
-5. You can now send Extrinsic to the Homa Lite Module for testing.
+5. You can now send Extrinsics to the Homa Lite Module for testing.
 
-### Reference on how  to use the Pokadot.js app
+### Reference on how to use the Pokadot.js app
 #### To submit an extrinsics as ROOT
 * Open the Developer -> Extrinsics tab. Select `sudo` -> `sudo(call)`
 * Ensure ALICE signs the transaction. In the `make run` test chain, ALICE is the root.
