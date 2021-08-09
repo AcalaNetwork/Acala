@@ -211,8 +211,7 @@ pub mod module {
 	pub type PayoutDeductionRates<T: Config> =
 		StorageMap<_, Twox64Concat, PoolId<T::RelaychainAccountId>, Rate, ValueQuery>;
 
-	/// The pending rewards amount, claim it the amount will be deducted if deduction rate is not
-	/// zero.
+	/// The pending rewards amount, actual available rewards amount may be deducted
 	///
 	/// PendingRewards: double_map PoolId, AccountId => Balance
 	#[pallet::storage]
