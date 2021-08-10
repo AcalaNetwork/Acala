@@ -23,8 +23,8 @@
 use super::*;
 use frame_support::{assert_noop, assert_ok};
 use mock::{
-	dollar, millicent, Currencies, Event, ExtBuilder, HomaLite, MinimumMintThreshold, MintFee, Origin, Runtime, System,
-	ACALA, ALICE, BOB, INITIAL_BALANCE, INVALID_CALLER, KSM, LKSM, ROOT,
+	dollar, Currencies, Event, ExtBuilder, HomaLite, Origin, Runtime, System, ACALA, ALICE, BOB, INITIAL_BALANCE,
+	INVALID_CALLER, KSM, LKSM, ROOT,
 };
 use sp_runtime::traits::BadOrigin;
 
@@ -128,7 +128,7 @@ fn repeated_mints_have_similar_exchange_rate() {
 		// liquid = (1000 - 0.01) * 1004949.9505 / 201000 * 0.99
 		let liquid_2 = 4_949_703_990_002_437;
 		assert_ok!(HomaLite::mint(Origin::signed(BOB), amount, 0));
-		assert_eq!(Currencies::free_balance(LKSM, &BOB), liquid_1 + liquid_2);
+		assert_eq!(Currencies::free_balance(LKSM, &BOB), 9_899_654_490_002_437);
 
 		// Since the effective exchange rate is lower than the theortical rate, Liquid currency becomes more
 		// valuable.
@@ -150,7 +150,7 @@ fn repeated_mints_have_similar_exchange_rate() {
 		// liquid = (1000 - 0.01) * 1009899.654490002437 / 204020 * 0.99
 		let liquid_3 = 4_900_454_170_858_361;
 		assert_ok!(HomaLite::mint(Origin::signed(BOB), amount, 0));
-		assert_eq!(Currencies::free_balance(LKSM, &BOB), liquid_1 + liquid_2 + liquid_3);
+		assert_eq!(Currencies::free_balance(LKSM, &BOB), 14_800_108_660_860_799);
 
 		// Increasing the Staking total increases the value of Liquid currency - this makes up for the
 		// staking rewards.
