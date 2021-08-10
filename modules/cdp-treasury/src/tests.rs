@@ -221,33 +221,32 @@ fn swap_collateral_to_exact_stable_work() {
 		assert_eq!(CDPTreasuryModule::total_collaterals_not_in_auction(BTC), 200);
 
 		assert_noop!(
-			CDPTreasuryModule::swap_collateral_to_exact_stable(BTC, 201, 499, None, None, false),
+			CDPTreasuryModule::swap_collateral_to_exact_stable(BTC, 201, 499, None, false),
 			Error::<Runtime>::CollateralNotEnough,
 		);
 
 		assert_ok!(CDPTreasuryModule::swap_collateral_to_exact_stable(
-			BTC, 100, 499, None, None, false
+			BTC, 100, 499, None, false
 		));
 		assert_eq!(CDPTreasuryModule::surplus_pool(), 499);
 		assert_eq!(CDPTreasuryModule::total_collaterals_not_in_auction(BTC), 100);
 
 		assert_noop!(
-			CDPTreasuryModule::swap_collateral_to_exact_stable(BTC, 100, 199, None, Some(&vec![BTC]), false),
+			CDPTreasuryModule::swap_collateral_to_exact_stable(BTC, 100, 199, Some(&vec![BTC]), false),
 			Error::<Runtime>::InvalidSwapPath
 		);
 		assert_noop!(
-			CDPTreasuryModule::swap_collateral_to_exact_stable(BTC, 100, 199, None, Some(&vec![BTC, DOT]), false),
+			CDPTreasuryModule::swap_collateral_to_exact_stable(BTC, 100, 199, Some(&vec![BTC, DOT]), false),
 			Error::<Runtime>::InvalidSwapPath
 		);
 		assert_noop!(
-			CDPTreasuryModule::swap_collateral_to_exact_stable(BTC, 100, 199, None, Some(&vec![DOT, AUSD]), false),
+			CDPTreasuryModule::swap_collateral_to_exact_stable(BTC, 100, 199, Some(&vec![DOT, AUSD]), false),
 			Error::<Runtime>::InvalidSwapPath
 		);
 		assert_ok!(CDPTreasuryModule::swap_collateral_to_exact_stable(
 			BTC,
 			100,
 			10,
-			None,
 			Some(&vec![BTC, DOT, AUSD]),
 			false
 		));
@@ -291,7 +290,7 @@ fn swap_exact_collateral_to_stable_work() {
 		assert_eq!(CDPTreasuryModule::total_collaterals(BTC), 200);
 
 		assert_noop!(
-			CDPTreasuryModule::swap_exact_collateral_to_stable(BTC, 200, 100, None, None, true),
+			CDPTreasuryModule::swap_exact_collateral_to_stable(BTC, 200, 100, None, true),
 			Error::<Runtime>::CollateralNotEnough,
 		);
 
@@ -304,21 +303,21 @@ fn swap_exact_collateral_to_stable_work() {
 		assert_eq!(MockAuctionManager::get_total_collateral_in_auction(BTC), 200);
 
 		assert_ok!(CDPTreasuryModule::swap_exact_collateral_to_stable(
-			BTC, 100, 400, None, None, true
+			BTC, 100, 400, None, true
 		));
 		assert_eq!(CDPTreasuryModule::surplus_pool(), 500);
 		assert_eq!(CDPTreasuryModule::total_collaterals(BTC), 100);
 
 		assert_noop!(
-			CDPTreasuryModule::swap_exact_collateral_to_stable(BTC, 100, 199, None, Some(&vec![BTC]), true),
+			CDPTreasuryModule::swap_exact_collateral_to_stable(BTC, 100, 199, Some(&vec![BTC]), true),
 			Error::<Runtime>::InvalidSwapPath
 		);
 		assert_noop!(
-			CDPTreasuryModule::swap_exact_collateral_to_stable(BTC, 100, 199, None, Some(&vec![BTC, DOT]), true),
+			CDPTreasuryModule::swap_exact_collateral_to_stable(BTC, 100, 199, Some(&vec![BTC, DOT]), true),
 			Error::<Runtime>::InvalidSwapPath
 		);
 		assert_noop!(
-			CDPTreasuryModule::swap_exact_collateral_to_stable(BTC, 100, 199, None, Some(&vec![DOT, AUSD]), true),
+			CDPTreasuryModule::swap_exact_collateral_to_stable(BTC, 100, 199, Some(&vec![DOT, AUSD]), true),
 			Error::<Runtime>::InvalidSwapPath
 		);
 
@@ -326,7 +325,6 @@ fn swap_exact_collateral_to_stable_work() {
 			BTC,
 			100,
 			10,
-			None,
 			Some(&vec![BTC, DOT, AUSD]),
 			true
 		));

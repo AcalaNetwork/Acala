@@ -25,6 +25,7 @@ use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_core::crypto::UncheckedInto;
 use sp_finality_grandpa::AuthorityId as GrandpaId;
 use sp_runtime::{traits::Zero, FixedPointNumber, FixedU128};
+use sp_std::collections::btree_map::BTreeMap;
 
 use crate::chain_spec::{Extensions, TELEMETRY_URL};
 
@@ -132,8 +133,6 @@ fn acala_genesis(
 		SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, UnreleasedNativeVaultAccountId, VestingConfig,
 		ACA, AUSD, DOT, LDOT, RENBTC,
 	};
-	#[cfg(feature = "std")]
-	use sp_std::collections::btree_map::BTreeMap;
 
 	let existential_deposit = NativeTokenExistentialDeposit::get();
 

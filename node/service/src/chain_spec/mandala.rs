@@ -25,6 +25,7 @@ use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_core::{crypto::UncheckedInto, sr25519};
 use sp_finality_grandpa::AuthorityId as GrandpaId;
 use sp_runtime::{traits::Zero, FixedPointNumber, FixedU128};
+use sp_std::collections::btree_map::BTreeMap;
 
 use crate::chain_spec::{
 	evm_genesis, get_account_id_from_seed, get_authority_keys_from_seed, Extensions, TELEMETRY_URL,
@@ -156,7 +157,7 @@ pub fn latest_mandala_testnet_config() -> Result<ChainSpec, String> {
 
 	Ok(ChainSpec::from_genesis(
 		"Acala Mandala TC7",
-		"mandala-tc7",
+		"mandala-dev-tc7",
 		ChainType::Live,
 		// SECRET="..."
 		// ./target/debug/subkey inspect "$SECRET//acala//root"
@@ -212,10 +213,10 @@ pub fn latest_mandala_testnet_config() -> Result<ChainSpec, String> {
 				.unwrap(),
 		],
 		TelemetryEndpoints::new(vec![(TELEMETRY_URL.into(), 0)]).ok(),
-		Some("mandala-tc7"),
+		Some("mandala-dev-tc7"),
 		Some(properties),
 		Extensions {
-			relay_chain: "rococo".into(),
+			relay_chain: "dev".into(),
 			para_id: PARA_ID,
 		},
 	))
@@ -240,8 +241,6 @@ fn testnet_genesis(
 		SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, TradingPair, VestingConfig, ACA,
 		AUSD, DOT, LDOT, RENBTC,
 	};
-	#[cfg(feature = "std")]
-	use sp_std::collections::btree_map::BTreeMap;
 
 	let existential_deposit = NativeTokenExistentialDeposit::get();
 
@@ -449,8 +448,6 @@ fn mandala_genesis(
 		StakingPoolConfig, StarportConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig,
 		UnreleasedNativeVaultAccountId, VestingConfig, ACA, AUSD, DOT, LDOT, RENBTC,
 	};
-	#[cfg(feature = "std")]
-	use sp_std::collections::btree_map::BTreeMap;
 
 	let existential_deposit = NativeTokenExistentialDeposit::get();
 
@@ -576,18 +573,10 @@ fn mandala_genesis(
 				let aca_airdrop_accounts_json = &include_bytes!("../../../../resources/mandala-airdrop-ACA.json")[..];
 				let aca_airdrop_accounts: Vec<(AccountId, Balance)> =
 					serde_json::from_slice(aca_airdrop_accounts_json).unwrap();
-				let kar_airdrop_accounts_json = &include_bytes!("../../../../resources/mandala-airdrop-KAR.json")[..];
-				let kar_airdrop_accounts: Vec<(AccountId, Balance)> =
-					serde_json::from_slice(kar_airdrop_accounts_json).unwrap();
 
 				aca_airdrop_accounts
 					.iter()
 					.map(|(account_id, aca_amount)| (account_id.clone(), AirDropCurrencyId::ACA, *aca_amount))
-					.chain(
-						kar_airdrop_accounts
-							.iter()
-							.map(|(account_id, kar_amount)| (account_id.clone(), AirDropCurrencyId::KAR, *kar_amount)),
-					)
 					.collect::<Vec<_>>()
 			},
 		},

@@ -27,7 +27,7 @@ use primitives::{
 };
 use sp_core::H160;
 use sp_runtime::{
-	traits::{AtLeast32BitUnsigned, MaybeSerializeDeserialize},
+	traits::{AtLeast32BitUnsigned, CheckedDiv, MaybeSerializeDeserialize},
 	transaction_validity::TransactionValidityError,
 	DispatchError, DispatchResult, FixedU128, RuntimeDebug,
 };
@@ -56,6 +56,7 @@ pub trait RiskManager<AccountId, CurrencyId, Balance, DebitBalance> {
 		currency_id: CurrencyId,
 		collateral_balance: Balance,
 		debit_balance: DebitBalance,
+		check_required_ratio: bool,
 	) -> DispatchResult;
 
 	fn check_debit_cap(currency_id: CurrencyId, total_debit_balance: DebitBalance) -> DispatchResult;
@@ -72,6 +73,7 @@ impl<AccountId, CurrencyId, Balance: Default, DebitBalance> RiskManager<AccountI
 		_currency_id: CurrencyId,
 		_collateral_balance: Balance,
 		_debit_balance: DebitBalance,
+		_check_required_ratio: bool,
 	) -> DispatchResult {
 		Ok(())
 	}
@@ -102,24 +104,15 @@ pub trait DEXManager<AccountId, CurrencyId, Balance> {
 
 	fn get_liquidity_token_address(currency_id_a: CurrencyId, currency_id_b: CurrencyId) -> Option<H160>;
 
-	fn get_swap_target_amount(
-		path: &[CurrencyId],
-		supply_amount: Balance,
-		price_impact_limit: Option<Ratio>,
-	) -> Option<Balance>;
+	fn get_swap_target_amount(path: &[CurrencyId], supply_amount: Balance) -> Option<Balance>;
 
-	fn get_swap_supply_amount(
-		path: &[CurrencyId],
-		target_amount: Balance,
-		price_impact_limit: Option<Ratio>,
-	) -> Option<Balance>;
+	fn get_swap_supply_amount(path: &[CurrencyId], target_amount: Balance) -> Option<Balance>;
 
 	fn swap_with_exact_supply(
 		who: &AccountId,
 		path: &[CurrencyId],
 		supply_amount: Balance,
 		min_target_amount: Balance,
-		price_impact_limit: Option<Ratio>,
 	) -> sp_std::result::Result<Balance, DispatchError>;
 
 	fn swap_with_exact_target(
@@ -127,7 +120,6 @@ pub trait DEXManager<AccountId, CurrencyId, Balance> {
 		path: &[CurrencyId],
 		target_amount: Balance,
 		max_supply_amount: Balance,
-		price_impact_limit: Option<Ratio>,
 	) -> sp_std::result::Result<Balance, DispatchError>;
 
 	fn add_liquidity(
@@ -163,19 +155,11 @@ where
 		Some(Default::default())
 	}
 
-	fn get_swap_target_amount(
-		_path: &[CurrencyId],
-		_supply_amount: Balance,
-		_price_impact_limit: Option<Ratio>,
-	) -> Option<Balance> {
+	fn get_swap_target_amount(_path: &[CurrencyId], _supply_amount: Balance) -> Option<Balance> {
 		Some(Default::default())
 	}
 
-	fn get_swap_supply_amount(
-		_path: &[CurrencyId],
-		_target_amount: Balance,
-		_price_impact_limit: Option<Ratio>,
-	) -> Option<Balance> {
+	fn get_swap_supply_amount(_path: &[CurrencyId], _target_amount: Balance) -> Option<Balance> {
 		Some(Default::default())
 	}
 
@@ -184,7 +168,6 @@ where
 		_path: &[CurrencyId],
 		_supply_amount: Balance,
 		_min_target_amount: Balance,
-		_price_impact_limit: Option<Ratio>,
 	) -> sp_std::result::Result<Balance, DispatchError> {
 		Ok(Default::default())
 	}
@@ -194,7 +177,6 @@ where
 		_path: &[CurrencyId],
 		_target_amount: Balance,
 		_max_supply_amount: Balance,
-		_price_impact_limit: Option<Ratio>,
 	) -> sp_std::result::Result<Balance, DispatchError> {
 		Ok(Default::default())
 	}
@@ -270,7 +252,6 @@ pub trait CDPTreasuryExtended<AccountId>: CDPTreasury<AccountId> {
 		currency_id: Self::CurrencyId,
 		supply_amount: Self::Balance,
 		min_target_amount: Self::Balance,
-		price_impact_limit: Option<Ratio>,
 		maybe_path: Option<&[Self::CurrencyId]>,
 		collateral_in_auction: bool,
 	) -> sp_std::result::Result<Self::Balance, DispatchError>;
@@ -279,7 +260,6 @@ pub trait CDPTreasuryExtended<AccountId>: CDPTreasury<AccountId> {
 		currency_id: Self::CurrencyId,
 		max_supply_amount: Self::Balance,
 		target_amount: Self::Balance,
-		price_impact_limit: Option<Ratio>,
 		path: Option<&[Self::CurrencyId]>,
 		collateral_in_auction: bool,
 	) -> sp_std::result::Result<Self::Balance, DispatchError>;
@@ -294,10 +274,19 @@ pub trait CDPTreasuryExtended<AccountId>: CDPTreasury<AccountId> {
 }
 
 pub trait PriceProvider<CurrencyId> {
-	fn get_relative_price(base: CurrencyId, quote: CurrencyId) -> Option<Price>;
 	fn get_price(currency_id: CurrencyId) -> Option<Price>;
-	fn lock_price(currency_id: CurrencyId);
-	fn unlock_price(currency_id: CurrencyId);
+	fn get_relative_price(base: CurrencyId, quote: CurrencyId) -> Option<Price> {
+		if let (Some(base_price), Some(quote_price)) = (Self::get_price(base), Self::get_price(quote)) {
+			base_price.checked_div(&quote_price)
+		} else {
+			None
+		}
+	}
+}
+
+pub trait LockablePrice<CurrencyId> {
+	fn lock_price(currency_id: CurrencyId) -> DispatchResult;
+	fn unlock_price(currency_id: CurrencyId) -> DispatchResult;
 }
 
 pub trait ExchangeRateProvider {

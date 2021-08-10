@@ -74,7 +74,7 @@ pub use sp_api::ConstructRuntimeApi;
 pub mod chain_spec;
 mod client;
 
-fn default_mock_parachain_inherent_data_provider() -> MockValidationDataInherentDataProvider {
+pub fn default_mock_parachain_inherent_data_provider() -> MockValidationDataInherentDataProvider {
 	MockValidationDataInherentDataProvider {
 		current_para_block: 0,
 		relay_offset: 1000,
@@ -124,15 +124,15 @@ pub trait IdentifyVariant {
 
 impl IdentifyVariant for Box<dyn ChainSpec> {
 	fn is_acala(&self) -> bool {
-		self.id().starts_with("acala") || self.id().starts_with("aca")
+		self.id().starts_with("acala")
 	}
 
 	fn is_karura(&self) -> bool {
-		self.id().starts_with("karura") || self.id().starts_with("kar")
+		self.id().starts_with("karura")
 	}
 
 	fn is_mandala(&self) -> bool {
-		self.id().starts_with("mandala") || self.id().starts_with("man")
+		self.id().starts_with("mandala")
 	}
 
 	fn is_mandala_dev(&self) -> bool {
