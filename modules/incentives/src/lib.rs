@@ -352,7 +352,45 @@ pub mod module {
 		#[transactional]
 		pub fn claim_rewards(origin: OriginFor<T>, pool_id: PoolId<T::RelaychainAccountId>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
-			Self::do_claim_reward(&who, &pool_id)?;
+
+			<orml_rewards::Pallet<T>>::claim_rewards(&who, &pool_id);
+
+			let pending_reward: Balance = PendingRewards::<T>::take(&pool_id, &who);
+			if !pending_reward.is_zero() {
+				let currency_id = match pool_id {
+					PoolId::LoansIncentive(_) | PoolId::DexIncentive(_) | PoolId::HomaIncentive => {
+						T::NativeCurrencyId::get()
+					}
+					PoolId::DexSaving(_) => T::StableCurrencyId::get(),
+					PoolId::HomaValidatorAllowance(_) => T::LiquidCurrencyId::get(),
+				};
+
+				// calculate actual rewards and deduction amount
+				let (actual_amount, deduction_amount) = {
+					let deduction_amount = Self::payout_deduction_rates(&pool_id)
+						.saturating_mul_int(pending_reward)
+						.min(pending_reward);
+					if !deduction_amount.is_zero() {
+						// re-accumulate deduction to rewards pool if deduction amount is not zero
+						<orml_rewards::Pallet<T>>::accumulate_reward(&pool_id, deduction_amount);
+					}
+					(pending_reward.saturating_sub(deduction_amount), deduction_amount)
+				};
+
+				// transfer the actual reward(pending reward exclude deduction) to user from the pool. it should not
+				// affect the process, ignore the result to continue. if it fails, just the user will not
+				// be rewarded, there will not increase user balance.
+				T::Currency::transfer(currency_id, &Self::account_id(), &who, actual_amount)?;
+
+				Self::deposit_event(Event::ClaimRewards(
+					who,
+					pool_id,
+					currency_id,
+					actual_amount,
+					deduction_amount,
+				));
+			}
+
 			Ok(())
 		}
 
@@ -449,49 +487,6 @@ pub mod module {
 impl<T: Config> Pallet<T> {
 	pub fn account_id() -> T::AccountId {
 		T::PalletId::get().into_account()
-	}
-
-	#[transactional]
-	fn do_claim_reward(who: &T::AccountId, pool_id: &PoolId<T::RelaychainAccountId>) -> DispatchResult {
-		<orml_rewards::Pallet<T>>::claim_rewards(who, pool_id);
-
-		let pending_reward: Balance = PendingRewards::<T>::take(pool_id, who);
-		if !pending_reward.is_zero() {
-			let currency_id = match pool_id {
-				PoolId::LoansIncentive(_) | PoolId::DexIncentive(_) | PoolId::HomaIncentive => {
-					T::NativeCurrencyId::get()
-				}
-				PoolId::DexSaving(_) => T::StableCurrencyId::get(),
-				PoolId::HomaValidatorAllowance(_) => T::LiquidCurrencyId::get(),
-			};
-
-			// calculate actual rewards and deduction amount
-			let (actual_amount, deduction_amount) = {
-				let deduction_amount = Self::payout_deduction_rates(pool_id)
-					.saturating_mul_int(pending_reward)
-					.min(pending_reward);
-				if !deduction_amount.is_zero() {
-					// re-accumulate deduction to rewards pool if deduction amount is not zero
-					<orml_rewards::Pallet<T>>::accumulate_reward(pool_id, deduction_amount);
-				}
-				(pending_reward.saturating_sub(deduction_amount), deduction_amount)
-			};
-
-			// transfer the actual reward(pending reward exclude deduction) to user from the pool. it should not
-			// affect the process, ignore the result to continue. if it fails, just the user will not
-			// be rewarded, there will not increase user balance.
-			T::Currency::transfer(currency_id, &Self::account_id(), &who, actual_amount)?;
-
-			Self::deposit_event(Event::ClaimRewards(
-				who.clone(),
-				pool_id.clone(),
-				currency_id,
-				actual_amount,
-				deduction_amount,
-			));
-		}
-
-		Ok(())
 	}
 }
 
