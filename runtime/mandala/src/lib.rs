@@ -1221,22 +1221,24 @@ pub fn create_x2_parachain_multilocation(index: u16) -> MultiLocation {
 }
 
 parameter_types! {
-	pub const DotCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
-	pub const LdotCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
 	pub MinimumMintThreshold: Balance = 10 * cent(DOT);
 	pub RelaychainSovereignSubAccount: MultiLocation = create_x2_parachain_multilocation(RELAYCHAIN_SUB_ACCOUNT_ID);
+	pub MaxRewardPerEra: Permill = Permill::from_rational(411u32, 1_000_000u32); // 15% / 365 = 0.0004109
+	pub MintFee: Balance = millicent(DOT);
 }
 impl module_homa_lite::Config for Runtime {
 	type Event = Event;
 	type WeightInfo = weights::module_homa_lite::WeightInfo<Runtime>;
 	type Currency = Currencies;
-	type StakingCurrencyId = DotCurrencyId;
-	type LiquidCurrencyId = LdotCurrencyId;
-	type IssuerOrigin = EnsureRootOrHalfGeneralCouncil;
+	type StakingCurrencyId = GetStakingCurrencyId;
+	type LiquidCurrencyId = GetLiquidCurrencyId;
 	type GovernanceOrigin = EnsureRootOrHalfGeneralCouncil;
 	type MinimumMintThreshold = MinimumMintThreshold;
 	type XcmTransfer = XTokens;
 	type SovereignSubAccountLocation = RelaychainSovereignSubAccount;
+	type DefaultExchangeRate = DefaultExchangeRate;
+	type MaxRewardPerEra = MaxRewardPerEra;
+	type MintFee = MintFee;
 }
 
 parameter_types! {

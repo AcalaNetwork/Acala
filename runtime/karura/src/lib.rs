@@ -1469,6 +1469,9 @@ parameter_types! {
 	pub const LKSMCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::LKSM);
 	pub MinimumMintThreshold: Balance = 10 * millicent(KSM);
 	pub RelaychainSovereignSubAccount: MultiLocation = create_x2_parachain_multilocation(RELAYCHAIN_SUB_ACCOUNT_ID);
+	pub MaxRewardPerEra: Permill = Permill::from_rational(411u32, 1_000_000u32); // 15% / 365 = 0.0004109
+	pub MintFee: Balance = millicent(KSM);
+	pub DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
 }
 impl module_homa_lite::Config for Runtime {
 	type Event = Event;
@@ -1476,11 +1479,13 @@ impl module_homa_lite::Config for Runtime {
 	type Currency = Currencies;
 	type StakingCurrencyId = KSMCurrencyId;
 	type LiquidCurrencyId = LKSMCurrencyId;
-	type IssuerOrigin = EnsureRootOrHalfGeneralCouncil;
 	type GovernanceOrigin = EnsureRootOrHalfGeneralCouncil;
 	type MinimumMintThreshold = MinimumMintThreshold;
 	type XcmTransfer = XTokens;
 	type SovereignSubAccountLocation = RelaychainSovereignSubAccount;
+	type DefaultExchangeRate = DefaultExchangeRate;
+	type MaxRewardPerEra = MaxRewardPerEra;
+	type MintFee = MintFee;
 }
 
 pub type LocalAssetTransactor = MultiCurrencyAdapter<

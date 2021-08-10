@@ -56,6 +56,11 @@ pub fn dollar(b: Balance) -> Balance {
 	b * 1_000_000_000_000
 }
 
+/// For testing only. Does not check for overflow.
+pub fn millicent(b: Balance) -> Balance {
+	b * 10_000_000
+}
+
 parameter_types! {
 	pub const BlockHashCount: u64 = 250;
 }
@@ -166,8 +171,11 @@ impl module_currencies::Config for Runtime {
 parameter_types! {
 	pub const StakingCurrencyId: CurrencyId = KSM;
 	pub const LiquidCurrencyId: CurrencyId = LKSM;
-	pub const MinimumMintThreshold: Balance = 1_000_000_000;
+	pub MinimumMintThreshold: Balance = millicent(1);
 	pub const MockXcmDestination: MultiLocation = MOCK_XCM_DESTINATION;
+	pub DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(10, 1);
+	pub const MaxRewardPerEra: Permill = Permill::from_percent(1);
+	pub MintFee: Balance = millicent(1000);
 }
 ord_parameter_types! {
 	pub const Root: AccountId = ROOT;
@@ -179,11 +187,13 @@ impl Config for Runtime {
 	type Currency = Currencies;
 	type StakingCurrencyId = StakingCurrencyId;
 	type LiquidCurrencyId = LiquidCurrencyId;
-	type IssuerOrigin = EnsureSignedBy<Root, AccountId>;
 	type GovernanceOrigin = EnsureSignedBy<Root, AccountId>;
 	type MinimumMintThreshold = MinimumMintThreshold;
 	type XcmTransfer = MockXcm;
 	type SovereignSubAccountLocation = MockXcmDestination;
+	type DefaultExchangeRate = DefaultExchangeRate;
+	type MaxRewardPerEra = MaxRewardPerEra;
+	type MintFee = MintFee;
 }
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;

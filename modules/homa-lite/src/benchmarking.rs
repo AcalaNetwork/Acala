@@ -31,27 +31,17 @@ pub struct Module<T: Config>(crate::Pallet<T>);
 const SEED: u32 = 0;
 
 benchmarks! {
-	// Benchmark request_mint
-	request_mint {
+	// Benchmark mint
+	mint {
 		let amount = 1_000_000_000_000;
 		let caller: T::AccountId = account("caller", 0, SEED);
 		<T as module::Config>::Currency::deposit(T::StakingCurrencyId::get(), &caller, amount)?;
-		module::Pallet::<T>::set_staking_currency_cap(RawOrigin::Root.into(), amount)?;
+		module::Pallet::<T>::set_minting_cap(RawOrigin::Root.into(), amount)?;
 	}: _(RawOrigin::Signed(caller), amount, 0)
 
-	issue {}: _(RawOrigin::Root, 1_000_000_000_000)
+	set_total_staking_currency {}: _(RawOrigin::Root, 1_000_000_000_000)
 
-	claim {
-		let amount = 1_000_000_000_000;
-		let caller: T::AccountId = account("caller", 0, SEED);
-		<T as module::Config>::Currency::deposit(T::LiquidCurrencyId::get(), &caller, amount)?;
-		<T as module::Config>::Currency::deposit(T::StakingCurrencyId::get(), &caller, amount)?;
-		module::Pallet::<T>::set_staking_currency_cap(RawOrigin::Root.into(), amount)?;
-		module::Pallet::<T>::request_mint(RawOrigin::Signed(caller.clone()).into(), amount, 0)?;
-		module::Pallet::<T>::issue(RawOrigin::Root.into(), amount)?;
-	}: _(RawOrigin::Signed(caller), caller.clone(), 0)
-
-	set_staking_currency_cap {
+	set_minting_cap {
 	}: _(RawOrigin::Root, 1_000_000_000_000_000_000)
 }
 
@@ -159,6 +149,9 @@ mod benchmark_mock {
 		pub const LiquidCurrencyId: CurrencyId = LKSM;
 		pub const MinimumMintThreshold: Balance = 1_000_000_000;
 		pub const MockXcmDestination: MultiLocation = MOCK_XCM_DESTINATION;
+		pub DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
+		pub MaxRewardPerEra: Permill = Permill::from_rational(411u32, 1_000_000u32);
+		pub const MintFee: Balance = 10_000_000;
 	}
 	ord_parameter_types! {
 		pub const Root: AccountId = ROOT;
@@ -170,11 +163,13 @@ mod benchmark_mock {
 		type Currency = Currencies;
 		type StakingCurrencyId = StakingCurrencyId;
 		type LiquidCurrencyId = LiquidCurrencyId;
-		type IssuerOrigin = EnsureRoot<AccountId>;
 		type GovernanceOrigin = EnsureRoot<AccountId>;
 		type MinimumMintThreshold = MinimumMintThreshold;
 		type XcmTransfer = MockXcm;
 		type SovereignSubAccountLocation = MockXcmDestination;
+		type DefaultExchangeRate = DefaultExchangeRate;
+		type MaxRewardPerEra = MaxRewardPerEra;
+		type MintFee = MintFee;
 	}
 
 	type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
@@ -222,27 +217,21 @@ mod tests {
 	use frame_support::assert_ok;
 
 	#[test]
-	fn test_request_mint() {
+	fn test_mint() {
 		ExtBuilder::default().build().execute_with(|| {
-			assert_ok!(test_benchmark_request_mint::<Runtime>());
+			assert_ok!(test_benchmark_mint::<Runtime>());
 		});
 	}
 	#[test]
-	fn test_issue() {
+	fn test_set_total_staking_currency() {
 		ExtBuilder::default().build().execute_with(|| {
-			assert_ok!(test_benchmark_issue::<Runtime>());
+			assert_ok!(test_benchmark_set_total_staking_currency::<Runtime>());
 		});
 	}
 	#[test]
-	fn test_claim() {
+	fn test_set_minting_cap() {
 		ExtBuilder::default().build().execute_with(|| {
-			assert_ok!(test_benchmark_claim::<Runtime>());
-		});
-	}
-	#[test]
-	fn test_set_staking_currency_cap() {
-		ExtBuilder::default().build().execute_with(|| {
-			assert_ok!(test_benchmark_set_staking_currency_cap::<Runtime>());
+			assert_ok!(test_benchmark_set_minting_cap::<Runtime>());
 		});
 	}
 }
