@@ -45,7 +45,7 @@ mod tests;
 
 pub use module::*;
 
-type EcdsaSignature = ecdsa::Signature;
+pub type EcdsaSignature = ecdsa::Signature;
 type PublicKey = [u8; 20];
 type DestAddress = Vec<u8>;
 const MINT_TX_LENGTH: u32 = 168;

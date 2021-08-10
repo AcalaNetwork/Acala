@@ -1423,7 +1423,7 @@ fn test_multicurrency_precompile_module() {
 
 			assert_eq!(
 				EVMBridge::name(invoke_context),
-				Ok(b"LP long string name, long string name, long string name, long string name, long string name - long string name, long string name, long string name, long string name, long string name"[..32].to_vec())
+				Ok(b"LP long string name, long string name, long string name, long string name, long string name, long string name, long string name, long string name, long string name, long string name"[..32].to_vec())
 			);
 			assert_eq!(
 				EVMBridge::symbol(invoke_context),

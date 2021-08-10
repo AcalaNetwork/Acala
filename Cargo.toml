@@ -4,6 +4,7 @@ cargo-features = ["resolver"]
 members = [
 	"node",
 	"node/cli",
+	"node/e2e-tests",
 	"node/service",
 
 	"modules/*",
@@ -195,10 +196,12 @@ sc-network-gossip = { git = "https://github.com/paritytech//substrate", rev = "7
 sc-offchain = { git = "https://github.com/paritytech//substrate", rev = "74101dc21cfffb4c2d014fcc28edc166d5ca1b16" }
 sc-rpc = { git = "https://github.com/paritytech//substrate", rev = "74101dc21cfffb4c2d014fcc28edc166d5ca1b16" }
 sc-rpc-api = { git = "https://github.com/paritytech//substrate", rev = "74101dc21cfffb4c2d014fcc28edc166d5ca1b16" }
+sc-rpc-server = { git = "https://github.com/paritytech//substrate", rev = "74101dc21cfffb4c2d014fcc28edc166d5ca1b16" }
 sc-service = { git = "https://github.com/paritytech//substrate", rev = "74101dc21cfffb4c2d014fcc28edc166d5ca1b16" }
 sc-sync-state-rpc = { git = "https://github.com/paritytech//substrate", rev = "74101dc21cfffb4c2d014fcc28edc166d5ca1b16" }
 sc-telemetry = { git = "https://github.com/paritytech//substrate", rev = "74101dc21cfffb4c2d014fcc28edc166d5ca1b16" }
 sc-tracing = { git = "https://github.com/paritytech//substrate", rev = "74101dc21cfffb4c2d014fcc28edc166d5ca1b16" }
+sc-transaction-graph = { git = "https://github.com/paritytech//substrate", rev = "74101dc21cfffb4c2d014fcc28edc166d5ca1b16" }
 sc-transaction-pool = { git = "https://github.com/paritytech//substrate", rev = "74101dc21cfffb4c2d014fcc28edc166d5ca1b16" }
 sp-api = { git = "https://github.com/paritytech//substrate", rev = "74101dc21cfffb4c2d014fcc28edc166d5ca1b16" }
 sp-application-crypto = { git = "https://github.com/paritytech//substrate", rev = "74101dc21cfffb4c2d014fcc28edc166d5ca1b16" }
