@@ -26,6 +26,7 @@ use mock::{
 	AUSDBTCPair, AUSDDOTPair, DOTBTCPair, DexAggregator, DexModule, Event, ExtBuilder, ListingOrigin, Origin, Runtime,
 	System, Tokens, ACA, ALICE, AUSD, BOB, BTC, DOT,
 };
+use support::{AggregatorManager, DEXManager};
 
 fn sorted_vec<T: Ord>(mut vec: Vec<T>) -> Vec<T> {
 	vec.sort();
@@ -60,5 +61,53 @@ fn test_all_active_pairs() {
 					AvailablePool(AvailableAmm::Dex, DOTBTCPair::get())
 				])
 			);
+		});
+}
+
+#[test]
+fn test_swap_amounts() {
+	ExtBuilder::default()
+		.initialize_enabled_trading_pairs()
+		.initialize_added_liquidity_pools(ALICE)
+		.build()
+		.execute_with(|| {
+			let path1 = vec![AvailablePool(AvailableAmm::Dex, AUSDDOTPair::get())];
+			let path2 = vec![
+				AvailablePool(AvailableAmm::Dex, AUSDDOTPair::get().swap()),
+				AvailablePool(AvailableAmm::Dex, AUSDBTCPair::get()),
+			];
+			let path2_slice: [CurrencyId; 3] = [DOT, AUSD, BTC];
+			let invalid_path = vec![
+				AvailablePool(AvailableAmm::Dex, AUSDBTCPair::get()),
+				AvailablePool(AvailableAmm::Dex, DOTBTCPair::get()),
+			];
+
+			let amount: Balance = 10;
+
+			assert_eq!(
+				DexAggregator::get_target_amount(path1.clone(), amount),
+				DexModule::aggregator_target_amount(path1.clone()[0].1, amount)
+			);
+			assert_ne!(DexAggregator::get_target_amount(path1.clone(), amount), Some(10));
+
+			assert_eq!(
+				DexAggregator::get_supply_amount(path1.clone(), amount),
+				DexModule::aggregator_supply_amount(path1.clone()[0].1, amount)
+			);
+
+			assert_eq!(
+				DexAggregator::get_target_amount(path2.clone(), amount),
+				DexModule::get_swap_target_amount(&path2_slice, amount)
+			);
+			assert_eq!(
+				DexAggregator::get_supply_amount(path2.clone(), amount),
+				DexModule::get_swap_supply_amount(&path2_slice, amount)
+			);
+
+			assert_eq!(DexAggregator::get_target_amount(invalid_path.clone(), amount), None);
+			assert_eq!(DexAggregator::get_supply_amount(invalid_path.clone(), amount), None);
+
+			assert_eq!(DexAggregator::get_supply_amount(Vec::new(), amount), None);
+			assert_eq!(DexAggregator::get_target_amount(Vec::new(), amount), None);
 		});
 }

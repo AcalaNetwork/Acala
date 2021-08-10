@@ -131,13 +131,56 @@ impl dex::Config for Runtime {
 }
 
 pub struct MockAggregator;
-impl AggregatorSuper<TradingPair, Balance> for MockAggregator {
+impl AggregatorSuper<AccountId, TradingPair, Balance> for MockAggregator {
 	fn all_active_pairs() -> Vec<AvailablePool> {
 		dex::Pallet::<Runtime>::get_active_pools()
 	}
 
-	fn get_swap_supply_amount(path: Vec<AvailablePool>, target_amount: Balance) -> Option<Balance> {
-		None
+	fn pallet_get_supply_amount(pool: AvailablePool, target_amount: Balance) -> Option<Balance> {
+		match pool.0 {
+			Dex => dex::Pallet::<Runtime>::aggregator_supply_amount(pool.1, target_amount),
+			_ => None,
+		}
+	}
+
+	fn pallet_get_target_amount(pool: AvailablePool, supply_amount: Balance) -> Option<Balance> {
+		match pool.0 {
+			Dex => dex::Pallet::<Runtime>::aggregator_target_amount(pool.1, supply_amount),
+			_ => None,
+		}
+	}
+
+	fn aggregator_swap_with_exact_supply(
+		who: &AccountId,
+		pool: &AvailablePool,
+		supply_amount: Balance,
+		min_target_amount: Balance,
+	) -> sp_std::result::Result<Balance, DispatchError> {
+		match pool.0 {
+			Dex => {
+				dex::Pallet::<Runtime>::aggregator_swap_with_exact_supply(who, pool, supply_amount, min_target_amount)
+			}
+			// defensively returns error. should not reach here
+			_ => Err(DispatchError::Other(
+				"Unexpected Pallet called in runtime for dex-aggregator, should not happen",
+			)),
+		}
+	}
+
+	fn aggregator_swap_with_exact_target(
+		who: &AccountId,
+		pool: &AvailablePool,
+		target_amount: Balance,
+		max_supply_amount: Balance,
+	) -> sp_std::result::Result<Balance, DispatchError> {
+		match pool.0 {
+			Dex => {
+				dex::Pallet::<Runtime>::aggregator_swap_with_exact_target(who, pool, target_amount, max_supply_amount)
+			}
+			_ => Err(DispatchError::Other(
+				"Unexpected Pallet called in runtime for dex-aggregator, should not happen",
+			)),
+		}
 	}
 }
 

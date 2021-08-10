@@ -1314,7 +1314,7 @@ impl<T: Config> DEXManager<T::AccountId, CurrencyId, Balance> for Pallet<T> {
 	}
 }
 
-impl<T: Config> AggregatorManager<TradingPair, Balance> for Pallet<T> {
+impl<T: Config> AggregatorManager<T::AccountId, TradingPair, Balance> for Pallet<T> {
 	/// Returns Vec of TradingPairs that are actively able to be swapped
 	fn get_active_pools() -> Vec<AvailablePool> {
 		let mut active_pairs = Vec::new();
@@ -1326,17 +1326,37 @@ impl<T: Config> AggregatorManager<TradingPair, Balance> for Pallet<T> {
 		active_pairs
 	}
 
-	fn aggregator_swap_supply_amount(pair: TradingPair, target_amount: Balance) -> Option<Balance> {
+	fn aggregator_supply_amount(pair: TradingPair, target_amount: Balance) -> Option<Balance> {
 		let path: [CurrencyId; 2] = [pair.first(), pair.second()];
 		Self::get_supply_amounts(&path, target_amount)
 			.ok()
 			.map(|amounts| amounts[0])
 	}
 
-	fn aggregator_swap_target_amount(pair: TradingPair, supply_amount: Balance) -> Option<Balance> {
+	fn aggregator_target_amount(pair: TradingPair, supply_amount: Balance) -> Option<Balance> {
 		let path: [CurrencyId; 2] = [pair.first(), pair.second()];
 		Self::get_target_amounts(&path, supply_amount)
 			.ok()
 			.map(|amounts| amounts[amounts.len() - 1])
+	}
+
+	fn aggregator_swap_with_exact_supply(
+		who: &T::AccountId,
+		pool: &AvailablePool,
+		supply_amount: Balance,
+		min_target_amount: Balance,
+	) -> sp_std::result::Result<Balance, DispatchError> {
+		let path: [CurrencyId; 2] = [pool.1.first(), pool.1.second()];
+		Self::do_swap_with_exact_supply(who, &path, supply_amount, min_target_amount)
+	}
+
+	fn aggregator_swap_with_exact_target(
+		who: &T::AccountId,
+		pool: &AvailablePool,
+		target_amount: Balance,
+		max_supply_amount: Balance,
+	) -> sp_std::result::Result<Balance, DispatchError> {
+		let path: [CurrencyId; 2] = [pool.1.first(), pool.1.second()];
+		Self::do_swap_with_exact_target(who, &path, target_amount, max_supply_amount)
 	}
 }

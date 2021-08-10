@@ -110,23 +110,64 @@ pub enum AvailableAmm {
 #[derive(Clone, Copy, Encode, Decode, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct AvailablePool(pub AvailableAmm, pub TradingPair);
 
-/// super trait to be used in runtimes to activate dex-aggregator pallet
-pub trait AggregatorSuper<TradingPair, Balance> {
+/// Super trait to be used in runtimes to activate dex-aggregator pallet
+pub trait AggregatorSuper<AccountId, TradingPair, Balance> {
+	/// Retrieves all active pairs for all pallets used in dex aggregator
 	fn all_active_pairs() -> Vec<AvailablePool>;
 
-	fn get_swap_supply_amount(path: Vec<AvailablePool>, target_amount: Balance) -> Option<Balance>;
+	/// Retrieves supply required for a given pool and a target amount. Returns None if swap is not
+	/// possible
+	fn pallet_get_supply_amount(pool: AvailablePool, target_amount: Balance) -> Option<Balance>;
+
+	/// Retrieves amount of target asset, given a pool and a supply amount Returns None if swap is
+	/// not possible
+	fn pallet_get_target_amount(pool: AvailablePool, supply_amount: Balance) -> Option<Balance>;
+
+	/// Attempts to swap trading pair with a given supply amount
+	fn aggregator_swap_with_exact_supply(
+		who: &AccountId,
+		pool: &AvailablePool,
+		supply_amount: Balance,
+		min_target_amount: Balance,
+	) -> sp_std::result::Result<Balance, DispatchError>;
+
+	/// Attempts to swap trading pair with a given target amount
+	fn aggregator_swap_with_exact_target(
+		who: &AccountId,
+		pool: &AvailablePool,
+		target_amount: Balance,
+		max_supply_amount: Balance,
+	) -> sp_std::result::Result<Balance, DispatchError>;
 }
 
-/// required trait for pallets with  to implement to be used by dex aggregator
-pub trait AggregatorManager<TradingPair, Balance> {
+/// Required trait for pallets with  to implement to be used by dex aggregator
+pub trait AggregatorManager<AccountId, TradingPair, Balance> {
 	/// Retrieve all active trading pairs for the pallet
 	fn get_active_pools() -> Vec<AvailablePool>;
 
-	/// Returns supply balance given a target  noop returns None
-	fn aggregator_swap_supply_amount(pair: TradingPair, target_amount: Balance) -> Option<Balance>;
+	/// Returns supply required given a trading pair and target amount, returns None if swap is not
+	/// possible
+	fn aggregator_supply_amount(pair: TradingPair, target_amount: Balance) -> Option<Balance>;
 
-	/// Returns target balance given a supply, noop returns None
-	fn aggregator_swap_target_amount(pair: TradingPair, supply_amount: Balance) -> Option<Balance>;
+	/// Returns amount of target token recieved, given trading pair and a supply amount, returns
+	/// None if swap is not possible
+	fn aggregator_target_amount(pair: TradingPair, supply_amount: Balance) -> Option<Balance>;
+
+	/// Attempts to swap trading pair with a given supply amount
+	fn aggregator_swap_with_exact_supply(
+		who: &AccountId,
+		pair: &AvailablePool,
+		supply_amount: Balance,
+		min_target_amount: Balance,
+	) -> sp_std::result::Result<Balance, DispatchError>;
+
+	/// Attempts to swap trading pair with a given target amount
+	fn aggregator_swap_with_exact_target(
+		who: &AccountId,
+		pair: &AvailablePool,
+		target_amount: Balance,
+		max_supply_amount: Balance,
+	) -> sp_std::result::Result<Balance, DispatchError>;
 }
 
 pub trait DEXManager<AccountId, CurrencyId, Balance> {
