@@ -174,7 +174,7 @@ parameter_types! {
 	pub MinimumMintThreshold: Balance = millicent(1);
 	pub const MockXcmDestination: MultiLocation = MOCK_XCM_DESTINATION;
 	pub DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(10, 1);
-	pub const MaxRewardPerEra: Permill = Permill::from_percent(10);
+	pub const MaxRewardPerEra: Permill = Permill::from_percent(1);
 	pub MintFee: Balance = millicent(1000);
 }
 ord_parameter_types! {

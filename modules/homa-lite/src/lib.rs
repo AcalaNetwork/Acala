@@ -145,7 +145,7 @@ pub mod module {
 			let who = ensure_signed(origin)?;
 			// Ensure the amount is above the minimum, after the MintFee is deducted.
 			ensure!(
-				amount > T::MinimumMintThreshold::get() + T::MintFee::get(),
+				amount > T::MinimumMintThreshold::get().saturating_add(T::MintFee::get()),
 				Error::<T>::MintAmountBelowMinimumThreshold
 			);
 
@@ -176,13 +176,13 @@ pub mod module {
 				.checked_mul_int(
 					amount
 						.checked_sub(T::MintFee::get())
-						.expect("Arithmatic should not panic"),
+						.expect("Mint amount is ensured to be greater than T::MintFee; qed"),
 				)
 				.ok_or(ArithmeticError::Overflow)?;
 
 			liquid_to_mint = liquid_to_mint
 				.checked_sub(T::MaxRewardPerEra::get().mul(liquid_to_mint))
-				.expect("Arithmatic should not panic");
+				.expect("Max rewards cannot be above 100%; qed");
 
 			// All checks pass. Proceed with Xcm transfer.
 			let xcm_result = T::XcmTransfer::transfer(

@@ -58,16 +58,21 @@ fn mint_works() {
 
 		// Since the exchange rate is not set, use the default 1:10 ratio
 		// liquid = (amount - MintFee) * 10 * (1 - MaxRewardPerEra)
-		let mut liquid = Permill::from_percent(90).mul((amount - MintFee::get()) * 10);
+		//        = 0.99 * (1000 - 0.01)  * 10 = 9899.901
+		let mut liquid = 9_899_901_000_000_000;
 		assert_ok!(HomaLite::mint(Origin::signed(ALICE), amount, 0));
 		assert_eq!(Currencies::free_balance(LKSM, &ALICE), liquid);
 		assert_eq!(
 			System::events().iter().last().unwrap().event,
 			Event::HomaLite(crate::Event::Minted(ALICE, amount, liquid))
 		);
+		// The total staking currency is now increased.
+		assert_eq!(TotalStakingCurrency::<Runtime>::get(), dollar(1000));
 
 		// Set the total staking amount
 		let lksm_issuance = Currencies::total_issuance(LKSM);
+		assert_eq!(lksm_issuance, 1_009_899_901_000_000_000);
+
 		// Set the exchange rate to 1(S) : 5(L)
 		assert_ok!(HomaLite::set_total_staking_currency(
 			Origin::signed(ROOT),
@@ -75,7 +80,8 @@ fn mint_works() {
 		));
 
 		// The exchange rate is now 1:5 ratio
-		liquid = Permill::from_percent(90).mul((amount - MintFee::get()) * 5);
+		// liquid = (1000 - 0.01) * 1_009_899_901_000_000_000 / 201_979_980_200_000_000 * 0.99
+		liquid = 4_949_950_500_000_000;
 		assert_ok!(HomaLite::mint(Origin::signed(BOB), amount, 0));
 		assert_eq!(Currencies::free_balance(LKSM, &BOB), liquid);
 		assert_eq!(
@@ -86,21 +92,70 @@ fn mint_works() {
 }
 
 #[test]
-fn mint_fails_when_below_minimum() {
+fn repeated_mints_have_similar_exchange_rate() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(HomaLite::set_minting_cap(Origin::signed(ROOT), dollar(1_000)));
+		let amount = dollar(1000);
 
-		// The mint amount must be strictly larger than Mint fee + Minimum amount allowed.
-		assert_noop!(
-			HomaLite::mint(Origin::signed(ALICE), MintFee::get() + MinimumMintThreshold::get(), 0),
-			Error::<Runtime>::MintAmountBelowMinimumThreshold
-		);
-
-		assert_ok!(HomaLite::mint(
-			Origin::signed(ALICE),
-			MintFee::get() + MinimumMintThreshold::get() + millicent(1),
-			0
+		assert_ok!(HomaLite::set_minting_cap(
+			Origin::signed(ROOT),
+			5 * dollar(INITIAL_BALANCE)
 		));
+
+		// Set the total staking amount
+		let mut lksm_issuance = Currencies::total_issuance(LKSM);
+		assert_eq!(lksm_issuance, dollar(1_000_000));
+
+		// Set the exchange rate to 1(S) : 5(L)
+		assert_ok!(HomaLite::set_total_staking_currency(
+			Origin::signed(ROOT),
+			lksm_issuance / 5
+		));
+
+		// The exchange rate is now 1:5 ratio
+		// liquid = (1000 - 0.01) * 1000 / 200 * 0.99
+		let liquid_1 = 4_949_950_500_000_000;
+		assert_ok!(HomaLite::mint(Origin::signed(BOB), amount, 0));
+		assert_eq!(Currencies::free_balance(LKSM, &BOB), liquid_1);
+		// The effective exchange rate is lower than the theoretical rate.
+		assert!(liquid_1 < dollar(5000));
+
+		// New total issuance
+		lksm_issuance = Currencies::total_issuance(LKSM);
+		assert_eq!(lksm_issuance, 1_004_949_950_500_000_000);
+		assert_eq!(TotalStakingCurrency::<Runtime>::get(), dollar(201_000));
+
+		// Second exchange
+		// liquid = (1000 - 0.01) * 1004949.9505 / 201000 * 0.99
+		let liquid_2 = 4_949_703_990_002_437;
+		assert_ok!(HomaLite::mint(Origin::signed(BOB), amount, 0));
+		assert_eq!(Currencies::free_balance(LKSM, &BOB), liquid_1 + liquid_2);
+
+		// Since the effective exchange rate is lower than the theortical rate, Liquid currency becomes more
+		// valuable.
+		assert!(liquid_1 > liquid_2);
+
+		// The effective exchange rate should be quite close.
+		// In this example the difffence is about 0.005%
+		assert!(Permill::from_rational(liquid_1 - liquid_2, liquid_1) < Permill::from_rational(5u128, 1_000u128));
+
+		// Now increase the Staking total by 1%
+		assert_eq!(TotalStakingCurrency::<Runtime>::get(), dollar(202_000));
+		assert_ok!(HomaLite::set_total_staking_currency(
+			Origin::signed(ROOT),
+			dollar(204_020)
+		));
+		lksm_issuance = Currencies::total_issuance(LKSM);
+		assert_eq!(lksm_issuance, 1_009_899_654_490_002_437);
+
+		// liquid = (1000 - 0.01) * 1009899.654490002437 / 204020 * 0.99
+		let liquid_3 = 4_900_454_170_858_361;
+		assert_ok!(HomaLite::mint(Origin::signed(BOB), amount, 0));
+		assert_eq!(Currencies::free_balance(LKSM, &BOB), liquid_1 + liquid_2 + liquid_3);
+
+		// Increasing the Staking total increases the value of Liquid currency - this makes up for the
+		// staking rewards.
+		assert!(liquid_3 < liquid_2);
+		assert!(liquid_3 < liquid_1);
 	});
 }
 
