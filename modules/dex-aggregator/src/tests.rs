@@ -180,6 +180,32 @@ fn test_swap_supply_extrinisc() {
 			System::assert_last_event(Event::DexModule(dex::Event::Swap(BOB, vec![AUSD, DOT], 100_000, 19799)));
 			assert_ok!(DexAggregator::swap_with_exact_supply(
 				bob_signed.clone(),
+				AUSD,
+				DOT,
+				100_000,
+				10
+			));
+			System::assert_last_event(Event::DexAggregator(crate::Event::Swap(
+				BOB,
+				TradingPair::from_currency_ids(AUSD, DOT).unwrap(),
+				100_000,
+				89099,
+			)));
+
+			assert_ok!(DexModule::swap_with_exact_supply(
+				bob_signed.clone(),
+				vec![DOT, AUSD],
+				100_000,
+				10
+			));
+			System::assert_last_event(Event::DexModule(dex::Event::Swap(
+				BOB,
+				vec![DOT, AUSD],
+				100_000,
+				494999,
+			)));
+			assert_ok!(DexAggregator::swap_with_exact_supply(
+				bob_signed.clone(),
 				DOT,
 				AUSD,
 				100_000,
@@ -189,7 +215,7 @@ fn test_swap_supply_extrinisc() {
 				BOB,
 				TradingPair::from_currency_ids(AUSD, DOT).unwrap(),
 				100_000,
-				89099,
+				494999,
 			)));
 		});
 }

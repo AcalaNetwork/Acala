@@ -157,6 +157,17 @@ impl TradingPair {
 		CurrencyId::join_dex_share_currency_id(self.first(), self.second())
 			.expect("shouldn't be invalid! guaranteed by construction")
 	}
+
+	pub fn from_currency_ids_unordered(currency_id_a: CurrencyId, currency_id_b: CurrencyId) -> Option<Self> {
+		if (currency_id_a.is_token_currency_id() || currency_id_a.is_erc20_currency_id())
+			&& (currency_id_b.is_token_currency_id() || currency_id_b.is_erc20_currency_id())
+			&& currency_id_a != currency_id_b
+		{
+			Some(TradingPair(currency_id_a, currency_id_b))
+		} else {
+			None
+		}
+	}
 }
 
 impl Decode for TradingPair {

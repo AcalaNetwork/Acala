@@ -113,7 +113,7 @@ pub struct AvailablePool(pub AvailableAmm, pub TradingPair);
 
 impl AvailablePool {
 	pub fn swap(&self) -> AvailablePool {
-		Self(self.0, self.1.swap())
+		AvailablePool(self.0, self.1.swap())
 	}
 }
 

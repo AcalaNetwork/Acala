@@ -77,21 +77,22 @@ pub mod module {
 	impl<T: Config> Pallet<T> {
 		/// Trading with DEX-Aggregator, swap with exact supply amount
 		///
-		/// - `path`: trading path.
+		/// - `supply_token`: CurrencyId of token input by user in swap
+		/// - `target_token`: CurrencyId of token recieved by user in swap
 		/// - `supply_amount`: exact supply amount.
 		/// - `min_target_amount`: acceptable minimum target amount.
 		#[pallet::weight(10000)]
 		#[transactional]
 		pub fn swap_with_exact_supply(
 			origin: OriginFor<T>,
-			input_token: CurrencyId,
-			output_token: CurrencyId,
+			supply_token: CurrencyId,
+			target_token: CurrencyId,
 			#[pallet::compact] supply_amount: Balance,
 			#[pallet::compact] min_target_amount: Balance,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
-			let pair =
-				TradingPair::from_currency_ids(input_token, output_token).ok_or(Error::<T>::InvalidCurrencyId)?;
+			let pair = TradingPair::from_currency_ids_unordered(supply_token, target_token)
+				.ok_or(Error::<T>::InvalidCurrencyId)?;
 
 			let best_path =
 				Self::optimal_path_with_exact_supply(pair, supply_amount).ok_or(Error::<T>::NoPossibleTradingPath)?;
@@ -116,17 +117,18 @@ pub mod module {
 		}
 
 		/*
-				/// Trading with DEX-Aggregator, swap with exact target amount
+				/// Trading with DEX-Aggregator, swap with exact supply amount
 				///
-				/// - `path`: trading path.
+				/// - `supply_token`: CurrencyId of token input by user in swap
+				/// - `target_token`: CurrencyId of token recieved by user in swap
 				/// - `target_amount`: exact target amount.
 				/// - `max_supply_amount`: acceptable maximum supply amount.
 				#[pallet::weight(10000)]
 				#[transactional]
 				pub fn swap_with_exact_target(
 					origin: OriginFor<T>,
-					input_asset: CurrencyId,
-					output_asset: CurrencyId,
+					supply_token: CurrencyId,
+					target_token: CurrencyId,
 					#[pallet::compact] target_amount: Balance,
 					#[pallet::compact] max_supply_amount: Balance,
 				) -> DispatchResult {
@@ -173,7 +175,7 @@ impl<T: Config> Pallet<T> {
 	/// cannot be swapped.
 	fn get_target_amount(path: Vec<AvailablePool>, supply_amount: Balance) -> Option<Balance> {
 		let mut cache_money = supply_amount;
-		if path.len() == 0 {
+		if path.is_empty() {
 			return None;
 		}
 		// Can panic but above line checks if vec is empty
