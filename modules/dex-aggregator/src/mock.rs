@@ -24,6 +24,7 @@ use super::*;
 use frame_support::{construct_runtime, ord_parameter_types, parameter_types, PalletId};
 use frame_system::EnsureSignedBy;
 use orml_traits::{parameter_type_with_key, MultiReservableCurrency};
+use primitives::TradingPair;
 use primitives::{Amount, TokenSymbol};
 use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup};
@@ -131,7 +132,7 @@ impl dex::Config for Runtime {
 }
 
 pub struct MockAggregator;
-impl AggregatorSuper<AccountId, TradingPair, Balance> for MockAggregator {
+impl AggregatorSuper<AccountId, TradingDirection, Balance> for MockAggregator {
 	fn all_active_pairs() -> Vec<AvailablePool> {
 		dex::Pallet::<Runtime>::get_active_pools()
 	}

@@ -27,9 +27,9 @@
 
 use frame_support::{pallet_prelude::*, transactional};
 use frame_system::pallet_prelude::*;
-use primitives::{Balance, CurrencyId, TradingPair};
+use primitives::{Balance, CurrencyId};
 use sp_std::vec;
-use support::{AggregatorSuper, AvailablePool};
+use support::{AggregatorSuper, AvailablePool, TradingDirection};
 
 mod mock;
 mod tests;
@@ -48,7 +48,7 @@ pub mod module {
 		#[pallet::constant]
 		type AggregatorTradingPathLimit: Get<u32>;
 
-		type Aggregator: AggregatorSuper<Self::AccountId, TradingPair, Balance>;
+		type Aggregator: AggregatorSuper<Self::AccountId, TradingDirection, Balance>;
 	}
 
 	#[pallet::pallet]
@@ -60,7 +60,7 @@ pub mod module {
 	pub enum Event<T: Config> {
 		/// Use supply currency to swap target currency. \[trader, trading_pair,
 		/// supply_currency_amount, target_currency_amount\]
-		Swap(T::AccountId, TradingPair, Balance, Balance),
+		Swap(T::AccountId, TradingDirection, Balance, Balance),
 	}
 
 	#[pallet::error]
@@ -91,14 +91,12 @@ pub mod module {
 			#[pallet::compact] min_target_amount: Balance,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
-			let pair = TradingPair::from_currency_ids_unordered(supply_token, target_token)
-				.ok_or(Error::<T>::InvalidCurrencyId)?;
-			dbg!(pair);
+			let pair =
+				TradingDirection::from_currency_ids(supply_token, target_token).ok_or(Error::<T>::InvalidCurrencyId)?;
 			let best_path =
 				Self::optimal_path_with_exact_supply(pair, supply_amount).ok_or(Error::<T>::NoPossibleTradingPath)?;
 			ensure!(best_path.1 > min_target_amount, Error::<T>::BelowMinimumTarget);
 			let mut balance = supply_amount;
-			dbg!(pair);
 			let last_path_elem = best_path.0.len() - 1;
 
 			for (i, pool) in best_path.0.into_iter().enumerate() {
@@ -112,7 +110,6 @@ pub mod module {
 					balance = Self::do_swap_with_exact_supply(&who, &pool, balance, 0)?;
 				}
 			}
-			dbg!(pair);
 			Self::deposit_event(Event::Swap(who, pair, supply_amount, balance));
 			Ok(())
 		}
@@ -204,7 +201,7 @@ impl<T: Config> Pallet<T> {
 	/// review, must build algorithm for length of n, as well as optimize and beautify. related: https://stackoverflow.com/questions/12293870/algorithm-to-get-all-possible-string-combinations-from-array-up-to-certain-lengt
 	/// https://stackoverflow.com/questions/361/generate-list-of-all-possible-permutations-of-a-string
 	fn optimal_path_with_exact_supply(
-		pair: TradingPair,
+		pair: TradingDirection,
 		supply_amount: Balance,
 	) -> Option<(Vec<AvailablePool>, Balance)> {
 		let mut i: u32 = 0;

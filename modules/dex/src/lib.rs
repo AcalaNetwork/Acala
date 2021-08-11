@@ -45,6 +45,7 @@ use sp_runtime::{
 use sp_std::{convert::TryInto, prelude::*, vec};
 use support::{
 	AggregatorManager, AvailableAmm, AvailablePool, CurrencyIdMapping, DEXIncentives, DEXManager, ExchangeRate, Ratio,
+	TradingDirection,
 };
 
 mod mock;
@@ -1314,26 +1315,26 @@ impl<T: Config> DEXManager<T::AccountId, CurrencyId, Balance> for Pallet<T> {
 	}
 }
 
-impl<T: Config> AggregatorManager<T::AccountId, TradingPair, Balance> for Pallet<T> {
-	/// Returns Vec of TradingPairs that are actively able to be swapped
+impl<T: Config> AggregatorManager<T::AccountId, TradingDirection, Balance> for Pallet<T> {
+	/// Returns Vec of TradingDirection that are actively able to be swapped
 	fn get_active_pools() -> Vec<AvailablePool> {
 		let mut active_pairs = Vec::new();
 		for (key, value) in TradingPairStatuses::<T>::iter() {
 			if let TradingPairStatus::Enabled = value {
-				active_pairs.push(AvailablePool(AvailableAmm::Dex, key.clone()));
+				active_pairs.push(AvailablePool(AvailableAmm::Dex, key.into()));
 			}
 		}
 		active_pairs
 	}
 
-	fn aggregator_supply_amount(pair: TradingPair, target_amount: Balance) -> Option<Balance> {
+	fn aggregator_supply_amount(pair: TradingDirection, target_amount: Balance) -> Option<Balance> {
 		let path: [CurrencyId; 2] = [pair.first(), pair.second()];
 		Self::get_supply_amounts(&path, target_amount)
 			.ok()
 			.map(|amounts| amounts[0])
 	}
 
-	fn aggregator_target_amount(pair: TradingPair, supply_amount: Balance) -> Option<Balance> {
+	fn aggregator_target_amount(pair: TradingDirection, supply_amount: Balance) -> Option<Balance> {
 		let path: [CurrencyId; 2] = [pair.first(), pair.second()];
 		Self::get_target_amounts(&path, supply_amount)
 			.ok()

@@ -109,11 +109,57 @@ pub enum AvailableAmm {
 /// Tuple Struct with first entry representing the module name and second entry available trading
 /// pair
 #[derive(Clone, Copy, Encode, Decode, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord)]
-pub struct AvailablePool(pub AvailableAmm, pub TradingPair);
+pub struct AvailablePool(pub AvailableAmm, pub TradingDirection);
 
 impl AvailablePool {
-	pub fn swap(&self) -> AvailablePool {
-		AvailablePool(self.0, self.1.swap())
+	pub fn swap(&self) -> Self {
+		Self(self.0, self.1.swap())
+	}
+}
+
+#[derive(Clone, Copy, Encode, Decode, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord)]
+pub struct TradingDirection {
+	input: CurrencyId,
+	output: CurrencyId,
+}
+
+impl TradingDirection {
+	pub fn swap(&self) -> Self {
+		Self {
+			input: self.output,
+			output: self.input,
+		}
+	}
+
+	pub fn first(&self) -> CurrencyId {
+		self.input
+	}
+
+	pub fn second(&self) -> CurrencyId {
+		self.output
+	}
+
+	pub fn from_currency_ids(input_currency: CurrencyId, output_currency: CurrencyId) -> Option<Self> {
+		if (input_currency.is_token_currency_id() || input_currency.is_erc20_currency_id())
+			&& (output_currency.is_token_currency_id() || output_currency.is_erc20_currency_id())
+			&& input_currency != output_currency
+		{
+			Some(TradingDirection {
+				input: input_currency,
+				output: output_currency,
+			})
+		} else {
+			None
+		}
+	}
+}
+
+impl From<TradingPair> for TradingDirection {
+	fn from(pair: TradingPair) -> Self {
+		Self {
+			input: pair.first(),
+			output: pair.second(),
+		}
 	}
 }
 
@@ -148,17 +194,17 @@ pub trait AggregatorSuper<AccountId, TradingPair, Balance> {
 }
 
 /// Required trait for pallets with  to implement to be used by dex aggregator
-pub trait AggregatorManager<AccountId, TradingPair, Balance> {
+pub trait AggregatorManager<AccountId, TradingDirection, Balance> {
 	/// Retrieve all active trading pairs for the pallet
 	fn get_active_pools() -> Vec<AvailablePool>;
 
 	/// Returns supply required given a trading pair and target amount, returns None if swap is not
 	/// possible
-	fn aggregator_supply_amount(pair: TradingPair, target_amount: Balance) -> Option<Balance>;
+	fn aggregator_supply_amount(pair: TradingDirection, target_amount: Balance) -> Option<Balance>;
 
 	/// Returns amount of target token recieved, given trading pair and a supply amount, returns
 	/// None if swap is not possible
-	fn aggregator_target_amount(pair: TradingPair, supply_amount: Balance) -> Option<Balance>;
+	fn aggregator_target_amount(pair: TradingDirection, supply_amount: Balance) -> Option<Balance>;
 
 	/// Attempts to swap trading pair with a given supply amount
 	fn aggregator_swap_with_exact_supply(
