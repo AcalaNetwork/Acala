@@ -1366,6 +1366,15 @@ fn get_active_pools_works() {
 		.execute_with(|| {
 			System::set_block_number(1);
 
+			assert_eq!(
+				sorted_vec(DexModule::get_active_pools()),
+				sorted_vec(vec![
+					AvailablePool(AvailableAmm::Dex, AUSDBTCPair::get()),
+					AvailablePool(AvailableAmm::Dex, DOTBTCPair::get()),
+					AvailablePool(AvailableAmm::Dex, AUSDDOTPair::get())
+				])
+			);
+
 			assert_ok!(DexModule::disable_trading_pair(
 				Origin::signed(ListingOrigin::get()),
 				AUSD,

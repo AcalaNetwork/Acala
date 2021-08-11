@@ -138,14 +138,14 @@ impl AggregatorSuper<AccountId, TradingPair, Balance> for MockAggregator {
 
 	fn pallet_get_supply_amount(pool: AvailablePool, target_amount: Balance) -> Option<Balance> {
 		match pool.0 {
-			Dex => dex::Pallet::<Runtime>::aggregator_supply_amount(pool.1, target_amount),
+			AvailableAmm::Dex => dex::Pallet::<Runtime>::aggregator_supply_amount(pool.1, target_amount),
 			_ => None,
 		}
 	}
 
 	fn pallet_get_target_amount(pool: AvailablePool, supply_amount: Balance) -> Option<Balance> {
 		match pool.0 {
-			Dex => dex::Pallet::<Runtime>::aggregator_target_amount(pool.1, supply_amount),
+			AvailableAmm::Dex => dex::Pallet::<Runtime>::aggregator_target_amount(pool.1, supply_amount),
 			_ => None,
 		}
 	}
@@ -157,7 +157,7 @@ impl AggregatorSuper<AccountId, TradingPair, Balance> for MockAggregator {
 		min_target_amount: Balance,
 	) -> sp_std::result::Result<Balance, DispatchError> {
 		match pool.0 {
-			Dex => {
+			AvailableAmm::Dex => {
 				dex::Pallet::<Runtime>::aggregator_swap_with_exact_supply(who, pool, supply_amount, min_target_amount)
 			}
 			// defensively returns error. should not reach here
@@ -174,7 +174,7 @@ impl AggregatorSuper<AccountId, TradingPair, Balance> for MockAggregator {
 		max_supply_amount: Balance,
 	) -> sp_std::result::Result<Balance, DispatchError> {
 		match pool.0 {
-			Dex => {
+			AvailableAmm::Dex => {
 				dex::Pallet::<Runtime>::aggregator_swap_with_exact_target(who, pool, target_amount, max_supply_amount)
 			}
 			_ => Err(DispatchError::Other(

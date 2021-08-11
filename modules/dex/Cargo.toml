@@ -23,6 +23,7 @@ orml-tokens = { path = "../../orml/tokens" }
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.8" }
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.8" }
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.8" }
+dex-aggregator = {package = "module-dex-aggregator", path = "../dex-aggregator"}
 
 [features]
 default = ["std"]

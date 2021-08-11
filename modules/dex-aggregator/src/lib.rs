@@ -29,7 +29,7 @@ use frame_support::{pallet_prelude::*, transactional};
 use frame_system::pallet_prelude::*;
 use primitives::{Balance, CurrencyId, TradingPair};
 use sp_std::vec;
-use support::{AggregatorSuper, AvailableAmm, AvailablePool};
+use support::{AggregatorSuper, AvailablePool};
 
 mod mock;
 mod tests;
@@ -66,7 +66,7 @@ pub mod module {
 	#[pallet::error]
 	pub enum Error<T> {
 		/// Minimum target was higher than any possible path expected target output
-		AboveMinimumTarget,
+		BelowMinimumTarget,
 		/// Aggregator could not find any viable path to perform the swap
 		NoPossibleTradingPath,
 		/// Invalid CurrencyId
@@ -92,31 +92,48 @@ pub mod module {
 			let who = ensure_signed(origin)?;
 			let pair =
 				TradingPair::from_currency_ids(input_token, output_token).ok_or(Error::<T>::InvalidCurrencyId)?;
+
 			let best_path =
 				Self::optimal_path_with_exact_supply(pair, supply_amount).ok_or(Error::<T>::NoPossibleTradingPath)?;
-			ensure!(best_path.1 > min_target_amount, Error::<T>::AboveMinimumTarget);
+			ensure!(best_path.1 > min_target_amount, Error::<T>::BelowMinimumTarget);
+			let mut balance = supply_amount;
 
+			let last_path_elem = best_path.0.len() - 1;
+
+			for (i, pool) in best_path.0.into_iter().enumerate() {
+				if i == last_path_elem {
+					// last element uses slippage tolerance of min_target amount
+					balance = Self::do_swap_with_exact_supply(&who, &pool, balance, min_target_amount)?;
+				} else {
+					// all pools that are not the final swap execute regardless of slippage... the transactional
+					// attribute should revert any state changes if the end of the chain of swaps results in a target
+					// amount < min target amount
+					balance = Self::do_swap_with_exact_supply(&who, &pool, balance, 0)?;
+				}
+			}
+			Self::deposit_event(Event::Swap(who, pair, supply_amount, balance));
 			Ok(())
 		}
 
 		/*
-		/// Trading with DEX-Aggregator, swap with exact target amount
-		///
-		/// - `path`: trading path.
-		/// - `target_amount`: exact target amount.
-		/// - `max_supply_amount`: acceptable maximum supply amount.
-		#[pallet::weight(10000)]
-		#[transactional]
-		pub fn swap_with_exact_target(
-			origin: OriginFor<T>,
-			input_asset: CurrencyId,
-			output_asset: CurrencyId,
-			#[pallet::compact] target_amount: Balance,
-			#[pallet::compact] max_supply_amount: Balance,
-		) -> DispatchResult {
-			let who = ensure_signed(origin)?;
-			Ok(())
-		}*/
+				/// Trading with DEX-Aggregator, swap with exact target amount
+				///
+				/// - `path`: trading path.
+				/// - `target_amount`: exact target amount.
+				/// - `max_supply_amount`: acceptable maximum supply amount.
+				#[pallet::weight(10000)]
+				#[transactional]
+				pub fn swap_with_exact_target(
+					origin: OriginFor<T>,
+					input_asset: CurrencyId,
+					output_asset: CurrencyId,
+					#[pallet::compact] target_amount: Balance,
+					#[pallet::compact] max_supply_amount: Balance,
+				) -> DispatchResult {
+					let who = ensure_signed(origin)?;
+					Ok(())
+				}
+		*/
 	}
 }
 
@@ -130,11 +147,14 @@ impl<T: Config> Pallet<T> {
 	/// cannot be swapped.
 	fn get_supply_amount(path: Vec<AvailablePool>, target_amount: Balance) -> Option<Balance> {
 		let mut cache_money = target_amount;
-		let mut cache_pool = match path.len() {
+		// CurrencyId of final target currency
+		let mut cache_pool: CurrencyId = match path.len() {
 			0 => return None,
 			n => path[n - 1].1.second(),
 		};
 
+		// Iterates through the trading path starting at the final step and gets the supply amount for each
+		// AvailablePool this is then used as the target amount for the next iteration
 		for pool in path.iter().rev() {
 			if cache_pool == pool.1.clone().second() {
 				cache_money = match T::Aggregator::pallet_get_supply_amount(*pool, cache_money) {
@@ -156,9 +176,12 @@ impl<T: Config> Pallet<T> {
 		if path.len() == 0 {
 			return None;
 		}
-		// can panic but above line checks if vec is empty
-		let mut cache_pool = path[0].1.first();
+		// Can panic but above line checks if vec is empty
+		// CurrencyId of supply currency
+		let mut cache_pool: CurrencyId = path[0].1.first();
 
+		// Iterates through the trading path and gets the target amount for each AvailablePool given a
+		// supply which then is used as the supply for the next iteration
 		for pool in path.iter() {
 			if cache_pool == pool.1.clone().first() {
 				cache_money = match T::Aggregator::pallet_get_target_amount(*pool, cache_money) {
@@ -174,14 +197,16 @@ impl<T: Config> Pallet<T> {
 	}
 
 	/// Returns tuple of optimal path with expected target amount. Returns None if trade is not
-	/// possible
+	/// possible TODO: This is an very ugly placeholder algorithm to get a working model for initial
+	/// review, must build algorithm for length of n, as well as optimize and beautify. related: https://stackoverflow.com/questions/12293870/algorithm-to-get-all-possible-string-combinations-from-array-up-to-certain-lengt
+	/// https://stackoverflow.com/questions/361/generate-list-of-all-possible-permutations-of-a-string
 	fn optimal_path_with_exact_supply(
 		pair: TradingPair,
 		supply_amount: Balance,
-	) -> Option<(Vec<TradingPair>, Balance)> {
+	) -> Option<(Vec<AvailablePool>, Balance)> {
 		let mut i: u32 = 0;
 		let all_pools = Self::all_active_pairs();
-		let mut optimal_path: Vec<TradingPair> = Vec::new();
+		let mut optimal_path: Vec<AvailablePool> = Vec::new();
 		let mut optimal_balance: Balance = 0;
 		while i < T::AggregatorTradingPathLimit::get() {
 			if i == 0 {
@@ -190,16 +215,46 @@ impl<T: Config> Pallet<T> {
 						if let Some(new_balance) = Self::get_target_amount(vec![pool], supply_amount) {
 							if new_balance > optimal_balance {
 								optimal_balance = new_balance;
-								optimal_path = vec![pool.1];
+								optimal_path = vec![pool];
 							}
 						}
 					}
 
 					if pair == pool.1.swap() {
-						if let Some(new_balance) = Self::get_target_amount(vec![pool], supply_amount) {
+						if let Some(new_balance) = Self::get_target_amount(vec![pool.swap()], supply_amount) {
 							if new_balance > optimal_balance {
 								optimal_balance = new_balance;
-								optimal_path = vec![pool.1.swap()];
+								optimal_path = vec![pool.swap()];
+							}
+						}
+					}
+				}
+			} else if i == 1 {
+				let mut possible_paths = Vec::new();
+				for pool in all_pools.clone() {
+					if pair.first() == pool.1.first() {
+						possible_paths.push(pool);
+					} else if pair.first() == pool.1.second() {
+						possible_paths.push(pool.swap())
+					}
+					for pool1 in possible_paths.clone() {
+						for pool2 in all_pools.clone() {
+							if pair.second() == pool2.1.second() && pool1.1.second() == pool2.1.first() {
+								if let Some(new_balance) = Self::get_target_amount(vec![pool1, pool2], supply_amount) {
+									if new_balance > optimal_balance {
+										optimal_balance = new_balance;
+										optimal_path = vec![pool1, pool2];
+									}
+								}
+							} else if pair.second() == pool2.1.first() && pool1.1.second() == pool2.1.second() {
+								if let Some(new_balance) =
+									Self::get_target_amount(vec![pool1, pool2.swap()], supply_amount)
+								{
+									if new_balance > optimal_balance {
+										optimal_balance = new_balance;
+										optimal_path = vec![pool1, pool2.swap()];
+									}
+								}
 							}
 						}
 					}
@@ -214,17 +269,22 @@ impl<T: Config> Pallet<T> {
 			Some((optimal_path, optimal_balance))
 		}
 	}
-}
 
-/*
-fn trading_pair_equivilent(path_pair: (AvailableAmm<T>, TradingPair), path_pair2: (AvailableAmm<T>, TradingPair)) -> bool {
-	if path_pair.0 == path_pair2.0 {
-		if path_pair.1 == path_pair2.1 || path_pair.1 == path_pair2.1.swap() {
-			true
-		} else {
-			false
-		}
-	} else {
-		false
+	fn do_swap_with_exact_supply(
+		who: &T::AccountId,
+		pool: &AvailablePool,
+		supply_amount: Balance,
+		min_target_amount: Balance,
+	) -> sp_std::result::Result<Balance, DispatchError> {
+		T::Aggregator::aggregator_swap_with_exact_supply(who, pool, supply_amount, min_target_amount)
 	}
-}*/
+
+	fn do_swap_with_exact_target(
+		who: &T::AccountId,
+		pool: &AvailablePool,
+		target_amount: Balance,
+		max_supply_amount: Balance,
+	) -> sp_std::result::Result<Balance, DispatchError> {
+		T::Aggregator::aggregator_swap_with_exact_target(who, pool, target_amount, max_supply_amount)
+	}
+}

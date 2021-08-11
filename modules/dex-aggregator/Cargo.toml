@@ -20,7 +20,7 @@ orml-traits = { path = "../../orml/traits" }
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.8" }
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.8" }
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.8" }
-dex = { package = "module-dex", path = "../dex", default-features = false }
+dex = { package = "module-dex", path = "../dex"}
 
 [features]
 default = ["std"]
@@ -33,6 +33,5 @@ std = [
 	"frame-system/std",
 	"support/std",
 	"primitives/std",
-	"dex/std"
 ]
 try-runtime = ["frame-support/try-runtime"]

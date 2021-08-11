@@ -103,12 +103,19 @@ pub trait AuctionManager<AccountId> {
 #[derive(Clone, Copy, Encode, Decode, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum AvailableAmm {
 	Dex,
+	OtherPallet,
 }
 
 /// Tuple Struct with first entry representing the module name and second entry available trading
 /// pair
 #[derive(Clone, Copy, Encode, Decode, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct AvailablePool(pub AvailableAmm, pub TradingPair);
+
+impl AvailablePool {
+	pub fn swap(&self) -> AvailablePool {
+		Self(self.0, self.1.swap())
+	}
+}
 
 /// Super trait to be used in runtimes to activate dex-aggregator pallet
 pub trait AggregatorSuper<AccountId, TradingPair, Balance> {
