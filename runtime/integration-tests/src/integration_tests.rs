@@ -80,7 +80,7 @@ pub const RELAY_CHAIN_CURRENCY: CurrencyId = DOT;
 #[cfg(feature = "with-mandala-runtime")]
 pub const USD_CURRENCY: CurrencyId = AUSD;
 #[cfg(feature = "with-mandala-runtime")]
-const LPTOKEN: CurrencyId = CurrencyId::DexShare(DexShare::Token(TokenSymbol::AUSD), DexShare::Token(TokenSymbol::DOT));
+const LPTOKEN: CurrencyId = CurrencyId::DexShare(DexShare::Token(TokenSymbol::KUSD), DexShare::Token(TokenSymbol::DOT));
 
 #[cfg(feature = "with-karura-runtime")]
 use karura_runtime::{
@@ -115,6 +115,8 @@ const LPTOKEN: CurrencyId = CurrencyId::DexShare(DexShare::Token(TokenSymbol::KU
 const ORACLE1: [u8; 32] = [0u8; 32];
 const ORACLE2: [u8; 32] = [1u8; 32];
 const ORACLE3: [u8; 32] = [2u8; 32];
+const ORACLE4: [u8; 32] = [3u8; 32];
+const ORACLE5: [u8; 32] = [4u8; 32];
 
 const ALICE: [u8; 32] = [4u8; 32];
 const BOB: [u8; 32] = [5u8; 32];
@@ -218,6 +220,8 @@ impl ExtBuilder {
 				AccountId::from(ORACLE1),
 				AccountId::from(ORACLE2),
 				AccountId::from(ORACLE3),
+				AccountId::from(ORACLE4),
+				AccountId::from(ORACLE5),
 			],
 			phantom: Default::default(),
 		}
@@ -253,6 +257,14 @@ fn set_oracle_price(prices: Vec<(CurrencyId, Price)>) -> DispatchResult {
 	));
 	assert_ok!(AcalaOracle::feed_values(
 		Origin::signed(AccountId::from(ORACLE3)),
+		prices.clone(),
+	));
+	assert_ok!(AcalaOracle::feed_values(
+		Origin::signed(AccountId::from(ORACLE4)),
+		prices.clone(),
+	));
+	assert_ok!(AcalaOracle::feed_values(
+		Origin::signed(AccountId::from(ORACLE5)),
 		prices,
 	));
 	Ok(())
@@ -365,13 +377,13 @@ fn liquidate_cdp() {
 			(
 				AccountId::from(ALICE),
 				RELAY_CHAIN_CURRENCY,
-				20 * dollar(RELAY_CHAIN_CURRENCY),
+				11 * dollar(RELAY_CHAIN_CURRENCY),
 			),
-			(AccountId::from(BOB), USD_CURRENCY, 1_000_000 * dollar(USD_CURRENCY)),
+			(AccountId::from(BOB), USD_CURRENCY, 1_000_001 * dollar(USD_CURRENCY)),
 			(
 				AccountId::from(BOB),
 				RELAY_CHAIN_CURRENCY,
-				101 * dollar(RELAY_CHAIN_CURRENCY),
+				102 * dollar(RELAY_CHAIN_CURRENCY),
 			),
 		])
 		.build()
@@ -380,6 +392,8 @@ fn liquidate_cdp() {
 				RELAY_CHAIN_CURRENCY,
 				Price::saturating_from_rational(10000, 1)
 			)])); // 10000 usd
+
+			//println!("{:?}", System::events());
 
 			assert_ok!(Dex::add_liquidity(
 				Origin::signed(AccountId::from(BOB)),
@@ -456,10 +470,9 @@ fn liquidate_cdp() {
 				50_000 * dollar(USD_CURRENCY),
 				LiquidationStrategy::Auction,
 			));
-			assert!(System::events().iter().any(|record| {
-				println!("{:?}", record);
-				record.event == liquidate_alice_xbtc_cdp_event
-			}));
+			assert!(System::events()
+				.iter()
+				.any(|record| record.event == liquidate_alice_xbtc_cdp_event));
 
 			assert_eq!(Loans::positions(RELAY_CHAIN_CURRENCY, AccountId::from(ALICE)).debit, 0);
 			assert_eq!(
@@ -732,11 +745,11 @@ fn test_honzon_module() {
 fn test_cdp_engine_module() {
 	ExtBuilder::default()
 		.balances(vec![
-			(AccountId::from(ALICE), USD_CURRENCY, 1_000 * dollar(USD_CURRENCY)),
+			(AccountId::from(ALICE), USD_CURRENCY, 2_000 * dollar(USD_CURRENCY)),
 			(
 				AccountId::from(ALICE),
 				RELAY_CHAIN_CURRENCY,
-				1_000 * dollar(RELAY_CHAIN_CURRENCY),
+				2_000 * dollar(RELAY_CHAIN_CURRENCY),
 			),
 		])
 		.build()
@@ -796,17 +809,17 @@ fn test_cdp_engine_module() {
 			assert_ok!(CdpEngine::adjust_position(
 				&AccountId::from(ALICE),
 				RELAY_CHAIN_CURRENCY,
-				(100 * dollar(RELAY_CHAIN_CURRENCY)) as i128,
+				(200 * dollar(RELAY_CHAIN_CURRENCY)) as i128,
 				0
 			));
 			assert_eq!(
 				Currencies::free_balance(RELAY_CHAIN_CURRENCY, &AccountId::from(ALICE)),
-				900 * dollar(RELAY_CHAIN_CURRENCY)
+				1800 * dollar(RELAY_CHAIN_CURRENCY)
 			);
 			assert_eq!(Loans::positions(RELAY_CHAIN_CURRENCY, AccountId::from(ALICE)).debit, 0);
 			assert_eq!(
 				Loans::positions(RELAY_CHAIN_CURRENCY, AccountId::from(ALICE)).collateral,
-				100 * dollar(RELAY_CHAIN_CURRENCY)
+				200 * dollar(RELAY_CHAIN_CURRENCY)
 			);
 
 			assert_noop!(
@@ -823,11 +836,11 @@ fn test_cdp_engine_module() {
 				&AccountId::from(ALICE),
 				RELAY_CHAIN_CURRENCY,
 				0,
-				(100 * dollar(USD_CURRENCY)) as i128
+				(200 * dollar(USD_CURRENCY)) as i128
 			));
 			assert_eq!(
 				Loans::positions(RELAY_CHAIN_CURRENCY, AccountId::from(ALICE)).debit,
-				100 * dollar(USD_CURRENCY)
+				200 * dollar(USD_CURRENCY)
 			);
 			assert_eq!(CdpTreasury::debit_pool(), 0);
 			assert_eq!(CdpTreasury::total_collaterals(RELAY_CHAIN_CURRENCY), 0);
@@ -845,13 +858,13 @@ fn test_cdp_engine_module() {
 				.any(|record| record.event == settle_cdp_in_debit_event));
 
 			assert_eq!(Loans::positions(RELAY_CHAIN_CURRENCY, AccountId::from(ALICE)).debit, 0);
-			assert_eq!(CdpTreasury::debit_pool(), 10 * dollar(USD_CURRENCY));
+			assert_eq!(CdpTreasury::debit_pool(), 20 * dollar(USD_CURRENCY));
 
 			// DOT is 10 decimal places where as ksm is 12 decimals. Hence the difference in collaterals.
 			#[cfg(feature = "with-mandala-runtime")]
-			assert_eq!(CdpTreasury::total_collaterals(RELAY_CHAIN_CURRENCY), 33_333_333_333);
+			assert_eq!(CdpTreasury::total_collaterals(RELAY_CHAIN_CURRENCY), 66_666_666_666);
 			#[cfg(feature = "with-karura-runtime")]
-			assert_eq!(CdpTreasury::total_collaterals(RELAY_CHAIN_CURRENCY), 3_333_333_333_333);
+			assert_eq!(CdpTreasury::total_collaterals(RELAY_CHAIN_CURRENCY), 6_666_666_666_666);
 		});
 }
 
