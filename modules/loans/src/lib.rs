@@ -188,6 +188,7 @@ impl<T: Config> Pallet<T> {
 		debit_adjustment: Amount,
 	) -> DispatchResult {
 		// mutate collateral and debit
+		// Note: if a new position, will inc consumer
 		Self::update_loan(who, currency_id, collateral_adjustment, debit_adjustment)?;
 
 		let collateral_balance_adjustment = Self::balance_try_from_amount_abs(collateral_adjustment)?;
