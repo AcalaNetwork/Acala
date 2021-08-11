@@ -80,16 +80,17 @@ pub const RELAY_CHAIN_CURRENCY: CurrencyId = DOT;
 #[cfg(feature = "with-mandala-runtime")]
 pub const USD_CURRENCY: CurrencyId = AUSD;
 #[cfg(feature = "with-mandala-runtime")]
-const LPTOKEN: CurrencyId = CurrencyId::DexShare(DexShare::Token(TokenSymbol::KUSD), DexShare::Token(TokenSymbol::DOT));
+const LPTOKEN: CurrencyId = CurrencyId::DexShare(DexShare::Token(TokenSymbol::AUSD), DexShare::Token(TokenSymbol::DOT));
 
 #[cfg(feature = "with-karura-runtime")]
 use karura_runtime::{
 	get_all_module_accounts, AcalaOracle, AccountId, AuctionManager, Authority, AuthoritysOriginId, Balance, Balances,
 	BlockNumber, Call, CdpEngine, CdpTreasury, CreateClassDeposit, CreateTokenDeposit, Currencies, CurrencyId,
 	CurrencyIdConvert, DataDepositPerByte, Dex, EmergencyShutdown, Event, EvmAccounts, ExistentialDeposits, Get,
-	GetNativeCurrencyId, Loans, MultiLocation, NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, Origin,
-	OriginCaller, ParachainInfo, ParachainSystem, Perbill, Proxy, Runtime, Scheduler, Session, SessionManager,
-	SevenDays, System, TokenSymbol, Tokens, TreasuryPalletId, Vesting, XcmConfig, XcmExecutor, NFT,
+	GetNativeCurrencyId, KaruraFoundationAccounts, Loans, MultiLocation, NativeTokenExistentialDeposit, NetworkId,
+	NftPalletId, OneDay, Origin, OriginCaller, ParachainInfo, ParachainSystem, Perbill, Proxy, Runtime, Scheduler,
+	Session, SessionManager, SevenDays, System, TokenSymbol, Tokens, TreasuryPalletId, Vesting, XcmConfig, XcmExecutor,
+	NFT,
 };
 
 #[cfg(feature = "with-karura-runtime")]
@@ -1255,17 +1256,20 @@ fn test_evm_accounts_module() {
 #[test]
 fn test_vesting_use_relaychain_block_number() {
 	ExtBuilder::default().build().execute_with(|| {
-		let treasury: AccountId = TreasuryPalletId::get().into_account();
+		#[cfg(feature = "with-mandala-runtime")]
+		let signer: AccountId = TreasuryPalletId::get().into_account();
+		#[cfg(feature = "with-karura-runtime")]
+		let signer: AccountId = KaruraFoundationAccounts::get()[0].clone();
 
 		assert_ok!(Balances::set_balance(
 			Origin::root(),
-			treasury.clone().into(),
-			1_000 * dollar(NATIVE_CURRENCY),
+			signer.clone().into(),
+			1_000 * dollar(ACA),
 			0
 		));
 
 		assert_ok!(Vesting::vested_transfer(
-			Origin::signed(treasury),
+			Origin::signed(signer),
 			alice().into(),
 			VestingSchedule {
 				start: 10,
@@ -1348,8 +1352,15 @@ fn test_session_manager_module() {
 fn treasury_should_take_xcm_execution_revenue() {
 	ExtBuilder::default().build().execute_with(|| {
 		let dot_amount = 1000 * dollar(RELAY_CHAIN_CURRENCY);
-		let actual_amount = 9999999760000;
-		let shallow_weight = 3000000;
+		#[cfg(feature = "with-mandala-runtime")]
+		let actual_amount = 9_999_999_760_000;
+		#[cfg(feature = "with-karura-runtime")]
+		let actual_amount = 999_999_952_000_000;
+
+		#[cfg(feature = "with-mandala-runtime")]
+		let shallow_weight = 3_000_000;
+		#[cfg(feature = "with-karura-runtime")]
+		let shallow_weight = 600_000_000;
 		let origin = MultiLocation::X1(Junction::Parent);
 
 		// receive relay chain token
