@@ -192,6 +192,7 @@ fn test_swap_supply_extrinisc() {
 				89099,
 			)));
 
+			// In this case DexModules and DexAggregator use the same trading path
 			assert_ok!(DexModule::swap_with_exact_supply(
 				bob_signed.clone(),
 				vec![DOT, AUSD],
@@ -213,7 +214,7 @@ fn test_swap_supply_extrinisc() {
 			));
 			System::assert_last_event(Event::DexAggregator(crate::Event::Swap(
 				BOB,
-				TradingPair::from_currency_ids(AUSD, DOT).unwrap(),
+				TradingPair::from_currency_ids_unordered(DOT, AUSD).unwrap(),
 				100_000,
 				494999,
 			)));

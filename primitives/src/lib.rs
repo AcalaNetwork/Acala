@@ -173,7 +173,7 @@ impl TradingPair {
 impl Decode for TradingPair {
 	fn decode<I: codec::Input>(input: &mut I) -> sp_std::result::Result<Self, codec::Error> {
 		let (first, second): (CurrencyId, CurrencyId) = Decode::decode(input)?;
-		TradingPair::from_currency_ids(first, second).ok_or_else(|| codec::Error::from("invalid currency id"))
+		TradingPair::from_currency_ids_unordered(first, second).ok_or_else(|| codec::Error::from("invalid currency id"))
 	}
 }
 

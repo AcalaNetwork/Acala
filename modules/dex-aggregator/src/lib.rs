@@ -93,12 +93,12 @@ pub mod module {
 			let who = ensure_signed(origin)?;
 			let pair = TradingPair::from_currency_ids_unordered(supply_token, target_token)
 				.ok_or(Error::<T>::InvalidCurrencyId)?;
-
+			dbg!(pair);
 			let best_path =
 				Self::optimal_path_with_exact_supply(pair, supply_amount).ok_or(Error::<T>::NoPossibleTradingPath)?;
 			ensure!(best_path.1 > min_target_amount, Error::<T>::BelowMinimumTarget);
 			let mut balance = supply_amount;
-
+			dbg!(pair);
 			let last_path_elem = best_path.0.len() - 1;
 
 			for (i, pool) in best_path.0.into_iter().enumerate() {
@@ -112,6 +112,7 @@ pub mod module {
 					balance = Self::do_swap_with_exact_supply(&who, &pool, balance, 0)?;
 				}
 			}
+			dbg!(pair);
 			Self::deposit_event(Event::Swap(who, pair, supply_amount, balance));
 			Ok(())
 		}
