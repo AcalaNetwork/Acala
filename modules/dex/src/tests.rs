@@ -1369,9 +1369,9 @@ fn get_active_pools_works() {
 			assert_eq!(
 				sorted_vec(DexModule::get_active_pools()),
 				sorted_vec(vec![
-					AvailablePool(AvailableAmm::Dex, AUSDBTCPair::get()),
-					AvailablePool(AvailableAmm::Dex, DOTBTCPair::get()),
-					AvailablePool(AvailableAmm::Dex, AUSDDOTPair::get())
+					AvailablePool(AvailableAmm::Dex, AUSDBTCPair::get().into()),
+					AvailablePool(AvailableAmm::Dex, DOTBTCPair::get().into()),
+					AvailablePool(AvailableAmm::Dex, AUSDDOTPair::get().into())
 				])
 			);
 
@@ -1384,8 +1384,8 @@ fn get_active_pools_works() {
 			assert_eq!(
 				sorted_vec(DexModule::get_active_pools()),
 				sorted_vec(vec![
-					AvailablePool(AvailableAmm::Dex, AUSDBTCPair::get()),
-					AvailablePool(AvailableAmm::Dex, DOTBTCPair::get())
+					AvailablePool(AvailableAmm::Dex, AUSDBTCPair::get().into()),
+					AvailablePool(AvailableAmm::Dex, DOTBTCPair::get().into())
 				])
 			);
 		});
