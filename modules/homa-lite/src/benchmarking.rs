@@ -109,6 +109,7 @@ mod benchmark_mock {
 		type ExistentialDeposits = ExistentialDeposits;
 		type OnDust = ();
 		type MaxLocks = ();
+		type DustRemovalWhitelist = ();
 	}
 
 	parameter_types! {
