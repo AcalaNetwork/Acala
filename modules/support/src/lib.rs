@@ -21,6 +21,7 @@
 
 use codec::{Decode, Encode, FullCodec, HasCompact};
 use frame_support::pallet_prelude::{DispatchClass, Pays, Weight};
+use max_encoded_len::MaxEncodedLen;
 use primitives::{
 	evm::{CallInfo, EvmAddress},
 	CurrencyId, TradingPair,
@@ -100,7 +101,7 @@ pub trait AuctionManager<AccountId> {
 /// Enum of all possible AMM (Automated Market Maker) pallets for use in dex-aggregator.
 /// used as a flag to show what liquidity pool a trading pair corresponds to (needed for multiple
 /// pools of the same trading pair)
-#[derive(Clone, Copy, Encode, Decode, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Encode, Decode, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord, MaxEncodedLen)]
 pub enum AvailableAmm {
 	Dex,
 	OtherPallet,

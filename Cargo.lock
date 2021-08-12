@@ -5407,6 +5407,27 @@ dependencies = [
  "frame-support",
  "frame-system",
  "max-encoded-len",
+ "module-dex-aggregator",
+ "module-support",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "parity-scale-codec",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "module-dex-aggregator"
+version = "0.1.0"
+dependencies = [
+ "acala-primitives",
+ "frame-support",
+ "frame-system",
+ "module-dex",
  "module-support",
  "orml-tokens",
  "orml-traits",
@@ -5844,6 +5865,7 @@ dependencies = [
  "acala-primitives",
  "frame-support",
  "impl-trait-for-tuples 0.1.3",
+ "max-encoded-len",
  "parity-scale-codec",
  "sp-core",
  "sp-io",

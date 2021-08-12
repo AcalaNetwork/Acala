@@ -178,7 +178,12 @@ fn test_swap_supply_extrinisc() {
 				100_000,
 				10
 			));
-			System::assert_last_event(Event::DexModule(dex::Event::Swap(BOB, vec![AUSD, DOT], 100_000, 19799)));
+			System::assert_last_event(Event::DexModule(dex::Event::Swap(
+				BOB,
+				vec![AUSD, DOT],
+				100_000,
+				19_799,
+			)));
 			assert_ok!(DexAggregator::swap_with_exact_supply(
 				bob_signed.clone(),
 				AUSD,
@@ -187,10 +192,7 @@ fn test_swap_supply_extrinisc() {
 				10
 			));
 			System::assert_last_event(Event::DexAggregator(crate::Event::Swap(
-				BOB,
-				TradingDirection::from_currency_ids(AUSD, DOT).unwrap(),
-				100_000,
-				89099,
+				BOB, AUSD, DOT, 100_000, 89_099,
 			)));
 
 			// In this case DexModules and DexAggregator use the same trading path
@@ -204,7 +206,7 @@ fn test_swap_supply_extrinisc() {
 				BOB,
 				vec![DOT, AUSD],
 				100_000,
-				494999,
+				494_999,
 			)));
 			assert_ok!(DexAggregator::swap_with_exact_supply(
 				bob_signed.clone(),
@@ -214,10 +216,81 @@ fn test_swap_supply_extrinisc() {
 				10
 			));
 			System::assert_last_event(Event::DexAggregator(crate::Event::Swap(
-				BOB,
-				TradingDirection::from_currency_ids(DOT, AUSD).unwrap(),
-				100_000,
-				494999,
+				BOB, DOT, AUSD, 100_000, 494_999,
 			)));
+		});
+}
+
+#[test]
+fn test_swap_target_extrinisc() {
+	ExtBuilder::default()
+		.initialize_enabled_trading_pairs()
+		.build()
+		.execute_with(|| {
+			System::set_block_number(1);
+			let bob_signed = Origin::signed(BOB);
+			assert_eq!(Tokens::free_balance(AUSD, &BOB), 1_000_000_000_000_000_000);
+			assert_eq!(Tokens::free_balance(DOT, &BOB), 1_000_000_000_000_000_000);
+			assert_eq!(Tokens::free_balance(BTC, &BOB), 1_000_000_000_000_000_000);
+
+			assert_ok!(DexModule::add_liquidity(
+				Origin::signed(ALICE),
+				AUSD,
+				DOT,
+				500_000_000_000_000,
+				100_000_000_000_000,
+				0,
+				false,
+			));
+			assert_ok!(DexModule::add_liquidity(
+				Origin::signed(ALICE),
+				AUSD,
+				BTC,
+				100_000_000_000_000,
+				10_000_000_000,
+				0,
+				false,
+			));
+			assert_ok!(DexModule::add_liquidity(
+				Origin::signed(ALICE),
+				DOT,
+				BTC,
+				100_000_000_000_000,
+				10_000_000_000,
+				0,
+				false,
+			));
+
+			assert_noop!(
+				DexAggregator::swap_with_exact_target(bob_signed.clone(), AUSD, DOT, 100_000_000_000, 250_000_000),
+				Error::<Runtime>::AboveMaximumSupply
+			);
+			assert_noop!(
+				DexAggregator::swap_with_exact_target(bob_signed.clone(), ACA, DOT, 100_000, 0),
+				Error::<Runtime>::NoPossibleTradingPath
+			);
+
+			// the aggregator does not use the same path as DexModule, it will use the more advantageous AUSD =>
+			// BTC => DOT path rather than AUSD => DOT, saving the user far more AUSD!
+			assert_ok!(DexModule::swap_with_exact_target(
+				bob_signed.clone(),
+				vec![AUSD, DOT],
+				20_000,
+				200_000
+			));
+			System::assert_last_event(Event::DexModule(dex::Event::Swap(
+				BOB,
+				vec![AUSD, DOT],
+				101_011,
+				20_000,
+			)));
+			assert_ok!(DexAggregator::swap_with_exact_target(
+				bob_signed.clone(),
+				AUSD,
+				DOT,
+				20_000,
+				200_000_000
+			));
+			System::assert_last_event(Event::DexAggregator(crate::Event::Swap(BOB, AUSD, DOT, 30_304, 20_000)));
 		});
 }
