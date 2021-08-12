@@ -298,7 +298,7 @@ parameter_types! {
 	pub const MaxCandidates: u32 = 50;
 	pub const MaxInvulnerables: u32 = 10;
 	pub const KickPenaltySessionLength: u32 = 8;
-	pub const CollatorKickThreshold: Permill = Permill::from_percent(30);
+	pub const CollatorKickThreshold: Permill = Permill::from_percent(85);
 }
 
 impl module_collator_selection::Config for Runtime {
@@ -1057,7 +1057,7 @@ impl module_cdp_treasury::Config for Runtime {
 
 parameter_types! {
 	// Sort by fee charge order
-	pub DefaultFeeSwapPathList: Vec<Vec<CurrencyId>> = vec![vec![KUSD, KAR], vec![KSM, KAR], vec![LKSM, KAR]];
+	pub DefaultFeeSwapPathList: Vec<Vec<CurrencyId>> = vec![vec![KUSD, KSM, KAR], vec![KSM, KAR], vec![LKSM, KAR]];
 }
 
 type NegativeImbalance = <Balances as PalletCurrency<AccountId>>::NegativeImbalance;
