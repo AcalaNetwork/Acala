@@ -16,5 +16,5 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-#[cfg(test)]
+#[cfg(any(feature = "with-mandala-runtime", feature = "with-karura-runtime"))]
 mod integration_tests;
