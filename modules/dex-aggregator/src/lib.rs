@@ -113,7 +113,7 @@ pub mod module {
 					// all pools that are not the final swap execute regardless of slippage... the transactional
 					// attribute should revert any state changes if the end of the chain of swaps results in a target
 					// amount < min target amount
-					balance = Self::do_swap_with_exact_supply(&who, &pool, balance, 0)?;
+					balance = Self::do_swap_with_exact_supply(&who, &pool, balance, Zero::zero())?;
 				}
 			}
 
