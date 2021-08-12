@@ -362,6 +362,7 @@ fn emergency_shutdown_and_cdp_treasury() {
 fn liquidate_cdp() {
 	ExtBuilder::default()
 		.balances(vec![
+			(AccountId::from(ALICE), ACA, 1 * dollar(ACA)),
 			(AccountId::from(ALICE), RENBTC, 10 * dollar(RENBTC)),
 			(AccountId::from(BOB), AUSD, 1_000_000 * dollar(AUSD)),
 			(AccountId::from(BOB), RENBTC, 101 * dollar(RENBTC)),
@@ -1564,14 +1565,11 @@ fn should_not_kill_contract_on_transfer_all_tokens() {
 				2 * dollar(AUSD)
 			));
 			assert_eq!(Currencies::free_balance(AUSD, &contract_account_id), 0);
-
 			assert_eq!(Currencies::free_balance(AUSD, &alice()), 1000 * dollar(AUSD));
 
 			// assert the contract account is not purged
 			assert!(EVM::accounts(contract).is_some());
-
 			assert_ok!(EVM::call(Origin::signed(alice()), contract.clone(), hex_literal::hex!("41c0e1b5").to_vec(), 0, 1000000000, 1000000000));
-
 			assert!(EVM::accounts(contract).is_none());
 
 			// should be gone
