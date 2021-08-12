@@ -157,7 +157,7 @@ pub mod module {
 				if i == last_path_elem {
 					balance = Self::do_swap_with_exact_target(&who, &pool, target_amount, balance)?;
 				} else {
-					balance = Self::do_swap_with_exact_supply(&who, &pool, balance, 0)?;
+					balance = Self::do_swap_with_exact_supply(&who, &pool, balance, Zero::zero())?;
 				}
 			}
 
