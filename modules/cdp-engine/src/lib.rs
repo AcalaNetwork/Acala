@@ -117,6 +117,14 @@ pub enum LiquidationStrategy {
 	Exchange,
 }
 
+/// Status of CDP
+#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq)]
+pub enum CDPStatus {
+	Safe,
+	Unsafe,
+	ChecksFailed(DispatchError),
+}
+
 #[frame_support::pallet]
 pub mod module {
 	use super::*;
@@ -192,10 +200,10 @@ pub mod module {
 		BelowRequiredCollateralRatio,
 		/// The collateral ratio below the liquidation ratio
 		BelowLiquidationRatio,
-		/// The CDP must be unsafe to be liquidated
+		/// The CDP must be unsafe status
 		MustBeUnsafe,
-		/// The CDP already is unsafe
-		IsUnsafe,
+		/// The CDP must be safe status
+		MustBeSafe,
 		/// Invalid collateral type
 		InvalidCollateralType,
 		/// Remain debit value in CDP below the dust amount
@@ -225,7 +233,7 @@ pub mod module {
 		CloseCDPInDebitByDEX(CurrencyId, T::AccountId, Balance, Balance, Balance),
 		/// The interest rate per sec for specific collateral type updated.
 		/// \[collateral_type, new_interest_rate_per_sec\]
-		InterestRatePerSec(CurrencyId, Option<Rate>),
+		InterestRatePerSecUpdated(CurrencyId, Option<Rate>),
 		/// The liquidation fee for specific collateral type updated.
 		/// \[collateral_type, new_liquidation_ratio\]
 		LiquidationRatioUpdated(CurrencyId, Option<Ratio>),
@@ -457,7 +465,7 @@ pub mod module {
 			let mut collateral_params = Self::collateral_params(currency_id);
 			if let Change::NewValue(update) = interest_rate_per_sec {
 				collateral_params.interest_rate_per_sec = update;
-				Self::deposit_event(Event::InterestRatePerSec(currency_id, update));
+				Self::deposit_event(Event::InterestRatePerSecUpdated(currency_id, update));
 			}
 			if let Change::NewValue(update) = liquidation_ratio {
 				collateral_params.liquidation_ratio = update;
@@ -489,7 +497,11 @@ pub mod module {
 				Call::liquidate(currency_id, who) => {
 					let account = T::Lookup::lookup(who.clone())?;
 					let Position { collateral, debit } = <LoansOf<T>>::positions(currency_id, &account);
-					if !Self::is_cdp_unsafe(*currency_id, collateral, debit) || T::EmergencyShutdown::is_shutdown() {
+					if !matches!(
+						Self::check_cdp_status(*currency_id, collateral, debit),
+						CDPStatus::Unsafe
+					) || T::EmergencyShutdown::is_shutdown()
+					{
 						return InvalidTransaction::Stale.into();
 					}
 
@@ -535,9 +547,7 @@ impl<T: Config> Pallet<T> {
 				if !rate_to_accumulate.is_zero() && !total_debits.is_zero() {
 					let debit_exchange_rate = Self::get_debit_exchange_rate(currency_id);
 					let debit_exchange_rate_increment = debit_exchange_rate.saturating_mul(rate_to_accumulate);
-					let total_debit_value = Self::get_debit_value(currency_id, total_debits);
-					let issued_stable_coin_balance =
-						debit_exchange_rate_increment.saturating_mul_int(total_debit_value);
+					let issued_stable_coin_balance = debit_exchange_rate_increment.saturating_mul_int(total_debits);
 
 					// issue stablecoin to surplus pool
 					let res = <T as Config>::CDPTreasury::on_system_surplus(issued_stable_coin_balance);
@@ -639,7 +649,11 @@ impl<T: Config> Pallet<T> {
 
 		#[allow(clippy::while_let_on_iterator)]
 		while let Some((who, Position { collateral, debit })) = map_iterator.next() {
-			if !is_shutdown && Self::is_cdp_unsafe(currency_id, collateral, debit) {
+			if !is_shutdown
+				&& matches!(
+					Self::check_cdp_status(currency_id, collateral, debit),
+					CDPStatus::Unsafe
+				) {
 				// liquidate unsafe CDPs before emergency shutdown occurs
 				Self::submit_unsigned_liquidation_tx(currency_id, who);
 			} else if is_shutdown && !debit.is_zero() {
@@ -685,13 +699,18 @@ impl<T: Config> Pallet<T> {
 		Ok(())
 	}
 
-	pub fn is_cdp_unsafe(currency_id: CurrencyId, collateral: Balance, debit: Balance) -> bool {
+	pub fn check_cdp_status(currency_id: CurrencyId, collateral_amount: Balance, debit_amount: Balance) -> CDPStatus {
 		let stable_currency_id = T::GetStableCurrencyId::get();
 		if let Some(feed_price) = T::PriceSource::get_relative_price(currency_id, stable_currency_id) {
-			let collateral_ratio = Self::calculate_collateral_ratio(currency_id, collateral, debit, feed_price);
-			collateral_ratio < Self::get_liquidation_ratio(currency_id)
+			let collateral_ratio =
+				Self::calculate_collateral_ratio(currency_id, collateral_amount, debit_amount, feed_price);
+			if collateral_ratio < Self::get_liquidation_ratio(currency_id) {
+				CDPStatus::Unsafe
+			} else {
+				CDPStatus::Safe
+			}
 		} else {
-			false
+			CDPStatus::ChecksFailed(Error::<T>::InvalidFeedPrice.into())
 		}
 	}
 
@@ -794,8 +813,8 @@ impl<T: Config> Pallet<T> {
 		let Position { collateral, debit } = <LoansOf<T>>::positions(currency_id, &who);
 		ensure!(!debit.is_zero(), Error::<T>::NoDebitValue);
 		ensure!(
-			!Self::is_cdp_unsafe(currency_id, collateral, debit),
-			Error::<T>::IsUnsafe
+			matches!(Self::check_cdp_status(currency_id, collateral, debit), CDPStatus::Safe),
+			Error::<T>::MustBeSafe
 		);
 
 		// confiscate all collateral and debit of unsafe cdp to cdp treasury
@@ -833,7 +852,10 @@ impl<T: Config> Pallet<T> {
 
 		// ensure the cdp is unsafe
 		ensure!(
-			Self::is_cdp_unsafe(currency_id, collateral, debit),
+			matches!(
+				Self::check_cdp_status(currency_id, collateral, debit),
+				CDPStatus::Unsafe
+			),
 			Error::<T>::MustBeUnsafe
 		);
 
@@ -904,6 +926,7 @@ impl<T: Config> RiskManager<T::AccountId, CurrencyId, Balance, Balance> for Pall
 		currency_id: CurrencyId,
 		collateral_balance: Balance,
 		debit_balance: Balance,
+		check_required_ratio: bool,
 	) -> DispatchResult {
 		if !debit_balance.is_zero() {
 			let debit_value = Self::get_debit_value(currency_id, debit_balance);
@@ -913,11 +936,13 @@ impl<T: Config> RiskManager<T::AccountId, CurrencyId, Balance, Balance> for Pall
 				Self::calculate_collateral_ratio(currency_id, collateral_balance, debit_balance, feed_price);
 
 			// check the required collateral ratio
-			if let Some(required_collateral_ratio) = Self::required_collateral_ratio(currency_id) {
-				ensure!(
-					collateral_ratio >= required_collateral_ratio,
-					Error::<T>::BelowRequiredCollateralRatio
-				);
+			if check_required_ratio {
+				if let Some(required_collateral_ratio) = Self::required_collateral_ratio(currency_id) {
+					ensure!(
+						collateral_ratio >= required_collateral_ratio,
+						Error::<T>::BelowRequiredCollateralRatio
+					);
+				}
 			}
 
 			// check the liquidation ratio

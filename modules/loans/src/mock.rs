@@ -92,6 +92,7 @@ impl orml_tokens::Config for Runtime {
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = ();
 	type MaxLocks = ();
+	type DustRemovalWhitelist = ();
 }
 
 parameter_types! {
@@ -194,11 +195,20 @@ impl RiskManager<AccountId, CurrencyId, Balance, Balance> for MockRiskManager {
 		currency_id: CurrencyId,
 		_collateral_balance: Balance,
 		_debit_balance: Balance,
+		check_required_ratio: bool,
 	) -> DispatchResult {
 		match currency_id {
-			DOT => Err(sp_runtime::DispatchError::Other("mock invalid position error")),
+			DOT => {
+				if check_required_ratio {
+					Err(sp_runtime::DispatchError::Other(
+						"mock below required collateral ratio error",
+					))
+				} else {
+					Err(sp_runtime::DispatchError::Other("mock below liquidation ratio error"))
+				}
+			}
 			BTC => Ok(()),
-			_ => Err(sp_runtime::DispatchError::Other("mock invalid position error")),
+			_ => Err(sp_runtime::DispatchError::Other("mock below liquidation ratio error")),
 		}
 	}
 

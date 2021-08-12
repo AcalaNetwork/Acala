@@ -57,6 +57,7 @@ pub trait RiskManager<AccountId, CurrencyId, Balance, DebitBalance> {
 		currency_id: CurrencyId,
 		collateral_balance: Balance,
 		debit_balance: DebitBalance,
+		check_required_ratio: bool,
 	) -> DispatchResult;
 
 	fn check_debit_cap(currency_id: CurrencyId, total_debit_balance: DebitBalance) -> DispatchResult;
@@ -73,6 +74,7 @@ impl<AccountId, CurrencyId, Balance: Default, DebitBalance> RiskManager<AccountI
 		_currency_id: CurrencyId,
 		_collateral_balance: Balance,
 		_debit_balance: DebitBalance,
+		_check_required_ratio: bool,
 	) -> DispatchResult {
 		Ok(())
 	}

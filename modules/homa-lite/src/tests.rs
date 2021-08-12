@@ -26,7 +26,7 @@ use mock::{
 	dollar, Currencies, Event, ExtBuilder, HomaLite, Origin, Runtime, System, ACALA, ALICE, BOB, INITIAL_BALANCE,
 	INVALID_CALLER, KSM, LKSM, ROOT,
 };
-use sp_runtime::{traits::BadOrigin, ArithmeticError};
+use sp_runtime::traits::BadOrigin;
 
 #[test]
 fn mock_initialize_token_works() {
@@ -42,74 +42,137 @@ fn mock_initialize_token_works() {
 }
 
 #[test]
-fn request_mint_works() {
+fn mint_works() {
 	ExtBuilder::default().build().execute_with(|| {
 		let amount = dollar(1000);
 
-		assert_ok!(HomaLite::set_staking_currency_cap(Origin::signed(ROOT), dollar(1_000)));
-		let current_batch = HomaLite::current_batch();
+		assert_ok!(HomaLite::set_minting_cap(
+			Origin::signed(ROOT),
+			5 * dollar(INITIAL_BALANCE)
+		));
 
 		assert_noop!(
-			HomaLite::request_mint(Origin::signed(ROOT), amount, 0),
+			HomaLite::mint(Origin::signed(ROOT), amount, 0),
 			orml_tokens::Error::<Runtime>::BalanceTooLow
 		);
 
-		assert_ok!(HomaLite::request_mint(Origin::signed(ALICE), amount, 0));
-		assert_eq!(PendingAmount::<Runtime>::get(&current_batch, &ALICE), amount);
+		// Since the exchange rate is not set, use the default 1:10 ratio
+		// liquid = (amount - MintFee) * 10 * (1 - MaxRewardPerEra)
+		//        = 0.99 * (1000 - 0.01)  * 10 = 9899.901
+		let mut liquid = 9_899_901_000_000_000;
+		assert_ok!(HomaLite::mint(Origin::signed(ALICE), amount, 0));
+		assert_eq!(Currencies::free_balance(LKSM, &ALICE), liquid);
 		assert_eq!(
 			System::events().iter().last().unwrap().event,
-			Event::HomaLite(crate::Event::MintRequested(current_batch, ALICE, amount))
+			Event::HomaLite(crate::Event::Minted(ALICE, amount, liquid))
+		);
+		// The total staking currency is now increased.
+		assert_eq!(TotalStakingCurrency::<Runtime>::get(), dollar(1000));
+
+		// Set the total staking amount
+		let lksm_issuance = Currencies::total_issuance(LKSM);
+		assert_eq!(lksm_issuance, 1_009_899_901_000_000_000);
+
+		// Set the exchange rate to 1(S) : 5(L)
+		assert_ok!(HomaLite::set_total_staking_currency(
+			Origin::signed(ROOT),
+			lksm_issuance / 5
+		));
+
+		// The exchange rate is now 1:5 ratio
+		// liquid = (1000 - 0.01) * 1_009_899_901_000_000_000 / 201_979_980_200_000_000 * 0.99
+		liquid = 4_949_950_500_000_000;
+		assert_ok!(HomaLite::mint(Origin::signed(BOB), amount, 0));
+		assert_eq!(Currencies::free_balance(LKSM, &BOB), liquid);
+		assert_eq!(
+			System::events().iter().last().unwrap().event,
+			Event::HomaLite(crate::Event::Minted(BOB, amount, liquid))
 		);
 	});
 }
 
 #[test]
-fn can_request_mint_more_than_once_in_a_batch() {
+fn repeated_mints_have_similar_exchange_rate() {
 	ExtBuilder::default().build().execute_with(|| {
-		let current_batch = HomaLite::current_batch();
-		assert_ok!(HomaLite::set_staking_currency_cap(Origin::signed(ROOT), dollar(10_000)));
+		let amount = dollar(1000);
 
-		assert_ok!(HomaLite::request_mint(Origin::signed(ALICE), dollar(1000), 0));
-		assert_eq!(
-			System::events().iter().last().unwrap().event,
-			Event::HomaLite(crate::Event::MintRequested(current_batch, ALICE, dollar(1000)))
-		);
+		assert_ok!(HomaLite::set_minting_cap(
+			Origin::signed(ROOT),
+			5 * dollar(INITIAL_BALANCE)
+		));
 
-		assert_ok!(HomaLite::request_mint(Origin::signed(ALICE), dollar(500), 0));
-		assert_eq!(
-			System::events().iter().last().unwrap().event,
-			Event::HomaLite(crate::Event::MintRequested(current_batch, ALICE, dollar(500)))
-		);
+		// Set the total staking amount
+		let mut lksm_issuance = Currencies::total_issuance(LKSM);
+		assert_eq!(lksm_issuance, dollar(1_000_000));
 
-		assert_eq!(PendingAmount::<Runtime>::get(&current_batch, &ALICE), dollar(1500));
+		// Set the exchange rate to 1(S) : 5(L)
+		assert_ok!(HomaLite::set_total_staking_currency(
+			Origin::signed(ROOT),
+			lksm_issuance / 5
+		));
+
+		// The exchange rate is now 1:5 ratio
+		// liquid = (1000 - 0.01) * 1000 / 200 * 0.99
+		let liquid_1 = 4_949_950_500_000_000;
+		assert_ok!(HomaLite::mint(Origin::signed(BOB), amount, 0));
+		assert_eq!(Currencies::free_balance(LKSM, &BOB), liquid_1);
+		// The effective exchange rate is lower than the theoretical rate.
+		assert!(liquid_1 < dollar(5000));
+
+		// New total issuance
+		lksm_issuance = Currencies::total_issuance(LKSM);
+		assert_eq!(lksm_issuance, 1_004_949_950_500_000_000);
+		assert_eq!(TotalStakingCurrency::<Runtime>::get(), dollar(201_000));
+
+		// Second exchange
+		// liquid = (1000 - 0.01) * 1004949.9505 / 201000 * 0.99
+		let liquid_2 = 4_949_703_990_002_437;
+		assert_ok!(HomaLite::mint(Origin::signed(BOB), amount, 0));
+		assert_eq!(Currencies::free_balance(LKSM, &BOB), 9_899_654_490_002_437);
+
+		// Since the effective exchange rate is lower than the theortical rate, Liquid currency becomes more
+		// valuable.
+		assert!(liquid_1 > liquid_2);
+
+		// The effective exchange rate should be quite close.
+		// In this example the difffence is about 0.005%
+		assert!(Permill::from_rational(liquid_1 - liquid_2, liquid_1) < Permill::from_rational(5u128, 1_000u128));
+
+		// Now increase the Staking total by 1%
+		assert_eq!(TotalStakingCurrency::<Runtime>::get(), dollar(202_000));
+		assert_ok!(HomaLite::set_total_staking_currency(
+			Origin::signed(ROOT),
+			dollar(204_020)
+		));
+		lksm_issuance = Currencies::total_issuance(LKSM);
+		assert_eq!(lksm_issuance, 1_009_899_654_490_002_437);
+
+		// liquid = (1000 - 0.01) * 1009899.654490002437 / 204020 * 0.99
+		let liquid_3 = 4_900_454_170_858_361;
+		assert_ok!(HomaLite::mint(Origin::signed(BOB), amount, 0));
+		assert_eq!(Currencies::free_balance(LKSM, &BOB), 14_800_108_660_860_799);
+
+		// Increasing the Staking total increases the value of Liquid currency - this makes up for the
+		// staking rewards.
+		assert!(liquid_3 < liquid_2);
+		assert!(liquid_3 < liquid_1);
 	});
 }
 
 #[test]
-fn request_mint_fails_when_below_minimum() {
+fn mint_fails_when_cap_is_exceeded() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(HomaLite::set_staking_currency_cap(Origin::signed(ROOT), dollar(1_000)));
+		assert_ok!(HomaLite::set_minting_cap(Origin::signed(ROOT), dollar(1_000)));
+
 		assert_noop!(
-			HomaLite::request_mint(Origin::signed(ALICE), 1_000, 0),
-			Error::<Runtime>::MintAmountBelowMinimumThreshold
-		);
-	});
-}
-
-#[test]
-fn request_mint_fails_when_cap_is_exceeded() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(HomaLite::set_staking_currency_cap(Origin::signed(ROOT), dollar(1_000)));
-
-		assert_noop!(
-			HomaLite::request_mint(Origin::signed(ALICE), dollar(1_001), 0),
+			HomaLite::mint(Origin::signed(ALICE), dollar(1_001), 0),
 			Error::<Runtime>::ExceededStakingCurrencyMintCap
 		);
 
-		assert_ok!(HomaLite::request_mint(Origin::signed(ALICE), dollar(1_000), 0));
+		assert_ok!(HomaLite::mint(Origin::signed(ALICE), dollar(1_000), 0));
 
 		assert_noop!(
-			HomaLite::request_mint(Origin::signed(ALICE), dollar(1), 0),
+			HomaLite::mint(Origin::signed(ALICE), dollar(1), 0),
 			Error::<Runtime>::ExceededStakingCurrencyMintCap
 		);
 	});
@@ -118,143 +181,39 @@ fn request_mint_fails_when_cap_is_exceeded() {
 #[test]
 fn failed_xcm_transfer_is_handled() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(HomaLite::set_staking_currency_cap(Origin::signed(ROOT), dollar(1_000)));
+		assert_ok!(HomaLite::set_minting_cap(Origin::signed(ROOT), dollar(1_000)));
 
 		// XCM transfer fails if it is called by INVALID_CALLER.
 		assert_noop!(
-			HomaLite::request_mint(Origin::signed(INVALID_CALLER), dollar(1), 0),
+			HomaLite::mint(Origin::signed(INVALID_CALLER), dollar(1), 0),
 			Error::<Runtime>::XcmTransferFailed
 		);
 	});
 }
 
 #[test]
-fn issue_works() {
+fn cannot_set_total_staking_currency_to_zero() {
 	ExtBuilder::default().build().execute_with(|| {
-		let current_batch = HomaLite::current_batch();
-		assert_ok!(HomaLite::set_staking_currency_cap(Origin::signed(ROOT), dollar(10_000)));
-		assert_eq!(current_batch, 0);
-
-		let lksm_issuance = Currencies::total_issuance(LKSM);
-		assert_ok!(HomaLite::request_mint(Origin::signed(ALICE), dollar(1000), 0));
-		assert_ok!(HomaLite::request_mint(Origin::signed(BOB), dollar(500), 0));
-
-		assert_ok!(HomaLite::issue(Origin::signed(ROOT), dollar(3000)));
-		assert_eq!(
-			System::events().iter().last().unwrap().event,
-			Event::HomaLite(crate::Event::BatchProcessed(0, dollar(3000), lksm_issuance))
-		);
-
-		assert_eq!(
-			BatchTotalIssuanceInfo::<Runtime>::get(0),
-			Some(TotalIssuanceInfo {
-				staking_total: dollar(3000),
-				liquid_total: lksm_issuance,
-			})
-		);
-		assert_eq!(BatchTotalIssuanceInfo::<Runtime>::get(1), None);
-		assert_eq!(HomaLite::current_batch(), 1);
-
-		assert_ok!(HomaLite::issue(Origin::signed(ROOT), dollar(1)));
-		assert_eq!(
-			System::events().iter().last().unwrap().event,
-			Event::HomaLite(crate::Event::BatchProcessed(1, dollar(1), lksm_issuance))
-		);
-		assert_eq!(HomaLite::current_batch(), 2);
-	});
-}
-
-#[test]
-fn issue_can_handle_failed_cases() {
-	ExtBuilder::default().build().execute_with(|| {
-		// Total issuance cannot be set to zero
 		assert_noop!(
-			HomaLite::issue(Origin::signed(ROOT), 0),
-			Error::<Runtime>::InvalidStakedCurrencyTotalIssuance
+			HomaLite::set_total_staking_currency(Origin::signed(ROOT), 0),
+			Error::<Runtime>::InvalidTotalStakingCurrency
 		);
-
-		// Only Issuer Origin is allowed to make issue call.
-		assert_noop!(HomaLite::issue(Origin::signed(ALICE), 0), BadOrigin);
-
-		assert_eq!(HomaLite::current_batch(), 0);
-	});
-}
-
-#[test]
-fn claim_works() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(HomaLite::set_staking_currency_cap(Origin::signed(ROOT), dollar(10_000)));
-
-		let lksm_issuance = Currencies::total_issuance(LKSM);
-		let ksm_issuance = lksm_issuance * 5;
-		assert_ok!(HomaLite::request_mint(Origin::signed(ALICE), dollar(1000), 0));
-		assert_ok!(HomaLite::request_mint(Origin::signed(BOB), dollar(5000), 0));
-
-		let alice_yield = dollar(1000) * lksm_issuance / ksm_issuance;
-		let bob_yield = dollar(5000) * lksm_issuance / ksm_issuance;
-
-		// Trying to claim without "issue" call will fail
-		assert_noop!(
-			HomaLite::claim(Origin::signed(ALICE), ALICE, 0),
-			Error::<Runtime>::LiquidCurrencyNotIssuedForThisBatch
-		);
-
-		assert_ok!(HomaLite::issue(Origin::signed(ROOT), ksm_issuance));
-
-		// Now that the liquid currency for batch 0 is issued, users can claim them.
-		assert_ok!(HomaLite::claim(Origin::signed(ALICE), ALICE, 0));
+		assert_ok!(HomaLite::set_total_staking_currency(Origin::signed(ROOT), 1));
+		assert_eq!(TotalStakingCurrency::<Runtime>::get(), 1);
 		assert_eq!(
 			System::events().iter().last().unwrap().event,
-			Event::HomaLite(crate::Event::LiquidCurrencyClaimed(0, ALICE, alice_yield))
+			Event::HomaLite(crate::Event::TotalStakingCurrencySet(1))
 		);
-		assert_eq!(Currencies::free_balance(LKSM, &ALICE), alice_yield);
-
-		assert_ok!(HomaLite::claim(Origin::signed(ALICE), BOB, 0));
-		assert_eq!(
-			System::events().iter().last().unwrap().event,
-			Event::HomaLite(crate::Event::LiquidCurrencyClaimed(0, BOB, bob_yield))
-		);
-		assert_eq!(Currencies::free_balance(LKSM, &BOB), bob_yield);
 	});
 }
 
 #[test]
-fn claim_can_handle_math_errors() {
+fn requires_root_to_set_total_staking_currency() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(HomaLite::set_staking_currency_cap(Origin::signed(ROOT), dollar(1_000)));
-
-		// Creates zero total issuance to trigger divide by zero error
-		let zero_issuance = TotalIssuanceInfo {
-			staking_total: 0,
-			liquid_total: 0,
-		};
-		BatchTotalIssuanceInfo::<Runtime>::insert(0, zero_issuance);
-
-		assert_ok!(HomaLite::request_mint(Origin::signed(ALICE), dollar(1000), 0));
-
-		// Now that the liquid currency for Batch 0 is issued, users can claim them.
 		assert_noop!(
-			HomaLite::claim(Origin::signed(ALICE), ALICE, 0),
-			ArithmeticError::Overflow
+			HomaLite::set_total_staking_currency(Origin::signed(ALICE), 0),
+			BadOrigin
 		);
-	});
-}
-
-#[test]
-fn repeated_claims_has_no_effect() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(HomaLite::set_staking_currency_cap(Origin::signed(ROOT), dollar(20_000)));
-
-		assert_ok!(HomaLite::request_mint(Origin::signed(ALICE), dollar(1000), 0));
-		assert_ok!(HomaLite::issue(Origin::signed(ROOT), dollar(10000)));
-		assert_ok!(HomaLite::claim(Origin::signed(ALICE), ALICE, 0));
-
-		let alice_balance = Currencies::free_balance(LKSM, &ALICE);
-
-		// The mint has already been claimed. claiming again does nothing.
-		assert_ok!(HomaLite::claim(Origin::signed(ALICE), ALICE, 0));
-
-		assert_eq!(Currencies::free_balance(LKSM, &ALICE), alice_balance);
 	});
 }
 
@@ -266,12 +225,12 @@ fn can_set_mint_cap() {
 
 		// Requires Root previlege.
 		assert_noop!(
-			HomaLite::set_staking_currency_cap(Origin::signed(ALICE), dollar(1_000)),
+			HomaLite::set_minting_cap(Origin::signed(ALICE), dollar(1_000)),
 			BadOrigin
 		);
 
 		// Set the cap.
-		assert_ok!(HomaLite::set_staking_currency_cap(Origin::signed(ROOT), dollar(1_000)));
+		assert_ok!(HomaLite::set_minting_cap(Origin::signed(ROOT), dollar(1_000)));
 
 		// Cap should be set now.
 		assert_eq!(StakingCurrencyMintCap::<Runtime>::get(), dollar(1_000));
