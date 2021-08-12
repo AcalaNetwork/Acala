@@ -141,7 +141,7 @@ cumulus-test-relay-sproof-builder = { git = "https://github.com/paritytech/cumul
 acala-service = { path = "../../node/service", features = ["with-all-runtime"] }
 
 [features]
-default = ["std", "with-karura-runtime"]
+default = ["std"]
 no_std = []
 with-mandala-runtime=[
 	"acala-service/with-mandala-runtime"

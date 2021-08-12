@@ -1470,7 +1470,7 @@ parameter_types! {
 #[cfg(not(feature = "with-ethereum-compatibility"))]
 parameter_types! {
 	pub NativeTokenExistentialDeposit: Balance = 10 * cent(ACA);
-	pub const NewContractExtraBytes: u32 = 10_000;
+	pub const NewContractExtraBytes: u32 = 10_000_000;
 	pub StorageDepositPerByte: Balance = microcent(ACA);
 	pub const MaxCodeSize: u32 = 60 * 1024;
 	pub DeveloperDeposit: Balance = dollar(ACA);
@@ -2348,10 +2348,10 @@ mod tests {
 			) > 0
 		);
 	}
-}
 
-#[test]
-fn transfer() {
-	let t = Call::System(frame_system::Call::remark(vec![1, 2, 3])).encode();
-	println!("t: {:?}", t);
+	#[test]
+	fn transfer() {
+		let t = Call::System(frame_system::Call::remark(vec![1, 2, 3])).encode();
+		println!("t: {:?}", t);
+	}
 }

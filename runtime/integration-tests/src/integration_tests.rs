@@ -62,13 +62,13 @@ use runtime_common::{dollar, ACA, AUSD, DOT, KSM, LDOT, LKSM, RENBTC};
 
 #[cfg(feature = "with-mandala-runtime")]
 use mandala_runtime::{
-	get_all_module_accounts, AcalaOracle, AccountId, AuctionManager, Authority, AuthoritysOriginId, Balance, Balances,
-	BlockNumber, Call, CdpEngine, CdpTreasury, CreateClassDeposit, CreateTokenDeposit, Currencies, CurrencyId,
-	CurrencyIdConvert, DataDepositPerByte, Dex, EmergencyShutdown, EnabledTradingPairs, Event, EvmAccounts,
-	ExistentialDeposits, Get, GetNativeCurrencyId, Loans, MultiLocation, NativeTokenExistentialDeposit, NetworkId,
-	NftPalletId, OneDay, Origin, OriginCaller, ParachainInfo, ParachainSystem, Perbill, Proxy, Runtime, Scheduler,
-	Session, SessionManager, SevenDays, System, TokenSymbol, Tokens, TreasuryAccount, TreasuryPalletId, Vesting,
-	XcmConfig, XcmExecutor, NFT,
+	create_x2_parachain_multilocation, get_all_module_accounts, AcalaOracle, AccountId, AuctionManager, Authority,
+	AuthoritysOriginId, Balance, Balances, BlockNumber, Call, CdpEngine, CdpTreasury, CreateClassDeposit,
+	CreateTokenDeposit, Currencies, CurrencyId, CurrencyIdConvert, DataDepositPerByte, Dex, EmergencyShutdown,
+	EnabledTradingPairs, Event, EvmAccounts, ExistentialDeposits, Get, GetNativeCurrencyId, Loans, MultiLocation,
+	NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, Origin, OriginCaller, ParachainInfo,
+	ParachainSystem, Perbill, Proxy, Runtime, Scheduler, Session, SessionManager, SevenDays, System, TokenSymbol,
+	Tokens, TreasuryAccount, TreasuryPalletId, Vesting, XcmConfig, XcmExecutor, NFT,
 };
 
 #[cfg(feature = "with-mandala-runtime")]
@@ -84,13 +84,13 @@ const LPTOKEN: CurrencyId = CurrencyId::DexShare(DexShare::Token(TokenSymbol::AU
 
 #[cfg(feature = "with-karura-runtime")]
 use karura_runtime::{
-	get_all_module_accounts, AcalaOracle, AccountId, AuctionManager, Authority, AuthoritysOriginId, Balance, Balances,
-	BlockNumber, Call, CdpEngine, CdpTreasury, CreateClassDeposit, CreateTokenDeposit, Currencies, CurrencyId,
-	CurrencyIdConvert, DataDepositPerByte, Dex, EmergencyShutdown, Event, EvmAccounts, ExistentialDeposits, Get,
-	GetNativeCurrencyId, KaruraFoundationAccounts, Loans, MultiLocation, NativeTokenExistentialDeposit, NetworkId,
-	NftPalletId, OneDay, Origin, OriginCaller, ParachainInfo, ParachainSystem, Perbill, Proxy, Runtime, Scheduler,
-	Session, SessionManager, SevenDays, System, TokenSymbol, Tokens, TreasuryPalletId, Vesting, XcmConfig, XcmExecutor,
-	NFT,
+	create_x2_parachain_multilocation, get_all_module_accounts, AcalaOracle, AccountId, AuctionManager, Authority,
+	AuthoritysOriginId, Balance, Balances, BlockNumber, Call, CdpEngine, CdpTreasury, CreateClassDeposit,
+	CreateTokenDeposit, Currencies, CurrencyId, CurrencyIdConvert, DataDepositPerByte, Dex, EmergencyShutdown, Event,
+	EvmAccounts, ExistentialDeposits, Get, GetNativeCurrencyId, KaruraFoundationAccounts, Loans, MultiLocation,
+	NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, Origin, OriginCaller, ParachainInfo,
+	ParachainSystem, Perbill, Proxy, Runtime, Scheduler, Session, SessionManager, SevenDays, System, TokenSymbol,
+	Tokens, TreasuryPalletId, Vesting, XcmConfig, XcmExecutor, NFT,
 };
 
 #[cfg(feature = "with-karura-runtime")]
@@ -1554,4 +1554,41 @@ fn sanity_check_weight_per_time_constants_are_as_expected() {
 	assert_eq!(WEIGHT_PER_MILLIS, WEIGHT_PER_SECOND / 1000);
 	assert_eq!(WEIGHT_PER_MICROS, WEIGHT_PER_MILLIS / 1000);
 	assert_eq!(WEIGHT_PER_NANOS, WEIGHT_PER_MICROS / 1000);
+}
+
+#[test]
+fn parachain_subaccounts_are_unique() {
+	ExtBuilder::default().build().execute_with(|| {
+		#[cfg(feature = "with-mandala-runtime")]
+		let relaychain = NetworkId::Polkadot;
+		#[cfg(feature = "with-karura-runtime")]
+		let relaychain = NetworkId::Kusama;
+
+		let parachain: AccountId = ParachainInfo::parachain_id().into_account();
+		assert_eq!(
+			parachain,
+			hex_literal::hex!["7061726164000000000000000000000000000000000000000000000000000000"].into()
+		);
+
+		assert_eq!(
+			create_x2_parachain_multilocation(0),
+			MultiLocation::X2(
+				Junction::Parent,
+				Junction::AccountId32 {
+					network: relaychain.clone(),
+					id: hex_literal::hex!["00465d6ab005c2fd8c4e0bf22a60fe3ce5ff035072ec74679f4babb4c6f00833"].into(),
+				}
+			)
+		);
+		assert_eq!(
+			create_x2_parachain_multilocation(1),
+			MultiLocation::X2(
+				Junction::Parent,
+				Junction::AccountId32 {
+					network: relaychain,
+					id: hex_literal::hex!["f0516bdbb7c54cac650736b9891b59242dd8e4e1c14df46dc39550fbb407dbe9"].into(),
+				}
+			)
+		);
+	});
 }
