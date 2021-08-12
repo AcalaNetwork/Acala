@@ -410,7 +410,7 @@ impl<T: Config> Pallet<T> {
 			TradingDirection::from_currency_ids(supply_token, target_token).ok_or(Error::<T>::InvalidCurrencyId)?;
 		let best_path =
 			Self::optimal_path_with_exact_target(pair, target_amount).ok_or(Error::<T>::NoPossibleTradingPath)?;
-		ensure!(best_path.1 < max_supply_amount, Error::<T>::AboveMaximumSupply);
+		ensure!(best_path.1 <= max_supply_amount, Error::<T>::AboveMaximumSupply);
 		// defensively checks if trading path limit is too long should never actually be too long, is a bug
 		// if this error appears
 		ensure!(
