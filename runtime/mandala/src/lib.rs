@@ -36,9 +36,9 @@ use codec::{Decode, Encode};
 pub use frame_support::{
 	construct_runtime, log, parameter_types,
 	traits::{
-		All, ContainsLengthBound, Currency as PalletCurrency, EnsureOrigin, Filter, Get, Imbalance, InstanceFilter,
-		IsSubType, IsType, KeyOwnerProofSystem, LockIdentifier, MaxEncodedLen, OnUnbalanced, Randomness, SortedMembers,
-		U128CurrencyToVote, WithdrawReasons,
+		All, Contains, ContainsLengthBound, Currency as PalletCurrency, EnsureOrigin, Filter, Get, Imbalance,
+		InstanceFilter, IsSubType, IsType, KeyOwnerProofSystem, LockIdentifier, MaxEncodedLen, OnUnbalanced,
+		Randomness, SortedMembers, U128CurrencyToVote, WithdrawReasons,
 	},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight, WEIGHT_PER_SECOND},
@@ -64,7 +64,7 @@ use sp_core::{crypto::KeyTypeId, OpaqueMetadata, H160};
 use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{
-		AccountIdConversion, BadOrigin, BlakeTwo256, Block as BlockT, Convert, SaturatedConversion, StaticLookup, Zero,
+		AccountIdConversion, BadOrigin, BlakeTwo256, Block as BlockT, Convert, SaturatedConversion, StaticLookup,
 	},
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, DispatchResult, FixedPointNumber,
@@ -186,8 +186,9 @@ pub fn get_all_module_accounts() -> Vec<AccountId> {
 		IncentivesPalletId::get().into_account(),
 		TreasuryReservePalletId::get().into_account(),
 		CollatorPotId::get().into_account(),
-		ZeroAccountId::get(),
 		StarportPalletId::get().into_account(),
+		ZeroAccountId::get(),
+		UnreleasedNativeVaultAccountId::get(),
 	]
 }
 
@@ -768,9 +769,16 @@ impl DataFeeder<CurrencyId, Price, AccountId> for AggregatedDataProvider {
 	}
 }
 
+pub struct DustRemovalWhitelist;
+impl Contains<AccountId> for DustRemovalWhitelist {
+	fn contains(a: &AccountId) -> bool {
+		get_all_module_accounts().contains(a)
+	}
+}
+
 parameter_type_with_key! {
 	pub ExistentialDeposits: |_currency_id: CurrencyId| -> Balance {
-		Zero::zero()
+		1
 	};
 }
 
@@ -787,6 +795,7 @@ impl orml_tokens::Config for Runtime {
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = orml_tokens::TransferDust<Runtime, TreasuryAccount>;
 	type MaxLocks = MaxLocks;
+	type DustRemovalWhitelist = DustRemovalWhitelist;
 }
 
 parameter_types! {

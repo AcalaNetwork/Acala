@@ -94,6 +94,7 @@ impl tokens::Config for Runtime {
 	type OnDust = tokens::TransferDust<Runtime, DustAccount>;
 	type WeightInfo = ();
 	type MaxLocks = MaxLocks;
+	type DustRemovalWhitelist = ();
 }
 
 pub const NATIVE_CURRENCY_ID: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);

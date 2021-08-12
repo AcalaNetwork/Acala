@@ -79,9 +79,9 @@ mod weights;
 pub use frame_support::{
 	construct_runtime, log, parameter_types,
 	traits::{
-		ContainsLengthBound, Currency as PalletCurrency, EnsureOrigin, Filter, Get, Imbalance, InstanceFilter, IsType,
-		KeyOwnerProofSystem, LockIdentifier, MaxEncodedLen, OnUnbalanced, Randomness, SortedMembers,
-		U128CurrencyToVote,
+		Contains, ContainsLengthBound, Currency as PalletCurrency, EnsureOrigin, Filter, Get, Imbalance,
+		InstanceFilter, IsType, KeyOwnerProofSystem, LockIdentifier, MaxEncodedLen, OnUnbalanced, Randomness,
+		SortedMembers, U128CurrencyToVote,
 	},
 	weights::{constants::RocksDbWeight, IdentityFee, Weight},
 	PalletId, RuntimeDebug, StorageValue,
@@ -174,6 +174,7 @@ pub fn get_all_module_accounts() -> Vec<AccountId> {
 		CollatorPotId::get().into_account(),
 		TreasuryReservePalletId::get().into_account(),
 		ZeroAccountId::get(),
+		UnreleasedNativeVaultAccountId::get(),
 	]
 }
 
@@ -751,6 +752,13 @@ impl DataFeeder<CurrencyId, Price, AccountId> for AggregatedDataProvider {
 	}
 }
 
+pub struct DustRemovalWhitelist;
+impl Contains<AccountId> for DustRemovalWhitelist {
+	fn contains(a: &AccountId) -> bool {
+		get_all_module_accounts().contains(a)
+	}
+}
+
 parameter_type_with_key! {
 	pub ExistentialDeposits: |_currency_id: CurrencyId| -> Balance {
 		Zero::zero()
@@ -770,6 +778,7 @@ impl orml_tokens::Config for Runtime {
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = orml_tokens::TransferDust<Runtime, TreasuryAccount>;
 	type MaxLocks = MaxLocks;
+	type DustRemovalWhitelist = DustRemovalWhitelist;
 }
 
 parameter_types! {

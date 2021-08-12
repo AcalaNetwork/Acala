@@ -86,9 +86,9 @@ mod weights;
 pub use frame_support::{
 	construct_runtime, log, parameter_types,
 	traits::{
-		All, ContainsLengthBound, Currency as PalletCurrency, EnsureOrigin, Filter, Get, Imbalance, InstanceFilter,
-		IsSubType, IsType, KeyOwnerProofSystem, LockIdentifier, MaxEncodedLen, OnUnbalanced, Randomness, SortedMembers,
-		U128CurrencyToVote,
+		All, Contains, ContainsLengthBound, Currency as PalletCurrency, EnsureOrigin, Filter, Get, Imbalance,
+		InstanceFilter, IsSubType, IsType, KeyOwnerProofSystem, LockIdentifier, MaxEncodedLen, OnUnbalanced,
+		Randomness, SortedMembers, U128CurrencyToVote,
 	},
 	weights::{constants::RocksDbWeight, IdentityFee, Weight},
 	PalletId, RuntimeDebug, StorageValue,
@@ -157,7 +157,6 @@ parameter_types! {
 	pub const LoansPalletId: PalletId = PalletId(*b"aca/loan");
 	pub const DEXPalletId: PalletId = PalletId(*b"aca/dexm");
 	pub const CDPTreasuryPalletId: PalletId = PalletId(*b"aca/cdpt");
-	pub const StakingPoolPalletId: PalletId = PalletId(*b"aca/stkp");
 	pub const HonzonTreasuryPalletId: PalletId = PalletId(*b"aca/hztr");
 	pub const HomaTreasuryPalletId: PalletId = PalletId(*b"aca/hmtr");
 	pub const IncentivesPalletId: PalletId = PalletId(*b"aca/inct");
@@ -171,17 +170,17 @@ parameter_types! {
 
 pub fn get_all_module_accounts() -> Vec<AccountId> {
 	vec![
-		TreasuryPalletId::get().into_account(),
 		LoansPalletId::get().into_account(),
-		DEXPalletId::get().into_account(),
 		CDPTreasuryPalletId::get().into_account(),
-		StakingPoolPalletId::get().into_account(),
-		HonzonTreasuryPalletId::get().into_account(),
-		HomaTreasuryPalletId::get().into_account(),
-		IncentivesPalletId::get().into_account(),
 		CollatorPotId::get().into_account(),
+		DEXPalletId::get().into_account(),
+		HomaTreasuryPalletId::get().into_account(),
+		HonzonTreasuryPalletId::get().into_account(),
+		IncentivesPalletId::get().into_account(),
+		TreasuryPalletId::get().into_account(),
 		TreasuryReservePalletId::get().into_account(),
 		ZeroAccountId::get(),
+		UnreleasedNativeVaultAccountId::get(),
 	]
 }
 
@@ -755,6 +754,13 @@ parameter_type_with_key! {
 	};
 }
 
+pub struct DustRemovalWhitelist;
+impl Contains<AccountId> for DustRemovalWhitelist {
+	fn contains(a: &AccountId) -> bool {
+		get_all_module_accounts().contains(a)
+	}
+}
+
 parameter_types! {
 	pub KaruraTreasuryAccount: AccountId = TreasuryPalletId::get().into_account();
 }
@@ -768,6 +774,7 @@ impl orml_tokens::Config for Runtime {
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = orml_tokens::TransferDust<Runtime, KaruraTreasuryAccount>;
 	type MaxLocks = MaxLocks;
+	type DustRemovalWhitelist = DustRemovalWhitelist;
 }
 
 parameter_types! {
