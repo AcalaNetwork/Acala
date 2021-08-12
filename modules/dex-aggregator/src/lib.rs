@@ -257,7 +257,7 @@ impl<T: Config> Pallet<T> {
 						}
 					}
 
-					if pair == pool.1.swap() {
+					else if pair == pool.1.swap() {
 						if let Some(new_balance) = Self::get_target_amount(vec![pool.swap()], supply_amount) {
 							if new_balance > optimal_balance {
 								optimal_balance = new_balance;
