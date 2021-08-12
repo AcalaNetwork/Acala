@@ -28,7 +28,7 @@
 use frame_support::{pallet_prelude::*, transactional};
 use frame_system::pallet_prelude::*;
 use primitives::{Balance, CurrencyId};
-use sp_runtime::SaturatedConversion;
+use sp_runtime::{traits::Zero, SaturatedConversion};
 use sp_std::vec;
 use support::{AggregatorSuper, AvailablePool, TradingDirection};
 
