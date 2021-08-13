@@ -804,7 +804,7 @@ parameter_type_with_key! {
 				}
 			},
 			CurrencyId::Erc20(_) => Balance::max_value(), // not handled by orml-tokens
-			CurrencyId::ChainSafe(_) => Balance::max_value(), // TODO: update this before we enable ChainSafe bridge
+			CurrencyId::ChainSafe(_) => 1, // TODO: update this before we enable ChainSafe bridge
 		}
 	};
 }
