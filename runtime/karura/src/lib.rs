@@ -1465,7 +1465,7 @@ pub fn create_x2_parachain_multilocation(index: u16) -> MultiLocation {
 	MultiLocation::X2(
 		Junction::Parent,
 		Junction::AccountId32 {
-			network: RelayNetwork::get(),
+			network: NetworkId::Any,
 			id: Utility::derivative_account_id(ParachainInfo::get().into_account(), index).into(),
 		},
 	)
