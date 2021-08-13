@@ -275,6 +275,7 @@ impl pallet_authorship::Config for Runtime {
 
 parameter_types! {
 	pub const DisabledValidatorsThreshold: Perbill = Perbill::from_percent(33);
+	pub const Period: u32 = 6 * HOURS; // TODO: delete this
 }
 
 impl pallet_session::Config for Runtime {
