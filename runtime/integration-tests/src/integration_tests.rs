@@ -71,17 +71,6 @@ use mandala_runtime::{
 	Tokens, TreasuryAccount, TreasuryPalletId, Vesting, XcmConfig, XcmExecutor, NFT,
 };
 
-#[cfg(feature = "with-mandala-runtime")]
-pub const NATIVE_CURRENCY: CurrencyId = ACA;
-#[cfg(feature = "with-mandala-runtime")]
-pub const LIQUID_CURRENCY: CurrencyId = LDOT;
-#[cfg(feature = "with-mandala-runtime")]
-pub const RELAY_CHAIN_CURRENCY: CurrencyId = DOT;
-#[cfg(feature = "with-mandala-runtime")]
-pub const USD_CURRENCY: CurrencyId = AUSD;
-#[cfg(feature = "with-mandala-runtime")]
-const LPTOKEN: CurrencyId = CurrencyId::DexShare(DexShare::Token(TokenSymbol::AUSD), DexShare::Token(TokenSymbol::DOT));
-
 #[cfg(feature = "with-karura-runtime")]
 use karura_runtime::{
 	create_x2_parachain_multilocation, get_all_module_accounts, AcalaOracle, AccountId, AuctionManager, Authority,
@@ -102,16 +91,30 @@ parameter_types! {
 	];
 	pub TreasuryAccount: AccountId = TreasuryPalletId::get().into_account();
 }
+
+#[cfg(feature = "with-mandala-runtime")]
+mod runtime_types {
+	use crate::integration_tests::{CurrencyId, DexShare, TokenSymbol, ACA, AUSD, DOT, LDOT};
+	pub const NATIVE_CURRENCY: CurrencyId = ACA;
+	pub const LIQUID_CURRENCY: CurrencyId = LDOT;
+	pub const RELAY_CHAIN_CURRENCY: CurrencyId = DOT;
+	pub const USD_CURRENCY: CurrencyId = AUSD;
+	pub const LPTOKEN: CurrencyId =
+		CurrencyId::DexShare(DexShare::Token(TokenSymbol::AUSD), DexShare::Token(TokenSymbol::DOT));
+}
+
 #[cfg(feature = "with-karura-runtime")]
-pub const NATIVE_CURRENCY: CurrencyId = KAR;
-#[cfg(feature = "with-karura-runtime")]
-pub const LIQUID_CURRENCY: CurrencyId = LKSM;
-#[cfg(feature = "with-karura-runtime")]
-pub const RELAY_CHAIN_CURRENCY: CurrencyId = KSM;
-#[cfg(feature = "with-karura-runtime")]
-pub const USD_CURRENCY: CurrencyId = KUSD;
-#[cfg(feature = "with-karura-runtime")]
-const LPTOKEN: CurrencyId = CurrencyId::DexShare(DexShare::Token(TokenSymbol::KUSD), DexShare::Token(TokenSymbol::KSM));
+mod runtime_types {
+	use crate::integration_tests::{CurrencyId, DexShare, TokenSymbol, KAR, KSM, KUSD, LKSM};
+	pub const NATIVE_CURRENCY: CurrencyId = KAR;
+	pub const LIQUID_CURRENCY: CurrencyId = LKSM;
+	pub const RELAY_CHAIN_CURRENCY: CurrencyId = KSM;
+	pub const USD_CURRENCY: CurrencyId = KUSD;
+	pub const LPTOKEN: CurrencyId =
+		CurrencyId::DexShare(DexShare::Token(TokenSymbol::KUSD), DexShare::Token(TokenSymbol::KSM));
+}
+
+pub use runtime_types::*;
 
 const ORACLE1: [u8; 32] = [0u8; 32];
 const ORACLE2: [u8; 32] = [1u8; 32];

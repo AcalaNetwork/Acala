@@ -2357,10 +2357,4 @@ mod tests {
 			) > 0
 		);
 	}
-
-	#[test]
-	fn transfer() {
-		let t = Call::System(frame_system::Call::remark(vec![1, 2, 3])).encode();
-		println!("t: {:?}", t);
-	}
 }
