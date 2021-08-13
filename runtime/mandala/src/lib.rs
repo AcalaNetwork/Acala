@@ -123,7 +123,7 @@ pub use runtime_common::{
 
 mod authority;
 mod benchmarking;
-mod constants;
+pub mod constants;
 
 /// This runtime version.
 #[sp_version::runtime_version]
@@ -777,8 +777,35 @@ impl Contains<AccountId> for DustRemovalWhitelist {
 }
 
 parameter_type_with_key! {
-	pub ExistentialDeposits: |_currency_id: CurrencyId| -> Balance {
-		1
+	pub ExistentialDeposits: |currency_id: CurrencyId| -> Balance {
+		match currency_id {
+			CurrencyId::Token(symbol) => match symbol {
+				TokenSymbol::AUSD => cent(*currency_id),
+				TokenSymbol::DOT => 10 * millicent(*currency_id),
+				TokenSymbol::LDOT => 50 * millicent(*currency_id),
+
+				TokenSymbol::KAR |
+				TokenSymbol::KUSD |
+				TokenSymbol::KSM |
+				TokenSymbol::LKSM |
+				TokenSymbol::RENBTC |
+				TokenSymbol::ACA |
+				TokenSymbol::CASH => Balance::max_value() // unsupported
+			},
+			CurrencyId::DexShare(dex_share_0, _) => {
+				let currency_id_0: CurrencyId = (*dex_share_0).into();
+
+				// initial dex share amount is calculated based on currency_id_0,
+				// use the ED of currency_id_0 as the ED of lp token.
+				if currency_id_0 == GetNativeCurrencyId::get() {
+					NativeTokenExistentialDeposit::get()
+				} else {
+					Self::get(&currency_id_0)
+				}
+			},
+			CurrencyId::Erc20(_) => Balance::max_value(), // not handled by orml-tokens
+			CurrencyId::ChainSafe(_) => 1, // TODO: update this before we enable ChainSafe bridge
+		}
 	};
 }
 
@@ -1293,8 +1320,8 @@ impl module_homa_validator_list::Config for Runtime {
 }
 
 parameter_types! {
-	pub CreateClassDeposit: Balance = 500 * millicent(ACA);
-	pub CreateTokenDeposit: Balance = 100 * millicent(ACA);
+	pub CreateClassDeposit: Balance = 20 * dollar(ACA);
+	pub CreateTokenDeposit: Balance = 2 * dollar(ACA);
 	pub MaxAttributesBytes: u32 = 2048;
 }
 
@@ -1441,7 +1468,7 @@ parameter_types! {
 
 #[cfg(feature = "with-ethereum-compatibility")]
 parameter_types! {
-	pub const NativeTokenExistentialDeposit: Balance = 1;
+	pub NativeTokenExistentialDeposit: Balance = 10 * cent(ACA);
 	pub const NewContractExtraBytes: u32 = 0;
 	pub const StorageDepositPerByte: Balance = 0;
 	pub const MaxCodeSize: u32 = 0x6000;
@@ -1451,8 +1478,8 @@ parameter_types! {
 
 #[cfg(not(feature = "with-ethereum-compatibility"))]
 parameter_types! {
-	pub NativeTokenExistentialDeposit: Balance = microcent(ACA);
-	pub const NewContractExtraBytes: u32 = 10_000;
+	pub NativeTokenExistentialDeposit: Balance = 10 * cent(ACA);
+	pub const NewContractExtraBytes: u32 = 10_000_000;
 	pub StorageDepositPerByte: Balance = microcent(ACA);
 	pub const MaxCodeSize: u32 = 60 * 1024;
 	pub DeveloperDeposit: Balance = dollar(ACA);
@@ -2330,10 +2357,4 @@ mod tests {
 			) > 0
 		);
 	}
-}
-
-#[test]
-fn transfer() {
-	let t = Call::System(frame_system::Call::remark(vec![1, 2, 3])).encode();
-	println!("t: {:?}", t);
 }

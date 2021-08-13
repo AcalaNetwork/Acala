@@ -81,7 +81,7 @@ runtime_benchmarks! {
 
 		ChainBridge::whitelist_chain(RawOrigin::Root.into(), dest_chain_id)?;
 		ChainSafeTransfer::register_resource_id(RawOrigin::Root.into(), resource_id, currency_id)?;
-		set_balance(currency_id, &sender, dollar(currency_id) * 100);
+		set_balance(currency_id, &sender, dollar(currency_id) * 101);
 	}: _(RawOrigin::Signed(sender), dest_chain_id, dest, dollar(currency_id) * 10)
 
 	transfer_origin_chain_token_from_bridge {
@@ -93,7 +93,7 @@ runtime_benchmarks! {
 
 		ChainBridge::whitelist_chain(RawOrigin::Root.into(), dest_chain_id)?;
 		ChainSafeTransfer::register_resource_id(RawOrigin::Root.into(), resource_id, currency_id)?;
-		set_balance(currency_id, &sender, dollar(currency_id) * 100);
+		set_balance(currency_id, &sender, dollar(currency_id) * 101);
 		ChainSafeTransfer::transfer_to_bridge(RawOrigin::Signed(sender).into(), currency_id, dest_chain_id, vec![0], dollar(currency_id) * 100)?;
 	}: transfer_from_bridge(chainbridge::EnsureBridge::<Runtime>::successful_origin(), receiver, dollar(currency_id) * 10, resource_id)
 
@@ -106,7 +106,7 @@ runtime_benchmarks! {
 
 		ChainBridge::whitelist_chain(RawOrigin::Root.into(), dest_chain_id)?;
 		ChainSafeTransfer::register_resource_id(RawOrigin::Root.into(), resource_id, currency_id)?;
-		set_balance(currency_id, &sender, 10_000_000_000_000_000_000u128);
+		set_balance(currency_id, &sender, 11_000_000_000_000_000_000u128);
 		ChainSafeTransfer::transfer_to_bridge(RawOrigin::Signed(sender).into(), currency_id, dest_chain_id, vec![0], 10_000_000_000_000_000_000u128)?;
 	}: transfer_from_bridge(chainbridge::EnsureBridge::<Runtime>::successful_origin(), receiver, 1_000_000_000_000_000_000u128, resource_id)
 }
