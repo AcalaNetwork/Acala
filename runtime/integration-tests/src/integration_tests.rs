@@ -1565,7 +1565,7 @@ fn parachain_subaccounts_are_unique() {
 		#[cfg(feature = "with-mandala-runtime")]
 		let relaychain = NetworkId::Polkadot;
 		#[cfg(feature = "with-karura-runtime")]
-		let relaychain = NetworkId::Kusama;
+		let relaychain = NetworkId::Any;
 
 		let parachain: AccountId = ParachainInfo::parachain_id().into_account();
 		assert_eq!(
