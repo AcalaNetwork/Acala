@@ -827,6 +827,9 @@ parameter_types! {
 	pub KaruraFoundationAccounts: Vec<AccountId> = vec![
 		hex_literal::hex!["efd29d0d6e63911ae3727fc71506bc3365c5d3b39e3a1680c857b4457cf8afad"].into(),	// tij5W2NzmtxxAbwudwiZpif9ScmZfgFYdzrJWKYq6oNbSNH
 		hex_literal::hex!["41dd2515ea11692c02306b68a2c6ff69b6606ebddaac40682789cfab300971c4"].into(),	// pndshZqDAC9GutDvv7LzhGhgWeGv5YX9puFA8xDidHXCyjd
+		hex_literal::hex!["dad0a28c620ba73b51234b1b2ae35064d90ee847e2c37f9268294646c5af65eb"].into(),	// tFBV65Ts7wpQPxGM6PET9euNzp4pXdi9DVtgLZDJoFveR9F
+		TreasuryPalletId::get().into_account(),
+		TreasuryReservePalletId::get().into_account(),
 	];
 }
 
