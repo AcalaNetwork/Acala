@@ -19,8 +19,12 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
 
-use frame_support::dispatch::{CallMetadata, GetCallMetadata};
-use frame_support::{pallet_prelude::*, traits::Filter, transactional};
+use frame_support::{
+	dispatch::{CallMetadata, GetCallMetadata},
+	pallet_prelude::*,
+	traits::{Filter, PalletInfoAccess},
+	transactional,
+};
 use frame_system::pallet_prelude::*;
 use sp_runtime::DispatchResult;
 use sp_std::{prelude::*, vec::Vec};
@@ -58,7 +62,9 @@ pub mod module {
 	#[pallet::event]
 	#[pallet::generate_deposit(fn deposit_event)]
 	pub enum Event<T: Config> {
+		/// Paused transaction . \[pallet_name_bytes, function_name_bytes\]
 		TransactionPaused(Vec<u8>, Vec<u8>),
+		/// Unpaused transaction . \[pallet_name_bytes, function_name_bytes\]
 		TransactionUnpaused(Vec<u8>, Vec<u8>),
 	}
 
@@ -82,13 +88,10 @@ pub mod module {
 		pub fn pause_transaction(origin: OriginFor<T>, pallet_name: Vec<u8>, function_name: Vec<u8>) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
 
-			// because the pallet name of this module in runtime is undetermined here,
-			// not allowed to pause calls have same names with these calls to ensure safe
-			// event if maybe there are calls with the same name in other pallet.
-			let function_name_string =
-				sp_std::str::from_utf8(&function_name).map_err(|_| Error::<T>::InvalidCharacter)?;
+			// not allowed to pause calls of this pallet to ensure safe
+			let pallet_name_string = sp_std::str::from_utf8(&pallet_name).map_err(|_| Error::<T>::InvalidCharacter)?;
 			ensure!(
-				function_name_string != "pause_transaction" && function_name_string != "unpause_transaction",
+				pallet_name_string != <Self as PalletInfoAccess>::name(),
 				Error::<T>::CannotPause
 			);
 
@@ -109,7 +112,7 @@ pub mod module {
 			function_name: Vec<u8>,
 		) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
-			if PausedTransactions::<T>::take((pallet_name.clone(), function_name.clone())).is_some() {
+			if PausedTransactions::<T>::take((&pallet_name, &function_name)).is_some() {
 				Self::deposit_event(Event::TransactionUnpaused(pallet_name, function_name));
 			};
 			Ok(())

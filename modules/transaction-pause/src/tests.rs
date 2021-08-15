@@ -36,48 +36,49 @@ fn pause_transaction_work() {
 		System::set_block_number(1);
 
 		assert_noop!(
-			TransactionPause::pause_transaction(
-				Origin::signed(5),
-				"Balances".as_bytes().to_vec(),
-				"transfer".as_bytes().to_vec()
-			),
+			TransactionPause::pause_transaction(Origin::signed(5), b"Balances".to_vec(), b"transfer".to_vec()),
 			BadOrigin
 		);
 
 		assert_eq!(
-			TransactionPause::paused_transactions(("Balances".as_bytes(), "transfer".as_bytes())),
+			TransactionPause::paused_transactions((b"Balances".to_vec(), b"transfer".to_vec())),
 			None
 		);
 		assert_ok!(TransactionPause::pause_transaction(
 			Origin::signed(1),
-			"Balances".as_bytes().to_vec(),
-			"transfer".as_bytes().to_vec()
+			b"Balances".to_vec(),
+			b"transfer".to_vec()
 		));
 		System::assert_last_event(Event::TransactionPause(crate::Event::TransactionPaused(
-			"Balances".as_bytes().to_vec(),
-			"transfer".as_bytes().to_vec(),
+			b"Balances".to_vec(),
+			b"transfer".to_vec(),
 		)));
 		assert_eq!(
-			TransactionPause::paused_transactions(("Balances".as_bytes(), "transfer".as_bytes())),
+			TransactionPause::paused_transactions((b"Balances".to_vec(), b"transfer".to_vec())),
 			Some(())
 		);
 
 		assert_noop!(
 			TransactionPause::pause_transaction(
 				Origin::signed(1),
-				"TransactionPause".as_bytes().to_vec(),
-				"pause_transaction".as_bytes().to_vec()
+				b"TransactionPause".to_vec(),
+				b"pause_transaction".to_vec()
 			),
 			Error::<Runtime>::CannotPause
 		);
 		assert_noop!(
 			TransactionPause::pause_transaction(
 				Origin::signed(1),
-				"TransactionPause".as_bytes().to_vec(),
-				"unpause_transaction".as_bytes().to_vec()
+				b"TransactionPause".to_vec(),
+				b"some_other_call".to_vec()
 			),
 			Error::<Runtime>::CannotPause
 		);
+		assert_ok!(TransactionPause::pause_transaction(
+			Origin::signed(1),
+			b"OtherPallet".to_vec(),
+			b"pause_transaction".to_vec()
+		));
 	});
 }
 
@@ -88,34 +89,30 @@ fn unpause_transaction_work() {
 
 		assert_ok!(TransactionPause::pause_transaction(
 			Origin::signed(1),
-			"Balances".as_bytes().to_vec(),
-			"transfer".as_bytes().to_vec()
+			b"Balances".to_vec(),
+			b"transfer".to_vec()
 		));
 		assert_eq!(
-			TransactionPause::paused_transactions(("Balances".as_bytes(), "transfer".as_bytes())),
+			TransactionPause::paused_transactions((b"Balances".to_vec(), b"transfer".to_vec())),
 			Some(())
 		);
 
 		assert_noop!(
-			TransactionPause::unpause_transaction(
-				Origin::signed(5),
-				"Balances".as_bytes().to_vec(),
-				"transfer".as_bytes().to_vec()
-			),
+			TransactionPause::unpause_transaction(Origin::signed(5), b"Balances".to_vec(), b"transfer".to_vec()),
 			BadOrigin
 		);
 
 		assert_ok!(TransactionPause::unpause_transaction(
 			Origin::signed(1),
-			"Balances".as_bytes().to_vec(),
-			"transfer".as_bytes().to_vec()
+			b"Balances".to_vec(),
+			b"transfer".to_vec()
 		));
 		System::assert_last_event(Event::TransactionPause(crate::Event::TransactionUnpaused(
-			"Balances".as_bytes().to_vec(),
-			"transfer".as_bytes().to_vec(),
+			b"Balances".to_vec(),
+			b"transfer".to_vec(),
 		)));
 		assert_eq!(
-			TransactionPause::paused_transactions(("Balances".as_bytes(), "transfer".as_bytes())),
+			TransactionPause::paused_transactions((b"Balances".to_vec(), b"transfer".to_vec())),
 			None
 		);
 	});
@@ -128,25 +125,25 @@ fn non_paused_transaction_filter_work() {
 		assert_eq!(NonPausedTransactionFilter::<Runtime>::filter(TOKENS_TRANSFER), true);
 		assert_ok!(TransactionPause::pause_transaction(
 			Origin::signed(1),
-			"Balances".as_bytes().to_vec(),
-			"transfer".as_bytes().to_vec()
+			b"Balances".to_vec(),
+			b"transfer".to_vec()
 		));
 		assert_ok!(TransactionPause::pause_transaction(
 			Origin::signed(1),
-			"Tokens".as_bytes().to_vec(),
-			"transfer".as_bytes().to_vec()
+			b"Tokens".to_vec(),
+			b"transfer".to_vec()
 		));
 		assert_eq!(NonPausedTransactionFilter::<Runtime>::filter(BALANCE_TRANSFER), false);
 		assert_eq!(NonPausedTransactionFilter::<Runtime>::filter(TOKENS_TRANSFER), false);
 		assert_ok!(TransactionPause::unpause_transaction(
 			Origin::signed(1),
-			"Balances".as_bytes().to_vec(),
-			"transfer".as_bytes().to_vec()
+			b"Balances".to_vec(),
+			b"transfer".to_vec()
 		));
 		assert_ok!(TransactionPause::unpause_transaction(
 			Origin::signed(1),
-			"Tokens".as_bytes().to_vec(),
-			"transfer".as_bytes().to_vec()
+			b"Tokens".to_vec(),
+			b"transfer".to_vec()
 		));
 		assert_eq!(NonPausedTransactionFilter::<Runtime>::filter(BALANCE_TRANSFER), true);
 		assert_eq!(NonPausedTransactionFilter::<Runtime>::filter(TOKENS_TRANSFER), true);

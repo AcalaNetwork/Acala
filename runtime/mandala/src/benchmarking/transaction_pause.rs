@@ -25,11 +25,11 @@ runtime_benchmarks! {
 	{ Runtime, module_transaction_pause }
 
 	pause_transaction {
-	}: _(RawOrigin::Root, "Balances".as_bytes().to_vec(), "transfer".as_bytes().to_vec())
+	}: _(RawOrigin::Root, b"Balances".to_vec(), b"transfer".to_vec())
 
 	unpause_transaction {
-		TransactionPause::pause_transaction(Origin::root(), "Balances".as_bytes().to_vec(), "transfer".as_bytes().to_vec())?;
-	}: _(RawOrigin::Root, "Balances".as_bytes().to_vec(), "transfer".as_bytes().to_vec())
+		TransactionPause::pause_transaction(Origin::root(), b"Balances".to_vec(), b"transfer".to_vec())?;
+	}: _(RawOrigin::Root, b"Balances".to_vec(), b"transfer".to_vec())
 }
 
 #[cfg(test)]
