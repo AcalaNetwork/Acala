@@ -32,10 +32,6 @@ pub mod weights;
 pub use module::*;
 pub use weights::WeightInfo;
 
-/// Invalid transaction custom error. Returned when validators_len field in heartbeat is
-/// incorrect.
-pub const TRANSACTION_PAUSED: u8 = 0;
-
 #[frame_support::pallet]
 pub mod module {
 	use super::*;
