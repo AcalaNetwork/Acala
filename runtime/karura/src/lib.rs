@@ -193,10 +193,11 @@ parameter_types! {
 pub struct BaseCallFilter;
 impl Filter<Call> for BaseCallFilter {
 	fn filter(call: &Call) -> bool {
-		matches!(
-			call,
-			// Core
-			Call::System(_) | Call::Timestamp(_) | Call::ParachainSystem(_) |
+		module_transaction_pause::NonPausedTransactionFilter::<Runtime>::filter(call)
+			&& matches!(
+				call,
+				// Core
+				Call::System(_) | Call::Timestamp(_) | Call::ParachainSystem(_) |
 			// Utility
 			Call::Scheduler(_) | Call::Utility(_) | Call::Multisig(_) | Call::Proxy(_) |
 			// Councils
@@ -225,7 +226,7 @@ impl Filter<Call> for BaseCallFilter {
 			// Honzon
 			Call::Auction(_) | Call::AuctionManager(_) | Call::Honzon(_) | Call::Loans(_) | Call::Prices(_) |
 			Call::CdpTreasury(_) | Call::CdpEngine(_) | Call::EmergencyShutdown(_)
-		)
+			)
 	}
 }
 
@@ -1055,6 +1056,12 @@ impl module_cdp_treasury::Config for Runtime {
 	type WeightInfo = weights::module_cdp_treasury::WeightInfo<Runtime>;
 }
 
+impl module_transaction_pause::Config for Runtime {
+	type Event = Event;
+	type UpdateOrigin = EnsureRootOrThreeFourthsGeneralCouncil;
+	type WeightInfo = weights::module_transaction_pause::WeightInfo<Runtime>;
+}
+
 parameter_types! {
 	// Sort by fee charge order
 	pub DefaultFeeSwapPathList: Vec<Vec<CurrencyId>> = vec![vec![KUSD, KSM, KAR], vec![KSM, KAR], vec![LKSM, KAR]];
@@ -1607,6 +1614,7 @@ construct_runtime!(
 		Utility: pallet_utility::{Pallet, Call, Event} = 3,
 		Multisig: pallet_multisig::{Pallet, Call, Storage, Event<T>} = 4,
 		Proxy: pallet_proxy::{Pallet, Call, Storage, Event<T>} = 5,
+		TransactionPause: module_transaction_pause::{Pallet, Call, Storage, Event<T>} = 6,
 
 		// Tokens & Related
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 10,
