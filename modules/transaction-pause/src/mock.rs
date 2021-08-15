@@ -23,16 +23,10 @@
 use super::*;
 use frame_support::{construct_runtime, ord_parameter_types, parameter_types};
 use frame_system::EnsureSignedBy;
-use orml_traits::{parameter_type_with_key, DataFeeder};
+use orml_traits::parameter_type_with_key;
 use primitives::{Amount, Balance, CurrencyId, TokenSymbol};
-use sp_core::{H160, H256};
-use sp_runtime::{
-	testing::Header,
-	traits::{IdentityLookup, One as OneT, Zero},
-	DispatchError, FixedPointNumber,
-};
-use sp_std::cell::RefCell;
-use support::{mocks::MockCurrencyIdMapping, ExchangeRate};
+use sp_core::H256;
+use sp_runtime::{testing::Header, traits::IdentityLookup};
 
 pub type AccountId = u128;
 pub const ALICE: AccountId = 1;
