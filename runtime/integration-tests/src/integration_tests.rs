@@ -243,6 +243,14 @@ impl ExtBuilder {
 			.assimilate_storage(&mut t)
 			.unwrap();
 
+		<parachain_info::GenesisConfig as GenesisBuild<Runtime>>::assimilate_storage(
+			&parachain_info::GenesisConfig {
+				parachain_id: 2000.into(),
+			},
+			&mut t,
+		)
+		.unwrap();
+
 		let mut ext = sp_io::TestExternalities::new(t);
 		ext.execute_with(|| System::set_block_number(1));
 		ext
@@ -1562,15 +1570,10 @@ fn sanity_check_weight_per_time_constants_are_as_expected() {
 #[test]
 fn parachain_subaccounts_are_unique() {
 	ExtBuilder::default().build().execute_with(|| {
-		#[cfg(feature = "with-mandala-runtime")]
-		let relaychain = NetworkId::Polkadot;
-		#[cfg(feature = "with-karura-runtime")]
-		let relaychain = NetworkId::Any;
-
 		let parachain: AccountId = ParachainInfo::parachain_id().into_account();
 		assert_eq!(
 			parachain,
-			hex_literal::hex!["7061726164000000000000000000000000000000000000000000000000000000"].into()
+			hex_literal::hex!["70617261d0070000000000000000000000000000000000000000000000000000"].into()
 		);
 
 		assert_eq!(
@@ -1578,8 +1581,8 @@ fn parachain_subaccounts_are_unique() {
 			MultiLocation::X2(
 				Junction::Parent,
 				Junction::AccountId32 {
-					network: relaychain.clone(),
-					id: hex_literal::hex!["00465d6ab005c2fd8c4e0bf22a60fe3ce5ff035072ec74679f4babb4c6f00833"].into(),
+					network: NetworkId::Any,
+					id: hex_literal::hex!["d7b8926b326dd349355a9a7cca6606c1e0eb6fd2b506066b518c7155ff0d8297"].into(),
 				}
 			)
 		);
@@ -1588,8 +1591,8 @@ fn parachain_subaccounts_are_unique() {
 			MultiLocation::X2(
 				Junction::Parent,
 				Junction::AccountId32 {
-					network: relaychain,
-					id: hex_literal::hex!["f0516bdbb7c54cac650736b9891b59242dd8e4e1c14df46dc39550fbb407dbe9"].into(),
+					network: NetworkId::Any,
+					id: hex_literal::hex!["74d37d762e06c6841a5dad64463a9afe0684f7e45245f6a7296ca613cca74669"].into(),
 				}
 			)
 		);
