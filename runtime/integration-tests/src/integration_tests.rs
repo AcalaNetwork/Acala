@@ -20,7 +20,6 @@
 
 use acala_service::chain_spec::evm_genesis;
 use codec::Encode;
-use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
 use frame_support::weights::constants::*;
 use frame_system::RawOrigin;
 
@@ -66,9 +65,9 @@ use mandala_runtime::{
 	AuthoritysOriginId, Balance, Balances, BlockNumber, Call, CdpEngine, CdpTreasury, CreateClassDeposit,
 	CreateTokenDeposit, Currencies, CurrencyId, CurrencyIdConvert, DataDepositPerByte, Dex, EmergencyShutdown,
 	EnabledTradingPairs, Event, EvmAccounts, ExistentialDeposits, Get, GetNativeCurrencyId, Loans, MultiLocation,
-	NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, Origin, OriginCaller, ParachainInfo,
-	ParachainSystem, Perbill, Proxy, Runtime, Scheduler, Session, SessionManager, SevenDays, System, TokenSymbol,
-	Tokens, TreasuryAccount, TreasuryPalletId, Vesting, XcmConfig, XcmExecutor, NFT,
+	NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, Origin, OriginCaller, ParachainInfo, Perbill, Proxy,
+	Runtime, Scheduler, Session, SessionManager, SevenDays, System, TokenSymbol, Tokens, TreasuryAccount,
+	TreasuryPalletId, Vesting, XcmConfig, XcmExecutor, NFT,
 };
 
 #[cfg(feature = "with-karura-runtime")]
@@ -112,6 +111,7 @@ mod runtime_types {
 	pub const USD_CURRENCY: CurrencyId = KUSD;
 	pub const LPTOKEN: CurrencyId =
 		CurrencyId::DexShare(DexShare::Token(TokenSymbol::KUSD), DexShare::Token(TokenSymbol::KSM));
+	pub use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
 }
 
 pub use runtime_types::*;
@@ -137,24 +137,31 @@ fn run_to_block(n: u32) {
 }
 
 fn set_relaychain_block_number(number: BlockNumber) {
-	ParachainSystem::on_initialize(number);
+	#[cfg(feature = "with-mandala-runtime")]
+	{
+		System::set_block_number(number);
+	}
+	#[cfg(feature = "with-karura-runtime")]
+	{
+		ParachainSystem::on_initialize(number);
 
-	let (relay_storage_root, proof) = RelayStateSproofBuilder::default().into_state_root_and_proof();
+		let (relay_storage_root, proof) = RelayStateSproofBuilder::default().into_state_root_and_proof();
 
-	assert_ok!(ParachainSystem::set_validation_data(
-		Origin::none(),
-		cumulus_primitives_parachain_inherent::ParachainInherentData {
-			validation_data: cumulus_primitives_core::PersistedValidationData {
-				parent_head: Default::default(),
-				relay_parent_number: number,
-				relay_parent_storage_root: relay_storage_root,
-				max_pov_size: Default::default(),
-			},
-			relay_chain_state: proof,
-			downward_messages: Default::default(),
-			horizontal_messages: Default::default(),
-		}
-	));
+		assert_ok!(ParachainSystem::set_validation_data(
+			Origin::none(),
+			cumulus_primitives_parachain_inherent::ParachainInherentData {
+				validation_data: cumulus_primitives_core::PersistedValidationData {
+					parent_head: Default::default(),
+					relay_parent_number: number,
+					relay_parent_storage_root: relay_storage_root,
+					max_pov_size: Default::default(),
+				},
+				relay_chain_state: proof,
+				downward_messages: Default::default(),
+				horizontal_messages: Default::default(),
+			}
+		));
+	}
 }
 
 pub struct ExtBuilder {
@@ -472,7 +479,10 @@ fn liquidate_cdp() {
 				AccountId::from(ALICE),
 				10 * dollar(RELAY_CHAIN_CURRENCY),
 				50_000 * dollar(USD_CURRENCY),
+				#[cfg(feature = "with-mandala-runtime")]
 				LiquidationStrategy::Auction,
+				#[cfg(feature = "with-karura-runtime")]
+				LiquidationStrategy::Exchange,
 			));
 			assert!(System::events()
 				.iter()
@@ -483,7 +493,10 @@ fn liquidate_cdp() {
 				Loans::positions(RELAY_CHAIN_CURRENCY, AccountId::from(ALICE)).collateral,
 				0
 			);
+			#[cfg(feature = "with-mandala-runtime")]
 			assert_eq!(AuctionManager::collateral_auctions(0).is_some(), true);
+			#[cfg(feature = "with-karura-runtime")]
+			assert_eq!(AuctionManager::collateral_auctions(0).is_some(), false);
 			assert_eq!(CdpTreasury::debit_pool(), 50_000 * dollar(USD_CURRENCY));
 
 			assert_ok!(CdpEngine::liquidate_unsafe_cdp(
