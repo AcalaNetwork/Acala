@@ -765,15 +765,9 @@ pub mod module {
 		/// - `code`: The new ABI bundle for the contract
 		#[pallet::weight(<T as Config>::WeightInfo::set_code())]
 		#[transactional]
-		pub fn set_code(
-			origin: OriginFor<T>,
-			contract: EvmAddress,
-			code: Vec<u8>,
-			gas_limit: u64,
-			storage_limit: u32,
-		) -> DispatchResultWithPostInfo {
+		pub fn set_code(origin: OriginFor<T>, contract: EvmAddress, code: Vec<u8>) -> DispatchResultWithPostInfo {
 			let root_or_signed = Self::ensure_root_or_signed(origin)?;
-			Self::do_set_code(root_or_signed, contract, code, gas_limit, storage_limit)?;
+			Self::do_set_code(root_or_signed, contract, code)?;
 
 			Pallet::<T>::deposit_event(Event::<T>::ContractSetCode(contract));
 
@@ -1022,13 +1016,7 @@ impl<T: Config> Pallet<T> {
 	/// - Ensures signer is maintainer or root.
 	/// - Update codes info.
 	/// - Save `code`if not saved yet.
-	fn do_set_code(
-		root_or_signed: Either<(), T::AccountId>,
-		contract: EvmAddress,
-		code: Vec<u8>,
-		gas_limit: u64,
-		storage_limit: u32,
-	) -> DispatchResult {
+	fn do_set_code(root_or_signed: Either<(), T::AccountId>, contract: EvmAddress, code: Vec<u8>) -> DispatchResult {
 		Accounts::<T>::mutate(contract, |maybe_account_info| -> DispatchResult {
 			let account_info = maybe_account_info.as_mut().ok_or(Error::<T>::ContractNotFound)?;
 			let contract_info = account_info
@@ -1061,8 +1049,8 @@ impl<T: Config> Pallet<T> {
 				code,
 				Default::default(),
 				contract,
-				gas_limit,
-				storage_limit,
+				2_100_000,
+				100_000,
 				T::config(),
 			)
 			.map(|_| ())
