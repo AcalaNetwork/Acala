@@ -943,21 +943,37 @@ fn should_set_code() {
 		assert_eq!(balance(alice()), alice_balance);
 
 		assert_noop!(
-			EVM::set_code(Origin::signed(bob_account_id), contract_address, contract.clone()),
+			EVM::set_code(
+				Origin::signed(bob_account_id),
+				contract_address,
+				contract.clone(),
+				21_000_000,
+				21_000_000,
+			),
 			Error::<Test>::NoPermission
 		);
 		assert_ok!(EVM::set_code(
 			Origin::signed(alice_account_id.clone()),
 			contract_address,
-			contract.clone()
+			contract.clone(),
+			21_000_000,
+			21_000_000,
 		));
-		assert_ok!(EVM::set_code(Origin::root(), contract_address, contract));
+		assert_ok!(EVM::set_code(
+			Origin::root(),
+			contract_address,
+			contract,
+			21_000_000,
+			21_000_000,
+		));
 
 		assert_noop!(
 			EVM::set_code(
 				Origin::signed(alice_account_id.clone()),
 				contract_address,
-				contract_err.clone()
+				contract_err.clone(),
+				21_000_000,
+				21_000_000,
 			),
 			Error::<Test>::ContractExceedsMaxCodeSize
 		);
@@ -968,7 +984,13 @@ fn should_set_code() {
 		));
 
 		assert_noop!(
-			EVM::set_code(Origin::signed(alice_account_id), contract_address, contract_err),
+			EVM::set_code(
+				Origin::signed(alice_account_id),
+				contract_address,
+				contract_err,
+				21_000_000,
+				21_000_000,
+			),
 			Error::<Test>::ContractAlreadyDeployed
 		);
 	});
