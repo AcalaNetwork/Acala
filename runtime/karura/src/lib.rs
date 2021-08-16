@@ -121,7 +121,7 @@ pub use runtime_common::{
 
 mod authority;
 mod benchmarking;
-mod constants;
+pub mod constants;
 
 /// This runtime version.
 #[sp_version::runtime_version]
@@ -276,7 +276,7 @@ impl pallet_authorship::Config for Runtime {
 
 parameter_types! {
 	pub const DisabledValidatorsThreshold: Perbill = Perbill::from_percent(33);
-	pub const Period: u32 = 6 * HOURS;
+	pub const Period: u32 = 6 * HOURS; // TODO: delete this
 }
 
 impl pallet_session::Config for Runtime {
@@ -372,8 +372,8 @@ impl pallet_sudo::Config for Runtime {
 
 parameter_types! {
 	pub const GeneralCouncilMotionDuration: BlockNumber = 3 * DAYS;
-	pub const GeneralCouncilMaxProposals: u32 = 50;
-	pub const GeneralCouncilMaxMembers: u32 = 50;
+	pub const GeneralCouncilMaxProposals: u32 = 20;
+	pub const GeneralCouncilMaxMembers: u32 = 30;
 }
 
 impl pallet_collective::Config<GeneralCouncilInstance> for Runtime {
@@ -402,8 +402,8 @@ impl pallet_membership::Config<GeneralCouncilMembershipInstance> for Runtime {
 
 parameter_types! {
 	pub const FinancialCouncilMotionDuration: BlockNumber = 3 * DAYS;
-	pub const FinancialCouncilMaxProposals: u32 = 50;
-	pub const FinancialCouncilMaxMembers: u32 = 50;
+	pub const FinancialCouncilMaxProposals: u32 = 20;
+	pub const FinancialCouncilMaxMembers: u32 = 30;
 }
 
 impl pallet_collective::Config<FinancialCouncilInstance> for Runtime {
@@ -432,8 +432,8 @@ impl pallet_membership::Config<FinancialCouncilMembershipInstance> for Runtime {
 
 parameter_types! {
 	pub const HomaCouncilMotionDuration: BlockNumber = 3 * DAYS;
-	pub const HomaCouncilMaxProposals: u32 = 50;
-	pub const HomaCouncilMaxMembers: u32 = 50;
+	pub const HomaCouncilMaxProposals: u32 = 20;
+	pub const HomaCouncilMaxMembers: u32 = 30;
 }
 
 impl pallet_collective::Config<HomaCouncilInstance> for Runtime {
@@ -462,8 +462,8 @@ impl pallet_membership::Config<HomaCouncilMembershipInstance> for Runtime {
 
 parameter_types! {
 	pub const TechnicalCommitteeMotionDuration: BlockNumber = 3 * DAYS;
-	pub const TechnicalCommitteeMaxProposals: u32 = 50;
-	pub const TechnicalCouncilMaxMembers: u32 = 50;
+	pub const TechnicalCommitteeMaxProposals: u32 = 20;
+	pub const TechnicalCouncilMaxMembers: u32 = 30;
 }
 
 impl pallet_collective::Config<TechnicalCommitteeInstance> for Runtime {
@@ -571,6 +571,9 @@ parameter_types! {
 	pub DataDepositPerByte: Balance = deposit(0, 1);
 	pub const MaximumReasonLength: u32 = 8192;
 	pub const MaxApprovals: u32 = 30;
+
+	pub const SevenDays: BlockNumber = 7 * DAYS;
+	pub const OneDay: BlockNumber = DAYS;
 }
 
 impl pallet_treasury::Config for Runtime {
@@ -614,11 +617,11 @@ impl pallet_tips::Config for Runtime {
 }
 
 parameter_types! {
-	pub const LaunchPeriod: BlockNumber = 2 * DAYS;
-	pub const VotingPeriod: BlockNumber = 2 * DAYS;
+	pub const LaunchPeriod: BlockNumber = 5 * DAYS;
+	pub const VotingPeriod: BlockNumber = 5 * DAYS;
 	pub const FastTrackVotingPeriod: BlockNumber = 3 * HOURS;
-	pub MinimumDeposit: Balance = 1000 * dollar(KAR);
-	pub const EnactmentPeriod: BlockNumber = 36 * HOURS;
+	pub MinimumDeposit: Balance = 100 * dollar(KAR);
+	pub const EnactmentPeriod: BlockNumber = 2 * DAYS;
 	pub const CooloffPeriod: BlockNumber = 7 * DAYS;
 	pub PreimageByteDeposit: Balance = deposit(0, 1);
 	pub const InstantAllowed: bool = true;
@@ -825,6 +828,9 @@ parameter_types! {
 	pub KaruraFoundationAccounts: Vec<AccountId> = vec![
 		hex_literal::hex!["efd29d0d6e63911ae3727fc71506bc3365c5d3b39e3a1680c857b4457cf8afad"].into(),	// tij5W2NzmtxxAbwudwiZpif9ScmZfgFYdzrJWKYq6oNbSNH
 		hex_literal::hex!["41dd2515ea11692c02306b68a2c6ff69b6606ebddaac40682789cfab300971c4"].into(),	// pndshZqDAC9GutDvv7LzhGhgWeGv5YX9puFA8xDidHXCyjd
+		hex_literal::hex!["dad0a28c620ba73b51234b1b2ae35064d90ee847e2c37f9268294646c5af65eb"].into(),	// tFBV65Ts7wpQPxGM6PET9euNzp4pXdi9DVtgLZDJoFveR9F
+		TreasuryPalletId::get().into_account(),
+		TreasuryReservePalletId::get().into_account(),
 	];
 }
 
@@ -868,7 +874,7 @@ impl orml_vesting::Config for Runtime {
 
 parameter_types! {
 	pub MaximumSchedulerWeight: Weight = Perbill::from_percent(10) * RuntimeBlockWeights::get().max_block;
-	pub const MaxScheduledPerBlock: u32 = 30;
+	pub const MaxScheduledPerBlock: u32 = 10;
 }
 
 impl pallet_scheduler::Config for Runtime {
@@ -979,7 +985,7 @@ parameter_types! {
 	pub DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
 	pub DefaultLiquidationPenalty: Rate = Rate::saturating_from_rational(8, 100);
 	pub MinimumDebitValue: Balance = 20 * dollar(KUSD);
-	pub MaxSwapSlippageCompareToOracle: Ratio = Ratio::saturating_from_rational(1, 100);
+	pub MaxSwapSlippageCompareToOracle: Ratio = Ratio::saturating_from_rational(15, 100);
 }
 
 impl module_cdp_engine::Config for Runtime {
@@ -1139,8 +1145,8 @@ impl module_incentives::Config for Runtime {
 }
 
 parameter_types! {
-	pub CreateClassDeposit: Balance = 20 * dollar(KAR);
-	pub CreateTokenDeposit: Balance = 2 * dollar(KAR);
+	pub CreateClassDeposit: Balance = 50 * dollar(KAR);
+	pub CreateTokenDeposit: Balance = 20 * cent(KAR);
 	pub MaxAttributesBytes: u32 = 2048;
 }
 
@@ -1481,10 +1487,10 @@ pub fn create_x2_parachain_multilocation(index: u16) -> MultiLocation {
 parameter_types! {
 	pub const KSMCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::KSM);
 	pub const LKSMCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::LKSM);
-	pub MinimumMintThreshold: Balance = 10 * millicent(KSM);
+	pub MinimumMintThreshold: Balance = 10 * cent(KSM);
 	pub RelaychainSovereignSubAccount: MultiLocation = create_x2_parachain_multilocation(RELAYCHAIN_SUB_ACCOUNT_ID);
-	pub MaxRewardPerEra: Permill = Permill::from_rational(411u32, 1_000_000u32); // 15% / 365 = 0.0004109
-	pub MintFee: Balance = millicent(KSM);
+	pub MaxRewardPerEra: Permill = Permill::from_rational(500u32, 1_000_000u32); // 1.2 ^ (1/365) = 1.0004996359
+	pub MintFee: Balance = 20 * millicent(KSM); // 2x XCM fee on Kusama
 	pub DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
 }
 impl module_homa_lite::Config for Runtime {
@@ -2130,7 +2136,7 @@ mod tests {
 		// Ensure that `required_point` > 0, collator can be kicked out normally.
 		assert!(
 			CollatorKickThreshold::get().mul_floor(
-				(Period::get() * module_collator_selection::POINT_PER_BLOCK)
+				(HOURS * module_collator_selection::POINT_PER_BLOCK)
 					.checked_div(MaxCandidates::get())
 					.unwrap()
 			) > 0

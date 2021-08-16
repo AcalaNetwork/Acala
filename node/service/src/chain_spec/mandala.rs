@@ -244,7 +244,7 @@ fn testnet_genesis(
 
 	let existential_deposit = NativeTokenExistentialDeposit::get();
 
-	let initial_balance: u128 = 1_000_000 * dollar(ACA);
+	let initial_balance: u128 = 10_000_000 * dollar(ACA);
 	let initial_staking: u128 = 100_000 * dollar(ACA);
 
 	let evm_genesis_accounts = evm_genesis();
@@ -388,11 +388,11 @@ fn testnet_genesis(
 				vec![
 					(
 						TradingPair::from_currency_ids(AUSD, DOT).unwrap(),
-						(1_000_000u128, 2_000_000u128),
+						(1_000_000 * dollar(AUSD), 2_000_000 * dollar(DOT)),
 					),
 					(
 						TradingPair::from_currency_ids(AUSD, ACA).unwrap(),
-						(1_000_000u128, 2_000_000u128),
+						(1_000_000 * dollar(AUSD), 2_000_000 * dollar(ACA)),
 					),
 				],
 			)],
