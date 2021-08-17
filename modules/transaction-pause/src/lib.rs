@@ -53,9 +53,9 @@ pub mod module {
 
 	#[pallet::error]
 	pub enum Error<T> {
-		// can not pause
+		/// can not pause
 		CannotPause,
-		// invalid character encoding
+		/// invalid character encoding
 		InvalidCharacter,
 	}
 
