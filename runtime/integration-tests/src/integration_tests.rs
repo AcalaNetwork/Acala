@@ -137,26 +137,24 @@ fn run_to_block(n: u32) {
 }
 
 fn set_relaychain_block_number(number: BlockNumber) {
-	{
-		ParachainSystem::on_initialize(number);
+	ParachainSystem::on_initialize(number);
 
-		let (relay_storage_root, proof) = RelayStateSproofBuilder::default().into_state_root_and_proof();
+	let (relay_storage_root, proof) = RelayStateSproofBuilder::default().into_state_root_and_proof();
 
-		assert_ok!(ParachainSystem::set_validation_data(
-			Origin::none(),
-			cumulus_primitives_parachain_inherent::ParachainInherentData {
-				validation_data: cumulus_primitives_core::PersistedValidationData {
-					parent_head: Default::default(),
-					relay_parent_number: number,
-					relay_parent_storage_root: relay_storage_root,
-					max_pov_size: Default::default(),
-				},
-				relay_chain_state: proof,
-				downward_messages: Default::default(),
-				horizontal_messages: Default::default(),
-			}
-		));
-	}
+	assert_ok!(ParachainSystem::set_validation_data(
+		Origin::none(),
+		cumulus_primitives_parachain_inherent::ParachainInherentData {
+			validation_data: cumulus_primitives_core::PersistedValidationData {
+				parent_head: Default::default(),
+				relay_parent_number: number,
+				relay_parent_storage_root: relay_storage_root,
+				max_pov_size: Default::default(),
+			},
+			relay_chain_state: proof,
+			downward_messages: Default::default(),
+			horizontal_messages: Default::default(),
+		}
+	));
 }
 
 pub struct ExtBuilder {
