@@ -238,13 +238,13 @@ fn testnet_genesis(
 		GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig, IndicesConfig, NativeTokenExistentialDeposit,
 		OperatorMembershipAcalaConfig, OperatorMembershipBandConfig, OrmlNFTConfig, ParachainInfoConfig, Period,
 		RenVmBridgeConfig, SessionConfig, SessionKeys, SessionManagerConfig, StakingPoolConfig, StarportConfig,
-		SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, TradingPair, VestingConfig, ACA,
-		AUSD, DOT, LDOT, RENBTC,
+		SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig, ACA, AUSD, DOT,
+		LDOT, RENBTC,
 	};
 
 	let existential_deposit = NativeTokenExistentialDeposit::get();
 
-	let initial_balance: u128 = 1_000_000 * dollar(ACA);
+	let initial_balance: u128 = 10_000_000 * dollar(ACA);
 	let initial_staking: u128 = 100_000 * dollar(ACA);
 
 	let evm_genesis_accounts = evm_genesis();
@@ -387,12 +387,12 @@ fn testnet_genesis(
 				get_account_id_from_seed::<sr25519::Public>("Alice"),
 				vec![
 					(
-						TradingPair::from_currency_ids(AUSD, DOT).unwrap(),
-						(1_000_000u128, 2_000_000u128),
+						mandala_runtime::TradingPair::from_currency_ids(AUSD, DOT).unwrap(),
+						(1_000_000 * dollar(AUSD), 2_000_000 * dollar(DOT)),
 					),
 					(
-						TradingPair::from_currency_ids(AUSD, ACA).unwrap(),
-						(1_000_000u128, 2_000_000u128),
+						mandala_runtime::TradingPair::from_currency_ids(AUSD, ACA).unwrap(),
+						(1_000_000 * dollar(AUSD), 2_000_000 * dollar(ACA)),
 					),
 				],
 			)],

@@ -50,6 +50,7 @@ pub trait WeightInfo {
 	fn mint() -> Weight;
 	fn set_total_staking_currency() -> Weight;
 	fn set_minting_cap() -> Weight;
+	fn set_xcm_dest_weight() -> Weight;
 }
 
 /// Weights for module_homa_lite using the Acala node and recommended hardware.
@@ -68,6 +69,10 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 		(20_346_000 as Weight)
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
+	fn set_xcm_dest_weight() -> Weight {
+		(20_346_000 as Weight)
+			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+	}
 }
 
 // For backwards compatibility and tests
@@ -82,6 +87,10 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
 	fn set_minting_cap() -> Weight {
+		(20_346_000 as Weight)
+			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
+	}
+	fn set_xcm_dest_weight() -> Weight {
 		(20_346_000 as Weight)
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
