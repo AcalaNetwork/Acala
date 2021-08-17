@@ -1053,7 +1053,7 @@ impl<T: Config> Pallet<T> {
 				handler.reserve_storage(storage_size_chainged as u32)?;
 				handler.charge_storage(&contract, storage_size_chainged as u32, 0)?;
 			} else {
-				handler.charge_storage(&contract, 0, storage_size_chainged as u32)?;
+				handler.charge_storage(&contract, 0, -storage_size_chainged as u32)?;
 			}
 			Self::update_contract_storage_size(&contract, storage_size_chainged);
 

@@ -999,6 +999,28 @@ fn should_set_code() {
 		assert_eq!(Codes::<Test>::contains_key(&code_hash), false);
 		assert_eq!(Codes::<Test>::contains_key(&new_code_hash), true);
 
+		assert_ok!(EVM::set_code(Origin::root(), contract_address, vec![]));
+		let new_code_hash = H256::from_str("c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470").unwrap();
+		assert_eq!(
+			Accounts::<Test>::get(&contract_address),
+			Some(AccountInfo {
+				nonce: 1,
+				contract_info: Some(ContractInfo {
+					code_hash: new_code_hash,
+					maintainer: alice(),
+					deployed: false
+				})
+			})
+		);
+		assert_eq!(
+			CodeInfos::<Test>::get(&new_code_hash),
+			Some(CodeInfo {
+				code_size: 0,
+				ref_count: 1,
+			})
+		);
+		assert_eq!(reserved_balance(contract_address), 3000);
+
 		assert_noop!(
 			EVM::set_code(
 				Origin::signed(alice_account_id.clone()),
