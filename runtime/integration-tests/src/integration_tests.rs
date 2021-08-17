@@ -20,6 +20,7 @@
 
 use acala_service::chain_spec::evm_genesis;
 use codec::Encode;
+use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
 use frame_support::weights::constants::*;
 use frame_system::RawOrigin;
 
@@ -65,9 +66,9 @@ use mandala_runtime::{
 	AuthoritysOriginId, Balance, Balances, BlockNumber, Call, CdpEngine, CdpTreasury, CreateClassDeposit,
 	CreateTokenDeposit, Currencies, CurrencyId, CurrencyIdConvert, DataDepositPerByte, Dex, EmergencyShutdown,
 	EnabledTradingPairs, Event, EvmAccounts, ExistentialDeposits, Get, GetNativeCurrencyId, Loans, MultiLocation,
-	NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, Origin, OriginCaller, ParachainInfo, Perbill, Proxy,
-	Runtime, Scheduler, Session, SessionManager, SevenDays, System, TokenSymbol, Tokens, TreasuryAccount,
-	TreasuryPalletId, Vesting, XcmConfig, XcmExecutor, NFT,
+	NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, Origin, OriginCaller, ParachainInfo,
+	ParachainSystem, Perbill, Proxy, Runtime, Scheduler, Session, SessionManager, SevenDays, System, TokenSymbol,
+	Tokens, TreasuryAccount, TreasuryPalletId, Vesting, XcmConfig, XcmExecutor, NFT,
 };
 
 #[cfg(feature = "with-karura-runtime")]
@@ -111,7 +112,6 @@ mod runtime_types {
 	pub const USD_CURRENCY: CurrencyId = KUSD;
 	pub const LPTOKEN: CurrencyId =
 		CurrencyId::DexShare(DexShare::Token(TokenSymbol::KUSD), DexShare::Token(TokenSymbol::KSM));
-	pub use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
 }
 
 pub use runtime_types::*;
@@ -137,11 +137,6 @@ fn run_to_block(n: u32) {
 }
 
 fn set_relaychain_block_number(number: BlockNumber) {
-	#[cfg(feature = "with-mandala-runtime")]
-	{
-		System::set_block_number(number);
-	}
-	#[cfg(feature = "with-karura-runtime")]
 	{
 		ParachainSystem::on_initialize(number);
 
@@ -388,7 +383,7 @@ fn liquidate_cdp() {
 			(
 				AccountId::from(ALICE),
 				RELAY_CHAIN_CURRENCY,
-				11 * dollar(RELAY_CHAIN_CURRENCY),
+				51 * dollar(RELAY_CHAIN_CURRENCY),
 			),
 			(AccountId::from(BOB), USD_CURRENCY, 1_000_001 * dollar(USD_CURRENCY)),
 			(
@@ -403,8 +398,6 @@ fn liquidate_cdp() {
 				RELAY_CHAIN_CURRENCY,
 				Price::saturating_from_rational(10000, 1)
 			)])); // 10000 usd
-
-			//println!("{:?}", System::events());
 
 			assert_ok!(Dex::add_liquidity(
 				Origin::signed(AccountId::from(BOB)),
@@ -429,8 +422,8 @@ fn liquidate_cdp() {
 			assert_ok!(CdpEngine::adjust_position(
 				&AccountId::from(ALICE),
 				RELAY_CHAIN_CURRENCY,
-				(10 * dollar(RELAY_CHAIN_CURRENCY)) as i128,
-				(500_000 * dollar(USD_CURRENCY)) as i128,
+				(50 * dollar(RELAY_CHAIN_CURRENCY)) as i128,
+				(2_500_000 * dollar(USD_CURRENCY)) as i128,
 			));
 
 			assert_ok!(CdpEngine::adjust_position(
@@ -442,11 +435,11 @@ fn liquidate_cdp() {
 
 			assert_eq!(
 				Loans::positions(RELAY_CHAIN_CURRENCY, AccountId::from(ALICE)).debit,
-				500_000 * dollar(USD_CURRENCY)
+				2_500_000 * dollar(USD_CURRENCY)
 			);
 			assert_eq!(
 				Loans::positions(RELAY_CHAIN_CURRENCY, AccountId::from(ALICE)).collateral,
-				10 * dollar(RELAY_CHAIN_CURRENCY)
+				50 * dollar(RELAY_CHAIN_CURRENCY)
 			);
 			assert_eq!(
 				Loans::positions(RELAY_CHAIN_CURRENCY, AccountId::from(BOB)).debit,
@@ -477,13 +470,11 @@ fn liquidate_cdp() {
 			let liquidate_alice_xbtc_cdp_event = Event::CdpEngine(module_cdp_engine::Event::LiquidateUnsafeCDP(
 				RELAY_CHAIN_CURRENCY,
 				AccountId::from(ALICE),
-				10 * dollar(RELAY_CHAIN_CURRENCY),
-				50_000 * dollar(USD_CURRENCY),
-				#[cfg(feature = "with-mandala-runtime")]
+				50 * dollar(RELAY_CHAIN_CURRENCY),
+				250_000 * dollar(USD_CURRENCY),
 				LiquidationStrategy::Auction,
-				#[cfg(feature = "with-karura-runtime")]
-				LiquidationStrategy::Exchange,
 			));
+
 			assert!(System::events()
 				.iter()
 				.any(|record| record.event == liquidate_alice_xbtc_cdp_event));
@@ -493,11 +484,8 @@ fn liquidate_cdp() {
 				Loans::positions(RELAY_CHAIN_CURRENCY, AccountId::from(ALICE)).collateral,
 				0
 			);
-			#[cfg(feature = "with-mandala-runtime")]
 			assert_eq!(AuctionManager::collateral_auctions(0).is_some(), true);
-			#[cfg(feature = "with-karura-runtime")]
-			assert_eq!(AuctionManager::collateral_auctions(0).is_some(), false);
-			assert_eq!(CdpTreasury::debit_pool(), 50_000 * dollar(USD_CURRENCY));
+			assert_eq!(CdpTreasury::debit_pool(), 250_000 * dollar(USD_CURRENCY));
 
 			assert_ok!(CdpEngine::liquidate_unsafe_cdp(
 				AccountId::from(BOB),
@@ -520,7 +508,7 @@ fn liquidate_cdp() {
 				Loans::positions(RELAY_CHAIN_CURRENCY, AccountId::from(BOB)).collateral,
 				0
 			);
-			assert_eq!(CdpTreasury::debit_pool(), 55_000 * dollar(USD_CURRENCY));
+			assert_eq!(CdpTreasury::debit_pool(), 255_000 * dollar(USD_CURRENCY));
 			assert!(CdpTreasury::surplus_pool() >= 5_000 * dollar(USD_CURRENCY));
 		});
 }
