@@ -31,7 +31,7 @@ use orml_traits::{MultiCurrency, XcmTransfer};
 use primitives::{Balance, CurrencyId};
 use sp_runtime::{traits::Zero, ArithmeticError, FixedPointNumber, Permill};
 use sp_std::{ops::Mul, prelude::*};
-use xcm::opaque::v0::{MultiLocation, Outcome};
+use xcm::opaque::v0::MultiLocation;
 
 pub use module::*;
 pub use weights::WeightInfo;
@@ -185,17 +185,14 @@ pub mod module {
 				.expect("Max rewards cannot be above 100%; qed");
 
 			// All checks pass. Proceed with Xcm transfer.
-			let xcm_result = T::XcmTransfer::transfer(
+			T::XcmTransfer::transfer(
 				who.clone(),
 				staking_currency,
 				amount,
 				T::SovereignSubAccountLocation::get(),
 				xcm_dest_weight,
-			)?;
-			ensure!(
-				matches!(xcm_result, Outcome::Complete(_)),
-				Error::<T>::XcmTransferFailed
-			);
+			)
+			.map_err(|_| Error::<T>::XcmTransferFailed)?;
 
 			// Mint the liquid currency into the user's account.
 			T::Currency::deposit(T::LiquidCurrencyId::get(), &who, liquid_to_mint)?;
