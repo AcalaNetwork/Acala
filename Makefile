@@ -72,6 +72,8 @@ test-eth: githooks
 .PHONY: test-runtimes
 test-runtimes:
 	SKIP_WASM_BUILD= cargo test --all --features with-all-runtime
+	SKIP_WASM_BUILD= cargo test -p runtime-integration-tests --features=with-mandala-runtime
+	SKIP_WASM_BUILD= cargo test -p runtime-integration-tests --features=with-karura-runtime
 
 .PHONY: test-benchmarking
 test-benchmarking:

@@ -52,7 +52,7 @@ fn mint_works() {
 		));
 
 		assert_noop!(
-			HomaLite::mint(Origin::signed(ROOT), amount, 0),
+			HomaLite::mint(Origin::signed(ROOT), amount),
 			orml_tokens::Error::<Runtime>::BalanceTooLow
 		);
 
@@ -60,7 +60,7 @@ fn mint_works() {
 		// liquid = (amount - MintFee) * 10 * (1 - MaxRewardPerEra)
 		//        = 0.99 * (1000 - 0.01)  * 10 = 9899.901
 		let mut liquid = 9_899_901_000_000_000;
-		assert_ok!(HomaLite::mint(Origin::signed(ALICE), amount, 0));
+		assert_ok!(HomaLite::mint(Origin::signed(ALICE), amount));
 		assert_eq!(Currencies::free_balance(LKSM, &ALICE), liquid);
 		assert_eq!(
 			System::events().iter().last().unwrap().event,
@@ -82,7 +82,7 @@ fn mint_works() {
 		// The exchange rate is now 1:5 ratio
 		// liquid = (1000 - 0.01) * 1_009_899_901_000_000_000 / 201_979_980_200_000_000 * 0.99
 		liquid = 4_949_950_500_000_000;
-		assert_ok!(HomaLite::mint(Origin::signed(BOB), amount, 0));
+		assert_ok!(HomaLite::mint(Origin::signed(BOB), amount));
 		assert_eq!(Currencies::free_balance(LKSM, &BOB), liquid);
 		assert_eq!(
 			System::events().iter().last().unwrap().event,
@@ -114,7 +114,7 @@ fn repeated_mints_have_similar_exchange_rate() {
 		// The exchange rate is now 1:5 ratio
 		// liquid = (1000 - 0.01) * 1000 / 200 * 0.99
 		let liquid_1 = 4_949_950_500_000_000;
-		assert_ok!(HomaLite::mint(Origin::signed(BOB), amount, 0));
+		assert_ok!(HomaLite::mint(Origin::signed(BOB), amount));
 		assert_eq!(Currencies::free_balance(LKSM, &BOB), liquid_1);
 		// The effective exchange rate is lower than the theoretical rate.
 		assert!(liquid_1 < dollar(5000));
@@ -127,7 +127,7 @@ fn repeated_mints_have_similar_exchange_rate() {
 		// Second exchange
 		// liquid = (1000 - 0.01) * 1004949.9505 / 201000 * 0.99
 		let liquid_2 = 4_949_703_990_002_437;
-		assert_ok!(HomaLite::mint(Origin::signed(BOB), amount, 0));
+		assert_ok!(HomaLite::mint(Origin::signed(BOB), amount));
 		assert_eq!(Currencies::free_balance(LKSM, &BOB), 9_899_654_490_002_437);
 
 		// Since the effective exchange rate is lower than the theortical rate, Liquid currency becomes more
@@ -149,7 +149,7 @@ fn repeated_mints_have_similar_exchange_rate() {
 
 		// liquid = (1000 - 0.01) * 1009899.654490002437 / 204020 * 0.99
 		let liquid_3 = 4_900_454_170_858_361;
-		assert_ok!(HomaLite::mint(Origin::signed(BOB), amount, 0));
+		assert_ok!(HomaLite::mint(Origin::signed(BOB), amount));
 		assert_eq!(Currencies::free_balance(LKSM, &BOB), 14_800_108_660_860_799);
 
 		// Increasing the Staking total increases the value of Liquid currency - this makes up for the
@@ -165,14 +165,14 @@ fn mint_fails_when_cap_is_exceeded() {
 		assert_ok!(HomaLite::set_minting_cap(Origin::signed(ROOT), dollar(1_000)));
 
 		assert_noop!(
-			HomaLite::mint(Origin::signed(ALICE), dollar(1_001), 0),
+			HomaLite::mint(Origin::signed(ALICE), dollar(1_001)),
 			Error::<Runtime>::ExceededStakingCurrencyMintCap
 		);
 
-		assert_ok!(HomaLite::mint(Origin::signed(ALICE), dollar(1_000), 0));
+		assert_ok!(HomaLite::mint(Origin::signed(ALICE), dollar(1_000)));
 
 		assert_noop!(
-			HomaLite::mint(Origin::signed(ALICE), dollar(1), 0),
+			HomaLite::mint(Origin::signed(ALICE), dollar(1)),
 			Error::<Runtime>::ExceededStakingCurrencyMintCap
 		);
 	});
@@ -185,7 +185,7 @@ fn failed_xcm_transfer_is_handled() {
 
 		// XCM transfer fails if it is called by INVALID_CALLER.
 		assert_noop!(
-			HomaLite::mint(Origin::signed(INVALID_CALLER), dollar(1), 0),
+			HomaLite::mint(Origin::signed(INVALID_CALLER), dollar(1)),
 			Error::<Runtime>::XcmTransferFailed
 		);
 	});
@@ -238,6 +238,28 @@ fn can_set_mint_cap() {
 		assert_eq!(
 			System::events().iter().last().unwrap().event,
 			Event::HomaLite(crate::Event::StakingCurrencyMintCapUpdated(dollar(1_000)))
+		);
+	});
+}
+
+#[test]
+fn can_set_xcm_dest_weight() {
+	ExtBuilder::default().build().execute_with(|| {
+		// Requires Root previlege.
+		assert_noop!(
+			HomaLite::set_xcm_dest_weight(Origin::signed(ALICE), 1_000_000),
+			BadOrigin
+		);
+
+		// Set the cap.
+		assert_ok!(HomaLite::set_xcm_dest_weight(Origin::signed(ROOT), 1_000_000));
+
+		// Cap should be set now.
+		assert_eq!(XcmDestWeight::<Runtime>::get(), 1_000_000);
+
+		assert_eq!(
+			System::events().iter().last().unwrap().event,
+			Event::HomaLite(crate::Event::XcmDestWeightSet(1_000_000))
 		);
 	});
 }

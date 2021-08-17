@@ -111,6 +111,9 @@ pub mod module {
 
 		/// The mint cap for Staking currency is updated.\[new_cap\]
 		StakingCurrencyMintCapUpdated(Balance),
+
+		/// A new weight for XCM transfers has been set.\[new_weight\]
+		XcmDestWeightSet(Weight),
 	}
 
 	/// The total amount of the staking currency on the relaychain.
@@ -126,6 +129,12 @@ pub mod module {
 	#[pallet::getter(fn staking_currency_mint_cap)]
 	pub type StakingCurrencyMintCap<T: Config> = StorageValue<_, Balance, ValueQuery>;
 
+	/// The extra weight for cross-chain XCM transfers.
+	/// xcm_dest_weight: value: Weight
+	#[pallet::storage]
+	#[pallet::getter(fn xcm_dest_weight)]
+	pub type XcmDestWeight<T: Config> = StorageValue<_, Weight, ValueQuery>;
+
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
 
@@ -138,10 +147,9 @@ pub mod module {
 		///
 		/// Parameters:
 		/// - `amount`: The amount of Staking currency to be exchanged.
-		/// - `xcm_dest_weight`: The weight to be paid to the destination for the XCM transfer.
 		#[pallet::weight(< T as Config >::WeightInfo::mint())]
 		#[transactional]
-		pub fn mint(origin: OriginFor<T>, amount: Balance, xcm_dest_weight: Weight) -> DispatchResult {
+		pub fn mint(origin: OriginFor<T>, amount: Balance) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			// Ensure the amount is above the minimum, after the MintFee is deducted.
 			ensure!(
@@ -190,7 +198,7 @@ pub mod module {
 				staking_currency,
 				amount,
 				T::SovereignSubAccountLocation::get(),
-				xcm_dest_weight,
+				Self::xcm_dest_weight(),
 			)?;
 			ensure!(
 				matches!(xcm_result, Outcome::Complete(_)),
@@ -237,6 +245,21 @@ pub mod module {
 
 			StakingCurrencyMintCap::<T>::put(new_cap);
 			Self::deposit_event(Event::<T>::StakingCurrencyMintCapUpdated(new_cap));
+			Ok(())
+		}
+
+		/// Sets the xcm_dest_weight for XCM transfers.
+		/// Requires `T::GovernanceOrigin`
+		///
+		/// Parameters:
+		/// - `xcm_dest_weight`: The new weight for XCM transfers.
+		#[pallet::weight(< T as Config >::WeightInfo::set_xcm_dest_weight())]
+		#[transactional]
+		pub fn set_xcm_dest_weight(origin: OriginFor<T>, xcm_dest_weight: Weight) -> DispatchResult {
+			T::GovernanceOrigin::ensure_origin(origin)?;
+
+			XcmDestWeight::<T>::put(xcm_dest_weight);
+			Self::deposit_event(Event::<T>::XcmDestWeightSet(xcm_dest_weight));
 			Ok(())
 		}
 	}

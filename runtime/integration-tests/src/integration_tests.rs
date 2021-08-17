@@ -243,6 +243,14 @@ impl ExtBuilder {
 			.assimilate_storage(&mut t)
 			.unwrap();
 
+		<parachain_info::GenesisConfig as GenesisBuild<Runtime>>::assimilate_storage(
+			&parachain_info::GenesisConfig {
+				parachain_id: 2000.into(),
+			},
+			&mut t,
+		)
+		.unwrap();
+
 		let mut ext = sp_io::TestExternalities::new(t);
 		ext.execute_with(|| System::set_block_number(1));
 		ext
@@ -381,7 +389,7 @@ fn liquidate_cdp() {
 			(
 				AccountId::from(ALICE),
 				RELAY_CHAIN_CURRENCY,
-				11 * dollar(RELAY_CHAIN_CURRENCY),
+				51 * dollar(RELAY_CHAIN_CURRENCY),
 			),
 			(AccountId::from(BOB), USD_CURRENCY, 1_000_001 * dollar(USD_CURRENCY)),
 			(
@@ -396,8 +404,6 @@ fn liquidate_cdp() {
 				RELAY_CHAIN_CURRENCY,
 				Price::saturating_from_rational(10000, 1)
 			)])); // 10000 usd
-
-			//println!("{:?}", System::events());
 
 			assert_ok!(Dex::add_liquidity(
 				Origin::signed(AccountId::from(BOB)),
@@ -422,8 +428,8 @@ fn liquidate_cdp() {
 			assert_ok!(CdpEngine::adjust_position(
 				&AccountId::from(ALICE),
 				RELAY_CHAIN_CURRENCY,
-				(10 * dollar(RELAY_CHAIN_CURRENCY)) as i128,
-				(500_000 * dollar(USD_CURRENCY)) as i128,
+				(50 * dollar(RELAY_CHAIN_CURRENCY)) as i128,
+				(2_500_000 * dollar(USD_CURRENCY)) as i128,
 			));
 
 			assert_ok!(CdpEngine::adjust_position(
@@ -435,11 +441,11 @@ fn liquidate_cdp() {
 
 			assert_eq!(
 				Loans::positions(RELAY_CHAIN_CURRENCY, AccountId::from(ALICE)).debit,
-				500_000 * dollar(USD_CURRENCY)
+				2_500_000 * dollar(USD_CURRENCY)
 			);
 			assert_eq!(
 				Loans::positions(RELAY_CHAIN_CURRENCY, AccountId::from(ALICE)).collateral,
-				10 * dollar(RELAY_CHAIN_CURRENCY)
+				50 * dollar(RELAY_CHAIN_CURRENCY)
 			);
 			assert_eq!(
 				Loans::positions(RELAY_CHAIN_CURRENCY, AccountId::from(BOB)).debit,
@@ -470,10 +476,11 @@ fn liquidate_cdp() {
 			let liquidate_alice_xbtc_cdp_event = Event::CdpEngine(module_cdp_engine::Event::LiquidateUnsafeCDP(
 				RELAY_CHAIN_CURRENCY,
 				AccountId::from(ALICE),
-				10 * dollar(RELAY_CHAIN_CURRENCY),
-				50_000 * dollar(USD_CURRENCY),
+				50 * dollar(RELAY_CHAIN_CURRENCY),
+				250_000 * dollar(USD_CURRENCY),
 				LiquidationStrategy::Auction,
 			));
+
 			assert!(System::events()
 				.iter()
 				.any(|record| record.event == liquidate_alice_xbtc_cdp_event));
@@ -484,7 +491,7 @@ fn liquidate_cdp() {
 				0
 			);
 			assert_eq!(AuctionManager::collateral_auctions(0).is_some(), true);
-			assert_eq!(CdpTreasury::debit_pool(), 50_000 * dollar(USD_CURRENCY));
+			assert_eq!(CdpTreasury::debit_pool(), 250_000 * dollar(USD_CURRENCY));
 
 			assert_ok!(CdpEngine::liquidate_unsafe_cdp(
 				AccountId::from(BOB),
@@ -507,7 +514,7 @@ fn liquidate_cdp() {
 				Loans::positions(RELAY_CHAIN_CURRENCY, AccountId::from(BOB)).collateral,
 				0
 			);
-			assert_eq!(CdpTreasury::debit_pool(), 55_000 * dollar(USD_CURRENCY));
+			assert_eq!(CdpTreasury::debit_pool(), 255_000 * dollar(USD_CURRENCY));
 			assert!(CdpTreasury::surplus_pool() >= 5_000 * dollar(USD_CURRENCY));
 		});
 }
@@ -1562,15 +1569,10 @@ fn sanity_check_weight_per_time_constants_are_as_expected() {
 #[test]
 fn parachain_subaccounts_are_unique() {
 	ExtBuilder::default().build().execute_with(|| {
-		#[cfg(feature = "with-mandala-runtime")]
-		let relaychain = NetworkId::Polkadot;
-		#[cfg(feature = "with-karura-runtime")]
-		let relaychain = NetworkId::Any;
-
 		let parachain: AccountId = ParachainInfo::parachain_id().into_account();
 		assert_eq!(
 			parachain,
-			hex_literal::hex!["7061726164000000000000000000000000000000000000000000000000000000"].into()
+			hex_literal::hex!["70617261d0070000000000000000000000000000000000000000000000000000"].into()
 		);
 
 		assert_eq!(
@@ -1578,8 +1580,8 @@ fn parachain_subaccounts_are_unique() {
 			MultiLocation::X2(
 				Junction::Parent,
 				Junction::AccountId32 {
-					network: relaychain.clone(),
-					id: hex_literal::hex!["00465d6ab005c2fd8c4e0bf22a60fe3ce5ff035072ec74679f4babb4c6f00833"].into(),
+					network: NetworkId::Any,
+					id: hex_literal::hex!["d7b8926b326dd349355a9a7cca6606c1e0eb6fd2b506066b518c7155ff0d8297"].into(),
 				}
 			)
 		);
@@ -1588,8 +1590,8 @@ fn parachain_subaccounts_are_unique() {
 			MultiLocation::X2(
 				Junction::Parent,
 				Junction::AccountId32 {
-					network: relaychain,
-					id: hex_literal::hex!["f0516bdbb7c54cac650736b9891b59242dd8e4e1c14df46dc39550fbb407dbe9"].into(),
+					network: NetworkId::Any,
+					id: hex_literal::hex!["74d37d762e06c6841a5dad64463a9afe0684f7e45245f6a7296ca613cca74669"].into(),
 				}
 			)
 		);

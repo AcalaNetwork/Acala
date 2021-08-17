@@ -941,6 +941,27 @@ fn should_set_code() {
 		let alice_balance = INITIAL_BALANCE - 284 * <Test as Config>::StorageDepositPerByte::get();
 
 		assert_eq!(balance(alice()), alice_balance);
+		assert_eq!(reserved_balance(contract_address), 2840);
+
+		let code_hash = H256::from_str("164981e02df203a0fb32a0af7c2cd1cc7f9df7bb49a4d2b0219307bb68a4b603").unwrap();
+		assert_eq!(
+			Accounts::<Test>::get(&contract_address),
+			Some(AccountInfo {
+				nonce: 1,
+				contract_info: Some(ContractInfo {
+					code_hash,
+					maintainer: alice(),
+					deployed: false
+				})
+			})
+		);
+		assert_eq!(
+			CodeInfos::<Test>::get(&code_hash),
+			Some(CodeInfo {
+				code_size: 184,
+				ref_count: 1,
+			})
+		);
 
 		assert_noop!(
 			EVM::set_code(Origin::signed(bob_account_id), contract_address, contract.clone()),
@@ -952,6 +973,53 @@ fn should_set_code() {
 			contract.clone()
 		));
 		assert_ok!(EVM::set_code(Origin::root(), contract_address, contract));
+
+		assert_eq!(reserved_balance(contract_address), 4150);
+
+		let new_code_hash = H256::from_str("9061d510f6235de4eae304e1a2a2ae22e1610ba893c018b7fabc1f1635f49877").unwrap();
+		assert_eq!(
+			Accounts::<Test>::get(&contract_address),
+			Some(AccountInfo {
+				nonce: 1,
+				contract_info: Some(ContractInfo {
+					code_hash: new_code_hash,
+					maintainer: alice(),
+					deployed: false
+				})
+			})
+		);
+		assert_eq!(CodeInfos::<Test>::get(&code_hash), None);
+		assert_eq!(
+			CodeInfos::<Test>::get(&new_code_hash),
+			Some(CodeInfo {
+				code_size: 215,
+				ref_count: 1,
+			})
+		);
+		assert_eq!(Codes::<Test>::contains_key(&code_hash), false);
+		assert_eq!(Codes::<Test>::contains_key(&new_code_hash), true);
+
+		assert_ok!(EVM::set_code(Origin::root(), contract_address, vec![]));
+		let new_code_hash = H256::from_str("c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470").unwrap();
+		assert_eq!(
+			Accounts::<Test>::get(&contract_address),
+			Some(AccountInfo {
+				nonce: 1,
+				contract_info: Some(ContractInfo {
+					code_hash: new_code_hash,
+					maintainer: alice(),
+					deployed: false
+				})
+			})
+		);
+		assert_eq!(
+			CodeInfos::<Test>::get(&new_code_hash),
+			Some(CodeInfo {
+				code_size: 0,
+				ref_count: 1,
+			})
+		);
+		assert_eq!(reserved_balance(contract_address), 3000);
 
 		assert_noop!(
 			EVM::set_code(

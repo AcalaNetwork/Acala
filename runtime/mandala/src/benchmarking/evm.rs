@@ -128,7 +128,6 @@ runtime_benchmarks! {
 		whitelist_account!(alice_account);
 	}: _(RawOrigin::Signed(alice_account_id()))
 
-	/* TODO: Repair this benchmarking test
 	set_code {
 		let alice_account = alice_account_id();
 
@@ -139,7 +138,6 @@ runtime_benchmarks! {
 
 		whitelist_account!(alice_account);
 	}: _(RawOrigin::Signed(alice_account_id()), contract, new_contract)
-	*/
 
 	selfdestruct {
 		let alice_account = alice_account_id();
