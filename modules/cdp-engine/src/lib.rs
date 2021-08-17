@@ -187,6 +187,12 @@ pub mod module {
 		/// Thus value at genesis is not used.
 		type UnixTime: UnixTime;
 
+		/// The default parital path list for CDP engine to swap collateral to stable,
+		/// Note: the path is parital, the whole swap path is collateral currency id concat
+		/// the partial path. And the list is sorted, CDP engine trys to swap stable by order.
+		#[pallet::constant]
+		type DefaultSwapParitalPathList: Get<Vec<Vec<CurrencyId>>>;
+
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
 	}
@@ -216,6 +222,8 @@ pub mod module {
 		AlreadyShutdown,
 		/// Must after system shutdown
 		MustAfterShutdown,
+		/// Failed to swap debit by default path list
+		SwapDebitFailed,
 	}
 
 	#[pallet::event]
@@ -822,13 +830,50 @@ impl<T: Config> Pallet<T> {
 
 		// swap exact stable with DEX in limit of price impact
 		let debit_value = Self::get_debit_value(currency_id, debit);
-		let actual_supply_collateral = <T as Config>::CDPTreasury::swap_collateral_to_exact_stable(
-			currency_id,
-			collateral.min(max_collateral_amount),
-			debit_value,
-			maybe_path,
-			false,
-		)?;
+		let collateral_supply = collateral.min(max_collateral_amount);
+
+		// if specify swap path
+		let actual_supply_collateral = (|| -> Result<Balance, DispatchError> {
+			if let Some(path) = maybe_path {
+				<T as Config>::CDPTreasury::swap_collateral_to_exact_stable(
+					currency_id,
+					collateral_supply,
+					debit_value,
+					path,
+					false,
+				)
+			} else {
+				let default_swap_parital_path_list: Vec<Vec<CurrencyId>> = T::DefaultSwapParitalPathList::get();
+				let stable_currency_id = T::GetStableCurrencyId::get();
+
+				// iterator default_swap_parital_path_list to try swap until swap succeed.
+				for partial_path in default_swap_parital_path_list {
+					let partial_path_len = partial_path.len();
+
+					// check collateral currency_id and partial_path can form a valid swap path.
+					if partial_path_len > 0
+						&& currency_id != partial_path[0]
+						&& partial_path[partial_path_len - 1] == stable_currency_id
+					{
+						let mut swap_path = vec![currency_id];
+						swap_path.extend(partial_path);
+
+						if let Ok(actual_supply_collateral) =
+							<T as Config>::CDPTreasury::swap_collateral_to_exact_stable(
+								currency_id,
+								collateral_supply,
+								debit_value,
+								&swap_path,
+								false,
+							) {
+							return Ok(actual_supply_collateral);
+						}
+					}
+				}
+
+				Err(Error::<T>::SwapDebitFailed.into())
+			}
+		})()?;
 
 		// refund remain collateral to CDP owner
 		let refund_collateral_amount = collateral
@@ -865,45 +910,62 @@ impl<T: Config> Pallet<T> {
 		let bad_debt_value = Self::get_debit_value(currency_id, debit);
 		let target_stable_amount = Self::get_liquidation_penalty(currency_id).saturating_mul_acc_int(bad_debt_value);
 		let liquidation_strategy = (|| -> Result<LiquidationStrategy, DispatchError> {
+			let default_swap_parital_path_list: Vec<Vec<CurrencyId>> = T::DefaultSwapParitalPathList::get();
+			let stable_currency_id = T::GetStableCurrencyId::get();
+
 			// calculate the supply limit by slippage limit for the price of oracle,
 			let max_supply_limit = Ratio::one()
 				.saturating_sub(T::MaxSwapSlippageCompareToOracle::get())
 				.reciprocal()
 				.unwrap_or_else(Ratio::max_value)
 				.saturating_mul_int(
-					T::PriceSource::get_relative_price(T::GetStableCurrencyId::get(), currency_id)
+					T::PriceSource::get_relative_price(stable_currency_id, currency_id)
 						.expect("the oracle price should be avalible because liquidation are triggered by it.")
 						.saturating_mul_int(target_stable_amount),
 				);
+			let collateral_supply = collateral.min(max_supply_limit);
 
-			// try use collateral to swap enough stable token in DEX.
-			if let Ok(actual_supply_collateral) = <T as Config>::CDPTreasury::swap_collateral_to_exact_stable(
-				currency_id,
-				collateral.min(max_supply_limit),
-				target_stable_amount,
-				None,
-				false,
-			) {
-				// refund remain collateral to CDP owner
-				let refund_collateral_amount = collateral
-					.checked_sub(actual_supply_collateral)
-					.expect("swap succecced means collateral >= actual_supply_collateral; qed");
+			// iterator default_swap_parital_path_list to try swap until swap succeed.
+			for partial_path in default_swap_parital_path_list {
+				let partial_path_len = partial_path.len();
 
-				<T as Config>::CDPTreasury::withdraw_collateral(&who, currency_id, refund_collateral_amount)?;
+				// check collateral currency_id and partial_path can form a valid swap path.
+				if partial_path_len > 0
+					&& currency_id != partial_path[0]
+					&& partial_path[partial_path_len - 1] == stable_currency_id
+				{
+					let mut swap_path = vec![currency_id];
+					swap_path.extend(partial_path);
 
-				Ok(LiquidationStrategy::Exchange)
-			} else {
-				// if swap failed, create collateral auctions by cdp treasury
-				<T as Config>::CDPTreasury::create_collateral_auctions(
-					currency_id,
-					collateral,
-					target_stable_amount,
-					who.clone(),
-					true,
-				)?;
+					if let Ok(actual_supply_collateral) = <T as Config>::CDPTreasury::swap_collateral_to_exact_stable(
+						currency_id,
+						collateral_supply,
+						target_stable_amount,
+						&swap_path,
+						false,
+					) {
+						// refund remain collateral to CDP owner
+						let refund_collateral_amount = collateral
+							.checked_sub(actual_supply_collateral)
+							.expect("swap succecced means collateral >= actual_supply_collateral; qed");
 
-				Ok(LiquidationStrategy::Auction)
+						<T as Config>::CDPTreasury::withdraw_collateral(&who, currency_id, refund_collateral_amount)?;
+
+						return Ok(LiquidationStrategy::Exchange);
+					}
+				}
 			}
+
+			// if cannot liquidate by swap, create collateral auctions by cdp treasury
+			<T as Config>::CDPTreasury::create_collateral_auctions(
+				currency_id,
+				collateral,
+				target_stable_amount,
+				who.clone(),
+				true,
+			)?;
+
+			Ok(LiquidationStrategy::Auction)
 		})()?;
 
 		Self::deposit_event(Event::LiquidateUnsafeCDP(
