@@ -389,7 +389,7 @@ fn liquidate_cdp() {
 			(
 				AccountId::from(ALICE),
 				RELAY_CHAIN_CURRENCY,
-				11 * dollar(RELAY_CHAIN_CURRENCY),
+				51 * dollar(RELAY_CHAIN_CURRENCY),
 			),
 			(AccountId::from(BOB), USD_CURRENCY, 1_000_001 * dollar(USD_CURRENCY)),
 			(
@@ -404,8 +404,6 @@ fn liquidate_cdp() {
 				RELAY_CHAIN_CURRENCY,
 				Price::saturating_from_rational(10000, 1)
 			)])); // 10000 usd
-
-			//println!("{:?}", System::events());
 
 			assert_ok!(Dex::add_liquidity(
 				Origin::signed(AccountId::from(BOB)),
@@ -430,8 +428,8 @@ fn liquidate_cdp() {
 			assert_ok!(CdpEngine::adjust_position(
 				&AccountId::from(ALICE),
 				RELAY_CHAIN_CURRENCY,
-				(10 * dollar(RELAY_CHAIN_CURRENCY)) as i128,
-				(500_000 * dollar(USD_CURRENCY)) as i128,
+				(50 * dollar(RELAY_CHAIN_CURRENCY)) as i128,
+				(2_500_000 * dollar(USD_CURRENCY)) as i128,
 			));
 
 			assert_ok!(CdpEngine::adjust_position(
@@ -443,11 +441,11 @@ fn liquidate_cdp() {
 
 			assert_eq!(
 				Loans::positions(RELAY_CHAIN_CURRENCY, AccountId::from(ALICE)).debit,
-				500_000 * dollar(USD_CURRENCY)
+				2_500_000 * dollar(USD_CURRENCY)
 			);
 			assert_eq!(
 				Loans::positions(RELAY_CHAIN_CURRENCY, AccountId::from(ALICE)).collateral,
-				10 * dollar(RELAY_CHAIN_CURRENCY)
+				50 * dollar(RELAY_CHAIN_CURRENCY)
 			);
 			assert_eq!(
 				Loans::positions(RELAY_CHAIN_CURRENCY, AccountId::from(BOB)).debit,
@@ -478,10 +476,11 @@ fn liquidate_cdp() {
 			let liquidate_alice_xbtc_cdp_event = Event::CdpEngine(module_cdp_engine::Event::LiquidateUnsafeCDP(
 				RELAY_CHAIN_CURRENCY,
 				AccountId::from(ALICE),
-				10 * dollar(RELAY_CHAIN_CURRENCY),
-				50_000 * dollar(USD_CURRENCY),
+				50 * dollar(RELAY_CHAIN_CURRENCY),
+				250_000 * dollar(USD_CURRENCY),
 				LiquidationStrategy::Auction,
 			));
+
 			assert!(System::events()
 				.iter()
 				.any(|record| record.event == liquidate_alice_xbtc_cdp_event));
@@ -492,7 +491,7 @@ fn liquidate_cdp() {
 				0
 			);
 			assert_eq!(AuctionManager::collateral_auctions(0).is_some(), true);
-			assert_eq!(CdpTreasury::debit_pool(), 50_000 * dollar(USD_CURRENCY));
+			assert_eq!(CdpTreasury::debit_pool(), 250_000 * dollar(USD_CURRENCY));
 
 			assert_ok!(CdpEngine::liquidate_unsafe_cdp(
 				AccountId::from(BOB),
@@ -515,7 +514,7 @@ fn liquidate_cdp() {
 				Loans::positions(RELAY_CHAIN_CURRENCY, AccountId::from(BOB)).collateral,
 				0
 			);
-			assert_eq!(CdpTreasury::debit_pool(), 55_000 * dollar(USD_CURRENCY));
+			assert_eq!(CdpTreasury::debit_pool(), 255_000 * dollar(USD_CURRENCY));
 			assert!(CdpTreasury::surplus_pool() >= 5_000 * dollar(USD_CURRENCY));
 		});
 }

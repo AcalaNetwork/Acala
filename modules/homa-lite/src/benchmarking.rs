@@ -37,12 +37,15 @@ benchmarks! {
 		let caller: T::AccountId = account("caller", 0, SEED);
 		<T as module::Config>::Currency::deposit(T::StakingCurrencyId::get(), &caller, amount)?;
 		module::Pallet::<T>::set_minting_cap(RawOrigin::Root.into(), amount)?;
-	}: _(RawOrigin::Signed(caller), amount, 0)
+	}: _(RawOrigin::Signed(caller), amount)
 
 	set_total_staking_currency {}: _(RawOrigin::Root, 1_000_000_000_000)
 
 	set_minting_cap {
 	}: _(RawOrigin::Root, 1_000_000_000_000_000_000)
+
+	set_xcm_dest_weight {
+	}: _(RawOrigin::Root, 1_000_000_000)
 }
 
 #[cfg(test)]
@@ -233,6 +236,12 @@ mod tests {
 	fn test_set_minting_cap() {
 		ExtBuilder::default().build().execute_with(|| {
 			assert_ok!(test_benchmark_set_minting_cap::<Runtime>());
+		});
+	}
+	#[test]
+	fn test_set_xcm_dest_weight() {
+		ExtBuilder::default().build().execute_with(|| {
+			assert_ok!(test_benchmark_set_xcm_dest_weight::<Runtime>());
 		});
 	}
 }

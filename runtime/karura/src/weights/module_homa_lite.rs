@@ -60,4 +60,8 @@ impl<T: frame_system::Config> module_homa_lite::WeightInfo for WeightInfo<T> {
 		(11_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
+	fn set_xcm_dest_weight() -> Weight {
+		(20_346_000 as Weight)
+			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+	}
 }
