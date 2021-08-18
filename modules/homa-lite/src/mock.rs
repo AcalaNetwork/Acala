@@ -77,7 +77,7 @@ impl XcmTransfer<AccountId, Balance, CurrencyId> for MockXcm {
 		_dest_weight: Weight,
 	) -> DispatchResult {
 		match who {
-			INVALID_CALLER => Err(DispatchError::Other("Invalid caller")),
+			INVALID_CALLER => Err(DispatchError::Other("invalid caller")),
 			_ => Ok(()),
 		}
 	}

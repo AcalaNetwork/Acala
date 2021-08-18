@@ -93,8 +93,6 @@ pub mod module {
 		MintAmountBelowMinimumThreshold,
 		/// The amount of Staking currency used has exceeded the cap allowed.
 		ExceededStakingCurrencyMintCap,
-		/// Error has occurred during Cross-chain transfer.
-		XcmTransferFailed,
 	}
 
 	#[pallet::event]
@@ -199,8 +197,7 @@ pub mod module {
 				amount,
 				T::SovereignSubAccountLocation::get(),
 				Self::xcm_dest_weight(),
-			)
-			.map_err(|_| Error::<T>::XcmTransferFailed)?;
+			)?;
 
 			// Mint the liquid currency into the user's account.
 			T::Currency::deposit(T::LiquidCurrencyId::get(), &who, liquid_to_mint)?;
