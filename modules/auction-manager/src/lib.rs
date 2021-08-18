@@ -263,6 +263,12 @@ pub mod module {
 				}
 			}
 		}
+
+		fn integrity_test() {
+			assert!(T::DefaultSwapParitalPathList::get()
+				.iter()
+				.all(|path| path.len() > 0 && path[path.len() - 1] == T::GetStableCurrencyId::get()));
+		}
 	}
 
 	#[pallet::call]
@@ -399,9 +405,9 @@ impl<T: Config> Pallet<T> {
 		}
 
 		// calculate how much collateral to offset target in settle price
-		let stable_currency_id = T::GetStableCurrencyId::get();
-		let settle_price = T::PriceSource::get_relative_price(stable_currency_id, collateral_auction.currency_id)
-			.ok_or(Error::<T>::InvalidFeedPrice)?;
+		let settle_price =
+			T::PriceSource::get_relative_price(T::GetStableCurrencyId::get(), collateral_auction.currency_id)
+				.ok_or(Error::<T>::InvalidFeedPrice)?;
 		let confiscate_collateral_amount = if collateral_auction.always_forward() {
 			collateral_auction.amount
 		} else {
@@ -574,17 +580,13 @@ impl<T: Config> Pallet<T> {
 		// if bid_price doesn't reach target, DEX will try trading with DEX to get better result.
 		if !collateral_auction.in_reverse_stage(bid_price) {
 			let default_swap_parital_path_list: Vec<Vec<CurrencyId>> = T::DefaultSwapParitalPathList::get();
-			let stable_currency_id = T::GetStableCurrencyId::get();
 
 			// iterator default_swap_parital_path_list to try swap until swap succeed.
 			for partial_path in default_swap_parital_path_list {
 				let partial_path_len = partial_path.len();
 
 				// check collateral currency_id and partial_path can form a valid swap path.
-				if partial_path_len > 0
-					&& collateral_auction.currency_id != partial_path[0]
-					&& partial_path[partial_path_len - 1] == stable_currency_id
-				{
+				if partial_path_len > 0 && collateral_auction.currency_id != partial_path[0] {
 					let mut swap_path = vec![collateral_auction.currency_id];
 					swap_path.extend(partial_path);
 
@@ -606,7 +608,7 @@ impl<T: Config> Pallet<T> {
 							// refund stable currency to the last bidder, it shouldn't fail and affect the
 							// process. but even it failed, just the winner did not get the bid price. it
 							// can be fixed by treasury council.
-							if let Some(bidder) = maybe_bidder.clone() {
+							if let Some(bidder) = maybe_bidder.as_ref() {
 								let res = T::CDPTreasury::issue_debit(&bidder, bid_price, false);
 								if let Err(e) = res {
 									log::warn!(

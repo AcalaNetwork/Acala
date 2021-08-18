@@ -380,6 +380,12 @@ pub mod module {
 				);
 			}
 		}
+
+		fn integrity_test() {
+			assert!(T::DefaultSwapParitalPathList::get()
+				.iter()
+				.all(|path| path.len() > 0 && path[path.len() - 1] == T::GetStableCurrencyId::get()));
+		}
 	}
 
 	#[pallet::call]
@@ -844,17 +850,13 @@ impl<T: Config> Pallet<T> {
 				)
 			} else {
 				let default_swap_parital_path_list: Vec<Vec<CurrencyId>> = T::DefaultSwapParitalPathList::get();
-				let stable_currency_id = T::GetStableCurrencyId::get();
 
 				// iterator default_swap_parital_path_list to try swap until swap succeed.
 				for partial_path in default_swap_parital_path_list {
 					let partial_path_len = partial_path.len();
 
 					// check collateral currency_id and partial_path can form a valid swap path.
-					if partial_path_len > 0
-						&& currency_id != partial_path[0]
-						&& partial_path[partial_path_len - 1] == stable_currency_id
-					{
+					if partial_path_len > 0 && currency_id != partial_path[0] {
 						let mut swap_path = vec![currency_id];
 						swap_path.extend(partial_path);
 
@@ -911,7 +913,6 @@ impl<T: Config> Pallet<T> {
 		let target_stable_amount = Self::get_liquidation_penalty(currency_id).saturating_mul_acc_int(bad_debt_value);
 		let liquidation_strategy = (|| -> Result<LiquidationStrategy, DispatchError> {
 			let default_swap_parital_path_list: Vec<Vec<CurrencyId>> = T::DefaultSwapParitalPathList::get();
-			let stable_currency_id = T::GetStableCurrencyId::get();
 
 			// calculate the supply limit by slippage limit for the price of oracle,
 			let max_supply_limit = Ratio::one()
@@ -919,7 +920,7 @@ impl<T: Config> Pallet<T> {
 				.reciprocal()
 				.unwrap_or_else(Ratio::max_value)
 				.saturating_mul_int(
-					T::PriceSource::get_relative_price(stable_currency_id, currency_id)
+					T::PriceSource::get_relative_price(T::GetStableCurrencyId::get(), currency_id)
 						.expect("the oracle price should be avalible because liquidation are triggered by it.")
 						.saturating_mul_int(target_stable_amount),
 				);
@@ -930,10 +931,7 @@ impl<T: Config> Pallet<T> {
 				let partial_path_len = partial_path.len();
 
 				// check collateral currency_id and partial_path can form a valid swap path.
-				if partial_path_len > 0
-					&& currency_id != partial_path[0]
-					&& partial_path[partial_path_len - 1] == stable_currency_id
-				{
+				if partial_path_len > 0 && currency_id != partial_path[0] {
 					let mut swap_path = vec![currency_id];
 					swap_path.extend(partial_path);
 
