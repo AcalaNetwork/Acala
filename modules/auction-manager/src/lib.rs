@@ -267,7 +267,7 @@ pub mod module {
 		fn integrity_test() {
 			assert!(T::DefaultSwapParitalPathList::get()
 				.iter()
-				.all(|path| path.len() > 0 && path[path.len() - 1] == T::GetStableCurrencyId::get()));
+				.all(|path| !path.is_empty() && path[path.len() - 1] == T::GetStableCurrencyId::get()));
 		}
 	}
 
