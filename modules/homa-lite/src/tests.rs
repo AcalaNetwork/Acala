@@ -186,7 +186,7 @@ fn failed_xcm_transfer_is_handled() {
 		// XCM transfer fails if it is called by INVALID_CALLER.
 		assert_noop!(
 			HomaLite::mint(Origin::signed(INVALID_CALLER), dollar(1)),
-			Error::<Runtime>::XcmTransferFailed
+			DispatchError::Other("invalid caller"),
 		);
 	});
 }
