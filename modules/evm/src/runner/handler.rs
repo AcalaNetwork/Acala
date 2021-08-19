@@ -36,7 +36,7 @@ use primitives::{H160_PREFIX_DEXSHARE, H160_PREFIX_TOKEN, PREDEPLOY_ADDRESS_STAR
 use sha3::{Digest, Keccak256};
 use sp_runtime::{
 	traits::{One, Saturating, UniqueSaturatedInto, Zero},
-	DispatchError, DispatchResult, SaturatedConversion, TransactionOutcome,
+	DispatchError, DispatchResult, TransactionOutcome,
 };
 use sp_std::{cmp::min, convert::Infallible, marker::PhantomData, prelude::*, rc::Rc};
 
@@ -179,16 +179,11 @@ impl<'vicinity, 'config, 'meter, T: Config> Handler<'vicinity, 'config, 'meter, 
 	}
 
 	fn transfer(transfer: Transfer) -> Result<(), ExitError> {
-		let source = T::AddressMapping::get_account_id(&transfer.source);
-		let target = T::AddressMapping::get_account_id(&transfer.target);
-
-		T::Currency::transfer(
-			&source,
-			&target,
-			transfer.value.saturated_into::<u128>().unique_saturated_into(),
-			ExistenceRequirement::AllowDeath,
-		)
-		.map_err(|_| ExitError::OutOfGas)
+		if transfer.value.is_zero() {
+			Ok(())
+		} else {
+			Err(ExitError::Other("invalid action".into()))
+		}
 	}
 
 	pub fn nonce(address: H160) -> U256 {
@@ -324,9 +319,8 @@ impl<'vicinity, 'config, 'meter, T: Config> HandlerT for Handler<'vicinity, 'con
 	type CallInterrupt = Infallible;
 	type CallFeedback = Infallible;
 
-	fn balance(&self, address: H160) -> U256 {
-		let account = Pallet::<T>::account_basic(&address);
-		account.balance
+	fn balance(&self, _address: H160) -> U256 {
+		Default::default()
 	}
 
 	fn code_size(&self, address: H160) -> U256 {
