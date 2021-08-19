@@ -9461,6 +9461,7 @@ dependencies = [
  "hex",
  "hex-literal 0.3.1",
  "karura-runtime",
+ "kusama-runtime",
  "libsecp256k1",
  "mandala-runtime",
  "max-encoded-len",
@@ -9533,6 +9534,8 @@ dependencies = [
  "parachain-info",
  "parity-scale-codec",
  "polkadot-parachain",
+ "polkadot-primitives",
+ "polkadot-runtime-parachains",
  "runtime-common",
  "serde",
  "serde_json",
@@ -9554,6 +9557,7 @@ dependencies = [
  "sp-version",
  "xcm",
  "xcm-builder",
+ "xcm-emulator",
  "xcm-executor",
 ]
 
@@ -13819,6 +13823,30 @@ dependencies = [
  "sp-arithmetic",
  "sp-io",
  "sp-runtime",
+ "sp-std",
+ "xcm",
+ "xcm-executor",
+]
+
+[[package]]
+name = "xcm-emulator"
+version = "0.1.0"
+source = "git+https://github.com/shaunxw/xcm-simulator?branch=polkadot-v0.9.8#c5350f6158265e5d79b22f3be3b13ad2358afb15"
+dependencies = [
+ "cumulus-pallet-dmp-queue",
+ "cumulus-pallet-parachain-system",
+ "cumulus-pallet-xcmp-queue",
+ "cumulus-primitives-core",
+ "cumulus-primitives-parachain-inherent",
+ "cumulus-test-relay-sproof-builder",
+ "frame-support",
+ "frame-system",
+ "parachain-info",
+ "parity-scale-codec",
+ "paste",
+ "polkadot-primitives",
+ "polkadot-runtime-parachains",
+ "sp-io",
  "sp-std",
  "xcm",
  "xcm-executor",

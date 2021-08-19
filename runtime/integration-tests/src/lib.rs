@@ -16,5 +16,12 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+#![cfg(test)]
+
 #[cfg(any(feature = "with-mandala-runtime", feature = "with-karura-runtime"))]
 mod integration_tests;
+
+#[cfg(feature = "with-karura-runtime")]
+mod kusama_cross_chain_transfer;
+#[cfg(feature = "with-karura-runtime")]
+mod kusama_test_net;
