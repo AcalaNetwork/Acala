@@ -830,18 +830,92 @@ fn close_cdp_has_debit_by_dex_work() {
 			Change::NoChange,
 		));
 
-		// max collateral amount limit swap
 		assert_noop!(
 			CDPEngineModule::close_cdp_has_debit_by_dex(ALICE, BTC, 5, None),
+			Error::<Runtime>::SwapDebitFailed
+		);
+
+		// max collateral amount limit swap
+		assert_noop!(
+			CDPEngineModule::close_cdp_has_debit_by_dex(ALICE, BTC, 5, Some(&vec![BTC, AUSD])),
 			dex::Error::<Runtime>::ExcessiveSupplyAmount
 		);
 
+		assert_eq!(DEXModule::get_liquidity_pool(BTC, AUSD), (100, 1000));
 		assert_ok!(CDPEngineModule::close_cdp_has_debit_by_dex(ALICE, BTC, 6, None));
 		System::assert_last_event(Event::CDPEngineModule(crate::Event::CloseCDPInDebitByDEX(
 			BTC, ALICE, 6, 94, 50,
 		)));
+
+		assert_eq!(DEXModule::get_liquidity_pool(BTC, AUSD), (106, 950));
 		assert_eq!(Currencies::free_balance(BTC, &ALICE), 994);
 		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 50);
+		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 0);
+		assert_eq!(LoansModule::positions(BTC, ALICE).collateral, 0);
+		assert_eq!(CDPTreasuryModule::get_surplus_pool(), 50);
+		assert_eq!(CDPTreasuryModule::get_debit_pool(), 50);
+	});
+}
+
+#[test]
+fn close_cdp_has_debit_by_swap_on_alternative_path() {
+	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
+		assert_ok!(DEXModule::add_liquidity(
+			Origin::signed(CAROL),
+			BTC,
+			ACA,
+			100,
+			1000,
+			0,
+			false
+		));
+		assert_ok!(DEXModule::add_liquidity(
+			Origin::signed(CAROL),
+			ACA,
+			AUSD,
+			1000,
+			1000,
+			0,
+			false
+		));
+		assert_ok!(CDPEngineModule::set_collateral_params(
+			Origin::signed(1),
+			BTC,
+			Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
+			Change::NewValue(Some(Rate::saturating_from_rational(2, 10))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
+			Change::NewValue(10000),
+		));
+
+		assert_eq!(DEXModule::get_liquidity_pool(BTC, ACA), (100, 1000));
+		assert_eq!(DEXModule::get_liquidity_pool(ACA, AUSD), (1000, 1000));
+		assert_ok!(CDPEngineModule::adjust_position(&ALICE, BTC, 100, 500));
+		assert_eq!(Currencies::free_balance(BTC, &ALICE), 900);
+		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 50);
+		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 500);
+		assert_eq!(LoansModule::positions(BTC, ALICE).collateral, 100);
+		assert_eq!(CDPTreasuryModule::get_surplus_pool(), 0);
+		assert_eq!(CDPTreasuryModule::get_debit_pool(), 0);
+
+		assert_ok!(CDPEngineModule::set_collateral_params(
+			Origin::signed(1),
+			BTC,
+			Change::NoChange,
+			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
+			Change::NoChange,
+			Change::NoChange,
+			Change::NoChange,
+		));
+		assert_ok!(CDPEngineModule::close_cdp_has_debit_by_dex(ALICE, BTC, 100, None));
+		System::assert_last_event(Event::CDPEngineModule(crate::Event::CloseCDPInDebitByDEX(
+			BTC, ALICE, 6, 94, 50,
+		)));
+
+		assert_eq!(DEXModule::get_liquidity_pool(BTC, ACA), (106, 947));
+		assert_eq!(DEXModule::get_liquidity_pool(ACA, AUSD), (1053, 950));
+		assert_eq!(Currencies::free_balance(BTC, &ALICE), 994);
 		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 0);
 		assert_eq!(LoansModule::positions(BTC, ALICE).collateral, 0);
 		assert_eq!(CDPTreasuryModule::get_surplus_pool(), 50);

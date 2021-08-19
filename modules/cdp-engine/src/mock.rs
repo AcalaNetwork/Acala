@@ -220,6 +220,9 @@ parameter_types! {
 	pub EnabledTradingPairs: Vec<TradingPair> = vec![
 		TradingPair::from_currency_ids(AUSD, BTC).unwrap(),
 		TradingPair::from_currency_ids(AUSD, DOT).unwrap(),
+		TradingPair::from_currency_ids(ACA, BTC).unwrap(),
+		TradingPair::from_currency_ids(ACA, DOT).unwrap(),
+		TradingPair::from_currency_ids(ACA, AUSD).unwrap(),
 	];
 }
 
@@ -272,6 +275,10 @@ parameter_types! {
 	pub MaxSwapSlippageCompareToOracle: Ratio = Ratio::saturating_from_rational(50, 100);
 	pub const UnsignedPriority: u64 = 1 << 20;
 	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![BTC, DOT];
+	pub DefaultSwapParitalPathList: Vec<Vec<CurrencyId>> = vec![
+		vec![AUSD],
+		vec![ACA, AUSD],
+	];
 }
 
 impl Config for Runtime {
@@ -289,6 +296,7 @@ impl Config for Runtime {
 	type UnsignedPriority = UnsignedPriority;
 	type EmergencyShutdown = MockEmergencyShutdown;
 	type UnixTime = Timestamp;
+	type DefaultSwapParitalPathList = DefaultSwapParitalPathList;
 	type WeightInfo = ();
 }
 
@@ -334,10 +342,11 @@ impl Default for ExtBuilder {
 			balances: vec![
 				(ALICE, BTC, 1000),
 				(BOB, BTC, 1000),
-				(CAROL, BTC, 100),
+				(CAROL, BTC, 10000),
 				(ALICE, DOT, 1000),
 				(BOB, DOT, 1000),
-				(CAROL, AUSD, 1000),
+				(CAROL, DOT, 10000),
+				(CAROL, AUSD, 10000),
 			],
 		}
 	}
@@ -348,6 +357,12 @@ impl ExtBuilder {
 		let mut t = frame_system::GenesisConfig::default()
 			.build_storage::<Runtime>()
 			.unwrap();
+
+		pallet_balances::GenesisConfig::<Runtime> {
+			balances: vec![(CAROL, 10000)],
+		}
+		.assimilate_storage(&mut t)
+		.unwrap();
 
 		orml_tokens::GenesisConfig::<Runtime> {
 			balances: self.balances,
