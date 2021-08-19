@@ -138,6 +138,12 @@ sp-trie = { git = "https://github.com/paritytech/substrate", branch = "polkadot-
 cumulus-primitives-parachain-inherent = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.8" }
 cumulus-test-relay-sproof-builder = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.8" }
 
+polkadot-primitives = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.8" }
+polkadot-runtime-parachains = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.8" }
+kusama-runtime = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.8" }
+
+xcm-emulator = { git = "https://github.com/shaunxw/xcm-simulator", branch = "polkadot-v0.9.8" }
+
 acala-service = { path = "../../node/service", features = ["with-all-runtime"] }
 
 [features]

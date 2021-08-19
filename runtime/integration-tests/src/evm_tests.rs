@@ -16,10 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-#![cfg(test)]
-mod integration_tests;
-
-use integration_tests::*;
+use crate::integration_tests::*;
 
 use module_support::{
 	EVMBridge as EVMBridgeT, EVM as EVMTrait,
