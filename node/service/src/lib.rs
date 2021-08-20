@@ -41,9 +41,9 @@ pub use mandala_runtime;
 use sc_consensus_aura::StartAuraParams;
 
 use acala_primitives::{Block, Hash};
+use cumulus_primitives_parachain_inherent::MockValidationDataInherentDataProvider;
 #[cfg(feature = "with-mandala-runtime")]
 use futures::stream::StreamExt;
-use mock_inherent_data_provider::MockParachainInherentDataProvider;
 use sc_client_api::ExecutorProvider;
 use sc_consensus::LongestChain;
 use sc_consensus_aura::ImportQueueParams;
@@ -73,7 +73,14 @@ pub use sp_api::ConstructRuntimeApi;
 
 pub mod chain_spec;
 mod client;
-mod mock_inherent_data_provider;
+
+pub fn default_mock_parachain_inherent_data_provider() -> MockValidationDataInherentDataProvider {
+	MockValidationDataInherentDataProvider {
+		current_para_block: 0,
+		relay_offset: 1000,
+		relay_blocks_per_para_block: 2,
+	}
+}
 
 #[cfg(feature = "with-mandala-runtime")]
 native_executor_instance!(
@@ -117,15 +124,15 @@ pub trait IdentifyVariant {
 
 impl IdentifyVariant for Box<dyn ChainSpec> {
 	fn is_acala(&self) -> bool {
-		self.id().starts_with("acala") || self.id().starts_with("aca")
+		self.id().starts_with("acala")
 	}
 
 	fn is_karura(&self) -> bool {
-		self.id().starts_with("karura") || self.id().starts_with("kar")
+		self.id().starts_with("karura")
 	}
 
 	fn is_mandala(&self) -> bool {
-		self.id().starts_with("mandala") || self.id().starts_with("man")
+		self.id().starts_with("mandala")
 	}
 
 	fn is_mandala_dev(&self) -> bool {
@@ -193,7 +200,7 @@ where
 		config.transaction_pool.clone(),
 		config.role.is_authority().into(),
 		registry,
-		task_manager.spawn_handle(),
+		task_manager.spawn_essential_handle(),
 		client.clone(),
 	);
 
@@ -227,7 +234,7 @@ where
 						slot_duration,
 					);
 
-					Ok((timestamp, slot, MockParachainInherentDataProvider))
+					Ok((timestamp, slot, default_mock_parachain_inherent_data_provider()))
 				},
 				spawner: &task_manager.spawn_essential_handle(),
 				registry,
@@ -510,6 +517,8 @@ where
 					slot_duration,
 					// We got around 500ms for proposing
 					block_proposal_slot_portion: SlotProportion::new(1f32 / 24f32),
+					// And a maximum of 750ms if slots are skipped
+					max_block_proposal_slot_portion: Some(SlotProportion::new(1f32 / 16f32)),
 					telemetry,
 				},
 			))
@@ -651,7 +660,7 @@ fn inner_mandala_dev(config: Configuration, instant_sealing: bool) -> Result<Tas
 					create_inherent_data_providers: |_, _| async {
 						Ok((
 							sp_timestamp::InherentDataProvider::from_system_time(),
-							MockParachainInherentDataProvider,
+							default_mock_parachain_inherent_data_provider(),
 						))
 					},
 				});
@@ -663,7 +672,7 @@ fn inner_mandala_dev(config: Configuration, instant_sealing: bool) -> Result<Tas
 			// aura
 			let can_author_with = sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone());
 			let slot_duration = sc_consensus_aura::slot_duration(&*client)?.slot_duration();
-			let aura = sc_consensus_aura::start_aura::<AuraPair, _, _, _, _, _, _, _, _, _, _>(StartAuraParams {
+			let aura = sc_consensus_aura::start_aura::<AuraPair, _, _, _, _, _, _, _, _, _, _, _>(StartAuraParams {
 				slot_duration: sc_consensus_aura::slot_duration(&*client)?,
 				client: client.clone(),
 				select_chain,
@@ -677,14 +686,18 @@ fn inner_mandala_dev(config: Configuration, instant_sealing: bool) -> Result<Tas
 						slot_duration,
 					);
 
-					Ok((timestamp, slot, MockParachainInherentDataProvider))
+					Ok((timestamp, slot, default_mock_parachain_inherent_data_provider()))
 				},
 				force_authoring,
 				backoff_authoring_blocks,
 				keystore: keystore_container.sync_keystore(),
 				can_author_with,
 				sync_oracle: network.clone(),
-				block_proposal_slot_portion: SlotProportion::new(2f32 / 3f32),
+				justification_sync_link: network.clone(),
+				// We got around 500ms for proposing
+				block_proposal_slot_portion: SlotProportion::new(1f32 / 24f32),
+				// And a maximum of 750ms if slots are skipped
+				max_block_proposal_slot_portion: Some(SlotProportion::new(1f32 / 16f32)),
 				telemetry: telemetry.as_ref().map(|x| x.handle()),
 			})?;
 

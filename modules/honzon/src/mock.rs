@@ -24,7 +24,7 @@ use super::*;
 use frame_support::{construct_runtime, ord_parameter_types, parameter_types, PalletId};
 use frame_system::{offchain::SendTransactionTypes, EnsureSignedBy};
 use orml_traits::parameter_type_with_key;
-use primitives::{Balance, Moment, TokenSymbol};
+use primitives::{Balance, Moment, ReserveIdentifier, TokenSymbol};
 use sp_core::H256;
 use sp_runtime::{
 	testing::{Header, TestXt},
@@ -95,6 +95,7 @@ impl orml_tokens::Config for Runtime {
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = ();
 	type MaxLocks = ();
+	type DustRemovalWhitelist = ();
 }
 
 parameter_types! {
@@ -110,7 +111,7 @@ impl pallet_balances::Config for Runtime {
 	type AccountStore = frame_system::Pallet<Runtime>;
 	type MaxLocks = ();
 	type MaxReserves = MaxReserves;
-	type ReserveIdentifier = [u8; 8];
+	type ReserveIdentifier = ReserveIdentifier;
 	type WeightInfo = ();
 }
 pub type AdaptedBasicCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Amount, BlockNumber>;
@@ -150,10 +151,6 @@ impl PriceProvider<CurrencyId> for MockPriceSource {
 	fn get_price(_currency_id: CurrencyId) -> Option<Price> {
 		Some(Price::one())
 	}
-
-	fn lock_price(_currency_id: CurrencyId) {}
-
-	fn unlock_price(_currency_id: CurrencyId) {}
 }
 
 pub struct MockAuctionManager;
@@ -239,8 +236,11 @@ parameter_types! {
 	pub DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::one();
 	pub DefaultLiquidationPenalty: Rate = Rate::saturating_from_rational(10, 100);
 	pub const MinimumDebitValue: Balance = 2;
-	pub MaxSlippageSwapWithDEX: Ratio = Ratio::saturating_from_rational(50, 100);
+	pub MaxSwapSlippageCompareToOracle: Ratio = Ratio::saturating_from_rational(50, 100);
 	pub const UnsignedPriority: u64 = 1 << 20;
+	pub DefaultSwapParitalPathList: Vec<Vec<CurrencyId>> = vec![
+		vec![AUSD],
+	];
 }
 
 impl cdp_engine::Config for Runtime {
@@ -254,10 +254,11 @@ impl cdp_engine::Config for Runtime {
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type CDPTreasury = CDPTreasuryModule;
 	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
-	type MaxSlippageSwapWithDEX = MaxSlippageSwapWithDEX;
+	type MaxSwapSlippageCompareToOracle = MaxSwapSlippageCompareToOracle;
 	type UnsignedPriority = UnsignedPriority;
 	type EmergencyShutdown = MockEmergencyShutdown;
 	type UnixTime = Timestamp;
+	type DefaultSwapParitalPathList = DefaultSwapParitalPathList;
 	type WeightInfo = ();
 }
 
@@ -306,14 +307,14 @@ where
 
 pub struct ExtBuilder {
 	endowed_native: Vec<(AccountId, Balance)>,
-	endowed_accounts: Vec<(AccountId, CurrencyId, Balance)>,
+	balances: Vec<(AccountId, CurrencyId, Balance)>,
 }
 
 impl Default for ExtBuilder {
 	fn default() -> Self {
 		Self {
 			endowed_native: vec![(ALICE, 1000)],
-			endowed_accounts: vec![
+			balances: vec![
 				(ALICE, BTC, 1000),
 				(BOB, BTC, 1000),
 				(ALICE, DOT, 1000),
@@ -336,7 +337,7 @@ impl ExtBuilder {
 		.unwrap();
 
 		orml_tokens::GenesisConfig::<Runtime> {
-			endowed_accounts: self.endowed_accounts,
+			balances: self.balances,
 		}
 		.assimilate_storage(&mut t)
 		.unwrap();

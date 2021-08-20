@@ -25,7 +25,7 @@ use frame_support::{assert_ok, construct_runtime, ord_parameter_types, parameter
 use frame_system::EnsureSignedBy;
 use module_support::{mocks::MockAddressMapping, AddressMapping};
 use orml_traits::parameter_type_with_key;
-use primitives::{Amount, Balance, CurrencyId, TokenSymbol};
+use primitives::{Amount, Balance, CurrencyId, ReserveIdentifier, TokenSymbol};
 use sp_core::{bytes::from_hex, crypto::AccountId32, H256};
 use sp_runtime::{testing::Header, traits::IdentityLookup};
 use std::str::FromStr;
@@ -79,7 +79,7 @@ impl pallet_balances::Config for Runtime {
 	type AccountStore = frame_system::Pallet<Runtime>;
 	type MaxLocks = ();
 	type MaxReserves = MaxReserves;
-	type ReserveIdentifier = [u8; 8];
+	type ReserveIdentifier = ReserveIdentifier;
 	type WeightInfo = ();
 }
 
@@ -98,6 +98,7 @@ impl orml_tokens::Config for Runtime {
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = ();
 	type MaxLocks = ();
+	type DustRemovalWhitelist = ();
 }
 
 parameter_types! {
@@ -217,27 +218,25 @@ pub fn deploy_contracts() {
 		10000
 	));
 
-	let event = Event::module_evm(module_evm::Event::Created(erc20_address()));
+	let event = Event::EVM(module_evm::Event::Created(erc20_address()));
 	assert_eq!(System::events().iter().last().unwrap().event, event);
 
 	assert_ok!(EVM::deploy_free(Origin::signed(CouncilAccount::get()), erc20_address()));
 }
 
 pub struct ExtBuilder {
-	endowed_accounts: Vec<(AccountId, Balance)>,
+	balances: Vec<(AccountId, Balance)>,
 }
 
 impl Default for ExtBuilder {
 	fn default() -> Self {
-		Self {
-			endowed_accounts: vec![],
-		}
+		Self { balances: vec![] }
 	}
 }
 
 impl ExtBuilder {
-	pub fn balances(mut self, endowed_accounts: Vec<(AccountId, Balance)>) -> Self {
-		self.endowed_accounts = endowed_accounts;
+	pub fn balances(mut self, balances: Vec<(AccountId, Balance)>) -> Self {
+		self.balances = balances;
 		self
 	}
 
@@ -247,7 +246,7 @@ impl ExtBuilder {
 			.unwrap();
 
 		pallet_balances::GenesisConfig::<Runtime> {
-			balances: self.endowed_accounts.clone().into_iter().collect::<Vec<_>>(),
+			balances: self.balances.clone().into_iter().collect::<Vec<_>>(),
 		}
 		.assimilate_storage(&mut t)
 		.unwrap();

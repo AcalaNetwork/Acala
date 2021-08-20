@@ -414,7 +414,7 @@ fn schedule_call_precompile_should_work() {
 		let (reason, output, used_gas) = ScheduleCallPrecompile::execute(&input, None, &context).unwrap();
 		assert_eq!(reason, ExitSucceed::Returned);
 		assert_eq!(used_gas, 0);
-		let event = TestEvent::pallet_scheduler(pallet_scheduler::Event::<Test>::Scheduled(3, 0));
+		let event = TestEvent::Scheduler(pallet_scheduler::Event::<Test>::Scheduled(3, 0));
 		assert!(System::events().iter().any(|record| record.event == event));
 
 		// cancel schedule
@@ -436,7 +436,7 @@ fn schedule_call_precompile_should_work() {
 		let (reason, _output, used_gas) = ScheduleCallPrecompile::execute(&cancel_input, None, &context).unwrap();
 		assert_eq!(reason, ExitSucceed::Returned);
 		assert_eq!(used_gas, 0);
-		let event = TestEvent::pallet_scheduler(pallet_scheduler::Event::<Test>::Canceled(3, 0));
+		let event = TestEvent::Scheduler(pallet_scheduler::Event::<Test>::Canceled(3, 0));
 		assert!(System::events().iter().any(|record| record.event == event));
 
 		let (reason, output, used_gas) = ScheduleCallPrecompile::execute(&input, None, &context).unwrap();
@@ -466,7 +466,7 @@ fn schedule_call_precompile_should_work() {
 		let (reason, _output, used_gas) = ScheduleCallPrecompile::execute(&reschedule_input, None, &context).unwrap();
 		assert_eq!(reason, ExitSucceed::Returned);
 		assert_eq!(used_gas, 0);
-		let event = TestEvent::pallet_scheduler(pallet_scheduler::Event::<Test>::Scheduled(5, 0));
+		let event = TestEvent::Scheduler(pallet_scheduler::Event::<Test>::Scheduled(5, 0));
 		assert!(System::events().iter().any(|record| record.event == event));
 
 		let from_account = <Test as module_evm::Config>::AddressMapping::get_account_id(&alice_evm_addr());

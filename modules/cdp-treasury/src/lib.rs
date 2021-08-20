@@ -166,7 +166,7 @@ pub mod module {
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight(T::WeightInfo::extract_surplus_to_treasury())]
 		#[transactional]
-		pub fn extract_surplus_to_treasury(origin: OriginFor<T>, amount: Balance) -> DispatchResultWithPostInfo {
+		pub fn extract_surplus_to_treasury(origin: OriginFor<T>, amount: Balance) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
 			T::Currency::transfer(
 				T::GetStableCurrencyId::get(),
@@ -174,7 +174,7 @@ pub mod module {
 				&T::TreasuryAccount::get(),
 				amount,
 			)?;
-			Ok(().into())
+			Ok(())
 		}
 
 		#[pallet::weight(T::WeightInfo::auction_collateral())]
@@ -185,7 +185,7 @@ pub mod module {
 			amount: Balance,
 			target: Balance,
 			splited: bool,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
 			<Self as CDPTreasuryExtended<T::AccountId>>::create_collateral_auctions(
 				currency_id,
@@ -194,7 +194,7 @@ pub mod module {
 				Self::account_id(),
 				splited,
 			)?;
-			Ok(().into())
+			Ok(())
 		}
 
 		/// Update parameters related to collateral auction under specific
@@ -210,11 +210,11 @@ pub mod module {
 			origin: OriginFor<T>,
 			currency_id: CurrencyId,
 			size: Balance,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
 			ExpectedCollateralAuctionSize::<T>::insert(currency_id, size);
 			Self::deposit_event(Event::ExpectedCollateralAuctionSizeUpdated(currency_id, size));
-			Ok(().into())
+			Ok(())
 		}
 	}
 }
@@ -333,8 +333,7 @@ impl<T: Config> CDPTreasuryExtended<T::AccountId> for Pallet<T> {
 		currency_id: CurrencyId,
 		supply_amount: Balance,
 		min_target_amount: Balance,
-		price_impact_limit: Option<Ratio>,
-		maybe_path: Option<&[CurrencyId]>,
+		swap_path: &[CurrencyId],
 		collateral_in_auction: bool,
 	) -> sp_std::result::Result<Balance, DispatchError> {
 		if collateral_in_auction {
@@ -350,27 +349,15 @@ impl<T: Config> CDPTreasuryExtended<T::AccountId> for Pallet<T> {
 			);
 		}
 
-		let stable_currency_id = T::GetStableCurrencyId::get();
-		let default_swap_path = &[currency_id, stable_currency_id];
-		let swap_path = match maybe_path {
-			None => default_swap_path,
-			Some(path) => {
-				let path_length = path.len();
-				ensure!(
-					path_length >= 2 && path[0] == currency_id && path[path_length - 1] == stable_currency_id,
-					Error::<T>::InvalidSwapPath
-				);
-				path
-			}
-		};
+		let swap_path_length = swap_path.len();
+		ensure!(
+			swap_path_length >= 2
+				&& swap_path[0] == currency_id
+				&& swap_path[swap_path_length - 1] == T::GetStableCurrencyId::get(),
+			Error::<T>::InvalidSwapPath
+		);
 
-		T::DEX::swap_with_exact_supply(
-			&Self::account_id(),
-			swap_path,
-			supply_amount,
-			min_target_amount,
-			price_impact_limit,
-		)
+		T::DEX::swap_with_exact_supply(&Self::account_id(), swap_path, supply_amount, min_target_amount)
 	}
 
 	/// swap collateral which not in auction to get exact stable,
@@ -379,8 +366,7 @@ impl<T: Config> CDPTreasuryExtended<T::AccountId> for Pallet<T> {
 		currency_id: CurrencyId,
 		max_supply_amount: Balance,
 		target_amount: Balance,
-		price_impact_limit: Option<Ratio>,
-		maybe_path: Option<&[CurrencyId]>,
+		swap_path: &[CurrencyId],
 		collateral_in_auction: bool,
 	) -> sp_std::result::Result<Balance, DispatchError> {
 		if collateral_in_auction {
@@ -396,27 +382,15 @@ impl<T: Config> CDPTreasuryExtended<T::AccountId> for Pallet<T> {
 			);
 		}
 
-		let stable_currency_id = T::GetStableCurrencyId::get();
-		let default_swap_path = &[currency_id, stable_currency_id];
-		let swap_path = match maybe_path {
-			None => default_swap_path,
-			Some(path) => {
-				let path_length = path.len();
-				ensure!(
-					path_length >= 2 && path[0] == currency_id && path[path_length - 1] == stable_currency_id,
-					Error::<T>::InvalidSwapPath
-				);
-				path
-			}
-		};
+		let swap_path_length = swap_path.len();
+		ensure!(
+			swap_path_length >= 2
+				&& swap_path[0] == currency_id
+				&& swap_path[swap_path_length - 1] == T::GetStableCurrencyId::get(),
+			Error::<T>::InvalidSwapPath
+		);
 
-		T::DEX::swap_with_exact_target(
-			&Self::account_id(),
-			swap_path,
-			target_amount,
-			max_supply_amount,
-			price_impact_limit,
-		)
+		T::DEX::swap_with_exact_target(&Self::account_id(), swap_path, target_amount, max_supply_amount)
 	}
 
 	fn create_collateral_auctions(

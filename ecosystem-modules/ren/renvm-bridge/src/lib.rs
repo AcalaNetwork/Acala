@@ -45,7 +45,7 @@ mod tests;
 
 pub use module::*;
 
-type EcdsaSignature = ecdsa::Signature;
+pub type EcdsaSignature = ecdsa::Signature;
 type PublicKey = [u8; 20];
 type DestAddress = Vec<u8>;
 const MINT_TX_LENGTH: u32 = 168;
@@ -178,7 +178,7 @@ pub mod module {
 			#[pallet::compact] amount: Balance,
 			_n_hash: [u8; 32],
 			sig: EcdsaSignature,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			ensure_none(origin)?;
 			Self::do_mint(&who, amount, &sig)?;
 
@@ -196,16 +196,12 @@ pub mod module {
 			);
 			Self::deposit_event(Event::Minted(who, amount));
 
-			Ok(().into())
+			Ok(())
 		}
 
 		/// Allow a user to burn assets.
 		#[pallet::weight(10_000)]
-		pub fn burn(
-			origin: OriginFor<T>,
-			to: DestAddress,
-			#[pallet::compact] amount: Balance,
-		) -> DispatchResultWithPostInfo {
+		pub fn burn(origin: OriginFor<T>, to: DestAddress, #[pallet::compact] amount: Balance) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
 
 			NextBurnEventId::<T>::try_mutate(|id| -> DispatchResult {
@@ -219,7 +215,7 @@ pub mod module {
 				Ok(())
 			})?;
 
-			Ok(().into())
+			Ok(())
 		}
 
 		/// Allow RenVm rotate the public key.
@@ -228,12 +224,63 @@ pub mod module {
 		///
 		/// Verify input by `validate_unsigned`
 		#[pallet::weight(10_000)]
-		pub fn rotate_key(origin: OriginFor<T>, new_key: PublicKey, sig: EcdsaSignature) -> DispatchResultWithPostInfo {
+		pub fn rotate_key(origin: OriginFor<T>, new_key: PublicKey, sig: EcdsaSignature) -> DispatchResult {
 			ensure_none(origin)?;
 			Self::do_rotate_key(new_key, sig);
 			Self::deposit_event(Event::RotatedKey(new_key));
 
-			Ok(().into())
+			Ok(())
+		}
+	}
+
+	#[pallet::validate_unsigned]
+	impl<T: Config> frame_support::unsigned::ValidateUnsigned for Pallet<T> {
+		type Call = Call<T>;
+
+		fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {
+			match call {
+				Call::mint(who, p_hash, amount, n_hash, sig) => {
+					// check if already exists
+					if Signatures::<T>::contains_key(&sig) {
+						return InvalidTransaction::Stale.into();
+					}
+
+					let verify_result = Encode::using_encoded(&who, |encoded| -> DispatchResult {
+						Self::verify_mint_signature(&p_hash, *amount, encoded, &n_hash, &sig.0)
+					});
+
+					// verify signature
+					if verify_result.is_err() {
+						return InvalidTransaction::BadProof.into();
+					}
+
+					ValidTransaction::with_tag_prefix("renvm-bridge")
+						.priority(T::UnsignedPriority::get())
+						.and_provides(sig)
+						.longevity(64_u64)
+						.propagate(true)
+						.build()
+				}
+				Call::rotate_key(new_key, sig) => {
+					// check if already exists
+					if Signatures::<T>::contains_key(&sig) {
+						return InvalidTransaction::Stale.into();
+					}
+
+					// verify signature
+					if Self::verify_rotate_key_signature(new_key, &sig.0).is_err() {
+						return InvalidTransaction::BadProof.into();
+					}
+
+					ValidTransaction::with_tag_prefix("renvm-bridge")
+						.priority(T::UnsignedPriority::get())
+						.and_provides(sig)
+						.longevity(64_u64)
+						.propagate(true)
+						.build()
+				}
+				_ => InvalidTransaction::Call.into(),
+			}
 		}
 	}
 }
@@ -317,56 +364,5 @@ impl<T: Config> Pallet<T> {
 		ensure!(addr == pubkey, Error::<T>::InvalidMintSignature);
 
 		Ok(())
-	}
-}
-
-#[allow(deprecated)]
-impl<T: Config> frame_support::unsigned::ValidateUnsigned for Pallet<T> {
-	type Call = Call<T>;
-
-	fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {
-		match call {
-			Call::mint(who, p_hash, amount, n_hash, sig) => {
-				// check if already exists
-				if Signatures::<T>::contains_key(&sig) {
-					return InvalidTransaction::Stale.into();
-				}
-
-				let verify_result = Encode::using_encoded(&who, |encoded| -> DispatchResult {
-					Self::verify_mint_signature(&p_hash, *amount, encoded, &n_hash, &sig.0)
-				});
-
-				// verify signature
-				if verify_result.is_err() {
-					return InvalidTransaction::BadProof.into();
-				}
-
-				ValidTransaction::with_tag_prefix("renvm-bridge")
-					.priority(T::UnsignedPriority::get())
-					.and_provides(sig)
-					.longevity(64_u64)
-					.propagate(true)
-					.build()
-			}
-			Call::rotate_key(new_key, sig) => {
-				// check if already exists
-				if Signatures::<T>::contains_key(&sig) {
-					return InvalidTransaction::Stale.into();
-				}
-
-				// verify signature
-				if Self::verify_rotate_key_signature(new_key, &sig.0).is_err() {
-					return InvalidTransaction::BadProof.into();
-				}
-
-				ValidTransaction::with_tag_prefix("renvm-bridge")
-					.priority(T::UnsignedPriority::get())
-					.and_provides(sig)
-					.longevity(64_u64)
-					.propagate(true)
-					.build()
-			}
-			_ => InvalidTransaction::Call.into(),
-		}
 	}
 }

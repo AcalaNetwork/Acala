@@ -76,21 +76,32 @@ pub mod weights;
 pub mod pallet {
 	pub use crate::weights::WeightInfo;
 	use frame_support::{
-		dispatch::DispatchResultWithPostInfo,
 		inherent::Vec,
 		pallet_prelude::*,
-		traits::{Currency, EnsureOrigin, MaxEncodedLen, ReservableCurrency, ValidatorSet},
+		storage::bounded_btree_set::BoundedBTreeSet,
+		traits::{
+			Currency, EnsureOrigin, ExistenceRequirement::KeepAlive, NamedReservableCurrency, ValidatorRegistration,
+			ValidatorSet,
+		},
 		BoundedVec, PalletId,
 	};
 	use frame_support::{
-		sp_runtime::{traits::AccountIdConversion, RuntimeDebug},
+		sp_runtime::{
+			traits::{AccountIdConversion, CheckedSub, Zero},
+			Permill,
+		},
 		weights::DispatchClass,
 	};
 	use frame_system::pallet_prelude::*;
 	use frame_system::Config as SystemConfig;
 	use pallet_session::SessionManager;
+	use primitives::ReserveIdentifier;
 	use sp_staking::SessionIndex;
-	use sp_std::{convert::TryInto, vec};
+	use sp_std::{convert::TryInto, ops::Div, vec};
+
+	pub const RESERVE_ID: ReserveIdentifier = ReserveIdentifier::CollatorSelection;
+	pub const POINT_PER_BLOCK: u32 = 10;
+	pub const SESSION_DELAY: SessionIndex = 2;
 
 	type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as SystemConfig>::AccountId>>::Balance;
 
@@ -110,71 +121,93 @@ pub mod pallet {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
 		/// The currency mechanism.
-		type Currency: ReservableCurrency<Self::AccountId>;
+		type Currency: NamedReservableCurrency<Self::AccountId, ReserveIdentifier = ReserveIdentifier>;
 
 		/// A type for retrieving the validators supposed to be online in a session.
-		type ValidatorSet: ValidatorSet<Self::AccountId, ValidatorId = Self::AccountId>;
+		type ValidatorSet: ValidatorSet<Self::AccountId, ValidatorId = Self::AccountId>
+			+ ValidatorRegistration<Self::AccountId>;
 
 		/// Origin that can dictate updating parameters of this pallet.
 		type UpdateOrigin: EnsureOrigin<Self::Origin>;
 
 		/// Account Identifier from which the internal Pot is generated.
+		#[pallet::constant]
 		type PotId: Get<PalletId>;
+
+		/// Minimum number of candidates.
+		#[pallet::constant]
+		type MinCandidates: Get<u32>;
 
 		/// Maximum number of candidates that we should have. This is used for benchmarking and is
 		/// not enforced.
 		///
 		/// This does not take into account the invulnerables.
+		#[pallet::constant]
 		type MaxCandidates: Get<u32>;
 
 		/// Maximum number of invulnerables.
+		#[pallet::constant]
 		type MaxInvulnerables: Get<u32>;
+
+		/// The Kicked candidate cannot register candidate or withdraw bond until
+		/// `KickPenaltySessionLength` ends.
+		#[pallet::constant]
+		type KickPenaltySessionLength: Get<u32>;
+
+		/// Will be kicked if block is not produced in threshold.
+		#[pallet::constant]
+		type CollatorKickThreshold: Get<Permill>;
 
 		/// The weight information of this pallet.
 		type WeightInfo: WeightInfo;
 	}
-
-	/// Basic information about a collation candidate.
-	#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, MaxEncodedLen)]
-	pub struct CandidateInfo<AccountId, Balance> {
-		/// Account identifier.
-		pub who: AccountId,
-		/// Reserved deposit.
-		pub deposit: Balance,
-	}
-
-	type CandidateInfoOf<T> = CandidateInfo<<T as SystemConfig>::AccountId, BalanceOf<T>>;
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
 	pub struct Pallet<T>(_);
 
 	/// The invulnerable, fixed collators.
+	///
+	/// Invulnerables: Vec<AccountId>
 	#[pallet::storage]
 	#[pallet::getter(fn invulnerables)]
 	pub type Invulnerables<T: Config> = StorageValue<_, BoundedVec<T::AccountId, T::MaxInvulnerables>, ValueQuery>;
 
 	/// The (community, limited) collation candidates.
+	///
+	/// Candidates: BTreeSet<AccountId>
 	#[pallet::storage]
 	#[pallet::getter(fn candidates)]
-	pub type Candidates<T: Config> = StorageValue<_, BoundedVec<CandidateInfoOf<T>, T::MaxCandidates>, ValueQuery>;
+	pub type Candidates<T: Config> = StorageValue<_, BoundedBTreeSet<T::AccountId, T::MaxCandidates>, ValueQuery>;
 
 	/// Desired number of candidates.
 	///
 	/// This should ideally always be less than [`Config::MaxCandidates`] for weights to be correct.
+	/// DesiredCandidates: u32
 	#[pallet::storage]
 	#[pallet::getter(fn desired_candidates)]
 	pub type DesiredCandidates<T> = StorageValue<_, u32, ValueQuery>;
 
 	/// Fixed deposit bond for each candidate.
+	///
+	/// CandidacyBond: Balance
 	#[pallet::storage]
 	#[pallet::getter(fn candidacy_bond)]
 	pub type CandidacyBond<T> = StorageValue<_, BalanceOf<T>, ValueQuery>;
 
 	/// Session points for each candidate.
+	///
+	/// SessionPoints: map AccountId => u32
 	#[pallet::storage]
 	#[pallet::getter(fn session_points)]
 	pub type SessionPoints<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, u32, ValueQuery>;
+
+	/// Mapping from the kicked candidate or the left candidate to session index.
+	///
+	/// NonCandidates: map AccountId => SessionIndex
+	#[pallet::storage]
+	#[pallet::getter(fn non_candidates)]
+	pub type NonCandidates<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, SessionIndex, ValueQuery>;
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
@@ -221,13 +254,18 @@ pub mod pallet {
 	}
 
 	#[pallet::event]
-	#[pallet::metadata(T::AccountId = "AccountId", BalanceOf<T> = "Balance")]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
+	#[pallet::metadata(T::AccountId = "AccountId", Vec<T::AccountId> = "Vec<AccountId>", BalanceOf<T> = "Balance")]
 	pub enum Event<T: Config> {
+		/// Invulnurable was updated. \[new_invulnerables\]
 		NewInvulnerables(Vec<T::AccountId>),
+		/// Desired candidates was updated. \[new_desired_candidates\]
 		NewDesiredCandidates(u32),
+		/// Candidacy bond was updated. \[new_candidacy_bond\]
 		NewCandidacyBond(BalanceOf<T>),
+		/// A candidate was added. \[who, bond\]
 		CandidateAdded(T::AccountId, BalanceOf<T>),
+		/// A candidate was removed. \[who\]
 		CandidateRemoved(T::AccountId),
 	}
 
@@ -235,10 +273,15 @@ pub mod pallet {
 	#[pallet::error]
 	pub enum Error<T> {
 		MaxCandidatesExceeded,
+		BelowCandidatesMin,
+		StillLocked,
 		Unknown,
 		Permission,
 		AlreadyCandidate,
 		NotCandidate,
+		NotNonCandidate,
+		NothingToWithdraw,
+		RequireSessionKey,
 		AlreadyInvulnerable,
 		InvalidProof,
 		MaxInvulnerablesExceeded,
@@ -250,66 +293,60 @@ pub mod pallet {
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight(T::WeightInfo::set_invulnerables(new.len() as u32))]
-		pub fn set_invulnerables(origin: OriginFor<T>, new: Vec<T::AccountId>) -> DispatchResultWithPostInfo {
+		pub fn set_invulnerables(origin: OriginFor<T>, new: Vec<T::AccountId>) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
 			let bounded_new: BoundedVec<T::AccountId, T::MaxInvulnerables> =
 				new.try_into().map_err(|_| Error::<T>::MaxInvulnerablesExceeded)?;
 			<Invulnerables<T>>::put(&bounded_new);
 			Self::deposit_event(Event::NewInvulnerables(bounded_new.into_inner()));
-			Ok(().into())
+			Ok(())
 		}
 
 		#[pallet::weight(T::WeightInfo::set_desired_candidates())]
-		pub fn set_desired_candidates(origin: OriginFor<T>, max: u32) -> DispatchResultWithPostInfo {
+		pub fn set_desired_candidates(origin: OriginFor<T>, max: u32) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
 			if max > T::MaxCandidates::get() {
 				Err(Error::<T>::MaxCandidatesExceeded)?;
 			}
 			<DesiredCandidates<T>>::put(&max);
 			Self::deposit_event(Event::NewDesiredCandidates(max));
-			Ok(().into())
+			Ok(())
 		}
 
 		#[pallet::weight(T::WeightInfo::set_candidacy_bond())]
-		pub fn set_candidacy_bond(origin: OriginFor<T>, bond: BalanceOf<T>) -> DispatchResultWithPostInfo {
+		pub fn set_candidacy_bond(origin: OriginFor<T>, bond: BalanceOf<T>) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
 			<CandidacyBond<T>>::put(&bond);
 			Self::deposit_event(Event::NewCandidacyBond(bond));
-			Ok(().into())
+			Ok(())
 		}
 
 		#[pallet::weight(T::WeightInfo::register_as_candidate(T::MaxCandidates::get()))]
 		pub fn register_as_candidate(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 
-			// ensure we are below limit.
-			let length = <Candidates<T>>::decode_len().unwrap_or_default();
-			ensure!(
-				(length as u32) < Self::desired_candidates(),
-				Error::<T>::MaxCandidatesExceeded
-			);
-			ensure!(!Self::invulnerables().contains(&who), Error::<T>::AlreadyInvulnerable);
+			<NonCandidates<T>>::try_mutate_exists(&who, |maybe_index| -> DispatchResult {
+				if let Some(index) = maybe_index.take() {
+					ensure!(T::ValidatorSet::session_index() >= index, Error::<T>::StillLocked);
+				}
+				Ok(())
+			})?;
 
 			let deposit = Self::candidacy_bond();
-			let incoming = CandidateInfo {
-				who: who.clone(),
-				deposit,
-			};
-
-			let mut bounded_candidates = Self::candidates();
-
-			if bounded_candidates.iter().any(|candidate| candidate.who == who) {
-				Err(Error::<T>::AlreadyCandidate)?;
-			} else {
-				bounded_candidates
-					.try_push(incoming)
-					.map_err(|_| Error::<T>::MaxCandidatesExceeded)?;
-				T::Currency::reserve(&who, deposit)?;
-				<Candidates<T>>::put(&bounded_candidates);
-			}
-
+			let bounded_candidates_len = Self::do_register_candidate(&who, deposit)?;
 			Self::deposit_event(Event::CandidateAdded(who, deposit));
-			Ok(Some(T::WeightInfo::register_as_candidate(bounded_candidates.len() as u32)).into())
+
+			Ok(Some(T::WeightInfo::register_as_candidate(bounded_candidates_len as u32)).into())
+		}
+
+		#[pallet::weight(T::WeightInfo::register_candidate(T::MaxCandidates::get()))]
+		pub fn register_candidate(origin: OriginFor<T>, new_candidate: T::AccountId) -> DispatchResultWithPostInfo {
+			T::UpdateOrigin::ensure_origin(origin)?;
+
+			let bounded_candidates_len = Self::do_register_candidate(&new_candidate, Zero::zero())?;
+
+			Self::deposit_event(Event::CandidateAdded(new_candidate, Zero::zero()));
+			Ok(Some(T::WeightInfo::register_candidate(bounded_candidates_len as u32)).into())
 		}
 
 		#[pallet::weight(T::WeightInfo::leave_intent(T::MaxCandidates::get()))]
@@ -317,8 +354,24 @@ pub mod pallet {
 			let who = ensure_signed(origin)?;
 
 			let current_count = Self::try_remove_candidate(&who)?;
+			<NonCandidates<T>>::insert(who, T::ValidatorSet::session_index().saturating_add(SESSION_DELAY));
 
 			Ok(Some(T::WeightInfo::leave_intent(current_count as u32)).into())
+		}
+
+		#[pallet::weight(T::WeightInfo::withdraw_bond())]
+		pub fn withdraw_bond(origin: OriginFor<T>) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+
+			<NonCandidates<T>>::try_mutate_exists(&who, |maybe_index| -> DispatchResult {
+				if let Some(index) = maybe_index.take() {
+					ensure!(T::ValidatorSet::session_index() >= index, Error::<T>::StillLocked);
+					T::Currency::unreserve_all_named(&RESERVE_ID, &who);
+					Ok(())
+				} else {
+					Err(Error::<T>::NothingToWithdraw.into())
+				}
+			})
 		}
 	}
 
@@ -327,19 +380,21 @@ pub mod pallet {
 		pub fn account_id() -> T::AccountId {
 			T::PotId::get().into_account()
 		}
+
 		/// Removes a candidate if they exist and sends them back their deposit
 		fn try_remove_candidate(who: &T::AccountId) -> Result<usize, DispatchError> {
 			let current_count = <Candidates<T>>::try_mutate(|candidates| -> Result<usize, DispatchError> {
-				let index = candidates
-					.iter()
-					.position(|candidate| candidate.who == *who)
-					.ok_or(Error::<T>::NotCandidate)?;
-				T::Currency::unreserve(&who, candidates[index].deposit);
-				candidates.remove(index);
+				// prevent collator count drop below minimal count
+				ensure!(
+					candidates.len() > T::MinCandidates::get() as usize,
+					Error::<T>::BelowCandidatesMin
+				);
+
+				candidates.take(who).ok_or(Error::<T>::NotCandidate)?;
 				Ok(candidates.len())
-			});
+			})?;
 			Self::deposit_event(Event::CandidateRemoved(who.clone()));
-			current_count
+			Ok(current_count)
 		}
 
 		/// Assemble the current set of candidates and invulnerables into the next collator set.
@@ -350,6 +405,27 @@ pub mod pallet {
 			collators.extend(candidates.into_iter().collect::<Vec<_>>());
 			collators
 		}
+
+		pub fn do_register_candidate(who: &T::AccountId, deposit: BalanceOf<T>) -> Result<usize, DispatchError> {
+			// ensure we are below limit.
+			let length = <Candidates<T>>::decode_len().unwrap_or_default();
+			ensure!(
+				(length as u32) < Self::desired_candidates(),
+				Error::<T>::MaxCandidatesExceeded
+			);
+			ensure!(!Self::invulnerables().contains(&who), Error::<T>::AlreadyInvulnerable);
+			ensure!(T::ValidatorSet::is_registered(&who), Error::<T>::RequireSessionKey);
+
+			<Candidates<T>>::try_mutate(|candidates| -> Result<usize, DispatchError> {
+				ensure!(!candidates.contains(who), Error::<T>::AlreadyCandidate);
+
+				candidates
+					.try_insert(who.clone())
+					.map_err(|_| Error::<T>::MaxCandidatesExceeded)?;
+				T::Currency::ensure_reserved_named(&RESERVE_ID, &who, deposit)?;
+				Ok(candidates.len())
+			})
+		}
 	}
 
 	/// Keep track of number of authored blocks per authority, uncles are counted as well since
@@ -359,12 +435,23 @@ pub mod pallet {
 	{
 		fn note_author(author: T::AccountId) {
 			log::debug!(
+				target: "collator-selection",
 				"note author {:?} authored a block at #{:?}",
 				author,
 				<frame_system::Pallet<T>>::block_number(),
 			);
+			let pot = Self::account_id();
+			// assumes an ED will be sent to pot.
+			let reward = T::Currency::free_balance(&pot)
+				.checked_sub(&T::Currency::minimum_balance())
+				.unwrap_or_default()
+				.div(2u32.into());
+			// `reward` is half of pot account minus ED, this should never fail.
+			let _success = T::Currency::transfer(&pot, &author, reward, KeepAlive);
+			debug_assert!(_success.is_ok());
+
 			if <SessionPoints<T>>::contains_key(&author) {
-				<SessionPoints<T>>::mutate(author, |point| *point += 1);
+				<SessionPoints<T>>::mutate(author, |point| *point += POINT_PER_BLOCK);
 			}
 
 			frame_system::Pallet::<T>::register_extra_weight_unchecked(
@@ -379,13 +466,11 @@ pub mod pallet {
 	/// Play the role of the session manager.
 	impl<T: Config> SessionManager<T::AccountId> for Pallet<T> {
 		fn new_session(index: SessionIndex) -> Option<Vec<T::AccountId>> {
-			let candidates = Self::candidates()
-				.into_iter()
-				.map(|candidate| candidate.who)
-				.collect::<Vec<_>>();
+			let candidates = Self::candidates().into_iter().collect::<Vec<_>>();
 			let result = Self::assemble_collators(candidates);
 
 			log::debug!(
+				target: "collator-selection",
 				"assembling new collators for new session {:?} at #{:?}, candidates: {:?}",
 				index,
 				<frame_system::Pallet<T>>::block_number(),
@@ -406,13 +491,14 @@ pub mod pallet {
 			let mut collators = vec![];
 
 			candidates.iter().for_each(|candidate| {
-				if validators.contains(&candidate.who) {
-					collators.push(&candidate.who);
-					<SessionPoints<T>>::insert(&candidate.who, 0);
+				if validators.contains(&candidate) {
+					collators.push(candidate);
+					<SessionPoints<T>>::insert(&candidate, 0);
 				}
 			});
 
 			log::debug!(
+				target: "collator-selection",
 				"start session {:?} at #{:?}, candidates: {:?}",
 				index,
 				<frame_system::Pallet<T>>::block_number(),
@@ -426,29 +512,47 @@ pub mod pallet {
 		}
 
 		fn end_session(index: SessionIndex) {
-			let mut candidates_len = 0;
 			let mut removed_len = 0;
-			<SessionPoints<T>>::drain().for_each(|(who, point)| {
-				if point == 0 {
+			let session_points = <SessionPoints<T>>::drain().collect::<Vec<_>>();
+			let candidates_len: u32 = session_points.len() as u32;
+
+			let total_session_point: u32 = session_points.iter().fold(0, |mut sum, (_, point)| {
+				sum += point;
+				sum
+			});
+			let average_session_point: u32 = total_session_point.checked_div(candidates_len).unwrap_or_default();
+			let required_point: u32 = T::CollatorKickThreshold::get().mul_floor(average_session_point);
+			for (who, point) in session_points {
+				// required_point maybe is zero
+				if point <= required_point {
 					log::debug!(
-						"end session {:?} at #{:?}, remove candidate: {:?}",
+						target: "collator-selection",
+						"end session {:?} at #{:?}, remove candidate: {:?}, point: {:?}, required_point: {:?}",
 						index,
 						<frame_system::Pallet<T>>::block_number(),
 						who,
+						point,
+						required_point,
 					);
 					removed_len += 1;
 
 					let outcome = Self::try_remove_candidate(&who);
 					if let Err(why) = outcome {
-						log::warn!("Failed to remove candidate {:?}", why);
+						log::warn!(
+							target: "collator-selection",
+							"Failed to remove candidate {:?}", why);
 						debug_assert!(false, "failed to remove candidate {:?}", why);
+					} else {
+						<NonCandidates<T>>::insert(
+							who,
+							T::ValidatorSet::session_index().saturating_add(T::KickPenaltySessionLength::get()),
+						);
 					}
 				}
-				candidates_len += 1;
-			});
+			}
 
 			frame_system::Pallet::<T>::register_extra_weight_unchecked(
-				T::WeightInfo::end_session(candidates_len as u32, removed_len as u32),
+				T::WeightInfo::end_session(candidates_len, removed_len as u32),
 				DispatchClass::Mandatory,
 			);
 		}

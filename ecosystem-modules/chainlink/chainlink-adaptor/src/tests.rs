@@ -63,7 +63,7 @@ fn mapping_feed_id_work() {
 			0,
 			DOT
 		));
-		System::assert_last_event(Event::chainlink_adaptor(crate::Event::MappingFeedId(0, DOT)));
+		System::assert_last_event(Event::ChainlinkAdaptor(crate::Event::MappingFeedId(0, DOT)));
 		assert_eq!(ChainlinkAdaptor::feed_id_mapping(DOT), Some(0));
 
 		assert_noop!(
@@ -107,7 +107,7 @@ fn unmapping_feed_id_work() {
 			Origin::signed(RegistorOrigin::get()),
 			DOT
 		));
-		System::assert_last_event(Event::chainlink_adaptor(crate::Event::UnmappingFeedId(0, DOT)));
+		System::assert_last_event(Event::ChainlinkAdaptor(crate::Event::UnmappingFeedId(0, DOT)));
 		assert_eq!(ChainlinkAdaptor::feed_id_mapping(DOT), None);
 	});
 }

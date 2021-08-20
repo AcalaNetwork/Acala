@@ -28,10 +28,10 @@ use primitives::{Amount, TokenSymbol};
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
-	traits::{AccountIdConversion, Convert, IdentityLookup, One as OneT},
+	traits::{AccountIdConversion, Convert, IdentityLookup},
 	DispatchResult,
 };
-use support::{AuctionManager, Price, PriceProvider};
+use support::{AuctionManager, LockablePrice};
 
 pub type AccountId = u128;
 pub type AuctionId = u32;
@@ -93,11 +93,11 @@ impl orml_tokens::Config for Runtime {
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = ();
 	type MaxLocks = ();
+	type DustRemovalWhitelist = ();
 }
 
 parameter_types! {
 	pub const ExistentialDeposit: Balance = 1;
-	pub const MaxReserves: u32 = 50;
 }
 
 impl pallet_balances::Config for Runtime {
@@ -107,7 +107,7 @@ impl pallet_balances::Config for Runtime {
 	type ExistentialDeposit = ExistentialDeposit;
 	type AccountStore = frame_system::Pallet<Runtime>;
 	type MaxLocks = ();
-	type MaxReserves = MaxReserves;
+	type MaxReserves = ();
 	type ReserveIdentifier = [u8; 8];
 	type WeightInfo = ();
 }
@@ -147,19 +147,15 @@ impl loans::Config for Runtime {
 	type OnUpdateLoan = ();
 }
 
-pub struct MockPriceSource;
-impl PriceProvider<CurrencyId> for MockPriceSource {
-	fn get_relative_price(_base: CurrencyId, _quote: CurrencyId) -> Option<Price> {
-		Some(Price::one())
+pub struct MockLockablePrice;
+impl LockablePrice<CurrencyId> for MockLockablePrice {
+	fn lock_price(_currency_id: CurrencyId) -> DispatchResult {
+		Ok(())
 	}
 
-	fn get_price(_currency_id: CurrencyId) -> Option<Price> {
-		Some(Price::one())
+	fn unlock_price(_currency_id: CurrencyId) -> DispatchResult {
+		Ok(())
 	}
-
-	fn lock_price(_currency_id: CurrencyId) {}
-
-	fn unlock_price(_currency_id: CurrencyId) {}
 }
 
 pub struct MockAuctionManager;
@@ -221,7 +217,7 @@ ord_parameter_types! {
 impl Config for Runtime {
 	type Event = Event;
 	type CollateralCurrencyIds = CollateralCurrencyIds;
-	type PriceSource = MockPriceSource;
+	type PriceSource = MockLockablePrice;
 	type CDPTreasury = CDPTreasuryModule;
 	type AuctionManagerHandler = MockAuctionManager;
 	type ShutdownOrigin = EnsureSignedBy<One, AccountId>;
@@ -248,13 +244,13 @@ construct_runtime!(
 );
 
 pub struct ExtBuilder {
-	endowed_accounts: Vec<(AccountId, CurrencyId, Balance)>,
+	balances: Vec<(AccountId, CurrencyId, Balance)>,
 }
 
 impl Default for ExtBuilder {
 	fn default() -> Self {
 		Self {
-			endowed_accounts: vec![
+			balances: vec![
 				(ALICE, BTC, 1000),
 				(BOB, BTC, 1000),
 				(ALICE, DOT, 1000),
@@ -271,7 +267,7 @@ impl ExtBuilder {
 			.unwrap();
 
 		orml_tokens::GenesisConfig::<Runtime> {
-			endowed_accounts: self.endowed_accounts,
+			balances: self.balances,
 		}
 		.assimilate_storage(&mut t)
 		.unwrap();

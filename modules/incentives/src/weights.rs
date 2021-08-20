@@ -54,6 +54,7 @@ pub trait WeightInfo {
 	fn claim_rewards() -> Weight;
 	fn update_incentive_rewards(c: u32, ) -> Weight;
 	fn update_dex_saving_rewards(c: u32, ) -> Weight;
+	fn update_payout_deduction_rates(c: u32, ) -> Weight;
 	fn add_allowance() -> Weight;
 }
 
@@ -88,6 +89,12 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(c as Weight)))
 	}
 	fn update_dex_saving_rewards(c: u32, ) -> Weight {
+		(914_000 as Weight)
+			// Standard Error: 21_000
+			.saturating_add((1_829_000 as Weight).saturating_mul(c as Weight))
+			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(c as Weight)))
+	}
+	fn update_payout_deduction_rates(c: u32, ) -> Weight {
 		(914_000 as Weight)
 			// Standard Error: 21_000
 			.saturating_add((1_829_000 as Weight).saturating_mul(c as Weight))
@@ -129,6 +136,12 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().writes((1 as Weight).saturating_mul(c as Weight)))
 	}
 	fn update_dex_saving_rewards(c: u32, ) -> Weight {
+		(914_000 as Weight)
+			// Standard Error: 21_000
+			.saturating_add((1_829_000 as Weight).saturating_mul(c as Weight))
+			.saturating_add(RocksDbWeight::get().writes((1 as Weight).saturating_mul(c as Weight)))
+	}
+	fn update_payout_deduction_rates(c: u32, ) -> Weight {
 		(914_000 as Weight)
 			// Standard Error: 21_000
 			.saturating_add((1_829_000 as Weight).saturating_mul(c as Weight))

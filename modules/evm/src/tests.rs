@@ -134,8 +134,7 @@ fn should_create_and_call_contract() {
 				code_hash,
 				maintainer: alice(),
 				deployed: true
-			}),
-			developer_deposit: None,
+			})
 		}));
 
 		assert_eq!(ContractStorageSizes::<Test>::get(&contract_address), code_size + NewContractExtraBytes::get());
@@ -447,6 +446,8 @@ fn contract_should_deploy_contracts() {
 			reserved_balance(result.address),
 			467 * <Test as Config>::StorageDepositPerByte::get()
 		);
+		assert_eq!(balance(factory_contract_address), 0);
+		assert_eq!(reserved_balance(factory_contract_address), 4670);
 
 		// Factory.createContract
 		let amount = 1000000000;
@@ -470,7 +471,9 @@ fn contract_should_deploy_contracts() {
 			alice_balance - amount - 281 * <Test as Config>::StorageDepositPerByte::get()
 		);
 		assert_eq!(balance(factory_contract_address), amount);
+		assert_eq!(reserved_balance(factory_contract_address), 5950);
 		let contract_address = H160::from_str("7b8f8ca099f6e33cf1817cf67d0556429cfc54e4").unwrap();
+		assert_eq!(balance(contract_address), 0);
 		assert_eq!(reserved_balance(contract_address), 1530);
 	});
 }
@@ -508,6 +511,8 @@ fn contract_should_deploy_contracts_without_payable() {
 
 		assert_eq!(balance(alice()), alice_balance);
 		let factory_contract_address = result.address;
+		assert_eq!(balance(factory_contract_address), 0);
+		assert_eq!(reserved_balance(factory_contract_address), 4640);
 
 		#[cfg(not(feature = "with-ethereum-compatibility"))]
 		deploy_free(result.address);
@@ -532,6 +537,7 @@ fn contract_should_deploy_contracts_without_payable() {
 			alice_balance - (result.used_storage as u64 * <Test as Config>::StorageDepositPerByte::get())
 		);
 		assert_eq!(balance(factory_contract_address), 0);
+		assert_eq!(reserved_balance(factory_contract_address), 5920);
 	});
 }
 
@@ -594,7 +600,7 @@ fn create_network_contract_works() {
 			Pallet::<Test>::account_basic(&NetworkContractSource::get()).nonce,
 			2.into()
 		);
-		System::assert_last_event(Event::evm_mod(crate::Event::Created(H160::from_low_u64_be(
+		System::assert_last_event(Event::EVM(crate::Event::Created(H160::from_low_u64_be(
 			MIRRORED_NFT_ADDRESS_START,
 		))));
 		assert_eq!(EVM::network_contract_index(), MIRRORED_NFT_ADDRESS_START + 1);
@@ -666,10 +672,7 @@ fn should_transfer_maintainer() {
 			result.address,
 			bob()
 		));
-		System::assert_last_event(Event::evm_mod(crate::Event::TransferredMaintainer(
-			result.address,
-			bob(),
-		)));
+		System::assert_last_event(Event::EVM(crate::Event::TransferredMaintainer(result.address, bob())));
 		assert_eq!(balance(bob()), INITIAL_BALANCE);
 
 		assert_noop!(
@@ -858,11 +861,9 @@ fn should_deploy_free() {
 fn should_enable_contract_development() {
 	new_test_ext().execute_with(|| {
 		let alice_account_id = <Test as Config>::AddressMapping::get_account_id(&alice());
+		assert_eq!(reserved_balance(alice()), 0);
 		assert_ok!(EVM::enable_contract_development(Origin::signed(alice_account_id)));
-		assert_eq!(
-			Accounts::<Test>::get(alice()).unwrap().developer_deposit,
-			Some(DeveloperDeposit::get())
-		);
+		assert_eq!(reserved_balance(alice()), DeveloperDeposit::get());
 		assert_eq!(balance(alice()), INITIAL_BALANCE - DeveloperDeposit::get());
 	});
 }
@@ -880,13 +881,11 @@ fn should_disable_contract_development() {
 		assert_eq!(balance(alice()), INITIAL_BALANCE);
 
 		// enable contract development
+		assert_eq!(reserved_balance(alice()), 0);
 		assert_ok!(EVM::enable_contract_development(Origin::signed(
 			alice_account_id.clone()
 		)));
-		assert_eq!(
-			Accounts::<Test>::get(alice()).unwrap().developer_deposit,
-			Some(DeveloperDeposit::get())
-		);
+		assert_eq!(reserved_balance(alice()), DeveloperDeposit::get());
 
 		// deposit reserved
 		assert_eq!(balance(alice()), INITIAL_BALANCE - DeveloperDeposit::get());
@@ -942,6 +941,27 @@ fn should_set_code() {
 		let alice_balance = INITIAL_BALANCE - 284 * <Test as Config>::StorageDepositPerByte::get();
 
 		assert_eq!(balance(alice()), alice_balance);
+		assert_eq!(reserved_balance(contract_address), 2840);
+
+		let code_hash = H256::from_str("164981e02df203a0fb32a0af7c2cd1cc7f9df7bb49a4d2b0219307bb68a4b603").unwrap();
+		assert_eq!(
+			Accounts::<Test>::get(&contract_address),
+			Some(AccountInfo {
+				nonce: 1,
+				contract_info: Some(ContractInfo {
+					code_hash,
+					maintainer: alice(),
+					deployed: false
+				})
+			})
+		);
+		assert_eq!(
+			CodeInfos::<Test>::get(&code_hash),
+			Some(CodeInfo {
+				code_size: 184,
+				ref_count: 1,
+			})
+		);
 
 		assert_noop!(
 			EVM::set_code(Origin::signed(bob_account_id), contract_address, contract.clone()),
@@ -953,6 +973,53 @@ fn should_set_code() {
 			contract.clone()
 		));
 		assert_ok!(EVM::set_code(Origin::root(), contract_address, contract));
+
+		assert_eq!(reserved_balance(contract_address), 4150);
+
+		let new_code_hash = H256::from_str("9061d510f6235de4eae304e1a2a2ae22e1610ba893c018b7fabc1f1635f49877").unwrap();
+		assert_eq!(
+			Accounts::<Test>::get(&contract_address),
+			Some(AccountInfo {
+				nonce: 1,
+				contract_info: Some(ContractInfo {
+					code_hash: new_code_hash,
+					maintainer: alice(),
+					deployed: false
+				})
+			})
+		);
+		assert_eq!(CodeInfos::<Test>::get(&code_hash), None);
+		assert_eq!(
+			CodeInfos::<Test>::get(&new_code_hash),
+			Some(CodeInfo {
+				code_size: 215,
+				ref_count: 1,
+			})
+		);
+		assert_eq!(Codes::<Test>::contains_key(&code_hash), false);
+		assert_eq!(Codes::<Test>::contains_key(&new_code_hash), true);
+
+		assert_ok!(EVM::set_code(Origin::root(), contract_address, vec![]));
+		let new_code_hash = H256::from_str("c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470").unwrap();
+		assert_eq!(
+			Accounts::<Test>::get(&contract_address),
+			Some(AccountInfo {
+				nonce: 1,
+				contract_info: Some(ContractInfo {
+					code_hash: new_code_hash,
+					maintainer: alice(),
+					deployed: false
+				})
+			})
+		);
+		assert_eq!(
+			CodeInfos::<Test>::get(&new_code_hash),
+			Some(CodeInfo {
+				code_size: 0,
+				ref_count: 1,
+			})
+		);
+		assert_eq!(reserved_balance(contract_address), 3000);
 
 		assert_noop!(
 			EVM::set_code(

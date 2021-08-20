@@ -19,11 +19,11 @@
 //! An orml_authority trait implementation.
 
 use crate::{
-	AcalaTreasuryPalletId, AccountId, AccountIdConversion, AuthoritysOriginId, BadOrigin, BlockNumber, DispatchResult,
-	EnsureRoot, EnsureRootOrHalfFinancialCouncil, EnsureRootOrHalfGeneralCouncil, EnsureRootOrHalfHomaCouncil,
+	AccountId, AccountIdConversion, AuthoritysOriginId, BadOrigin, BlockNumber, DispatchResult, EnsureRoot,
+	EnsureRootOrHalfFinancialCouncil, EnsureRootOrHalfGeneralCouncil, EnsureRootOrHalfHomaCouncil,
 	EnsureRootOrOneThirdsTechnicalCommittee, EnsureRootOrThreeFourthsGeneralCouncil,
 	EnsureRootOrTwoThirdsTechnicalCommittee, HomaTreasuryPalletId, HonzonTreasuryPalletId, OneDay, Origin,
-	OriginCaller, SevenDays, TreasuryReservePalletId, ZeroDay, HOURS,
+	OriginCaller, SevenDays, TreasuryPalletId, TreasuryReservePalletId, ZeroDay, HOURS,
 };
 pub use frame_support::traits::{schedule::Priority, EnsureOrigin, OriginTrait};
 use frame_system::ensure_root;
@@ -78,9 +78,7 @@ impl orml_authority::AsOriginId<Origin, OriginCaller> for AuthoritysOriginId {
 	fn into_origin(self) -> OriginCaller {
 		match self {
 			AuthoritysOriginId::Root => Origin::root().caller().clone(),
-			AuthoritysOriginId::AcalaTreasury => Origin::signed(AcalaTreasuryPalletId::get().into_account())
-				.caller()
-				.clone(),
+			AuthoritysOriginId::Treasury => Origin::signed(TreasuryPalletId::get().into_account()).caller().clone(),
 			AuthoritysOriginId::HonzonTreasury => Origin::signed(HonzonTreasuryPalletId::get().into_account())
 				.caller()
 				.clone(),
@@ -102,7 +100,7 @@ impl orml_authority::AsOriginId<Origin, OriginCaller> for AuthoritysOriginId {
 				OriginCaller,
 			> as EnsureOrigin<Origin>>::ensure_origin(origin)
 			.map_or_else(|_| Err(BadOrigin.into()), |_| Ok(())),
-			AuthoritysOriginId::AcalaTreasury => {
+			AuthoritysOriginId::Treasury => {
 				<EnsureDelayed<OneDay, EnsureRootOrHalfGeneralCouncil, BlockNumber, OriginCaller> as EnsureOrigin<
 					Origin,
 				>>::ensure_origin(origin)

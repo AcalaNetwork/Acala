@@ -25,11 +25,12 @@ use frame_support::{
 };
 use frame_system as system;
 use frame_system::EnsureSignedBy;
+use primitives::ReserveIdentifier;
 use sp_core::H256;
 use sp_runtime::{
 	testing::{Header, UintAuthorityId},
 	traits::{BlakeTwo256, IdentityLookup, OpaqueKeys},
-	RuntimeAppPublic,
+	Permill, RuntimeAppPublic,
 };
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
@@ -45,7 +46,7 @@ frame_support::construct_runtime!(
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
 		Session: pallet_session::{Pallet, Call, Storage, Event, Config<T>},
-		Aura: pallet_aura::{Pallet, Call, Storage, Config<T>},
+		Aura: pallet_aura::{Pallet, Storage, Config<T>},
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
 		CollatorSelection: collator_selection::{Pallet, Call, Storage, Event<T>},
 		Authorship: pallet_authorship::{Pallet, Call, Storage, Inherent},
@@ -94,10 +95,10 @@ impl pallet_balances::Config for Test {
 	type DustRemoval = ();
 	type ExistentialDeposit = ExistentialDeposit;
 	type AccountStore = System;
-	type WeightInfo = ();
 	type MaxLocks = ();
 	type MaxReserves = MaxReserves;
-	type ReserveIdentifier = [u8; 8];
+	type ReserveIdentifier = ReserveIdentifier;
+	type WeightInfo = ();
 }
 
 pub struct Author4;
@@ -190,8 +191,11 @@ ord_parameter_types! {
 
 parameter_types! {
 	pub const PotId: PalletId = PalletId(*b"PotStake");
+	pub const MinCandidates: u32 = 1;
 	pub const MaxCandidates: u32 = 4;
 	pub const MaxInvulnerables: u32 = 4;
+	pub const KickPenaltySessionLength: u32 = 8;
+	pub const CollatorKickThreshold: Permill = Permill::from_percent(100);
 }
 
 impl Config for Test {
@@ -200,8 +204,11 @@ impl Config for Test {
 	type ValidatorSet = Session;
 	type UpdateOrigin = EnsureSignedBy<RootAccount, u64>;
 	type PotId = PotId;
+	type MinCandidates = MinCandidates;
 	type MaxCandidates = MaxCandidates;
 	type MaxInvulnerables = MaxInvulnerables;
+	type KickPenaltySessionLength = KickPenaltySessionLength;
+	type CollatorKickThreshold = CollatorKickThreshold;
 	type WeightInfo = ();
 }
 
@@ -223,7 +230,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		.collect::<Vec<_>>();
 
 	let balances = pallet_balances::GenesisConfig::<Test> {
-		balances: vec![(1, 100), (2, 100), (3, 100), (4, 100), (5, 100)],
+		balances: vec![(1, 100), (2, 100), (3, 100), (4, 100), (5, 100), (33, 5)],
 	};
 	let collator_selection = collator_selection::GenesisConfig::<Test> {
 		desired_candidates: 2,

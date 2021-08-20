@@ -33,19 +33,15 @@ use module_support::{
 };
 use orml_traits::{parameter_type_with_key, MultiReservableCurrency};
 pub use primitives::{
-	evm::EvmAddress, Amount, BlockNumber, CurrencyId, DexShare, Header, Nonce, TokenSymbol, TradingPair,
+	evm::EvmAddress, Amount, BlockNumber, CurrencyId, DexShare, Header, Nonce, ReserveIdentifier, TokenSymbol,
+	TradingPair,
 };
-use sha3::{Digest, Keccak256};
 use sp_core::{crypto::AccountId32, H160, H256};
 use sp_runtime::{
 	traits::{BlakeTwo256, Convert, IdentityLookup, One as OneT},
 	DispatchResult, FixedPointNumber, FixedU128, Perbill,
 };
-use sp_std::{
-	collections::btree_map::BTreeMap,
-	convert::{TryFrom, TryInto},
-	str::FromStr,
-};
+use sp_std::{collections::btree_map::BTreeMap, convert::TryFrom, str::FromStr};
 
 pub type AccountId = AccountId32;
 type Key = CurrencyId;
@@ -86,6 +82,7 @@ parameter_types! {
 	pub const ExpiresIn: u32 = 600;
 	pub const RootOperatorAccountId: AccountId = ALICE;
 	pub static OracleMembers: Vec<AccountId> = vec![ALICE, BOB, EVA];
+	pub const MaxHasDispatchedSize: u32 = 40;
 }
 
 pub struct Members;
@@ -105,6 +102,7 @@ impl orml_oracle::Config for Test {
 	type OracleValue = Price;
 	type RootOperatorAccountId = RootOperatorAccountId;
 	type Members = Members;
+	type MaxHasDispatchedSize = MaxHasDispatchedSize;
 	type WeightInfo = ();
 }
 
@@ -130,6 +128,7 @@ impl orml_tokens::Config for Test {
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = ();
 	type MaxLocks = ();
+	type DustRemovalWhitelist = ();
 }
 
 parameter_types! {
@@ -143,10 +142,10 @@ impl pallet_balances::Config for Test {
 	type Event = Event;
 	type ExistentialDeposit = ExistentialDeposit;
 	type AccountStore = System;
-	type WeightInfo = ();
 	type MaxLocks = ();
 	type MaxReserves = MaxReserves;
-	type ReserveIdentifier = [u8; 8];
+	type ReserveIdentifier = ReserveIdentifier;
+	type WeightInfo = ();
 }
 
 pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
@@ -183,13 +182,18 @@ impl module_evm_manager::Config for Test {
 parameter_types! {
 	pub const CreateClassDeposit: Balance = 200;
 	pub const CreateTokenDeposit: Balance = 100;
+	pub const DataDepositPerByte: Balance = 10;
 	pub const NftPalletId: PalletId = PalletId(*b"aca/aNFT");
+	pub MaxAttributesBytes: u32 = 2048;
 }
 impl module_nft::Config for Test {
 	type Event = Event;
+	type Currency = Balances;
 	type CreateClassDeposit = CreateClassDeposit;
 	type CreateTokenDeposit = CreateTokenDeposit;
+	type DataDepositPerByte = DataDepositPerByte;
 	type PalletId = NftPalletId;
+	type MaxAttributesBytes = MaxAttributesBytes;
 	type WeightInfo = ();
 }
 
@@ -210,14 +214,13 @@ impl orml_nft::Config for Test {
 parameter_types! {
 	pub const TransactionByteFee: Balance = 10;
 	pub const GetStableCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
-	pub AllNonNativeCurrencyIds: Vec<CurrencyId> = vec![CurrencyId::Token(TokenSymbol::AUSD)];
-	pub MaxSlippageSwapWithDEX: Ratio = Ratio::one();
+	pub DefaultFeeSwapPathList: Vec<Vec<CurrencyId>> = vec![vec![CurrencyId::Token(TokenSymbol::AUSD), CurrencyId::Token(TokenSymbol::ACA)]];
+	pub MaxSwapSlippageCompareToOracle: Ratio = Ratio::one();
 }
 
 impl module_transaction_payment::Config for Test {
-	type AllNonNativeCurrencyIds = AllNonNativeCurrencyIds;
 	type NativeCurrencyId = GetNativeCurrencyId;
-	type StableCurrencyId = GetStableCurrencyId;
+	type DefaultFeeSwapPathList = DefaultFeeSwapPathList;
 	type Currency = Balances;
 	type MultiCurrency = Currencies;
 	type OnTransactionPayment = ();
@@ -225,7 +228,9 @@ impl module_transaction_payment::Config for Test {
 	type WeightToFee = IdentityFee<Balance>;
 	type FeeMultiplierUpdate = ();
 	type DEX = ();
-	type MaxSlippageSwapWithDEX = MaxSlippageSwapWithDEX;
+	type MaxSwapSlippageCompareToOracle = MaxSwapSlippageCompareToOracle;
+	type TradingPathLimit = TradingPathLimit;
+	type PriceSource = module_prices::RealTimePriceProvider<Test>;
 	type WeightInfo = ();
 }
 pub type ChargeTransactionPayment = module_transaction_payment::ChargeTransactionPayment<Test>;
@@ -343,7 +348,12 @@ pub type MultiCurrencyPrecompile =
 pub type NFTPrecompile = crate::NFTPrecompile<AccountId, MockAddressMapping, EvmCurrencyIdMapping, NFTModule>;
 pub type StateRentPrecompile =
 	crate::StateRentPrecompile<AccountId, MockAddressMapping, EvmCurrencyIdMapping, ModuleEVM>;
-pub type OraclePrecompile = crate::OraclePrecompile<AccountId, MockAddressMapping, EvmCurrencyIdMapping, Prices>;
+pub type OraclePrecompile = crate::OraclePrecompile<
+	AccountId,
+	MockAddressMapping,
+	EvmCurrencyIdMapping,
+	module_prices::PriorityLockedPriceProvider<Test>,
+>;
 pub type ScheduleCallPrecompile = crate::ScheduleCallPrecompile<
 	AccountId,
 	MockAddressMapping,
@@ -584,14 +594,4 @@ pub fn get_task_id(output: Vec<u8>) -> Vec<u8> {
 	num[..].copy_from_slice(&output[32 - 4..32]);
 	let task_id_len: u32 = u32::from_be_bytes(num);
 	return output[32..32 + task_id_len as usize].to_vec();
-}
-
-pub fn get_function_selector(s: &str) -> [u8; 4] {
-	// create a SHA3-256 object
-	let mut hasher = Keccak256::new();
-	// write input message
-	hasher.update(s);
-	// read hash digest
-	let result = hasher.finalize();
-	result[..4].try_into().unwrap()
 }

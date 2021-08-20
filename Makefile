@@ -72,6 +72,8 @@ test-eth: githooks
 .PHONY: test-runtimes
 test-runtimes:
 	SKIP_WASM_BUILD= cargo test --all --features with-all-runtime
+	SKIP_WASM_BUILD= cargo test -p runtime-integration-tests --features=with-mandala-runtime
+	SKIP_WASM_BUILD= cargo test -p runtime-integration-tests --features=with-karura-runtime
 
 .PHONY: test-benchmarking
 test-benchmarking:
@@ -140,3 +142,11 @@ srtool-build-wasm-karura:
 .PHONY: generate-tokens
 generate-tokens:
 	./scripts/generate-tokens-and-predeploy-contracts.sh
+
+.PHONY: benchmark-mandala
+benchmark-mandala:
+	 cargo run --release --features=runtime-benchmarks --features=with-mandala-runtime -- benchmark --chain=mandala-latest --steps=50 --repeat=20 '--pallet=*' '--extrinsic=*' --execution=wasm --wasm-execution=compiled --heap-pages=4096 --template=./templates/runtime-weight-template.hbs --output=./runtime/mandala/src/weights/
+
+.PHONY: benchmark-karura
+benchmark-karura:
+	 cargo run --release --features=runtime-benchmarks --features=with-karura-runtime -- benchmark --chain=karura-latest --steps=50 --repeat=20 '--pallet=*' '--extrinsic=*' --execution=wasm --wasm-execution=compiled --heap-pages=4096 --template=./templates/runtime-weight-template.hbs --output=./runtime/karura/src/weights/

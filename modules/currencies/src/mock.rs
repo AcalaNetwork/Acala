@@ -22,7 +22,7 @@
 
 use frame_support::{assert_ok, ord_parameter_types, parameter_types, traits::GenesisBuild, PalletId};
 use orml_traits::parameter_type_with_key;
-use primitives::{CurrencyId, TokenSymbol};
+use primitives::{CurrencyId, ReserveIdentifier, TokenSymbol};
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
@@ -94,6 +94,7 @@ impl tokens::Config for Runtime {
 	type OnDust = tokens::TransferDust<Runtime, DustAccount>;
 	type WeightInfo = ();
 	type MaxLocks = MaxLocks;
+	type DustRemovalWhitelist = ();
 }
 
 pub const NATIVE_CURRENCY_ID: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
@@ -114,10 +115,10 @@ impl pallet_balances::Config for Runtime {
 	type Event = Event;
 	type ExistentialDeposit = ExistentialDeposit;
 	type AccountStore = System;
-	type WeightInfo = ();
-	type MaxReserves = MaxReserves;
-	type ReserveIdentifier = [u8; 8];
 	type MaxLocks = ();
+	type MaxReserves = MaxReserves;
+	type ReserveIdentifier = ReserveIdentifier;
+	type WeightInfo = ();
 }
 
 pub type PalletBalances = pallet_balances::Pallet<Runtime>;
@@ -248,27 +249,25 @@ pub fn deploy_contracts() {
 		10000
 	));
 
-	let event = Event::module_evm(module_evm::Event::Created(erc20_address()));
+	let event = Event::EVM(module_evm::Event::Created(erc20_address()));
 	assert_eq!(System::events().iter().last().unwrap().event, event);
 
 	assert_ok!(EVM::deploy_free(Origin::signed(CouncilAccount::get()), erc20_address()));
 }
 
 pub struct ExtBuilder {
-	endowed_accounts: Vec<(AccountId, CurrencyId, Balance)>,
+	balances: Vec<(AccountId, CurrencyId, Balance)>,
 }
 
 impl Default for ExtBuilder {
 	fn default() -> Self {
-		Self {
-			endowed_accounts: vec![],
-		}
+		Self { balances: vec![] }
 	}
 }
 
 impl ExtBuilder {
-	pub fn balances(mut self, endowed_accounts: Vec<(AccountId, CurrencyId, Balance)>) -> Self {
-		self.endowed_accounts = endowed_accounts;
+	pub fn balances(mut self, balances: Vec<(AccountId, CurrencyId, Balance)>) -> Self {
+		self.balances = balances;
 		self
 	}
 
@@ -288,7 +287,7 @@ impl ExtBuilder {
 
 		pallet_balances::GenesisConfig::<Runtime> {
 			balances: self
-				.endowed_accounts
+				.balances
 				.clone()
 				.into_iter()
 				.filter(|(_, currency_id, _)| *currency_id == NATIVE_CURRENCY_ID)
@@ -299,8 +298,8 @@ impl ExtBuilder {
 		.unwrap();
 
 		tokens::GenesisConfig::<Runtime> {
-			endowed_accounts: self
-				.endowed_accounts
+			balances: self
+				.balances
 				.into_iter()
 				.filter(|(_, currency_id, _)| *currency_id != NATIVE_CURRENCY_ID)
 				.collect::<Vec<_>>(),

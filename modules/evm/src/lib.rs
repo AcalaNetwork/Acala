@@ -34,8 +34,8 @@ use frame_support::{
 	error::BadOrigin,
 	pallet_prelude::*,
 	traits::{
-		BalanceStatus, Currency, EnsureOrigin, ExistenceRequirement, Get, MaxEncodedLen, OnKilledAccount,
-		ReservableCurrency,
+		BalanceStatus, Currency, EnsureOrigin, ExistenceRequirement, Get, MaxEncodedLen, NamedReservableCurrency,
+		OnKilledAccount,
 	},
 	transactional,
 	weights::{Pays, PostDispatchInfo, Weight},
@@ -65,7 +65,7 @@ pub use evm::{Context, ExitError, ExitFatal, ExitReason, ExitRevert, ExitSucceed
 pub use orml_traits::currency::TransferAll;
 pub use primitives::{
 	evm::{Account, CallInfo, CreateInfo, EvmAddress, Log, Vicinity},
-	MIRRORED_NFT_ADDRESS_START,
+	ReserveIdentifier, MIRRORED_NFT_ADDRESS_START,
 };
 
 pub mod precompiles;
@@ -82,6 +82,8 @@ pub use weights::WeightInfo;
 pub type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 pub type NegativeImbalanceOf<T> =
 	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::NegativeImbalance;
+pub const RESERVE_ID_STORAGE_DEPOSIT: ReserveIdentifier = ReserveIdentifier::EvmStorageDeposit;
+pub const RESERVE_ID_DEVELOPER_DEPOSIT: ReserveIdentifier = ReserveIdentifier::EvmDeveloperDeposit;
 
 // Initially based on Istanbul hard fork configuration.
 static ACALA_CONFIG: EvmConfig = EvmConfig {
@@ -135,7 +137,8 @@ pub mod module {
 		type AddressMapping: AddressMapping<Self::AccountId>;
 
 		/// Currency type for withdraw and balance storage.
-		type Currency: Currency<Self::AccountId> + ReservableCurrency<Self::AccountId>;
+		type Currency: Currency<Self::AccountId>
+			+ NamedReservableCurrency<Self::AccountId, ReserveIdentifier = ReserveIdentifier>;
 
 		/// Merge free balance from source to dest.
 		type TransferAll: TransferAll<Self::AccountId>;
@@ -209,16 +212,11 @@ pub mod module {
 	pub struct AccountInfo<T: Config> {
 		pub nonce: T::Index,
 		pub contract_info: Option<ContractInfo>,
-		pub developer_deposit: Option<BalanceOf<T>>,
 	}
 
 	impl<T: Config> AccountInfo<T> {
 		pub fn new(nonce: T::Index, contract_info: Option<ContractInfo>) -> Self {
-			Self {
-				nonce,
-				contract_info,
-				developer_deposit: None,
-			}
+			Self { nonce, contract_info }
 		}
 	}
 
@@ -378,6 +376,7 @@ pub mod module {
 	/// EVM events
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
+	#[pallet::metadata(T::AccountId = "AccountId")]
 	pub enum Event<T: Config> {
 		/// Ethereum events from contracts.
 		Log(Log),
@@ -736,22 +735,11 @@ pub mod module {
 		#[transactional]
 		pub fn enable_contract_development(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
-			let address = T::AddressMapping::get_or_create_evm_address(&who);
-			T::Currency::reserve(&who, T::DeveloperDeposit::get())?;
-			Accounts::<T>::mutate(address, |maybe_account_info| -> DispatchResult {
-				if let Some(account_info) = maybe_account_info.as_mut() {
-					ensure!(
-						account_info.developer_deposit.is_none(),
-						Error::<T>::ContractDevelopmentAlreadyEnabled
-					);
-					account_info.developer_deposit = Some(T::DeveloperDeposit::get());
-				} else {
-					let mut account_info = AccountInfo::<T>::new(Default::default(), None);
-					account_info.developer_deposit = Some(T::DeveloperDeposit::get());
-					*maybe_account_info = Some(account_info);
-				}
-				Ok(())
-			})?;
+			ensure!(
+				T::Currency::reserved_balance_named(&RESERVE_ID_DEVELOPER_DEPOSIT, &who).is_zero(),
+				Error::<T>::ContractDevelopmentAlreadyEnabled
+			);
+			T::Currency::ensure_reserved_named(&RESERVE_ID_DEVELOPER_DEPOSIT, &who, T::DeveloperDeposit::get())?;
 			Pallet::<T>::deposit_event(Event::<T>::ContractDevelopmentEnabled(who));
 			Ok(().into())
 		}
@@ -762,17 +750,11 @@ pub mod module {
 		#[transactional]
 		pub fn disable_contract_development(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
-			let address = T::AddressMapping::get_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
-			let deposit = Accounts::<T>::mutate(address, |maybe_account_info| -> Result<BalanceOf<T>, Error<T>> {
-				let account_info = maybe_account_info
-					.as_mut()
-					.ok_or(Error::<T>::ContractDevelopmentNotEnabled)?;
-				account_info
-					.developer_deposit
-					.take()
-					.ok_or(Error::<T>::ContractDevelopmentNotEnabled)
-			})?;
-			T::Currency::unreserve(&who, deposit);
+			ensure!(
+				!T::Currency::reserved_balance_named(&RESERVE_ID_DEVELOPER_DEPOSIT, &who).is_zero(),
+				Error::<T>::ContractDevelopmentNotEnabled
+			);
+			T::Currency::unreserve_all_named(&RESERVE_ID_DEVELOPER_DEPOSIT, &who);
 			Pallet::<T>::deposit_event(Event::<T>::ContractDevelopmentDisabled(who));
 			Ok(().into())
 		}
@@ -834,7 +816,7 @@ impl<T: Config> Pallet<T> {
 				}
 			});
 
-			AccountStorages::<T>::remove_prefix(address);
+			AccountStorages::<T>::remove_prefix(address, None);
 
 			let size = ContractStorageSizes::<T>::take(address);
 
@@ -1039,7 +1021,7 @@ impl<T: Config> Pallet<T> {
 			let account_info = maybe_account_info.as_mut().ok_or(Error::<T>::ContractNotFound)?;
 			let contract_info = account_info
 				.contract_info
-				.as_ref()
+				.as_mut()
 				.ok_or(Error::<T>::ContractNotFound)?;
 
 			let source = if let Either::Right(signer) = root_or_signed {
@@ -1051,27 +1033,58 @@ impl<T: Config> Pallet<T> {
 				T::NetworkContractSource::get()
 			};
 
-			let code_size = code.len() as u32;
-			let code_hash = code_hash(&code.as_slice());
+			let old_code_info = Self::code_infos(&contract_info.code_hash).ok_or(Error::<T>::ContractNotFound)?;
+
+			let bounded_code: BoundedVec<u8, T::MaxCodeSize> =
+				code.try_into().map_err(|_| Error::<T>::ContractExceedsMaxCodeSize)?;
+			let code_hash = code_hash(&bounded_code.as_slice());
+			let code_size = bounded_code.len() as u32;
+			// The code_hash of the same contract is definitely different.
+			// The `contract_info.code_hash` hashed by on_contract_initialization which constructored.
+			// Still check it here.
 			if code_hash == contract_info.code_hash {
 				return Ok(());
 			}
 
-			ensure!(
-				code_size <= T::MaxCodeSize::get(),
-				Error::<T>::ContractExceedsMaxCodeSize
-			);
+			let storage_size_chainged: i32 =
+				code_size.saturating_add(T::NewContractExtraBytes::get()) as i32 - old_code_info.code_size as i32;
+			let mut handler = StorageMeterHandlerImpl::<T>::new(source);
+			if storage_size_chainged.is_positive() {
+				handler.reserve_storage(storage_size_chainged as u32)?;
+				handler.charge_storage(&contract, storage_size_chainged as u32, 0)?;
+			} else {
+				handler.charge_storage(&contract, 0, -storage_size_chainged as u32)?;
+			}
+			Self::update_contract_storage_size(&contract, storage_size_chainged);
 
-			Runner::<T>::create_at_address(
-				source,
-				code,
-				Default::default(),
-				contract,
-				2_100_000,
-				100_000,
-				T::config(),
-			)
-			.map(|_| ())
+			// try remove old codes
+			CodeInfos::<T>::mutate_exists(&contract_info.code_hash, |maybe_code_info| -> DispatchResult {
+				let code_info = maybe_code_info.as_mut().ok_or(Error::<T>::ContractNotFound)?;
+				code_info.ref_count = code_info.ref_count.saturating_sub(1);
+				if code_info.ref_count == 0 {
+					Codes::<T>::remove(&contract_info.code_hash);
+					*maybe_code_info = None;
+				}
+				Ok(())
+			})?;
+
+			CodeInfos::<T>::mutate_exists(&code_hash, |maybe_code_info| {
+				if let Some(code_info) = maybe_code_info.as_mut() {
+					code_info.ref_count = code_info.ref_count.saturating_add(1);
+				} else {
+					let new = CodeInfo {
+						code_size,
+						ref_count: 1,
+					};
+					*maybe_code_info = Some(new);
+
+					Codes::<T>::insert(&code_hash, bounded_code);
+				}
+			});
+			// update code_hash
+			contract_info.code_hash = code_hash;
+
+			Ok(())
 		})
 	}
 
@@ -1091,7 +1104,13 @@ impl<T: Config> Pallet<T> {
 		let contract_account = T::AddressMapping::get_account_id(&contract);
 
 		let amount = T::StorageDepositPerByte::get().saturating_mul(storage.into());
-		let val = T::Currency::repatriate_reserved(&contract_account, &who, amount, BalanceStatus::Free)?;
+		let val = T::Currency::repatriate_reserved_named(
+			&RESERVE_ID_STORAGE_DEPOSIT,
+			&contract_account,
+			&who,
+			amount,
+			BalanceStatus::Free,
+		)?;
 		debug_assert!(val.is_zero());
 
 		Ok(())

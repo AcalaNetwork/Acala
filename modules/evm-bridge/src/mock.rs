@@ -23,11 +23,10 @@
 use super::*;
 use frame_support::{assert_ok, construct_runtime, ord_parameter_types, parameter_types};
 use frame_system::EnsureSignedBy;
-use primitives::evm::EvmAddress;
-use sha3::{Digest, Keccak256};
+use primitives::{evm::EvmAddress, ReserveIdentifier};
 use sp_core::{bytes::from_hex, crypto::AccountId32, H256};
 use sp_runtime::{testing::Header, traits::IdentityLookup};
-use sp_std::{convert::TryInto, str::FromStr};
+use sp_std::str::FromStr;
 use support::{mocks::MockAddressMapping, AddressMapping};
 
 pub type AccountId = AccountId32;
@@ -79,10 +78,10 @@ impl pallet_balances::Config for Runtime {
 	type Event = Event;
 	type ExistentialDeposit = ExistentialDeposit;
 	type AccountStore = System;
-	type WeightInfo = ();
-	type MaxReserves = MaxReserves;
-	type ReserveIdentifier = [u8; 8];
 	type MaxLocks = ();
+	type MaxReserves = MaxReserves;
+	type ReserveIdentifier = ReserveIdentifier;
+	type WeightInfo = ();
 }
 
 parameter_types! {
@@ -157,14 +156,12 @@ construct_runtime!(
 );
 
 pub struct ExtBuilder {
-	endowed_accounts: Vec<(AccountId, Balance)>,
+	balances: Vec<(AccountId, Balance)>,
 }
 
 impl Default for ExtBuilder {
 	fn default() -> Self {
-		Self {
-			endowed_accounts: vec![],
-		}
+		Self { balances: vec![] }
 	}
 }
 
@@ -198,25 +195,15 @@ pub fn deploy_contracts() {
 		10000
 	));
 
-	let event = Event::module_evm(module_evm::Event::Created(erc20_address()));
+	let event = Event::EVM(module_evm::Event::Created(erc20_address()));
 	assert_eq!(System::events().iter().last().unwrap().event, event);
 
 	assert_ok!(EVM::deploy_free(Origin::signed(CouncilAccount::get()), erc20_address()));
 }
 
-pub fn get_function_selector(s: &str) -> [u8; 4] {
-	// create a SHA3-256 object
-	let mut hasher = Keccak256::new();
-	// write input message
-	hasher.update(s);
-	// read hash digest
-	let result = hasher.finalize();
-	result[..4].try_into().unwrap()
-}
-
 impl ExtBuilder {
-	pub fn balances(mut self, endowed_accounts: Vec<(AccountId, Balance)>) -> Self {
-		self.endowed_accounts = endowed_accounts;
+	pub fn balances(mut self, balances: Vec<(AccountId, Balance)>) -> Self {
+		self.balances = balances;
 		self
 	}
 
@@ -226,7 +213,7 @@ impl ExtBuilder {
 			.unwrap();
 
 		pallet_balances::GenesisConfig::<Runtime> {
-			balances: self.endowed_accounts.clone().into_iter().collect::<Vec<_>>(),
+			balances: self.balances.clone().into_iter().collect::<Vec<_>>(),
 		}
 		.assimilate_storage(&mut t)
 		.unwrap();

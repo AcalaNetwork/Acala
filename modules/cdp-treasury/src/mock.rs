@@ -90,11 +90,11 @@ impl orml_tokens::Config for Runtime {
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = ();
 	type MaxLocks = ();
+	type DustRemovalWhitelist = ();
 }
 
 parameter_types! {
 	pub const ExistentialDeposit: Balance = 1;
-	pub const MaxReserves: u32 = 50;
 }
 
 impl pallet_balances::Config for Runtime {
@@ -104,7 +104,7 @@ impl pallet_balances::Config for Runtime {
 	type ExistentialDeposit = ExistentialDeposit;
 	type AccountStore = frame_system::Pallet<Runtime>;
 	type MaxLocks = ();
-	type MaxReserves = MaxReserves;
+	type MaxReserves = ();
 	type ReserveIdentifier = [u8; 8];
 	type WeightInfo = ();
 }
@@ -126,7 +126,11 @@ parameter_types! {
 	pub const GetStableCurrencyId: CurrencyId = AUSD;
 	pub const GetExchangeFee: (u32, u32) = (0, 100);
 	pub const TradingPathLimit: u32 = 3;
-	pub EnabledTradingPairs : Vec<TradingPair> = vec![TradingPair::new(AUSD, BTC), TradingPair::new(AUSD, DOT), TradingPair::new(BTC, DOT)];
+	pub EnabledTradingPairs: Vec<TradingPair> = vec![
+		TradingPair::from_currency_ids(AUSD, BTC).unwrap(),
+		TradingPair::from_currency_ids(AUSD, DOT).unwrap(),
+		TradingPair::from_currency_ids(BTC, DOT).unwrap(),
+	];
 	pub const DEXPalletId: PalletId = PalletId(*b"aca/dexm");
 }
 
@@ -223,13 +227,13 @@ construct_runtime!(
 );
 
 pub struct ExtBuilder {
-	endowed_accounts: Vec<(AccountId, CurrencyId, Balance)>,
+	balances: Vec<(AccountId, CurrencyId, Balance)>,
 }
 
 impl Default for ExtBuilder {
 	fn default() -> Self {
 		Self {
-			endowed_accounts: vec![
+			balances: vec![
 				(ALICE, DOT, 1000),
 				(ALICE, AUSD, 1000),
 				(ALICE, BTC, 1000),
@@ -248,7 +252,7 @@ impl ExtBuilder {
 			.unwrap();
 
 		orml_tokens::GenesisConfig::<Runtime> {
-			endowed_accounts: self.endowed_accounts,
+			balances: self.balances,
 		}
 		.assimilate_storage(&mut t)
 		.unwrap();

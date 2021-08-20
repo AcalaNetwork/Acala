@@ -95,11 +95,11 @@ impl orml_tokens::Config for Runtime {
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = ();
 	type MaxLocks = ();
+	type DustRemovalWhitelist = ();
 }
 
 parameter_types! {
 	pub const ExistentialDeposit: Balance = 1;
-	pub const MaxReserves: u32 = 50;
 }
 
 impl pallet_balances::Config for Runtime {
@@ -109,7 +109,7 @@ impl pallet_balances::Config for Runtime {
 	type ExistentialDeposit = ExistentialDeposit;
 	type AccountStore = frame_system::Pallet<Runtime>;
 	type MaxLocks = ();
-	type MaxReserves = MaxReserves;
+	type MaxReserves = ();
 	type ReserveIdentifier = [u8; 8];
 	type WeightInfo = ();
 }
@@ -161,12 +161,8 @@ impl PriceProvider<CurrencyId> for MockPriceSource {
 	}
 
 	fn get_price(_currency_id: CurrencyId) -> Option<Price> {
-		Some(Price::one())
+		unimplemented!()
 	}
-
-	fn lock_price(_currency_id: CurrencyId) {}
-
-	fn unlock_price(_currency_id: CurrencyId) {}
 }
 
 pub struct MockAuctionManager;
@@ -221,10 +217,16 @@ parameter_types! {
 	pub const DEXPalletId: PalletId = PalletId(*b"aca/dexm");
 	pub const GetExchangeFee: (u32, u32) = (0, 100);
 	pub const TradingPathLimit: u32 = 3;
-	pub EnabledTradingPairs : Vec<TradingPair> = vec![TradingPair::new(AUSD, BTC), TradingPair::new(AUSD, DOT)];
+	pub EnabledTradingPairs: Vec<TradingPair> = vec![
+		TradingPair::from_currency_ids(AUSD, BTC).unwrap(),
+		TradingPair::from_currency_ids(AUSD, DOT).unwrap(),
+		TradingPair::from_currency_ids(ACA, BTC).unwrap(),
+		TradingPair::from_currency_ids(ACA, DOT).unwrap(),
+		TradingPair::from_currency_ids(ACA, AUSD).unwrap(),
+	];
 }
 
-impl module_dex::Config for Runtime {
+impl dex::Config for Runtime {
 	type Event = Event;
 	type Currency = Currencies;
 	type GetExchangeFee = GetExchangeFee;
@@ -267,12 +269,16 @@ ord_parameter_types! {
 
 parameter_types! {
 	pub DefaultLiquidationRatio: Ratio = Ratio::saturating_from_rational(3, 2);
-	pub DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::one();
+	pub DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
 	pub DefaultLiquidationPenalty: Rate = Rate::saturating_from_rational(10, 100);
 	pub const MinimumDebitValue: Balance = 2;
-	pub MaxSlippageSwapWithDEX: Ratio = Ratio::saturating_from_rational(50, 100);
+	pub MaxSwapSlippageCompareToOracle: Ratio = Ratio::saturating_from_rational(50, 100);
 	pub const UnsignedPriority: u64 = 1 << 20;
 	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![BTC, DOT];
+	pub DefaultSwapParitalPathList: Vec<Vec<CurrencyId>> = vec![
+		vec![AUSD],
+		vec![ACA, AUSD],
+	];
 }
 
 impl Config for Runtime {
@@ -286,10 +292,11 @@ impl Config for Runtime {
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type CDPTreasury = CDPTreasuryModule;
 	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
-	type MaxSlippageSwapWithDEX = MaxSlippageSwapWithDEX;
+	type MaxSwapSlippageCompareToOracle = MaxSwapSlippageCompareToOracle;
 	type UnsignedPriority = UnsignedPriority;
 	type EmergencyShutdown = MockEmergencyShutdown;
 	type UnixTime = Timestamp;
+	type DefaultSwapParitalPathList = DefaultSwapParitalPathList;
 	type WeightInfo = ();
 }
 
@@ -309,7 +316,7 @@ construct_runtime!(
 		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
 		LoansModule: loans::{Pallet, Storage, Call, Event<T>},
 		PalletBalances: pallet_balances::{Pallet, Call, Storage, Event<T>},
-		DEXModule: module_dex::{Pallet, Storage, Call, Event<T>, Config<T>},
+		DEXModule: dex::{Pallet, Storage, Call, Event<T>, Config<T>},
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
 	}
 );
@@ -326,19 +333,20 @@ where
 }
 
 pub struct ExtBuilder {
-	endowed_accounts: Vec<(AccountId, CurrencyId, Balance)>,
+	balances: Vec<(AccountId, CurrencyId, Balance)>,
 }
 
 impl Default for ExtBuilder {
 	fn default() -> Self {
 		Self {
-			endowed_accounts: vec![
+			balances: vec![
 				(ALICE, BTC, 1000),
 				(BOB, BTC, 1000),
-				(CAROL, BTC, 100),
+				(CAROL, BTC, 10000),
 				(ALICE, DOT, 1000),
 				(BOB, DOT, 1000),
-				(CAROL, AUSD, 1000),
+				(CAROL, DOT, 10000),
+				(CAROL, AUSD, 10000),
 			],
 		}
 	}
@@ -350,13 +358,19 @@ impl ExtBuilder {
 			.build_storage::<Runtime>()
 			.unwrap();
 
-		orml_tokens::GenesisConfig::<Runtime> {
-			endowed_accounts: self.endowed_accounts,
+		pallet_balances::GenesisConfig::<Runtime> {
+			balances: vec![(CAROL, 10000)],
 		}
 		.assimilate_storage(&mut t)
 		.unwrap();
 
-		module_dex::GenesisConfig::<Runtime> {
+		orml_tokens::GenesisConfig::<Runtime> {
+			balances: self.balances,
+		}
+		.assimilate_storage(&mut t)
+		.unwrap();
+
+		dex::GenesisConfig::<Runtime> {
 			initial_listing_trading_pairs: vec![],
 			initial_enabled_trading_pairs: EnabledTradingPairs::get(),
 			initial_added_liquidity_pools: vec![],

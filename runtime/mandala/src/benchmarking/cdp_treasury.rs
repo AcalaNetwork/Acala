@@ -16,28 +16,29 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{dollar, CdpTreasury, Currencies, CurrencyId, Runtime, AUSD, DOT};
+use crate::{dollar, CdpTreasury, Currencies, CurrencyId, GetStableCurrencyId, GetStakingCurrencyId, Runtime};
 
 use frame_system::RawOrigin;
 use module_support::CDPTreasury;
 use orml_benchmarking::runtime_benchmarks;
 use orml_traits::MultiCurrency;
 
+const STABLECOIN: CurrencyId = GetStableCurrencyId::get();
+const STAKING: CurrencyId = GetStakingCurrencyId::get();
+
 runtime_benchmarks! {
 	{ Runtime, module_cdp_treasury }
 
 	auction_collateral {
-		let currency_id: CurrencyId = DOT;
-		Currencies::deposit(currency_id, &CdpTreasury::account_id(), 10_000 * dollar(currency_id))?;
-	}: _(RawOrigin::Root, currency_id, 1_000 * dollar(currency_id), 1_000 * dollar(AUSD), true)
+		Currencies::deposit(STAKING, &CdpTreasury::account_id(), 10_000 * dollar(STAKING))?;
+	}: _(RawOrigin::Root, STAKING, 1_000 * dollar(STAKING), 1_000 * dollar(STABLECOIN), true)
 
 	set_expected_collateral_auction_size {
-		let currency_id: CurrencyId = DOT;
-	}: _(RawOrigin::Root, currency_id, 200 * dollar(currency_id))
+	}: _(RawOrigin::Root, STAKING, 200 * dollar(STAKING))
 
 	extract_surplus_to_treasury {
-		CdpTreasury::on_system_surplus(1_000 * dollar(AUSD))?;
-	}: _(RawOrigin::Root, 200 * dollar(AUSD))
+		CdpTreasury::on_system_surplus(1_000 * dollar(STABLECOIN))?;
+	}: _(RawOrigin::Root, 200 * dollar(STABLECOIN))
 }
 
 #[cfg(test)]

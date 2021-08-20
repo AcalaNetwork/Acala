@@ -79,7 +79,7 @@ impl frame_system::Config for Runtime {
 
 parameter_type_with_key! {
 	pub ExistentialDeposits: |_currency_id: CurrencyId| -> Balance {
-		Default::default()
+		100
 	};
 }
 
@@ -92,11 +92,11 @@ impl orml_tokens::Config for Runtime {
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = ();
 	type MaxLocks = ();
+	type DustRemovalWhitelist = ();
 }
 
 parameter_types! {
 	pub const ExistentialDeposit: Balance = 1;
-	pub const MaxReserves: u32 = 50;
 }
 
 impl pallet_balances::Config for Runtime {
@@ -106,7 +106,7 @@ impl pallet_balances::Config for Runtime {
 	type ExistentialDeposit = ExistentialDeposit;
 	type AccountStore = frame_system::Pallet<Runtime>;
 	type MaxLocks = ();
-	type MaxReserves = MaxReserves;
+	type MaxReserves = ();
 	type ReserveIdentifier = [u8; 8];
 	type WeightInfo = ();
 }
@@ -195,18 +195,27 @@ impl RiskManager<AccountId, CurrencyId, Balance, Balance> for MockRiskManager {
 		currency_id: CurrencyId,
 		_collateral_balance: Balance,
 		_debit_balance: Balance,
+		check_required_ratio: bool,
 	) -> DispatchResult {
 		match currency_id {
-			DOT => Err(sp_runtime::DispatchError::Other("mock error")),
+			DOT => {
+				if check_required_ratio {
+					Err(sp_runtime::DispatchError::Other(
+						"mock below required collateral ratio error",
+					))
+				} else {
+					Err(sp_runtime::DispatchError::Other("mock below liquidation ratio error"))
+				}
+			}
 			BTC => Ok(()),
-			_ => Err(sp_runtime::DispatchError::Other("mock error")),
+			_ => Err(sp_runtime::DispatchError::Other("mock below liquidation ratio error")),
 		}
 	}
 
 	fn check_debit_cap(currency_id: CurrencyId, total_debit_balance: Balance) -> DispatchResult {
 		match (currency_id, total_debit_balance) {
-			(DOT, 1000) => Err(sp_runtime::DispatchError::Other("mock error")),
-			(BTC, 1000) => Err(sp_runtime::DispatchError::Other("mock error")),
+			(DOT, 1000) => Err(sp_runtime::DispatchError::Other("mock exceed debit value cap error")),
+			(BTC, 1000) => Err(sp_runtime::DispatchError::Other("mock exceed debit value cap error")),
 			(_, _) => Ok(()),
 		}
 	}
@@ -245,13 +254,13 @@ construct_runtime!(
 );
 
 pub struct ExtBuilder {
-	endowed_accounts: Vec<(AccountId, CurrencyId, Balance)>,
+	balances: Vec<(AccountId, CurrencyId, Balance)>,
 }
 
 impl Default for ExtBuilder {
 	fn default() -> Self {
 		Self {
-			endowed_accounts: vec![
+			balances: vec![
 				(ALICE, DOT, 1000),
 				(ALICE, BTC, 1000),
 				(BOB, DOT, 1000),
@@ -267,7 +276,7 @@ impl ExtBuilder {
 			.build_storage::<Runtime>()
 			.unwrap();
 		orml_tokens::GenesisConfig::<Runtime> {
-			endowed_accounts: self.endowed_accounts,
+			balances: self.balances,
 		}
 		.assimilate_storage(&mut t)
 		.unwrap();

@@ -18,11 +18,16 @@
 
 #![cfg(feature = "runtime-benchmarks")]
 
+use sp_runtime::traits::AccountIdConversion;
+
+pub mod utils;
+
 // module benchmarking
 pub mod auction_manager;
 pub mod cdp_engine;
 pub mod cdp_treasury;
 pub mod collator_selection;
+pub mod currencies;
 pub mod dex;
 pub mod emergency_shutdown;
 pub mod evm;
@@ -30,18 +35,23 @@ pub mod evm_accounts;
 pub mod homa;
 pub mod honzon;
 pub mod incentives;
+pub mod nominees_election;
 pub mod prices;
+pub mod session_manager;
+pub mod transaction_pause;
 pub mod transaction_payment;
 
 // orml benchmarking
 pub mod auction;
 pub mod authority;
-pub mod currencies;
 pub mod gradually_update;
 pub mod oracle;
 pub mod tokens;
-pub mod utils;
 pub mod vesting;
 
 // ecosystem benchmarking
 pub mod chainsafe_transfer;
+
+pub fn get_treasury_account() -> super::AccountId {
+	super::TreasuryPalletId::get().into_account()
+}

@@ -25,6 +25,7 @@ use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_core::{crypto::UncheckedInto, sr25519};
 use sp_finality_grandpa::AuthorityId as GrandpaId;
 use sp_runtime::{traits::Zero, FixedPointNumber, FixedU128};
+use sp_std::collections::btree_map::BTreeMap;
 
 use crate::chain_spec::{
 	evm_genesis, get_account_id_from_seed, get_authority_keys_from_seed, Extensions, TELEMETRY_URL,
@@ -34,8 +35,17 @@ pub type ChainSpec = sc_service::GenericChainSpec<mandala_runtime::GenesisConfig
 
 pub const PARA_ID: u32 = 1000;
 
-/// Development testnet config (single validator Alice)
-pub fn development_testnet_config() -> Result<ChainSpec, String> {
+/// Development testnet config (single validator Alice), non-parachain
+pub fn dev_testnet_config() -> Result<ChainSpec, String> {
+	dev_testnet_config_from_chain_id("mandala-dev")
+}
+
+/// Parachain development testnet config (single collator Alice)
+pub fn parachain_dev_testnet_config() -> Result<ChainSpec, String> {
+	dev_testnet_config_from_chain_id("mandala-pc-dev")
+}
+
+fn dev_testnet_config_from_chain_id(chain_id: &str) -> Result<ChainSpec, String> {
 	let mut properties = Map::new();
 	let mut token_symbol: Vec<String> = vec![];
 	let mut token_decimals: Vec<u32> = vec![];
@@ -50,7 +60,7 @@ pub fn development_testnet_config() -> Result<ChainSpec, String> {
 
 	Ok(ChainSpec::from_genesis(
 		"Mandala Dev",
-		"mandala-dev",
+		chain_id,
 		ChainType::Development,
 		move || {
 			testnet_genesis(
@@ -147,7 +157,7 @@ pub fn latest_mandala_testnet_config() -> Result<ChainSpec, String> {
 
 	Ok(ChainSpec::from_genesis(
 		"Acala Mandala TC7",
-		"mandala-tc7",
+		"mandala-dev-tc7",
 		ChainType::Live,
 		// SECRET="..."
 		// ./target/debug/subkey inspect "$SECRET//acala//root"
@@ -203,10 +213,10 @@ pub fn latest_mandala_testnet_config() -> Result<ChainSpec, String> {
 				.unwrap(),
 		],
 		TelemetryEndpoints::new(vec![(TELEMETRY_URL.into(), 0)]).ok(),
-		Some("mandala-tc7"),
+		Some("mandala-dev-tc7"),
 		Some(properties),
 		Extensions {
-			relay_chain: "rococo".into(),
+			relay_chain: "dev".into(),
 			para_id: PARA_ID,
 		},
 	))
@@ -226,16 +236,15 @@ fn testnet_genesis(
 		dollar, get_all_module_accounts, AirDropConfig, Balance, BalancesConfig, CdpEngineConfig, CdpTreasuryConfig,
 		CollatorSelectionConfig, DexConfig, EVMConfig, EnabledTradingPairs, FinancialCouncilMembershipConfig,
 		GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig, IndicesConfig, NativeTokenExistentialDeposit,
-		OperatorMembershipAcalaConfig, OperatorMembershipBandConfig, OrmlNFTConfig, ParachainInfoConfig,
-		RenVmBridgeConfig, SessionConfig, SessionKeys, StakingPoolConfig, SudoConfig, SystemConfig,
-		TechnicalCommitteeMembershipConfig, TokensConfig, TradingPair, VestingConfig, ACA, AUSD, DOT, LDOT, RENBTC,
+		OperatorMembershipAcalaConfig, OperatorMembershipBandConfig, OrmlNFTConfig, ParachainInfoConfig, Period,
+		RenVmBridgeConfig, SessionConfig, SessionKeys, SessionManagerConfig, StakingPoolConfig, StarportConfig,
+		SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig, ACA, AUSD, DOT,
+		LDOT, RENBTC,
 	};
-	#[cfg(feature = "std")]
-	use sp_std::collections::btree_map::BTreeMap;
 
 	let existential_deposit = NativeTokenExistentialDeposit::get();
 
-	let initial_balance: u128 = 1_000_000 * dollar(ACA);
+	let initial_balance: u128 = 10_000_000 * dollar(ACA);
 	let initial_staking: u128 = 100_000 * dollar(ACA);
 
 	let evm_genesis_accounts = evm_genesis();
@@ -266,57 +275,61 @@ fn testnet_genesis(
 		.collect::<Vec<(AccountId, Balance)>>();
 
 	mandala_runtime::GenesisConfig {
-		frame_system: SystemConfig {
+		system: SystemConfig {
 			// Add Wasm runtime to storage.
 			code: wasm_binary.to_vec(),
 			changes_trie_config: Default::default(),
 		},
-		pallet_indices: IndicesConfig { indices: vec![] },
-		pallet_balances: BalancesConfig { balances },
-		pallet_sudo: SudoConfig { key: root_key.clone() },
-		pallet_collective_Instance1: Default::default(),
-		pallet_membership_Instance1: GeneralCouncilMembershipConfig {
+		starport: StarportConfig {
+			initial_authorities: vec![get_account_id_from_seed::<sr25519::Public>("Alice")],
+		},
+		indices: IndicesConfig { indices: vec![] },
+		balances: BalancesConfig { balances },
+		sudo: SudoConfig { key: root_key.clone() },
+		general_council: Default::default(),
+		general_council_membership: GeneralCouncilMembershipConfig {
 			members: vec![root_key.clone()],
 			phantom: Default::default(),
 		},
-		pallet_collective_Instance2: Default::default(),
-		pallet_membership_Instance2: FinancialCouncilMembershipConfig {
+		financial_council: Default::default(),
+		financial_council_membership: FinancialCouncilMembershipConfig {
 			members: vec![root_key.clone()],
 			phantom: Default::default(),
 		},
-		pallet_collective_Instance3: Default::default(),
-		pallet_membership_Instance3: HomaCouncilMembershipConfig {
+		homa_council: Default::default(),
+		homa_council_membership: HomaCouncilMembershipConfig {
 			members: vec![root_key.clone()],
 			phantom: Default::default(),
 		},
-		pallet_collective_Instance4: Default::default(),
-		pallet_membership_Instance4: TechnicalCommitteeMembershipConfig {
+		technical_committee: Default::default(),
+		technical_committee_membership: TechnicalCommitteeMembershipConfig {
 			members: vec![root_key.clone()],
 			phantom: Default::default(),
 		},
-		pallet_membership_Instance5: OperatorMembershipAcalaConfig {
+		operator_membership_acala: OperatorMembershipAcalaConfig {
 			members: vec![root_key.clone()],
 			phantom: Default::default(),
 		},
-		pallet_membership_Instance6: OperatorMembershipBandConfig {
+		operator_membership_band: OperatorMembershipBandConfig {
 			members: vec![root_key.clone()],
 			phantom: Default::default(),
 		},
-		pallet_treasury: Default::default(),
-		orml_tokens: TokensConfig {
-			endowed_accounts: endowed_accounts
+		democracy: Default::default(),
+		treasury: Default::default(),
+		tokens: TokensConfig {
+			balances: endowed_accounts
 				.iter()
 				.flat_map(|x| vec![(x.clone(), DOT, initial_balance), (x.clone(), AUSD, initial_balance)])
 				.collect(),
 		},
-		orml_vesting: VestingConfig { vesting: vec![] },
-		module_cdp_treasury: CdpTreasuryConfig {
+		vesting: VestingConfig { vesting: vec![] },
+		cdp_treasury: CdpTreasuryConfig {
 			expected_collateral_auction_size: vec![
 				(DOT, dollar(DOT)), // (currency_id, max size of a collateral auction)
 				(RENBTC, dollar(RENBTC)),
 			],
 		},
-		module_cdp_engine: CdpEngineConfig {
+		cdp_engine: CdpEngineConfig {
 			collaterals_params: vec![
 				(
 					DOT,
@@ -348,14 +361,14 @@ fn testnet_genesis(
 				1_000_000_000_000_000_000u128,
 			), /* 5% APR */
 		},
-		module_airdrop: AirDropConfig {
+		air_drop: AirDropConfig {
 			airdrop_accounts: vec![],
 		},
-		module_evm: EVMConfig {
+		evm: EVMConfig {
 			accounts: evm_genesis_accounts,
 			treasury: root_key,
 		},
-		module_staking_pool: StakingPoolConfig {
+		staking_pool: StakingPoolConfig {
 			staking_pool_params: module_staking_pool::Params {
 				target_max_free_unbonded_ratio: FixedU128::saturating_from_rational(10, 100),
 				target_min_free_unbonded_ratio: FixedU128::saturating_from_rational(5, 100),
@@ -364,30 +377,39 @@ fn testnet_genesis(
 				base_fee_rate: FixedU128::saturating_from_rational(2, 100),
 			},
 		},
-		module_dex: DexConfig {
+		dex: DexConfig {
 			initial_listing_trading_pairs: vec![],
 			initial_enabled_trading_pairs: EnabledTradingPairs::get(),
+			#[cfg(feature = "runtime-benchmarks")]
+			initial_added_liquidity_pools: vec![],
+			#[cfg(not(feature = "runtime-benchmarks"))]
 			initial_added_liquidity_pools: vec![(
 				get_account_id_from_seed::<sr25519::Public>("Alice"),
 				vec![
-					(TradingPair::new(AUSD, DOT), (1_000_000u128, 2_000_000u128)),
-					(TradingPair::new(AUSD, ACA), (1_000_000u128, 2_000_000u128)),
+					(
+						mandala_runtime::TradingPair::from_currency_ids(AUSD, DOT).unwrap(),
+						(1_000_000 * dollar(AUSD), 2_000_000 * dollar(DOT)),
+					),
+					(
+						mandala_runtime::TradingPair::from_currency_ids(AUSD, ACA).unwrap(),
+						(1_000_000 * dollar(AUSD), 2_000_000 * dollar(ACA)),
+					),
 				],
 			)],
 		},
 		parachain_info: ParachainInfoConfig {
 			parachain_id: PARA_ID.into(),
 		},
-		ecosystem_renvm_bridge: RenVmBridgeConfig {
+		ren_vm_bridge: RenVmBridgeConfig {
 			ren_vm_public_key: hex!["4b939fc8ade87cb50b78987b1dda927460dc456a"],
 		},
 		orml_nft: OrmlNFTConfig { tokens: vec![] },
-		module_collator_selection: CollatorSelectionConfig {
+		collator_selection: CollatorSelectionConfig {
 			invulnerables: initial_authorities.iter().cloned().map(|(acc, _, _, _)| acc).collect(),
 			candidacy_bond: initial_staking,
 			..Default::default()
 		},
-		pallet_session: SessionConfig {
+		session: SessionConfig {
 			keys: initial_authorities
 				.iter()
 				.cloned()
@@ -400,9 +422,14 @@ fn testnet_genesis(
 				})
 				.collect(),
 		},
+		session_manager: SessionManagerConfig {
+			session_duration: Period::get(),
+		},
 		// no need to pass anything to aura, in fact it will panic if we do. Session will take care
 		// of this.
-		pallet_aura: Default::default(),
+		aura: Default::default(),
+		aura_ext: Default::default(),
+		parachain_system: Default::default(),
 	}
 }
 
@@ -417,12 +444,10 @@ fn mandala_genesis(
 		CdpEngineConfig, CdpTreasuryConfig, CollatorSelectionConfig, DexConfig, EVMConfig, EnabledTradingPairs,
 		FinancialCouncilMembershipConfig, GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig, IndicesConfig,
 		NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OperatorMembershipBandConfig, OrmlNFTConfig,
-		ParachainInfoConfig, RenVmBridgeConfig, SessionConfig, SessionKeys, StakingPoolConfig, SudoConfig,
-		SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, UnreleasedNativeVaultAccountId, VestingConfig,
-		ACA, AUSD, DOT, LDOT, RENBTC,
+		ParachainInfoConfig, Period, RenVmBridgeConfig, SessionConfig, SessionKeys, SessionManagerConfig,
+		StakingPoolConfig, StarportConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig,
+		VestingConfig, ACA, AUSD, DOT, LDOT, RENBTC,
 	};
-	#[cfg(feature = "std")]
-	use sp_std::collections::btree_map::BTreeMap;
 
 	let existential_deposit = NativeTokenExistentialDeposit::get();
 
@@ -430,8 +455,6 @@ fn mandala_genesis(
 	let initial_staking: u128 = 100_000 * dollar(ACA);
 
 	let evm_genesis_accounts = evm_genesis();
-
-	let mut unreleased_native = 1_000_000_000 * dollar(ACA); // 1 billion
 	let balances = initial_authorities
 		.iter()
 		.map(|x| (x.0.clone(), initial_staking + dollar(ACA))) // bit more for fee
@@ -451,63 +474,65 @@ fn mandala_genesis(
 				} else {
 					acc.insert(account_id.clone(), amount);
 				}
-				unreleased_native = unreleased_native.saturating_sub(amount);
 				acc
 			},
 		)
 		.into_iter()
-		.chain(vec![(UnreleasedNativeVaultAccountId::get(), unreleased_native)])
 		.collect::<Vec<(AccountId, Balance)>>();
 
 	mandala_runtime::GenesisConfig {
-		frame_system: SystemConfig {
+		system: SystemConfig {
 			// Add Wasm runtime to storage.
 			code: wasm_binary.to_vec(),
 			changes_trie_config: Default::default(),
 		},
-		pallet_indices: IndicesConfig { indices: vec![] },
-		pallet_balances: BalancesConfig { balances },
-		pallet_sudo: SudoConfig { key: root_key.clone() },
-		pallet_collective_Instance1: Default::default(),
-		pallet_membership_Instance1: GeneralCouncilMembershipConfig {
+		starport: StarportConfig {
+			initial_authorities: vec![get_account_id_from_seed::<sr25519::Public>("Alice")],
+		},
+		indices: IndicesConfig { indices: vec![] },
+		balances: BalancesConfig { balances },
+		sudo: SudoConfig { key: root_key.clone() },
+		general_council: Default::default(),
+		general_council_membership: GeneralCouncilMembershipConfig {
 			members: vec![root_key.clone()],
 			phantom: Default::default(),
 		},
-		pallet_collective_Instance2: Default::default(),
-		pallet_membership_Instance2: FinancialCouncilMembershipConfig {
+		financial_council: Default::default(),
+		financial_council_membership: FinancialCouncilMembershipConfig {
 			members: vec![root_key.clone()],
 			phantom: Default::default(),
 		},
-		pallet_collective_Instance3: Default::default(),
-		pallet_membership_Instance3: HomaCouncilMembershipConfig {
+		homa_council: Default::default(),
+		homa_council_membership: HomaCouncilMembershipConfig {
 			members: vec![root_key.clone()],
 			phantom: Default::default(),
 		},
-		pallet_collective_Instance4: Default::default(),
-		pallet_membership_Instance4: TechnicalCommitteeMembershipConfig {
+		technical_committee: Default::default(),
+		technical_committee_membership: TechnicalCommitteeMembershipConfig {
 			members: vec![root_key.clone()],
 			phantom: Default::default(),
 		},
-		pallet_membership_Instance5: OperatorMembershipAcalaConfig {
+		operator_membership_acala: OperatorMembershipAcalaConfig {
 			members: endowed_accounts.clone(),
 			phantom: Default::default(),
 		},
-		pallet_membership_Instance6: OperatorMembershipBandConfig {
+		operator_membership_band: OperatorMembershipBandConfig {
 			members: endowed_accounts,
 			phantom: Default::default(),
 		},
-		pallet_treasury: Default::default(),
-		orml_tokens: TokensConfig {
-			endowed_accounts: vec![(root_key.clone(), DOT, initial_balance)],
+		democracy: Default::default(),
+		treasury: Default::default(),
+		tokens: TokensConfig {
+			balances: vec![(root_key.clone(), DOT, initial_balance)],
 		},
-		orml_vesting: VestingConfig { vesting: vec![] },
-		module_cdp_treasury: CdpTreasuryConfig {
+		vesting: VestingConfig { vesting: vec![] },
+		cdp_treasury: CdpTreasuryConfig {
 			expected_collateral_auction_size: vec![
 				(DOT, dollar(DOT)), // (currency_id, max size of a collateral auction)
 				(RENBTC, 5 * cent(RENBTC)),
 			],
 		},
-		module_cdp_engine: CdpEngineConfig {
+		cdp_engine: CdpEngineConfig {
 			collaterals_params: vec![
 				(
 					DOT,
@@ -539,31 +564,23 @@ fn mandala_genesis(
 				1_000_000_000_000_000_000u128,
 			), /* 5% APR */
 		},
-		module_airdrop: AirDropConfig {
+		air_drop: AirDropConfig {
 			airdrop_accounts: {
 				let aca_airdrop_accounts_json = &include_bytes!("../../../../resources/mandala-airdrop-ACA.json")[..];
 				let aca_airdrop_accounts: Vec<(AccountId, Balance)> =
 					serde_json::from_slice(aca_airdrop_accounts_json).unwrap();
-				let kar_airdrop_accounts_json = &include_bytes!("../../../../resources/mandala-airdrop-KAR.json")[..];
-				let kar_airdrop_accounts: Vec<(AccountId, Balance)> =
-					serde_json::from_slice(kar_airdrop_accounts_json).unwrap();
 
 				aca_airdrop_accounts
 					.iter()
 					.map(|(account_id, aca_amount)| (account_id.clone(), AirDropCurrencyId::ACA, *aca_amount))
-					.chain(
-						kar_airdrop_accounts
-							.iter()
-							.map(|(account_id, kar_amount)| (account_id.clone(), AirDropCurrencyId::KAR, *kar_amount)),
-					)
 					.collect::<Vec<_>>()
 			},
 		},
-		module_evm: EVMConfig {
+		evm: EVMConfig {
 			accounts: evm_genesis_accounts,
 			treasury: root_key,
 		},
-		module_staking_pool: StakingPoolConfig {
+		staking_pool: StakingPoolConfig {
 			staking_pool_params: module_staking_pool::Params {
 				target_max_free_unbonded_ratio: FixedU128::saturating_from_rational(10, 100),
 				target_min_free_unbonded_ratio: FixedU128::saturating_from_rational(5, 100),
@@ -572,7 +589,7 @@ fn mandala_genesis(
 				base_fee_rate: FixedU128::saturating_from_rational(2, 100),
 			},
 		},
-		module_dex: DexConfig {
+		dex: DexConfig {
 			initial_listing_trading_pairs: vec![],
 			initial_enabled_trading_pairs: EnabledTradingPairs::get(),
 			initial_added_liquidity_pools: vec![],
@@ -580,10 +597,13 @@ fn mandala_genesis(
 		parachain_info: ParachainInfoConfig {
 			parachain_id: PARA_ID.into(),
 		},
-		ecosystem_renvm_bridge: RenVmBridgeConfig {
+		ren_vm_bridge: RenVmBridgeConfig {
 			ren_vm_public_key: hex!["4b939fc8ade87cb50b78987b1dda927460dc456a"],
 		},
 		orml_nft: OrmlNFTConfig {
+			#[cfg(feature = "runtime-benchmarks")]
+			tokens: vec![],
+			#[cfg(not(feature = "runtime-benchmarks"))]
 			tokens: {
 				let nft_airdrop_json = &include_bytes!("../../../../resources/mandala-airdrop-NFT.json")[..];
 				let nft_airdrop: Vec<(
@@ -613,12 +633,12 @@ fn mandala_genesis(
 				tokens
 			},
 		},
-		module_collator_selection: CollatorSelectionConfig {
+		collator_selection: CollatorSelectionConfig {
 			invulnerables: initial_authorities.iter().cloned().map(|(acc, _, _, _)| acc).collect(),
 			candidacy_bond: initial_staking,
 			..Default::default()
 		},
-		pallet_session: SessionConfig {
+		session: SessionConfig {
 			keys: initial_authorities
 				.iter()
 				.cloned()
@@ -631,8 +651,13 @@ fn mandala_genesis(
 				})
 				.collect(),
 		},
+		session_manager: SessionManagerConfig {
+			session_duration: Period::get(),
+		},
 		// no need to pass anything to aura, in fact it will panic if we do. Session will take care
 		// of this.
-		pallet_aura: Default::default(),
+		aura: Default::default(),
+		aura_ext: Default::default(),
+		parachain_system: Default::default(),
 	}
 }

@@ -26,22 +26,19 @@ use frame_support::{
 	construct_runtime, ord_parameter_types, parameter_types, weights::WeightToFeeCoefficients, PalletId,
 };
 use orml_traits::parameter_type_with_key;
-use primitives::{Amount, TokenSymbol, TradingPair};
+use primitives::{Amount, ReserveIdentifier, TokenSymbol, TradingPair};
 use smallvec::smallvec;
 use sp_core::{crypto::AccountId32, H256};
-use sp_runtime::{
-	testing::Header,
-	traits::{IdentityLookup, One},
-	Perbill,
-};
+use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
 use sp_std::cell::RefCell;
-use support::{mocks::MockAddressMapping, Ratio};
+use support::{mocks::MockAddressMapping, Price};
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
 
 pub const ALICE: AccountId = AccountId::new([1u8; 32]);
 pub const BOB: AccountId = AccountId::new([2u8; 32]);
+pub const CHARLIE: AccountId = AccountId::new([3u8; 32]);
 pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
 pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
@@ -107,10 +104,11 @@ impl orml_tokens::Config for Runtime {
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = ();
 	type MaxLocks = ();
+	type DustRemovalWhitelist = ();
 }
 
 parameter_types! {
-	pub const NativeTokenExistentialDeposit: Balance = 0;
+	pub const NativeTokenExistentialDeposit: Balance = 10;
 	pub const MaxReserves: u32 = 50;
 }
 
@@ -122,7 +120,7 @@ impl pallet_balances::Config for Runtime {
 	type AccountStore = System;
 	type MaxLocks = ();
 	type MaxReserves = MaxReserves;
-	type ReserveIdentifier = [u8; 8];
+	type ReserveIdentifier = ReserveIdentifier;
 	type WeightInfo = ();
 }
 
@@ -154,7 +152,10 @@ parameter_types! {
 	pub const DEXPalletId: PalletId = PalletId(*b"aca/dexm");
 	pub const GetExchangeFee: (u32, u32) = (0, 100);
 	pub const TradingPathLimit: u32 = 3;
-	pub EnabledTradingPairs : Vec<TradingPair> = vec![TradingPair::new(AUSD, ACA), TradingPair::new(AUSD, DOT)];
+	pub EnabledTradingPairs: Vec<TradingPair> = vec![
+		TradingPair::from_currency_ids(AUSD, ACA).unwrap(),
+		TradingPair::from_currency_ids(AUSD, DOT).unwrap(),
+	];
 }
 
 impl module_dex::Config for Runtime {
@@ -170,24 +171,61 @@ impl module_dex::Config for Runtime {
 }
 
 parameter_types! {
-	pub AllNonNativeCurrencyIds: Vec<CurrencyId> = vec![AUSD, DOT];
-	pub MaxSlippageSwapWithDEX: Ratio = Ratio::one();
-	pub const StableCurrencyId: CurrencyId = AUSD;
+	pub MaxSwapSlippageCompareToOracle: Ratio = Ratio::saturating_from_rational(1, 2);
 	pub static TransactionByteFee: u128 = 1;
+	pub DefaultFeeSwapPathList: Vec<Vec<CurrencyId>> = vec![vec![AUSD, ACA], vec![DOT, AUSD, ACA]];
+}
+
+thread_local! {
+	pub static TIP_UNBALANCED_AMOUNT: RefCell<u128> = RefCell::new(0);
+	pub static FEE_UNBALANCED_AMOUNT: RefCell<u128> = RefCell::new(0);
+}
+
+pub struct DealWithFees;
+impl OnUnbalanced<pallet_balances::NegativeImbalance<Runtime>> for DealWithFees {
+	fn on_unbalanceds<B>(mut fees_then_tips: impl Iterator<Item = pallet_balances::NegativeImbalance<Runtime>>) {
+		if let Some(fees) = fees_then_tips.next() {
+			FEE_UNBALANCED_AMOUNT.with(|a| *a.borrow_mut() += fees.peek());
+			if let Some(tips) = fees_then_tips.next() {
+				TIP_UNBALANCED_AMOUNT.with(|a| *a.borrow_mut() += tips.peek());
+			}
+		}
+	}
+}
+
+thread_local! {
+	static RELATIVE_PRICE: RefCell<Option<Price>> = RefCell::new(Some(Price::one()));
+}
+
+pub struct MockPriceSource;
+impl MockPriceSource {
+	pub fn set_relative_price(price: Option<Price>) {
+		RELATIVE_PRICE.with(|v| *v.borrow_mut() = price);
+	}
+}
+impl PriceProvider<CurrencyId> for MockPriceSource {
+	fn get_relative_price(_base: CurrencyId, _quote: CurrencyId) -> Option<Price> {
+		RELATIVE_PRICE.with(|v| *v.borrow_mut())
+	}
+
+	fn get_price(_currency_id: CurrencyId) -> Option<Price> {
+		unimplemented!()
+	}
 }
 
 impl Config for Runtime {
-	type AllNonNativeCurrencyIds = AllNonNativeCurrencyIds;
 	type NativeCurrencyId = GetNativeCurrencyId;
-	type StableCurrencyId = StableCurrencyId;
+	type DefaultFeeSwapPathList = DefaultFeeSwapPathList;
 	type Currency = PalletBalances;
 	type MultiCurrency = Currencies;
-	type OnTransactionPayment = ();
+	type OnTransactionPayment = DealWithFees;
 	type TransactionByteFee = TransactionByteFee;
 	type WeightToFee = WeightToFee;
 	type FeeMultiplierUpdate = ();
 	type DEX = DEXModule;
-	type MaxSlippageSwapWithDEX = MaxSlippageSwapWithDEX;
+	type MaxSwapSlippageCompareToOracle = MaxSwapSlippageCompareToOracle;
+	type TradingPathLimit = TradingPathLimit;
+	type PriceSource = MockPriceSource;
 	type WeightInfo = ();
 }
 
@@ -228,19 +266,21 @@ construct_runtime!(
 );
 
 pub struct ExtBuilder {
-	endowed_accounts: Vec<(AccountId, CurrencyId, Balance)>,
+	balances: Vec<(AccountId, CurrencyId, Balance)>,
 	base_weight: u64,
 	byte_fee: u128,
 	weight_to_fee: u128,
+	native_balances: Vec<(AccountId, Balance)>,
 }
 
 impl Default for ExtBuilder {
 	fn default() -> Self {
 		Self {
-			endowed_accounts: vec![(ALICE, AUSD, 10000), (ALICE, DOT, 1000)],
+			balances: vec![(ALICE, AUSD, 10000), (ALICE, DOT, 1000)],
 			base_weight: 0,
 			byte_fee: 2,
 			weight_to_fee: 1,
+			native_balances: vec![],
 		}
 	}
 }
@@ -258,6 +298,10 @@ impl ExtBuilder {
 		self.weight_to_fee = weight_to_fee;
 		self
 	}
+	pub fn one_hundred_thousand_for_alice_n_charlie(mut self) -> Self {
+		self.native_balances = vec![(ALICE, 100000), (CHARLIE, 100000)];
+		self
+	}
 	fn set_constants(&self) {
 		EXTRINSIC_BASE_WEIGHT.with(|v| *v.borrow_mut() = self.base_weight);
 		TRANSACTION_BYTE_FEE.with(|v| *v.borrow_mut() = self.byte_fee);
@@ -270,13 +314,13 @@ impl ExtBuilder {
 			.unwrap();
 
 		pallet_balances::GenesisConfig::<Runtime> {
-			balances: vec![(ALICE, 100000)],
+			balances: self.native_balances,
 		}
 		.assimilate_storage(&mut t)
 		.unwrap();
 
 		orml_tokens::GenesisConfig::<Runtime> {
-			endowed_accounts: self.endowed_accounts,
+			balances: self.balances,
 		}
 		.assimilate_storage(&mut t)
 		.unwrap();

@@ -202,6 +202,7 @@ pub mod module {
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
+	#[pallet::metadata(T::AccountId = "AccountId")]
 	pub enum Event<T: Config> {
 		/// Deposit staking currency(DOT) to staking pool and issue liquid
 		/// currency(LDOT). \[who, staking_amount_deposited,
@@ -332,7 +333,7 @@ pub mod module {
 			target_unbonding_to_free_ratio: ChangeRatio,
 			unbonding_to_free_adjustment: ChangeRate,
 			base_fee_rate: ChangeRate,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
 			StakingPoolParams::<T>::try_mutate(|params| -> DispatchResult {
 				if let Change::NewValue(update) = target_max_free_unbonded_ratio {
@@ -357,7 +358,7 @@ pub mod module {
 				);
 				Ok(())
 			})?;
-			Ok(().into())
+			Ok(())
 		}
 	}
 }
@@ -827,7 +828,7 @@ impl<T: Config> HomaProtocol<T::AccountId, Balance, EraIndex> for Pallet<T> {
 				// if available_free_pool is not enough, need re-calculate
 				if demand_staking_amount > available_free_pool {
 					let ratio = Ratio::checked_from_rational(available_free_pool, demand_staking_amount)
-						.expect("demand_staking_amount is not zero; qed");
+						.expect("demand_staking_amount is gt available_free_pool and not zero; qed");
 					liquid_amount_to_burn = ratio.saturating_mul_int(liquid_amount_to_burn);
 					demand_staking_amount = available_free_pool;
 				}
@@ -912,7 +913,7 @@ impl<T: Config> HomaProtocol<T::AccountId, Balance, EraIndex> for Pallet<T> {
 				// if available_unclaimed_unbonding is not enough, need re-calculate
 				if demand_staking_amount > available_unclaimed_unbonding {
 					let ratio = Ratio::checked_from_rational(available_unclaimed_unbonding, demand_staking_amount)
-						.expect("staking_amount_to_claim is not zero; qed");
+						.expect("demand_staking_amount is gt available_unclaimed_unbonding and not zero; qed");
 					liquid_amount_to_burn = ratio.saturating_mul_int(liquid_amount_to_burn);
 					demand_staking_amount = available_unclaimed_unbonding;
 				}

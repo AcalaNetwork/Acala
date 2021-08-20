@@ -17,7 +17,8 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-	dollar, AccountId, Auction, AuctionId, AuctionManager, AuctionTimeToClose, CdpTreasury, Runtime, System, AUSD, DOT,
+	dollar, AccountId, Auction, AuctionId, AuctionManager, AuctionTimeToClose, CdpTreasury, CurrencyId,
+	GetStableCurrencyId, GetStakingCurrencyId, Runtime, System,
 };
 
 use super::utils::set_balance;
@@ -29,7 +30,11 @@ use orml_benchmarking::runtime_benchmarks;
 use sp_std::prelude::*;
 
 const SEED: u32 = 0;
+const MAX_DOLLARS: u32 = 1000;
 const MAX_AUCTION_ID: u32 = 100;
+
+const STABLECOIN: CurrencyId = GetStableCurrencyId::get();
+const STAKING: CurrencyId = GetStakingCurrencyId::get();
 
 runtime_benchmarks! {
 	{ Runtime, orml_auction }
@@ -38,18 +43,19 @@ runtime_benchmarks! {
 	// there's no bidder before and bid price doesn't exceed target amount
 	#[extra]
 	bid_collateral_auction_as_first_bidder {
+		let d in 1 .. MAX_DOLLARS;
+
 		let bidder: AccountId = whitelisted_caller();
 		let funder = account("funder", 0, SEED);
-		let currency_id = DOT;
-		let collateral_amount = 100 * dollar(currency_id);
-		let target_amount = 10_000 * dollar(AUSD);
-		let bid_price = 5_000u128 * dollar(AUSD);
+		let collateral_amount = 100 * dollar(STAKING);
+		let target_amount = 10_000 * dollar(STABLECOIN);
+		let bid_price = (5_000u128 + d as u128) * dollar(STABLECOIN);
 		let auction_id: AuctionId = 0;
 
-		set_balance(currency_id, &funder, collateral_amount);
-		set_balance(AUSD, &bidder, bid_price);
-		<CdpTreasury as CDPTreasury<_>>::deposit_collateral(&funder, currency_id, collateral_amount)?;
-		AuctionManager::new_collateral_auction(&funder, currency_id, collateral_amount, target_amount)?;
+		set_balance(STAKING, &funder, collateral_amount);
+		set_balance(STABLECOIN, &bidder, bid_price);
+		<CdpTreasury as CDPTreasury<_>>::deposit_collateral(&funder, STAKING, collateral_amount)?;
+		AuctionManager::new_collateral_auction(&funder, STAKING, collateral_amount, target_amount)?;
 	}: bid(RawOrigin::Signed(bidder), auction_id, bid_price)
 
 	// `bid` a collateral auction, worst cases:
@@ -58,18 +64,17 @@ runtime_benchmarks! {
 		let bidder: AccountId = whitelisted_caller();
 		let previous_bidder = account("previous_bidder", 0, SEED);
 		let funder = account("funder", 0, SEED);
-		let currency_id = DOT;
-		let collateral_amount = 100 * dollar(currency_id);
-		let target_amount = 10_000 * dollar(AUSD);
-		let previous_bid_price = 5_000u128 * dollar(AUSD);
-		let bid_price = 10_000u128 * dollar(AUSD);
+		let collateral_amount = 100 * dollar(STAKING);
+		let target_amount = 10_000 * dollar(STABLECOIN);
+		let previous_bid_price = 5_000u128 * dollar(STABLECOIN);
+		let bid_price = 10_000u128 * dollar(STABLECOIN);
 		let auction_id: AuctionId = 0;
 
-		set_balance(currency_id, &funder, collateral_amount);
-		set_balance(AUSD, &bidder, bid_price);
-		set_balance(AUSD, &previous_bidder, previous_bid_price);
-		<CdpTreasury as CDPTreasury<_>>::deposit_collateral(&funder, currency_id, collateral_amount)?;
-		AuctionManager::new_collateral_auction(&funder, currency_id, collateral_amount, target_amount)?;
+		set_balance(STAKING, &funder, collateral_amount);
+		set_balance(STABLECOIN, &bidder, bid_price);
+		set_balance(STABLECOIN, &previous_bidder, previous_bid_price);
+		<CdpTreasury as CDPTreasury<_>>::deposit_collateral(&funder, STAKING, collateral_amount)?;
+		AuctionManager::new_collateral_auction(&funder, STAKING, collateral_amount, target_amount)?;
 		Auction::bid(RawOrigin::Signed(previous_bidder).into(), auction_id, previous_bid_price)?;
 	}: bid(RawOrigin::Signed(bidder), auction_id, bid_price)
 
@@ -78,17 +83,16 @@ runtime_benchmarks! {
 
 		let bidder = account("bidder", 0, SEED);
 		let funder = account("funder", 0, SEED);
-		let currency_id = DOT;
-		let collateral_amount = 100 * dollar(currency_id);
-		let target_amount = 10_000 * dollar(AUSD);
-		let bid_price = 5_000u128 * dollar(AUSD);
+		let collateral_amount = 100 * dollar(STAKING);
+		let target_amount = 10_000 * dollar(STABLECOIN);
+		let bid_price = 5_000u128 * dollar(STABLECOIN);
 
 		System::set_block_number(1);
 		for auction_id in 0 .. c {
-			set_balance(currency_id, &funder, collateral_amount);
-			<CdpTreasury as CDPTreasury<_>>::deposit_collateral(&funder, currency_id, collateral_amount)?;
-			AuctionManager::new_collateral_auction(&funder, currency_id, collateral_amount, target_amount)?;
-			set_balance(AUSD, &bidder, bid_price);
+			set_balance(STAKING, &funder, collateral_amount);
+			<CdpTreasury as CDPTreasury<_>>::deposit_collateral(&funder, STAKING, collateral_amount)?;
+			AuctionManager::new_collateral_auction(&funder, STAKING, collateral_amount, target_amount)?;
+			set_balance(STABLECOIN, &bidder, bid_price);
 			Auction::bid(RawOrigin::Signed(bidder.clone()).into(), auction_id, bid_price)?;
 		}
 	}: {

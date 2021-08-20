@@ -80,4 +80,9 @@ impl<T: frame_system::Config> module_nft::WeightInfo for WeightInfo<T> {
 			.saturating_add(T::DbWeight::get().reads(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes(4 as Weight))
 	}
+	fn update_class_properties() -> Weight {
+		(21_000_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(1 as Weight))
+			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+	}
 }

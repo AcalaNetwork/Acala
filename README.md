@@ -7,6 +7,7 @@
 [![GitHub Workflow Status](https://img.shields.io/github/workflow/status/AcalaNetwork/Acala/Test?label=Actions&logo=github)](https://github.com/AcalaNetwork/Acala/actions?query=workflow%3ATest)
 [![GitHub tag (latest by date)](https://img.shields.io/github/v/tag/AcalaNetwork/Acala)](https://github.com/AcalaNetwork/Acala/tags)
 [![Substrate version](https://img.shields.io/badge/Substrate-2.0.0-brightgreen?logo=Parity%20Substrate)](https://substrate.dev/)
+[![codecov](https://codecov.io/gh/AcalaNetwork/Acala/branch/master/graph/badge.svg?token=ERf7EDgafw)](https://codecov.io/gh/AcalaNetwork/Acala)
 [![License](https://img.shields.io/github/license/AcalaNetwork/Acala?color=green)](https://github.com/AcalaNetwork/Acala/blob/master/LICENSE)
  <br />
 [![Twitter URL](https://img.shields.io/twitter/url?style=social&url=https%3A%2F%2Ftwitter.com%2FAcalaNetwork)](https://twitter.com/AcalaNetwork)
@@ -167,10 +168,17 @@ If modify the storage, should test the data migration before upgrade the runtime
 ```bash
 # Use a live chain to run the migration test and save state snapshot to file `snapshot.bin`.
 # Add `-m module_name` can specify the module.
-cargo run --features with-mandala-runtime --features with-ethereum-compatibility --features try-runtime -- try-runtime --wasm-execution=compiled live "http://localhost:9933" -s snapshot.bin [-m module_name]
+cargo run --features with-mandala-runtime --features try-runtime -- try-runtime --wasm-execution=compiled --block-at=0x9def608d5674f6d16574f53849218fe13d80ec1042ef7c2d4de7d4c50abab806 --url="wss://karura.api.onfinality.io/public-ws" on-runtime-upgrade live -s snapshot.bin
 
-# Use a state snapshot as state to run the migration test.
-cargo run --features with-mandala-runtime --features with-ethereum-compatibility --features try-runtime -- try-runtime --wasm-execution=compiled snap snapshot.bin
+ # Use a state snapshot to run the migration test.
+cargo run --features with-mandala-runtime --features try-runtime -- try-runtime --wasm-execution=compiled --block-at=0x9def608d5674f6d16574f53849218fe13d80ec1042ef7c2d4de7d4c50abab806 on-runtime-upgrade snap -s snapshot.bin
+
+# Off-Chain worker
+# Use a live chain to run the off-chain migration test and save state snapshot to file `snapshot.bin`.
+cargo run --features with-mandala-runtime --features try-runtime -- try-runtime --wasm-execution=compiled --block-at=0x9def608d5674f6d16574f53849218fe13d80ec1042ef7c2d4de7d4c50abab806 --url="wss://karura.api.onfinality.io/public-ws" offchain-worker live -s snapshot.bin
+
+ # Use a state snapshot to run the offchain migration test.
+cargo run --features with-mandala-runtime --features try-runtime -- try-runtime --wasm-execution=compiled --block-at=0x9def608d5674f6d16574f53849218fe13d80ec1042ef7c2d4de7d4c50abab806 --url="wss://karura.api.onfinality.io/public-ws" offchain-worker snap -s snapshot.bin
 ```
 
 # 8. Run local testnet with `Relaychain` and `Parachain`
@@ -184,12 +192,13 @@ yarn
 
 # generate docker-compose.yml and genesis
 # NOTE: If the docker image is not the latest, need to download it manually.
-# bash: docker pull acala/karura-node:latest
+# e.g.: docker pull acala/karura-node:latest
 yarn run start generate
 
 # start relaychain and parachain
 cd output
-docker-compose up -d
+# NOTE: If regenerate the output directory, need to rebuild the images.
+docker-compose up -d --build
 
 # list all of the containers.
 docker ps -a
@@ -197,16 +206,17 @@ docker ps -a
 # track container logs
 docker logs -f [container_id/container_name]
 
-# stop all of the containers. 
+# stop all of the containers.
 docker-compose stop
 
-# remove all of the containers. 
+# remove all of the containers.
 docker-compose rm
 
-# If you want to clear the data and restart, you need to clear the volumes.
-# remove volume 
+# NOTE: If you want to clear the data and restart, you need to clear the volumes.
+# remove volume
 docker volume ls
 docker volume rm [volume_name]
 # prune all volumes
 docker volume prune
 ```
+

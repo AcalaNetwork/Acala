@@ -28,10 +28,11 @@ use mock::{Event, *};
 fn debits_key() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_eq!(LoansModule::positions(BTC, &ALICE).debit, 0);
-		assert_ok!(LoansModule::adjust_position(&ALICE, BTC, 100, 100));
-		assert_eq!(LoansModule::positions(BTC, &ALICE).debit, 100);
+		assert_ok!(LoansModule::adjust_position(&ALICE, BTC, 200, 200));
+		assert_eq!(LoansModule::positions(BTC, &ALICE).debit, 200);
+		assert_eq!(Currencies::free_balance(BTC, &LoansModule::account_id()), 200);
 		assert_ok!(LoansModule::adjust_position(&ALICE, BTC, -100, -100));
-		assert_eq!(LoansModule::positions(BTC, &ALICE).debit, 0);
+		assert_eq!(LoansModule::positions(BTC, &ALICE).debit, 100);
 	});
 }
 
@@ -59,13 +60,34 @@ fn adjust_position_should_work() {
 		assert_eq!(Currencies::free_balance(BTC, &ALICE), 1000);
 
 		// balance too low
-		assert_eq!(LoansModule::adjust_position(&ALICE, BTC, 2000, 0).is_ok(), false);
+		assert_noop!(
+			LoansModule::adjust_position(&ALICE, BTC, 2000, 0),
+			orml_tokens::Error::<Runtime>::BalanceTooLow
+		);
 
-		// mock can't pass position valid check
-		assert_eq!(LoansModule::adjust_position(&ALICE, DOT, 500, 0).is_ok(), false);
+		// mock can't pass liquidation ratio check
+		assert_noop!(
+			LoansModule::adjust_position(&ALICE, DOT, 500, 0),
+			sp_runtime::DispatchError::Other("mock below liquidation ratio error")
+		);
+
+		// mock can't pass required ratio check
+		assert_noop!(
+			LoansModule::adjust_position(&ALICE, DOT, 500, 1),
+			sp_runtime::DispatchError::Other("mock below required collateral ratio error")
+		);
 
 		// mock exceed debit value cap
-		assert_eq!(LoansModule::adjust_position(&ALICE, BTC, 1000, 1000).is_ok(), false);
+		assert_noop!(
+			LoansModule::adjust_position(&ALICE, BTC, 1000, 1000),
+			sp_runtime::DispatchError::Other("mock exceed debit value cap error")
+		);
+
+		// failed because ED of collateral
+		assert_noop!(
+			LoansModule::adjust_position(&ALICE, BTC, 99, 0),
+			orml_tokens::Error::<Runtime>::ExistentialDeposit,
+		);
 
 		assert_eq!(Currencies::free_balance(BTC, &ALICE), 1000);
 		assert_eq!(Currencies::free_balance(BTC, &LoansModule::account_id()), 0);
@@ -84,7 +106,12 @@ fn adjust_position_should_work() {
 		assert_eq!(LoansModule::positions(BTC, &ALICE).debit, 300);
 		assert_eq!(LoansModule::positions(BTC, &ALICE).collateral, 500);
 		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 150);
-		System::assert_last_event(Event::loans(crate::Event::PositionUpdated(ALICE, BTC, 500, 300)));
+		System::assert_last_event(Event::LoansModule(crate::Event::PositionUpdated(ALICE, BTC, 500, 300)));
+
+		// collateral_adjustment is negatives
+		assert_eq!(Currencies::total_balance(BTC, &LoansModule::account_id()), 500);
+		assert_ok!(LoansModule::adjust_position(&ALICE, BTC, -500, 0));
+		assert_eq!(Currencies::free_balance(BTC, &LoansModule::account_id()), 0);
 	});
 }
 
@@ -146,7 +173,7 @@ fn transfer_loan_should_work() {
 		assert_eq!(LoansModule::positions(BTC, &ALICE).collateral, 0);
 		assert_eq!(LoansModule::positions(BTC, &BOB).debit, 1100);
 		assert_eq!(LoansModule::positions(BTC, &BOB).collateral, 500);
-		System::assert_last_event(Event::loans(crate::Event::TransferLoan(ALICE, BOB, BTC)));
+		System::assert_last_event(Event::LoansModule(crate::Event::TransferLoan(ALICE, BOB, BTC)));
 	});
 }
 
@@ -174,7 +201,7 @@ fn confiscate_collateral_and_debit_work() {
 		assert_eq!(CDPTreasuryModule::debit_pool(), 100);
 		assert_eq!(LoansModule::positions(BTC, &ALICE).debit, 100);
 		assert_eq!(LoansModule::positions(BTC, &ALICE).collateral, 200);
-		System::assert_last_event(Event::loans(crate::Event::ConfiscateCollateralAndDebit(
+		System::assert_last_event(Event::LoansModule(crate::Event::ConfiscateCollateralAndDebit(
 			ALICE, BTC, 300, 200,
 		)));
 	});

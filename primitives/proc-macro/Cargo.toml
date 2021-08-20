@@ -1,0 +1,15 @@
+[package]
+name = "primitives-proc-macro"
+version = "1.3.0"
+authors = ["Acala Developers"]
+edition = "2018"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+sha3 = { version = "0.9.1" }
+quote = "1.0.3"
+syn = { version = "1.0.58", features = ["full", "fold", "extra-traits", "visit"] }
+proc-macro2 = "1.0.6"
+proc-macro-crate = "1.0.0"

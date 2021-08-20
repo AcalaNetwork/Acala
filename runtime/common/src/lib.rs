@@ -20,20 +20,32 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use codec::{Decode, Encode};
 use frame_support::{
 	parameter_types,
+	traits::{Contains, MaxEncodedLen},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, WEIGHT_PER_MILLIS},
 		DispatchClass, Weight,
 	},
+	RuntimeDebug,
 };
-use frame_system::limits;
+use frame_system::{limits, EnsureOneOf, EnsureRoot};
 pub use module_support::{ExchangeRate, PrecompileCallerFilter, Price, Rate, Ratio};
 use primitives::{
-	Balance, CurrencyId, PRECOMPILE_ADDRESS_START, PREDEPLOY_ADDRESS_START, SYSTEM_CONTRACT_ADDRESS_PREFIX,
+	Balance, BlockNumber, CurrencyId, PRECOMPILE_ADDRESS_START, PREDEPLOY_ADDRESS_START, SYSTEM_CONTRACT_ADDRESS_PREFIX,
 };
-use sp_core::H160;
-use sp_runtime::{traits::Convert, transaction_validity::TransactionPriority, Perbill};
+use sp_core::{
+	u32_trait::{_1, _2, _3, _4},
+	H160,
+};
+use sp_runtime::{
+	// TODO: move after https://github.com/paritytech/substrate/pull/9209
+	offchain::storage_lock::BlockNumberProvider,
+	traits::Convert,
+	transaction_validity::TransactionPriority,
+	Perbill,
+};
 use static_assertions::const_assert;
 
 mod homa;
@@ -44,16 +56,20 @@ pub use precompile::{
 	AllPrecompiles, DexPrecompile, MultiCurrencyPrecompile, NFTPrecompile, OraclePrecompile, ScheduleCallPrecompile,
 	StateRentPrecompile,
 };
-pub use primitives::currency::{TokenInfo, ACA, AUSD, DOT, KAR, KSM, KUSD, LDOT, LKSM, RENBTC};
+pub use primitives::{
+	currency::{TokenInfo, ACA, AUSD, DOT, KAR, KSM, KUSD, LDOT, LKSM, RENBTC},
+	AccountId,
+};
 
 pub type TimeStampedPrice = orml_oracle::TimestampedValue<Price, primitives::Moment>;
 
 // Priority of unsigned transactions
 parameter_types! {
-	pub const StakingUnsignedPriority: TransactionPriority = TransactionPriority::max_value() / 2;
-	pub const RenvmBridgeUnsignedPriority: TransactionPriority = TransactionPriority::max_value() / 2;
-	pub const CdpEngineUnsignedPriority: TransactionPriority = TransactionPriority::max_value();
-	pub const AuctionManagerUnsignedPriority: TransactionPriority = TransactionPriority::max_value() - 1;
+	// Operational is 3/4 of TransactionPriority::max_value().
+	// Ensure Inherent -> Operational tx -> Unsigned tx -> Signed normal tx
+	pub const CdpEngineUnsignedPriority: TransactionPriority = TransactionPriority::max_value() / 2;      // 50%
+	pub const AuctionManagerUnsignedPriority: TransactionPriority = TransactionPriority::max_value() / 5; // 20%
+	pub const RenvmBridgeUnsignedPriority: TransactionPriority = TransactionPriority::max_value() / 10;   // 10%
 }
 
 /// Check if the given `address` is a system contract.
@@ -131,8 +147,8 @@ parameter_types! {
 		.saturating_sub(BlockExecutionWeight::get());
 }
 
-pub struct RelaychainValidatorFilter;
-impl<AccountId> orml_traits::Contains<AccountId> for RelaychainValidatorFilter {
+pub struct DummyNomineeFilter;
+impl<AccountId> Contains<AccountId> for DummyNomineeFilter {
 	fn contains(_: &AccountId) -> bool {
 		true
 	}
@@ -153,6 +169,175 @@ pub fn millicent(currency_id: CurrencyId) -> Balance {
 
 pub fn microcent(currency_id: CurrencyId) -> Balance {
 	millicent(currency_id) / 1000
+}
+
+pub struct RelaychainBlockNumberProvider<T>(sp_std::marker::PhantomData<T>);
+
+impl<T: cumulus_pallet_parachain_system::Config> BlockNumberProvider for RelaychainBlockNumberProvider<T> {
+	type BlockNumber = BlockNumber;
+
+	fn current_block_number() -> Self::BlockNumber {
+		cumulus_pallet_parachain_system::Pallet::<T>::validation_data()
+			.map(|d| d.relay_parent_number)
+			.unwrap_or_default()
+	}
+}
+
+pub type GeneralCouncilInstance = pallet_collective::Instance1;
+pub type FinancialCouncilInstance = pallet_collective::Instance2;
+pub type HomaCouncilInstance = pallet_collective::Instance3;
+pub type TechnicalCommitteeInstance = pallet_collective::Instance4;
+
+pub type GeneralCouncilMembershipInstance = pallet_membership::Instance1;
+pub type FinancialCouncilMembershipInstance = pallet_membership::Instance2;
+pub type HomaCouncilMembershipInstance = pallet_membership::Instance3;
+pub type TechnicalCommitteeMembershipInstance = pallet_membership::Instance4;
+pub type OperatorMembershipInstanceAcala = pallet_membership::Instance5;
+pub type OperatorMembershipInstanceBand = pallet_membership::Instance6;
+
+// General Council
+pub type EnsureRootOrAllGeneralCouncil = EnsureOneOf<
+	AccountId,
+	EnsureRoot<AccountId>,
+	pallet_collective::EnsureProportionAtLeast<_1, _1, AccountId, GeneralCouncilInstance>,
+>;
+
+pub type EnsureRootOrHalfGeneralCouncil = EnsureOneOf<
+	AccountId,
+	EnsureRoot<AccountId>,
+	pallet_collective::EnsureProportionAtLeast<_1, _2, AccountId, GeneralCouncilInstance>,
+>;
+
+pub type EnsureRootOrOneThirdsGeneralCouncil = EnsureOneOf<
+	AccountId,
+	EnsureRoot<AccountId>,
+	pallet_collective::EnsureProportionAtLeast<_1, _3, AccountId, GeneralCouncilInstance>,
+>;
+
+pub type EnsureRootOrTwoThirdsGeneralCouncil = EnsureOneOf<
+	AccountId,
+	EnsureRoot<AccountId>,
+	pallet_collective::EnsureProportionAtLeast<_2, _3, AccountId, GeneralCouncilInstance>,
+>;
+
+pub type EnsureRootOrThreeFourthsGeneralCouncil = EnsureOneOf<
+	AccountId,
+	EnsureRoot<AccountId>,
+	pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, GeneralCouncilInstance>,
+>;
+
+// Financial Council
+pub type EnsureRootOrAllFinancialCouncil = EnsureOneOf<
+	AccountId,
+	EnsureRoot<AccountId>,
+	pallet_collective::EnsureProportionAtLeast<_1, _1, AccountId, FinancialCouncilInstance>,
+>;
+
+pub type EnsureRootOrHalfFinancialCouncil = EnsureOneOf<
+	AccountId,
+	EnsureRoot<AccountId>,
+	pallet_collective::EnsureProportionAtLeast<_1, _2, AccountId, FinancialCouncilInstance>,
+>;
+
+pub type EnsureRootOrOneThirdsFinancialCouncil = EnsureOneOf<
+	AccountId,
+	EnsureRoot<AccountId>,
+	pallet_collective::EnsureProportionAtLeast<_1, _3, AccountId, FinancialCouncilInstance>,
+>;
+
+pub type EnsureRootOrTwoThirdsFinancialCouncil = EnsureOneOf<
+	AccountId,
+	EnsureRoot<AccountId>,
+	pallet_collective::EnsureProportionAtLeast<_2, _3, AccountId, FinancialCouncilInstance>,
+>;
+
+pub type EnsureRootOrThreeFourthsFinancialCouncil = EnsureOneOf<
+	AccountId,
+	EnsureRoot<AccountId>,
+	pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, FinancialCouncilInstance>,
+>;
+
+// Homa Council
+pub type EnsureRootOrAllHomaCouncil = EnsureOneOf<
+	AccountId,
+	EnsureRoot<AccountId>,
+	pallet_collective::EnsureProportionAtLeast<_1, _1, AccountId, HomaCouncilInstance>,
+>;
+
+pub type EnsureRootOrHalfHomaCouncil = EnsureOneOf<
+	AccountId,
+	EnsureRoot<AccountId>,
+	pallet_collective::EnsureProportionAtLeast<_1, _2, AccountId, HomaCouncilInstance>,
+>;
+
+pub type EnsureRootOrOneThirdsHomaCouncil = EnsureOneOf<
+	AccountId,
+	EnsureRoot<AccountId>,
+	pallet_collective::EnsureProportionAtLeast<_1, _3, AccountId, HomaCouncilInstance>,
+>;
+
+pub type EnsureRootOrTwoThirdsHomaCouncil = EnsureOneOf<
+	AccountId,
+	EnsureRoot<AccountId>,
+	pallet_collective::EnsureProportionAtLeast<_2, _3, AccountId, HomaCouncilInstance>,
+>;
+
+pub type EnsureRootOrThreeFourthsHomaCouncil = EnsureOneOf<
+	AccountId,
+	EnsureRoot<AccountId>,
+	pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, HomaCouncilInstance>,
+>;
+
+// Technical Committee Council
+pub type EnsureRootOrAllTechnicalCommittee = EnsureOneOf<
+	AccountId,
+	EnsureRoot<AccountId>,
+	pallet_collective::EnsureProportionAtLeast<_1, _1, AccountId, TechnicalCommitteeInstance>,
+>;
+
+pub type EnsureRootOrHalfTechnicalCommittee = EnsureOneOf<
+	AccountId,
+	EnsureRoot<AccountId>,
+	pallet_collective::EnsureProportionAtLeast<_1, _2, AccountId, TechnicalCommitteeInstance>,
+>;
+
+pub type EnsureRootOrOneThirdsTechnicalCommittee = EnsureOneOf<
+	AccountId,
+	EnsureRoot<AccountId>,
+	pallet_collective::EnsureProportionAtLeast<_1, _3, AccountId, TechnicalCommitteeInstance>,
+>;
+
+pub type EnsureRootOrTwoThirdsTechnicalCommittee = EnsureOneOf<
+	AccountId,
+	EnsureRoot<AccountId>,
+	pallet_collective::EnsureProportionAtLeast<_2, _3, AccountId, TechnicalCommitteeInstance>,
+>;
+
+pub type EnsureRootOrThreeFourthsTechnicalCommittee = EnsureOneOf<
+	AccountId,
+	EnsureRoot<AccountId>,
+	pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, TechnicalCommitteeInstance>,
+>;
+
+/// The type used to represent the kinds of proxying allowed.
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Encode, Decode, RuntimeDebug, MaxEncodedLen)]
+pub enum ProxyType {
+	Any,
+	CancelProxy,
+	Governance,
+	Auction,
+	Swap,
+	Loan,
+}
+impl Default for ProxyType {
+	fn default() -> Self {
+		Self::Any
+	}
+}
+
+#[repr(u16)]
+pub enum RelaychainSubAccountId {
+	HomaLite = 0,
 }
 
 #[cfg(test)]

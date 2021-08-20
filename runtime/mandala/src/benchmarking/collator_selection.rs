@@ -16,12 +16,19 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AccountId, Balance, Balances, CollatorSelection, Event, MaxCandidates, MaxInvulnerables, Runtime, System};
+use crate::{
+	AccountId, Balance, Balances, CollatorKickThreshold, CollatorSelection, Event, MaxCandidates, MaxInvulnerables,
+	MinCandidates, Period, Runtime, Session, SessionKeys, System,
+};
 
 use frame_benchmarking::{account, whitelisted_caller};
-use frame_support::assert_ok;
-use frame_support::traits::Currency;
+use frame_support::{
+	assert_ok,
+	pallet_prelude::Decode,
+	traits::{Currency, OnInitialize},
+};
 use frame_system::RawOrigin;
+use module_collator_selection::POINT_PER_BLOCK;
 use orml_benchmarking::{runtime_benchmarks, whitelist_account};
 use pallet_authorship::EventHandler;
 use pallet_session::SessionManager;
@@ -39,14 +46,18 @@ fn register_candidates(count: u32) {
 		module_collator_selection::CandidacyBond::<Runtime>::get() > 0u32.into(),
 		"Bond cannot be zero!"
 	);
-	for who in candidates {
+	for (index, who) in candidates.iter().enumerate() {
 		Balances::make_free_balance_be(
 			&who,
 			module_collator_selection::CandidacyBond::<Runtime>::get()
 				.checked_mul(2u32.into())
 				.unwrap(),
 		);
-		CollatorSelection::register_as_candidate(RawOrigin::Signed(who).into()).unwrap();
+		let mut keys = [1u8; 128];
+		keys[0..4].copy_from_slice(&(index as u32).to_be_bytes());
+		let keys: SessionKeys = Decode::decode(&mut &keys[..]).unwrap();
+		Session::set_keys(RawOrigin::Signed(who.clone()).into(), keys, vec![]).unwrap();
+		CollatorSelection::register_as_candidate(RawOrigin::Signed(who.clone()).into()).unwrap();
 	}
 }
 
@@ -90,6 +101,24 @@ runtime_benchmarks! {
 	// worse case is when we have all the max-candidate slots filled except one, and we fill that
 	// one.
 	register_as_candidate {
+		// MinCandidates = 5, so begin with 5.
+		let c in 5 .. MaxCandidates::get();
+
+		module_collator_selection::CandidacyBond::<Runtime>::put(Balances::minimum_balance());
+		module_collator_selection::DesiredCandidates::<Runtime>::put(c);
+		register_candidates(c-1);
+
+		let caller: AccountId = whitelisted_caller();
+		let bond: Balance = Balances::minimum_balance().checked_mul(2u32.into()).unwrap();
+		Balances::make_free_balance_be(&caller, bond.clone());
+
+		Session::set_keys(RawOrigin::Signed(caller.clone()).into(), SessionKeys::default(), vec![]).unwrap();
+	}: _(RawOrigin::Signed(caller.clone()))
+	verify {
+		assert_last_event(module_collator_selection::Event::CandidateAdded(caller, bond.checked_div(2u32.into()).unwrap()).into());
+	}
+
+	register_candidate {
 		let c in 1 .. MaxCandidates::get();
 
 		module_collator_selection::CandidacyBond::<Runtime>::put(Balances::minimum_balance());
@@ -100,24 +129,41 @@ runtime_benchmarks! {
 		let bond: Balance = Balances::minimum_balance().checked_mul(2u32.into()).unwrap();
 		Balances::make_free_balance_be(&caller, bond.clone());
 
-	}: _(RawOrigin::Signed(caller.clone()))
+		Session::set_keys(RawOrigin::Signed(caller.clone()).into(), SessionKeys::default(), vec![]).unwrap();
+	}: _(RawOrigin::Root, caller.clone())
 	verify {
-		assert_last_event(module_collator_selection::Event::CandidateAdded(caller, bond.checked_div(2u32.into()).unwrap()).into());
+		assert_last_event(module_collator_selection::Event::CandidateAdded(caller, 0).into());
 	}
 
 	// worse case is the last candidate leaving.
 	leave_intent {
-		let c in 1 .. MaxCandidates::get();
+		// MinCandidates = 5, so begin with 6.
+		let c in 6 .. MaxCandidates::get();
 		module_collator_selection::CandidacyBond::<Runtime>::put(Balances::minimum_balance());
 		module_collator_selection::DesiredCandidates::<Runtime>::put(c);
 		register_candidates(c);
 
-		let leaving = module_collator_selection::Candidates::<Runtime>::get().last().unwrap().who.clone();
+		let leaving = module_collator_selection::Candidates::<Runtime>::get().into_iter().last().unwrap();
 		whitelist_account!(leaving);
 	}: _(RawOrigin::Signed(leaving.clone()))
 	verify {
 		assert_last_event(module_collator_selection::Event::CandidateRemoved(leaving).into());
 	}
+
+	withdraw_bond {
+		// MinCandidates = 5, so begin with 6.
+		let c = MaxCandidates::get();
+		module_collator_selection::CandidacyBond::<Runtime>::put(Balances::minimum_balance());
+		module_collator_selection::DesiredCandidates::<Runtime>::put(c);
+		register_candidates(c);
+
+		module_session_manager::SessionDuration::<Runtime>::put(Period::get());
+		let leaving = module_collator_selection::Candidates::<Runtime>::get().into_iter().last().unwrap();
+		whitelist_account!(leaving);
+		CollatorSelection::leave_intent(RawOrigin::Signed(leaving.clone()).into())?;
+		Session::on_initialize(Period::get());
+		Session::on_initialize(2*Period::get());
+	}: _(RawOrigin::Signed(leaving))
 
 	// worse case is paying a non-existing candidate account.
 	note_author {
@@ -131,7 +177,11 @@ runtime_benchmarks! {
 			Balances::minimum_balance().checked_mul(2u32.into()).unwrap()
 		);
 		let author = account("author", 0, SEED);
-		assert!(Balances::free_balance(&author) == 0u32.into());
+		Balances::make_free_balance_be(
+			&author,
+			Balances::minimum_balance()
+		);
+		assert!(Balances::free_balance(&author) == Balances::minimum_balance());
 	}: {
 		CollatorSelection::note_author(author.clone())
 	}
@@ -152,19 +202,19 @@ runtime_benchmarks! {
 	}
 
 	start_session {
-		let r in 1 .. MaxCandidates::get();
-		let c in 1 .. MaxCandidates::get();
+		// MinCandidates = 5, so begin with 5.
+		let r in 5 .. MaxCandidates::get();
+		let c in 5 .. MaxCandidates::get();
 
 		module_collator_selection::CandidacyBond::<Runtime>::put(Balances::minimum_balance());
 		module_collator_selection::DesiredCandidates::<Runtime>::put(c);
 		System::set_block_number(0u32.into());
 		register_candidates(c);
 
-		// TODO: https://github.com/paritytech/substrate/pull/8815
-		// for i in 0..r {
-		//     pallet_session::Validators::insert()
-		// }
+		module_session_manager::SessionDuration::<Runtime>::put(Period::get());
 		System::set_block_number(20u32.into());
+		Session::on_initialize(Period::get());
+		Session::on_initialize(2*Period::get());
 
 		assert!(module_collator_selection::Candidates::<Runtime>::get().len() == c as usize);
 	}: {
@@ -172,8 +222,9 @@ runtime_benchmarks! {
 	}
 
 	end_session {
-		let r in 1 .. MaxCandidates::get();
-		let c in 1 .. MaxCandidates::get();
+		// MinCandidates = 5, so begin with 5.
+		let r in 5 .. MaxCandidates::get();
+		let c in 5 .. MaxCandidates::get();
 
 		module_collator_selection::CandidacyBond::<Runtime>::put(Balances::minimum_balance());
 		module_collator_selection::DesiredCandidates::<Runtime>::put(c);
@@ -181,15 +232,15 @@ runtime_benchmarks! {
 		register_candidates(c);
 
 		let candidates = module_collator_selection::Candidates::<Runtime>::get();
-		let non_removals = if c > r { c - r } else { 0 };
+		let removals = c.checked_sub(r).unwrap_or_default().checked_sub(MinCandidates::get()).unwrap_or_default();
 
 		let mut count = 0;
 		candidates.iter().for_each(|candidate| {
-			if count < non_removals {
-				module_collator_selection::SessionPoints::<Runtime>::insert(&candidate.who, 1);
-			} else {
+			if count < removals {
 				// point = 0, will be removed.
-				module_collator_selection::SessionPoints::<Runtime>::insert(&candidate.who, 0);
+				module_collator_selection::SessionPoints::<Runtime>::insert(&candidate, 0);
+			} else {
+				module_collator_selection::SessionPoints::<Runtime>::insert(&candidate, CollatorKickThreshold::get().mul_floor(Period::get() * POINT_PER_BLOCK));
 			}
 			count += 1;
 		});
@@ -200,7 +251,7 @@ runtime_benchmarks! {
 	}: {
 		CollatorSelection::end_session(0)
 	} verify {
-		assert!(module_collator_selection::Candidates::<Runtime>::get().len() == non_removals as usize);
+		assert!(module_collator_selection::Candidates::<Runtime>::get().len() == (c - removals) as usize);
 	}
 }
 

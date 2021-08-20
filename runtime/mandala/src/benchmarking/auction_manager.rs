@@ -17,20 +17,23 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-	dollar, AcalaOracle, AccountId, AuctionId, AuctionManager, CdpTreasury, Currencies, EmergencyShutdown,
-	GetStableCurrencyId, Price, Runtime, DOT,
+	dollar, AccountId, AuctionId, AuctionManager, CdpTreasury, Currencies, CurrencyId, EmergencyShutdown,
+	GetStableCurrencyId, GetStakingCurrencyId, Price, Runtime,
 };
 
+use super::utils::feed_price;
 use frame_benchmarking::account;
 use frame_system::RawOrigin;
-use module_support::AuctionManager as AuctionManagerTrait;
-use module_support::CDPTreasury;
+use module_support::{AuctionManager as AuctionManagerTrait, CDPTreasury};
 use orml_benchmarking::runtime_benchmarks;
 use orml_traits::MultiCurrency;
 use sp_runtime::FixedPointNumber;
 use sp_std::vec;
 
 const SEED: u32 = 0;
+
+const STABLECOIN: CurrencyId = GetStableCurrencyId::get();
+const STAKING: CurrencyId = GetStakingCurrencyId::get();
 
 runtime_benchmarks! {
 	{ Runtime, module_auction_manager }
@@ -40,22 +43,21 @@ runtime_benchmarks! {
 	cancel_collateral_auction {
 		let bidder: AccountId = account("bidder", 0, SEED);
 		let funder: AccountId = account("funder", 0, SEED);
-		let stable_currency_id = GetStableCurrencyId::get();
 
 		// set balance
-		Currencies::deposit(stable_currency_id, &bidder, 80 * dollar(stable_currency_id))?;
-		Currencies::deposit(DOT, &funder, dollar(DOT))?;
-		CdpTreasury::deposit_collateral(&funder, DOT, dollar(DOT))?;
+		Currencies::deposit(STABLECOIN, &bidder, 80 * dollar(STABLECOIN))?;
+		Currencies::deposit(STAKING, &funder, dollar(STAKING))?;
+		CdpTreasury::deposit_collateral(&funder, STAKING, dollar(STAKING))?;
 
 		// feed price
-		AcalaOracle::feed_values(RawOrigin::Root.into(), vec![(DOT, Price::saturating_from_integer(120))])?;
+		feed_price(vec![(STAKING, Price::saturating_from_integer(120))])?;
 
 		// create collateral auction
-		AuctionManager::new_collateral_auction(&funder, DOT, dollar(DOT), 100 * dollar(stable_currency_id))?;
+		AuctionManager::new_collateral_auction(&funder, STAKING, dollar(STAKING), 100 * dollar(STABLECOIN))?;
 		let auction_id: AuctionId = Default::default();
 
 		// bid collateral auction
-		let _ = AuctionManager::collateral_auction_bid_handler(1, auction_id, (bidder, 80 * dollar(stable_currency_id)), None);
+		let _ = AuctionManager::collateral_auction_bid_handler(1, auction_id, (bidder, 80 * dollar(STABLECOIN)), None);
 
 		// shutdown
 		EmergencyShutdown::emergency_shutdown(RawOrigin::Root.into())?;

@@ -23,7 +23,7 @@ use super::*;
 use frame_support::{construct_runtime, ord_parameter_types, parameter_types};
 use frame_system::EnsureSignedBy;
 use orml_traits::parameter_type_with_key;
-use primitives::{Amount, BlockNumber, CurrencyId, TokenSymbol};
+use primitives::{Amount, BlockNumber, CurrencyId, ReserveIdentifier, TokenSymbol};
 use sp_core::{H160, H256};
 use sp_runtime::{
 	testing::Header,
@@ -77,10 +77,10 @@ impl pallet_balances::Config for Test {
 	type Event = Event;
 	type ExistentialDeposit = ExistentialDeposit;
 	type AccountStore = System;
-	type WeightInfo = ();
 	type MaxLocks = ();
 	type MaxReserves = MaxReserves;
-	type ReserveIdentifier = [u8; 8];
+	type ReserveIdentifier = ReserveIdentifier;
+	type WeightInfo = ();
 }
 
 parameter_types! {
@@ -108,6 +108,7 @@ impl orml_tokens::Config for Test {
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = ();
 	type MaxLocks = ();
+	type DustRemovalWhitelist = ();
 }
 
 parameter_types! {
@@ -278,6 +279,7 @@ pub fn reserved_balance(address: H160) -> u64 {
 	Balances::reserved_balance(account_id)
 }
 
+#[cfg(not(feature = "with-ethereum-compatibility"))]
 pub fn deploy_free(contract: H160) {
 	let _ = EVM::deploy_free(Origin::signed(CouncilAccount::get()), contract);
 }

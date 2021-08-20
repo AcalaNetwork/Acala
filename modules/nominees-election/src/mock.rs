@@ -86,11 +86,11 @@ impl orml_tokens::Config for Runtime {
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = ();
 	type MaxLocks = MaxLocks;
+	type DustRemovalWhitelist = ();
 }
 
 parameter_types! {
 	pub const ExistentialDeposit: Balance = 1;
-	pub const MaxReserves: u32 = 50;
 }
 
 impl pallet_balances::Config for Runtime {
@@ -100,7 +100,7 @@ impl pallet_balances::Config for Runtime {
 	type ExistentialDeposit = ExistentialDeposit;
 	type AccountStore = System;
 	type MaxLocks = ();
-	type MaxReserves = MaxReserves;
+	type MaxReserves = ();
 	type ReserveIdentifier = [u8; 8];
 	type WeightInfo = ();
 }
@@ -126,10 +126,11 @@ parameter_types! {
 	pub const BondingDuration: EraIndex = 4;
 	pub const NominateesCount: u32 = 5;
 	pub const MaxUnlockingChunks: u32 = 3;
+	pub const PalletId: LockIdentifier = *b"1       ";
 }
 
-pub struct MockRelaychainValidatorFilter;
-impl Contains<AccountId> for MockRelaychainValidatorFilter {
+pub struct MockNomineeFilter;
+impl Contains<AccountId> for MockNomineeFilter {
 	fn contains(a: &AccountId) -> bool {
 		match a {
 			0..=6 => true,
@@ -142,11 +143,13 @@ impl Config for Runtime {
 	type Event = Event;
 	type Currency = LDOTCurrency;
 	type NomineeId = AccountId;
+	type PalletId = PalletId;
 	type MinBondThreshold = MinBondThreshold;
 	type BondingDuration = BondingDuration;
 	type NominateesCount = NominateesCount;
 	type MaxUnlockingChunks = MaxUnlockingChunks;
-	type RelaychainValidatorFilter = MockRelaychainValidatorFilter;
+	type NomineeFilter = MockNomineeFilter;
+	type WeightInfo = ();
 }
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
@@ -167,13 +170,13 @@ construct_runtime!(
 );
 
 pub struct ExtBuilder {
-	endowed_accounts: Vec<(AccountId, CurrencyId, Balance)>,
+	balances: Vec<(AccountId, CurrencyId, Balance)>,
 }
 
 impl Default for ExtBuilder {
 	fn default() -> Self {
 		Self {
-			endowed_accounts: vec![(ALICE, LDOT, 1000), (BOB, LDOT, 1000)],
+			balances: vec![(ALICE, LDOT, 1000), (BOB, LDOT, 1000)],
 		}
 	}
 }
@@ -185,7 +188,7 @@ impl ExtBuilder {
 			.unwrap();
 
 		orml_tokens::GenesisConfig::<Runtime> {
-			endowed_accounts: self.endowed_accounts,
+			balances: self.balances,
 		}
 		.assimilate_storage(&mut t)
 		.unwrap();

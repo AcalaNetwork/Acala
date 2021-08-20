@@ -22,18 +22,12 @@ use crate::{
 	AccountId, AccountIdConversion, AuthoritysOriginId, BadOrigin, BlockNumber, DispatchResult, EnsureRoot,
 	EnsureRootOrHalfFinancialCouncil, EnsureRootOrHalfGeneralCouncil, EnsureRootOrHalfHomaCouncil,
 	EnsureRootOrOneThirdsTechnicalCommittee, EnsureRootOrThreeFourthsGeneralCouncil,
-	EnsureRootOrTwoThirdsTechnicalCommittee, HomaTreasuryPalletId, HonzonTreasuryPalletId, Origin, OriginCaller,
-	TreasuryPalletId, TreasuryReservePalletId, DAYS, HOURS,
+	EnsureRootOrTwoThirdsTechnicalCommittee, HomaTreasuryPalletId, HonzonTreasuryPalletId, OneDay, Origin,
+	OriginCaller, SevenDays, TreasuryPalletId, TreasuryReservePalletId, HOURS,
 };
-use frame_support::parameter_types;
 pub use frame_support::traits::{schedule::Priority, EnsureOrigin, OriginTrait};
 use frame_system::ensure_root;
 use orml_authority::EnsureDelayed;
-
-parameter_types! {
-	pub const SevenDays: BlockNumber = 7 * DAYS;
-	pub const OneDay: BlockNumber = DAYS;
-}
 
 pub struct AuthorityConfigImpl;
 impl orml_authority::AuthorityConfig<Origin, OriginCaller, BlockNumber> for AuthorityConfigImpl {
@@ -84,9 +78,7 @@ impl orml_authority::AsOriginId<Origin, OriginCaller> for AuthoritysOriginId {
 	fn into_origin(self) -> OriginCaller {
 		match self {
 			AuthoritysOriginId::Root => Origin::root().caller().clone(),
-			AuthoritysOriginId::AcalaTreasury => {
-				Origin::signed(TreasuryPalletId::get().into_account()).caller().clone()
-			}
+			AuthoritysOriginId::Treasury => Origin::signed(TreasuryPalletId::get().into_account()).caller().clone(),
 			AuthoritysOriginId::HonzonTreasury => Origin::signed(HonzonTreasuryPalletId::get().into_account())
 				.caller()
 				.clone(),
@@ -109,7 +101,7 @@ impl orml_authority::AsOriginId<Origin, OriginCaller> for AuthoritysOriginId {
 					OriginCaller,
 				> as EnsureOrigin<Origin>>::ensure_origin(origin)
 				.map_or_else(|_| Err(BadOrigin.into()), |_| Ok(())),
-				AuthoritysOriginId::AcalaTreasury => {
+				AuthoritysOriginId::Treasury => {
 					<EnsureDelayed<OneDay, EnsureRootOrHalfGeneralCouncil, BlockNumber, OriginCaller> as EnsureOrigin<
 						Origin,
 					>>::ensure_origin(origin)

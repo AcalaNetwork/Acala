@@ -28,7 +28,7 @@ use frame_support::{
 	RuntimeDebug,
 };
 use orml_traits::parameter_type_with_key;
-use primitives::{Amount, Balance, BlockNumber, CurrencyId, TokenSymbol};
+use primitives::{Amount, Balance, BlockNumber, CurrencyId, ReserveIdentifier, TokenSymbol};
 use sp_core::{crypto::AccountId32, H256};
 use sp_runtime::{
 	testing::Header,
@@ -79,7 +79,7 @@ impl pallet_balances::Config for Runtime {
 	type AccountStore = frame_system::Pallet<Runtime>;
 	type MaxLocks = ();
 	type MaxReserves = MaxReserves;
-	type ReserveIdentifier = [u8; 8];
+	type ReserveIdentifier = ReserveIdentifier;
 	type WeightInfo = ();
 }
 impl pallet_utility::Config for Runtime {
@@ -161,6 +161,7 @@ impl orml_tokens::Config for Runtime {
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = ();
 	type MaxLocks = ();
+	type DustRemovalWhitelist = ();
 }
 
 pub const NATIVE_CURRENCY_ID: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
@@ -182,13 +183,18 @@ impl module_currencies::Config for Runtime {
 parameter_types! {
 	pub const CreateClassDeposit: Balance = 200;
 	pub const CreateTokenDeposit: Balance = 100;
+	pub const DataDepositPerByte: Balance = 10;
 	pub const NftPalletId: PalletId = PalletId(*b"aca/aNFT");
+	pub MaxAttributesBytes: u32 = 10;
 }
 impl Config for Runtime {
 	type Event = Event;
+	type Currency = Balances;
 	type CreateClassDeposit = CreateClassDeposit;
 	type CreateTokenDeposit = CreateTokenDeposit;
+	type DataDepositPerByte = DataDepositPerByte;
 	type PalletId = NftPalletId;
+	type MaxAttributesBytes = MaxAttributesBytes;
 	type WeightInfo = ();
 }
 

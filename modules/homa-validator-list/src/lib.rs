@@ -28,14 +28,19 @@
 #![allow(clippy::unused_unit)]
 #![allow(clippy::collapsible_if)]
 
-use frame_support::{pallet_prelude::*, traits::MaxEncodedLen, transactional};
+use frame_support::{
+	pallet_prelude::*,
+	traits::{Contains, MaxEncodedLen},
+	transactional,
+};
 use frame_system::pallet_prelude::*;
-use orml_traits::{BasicCurrency, BasicLockableCurrency, Contains, Happened, LockIdentifier};
+use orml_traits::{BasicCurrency, BasicLockableCurrency, Happened, LockIdentifier};
 use primitives::Balance;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_runtime::{
-	traits::{MaybeDisplay, MaybeSerializeDeserialize, Member, Zero},
+	offchain::storage_lock::BlockNumberProvider,
+	traits::{Bounded, MaybeDisplay, MaybeSerializeDeserialize, Member, Zero},
 	DispatchResult, FixedPointNumber, RuntimeDebug,
 };
 use sp_std::{fmt::Debug, vec::Vec};
@@ -53,7 +58,7 @@ pub trait WeightInfo {
 	fn unbond() -> Weight;
 	fn rebond() -> Weight;
 	fn withdraw_unbonded() -> Weight;
-	fn freeze() -> Weight;
+	fn freeze(u: u32) -> Weight;
 	fn thaw() -> Weight;
 	fn slash() -> Weight;
 }
@@ -72,7 +77,7 @@ impl WeightInfo for () {
 	fn withdraw_unbonded() -> Weight {
 		10_000
 	}
-	fn freeze() -> Weight {
+	fn freeze(_u: u32) -> Weight {
 		10_000
 	}
 	fn thaw() -> Weight {
@@ -83,10 +88,14 @@ impl WeightInfo for () {
 	}
 }
 
+/// Insurance for a validator from a single address
 #[derive(Encode, Decode, Clone, Copy, RuntimeDebug, Default, PartialEq, MaxEncodedLen)]
 pub struct Guarantee<BlockNumber> {
+	/// The total tokens the validator has in insurance
 	total: Balance,
+	/// The number of tokens that are actively bonded for insurance
 	bonded: Balance,
+	/// The number of tokens that are in the process of unbonding for insurance
 	unbonding: Option<(Balance, BlockNumber)>,
 }
 
@@ -136,15 +145,20 @@ impl<BlockNumber: PartialOrd> Guarantee<BlockNumber> {
 	}
 }
 
+/// Information on a relay chain validator's slash
 #[derive(Encode, Decode, Clone, RuntimeDebug, Eq, PartialEq, MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct SlashInfo<Balance, RelaychainAccountId> {
+	/// Address of a validator on the relay chain
 	validator: RelaychainAccountId,
+	/// The amount of tokens a validator has in backing on the relay chain
 	relaychain_token_amount: Balance,
 }
 
+/// Validator insurance and frozen status
 #[derive(Encode, Decode, Clone, Copy, RuntimeDebug, Default, MaxEncodedLen)]
 pub struct ValidatorBacking {
+	/// Total insurance from all guarantors
 	total_insurance: Balance,
 	is_frozen: bool,
 }
@@ -155,22 +169,37 @@ pub mod module {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
+		/// The overarching event type.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		/// The AccountId of a relay chain account.
 		type RelaychainAccountId: Parameter + Member + MaybeSerializeDeserialize + Debug + MaybeDisplay + Ord + Default;
+		/// The liquid representation of the staking token on the relay chain.
 		type LiquidTokenCurrency: BasicLockableCurrency<Self::AccountId, Balance = Balance>;
 		#[pallet::constant]
+		/// The minimum amount of tokens that can be bonded to a validator.
 		type MinBondAmount: Get<Balance>;
 		#[pallet::constant]
+		/// The number of blocks a token is bonded to a validator for.
 		type BondingDuration: Get<Self::BlockNumber>;
 		#[pallet::constant]
+		/// The minimum amount of insurance a validator needs.
 		type ValidatorInsuranceThreshold: Get<Balance>;
+		/// The AccountId that can perform a freeze.
 		type FreezeOrigin: EnsureOrigin<Self::Origin>;
+		/// The AccountId that can perform a slash.
 		type SlashOrigin: EnsureOrigin<Self::Origin>;
+		/// Callback to be called when a slash occurs.
 		type OnSlash: Happened<Balance>;
+		/// Exchange rate between staked token and liquid token equivalent.
 		type LiquidStakingExchangeRateProvider: ExchangeRateProvider;
 		type WeightInfo: WeightInfo;
+		/// Callback to be called when a validator's insurance increases.
 		type OnIncreaseGuarantee: Happened<(Self::AccountId, Self::RelaychainAccountId, Balance)>;
+		/// Callback to be called when a validator's insurance decreases.
 		type OnDecreaseGuarantee: Happened<(Self::AccountId, Self::RelaychainAccountId, Balance)>;
+
+		// The block number provider
+		type BlockNumberProvider: BlockNumberProvider<BlockNumber = Self::BlockNumber>;
 	}
 
 	#[pallet::error]
@@ -182,6 +211,7 @@ pub mod module {
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
+	#[pallet::metadata(T::AccountId = "AccountId", T::RelaychainAccountId = "RelaychainAccountId")]
 	pub enum Event<T: Config> {
 		FreezeValidator(T::RelaychainAccountId),
 		ThawValidator(T::RelaychainAccountId),
@@ -229,13 +259,18 @@ pub mod module {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
+		/// Bond tokens to a validator on the relay chain.
+		/// Ensures the amount to bond is greater than the minimum bond amount.
+		///
+		/// - `validator`: the AccountId of a validator on the relay chain to bond to
+		/// - `amount`: the number of tokens to bond to the given validator
 		#[pallet::weight(T::WeightInfo::bond())]
 		#[transactional]
 		pub fn bond(
 			origin: OriginFor<T>,
 			validator: T::RelaychainAccountId,
 			#[pallet::compact] amount: Balance,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			let guarantor = ensure_signed(origin)?;
 			let free_balance = T::LiquidTokenCurrency::free_balance(&guarantor);
 			let total_should_locked = Self::total_locked_by_guarantor(&guarantor).unwrap_or_default();
@@ -256,16 +291,21 @@ pub mod module {
 					})?;
 				}
 			}
-			Ok(().into())
+			Ok(())
 		}
 
+		/// Unbond tokens from a validator on the relay chain.
+		/// Ensures the bonded amount is zero or greater than the minimum bond amount.
+		///
+		/// - `validator`: the AccountId of a validator on the relay chain to unbond from
+		/// - `amount`: the number of tokens to unbond from the given validator
 		#[pallet::weight(T::WeightInfo::unbond())]
 		#[transactional]
 		pub fn unbond(
 			origin: OriginFor<T>,
 			validator: T::RelaychainAccountId,
 			#[pallet::compact] amount: Balance,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			let guarantor = ensure_signed(origin)?;
 
 			if !amount.is_zero() {
@@ -277,23 +317,27 @@ pub mod module {
 						guarantee.bonded.is_zero() || guarantee.bonded >= T::MinBondAmount::get(),
 						Error::<T>::BelowMinBondAmount,
 					);
-					let expired_block = <frame_system::Pallet<T>>::block_number() + T::BondingDuration::get();
+					let expired_block = T::BlockNumberProvider::current_block_number() + T::BondingDuration::get();
 					guarantee.unbonding = Some((amount, expired_block));
 
 					Self::deposit_event(Event::UnbondGuarantee(guarantor.clone(), validator.clone(), amount));
 					Ok(())
 				})?;
 			}
-			Ok(().into())
+			Ok(())
 		}
 
+		/// Rebond tokens to a validator on the relay chain.
+		///
+		/// - `validator`: The AccountId of a validator on the relay chain to rebond to
+		/// - `amount`: The amount of tokens to to rebond to the given validator
 		#[pallet::weight(T::WeightInfo::rebond())]
 		#[transactional]
 		pub fn rebond(
 			origin: OriginFor<T>,
 			validator: T::RelaychainAccountId,
 			#[pallet::compact] amount: Balance,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			let guarantor = ensure_signed(origin)?;
 
 			if !amount.is_zero() {
@@ -302,15 +346,16 @@ pub mod module {
 					Ok(())
 				})?;
 			}
-			Ok(().into())
+			Ok(())
 		}
 
+		/// Withdraw the unbonded tokens from a validator on the relay chain.
+		/// Ensures the validator is not frozen.
+		///
+		/// - `validator`: The AccountId of a validator on the relay chain to withdraw from
 		#[pallet::weight(T::WeightInfo::withdraw_unbonded())]
 		#[transactional]
-		pub fn withdraw_unbonded(
-			origin: OriginFor<T>,
-			validator: T::RelaychainAccountId,
-		) -> DispatchResultWithPostInfo {
+		pub fn withdraw_unbonded(origin: OriginFor<T>, validator: T::RelaychainAccountId) -> DispatchResult {
 			let guarantor = ensure_signed(origin)?;
 			ensure!(
 				!Self::validator_backings(&validator).unwrap_or_default().is_frozen,
@@ -318,7 +363,7 @@ pub mod module {
 			);
 			Self::update_guarantee(&guarantor, &validator, |guarantee| -> DispatchResult {
 				let old_total = guarantee.total;
-				*guarantee = guarantee.consolidate_unbonding(<frame_system::Pallet<T>>::block_number());
+				*guarantee = guarantee.consolidate_unbonding(T::BlockNumberProvider::current_block_number());
 				let new_total = guarantee
 					.bonded
 					.saturating_add(guarantee.unbonding.unwrap_or_default().0);
@@ -332,12 +377,16 @@ pub mod module {
 				}
 				Ok(())
 			})?;
-			Ok(().into())
+			Ok(())
 		}
 
-		#[pallet::weight(T::WeightInfo::freeze())]
+		/// Freezes validators on the relay chain if they are not already frozen.
+		/// Ensures the caller can freeze validators.
+		///
+		/// - `validators`: The AccountIds of the validators on the relay chain to freeze
+		#[pallet::weight(T::WeightInfo::freeze(validators.len() as u32))]
 		#[transactional]
-		pub fn freeze(origin: OriginFor<T>, validators: Vec<T::RelaychainAccountId>) -> DispatchResultWithPostInfo {
+		pub fn freeze(origin: OriginFor<T>, validators: Vec<T::RelaychainAccountId>) -> DispatchResult {
 			T::FreezeOrigin::ensure_origin(origin)?;
 			validators.iter().for_each(|validator| {
 				ValidatorBackings::<T>::mutate_exists(validator, |maybe_validator| {
@@ -349,12 +398,18 @@ pub mod module {
 					*maybe_validator = Some(v);
 				});
 			});
-			Ok(().into())
+			Ok(())
 		}
 
+		/// Unfreezes validators on the relay chain if they are frozen.
+		/// Ensures the caller can perform a slash.
+		///
+		/// - `validators`: The AccountIds of the validators on the relay chain to unfreeze
 		#[pallet::weight(T::WeightInfo::thaw())]
 		#[transactional]
-		pub fn thaw(origin: OriginFor<T>, validators: Vec<T::RelaychainAccountId>) -> DispatchResultWithPostInfo {
+		pub fn thaw(origin: OriginFor<T>, validators: Vec<T::RelaychainAccountId>) -> DispatchResult {
+			// Using SlashOrigin instead of FreezeOrigin so that un-freezing requires more council members than
+			// freezing
 			T::SlashOrigin::ensure_origin(origin)?;
 			validators.iter().for_each(|validator| {
 				ValidatorBackings::<T>::mutate_exists(validator, |maybe_validator| {
@@ -366,15 +421,16 @@ pub mod module {
 					*maybe_validator = Some(v);
 				});
 			});
-			Ok(().into())
+			Ok(())
 		}
 
+		/// Slash validators on the relay chain.
+		/// Ensures the the caller can perform a slash.
+		///
+		/// - `slashes`: The SlashInfos of the validators to be slashed
 		#[pallet::weight(T::WeightInfo::slash())]
 		#[transactional]
-		pub fn slash(
-			origin: OriginFor<T>,
-			slashes: Vec<SlashInfo<Balance, T::RelaychainAccountId>>,
-		) -> DispatchResultWithPostInfo {
+		pub fn slash(origin: OriginFor<T>, slashes: Vec<SlashInfo<Balance, T::RelaychainAccountId>>) -> DispatchResult {
 			T::SlashOrigin::ensure_origin(origin)?;
 			let liquid_staking_exchange_rate = T::LiquidStakingExchangeRateProvider::get_exchange_rate();
 			let staking_liquid_exchange_rate = liquid_staking_exchange_rate.reciprocal().unwrap_or_default();
@@ -394,7 +450,7 @@ pub mod module {
 					// NOTE: ignoring result because the closure will not throw err.
 					let res = Self::update_guarantee(&guarantor, &validator, |guarantee| -> DispatchResult {
 						let should_slashing = Ratio::checked_from_rational(guarantee.total, total_insurance)
-							.unwrap_or_default()
+							.unwrap_or_else(Ratio::max_value)
 							.saturating_mul_int(insurance_loss);
 						let gap = T::LiquidTokenCurrency::slash(&guarantor, should_slashing);
 						let actual_slashing = should_slashing.saturating_sub(gap);
@@ -412,7 +468,7 @@ pub mod module {
 			}
 
 			T::OnSlash::happened(&actual_total_slashing);
-			Ok(().into())
+			Ok(())
 		}
 	}
 }
