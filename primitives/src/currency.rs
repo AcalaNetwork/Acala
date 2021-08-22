@@ -166,29 +166,39 @@ macro_rules! create_currency_id {
 
 create_currency_id! {
 	// Represent a Token symbol with 8 bit
-	// Bit 8 : 0 for Pokladot Ecosystem, 1 for Kusama Ecosystem
-	// Bit 7 : Reserved
-	// Bit 6 - 1 : The token ID
+	//
+	// 0 - 127: Polkadot Ecosystem tokens
+	// 0 - 19: Acala & Polkadot native tokens
+	// 20 - 39: External tokens (e.g. bridged)
+	// 40 - 127: Polkadot parachain tokens
+	//
+	// 128 - 255: Kusama Ecosystem tokens
+	// 128 - 147: Karura & Kusama native tokens
+	// 148 - 167: External tokens (e.g. bridged)
+	// 168 - 255: Kusama parachain tokens
 	#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord)]
 	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 	#[repr(u8)]
 	pub enum TokenSymbol {
-		// Polkadot Ecosystem
+		// 0 - 19: Acala & Polkadot native tokens
 		ACA("Acala", 12) = 0,
 		AUSD("Acala Dollar", 12) = 1,
 		DOT("Polkadot", 10) = 2,
 		LDOT("Liquid DOT", 10) = 3,
-		RENBTC("Ren Protocol BTC", 8) = 4,
+		// 20 - 39: External tokens (e.g. bridged)
+		RENBTC("Ren Protocol BTC", 8) = 20,
+		CASH("Compound CASH", 8) = 21,
+		// 40 - 127: Polkadot parachain tokens
 
-		// Kusama Ecosystem
+		// 128 - 147: Karura & Kusama native tokens
 		KAR("Karura", 12) = 128,
 		KUSD("Karura Dollar", 12) = 129,
 		KSM("Kusama", 12) = 130,
 		LKSM("Liquid KSM", 12) = 131,
-		// Reserve for RENBTC = 132
-
-		// External Ecosystem
-		CASH("Compound CASH", 8) = 140,
+		// 148 - 167: External tokens (e.g. bridged)
+		// 149: Reserved for renBTC
+		// 150: Reserved for CASH
+		// 168 - 255: Kusama parachain tokens
 	}
 }
 
