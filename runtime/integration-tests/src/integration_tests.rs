@@ -16,8 +16,6 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-#![cfg(test)]
-
 use acala_service::chain_spec::evm_genesis;
 use codec::Encode;
 use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
@@ -58,28 +56,28 @@ use frame_support::{
 	traits::{schedule::DispatchTime, Currency, GenesisBuild, OnFinalize, OnInitialize, OriginTrait, ValidatorSet},
 };
 #[allow(unused_imports)]
-use runtime_common::{dollar, ACA, AUSD, DOT, KSM, LDOT, LKSM, RENBTC};
+pub use runtime_common::{dollar, ACA, AUSD, DOT, KSM, LDOT, LKSM, RENBTC};
 
 #[cfg(feature = "with-mandala-runtime")]
-use mandala_runtime::{
+pub use mandala_runtime::{
 	create_x2_parachain_multilocation, get_all_module_accounts, AcalaOracle, AccountId, AuctionManager, Authority,
 	AuthoritysOriginId, Balance, Balances, BlockNumber, Call, CdpEngine, CdpTreasury, CreateClassDeposit,
 	CreateTokenDeposit, Currencies, CurrencyId, CurrencyIdConvert, DataDepositPerByte, Dex, EmergencyShutdown,
 	EnabledTradingPairs, Event, EvmAccounts, ExistentialDeposits, Get, GetNativeCurrencyId, Loans, MultiLocation,
 	NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, Origin, OriginCaller, ParachainInfo,
 	ParachainSystem, Perbill, Proxy, Runtime, Scheduler, Session, SessionManager, SevenDays, System, TokenSymbol,
-	Tokens, TreasuryAccount, TreasuryPalletId, Vesting, XcmConfig, XcmExecutor, NFT,
+	Tokens, TreasuryAccount, TreasuryPalletId, Vesting, XTokens, XcmConfig, XcmExecutor, NFT,
 };
 
 #[cfg(feature = "with-karura-runtime")]
-use karura_runtime::{
+pub use karura_runtime::{
 	create_x2_parachain_multilocation, get_all_module_accounts, AcalaOracle, AccountId, AuctionManager, Authority,
 	AuthoritysOriginId, Balance, Balances, BlockNumber, Call, CdpEngine, CdpTreasury, CreateClassDeposit,
 	CreateTokenDeposit, Currencies, CurrencyId, CurrencyIdConvert, DataDepositPerByte, Dex, EmergencyShutdown, Event,
 	EvmAccounts, ExistentialDeposits, Get, GetNativeCurrencyId, KaruraFoundationAccounts, Loans, MultiLocation,
 	NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, Origin, OriginCaller, ParachainInfo,
 	ParachainSystem, Perbill, Proxy, Runtime, Scheduler, Session, SessionManager, SevenDays, System, TokenSymbol,
-	Tokens, TreasuryPalletId, Vesting, XcmConfig, XcmExecutor, NFT,
+	Tokens, TreasuryPalletId, Vesting, XTokens, XcmConfig, XcmExecutor, NFT,
 };
 
 #[cfg(feature = "with-karura-runtime")]
@@ -122,8 +120,8 @@ const ORACLE3: [u8; 32] = [2u8; 32];
 const ORACLE4: [u8; 32] = [3u8; 32];
 const ORACLE5: [u8; 32] = [4u8; 32];
 
-const ALICE: [u8; 32] = [4u8; 32];
-const BOB: [u8; 32] = [5u8; 32];
+pub const ALICE: [u8; 32] = [4u8; 32];
+pub const BOB: [u8; 32] = [5u8; 32];
 
 fn run_to_block(n: u32) {
 	while System::block_number() < n {

@@ -57,6 +57,9 @@ pub mod incentives {
 pub mod prices {
 	include!("../../../mandala/src/benchmarking/prices.rs");
 }
+pub mod transaction_pause {
+	include!("../../../mandala/src/benchmarking/transaction_pause.rs");
+}
 pub mod transaction_payment {
 	include!("../../../mandala/src/benchmarking/transaction_payment.rs");
 }

@@ -183,8 +183,8 @@ pub mod module {
 		/// share_decrement\]
 		RemoveLiquidity(T::AccountId, CurrencyId, Balance, CurrencyId, Balance, Balance),
 		/// Use supply currency to swap target currency. \[trader, trading_path,
-		/// supply_currency_amount, target_currency_amount\]
-		Swap(T::AccountId, Vec<CurrencyId>, Balance, Balance),
+		/// liquidity_change_list\]
+		Swap(T::AccountId, Vec<CurrencyId>, Vec<Balance>),
 		/// Enable trading pair. \[trading_pair\]
 		EnableTradingPair(TradingPair),
 		/// List provisioning trading pair. \[trading_pair\]
@@ -1190,12 +1190,7 @@ impl<T: Config> Pallet<T> {
 		Self::_swap_by_path(&path, &amounts)?;
 		T::Currency::transfer(path[path.len() - 1], &module_account_id, who, actual_target_amount)?;
 
-		Self::deposit_event(Event::Swap(
-			who.clone(),
-			path.to_vec(),
-			supply_amount,
-			actual_target_amount,
-		));
+		Self::deposit_event(Event::Swap(who.clone(), path.to_vec(), amounts));
 		Ok(actual_target_amount)
 	}
 
@@ -1216,12 +1211,7 @@ impl<T: Config> Pallet<T> {
 		Self::_swap_by_path(&path, &amounts)?;
 		T::Currency::transfer(path[path.len() - 1], &module_account_id, who, target_amount)?;
 
-		Self::deposit_event(Event::Swap(
-			who.clone(),
-			path.to_vec(),
-			actual_supply_amount,
-			target_amount,
-		));
+		Self::deposit_event(Event::Swap(who.clone(), path.to_vec(), amounts));
 		Ok(actual_supply_amount)
 	}
 }

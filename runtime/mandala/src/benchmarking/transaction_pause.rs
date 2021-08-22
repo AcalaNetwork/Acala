@@ -16,12 +16,27 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-#![cfg(test)]
+use crate::{Origin, Runtime, TransactionPause};
 
-#[cfg(any(feature = "with-mandala-runtime", feature = "with-karura-runtime"))]
-mod integration_tests;
+use frame_system::RawOrigin;
+use orml_benchmarking::runtime_benchmarks;
 
-#[cfg(feature = "with-karura-runtime")]
-mod kusama_cross_chain_transfer;
-#[cfg(feature = "with-karura-runtime")]
-mod kusama_test_net;
+runtime_benchmarks! {
+	{ Runtime, module_transaction_pause }
+
+	pause_transaction {
+	}: _(RawOrigin::Root, b"Balances".to_vec(), b"transfer".to_vec())
+
+	unpause_transaction {
+		TransactionPause::pause_transaction(Origin::root(), b"Balances".to_vec(), b"transfer".to_vec())?;
+	}: _(RawOrigin::Root, b"Balances".to_vec(), b"transfer".to_vec())
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+	use crate::benchmarking::utils::tests::new_test_ext;
+	use orml_benchmarking::impl_benchmark_test_suite;
+
+	impl_benchmark_test_suite!(new_test_ext(),);
+}
