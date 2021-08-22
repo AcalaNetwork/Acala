@@ -38,7 +38,7 @@ use sp_runtime::{
 	traits::{One, Saturating, UniqueSaturatedInto, Zero},
 	DispatchError, DispatchResult, SaturatedConversion, TransactionOutcome,
 };
-use sp_std::{cmp::min, convert::Infallible, marker::PhantomData, prelude::*, rc::Rc};
+use sp_std::{cmp::min, convert::Infallible, fmt::Write, marker::PhantomData, prelude::*, rc::Rc};
 
 /// Storage key size and storage value size.
 pub const STORAGE_SIZE: u32 = 64;
@@ -49,6 +49,8 @@ pub struct Handler<'vicinity, 'config, 'meter, T: Config> {
 	pub gasometer: Gasometer<'config>,
 	pub storage_meter: StorageMeter<'meter>,
 	pub is_static: bool,
+	/// precompile return error message.
+	pub err_msg: Option<Vec<u8>>,
 	_marker: PhantomData<T>,
 }
 
@@ -70,6 +72,7 @@ impl<'vicinity, 'config, 'meter, T: Config> Handler<'vicinity, 'config, 'meter, 
 			is_static,
 			gasometer: Gasometer::new(gas_limit, config),
 			storage_meter,
+			err_msg: None,
 			_marker: PhantomData,
 		}
 	}
@@ -128,7 +131,12 @@ impl<'vicinity, 'config, 'meter, T: Config> Handler<'vicinity, 'config, 'meter, 
 					Ok(_) => TransactionOutcome::Commit(Ok(r)),
 					Err(e) => TransactionOutcome::Rollback(Err(e)),
 				},
-				TransactionOutcome::Rollback(e) => TransactionOutcome::Rollback(Ok(e)),
+				TransactionOutcome::Rollback(e) => {
+					if substate.err_msg.is_some() {
+						self.err_msg = substate.err_msg;
+					}
+					TransactionOutcome::Rollback(Ok(e))
+				}
 			}
 		})
 	}
@@ -170,7 +178,27 @@ impl<'vicinity, 'config, 'meter, T: Config> Handler<'vicinity, 'config, 'meter, 
 		match reason {
 			ExitReason::Succeed(s) => (s.into(), runtime.machine().return_value()),
 			ExitReason::Error(e) => (e.into(), Vec::new()),
-			ExitReason::Revert(e) => (e.into(), runtime.machine().return_value()),
+			ExitReason::Revert(e) => {
+				if let Some(err_msg) = &self.err_msg {
+					// Return precompile error message
+					// Refer to evm.rpc.lib.rs function: `decode_revert_message`
+					let mut output = vec![0u8; 36];
+					let mut message_len = [0u8; 32];
+					U256::from(err_msg.len()).to_big_endian(&mut message_len[..]);
+					output.extend_from_slice(&message_len.to_vec());
+					output.extend_from_slice(&err_msg);
+
+					log::debug!(
+						target: "evm",
+						"err_msg: {:?}, output: {:?}",
+						err_msg,
+						output,
+					);
+					(e.into(), output.to_vec())
+				} else {
+					(e.into(), runtime.machine().return_value())
+				}
+			}
 			ExitReason::Fatal(e) => {
 				self.gasometer.fail();
 				(e.into(), Vec::new())
@@ -638,7 +666,12 @@ impl<'vicinity, 'config, 'meter, T: Config> HandlerT for Handler<'vicinity, 'con
 							// try_or_rollback!(self.storage_meter.record_cost(0));
 							TransactionOutcome::Commit(Capture::Exit((s.into(), out)))
 						}
-						Err(e) => TransactionOutcome::Rollback(Capture::Exit((e.into(), Vec::new()))),
+						Err(e) => {
+							let mut w = sp_std::Writer::default();
+							let _ = core::write!(&mut w, "{:?}", e);
+							substate.err_msg = Some(w.into_inner());
+							TransactionOutcome::Rollback(Capture::Exit((e.into(), Vec::new())))
+						}
 					};
 				}
 
