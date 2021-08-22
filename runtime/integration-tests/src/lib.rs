@@ -25,3 +25,6 @@ mod integration_tests;
 mod kusama_cross_chain_transfer;
 #[cfg(feature = "with-karura-runtime")]
 mod kusama_test_net;
+
+#[cfg(feature = "with-mandala-runtime")]
+mod evm_tests;
