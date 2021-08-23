@@ -768,6 +768,12 @@ parameter_types! {
 	pub const OracleCountLimit: u32 = 25;
 	// Maximum number of feeds.
 	pub const FeedLimit: FeedId = 100;
+	// TODO: should set it by chainlink
+	pub ChainlinkAdmin: AccountId = AccountId::from([111u8; 32]);
+	// TODO: should set it by chainlink
+	pub FeedCreators: Vec<AccountId> = vec![
+		AccountId::from([111u8; 32])
+	];
 }
 
 impl pallet_chainlink_feed::Config for Runtime {
@@ -780,7 +786,7 @@ impl pallet_chainlink_feed::Config for Runtime {
 	type StringLimit = StringLimit;
 	type OracleCountLimit = OracleCountLimit;
 	type FeedLimit = FeedLimit;
-	type OnAnswerHandler = ();
+	type OnAnswerHandler = ChainlinkAdaptor;
 	type WeightInfo = ();
 }
 
@@ -795,8 +801,8 @@ impl ecosystem_chainlink_adaptor::Config for Runtime {
 	type Event = Event;
 	type Convert = PriceConvert;
 	type Time = Timestamp;
-	// TODO: replace it with chainlink's admin
 	type RegistorOrigin = EnsureRootOrHalfFinancialCouncil;
+	type WeightInfo = ();
 }
 
 create_median_value_data_provider!(
@@ -2342,6 +2348,7 @@ impl_runtime_apis! {
 			orml_add_benchmark!(params, batches, orml_oracle, benchmarking::oracle);
 
 			orml_add_benchmark!(params, batches, ecosystem_chainsafe, benchmarking::chainsafe_transfer);
+			orml_add_benchmark!(params, batches, ecosystem_chainlink_adaptor, benchmarking::chainlink_adaptor);
 
 			if batches.is_empty() { return Err("Benchmark not found for this module.".into()) }
 			Ok(batches)

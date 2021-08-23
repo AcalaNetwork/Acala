@@ -50,6 +50,7 @@ pub mod tokens;
 pub mod vesting;
 
 // ecosystem benchmarking
+pub mod chainlink_adaptor;
 pub mod chainsafe_transfer;
 
 pub fn get_treasury_account() -> super::AccountId {

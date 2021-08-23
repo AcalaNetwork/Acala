@@ -23,23 +23,21 @@
 use super::*;
 use frame_support::{assert_noop, assert_ok};
 use mock::{Event, *};
-use sp_runtime::traits::BadOrigin;
+use sp_runtime::traits::{BadOrigin, Bounded};
 
 #[test]
-fn mapping_feed_id_work() {
+fn map_feed_id_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
 
 		assert_eq!(ChainlinkAdaptor::feed_id_mapping(DOT), None);
+		assert_eq!(ChainlinkAdaptor::currency_id_mapping(0), None);
 		assert_eq!(ChainlinkFeed::feed_config(0), None);
 
-		assert_noop!(
-			ChainlinkAdaptor::mapping_feed_id(Origin::signed(ALICE), 0, DOT),
-			BadOrigin,
-		);
+		assert_noop!(ChainlinkAdaptor::map_feed_id(Origin::signed(ALICE), 0, DOT), BadOrigin,);
 
 		assert_noop!(
-			ChainlinkAdaptor::mapping_feed_id(Origin::signed(RegistorOrigin::get()), 0, DOT),
+			ChainlinkAdaptor::map_feed_id(Origin::signed(RegistorOrigin::get()), 0, DOT),
 			Error::<Runtime>::InvalidFeedId,
 		);
 
@@ -58,23 +56,24 @@ fn mapping_feed_id_work() {
 		));
 		assert_eq!(ChainlinkFeed::feed_config(0).is_some(), true);
 
-		assert_ok!(ChainlinkAdaptor::mapping_feed_id(
+		assert_ok!(ChainlinkAdaptor::map_feed_id(
 			Origin::signed(RegistorOrigin::get()),
 			0,
 			DOT
 		));
-		System::assert_last_event(Event::ChainlinkAdaptor(crate::Event::MappingFeedId(0, DOT)));
+		System::assert_last_event(Event::ChainlinkAdaptor(crate::Event::MapFeedId(0, DOT)));
 		assert_eq!(ChainlinkAdaptor::feed_id_mapping(DOT), Some(0));
+		assert_eq!(ChainlinkAdaptor::currency_id_mapping(0), Some(DOT));
 
 		assert_noop!(
-			ChainlinkAdaptor::mapping_feed_id(Origin::signed(RegistorOrigin::get()), 1, DOT),
-			Error::<Runtime>::CurrencyIdAlreadyMapping,
+			ChainlinkAdaptor::map_feed_id(Origin::signed(RegistorOrigin::get()), 1, DOT),
+			Error::<Runtime>::AlreadyMapped,
 		);
 	});
 }
 
 #[test]
-fn unmapping_feed_id_work() {
+fn unmap_feed_id_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
 
@@ -82,7 +81,7 @@ fn unmapping_feed_id_work() {
 			Origin::signed(ALICE),
 			20,
 			10,
-			(10, 1000),
+			(Bounded::min_value(), Bounded::max_value()),
 			1,
 			0,
 			b"dotusd".to_vec(),
@@ -91,24 +90,33 @@ fn unmapping_feed_id_work() {
 			None,
 			None,
 		));
-		assert_ok!(ChainlinkAdaptor::mapping_feed_id(
+		assert_ok!(ChainlinkAdaptor::map_feed_id(
 			Origin::signed(RegistorOrigin::get()),
 			0,
 			DOT
 		));
+		Timestamp::set_timestamp(10000);
+		assert_ok!(ChainlinkFeed::submit(
+			Origin::signed(ALICE),
+			0,
+			1,
+			40_000_000_000_000_000_000u128,
+		));
+
 		assert_eq!(ChainlinkAdaptor::feed_id_mapping(DOT), Some(0));
+		assert_eq!(ChainlinkAdaptor::currency_id_mapping(0), Some(DOT));
+		assert_eq!(ChainlinkAdaptor::last_updated_timestamp(0), 10000);
 
-		assert_noop!(
-			ChainlinkAdaptor::unmapping_feed_id(Origin::signed(ALICE), DOT),
-			BadOrigin,
-		);
+		assert_noop!(ChainlinkAdaptor::unmap_feed_id(Origin::signed(ALICE), DOT), BadOrigin,);
 
-		assert_ok!(ChainlinkAdaptor::unmapping_feed_id(
+		assert_ok!(ChainlinkAdaptor::unmap_feed_id(
 			Origin::signed(RegistorOrigin::get()),
 			DOT
 		));
-		System::assert_last_event(Event::ChainlinkAdaptor(crate::Event::UnmappingFeedId(0, DOT)));
+		System::assert_last_event(Event::ChainlinkAdaptor(crate::Event::UnmapFeedId(0, DOT)));
 		assert_eq!(ChainlinkAdaptor::feed_id_mapping(DOT), None);
+		assert_eq!(ChainlinkAdaptor::currency_id_mapping(0), None);
+		assert_eq!(ChainlinkAdaptor::last_updated_timestamp(0), 0);
 	});
 }
 
@@ -119,7 +127,7 @@ fn data_provider_get_work() {
 			Origin::signed(ALICE),
 			20,
 			10,
-			(0, u128::MAX),
+			(Bounded::min_value(), Bounded::max_value()),
 			1,
 			0,
 			b"dotusd".to_vec(),
@@ -128,7 +136,7 @@ fn data_provider_get_work() {
 			None,
 			None,
 		));
-		assert_ok!(ChainlinkAdaptor::mapping_feed_id(
+		assert_ok!(ChainlinkAdaptor::map_feed_id(
 			Origin::signed(RegistorOrigin::get()),
 			0,
 			DOT
@@ -169,7 +177,7 @@ fn data_provider_get_no_op_work() {
 			Origin::signed(ALICE),
 			20,
 			10,
-			(0, u128::MAX),
+			(Bounded::min_value(), Bounded::max_value()),
 			1,
 			0,
 			b"dotusd".to_vec(),
@@ -178,7 +186,7 @@ fn data_provider_get_no_op_work() {
 			None,
 			None,
 		));
-		assert_ok!(ChainlinkAdaptor::mapping_feed_id(
+		assert_ok!(ChainlinkAdaptor::map_feed_id(
 			Origin::signed(RegistorOrigin::get()),
 			0,
 			DOT
@@ -238,7 +246,7 @@ fn data_provider_get_all_values_work() {
 			Origin::signed(ALICE),
 			20,
 			10,
-			(0, u128::MAX),
+			(Bounded::min_value(), Bounded::max_value()),
 			1,
 			0,
 			b"dotusd".to_vec(),
@@ -251,7 +259,7 @@ fn data_provider_get_all_values_work() {
 			Origin::signed(ALICE),
 			20,
 			10,
-			(0, u128::MAX),
+			(Bounded::min_value(), Bounded::max_value()),
 			1,
 			0,
 			b"ksmusd".to_vec(),
@@ -260,12 +268,12 @@ fn data_provider_get_all_values_work() {
 			None,
 			None,
 		));
-		assert_ok!(ChainlinkAdaptor::mapping_feed_id(
+		assert_ok!(ChainlinkAdaptor::map_feed_id(
 			Origin::signed(RegistorOrigin::get()),
 			0,
 			DOT
 		));
-		assert_ok!(ChainlinkAdaptor::mapping_feed_id(
+		assert_ok!(ChainlinkAdaptor::map_feed_id(
 			Origin::signed(RegistorOrigin::get()),
 			1,
 			KSM
@@ -351,5 +359,58 @@ fn data_provider_get_all_values_work() {
 				),
 			]
 		);
+	});
+}
+
+#[test]
+fn on_answer_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(ChainlinkFeed::create_feed(
+			Origin::signed(ALICE),
+			20,
+			10,
+			(Bounded::min_value(), Bounded::max_value()),
+			1,
+			0,
+			b"dotusd".to_vec(),
+			0,
+			vec![(ALICE, ALICE), (BOB, BOB)],
+			None,
+			None,
+		));
+		assert_ok!(ChainlinkFeed::create_feed(
+			Origin::signed(ALICE),
+			20,
+			10,
+			(Bounded::min_value(), Bounded::max_value()),
+			1,
+			0,
+			b"ksmusd".to_vec(),
+			0,
+			vec![(ALICE, ALICE), (BOB, BOB)],
+			None,
+			None,
+		));
+
+		Timestamp::set_timestamp(10000);
+		ChainlinkAdaptor::on_answer(0, Default::default());
+		assert_eq!(ChainlinkAdaptor::last_updated_timestamp(0), 0);
+		assert_eq!(ChainlinkAdaptor::last_updated_timestamp(1), 0);
+
+		assert_ok!(ChainlinkAdaptor::map_feed_id(
+			Origin::signed(RegistorOrigin::get()),
+			0,
+			DOT
+		));
+		assert_ok!(ChainlinkAdaptor::map_feed_id(
+			Origin::signed(RegistorOrigin::get()),
+			1,
+			KSM
+		));
+		Timestamp::set_timestamp(20000);
+		ChainlinkAdaptor::on_answer(0, Default::default());
+		ChainlinkAdaptor::on_answer(1, Default::default());
+		assert_eq!(ChainlinkAdaptor::last_updated_timestamp(0), 20000);
+		assert_eq!(ChainlinkAdaptor::last_updated_timestamp(1), 20000);
 	});
 }

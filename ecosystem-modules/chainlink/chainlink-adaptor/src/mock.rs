@@ -134,6 +134,7 @@ impl Config for Runtime {
 	type Convert = MockConvert;
 	type Time = Timestamp;
 	type RegistorOrigin = EnsureSignedBy<RegistorOrigin, AccountId>;
+	type WeightInfo = ();
 }
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
