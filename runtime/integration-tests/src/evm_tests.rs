@@ -59,7 +59,7 @@ pub fn deploy_erc20_contracts() {
 	assert_ok!(EVM::create_network_contract(
 		Origin::root(),
 		code.clone(),
-		NativeTokenExistentialDeposit::get(),
+		0,
 		2100_000,
 		100000
 	));
@@ -69,13 +69,7 @@ pub fn deploy_erc20_contracts() {
 
 	assert_ok!(EVM::deploy_free(Origin::root(), erc20_address_0()));
 
-	assert_ok!(EVM::create_network_contract(
-		Origin::root(),
-		code,
-		NativeTokenExistentialDeposit::get(),
-		2100_000,
-		100000
-	));
+	assert_ok!(EVM::create_network_contract(Origin::root(), code, 0, 2100_000, 100000));
 
 	let event = Event::EVM(module_evm::Event::<Runtime>::Created(erc20_address_1()));
 	assert_eq!(System::events().iter().last().unwrap().event, event);
@@ -99,8 +93,7 @@ fn deploy_contract(account: AccountId) -> Result<H160, DispatchError> {
 	// contract Contract {}
 	let contract = hex_literal::hex!("608060405234801561001057600080fd5b5061016f806100206000396000f3fe608060405260043610610041576000357c0100000000000000000000000000000000000000000000000000000000900463ffffffff168063412a5a6d14610046575b600080fd5b61004e610050565b005b600061005a6100e2565b604051809103906000f080158015610076573d6000803e3d6000fd5b50905060008190806001815401808255809150509060018203906000526020600020016000909192909190916101000a81548173ffffffffffffffffffffffffffffffffffffffff021916908373ffffffffffffffffffffffffffffffffffffffff1602179055505050565b6040516052806100f28339019056fe6080604052348015600f57600080fd5b50603580601d6000396000f3fe6080604052600080fdfea165627a7a7230582092dc1966a8880ddf11e067f9dd56a632c11a78a4afd4a9f05924d427367958cc0029a165627a7a723058202b2cc7384e11c452cdbf39b68dada2d5e10a632cc0174a354b8b8c83237e28a40029").to_vec();
 
-	EVM::create(Origin::signed(account), contract, 0, 1000000000, 1000000000)
-		.map_or_else(|e| Err(e.error), |_| Ok(()))?;
+	EVM::create(Origin::signed(account), contract, 0, 1000000000, 100000).map_or_else(|e| Err(e.error), |_| Ok(()))?;
 
 	if let Event::EVM(module_evm::Event::<Runtime>::Created(address)) = System::events().iter().last().unwrap().event {
 		Ok(address)
@@ -282,7 +275,7 @@ fn dex_module_works_with_evm_contract() {
 }
 
 #[cfg(not(feature = "with-ethereum-compatibility"))]
-//#[test]
+#[test]
 fn test_evm_module() {
 	ExtBuilder::default()
 		.balances(vec![
@@ -307,7 +300,7 @@ fn test_evm_module() {
 			)));
 
 			// test EvmAccounts Lookup
-			assert_eq!(Balances::free_balance(alice()), 999_999_896_330_000);
+			assert_eq!(Balances::free_balance(alice()), 998_963_300_000_000);
 			assert_eq!(Balances::free_balance(bob()), 1_000 * dollar(NATIVE_CURRENCY));
 			let to = EvmAccounts::eth_address(&alice_key());
 			assert_ok!(Currencies::transfer(
@@ -316,7 +309,7 @@ fn test_evm_module() {
 				NATIVE_CURRENCY,
 				10 * dollar(NATIVE_CURRENCY)
 			));
-			assert_eq!(Balances::free_balance(alice()), 1_009_999_896_330_000);
+			assert_eq!(Balances::free_balance(alice()), 1_008_963_300_000_000);
 			assert_eq!(
 				Balances::free_balance(bob()),
 				1_000 * dollar(NATIVE_CURRENCY) - 10 * dollar(NATIVE_CURRENCY)
@@ -373,7 +366,7 @@ fn test_evm_module() {
 		});
 }
 
-//#[test]
+#[test]
 fn test_multicurrency_precompile_module() {
 	ExtBuilder::default()
 		.balances(vec![
@@ -508,7 +501,7 @@ fn test_multicurrency_precompile_module() {
 		});
 }
 
-//#[test]
+#[test]
 fn should_not_kill_contract_on_transfer_all() {
 	ExtBuilder::default()
 		.balances(vec![
@@ -525,7 +518,7 @@ fn should_not_kill_contract_on_transfer_all() {
 			// }
 			let code = hex_literal::hex!("6080604052603e8060116000396000f3fe6080604052600080fdfea265627a7a72315820e816b34c9ce8a2446f3d059b4907b4572645fde734e31dabf5465c801dcb44a964736f6c63430005110032").to_vec();
 
-			assert_ok!(EVM::create(Origin::signed(alice()), code, 2 * dollar(NATIVE_CURRENCY), 1000000000, 1000000000));
+			assert_ok!(EVM::create(Origin::signed(alice()), code, 2 * dollar(NATIVE_CURRENCY), 1000000000, 100000));
 
 			let contract = if let Event::EVM(module_evm::Event::Created(address)) = System::events().iter().last().unwrap().event {
 				address
@@ -536,7 +529,7 @@ fn should_not_kill_contract_on_transfer_all() {
 			assert_eq!(Balances::free_balance(EvmAddressMapping::<Runtime>::get_account_id(&contract)), 2 * dollar(NATIVE_CURRENCY));
 
 			#[cfg(not(feature = "with-ethereum-compatibility"))]
-			assert_eq!(Balances::free_balance(alice()), 1_997_999_899_380_000);
+			assert_eq!(Balances::free_balance(alice()), 1_996_993_800_000_000);
 
 			#[cfg(feature = "with-ethereum-compatibility")]
 			assert_eq!(Balances::free_balance(alice()), 1_998 * dollar(NATIVE_CURRENCY));
@@ -551,7 +544,7 @@ fn should_not_kill_contract_on_transfer_all() {
 			assert_eq!(Balances::free_balance(EvmAddressMapping::<Runtime>::get_account_id(&contract)), 0);
 
 			#[cfg(not(feature = "with-ethereum-compatibility"))]
-			assert_eq!(Balances::free_balance(alice()), 1_999_999_899_380_000);
+			assert_eq!(Balances::free_balance(alice()), 1_998_993_800_000_000);
 
 			#[cfg(feature = "with-ethereum-compatibility")]
 			assert_eq!(Balances::free_balance(alice()), 1000 * dollar(NATIVE_CURRENCY));
@@ -582,7 +575,7 @@ fn should_not_kill_contract_on_transfer_all_tokens() {
 			// 	 }
 			// }
 			let code = hex_literal::hex!("608060405260848060116000396000f3fe6080604052348015600f57600080fd5b506004361060285760003560e01c806341c0e1b514602d575b600080fd5b60336035565b005b600073ffffffffffffffffffffffffffffffffffffffff16fffea265627a7a72315820ed64a7551098c4afc823bee1663309079d9cb8798a6bdd71be2cd3ccee52d98e64736f6c63430005110032").to_vec();
-			assert_ok!(EVM::create(Origin::signed(alice()), code, dollar(NATIVE_CURRENCY), 1000000000, 1000000000));
+			assert_ok!(EVM::create(Origin::signed(alice()), code, 0, 1000000000, 100000));
 			let contract = if let Event::EVM(module_evm::Event::Created(address)) = System::events().iter().last().unwrap().event {
 				address
 			} else {
@@ -611,17 +604,10 @@ fn should_not_kill_contract_on_transfer_all_tokens() {
 
 			assert_eq!(Currencies::free_balance(USD_CURRENCY, &alice()), 1000 * dollar(USD_CURRENCY));
 
-			assert_ok!(Currencies::transfer(
-				Origin::signed(contract_account_id.clone()),
-				alice().into(),
-				NATIVE_CURRENCY,
-				dollar(NATIVE_CURRENCY)
-			));
-
 			// assert the contract account is not purged
 			assert!(EVM::accounts(contract).is_some());
 
-			assert_ok!(EVM::call(Origin::signed(alice()), contract.clone(), hex_literal::hex!("41c0e1b5").to_vec(), 0, 1000000000, 1000000000));
+			assert_ok!(EVM::call(Origin::signed(alice()), contract.clone(), hex_literal::hex!("41c0e1b5").to_vec(), 0, 1000000000, 100000));
 
 			assert!(EVM::accounts(contract).is_none());
 
