@@ -51,7 +51,7 @@ use xcm::{
 use primitives::currency::*;
 
 #[allow(unused_imports)]
-pub use frame_support::{
+use frame_support::{
 	assert_noop, assert_ok, parameter_types,
 	traits::{schedule::DispatchTime, Currency, GenesisBuild, OnFinalize, OnInitialize, OriginTrait, ValidatorSet},
 };

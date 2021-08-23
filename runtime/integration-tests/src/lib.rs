@@ -21,8 +21,8 @@
 #[cfg(any(feature = "with-mandala-runtime", feature = "with-karura-runtime"))]
 mod integration_tests;
 
-//#[cfg(any(feature = "with-mandala-runtime", feature = "with-karura-runtime"))]
-//mod evm_tests;
+#[cfg(any(feature = "with-mandala-runtime", feature = "with-karura-runtime"))]
+mod evm_tests;
 
 #[cfg(feature = "with-karura-runtime")]
 mod kusama_cross_chain_transfer;
