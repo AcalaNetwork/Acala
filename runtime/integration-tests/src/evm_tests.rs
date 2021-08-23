@@ -558,7 +558,7 @@ fn should_not_kill_contract_on_transfer_all() {
 			assert_eq!(Balances::free_balance(alice()), 1_996_981_400_000_000);
 
 			#[cfg(feature = "with-ethereum-compatibility")]
-			assert_eq!(Balances::free_balance(alice()), 1000 * dollar(NATIVE_CURRENCY));
+			assert_eq!(Balances::free_balance(alice()), 2000 * dollar(NATIVE_CURRENCY));
 
 			// assert the contract account is not purged
 			assert!(EVM::accounts(contract).is_some());
