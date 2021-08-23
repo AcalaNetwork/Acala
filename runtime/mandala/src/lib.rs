@@ -802,7 +802,7 @@ impl ecosystem_chainlink_adaptor::Config for Runtime {
 	type Convert = PriceConvert;
 	type Time = Timestamp;
 	type RegistorOrigin = EnsureRootOrHalfFinancialCouncil;
-	type WeightInfo = ();
+	type WeightInfo = weights::ecosystem_chainlink_adaptor::WeightInfo<Runtime>;
 }
 
 create_median_value_data_provider!(

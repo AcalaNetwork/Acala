@@ -46,4 +46,5 @@ pub mod orml_oracle;
 pub mod orml_tokens;
 pub mod orml_vesting;
 
+pub mod ecosystem_chainlink_adaptor;
 pub mod ecosystem_chainsafe;
