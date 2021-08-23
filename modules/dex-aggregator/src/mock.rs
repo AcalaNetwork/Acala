@@ -188,9 +188,13 @@ impl AggregatorSuper<AccountId, TradingDirection, Balance> for MockAggregator {
 	}
 }
 
+parameter_types! {
+	pub const AggregatorTradingPathLimit: u32 = 2;
+}
+
 impl Config for Runtime {
 	type Event = Event;
-	type AggregatorTradingPathLimit = TradingPathLimit;
+	type AggregatorTradingPathLimit = AggregatorTradingPathLimit;
 	type Aggregator = MockAggregator;
 }
 

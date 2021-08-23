@@ -232,6 +232,15 @@ impl<T: Config> Pallet<T> {
 		Some(cache_money)
 	}
 
+	fn pool_pair_match(first_id: CurrencyId, second_id: CurrencyId, pool: &AvailablePool) -> Option<AvailablePool> {
+		if pool.first() == first_id && pool.second() == second_id {
+			return Some(*pool);
+		} else if pool.second() == first_id && pool.first() == second_id {
+			return Some(pool.swap());
+		}
+		None
+	}
+
 	/// Returns ordered AvailablePool where pool.first() matches CurrencyId, if impossible returns
 	/// None
 	fn pool_first_match(id: CurrencyId, pool: &AvailablePool) -> Option<AvailablePool> {
@@ -266,9 +275,10 @@ impl<T: Config> Pallet<T> {
 		let mut optimal_balance: Balance = 0;
 		let mut cached_pools: Vec<AvailablePool> = Vec::new();
 		let mut cached_paths: Vec<Vec<AvailablePool>> = Vec::new();
+		let path_limit: usize = T::AggregatorTradingPathLimit::get().saturated_into();
 
 		// AggregatorTradingPathLimit is defined in runtime should be reasonable value
-		while i < T::AggregatorTradingPathLimit::get().saturated_into() {
+		while i < path_limit {
 			if i == 0 {
 				for pool in &all_pools {
 					if let Some(matched_pool) = Self::pool_first_match(pair.first(), pool) {
@@ -297,6 +307,34 @@ impl<T: Config> Pallet<T> {
 									if new_balance > optimal_balance {
 										optimal_balance = new_balance;
 										optimal_path = matched_path;
+									}
+								}
+							}
+						}
+					}
+				}
+			// This block eliminates the caching scheme for last iteration as it is unneeded due to
+			// no subsequent steps, cloning all the viable paths could be expensive on the last loop
+			// so should improve speed
+			} else if i == (path_limit.saturating_sub(1)) {
+				for path in &cached_paths {
+					let path_len = path.len();
+					// defensively checks path len to ensure getting Vec elements will not panic
+					// should always be true
+					if path_len == i {
+						let first_token = path[path_len - 2].second();
+						let second_token = path[path_len - 1].first();
+						for pool in &all_pools {
+							if let Some(matched_pool) = Self::pool_pair_match(first_token, second_token, pool) {
+								let mut new_path = path.clone();
+								new_path.insert(i - 1, matched_pool);
+								if second_token == matched_pool.second() {
+									if let Some(new_balance) = Self::get_target_amount(new_path.clone(), supply_amount)
+									{
+										if new_balance > optimal_balance {
+											optimal_balance = new_balance;
+											optimal_path = new_path;
+										}
 									}
 								}
 							}
@@ -354,9 +392,10 @@ impl<T: Config> Pallet<T> {
 		let mut optimal_balance: Balance = u128::MAX;
 		let mut cached_pools: Vec<AvailablePool> = Vec::new();
 		let mut cached_paths: Vec<Vec<AvailablePool>> = Vec::new();
+		let path_limit: usize = T::AggregatorTradingPathLimit::get().saturated_into();
 
 		// AggregatorTradingPathLimit is defined in runtime should be reasonable value
-		while i < T::AggregatorTradingPathLimit::get().saturated_into() {
+		while i < path_limit {
 			if i == 0 {
 				for pool in &all_pools {
 					if let Some(matched_pool) = Self::pool_first_match(pair.first(), pool) {
@@ -385,6 +424,33 @@ impl<T: Config> Pallet<T> {
 									if new_balance < optimal_balance {
 										optimal_balance = new_balance;
 										optimal_path = matched_path;
+									}
+								}
+							}
+						}
+					}
+				}
+			// This block eliminates the caching scheme for last iteration as it is unneeded due to
+			// being the last one, cloning all viable paths could be expensive on the last loop
+			} else if i == (path_limit.saturating_sub(1)) {
+				for path in &cached_paths {
+					let path_len = path.len();
+					// defensively checks path len to ensure getting Vec elements will not panic
+					// should always be true
+					if path_len == i {
+						let first_token = path[path_len - 2].second();
+						let second_token = path[path_len - 1].first();
+						for pool in &all_pools {
+							if let Some(matched_pool) = Self::pool_pair_match(first_token, second_token, pool) {
+								let mut new_path = path.clone();
+								new_path.insert(i - 1, matched_pool);
+								if second_token == matched_pool.second() {
+									if let Some(new_balance) = Self::get_supply_amount(new_path.clone(), target_amount)
+									{
+										if new_balance < optimal_balance {
+											optimal_balance = new_balance;
+											optimal_path = new_path;
+										}
 									}
 								}
 							}
@@ -445,7 +511,7 @@ impl<T: Config> Pallet<T> {
 		// defensively checks if trading path limit is too long should never actually be too long, is a bug
 		// if this error appears
 		ensure!(
-			best_path.0.len() < T::AggregatorTradingPathLimit::get().saturated_into(),
+			best_path.0.len() <= T::AggregatorTradingPathLimit::get().saturated_into(),
 			Error::<T>::InvalidPathLength
 		);
 		Ok(best_path.0)
@@ -462,10 +528,11 @@ impl<T: Config> Pallet<T> {
 		let best_path =
 			Self::optimal_path_with_exact_target(pair, target_amount).ok_or(Error::<T>::NoPossibleTradingPath)?;
 		ensure!(best_path.1 <= max_supply_amount, Error::<T>::AboveMaximumSupply);
+
 		// defensively checks if trading path limit is too long should never actually be too long, is a bug
 		// if this error appears
 		ensure!(
-			best_path.0.len() < T::AggregatorTradingPathLimit::get().saturated_into(),
+			best_path.0.len() <= T::AggregatorTradingPathLimit::get().saturated_into(),
 			Error::<T>::InvalidPathLength
 		);
 		Ok(best_path)
