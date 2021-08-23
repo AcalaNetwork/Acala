@@ -42,9 +42,9 @@ fn test_all_active_pairs() {
 		.build()
 		.execute_with(|| {
 			let all_pairs = vec![
-				AvailablePool(AvailableAmm::Dex, AUSDBTCPair::get().into()),
-				AvailablePool(AvailableAmm::Dex, AUSDDOTPair::get().into()),
-				AvailablePool(AvailableAmm::Dex, DOTBTCPair::get().into()),
+				AvailablePool::from_pallet_pair(AvailableAmm::Dex, AUSDBTCPair::get().into()),
+				AvailablePool::from_pallet_pair(AvailableAmm::Dex, AUSDDOTPair::get().into()),
+				AvailablePool::from_pallet_pair(AvailableAmm::Dex, DOTBTCPair::get().into()),
 			];
 			assert_eq!(
 				sorted_vec(DexAggregator::all_active_pairs()),
@@ -59,8 +59,8 @@ fn test_all_active_pairs() {
 			assert_eq!(
 				sorted_vec(DexAggregator::all_active_pairs()),
 				sorted_vec(vec![
-					AvailablePool(AvailableAmm::Dex, AUSDBTCPair::get().into()),
-					AvailablePool(AvailableAmm::Dex, DOTBTCPair::get().into())
+					AvailablePool::from_pallet_pair(AvailableAmm::Dex, AUSDBTCPair::get().into()),
+					AvailablePool::from_pallet_pair(AvailableAmm::Dex, DOTBTCPair::get().into())
 				])
 			);
 		});
@@ -73,29 +73,32 @@ fn test_get_swap_amounts() {
 		.initialize_added_liquidity_pools(ALICE)
 		.build()
 		.execute_with(|| {
-			let path1 = vec![AvailablePool(AvailableAmm::Dex, AUSDDOTPair::get().into())];
+			let path1 = vec![AvailablePool::from_pallet_pair(
+				AvailableAmm::Dex,
+				AUSDDOTPair::get().into(),
+			)];
 			let swap_ausd_dot: TradingDirection = AUSDDOTPair::get().into();
 			let path2 = vec![
-				AvailablePool(AvailableAmm::Dex, swap_ausd_dot.swap()),
-				AvailablePool(AvailableAmm::Dex, AUSDBTCPair::get().into()),
+				AvailablePool::from_pallet_pair(AvailableAmm::Dex, swap_ausd_dot.swap()),
+				AvailablePool::from_pallet_pair(AvailableAmm::Dex, AUSDBTCPair::get().into()),
 			];
 			let path2_slice: [CurrencyId; 3] = [DOT, AUSD, BTC];
 			let invalid_path = vec![
-				AvailablePool(AvailableAmm::Dex, AUSDBTCPair::get().into()),
-				AvailablePool(AvailableAmm::Dex, DOTBTCPair::get().into()),
+				AvailablePool::from_pallet_pair(AvailableAmm::Dex, AUSDBTCPair::get().into()),
+				AvailablePool::from_pallet_pair(AvailableAmm::Dex, DOTBTCPair::get().into()),
 			];
 
 			let amount: Balance = 10;
 
 			assert_eq!(
 				DexAggregator::get_target_amount(path1.clone(), amount),
-				DexModule::aggregator_target_amount(path1.clone()[0].1, amount)
+				DexModule::aggregator_target_amount(path1.clone()[0].pair, amount)
 			);
 			assert_ne!(DexAggregator::get_target_amount(path1.clone(), amount), Some(0));
 
 			assert_eq!(
 				DexAggregator::get_supply_amount(path1.clone(), amount),
-				DexModule::aggregator_supply_amount(path1.clone()[0].1, amount)
+				DexModule::aggregator_supply_amount(path1.clone()[0].pair, amount)
 			);
 
 			assert_eq!(

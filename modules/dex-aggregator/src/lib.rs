@@ -179,25 +179,25 @@ impl<T: Config> Pallet<T> {
 		T::Aggregator::all_active_pairs()
 	}
 
-	/// Returns supply amount given the trading path and the target amount. Returns None if path
-	/// cannot be swapped.
+	/// Returns supply amount needed given the trading path and the target amount. Returns None if
+	/// path cannot be swapped.
 	fn get_supply_amount(path: Vec<AvailablePool>, target_amount: Balance) -> Option<Balance> {
 		let mut cache_money = target_amount;
 		// CurrencyId of final target currency
 		let mut cache_pool: CurrencyId = match path.len() {
 			0 => return None,
-			n => path[n - 1].1.second(),
+			n => path[n - 1].second(),
 		};
 
 		// Iterates through the trading path starting at the final element and gets the supply amount for
 		// each AvailablePool this is then used as the target amount for the next iteration
 		for pool in path.iter().rev() {
-			if cache_pool == pool.1.clone().second() {
-				cache_money = match T::Aggregator::pallet_get_supply_amount(*pool, cache_money) {
+			if cache_pool == pool.second() {
+				cache_money = match T::Aggregator::aggregator_get_supply_amount(*pool, cache_money) {
 					Some(i) => i,
 					None => return None,
 				};
-				cache_pool = pool.1.clone().first();
+				cache_pool = pool.first();
 			} else {
 				return None;
 			}
@@ -205,8 +205,8 @@ impl<T: Config> Pallet<T> {
 		Some(cache_money)
 	}
 
-	/// Returns target amount given the trading path and the supply amount. Returns None if path
-	/// cannot be swapped.
+	/// Returns target amount returned given the trading path and the supply amount. Returns None if
+	/// path cannot be swapped.
 	fn get_target_amount(path: Vec<AvailablePool>, supply_amount: Balance) -> Option<Balance> {
 		let mut cache_money = supply_amount;
 		if path.is_empty() {
@@ -214,17 +214,17 @@ impl<T: Config> Pallet<T> {
 		}
 		// Can panic but above line checks if vec is empty
 		// CurrencyId of supply currency
-		let mut cache_pool: CurrencyId = path[0].1.first();
+		let mut cache_pool: CurrencyId = path[0].first();
 
 		// Iterates through the trading path and gets the target amount for each AvailablePool given a
 		// supply which then is used as the supply for the next iteration
 		for pool in path.iter() {
-			if cache_pool == pool.1.clone().first() {
-				cache_money = match T::Aggregator::pallet_get_target_amount(*pool, cache_money) {
+			if cache_pool == pool.first() {
+				cache_money = match T::Aggregator::aggregator_get_target_amount(*pool, cache_money) {
 					Some(i) => i,
 					None => return None,
 				};
-				cache_pool = pool.1.clone().second()
+				cache_pool = pool.second()
 			} else {
 				return None;
 			}
@@ -232,68 +232,104 @@ impl<T: Config> Pallet<T> {
 		Some(cache_money)
 	}
 
+	/// Returns ordered AvailablePool where pool.first() matches CurrencyId, if impossible returns
+	/// None
+	fn pool_first_match(id: CurrencyId, pool: &AvailablePool) -> Option<AvailablePool> {
+		if pool.first() == id {
+			return Some(*pool);
+		} else if pool.second() == id {
+			return Some(pool.swap());
+		}
+		None
+	}
+
+	/// Returns ordered AvailablePool where pool.second() matches CurrencyId, if impossible returns
+	/// None
+	fn pool_second_match(id: CurrencyId, pool: &AvailablePool) -> Option<AvailablePool> {
+		if pool.second() == id {
+			return Some(*pool);
+		} else if pool.first() == id {
+			return Some(pool.swap());
+		}
+		None
+	}
+
 	/// Returns tuple of optimal path with expected target amount. Returns None if trade is not
-	/// possible TODO: This is an very ugly placeholder algorithm to get a working model for initial
-	/// review, must build algorithm for length of n, as well as optimize and beautify. related: https://stackoverflow.com/questions/12293870/algorithm-to-get-all-possible-string-combinations-from-array-up-to-certain-lengt
-	/// https://stackoverflow.com/questions/361/generate-list-of-all-possible-permutations-of-a-string
+	/// possible
 	fn optimal_path_with_exact_supply(
 		pair: TradingDirection,
 		supply_amount: Balance,
 	) -> Option<(Vec<AvailablePool>, Balance)> {
-		let mut i: u32 = 0;
+		let mut i: usize = 0;
 		let all_pools = Self::all_active_pairs();
 		let mut optimal_path: Vec<AvailablePool> = Vec::new();
 		let mut optimal_balance: Balance = 0;
+		let mut cached_pools: Vec<AvailablePool> = Vec::new();
+		let mut cached_paths: Vec<Vec<AvailablePool>> = Vec::new();
 
-		while i < T::AggregatorTradingPathLimit::get() {
+		// AggregatorTradingPathLimit is defined in runtime should be reasonable value
+		while i < T::AggregatorTradingPathLimit::get().saturated_into() {
 			if i == 0 {
-				for pool in all_pools.clone() {
-					if pair == pool.1 {
-						if let Some(new_balance) = Self::get_target_amount(vec![pool], supply_amount) {
-							if new_balance > optimal_balance {
-								optimal_balance = new_balance;
-								optimal_path = vec![pool];
-							}
-						}
-					} else if pair == pool.1.swap() {
-						if let Some(new_balance) = Self::get_target_amount(vec![pool.swap()], supply_amount) {
-							if new_balance > optimal_balance {
-								optimal_balance = new_balance;
-								optimal_path = vec![pool.swap()];
+				for pool in &all_pools {
+					if let Some(matched_pool) = Self::pool_first_match(pair.first(), pool) {
+						cached_pools.push(matched_pool);
+						if matched_pool.second() == pair.second() {
+							if let Some(new_balance) =
+								T::Aggregator::aggregator_get_target_amount(matched_pool, supply_amount)
+							{
+								if new_balance > optimal_balance {
+									optimal_balance = new_balance;
+									optimal_path = vec![matched_pool];
+								}
 							}
 						}
 					}
 				}
 			} else if i == 1 {
-				let mut possible_paths = Vec::new();
-				for pool in all_pools.clone() {
-					if pair.first() == pool.1.first() {
-						possible_paths.push(pool);
-					} else if pair.first() == pool.1.second() {
-						possible_paths.push(pool.swap())
-					}
-					for pool1 in possible_paths.clone() {
-						for pool2 in all_pools.clone() {
-							if pair.second() == pool2.1.second() && pool1.1.second() == pool2.1.first() {
-								if let Some(new_balance) = Self::get_target_amount(vec![pool1, pool2], supply_amount) {
-									if new_balance > optimal_balance {
-										optimal_balance = new_balance;
-										optimal_path = vec![pool1, pool2];
-									}
-								}
-							} else if pair.second() == pool2.1.first() && pool1.1.second() == pool2.1.second() {
-								if let Some(new_balance) =
-									Self::get_target_amount(vec![pool1, pool2.swap()], supply_amount)
+				for cache_pool in cached_pools.iter() {
+					for pool in &all_pools {
+						if let Some(matched_pool) = Self::pool_second_match(pair.second(), pool) {
+							cached_paths.push(vec![*cache_pool, matched_pool]);
+							if matched_pool.first() == cache_pool.second() {
+								let matched_path = vec![*cache_pool, matched_pool];
+								if let Some(new_balance) = Self::get_target_amount(matched_path.clone(), supply_amount)
 								{
 									if new_balance > optimal_balance {
 										optimal_balance = new_balance;
-										optimal_path = vec![pool1, pool2.swap()];
+										optimal_path = matched_path;
 									}
 								}
 							}
 						}
 					}
 				}
+			} else if i >= 2 {
+				let mut new_cached_paths: Vec<Vec<AvailablePool>> = Vec::new();
+				for path in &cached_paths {
+					let path_len = path.len();
+					// defensively checks path len to ensure getting Vec elements will not panic
+					// should always be true
+					if path_len == i {
+						let first_token = path[path_len - 2].second();
+						let second_token = path[path_len - 1].first();
+						for pool in &all_pools {
+							if let Some(matched_pool) = Self::pool_first_match(first_token, pool) {
+								let mut new_path = path.clone();
+								new_path.insert(i - 1, matched_pool);
+								new_cached_paths.push(new_path.clone());
+								if second_token == matched_pool.second() {
+									if let Some(new_balance) = Self::get_target_amount(path.clone(), supply_amount) {
+										if new_balance > optimal_balance {
+											optimal_balance = new_balance;
+											optimal_path = new_path;
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+				cached_paths = new_cached_paths;
 			}
 			i += 1;
 		}
@@ -306,67 +342,81 @@ impl<T: Config> Pallet<T> {
 	}
 
 	/// Returns tuple of optimal path with expected supply amount. Returns None if trade is not
-	/// possible. TODO: see above to do in optimal_path_with_exact_supply
+	/// possible.
 	fn optimal_path_with_exact_target(
 		pair: TradingDirection,
 		target_amount: Balance,
 	) -> Option<(Vec<AvailablePool>, Balance)> {
-		let mut i: u32 = 0;
+		let mut i: usize = 0;
 		let all_pools = Self::all_active_pairs();
 		let mut optimal_path: Vec<AvailablePool> = Vec::new();
 		let mut optimal_balance: Balance = u128::MAX;
+		let mut cached_pools: Vec<AvailablePool> = Vec::new();
+		let mut cached_paths: Vec<Vec<AvailablePool>> = Vec::new();
 
-		while i < T::AggregatorTradingPathLimit::get() {
+		// AggregatorTradingPathLimit is defined in runtime should be reasonable value
+		while i < T::AggregatorTradingPathLimit::get().saturated_into() {
 			if i == 0 {
-				for pool in all_pools.clone() {
-					if pair == pool.1 {
-						if let Some(new_balance) = Self::get_supply_amount(vec![pool], target_amount) {
-							if new_balance < optimal_balance {
-								optimal_balance = new_balance;
-								optimal_path = vec![pool];
-							}
-						}
-					}
-
-					if pair == pool.1.swap() {
-						if let Some(new_balance) = Self::get_supply_amount(vec![pool.swap()], target_amount) {
-							if new_balance < optimal_balance {
-								optimal_balance = new_balance;
-								optimal_path = vec![pool.swap()];
+				for pool in &all_pools {
+					if let Some(matched_pool) = Self::pool_first_match(pair.first(), pool) {
+						cached_pools.push(matched_pool);
+						if matched_pool.second() == pair.second() {
+							if let Some(new_balance) =
+								T::Aggregator::aggregator_get_supply_amount(matched_pool, target_amount)
+							{
+								if new_balance < optimal_balance {
+									optimal_balance = new_balance;
+									optimal_path = vec![matched_pool];
+								}
 							}
 						}
 					}
 				}
 			} else if i == 1 {
-				let mut possible_paths = Vec::new();
-				for pool in all_pools.clone() {
-					if pair.first() == pool.1.first() {
-						possible_paths.push(pool);
-					} else if pair.first() == pool.1.second() {
-						possible_paths.push(pool.swap())
-					}
-					for pool1 in possible_paths.clone() {
-						for pool2 in all_pools.clone() {
-							if pair.second() == pool2.1.second() && pool1.1.second() == pool2.1.first() {
-								if let Some(new_balance) = Self::get_supply_amount(vec![pool1, pool2], target_amount) {
-									if new_balance < optimal_balance {
-										optimal_balance = new_balance;
-										optimal_path = vec![pool1, pool2];
-									}
-								}
-							} else if pair.second() == pool2.1.first() && pool1.1.second() == pool2.1.second() {
-								if let Some(new_balance) =
-									Self::get_supply_amount(vec![pool1, pool2.swap()], target_amount)
+				for cache_pool in cached_pools.iter() {
+					for pool in &all_pools {
+						if let Some(matched_pool) = Self::pool_second_match(pair.second(), pool) {
+							cached_paths.push(vec![*cache_pool, matched_pool]);
+							if matched_pool.first() == cache_pool.second() {
+								let matched_path = vec![*cache_pool, matched_pool];
+								if let Some(new_balance) = Self::get_supply_amount(matched_path.clone(), target_amount)
 								{
 									if new_balance < optimal_balance {
 										optimal_balance = new_balance;
-										optimal_path = vec![pool1, pool2.swap()];
+										optimal_path = matched_path;
 									}
 								}
 							}
 						}
 					}
 				}
+			} else if i >= 2 {
+				let mut new_cached_paths: Vec<Vec<AvailablePool>> = Vec::new();
+				for path in &cached_paths {
+					let path_len = path.len();
+					// defensively checks path len to ensure getting Vec elements will not panic
+					// should always be true
+					if path_len == i {
+						let first_token = path[path_len - 2].second();
+						let second_token = path[path_len - 1].first();
+						for pool in &all_pools {
+							if let Some(matched_pool) = Self::pool_first_match(first_token, pool) {
+								let mut new_path = path.clone();
+								new_path.insert(i - 1, matched_pool);
+								new_cached_paths.push(new_path.clone());
+								if second_token == matched_pool.second() {
+									if let Some(new_balance) = Self::get_supply_amount(path.clone(), target_amount) {
+										if new_balance < optimal_balance {
+											optimal_balance = new_balance;
+											optimal_path = new_path;
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+				cached_paths = new_cached_paths;
 			}
 			i += 1;
 		}

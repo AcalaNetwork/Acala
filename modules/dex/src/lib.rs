@@ -1321,7 +1321,7 @@ impl<T: Config> AggregatorManager<T::AccountId, TradingDirection, Balance> for P
 		let mut active_pairs = Vec::new();
 		for (key, value) in TradingPairStatuses::<T>::iter() {
 			if let TradingPairStatus::Enabled = value {
-				active_pairs.push(AvailablePool(AvailableAmm::Dex, key.into()));
+				active_pairs.push(AvailablePool::from_pallet_pair(AvailableAmm::Dex, key.into()));
 			}
 		}
 		active_pairs
@@ -1347,7 +1347,7 @@ impl<T: Config> AggregatorManager<T::AccountId, TradingDirection, Balance> for P
 		supply_amount: Balance,
 		min_target_amount: Balance,
 	) -> sp_std::result::Result<Balance, DispatchError> {
-		let path: [CurrencyId; 2] = [pool.1.first(), pool.1.second()];
+		let path: [CurrencyId; 2] = [pool.pair.first(), pool.pair.second()];
 		Self::do_swap_with_exact_supply(who, &path, supply_amount, min_target_amount)
 	}
 
@@ -1357,7 +1357,7 @@ impl<T: Config> AggregatorManager<T::AccountId, TradingDirection, Balance> for P
 		target_amount: Balance,
 		max_supply_amount: Balance,
 	) -> sp_std::result::Result<Balance, DispatchError> {
-		let path: [CurrencyId; 2] = [pool.1.first(), pool.1.second()];
+		let path: [CurrencyId; 2] = [pool.pair.first(), pool.pair.second()];
 		Self::do_swap_with_exact_target(who, &path, target_amount, max_supply_amount)
 	}
 }

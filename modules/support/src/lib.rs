@@ -112,11 +112,29 @@ pub enum AvailableAmm {
 /// Tuple Struct with first entry representing the module name and second entry available trading
 /// pair
 #[derive(Clone, Copy, Encode, Decode, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord)]
-pub struct AvailablePool(pub AvailableAmm, pub TradingDirection);
+pub struct AvailablePool {
+	pub pallet: AvailableAmm,
+	pub pair: TradingDirection,
+}
 
 impl AvailablePool {
+	pub fn from_pallet_pair(pallet: AvailableAmm, pair: TradingDirection) -> Self {
+		Self { pallet, pair }
+	}
+
 	pub fn swap(&self) -> Self {
-		Self(self.0, self.1.swap())
+		Self {
+			pallet: self.pallet,
+			pair: self.pair.swap(),
+		}
+	}
+
+	pub fn first(&self) -> CurrencyId {
+		self.pair.first()
+	}
+
+	pub fn second(&self) -> CurrencyId {
+		self.pair.second()
 	}
 }
 
@@ -173,11 +191,11 @@ pub trait AggregatorSuper<AccountId, TradingPair, Balance> {
 
 	/// Retrieves supply required for a given pool and a target amount. Returns None if swap is not
 	/// possible
-	fn pallet_get_supply_amount(pool: AvailablePool, target_amount: Balance) -> Option<Balance>;
+	fn aggregator_get_supply_amount(pool: AvailablePool, target_amount: Balance) -> Option<Balance>;
 
 	/// Retrieves amount of target asset, given a pool and a supply amount Returns None if swap is
 	/// not possible
-	fn pallet_get_target_amount(pool: AvailablePool, supply_amount: Balance) -> Option<Balance>;
+	fn aggregator_get_target_amount(pool: AvailablePool, supply_amount: Balance) -> Option<Balance>;
 
 	/// Attempts to swap trading pair with a given supply amount
 	fn aggregator_swap_with_exact_supply(
