@@ -39,11 +39,13 @@ pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
 pub const BTC: CurrencyId = CurrencyId::Token(TokenSymbol::RENBTC);
 pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
 pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
+pub const CASH: CurrencyId = CurrencyId::Token(TokenSymbol::CASH);
 
 parameter_types! {
 	pub static AUSDBTCPair: TradingPair = TradingPair::from_currency_ids(AUSD, BTC).unwrap();
 	pub static AUSDDOTPair: TradingPair = TradingPair::from_currency_ids(AUSD, DOT).unwrap();
 	pub static DOTBTCPair: TradingPair = TradingPair::from_currency_ids(DOT, BTC).unwrap();
+	pub static DOTCASHPair: TradingPair = TradingPair::from_currency_ids(DOT, CASH).unwrap();
 }
 
 mod dex_aggregator {

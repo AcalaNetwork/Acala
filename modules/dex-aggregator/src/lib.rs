@@ -318,7 +318,8 @@ impl<T: Config> Pallet<T> {
 								new_path.insert(i - 1, matched_pool);
 								new_cached_paths.push(new_path.clone());
 								if second_token == matched_pool.second() {
-									if let Some(new_balance) = Self::get_target_amount(path.clone(), supply_amount) {
+									if let Some(new_balance) = Self::get_target_amount(new_path.clone(), supply_amount)
+									{
 										if new_balance > optimal_balance {
 											optimal_balance = new_balance;
 											optimal_path = new_path;
@@ -405,7 +406,8 @@ impl<T: Config> Pallet<T> {
 								new_path.insert(i - 1, matched_pool);
 								new_cached_paths.push(new_path.clone());
 								if second_token == matched_pool.second() {
-									if let Some(new_balance) = Self::get_supply_amount(path.clone(), target_amount) {
+									if let Some(new_balance) = Self::get_supply_amount(new_path.clone(), target_amount)
+									{
 										if new_balance < optimal_balance {
 											optimal_balance = new_balance;
 											optimal_path = new_path;
