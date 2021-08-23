@@ -48,6 +48,7 @@ use sp_std::marker::PhantomData;
 pub trait WeightInfo {
 	fn map_feed_id() -> Weight;
 	fn unmap_feed_id() -> Weight;
+	fn overwrite_chainlink_feed_admin() -> Weight;
 }
 
 /// Weights for ecosystem_chainlink_adaptor using the Acala node and recommended hardware.
@@ -63,6 +64,11 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
             .saturating_add(T::DbWeight::get().reads(1 as Weight))
             .saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
+	fn overwrite_chainlink_feed_admin() -> Weight {
+		(35_000_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(1 as Weight))
+            .saturating_add(T::DbWeight::get().writes(1 as Weight))
+	}
 }
 
 // For backwards compatibility and tests
@@ -73,6 +79,11 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
 	fn unmap_feed_id() -> Weight {
+		(35_000_000 as Weight)
+            .saturating_add(RocksDbWeight::get().reads(1 as Weight))
+            .saturating_add(RocksDbWeight::get().writes(1 as Weight))
+	}
+	fn overwrite_chainlink_feed_admin() -> Weight {
 		(35_000_000 as Weight)
             .saturating_add(RocksDbWeight::get().reads(1 as Weight))
             .saturating_add(RocksDbWeight::get().writes(1 as Weight))

@@ -121,11 +121,7 @@ pub mod module {
 		/// - `currency_id`: currency_id.
 		#[pallet::weight(<T as Config>::WeightInfo::map_feed_id())]
 		#[transactional]
-		pub fn map_feed_id(
-			origin: OriginFor<T>,
-			feed_id: FeedIdOf<T>,
-			currency_id: CurrencyId,
-		) -> DispatchResultWithPostInfo {
+		pub fn map_feed_id(origin: OriginFor<T>, feed_id: FeedIdOf<T>, currency_id: CurrencyId) -> DispatchResult {
 			T::RegistorOrigin::ensure_origin(origin)?;
 			ensure!(
 				!FeedIdMapping::<T>::contains_key(currency_id) && !CurrencyIdMapping::<T>::contains_key(feed_id),
@@ -139,7 +135,7 @@ pub mod module {
 			FeedIdMapping::<T>::insert(currency_id, feed_id);
 			CurrencyIdMapping::<T>::insert(feed_id, currency_id);
 			Self::deposit_event(Event::MapFeedId(feed_id, currency_id));
-			Ok(().into())
+			Ok(())
 		}
 
 		/// Unmap feed_id with currency_id.
@@ -149,14 +145,27 @@ pub mod module {
 		/// - `currency_id`: currency_id.
 		#[pallet::weight(<T as Config>::WeightInfo::unmap_feed_id())]
 		#[transactional]
-		pub fn unmap_feed_id(origin: OriginFor<T>, currency_id: CurrencyId) -> DispatchResultWithPostInfo {
+		pub fn unmap_feed_id(origin: OriginFor<T>, currency_id: CurrencyId) -> DispatchResult {
 			T::RegistorOrigin::ensure_origin(origin)?;
 			if let Some(feed_id) = FeedIdMapping::<T>::take(currency_id) {
 				CurrencyIdMapping::<T>::remove(feed_id);
 				LastUpdatedTimestamp::<T>::remove(feed_id);
 				Self::deposit_event(Event::UnmapFeedId(feed_id, currency_id));
 			}
-			Ok(().into())
+			Ok(())
+		}
+
+		/// Overwrite the admin of chainlink feed
+		///
+		/// The dispatch origin of this call must be `RegistorOrigin`.
+		///
+		/// - `new_admin`: new admin account id.
+		#[pallet::weight(<T as Config>::WeightInfo::overwrite_chainlink_feed_admin())]
+		#[transactional]
+		pub fn overwrite_chainlink_feed_admin(origin: OriginFor<T>, new_admin: T::AccountId) -> DispatchResult {
+			T::RegistorOrigin::ensure_origin(origin)?;
+			<pallet_chainlink_feed::PalletAdmin<T>>::put(new_admin);
+			Ok(())
 		}
 	}
 }

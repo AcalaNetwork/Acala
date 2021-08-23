@@ -16,11 +16,10 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{dollar, AccountId, ChainlinkAdaptor, ChainlinkFeed, FeedId, GetNativeCurrencyId, Runtime};
+use crate::{dollar, AccountId, ChainlinkAdaptor, ChainlinkFeed, GetNativeCurrencyId, Runtime};
 
 use super::utils::set_balance;
-use frame_benchmarking::{account, whitelisted_caller};
-use frame_support::{traits::EnsureOrigin, weights::DispatchClass};
+use frame_benchmarking::account;
 use frame_system::RawOrigin;
 use orml_benchmarking::runtime_benchmarks;
 use sp_runtime::traits::Bounded;
@@ -35,6 +34,14 @@ runtime_benchmarks! {
 		let who: AccountId = account("who", 0, SEED);
 		let currency_id = GetNativeCurrencyId::get();
 		set_balance(currency_id, &who, dollar(currency_id) * 100);
+		ChainlinkAdaptor::overwrite_chainlink_feed_admin(
+			RawOrigin::Root.into(),
+			who.clone()
+		)?;
+		ChainlinkFeed::set_feed_creator(
+			RawOrigin::Signed(who.clone()).into(),
+			who.clone()
+		)?;
 		ChainlinkFeed::create_feed(
 			RawOrigin::Signed(who.clone()).into(),
 			20,
@@ -48,12 +55,20 @@ runtime_benchmarks! {
 			None,
 			None,
 		)?;
-	}: _(RawOrigin::Signed(whitelisted_caller()), 0, currency_id)
+	}: _(RawOrigin::Root, 0, currency_id)
 
 	unmap_feed_id {
 		let who: AccountId = account("who", 0, SEED);
 		let currency_id = GetNativeCurrencyId::get();
 		set_balance(currency_id, &who, dollar(currency_id) * 100);
+		ChainlinkAdaptor::overwrite_chainlink_feed_admin(
+			RawOrigin::Root.into(),
+			who.clone()
+		)?;
+		ChainlinkFeed::set_feed_creator(
+			RawOrigin::Signed(who.clone()).into(),
+			who.clone()
+		)?;
 		ChainlinkFeed::create_feed(
 			RawOrigin::Signed(who.clone()).into(),
 			20,
@@ -68,11 +83,15 @@ runtime_benchmarks! {
 			None,
 		)?;
 		ChainlinkAdaptor::map_feed_id(
-			RawOrigin::Signed(whitelisted_caller()).into(),
+			RawOrigin::Root.into(),
 			0,
 			currency_id
 		)?;
-	}: _(RawOrigin::Signed(whitelisted_caller()), currency_id)
+	}: _(RawOrigin::Root, currency_id)
+
+	overwrite_chainlink_feed_admin {
+		let who: AccountId = account("who", 0, SEED);
+	}: _(RawOrigin::Root, who)
 }
 
 #[cfg(test)]

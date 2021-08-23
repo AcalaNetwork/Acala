@@ -26,6 +26,19 @@ use mock::{Event, *};
 use sp_runtime::traits::{BadOrigin, Bounded};
 
 #[test]
+fn overwrite_chainlink_feed_admin_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_eq!(ChainlinkFeed::pallet_admin(), 0);
+		assert_eq!(<pallet_chainlink_feed::PalletAdmin<Runtime>>::exists(), false);
+		assert_ok!(ChainlinkAdaptor::overwrite_chainlink_feed_admin(
+			Origin::signed(RegistorOrigin::get()),
+			ALICE
+		));
+		assert_eq!(ChainlinkFeed::pallet_admin(), ALICE);
+	});
+}
+
+#[test]
 fn map_feed_id_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
