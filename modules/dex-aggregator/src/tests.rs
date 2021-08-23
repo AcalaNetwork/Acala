@@ -184,8 +184,7 @@ fn test_swap_supply_extrinisc() {
 			System::assert_last_event(Event::DexModule(dex::Event::Swap(
 				BOB,
 				vec![AUSD, DOT],
-				100_000,
-				19_799,
+				vec![100_000, 19_799],
 			)));
 			assert_ok!(DexAggregator::swap_with_exact_supply(
 				bob_signed.clone(),
@@ -208,8 +207,7 @@ fn test_swap_supply_extrinisc() {
 			System::assert_last_event(Event::DexModule(dex::Event::Swap(
 				BOB,
 				vec![DOT, AUSD],
-				100_000,
-				494_999,
+				vec![100_000, 494_999],
 			)));
 			assert_ok!(DexAggregator::swap_with_exact_supply(
 				bob_signed.clone(),
@@ -284,8 +282,7 @@ fn test_swap_target_extrinisc() {
 			System::assert_last_event(Event::DexModule(dex::Event::Swap(
 				BOB,
 				vec![AUSD, DOT],
-				101_011,
-				20_000,
+				vec![101_011, 20_000],
 			)));
 			assert_ok!(DexAggregator::swap_with_exact_target(
 				bob_signed.clone(),
