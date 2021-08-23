@@ -24,11 +24,11 @@ use super::*;
 use frame_support::{ord_parameter_types, parameter_types};
 use frame_system::EnsureSignedBy;
 use module_support::mocks::MockAddressMapping;
-use orml_traits::{parameter_type_with_key, XcmExecutionResult, XcmTransfer};
+use orml_traits::{parameter_type_with_key, XcmTransfer};
 use primitives::{Amount, TokenSymbol};
 use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, AccountId32};
-use xcm::opaque::v0::{Junction, MultiAsset, MultiLocation, NetworkId, Outcome};
+use xcm::opaque::v0::{Junction, MultiAsset, MultiLocation, NetworkId};
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
@@ -75,10 +75,10 @@ impl XcmTransfer<AccountId, Balance, CurrencyId> for MockXcm {
 		_amount: Balance,
 		_dest: MultiLocation,
 		_dest_weight: Weight,
-	) -> XcmExecutionResult {
+	) -> DispatchResult {
 		match who {
-			INVALID_CALLER => Ok(Outcome::Error(xcm::opaque::v0::Error::Undefined)),
-			_ => Ok(Outcome::Complete(0)),
+			INVALID_CALLER => Err(DispatchError::Other("invalid caller")),
+			_ => Ok(()),
 		}
 	}
 
@@ -88,8 +88,8 @@ impl XcmTransfer<AccountId, Balance, CurrencyId> for MockXcm {
 		_asset: MultiAsset,
 		_dest: MultiLocation,
 		_dest_weight: Weight,
-	) -> XcmExecutionResult {
-		Ok(Outcome::Complete(0))
+	) -> DispatchResult {
+		Ok(())
 	}
 }
 

@@ -43,6 +43,7 @@ pub const BOB: AccountId = 2;
 pub const CAROL: AccountId = 3;
 pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
 pub const BTC: CurrencyId = CurrencyId::Token(TokenSymbol::RENBTC);
+pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
 
 mod auction_manager {
 	pub use super::super::*;
@@ -152,7 +153,11 @@ parameter_types! {
 	pub const DEXPalletId: PalletId = PalletId(*b"aca/dexm");
 	pub const GetExchangeFee: (u32, u32) = (0, 100);
 	pub const TradingPathLimit: u32 = 3;
-	pub EnabledTradingPairs: Vec<TradingPair> = vec![TradingPair::from_currency_ids(AUSD, BTC).unwrap()];
+	pub EnabledTradingPairs: Vec<TradingPair> = vec![
+		TradingPair::from_currency_ids(AUSD, BTC).unwrap(),
+		TradingPair::from_currency_ids(DOT, BTC).unwrap(),
+		TradingPair::from_currency_ids(AUSD, DOT).unwrap()
+	];
 }
 
 impl module_dex::Config for Runtime {
@@ -187,6 +192,10 @@ parameter_types! {
 	pub const AuctionTimeToClose: u64 = 100;
 	pub const AuctionDurationSoftCap: u64 = 2000;
 	pub const UnsignedPriority: u64 = 1 << 20;
+	pub DefaultSwapParitalPathList: Vec<Vec<CurrencyId>> = vec![
+		vec![AUSD],
+		vec![DOT, AUSD],
+	];
 }
 
 impl Config for Runtime {
@@ -202,6 +211,7 @@ impl Config for Runtime {
 	type PriceSource = MockPriceSource;
 	type UnsignedPriority = UnsignedPriority;
 	type EmergencyShutdown = MockEmergencyShutdown;
+	type DefaultSwapParitalPathList = DefaultSwapParitalPathList;
 	type WeightInfo = ();
 }
 
@@ -247,6 +257,9 @@ impl Default for ExtBuilder {
 				(ALICE, BTC, 1000),
 				(BOB, BTC, 1000),
 				(CAROL, BTC, 1000),
+				(ALICE, DOT, 1000),
+				(BOB, DOT, 1000),
+				(CAROL, DOT, 1000),
 			],
 		}
 	}

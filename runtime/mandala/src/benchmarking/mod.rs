@@ -38,6 +38,7 @@ pub mod incentives;
 pub mod nominees_election;
 pub mod prices;
 pub mod session_manager;
+pub mod transaction_pause;
 pub mod transaction_payment;
 
 // orml benchmarking

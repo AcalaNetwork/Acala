@@ -1155,8 +1155,7 @@ fn do_swap_with_exact_supply_work() {
 			System::assert_last_event(Event::DexModule(crate::Event::Swap(
 				BOB,
 				vec![DOT, AUSD],
-				100_000_000_000_000,
-				248_743_718_592_964,
+				vec![100_000_000_000_000, 248_743_718_592_964],
 			)));
 			assert_eq!(
 				DexModule::get_liquidity(AUSD, DOT),
@@ -1185,8 +1184,7 @@ fn do_swap_with_exact_supply_work() {
 			System::assert_last_event(Event::DexModule(crate::Event::Swap(
 				BOB,
 				vec![DOT, AUSD, BTC],
-				200_000_000_000_000,
-				5_530_663_837,
+				vec![200_000_000_000_000, 124_996_843_514_053, 5_530_663_837],
 			)));
 			assert_eq!(
 				DexModule::get_liquidity(AUSD, DOT),
@@ -1280,8 +1278,7 @@ fn do_swap_with_exact_target_work() {
 			System::assert_last_event(Event::DexModule(crate::Event::Swap(
 				BOB,
 				vec![DOT, AUSD],
-				101_010_101_010_102,
-				250_000_000_000_000,
+				vec![101_010_101_010_102, 250_000_000_000_000],
 			)));
 			assert_eq!(
 				DexModule::get_liquidity(AUSD, DOT),
@@ -1310,8 +1307,7 @@ fn do_swap_with_exact_target_work() {
 			System::assert_last_event(Event::DexModule(crate::Event::Swap(
 				BOB,
 				vec![DOT, AUSD, BTC],
-				137_654_580_386_993,
-				5_000_000_000,
+				vec![137_654_580_386_993, 101_010_101_010_102, 5_000_000_000],
 			)));
 			assert_eq!(
 				DexModule::get_liquidity(AUSD, DOT),

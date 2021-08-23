@@ -335,6 +335,11 @@ impl Default for ProxyType {
 	}
 }
 
+#[repr(u16)]
+pub enum RelaychainSubAccountId {
+	HomaLite = 0,
+}
+
 #[cfg(test)]
 mod tests {
 	use super::*;

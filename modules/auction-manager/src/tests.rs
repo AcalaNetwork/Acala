@@ -187,6 +187,7 @@ fn collateral_auction_end_handler_without_bid() {
 			0,
 			false
 		));
+		assert_eq!(DEXModule::get_liquidity_pool(BTC, AUSD), (100, 1000));
 		assert_eq!(DEXModule::get_swap_target_amount(&[BTC, AUSD], 100).unwrap(), 500);
 
 		assert_ok!(AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 100, 200));
@@ -205,6 +206,7 @@ fn collateral_auction_end_handler_without_bid() {
 			0, BTC, 100, 500,
 		)));
 
+		assert_eq!(DEXModule::get_liquidity_pool(BTC, AUSD), (200, 500));
 		assert_eq!(CDPTreasuryModule::total_collaterals(BTC), 0);
 		assert_eq!(AuctionManagerModule::collateral_auctions(0), None);
 		assert_eq!(AuctionManagerModule::total_target_in_auction(), 0);
@@ -215,6 +217,50 @@ fn collateral_auction_end_handler_without_bid() {
 		assert_eq!(CDPTreasuryModule::surplus_pool(), 500);
 		let alice_ref_count_1 = System::consumers(&ALICE);
 		assert_eq!(alice_ref_count_1, alice_ref_count_0 - 1);
+	});
+}
+
+#[test]
+fn collateral_auction_end_handler_without_bid_and_swap_by_alternative_path() {
+	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
+		assert_ok!(CDPTreasuryModule::deposit_collateral(&CAROL, BTC, 100));
+		assert_ok!(DEXModule::add_liquidity(
+			Origin::signed(BOB),
+			BTC,
+			DOT,
+			100,
+			1000,
+			0,
+			false
+		));
+		assert_ok!(DEXModule::add_liquidity(
+			Origin::signed(CAROL),
+			DOT,
+			AUSD,
+			1000,
+			1000,
+			0,
+			false
+		));
+		assert_eq!(DEXModule::get_liquidity_pool(BTC, DOT), (100, 1000));
+		assert_eq!(DEXModule::get_liquidity_pool(DOT, AUSD), (1000, 1000));
+		assert_eq!(DEXModule::get_swap_target_amount(&[BTC, AUSD], 100), None);
+		assert_eq!(DEXModule::get_swap_target_amount(&[BTC, DOT, AUSD], 100), Some(333));
+
+		assert_ok!(AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 100, 200));
+		assert_eq!(Tokens::free_balance(BTC, &ALICE), 1000);
+		assert_eq!(Tokens::free_balance(AUSD, &ALICE), 1000);
+
+		AuctionManagerModule::on_auction_ended(0, None);
+		System::assert_last_event(Event::AuctionManagerModule(crate::Event::DEXTakeCollateralAuction(
+			0, BTC, 100, 333,
+		)));
+
+		assert_eq!(DEXModule::get_liquidity_pool(BTC, DOT), (200, 500));
+		assert_eq!(DEXModule::get_liquidity_pool(DOT, AUSD), (1500, 667));
+		assert_eq!(Tokens::free_balance(BTC, &ALICE), 1000);
+		assert_eq!(Tokens::free_balance(AUSD, &ALICE), 1133);
 	});
 }
 

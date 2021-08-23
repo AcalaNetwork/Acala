@@ -1021,7 +1021,7 @@ impl<T: Config> Pallet<T> {
 			let account_info = maybe_account_info.as_mut().ok_or(Error::<T>::ContractNotFound)?;
 			let contract_info = account_info
 				.contract_info
-				.as_ref()
+				.as_mut()
 				.ok_or(Error::<T>::ContractNotFound)?;
 
 			let source = if let Either::Right(signer) = root_or_signed {
@@ -1033,27 +1033,58 @@ impl<T: Config> Pallet<T> {
 				T::NetworkContractSource::get()
 			};
 
-			let code_size = code.len() as u32;
-			let code_hash = code_hash(&code.as_slice());
+			let old_code_info = Self::code_infos(&contract_info.code_hash).ok_or(Error::<T>::ContractNotFound)?;
+
+			let bounded_code: BoundedVec<u8, T::MaxCodeSize> =
+				code.try_into().map_err(|_| Error::<T>::ContractExceedsMaxCodeSize)?;
+			let code_hash = code_hash(&bounded_code.as_slice());
+			let code_size = bounded_code.len() as u32;
+			// The code_hash of the same contract is definitely different.
+			// The `contract_info.code_hash` hashed by on_contract_initialization which constructored.
+			// Still check it here.
 			if code_hash == contract_info.code_hash {
 				return Ok(());
 			}
 
-			ensure!(
-				code_size <= T::MaxCodeSize::get(),
-				Error::<T>::ContractExceedsMaxCodeSize
-			);
+			let storage_size_chainged: i32 =
+				code_size.saturating_add(T::NewContractExtraBytes::get()) as i32 - old_code_info.code_size as i32;
+			let mut handler = StorageMeterHandlerImpl::<T>::new(source);
+			if storage_size_chainged.is_positive() {
+				handler.reserve_storage(storage_size_chainged as u32)?;
+				handler.charge_storage(&contract, storage_size_chainged as u32, 0)?;
+			} else {
+				handler.charge_storage(&contract, 0, -storage_size_chainged as u32)?;
+			}
+			Self::update_contract_storage_size(&contract, storage_size_chainged);
 
-			Runner::<T>::create_at_address(
-				source,
-				code,
-				Default::default(),
-				contract,
-				2_100_000,
-				100_000,
-				T::config(),
-			)
-			.map(|_| ())
+			// try remove old codes
+			CodeInfos::<T>::mutate_exists(&contract_info.code_hash, |maybe_code_info| -> DispatchResult {
+				let code_info = maybe_code_info.as_mut().ok_or(Error::<T>::ContractNotFound)?;
+				code_info.ref_count = code_info.ref_count.saturating_sub(1);
+				if code_info.ref_count == 0 {
+					Codes::<T>::remove(&contract_info.code_hash);
+					*maybe_code_info = None;
+				}
+				Ok(())
+			})?;
+
+			CodeInfos::<T>::mutate_exists(&code_hash, |maybe_code_info| {
+				if let Some(code_info) = maybe_code_info.as_mut() {
+					code_info.ref_count = code_info.ref_count.saturating_add(1);
+				} else {
+					let new = CodeInfo {
+						code_size,
+						ref_count: 1,
+					};
+					*maybe_code_info = Some(new);
+
+					Codes::<T>::insert(&code_hash, bounded_code);
+				}
+			});
+			// update code_hash
+			contract_info.code_hash = code_hash;
+
+			Ok(())
 		})
 	}
 
