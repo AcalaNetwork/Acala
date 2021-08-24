@@ -29,7 +29,8 @@ use module_support::{
 use orml_authority::DelayedOrigin;
 use orml_traits::{Change, GetByKey, MultiCurrency};
 use orml_vesting::VestingSchedule;
-pub use primitives::{evm::EvmAddress, DexShare, TradingPair};
+#[allow(unused_imports)]
+use primitives::{currency::*, DexShare, TradingPair};
 use sp_core::H160;
 use sp_io::hashing::keccak_256;
 use sp_runtime::{
@@ -48,8 +49,6 @@ use xcm::{
 	},
 };
 
-use primitives::currency::*;
-
 #[allow(unused_imports)]
 use frame_support::{
 	assert_noop, assert_ok, parameter_types,
@@ -63,10 +62,11 @@ pub use mandala_runtime::{
 	create_x2_parachain_multilocation, get_all_module_accounts, AcalaOracle, AccountId, AuctionManager, Authority,
 	AuthoritysOriginId, Balance, Balances, BlockNumber, Call, CdpEngine, CdpTreasury, CreateClassDeposit,
 	CreateTokenDeposit, Currencies, CurrencyId, CurrencyIdConvert, DataDepositPerByte, Dex, EmergencyShutdown,
-	EnabledTradingPairs, Event, EvmAccounts, ExistentialDeposits, Get, GetNativeCurrencyId, Loans, MultiLocation,
-	NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, Origin, OriginCaller, ParachainInfo,
-	ParachainSystem, Perbill, Proxy, Runtime, Scheduler, Session, SessionManager, SevenDays, System, TokenSymbol,
-	Tokens, TreasuryAccount, TreasuryPalletId, Vesting, XTokens, XcmConfig, XcmExecutor, NFT,
+	EnabledTradingPairs, Event, EvmAccounts, ExistentialDeposits, Get, GetNativeCurrencyId, HomaLite, Loans,
+	MultiLocation, NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, Origin, OriginCaller, ParachainInfo,
+	ParachainSystem, Perbill, Proxy, RelaychainSovereignSubAccount, Runtime, Scheduler, Session, SessionManager,
+	SevenDays, System, TokenSymbol, Tokens, TreasuryAccount, TreasuryPalletId, Utility, Vesting, XcmConfig,
+	XcmExecutor, NFT,
 };
 
 #[cfg(feature = "with-karura-runtime")]
@@ -74,10 +74,10 @@ pub use karura_runtime::{
 	create_x2_parachain_multilocation, get_all_module_accounts, AcalaOracle, AccountId, AuctionManager, Authority,
 	AuthoritysOriginId, Balance, Balances, BlockNumber, Call, CdpEngine, CdpTreasury, CreateClassDeposit,
 	CreateTokenDeposit, Currencies, CurrencyId, CurrencyIdConvert, DataDepositPerByte, Dex, EmergencyShutdown, Event,
-	EvmAccounts, ExistentialDeposits, Get, GetNativeCurrencyId, KaruraFoundationAccounts, Loans, MultiLocation,
-	NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, Origin, OriginCaller, ParachainInfo,
-	ParachainSystem, Perbill, Proxy, Runtime, Scheduler, Session, SessionManager, SevenDays, System, TokenSymbol,
-	Tokens, TreasuryPalletId, Vesting, XTokens, XcmConfig, XcmExecutor, NFT,
+	EvmAccounts, ExistentialDeposits, Get, GetNativeCurrencyId, HomaLite, KaruraFoundationAccounts, Loans,
+	MultiLocation, NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, Origin, OriginCaller, ParachainInfo,
+	ParachainSystem, Perbill, Proxy, RelaychainSovereignSubAccount, Runtime, Scheduler, Session, SessionManager,
+	SevenDays, System, TokenSymbol, Tokens, TreasuryPalletId, Utility, Vesting, XTokens, XcmConfig, XcmExecutor, NFT,
 };
 
 #[cfg(feature = "with-karura-runtime")]
@@ -1571,6 +1571,11 @@ fn parachain_subaccounts_are_unique() {
 		assert_eq!(
 			parachain,
 			hex_literal::hex!["70617261d0070000000000000000000000000000000000000000000000000000"].into()
+		);
+
+		assert_eq!(
+			RelaychainSovereignSubAccount::get(),
+			create_x2_parachain_multilocation(0)
 		);
 
 		assert_eq!(
