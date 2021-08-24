@@ -1272,7 +1272,7 @@ pub fn create_x2_parachain_multilocation(index: u16) -> MultiLocation {
 parameter_types! {
 	pub MinimumMintThreshold: Balance = 10 * cent(DOT);
 	pub RelaychainSovereignSubAccount: MultiLocation = create_x2_parachain_multilocation(RelaychainSubAccountId::HomaLite as u16);
-	pub MaxRewardPerEra: Permill = Permill::from_rational(500u32, 1_000_000u32); // 1.2 * (1/365) = 1.0004996359
+	pub MaxRewardPerEra: Permill = Permill::from_rational(500u32, 1_000_000u32); // 1.2 ^ (1/365) = 1.0004996359
 	pub MintFee: Balance = 20 * millicent(DOT); // 2x XCM fee on Kusama
 }
 impl module_homa_lite::Config for Runtime {

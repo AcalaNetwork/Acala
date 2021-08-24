@@ -26,6 +26,9 @@ use crate::kusama_test_net::*;
 use frame_support::{assert_noop, assert_ok};
 use orml_traits::MultiCurrency;
 
+#[cfg(feature = "with-karura-runtime")]
+pub use karura_imports::*;
+#[cfg(feature = "with-karura-runtime")]
 mod karura_imports {
 	pub use sp_runtime::MultiAddress;
 	pub use xcm::v0::{
@@ -35,9 +38,6 @@ mod karura_imports {
 	};
 	pub use xcm_emulator::TestExt;
 }
-
-#[cfg(feature = "with-karura-runtime")]
-pub use karura_imports::*;
 
 #[cfg(any(feature = "with-mandala-runtime", feature = "with-karura-runtime"))]
 #[test]
