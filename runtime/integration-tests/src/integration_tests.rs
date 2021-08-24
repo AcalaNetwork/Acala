@@ -19,7 +19,11 @@
 use acala_service::chain_spec::evm_genesis;
 use codec::Encode;
 use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
-use frame_support::weights::constants::*;
+use frame_support::{
+	assert_noop, assert_ok,
+	traits::{schedule::DispatchTime, Currency, GenesisBuild, OnFinalize, OnInitialize, OriginTrait, ValidatorSet},
+	weights::constants::*,
+};
 use frame_system::RawOrigin;
 
 use module_cdp_engine::LiquidationStrategy;
@@ -29,7 +33,7 @@ use module_support::{
 use orml_authority::DelayedOrigin;
 use orml_traits::{Change, GetByKey, MultiCurrency};
 use orml_vesting::VestingSchedule;
-pub use primitives::{evm::EvmAddress, DexShare, TradingPair};
+use primitives::currency::*;
 use sp_core::H160;
 use sp_io::hashing::keccak_256;
 use sp_runtime::{
@@ -48,71 +52,69 @@ use xcm::{
 	},
 };
 
-use primitives::currency::*;
-
-#[allow(unused_imports)]
-use frame_support::{
-	assert_noop, assert_ok, parameter_types,
-	traits::{schedule::DispatchTime, Currency, GenesisBuild, OnFinalize, OnInitialize, OriginTrait, ValidatorSet},
-};
-#[allow(unused_imports)]
-pub use runtime_common::{dollar, ACA, AUSD, DOT, KSM, LDOT, LKSM, RENBTC};
-
 #[cfg(feature = "with-mandala-runtime")]
-pub use mandala_runtime::{
-	create_x2_parachain_multilocation, get_all_module_accounts, AcalaOracle, AccountId, AuctionManager, Authority,
-	AuthoritysOriginId, Balance, Balances, BlockNumber, Call, CdpEngine, CdpTreasury, CreateClassDeposit,
-	CreateTokenDeposit, Currencies, CurrencyId, CurrencyIdConvert, DataDepositPerByte, Dex, EmergencyShutdown,
-	EnabledTradingPairs, Event, EvmAccounts, ExistentialDeposits, Get, GetNativeCurrencyId, Loans, MultiLocation,
-	NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, Origin, OriginCaller, ParachainInfo,
-	ParachainSystem, Perbill, Proxy, Runtime, Scheduler, Session, SessionManager, SevenDays, System, TokenSymbol,
-	Tokens, TreasuryAccount, TreasuryPalletId, Vesting, XTokens, XcmConfig, XcmExecutor, NFT,
-};
-
-#[cfg(feature = "with-karura-runtime")]
-pub use karura_runtime::{
-	create_x2_parachain_multilocation, get_all_module_accounts, AcalaOracle, AccountId, AuctionManager, Authority,
-	AuthoritysOriginId, Balance, Balances, BlockNumber, Call, CdpEngine, CdpTreasury, CreateClassDeposit,
-	CreateTokenDeposit, Currencies, CurrencyId, CurrencyIdConvert, DataDepositPerByte, Dex, EmergencyShutdown, Event,
-	EvmAccounts, ExistentialDeposits, Get, GetNativeCurrencyId, KaruraFoundationAccounts, Loans, MultiLocation,
-	NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, Origin, OriginCaller, ParachainInfo,
-	ParachainSystem, Perbill, Proxy, Runtime, Scheduler, Session, SessionManager, SevenDays, System, TokenSymbol,
-	Tokens, TreasuryPalletId, Vesting, XTokens, XcmConfig, XcmExecutor, NFT,
-};
-
-#[cfg(feature = "with-karura-runtime")]
-parameter_types! {
-	pub EnabledTradingPairs: Vec<TradingPair> = vec![
-		TradingPair::from_currency_ids(USD_CURRENCY, NATIVE_CURRENCY).unwrap(),
-		TradingPair::from_currency_ids(USD_CURRENCY, RELAY_CHAIN_CURRENCY).unwrap(),
-		TradingPair::from_currency_ids(USD_CURRENCY, LIQUID_CURRENCY).unwrap(),
-	];
-	pub TreasuryAccount: AccountId = TreasuryPalletId::get().into_account();
-}
-
+pub use mandala_imports::*;
 #[cfg(feature = "with-mandala-runtime")]
-mod runtime_types {
-	use crate::integration_tests::{CurrencyId, DexShare, TokenSymbol, ACA, AUSD, DOT, LDOT};
+mod mandala_imports {
+	pub use mandala_runtime::{
+		create_x2_parachain_multilocation, get_all_module_accounts, AcalaOracle, AccountId, AuctionManager, Authority,
+		AuthoritysOriginId, Balance, Balances, BlockNumber, Call, CdpEngine, CdpTreasury, CreateClassDeposit,
+		CreateTokenDeposit, Currencies, CurrencyId, CurrencyIdConvert, DataDepositPerByte, Dex, EmergencyShutdown,
+		EnabledTradingPairs, Event, EvmAccounts, ExistentialDeposits, Get, GetNativeCurrencyId, HomaLite, Loans,
+		MultiLocation, NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, Origin, OriginCaller,
+		ParachainInfo, ParachainSystem, Perbill, Proxy, RelaychainSovereignSubAccount, Runtime, Scheduler, Session,
+		SessionManager, SevenDays, System, TokenSymbol, Tokens, TreasuryAccount, TreasuryPalletId, Utility, Vesting,
+		XcmConfig, XcmExecutor, NFT,
+	};
+
+	pub use runtime_common::{dollar, ACA, AUSD, DOT, LDOT};
 	pub const NATIVE_CURRENCY: CurrencyId = ACA;
 	pub const LIQUID_CURRENCY: CurrencyId = LDOT;
 	pub const RELAY_CHAIN_CURRENCY: CurrencyId = DOT;
 	pub const USD_CURRENCY: CurrencyId = AUSD;
-	pub const LPTOKEN: CurrencyId =
-		CurrencyId::DexShare(DexShare::Token(TokenSymbol::AUSD), DexShare::Token(TokenSymbol::DOT));
+	pub const LPTOKEN: CurrencyId = CurrencyId::DexShare(
+		primitives::DexShare::Token(TokenSymbol::AUSD),
+		primitives::DexShare::Token(TokenSymbol::DOT),
+	);
 }
 
 #[cfg(feature = "with-karura-runtime")]
-mod runtime_types {
-	use crate::integration_tests::{CurrencyId, DexShare, TokenSymbol, KAR, KSM, KUSD, LKSM};
+pub use karura_imports::*;
+#[cfg(feature = "with-karura-runtime")]
+mod karura_imports {
+	pub use frame_support::parameter_types;
+	pub use karura_runtime::{
+		create_x2_parachain_multilocation, get_all_module_accounts, AcalaOracle, AccountId, AuctionManager, Authority,
+		AuthoritysOriginId, Balance, Balances, BlockNumber, Call, CdpEngine, CdpTreasury, CreateClassDeposit,
+		CreateTokenDeposit, Currencies, CurrencyId, CurrencyIdConvert, DataDepositPerByte, Dex, EmergencyShutdown,
+		Event, EvmAccounts, ExistentialDeposits, Get, GetNativeCurrencyId, HomaLite, KaruraFoundationAccounts, Loans,
+		MultiLocation, NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, Origin, OriginCaller,
+		ParachainInfo, ParachainSystem, Perbill, Proxy, RelaychainSovereignSubAccount, Runtime, Scheduler, Session,
+		SessionManager, SevenDays, System, TokenSymbol, Tokens, TreasuryPalletId, Utility, Vesting, XTokens, XcmConfig,
+		XcmExecutor, NFT,
+	};
+	pub use primitives::TradingPair;
+	pub use runtime_common::{dollar, KAR, KSM, KUSD, LKSM};
+	pub use sp_runtime::traits::AccountIdConversion;
+
+	parameter_types! {
+		pub EnabledTradingPairs: Vec<TradingPair> = vec![
+			TradingPair::from_currency_ids(USD_CURRENCY, NATIVE_CURRENCY).unwrap(),
+			TradingPair::from_currency_ids(USD_CURRENCY, RELAY_CHAIN_CURRENCY).unwrap(),
+			TradingPair::from_currency_ids(USD_CURRENCY, LIQUID_CURRENCY).unwrap(),
+		];
+		pub TreasuryAccount: AccountId = TreasuryPalletId::get().into_account();
+	}
+
 	pub const NATIVE_CURRENCY: CurrencyId = KAR;
 	pub const LIQUID_CURRENCY: CurrencyId = LKSM;
 	pub const RELAY_CHAIN_CURRENCY: CurrencyId = KSM;
 	pub const USD_CURRENCY: CurrencyId = KUSD;
-	pub const LPTOKEN: CurrencyId =
-		CurrencyId::DexShare(DexShare::Token(TokenSymbol::KUSD), DexShare::Token(TokenSymbol::KSM));
+	pub const LPTOKEN: CurrencyId = CurrencyId::DexShare(
+		primitives::DexShare::Token(TokenSymbol::KUSD),
+		primitives::DexShare::Token(TokenSymbol::KSM),
+	);
 }
-
-pub use runtime_types::*;
 
 const ORACLE1: [u8; 32] = [0u8; 32];
 const ORACLE2: [u8; 32] = [1u8; 32];
@@ -1571,6 +1573,11 @@ fn parachain_subaccounts_are_unique() {
 		assert_eq!(
 			parachain,
 			hex_literal::hex!["70617261d0070000000000000000000000000000000000000000000000000000"].into()
+		);
+
+		assert_eq!(
+			RelaychainSovereignSubAccount::get(),
+			create_x2_parachain_multilocation(0)
 		);
 
 		assert_eq!(
