@@ -118,7 +118,7 @@ mod karura_only_tests {
 
 	#[test]
 	fn homa_lite_xcm_transfer() {
-		let parachain_account: AccountId =
+		let homa_lite_sub_account: AccountId =
 			hex_literal::hex!["d7b8926b326dd349355a9a7cca6606c1e0eb6fd2b506066b518c7155ff0d8297"].into();
 		Kusama::execute_with(|| {
 			// Transfer some KSM into the parachain.
@@ -137,7 +137,7 @@ mod karura_only_tests {
 			));
 
 			// This account starts off with no fund.
-			assert_eq!(kusama_runtime::Balances::free_balance(&parachain_account), 0);
+			assert_eq!(kusama_runtime::Balances::free_balance(&homa_lite_sub_account), 0);
 		});
 
 		Karura::execute_with(|| {
@@ -155,7 +155,7 @@ mod karura_only_tests {
 			let liquid_issuance = Currencies::total_issuance(LIQUID_CURRENCY);
 			assert_eq!(liquid_issuance, 1_000_000 * dollar(LIQUID_CURRENCY));
 
-			let staking_total = liquid_issuance / 5;
+			let staking_total = 200_000 * dollar(LIQUID_CURRENCY);
 
 			// Set the exchange rate to 1(S) : 5(L)
 			assert_ok!(HomaLite::set_total_staking_currency(Origin::root(), staking_total));
@@ -174,7 +174,7 @@ mod karura_only_tests {
 		Kusama::execute_with(|| {
 			// Check of 2000 dollars (minus some fee) are transferred into the Kusama chain.
 			assert_eq!(
-				kusama_runtime::Balances::free_balance(&parachain_account),
+				kusama_runtime::Balances::free_balance(&homa_lite_sub_account),
 				1_999_946_666_670_000
 			);
 		});
