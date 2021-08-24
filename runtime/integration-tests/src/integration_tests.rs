@@ -29,7 +29,8 @@ use module_support::{
 use orml_authority::DelayedOrigin;
 use orml_traits::{Change, GetByKey, MultiCurrency};
 use orml_vesting::VestingSchedule;
-pub use primitives::{evm::EvmAddress, DexShare, TradingPair};
+#[allow(unused_imports)]
+use primitives::{currency::*, DexShare, TradingPair};
 use sp_core::H160;
 use sp_io::hashing::keccak_256;
 use sp_runtime::{
@@ -48,8 +49,6 @@ use xcm::{
 	},
 };
 
-use primitives::currency::*;
-
 #[allow(unused_imports)]
 use frame_support::{
 	assert_noop, assert_ok, parameter_types,
@@ -65,8 +64,9 @@ pub use mandala_runtime::{
 	CreateTokenDeposit, Currencies, CurrencyId, CurrencyIdConvert, DataDepositPerByte, Dex, EmergencyShutdown,
 	EnabledTradingPairs, Event, EvmAccounts, ExistentialDeposits, Get, GetNativeCurrencyId, HomaLite, Loans,
 	MultiLocation, NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, Origin, OriginCaller, ParachainInfo,
-	ParachainSystem, Perbill, Proxy, Runtime, Scheduler, Session, SessionManager, SevenDays, System, TokenSymbol,
-	Tokens, TreasuryAccount, TreasuryPalletId, Vesting, XTokens, XcmConfig, XcmExecutor, NFT,
+	ParachainSystem, Perbill, Proxy, RelaychainSovereignSubAccount, Runtime, Scheduler, Session, SessionManager,
+	SevenDays, System, TokenSymbol, Tokens, TreasuryAccount, TreasuryPalletId, Utility, Vesting, XcmConfig,
+	XcmExecutor, NFT,
 };
 
 #[cfg(feature = "with-karura-runtime")]
@@ -76,8 +76,8 @@ pub use karura_runtime::{
 	CreateTokenDeposit, Currencies, CurrencyId, CurrencyIdConvert, DataDepositPerByte, Dex, EmergencyShutdown, Event,
 	EvmAccounts, ExistentialDeposits, Get, GetNativeCurrencyId, HomaLite, KaruraFoundationAccounts, Loans,
 	MultiLocation, NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, Origin, OriginCaller, ParachainInfo,
-	ParachainSystem, Perbill, Proxy, Runtime, Scheduler, Session, SessionManager, SevenDays, System, TokenSymbol,
-	Tokens, TreasuryPalletId, Vesting, XTokens, XcmConfig, XcmExecutor, NFT,
+	ParachainSystem, Perbill, Proxy, RelaychainSovereignSubAccount, Runtime, Scheduler, Session, SessionManager,
+	SevenDays, System, TokenSymbol, Tokens, TreasuryPalletId, Utility, Vesting, XTokens, XcmConfig, XcmExecutor, NFT,
 };
 
 #[cfg(feature = "with-karura-runtime")]
@@ -1574,6 +1574,11 @@ fn parachain_subaccounts_are_unique() {
 		);
 
 		assert_eq!(
+			RelaychainSovereignSubAccount::get(),
+			create_x2_parachain_multilocation(0)
+		);
+
+		assert_eq!(
 			create_x2_parachain_multilocation(0),
 			MultiLocation::X2(
 				Junction::Parent,
@@ -1594,72 +1599,4 @@ fn parachain_subaccounts_are_unique() {
 			)
 		);
 	});
-}
-
-#[test]
-fn homa_lite_mint_works() {
-	ExtBuilder::default()
-		.balances(vec![
-			(alice(), RELAY_CHAIN_CURRENCY, 5_000 * dollar(RELAY_CHAIN_CURRENCY)),
-			(bob(), RELAY_CHAIN_CURRENCY, 5_000 * dollar(RELAY_CHAIN_CURRENCY)),
-			(bob(), LIQUID_CURRENCY, 1_000_000 * dollar(LIQUID_CURRENCY)),
-		])
-		.build()
-		.execute_with(|| {
-			let amount = 1000 * dollar(RELAY_CHAIN_CURRENCY);
-
-			assert_noop!(
-				HomaLite::mint(Origin::signed(alice()), amount),
-				module_homa_lite::Error::<Runtime>::ExceededStakingCurrencyMintCap
-			);
-
-			// Set the total staking amount
-			let liquid_issuance = Currencies::total_issuance(LIQUID_CURRENCY);
-			assert_eq!(liquid_issuance, 1_000_000 * dollar(LIQUID_CURRENCY));
-
-			let staking_total = liquid_issuance / 5;
-
-			// Set the exchange rate to 1(S) : 5(L)
-			assert_ok!(HomaLite::set_total_staking_currency(Origin::root(), staking_total));
-
-			assert_ok!(HomaLite::set_minting_cap(Origin::root(), 10 * staking_total));
-
-			// MaxRewardPerEra = 0.0005
-			// MintFee: Balance = 0.0002
-
-			// Exchange rate set to 1(Staking) : 5(Liquid) ratio
-			// liquid = (amount - MintFee) * exchange_rate * (1 - MaxRewardPerEra)
-			//        = (1000 - 0.0002)  * 5 * 0.9995 = 4997.4990005
-			let liquid_amount_1 = 49_974_990_005 * dollar(RELAY_CHAIN_CURRENCY) / 10_000_000;
-
-			assert_ok!(HomaLite::mint(Origin::signed(alice()), amount));
-			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY, &alice()), liquid_amount_1);
-			System::assert_last_event(Event::HomaLite(module_homa_lite::Event::Minted(
-				alice(),
-				amount,
-				liquid_amount_1,
-			)));
-
-			// Total issuance for liquid currnecy increased.
-			let new_liquid_issuance = Currencies::total_issuance(LIQUID_CURRENCY);
-			assert_eq!(new_liquid_issuance, liquid_issuance + liquid_amount_1);
-
-			// liquid = (amount - MintFee) * (new_liquid_issuance / new_staking_total) * (1 - MaxRewardPerEra)
-			//        = (1000 - 0.0002) * (1004997.4990005 / 201000) * 0.9995 = 4997.486563940297
-			#[cfg(feature = "with-mandala-runtime")] // Mandala uses DOT, which has 10 d.p. accuracy.
-			let liquid_amount_2 = 4_997_486_563_940_300 * dollar(RELAY_CHAIN_CURRENCY) / 1_000_000_000_000;
-			#[cfg(feature = "with-karura-runtime")] // Karura uses KSM, which has 12 d.p. accuracy.
-			let liquid_amount_2 = 4_997_486_563_940_297 * dollar(RELAY_CHAIN_CURRENCY) / 1_000_000_000_000;
-
-			assert_ok!(HomaLite::mint(Origin::signed(alice()), amount));
-			System::assert_last_event(Event::HomaLite(module_homa_lite::Event::Minted(
-				alice(),
-				amount,
-				liquid_amount_2,
-			)));
-			assert_eq!(
-				Currencies::free_balance(LIQUID_CURRENCY, &alice()),
-				liquid_amount_1 + liquid_amount_2
-			);
-		});
 }
