@@ -1853,40 +1853,18 @@ parameter_types! {
 	pub FeePrecision: u128 = 10000000000u128;
 }
 
-pub struct AccountIdConvert;
-
-impl Convert<(AccountId, u32), AccountId> for AccountIdConvert {
-	fn convert(a: (AccountId, u32)) -> AccountId {
-		match a {
-			(pallet_id, pool_id) => {
-				let pallet_id_bytes: [u8; 32] = pallet_id.into();
-				let bytes: [u8; 4] = pool_id.to_be_bytes();
-				let mut res: [u8; 36] = [0; 36];
-				for idx in 0..pallet_id_bytes.len() {
-					res[idx] = pallet_id_bytes[idx];
-				}
-				for idx in 0..bytes.len() {
-					res[idx + 32] = bytes[idx];
-				}
-				let hash: [u8; 32] = sp_io::hashing::blake2_256(&res);
-				hash.into()
-			}
-		}
-	}
-}
-
 impl nutsfinance_stable_asset::Config for Runtime {
 	type Event = Event;
 	type AssetId = CurrencyId;
 	type Balance = Balance;
 	type Assets = orml_tokens::Pallet<Runtime>;
-	//type Assets = FrameAssets;
 	type PalletId = StableAssetPalletId;
 
 	type AtLeast64BitUnsigned = u128;
 	type Precision = Precision;
 	type FeePrecision = FeePrecision;
-	type AccountIdConvert = AccountIdConvert;
+	type WeightInfo = weights::nutsfinance_stable_asset::WeightInfo<Runtime>;
+	type ListingOrigin = EnsureRootOrHalfGeneralCouncil;
 }
 
 impl cumulus_pallet_aura_ext::Config for Runtime {}
