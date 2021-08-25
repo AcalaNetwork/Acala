@@ -70,7 +70,7 @@ version = "1.3.0"
 dependencies = [
  "bstringify",
  "chainbridge",
- "evm 0.30.1",
+ "evm",
  "frame-support",
  "num_enum",
  "parity-scale-codec",
@@ -2333,6 +2333,51 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ee2626afccd7561a06cf1367e2950c4718ea04565e20fb5029b6c7d8ad09abcf"
 
 [[package]]
+name = "e2e-tests"
+version = "1.2.2"
+dependencies = [
+ "acala-cli",
+ "acala-primitives",
+ "acala-service",
+ "cumulus-primitives-parachain-inherent",
+ "ecosystem-renvm-bridge",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "hex-literal 0.3.3",
+ "log",
+ "mandala-runtime",
+ "module-cdp-engine",
+ "module-emergency-shutdown",
+ "module-evm",
+ "module-transaction-payment",
+ "pallet-balances",
+ "pallet-sudo",
+ "sc-client-api",
+ "sc-consensus",
+ "sc-consensus-aura",
+ "sc-consensus-babe",
+ "sc-consensus-manual-seal",
+ "sc-executor",
+ "sc-finality-grandpa",
+ "sc-informant",
+ "sc-network",
+ "sc-network-test",
+ "sc-service",
+ "sp-api",
+ "sp-consensus",
+ "sp-consensus-aura",
+ "sp-consensus-babe",
+ "sp-core",
+ "sp-inherents",
+ "sp-keyring 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.9)",
+ "sp-keystore",
+ "sp-runtime",
+ "sp-timestamp",
+ "test-runner",
+]
+
+[[package]]
 name = "ecosystem-chainsafe"
 version = "1.3.0"
 dependencies = [
@@ -2558,28 +2603,12 @@ dependencies = [
 
 [[package]]
 name = "ethereum"
-version = "0.7.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "567ce064a8232c16e2b2c2173a936b91fbe35c2f2c5278871f5a1a31688b42e9"
-dependencies = [
- "ethereum-types 0.11.0",
- "funty",
- "hash-db",
- "hash256-std-hasher",
- "rlp",
- "rlp-derive",
- "sha3 0.9.1",
- "triehash",
-]
-
-[[package]]
-name = "ethereum"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4a67be3eaf296ef668733f54c637e84d0ca34eaf194f0077455135981ad464c3"
 dependencies = [
  "bytes 1.0.1",
- "ethereum-types 0.12.0",
+ "ethereum-types",
  "hash-db",
  "hash256-std-hasher",
  "parity-scale-codec",
@@ -2588,19 +2617,6 @@ dependencies = [
  "serde",
  "sha3 0.9.1",
  "triehash",
-]
-
-[[package]]
-name = "ethereum-types"
-version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f64b5df66a228d85e4b17e5d6c6aa43b0310898ffe8a85988c4c032357aaabfd"
-dependencies = [
- "ethbloom",
- "fixed-hash",
- "impl-rlp",
- "primitive-types 0.9.1",
- "uint",
 ]
 
 [[package]]
@@ -2614,7 +2630,7 @@ dependencies = [
  "impl-codec",
  "impl-rlp",
  "impl-serde",
- "primitive-types 0.10.1",
+ "primitive-types",
  "uint",
 ]
 
@@ -2626,47 +2642,21 @@ checksum = "f7531096570974c3a9dcf9e4b8e1cede1ec26cf5046219fb3b9d897503b9be59"
 
 [[package]]
 name = "evm"
-version = "0.26.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1202e8dfa45bea73ee003c4be2f3549d60cb2e2ac5b0c1db563bd4653213efde"
-dependencies = [
- "ethereum 0.7.1",
- "evm-core 0.26.1",
- "evm-gasometer 0.26.0",
- "evm-runtime 0.26.0",
- "log",
- "primitive-types 0.9.1",
- "rlp",
- "sha3 0.8.2",
-]
-
-[[package]]
-name = "evm"
 version = "0.30.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3144301c57a81101003055c7cab61b58e68060f3bd1c54aa419f663e4f0e6347"
 dependencies = [
  "environmental",
- "ethereum 0.9.0",
- "evm-core 0.30.0",
- "evm-gasometer 0.30.0",
- "evm-runtime 0.30.0",
+ "ethereum",
+ "evm-core",
+ "evm-gasometer",
+ "evm-runtime",
  "log",
  "parity-scale-codec",
- "primitive-types 0.10.1",
+ "primitive-types",
  "rlp",
  "serde",
  "sha3 0.8.2",
-]
-
-[[package]]
-name = "evm-core"
-version = "0.26.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0f235e93b84fccc1ebdffad226dc56caf833de2fb2f3395f933d95fbf66b254e"
-dependencies = [
- "funty",
- "primitive-types 0.9.1",
 ]
 
 [[package]]
@@ -2677,19 +2667,8 @@ checksum = "a7bfa2dae9a2c6c0172d83c37eb406bfabf6a9d1af17b7ab4958e89853ddae97"
 dependencies = [
  "funty",
  "parity-scale-codec",
- "primitive-types 0.10.1",
+ "primitive-types",
  "serde",
-]
-
-[[package]]
-name = "evm-gasometer"
-version = "0.26.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "463412356790c5e34e8a13cd23ba06284d9afa999e82e8c64497aed2ee625375"
-dependencies = [
- "evm-core 0.26.1",
- "evm-runtime 0.26.0",
- "primitive-types 0.9.1",
 ]
 
 [[package]]
@@ -2699,16 +2678,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "14d5b12117cb9a5a9b9f031296ea86416da2cd9d8c9a9e3a2fa10275ae55f3ea"
 dependencies = [
  "environmental",
- "evm-core 0.30.0",
- "evm-runtime 0.30.0",
- "primitive-types 0.10.1",
+ "evm-core",
+ "evm-runtime",
+ "primitive-types",
 ]
 
 [[package]]
 name = "evm-rpc"
 version = "1.3.0"
 dependencies = [
- "ethereum-types 0.12.0",
+ "ethereum-types",
  "frame-support",
  "jsonrpc-core",
  "jsonrpc-derive",
@@ -2730,24 +2709,13 @@ dependencies = [
 
 [[package]]
 name = "evm-runtime"
-version = "0.26.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0c08f510e5535cee2352adb9b93ff24dc80f8ca1bad445a9aa1292ce144b45a1"
-dependencies = [
- "evm-core 0.26.1",
- "primitive-types 0.9.1",
- "sha3 0.8.2",
-]
-
-[[package]]
-name = "evm-runtime"
 version = "0.30.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3921ac8964cf13d12693392fef6686ef94470328ccd8eea384c6ff9ac0125b01"
 dependencies = [
  "environmental",
- "evm-core 0.30.0",
- "primitive-types 0.10.1",
+ "evm-core",
+ "primitive-types",
  "sha3 0.8.2",
 ]
 
@@ -5125,7 +5093,7 @@ dependencies = [
  "ecosystem-compound-cash",
  "ecosystem-renvm-bridge",
  "ecosystem-starport",
- "evm 0.26.0",
+ "evm",
  "frame-benchmarking",
  "frame-executive",
  "frame-support",
@@ -5651,9 +5619,9 @@ version = "1.3.0"
 dependencies = [
  "acala-primitives",
  "env_logger 0.7.1",
- "evm 0.30.1",
- "evm-gasometer 0.30.0",
- "evm-runtime 0.30.0",
+ "evm",
+ "evm-gasometer",
+ "evm-runtime",
  "frame-support",
  "frame-system",
  "impl-trait-for-tuples 0.1.3",
@@ -5664,7 +5632,7 @@ dependencies = [
  "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec",
- "primitive-types 0.10.1",
+ "primitive-types",
  "ripemd160",
  "rlp",
  "serde",
@@ -5702,7 +5670,7 @@ name = "module-evm-bridge"
 version = "1.3.0"
 dependencies = [
  "acala-primitives",
- "ethereum-types 0.12.0",
+ "ethereum-types",
  "frame-support",
  "frame-system",
  "impl-trait-for-tuples 0.2.1",
@@ -5712,7 +5680,7 @@ dependencies = [
  "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec",
- "primitive-types 0.10.1",
+ "primitive-types",
  "primitives-proc-macro",
  "serde",
  "sp-core",
@@ -5750,7 +5718,7 @@ name = "module-evm-rpc-runtime-api"
 version = "1.3.0"
 dependencies = [
  "acala-primitives",
- "ethereum-types 0.12.0",
+ "ethereum-types",
  "sp-api",
  "sp-core",
  "sp-runtime",
@@ -7081,7 +7049,7 @@ dependencies = [
  "parity-scale-codec",
  "sp-core",
  "sp-io",
- "sp-keyring",
+ "sp-keyring 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=91061a7d925b5bc597804293da283477512ba4ff)",
  "sp-runtime",
  "sp-std",
 ]
@@ -7611,14 +7579,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7ad6f1acec69b95caf435bbd158d486e5a0a44fcf51531e84922c59ff09e8457"
 dependencies = [
  "cfg-if 1.0.0",
- "ethereum-types 0.12.0",
+ "ethereum-types",
  "hashbrown",
  "impl-trait-for-tuples 0.2.1",
  "jemallocator",
  "lru",
  "parity-util-mem-derive",
  "parking_lot 0.11.1",
- "primitive-types 0.10.1",
+ "primitive-types",
  "smallvec 1.6.1",
  "winapi 0.3.9",
 ]
@@ -9021,17 +8989,6 @@ checksum = "ac74c624d6b2d21f425f752262f42188365d7b8ff1aff74c82e45136510a4857"
 
 [[package]]
 name = "primitive-types"
-version = "0.9.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "06345ee39fbccfb06ab45f3a1a5798d9dafa04cb8921a76d227040003a234b0e"
-dependencies = [
- "fixed-hash",
- "impl-rlp",
- "uint",
-]
-
-[[package]]
-name = "primitive-types"
 version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "05e4722c697a58a99d5d06a08c30821d7c082a4632198de1eaa5a6c22ef42373"
@@ -10173,7 +10130,7 @@ dependencies = [
  "serde_json",
  "sp-blockchain",
  "sp-core",
- "sp-keyring",
+ "sp-keyring 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=91061a7d925b5bc597804293da283477512ba4ff)",
  "sp-keystore",
  "sp-panic-handler",
  "sp-runtime",
@@ -10418,7 +10375,7 @@ dependencies = [
  "sp-consensus-slots",
  "sp-core",
  "sp-inherents",
- "sp-keyring",
+ "sp-keyring 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=91061a7d925b5bc597804293da283477512ba4ff)",
  "sp-keystore",
  "sp-runtime",
  "sp-timestamp",
@@ -10652,6 +10609,25 @@ dependencies = [
 [[package]]
 name = "sc-light"
 version = "4.0.0-dev"
+source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.9#91061a7d925b5bc597804293da283477512ba4ff"
+dependencies = [
+ "hash-db",
+ "lazy_static",
+ "parity-scale-codec",
+ "parking_lot 0.11.1",
+ "sc-client-api",
+ "sc-executor",
+ "sp-api",
+ "sp-blockchain",
+ "sp-core",
+ "sp-externalities",
+ "sp-runtime",
+ "sp-state-machine",
+]
+
+[[package]]
+name = "sc-light"
+version = "4.0.0-dev"
 source = "git+https://github.com/paritytech//substrate?rev=91061a7d925b5bc597804293da283477512ba4ff#91061a7d925b5bc597804293da283477512ba4ff"
 dependencies = [
  "hash-db",
@@ -10738,6 +10714,35 @@ dependencies = [
  "substrate-prometheus-endpoint",
  "tracing",
  "wasm-timer",
+]
+
+[[package]]
+name = "sc-network-test"
+version = "0.8.0"
+source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.9#91061a7d925b5bc597804293da283477512ba4ff"
+dependencies = [
+ "async-std",
+ "async-trait",
+ "futures 0.3.16",
+ "futures-timer 3.0.2",
+ "libp2p",
+ "log",
+ "parking_lot 0.11.1",
+ "rand 0.7.3",
+ "sc-block-builder",
+ "sc-client-api",
+ "sc-consensus",
+ "sc-network",
+ "sc-service",
+ "sp-blockchain",
+ "sp-consensus",
+ "sp-consensus-babe",
+ "sp-core",
+ "sp-runtime",
+ "sp-tracing",
+ "substrate-test-runtime",
+ "substrate-test-runtime-client",
+ "tempfile",
 ]
 
 [[package]]
@@ -10897,7 +10902,7 @@ dependencies = [
  "sc-executor",
  "sc-informant",
  "sc-keystore",
- "sc-light",
+ "sc-light 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=91061a7d925b5bc597804293da283477512ba4ff)",
  "sc-network",
  "sc-offchain",
  "sc-rpc",
@@ -11756,7 +11761,7 @@ dependencies = [
  "parity-scale-codec",
  "parity-util-mem",
  "parking_lot 0.11.1",
- "primitive-types 0.10.1",
+ "primitive-types",
  "rand 0.7.3",
  "regex",
  "schnorrkel",
@@ -11861,6 +11866,17 @@ dependencies = [
  "sp-wasm-interface",
  "tracing",
  "tracing-core",
+]
+
+[[package]]
+name = "sp-keyring"
+version = "4.0.0-dev"
+source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.9#91061a7d925b5bc597804293da283477512ba4ff"
+dependencies = [
+ "lazy_static",
+ "sp-core",
+ "sp-runtime",
+ "strum",
 ]
 
 [[package]]
@@ -11981,7 +11997,7 @@ source = "git+https://github.com/paritytech//substrate?rev=91061a7d925b5bc597804
 dependencies = [
  "impl-trait-for-tuples 0.2.1",
  "parity-scale-codec",
- "primitive-types 0.10.1",
+ "primitive-types",
  "sp-externalities",
  "sp-runtime-interface-proc-macro",
  "sp-std",
@@ -12409,6 +12425,97 @@ dependencies = [
 ]
 
 [[package]]
+name = "substrate-test-client"
+version = "2.0.1"
+source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.9#91061a7d925b5bc597804293da283477512ba4ff"
+dependencies = [
+ "async-trait",
+ "futures 0.1.31",
+ "futures 0.3.16",
+ "hash-db",
+ "hex",
+ "parity-scale-codec",
+ "sc-client-api",
+ "sc-client-db",
+ "sc-consensus",
+ "sc-executor",
+ "sc-light 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.9)",
+ "sc-offchain",
+ "sc-service",
+ "serde",
+ "serde_json",
+ "sp-blockchain",
+ "sp-consensus",
+ "sp-core",
+ "sp-keyring 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.9)",
+ "sp-keystore",
+ "sp-runtime",
+ "sp-state-machine",
+]
+
+[[package]]
+name = "substrate-test-runtime"
+version = "2.0.0"
+source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.9#91061a7d925b5bc597804293da283477512ba4ff"
+dependencies = [
+ "cfg-if 1.0.0",
+ "frame-support",
+ "frame-system",
+ "frame-system-rpc-runtime-api",
+ "log",
+ "memory-db",
+ "pallet-babe",
+ "pallet-timestamp",
+ "parity-scale-codec",
+ "parity-util-mem",
+ "sc-service",
+ "serde",
+ "sp-api",
+ "sp-application-crypto",
+ "sp-block-builder",
+ "sp-consensus-aura",
+ "sp-consensus-babe",
+ "sp-core",
+ "sp-externalities",
+ "sp-finality-grandpa",
+ "sp-inherents",
+ "sp-io",
+ "sp-keyring 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.9)",
+ "sp-offchain",
+ "sp-runtime",
+ "sp-runtime-interface",
+ "sp-session",
+ "sp-state-machine",
+ "sp-std",
+ "sp-transaction-pool",
+ "sp-trie",
+ "sp-version",
+ "substrate-wasm-builder",
+ "trie-db",
+]
+
+[[package]]
+name = "substrate-test-runtime-client"
+version = "2.0.0"
+source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.9#91061a7d925b5bc597804293da283477512ba4ff"
+dependencies = [
+ "futures 0.3.16",
+ "parity-scale-codec",
+ "sc-block-builder",
+ "sc-client-api",
+ "sc-consensus",
+ "sc-light 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.9)",
+ "sc-service",
+ "sp-api",
+ "sp-blockchain",
+ "sp-consensus",
+ "sp-core",
+ "sp-runtime",
+ "substrate-test-client",
+ "substrate-test-runtime",
+]
+
+[[package]]
 name = "substrate-wasm-builder"
 version = "5.0.0-dev"
 source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.9#91061a7d925b5bc597804293da283477512ba4ff"
@@ -12509,6 +12616,48 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2dfed899f0eb03f32ee8c6a0aabdb8a7949659e3466561fc0adf54e26d88c5f4"
 dependencies = [
  "winapi-util",
+]
+
+[[package]]
+name = "test-runner"
+version = "1.2.2"
+dependencies = [
+ "env_logger 0.7.1",
+ "frame-system",
+ "futures 0.3.16",
+ "jsonrpc-core",
+ "log",
+ "sc-basic-authorship",
+ "sc-cli",
+ "sc-client-api",
+ "sc-consensus",
+ "sc-consensus-manual-seal",
+ "sc-executor",
+ "sc-informant",
+ "sc-network",
+ "sc-rpc",
+ "sc-rpc-server",
+ "sc-service",
+ "sc-transaction-pool",
+ "sc-transaction-pool-api",
+ "sp-api",
+ "sp-block-builder",
+ "sp-blockchain",
+ "sp-consensus",
+ "sp-core",
+ "sp-externalities",
+ "sp-inherents",
+ "sp-io",
+ "sp-keyring 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.9)",
+ "sp-keystore",
+ "sp-offchain",
+ "sp-runtime",
+ "sp-runtime-interface",
+ "sp-session",
+ "sp-state-machine",
+ "sp-transaction-pool",
+ "sp-wasm-interface",
+ "tokio 0.2.25",
 ]
 
 [[package]]
@@ -12671,6 +12820,7 @@ dependencies = [
  "libc",
  "memchr",
  "mio",
+ "mio-named-pipes",
  "mio-uds",
  "num_cpus",
  "pin-project-lite 0.1.12",
@@ -13144,8 +13294,8 @@ version = "1.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1f559b464de2e2bdabcac6a210d12e9b5a5973c251e102c44c585c71d51bd78e"
 dependencies = [
- "cfg-if 1.0.0",
- "rand 0.8.4",
+ "cfg-if 0.1.10",
+ "rand 0.3.23",
  "static_assertions",
 ]
 

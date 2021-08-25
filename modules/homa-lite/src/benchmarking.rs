@@ -223,25 +223,25 @@ mod tests {
 	#[test]
 	fn test_mint() {
 		ExtBuilder::default().build().execute_with(|| {
-			assert_ok!(test_benchmark_mint::<Runtime>());
+			assert_ok!(Pallet::<Runtime>::test_benchmark_mint());
 		});
 	}
 	#[test]
 	fn test_set_total_staking_currency() {
 		ExtBuilder::default().build().execute_with(|| {
-			assert_ok!(test_benchmark_set_total_staking_currency::<Runtime>());
+			assert_ok!(Pallet::<Runtime>::test_benchmark_set_total_staking_currency());
 		});
 	}
 	#[test]
 	fn test_set_minting_cap() {
 		ExtBuilder::default().build().execute_with(|| {
-			assert_ok!(test_benchmark_set_minting_cap::<Runtime>());
+			assert_ok!(Pallet::<Runtime>::test_benchmark_set_minting_cap());
 		});
 	}
 	#[test]
 	fn test_set_xcm_dest_weight() {
 		ExtBuilder::default().build().execute_with(|| {
-			assert_ok!(test_benchmark_set_xcm_dest_weight::<Runtime>());
+			assert_ok!(Pallet::<Runtime>::test_benchmark_set_xcm_dest_weight());
 		});
 	}
 }

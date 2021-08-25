@@ -1961,15 +1961,13 @@ impl_runtime_apis! {
 		) {
 			use frame_benchmarking::{list_benchmark, Benchmarking, BenchmarkList};
 			use frame_support::traits::StorageInfoTrait;
-			use orml_benchmarking::list_benchmark as orml_list_benchmark;
+			// use orml_benchmarking::list_benchmark as orml_list_benchmark;
 
 			use module_nft::benchmarking::Pallet as NftBench;
-			use module_homa_lite::benchmarking::Pallet as HomaLiteBench;
 
 			let mut list = Vec::<BenchmarkList>::new();
 
 			list_benchmark!(list, extra, module_nft, NftBench::<Runtime>);
-			list_benchmark!(list, extra, module_homa_lite, HomaLiteBench::<Runtime>);
 
 			// orml_list_benchmark!(list, extra, dex, benchmarking::dex);
 			// orml_list_benchmark!(list, extra, auction_manager, benchmarking::auction_manager);
@@ -2004,7 +2002,6 @@ impl_runtime_apis! {
 			// use orml_benchmarking::{add_benchmark as orml_add_benchmark};
 
 			use module_nft::benchmarking::Pallet as NftBench;
-			use module_homa_lite::benchmarking::Pallet as HomaLiteBench;
 
 			let whitelist: Vec<TrackedStorageKey> = vec![
 				// Block Number
@@ -2027,7 +2024,6 @@ impl_runtime_apis! {
 			let params = (&config, &whitelist);
 
 			add_benchmark!(params, batches, nft, NftBench::<Runtime>);
-			add_benchmark!(params, batches, module_homa_lite, HomaLiteBench::<Runtime>);
 			// orml_add_benchmark!(params, batches, dex, benchmarking::dex);
 			// orml_add_benchmark!(params, batches, auction_manager, benchmarking::auction_manager);
 			// orml_add_benchmark!(params, batches, cdp_engine, benchmarking::cdp_engine);
