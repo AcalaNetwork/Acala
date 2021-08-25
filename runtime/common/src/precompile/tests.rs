@@ -668,7 +668,7 @@ fn dex_precompile_get_liquidity_token_address_should_work() {
 		U256::from_big_endian(&ausd_evm_address().as_bytes()).to_big_endian(&mut input[4 + 2 * 32..4 + 3 * 32]);
 
 		let mut expected_output = [0u8; 32];
-		let address = H160::from_str("0x0000000000000000000000010000000100000004").unwrap();
+		let address = H160::from_str("0x0000000000000000000000010000000100000014").unwrap();
 		U256::from(address.as_bytes()).to_big_endian(&mut expected_output[..32]);
 
 		let (reason, output, used_gas) = DexPrecompile::execute(&input, None, &context).unwrap();

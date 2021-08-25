@@ -130,7 +130,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("karura"),
 	impl_name: create_runtime_str!("karura"),
 	authoring_version: 1,
-	spec_version: 1007,
+	spec_version: 1008,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -199,34 +199,36 @@ impl Filter<Call> for BaseCallFilter {
 				call,
 				// Core
 				Call::System(_) | Call::Timestamp(_) | Call::ParachainSystem(_) |
-			// Utility
-			Call::Scheduler(_) | Call::Utility(_) | Call::Multisig(_) | Call::Proxy(_) |
-			// Councils
-			Call::Authority(_) | Call::GeneralCouncil(_) | Call::GeneralCouncilMembership(_) |
-			Call::FinancialCouncil(_) | Call::FinancialCouncilMembership(_) |
-			Call::HomaCouncil(_) | Call::HomaCouncilMembership(_) |
-			Call::TechnicalCommittee(_) | Call::TechnicalCommitteeMembership(_) |
-			// Oracle
-			Call::AcalaOracle(_) | Call::OperatorMembershipAcala(_) |
-			// Democracy
-			Call::Democracy(_) | Call::Treasury(_) | Call::Bounties(_) | Call::Tips(_) |
-			// Collactor Selection
-			Call::CollatorSelection(_) | Call::Session(_) | Call::SessionManager(_) |
-			// Vesting
-			Call::Vesting(_) |
-			// TransactionPayment
-			Call::TransactionPayment(_) |
-			// Tokens
-			Call::XTokens(_) | Call::Balances(_) | Call::Currencies(_) |
-			// NFT
-			Call::NFT(_) |
-			// DEX
-			Call::Dex(_) |
-			// Incentives
-			Call::Incentives(_) |
-			// Honzon
-			Call::Auction(_) | Call::AuctionManager(_) | Call::Honzon(_) | Call::Loans(_) | Call::Prices(_) |
-			Call::CdpTreasury(_) | Call::CdpEngine(_) | Call::EmergencyShutdown(_)
+				// Utility
+				Call::Scheduler(_) | Call::Utility(_) | Call::Multisig(_) | Call::Proxy(_) |
+				// Councils
+				Call::Authority(_) | Call::GeneralCouncil(_) | Call::GeneralCouncilMembership(_) |
+				Call::FinancialCouncil(_) | Call::FinancialCouncilMembership(_) |
+				Call::HomaCouncil(_) | Call::HomaCouncilMembership(_) |
+				Call::TechnicalCommittee(_) | Call::TechnicalCommitteeMembership(_) |
+				// Oracle
+				Call::AcalaOracle(_) | Call::OperatorMembershipAcala(_) |
+				// Democracy
+				Call::Democracy(_) | Call::Treasury(_) | Call::Bounties(_) | Call::Tips(_) |
+				// Collactor Selection
+				Call::CollatorSelection(_) | Call::Session(_) | Call::SessionManager(_) |
+				// Vesting
+				Call::Vesting(_) |
+				// TransactionPayment
+				Call::TransactionPayment(_) |
+				// Tokens
+				Call::XTokens(_) | Call::Balances(_) | Call::Currencies(_) |
+				// NFT
+				Call::NFT(_) |
+				// DEX
+				Call::Dex(_) |
+				// Incentives
+				Call::Incentives(_) |
+				// Honzon
+				Call::Auction(_) | Call::AuctionManager(_) | Call::Honzon(_) | Call::Loans(_) | Call::Prices(_) |
+				Call::CdpTreasury(_) | Call::CdpEngine(_) | Call::EmergencyShutdown(_) |
+				// Homa
+				Call::HomaLite(_)
 			)
 	}
 }
