@@ -983,6 +983,118 @@ where
 	}
 }
 
+impl<T, GetCurrencyId> fungible::Inspect<T::AccountId> for Currency<T, GetCurrencyId>
+where
+	T: Config,
+	GetCurrencyId: Get<CurrencyId>,
+{
+	type Balance = BalanceOf<T>;
+
+	fn total_issuance() -> Self::Balance {
+		<Pallet<T> as fungibles::Inspect<_>>::total_issuance(GetCurrencyId::get())
+	}
+	fn minimum_balance() -> Self::Balance {
+		<Pallet<T> as fungibles::Inspect<_>>::total_issuance(GetCurrencyId::get())
+	}
+	fn balance(who: &T::AccountId) -> Self::Balance {
+		<Pallet<T> as fungibles::Inspect<_>>::balance(GetCurrencyId::get(), who)
+	}
+	fn reducible_balance(who: &T::AccountId, keep_alive: bool) -> Self::Balance {
+		<Pallet<T> as fungibles::Inspect<_>>::reducible_balance(GetCurrencyId::get(), who, keep_alive)
+	}
+	fn can_deposit(who: &T::AccountId, amount: Self::Balance) -> DepositConsequence {
+		<Pallet<T> as fungibles::Inspect<_>>::can_deposit(GetCurrencyId::get(), who, amount)
+	}
+	fn can_withdraw(who: &T::AccountId, amount: Self::Balance) -> WithdrawConsequence<Self::Balance> {
+		<Pallet<T> as fungibles::Inspect<_>>::can_withdraw(GetCurrencyId::get(), who, amount)
+	}
+}
+
+impl<T, GetCurrencyId> fungible::Mutate<T::AccountId> for Currency<T, GetCurrencyId>
+where
+	T: Config,
+	GetCurrencyId: Get<CurrencyId>,
+{
+	fn mint_into(who: &T::AccountId, amount: Self::Balance) -> DispatchResult {
+		<Pallet<T> as fungibles::Mutate<_>>::mint_into(GetCurrencyId::get(), who, amount)
+	}
+
+	fn burn_from(who: &T::AccountId, amount: Self::Balance) -> Result<Self::Balance, DispatchError> {
+		<Pallet<T> as fungibles::Mutate<_>>::burn_from(GetCurrencyId::get(), who, amount)
+	}
+}
+
+impl<T, GetCurrencyId> fungible::Transfer<T::AccountId> for Currency<T, GetCurrencyId>
+where
+	T: Config,
+	GetCurrencyId: Get<CurrencyId>,
+{
+	fn transfer(
+		source: &T::AccountId,
+		dest: &T::AccountId,
+		amount: Self::Balance,
+		keep_alive: bool,
+	) -> Result<Self::Balance, DispatchError> {
+		<Pallet<T> as fungibles::Transfer<_>>::transfer(GetCurrencyId::get(), source, dest, amount, keep_alive)
+	}
+}
+
+impl<T, GetCurrencyId> fungible::Unbalanced<T::AccountId> for Currency<T, GetCurrencyId>
+where
+	T: Config,
+	GetCurrencyId: Get<CurrencyId>,
+{
+	fn set_balance(who: &T::AccountId, amount: Self::Balance) -> DispatchResult {
+		<Pallet<T> as fungibles::Unbalanced<_>>::set_balance(GetCurrencyId::get(), who, amount)
+	}
+
+	fn set_total_issuance(amount: Self::Balance) {
+		<Pallet<T> as fungibles::Unbalanced<_>>::set_total_issuance(GetCurrencyId::get(), amount)
+	}
+}
+
+impl<T, GetCurrencyId> fungible::InspectHold<T::AccountId> for Currency<T, GetCurrencyId>
+where
+	T: Config,
+	GetCurrencyId: Get<CurrencyId>,
+{
+	fn balance_on_hold(who: &T::AccountId) -> Self::Balance {
+		<Pallet<T> as fungibles::InspectHold<_>>::balance_on_hold(GetCurrencyId::get(), who)
+	}
+	fn can_hold(who: &T::AccountId, amount: Self::Balance) -> bool {
+		<Pallet<T> as fungibles::InspectHold<_>>::can_hold(GetCurrencyId::get(), who, amount)
+	}
+}
+
+impl<T, GetCurrencyId> fungible::MutateHold<T::AccountId> for Currency<T, GetCurrencyId>
+where
+	T: Config,
+	GetCurrencyId: Get<CurrencyId>,
+{
+	fn hold(who: &T::AccountId, amount: Self::Balance) -> DispatchResult {
+		<Pallet<T> as fungibles::MutateHold<_>>::hold(GetCurrencyId::get(), who, amount)
+	}
+	fn release(who: &T::AccountId, amount: Self::Balance, best_effort: bool) -> Result<Self::Balance, DispatchError> {
+		<Pallet<T> as fungibles::MutateHold<_>>::release(GetCurrencyId::get(), who, amount, best_effort)
+	}
+	fn transfer_held(
+		source: &T::AccountId,
+		dest: &T::AccountId,
+		amount: Self::Balance,
+		best_effort: bool,
+		on_hold: bool,
+	) -> Result<Self::Balance, DispatchError> {
+		<Pallet<T> as fungibles::MutateHold<_>>::transfer_held(
+			GetCurrencyId::get(),
+			source,
+			dest,
+			amount,
+			best_effort,
+			on_hold,
+		)
+	}
+}
+
 /// Adapt other currency traits implementation to `BasicCurrency`.
 pub struct BasicCurrencyAdapter<T, Currency, Amount, Moment>(marker::PhantomData<(T, Currency, Amount, Moment)>);
 
@@ -1135,6 +1247,119 @@ where
 		status: BalanceStatus,
 	) -> result::Result<Self::Balance, DispatchError> {
 		Currency::repatriate_reserved(slashed, beneficiary, value, status)
+	}
+}
+
+type FungibleBalanceOf<A, Currency> = <Currency as fungible::Inspect<A>>::Balance;
+
+impl<T, AccountId, Currency, Amount, Moment> fungible::Inspect<AccountId>
+	for BasicCurrencyAdapter<T, Currency, Amount, Moment>
+where
+	Currency: fungible::Inspect<AccountId>,
+	T: Config,
+{
+	type Balance = FungibleBalanceOf<AccountId, Currency>;
+
+	fn total_issuance() -> Self::Balance {
+		Currency::total_issuance()
+	}
+	fn minimum_balance() -> Self::Balance {
+		Currency::total_issuance()
+	}
+	fn balance(who: &AccountId) -> Self::Balance {
+		Currency::balance(who)
+	}
+	fn reducible_balance(who: &AccountId, keep_alive: bool) -> Self::Balance {
+		Currency::reducible_balance(who, keep_alive)
+	}
+	fn can_deposit(who: &AccountId, amount: Self::Balance) -> DepositConsequence {
+		Currency::can_deposit(who, amount)
+	}
+	fn can_withdraw(who: &AccountId, amount: Self::Balance) -> WithdrawConsequence<Self::Balance> {
+		Currency::can_withdraw(who, amount)
+	}
+}
+
+impl<T, AccountId, Currency, Amount, Moment> fungible::Mutate<AccountId>
+	for BasicCurrencyAdapter<T, Currency, Amount, Moment>
+where
+	Currency: fungible::Mutate<AccountId>,
+	T: Config,
+{
+	fn mint_into(who: &AccountId, amount: Self::Balance) -> DispatchResult {
+		Currency::mint_into(who, amount)
+	}
+
+	fn burn_from(who: &AccountId, amount: Self::Balance) -> Result<Self::Balance, DispatchError> {
+		Currency::burn_from(who, amount)
+	}
+}
+
+impl<T, AccountId, Currency, Amount, Moment> fungible::Transfer<AccountId>
+	for BasicCurrencyAdapter<T, Currency, Amount, Moment>
+where
+	Currency: fungible::Transfer<AccountId>,
+	T: Config,
+{
+	fn transfer(
+		source: &AccountId,
+		dest: &AccountId,
+		amount: Self::Balance,
+		keep_alive: bool,
+	) -> Result<Self::Balance, DispatchError> {
+		Currency::transfer(source, dest, amount, keep_alive)
+	}
+}
+
+impl<T, AccountId, Currency, Amount, Moment> fungible::Unbalanced<AccountId>
+	for BasicCurrencyAdapter<T, Currency, Amount, Moment>
+where
+	Currency: fungible::Unbalanced<AccountId>,
+	T: Config,
+{
+	fn set_balance(who: &AccountId, amount: Self::Balance) -> DispatchResult {
+		Currency::set_balance(who, amount)
+	}
+
+	fn set_total_issuance(amount: Self::Balance) {
+		Currency::set_total_issuance(amount)
+	}
+}
+
+impl<T, AccountId, Currency, Amount, Moment> fungible::InspectHold<AccountId>
+	for BasicCurrencyAdapter<T, Currency, Amount, Moment>
+where
+	Currency: fungible::InspectHold<AccountId>,
+	T: Config,
+{
+	fn balance_on_hold(who: &AccountId) -> Self::Balance {
+		Currency::balance_on_hold(who)
+	}
+	fn can_hold(who: &AccountId, amount: Self::Balance) -> bool {
+		Currency::can_hold(who, amount)
+	}
+}
+
+impl<T, AccountId, Currency, Amount, Moment> fungible::MutateHold<AccountId>
+	for BasicCurrencyAdapter<T, Currency, Amount, Moment>
+where
+	Currency: fungible::MutateHold<AccountId>,
+	T: Config,
+{
+	fn hold(who: &AccountId, amount: Self::Balance) -> DispatchResult {
+		Currency::hold(who, amount)
+	}
+	fn release(who: &AccountId, amount: Self::Balance, best_effort: bool) -> Result<Self::Balance, DispatchError> {
+		Currency::release(who, amount, best_effort)
+	}
+	fn transfer_held(
+		source: &AccountId,
+		dest: &AccountId,
+		amount: Self::Balance,
+		best_effort: bool,
+		on_hold: bool,
+	) -> Result<Self::Balance, DispatchError> {
+		Currency::transfer_held(source, dest, amount, best_effort, on_hold)
 	}
 }
 
