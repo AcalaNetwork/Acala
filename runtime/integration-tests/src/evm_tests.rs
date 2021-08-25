@@ -22,6 +22,7 @@ use frame_support::assert_ok;
 use module_evm_accounts::EvmAddressMapping;
 use module_support::CurrencyIdMapping;
 use module_support::{EVMBridge as EVMBridgeT, EVM as EVMTrait};
+use primitives::evm::EvmAddress;
 use sp_core::bytes::from_hex;
 use std::str::FromStr;
 
