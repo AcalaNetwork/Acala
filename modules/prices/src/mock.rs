@@ -24,14 +24,15 @@ use super::*;
 use frame_support::{construct_runtime, ord_parameter_types, parameter_types};
 use frame_system::EnsureSignedBy;
 use orml_traits::{parameter_type_with_key, DataFeeder};
-use primitives::{Amount, TokenSymbol};
+use primitives::{currency::DexShare, Amount, TokenSymbol};
 use sp_core::{H160, H256};
 use sp_runtime::{
 	testing::Header,
 	traits::{IdentityLookup, One as OneT, Zero},
 	DispatchError, FixedPointNumber,
 };
-use support::{mocks::MockCurrencyIdMapping, ExchangeRate, Ratio};
+use sp_std::cell::RefCell;
+use support::{mocks::MockCurrencyIdMapping, ExchangeRate};
 
 pub type AccountId = u128;
 pub type BlockNumber = u64;
@@ -41,8 +42,7 @@ pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
 pub const BTC: CurrencyId = CurrencyId::Token(TokenSymbol::RENBTC);
 pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
 pub const LDOT: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
-pub const LP_BTC_AUSD: CurrencyId =
-	CurrencyId::DexShare(DexShare::Token(TokenSymbol::RENBTC), DexShare::Token(TokenSymbol::AUSD));
+pub const KSM: CurrencyId = CurrencyId::Token(TokenSymbol::KSM);
 pub const LP_AUSD_DOT: CurrencyId =
 	CurrencyId::DexShare(DexShare::Token(TokenSymbol::AUSD), DexShare::Token(TokenSymbol::DOT));
 
@@ -80,15 +80,35 @@ impl frame_system::Config for Runtime {
 	type OnSetCode = ();
 }
 
+thread_local! {
+	static CHANGED: RefCell<bool> = RefCell::new(false);
+}
+
+pub fn mock_oracle_update() {
+	CHANGED.with(|v| *v.borrow_mut() = true)
+}
+
 pub struct MockDataProvider;
 impl DataProvider<CurrencyId, Price> for MockDataProvider {
 	fn get(currency_id: &CurrencyId) -> Option<Price> {
-		match *currency_id {
-			AUSD => Some(Price::saturating_from_rational(99, 100)),
-			BTC => Some(Price::saturating_from_integer(50000)),
-			DOT => Some(Price::saturating_from_integer(100)),
-			ACA => Some(Price::zero()),
-			_ => None,
+		if CHANGED.with(|v| *v.borrow_mut()) {
+			match *currency_id {
+				AUSD => None,
+				BTC => Some(Price::saturating_from_integer(40000)),
+				DOT => Some(Price::saturating_from_integer(10)),
+				ACA => Some(Price::saturating_from_integer(30)),
+				KSM => Some(Price::saturating_from_integer(200)),
+				_ => None,
+			}
+		} else {
+			match *currency_id {
+				AUSD => Some(Price::saturating_from_rational(99, 100)),
+				BTC => Some(Price::saturating_from_integer(50000)),
+				DOT => Some(Price::saturating_from_integer(100)),
+				ACA => Some(Price::zero()),
+				KSM => None,
+				_ => None,
+			}
 		}
 	}
 }
@@ -102,7 +122,11 @@ impl DataFeeder<CurrencyId, Price, AccountId> for MockDataProvider {
 pub struct MockLiquidStakingExchangeProvider;
 impl ExchangeRateProvider for MockLiquidStakingExchangeProvider {
 	fn get_exchange_rate() -> ExchangeRate {
-		ExchangeRate::saturating_from_rational(1, 2)
+		if CHANGED.with(|v| *v.borrow_mut()) {
+			ExchangeRate::saturating_from_rational(3, 5)
+		} else {
+			ExchangeRate::saturating_from_rational(1, 2)
+		}
 	}
 }
 
@@ -119,19 +143,11 @@ impl DEXManager<AccountId, CurrencyId, Balance> for MockDEX {
 		unimplemented!()
 	}
 
-	fn get_swap_target_amount(
-		_path: &[CurrencyId],
-		_supply_amount: Balance,
-		_price_impact_limit: Option<Ratio>,
-	) -> Option<Balance> {
+	fn get_swap_target_amount(_path: &[CurrencyId], _supply_amount: Balance) -> Option<Balance> {
 		unimplemented!()
 	}
 
-	fn get_swap_supply_amount(
-		_path: &[CurrencyId],
-		_target_amount: Balance,
-		_price_impact_limit: Option<Ratio>,
-	) -> Option<Balance> {
+	fn get_swap_supply_amount(_path: &[CurrencyId], _target_amount: Balance) -> Option<Balance> {
 		unimplemented!()
 	}
 
@@ -140,7 +156,6 @@ impl DEXManager<AccountId, CurrencyId, Balance> for MockDEX {
 		_path: &[CurrencyId],
 		_supply_amount: Balance,
 		_min_target_amount: Balance,
-		_price_impact_limit: Option<Ratio>,
 	) -> sp_std::result::Result<Balance, DispatchError> {
 		unimplemented!()
 	}
@@ -150,7 +165,6 @@ impl DEXManager<AccountId, CurrencyId, Balance> for MockDEX {
 		_path: &[CurrencyId],
 		_target_amount: Balance,
 		_max_supply_amount: Balance,
-		_price_impact_limit: Option<Ratio>,
 	) -> sp_std::result::Result<Balance, DispatchError> {
 		unimplemented!()
 	}
@@ -195,6 +209,7 @@ impl orml_tokens::Config for Runtime {
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = ();
 	type MaxLocks = ();
+	type DustRemovalWhitelist = ();
 }
 
 ord_parameter_types! {

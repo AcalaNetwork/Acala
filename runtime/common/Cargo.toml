@@ -1,6 +1,6 @@
 [package]
 name = "runtime-common"
-version = "1.2.1"
+version = "1.3.1"
 authors = ["Acala Developers"]
 edition = "2018"
 
@@ -41,7 +41,7 @@ pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "p
 pallet-proxy = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.8" }
 pallet-utility = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.8" }
 
-acala-service = {  path = "../../node/service" }
+acala-service = { path = "../../node/service", features = ["with-mandala-runtime"] }
 orml-tokens = { path = "../../orml/tokens" }
 orml-nft = { path = "../../orml/nft" }
 module-currencies = { path = "../../modules/currencies" }
@@ -78,4 +78,6 @@ std = [
 	"module-support/std",
 	"primitives/std",
 ]
-with-ethereum-compatibility = []
+with-ethereum-compatibility = [
+	"module-evm/with-ethereum-compatibility",
+]

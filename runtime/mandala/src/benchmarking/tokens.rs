@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use super::utils::{lookup_of_account, set_balance};
+use super::utils::{lookup_of_account, set_balance as update_balance};
 use crate::{dollar, AccountId, Balance, CurrencyId, GetStableCurrencyId, Runtime, Tokens};
 
 use sp_std::prelude::*;
@@ -38,7 +38,7 @@ runtime_benchmarks! {
 		let amount: Balance = dollar(STABLECOIN);
 
 		let from: AccountId = whitelisted_caller();
-		set_balance(STABLECOIN, &from, amount);
+		update_balance(STABLECOIN, &from, amount);
 
 		let to: AccountId = account("to", 0, SEED);
 		let to_lookup = lookup_of_account(to.clone());
@@ -51,13 +51,45 @@ runtime_benchmarks! {
 		let amount: Balance = dollar(STABLECOIN);
 
 		let from: AccountId = whitelisted_caller();
-		set_balance(STABLECOIN, &from, amount);
+		update_balance(STABLECOIN, &from, amount);
 
 		let to: AccountId = account("to", 0, SEED);
 		let to_lookup = lookup_of_account(to);
-	}: _(RawOrigin::Signed(from.clone()), to_lookup, STABLECOIN)
+	}: _(RawOrigin::Signed(from.clone()), to_lookup, STABLECOIN, false)
 	verify {
 		assert_eq!(<Tokens as MultiCurrency<_>>::total_balance(STABLECOIN, &from), 0);
+	}
+
+	transfer_keep_alive {
+		let from: AccountId = whitelisted_caller();
+		update_balance(STABLECOIN, &from, 2 * dollar(STABLECOIN));
+
+		let to: AccountId = account("to", 0, SEED);
+		let to_lookup = lookup_of_account(to.clone());
+	}: _(RawOrigin::Signed(from), to_lookup, STABLECOIN, dollar(STABLECOIN))
+	verify {
+		assert_eq!(<Tokens as MultiCurrency<_>>::total_balance(STABLECOIN, &to), dollar(STABLECOIN));
+	}
+
+	force_transfer {
+		let from: AccountId = account("from", 0, SEED);
+		let from_lookup = lookup_of_account(from.clone());
+		update_balance(STABLECOIN, &from, 2 * dollar(STABLECOIN));
+
+		let to: AccountId = account("to", 0, SEED);
+		let to_lookup = lookup_of_account(to.clone());
+	}: _(RawOrigin::Root, from_lookup, to_lookup, STABLECOIN, dollar(STABLECOIN))
+	verify {
+		assert_eq!(<Tokens as MultiCurrency<_>>::total_balance(STABLECOIN, &to), dollar(STABLECOIN));
+	}
+
+	set_balance {
+		let who: AccountId = account("who", 0, SEED);
+		let who_lookup = lookup_of_account(who.clone());
+
+	}: _(RawOrigin::Root, who_lookup, STABLECOIN, dollar(STABLECOIN), dollar(STABLECOIN))
+	verify {
+		assert_eq!(<Tokens as MultiCurrency<_>>::total_balance(STABLECOIN, &who), 2 * dollar(STABLECOIN));
 	}
 }
 

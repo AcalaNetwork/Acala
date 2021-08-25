@@ -41,25 +41,47 @@ fn class_id_account() -> AccountId {
 	<Runtime as Config>::PalletId::get().into_sub_account(CLASS_ID)
 }
 
+fn test_attr(x: u8) -> Attributes {
+	let mut attr: Attributes = BTreeMap::new();
+	attr.insert(vec![x, x + 10], vec![x, x + 1, x + 2]);
+	attr.insert(vec![x + 1], vec![11]);
+	attr
+}
+
+const TEST_ATTR_LEN: Balance = 7;
+
 #[test]
 fn create_class_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		let metadata = vec![1];
+
 		assert_ok!(NFTModule::create_class(
 			Origin::signed(ALICE),
 			metadata.clone(),
-			Default::default()
+			Default::default(),
+			test_attr(1),
 		));
 		System::assert_last_event(Event::NFTModule(crate::Event::CreatedClass(
 			class_id_account(),
 			CLASS_ID,
 		)));
+
+		let cls_deposit =
+			CreateClassDeposit::get() + DataDepositPerByte::get() * ((metadata.len() as u128) + TEST_ATTR_LEN);
+
 		assert_eq!(
 			reserved_balance(&class_id_account()),
-			<Runtime as Config>::CreateClassDeposit::get()
-				+ Proxy::deposit(1u32)
-				+ <Runtime as Config>::DataDepositPerByte::get() * (metadata.len() as u128)
+			cls_deposit + Proxy::deposit(1u32),
 		);
+
+		assert_eq!(
+			orml_nft::Pallet::<Runtime>::classes(0).unwrap().data,
+			ClassData {
+				deposit: cls_deposit,
+				properties: Default::default(),
+				attributes: test_attr(1),
+			}
+		)
 	});
 }
 
@@ -71,9 +93,23 @@ fn create_class_should_fail() {
 			NFTModule::create_class(
 				Origin::signed(BOB),
 				metadata.clone(),
-				Properties(ClassProperty::Transferable | ClassProperty::Burnable)
+				Properties(ClassProperty::Transferable | ClassProperty::Burnable),
+				Default::default(),
 			),
 			pallet_balances::Error::<Runtime, _>::InsufficientBalance
+		);
+
+		let mut large_attr: Attributes = BTreeMap::new();
+		large_attr.insert(vec![1, 2, 3, 4, 5], vec![6, 7, 8, 9, 10, 11]);
+
+		assert_noop!(
+			NFTModule::create_class(
+				Origin::signed(ALICE),
+				metadata.clone(),
+				Properties(ClassProperty::Transferable | ClassProperty::Burnable),
+				large_attr,
+			),
+			Error::<Runtime>::AttributesTooLarge
 		);
 	});
 }
@@ -82,26 +118,27 @@ fn create_class_should_fail() {
 fn mint_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		let metadata = vec![1];
-		let metadata_2 = vec![2];
+		let metadata_2 = vec![2, 3];
 		assert_ok!(NFTModule::create_class(
 			Origin::signed(ALICE),
 			metadata.clone(),
-			Properties(ClassProperty::Transferable | ClassProperty::Burnable)
+			Properties(ClassProperty::Transferable | ClassProperty::Burnable | ClassProperty::Mintable),
+			test_attr(1),
 		));
 		System::assert_last_event(Event::NFTModule(crate::Event::CreatedClass(
 			class_id_account(),
 			CLASS_ID,
 		)));
-		assert_eq!(
-			Balances::deposit_into_existing(&class_id_account(), 2 * <Runtime as Config>::CreateTokenDeposit::get())
-				.is_ok(),
-			true
-		);
+		assert_ok!(Balances::deposit_into_existing(
+			&class_id_account(),
+			2 * (CreateTokenDeposit::get() + ((metadata_2.len() as u128 + TEST_ATTR_LEN) * DataDepositPerByte::get()))
+		));
 		assert_ok!(NFTModule::mint(
 			Origin::signed(class_id_account()),
 			BOB,
 			CLASS_ID,
 			metadata_2.clone(),
+			test_attr(2),
 			2
 		));
 		System::assert_last_event(Event::NFTModule(crate::Event::MintedToken(
@@ -112,13 +149,13 @@ fn mint_should_work() {
 		)));
 		assert_eq!(
 			reserved_balance(&class_id_account()),
-			<Runtime as Config>::CreateClassDeposit::get()
+			CreateClassDeposit::get()
 				+ Proxy::deposit(1u32)
-				+ <Runtime as Config>::DataDepositPerByte::get() * (metadata.len() as u128)
+				+ DataDepositPerByte::get() * (metadata.len() as u128 + TEST_ATTR_LEN)
 		);
 		assert_eq!(
 			reserved_balance(&BOB),
-			2 * <Runtime as Config>::CreateTokenDeposit::get()
+			2 * (CreateTokenDeposit::get() + DataDepositPerByte::get() * (metadata_2.len() as u128 + TEST_ATTR_LEN))
 		);
 		assert_eq!(
 			orml_nft::Pallet::<Runtime>::tokens(0, 0).unwrap(),
@@ -126,7 +163,9 @@ fn mint_should_work() {
 				metadata: metadata_2.clone().try_into().unwrap(),
 				owner: BOB,
 				data: TokenData {
-					deposit: <Runtime as Config>::CreateTokenDeposit::get()
+					deposit: CreateTokenDeposit::get()
+						+ DataDepositPerByte::get() * (metadata_2.len() as u128 + TEST_ATTR_LEN),
+					attributes: test_attr(2),
 				}
 			}
 		);
@@ -136,7 +175,9 @@ fn mint_should_work() {
 				metadata: metadata_2.clone().try_into().unwrap(),
 				owner: BOB,
 				data: TokenData {
-					deposit: <Runtime as Config>::CreateTokenDeposit::get()
+					deposit: CreateTokenDeposit::get()
+						+ DataDepositPerByte::get() * (metadata_2.len() as u128 + TEST_ATTR_LEN),
+					attributes: test_attr(2),
 				}
 			}
 		);
@@ -154,34 +195,87 @@ fn mint_should_fail() {
 		assert_ok!(NFTModule::create_class(
 			Origin::signed(ALICE),
 			metadata.clone(),
-			Properties(ClassProperty::Transferable | ClassProperty::Burnable)
+			Properties(ClassProperty::Transferable | ClassProperty::Burnable | ClassProperty::Mintable),
+			Default::default(),
 		));
 		assert_noop!(
-			NFTModule::mint(Origin::signed(ALICE), BOB, CLASS_ID_NOT_EXIST, metadata.clone(), 2),
+			NFTModule::mint(
+				Origin::signed(ALICE),
+				BOB,
+				CLASS_ID_NOT_EXIST,
+				metadata.clone(),
+				Default::default(),
+				2
+			),
 			Error::<Runtime>::ClassIdNotFound
 		);
 
 		assert_noop!(
-			NFTModule::mint(Origin::signed(BOB), BOB, CLASS_ID, metadata.clone(), 0),
+			NFTModule::mint(
+				Origin::signed(BOB),
+				BOB,
+				CLASS_ID,
+				metadata.clone(),
+				Default::default(),
+				0
+			),
 			Error::<Runtime>::InvalidQuantity
 		);
 
 		assert_noop!(
-			NFTModule::mint(Origin::signed(BOB), BOB, CLASS_ID, metadata.clone(), 2),
+			NFTModule::mint(
+				Origin::signed(BOB),
+				BOB,
+				CLASS_ID,
+				metadata.clone(),
+				Default::default(),
+				2
+			),
 			Error::<Runtime>::NoPermission
 		);
 
 		orml_nft::NextTokenId::<Runtime>::mutate(CLASS_ID, |id| {
 			*id = <Runtime as orml_nft::Config>::TokenId::max_value()
 		});
-		assert_eq!(
-			Balances::deposit_into_existing(&class_id_account(), 2 * <Runtime as Config>::CreateTokenDeposit::get())
-				.is_ok(),
-			true
-		);
+		assert_ok!(Balances::deposit_into_existing(
+			&class_id_account(),
+			2 * (CreateTokenDeposit::get() + DataDepositPerByte::get())
+		));
 		assert_noop!(
-			NFTModule::mint(Origin::signed(class_id_account()), BOB, CLASS_ID, metadata.clone(), 2),
+			NFTModule::mint(
+				Origin::signed(class_id_account()),
+				BOB,
+				CLASS_ID,
+				metadata.clone(),
+				Default::default(),
+				2
+			),
 			orml_nft::Error::<Runtime>::NoAvailableTokenId
+		);
+	});
+}
+
+#[test]
+fn mint_should_fail_without_mintable() {
+	ExtBuilder::default().build().execute_with(|| {
+		let metadata = vec![1];
+		assert_ok!(NFTModule::create_class(
+			Origin::signed(ALICE),
+			metadata.clone(),
+			Default::default(),
+			Default::default(),
+		));
+
+		assert_noop!(
+			NFTModule::mint(
+				Origin::signed(class_id_account()),
+				BOB,
+				CLASS_ID,
+				metadata.clone(),
+				Default::default(),
+				2
+			),
+			Error::<Runtime>::NonMintable
 		);
 	});
 }
@@ -193,24 +287,25 @@ fn transfer_should_work() {
 		assert_ok!(NFTModule::create_class(
 			Origin::signed(ALICE),
 			metadata.clone(),
-			Properties(ClassProperty::Transferable | ClassProperty::Burnable)
+			Properties(ClassProperty::Transferable | ClassProperty::Burnable | ClassProperty::Mintable),
+			Default::default(),
 		));
-		assert_eq!(
-			Balances::deposit_into_existing(&class_id_account(), 2 * <Runtime as Config>::CreateTokenDeposit::get())
-				.is_ok(),
-			true
-		);
+		assert_ok!(Balances::deposit_into_existing(
+			&class_id_account(),
+			2 * (CreateTokenDeposit::get() + DataDepositPerByte::get())
+		));
 		assert_ok!(NFTModule::mint(
 			Origin::signed(class_id_account()),
 			BOB,
 			CLASS_ID,
 			metadata.clone(),
+			Default::default(),
 			2
 		));
 
 		assert_eq!(
 			reserved_balance(&BOB),
-			2 * <Runtime as Config>::CreateTokenDeposit::get()
+			2 * (CreateTokenDeposit::get() + DataDepositPerByte::get())
 		);
 
 		assert_ok!(NFTModule::transfer(Origin::signed(BOB), ALICE, (CLASS_ID, TOKEN_ID)));
@@ -219,11 +314,11 @@ fn transfer_should_work() {
 		)));
 		assert_eq!(
 			reserved_balance(&BOB),
-			1 * <Runtime as Config>::CreateTokenDeposit::get()
+			1 * (CreateTokenDeposit::get() + DataDepositPerByte::get())
 		);
 		assert_eq!(
 			reserved_balance(&ALICE),
-			1 * <Runtime as Config>::CreateTokenDeposit::get()
+			1 * (CreateTokenDeposit::get() + DataDepositPerByte::get())
 		);
 
 		assert_ok!(NFTModule::transfer(Origin::signed(ALICE), BOB, (CLASS_ID, TOKEN_ID)));
@@ -232,7 +327,7 @@ fn transfer_should_work() {
 		)));
 		assert_eq!(
 			reserved_balance(&BOB),
-			2 * <Runtime as Config>::CreateTokenDeposit::get()
+			2 * (CreateTokenDeposit::get() + DataDepositPerByte::get())
 		);
 		assert_eq!(reserved_balance(&ALICE), 0);
 	});
@@ -245,18 +340,19 @@ fn transfer_should_fail() {
 		assert_ok!(NFTModule::create_class(
 			Origin::signed(ALICE),
 			metadata.clone(),
-			Properties(ClassProperty::Transferable | ClassProperty::Burnable)
+			Properties(ClassProperty::Transferable | ClassProperty::Burnable | ClassProperty::Mintable),
+			Default::default(),
 		));
-		assert_eq!(
-			Balances::deposit_into_existing(&class_id_account(), 1 * <Runtime as Config>::CreateTokenDeposit::get())
-				.is_ok(),
-			true
-		);
+		assert_ok!(Balances::deposit_into_existing(
+			&class_id_account(),
+			1 * CreateTokenDeposit::get() + DataDepositPerByte::get()
+		));
 		assert_ok!(NFTModule::mint(
 			Origin::signed(class_id_account()),
 			BOB,
 			CLASS_ID,
 			metadata.clone(),
+			Default::default(),
 			1
 		));
 		assert_noop!(
@@ -278,18 +374,19 @@ fn transfer_should_fail() {
 		assert_ok!(NFTModule::create_class(
 			Origin::signed(ALICE),
 			metadata.clone(),
-			Default::default()
+			Properties(ClassProperty::Mintable.into()),
+			Default::default(),
 		));
-		assert_eq!(
-			Balances::deposit_into_existing(&class_id_account(), 1 * <Runtime as Config>::CreateTokenDeposit::get())
-				.is_ok(),
-			true
-		);
+		assert_ok!(Balances::deposit_into_existing(
+			&class_id_account(),
+			1 * CreateTokenDeposit::get() + DataDepositPerByte::get()
+		));
 		assert_ok!(NFTModule::mint(
 			Origin::signed(class_id_account()),
 			BOB,
 			CLASS_ID,
 			metadata.clone(),
+			Default::default(),
 			1
 		));
 		assert_noop!(
@@ -306,27 +403,26 @@ fn burn_should_work() {
 		assert_ok!(NFTModule::create_class(
 			Origin::signed(ALICE),
 			metadata.clone(),
-			Properties(ClassProperty::Transferable | ClassProperty::Burnable)
+			Properties(ClassProperty::Transferable | ClassProperty::Burnable | ClassProperty::Mintable),
+			Default::default(),
 		));
-		assert_eq!(
-			Balances::deposit_into_existing(&class_id_account(), 1 * <Runtime as Config>::CreateTokenDeposit::get())
-				.is_ok(),
-			true
-		);
+		assert_ok!(Balances::deposit_into_existing(
+			&class_id_account(),
+			1 * CreateTokenDeposit::get() + DataDepositPerByte::get()
+		));
 		assert_ok!(NFTModule::mint(
 			Origin::signed(class_id_account()),
 			BOB,
 			CLASS_ID,
 			metadata.clone(),
+			Default::default(),
 			1
 		));
 		assert_ok!(NFTModule::burn(Origin::signed(BOB), (CLASS_ID, TOKEN_ID)));
 		System::assert_last_event(Event::NFTModule(crate::Event::BurnedToken(BOB, CLASS_ID, TOKEN_ID)));
 		assert_eq!(
 			reserved_balance(&class_id_account()),
-			<Runtime as Config>::CreateClassDeposit::get()
-				+ Proxy::deposit(1u32)
-				+ <Runtime as Config>::DataDepositPerByte::get() * (metadata.len() as u128)
+			CreateClassDeposit::get() + Proxy::deposit(1u32) + DataDepositPerByte::get() * (metadata.len() as u128)
 		);
 	});
 }
@@ -338,18 +434,19 @@ fn burn_should_fail() {
 		assert_ok!(NFTModule::create_class(
 			Origin::signed(ALICE),
 			metadata.clone(),
-			Properties(ClassProperty::Transferable | ClassProperty::Burnable)
+			Properties(ClassProperty::Transferable | ClassProperty::Burnable | ClassProperty::Mintable),
+			Default::default(),
 		));
-		assert_eq!(
-			Balances::deposit_into_existing(&class_id_account(), 1 * <Runtime as Config>::CreateTokenDeposit::get())
-				.is_ok(),
-			true
-		);
+		assert_ok!(Balances::deposit_into_existing(
+			&class_id_account(),
+			1 * CreateTokenDeposit::get() + DataDepositPerByte::get()
+		));
 		assert_ok!(NFTModule::mint(
 			Origin::signed(class_id_account()),
 			BOB,
 			CLASS_ID,
 			metadata.clone(),
+			Default::default(),
 			1
 		));
 		assert_noop!(
@@ -376,18 +473,19 @@ fn burn_should_fail() {
 		assert_ok!(NFTModule::create_class(
 			Origin::signed(ALICE),
 			metadata.clone(),
-			Default::default()
+			Properties(ClassProperty::Mintable.into()),
+			Default::default(),
 		));
-		assert_eq!(
-			Balances::deposit_into_existing(&class_id_account(), 1 * <Runtime as Config>::CreateTokenDeposit::get())
-				.is_ok(),
-			true
-		);
+		assert_ok!(Balances::deposit_into_existing(
+			&class_id_account(),
+			1 * CreateTokenDeposit::get() + DataDepositPerByte::get()
+		));
 		assert_ok!(NFTModule::mint(
 			Origin::signed(class_id_account()),
 			BOB,
 			CLASS_ID,
 			metadata.clone(),
+			Default::default(),
 			1
 		));
 		assert_noop!(
@@ -404,18 +502,19 @@ fn burn_with_remark_should_work() {
 		assert_ok!(NFTModule::create_class(
 			Origin::signed(ALICE),
 			metadata.clone(),
-			Properties(ClassProperty::Transferable | ClassProperty::Burnable)
+			Properties(ClassProperty::Transferable | ClassProperty::Burnable | ClassProperty::Mintable),
+			Default::default(),
 		));
-		assert_eq!(
-			Balances::deposit_into_existing(&class_id_account(), 1 * <Runtime as Config>::CreateTokenDeposit::get())
-				.is_ok(),
-			true
-		);
+		assert_ok!(Balances::deposit_into_existing(
+			&class_id_account(),
+			1 * CreateTokenDeposit::get() + DataDepositPerByte::get()
+		));
 		assert_ok!(NFTModule::mint(
 			Origin::signed(class_id_account()),
 			BOB,
 			CLASS_ID,
 			metadata.clone(),
+			Default::default(),
 			1
 		));
 
@@ -435,9 +534,7 @@ fn burn_with_remark_should_work() {
 
 		assert_eq!(
 			reserved_balance(&class_id_account()),
-			<Runtime as Config>::CreateClassDeposit::get()
-				+ Proxy::deposit(1u32)
-				+ <Runtime as Config>::DataDepositPerByte::get() * (metadata.len() as u128)
+			CreateClassDeposit::get() + Proxy::deposit(1u32) + DataDepositPerByte::get() * (metadata.len() as u128)
 		);
 	});
 }
@@ -449,12 +546,12 @@ fn destroy_class_should_work() {
 		assert_ok!(NFTModule::create_class(
 			Origin::signed(ALICE),
 			metadata.clone(),
-			Properties(ClassProperty::Transferable | ClassProperty::Burnable)
+			Properties(ClassProperty::Transferable | ClassProperty::Burnable | ClassProperty::Mintable),
+			Default::default(),
 		));
 
-		let deposit = Proxy::deposit(1u32)
-			+ <Runtime as Config>::CreateClassDeposit::get()
-			+ <Runtime as Config>::DataDepositPerByte::get() * (metadata.len() as u128);
+		let deposit =
+			Proxy::deposit(1u32) + CreateClassDeposit::get() + DataDepositPerByte::get() * (metadata.len() as u128);
 		assert_eq!(free_balance(&ALICE), 100000 - deposit);
 		assert_eq!(reserved_balance(&ALICE), 0);
 		assert_eq!(free_balance(&class_id_account()), 0);
@@ -463,13 +560,14 @@ fn destroy_class_should_work() {
 		assert_eq!(reserved_balance(&BOB), 0);
 		assert_ok!(Balances::deposit_into_existing(
 			&class_id_account(),
-			1 * <Runtime as Config>::CreateTokenDeposit::get()
-		)); // + 100
+			1 * CreateTokenDeposit::get() + DataDepositPerByte::get()
+		));
 		assert_ok!(NFTModule::mint(
 			Origin::signed(class_id_account()),
 			BOB,
 			CLASS_ID,
 			metadata.clone(),
+			Default::default(),
 			1
 		));
 		assert_ok!(NFTModule::burn(Origin::signed(BOB), (CLASS_ID, TOKEN_ID)));
@@ -486,7 +584,10 @@ fn destroy_class_should_work() {
 		assert_eq!(reserved_balance(&class_id_account()), 0);
 		assert_eq!(free_balance(&ALICE), 100000);
 		assert_eq!(reserved_balance(&ALICE), 0);
-		assert_eq!(free_balance(&BOB), <Runtime as Config>::CreateTokenDeposit::get());
+		assert_eq!(
+			free_balance(&BOB),
+			CreateTokenDeposit::get() + DataDepositPerByte::get()
+		);
 		assert_eq!(reserved_balance(&BOB), 0);
 	});
 }
@@ -498,18 +599,19 @@ fn destroy_class_should_fail() {
 		assert_ok!(NFTModule::create_class(
 			Origin::signed(ALICE),
 			metadata.clone(),
-			Properties(ClassProperty::Transferable | ClassProperty::Burnable)
+			Properties(ClassProperty::Transferable | ClassProperty::Burnable | ClassProperty::Mintable),
+			Default::default(),
 		));
-		assert_eq!(
-			Balances::deposit_into_existing(&class_id_account(), 1 * <Runtime as Config>::CreateTokenDeposit::get())
-				.is_ok(),
-			true
-		);
+		assert_ok!(Balances::deposit_into_existing(
+			&class_id_account(),
+			1 * CreateTokenDeposit::get() + DataDepositPerByte::get()
+		));
 		assert_ok!(NFTModule::mint(
 			Origin::signed(class_id_account()),
 			BOB,
 			CLASS_ID,
 			metadata.clone(),
+			Default::default(),
 			1
 		));
 		assert_noop!(
@@ -539,5 +641,71 @@ fn destroy_class_should_fail() {
 			CLASS_ID,
 			ALICE
 		));
+	});
+}
+
+#[test]
+fn update_class_properties_should_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		let metadata = vec![1];
+
+		assert_ok!(NFTModule::create_class(
+			Origin::signed(ALICE),
+			metadata.clone(),
+			Properties(ClassProperty::Transferable | ClassProperty::ClassPropertiesMutable | ClassProperty::Mintable),
+			Default::default(),
+		));
+
+		assert_ok!(Balances::deposit_into_existing(
+			&class_id_account(),
+			CreateTokenDeposit::get() + ((metadata.len() as u128 + TEST_ATTR_LEN) * DataDepositPerByte::get())
+		));
+
+		assert_ok!(NFTModule::mint(
+			Origin::signed(class_id_account()),
+			BOB,
+			CLASS_ID,
+			metadata.clone(),
+			Default::default(),
+			1
+		));
+
+		assert_ok!(NFTModule::transfer(Origin::signed(BOB), ALICE, (CLASS_ID, TOKEN_ID)));
+
+		assert_ok!(NFTModule::update_class_properties(
+			Origin::signed(class_id_account()),
+			CLASS_ID,
+			Properties(ClassProperty::ClassPropertiesMutable.into())
+		));
+
+		assert_noop!(
+			NFTModule::transfer(Origin::signed(ALICE), BOB, (CLASS_ID, TOKEN_ID)),
+			Error::<Runtime>::NonTransferable
+		);
+
+		assert_ok!(NFTModule::update_class_properties(
+			Origin::signed(class_id_account()),
+			CLASS_ID,
+			Properties(ClassProperty::Transferable.into())
+		));
+
+		assert_ok!(NFTModule::transfer(Origin::signed(ALICE), BOB, (CLASS_ID, TOKEN_ID)));
+
+		assert_noop!(
+			NFTModule::update_class_properties(Origin::signed(class_id_account()), CLASS_ID, Default::default()),
+			Error::<Runtime>::Immutable
+		);
+
+		assert_noop!(
+			NFTModule::mint(
+				Origin::signed(class_id_account()),
+				BOB,
+				CLASS_ID,
+				metadata.clone(),
+				Default::default(),
+				1
+			),
+			Error::<Runtime>::NonMintable
+		);
 	});
 }

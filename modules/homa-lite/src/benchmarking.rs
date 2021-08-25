@@ -31,29 +31,21 @@ pub struct Module<T: Config>(crate::Pallet<T>);
 const SEED: u32 = 0;
 
 benchmarks! {
-	// Benchmark request_mint
-	request_mint {
-		let amount = 1_000_000_000;
+	// Benchmark mint
+	mint {
+		let amount = 1_000_000_000_000;
 		let caller: T::AccountId = account("caller", 0, SEED);
 		<T as module::Config>::Currency::deposit(T::StakingCurrencyId::get(), &caller, amount)?;
-		module::Pallet::<T>::set_stash_account_id(RawOrigin::Root.into(), caller.clone())?;
+		module::Pallet::<T>::set_minting_cap(RawOrigin::Root.into(), amount)?;
 	}: _(RawOrigin::Signed(caller), amount)
 
-	issue {}: _(RawOrigin::Root, 1_000_000_000)
+	set_total_staking_currency {}: _(RawOrigin::Root, 1_000_000_000_000)
 
-	claim{
-		let amount = 1_000_000_000;
-		let caller: T::AccountId = account("caller", 0, SEED);
-		<T as module::Config>::Currency::deposit(T::LiquidCurrencyId::get(), &caller, amount)?;
-		<T as module::Config>::Currency::deposit(T::StakingCurrencyId::get(), &caller, amount)?;
-		module::Pallet::<T>::set_stash_account_id(RawOrigin::Root.into(), caller.clone())?;
-		module::Pallet::<T>::request_mint(RawOrigin::Signed(caller.clone()).into(), amount)?;
-		module::Pallet::<T>::issue(RawOrigin::Root.into(), amount)?;
-	}: _(RawOrigin::Signed(caller), caller.clone(), 0)
+	set_minting_cap {
+	}: _(RawOrigin::Root, 1_000_000_000_000_000_000)
 
-	set_stash_account_id{
-		let caller: T::AccountId = account("caller", 0, SEED);
-	}: _(RawOrigin::Root, caller)
+	set_xcm_dest_weight {
+	}: _(RawOrigin::Root, 1_000_000_000)
 }
 
 #[cfg(test)]
@@ -64,20 +56,16 @@ mod benchmark_mock {
 	use crate as module_homa_lite;
 	use frame_support::{ord_parameter_types, parameter_types};
 	use frame_system::EnsureRoot;
+	use mock::{MockXcm, ACALA, KSM, LKSM, MOCK_XCM_DESTINATION, ROOT};
 	use module_support::mocks::MockAddressMapping;
 	use orml_traits::parameter_type_with_key;
-	use primitives::{Amount, TokenSymbol};
+	use primitives::Amount;
 	use sp_core::H256;
 	use sp_runtime::{testing::Header, traits::IdentityLookup, AccountId32};
 
 	mod homa_lite {
 		pub use super::super::*;
 	}
-
-	pub const ROOT: AccountId = AccountId32::new([255u8; 32]);
-	pub const ACALA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
-	pub const KSM: CurrencyId = CurrencyId::Token(TokenSymbol::KSM);
-	pub const LKSM: CurrencyId = CurrencyId::Token(TokenSymbol::LKSM);
 
 	parameter_types! {
 		pub const BlockHashCount: u64 = 250;
@@ -124,6 +112,7 @@ mod benchmark_mock {
 		type ExistentialDeposits = ExistentialDeposits;
 		type OnDust = ();
 		type MaxLocks = ();
+		type DustRemovalWhitelist = ();
 	}
 
 	parameter_types! {
@@ -162,7 +151,11 @@ mod benchmark_mock {
 	parameter_types! {
 		pub const StakingCurrencyId: CurrencyId = KSM;
 		pub const LiquidCurrencyId: CurrencyId = LKSM;
-		pub const HomaLitePalletId: PalletId = PalletId(*b"aca/hmlt");
+		pub const MinimumMintThreshold: Balance = 1_000_000_000;
+		pub const MockXcmDestination: MultiLocation = MOCK_XCM_DESTINATION;
+		pub DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
+		pub MaxRewardPerEra: Permill = Permill::from_rational(411u32, 1_000_000u32);
+		pub const MintFee: Balance = 10_000_000;
 	}
 	ord_parameter_types! {
 		pub const Root: AccountId = ROOT;
@@ -174,9 +167,13 @@ mod benchmark_mock {
 		type Currency = Currencies;
 		type StakingCurrencyId = StakingCurrencyId;
 		type LiquidCurrencyId = LiquidCurrencyId;
-		type PalletId = HomaLitePalletId;
-		type IssuerOrigin = EnsureRoot<AccountId>;
 		type GovernanceOrigin = EnsureRoot<AccountId>;
+		type MinimumMintThreshold = MinimumMintThreshold;
+		type XcmTransfer = MockXcm;
+		type SovereignSubAccountLocation = MockXcmDestination;
+		type DefaultExchangeRate = DefaultExchangeRate;
+		type MaxRewardPerEra = MaxRewardPerEra;
+		type MintFee = MintFee;
 	}
 
 	type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
@@ -224,27 +221,27 @@ mod tests {
 	use frame_support::assert_ok;
 
 	#[test]
-	fn test_request_mint() {
+	fn test_mint() {
 		ExtBuilder::default().build().execute_with(|| {
-			assert_ok!(test_benchmark_request_mint::<Runtime>());
+			assert_ok!(test_benchmark_mint::<Runtime>());
 		});
 	}
 	#[test]
-	fn test_issue() {
+	fn test_set_total_staking_currency() {
 		ExtBuilder::default().build().execute_with(|| {
-			assert_ok!(test_benchmark_issue::<Runtime>());
+			assert_ok!(test_benchmark_set_total_staking_currency::<Runtime>());
 		});
 	}
 	#[test]
-	fn test_claim() {
+	fn test_set_minting_cap() {
 		ExtBuilder::default().build().execute_with(|| {
-			assert_ok!(test_benchmark_claim::<Runtime>());
+			assert_ok!(test_benchmark_set_minting_cap::<Runtime>());
 		});
 	}
 	#[test]
-	fn test_set_stash_account_id() {
+	fn test_set_xcm_dest_weight() {
 		ExtBuilder::default().build().execute_with(|| {
-			assert_ok!(test_benchmark_set_stash_account_id::<Runtime>());
+			assert_ok!(test_benchmark_set_xcm_dest_weight::<Runtime>());
 		});
 	}
 }

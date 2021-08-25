@@ -29,13 +29,9 @@ use orml_traits::parameter_type_with_key;
 use primitives::{Amount, ReserveIdentifier, TokenSymbol, TradingPair};
 use smallvec::smallvec;
 use sp_core::{crypto::AccountId32, H256};
-use sp_runtime::{
-	testing::Header,
-	traits::{IdentityLookup, One},
-	Perbill,
-};
+use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
 use sp_std::cell::RefCell;
-use support::{mocks::MockAddressMapping, Ratio};
+use support::{mocks::MockAddressMapping, Price};
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
@@ -108,6 +104,7 @@ impl orml_tokens::Config for Runtime {
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = ();
 	type MaxLocks = ();
+	type DustRemovalWhitelist = ();
 }
 
 parameter_types! {
@@ -174,10 +171,9 @@ impl module_dex::Config for Runtime {
 }
 
 parameter_types! {
-	pub AllNonNativeCurrencyIds: Vec<CurrencyId> = vec![AUSD, DOT];
-	pub MaxSlippageSwapWithDEX: Ratio = Ratio::one();
-	pub const StableCurrencyId: CurrencyId = AUSD;
+	pub MaxSwapSlippageCompareToOracle: Ratio = Ratio::saturating_from_rational(1, 2);
 	pub static TransactionByteFee: u128 = 1;
+	pub DefaultFeeSwapPathList: Vec<Vec<CurrencyId>> = vec![vec![AUSD, ACA], vec![DOT, AUSD, ACA]];
 }
 
 thread_local! {
@@ -197,10 +193,29 @@ impl OnUnbalanced<pallet_balances::NegativeImbalance<Runtime>> for DealWithFees 
 	}
 }
 
+thread_local! {
+	static RELATIVE_PRICE: RefCell<Option<Price>> = RefCell::new(Some(Price::one()));
+}
+
+pub struct MockPriceSource;
+impl MockPriceSource {
+	pub fn set_relative_price(price: Option<Price>) {
+		RELATIVE_PRICE.with(|v| *v.borrow_mut() = price);
+	}
+}
+impl PriceProvider<CurrencyId> for MockPriceSource {
+	fn get_relative_price(_base: CurrencyId, _quote: CurrencyId) -> Option<Price> {
+		RELATIVE_PRICE.with(|v| *v.borrow_mut())
+	}
+
+	fn get_price(_currency_id: CurrencyId) -> Option<Price> {
+		unimplemented!()
+	}
+}
+
 impl Config for Runtime {
-	type AllNonNativeCurrencyIds = AllNonNativeCurrencyIds;
 	type NativeCurrencyId = GetNativeCurrencyId;
-	type StableCurrencyId = StableCurrencyId;
+	type DefaultFeeSwapPathList = DefaultFeeSwapPathList;
 	type Currency = PalletBalances;
 	type MultiCurrency = Currencies;
 	type OnTransactionPayment = DealWithFees;
@@ -208,7 +223,9 @@ impl Config for Runtime {
 	type WeightToFee = WeightToFee;
 	type FeeMultiplierUpdate = ();
 	type DEX = DEXModule;
-	type MaxSlippageSwapWithDEX = MaxSlippageSwapWithDEX;
+	type MaxSwapSlippageCompareToOracle = MaxSwapSlippageCompareToOracle;
+	type TradingPathLimit = TradingPathLimit;
+	type PriceSource = MockPriceSource;
 	type WeightInfo = ();
 }
 

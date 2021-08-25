@@ -105,6 +105,7 @@ impl orml_tokens::Config for Runtime {
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = ();
 	type MaxLocks = ();
+	type DustRemovalWhitelist = ();
 }
 
 pub struct MockCDPTreasury;
@@ -173,11 +174,11 @@ impl DEXManager<AccountId, CurrencyId, Balance> for MockDEX {
 		unimplemented!()
 	}
 
-	fn get_swap_target_amount(_: &[CurrencyId], _: Balance, _: Option<Ratio>) -> Option<Balance> {
+	fn get_swap_target_amount(_: &[CurrencyId], _: Balance) -> Option<Balance> {
 		unimplemented!()
 	}
 
-	fn get_swap_supply_amount(_: &[CurrencyId], _: Balance, _: Option<Ratio>) -> Option<Balance> {
+	fn get_swap_supply_amount(_: &[CurrencyId], _: Balance) -> Option<Balance> {
 		unimplemented!()
 	}
 
@@ -186,7 +187,6 @@ impl DEXManager<AccountId, CurrencyId, Balance> for MockDEX {
 		_: &[CurrencyId],
 		_: Balance,
 		_: Balance,
-		_: Option<Ratio>,
 	) -> sp_std::result::Result<Balance, DispatchError> {
 		unimplemented!()
 	}
@@ -196,7 +196,6 @@ impl DEXManager<AccountId, CurrencyId, Balance> for MockDEX {
 		_: &[CurrencyId],
 		_: Balance,
 		_: Balance,
-		_: Option<Ratio>,
 	) -> sp_std::result::Result<Balance, DispatchError> {
 		unimplemented!()
 	}

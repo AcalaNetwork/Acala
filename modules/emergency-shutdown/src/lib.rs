@@ -37,7 +37,7 @@ use frame_system::{ensure_signed, pallet_prelude::*};
 use primitives::{Balance, CurrencyId};
 use sp_runtime::{traits::Zero, FixedPointNumber};
 use sp_std::prelude::*;
-use support::{AuctionManager, CDPTreasury, EmergencyShutdown, PriceProvider, Ratio};
+use support::{AuctionManager, CDPTreasury, EmergencyShutdown, LockablePrice, Ratio};
 
 mod mock;
 mod tests;
@@ -59,7 +59,7 @@ pub mod module {
 		type CollateralCurrencyIds: Get<Vec<CurrencyId>>;
 
 		/// Price source to freeze currencies' price
-		type PriceSource: PriceProvider<CurrencyId>;
+		type PriceSource: LockablePrice<CurrencyId>;
 
 		/// CDP treasury to escrow collateral assets after settlement
 		type CDPTreasury: CDPTreasury<Self::AccountId, Balance = Balance, CurrencyId = CurrencyId>;
@@ -138,7 +138,8 @@ pub mod module {
 
 			// lock price for every collateral
 			for currency_id in collateral_currency_ids {
-				<T as Config>::PriceSource::lock_price(currency_id);
+				// TODO: check the results
+				let _ = <T as Config>::PriceSource::lock_price(currency_id);
 			}
 
 			IsShutdown::<T>::put(true);

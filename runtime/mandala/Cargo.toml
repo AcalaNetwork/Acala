@@ -1,6 +1,6 @@
 [package]
 name = "mandala-runtime"
-version = "1.2.1"
+version = "1.3.1"
 authors = ["Acala Developers"]
 edition = "2018"
 build = "build.rs"
@@ -93,6 +93,7 @@ orml-xcm-support = { path = "../../orml/xcm-support", default-features = false }
 orml-unknown-tokens = { path = "../../orml/unknown-tokens", default-features = false }
 orml-xcm = { path = "../../orml/xcm", default-features = false }
 
+module-transaction-pause = { path = "../../modules/transaction-pause", default-features = false }
 module-transaction-payment = { path = "../../modules/transaction-payment", default-features = false }
 module-airdrop = { path = "../../modules/airdrop", default-features = false }
 module-auction-manager = { path = "../../modules/auction-manager", default-features = false }
@@ -229,6 +230,7 @@ std = [
 	"orml-unknown-tokens/std",
 	"orml-xcm/std",
 
+	"module-transaction-pause/std",
 	"module-transaction-payment/std",
 	"module-airdrop/std",
 	"module-auction-manager/std",
@@ -334,6 +336,7 @@ try-runtime = [
 	"orml-rewards/try-runtime",
 	"orml-nft/try-runtime",
 
+	"module-transaction-pause/try-runtime",
 	"module-transaction-payment/try-runtime",
 	"module-airdrop/try-runtime",
 	"module-auction-manager/try-runtime",

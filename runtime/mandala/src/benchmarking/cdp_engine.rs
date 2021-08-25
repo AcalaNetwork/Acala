@@ -19,7 +19,7 @@
 use crate::{
 	dollar, AccountId, Address, Amount, Balance, CdpEngine, CollateralCurrencyIds, CurrencyId,
 	DefaultDebitExchangeRate, Dex, EmergencyShutdown, ExistentialDeposits, GetStableCurrencyId, GetStakingCurrencyId,
-	MaxSlippageSwapWithDEX, MinimumDebitValue, Price, Rate, Ratio, Runtime, MILLISECS_PER_BLOCK,
+	MaxSwapSlippageCompareToOracle, MinimumDebitValue, Price, Rate, Ratio, Runtime, MILLISECS_PER_BLOCK,
 };
 
 use super::utils::{feed_price, set_balance};
@@ -198,7 +198,7 @@ runtime_benchmarks! {
 		let collateral_value = 2 * debit_value;
 		let collateral_amount = Price::saturating_from_rational(dollar(STAKING), dollar(STABLECOIN)).saturating_mul_int(collateral_value);
 		let collateral_price = Price::one();		// 1 USD
-		let max_slippage_swap_with_dex = MaxSlippageSwapWithDEX::get();
+		let max_slippage_swap_with_dex = MaxSwapSlippageCompareToOracle::get();
 		let collateral_amount_in_dex = max_slippage_swap_with_dex.reciprocal().unwrap().saturating_mul_int(collateral_amount);
 		let base_amount_in_dex = max_slippage_swap_with_dex.reciprocal().unwrap().saturating_mul_int(debit_value * 2);
 

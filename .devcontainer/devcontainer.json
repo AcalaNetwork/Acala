@@ -1,0 +1,33 @@
+{
+	"name": "acala",
+	"build": { 
+		"dockerfile": "./Dockerfile",
+		"context": "../"
+	},
+	"runArgs": [
+		"--privileged",
+		"--cap-add=SYS_PTRACE",
+		"--security-opt",
+		"seccomp=unconfined"
+	],
+	"mounts": [
+		"source=/var/run/docker.sock,target=/var/run/docker-host.sock,type=bind"
+	],
+	"extensions": [
+		"matklad.rust-analyzer",
+		"bungcip.better-toml",
+		"vadimcn.vscode-lldb",
+		"mutantdino.resourcemonitor"
+	],
+	"settings": {
+		"lldb.executable": "/usr/bin/lldb",
+		"files.watcherExclude": {
+			"**/target/**": true
+		},
+	},
+	"forwardPorts": [
+		30333,
+		9933,
+		9944
+	]
+}
