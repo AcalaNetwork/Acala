@@ -1849,8 +1849,8 @@ impl orml_xcm::Config for Runtime {
 }
 
 parameter_types! {
-	pub Precision: u128 = 1000000000000000000u128;
-	pub FeePrecision: u128 = 10000000000u128;
+	pub const Precision: u128 = 1000000000000000000u128; // 18 decimals
+	pub const FeePrecision: u128 = 10000000000u128; // 10 decimals
 }
 
 impl nutsfinance_stable_asset::Config for Runtime {
