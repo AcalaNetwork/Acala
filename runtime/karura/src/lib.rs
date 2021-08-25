@@ -130,7 +130,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("karura"),
 	impl_name: create_runtime_str!("karura"),
 	authoring_version: 1,
-	spec_version: 1007,
+	spec_version: 1008,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -226,7 +226,9 @@ impl Contains<Call> for BaseCallFilter {
 				Call::Incentives(_) |
 				// Honzon
 				Call::Auction(_) | Call::AuctionManager(_) | Call::Honzon(_) | Call::Loans(_) | Call::Prices(_) |
-				Call::CdpTreasury(_) | Call::CdpEngine(_) | Call::EmergencyShutdown(_)
+				Call::CdpTreasury(_) | Call::CdpEngine(_) | Call::EmergencyShutdown(_) |
+				// Homa
+				Call::HomaLite(_)
 			)
 	}
 }
@@ -234,7 +236,7 @@ impl Contains<Call> for BaseCallFilter {
 impl frame_system::Config for Runtime {
 	type AccountId = AccountId;
 	type Call = Call;
-	type Lookup = AccountIdLookup<AccountId, AccountIndex>;
+	type Lookup = (AccountIdLookup<AccountId, AccountIndex>, EvmAccounts);
 	type Index = Nonce;
 	type BlockNumber = BlockNumber;
 	type Hash = Hash;
@@ -750,6 +752,9 @@ parameter_type_with_key! {
 				// use the ED of currency_id_0 as the ED of lp token.
 				if currency_id_0 == GetNativeCurrencyId::get() {
 					NativeTokenExistentialDeposit::get()
+				} else if let CurrencyId::Erc20(_) = currency_id_0 {
+					// LP token with erc20
+					1
 				} else {
 					Self::get(&currency_id_0)
 				}

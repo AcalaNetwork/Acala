@@ -802,6 +802,9 @@ parameter_type_with_key! {
 				// use the ED of currency_id_0 as the ED of lp token.
 				if currency_id_0 == GetNativeCurrencyId::get() {
 					NativeTokenExistentialDeposit::get()
+				} else if let CurrencyId::Erc20(_) = currency_id_0 {
+					// LP token with erc20
+					1
 				} else {
 					Self::get(&currency_id_0)
 				}
@@ -1273,8 +1276,8 @@ pub fn create_x2_parachain_multilocation(index: u16) -> MultiLocation {
 parameter_types! {
 	pub MinimumMintThreshold: Balance = 10 * cent(DOT);
 	pub RelaychainSovereignSubAccount: MultiLocation = create_x2_parachain_multilocation(RelaychainSubAccountId::HomaLite as u16);
-	pub MaxRewardPerEra: Permill = Permill::from_rational(411u32, 1_000_000u32); // 15% / 365 = 0.0004109
-	pub MintFee: Balance = millicent(DOT);
+	pub MaxRewardPerEra: Permill = Permill::from_rational(500u32, 1_000_000u32); // 1.2 ^ (1/365) = 1.0004996359
+	pub MintFee: Balance = 20 * millicent(DOT); // 2x XCM fee on Kusama
 }
 impl module_homa_lite::Config for Runtime {
 	type Event = Event;
@@ -1493,8 +1496,8 @@ parameter_types! {
 #[cfg(not(feature = "with-ethereum-compatibility"))]
 parameter_types! {
 	pub NativeTokenExistentialDeposit: Balance = 10 * cent(ACA);
-	pub const NewContractExtraBytes: u32 = 10_000_000;
-	pub StorageDepositPerByte: Balance = microcent(ACA);
+	pub const NewContractExtraBytes: u32 = 10_000;
+	pub StorageDepositPerByte: Balance = deposit(0, 1);
 	pub const MaxCodeSize: u32 = 60 * 1024;
 	pub DeveloperDeposit: Balance = dollar(ACA);
 	pub DeploymentFee: Balance = dollar(ACA);
