@@ -53,6 +53,7 @@ use sc_service::{
 	error::Error as ServiceError, Configuration, PartialComponents, Role, TFullBackend, TFullClient, TaskManager,
 };
 use sc_telemetry::{Telemetry, TelemetryHandle, TelemetryWorker, TelemetryWorkerHandle};
+use sc_transaction_pool::BasicPool;
 use sp_consensus::SlotData;
 use sp_consensus_aura::sr25519::{AuthorityId as AuraId, AuthorityPair as AuraPair};
 use sp_keystore::SyncCryptoStorePtr;
@@ -196,7 +197,7 @@ where
 
 	let registry = config.prometheus_registry();
 
-	let transaction_pool = sc_transaction_pool::BasicPool::new_full(
+	let transaction_pool = BasicPool::new_full(
 		config.transaction_pool.clone(),
 		config.role.is_authority().into(),
 		registry,
@@ -614,6 +615,7 @@ fn inner_mandala_dev(config: Configuration, instant_sealing: bool) -> Result<Tas
 		import_queue,
 		on_demand: None,
 		block_announce_validator_builder: None,
+		warp_sync: None,
 	})?;
 
 	if config.offchain_worker.enabled {
@@ -654,7 +656,7 @@ fn inner_mandala_dev(config: Configuration, instant_sealing: bool) -> Result<Tas
 					block_import: client.clone(),
 					env: proposer_factory,
 					client: client.clone(),
-					pool,
+					pool: transaction_pool.clone(),
 					commands_stream,
 					select_chain,
 					consensus_data_provider: None,
@@ -712,14 +714,14 @@ fn inner_mandala_dev(config: Configuration, instant_sealing: bool) -> Result<Tas
 		let client = client.clone();
 		let transaction_pool = transaction_pool.clone();
 
-		Box::new(move |deny_unsafe, _| -> acala_rpc::RpcExtension {
+		Box::new(move |deny_unsafe, _| {
 			let deps = acala_rpc::FullDeps {
 				client: client.clone(),
 				pool: transaction_pool.clone(),
 				deny_unsafe,
 			};
 
-			acala_rpc::create_full(deps)
+			Ok(acala_rpc::create_full(deps))
 		})
 	};
 
