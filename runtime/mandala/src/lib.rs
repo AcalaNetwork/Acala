@@ -2241,6 +2241,55 @@ impl_runtime_apis! {
 	// benchmarks for acala modules
 	#[cfg(feature = "runtime-benchmarks")]
 	impl frame_benchmarking::Benchmark<Block> for Runtime {
+		fn benchmark_metadata(extra: bool) -> (
+			Vec<frame_benchmarking::BenchmarkList>,
+			Vec<frame_support::traits::StorageInfo>,
+		) {
+			use frame_benchmarking::{list_benchmark, Benchmarking, BenchmarkList};
+			use frame_support::traits::StorageInfoTrait;
+			use orml_benchmarking::list_benchmark as orml_list_benchmark;
+
+			use module_nft::benchmarking::Pallet as NftBench;
+			use module_homa_lite::benchmarking::Pallet as HomaLiteBench;
+
+			let mut list = Vec::<BenchmarkList>::new();
+
+			list_benchmark!(list, extra, module_nft, NftBench::<Runtime>);
+			list_benchmark!(list, extra, module_homa_lite, HomaLiteBench::<Runtime>);
+
+			orml_list_benchmark!(list, extra, module_dex, benchmarking::dex);
+			orml_list_benchmark!(list, extra, module_auction_manager, benchmarking::auction_manager);
+			orml_list_benchmark!(list, extra, module_cdp_engine, benchmarking::cdp_engine);
+			orml_list_benchmark!(list, extra, module_collator_selection, benchmarking::collator_selection);
+			orml_list_benchmark!(list, extra, module_nominees_election, benchmarking::nominees_election);
+			orml_list_benchmark!(list, extra, module_emergency_shutdown, benchmarking::emergency_shutdown);
+			orml_list_benchmark!(list, extra, module_evm, benchmarking::evm);
+			orml_list_benchmark!(list, extra, module_honzon, benchmarking::honzon);
+			orml_list_benchmark!(list, extra, module_cdp_treasury, benchmarking::cdp_treasury);
+			orml_list_benchmark!(list, extra, module_transaction_pause, benchmarking::transaction_pause);
+			orml_list_benchmark!(list, extra, module_transaction_payment, benchmarking::transaction_payment);
+			orml_list_benchmark!(list, extra, module_incentives, benchmarking::incentives);
+			orml_list_benchmark!(list, extra, module_prices, benchmarking::prices);
+			orml_list_benchmark!(list, extra, module_evm_accounts, benchmarking::evm_accounts);
+			orml_list_benchmark!(list, extra, module_homa, benchmarking::homa);
+			orml_list_benchmark!(list, extra, module_currencies, benchmarking::currencies);
+			orml_list_benchmark!(list, extra, module_session_manager, benchmarking::session_manager);
+
+			orml_list_benchmark!(list, extra, orml_tokens, benchmarking::tokens);
+			orml_list_benchmark!(list, extra, orml_vesting, benchmarking::vesting);
+			orml_list_benchmark!(list, extra, orml_auction, benchmarking::auction);
+
+			orml_list_benchmark!(list, extra, orml_authority, benchmarking::authority);
+			orml_list_benchmark!(list, extra, orml_gradually_update, benchmarking::gradually_update);
+			orml_list_benchmark!(list, extra, orml_oracle, benchmarking::oracle);
+
+			orml_list_benchmark!(list, extra, ecosystem_chainsafe, benchmarking::chainsafe_transfer);
+
+			let storage_info = AllPalletsWithSystem::storage_info();
+
+			return (list, storage_info)
+		}
+
 		fn dispatch_benchmark(
 			config: frame_benchmarking::BenchmarkConfig
 		) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString> {
