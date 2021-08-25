@@ -1857,7 +1857,7 @@ impl nutsfinance_stable_asset::Config for Runtime {
 	type Event = Event;
 	type AssetId = CurrencyId;
 	type Balance = Balance;
-	type Assets = orml_tokens::Pallet<Runtime>;
+	type Assets = Tokens;
 	type PalletId = StableAssetPalletId;
 
 	type AtLeast64BitUnsigned = u128;
