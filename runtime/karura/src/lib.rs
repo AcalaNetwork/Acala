@@ -86,9 +86,9 @@ mod weights;
 pub use frame_support::{
 	construct_runtime, log, parameter_types,
 	traits::{
-		All, Contains, ContainsLengthBound, Currency as PalletCurrency, EnsureOrigin, Filter, Get, Imbalance,
-		InstanceFilter, IsSubType, IsType, KeyOwnerProofSystem, LockIdentifier, MaxEncodedLen, OnUnbalanced,
-		Randomness, SortedMembers, U128CurrencyToVote,
+		Contains, ContainsLengthBound, Currency as PalletCurrency, EnsureOrigin, Everything, Get, Imbalance,
+		InstanceFilter, IsSubType, IsType, KeyOwnerProofSystem, LockIdentifier, OnUnbalanced, Randomness,
+		SortedMembers, U128CurrencyToVote,
 	},
 	weights::{constants::RocksDbWeight, IdentityFee, Weight},
 	PalletId, RuntimeDebug, StorageValue,
@@ -192,41 +192,41 @@ parameter_types! {
 }
 
 pub struct BaseCallFilter;
-impl Filter<Call> for BaseCallFilter {
-	fn filter(call: &Call) -> bool {
-		module_transaction_pause::NonPausedTransactionFilter::<Runtime>::filter(call)
+impl Contains<Call> for BaseCallFilter {
+	fn contains(call: &Call) -> bool {
+		module_transaction_pause::NonPausedTransactionFilter::<Runtime>::contains(call)
 			&& matches!(
 				call,
 				// Core
 				Call::System(_) | Call::Timestamp(_) | Call::ParachainSystem(_) |
-			// Utility
-			Call::Scheduler(_) | Call::Utility(_) | Call::Multisig(_) | Call::Proxy(_) |
-			// Councils
-			Call::Authority(_) | Call::GeneralCouncil(_) | Call::GeneralCouncilMembership(_) |
-			Call::FinancialCouncil(_) | Call::FinancialCouncilMembership(_) |
-			Call::HomaCouncil(_) | Call::HomaCouncilMembership(_) |
-			Call::TechnicalCommittee(_) | Call::TechnicalCommitteeMembership(_) |
-			// Oracle
-			Call::AcalaOracle(_) | Call::OperatorMembershipAcala(_) |
-			// Democracy
-			Call::Democracy(_) | Call::Treasury(_) | Call::Bounties(_) | Call::Tips(_) |
-			// Collactor Selection
-			Call::CollatorSelection(_) | Call::Session(_) | Call::SessionManager(_) |
-			// Vesting
-			Call::Vesting(_) |
-			// TransactionPayment
-			Call::TransactionPayment(_) |
-			// Tokens
-			Call::XTokens(_) | Call::Balances(_) | Call::Currencies(_) |
-			// NFT
-			Call::NFT(_) |
-			// DEX
-			Call::Dex(_) |
-			// Incentives
-			Call::Incentives(_) |
-			// Honzon
-			Call::Auction(_) | Call::AuctionManager(_) | Call::Honzon(_) | Call::Loans(_) | Call::Prices(_) |
-			Call::CdpTreasury(_) | Call::CdpEngine(_) | Call::EmergencyShutdown(_)
+				// Utility
+				Call::Scheduler(_) | Call::Utility(_) | Call::Multisig(_) | Call::Proxy(_) |
+				// Councils
+				Call::Authority(_) | Call::GeneralCouncil(_) | Call::GeneralCouncilMembership(_) |
+				Call::FinancialCouncil(_) | Call::FinancialCouncilMembership(_) |
+				Call::HomaCouncil(_) | Call::HomaCouncilMembership(_) |
+				Call::TechnicalCommittee(_) | Call::TechnicalCommitteeMembership(_) |
+				// Oracle
+				Call::AcalaOracle(_) | Call::OperatorMembershipAcala(_) |
+				// Democracy
+				Call::Democracy(_) | Call::Treasury(_) | Call::Bounties(_) | Call::Tips(_) |
+				// Collactor Selection
+				Call::CollatorSelection(_) | Call::Session(_) | Call::SessionManager(_) |
+				// Vesting
+				Call::Vesting(_) |
+				// TransactionPayment
+				Call::TransactionPayment(_) |
+				// Tokens
+				Call::XTokens(_) | Call::Balances(_) | Call::Currencies(_) |
+				// NFT
+				Call::NFT(_) |
+				// DEX
+				Call::Dex(_) |
+				// Incentives
+				Call::Incentives(_) |
+				// Honzon
+				Call::Auction(_) | Call::AuctionManager(_) | Call::Honzon(_) | Call::Loans(_) | Call::Prices(_) |
+				Call::CdpTreasury(_) | Call::CdpEngine(_) | Call::EmergencyShutdown(_)
 			)
 	}
 }
@@ -262,6 +262,7 @@ impl frame_system::Config for Runtime {
 
 impl pallet_aura::Config for Runtime {
 	type AuthorityId = AuraId;
+	type DisabledValidators = ();
 }
 
 parameter_types! {
@@ -1403,7 +1404,7 @@ parameter_types! {
 	pub KsmPerSecond: (MultiLocation, u128) = (X1(Parent), ksm_per_second());
 }
 
-pub type Barrier = (TakeWeightCredit, AllowTopLevelPaidExecutionFrom<All<MultiLocation>>);
+pub type Barrier = (TakeWeightCredit, AllowTopLevelPaidExecutionFrom<Everything>);
 
 pub struct ToTreasury;
 impl TakeRevenue for ToTreasury {
@@ -1456,11 +1457,12 @@ impl pallet_xcm::Config for Runtime {
 	type SendXcmOrigin = EnsureXcmOrigin<Origin, LocalOriginToLocation>;
 	type XcmRouter = XcmRouter;
 	type ExecuteXcmOrigin = EnsureXcmOrigin<Origin, LocalOriginToLocation>;
-	type XcmExecuteFilter = All<(MultiLocation, Xcm<Call>)>;
+	type XcmExecuteFilter = Everything;
 	type XcmExecutor = XcmExecutor<XcmConfig>;
 	type XcmTeleportFilter = ();
-	type XcmReserveTransferFilter = All<(MultiLocation, Vec<MultiAsset>)>;
+	type XcmReserveTransferFilter = Everything;
 	type Weigher = FixedWeightBounds<UnitWeightCost, Call>;
+	type LocationInverter = LocationInverter<Ancestry>;
 }
 
 impl cumulus_pallet_xcm::Config for Runtime {

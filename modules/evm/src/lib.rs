@@ -824,9 +824,7 @@ impl<T: Config> Pallet<T> {
 
 		// this should happen after `Accounts` is updated because this could trigger another updates on
 		// `Accounts`
-		frame_system::Pallet::<T>::dec_providers(&address_account).map_err(|e| match e {
-			frame_system::DecRefError::ConsumerRemaining => DispatchError::ConsumerRemaining,
-		})?;
+		frame_system::Pallet::<T>::dec_providers(&address_account)?;
 
 		Ok(size)
 	}

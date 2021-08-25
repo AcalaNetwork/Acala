@@ -14,8 +14,10 @@ sc-cli = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v
 sc-basic-authorship = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.9" }
 sc-rpc = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.9" }
 sc-transaction-pool = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.9" }
+sc-transaction-pool-api = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.9" }
 sc-client-api = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.9" }
 sc-rpc-server = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.9" }
+sc-consensus = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.9" }
 manual-seal = { package = "sc-consensus-manual-seal", git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.9" }
 
 # primitive deps

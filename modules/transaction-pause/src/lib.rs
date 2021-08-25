@@ -22,7 +22,7 @@
 use frame_support::{
 	dispatch::{CallMetadata, GetCallMetadata},
 	pallet_prelude::*,
-	traits::{Filter, PalletInfoAccess},
+	traits::{Contains, PalletInfoAccess},
 	transactional,
 };
 use frame_system::pallet_prelude::*;
@@ -121,11 +121,11 @@ pub mod module {
 }
 
 pub struct NonPausedTransactionFilter<T>(sp_std::marker::PhantomData<T>);
-impl<T: Config> Filter<T::Call> for NonPausedTransactionFilter<T>
+impl<T: Config> Contains<T::Call> for NonPausedTransactionFilter<T>
 where
 	<T as frame_system::Config>::Call: GetCallMetadata,
 {
-	fn filter(call: &T::Call) -> bool {
+	fn contains(call: &T::Call) -> bool {
 		let CallMetadata {
 			function_name,
 			pallet_name,

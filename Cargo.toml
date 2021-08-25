@@ -4,7 +4,7 @@ cargo-features = ["resolver"]
 members = [
 	"node",
 	"node/cli",
-	"node/e2e-tests",
+	# "node/e2e-tests",
 	"node/service",
 
 	"modules/*",
@@ -181,6 +181,7 @@ sc-consensus-babe-rpc = { git = "https://github.com/paritytech//substrate", rev 
 sc-consensus-epochs = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
 sc-consensus-manual-seal = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
 sc-consensus-slots = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
+sc-cli = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
 sc-executor = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
 sc-executor-common = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
 sc-executor-wasmtime = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
@@ -199,6 +200,7 @@ sc-sync-state-rpc = { git = "https://github.com/paritytech//substrate", rev = "9
 sc-telemetry = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
 sc-tracing = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
 sc-transaction-pool = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
+sc-transaction-pool-api = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
 sp-api = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
 sp-application-crypto = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
 sp-arithmetic = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
@@ -293,7 +295,7 @@ cumulus-primitives-parachain-inherent = { git = "https://github.com/paritytech//
 cumulus-test-relay-sproof-builder = { git = "https://github.com/paritytech//cumulus", rev = "fd80849dde5c209c20a996cfcc5aaacd4666dcbe" }
 
 [patch."https://github.com/paritytech/grandpa-bridge-gadget"]
-pallet-beefy = { git = "https://github.com/paritytech//grandpa-bridge-gadget", rev = "55ae3329847e0bbde51c9d45991d99f444777555" }
-beefy-primitives = { git = "https://github.com/paritytech//grandpa-bridge-gadget", rev = "55ae3329847e0bbde51c9d45991d99f444777555" }
-beefy-gadget = { git = "https://github.com/paritytech//grandpa-bridge-gadget", rev = "55ae3329847e0bbde51c9d45991d99f444777555" }
-beefy-gadget-rpc = { git = "https://github.com/paritytech//grandpa-bridge-gadget", rev = "55ae3329847e0bbde51c9d45991d99f444777555" }
+pallet-beefy = { git = "https://github.com/paritytech//grandpa-bridge-gadget", rev = "f40c0ab7b327e874d5c8d699bfa5d762f1759ee0" }
+beefy-primitives = { git = "https://github.com/paritytech//grandpa-bridge-gadget", rev = "f40c0ab7b327e874d5c8d699bfa5d762f1759ee0" }
+beefy-gadget = { git = "https://github.com/paritytech//grandpa-bridge-gadget", rev = "f40c0ab7b327e874d5c8d699bfa5d762f1759ee0" }
+beefy-gadget-rpc = { git = "https://github.com/paritytech//grandpa-bridge-gadget", rev = "f40c0ab7b327e874d5c8d699bfa5d762f1759ee0" }

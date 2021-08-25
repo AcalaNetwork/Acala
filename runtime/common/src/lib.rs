@@ -20,10 +20,10 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use codec::{Decode, Encode};
+use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	parameter_types,
-	traits::{Contains, MaxEncodedLen},
+	traits::Contains,
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, WEIGHT_PER_MILLIS},
 		DispatchClass, Weight,
@@ -40,9 +40,7 @@ use sp_core::{
 	H160,
 };
 use sp_runtime::{
-	// TODO: move after https://github.com/paritytech/substrate/pull/9209
-	offchain::storage_lock::BlockNumberProvider,
-	traits::Convert,
+	traits::{BlockNumberProvider, Convert},
 	transaction_validity::TransactionPriority,
 	Perbill,
 };
