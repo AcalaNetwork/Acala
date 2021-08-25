@@ -17,7 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use acala_service::chain_spec::evm_genesis;
-use codec::Encode;
+pub use codec::Encode;
 use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
 use frame_support::{
 	assert_noop, assert_ok,
@@ -27,16 +27,16 @@ use frame_support::{
 use frame_system::RawOrigin;
 
 use module_cdp_engine::LiquidationStrategy;
-use module_support::{
+pub use module_support::{
 	mocks::MockAddressMapping, AddressMapping, CDPTreasury, DEXManager, Price, Rate, Ratio, RiskManager,
 };
 use orml_authority::DelayedOrigin;
-use orml_traits::{Change, GetByKey, MultiCurrency};
+pub use orml_traits::{Change, GetByKey, MultiCurrency};
 use orml_vesting::VestingSchedule;
-use primitives::currency::*;
-use sp_core::H160;
+pub use primitives::currency::*;
+pub use sp_core::H160;
 use sp_io::hashing::keccak_256;
-use sp_runtime::{
+pub use sp_runtime::{
 	traits::{AccountIdConversion, BadOrigin, Convert, Zero},
 	DispatchError, DispatchResult, FixedPointNumber, MultiAddress,
 };
@@ -282,11 +282,11 @@ fn set_oracle_price(prices: Vec<(CurrencyId, Price)>) -> DispatchResult {
 	Ok(())
 }
 
-fn alice_key() -> secp256k1::SecretKey {
+pub fn alice_key() -> secp256k1::SecretKey {
 	secp256k1::SecretKey::parse(&keccak_256(b"Alice")).unwrap()
 }
 
-fn bob_key() -> secp256k1::SecretKey {
+pub fn bob_key() -> secp256k1::SecretKey {
 	secp256k1::SecretKey::parse(&keccak_256(b"Bob")).unwrap()
 }
 

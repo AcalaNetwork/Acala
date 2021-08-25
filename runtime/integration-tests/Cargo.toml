@@ -155,6 +155,10 @@ with-mandala-runtime=[
 with-karura-runtime=[
 	"acala-service/with-karura-runtime"
 ]
+with-ethereum-compatibility=[
+	"mandala-runtime/with-ethereum-compatibility",
+	"module-evm/with-ethereum-compatibility",
+]
 std = [
 	"codec/std",
 	"serde",

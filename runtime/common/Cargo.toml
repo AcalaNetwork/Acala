@@ -78,4 +78,6 @@ std = [
 	"module-support/std",
 	"primitives/std",
 ]
-with-ethereum-compatibility = []
+with-ethereum-compatibility = [
+	"module-evm/with-ethereum-compatibility",
+]
