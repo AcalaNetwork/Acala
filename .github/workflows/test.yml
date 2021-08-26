@@ -60,3 +60,5 @@ jobs:
       run: make test-benchmarking
     - name: Check benchmarks
       run: make check-benchmarks
+    - name: Check try-runtime
+      run: make check-try-runtime
