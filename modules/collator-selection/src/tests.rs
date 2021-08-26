@@ -49,7 +49,7 @@ fn it_should_set_invulnerables() {
 
 		// cannot set with non-root.
 		assert_noop!(
-			CollatorSelection::set_invulnerables(Origin::signed(1), new_set.clone()),
+			CollatorSelection::set_invulnerables(Origin::signed(1), new_set),
 			BadOrigin
 		);
 	});

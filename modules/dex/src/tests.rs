@@ -664,31 +664,31 @@ fn get_target_amounts_work() {
 			LiquidityPool::<Runtime>::insert(AUSDDOTPair::get(), (50000, 10000));
 			LiquidityPool::<Runtime>::insert(AUSDBTCPair::get(), (100000, 10));
 			assert_noop!(
-				DexModule::get_target_amounts(&vec![DOT], 10000),
+				DexModule::get_target_amounts(&[DOT], 10000),
 				Error::<Runtime>::InvalidTradingPathLength,
 			);
 			assert_noop!(
-				DexModule::get_target_amounts(&vec![DOT, AUSD, BTC, DOT], 10000),
+				DexModule::get_target_amounts(&[DOT, AUSD, BTC, DOT], 10000),
 				Error::<Runtime>::InvalidTradingPathLength,
 			);
 			assert_noop!(
-				DexModule::get_target_amounts(&vec![DOT, AUSD, ACA], 10000),
+				DexModule::get_target_amounts(&[DOT, AUSD, ACA], 10000),
 				Error::<Runtime>::MustBeEnabled,
 			);
 			assert_eq!(
-				DexModule::get_target_amounts(&vec![DOT, AUSD], 10000),
+				DexModule::get_target_amounts(&[DOT, AUSD], 10000),
 				Ok(vec![10000, 24874])
 			);
 			assert_eq!(
-				DexModule::get_target_amounts(&vec![DOT, AUSD, BTC], 10000),
+				DexModule::get_target_amounts(&[DOT, AUSD, BTC], 10000),
 				Ok(vec![10000, 24874, 1])
 			);
 			assert_noop!(
-				DexModule::get_target_amounts(&vec![DOT, AUSD, BTC], 100),
+				DexModule::get_target_amounts(&[DOT, AUSD, BTC], 100),
 				Error::<Runtime>::ZeroTargetAmount,
 			);
 			assert_noop!(
-				DexModule::get_target_amounts(&vec![DOT, BTC], 100),
+				DexModule::get_target_amounts(&[DOT, BTC], 100),
 				Error::<Runtime>::InsufficientLiquidity,
 			);
 		});
@@ -729,31 +729,31 @@ fn get_supply_amounts_work() {
 			LiquidityPool::<Runtime>::insert(AUSDDOTPair::get(), (50000, 10000));
 			LiquidityPool::<Runtime>::insert(AUSDBTCPair::get(), (100000, 10));
 			assert_noop!(
-				DexModule::get_supply_amounts(&vec![DOT], 10000),
+				DexModule::get_supply_amounts(&[DOT], 10000),
 				Error::<Runtime>::InvalidTradingPathLength,
 			);
 			assert_noop!(
-				DexModule::get_supply_amounts(&vec![DOT, AUSD, BTC, DOT], 10000),
+				DexModule::get_supply_amounts(&[DOT, AUSD, BTC, DOT], 10000),
 				Error::<Runtime>::InvalidTradingPathLength,
 			);
 			assert_noop!(
-				DexModule::get_supply_amounts(&vec![DOT, AUSD, ACA], 10000),
+				DexModule::get_supply_amounts(&[DOT, AUSD, ACA], 10000),
 				Error::<Runtime>::MustBeEnabled,
 			);
 			assert_eq!(
-				DexModule::get_supply_amounts(&vec![DOT, AUSD], 24874),
+				DexModule::get_supply_amounts(&[DOT, AUSD], 24874),
 				Ok(vec![10000, 24874])
 			);
 			assert_eq!(
-				DexModule::get_supply_amounts(&vec![DOT, AUSD], 25000),
+				DexModule::get_supply_amounts(&[DOT, AUSD], 25000),
 				Ok(vec![10102, 25000])
 			);
 			assert_noop!(
-				DexModule::get_supply_amounts(&vec![DOT, AUSD, BTC], 10000),
+				DexModule::get_supply_amounts(&[DOT, AUSD, BTC], 10000),
 				Error::<Runtime>::ZeroSupplyAmount,
 			);
 			assert_noop!(
-				DexModule::get_supply_amounts(&vec![DOT, BTC], 10000),
+				DexModule::get_supply_amounts(&[DOT, BTC], 10000),
 				Error::<Runtime>::InsufficientLiquidity,
 			);
 		});
@@ -790,9 +790,9 @@ fn _swap_by_path_work() {
 
 			assert_eq!(DexModule::get_liquidity(AUSD, DOT), (50000, 10000));
 			assert_eq!(DexModule::get_liquidity(AUSD, BTC), (100000, 10));
-			assert_ok!(DexModule::_swap_by_path(&vec![DOT, AUSD], &vec![10000, 25000]));
+			assert_ok!(DexModule::_swap_by_path(&[DOT, AUSD], &[10000, 25000]));
 			assert_eq!(DexModule::get_liquidity(AUSD, DOT), (25000, 20000));
-			assert_ok!(DexModule::_swap_by_path(&vec![DOT, AUSD, BTC], &vec![100000, 20000, 1]));
+			assert_ok!(DexModule::_swap_by_path(&[DOT, AUSD, BTC], &[100000, 20000, 1]));
 			assert_eq!(DexModule::get_liquidity(AUSD, DOT), (5000, 120000));
 			assert_eq!(DexModule::get_liquidity(AUSD, BTC), (120000, 9));
 		});

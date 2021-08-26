@@ -343,7 +343,7 @@ pub mod module {
 			ensure!(!ledger.total.is_zero(), Error::<T, I>::NoBonded);
 
 			for validator in bounded_targets.iter() {
-				ensure!(T::NomineeFilter::contains(&validator), Error::<T, I>::InvalidNominee);
+				ensure!(T::NomineeFilter::contains(validator), Error::<T, I>::InvalidNominee);
 			}
 
 			let old_nominations = Self::nominations(&who);

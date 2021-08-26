@@ -150,3 +150,7 @@ benchmark-mandala:
 .PHONY: benchmark-karura
 benchmark-karura:
 	 cargo run --release --features=runtime-benchmarks --features=with-karura-runtime -- benchmark --chain=karura-latest --steps=50 --repeat=20 '--pallet=*' '--extrinsic=*' --execution=wasm --wasm-execution=compiled --heap-pages=4096 --template=./templates/runtime-weight-template.hbs --output=./runtime/karura/src/weights/
+
+.PHONY: clippy-fix
+clippy-fix:
+	cargo clippy --fix -Z unstable-options

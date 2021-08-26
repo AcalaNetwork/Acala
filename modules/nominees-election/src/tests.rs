@@ -242,15 +242,15 @@ fn update_votes_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		<Votes<Runtime>>::insert(1, 50);
 		<Votes<Runtime>>::insert(2, 100);
-		NomineesElectionModule::update_votes(30, &vec![1, 2], 50, &vec![1, 2]);
+		NomineesElectionModule::update_votes(30, &[1, 2], 50, &[1, 2]);
 		assert_eq!(NomineesElectionModule::votes(1), 70);
 		assert_eq!(NomineesElectionModule::votes(2), 120);
-		NomineesElectionModule::update_votes(0, &vec![1, 2], 50, &vec![3, 4]);
+		NomineesElectionModule::update_votes(0, &[1, 2], 50, &[3, 4]);
 		assert_eq!(NomineesElectionModule::votes(1), 70);
 		assert_eq!(NomineesElectionModule::votes(2), 120);
 		assert_eq!(NomineesElectionModule::votes(3), 50);
 		assert_eq!(NomineesElectionModule::votes(4), 50);
-		NomineesElectionModule::update_votes(200, &vec![1, 2, 3, 4], 10, &vec![3, 4]);
+		NomineesElectionModule::update_votes(200, &[1, 2, 3, 4], 10, &[3, 4]);
 		assert_eq!(NomineesElectionModule::votes(1), 0);
 		assert_eq!(NomineesElectionModule::votes(2), 0);
 		assert_eq!(NomineesElectionModule::votes(3), 10);
