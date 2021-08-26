@@ -27,7 +27,8 @@
 #![allow(clippy::unused_unit)]
 #![allow(clippy::collapsible_if)]
 
-use frame_support::{log, pallet_prelude::*, traits::MaxEncodedLen, transactional, PalletId};
+use codec::MaxEncodedLen;
+use frame_support::{log, pallet_prelude::*, transactional, PalletId};
 use orml_traits::{Happened, MultiCurrency, MultiCurrencyExtended};
 use primitives::{Amount, Balance, CurrencyId};
 use sp_runtime::{

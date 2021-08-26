@@ -258,6 +258,6 @@ mod tests {
 		assert_eq!(tx2.priority, 1844674407370965161);
 
 		assert_eq!(tx3.hash, normal_tx_hash);
-		assert_eq!(tx3.priority, 42570167292000);
+		assert_eq!(tx3.priority, 42785501349000);
 	}
 }

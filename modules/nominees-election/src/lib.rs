@@ -19,11 +19,11 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
 
-use codec::Encode;
+use codec::{Encode, MaxEncodedLen};
 use frame_support::{
 	log,
 	pallet_prelude::*,
-	traits::{Contains, Get, LockIdentifier, MaxEncodedLen},
+	traits::{Contains, Get, LockIdentifier},
 	transactional, BoundedVec,
 };
 use frame_system::pallet_prelude::*;

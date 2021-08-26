@@ -28,19 +28,15 @@
 #![allow(clippy::unused_unit)]
 #![allow(clippy::collapsible_if)]
 
-use frame_support::{
-	pallet_prelude::*,
-	traits::{Contains, MaxEncodedLen},
-	transactional,
-};
+use codec::MaxEncodedLen;
+use frame_support::{pallet_prelude::*, traits::Contains, transactional};
 use frame_system::pallet_prelude::*;
 use orml_traits::{BasicCurrency, BasicLockableCurrency, Happened, LockIdentifier};
 use primitives::Balance;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_runtime::{
-	offchain::storage_lock::BlockNumberProvider,
-	traits::{Bounded, MaybeDisplay, MaybeSerializeDeserialize, Member, Zero},
+	traits::{BlockNumberProvider, Bounded, MaybeDisplay, MaybeSerializeDeserialize, Member, Zero},
 	DispatchResult, FixedPointNumber, RuntimeDebug,
 };
 use sp_std::{fmt::Debug, vec::Vec};

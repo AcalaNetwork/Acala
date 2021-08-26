@@ -19,10 +19,11 @@
 #![allow(clippy::all)]
 
 use manual_seal::consensus::ConsensusDataProvider;
+use sc_consensus::BlockImport;
 use sc_executor::NativeExecutionDispatch;
 use sc_service::{Configuration, TFullBackend, TFullClient, TaskExecutor, TaskManager};
 use sp_api::{ConstructRuntimeApi, TransactionFor};
-use sp_consensus::{BlockImport, SelectChain};
+use sp_consensus::SelectChain;
 use sp_inherents::{CreateInherentDataProviders, InherentDataProvider};
 use sp_keystore::SyncCryptoStorePtr;
 use sp_runtime::traits::{Block as BlockT, SignedExtension};

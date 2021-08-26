@@ -24,7 +24,7 @@ use crate as nft;
 use codec::{Decode, Encode};
 use frame_support::{
 	construct_runtime, parameter_types,
-	traits::{Filter, InstanceFilter},
+	traits::{Contains, InstanceFilter},
 	RuntimeDebug,
 };
 use orml_traits::parameter_type_with_key;
@@ -119,8 +119,8 @@ impl InstanceFilter<Call> for ProxyType {
 	}
 }
 pub struct BaseFilter;
-impl Filter<Call> for BaseFilter {
-	fn filter(c: &Call) -> bool {
+impl Contains<Call> for BaseFilter {
+	fn contains(c: &Call) -> bool {
 		match *c {
 			// Remark is used as a no-op call in the benchmarking
 			Call::System(SystemCall::remark(_)) => true,

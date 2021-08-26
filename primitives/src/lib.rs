@@ -23,9 +23,8 @@
 pub mod currency;
 pub mod evm;
 
-use codec::{Decode, Encode};
+use codec::{Decode, Encode, MaxEncodedLen};
 use core::ops::Range;
-use max_encoded_len::MaxEncodedLen;
 use sp_runtime::{
 	generic,
 	traits::{BlakeTwo256, IdentifyAccount, Verify},

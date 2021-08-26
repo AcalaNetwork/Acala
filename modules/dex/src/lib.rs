@@ -33,7 +33,8 @@
 #![allow(clippy::unused_unit)]
 #![allow(clippy::collapsible_if)]
 
-use frame_support::{log, pallet_prelude::*, traits::MaxEncodedLen, transactional, PalletId};
+use codec::MaxEncodedLen;
+use frame_support::{log, pallet_prelude::*, transactional, PalletId};
 use frame_system::pallet_prelude::*;
 use orml_traits::{MultiCurrency, MultiCurrencyExtended};
 use primitives::{Balance, CurrencyId, TradingPair};

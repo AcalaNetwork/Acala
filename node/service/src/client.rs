@@ -339,6 +339,23 @@ impl sc_client_api::StorageProvider<Block, crate::FullBackend> for Client {
 		}
 	}
 
+	fn child_storage_keys_iter<'a>(
+		&self,
+		id: &BlockId<Block>,
+		child_info: ChildInfo,
+		prefix: Option<&'a StorageKey>,
+		start_key: Option<&StorageKey>,
+	) -> sp_blockchain::Result<KeyIterator<'a, <crate::FullBackend as sc_client_api::Backend<Block>>::State, Block>> {
+		match self {
+			#[cfg(feature = "with-mandala-runtime")]
+			Self::Mandala(client) => client.child_storage_keys_iter(id, child_info, prefix, start_key),
+			#[cfg(feature = "with-karura-runtime")]
+			Self::Karura(client) => client.child_storage_keys_iter(id, child_info, prefix, start_key),
+			#[cfg(feature = "with-acala-runtime")]
+			Self::Acala(client) => client.child_storage_keys_iter(id, child_info, prefix, start_key),
+		}
+	}
+
 	fn child_storage(
 		&self,
 		id: &BlockId<Block>,
