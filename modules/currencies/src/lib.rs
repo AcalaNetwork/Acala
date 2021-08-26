@@ -852,12 +852,39 @@ impl<T: Config> fungibles::MutateHold<T::AccountId> for Pallet<T> {
 		source: &T::AccountId,
 		dest: &T::AccountId,
 		amount: Self::Balance,
-		_best_effort: bool,
+		best_effort: bool,
 		on_hold: bool,
 	) -> Result<Self::Balance, DispatchError> {
-		let status = if on_hold { Status::Reserved } else { Status::Free };
-		// TODO: it's wrong, need to refactor it
-		<Self as MultiReservableCurrency<_>>::repatriate_reserved(asset_id, source, dest, amount, status)
+		match asset_id {
+			CurrencyId::Erc20(_) => {
+				if amount.is_zero() {
+					return Ok(amount);
+				}
+
+				let reserved_balance = <Self as fungibles::InspectHold<_>>::balance_on_hold(asset_id, source);
+				ensure!(amount <= reserved_balance || best_effort, Error::<T>::BalanceTooLow);
+
+				let status = if on_hold { Status::Reserved } else { Status::Free };
+				let gap =
+					<Self as MultiReservableCurrency<_>>::repatriate_reserved(asset_id, source, dest, amount, status)?;
+				Ok(amount.saturating_sub(gap))
+			}
+			id if id == T::GetNativeCurrencyId::get() => <T::NativeCurrency as fungible::MutateHold<_>>::transfer_held(
+				source,
+				dest,
+				amount,
+				best_effort,
+				on_hold,
+			),
+			_ => <T::MultiCurrency as fungibles::MutateHold<_>>::transfer_held(
+				asset_id,
+				source,
+				dest,
+				amount,
+				best_effort,
+				on_hold,
+			),
+		}
 	}
 }
 
