@@ -5132,6 +5132,7 @@ dependencies = [
  "module-support",
  "module-transaction-pause",
  "module-transaction-payment",
+ "nutsfinance-stable-asset",
  "orml-auction",
  "orml-authority",
  "orml-benchmarking",
@@ -6296,6 +6297,21 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "nutsfinance-stable-asset"
+version = "0.1.0"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "pallet-balances",
+ "parity-scale-codec",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]
