@@ -765,7 +765,7 @@ impl<T: Config> fungibles::Transfer<T::AccountId> for Pallet<T> {
 impl<T: Config> fungibles::Unbalanced<T::AccountId> for Pallet<T> {
 	fn set_balance(asset_id: Self::AssetId, who: &T::AccountId, amount: Self::Balance) -> DispatchResult {
 		match asset_id {
-			CurrencyId::Erc20(_) => return Err(Error::<T>::Erc20InvalidOperation.into()),
+			CurrencyId::Erc20(_) => Err(Error::<T>::Erc20InvalidOperation.into()),
 			id if id == T::GetNativeCurrencyId::get() => {
 				<T::NativeCurrency as fungible::Unbalanced<_>>::set_balance(who, amount)
 			}
