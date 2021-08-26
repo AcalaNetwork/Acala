@@ -856,6 +856,7 @@ impl<T: Config> fungibles::MutateHold<T::AccountId> for Pallet<T> {
 		on_hold: bool,
 	) -> Result<Self::Balance, DispatchError> {
 		let status = if on_hold { Status::Reserved } else { Status::Free };
+		// TODO: it's wrong, need to refactor it
 		<Self as MultiReservableCurrency<_>>::repatriate_reserved(asset_id, source, dest, amount, status)
 	}
 }
@@ -994,7 +995,7 @@ where
 		<Pallet<T> as fungibles::Inspect<_>>::total_issuance(GetCurrencyId::get())
 	}
 	fn minimum_balance() -> Self::Balance {
-		<Pallet<T> as fungibles::Inspect<_>>::total_issuance(GetCurrencyId::get())
+		<Pallet<T> as fungibles::Inspect<_>>::minimum_balance(GetCurrencyId::get())
 	}
 	fn balance(who: &T::AccountId) -> Self::Balance {
 		<Pallet<T> as fungibles::Inspect<_>>::balance(GetCurrencyId::get(), who)
@@ -1264,7 +1265,7 @@ where
 		Currency::total_issuance()
 	}
 	fn minimum_balance() -> Self::Balance {
-		Currency::total_issuance()
+		Currency::minimum_balance()
 	}
 	fn balance(who: &AccountId) -> Self::Balance {
 		Currency::balance(who)
