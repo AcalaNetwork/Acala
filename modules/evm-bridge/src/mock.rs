@@ -191,7 +191,7 @@ pub fn deploy_contracts() {
 		Origin::signed(NetworkContractAccount::get()),
 		code,
 		0,
-		2100_000,
+		2_100_000,
 		10000
 	));
 
@@ -213,7 +213,7 @@ impl ExtBuilder {
 			.unwrap();
 
 		pallet_balances::GenesisConfig::<Runtime> {
-			balances: self.balances.clone().into_iter().collect::<Vec<_>>(),
+			balances: self.balances.into_iter().collect::<Vec<_>>(),
 		}
 		.assimilate_storage(&mut t)
 		.unwrap();

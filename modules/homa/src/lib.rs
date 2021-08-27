@@ -28,7 +28,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
 
-use frame_support::{pallet_prelude::*, traits::MaxEncodedLen, transactional};
+use codec::MaxEncodedLen;
+use frame_support::{pallet_prelude::*, transactional};
 use frame_system::pallet_prelude::*;
 use primitives::{Balance, EraIndex};
 use sp_runtime::RuntimeDebug;

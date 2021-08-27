@@ -19,11 +19,11 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
 
-use codec::Encode;
+use codec::{Encode, MaxEncodedLen};
 use frame_support::{
 	log,
 	pallet_prelude::*,
-	traits::{Contains, Get, LockIdentifier, MaxEncodedLen},
+	traits::{Contains, Get, LockIdentifier},
 	transactional, BoundedVec,
 };
 use frame_system::pallet_prelude::*;
@@ -343,7 +343,7 @@ pub mod module {
 			ensure!(!ledger.total.is_zero(), Error::<T, I>::NoBonded);
 
 			for validator in bounded_targets.iter() {
-				ensure!(T::NomineeFilter::contains(&validator), Error::<T, I>::InvalidNominee);
+				ensure!(T::NomineeFilter::contains(validator), Error::<T, I>::InvalidNominee);
 			}
 
 			let old_nominations = Self::nominations(&who);

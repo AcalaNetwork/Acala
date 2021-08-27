@@ -198,10 +198,10 @@ impl<T: Config> Pallet<T> {
 
 		if Self::is_origin_chain_resource(resource_id) {
 			// transfer tokens to bridge account to lock
-			T::Currency::transfer(currency_id, &from, &bridge_account_id, amount)?;
+			T::Currency::transfer(currency_id, from, &bridge_account_id, amount)?;
 		} else {
 			// burn tokens
-			T::Currency::withdraw(currency_id, &from, amount)?;
+			T::Currency::withdraw(currency_id, from, amount)?;
 		}
 
 		chainbridge::Module::<T>::transfer_fungible(

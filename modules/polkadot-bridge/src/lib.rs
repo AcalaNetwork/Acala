@@ -353,7 +353,7 @@ impl<T: Config> Pallet<T> {
 	fn receive_from_sub_account(account_index: u32, to: &T::AccountId, amount: Balance) -> DispatchResult {
 		SubAccounts::<T>::try_mutate(account_index, |status| -> DispatchResult {
 			status.available = status.available.checked_sub(amount).ok_or(Error::<T>::NotEnough)?;
-			T::DOTCurrency::deposit(&to, amount)
+			T::DOTCurrency::deposit(to, amount)
 		})
 	}
 }

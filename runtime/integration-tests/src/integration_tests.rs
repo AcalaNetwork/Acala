@@ -490,7 +490,7 @@ fn liquidate_cdp() {
 				Loans::positions(RELAY_CHAIN_CURRENCY, AccountId::from(ALICE)).collateral,
 				0
 			);
-			assert_eq!(AuctionManager::collateral_auctions(0).is_some(), true);
+			assert!(AuctionManager::collateral_auctions(0).is_some());
 			assert_eq!(CdpTreasury::debit_pool(), 250_000 * dollar(USD_CURRENCY));
 
 			assert_ok!(CdpEngine::liquidate_unsafe_cdp(

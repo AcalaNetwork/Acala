@@ -36,6 +36,7 @@ use sc_service::{
 	TaskManager, TaskType,
 };
 use sc_transaction_pool::BasicPool;
+use sc_transaction_pool_api::TransactionPool;
 use sp_api::{ApiExt, ConstructRuntimeApi, Core, Metadata, OverlayedChanges, StorageTransactionCache};
 use sp_block_builder::BlockBuilder;
 use sp_blockchain::HeaderBackend;
@@ -47,7 +48,6 @@ use sp_runtime::{generic::UncheckedExtrinsic, traits::NumberFor};
 use sp_session::SessionKeys;
 use sp_state_machine::Ext;
 use sp_transaction_pool::runtime_api::TaggedTransactionQueue;
-use sp_transaction_pool::TransactionPool;
 
 use crate::{utils::logger, ChainInfo};
 use log::LevelFilter;
@@ -72,7 +72,7 @@ pub struct Node<T: ChainInfo> {
 			Block = T::Block,
 			Hash = <T::Block as BlockT>::Hash,
 			Error = sc_transaction_pool::error::Error,
-			InPoolTransaction = sc_transaction_graph::base_pool::Transaction<
+			InPoolTransaction = sc_transaction_pool::Transaction<
 				<T::Block as BlockT>::Hash,
 				<T::Block as BlockT>::Extrinsic,
 			>,
@@ -156,6 +156,7 @@ impl<T: ChainInfo> Node<T> {
 				import_queue,
 				on_demand: None,
 				block_announce_validator_builder: None,
+				warp_sync: None,
 			};
 			build_network(params)?
 		};
@@ -183,7 +184,7 @@ impl<T: ChainInfo> Node<T> {
 				keystore,
 				on_demand: None,
 				transaction_pool: transaction_pool.clone(),
-				rpc_extensions_builder: Box::new(move |_, _| jsonrpc_core::IoHandler::default()),
+				rpc_extensions_builder: Box::new(move |_, _| Ok(jsonrpc_core::IoHandler::default())),
 				remote_blockchain: None,
 				network,
 				system_rpc_tx,
@@ -197,7 +198,7 @@ impl<T: ChainInfo> Node<T> {
 			block_import,
 			env,
 			client: client.clone(),
-			pool: transaction_pool.pool().clone(),
+			pool: transaction_pool.clone(),
 			commands_stream,
 			select_chain,
 			consensus_data_provider,
@@ -243,7 +244,7 @@ impl<T: ChainInfo> Node<T> {
 			Block = T::Block,
 			Hash = <T::Block as BlockT>::Hash,
 			Error = sc_transaction_pool::error::Error,
-			InPoolTransaction = sc_transaction_graph::base_pool::Transaction<
+			InPoolTransaction = sc_transaction_pool::Transaction<
 				<T::Block as BlockT>::Hash,
 				<T::Block as BlockT>::Extrinsic,
 			>,

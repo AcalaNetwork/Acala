@@ -36,9 +36,9 @@ use codec::{Decode, Encode};
 pub use frame_support::{
 	construct_runtime, log, parameter_types,
 	traits::{
-		All, Contains, ContainsLengthBound, Currency as PalletCurrency, EnsureOrigin, Filter, Get, Imbalance,
-		InstanceFilter, IsSubType, IsType, KeyOwnerProofSystem, LockIdentifier, MaxEncodedLen, OnUnbalanced,
-		Randomness, SortedMembers, U128CurrencyToVote, WithdrawReasons,
+		Contains, ContainsLengthBound, Currency as PalletCurrency, EnsureOrigin, Everything, Get, Imbalance,
+		InstanceFilter, IsSubType, IsType, KeyOwnerProofSystem, LockIdentifier, OnUnbalanced, Randomness,
+		SortedMembers, U128CurrencyToVote, WithdrawReasons,
 	},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight, WEIGHT_PER_SECOND},
@@ -122,6 +122,9 @@ pub use runtime_common::{
 	AUSD, DOT, LDOT, RENBTC,
 };
 
+/// Import the stable_asset pallet.
+pub use nutsfinance_stable_asset;
+
 mod authority;
 mod benchmarking;
 pub mod constants;
@@ -173,6 +176,7 @@ parameter_types! {
 	pub UnreleasedNativeVaultAccountId: AccountId = PalletId(*b"aca/urls").into_account();
 	// Ecosystem modules
 	pub const StarportPalletId: PalletId = PalletId(*b"aca/stpt");
+	pub const StableAssetPalletId: PalletId = PalletId(*b"nuts/sta");
 }
 
 pub fn get_all_module_accounts() -> Vec<AccountId> {
@@ -190,6 +194,7 @@ pub fn get_all_module_accounts() -> Vec<AccountId> {
 		StarportPalletId::get().into_account(),
 		ZeroAccountId::get(),
 		UnreleasedNativeVaultAccountId::get(),
+		StableAssetPalletId::get().into_account(),
 	]
 }
 
@@ -200,9 +205,9 @@ parameter_types! {
 }
 
 pub struct BaseCallFilter;
-impl Filter<Call> for BaseCallFilter {
-	fn filter(call: &Call) -> bool {
-		module_transaction_pause::NonPausedTransactionFilter::<Runtime>::filter(call)
+impl Contains<Call> for BaseCallFilter {
+	fn contains(call: &Call) -> bool {
+		module_transaction_pause::NonPausedTransactionFilter::<Runtime>::contains(call)
 			&& !matches!(call, Call::Democracy(pallet_democracy::Call::propose(..)),)
 	}
 }
@@ -238,6 +243,7 @@ impl frame_system::Config for Runtime {
 
 impl pallet_aura::Config for Runtime {
 	type AuthorityId = AuraId;
+	type DisabledValidators = ();
 }
 
 parameter_types! {
@@ -1667,7 +1673,7 @@ parameter_types! {
 	pub DotPerSecond: (MultiLocation, u128) = (X1(Parent), dot_per_second());
 }
 
-pub type Barrier = (TakeWeightCredit, AllowTopLevelPaidExecutionFrom<All<MultiLocation>>);
+pub type Barrier = (TakeWeightCredit, AllowTopLevelPaidExecutionFrom<Everything>);
 
 pub struct ToTreasury;
 impl TakeRevenue for ToTreasury {
@@ -1721,11 +1727,12 @@ impl pallet_xcm::Config for Runtime {
 	type SendXcmOrigin = EnsureXcmOrigin<Origin, LocalOriginToLocation>;
 	type XcmRouter = XcmRouter;
 	type ExecuteXcmOrigin = EnsureXcmOrigin<Origin, LocalOriginToLocation>;
-	type XcmExecuteFilter = All<(MultiLocation, Xcm<Call>)>;
+	type XcmExecuteFilter = Everything;
 	type XcmExecutor = XcmExecutor<XcmConfig>;
 	type XcmTeleportFilter = ();
-	type XcmReserveTransferFilter = All<(MultiLocation, Vec<MultiAsset>)>;
+	type XcmReserveTransferFilter = Everything;
 	type Weigher = FixedWeightBounds<UnitWeightCost, Call>;
+	type LocationInverter = LocationInverter<Ancestry>;
 }
 
 impl cumulus_pallet_xcm::Config for Runtime {
@@ -1841,6 +1848,25 @@ impl orml_unknown_tokens::Config for Runtime {
 impl orml_xcm::Config for Runtime {
 	type Event = Event;
 	type SovereignOrigin = EnsureRootOrHalfGeneralCouncil;
+}
+
+parameter_types! {
+	pub const Precision: u128 = 1000000000000000000u128; // 18 decimals
+	pub const FeePrecision: u128 = 10000000000u128; // 10 decimals
+}
+
+impl nutsfinance_stable_asset::Config for Runtime {
+	type Event = Event;
+	type AssetId = CurrencyId;
+	type Balance = Balance;
+	type Assets = Tokens;
+	type PalletId = StableAssetPalletId;
+
+	type AtLeast64BitUnsigned = u128;
+	type Precision = Precision;
+	type FeePrecision = FeePrecision;
+	type WeightInfo = weights::nutsfinance_stable_asset::WeightInfo<Runtime>;
+	type ListingOrigin = EnsureRootOrHalfGeneralCouncil;
 }
 
 impl cumulus_pallet_aura_ext::Config for Runtime {}
@@ -1995,6 +2021,9 @@ construct_runtime! {
 		Aura: pallet_aura::{Pallet, Storage, Config<T>} = 193,
 		AuraExt: cumulus_pallet_aura_ext::{Pallet, Storage, Config} = 194,
 		SessionManager: module_session_manager::{Pallet, Call, Storage, Event<T>, Config<T>} = 195,
+
+		// Stable asset
+		StableAsset: nutsfinance_stable_asset::{Pallet, Call, Storage, Event<T>} = 200,
 
 		// Dev
 		Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>} = 255,
@@ -2242,6 +2271,55 @@ impl_runtime_apis! {
 	// benchmarks for acala modules
 	#[cfg(feature = "runtime-benchmarks")]
 	impl frame_benchmarking::Benchmark<Block> for Runtime {
+		fn benchmark_metadata(extra: bool) -> (
+			Vec<frame_benchmarking::BenchmarkList>,
+			Vec<frame_support::traits::StorageInfo>,
+		) {
+			use frame_benchmarking::{list_benchmark, Benchmarking, BenchmarkList};
+			use frame_support::traits::StorageInfoTrait;
+			use orml_benchmarking::list_benchmark as orml_list_benchmark;
+
+			use module_nft::benchmarking::Pallet as NftBench;
+			use module_homa_lite::benchmarking::Pallet as HomaLiteBench;
+
+			let mut list = Vec::<BenchmarkList>::new();
+
+			list_benchmark!(list, extra, module_nft, NftBench::<Runtime>);
+			list_benchmark!(list, extra, module_homa_lite, HomaLiteBench::<Runtime>);
+
+			orml_list_benchmark!(list, extra, module_dex, benchmarking::dex);
+			orml_list_benchmark!(list, extra, module_auction_manager, benchmarking::auction_manager);
+			orml_list_benchmark!(list, extra, module_cdp_engine, benchmarking::cdp_engine);
+			orml_list_benchmark!(list, extra, module_collator_selection, benchmarking::collator_selection);
+			orml_list_benchmark!(list, extra, module_nominees_election, benchmarking::nominees_election);
+			orml_list_benchmark!(list, extra, module_emergency_shutdown, benchmarking::emergency_shutdown);
+			orml_list_benchmark!(list, extra, module_evm, benchmarking::evm);
+			orml_list_benchmark!(list, extra, module_honzon, benchmarking::honzon);
+			orml_list_benchmark!(list, extra, module_cdp_treasury, benchmarking::cdp_treasury);
+			orml_list_benchmark!(list, extra, module_transaction_pause, benchmarking::transaction_pause);
+			orml_list_benchmark!(list, extra, module_transaction_payment, benchmarking::transaction_payment);
+			orml_list_benchmark!(list, extra, module_incentives, benchmarking::incentives);
+			orml_list_benchmark!(list, extra, module_prices, benchmarking::prices);
+			orml_list_benchmark!(list, extra, module_evm_accounts, benchmarking::evm_accounts);
+			orml_list_benchmark!(list, extra, module_homa, benchmarking::homa);
+			orml_list_benchmark!(list, extra, module_currencies, benchmarking::currencies);
+			orml_list_benchmark!(list, extra, module_session_manager, benchmarking::session_manager);
+
+			orml_list_benchmark!(list, extra, orml_tokens, benchmarking::tokens);
+			orml_list_benchmark!(list, extra, orml_vesting, benchmarking::vesting);
+			orml_list_benchmark!(list, extra, orml_auction, benchmarking::auction);
+
+			orml_list_benchmark!(list, extra, orml_authority, benchmarking::authority);
+			orml_list_benchmark!(list, extra, orml_gradually_update, benchmarking::gradually_update);
+			orml_list_benchmark!(list, extra, orml_oracle, benchmarking::oracle);
+
+			orml_list_benchmark!(list, extra, ecosystem_chainsafe, benchmarking::chainsafe_transfer);
+
+			let storage_info = AllPalletsWithSystem::storage_info();
+
+			return (list, storage_info)
+		}
+
 		fn dispatch_benchmark(
 			config: frame_benchmarking::BenchmarkConfig
 		) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString> {
@@ -2301,6 +2379,7 @@ impl_runtime_apis! {
 			orml_add_benchmark!(params, batches, orml_oracle, benchmarking::oracle);
 
 			orml_add_benchmark!(params, batches, ecosystem_chainsafe, benchmarking::chainsafe_transfer);
+			orml_add_benchmark!(params, batches, nutsfinance_stable_asset, benchmarking::nutsfinance_stable_asset);
 
 			if batches.is_empty() { return Err("Benchmark not found for this module.".into()) }
 			Ok(batches)
@@ -2326,7 +2405,7 @@ impl cumulus_pallet_parachain_system::CheckInherents<Block> for CheckInherents {
 		.create_inherent_data()
 		.expect("Could not create the timestamp inherent data");
 
-		inherent_data.check_extrinsics(&block)
+		inherent_data.check_extrinsics(block)
 	}
 }
 

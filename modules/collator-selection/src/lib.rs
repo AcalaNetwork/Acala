@@ -413,8 +413,8 @@ pub mod pallet {
 				(length as u32) < Self::desired_candidates(),
 				Error::<T>::MaxCandidatesExceeded
 			);
-			ensure!(!Self::invulnerables().contains(&who), Error::<T>::AlreadyInvulnerable);
-			ensure!(T::ValidatorSet::is_registered(&who), Error::<T>::RequireSessionKey);
+			ensure!(!Self::invulnerables().contains(who), Error::<T>::AlreadyInvulnerable);
+			ensure!(T::ValidatorSet::is_registered(who), Error::<T>::RequireSessionKey);
 
 			<Candidates<T>>::try_mutate(|candidates| -> Result<usize, DispatchError> {
 				ensure!(!candidates.contains(who), Error::<T>::AlreadyCandidate);
@@ -422,7 +422,7 @@ pub mod pallet {
 				candidates
 					.try_insert(who.clone())
 					.map_err(|_| Error::<T>::MaxCandidatesExceeded)?;
-				T::Currency::ensure_reserved_named(&RESERVE_ID, &who, deposit)?;
+				T::Currency::ensure_reserved_named(&RESERVE_ID, who, deposit)?;
 				Ok(candidates.len())
 			})
 		}
@@ -491,7 +491,7 @@ pub mod pallet {
 			let mut collators = vec![];
 
 			candidates.iter().for_each(|candidate| {
-				if validators.contains(&candidate) {
+				if validators.contains(candidate) {
 					collators.push(candidate);
 					<SessionPoints<T>>::insert(&candidate, 0);
 				}

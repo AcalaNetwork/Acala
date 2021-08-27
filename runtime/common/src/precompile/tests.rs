@@ -16,6 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+#![allow(clippy::erasing_op)]
 #![cfg(test)]
 use super::*;
 use crate::precompile::{
@@ -296,7 +297,7 @@ fn oracle_precompile_should_work() {
 		// action
 		input[1 * 32..4 + 1 * 32].copy_from_slice(&Into::<u32>::into(oracle::Action::GetPrice).to_be_bytes());
 		// RENBTC
-		U256::from_big_endian(&renbtc_evm_address().as_bytes()).to_big_endian(&mut input[4 + 1 * 32..4 + 2 * 32]);
+		U256::from_big_endian(renbtc_evm_address().as_bytes()).to_big_endian(&mut input[4 + 1 * 32..4 + 2 * 32]);
 
 		// no price yet
 		let (reason, output, used_gas) = OraclePrecompile::execute(&input, None, &context).unwrap();
@@ -618,9 +619,9 @@ fn dex_precompile_get_liquidity_should_work() {
 		// action
 		input[1 * 32..4 + 1 * 32].copy_from_slice(&Into::<u32>::into(dex::Action::GetLiquidityPool).to_be_bytes());
 		// RENBTC
-		U256::from_big_endian(&renbtc_evm_address().as_bytes()).to_big_endian(&mut input[4 + 1 * 32..4 + 2 * 32]);
+		U256::from_big_endian(renbtc_evm_address().as_bytes()).to_big_endian(&mut input[4 + 1 * 32..4 + 2 * 32]);
 		// AUSD
-		U256::from_big_endian(&ausd_evm_address().as_bytes()).to_big_endian(&mut input[4 + 2 * 32..4 + 3 * 32]);
+		U256::from_big_endian(ausd_evm_address().as_bytes()).to_big_endian(&mut input[4 + 2 * 32..4 + 3 * 32]);
 
 		let mut expected_output = [0u8; 64];
 		U256::from(1_000).to_big_endian(&mut expected_output[..32]);
@@ -663,9 +664,9 @@ fn dex_precompile_get_liquidity_token_address_should_work() {
 		input[1 * 32..4 + 1 * 32]
 			.copy_from_slice(&Into::<u32>::into(dex::Action::GetLiquidityTokenAddress).to_be_bytes());
 		// RENBTC
-		U256::from_big_endian(&renbtc_evm_address().as_bytes()).to_big_endian(&mut input[4 + 1 * 32..4 + 2 * 32]);
+		U256::from_big_endian(renbtc_evm_address().as_bytes()).to_big_endian(&mut input[4 + 1 * 32..4 + 2 * 32]);
 		// AUSD
-		U256::from_big_endian(&ausd_evm_address().as_bytes()).to_big_endian(&mut input[4 + 2 * 32..4 + 3 * 32]);
+		U256::from_big_endian(ausd_evm_address().as_bytes()).to_big_endian(&mut input[4 + 2 * 32..4 + 3 * 32]);
 
 		let mut expected_output = [0u8; 32];
 		let address = H160::from_str("0x0000000000000000000000010000000100000014").unwrap();
@@ -722,9 +723,9 @@ fn dex_precompile_get_swap_target_amount_should_work() {
 		// path_len
 		U256::from(2).to_big_endian(&mut input[4 + 3 * 32..4 + 4 * 32]);
 		// RENBTC
-		U256::from_big_endian(&renbtc_evm_address().as_bytes()).to_big_endian(&mut input[4 + 4 * 32..4 + 5 * 32]);
+		U256::from_big_endian(renbtc_evm_address().as_bytes()).to_big_endian(&mut input[4 + 4 * 32..4 + 5 * 32]);
 		// AUSD
-		U256::from_big_endian(&ausd_evm_address().as_bytes()).to_big_endian(&mut input[4 + 5 * 32..4 + 6 * 32]);
+		U256::from_big_endian(ausd_evm_address().as_bytes()).to_big_endian(&mut input[4 + 5 * 32..4 + 6 * 32]);
 
 		let mut expected_output = [0u8; 32];
 		U256::from(989).to_big_endian(&mut expected_output[..32]);
@@ -771,9 +772,9 @@ fn dex_precompile_get_swap_supply_amount_should_work() {
 		// path_len
 		U256::from(2).to_big_endian(&mut input[4 + 3 * 32..4 + 4 * 32]);
 		// RENBTC
-		U256::from_big_endian(&renbtc_evm_address().as_bytes()).to_big_endian(&mut input[4 + 4 * 32..4 + 5 * 32]);
+		U256::from_big_endian(renbtc_evm_address().as_bytes()).to_big_endian(&mut input[4 + 4 * 32..4 + 5 * 32]);
 		// AUSD
-		U256::from_big_endian(&ausd_evm_address().as_bytes()).to_big_endian(&mut input[4 + 5 * 32..4 + 6 * 32]);
+		U256::from_big_endian(ausd_evm_address().as_bytes()).to_big_endian(&mut input[4 + 5 * 32..4 + 6 * 32]);
 
 		let mut expected_output = [0u8; 32];
 		U256::from(1).to_big_endian(&mut expected_output[..32]);
@@ -824,9 +825,9 @@ fn dex_precompile_swap_with_exact_supply_should_work() {
 		// path_len
 		U256::from(2).to_big_endian(&mut input[4 + 5 * 32..4 + 6 * 32]);
 		// RENBTC
-		U256::from_big_endian(&renbtc_evm_address().as_bytes()).to_big_endian(&mut input[4 + 6 * 32..4 + 7 * 32]);
+		U256::from_big_endian(renbtc_evm_address().as_bytes()).to_big_endian(&mut input[4 + 6 * 32..4 + 7 * 32]);
 		// AUSD
-		U256::from_big_endian(&ausd_evm_address().as_bytes()).to_big_endian(&mut input[4 + 7 * 32..4 + 8 * 32]);
+		U256::from_big_endian(ausd_evm_address().as_bytes()).to_big_endian(&mut input[4 + 7 * 32..4 + 8 * 32]);
 
 		let mut expected_output = [0u8; 32];
 		U256::from(989).to_big_endian(&mut expected_output[..32]);
@@ -877,9 +878,9 @@ fn dex_precompile_swap_with_exact_target_should_work() {
 		// path_len
 		U256::from(2).to_big_endian(&mut input[4 + 5 * 32..4 + 6 * 32]);
 		// RENBTC
-		U256::from_big_endian(&renbtc_evm_address().as_bytes()).to_big_endian(&mut input[4 + 6 * 32..4 + 7 * 32]);
+		U256::from_big_endian(renbtc_evm_address().as_bytes()).to_big_endian(&mut input[4 + 6 * 32..4 + 7 * 32]);
 		// AUSD
-		U256::from_big_endian(&ausd_evm_address().as_bytes()).to_big_endian(&mut input[4 + 7 * 32..4 + 8 * 32]);
+		U256::from_big_endian(ausd_evm_address().as_bytes()).to_big_endian(&mut input[4 + 7 * 32..4 + 8 * 32]);
 
 		let mut expected_output = [0u8; 32];
 		U256::from(1).to_big_endian(&mut expected_output[..32]);

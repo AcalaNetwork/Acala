@@ -180,7 +180,7 @@ impl cdp_treasury::Config for Runtime {
 pub struct MockConvert;
 impl Convert<(CurrencyId, Balance), Balance> for MockConvert {
 	fn convert(a: (CurrencyId, Balance)) -> Balance {
-		(a.1 / Balance::from(2u64)).into()
+		a.1 / Balance::from(2u64)
 	}
 }
 
