@@ -300,7 +300,7 @@ pub struct ExtBuilder {
 impl Default for ExtBuilder {
 	fn default() -> Self {
 		Self {
-			balances: vec![(UNRELEASED::get(), ACA, 10_000)],
+			balances: vec![(UNRELEASED::get(), ACA, 10_000), (UNRELEASED::get(), BTC, 10_000)],
 		}
 	}
 }
