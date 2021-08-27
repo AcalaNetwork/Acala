@@ -732,10 +732,10 @@ impl<T: Config> fungibles::Transfer<T::AccountId> for Pallet<T> {
 
 		let transferred_amount = match asset_id {
 			CurrencyId::Erc20(contract) => {
-				let sender = T::AddressMapping::get_evm_address(&source).ok_or(Error::<T>::EvmAccountNotFound)?;
+				let sender = T::AddressMapping::get_evm_address(source).ok_or(Error::<T>::EvmAccountNotFound)?;
 				let origin = T::EVMBridge::get_origin().unwrap_or_default();
 				let origin_address = T::AddressMapping::get_or_create_evm_address(&origin);
-				let address = T::AddressMapping::get_or_create_evm_address(&dest);
+				let address = T::AddressMapping::get_or_create_evm_address(dest);
 				T::EVMBridge::transfer(
 					InvokeContext {
 						contract,
