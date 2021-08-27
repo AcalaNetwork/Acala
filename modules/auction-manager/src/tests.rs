@@ -113,10 +113,7 @@ fn collateral_auction_bid_handler_work() {
 			AuctionManagerModule::collateral_auction_bid_handler(1, 0, (BOB, 4), None),
 			Error::<Runtime>::InvalidBidPrice,
 		);
-		assert_eq!(
-			AuctionManagerModule::collateral_auction_bid_handler(1, 0, (BOB, 5), None).is_ok(),
-			true
-		);
+		assert!(AuctionManagerModule::collateral_auction_bid_handler(1, 0, (BOB, 5), None).is_ok(),);
 		assert_eq!(CDPTreasuryModule::surplus_pool(), 5);
 		assert_eq!(Tokens::free_balance(AUSD, &BOB), 995);
 
@@ -124,10 +121,7 @@ fn collateral_auction_bid_handler_work() {
 		assert_eq!(bob_ref_count_1, bob_ref_count_0 + 1);
 		let carol_ref_count_0 = System::consumers(&CAROL);
 
-		assert_eq!(
-			AuctionManagerModule::collateral_auction_bid_handler(2, 0, (CAROL, 10), Some((BOB, 5))).is_ok(),
-			true
-		);
+		assert!(AuctionManagerModule::collateral_auction_bid_handler(2, 0, (CAROL, 10), Some((BOB, 5))).is_ok(),);
 		assert_eq!(CDPTreasuryModule::surplus_pool(), 10);
 		assert_eq!(Tokens::free_balance(AUSD, &BOB), 1000);
 		assert_eq!(Tokens::free_balance(AUSD, &CAROL), 990);
@@ -138,10 +132,7 @@ fn collateral_auction_bid_handler_work() {
 		let carol_ref_count_1 = System::consumers(&CAROL);
 		assert_eq!(carol_ref_count_1, carol_ref_count_0 + 1);
 
-		assert_eq!(
-			AuctionManagerModule::collateral_auction_bid_handler(3, 0, (BOB, 200), Some((CAROL, 10))).is_ok(),
-			true
-		);
+		assert!(AuctionManagerModule::collateral_auction_bid_handler(3, 0, (BOB, 200), Some((CAROL, 10))).is_ok(),);
 		assert_eq!(CDPTreasuryModule::surplus_pool(), 100);
 		assert_eq!(Tokens::free_balance(AUSD, &BOB), 900);
 		assert_eq!(Tokens::free_balance(AUSD, &CAROL), 1000);
@@ -162,10 +153,7 @@ fn bid_when_soft_cap_for_collateral_auction_work() {
 			AuctionManagerModule::on_new_bid(1, 0, (BOB, 100), None).auction_end_change,
 			Change::NewValue(Some(101))
 		);
-		assert_eq!(
-			AuctionManagerModule::on_new_bid(2001, 0, (CAROL, 10), Some((BOB, 5))).accept_bid,
-			false,
-		);
+		assert!(!AuctionManagerModule::on_new_bid(2001, 0, (CAROL, 10), Some((BOB, 5))).accept_bid,);
 		assert_eq!(
 			AuctionManagerModule::on_new_bid(2001, 0, (CAROL, 15), Some((BOB, 5))).auction_end_change,
 			Change::NewValue(Some(2051))
@@ -270,10 +258,7 @@ fn collateral_auction_end_handler_in_reverse_stage() {
 		System::set_block_number(1);
 		assert_ok!(CDPTreasuryModule::deposit_collateral(&CAROL, BTC, 100));
 		assert_ok!(AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 100, 200));
-		assert_eq!(
-			AuctionManagerModule::collateral_auction_bid_handler(2, 0, (BOB, 400), None).is_ok(),
-			true
-		);
+		assert!(AuctionManagerModule::collateral_auction_bid_handler(2, 0, (BOB, 400), None).is_ok(),);
 		assert_eq!(CDPTreasuryModule::total_collaterals(BTC), 50);
 		assert_eq!(AuctionManagerModule::total_collateral_in_auction(BTC), 50);
 		assert_eq!(Tokens::free_balance(BTC, &ALICE), 1050);
@@ -311,10 +296,7 @@ fn collateral_auction_end_handler_by_dealing_which_target_not_zero() {
 		System::set_block_number(1);
 		assert_ok!(CDPTreasuryModule::deposit_collateral(&CAROL, BTC, 100));
 		assert_ok!(AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 100, 200));
-		assert_eq!(
-			AuctionManagerModule::collateral_auction_bid_handler(1, 0, (BOB, 100), None).is_ok(),
-			true
-		);
+		assert!(AuctionManagerModule::collateral_auction_bid_handler(1, 0, (BOB, 100), None).is_ok(),);
 		assert_eq!(CDPTreasuryModule::total_collaterals(BTC), 100);
 		assert_eq!(AuctionManagerModule::total_target_in_auction(), 200);
 		assert_eq!(AuctionManagerModule::total_collateral_in_auction(BTC), 100);
@@ -351,10 +333,7 @@ fn collateral_auction_end_handler_by_dex_which_target_not_zero() {
 		System::set_block_number(1);
 		assert_ok!(CDPTreasuryModule::deposit_collateral(&CAROL, BTC, 100));
 		assert_ok!(AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 100, 200));
-		assert_eq!(
-			AuctionManagerModule::collateral_auction_bid_handler(1, 0, (BOB, 20), None).is_ok(),
-			true
-		);
+		assert!(AuctionManagerModule::collateral_auction_bid_handler(1, 0, (BOB, 20), None).is_ok(),);
 		assert_ok!(DEXModule::add_liquidity(
 			Origin::signed(CAROL),
 			BTC,

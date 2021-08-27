@@ -563,10 +563,7 @@ fn claim_dex_share_work() {
 
 		let lp_currency_id = AUSDDOTPair::get().dex_share_currency_id();
 
-		assert_eq!(
-			InitialShareExchangeRates::<Runtime>::contains_key(AUSDDOTPair::get()),
-			true
-		);
+		assert!(InitialShareExchangeRates::<Runtime>::contains_key(AUSDDOTPair::get()),);
 		assert_eq!(
 			DexModule::initial_share_exchange_rates(AUSDDOTPair::get()),
 			(ExchangeRate::one(), ExchangeRate::saturating_from_rational(5, 1))
@@ -597,10 +594,7 @@ fn claim_dex_share_work() {
 		assert_eq!(DexModule::provisioning_pool(AUSDDOTPair::get(), ALICE), (0, 0));
 		assert_eq!(Tokens::free_balance(lp_currency_id, &ALICE), 2_000_000_000_000_000u128);
 		assert_eq!(System::consumers(&ALICE), alice_ref_count_0 - 1);
-		assert_eq!(
-			InitialShareExchangeRates::<Runtime>::contains_key(AUSDDOTPair::get()),
-			true
-		);
+		assert!(InitialShareExchangeRates::<Runtime>::contains_key(AUSDDOTPair::get()),);
 
 		assert_ok!(DexModule::disable_trading_pair(
 			Origin::signed(ListingOrigin::get()),
@@ -612,10 +606,7 @@ fn claim_dex_share_work() {
 		assert_eq!(DexModule::provisioning_pool(AUSDDOTPair::get(), BOB), (0, 0));
 		assert_eq!(Tokens::free_balance(lp_currency_id, &BOB), 8_000_000_000_000_000u128);
 		assert_eq!(System::consumers(&BOB), bob_ref_count_0 - 1);
-		assert_eq!(
-			InitialShareExchangeRates::<Runtime>::contains_key(AUSDDOTPair::get()),
-			false
-		);
+		assert!(!InitialShareExchangeRates::<Runtime>::contains_key(AUSDDOTPair::get()),);
 	});
 }
 

@@ -153,4 +153,4 @@ benchmark-karura:
 
 .PHONY: clippy-fix
 clippy-fix:
-	cargo clippy --fix -Z unstable-options
+	CARGO_INCREMENTAL=0 ./orml/scripts/run-clippy.sh --fix -Z unstable-options --broken-code --allow-dirty

@@ -132,10 +132,7 @@ parameter_types! {
 pub struct MockNomineeFilter;
 impl Contains<AccountId> for MockNomineeFilter {
 	fn contains(a: &AccountId) -> bool {
-		match a {
-			0..=6 => true,
-			_ => false,
-		}
+		(0..=6).contains(a)
 	}
 }
 

@@ -266,7 +266,7 @@ mod tests {
 				*alice = alice.checked_add(refunded - used).ok_or("error")?;
 			}
 
-			let contract_val = self.reserves.get_mut(&contract).ok_or("error")?;
+			let contract_val = self.reserves.get_mut(contract).ok_or("error")?;
 			if used > refunded {
 				*contract_val = contract_val.checked_add(used - refunded).ok_or("error")?;
 			} else {
