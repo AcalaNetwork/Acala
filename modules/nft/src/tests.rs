@@ -105,7 +105,7 @@ fn create_class_should_fail() {
 		assert_noop!(
 			NFTModule::create_class(
 				Origin::signed(ALICE),
-				metadata.clone(),
+				metadata,
 				Properties(ClassProperty::Transferable | ClassProperty::Burnable),
 				large_attr,
 			),
@@ -246,7 +246,7 @@ fn mint_should_fail() {
 				Origin::signed(class_id_account()),
 				BOB,
 				CLASS_ID,
-				metadata.clone(),
+				metadata,
 				Default::default(),
 				2
 			),
@@ -271,7 +271,7 @@ fn mint_should_fail_without_mintable() {
 				Origin::signed(class_id_account()),
 				BOB,
 				CLASS_ID,
-				metadata.clone(),
+				metadata,
 				Default::default(),
 				2
 			),
@@ -298,7 +298,7 @@ fn transfer_should_work() {
 			Origin::signed(class_id_account()),
 			BOB,
 			CLASS_ID,
-			metadata.clone(),
+			metadata,
 			Default::default(),
 			2
 		));
@@ -351,7 +351,7 @@ fn transfer_should_fail() {
 			Origin::signed(class_id_account()),
 			BOB,
 			CLASS_ID,
-			metadata.clone(),
+			metadata,
 			Default::default(),
 			1
 		));
@@ -385,7 +385,7 @@ fn transfer_should_fail() {
 			Origin::signed(class_id_account()),
 			BOB,
 			CLASS_ID,
-			metadata.clone(),
+			metadata,
 			Default::default(),
 			1
 		));
@@ -445,7 +445,7 @@ fn burn_should_fail() {
 			Origin::signed(class_id_account()),
 			BOB,
 			CLASS_ID,
-			metadata.clone(),
+			metadata,
 			Default::default(),
 			1
 		));
@@ -484,7 +484,7 @@ fn burn_should_fail() {
 			Origin::signed(class_id_account()),
 			BOB,
 			CLASS_ID,
-			metadata.clone(),
+			metadata,
 			Default::default(),
 			1
 		));
@@ -566,7 +566,7 @@ fn destroy_class_should_work() {
 			Origin::signed(class_id_account()),
 			BOB,
 			CLASS_ID,
-			metadata.clone(),
+			metadata,
 			Default::default(),
 			1
 		));
@@ -610,7 +610,7 @@ fn destroy_class_should_fail() {
 			Origin::signed(class_id_account()),
 			BOB,
 			CLASS_ID,
-			metadata.clone(),
+			metadata,
 			Default::default(),
 			1
 		));
@@ -701,7 +701,7 @@ fn update_class_properties_should_work() {
 				Origin::signed(class_id_account()),
 				BOB,
 				CLASS_ID,
-				metadata.clone(),
+				metadata,
 				Default::default(),
 				1
 			),

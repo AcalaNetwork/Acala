@@ -245,7 +245,7 @@ pub fn deploy_contracts() {
 		Origin::signed(NetworkContractAccount::get()),
 		code,
 		0,
-		2100_000,
+		2_100_000,
 		10000
 	));
 

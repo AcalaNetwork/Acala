@@ -35,7 +35,7 @@ fn fail_call_return_ok() {
 	new_test_ext().execute_with(|| {
 		let mut data = [0u8; 32];
 		data[0..4].copy_from_slice(b"evm:");
-		let signer: AccountId32 = AccountId32::from(data).into();
+		let signer: AccountId32 = AccountId32::from(data);
 
 		let origin = Origin::signed(signer);
 		assert_ok!(EVM::call(origin.clone(), contract_a(), Vec::new(), 0, 1000000, 0));
@@ -84,7 +84,7 @@ fn should_create_and_call_contract() {
 		// deploy contract
 		let caller = alice();
 		let result = Runner::<Test>::create(
-			caller.clone(),
+			caller,
 			contract,
 			0,
 			1000000,
@@ -676,12 +676,12 @@ fn should_transfer_maintainer() {
 		assert_eq!(balance(bob()), INITIAL_BALANCE);
 
 		assert_noop!(
-			EVM::transfer_maintainer(Origin::signed(bob_account_id.clone()), H160::default(), alice()),
+			EVM::transfer_maintainer(Origin::signed(bob_account_id), H160::default(), alice()),
 			Error::<Test>::ContractNotFound
 		);
 
 		assert_noop!(
-			EVM::transfer_maintainer(Origin::signed(alice_account_id.clone()), result.address, bob()),
+			EVM::transfer_maintainer(Origin::signed(alice_account_id), result.address, bob()),
 			Error::<Test>::NoPermission
 		);
 		assert_eq!(balance(alice()), alice_balance);
@@ -845,7 +845,7 @@ fn should_deploy_free() {
 			bob(),
 			alice(),
 			contract_address,
-			multiply.clone(),
+			multiply,
 			0,
 			1000000,
 			1000000,
@@ -996,8 +996,8 @@ fn should_set_code() {
 				ref_count: 1,
 			})
 		);
-		assert_eq!(Codes::<Test>::contains_key(&code_hash), false);
-		assert_eq!(Codes::<Test>::contains_key(&new_code_hash), true);
+		assert!(!Codes::<Test>::contains_key(&code_hash));
+		assert!(Codes::<Test>::contains_key(&new_code_hash));
 
 		assert_ok!(EVM::set_code(Origin::root(), contract_address, vec![]));
 		let new_code_hash = H256::from_str("c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470").unwrap();
@@ -1066,9 +1066,9 @@ fn should_selfdestruct() {
 
 		let amount = 1000u64;
 
-		let stored_value: Vec<u8> =
+		let mut stored_value: Vec<u8> =
 			from_hex("0x000000000000000000000000000000000000000000000000000000000000007b").unwrap();
-		contract.append(&mut stored_value.clone());
+		contract.append(&mut stored_value);
 
 		// create contract
 		let result =

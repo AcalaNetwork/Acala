@@ -121,8 +121,8 @@ fn unpause_transaction_work() {
 #[test]
 fn non_paused_transaction_filter_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_eq!(NonPausedTransactionFilter::<Runtime>::contains(BALANCE_TRANSFER), true);
-		assert_eq!(NonPausedTransactionFilter::<Runtime>::contains(TOKENS_TRANSFER), true);
+		assert!(NonPausedTransactionFilter::<Runtime>::contains(BALANCE_TRANSFER));
+		assert!(NonPausedTransactionFilter::<Runtime>::contains(TOKENS_TRANSFER));
 		assert_ok!(TransactionPause::pause_transaction(
 			Origin::signed(1),
 			b"Balances".to_vec(),
@@ -133,8 +133,8 @@ fn non_paused_transaction_filter_work() {
 			b"Tokens".to_vec(),
 			b"transfer".to_vec()
 		));
-		assert_eq!(NonPausedTransactionFilter::<Runtime>::contains(BALANCE_TRANSFER), false);
-		assert_eq!(NonPausedTransactionFilter::<Runtime>::contains(TOKENS_TRANSFER), false);
+		assert!(!NonPausedTransactionFilter::<Runtime>::contains(BALANCE_TRANSFER));
+		assert!(!NonPausedTransactionFilter::<Runtime>::contains(TOKENS_TRANSFER));
 		assert_ok!(TransactionPause::unpause_transaction(
 			Origin::signed(1),
 			b"Balances".to_vec(),
@@ -145,7 +145,7 @@ fn non_paused_transaction_filter_work() {
 			b"Tokens".to_vec(),
 			b"transfer".to_vec()
 		));
-		assert_eq!(NonPausedTransactionFilter::<Runtime>::contains(BALANCE_TRANSFER), true);
-		assert_eq!(NonPausedTransactionFilter::<Runtime>::contains(TOKENS_TRANSFER), true);
+		assert!(NonPausedTransactionFilter::<Runtime>::contains(BALANCE_TRANSFER));
+		assert!(NonPausedTransactionFilter::<Runtime>::contains(TOKENS_TRANSFER));
 	});
 }

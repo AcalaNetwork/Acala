@@ -7,7 +7,7 @@ build = "build.rs"
 
 [dependencies]
 smallvec = "1.4.0"
-codec = { package = "parity-scale-codec", version = "2.0.0", default-features = false, features = ["derive", "max-encoded-len"] }
+codec = { package = "parity-scale-codec", version = "2.2.0", default-features = false, features = ["derive", "max-encoded-len"] }
 serde = { version = "1.0.124", optional = true, default-features = false }
 serde_json = "1.0.64"
 hex = { version = "0.4", default-features = false, optional = true }

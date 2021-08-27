@@ -518,7 +518,7 @@ impl<T: Config> DEXIncentives<T::AccountId, CurrencyId, Balance> for Pallet<T> {
 			Error::<T>::NotEnough,
 		);
 
-		T::Currency::transfer(lp_currency_id, &Self::account_id(), &who, amount)?;
+		T::Currency::transfer(lp_currency_id, &Self::account_id(), who, amount)?;
 		<orml_rewards::Pallet<T>>::remove_share(
 			who,
 			&PoolId::DexIncentive(lp_currency_id),

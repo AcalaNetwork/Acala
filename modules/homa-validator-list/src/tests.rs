@@ -90,45 +90,39 @@ fn freeze_work() {
 			BadOrigin
 		);
 
-		assert_eq!(
-			HomaValidatorListModule::validator_backings(VALIDATOR_1)
+		assert!(
+			!HomaValidatorListModule::validator_backings(VALIDATOR_1)
 				.unwrap_or_default()
 				.is_frozen,
-			false
 		);
-		assert_eq!(
-			HomaValidatorListModule::validator_backings(VALIDATOR_2)
+		assert!(
+			!HomaValidatorListModule::validator_backings(VALIDATOR_2)
 				.unwrap_or_default()
 				.is_frozen,
-			false
 		);
-		assert_eq!(
-			HomaValidatorListModule::validator_backings(VALIDATOR_3)
+		assert!(
+			!HomaValidatorListModule::validator_backings(VALIDATOR_3)
 				.unwrap_or_default()
 				.is_frozen,
-			false
 		);
 		assert_ok!(HomaValidatorListModule::freeze(
 			Origin::signed(10),
 			vec![VALIDATOR_1, VALIDATOR_2, VALIDATOR_3]
 		));
-		assert_eq!(
+		assert!(
 			HomaValidatorListModule::validator_backings(VALIDATOR_1)
 				.unwrap_or_default()
-				.is_frozen,
-			true
+				.is_frozen
 		);
-		assert_eq!(
+		assert!(
 			HomaValidatorListModule::validator_backings(VALIDATOR_2)
 				.unwrap_or_default()
-				.is_frozen,
-			true
+				.is_frozen
 		);
-		assert_eq!(
+		assert!(
 			HomaValidatorListModule::validator_backings(VALIDATOR_3)
 				.unwrap_or_default()
-				.is_frozen,
-			true
+				.is_frozen
 		);
 
 		System::assert_has_event(mock::Event::HomaValidatorListModule(crate::Event::FreezeValidator(
@@ -156,45 +150,39 @@ fn thaw_work() {
 			Origin::signed(10),
 			vec![VALIDATOR_1, VALIDATOR_2]
 		));
-		assert_eq!(
+		assert!(
 			HomaValidatorListModule::validator_backings(VALIDATOR_1)
 				.unwrap_or_default()
-				.is_frozen,
-			true
+				.is_frozen
 		);
-		assert_eq!(
+		assert!(
 			HomaValidatorListModule::validator_backings(VALIDATOR_2)
 				.unwrap_or_default()
-				.is_frozen,
-			true
+				.is_frozen
 		);
-		assert_eq!(
-			HomaValidatorListModule::validator_backings(VALIDATOR_3)
+		assert!(
+			!HomaValidatorListModule::validator_backings(VALIDATOR_3)
 				.unwrap_or_default()
-				.is_frozen,
-			false
+				.is_frozen
 		);
 		assert_ok!(HomaValidatorListModule::thaw(
 			Origin::signed(10),
 			vec![VALIDATOR_1, VALIDATOR_2, VALIDATOR_3]
 		));
-		assert_eq!(
-			HomaValidatorListModule::validator_backings(VALIDATOR_1)
+		assert!(
+			!HomaValidatorListModule::validator_backings(VALIDATOR_1)
 				.unwrap_or_default()
-				.is_frozen,
-			false
+				.is_frozen
 		);
-		assert_eq!(
-			HomaValidatorListModule::validator_backings(VALIDATOR_2)
+		assert!(
+			!HomaValidatorListModule::validator_backings(VALIDATOR_2)
 				.unwrap_or_default()
-				.is_frozen,
-			false
+				.is_frozen
 		);
-		assert_eq!(
-			HomaValidatorListModule::validator_backings(VALIDATOR_3)
+		assert!(
+			!HomaValidatorListModule::validator_backings(VALIDATOR_3)
 				.unwrap_or_default()
-				.is_frozen,
-			false
+				.is_frozen
 		);
 		System::assert_has_event(mock::Event::HomaValidatorListModule(crate::Event::ThawValidator(
 			VALIDATOR_1,
@@ -784,7 +772,7 @@ fn contains_work() {
 				.total_insurance,
 			100
 		);
-		assert_eq!(HomaValidatorListModule::contains(&VALIDATOR_1), false);
+		assert!(!HomaValidatorListModule::contains(&VALIDATOR_1));
 
 		assert_ok!(HomaValidatorListModule::bond(Origin::signed(ALICE), VALIDATOR_1, 100));
 		assert_eq!(
@@ -793,6 +781,6 @@ fn contains_work() {
 				.total_insurance,
 			200
 		);
-		assert_eq!(HomaValidatorListModule::contains(&VALIDATOR_1), true);
+		assert!(HomaValidatorListModule::contains(&VALIDATOR_1));
 	});
 }

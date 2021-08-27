@@ -258,7 +258,7 @@ impl<'vicinity, 'config, 'meter, T: Config> Handler<'vicinity, 'config, 'meter, 
 
 	pub fn is_developer_or_contract(caller: &H160) -> bool {
 		if let Some(AccountInfo { contract_info, .. }) = Accounts::<T>::get(caller) {
-			let account_id = T::AddressMapping::get_account_id(&caller);
+			let account_id = T::AddressMapping::get_account_id(caller);
 			contract_info.is_some()
 				|| !T::Currency::reserved_balance_named(&RESERVE_ID_DEVELOPER_DEPOSIT, &account_id).is_zero()
 		} else {
@@ -684,7 +684,7 @@ impl<'vicinity, 'config, 'meter, T: Config> HandlerT for Handler<'vicinity, 'con
 			self.gasometer.record_cost(cost)?;
 		} else {
 			let (gas_cost, memory_cost) =
-				gasometer::dynamic_opcode_cost(context.address, opcode, stack, self.is_static, &self.config, self)?;
+				gasometer::dynamic_opcode_cost(context.address, opcode, stack, self.is_static, self.config, self)?;
 
 			self.gasometer.record_dynamic_cost(gas_cost, memory_cost)?;
 		}

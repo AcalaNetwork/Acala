@@ -29,14 +29,14 @@ use sp_runtime::traits::BadOrigin;
 fn emergency_shutdown_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
-		assert_eq!(EmergencyShutdownModule::is_shutdown(), false);
+		assert!(!EmergencyShutdownModule::is_shutdown());
 		assert_noop!(
 			EmergencyShutdownModule::emergency_shutdown(Origin::signed(5)),
 			BadOrigin,
 		);
 		assert_ok!(EmergencyShutdownModule::emergency_shutdown(Origin::signed(1)));
 		System::assert_last_event(Event::EmergencyShutdownModule(crate::Event::Shutdown(1)));
-		assert_eq!(EmergencyShutdownModule::is_shutdown(), true);
+		assert!(EmergencyShutdownModule::is_shutdown());
 		assert_noop!(
 			EmergencyShutdownModule::emergency_shutdown(Origin::signed(1)),
 			Error::<Runtime>::AlreadyShutdown,
@@ -47,7 +47,7 @@ fn emergency_shutdown_work() {
 #[test]
 fn open_collateral_refund_fail() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_eq!(EmergencyShutdownModule::can_refund(), false);
+		assert!(!EmergencyShutdownModule::can_refund());
 		assert_noop!(
 			EmergencyShutdownModule::open_collateral_refund(Origin::signed(1)),
 			Error::<Runtime>::MustAfterShutdown,
@@ -59,7 +59,7 @@ fn open_collateral_refund_fail() {
 fn open_collateral_refund_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
-		assert_eq!(EmergencyShutdownModule::can_refund(), false);
+		assert!(!EmergencyShutdownModule::can_refund());
 		assert_ok!(EmergencyShutdownModule::emergency_shutdown(Origin::signed(1)));
 		assert_noop!(
 			EmergencyShutdownModule::open_collateral_refund(Origin::signed(5)),
@@ -67,7 +67,7 @@ fn open_collateral_refund_work() {
 		);
 		assert_ok!(EmergencyShutdownModule::open_collateral_refund(Origin::signed(1)));
 		System::assert_last_event(Event::EmergencyShutdownModule(crate::Event::OpenRefund(1)));
-		assert_eq!(EmergencyShutdownModule::can_refund(), true);
+		assert!(EmergencyShutdownModule::can_refund());
 	});
 }
 

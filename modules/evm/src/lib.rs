@@ -793,8 +793,8 @@ pub mod module {
 impl<T: Config> Pallet<T> {
 	#[transactional]
 	pub fn remove_contract(address: &EvmAddress, dest: &EvmAddress) -> Result<u32, DispatchError> {
-		let address_account = T::AddressMapping::get_account_id(&address);
-		let dest_account = T::AddressMapping::get_account_id(&dest);
+		let address_account = T::AddressMapping::get_account_id(address);
+		let dest_account = T::AddressMapping::get_account_id(dest);
 
 		let size = Accounts::<T>::try_mutate_exists(address, |account_info| -> Result<u32, DispatchError> {
 			let account_info = account_info.as_mut().ok_or(Error::<T>::ContractNotFound)?;
@@ -916,7 +916,7 @@ impl<T: Config> Pallet<T> {
 		code: Vec<u8>,
 	) -> Result<(), ExitError> {
 		let bounded_code: BoundedVec<u8, T::MaxCodeSize> = code.try_into().map_err(|_| ExitError::OutOfGas)?;
-		let code_hash = code_hash(&bounded_code.as_slice());
+		let code_hash = code_hash(bounded_code.as_slice());
 		let code_size = bounded_code.len() as u32;
 
 		let contract_info = ContractInfo {
@@ -1034,7 +1034,7 @@ impl<T: Config> Pallet<T> {
 
 			let bounded_code: BoundedVec<u8, T::MaxCodeSize> =
 				code.try_into().map_err(|_| Error::<T>::ContractExceedsMaxCodeSize)?;
-			let code_hash = code_hash(&bounded_code.as_slice());
+			let code_hash = code_hash(bounded_code.as_slice());
 			let code_size = bounded_code.len() as u32;
 			// The code_hash of the same contract is definitely different.
 			// The `contract_info.code_hash` hashed by on_contract_initialization which constructored.
@@ -1096,7 +1096,7 @@ impl<T: Config> Pallet<T> {
 		ensure!(contract_info.maintainer == *maintainer, Error::<T>::NoPermission);
 		ensure!(!contract_info.deployed, Error::<T>::ContractAlreadyDeployed);
 
-		let storage = Self::remove_contract(&contract, &maintainer)?;
+		let storage = Self::remove_contract(&contract, maintainer)?;
 
 		let contract_account = T::AddressMapping::get_account_id(&contract);
 

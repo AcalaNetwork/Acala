@@ -379,7 +379,7 @@ fn adjust_position_work() {
 		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 50);
 		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 500);
 		assert_eq!(LoansModule::positions(BTC, ALICE).collateral, 100);
-		assert_eq!(CDPEngineModule::adjust_position(&ALICE, BTC, 0, 200).is_ok(), false);
+		assert!(!CDPEngineModule::adjust_position(&ALICE, BTC, 0, 200).is_ok());
 		assert_ok!(CDPEngineModule::adjust_position(&ALICE, BTC, 0, -200));
 		assert_eq!(Currencies::free_balance(BTC, &ALICE), 900);
 		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 30);
@@ -401,7 +401,7 @@ fn remain_debit_value_too_small_check() {
 			Change::NewValue(10000),
 		));
 		assert_ok!(CDPEngineModule::adjust_position(&ALICE, BTC, 100, 500));
-		assert_eq!(CDPEngineModule::adjust_position(&ALICE, BTC, 0, -490).is_ok(), false);
+		assert!(!CDPEngineModule::adjust_position(&ALICE, BTC, 0, -490).is_ok());
 		assert_ok!(CDPEngineModule::adjust_position(&ALICE, BTC, -100, -500));
 	});
 }
@@ -706,7 +706,7 @@ fn accumulate_interest_work() {
 		assert_eq!(CDPEngineModule::debit_exchange_rate(DOT), None);
 
 		mock_shutdown();
-		assert_eq!(<Runtime as Config>::EmergencyShutdown::is_shutdown(), true);
+		assert!(<Runtime as Config>::EmergencyShutdown::is_shutdown());
 
 		CDPEngineModule::accumulate_interest(3, 2);
 		assert_eq!(CDPEngineModule::last_accumulation_secs(), 3);
@@ -837,7 +837,7 @@ fn close_cdp_has_debit_by_dex_work() {
 
 		// max collateral amount limit swap
 		assert_noop!(
-			CDPEngineModule::close_cdp_has_debit_by_dex(ALICE, BTC, 5, Some(&vec![BTC, AUSD])),
+			CDPEngineModule::close_cdp_has_debit_by_dex(ALICE, BTC, 5, Some(&[BTC, AUSD])),
 			dex::Error::<Runtime>::ExcessiveSupplyAmount
 		);
 

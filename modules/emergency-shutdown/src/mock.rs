@@ -129,7 +129,7 @@ impl orml_currencies::Config for Runtime {
 pub struct MockConvert;
 impl Convert<(CurrencyId, Balance), Balance> for MockConvert {
 	fn convert(a: (CurrencyId, Balance)) -> Balance {
-		a.1.into()
+		a.1
 	}
 }
 

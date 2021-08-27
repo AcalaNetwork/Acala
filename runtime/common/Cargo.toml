@@ -8,7 +8,7 @@ edition = "2018"
 static_assertions = "1.1.0"
 num_enum = { version = "0.5.1", default-features = false }
 serde = { version = "1.0.124", optional = true, default-features = false }
-codec = { package = "parity-scale-codec", version = "2.0.0", default-features = false, features = ["max-encoded-len"] }
+codec = { package = "parity-scale-codec", version = "2.2.0", default-features = false, features = ["max-encoded-len"] }
 
 frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.9", default-features = false }
 frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.9", default-features = false }
