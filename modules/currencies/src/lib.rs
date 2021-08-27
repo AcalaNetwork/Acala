@@ -257,7 +257,7 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 					return Ok(());
 				}
 
-				let address = T::AddressMapping::get_evm_address(&who).ok_or(Error::<T>::EvmAccountNotFound)?;
+				let address = T::AddressMapping::get_evm_address(who).ok_or(Error::<T>::EvmAccountNotFound)?;
 				let balance = T::EVMBridge::balance_of(
 					InvokeContext {
 						contract,
@@ -454,7 +454,7 @@ impl<T: Config> MultiReservableCurrency<T::AccountId> for Pallet<T> {
 				if value.is_zero() {
 					return Ok(());
 				}
-				let address = T::AddressMapping::get_evm_address(&who).ok_or(Error::<T>::EvmAccountNotFound)?;
+				let address = T::AddressMapping::get_evm_address(who).ok_or(Error::<T>::EvmAccountNotFound)?;
 				T::EVMBridge::transfer(
 					InvokeContext {
 						contract,
