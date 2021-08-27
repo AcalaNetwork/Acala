@@ -124,7 +124,7 @@ fn update_loan_should_work() {
 		assert_eq!(LoansModule::total_positions(BTC).collateral, 0);
 		assert_eq!(LoansModule::positions(BTC, &ALICE).debit, 0);
 		assert_eq!(LoansModule::positions(BTC, &ALICE).collateral, 0);
-		assert_eq!(<Positions<Runtime>>::contains_key(BTC, &ALICE), false);
+		assert!(!<Positions<Runtime>>::contains_key(BTC, &ALICE));
 
 		let alice_ref_count_0 = System::consumers(&ALICE);
 
@@ -145,11 +145,11 @@ fn update_loan_should_work() {
 		assert_eq!(Currencies::free_balance(BTC, &ALICE), 1000);
 
 		// should remove position storage if zero
-		assert_eq!(<Positions<Runtime>>::contains_key(BTC, &ALICE), true);
+		assert!(<Positions<Runtime>>::contains_key(BTC, &ALICE));
 		assert_ok!(LoansModule::update_loan(&ALICE, BTC, -3000, -2000));
 		assert_eq!(LoansModule::positions(BTC, &ALICE).debit, 0);
 		assert_eq!(LoansModule::positions(BTC, &ALICE).collateral, 0);
-		assert_eq!(<Positions<Runtime>>::contains_key(BTC, &ALICE), false);
+		assert!(!<Positions<Runtime>>::contains_key(BTC, &ALICE));
 
 		// decrease ref count after remove position
 		let alice_ref_count_2 = System::consumers(&ALICE);

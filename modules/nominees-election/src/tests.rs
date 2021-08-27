@@ -225,7 +225,7 @@ fn rebalance_work() {
 		assert_eq!(NomineesElectionModule::nominees().len(), 0);
 		NomineesElectionModule::rebalance();
 		assert_eq!(NomineesElectionModule::nominees().len(), 5);
-		assert_eq!(NomineesElectionModule::nominees().contains(&1), true);
+		assert!(NomineesElectionModule::nominees().contains(&1));
 		assert_ok!(NomineesElectionModule::bond(Origin::signed(BOB), 600));
 		assert_ok!(NomineesElectionModule::nominate(
 			Origin::signed(ALICE),
@@ -233,7 +233,7 @@ fn rebalance_work() {
 		));
 		NomineesElectionModule::rebalance();
 		assert_eq!(NomineesElectionModule::nominees().len(), 5);
-		assert_eq!(NomineesElectionModule::nominees().contains(&1), false);
+		assert!(!NomineesElectionModule::nominees().contains(&1));
 	});
 }
 

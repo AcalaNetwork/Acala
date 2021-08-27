@@ -996,8 +996,8 @@ fn should_set_code() {
 				ref_count: 1,
 			})
 		);
-		assert_eq!(Codes::<Test>::contains_key(&code_hash), false);
-		assert_eq!(Codes::<Test>::contains_key(&new_code_hash), true);
+		assert!(!Codes::<Test>::contains_key(&code_hash));
+		assert!(Codes::<Test>::contains_key(&new_code_hash));
 
 		assert_ok!(EVM::set_code(Origin::root(), contract_address, vec![]));
 		let new_code_hash = H256::from_str("c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470").unwrap();

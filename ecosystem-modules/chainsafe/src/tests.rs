@@ -110,7 +110,7 @@ fn remove_resource_id_work() {
 #[test]
 fn is_origin_chain_resource_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_eq!(ChainSafeTransfer::is_origin_chain_resource(ACAResourceId::get()), true);
+		assert!(ChainSafeTransfer::is_origin_chain_resource(ACAResourceId::get()));
 		assert_eq!(
 			ChainSafeTransfer::is_origin_chain_resource(WETHResourceId::get()),
 			false
