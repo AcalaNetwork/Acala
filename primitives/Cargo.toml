@@ -12,12 +12,17 @@ num_enum = { version = "0.5.1", default-features = false }
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.9", default-features = false }
 sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.9", default-features = false }
 sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.9", default-features = false }
+
 evm = { version = "0.30.0", default-features = false, features = ["with-codec"] }
+ethereum = { version = "0.9.0", default-features = false, features = ["with-codec"] }
+rlp = { version = "0.5", default-features = false }
+
 chainbridge = { git = "https://github.com/AcalaNetwork/chainbridge-substrate", default-features = false }
 
 [dev-dependencies]
 sha3 = { version = "0.9.1" }
 serde_json = { version = "1.0.64" }
+hex-literal = "0.3.1"
 primitives-proc-macro = { path = "./proc-macro" }
 frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.9" }
 
@@ -30,8 +35,13 @@ std = [
 	"sp-runtime/std",
 	"sp-core/std",
 	"sp-std/std",
+
 	"evm/std",
 	"evm/with-serde",
+	"ethereum/std",
+	"ethereum/with-serde",
+	"rlp/std",
+
 	"chainbridge/std",
 ]
 runtime-benchmarks = [

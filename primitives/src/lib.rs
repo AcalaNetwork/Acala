@@ -22,6 +22,7 @@
 
 pub mod currency;
 pub mod evm;
+pub mod unchecked_extrinsic;
 
 use codec::{Decode, Encode, MaxEncodedLen};
 use core::ops::Range;

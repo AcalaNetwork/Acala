@@ -70,11 +70,14 @@ version = "1.3.1"
 dependencies = [
  "bstringify",
  "chainbridge",
+ "ethereum",
  "evm",
  "frame-support",
+ "hex-literal 0.3.3",
  "num_enum",
  "parity-scale-codec",
  "primitives-proc-macro",
+ "rlp",
  "serde",
  "serde_json",
  "sha3 0.9.1",
@@ -5132,6 +5135,7 @@ dependencies = [
  "module-support",
  "module-transaction-pause",
  "module-transaction-payment",
+ "nutsfinance-stable-asset",
  "orml-auction",
  "orml-authority",
  "orml-benchmarking",
@@ -6296,6 +6300,21 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "nutsfinance-stable-asset"
+version = "0.1.0"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "pallet-balances",
+ "parity-scale-codec",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]
