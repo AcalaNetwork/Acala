@@ -50,28 +50,45 @@ where
 			.map_err(|_| Error::from("Invalid RLP length"))?
 			.total();
 
-		let sub_len = sub_len.min(MAX_TX_LENGTH).max(4);
-		let rlp_len = rlp_len.min(MAX_TX_LENGTH).max(4);
+		let sub_len = if sub_len >= MAX_TX_LENGTH || sub_len < 4 {
+			None
+		} else {
+			Some(sub_len)
+		};
+		let rlp_len = if rlp_len >= MAX_TX_LENGTH || rlp_len < 4 {
+			None
+		} else {
+			Some(rlp_len)
+		};
 
-		let max_len = sub_len.max(rlp_len);
+		let max_len = sub_len.unwrap_or_default().max(rlp_len.unwrap_or_default());
+
+		if max_len < 4 {
+			return Err(Error::from("Invalid data length"));
+		}
+
 		let mut payload = vec![0u8; max_len];
 		payload[0..4].copy_from_slice(&first_4_bytes);
-		let min_len = sub_len.min(rlp_len);
+		let min_len = sub_len.unwrap_or(MAX_TX_LENGTH).min(rlp_len.unwrap_or(MAX_TX_LENGTH));
 		input.read(&mut payload[4..min_len])?;
 
 		// try the smaller one first and than the larger one
 		if rlp_len < sub_len {
-			let utx = rlp::decode::<TransactionV2>(&payload[..rlp_len]);
-			if let Ok(utx) = utx {
-				return Ok(AcalaUncheckedExtrinsic::Ethereum(utx));
+			if let Some(rlp_len) = rlp_len {
+				let utx = rlp::decode::<TransactionV2>(&payload[..rlp_len]);
+				if let Ok(utx) = utx {
+					return Ok(AcalaUncheckedExtrinsic::Ethereum(utx));
+				}
 			}
 			input.read(&mut payload[min_len..])?;
 			let utx = UncheckedExtrinsic::decode(&mut &payload[..])?;
 			return Ok(AcalaUncheckedExtrinsic::Substrate(utx));
 		} else {
-			let utx = UncheckedExtrinsic::decode(&mut &payload[..sub_len]);
-			if let Ok(utx) = utx {
-				return Ok(AcalaUncheckedExtrinsic::Substrate(utx));
+			if let Some(sub_len) = sub_len {
+				let utx = UncheckedExtrinsic::decode(&mut &payload[..sub_len]);
+				if let Ok(utx) = utx {
+					return Ok(AcalaUncheckedExtrinsic::Substrate(utx));
+				}
 			}
 			input.read(&mut payload[min_len..])?;
 			let utx = rlp::decode::<TransactionV2>(&payload).map_err(|_| Error::from("Invalid RLP length"))?;
