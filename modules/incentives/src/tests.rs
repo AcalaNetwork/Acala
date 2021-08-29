@@ -206,7 +206,10 @@ fn update_incentive_rewards_works() {
 			0
 		);
 		assert_eq!(
-			IncentivesModule::incentive_reward_amount(PoolId::LoansIncentive(DOT)),
+			IncentivesModule::incentive_reward_amount(PoolId::LoansIncentive {
+				collateral_currency_id: DOT,
+				reward_currency_id: ACA
+			}),
 			0
 		);
 
@@ -214,9 +217,15 @@ fn update_incentive_rewards_works() {
 			Origin::signed(Root::get()),
 			vec![
 				(PoolId::DexIncentive(DOT_AUSD_LP), 1000),
-				(PoolId::LoansIncentive(DOT), 500),
 				(
-					PoolId::LoansIncentiveAlternative {
+					PoolId::LoansIncentive {
+						collateral_currency_id: DOT,
+						reward_currency_id: ACA
+					},
+					500
+				),
+				(
+					PoolId::LoansIncentive {
 						collateral_currency_id: DOT_AUSD_LP,
 						reward_currency_id: LDOT
 					},
@@ -229,11 +238,14 @@ fn update_incentive_rewards_works() {
 			1000,
 		)));
 		System::assert_has_event(Event::IncentivesModule(crate::Event::IncentiveRewardAmountUpdated(
-			PoolId::LoansIncentive(DOT),
+			PoolId::LoansIncentive {
+				collateral_currency_id: DOT,
+				reward_currency_id: ACA,
+			},
 			500,
 		)));
 		System::assert_has_event(Event::IncentivesModule(crate::Event::IncentiveRewardAmountUpdated(
-			PoolId::LoansIncentiveAlternative {
+			PoolId::LoansIncentive {
 				collateral_currency_id: DOT_AUSD_LP,
 				reward_currency_id: LDOT,
 			},
@@ -244,11 +256,14 @@ fn update_incentive_rewards_works() {
 			1000
 		);
 		assert_eq!(
-			IncentivesModule::incentive_reward_amount(PoolId::LoansIncentive(DOT)),
+			IncentivesModule::incentive_reward_amount(PoolId::LoansIncentive {
+				collateral_currency_id: DOT,
+				reward_currency_id: ACA
+			}),
 			500
 		);
 		assert_eq!(
-			IncentivesModule::incentive_reward_amount(PoolId::LoansIncentiveAlternative {
+			IncentivesModule::incentive_reward_amount(PoolId::LoansIncentive {
 				collateral_currency_id: DOT_AUSD_LP,
 				reward_currency_id: LDOT
 			}),
@@ -269,20 +284,6 @@ fn update_incentive_rewards_works() {
 				vec![(PoolId::HomaValidatorAllowance(VALIDATOR::get()), 300)],
 			),
 			Error::<Runtime>::InvalidPoolId
-		);
-
-		assert_noop!(
-			IncentivesModule::update_incentive_rewards(
-				Origin::signed(Root::get()),
-				vec![(
-					PoolId::LoansIncentiveAlternative {
-						collateral_currency_id: DOT,
-						reward_currency_id: LDOT
-					},
-					200
-				)],
-			),
-			Error::<Runtime>::InvalidCurrencyId
 		);
 	});
 }
@@ -355,7 +356,7 @@ fn update_payout_deduction_rates_works() {
 			IncentivesModule::update_payout_deduction_rates(
 				Origin::signed(Root::get()),
 				vec![(
-					PoolId::LoansIncentiveAlternative {
+					PoolId::LoansIncentive {
 						collateral_currency_id: DOT_AUSD_LP,
 						reward_currency_id: BTC
 					},
@@ -425,7 +426,10 @@ fn add_allowance_works() {
 fn on_update_loan_works() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_eq!(
-			RewardsModule::pools(PoolId::LoansIncentive(BTC)),
+			RewardsModule::pools(PoolId::LoansIncentive {
+				collateral_currency_id: BTC,
+				reward_currency_id: ACA
+			}),
 			PoolInfo {
 				total_shares: 0,
 				total_rewards: 0,
@@ -433,17 +437,32 @@ fn on_update_loan_works() {
 			}
 		);
 		assert_eq!(
-			RewardsModule::share_and_withdrawn_reward(PoolId::LoansIncentive(BTC), ALICE::get()),
+			RewardsModule::share_and_withdrawn_reward(
+				PoolId::LoansIncentive {
+					collateral_currency_id: BTC,
+					reward_currency_id: ACA
+				},
+				ALICE::get()
+			),
 			(0, 0)
 		);
 		assert_eq!(
-			RewardsModule::share_and_withdrawn_reward(PoolId::LoansIncentive(BTC), BOB::get()),
+			RewardsModule::share_and_withdrawn_reward(
+				PoolId::LoansIncentive {
+					collateral_currency_id: BTC,
+					reward_currency_id: ACA
+				},
+				BOB::get()
+			),
 			(0, 0)
 		);
 
 		OnUpdateLoan::<Runtime>::happened(&(ALICE::get(), BTC, 100, 0));
 		assert_eq!(
-			RewardsModule::pools(PoolId::LoansIncentive(BTC)),
+			RewardsModule::pools(PoolId::LoansIncentive {
+				collateral_currency_id: BTC,
+				reward_currency_id: ACA
+			}),
 			PoolInfo {
 				total_shares: 100,
 				total_rewards: 0,
@@ -451,13 +470,22 @@ fn on_update_loan_works() {
 			}
 		);
 		assert_eq!(
-			RewardsModule::share_and_withdrawn_reward(PoolId::LoansIncentive(BTC), ALICE::get()),
+			RewardsModule::share_and_withdrawn_reward(
+				PoolId::LoansIncentive {
+					collateral_currency_id: BTC,
+					reward_currency_id: ACA
+				},
+				ALICE::get()
+			),
 			(100, 0)
 		);
 
 		OnUpdateLoan::<Runtime>::happened(&(BOB::get(), BTC, 100, 500));
 		assert_eq!(
-			RewardsModule::pools(PoolId::LoansIncentive(BTC)),
+			RewardsModule::pools(PoolId::LoansIncentive {
+				collateral_currency_id: BTC,
+				reward_currency_id: ACA
+			}),
 			PoolInfo {
 				total_shares: 700,
 				total_rewards: 0,
@@ -465,13 +493,22 @@ fn on_update_loan_works() {
 			}
 		);
 		assert_eq!(
-			RewardsModule::share_and_withdrawn_reward(PoolId::LoansIncentive(BTC), BOB::get()),
+			RewardsModule::share_and_withdrawn_reward(
+				PoolId::LoansIncentive {
+					collateral_currency_id: BTC,
+					reward_currency_id: ACA
+				},
+				BOB::get()
+			),
 			(600, 0)
 		);
 
 		OnUpdateLoan::<Runtime>::happened(&(ALICE::get(), BTC, -50, 100));
 		assert_eq!(
-			RewardsModule::pools(PoolId::LoansIncentive(BTC)),
+			RewardsModule::pools(PoolId::LoansIncentive {
+				collateral_currency_id: BTC,
+				reward_currency_id: ACA
+			}),
 			PoolInfo {
 				total_shares: 650,
 				total_rewards: 0,
@@ -479,13 +516,22 @@ fn on_update_loan_works() {
 			}
 		);
 		assert_eq!(
-			RewardsModule::share_and_withdrawn_reward(PoolId::LoansIncentive(BTC), ALICE::get()),
+			RewardsModule::share_and_withdrawn_reward(
+				PoolId::LoansIncentive {
+					collateral_currency_id: BTC,
+					reward_currency_id: ACA
+				},
+				ALICE::get()
+			),
 			(50, 0)
 		);
 
 		OnUpdateLoan::<Runtime>::happened(&(BOB::get(), BTC, -650, 600));
 		assert_eq!(
-			RewardsModule::pools(PoolId::LoansIncentive(BTC)),
+			RewardsModule::pools(PoolId::LoansIncentive {
+				collateral_currency_id: BTC,
+				reward_currency_id: ACA
+			}),
 			PoolInfo {
 				total_shares: 50,
 				total_rewards: 0,
@@ -493,7 +539,13 @@ fn on_update_loan_works() {
 			}
 		);
 		assert_eq!(
-			RewardsModule::share_and_withdrawn_reward(PoolId::LoansIncentive(BTC), BOB::get()),
+			RewardsModule::share_and_withdrawn_reward(
+				PoolId::LoansIncentive {
+					collateral_currency_id: BTC,
+					reward_currency_id: ACA
+				},
+				BOB::get()
+			),
 			(0, 0)
 		);
 	});
@@ -549,25 +601,57 @@ fn guarantee_hooks_works() {
 fn payout_works() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_eq!(
-			IncentivesModule::pending_rewards(PoolId::LoansIncentive(BTC), ALICE::get()),
+			IncentivesModule::pending_rewards(
+				PoolId::LoansIncentive {
+					collateral_currency_id: BTC,
+					reward_currency_id: ACA
+				},
+				ALICE::get()
+			),
 			0
 		);
 
-		IncentivesModule::payout(&ALICE::get(), &PoolId::LoansIncentive(BTC), 1000);
+		IncentivesModule::payout(
+			&ALICE::get(),
+			&PoolId::LoansIncentive {
+				collateral_currency_id: BTC,
+				reward_currency_id: ACA,
+			},
+			1000,
+		);
 		assert_eq!(
-			IncentivesModule::pending_rewards(PoolId::LoansIncentive(BTC), ALICE::get()),
+			IncentivesModule::pending_rewards(
+				PoolId::LoansIncentive {
+					collateral_currency_id: BTC,
+					reward_currency_id: ACA
+				},
+				ALICE::get()
+			),
 			1000
 		);
 
-		IncentivesModule::payout(&ALICE::get(), &PoolId::LoansIncentive(BTC), 1000);
+		IncentivesModule::payout(
+			&ALICE::get(),
+			&PoolId::LoansIncentive {
+				collateral_currency_id: BTC,
+				reward_currency_id: ACA,
+			},
+			1000,
+		);
 		assert_eq!(
-			IncentivesModule::pending_rewards(PoolId::LoansIncentive(BTC), ALICE::get()),
+			IncentivesModule::pending_rewards(
+				PoolId::LoansIncentive {
+					collateral_currency_id: BTC,
+					reward_currency_id: ACA
+				},
+				ALICE::get()
+			),
 			2000
 		);
 
 		IncentivesModule::payout(
 			&ALICE::get(),
-			&PoolId::LoansIncentiveAlternative {
+			&PoolId::LoansIncentive {
 				collateral_currency_id: BTC_AUSD_LP,
 				reward_currency_id: BTC,
 			},
@@ -575,7 +659,7 @@ fn payout_works() {
 		);
 		assert_eq!(
 			IncentivesModule::pending_rewards(
-				PoolId::LoansIncentiveAlternative {
+				PoolId::LoansIncentive {
 					collateral_currency_id: BTC_AUSD_LP,
 					reward_currency_id: BTC
 				},
@@ -610,13 +694,20 @@ fn claim_rewards_works() {
 		));
 
 		// alice add shares before accumulate rewards
-		RewardsModule::add_share(&ALICE::get(), &PoolId::LoansIncentive(BTC), 100);
+		RewardsModule::add_share(
+			&ALICE::get(),
+			&PoolId::LoansIncentive {
+				collateral_currency_id: BTC,
+				reward_currency_id: ACA,
+			},
+			100,
+		);
 		RewardsModule::add_share(&ALICE::get(), &PoolId::DexIncentive(BTC_AUSD_LP), 100);
 		RewardsModule::add_share(&ALICE::get(), &PoolId::DexSaving(BTC_AUSD_LP), 100);
 		RewardsModule::add_share(&ALICE::get(), &PoolId::HomaValidatorAllowance(VALIDATOR::get()), 100);
 		RewardsModule::add_share(
 			&ALICE::get(),
-			&PoolId::LoansIncentiveAlternative {
+			&PoolId::LoansIncentive {
 				collateral_currency_id: BTC_AUSD_LP,
 				reward_currency_id: BTC,
 			},
@@ -628,12 +719,18 @@ fn claim_rewards_works() {
 		RewardsModule::add_share(&BOB::get(), &PoolId::DexIncentive(BTC_AUSD_LP), 100);
 
 		// accumulate rewards for different pools
-		RewardsModule::accumulate_reward(&PoolId::LoansIncentive(BTC), 2000);
+		RewardsModule::accumulate_reward(
+			&PoolId::LoansIncentive {
+				collateral_currency_id: BTC,
+				reward_currency_id: ACA,
+			},
+			2000,
+		);
 		RewardsModule::accumulate_reward(&PoolId::DexIncentive(BTC_AUSD_LP), 1000);
 		RewardsModule::accumulate_reward(&PoolId::DexSaving(BTC_AUSD_LP), 2000);
 		RewardsModule::accumulate_reward(&PoolId::HomaValidatorAllowance(VALIDATOR::get()), 5000);
 		RewardsModule::accumulate_reward(
-			&PoolId::LoansIncentiveAlternative {
+			&PoolId::LoansIncentive {
 				collateral_currency_id: BTC_AUSD_LP,
 				reward_currency_id: BTC,
 			},
@@ -641,11 +738,22 @@ fn claim_rewards_works() {
 		);
 
 		// bob add share after accumulate rewards
-		RewardsModule::add_share(&BOB::get(), &PoolId::LoansIncentive(BTC), 100);
+		RewardsModule::add_share(
+			&BOB::get(),
+			&PoolId::LoansIncentive {
+				collateral_currency_id: BTC,
+				reward_currency_id: ACA,
+			},
+			100,
+		);
 
-		// alice claim rewards for PoolId::LoansIncentive(BTC)
+		// alice claim rewards for PoolId::LoansIncentive { collateral_currency_id: BTC, reward_currency_id:
+		// ACA }
 		assert_eq!(
-			RewardsModule::pools(PoolId::LoansIncentive(BTC)),
+			RewardsModule::pools(PoolId::LoansIncentive {
+				collateral_currency_id: BTC,
+				reward_currency_id: ACA
+			}),
 			PoolInfo {
 				total_shares: 200,
 				total_rewards: 4000,
@@ -653,24 +761,39 @@ fn claim_rewards_works() {
 			}
 		);
 		assert_eq!(
-			RewardsModule::share_and_withdrawn_reward(PoolId::LoansIncentive(BTC), ALICE::get()),
+			RewardsModule::share_and_withdrawn_reward(
+				PoolId::LoansIncentive {
+					collateral_currency_id: BTC,
+					reward_currency_id: ACA
+				},
+				ALICE::get()
+			),
 			(100, 0)
 		);
 		assert_eq!(TokensModule::free_balance(ACA, &VAULT::get()), 10000);
 		assert_eq!(TokensModule::free_balance(ACA, &ALICE::get()), 0);
 		assert_ok!(IncentivesModule::claim_rewards(
 			Origin::signed(ALICE::get()),
-			PoolId::LoansIncentive(BTC)
+			PoolId::LoansIncentive {
+				collateral_currency_id: BTC,
+				reward_currency_id: ACA
+			}
 		));
 		System::assert_last_event(Event::IncentivesModule(crate::Event::ClaimRewards(
 			ALICE::get(),
-			PoolId::LoansIncentive(BTC),
+			PoolId::LoansIncentive {
+				collateral_currency_id: BTC,
+				reward_currency_id: ACA,
+			},
 			ACA,
 			2000,
 			0,
 		)));
 		assert_eq!(
-			RewardsModule::pools(PoolId::LoansIncentive(BTC)),
+			RewardsModule::pools(PoolId::LoansIncentive {
+				collateral_currency_id: BTC,
+				reward_currency_id: ACA
+			}),
 			PoolInfo {
 				total_shares: 200,
 				total_rewards: 4000,
@@ -678,24 +801,43 @@ fn claim_rewards_works() {
 			}
 		);
 		assert_eq!(
-			RewardsModule::share_and_withdrawn_reward(PoolId::LoansIncentive(BTC), ALICE::get()),
+			RewardsModule::share_and_withdrawn_reward(
+				PoolId::LoansIncentive {
+					collateral_currency_id: BTC,
+					reward_currency_id: ACA
+				},
+				ALICE::get()
+			),
 			(100, 2000)
 		);
 		assert_eq!(TokensModule::free_balance(ACA, &VAULT::get()), 8000);
 		assert_eq!(TokensModule::free_balance(ACA, &ALICE::get()), 2000);
 
-		// bob claim rewards for PoolId::LoansIncentive(BTC)
+		// bob claim rewards for PoolId::LoansIncentive { collateral_currency_id: BTC, reward_currency_id:
+		// ACA }
 		assert_eq!(
-			RewardsModule::share_and_withdrawn_reward(PoolId::LoansIncentive(BTC), BOB::get()),
+			RewardsModule::share_and_withdrawn_reward(
+				PoolId::LoansIncentive {
+					collateral_currency_id: BTC,
+					reward_currency_id: ACA
+				},
+				BOB::get()
+			),
 			(100, 2000)
 		);
 		assert_eq!(TokensModule::free_balance(ACA, &BOB::get()), 0);
 		assert_ok!(IncentivesModule::claim_rewards(
 			Origin::signed(BOB::get()),
-			PoolId::LoansIncentive(BTC)
+			PoolId::LoansIncentive {
+				collateral_currency_id: BTC,
+				reward_currency_id: ACA
+			}
 		));
 		assert_eq!(
-			RewardsModule::pools(PoolId::LoansIncentive(BTC)),
+			RewardsModule::pools(PoolId::LoansIncentive {
+				collateral_currency_id: BTC,
+				reward_currency_id: ACA
+			}),
 			PoolInfo {
 				total_shares: 200,
 				total_rewards: 4000,
@@ -703,7 +845,13 @@ fn claim_rewards_works() {
 			}
 		);
 		assert_eq!(
-			RewardsModule::share_and_withdrawn_reward(PoolId::LoansIncentive(BTC), BOB::get()),
+			RewardsModule::share_and_withdrawn_reward(
+				PoolId::LoansIncentive {
+					collateral_currency_id: BTC,
+					reward_currency_id: ACA
+				},
+				BOB::get()
+			),
 			(100, 2000)
 		);
 		assert_eq!(TokensModule::free_balance(ACA, &VAULT::get()), 8000);
@@ -923,18 +1071,18 @@ fn claim_rewards_works() {
 			0
 		);
 
-		// alice claim reward for PoolId::LoansIncentiveAlternative { collateral_currency_id: BTC_AUSD_LP,
+		// alice claim reward for PoolId::LoansIncentive { collateral_currency_id: BTC_AUSD_LP,
 		// reward_currency_id: BTC }
 		assert_ok!(IncentivesModule::claim_rewards(
 			Origin::signed(ALICE::get()),
-			PoolId::LoansIncentiveAlternative {
+			PoolId::LoansIncentive {
 				collateral_currency_id: BTC_AUSD_LP,
 				reward_currency_id: BTC
 			}
 		));
 		System::assert_last_event(Event::IncentivesModule(crate::Event::ClaimRewards(
 			ALICE::get(),
-			PoolId::LoansIncentiveAlternative {
+			PoolId::LoansIncentive {
 				collateral_currency_id: BTC_AUSD_LP,
 				reward_currency_id: BTC,
 			},
@@ -943,7 +1091,7 @@ fn claim_rewards_works() {
 			0,
 		)));
 		assert_eq!(
-			RewardsModule::pools(PoolId::LoansIncentiveAlternative {
+			RewardsModule::pools(PoolId::LoansIncentive {
 				collateral_currency_id: BTC_AUSD_LP,
 				reward_currency_id: BTC
 			}),
@@ -955,7 +1103,7 @@ fn claim_rewards_works() {
 		);
 		assert_eq!(
 			RewardsModule::share_and_withdrawn_reward(
-				PoolId::LoansIncentiveAlternative {
+				PoolId::LoansIncentive {
 					collateral_currency_id: BTC_AUSD_LP,
 					reward_currency_id: BTC
 				},
@@ -967,7 +1115,7 @@ fn claim_rewards_works() {
 		assert_eq!(TokensModule::free_balance(BTC, &ALICE::get()), 5000);
 		assert_eq!(
 			IncentivesModule::pending_rewards(
-				PoolId::LoansIncentiveAlternative {
+				PoolId::LoansIncentive {
 					collateral_currency_id: BTC_AUSD_LP,
 					reward_currency_id: BTC
 				},
@@ -984,12 +1132,24 @@ fn on_initialize_should_work() {
 		assert_ok!(IncentivesModule::update_incentive_rewards(
 			Origin::signed(Root::get()),
 			vec![
-				(PoolId::LoansIncentive(BTC), 1000),
-				(PoolId::LoansIncentive(DOT), 2000),
+				(
+					PoolId::LoansIncentive {
+						collateral_currency_id: BTC,
+						reward_currency_id: ACA
+					},
+					1000
+				),
+				(
+					PoolId::LoansIncentive {
+						collateral_currency_id: DOT,
+						reward_currency_id: ACA
+					},
+					2000
+				),
 				(PoolId::DexIncentive(BTC_AUSD_LP), 100),
 				(PoolId::DexIncentive(DOT_AUSD_LP), 200),
 				(
-					PoolId::LoansIncentiveAlternative {
+					PoolId::LoansIncentive {
 						collateral_currency_id: BTC_AUSD_LP,
 						reward_currency_id: BTC
 					},
@@ -1005,14 +1165,21 @@ fn on_initialize_should_work() {
 			],
 		));
 
-		RewardsModule::add_share(&ALICE::get(), &PoolId::LoansIncentive(BTC), 1);
+		RewardsModule::add_share(
+			&ALICE::get(),
+			&PoolId::LoansIncentive {
+				collateral_currency_id: BTC,
+				reward_currency_id: ACA,
+			},
+			1,
+		);
 		RewardsModule::add_share(&ALICE::get(), &PoolId::DexIncentive(BTC_AUSD_LP), 1);
 		RewardsModule::add_share(&ALICE::get(), &PoolId::DexIncentive(DOT_AUSD_LP), 1);
 		RewardsModule::add_share(&ALICE::get(), &PoolId::DexSaving(BTC_AUSD_LP), 1);
 		RewardsModule::add_share(&ALICE::get(), &PoolId::DexSaving(DOT_AUSD_LP), 1);
 		RewardsModule::add_share(
 			&ALICE::get(),
-			&PoolId::LoansIncentiveAlternative {
+			&PoolId::LoansIncentive {
 				collateral_currency_id: BTC_AUSD_LP,
 				reward_currency_id: BTC,
 			},
@@ -1021,14 +1188,28 @@ fn on_initialize_should_work() {
 
 		assert_eq!(TokensModule::free_balance(ACA, &VAULT::get()), 0);
 		assert_eq!(TokensModule::free_balance(AUSD, &VAULT::get()), 0);
-		assert_eq!(RewardsModule::pools(PoolId::LoansIncentive(BTC)).total_rewards, 0);
-		assert_eq!(RewardsModule::pools(PoolId::LoansIncentive(DOT)).total_rewards, 0);
+		assert_eq!(
+			RewardsModule::pools(PoolId::LoansIncentive {
+				collateral_currency_id: BTC,
+				reward_currency_id: ACA
+			})
+			.total_rewards,
+			0
+		);
+		assert_eq!(
+			RewardsModule::pools(PoolId::LoansIncentive {
+				collateral_currency_id: DOT,
+				reward_currency_id: ACA
+			})
+			.total_rewards,
+			0
+		);
 		assert_eq!(RewardsModule::pools(PoolId::DexIncentive(BTC_AUSD_LP)).total_rewards, 0);
 		assert_eq!(RewardsModule::pools(PoolId::DexIncentive(DOT_AUSD_LP)).total_rewards, 0);
 		assert_eq!(RewardsModule::pools(PoolId::DexSaving(BTC_AUSD_LP)).total_rewards, 0);
 		assert_eq!(RewardsModule::pools(PoolId::DexSaving(DOT_AUSD_LP)).total_rewards, 0);
 		assert_eq!(
-			RewardsModule::pools(PoolId::LoansIncentiveAlternative {
+			RewardsModule::pools(PoolId::LoansIncentive {
 				collateral_currency_id: BTC_AUSD_LP,
 				reward_currency_id: BTC
 			})
@@ -1039,14 +1220,28 @@ fn on_initialize_should_work() {
 		IncentivesModule::on_initialize(9);
 		assert_eq!(TokensModule::free_balance(ACA, &VAULT::get()), 0);
 		assert_eq!(TokensModule::free_balance(AUSD, &VAULT::get()), 0);
-		assert_eq!(RewardsModule::pools(PoolId::LoansIncentive(BTC)).total_rewards, 0);
-		assert_eq!(RewardsModule::pools(PoolId::LoansIncentive(DOT)).total_rewards, 0);
+		assert_eq!(
+			RewardsModule::pools(PoolId::LoansIncentive {
+				collateral_currency_id: BTC,
+				reward_currency_id: ACA
+			})
+			.total_rewards,
+			0
+		);
+		assert_eq!(
+			RewardsModule::pools(PoolId::LoansIncentive {
+				collateral_currency_id: DOT,
+				reward_currency_id: ACA
+			})
+			.total_rewards,
+			0
+		);
 		assert_eq!(RewardsModule::pools(PoolId::DexIncentive(BTC_AUSD_LP)).total_rewards, 0);
 		assert_eq!(RewardsModule::pools(PoolId::DexIncentive(DOT_AUSD_LP)).total_rewards, 0);
 		assert_eq!(RewardsModule::pools(PoolId::DexSaving(BTC_AUSD_LP)).total_rewards, 0);
 		assert_eq!(RewardsModule::pools(PoolId::DexSaving(DOT_AUSD_LP)).total_rewards, 0);
 		assert_eq!(
-			RewardsModule::pools(PoolId::LoansIncentiveAlternative {
+			RewardsModule::pools(PoolId::LoansIncentive {
 				collateral_currency_id: BTC_AUSD_LP,
 				reward_currency_id: BTC
 			})
@@ -1057,8 +1252,22 @@ fn on_initialize_should_work() {
 		IncentivesModule::on_initialize(10);
 		assert_eq!(TokensModule::free_balance(ACA, &VAULT::get()), 1300);
 		assert_eq!(TokensModule::free_balance(AUSD, &VAULT::get()), 9);
-		assert_eq!(RewardsModule::pools(PoolId::LoansIncentive(BTC)).total_rewards, 1000);
-		assert_eq!(RewardsModule::pools(PoolId::LoansIncentive(DOT)).total_rewards, 0);
+		assert_eq!(
+			RewardsModule::pools(PoolId::LoansIncentive {
+				collateral_currency_id: BTC,
+				reward_currency_id: ACA
+			})
+			.total_rewards,
+			1000
+		);
+		assert_eq!(
+			RewardsModule::pools(PoolId::LoansIncentive {
+				collateral_currency_id: DOT,
+				reward_currency_id: ACA
+			})
+			.total_rewards,
+			0
+		);
 		assert_eq!(
 			RewardsModule::pools(PoolId::DexIncentive(BTC_AUSD_LP)).total_rewards,
 			100
@@ -1070,7 +1279,7 @@ fn on_initialize_should_work() {
 		assert_eq!(RewardsModule::pools(PoolId::DexSaving(BTC_AUSD_LP)).total_rewards, 5);
 		assert_eq!(RewardsModule::pools(PoolId::DexSaving(DOT_AUSD_LP)).total_rewards, 4);
 		assert_eq!(
-			RewardsModule::pools(PoolId::LoansIncentiveAlternative {
+			RewardsModule::pools(PoolId::LoansIncentive {
 				collateral_currency_id: BTC_AUSD_LP,
 				reward_currency_id: BTC
 			})
@@ -1078,13 +1287,34 @@ fn on_initialize_should_work() {
 			20
 		);
 
-		RewardsModule::add_share(&ALICE::get(), &PoolId::LoansIncentive(DOT), 1);
+		RewardsModule::add_share(
+			&ALICE::get(),
+			&PoolId::LoansIncentive {
+				collateral_currency_id: DOT,
+				reward_currency_id: ACA,
+			},
+			1,
+		);
 		IncentivesModule::on_initialize(20);
 		assert_eq!(TokensModule::free_balance(ACA, &VAULT::get()), 4600);
 		assert_eq!(TokensModule::free_balance(AUSD, &VAULT::get()), 18);
 		assert_eq!(TokensModule::free_balance(BTC, &VAULT::get()), 40);
-		assert_eq!(RewardsModule::pools(PoolId::LoansIncentive(BTC)).total_rewards, 2000);
-		assert_eq!(RewardsModule::pools(PoolId::LoansIncentive(DOT)).total_rewards, 2000);
+		assert_eq!(
+			RewardsModule::pools(PoolId::LoansIncentive {
+				collateral_currency_id: BTC,
+				reward_currency_id: ACA
+			})
+			.total_rewards,
+			2000
+		);
+		assert_eq!(
+			RewardsModule::pools(PoolId::LoansIncentive {
+				collateral_currency_id: DOT,
+				reward_currency_id: ACA
+			})
+			.total_rewards,
+			2000
+		);
 		assert_eq!(
 			RewardsModule::pools(PoolId::DexIncentive(BTC_AUSD_LP)).total_rewards,
 			200
@@ -1096,7 +1326,7 @@ fn on_initialize_should_work() {
 		assert_eq!(RewardsModule::pools(PoolId::DexSaving(BTC_AUSD_LP)).total_rewards, 10);
 		assert_eq!(RewardsModule::pools(PoolId::DexSaving(DOT_AUSD_LP)).total_rewards, 8);
 		assert_eq!(
-			RewardsModule::pools(PoolId::LoansIncentiveAlternative {
+			RewardsModule::pools(PoolId::LoansIncentive {
 				collateral_currency_id: BTC_AUSD_LP,
 				reward_currency_id: BTC
 			})
@@ -1109,8 +1339,22 @@ fn on_initialize_should_work() {
 		assert_eq!(TokensModule::free_balance(ACA, &VAULT::get()), 4600);
 		assert_eq!(TokensModule::free_balance(AUSD, &VAULT::get()), 18);
 		assert_eq!(TokensModule::free_balance(BTC, &VAULT::get()), 40);
-		assert_eq!(RewardsModule::pools(PoolId::LoansIncentive(BTC)).total_rewards, 2000);
-		assert_eq!(RewardsModule::pools(PoolId::LoansIncentive(DOT)).total_rewards, 2000);
+		assert_eq!(
+			RewardsModule::pools(PoolId::LoansIncentive {
+				collateral_currency_id: BTC,
+				reward_currency_id: ACA
+			})
+			.total_rewards,
+			2000
+		);
+		assert_eq!(
+			RewardsModule::pools(PoolId::LoansIncentive {
+				collateral_currency_id: DOT,
+				reward_currency_id: ACA
+			})
+			.total_rewards,
+			2000
+		);
 		assert_eq!(
 			RewardsModule::pools(PoolId::DexIncentive(BTC_AUSD_LP)).total_rewards,
 			200
@@ -1122,7 +1366,7 @@ fn on_initialize_should_work() {
 		assert_eq!(RewardsModule::pools(PoolId::DexSaving(BTC_AUSD_LP)).total_rewards, 10);
 		assert_eq!(RewardsModule::pools(PoolId::DexSaving(DOT_AUSD_LP)).total_rewards, 8);
 		assert_eq!(
-			RewardsModule::pools(PoolId::LoansIncentiveAlternative {
+			RewardsModule::pools(PoolId::LoansIncentive {
 				collateral_currency_id: BTC_AUSD_LP,
 				reward_currency_id: BTC
 			})
