@@ -28,8 +28,7 @@ use sp_core::{H160, H256};
 use sp_runtime::{
 	generic::{CheckedExtrinsic, UncheckedExtrinsic},
 	traits::{
-		self, Checkable, Convert as ConvertT, Extrinsic, ExtrinsicMetadata, IdentifyAccount, MaybeDisplay, Member,
-		SignedExtension,
+		self, Checkable, Convert, Extrinsic, ExtrinsicMetadata, IdentifyAccount, MaybeDisplay, Member, SignedExtension,
 	},
 	transaction_validity::{InvalidTransaction, TransactionValidityError},
 	RuntimeDebug,
@@ -40,15 +39,15 @@ use sp_std::prelude::*;
 const MAX_TX_LENGTH: usize = 5 * 1024 * 1024;
 
 #[derive(Clone, PartialEq, Eq, RuntimeDebug)]
-pub enum AcalaUncheckedExtrinsic<Call, Signature, Extra: SignedExtension, Convert> {
+pub enum AcalaUncheckedExtrinsic<Call, Signature, Extra: SignedExtension, ConvertTx> {
 	Substrate(UncheckedExtrinsic<Address, Call, Signature, Extra>),
 	Ethereum(TransactionV2),
-	_Phantom(sp_std::marker::PhantomData<Convert>),
+	_Phantom(sp_std::marker::PhantomData<ConvertTx>),
 }
 
 #[cfg(feature = "std")]
-impl<Call, Signature, Extra, Convert> parity_util_mem::MallocSizeOf
-	for AcalaUncheckedExtrinsic<Call, Signature, Extra, Convert>
+impl<Call, Signature, Extra, ConvertTx> parity_util_mem::MallocSizeOf
+	for AcalaUncheckedExtrinsic<Call, Signature, Extra, ConvertTx>
 where
 	Extra: SignedExtension,
 {
@@ -58,8 +57,8 @@ where
 	}
 }
 
-impl<Call, Signature, Extra: SignedExtension, Convert> Extrinsic
-	for AcalaUncheckedExtrinsic<Call, Signature, Extra, Convert>
+impl<Call, Signature, Extra: SignedExtension, ConvertTx> Extrinsic
+	for AcalaUncheckedExtrinsic<Call, Signature, Extra, ConvertTx>
 {
 	type Call = Call;
 
@@ -82,15 +81,15 @@ impl<Call, Signature, Extra: SignedExtension, Convert> Extrinsic
 	}
 }
 
-impl<Call, Signature, Extra: SignedExtension, Convert> ExtrinsicMetadata
-	for AcalaUncheckedExtrinsic<Call, Signature, Extra, Convert>
+impl<Call, Signature, Extra: SignedExtension, ConvertTx> ExtrinsicMetadata
+	for AcalaUncheckedExtrinsic<Call, Signature, Extra, ConvertTx>
 {
 	const VERSION: u8 = UncheckedExtrinsic::<Address, Call, Signature, Extra>::VERSION;
 	type SignedExtensions = Extra;
 }
 
-impl<Call, Signature, Extra: SignedExtension, Convert> ExtrinsicCall
-	for AcalaUncheckedExtrinsic<Call, Signature, Extra, Convert>
+impl<Call, Signature, Extra: SignedExtension, ConvertTx> ExtrinsicCall
+	for AcalaUncheckedExtrinsic<Call, Signature, Extra, ConvertTx>
 {
 	fn call(&self) -> &Self::Call {
 		match self {
@@ -101,14 +100,14 @@ impl<Call, Signature, Extra: SignedExtension, Convert> ExtrinsicCall
 	}
 }
 
-impl<AccountId, Call, Signature, Extra, Convert, Lookup> Checkable<Lookup>
-	for AcalaUncheckedExtrinsic<Call, Signature, Extra, Convert>
+impl<AccountId, Call, Signature, Extra, ConvertTx, Lookup> Checkable<Lookup>
+	for AcalaUncheckedExtrinsic<Call, Signature, Extra, ConvertTx>
 where
 	Call: Encode + Member,
 	Signature: Member + traits::Verify,
 	<Signature as traits::Verify>::Signer: IdentifyAccount<AccountId = AccountId>,
 	Extra: SignedExtension<AccountId = AccountId>,
-	Convert: ConvertT<TransactionV2, (Call, Extra)>,
+	ConvertTx: Convert<TransactionV2, (Call, Extra)>,
 	AccountId: Member + MaybeDisplay,
 	Lookup: traits::Lookup<Source = Address, Target = AccountId>,
 {
@@ -150,7 +149,7 @@ where
 
 				let acc = lookup.lookup(Address::Address20(signer.into()))?;
 
-				let (function, extra) = Convert::convert(tx);
+				let (function, extra) = ConvertTx::convert(tx);
 
 				Ok(CheckedExtrinsic {
 					signed: Some((acc, extra)),
@@ -162,7 +161,7 @@ where
 	}
 }
 
-impl<Call, Signature, Extra, Convert> GetDispatchInfo for AcalaUncheckedExtrinsic<Call, Signature, Extra, Convert>
+impl<Call, Signature, Extra, ConvertTx> GetDispatchInfo for AcalaUncheckedExtrinsic<Call, Signature, Extra, ConvertTx>
 where
 	Call: GetDispatchInfo,
 	Extra: SignedExtension,
@@ -176,7 +175,7 @@ where
 	}
 }
 
-impl<Call, Signature, Extra, Convert> Decode for AcalaUncheckedExtrinsic<Call, Signature, Extra, Convert>
+impl<Call, Signature, Extra, ConvertTx> Decode for AcalaUncheckedExtrinsic<Call, Signature, Extra, ConvertTx>
 where
 	Address: Decode,
 	Signature: Decode,
@@ -244,7 +243,7 @@ where
 	}
 }
 
-impl<Call, Signature, Extra, Convert> Encode for AcalaUncheckedExtrinsic<Call, Signature, Extra, Convert>
+impl<Call, Signature, Extra, ConvertTx> Encode for AcalaUncheckedExtrinsic<Call, Signature, Extra, ConvertTx>
 where
 	Signature: Encode,
 	Call: Encode,
@@ -259,7 +258,7 @@ where
 	}
 }
 
-impl<Call, Signature, Extra, Convert> EncodeLike for AcalaUncheckedExtrinsic<Call, Signature, Extra, Convert>
+impl<Call, Signature, Extra, ConvertTx> EncodeLike for AcalaUncheckedExtrinsic<Call, Signature, Extra, ConvertTx>
 where
 	Signature: Encode,
 	Call: Encode,
@@ -268,8 +267,8 @@ where
 }
 
 #[cfg(feature = "std")]
-impl<Signature: Encode, Call: Encode, Extra: SignedExtension, Convert> serde::Serialize
-	for AcalaUncheckedExtrinsic<Call, Signature, Extra, Convert>
+impl<Signature: Encode, Call: Encode, Extra: SignedExtension, ConvertTx> serde::Serialize
+	for AcalaUncheckedExtrinsic<Call, Signature, Extra, ConvertTx>
 {
 	fn serialize<S>(&self, seq: S) -> Result<S::Ok, S::Error>
 	where
@@ -280,8 +279,8 @@ impl<Signature: Encode, Call: Encode, Extra: SignedExtension, Convert> serde::Se
 }
 
 #[cfg(feature = "std")]
-impl<'a, Signature: Decode, Call: Decode, Extra: SignedExtension, Convert> serde::Deserialize<'a>
-	for AcalaUncheckedExtrinsic<Call, Signature, Extra, Convert>
+impl<'a, Signature: Decode, Call: Decode, Extra: SignedExtension, ConvertTx> serde::Deserialize<'a>
+	for AcalaUncheckedExtrinsic<Call, Signature, Extra, ConvertTx>
 {
 	fn deserialize<D>(de: D) -> Result<Self, D::Error>
 	where
@@ -292,8 +291,8 @@ impl<'a, Signature: Decode, Call: Decode, Extra: SignedExtension, Convert> serde
 	}
 }
 
-impl<Call, Signature, Extra: SignedExtension, Convert> Into<UncheckedExtrinsic<Address, Call, Signature, Extra>>
-	for AcalaUncheckedExtrinsic<Call, Signature, Extra, Convert>
+impl<Call, Signature, Extra: SignedExtension, ConvertTx> Into<UncheckedExtrinsic<Address, Call, Signature, Extra>>
+	for AcalaUncheckedExtrinsic<Call, Signature, Extra, ConvertTx>
 {
 	fn into(self) -> UncheckedExtrinsic<Address, Call, Signature, Extra> {
 		match self {
@@ -317,7 +316,7 @@ mod tests {
 	#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
 	pub struct DummyConvert;
 
-	impl<A, B> ConvertT<A, B> for DummyConvert {
+	impl<A, B> Convert<A, B> for DummyConvert {
 		fn convert(_: A) -> B {
 			unimplemented!()
 		}
