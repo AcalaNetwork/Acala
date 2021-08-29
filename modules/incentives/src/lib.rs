@@ -385,14 +385,6 @@ pub mod module {
 			T::UpdateOrigin::ensure_origin(origin)?;
 			for (pool_id, deduction_rate) in updates {
 				match pool_id {
-					PoolId::LoansIncentive {
-						collateral_currency_id, ..
-					} => {
-						ensure!(
-							collateral_currency_id.is_dex_share_currency_id(),
-							Error::<T>::InvalidCurrencyId
-						);
-					}
 					PoolId::DexSaving(currency_id) | PoolId::DexIncentive(currency_id) => {
 						ensure!(currency_id.is_dex_share_currency_id(), Error::<T>::InvalidCurrencyId);
 					}
