@@ -97,6 +97,9 @@ pub type BlockId = generic::BlockId<Block>;
 /// Opaque, encoded, unchecked extrinsic.
 pub use sp_runtime::OpaqueExtrinsic as UncheckedExtrinsic;
 
+/// The address format for describing accounts.
+pub type Address = sp_runtime::MultiAddress<AccountId, AccountIndex>;
+
 #[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum AirDropCurrencyId {
