@@ -16,15 +16,21 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::Address;
 use codec::{Compact, Decode, Encode, EncodeLike, Error, Input};
-use ethereum::TransactionV2;
+use ethereum::{EIP1559TransactionMessage, EIP2930TransactionMessage, LegacyTransactionMessage, TransactionV2};
 use frame_support::{
 	traits::ExtrinsicCall,
 	weights::{DispatchInfo, GetDispatchInfo},
 };
+use sha3::{Digest, Keccak256};
+use sp_core::{H160, H256};
 use sp_runtime::{
 	generic::{CheckedExtrinsic, UncheckedExtrinsic},
-	traits::{self, Checkable, Extrinsic, ExtrinsicMetadata, IdentifyAccount, MaybeDisplay, Member, SignedExtension},
+	traits::{
+		self, Checkable, Convert as ConvertT, Extrinsic, ExtrinsicMetadata, IdentifyAccount, MaybeDisplay, Member,
+		SignedExtension,
+	},
 	transaction_validity::{InvalidTransaction, TransactionValidityError},
 	RuntimeDebug,
 };
@@ -34,14 +40,15 @@ use sp_std::prelude::*;
 const MAX_TX_LENGTH: usize = 5 * 1024 * 1024;
 
 #[derive(Clone, PartialEq, Eq, RuntimeDebug)]
-pub enum AcalaUncheckedExtrinsic<Address, Call, Signature, Extra: SignedExtension> {
+pub enum AcalaUncheckedExtrinsic<Call, Signature, Extra: SignedExtension, Convert> {
 	Substrate(UncheckedExtrinsic<Address, Call, Signature, Extra>),
 	Ethereum(TransactionV2),
+	_Phantom(sp_std::marker::PhantomData<Convert>),
 }
 
 #[cfg(feature = "std")]
-impl<Address, Call, Signature, Extra> parity_util_mem::MallocSizeOf
-	for AcalaUncheckedExtrinsic<Address, Call, Signature, Extra>
+impl<Call, Signature, Extra, Convert> parity_util_mem::MallocSizeOf
+	for AcalaUncheckedExtrinsic<Call, Signature, Extra, Convert>
 where
 	Extra: SignedExtension,
 {
@@ -51,8 +58,8 @@ where
 	}
 }
 
-impl<Address, Call, Signature, Extra: SignedExtension> Extrinsic
-	for AcalaUncheckedExtrinsic<Address, Call, Signature, Extra>
+impl<Call, Signature, Extra: SignedExtension, Convert> Extrinsic
+	for AcalaUncheckedExtrinsic<Call, Signature, Extra, Convert>
 {
 	type Call = Call;
 
@@ -62,6 +69,7 @@ impl<Address, Call, Signature, Extra: SignedExtension> Extrinsic
 		match self {
 			Self::Substrate(tx) => tx.is_signed(),
 			Self::Ethereum(_) => Some(true),
+			Self::_Phantom(_) => unreachable!(),
 		}
 	}
 
@@ -74,45 +82,87 @@ impl<Address, Call, Signature, Extra: SignedExtension> Extrinsic
 	}
 }
 
-impl<Address, Call, Signature, Extra> ExtrinsicMetadata for AcalaUncheckedExtrinsic<Address, Call, Signature, Extra>
-where
-	Extra: SignedExtension,
+impl<Call, Signature, Extra: SignedExtension, Convert> ExtrinsicMetadata
+	for AcalaUncheckedExtrinsic<Call, Signature, Extra, Convert>
 {
 	const VERSION: u8 = UncheckedExtrinsic::<Address, Call, Signature, Extra>::VERSION;
 	type SignedExtensions = Extra;
 }
 
-impl<Address, Call, Signature, Extra> ExtrinsicCall for AcalaUncheckedExtrinsic<Address, Call, Signature, Extra>
-where
-	Extra: SignedExtension,
+impl<Call, Signature, Extra: SignedExtension, Convert> ExtrinsicCall
+	for AcalaUncheckedExtrinsic<Call, Signature, Extra, Convert>
 {
 	fn call(&self) -> &Self::Call {
 		match self {
 			Self::Substrate(tx) => tx.call(),
 			Self::Ethereum(_) => todo!(),
+			Self::_Phantom(_) => unreachable!(),
 		}
 	}
 }
 
-impl<Address, AccountId, Call, Signature, Extra, Lookup> Checkable<Lookup>
-	for AcalaUncheckedExtrinsic<Address, Call, Signature, Extra>
+impl<AccountId, Call, Signature, Extra, Convert, Lookup> Checkable<Lookup>
+	for AcalaUncheckedExtrinsic<Call, Signature, Extra, Convert>
 where
-	Address: Member + MaybeDisplay,
 	Call: Encode + Member,
 	Signature: Member + traits::Verify,
 	<Signature as traits::Verify>::Signer: IdentifyAccount<AccountId = AccountId>,
 	Extra: SignedExtension<AccountId = AccountId>,
+	Convert: ConvertT<TransactionV2, (Call, Extra)>,
 	AccountId: Member + MaybeDisplay,
 	Lookup: traits::Lookup<Source = Address, Target = AccountId>,
 {
 	type Checked = CheckedExtrinsic<AccountId, Call, Extra>;
 
 	fn check(self, lookup: &Lookup) -> Result<Self::Checked, TransactionValidityError> {
-		todo!()
+		match self {
+			Self::Substrate(tx) => tx.check(lookup),
+			Self::Ethereum(tx) => {
+				let mut sig = [0u8; 65];
+
+				let msg = match tx.clone() {
+					TransactionV2::Legacy(tx) => {
+						sig[0..32].copy_from_slice(&tx.signature.r()[..]);
+						sig[32..64].copy_from_slice(&tx.signature.s()[..]);
+						sig[64] = tx.signature.standard_v();
+
+						LegacyTransactionMessage::from(tx).hash()
+					}
+					TransactionV2::EIP2930(tx) => {
+						sig[0..32].copy_from_slice(&tx.r[..]);
+						sig[32..64].copy_from_slice(&tx.s[..]);
+						sig[64] = if tx.odd_y_parity { 1 } else { 0 };
+
+						EIP2930TransactionMessage::from(tx).hash()
+					}
+					TransactionV2::EIP1559(tx) => {
+						sig[0..32].copy_from_slice(&tx.r[..]);
+						sig[32..64].copy_from_slice(&tx.s[..]);
+						sig[64] = if tx.odd_y_parity { 1 } else { 0 };
+
+						EIP1559TransactionMessage::from(tx).hash()
+					}
+				};
+
+				let pubkey = sp_io::crypto::secp256k1_ecdsa_recover(&sig, msg.as_fixed_bytes())
+					.map_err(|_| InvalidTransaction::BadProof)?;
+				let signer = H160::from(H256::from_slice(Keccak256::digest(&pubkey).as_slice()));
+
+				let acc = lookup.lookup(Address::Address20(signer.into()))?;
+
+				let (function, extra) = Convert::convert(tx);
+
+				Ok(CheckedExtrinsic {
+					signed: Some((acc, extra)),
+					function,
+				})
+			}
+			Self::_Phantom(_) => unreachable!(),
+		}
 	}
 }
 
-impl<Address, Call, Signature, Extra> GetDispatchInfo for AcalaUncheckedExtrinsic<Address, Call, Signature, Extra>
+impl<Call, Signature, Extra, Convert> GetDispatchInfo for AcalaUncheckedExtrinsic<Call, Signature, Extra, Convert>
 where
 	Call: GetDispatchInfo,
 	Extra: SignedExtension,
@@ -121,11 +171,12 @@ where
 		match self {
 			Self::Substrate(tx) => tx.get_dispatch_info(),
 			Self::Ethereum(_) => todo!(),
+			Self::_Phantom(_) => unreachable!(),
 		}
 	}
 }
 
-impl<Address, Call, Signature, Extra> Decode for AcalaUncheckedExtrinsic<Address, Call, Signature, Extra>
+impl<Call, Signature, Extra, Convert> Decode for AcalaUncheckedExtrinsic<Call, Signature, Extra, Convert>
 where
 	Address: Decode,
 	Signature: Decode,
@@ -193,9 +244,8 @@ where
 	}
 }
 
-impl<Address, Call, Signature, Extra> Encode for AcalaUncheckedExtrinsic<Address, Call, Signature, Extra>
+impl<Call, Signature, Extra, Convert> Encode for AcalaUncheckedExtrinsic<Call, Signature, Extra, Convert>
 where
-	Address: Encode,
 	Signature: Encode,
 	Call: Encode,
 	Extra: SignedExtension,
@@ -204,13 +254,13 @@ where
 		match self {
 			AcalaUncheckedExtrinsic::Substrate(tx) => tx.encode(),
 			AcalaUncheckedExtrinsic::Ethereum(tx) => rlp::encode(tx).to_vec(),
+			Self::_Phantom(_) => unreachable!(),
 		}
 	}
 }
 
-impl<Address, Call, Signature, Extra> EncodeLike for AcalaUncheckedExtrinsic<Address, Call, Signature, Extra>
+impl<Call, Signature, Extra, Convert> EncodeLike for AcalaUncheckedExtrinsic<Call, Signature, Extra, Convert>
 where
-	Address: Encode,
 	Signature: Encode,
 	Call: Encode,
 	Extra: SignedExtension,
@@ -218,8 +268,8 @@ where
 }
 
 #[cfg(feature = "std")]
-impl<Address: Encode, Signature: Encode, Call: Encode, Extra: SignedExtension> serde::Serialize
-	for AcalaUncheckedExtrinsic<Address, Call, Signature, Extra>
+impl<Signature: Encode, Call: Encode, Extra: SignedExtension, Convert> serde::Serialize
+	for AcalaUncheckedExtrinsic<Call, Signature, Extra, Convert>
 {
 	fn serialize<S>(&self, seq: S) -> Result<S::Ok, S::Error>
 	where
@@ -230,8 +280,8 @@ impl<Address: Encode, Signature: Encode, Call: Encode, Extra: SignedExtension> s
 }
 
 #[cfg(feature = "std")]
-impl<'a, Address: Decode, Signature: Decode, Call: Decode, Extra: SignedExtension> serde::Deserialize<'a>
-	for AcalaUncheckedExtrinsic<Address, Call, Signature, Extra>
+impl<'a, Signature: Decode, Call: Decode, Extra: SignedExtension, Convert> serde::Deserialize<'a>
+	for AcalaUncheckedExtrinsic<Call, Signature, Extra, Convert>
 {
 	fn deserialize<D>(de: D) -> Result<Self, D::Error>
 	where
@@ -242,13 +292,14 @@ impl<'a, Address: Decode, Signature: Decode, Call: Decode, Extra: SignedExtensio
 	}
 }
 
-impl<Address, Call, Signature, Extra: SignedExtension> Into<UncheckedExtrinsic<Address, Call, Signature, Extra>>
-	for AcalaUncheckedExtrinsic<Address, Call, Signature, Extra>
+impl<Call, Signature, Extra: SignedExtension, Convert> Into<UncheckedExtrinsic<Address, Call, Signature, Extra>>
+	for AcalaUncheckedExtrinsic<Call, Signature, Extra, Convert>
 {
 	fn into(self) -> UncheckedExtrinsic<Address, Call, Signature, Extra> {
 		match self {
 			AcalaUncheckedExtrinsic::Substrate(tx) => tx,
 			AcalaUncheckedExtrinsic::Ethereum(_tx) => todo!(),
+			Self::_Phantom(_) => unreachable!(),
 		}
 	}
 }
@@ -263,11 +314,20 @@ mod tests {
 	use hex_literal::hex;
 	use sp_core::U256;
 
+	#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
+	pub struct DummyConvert;
+
+	impl<A, B> ConvertT<A, B> for DummyConvert {
+		fn convert(_: A) -> B {
+			unimplemented!()
+		}
+	}
+
 	#[test]
 	fn test_decode_substrate_tx() {
-		let data = UncheckedExtrinsic::<u64, Vec<u8>, u64, ()>::new_signed(vec![], 456, 789, ());
+		let data = UncheckedExtrinsic::<Address, Vec<u8>, u64, ()>::new_signed(vec![], Address::Index(456), 789, ());
 		let encoded = data.encode();
-		let decoded = AcalaUncheckedExtrinsic::<u64, Vec<u8>, u64, ()>::decode(&mut &encoded[..]).unwrap();
+		let decoded = AcalaUncheckedExtrinsic::<Vec<u8>, u64, (), DummyConvert>::decode(&mut &encoded[..]).unwrap();
 		assert_eq!(decoded, AcalaUncheckedExtrinsic::Substrate(data));
 
 		let encoded2 = decoded.encode();
@@ -276,9 +336,14 @@ mod tests {
 
 	#[test]
 	fn test_decode_substrate_tx_big() {
-		let data = UncheckedExtrinsic::<u64, Vec<u8>, u64, ()>::new_signed(vec![123; 1024 * 1024 * 4], 456, 789, ());
+		let data = UncheckedExtrinsic::<Address, Vec<u8>, u64, ()>::new_signed(
+			vec![123; 1024 * 1024 * 4],
+			Address::Index(456),
+			789,
+			(),
+		);
 		let encoded = data.encode();
-		let decoded = AcalaUncheckedExtrinsic::<u64, Vec<u8>, u64, ()>::decode(&mut &encoded[..]).unwrap();
+		let decoded = AcalaUncheckedExtrinsic::<Vec<u8>, u64, (), DummyConvert>::decode(&mut &encoded[..]).unwrap();
 		assert_eq!(decoded, AcalaUncheckedExtrinsic::Substrate(data));
 
 		let encoded2 = decoded.encode();
@@ -287,9 +352,9 @@ mod tests {
 
 	#[test]
 	fn test_decode_unsigned_substrate_tx() {
-		let data = UncheckedExtrinsic::<u64, Vec<u8>, u64, ()>::new_unsigned(vec![1, 2]);
+		let data = UncheckedExtrinsic::<Address, Vec<u8>, u64, ()>::new_unsigned(vec![1, 2]);
 		let encoded = data.encode();
-		let decoded = AcalaUncheckedExtrinsic::<u64, Vec<u8>, u64, ()>::decode(&mut &encoded[..]).unwrap();
+		let decoded = AcalaUncheckedExtrinsic::<Vec<u8>, u64, (), DummyConvert>::decode(&mut &encoded[..]).unwrap();
 		assert_eq!(decoded, AcalaUncheckedExtrinsic::Substrate(data));
 
 		let encoded2 = decoded.encode();
@@ -298,9 +363,9 @@ mod tests {
 
 	#[test]
 	fn test_decode_unsigned_substrate_tx_big() {
-		let data = UncheckedExtrinsic::<u64, Vec<u8>, u64, ()>::new_unsigned(vec![123; 1024 * 1024 * 4]);
+		let data = UncheckedExtrinsic::<Address, Vec<u8>, u64, ()>::new_unsigned(vec![123; 1024 * 1024 * 4]);
 		let encoded = data.encode();
-		let decoded = AcalaUncheckedExtrinsic::<u64, Vec<u8>, u64, ()>::decode(&mut &encoded[..]).unwrap();
+		let decoded = AcalaUncheckedExtrinsic::<Vec<u8>, u64, (), DummyConvert>::decode(&mut &encoded[..]).unwrap();
 		assert_eq!(decoded, AcalaUncheckedExtrinsic::Substrate(data));
 
 		let encoded2 = decoded.encode();
@@ -324,7 +389,7 @@ mod tests {
 			.unwrap(),
 		});
 		let encoded = rlp::encode(&data);
-		let decoded = AcalaUncheckedExtrinsic::<u64, Vec<u8>, u64, ()>::decode(&mut &encoded[..]).unwrap();
+		let decoded = AcalaUncheckedExtrinsic::<Vec<u8>, u64, (), DummyConvert>::decode(&mut &encoded[..]).unwrap();
 		assert_eq!(decoded, AcalaUncheckedExtrinsic::Ethereum(data));
 
 		let encoded2 = decoded.encode();
@@ -348,7 +413,7 @@ mod tests {
 			.unwrap(),
 		});
 		let encoded = rlp::encode(&data);
-		let decoded = AcalaUncheckedExtrinsic::<u64, Vec<u8>, u64, ()>::decode(&mut &encoded[..]).unwrap();
+		let decoded = AcalaUncheckedExtrinsic::<Vec<u8>, u64, (), DummyConvert>::decode(&mut &encoded[..]).unwrap();
 		assert_eq!(decoded, AcalaUncheckedExtrinsic::Ethereum(data));
 
 		let encoded2 = decoded.encode();
@@ -383,7 +448,7 @@ mod tests {
 			s: hex!("5edcc541b4741c5cc6dd347c5ed9577ef293a62787b4510465fadbfe39ee4094").into(),
 		});
 		let encoded = rlp::encode(&data);
-		let decoded = AcalaUncheckedExtrinsic::<u64, Vec<u8>, u64, ()>::decode(&mut &encoded[..]).unwrap();
+		let decoded = AcalaUncheckedExtrinsic::<Vec<u8>, u64, (), DummyConvert>::decode(&mut &encoded[..]).unwrap();
 		assert_eq!(decoded, AcalaUncheckedExtrinsic::Ethereum(data));
 
 		let encoded2 = decoded.encode();
@@ -419,7 +484,7 @@ mod tests {
 			s: hex!("5edcc541b4741c5cc6dd347c5ed9577ef293a62787b4510465fadbfe39ee4094").into(),
 		});
 		let encoded = rlp::encode(&data);
-		let decoded = AcalaUncheckedExtrinsic::<u64, Vec<u8>, u64, ()>::decode(&mut &encoded[..]).unwrap();
+		let decoded = AcalaUncheckedExtrinsic::<Vec<u8>, u64, (), DummyConvert>::decode(&mut &encoded[..]).unwrap();
 		assert_eq!(decoded, AcalaUncheckedExtrinsic::Ethereum(data));
 
 		let encoded2 = decoded.encode();

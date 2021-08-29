@@ -105,9 +105,10 @@ pub use sp_runtime::{Perbill, Percent, Permill, Perquintill};
 pub use authority::AuthorityConfigImpl;
 pub use constants::{fee::*, time::*};
 pub use primitives::{
-	evm::EstimateResourcesRequest, AcalaUncheckedExtrinsic, AccountId, AccountIndex, Address, AirDropCurrencyId,
-	Amount, AuctionId, AuthoritysOriginId, Balance, BlockNumber, CurrencyId, DataProviderId, EraIndex, Hash, Header,
-	Moment, Nonce, ReserveIdentifier, Share, Signature, TokenSymbol, TradingPair,
+	evm::{self, EstimateResourcesRequest},
+	AcalaUncheckedExtrinsic, AccountId, AccountIndex, Address, AirDropCurrencyId, Amount, AuctionId,
+	AuthoritysOriginId, Balance, BlockNumber, CurrencyId, DataProviderId, EraIndex, Hash, Header, Moment, Nonce,
+	ReserveIdentifier, Share, Signature, TokenSymbol, TradingPair,
 };
 pub use runtime_common::{
 	cent, dollar, microcent, millicent, CurveFeeModel, EnsureRootOrAllGeneralCouncil,
@@ -1871,6 +1872,15 @@ impl nutsfinance_stable_asset::Config for Runtime {
 
 impl cumulus_pallet_aura_ext::Config for Runtime {}
 
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
+pub struct ConvertEthereumTx;
+
+impl Convert<evm::TransactionV2, (Call, SignedExtra)> for ConvertEthereumTx {
+	fn convert(_tx: evm::TransactionV2) -> (Call, SignedExtra) {
+		todo!()
+	}
+}
+
 /// Block type as expected by this runtime.
 pub type Block = generic::Block<Header, UncheckedExtrinsic>;
 /// A Block signed with a Justification
@@ -1889,7 +1899,7 @@ pub type SignedExtra = (
 	module_evm::SetEvmOrigin<Runtime>,
 );
 /// Unchecked extrinsic type as expected by this runtime.
-pub type UncheckedExtrinsic = AcalaUncheckedExtrinsic<Address, Call, Signature, SignedExtra>;
+pub type UncheckedExtrinsic = AcalaUncheckedExtrinsic<Call, Signature, SignedExtra, ConvertEthereumTx>;
 /// The payload being signed in transactions.
 pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 /// Extrinsic type that has already been checked.

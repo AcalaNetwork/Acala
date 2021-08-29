@@ -83,6 +83,7 @@ dependencies = [
  "serde_json",
  "sha3 0.9.1",
  "sp-core",
+ "sp-io",
  "sp-runtime",
  "sp-std",
 ]

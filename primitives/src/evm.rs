@@ -25,6 +25,7 @@ use sp_core::{H160, U256};
 use sp_runtime::RuntimeDebug;
 use sp_std::vec::Vec;
 
+pub use ethereum::TransactionV2;
 pub use evm::backend::{Basic as Account, Log};
 pub use evm::Config;
 
