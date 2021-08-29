@@ -35,9 +35,9 @@ use sp_runtime::{
 };
 use sp_std::prelude::*;
 
-// max block length is 5MB so we can safely constraint max tx length cannot be greater than 5MB
-const MAX_TX_LENGTH: usize = 5 * 1024 * 1024;
-
+/// Unchecked extrinsic that support boths Substrate format and Ethereum format
+/// NOTE: a SCALE codec style length prefix is added to the Ethereum format in additional to the RLP
+/// length prefix
 #[derive(Clone, PartialEq, Eq, RuntimeDebug)]
 pub enum AcalaUncheckedExtrinsic<Call, Signature, Extra: SignedExtension, ConvertTx> {
 	Substrate(UncheckedExtrinsic<Address, Call, Signature, Extra>),
@@ -175,6 +175,37 @@ where
 	}
 }
 
+struct InputReplayer<'a, I: Input> {
+	pub input: &'a mut I,
+	pub buffer: Vec<u8>,
+}
+
+impl<'a, I: Input> Input for InputReplayer<'a, I> {
+	fn remaining_len(&mut self) -> Result<Option<usize>, Error> {
+		self.input.remaining_len()
+	}
+
+	fn read(&mut self, into: &mut [u8]) -> Result<(), Error> {
+		self.input.read(into)?;
+		self.buffer.extend_from_slice(into);
+		Ok(())
+	}
+
+	fn read_byte(&mut self) -> Result<u8, Error> {
+		let byte = self.input.read_byte()?;
+		self.buffer.push(byte);
+		Ok(byte)
+	}
+
+	fn descend_ref(&mut self) -> Result<(), Error> {
+		self.input.descend_ref()
+	}
+
+	fn ascend_ref(&mut self) {
+		self.input.ascend_ref()
+	}
+}
+
 impl<Call, Signature, Extra, ConvertTx> Decode for AcalaUncheckedExtrinsic<Call, Signature, Extra, ConvertTx>
 where
 	Address: Decode,
@@ -183,63 +214,31 @@ where
 	Extra: SignedExtension,
 {
 	fn decode<I: Input>(input: &mut I) -> Result<Self, Error> {
-		// Min size for Substrate tx is 4 bytes: (length_prefix, tx_version, call_module_index,
-		// call_method_index) Min size for Ethereum tx is about 75 bytes
-		let mut first_4_bytes = [0u8; 4];
-		input.read(&mut first_4_bytes)?;
+		let capacity = input.remaining_len().unwrap_or_default().unwrap_or(1024);
 
-		let slice = &mut &first_4_bytes[..];
-		let sub_len = Compact::<u32>::decode(slice).unwrap_or_else(|_| 0.into()).0 as usize;
-		let sub_len = sub_len + 4 - slice.len(); // add length for prefix
-
-		let rlp_len = rlp::PayloadInfo::from(&first_4_bytes)
-			.map_err(|_| Error::from("Invalid RLP length"))?
-			.total();
-
-		let sub_len = if sub_len >= MAX_TX_LENGTH || sub_len < 4 {
-			None
-		} else {
-			Some(sub_len)
-		};
-		let rlp_len = if rlp_len >= MAX_TX_LENGTH || rlp_len < 4 {
-			None
-		} else {
-			Some(rlp_len)
+		let mut replayer = InputReplayer {
+			input,
+			buffer: Vec::with_capacity(capacity),
 		};
 
-		let max_len = sub_len.unwrap_or_default().max(rlp_len.unwrap_or_default());
-
-		if max_len < 4 {
-			return Err(Error::from("Invalid data length"));
-		}
-
-		let mut payload = vec![0u8; max_len];
-		payload[0..4].copy_from_slice(&first_4_bytes);
-		let min_len = sub_len.unwrap_or(MAX_TX_LENGTH).min(rlp_len.unwrap_or(MAX_TX_LENGTH));
-		input.read(&mut payload[4..min_len])?;
-
-		// try the smaller one first and than the larger one
-		if rlp_len < sub_len {
-			if let Some(rlp_len) = rlp_len {
-				let utx = rlp::decode::<TransactionV2>(&payload[..rlp_len]);
-				if let Ok(utx) = utx {
-					return Ok(AcalaUncheckedExtrinsic::Ethereum(utx));
-				}
-			}
-			input.read(&mut payload[min_len..])?;
-			let utx = UncheckedExtrinsic::decode(&mut &payload[..])?;
+		let utx = UncheckedExtrinsic::decode(&mut replayer);
+		if let Ok(utx) = utx {
 			return Ok(AcalaUncheckedExtrinsic::Substrate(utx));
-		} else {
-			if let Some(sub_len) = sub_len {
-				let utx = UncheckedExtrinsic::decode(&mut &payload[..sub_len]);
-				if let Ok(utx) = utx {
-					return Ok(AcalaUncheckedExtrinsic::Substrate(utx));
-				}
-			}
-			input.read(&mut payload[min_len..])?;
-			let utx = rlp::decode::<TransactionV2>(&payload).map_err(|_| Error::from("Invalid RLP length"))?;
-			return Ok(AcalaUncheckedExtrinsic::Ethereum(utx));
 		}
+
+		let mut buffer = replayer.buffer;
+		let input = replayer.input;
+
+		// read the length prefix
+		let len: Compact<u32> = Decode::decode(&mut &buffer[..])?;
+		let len_len = len.encode().len();
+
+		let old_len = buffer.len();
+		buffer.resize(len.0 as usize + len_len, 0);
+		input.read(&mut buffer[old_len..])?;
+
+		let utx = rlp::decode::<TransactionV2>(&buffer[len_len..]).map_err(|_| Error::from("Invalid extrinsic"))?;
+		Ok(AcalaUncheckedExtrinsic::Ethereum(utx))
 	}
 }
 
@@ -252,7 +251,7 @@ where
 	fn encode(&self) -> Vec<u8> {
 		match self {
 			AcalaUncheckedExtrinsic::Substrate(tx) => tx.encode(),
-			AcalaUncheckedExtrinsic::Ethereum(tx) => rlp::encode(tx).to_vec(),
+			AcalaUncheckedExtrinsic::Ethereum(tx) => rlp::encode(tx).encode(),
 			Self::_Phantom(_) => unreachable!(),
 		}
 	}
@@ -387,7 +386,7 @@ mod tests {
 			)
 			.unwrap(),
 		});
-		let encoded = rlp::encode(&data);
+		let encoded = rlp::encode(&data).encode();
 		let decoded = AcalaUncheckedExtrinsic::<Vec<u8>, u64, (), DummyConvert>::decode(&mut &encoded[..]).unwrap();
 		assert_eq!(decoded, AcalaUncheckedExtrinsic::Ethereum(data));
 
@@ -411,7 +410,7 @@ mod tests {
 			)
 			.unwrap(),
 		});
-		let encoded = rlp::encode(&data);
+		let encoded = rlp::encode(&data).encode();
 		let decoded = AcalaUncheckedExtrinsic::<Vec<u8>, u64, (), DummyConvert>::decode(&mut &encoded[..]).unwrap();
 		assert_eq!(decoded, AcalaUncheckedExtrinsic::Ethereum(data));
 
@@ -446,7 +445,7 @@ mod tests {
 			r: hex!("36b241b061a36a32ab7fe86c7aa9eb592dd59018cd0443adc0903590c16b02b0").into(),
 			s: hex!("5edcc541b4741c5cc6dd347c5ed9577ef293a62787b4510465fadbfe39ee4094").into(),
 		});
-		let encoded = rlp::encode(&data);
+		let encoded = rlp::encode(&data).encode();
 		let decoded = AcalaUncheckedExtrinsic::<Vec<u8>, u64, (), DummyConvert>::decode(&mut &encoded[..]).unwrap();
 		assert_eq!(decoded, AcalaUncheckedExtrinsic::Ethereum(data));
 
@@ -482,7 +481,7 @@ mod tests {
 			r: hex!("36b241b061a36a32ab7fe86c7aa9eb592dd59018cd0443adc0903590c16b02b0").into(),
 			s: hex!("5edcc541b4741c5cc6dd347c5ed9577ef293a62787b4510465fadbfe39ee4094").into(),
 		});
-		let encoded = rlp::encode(&data);
+		let encoded = rlp::encode(&data).encode();
 		let decoded = AcalaUncheckedExtrinsic::<Vec<u8>, u64, (), DummyConvert>::decode(&mut &encoded[..]).unwrap();
 		assert_eq!(decoded, AcalaUncheckedExtrinsic::Ethereum(data));
 
