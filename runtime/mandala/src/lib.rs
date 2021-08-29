@@ -100,7 +100,7 @@ mod weights;
 pub use pallet_timestamp::Call as TimestampCall;
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
-pub use sp_runtime::{Perbill, Percent, Permill, Perquintill};
+pub use sp_runtime::{transaction_validity::InvalidTransaction, Perbill, Percent, Permill, Perquintill};
 
 pub use authority::AuthorityConfigImpl;
 pub use constants::{fee::*, time::*};
@@ -1875,9 +1875,71 @@ impl cumulus_pallet_aura_ext::Config for Runtime {}
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
 pub struct ConvertEthereumTx;
 
-impl Convert<evm::TransactionV2, (Call, SignedExtra)> for ConvertEthereumTx {
-	fn convert(_tx: evm::TransactionV2) -> (Call, SignedExtra) {
-		todo!()
+impl Convert<evm::TransactionV2, Result<(Call, SignedExtra), InvalidTransaction>> for ConvertEthereumTx {
+	fn convert(tx: evm::TransactionV2) -> Result<(Call, SignedExtra), InvalidTransaction> {
+		// TODO: handle gas price, priority fee and additional expiration
+		let (chain_id, nonce, gas_limit, action, value, input) = match tx {
+			evm::TransactionV2::Legacy(tx) => (
+				tx.signature.chain_id(),
+				tx.nonce,
+				tx.gas_limit,
+				tx.action,
+				tx.value,
+				tx.input,
+			),
+			evm::TransactionV2::EIP2930(tx) => {
+				(Some(tx.chain_id), tx.nonce, tx.gas_limit, tx.action, tx.value, tx.input)
+			}
+			evm::TransactionV2::EIP1559(tx) => {
+				(Some(tx.chain_id), tx.nonce, tx.gas_limit, tx.action, tx.value, tx.input)
+			}
+		};
+
+		if let Some(chain_id) = chain_id {
+			if chain_id != ChainId::get() {
+				return Err(InvalidTransaction::BadProof);
+			}
+		}
+
+		// TODO: get storage limit somehow
+		let call = match action {
+			evm::TransactionAction::Call(address) => Call::EVM(module_evm::Call::call(
+				address,
+				input,
+				value.saturated_into(),
+				gas_limit.saturated_into(),
+				1000,
+			)),
+			evm::TransactionAction::Create => Call::EVM(module_evm::Call::create(
+				input,
+				value.saturated_into(),
+				gas_limit.saturated_into(),
+				1000,
+			)),
+		};
+
+		let period = BlockHashCount::get()
+			.checked_next_power_of_two()
+			.map(|c| c / 2)
+			.unwrap_or(2) as u64;
+		let current_block = System::block_number()
+			.saturated_into::<u64>()
+			// The `System::block_number` is initialized with `n+1`,
+			// so the actual block number is `n`.
+			.saturating_sub(1);
+		let tip = 0;
+		let extra: SignedExtra = (
+			frame_system::CheckSpecVersion::<Runtime>::new(),
+			frame_system::CheckTxVersion::<Runtime>::new(),
+			frame_system::CheckGenesis::<Runtime>::new(),
+			frame_system::CheckEra::<Runtime>::from(generic::Era::mortal(period, current_block)),
+			frame_system::CheckNonce::<Runtime>::from(nonce.saturated_into()),
+			frame_system::CheckWeight::<Runtime>::new(),
+			module_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip),
+			module_evm::SetEvmOrigin::<Runtime>::new(),
+		);
+
+		Ok((call, extra))
 	}
 }
 

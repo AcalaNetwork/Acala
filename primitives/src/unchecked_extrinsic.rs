@@ -107,7 +107,7 @@ where
 	Signature: Member + traits::Verify,
 	<Signature as traits::Verify>::Signer: IdentifyAccount<AccountId = AccountId>,
 	Extra: SignedExtension<AccountId = AccountId>,
-	ConvertTx: Convert<TransactionV2, (Call, Extra)>,
+	ConvertTx: Convert<TransactionV2, Result<(Call, Extra), InvalidTransaction>>,
 	AccountId: Member + MaybeDisplay,
 	Lookup: traits::Lookup<Source = Address, Target = AccountId>,
 {
@@ -149,7 +149,7 @@ where
 
 				let acc = lookup.lookup(Address::Address20(signer.into()))?;
 
-				let (function, extra) = ConvertTx::convert(tx);
+				let (function, extra) = ConvertTx::convert(tx)?;
 
 				Ok(CheckedExtrinsic {
 					signed: Some((acc, extra)),
