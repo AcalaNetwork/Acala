@@ -18,15 +18,111 @@
 
 use codec::{Compact, Decode, Encode, EncodeLike, Error, Input};
 use ethereum::TransactionV2;
-use sp_runtime::{generic::UncheckedExtrinsic, traits::SignedExtension, RuntimeDebug};
+use frame_support::{
+	traits::ExtrinsicCall,
+	weights::{DispatchInfo, GetDispatchInfo},
+};
+use sp_runtime::{
+	generic::{CheckedExtrinsic, UncheckedExtrinsic},
+	traits::{self, Checkable, Extrinsic, ExtrinsicMetadata, IdentifyAccount, MaybeDisplay, Member, SignedExtension},
+	transaction_validity::{InvalidTransaction, TransactionValidityError},
+	RuntimeDebug,
+};
 use sp_std::prelude::*;
 
-const MAX_TX_LENGTH: usize = 5 * 1024 * 1024; // max block length is 5MB
+// max block length is 5MB so we can safely constraint max tx length cannot be greater than 5MB
+const MAX_TX_LENGTH: usize = 5 * 1024 * 1024;
 
 #[derive(Clone, PartialEq, Eq, RuntimeDebug)]
 pub enum AcalaUncheckedExtrinsic<Address, Call, Signature, Extra: SignedExtension> {
 	Substrate(UncheckedExtrinsic<Address, Call, Signature, Extra>),
 	Ethereum(TransactionV2),
+}
+
+#[cfg(feature = "std")]
+impl<Address, Call, Signature, Extra> parity_util_mem::MallocSizeOf
+	for AcalaUncheckedExtrinsic<Address, Call, Signature, Extra>
+where
+	Extra: SignedExtension,
+{
+	fn size_of(&self, _ops: &mut parity_util_mem::MallocSizeOfOps) -> usize {
+		// Instantiated only in runtime.
+		0
+	}
+}
+
+impl<Address, Call, Signature, Extra: SignedExtension> Extrinsic
+	for AcalaUncheckedExtrinsic<Address, Call, Signature, Extra>
+{
+	type Call = Call;
+
+	type SignaturePayload = (Address, Signature, Extra);
+
+	fn is_signed(&self) -> Option<bool> {
+		match self {
+			Self::Substrate(tx) => tx.is_signed(),
+			Self::Ethereum(_) => Some(true),
+		}
+	}
+
+	fn new(function: Call, signed_data: Option<Self::SignaturePayload>) -> Option<Self> {
+		Some(if let Some((address, signature, extra)) = signed_data {
+			Self::Substrate(UncheckedExtrinsic::new_signed(function, address, signature, extra))
+		} else {
+			Self::Substrate(UncheckedExtrinsic::new_unsigned(function))
+		})
+	}
+}
+
+impl<Address, Call, Signature, Extra> ExtrinsicMetadata for AcalaUncheckedExtrinsic<Address, Call, Signature, Extra>
+where
+	Extra: SignedExtension,
+{
+	const VERSION: u8 = UncheckedExtrinsic::<Address, Call, Signature, Extra>::VERSION;
+	type SignedExtensions = Extra;
+}
+
+impl<Address, Call, Signature, Extra> ExtrinsicCall for AcalaUncheckedExtrinsic<Address, Call, Signature, Extra>
+where
+	Extra: SignedExtension,
+{
+	fn call(&self) -> &Self::Call {
+		match self {
+			Self::Substrate(tx) => tx.call(),
+			Self::Ethereum(_) => todo!(),
+		}
+	}
+}
+
+impl<Address, AccountId, Call, Signature, Extra, Lookup> Checkable<Lookup>
+	for AcalaUncheckedExtrinsic<Address, Call, Signature, Extra>
+where
+	Address: Member + MaybeDisplay,
+	Call: Encode + Member,
+	Signature: Member + traits::Verify,
+	<Signature as traits::Verify>::Signer: IdentifyAccount<AccountId = AccountId>,
+	Extra: SignedExtension<AccountId = AccountId>,
+	AccountId: Member + MaybeDisplay,
+	Lookup: traits::Lookup<Source = Address, Target = AccountId>,
+{
+	type Checked = CheckedExtrinsic<AccountId, Call, Extra>;
+
+	fn check(self, lookup: &Lookup) -> Result<Self::Checked, TransactionValidityError> {
+		todo!()
+	}
+}
+
+impl<Address, Call, Signature, Extra> GetDispatchInfo for AcalaUncheckedExtrinsic<Address, Call, Signature, Extra>
+where
+	Call: GetDispatchInfo,
+	Extra: SignedExtension,
+{
+	fn get_dispatch_info(&self) -> DispatchInfo {
+		match self {
+			Self::Substrate(tx) => tx.get_dispatch_info(),
+			Self::Ethereum(_) => todo!(),
+		}
+	}
 }
 
 impl<Address, Call, Signature, Extra> Decode for AcalaUncheckedExtrinsic<Address, Call, Signature, Extra>
@@ -143,6 +239,17 @@ impl<'a, Address: Decode, Signature: Decode, Call: Decode, Extra: SignedExtensio
 	{
 		let r = sp_core::bytes::deserialize(de)?;
 		Decode::decode(&mut &r[..]).map_err(|e| serde::de::Error::custom(format!("Decode error: {}", e)))
+	}
+}
+
+impl<Address, Call, Signature, Extra: SignedExtension> Into<UncheckedExtrinsic<Address, Call, Signature, Extra>>
+	for AcalaUncheckedExtrinsic<Address, Call, Signature, Extra>
+{
+	fn into(self) -> UncheckedExtrinsic<Address, Call, Signature, Extra> {
+		match self {
+			AcalaUncheckedExtrinsic::Substrate(tx) => tx,
+			AcalaUncheckedExtrinsic::Ethereum(_tx) => todo!(),
+		}
 	}
 }
 

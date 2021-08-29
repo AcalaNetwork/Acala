@@ -105,9 +105,9 @@ pub use sp_runtime::{Perbill, Percent, Permill, Perquintill};
 pub use authority::AuthorityConfigImpl;
 pub use constants::{fee::*, time::*};
 pub use primitives::{
-	evm::EstimateResourcesRequest, AccountId, AccountIndex, Address, AirDropCurrencyId, Amount, AuctionId,
-	AuthoritysOriginId, Balance, BlockNumber, CurrencyId, DataProviderId, EraIndex, Hash, Header, Moment, Nonce,
-	ReserveIdentifier, Share, Signature, TokenSymbol, TradingPair,
+	evm::EstimateResourcesRequest, AcalaUncheckedExtrinsic, AccountId, AccountIndex, Address, AirDropCurrencyId,
+	Amount, AuctionId, AuthoritysOriginId, Balance, BlockNumber, CurrencyId, DataProviderId, EraIndex, Hash, Header,
+	Moment, Nonce, ReserveIdentifier, Share, Signature, TokenSymbol, TradingPair,
 };
 pub use runtime_common::{
 	cent, dollar, microcent, millicent, CurveFeeModel, EnsureRootOrAllGeneralCouncil,
@@ -1889,7 +1889,7 @@ pub type SignedExtra = (
 	module_evm::SetEvmOrigin<Runtime>,
 );
 /// Unchecked extrinsic type as expected by this runtime.
-pub type UncheckedExtrinsic = generic::UncheckedExtrinsic<Address, Call, Signature, SignedExtra>;
+pub type UncheckedExtrinsic = AcalaUncheckedExtrinsic<Address, Call, Signature, SignedExtra>;
 /// The payload being signed in transactions.
 pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 /// Extrinsic type that has already been checked.
@@ -2222,31 +2222,36 @@ impl_runtime_apis! {
 			let utx = UncheckedExtrinsic::decode(&mut &*extrinsic)
 				.map_err(|_| sp_runtime::DispatchError::Other("Invalid parameter extrinsic, decode failed"))?;
 
-			let request = match utx.function {
-				Call::EVM(module_evm::Call::call(to, data, value, gas_limit, storage_limit)) => {
-					Some(EstimateResourcesRequest {
-						from: None,
-						to: Some(to),
-						gas_limit: Some(gas_limit),
-						storage_limit: Some(storage_limit),
-						value: Some(value),
-						data: Some(data),
-					})
-				}
-				Call::EVM(module_evm::Call::create(data, value, gas_limit, storage_limit)) => {
-					Some(EstimateResourcesRequest {
-						from: None,
-						to: None,
-						gas_limit: Some(gas_limit),
-						storage_limit: Some(storage_limit),
-						value: Some(value),
-						data: Some(data),
-					})
-				}
-				_ => None,
-			};
+			match utx {
+				UncheckedExtrinsic::Substrate(utx) => {
+					let request = match utx.function {
+						Call::EVM(module_evm::Call::call(to, data, value, gas_limit, storage_limit)) => {
+							Some(EstimateResourcesRequest {
+								from: None,
+								to: Some(to),
+								gas_limit: Some(gas_limit),
+								storage_limit: Some(storage_limit),
+								value: Some(value),
+								data: Some(data),
+							})
+						}
+						Call::EVM(module_evm::Call::create(data, value, gas_limit, storage_limit)) => {
+							Some(EstimateResourcesRequest {
+								from: None,
+								to: None,
+								gas_limit: Some(gas_limit),
+								storage_limit: Some(storage_limit),
+								value: Some(value),
+								data: Some(data),
+							})
+						}
+						_ => None,
+					};
 
-			request.ok_or(sp_runtime::DispatchError::Other("Invalid parameter extrinsic, not evm Call"))
+					request.ok_or(sp_runtime::DispatchError::Other("Invalid parameter extrinsic, not evm Call"))
+				}
+				_ => todo!(),
+			}
 		}
 	}
 

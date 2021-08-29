@@ -34,6 +34,7 @@ use sp_runtime::{
 use sp_std::{convert::Into, prelude::*};
 
 pub use currency::{CurrencyId, DexShare, TokenSymbol};
+pub use unchecked_extrinsic::AcalaUncheckedExtrinsic;
 
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
