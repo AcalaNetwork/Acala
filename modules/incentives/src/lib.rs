@@ -37,6 +37,7 @@
 //! in the liquidation of unsafe CDP, reward currency type is stable currency.
 //! 5. HomaValidatorAllowance: this is third party's allowance to guarantor of Homa protocol, reward
 //! currency type is liquid currency.
+//! 6. LoansIncentiveAlternative: alternative reward with custom reward currency id.
 //!
 //! Reward sources:
 //! 1. Native currency(ACA/KAR): reward comes from unreleased reservation because the economic
@@ -46,8 +47,8 @@
 //! validators on the relay chain).
 //!
 //! Reward accumulation:
-//! 1. LoansIncentive/DexIncentive/HomaIncentive/DexSaving: the fixed blocks is
-//! period(AccumulatePeriod), and on the beginning of each period will accumulate reward.
+//! 1. LoansIncentive/DexIncentive/HomaIncentive/DexSaving/LoansIncentiveAlternative: the fixed
+//! blocks is period(AccumulatePeriod), and on the beginning of each period will accumulate reward.
 //! 2. HomaValidatorAllowance: transfer rewards into the vault account.
 
 #![cfg_attr(not(feature = "std"), no_std)]
@@ -93,9 +94,12 @@ pub enum PoolId<AccountId> {
 	/// Homa protocol
 	HomaValidatorAllowance(AccountId),
 
-	/// Rewards pool(_, RewardCurrencyId) for market makers who provide dex
-	/// liquidity
-	LoansIncentiveAlternative(CurrencyId, CurrencyId),
+	/// Rewards for market makers who provide dex
+	/// liquidity. Only support dex share currently.
+	LoansIncentiveAlternative {
+		collateral_currency_id: CurrencyId,
+		reward_currency_id: CurrencyId,
+	},
 }
 
 #[frame_support::pallet]
@@ -254,7 +258,7 @@ pub mod module {
 								Self::accumulate_dex_saving(pool_id, lp_currency_id);
 							}
 
-							PoolId::LoansIncentiveAlternative(_, reward_currency_id) => {
+							PoolId::LoansIncentiveAlternative { reward_currency_id, .. } => {
 								count += 1;
 								Self::accumulate_incentives(pool_id, reward_currency_id);
 							}
@@ -303,7 +307,7 @@ pub mod module {
 					}
 					PoolId::DexSaving(_) => T::StableCurrencyId::get(),
 					PoolId::HomaValidatorAllowance(_) => T::LiquidCurrencyId::get(),
-					PoolId::LoansIncentiveAlternative(_, reward_currency_id) => reward_currency_id,
+					PoolId::LoansIncentiveAlternative { reward_currency_id, .. } => reward_currency_id,
 				};
 
 				// calculate actual rewards and deduction amount
@@ -344,8 +348,16 @@ pub mod module {
 			T::UpdateOrigin::ensure_origin(origin)?;
 			for (pool_id, amount) in updates {
 				match pool_id {
-					PoolId::DexIncentive(currency_id) | PoolId::LoansIncentiveAlternative(currency_id, _) => {
+					PoolId::DexIncentive(currency_id) => {
 						ensure!(currency_id.is_dex_share_currency_id(), Error::<T>::InvalidCurrencyId);
+					}
+					PoolId::LoansIncentiveAlternative {
+						collateral_currency_id, ..
+					} => {
+						ensure!(
+							collateral_currency_id.is_dex_share_currency_id(),
+							Error::<T>::InvalidCurrencyId
+						);
 					}
 					PoolId::LoansIncentive(_) | PoolId::HomaIncentive => {}
 					_ => {
@@ -389,10 +401,16 @@ pub mod module {
 			T::UpdateOrigin::ensure_origin(origin)?;
 			for (pool_id, deduction_rate) in updates {
 				match pool_id {
-					PoolId::DexSaving(currency_id)
-					| PoolId::DexIncentive(currency_id)
-					| PoolId::LoansIncentiveAlternative(currency_id, _) => {
+					PoolId::DexSaving(currency_id) | PoolId::DexIncentive(currency_id) => {
 						ensure!(currency_id.is_dex_share_currency_id(), Error::<T>::InvalidCurrencyId);
+					}
+					PoolId::LoansIncentiveAlternative {
+						collateral_currency_id, ..
+					} => {
+						ensure!(
+							collateral_currency_id.is_dex_share_currency_id(),
+							Error::<T>::InvalidCurrencyId
+						);
 					}
 					_ => {}
 				}
