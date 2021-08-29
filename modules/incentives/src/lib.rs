@@ -31,13 +31,12 @@
 //! is native currency.
 //! 2. DexIncentive: this is platform‘s reward to makers of DEX, reward currency type is native
 //! currency.
-//! 3. HomaIncentive: this is platform‘s reward to users of Homa protocol, reward currency
+//! 3. LoansIncentiveAlternative: alternative reward with custom reward currency id.
 //! type is native currency.
 //! 4. DexSaving: this is Honzon protocol's extra reward to makers of DEX because they participate
 //! in the liquidation of unsafe CDP, reward currency type is stable currency.
 //! 5. HomaValidatorAllowance: this is third party's allowance to guarantor of Homa protocol, reward
 //! currency type is liquid currency.
-//! 6. LoansIncentiveAlternative: alternative reward with custom reward currency id.
 //!
 //! Reward sources:
 //! 1. Native currency(ACA/KAR): reward comes from unreleased reservation because the economic
@@ -47,7 +46,7 @@
 //! validators on the relay chain).
 //!
 //! Reward accumulation:
-//! 1. LoansIncentive/DexIncentive/HomaIncentive/DexSaving/LoansIncentiveAlternative: the fixed
+//! 1. LoansIncentive/DexIncentive/LoansIncentiveAlternative/DexSaving: the fixed
 //! blocks is period(AccumulatePeriod), and on the beginning of each period will accumulate reward.
 //! 2. HomaValidatorAllowance: transfer rewards into the vault account.
 
@@ -83,8 +82,12 @@ pub enum PoolId<AccountId> {
 	/// liquidity
 	DexIncentive(CurrencyId),
 
-	/// Rewards pool(NativeCurrencyId) for users who staking by Homa protocol
-	HomaIncentive,
+	/// Rewards for market makers who provide dex
+	/// liquidity. Only support dex share currently.
+	LoansIncentiveAlternative {
+		collateral_currency_id: CurrencyId,
+		reward_currency_id: CurrencyId,
+	},
 
 	/// Rewards pool(StableCurrencyId) for liquidators who provide dex liquidity
 	/// to participate automatic liquidation
@@ -93,13 +96,6 @@ pub enum PoolId<AccountId> {
 	/// Rewards pool(LiquidCurrencyId) for users who guarantee for validators by
 	/// Homa protocol
 	HomaValidatorAllowance(AccountId),
-
-	/// Rewards for market makers who provide dex
-	/// liquidity. Only support dex share currently.
-	LoansIncentiveAlternative {
-		collateral_currency_id: CurrencyId,
-		reward_currency_id: CurrencyId,
-	},
 }
 
 #[frame_support::pallet]
@@ -248,7 +244,7 @@ pub mod module {
 				for (pool_id, pool_info) in orml_rewards::Pools::<T>::iter() {
 					if !pool_info.total_shares.is_zero() {
 						match pool_id {
-							PoolId::LoansIncentive(_) | PoolId::DexIncentive(_) | PoolId::HomaIncentive => {
+							PoolId::LoansIncentive(_) | PoolId::DexIncentive(_) => {
 								count += 1;
 								Self::accumulate_incentives(pool_id, native_currency_id);
 							}
@@ -302,9 +298,7 @@ pub mod module {
 			let pending_reward: Balance = PendingRewards::<T>::take(&pool_id, &who);
 			if !pending_reward.is_zero() {
 				let currency_id = match pool_id {
-					PoolId::LoansIncentive(_) | PoolId::DexIncentive(_) | PoolId::HomaIncentive => {
-						T::NativeCurrencyId::get()
-					}
+					PoolId::LoansIncentive(_) | PoolId::DexIncentive(_) => T::NativeCurrencyId::get(),
 					PoolId::DexSaving(_) => T::StableCurrencyId::get(),
 					PoolId::HomaValidatorAllowance(_) => T::LiquidCurrencyId::get(),
 					PoolId::LoansIncentiveAlternative { reward_currency_id, .. } => reward_currency_id,
@@ -359,7 +353,7 @@ pub mod module {
 							Error::<T>::InvalidCurrencyId
 						);
 					}
-					PoolId::LoansIncentive(_) | PoolId::HomaIncentive => {}
+					PoolId::LoansIncentive(_) => {}
 					_ => {
 						return Err(Error::<T>::InvalidPoolId.into());
 					}
