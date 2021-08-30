@@ -182,7 +182,7 @@ impl<'vicinity, 'config, 'meter, T: Config> Handler<'vicinity, 'config, 'meter, 
 		if transfer.value.is_zero() {
 			Ok(())
 		} else {
-			Err(ExitError::Other("invalid action".into()))
+			Err(ExitError::OutOfFund)
 		}
 	}
 
