@@ -225,6 +225,7 @@ pub enum CurrencyId {
 	DexShare(DexShare, DexShare),
 	Erc20(EvmAddress),
 	ChainSafe(chainbridge::ResourceId),
+	StableAssetPoolToken(nutsfinance_stable_asset::PoolId),
 }
 
 impl CurrencyId {
@@ -309,6 +310,7 @@ impl TryFrom<CurrencyId> for EvmAddress {
 			}
 			CurrencyId::Erc20(address) => Ok(address),
 			CurrencyId::ChainSafe(_) => Err(()),
+			CurrencyId::StableAssetPoolToken(_) => Err(()),
 		}
 	}
 }

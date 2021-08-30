@@ -14,6 +14,7 @@ sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkad
 sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.9", default-features = false }
 evm = { version = "0.30.0", default-features = false, features = ["with-codec"] }
 chainbridge = { git = "https://github.com/AcalaNetwork/chainbridge-substrate", default-features = false }
+nutsfinance-stable-asset = { version = "0.1.0", default-features = false, path = "../ecosystem-modules/stable-asset/lib/stable-asset", package = "nutsfinance-stable-asset" }
 
 [dev-dependencies]
 sha3 = { version = "0.9.1" }
@@ -33,6 +34,7 @@ std = [
 	"evm/std",
 	"evm/with-serde",
 	"chainbridge/std",
+	"nutsfinance-stable-asset/std"
 ]
 runtime-benchmarks = [
 	"chainbridge/runtime-benchmarks",
