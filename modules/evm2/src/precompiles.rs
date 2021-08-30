@@ -18,7 +18,8 @@
 
 //! Builtin precompiles.
 
-use evm::{executor::PrecompileOutput, Context, ExitError, ExitSucceed};
+use crate::runner::state::PrecompileOutput;
+use evm::{Context, ExitError, ExitSucceed};
 use impl_trait_for_tuples::impl_for_tuples;
 use primitive_types::H160;
 use ripemd160::Digest;
@@ -226,8 +227,6 @@ impl LinearCostPrecompile for Ripemd160 {
 	const WORD: u64 = 120;
 
 	fn execute(input: &[u8], _cost: u64) -> core::result::Result<(ExitSucceed, Vec<u8>), ExitError> {
-		use ripemd160::Digest;
-
 		let mut ret = [0u8; 32];
 		ret[12..32].copy_from_slice(&ripemd160::Ripemd160::digest(input));
 		Ok((ExitSucceed::Returned, ret.to_vec()))

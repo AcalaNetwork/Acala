@@ -339,8 +339,8 @@ pub mod module {
 
 				//	//let mut storage_meter_handler =
 				// StorageMeterHandlerImpl::<T>::new(vicinity.origin); 	//let storage_meter =
-				// StorageMeter::new(&mut storage_meter_handler, contract_address, storage_limit) 	//	.
-				// expect("Genesis contract failed to new storage_meter");
+				// StorageMeter::new(&mut storage_meter_handler, contract_address, storage_limit) 	//
+				// . expect("Genesis contract failed to new storage_meter");
 
 				//	//let mut substate = Handler::<T>::new(&vicinity, 2_100_000, storage_meter,
 				// false, T::config()); 	//let (reason, out) =
@@ -905,7 +905,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	/// Removes an account from Accounts and AccountStorages.
-	pub fn remove_account(address: &EvmAddress) -> Result<(), ExitError> {
+	pub fn remove_account(address: &EvmAddress) -> Result<(), DispatchError> {
 		// Deref code, and remove it if ref count is zero.
 		if let Some(AccountInfo {
 			contract_info: Some(contract_info),

@@ -1,17 +1,21 @@
 //! EVM stack-based runner.
+// Synchronize with https://github.com/rust-blockchain/evm/blob/master/src/executor/stack/mod.rs
 
 use crate::precompiles::PrecompileSet;
+use crate::runner::handler::StorageMeterHandlerImpl;
 use crate::runner::Runner as RunnerT;
+use crate::runner::{
+	state::{StackExecutor, StackSubstateMetadata},
+	StackState as StackStateT,
+};
 use crate::{
 	AccountInfo,
 	/*	AccountCodes, AccountStorages, AddressMapping, BlockHashMapping, Config, Error, Event,
 	 *	FeeCalculator, OnChargeEVMTransaction, Pallet, PrecompileSet, */
-	Accounts,
-	One,
+	Accounts, One, StorageMeter,
 };
 use crate::{AccountStorages, CallInfo, Config, CreateInfo, Error, Event, ExecutionInfo, Pallet};
 use evm::backend::Backend as BackendT;
-use evm::executor::{StackExecutor, StackState as StackStateT, StackSubstateMetadata};
 use evm::{ExitError, ExitReason, Transfer};
 use frame_support::{
 	ensure, log,
@@ -61,8 +65,8 @@ impl<T: Config> Runner<T> {
 		ensure!(source_account.balance >= total_payment, Error::<T>::BalanceLow);
 
 		// Deduct fee from the `source` account.
-		//TODO
-		//let fee = T::ChargeTransactionPayment::withdraw_fee(&source, total_fee)?;
+		// NOTE: charge from transaction-payment
+		// let fee = T::ChargeTransactionPayment::withdraw_fee(&source, total_fee)?;
 
 		// Execute the EVM call.
 		let (reason, retv) = f(&mut executor);
@@ -80,8 +84,8 @@ impl<T: Config> Runner<T> {
 		);
 
 		// Refund fees to the `source` account if deducted more before,
-		//TODO
-		//T::OnChargeTransaction::correct_and_deposit_fee(&source, actual_fee, fee)?;
+		// NOTE: refund from transaction-payment
+		// T::OnChargeTransaction::correct_and_deposit_fee(&source, actual_fee, fee)?;
 
 		let state = executor.into_state();
 
@@ -91,7 +95,7 @@ impl<T: Config> Runner<T> {
 				"Deleting account at {:?}",
 				address
 			);
-			Pallet::<T>::remove_account(&address);
+			Pallet::<T>::remove_account(&address).map_err(|e| Error::<T>::CannotKillContract)?;
 		}
 
 		for log in &state.substate.logs {
@@ -284,8 +288,6 @@ impl<'config> SubstrateStackSubstate<'config> {
 pub struct SubstrateStackState<'vicinity, 'config, T> {
 	vicinity: &'vicinity Vicinity,
 	substate: SubstrateStackSubstate<'config>,
-	// save all callers from `inc_nonce` to get maintainer
-	callers: Vec<H160>,
 	_marker: PhantomData<T>,
 }
 
@@ -300,7 +302,6 @@ impl<'vicinity, 'config, T: Config> SubstrateStackState<'vicinity, 'config, T> {
 				logs: Vec::new(),
 				parent: None,
 			},
-			callers: vec![],
 			_marker: PhantomData,
 		}
 	}
@@ -419,8 +420,6 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 				*maybe_account = Some(account_info);
 			}
 		});
-
-		self.callers.push(address);
 	}
 
 	fn set_storage(&mut self, address: H160, index: H256, value: H256) {
@@ -464,15 +463,38 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 			address
 		);
 
-		// avoid config.create_increase_nonce
-		// should not default value
-		let caller = self.callers.pop().map_or(Default::default(), |v| {
-			if v != address {
-				v
+		let caller: H160;
+		let mut substate = &self.substate;
+
+		loop {
+			if let Some(c) = substate.metadata().caller() {
+				// maybe the caller is contract and not deployed.
+				// get the parent's maintainer.
+				if Pallet::<T>::is_account_empty(&c) {
+					if substate.parent.is_none() {
+						log::error!(
+							target: "evm",
+							"get parent's maintainer failed. caller: {:?}, address: {:?}",
+							c,
+							address
+						);
+						return;
+					}
+					substate = &substate.parent.as_ref().expect("has checked; qed");
+				} else {
+					caller = *c;
+					break;
+				}
 			} else {
-				self.callers.pop().unwrap_or_default()
+				log::error!(
+					target: "evm",
+					"get maintainer failed. address: {:?}",
+					address
+				);
+				return;
 			}
-		});
+		}
+
 		Pallet::<T>::create_account(address, caller, code);
 	}
 
