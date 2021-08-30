@@ -50,9 +50,7 @@ pub struct StackSubstateMetadata<'config> {
 	depth: Option<usize>,
 	// save the caller which called `inner_create` to get maintainer
 	caller: Option<H160>,
-	// save the origin
-	origin: Option<H160>,
-	// save the contract
+	// save the contract to charge storage
 	target: Option<H160>,
 }
 
@@ -64,7 +62,6 @@ impl<'config> StackSubstateMetadata<'config> {
 			is_static: false,
 			depth: None,
 			caller: None,
-			origin: None,
 			target: None,
 		}
 	}
@@ -73,12 +70,8 @@ impl<'config> StackSubstateMetadata<'config> {
 		self.gasometer_mut().record_stipend(other.gasometer().gas())?;
 		self.gasometer.record_refund(other.gasometer().refunded_gas())?;
 
-		let storage = other.storage_meter().finish()?;
-		if storage.is_positive() {
-			self.storage_meter.charge(storage as u32);
-		} else {
-			self.storage_meter.refund(storage.abs() as u32);
-		}
+		// merge child meter into parent meter
+		let storage = self.storage_meter.merge(other.storage_meter())?;
 
 		let target = self.target.ok_or(ExitError::Other("Storage target is none".into()))?;
 
@@ -105,7 +98,6 @@ impl<'config> StackSubstateMetadata<'config> {
 				Some(n) => Some(n + 1),
 			},
 			caller: None,
-			origin: self.origin,
 			target: None,
 		}
 	}

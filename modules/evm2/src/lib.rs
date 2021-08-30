@@ -22,7 +22,7 @@
 #![allow(clippy::unused_unit)]
 #![allow(clippy::upper_case_acronyms)]
 
-use crate::runner::storage_meter::{StorageMeter, StorageMeterHandler};
+use crate::runner::storage_meter::StorageMeter;
 use codec::{Decode, Encode, MaxEncodedLen};
 use evm::Config as EvmConfig;
 use frame_support::{

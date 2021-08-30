@@ -89,6 +89,7 @@ impl<T: Config> Runner<T> {
 
 		let state = executor.into_state();
 
+		// charge storage
 		for (target, storage) in &state.substate.storage_logs {
 			log::debug!(
 				target: "evm",

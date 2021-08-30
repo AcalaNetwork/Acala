@@ -21,15 +21,6 @@ use frame_support::log;
 use sp_core::H160;
 use sp_runtime::{DispatchError, DispatchResult};
 
-pub trait StorageMeterHandler {
-	fn reserve_storage(&mut self, limit: u32) -> DispatchResult;
-	fn unreserve_storage(&mut self, limit: u32, used: u32, refunded: u32) -> DispatchResult;
-
-	fn charge_storage(&mut self, contract: &H160, used: u32, refunded: u32) -> DispatchResult;
-
-	fn out_of_storage_error(&self) -> DispatchError;
-}
-
 pub struct StorageMeter {
 	limit: u32,
 	total_used: u32,
@@ -77,6 +68,19 @@ impl StorageMeter {
 		}
 	}
 
+	pub fn finish(&self) -> Result<i32, ExitError> {
+		log::trace!(
+			target: "evm",
+			"StorageMeter: finish: used {:?} refunded {:?}",
+			self.total_used, self.total_refunded
+		);
+		if self.limit < self.total_used.saturating_sub(self.total_refunded) {
+			Err(ExitError::Other("OutOfStorage".into()))
+		} else {
+			Ok(self.used_storage())
+		}
+	}
+
 	pub fn charge(&mut self, storage: u32) {
 		log::trace!(
 			target: "evm",
@@ -104,213 +108,166 @@ impl StorageMeter {
 		self.total_refunded = self.total_refunded.saturating_add(storage);
 	}
 
-	pub fn finish(&self) -> Result<i32, ExitError> {
-		log::trace!(
-			target: "evm",
-			"StorageMeter: finish: used {:?} refunded {:?}",
-			self.total_used, self.total_refunded
-		);
-		if self.limit < self.total_used.saturating_sub(self.total_refunded) {
-			Err(ExitError::Other("OutOfStorage".into()))
+	pub fn merge(&mut self, other: &Self) -> Result<i32, ExitError> {
+		let storage = other.finish()?;
+		if storage.is_positive() {
+			self.charge(storage as u32);
 		} else {
-			Ok(self.used_storage())
+			self.refund(storage.abs() as u32);
 		}
+		Ok(storage)
 	}
 }
 
-//#[cfg(test)]
-//mod tests {
-//	use super::*;
-//	use frame_support::{assert_err, assert_ok};
-//
-//	const ALICE: H160 = H160::repeat_byte(11);
-//	const CONTRACT: H160 = H160::repeat_byte(22);
-//	const CONTRACT_2: H160 = H160::repeat_byte(33);
-//	const CONTRACT_3: H160 = H160::repeat_byte(44);
-//	struct DummyHandler {
-//		pub storages: std::collections::BTreeMap<H160, u32>,
-//		pub reserves: std::collections::BTreeMap<H160, u32>,
-//	}
-//
-//	impl DummyHandler {
-//		fn new() -> Self {
-//			let mut val = Self {
-//				storages: Default::default(),
-//				reserves: Default::default(),
-//			};
-//			val.storages.insert(ALICE, 0);
-//			val.reserves.insert(ALICE, 0);
-//			val.storages.insert(CONTRACT, 0);
-//			val.reserves.insert(CONTRACT, 0);
-//			val.storages.insert(CONTRACT_2, 0);
-//			val.reserves.insert(CONTRACT_2, 0);
-//			val.storages.insert(CONTRACT_3, 0);
-//			val.reserves.insert(CONTRACT_3, 0);
-//			val
-//		}
-//	}
-//
-//	#[test]
-//	fn test_storage_with_limit_zero() {
-//		let mut handler = DummyHandler::new();
-//
-//		let mut storage_meter = StorageMeter::new(&mut handler, CONTRACT, 0).unwrap();
-//		assert_eq!(storage_meter.available_storage(), 0);
-//
-//		// refund
-//		assert_ok!(storage_meter.refund(1));
-//		assert_eq!(storage_meter.available_storage(), 1);
-//
-//		// charge
-//		assert_ok!(storage_meter.charge(1));
-//		assert_eq!(storage_meter.available_storage(), 0);
-//
-//		assert_ok!(storage_meter.finish());
-//
-//		assert_eq!(handler.storages.get(&ALICE).cloned().unwrap_or_default(), 0);
-//		assert_eq!(handler.reserves.get(&ALICE).cloned().unwrap_or_default(), 0);
-//		assert_eq!(handler.storages.get(&CONTRACT).cloned().unwrap_or_default(), 0);
-//		assert_eq!(handler.reserves.get(&CONTRACT).cloned().unwrap_or_default(), 0);
-//	}
-//
-//	#[test]
-//	fn test_charge_storage_fee() {
-//		let mut handler = DummyHandler::new();
-//		handler.storages.insert(ALICE, 1000);
-//
-//		let mut storage_meter = StorageMeter::new(&mut handler, CONTRACT, 1000).unwrap();
-//		assert_eq!(storage_meter.available_storage(), 1000);
-//
-//		assert_ok!(storage_meter.refund(1));
-//		assert_eq!(storage_meter.available_storage(), 1001);
-//
-//		assert_ok!(storage_meter.charge(101));
-//		assert_eq!(storage_meter.available_storage(), 900);
-//
-//		assert_ok!(storage_meter.charge(50));
-//		assert_eq!(storage_meter.available_storage(), 850);
-//
-//		assert_ok!(storage_meter.refund(20));
-//		assert_eq!(storage_meter.available_storage(), 870);
-//
-//		assert_ok!(storage_meter.finish());
-//
-//		assert_eq!(handler.storages.get(&ALICE).cloned().unwrap_or_default(), 870);
-//		assert_eq!(handler.reserves.get(&ALICE).cloned().unwrap_or_default(), 0);
-//		assert_eq!(handler.storages.get(&CONTRACT).cloned().unwrap_or_default(), 0);
-//		assert_eq!(handler.reserves.get(&CONTRACT).cloned().unwrap_or_default(), 130);
-//	}
-//
-//	#[test]
-//	fn test_refund_storage_fee() {
-//		let mut handler = DummyHandler::new();
-//		handler.storages.insert(ALICE, 1000);
-//		handler.reserves.insert(CONTRACT, 1000);
-//
-//		let mut storage_meter = StorageMeter::new(&mut handler, CONTRACT, 1000).unwrap();
-//		assert_eq!(storage_meter.available_storage(), 1000);
-//
-//		assert_ok!(storage_meter.refund(100));
-//		assert_eq!(storage_meter.available_storage(), 1100);
-//
-//		assert_ok!(storage_meter.charge(50));
-//		assert_eq!(storage_meter.available_storage(), 1050);
-//
-//		assert_ok!(storage_meter.finish());
-//
-//		assert_eq!(handler.storages.get(&ALICE).cloned().unwrap_or_default(), 1050);
-//		assert_eq!(handler.reserves.get(&ALICE).cloned().unwrap_or_default(), 0);
-//		assert_eq!(handler.storages.get(&CONTRACT).cloned().unwrap_or_default(), 0);
-//		assert_eq!(handler.reserves.get(&CONTRACT).cloned().unwrap_or_default(), 950);
-//	}
-//
-//	#[test]
-//	fn test_out_of_storage() {
-//		let mut handler = DummyHandler::new();
-//		handler.storages.insert(ALICE, 1000);
-//
-//		assert!(StorageMeter::new(&mut handler, CONTRACT, 1001).is_err());
-//		let mut storage_meter = StorageMeter::new(&mut handler, CONTRACT, 1000).unwrap();
-//		assert_eq!(storage_meter.available_storage(), 1000);
-//
-//		assert_ok!(storage_meter.charge(500));
-//		assert_eq!(storage_meter.available_storage(), 500);
-//
-//		assert_ok!(storage_meter.charge(500));
-//		assert_eq!(storage_meter.available_storage(), 0);
-//
-//		assert_ok!(storage_meter.charge(2));
-//		assert_ok!(storage_meter.refund(1));
-//		assert_ok!(storage_meter.child_meter(CONTRACT_2).map(|_| ()));
-//		assert_err!(storage_meter.finish(), DispatchError::Other("OutOfStorage"));
-//	}
-//
-//	#[test]
-//	fn test_high_use_and_refund() {
-//		let mut handler = DummyHandler::new();
-//		handler.storages.insert(ALICE, 1000);
-//
-//		let mut storage_meter = StorageMeter::new(&mut handler, CONTRACT, 1000).unwrap();
-//		assert_eq!(storage_meter.available_storage(), 1000);
-//
-//		assert_ok!(storage_meter.charge(1000));
-//		assert_eq!(storage_meter.available_storage(), 0);
-//
-//		assert_ok!(storage_meter.charge(100));
-//		assert_eq!(storage_meter.available_storage(), 0);
-//		assert_ok!(storage_meter.refund(200));
-//		assert_eq!(storage_meter.available_storage(), 100);
-//		assert_ok!(storage_meter.child_meter(CONTRACT_2).map(|_| ()));
-//		assert_ok!(storage_meter.finish());
-//	}
-//
-//	#[test]
-//	fn test_child_meter() {
-//		let mut handler = DummyHandler::new();
-//		handler.storages.insert(ALICE, 1000);
-//
-//		let mut storage_meter = StorageMeter::new(&mut handler, CONTRACT, 1000).unwrap();
-//
-//		assert_ok!(storage_meter.charge(100));
-//
-//		let mut child_meter = storage_meter.child_meter(CONTRACT_2).unwrap();
-//		assert_eq!(child_meter.available_storage(), 900);
-//
-//		assert_ok!(child_meter.charge(100));
-//		assert_eq!(child_meter.available_storage(), 800);
-//
-//		assert_ok!(child_meter.refund(50));
-//		assert_eq!(child_meter.available_storage(), 850);
-//
-//		let mut child_meter_2 = child_meter.child_meter(CONTRACT_3).unwrap();
-//
-//		assert_eq!(child_meter_2.available_storage(), 850);
-//
-//		assert_ok!(child_meter_2.charge(20));
-//		assert_eq!(child_meter_2.available_storage(), 830);
-//
-//		assert_ok!(child_meter_2.finish());
-//
-//		assert_ok!(child_meter.finish());
-//
-//		let mut child_meter_3 = storage_meter.child_meter(CONTRACT_2).unwrap();
-//
-//		assert_eq!(child_meter_3.available_storage(), 830);
-//
-//		assert_ok!(child_meter_3.charge(30));
-//
-//		assert_eq!(child_meter_3.available_storage(), 800);
-//
-//		assert_ok!(child_meter_3.finish());
-//
-//		assert_eq!(storage_meter.available_storage(), 800);
-//
-//		assert_ok!(storage_meter.finish());
-//
-//		assert_eq!(handler.storages.get(&ALICE).cloned().unwrap_or_default(), 800);
-//		assert_eq!(handler.reserves.get(&ALICE).cloned().unwrap_or_default(), 0);
-//		assert_eq!(handler.reserves.get(&CONTRACT).cloned().unwrap_or_default(), 100);
-//		assert_eq!(handler.reserves.get(&CONTRACT_2).cloned().unwrap_or_default(), 80);
-//		assert_eq!(handler.reserves.get(&CONTRACT_3).cloned().unwrap_or_default(), 20);
-//	}
-//}
+#[cfg(test)]
+mod tests {
+	use super::*;
+	use frame_support::{assert_err, assert_ok};
+
+	const ALICE: H160 = H160::repeat_byte(11);
+	const CONTRACT: H160 = H160::repeat_byte(22);
+	const CONTRACT_2: H160 = H160::repeat_byte(33);
+	const CONTRACT_3: H160 = H160::repeat_byte(44);
+
+	#[test]
+	fn test_storage_with_limit_zero() {
+		let mut storage_meter = StorageMeter::new(0);
+		assert_eq!(storage_meter.available_storage(), 0);
+		assert_eq!(storage_meter.storage_limit(), 0);
+
+		// refund
+		storage_meter.refund(1);
+		assert_eq!(storage_meter.total_used(), 0);
+		assert_eq!(storage_meter.total_refunded(), 1);
+		assert_eq!(storage_meter.used_storage(), -1);
+		assert_eq!(storage_meter.available_storage(), 1);
+
+		// charge
+		storage_meter.charge(1);
+		assert_eq!(storage_meter.total_used(), 1);
+		assert_eq!(storage_meter.total_refunded(), 1);
+		assert_eq!(storage_meter.used_storage(), 0);
+		assert_eq!(storage_meter.available_storage(), 0);
+
+		// uncharge
+		storage_meter.uncharge(1);
+		assert_eq!(storage_meter.total_used(), 0);
+		assert_eq!(storage_meter.total_refunded(), 1);
+		assert_eq!(storage_meter.used_storage(), -1);
+		assert_eq!(storage_meter.available_storage(), 1);
+
+		// finish
+		assert_eq!(storage_meter.finish(), Ok(-1));
+	}
+
+	#[test]
+	fn test_out_of_storage() {
+		let mut storage_meter = StorageMeter::new(1000);
+		assert_eq!(storage_meter.available_storage(), 1000);
+
+		storage_meter.charge(200);
+		assert_eq!(storage_meter.finish(), Ok(200));
+
+		storage_meter.charge(2000);
+		assert_eq!(storage_meter.finish(), Err(ExitError::Other("OutOfStorage".into())));
+
+		storage_meter.refund(2000);
+		assert_eq!(storage_meter.finish(), Ok(200));
+	}
+
+	#[test]
+	fn test_high_use_and_refund() {
+		let mut storage_meter = StorageMeter::new(1000);
+		assert_eq!(storage_meter.available_storage(), 1000);
+
+		storage_meter.charge(1000);
+		assert_eq!(storage_meter.available_storage(), 0);
+
+		storage_meter.charge(100);
+		assert_eq!(storage_meter.available_storage(), 0);
+		storage_meter.refund(200);
+		assert_eq!(storage_meter.available_storage(), 100);
+
+		let child_meter = storage_meter.child_meter();
+		assert_eq!(storage_meter.available_storage(), 100);
+
+		assert_eq!(child_meter.finish(), Ok(0));
+		assert_eq!(storage_meter.finish(), Ok(900));
+	}
+
+	#[test]
+	fn test_child_meter() {
+		let mut storage_meter = StorageMeter::new(1000);
+		storage_meter.charge(100);
+
+		let mut child_meter = storage_meter.child_meter();
+		assert_eq!(child_meter.available_storage(), 900);
+
+		child_meter.charge(100);
+		assert_eq!(child_meter.available_storage(), 800);
+
+		child_meter.refund(50);
+		assert_eq!(child_meter.available_storage(), 850);
+
+		let mut child_meter_2 = child_meter.child_meter();
+		assert_eq!(child_meter_2.available_storage(), 850);
+
+		child_meter_2.charge(20);
+		assert_eq!(child_meter_2.available_storage(), 830);
+
+		assert_eq!(child_meter_2.finish(), Ok(20));
+
+		assert_eq!(child_meter.finish(), Ok(50));
+
+		let mut child_meter_3 = storage_meter.child_meter();
+		assert_eq!(child_meter_3.available_storage(), 900);
+
+		child_meter_3.charge(30);
+		assert_eq!(child_meter_3.available_storage(), 870);
+		assert_eq!(child_meter_3.finish(), Ok(30));
+
+		assert_eq!(storage_meter.available_storage(), 900);
+		assert_eq!(storage_meter.finish(), Ok(100));
+	}
+
+	#[test]
+	fn test_merge() {
+		let mut storage_meter = StorageMeter::new(1000);
+		storage_meter.charge(100);
+
+		let mut child_meter = storage_meter.child_meter();
+		assert_eq!(child_meter.available_storage(), 900);
+
+		child_meter.charge(100);
+		assert_eq!(child_meter.available_storage(), 800);
+
+		child_meter.refund(50);
+		assert_eq!(child_meter.available_storage(), 850);
+
+		let mut child_meter_2 = child_meter.child_meter();
+		assert_eq!(child_meter_2.available_storage(), 850);
+
+		child_meter_2.charge(20);
+		assert_eq!(child_meter_2.available_storage(), 830);
+
+		assert_eq!(child_meter_2.finish(), Ok(20));
+
+		assert_eq!(child_meter.finish(), Ok(50));
+		assert_eq!(child_meter.merge(&child_meter_2), Ok(20));
+		assert_eq!(child_meter.available_storage(), 830);
+
+		let mut child_meter_3 = storage_meter.child_meter();
+		assert_eq!(child_meter_3.available_storage(), 900);
+
+		child_meter_3.charge(30);
+		assert_eq!(child_meter_3.available_storage(), 870);
+		assert_eq!(child_meter_3.finish(), Ok(30));
+		assert_eq!(storage_meter.merge(&child_meter_3), Ok(30));
+
+		assert_eq!(storage_meter.available_storage(), 870);
+		assert_eq!(child_meter.finish(), Ok(70));
+		assert_eq!(storage_meter.finish(), Ok(130));
+		assert_eq!(storage_meter.merge(&child_meter), Ok(70));
+		assert_eq!(storage_meter.available_storage(), 800);
+	}
+}
