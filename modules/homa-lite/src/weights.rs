@@ -48,15 +48,22 @@ use sp_std::marker::PhantomData;
 /// Weight functions needed for module_homa_lite.
 pub trait WeightInfo {
 	fn mint() -> Weight;
+	fn mint_for_requests() -> Weight;
 	fn set_total_staking_currency() -> Weight;
 	fn set_minting_cap() -> Weight;
 	fn set_xcm_dest_weight() -> Weight;
+	fn request_redeem() -> Weight;
 }
 
 /// Weights for module_homa_lite using the Acala node and recommended hardware.
 pub struct AcalaWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	fn mint() -> Weight {
+		(250_414_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(12 as Weight))
+			.saturating_add(T::DbWeight::get().writes(7 as Weight))
+	}
+	fn mint_for_requests() -> Weight {
 		(250_414_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(12 as Weight))
 			.saturating_add(T::DbWeight::get().writes(7 as Weight))
@@ -73,11 +80,20 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 		(20_346_000 as Weight)
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
+	fn request_redeem() -> Weight {
+		(250_414_000 as Weight)
+			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+	}
 }
 
 // For backwards compatibility and tests
 impl WeightInfo for () {
 	fn mint() -> Weight {
+		(250_414_000 as Weight)
+			.saturating_add(RocksDbWeight::get().reads(12 as Weight))
+			.saturating_add(RocksDbWeight::get().writes(7 as Weight))
+	}
+	fn mint_for_requests() -> Weight {
 		(250_414_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(12 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(7 as Weight))
@@ -92,6 +108,10 @@ impl WeightInfo for () {
 	}
 	fn set_xcm_dest_weight() -> Weight {
 		(20_346_000 as Weight)
+			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
+	}
+	fn request_redeem() -> Weight {
+		(250_414_000 as Weight)
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
 }
