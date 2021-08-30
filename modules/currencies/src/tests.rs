@@ -480,8 +480,16 @@ fn erc20_transfer_should_fail() {
 		.build()
 		.execute_with(|| {
 			deploy_contracts();
+
+			// Real origin not found
+			assert_noop!(
+				Currencies::transfer(Origin::signed(alice()), bob(), CurrencyId::Erc20(erc20_address()), 100),
+				Error::<Runtime>::RealOriginNotFound
+			);
+
 			<EVM as EVMTrait<AccountId>>::set_origin(alice());
 			<EVM as EVMTrait<AccountId>>::set_origin(bob());
+
 			// empty address
 			assert!(
 				Currencies::transfer(Origin::signed(alice()), bob(), CurrencyId::Erc20(H160::default()), 100).is_err()

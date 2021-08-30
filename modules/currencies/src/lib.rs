@@ -102,6 +102,8 @@ pub mod module {
 		Erc20InvalidOperation,
 		/// EVM account not found
 		EvmAccountNotFound,
+		/// Real origin not found
+		RealOriginNotFound,
 	}
 
 	#[pallet::event]
@@ -274,7 +276,7 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 		match currency_id {
 			CurrencyId::Erc20(contract) => {
 				let sender = T::AddressMapping::get_evm_address(from).ok_or(Error::<T>::EvmAccountNotFound)?;
-				let origin = T::EVMBridge::get_origin().unwrap_or_default();
+				let origin = T::EVMBridge::get_origin().ok_or(Error::<T>::RealOriginNotFound)?;
 				let origin_address = T::AddressMapping::get_or_create_evm_address(&origin);
 				let address = T::AddressMapping::get_or_create_evm_address(to);
 				T::EVMBridge::transfer(
