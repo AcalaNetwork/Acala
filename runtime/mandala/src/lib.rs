@@ -1859,10 +1859,7 @@ parameter_types! {
 pub struct EnsurePoolAssetId;
 impl nutsfinance_stable_asset::traits::ValidateAssetId<CurrencyId> for EnsurePoolAssetId {
 	fn validate(currency_id: CurrencyId) -> bool {
-		match currency_id {
-			CurrencyId::StableAssetPoolToken(_) => true,
-			_ => false,
-		}
+		matches!(currency_id, CurrencyId::StableAssetPoolToken(_))
 	}
 }
 
