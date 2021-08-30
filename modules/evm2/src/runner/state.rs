@@ -1,6 +1,6 @@
 // Synchronize with https://github.com/rust-blockchain/evm/blob/master/src/executor/stack/mod.rs
 
-use crate::runner::StackState;
+use crate::{runner::StackState, StorageMeter};
 use core::{cmp::min, convert::Infallible};
 use evm::backend::Backend;
 use evm::{
@@ -24,6 +24,15 @@ use std::{
 	vec::Vec,
 };
 
+#[cfg(feature = "tracing")]
+macro_rules! event {
+	($x:expr) => {
+		use evm:::tracing::Event::*;
+		$x.emit();
+	};
+}
+
+#[cfg(not(feature = "tracing"))]
 macro_rules! event {
 	($x:expr) => {};
 }
@@ -36,27 +45,44 @@ pub enum StackExitKind {
 
 pub struct StackSubstateMetadata<'config> {
 	gasometer: Gasometer<'config>,
+	storage_meter: StorageMeter,
 	is_static: bool,
 	depth: Option<usize>,
 	// save the caller which called `inner_create` to get maintainer
 	caller: Option<H160>,
+	// save the origin
+	origin: Option<H160>,
+	// save the contract
+	target: Option<H160>,
 }
 
 impl<'config> StackSubstateMetadata<'config> {
-	pub fn new(gas_limit: u64, config: &'config Config) -> Self {
+	pub fn new(gas_limit: u64, storage_limit: u32, config: &'config Config) -> Self {
 		Self {
 			gasometer: Gasometer::new(gas_limit, config),
+			storage_meter: StorageMeter::new(storage_limit),
 			is_static: false,
 			depth: None,
 			caller: None,
+			origin: None,
+			target: None,
 		}
 	}
 
-	pub fn swallow_commit(&mut self, other: Self) -> Result<(), ExitError> {
+	pub fn swallow_commit(&mut self, other: Self) -> Result<(H160, i32), ExitError> {
 		self.gasometer_mut().record_stipend(other.gasometer().gas())?;
 		self.gasometer.record_refund(other.gasometer().refunded_gas())?;
 
-		Ok(())
+		let storage = other.storage_meter().finish()?;
+		if storage.is_positive() {
+			self.storage_meter.charge(storage as u32);
+		} else {
+			self.storage_meter.refund(storage.abs() as u32);
+		}
+
+		let target = self.target.ok_or(ExitError::Other("Storage target is none".into()))?;
+
+		Ok((target, storage))
 	}
 
 	pub fn swallow_revert(&mut self, other: Self) -> Result<(), ExitError> {
@@ -72,12 +98,15 @@ impl<'config> StackSubstateMetadata<'config> {
 	pub fn spit_child(&self, gas_limit: u64, is_static: bool) -> Self {
 		Self {
 			gasometer: Gasometer::new(gas_limit, self.gasometer().config()),
+			storage_meter: StorageMeter::new(self.storage_meter().available_storage()),
 			is_static: is_static || self.is_static,
 			depth: match self.depth {
 				None => Some(0),
 				Some(n) => Some(n + 1),
 			},
 			caller: None,
+			origin: self.origin,
+			target: None,
 		}
 	}
 
@@ -87,6 +116,14 @@ impl<'config> StackSubstateMetadata<'config> {
 
 	pub fn gasometer_mut(&mut self) -> &mut Gasometer<'config> {
 		&mut self.gasometer
+	}
+
+	pub fn storage_meter(&self) -> &StorageMeter {
+		&self.storage_meter
+	}
+
+	pub fn storage_meter_mut(&mut self) -> &mut StorageMeter {
+		&mut self.storage_meter
 	}
 
 	pub fn is_static(&self) -> bool {

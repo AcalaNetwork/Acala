@@ -77,6 +77,9 @@ pub mod weights;
 pub use module::*;
 pub use weights::WeightInfo;
 
+/// Storage key size and storage value size.
+pub const STORAGE_SIZE: u32 = 64;
+
 /// Type alias for currency balance.
 pub type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 pub type NegativeImbalanceOf<T> =
@@ -460,6 +463,12 @@ pub mod module {
 		FeeOverflow,
 		/// Calculating total payment overflowed
 		PaymentOverflow,
+		/// Reserve storage failed
+		ReserveStorageFailed,
+		/// Unreserve storage failed
+		UnreserveStorageFailed,
+		/// Charge storage failed
+		ChargeStorageFailed,
 	}
 
 	#[pallet::pallet]
@@ -1260,6 +1269,90 @@ impl<T: Config> Pallet<T> {
 		} else {
 			address
 		}
+	}
+
+	fn reserve_storage(caller: &H160, limit: u32) -> DispatchResult {
+		if limit.is_zero() {
+			return Ok(());
+		}
+
+		log::debug!(
+			target: "evm",
+			"reserve_storage: from {:?} limit {:?}",
+			caller, limit,
+		);
+
+		let user = T::AddressMapping::get_account_id(caller);
+
+		let amount = T::StorageDepositPerByte::get().saturating_mul(limit.into());
+
+		T::Currency::reserve_named(&RESERVE_ID_STORAGE_DEPOSIT, &user, amount)
+	}
+
+	fn unreserve_storage(caller: &H160, limit: u32, used: u32, refunded: u32) -> DispatchResult {
+		let total = limit.saturating_add(refunded);
+		let unused = total.saturating_sub(used);
+		if unused.is_zero() {
+			return Ok(());
+		}
+
+		log::debug!(
+			target: "evm",
+			"unreserve_storage: from {:?} used {:?} refunded {:?} unused {:?}",
+			caller, used, refunded, unused
+		);
+
+		let user = T::AddressMapping::get_account_id(caller);
+		let amount = T::StorageDepositPerByte::get().saturating_mul(unused.into());
+
+		// should always be able to unreserve the amount
+		// but otherwise we will just ignore the issue here.
+		let err_amount = T::Currency::unreserve_named(&RESERVE_ID_STORAGE_DEPOSIT, &user, amount);
+		debug_assert!(err_amount.is_zero());
+		Ok(())
+	}
+
+	fn charge_storage(caller: &H160, contract: &H160, storage: i32) -> DispatchResult {
+		if storage.is_zero() {
+			return Ok(());
+		}
+
+		log::debug!(
+			target: "evm",
+			"charge_storage: from {:?} contract {:?} storage {:?}",
+			caller, contract, storage
+		);
+
+		let user = T::AddressMapping::get_account_id(caller);
+		let contract_acc = T::AddressMapping::get_account_id(contract);
+
+		if storage.is_positive() {
+			let amount = T::StorageDepositPerByte::get().saturating_mul((storage as u32).into());
+
+			// `repatriate_reserved` requires beneficiary is an existing account but
+			// contract_acc could be a new account so we need to do
+			// unreserve/transfer/reserve.
+			// should always be able to unreserve the amount
+			// but otherwise we will just ignore the issue here.
+			let err_amount = T::Currency::unreserve_named(&RESERVE_ID_STORAGE_DEPOSIT, &user, amount);
+			debug_assert!(err_amount.is_zero());
+			T::Currency::transfer(&user, &contract_acc, amount, ExistenceRequirement::AllowDeath)?;
+			T::Currency::reserve_named(&RESERVE_ID_STORAGE_DEPOSIT, &contract_acc, amount)?;
+		} else {
+			let amount = T::StorageDepositPerByte::get().saturating_mul((storage.abs() as u32).into());
+
+			// user can't be a dead account
+			let val = T::Currency::repatriate_reserved_named(
+				&RESERVE_ID_STORAGE_DEPOSIT,
+				&contract_acc,
+				&user,
+				amount,
+				BalanceStatus::Reserved,
+			)?;
+			debug_assert!(val.is_zero());
+		};
+
+		Ok(())
 	}
 }
 

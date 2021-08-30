@@ -1,4 +1,3 @@
-pub mod handler;
 pub mod stack;
 pub mod state;
 pub mod storage_meter;

@@ -2,7 +2,6 @@
 // Synchronize with https://github.com/rust-blockchain/evm/blob/master/src/executor/stack/mod.rs
 
 use crate::precompiles::PrecompileSet;
-use crate::runner::handler::StorageMeterHandlerImpl;
 use crate::runner::Runner as RunnerT;
 use crate::runner::{
 	state::{StackExecutor, StackSubstateMetadata},
@@ -12,7 +11,7 @@ use crate::{
 	AccountInfo,
 	/*	AccountCodes, AccountStorages, AddressMapping, BlockHashMapping, Config, Error, Event,
 	 *	FeeCalculator, OnChargeEVMTransaction, Pallet, PrecompileSet, */
-	Accounts, One, StorageMeter,
+	Accounts, One, StorageMeter, STORAGE_SIZE,
 };
 use crate::{AccountStorages, CallInfo, Config, CreateInfo, Error, Event, ExecutionInfo, Pallet};
 use evm::backend::Backend as BackendT;
@@ -53,7 +52,7 @@ impl<T: Config> Runner<T> {
 		let gas_price = U256::one();
 		let vicinity = Vicinity { gas_price, origin };
 
-		let metadata = StackSubstateMetadata::new(gas_limit, &config);
+		let metadata = StackSubstateMetadata::new(gas_limit, storage_limit, &config);
 		let state = SubstrateStackState::new(&vicinity, metadata);
 		let mut executor = StackExecutor::new_with_precompile(state, config, T::Precompiles::execute);
 
@@ -67,6 +66,7 @@ impl<T: Config> Runner<T> {
 		// Deduct fee from the `source` account.
 		// NOTE: charge from transaction-payment
 		// let fee = T::ChargeTransactionPayment::withdraw_fee(&source, total_fee)?;
+		Pallet::<T>::reserve_storage(&origin, storage_limit).map_err(|_| Error::<T>::ReserveStorageFailed)?;
 
 		// Execute the EVM call.
 		let (reason, retv) = f(&mut executor);
@@ -89,13 +89,27 @@ impl<T: Config> Runner<T> {
 
 		let state = executor.into_state();
 
+		for (target, storage) in &state.substate.storage_logs {
+			log::debug!(
+				target: "evm",
+				"target {:?} used storage: {:?}",
+				target, storage
+			);
+			Pallet::<T>::charge_storage(&origin, &target, *storage).map_err(|_| Error::<T>::ChargeStorageFailed)?;
+		}
+
+		let used_storage = state.metadata().storage_meter().total_used();
+		let refunded_storage = state.metadata().storage_meter().total_refunded();
+		Pallet::<T>::unreserve_storage(&origin, storage_limit, used_storage, refunded_storage)
+			.map_err(|_| Error::<T>::UnreserveStorageFailed)?;
+
 		for address in state.substate.deletes {
 			log::debug!(
 				target: "evm",
 				"Deleting account at {:?}",
 				address
 			);
-			Pallet::<T>::remove_account(&address).map_err(|e| Error::<T>::CannotKillContract)?;
+			Pallet::<T>::remove_account(&address).map_err(|_| Error::<T>::CannotKillContract)?;
 		}
 
 		for log in &state.substate.logs {
@@ -193,7 +207,6 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 		storage_limit: u32,
 		config: &evm::Config,
 	) -> Result<CreateInfo, Self::Error> {
-		let code_hash = H256::from_slice(Keccak256::digest(&init).as_slice());
 		Self::execute(source, source, value, gas_limit, storage_limit, config, |executor| {
 			(
 				executor.transact_create(source, value, init, gas_limit),
@@ -207,6 +220,7 @@ struct SubstrateStackSubstate<'config> {
 	metadata: StackSubstateMetadata<'config>,
 	deletes: BTreeSet<H160>,
 	logs: Vec<Log>,
+	storage_logs: Vec<(H160, i32)>,
 	parent: Option<Box<SubstrateStackSubstate<'config>>>,
 }
 
@@ -225,6 +239,7 @@ impl<'config> SubstrateStackSubstate<'config> {
 			parent: None,
 			deletes: BTreeSet::new(),
 			logs: Vec::new(),
+			storage_logs: Vec::new(),
 		};
 		mem::swap(&mut entering, self);
 
@@ -237,8 +252,10 @@ impl<'config> SubstrateStackSubstate<'config> {
 		let mut exited = *self.parent.take().expect("Cannot commit on root substate");
 		mem::swap(&mut exited, self);
 
-		self.metadata.swallow_commit(exited.metadata)?;
+		let (target, storage) = self.metadata.swallow_commit(exited.metadata)?;
 		self.logs.append(&mut exited.logs);
+		exited.storage_logs.push((target, storage));
+		self.storage_logs.append(&mut exited.storage_logs);
 		self.deletes.append(&mut exited.deletes);
 
 		sp_io::storage::commit_transaction();
@@ -300,6 +317,7 @@ impl<'vicinity, 'config, T: Config> SubstrateStackState<'vicinity, 'config, T> {
 				metadata,
 				deletes: BTreeSet::new(),
 				logs: Vec::new(),
+				storage_logs: Vec::new(),
 				parent: None,
 			},
 			_marker: PhantomData,
@@ -431,6 +449,8 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 				index,
 			);
 			<AccountStorages<T>>::remove(address, index);
+			Pallet::<T>::update_contract_storage_size(&address, -(STORAGE_SIZE as i32));
+			self.substate.metadata.storage_meter_mut().refund(STORAGE_SIZE);
 		} else {
 			log::debug!(
 				target: "evm",
@@ -440,11 +460,16 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 				value,
 			);
 			<AccountStorages<T>>::insert(address, index, value);
+			Pallet::<T>::update_contract_storage_size(&address, STORAGE_SIZE as i32);
+			self.substate.metadata.storage_meter_mut().charge(STORAGE_SIZE);
 		}
 	}
 
 	fn reset_storage(&mut self, address: H160) {
 		<AccountStorages<T>>::remove_prefix(address, None);
+		//TODO
+		//Pallet::<T>::update_contract_storage_size(&address, -(STORAGE_SIZE as i32));
+		//self.substate.metadata.storage_meter_mut().refund(STORAGE_SIZE);
 	}
 
 	fn log(&mut self, address: H160, topics: Vec<H256>, data: Vec<u8>) {
@@ -468,7 +493,7 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 
 		loop {
 			if let Some(c) = substate.metadata().caller() {
-				// maybe the caller is contract and not deployed.
+				// the caller maybe is contract and not deployed.
 				// get the parent's maintainer.
 				if Pallet::<T>::is_account_empty(&c) {
 					if substate.parent.is_none() {
