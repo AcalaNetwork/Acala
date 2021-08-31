@@ -46,13 +46,9 @@ members = [
 	"ecosystem-modules/starport",
 	"ecosystem-modules/compound-cash",
 	"ecosystem-modules/stable-asset/lib/stable-asset",
-
-	"ecosystem-modules/pint/pallets/asset-index",
-	"ecosystem-modules/pint/pallets/committee",
-	"ecosystem-modules/pint/pallets/local-treasury",
-	"ecosystem-modules/pint/pallets/price-feed",
-	"ecosystem-modules/pint/pallets/saft-registry",
-	"ecosystem-modules/pint/primitives/primitives",
+]
+exclude = [
+	"ecosystem-modules/pint"
 ]
 
 resolver = "2"

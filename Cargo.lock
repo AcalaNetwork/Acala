@@ -4228,7 +4228,7 @@ dependencies = [
  "orml-rewards",
  "orml-tokens",
  "orml-traits",
- "orml-unknown-tokens 0.4.1-dev",
+ "orml-unknown-tokens",
  "orml-vesting",
  "orml-xcm",
  "orml-xcm-support",
@@ -5144,7 +5144,7 @@ dependencies = [
  "orml-rewards",
  "orml-tokens",
  "orml-traits",
- "orml-unknown-tokens 0.4.1-dev",
+ "orml-unknown-tokens",
  "orml-vesting",
  "orml-xcm",
  "orml-xcm-support",
@@ -6612,20 +6612,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "orml-unknown-tokens"
-version = "0.4.1-dev"
-source = "git+https://github.com/open-web3-stack/open-runtime-module-library?branch=master#5babe0b71cf60538ca23d41231f9558816c52ae9"
-dependencies = [
- "frame-support",
- "frame-system",
- "orml-xcm-support",
- "parity-scale-codec",
- "serde",
- "sp-std",
- "xcm",
-]
-
-[[package]]
 name = "orml-utilities"
 version = "0.4.1-dev"
 dependencies = [
@@ -6723,7 +6709,7 @@ dependencies = [
  "xcm",
  "xcm-builder",
  "xcm-executor",
- "xcm-simulator 0.9.9-1",
+ "xcm-simulator",
 ]
 
 [[package]]
@@ -6748,36 +6734,16 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "orml-tokens",
  "orml-traits",
- "pallet-balances",
  "pallet-chainlink-feed",
  "pallet-price-feed",
- "pallet-saft-registry",
  "parity-scale-codec",
  "polkadot-parachain",
  "primitives",
- "rand 0.8.4",
  "serde",
  "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
  "xcm",
  "xcm-executor",
-]
-
-[[package]]
-name = "pallet-assets"
-version = "4.0.0-dev"
-source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.9#91061a7d925b5bc597804293da283477512ba4ff"
-dependencies = [
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "parity-scale-codec",
- "sp-runtime",
- "sp-std",
 ]
 
 [[package]]
@@ -7015,7 +6981,6 @@ dependencies = [
  "frame-support",
  "frame-system",
  "parity-scale-codec",
- "sp-core",
 ]
 
 [[package]]
@@ -7164,12 +7129,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "pallet-balances",
  "parity-scale-codec",
- "serde",
- "sp-core",
- "sp-io",
- "sp-runtime",
 ]
 
 [[package]]
@@ -7311,15 +7271,10 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "pallet-balances",
  "pallet-chainlink-feed",
- "pallet-timestamp",
  "parity-scale-codec",
  "primitives",
  "serde",
- "sp-core",
- "sp-io",
- "sp-runtime",
 ]
 
 [[package]]
@@ -7352,74 +7307,15 @@ dependencies = [
 ]
 
 [[package]]
-name = "pallet-remote-asset-manager"
-version = "0.0.1"
-dependencies = [
- "cumulus-pallet-dmp-queue",
- "cumulus-pallet-parachain-system",
- "cumulus-pallet-xcm",
- "cumulus-pallet-xcmp-queue",
- "cumulus-primitives-core",
- "frame-benchmarking",
- "frame-election-provider-support",
- "frame-support",
- "frame-system",
- "log",
- "orml-currencies",
- "orml-tokens",
- "orml-traits",
- "orml-unknown-tokens 0.4.1-dev (git+https://github.com/open-web3-stack/open-runtime-module-library?branch=master)",
- "orml-xcm-support",
- "orml-xtokens",
- "pallet-asset-index",
- "pallet-assets",
- "pallet-balances",
- "pallet-collective",
- "pallet-price-feed",
- "pallet-proxy",
- "pallet-saft-registry",
- "pallet-session",
- "pallet-staking",
- "pallet-staking-reward-curve",
- "pallet-timestamp",
- "pallet-xcm",
- "parachain-info",
- "parity-scale-codec",
- "polkadot-parachain",
- "polkadot-runtime-parachains",
- "primitives",
- "serde",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-staking",
- "sp-std",
- "xcm",
- "xcm-builder",
- "xcm-calls",
- "xcm-executor",
- "xcm-simulator 0.1.0",
-]
-
-[[package]]
 name = "pallet-saft-registry"
 version = "0.0.1"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "orml-tokens",
- "orml-traits",
  "pallet-asset-index",
- "pallet-balances",
- "pallet-price-feed",
- "pallet-remote-asset-manager",
  "parity-scale-codec",
  "primitives",
- "serde",
- "sp-core",
- "sp-io",
- "sp-runtime",
  "xcm",
 ]
 
@@ -10028,7 +9924,7 @@ dependencies = [
  "orml-rewards",
  "orml-tokens",
  "orml-traits",
- "orml-unknown-tokens 0.4.1-dev",
+ "orml-unknown-tokens",
  "orml-vesting",
  "orml-xcm",
  "orml-xcm-support",
@@ -14314,28 +14210,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "xcm-calls"
-version = "0.0.1"
-dependencies = [
- "frame-election-provider-support",
- "frame-support",
- "frame-system",
- "pallet-assets",
- "pallet-balances",
- "pallet-proxy",
- "pallet-session",
- "pallet-staking",
- "pallet-staking-reward-curve",
- "pallet-timestamp",
- "parity-scale-codec",
- "serde",
- "sp-core",
- "sp-runtime",
- "sp-staking",
- "xcm",
-]
-
-[[package]]
 name = "xcm-emulator"
 version = "0.1.0"
 source = "git+https://github.com/shaunxw/xcm-simulator?branch=polkadot-v0.9.9#b6cf9973c8a81fb1a68036d1d8ef0c922f0e7551"
@@ -14374,25 +14248,6 @@ dependencies = [
  "sp-runtime",
  "sp-std",
  "xcm",
-]
-
-[[package]]
-name = "xcm-simulator"
-version = "0.1.0"
-source = "git+https://github.com/shaunxw/xcm-simulator?branch=master#b6cf9973c8a81fb1a68036d1d8ef0c922f0e7551"
-dependencies = [
- "cumulus-pallet-dmp-queue",
- "cumulus-pallet-xcmp-queue",
- "cumulus-primitives-core",
- "frame-support",
- "parity-scale-codec",
- "paste",
- "polkadot-parachain",
- "polkadot-runtime-parachains",
- "sp-io",
- "sp-std",
- "xcm",
- "xcm-executor",
 ]
 
 [[package]]
