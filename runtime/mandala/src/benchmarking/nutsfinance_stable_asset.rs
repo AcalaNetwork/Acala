@@ -22,7 +22,7 @@ use super::utils::set_balance_fungibles;
 use frame_benchmarking::{account, whitelisted_caller};
 use frame_system::RawOrigin;
 use orml_benchmarking::runtime_benchmarks;
-use primitives::currency::{AUSD, DOT, LDOT};
+use primitives::currency::{CurrencyId, AUSD, LDOT};
 use sp_std::prelude::*;
 
 const SEED: u32 = 0;
@@ -31,7 +31,7 @@ runtime_benchmarks! {
 	{ Runtime, nutsfinance_stable_asset }
 
 	create_pool {
-		let pool_asset = DOT;
+		let pool_asset = CurrencyId::StableAssetPoolToken(1);
 		let assets = vec![LDOT, AUSD];
 		let precisions = vec![1u128, 1u128];
 		let mint_fee = 10000000u128;
@@ -42,7 +42,7 @@ runtime_benchmarks! {
 	}: _(RawOrigin::Root, pool_asset, assets, precisions, mint_fee, swap_fee, redeem_fee, intial_a, fee_recipient)
 
 	modify_a {
-		let pool_asset = DOT;
+		let pool_asset = CurrencyId::StableAssetPoolToken(1);
 		let assets = vec![LDOT, AUSD];
 		let precisions = vec![1u128, 1u128];
 		let mint_fee = 10000000u128;
@@ -56,7 +56,7 @@ runtime_benchmarks! {
 
 	mint {
 		let tester: AccountId = whitelisted_caller();
-		let pool_asset = DOT;
+		let pool_asset = CurrencyId::StableAssetPoolToken(1);
 		let assets = vec![LDOT, AUSD];
 		let precisions = vec![1u128, 1u128];
 		let mint_fee = 10000000u128;
@@ -72,7 +72,7 @@ runtime_benchmarks! {
 
 	swap {
 		let tester: AccountId = whitelisted_caller();
-		let pool_asset = DOT;
+		let pool_asset = CurrencyId::StableAssetPoolToken(1);
 		let assets = vec![LDOT, AUSD];
 		let precisions = vec![1u128, 1u128];
 		let mint_fee = 10000000u128;
@@ -89,7 +89,7 @@ runtime_benchmarks! {
 
 	collect_fee {
 		let tester: AccountId = whitelisted_caller();
-		let pool_asset = DOT;
+		let pool_asset = CurrencyId::StableAssetPoolToken(1);
 		let assets = vec![LDOT, AUSD];
 		let precisions = vec![1u128, 1u128];
 		let mint_fee = 10000000u128;
@@ -107,7 +107,7 @@ runtime_benchmarks! {
 
 	redeem_proportion {
 		let tester: AccountId = whitelisted_caller();
-		let pool_asset = DOT;
+		let pool_asset = CurrencyId::StableAssetPoolToken(1);
 		let assets = vec![LDOT, AUSD];
 		let precisions = vec![1u128, 1u128];
 		let mint_fee = 10000000u128;
@@ -124,7 +124,7 @@ runtime_benchmarks! {
 
 	redeem_single {
 		let tester: AccountId = whitelisted_caller();
-		let pool_asset = DOT;
+		let pool_asset = CurrencyId::StableAssetPoolToken(1);
 		let assets = vec![LDOT, AUSD];
 		let precisions = vec![1u128, 1u128];
 		let mint_fee = 10000000u128;
@@ -141,7 +141,7 @@ runtime_benchmarks! {
 
 	redeem_multi {
 		let tester: AccountId = whitelisted_caller();
-		let pool_asset = DOT;
+		let pool_asset = CurrencyId::StableAssetPoolToken(1);
 		let assets = vec![LDOT, AUSD];
 		let precisions = vec![1u128, 1u128];
 		let mint_fee = 10000000u128;

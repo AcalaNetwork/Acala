@@ -816,6 +816,7 @@ parameter_type_with_key! {
 			},
 			CurrencyId::Erc20(_) => Balance::max_value(), // not handled by orml-tokens
 			CurrencyId::ChainSafe(_) => 1, // TODO: update this before we enable ChainSafe bridge
+			CurrencyId::StableAssetPoolToken(_) => 1, // TODO: update this before we enable StableAsset
 		}
 	};
 }
@@ -1855,6 +1856,13 @@ parameter_types! {
 	pub const FeePrecision: u128 = 10000000000u128; // 10 decimals
 }
 
+pub struct EnsurePoolAssetId;
+impl nutsfinance_stable_asset::traits::ValidateAssetId<CurrencyId> for EnsurePoolAssetId {
+	fn validate(currency_id: CurrencyId) -> bool {
+		matches!(currency_id, CurrencyId::StableAssetPoolToken(_))
+	}
+}
+
 impl nutsfinance_stable_asset::Config for Runtime {
 	type Event = Event;
 	type AssetId = CurrencyId;
@@ -1867,6 +1875,7 @@ impl nutsfinance_stable_asset::Config for Runtime {
 	type FeePrecision = FeePrecision;
 	type WeightInfo = weights::nutsfinance_stable_asset::WeightInfo<Runtime>;
 	type ListingOrigin = EnsureRootOrHalfGeneralCouncil;
+	type EnsurePoolAssetId = EnsurePoolAssetId;
 }
 
 impl cumulus_pallet_aura_ext::Config for Runtime {}
