@@ -22,9 +22,12 @@
 #![allow(clippy::unused_unit)]
 #![allow(clippy::upper_case_acronyms)]
 
-use crate::runner::storage_meter::StorageMeter;
+pub use crate::{
+	precompiles::{Precompile, PrecompileSet},
+	runner::{storage_meter::StorageMeter, Runner},
+};
 use codec::{Decode, Encode, MaxEncodedLen};
-use evm::Config as EvmConfig;
+pub use evm::{Config as EvmConfig, Context, ExitError, ExitFatal, ExitReason, ExitRevert, ExitSucceed};
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult, DispatchResultWithPostInfo},
 	ensure,
@@ -40,8 +43,16 @@ use frame_support::{
 	BoundedVec, RuntimeDebug,
 };
 use frame_system::{ensure_root, ensure_signed, pallet_prelude::*, EnsureOneOf, EnsureRoot, EnsureSigned};
-use primitive_types::{H256, U256};
-use primitives::{H160_PREFIX_DEXSHARE, H160_PREFIX_TOKEN, PREDEPLOY_ADDRESS_START, SYSTEM_CONTRACT_ADDRESS_PREFIX};
+pub use module_support::{
+	AddressMapping, EVMStateRentTrait, ExecutionMode, InvokeContext, TransactionPayment, EVM as EVMTrait,
+};
+pub use orml_traits::currency::TransferAll;
+use primitive_types::{H160, H256, U256};
+pub use primitives::{
+	evm::{Account, CallInfo, CreateInfo, EvmAddress, ExecutionInfo, Log, Vicinity},
+	ReserveIdentifier, H160_PREFIX_DEXSHARE, H160_PREFIX_TOKEN, MIRRORED_NFT_ADDRESS_START, PREDEPLOY_ADDRESS_START,
+	SYSTEM_CONTRACT_ADDRESS_PREFIX,
+};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sha3::{Digest, Keccak256};
@@ -53,19 +64,6 @@ use sp_runtime::{
 	Either, TransactionOutcome,
 };
 use sp_std::{convert::TryInto, marker::PhantomData, prelude::*};
-
-pub use module_support::{
-	AddressMapping, EVMStateRentTrait, ExecutionMode, InvokeContext, TransactionPayment, EVM as EVMTrait,
-};
-
-pub use crate::precompiles::{Precompile, PrecompileSet};
-pub use crate::runner::Runner;
-pub use evm::{Context, ExitError, ExitFatal, ExitReason, ExitRevert, ExitSucceed};
-pub use orml_traits::currency::TransferAll;
-pub use primitives::{
-	evm::{Account, EvmAddress, Log, Vicinity},
-	ReserveIdentifier, MIRRORED_NFT_ADDRESS_START,
-};
 
 pub mod precompiles;
 pub mod runner;
@@ -1304,65 +1302,65 @@ impl<T: Config> Pallet<T> {
 	}
 }
 
-//impl<T: Config> EVMTrait<T::AccountId> for Pallet<T> {
-//	type Balance = BalanceOf<T>;
-//	fn execute(
-//		context: InvokeContext,
-//		input: Vec<u8>,
-//		value: BalanceOf<T>,
-//		gas_limit: u64,
-//		storage_limit: u32,
-//		mode: ExecutionMode,
-//	) -> Result<CallInfo, sp_runtime::DispatchError> {
-//		let mut config = T::config().clone();
-//		if let ExecutionMode::EstimateGas = mode {
-//			config.estimate = true;
-//		}
-//
-//		frame_support::storage::with_transaction(|| {
-//			let result = T::Runner::call(
-//				context.sender,
-//				context.origin,
-//				context.contract,
-//				input,
-//				U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(value)),
-//				gas_limit,
-//				storage_limit,
-//				&config,
-//			);
-//
-//			match result {
-//				Ok(info) => match mode {
-//					ExecutionMode::Execute => {
-//						if info.exit_reason.is_succeed() {
-//							Pallet::<T>::deposit_event(Event::<T>::Executed(context.contract));
-//							TransactionOutcome::Commit(Ok(info))
-//						} else {
-//							Pallet::<T>::deposit_event(Event::<T>::ExecutedFailed(
-//								context.contract,
-//								info.exit_reason.clone(),
-//								info.value.clone(),
-//							));
-//							TransactionOutcome::Rollback(Ok(info))
-//						}
-//					}
-//					ExecutionMode::View | ExecutionMode::EstimateGas => TransactionOutcome::Rollback(Ok(info)),
-//				},
-//				Err(e) => TransactionOutcome::Rollback(Err(e)),
-//			}
-//		})
-//	}
-//
-//	/// Get the real origin account and charge storage rent from the origin.
-//	fn get_origin() -> Option<T::AccountId> {
-//		ExtrinsicOrigin::<T>::get()
-//	}
-//
-//	/// Provide a method to set origin for `on_initialize`
-//	fn set_origin(origin: T::AccountId) {
-//		ExtrinsicOrigin::<T>::set(Some(origin));
-//	}
-//}
+impl<T: Config> EVMTrait<T::AccountId> for Pallet<T> {
+	type Balance = BalanceOf<T>;
+	fn execute(
+		context: InvokeContext,
+		input: Vec<u8>,
+		value: BalanceOf<T>,
+		gas_limit: u64,
+		storage_limit: u32,
+		mode: ExecutionMode,
+	) -> Result<CallInfo, DispatchError> {
+		let mut config = T::config().clone();
+		if let ExecutionMode::EstimateGas = mode {
+			config.estimate = true;
+		}
+
+		frame_support::storage::with_transaction(|| {
+			let result = T::Runner::call(
+				context.sender,
+				context.origin,
+				context.contract,
+				input,
+				U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(value)),
+				gas_limit,
+				storage_limit,
+				&config,
+			);
+
+			match result {
+				Ok(info) => match mode {
+					ExecutionMode::Execute => {
+						if info.exit_reason.is_succeed() {
+							Pallet::<T>::deposit_event(Event::<T>::Executed(context.contract));
+							TransactionOutcome::Commit(Ok(info))
+						} else {
+							Pallet::<T>::deposit_event(Event::<T>::ExecutedFailed(
+								context.contract,
+								info.exit_reason.clone(),
+								info.value.clone(),
+							));
+							TransactionOutcome::Rollback(Ok(info))
+						}
+					}
+					ExecutionMode::View | ExecutionMode::EstimateGas => TransactionOutcome::Rollback(Ok(info)),
+				},
+				Err(e) => TransactionOutcome::Rollback(Err(e)),
+			}
+		})
+	}
+
+	/// Get the real origin account and charge storage rent from the origin.
+	fn get_origin() -> Option<T::AccountId> {
+		ExtrinsicOrigin::<T>::get()
+	}
+
+	/// Provide a method to set origin for `on_initialize`
+	fn set_origin(origin: T::AccountId) {
+		ExtrinsicOrigin::<T>::set(Some(origin));
+	}
+}
 
 impl<T: Config> EVMStateRentTrait<T::AccountId, BalanceOf<T>> for Pallet<T> {
 	fn query_new_contract_extra_bytes() -> u32 {
@@ -1471,17 +1469,3 @@ impl<T: Config + Send + Sync> SignedExtension for SetEvmOrigin<T> {
 		Ok(())
 	}
 }
-
-use sp_core::H160;
-#[derive(Clone, Eq, PartialEq, Encode, Decode)]
-#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
-pub struct ExecutionInfo<T> {
-	pub exit_reason: ExitReason,
-	pub value: T,
-	pub used_gas: U256,
-	pub used_storage: i32,
-	pub logs: Vec<Log>,
-}
-
-pub type CallInfo = ExecutionInfo<Vec<u8>>;
-pub type CreateInfo = ExecutionInfo<H160>;

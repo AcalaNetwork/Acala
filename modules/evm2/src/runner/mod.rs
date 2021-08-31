@@ -21,8 +21,8 @@ pub mod state;
 pub mod storage_meter;
 
 use crate::{CallInfo, Config, CreateInfo, ExitError};
-use evm::backend::Backend;
-use evm::Transfer;
+use evm::{backend::Backend, Transfer};
+use frame_support::dispatch::DispatchError;
 pub use primitives::{
 	evm::{Account, EvmAddress, Log, Vicinity},
 	ReserveIdentifier, MIRRORED_NFT_ADDRESS_START,
@@ -32,8 +32,6 @@ use sp_std::vec::Vec;
 use state::StackSubstateMetadata;
 
 pub trait Runner<T: Config> {
-	type Error: Into<sp_runtime::DispatchError>;
-
 	fn call(
 		source: H160,
 		origin: H160,
@@ -43,7 +41,7 @@ pub trait Runner<T: Config> {
 		gas_limit: u64,
 		storage_limit: u32,
 		config: &evm::Config,
-	) -> Result<CallInfo, Self::Error>;
+	) -> Result<CallInfo, DispatchError>;
 
 	fn create(
 		source: H160,
@@ -52,7 +50,7 @@ pub trait Runner<T: Config> {
 		gas_limit: u64,
 		storage_limit: u32,
 		config: &evm::Config,
-	) -> Result<CreateInfo, Self::Error>;
+	) -> Result<CreateInfo, DispatchError>;
 
 	fn create2(
 		source: H160,
@@ -62,7 +60,7 @@ pub trait Runner<T: Config> {
 		gas_limit: u64,
 		storage_limit: u32,
 		config: &evm::Config,
-	) -> Result<CreateInfo, Self::Error>;
+	) -> Result<CreateInfo, DispatchError>;
 
 	fn create_at_address(
 		source: H160,
@@ -72,7 +70,7 @@ pub trait Runner<T: Config> {
 		gas_limit: u64,
 		storage_limit: u32,
 		config: &evm::Config,
-	) -> Result<CreateInfo, Self::Error>;
+	) -> Result<CreateInfo, DispatchError>;
 }
 
 pub trait StackState<'config>: Backend {

@@ -26,7 +26,7 @@ use crate::runner::{
 	state::{StackExecutor, StackSubstateMetadata},
 	StackState,
 };
-use frame_support::{assert_err, assert_noop, assert_ok, dispatch::DispatchErrorWithPostInfo};
+use frame_support::{assert_noop, assert_ok, dispatch::DispatchErrorWithPostInfo};
 use module_support::AddressMapping;
 use sp_core::{
 	bytes::{from_hex, to_hex},
@@ -1300,179 +1300,178 @@ fn storage_limit_should_work() {
 	});
 }
 
-//#[test]
-//fn evm_execute_mode_should_work() {
-//	// pragma solidity ^0.5.0;
-//
-//	// contract Factory {
-//	// 	Contract[] newContracts;
-//
-//	// 	function createContract (uint num) public payable {
-//	// 		for(uint i = 0; i < num; i++) {
-//	// 			Contract newContract = new Contract();
-//	// 			newContracts.push(newContract);
-//	// 		}
-//	// 	}
-//	// }
-//
-//	// contract Contract {}
-//	let contract = from_hex(
-//		"0x608060405234801561001057600080fd5b506101a0806100206000396000f3fe60806040526004361061001e5760003560e01c80639db8d7d514610023575b600080fd5b61004f6004803603602081101561003957600080fd5b8101908080359060200190929190505050610051565b005b60008090505b8181101561010057600060405161006d90610104565b604051809103906000f080158015610089573d6000803e3d6000fd5b50905060008190806001815401808255809150509060018203906000526020600020016000909192909190916101000a81548173ffffffffffffffffffffffffffffffffffffffff021916908373ffffffffffffffffffffffffffffffffffffffff16021790555050508080600101915050610057565b5050565b605b806101118339019056fe6080604052348015600f57600080fd5b50603e80601d6000396000f3fe6080604052600080fdfea265627a7a7231582035666e9471716d6d05ed9f0c1ab13d0371f49d536270f905bff06cd98212dcb064736f6c63430005110032a265627a7a723158203b6aaf6588bc3e6a35986612a62f715255430eab09ffb24401e5f18eb58a05d564736f6c63430005110032"
-//	).unwrap();
-//
-//	new_test_ext().execute_with(|| {
-//		let mut alice_balance = INITIAL_BALANCE - 516 * <Runtime as
-// Config>::StorageDepositPerByte::get();
-//
-//		let result = <Runtime as Config>::Runner::create(
-//			alice(),
-//			contract.clone(),
-//			0.into(),
-//			1000000000,
-//			1000000000,
-//			<Runtime as Config>::config(),
-//		)
-//		.unwrap();
-//		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
-//		assert_eq!(result.used_storage, 516);
-//		assert_eq!(balance(alice()), alice_balance);
-//		let factory_contract_address = result.value;
-//
-//		#[cfg(not(feature = "with-ethereum-compatibility"))]
-//		deploy_free(factory_contract_address);
-//
-//		let context = InvokeContext {
-//			contract: factory_contract_address,
-//			sender: alice(),
-//			origin: alice(),
-//		};
-//
-//		// ExecutionMode::EstimateGas
-//		// Factory.createContract(1)
-//		let create_contract =
-//			from_hex("0x9db8d7d50000000000000000000000000000000000000000000000000000000000000001").unwrap();
-//		let result = EVM::execute(
-//			context,
-//			create_contract,
-//			Default::default(),
-//			2_100_000,
-//			1000,
-//			ExecutionMode::EstimateGas,
-//		)
-//		.unwrap();
-//		assert_eq!(
-//			result,
-//			CallInfo {
-//				exit_reason: ExitReason::Succeed(ExitSucceed::Stopped),
-//				value: vec![],
-//				used_gas: U256::from(113949),
-//				used_storage: 290,
-//				logs: vec![]
-//			}
-//		);
-//
-//		// Factory.createContract(2)
-//		let create_contract =
-//			from_hex("0x9db8d7d50000000000000000000000000000000000000000000000000000000000000002").unwrap();
-//		let result = EVM::execute(
-//			context,
-//			create_contract,
-//			Default::default(),
-//			2_100_000,
-//			2_100_000,
-//			ExecutionMode::EstimateGas,
-//		)
-//		.unwrap();
-//		assert_eq!(
-//			result,
-//			CallInfo {
-//				exit_reason: ExitReason::Succeed(ExitSucceed::Stopped),
-//				value: vec![],
-//				used_gas: U256::from(200380),
-//				used_storage: 516,
-//				logs: vec![]
-//			}
-//		);
-//		assert_eq!(balance(alice()), alice_balance);
-//
-//		// ExecutionMode::Execute
-//		// Factory.createContract(1)
-//		let create_contract =
-//			from_hex("0x9db8d7d50000000000000000000000000000000000000000000000000000000000000001").unwrap();
-//		let result = EVM::execute(
-//			context,
-//			create_contract,
-//			Default::default(),
-//			2_100_000,
-//			0,
-//			ExecutionMode::Execute,
-//		)
-//		.unwrap();
-//		assert_eq!(
-//			result,
-//			CallInfo {
-//				exit_reason: ExitReason::Revert(ExitRevert::Reverted),
-//				value: vec![],
-//				used_gas: U256::from(72098),
-//				used_storage: 0,
-//				logs: vec![]
-//			}
-//		);
-//		assert_eq!(balance(alice()), alice_balance);
-//
-//		let create_contract =
-//			from_hex("0x9db8d7d50000000000000000000000000000000000000000000000000000000000000001").unwrap();
-//		let result = EVM::execute(
-//			context,
-//			create_contract,
-//			Default::default(),
-//			2_100_000,
-//			2_100_000,
-//			ExecutionMode::Execute,
-//		)
-//		.unwrap();
-//		assert_eq!(
-//			result,
-//			CallInfo {
-//				exit_reason: ExitReason::Succeed(ExitSucceed::Stopped),
-//				value: vec![],
-//				used_gas: U256::from(113949),
-//				used_storage: 290,
-//				logs: vec![]
-//			}
-//		);
-//
-//		alice_balance -= 290 * <Runtime as Config>::StorageDepositPerByte::get();
-//
-//		assert_eq!(balance(alice()), alice_balance);
-//
-//		// ExecutionMode::View
-//		// Discard any state changes
-//		let create_contract =
-//			from_hex("0x9db8d7d50000000000000000000000000000000000000000000000000000000000000001").unwrap();
-//		let result = EVM::execute(
-//			context,
-//			create_contract,
-//			Default::default(),
-//			2_100_000,
-//			2_100_000,
-//			ExecutionMode::View,
-//		)
-//		.unwrap();
-//		assert_eq!(
-//			result,
-//			CallInfo {
-//				exit_reason: ExitReason::Succeed(ExitSucceed::Stopped),
-//				value: vec![],
-//				used_gas: U256::from(98949),
-//				used_storage: 226,
-//				logs: vec![]
-//			}
-//		);
-//
-//		assert_eq!(balance(alice()), alice_balance);
-//	});
-//}
+#[test]
+fn evm_execute_mode_should_work() {
+	// pragma solidity ^0.5.0;
+
+	// contract Factory {
+	// 	Contract[] newContracts;
+
+	// 	function createContract (uint num) public payable {
+	// 		for(uint i = 0; i < num; i++) {
+	// 			Contract newContract = new Contract();
+	// 			newContracts.push(newContract);
+	// 		}
+	// 	}
+	// }
+
+	// contract Contract {}
+	let contract = from_hex(
+		"0x608060405234801561001057600080fd5b506101a0806100206000396000f3fe60806040526004361061001e5760003560e01c80639db8d7d514610023575b600080fd5b61004f6004803603602081101561003957600080fd5b8101908080359060200190929190505050610051565b005b60008090505b8181101561010057600060405161006d90610104565b604051809103906000f080158015610089573d6000803e3d6000fd5b50905060008190806001815401808255809150509060018203906000526020600020016000909192909190916101000a81548173ffffffffffffffffffffffffffffffffffffffff021916908373ffffffffffffffffffffffffffffffffffffffff16021790555050508080600101915050610057565b5050565b605b806101118339019056fe6080604052348015600f57600080fd5b50603e80601d6000396000f3fe6080604052600080fdfea265627a7a7231582035666e9471716d6d05ed9f0c1ab13d0371f49d536270f905bff06cd98212dcb064736f6c63430005110032a265627a7a723158203b6aaf6588bc3e6a35986612a62f715255430eab09ffb24401e5f18eb58a05d564736f6c63430005110032"
+	).unwrap();
+
+	new_test_ext().execute_with(|| {
+		let mut alice_balance = INITIAL_BALANCE - 516 * <Runtime as Config>::StorageDepositPerByte::get();
+
+		let result = <Runtime as Config>::Runner::create(
+			alice(),
+			contract.clone(),
+			0.into(),
+			1000000000,
+			1000000000,
+			<Runtime as Config>::config(),
+		)
+		.unwrap();
+		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
+		assert_eq!(result.used_storage, 516);
+		assert_eq!(balance(alice()), alice_balance);
+		let factory_contract_address = result.value;
+
+		#[cfg(not(feature = "with-ethereum-compatibility"))]
+		deploy_free(factory_contract_address);
+
+		let context = InvokeContext {
+			contract: factory_contract_address,
+			sender: alice(),
+			origin: alice(),
+		};
+
+		// ExecutionMode::EstimateGas
+		// Factory.createContract(1)
+		let create_contract =
+			from_hex("0x9db8d7d50000000000000000000000000000000000000000000000000000000000000001").unwrap();
+		let result = EVM::execute(
+			context,
+			create_contract,
+			Default::default(),
+			2_100_000,
+			1000,
+			ExecutionMode::EstimateGas,
+		)
+		.unwrap();
+		assert_eq!(
+			result,
+			CallInfo {
+				exit_reason: ExitReason::Succeed(ExitSucceed::Stopped),
+				value: vec![],
+				used_gas: U256::from(139845),
+				used_storage: 290,
+				logs: vec![]
+			}
+		);
+
+		// Factory.createContract(2)
+		let create_contract =
+			from_hex("0x9db8d7d50000000000000000000000000000000000000000000000000000000000000002").unwrap();
+		let result = EVM::execute(
+			context,
+			create_contract,
+			Default::default(),
+			2_100_000,
+			2_100_000,
+			ExecutionMode::EstimateGas,
+		)
+		.unwrap();
+		assert_eq!(
+			result,
+			CallInfo {
+				exit_reason: ExitReason::Succeed(ExitSucceed::Stopped),
+				value: vec![],
+				used_gas: U256::from(256402),
+				used_storage: 580,
+				logs: vec![]
+			}
+		);
+		assert_eq!(balance(alice()), alice_balance);
+
+		// ExecutionMode::Execute
+		// Factory.createContract(1)
+		let create_contract =
+			from_hex("0x9db8d7d50000000000000000000000000000000000000000000000000000000000000001").unwrap();
+		let result = EVM::execute(
+			context,
+			create_contract,
+			Default::default(),
+			2_100_000,
+			0,
+			ExecutionMode::Execute,
+		)
+		.unwrap();
+		assert_eq!(
+			result,
+			CallInfo {
+				exit_reason: ExitReason::Revert(ExitRevert::Reverted),
+				value: vec![],
+				used_gas: U256::from(66018),
+				used_storage: 0,
+				logs: vec![]
+			}
+		);
+		assert_eq!(balance(alice()), alice_balance);
+
+		let create_contract =
+			from_hex("0x9db8d7d50000000000000000000000000000000000000000000000000000000000000001").unwrap();
+		let result = EVM::execute(
+			context,
+			create_contract,
+			Default::default(),
+			2_100_000,
+			2_100_000,
+			ExecutionMode::Execute,
+		)
+		.unwrap();
+		assert_eq!(
+			result,
+			CallInfo {
+				exit_reason: ExitReason::Succeed(ExitSucceed::Stopped),
+				value: vec![],
+				used_gas: U256::from(107869),
+				used_storage: 290,
+				logs: vec![]
+			}
+		);
+
+		alice_balance -= 290 * <Runtime as Config>::StorageDepositPerByte::get();
+
+		assert_eq!(balance(alice()), alice_balance);
+
+		// ExecutionMode::View
+		// Discard any state changes
+		let create_contract =
+			from_hex("0x9db8d7d50000000000000000000000000000000000000000000000000000000000000001").unwrap();
+		let result = EVM::execute(
+			context,
+			create_contract,
+			Default::default(),
+			2_100_000,
+			2_100_000,
+			ExecutionMode::View,
+		)
+		.unwrap();
+		assert_eq!(
+			result,
+			CallInfo {
+				exit_reason: ExitReason::Succeed(ExitSucceed::Stopped),
+				value: vec![],
+				used_gas: U256::from(92869),
+				used_storage: 290,
+				logs: vec![]
+			}
+		);
+
+		assert_eq!(balance(alice()), alice_balance);
+	});
+}
 
 #[test]
 fn should_update_storage() {

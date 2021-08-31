@@ -19,17 +19,18 @@
 //! EVM stack-based runner.
 // Synchronize with https://github.com/rust-blockchain/evm/blob/master/src/executor/stack/mod.rs
 
-use crate::precompiles::PrecompileSet;
-use crate::runner::Runner as RunnerT;
-use crate::runner::{
-	state::{StackExecutor, StackSubstateMetadata},
-	StackState as StackStateT,
+use crate::{
+	precompiles::PrecompileSet,
+	runner::{
+		state::{StackExecutor, StackSubstateMetadata},
+		Runner as RunnerT, StackState as StackStateT,
+	},
+	AccountInfo, AccountStorages, Accounts, CallInfo, Config, CreateInfo, Error, Event, ExecutionInfo, One, Pallet,
+	STORAGE_SIZE,
 };
-use crate::{AccountInfo, Accounts, One, StorageMeter, STORAGE_SIZE};
-use crate::{AccountStorages, CallInfo, Config, CreateInfo, Error, Event, ExecutionInfo, Pallet};
-use evm::backend::Backend as BackendT;
-use evm::{ExitError, ExitReason, Transfer};
+use evm::{backend::Backend as BackendT, ExitError, ExitReason, Transfer};
 use frame_support::{
+	dispatch::DispatchError,
 	ensure, log,
 	traits::{Currency, ExistenceRequirement, Get},
 };
@@ -59,7 +60,7 @@ impl<T: Config> Runner<T> {
 		storage_limit: u32,
 		config: &'config evm::Config,
 		f: F,
-	) -> Result<ExecutionInfo<R>, Error<T>>
+	) -> Result<ExecutionInfo<R>, sp_runtime::DispatchError>
 	where
 		F: FnOnce(&mut StackExecutor<'config, SubstrateStackState<'_, 'config, T>>) -> (ExitReason, R),
 	{
@@ -108,7 +109,7 @@ impl<T: Config> Runner<T> {
 			_ if reason == ExitReason::Error(ExitError::Other("OutOfStorage".into())) => {
 				// TODO: Looking for a better way
 				sp_io::storage::rollback_transaction();
-				return Err(Error::<T>::OutOfStorage);
+				return Err(DispatchError::from(Error::<T>::OutOfStorage));
 			}
 			_ => {}
 		}
@@ -167,8 +168,6 @@ impl<T: Config> Runner<T> {
 }
 
 impl<T: Config> RunnerT<T> for Runner<T> {
-	type Error = Error<T>;
-
 	fn call(
 		source: H160,
 		origin: H160,
@@ -178,7 +177,7 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 		gas_limit: u64,
 		storage_limit: u32,
 		config: &evm::Config,
-	) -> Result<CallInfo, Self::Error> {
+	) -> Result<CallInfo, DispatchError> {
 		// if the contract not deployed, the caller must be developer or contract or maintainer.
 		// if the contract not exists, let evm try to execute it and handle the error.
 		ensure!(
@@ -198,7 +197,7 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 		gas_limit: u64,
 		storage_limit: u32,
 		config: &evm::Config,
-	) -> Result<CreateInfo, Self::Error> {
+	) -> Result<CreateInfo, DispatchError> {
 		Self::execute(source, source, value, gas_limit, storage_limit, config, |executor| {
 			let address = executor.create_address(evm::CreateScheme::Legacy { caller: source });
 			(executor.transact_create(source, value, init, gas_limit), address)
@@ -213,7 +212,7 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 		gas_limit: u64,
 		storage_limit: u32,
 		config: &evm::Config,
-	) -> Result<CreateInfo, Self::Error> {
+	) -> Result<CreateInfo, DispatchError> {
 		let code_hash = H256::from_slice(Keccak256::digest(&init).as_slice());
 		Self::execute(source, source, value, gas_limit, storage_limit, config, |executor| {
 			let address = executor.create_address(evm::CreateScheme::Create2 {
@@ -233,7 +232,7 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 		gas_limit: u64,
 		storage_limit: u32,
 		config: &evm::Config,
-	) -> Result<CreateInfo, Self::Error> {
+	) -> Result<CreateInfo, DispatchError> {
 		Self::execute(source, source, value, gas_limit, storage_limit, config, |executor| {
 			(
 				executor.transact_create(source, value, init, gas_limit),

@@ -23,7 +23,6 @@ use evm::{Context, ExitError, ExitSucceed};
 use impl_trait_for_tuples::impl_for_tuples;
 use primitive_types::H160;
 use ripemd160::Digest;
-use sp_runtime::SaturatedConversion;
 use sp_std::{cmp::min, marker::PhantomData, vec::Vec};
 use tiny_keccak::Hasher;
 

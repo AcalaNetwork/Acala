@@ -43,22 +43,16 @@ pub struct Vicinity {
 
 #[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct CreateInfo {
+pub struct ExecutionInfo<T> {
 	pub exit_reason: ExitReason,
-	pub address: EvmAddress,
-	pub output: Vec<u8>,
+	pub value: T,
 	pub used_gas: U256,
 	pub used_storage: i32,
+	pub logs: Vec<Log>,
 }
 
-#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct CallInfo {
-	pub exit_reason: ExitReason,
-	pub output: Vec<u8>,
-	pub used_gas: U256,
-	pub used_storage: i32,
-}
+pub type CallInfo = ExecutionInfo<Vec<u8>>;
+pub type CreateInfo = ExecutionInfo<H160>;
 
 #[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]

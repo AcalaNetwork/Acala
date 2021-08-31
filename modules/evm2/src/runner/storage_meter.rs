@@ -18,7 +18,6 @@
 
 use evm::ExitError;
 use frame_support::log;
-use sp_runtime::{DispatchError, DispatchResult};
 
 pub struct StorageMeter {
 	limit: u32,
@@ -154,7 +153,6 @@ impl StorageMeter {
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use frame_support::{assert_err, assert_ok};
 
 	#[test]
 	fn test_storage_with_limit_zero() {

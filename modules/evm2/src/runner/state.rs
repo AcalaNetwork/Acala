@@ -20,27 +20,19 @@
 
 use crate::{runner::StackState, StorageMeter};
 use core::{cmp::min, convert::Infallible};
-use evm::backend::Backend;
 use evm::{
 	Capture, Config, Context, CreateScheme, ExitError, ExitReason, ExitSucceed, Opcode, Runtime, Stack, Transfer,
 };
 use evm_gasometer::{self as gasometer, Gasometer};
 use evm_runtime::Handler;
-use frame_support::{
-	ensure, log,
-	traits::{Currency, ExistenceRequirement, Get},
-};
+use frame_support::log;
 use primitive_types::{H160, H256, U256};
 pub use primitives::{
 	evm::{Account, EvmAddress, Log, Vicinity},
 	ReserveIdentifier, MIRRORED_NFT_ADDRESS_START,
 };
 use sha3::{Digest, Keccak256};
-use std::{
-	collections::{BTreeMap, BTreeSet},
-	rc::Rc,
-	vec::Vec,
-};
+use std::{rc::Rc, vec::Vec};
 
 #[cfg(feature = "tracing")]
 macro_rules! event {
