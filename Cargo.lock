@@ -73,6 +73,7 @@ dependencies = [
  "evm",
  "frame-support",
  "num_enum",
+ "nutsfinance-stable-asset",
  "parity-scale-codec",
  "primitives-proc-macro",
  "serde",
