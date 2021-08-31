@@ -122,7 +122,7 @@ pub mod module {
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
-	#[pallet::metadata(T::AccountId = "AccountId")]
+	#[pallet::metadata(T::AccountId = "AccountId", RelaychainBlockNumberOf<T> = "RelaychainBlockNumner")]
 	pub enum Event<T: Config> {
 		/// The user has Staked some currencies to mint Liquid Currency.
 		/// \[user, amount_staked, amount_minted\]
@@ -149,6 +149,13 @@ pub mod module {
 		/// The user has redeemed some Liquid currency back to Staking currency.
 		/// \[user, staking_amount_redeemed, liquid_amount_deducted\]
 		Redeemed(T::AccountId, Balance, Balance),
+
+		/// A new Unbound request added to the schedule.
+		/// \[staking_amount, relaychain_blocknumber\]
+		ScheduledUnboundAdded(Balance, RelaychainBlockNumberOf<T>),
+
+		/// The ScheduledUnbound has been replaced.
+		ScheduledUnboundReplaced,
 	}
 
 	/// The total amount of the staking currency on the relaychain.
@@ -279,7 +286,8 @@ pub mod module {
 		/// The redemption will happen after the currencies are unbounded on the relaychain.
 		///
 		/// Parameters:
-		/// -
+		/// - `liquid_amount`: The amount of liquid currency to be redeemed into Staking currency.
+		/// - `additional_fee`: Percentage of the fee to be awarded to the minter.
 		#[pallet::weight(< T as Config >::WeightInfo::request_redeem())]
 		#[transactional]
 		pub fn request_redeem(origin: OriginFor<T>, liquid_amount: Balance, additional_fee: Permill) -> DispatchResult {
@@ -309,6 +317,53 @@ pub mod module {
 					Self::deposit_event(Event::<T>::RedeemRequested(who, actual_redeem_amount));
 				}
 			}
+			Ok(())
+		}
+
+		/// Request staking currencies to be unbounded from the Relaychain.
+		///
+		/// Requires `T::GovernanceOrigin`
+		///
+		/// Parameters:
+		/// - `staking_amount`: The amount of staking currency to be unbounded.
+		/// - `unbound_block`: The relaychain block number to unbound.
+		#[pallet::weight(< T as Config >::WeightInfo::schedule_unbound())]
+		#[transactional]
+		pub fn schedule_unbound(
+			origin: OriginFor<T>,
+			staking_amount: Balance,
+			unbound_block: RelaychainBlockNumberOf<T>,
+		) -> DispatchResult {
+			T::GovernanceOrigin::ensure_origin(origin)?;
+
+			let mut current_scheduled_unbound = Self::scheduled_unbound();
+			current_scheduled_unbound.push((staking_amount, unbound_block));
+			ScheduledUnbound::<T>::put(current_scheduled_unbound);
+
+			Self::deposit_event(Event::<T>::ScheduledUnboundAdded(staking_amount, unbound_block));
+			Ok(())
+		}
+
+		/// Replace the current storage for `ScheduledUnbound`.
+		/// This should only be used to correct mistaken call of schedule_unbond or if something
+		/// unexpected happened on relaychain.
+		///
+		/// Requires `T::GovernanceOrigin`
+		///
+		/// Parameters:
+		/// - `new_unbounds`: The new ScheduledUnbound storage to replace the currrent storage.
+		#[pallet::weight(< T as Config >::WeightInfo::replace_schedule_unbound())]
+		#[transactional]
+		pub fn replace_schedule_unbound(
+			origin: OriginFor<T>,
+			new_unbounds: Vec<(Balance, RelaychainBlockNumberOf<T>)>,
+		) -> DispatchResult {
+			T::GovernanceOrigin::ensure_origin(origin)?;
+
+			ScheduledUnbound::<T>::put(new_unbounds);
+
+			Self::deposit_event(Event::<T>::ScheduledUnboundReplaced);
+
 			Ok(())
 		}
 	}

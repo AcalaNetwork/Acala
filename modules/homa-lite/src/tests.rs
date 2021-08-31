@@ -126,9 +126,13 @@ fn repeated_mints_have_similar_exchange_rate() {
 
 		// Second exchange
 		// liquid = (1000 - 0.01) * 1004949.9505 / 201000 * 0.99
-		let liquid_2 = 4_949_703_990_002_437;
+		let liquid_2 = 4_949_703_990_002_433; // Actual amount is lower due to rounding loss
 		assert_ok!(HomaLite::mint(Origin::signed(BOB), amount));
-		assert_eq!(Currencies::free_balance(LKSM, &BOB), 9_899_654_490_002_437);
+		assert_eq!(
+			System::events().iter().last().unwrap().event,
+			Event::HomaLite(crate::Event::Minted(BOB, amount, liquid_2))
+		);
+		assert_eq!(Currencies::free_balance(LKSM, &BOB), 9_899_654_490_002_433);
 
 		// Since the effective exchange rate is lower than the theortical rate, Liquid currency becomes more
 		// valuable.
@@ -139,18 +143,22 @@ fn repeated_mints_have_similar_exchange_rate() {
 		assert!(Permill::from_rational(liquid_1 - liquid_2, liquid_1) < Permill::from_rational(5u128, 1_000u128));
 
 		// Now increase the Staking total by 1%
-		assert_eq!(TotalStakingCurrency::<Runtime>::get(), dollar(202_000));
+		assert_eq!(TotalStakingCurrency::<Runtime>::get(), 201_999_999_999_999_999);
 		assert_ok!(HomaLite::set_total_staking_currency(
 			Origin::signed(ROOT),
 			dollar(204_020)
 		));
 		lksm_issuance = Currencies::total_issuance(LKSM);
-		assert_eq!(lksm_issuance, 1_009_899_654_490_002_437);
+		assert_eq!(lksm_issuance, 1_009_899_654_490_002_433);
 
-		// liquid = (1000 - 0.01) * 1009899.654490002437 / 204020 * 0.99
-		let liquid_3 = 4_900_454_170_858_361;
+		// liquid = (1000 - 0.01) * 1009899.654490002433 / 204020 * 0.99
+		let liquid_3 = 4_900_454_170_858_356; // Actual amount is lower due to rounding loss
 		assert_ok!(HomaLite::mint(Origin::signed(BOB), amount));
-		assert_eq!(Currencies::free_balance(LKSM, &BOB), 14_800_108_660_860_799);
+		assert_eq!(
+			System::events().iter().last().unwrap().event,
+			Event::HomaLite(crate::Event::Minted(BOB, amount, liquid_3))
+		);
+		assert_eq!(Currencies::free_balance(LKSM, &BOB), 14_800_108_660_860_789);
 
 		// Increasing the Staking total increases the value of Liquid currency - this makes up for the
 		// staking rewards.

@@ -53,6 +53,8 @@ pub trait WeightInfo {
 	fn set_minting_cap() -> Weight;
 	fn set_xcm_dest_weight() -> Weight;
 	fn request_redeem() -> Weight;
+	fn schedule_unbound() -> Weight;
+	fn replace_schedule_unbound() -> Weight;
 }
 
 /// Weights for module_homa_lite using the Acala node and recommended hardware.
@@ -82,6 +84,14 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	}
 	fn request_redeem() -> Weight {
 		(250_414_000 as Weight)
+			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+	}
+	fn schedule_unbound() -> Weight {
+		(20_346_000 as Weight)
+			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+	}
+	fn replace_schedule_unbound() -> Weight {
+		(20_346_000 as Weight)
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 }
@@ -114,4 +124,12 @@ impl WeightInfo for () {
 		(250_414_000 as Weight)
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
+	fn schedule_unbound() -> Weight {
+		(20_346_000 as Weight)
+			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
+	}
+	fn replace_schedule_unbound() -> Weight {
+		(20_346_000 as Weight)
+			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
+	}	
 }

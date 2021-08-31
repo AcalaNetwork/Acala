@@ -177,9 +177,21 @@ parameter_types! {
 	pub DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(10, 1);
 	pub const MaxRewardPerEra: Permill = Permill::from_percent(1);
 	pub MintFee: Balance = millicent(1000);
+	pub BaseWithdrawFee: Permill = Permill::from_rational(1u32, 1_000u32); // 0.1%
+	pub const ParachainAccount: AccountId = ROOT;
+	pub const MaximumRedeemRequestMatchesForMint: u32 = 20;
+	pub static MockBlockNumberProvider: u64 = 0;
 }
 ord_parameter_types! {
 	pub const Root: AccountId = ROOT;
+}
+
+impl BlockNumberProvider for MockBlockNumberProvider {
+	type BlockNumber = BlockNumber;
+
+	fn current_block_number() -> Self::BlockNumber {
+		Self::get()
+	}
 }
 
 impl Config for Runtime {
@@ -195,6 +207,10 @@ impl Config for Runtime {
 	type DefaultExchangeRate = DefaultExchangeRate;
 	type MaxRewardPerEra = MaxRewardPerEra;
 	type MintFee = MintFee;
+	type BaseWithdrawFee = BaseWithdrawFee;
+	type RelaychainBlockNumber = MockBlockNumberProvider;
+	type ParachainAccount = ParachainAccount;
+	type MaximumRedeemRequestMatchesForMint = MaximumRedeemRequestMatchesForMint;
 }
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
