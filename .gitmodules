@@ -7,3 +7,6 @@
 [submodule "stable-asset"]
 	path = ecosystem-modules/stable-asset
 	url = https://github.com/nutsfinance/stable-asset.git
+[submodule "pint"]
+	path = ecosystem-modules/pint
+	url = https://github.com/ChainSafe/PINT.git
