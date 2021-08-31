@@ -28,7 +28,7 @@ use frame_support::{pallet_prelude::*, transactional};
 use frame_system::{ensure_signed, pallet_prelude::*};
 use module_support::{ExchangeRate, Ratio};
 use orml_traits::{BalanceStatus, MultiCurrency, MultiReservableCurrency, XcmTransfer};
-use primitives::{Balance, CurrencyId, ReserveIdentifier};
+use primitives::{Balance, CurrencyId};
 use sp_runtime::{
 	offchain::storage_lock::BlockNumberProvider,
 	traits::{Saturating, Zero},
@@ -54,8 +54,7 @@ pub mod module {
 		type WeightInfo: WeightInfo;
 
 		/// Multi-currency support for asset management
-		type Currency: MultiCurrency<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>
-			+ MultiReservableCurrency<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
+		type Currency: MultiReservableCurrency<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
 
 		/// The Currency ID for the Staking asset
 		#[pallet::constant]
@@ -95,15 +94,16 @@ pub mod module {
 		#[pallet::constant]
 		type BaseWithdrawFee: Get<Permill>;
 
-		/// TODO: ???
-		type Reserveldentifier: Get<ReserveIdentifier>;
-
 		/// Block number provider for the relaychain.
 		type RelaychainBlockNumber: BlockNumberProvider<BlockNumber = Self::BlockNumber>;
 
 		/// The account ID to redeem from on the relaychain.
 		#[pallet::constant]
 		type ParachainAccount: Get<Self::AccountId>;
+
+		/// The maximum number of redeem requests to match in "Mint" extrinsic.
+		#[pallet::constant]
+		type MaximumRedeemRequestMatchesForMint: Get<u32>;
 	}
 
 	#[pallet::error]
@@ -118,8 +118,6 @@ pub mod module {
 		InsufficientReservedBalances,
 		/// Amount redeemed is above total amount staked.
 		InsufficientTotalStakingCurrency,
-		/// The user does not have enough liquid balance to redeem.
-		InsufficientLiquidBalance,
 	}
 
 	#[pallet::event]
@@ -173,7 +171,7 @@ pub mod module {
 	pub type XcmDestWeight<T: Config> = StorageValue<_, Weight, ValueQuery>;
 
 	/// Requests to redeem staked currencies.
-	/// RedeemRequests: Map: AccountId => (liquid_amount: Balance, addtional_fee: Permill)
+	/// RedeemRequests: Map: AccountId => Option<(liquid_amount: Balance, addtional_fee: Permill)>
 	#[pallet::storage]
 	#[pallet::getter(fn redeem_requests)]
 	pub type RedeemRequests<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, (Balance, Permill), OptionQuery>;
@@ -291,44 +289,24 @@ pub mod module {
 				// If the maount is zero, cancel previuos redeem request.
 				if let Some((_, _)) = Self::redeem_requests(&who) {
 					// Unreserve the liquid fee and remove the redeem request.
-					ensure!(
-						T::Currency::unreserve(T::LiquidCurrencyId::get(), &who, liquid_amount) == liquid_amount,
-						Error::<T>::InsufficientReservedBalances
-					);
 					RedeemRequests::<T>::remove(&who);
 
 					Self::deposit_event(Event::<T>::RedeemRequestCancelled(who, liquid_amount));
 				}
 			} else {
-				// Put in an redeem request, or add additional amounts to be redeemed
-				let (redeemed_amount, _) = Self::redeem_requests(&who).unwrap_or((0, Permill::zero()));
-
-				ensure!(
-					liquid_amount < Self::convert_staking_to_liquid(Self::total_staking_currency())?,
-					Error::<T>::InsufficientTotalStakingCurrency
-				);
-
+				// Put in an redeem request, replaces the current request in storage.
 				let actual_redeem_amount = min(
 					liquid_amount,
 					Self::convert_staking_to_liquid(Self::available_staking_balance())?,
 				);
 				if !actual_redeem_amount.is_zero() {
-					let new_redeemed_amount = redeemed_amount
-						.checked_add(actual_redeem_amount)
-						.ok_or(ArithmeticError::Overflow)?;
-					let new_fee = additional_fee;
-
 					// Reserve the liquid currencies to be redeem.
-					ensure!(
-						T::Currency::can_reserve(T::LiquidCurrencyId::get(), &who, actual_redeem_amount),
-						Error::<T>::InsufficientLiquidBalance
-					);
 					T::Currency::reserve(T::LiquidCurrencyId::get(), &who, actual_redeem_amount)?;
 
 					// override RedeemRequests
-					RedeemRequests::<T>::insert(&who, (new_redeemed_amount, new_fee));
+					RedeemRequests::<T>::insert(&who, (actual_redeem_amount, additional_fee));
 
-					Self::deposit_event(Event::<T>::RedeemRequested(who, liquid_amount));
+					Self::deposit_event(Event::<T>::RedeemRequested(who, actual_redeem_amount));
 				}
 			}
 			Ok(())
@@ -409,10 +387,7 @@ pub mod module {
 				liquid_amount_can_be_redeemed,
 				BalanceStatus::Free,
 			)?;
-			ensure!(
-				amount_repatriated == liquid_amount_can_be_redeemed,
-				Error::<T>::InsufficientReservedBalances
-			);
+			ensure!(amount_repatriated.is_zero(), Error::<T>::InsufficientReservedBalances);
 
 			// Fee is charged on the staking currency that is to be transferred.
 			// staking_amount = original_staking_amount * ( 1 - base_with_fee - additional_fee )
@@ -499,10 +474,11 @@ pub mod module {
 			// Redeem request storage has now been updated.
 			new_balances.clear();
 
+			let mut redeem_requests_limit_remaining = T::MaximumRedeemRequestMatchesForMint::get();
 			// Iterate all remaining redeem requests now.
 			for (redeemer, (request_amount, extra_fee)) in RedeemRequests::<T>::iter() {
 				// If all the currencies are minted, return.
-				if liquid_remaining.is_zero() {
+				if liquid_remaining.is_zero() || redeem_requests_limit_remaining.is_zero() {
 					break;
 				}
 				Self::match_mint_with_redeem_request(
@@ -513,6 +489,7 @@ pub mod module {
 					&mut liquid_remaining,
 					&mut new_balances,
 				)?;
+				redeem_requests_limit_remaining -= 1;
 			}
 
 			// Update storage to the new balances. Remove Redeem requests that have been filled.
