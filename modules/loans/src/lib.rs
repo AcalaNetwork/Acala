@@ -163,7 +163,7 @@ impl<T: Config> Pallet<T> {
 
 		// update loan
 		Self::update_loan(
-			&who,
+			who,
 			currency_id,
 			collateral_adjustment.saturating_neg(),
 			debit_adjustment.saturating_neg(),

@@ -628,11 +628,11 @@ impl<T: Config> Pallet<T> {
 
 		// acquire offchain worker lock
 		let lock_expiration = Duration::from_millis(LOCK_DURATION);
-		let mut lock = StorageLock::<'_, Time>::with_deadline(&OFFCHAIN_WORKER_LOCK, lock_expiration);
+		let mut lock = StorageLock::<'_, Time>::with_deadline(OFFCHAIN_WORKER_LOCK, lock_expiration);
 		let mut guard = lock.try_lock().map_err(|_| OffchainErr::OffchainLock)?;
 
 		let collateral_currency_ids = T::CollateralCurrencyIds::get();
-		let to_be_continue = StorageValueRef::persistent(&OFFCHAIN_WORKER_DATA);
+		let to_be_continue = StorageValueRef::persistent(OFFCHAIN_WORKER_DATA);
 
 		// get to_be_continue record
 		let (collateral_position, start_key) =
@@ -646,7 +646,7 @@ impl<T: Config> Pallet<T> {
 			};
 
 		// get the max iterationns config
-		let max_iterations = StorageValueRef::persistent(&OFFCHAIN_WORKER_MAX_ITERATIONS)
+		let max_iterations = StorageValueRef::persistent(OFFCHAIN_WORKER_MAX_ITERATIONS)
 			.get::<u32>()
 			.unwrap_or(Some(DEFAULT_MAX_ITERATIONS));
 

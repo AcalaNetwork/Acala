@@ -145,7 +145,7 @@ fn deposit_collateral_work() {
 		assert_eq!(CDPTreasuryModule::total_collaterals(BTC), 0);
 		assert_eq!(Currencies::free_balance(BTC, &CDPTreasuryModule::account_id()), 0);
 		assert_eq!(Currencies::free_balance(BTC, &ALICE), 1000);
-		assert_eq!(CDPTreasuryModule::deposit_collateral(&ALICE, BTC, 10000).is_ok(), false);
+		assert!(!CDPTreasuryModule::deposit_collateral(&ALICE, BTC, 10000).is_ok());
 		assert_ok!(CDPTreasuryModule::deposit_collateral(&ALICE, BTC, 500));
 		assert_eq!(CDPTreasuryModule::total_collaterals(BTC), 500);
 		assert_eq!(Currencies::free_balance(BTC, &CDPTreasuryModule::account_id()), 500);
@@ -160,7 +160,7 @@ fn withdraw_collateral_work() {
 		assert_eq!(CDPTreasuryModule::total_collaterals(BTC), 500);
 		assert_eq!(Currencies::free_balance(BTC, &CDPTreasuryModule::account_id()), 500);
 		assert_eq!(Currencies::free_balance(BTC, &BOB), 1000);
-		assert_eq!(CDPTreasuryModule::withdraw_collateral(&BOB, BTC, 501).is_ok(), false);
+		assert!(!CDPTreasuryModule::withdraw_collateral(&BOB, BTC, 501).is_ok());
 		assert_ok!(CDPTreasuryModule::withdraw_collateral(&BOB, BTC, 400));
 		assert_eq!(CDPTreasuryModule::total_collaterals(BTC), 100);
 		assert_eq!(Currencies::free_balance(BTC, &CDPTreasuryModule::account_id()), 100);

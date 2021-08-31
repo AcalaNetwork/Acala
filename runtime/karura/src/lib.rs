@@ -761,6 +761,7 @@ parameter_type_with_key! {
 			},
 			CurrencyId::Erc20(_) => Balance::max_value(), // not handled by orml-tokens
 			CurrencyId::ChainSafe(_) => Balance::max_value(), // TODO: update this before we enable ChainSafe bridge
+			CurrencyId::StableAssetPoolToken(_) => Balance::max_value(), // TODO: update this before we enable StableAsset
 		}
 	};
 }
@@ -1619,6 +1620,15 @@ impl orml_xcm::Config for Runtime {
 	type SovereignOrigin = EnsureRootOrHalfGeneralCouncil;
 }
 
+pub struct OnRuntimeUpgrade;
+impl frame_support::traits::OnRuntimeUpgrade for OnRuntimeUpgrade {
+	fn on_runtime_upgrade() -> u64 {
+		frame_support::migrations::migrate_from_pallet_version_to_storage_version::<AllPalletsWithSystem>(
+			&RocksDbWeight::get(),
+		)
+	}
+}
+
 #[allow(clippy::large_enum_variant)]
 construct_runtime!(
 	pub enum Runtime where
@@ -1754,8 +1764,14 @@ pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExtra>;
 /// Executive: handles dispatch to the various modules.
-pub type Executive =
-	frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllPallets, ()>;
+pub type Executive = frame_executive::Executive<
+	Runtime,
+	Block,
+	frame_system::ChainContext<Runtime>,
+	Runtime,
+	AllPallets,
+	OnRuntimeUpgrade,
+>;
 
 #[cfg(not(feature = "disable-runtime-api"))]
 impl_runtime_apis! {
@@ -2122,7 +2138,7 @@ impl cumulus_pallet_parachain_system::CheckInherents<Block> for CheckInherents {
 		.create_inherent_data()
 		.expect("Could not create the timestamp inherent data");
 
-		inherent_data.check_extrinsics(&block)
+		inherent_data.check_extrinsics(block)
 	}
 }
 
@@ -2141,7 +2157,7 @@ mod tests {
 
 	fn run_with_system_weight<F>(w: Weight, mut assertions: F)
 	where
-		F: FnMut() -> (),
+		F: FnMut(),
 	{
 		let mut t: sp_io::TestExternalities = frame_system::GenesisConfig::default()
 			.build_storage::<Runtime>()

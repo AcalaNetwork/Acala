@@ -396,9 +396,9 @@ impl<T: Config> Pallet<T> {
 
 		orml_nft::Pallet::<T>::transfer(from, to, token)?;
 
-		<T as module::Config>::Currency::unreserve_named(&RESERVE_ID, &from, token_info.data.deposit);
-		<T as module::Config>::Currency::transfer(&from, &to, token_info.data.deposit, AllowDeath)?;
-		<T as module::Config>::Currency::reserve_named(&RESERVE_ID, &to, token_info.data.deposit)?;
+		<T as module::Config>::Currency::unreserve_named(&RESERVE_ID, from, token_info.data.deposit);
+		<T as module::Config>::Currency::transfer(from, to, token_info.data.deposit, AllowDeath)?;
+		<T as module::Config>::Currency::reserve_named(&RESERVE_ID, to, token_info.data.deposit)?;
 
 		Self::deposit_event(Event::TransferredToken(from.clone(), to.clone(), token.0, token.1));
 		Ok(())

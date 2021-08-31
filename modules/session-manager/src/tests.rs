@@ -82,19 +82,19 @@ fn should_end_session_work() {
 		assert_eq!(SessionManager::session_duration(), 10);
 		assert_eq!(SessionManager::duration_offset(), 0);
 
-		assert_eq!(SessionManager::should_end_session(9), false);
-		assert_eq!(SessionManager::should_end_session(10), true);
+		assert!(!SessionManager::should_end_session(9));
+		assert!(SessionManager::should_end_session(10));
 
 		assert_ok!(SessionManager::schedule_session_duration(Origin::root(), 1, 11));
 		SessionManager::on_initialize(10);
 		assert_eq!(SessionManager::session_duration(), 11);
 		assert_eq!(SessionManager::duration_offset(), 10);
 
-		assert_eq!(SessionManager::should_end_session(9), false);
-		assert_eq!(SessionManager::should_end_session(10), true);
-		assert_eq!(SessionManager::should_end_session(11), false);
-		assert_eq!(SessionManager::should_end_session(20), false);
-		assert_eq!(SessionManager::should_end_session(21), true);
+		assert!(!SessionManager::should_end_session(9));
+		assert!(SessionManager::should_end_session(10));
+		assert!(!SessionManager::should_end_session(11));
+		assert!(!SessionManager::should_end_session(20));
+		assert!(SessionManager::should_end_session(21));
 	});
 }
 

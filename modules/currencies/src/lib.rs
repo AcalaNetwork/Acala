@@ -102,6 +102,8 @@ pub mod module {
 		Erc20InvalidOperation,
 		/// EVM account not found
 		EvmAccountNotFound,
+		/// Real origin not found
+		RealOriginNotFound,
 	}
 
 	#[pallet::event]
@@ -207,7 +209,7 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 	fn total_balance(currency_id: Self::CurrencyId, who: &T::AccountId) -> Self::Balance {
 		match currency_id {
 			CurrencyId::Erc20(contract) => {
-				if let Some(address) = T::AddressMapping::get_evm_address(&who) {
+				if let Some(address) = T::AddressMapping::get_evm_address(who) {
 					let context = InvokeContext {
 						contract,
 						sender: Default::default(),
@@ -225,7 +227,7 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 	fn free_balance(currency_id: Self::CurrencyId, who: &T::AccountId) -> Self::Balance {
 		match currency_id {
 			CurrencyId::Erc20(contract) => {
-				if let Some(address) = T::AddressMapping::get_evm_address(&who) {
+				if let Some(address) = T::AddressMapping::get_evm_address(who) {
 					let context = InvokeContext {
 						contract,
 						sender: Default::default(),
@@ -243,7 +245,7 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 	fn ensure_can_withdraw(currency_id: Self::CurrencyId, who: &T::AccountId, amount: Self::Balance) -> DispatchResult {
 		match currency_id {
 			CurrencyId::Erc20(contract) => {
-				let address = T::AddressMapping::get_evm_address(&who).ok_or(Error::<T>::EvmAccountNotFound)?;
+				let address = T::AddressMapping::get_evm_address(who).ok_or(Error::<T>::EvmAccountNotFound)?;
 				let balance = T::EVMBridge::balance_of(
 					InvokeContext {
 						contract,
@@ -273,10 +275,10 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 
 		match currency_id {
 			CurrencyId::Erc20(contract) => {
-				let sender = T::AddressMapping::get_evm_address(&from).ok_or(Error::<T>::EvmAccountNotFound)?;
-				let origin = T::EVMBridge::get_origin().unwrap_or_default();
+				let sender = T::AddressMapping::get_evm_address(from).ok_or(Error::<T>::EvmAccountNotFound)?;
+				let origin = T::EVMBridge::get_origin().ok_or(Error::<T>::RealOriginNotFound)?;
 				let origin_address = T::AddressMapping::get_or_create_evm_address(&origin);
-				let address = T::AddressMapping::get_or_create_evm_address(&to);
+				let address = T::AddressMapping::get_or_create_evm_address(to);
 				T::EVMBridge::transfer(
 					InvokeContext {
 						contract,
@@ -410,7 +412,7 @@ impl<T: Config> MultiReservableCurrency<T::AccountId> for Pallet<T> {
 	fn reserved_balance(currency_id: Self::CurrencyId, who: &T::AccountId) -> Self::Balance {
 		match currency_id {
 			CurrencyId::Erc20(contract) => {
-				if let Some(address) = T::AddressMapping::get_evm_address(&who) {
+				if let Some(address) = T::AddressMapping::get_evm_address(who) {
 					return T::EVMBridge::balance_of(
 						InvokeContext {
 							contract,
@@ -434,7 +436,7 @@ impl<T: Config> MultiReservableCurrency<T::AccountId> for Pallet<T> {
 				if value.is_zero() {
 					return Ok(());
 				}
-				let address = T::AddressMapping::get_evm_address(&who).ok_or(Error::<T>::EvmAccountNotFound)?;
+				let address = T::AddressMapping::get_evm_address(who).ok_or(Error::<T>::EvmAccountNotFound)?;
 				T::EVMBridge::transfer(
 					InvokeContext {
 						contract,
@@ -456,7 +458,7 @@ impl<T: Config> MultiReservableCurrency<T::AccountId> for Pallet<T> {
 				if value.is_zero() {
 					return value;
 				}
-				if let Some(address) = T::AddressMapping::get_evm_address(&who) {
+				if let Some(address) = T::AddressMapping::get_evm_address(who) {
 					let sender = reserve_address(address);
 					let reserved_balance = T::EVMBridge::balance_of(
 						InvokeContext {
@@ -510,8 +512,8 @@ impl<T: Config> MultiReservableCurrency<T::AccountId> for Pallet<T> {
 				}
 
 				let slashed_address =
-					T::AddressMapping::get_evm_address(&slashed).ok_or(Error::<T>::EvmAccountNotFound)?;
-				let beneficiary_address = T::AddressMapping::get_or_create_evm_address(&beneficiary);
+					T::AddressMapping::get_evm_address(slashed).ok_or(Error::<T>::EvmAccountNotFound)?;
+				let beneficiary_address = T::AddressMapping::get_or_create_evm_address(beneficiary);
 
 				let slashed_reserve_address = reserve_address(slashed_address);
 				let beneficiary_reserve_address = reserve_address(beneficiary_address);

@@ -276,7 +276,7 @@ pub mod module {
 						.for_each(|(trading_pair, (deposit_amount_0, deposit_amount_1))| {
 							let result = match <Pallet<T>>::trading_pair_statuses(trading_pair) {
 								TradingPairStatus::<_, _>::Enabled => <Pallet<T>>::do_add_liquidity(
-									&who,
+									who,
 									trading_pair.first(),
 									trading_pair.second(),
 									*deposit_amount_0,
@@ -780,13 +780,13 @@ impl<T: Config> Pallet<T> {
 			pool.1 = pool.1.checked_add(contribution_1).ok_or(ArithmeticError::Overflow)?;
 
 			let module_account_id = Self::account_id();
-			T::Currency::transfer(trading_pair.first(), &who, &module_account_id, contribution_0)?;
-			T::Currency::transfer(trading_pair.second(), &who, &module_account_id, contribution_1)?;
+			T::Currency::transfer(trading_pair.first(), who, &module_account_id, contribution_0)?;
+			T::Currency::transfer(trading_pair.second(), who, &module_account_id, contribution_1)?;
 
 			*maybe_pool = Some(pool);
 
 			if !existed && maybe_pool.is_some() {
-				if frame_system::Pallet::<T>::inc_consumers(&who).is_err() {
+				if frame_system::Pallet::<T>::inc_consumers(who).is_err() {
 					// No providers for the locks. This is impossible under normal circumstances
 					// since the funds that are under the lock will themselves be stored in the
 					// account and therefore will need a reference.
@@ -976,9 +976,9 @@ impl<T: Config> Pallet<T> {
 			if by_unstake {
 				T::DEXIncentives::do_withdraw_dex_share(who, dex_share_currency_id, remove_share)?;
 			}
-			T::Currency::withdraw(dex_share_currency_id, &who, remove_share)?;
-			T::Currency::transfer(trading_pair.first(), &module_account_id, &who, pool_0_decrement)?;
-			T::Currency::transfer(trading_pair.second(), &module_account_id, &who, pool_1_decrement)?;
+			T::Currency::withdraw(dex_share_currency_id, who, remove_share)?;
+			T::Currency::transfer(trading_pair.first(), &module_account_id, who, pool_0_decrement)?;
+			T::Currency::transfer(trading_pair.second(), &module_account_id, who, pool_1_decrement)?;
 
 			*pool_0 = pool_0.checked_sub(pool_0_decrement).ok_or(ArithmeticError::Underflow)?;
 			*pool_1 = pool_1.checked_sub(pool_1_decrement).ok_or(ArithmeticError::Underflow)?;
@@ -1179,7 +1179,7 @@ impl<T: Config> Pallet<T> {
 		supply_amount: Balance,
 		min_target_amount: Balance,
 	) -> sp_std::result::Result<Balance, DispatchError> {
-		let amounts = Self::get_target_amounts(&path, supply_amount)?;
+		let amounts = Self::get_target_amounts(path, supply_amount)?;
 		ensure!(
 			amounts[amounts.len() - 1] >= min_target_amount,
 			Error::<T>::InsufficientTargetAmount
@@ -1188,7 +1188,7 @@ impl<T: Config> Pallet<T> {
 		let actual_target_amount = amounts[amounts.len() - 1];
 
 		T::Currency::transfer(path[0], who, &module_account_id, supply_amount)?;
-		Self::_swap_by_path(&path, &amounts)?;
+		Self::_swap_by_path(path, &amounts)?;
 		T::Currency::transfer(path[path.len() - 1], &module_account_id, who, actual_target_amount)?;
 
 		Self::deposit_event(Event::Swap(who.clone(), path.to_vec(), amounts));
@@ -1203,13 +1203,13 @@ impl<T: Config> Pallet<T> {
 		target_amount: Balance,
 		max_supply_amount: Balance,
 	) -> sp_std::result::Result<Balance, DispatchError> {
-		let amounts = Self::get_supply_amounts(&path, target_amount)?;
+		let amounts = Self::get_supply_amounts(path, target_amount)?;
 		ensure!(amounts[0] <= max_supply_amount, Error::<T>::ExcessiveSupplyAmount);
 		let module_account_id = Self::account_id();
 		let actual_supply_amount = amounts[0];
 
 		T::Currency::transfer(path[0], who, &module_account_id, actual_supply_amount)?;
-		Self::_swap_by_path(&path, &amounts)?;
+		Self::_swap_by_path(path, &amounts)?;
 		T::Currency::transfer(path[path.len() - 1], &module_account_id, who, target_amount)?;
 
 		Self::deposit_event(Event::Swap(who.clone(), path.to_vec(), amounts));
@@ -1228,13 +1228,13 @@ impl<T: Config> DEXManager<T::AccountId, CurrencyId, Balance> for Pallet<T> {
 	}
 
 	fn get_swap_target_amount(path: &[CurrencyId], supply_amount: Balance) -> Option<Balance> {
-		Self::get_target_amounts(&path, supply_amount)
+		Self::get_target_amounts(path, supply_amount)
 			.ok()
 			.map(|amounts| amounts[amounts.len() - 1])
 	}
 
 	fn get_swap_supply_amount(path: &[CurrencyId], target_amount: Balance) -> Option<Balance> {
-		Self::get_supply_amounts(&path, target_amount)
+		Self::get_supply_amounts(path, target_amount)
 			.ok()
 			.map(|amounts| amounts[0])
 	}

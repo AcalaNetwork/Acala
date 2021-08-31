@@ -593,5 +593,5 @@ pub fn get_task_id(output: Vec<u8>) -> Vec<u8> {
 	let mut num = [0u8; 4];
 	num[..].copy_from_slice(&output[32 - 4..32]);
 	let task_id_len: u32 = u32::from_be_bytes(num);
-	return output[32..32 + task_id_len as usize].to_vec();
+	output[32..32 + task_id_len as usize].to_vec()
 }

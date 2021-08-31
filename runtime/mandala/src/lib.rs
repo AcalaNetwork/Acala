@@ -122,6 +122,9 @@ pub use runtime_common::{
 	AUSD, DOT, LDOT, RENBTC,
 };
 
+/// Import the stable_asset pallet.
+pub use nutsfinance_stable_asset;
+
 mod authority;
 mod benchmarking;
 pub mod constants;
@@ -173,6 +176,7 @@ parameter_types! {
 	pub UnreleasedNativeVaultAccountId: AccountId = PalletId(*b"aca/urls").into_account();
 	// Ecosystem modules
 	pub const StarportPalletId: PalletId = PalletId(*b"aca/stpt");
+	pub const StableAssetPalletId: PalletId = PalletId(*b"nuts/sta");
 }
 
 pub fn get_all_module_accounts() -> Vec<AccountId> {
@@ -190,6 +194,7 @@ pub fn get_all_module_accounts() -> Vec<AccountId> {
 		StarportPalletId::get().into_account(),
 		ZeroAccountId::get(),
 		UnreleasedNativeVaultAccountId::get(),
+		StableAssetPalletId::get().into_account(),
 	]
 }
 
@@ -811,6 +816,7 @@ parameter_type_with_key! {
 			},
 			CurrencyId::Erc20(_) => Balance::max_value(), // not handled by orml-tokens
 			CurrencyId::ChainSafe(_) => 1, // TODO: update this before we enable ChainSafe bridge
+			CurrencyId::StableAssetPoolToken(_) => 1, // TODO: update this before we enable StableAsset
 		}
 	};
 }
@@ -1845,6 +1851,33 @@ impl orml_xcm::Config for Runtime {
 	type SovereignOrigin = EnsureRootOrHalfGeneralCouncil;
 }
 
+parameter_types! {
+	pub const Precision: u128 = 1000000000000000000u128; // 18 decimals
+	pub const FeePrecision: u128 = 10000000000u128; // 10 decimals
+}
+
+pub struct EnsurePoolAssetId;
+impl nutsfinance_stable_asset::traits::ValidateAssetId<CurrencyId> for EnsurePoolAssetId {
+	fn validate(currency_id: CurrencyId) -> bool {
+		matches!(currency_id, CurrencyId::StableAssetPoolToken(_))
+	}
+}
+
+impl nutsfinance_stable_asset::Config for Runtime {
+	type Event = Event;
+	type AssetId = CurrencyId;
+	type Balance = Balance;
+	type Assets = Tokens;
+	type PalletId = StableAssetPalletId;
+
+	type AtLeast64BitUnsigned = u128;
+	type Precision = Precision;
+	type FeePrecision = FeePrecision;
+	type WeightInfo = weights::nutsfinance_stable_asset::WeightInfo<Runtime>;
+	type ListingOrigin = EnsureRootOrHalfGeneralCouncil;
+	type EnsurePoolAssetId = EnsurePoolAssetId;
+}
+
 impl cumulus_pallet_aura_ext::Config for Runtime {}
 
 /// The address format for describing accounts.
@@ -1997,6 +2030,9 @@ construct_runtime! {
 		Aura: pallet_aura::{Pallet, Storage, Config<T>} = 193,
 		AuraExt: cumulus_pallet_aura_ext::{Pallet, Storage, Config} = 194,
 		SessionManager: module_session_manager::{Pallet, Call, Storage, Event<T>, Config<T>} = 195,
+
+		// Stable asset
+		StableAsset: nutsfinance_stable_asset::{Pallet, Call, Storage, Event<T>} = 200,
 
 		// Dev
 		Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>} = 255,
@@ -2352,6 +2388,7 @@ impl_runtime_apis! {
 			orml_add_benchmark!(params, batches, orml_oracle, benchmarking::oracle);
 
 			orml_add_benchmark!(params, batches, ecosystem_chainsafe, benchmarking::chainsafe_transfer);
+			orml_add_benchmark!(params, batches, nutsfinance_stable_asset, benchmarking::nutsfinance_stable_asset);
 
 			if batches.is_empty() { return Err("Benchmark not found for this module.".into()) }
 			Ok(batches)
@@ -2377,7 +2414,7 @@ impl cumulus_pallet_parachain_system::CheckInherents<Block> for CheckInherents {
 		.create_inherent_data()
 		.expect("Could not create the timestamp inherent data");
 
-		inherent_data.check_extrinsics(&block)
+		inherent_data.check_extrinsics(block)
 	}
 }
 

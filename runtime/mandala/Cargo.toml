@@ -7,7 +7,7 @@ build = "build.rs"
 
 [dependencies]
 smallvec = "1.4.0"
-codec = { package = "parity-scale-codec", version = "2.0.0", default-features = false, features = ["derive", "max-encoded-len"] }
+codec = { package = "parity-scale-codec", version = "2.2.0", default-features = false, features = ["derive", "max-encoded-len"] }
 serde = { version = "1.0.124", optional = true, default-features = false }
 serde_json = "1.0.64"
 hex = { version = "0.4", default-features = false, optional = true }
@@ -120,6 +120,7 @@ module-session-manager = { path = "../../modules/session-manager", default-featu
 module-staking-pool = { path = "../../modules/staking-pool", default-features = false }
 module-staking-pool-rpc-runtime-api = { path = "../../modules/staking-pool/rpc/runtime-api", default-features = false }
 module-polkadot-bridge = { path = "../../modules/polkadot-bridge", default-features = false }
+nutsfinance-stable-asset = { version = "0.1.0", default-features = false, path = "../../ecosystem-modules/stable-asset/lib/stable-asset", package = "nutsfinance-stable-asset" }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 runtime-common = { path = "../common", default-features = false }
 

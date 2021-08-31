@@ -175,7 +175,7 @@ mod tests {
 		node.submit_extrinsic(frame_system::Call::remark((b"hello world").to_vec()), Some(alice));
 
 		// look ma, I can read state.
-		let _events = node.with_state(|| frame_system::Pallet::<Runtime>::events());
+		let _events = node.with_state(frame_system::Pallet::<Runtime>::events);
 		// get access to the underlying client.
 		let _client = node.client();
 	}
@@ -197,7 +197,7 @@ mod tests {
 
 		// Send extrinsic in action.
 		let tx = pallet_balances::Call::transfer(MultiAddress::from(bob_account_id.clone()), amount);
-		node.submit_extrinsic(tx.clone(), Some(alice_account_id.clone()));
+		node.submit_extrinsic(tx, Some(alice_account_id));
 
 		// Produce blocks in action, Powered by manual-seal™.
 		node.seal_blocks(1);
@@ -220,13 +220,13 @@ mod tests {
 		// send operational extrinsic
 		let operational_tx_hash = node.submit_extrinsic(
 			pallet_sudo::Call::sudo(Box::new(module_emergency_shutdown::Call::emergency_shutdown().into())),
-			Some(alice_account_id.clone()),
+			Some(alice_account_id),
 		);
 
 		// send normal extrinsic
 		let normal_tx_hash = node.submit_extrinsic(
 			pallet_balances::Call::transfer(MultiAddress::from(bob_account_id.clone()), 80_000),
-			Some(bob_account_id.clone()),
+			Some(bob_account_id),
 		);
 
 		// send unsigned extrinsic
