@@ -1,3 +1,21 @@
+// This file is part of Acala.
+
+// Copyright (C) 2020-2021 Acala Foundation.
+// SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
+
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with this program. If not, see <https://www.gnu.org/licenses/>.
+
 //! EVM stack-based runner.
 // Synchronize with https://github.com/rust-blockchain/evm/blob/master/src/executor/stack/mod.rs
 
@@ -7,12 +25,7 @@ use crate::runner::{
 	state::{StackExecutor, StackSubstateMetadata},
 	StackState as StackStateT,
 };
-use crate::{
-	AccountInfo,
-	/*	AccountCodes, AccountStorages, AddressMapping, BlockHashMapping, Config, Error, Event,
-	 *	FeeCalculator, OnChargeEVMTransaction, Pallet, PrecompileSet, */
-	Accounts, One, StorageMeter, STORAGE_SIZE,
-};
+use crate::{AccountInfo, Accounts, One, StorageMeter, STORAGE_SIZE};
 use crate::{AccountStorages, CallInfo, Config, CreateInfo, Error, Event, ExecutionInfo, Pallet};
 use evm::backend::Backend as BackendT;
 use evm::{ExitError, ExitReason, Transfer};
@@ -27,6 +40,7 @@ pub use primitives::{
 };
 use sha3::{Digest, Keccak256};
 use sp_core::{H160, H256, U256};
+use sp_io::KillStorageResult::{AllRemoved, SomeRemaining};
 use sp_runtime::traits::UniqueSaturatedInto;
 use sp_std::{boxed::Box, collections::btree_set::BTreeSet, marker::PhantomData, mem, vec::Vec};
 
@@ -52,7 +66,7 @@ impl<T: Config> Runner<T> {
 		let gas_price = U256::one();
 		let vicinity = Vicinity { gas_price, origin };
 
-		let metadata = StackSubstateMetadata::new(gas_limit, storage_limit, &config);
+		let metadata = StackSubstateMetadata::new(gas_limit, storage_limit, T::NewContractExtraBytes::get(), &config);
 		let state = SubstrateStackState::new(&vicinity, metadata);
 		let mut executor = StackExecutor::new_with_precompile(state, config, T::Precompiles::execute);
 
@@ -90,6 +104,21 @@ impl<T: Config> Runner<T> {
 		let state = executor.into_state();
 
 		// charge storage
+		match reason {
+			_ if reason == ExitReason::Error(ExitError::Other("OutOfStorage".into())) => {
+				// TODO: Looking for a better way
+				sp_io::storage::rollback_transaction();
+				return Err(Error::<T>::OutOfStorage);
+			}
+			_ => {}
+		}
+		let actual_storage = state
+			.metadata()
+			.storage_meter()
+			.finish()
+			.map_err(|_| Error::<T>::OutOfStorage)?;
+		let used_storage = state.metadata().storage_meter().total_used();
+		let refunded_storage = state.metadata().storage_meter().total_refunded();
 		for (target, storage) in &state.substate.storage_logs {
 			log::debug!(
 				target: "evm",
@@ -98,9 +127,6 @@ impl<T: Config> Runner<T> {
 			);
 			Pallet::<T>::charge_storage(&origin, &target, *storage).map_err(|_| Error::<T>::ChargeStorageFailed)?;
 		}
-
-		let used_storage = state.metadata().storage_meter().total_used();
-		let refunded_storage = state.metadata().storage_meter().total_refunded();
 		Pallet::<T>::unreserve_storage(&origin, storage_limit, used_storage, refunded_storage)
 			.map_err(|_| Error::<T>::UnreserveStorageFailed)?;
 
@@ -134,7 +160,7 @@ impl<T: Config> Runner<T> {
 			value: retv,
 			exit_reason: reason,
 			used_gas,
-			used_storage: 0,
+			used_storage: actual_storage,
 			logs: state.substate.logs,
 		})
 	}
@@ -253,11 +279,18 @@ impl<'config> SubstrateStackSubstate<'config> {
 		let mut exited = *self.parent.take().expect("Cannot commit on root substate");
 		mem::swap(&mut exited, self);
 
-		let (target, storage) = self.metadata.swallow_commit(exited.metadata)?;
+		let target = self
+			.metadata()
+			.target()
+			.ok_or(ExitError::Other("Storage target is none".into()))?;
+		let storage = exited.metadata().storage_meter().used_storage();
+
+		self.metadata.swallow_commit(exited.metadata)?;
 		self.logs.append(&mut exited.logs);
+		self.deletes.append(&mut exited.deletes);
+
 		exited.storage_logs.push((target, storage));
 		self.storage_logs.append(&mut exited.storage_logs);
-		self.deletes.append(&mut exited.deletes);
 
 		sp_io::storage::commit_transaction();
 		Ok(())
@@ -467,10 +500,14 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 	}
 
 	fn reset_storage(&mut self, address: H160) {
-		<AccountStorages<T>>::remove_prefix(address, None);
-		//TODO
-		//Pallet::<T>::update_contract_storage_size(&address, -(STORAGE_SIZE as i32));
-		//self.substate.metadata.storage_meter_mut().refund(STORAGE_SIZE);
+		match <AccountStorages<T>>::remove_prefix(address, None) {
+			AllRemoved(count) | SomeRemaining(count) => {
+				// should not happen
+				let storage = count.saturating_mul(STORAGE_SIZE);
+				Pallet::<T>::update_contract_storage_size(&address, -(storage as i32));
+				self.substate.metadata.storage_meter_mut().refund(storage);
+			}
+		}
 	}
 
 	fn log(&mut self, address: H160, topics: Vec<H256>, data: Vec<u8>) {
@@ -504,6 +541,7 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 							c,
 							address
 						);
+						debug_assert!(false);
 						return;
 					}
 					substate = &substate.parent.as_ref().expect("has checked; qed");
@@ -517,6 +555,7 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 					"get maintainer failed. address: {:?}",
 					address
 				);
+				debug_assert!(false);
 				return;
 			}
 		}

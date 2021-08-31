@@ -18,66 +18,92 @@
 
 use evm::ExitError;
 use frame_support::log;
-use sp_core::H160;
 use sp_runtime::{DispatchError, DispatchResult};
 
 pub struct StorageMeter {
 	limit: u32,
-	total_used: u32,
-	total_refunded: u32,
+	extra_bytes: u32,
+	used: u32,
+	refunded: u32,
+	// save storage of children
+	child_used: u32,
+	child_refunded: u32,
 }
 
 impl StorageMeter {
 	/// Create a new storage_meter with given storage limit.
-	pub fn new(limit: u32) -> Self {
+	pub fn new(limit: u32, extra_bytes: u32) -> Self {
 		Self {
 			limit,
-			total_used: 0,
-			total_refunded: 0,
+			extra_bytes,
+			used: 0,
+			refunded: 0,
+			child_used: 0,
+			child_refunded: 0,
 		}
 	}
 
 	pub fn child_meter(&mut self) -> Self {
 		let storage = self.available_storage();
-		StorageMeter::new(storage)
+		StorageMeter::new(storage, self.extra_bytes)
 	}
 
 	pub fn storage_limit(&self) -> u32 {
 		self.limit
 	}
 
+	pub fn extra_bytes(&self) -> u32 {
+		self.extra_bytes
+	}
+
+	pub fn used(&self) -> u32 {
+		self.used
+	}
+
+	pub fn refunded(&self) -> u32 {
+		self.refunded
+	}
+
 	pub fn total_used(&self) -> u32 {
-		self.total_used
+		self.used.saturating_add(self.child_used)
 	}
 
 	pub fn total_refunded(&self) -> u32 {
-		self.total_refunded
+		self.refunded.saturating_add(self.child_refunded)
 	}
 
 	pub fn available_storage(&self) -> u32 {
 		self.limit
-			.saturating_add(self.total_refunded)
-			.saturating_sub(self.total_used)
+			.saturating_add(self.refunded)
+			.saturating_add(self.child_refunded)
+			.saturating_sub(self.used)
+			.saturating_sub(self.child_used)
 	}
 
 	pub fn used_storage(&self) -> i32 {
-		if self.total_used > self.total_refunded {
-			(self.total_used - self.total_refunded) as i32
+		if self.used > self.refunded {
+			(self.used - self.refunded) as i32
 		} else {
-			-((self.total_refunded - self.total_used) as i32)
+			-((self.refunded - self.used) as i32)
 		}
 	}
 
 	pub fn finish(&self) -> Result<i32, ExitError> {
+		let total_used = self.total_used();
+		let total_refunded = self.total_refunded();
 		log::trace!(
 			target: "evm",
 			"StorageMeter: finish: used {:?} refunded {:?}",
-			self.total_used, self.total_refunded
+			total_used, total_refunded
 		);
-		if self.limit < self.total_used.saturating_sub(self.total_refunded) {
+		if self.limit < total_used.saturating_sub(total_refunded) {
 			Err(ExitError::Other("OutOfStorage".into()))
 		} else {
-			Ok(self.used_storage())
+			if total_used > total_refunded {
+				Ok((total_used - total_refunded) as i32)
+			} else {
+				Ok(-((total_refunded - total_used) as i32))
+			}
 		}
 	}
 
@@ -87,7 +113,16 @@ impl StorageMeter {
 			"StorageMeter: charge: storage {:?}",
 			storage
 		);
-		self.total_used = self.total_used.saturating_add(storage);
+		self.used = self.used.saturating_add(storage);
+	}
+
+	pub fn charge_with_extra_bytes(&mut self, storage: u32) {
+		log::trace!(
+			target: "evm",
+			"StorageMeter: charge: storage {:?}",
+			storage
+		);
+		self.used = self.used.saturating_add(storage).saturating_add(self.extra_bytes);
 	}
 
 	pub fn uncharge(&mut self, storage: u32) {
@@ -96,7 +131,7 @@ impl StorageMeter {
 			"StorageMeter: uncharge: storage {:?}",
 			storage
 		);
-		self.total_used = self.total_used.saturating_sub(storage);
+		self.used = self.used.saturating_sub(storage);
 	}
 
 	pub fn refund(&mut self, storage: u32) {
@@ -105,17 +140,14 @@ impl StorageMeter {
 			"StorageMeter: refund: storage {:?}",
 			storage
 		);
-		self.total_refunded = self.total_refunded.saturating_add(storage);
+		self.refunded = self.refunded.saturating_add(storage);
 	}
 
-	pub fn merge(&mut self, other: &Self) -> Result<i32, ExitError> {
-		let storage = other.finish()?;
-		if storage.is_positive() {
-			self.charge(storage as u32);
-		} else {
-			self.refund(storage.abs() as u32);
-		}
-		Ok(storage)
+	pub fn merge(&mut self, other: &Self) -> Result<(), ExitError> {
+		other.finish()?;
+		self.child_used = self.child_used.saturating_add(other.total_used());
+		self.child_refunded = self.child_refunded.saturating_add(other.total_refunded());
+		Ok(())
 	}
 }
 
@@ -124,14 +156,9 @@ mod tests {
 	use super::*;
 	use frame_support::{assert_err, assert_ok};
 
-	const ALICE: H160 = H160::repeat_byte(11);
-	const CONTRACT: H160 = H160::repeat_byte(22);
-	const CONTRACT_2: H160 = H160::repeat_byte(33);
-	const CONTRACT_3: H160 = H160::repeat_byte(44);
-
 	#[test]
 	fn test_storage_with_limit_zero() {
-		let mut storage_meter = StorageMeter::new(0);
+		let mut storage_meter = StorageMeter::new(0, 0);
 		assert_eq!(storage_meter.available_storage(), 0);
 		assert_eq!(storage_meter.storage_limit(), 0);
 
@@ -161,8 +188,21 @@ mod tests {
 	}
 
 	#[test]
+	fn test_with_extra_bytes() {
+		let mut storage_meter = StorageMeter::new(1000, 100);
+		assert_eq!(storage_meter.available_storage(), 1000);
+		assert_eq!(storage_meter.extra_bytes(), 100);
+
+		storage_meter.charge(200);
+		assert_eq!(storage_meter.finish(), Ok(200));
+
+		storage_meter.charge_with_extra_bytes(200);
+		assert_eq!(storage_meter.finish(), Ok(500));
+	}
+
+	#[test]
 	fn test_out_of_storage() {
-		let mut storage_meter = StorageMeter::new(1000);
+		let mut storage_meter = StorageMeter::new(1000, 0);
 		assert_eq!(storage_meter.available_storage(), 1000);
 
 		storage_meter.charge(200);
@@ -177,7 +217,7 @@ mod tests {
 
 	#[test]
 	fn test_high_use_and_refund() {
-		let mut storage_meter = StorageMeter::new(1000);
+		let mut storage_meter = StorageMeter::new(1000, 0);
 		assert_eq!(storage_meter.available_storage(), 1000);
 
 		storage_meter.charge(1000);
@@ -197,7 +237,7 @@ mod tests {
 
 	#[test]
 	fn test_child_meter() {
-		let mut storage_meter = StorageMeter::new(1000);
+		let mut storage_meter = StorageMeter::new(1000, 0);
 		storage_meter.charge(100);
 
 		let mut child_meter = storage_meter.child_meter();
@@ -232,7 +272,7 @@ mod tests {
 
 	#[test]
 	fn test_merge() {
-		let mut storage_meter = StorageMeter::new(1000);
+		let mut storage_meter = StorageMeter::new(1000, 0);
 		storage_meter.charge(100);
 
 		let mut child_meter = storage_meter.child_meter();
@@ -253,7 +293,7 @@ mod tests {
 		assert_eq!(child_meter_2.finish(), Ok(20));
 
 		assert_eq!(child_meter.finish(), Ok(50));
-		assert_eq!(child_meter.merge(&child_meter_2), Ok(20));
+		assert_eq!(child_meter.merge(&child_meter_2), Ok(()));
 		assert_eq!(child_meter.available_storage(), 830);
 
 		let mut child_meter_3 = storage_meter.child_meter();
@@ -262,12 +302,12 @@ mod tests {
 		child_meter_3.charge(30);
 		assert_eq!(child_meter_3.available_storage(), 870);
 		assert_eq!(child_meter_3.finish(), Ok(30));
-		assert_eq!(storage_meter.merge(&child_meter_3), Ok(30));
+		assert_eq!(storage_meter.merge(&child_meter_3), Ok(()));
 
 		assert_eq!(storage_meter.available_storage(), 870);
 		assert_eq!(child_meter.finish(), Ok(70));
 		assert_eq!(storage_meter.finish(), Ok(130));
-		assert_eq!(storage_meter.merge(&child_meter), Ok(70));
+		assert_eq!(storage_meter.merge(&child_meter), Ok(()));
 		assert_eq!(storage_meter.available_storage(), 800);
 	}
 }

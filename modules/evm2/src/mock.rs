@@ -20,6 +20,10 @@
 
 use super::*;
 
+use crate::runner::{
+	stack::SubstrateStackState,
+	state::{StackExecutor, StackSubstateMetadata},
+};
 use frame_support::{construct_runtime, ord_parameter_types, parameter_types, traits::FindAuthor, ConsensusEngineId};
 use frame_system::EnsureSignedBy;
 use module_support::mocks::MockAddressMapping;
@@ -41,7 +45,7 @@ parameter_types! {
 	pub const BlockHashCount: u64 = 250;
 }
 
-impl frame_system::Config for Test {
+impl frame_system::Config for Runtime {
 	type BaseCallFilter = ();
 	type BlockWeights = ();
 	type BlockLength = ();
@@ -61,7 +65,7 @@ impl frame_system::Config for Test {
 	type PalletInfo = PalletInfo;
 	type AccountData = pallet_balances::AccountData<u64>;
 	type OnNewAccount = ();
-	type OnKilledAccount = crate::CallKillAccount<Test>;
+	type OnKilledAccount = crate::CallKillAccount<Runtime>;
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
 	type OnSetCode = ();
@@ -71,7 +75,7 @@ parameter_types! {
 	pub const ExistentialDeposit: u64 = 1;
 	pub const MaxReserves: u32 = 50;
 }
-impl pallet_balances::Config for Test {
+impl pallet_balances::Config for Runtime {
 	type Balance = u64;
 	type DustRemoval = ();
 	type Event = Event;
@@ -86,7 +90,7 @@ impl pallet_balances::Config for Test {
 parameter_types! {
 	pub const MinimumPeriod: u64 = 1000;
 }
-impl pallet_timestamp::Config for Test {
+impl pallet_timestamp::Config for Runtime {
 	type Moment = u64;
 	type OnTimestampSet = ();
 	type MinimumPeriod = MinimumPeriod;
@@ -99,7 +103,7 @@ parameter_type_with_key! {
 	};
 }
 
-impl orml_tokens::Config for Test {
+impl orml_tokens::Config for Runtime {
 	type Event = Event;
 	type Balance = u64;
 	type Amount = Amount;
@@ -115,14 +119,14 @@ parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 }
 
-impl orml_currencies::Config for Test {
+impl orml_currencies::Config for Runtime {
 	type Event = Event;
 	type MultiCurrency = Tokens;
 	type NativeCurrency = AdaptedBasicCurrency;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type WeightInfo = ();
 }
-pub type AdaptedBasicCurrency = orml_currencies::BasicCurrencyAdapter<Test, Balances, Amount, BlockNumber>;
+pub type AdaptedBasicCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
 
 pub struct GasToWeight;
 
@@ -158,7 +162,7 @@ ord_parameter_types! {
 	pub const ChainId: u64 = 1;
 }
 
-impl Config for Test {
+impl Config for Runtime {
 	type AddressMapping = MockAddressMapping;
 	type Currency = Balances;
 	type TransferAll = Currencies;
@@ -184,11 +188,11 @@ impl Config for Test {
 	type WeightInfo = ();
 }
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
-type Block = frame_system::mocking::MockBlock<Test>;
+type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
+type Block = frame_system::mocking::MockBlock<Runtime>;
 
 construct_runtime!(
-	pub enum Test where
+	pub enum Runtime where
 		Block = Block,
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic,
@@ -224,7 +228,9 @@ pub fn charlie() -> H160 {
 }
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
-	let mut t = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
+	let mut t = frame_system::GenesisConfig::default()
+		.build_storage::<Runtime>()
+		.unwrap();
 
 	let mut accounts = BTreeMap::new();
 
@@ -266,10 +272,10 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		},
 	);
 
-	pallet_balances::GenesisConfig::<Test>::default()
+	pallet_balances::GenesisConfig::<Runtime>::default()
 		.assimilate_storage(&mut t)
 		.unwrap();
-	evm_mod::GenesisConfig::<Test> {
+	evm_mod::GenesisConfig::<Runtime> {
 		accounts,
 		treasury: Default::default(),
 	}
@@ -282,12 +288,12 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 }
 
 pub fn balance(address: H160) -> u64 {
-	let account_id = <Test as Config>::AddressMapping::get_account_id(&address);
+	let account_id = <Runtime as Config>::AddressMapping::get_account_id(&address);
 	Balances::free_balance(account_id)
 }
 
 pub fn reserved_balance(address: H160) -> u64 {
-	let account_id = <Test as Config>::AddressMapping::get_account_id(&address);
+	let account_id = <Runtime as Config>::AddressMapping::get_account_id(&address);
 	Balances::reserved_balance(account_id)
 }
 

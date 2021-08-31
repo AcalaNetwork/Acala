@@ -318,9 +318,6 @@ pub mod module {
 	#[pallet::genesis_build]
 	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
 		fn build(&self) {
-			let treasury = T::AddressMapping::get_or_create_evm_address(&self.treasury);
-			//let mut handler = handler::StorageMeterHandlerImpl::<T>::new(treasury);
-
 			self.accounts.iter().for_each(|(address, account)| {
 				let account_id = T::AddressMapping::get_account_id(address);
 
@@ -328,55 +325,6 @@ pub mod module {
 				<Accounts<T>>::insert(address, account_info);
 
 				T::Currency::deposit_creating(&account_id, account.balance);
-
-				//if !account.code.is_empty() {
-				//	// if code len > 0 then it's a contract
-				//	let source = T::NetworkContractSource::get();
-				//	let vicinity = Vicinity {
-				//		gas_price: U256::one(),
-				//		origin: source,
-				//	};
-				//	let storage_limit = 0;
-				//	let contract_address = *address;
-				//	let code = account.code.clone();
-
-				//	//let mut storage_meter_handler =
-				// StorageMeterHandlerImpl::<T>::new(vicinity.origin); 	//let storage_meter =
-				// StorageMeter::new(&mut storage_meter_handler, contract_address, storage_limit) 	//
-				// . expect("Genesis contract failed to new storage_meter");
-
-				//	//let mut substate = Handler::<T>::new(&vicinity, 2_100_000, storage_meter,
-				// false, T::config()); 	//let (reason, out) =
-				//	//	substate.execute(source, contract_address, Default::default(), code,
-				// Vec::new());
-
-				//	//assert!(
-				//	//	reason.is_succeed(),
-				//	//	"Genesis contract failed to execute, error: {:?}",
-				//	//	reason
-				//	//);
-
-				//	//<Pallet<T>>::create_account(&contract_address, &source, out)
-				//	//	.expect("Genesis contract failed to initialize");
-
-				//	#[cfg(not(feature = "with-ethereum-compatibility"))]
-				//	<Pallet<T>>::mark_deployed(*address, None).expect("Genesis contract failed to
-				// deploy");
-
-				//	let mut count = 0;
-				//	for (index, value) in &account.storage {
-				//		AccountStorages::<T>::insert(address, index, value);
-				//		count += 1;
-				//	}
-
-				//	let storage = count * handler::STORAGE_SIZE;
-				//	handler
-				//		.reserve_storage(storage)
-				//		.expect("Genesis contract failed to reserve storage");
-				//	handler
-				//		.charge_storage(address, storage, 0)
-				//		.expect("Genesis contract failed to charge storage");
-				//}
 			});
 			NetworkContractIndex::<T>::put(MIRRORED_NFT_ADDRESS_START);
 		}
@@ -488,6 +436,7 @@ pub mod module {
 		/// - `gas_limit`: the maximum gas the call can use
 		/// - `storage_limit`: the total bytes the contract's storage can increase by
 		#[pallet::weight(T::GasToWeight::convert(*gas_limit))]
+		#[transactional]
 		pub fn call(
 			origin: OriginFor<T>,
 			target: EvmAddress,
@@ -606,6 +555,7 @@ pub mod module {
 		/// - `gas_limit`: the maximum gas the call can use
 		/// - `storage_limit`: the total bytes the contract's storage can increase by
 		#[pallet::weight(T::GasToWeight::convert(*gas_limit))]
+		#[transactional]
 		pub fn create(
 			origin: OriginFor<T>,
 			init: Vec<u8>,
@@ -648,6 +598,7 @@ pub mod module {
 		/// - `gas_limit`: the maximum gas the call can use
 		/// - `storage_limit`: the total bytes the contract's storage can increase by
 		#[pallet::weight(T::GasToWeight::convert(*gas_limit))]
+		#[transactional]
 		pub fn create2(
 			origin: OriginFor<T>,
 			init: Vec<u8>,
@@ -691,6 +642,7 @@ pub mod module {
 		/// - `gas_limit`: the maximum gas the call can use
 		/// - `storage_limit`: the total bytes the contract's storage can increase by
 		#[pallet::weight(T::GasToWeight::convert(*gas_limit))]
+		#[transactional]
 		pub fn create_network_contract(
 			origin: OriginFor<T>,
 			init: Vec<u8>,
@@ -863,7 +815,6 @@ impl<T: Config> Pallet<T> {
 				return false;
 			}
 
-			// TODO: check other orml tokens?
 			account_info.nonce.is_zero()
 		})
 	}
@@ -871,7 +822,7 @@ impl<T: Config> Pallet<T> {
 	/// Remove an account if its empty.
 	pub fn remove_account_if_empty(address: &H160) {
 		if Self::is_account_empty(address) {
-			Self::remove_account(address);
+			let _ = Self::remove_account(address);
 		}
 	}
 
@@ -908,7 +859,7 @@ impl<T: Config> Pallet<T> {
 
 		// this should happen after `Accounts` is updated because this could trigger another updates on
 		// `Accounts`
-		frame_system::Pallet::<T>::dec_providers(&address_account)?;
+		let _ = frame_system::Pallet::<T>::dec_consumers(&address_account);
 
 		Ok(size)
 	}
@@ -1006,7 +957,7 @@ impl<T: Config> Pallet<T> {
 			}
 		});
 
-		frame_system::Pallet::<T>::inc_consumers(&T::AddressMapping::get_account_id(&address));
+		let _ = frame_system::Pallet::<T>::inc_consumers(&T::AddressMapping::get_account_id(&address));
 	}
 
 	/// Get the account basic in EVM format.
@@ -1145,14 +1096,11 @@ impl<T: Config> Pallet<T> {
 
 			let storage_size_chainged: i32 =
 				code_size.saturating_add(T::NewContractExtraBytes::get()) as i32 - old_code_info.code_size as i32;
-			//TODO
-			//let mut handler = StorageMeterHandlerImpl::<T>::new(source);
-			//if storage_size_chainged.is_positive() {
-			//	handler.reserve_storage(storage_size_chainged as u32)?;
-			//	handler.charge_storage(&contract, storage_size_chainged as u32, 0)?;
-			//} else {
-			//	handler.charge_storage(&contract, 0, -storage_size_chainged as u32)?;
-			//}
+
+			if storage_size_chainged.is_positive() {
+				Self::reserve_storage(&source, storage_size_chainged as u32)?;
+			}
+			Self::charge_storage(&source, &contract, storage_size_chainged)?;
 			Self::update_contract_storage_size(&contract, storage_size_chainged);
 
 			// try remove old codes

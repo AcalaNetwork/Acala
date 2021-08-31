@@ -1,3 +1,21 @@
+// This file is part of Acala.
+
+// Copyright (C) 2020-2021 Acala Foundation.
+// SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
+
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with this program. If not, see <https://www.gnu.org/licenses/>.
+
 // Synchronize with https://github.com/rust-blockchain/evm/blob/master/src/executor/stack/mod.rs
 
 use crate::{runner::StackState, StorageMeter};
@@ -55,10 +73,10 @@ pub struct StackSubstateMetadata<'config> {
 }
 
 impl<'config> StackSubstateMetadata<'config> {
-	pub fn new(gas_limit: u64, storage_limit: u32, config: &'config Config) -> Self {
+	pub fn new(gas_limit: u64, storage_limit: u32, extra_bytes: u32, config: &'config Config) -> Self {
 		Self {
 			gasometer: Gasometer::new(gas_limit, config),
-			storage_meter: StorageMeter::new(storage_limit),
+			storage_meter: StorageMeter::new(storage_limit, extra_bytes),
 			is_static: false,
 			depth: None,
 			caller: None,
@@ -66,16 +84,14 @@ impl<'config> StackSubstateMetadata<'config> {
 		}
 	}
 
-	pub fn swallow_commit(&mut self, other: Self) -> Result<(H160, i32), ExitError> {
+	pub fn swallow_commit(&mut self, other: Self) -> Result<(), ExitError> {
 		self.gasometer_mut().record_stipend(other.gasometer().gas())?;
 		self.gasometer.record_refund(other.gasometer().refunded_gas())?;
 
 		// merge child meter into parent meter
-		let storage = self.storage_meter.merge(other.storage_meter())?;
+		self.storage_meter.merge(other.storage_meter())?;
 
-		let target = self.target.ok_or(ExitError::Other("Storage target is none".into()))?;
-
-		Ok((target, storage))
+		Ok(())
 	}
 
 	pub fn swallow_revert(&mut self, other: Self) -> Result<(), ExitError> {
@@ -91,7 +107,10 @@ impl<'config> StackSubstateMetadata<'config> {
 	pub fn spit_child(&self, gas_limit: u64, is_static: bool) -> Self {
 		Self {
 			gasometer: Gasometer::new(gas_limit, self.gasometer().config()),
-			storage_meter: StorageMeter::new(self.storage_meter().available_storage()),
+			storage_meter: StorageMeter::new(
+				self.storage_meter().available_storage(),
+				self.storage_meter().extra_bytes(),
+			),
 			is_static: is_static || self.is_static,
 			depth: match self.depth {
 				None => Some(0),
@@ -132,6 +151,14 @@ impl<'config> StackSubstateMetadata<'config> {
 
 	pub fn caller_mut(&mut self) -> &mut Option<H160> {
 		&mut self.caller
+	}
+
+	pub fn target(&self) -> &Option<H160> {
+		&self.target
+	}
+
+	pub fn target_mut(&mut self) -> &mut Option<H160> {
+		&mut self.target
 	}
 }
 
@@ -399,13 +426,14 @@ impl<'config, S: StackState<'config>> StackExecutor<'config, S> {
 			};
 		}
 
-		*self.state.metadata_mut().caller_mut() = Some(caller);
-
 		fn l64(gas: u64) -> u64 {
 			gas - gas / 64
 		}
 
 		let address = self.create_address(scheme);
+
+		*self.state.metadata_mut().caller_mut() = Some(caller);
+		*self.state.metadata_mut().target_mut() = Some(address);
 
 		event!(Create {
 			caller,
@@ -503,6 +531,10 @@ impl<'config, S: StackState<'config>> StackExecutor<'config, S> {
 
 				match self.state.metadata_mut().gasometer_mut().record_deposit(out.len()) {
 					Ok(()) => {
+						self.state
+							.metadata_mut()
+							.storage_meter_mut()
+							.charge_with_extra_bytes(out.len() as u32);
 						let e = self.exit_substate(StackExitKind::Succeeded);
 						self.state.set_code(address, out);
 						try_or_fail!(e);
@@ -555,6 +587,8 @@ impl<'config, S: StackState<'config>> StackExecutor<'config, S> {
 		fn l64(gas: u64) -> u64 {
 			gas - gas / 64
 		}
+
+		*self.state.metadata_mut().target_mut() = Some(code_address);
 
 		event!(Call {
 			code_address,
@@ -629,7 +663,8 @@ impl<'config, S: StackState<'config>> StackExecutor<'config, S> {
 					}
 
 					let _ = self.state.metadata_mut().gasometer_mut().record_cost(cost);
-					let _ = self.exit_substate(StackExitKind::Succeeded);
+					let e = self.exit_substate(StackExitKind::Succeeded);
+					try_or_fail!(e);
 					return Capture::Exit((ExitReason::Succeed(exit_status), output));
 				}
 				Err(e) => {
@@ -646,7 +681,8 @@ impl<'config, S: StackState<'config>> StackExecutor<'config, S> {
 
 		match reason {
 			ExitReason::Succeed(s) => {
-				let _ = self.exit_substate(StackExitKind::Succeeded);
+				let e = self.exit_substate(StackExitKind::Succeeded);
+				try_or_fail!(e);
 				Capture::Exit((ExitReason::Succeed(s), runtime.machine().return_value()))
 			}
 			ExitReason::Error(e) => {
