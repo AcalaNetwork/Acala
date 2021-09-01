@@ -26,7 +26,7 @@ pub mod weights;
 
 use frame_support::{pallet_prelude::*, transactional};
 use frame_system::{ensure_signed, pallet_prelude::*};
-use module_support::{ExchangeRate, Ratio};
+use module_support::{ExchangeRate, ExchangeRateProvider, Ratio};
 use orml_traits::{MultiCurrency, XcmTransfer};
 use primitives::{Balance, CurrencyId};
 use sp_runtime::{traits::Zero, ArithmeticError, FixedPointNumber, Permill};
@@ -256,5 +256,15 @@ pub mod module {
 			Self::deposit_event(Event::<T>::XcmDestWeightSet(xcm_dest_weight));
 			Ok(())
 		}
+	}
+}
+
+impl<T: Config> ExchangeRateProvider for Pallet<T> {
+	fn get_exchange_rate() -> ExchangeRate {
+		ExchangeRate::checked_from_rational(
+			T::Currency::total_issuance(T::LiquidCurrencyId::get()),
+			Pallet::<T>::total_staking_currency(),
+		)
+		.unwrap_or_default()
 	}
 }

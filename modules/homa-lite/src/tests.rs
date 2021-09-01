@@ -79,11 +79,17 @@ fn mint_works() {
 			lksm_issuance / 5
 		));
 
+		assert_eq!(
+			HomaLite::get_exchange_rate(),
+			ExchangeRate::saturating_from_rational(lksm_issuance, lksm_issuance / 5)
+		);
+
 		// The exchange rate is now 1:5 ratio
 		// liquid = (1000 - 0.01) * 1_009_899_901_000_000_000 / 201_979_980_200_000_000 * 0.99
 		liquid = 4_949_950_500_000_000;
 		assert_ok!(HomaLite::mint(Origin::signed(BOB), amount));
 		assert_eq!(Currencies::free_balance(LKSM, &BOB), liquid);
+
 		assert_eq!(
 			System::events().iter().last().unwrap().event,
 			Event::HomaLite(crate::Event::Minted(BOB, amount, liquid))
