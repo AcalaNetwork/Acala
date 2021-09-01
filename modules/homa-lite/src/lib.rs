@@ -26,7 +26,7 @@ pub mod weights;
 
 use frame_support::{pallet_prelude::*, transactional};
 use frame_system::{ensure_signed, pallet_prelude::*};
-use module_support::{ExchangeRate, Ratio};
+use module_support::{ExchangeRate, ExchangeRateProvider, Ratio};
 use orml_traits::{MultiCurrency, XcmTransfer};
 use primitives::{Balance, CurrencyId};
 use sp_runtime::{traits::Zero, ArithmeticError, FixedPointNumber, Permill};
@@ -169,13 +169,10 @@ pub mod module {
 			// ensure the user has enough funds on their account.
 			T::Currency::ensure_can_withdraw(staking_currency, &who, amount)?;
 
-			// Calculate how much Liquid currency is to be minted.
 			// Gets the current exchange rate
-			let staking_total = Self::total_staking_currency();
-			let liquid_total = T::Currency::total_issuance(T::LiquidCurrencyId::get());
-			let exchange_rate =
-				Ratio::checked_from_rational(liquid_total, staking_total).unwrap_or_else(T::DefaultExchangeRate::get);
+			let exchange_rate = Self::get_staking_exchange_rate();
 
+			// Calculate how much Liquid currency is to be minted.
 			// liquid_to_mint = ( (staked_amount - MintFee) * liquid_total / staked_total ) * (1 -
 			// MaxRewardPerEra)
 			let mut liquid_to_mint = exchange_rate
@@ -256,5 +253,22 @@ pub mod module {
 			Self::deposit_event(Event::<T>::XcmDestWeightSet(xcm_dest_weight));
 			Ok(())
 		}
+	}
+}
+
+impl<T: Config> Pallet<T> {
+	pub fn get_staking_exchange_rate() -> ExchangeRate {
+		let staking_total = Self::total_staking_currency();
+		let liquid_total = T::Currency::total_issuance(T::LiquidCurrencyId::get());
+		Ratio::checked_from_rational(liquid_total, staking_total).unwrap_or_else(T::DefaultExchangeRate::get)
+	}
+}
+
+pub struct LiquidExchangeProvider<T>(sp_std::marker::PhantomData<T>);
+impl<T: Config> ExchangeRateProvider for LiquidExchangeProvider<T> {
+	fn get_exchange_rate() -> ExchangeRate {
+		Pallet::<T>::get_staking_exchange_rate()
+			.reciprocal()
+			.unwrap_or_default()
 	}
 }

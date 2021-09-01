@@ -801,18 +801,11 @@ impl module_prices::Config for Runtime {
 	type GetStakingCurrencyId = GetStakingCurrencyId;
 	type GetLiquidCurrencyId = GetLiquidCurrencyId;
 	type LockOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
-	type LiquidStakingExchangeRateProvider = LiquidStakingExchangeRateProvider;
+	type LiquidStakingExchangeRateProvider = module_homa_lite::LiquidExchangeProvider<Runtime>;
 	type DEX = Dex;
 	type Currency = Currencies;
 	type CurrencyIdMapping = EvmCurrencyIdMapping<Runtime>;
 	type WeightInfo = weights::module_prices::WeightInfo<Runtime>;
-}
-
-pub struct LiquidStakingExchangeRateProvider;
-impl module_support::ExchangeRateProvider for LiquidStakingExchangeRateProvider {
-	fn get_exchange_rate() -> ExchangeRate {
-		ExchangeRate::zero()
-	}
 }
 
 parameter_types! {
