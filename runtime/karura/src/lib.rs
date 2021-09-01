@@ -811,7 +811,11 @@ impl module_prices::Config for Runtime {
 pub struct LiquidStakingExchangeRateProvider;
 impl module_support::ExchangeRateProvider for LiquidStakingExchangeRateProvider {
 	fn get_exchange_rate() -> ExchangeRate {
-		ExchangeRate::zero()
+		ExchangeRate::checked_from_rational(
+			Tokens::total_issuance(GetLiquidCurrencyId::get()),
+			HomaLite::total_staking_currency(),
+		)
+		.unwrap_or_default()
 	}
 }
 
