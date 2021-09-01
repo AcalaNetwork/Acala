@@ -187,7 +187,6 @@ create_currency_id! {
 		LDOT("Liquid DOT", 10) = 3,
 		// 20 - 39: External tokens (e.g. bridged)
 		RENBTC("Ren Protocol BTC", 8) = 20,
-		BNC("Bifrost Native Token", 12) = 133,
 		CASH("Compound CASH", 8) = 21,
 		// 40 - 127: Polkadot parachain tokens
 
@@ -200,6 +199,7 @@ create_currency_id! {
 		// 149: Reserved for renBTC
 		// 150: Reserved for CASH
 		// 168 - 255: Kusama parachain tokens
+		BNC("Bifrost Native Token", 12) = 168,
 	}
 }
 

@@ -736,7 +736,7 @@ parameter_type_with_key! {
 				TokenSymbol::KUSD => cent(*currency_id),
 				TokenSymbol::KSM => 10 * millicent(*currency_id),
 				TokenSymbol::LKSM => 50 * millicent(*currency_id),
-				TokenSymbol::BNC => Zero::zero(),
+				TokenSymbol::BNC => 800 * millicent(*currency_id),  // 80BNC = 1KSM
 
 				TokenSymbol::ACA |
 				TokenSymbol::AUSD |
@@ -1429,9 +1429,18 @@ impl TakeRevenue for ToTreasury {
 parameter_types! {
 	pub BifrostNativeTokenLocation: (MultiLocation, u128) = (
 		X3(Parent, Parachain(2001), GeneralKey([0,1].to_vec())),
-		ksm_per_second()
+		// BNC:KSM = 80:1
+		6_400_000_000_000
 	);
 }
+
+// Fee traders for multiple fee currencies
+type MultiTraders = (
+	// KSM trader
+	FixedRateOfConcreteFungible<KsmPerSecond, ToTreasury>,
+	// BNC trader
+	FixedRateOfConcreteFungible<BifrostNativeTokenLocation, ToTreasury>
+);
 
 pub struct XcmConfig;
 impl xcm_executor::Config for XcmConfig {
@@ -1446,8 +1455,7 @@ impl xcm_executor::Config for XcmConfig {
 	type LocationInverter = LocationInverter<Ancestry>;
 	type Barrier = Barrier;
 	type Weigher = FixedWeightBounds<UnitWeightCost, Call>;
-	// Only receiving KSM is handled, and all fees must be paid in KSM.
-	type Trader = FixedRateOfConcreteFungible<BifrostNativeTokenLocation, ToTreasury>;
+	type Trader = MultiTraders;
 	type ResponseHandler = (); // Don't handle responses for now.
 }
 
