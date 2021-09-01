@@ -116,7 +116,7 @@ pub use runtime_common::{
 	GeneralCouncilMembershipInstance, HomaCouncilInstance, HomaCouncilMembershipInstance,
 	OperatorMembershipInstanceAcala, OperatorMembershipInstanceBand, Price, ProxyType, Rate, Ratio,
 	RelaychainBlockNumberProvider, RelaychainSubAccountId, RuntimeBlockLength, RuntimeBlockWeights,
-	SystemContractsFilter, TechnicalCommitteeInstance, TechnicalCommitteeMembershipInstance, TimeStampedPrice, KAR,
+	SystemContractsFilter, TechnicalCommitteeInstance, TechnicalCommitteeMembershipInstance, TimeStampedPrice, BNC, KAR,
 	KSM, KUSD, LKSM, RENBTC,
 };
 
@@ -736,6 +736,7 @@ parameter_type_with_key! {
 				TokenSymbol::KUSD => cent(*currency_id),
 				TokenSymbol::KSM => 10 * millicent(*currency_id),
 				TokenSymbol::LKSM => 50 * millicent(*currency_id),
+				TokenSymbol::BNC => Zero::zero(),
 
 				TokenSymbol::ACA |
 				TokenSymbol::AUSD |
@@ -1425,6 +1426,13 @@ impl TakeRevenue for ToTreasury {
 	}
 }
 
+parameter_types! {
+	pub BifrostNativeTokenLocation: (MultiLocation, u128) = (
+		X3(Parent, Parachain(2001), GeneralKey([0,1].to_vec())),
+		ksm_per_second()
+	);
+}
+
 pub struct XcmConfig;
 impl xcm_executor::Config for XcmConfig {
 	type Call = Call;
@@ -1439,7 +1447,7 @@ impl xcm_executor::Config for XcmConfig {
 	type Barrier = Barrier;
 	type Weigher = FixedWeightBounds<UnitWeightCost, Call>;
 	// Only receiving KSM is handled, and all fees must be paid in KSM.
-	type Trader = FixedRateOfConcreteFungible<KsmPerSecond, ToTreasury>;
+	type Trader = FixedRateOfConcreteFungible<BifrostNativeTokenLocation, ToTreasury>;
 	type ResponseHandler = (); // Don't handle responses for now.
 }
 
@@ -1545,6 +1553,8 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 		match id {
 			Token(KSM) => Some(X1(Parent)),
 			Token(KAR) | Token(KUSD) | Token(LKSM) | Token(RENBTC) => Some(native_currency_location(id)),
+			// Bifrost native token
+			Token(BNC) => Some(X3(Parent, Parachain(2001), GeneralKey([0, 1].to_vec()))),
 			_ => None,
 		}
 	}
@@ -1555,13 +1565,23 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 		use TokenSymbol::*;
 		match location {
 			X1(Parent) => Some(Token(KSM)),
-			X3(Parent, Parachain(id), GeneralKey(key)) if ParaId::from(id) == ParachainInfo::get() => {
+			X3(Parent, Parachain(id), GeneralKey(key)) => {
 				// decode the general key
-				if let Ok(currency_id) = CurrencyId::decode(&mut &key[..]) {
-					// check `currency_id` is cross-chain asset
-					match currency_id {
-						Token(KAR) | Token(KUSD) | Token(LKSM) | Token(RENBTC) => Some(currency_id),
-						_ => None,
+				if ParaId::from(id) == ParachainInfo::get() {
+					if let Ok(currency_id) = CurrencyId::decode(&mut &key[..]) {
+						// check `currency_id` is cross-chain asset
+						match currency_id {
+							Token(KAR) | Token(KUSD) | Token(LKSM) | Token(RENBTC) => Some(currency_id),
+							_ => None,
+						}
+					} else {
+						None
+					}
+				} else if id == 2001 {
+					if key == [0, 1].to_vec() {
+						Some(Token(BNC))
+					} else {
+						None
 					}
 				} else {
 					None
