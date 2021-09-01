@@ -80,8 +80,12 @@ fn mint_works() {
 		));
 
 		assert_eq!(
-			HomaLite::get_exchange_rate(),
+			HomaLite::get_staking_exchange_rate(),
 			ExchangeRate::saturating_from_rational(lksm_issuance, lksm_issuance / 5)
+		);
+		assert_eq!(
+			LiquidExchangeProvider::<Runtime>::get_exchange_rate(),
+			ExchangeRate::saturating_from_rational(lksm_issuance / 5, lksm_issuance)
 		);
 
 		// The exchange rate is now 1:5 ratio

@@ -169,13 +169,10 @@ pub mod module {
 			// ensure the user has enough funds on their account.
 			T::Currency::ensure_can_withdraw(staking_currency, &who, amount)?;
 
-			// Calculate how much Liquid currency is to be minted.
 			// Gets the current exchange rate
-			let staking_total = Self::total_staking_currency();
-			let liquid_total = T::Currency::total_issuance(T::LiquidCurrencyId::get());
-			let exchange_rate =
-				Ratio::checked_from_rational(liquid_total, staking_total).unwrap_or_else(T::DefaultExchangeRate::get);
+			let exchange_rate = Self::get_staking_exchange_rate();
 
+			// Calculate how much Liquid currency is to be minted.
 			// liquid_to_mint = ( (staked_amount - MintFee) * liquid_total / staked_total ) * (1 -
 			// MaxRewardPerEra)
 			let mut liquid_to_mint = exchange_rate
@@ -259,12 +256,19 @@ pub mod module {
 	}
 }
 
-impl<T: Config> ExchangeRateProvider for Pallet<T> {
+impl<T: Config> Pallet<T> {
+	pub fn get_staking_exchange_rate() -> ExchangeRate {
+		let staking_total = Self::total_staking_currency();
+		let liquid_total = T::Currency::total_issuance(T::LiquidCurrencyId::get());
+		Ratio::checked_from_rational(liquid_total, staking_total).unwrap_or_else(T::DefaultExchangeRate::get)
+	}
+}
+
+pub struct LiquidExchangeProvider<T>(sp_std::marker::PhantomData<T>);
+impl<T: Config> ExchangeRateProvider for LiquidExchangeProvider<T> {
 	fn get_exchange_rate() -> ExchangeRate {
-		ExchangeRate::checked_from_rational(
-			T::Currency::total_issuance(T::LiquidCurrencyId::get()),
-			Pallet::<T>::total_staking_currency(),
-		)
-		.unwrap_or_default()
+		Pallet::<T>::get_staking_exchange_rate()
+			.reciprocal()
+			.unwrap_or_default()
 	}
 }
