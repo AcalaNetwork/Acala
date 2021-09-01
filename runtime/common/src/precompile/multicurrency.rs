@@ -181,8 +181,8 @@ fn vec_u8_from_u8(b: u8) -> Vec<u8> {
 	be_bytes.to_vec()
 }
 
+use ethabi::Token;
 fn vec_u8_from_str(b: &[u8]) -> Vec<u8> {
-	let mut be_bytes = [0u8; 32];
-	U256::from_big_endian(b).to_big_endian(&mut be_bytes[..]);
-	be_bytes.to_vec()
+	let out = Token::Bytes(b.to_vec());
+	ethabi::encode(&[out])
 }
