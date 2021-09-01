@@ -27,9 +27,7 @@ use sp_finality_grandpa::AuthorityId as GrandpaId;
 use sp_runtime::{traits::Zero, FixedPointNumber, FixedU128};
 use sp_std::collections::btree_map::BTreeMap;
 
-use crate::chain_spec::{
-	evm_genesis, get_account_id_from_seed, get_authority_keys_from_seed, Extensions, TELEMETRY_URL,
-};
+use crate::chain_spec::{get_account_id_from_seed, get_authority_keys_from_seed, Extensions, TELEMETRY_URL};
 
 pub type ChainSpec = sc_service::GenericChainSpec<mandala_runtime::GenesisConfig, Extensions>;
 
@@ -247,8 +245,6 @@ fn testnet_genesis(
 	let initial_balance: u128 = 10_000_000 * dollar(ACA);
 	let initial_staking: u128 = 100_000 * dollar(ACA);
 
-	let evm_genesis_accounts = evm_genesis();
-
 	let balances = initial_authorities
 		.iter()
 		.map(|x| (x.0.clone(), initial_staking + dollar(ACA))) // bit more for fee
@@ -364,10 +360,7 @@ fn testnet_genesis(
 		air_drop: AirDropConfig {
 			airdrop_accounts: vec![],
 		},
-		evm: EVMConfig {
-			accounts: evm_genesis_accounts,
-			treasury: root_key,
-		},
+		evm: Default::default(),
 		staking_pool: StakingPoolConfig {
 			staking_pool_params: module_staking_pool::Params {
 				target_max_free_unbonded_ratio: FixedU128::saturating_from_rational(10, 100),
@@ -454,7 +447,6 @@ fn mandala_genesis(
 	let initial_balance: u128 = 1_000_000 * dollar(ACA);
 	let initial_staking: u128 = 100_000 * dollar(ACA);
 
-	let evm_genesis_accounts = evm_genesis();
 	let balances = initial_authorities
 		.iter()
 		.map(|x| (x.0.clone(), initial_staking + dollar(ACA))) // bit more for fee
@@ -576,10 +568,7 @@ fn mandala_genesis(
 					.collect::<Vec<_>>()
 			},
 		},
-		evm: EVMConfig {
-			accounts: evm_genesis_accounts,
-			treasury: root_key,
-		},
+		evm: Default::default(),
 		staking_pool: StakingPoolConfig {
 			staking_pool_params: module_staking_pool::Params {
 				target_max_free_unbonded_ratio: FixedU128::saturating_from_rational(10, 100),

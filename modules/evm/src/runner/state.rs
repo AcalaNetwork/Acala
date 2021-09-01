@@ -29,7 +29,7 @@ use frame_support::log;
 use primitive_types::{H160, H256, U256};
 pub use primitives::{
 	evm::{Account, EvmAddress, Log, Vicinity},
-	ReserveIdentifier, MIRRORED_NFT_ADDRESS_START,
+	ReserveIdentifier, MIRRORED_NFT_ADDRESS_START, SYSTEM_CONTRACT_ADDRESS_PREFIX,
 };
 use sha3::{Digest, Keccak256};
 use sp_std::{rc::Rc, vec::Vec};
@@ -408,8 +408,8 @@ impl<'config, S: StackState<'config>> StackExecutor<'config, S> {
 	}
 
 	/// Get the create address from given scheme.
-	pub fn create_address(&self, scheme: CreateScheme) -> H160 {
-		match scheme {
+	pub fn create_address(&self, scheme: CreateScheme) -> Result<H160, ExitError> {
+		let address = match scheme {
 			CreateScheme::Create2 {
 				caller,
 				code_hash,
@@ -430,6 +430,17 @@ impl<'config, S: StackState<'config>> StackExecutor<'config, S> {
 				H256::from_slice(Keccak256::digest(&stream.out()).as_slice()).into()
 			}
 			CreateScheme::Fixed(naddress) => naddress,
+		};
+
+		match scheme {
+			CreateScheme::Create2 { .. } | CreateScheme::Legacy { .. } => {
+				if address.as_bytes().starts_with(&SYSTEM_CONTRACT_ADDRESS_PREFIX) {
+					Err(ExitError::Other("ConflictContractAddress".into()))
+				} else {
+					Ok(address)
+				}
+			}
+			_ => Ok(address),
 		}
 	}
 
@@ -455,7 +466,12 @@ impl<'config, S: StackState<'config>> StackExecutor<'config, S> {
 			gas - gas / 64
 		}
 
-		let address = self.create_address(scheme);
+		let address = match self.create_address(scheme) {
+			Err(e) => {
+				return Capture::Exit((ExitReason::Error(e), None, Vec::new()));
+			}
+			Ok(address) => address,
+		};
 
 		*self.state.metadata_mut().caller_mut() = Some(caller);
 		*self.state.metadata_mut().target_mut() = Some(address);

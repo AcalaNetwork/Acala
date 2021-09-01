@@ -202,7 +202,9 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 	) -> Result<CreateInfo, DispatchError> {
 		let value = U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(value));
 		Self::execute(source, source, value, gas_limit, storage_limit, config, |executor| {
-			let address = executor.create_address(evm::CreateScheme::Legacy { caller: source });
+			let address = executor
+				.create_address(evm::CreateScheme::Legacy { caller: source })
+				.unwrap_or_default(); // transact_create will check the address
 			(executor.transact_create(source, value, init, gas_limit), address)
 		})
 	}
@@ -219,27 +221,28 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 		let value = U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(value));
 		let code_hash = H256::from_slice(Keccak256::digest(&init).as_slice());
 		Self::execute(source, source, value, gas_limit, storage_limit, config, |executor| {
-			let address = executor.create_address(evm::CreateScheme::Create2 {
-				caller: source,
-				code_hash,
-				salt,
-			});
+			let address = executor
+				.create_address(evm::CreateScheme::Create2 {
+					caller: source,
+					code_hash,
+					salt,
+				})
+				.unwrap_or_default(); // transact_create2 will check the address
 			(executor.transact_create2(source, value, init, salt, gas_limit), address)
 		})
 	}
 
 	fn create_at_address(
 		source: H160,
+		address: H160,
 		init: Vec<u8>,
 		value: BalanceOf<T>,
-		assigned_address: H160,
 		gas_limit: u64,
 		storage_limit: u32,
 		config: &evm::Config,
 	) -> Result<CreateInfo, DispatchError> {
 		let value = U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(value));
 		Self::execute(source, source, value, gas_limit, storage_limit, config, |executor| {
-			let address = executor.create_address(evm::CreateScheme::Fixed(assigned_address));
 			(
 				executor.transact_create_at_address(source, address, value, init, gas_limit),
 				address,

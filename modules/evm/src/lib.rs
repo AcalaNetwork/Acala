@@ -50,7 +50,7 @@ pub use orml_traits::currency::TransferAll;
 use primitive_types::{H160, H256, U256};
 pub use primitives::{
 	evm::{Account, CallInfo, CreateInfo, EvmAddress, ExecutionInfo, Log, Vicinity},
-	ReserveIdentifier, H160_PREFIX_DEXSHARE, H160_PREFIX_TOKEN, MIRRORED_NFT_ADDRESS_START, PREDEPLOY_ADDRESS_START,
+	ReserveIdentifier, H160_PREFIX_DEXSHARE, H160_PREFIX_TOKEN, MIRRORED_NFT_ADDRESS_START, PRECOMPILE_ADDRESS_START,
 	SYSTEM_CONTRACT_ADDRESS_PREFIX,
 };
 #[cfg(feature = "std")]
@@ -238,10 +238,6 @@ pub mod module {
 		pub nonce: Index,
 		/// Account balance.
 		pub balance: Balance,
-		/// Full account storage.
-		pub storage: BTreeMap<H256, H256>,
-		/// Account code.
-		pub code: Vec<u8>,
 	}
 
 	/// The EVM accounts info.
@@ -299,8 +295,7 @@ pub mod module {
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
-		pub accounts: std::collections::BTreeMap<EvmAddress, GenesisAccount<BalanceOf<T>, T::Index>>,
-		pub treasury: T::AccountId,
+		pub accounts: BTreeMap<EvmAddress, GenesisAccount<BalanceOf<T>, T::Index>>,
 	}
 
 	#[cfg(feature = "std")]
@@ -308,7 +303,6 @@ pub mod module {
 		fn default() -> Self {
 			GenesisConfig {
 				accounts: Default::default(),
-				treasury: Default::default(),
 			}
 		}
 	}
@@ -401,8 +395,6 @@ pub mod module {
 		ChargeFeeFailed,
 		/// Contract cannot be killed due to reference count
 		CannotKillContract,
-		/// Contract address conflicts with the system contract
-		ConflictContractAddress,
 		/// Not enough balance to perform action
 		BalanceLow,
 		/// Calculating total fee overflowed
@@ -629,7 +621,7 @@ pub mod module {
 			let source = T::NetworkContractSource::get();
 			let address = EvmAddress::from_low_u64_be(Self::network_contract_index());
 			let info =
-				T::Runner::create_at_address(source, init, value, address, gas_limit, storage_limit, T::config())?;
+				T::Runner::create_at_address(source, address, init, value, gas_limit, storage_limit, T::config())?;
 
 			NetworkContractIndex::<T>::mutate(|v| *v = v.saturating_add(One::one()));
 
@@ -1172,8 +1164,8 @@ impl<T: Config> Pallet<T> {
 		}
 
 		if addr.starts_with(&H160_PREFIX_TOKEN) || addr.starts_with(&H160_PREFIX_DEXSHARE) {
-			// Token contracts.
-			let token_address = H160::from_low_u64_be(PREDEPLOY_ADDRESS_START);
+			// MultiCurrencyPrecompile
+			let token_address = H160::from_low_u64_be(PRECOMPILE_ADDRESS_START);
 			log::debug!(
 				target: "evm",
 				"handle_mirrored_token: origin address: {:?}, token address: {:?}",

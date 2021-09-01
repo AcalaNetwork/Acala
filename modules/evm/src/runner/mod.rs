@@ -64,9 +64,9 @@ pub trait Runner<T: Config> {
 
 	fn create_at_address(
 		source: H160,
+		address: H160,
 		init: Vec<u8>,
 		value: BalanceOf<T>,
-		assigned_address: H160,
 		gas_limit: u64,
 		storage_limit: u32,
 		config: &evm::Config,

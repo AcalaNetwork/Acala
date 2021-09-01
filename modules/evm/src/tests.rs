@@ -63,19 +63,26 @@ fn should_calculate_contract_address() {
 
 		assert_eq!(
 			executor.create_address(evm::CreateScheme::Legacy { caller: addr }),
-			H160::from_str("d654cB21c05cb14895baae28159b1107e9DbD6E4").unwrap()
+			Ok(H160::from_str("d654cB21c05cb14895baae28159b1107e9DbD6E4").unwrap())
 		);
 
 		executor.state_mut().inc_nonce(addr);
 		assert_eq!(
 			executor.create_address(evm::CreateScheme::Legacy { caller: addr }),
-			H160::from_str("97784910F057B07bFE317b0552AE23eF34644Aed").unwrap()
+			Ok(H160::from_str("97784910F057B07bFE317b0552AE23eF34644Aed").unwrap())
 		);
 
 		executor.state_mut().inc_nonce(addr);
 		assert_eq!(
 			executor.create_address(evm::CreateScheme::Legacy { caller: addr }),
-			H160::from_str("82155a21E0Ccaee9D4239a582EB2fDAC1D9237c5").unwrap()
+			Ok(H160::from_str("82155a21E0Ccaee9D4239a582EB2fDAC1D9237c5").unwrap())
+		);
+
+		assert_eq!(
+			executor.create_address(evm::CreateScheme::Fixed(
+				H160::from_str("0x0000000000000000000000000000000000000000").unwrap()
+			)),
+			Ok(H160::from_str("0x0000000000000000000000000000000000000000").unwrap())
 		);
 	});
 }
