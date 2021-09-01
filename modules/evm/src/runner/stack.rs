@@ -424,8 +424,7 @@ impl<'vicinity, 'config, T: Config> BackendT for SubstrateStackState<'vicinity, 
 	}
 
 	fn code(&self, address: H160) -> Vec<u8> {
-		let addr = Pallet::<T>::handle_mirrored_token(address);
-		Pallet::<T>::code_at_address(&addr).into_inner()
+		Pallet::<T>::code_at_address(&address).into_inner()
 	}
 
 	fn storage(&self, address: H160, index: H256) -> H256 {

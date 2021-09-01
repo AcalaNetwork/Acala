@@ -75,7 +75,7 @@ where
 		let input = Input::<Action, AccountId, AddressMapping, CurrencyIdMapping>::new(input);
 
 		let action = input.action()?;
-		let currency_id = CurrencyIdMapping::decode_evm_address(context.caller)
+		let currency_id = CurrencyIdMapping::decode_evm_address(context.address)
 			.ok_or_else(|| ExitError::Other("invalid currency id".into()))?;
 
 		log::debug!(target: "evm", "multicurrency: currency id: {:?}", currency_id);

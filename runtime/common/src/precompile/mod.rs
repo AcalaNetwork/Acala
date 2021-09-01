@@ -111,9 +111,13 @@ impl<
 			address, input, target_gas, context,
 		)
 		.or_else(|| {
-			if is_acala_precompile(address) && !PrecompileCallerFilter::is_allowed(context.caller) {
-				log::debug!(target: "evm", "Precompile no permission");
-				return Some(Err(ExitError::Other("no permission".into())));
+			// allow all of the callers
+			// if is_acala_precompile(address) && !PrecompileCallerFilter::is_allowed(context.caller) {
+			// 	log::debug!(target: "evm", "Precompile no permission");
+			// 	return Some(Err(ExitError::Other("no permission".into())));
+			// }
+			if !is_acala_precompile(address) {
+				return None;
 			}
 
 			if address == H160::from_low_u64_be(PRECOMPILE_ADDRESS_START) {

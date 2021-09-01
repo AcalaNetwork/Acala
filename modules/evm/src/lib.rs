@@ -1151,33 +1151,6 @@ impl<T: Config> Pallet<T> {
 		}
 	}
 
-	fn handle_mirrored_token(address: H160) -> H160 {
-		log::debug!(
-			target: "evm",
-			"handle_mirrored_token: address: {:?}",
-			address,
-		);
-
-		let addr = address.as_bytes();
-		if !addr.starts_with(&SYSTEM_CONTRACT_ADDRESS_PREFIX) {
-			return address;
-		}
-
-		if addr.starts_with(&H160_PREFIX_TOKEN) || addr.starts_with(&H160_PREFIX_DEXSHARE) {
-			// MultiCurrencyPrecompile
-			let token_address = H160::from_low_u64_be(PRECOMPILE_ADDRESS_START);
-			log::debug!(
-				target: "evm",
-				"handle_mirrored_token: origin address: {:?}, token address: {:?}",
-				address,
-				token_address
-			);
-			token_address
-		} else {
-			address
-		}
-	}
-
 	fn reserve_storage(caller: &H160, limit: u32) -> DispatchResult {
 		if limit.is_zero() {
 			return Ok(());

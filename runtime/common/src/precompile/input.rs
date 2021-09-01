@@ -30,7 +30,6 @@ use module_support::{AddressMapping as AddressMappingT, CurrencyIdMapping as Cur
 use primitives::{Amount, Balance, CurrencyId};
 use sp_core::H160;
 
-pub const INPUT_BYTES_LENGTH: usize = 32;
 pub const FUNCTION_SELECTOR_LENGTH: usize = 4;
 pub const PER_PARAM_BYTES: usize = 32;
 pub const ACTION_INDEX: usize = 0;
@@ -88,15 +87,14 @@ where
 	type AccountId = AccountId;
 
 	fn nth_param(&self, n: usize, len: Option<usize>) -> Result<&[u8], Self::Error> {
-		// Solidity dynamic bytes will add the size to the front of the input,
-		// pre-compile needs to deal with the INPUT_BYTES_LENGTH `size`.
+		// TODO: Support multiple indefinite length parameters
 		let (start, end) = if n == 0 {
 			// ACTION_INDEX
-			let start = INPUT_BYTES_LENGTH;
+			let start = 0;
 			let end = start + FUNCTION_SELECTOR_LENGTH;
 			(start, end)
 		} else {
-			let start = INPUT_BYTES_LENGTH + FUNCTION_SELECTOR_LENGTH + PER_PARAM_BYTES * (n - 1);
+			let start = FUNCTION_SELECTOR_LENGTH + PER_PARAM_BYTES * (n - 1);
 			let end = start + len.unwrap_or(PER_PARAM_BYTES);
 			(start, end)
 		};

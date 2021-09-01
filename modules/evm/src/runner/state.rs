@@ -29,7 +29,8 @@ use frame_support::log;
 use primitive_types::{H160, H256, U256};
 pub use primitives::{
 	evm::{Account, EvmAddress, Log, Vicinity},
-	ReserveIdentifier, MIRRORED_NFT_ADDRESS_START, SYSTEM_CONTRACT_ADDRESS_PREFIX,
+	ReserveIdentifier, H160_PREFIX_DEXSHARE, H160_PREFIX_TOKEN, MIRRORED_NFT_ADDRESS_START, PRECOMPILE_ADDRESS_START,
+	SYSTEM_CONTRACT_ADDRESS_PREFIX,
 };
 use sha3::{Digest, Keccak256};
 use sp_std::{rc::Rc, vec::Vec};
@@ -407,6 +408,33 @@ impl<'config, S: StackState<'config>> StackExecutor<'config, S> {
 		self.state.basic(address).nonce
 	}
 
+	pub fn handle_mirrored_token(&self, address: H160) -> H160 {
+		log::debug!(
+			target: "evm",
+			"handle_mirrored_token: address: {:?}",
+			address,
+		);
+
+		let addr = address.as_bytes();
+		if !addr.starts_with(&SYSTEM_CONTRACT_ADDRESS_PREFIX) {
+			return address;
+		}
+
+		if addr.starts_with(&H160_PREFIX_TOKEN) || addr.starts_with(&H160_PREFIX_DEXSHARE) {
+			// MultiCurrencyPrecompile
+			let token_address = H160::from_low_u64_be(PRECOMPILE_ADDRESS_START);
+			log::debug!(
+				target: "evm",
+				"handle_mirrored_token: origin address: {:?}, token address: {:?}",
+				address,
+				token_address
+			);
+			token_address
+		} else {
+			address
+		}
+	}
+
 	/// Get the create address from given scheme.
 	pub fn create_address(&self, scheme: CreateScheme) -> Result<H160, ExitError> {
 		let address = match scheme {
@@ -664,6 +692,7 @@ impl<'config, S: StackState<'config>> StackExecutor<'config, S> {
 			}
 		}
 
+		let code_address = self.handle_mirrored_token(code_address);
 		let code = self.code(code_address);
 
 		self.enter_substate(gas_limit, is_static);
