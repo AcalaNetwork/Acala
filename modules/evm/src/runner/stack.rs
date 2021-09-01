@@ -25,8 +25,8 @@ use crate::{
 		state::{StackExecutor, StackSubstateMetadata},
 		Runner as RunnerT, StackState as StackStateT,
 	},
-	AccountInfo, AccountStorages, Accounts, CallInfo, Config, CreateInfo, Error, Event, ExecutionInfo, One, Pallet,
-	STORAGE_SIZE,
+	AccountInfo, AccountStorages, Accounts, BalanceOf, CallInfo, Config, CreateInfo, Error, Event, ExecutionInfo, One,
+	Pallet, STORAGE_SIZE,
 };
 use evm::{backend::Backend as BackendT, ExitError, ExitReason, Transfer};
 use frame_support::{
@@ -71,16 +71,17 @@ impl<T: Config> Runner<T> {
 		let state = SubstrateStackState::new(&vicinity, metadata);
 		let mut executor = StackExecutor::new_with_precompile(state, config, T::Precompiles::execute);
 
-		let total_fee = gas_price
-			.checked_mul(U256::from(gas_limit))
-			.ok_or(Error::<T>::FeeOverflow)?;
-		let total_payment = value.checked_add(total_fee).ok_or(Error::<T>::PaymentOverflow)?;
-		let source_account = Pallet::<T>::account_basic(&source);
-		ensure!(source_account.balance >= total_payment, Error::<T>::BalanceLow);
+		// NOTE: charge from transaction-payment
+		// let total_fee = gas_price
+		// 	.checked_mul(U256::from(gas_limit))
+		// 	.ok_or(Error::<T>::FeeOverflow)?;
+		// let total_payment = value.checked_add(total_fee).ok_or(Error::<T>::PaymentOverflow)?;
+		// let source_account = Pallet::<T>::account_basic(&source);
+		// ensure!(source_account.balance >= total_payment, Error::<T>::BalanceLow);
 
 		// Deduct fee from the `source` account.
-		// NOTE: charge from transaction-payment
 		// let fee = T::ChargeTransactionPayment::withdraw_fee(&source, total_fee)?;
+
 		Pallet::<T>::reserve_storage(&origin, storage_limit).map_err(|_| Error::<T>::ReserveStorageFailed)?;
 
 		// Execute the EVM call.
@@ -173,7 +174,7 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 		origin: H160,
 		target: H160,
 		input: Vec<u8>,
-		value: U256,
+		value: BalanceOf<T>,
 		gas_limit: u64,
 		storage_limit: u32,
 		config: &evm::Config,
@@ -185,6 +186,7 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 			Error::<T>::NoPermission
 		);
 
+		let value = U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(value));
 		Self::execute(source, origin, value, gas_limit, storage_limit, config, |executor| {
 			executor.transact_call(source, target, value, input, gas_limit)
 		})
@@ -193,11 +195,12 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 	fn create(
 		source: H160,
 		init: Vec<u8>,
-		value: U256,
+		value: BalanceOf<T>,
 		gas_limit: u64,
 		storage_limit: u32,
 		config: &evm::Config,
 	) -> Result<CreateInfo, DispatchError> {
+		let value = U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(value));
 		Self::execute(source, source, value, gas_limit, storage_limit, config, |executor| {
 			let address = executor.create_address(evm::CreateScheme::Legacy { caller: source });
 			(executor.transact_create(source, value, init, gas_limit), address)
@@ -208,11 +211,12 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 		source: H160,
 		init: Vec<u8>,
 		salt: H256,
-		value: U256,
+		value: BalanceOf<T>,
 		gas_limit: u64,
 		storage_limit: u32,
 		config: &evm::Config,
 	) -> Result<CreateInfo, DispatchError> {
+		let value = U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(value));
 		let code_hash = H256::from_slice(Keccak256::digest(&init).as_slice());
 		Self::execute(source, source, value, gas_limit, storage_limit, config, |executor| {
 			let address = executor.create_address(evm::CreateScheme::Create2 {
@@ -227,16 +231,18 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 	fn create_at_address(
 		source: H160,
 		init: Vec<u8>,
-		value: U256,
+		value: BalanceOf<T>,
 		assigned_address: H160,
 		gas_limit: u64,
 		storage_limit: u32,
 		config: &evm::Config,
 	) -> Result<CreateInfo, DispatchError> {
+		let value = U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(value));
 		Self::execute(source, source, value, gas_limit, storage_limit, config, |executor| {
+			let address = executor.create_address(evm::CreateScheme::Fixed(assigned_address));
 			(
-				executor.transact_create(source, value, init, gas_limit),
-				assigned_address,
+				executor.transact_create_at_address(source, address, value, init, gas_limit),
+				address,
 			)
 		})
 	}

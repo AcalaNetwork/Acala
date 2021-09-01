@@ -416,6 +416,8 @@ impl module_evm::Config for Test {
 	type DeploymentFee = DeploymentFee;
 	type TreasuryAccount = TreasuryAccount;
 	type FreeDeploymentOrigin = EnsureSignedBy<CouncilAccount, AccountId>;
+	type Runner = module_evm::runner::stack::Runner<Self>;
+	type FindAuthor = ();
 	type WeightInfo = ();
 }
 

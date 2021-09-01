@@ -19,6 +19,7 @@
 // Disable the following lints
 #![allow(clippy::type_complexity)]
 
+use crate::precompile::PrecompileOutput;
 use frame_support::{
 	dispatch::Dispatchable,
 	ensure, log, parameter_types,
@@ -136,7 +137,7 @@ impl<
 		input: &[u8],
 		_target_gas: Option<u64>,
 		_context: &Context,
-	) -> result::Result<(ExitSucceed, Vec<u8>, u64), ExitError> {
+	) -> result::Result<PrecompileOutput, ExitError> {
 		log::debug!(target: "evm", "schedule call: input: {:?}", input);
 
 		let input = Input::<Action, AccountId, AddressMapping, CurrencyIdMapping>::new(input);
@@ -227,7 +228,12 @@ impl<
 				U256::from(task_id.len()).to_big_endian(&mut task_id_with_len[0..32]);
 				task_id_with_len[32..32 + task_id.len()].copy_from_slice(&task_id[..]);
 
-				Ok((ExitSucceed::Returned, task_id_with_len.to_vec(), 0))
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: 0,
+					output: task_id_with_len.to_vec(),
+					logs: Default::default(),
+				})
 			}
 			Action::Cancel => {
 				let from = input.evm_address_at(1)?;
@@ -255,7 +261,12 @@ impl<
 					ChargeTransactionPayment::unreserve_fee(&from_account, task_info.fee.into());
 				}
 
-				Ok((ExitSucceed::Returned, vec![], 0))
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: 0,
+					output: vec![],
+					logs: Default::default(),
+				})
 			}
 			Action::Reschedule => {
 				let from = input.evm_address_at(1)?;
@@ -281,7 +292,12 @@ impl<
 					ExitError::Other(err_msg.into())
 				})?;
 
-				Ok((ExitSucceed::Returned, vec![], 0))
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: 0,
+					output: vec![],
+					logs: Default::default(),
+				})
 			}
 		}
 	}

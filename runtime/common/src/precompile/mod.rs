@@ -28,15 +28,16 @@ use crate::is_acala_precompile;
 use frame_support::log;
 use module_evm::{
 	precompiles::{
-		ECRecover, ECRecoverPublicKey, EvmPrecompiles, Identity, Precompile, Precompiles, Ripemd160, Sha256,
+		ECRecover, ECRecoverPublicKey, EvmPrecompiles, Identity, Precompile, PrecompileSet, Ripemd160, Sha256,
 		Sha3FIPS256, Sha3FIPS512,
 	},
-	Context, ExitError, ExitSucceed,
+	runner::state::PrecompileOutput,
+	Context, ExitError,
 };
 use module_support::PrecompileCallerFilter as PrecompileCallerFilterT;
 use primitives::PRECOMPILE_ADDRESS_START;
 use sp_core::H160;
-use sp_std::{marker::PhantomData, prelude::*};
+use sp_std::marker::PhantomData;
 
 pub mod dex;
 pub mod input;
@@ -81,7 +82,7 @@ impl<
 		OraclePrecompile,
 		ScheduleCallPrecompile,
 		DexPrecompile,
-	> Precompiles
+	> PrecompileSet
 	for AllPrecompiles<
 		PrecompileCallerFilter,
 		MultiCurrencyPrecompile,
@@ -105,7 +106,7 @@ impl<
 		input: &[u8],
 		target_gas: Option<u64>,
 		context: &Context,
-	) -> Option<core::result::Result<(ExitSucceed, Vec<u8>, u64), ExitError>> {
+	) -> Option<core::result::Result<PrecompileOutput, ExitError>> {
 		EvmPrecompiles::<ECRecover, Sha256, Ripemd160, Identity, ECRecoverPublicKey, Sha3FIPS256, Sha3FIPS512>::execute(
 			address, input, target_gas, context,
 		)

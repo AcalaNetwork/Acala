@@ -4,9 +4,6 @@ version = "1.3.1"
 authors = ["Acala Developers"]
 edition = "2018"
 
-[package.metadata.docs.rs]
-targets = ["x86_64-unknown-linux-gnu"]
-
 [dependencies]
 codec = { package = "parity-scale-codec", version = "2.2.0", default-features = false }
 impl-trait-for-tuples = "0.1"
@@ -31,7 +28,7 @@ sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkad
 sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.9", default-features = false }
 orml-traits = { path = "../../orml/traits", default-features = false }
 
-support = { package = "module-support", path = "../support", default-features = false }
+module-support = { path = "../support", default-features = false }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 
 [dev-dependencies]
@@ -62,7 +59,7 @@ std = [
 	"ripemd160/std",
 	"primitives/std",
 	"orml-traits/std",
-	"support/std",
+	"module-support/std",
 ]
 with-ethereum-compatibility = []
 try-runtime = ["frame-support/try-runtime"]

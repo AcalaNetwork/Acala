@@ -16,6 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::precompile::PrecompileOutput;
 use frame_support::{log, sp_runtime::FixedPointNumber};
 use module_evm::{Context, ExitError, ExitSucceed, Precompile};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
@@ -59,7 +60,7 @@ where
 		input: &[u8],
 		_target_gas: Option<u64>,
 		_context: &Context,
-	) -> result::Result<(ExitSucceed, Vec<u8>, u64), ExitError> {
+	) -> result::Result<PrecompileOutput, ExitError> {
 		//TODO: evaluate cost
 
 		log::debug!(target: "evm", "oracle: input: {:?}", input);
@@ -96,11 +97,12 @@ where
 				};
 
 				log::debug!(target: "evm", "oracle: getPrice currency_id: {:?}, price: {:?}, adjustment_multiplier: {:?}", currency_id, price, adjustment_multiplier);
-				Ok((
-					ExitSucceed::Returned,
-					vec_u8_from_price(price, adjustment_multiplier),
-					0,
-				))
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: 0,
+					output: vec_u8_from_price(price, adjustment_multiplier),
+					logs: Default::default(),
+				})
 			}
 		}
 	}

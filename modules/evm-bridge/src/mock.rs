@@ -131,6 +131,8 @@ impl module_evm::Config for Runtime {
 	type TreasuryAccount = TreasuryAccount;
 	type FreeDeploymentOrigin = EnsureSignedBy<CouncilAccount, AccountId32>;
 
+	type Runner = module_evm::runner::stack::Runner<Self>;
+	type FindAuthor = ();
 	type WeightInfo = ();
 }
 

@@ -50,6 +50,7 @@ use sp_version::RuntimeVersion;
 
 use frame_system::{EnsureRoot, RawOrigin};
 use module_currencies::{BasicCurrencyAdapter, Currency};
+use module_evm::Runner;
 use module_evm::{CallInfo, CreateInfo};
 use module_evm_accounts::EvmAddressMapping;
 use module_evm_manager::EvmCurrencyIdMapping;
@@ -1393,6 +1394,8 @@ impl module_evm::Config for Runtime {
 	type DeploymentFee = DeploymentFee;
 	type TreasuryAccount = TreasuryAccount;
 	type FreeDeploymentOrigin = EnsureRootOrHalfGeneralCouncil;
+	type Runner = module_evm::runner::stack::Runner<Self>;
+	type FindAuthor = ();
 	type WeightInfo = weights::module_evm::WeightInfo<Runtime>;
 }
 
@@ -1868,7 +1871,7 @@ impl_runtime_apis! {
 				None
 			};
 
-			module_evm::Runner::<Runtime>::call(
+			module_evm::runner::stack::Runner::<Runtime>::call(
 				from,
 				from,
 				to,
@@ -1896,7 +1899,7 @@ impl_runtime_apis! {
 				None
 			};
 
-			module_evm::Runner::<Runtime>::create(
+			module_evm::runner::stack::Runner::<Runtime>::create(
 				from,
 				data,
 				value,

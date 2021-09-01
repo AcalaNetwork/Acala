@@ -32,7 +32,7 @@ pub use primitives::{
 	ReserveIdentifier, MIRRORED_NFT_ADDRESS_START,
 };
 use sha3::{Digest, Keccak256};
-use std::{rc::Rc, vec::Vec};
+use sp_std::{rc::Rc, vec::Vec};
 
 #[cfg(feature = "tracing")]
 macro_rules! event {
@@ -297,6 +297,39 @@ impl<'config, S: StackState<'config>> StackExecutor<'config, S> {
 				code_hash,
 				salt,
 			},
+			value,
+			init_code,
+			Some(gas_limit),
+			false,
+		) {
+			Capture::Exit((s, _, _)) => s,
+			Capture::Trap(_) => unreachable!(),
+		}
+	}
+
+	/// Execute a `CREATE` transaction with specific address.
+	pub fn transact_create_at_address(
+		&mut self,
+		caller: H160,
+		address: H160,
+		value: U256,
+		init_code: Vec<u8>,
+		gas_limit: u64,
+	) -> ExitReason {
+		let transaction_cost = gasometer::create_transaction_cost(&init_code);
+		match self
+			.state
+			.metadata_mut()
+			.gasometer_mut()
+			.record_transaction(transaction_cost)
+		{
+			Ok(()) => (),
+			Err(e) => return e.into(),
+		}
+
+		match self.create_inner(
+			caller,
+			CreateScheme::Fixed(address),
 			value,
 			init_code,
 			Some(gas_limit),

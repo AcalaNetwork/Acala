@@ -16,6 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::precompile::PrecompileOutput;
 use frame_support::log;
 use module_evm::{Context, ExitError, ExitSucceed, Precompile};
 use module_support::{AddressMapping as AddressMappingT, CurrencyIdMapping as CurrencyIdMappingT};
@@ -62,7 +63,7 @@ where
 		input: &[u8],
 		_target_gas: Option<u64>,
 		_context: &Context,
-	) -> result::Result<(ExitSucceed, Vec<u8>, u64), ExitError> {
+	) -> result::Result<PrecompileOutput, ExitError> {
 		log::debug!(target: "evm", "nft: input: {:?}", input);
 
 		let input = Input::<Action, AccountId, AddressMapping, CurrencyIdMapping>::new(input);
@@ -77,7 +78,12 @@ where
 
 				let balance = vec_u8_from_balance(NFT::balance(&who));
 
-				Ok((ExitSucceed::Returned, balance, 0))
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: 0,
+					output: balance,
+					logs: Default::default(),
+				})
 			}
 			Action::QueryOwner => {
 				let class_id = input.u32_at(1)?;
@@ -94,7 +100,12 @@ where
 				let mut address = [0u8; 32];
 				address[12..].copy_from_slice(&owner.as_bytes().to_vec());
 
-				Ok((ExitSucceed::Returned, address.to_vec(), 0))
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: 0,
+					output: address.to_vec(),
+					logs: Default::default(),
+				})
 			}
 			Action::Transfer => {
 				let from = input.account_id_at(1)?;
@@ -108,7 +119,12 @@ where
 				NFT::transfer(&from, &to, (class_id, token_id))
 					.map_err(|e| ExitError::Other(Cow::Borrowed(e.into())))?;
 
-				Ok((ExitSucceed::Returned, vec![], 0))
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: 0,
+					output: vec![],
+					logs: Default::default(),
+				})
 			}
 		}
 	}
