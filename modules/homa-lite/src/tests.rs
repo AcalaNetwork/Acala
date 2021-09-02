@@ -245,13 +245,13 @@ fn can_adjust_total_staking_currency() {
 
 		assert_eq!(HomaLite::total_staking_currency(), 5001);
 
-		assert_ok!(HomaLite::adjust_total_staking_currency(
+		assert_ok!(HomaLite::set_total_staking_currency(
 			Origin::signed(ROOT),
-			AmountOf::<Runtime>::max_value()
+			Balance::max_value()
 		));
 
 		assert_noop!(
-			HomaLite::adjust_total_staking_currency(Origin::signed(ROOT), AmountOf::<Runtime>::max_value()),
+			HomaLite::adjust_total_staking_currency(Origin::signed(ROOT), 1),
 			Error::<Runtime>::InvalidAdjustmentToTotalStakingCurrency
 		);
 	});
