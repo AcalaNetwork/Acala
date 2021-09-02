@@ -116,8 +116,8 @@ pub use runtime_common::{
 	GeneralCouncilMembershipInstance, HomaCouncilInstance, HomaCouncilMembershipInstance,
 	OperatorMembershipInstanceAcala, OperatorMembershipInstanceBand, Price, ProxyType, Rate, Ratio,
 	RelaychainBlockNumberProvider, RelaychainSubAccountId, RuntimeBlockLength, RuntimeBlockWeights,
-	SystemContractsFilter, TechnicalCommitteeInstance, TechnicalCommitteeMembershipInstance, TimeStampedPrice, BNC, KAR,
-	KSM, KUSD, LKSM, RENBTC,
+	SystemContractsFilter, TechnicalCommitteeInstance, TechnicalCommitteeMembershipInstance, TimeStampedPrice, BNC,
+	KAR, KSM, KUSD, LKSM, RENBTC,
 };
 
 mod authority;
@@ -1434,14 +1434,6 @@ parameter_types! {
 	);
 }
 
-// Fee traders for multiple fee currencies
-type MultiTraders = (
-	// KSM trader
-	FixedRateOfConcreteFungible<KsmPerSecond, ToTreasury>,
-	// BNC trader
-	FixedRateOfConcreteFungible<BifrostNativeTokenLocation, ToTreasury>
-);
-
 pub struct XcmConfig;
 impl xcm_executor::Config for XcmConfig {
 	type Call = Call;
@@ -1455,7 +1447,7 @@ impl xcm_executor::Config for XcmConfig {
 	type LocationInverter = LocationInverter<Ancestry>;
 	type Barrier = Barrier;
 	type Weigher = FixedWeightBounds<UnitWeightCost, Call>;
-	type Trader = MultiTraders;
+	type Trader = FixedRateOfConcreteFungible<KsmPerSecond, ToTreasury>;
 	type ResponseHandler = (); // Don't handle responses for now.
 }
 
