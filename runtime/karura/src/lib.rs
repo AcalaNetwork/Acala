@@ -208,7 +208,7 @@ impl Contains<Call> for BaseCallFilter {
 
 		let is_evm = matches!(
 			call,
-			Call::Evm(_) | Call::EVMBridge(_) | Call::EvmAccounts(_) | Call::EvmManager(_)
+			Call::EVM(_) | Call::EvmAccounts(_) // EvmBridge / EvmManager does not have call
 		);
 		if is_evm {
 			// no evm call
