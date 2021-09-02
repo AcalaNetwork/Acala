@@ -254,6 +254,8 @@ pub mod module {
 
 			let by_balance = TryInto::<Balance>::try_into(by_amount_abs)
 				.map_err(|_| Error::<T>::InvalidAdjustmentToTotalStakingCurrency)?;
+
+			// Adjust the current total.
 			if by_amount.is_positive() {
 				current_staking_total = current_staking_total
 					.checked_add(by_balance)
