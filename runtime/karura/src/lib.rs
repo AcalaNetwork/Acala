@@ -194,42 +194,18 @@ parameter_types! {
 pub struct BaseCallFilter;
 impl Contains<Call> for BaseCallFilter {
 	fn contains(call: &Call) -> bool {
+		// exclude these calls in blacklist
+		!matches!(
+			call,
+			// permission
+			Call::Authorship(_) | Call::Sudo(_) |
+			// xcm
+			Call::XcmpQueue(_) | Call::PolkadotXcm(_) | Call::DmpQueue(_) | Call::OrmlXcm(_) |
+			// evm
+			Call::EVM(_) | Call::EvmAccounts(_)
+		) &&
+		// and call must not be paused
 		module_transaction_pause::NonPausedTransactionFilter::<Runtime>::contains(call)
-			&& matches!(
-				call,
-				// Core
-				Call::System(_) | Call::Timestamp(_) | Call::ParachainSystem(_) |
-				// Utility
-				Call::Scheduler(_) | Call::Utility(_) | Call::Multisig(_) | Call::Proxy(_) |
-				// Councils
-				Call::Authority(_) | Call::GeneralCouncil(_) | Call::GeneralCouncilMembership(_) |
-				Call::FinancialCouncil(_) | Call::FinancialCouncilMembership(_) |
-				Call::HomaCouncil(_) | Call::HomaCouncilMembership(_) |
-				Call::TechnicalCommittee(_) | Call::TechnicalCommitteeMembership(_) |
-				// Oracle
-				Call::AcalaOracle(_) | Call::OperatorMembershipAcala(_) |
-				// Democracy
-				Call::Democracy(_) | Call::Treasury(_) | Call::Bounties(_) | Call::Tips(_) |
-				// Collactor Selection
-				Call::CollatorSelection(_) | Call::Session(_) | Call::SessionManager(_) |
-				// Vesting
-				Call::Vesting(_) |
-				// TransactionPayment
-				Call::TransactionPayment(_) |
-				// Tokens
-				Call::XTokens(_) | Call::Balances(_) | Call::Currencies(_) |
-				// NFT
-				Call::NFT(_) |
-				// DEX
-				Call::Dex(_) |
-				// Incentives
-				Call::Incentives(_) |
-				// Honzon
-				Call::Auction(_) | Call::AuctionManager(_) | Call::Honzon(_) | Call::Loans(_) | Call::Prices(_) |
-				Call::CdpTreasury(_) | Call::CdpEngine(_) | Call::EmergencyShutdown(_) |
-				// Homa
-				Call::HomaLite(_)
-			)
 	}
 }
 
@@ -1691,7 +1667,7 @@ construct_runtime!(
 
 		// ORML Core
 		Auction: orml_auction::{Pallet, Storage, Call, Event<T>} = 80,
-		Rewards: orml_rewards::{Pallet, Storage, Call} = 81,
+		Rewards: orml_rewards::{Pallet, Storage} = 81,
 		OrmlNFT: orml_nft::{Pallet, Storage, Config<T>} = 82,
 
 		// Karura Core
