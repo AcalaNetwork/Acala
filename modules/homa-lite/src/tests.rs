@@ -224,15 +224,12 @@ fn can_adjust_total_staking_currency() {
 		assert_eq!(HomaLite::total_staking_currency(), 1);
 
 		assert_noop!(
-			HomaLite::adjust_total_staking_currency(Origin::signed(ALICE), BalanceAdjustment::Increase(5000)),
+			HomaLite::adjust_total_staking_currency(Origin::signed(ALICE), 5000),
 			BadOrigin
 		);
 
 		// Can adjust total_staking_currency with ROOT.
-		assert_ok!(HomaLite::adjust_total_staking_currency(
-			Origin::signed(ROOT),
-			BalanceAdjustment::Increase(5000)
-		));
+		assert_ok!(HomaLite::adjust_total_staking_currency(Origin::signed(ROOT), 5000));
 
 		assert_eq!(HomaLite::total_staking_currency(), 5001);
 		assert_eq!(
@@ -242,19 +239,21 @@ fn can_adjust_total_staking_currency() {
 
 		// Underflow / overflow causes error
 		assert_noop!(
-			HomaLite::adjust_total_staking_currency(Origin::signed(ROOT), BalanceAdjustment::Decrease(5002)),
-			Error::<Runtime>::InvalidAdjustmentToTotalStakingCurrency
-		);
-
-		assert_noop!(
-			HomaLite::adjust_total_staking_currency(
-				Origin::signed(ROOT),
-				BalanceAdjustment::Increase(Balance::max_value())
-			),
+			HomaLite::adjust_total_staking_currency(Origin::signed(ROOT), -5002),
 			Error::<Runtime>::InvalidAdjustmentToTotalStakingCurrency
 		);
 
 		assert_eq!(HomaLite::total_staking_currency(), 5001);
+
+		assert_ok!(HomaLite::adjust_total_staking_currency(
+			Origin::signed(ROOT),
+			AmountOf::<Runtime>::max_value()
+		));
+
+		assert_noop!(
+			HomaLite::adjust_total_staking_currency(Origin::signed(ROOT), AmountOf::<Runtime>::max_value()),
+			Error::<Runtime>::InvalidAdjustmentToTotalStakingCurrency
+		);
 	});
 }
 

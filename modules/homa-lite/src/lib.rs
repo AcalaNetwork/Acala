@@ -27,10 +27,10 @@ pub mod weights;
 use frame_support::{pallet_prelude::*, transactional};
 use frame_system::{ensure_signed, pallet_prelude::*};
 use module_support::{ExchangeRate, ExchangeRateProvider, Ratio};
-use orml_traits::{MultiCurrency, XcmTransfer};
+use orml_traits::{arithmetic::Signed, MultiCurrency, MultiCurrencyExtended, XcmTransfer};
 use primitives::{Balance, CurrencyId};
 use sp_runtime::{traits::Zero, ArithmeticError, FixedPointNumber, Permill};
-use sp_std::{ops::Mul, prelude::*};
+use sp_std::{convert::TryInto, ops::Mul, prelude::*};
 use xcm::opaque::v0::MultiLocation;
 
 pub use module::*;
@@ -40,11 +40,8 @@ pub use weights::WeightInfo;
 pub mod module {
 	use super::*;
 
-	#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq)]
-	pub enum BalanceAdjustment {
-		Increase(Balance),
-		Decrease(Balance),
-	}
+	pub(crate) type AmountOf<T> =
+		<<T as Config>::Currency as MultiCurrencyExtended<<T as frame_system::Config>::AccountId>>::Amount;
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
@@ -54,7 +51,8 @@ pub mod module {
 		type WeightInfo: WeightInfo;
 
 		/// Multi-currency support for asset management
-		type Currency: MultiCurrency<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
+		type Currency: MultiCurrency<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>
+			+ MultiCurrencyExtended<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
 
 		/// The Currency ID for the Staking asset
 		#[pallet::constant]
@@ -240,14 +238,20 @@ pub mod module {
 		///   by.
 		#[pallet::weight(< T as Config >::WeightInfo::adjust_total_staking_currency())]
 		#[transactional]
-		pub fn adjust_total_staking_currency(origin: OriginFor<T>, staking_total: BalanceAdjustment) -> DispatchResult {
+		pub fn adjust_total_staking_currency(origin: OriginFor<T>, adjustment: AmountOf<T>) -> DispatchResult {
 			T::GovernanceOrigin::ensure_origin(origin)?;
 			let mut current_staking_total = Self::total_staking_currency();
-			current_staking_total = match staking_total {
-				BalanceAdjustment::Increase(amount) => current_staking_total.checked_add(amount),
-				BalanceAdjustment::Decrease(amount) => current_staking_total.checked_sub(amount),
+			let abs_amount = TryInto::<Balance>::try_into(adjustment)
+				.map_err(|_| Error::<T>::InvalidAdjustmentToTotalStakingCurrency)?;
+			if adjustment.is_positive() {
+				current_staking_total = current_staking_total
+					.checked_add(abs_amount)
+					.ok_or(Error::<T>::InvalidAdjustmentToTotalStakingCurrency)?;
+			} else {
+				current_staking_total = current_staking_total
+					.checked_sub(abs_amount)
+					.ok_or(Error::<T>::InvalidAdjustmentToTotalStakingCurrency)?;
 			}
-			.ok_or(Error::<T>::InvalidAdjustmentToTotalStakingCurrency)?;
 
 			TotalStakingCurrency::<T>::put(current_staking_total);
 			Self::deposit_event(Event::<T>::TotalStakingCurrencySet(current_staking_total));
