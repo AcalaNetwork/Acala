@@ -35,7 +35,7 @@ use frame_system::{
 };
 use loans::Position;
 use orml_traits::Change;
-use orml_utilities::{IterableStorageDoubleMapExtended, OffchainErr};
+use orml_utilities::OffchainErr;
 use primitives::{Amount, Balance, CurrencyId};
 use rand_chacha::{
 	rand_core::{RngCore, SeedableRng},
@@ -652,11 +652,8 @@ impl<T: Config> Pallet<T> {
 
 		let currency_id = collateral_currency_ids[collateral_position as usize];
 		let is_shutdown = T::EmergencyShutdown::is_shutdown();
-		let mut map_iterator = <loans::Positions<T> as IterableStorageDoubleMapExtended<_, _, _>>::iter_prefix(
-			currency_id,
-			max_iterations,
-			start_key.clone(),
-		);
+		let mut map_iterator =
+			<loans::Positions<T>>::iter_prefix_from(currency_id, start_key.clone().ok_or(OffchainErr::OffchainStore)?);
 
 		let mut iteration_count = 0;
 		let iteration_start_time = sp_io::offchain::timestamp();
@@ -694,18 +691,12 @@ impl<T: Config> Pallet<T> {
 		);
 
 		// if iteration for map storage finished, clear to be continue record
-		// otherwise, update to be continue record
-		if map_iterator.finished {
-			let next_collateral_position =
-				if collateral_position < collateral_currency_ids.len().saturating_sub(1) as u32 {
-					collateral_position + 1
-				} else {
-					0
-				};
-			to_be_continue.set(&(next_collateral_position, Option::<Vec<u8>>::None));
+		let next_collateral_position = if collateral_position < collateral_currency_ids.len().saturating_sub(1) as u32 {
+			collateral_position + 1
 		} else {
-			to_be_continue.set(&(collateral_position, Some(map_iterator.map_iterator.previous_key)));
-		}
+			0
+		};
+		to_be_continue.set(&(next_collateral_position, Option::<Vec<u8>>::None));
 
 		// Consume the guard but **do not** unlock the underlying lock.
 		guard.forget();
