@@ -49,6 +49,7 @@ use sp_std::marker::PhantomData;
 pub trait WeightInfo {
 	fn mint() -> Weight;
 	fn set_total_staking_currency() -> Weight;
+	fn adjust_total_staking_currency() -> Weight;
 	fn set_minting_cap() -> Weight;
 	fn set_xcm_dest_weight() -> Weight;
 }
@@ -62,6 +63,10 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 			.saturating_add(T::DbWeight::get().writes(7 as Weight))
 	}
 	fn set_total_staking_currency() -> Weight {
+		(20_068_000 as Weight)
+			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+	}
+	fn adjust_total_staking_currency() -> Weight {
 		(20_068_000 as Weight)
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
@@ -83,6 +88,10 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().writes(7 as Weight))
 	}
 	fn set_total_staking_currency() -> Weight {
+		(20_068_000 as Weight)
+			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
+	}
+	fn adjust_total_staking_currency() -> Weight {
 		(20_068_000 as Weight)
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}

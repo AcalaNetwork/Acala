@@ -40,6 +40,12 @@ pub use weights::WeightInfo;
 pub mod module {
 	use super::*;
 
+	#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq)]
+	pub enum BalanceAdjustment {
+		Increase(Balance),
+		Decrease(Balance),
+	}
+
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
@@ -93,6 +99,8 @@ pub mod module {
 		MintAmountBelowMinimumThreshold,
 		/// The amount of Staking currency used has exceeded the cap allowed.
 		ExceededStakingCurrencyMintCap,
+		/// The adjustment to total_staking_currency causes arithmatic error
+		InvalidAdjustmentToTotalStakingCurrency,
 	}
 
 	#[pallet::event]
@@ -220,6 +228,29 @@ pub mod module {
 
 			TotalStakingCurrency::<T>::put(staking_total);
 			Self::deposit_event(Event::<T>::TotalStakingCurrencySet(staking_total));
+
+			Ok(())
+		}
+
+		/// Adjusts the total_staking_currency by the given difference.
+		/// Requires `T::GovernanceOrigin`
+		///
+		/// Parameters:
+		/// - `adjustment`: The difference in amount the total_staking_currency should be adjusted
+		///   by.
+		#[pallet::weight(< T as Config >::WeightInfo::adjust_total_staking_currency())]
+		#[transactional]
+		pub fn adjust_total_staking_currency(origin: OriginFor<T>, staking_total: BalanceAdjustment) -> DispatchResult {
+			T::GovernanceOrigin::ensure_origin(origin)?;
+			let mut current_staking_total = Self::total_staking_currency();
+			current_staking_total = match staking_total {
+				BalanceAdjustment::Increase(amount) => current_staking_total.checked_add(amount),
+				BalanceAdjustment::Decrease(amount) => current_staking_total.checked_sub(amount),
+			}
+			.ok_or(Error::<T>::InvalidAdjustmentToTotalStakingCurrency)?;
+
+			TotalStakingCurrency::<T>::put(current_staking_total);
+			Self::deposit_event(Event::<T>::TotalStakingCurrencySet(current_staking_total));
 
 			Ok(())
 		}
