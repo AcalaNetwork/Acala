@@ -48,27 +48,27 @@ use sp_std::marker::PhantomData;
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> module_currencies::WeightInfo for WeightInfo<T> {
 	fn transfer_non_native_currency() -> Weight {
-		(101_217_000 as Weight)
+		(98_870_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(5 as Weight))
 			.saturating_add(T::DbWeight::get().writes(4 as Weight))
 	}
 	fn transfer_native_currency() -> Weight {
-		(99_570_000 as Weight)
+		(98_539_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
 	fn update_balance_non_native_currency() -> Weight {
-		(54_398_000 as Weight)
+		(53_669_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes(3 as Weight))
 	}
 	fn update_balance_native_currency_creating() -> Weight {
-		(53_018_000 as Weight)
+		(52_014_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn update_balance_native_currency_killing() -> Weight {
-		(62_133_000 as Weight)
+		(61_111_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
