@@ -54,8 +54,7 @@ pub mod module {
 		type WeightInfo: WeightInfo;
 
 		/// Multi-currency support for asset management
-		type Currency: MultiCurrency<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>
-			+ MultiCurrencyExtended<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
+		type Currency: MultiCurrencyExtended<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
 
 		/// The Currency ID for the Staking asset
 		#[pallet::constant]
