@@ -361,10 +361,9 @@ impl<T: Config> Pallet<T> {
 
 		if let Some(iterator_start_key) = start_key {
 			// start iterations to cancel collateral auctions
-			let mut iterator = <CollateralAuctions<T>>::iter_from(iterator_start_key);
+			let iterator = <CollateralAuctions<T>>::iter_from(iterator_start_key);
 
-			#[allow(clippy::while_let_on_iterator)]
-			while let Some((collateral_auction_id, _)) = iterator.next() {
+			for (collateral_auction_id, _) in iterator {
 				if let (Some(collateral_auction), Some((_, last_bid_price))) = (
 					Self::collateral_auctions(collateral_auction_id),
 					Self::get_last_bid(collateral_auction_id),
