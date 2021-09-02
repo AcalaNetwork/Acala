@@ -29,7 +29,10 @@ use frame_system::{ensure_signed, pallet_prelude::*};
 use module_support::{ExchangeRate, ExchangeRateProvider, Ratio};
 use orml_traits::{arithmetic::Signed, MultiCurrency, MultiCurrencyExtended, XcmTransfer};
 use primitives::{Balance, CurrencyId};
-use sp_runtime::{traits::Zero, ArithmeticError, FixedPointNumber, Permill};
+use sp_runtime::{
+	traits::{Bounded, Zero},
+	ArithmeticError, FixedPointNumber, Permill,
+};
 use sp_std::{convert::TryInto, ops::Mul, prelude::*};
 use xcm::opaque::v0::MultiLocation;
 
@@ -238,18 +241,26 @@ pub mod module {
 		///   by.
 		#[pallet::weight(< T as Config >::WeightInfo::adjust_total_staking_currency())]
 		#[transactional]
-		pub fn adjust_total_staking_currency(origin: OriginFor<T>, adjustment: AmountOf<T>) -> DispatchResult {
+		pub fn adjust_total_staking_currency(origin: OriginFor<T>, by_amount: AmountOf<T>) -> DispatchResult {
 			T::GovernanceOrigin::ensure_origin(origin)?;
 			let mut current_staking_total = Self::total_staking_currency();
-			let abs_amount = TryInto::<Balance>::try_into(adjustment)
+
+			// Convert AmountOf<T> into Balance safely.
+			let by_amount_abs = if by_amount == AmountOf::<T>::min_value() {
+				AmountOf::<T>::max_value()
+			} else {
+				by_amount.abs()
+			};
+
+			let by_balance = TryInto::<Balance>::try_into(by_amount_abs)
 				.map_err(|_| Error::<T>::InvalidAdjustmentToTotalStakingCurrency)?;
-			if adjustment.is_positive() {
+			if by_amount.is_positive() {
 				current_staking_total = current_staking_total
-					.checked_add(abs_amount)
+					.checked_add(by_balance)
 					.ok_or(Error::<T>::InvalidAdjustmentToTotalStakingCurrency)?;
 			} else {
 				current_staking_total = current_staking_total
-					.checked_sub(abs_amount)
+					.checked_sub(by_balance)
 					.ok_or(Error::<T>::InvalidAdjustmentToTotalStakingCurrency)?;
 			}
 
