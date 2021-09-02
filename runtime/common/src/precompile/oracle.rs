@@ -61,10 +61,6 @@ where
 		_target_gas: Option<u64>,
 		_context: &Context,
 	) -> result::Result<PrecompileOutput, ExitError> {
-		//TODO: evaluate cost
-
-		log::debug!(target: "evm", "oracle: input: {:?}", input);
-
 		let input = Input::<Action, AccountId, AddressMapping, CurrencyIdMapping>::new(input);
 
 		let action = input.action()?;

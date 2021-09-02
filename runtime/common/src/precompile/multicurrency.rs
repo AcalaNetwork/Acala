@@ -20,13 +20,12 @@ use crate::precompile::PrecompileOutput;
 use frame_support::log;
 use module_evm::{Context, ExitError, ExitSucceed, Precompile};
 use module_support::{AddressMapping as AddressMappingT, CurrencyIdMapping as CurrencyIdMappingT};
-use sp_core::U256;
 use sp_runtime::RuntimeDebug;
 use sp_std::{fmt::Debug, marker::PhantomData, prelude::*, result};
 
 use orml_traits::MultiCurrency as MultiCurrencyT;
 
-use super::input::{Input, InputT};
+use super::input::{Input, InputT, Output};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use primitives::{Balance, CurrencyId};
 
@@ -52,7 +51,7 @@ pub enum Action {
 	QueryDecimals = "decimals()",
 	QueryTotalIssuance = "totalSupply()",
 	QueryBalance = "balanceOf(address)",
-	Transfer = "transfer(address,address,uint256)",
+	Transfer = "transfer(address,uint256)",
 }
 
 impl<AccountId, AddressMapping, CurrencyIdMapping, MultiCurrency> Precompile
@@ -68,10 +67,6 @@ where
 		_target_gas: Option<u64>,
 		context: &Context,
 	) -> result::Result<PrecompileOutput, ExitError> {
-		//TODO: evaluate cost
-
-		log::debug!(target: "evm", "multicurrency: input: {:?}", input);
-
 		let input = Input::<Action, AccountId, AddressMapping, CurrencyIdMapping>::new(input);
 
 		let action = input.action()?;
@@ -89,7 +84,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: 0,
-					output: vec_u8_from_str(&name),
+					output: Output::new().vec_u8_from_str(&name),
 					logs: Default::default(),
 				})
 			}
@@ -101,7 +96,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: 0,
-					output: vec_u8_from_str(&symbol),
+					output: Output::new().vec_u8_from_str(&symbol),
 					logs: Default::default(),
 				})
 			}
@@ -113,39 +108,37 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: 0,
-					output: vec_u8_from_u8(decimals),
+					output: Output::new().vec_u8_from_u8(decimals),
 					logs: Default::default(),
 				})
 			}
 			Action::QueryTotalIssuance => {
-				let total_issuance = vec_u8_from_balance(MultiCurrency::total_issuance(currency_id));
+				let total_issuance = MultiCurrency::total_issuance(currency_id);
 				log::debug!(target: "evm", "multicurrency: total issuance: {:?}", total_issuance);
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: 0,
-					output: total_issuance,
+					output: Output::new().vec_u8_from_u128(total_issuance),
 					logs: Default::default(),
 				})
 			}
 			Action::QueryBalance => {
 				let who = input.account_id_at(1)?;
-				log::debug!(target: "evm", "multicurrency: who: {:?}", who);
-
-				let balance = vec_u8_from_balance(MultiCurrency::total_balance(currency_id, &who));
-				log::debug!(target: "evm", "multicurrency: balance: {:?}", balance);
+				let balance = MultiCurrency::total_balance(currency_id, &who);
+				log::debug!(target: "evm", "multicurrency: who: {:?}, balance: {:?}", who, balance);
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: 0,
-					output: balance,
+					output: Output::new().vec_u8_from_u128(balance),
 					logs: Default::default(),
 				})
 			}
 			Action::Transfer => {
-				let from = input.account_id_at(1)?;
-				let to = input.account_id_at(2)?;
-				let amount = input.balance_at(3)?;
+				let from = AddressMapping::get_account_id(&context.caller);
+				let to = input.account_id_at(1)?;
+				let amount = input.balance_at(2)?;
 
 				log::debug!(target: "evm", "multicurrency: from: {:?}", from);
 				log::debug!(target: "evm", "multicurrency: to: {:?}", to);
@@ -167,22 +160,4 @@ where
 			}
 		}
 	}
-}
-
-fn vec_u8_from_balance(balance: Balance) -> Vec<u8> {
-	let mut be_bytes = [0u8; 32];
-	U256::from(balance).to_big_endian(&mut be_bytes[..]);
-	be_bytes.to_vec()
-}
-
-fn vec_u8_from_u8(b: u8) -> Vec<u8> {
-	let mut be_bytes = [0u8; 32];
-	U256::from(b).to_big_endian(&mut be_bytes[..]);
-	be_bytes.to_vec()
-}
-
-use ethabi::Token;
-fn vec_u8_from_str(b: &[u8]) -> Vec<u8> {
-	let out = Token::Bytes(b.to_vec());
-	ethabi::encode(&[out])
 }

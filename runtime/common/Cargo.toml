@@ -28,6 +28,7 @@ orml-traits = { path = "../../orml/traits", default-features = false }
 module-evm = { path = "../../modules/evm", default-features = false }
 module-staking-pool = { path = "../../modules/staking-pool", default-features = false }
 module-support = { path = "../../modules/support", default-features = false }
+primitive-types = { version = "0.9.1", default-features = false, features = ["rlp", "byteorder"] }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 primitives-proc-macro = { path = "../../primitives/proc-macro" }
 
@@ -77,6 +78,7 @@ std = [
 	"module-evm/std",
 	"module-staking-pool/std",
 	"module-support/std",
+	"primitive-types/std",
 	"primitives/std",
 ]
 with-ethereum-compatibility = [

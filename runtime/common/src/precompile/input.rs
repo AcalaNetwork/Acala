@@ -22,9 +22,11 @@ use sp_std::{
 	marker::PhantomData,
 	mem,
 	result::Result,
+	vec,
 	vec::Vec,
 };
 
+use ethabi::Token;
 use module_evm::ExitError;
 use module_support::{AddressMapping as AddressMappingT, CurrencyIdMapping as CurrencyIdMappingT};
 use primitives::{Amount, Balance, CurrencyId};
@@ -183,6 +185,42 @@ where
 		let bytes = self.nth_param(index, Some(len))?;
 
 		Ok(bytes.to_vec())
+	}
+}
+
+pub struct Output;
+
+impl Output {
+	pub fn new() -> Self {
+		Self
+	}
+
+	pub fn vec_u8_from_u8(&self, b: u8) -> Vec<u8> {
+		let out = Token::Uint(primitive_types::U256::from(b));
+		ethabi::encode(&[out])
+	}
+
+	pub fn vec_u8_from_u128(&self, b: u128) -> Vec<u8> {
+		let out = Token::Uint(primitive_types::U256::from(b));
+		ethabi::encode(&[out])
+	}
+
+	pub fn vec_u8_from_u128_tuple(&self, b: u128, c: u128) -> Vec<u8> {
+		let out = Token::Tuple(vec![
+			Token::Uint(primitive_types::U256::from(b)),
+			Token::Uint(primitive_types::U256::from(c)),
+		]);
+		ethabi::encode(&[out])
+	}
+
+	pub fn vec_u8_from_str(&self, b: &[u8]) -> Vec<u8> {
+		let out = Token::Bytes(b.to_vec());
+		ethabi::encode(&[out])
+	}
+
+	pub fn vec_u8_from_address(&self, b: &H160) -> Vec<u8> {
+		let out = Token::Address(primitive_types::H160::from_slice(b.as_bytes()));
+		ethabi::encode(&[out])
 	}
 }
 

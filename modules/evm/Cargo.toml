@@ -14,9 +14,9 @@ serde = { version = "1.0.124", optional = true, features = ["derive"] }
 sha3 = { version = "0.9.1", default-features = false }
 tiny-keccak = { version = "2.0", features = ["fips202"] }
 
-evm = { version = "0.30.0", default-features = false, features = ["with-codec"] }
-evm-gasometer = { version = "0.30.0", default-features = false }
-evm-runtime = { version = "0.30.0", default-features = false }
+evm = { version = "0.30.0", default-features = false, features = ["with-codec", "tracing" ] }
+evm-gasometer = { version = "0.30.0", default-features = false, features = ["tracing"] }
+evm-runtime = { version = "0.30.0", default-features = false, features = ["tracing"] }
 
 frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.9", default-features = false }
 frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.9", default-features = false }
@@ -63,3 +63,8 @@ std = [
 ]
 with-ethereum-compatibility = []
 try-runtime = ["frame-support/try-runtime"]
+#tracing = [
+#	"evm/tracing",
+#	"evm-gasometer/tracing",
+#	"evm-runtime/tracing",
+#]

@@ -69,7 +69,6 @@ where
 		_target_gas: Option<u64>,
 		_context: &Context,
 	) -> result::Result<PrecompileOutput, ExitError> {
-		log::debug!(target: "evm", "state_rent input: {:?}", input);
 		let input = Input::<Action, AccountId, AddressMapping, CurrencyIdMapping>::new(input);
 
 		let action = input.action()?;

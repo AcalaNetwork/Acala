@@ -138,8 +138,6 @@ impl<
 		_target_gas: Option<u64>,
 		_context: &Context,
 	) -> result::Result<PrecompileOutput, ExitError> {
-		log::debug!(target: "evm", "schedule call: input: {:?}", input);
-
 		let input = Input::<Action, AccountId, AddressMapping, CurrencyIdMapping>::new(input);
 
 		let action = input.action()?;

@@ -120,7 +120,9 @@ impl<
 				return None;
 			}
 
-			if address == H160::from_low_u64_be(PRECOMPILE_ADDRESS_START) {
+			log::debug!(target: "evm", "Precompile begin, address: {:?}, input: {:?}, target_gas: {:?}, context: {:?}", address, input, target_gas, context);
+
+			let result = if address == H160::from_low_u64_be(PRECOMPILE_ADDRESS_START) {
 				Some(MultiCurrencyPrecompile::execute(input, target_gas, context))
 			} else if address == H160::from_low_u64_be(PRECOMPILE_ADDRESS_START + 1) {
 				Some(NFTPrecompile::execute(input, target_gas, context))
@@ -134,7 +136,10 @@ impl<
 				Some(DexPrecompile::execute(input, target_gas, context))
 			} else {
 				None
-			}
+			};
+
+			log::debug!(target: "evm", "Precompile end, result: {:?}", result);
+			result
 		})
 	}
 }
