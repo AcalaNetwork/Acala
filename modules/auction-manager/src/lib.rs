@@ -35,7 +35,7 @@ use frame_system::{
 	pallet_prelude::*,
 };
 use orml_traits::{Auction, AuctionHandler, Change, MultiCurrency, OnNewBidResult};
-use orml_utilities::OffchainErr;
+use orml_utilities::{IterableStorageMapExtended, OffchainErr};
 use primitives::{AuctionId, Balance, CurrencyId};
 use sp_runtime::{
 	offchain::{
@@ -359,35 +359,35 @@ impl<T: Config> Pallet<T> {
 			max_iterations
 		);
 
-		if let Some(iterator_start_key) = start_key {
-			// start iterations to cancel collateral auctions
-			let mut iterator = <CollateralAuctions<T>>::iter_from(iterator_start_key);
+		// start iterations to cancel collateral auctions
+		let mut iterator = <CollateralAuctions<T> as IterableStorageMapExtended<_, _>>::iter(max_iterations, start_key);
 
-			#[allow(clippy::while_let_on_iterator)]
-			while let Some((collateral_auction_id, _)) = iterator.next() {
-				if let (Some(collateral_auction), Some((_, last_bid_price))) = (
-					Self::collateral_auctions(collateral_auction_id),
-					Self::get_last_bid(collateral_auction_id),
-				) {
-					// if collateral auction has already been in reverse stage,
-					// should skip it.
-					if collateral_auction.in_reverse_stage(last_bid_price) {
-						continue;
-					}
+		#[allow(clippy::while_let_on_iterator)]
+		while let Some((collateral_auction_id, _)) = iterator.next() {
+			if let (Some(collateral_auction), Some((_, last_bid_price))) = (
+				Self::collateral_auctions(collateral_auction_id),
+				Self::get_last_bid(collateral_auction_id),
+			) {
+				// if collateral auction has already been in reverse stage,
+				// should skip it.
+				if collateral_auction.in_reverse_stage(last_bid_price) {
+					continue;
 				}
-				Self::submit_cancel_auction_tx(collateral_auction_id);
-				guard.extend_lock().map_err(|_| OffchainErr::OffchainLock)?;
 			}
-
-			to_be_continue.clear();
-
-			// Consume the guard but **do not** unlock the underlying lock.
-			guard.forget();
-
-			Ok(())
-		} else {
-			Err(OffchainErr::OffchainStore)
+			Self::submit_cancel_auction_tx(collateral_auction_id);
+			guard.extend_lock().map_err(|_| OffchainErr::OffchainLock)?;
 		}
+
+		if iterator.finished {
+			to_be_continue.clear();
+		} else {
+			to_be_continue.set(&iterator.storage_map_iterator.previous_key);
+		}
+
+		// Consume the guard but **do not** unlock the underlying lock.
+		guard.forget();
+
+		Ok(())
 	}
 
 	fn cancel_collateral_auction(
