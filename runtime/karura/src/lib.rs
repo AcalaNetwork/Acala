@@ -194,42 +194,28 @@ parameter_types! {
 pub struct BaseCallFilter;
 impl Contains<Call> for BaseCallFilter {
 	fn contains(call: &Call) -> bool {
-		module_transaction_pause::NonPausedTransactionFilter::<Runtime>::contains(call)
-			&& matches!(
-				call,
-				// Core
-				Call::System(_) | Call::Timestamp(_) | Call::ParachainSystem(_) |
-				// Utility
-				Call::Scheduler(_) | Call::Utility(_) | Call::Multisig(_) | Call::Proxy(_) |
-				// Councils
-				Call::Authority(_) | Call::GeneralCouncil(_) | Call::GeneralCouncilMembership(_) |
-				Call::FinancialCouncil(_) | Call::FinancialCouncilMembership(_) |
-				Call::HomaCouncil(_) | Call::HomaCouncilMembership(_) |
-				Call::TechnicalCommittee(_) | Call::TechnicalCommitteeMembership(_) |
-				// Oracle
-				Call::AcalaOracle(_) | Call::OperatorMembershipAcala(_) |
-				// Democracy
-				Call::Democracy(_) | Call::Treasury(_) | Call::Bounties(_) | Call::Tips(_) |
-				// Collactor Selection
-				Call::CollatorSelection(_) | Call::Session(_) | Call::SessionManager(_) |
-				// Vesting
-				Call::Vesting(_) |
-				// TransactionPayment
-				Call::TransactionPayment(_) |
-				// Tokens
-				Call::XTokens(_) | Call::Balances(_) | Call::Currencies(_) |
-				// NFT
-				Call::NFT(_) |
-				// DEX
-				Call::Dex(_) |
-				// Incentives
-				Call::Incentives(_) |
-				// Honzon
-				Call::Auction(_) | Call::AuctionManager(_) | Call::Honzon(_) | Call::Loans(_) | Call::Prices(_) |
-				Call::CdpTreasury(_) | Call::CdpEngine(_) | Call::EmergencyShutdown(_) |
-				// Homa
-				Call::HomaLite(_)
-			)
+		let is_core_call = matches!(call, Call::System(_) | Call::Timestamp(_) | Call::ParachainSystem(_));
+		if is_core_call {
+			// always allow core call
+			return true;
+		}
+
+		let is_paused = module_transaction_pause::PausedTransactionFilter::<Runtime>::contains(call);
+		if is_paused {
+			// no paused call
+			return false;
+		}
+
+		let is_evm = matches!(
+			call,
+			Call::EVM(_) | Call::EvmAccounts(_) // EvmBridge / EvmManager does not have call
+		);
+		if is_evm {
+			// no evm call
+			return false;
+		}
+
+		true
 	}
 }
 
