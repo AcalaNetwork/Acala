@@ -58,25 +58,25 @@ pub trait WeightInfo {
 pub struct AcalaWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	fn mint() -> Weight {
-		(244_764_000 as Weight)
+		(237_625_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(13 as Weight))
 			.saturating_add(T::DbWeight::get().writes(7 as Weight))
 	}
 	fn set_total_staking_currency() -> Weight {
-		(19_317_000 as Weight)
+		(19_651_000 as Weight)
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn adjust_total_staking_currency() -> Weight {
-		(22_371_000 as Weight)
+		(22_554_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn set_minting_cap() -> Weight {
-		(19_942_000 as Weight)
+		(20_026_000 as Weight)
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn set_xcm_dest_weight() -> Weight {
-		(19_094_000 as Weight)
+		(19_306_000 as Weight)
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 }
@@ -84,25 +84,25 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 // For backwards compatibility and tests
 impl WeightInfo for () {
 	fn mint() -> Weight {
-		(244_764_000 as Weight)
+		(237_625_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(13 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(7 as Weight))
 	}
 	fn set_total_staking_currency() -> Weight {
-		(19_317_000 as Weight)
+		(19_651_000 as Weight)
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
 	fn adjust_total_staking_currency() -> Weight {
-		(22_371_000 as Weight)
+		(22_554_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
 	fn set_minting_cap() -> Weight {
-		(19_942_000 as Weight)
+		(20_026_000 as Weight)
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
 	fn set_xcm_dest_weight() -> Weight {
-		(19_094_000 as Weight)
+		(19_306_000 as Weight)
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
 }
