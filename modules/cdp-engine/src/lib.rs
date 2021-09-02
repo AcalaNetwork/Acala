@@ -652,13 +652,14 @@ impl<T: Config> Pallet<T> {
 
 		let currency_id = collateral_currency_ids[collateral_position as usize];
 		let is_shutdown = T::EmergencyShutdown::is_shutdown();
-		let map_iterator =
+		let mut map_iterator =
 			<loans::Positions<T>>::iter_prefix_from(currency_id, start_key.clone().ok_or(OffchainErr::OffchainStore)?);
 
 		let mut iteration_count = 0;
 		let iteration_start_time = sp_io::offchain::timestamp();
 
-		for (who, Position { collateral, debit }) in map_iterator {
+		#[allow(clippy::while_let_on_iterator)]
+		while let Some((who, Position { collateral, debit })) = map_iterator.next() {
 			if !is_shutdown
 				&& matches!(
 					Self::check_cdp_status(currency_id, collateral, debit),
