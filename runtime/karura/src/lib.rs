@@ -1405,8 +1405,8 @@ impl TakeRevenue for ToTreasury {
 	}
 }
 
-/// TODO: this is a hacky way for multi traders, should be replaced after tuple impl ready
-/// https://github.com/paritytech/polkadot/pull/3601
+/// TODO: this is a temp solution for multi traders, should be replaced after tuple impl is
+/// available https://github.com/paritytech/polkadot/pull/3601
 ///
 /// To add more traders:
 /// 1. Add a new trader generic type after `KsmTrader`.
