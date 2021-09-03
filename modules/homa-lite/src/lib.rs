@@ -99,8 +99,6 @@ pub mod module {
 		MintAmountBelowMinimumThreshold,
 		/// The amount of Staking currency used has exceeded the cap allowed.
 		ExceededStakingCurrencyMintCap,
-		/// The adjustment to total_staking_currency causes arithmatic error
-		InvalidAdjustmentToTotalStakingCurrency,
 	}
 
 	#[pallet::event]
@@ -251,18 +249,17 @@ pub mod module {
 				by_amount.abs()
 			};
 
-			let by_balance = TryInto::<Balance>::try_into(by_amount_abs)
-				.map_err(|_| Error::<T>::InvalidAdjustmentToTotalStakingCurrency)?;
+			let by_balance = TryInto::<Balance>::try_into(by_amount_abs).map_err(|_| ArithmeticError::Overflow)?;
 
 			// Adjust the current total.
 			if by_amount.is_positive() {
 				current_staking_total = current_staking_total
 					.checked_add(by_balance)
-					.ok_or(Error::<T>::InvalidAdjustmentToTotalStakingCurrency)?;
+					.ok_or(ArithmeticError::Overflow)?;
 			} else {
 				current_staking_total = current_staking_total
 					.checked_sub(by_balance)
-					.ok_or(Error::<T>::InvalidAdjustmentToTotalStakingCurrency)?;
+					.ok_or(ArithmeticError::Underflow)?;
 			}
 
 			TotalStakingCurrency::<T>::put(current_staking_total);

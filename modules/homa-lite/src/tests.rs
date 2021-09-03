@@ -240,7 +240,7 @@ fn can_adjust_total_staking_currency() {
 		// Underflow / overflow causes error
 		assert_noop!(
 			HomaLite::adjust_total_staking_currency(Origin::signed(ROOT), -5002),
-			Error::<Runtime>::InvalidAdjustmentToTotalStakingCurrency
+			ArithmeticError::Underflow
 		);
 
 		assert_eq!(HomaLite::total_staking_currency(), 5001);
@@ -252,7 +252,7 @@ fn can_adjust_total_staking_currency() {
 
 		assert_noop!(
 			HomaLite::adjust_total_staking_currency(Origin::signed(ROOT), 1),
-			Error::<Runtime>::InvalidAdjustmentToTotalStakingCurrency
+			ArithmeticError::Overflow
 		);
 	});
 }
