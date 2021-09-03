@@ -24,7 +24,12 @@
 
 pub use crate::{
 	precompiles::{Precompile, PrecompileSet},
-	runner::{storage_meter::StorageMeter, Runner},
+	runner::{
+		stack::SubstrateStackState,
+		state::{StackExecutor, StackSubstateMetadata},
+		storage_meter::StorageMeter,
+		Runner,
+	},
 };
 use codec::{Decode, Encode, MaxEncodedLen};
 pub use evm::{Config as EvmConfig, Context, ExitError, ExitFatal, ExitReason, ExitRevert, ExitSucceed};
@@ -63,6 +68,7 @@ use sp_runtime::{
 	transaction_validity::TransactionValidityError,
 	Either, TransactionOutcome,
 };
+use sp_std::rc::Rc;
 use sp_std::{collections::btree_map::BTreeMap, convert::TryInto, marker::PhantomData, prelude::*};
 
 pub mod precompiles;
@@ -238,6 +244,10 @@ pub mod module {
 		pub nonce: Index,
 		/// Account balance.
 		pub balance: Balance,
+		/// Full account storage.
+		pub storage: BTreeMap<H256, H256>,
+		/// Account code.
+		pub code: Vec<u8>,
 	}
 
 	/// The EVM accounts info.
@@ -296,6 +306,7 @@ pub mod module {
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
 		pub accounts: BTreeMap<EvmAddress, GenesisAccount<BalanceOf<T>, T::Index>>,
+		pub treasury: T::AccountId,
 	}
 
 	#[cfg(feature = "std")]
@@ -303,6 +314,7 @@ pub mod module {
 		fn default() -> Self {
 			GenesisConfig {
 				accounts: Default::default(),
+				treasury: Default::default(),
 			}
 		}
 	}
@@ -310,6 +322,15 @@ pub mod module {
 	#[pallet::genesis_build]
 	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
 		fn build(&self) {
+			let source = T::AddressMapping::get_or_create_evm_address(&self.treasury);
+			if !self.accounts.is_empty() && T::Currency::free_balance(&self.treasury).is_zero() {
+				// Use the treasury to create predeploy contracts
+				// Because the `get_or_create_evm_address` in the mock cannot get the correct account with address.
+				// So use `get_account_id` to get treasury here.
+				let treasury = T::AddressMapping::get_account_id(&source);
+				T::Currency::deposit_creating(&treasury, 1_000_000_000u32.into());
+			}
+
 			self.accounts.iter().for_each(|(address, account)| {
 				let account_id = T::AddressMapping::get_account_id(address);
 
@@ -317,6 +338,51 @@ pub mod module {
 				<Accounts<T>>::insert(address, account_info);
 
 				T::Currency::deposit_creating(&account_id, account.balance);
+
+				if !account.code.is_empty() {
+					// Transactions are not supported by BasicExternalities
+					// Use the EVM Runtime
+					let vicinity = Vicinity {
+						gas_price: U256::one(),
+						origin: Default::default(),
+					};
+					let context = Context {
+						caller: source,
+						address: *address,
+						apparent_value: Default::default(),
+					};
+					let metadata =
+						StackSubstateMetadata::new(210_000, 1000, T::NewContractExtraBytes::get(), &T::config());
+					let state = SubstrateStackState::<T>::new(&vicinity, metadata);
+					let mut executor = StackExecutor::new(state, &T::config());
+
+					let mut runtime =
+						evm::Runtime::new(Rc::new(account.code.clone()), Rc::new(Vec::new()), context, T::config());
+					let reason = executor.execute(&mut runtime);
+
+					assert!(
+						reason.is_succeed(),
+						"Genesis contract failed to execute, error: {:?}",
+						reason
+					);
+
+					let out = runtime.machine().return_value();
+					<Pallet<T>>::create_account(source, *address, out.clone());
+
+					#[cfg(not(feature = "with-ethereum-compatibility"))]
+					<Pallet<T>>::mark_deployed(*address, None).expect("Genesis contract failed to deploy");
+
+					let mut count = 0;
+					for (index, value) in &account.storage {
+						AccountStorages::<T>::insert(address, index, value);
+						count += 1;
+					}
+
+					let storage = count * STORAGE_SIZE + out.len() as u32 + T::NewContractExtraBytes::get();
+					<Pallet<T>>::reserve_storage(&source, storage).expect("Genesis contract failed to reserve storage");
+					<Pallet<T>>::charge_storage(&source, address, storage as i32)
+						.expect("Genesis contract failed to charge storage");
+				}
 			});
 			NetworkContractIndex::<T>::put(MIRRORED_NFT_ADDRESS_START);
 		}
@@ -860,7 +926,7 @@ impl<T: Config> Pallet<T> {
 	/// - Update codes info.
 	/// - Update maintainer of the contract.
 	/// - Save `code` if not saved yet.
-	pub fn create_account(address: H160, source: H160, code: Vec<u8>) {
+	pub fn create_account(source: H160, address: H160, code: Vec<u8>) {
 		let bounded_code: BoundedVec<u8, T::MaxCodeSize> = code
 			.try_into()
 			.expect("checked by create_contract_limit in ACALA_CONFIG; qed");

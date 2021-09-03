@@ -235,6 +235,8 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		GenesisAccount {
 			nonce: 1,
 			balance: Default::default(),
+			storage: Default::default(),
+			code: Default::default(),
 		},
 	);
 	accounts.insert(
@@ -242,6 +244,8 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		GenesisAccount {
 			nonce: 1,
 			balance: Default::default(),
+			storage: Default::default(),
+			code: Default::default(),
 		},
 	);
 
@@ -250,6 +254,8 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		GenesisAccount {
 			nonce: 1,
 			balance: INITIAL_BALANCE,
+			storage: Default::default(),
+			code: Default::default(),
 		},
 	);
 	accounts.insert(
@@ -257,15 +263,20 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		GenesisAccount {
 			nonce: 1,
 			balance: INITIAL_BALANCE,
+			storage: Default::default(),
+			code: Default::default(),
 		},
 	);
 
 	pallet_balances::GenesisConfig::<Runtime>::default()
 		.assimilate_storage(&mut t)
 		.unwrap();
-	evm_mod::GenesisConfig::<Runtime> { accounts }
-		.assimilate_storage(&mut t)
-		.unwrap();
+	evm_mod::GenesisConfig::<Runtime> {
+		accounts,
+		treasury: Default::default(),
+	}
+	.assimilate_storage(&mut t)
+	.unwrap();
 
 	let mut ext = sp_io::TestExternalities::new(t);
 	ext.execute_with(|| System::set_block_number(1));

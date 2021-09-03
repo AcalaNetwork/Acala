@@ -29,7 +29,7 @@ use frame_support::log;
 use primitive_types::{H160, H256, U256};
 pub use primitives::{
 	evm::{Account, EvmAddress, Log, Vicinity},
-	ReserveIdentifier, H160_PREFIX_DEXSHARE, H160_PREFIX_TOKEN, MIRRORED_NFT_ADDRESS_START, PRECOMPILE_ADDRESS_START,
+	ReserveIdentifier, H160_PREFIX_DEXSHARE, H160_PREFIX_TOKEN, MIRRORED_NFT_ADDRESS_START, PREDEPLOY_ADDRESS_START,
 	SYSTEM_CONTRACT_ADDRESS_PREFIX,
 };
 use sha3::{Digest, Keccak256};
@@ -432,8 +432,8 @@ impl<'config, S: StackState<'config>> StackExecutor<'config, S> {
 		}
 
 		if addr.starts_with(&H160_PREFIX_TOKEN) || addr.starts_with(&H160_PREFIX_DEXSHARE) {
-			// MultiCurrencyPrecompile
-			let token_address = H160::from_low_u64_be(PRECOMPILE_ADDRESS_START);
+			// `Token` predeploy contract.
+			let token_address = H160::from_low_u64_be(PREDEPLOY_ADDRESS_START);
 			log::debug!(
 				target: "evm",
 				"handle_mirrored_token: origin address: {:?}, token address: {:?}",
