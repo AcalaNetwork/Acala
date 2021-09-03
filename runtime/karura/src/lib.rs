@@ -1424,14 +1424,12 @@ impl<KsmTrader: WeightTrader> WeightTrader for MultiWeightTraders<KsmTrader> {
 		}
 	}
 	fn buy_weight(&mut self, weight: Weight, payment: Assets) -> Result<Assets, XcmError> {
-		match self.ksm_trader.buy_weight(weight, payment) {
-			Ok(assets) => return Ok(assets),
-			Err(_) => {}
+		if let Ok(assets) = self.ksm_trader.buy_weight(weight, payment) {
+			return Ok(assets);
 		}
 
-		// match self.dummy_trader.buy_weight(weight, payment) {
-		// 	Ok(assets) => return Ok(assets),
-		// 	Err(_) => {},
+		// if let Ok(asset) = self.dummy_trader.buy_weight(weight, payment) {
+		// 	return Ok(assets)
 		// }
 
 		Err(XcmError::TooExpensive)
