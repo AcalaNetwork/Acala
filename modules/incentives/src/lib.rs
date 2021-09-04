@@ -62,7 +62,7 @@ use sp_runtime::{
 	traits::{AccountIdConversion, MaybeDisplay, One, UniqueSaturatedInto, Zero},
 	DispatchResult, FixedPointNumber, RuntimeDebug,
 };
-use sp_std::{fmt::Debug, vec::Vec};
+use sp_std::{collections::btree_map::BTreeMap, fmt::Debug, vec::Vec};
 use support::{CDPTreasury, DEXIncentives, DEXManager, EmergencyShutdown, Rate};
 
 mod mock;
@@ -101,7 +101,12 @@ pub mod module {
 	#[pallet::config]
 	pub trait Config:
 		frame_system::Config
-		+ orml_rewards::Config<Share = Balance, Balance = Balance, PoolId = PoolId<Self::RelaychainAccountId>>
+		+ orml_rewards::Config<
+			Share = Balance,
+			Balance = Balance,
+			PoolId = PoolId<Self::RelaychainAccountId>,
+			CurrencyId = CurrencyId,
+		>
 	{
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
@@ -126,7 +131,7 @@ pub mod module {
 
 		/// The source account for native token rewards.
 		#[pallet::constant]
-		type NativeRewardsSource: Get<Self::AccountId>;
+		type RewardsSource: Get<Self::AccountId>;
 
 		/// The origin which may update incentive related params
 		type UpdateOrigin: EnsureOrigin<Self::Origin>;
@@ -185,6 +190,8 @@ pub mod module {
 		SavingRewardRateUpdated(PoolId<T::RelaychainAccountId>, Rate),
 		/// Payout deduction rate updated. \[pool_id, deduction_rate\]
 		PayoutDeductionRateUpdated(PoolId<T::RelaychainAccountId>, Rate),
+		/// Reward currencies updated. \[pool_id, reward_currencies\]
+		RewardCurrenciesUpdated(PoolId<T::RelaychainAccountId>, Vec<CurrencyId>),
 	}
 
 	/// Mapping from pool to its fixed reward amount per period.
@@ -203,6 +210,14 @@ pub mod module {
 	pub type DexSavingRewardRate<T: Config> =
 		StorageMap<_, Twox64Concat, PoolId<T::RelaychainAccountId>, Rate, ValueQuery>;
 
+	/// Mapping from pool to reward currencies.
+	///
+	/// DexSavingRewardRate: map PoolId => Vec<CurrencyId>
+	#[pallet::storage]
+	#[pallet::getter(fn reward_currencies)]
+	pub type RewardCurrencies<T: Config> =
+		StorageMap<_, Twox64Concat, PoolId<T::RelaychainAccountId>, Vec<CurrencyId>, OptionQuery>;
+
 	/// Mapping from pool to its payout deduction rate.
 	///
 	/// PayoutDeductionRates: map PoolId => Rate
@@ -213,7 +228,7 @@ pub mod module {
 
 	/// The pending rewards amount, actual available rewards amount may be deducted
 	///
-	/// PendingRewards: double_map PoolId, AccountId => Balance
+	/// PendingRewards: double_map PoolId, AccountId => BTreeMap<CurrencyId, Balance>
 	#[pallet::storage]
 	#[pallet::getter(fn pending_rewards)]
 	pub type PendingRewards<T: Config> = StorageDoubleMap<
@@ -222,7 +237,7 @@ pub mod module {
 		PoolId<T::RelaychainAccountId>,
 		Twox64Concat,
 		T::AccountId,
-		Balance,
+		BTreeMap<CurrencyId, Balance>,
 		ValueQuery,
 	>;
 
@@ -235,87 +250,17 @@ pub mod module {
 			// accumulate reward periodically
 			if !T::EmergencyShutdown::is_shutdown() && now % T::AccumulatePeriod::get() == Zero::zero() {
 				let mut count: u32 = 0;
-				let native_currency_id = T::NativeCurrencyId::get();
-				let stable_currency_id = T::StableCurrencyId::get();
-
 				for (pool_id, pool_info) in orml_rewards::Pools::<T>::iter() {
 					if !pool_info.total_shares.is_zero() {
 						match pool_id {
 							PoolId::LoansIncentive(_) | PoolId::DexIncentive(_) | PoolId::HomaIncentive => {
 								count += 1;
-								let incentive_reward_amount = Self::incentive_reward_amount(pool_id.clone());
-
-								if !incentive_reward_amount.is_zero() {
-									let res = T::Currency::transfer(
-										native_currency_id,
-										&T::NativeRewardsSource::get(),
-										&Self::account_id(),
-										incentive_reward_amount,
-									);
-									match res {
-										Ok(_) => {
-											<orml_rewards::Pallet<T>>::accumulate_reward(
-												&pool_id,
-												incentive_reward_amount,
-											);
-										}
-										Err(e) => {
-											log::warn!(
-												target: "incentives",
-												"transfer: failed to transfer {:?} {:?} from {:?} to {:?}: {:?}. \
-												This is unexpected but should be safe",
-												incentive_reward_amount, native_currency_id, T::NativeRewardsSource::get(), Self::account_id(), e
-											);
-										}
-									}
-								}
+								Self::accumulate_incentives(pool_id);
 							}
 
 							PoolId::DexSaving(lp_currency_id) => {
 								count += 1;
-								let dex_saving_reward_rate = Self::dex_saving_reward_rate(pool_id.clone());
-
-								if !dex_saving_reward_rate.is_zero() {
-									if let Some((currency_id_a, currency_id_b)) =
-										lp_currency_id.split_dex_share_currency_id()
-									{
-										// accumulate saving reward only for liquidity pool of stable currency id
-										let dex_saving_reward_base = if currency_id_a == stable_currency_id {
-											T::DEX::get_liquidity_pool(stable_currency_id, currency_id_b).0
-										} else if currency_id_b == stable_currency_id {
-											T::DEX::get_liquidity_pool(stable_currency_id, currency_id_a).0
-										} else {
-											Zero::zero()
-										};
-										let dex_saving_reward_amount =
-											dex_saving_reward_rate.saturating_mul_int(dex_saving_reward_base);
-
-										// issue stable coin without backing.
-										if !dex_saving_reward_amount.is_zero() {
-											let res = T::CDPTreasury::issue_debit(
-												&Self::account_id(),
-												dex_saving_reward_amount,
-												false,
-											);
-											match res {
-												Ok(_) => {
-													<orml_rewards::Pallet<T>>::accumulate_reward(
-														&pool_id,
-														dex_saving_reward_amount,
-													);
-												}
-												Err(e) => {
-													log::warn!(
-														target: "incentives",
-														"issue_debit: failed to issue {:?} unbacked stable to {:?}: {:?}. \
-														This is unexpected but should be safe",
-														dex_saving_reward_amount, Self::account_id(), e
-													);
-												}
-											}
-										}
-									}
-								}
+								Self::accumulate_dex_saving(lp_currency_id, pool_id);
 							}
 
 							_ => {}
@@ -355,16 +300,11 @@ pub mod module {
 
 			<orml_rewards::Pallet<T>>::claim_rewards(&who, &pool_id);
 
-			let pending_reward: Balance = PendingRewards::<T>::take(&pool_id, &who);
-			if !pending_reward.is_zero() {
-				let currency_id = match pool_id {
-					PoolId::LoansIncentive(_) | PoolId::DexIncentive(_) | PoolId::HomaIncentive => {
-						T::NativeCurrencyId::get()
-					}
-					PoolId::DexSaving(_) => T::StableCurrencyId::get(),
-					PoolId::HomaValidatorAllowance(_) => T::LiquidCurrencyId::get(),
-				};
-
+			let pending_rewards: BTreeMap<CurrencyId, Balance> = PendingRewards::<T>::take(&pool_id, &who);
+			for (currency_id, pending_reward) in pending_rewards {
+				if pending_reward.is_zero() {
+					continue;
+				}
 				// calculate actual rewards and deduction amount
 				let (actual_amount, deduction_amount) = {
 					let deduction_amount = Self::payout_deduction_rates(&pool_id)
@@ -372,7 +312,7 @@ pub mod module {
 						.min(pending_reward);
 					if !deduction_amount.is_zero() {
 						// re-accumulate deduction to rewards pool if deduction amount is not zero
-						<orml_rewards::Pallet<T>>::accumulate_reward(&pool_id, deduction_amount);
+						<orml_rewards::Pallet<T>>::accumulate_reward(&pool_id, currency_id, deduction_amount)?;
 					}
 					(pending_reward.saturating_sub(deduction_amount), deduction_amount)
 				};
@@ -383,8 +323,8 @@ pub mod module {
 				T::Currency::transfer(currency_id, &Self::account_id(), &who, actual_amount)?;
 
 				Self::deposit_event(Event::ClaimRewards(
-					who,
-					pool_id,
+					who.clone(),
+					pool_id.clone(),
 					currency_id,
 					actual_amount,
 					deduction_amount,
@@ -460,6 +400,21 @@ pub mod module {
 			Ok(())
 		}
 
+		#[pallet::weight(0)]
+		#[transactional]
+		pub fn update_reward_currencies(
+			origin: OriginFor<T>,
+			updates: Vec<(PoolId<T::RelaychainAccountId>, Vec<CurrencyId>)>,
+		) -> DispatchResult {
+			T::UpdateOrigin::ensure_origin(origin)?;
+			for (pool_id, currencies) in updates {
+				// TODO: checks
+				RewardCurrencies::<T>::insert(&pool_id, currencies.clone());
+				Self::deposit_event(Event::RewardCurrenciesUpdated(pool_id, currencies));
+			}
+			Ok(())
+		}
+
 		#[pallet::weight(<T as Config>::WeightInfo::add_allowance())]
 		#[transactional]
 		pub fn add_allowance(
@@ -472,7 +427,7 @@ pub mod module {
 			match pool_id {
 				PoolId::HomaValidatorAllowance(_) => {
 					T::Currency::transfer(T::LiquidCurrencyId::get(), &who, &Self::account_id(), amount)?;
-					<orml_rewards::Pallet<T>>::accumulate_reward(&pool_id, amount);
+					<orml_rewards::Pallet<T>>::accumulate_reward(&pool_id, T::LiquidCurrencyId::get(), amount)?;
 				}
 				_ => {
 					return Err(Error::<T>::InvalidPoolId.into());
@@ -487,6 +442,103 @@ pub mod module {
 impl<T: Config> Pallet<T> {
 	pub fn account_id() -> T::AccountId {
 		T::PalletId::get().into_account()
+	}
+
+	fn get_reward_currencies(pool: &PoolId<T::RelaychainAccountId>) -> Vec<CurrencyId> {
+		Self::reward_currencies(pool).unwrap_or_else(|| match *pool {
+			PoolId::LoansIncentive(_) | PoolId::DexIncentive(_) | PoolId::HomaIncentive => {
+				vec![T::NativeCurrencyId::get()]
+			}
+			PoolId::DexSaving(_) => vec![T::StableCurrencyId::get()],
+			PoolId::HomaValidatorAllowance(_) => vec![T::LiquidCurrencyId::get()],
+		})
+	}
+
+	fn accumulate_incentives(pool_id: PoolId<T::RelaychainAccountId>) {
+		let incentive_reward_amount = Self::incentive_reward_amount(pool_id.clone());
+
+		if !incentive_reward_amount.is_zero() {
+			for reward_currency in Self::get_reward_currencies(&pool_id) {
+				let res = T::Currency::transfer(
+					reward_currency,
+					&T::RewardsSource::get(),
+					&Self::account_id(),
+					incentive_reward_amount,
+				);
+				match res {
+					Ok(_) => {
+						let _ = <orml_rewards::Pallet<T>>::accumulate_reward(
+							&pool_id,
+							reward_currency,
+							incentive_reward_amount,
+						)
+						.map_err(|e| {
+							log::error!(
+								target: "incentives",
+								"accumulate_reward: failed to accumulate reward to non-existen pool {:?}, reward_currency {:?}, amount {:?}: {:?}",
+								pool_id, reward_currency, incentive_reward_amount, e
+							);
+						});
+					}
+					Err(e) => {
+						log::warn!(
+							target: "incentives",
+							"transfer: failed to transfer {:?} {:?} from {:?} to {:?}: {:?}. \
+							This is unexpected but should be safe",
+							incentive_reward_amount, reward_currency, T::RewardsSource::get(), Self::account_id(), e
+						);
+					}
+				}
+			}
+		}
+	}
+
+	fn accumulate_dex_saving(lp_currency_id: CurrencyId, pool_id: PoolId<T::RelaychainAccountId>) {
+		let stable_currency_id = T::StableCurrencyId::get();
+		let dex_saving_reward_rate = Self::dex_saving_reward_rate(pool_id.clone());
+
+		if !dex_saving_reward_rate.is_zero() {
+			if let Some((currency_id_a, currency_id_b)) = lp_currency_id.split_dex_share_currency_id() {
+				// accumulate saving reward only for liquidity pool of stable currency id
+				let dex_saving_reward_base = if currency_id_a == stable_currency_id {
+					T::DEX::get_liquidity_pool(stable_currency_id, currency_id_b).0
+				} else if currency_id_b == stable_currency_id {
+					T::DEX::get_liquidity_pool(stable_currency_id, currency_id_a).0
+				} else {
+					Zero::zero()
+				};
+				let dex_saving_reward_amount = dex_saving_reward_rate.saturating_mul_int(dex_saving_reward_base);
+
+				// issue stable coin without backing.
+				if !dex_saving_reward_amount.is_zero() {
+					let res = T::CDPTreasury::issue_debit(&Self::account_id(), dex_saving_reward_amount, false);
+					match res {
+						Ok(_) => {
+							let _ = <orml_rewards::Pallet<T>>::accumulate_reward(
+								&pool_id,
+								stable_currency_id,
+								dex_saving_reward_amount,
+							)
+							.map_err(|e| {
+								log::error!(
+									target: "incentives",
+									"accumulate_reward: failed to accumulate reward to non-existen pool {:?}, reward_currency {:?}, amount {:?}: {:?}",
+									pool_id, stable_currency_id, dex_saving_reward_amount, e
+								);
+							});
+						}
+						Err(e) => {
+							log::warn!(
+								target: "incentives",
+								"issue_debit: failed to issue {:?} unbacked stable to {:?}: {:?}. \
+								This is unexpected but should be safe",
+								dex_saving_reward_amount, Self::account_id(), e
+							);
+						}
+					}
+				}
+			}
+		}
 	}
 }
 
@@ -566,14 +618,19 @@ impl<T: Config> Happened<(T::AccountId, T::RelaychainAccountId, Balance)> for On
 	}
 }
 
-impl<T: Config> RewardHandler<T::AccountId> for Pallet<T> {
+impl<T: Config> RewardHandler<T::AccountId, CurrencyId> for Pallet<T> {
 	type Balance = Balance;
 	type PoolId = PoolId<T::RelaychainAccountId>;
 
-	fn payout(who: &T::AccountId, pool_id: &Self::PoolId, payout_amount: Self::Balance) {
+	fn payout(who: &T::AccountId, pool_id: &Self::PoolId, currency_id: CurrencyId, payout_amount: Self::Balance) {
 		if payout_amount.is_zero() {
 			return;
 		}
-		PendingRewards::<T>::mutate(pool_id, who, |p| *p = p.saturating_add(payout_amount));
+		PendingRewards::<T>::mutate(pool_id, who, |rewards| {
+			rewards
+				.entry(currency_id)
+				.and_modify(|current| *current = current.saturating_add(payout_amount))
+				.or_insert(payout_amount);
+		});
 	}
 }

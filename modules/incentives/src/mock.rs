@@ -244,11 +244,12 @@ impl orml_rewards::Config for Runtime {
 	type Share = Balance;
 	type Balance = Balance;
 	type PoolId = PoolId<AccountId>;
+	type CurrencyId = CurrencyId;
 	type Handler = IncentivesModule;
 }
 
 parameter_types! {
-	pub NativeRewardsSource: AccountId = UNRELEASED::get();
+	pub RewardsSource: AccountId = UNRELEASED::get();
 	pub const AccumulatePeriod: BlockNumber = 10;
 	pub const NativeCurrencyId: CurrencyId = ACA;
 	pub const StableCurrencyId: CurrencyId = AUSD;
@@ -263,7 +264,7 @@ ord_parameter_types! {
 impl Config for Runtime {
 	type Event = Event;
 	type RelaychainAccountId = AccountId;
-	type NativeRewardsSource = NativeRewardsSource;
+	type RewardsSource = RewardsSource;
 	type AccumulatePeriod = AccumulatePeriod;
 	type NativeCurrencyId = NativeCurrencyId;
 	type StableCurrencyId = StableCurrencyId;
