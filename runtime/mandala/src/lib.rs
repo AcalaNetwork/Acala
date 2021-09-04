@@ -1200,6 +1200,7 @@ impl orml_rewards::Config for Runtime {
 	type Share = Balance;
 	type Balance = Balance;
 	type PoolId = module_incentives::PoolId<AccountId>;
+	type CurrencyId = CurrencyId;
 	type Handler = Incentives;
 }
 

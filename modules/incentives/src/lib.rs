@@ -62,7 +62,7 @@ use sp_runtime::{
 	traits::{AccountIdConversion, MaybeDisplay, One, UniqueSaturatedInto, Zero},
 	DispatchResult, FixedPointNumber, RuntimeDebug,
 };
-use sp_std::{collections::btree_map::BTreeMap, fmt::Debug, vec::Vec};
+use sp_std::{collections::btree_map::BTreeMap, fmt::Debug, prelude::*};
 use support::{CDPTreasury, DEXIncentives, DEXManager, EmergencyShutdown, Rate};
 
 mod mock;
@@ -408,7 +408,12 @@ pub mod module {
 		) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
 			for (pool_id, currencies) in updates {
-				// TODO: checks
+				match pool_id {
+					PoolId::DexSaving(_) => {
+						return Err(Error::<T>::InvalidPoolId.into());
+					}
+					_ => {}
+				}
 				RewardCurrencies::<T>::insert(&pool_id, currencies.clone());
 				Self::deposit_event(Event::RewardCurrenciesUpdated(pool_id, currencies));
 			}
@@ -426,8 +431,10 @@ pub mod module {
 
 			match pool_id {
 				PoolId::HomaValidatorAllowance(_) => {
-					T::Currency::transfer(T::LiquidCurrencyId::get(), &who, &Self::account_id(), amount)?;
-					<orml_rewards::Pallet<T>>::accumulate_reward(&pool_id, T::LiquidCurrencyId::get(), amount)?;
+					for reward_currency in Self::get_reward_currencies(&pool_id) {
+						T::Currency::transfer(reward_currency, &who, &Self::account_id(), amount)?;
+						<orml_rewards::Pallet<T>>::accumulate_reward(&pool_id, reward_currency, amount)?;
+					}
 				}
 				_ => {
 					return Err(Error::<T>::InvalidPoolId.into());
@@ -447,10 +454,10 @@ impl<T: Config> Pallet<T> {
 	fn get_reward_currencies(pool: &PoolId<T::RelaychainAccountId>) -> Vec<CurrencyId> {
 		Self::reward_currencies(pool).unwrap_or_else(|| match *pool {
 			PoolId::LoansIncentive(_) | PoolId::DexIncentive(_) | PoolId::HomaIncentive => {
-				vec![T::NativeCurrencyId::get()]
+				[T::NativeCurrencyId::get()].to_vec()
 			}
-			PoolId::DexSaving(_) => vec![T::StableCurrencyId::get()],
-			PoolId::HomaValidatorAllowance(_) => vec![T::LiquidCurrencyId::get()],
+			PoolId::DexSaving(_) => [T::StableCurrencyId::get()].to_vec(),
+			PoolId::HomaValidatorAllowance(_) => [T::LiquidCurrencyId::get()].to_vec(),
 		})
 	}
 
