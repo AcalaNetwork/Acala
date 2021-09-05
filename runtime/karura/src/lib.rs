@@ -66,6 +66,7 @@ pub use orml_xcm_support::{IsNativeConcrete, MultiCurrencyAdapter, MultiNativeAs
 use pallet_xcm::XcmPassthrough;
 pub use polkadot_parachain::primitives::Sibling;
 pub use xcm::v0::{
+	Error as XcmError,
 	Junction::{self, AccountId32, GeneralKey, Parachain, Parent},
 	MultiAsset,
 	MultiLocation::{self, X1, X2, X3},
@@ -78,7 +79,7 @@ pub use xcm_builder::{
 	ParentIsDefault, RelayChainAsNative, SiblingParachainAsNative, SiblingParachainConvertsVia,
 	SignedAccountId32AsNative, SignedToAccountId32, SovereignSignedViaLocation, TakeRevenue, TakeWeightCredit,
 };
-pub use xcm_executor::{Config, XcmExecutor};
+pub use xcm_executor::{traits::WeightTrader, Assets, Config, XcmExecutor};
 
 /// Weights for pallets used in the runtime.
 mod weights;
@@ -1404,6 +1405,54 @@ impl TakeRevenue for ToTreasury {
 	}
 }
 
+/// TODO: this is a temp solution for multi traders, should be replaced after tuple impl is
+/// available https://github.com/paritytech/polkadot/pull/3601
+///
+/// To add more traders:
+/// 1. Add a new trader generic type after `KsmTrader`.
+/// 2. Add a new trader field.
+/// 3. Call this new trader type's new/buy_weight/refund functions in `WeightTrader` impl,
+///   like the way of `KsmTrader`.
+pub struct MultiWeightTraders<KsmTrader> {
+	ksm_trader: KsmTrader,
+}
+impl<KsmTrader: WeightTrader> WeightTrader for MultiWeightTraders<KsmTrader> {
+	fn new() -> Self {
+		Self {
+			ksm_trader: KsmTrader::new(),
+			// dummy_trader: DummyTrader::new(),
+		}
+	}
+	fn buy_weight(&mut self, weight: Weight, payment: Assets) -> Result<Assets, XcmError> {
+		if let Ok(assets) = self.ksm_trader.buy_weight(weight, payment) {
+			return Ok(assets);
+		}
+
+		// if let Ok(asset) = self.dummy_trader.buy_weight(weight, payment) {
+		// 	return Ok(assets)
+		// }
+
+		Err(XcmError::TooExpensive)
+	}
+	fn refund_weight(&mut self, weight: Weight) -> MultiAsset {
+		let ksm = self.ksm_trader.refund_weight(weight);
+		match ksm {
+			MultiAsset::ConcreteFungible { amount, .. } if !amount.is_zero() => return ksm,
+			_ => {}
+		}
+
+		// let dummy = self.dummy_trader.refund_weight(weight);
+		// match dummy {
+		// 	MultiAsset::ConcreteFungible { amount, .. } if !amount.is_zero() => return dummy,
+		// 	_ => {},
+		// }
+
+		MultiAsset::None
+	}
+}
+
+pub type Trader = MultiWeightTraders<FixedRateOfConcreteFungible<KsmPerSecond, ToTreasury>>;
+
 pub struct XcmConfig;
 impl xcm_executor::Config for XcmConfig {
 	type Call = Call;
@@ -1418,7 +1467,7 @@ impl xcm_executor::Config for XcmConfig {
 	type Barrier = Barrier;
 	type Weigher = FixedWeightBounds<UnitWeightCost, Call>;
 	// Only receiving KSM is handled, and all fees must be paid in KSM.
-	type Trader = FixedRateOfConcreteFungible<KsmPerSecond, ToTreasury>;
+	type Trader = Trader;
 	type ResponseHandler = (); // Don't handle responses for now.
 }
 
