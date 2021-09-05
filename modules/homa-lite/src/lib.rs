@@ -27,10 +27,13 @@ pub mod weights;
 use frame_support::{pallet_prelude::*, transactional};
 use frame_system::{ensure_signed, pallet_prelude::*};
 use module_support::{ExchangeRate, ExchangeRateProvider, Ratio};
-use orml_traits::{MultiCurrency, XcmTransfer};
+use orml_traits::{arithmetic::Signed, MultiCurrency, MultiCurrencyExtended, XcmTransfer};
 use primitives::{Balance, CurrencyId};
-use sp_runtime::{traits::Zero, ArithmeticError, FixedPointNumber, Permill};
-use sp_std::{ops::Mul, prelude::*};
+use sp_runtime::{
+	traits::{Bounded, Zero},
+	ArithmeticError, FixedPointNumber, Permill,
+};
+use sp_std::{convert::TryInto, ops::Mul, prelude::*};
 use xcm::opaque::v0::MultiLocation;
 
 pub use module::*;
@@ -40,6 +43,9 @@ pub use weights::WeightInfo;
 pub mod module {
 	use super::*;
 
+	pub(crate) type AmountOf<T> =
+		<<T as Config>::Currency as MultiCurrencyExtended<<T as frame_system::Config>::AccountId>>::Amount;
+
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
@@ -48,7 +54,7 @@ pub mod module {
 		type WeightInfo: WeightInfo;
 
 		/// Multi-currency support for asset management
-		type Currency: MultiCurrency<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
+		type Currency: MultiCurrencyExtended<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
 
 		/// The Currency ID for the Staking asset
 		#[pallet::constant]
@@ -220,6 +226,44 @@ pub mod module {
 
 			TotalStakingCurrency::<T>::put(staking_total);
 			Self::deposit_event(Event::<T>::TotalStakingCurrencySet(staking_total));
+
+			Ok(())
+		}
+
+		/// Adjusts the total_staking_currency by the given difference.
+		/// Requires `T::GovernanceOrigin`
+		///
+		/// Parameters:
+		/// - `adjustment`: The difference in amount the total_staking_currency should be adjusted
+		///   by.
+		#[pallet::weight(< T as Config >::WeightInfo::adjust_total_staking_currency())]
+		#[transactional]
+		pub fn adjust_total_staking_currency(origin: OriginFor<T>, by_amount: AmountOf<T>) -> DispatchResult {
+			T::GovernanceOrigin::ensure_origin(origin)?;
+			let mut current_staking_total = Self::total_staking_currency();
+
+			// Convert AmountOf<T> into Balance safely.
+			let by_amount_abs = if by_amount == AmountOf::<T>::min_value() {
+				AmountOf::<T>::max_value()
+			} else {
+				by_amount.abs()
+			};
+
+			let by_balance = TryInto::<Balance>::try_into(by_amount_abs).map_err(|_| ArithmeticError::Overflow)?;
+
+			// Adjust the current total.
+			if by_amount.is_positive() {
+				current_staking_total = current_staking_total
+					.checked_add(by_balance)
+					.ok_or(ArithmeticError::Overflow)?;
+			} else {
+				current_staking_total = current_staking_total
+					.checked_sub(by_balance)
+					.ok_or(ArithmeticError::Underflow)?;
+			}
+
+			TotalStakingCurrency::<T>::put(current_staking_total);
+			Self::deposit_event(Event::<T>::TotalStakingCurrencySet(current_staking_total));
 
 			Ok(())
 		}

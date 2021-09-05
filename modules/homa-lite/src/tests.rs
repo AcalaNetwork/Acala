@@ -218,6 +218,46 @@ fn cannot_set_total_staking_currency_to_zero() {
 }
 
 #[test]
+fn can_adjust_total_staking_currency() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(HomaLite::set_total_staking_currency(Origin::signed(ROOT), 1));
+		assert_eq!(HomaLite::total_staking_currency(), 1);
+
+		assert_noop!(
+			HomaLite::adjust_total_staking_currency(Origin::signed(ALICE), 5000),
+			BadOrigin
+		);
+
+		// Can adjust total_staking_currency with ROOT.
+		assert_ok!(HomaLite::adjust_total_staking_currency(Origin::signed(ROOT), 5000));
+
+		assert_eq!(HomaLite::total_staking_currency(), 5001);
+		assert_eq!(
+			System::events().iter().last().unwrap().event,
+			Event::HomaLite(crate::Event::TotalStakingCurrencySet(5001))
+		);
+
+		// Underflow / overflow causes error
+		assert_noop!(
+			HomaLite::adjust_total_staking_currency(Origin::signed(ROOT), -5002),
+			ArithmeticError::Underflow
+		);
+
+		assert_eq!(HomaLite::total_staking_currency(), 5001);
+
+		assert_ok!(HomaLite::set_total_staking_currency(
+			Origin::signed(ROOT),
+			Balance::max_value()
+		));
+
+		assert_noop!(
+			HomaLite::adjust_total_staking_currency(Origin::signed(ROOT), 1),
+			ArithmeticError::Overflow
+		);
+	});
+}
+
+#[test]
 fn requires_root_to_set_total_staking_currency() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_noop!(
