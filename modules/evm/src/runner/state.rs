@@ -758,9 +758,9 @@ impl<'config, S: StackState<'config>> StackExecutor<'config, S> {
 		let mut runtime = Runtime::new(Rc::new(code), Rc::new(input), context, self.config);
 
 		//#[cfg(not(feature = "tracing"))]
-		//let reason = self.execute(&mut runtime);
+		let reason = self.execute(&mut runtime);
 		//#[cfg(feature = "tracing")]
-		let reason = evm_runtime::tracing::using(&mut Tracer, || self.execute(&mut runtime));
+		//let reason = evm_runtime::tracing::using(&mut Tracer, || self.execute(&mut runtime));
 		log::debug!(target: "evm", "Call execution using address {}: {:?}", code_address, reason);
 
 		match reason {
