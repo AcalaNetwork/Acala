@@ -595,7 +595,6 @@ fn should_not_kill_contract_on_transfer_all_tokens() {
 			};
 
 			let contract_account_id = EvmAddressMapping::<Runtime>::get_account_id(&contract);
-			assert_eq!(System::providers(&contract_account_id), 2);
 
 			assert_ok!(Currencies::transfer(
 				Origin::signed(alice()),
@@ -604,7 +603,6 @@ fn should_not_kill_contract_on_transfer_all_tokens() {
 				2 * dollar(USD_CURRENCY)
 			));
 
-			assert_eq!(System::providers(&contract_account_id), 3);
 			assert_eq!(Currencies::free_balance(USD_CURRENCY, &alice()), 998 * dollar(USD_CURRENCY));
 			assert_eq!(Currencies::free_balance(USD_CURRENCY, &contract_account_id), 2 * dollar(USD_CURRENCY));
 			assert_eq!(EVM::accounts(contract).unwrap().nonce, 1);
@@ -619,7 +617,6 @@ fn should_not_kill_contract_on_transfer_all_tokens() {
 			assert_eq!(Currencies::free_balance(USD_CURRENCY, &alice()), 1000 * dollar(USD_CURRENCY));
 
 			// assert the contract account is not purged
-			assert_eq!(System::providers(&contract_account_id), 2);
 			assert!(EVM::accounts(contract).is_some());
 
 			assert_ok!(EVM::call(Origin::signed(alice()), contract.clone(), hex_literal::hex!("41c0e1b5").to_vec(), 0, 1000000000, 100000));
