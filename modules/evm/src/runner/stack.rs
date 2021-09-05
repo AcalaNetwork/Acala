@@ -25,8 +25,8 @@ use crate::{
 		state::{StackExecutor, StackSubstateMetadata},
 		Runner as RunnerT, StackState as StackStateT,
 	},
-	AccountInfo, AccountStorages, Accounts, BalanceOf, CallInfo, Config, CreateInfo, Error, Event, ExecutionInfo, One,
-	Pallet, STORAGE_SIZE,
+	AccountInfo, AccountStorages, Accounts, BalanceOf, CallInfo, Config, ContractStorageSizes, CreateInfo, Error,
+	Event, ExecutionInfo, One, Pallet, STORAGE_SIZE,
 };
 use evm::{backend::Backend as BackendT, ExitError, ExitReason, Transfer};
 use frame_support::{
@@ -144,7 +144,7 @@ impl<T: Config> Runner<T> {
 				"Deleting account at {:?}",
 				address
 			);
-			Pallet::<T>::remove_account(&address).map_err(|_| Error::<T>::CannotKillContract)?;
+			Pallet::<T>::remove_contract(&address).map_err(|_| Error::<T>::CannotKillContract)?;
 		}
 
 		for log in &state.substate.logs {
@@ -528,7 +528,9 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 	}
 
 	fn set_deleted(&mut self, address: H160) {
-		self.substate.set_deleted(address)
+		self.substate.set_deleted(address);
+		let size = ContractStorageSizes::<T>::get(address);
+		self.substate.metadata.storage_meter_mut().refund(size);
 	}
 
 	fn set_code(&mut self, address: H160, code: Vec<u8>) {

@@ -1156,10 +1156,11 @@ fn should_selfdestruct() {
 			EVM::selfdestruct(Origin::signed(bob_account_id), contract_address),
 			Error::<Runtime>::NoPermission
 		);
+		let contract_account_id = <Runtime as Config>::AddressMapping::get_account_id(&contract_address);
+		assert_eq!(System::providers(&contract_account_id), 2);
 		assert_ok!(EVM::selfdestruct(Origin::signed(alice_account_id), contract_address));
 
-		let contract_account_id = <Runtime as Config>::AddressMapping::get_account_id(&contract_address);
-
+		assert_eq!(System::providers(&contract_account_id), 0);
 		assert!(!System::account_exists(&contract_account_id));
 		assert!(!Accounts::<Runtime>::contains_key(&contract_address));
 		assert!(!ContractStorageSizes::<Runtime>::contains_key(&contract_address));

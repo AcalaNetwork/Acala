@@ -111,13 +111,13 @@ impl<
 			address, input, target_gas, context,
 		)
 		.or_else(|| {
-			// allow all of the callers
-			// if is_acala_precompile(address) && !PrecompileCallerFilter::is_allowed(context.caller) {
-			// 	log::debug!(target: "evm", "Precompile no permission");
-			// 	return Some(Err(ExitError::Other("no permission".into())));
-			// }
 			if !is_acala_precompile(address) {
 				return None;
+			}
+
+			if !PrecompileCallerFilter::is_allowed(context.caller) {
+				log::debug!(target: "evm", "Precompile no permission");
+				return Some(Err(ExitError::Other("no permission".into())));
 			}
 
 			log::debug!(target: "evm", "Precompile begin, address: {:?}, input: {:?}, target_gas: {:?}, context: {:?}", address, input, target_gas, context);

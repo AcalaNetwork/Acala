@@ -30,8 +30,9 @@ use ethabi::Token;
 use module_evm::ExitError;
 use module_support::{AddressMapping as AddressMappingT, CurrencyIdMapping as CurrencyIdMappingT};
 use primitives::{Amount, Balance, CurrencyId};
-use sp_core::H160;
+use sp_core::{H160, U256};
 
+pub const INPUT_BYTES_LENGTH: usize = 32;
 pub const FUNCTION_SELECTOR_LENGTH: usize = 4;
 pub const PER_PARAM_BYTES: usize = 32;
 pub const ACTION_INDEX: usize = 0;
@@ -89,14 +90,15 @@ where
 	type AccountId = AccountId;
 
 	fn nth_param(&self, n: usize, len: Option<usize>) -> Result<&[u8], Self::Error> {
-		// TODO: Support multiple indefinite length parameters
+		// Solidity dynamic bytes will add the size to the front of the input,
+		// pre-compile needs to deal with the INPUT_BYTES_LENGTH `size`.
 		let (start, end) = if n == 0 {
 			// ACTION_INDEX
-			let start = 0;
+			let start = INPUT_BYTES_LENGTH;
 			let end = start + FUNCTION_SELECTOR_LENGTH;
 			(start, end)
 		} else {
-			let start = FUNCTION_SELECTOR_LENGTH + PER_PARAM_BYTES * (n - 1);
+			let start = INPUT_BYTES_LENGTH + FUNCTION_SELECTOR_LENGTH + PER_PARAM_BYTES * (n - 1);
 			let end = start + len.unwrap_or(PER_PARAM_BYTES);
 			(start, end)
 		};
@@ -200,6 +202,11 @@ impl Output {
 		ethabi::encode(&[out])
 	}
 
+	pub fn vec_u8_from_u32(&self, b: u32) -> Vec<u8> {
+		let out = Token::Uint(primitive_types::U256::from(b));
+		ethabi::encode(&[out])
+	}
+
 	pub fn vec_u8_from_u128(&self, b: u128) -> Vec<u8> {
 		let out = Token::Uint(primitive_types::U256::from(b));
 		ethabi::encode(&[out])
@@ -216,6 +223,27 @@ impl Output {
 	pub fn vec_u8_from_str(&self, b: &[u8]) -> Vec<u8> {
 		let out = Token::Bytes(b.to_vec());
 		ethabi::encode(&[out])
+	}
+
+	pub fn vec_u8_from_fixed_str(&self, b: &[u8]) -> Vec<u8> {
+		let out = Token::FixedBytes(b.to_vec());
+		ethabi::encode(&[out])
+	}
+
+	// TODO: optimization
+	pub fn vec_u8_from_str_old(&self, b: &[u8]) -> Vec<u8> {
+		// add task_id len prefix
+		let mut task_id_with_len = [0u8; 96];
+		U256::from(b.len()).to_big_endian(&mut task_id_with_len[0..32]);
+		task_id_with_len[32..32 + b.len()].copy_from_slice(&b[..]);
+		task_id_with_len.to_vec()
+	}
+
+	// TODO: optimization
+	pub fn vec_u8_from_fixed_str_old(&self, b: &[u8]) -> Vec<u8> {
+		let mut be_bytes = [0u8; 32];
+		U256::from_big_endian(b).to_big_endian(&mut be_bytes[..]);
+		be_bytes.to_vec()
 	}
 
 	pub fn vec_u8_from_address(&self, b: &H160) -> Vec<u8> {

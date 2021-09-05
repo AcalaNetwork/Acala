@@ -31,11 +31,11 @@ use frame_support::{
 use module_evm::{Context, ExitError, ExitSucceed, Precompile};
 use module_support::{AddressMapping as AddressMappingT, CurrencyIdMapping as CurrencyIdMappingT, TransactionPayment};
 use primitives::{Balance, BlockNumber};
-use sp_core::{H160, U256};
+use sp_core::H160;
 use sp_runtime::RuntimeDebug;
 use sp_std::{fmt::Debug, marker::PhantomData, prelude::*, result};
 
-use super::input::{Input, InputT};
+use super::input::{Input, InputT, Output};
 use codec::{Decode, Encode};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use pallet_scheduler::TaskAddress;
@@ -221,15 +221,10 @@ impl<
 				)
 				.map_err(|_| ExitError::Other("Schedule failed".into()))?;
 
-				// add task_id len prefix
-				let mut task_id_with_len = [0u8; 96];
-				U256::from(task_id.len()).to_big_endian(&mut task_id_with_len[0..32]);
-				task_id_with_len[32..32 + task_id.len()].copy_from_slice(&task_id[..]);
-
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: 0,
-					output: task_id_with_len.to_vec(),
+					output: Output::new().vec_u8_from_str_old(&task_id),
 					logs: Default::default(),
 				})
 			}

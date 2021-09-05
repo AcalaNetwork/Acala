@@ -20,13 +20,13 @@ use crate::precompile::PrecompileOutput;
 use frame_support::log;
 use module_evm::{Context, ExitError, ExitSucceed, Precompile};
 use module_support::{AddressMapping as AddressMappingT, CurrencyIdMapping as CurrencyIdMappingT};
-use sp_core::{H160, U256};
+use sp_core::H160;
 use sp_runtime::RuntimeDebug;
 use sp_std::{borrow::Cow, fmt::Debug, marker::PhantomData, prelude::*, result};
 
 use orml_traits::NFT as NFTT;
 
-use super::input::{Input, InputT};
+use super::input::{Input, InputT, Output};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use primitives::NFTBalance;
 
@@ -74,12 +74,12 @@ where
 
 				log::debug!(target: "evm", "nft: query_balance who: {:?}", who);
 
-				let balance = vec_u8_from_balance(NFT::balance(&who));
+				let balance = NFT::balance(&who);
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: 0,
-					output: balance,
+					output: Output::new().vec_u8_from_u128(balance),
 					logs: Default::default(),
 				})
 			}
@@ -95,13 +95,10 @@ where
 					Default::default()
 				};
 
-				let mut address = [0u8; 32];
-				address[12..].copy_from_slice(&owner.as_bytes().to_vec());
-
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: 0,
-					output: address.to_vec(),
+					output: Output::new().vec_u8_from_address(&owner),
 					logs: Default::default(),
 				})
 			}
@@ -126,10 +123,4 @@ where
 			}
 		}
 	}
-}
-
-fn vec_u8_from_balance(b: NFTBalance) -> Vec<u8> {
-	let mut be_bytes = [0u8; 32];
-	U256::from(b).to_big_endian(&mut be_bytes[..]);
-	be_bytes.to_vec()
 }

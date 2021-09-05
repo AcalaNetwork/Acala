@@ -323,13 +323,6 @@ pub mod module {
 	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
 		fn build(&self) {
 			let source = T::AddressMapping::get_or_create_evm_address(&self.treasury);
-			if !self.accounts.is_empty() && T::Currency::free_balance(&self.treasury).is_zero() {
-				// Use the treasury to create predeploy contracts
-				// Because the `get_or_create_evm_address` in the mock cannot get the correct account with address.
-				// So use `get_account_id` to get treasury here.
-				let treasury = T::AddressMapping::get_account_id(&source);
-				T::Currency::deposit_creating(&treasury, 1_000_000_000u32.into());
-			}
 
 			self.accounts.iter().for_each(|(address, account)| {
 				let account_id = T::AddressMapping::get_account_id(address);
@@ -372,16 +365,9 @@ pub mod module {
 					#[cfg(not(feature = "with-ethereum-compatibility"))]
 					<Pallet<T>>::mark_deployed(*address, None).expect("Genesis contract failed to deploy");
 
-					let mut count = 0;
 					for (index, value) in &account.storage {
 						AccountStorages::<T>::insert(address, index, value);
-						count += 1;
 					}
-
-					let storage = count * STORAGE_SIZE + out.len() as u32 + T::NewContractExtraBytes::get();
-					<Pallet<T>>::reserve_storage(&source, storage).expect("Genesis contract failed to reserve storage");
-					<Pallet<T>>::charge_storage(&source, address, storage as i32)
-						.expect("Genesis contract failed to charge storage");
 				}
 			});
 			NetworkContractIndex::<T>::put(MIRRORED_NFT_ADDRESS_START);
@@ -461,6 +447,8 @@ pub mod module {
 		ChargeFeeFailed,
 		/// Contract cannot be killed due to reference count
 		CannotKillContract,
+		/// Contract address conflicts with the system contract
+		ConflictContractAddress,
 		/// Not enough balance to perform action
 		BalanceLow,
 		/// Calculating total fee overflowed
@@ -847,20 +835,21 @@ impl<T: Config> Pallet<T> {
 	/// Remove an account if its empty.
 	pub fn remove_account_if_empty(address: &H160) {
 		if Self::is_account_empty(address) {
-			let _ = Self::remove_account(address);
+			let res = Self::remove_account(address);
+			debug_assert!(res.is_ok());
 		}
 	}
 
 	#[transactional]
-	pub fn remove_contract(address: &EvmAddress, dest: &EvmAddress) -> Result<u32, DispatchError> {
+	pub fn remove_contract(address: &EvmAddress) -> Result<u32, DispatchError> {
 		let address_account = T::AddressMapping::get_account_id(&address);
-		let dest_account = T::AddressMapping::get_account_id(&dest);
 
 		let size = Accounts::<T>::try_mutate_exists(address, |account_info| -> Result<u32, DispatchError> {
 			let account_info = account_info.as_mut().ok_or(Error::<T>::ContractNotFound)?;
 			let contract_info = account_info.contract_info.take().ok_or(Error::<T>::ContractNotFound)?;
 
-			T::TransferAll::transfer_all(&address_account, &dest_account)?;
+			let maintainer_account = T::AddressMapping::get_account_id(&contract_info.maintainer);
+			T::TransferAll::transfer_all(&address_account, &maintainer_account)?;
 
 			CodeInfos::<T>::mutate_exists(&contract_info.code_hash, |maybe_code_info| {
 				if let Some(code_info) = maybe_code_info.as_mut() {
@@ -884,7 +873,7 @@ impl<T: Config> Pallet<T> {
 
 		// this should happen after `Accounts` is updated because this could trigger another updates on
 		// `Accounts`
-		let _ = frame_system::Pallet::<T>::dec_consumers(&address_account);
+		frame_system::Pallet::<T>::dec_providers(&address_account)?;
 
 		Ok(size)
 	}
@@ -982,7 +971,7 @@ impl<T: Config> Pallet<T> {
 			}
 		});
 
-		let _ = frame_system::Pallet::<T>::inc_consumers(&T::AddressMapping::get_account_id(&address));
+		frame_system::Pallet::<T>::inc_providers(&T::AddressMapping::get_account_id(&address));
 	}
 
 	/// Get the account basic in EVM format.
@@ -1170,7 +1159,7 @@ impl<T: Config> Pallet<T> {
 		ensure!(contract_info.maintainer == *maintainer, Error::<T>::NoPermission);
 		ensure!(!contract_info.deployed, Error::<T>::ContractAlreadyDeployed);
 
-		let storage = Self::remove_contract(&contract, &maintainer)?;
+		let storage = Self::remove_contract(&contract)?;
 
 		let contract_account = T::AddressMapping::get_account_id(&contract);
 

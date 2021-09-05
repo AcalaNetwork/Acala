@@ -16,6 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+use acala_service::chain_spec::evm_genesis;
 pub use codec::Encode;
 use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
 use frame_support::{
@@ -173,6 +174,8 @@ impl ExtBuilder {
 	}
 
 	pub fn build(self) -> sp_io::TestExternalities {
+		let evm_genesis_accounts = evm_genesis();
+
 		let mut t = frame_system::GenesisConfig::default()
 			.build_storage::<Runtime>()
 			.unwrap();
@@ -229,9 +232,12 @@ impl ExtBuilder {
 		.assimilate_storage(&mut t)
 		.unwrap();
 
-		module_evm::GenesisConfig::<Runtime>::Default()
-			.assimilate_storage(&mut t)
-			.unwrap();
+		module_evm::GenesisConfig::<Runtime> {
+			accounts: evm_genesis_accounts,
+			treasury: Default::default(),
+		}
+		.assimilate_storage(&mut t)
+		.unwrap();
 
 		module_session_manager::GenesisConfig::<Runtime> { session_duration: 10 }
 			.assimilate_storage(&mut t)

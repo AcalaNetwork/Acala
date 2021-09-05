@@ -47,10 +47,10 @@ pub enum Action {
 	GetLiquidityTokenAddress = "getLiquidityTokenAddress(address,address)",
 	GetSwapTargetAmount = "getSwapTargetAmount(address[],uint256)",
 	GetSwapSupplyAmount = "getSwapSupplyAmount(address[],uint256)",
-	SwapWithExactSupply = "swapWithExactSupply(address[],uint256,uint256)",
-	SwapWithExactTarget = "swapWithExactTarget(address[],uint256,uint256)",
-	AddLiquidity = "addLiquidity(address,address,uint256,uint256,uint256)",
-	RemoveLiquidity = "removeLiquidity(address,address,uint256,uint256,uint256)",
+	SwapWithExactSupply = "swapWithExactSupply(address,address[],uint256,uint256)",
+	SwapWithExactTarget = "swapWithExactTarget(address,address[],uint256,uint256)",
+	AddLiquidity = "addLiquidity(address,address,address,uint256,uint256,uint256)",
+	RemoveLiquidity = "removeLiquidity(address,address,address,uint256,uint256,uint256)",
 }
 
 impl<AccountId, AddressMapping, CurrencyIdMapping, Dex> Precompile
@@ -64,7 +64,7 @@ where
 	fn execute(
 		input: &[u8],
 		_target_gas: Option<u64>,
-		context: &Context,
+		_context: &Context,
 	) -> result::Result<PrecompileOutput, ExitError> {
 		let input = Input::<Action, AccountId, AddressMapping, CurrencyIdMapping>::new(input);
 
@@ -157,14 +157,14 @@ where
 				})
 			}
 			Action::SwapWithExactSupply => {
-				let who = AddressMapping::get_account_id(&context.caller);
+				let who = input.account_id_at(1)?;
 				// solidity abi enocde array will add an offset at input[2]
-				let supply_amount = input.balance_at(2)?;
-				let min_target_amount = input.balance_at(3)?;
-				let path_len = input.u32_at(4)?;
+				let supply_amount = input.balance_at(3)?;
+				let min_target_amount = input.balance_at(4)?;
+				let path_len = input.u32_at(5)?;
 				let mut path = vec![];
 				for i in 0..path_len {
-					path.push(input.currency_id_at((5 + i) as usize)?);
+					path.push(input.currency_id_at((6 + i) as usize)?);
 				}
 				log::debug!(
 					target: "evm",
@@ -186,14 +186,14 @@ where
 				})
 			}
 			Action::SwapWithExactTarget => {
-				let who = AddressMapping::get_account_id(&context.caller);
+				let who = input.account_id_at(1)?;
 				// solidity abi enocde array will add an offset at input[2]
-				let target_amount = input.balance_at(2)?;
-				let max_supply_amount = input.balance_at(3)?;
-				let path_len = input.u32_at(4)?;
+				let target_amount = input.balance_at(3)?;
+				let max_supply_amount = input.balance_at(4)?;
+				let path_len = input.u32_at(5)?;
 				let mut path = vec![];
 				for i in 0..path_len {
-					path.push(input.currency_id_at((5 + i) as usize)?);
+					path.push(input.currency_id_at((6 + i) as usize)?);
 				}
 				log::debug!(
 					target: "evm",
@@ -215,12 +215,12 @@ where
 				})
 			}
 			Action::AddLiquidity => {
-				let who = AddressMapping::get_account_id(&context.caller);
-				let currency_id_a = input.currency_id_at(1)?;
-				let currency_id_b = input.currency_id_at(2)?;
-				let max_amount_a = input.balance_at(3)?;
-				let max_amount_b = input.balance_at(4)?;
-				let min_share_increment = input.balance_at(5)?;
+				let who = input.account_id_at(1)?;
+				let currency_id_a = input.currency_id_at(2)?;
+				let currency_id_b = input.currency_id_at(3)?;
+				let max_amount_a = input.balance_at(4)?;
+				let max_amount_b = input.balance_at(5)?;
+				let min_share_increment = input.balance_at(6)?;
 
 				log::debug!(
 					target: "evm",
@@ -250,12 +250,12 @@ where
 				})
 			}
 			Action::RemoveLiquidity => {
-				let who = AddressMapping::get_account_id(&context.caller);
-				let currency_id_a = input.currency_id_at(1)?;
-				let currency_id_b = input.currency_id_at(2)?;
-				let remove_share = input.balance_at(3)?;
-				let min_withdrawn_a = input.balance_at(4)?;
-				let min_withdrawn_b = input.balance_at(5)?;
+				let who = input.account_id_at(1)?;
+				let currency_id_a = input.currency_id_at(2)?;
+				let currency_id_b = input.currency_id_at(3)?;
+				let remove_share = input.balance_at(4)?;
+				let min_withdrawn_a = input.balance_at(5)?;
+				let min_withdrawn_b = input.balance_at(6)?;
 
 				log::debug!(
 					target: "evm",

@@ -21,13 +21,12 @@ use frame_support::{log, sp_runtime::FixedPointNumber};
 use module_evm::{Context, ExitError, ExitSucceed, Precompile};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use primitives::CurrencyId;
-use sp_core::U256;
 use sp_runtime::RuntimeDebug;
 use sp_std::{fmt::Debug, marker::PhantomData, prelude::*, result};
 
-use super::input::{Input, InputT};
+use super::input::{Input, InputT, Output};
 use module_support::{
-	AddressMapping as AddressMappingT, CurrencyIdMapping as CurrencyIdMappingT, Price, PriceProvider as PriceProviderT,
+	AddressMapping as AddressMappingT, CurrencyIdMapping as CurrencyIdMappingT, PriceProvider as PriceProviderT,
 };
 
 /// The `Oracle` impl precompile.
@@ -92,20 +91,16 @@ where
 					}
 				};
 
-				log::debug!(target: "evm", "oracle: getPrice currency_id: {:?}, price: {:?}, adjustment_multiplier: {:?}", currency_id, price, adjustment_multiplier);
+				let output = price.into_inner().wrapping_div(adjustment_multiplier);
+
+				log::debug!(target: "evm", "oracle: getPrice currency_id: {:?}, price: {:?}, adjustment_multiplier: {:?}, output: {:?}", currency_id, price, adjustment_multiplier, output);
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: 0,
-					output: vec_u8_from_price(price, adjustment_multiplier),
+					output: Output::new().vec_u8_from_u128(output),
 					logs: Default::default(),
 				})
 			}
 		}
 	}
-}
-
-fn vec_u8_from_price(price: Price, adjustment_multiplier: u128) -> Vec<u8> {
-	let mut be_bytes = [0u8; 32];
-	U256::from(price.into_inner().wrapping_div(adjustment_multiplier)).to_big_endian(&mut be_bytes[..32]);
-	be_bytes.to_vec()
 }

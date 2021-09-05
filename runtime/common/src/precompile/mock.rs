@@ -19,6 +19,7 @@
 #![cfg(test)]
 
 use crate::{AllPrecompiles, Ratio, RuntimeBlockWeights, SystemContractsFilter, Weight};
+use acala_service::chain_spec::evm_genesis;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	assert_ok, ord_parameter_types, parameter_types,
@@ -528,12 +529,16 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	let mut storage = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
 
 	let mut accounts = BTreeMap::new();
+	let mut evm_genesis_accounts = evm_genesis();
+	accounts.append(&mut evm_genesis_accounts);
 
 	accounts.insert(
 		alice_evm_addr(),
 		module_evm::GenesisAccount {
 			nonce: 1,
 			balance: INITIAL_BALANCE,
+			storage: Default::default(),
+			code: Default::default(),
 		},
 	);
 	accounts.insert(
@@ -541,15 +546,20 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		module_evm::GenesisAccount {
 			nonce: 1,
 			balance: INITIAL_BALANCE,
+			storage: Default::default(),
+			code: Default::default(),
 		},
 	);
 
 	pallet_balances::GenesisConfig::<Test>::default()
 		.assimilate_storage(&mut storage)
 		.unwrap();
-	module_evm::GenesisConfig::<Test> { accounts }
-		.assimilate_storage(&mut storage)
-		.unwrap();
+	module_evm::GenesisConfig::<Test> {
+		accounts,
+		treasury: Default::default(),
+	}
+	.assimilate_storage(&mut storage)
+	.unwrap();
 
 	let mut ext = sp_io::TestExternalities::new(storage);
 	ext.execute_with(|| {

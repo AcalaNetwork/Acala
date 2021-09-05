@@ -51,7 +51,7 @@ pub enum Action {
 	QueryDecimals = "decimals()",
 	QueryTotalIssuance = "totalSupply()",
 	QueryBalance = "balanceOf(address)",
-	Transfer = "transfer(address,uint256)",
+	Transfer = "transfer(address,address,uint256)",
 }
 
 impl<AccountId, AddressMapping, CurrencyIdMapping, MultiCurrency> Precompile
@@ -70,7 +70,7 @@ where
 		let input = Input::<Action, AccountId, AddressMapping, CurrencyIdMapping>::new(input);
 
 		let action = input.action()?;
-		let currency_id = CurrencyIdMapping::decode_evm_address(context.address)
+		let currency_id = CurrencyIdMapping::decode_evm_address(context.caller)
 			.ok_or_else(|| ExitError::Other("invalid currency id".into()))?;
 
 		log::debug!(target: "evm", "multicurrency: currency id: {:?}", currency_id);
@@ -84,7 +84,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: 0,
-					output: Output::new().vec_u8_from_str(&name),
+					output: Output::new().vec_u8_from_fixed_str_old(&name),
 					logs: Default::default(),
 				})
 			}
@@ -96,7 +96,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: 0,
-					output: Output::new().vec_u8_from_str(&symbol),
+					output: Output::new().vec_u8_from_fixed_str_old(&symbol),
 					logs: Default::default(),
 				})
 			}
@@ -136,9 +136,9 @@ where
 				})
 			}
 			Action::Transfer => {
-				let from = AddressMapping::get_account_id(&context.caller);
-				let to = input.account_id_at(1)?;
-				let amount = input.balance_at(2)?;
+				let from = input.account_id_at(1)?;
+				let to = input.account_id_at(2)?;
+				let amount = input.balance_at(3)?;
 
 				log::debug!(target: "evm", "multicurrency: from: {:?}", from);
 				log::debug!(target: "evm", "multicurrency: to: {:?}", to);
