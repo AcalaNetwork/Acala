@@ -344,9 +344,9 @@ pub mod module {
 						apparent_value: Default::default(),
 					};
 					let metadata =
-						StackSubstateMetadata::new(210_000, 1000, T::NewContractExtraBytes::get(), &T::config());
+						StackSubstateMetadata::new(210_000, 1000, T::NewContractExtraBytes::get(), T::config());
 					let state = SubstrateStackState::<T>::new(&vicinity, metadata);
-					let mut executor = StackExecutor::new(state, &T::config());
+					let mut executor = StackExecutor::new(state, T::config());
 
 					let mut runtime =
 						evm::Runtime::new(Rc::new(account.code.clone()), Rc::new(Vec::new()), context, T::config());
@@ -359,7 +359,7 @@ pub mod module {
 					);
 
 					let out = runtime.machine().return_value();
-					<Pallet<T>>::create_account(source, *address, out.clone());
+					<Pallet<T>>::create_account(source, *address, out);
 
 					#[cfg(not(feature = "with-ethereum-compatibility"))]
 					<Pallet<T>>::mark_deployed(*address, None).expect("Genesis contract failed to deploy");
@@ -841,7 +841,7 @@ impl<T: Config> Pallet<T> {
 
 	#[transactional]
 	pub fn remove_contract(address: &EvmAddress) -> Result<u32, DispatchError> {
-		let address_account = T::AddressMapping::get_account_id(&address);
+		let address_account = T::AddressMapping::get_account_id(address);
 
 		let size = Accounts::<T>::try_mutate_exists(address, |account_info| -> Result<u32, DispatchError> {
 			let account_info = account_info.as_mut().ok_or(Error::<T>::ContractNotFound)?;
@@ -930,12 +930,12 @@ impl<T: Config> Pallet<T> {
 				.map_or(source, |contract_info| contract_info.maintainer)
 		});
 
-		let code_hash = code_hash(&bounded_code.as_slice());
+		let code_hash = code_hash(bounded_code.as_slice());
 		let code_size = bounded_code.len() as u32;
 
 		let contract_info = ContractInfo {
 			code_hash,
-			maintainer: maintainer,
+			maintainer,
 			#[cfg(feature = "with-ethereum-compatibility")]
 			deployed: true,
 			#[cfg(not(feature = "with-ethereum-compatibility"))]
@@ -1098,7 +1098,7 @@ impl<T: Config> Pallet<T> {
 
 			let bounded_code: BoundedVec<u8, T::MaxCodeSize> =
 				code.try_into().map_err(|_| Error::<T>::ContractExceedsMaxCodeSize)?;
-			let code_hash = code_hash(&bounded_code.as_slice());
+			let code_hash = code_hash(bounded_code.as_slice());
 			let code_size = bounded_code.len() as u32;
 			// The code_hash of the same contract is definitely different.
 			// The `contract_info.code_hash` hashed by on_contract_initialization which constructored.
@@ -1197,7 +1197,7 @@ impl<T: Config> Pallet<T> {
 
 	fn is_developer_or_contract(caller: &H160) -> bool {
 		if let Some(AccountInfo { contract_info, .. }) = Accounts::<T>::get(caller) {
-			let account_id = T::AddressMapping::get_account_id(&caller);
+			let account_id = T::AddressMapping::get_account_id(caller);
 			contract_info.is_some()
 				|| !T::Currency::reserved_balance_named(&RESERVE_ID_DEVELOPER_DEPOSIT, &account_id).is_zero()
 		} else {

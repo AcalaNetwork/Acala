@@ -79,7 +79,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: 0,
-					output: Output::new().vec_u8_from_u128(balance),
+					output: Output::default().vec_u8_from_u128(balance),
 					logs: Default::default(),
 				})
 			}
@@ -98,7 +98,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: 0,
-					output: Output::new().vec_u8_from_address(&owner),
+					output: Output::default().vec_u8_from_address(&owner),
 					logs: Default::default(),
 				})
 			}

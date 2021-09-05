@@ -97,7 +97,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: 0,
-					output: Output::new().vec_u8_from_u128(output),
+					output: Output::default().vec_u8_from_u128(output),
 					logs: Default::default(),
 				})
 			}

@@ -78,7 +78,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: 0,
-					output: Output::new().vec_u8_from_u32(output),
+					output: Output::default().vec_u8_from_u32(output),
 					logs: Default::default(),
 				})
 			}
@@ -87,7 +87,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: 0,
-					output: Output::new().vec_u8_from_u128(deposit),
+					output: Output::default().vec_u8_from_u128(deposit),
 					logs: Default::default(),
 				})
 			}
@@ -100,7 +100,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: 0,
-					output: Output::new().vec_u8_from_address(&maintainer),
+					output: Output::default().vec_u8_from_address(&maintainer),
 					logs: Default::default(),
 				})
 			}
@@ -109,7 +109,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: 0,
-					output: Output::new().vec_u8_from_u128(deposit),
+					output: Output::default().vec_u8_from_u128(deposit),
 					logs: Default::default(),
 				})
 			}
@@ -118,7 +118,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: 0,
-					output: Output::new().vec_u8_from_u128(fee),
+					output: Output::default().vec_u8_from_u128(fee),
 					logs: Default::default(),
 				})
 			}

@@ -96,13 +96,13 @@ impl StorageMeter {
 			total_used, total_refunded
 		);
 		if self.limit < total_used.saturating_sub(total_refunded) {
-			Err(ExitError::Other("OutOfStorage".into()))
+			return Err(ExitError::Other("OutOfStorage".into()));
+		}
+
+		if total_used > total_refunded {
+			Ok((total_used - total_refunded) as i32)
 		} else {
-			if total_used > total_refunded {
-				Ok((total_used - total_refunded) as i32)
-			} else {
-				Ok(-((total_refunded - total_used) as i32))
-			}
+			Ok(-((total_refunded - total_used) as i32))
 		}
 	}
 

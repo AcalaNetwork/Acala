@@ -67,7 +67,7 @@ impl<T: Config> Runner<T> {
 		let gas_price = U256::one();
 		let vicinity = Vicinity { gas_price, origin };
 
-		let metadata = StackSubstateMetadata::new(gas_limit, storage_limit, T::NewContractExtraBytes::get(), &config);
+		let metadata = StackSubstateMetadata::new(gas_limit, storage_limit, T::NewContractExtraBytes::get(), config);
 		let state = SubstrateStackState::new(&vicinity, metadata);
 		let mut executor = StackExecutor::new_with_precompile(state, config, T::Precompiles::execute);
 
@@ -130,7 +130,7 @@ impl<T: Config> Runner<T> {
 				target, storage
 			);
 			if !config.estimate {
-				Pallet::<T>::charge_storage(&origin, &target, *storage).map_err(|_| Error::<T>::ChargeStorageFailed)?;
+				Pallet::<T>::charge_storage(&origin, target, *storage).map_err(|_| Error::<T>::ChargeStorageFailed)?;
 			}
 		}
 		if !config.estimate {
@@ -548,7 +548,7 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 			if let Some(c) = substate.metadata().caller() {
 				// the caller maybe is contract and not deployed.
 				// get the parent's maintainer.
-				if Pallet::<T>::is_account_empty(&c) {
+				if Pallet::<T>::is_account_empty(c) {
 					if substate.parent.is_none() {
 						log::error!(
 							target: "evm",
@@ -559,7 +559,7 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 						debug_assert!(false);
 						return;
 					}
-					substate = &substate.parent.as_ref().expect("has checked; qed");
+					substate = substate.parent.as_ref().expect("has checked; qed");
 				} else {
 					caller = *c;
 					break;

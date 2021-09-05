@@ -190,13 +190,10 @@ where
 	}
 }
 
+#[derive(Default, Clone, PartialEq, Debug)]
 pub struct Output;
 
 impl Output {
-	pub fn new() -> Self {
-		Self
-	}
-
 	pub fn vec_u8_from_u8(&self, b: u8) -> Vec<u8> {
 		let out = Token::Uint(primitive_types::U256::from(b));
 		ethabi::encode(&[out])
@@ -235,7 +232,7 @@ impl Output {
 		// add task_id len prefix
 		let mut task_id_with_len = [0u8; 96];
 		U256::from(b.len()).to_big_endian(&mut task_id_with_len[0..32]);
-		task_id_with_len[32..32 + b.len()].copy_from_slice(&b[..]);
+		task_id_with_len[32..32 + b.len()].copy_from_slice(b);
 		task_id_with_len.to_vec()
 	}
 

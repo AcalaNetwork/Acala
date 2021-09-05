@@ -84,7 +84,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: 0,
-					output: Output::new().vec_u8_from_fixed_str_old(&name),
+					output: Output::default().vec_u8_from_fixed_str_old(&name),
 					logs: Default::default(),
 				})
 			}
@@ -96,7 +96,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: 0,
-					output: Output::new().vec_u8_from_fixed_str_old(&symbol),
+					output: Output::default().vec_u8_from_fixed_str_old(&symbol),
 					logs: Default::default(),
 				})
 			}
@@ -108,7 +108,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: 0,
-					output: Output::new().vec_u8_from_u8(decimals),
+					output: Output::default().vec_u8_from_u8(decimals),
 					logs: Default::default(),
 				})
 			}
@@ -119,7 +119,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: 0,
-					output: Output::new().vec_u8_from_u128(total_issuance),
+					output: Output::default().vec_u8_from_u128(total_issuance),
 					logs: Default::default(),
 				})
 			}
@@ -131,7 +131,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: 0,
-					output: Output::new().vec_u8_from_u128(balance),
+					output: Output::default().vec_u8_from_u128(balance),
 					logs: Default::default(),
 				})
 			}
