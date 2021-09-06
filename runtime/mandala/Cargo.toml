@@ -307,7 +307,8 @@ runtime-benchmarks = [
 	"pint-saft-registry/runtime-benchmarks",
 	"pint-asset-index/runtime-benchmarks",
 	"pint-local-treasury/runtime-benchmarks",
-	"pint-price-feed/runtime-benchmarks"
+	"pint-price-feed/runtime-benchmarks",
+	"pint-primitives/runtime-benchmarks"
 ]
 # When enabled, the runtime api will not be build.
 #

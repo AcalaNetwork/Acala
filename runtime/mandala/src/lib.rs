@@ -1890,6 +1890,17 @@ impl nutsfinance_stable_asset::Config for Runtime {
 }
 
 // PINT pallet implementations
+
+// This is required in order to make `CurrencyId` usable within PINT's runtime-benchmarks
+#[cfg(feature = "runtime-benchmarks")]
+impl pint_primitives::traits::MaybeAssetIdConvert<u8, CurrencyId> for Runtime {
+
+	fn try_convert(value: u8) -> Option<CurrencyId> {
+		use sp_std::convert::TryFrom;
+		TokenSymbol::try_from(value).ok().map(CurrencyId::Token)
+	}
+}
+
 parameter_types! {
 	pub const MinCouncilVotes: usize = 4;
 	pub const ProposalSubmissionPeriod: BlockNumber = 10 * MINUTES;
@@ -1905,8 +1916,8 @@ parameter_types! {
 
 type EnsureApprovedByCommittee = frame_system::EnsureOneOf<
 	AccountId,
-	frame_system::EnsureRoot<AccountId>,
 	pint_committee::EnsureApprovedByCommittee<Runtime>,
+	frame_system::EnsureRoot<AccountId>,
 >;
 
 impl pint_saft_registry::Config for Runtime {
@@ -1944,7 +1955,7 @@ impl pint_committee::Config for Runtime {
 
 impl pint_asset_index::Config for Runtime {
 	// Using signed as the admin origin for testing now
-	type AdminOrigin = frame_system::EnsureSigned<AccountId>;
+	type AdminOrigin = EnsureApprovedByCommittee;
 	type IndexToken = Balances;
 	type Balance = Balance;
 	type LockupPeriod = LockupPeriod;
@@ -1957,6 +1968,8 @@ impl pint_asset_index::Config for Runtime {
 	type SelfAssetId = PINTAssetId;
 	type Currency = Currencies;
 	type PriceFeed = AggregatedDataProvider;
+	// #[cfg(feature = "runtime-benchmarks")]
+	// type PriceFeedBenchmarks = PriceFeed;
 	type SaftRegistry = SaftRegistry;
 	type BaseWithdrawalFee = BaseWithdrawalFee;
 	type TreasuryPalletId = TreasuryPalletId;
