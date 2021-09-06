@@ -61,13 +61,13 @@ fn transfer_to_relay_chain() {
 			Origin::signed(ALICE.into()),
 			KSM,
 			dollar(KSM),
-			X2(
+			Box::new(X2(
 				Parent,
 				Junction::AccountId32 {
 					id: BOB,
 					network: NetworkId::Any,
 				}
-			),
+			)),
 			3_000_000_000
 		));
 	});
