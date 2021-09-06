@@ -791,6 +791,7 @@ parameter_type_with_key! {
 				TokenSymbol::AUSD => cent(*currency_id),
 				TokenSymbol::DOT => 10 * millicent(*currency_id),
 				TokenSymbol::LDOT => 50 * millicent(*currency_id),
+				TokenSymbol::BNC => 800 * millicent(*currency_id),  // 80BNC = 1KSM
 
 				TokenSymbol::KAR |
 				TokenSymbol::KUSD |

@@ -102,7 +102,7 @@ pub use sp_runtime::BuildStorage;
 pub use sp_runtime::{Perbill, Percent, Permill, Perquintill};
 
 pub use authority::AuthorityConfigImpl;
-pub use constants::{fee::*, time::*};
+pub use constants::{fee::*, parachains, time::*};
 pub use primitives::{
 	evm::EstimateResourcesRequest, AccountId, AccountIndex, Amount, AuctionId, AuthoritysOriginId, Balance,
 	BlockNumber, CurrencyId, DataProviderId, EraIndex, Hash, Moment, Nonce, ReserveIdentifier, Share, Signature,
@@ -117,8 +117,8 @@ pub use runtime_common::{
 	GeneralCouncilMembershipInstance, HomaCouncilInstance, HomaCouncilMembershipInstance,
 	OperatorMembershipInstanceAcala, OperatorMembershipInstanceBand, Price, ProxyType, Rate, Ratio,
 	RelaychainBlockNumberProvider, RelaychainSubAccountId, RuntimeBlockLength, RuntimeBlockWeights,
-	SystemContractsFilter, TechnicalCommitteeInstance, TechnicalCommitteeMembershipInstance, TimeStampedPrice, KAR,
-	KSM, KUSD, LKSM, RENBTC,
+	SystemContractsFilter, TechnicalCommitteeInstance, TechnicalCommitteeMembershipInstance, TimeStampedPrice, BNC,
+	KAR, KSM, KUSD, LKSM, RENBTC,
 };
 
 mod authority;
@@ -723,6 +723,7 @@ parameter_type_with_key! {
 				TokenSymbol::KUSD => cent(*currency_id),
 				TokenSymbol::KSM => 10 * millicent(*currency_id),
 				TokenSymbol::LKSM => 50 * millicent(*currency_id),
+				TokenSymbol::BNC => 800 * millicent(*currency_id),  // 80BNC = 1KSM
 
 				TokenSymbol::ACA |
 				TokenSymbol::AUSD |
@@ -1405,6 +1406,13 @@ impl TakeRevenue for ToTreasury {
 	}
 }
 
+parameter_types! {
+	pub BncPerSecond: (MultiLocation, u128) = (
+		X3(Parent, Parachain(parachains::bifrost::ID), GeneralKey(parachains::bifrost::BNC_KEY.to_vec())),
+		// BNC:KSM = 80:1
+		ksm_per_second() * 80
+	);
+}
 /// TODO: this is a temp solution for multi traders, should be replaced after tuple impl is
 /// available https://github.com/paritytech/polkadot/pull/3601
 ///
@@ -1413,18 +1421,24 @@ impl TakeRevenue for ToTreasury {
 /// 2. Add a new trader field.
 /// 3. Call this new trader type's new/buy_weight/refund functions in `WeightTrader` impl,
 ///   like the way of `KsmTrader`.
-pub struct MultiWeightTraders<KsmTrader> {
+pub struct MultiWeightTraders<KsmTrader, BncTrader> {
 	ksm_trader: KsmTrader,
+	bnc_trader: BncTrader,
 }
-impl<KsmTrader: WeightTrader> WeightTrader for MultiWeightTraders<KsmTrader> {
+impl<KsmTrader: WeightTrader, BncTrader: WeightTrader> WeightTrader for MultiWeightTraders<KsmTrader, BncTrader> {
 	fn new() -> Self {
 		Self {
 			ksm_trader: KsmTrader::new(),
+			bnc_trader: BncTrader::new(),
 			// dummy_trader: DummyTrader::new(),
 		}
 	}
 	fn buy_weight(&mut self, weight: Weight, payment: Assets) -> Result<Assets, XcmError> {
-		if let Ok(assets) = self.ksm_trader.buy_weight(weight, payment) {
+		if let Ok(assets) = self.ksm_trader.buy_weight(weight, payment.clone()) {
+			return Ok(assets);
+		}
+
+		if let Ok(assets) = self.bnc_trader.buy_weight(weight, payment) {
 			return Ok(assets);
 		}
 
@@ -1441,6 +1455,12 @@ impl<KsmTrader: WeightTrader> WeightTrader for MultiWeightTraders<KsmTrader> {
 			_ => {}
 		}
 
+		let bnc = self.bnc_trader.refund_weight(weight);
+		match bnc {
+			MultiAsset::ConcreteFungible { amount, .. } if !amount.is_zero() => return bnc,
+			_ => {}
+		}
+
 		// let dummy = self.dummy_trader.refund_weight(weight);
 		// match dummy {
 		// 	MultiAsset::ConcreteFungible { amount, .. } if !amount.is_zero() => return dummy,
@@ -1451,7 +1471,10 @@ impl<KsmTrader: WeightTrader> WeightTrader for MultiWeightTraders<KsmTrader> {
 	}
 }
 
-pub type Trader = MultiWeightTraders<FixedRateOfConcreteFungible<KsmPerSecond, ToTreasury>>;
+pub type Trader = MultiWeightTraders<
+	FixedRateOfConcreteFungible<KsmPerSecond, ToTreasury>,
+	FixedRateOfConcreteFungible<BncPerSecond, ToTreasury>,
+>;
 
 pub struct XcmConfig;
 impl xcm_executor::Config for XcmConfig {
@@ -1573,6 +1596,12 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 		match id {
 			Token(KSM) => Some(X1(Parent)),
 			Token(KAR) | Token(KUSD) | Token(LKSM) | Token(RENBTC) => Some(native_currency_location(id)),
+			// Bifrost native token
+			Token(BNC) => Some(X3(
+				Parent,
+				Parachain(parachains::bifrost::ID),
+				GeneralKey(parachains::bifrost::BNC_KEY.to_vec()),
+			)),
 			_ => None,
 		}
 	}
@@ -1583,16 +1612,23 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 		use TokenSymbol::*;
 		match location {
 			X1(Parent) => Some(Token(KSM)),
-			X3(Parent, Parachain(id), GeneralKey(key)) if ParaId::from(id) == ParachainInfo::get() => {
-				// decode the general key
-				if let Ok(currency_id) = CurrencyId::decode(&mut &key[..]) {
-					// check `currency_id` is cross-chain asset
-					match currency_id {
-						Token(KAR) | Token(KUSD) | Token(LKSM) | Token(RENBTC) => Some(currency_id),
-						_ => None,
+			X3(Parent, Parachain(id), GeneralKey(key)) => {
+				match (id, &key[..]) {
+					(parachains::bifrost::ID, parachains::bifrost::BNC_KEY) => Some(Token(BNC)),
+					(id, key) if id == u32::from(ParachainInfo::get()) => {
+						// Karura
+						if let Ok(currency_id) = CurrencyId::decode(&mut &*key) {
+							// check `currency_id` is cross-chain asset
+							match currency_id {
+								Token(KAR) | Token(KUSD) | Token(LKSM) | Token(RENBTC) => Some(currency_id),
+								_ => None,
+							}
+						} else {
+							// invalid general key
+							None
+						}
 					}
-				} else {
-					None
+					_ => None,
 				}
 			}
 			_ => None,
