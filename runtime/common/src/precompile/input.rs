@@ -30,7 +30,7 @@ use ethabi::Token;
 use module_evm::ExitError;
 use module_support::{AddressMapping as AddressMappingT, CurrencyIdMapping as CurrencyIdMappingT};
 use primitives::{Amount, Balance, CurrencyId};
-use sp_core::{H160, U256};
+use sp_core::H160;
 
 pub const INPUT_BYTES_LENGTH: usize = 32;
 pub const FUNCTION_SELECTOR_LENGTH: usize = 4;
@@ -194,22 +194,22 @@ where
 pub struct Output;
 
 impl Output {
-	pub fn vec_u8_from_u8(&self, b: u8) -> Vec<u8> {
+	pub fn encode_u8(&self, b: u8) -> Vec<u8> {
 		let out = Token::Uint(primitive_types::U256::from(b));
 		ethabi::encode(&[out])
 	}
 
-	pub fn vec_u8_from_u32(&self, b: u32) -> Vec<u8> {
+	pub fn encode_u32(&self, b: u32) -> Vec<u8> {
 		let out = Token::Uint(primitive_types::U256::from(b));
 		ethabi::encode(&[out])
 	}
 
-	pub fn vec_u8_from_u128(&self, b: u128) -> Vec<u8> {
+	pub fn encode_u128(&self, b: u128) -> Vec<u8> {
 		let out = Token::Uint(primitive_types::U256::from(b));
 		ethabi::encode(&[out])
 	}
 
-	pub fn vec_u8_from_u128_tuple(&self, b: u128, c: u128) -> Vec<u8> {
+	pub fn encode_u128_tuple(&self, b: u128, c: u128) -> Vec<u8> {
 		let out = Token::Tuple(vec![
 			Token::Uint(primitive_types::U256::from(b)),
 			Token::Uint(primitive_types::U256::from(c)),
@@ -217,33 +217,12 @@ impl Output {
 		ethabi::encode(&[out])
 	}
 
-	pub fn vec_u8_from_str(&self, b: &[u8]) -> Vec<u8> {
+	pub fn encode_bytes(&self, b: &[u8]) -> Vec<u8> {
 		let out = Token::Bytes(b.to_vec());
 		ethabi::encode(&[out])
 	}
 
-	pub fn vec_u8_from_fixed_str(&self, b: &[u8]) -> Vec<u8> {
-		let out = Token::FixedBytes(b.to_vec());
-		ethabi::encode(&[out])
-	}
-
-	// TODO: optimization
-	pub fn vec_u8_from_str_old(&self, b: &[u8]) -> Vec<u8> {
-		// add task_id len prefix
-		let mut task_id_with_len = [0u8; 96];
-		U256::from(b.len()).to_big_endian(&mut task_id_with_len[0..32]);
-		task_id_with_len[32..32 + b.len()].copy_from_slice(b);
-		task_id_with_len.to_vec()
-	}
-
-	// TODO: optimization
-	pub fn vec_u8_from_fixed_str_old(&self, b: &[u8]) -> Vec<u8> {
-		let mut be_bytes = [0u8; 32];
-		U256::from_big_endian(b).to_big_endian(&mut be_bytes[..]);
-		be_bytes.to_vec()
-	}
-
-	pub fn vec_u8_from_address(&self, b: &H160) -> Vec<u8> {
+	pub fn encode_address(&self, b: &H160) -> Vec<u8> {
 		let out = Token::Address(primitive_types::H160::from_slice(b.as_bytes()));
 		ethabi::encode(&[out])
 	}

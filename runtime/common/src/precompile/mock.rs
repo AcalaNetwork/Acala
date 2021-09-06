@@ -593,7 +593,7 @@ pub fn run_to_block(n: u32) {
 }
 pub fn get_task_id(output: Vec<u8>) -> Vec<u8> {
 	let mut num = [0u8; 4];
-	num[..].copy_from_slice(&output[32 - 4..32]);
+	num[..].copy_from_slice(&output[64 - 4..64]);
 	let task_id_len: u32 = u32::from_be_bytes(num);
-	output[32..32 + task_id_len as usize].to_vec()
+	output[64..64 + task_id_len as usize].to_vec()
 }

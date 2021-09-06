@@ -145,8 +145,12 @@ fn multicurrency_precompile_should_work() {
 		context.caller = aca_evm_address();
 		let resp = MultiCurrencyPrecompile::execute(&input, None, &context).unwrap();
 		assert_eq!(resp.exit_status, ExitSucceed::Returned);
-		let mut expected_output = [0u8; 32];
-		expected_output[27..32].copy_from_slice(&b"Acala"[..]);
+		let mut expected_output = [0u8; 96];
+		// skip offset
+		expected_output[31] = 32;
+		// length
+		expected_output[63] = 5;
+		expected_output[64..64 + 5].copy_from_slice(&b"Acala"[..]);
 		assert_eq!(resp.output, expected_output);
 		assert_eq!(resp.cost, 0);
 
@@ -154,8 +158,12 @@ fn multicurrency_precompile_should_work() {
 		context.caller = lp_aca_ausd_evm_address();
 		let resp = MultiCurrencyPrecompile::execute(&input, None, &context).unwrap();
 		assert_eq!(resp.exit_status, ExitSucceed::Returned);
-		let mut expected_output = [0u8; 32];
-		expected_output[9..32].copy_from_slice(&b"LP Acala - Acala Dollar"[..]);
+		let mut expected_output = [0u8; 96];
+		// skip offset
+		expected_output[31] = 32;
+		// length
+		expected_output[63] = 23;
+		expected_output[64..64 + 23].copy_from_slice(&b"LP Acala - Acala Dollar"[..]);
 		assert_eq!(resp.output, expected_output);
 		assert_eq!(resp.cost, 0);
 
@@ -168,8 +176,12 @@ fn multicurrency_precompile_should_work() {
 		context.caller = aca_evm_address();
 		let resp = MultiCurrencyPrecompile::execute(&input, None, &context).unwrap();
 		assert_eq!(resp.exit_status, ExitSucceed::Returned);
-		let mut expected_output = [0u8; 32];
-		expected_output[29..32].copy_from_slice(&b"ACA"[..]);
+		let mut expected_output = [0u8; 96];
+		// skip offset
+		expected_output[31] = 32;
+		// length
+		expected_output[63] = 3;
+		expected_output[64..64 + 3].copy_from_slice(&b"ACA"[..]);
 		assert_eq!(resp.output, expected_output);
 		assert_eq!(resp.cost, 0);
 
@@ -177,8 +189,12 @@ fn multicurrency_precompile_should_work() {
 		context.caller = lp_aca_ausd_evm_address();
 		let resp = MultiCurrencyPrecompile::execute(&input, None, &context).unwrap();
 		assert_eq!(resp.exit_status, ExitSucceed::Returned);
-		let mut expected_output = [0u8; 32];
-		expected_output[21..32].copy_from_slice(&b"LP_ACA_AUSD"[..]);
+		let mut expected_output = [0u8; 96];
+		// skip offset
+		expected_output[31] = 32;
+		// length
+		expected_output[63] = 11;
+		expected_output[64..64 + 11].copy_from_slice(&b"LP_ACA_AUSD"[..]);
 		assert_eq!(resp.output, expected_output);
 		assert_eq!(resp.cost, 0);
 
@@ -427,7 +443,7 @@ fn schedule_call_precompile_should_work() {
 		let task_id = get_task_id(resp.output);
 		let mut cancel_input = [0u8; 6 * 32];
 		// array size
-		U256::default().to_big_endian(&mut input[0 * 32..1 * 32]);
+		U256::default().to_big_endian(&mut cancel_input[0 * 32..1 * 32]);
 		// action
 		cancel_input[1 * 32..4 + 1 * 32]
 			.copy_from_slice(&Into::<u32>::into(schedule_call::Action::Cancel).to_be_bytes());

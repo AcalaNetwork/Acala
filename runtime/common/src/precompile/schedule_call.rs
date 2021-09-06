@@ -224,7 +224,7 @@ impl<
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: 0,
-					output: Output::default().vec_u8_from_str_old(&task_id),
+					output: Output::default().encode_bytes(&task_id),
 					logs: Default::default(),
 				})
 			}

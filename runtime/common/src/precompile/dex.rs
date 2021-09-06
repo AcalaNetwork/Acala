@@ -85,7 +85,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: 0,
-					output: Output::default().vec_u8_from_u128_tuple(balance_a, balance_b),
+					output: Output::default().encode_u128_tuple(balance_a, balance_b),
 					logs: Default::default(),
 				})
 			}
@@ -104,7 +104,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: 0,
-					output: Output::default().vec_u8_from_address(&value),
+					output: Output::default().encode_address(&value),
 					logs: Default::default(),
 				})
 			}
@@ -128,7 +128,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: 0,
-					output: Output::default().vec_u8_from_u128(value),
+					output: Output::default().encode_u128(value),
 					logs: Default::default(),
 				})
 			}
@@ -152,7 +152,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: 0,
-					output: Output::default().vec_u8_from_u128(value),
+					output: Output::default().encode_u128(value),
 					logs: Default::default(),
 				})
 			}
@@ -181,7 +181,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: 0,
-					output: Output::default().vec_u8_from_u128(value),
+					output: Output::default().encode_u128(value),
 					logs: Default::default(),
 				})
 			}
@@ -210,7 +210,7 @@ where
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: 0,
-					output: Output::default().vec_u8_from_u128(value),
+					output: Output::default().encode_u128(value),
 					logs: Default::default(),
 				})
 			}
