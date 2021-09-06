@@ -243,7 +243,7 @@ impl EmergencyShutdown for MockEmergencyShutdown {
 impl orml_rewards::Config for Runtime {
 	type Share = Balance;
 	type Balance = Balance;
-	type PoolId = PoolId<AccountId>;
+	type PoolId = PoolId;
 	type CurrencyId = CurrencyId;
 	type Handler = IncentivesModule;
 }
@@ -263,12 +263,9 @@ ord_parameter_types! {
 
 impl Config for Runtime {
 	type Event = Event;
-	type RelaychainAccountId = AccountId;
 	type RewardsSource = RewardsSource;
 	type AccumulatePeriod = AccumulatePeriod;
-	type NativeCurrencyId = NativeCurrencyId;
 	type StableCurrencyId = StableCurrencyId;
-	type LiquidCurrencyId = LiquidCurrencyId;
 	type UpdateOrigin = EnsureSignedBy<Root, AccountId>;
 	type CDPTreasury = MockCDPTreasury;
 	type Currency = TokensModule;
