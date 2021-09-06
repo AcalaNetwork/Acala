@@ -5717,6 +5717,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "module-kusama-call-builder"
+version = "1.3.0"
+dependencies = [
+ "acala-primitives",
+ "frame-support",
+ "frame-system",
+ "module-support",
+ "parity-scale-codec",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+]
+
+[[package]]
 name = "module-loans"
 version = "1.3.0"
 dependencies = [

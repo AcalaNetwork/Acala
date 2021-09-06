@@ -64,4 +64,8 @@ impl<T: frame_system::Config> module_homa_lite::WeightInfo for WeightInfo<T> {
 		(20_346_000 as Weight)
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
+	fn on_idle() -> Weight {
+		(20_346_000 as Weight)
+			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+	}
 }

@@ -562,3 +562,10 @@ impl CurrencyIdMapping for () {
 pub trait CompoundCashTrait<Balance, Moment> {
 	fn set_future_yield(next_cash_yield: Balance, yield_index: u128, timestamp_effective: Moment) -> DispatchResult;
 }
+
+pub trait CallBuilder<AccountId, Balance> {
+	type RelaychainCall: Encode + Decode;
+	fn utility_batch_call(call: Vec<Self::RelaychainCall>) -> Self::RelaychainCall;
+	fn staking_withdraw_unbonded(num_slashing_spans: u32) -> Self::RelaychainCall;
+	fn balances_transfer_keep_alive(to: AccountId, amount: Balance) -> Self::RelaychainCall;
+}

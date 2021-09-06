@@ -271,3 +271,79 @@ fn can_set_xcm_dest_weight() {
 		);
 	});
 }
+
+#[test]
+fn can_schedule_unbound() {
+	ExtBuilder::default().build().execute_with(|| {
+		// Requires Root previlege.
+		assert_noop!(
+			HomaLite::schedule_unbound(Origin::signed(ALICE), 1_000_000, 100),
+			BadOrigin
+		);
+
+		// Schedule an unbound.
+		assert_ok!(HomaLite::schedule_unbound(Origin::signed(ROOT), 1_000_000, 100));
+
+		// Storage should be updated now.
+		assert_eq!(ScheduledUnbound::<Runtime>::get(), vec![(1_000_000, 100)]);
+
+		assert_eq!(
+			System::events().iter().last().unwrap().event,
+			Event::HomaLite(crate::Event::ScheduledUnboundAdded(1_000_000, 100))
+		);
+
+		// Schedule another unbound.
+		assert_ok!(HomaLite::schedule_unbound(Origin::signed(ROOT), 200, 80));
+
+		// Storage should be updated now.
+		assert_eq!(ScheduledUnbound::<Runtime>::get(), vec![(1_000_000, 100), (200, 80)]);
+
+		assert_eq!(
+			System::events().iter().last().unwrap().event,
+			Event::HomaLite(crate::Event::ScheduledUnboundAdded(200, 80))
+		);
+	});
+}
+
+#[test]
+fn can_replace_schedule_unbound() {
+	ExtBuilder::default().build().execute_with(|| {
+		// Requires Root previlege.
+		assert_noop!(
+			HomaLite::replace_schedule_unbound(Origin::signed(ALICE), vec![(1_000_000, 100)]),
+			BadOrigin
+		);
+
+		// Schedule an unbound.
+		assert_ok!(HomaLite::schedule_unbound(Origin::signed(ROOT), 1_000_000, 100));
+		assert_ok!(HomaLite::schedule_unbound(Origin::signed(ROOT), 200, 80));
+		assert_eq!(ScheduledUnbound::<Runtime>::get(), vec![(1_000_000, 100), (200, 80)]);
+
+		// replace the current storage.
+		assert_ok(HomaLite::replace_schedule_unbound(
+			Origin::signed(ROOT),
+			vec![(800, 2), (1357, 120)],
+		));
+		assert_eq!(ScheduledUnbound::<Runtime>::get(), vec![(800, 2), (1357, 120)]);
+
+		assert_eq!(
+			System::events().iter().last().unwrap().event,
+			Event::HomaLite(crate::Event::ScheduledUnboundReplaced)
+		);
+	});
+}
+
+// can place redeem requests
+// * can redeeem up to the limit
+#[test]
+fn can_place_redeem_requests() {
+	ExtBuilder::default().build().execute_with(|| {});
+}
+
+// can cancel redeem requests
+
+// mint can match all redeem requests
+
+// mint can mix redeem requests with xcm
+
+// can_mint_for_requests

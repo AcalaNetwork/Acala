@@ -26,16 +26,18 @@ pub mod weights;
 
 use frame_support::{pallet_prelude::*, transactional};
 use frame_system::{ensure_signed, pallet_prelude::*};
-use module_support::{ExchangeRate, Ratio};
+use module_support::{CallBuilder, ExchangeRate, Ratio};
 use orml_traits::{BalanceStatus, MultiCurrency, MultiReservableCurrency, XcmTransfer};
 use primitives::{Balance, CurrencyId};
 use sp_runtime::{
 	offchain::storage_lock::BlockNumberProvider,
-	traits::{Saturating, Zero},
+	traits::{Convert, Saturating, Zero},
 	ArithmeticError, FixedPointNumber, Permill,
 };
-use sp_std::{cmp::min, ops::Mul, prelude::*};
+use sp_std::{cmp::min, convert::From, ops::Mul, prelude::*};
+
 use xcm::opaque::v0::MultiLocation;
+use xcm::v0::prelude::*;
 
 pub use module::*;
 pub use weights::WeightInfo;
@@ -74,6 +76,15 @@ pub mod module {
 		/// The interface to Cross-chain transfer.
 		type XcmTransfer: XcmTransfer<Self::AccountId, Balance, CurrencyId>;
 
+		/// XCM executor.
+		type XcmExecutor: ExecuteXcm<Self::Call>;
+
+		/// The build that construct Relaychain Calls used in XCM messaging.
+		type RelaychainCallBuilder: CallBuilder<Self::AccountId, Balance>;
+
+		/// Convert `T::AccountId` to `MultiLocation`.
+		type AccountIdToMultiLocation: Convert<Self::AccountId, MultiLocation>;
+
 		/// The sovereign sub-account for where the staking currencies are sent to.
 		#[pallet::constant]
 		type SovereignSubAccountLocation: Get<MultiLocation>;
@@ -104,6 +115,10 @@ pub mod module {
 		/// The maximum number of redeem requests to match in "Mint" extrinsic.
 		#[pallet::constant]
 		type MaximumRedeemRequestMatchesForMint: Get<u32>;
+
+		/// Unbounding slashing spans for unbounding on the relaychain.
+		#[pallet::constant]
+		type RelaychainUnboundingSlashingSpans: Get<u32>;
 	}
 
 	#[pallet::error]
@@ -197,6 +212,48 @@ pub mod module {
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
+
+	#[pallet::hooks]
+	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
+		fn on_idle(_n: T::BlockNumber, remaining_weight: crate::weights::Weight) -> crate::weights::Weight {
+			let required_weight = <T as Config>::WeightInfo::on_idle();
+			let mut current_weight = 0;
+			if remaining_weight > required_weight {
+				let mut scheduled_unbound = Self::scheduled_unbound();
+				if scheduled_unbound.is_empty() {
+					return 0;
+				}
+				let (staking_amount, block_number) = scheduled_unbound[0];
+				if T::RelaychainBlockNumber::current_block_number() >= block_number {
+					let xcm_call = Self::construct_xcm_unreserve_message(
+						T::ParachainAccount::get(),
+						staking_amount,
+						required_weight,
+					);
+					// make XCM call to trigger withdraw_unbound and transfer
+					let origin_location = T::AccountIdToMultiLocation::convert(T::ParachainAccount::get());
+					let outcome = T::XcmExecutor::execute_xcm_in_credit(
+						origin_location,
+						xcm_call,
+						required_weight,
+						required_weight,
+					);
+					if outcome.ensure_complete().is_ok() {
+						scheduled_unbound.remove(0);
+						ScheduledUnbound::<T>::put(scheduled_unbound);
+
+						let available_staking = Self::available_staking_balance()
+							.checked_add(staking_amount)
+							.expect("Total available staking currency cannot overflow.");
+						AvailableStakingBalance::<T>::put(available_staking);
+
+						current_weight = required_weight;
+					}
+				}
+			}
+			current_weight
+		}
+	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
@@ -336,9 +393,7 @@ pub mod module {
 		) -> DispatchResult {
 			T::GovernanceOrigin::ensure_origin(origin)?;
 
-			let mut current_scheduled_unbound = Self::scheduled_unbound();
-			current_scheduled_unbound.push((staking_amount, unbound_block));
-			ScheduledUnbound::<T>::put(current_scheduled_unbound);
+			ScheduledUnbound::<T>::append((staking_amount, unbound_block));
 
 			Self::deposit_event(Event::<T>::ScheduledUnboundAdded(staking_amount, unbound_block));
 			Ok(())
@@ -606,6 +661,26 @@ pub mod module {
 			Self::deposit_event(Event::<T>::Minted(minter.clone(), actual_staked, actual_liquid));
 
 			Ok(())
+		}
+
+		/// Construct a XCM message
+		fn construct_xcm_unreserve_message(
+			sovereign_account: T::AccountId,
+			amount: Balance,
+			weight_limit: u64,
+		) -> Xcm<T::Call> {
+			let xcm_message = T::RelaychainCallBuilder::utility_batch_call(vec![
+				T::RelaychainCallBuilder::staking_withdraw_unbonded(T::RelaychainUnboundingSlashingSpans::get()),
+				T::RelaychainCallBuilder::balances_transfer_keep_alive(sovereign_account, amount),
+			]);
+
+			//let double_encoded = DoubleEncoded::from();
+
+			Transact {
+				origin_type: xcm::v0::OriginKind::SovereignAccount,
+				require_weight_at_most: weight_limit,
+				call: xcm_message.encode().into(),
+			}
 		}
 	}
 }

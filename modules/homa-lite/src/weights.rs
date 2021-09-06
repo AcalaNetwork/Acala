@@ -42,7 +42,7 @@
 #![allow(unused_imports)]
 #![allow(clippy::unnecessary_cast)]
 
-use frame_support::{traits::Get, weights::{Weight, constants::RocksDbWeight}};
+pub use frame_support::{traits::Get, weights::{Weight, constants::RocksDbWeight}};
 use sp_std::marker::PhantomData;
 
 /// Weight functions needed for module_homa_lite.
@@ -55,6 +55,7 @@ pub trait WeightInfo {
 	fn request_redeem() -> Weight;
 	fn schedule_unbound() -> Weight;
 	fn replace_schedule_unbound() -> Weight;
+	fn on_idle() -> Weight;
 }
 
 /// Weights for module_homa_lite using the Acala node and recommended hardware.
@@ -94,6 +95,10 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 		(20_346_000 as Weight)
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
+	fn on_idle() -> Weight {
+		(20_346_000 as Weight)
+			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+	}
 }
 
 // For backwards compatibility and tests
@@ -129,6 +134,10 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
 	fn replace_schedule_unbound() -> Weight {
+		(20_346_000 as Weight)
+			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
+	}
+	fn on_idle() -> Weight {
 		(20_346_000 as Weight)
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}	
