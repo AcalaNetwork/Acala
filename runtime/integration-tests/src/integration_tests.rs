@@ -1092,7 +1092,7 @@ fn test_authority_module() {
 				origin
 			};
 
-			let pallets_origin = Box::new((schedule_origin.caller().clone()));
+			let pallets_origin = Box::new(schedule_origin.caller().clone());
 			assert_ok!(Authority::cancel_scheduled_dispatch(Origin::root(), pallets_origin, 5));
 			System::assert_last_event(Event::Authority(orml_authority::Event::Cancelled(
 				OriginCaller::Authority(DelayedOrigin {
