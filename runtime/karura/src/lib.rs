@@ -1407,7 +1407,7 @@ impl TakeRevenue for ToTreasury {
 }
 
 parameter_types! {
-	pub BifrostNativeTokenLocation: (MultiLocation, u128) = (
+	pub BncPerSecond: (MultiLocation, u128) = (
 		X3(Parent, Parachain(2001), GeneralKey([0,1].to_vec())),
 		// BNC:KSM = 80:1
 		6_400_000_000_000
@@ -1421,18 +1421,24 @@ parameter_types! {
 /// 2. Add a new trader field.
 /// 3. Call this new trader type's new/buy_weight/refund functions in `WeightTrader` impl,
 ///   like the way of `KsmTrader`.
-pub struct MultiWeightTraders<KsmTrader> {
+pub struct MultiWeightTraders<KsmTrader, BncTrader> {
 	ksm_trader: KsmTrader,
+	bnc_trader: BncTrader,
 }
-impl<KsmTrader: WeightTrader> WeightTrader for MultiWeightTraders<KsmTrader> {
+impl<KsmTrader: WeightTrader, BncTrader: WeightTrader> WeightTrader for MultiWeightTraders<KsmTrader, BncTrader> {
 	fn new() -> Self {
 		Self {
 			ksm_trader: KsmTrader::new(),
+			bnc_trader: BncTrader::new(),
 			// dummy_trader: DummyTrader::new(),
 		}
 	}
 	fn buy_weight(&mut self, weight: Weight, payment: Assets) -> Result<Assets, XcmError> {
-		if let Ok(assets) = self.ksm_trader.buy_weight(weight, payment) {
+		if let Ok(assets) = self.ksm_trader.buy_weight(weight, payment.clone()) {
+			return Ok(assets);
+		}
+
+		if let Ok(assets) = self.bnc_trader.buy_weight(weight, payment) {
 			return Ok(assets);
 		}
 
@@ -1449,6 +1455,12 @@ impl<KsmTrader: WeightTrader> WeightTrader for MultiWeightTraders<KsmTrader> {
 			_ => {}
 		}
 
+		let bnc = self.bnc_trader.refund_weight(weight);
+		match bnc {
+			MultiAsset::ConcreteFungible { amount, .. } if !amount.is_zero() => return bnc,
+			_ => {}
+		}
+
 		// let dummy = self.dummy_trader.refund_weight(weight);
 		// match dummy {
 		// 	MultiAsset::ConcreteFungible { amount, .. } if !amount.is_zero() => return dummy,
@@ -1459,7 +1471,10 @@ impl<KsmTrader: WeightTrader> WeightTrader for MultiWeightTraders<KsmTrader> {
 	}
 }
 
-pub type Trader = MultiWeightTraders<FixedRateOfConcreteFungible<KsmPerSecond, ToTreasury>>;
+pub type Trader = MultiWeightTraders<
+	FixedRateOfConcreteFungible<KsmPerSecond, ToTreasury>,
+	FixedRateOfConcreteFungible<BncPerSecond, ToTreasury>,
+>;
 
 pub struct XcmConfig;
 impl xcm_executor::Config for XcmConfig {
