@@ -91,6 +91,9 @@ pub mod fee {
 	}
 }
 
-pub mod para_id {
-	pub const BIFROST: u32 = 2001;
+pub mod parachains {
+	pub mod bifrost {
+		pub const ID: u32 = 2001;
+		pub const BNC_KEY: &[u8] = &[0, 1];
+	}
 }
