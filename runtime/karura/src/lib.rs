@@ -102,7 +102,7 @@ pub use sp_runtime::BuildStorage;
 pub use sp_runtime::{Perbill, Percent, Permill, Perquintill};
 
 pub use authority::AuthorityConfigImpl;
-pub use constants::{fee::*, time::*};
+pub use constants::{fee::*, para_id, time::*};
 pub use primitives::{
 	evm::EstimateResourcesRequest, AccountId, AccountIndex, Amount, AuctionId, AuthoritysOriginId, Balance,
 	BlockNumber, CurrencyId, DataProviderId, EraIndex, Hash, Moment, Nonce, ReserveIdentifier, Share, Signature,
@@ -1408,7 +1408,7 @@ impl TakeRevenue for ToTreasury {
 
 parameter_types! {
 	pub BncPerSecond: (MultiLocation, u128) = (
-		X3(Parent, Parachain(2001), GeneralKey([0,1].to_vec())),
+		X3(Parent, Parachain(para_id::BIFROST), GeneralKey([0,1].to_vec())),
 		// BNC:KSM = 80:1
 		6_400_000_000_000
 	);
@@ -1597,7 +1597,7 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 			Token(KSM) => Some(X1(Parent)),
 			Token(KAR) | Token(KUSD) | Token(LKSM) | Token(RENBTC) => Some(native_currency_location(id)),
 			// Bifrost native token
-			Token(BNC) => Some(X3(Parent, Parachain(2001), GeneralKey([0, 1].to_vec()))),
+			Token(BNC) => Some(X3(Parent, Parachain(para_id::BIFROST), GeneralKey([0, 1].to_vec()))),
 			_ => None,
 		}
 	}
@@ -1620,7 +1620,7 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 					} else {
 						None
 					}
-				} else if id == 2001 {
+				} else if id == para_id::BIFROST {
 					if key == [0, 1].to_vec() {
 						Some(Token(BNC))
 					} else {

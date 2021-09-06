@@ -90,3 +90,7 @@ pub mod fee {
 		kar_per_second / 100
 	}
 }
+
+pub mod para_id {
+	pub const BIFROST: u32 = 2001;
+}
