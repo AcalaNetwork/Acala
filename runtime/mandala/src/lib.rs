@@ -207,7 +207,7 @@ parameter_types! {
 pub struct BaseCallFilter;
 impl Contains<Call> for BaseCallFilter {
 	fn contains(call: &Call) -> bool {
-		module_transaction_pause::NonPausedTransactionFilter::<Runtime>::contains(call)
+		!module_transaction_pause::PausedTransactionFilter::<Runtime>::contains(call)
 			&& !matches!(call, Call::Democracy(pallet_democracy::Call::propose(..)),)
 	}
 }
