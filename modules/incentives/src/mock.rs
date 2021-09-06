@@ -25,6 +25,7 @@ use frame_support::{
 	construct_runtime,
 	dispatch::{DispatchError, DispatchResult},
 	ord_parameter_types, parameter_types,
+	weights::constants::RocksDbWeight,
 };
 use frame_system::EnsureSignedBy;
 use orml_traits::parameter_type_with_key;
@@ -83,7 +84,7 @@ impl frame_system::Config for Runtime {
 	type AccountData = pallet_balances::AccountData<Balance>;
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
-	type DbWeight = ();
+	type DbWeight = RocksDbWeight;
 	type BaseCallFilter = ();
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();

@@ -65,6 +65,7 @@ use sp_runtime::{
 use sp_std::{collections::btree_map::BTreeMap, fmt::Debug, prelude::*};
 use support::{CDPTreasury, DEXIncentives, DEXManager, EmergencyShutdown, Rate};
 
+pub mod migrations;
 mod mock;
 mod tests;
 pub mod weights;
