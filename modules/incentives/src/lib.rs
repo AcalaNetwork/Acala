@@ -544,15 +544,13 @@ impl<T: Config> Happened<(T::AccountId, CurrencyId, Amount, Balance)> for OnUpda
 			let adjustment_abs =
 				sp_std::convert::TryInto::<Balance>::try_into(adjustment.saturating_abs()).unwrap_or_default();
 
-			if !adjustment_abs.is_zero() {
-				let new_share_amount = if adjustment.is_positive() {
-					previous_amount.saturating_add(adjustment_abs)
-				} else {
-					previous_amount.saturating_sub(adjustment_abs)
-				};
+			let new_share_amount = if adjustment.is_positive() {
+				previous_amount.saturating_add(adjustment_abs)
+			} else {
+				previous_amount.saturating_sub(adjustment_abs)
+			};
 
-				<orml_rewards::Pallet<T>>::set_share(who, &PoolId::LoansIncentive(*currency_id), new_share_amount);
-			}
+			<orml_rewards::Pallet<T>>::set_share(who, &PoolId::LoansIncentive(*currency_id), new_share_amount);
 		}
 	}
 }

@@ -419,7 +419,9 @@ fn on_update_loan_works() {
 			Origin::signed(Root::get()),
 			vec![(PoolId::LoansIncentive(BTC), 1000),],
 		));
-		OnUpdateLoan::<Runtime>::happened(&(ALICE::get(), BTC, 100, 0));
+
+		// share will be updated even if the adjustment is zero
+		OnUpdateLoan::<Runtime>::happened(&(ALICE::get(), BTC, 0, 100));
 		assert_eq!(
 			RewardsModule::pools(PoolId::LoansIncentive(BTC)),
 			PoolInfo {
