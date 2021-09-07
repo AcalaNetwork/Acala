@@ -55,6 +55,7 @@ use module_currencies::BasicCurrencyAdapter;
 use module_evm::{CallInfo, CreateInfo};
 use module_evm_accounts::EvmAddressMapping;
 use module_evm_manager::EvmCurrencyIdMapping;
+use module_relaychain::RelaychainCallBuilder;
 use module_transaction_payment::{Multiplier, TargetedFeeAdjustment};
 use orml_traits::{
 	create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended, MultiCurrency,
@@ -1495,9 +1496,13 @@ parameter_types! {
 	pub const LKSMCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::LKSM);
 	pub MinimumMintThreshold: Balance = 10 * cent(KSM);
 	pub RelaychainSovereignSubAccount: MultiLocation = create_x2_parachain_multilocation(RelaychainSubAccountId::HomaLite as u16);
-	pub MaxRewardPerEra: Permill = Permill::from_rational(500u32, 1_000_000u32); // 1.2 ^ (1/365) = 1.0004996359
+	pub MaxRewardPerEra: Permill = Permill::from_rational(261u32, 1_000_000u32); // 1.1^(1/365) = 1.00026115788
 	pub MintFee: Balance = 20 * millicent(KSM); // 2x XCM fee on Kusama
 	pub DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
+	pub BaseWithdrawFee: Permill = Permill::from_rational(7338u32, 1_000_000); // 10% yield per year, unbounding period = 28 days. 1.1^(28/365) = 1.0073382
+	pub MaximumRedeemRequestMatchesForMint: u32 = 20;
+	pub RelaychainUnboundingSlashingSpans: u32 = 5;
+	pub ParachainAccount: AccountId = ParachainInfo::get().into_account();
 }
 impl module_homa_lite::Config for Runtime {
 	type Event = Event;
@@ -1512,6 +1517,13 @@ impl module_homa_lite::Config for Runtime {
 	type DefaultExchangeRate = DefaultExchangeRate;
 	type MaxRewardPerEra = MaxRewardPerEra;
 	type MintFee = MintFee;
+	type XcmExecutor = XcmExecutor<XcmConfig>;
+	type RelaychainCallBuilder = RelaychainCallBuilder<AccountId>;
+	type BaseWithdrawFee = BaseWithdrawFee;
+	type RelaychainBlockNumber = RelaychainBlockNumberProvider<Runtime>;
+	type ParachainAccount = ParachainAccount;
+	type MaximumRedeemRequestMatchesForMint = MaximumRedeemRequestMatchesForMint;
+	type RelaychainUnboundingSlashingSpans = RelaychainUnboundingSlashingSpans;
 }
 
 pub type LocalAssetTransactor = MultiCurrencyAdapter<

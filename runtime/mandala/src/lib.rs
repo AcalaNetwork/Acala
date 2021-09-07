@@ -52,6 +52,7 @@ use module_currencies::{BasicCurrencyAdapter, Currency};
 use module_evm::{CallInfo, CreateInfo};
 use module_evm_accounts::EvmAddressMapping;
 pub use module_evm_manager::EvmCurrencyIdMapping;
+use module_relaychain::RelaychainCallBuilder;
 use module_transaction_payment::{Multiplier, TargetedFeeAdjustment};
 use orml_tokens::CurrencyAdapter;
 use orml_traits::{
@@ -1272,8 +1273,12 @@ pub fn create_x2_parachain_multilocation(index: u16) -> MultiLocation {
 parameter_types! {
 	pub MinimumMintThreshold: Balance = 10 * cent(DOT);
 	pub RelaychainSovereignSubAccount: MultiLocation = create_x2_parachain_multilocation(RelaychainSubAccountId::HomaLite as u16);
-	pub MaxRewardPerEra: Permill = Permill::from_rational(411u32, 1_000_000u32); // 15% / 365 = 0.0004109
+	pub MaxRewardPerEra: Permill = Permill::from_rational(383u32, 1_000_000u32); // 1.15^(1/365) = 1.0003829827
 	pub MintFee: Balance = millicent(DOT);
+	pub BaseWithdrawFee: Permill = Permill::from_rational(2684u32, 1_000_000u32); // 15% yield per year, unbounding period = 7 days. 1.15^(7 / 365) = 1.00268396141
+	pub MaximumRedeemRequestMatchesForMint: u32 = 20;
+	pub RelaychainUnboundingSlashingSpans: u32 = 5;
+	pub ParachainAccount: AccountId = ParachainInfo::get().into_account();
 }
 impl module_homa_lite::Config for Runtime {
 	type Event = Event;
@@ -1288,6 +1293,13 @@ impl module_homa_lite::Config for Runtime {
 	type DefaultExchangeRate = DefaultExchangeRate;
 	type MaxRewardPerEra = MaxRewardPerEra;
 	type MintFee = MintFee;
+	type XcmExecutor = XcmExecutor<XcmConfig>;
+	type RelaychainCallBuilder = RelaychainCallBuilder<AccountId>;
+	type BaseWithdrawFee = BaseWithdrawFee;
+	type RelaychainBlockNumber = RelaychainBlockNumberProvider<Runtime>;
+	type ParachainAccount = ParachainAccount;
+	type MaximumRedeemRequestMatchesForMint = MaximumRedeemRequestMatchesForMint;
+	type RelaychainUnboundingSlashingSpans = RelaychainUnboundingSlashingSpans;
 }
 
 parameter_types! {

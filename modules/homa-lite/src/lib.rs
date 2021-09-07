@@ -31,7 +31,7 @@ use orml_traits::{BalanceStatus, MultiCurrency, MultiReservableCurrency, XcmTran
 use primitives::{Balance, CurrencyId};
 use sp_runtime::{
 	offchain::storage_lock::BlockNumberProvider,
-	traits::{Convert, Saturating, Zero},
+	traits::{Saturating, Zero},
 	ArithmeticError, FixedPointNumber, Permill,
 };
 use sp_std::{cmp::min, convert::From, ops::Mul, prelude::*};
@@ -79,11 +79,8 @@ pub mod module {
 		/// XCM executor.
 		type XcmExecutor: ExecuteXcm<Self::Call>;
 
-		/// The build that construct Relaychain Calls used in XCM messaging.
-		type RelaychainCallBuilder: CallBuilder<Self::AccountId, Balance>;
-
-		/// Convert `T::AccountId` to `MultiLocation`.
-		type AccountIdToMultiLocation: Convert<Self::AccountId, MultiLocation>;
+		/// The Call builder for communicating with Relaychain via XCM messaging.
+		type RelaychainCallBuilder: CallBuilder<AccountId = Self::AccountId, Balance = Balance>;
 
 		/// The sovereign sub-account for where the staking currencies are sent to.
 		#[pallet::constant]
@@ -231,7 +228,7 @@ pub mod module {
 						required_weight,
 					);
 					// make XCM call to trigger withdraw_unbound and transfer
-					let origin_location = T::AccountIdToMultiLocation::convert(T::ParachainAccount::get());
+					let origin_location = T::SovereignSubAccountLocation::get();
 					let outcome = T::XcmExecutor::execute_xcm_in_credit(
 						origin_location,
 						xcm_call,
@@ -665,16 +662,14 @@ pub mod module {
 
 		/// Construct a XCM message
 		fn construct_xcm_unreserve_message(
-			sovereign_account: T::AccountId,
+			parachain_account: T::AccountId,
 			amount: Balance,
 			weight_limit: u64,
 		) -> Xcm<T::Call> {
 			let xcm_message = T::RelaychainCallBuilder::utility_batch_call(vec![
 				T::RelaychainCallBuilder::staking_withdraw_unbonded(T::RelaychainUnboundingSlashingSpans::get()),
-				T::RelaychainCallBuilder::balances_transfer_keep_alive(sovereign_account, amount),
+				T::RelaychainCallBuilder::balances_transfer_keep_alive(parachain_account, amount),
 			]);
-
-			//let double_encoded = DoubleEncoded::from();
 
 			Transact {
 				origin_type: xcm::v0::OriginKind::SovereignAccount,

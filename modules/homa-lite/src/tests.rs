@@ -62,10 +62,7 @@ fn mint_works() {
 		let mut liquid = 9_899_901_000_000_000;
 		assert_ok!(HomaLite::mint(Origin::signed(ALICE), amount));
 		assert_eq!(Currencies::free_balance(LKSM, &ALICE), liquid);
-		assert_eq!(
-			System::events().iter().last().unwrap().event,
-			Event::HomaLite(crate::Event::Minted(ALICE, amount, liquid))
-		);
+		System::assert_last_event(Event::HomaLite(crate::Event::Minted(ALICE, amount, liquid)));
 		// The total staking currency is now increased.
 		assert_eq!(TotalStakingCurrency::<Runtime>::get(), dollar(1000));
 
@@ -84,10 +81,7 @@ fn mint_works() {
 		liquid = 4_949_950_500_000_000;
 		assert_ok!(HomaLite::mint(Origin::signed(BOB), amount));
 		assert_eq!(Currencies::free_balance(LKSM, &BOB), liquid);
-		assert_eq!(
-			System::events().iter().last().unwrap().event,
-			Event::HomaLite(crate::Event::Minted(BOB, amount, liquid))
-		);
+		System::assert_last_event(Event::HomaLite(crate::Event::Minted(BOB, amount, liquid)));
 	});
 }
 
@@ -128,10 +122,7 @@ fn repeated_mints_have_similar_exchange_rate() {
 		// liquid = (1000 - 0.01) * 1004949.9505 / 201000 * 0.99
 		let liquid_2 = 4_949_703_990_002_433; // Actual amount is lower due to rounding loss
 		assert_ok!(HomaLite::mint(Origin::signed(BOB), amount));
-		assert_eq!(
-			System::events().iter().last().unwrap().event,
-			Event::HomaLite(crate::Event::Minted(BOB, amount, liquid_2))
-		);
+		System::assert_last_event(Event::HomaLite(crate::Event::Minted(BOB, amount, liquid_2)));
 		assert_eq!(Currencies::free_balance(LKSM, &BOB), 9_899_654_490_002_433);
 
 		// Since the effective exchange rate is lower than the theortical rate, Liquid currency becomes more
@@ -154,10 +145,7 @@ fn repeated_mints_have_similar_exchange_rate() {
 		// liquid = (1000 - 0.01) * 1009899.654490002433 / 204020 * 0.99
 		let liquid_3 = 4_900_454_170_858_356; // Actual amount is lower due to rounding loss
 		assert_ok!(HomaLite::mint(Origin::signed(BOB), amount));
-		assert_eq!(
-			System::events().iter().last().unwrap().event,
-			Event::HomaLite(crate::Event::Minted(BOB, amount, liquid_3))
-		);
+		System::assert_last_event(Event::HomaLite(crate::Event::Minted(BOB, amount, liquid_3)));
 		assert_eq!(Currencies::free_balance(LKSM, &BOB), 14_800_108_660_860_789);
 
 		// Increasing the Staking total increases the value of Liquid currency - this makes up for the
@@ -208,10 +196,7 @@ fn cannot_set_total_staking_currency_to_zero() {
 		);
 		assert_ok!(HomaLite::set_total_staking_currency(Origin::signed(ROOT), 1));
 		assert_eq!(TotalStakingCurrency::<Runtime>::get(), 1);
-		assert_eq!(
-			System::events().iter().last().unwrap().event,
-			Event::HomaLite(crate::Event::TotalStakingCurrencySet(1))
-		);
+		System::assert_last_event(Event::HomaLite(crate::Event::TotalStakingCurrencySet(1)));
 	});
 }
 
@@ -243,10 +228,9 @@ fn can_set_mint_cap() {
 		// Cap should be set now.
 		assert_eq!(StakingCurrencyMintCap::<Runtime>::get(), dollar(1_000));
 
-		assert_eq!(
-			System::events().iter().last().unwrap().event,
-			Event::HomaLite(crate::Event::StakingCurrencyMintCapUpdated(dollar(1_000)))
-		);
+		System::assert_last_event(Event::HomaLite(crate::Event::StakingCurrencyMintCapUpdated(dollar(
+			1_000,
+		))));
 	});
 }
 
@@ -265,10 +249,7 @@ fn can_set_xcm_dest_weight() {
 		// Cap should be set now.
 		assert_eq!(XcmDestWeight::<Runtime>::get(), 1_000_000);
 
-		assert_eq!(
-			System::events().iter().last().unwrap().event,
-			Event::HomaLite(crate::Event::XcmDestWeightSet(1_000_000))
-		);
+		System::assert_last_event(Event::HomaLite(crate::Event::XcmDestWeightSet(1_000_000)));
 	});
 }
 
@@ -287,10 +268,7 @@ fn can_schedule_unbound() {
 		// Storage should be updated now.
 		assert_eq!(ScheduledUnbound::<Runtime>::get(), vec![(1_000_000, 100)]);
 
-		assert_eq!(
-			System::events().iter().last().unwrap().event,
-			Event::HomaLite(crate::Event::ScheduledUnboundAdded(1_000_000, 100))
-		);
+		System::assert_last_event(Event::HomaLite(crate::Event::ScheduledUnboundAdded(1_000_000, 100)));
 
 		// Schedule another unbound.
 		assert_ok!(HomaLite::schedule_unbound(Origin::signed(ROOT), 200, 80));
@@ -298,10 +276,7 @@ fn can_schedule_unbound() {
 		// Storage should be updated now.
 		assert_eq!(ScheduledUnbound::<Runtime>::get(), vec![(1_000_000, 100), (200, 80)]);
 
-		assert_eq!(
-			System::events().iter().last().unwrap().event,
-			Event::HomaLite(crate::Event::ScheduledUnboundAdded(200, 80))
-		);
+		System::assert_last_event(Event::HomaLite(crate::Event::ScheduledUnboundAdded(200, 80)));
 	});
 }
 
@@ -326,10 +301,7 @@ fn can_replace_schedule_unbound() {
 		));
 		assert_eq!(ScheduledUnbound::<Runtime>::get(), vec![(800, 2), (1357, 120)]);
 
-		assert_eq!(
-			System::events().iter().last().unwrap().event,
-			Event::HomaLite(crate::Event::ScheduledUnboundReplaced)
-		);
+		System::assert_last_event(Event::HomaLite(crate::Event::ScheduledUnboundReplaced));
 	});
 }
 

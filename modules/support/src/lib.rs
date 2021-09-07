@@ -19,7 +19,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::upper_case_acronyms)]
 
-use codec::{Decode, Encode, FullCodec, HasCompact};
+use codec::{Codec, Decode, Encode, FullCodec, HasCompact};
 use frame_support::pallet_prelude::{DispatchClass, Pays, Weight};
 use primitives::{
 	evm::{CallInfo, EvmAddress},
@@ -563,9 +563,12 @@ pub trait CompoundCashTrait<Balance, Moment> {
 	fn set_future_yield(next_cash_yield: Balance, yield_index: u128, timestamp_effective: Moment) -> DispatchResult;
 }
 
-pub trait CallBuilder<AccountId, Balance> {
-	type RelaychainCall: Encode + Decode;
+pub trait CallBuilder {
+	type AccountId: Codec;
+	type Balance: Codec;
+	type RelaychainCall: Codec;
+
 	fn utility_batch_call(call: Vec<Self::RelaychainCall>) -> Self::RelaychainCall;
 	fn staking_withdraw_unbonded(num_slashing_spans: u32) -> Self::RelaychainCall;
-	fn balances_transfer_keep_alive(to: AccountId, amount: Balance) -> Self::RelaychainCall;
+	fn balances_transfer_keep_alive(to: Self::AccountId, amount: Self::Balance) -> Self::RelaychainCall;
 }

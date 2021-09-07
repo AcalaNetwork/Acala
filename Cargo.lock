@@ -4103,6 +4103,7 @@ dependencies = [
  "module-nominees-election",
  "module-polkadot-bridge",
  "module-prices",
+ "module-relaychain",
  "module-session-manager",
  "module-staking-pool",
  "module-staking-pool-rpc-runtime-api",
@@ -4977,6 +4978,7 @@ dependencies = [
  "module-nominees-election",
  "module-polkadot-bridge",
  "module-prices",
+ "module-relaychain",
  "module-session-manager",
  "module-staking-pool",
  "module-staking-pool-rpc-runtime-api",
@@ -5717,21 +5719,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "module-kusama-call-builder"
-version = "1.3.0"
-dependencies = [
- "acala-primitives",
- "frame-support",
- "frame-system",
- "module-support",
- "parity-scale-codec",
- "serde",
- "sp-core",
- "sp-io",
- "sp-runtime",
-]
-
-[[package]]
 name = "module-loans"
 version = "1.3.0"
 dependencies = [
@@ -5827,6 +5814,22 @@ dependencies = [
  "module-support",
  "orml-tokens",
  "orml-traits",
+ "parity-scale-codec",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "module-relaychain"
+version = "1.3.0"
+dependencies = [
+ "acala-primitives",
+ "frame-support",
+ "frame-system",
+ "module-support",
  "parity-scale-codec",
  "serde",
  "sp-core",
