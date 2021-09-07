@@ -62,7 +62,7 @@ mod mandala_imports {
 		CreateTokenDeposit, Currencies, CurrencyId, CurrencyIdConvert, DataDepositPerByte, Dex, EmergencyShutdown,
 		EnabledTradingPairs, Event, EvmAccounts, ExistentialDeposits, Get, GetNativeCurrencyId, HomaLite, Honzon,
 		Loans, MultiLocation, NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, Origin, OriginCaller,
-		ParachainInfo, ParachainSystem, Perbill, PolkadotXcm, Proxy, RelaychainSovereignSubAccount, Runtime, Scheduler,
+		ParachainInfo, ParachainSystem, Perbill, Proxy, RelaychainSovereignSubAccount, Runtime, Scheduler,
 		Session, SessionManager, SevenDays, System, Timestamp, TokenSymbol, Tokens, TreasuryAccount, TreasuryPalletId,
 		Utility, Vesting, XcmConfig, XcmExecutor, NFT,
 	};
@@ -89,7 +89,7 @@ mod karura_imports {
 		CreateTokenDeposit, Currencies, CurrencyId, CurrencyIdConvert, DataDepositPerByte, Dex, EmergencyShutdown,
 		Event, EvmAccounts, ExistentialDeposits, Get, GetNativeCurrencyId, HomaLite, Honzon, KaruraFoundationAccounts,
 		Loans, MultiLocation, NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, Origin, OriginCaller,
-		ParachainInfo, ParachainSystem, Perbill, PolkadotXcm, Proxy, RelaychainSovereignSubAccount, Runtime, Scheduler,
+		ParachainInfo, ParachainSystem, Perbill, Proxy, RelaychainSovereignSubAccount, Runtime, Scheduler,
 		Session, SessionManager, SevenDays, System, TokenSymbol, Tokens, TreasuryPalletId, Utility, Vesting, XTokens,
 		XcmConfig, XcmExecutor, NFT,
 	};
@@ -1759,47 +1759,6 @@ fn treasury_handles_dust_correctly() {
 			assert_eq!(Tokens::free_balance(USD_CURRENCY, &AccountId::from(BOB)), usd_ed + 1);
 			assert_eq!(Tokens::free_balance(USD_CURRENCY, &AccountId::from(ALICE)), 0);
 			assert_eq!(Tokens::free_balance(USD_CURRENCY, &TreasuryAccount::get()), usd_ed - 1);
-		});
-}
-
-#[test]
-fn treasury_should_take_xcm_fee() {
-	ExtBuilder::default()
-		.balances(vec![(
-			AccountId::from(ALICE),
-			RELAY_CHAIN_CURRENCY,
-			2 * dollar(RELAY_CHAIN_CURRENCY),
-		)])
-		.build()
-		.execute_with(|| {
-			assert_eq!(
-				Currencies::free_balance(RELAY_CHAIN_CURRENCY, &TreasuryAccount::get()),
-				0
-			);
-			let destination = MultiLocation::X1(Junction::Parent);
-			assert_ok!(PolkadotXcm::send(
-				Origin::signed(AccountId::from(ALICE)),
-				destination,
-				Xcm::ReserveAssetDeposit {
-					assets: vec![MultiAsset::ConcreteFungible {
-						id: MultiLocation::X1(Junction::Parent),
-						amount: dollar(RELAY_CHAIN_CURRENCY),
-					}],
-					effects: vec![DepositAsset {
-						assets: vec![MultiAsset::All],
-						dest: MultiLocation::X1(Junction::AccountId32 {
-							network: NetworkId::Any,
-							id: ALICE,
-						}),
-					}]
-				},
-			));
-
-			// Treasury should get fee for sent crosschain message
-			assert_eq!(
-				Currencies::free_balance(RELAY_CHAIN_CURRENCY, &TreasuryAccount::get()),
-				0
-			);
 		});
 }
 
