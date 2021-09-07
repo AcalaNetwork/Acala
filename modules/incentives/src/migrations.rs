@@ -39,3 +39,47 @@ pub enum PoolIdV0<AccountId> {
 	/// Homa protocol
 	HomaValidatorAllowance(AccountId),
 }
+
+// //! Migrations for the incentives module.
+// pub fn migrate_to_multi_currency_reward<T: Config>() -> Weight {
+// 	let get_reward_currency = |pool: &PoolIdV0<T::AccountId>| match pool {
+// 		PoolIdV0::LoansIncentive(_) | PoolIdV0::DexIncentive(_) | PoolIdV0::HomaIncentive =>
+// T::NativeCurrencyId::get(), 		PoolIdV0::DexSaving(_) => T::StableCurrencyId::get(),
+// 		PoolIdV0::HomaValidatorAllowance(_) => T::LiquidCurrencyId::get(),
+// 	};
+
+// 	let orml_used_weight =
+// 		orml_rewards::migrations::migrate_to_multi_currency_reward::<T>(Box::new(get_reward_currency));
+
+// 	let mut reads_writes = 0;
+
+// 	PendingRewards::<T>::translate::<Balance, _>(|pool, _who, reward| {
+// 		reads_writes += 1;
+// 		if reward.is_zero() {
+// 			return None;
+// 		}
+// 		Some(vec![(get_reward_currency(&pool), reward)].into_iter().collect())
+// 	});
+
+// 	// Return the weight consumed by the migration.
+// 	T::DbWeight::get().reads_writes(reads_writes, reads_writes) + orml_used_weight
+// }
+
+// #[test]
+// fn migrate_to_multi_currency_reward_works() {
+// 	use crate::mock::*;
+// 	ExtBuilder::default().build().execute_with(|| {
+// 		(500 as Balance).using_encoded(|data| {
+// 			let key = PendingRewards::<Runtime>::hashed_key_for(&PoolIdV0::DexSaving(BTC), &ALICE::get());
+// 			sp_io::storage::set(&key[..], data);
+// 		});
+
+// 		let weight = migrate_to_multi_currency_reward::<Runtime>();
+// 		assert_eq!(weight, 125_000_000);
+
+// 		assert_eq!(
+// 			PendingRewards::<Runtime>::get(&PoolIdV0::DexSaving(BTC), &ALICE::get()),
+// 			vec![(AUSD, 500)].into_iter().collect(),
+// 		);
+// 	});
+// }
