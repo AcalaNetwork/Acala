@@ -820,12 +820,8 @@ impl<T: Config> Pallet<T> {
 			return false;
 		}
 
-		Accounts::<T>::mutate_exists(address, |maybe_account_info| -> bool {
-			if let Some(account_info) = maybe_account_info {
-				account_info.contract_info.is_none() && account_info.nonce.is_zero()
-			} else {
-				true
-			}
+		Self::accounts(address).map_or(true, |account_info| {
+			account_info.contract_info.is_none() && account_info.nonce.is_zero()
 		})
 	}
 
