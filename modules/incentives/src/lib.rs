@@ -535,17 +535,24 @@ pub struct OnUpdateLoan<T>(sp_std::marker::PhantomData<T>);
 impl<T: Config> Happened<(T::AccountId, CurrencyId, Amount, Balance)> for OnUpdateLoan<T> {
 	fn happened(info: &(T::AccountId, CurrencyId, Amount, Balance)) {
 		let (who, currency_id, adjustment, previous_amount) = info;
-		let adjustment_abs =
-			sp_std::convert::TryInto::<Balance>::try_into(adjustment.saturating_abs()).unwrap_or_default();
+		let pool_id: PoolId<T::RelaychainAccountId> = PoolId::LoansIncentive(*currency_id);
 
-		if !adjustment_abs.is_zero() {
-			let new_share_amount = if adjustment.is_positive() {
-				previous_amount.saturating_add(adjustment_abs)
-			} else {
-				previous_amount.saturating_sub(adjustment_abs)
-			};
+		// Only when a pool has incentive, shares will be updated.
+		// If the incentive has not been opened before, users did something that should update share after
+		// opening the incentive, TODO: do Pool::LoansIncentive(KSM) migration
+		if !Pallet::<T>::incentive_reward_amount(&pool_id).is_zero() {
+			let adjustment_abs =
+				sp_std::convert::TryInto::<Balance>::try_into(adjustment.saturating_abs()).unwrap_or_default();
 
-			<orml_rewards::Pallet<T>>::set_share(who, &PoolId::LoansIncentive(*currency_id), new_share_amount);
+			if !adjustment_abs.is_zero() {
+				let new_share_amount = if adjustment.is_positive() {
+					previous_amount.saturating_add(adjustment_abs)
+				} else {
+					previous_amount.saturating_sub(adjustment_abs)
+				};
+
+				<orml_rewards::Pallet<T>>::set_share(who, &PoolId::LoansIncentive(*currency_id), new_share_amount);
+			}
 		}
 	}
 }
