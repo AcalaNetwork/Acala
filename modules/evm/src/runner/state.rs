@@ -35,29 +35,24 @@ pub use primitives::{
 use sha3::{Digest, Keccak256};
 use sp_std::{rc::Rc, vec::Vec};
 
-//#[cfg(feature = "tracing")]
-//macro_rules! event {
-//	($x:expr) => {
-//		use evm::tracing::Event::*;
-//		$x.emit();
-//	};
-//}
-
-#[cfg(not(feature = "tracing"))]
 macro_rules! event {
 	($x:expr) => {};
 }
 
-//#[cfg(feature = "tracing")]
-struct Tracer;
-//#[cfg(feature = "tracing")]
-impl evm_runtime::tracing::EventListener for Tracer {
-	fn event(&mut self, event: evm_runtime::tracing::Event) {
-		log::debug!(
-			target: "evm", "evm_runtime tracing: {:?}", event
-		);
+#[cfg(feature = "tracing")]
+mod tracing {
+	pub struct Tracer;
+	impl evm_runtime::tracing::EventListener for Tracer {
+		fn event(&mut self, event: evm_runtime::tracing::Event) {
+			frame_support::log::debug!(
+				target: "evm", "evm_runtime tracing: {:?}", event
+			);
+		}
 	}
 }
+
+#[cfg(feature = "tracing")]
+use tracing::*;
 
 pub enum StackExitKind {
 	Succeeded,
@@ -757,10 +752,11 @@ impl<'config, S: StackState<'config>> StackExecutor<'config, S> {
 
 		let mut runtime = Runtime::new(Rc::new(code), Rc::new(input), context, self.config);
 
-		//#[cfg(not(feature = "tracing"))]
+		#[cfg(not(feature = "tracing"))]
 		let reason = self.execute(&mut runtime);
-		//#[cfg(feature = "tracing")]
-		//let reason = evm_runtime::tracing::using(&mut Tracer, || self.execute(&mut runtime));
+		#[cfg(feature = "tracing")]
+		let reason = evm_runtime::tracing::using(&mut Tracer, || self.execute(&mut runtime));
+
 		log::debug!(target: "evm", "Call execution using address {}: {:?}", code_address, reason);
 
 		match reason {
