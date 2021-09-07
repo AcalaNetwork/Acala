@@ -227,11 +227,13 @@ pub mod module {
 				for (pool_id, pool_info) in orml_rewards::Pools::<T>::iter() {
 					if !pool_info.total_shares.is_zero() {
 						match pool_id {
+							// do not accumulate incentives for PoolId::Loans after shutdown
 							PoolId::Loans(_) if !shutdown => {
 								count += 1;
 								Self::accumulate_incentives(pool_id);
 							}
 							PoolId::Dex(lp_currency_id) => {
+								// do not accumulate dex saving any more after shutdown
 								if !shutdown {
 									Self::accumulate_dex_saving(lp_currency_id, pool_id);
 								}

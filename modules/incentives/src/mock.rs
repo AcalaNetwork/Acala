@@ -55,8 +55,7 @@ ord_parameter_types! {
 	pub const ALICE: AccountId = AccountId::from([1u8; 32]);
 	pub const BOB: AccountId = AccountId::from([2u8; 32]);
 	pub const VAULT: AccountId = IncentivesModule::account_id();
-	pub const UNRELEASED: AccountId = AccountId::from([3u8; 32]);
-	pub const VALIDATOR: AccountId = AccountId::from([4u8; 32]);
+	pub const RewardsSource: AccountId = AccountId::from([3u8; 32]);
 	pub const ROOT: AccountId = AccountId32::new([255u8; 32]);
 }
 
@@ -249,11 +248,8 @@ impl orml_rewards::Config for Runtime {
 }
 
 parameter_types! {
-	pub RewardsSource: AccountId = UNRELEASED::get();
 	pub const AccumulatePeriod: BlockNumber = 10;
-	pub const NativeCurrencyId: CurrencyId = ACA;
 	pub const StableCurrencyId: CurrencyId = AUSD;
-	pub const LiquidCurrencyId: CurrencyId = LDOT;
 	pub const IncentivesPalletId: PalletId = PalletId(*b"aca/inct");
 }
 
@@ -266,7 +262,7 @@ impl Config for Runtime {
 	type RewardsSource = RewardsSource;
 	type AccumulatePeriod = AccumulatePeriod;
 	type StableCurrencyId = StableCurrencyId;
-	type UpdateOrigin = EnsureSignedBy<Root, AccountId>;
+	type UpdateOrigin = EnsureSignedBy<ROOT, AccountId>;
 	type CDPTreasury = MockCDPTreasury;
 	type Currency = TokensModule;
 	type DEX = MockDEX;
@@ -297,9 +293,7 @@ pub struct ExtBuilder {
 
 impl Default for ExtBuilder {
 	fn default() -> Self {
-		Self {
-			balances: vec![(UNRELEASED::get(), ACA, 10_000)],
-		}
+		Self { balances: vec![] }
 	}
 }
 
