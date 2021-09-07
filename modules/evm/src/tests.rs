@@ -1074,7 +1074,7 @@ fn should_set_code() {
 			EVM::set_code(
 				Origin::signed(alice_account_id.clone()),
 				contract_address,
-				contract_err.clone()
+				[8u8; (MaxCodeSize::get() + 1) as usize].to_vec(),
 			),
 			Error::<Runtime>::ContractExceedsMaxCodeSize
 		);
@@ -1557,5 +1557,15 @@ fn should_update_storage() {
 
 		assert_eq!(result.used_storage, -(STORAGE_SIZE as i32));
 		assert_eq!(ContractStorageSizes::<Runtime>::get(&contract_address), used_storage);
+	});
+}
+
+#[test]
+fn code_hash_with_non_existent_address_should_work() {
+	new_test_ext().execute_with(|| {
+		assert_eq!(
+			EVM::code_hash_at_address(&H160::from_str("0x0000000000000000000000000000000000000000").unwrap()),
+			code_hash(&[])
+		);
 	});
 }

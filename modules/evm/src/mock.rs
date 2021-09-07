@@ -154,7 +154,6 @@ ord_parameter_types! {
 	pub const StorageDepositPerByte: u64 = 10;
 	pub const DeveloperDeposit: u64 = 1000;
 	pub const DeploymentFee: u64 = 200;
-	pub const MaxCodeSize: u32 = 1000;
 	pub const ChainId: u64 = 1;
 }
 
@@ -164,7 +163,6 @@ impl Config for Runtime {
 	type TransferAll = Currencies;
 	type NewContractExtraBytes = NewContractExtraBytes;
 	type StorageDepositPerByte = StorageDepositPerByte;
-	type MaxCodeSize = MaxCodeSize;
 
 	type Event = Event;
 	type Precompiles = ();

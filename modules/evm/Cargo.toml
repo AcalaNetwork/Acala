@@ -6,6 +6,7 @@ edition = "2018"
 
 [dependencies]
 codec = { package = "parity-scale-codec", version = "2.2.0", default-features = false }
+hex-literal = { version = "0.3.1" }
 impl-trait-for-tuples = "0.1"
 primitive-types = { version = "0.10.0", default-features = false, features = ["rlp", "byteorder"] }
 ripemd160 = { version = "0.9", default-features = false }

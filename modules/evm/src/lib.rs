@@ -39,6 +39,7 @@ use frame_support::{
 	error::BadOrigin,
 	log,
 	pallet_prelude::*,
+	parameter_types,
 	traits::{
 		BalanceStatus, Currency, EnsureOrigin, ExistenceRequirement, FindAuthor, Get, NamedReservableCurrency,
 		OnKilledAccount,
@@ -48,6 +49,7 @@ use frame_support::{
 	BoundedVec, RuntimeDebug,
 };
 use frame_system::{ensure_root, ensure_signed, pallet_prelude::*, EnsureOneOf, EnsureRoot, EnsureSigned};
+use hex_literal::hex;
 pub use module_support::{
 	AddressMapping, EVMStateRentTrait, ExecutionMode, InvokeContext, TransactionPayment, EVM as EVMTrait,
 };
@@ -116,7 +118,7 @@ static ACALA_CONFIG: EvmConfig = EvmConfig {
 	stack_limit: 1024,
 	memory_limit: usize::max_value(),
 	call_stack_limit: 1024,
-	create_contract_limit: Some(60 * 1024), // the same as T::MaxCodeSize::get()
+	create_contract_limit: Some(MaxCodeSize::get() as usize),
 	call_stipend: 2300,
 	has_delegate_call: true,
 	has_create2: true,
@@ -132,6 +134,11 @@ static ACALA_CONFIG: EvmConfig = EvmConfig {
 #[frame_support::pallet]
 pub mod module {
 	use super::*;
+
+	parameter_types! {
+		// Contract max code size.
+		pub const MaxCodeSize: u32 = 60 * 1024;
+	}
 
 	/// EVM module trait
 	#[pallet::config]
@@ -154,10 +161,6 @@ pub mod module {
 		/// Storage required for per byte.
 		#[pallet::constant]
 		type StorageDepositPerByte: Get<BalanceOf<Self>>;
-
-		/// Contract max code size.
-		#[pallet::constant]
-		type MaxCodeSize: Get<u32>;
 
 		/// The overarching event type.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
@@ -278,7 +281,7 @@ pub mod module {
 	/// Codes: H256 => Vec<u8>
 	#[pallet::storage]
 	#[pallet::getter(fn codes)]
-	pub type Codes<T: Config> = StorageMap<_, Identity, H256, BoundedVec<u8, T::MaxCodeSize>, ValueQuery>;
+	pub type Codes<T: Config> = StorageMap<_, Identity, H256, BoundedVec<u8, MaxCodeSize>, ValueQuery>;
 
 	/// The code info for EVM contracts.
 	/// Key is Keccak256 hash of code.
@@ -359,7 +362,7 @@ pub mod module {
 					);
 
 					let out = runtime.machine().return_value();
-					<Pallet<T>>::create_account(source, *address, out);
+					<Pallet<T>>::create_contract(source, *address, out);
 
 					#[cfg(not(feature = "with-ethereum-compatibility"))]
 					<Pallet<T>>::mark_deployed(*address, None).expect("Genesis contract failed to deploy");
@@ -383,7 +386,7 @@ pub mod module {
 		/// A contract has been created at given \[address\].
 		Created(EvmAddress),
 		/// A contract was attempted to be created, but the execution failed.
-		/// \[contract, exit_reason, output\]
+		/// \[contract, exit_reason\]
 		CreatedFailed(EvmAddress, ExitReason),
 		/// A \[contract\] has been executed successfully with states applied.
 		Executed(EvmAddress),
@@ -811,27 +814,23 @@ impl<T: Config> Pallet<T> {
 	/// Check whether an account is empty.
 	pub fn is_account_empty(address: &H160) -> bool {
 		let account_id = T::AddressMapping::get_account_id(address);
-		let balance = T::Currency::free_balance(&account_id);
+		let balance = T::Currency::total_balance(&account_id);
 
 		if !balance.is_zero() {
 			return false;
 		}
 
 		Accounts::<T>::mutate_exists(address, |maybe_account_info| -> bool {
-			if maybe_account_info.is_none() {
-				return true;
+			if let Some(account_info) = maybe_account_info {
+				account_info.contract_info.is_none() && account_info.nonce.is_zero()
+			} else {
+				true
 			}
-
-			let account_info = maybe_account_info.as_ref().expect("has checked; qed");
-			if account_info.contract_info.is_some() {
-				return false;
-			}
-
-			account_info.nonce.is_zero()
 		})
 	}
 
 	/// Remove an account if its empty.
+	/// Unused now.
 	pub fn remove_account_if_empty(address: &H160) {
 		if Self::is_account_empty(address) {
 			let res = Self::remove_account(address);
@@ -878,7 +877,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	/// Removes an account from Accounts and AccountStorages.
-	pub fn remove_account(address: &EvmAddress) -> Result<(), DispatchError> {
+	pub fn remove_account(address: &EvmAddress) -> DispatchResult {
 		// Deref code, and remove it if ref count is zero.
 		if let Some(AccountInfo {
 			contract_info: Some(contract_info),
@@ -914,8 +913,8 @@ impl<T: Config> Pallet<T> {
 	/// - Update codes info.
 	/// - Update maintainer of the contract.
 	/// - Save `code` if not saved yet.
-	pub fn create_account(source: H160, address: H160, code: Vec<u8>) {
-		let bounded_code: BoundedVec<u8, T::MaxCodeSize> = code
+	pub fn create_contract(source: H160, address: H160, code: Vec<u8>) {
+		let bounded_code: BoundedVec<u8, MaxCodeSize> = code
 			.try_into()
 			.expect("checked by create_contract_limit in ACALA_CONFIG; qed");
 		if bounded_code.is_empty() {
@@ -1003,12 +1002,13 @@ impl<T: Config> Pallet<T> {
 		{
 			contract_info.code_hash
 		} else {
-			code_hash(&[])
+			// The same as `code_hash(&[])`, hardcode here.
+			H256::from_slice(&hex!("c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470").to_vec())
 		}
 	}
 
 	/// Get code at given address.
-	pub fn code_at_address(address: &EvmAddress) -> BoundedVec<u8, T::MaxCodeSize> {
+	pub fn code_at_address(address: &EvmAddress) -> BoundedVec<u8, MaxCodeSize> {
 		Self::codes(&Self::code_hash_at_address(address))
 	}
 
@@ -1096,7 +1096,7 @@ impl<T: Config> Pallet<T> {
 
 			let old_code_info = Self::code_infos(&contract_info.code_hash).ok_or(Error::<T>::ContractNotFound)?;
 
-			let bounded_code: BoundedVec<u8, T::MaxCodeSize> =
+			let bounded_code: BoundedVec<u8, MaxCodeSize> =
 				code.try_into().map_err(|_| Error::<T>::ContractExceedsMaxCodeSize)?;
 			let code_hash = code_hash(bounded_code.as_slice());
 			let code_size = bounded_code.len() as u32;

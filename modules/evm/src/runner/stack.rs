@@ -575,10 +575,13 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 			}
 		}
 
-		Pallet::<T>::create_account(caller, address, code);
+		Pallet::<T>::create_contract(caller, address, code);
 	}
 
 	fn transfer(&mut self, transfer: Transfer) -> Result<(), ExitError> {
+		if transfer.value.is_zero() {
+			return Ok(());
+		}
 		let source = T::AddressMapping::get_account_id(&transfer.source);
 		let target = T::AddressMapping::get_account_id(&transfer.target);
 
@@ -588,7 +591,7 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 			transfer.value.low_u128().unique_saturated_into(),
 			ExistenceRequirement::AllowDeath,
 		)
-		.map_err(|_| ExitError::OutOfFund)
+		.map_err(|e| ExitError::Other(Into::<&str>::into(e).into()))
 	}
 
 	fn reset_balance(&mut self, _address: H160) {
