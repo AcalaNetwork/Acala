@@ -1199,7 +1199,7 @@ impl module_evm_manager::Config for Runtime {
 impl orml_rewards::Config for Runtime {
 	type Share = Balance;
 	type Balance = Balance;
-	type PoolId = module_incentives::PoolId<AccountId>;
+	type PoolId = module_incentives::PoolId;
 	type CurrencyId = CurrencyId;
 	type Handler = Incentives;
 }
@@ -1210,11 +1210,8 @@ parameter_types! {
 
 impl module_incentives::Config for Runtime {
 	type Event = Event;
-	type RelaychainAccountId = AccountId;
 	type RewardsSource = UnreleasedNativeVaultAccountId;
-	type NativeCurrencyId = GetNativeCurrencyId;
 	type StableCurrencyId = GetStableCurrencyId;
-	type LiquidCurrencyId = GetLiquidCurrencyId;
 	type AccumulatePeriod = AccumulatePeriod;
 	type UpdateOrigin = EnsureRootOrThreeFourthsGeneralCouncil;
 	type CDPTreasury = CdpTreasury;
@@ -1338,8 +1335,8 @@ impl module_homa_validator_list::Config for Runtime {
 	type OnSlash = module_staking_pool::OnSlash<Runtime>;
 	type LiquidStakingExchangeRateProvider = LiquidStakingExchangeRateProvider;
 	type WeightInfo = ();
-	type OnIncreaseGuarantee = module_incentives::OnIncreaseGuarantee<Runtime>;
-	type OnDecreaseGuarantee = module_incentives::OnDecreaseGuarantee<Runtime>;
+	type OnIncreaseGuarantee = ();
+	type OnDecreaseGuarantee = ();
 	type BlockNumberProvider = RelaychainBlockNumberProvider<Runtime>;
 }
 
