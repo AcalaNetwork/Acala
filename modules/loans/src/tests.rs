@@ -203,3 +203,19 @@ fn confiscate_collateral_and_debit_work() {
 		)));
 	});
 }
+
+#[test]
+fn loan_updated_updated_when_adjust_collateral() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_eq!(DOT_SHARES.with(|v| *v.borrow().get(&BOB).unwrap_or(&0)), 0);
+
+		assert_ok!(LoansModule::update_loan(&BOB, DOT, 1000, 0));
+		assert_eq!(DOT_SHARES.with(|v| *v.borrow().get(&BOB).unwrap_or(&0)), 1000);
+
+		assert_ok!(LoansModule::update_loan(&BOB, DOT, 0, 200));
+		assert_eq!(DOT_SHARES.with(|v| *v.borrow().get(&BOB).unwrap_or(&0)), 1000);
+
+		assert_ok!(LoansModule::update_loan(&BOB, DOT, -800, 500));
+		assert_eq!(DOT_SHARES.with(|v| *v.borrow().get(&BOB).unwrap_or(&0)), 200);
+	});
+}
