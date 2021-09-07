@@ -1408,15 +1408,7 @@ fn treasury_should_take_xcm_execution_revenue() {
 		assert_eq!(debt, shallow_weight);
 
 		assert_eq!(Tokens::free_balance(RELAY_CHAIN_CURRENCY, &ALICE.into()), 0);
-		assert_ok!(Currencies::deposit(
-			RELAY_CHAIN_CURRENCY,
-			&TreasuryAccount::get(),
-			ExistentialDeposits::get(&RELAY_CHAIN_CURRENCY)
-		));
-		assert_eq!(
-			Tokens::free_balance(RELAY_CHAIN_CURRENCY, &TreasuryAccount::get()),
-			ExistentialDeposits::get(&RELAY_CHAIN_CURRENCY)
-		);
+		assert_eq!(Tokens::free_balance(RELAY_CHAIN_CURRENCY, &TreasuryAccount::get()), 0);
 
 		let weight_limit = debt + deep + 1;
 		assert_eq!(
@@ -1427,7 +1419,7 @@ fn treasury_should_take_xcm_execution_revenue() {
 		assert_eq!(Tokens::free_balance(RELAY_CHAIN_CURRENCY, &ALICE.into()), actual_amount);
 		assert_eq!(
 			Tokens::free_balance(RELAY_CHAIN_CURRENCY, &TreasuryAccount::get()),
-			ExistentialDeposits::get(&RELAY_CHAIN_CURRENCY) + dot_amount - actual_amount
+			dot_amount - actual_amount
 		);
 	});
 }
