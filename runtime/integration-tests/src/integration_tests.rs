@@ -90,8 +90,8 @@ mod karura_imports {
 		Event, EvmAccounts, ExistentialDeposits, Get, GetNativeCurrencyId, HomaLite, Honzon, KaruraFoundationAccounts,
 		Loans, MultiLocation, NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, Origin, OriginCaller,
 		ParachainInfo, ParachainSystem, Perbill, Proxy, RelaychainSovereignSubAccount, Runtime, Scheduler, Session,
-		SessionManager, SevenDays, System, TokenSymbol, Tokens, TreasuryPalletId, Utility, Vesting, XTokens, XcmConfig,
-		XcmExecutor, NFT,
+		SessionManager, SevenDays, System, Timestamp, TokenSymbol, Tokens, TreasuryPalletId, Utility, Vesting, XTokens,
+		XcmConfig, XcmExecutor, NFT,
 	};
 	pub use primitives::TradingPair;
 	pub use runtime_common::{dollar, KAR, KSM, KUSD, LKSM};
