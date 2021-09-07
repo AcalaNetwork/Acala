@@ -38,7 +38,7 @@ pub use sp_core::H160;
 use sp_io::hashing::keccak_256;
 pub use sp_runtime::{
 	traits::{AccountIdConversion, BadOrigin, Convert, Zero},
-	DispatchError, DispatchResult, FixedPointNumber, FixedU128, MultiAddress,
+	DispatchError, DispatchResult, FixedPointNumber, MultiAddress,
 };
 
 use xcm::{
