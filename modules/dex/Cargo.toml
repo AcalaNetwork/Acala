@@ -1,6 +1,6 @@
 [package]
 name = "module-dex"
-version = "1.4.0"
+version = "1.4.1"
 authors = ["Acala Developers"]
 edition = "2018"
 

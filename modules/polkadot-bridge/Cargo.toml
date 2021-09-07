@@ -1,6 +1,6 @@
 [package]
 name = "module-polkadot-bridge"
-version = "1.4.0"
+version = "1.4.1"
 authors = ["Acala Developers"]
 edition = "2018"
 
