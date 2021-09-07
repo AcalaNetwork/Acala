@@ -1820,16 +1820,19 @@ fn cdp_treasury_handles_honzon_surplus_correctly() {
 				Currencies::free_balance(USD_CURRENCY, &AccountId::from(ALICE)),
 				50 * dollar(USD_CURRENCY)
 			);
+			assert_eq!(Currencies::free_balance(USD_CURRENCY, &CdpTreasury::account_id()), 0);
+			assert_eq!(CdpTreasury::get_surplus_pool(), 0);
+			assert_eq!(CdpTreasury::get_debit_pool(), 0);
 			run_to_block(2);
 
-			// treasury recieves stablecoins into surplus pool from loan
+			// Empty treasury recieves stablecoins into surplus pool from loan
 			assert_eq!(CdpTreasury::get_surplus_pool(), 160248248179);
 			assert_eq!(CdpTreasury::get_debit_pool(), 0);
 			// Honzon generated cdp treasury surplus can be transfered
 			assert_eq!(Currencies::free_balance(USD_CURRENCY, &AccountId::from(BOB)), 0);
 			assert_eq!(
 				CdpEngine::debit_exchange_rate(RELAY_CHAIN_CURRENCY),
-				// about 1/100
+				// about 1/10
 				Some(Ratio::saturating_from_rational(
 					100320496496359801 as i64,
 					1000000000000000000 as i64
@@ -1849,22 +1852,33 @@ fn cdp_treasury_handles_honzon_surplus_correctly() {
 			assert_eq!(Currencies::free_balance(USD_CURRENCY, &CdpTreasury::account_id()), 1);
 			run_to_block(50);
 			// Debt exchange rate updates
-			assert!(
-				CdpEngine::debit_exchange_rate(RELAY_CHAIN_CURRENCY).unwrap() > Ratio::saturating_from_rational(1, 95)
+			assert_eq!(
+				CdpEngine::debit_exchange_rate(RELAY_CHAIN_CURRENCY),
+				// Around 1/10, increasing from last check
+				Some(Ratio::saturating_from_rational(
+					100803168231839846 as i64,
+					1000000000000000000 as i64
+				))
 			);
 
-			// closing loan will add to treasury debit_pool
+			// Closing loan will add to treasury debit_pool
 			assert_ok!(Honzon::close_loan_has_debit_by_dex(
 				Origin::signed(AccountId::from(ALICE)),
 				RELAY_CHAIN_CURRENCY,
 				5 * dollar(RELAY_CHAIN_CURRENCY),
 				None
 			));
-			assert!(CdpTreasury::get_debit_pool() > 50 * dollar(USD_CURRENCY));
+			// About 50.4 dollar(USD_CURRENCY)
+			assert_eq!(CdpTreasury::get_debit_pool(), 50401584115919);
+			assert_eq!(Loans::total_positions(RELAY_CHAIN_CURRENCY).debit, 0);
 			run_to_block(100);
-			// Debt exchange rate updates accordingly, increasing a lot due to more debit
-			assert!(
-				CdpEngine::debit_exchange_rate(RELAY_CHAIN_CURRENCY).unwrap() > Ratio::saturating_from_rational(1, 10)
-			);
+			// Debt exchange rate doesn't update due to no debit positions
+			assert_eq!(
+				CdpEngine::debit_exchange_rate(RELAY_CHAIN_CURRENCY),
+				Some(Ratio::saturating_from_rational(
+					100803168231839846 as i64,
+					1000000000000000000 as i64
+				))
+			)
 		});
 }
