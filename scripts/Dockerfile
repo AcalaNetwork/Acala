@@ -1,32 +1,5 @@
-FROM rust as planner
-WORKDIR app
-# We only pay the installation cost once,
-# it will be cached from the second build onwards
-RUN rustup default nightly-2021-06-17
-RUN cargo install cargo-chef
-COPY . .
-RUN cargo chef prepare  --recipe-path recipe.json
-
-# =============
-
-FROM rust as cacher
-WORKDIR app
-RUN rustup default nightly-2021-06-17 && \
-	rustup target add wasm32-unknown-unknown --toolchain nightly-2021-06-17
-RUN cargo install cargo-chef
-RUN apt-get update && \
-	apt-get dist-upgrade -y -o Dpkg::Options::="--force-confold" && \
-	apt-get install -y cmake pkg-config libssl-dev git clang libclang-dev
-
-COPY --from=planner /app/recipe.json recipe.json
-RUN cargo chef cook --recipe-path recipe.json --release
-
-# =============
-
 FROM rust as builder
 WORKDIR app
-
-COPY --from=cacher $CARGO_HOME $CARGO_HOME
 
 RUN rustup default nightly-2021-06-17 && \
 	rustup target add wasm32-unknown-unknown --toolchain nightly-2021-06-17
@@ -40,8 +13,6 @@ ENV GIT_COMMIT=$GIT_COMMIT
 ARG BUILD_ARGS
 
 COPY . .
-
-COPY --from=cacher /app/target target
 
 RUN cargo build --release $BUILD_ARGS
 

@@ -436,11 +436,25 @@ fn on_update_loan_works() {
 			(100, Default::default())
 		);
 
+		// share will be updated even if the adjustment is zero
+		OnUpdateLoan::<Runtime>::happened(&(ALICE::get(), BTC, 0, 200));
+		assert_eq!(
+			RewardsModule::pools(PoolId::Loans(BTC)),
+			PoolInfo {
+				total_shares: 200,
+				..Default::default()
+			}
+		);
+		assert_eq!(
+			RewardsModule::share_and_withdrawn_reward(PoolId::Loans(BTC), ALICE::get()),
+			(200, Default::default())
+		);
+
 		OnUpdateLoan::<Runtime>::happened(&(BOB::get(), BTC, 100, 500));
 		assert_eq!(
 			RewardsModule::pools(PoolId::Loans(BTC)),
 			PoolInfo {
-				total_shares: 700,
+				total_shares: 800,
 				..Default::default()
 			}
 		);
@@ -449,24 +463,24 @@ fn on_update_loan_works() {
 			(600, Default::default())
 		);
 
-		OnUpdateLoan::<Runtime>::happened(&(ALICE::get(), BTC, -50, 100));
+		OnUpdateLoan::<Runtime>::happened(&(ALICE::get(), BTC, -50, 200));
 		assert_eq!(
 			RewardsModule::pools(PoolId::Loans(BTC)),
 			PoolInfo {
-				total_shares: 650,
+				total_shares: 750,
 				..Default::default()
 			}
 		);
 		assert_eq!(
 			RewardsModule::share_and_withdrawn_reward(PoolId::Loans(BTC), ALICE::get()),
-			(50, Default::default())
+			(150, Default::default())
 		);
 
 		OnUpdateLoan::<Runtime>::happened(&(BOB::get(), BTC, -650, 600));
 		assert_eq!(
 			RewardsModule::pools(PoolId::Loans(BTC)),
 			PoolInfo {
-				total_shares: 50,
+				total_shares: 150,
 				..Default::default()
 			}
 		);

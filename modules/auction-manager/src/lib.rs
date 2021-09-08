@@ -367,7 +367,7 @@ impl<T: Config> Pallet<T> {
 
 		#[allow(clippy::while_let_on_iterator)]
 		while let Some((collateral_auction_id, _)) = iterator.next() {
-			if iteration_count > max_iterations {
+			if iteration_count >= max_iterations {
 				finished = false;
 				break;
 			}

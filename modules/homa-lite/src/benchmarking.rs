@@ -41,6 +41,8 @@ benchmarks! {
 
 	set_total_staking_currency {}: _(RawOrigin::Root, 1_000_000_000_000)
 
+	adjust_total_staking_currency {}: _(RawOrigin::Root, AmountOf::<T>::default())
+
 	set_minting_cap {
 	}: _(RawOrigin::Root, 1_000_000_000_000_000_000)
 
@@ -230,6 +232,12 @@ mod tests {
 	fn test_set_total_staking_currency() {
 		ExtBuilder::default().build().execute_with(|| {
 			assert_ok!(Pallet::<Runtime>::test_benchmark_set_total_staking_currency());
+		});
+	}
+	#[test]
+	fn test_adjust_total_staking_currency() {
+		ExtBuilder::default().build().execute_with(|| {
+			assert_ok!(Pallet::<Runtime>::test_benchmark_adjust_total_staking_currency());
 		});
 	}
 	#[test]
