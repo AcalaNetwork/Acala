@@ -36,8 +36,7 @@ use sp_runtime::{
 };
 use sp_std::{cmp::min, convert::From, ops::Mul, prelude::*};
 
-use xcm::opaque::v0::MultiLocation;
-use xcm::v0::prelude::*;
+use xcm::v0::{ExecuteXcm, MultiLocation, Xcm};
 
 pub use module::*;
 pub use weights::WeightInfo;
@@ -671,7 +670,7 @@ pub mod module {
 				T::RelaychainCallBuilder::balances_transfer_keep_alive(parachain_account, amount),
 			]);
 
-			Transact {
+			Xcm::Transact {
 				origin_type: xcm::v0::OriginKind::SovereignAccount,
 				require_weight_at_most: weight_limit,
 				call: xcm_message.encode().into(),

@@ -30,7 +30,7 @@ use primitives::{Amount, TokenSymbol};
 use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, AccountId32};
 
-use xcm::opaque::v0::{Error as XcmError, Junction, MultiAsset, MultiLocation, NetworkId, Outcome};
+use xcm::v0::{Error as XcmError, Junction, MultiAsset, NetworkId, Outcome};
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
@@ -96,15 +96,15 @@ impl XcmTransfer<AccountId, Balance, CurrencyId> for MockXcm {
 }
 
 impl ExecuteXcm<Call> for MockXcm {
-	fn execute_xcm(origin: MultiLocation, message: Xcm<Call>, weight_limit: Weight) -> Outcome {
+	fn execute_xcm(_origin: MultiLocation, _message: Xcm<Call>, _weight_limit: Weight) -> Outcome {
 		Outcome::Complete(0)
 	}
 
 	fn execute_xcm_in_credit(
 		origin: MultiLocation,
-		message: Xcm<Call>,
-		weight_limit: Weight,
-		weight_credit: Weight,
+		_message: Xcm<Call>,
+		_weight_limit: Weight,
+		_weight_credit: Weight,
 	) -> Outcome {
 		if origin == MOCK_XCM_DESTINATION {
 			Outcome::Complete(0)
