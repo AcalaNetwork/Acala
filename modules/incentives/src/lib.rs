@@ -335,7 +335,9 @@ pub mod module {
 		/// The dispatch origin of this call must be `UpdateOrigin`.
 		///
 		/// - `updates`: Vec<(PoolId, Vec<(RewardCurrencyId, FixedAmountPerPeriod)>)>
-		#[pallet::weight(<T as Config>::WeightInfo::update_incentive_rewards(updates.len() as u32))]
+		#[pallet::weight(<T as Config>::WeightInfo::update_incentive_rewards(
+			updates.iter().fold(0, |count, x| count + x.1.len()) as u32
+		))]
 		#[transactional]
 		pub fn update_incentive_rewards(
 			origin: OriginFor<T>,
@@ -404,7 +406,7 @@ pub mod module {
 		/// The dispatch origin of this call must be `UpdateOrigin`.
 		///
 		/// - `updates`: Vec<(PoolId, DecutionRate>)>
-		#[pallet::weight(<T as Config>::WeightInfo::update_payout_deduction_rates(updates.len() as u32))]
+		#[pallet::weight(<T as Config>::WeightInfo::update_claim_reward_deduction_rates(updates.len() as u32))]
 		#[transactional]
 		pub fn update_claim_reward_deduction_rates(
 			origin: OriginFor<T>,
