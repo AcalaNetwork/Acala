@@ -130,16 +130,16 @@ fn multicurrency_precompile_should_work() {
 		context.caller = erc20_address_not_exists();
 		let mut input = [0u8; 68];
 		// action
-		input[1 * 32..4 + 1 * 32].copy_from_slice(&Into::<u32>::into(multicurrency::Action::QuerySymbol).to_be_bytes());
+		input[0..4].copy_from_slice(&Into::<u32>::into(multicurrency::Action::QuerySymbol).to_be_bytes());
 		assert_noop!(
 			MultiCurrencyPrecompile::execute(&input, None, &context),
 			ExitError::Other("invalid currency id".into())
 		);
 
 		// 1.QueryName
-		let mut input = [0u8; 36];
+		let mut input = [0u8; 4];
 		// action
-		input[1 * 32..4 + 1 * 32].copy_from_slice(&Into::<u32>::into(multicurrency::Action::QueryName).to_be_bytes());
+		input[0..4].copy_from_slice(&Into::<u32>::into(multicurrency::Action::QueryName).to_be_bytes());
 
 		// Token
 		context.caller = aca_evm_address();
@@ -168,9 +168,9 @@ fn multicurrency_precompile_should_work() {
 		assert_eq!(resp.cost, 0);
 
 		// 2.QuerySymbol
-		let mut input = [0u8; 36];
+		let mut input = [0u8; 4];
 		// action
-		input[1 * 32..4 + 1 * 32].copy_from_slice(&Into::<u32>::into(multicurrency::Action::QuerySymbol).to_be_bytes());
+		input[0..4].copy_from_slice(&Into::<u32>::into(multicurrency::Action::QuerySymbol).to_be_bytes());
 
 		// Token
 		context.caller = aca_evm_address();
@@ -199,10 +199,9 @@ fn multicurrency_precompile_should_work() {
 		assert_eq!(resp.cost, 0);
 
 		// 3.QueryDecimals
-		let mut input = [0u8; 36];
+		let mut input = [0u8; 4];
 		// action
-		input[1 * 32..4 + 1 * 32]
-			.copy_from_slice(&Into::<u32>::into(multicurrency::Action::QueryDecimals).to_be_bytes());
+		input[0..4].copy_from_slice(&Into::<u32>::into(multicurrency::Action::QueryDecimals).to_be_bytes());
 
 		// Token
 		context.caller = aca_evm_address();
@@ -223,10 +222,9 @@ fn multicurrency_precompile_should_work() {
 		assert_eq!(resp.cost, 0);
 
 		// 4.QueryTotalIssuance
-		let mut input = [0u8; 36];
+		let mut input = [0u8; 4];
 		// action
-		input[1 * 32..4 + 1 * 32]
-			.copy_from_slice(&Into::<u32>::into(multicurrency::Action::QueryTotalIssuance).to_be_bytes());
+		input[0..4].copy_from_slice(&Into::<u32>::into(multicurrency::Action::QueryTotalIssuance).to_be_bytes());
 
 		// Token
 		context.caller = aca_evm_address();
@@ -246,12 +244,11 @@ fn multicurrency_precompile_should_work() {
 		assert_eq!(resp.cost, 0);
 
 		// 5.QueryBalance
-		let mut input = [0u8; 4 + 2 * 32];
+		let mut input = [0u8; 36];
 		// action
-		input[1 * 32..4 + 1 * 32]
-			.copy_from_slice(&Into::<u32>::into(multicurrency::Action::QueryBalance).to_be_bytes());
+		input[0..4].copy_from_slice(&Into::<u32>::into(multicurrency::Action::QueryBalance).to_be_bytes());
 		// from
-		U256::from(alice_evm_addr().as_bytes()).to_big_endian(&mut input[4 + 1 * 32..4 + 2 * 32]);
+		U256::from(alice_evm_addr().as_bytes()).to_big_endian(&mut input[4 + 0 * 32..4 + 1 * 32]);
 
 		// Token
 		context.caller = aca_evm_address();
@@ -271,15 +268,15 @@ fn multicurrency_precompile_should_work() {
 		assert_eq!(resp.cost, 0);
 
 		// 6.Transfer
-		let mut input = [0u8; 4 + 4 * 32];
+		let mut input = [0u8; 4 + 3 * 32];
 		// action
-		input[1 * 32..4 + 1 * 32].copy_from_slice(&Into::<u32>::into(multicurrency::Action::Transfer).to_be_bytes());
+		input[0..4].copy_from_slice(&Into::<u32>::into(multicurrency::Action::Transfer).to_be_bytes());
 		// from
-		U256::from(alice_evm_addr().as_bytes()).to_big_endian(&mut input[4 + 1 * 32..4 + 2 * 32]);
+		U256::from(alice_evm_addr().as_bytes()).to_big_endian(&mut input[4 + 0 * 32..4 + 1 * 32]);
 		// to
-		U256::from(bob_evm_addr().as_bytes()).to_big_endian(&mut input[4 + 2 * 32..4 + 3 * 32]);
+		U256::from(bob_evm_addr().as_bytes()).to_big_endian(&mut input[4 + 1 * 32..4 + 2 * 32]);
 		// amount
-		U256::from(1).to_big_endian(&mut input[4 + 3 * 32..4 + 4 * 32]);
+		U256::from(1).to_big_endian(&mut input[4 + 2 * 32..4 + 3 * 32]);
 		let from_balance = Balances::free_balance(alice());
 		let to_balance = Balances::free_balance(bob());
 
@@ -314,11 +311,11 @@ fn oracle_precompile_should_work() {
 		let price = Price::from(30_000);
 
 		// action + currency_id
-		let mut input = [0u8; 68];
+		let mut input = [0u8; 36];
 		// action
-		input[1 * 32..4 + 1 * 32].copy_from_slice(&Into::<u32>::into(oracle::Action::GetPrice).to_be_bytes());
+		input[0..4].copy_from_slice(&Into::<u32>::into(oracle::Action::GetPrice).to_be_bytes());
 		// RENBTC
-		U256::from_big_endian(renbtc_evm_address().as_bytes()).to_big_endian(&mut input[4 + 1 * 32..4 + 2 * 32]);
+		U256::from_big_endian(renbtc_evm_address().as_bytes()).to_big_endian(&mut input[4..4 + 32]);
 
 		// no price yet
 		let resp = OraclePrecompile::execute(&input, None, &context).unwrap();
@@ -364,7 +361,7 @@ fn oracle_precompile_should_handle_invalid_input() {
 
 		assert_noop!(
 			OraclePrecompile::execute(
-				&[0u8; 32],
+				&[0u8; 3],
 				None,
 				&Context {
 					address: Default::default(),
@@ -377,7 +374,7 @@ fn oracle_precompile_should_handle_invalid_input() {
 
 		assert_noop!(
 			OraclePrecompile::execute(
-				&[1u8; 64],
+				&[1u8; 32],
 				None,
 				&Context {
 					address: Default::default(),
@@ -399,26 +396,24 @@ fn schedule_call_precompile_should_work() {
 			apparent_value: Default::default(),
 		};
 
-		let mut input = [0u8; 12 * 32];
-		// array size
-		U256::default().to_big_endian(&mut input[0 * 32..1 * 32]);
+		let mut input = [0u8; 11 * 32];
 		// action
-		input[1 * 32..4 + 1 * 32].copy_from_slice(&Into::<u32>::into(schedule_call::Action::Schedule).to_be_bytes());
+		input[0..4].copy_from_slice(&Into::<u32>::into(schedule_call::Action::Schedule).to_be_bytes());
 		// from
-		U256::from(alice_evm_addr().as_bytes()).to_big_endian(&mut input[4 + 1 * 32..4 + 2 * 32]);
+		U256::from(alice_evm_addr().as_bytes()).to_big_endian(&mut input[4 + 0 * 32..4 + 1 * 32]);
 		// target
-		U256::from(aca_evm_address().as_bytes()).to_big_endian(&mut input[4 + 2 * 32..4 + 3 * 32]);
+		U256::from(aca_evm_address().as_bytes()).to_big_endian(&mut input[4 + 1 * 32..4 + 2 * 32]);
 		// value
-		U256::from(0).to_big_endian(&mut input[4 + 3 * 32..4 + 4 * 32]);
+		U256::from(0).to_big_endian(&mut input[4 + 2 * 32..4 + 3 * 32]);
 		// gas_limit
-		U256::from(300000).to_big_endian(&mut input[4 + 4 * 32..4 + 5 * 32]);
+		U256::from(300000).to_big_endian(&mut input[4 + 3 * 32..4 + 4 * 32]);
 		// storage_limit
-		U256::from(100).to_big_endian(&mut input[4 + 5 * 32..4 + 6 * 32]);
+		U256::from(100).to_big_endian(&mut input[4 + 4 * 32..4 + 5 * 32]);
 		// min_delay
-		U256::from(1).to_big_endian(&mut input[4 + 6 * 32..4 + 7 * 32]);
+		U256::from(1).to_big_endian(&mut input[4 + 5 * 32..4 + 6 * 32]);
 		// skip offset
 		// input_len
-		U256::from(4 + 32 + 32).to_big_endian(&mut input[4 + 8 * 32..4 + 9 * 32]);
+		U256::from(4 + 32 + 32).to_big_endian(&mut input[4 + 7 * 32..4 + 8 * 32]);
 
 		// input_data
 		let mut transfer_to_bob = [0u8; 68];
@@ -429,9 +424,9 @@ fn schedule_call_precompile_should_work() {
 		// amount
 		U256::from(1000).to_big_endian(&mut transfer_to_bob[36..68]);
 
-		U256::from(&transfer_to_bob[0..32]).to_big_endian(&mut input[4 + 9 * 32..4 + 10 * 32]);
-		U256::from(&transfer_to_bob[32..64]).to_big_endian(&mut input[4 + 10 * 32..4 + 11 * 32]);
-		input[4 + 11 * 32..4 + 11 * 32 + 4].copy_from_slice(&transfer_to_bob[64..68]);
+		U256::from(&transfer_to_bob[0..32]).to_big_endian(&mut input[4 + 8 * 32..4 + 9 * 32]);
+		U256::from(&transfer_to_bob[32..64]).to_big_endian(&mut input[4 + 9 * 32..4 + 10 * 32]);
+		input[4 + 10 * 32..4 + 10 * 32 + 4].copy_from_slice(&transfer_to_bob[64..68]);
 
 		let resp = ScheduleCallPrecompile::execute(&input, None, &context).unwrap();
 		assert_eq!(resp.exit_status, ExitSucceed::Returned);
@@ -441,19 +436,16 @@ fn schedule_call_precompile_should_work() {
 
 		// cancel schedule
 		let task_id = get_task_id(resp.output);
-		let mut cancel_input = [0u8; 6 * 32];
-		// array size
-		U256::default().to_big_endian(&mut cancel_input[0 * 32..1 * 32]);
+		let mut cancel_input = [0u8; 5 * 32];
 		// action
-		cancel_input[1 * 32..4 + 1 * 32]
-			.copy_from_slice(&Into::<u32>::into(schedule_call::Action::Cancel).to_be_bytes());
+		cancel_input[0..4].copy_from_slice(&Into::<u32>::into(schedule_call::Action::Cancel).to_be_bytes());
 		// from
-		U256::from(alice_evm_addr().as_bytes()).to_big_endian(&mut cancel_input[4 + 1 * 32..4 + 2 * 32]);
+		U256::from(alice_evm_addr().as_bytes()).to_big_endian(&mut cancel_input[4 + 0 * 32..4 + 1 * 32]);
 		// skip offset
 		// task_id_len
-		U256::from(task_id.len()).to_big_endian(&mut cancel_input[4 + 3 * 32..4 + 4 * 32]);
+		U256::from(task_id.len()).to_big_endian(&mut cancel_input[4 + 2 * 32..4 + 3 * 32]);
 		// task_id
-		cancel_input[4 + 4 * 32..4 + 4 * 32 + task_id.len()].copy_from_slice(&task_id[..]);
+		cancel_input[4 + 3 * 32..4 + 3 * 32 + task_id.len()].copy_from_slice(&task_id[..]);
 
 		let resp = ScheduleCallPrecompile::execute(&cancel_input, None, &context).unwrap();
 		assert_eq!(resp.exit_status, ExitSucceed::Returned);
@@ -469,21 +461,18 @@ fn schedule_call_precompile_should_work() {
 
 		// reschedule call
 		let task_id = get_task_id(resp.output);
-		let mut reschedule_input = [0u8; 7 * 32];
-		// array size
-		U256::default().to_big_endian(&mut input[0 * 32..1 * 32]);
+		let mut reschedule_input = [0u8; 6 * 32];
 		// action
-		reschedule_input[1 * 32..4 + 1 * 32]
-			.copy_from_slice(&Into::<u32>::into(schedule_call::Action::Reschedule).to_be_bytes());
+		reschedule_input[0..4].copy_from_slice(&Into::<u32>::into(schedule_call::Action::Reschedule).to_be_bytes());
 		// from
-		U256::from(alice_evm_addr().as_bytes()).to_big_endian(&mut reschedule_input[4 + 1 * 32..4 + 2 * 32]);
+		U256::from(alice_evm_addr().as_bytes()).to_big_endian(&mut reschedule_input[4 + 0 * 32..4 + 1 * 32]);
 		// min_delay
-		U256::from(2).to_big_endian(&mut reschedule_input[4 + 2 * 32..4 + 3 * 32]);
+		U256::from(2).to_big_endian(&mut reschedule_input[4 + 1 * 32..4 + 2 * 32]);
 		// skip offset
 		// task_id_len
-		U256::from(task_id.len()).to_big_endian(&mut reschedule_input[4 + 4 * 32..4 + 5 * 32]);
+		U256::from(task_id.len()).to_big_endian(&mut reschedule_input[4 + 3 * 32..4 + 4 * 32]);
 		// task_id
-		reschedule_input[4 + 5 * 32..4 + 5 * 32 + task_id.len()].copy_from_slice(&task_id[..]);
+		reschedule_input[4 + 4 * 32..4 + 4 * 32 + task_id.len()].copy_from_slice(&task_id[..]);
 
 		let resp = ScheduleCallPrecompile::execute(&reschedule_input, None, &context).unwrap();
 		assert_eq!(resp.exit_status, ExitSucceed::Returned);
@@ -509,7 +498,7 @@ fn schedule_call_precompile_should_work() {
 		run_to_block(5);
 		#[cfg(not(feature = "with-ethereum-compatibility"))]
 		{
-			assert_eq!(Balances::free_balance(from_account.clone()), 999999973085);
+			assert_eq!(Balances::free_balance(from_account.clone()), 999999972553);
 			assert_eq!(Balances::reserved_balance(from_account), 0);
 			assert_eq!(Balances::free_balance(to_account), 1000000001000);
 		}
@@ -532,25 +521,23 @@ fn schedule_call_precompile_should_handle_invalid_input() {
 		};
 
 		let mut input = [0u8; 10 * 32];
-		// array size
-		U256::default().to_big_endian(&mut input[0 * 32..1 * 32]);
 		// action
-		input[1 * 32..4 + 1 * 32].copy_from_slice(&Into::<u32>::into(schedule_call::Action::Schedule).to_be_bytes());
+		input[0..4].copy_from_slice(&Into::<u32>::into(schedule_call::Action::Schedule).to_be_bytes());
 		// from
-		U256::from(alice_evm_addr().as_bytes()).to_big_endian(&mut input[4 + 1 * 32..4 + 2 * 32]);
+		U256::from(alice_evm_addr().as_bytes()).to_big_endian(&mut input[4 + 0 * 32..4 + 1 * 32]);
 		// target
-		U256::from(aca_evm_address().as_bytes()).to_big_endian(&mut input[4 + 2 * 32..4 + 3 * 32]);
+		U256::from(aca_evm_address().as_bytes()).to_big_endian(&mut input[4 + 1 * 32..4 + 2 * 32]);
 		// value
-		U256::from(0).to_big_endian(&mut input[4 + 3 * 32..4 + 4 * 32]);
+		U256::from(0).to_big_endian(&mut input[4 + 2 * 32..4 + 3 * 32]);
 		// gas_limit
-		U256::from(300000).to_big_endian(&mut input[4 + 4 * 32..4 + 5 * 32]);
+		U256::from(300000).to_big_endian(&mut input[4 + 3 * 32..4 + 4 * 32]);
 		// storage_limit
-		U256::from(100).to_big_endian(&mut input[4 + 5 * 32..4 + 6 * 32]);
+		U256::from(100).to_big_endian(&mut input[4 + 4 * 32..4 + 5 * 32]);
 		// min_delay
-		U256::from(1).to_big_endian(&mut input[4 + 6 * 32..4 + 7 * 32]);
+		U256::from(1).to_big_endian(&mut input[4 + 5 * 32..4 + 6 * 32]);
 		// skip offset
 		// input_len
-		U256::from(1).to_big_endian(&mut input[4 + 8 * 32..4 + 9 * 32]);
+		U256::from(1).to_big_endian(&mut input[4 + 7 * 32..4 + 8 * 32]);
 
 		// input_data = 0x12
 		input[4 + 9 * 32] = hex!("12")[0];
@@ -576,19 +563,16 @@ fn schedule_call_precompile_should_handle_invalid_input() {
 
 		// cancel schedule
 		let task_id = get_task_id(resp.output);
-		let mut cancel_input = [0u8; 7 * 32];
-		// array size
-		U256::default().to_big_endian(&mut input[0 * 32..1 * 32]);
+		let mut cancel_input = [0u8; 6 * 32];
 		// action
-		cancel_input[1 * 32..4 + 1 * 32]
-			.copy_from_slice(&Into::<u32>::into(schedule_call::Action::Cancel).to_be_bytes());
+		cancel_input[0..4].copy_from_slice(&Into::<u32>::into(schedule_call::Action::Cancel).to_be_bytes());
 		// from
-		U256::from(bob_evm_addr().as_bytes()).to_big_endian(&mut cancel_input[4 + 1 * 32..4 + 2 * 32]);
+		U256::from(bob_evm_addr().as_bytes()).to_big_endian(&mut cancel_input[4 + 0 * 32..4 + 1 * 32]);
 		// skip offset
 		// task_id_len
-		U256::from(task_id.len()).to_big_endian(&mut cancel_input[4 + 3 * 32..4 + 4 * 32]);
+		U256::from(task_id.len()).to_big_endian(&mut cancel_input[4 + 2 * 32..4 + 3 * 32]);
 		// task_id
-		cancel_input[4 + 4 * 32..4 + 4 * 32 + task_id.len()].copy_from_slice(&task_id[..]);
+		cancel_input[4 + 3 * 32..4 + 3 * 32 + task_id.len()].copy_from_slice(&task_id[..]);
 
 		assert_eq!(
 			ScheduleCallPrecompile::execute(&cancel_input, None, &context),
@@ -598,7 +582,7 @@ fn schedule_call_precompile_should_handle_invalid_input() {
 		run_to_block(4);
 		#[cfg(not(feature = "with-ethereum-compatibility"))]
 		{
-			assert_eq!(Balances::free_balance(from_account.clone()), 999999978914);
+			assert_eq!(Balances::free_balance(from_account.clone()), 999999978926);
 			assert_eq!(Balances::reserved_balance(from_account), 0);
 			assert_eq!(Balances::free_balance(to_account), 1000000000000);
 		}
@@ -633,16 +617,14 @@ fn dex_precompile_get_liquidity_should_work() {
 			apparent_value: Default::default(),
 		};
 
-		// array_size + action + currency_id_a + currency_id_b
-		let mut input = [0u8; 4 * 32];
-		// array size
-		U256::default().to_big_endian(&mut input[0 * 32..1 * 32]);
+		// action + currency_id_a + currency_id_b
+		let mut input = [0u8; 3 * 32];
 		// action
-		input[1 * 32..4 + 1 * 32].copy_from_slice(&Into::<u32>::into(dex::Action::GetLiquidityPool).to_be_bytes());
+		input[0..4].copy_from_slice(&Into::<u32>::into(dex::Action::GetLiquidityPool).to_be_bytes());
 		// RENBTC
-		U256::from_big_endian(renbtc_evm_address().as_bytes()).to_big_endian(&mut input[4 + 1 * 32..4 + 2 * 32]);
+		U256::from_big_endian(renbtc_evm_address().as_bytes()).to_big_endian(&mut input[4 + 0 * 32..4 + 1 * 32]);
 		// AUSD
-		U256::from_big_endian(ausd_evm_address().as_bytes()).to_big_endian(&mut input[4 + 2 * 32..4 + 3 * 32]);
+		U256::from_big_endian(ausd_evm_address().as_bytes()).to_big_endian(&mut input[4 + 1 * 32..4 + 2 * 32]);
 
 		let mut expected_output = [0u8; 64];
 		U256::from(1_000).to_big_endian(&mut expected_output[..32]);
@@ -677,17 +659,14 @@ fn dex_precompile_get_liquidity_token_address_should_work() {
 			apparent_value: Default::default(),
 		};
 
-		// array_size + action + currency_id_a + currency_id_b
-		let mut input = [0u8; 5 * 32];
-		// array size
-		U256::default().to_big_endian(&mut input[0 * 32..1 * 32]);
+		// action + currency_id_a + currency_id_b
+		let mut input = [0u8; 4 * 32];
 		// action
-		input[1 * 32..4 + 1 * 32]
-			.copy_from_slice(&Into::<u32>::into(dex::Action::GetLiquidityTokenAddress).to_be_bytes());
+		input[0..4].copy_from_slice(&Into::<u32>::into(dex::Action::GetLiquidityTokenAddress).to_be_bytes());
 		// RENBTC
-		U256::from_big_endian(renbtc_evm_address().as_bytes()).to_big_endian(&mut input[4 + 1 * 32..4 + 2 * 32]);
+		U256::from_big_endian(renbtc_evm_address().as_bytes()).to_big_endian(&mut input[4 + 0 * 32..4 + 1 * 32]);
 		// AUSD
-		U256::from_big_endian(ausd_evm_address().as_bytes()).to_big_endian(&mut input[4 + 2 * 32..4 + 3 * 32]);
+		U256::from_big_endian(ausd_evm_address().as_bytes()).to_big_endian(&mut input[4 + 1 * 32..4 + 2 * 32]);
 
 		let mut expected_output = [0u8; 32];
 		let address = H160::from_str("0x0000000000000000000000010000000100000014").unwrap();
@@ -731,22 +710,20 @@ fn dex_precompile_get_swap_target_amount_should_work() {
 			apparent_value: Default::default(),
 		};
 
-		// array_size + action + path_len + currency_id_a + currency_id_b +
+		// action + path_len + currency_id_a + currency_id_b +
 		// supply_amount
-		let mut input = [0u8; 7 * 32];
-		// array size
-		U256::default().to_big_endian(&mut input[0 * 32..1 * 32]);
+		let mut input = [0u8; 6 * 32];
 		// action
-		input[1 * 32..4 + 1 * 32].copy_from_slice(&Into::<u32>::into(dex::Action::GetSwapTargetAmount).to_be_bytes());
+		input[0..4].copy_from_slice(&Into::<u32>::into(dex::Action::GetSwapTargetAmount).to_be_bytes());
 		// skip offset
 		// supply_amount
-		U256::from(1).to_big_endian(&mut input[4 + 2 * 32..4 + 3 * 32]);
+		U256::from(1).to_big_endian(&mut input[4 + 1 * 32..4 + 2 * 32]);
 		// path_len
-		U256::from(2).to_big_endian(&mut input[4 + 3 * 32..4 + 4 * 32]);
+		U256::from(2).to_big_endian(&mut input[4 + 2 * 32..4 + 3 * 32]);
 		// RENBTC
-		U256::from_big_endian(renbtc_evm_address().as_bytes()).to_big_endian(&mut input[4 + 4 * 32..4 + 5 * 32]);
+		U256::from_big_endian(renbtc_evm_address().as_bytes()).to_big_endian(&mut input[4 + 3 * 32..4 + 4 * 32]);
 		// AUSD
-		U256::from_big_endian(ausd_evm_address().as_bytes()).to_big_endian(&mut input[4 + 5 * 32..4 + 6 * 32]);
+		U256::from_big_endian(ausd_evm_address().as_bytes()).to_big_endian(&mut input[4 + 4 * 32..4 + 5 * 32]);
 
 		let mut expected_output = [0u8; 32];
 		U256::from(989).to_big_endian(&mut expected_output[..32]);
@@ -780,22 +757,20 @@ fn dex_precompile_get_swap_supply_amount_should_work() {
 			apparent_value: Default::default(),
 		};
 
-		// array_size + action + path_len + currency_id_a + currency_id_b +
+		// action + path_len + currency_id_a + currency_id_b +
 		// target_amount
-		let mut input = [0u8; 7 * 32];
-		// array size
-		U256::default().to_big_endian(&mut input[0 * 32..1 * 32]);
+		let mut input = [0u8; 6 * 32];
 		// action
-		input[1 * 32..4 + 1 * 32].copy_from_slice(&Into::<u32>::into(dex::Action::GetSwapSupplyAmount).to_be_bytes());
+		input[0..4].copy_from_slice(&Into::<u32>::into(dex::Action::GetSwapSupplyAmount).to_be_bytes());
 		// skip offset
 		// target_amount
-		U256::from(1).to_big_endian(&mut input[4 + 2 * 32..4 + 3 * 32]);
+		U256::from(1).to_big_endian(&mut input[4 + 1 * 32..4 + 2 * 32]);
 		// path_len
-		U256::from(2).to_big_endian(&mut input[4 + 3 * 32..4 + 4 * 32]);
+		U256::from(2).to_big_endian(&mut input[4 + 2 * 32..4 + 3 * 32]);
 		// RENBTC
-		U256::from_big_endian(renbtc_evm_address().as_bytes()).to_big_endian(&mut input[4 + 4 * 32..4 + 5 * 32]);
+		U256::from_big_endian(renbtc_evm_address().as_bytes()).to_big_endian(&mut input[4 + 3 * 32..4 + 4 * 32]);
 		// AUSD
-		U256::from_big_endian(ausd_evm_address().as_bytes()).to_big_endian(&mut input[4 + 5 * 32..4 + 6 * 32]);
+		U256::from_big_endian(ausd_evm_address().as_bytes()).to_big_endian(&mut input[4 + 4 * 32..4 + 5 * 32]);
 
 		let mut expected_output = [0u8; 32];
 		U256::from(1).to_big_endian(&mut expected_output[..32]);
@@ -829,26 +804,24 @@ fn dex_precompile_swap_with_exact_supply_should_work() {
 			apparent_value: Default::default(),
 		};
 
-		// array_size + action + who + path_len + currency_id_a + currency_id_b +
+		// action + who + path_len + currency_id_a + currency_id_b +
 		// supply_amount + min_target_amount
-		let mut input = [0u8; 9 * 32];
-		// array size
-		U256::default().to_big_endian(&mut input[0 * 32..1 * 32]);
+		let mut input = [0u8; 8 * 32];
 		// action
-		input[1 * 32..4 + 1 * 32].copy_from_slice(&Into::<u32>::into(dex::Action::SwapWithExactSupply).to_be_bytes());
+		input[0..4].copy_from_slice(&Into::<u32>::into(dex::Action::SwapWithExactSupply).to_be_bytes());
 		// who
-		U256::from(alice_evm_addr().as_bytes()).to_big_endian(&mut input[4 + 1 * 32..4 + 2 * 32]);
+		U256::from(alice_evm_addr().as_bytes()).to_big_endian(&mut input[4 + 0 * 32..4 + 1 * 32]);
 		// skip offset
 		// supply_amount
-		U256::from(1).to_big_endian(&mut input[4 + 3 * 32..4 + 4 * 32]);
+		U256::from(1).to_big_endian(&mut input[4 + 2 * 32..4 + 3 * 32]);
 		// min_target_amount
-		U256::from(0).to_big_endian(&mut input[4 + 4 * 32..4 + 5 * 32]);
+		U256::from(0).to_big_endian(&mut input[4 + 3 * 32..4 + 4 * 32]);
 		// path_len
-		U256::from(2).to_big_endian(&mut input[4 + 5 * 32..4 + 6 * 32]);
+		U256::from(2).to_big_endian(&mut input[4 + 4 * 32..4 + 5 * 32]);
 		// RENBTC
-		U256::from_big_endian(renbtc_evm_address().as_bytes()).to_big_endian(&mut input[4 + 6 * 32..4 + 7 * 32]);
+		U256::from_big_endian(renbtc_evm_address().as_bytes()).to_big_endian(&mut input[4 + 5 * 32..4 + 6 * 32]);
 		// AUSD
-		U256::from_big_endian(ausd_evm_address().as_bytes()).to_big_endian(&mut input[4 + 7 * 32..4 + 8 * 32]);
+		U256::from_big_endian(ausd_evm_address().as_bytes()).to_big_endian(&mut input[4 + 6 * 32..4 + 7 * 32]);
 
 		let mut expected_output = [0u8; 32];
 		U256::from(989).to_big_endian(&mut expected_output[..32]);
@@ -882,26 +855,24 @@ fn dex_precompile_swap_with_exact_target_should_work() {
 			apparent_value: Default::default(),
 		};
 
-		// array_size + action + who + path_len + currency_id_a + currency_id_b +
+		// action + who + path_len + currency_id_a + currency_id_b +
 		// target_amount + max_supply_amount
-		let mut input = [0u8; 9 * 32];
-		// array size
-		U256::default().to_big_endian(&mut input[0 * 32..1 * 32]);
+		let mut input = [0u8; 8 * 32];
 		// action
-		input[1 * 32..4 + 1 * 32].copy_from_slice(&Into::<u32>::into(dex::Action::SwapWithExactTarget).to_be_bytes());
+		input[0..4].copy_from_slice(&Into::<u32>::into(dex::Action::SwapWithExactTarget).to_be_bytes());
 		// who
-		U256::from(alice_evm_addr().as_bytes()).to_big_endian(&mut input[4 + 1 * 32..4 + 2 * 32]);
+		U256::from(alice_evm_addr().as_bytes()).to_big_endian(&mut input[4 + 0 * 32..4 + 1 * 32]);
 		// skip offset
 		// target_amount
-		U256::from(1).to_big_endian(&mut input[4 + 3 * 32..4 + 4 * 32]);
+		U256::from(1).to_big_endian(&mut input[4 + 2 * 32..4 + 3 * 32]);
 		// max_supply_amount
-		U256::from(1).to_big_endian(&mut input[4 + 4 * 32..4 + 5 * 32]);
+		U256::from(1).to_big_endian(&mut input[4 + 3 * 32..4 + 4 * 32]);
 		// path_len
-		U256::from(2).to_big_endian(&mut input[4 + 5 * 32..4 + 6 * 32]);
+		U256::from(2).to_big_endian(&mut input[4 + 4 * 32..4 + 5 * 32]);
 		// RENBTC
-		U256::from_big_endian(renbtc_evm_address().as_bytes()).to_big_endian(&mut input[4 + 6 * 32..4 + 7 * 32]);
+		U256::from_big_endian(renbtc_evm_address().as_bytes()).to_big_endian(&mut input[4 + 5 * 32..4 + 6 * 32]);
 		// AUSD
-		U256::from_big_endian(ausd_evm_address().as_bytes()).to_big_endian(&mut input[4 + 7 * 32..4 + 8 * 32]);
+		U256::from_big_endian(ausd_evm_address().as_bytes()).to_big_endian(&mut input[4 + 6 * 32..4 + 7 * 32]);
 
 		let mut expected_output = [0u8; 32];
 		U256::from(1).to_big_endian(&mut expected_output[..32]);

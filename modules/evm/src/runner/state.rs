@@ -18,10 +18,11 @@
 
 // Synchronize with https://github.com/rust-blockchain/evm/blob/master/src/executor/stack/mod.rs
 
-use crate::{runner::StackState, StorageMeter};
+use crate::{encode_revert_message, runner::StackState, StorageMeter};
 use core::{cmp::min, convert::Infallible};
 use evm::{
-	Capture, Config, Context, CreateScheme, ExitError, ExitReason, ExitSucceed, Opcode, Runtime, Stack, Transfer,
+	Capture, Config, Context, CreateScheme, ExitError, ExitReason, ExitRevert, ExitSucceed, Opcode, Runtime, Stack,
+	Transfer,
 };
 use evm_gasometer::{self as gasometer, Gasometer};
 use evm_runtime::Handler;
@@ -744,8 +745,9 @@ impl<'config, S: StackState<'config>> StackExecutor<'config, S> {
 					return Capture::Exit((ExitReason::Succeed(exit_status), output));
 				}
 				Err(e) => {
-					let _ = self.exit_substate(StackExitKind::Failed);
-					return Capture::Exit((ExitReason::Error(e), Vec::new()));
+					// return the error to contract
+					let _ = self.exit_substate(StackExitKind::Reverted);
+					return Capture::Exit((ExitReason::Revert(ExitRevert::Reverted), encode_revert_message(&e)));
 				}
 			}
 		}

@@ -32,7 +32,6 @@ use module_support::{AddressMapping as AddressMappingT, CurrencyIdMapping as Cur
 use primitives::{Amount, Balance, CurrencyId};
 use sp_core::H160;
 
-pub const INPUT_BYTES_LENGTH: usize = 32;
 pub const FUNCTION_SELECTOR_LENGTH: usize = 4;
 pub const PER_PARAM_BYTES: usize = 32;
 pub const ACTION_INDEX: usize = 0;
@@ -90,15 +89,13 @@ where
 	type AccountId = AccountId;
 
 	fn nth_param(&self, n: usize, len: Option<usize>) -> Result<&[u8], Self::Error> {
-		// Solidity dynamic bytes will add the size to the front of the input,
-		// pre-compile needs to deal with the INPUT_BYTES_LENGTH `size`.
 		let (start, end) = if n == 0 {
 			// ACTION_INDEX
-			let start = INPUT_BYTES_LENGTH;
+			let start = 0;
 			let end = start + FUNCTION_SELECTOR_LENGTH;
 			(start, end)
 		} else {
-			let start = INPUT_BYTES_LENGTH + FUNCTION_SELECTOR_LENGTH + PER_PARAM_BYTES * (n - 1);
+			let start = FUNCTION_SELECTOR_LENGTH + PER_PARAM_BYTES * (n - 1);
 			let end = start + len.unwrap_or(PER_PARAM_BYTES);
 			(start, end)
 		};
@@ -252,28 +249,28 @@ mod tests {
 
 	#[test]
 	fn nth_param_works() {
-		let input = TestInput::new(&[1u8; 68][..]);
+		let input = TestInput::new(&[1u8; 36][..]);
 		assert_ok!(input.nth_param(1, None), &[1u8; 32][..]);
 		assert_err!(input.nth_param(2, None), ExitError::Other("invalid input".into()));
 	}
 
 	#[test]
 	fn action_works() {
-		let input = TestInput::new(&[0u8; 68][..]);
+		let input = TestInput::new(&[0u8; 36][..]);
 		assert_ok!(input.action(), Action::QueryBalance);
 
-		let mut raw_input = [0u8; 68];
-		raw_input[35] = 1;
+		let mut raw_input = [0u8; 36];
+		raw_input[3] = 1;
 		let input = TestInput::new(&raw_input[..]);
 		assert_ok!(input.action(), Action::Transfer);
 
-		let mut raw_input = [0u8; 68];
-		raw_input[35] = 2;
+		let mut raw_input = [0u8; 36];
+		raw_input[3] = 2;
 		let input = TestInput::new(&raw_input[..]);
 		assert_ok!(input.action(), Action::Unknown);
 
-		let mut raw_input = [0u8; 68];
-		raw_input[35] = 3;
+		let mut raw_input = [0u8; 36];
+		raw_input[3] = 3;
 		let input = TestInput::new(&raw_input[..]);
 		assert_eq!(input.action(), Err(ExitError::Other("invalid action".into())));
 	}
@@ -284,8 +281,8 @@ mod tests {
 		address[19] = 1;
 		let account_id = MockAddressMapping::get_account_id(&address.into());
 
-		let mut raw_input = [0u8; 68];
-		raw_input[67] = 1;
+		let mut raw_input = [0u8; 36];
+		raw_input[35] = 1;
 		let input = TestInput::new(&raw_input[..]);
 		assert_ok!(input.account_id_at(1), account_id);
 	}
@@ -296,8 +293,8 @@ mod tests {
 		address[19] = 1;
 		let evm_address = H160::from_slice(&address);
 
-		let mut raw_input = [0u8; 68];
-		raw_input[67] = 1;
+		let mut raw_input = [0u8; 36];
+		raw_input[35] = 1;
 		let input = TestInput::new(&raw_input[..]);
 		assert_ok!(input.evm_address_at(1), evm_address);
 	}
@@ -307,12 +304,12 @@ mod tests {
 		let input = TestInput::new(&[0u8; 100][..]);
 		assert_err!(input.currency_id_at(1), ExitError::Other("invalid currency id".into()));
 
-		let mut raw_input = [0u8; 68];
-		raw_input[64] = 1;
+		let mut raw_input = [0u8; 36];
+		raw_input[32] = 1;
 		let input = TestInput::new(&raw_input[..]);
 		assert_ok!(input.currency_id_at(1), CurrencyId::Token(TokenSymbol::ACA));
 
-		raw_input[67] = 1;
+		raw_input[35] = 1;
 		let input = TestInput::new(&raw_input[..]);
 		assert_ok!(input.currency_id_at(1), CurrencyId::Token(TokenSymbol::AUSD));
 	}
@@ -322,8 +319,8 @@ mod tests {
 		let balance = 127u128;
 		let balance_bytes = balance.to_be_bytes();
 
-		let mut raw_input = [0u8; 68];
-		raw_input[52..].copy_from_slice(&balance_bytes);
+		let mut raw_input = [0u8; 36];
+		raw_input[20..].copy_from_slice(&balance_bytes);
 		let input = TestInput::new(&raw_input[..]);
 		assert_ok!(input.balance_at(1), balance);
 	}
@@ -333,8 +330,8 @@ mod tests {
 		let amount = 127i128;
 		let amount_bytes = amount.to_be_bytes();
 
-		let mut raw_input = [0u8; 68];
-		raw_input[52..].copy_from_slice(&amount_bytes);
+		let mut raw_input = [0u8; 36];
+		raw_input[20..].copy_from_slice(&amount_bytes);
 		let input = TestInput::new(&raw_input[..]);
 		assert_ok!(input.amount_at(1), amount);
 	}
@@ -344,8 +341,8 @@ mod tests {
 		let u64_num = 127u64;
 		let u64_bytes = u64_num.to_be_bytes();
 
-		let mut raw_input = [0u8; 68];
-		raw_input[60..].copy_from_slice(&u64_bytes);
+		let mut raw_input = [0u8; 36];
+		raw_input[28..].copy_from_slice(&u64_bytes);
 		let input = TestInput::new(&raw_input[..]);
 		assert_ok!(input.u64_at(1), u64_num);
 	}

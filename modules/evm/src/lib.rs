@@ -70,7 +70,7 @@ use sp_runtime::{
 	transaction_validity::TransactionValidityError,
 	Either, TransactionOutcome,
 };
-use sp_std::{collections::btree_map::BTreeMap, convert::TryInto, marker::PhantomData, prelude::*, rc::Rc};
+use sp_std::{collections::btree_map::BTreeMap, convert::TryInto, fmt::Write, marker::PhantomData, prelude::*, rc::Rc};
 
 pub mod precompiles;
 pub mod runner;
@@ -1391,6 +1391,21 @@ impl<T: Config> OnKilledAccount<T::AccountId> for CallKillAccount<T> {
 
 pub fn code_hash(code: &[u8]) -> H256 {
 	H256::from_slice(Keccak256::digest(code).as_slice())
+}
+
+fn encode_revert_message(e: &ExitError) -> Vec<u8> {
+	// A minimum size of error function selector (4) + offset (32) + string length
+	// (32) should contain a utf-8 encoded revert reason.
+
+	let mut w = sp_std::Writer::default();
+	let _ = core::write!(&mut w, "{:?}", e);
+	let msg = w.into_inner();
+
+	let mut data = Vec::with_capacity(68 + msg.len());
+	data.extend_from_slice(&[0u8; 68]);
+	U256::from(msg.len()).to_big_endian(&mut data[36..68]);
+	data.extend_from_slice(&msg);
+	data
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq)]
