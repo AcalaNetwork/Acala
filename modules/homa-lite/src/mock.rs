@@ -23,12 +23,14 @@
 use super::*;
 use frame_support::{ord_parameter_types, parameter_types};
 use frame_system::EnsureSignedBy;
+use module_relaychain::RelaychainCallBuilder;
 use module_support::mocks::MockAddressMapping;
 use orml_traits::{parameter_type_with_key, XcmTransfer};
 use primitives::{Amount, TokenSymbol};
 use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, AccountId32};
-use xcm::opaque::v0::{Junction, MultiAsset, MultiLocation, NetworkId};
+
+use xcm::opaque::v0::{Error as XcmError, Junction, MultiAsset, MultiLocation, NetworkId, Outcome};
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
@@ -90,6 +92,25 @@ impl XcmTransfer<AccountId, Balance, CurrencyId> for MockXcm {
 		_dest_weight: Weight,
 	) -> DispatchResult {
 		Ok(())
+	}
+}
+
+impl ExecuteXcm<Call> for MockXcm {
+	fn execute_xcm(origin: MultiLocation, message: Xcm<Call>, weight_limit: Weight) -> Outcome {
+		Outcome::Complete(0)
+	}
+
+	fn execute_xcm_in_credit(
+		origin: MultiLocation,
+		message: Xcm<Call>,
+		weight_limit: Weight,
+		weight_credit: Weight,
+	) -> Outcome {
+		if origin == MOCK_XCM_DESTINATION {
+			Outcome::Complete(0)
+		} else {
+			Outcome::Error(XcmError::BadOrigin)
+		}
 	}
 }
 
@@ -181,6 +202,7 @@ parameter_types! {
 	pub const ParachainAccount: AccountId = ROOT;
 	pub const MaximumRedeemRequestMatchesForMint: u32 = 20;
 	pub static MockBlockNumberProvider: u64 = 0;
+	pub const RelaychainUnboundingSlashingSpans: u32 = 5;
 }
 ord_parameter_types! {
 	pub const Root: AccountId = ROOT;
@@ -207,10 +229,13 @@ impl Config for Runtime {
 	type DefaultExchangeRate = DefaultExchangeRate;
 	type MaxRewardPerEra = MaxRewardPerEra;
 	type MintFee = MintFee;
+	type XcmExecutor = MockXcm;
+	type RelaychainCallBuilder = RelaychainCallBuilder<AccountId>;
 	type BaseWithdrawFee = BaseWithdrawFee;
 	type RelaychainBlockNumber = MockBlockNumberProvider;
 	type ParachainAccount = ParachainAccount;
 	type MaximumRedeemRequestMatchesForMint = MaximumRedeemRequestMatchesForMint;
+	type RelaychainUnboundingSlashingSpans = RelaychainUnboundingSlashingSpans;
 }
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;

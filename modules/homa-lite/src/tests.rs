@@ -295,7 +295,7 @@ fn can_replace_schedule_unbound() {
 		assert_eq!(ScheduledUnbound::<Runtime>::get(), vec![(1_000_000, 100), (200, 80)]);
 
 		// replace the current storage.
-		assert_ok(HomaLite::replace_schedule_unbound(
+		assert_ok!(HomaLite::replace_schedule_unbound(
 			Origin::signed(ROOT),
 			vec![(800, 2), (1357, 120)],
 		));

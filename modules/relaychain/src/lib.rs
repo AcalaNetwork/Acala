@@ -51,8 +51,7 @@ pub enum StakingCall {
 	WithdrawUnbonded(#[codec(compact)] u32),
 }
 
-#[cfg(feature = "kusama")]
-mod relaychain_calls {
+mod kusama {
 	use crate::*;
 
 	/// The encoded index correspondes to Kusama's Runtime module configuration.
@@ -68,24 +67,27 @@ mod relaychain_calls {
 	}
 }
 
-// #[cfg(feature = "polkadot")]
-// mod relaychain_calls {
-// 	use crate::*;
+mod polkadot {
+	use crate::*;
 
-// 	/// The encoded index correspondes to Polkadot's Runtime module configuration.
-// 	/// https://github.com/paritytech/polkadot/blob/84a3962e76151ac5ed3afa4ef1e0af829531ab42/runtime/polkadot/src/lib.rs#L1040
-// 	#[derive(Encode, Decode, RuntimeDebug)]
-// 	pub enum RelaychainCall<AccountId> {
-// 		#[codec(index = 5)]
-// 		Balances(BalancesCall<AccountId>),
-// 		#[codec(index = 7)]
-// 		Staking(StakingCall),
-// 		#[codec(index = 26)]
-// 		Utility(UtilityCall<Self>),
-// 	}
-// }
+	/// The encoded index correspondes to Polkadot's Runtime module configuration.
+	/// https://github.com/paritytech/polkadot/blob/84a3962e76151ac5ed3afa4ef1e0af829531ab42/runtime/polkadot/src/lib.rs#L1040
+	#[derive(Encode, Decode, RuntimeDebug)]
+	pub enum RelaychainCall<AccountId> {
+		#[codec(index = 5)]
+		Balances(BalancesCall<AccountId>),
+		#[codec(index = 7)]
+		Staking(StakingCall),
+		#[codec(index = 26)]
+		Utility(UtilityCall<Self>),
+	}
+}
 
-pub use relaychain_calls::*;
+#[cfg(feature = "kusama")]
+pub use kusama::*;
+
+#[cfg(feature = "polkadot")]
+pub use polkadot::*;
 
 pub struct RelaychainCallBuilder<AccountId>(PhantomData<AccountId>);
 
