@@ -23,8 +23,8 @@
 use super::*;
 use frame_support::{assert_noop, assert_ok};
 use mock::{
-	dollar, Currencies, Event, ExtBuilder, HomaLite, Origin, Runtime, System, ACALA, ALICE, BOB, INITIAL_BALANCE,
-	INVALID_CALLER, KSM, LKSM, ROOT,
+	dollar, Currencies, Event, ExtBuilder, HomaLite, MockBlockNumberProvider, Origin, Runtime, System, ACALA, ALICE,
+	BOB, INITIAL_BALANCE, INVALID_CALLER, KSM, LKSM, ROOT,
 };
 use sp_runtime::traits::BadOrigin;
 
@@ -302,6 +302,41 @@ fn can_replace_schedule_unbound() {
 		assert_eq!(ScheduledUnbound::<Runtime>::get(), vec![(800, 2), (1357, 120)]);
 
 		System::assert_last_event(Event::HomaLite(crate::Event::ScheduledUnboundReplaced));
+	});
+}
+
+// on_idle can call xcm to increase AvailableStakingBalance
+#[test]
+fn on_idle_can_process_xcm_to_increase_available_staking_balance() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(HomaLite::replace_schedule_unbound(
+			Origin::signed(ROOT),
+			vec![(100, 1), (200, 2), (30, 2)],
+		));
+		assert_eq!(ScheduledUnbound::<Runtime>::get(), vec![(100, 1), (200, 2), (30, 2)]);
+		assert_eq!(AvailableStakingBalance::<Runtime>::get(), 0);
+
+		// Block number 0 has nothing scheduled
+		MockBlockNumberProvider::set(0);
+		HomaLite::on_idle(MockBlockNumberProvider::get(), 1_000_000_000);
+		assert_eq!(ScheduledUnbound::<Runtime>::get(), vec![(100, 1), (200, 2), (30, 2)]);
+		assert_eq!(AvailableStakingBalance::<Runtime>::get(), 0);
+
+		// Block number 1
+		MockBlockNumberProvider::set(1);
+		HomaLite::on_idle(MockBlockNumberProvider::get(), 1_000_000_000);
+		assert_eq!(ScheduledUnbound::<Runtime>::get(), vec![(200, 2), (30, 2)]);
+		assert_eq!(AvailableStakingBalance::<Runtime>::get(), 100);
+
+		// Block number 2. Each on_idle call should unbound one item.
+		MockBlockNumberProvider::set(2);
+		HomaLite::on_idle(MockBlockNumberProvider::get(), 1_000_000_000);
+		assert_eq!(ScheduledUnbound::<Runtime>::get(), vec![(30, 2)]);
+		assert_eq!(AvailableStakingBalance::<Runtime>::get(), 300);
+
+		HomaLite::on_idle(MockBlockNumberProvider::get(), 1_000_000_000);
+		assert_eq!(ScheduledUnbound::<Runtime>::get(), vec![]);
+		assert_eq!(AvailableStakingBalance::<Runtime>::get(), 330);
 	});
 }
 

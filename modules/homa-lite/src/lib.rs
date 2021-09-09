@@ -24,7 +24,7 @@ mod mock;
 mod tests;
 pub mod weights;
 
-use frame_support::{pallet_prelude::*, transactional};
+use frame_support::{log, pallet_prelude::*, transactional};
 use frame_system::{ensure_signed, pallet_prelude::*};
 use module_support::{CallBuilder, ExchangeRate, Ratio};
 use orml_traits::{BalanceStatus, MultiCurrency, MultiReservableCurrency, XcmTransfer};
@@ -129,6 +129,8 @@ pub mod module {
 		InsufficientReservedBalances,
 		/// Amount redeemed is above total amount staked.
 		InsufficientTotalStakingCurrency,
+		/// There isn't enough liquid balance in the user's account.
+		InsufficientLiquidBalance,
 	}
 
 	#[pallet::event]
@@ -154,8 +156,8 @@ pub mod module {
 		RedeemRequestCancelled(T::AccountId, Balance),
 
 		/// A new Redeem request has been registered.
-		/// \[who, liquid_amount\]
-		RedeemRequested(T::AccountId, Balance),
+		/// \[who, liquid_amount, extra_fee\]
+		RedeemRequested(T::AccountId, Balance, Permill),
 
 		/// The user has redeemed some Liquid currency back to Staking currency.
 		/// \[user, staking_amount_redeemed, liquid_amount_deducted\]
@@ -167,6 +169,10 @@ pub mod module {
 
 		/// The ScheduledUnbound has been replaced.
 		ScheduledUnboundReplaced,
+
+		/// The scheduled Unbound has been withdrew from the Relaychain.
+		///\[staking_amount_added\]
+		ScheduledUnboundWithdrew(Balance),
 	}
 
 	/// The total amount of the staking currency on the relaychain.
@@ -216,34 +222,19 @@ pub mod module {
 			let mut current_weight = 0;
 			if remaining_weight > required_weight {
 				let mut scheduled_unbound = Self::scheduled_unbound();
-				if scheduled_unbound.is_empty() {
-					return 0;
-				}
-				let (staking_amount, block_number) = scheduled_unbound[0];
-				if T::RelaychainBlockNumber::current_block_number() >= block_number {
-					let xcm_call = Self::construct_xcm_unreserve_message(
-						T::ParachainAccount::get(),
-						staking_amount,
-						required_weight,
-					);
-					// make XCM call to trigger withdraw_unbound and transfer
-					let origin_location = T::SovereignSubAccountLocation::get();
-					let outcome = T::XcmExecutor::execute_xcm_in_credit(
-						origin_location,
-						xcm_call,
-						required_weight,
-						required_weight,
-					);
-					if outcome.ensure_complete().is_ok() {
-						scheduled_unbound.remove(0);
-						ScheduledUnbound::<T>::put(scheduled_unbound);
+				if !scheduled_unbound.is_empty() {
+					let (staking_amount, block_number) = scheduled_unbound[0];
+					if T::RelaychainBlockNumber::current_block_number() >= block_number {
+						let res = Self::process_scheduled_unbound(staking_amount);
+						if res.is_ok() {
+							current_weight = required_weight;
 
-						let available_staking = Self::available_staking_balance()
-							.checked_add(staking_amount)
-							.expect("Total available staking currency cannot overflow.");
-						AvailableStakingBalance::<T>::put(available_staking);
-
-						current_weight = required_weight;
+							scheduled_unbound.remove(0);
+							ScheduledUnbound::<T>::put(scheduled_unbound);
+						} else {
+							log::debug!("{:?}", res);
+							debug_assert!(res.is_ok());
+						}
 					}
 				}
 			}
@@ -355,19 +346,50 @@ pub mod module {
 					Self::deposit_event(Event::<T>::RedeemRequestCancelled(who, liquid_amount));
 				}
 			} else {
-				// Put in an redeem request, replaces the current request in storage.
-				let actual_redeem_amount = min(
+				// If there are available_staking_balances, redeem immediately with no additional fee.
+				let mut available_staking_balance = Self::available_staking_balance();
+				let actual_liquid_amount = min(
 					liquid_amount,
-					Self::convert_staking_to_liquid(Self::available_staking_balance())?,
+					Self::convert_staking_to_liquid(available_staking_balance)?,
 				);
-				if !actual_redeem_amount.is_zero() {
-					// Reserve the liquid currencies to be redeem.
-					T::Currency::reserve(T::LiquidCurrencyId::get(), &who, actual_redeem_amount)?;
 
-					// override RedeemRequests
-					RedeemRequests::<T>::insert(&who, (actual_redeem_amount, additional_fee));
+				if !actual_liquid_amount.is_zero() {
+					// Immediately redeem from the available_staking_balances
+					let actual_staking_amount = Self::convert_liquid_to_staking(actual_liquid_amount)?;
 
-					Self::deposit_event(Event::<T>::RedeemRequested(who, actual_redeem_amount));
+					// Redeem from the available_staking_balances costs no extra fee.
+					T::Currency::deposit(T::StakingCurrencyId::get(), &who, actual_staking_amount)?;
+					let slash_amount = T::Currency::slash(T::LiquidCurrencyId::get(), &who, actual_liquid_amount);
+					ensure!(
+						slash_amount == actual_liquid_amount,
+						Error::<T>::InsufficientLiquidBalance
+					);
+
+					// Update the available_staking_balance
+					available_staking_balance = available_staking_balance
+						.checked_sub(actual_staking_amount)
+						.expect("min() ensures actual amount cannot be more than the total; qed");
+					AvailableStakingBalance::<T>::put(available_staking_balance);
+
+					Self::deposit_event(Event::<T>::Redeemed(
+						who.clone(),
+						actual_staking_amount,
+						actual_liquid_amount,
+					));
+				}
+
+				// Unredeemed requests are added to a queue.
+				let liquid_remaining = actual_liquid_amount
+					.checked_sub(actual_liquid_amount)
+					.expect("min() ensures actual amount cannot be more than the original; qed");
+				if !liquid_remaining.is_zero() {
+					// Lock the liquid currency.
+					T::Currency::reserve(T::LiquidCurrencyId::get(), &who, liquid_remaining)?;
+
+					// Insert the new redeem request into storage.
+					RedeemRequests::<T>::insert(&who, (liquid_remaining, additional_fee));
+
+					Self::deposit_event(Event::<T>::RedeemRequested(who, liquid_remaining, additional_fee));
 				}
 			}
 			Ok(())
@@ -675,6 +697,77 @@ pub mod module {
 				require_weight_at_most: weight_limit,
 				call: xcm_message.encode().into(),
 			}
+		}
+
+		#[transactional]
+		fn process_scheduled_unbound(staking_amount: Balance) -> DispatchResult {
+			let xcm_call = Self::construct_xcm_unreserve_message(
+				T::ParachainAccount::get(),
+				staking_amount,
+				Self::xcm_dest_weight(),
+			);
+			// make XCM call to trigger withdraw_unbound and transfer
+			let origin_location = T::SovereignSubAccountLocation::get();
+			let outcome = T::XcmExecutor::execute_xcm_in_credit(
+				origin_location,
+				xcm_call,
+				Self::xcm_dest_weight(),
+				Self::xcm_dest_weight(),
+			);
+			if outcome.ensure_complete().is_ok() {
+				// Now that there's available staking balance, automatically match existing
+				// redeem_requests.
+				let mut new_balances: Vec<(T::AccountId, Balance, Permill)> = vec![];
+				let mut available_staking_balance = Self::available_staking_balance()
+					.checked_add(staking_amount)
+					.ok_or(ArithmeticError::Overflow)?;
+				for (redeemer, (request_amount, extra_fee)) in RedeemRequests::<T>::iter() {
+					// If all the currencies are minted, return.
+					if available_staking_balance.is_zero() {
+						break;
+					}
+					let actual_liuqid_amount = min(
+						request_amount,
+						Self::convert_staking_to_liquid(available_staking_balance)?,
+					);
+
+					let actual_staking_amount = Self::convert_liquid_to_staking(actual_liuqid_amount)?;
+
+					// Redeem from the available_staking_balances costs no extra fee.
+					T::Currency::deposit(T::StakingCurrencyId::get(), &redeemer, actual_staking_amount)?;
+					T::Currency::unreserve(T::StakingCurrencyId::get(), &redeemer, actual_liuqid_amount);
+					let slashed_amount =
+						T::Currency::slash(T::LiquidCurrencyId::get(), &redeemer, actual_liuqid_amount);
+					ensure!(
+						slashed_amount == actual_liuqid_amount,
+						Error::<T>::InsufficientLiquidBalance
+					);
+
+					available_staking_balance = available_staking_balance.saturating_sub(actual_staking_amount);
+					let request_amount_remaining = request_amount.saturating_sub(actual_staking_amount);
+					new_balances.push((redeemer.clone(), request_amount_remaining, extra_fee));
+
+					Self::deposit_event(Event::<T>::Redeemed(
+						redeemer,
+						actual_staking_amount,
+						actual_liuqid_amount,
+					));
+				}
+
+				// Update storage to the new balances. Remove Redeem requests that have been filled.
+				for (redeemer, new_balance, extra_fee) in new_balances {
+					if new_balance.is_zero() {
+						RedeemRequests::<T>::remove(&redeemer);
+					} else {
+						RedeemRequests::<T>::insert(&redeemer, (new_balance, extra_fee));
+					}
+				}
+
+				AvailableStakingBalance::<T>::put(available_staking_balance);
+				Self::deposit_event(Event::<T>::ScheduledUnboundWithdrew(staking_amount));
+			}
+
+			Ok(())
 		}
 	}
 }
