@@ -400,7 +400,28 @@ fn on_update_loan_works() {
 			(0, 0)
 		);
 
+		// will not update shares when LoansIncentives type pool without incentive
 		OnUpdateLoan::<Runtime>::happened(&(ALICE::get(), BTC, 100, 0));
+		assert_eq!(
+			RewardsModule::pools(PoolId::LoansIncentive(BTC)),
+			PoolInfo {
+				total_shares: 0,
+				total_rewards: 0,
+				total_withdrawn_rewards: 0
+			}
+		);
+		assert_eq!(
+			RewardsModule::share_and_withdrawn_reward(PoolId::LoansIncentive(BTC), ALICE::get()),
+			(0, 0)
+		);
+
+		assert_ok!(IncentivesModule::update_incentive_rewards(
+			Origin::signed(Root::get()),
+			vec![(PoolId::LoansIncentive(BTC), 1000),],
+		));
+
+		// share will be updated even if the adjustment is zero
+		OnUpdateLoan::<Runtime>::happened(&(ALICE::get(), BTC, 0, 100));
 		assert_eq!(
 			RewardsModule::pools(PoolId::LoansIncentive(BTC)),
 			PoolInfo {
