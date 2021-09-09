@@ -699,7 +699,6 @@ impl<'config, S: StackState<'config>> StackExecutor<'config, S> {
 			}
 		}
 
-		let code_address = self.handle_mirrored_token(code_address);
 		let code = self.code(code_address);
 
 		self.enter_substate(gas_limit, is_static);
@@ -795,7 +794,8 @@ impl<'config, S: StackState<'config>> Handler for StackExecutor<'config, S> {
 	}
 
 	fn code_size(&self, address: H160) -> U256 {
-		U256::from(self.state.code(address).len())
+		let addr = self.handle_mirrored_token(address);
+		U256::from(self.state.code(addr).len())
 	}
 
 	fn code_hash(&self, address: H160) -> H256 {
@@ -803,11 +803,13 @@ impl<'config, S: StackState<'config>> Handler for StackExecutor<'config, S> {
 			return H256::default();
 		}
 
-		H256::from_slice(Keccak256::digest(&self.state.code(address)).as_slice())
+		let addr = self.handle_mirrored_token(address);
+		H256::from_slice(Keccak256::digest(&self.state.code(addr)).as_slice())
 	}
 
 	fn code(&self, address: H160) -> Vec<u8> {
-		self.state.code(address)
+		let addr = self.handle_mirrored_token(address);
+		self.state.code(addr)
 	}
 
 	fn storage(&self, address: H160, index: H256) -> H256 {
