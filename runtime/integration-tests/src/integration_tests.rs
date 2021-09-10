@@ -1850,13 +1850,13 @@ fn cdp_treasury_handles_honzon_surplus_correctly() {
 				160248248178
 			);
 			assert_eq!(Currencies::free_balance(USD_CURRENCY, &CdpTreasury::account_id()), 1);
-			run_to_block(50);
+			run_to_block(3);
 			// Debt exchange rate updates
 			assert_eq!(
 				CdpEngine::debit_exchange_rate(RELAY_CHAIN_CURRENCY),
 				// Around 1/10, increasing from last check
 				Some(Ratio::saturating_from_rational(
-					100803168231839846 as i64,
+					100330528546009436 as i64,
 					1000000000000000000 as i64
 				))
 			);
@@ -1868,15 +1868,15 @@ fn cdp_treasury_handles_honzon_surplus_correctly() {
 				5 * dollar(RELAY_CHAIN_CURRENCY),
 				None
 			));
-			// About 50.4 dollar(USD_CURRENCY)
-			assert_eq!(CdpTreasury::get_debit_pool(), 50401584115919);
+			// Just over 50 dollar(USD_CURRENCY), due to interest on loan
+			assert_eq!(CdpTreasury::get_debit_pool(), 50165264273004);
 			assert_eq!(Loans::total_positions(RELAY_CHAIN_CURRENCY).debit, 0);
-			run_to_block(100);
+			run_to_block(4);
 			// Debt exchange rate doesn't update due to no debit positions
 			assert_eq!(
 				CdpEngine::debit_exchange_rate(RELAY_CHAIN_CURRENCY),
 				Some(Ratio::saturating_from_rational(
-					100803168231839846 as i64,
+					100330528546009436 as i64,
 					1000000000000000000 as i64
 				))
 			)
