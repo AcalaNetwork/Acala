@@ -1268,7 +1268,6 @@ parameter_types! {
 	pub const ChainId: u64 = 686;
 	pub const NewContractExtraBytes: u32 = 10_000;
 	pub StorageDepositPerByte: Balance = deposit(0, 1);
-	// https://eips.ethereum.org/EIPS/eip-170
 	pub NetworkContractSource: H160 = H160::from_low_u64_be(0);
 	pub DeveloperDeposit: Balance = 100 * dollar(KAR);
 	pub DeploymentFee: Balance = 10000 * dollar(KAR);
