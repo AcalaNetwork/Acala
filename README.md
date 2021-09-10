@@ -110,7 +110,7 @@ make init
 Build Mandala TC native code:
 
 ```bash
-make build-dev
+make build-full
 ```
 
 # 4. Run
