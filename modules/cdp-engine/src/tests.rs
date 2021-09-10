@@ -26,6 +26,23 @@ use mock::{Event, *};
 use orml_traits::MultiCurrency;
 use sp_runtime::traits::BadOrigin;
 use support::DEXManager;
+use sp_io::offchain;
+use sp_core::offchain::{
+	testing::{TestOffchainExt, TestTransactionPoolExt}, StorageKind,
+	OffchainDbExt, OffchainWorkerExt, TransactionPoolExt, OffchainStorage, DbExternalities
+};
+
+pub const INIT_TIMESTAMP: u64 = 30_000;
+pub const BLOCK_TIME: u64 = 1000;
+
+fn run_to_block_offchain(n: u64) {
+	while System::block_number() < n {
+		System::set_block_number(System::block_number() + 1);
+		Timestamp::set_timestamp((System::block_number() as u64 * BLOCK_TIME) + INIT_TIMESTAMP);
+		CDPEngineModule::on_initialize(System::block_number());
+		CDPEngineModule::offchain_worker(System::block_number());
+	}
+}
 
 #[test]
 fn check_cdp_status_work() {
@@ -920,5 +937,46 @@ fn close_cdp_has_debit_by_swap_on_alternative_path() {
 		assert_eq!(LoansModule::positions(BTC, ALICE).collateral, 0);
 		assert_eq!(CDPTreasuryModule::get_surplus_pool(), 50);
 		assert_eq!(CDPTreasuryModule::get_debit_pool(), 50);
+	});
+}
+
+#[test]
+fn offchain_worker_liquidates_cdp() {
+	let ext = ExtBuilder::default().build();
+	let mut ext2 = offchain(ext);
+
+	ext2.execute_with(|| {
+		System::set_block_number(1);
+		assert_ok!(CDPEngineModule::set_collateral_params(
+			Origin::signed(1),
+			BTC,
+			Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
+			Change::NewValue(Some(Rate::saturating_from_rational(2, 10))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
+			Change::NewValue(10000),
+		));
+
+		// offchain worker does not liquidate alice
+		assert_ok!(CDPEngineModule::adjust_position(&ALICE, BTC, 100, 500));
+		assert_eq!(Currencies::free_balance(BTC, &ALICE), 900);
+		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 50);
+		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 500);
+		assert_eq!(LoansModule::positions(BTC, ALICE).collateral, 100);
+		assert_ok!(CDPEngineModule::set_collateral_params(
+			Origin::signed(1),
+			BTC,
+			Change::NoChange,
+			Change::NewValue(Some(Ratio::saturating_from_rational(3, 1))),
+			Change::NoChange,
+			Change::NoChange,
+			Change::NoChange,
+		));
+		run_to_block_offchain(2);
+		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 500);
+		assert_eq!(LoansModule::positions(BTC, ALICE).collateral, 100);
+
+		panic!();
+
 	});
 }
