@@ -201,14 +201,14 @@ parameter_types! {
 	pub BaseWithdrawFee: Permill = Permill::from_rational(1u32, 1_000u32); // 0.1%
 	pub const ParachainAccount: AccountId = ROOT;
 	pub const MaximumRedeemRequestMatchesForMint: u32 = 20;
-	pub static MockBlockNumberProvider: u64 = 0;
+	pub static MockRelayBlockNumberProvider: u64 = 0;
 	pub const RelaychainUnboundingSlashingSpans: u32 = 5;
 }
 ord_parameter_types! {
 	pub const Root: AccountId = ROOT;
 }
 
-impl BlockNumberProvider for MockBlockNumberProvider {
+impl BlockNumberProvider for MockRelayBlockNumberProvider {
 	type BlockNumber = BlockNumber;
 
 	fn current_block_number() -> Self::BlockNumber {
@@ -232,7 +232,7 @@ impl Config for Runtime {
 	type XcmExecutor = MockXcm;
 	type RelaychainCallBuilder = RelaychainCallBuilder<AccountId>;
 	type BaseWithdrawFee = BaseWithdrawFee;
-	type RelaychainBlockNumber = MockBlockNumberProvider;
+	type RelaychainBlockNumber = MockRelayBlockNumberProvider;
 	type ParachainAccount = ParachainAccount;
 	type MaximumRedeemRequestMatchesForMint = MaximumRedeemRequestMatchesForMint;
 	type RelaychainUnboundingSlashingSpans = RelaychainUnboundingSlashingSpans;

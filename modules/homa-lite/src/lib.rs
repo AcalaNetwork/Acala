@@ -339,11 +339,13 @@ pub mod module {
 
 			if liquid_amount.is_zero() {
 				// If the maount is zero, cancel previuos redeem request.
-				if let Some((_, _)) = Self::redeem_requests(&who) {
+				if let Some((request_amount, _)) = Self::redeem_requests(&who) {
 					// Unreserve the liquid fee and remove the redeem request.
+					let unreserved = T::Currency::unreserve(T::LiquidCurrencyId::get(), &who, request_amount);
+					ensure!(unreserved.is_zero(), Error::<T>::InsufficientReservedBalances);
 					RedeemRequests::<T>::remove(&who);
 
-					Self::deposit_event(Event::<T>::RedeemRequestCancelled(who, liquid_amount));
+					Self::deposit_event(Event::<T>::RedeemRequestCancelled(who, request_amount));
 				}
 			} else {
 				// If there are available_staking_balances, redeem immediately with no additional fee.
@@ -360,10 +362,7 @@ pub mod module {
 					// Redeem from the available_staking_balances costs no extra fee.
 					T::Currency::deposit(T::StakingCurrencyId::get(), &who, actual_staking_amount)?;
 					let slash_amount = T::Currency::slash(T::LiquidCurrencyId::get(), &who, actual_liquid_amount);
-					ensure!(
-						slash_amount == actual_liquid_amount,
-						Error::<T>::InsufficientLiquidBalance
-					);
+					ensure!(slash_amount.is_zero(), Error::<T>::InsufficientLiquidBalance);
 
 					// Update the available_staking_balance
 					available_staking_balance = available_staking_balance
@@ -379,7 +378,7 @@ pub mod module {
 				}
 
 				// Unredeemed requests are added to a queue.
-				let liquid_remaining = actual_liquid_amount
+				let liquid_remaining = liquid_amount
 					.checked_sub(actual_liquid_amount)
 					.expect("min() ensures actual amount cannot be more than the original; qed");
 				if !liquid_remaining.is_zero() {
@@ -726,31 +725,28 @@ pub mod module {
 					if available_staking_balance.is_zero() {
 						break;
 					}
-					let actual_liuqid_amount = min(
+					let actual_liquid_amount = min(
 						request_amount,
 						Self::convert_staking_to_liquid(available_staking_balance)?,
 					);
 
-					let actual_staking_amount = Self::convert_liquid_to_staking(actual_liuqid_amount)?;
+					let actual_staking_amount = Self::convert_liquid_to_staking(actual_liquid_amount)?;
 
 					// Redeem from the available_staking_balances costs no extra fee.
 					T::Currency::deposit(T::StakingCurrencyId::get(), &redeemer, actual_staking_amount)?;
-					T::Currency::unreserve(T::StakingCurrencyId::get(), &redeemer, actual_liuqid_amount);
+					T::Currency::unreserve(T::LiquidCurrencyId::get(), &redeemer, actual_liquid_amount);
 					let slashed_amount =
-						T::Currency::slash(T::LiquidCurrencyId::get(), &redeemer, actual_liuqid_amount);
-					ensure!(
-						slashed_amount == actual_liuqid_amount,
-						Error::<T>::InsufficientLiquidBalance
-					);
+						T::Currency::slash(T::LiquidCurrencyId::get(), &redeemer, actual_liquid_amount);
+					ensure!(slashed_amount.is_zero(), Error::<T>::InsufficientLiquidBalance);
 
 					available_staking_balance = available_staking_balance.saturating_sub(actual_staking_amount);
-					let request_amount_remaining = request_amount.saturating_sub(actual_staking_amount);
+					let request_amount_remaining = request_amount.saturating_sub(actual_liquid_amount);
 					new_balances.push((redeemer.clone(), request_amount_remaining, extra_fee));
 
 					Self::deposit_event(Event::<T>::Redeemed(
 						redeemer,
 						actual_staking_amount,
-						actual_liuqid_amount,
+						actual_liquid_amount,
 					));
 				}
 
