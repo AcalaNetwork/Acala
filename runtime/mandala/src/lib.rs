@@ -1211,8 +1211,11 @@ parameter_types! {
 
 impl module_incentives::Config for Runtime {
 	type Event = Event;
+	type RelaychainAccountId = AccountId;
 	type RewardsSource = UnreleasedNativeVaultAccountId;
+	type NativeCurrencyId = GetNativeCurrencyId;
 	type StableCurrencyId = GetStableCurrencyId;
+	type LiquidCurrencyId = GetLiquidCurrencyId;
 	type AccumulatePeriod = AccumulatePeriod;
 	type UpdateOrigin = EnsureRootOrThreeFourthsGeneralCouncil;
 	type CDPTreasury = CdpTreasury;

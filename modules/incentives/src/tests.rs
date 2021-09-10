@@ -495,19 +495,19 @@ fn on_update_loan_works() {
 fn payout_works() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_eq!(
-			IncentivesModule::pending_rewards(PoolId::Loans(BTC), ALICE::get()),
+			IncentivesModule::pending_multi_rewards(PoolId::Loans(BTC), ALICE::get()),
 			BTreeMap::default()
 		);
 
 		IncentivesModule::payout(&ALICE::get(), &PoolId::Loans(BTC), ACA, 1000);
 		assert_eq!(
-			IncentivesModule::pending_rewards(PoolId::Loans(BTC), ALICE::get()),
+			IncentivesModule::pending_multi_rewards(PoolId::Loans(BTC), ALICE::get()),
 			vec![(ACA, 1000)].into_iter().collect()
 		);
 
 		IncentivesModule::payout(&ALICE::get(), &PoolId::Loans(BTC), ACA, 1000);
 		assert_eq!(
-			IncentivesModule::pending_rewards(PoolId::Loans(BTC), ALICE::get()),
+			IncentivesModule::pending_multi_rewards(PoolId::Loans(BTC), ALICE::get()),
 			vec![(ACA, 2000)].into_iter().collect()
 		);
 	});
@@ -654,7 +654,7 @@ fn claim_rewards_works() {
 		assert_eq!(TokensModule::free_balance(ACA, &ALICE::get()), 200);
 		assert_eq!(TokensModule::free_balance(AUSD, &ALICE::get()), 0);
 		assert_eq!(
-			IncentivesModule::pending_rewards(PoolId::Dex(BTC_AUSD_LP), ALICE::get()),
+			IncentivesModule::pending_multi_rewards(PoolId::Dex(BTC_AUSD_LP), ALICE::get()),
 			BTreeMap::default()
 		);
 		RewardsModule::remove_share(&ALICE::get(), &PoolId::Dex(BTC_AUSD_LP), 50);
@@ -674,7 +674,7 @@ fn claim_rewards_works() {
 		assert_eq!(TokensModule::free_balance(ACA, &ALICE::get()), 200);
 		assert_eq!(TokensModule::free_balance(AUSD, &ALICE::get()), 0);
 		assert_eq!(
-			IncentivesModule::pending_rewards(PoolId::Dex(BTC_AUSD_LP), ALICE::get()),
+			IncentivesModule::pending_multi_rewards(PoolId::Dex(BTC_AUSD_LP), ALICE::get()),
 			vec![(ACA, 500), (AUSD, 1000)].into_iter().collect()
 		);
 
@@ -713,7 +713,7 @@ fn claim_rewards_works() {
 		assert_eq!(TokensModule::free_balance(ACA, &ALICE::get()), 450);
 		assert_eq!(TokensModule::free_balance(AUSD, &ALICE::get()), 500);
 		assert_eq!(
-			IncentivesModule::pending_rewards(PoolId::Dex(BTC_AUSD_LP), ALICE::get()),
+			IncentivesModule::pending_multi_rewards(PoolId::Dex(BTC_AUSD_LP), ALICE::get()),
 			BTreeMap::default()
 		);
 	});
