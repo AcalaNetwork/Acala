@@ -89,6 +89,12 @@ Install Rust:
 curl https://sh.rustup.rs -sSf | sh
 ```
 
+You may also need clang.
+
+```bash
+sudo apt-get install -y clang
+```
+
 Make sure you have `submodule.recurse` set to true to make life with submodule easier.
 
 ```bash
