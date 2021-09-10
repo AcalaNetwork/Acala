@@ -1051,7 +1051,7 @@ fn test_authority_module() {
 			// fast_track_scheduled_dispatch
 			assert_ok!(Authority::fast_track_scheduled_dispatch(
 				Origin::root(),
-				frame_system::RawOrigin::Root.into(),
+				Box::new(frame_system::RawOrigin::Root.into()),
 				4,
 				DispatchTime::At(seven_days_later + 3),
 			));
@@ -1059,7 +1059,7 @@ fn test_authority_module() {
 			// delay_scheduled_dispatch
 			assert_ok!(Authority::delay_scheduled_dispatch(
 				Origin::root(),
-				frame_system::RawOrigin::Root.into(),
+				Box::new(frame_system::RawOrigin::Root.into()),
 				4,
 				4,
 			));
@@ -1092,7 +1092,7 @@ fn test_authority_module() {
 				origin
 			};
 
-			let pallets_origin = schedule_origin.caller().clone();
+			let pallets_origin = Box::new(schedule_origin.caller().clone());
 			assert_ok!(Authority::cancel_scheduled_dispatch(Origin::root(), pallets_origin, 5));
 			System::assert_last_event(Event::Authority(orml_authority::Event::Cancelled(
 				OriginCaller::Authority(DelayedOrigin {
@@ -1116,7 +1116,7 @@ fn test_authority_module() {
 
 			assert_ok!(Authority::cancel_scheduled_dispatch(
 				Origin::root(),
-				frame_system::RawOrigin::Root.into(),
+				Box::new(frame_system::RawOrigin::Root.into()),
 				6
 			));
 			System::assert_last_event(Event::Authority(orml_authority::Event::Cancelled(

@@ -67,6 +67,7 @@ pub use orml_xcm_support::{IsNativeConcrete, MultiCurrencyAdapter, MultiNativeAs
 use pallet_xcm::XcmPassthrough;
 pub use polkadot_parachain::primitives::Sibling;
 pub use xcm::v0::{
+	Error as XcmError,
 	Junction::{self, AccountId32, GeneralKey, Parachain, Parent},
 	MultiAsset,
 	MultiLocation::{self, X1, X2, X3},
@@ -79,7 +80,7 @@ pub use xcm_builder::{
 	ParentIsDefault, RelayChainAsNative, SiblingParachainAsNative, SiblingParachainConvertsVia,
 	SignedAccountId32AsNative, SignedToAccountId32, SovereignSignedViaLocation, TakeRevenue, TakeWeightCredit,
 };
-pub use xcm_executor::{Config, XcmExecutor};
+pub use xcm_executor::{traits::WeightTrader, Assets, Config, XcmExecutor};
 
 /// Weights for pallets used in the runtime.
 mod weights;
@@ -102,7 +103,7 @@ pub use sp_runtime::BuildStorage;
 pub use sp_runtime::{Perbill, Percent, Permill, Perquintill};
 
 pub use authority::AuthorityConfigImpl;
-pub use constants::{fee::*, time::*};
+pub use constants::{fee::*, parachains, time::*};
 pub use primitives::{
 	evm::EstimateResourcesRequest, AccountId, AccountIndex, Amount, AuctionId, AuthoritysOriginId, Balance,
 	BlockNumber, CurrencyId, DataProviderId, EraIndex, Hash, Moment, Nonce, ReserveIdentifier, Share, Signature,
@@ -117,8 +118,8 @@ pub use runtime_common::{
 	GeneralCouncilMembershipInstance, HomaCouncilInstance, HomaCouncilMembershipInstance,
 	OperatorMembershipInstanceAcala, OperatorMembershipInstanceBand, Price, ProxyType, Rate, Ratio,
 	RelaychainBlockNumberProvider, RelaychainSubAccountId, RuntimeBlockLength, RuntimeBlockWeights,
-	SystemContractsFilter, TechnicalCommitteeInstance, TechnicalCommitteeMembershipInstance, TimeStampedPrice, KAR,
-	KSM, KUSD, LKSM, RENBTC,
+	SystemContractsFilter, TechnicalCommitteeInstance, TechnicalCommitteeMembershipInstance, TimeStampedPrice, BNC,
+	KAR, KSM, KUSD, LKSM, RENBTC,
 };
 
 mod authority;
@@ -131,7 +132,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("karura"),
 	impl_name: create_runtime_str!("karura"),
 	authoring_version: 1,
-	spec_version: 1008,
+	spec_version: 1009,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -195,42 +196,41 @@ parameter_types! {
 pub struct BaseCallFilter;
 impl Contains<Call> for BaseCallFilter {
 	fn contains(call: &Call) -> bool {
-		module_transaction_pause::NonPausedTransactionFilter::<Runtime>::contains(call)
-			&& matches!(
-				call,
-				// Core
-				Call::System(_) | Call::Timestamp(_) | Call::ParachainSystem(_) |
-				// Utility
-				Call::Scheduler(_) | Call::Utility(_) | Call::Multisig(_) | Call::Proxy(_) |
-				// Councils
-				Call::Authority(_) | Call::GeneralCouncil(_) | Call::GeneralCouncilMembership(_) |
-				Call::FinancialCouncil(_) | Call::FinancialCouncilMembership(_) |
-				Call::HomaCouncil(_) | Call::HomaCouncilMembership(_) |
-				Call::TechnicalCommittee(_) | Call::TechnicalCommitteeMembership(_) |
-				// Oracle
-				Call::AcalaOracle(_) | Call::OperatorMembershipAcala(_) |
-				// Democracy
-				Call::Democracy(_) | Call::Treasury(_) | Call::Bounties(_) | Call::Tips(_) |
-				// Collactor Selection
-				Call::CollatorSelection(_) | Call::Session(_) | Call::SessionManager(_) |
-				// Vesting
-				Call::Vesting(_) |
-				// TransactionPayment
-				Call::TransactionPayment(_) |
-				// Tokens
-				Call::XTokens(_) | Call::Balances(_) | Call::Currencies(_) |
-				// NFT
-				Call::NFT(_) |
-				// DEX
-				Call::Dex(_) |
-				// Incentives
-				Call::Incentives(_) |
-				// Honzon
-				Call::Auction(_) | Call::AuctionManager(_) | Call::Honzon(_) | Call::Loans(_) | Call::Prices(_) |
-				Call::CdpTreasury(_) | Call::CdpEngine(_) | Call::EmergencyShutdown(_) |
-				// Homa
-				Call::HomaLite(_)
-			)
+		let is_core_call = matches!(call, Call::System(_) | Call::Timestamp(_) | Call::ParachainSystem(_));
+		if is_core_call {
+			// always allow core call
+			return true;
+		}
+
+		let is_paused = module_transaction_pause::PausedTransactionFilter::<Runtime>::contains(call);
+		if is_paused {
+			// no paused call
+			return false;
+		}
+
+		let is_evm = matches!(
+			call,
+			Call::EVM(_) | Call::EvmAccounts(_) // EvmBridge / EvmManager does not have call
+		);
+		if is_evm {
+			// no evm call
+			return false;
+		}
+
+		let is_bnc_transfer = matches!(
+			call,
+			Call::Currencies(module_currencies::Call::transfer(
+				_,
+				CurrencyId::Token(TokenSymbol::BNC),
+				_
+			))
+		);
+		if is_bnc_transfer {
+			// BNC transfer disabled by request of Bifrost team
+			return false;
+		}
+
+		true
 	}
 }
 
@@ -737,6 +737,7 @@ parameter_type_with_key! {
 				TokenSymbol::KUSD => cent(*currency_id),
 				TokenSymbol::KSM => 10 * millicent(*currency_id),
 				TokenSymbol::LKSM => 50 * millicent(*currency_id),
+				TokenSymbol::BNC => 800 * millicent(*currency_id),  // 80BNC = 1KSM
 
 				TokenSymbol::ACA |
 				TokenSymbol::AUSD |
@@ -802,18 +803,11 @@ impl module_prices::Config for Runtime {
 	type GetStakingCurrencyId = GetStakingCurrencyId;
 	type GetLiquidCurrencyId = GetLiquidCurrencyId;
 	type LockOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
-	type LiquidStakingExchangeRateProvider = LiquidStakingExchangeRateProvider;
+	type LiquidStakingExchangeRateProvider = module_homa_lite::LiquidExchangeProvider<Runtime>;
 	type DEX = Dex;
 	type Currency = Currencies;
 	type CurrencyIdMapping = EvmCurrencyIdMapping<Runtime>;
 	type WeightInfo = weights::module_prices::WeightInfo<Runtime>;
-}
-
-pub struct LiquidStakingExchangeRateProvider;
-impl module_support::ExchangeRateProvider for LiquidStakingExchangeRateProvider {
-	fn get_exchange_rate() -> ExchangeRate {
-		ExchangeRate::zero()
-	}
 }
 
 parameter_types! {
@@ -1425,6 +1419,76 @@ impl TakeRevenue for ToTreasury {
 	}
 }
 
+parameter_types! {
+	pub BncPerSecond: (MultiLocation, u128) = (
+		X3(Parent, Parachain(parachains::bifrost::ID), GeneralKey(parachains::bifrost::BNC_KEY.to_vec())),
+		// BNC:KSM = 80:1
+		ksm_per_second() * 80
+	);
+}
+/// TODO: this is a temp solution for multi traders, should be replaced after tuple impl is
+/// available https://github.com/paritytech/polkadot/pull/3601
+///
+/// To add more traders:
+/// 1. Add a new trader generic type after `KsmTrader`.
+/// 2. Add a new trader field.
+/// 3. Call this new trader type's new/buy_weight/refund functions in `WeightTrader` impl,
+///   like the way of `KsmTrader`.
+pub struct MultiWeightTraders<KsmTrader, BncTrader> {
+	ksm_trader: KsmTrader,
+	bnc_trader: BncTrader,
+}
+impl<KsmTrader: WeightTrader, BncTrader: WeightTrader> WeightTrader for MultiWeightTraders<KsmTrader, BncTrader> {
+	fn new() -> Self {
+		Self {
+			ksm_trader: KsmTrader::new(),
+			bnc_trader: BncTrader::new(),
+			// dummy_trader: DummyTrader::new(),
+		}
+	}
+	fn buy_weight(&mut self, weight: Weight, payment: Assets) -> Result<Assets, XcmError> {
+		if let Ok(assets) = self.ksm_trader.buy_weight(weight, payment.clone()) {
+			return Ok(assets);
+		}
+
+		if let Ok(assets) = self.bnc_trader.buy_weight(weight, payment) {
+			return Ok(assets);
+		}
+
+		// if let Ok(asset) = self.dummy_trader.buy_weight(weight, payment) {
+		// 	return Ok(assets)
+		// }
+
+		Err(XcmError::TooExpensive)
+	}
+	fn refund_weight(&mut self, weight: Weight) -> MultiAsset {
+		let ksm = self.ksm_trader.refund_weight(weight);
+		match ksm {
+			MultiAsset::ConcreteFungible { amount, .. } if !amount.is_zero() => return ksm,
+			_ => {}
+		}
+
+		let bnc = self.bnc_trader.refund_weight(weight);
+		match bnc {
+			MultiAsset::ConcreteFungible { amount, .. } if !amount.is_zero() => return bnc,
+			_ => {}
+		}
+
+		// let dummy = self.dummy_trader.refund_weight(weight);
+		// match dummy {
+		// 	MultiAsset::ConcreteFungible { amount, .. } if !amount.is_zero() => return dummy,
+		// 	_ => {},
+		// }
+
+		MultiAsset::None
+	}
+}
+
+pub type Trader = MultiWeightTraders<
+	FixedRateOfConcreteFungible<KsmPerSecond, ToTreasury>,
+	FixedRateOfConcreteFungible<BncPerSecond, ToTreasury>,
+>;
+
 pub struct XcmConfig;
 impl xcm_executor::Config for XcmConfig {
 	type Call = Call;
@@ -1439,7 +1503,7 @@ impl xcm_executor::Config for XcmConfig {
 	type Barrier = Barrier;
 	type Weigher = FixedWeightBounds<UnitWeightCost, Call>;
 	// Only receiving KSM is handled, and all fees must be paid in KSM.
-	type Trader = FixedRateOfConcreteFungible<KsmPerSecond, ToTreasury>;
+	type Trader = Trader;
 	type ResponseHandler = (); // Don't handle responses for now.
 }
 
@@ -1545,6 +1609,12 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 		match id {
 			Token(KSM) => Some(X1(Parent)),
 			Token(KAR) | Token(KUSD) | Token(LKSM) | Token(RENBTC) => Some(native_currency_location(id)),
+			// Bifrost native token
+			Token(BNC) => Some(X3(
+				Parent,
+				Parachain(parachains::bifrost::ID),
+				GeneralKey(parachains::bifrost::BNC_KEY.to_vec()),
+			)),
 			_ => None,
 		}
 	}
@@ -1555,16 +1625,23 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 		use TokenSymbol::*;
 		match location {
 			X1(Parent) => Some(Token(KSM)),
-			X3(Parent, Parachain(id), GeneralKey(key)) if ParaId::from(id) == ParachainInfo::get() => {
-				// decode the general key
-				if let Ok(currency_id) = CurrencyId::decode(&mut &key[..]) {
-					// check `currency_id` is cross-chain asset
-					match currency_id {
-						Token(KAR) | Token(KUSD) | Token(LKSM) | Token(RENBTC) => Some(currency_id),
-						_ => None,
+			X3(Parent, Parachain(id), GeneralKey(key)) => {
+				match (id, &key[..]) {
+					(parachains::bifrost::ID, parachains::bifrost::BNC_KEY) => Some(Token(BNC)),
+					(id, key) if id == u32::from(ParachainInfo::get()) => {
+						// Karura
+						if let Ok(currency_id) = CurrencyId::decode(&mut &*key) {
+							// check `currency_id` is cross-chain asset
+							match currency_id {
+								Token(KAR) | Token(KUSD) | Token(LKSM) | Token(RENBTC) => Some(currency_id),
+								_ => None,
+							}
+						} else {
+							// invalid general key
+							None
+						}
 					}
-				} else {
-					None
+					_ => None,
 				}
 			}
 			_ => None,

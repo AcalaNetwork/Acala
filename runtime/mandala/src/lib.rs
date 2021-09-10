@@ -208,7 +208,7 @@ parameter_types! {
 pub struct BaseCallFilter;
 impl Contains<Call> for BaseCallFilter {
 	fn contains(call: &Call) -> bool {
-		module_transaction_pause::NonPausedTransactionFilter::<Runtime>::contains(call)
+		!module_transaction_pause::PausedTransactionFilter::<Runtime>::contains(call)
 			&& !matches!(call, Call::Democracy(pallet_democracy::Call::propose(..)),)
 	}
 }
@@ -792,6 +792,7 @@ parameter_type_with_key! {
 				TokenSymbol::AUSD => cent(*currency_id),
 				TokenSymbol::DOT => 10 * millicent(*currency_id),
 				TokenSymbol::LDOT => 50 * millicent(*currency_id),
+				TokenSymbol::BNC => 800 * millicent(*currency_id),  // 80BNC = 1KSM
 
 				TokenSymbol::KAR |
 				TokenSymbol::KUSD |
