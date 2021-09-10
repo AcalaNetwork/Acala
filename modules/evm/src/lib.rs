@@ -443,14 +443,14 @@ pub mod module {
 		ContractAlreadyDeployed,
 		/// Contract exceeds max code size
 		ContractExceedsMaxCodeSize,
+		/// Contract already existed
+		ContractAlreadyExisted,
 		/// Storage usage exceeds storage limit
 		OutOfStorage,
 		/// Charge fee failed
 		ChargeFeeFailed,
 		/// Contract cannot be killed due to reference count
 		CannotKillContract,
-		/// Contract address conflicts with the system contract
-		ConflictContractAddress,
 		/// Not enough balance to perform action
 		BalanceLow,
 		/// Calculating total fee overflowed
@@ -680,6 +680,49 @@ pub mod module {
 				T::Runner::create_at_address(source, address, init, value, gas_limit, storage_limit, T::config())?;
 
 			NetworkContractIndex::<T>::mutate(|v| *v = v.saturating_add(One::one()));
+
+			if info.exit_reason.is_succeed() {
+				Pallet::<T>::deposit_event(Event::<T>::Created(info.value));
+			} else {
+				Pallet::<T>::deposit_event(Event::<T>::CreatedFailed(info.value, info.exit_reason));
+			}
+
+			let used_gas: u64 = info.used_gas.unique_saturated_into();
+
+			Ok(PostDispatchInfo {
+				actual_weight: Some(T::GasToWeight::convert(used_gas)),
+				pays_fee: Pays::Yes,
+			})
+		}
+
+		/// Issue an EVM create operation. The address specified
+		/// will be used as created contract address.
+		///
+		/// - `target`: the address specified by the contract
+		/// - `init`: the data supplied for the contract's constructor
+		/// - `value`: the amount sent for payable calls
+		/// - `gas_limit`: the maximum gas the call can use
+		/// - `storage_limit`: the total bytes the contract's storage can increase by
+		#[pallet::weight(T::GasToWeight::convert(*gas_limit))]
+		#[transactional]
+		pub fn create_predeploy_contract(
+			origin: OriginFor<T>,
+			target: EvmAddress,
+			init: Vec<u8>,
+			value: BalanceOf<T>,
+			gas_limit: u64,
+			storage_limit: u32,
+		) -> DispatchResultWithPostInfo {
+			T::NetworkContractOrigin::ensure_origin(origin)?;
+
+			ensure!(
+				Pallet::<T>::is_account_empty(&target),
+				Error::<T>::ContractAlreadyExisted
+			);
+
+			let source = T::NetworkContractSource::get();
+			let info =
+				T::Runner::create_at_address(source, target, init, value, gas_limit, storage_limit, T::config())?;
 
 			if info.exit_reason.is_succeed() {
 				Pallet::<T>::deposit_event(Event::<T>::Created(info.value));

@@ -679,6 +679,53 @@ fn create_network_contract_fails_if_non_network_contract_origin() {
 }
 
 #[test]
+fn create_predeploy_contract_works() {
+	// pragma solidity ^0.5.0;
+	//
+	// contract Test {
+	//	 function multiply(uint a, uint b) public pure returns(uint) {
+	// 	 	return a * b;
+	// 	 }
+	// }
+	let contract = from_hex(
+		"0x608060405234801561001057600080fd5b5060b88061001f6000396000f3fe6080604052348015600f57600080fd5b506004361060285760003560e01c8063165c4a1614602d575b600080fd5b606060048036036040811015604157600080fd5b8101908080359060200190929190803590602001909291905050506076565b6040518082815260200191505060405180910390f35b600081830290509291505056fea265627a7a723158201f3db7301354b88b310868daf4395a6ab6cd42d16b1d8e68cdf4fdd9d34fffbf64736f6c63430005110032"
+	).unwrap();
+
+	new_test_ext().execute_with(|| {
+		let addr = H160::from_str("1111111111111111111111111111111111111111").unwrap();
+
+		assert_eq!(Pallet::<Runtime>::is_account_empty(&addr), true);
+
+		// deploy contract
+		assert_ok!(EVM::create_predeploy_contract(
+			Origin::signed(NetworkContractAccount::get()),
+			addr,
+			contract,
+			0,
+			1000000,
+			1000000,
+		));
+
+		assert_eq!(Pallet::<Runtime>::is_account_empty(&addr), false);
+
+		System::assert_last_event(Event::EVM(crate::Event::Created(addr)));
+
+		assert_noop!(
+			EVM::create_predeploy_contract(
+				Origin::signed(NetworkContractAccount::get()),
+				addr,
+				vec![],
+				0,
+				1000000,
+				1000000,
+			),
+			Error::<Runtime>::ContractAlreadyExisted
+		);
+	});
+}
+
+#[test]
+#[test]
 fn should_transfer_maintainer() {
 	// pragma solidity ^0.5.0;
 	//
