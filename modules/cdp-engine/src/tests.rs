@@ -22,15 +22,12 @@
 
 use super::*;
 use frame_support::{assert_noop, assert_ok};
-use mock::{Event, *};
+use mock::{Call as MockCall, Event, *};
 use orml_traits::MultiCurrency;
+use sp_core::offchain::{testing, OffchainDbExt, OffchainWorkerExt, TransactionPoolExt};
+use sp_io::offchain;
 use sp_runtime::traits::BadOrigin;
 use support::DEXManager;
-use sp_io::offchain;
-use sp_core::offchain::{
-	testing::{TestOffchainExt, TestTransactionPoolExt}, StorageKind,
-	OffchainDbExt, OffchainWorkerExt, TransactionPoolExt, OffchainStorage, DbExternalities
-};
 
 pub const INIT_TIMESTAMP: u64 = 30_000;
 pub const BLOCK_TIME: u64 = 1000;
@@ -41,6 +38,8 @@ fn run_to_block_offchain(n: u64) {
 		Timestamp::set_timestamp((System::block_number() as u64 * BLOCK_TIME) + INIT_TIMESTAMP);
 		CDPEngineModule::on_initialize(System::block_number());
 		CDPEngineModule::offchain_worker(System::block_number());
+		// this unlocks the concurrency storage lock so offchain_worker will fire next block
+		offchain::sleep_until(offchain::timestamp().add(Duration::from_millis(LOCK_DURATION + 200)));
 	}
 }
 
@@ -942,10 +941,14 @@ fn close_cdp_has_debit_by_swap_on_alternative_path() {
 
 #[test]
 fn offchain_worker_liquidates_cdp() {
-	let ext = ExtBuilder::default().build();
-	let mut ext2 = offchain(ext);
+	let (offchain, _offchain_state) = testing::TestOffchainExt::new();
+	let (pool, pool_state) = testing::TestTransactionPoolExt::new();
+	let mut ext = ExtBuilder::default().build();
+	ext.register_extension(OffchainWorkerExt::new(offchain.clone()));
+	ext.register_extension(TransactionPoolExt::new(pool));
+	ext.register_extension(OffchainDbExt::new(offchain.clone()));
 
-	ext2.execute_with(|| {
+	ext.execute_with(|| {
 		System::set_block_number(1);
 		assert_ok!(CDPEngineModule::set_collateral_params(
 			Origin::signed(1),
@@ -957,12 +960,20 @@ fn offchain_worker_liquidates_cdp() {
 			Change::NewValue(10000),
 		));
 
-		// offchain worker does not liquidate alice
+		// offchain worker will not liquidate alice
 		assert_ok!(CDPEngineModule::adjust_position(&ALICE, BTC, 100, 500));
 		assert_eq!(Currencies::free_balance(BTC, &ALICE), 900);
 		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 50);
 		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 500);
 		assert_eq!(LoansModule::positions(BTC, ALICE).collateral, 100);
+		run_to_block_offchain(3);
+
+		// checks that offchain worker tx pool is empty (therefore tx to liquidate alice is not present)
+		assert!(pool_state.write().transactions.pop().is_none());
+		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 500);
+		assert_eq!(LoansModule::positions(BTC, ALICE).collateral, 100);
+
+		// changes alice into unsafe position
 		assert_ok!(CDPEngineModule::set_collateral_params(
 			Origin::signed(1),
 			BTC,
@@ -972,11 +983,16 @@ fn offchain_worker_liquidates_cdp() {
 			Change::NoChange,
 			Change::NoChange,
 		));
-		run_to_block_offchain(2);
-		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 500);
-		assert_eq!(LoansModule::positions(BTC, ALICE).collateral, 100);
+		run_to_block_offchain(5);
+		// offchain worker will liquidate alice
+		let tx = pool_state.write().transactions.pop().unwrap();
+		let tx = Extrinsic::decode(&mut &*tx).unwrap();
+		if let MockCall::CDPEngineModule(crate::Call::liquidate(currency_call, who_call)) = tx.call {
+			assert_ok!(CDPEngineModule::liquidate(Origin::none(), currency_call, who_call));
+		}
 
-		panic!();
-
+		// alice is liquidated
+		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 0);
+		assert_eq!(LoansModule::positions(BTC, ALICE).collateral, 0);
 	});
 }

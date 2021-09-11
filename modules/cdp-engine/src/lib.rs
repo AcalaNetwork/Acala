@@ -653,10 +653,17 @@ impl<T: Config> Pallet<T> {
 		let currency_id = collateral_currency_ids[collateral_position as usize];
 		let is_shutdown = T::EmergencyShutdown::is_shutdown();
 
+		// If start key is Some(value) continue iterating from that point in storage otherwise start
+		// iterating from the beginning of <loans::Positons<T>>
 		let mut map_iterator = match start_key.clone() {
 			Some(key) => <loans::Positions<T>>::iter_prefix_from(currency_id, key),
 			None => <loans::Positions<T>>::iter_prefix(currency_id),
 		};
+
+		for i in <loans::Positions<T>>::iter_prefix_values(currency_id) {
+			dbg!(i);
+			log::info!("{:?}", i);
+		}
 
 		let mut finished = true;
 		let mut iteration_count = 0;
@@ -664,9 +671,11 @@ impl<T: Config> Pallet<T> {
 
 		#[allow(clippy::while_let_on_iterator)]
 		while let Some((who, Position { collateral, debit })) = map_iterator.next() {
-			if iteration_count >= max_iterations.unwrap_or(DEFAULT_MAX_ITERATIONS) {
-				finished = false;
-				break;
+			if let Some(max_iteration_val) = max_iterations {
+				if iteration_count >= max_iteration_val {
+					finished = false;
+					break;
+				}
 			}
 
 			if !is_shutdown

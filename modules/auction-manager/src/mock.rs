@@ -25,13 +25,7 @@ use frame_support::{construct_runtime, ord_parameter_types, parameter_types, Pal
 use frame_system::EnsureSignedBy;
 use orml_traits::parameter_type_with_key;
 use primitives::{TokenSymbol, TradingPair};
-use sp_core::{
-	offchain::{
-		testing::{TestOffchainExt, TestTransactionPoolExt},
-		OffchainDbExt, OffchainWorkerExt, TransactionPoolExt,
-	},
-	H256,
-};
+use sp_core::H256;
 use sp_runtime::{
 	testing::{Header, TestXt},
 	traits::{AccountIdConversion, IdentityLookup, One as OneT},
@@ -294,13 +288,3 @@ impl ExtBuilder {
 		t.into()
 	}
 }
-
-pub fn offchain(mut ext: sp_io::TestExternalities) -> sp_io::TestExternalities {
-	let (offchain, _offchain_state) = TestOffchainExt::new();
-	let (pool, _pool_state) = TestTransactionPoolExt::new();
-	ext.register_extension(OffchainDbExt::new(offchain.clone()));
-	ext.register_extension(OffchainWorkerExt::new(offchain));
-	ext.register_extension(TransactionPoolExt::new(pool));
-	ext
-}
-

@@ -23,7 +23,18 @@
 use super::*;
 use frame_support::{assert_noop, assert_ok};
 use mock::{Event, *};
+use sp_core::offchain::{testing, OffchainDbExt, OffchainWorkerExt, TransactionPoolExt};
+use sp_io::offchain;
 use sp_runtime::traits::One;
+
+fn run_to_block_offchain(n: u64) {
+	while System::block_number() < n {
+		System::set_block_number(System::block_number() + 1);
+		AuctionManagerModule::offchain_worker(System::block_number());
+		// this unlocks the concurrency storage lock so offchain_worker will fire next block
+		offchain::sleep_until(offchain::timestamp().add(Duration::from_millis(LOCK_DURATION + 200)));
+	}
+}
 
 #[test]
 fn get_auction_time_to_close_work() {
@@ -469,5 +480,30 @@ fn cancel_collateral_auction_work() {
 		assert_eq!(alice_ref_count_1, alice_ref_count_0 - 1);
 		let bob_ref_count_1 = System::consumers(&BOB);
 		assert_eq!(bob_ref_count_1, bob_ref_count_0 - 1);
+	});
+}
+
+#[test]
+fn offchain_worker_cancels_auction_in_shutdown() {
+	let (offchain, _offchain_state) = testing::TestOffchainExt::new();
+	let (pool, pool_state) = testing::TestTransactionPoolExt::new();
+	let mut ext = ExtBuilder::default().build();
+	ext.register_extension(OffchainWorkerExt::new(offchain.clone()));
+	ext.register_extension(TransactionPoolExt::new(pool));
+	ext.register_extension(OffchainDbExt::new(offchain.clone()));
+
+	ext.execute_with(|| {
+		System::set_block_number(1);
+
+		run_to_block_offchain(3);
+		// offchain worker does not have any tx because shutdown is false
+		assert!(!MockEmergencyShutdown::is_shutdown());
+		assert!(pool_state.write().transactions.pop().is_none());
+		mock_shutdown();
+		assert!(MockEmergencyShutdown::is_shutdown());
+
+		run_to_block_offchain(3);
+
+		panic!();
 	});
 }
