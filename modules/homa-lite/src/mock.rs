@@ -43,6 +43,7 @@ mod homa_lite {
 pub const ROOT: AccountId = AccountId32::new([255u8; 32]);
 pub const ALICE: AccountId = AccountId32::new([1u8; 32]);
 pub const BOB: AccountId = AccountId32::new([2u8; 32]);
+pub const CHARLIE: AccountId = AccountId32::new([3u8; 32]);
 pub const INVALID_CALLER: AccountId = AccountId32::new([254u8; 32]);
 pub const ACALA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const KSM: CurrencyId = CurrencyId::Token(TokenSymbol::KSM);
@@ -200,7 +201,7 @@ parameter_types! {
 	pub MintFee: Balance = millicent(1000);
 	pub BaseWithdrawFee: Permill = Permill::from_rational(1u32, 1_000u32); // 0.1%
 	pub const ParachainAccount: AccountId = ROOT;
-	pub const MaximumRedeemRequestMatchesForMint: u32 = 20;
+	pub const MaximumRedeemRequestMatchesForMint: u32 = 2;
 	pub static MockRelayBlockNumberProvider: u64 = 0;
 	pub const RelaychainUnboundingSlashingSpans: u32 = 5;
 }

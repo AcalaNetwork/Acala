@@ -24,7 +24,7 @@ use super::*;
 use frame_support::{assert_noop, assert_ok};
 use mock::{
 	dollar, Currencies, Event, ExtBuilder, HomaLite, MockRelayBlockNumberProvider, Origin, Runtime, System, ACALA,
-	ALICE, BOB, INITIAL_BALANCE, INVALID_CALLER, KSM, LKSM, ROOT,
+	ALICE, BOB, CHARLIE, INITIAL_BALANCE, INVALID_CALLER, KSM, LKSM, ROOT,
 };
 use sp_runtime::traits::BadOrigin;
 
@@ -109,6 +109,7 @@ fn repeated_mints_have_similar_exchange_rate() {
 		// liquid = (1000 - 0.01) * 1000 / 200 * 0.99
 		let liquid_1 = 4_949_950_500_000_000;
 		assert_ok!(HomaLite::mint(Origin::signed(BOB), amount));
+		assert_eq!(Currencies::free_balance(KSM, &BOB), dollar(999_000));
 		assert_eq!(Currencies::free_balance(LKSM, &BOB), liquid_1);
 		// The effective exchange rate is lower than the theoretical rate.
 		assert!(liquid_1 < dollar(5000));
@@ -123,6 +124,7 @@ fn repeated_mints_have_similar_exchange_rate() {
 		let liquid_2 = 4_949_703_990_002_433; // Actual amount is lower due to rounding loss
 		assert_ok!(HomaLite::mint(Origin::signed(BOB), amount));
 		System::assert_last_event(Event::HomaLite(crate::Event::Minted(BOB, amount, liquid_2)));
+		assert_eq!(Currencies::free_balance(KSM, &BOB), 998_000_000_000_000_001);
 		assert_eq!(Currencies::free_balance(LKSM, &BOB), 9_899_654_490_002_433);
 
 		// Since the effective exchange rate is lower than the theortical rate, Liquid currency becomes more
@@ -146,6 +148,7 @@ fn repeated_mints_have_similar_exchange_rate() {
 		let liquid_3 = 4_900_454_170_858_356; // Actual amount is lower due to rounding loss
 		assert_ok!(HomaLite::mint(Origin::signed(BOB), amount));
 		System::assert_last_event(Event::HomaLite(crate::Event::Minted(BOB, amount, liquid_3)));
+		assert_eq!(Currencies::free_balance(KSM, &BOB), 997_000_000_000_000_002);
 		assert_eq!(Currencies::free_balance(LKSM, &BOB), 14_800_108_660_860_789);
 
 		// Increasing the Staking total increases the value of Liquid currency - this makes up for the
@@ -510,8 +513,128 @@ fn can_cancel_requested_redeem() {
 	});
 }
 
-// mint can match all redeem requests
+// mint can match all redeem requests, up to the given limit
+// can cancel redeem requests
+#[test]
+fn mint_can_match_requested_redeem() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(HomaLite::set_minting_cap(Origin::signed(ROOT), dollar(INITIAL_BALANCE)));
+		assert_ok!(Currencies::deposit(LKSM, &ALICE, dollar(200)));
+		assert_ok!(Currencies::deposit(LKSM, &BOB, dollar(200)));
+		assert_ok!(Currencies::deposit(KSM, &CHARLIE, dollar(100)));
 
-// mint can mix redeem requests with xcm
+		assert_ok!(HomaLite::request_redeem(
+			Origin::signed(ROOT),
+			dollar(100),
+			Permill::zero()
+		));
+		assert_ok!(HomaLite::request_redeem(
+			Origin::signed(ALICE),
+			dollar(200),
+			Permill::zero()
+		));
+		assert_ok!(HomaLite::request_redeem(
+			Origin::signed(BOB),
+			dollar(200),
+			Permill::zero()
+		));
+
+		assert_eq!(Currencies::free_balance(KSM, &CHARLIE), dollar(100));
+		assert_eq!(Currencies::free_balance(LKSM, &CHARLIE), 0);
+
+		// Minting request can match up to 2 requests at a time. The rest is exchanged via XCM
+		assert_ok!(HomaLite::mint(Origin::signed(CHARLIE), dollar(100)));
+
+		// Mint fee from Redeemer is awarded to the minter
+		assert_eq!(Currencies::free_balance(KSM, &CHARLIE), 40_000_000_000);
+		// XCM will cost some fee
+		assert_eq!(Currencies::free_balance(LKSM, &CHARLIE), 993_901_000_000_000);
+	});
+}
 
 // can_mint_for_requests
+#[test]
+fn can_mint_for_request() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(HomaLite::set_minting_cap(
+			Origin::signed(ROOT),
+			5 * dollar(INITIAL_BALANCE)
+		));
+		assert_ok!(Currencies::deposit(LKSM, &ALICE, dollar(200)));
+		assert_ok!(Currencies::deposit(LKSM, &BOB, dollar(300)));
+		assert_ok!(Currencies::deposit(KSM, &CHARLIE, dollar(40)));
+
+		assert_ok!(HomaLite::request_redeem(
+			Origin::signed(ROOT),
+			dollar(100),
+			Permill::zero()
+		));
+		assert_ok!(HomaLite::request_redeem(
+			Origin::signed(ALICE),
+			dollar(200),
+			Permill::zero()
+		));
+		assert_ok!(HomaLite::request_redeem(
+			Origin::signed(BOB),
+			dollar(300),
+			Permill::zero()
+		));
+
+		// Prioritize ALICE and BOB's requests
+		assert_ok!(HomaLite::mint_for_requests(
+			Origin::signed(CHARLIE),
+			dollar(40),
+			vec![ALICE, BOB]
+		));
+
+		assert_eq!(HomaLite::redeem_requests(ROOT), Some((dollar(100), Permill::zero())));
+		assert_eq!(Currencies::reserved_balance(LKSM, &ROOT), dollar(100));
+
+		assert_eq!(HomaLite::redeem_requests(ALICE), None);
+		assert_eq!(Currencies::reserved_balance(LKSM, &ALICE), 0);
+		assert_eq!(HomaLite::redeem_requests(BOB), Some((dollar(100), Permill::zero())));
+		assert_eq!(Currencies::reserved_balance(LKSM, &BOB), dollar(100));
+
+		// Mint fee awarded to the minter
+		assert_eq!(Currencies::free_balance(KSM, &CHARLIE), 40_000_000_000);
+		assert_eq!(Currencies::free_balance(LKSM, &CHARLIE), dollar(400));
+	});
+}
+
+// Extra fee is paid from the redeemer to the Minter
+#[test]
+fn request_redeem_extra_fee_works() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(HomaLite::set_minting_cap(
+			Origin::signed(ROOT),
+			5 * dollar(INITIAL_BALANCE)
+		));
+		assert_ok!(Currencies::deposit(LKSM, &ALICE, dollar(200)));
+		assert_ok!(Currencies::deposit(KSM, &CHARLIE, dollar(30)));
+
+		assert_ok!(HomaLite::request_redeem(
+			Origin::signed(ROOT),
+			dollar(100),
+			Permill::from_percent(50)
+		));
+		assert_ok!(HomaLite::request_redeem(
+			Origin::signed(ALICE),
+			dollar(200),
+			Permill::from_percent(10)
+		));
+
+		assert_ok!(HomaLite::mint(Origin::signed(CHARLIE), dollar(30)));
+
+		// ROOT exchanges 50L-> 5S + 5S(fee)
+		assert_eq!(HomaLite::redeem_requests(ROOT), None);
+		assert_eq!(Currencies::reserved_balance(LKSM, &ROOT), 0);
+
+		// ALICE exchanges 180L->18S + 2S(fee)
+		assert_eq!(HomaLite::redeem_requests(ALICE), None);
+		assert_eq!(Currencies::reserved_balance(LKSM, &ALICE), 0);
+
+		// Extra fee + mint fee are rewarded to the minter
+		assert_eq!(Currencies::free_balance(KSM, &CHARLIE), 7_030_000_000_000);
+		assert_eq!(Currencies::free_balance(LKSM, &CHARLIE), dollar(300));
+	});
+}

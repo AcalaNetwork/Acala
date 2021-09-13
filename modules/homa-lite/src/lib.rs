@@ -131,6 +131,8 @@ pub mod module {
 		InsufficientTotalStakingCurrency,
 		/// There isn't enough liquid balance in the user's account.
 		InsufficientLiquidBalance,
+		/// There isn't enough staking balance in the user's account.
+		InsufficientStakingBalance,
 	}
 
 	#[pallet::event]
@@ -658,8 +660,11 @@ pub mod module {
 					T::SovereignSubAccountLocation::get(),
 					Self::xcm_dest_weight(),
 				)?;
-
-				// Mint the liquid currency into the user's account.
+				// Burn the Staking currency, and mint liquid currency into the user's account
+				ensure!(
+					T::Currency::slash(T::StakingCurrencyId::get(), &minter, staking_remaining).is_zero(),
+					Error::<T>::InsufficientStakingBalance
+				);
 				T::Currency::deposit(T::LiquidCurrencyId::get(), &minter, liquid_to_mint)?;
 
 				staking_remaining = Balance::zero();
