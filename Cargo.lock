@@ -6659,6 +6659,7 @@ dependencies = [
  "frame-system",
  "pallet-xcm",
  "parity-scale-codec",
+ "sp-std",
  "xcm",
 ]
 

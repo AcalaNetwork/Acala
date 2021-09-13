@@ -63,7 +63,7 @@ mod mock;
 mod tests;
 pub mod weights;
 
-pub use migrations::PoolIdV0;
+pub use migrations::{PoolIdConvertor, PoolIdV0};
 pub use module::*;
 pub use weights::WeightInfo;
 
@@ -84,7 +84,13 @@ pub mod module {
 	#[pallet::config]
 	pub trait Config:
 		frame_system::Config
-		+ orml_rewards::Config<Share = Balance, Balance = Balance, PoolId = PoolId, CurrencyId = CurrencyId>
+		+ orml_rewards::Config<
+			Share = Balance,
+			Balance = Balance,
+			PoolIdV0 = PoolIdV0<Self::RelaychainAccountId>,
+			PoolId = PoolId,
+			CurrencyId = CurrencyId,
+		>
 	{
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
@@ -263,7 +269,7 @@ pub mod module {
 				let mut count: u32 = 0;
 				let shutdown = T::EmergencyShutdown::is_shutdown();
 
-				for (pool_id, pool_info) in orml_rewards::Pools::<T>::iter() {
+				for (pool_id, pool_info) in orml_rewards::PoolInfos::<T>::iter() {
 					if !pool_info.total_shares.is_zero() {
 						match pool_id {
 							// do not accumulate incentives for PoolId::Loans after shutdown
@@ -288,6 +294,10 @@ pub mod module {
 			} else {
 				0
 			}
+		}
+
+		fn on_runtime_upgrade() -> Weight {
+			migrations::migration_process::<T>()
 		}
 	}
 
@@ -588,7 +598,7 @@ impl<T: Config> DEXIncentives<T::AccountId, CurrencyId, Balance> for Pallet<T> {
 	fn do_withdraw_dex_share(who: &T::AccountId, lp_currency_id: CurrencyId, amount: Balance) -> DispatchResult {
 		ensure!(lp_currency_id.is_dex_share_currency_id(), Error::<T>::InvalidCurrencyId);
 		ensure!(
-			<orml_rewards::Pallet<T>>::share_and_withdrawn_reward(&PoolId::Dex(lp_currency_id), &who).0 >= amount,
+			<orml_rewards::Pallet<T>>::shares_and_withdrawn_rewards(&PoolId::Dex(lp_currency_id), &who).0 >= amount,
 			Error::<T>::NotEnough,
 		);
 

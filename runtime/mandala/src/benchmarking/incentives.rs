@@ -17,8 +17,8 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-	dollar, AccountId, AccumulatePeriod, CollateralCurrencyIds, Currencies, CurrencyId, GetLiquidCurrencyId,
-	GetNativeCurrencyId, GetStableCurrencyId, GetStakingCurrencyId, Incentives, Rate, Rewards, Runtime, System,
+	dollar, AccountId, AccumulatePeriod, CollateralCurrencyIds, Currencies, CurrencyId, GetNativeCurrencyId,
+	GetStableCurrencyId, GetStakingCurrencyId, Incentives, Rate, Rewards, Runtime, System,
 };
 
 use super::utils::set_balance;
@@ -36,7 +36,6 @@ const SEED: u32 = 0;
 const NATIVE: CurrencyId = GetNativeCurrencyId::get();
 const STAKING: CurrencyId = GetStakingCurrencyId::get();
 const STABLECOIN: CurrencyId = GetStableCurrencyId::get();
-const LIQUID: CurrencyId = GetLiquidCurrencyId::get();
 
 runtime_benchmarks! {
 	{ Runtime, module_incentives }
@@ -51,7 +50,7 @@ runtime_benchmarks! {
 			let pool_id = PoolId::Loans(currency_id);
 
 			Incentives::update_incentive_rewards(RawOrigin::Root.into(), vec![(pool_id.clone(), vec![(NATIVE, 100 * dollar(NATIVE))])])?;
-			orml_rewards::Pools::<Runtime>::mutate(pool_id, |pool_info| {
+			orml_rewards::PoolInfos::<Runtime>::mutate(pool_id, |pool_info| {
 				pool_info.total_shares += 100;
 			});
 		}
@@ -86,7 +85,7 @@ runtime_benchmarks! {
 
 		Rewards::add_share(&caller, &pool_id, 100);
 		Currencies::deposit(native_currency_id, &Incentives::account_id(), 80 * dollar(native_currency_id))?;
-		Rewards::accumulate_reward(&pool_id, native_currency_id, 80 * dollar(native_currency_id));
+		Rewards::accumulate_reward(&pool_id, native_currency_id, 80 * dollar(native_currency_id))?;
 	}: _(RawOrigin::Signed(caller), pool_id)
 
 	update_incentive_rewards {

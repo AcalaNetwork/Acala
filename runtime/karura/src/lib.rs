@@ -1126,6 +1126,8 @@ impl module_evm_manager::Config for Runtime {
 impl orml_rewards::Config for Runtime {
 	type Share = Balance;
 	type Balance = Balance;
+	type PoolIdV0 = module_incentives::PoolIdV0<AccountId>;
+	type PoolIdConvertor = module_incentives::PoolIdConvertor<Runtime>;
 	type PoolId = module_incentives::PoolId;
 	type CurrencyId = CurrencyId;
 	type Handler = Incentives;

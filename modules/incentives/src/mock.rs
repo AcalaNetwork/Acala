@@ -243,6 +243,8 @@ impl EmergencyShutdown for MockEmergencyShutdown {
 impl orml_rewards::Config for Runtime {
 	type Share = Balance;
 	type Balance = Balance;
+	type PoolIdV0 = PoolIdV0<AccountId>;
+	type PoolIdConvertor = PoolIdConvertor<Runtime>;
 	type PoolId = PoolId;
 	type CurrencyId = CurrencyId;
 	type Handler = IncentivesModule;

@@ -40,6 +40,13 @@ pub enum PoolIdV0<AccountId> {
 	HomaValidatorAllowance(AccountId),
 }
 
+pub struct PoolIdConvertor<T>(sp_std::marker::PhantomData<T>);
+impl<T: Config> sp_runtime::traits::Convert<PoolIdV0<T::RelaychainAccountId>, Option<PoolId>> for PoolIdConvertor<T> {
+	fn convert(a: PoolIdV0<T::RelaychainAccountId>) -> Option<PoolId> {
+		convert_to_new_pool_id::<T>(a)
+	}
+}
+
 // migrate storage `PayoutDeductionRates` to `ClaimRewardDeductionRates`
 pub fn migrate_to_claim_reward_deduction_rates<T: Config>() -> Weight {
 	let mut reads_writes = 0;
@@ -122,14 +129,18 @@ pub fn migrate_to_pending_multi_rewards<T: Config>() -> Weight {
 }
 
 pub fn migration_process<T: Config>() -> Weight {
-	// TODO: orml-rewards migration
+	// orml-rewards migration
+	let get_reward_currency =
+		|old_pool_id: &PoolIdV0<T::RelaychainAccountId>| get_reward_currency_id::<T>(old_pool_id.clone());
+	let _ = orml_rewards::migrations::migrate_to_multi_currency_reward::<T>(Box::new(get_reward_currency));
 
-	// incentives migration
-	migrate_to_claim_reward_deduction_rates::<T>()
-	+ migrate_to_dex_saving_reward_rates::<T>()
-	+ migrate_to_incentive_reward_amounts::<T>()
-	// NOTE: if storages to migrate are too much, consider remove it and use MigraterHelper to do long-term migration
-	+ migrate_to_pending_multi_rewards::<T>()
+	// module-incentives migration
+	let _ = migrate_to_claim_reward_deduction_rates::<T>();
+	let _ = migrate_to_dex_saving_reward_rates::<T>();
+	let _ = migrate_to_incentive_reward_amounts::<T>();
+	let _ = migrate_to_pending_multi_rewards::<T>();
+
+	Default::default()
 }
 
 // helper to map PoolIdV0 to PoolId
