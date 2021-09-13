@@ -940,7 +940,7 @@ fn close_cdp_has_debit_by_swap_on_alternative_path() {
 }
 
 #[test]
-fn offchain_worker_liquidates_cdp() {
+fn offchain_worker_works_cdp() {
 	let (offchain, _offchain_state) = testing::TestOffchainExt::new();
 	let (pool, pool_state) = testing::TestTransactionPoolExt::new();
 	let mut ext = ExtBuilder::default().build();
@@ -949,6 +949,7 @@ fn offchain_worker_liquidates_cdp() {
 	ext.register_extension(OffchainDbExt::new(offchain.clone()));
 
 	ext.execute_with(|| {
+		let collateral_currencies_num = CollateralCurrencyIds::get().len() as u64;
 		System::set_block_number(1);
 		assert_ok!(CDPEngineModule::set_collateral_params(
 			Origin::signed(1),
@@ -962,11 +963,13 @@ fn offchain_worker_liquidates_cdp() {
 
 		// offchain worker will not liquidate alice
 		assert_ok!(CDPEngineModule::adjust_position(&ALICE, BTC, 100, 500));
+		assert_ok!(CDPEngineModule::adjust_position(&BOB, BTC, 100, 100));
 		assert_eq!(Currencies::free_balance(BTC, &ALICE), 900);
 		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 50);
 		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 500);
 		assert_eq!(LoansModule::positions(BTC, ALICE).collateral, 100);
-		run_to_block_offchain(3);
+		// jump 2 blocks at a time because code rotates through the different T::CollateralCurrencyIds
+		run_to_block_offchain(System::block_number() + collateral_currencies_num);
 
 		// checks that offchain worker tx pool is empty (therefore tx to liquidate alice is not present)
 		assert!(pool_state.write().transactions.pop().is_none());
@@ -983,16 +986,50 @@ fn offchain_worker_liquidates_cdp() {
 			Change::NoChange,
 			Change::NoChange,
 		));
-		run_to_block_offchain(5);
+		run_to_block_offchain(System::block_number() + collateral_currencies_num);
+
 		// offchain worker will liquidate alice
 		let tx = pool_state.write().transactions.pop().unwrap();
 		let tx = Extrinsic::decode(&mut &*tx).unwrap();
 		if let MockCall::CDPEngineModule(crate::Call::liquidate(currency_call, who_call)) = tx.call {
 			assert_ok!(CDPEngineModule::liquidate(Origin::none(), currency_call, who_call));
 		}
-
-		// alice is liquidated
+		// empty offchain tx pool (Bob was not liquidated)
+		assert!(pool_state.write().transactions.pop().is_none());
+		// alice is liquidated but bob is not
 		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 0);
 		assert_eq!(LoansModule::positions(BTC, ALICE).collateral, 0);
+		assert_eq!(LoansModule::positions(BTC, BOB).debit, 100);
+		assert_eq!(LoansModule::positions(BTC, BOB).collateral, 100);
+
+		// emergency shutdown will settle Bobs position
+		mock_shutdown();
+		assert!(MockEmergencyShutdown::is_shutdown());
+		run_to_block_offchain(System::block_number() + collateral_currencies_num);
+		// offchain worker will liquidate alice
+		let tx = pool_state.write().transactions.pop().unwrap();
+		let tx = Extrinsic::decode(&mut &*tx).unwrap();
+		if let MockCall::CDPEngineModule(crate::Call::settle(currency_call, who_call)) = tx.call {
+			assert_ok!(CDPEngineModule::settle(Origin::none(), currency_call, who_call));
+		}
+		// emergency shutdown settles bob's debit position
+		assert_eq!(LoansModule::positions(BTC, BOB).debit, 0);
+		assert_eq!(LoansModule::positions(BTC, BOB).collateral, 90);
 	});
 }
+
+/*
+#[test]
+fn offchain_worker_iteration_limit_works() {
+	let (offchain, offchain_state) = testing::TestOffchainExt::new();
+	let (pool, pool_state) = testing::TestTransactionPoolExt::new();
+	let mut ext = ExtBuilder::default().build();
+	ext.register_extension(OffchainWorkerExt::new(offchain.clone()));
+	ext.register_extension(TransactionPoolExt::new(pool));
+	ext.register_extension(OffchainDbExt::new(offchain.clone()));
+
+	ext.execute_with(|| {
+		offchain_state.write().persistent_storage.
+
+	});
+}*/

@@ -660,11 +660,6 @@ impl<T: Config> Pallet<T> {
 			None => <loans::Positions<T>>::iter_prefix(currency_id),
 		};
 
-		for i in <loans::Positions<T>>::iter_prefix_values(currency_id) {
-			dbg!(i);
-			log::info!("{:?}", i);
-		}
-
 		let mut finished = true;
 		let mut iteration_count = 0;
 		let iteration_start_time = sp_io::offchain::timestamp();

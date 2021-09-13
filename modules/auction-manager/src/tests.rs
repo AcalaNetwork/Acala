@@ -495,7 +495,7 @@ fn offchain_worker_cancels_auction_in_shutdown() {
 	ext.execute_with(|| {
 		System::set_block_number(1);
 
-		run_to_block_offchain(3);
+		run_to_block_offchain(2);
 		// offchain worker does not have any tx because shutdown is false
 		assert!(!MockEmergencyShutdown::is_shutdown());
 		assert!(pool_state.write().transactions.pop().is_none());
