@@ -118,7 +118,7 @@ pub use runtime_common::{
 	OperatorMembershipInstanceAcala, OperatorMembershipInstanceBand, Price, ProxyType, Rate, Ratio,
 	RelaychainBlockNumberProvider, RelaychainSubAccountId, RuntimeBlockLength, RuntimeBlockWeights,
 	SystemContractsFilter, TechnicalCommitteeInstance, TechnicalCommitteeMembershipInstance, TimeStampedPrice, BNC,
-	KAR, KSM, KUSD, LKSM, RENBTC,
+	KAR, KILT, KSM, KUSD, LKSM, RENBTC,
 };
 
 mod authority;
@@ -228,6 +228,15 @@ impl Contains<Call> for BaseCallFilter {
 			// BNC transfer disabled by request of Bifrost team
 			return false;
 		}
+
+		let is_kilt_transfer = matches!(
+			call,
+			Call::Currencies(module_currencies::Call::transfer(
+				_,
+				CurrencyId::Token(TokenSymbol::KILT),
+				_
+			))
+		);
 
 		true
 	}
@@ -737,6 +746,7 @@ parameter_type_with_key! {
 				TokenSymbol::KSM => 10 * millicent(*currency_id),
 				TokenSymbol::LKSM => 50 * millicent(*currency_id),
 				TokenSymbol::BNC => 800 * millicent(*currency_id),  // 80BNC = 1KSM
+				TokenSymbol::KILT => 800 * millicent(*currency_id), // TBD
 
 				TokenSymbol::ACA |
 				TokenSymbol::AUSD |
@@ -1425,6 +1435,12 @@ parameter_types! {
 		// BNC:KSM = 80:1
 		ksm_per_second() * 80
 	);
+
+	pub KiltPerSecond: (MultiLocation, u128) = (
+		X3(Parent, Parachain(parachains::kilt::ID), GeneralKey(parachains::kilt::KILT_KEY.to_vec())),
+		// KILT:KSM = ?:1
+		ksm_per_second() * 80
+	);
 }
 /// TODO: this is a temp solution for multi traders, should be replaced after tuple impl is
 /// available https://github.com/paritytech/polkadot/pull/3601
@@ -1434,15 +1450,19 @@ parameter_types! {
 /// 2. Add a new trader field.
 /// 3. Call this new trader type's new/buy_weight/refund functions in `WeightTrader` impl,
 ///   like the way of `KsmTrader`.
-pub struct MultiWeightTraders<KsmTrader, BncTrader> {
+pub struct MultiWeightTraders<KsmTrader, BncTrader, KiltTrader> {
 	ksm_trader: KsmTrader,
 	bnc_trader: BncTrader,
+	kilt_trader: KiltTrader,
 }
-impl<KsmTrader: WeightTrader, BncTrader: WeightTrader> WeightTrader for MultiWeightTraders<KsmTrader, BncTrader> {
+impl<KsmTrader: WeightTrader, BncTrader: WeightTrader, KiltTrader: WeightTrader> WeightTrader
+	for MultiWeightTraders<KsmTrader, BncTrader, KiltTrader>
+{
 	fn new() -> Self {
 		Self {
 			ksm_trader: KsmTrader::new(),
 			bnc_trader: BncTrader::new(),
+			kilt_trader: KiltTrader::new(),
 			// dummy_trader: DummyTrader::new(),
 		}
 	}
@@ -1452,6 +1472,10 @@ impl<KsmTrader: WeightTrader, BncTrader: WeightTrader> WeightTrader for MultiWei
 		}
 
 		if let Ok(assets) = self.bnc_trader.buy_weight(weight, payment) {
+			return Ok(assets);
+		}
+
+		if let Ok(assets) = self.kilt_trader.buy_weight(weight, payment) {
 			return Ok(assets);
 		}
 
@@ -1474,6 +1498,12 @@ impl<KsmTrader: WeightTrader, BncTrader: WeightTrader> WeightTrader for MultiWei
 			_ => {}
 		}
 
+		let kilt = self.kilt_trader.refund_weight(weight);
+		match kilt {
+			MultiAsset::ConcreteFungible { amount, .. } if !amount.is_zero() => return kilt,
+			_ => {}
+		}
+
 		// let dummy = self.dummy_trader.refund_weight(weight);
 		// match dummy {
 		// 	MultiAsset::ConcreteFungible { amount, .. } if !amount.is_zero() => return dummy,
@@ -1487,6 +1517,7 @@ impl<KsmTrader: WeightTrader, BncTrader: WeightTrader> WeightTrader for MultiWei
 pub type Trader = MultiWeightTraders<
 	FixedRateOfConcreteFungible<KsmPerSecond, ToTreasury>,
 	FixedRateOfConcreteFungible<BncPerSecond, ToTreasury>,
+	FixedRateOfConcreteFungible<KiltPerSecond, ToTreasury>,
 >;
 
 pub struct XcmConfig;
@@ -1615,6 +1646,11 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 				Parachain(parachains::bifrost::ID),
 				GeneralKey(parachains::bifrost::BNC_KEY.to_vec()),
 			)),
+			Token(KILT) => Some(X3(
+				Parent,
+				Parachain(parachains::kilt::ID),
+				GeneralKey(parachains::kilt::KILT_KEY.to_vec()),
+			)),
 			_ => None,
 		}
 	}
@@ -1628,6 +1664,7 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 			X3(Parent, Parachain(id), GeneralKey(key)) => {
 				match (id, &key[..]) {
 					(parachains::bifrost::ID, parachains::bifrost::BNC_KEY) => Some(Token(BNC)),
+					(parachains::kilt::ID, parachains::kilt::KILT_KEY) => Some(Token(KILT)),
 					(id, key) if id == u32::from(ParachainInfo::get()) => {
 						// Karura
 						if let Ok(currency_id) = CurrencyId::decode(&mut &*key) {

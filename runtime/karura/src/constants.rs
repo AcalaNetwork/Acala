@@ -96,4 +96,9 @@ pub mod parachains {
 		pub const ID: u32 = 2001;
 		pub const BNC_KEY: &[u8] = &[0, 1];
 	}
+
+	pub mod kilt {
+		pub const ID: u32 = 2086;
+		pub const KILT_KEY: &[u8] = &[0, 1];
+	}
 }
