@@ -368,7 +368,7 @@ pub mod module {
 
 				Self::deposit_event(Event::ClaimRewards(
 					who.clone(),
-					pool_id.clone(),
+					pool_id,
 					currency_id,
 					actual_amount,
 					deduction_amount,
@@ -462,11 +462,8 @@ pub mod module {
 		) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
 			for (pool_id, deduction_rate) in updates {
-				match pool_id {
-					PoolId::Dex(currency_id) => {
-						ensure!(currency_id.is_dex_share_currency_id(), Error::<T>::InvalidPoolId);
-					}
-					_ => {}
+				if let PoolId::Dex(currency_id) = pool_id {
+					ensure!(currency_id.is_dex_share_currency_id(), Error::<T>::InvalidPoolId);
 				}
 				ensure!(deduction_rate <= Rate::one(), Error::<T>::InvalidRate);
 				ClaimRewardDeductionRates::<T>::mutate_exists(&pool_id, |maybe_rate| {
