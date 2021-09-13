@@ -351,7 +351,8 @@ impl<T: Config> Pallet<T> {
 		// get the max iterationns config
 		let max_iterations = StorageValueRef::persistent(OFFCHAIN_WORKER_MAX_ITERATIONS)
 			.get::<u32>()
-			.unwrap_or(Some(DEFAULT_MAX_ITERATIONS));
+			.unwrap_or(Some(DEFAULT_MAX_ITERATIONS))
+			.unwrap_or(DEFAULT_MAX_ITERATIONS);
 
 		log::debug!(
 			target: "auction-manager",
@@ -370,11 +371,9 @@ impl<T: Config> Pallet<T> {
 
 		#[allow(clippy::while_let_on_iterator)]
 		while let Some((collateral_auction_id, _)) = iterator.next() {
-			if let Some(max_iterations_val) = max_iterations {
-				if iteration_count >= max_iterations_val {
-					finished = false;
-					break;
-				}
+			if iteration_count >= max_iterations {
+				finished = false;
+				break;
 			}
 			iteration_count += 1;
 

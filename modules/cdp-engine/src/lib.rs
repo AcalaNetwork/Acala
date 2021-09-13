@@ -648,7 +648,8 @@ impl<T: Config> Pallet<T> {
 		// get the max iterationns config
 		let max_iterations = StorageValueRef::persistent(OFFCHAIN_WORKER_MAX_ITERATIONS)
 			.get::<u32>()
-			.unwrap_or(Some(DEFAULT_MAX_ITERATIONS));
+			.unwrap_or(Some(DEFAULT_MAX_ITERATIONS))
+			.unwrap_or(DEFAULT_MAX_ITERATIONS);
 
 		let currency_id = collateral_currency_ids[collateral_position as usize];
 		let is_shutdown = T::EmergencyShutdown::is_shutdown();
@@ -666,11 +667,9 @@ impl<T: Config> Pallet<T> {
 
 		#[allow(clippy::while_let_on_iterator)]
 		while let Some((who, Position { collateral, debit })) = map_iterator.next() {
-			if let Some(max_iteration_val) = max_iterations {
-				if iteration_count >= max_iteration_val {
-					finished = false;
-					break;
-				}
+			if iteration_count >= max_iterations {
+				finished = false;
+				break;
 			}
 
 			if !is_shutdown
