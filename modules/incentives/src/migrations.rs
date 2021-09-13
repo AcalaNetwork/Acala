@@ -132,7 +132,8 @@ pub fn migration_process<T: Config>() -> Weight {
 	// orml-rewards migration
 	let get_reward_currency =
 		|old_pool_id: &PoolIdV0<T::RelaychainAccountId>| get_reward_currency_id::<T>(old_pool_id.clone());
-	let _ = orml_rewards::migrations::migrate_to_multi_currency_reward::<T>(Box::new(get_reward_currency));
+	let _ = orml_rewards::migrations::migrate_to_pool_infos::<T>(Box::new(get_reward_currency));
+	let _ = orml_rewards::migrations::migrate_to_shares_and_withdrawn_rewards::<T>(Box::new(get_reward_currency));
 
 	// module-incentives migration
 	let _ = migrate_to_claim_reward_deduction_rates::<T>();
