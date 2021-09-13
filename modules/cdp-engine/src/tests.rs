@@ -26,7 +26,10 @@ use mock::{Call as MockCall, Event, *};
 use orml_traits::MultiCurrency;
 use sp_core::offchain::{testing, OffchainDbExt, OffchainWorkerExt, TransactionPoolExt};
 use sp_io::offchain;
-use sp_runtime::traits::BadOrigin;
+use sp_runtime::{
+	offchain::{DbExternalities, StorageKind},
+	traits::BadOrigin,
+};
 use support::DEXManager;
 
 pub const INIT_TIMESTAMP: u64 = 30_000;
@@ -1018,10 +1021,9 @@ fn offchain_worker_works_cdp() {
 	});
 }
 
-/*
 #[test]
 fn offchain_worker_iteration_limit_works() {
-	let (offchain, offchain_state) = testing::TestOffchainExt::new();
+	let (mut offchain, _offchain_state) = testing::TestOffchainExt::new();
 	let (pool, pool_state) = testing::TestTransactionPoolExt::new();
 	let mut ext = ExtBuilder::default().build();
 	ext.register_extension(OffchainWorkerExt::new(offchain.clone()));
@@ -1029,7 +1031,52 @@ fn offchain_worker_iteration_limit_works() {
 	ext.register_extension(OffchainDbExt::new(offchain.clone()));
 
 	ext.execute_with(|| {
-		offchain_state.write().persistent_storage.
+		System::set_block_number(1);
+		// sets max iterations value to 1
+		offchain.local_storage_set(StorageKind::PERSISTENT, OFFCHAIN_WORKER_MAX_ITERATIONS, &1u32.encode());
+		assert_ok!(CDPEngineModule::set_collateral_params(
+			Origin::signed(1),
+			BTC,
+			Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
+			Change::NewValue(Some(Rate::saturating_from_rational(2, 10))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
+			Change::NewValue(10000),
+		));
 
+		assert_ok!(CDPEngineModule::adjust_position(&ALICE, BTC, 100, 500));
+		assert_ok!(CDPEngineModule::adjust_position(&BOB, BTC, 100, 500));
+		// make both positions unsafe
+		assert_ok!(CDPEngineModule::set_collateral_params(
+			Origin::signed(1),
+			BTC,
+			Change::NoChange,
+			Change::NewValue(Some(Ratio::saturating_from_rational(3, 1))),
+			Change::NoChange,
+			Change::NoChange,
+			Change::NoChange,
+		));
+		run_to_block_offchain(2);
+		let tx = pool_state.write().transactions.pop().unwrap();
+		let tx = Extrinsic::decode(&mut &*tx).unwrap();
+		if let MockCall::CDPEngineModule(crate::Call::liquidate(currency_call, who_call)) = tx.call {
+			assert_ok!(CDPEngineModule::liquidate(Origin::none(), currency_call, who_call));
+		}
+		// alice is liquidated but not bob, he will get liquidated next block due to iteration limit
+		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 0);
+		assert_eq!(LoansModule::positions(BTC, ALICE).collateral, 0);
+		// only one tx is submitted due to iteration limit
+		assert!(pool_state.write().transactions.pop().is_none());
+
+		// Iterator continues where it was from storage and now liquidates bob
+		run_to_block_offchain(3);
+		let tx = pool_state.write().transactions.pop().unwrap();
+		let tx = Extrinsic::decode(&mut &*tx).unwrap();
+		if let MockCall::CDPEngineModule(crate::Call::liquidate(currency_call, who_call)) = tx.call {
+			assert_ok!(CDPEngineModule::liquidate(Origin::none(), currency_call, who_call));
+		}
+		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 0);
+		assert_eq!(LoansModule::positions(BTC, ALICE).collateral, 0);
+		assert!(pool_state.write().transactions.pop().is_none());
 	});
-}*/
+}

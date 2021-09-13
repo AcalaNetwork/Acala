@@ -634,6 +634,7 @@ impl<T: Config> Pallet<T> {
 		let collateral_currency_ids = T::CollateralCurrencyIds::get();
 		let to_be_continue = StorageValueRef::persistent(OFFCHAIN_WORKER_DATA);
 
+		dbg!(to_be_continue.get::<(u32, Option<Vec<u8>>)>());
 		// get to_be_continue record
 		let (collateral_position, start_key) =
 			if let Ok(Some((last_collateral_position, maybe_last_iterator_previous_key))) =
@@ -672,6 +673,8 @@ impl<T: Config> Pallet<T> {
 					break;
 				}
 			}
+
+			dbg!(who.clone());
 
 			if !is_shutdown
 				&& matches!(
@@ -714,7 +717,7 @@ impl<T: Config> Pallet<T> {
 				};
 			to_be_continue.set(&(next_collateral_position, Option::<Vec<u8>>::None));
 		} else {
-			to_be_continue.set(&(collateral_position, Some(map_iterator.last_raw_key())));
+			to_be_continue.set(&(collateral_position, Some(map_iterator.prefix())));
 		}
 
 		// Consume the guard but **do not** unlock the underlying lock.
