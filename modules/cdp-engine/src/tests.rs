@@ -952,6 +952,7 @@ fn offchain_worker_works_cdp() {
 	ext.register_extension(OffchainDbExt::new(offchain.clone()));
 
 	ext.execute_with(|| {
+		// number of currencies allowed as collateral (cycles through all of them)
 		let collateral_currencies_num = CollateralCurrencyIds::get().len() as u64;
 		System::set_block_number(1);
 		assert_ok!(CDPEngineModule::set_collateral_params(
@@ -1005,11 +1006,11 @@ fn offchain_worker_works_cdp() {
 		assert_eq!(LoansModule::positions(BTC, BOB).debit, 100);
 		assert_eq!(LoansModule::positions(BTC, BOB).collateral, 100);
 
-		// emergency shutdown will settle Bobs position
+		// emergency shutdown will settle Bobs debit position
 		mock_shutdown();
 		assert!(MockEmergencyShutdown::is_shutdown());
 		run_to_block_offchain(System::block_number() + collateral_currencies_num);
-		// offchain worker will liquidate alice
+		// offchain worker will settle bob's position
 		let tx = pool_state.write().transactions.pop().unwrap();
 		let tx = Extrinsic::decode(&mut &*tx).unwrap();
 		if let MockCall::CDPEngineModule(crate::Call::settle(currency_call, who_call)) = tx.call {
@@ -1075,8 +1076,8 @@ fn offchain_worker_iteration_limit_works() {
 		if let MockCall::CDPEngineModule(crate::Call::liquidate(currency_call, who_call)) = tx.call {
 			assert_ok!(CDPEngineModule::liquidate(Origin::none(), currency_call, who_call));
 		}
-		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 0);
-		assert_eq!(LoansModule::positions(BTC, ALICE).collateral, 0);
+		assert_eq!(LoansModule::positions(BTC, BOB).debit, 0);
+		assert_eq!(LoansModule::positions(BTC, BOB).collateral, 0);
 		assert!(pool_state.write().transactions.pop().is_none());
 	});
 }

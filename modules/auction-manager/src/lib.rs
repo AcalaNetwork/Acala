@@ -376,7 +376,6 @@ impl<T: Config> Pallet<T> {
 					break;
 				}
 			}
-
 			iteration_count += 1;
 
 			if let (Some(collateral_auction), Some((_, last_bid_price))) = (
@@ -396,7 +395,7 @@ impl<T: Config> Pallet<T> {
 		if finished {
 			to_be_continue.clear();
 		} else {
-			to_be_continue.set(&iterator.last_raw_key());
+			to_be_continue.set(&iterator.prefix());
 		}
 
 		// Consume the guard but **do not** unlock the underlying lock.
