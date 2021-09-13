@@ -16,14 +16,14 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Authority, AuthoritysOriginId, BlockNumber, Call, Origin, Runtime, System};
+use crate::{AccountId, Authority, AuthoritysOriginId, BlockNumber, Call, Origin, Runtime, System};
 
-use sp_runtime::Perbill;
+use sp_runtime::{traits::Hash, Perbill};
 use sp_std::prelude::*;
 
 use frame_support::traits::{schedule::DispatchTime, OriginTrait};
 use frame_system::RawOrigin;
-use orml_benchmarking::runtime_benchmarks;
+use orml_benchmarking::{runtime_benchmarks, whitelisted_caller};
 
 runtime_benchmarks! {
 	{ Runtime, orml_authority }
@@ -135,6 +135,51 @@ runtime_benchmarks! {
 
 		let pallets_origin = schedule_origin.caller().clone();
 	}: _(RawOrigin::Root, Box::new(pallets_origin), 0)
+
+	// authorize a call that can be triggered later
+	authorize_call {
+		let caller: AccountId = whitelisted_caller();
+		let ensure_root_call = Call::System(frame_system::Call::fill_block(Perbill::from_percent(1)));
+		let call = Call::Authority(orml_authority::Call::dispatch_as(
+			AuthoritysOriginId::Root,
+			Box::new(ensure_root_call.clone()),
+		));
+		let hash = <Runtime as frame_system::Config>::Hashing::hash_of(&call);
+		System::set_block_number(1u32);
+	}: _(RawOrigin::Root, Box::new(call.clone()), Some(caller.clone()))
+	verify {
+		assert_eq!(Authority::saved_calls(&hash), Some((call, Some(caller))));
+	}
+
+	remove_authorized_call {
+		let caller: AccountId = whitelisted_caller();
+		let ensure_root_call = Call::System(frame_system::Call::fill_block(Perbill::from_percent(1)));
+		let call = Call::Authority(orml_authority::Call::dispatch_as(
+			AuthoritysOriginId::Root,
+			Box::new(ensure_root_call.clone()),
+		));
+		let hash = <Runtime as frame_system::Config>::Hashing::hash_of(&call);
+		System::set_block_number(1u32);
+		Authority::authorize_call(Origin::root(), Box::new(call.clone()), Some(caller.clone()))?;
+	}: _(RawOrigin::Signed(caller), hash)
+	verify {
+		assert_eq!(Authority::saved_calls(&hash), None);
+	}
+
+	trigger_call {
+		let caller: AccountId = whitelisted_caller();
+		let ensure_root_call = Call::System(frame_system::Call::fill_block(Perbill::from_percent(1)));
+		let call = Call::Authority(orml_authority::Call::dispatch_as(
+			AuthoritysOriginId::Root,
+			Box::new(ensure_root_call.clone()),
+		));
+		let hash = <Runtime as frame_system::Config>::Hashing::hash_of(&call);
+		System::set_block_number(1u32);
+		Authority::authorize_call(Origin::root(), Box::new(call.clone()), Some(caller.clone()))?;
+	}: _(RawOrigin::Signed(caller), hash)
+	verify {
+		assert_eq!(Authority::saved_calls(&hash), None);
+	}
 }
 
 #[cfg(test)]
