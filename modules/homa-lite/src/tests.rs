@@ -76,6 +76,15 @@ fn mint_works() {
 			lksm_issuance / 5
 		));
 
+		assert_eq!(
+			HomaLite::get_staking_exchange_rate(),
+			ExchangeRate::saturating_from_rational(lksm_issuance, lksm_issuance / 5)
+		);
+		assert_eq!(
+			LiquidExchangeProvider::<Runtime>::get_exchange_rate(),
+			ExchangeRate::saturating_from_rational(lksm_issuance / 5, lksm_issuance)
+		);
+
 		// The exchange rate is now 1:5 ratio
 		// liquid = (1000 - 0.01) * 1_009_899_901_000_000_000 / 201_979_980_200_000_000 * 0.99
 		liquid = 4_949_950_500_000_000;
@@ -200,6 +209,43 @@ fn cannot_set_total_staking_currency_to_zero() {
 		assert_ok!(HomaLite::set_total_staking_currency(Origin::signed(ROOT), 1));
 		assert_eq!(TotalStakingCurrency::<Runtime>::get(), 1);
 		System::assert_last_event(Event::HomaLite(crate::Event::TotalStakingCurrencySet(1)));
+	});
+}
+
+#[test]
+fn can_adjust_total_staking_currency() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(HomaLite::set_total_staking_currency(Origin::signed(ROOT), 1));
+		assert_eq!(HomaLite::total_staking_currency(), 1);
+
+		assert_noop!(
+			HomaLite::adjust_total_staking_currency(Origin::signed(ALICE), 5000),
+			BadOrigin
+		);
+
+		// Can adjust total_staking_currency with ROOT.
+		assert_ok!(HomaLite::adjust_total_staking_currency(Origin::signed(ROOT), 5000));
+
+		assert_eq!(HomaLite::total_staking_currency(), 5001);
+		System::assert_last_event(Event::HomaLite(crate::Event::TotalStakingCurrencySet(5001)));
+
+		// Underflow / overflow causes error
+		assert_noop!(
+			HomaLite::adjust_total_staking_currency(Origin::signed(ROOT), -5002),
+			ArithmeticError::Underflow
+		);
+
+		assert_eq!(HomaLite::total_staking_currency(), 5001);
+
+		assert_ok!(HomaLite::set_total_staking_currency(
+			Origin::signed(ROOT),
+			Balance::max_value()
+		));
+
+		assert_noop!(
+			HomaLite::adjust_total_staking_currency(Origin::signed(ROOT), 1),
+			ArithmeticError::Overflow
+		);
 	});
 }
 

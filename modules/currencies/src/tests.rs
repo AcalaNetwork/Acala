@@ -480,8 +480,16 @@ fn erc20_transfer_should_fail() {
 		.build()
 		.execute_with(|| {
 			deploy_contracts();
+
+			// Real origin not found
+			assert_noop!(
+				Currencies::transfer(Origin::signed(alice()), bob(), CurrencyId::Erc20(erc20_address()), 100),
+				Error::<Runtime>::RealOriginNotFound
+			);
+
 			<EVM as EVMTrait<AccountId>>::set_origin(alice());
 			<EVM as EVMTrait<AccountId>>::set_origin(bob());
+
 			// empty address
 			assert!(
 				Currencies::transfer(Origin::signed(alice()), bob(), CurrencyId::Erc20(H160::default()), 100).is_err()
@@ -501,10 +509,7 @@ fn erc20_can_reserve_should_work() {
 		.build()
 		.execute_with(|| {
 			deploy_contracts();
-			assert_eq!(
-				Currencies::can_reserve(CurrencyId::Erc20(erc20_address()), &alice(), 1),
-				true
-			);
+			assert!(Currencies::can_reserve(CurrencyId::Erc20(erc20_address()), &alice(), 1),);
 		});
 }
 
@@ -624,10 +629,7 @@ fn erc20_should_not_slash() {
 		.build()
 		.execute_with(|| {
 			deploy_contracts();
-			assert_eq!(
-				Currencies::can_slash(CurrencyId::Erc20(erc20_address()), &alice(), 1),
-				false
-			);
+			assert!(!Currencies::can_slash(CurrencyId::Erc20(erc20_address()), &alice(), 1),);
 			// calling slash will return 0
 			assert_eq!(Currencies::slash(CurrencyId::Erc20(erc20_address()), &alice(), 1), 0);
 		});

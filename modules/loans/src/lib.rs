@@ -27,7 +27,8 @@
 #![allow(clippy::unused_unit)]
 #![allow(clippy::collapsible_if)]
 
-use frame_support::{log, pallet_prelude::*, traits::MaxEncodedLen, transactional, PalletId};
+use codec::MaxEncodedLen;
+use frame_support::{log, pallet_prelude::*, transactional, PalletId};
 use orml_traits::{Happened, MultiCurrency, MultiCurrencyExtended};
 use primitives::{Amount, Balance, CurrencyId};
 use sp_runtime::{
@@ -162,7 +163,7 @@ impl<T: Config> Pallet<T> {
 
 		// update loan
 		Self::update_loan(
-			&who,
+			who,
 			currency_id,
 			collateral_adjustment.saturating_neg(),
 			debit_adjustment.saturating_neg(),
@@ -306,9 +307,12 @@ impl<T: Config> Pallet<T> {
 				}
 			}
 
+			// use the collateral amount as the shares for Loans incentives
+			// NOTE: but for KSM loans in Karura, the debit amount was used before,
+			// and the data will been messed up, before migration or calibration,
+			// it is forbidden to turn on incentives for pool LoansIncentive(KSM).
+			T::OnUpdateLoan::happened(&(who.clone(), currency_id, collateral_adjustment, p.collateral));
 			p.collateral = new_collateral;
-
-			T::OnUpdateLoan::happened(&(who.clone(), currency_id, debit_adjustment, p.debit));
 			p.debit = new_debit;
 
 			if p.collateral.is_zero() && p.debit.is_zero() {

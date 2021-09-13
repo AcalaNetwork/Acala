@@ -156,7 +156,7 @@ mod mock {
 	use codec::{Decode, Encode};
 	use frame_support::{
 		parameter_types,
-		traits::{Filter, InstanceFilter},
+		traits::{Contains, InstanceFilter},
 		weights::Weight,
 		PalletId, RuntimeDebug,
 	};
@@ -253,8 +253,8 @@ mod mock {
 		}
 	}
 	pub struct BaseFilter;
-	impl Filter<Call> for BaseFilter {
-		fn filter(c: &Call) -> bool {
+	impl Contains<Call> for BaseFilter {
+		fn contains(c: &Call) -> bool {
 			match *c {
 				// Remark is used as a no-op call in the benchmarking
 				Call::System(SystemCall::remark(_)) => true,

@@ -30,6 +30,8 @@ use sp_runtime::{
 	testing::Header,
 	traits::{AccountIdConversion, IdentityLookup},
 };
+use sp_std::cell::RefCell;
+use std::collections::HashMap;
 use support::{AuctionManager, RiskManager};
 
 pub type AccountId = u128;
@@ -180,7 +182,7 @@ impl cdp_treasury::Config for Runtime {
 pub struct MockConvert;
 impl Convert<(CurrencyId, Balance), Balance> for MockConvert {
 	fn convert(a: (CurrencyId, Balance)) -> Balance {
-		(a.1 / Balance::from(2u64)).into()
+		a.1 / Balance::from(2u64)
 	}
 }
 
@@ -221,6 +223,32 @@ impl RiskManager<AccountId, CurrencyId, Balance, Balance> for MockRiskManager {
 	}
 }
 
+thread_local! {
+	pub static DOT_SHARES: RefCell<HashMap<AccountId, Balance>> = RefCell::new(HashMap::new());
+}
+
+pub struct MockOnUpdateLoan;
+impl Happened<(AccountId, CurrencyId, Amount, Balance)> for MockOnUpdateLoan {
+	fn happened(info: &(AccountId, CurrencyId, Amount, Balance)) {
+		let (who, currency_id, adjustment, previous_amount) = info;
+		let adjustment_abs =
+			sp_std::convert::TryInto::<Balance>::try_into(adjustment.saturating_abs()).unwrap_or_default();
+		let new_share_amount = if adjustment.is_positive() {
+			previous_amount.saturating_add(adjustment_abs)
+		} else {
+			previous_amount.saturating_sub(adjustment_abs)
+		};
+
+		if *currency_id == DOT {
+			DOT_SHARES.with(|v| {
+				let mut old_map = v.borrow().clone();
+				old_map.insert(*who, new_share_amount);
+				*v.borrow_mut() = old_map;
+			});
+		}
+	}
+}
+
 parameter_types! {
 	pub const LoansPalletId: PalletId = PalletId(*b"aca/loan");
 }
@@ -232,7 +260,7 @@ impl Config for Runtime {
 	type RiskManager = MockRiskManager;
 	type CDPTreasury = CDPTreasuryModule;
 	type PalletId = LoansPalletId;
-	type OnUpdateLoan = ();
+	type OnUpdateLoan = MockOnUpdateLoan;
 }
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;

@@ -49,7 +49,7 @@ fn it_should_set_invulnerables() {
 
 		// cannot set with non-root.
 		assert_noop!(
-			CollatorSelection::set_invulnerables(Origin::signed(1), new_set.clone()),
+			CollatorSelection::set_invulnerables(Origin::signed(1), new_set),
 			BadOrigin
 		);
 	});
@@ -367,21 +367,21 @@ fn withdraw_bond() {
 		);
 		initialize_to_block(2 * Period::get());
 		// bond is returned
-		assert_eq!(NonCandidates::<Test>::contains_key(3), true);
+		assert!(NonCandidates::<Test>::contains_key(3));
 		assert_ok!(CollatorSelection::withdraw_bond(Origin::signed(3)));
 		assert_eq!(Balances::free_balance(3), 100);
-		assert_eq!(NonCandidates::<Test>::contains_key(3), false);
+		assert!(!NonCandidates::<Test>::contains_key(3));
 
 		assert_ok!(CollatorSelection::set_candidacy_bond(
 			Origin::signed(RootAccount::get()),
 			20
 		));
-		assert_eq!(NonCandidates::<Test>::contains_key(4), true);
-		assert_eq!(CollatorSelection::candidates().contains(&4), false);
+		assert!(NonCandidates::<Test>::contains_key(4));
+		assert!(!CollatorSelection::candidates().contains(&4));
 		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(4)));
 		assert_eq!(Balances::free_balance(4), 80);
-		assert_eq!(NonCandidates::<Test>::contains_key(4), false);
-		assert_eq!(CollatorSelection::candidates().contains(&4), true);
+		assert!(!NonCandidates::<Test>::contains_key(4));
+		assert!(CollatorSelection::candidates().contains(&4));
 	});
 }
 

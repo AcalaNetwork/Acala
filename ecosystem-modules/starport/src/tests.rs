@@ -166,7 +166,7 @@ fn invoke_can_set_supply_cap() {
 		let notice = GatewayNotice::new(0, GatewayNoticePayload::SetSupplyCap(ACALA, 100));
 		assert_ok!(Starport::invoke(
 			Origin::signed(GATEWAY_ACCOUNT),
-			notice.clone(),
+			notice,
 			mock::get_mock_signatures()
 		));
 		assert_eq!(
@@ -347,7 +347,7 @@ fn invoke_can_set_future_cash_yield() {
 		);
 		assert_ok!(Starport::invoke(
 			Origin::signed(GATEWAY_ACCOUNT),
-			notice.clone(),
+			notice,
 			mock::get_mock_signatures()
 		));
 		assert_eq!(
@@ -420,7 +420,7 @@ fn notices_are_invoked_by_any_account() {
 		notice.id = 2;
 		assert_ok!(Starport::invoke(
 			Origin::signed(BOB),
-			notice.clone(),
+			notice,
 			mock::get_mock_signatures()
 		));
 		assert_eq!(

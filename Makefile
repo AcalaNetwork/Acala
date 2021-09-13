@@ -64,10 +64,10 @@ test: githooks
 
 .PHONY: test-eth
 test-eth: githooks
-	SKIP_WASM_BUILD= cargo test --features with-mandala-runtime --features with-ethereum-compatibility test_evm_module
-	SKIP_WASM_BUILD= cargo test --features with-mandala-runtime --features with-ethereum-compatibility should_not_kill_contract_on_transfer_all
-	SKIP_WASM_BUILD= cargo test --features with-mandala-runtime --features with-ethereum-compatibility schedule_call_precompile_should_work
-	SKIP_WASM_BUILD= cargo test --features with-mandala-runtime --features with-ethereum-compatibility schedule_call_precompile_should_handle_invalid_input
+	SKIP_WASM_BUILD= cargo test -p runtime-common --features with-ethereum-compatibility schedule_call_precompile_should_work
+	SKIP_WASM_BUILD= cargo test -p runtime-integration-tests --features with-mandala-runtime --features with-ethereum-compatibility test_evm_module
+	SKIP_WASM_BUILD= cargo test -p runtime-integration-tests --features with-mandala-runtime --features with-ethereum-compatibility should_not_kill_contract_on_transfer_all
+	SKIP_WASM_BUILD= cargo test -p runtime-integration-tests --features with-mandala-runtime --features with-ethereum-compatibility schedule_call_precompile_should_handle_invalid_input
 
 .PHONY: test-runtimes
 test-runtimes:
@@ -150,3 +150,11 @@ benchmark-mandala:
 .PHONY: benchmark-karura
 benchmark-karura:
 	 cargo run --release --features=runtime-benchmarks --features=with-karura-runtime -- benchmark --chain=karura-latest --steps=50 --repeat=20 '--pallet=*' '--extrinsic=*' --execution=wasm --wasm-execution=compiled --heap-pages=4096 --template=./templates/runtime-weight-template.hbs --output=./runtime/karura/src/weights/
+
+.PHONY: clippy-fix
+clippy-fix:
+	CARGO_INCREMENTAL=0 ./orml/scripts/run-clippy.sh --fix -Z unstable-options --broken-code --allow-dirty
+
+.PHONY: clean-runtimes
+clean-runtimes:
+	./scripts/clean-runtimes.sh

@@ -21,6 +21,7 @@ use crate::{
 };
 
 use frame_benchmarking::account;
+use frame_support::traits::tokens::fungibles;
 use frame_support::{assert_ok, traits::Contains};
 use frame_system::RawOrigin;
 use orml_traits::MultiCurrencyExtended;
@@ -53,6 +54,10 @@ pub fn feed_price(prices: Vec<(CurrencyId, Price)>) -> DispatchResult {
 	}
 
 	Ok(())
+}
+
+pub fn set_balance_fungibles(currency_id: CurrencyId, who: &AccountId, balance: Balance) {
+	assert_ok!(<orml_tokens::Pallet<Runtime> as fungibles::Mutate<AccountId>>::mint_into(currency_id, who, balance));
 }
 
 #[cfg(test)]

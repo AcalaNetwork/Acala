@@ -21,6 +21,7 @@
 use crate::integration_tests::*;
 
 use cumulus_primitives_core::ParaId;
+use frame_support::traits::GenesisBuild;
 use polkadot_primitives::v1::{BlockNumber, MAX_CODE_SIZE, MAX_POV_SIZE};
 use polkadot_runtime_parachains::configuration::HostConfiguration;
 use sp_runtime::traits::AccountIdConversion;
@@ -99,7 +100,7 @@ pub fn kusama_ext() -> sp_io::TestExternalities {
 
 	pallet_balances::GenesisConfig::<Runtime> {
 		balances: vec![
-			(AccountId::from(ALICE), 2 * dollar(KSM)),
+			(AccountId::from(ALICE), 2002 * dollar(KSM)),
 			(ParaId::from(2000).into_account(), 2 * dollar(KSM)),
 		],
 	}

@@ -124,7 +124,7 @@ fn update_loan_should_work() {
 		assert_eq!(LoansModule::total_positions(BTC).collateral, 0);
 		assert_eq!(LoansModule::positions(BTC, &ALICE).debit, 0);
 		assert_eq!(LoansModule::positions(BTC, &ALICE).collateral, 0);
-		assert_eq!(<Positions<Runtime>>::contains_key(BTC, &ALICE), false);
+		assert!(!<Positions<Runtime>>::contains_key(BTC, &ALICE));
 
 		let alice_ref_count_0 = System::consumers(&ALICE);
 
@@ -145,11 +145,11 @@ fn update_loan_should_work() {
 		assert_eq!(Currencies::free_balance(BTC, &ALICE), 1000);
 
 		// should remove position storage if zero
-		assert_eq!(<Positions<Runtime>>::contains_key(BTC, &ALICE), true);
+		assert!(<Positions<Runtime>>::contains_key(BTC, &ALICE));
 		assert_ok!(LoansModule::update_loan(&ALICE, BTC, -3000, -2000));
 		assert_eq!(LoansModule::positions(BTC, &ALICE).debit, 0);
 		assert_eq!(LoansModule::positions(BTC, &ALICE).collateral, 0);
-		assert_eq!(<Positions<Runtime>>::contains_key(BTC, &ALICE), false);
+		assert!(!<Positions<Runtime>>::contains_key(BTC, &ALICE));
 
 		// decrease ref count after remove position
 		let alice_ref_count_2 = System::consumers(&ALICE);
@@ -185,10 +185,7 @@ fn confiscate_collateral_and_debit_work() {
 		assert_eq!(Currencies::free_balance(BTC, &LoansModule::account_id()), 0);
 
 		// have no sufficient balance
-		assert_eq!(
-			LoansModule::confiscate_collateral_and_debit(&BOB, BTC, 5000, 1000).is_ok(),
-			false,
-		);
+		assert!(!LoansModule::confiscate_collateral_and_debit(&BOB, BTC, 5000, 1000).is_ok(),);
 
 		assert_ok!(LoansModule::adjust_position(&ALICE, BTC, 500, 300));
 		assert_eq!(CDPTreasuryModule::get_total_collaterals(BTC), 0);
@@ -204,5 +201,21 @@ fn confiscate_collateral_and_debit_work() {
 		System::assert_last_event(Event::LoansModule(crate::Event::ConfiscateCollateralAndDebit(
 			ALICE, BTC, 300, 200,
 		)));
+	});
+}
+
+#[test]
+fn loan_updated_updated_when_adjust_collateral() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_eq!(DOT_SHARES.with(|v| *v.borrow().get(&BOB).unwrap_or(&0)), 0);
+
+		assert_ok!(LoansModule::update_loan(&BOB, DOT, 1000, 0));
+		assert_eq!(DOT_SHARES.with(|v| *v.borrow().get(&BOB).unwrap_or(&0)), 1000);
+
+		assert_ok!(LoansModule::update_loan(&BOB, DOT, 0, 200));
+		assert_eq!(DOT_SHARES.with(|v| *v.borrow().get(&BOB).unwrap_or(&0)), 1000);
+
+		assert_ok!(LoansModule::update_loan(&BOB, DOT, -800, 500));
+		assert_eq!(DOT_SHARES.with(|v| *v.borrow().get(&BOB).unwrap_or(&0)), 200);
 	});
 }
