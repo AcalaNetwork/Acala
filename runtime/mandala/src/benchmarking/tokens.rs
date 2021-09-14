@@ -17,8 +17,9 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use super::utils::{lookup_of_account, set_balance as update_balance};
-use crate::{dollar, AccountId, Balance, CurrencyId, GetStableCurrencyId, Runtime, Tokens};
+use crate::{dollar, AccountId, Balance, CurrencyId, GetStableCurrencyId, Runtime, Tokens, TreasuryPalletId};
 
+use sp_runtime::traits::AccountIdConversion;
 use sp_std::prelude::*;
 
 use frame_benchmarking::{account, whitelisted_caller};
@@ -90,6 +91,26 @@ runtime_benchmarks! {
 	}: _(RawOrigin::Root, who_lookup, STABLECOIN, dollar(STABLECOIN), dollar(STABLECOIN))
 	verify {
 		assert_eq!(<Tokens as MultiCurrency<_>>::total_balance(STABLECOIN, &who), 2 * dollar(STABLECOIN));
+	}
+
+	sweep_dust {
+		let c in 1..3u32;
+		let treasury: AccountId = TreasuryPalletId::get().into_account();
+		let accounts: Vec<AccountId> = vec!["alice", "bob", "charlie"].into_iter().map(|x| account(x, 0, SEED)).collect();
+		accounts.iter().for_each(|account| {
+			orml_tokens::Accounts::<Runtime>::insert(account, STABLECOIN, orml_tokens::AccountData {
+				free: 100,
+				frozen: 0,
+				reserved: 0
+			});
+		});
+		update_balance(STABLECOIN, &treasury, dollar(STABLECOIN));
+	}: _(RawOrigin::Root, STABLECOIN, (&accounts[..c as usize]).to_vec())
+	verify {
+		(&accounts[..c as usize]).iter().for_each(|account| {
+			assert_eq!(Tokens::accounts(account, STABLECOIN), orml_tokens::AccountData::default());
+		});
+		assert_eq!(Tokens::free_balance(STABLECOIN, &treasury), dollar(STABLECOIN) + (100 * c) as Balance);
 	}
 }
 
