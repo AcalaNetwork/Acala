@@ -1570,7 +1570,7 @@ parameter_types! {
 	pub RelaychainSovereignSubAccount: MultiLocation = create_x2_parachain_multilocation(RelaychainSubAccountId::HomaLite as u16);
 	pub MaxRewardPerEra: Permill = Permill::from_rational(261u32, 1_000_000u32); // 1.1^(1/365) = 1.00026115788
 	pub MintFee: Balance = 20 * millicent(KSM); // 2x XCM fee on Kusama
-	pub DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
+	pub DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(10, 1);
 	pub BaseWithdrawFee: Permill = Permill::from_rational(7338u32, 1_000_000); // 10% yield per year, unbounding period = 28 days. 1.1^(28/365) = 1.0073382
 	pub MaximumRedeemRequestMatchesForMint: u32 = 20;
 	pub RelaychainUnboundingSlashingSpans: u32 = 5;

@@ -111,7 +111,7 @@ module-session-manager = { path = "../../modules/session-manager", default-featu
 module-staking-pool = { path = "../../modules/staking-pool", default-features = false }
 module-staking-pool-rpc-runtime-api = { path = "../../modules/staking-pool/rpc/runtime-api", default-features = false }
 module-polkadot-bridge = { path = "../../modules/polkadot-bridge", default-features = false }
-module-relaychain = { path = "../../modules/relaychain", features = ["kusama"]}
+module-relaychain = { path = "../../modules/relaychain", default-features = false, features = ["kusama"]}
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 runtime-common = { path = "../common", default-features = false }
 

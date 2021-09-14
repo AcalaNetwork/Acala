@@ -52,13 +52,12 @@ mod common_tests {
 
 				assert_ok!(HomaLite::set_minting_cap(Origin::root(), 10 * staking_total));
 
-				// MaxRewardPerEra = 0.0005
-				// MintFee: Balance = 0.0002
-
 				// Exchange rate set to 1(Staking) : 5(Liquid) ratio
 				// liquid = (amount - MintFee) * exchange_rate * (1 - MaxRewardPerEra)
-				//        = (1000 - 0.0002)  * 5 * 0.9995 = 4997.4990005
-				let liquid_amount_1 = 49_974_990_005 * dollar(RELAY_CHAIN_CURRENCY) / 10_000_000;
+				#[cfg(feature = "with-mandala-runtime")]
+				let liquid_amount_1 = 49_980_849_500_190;
+				#[cfg(feature = "with-karura-runtime")]
+				let liquid_amount_1 = 4_998_694_000_261_000;
 
 				assert_ok!(HomaLite::mint(Origin::signed(alice()), amount));
 				assert_eq!(Currencies::free_balance(LIQUID_CURRENCY, &alice()), liquid_amount_1);
@@ -71,16 +70,15 @@ mod common_tests {
 				// Total issuance for liquid currnecy increased.
 				let new_liquid_issuance = Currencies::total_issuance(LIQUID_CURRENCY);
 				#[cfg(feature = "with-mandala-runtime")]
-				assert_eq!(new_liquid_issuance, 10_049_974_990_005_000);
+				assert_eq!(new_liquid_issuance, 10_049_980_849_500_190);
 				#[cfg(feature = "with-karura-runtime")]
-				assert_eq!(new_liquid_issuance, 1_004_997_499_000_500_000);
+				assert_eq!(new_liquid_issuance, 1_004_998_694_000_261_000);
 
 				// liquid = (amount - MintFee) * (new_liquid_issuance / new_staking_total) * (1 - MaxRewardPerEra)
-				//        = (1000 - 0.0002) * (1004997.4990005 / 201000) * 0.9995 = 4997.486563940297
 				#[cfg(feature = "with-mandala-runtime")] // Mandala uses DOT, which has 10 d.p. accuracy.
-				let liquid_amount_2 = 49_974_865_639_403;
+				let liquid_amount_2 = 49_980_754_260_558;
 				#[cfg(feature = "with-karura-runtime")] // Karura uses KSM, which has 12 d.p. accuracy.
-				let liquid_amount_2 = 4_997_486_563_940_297;
+				let liquid_amount_2 = 4_998_687_504_447_005;
 
 				assert_ok!(HomaLite::mint(Origin::signed(alice()), amount));
 				System::assert_last_event(Event::HomaLite(module_homa_lite::Event::Minted(
@@ -90,12 +88,132 @@ mod common_tests {
 				)));
 
 				#[cfg(feature = "with-mandala-runtime")]
-				assert_eq!(Currencies::free_balance(LIQUID_CURRENCY, &alice()), 99_949_855_644_403);
+				assert_eq!(Currencies::free_balance(LIQUID_CURRENCY, &alice()), 99_961_603_760_748);
 				#[cfg(feature = "with-karura-runtime")]
 				assert_eq!(
 					Currencies::free_balance(LIQUID_CURRENCY, &alice()),
-					9_994_985_564_440_297
+					9_997_381_504_708_005
 				);
+			});
+	}
+
+	#[test]
+	fn homa_lite_mint_can_match_redeem_requests() {
+		ExtBuilder::default()
+			.balances(vec![
+				(AccountId::from(ALICE), LIQUID_CURRENCY, 5_000 * dollar(LIQUID_CURRENCY)),
+				(AccountId::from(BOB), LIQUID_CURRENCY, 5_000 * dollar(LIQUID_CURRENCY)),
+				(
+					AccountId::from(CHARLIE),
+					LIQUID_CURRENCY,
+					2_000 * dollar(LIQUID_CURRENCY),
+				),
+				(
+					AccountId::from(DAVE),
+					RELAY_CHAIN_CURRENCY,
+					1_200 * dollar(RELAY_CHAIN_CURRENCY),
+				),
+			])
+			.build()
+			.execute_with(|| {
+				// Default exchange rate is 1S : 10L
+				assert_ok!(HomaLite::set_minting_cap(
+					Origin::root(),
+					20_000 * dollar(RELAY_CHAIN_CURRENCY)
+				));
+
+				// insert redeem requests
+				assert_ok!(HomaLite::request_redeem(
+					Origin::signed(AccountId::from(ALICE)),
+					5_000 * dollar(LIQUID_CURRENCY),
+					Permill::zero()
+				));
+				assert_ok!(HomaLite::request_redeem(
+					Origin::signed(AccountId::from(BOB)),
+					5_000 * dollar(LIQUID_CURRENCY),
+					Permill::from_percent(10)
+				));
+				assert_ok!(HomaLite::request_redeem(
+					Origin::signed(AccountId::from(CHARLIE)),
+					2_000 * dollar(LIQUID_CURRENCY),
+					Permill::from_percent(1)
+				));
+
+				// Minter pays no fee if minted via matching redeem requests, and no XCM transfer is needed.
+				assert_ok!(HomaLite::mint(
+					Origin::signed(AccountId::from(DAVE)),
+					1_200 * dollar(RELAY_CHAIN_CURRENCY)
+				));
+
+				#[cfg(feature = "with-mandala-runtime")]
+				{
+					// Base withdraw fee = 0.007338
+					// for ALICE:  staking_amount = +500 - redeem_fee = 500 - 1.342 = 498.658
+					//             liquid_amount  = -5_000
+					// for BOB:    staking_amount = +500 - redeem_fee - extra_fee(10%) = 500 - 1.342 - 50 = 448.658
+					//             liquid_amount  = -5_000
+					// for CHARlIE:staking_amount = +200 - redeem_fee - extra_fee(1%) = 200 - 0.5368 - 2 = 197.4632
+					//             liquid_amount  = -5_000
+					// for minter: staking_amount = 1200 -1_200 + redeem_fee + extra_fee = 55.2208
+					//             liquid_amount  = +12_000
+					assert_eq!(
+						Currencies::free_balance(RELAY_CHAIN_CURRENCY, &AccountId::from(ALICE)),
+						4_986_580_000_000
+					);
+					assert_eq!(Currencies::free_balance(LIQUID_CURRENCY, &AccountId::from(ALICE)), 0);
+					assert_eq!(
+						Currencies::free_balance(RELAY_CHAIN_CURRENCY, &AccountId::from(BOB)),
+						4_486_580_000_000
+					);
+					assert_eq!(Currencies::free_balance(LIQUID_CURRENCY, &AccountId::from(BOB)), 0);
+					assert_eq!(
+						Currencies::free_balance(RELAY_CHAIN_CURRENCY, &AccountId::from(CHARLIE)),
+						1_974_632_000_000
+					);
+					assert_eq!(Currencies::free_balance(LIQUID_CURRENCY, &AccountId::from(CHARLIE)), 0);
+					assert_eq!(
+						Currencies::free_balance(RELAY_CHAIN_CURRENCY, &AccountId::from(DAVE)),
+						552_208_000_000
+					);
+					assert_eq!(
+						Currencies::free_balance(LIQUID_CURRENCY, &AccountId::from(DAVE)),
+						12_000 * dollar(LIQUID_CURRENCY)
+					);
+				}
+				#[cfg(feature = "with-karura-runtime")]
+				{
+					// for ALICE:  staking_amount = +500 - redeem_fee = 500 - 3.669 = 496.331
+					//             liquid_amount  = -5_000
+					// for BOB:    staking_amount = +500 - redeem_fee - extra_fee(10%) = 500 - 3.669 - 50 = 446.331
+					//             liquid_amount  = -5_000
+					// for CHARlIE:staking_amount = +200 - redeem_fee - extra_fee(1%) = 200 - 1.4676 - 2 = 196.5324
+					//             liquid_amount  = -5_000
+					// for minter: staking_amount = 1200 -1_200 + redeem_fee + extra_fee = 60.8056
+					//             liquid_amount  = +12_000
+					assert_eq!(
+						Currencies::free_balance(RELAY_CHAIN_CURRENCY, &AccountId::from(ALICE)),
+						496_331_000_000_000
+					);
+					assert_eq!(Currencies::free_balance(LIQUID_CURRENCY, &AccountId::from(ALICE)), 0);
+					assert_eq!(
+						Currencies::free_balance(RELAY_CHAIN_CURRENCY, &AccountId::from(BOB)),
+						446_331_000_000_000
+					);
+					assert_eq!(Currencies::free_balance(LIQUID_CURRENCY, &AccountId::from(BOB)), 0);
+					assert_eq!(
+						Currencies::free_balance(RELAY_CHAIN_CURRENCY, &AccountId::from(CHARLIE)),
+						196_532_400_000_000
+					);
+					assert_eq!(Currencies::free_balance(LIQUID_CURRENCY, &AccountId::from(CHARLIE)), 0);
+					assert_eq!(
+						Currencies::free_balance(RELAY_CHAIN_CURRENCY, &AccountId::from(DAVE)),
+						60_805_600_000_000
+					);
+					assert_eq!(
+						Currencies::free_balance(LIQUID_CURRENCY, &AccountId::from(DAVE)),
+						12_000 * dollar(LIQUID_CURRENCY)
+					);
+				}
 			});
 	}
 }
@@ -168,14 +286,14 @@ mod karura_only_tests {
 			assert_ok!(HomaLite::mint(Origin::signed(alice()), amount));
 
 			// Most balances transferred into Kusama. Some extra fee is deducted as gas
-			assert_eq!(Tokens::free_balance(RELAY_CHAIN_CURRENCY, &alice()), 999_952_000_000);
+			assert_eq!(Tokens::free_balance(RELAY_CHAIN_CURRENCY, &alice()), 999_952_000_001);
 		});
 
 		Kusama::execute_with(|| {
 			// Check of 2000 dollars (minus some fee) are transferred into the Kusama chain.
 			assert_eq!(
 				kusama_runtime::Balances::free_balance(&homa_lite_sub_account),
-				1_999_946_666_670_000
+				1_999_946_666_669_999
 			);
 		});
 	}

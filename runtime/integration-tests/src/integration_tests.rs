@@ -62,9 +62,9 @@ mod mandala_imports {
 		CreateTokenDeposit, Currencies, CurrencyId, CurrencyIdConvert, DataDepositPerByte, Dex, EmergencyShutdown,
 		EnabledTradingPairs, Event, EvmAccounts, ExistentialDeposits, Get, GetNativeCurrencyId, HomaLite, Loans,
 		MultiLocation, NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, Origin, OriginCaller,
-		ParachainInfo, ParachainSystem, Perbill, Proxy, RelaychainSovereignSubAccount, Runtime, Scheduler, Session,
-		SessionManager, SevenDays, System, TokenSymbol, Tokens, TreasuryAccount, TreasuryPalletId, Utility, Vesting,
-		XcmConfig, XcmExecutor, NFT,
+		ParachainInfo, ParachainSystem, Perbill, Permill, Proxy, RelaychainSovereignSubAccount, Runtime, Scheduler,
+		Session, SessionManager, SevenDays, System, TokenSymbol, Tokens, TreasuryAccount, TreasuryPalletId, Utility,
+		Vesting, XcmConfig, XcmExecutor, NFT,
 	};
 
 	pub use runtime_common::{dollar, ACA, AUSD, DOT, LDOT};
@@ -89,9 +89,9 @@ mod karura_imports {
 		CreateTokenDeposit, Currencies, CurrencyId, CurrencyIdConvert, DataDepositPerByte, Dex, EmergencyShutdown,
 		Event, EvmAccounts, ExistentialDeposits, Get, GetNativeCurrencyId, HomaLite, KaruraFoundationAccounts, Loans,
 		MultiLocation, NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, Origin, OriginCaller,
-		ParachainInfo, ParachainSystem, Perbill, Proxy, RelaychainSovereignSubAccount, Runtime, Scheduler, Session,
-		SessionManager, SevenDays, System, TokenSymbol, Tokens, TreasuryPalletId, Utility, Vesting, XTokens, XcmConfig,
-		XcmExecutor, NFT,
+		ParachainInfo, ParachainSystem, Perbill, Permill, Proxy, RelaychainSovereignSubAccount, Runtime, Scheduler,
+		Session, SessionManager, SevenDays, System, TokenSymbol, Tokens, TreasuryPalletId, Utility, Vesting, XTokens,
+		XcmConfig, XcmExecutor, NFT,
 	};
 	pub use primitives::TradingPair;
 	pub use runtime_common::{dollar, KAR, KSM, KUSD, LKSM};
@@ -124,6 +124,8 @@ const ORACLE5: [u8; 32] = [4u8; 32];
 
 pub const ALICE: [u8; 32] = [4u8; 32];
 pub const BOB: [u8; 32] = [5u8; 32];
+pub const CHARLIE: [u8; 32] = [6u8; 32];
+pub const DAVE: [u8; 32] = [7u8; 32];
 
 fn run_to_block(n: u32) {
 	while System::block_number() < n {

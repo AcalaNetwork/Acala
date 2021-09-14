@@ -75,10 +75,11 @@ impl XcmTransfer<AccountId, Balance, CurrencyId> for MockXcm {
 	fn transfer(
 		who: AccountId,
 		_currency_id: CurrencyId,
-		_amount: Balance,
+		amount: Balance,
 		_dest: MultiLocation,
 		_dest_weight: Weight,
 	) -> DispatchResult {
+		Currencies::slash(KSM, &who, amount);
 		match who {
 			INVALID_CALLER => Err(DispatchError::Other("invalid caller")),
 			_ => Ok(()),
