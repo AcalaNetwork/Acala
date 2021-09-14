@@ -563,3 +563,31 @@ fn offchain_worker_max_iterations_check() {
 		assert!(pool_state.write().transactions.pop().is_none());
 	});
 }
+
+#[test]
+fn offchain_default_max_iterator_works() {
+	let (mut offchain, _offchain_state) = testing::TestOffchainExt::new();
+	let (pool, pool_state) = testing::TestTransactionPoolExt::new();
+	let mut ext = ExtBuilder::lots_of_accounts().build();
+	ext.register_extension(OffchainWorkerExt::new(offchain.clone()));
+	ext.register_extension(TransactionPoolExt::new(pool));
+	ext.register_extension(OffchainDbExt::new(offchain.clone()));
+
+	ext.execute_with(|| {
+		System::set_block_number(1);
+		// checks that max iterations is stored as none
+		assert!(offchain
+			.local_storage_get(StorageKind::PERSISTENT, OFFCHAIN_WORKER_MAX_ITERATIONS)
+			.is_none());
+
+		for i in 0..1001 {
+			let account_id: AccountId = i;
+			assert_ok!(AuctionManagerModule::new_collateral_auction(&account_id, BTC, 1, 10));
+		}
+
+		mock_shutdown();
+		run_to_block_offchain(2);
+		// should only run 1000 iterations stopping due to DEFAULT_MAX_ITERATION
+		assert_eq!(pool_state.write().transactions.len(), 1000);
+	});
+}

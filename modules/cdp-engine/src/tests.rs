@@ -1081,3 +1081,49 @@ fn offchain_worker_iteration_limit_works() {
 		assert!(pool_state.write().transactions.pop().is_none());
 	});
 }
+
+#[test]
+fn offchain_default_max_iterator_works() {
+	let (mut offchain, _offchain_state) = testing::TestOffchainExt::new();
+	let (pool, pool_state) = testing::TestTransactionPoolExt::new();
+	let mut ext = ExtBuilder::lots_of_accounts().build();
+	ext.register_extension(OffchainWorkerExt::new(offchain.clone()));
+	ext.register_extension(TransactionPoolExt::new(pool));
+	ext.register_extension(OffchainDbExt::new(offchain.clone()));
+
+	ext.execute_with(|| {
+		System::set_block_number(1);
+		assert_ok!(CDPEngineModule::set_collateral_params(
+			Origin::signed(1),
+			BTC,
+			Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
+			Change::NewValue(Some(Rate::saturating_from_rational(2, 10))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
+			Change::NewValue(10000),
+		));
+		// checks that max iterations is stored as none
+		assert!(offchain
+			.local_storage_get(StorageKind::PERSISTENT, OFFCHAIN_WORKER_MAX_ITERATIONS)
+			.is_none());
+
+		for i in 0..1001 {
+			let acount_id: AccountId = i;
+			assert_ok!(CDPEngineModule::adjust_position(&acount_id, BTC, 10, 50));
+		}
+
+		// make all positions unsafe
+		assert_ok!(CDPEngineModule::set_collateral_params(
+			Origin::signed(1),
+			BTC,
+			Change::NoChange,
+			Change::NewValue(Some(Ratio::saturating_from_rational(3, 1))),
+			Change::NoChange,
+			Change::NoChange,
+			Change::NoChange,
+		));
+		run_to_block_offchain(2);
+		// should only run 1000 iterations stopping due to DEFAULT_MAX_ITERATIONS
+		assert_eq!(pool_state.write().transactions.len(), 1000);
+	});
+}
