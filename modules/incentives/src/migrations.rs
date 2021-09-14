@@ -52,7 +52,6 @@ impl<T: Config> sp_runtime::traits::Convert<PoolIdV0<T::RelaychainAccountId>, Op
 pub fn migrate_to_claim_reward_deduction_rates<T: Config>(maybe_limit: Option<usize>) -> Weight {
 	let mut remove_items = 0;
 	let mut insert_items = 0;
-	let start = std::time::Instant::now();
 
 	for (old_pool_id, rate) in PayoutDeductionRates::<T>::drain().take(maybe_limit.unwrap_or(usize::MAX)) {
 		remove_items += 1;
@@ -66,8 +65,8 @@ pub fn migrate_to_claim_reward_deduction_rates<T: Config>(maybe_limit: Option<us
 
 	log::info!(
 		target: "incentives-migration",
-		"migrate incentives PayoutDeductionRates: migrate {:?} items, spend {:?}",
-		remove_items, std::time::Instant::now() - start,
+		"migrate incentives PayoutDeductionRates: migrate {:?} items",
+		remove_items,
 	);
 
 	let total_reads_writes = remove_items + insert_items;
@@ -78,7 +77,6 @@ pub fn migrate_to_claim_reward_deduction_rates<T: Config>(maybe_limit: Option<us
 pub fn migrate_to_dex_saving_reward_rates<T: Config>(maybe_limit: Option<usize>) -> Weight {
 	let mut remove_items = 0;
 	let mut insert_items = 0;
-	let start = std::time::Instant::now();
 
 	for (old_pool_id, rate) in DexSavingRewardRate::<T>::drain().take(maybe_limit.unwrap_or(usize::MAX)) {
 		remove_items += 1;
@@ -92,8 +90,8 @@ pub fn migrate_to_dex_saving_reward_rates<T: Config>(maybe_limit: Option<usize>)
 
 	log::info!(
 		target: "incentives-migration",
-		"migrate incentives DexSavingRewardRate: migrate {:?} items, spend {:?}",
-		remove_items, std::time::Instant::now() - start,
+		"migrate incentives DexSavingRewardRate: migrate {:?} items",
+		remove_items,
 	);
 
 	let total_reads_writes = remove_items + insert_items;
@@ -105,7 +103,6 @@ pub fn migrate_to_incentive_reward_amounts<T: Config>(maybe_limit: Option<usize>
 	let reward_currency_id = T::NativeCurrencyId::get();
 	let mut remove_items = 0;
 	let mut insert_items = 0;
-	let start = std::time::Instant::now();
 
 	for (old_pool_id, amount) in IncentiveRewardAmount::<T>::drain().take(maybe_limit.unwrap_or(usize::MAX)) {
 		remove_items += 1;
@@ -123,8 +120,8 @@ pub fn migrate_to_incentive_reward_amounts<T: Config>(maybe_limit: Option<usize>
 
 	log::info!(
 		target: "incentives-migration",
-		"migrate incentives IncentiveRewardAmount: migrate {:?} items, spend {:?}",
-		remove_items, std::time::Instant::now() - start,
+		"migrate incentives IncentiveRewardAmount: migrate {:?} items",
+		remove_items,
 	);
 
 	let total_reads_writes = remove_items + insert_items;
@@ -135,7 +132,6 @@ pub fn migrate_to_incentive_reward_amounts<T: Config>(maybe_limit: Option<usize>
 pub fn migrate_to_pending_multi_rewards<T: Config>(maybe_limit: Option<usize>) -> Weight {
 	let mut remove_items = 0;
 	let mut insert_items = 0;
-	let start = std::time::Instant::now();
 
 	for (old_pool_id, who, reward_amount) in PendingRewards::<T>::drain().take(maybe_limit.unwrap_or(usize::MAX)) {
 		remove_items += 1;
@@ -157,35 +153,12 @@ pub fn migrate_to_pending_multi_rewards<T: Config>(maybe_limit: Option<usize>) -
 
 	log::info!(
 		target: "incentives-migration",
-		"migrate incentives PendingRewards: migrate {:?} items, spend {:?}",
-		remove_items, std::time::Instant::now() - start,
+		"migrate incentives PendingRewards: migrate {:?} items",
+		remove_items,
 	);
 
 	let total_reads_writes = remove_items + insert_items;
 	T::DbWeight::get().reads_writes(total_reads_writes, total_reads_writes)
-}
-
-pub fn migrate_in_one_block<T: Config>() -> Weight {
-	let mut accumulated_weight: Weight = 0;
-
-	// orml-rewards migration
-	let get_reward_currency =
-		|old_pool_id: &PoolIdV0<T::RelaychainAccountId>| get_reward_currency_id::<T>(old_pool_id.clone());
-	accumulated_weight = accumulated_weight.saturating_add(orml_rewards::migrations::migrate_to_pool_infos::<T>(
-		None,
-		Box::new(get_reward_currency),
-	));
-	accumulated_weight = accumulated_weight.saturating_add(
-		orml_rewards::migrations::migrate_to_shares_and_withdrawn_rewards::<T>(None, Box::new(get_reward_currency)),
-	);
-
-	// module-incentives migration
-	accumulated_weight = accumulated_weight.saturating_add(migrate_to_claim_reward_deduction_rates::<T>(None));
-	accumulated_weight = accumulated_weight.saturating_add(migrate_to_dex_saving_reward_rates::<T>(None));
-	accumulated_weight = accumulated_weight.saturating_add(migrate_to_incentive_reward_amounts::<T>(None));
-	accumulated_weight = accumulated_weight.saturating_add(migrate_to_pending_multi_rewards::<T>(None));
-
-	accumulated_weight
 }
 
 // helper to map PoolIdV0 to PoolId

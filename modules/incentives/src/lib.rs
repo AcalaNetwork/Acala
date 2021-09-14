@@ -63,7 +63,7 @@ mod mock;
 mod tests;
 pub mod weights;
 
-pub use migrations::{PoolIdConvertor, PoolIdV0};
+pub use migrations::{get_reward_currency_id, PoolIdConvertor, PoolIdV0};
 pub use module::*;
 pub use weights::WeightInfo;
 
@@ -297,7 +297,26 @@ pub mod module {
 		}
 
 		fn on_runtime_upgrade() -> Weight {
-			migrations::migrate_in_one_block::<T>()
+			let mut accumulated_weight: Weight = 0;
+
+			// migrate orml-rewards `Pools` to `PoolInfos`
+			let get_reward_currency =
+				|old_pool_id: &PoolIdV0<T::RelaychainAccountId>| get_reward_currency_id::<T>(old_pool_id.clone());
+			accumulated_weight = accumulated_weight.saturating_add(
+				orml_rewards::migrations::migrate_to_pool_infos::<T>(None, Box::new(get_reward_currency)),
+			);
+
+			// migrate `PayoutDeductionRates` to `ClaimRewardDeductionRates`
+			// migrate `DexSavingRewardRate` to `DexSavingRewardRates`
+			// migrate `IncentiveRewardAmount` to `IncentiveRewardAmounts`
+			accumulated_weight = accumulated_weight
+				.saturating_add(crate::migrations::migrate_to_claim_reward_deduction_rates::<T>(None));
+			accumulated_weight =
+				accumulated_weight.saturating_add(crate::migrations::migrate_to_dex_saving_reward_rates::<T>(None));
+			accumulated_weight =
+				accumulated_weight.saturating_add(crate::migrations::migrate_to_incentive_reward_amounts::<T>(None));
+
+			accumulated_weight
 		}
 	}
 
@@ -483,11 +502,31 @@ pub mod module {
 			Ok(())
 		}
 
-		#[pallet::weight(<T as frame_system::Config>::DbWeight::get().reads_writes(count*2, count*2))]
+		#[pallet::weight({
+			let reads_and_writes: u64 = (count*2).into();
+			<T as frame_system::Config>::DbWeight::get().reads_writes(reads_and_writes, reads_and_writes)
+		})]
 		#[transactional]
-		pub fn migrate_pools(origin: OriginFor<T>, count: u32) -> DispatchResult {
+		pub fn migrate_share_and_withdrawn_reward(origin: OriginFor<T>, count: u32) -> DispatchResult {
 			let _ = ensure_signed(origin)?;
-			orml_rewards::Ok(())
+			let get_reward_currency =
+				|old_pool_id: &PoolIdV0<T::RelaychainAccountId>| get_reward_currency_id::<T>(old_pool_id.clone());
+			orml_rewards::migrations::migrate_to_shares_and_withdrawn_rewards::<T>(
+				Some(count as usize),
+				Box::new(get_reward_currency),
+			);
+			Ok(())
+		}
+
+		#[pallet::weight({
+			let reads_and_writes: u64 = (count*2).into();
+			<T as frame_system::Config>::DbWeight::get().reads_writes(reads_and_writes, reads_and_writes)
+		})]
+		#[transactional]
+		pub fn migrate_pending_rewards(origin: OriginFor<T>, count: u32) -> DispatchResult {
+			let _ = ensure_signed(origin)?;
+			crate::migrations::migrate_to_pending_multi_rewards::<T>(Some(count as usize));
+			Ok(())
 		}
 	}
 }
