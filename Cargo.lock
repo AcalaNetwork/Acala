@@ -2590,14 +2590,12 @@ dependencies = [
 
 [[package]]
 name = "ethabi"
-version = "13.0.0"
-source = "git+https://github.com/darwinia-network/ethabi?tag=v13.0.0-no-std#baacf174d5c2f12122c4ee3fe31506fb52069983"
+version = "14.1.0"
+source = "git+https://github.com/rust-ethereum/ethabi?rev=8bd90d13956edf18bb47c6e39dcf7ab99bf264c7#8bd90d13956edf18bb47c6e39dcf7ab99bf264c7"
 dependencies = [
  "anyhow",
- "ethereum-types 0.11.0",
+ "ethereum-types",
  "hex",
- "serde",
- "serde_json",
  "sha3 0.9.1",
  "thiserror",
  "uint",
@@ -2624,7 +2622,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4a67be3eaf296ef668733f54c637e84d0ca34eaf194f0077455135981ad464c3"
 dependencies = [
  "bytes 1.0.1",
- "ethereum-types 0.12.0",
+ "ethereum-types",
  "hash-db",
  "hash256-std-hasher",
  "parity-scale-codec",
@@ -2633,18 +2631,6 @@ dependencies = [
  "serde",
  "sha3 0.9.1",
  "triehash",
-]
-
-[[package]]
-name = "ethereum-types"
-version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f64b5df66a228d85e4b17e5d6c6aa43b0310898ffe8a85988c4c032357aaabfd"
-dependencies = [
- "ethbloom",
- "fixed-hash",
- "primitive-types 0.9.1",
- "uint",
 ]
 
 [[package]]
@@ -2658,7 +2644,7 @@ dependencies = [
  "impl-codec",
  "impl-rlp",
  "impl-serde",
- "primitive-types 0.10.1",
+ "primitive-types",
  "uint",
 ]
 
@@ -2681,7 +2667,7 @@ dependencies = [
  "evm-runtime",
  "log",
  "parity-scale-codec",
- "primitive-types 0.10.1",
+ "primitive-types",
  "rlp",
  "serde",
  "sha3 0.8.2",
@@ -2695,7 +2681,7 @@ checksum = "a7bfa2dae9a2c6c0172d83c37eb406bfabf6a9d1af17b7ab4958e89853ddae97"
 dependencies = [
  "funty",
  "parity-scale-codec",
- "primitive-types 0.10.1",
+ "primitive-types",
  "serde",
 ]
 
@@ -2708,14 +2694,14 @@ dependencies = [
  "environmental",
  "evm-core",
  "evm-runtime",
- "primitive-types 0.10.1",
+ "primitive-types",
 ]
 
 [[package]]
 name = "evm-rpc"
 version = "1.4.1"
 dependencies = [
- "ethereum-types 0.12.0",
+ "ethereum-types",
  "frame-support",
  "jsonrpc-core",
  "jsonrpc-derive",
@@ -2743,7 +2729,7 @@ checksum = "3921ac8964cf13d12693392fef6686ef94470328ccd8eea384c6ff9ac0125b01"
 dependencies = [
  "environmental",
  "evm-core",
- "primitive-types 0.10.1",
+ "primitive-types",
  "sha3 0.8.2",
 ]
 
@@ -5662,7 +5648,7 @@ dependencies = [
  "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec",
- "primitive-types 0.10.1",
+ "primitive-types",
  "ripemd160",
  "rlp",
  "serde",
@@ -5700,7 +5686,7 @@ name = "module-evm-bridge"
 version = "1.4.1"
 dependencies = [
  "acala-primitives",
- "ethereum-types 0.12.0",
+ "ethereum-types",
  "frame-support",
  "frame-system",
  "impl-trait-for-tuples 0.2.1",
@@ -5710,7 +5696,7 @@ dependencies = [
  "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec",
- "primitive-types 0.10.1",
+ "primitive-types",
  "primitives-proc-macro",
  "serde",
  "sp-core",
@@ -5748,7 +5734,7 @@ name = "module-evm-rpc-runtime-api"
 version = "1.4.1"
 dependencies = [
  "acala-primitives",
- "ethereum-types 0.12.0",
+ "ethereum-types",
  "sp-api",
  "sp-core",
  "sp-runtime",
@@ -7625,14 +7611,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7ad6f1acec69b95caf435bbd158d486e5a0a44fcf51531e84922c59ff09e8457"
 dependencies = [
  "cfg-if 1.0.0",
- "ethereum-types 0.12.0",
+ "ethereum-types",
  "hashbrown",
  "impl-trait-for-tuples 0.2.1",
  "jemallocator",
  "lru",
  "parity-util-mem-derive",
  "parking_lot 0.11.1",
- "primitive-types 0.10.1",
+ "primitive-types",
  "smallvec 1.6.1",
  "winapi 0.3.9",
 ]
@@ -9035,18 +9021,6 @@ checksum = "ac74c624d6b2d21f425f752262f42188365d7b8ff1aff74c82e45136510a4857"
 
 [[package]]
 name = "primitive-types"
-version = "0.9.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "06345ee39fbccfb06ab45f3a1a5798d9dafa04cb8921a76d227040003a234b0e"
-dependencies = [
- "fixed-hash",
- "impl-codec",
- "impl-rlp",
- "uint",
-]
-
-[[package]]
-name = "primitive-types"
 version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "05e4722c697a58a99d5d06a08c30821d7c082a4632198de1eaa5a6c22ef42373"
@@ -9791,7 +9765,6 @@ dependencies = [
  "pallet-timestamp",
  "pallet-utility",
  "parity-scale-codec",
- "primitive-types 0.9.1",
  "primitives-proc-macro",
  "serde",
  "serde_json",
@@ -11821,7 +11794,7 @@ dependencies = [
  "parity-scale-codec",
  "parity-util-mem",
  "parking_lot 0.11.1",
- "primitive-types 0.10.1",
+ "primitive-types",
  "rand 0.7.3",
  "regex",
  "schnorrkel",
@@ -12057,7 +12030,7 @@ source = "git+https://github.com/paritytech//substrate?rev=91061a7d925b5bc597804
 dependencies = [
  "impl-trait-for-tuples 0.2.1",
  "parity-scale-codec",
- "primitive-types 0.10.1",
+ "primitive-types",
  "sp-externalities",
  "sp-runtime-interface-proc-macro",
  "sp-std",

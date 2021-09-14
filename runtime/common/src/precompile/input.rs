@@ -30,7 +30,7 @@ use ethabi::Token;
 use module_evm::ExitError;
 use module_support::{AddressMapping as AddressMappingT, CurrencyIdMapping as CurrencyIdMappingT};
 use primitives::{Amount, Balance, CurrencyId};
-use sp_core::H160;
+use sp_core::{H160, U256};
 
 pub const FUNCTION_SELECTOR_LENGTH: usize = 4;
 pub const PER_PARAM_BYTES: usize = 32;
@@ -192,25 +192,22 @@ pub struct Output;
 
 impl Output {
 	pub fn encode_u8(&self, b: u8) -> Vec<u8> {
-		let out = Token::Uint(primitive_types::U256::from(b));
+		let out = Token::Uint(U256::from(b));
 		ethabi::encode(&[out])
 	}
 
 	pub fn encode_u32(&self, b: u32) -> Vec<u8> {
-		let out = Token::Uint(primitive_types::U256::from(b));
+		let out = Token::Uint(U256::from(b));
 		ethabi::encode(&[out])
 	}
 
 	pub fn encode_u128(&self, b: u128) -> Vec<u8> {
-		let out = Token::Uint(primitive_types::U256::from(b));
+		let out = Token::Uint(U256::from(b));
 		ethabi::encode(&[out])
 	}
 
 	pub fn encode_u128_tuple(&self, b: u128, c: u128) -> Vec<u8> {
-		let out = Token::Tuple(vec![
-			Token::Uint(primitive_types::U256::from(b)),
-			Token::Uint(primitive_types::U256::from(c)),
-		]);
+		let out = Token::Tuple(vec![Token::Uint(U256::from(b)), Token::Uint(U256::from(c))]);
 		ethabi::encode(&[out])
 	}
 
@@ -220,7 +217,7 @@ impl Output {
 	}
 
 	pub fn encode_address(&self, b: &H160) -> Vec<u8> {
-		let out = Token::Address(primitive_types::H160::from_slice(b.as_bytes()));
+		let out = Token::Address(H160::from_slice(b.as_bytes()));
 		ethabi::encode(&[out])
 	}
 }
