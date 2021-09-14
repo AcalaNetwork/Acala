@@ -17,6 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+use frame_support::log;
 
 /// PoolId for various rewards pools
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug)]
@@ -48,46 +49,66 @@ impl<T: Config> sp_runtime::traits::Convert<PoolIdV0<T::RelaychainAccountId>, Op
 }
 
 // migrate storage `PayoutDeductionRates` to `ClaimRewardDeductionRates`
-pub fn migrate_to_claim_reward_deduction_rates<T: Config>() -> Weight {
-	let mut reads_writes = 0;
+pub fn migrate_to_claim_reward_deduction_rates<T: Config>(maybe_limit: Option<usize>) -> Weight {
+	let mut remove_items = 0;
+	let mut insert_items = 0;
+	let start = std::time::Instant::now();
 
-	for (old_pool_id, rate) in PayoutDeductionRates::<T>::drain() {
-		reads_writes += 1;
+	for (old_pool_id, rate) in PayoutDeductionRates::<T>::drain().take(maybe_limit.unwrap_or(usize::MAX)) {
+		remove_items += 1;
 		if !rate.is_zero() {
 			if let Some(pool_id) = convert_to_new_pool_id::<T>(old_pool_id) {
 				ClaimRewardDeductionRates::<T>::insert(pool_id, rate);
-				reads_writes += 1;
+				insert_items += 1;
 			}
 		}
 	}
 
-	T::DbWeight::get().reads_writes(reads_writes, reads_writes)
+	log::info!(
+		target: "incentives-migration",
+		"migrate incentives PayoutDeductionRates: migrate {:?} items, spend {:?}",
+		remove_items, std::time::Instant::now() - start,
+	);
+
+	let total_reads_writes = remove_items + insert_items;
+	T::DbWeight::get().reads_writes(total_reads_writes, total_reads_writes)
 }
 
 // migrate storage `DexSavingRewardRate` to `DexSavingRewardRates`
-pub fn migrate_to_dex_saving_reward_rates<T: Config>() -> Weight {
-	let mut reads_writes = 0;
+pub fn migrate_to_dex_saving_reward_rates<T: Config>(maybe_limit: Option<usize>) -> Weight {
+	let mut remove_items = 0;
+	let mut insert_items = 0;
+	let start = std::time::Instant::now();
 
-	for (old_pool_id, rate) in DexSavingRewardRate::<T>::drain() {
-		reads_writes += 1;
+	for (old_pool_id, rate) in DexSavingRewardRate::<T>::drain().take(maybe_limit.unwrap_or(usize::MAX)) {
+		remove_items += 1;
 		if !rate.is_zero() {
 			if let PoolIdV0::DexSaving(currency_id) = old_pool_id {
 				DexSavingRewardRates::<T>::insert(PoolId::Dex(currency_id), rate);
-				reads_writes += 1;
+				insert_items += 1;
 			}
 		}
 	}
 
-	T::DbWeight::get().reads_writes(reads_writes, reads_writes)
+	log::info!(
+		target: "incentives-migration",
+		"migrate incentives DexSavingRewardRate: migrate {:?} items, spend {:?}",
+		remove_items, std::time::Instant::now() - start,
+	);
+
+	let total_reads_writes = remove_items + insert_items;
+	T::DbWeight::get().reads_writes(total_reads_writes, total_reads_writes)
 }
 
 // migrate storage `IncentiveRewardAmount` to `IncentiveRewardAmounts`
-pub fn migrate_to_incentive_reward_amounts<T: Config>() -> Weight {
-	let mut reads_writes = 0;
+pub fn migrate_to_incentive_reward_amounts<T: Config>(maybe_limit: Option<usize>) -> Weight {
 	let reward_currency_id = T::NativeCurrencyId::get();
+	let mut remove_items = 0;
+	let mut insert_items = 0;
+	let start = std::time::Instant::now();
 
-	for (old_pool_id, amount) in IncentiveRewardAmount::<T>::drain() {
-		reads_writes += 1;
+	for (old_pool_id, amount) in IncentiveRewardAmount::<T>::drain().take(maybe_limit.unwrap_or(usize::MAX)) {
+		remove_items += 1;
 		if !amount.is_zero() {
 			if let Some(pool_id) = match old_pool_id {
 				PoolIdV0::DexIncentive(currency_id) => Some(PoolId::Dex(currency_id)),
@@ -95,20 +116,29 @@ pub fn migrate_to_incentive_reward_amounts<T: Config>() -> Weight {
 				_ => None,
 			} {
 				IncentiveRewardAmounts::<T>::insert(pool_id, reward_currency_id, amount);
-				reads_writes += 1;
+				insert_items += 1;
 			}
 		}
 	}
 
-	T::DbWeight::get().reads_writes(reads_writes, reads_writes)
+	log::info!(
+		target: "incentives-migration",
+		"migrate incentives IncentiveRewardAmount: migrate {:?} items, spend {:?}",
+		remove_items, std::time::Instant::now() - start,
+	);
+
+	let total_reads_writes = remove_items + insert_items;
+	T::DbWeight::get().reads_writes(total_reads_writes, total_reads_writes)
 }
 
 // migrate storage `PendingRewards` to `PendingMultiRewards`
-pub fn migrate_to_pending_multi_rewards<T: Config>() -> Weight {
-	let mut reads_writes = 0;
+pub fn migrate_to_pending_multi_rewards<T: Config>(maybe_limit: Option<usize>) -> Weight {
+	let mut remove_items = 0;
+	let mut insert_items = 0;
+	let start = std::time::Instant::now();
 
-	for (old_pool_id, who, reward_amount) in PendingRewards::<T>::drain() {
-		reads_writes += 1;
+	for (old_pool_id, who, reward_amount) in PendingRewards::<T>::drain().take(maybe_limit.unwrap_or(usize::MAX)) {
+		remove_items += 1;
 
 		if !reward_amount.is_zero() {
 			if let Some(pool_id) = convert_to_new_pool_id::<T>(old_pool_id.clone()) {
@@ -120,28 +150,42 @@ pub fn migrate_to_pending_multi_rewards<T: Config>() -> Weight {
 						})
 						.or_insert(reward_amount);
 				});
-				reads_writes += 1;
+				insert_items += 1;
 			}
 		}
 	}
 
-	T::DbWeight::get().reads_writes(reads_writes, reads_writes)
+	log::info!(
+		target: "incentives-migration",
+		"migrate incentives PendingRewards: migrate {:?} items, spend {:?}",
+		remove_items, std::time::Instant::now() - start,
+	);
+
+	let total_reads_writes = remove_items + insert_items;
+	T::DbWeight::get().reads_writes(total_reads_writes, total_reads_writes)
 }
 
-pub fn migration_process<T: Config>() -> Weight {
+pub fn migrate_in_one_block<T: Config>() -> Weight {
+	let mut accumulated_weight: Weight = 0;
+
 	// orml-rewards migration
 	let get_reward_currency =
 		|old_pool_id: &PoolIdV0<T::RelaychainAccountId>| get_reward_currency_id::<T>(old_pool_id.clone());
-	let _ = orml_rewards::migrations::migrate_to_pool_infos::<T>(Box::new(get_reward_currency));
-	let _ = orml_rewards::migrations::migrate_to_shares_and_withdrawn_rewards::<T>(Box::new(get_reward_currency));
+	accumulated_weight = accumulated_weight.saturating_add(orml_rewards::migrations::migrate_to_pool_infos::<T>(
+		None,
+		Box::new(get_reward_currency),
+	));
+	accumulated_weight = accumulated_weight.saturating_add(
+		orml_rewards::migrations::migrate_to_shares_and_withdrawn_rewards::<T>(None, Box::new(get_reward_currency)),
+	);
 
 	// module-incentives migration
-	let _ = migrate_to_claim_reward_deduction_rates::<T>();
-	let _ = migrate_to_dex_saving_reward_rates::<T>();
-	let _ = migrate_to_incentive_reward_amounts::<T>();
-	let _ = migrate_to_pending_multi_rewards::<T>();
+	accumulated_weight = accumulated_weight.saturating_add(migrate_to_claim_reward_deduction_rates::<T>(None));
+	accumulated_weight = accumulated_weight.saturating_add(migrate_to_dex_saving_reward_rates::<T>(None));
+	accumulated_weight = accumulated_weight.saturating_add(migrate_to_incentive_reward_amounts::<T>(None));
+	accumulated_weight = accumulated_weight.saturating_add(migrate_to_pending_multi_rewards::<T>(None));
 
-	Default::default()
+	accumulated_weight
 }
 
 // helper to map PoolIdV0 to PoolId
@@ -210,7 +254,10 @@ fn migrate_to_claim_reward_deduction_rates_works() {
 			false
 		);
 
-		migrate_to_claim_reward_deduction_rates::<Runtime>();
+		assert_eq!(
+			migrate_to_claim_reward_deduction_rates::<Runtime>(None),
+			<Runtime as frame_system::Config>::DbWeight::get().reads_writes(5 + 2, 5 + 2)
+		);
 
 		assert_eq!(
 			PayoutDeductionRates::<Runtime>::contains_key(PoolIdV0::DexSaving(DOT_AUSD_LP)),
@@ -287,7 +334,10 @@ fn migrate_to_dex_saving_reward_rates_works() {
 			false
 		);
 
-		migrate_to_dex_saving_reward_rates::<Runtime>();
+		assert_eq!(
+			migrate_to_dex_saving_reward_rates::<Runtime>(None),
+			<Runtime as frame_system::Config>::DbWeight::get().reads_writes(3 + 1, 3 + 1)
+		);
 
 		assert_eq!(
 			DexSavingRewardRate::<Runtime>::contains_key(PoolIdV0::DexSaving(DOT_AUSD_LP)),
@@ -355,7 +405,10 @@ fn migrate_to_incentive_reward_amounts_works() {
 			false
 		);
 
-		migrate_to_incentive_reward_amounts::<Runtime>();
+		assert_eq!(
+			migrate_to_incentive_reward_amounts::<Runtime>(None),
+			<Runtime as frame_system::Config>::DbWeight::get().reads_writes(4 + 1, 4 + 1)
+		);
 
 		assert_eq!(
 			IncentiveRewardAmount::<Runtime>::contains_key(PoolIdV0::DexIncentive(DOT_AUSD_LP)),
@@ -432,7 +485,11 @@ fn migrate_to_pending_multi_rewards_works() {
 			false
 		);
 
-		migrate_to_pending_multi_rewards::<Runtime>();
+		assert_eq!(
+			migrate_to_pending_multi_rewards::<Runtime>(None),
+			<Runtime as frame_system::Config>::DbWeight::get().reads_writes(5 + 3, 5 + 3)
+		);
+
 		assert_eq!(
 			PendingRewards::<Runtime>::contains_key(PoolIdV0::DexIncentive(DOT_AUSD_LP), ALICE::get()),
 			false

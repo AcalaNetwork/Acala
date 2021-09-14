@@ -297,7 +297,7 @@ pub mod module {
 		}
 
 		fn on_runtime_upgrade() -> Weight {
-			migrations::migration_process::<T>()
+			migrations::migrate_in_one_block::<T>()
 		}
 	}
 
@@ -481,6 +481,13 @@ pub mod module {
 				});
 			}
 			Ok(())
+		}
+
+		#[pallet::weight(<T as frame_system::Config>::DbWeight::get().reads_writes(count*2, count*2))]
+		#[transactional]
+		pub fn migrate_pools(origin: OriginFor<T>, count: u32) -> DispatchResult {
+			let _ = ensure_signed(origin)?;
+			orml_rewards::Ok(())
 		}
 	}
 }
