@@ -1125,5 +1125,8 @@ fn offchain_default_max_iterator_works() {
 		run_to_block_offchain(2);
 		// should only run 1000 iterations stopping due to DEFAULT_MAX_ITERATIONS
 		assert_eq!(pool_state.write().transactions.len(), 1000);
+		// should only now run 1 iteration to finish off where it ended last block
+		run_to_block_offchain(3);
+		assert_eq!(pool_state.write().transactions.len(), 1001);
 	});
 }

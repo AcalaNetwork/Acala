@@ -667,11 +667,6 @@ impl<T: Config> Pallet<T> {
 
 		#[allow(clippy::while_let_on_iterator)]
 		while let Some((who, Position { collateral, debit })) = map_iterator.next() {
-			if iteration_count >= max_iterations {
-				finished = false;
-				break;
-			}
-
 			if !is_shutdown
 				&& matches!(
 					Self::check_cdp_status(currency_id, collateral, debit),
@@ -685,7 +680,10 @@ impl<T: Config> Pallet<T> {
 			}
 
 			iteration_count += 1;
-
+			if iteration_count == max_iterations {
+				finished = false;
+				break;
+			}
 			// extend offchain worker lock
 			guard.extend_lock().map_err(|_| OffchainErr::OffchainLock)?;
 		}
@@ -713,7 +711,7 @@ impl<T: Config> Pallet<T> {
 				};
 			to_be_continue.set(&(next_collateral_position, Option::<Vec<u8>>::None));
 		} else {
-			to_be_continue.set(&(collateral_position, Some(map_iterator.prefix())));
+			to_be_continue.set(&(collateral_position, Some(map_iterator.last_raw_key())));
 		}
 
 		// Consume the guard but **do not** unlock the underlying lock.

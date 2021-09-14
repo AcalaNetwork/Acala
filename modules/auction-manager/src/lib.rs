@@ -371,10 +371,6 @@ impl<T: Config> Pallet<T> {
 
 		#[allow(clippy::while_let_on_iterator)]
 		while let Some((collateral_auction_id, _)) = iterator.next() {
-			if iteration_count >= max_iterations {
-				finished = false;
-				break;
-			}
 			iteration_count += 1;
 
 			if let (Some(collateral_auction), Some((_, last_bid_price))) = (
@@ -384,17 +380,26 @@ impl<T: Config> Pallet<T> {
 				// if collateral auction has already been in reverse stage,
 				// should skip it.
 				if collateral_auction.in_reverse_stage(last_bid_price) {
+					if iteration_count == max_iterations {
+						finished = false;
+						break;
+					}
 					continue;
 				}
 			}
 			Self::submit_cancel_auction_tx(collateral_auction_id);
+
+			if iteration_count == max_iterations {
+				finished = false;
+				break;
+			}
 			guard.extend_lock().map_err(|_| OffchainErr::OffchainLock)?;
 		}
 
 		if finished {
 			to_be_continue.clear();
 		} else {
-			to_be_continue.set(&iterator.prefix());
+			to_be_continue.set(&iterator.last_raw_key());
 		}
 
 		// Consume the guard but **do not** unlock the underlying lock.

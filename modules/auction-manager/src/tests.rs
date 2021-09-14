@@ -544,15 +544,15 @@ fn offchain_worker_max_iterations_check() {
 		if let MockCall::AuctionManagerModule(crate::Call::cancel(auction_id)) = tx.call {
 			assert_ok!(AuctionManagerModule::cancel(Origin::none(), auction_id));
 		}
-		// only one auction canceled so offchain tx pool is empty
 		assert!(
 			AuctionManagerModule::collateral_auctions(1).is_some()
 				|| AuctionManagerModule::collateral_auctions(0).is_some()
 		);
+		// only one auction canceled so offchain tx pool is empty
 		assert!(pool_state.write().transactions.pop().is_none());
 
 		run_to_block_offchain(3);
-		// now offchain worker will cancel one auction but the other one will cancel next block
+		// now offchain worker will cancel the next auction
 		let tx = pool_state.write().transactions.pop().unwrap();
 		let tx = Extrinsic::decode(&mut &*tx).unwrap();
 		if let MockCall::AuctionManagerModule(crate::Call::cancel(auction_id)) = tx.call {
@@ -589,5 +589,8 @@ fn offchain_default_max_iterator_works() {
 		run_to_block_offchain(2);
 		// should only run 1000 iterations stopping due to DEFAULT_MAX_ITERATION
 		assert_eq!(pool_state.write().transactions.len(), 1000);
+		run_to_block_offchain(3);
+		// next block iterator starts where it left off and adds the final account to tx pool
+		assert_eq!(pool_state.write().transactions.len(), 1001);
 	});
 }
