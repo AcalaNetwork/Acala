@@ -6945,7 +6945,7 @@ dependencies = [
 [[package]]
 name = "pallet-chainlink-feed"
 version = "0.1.0"
-source = "git+https://github.com/smartcontractkit/chainlink-polkadot?branch=polkadot-v0.9.8#124646ec14d25b9c6b5b3100c5422ebb53c804a0"
+source = "git+https://github.com/smartcontractkit/chainlink-polkadot?branch=polkadot-v0.9.9#79107694e226c94301d3479f3f96a88892f917f2"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -6981,6 +6981,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "log",
  "parity-scale-codec",
 ]
 
@@ -13410,8 +13411,8 @@ version = "1.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1f559b464de2e2bdabcac6a210d12e9b5a5973c251e102c44c585c71d51bd78e"
 dependencies = [
- "cfg-if 1.0.0",
- "rand 0.8.4",
+ "cfg-if 0.1.10",
+ "rand 0.3.23",
  "static_assertions",
 ]
 
