@@ -324,7 +324,9 @@ pub mod module {
 	#[pallet::genesis_build]
 	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
 		fn build(&self) {
-			let source = T::AddressMapping::get_or_create_evm_address(&self.treasury);
+			// NOTE: Only applicable for mandala testnet, unit test and integration test.
+			// Use create_predeploy_contract to deploy predeploy contracts on the mainnet.
+			let source = T::NetworkContractSource::get();
 
 			self.accounts.iter().for_each(|(address, account)| {
 				let account_id = T::AddressMapping::get_account_id(address);
@@ -332,7 +334,12 @@ pub mod module {
 				let account_info = <AccountInfo<T>>::new(account.nonce, None);
 				<Accounts<T>>::insert(address, account_info);
 
-				T::Currency::deposit_creating(&account_id, account.balance);
+				let amount = if account.balance.is_zero() {
+					T::Currency::minimum_balance()
+				} else {
+					account.balance
+				};
+				T::Currency::deposit_creating(&account_id, amount);
 
 				if !account.code.is_empty() {
 					// Transactions are not supported by BasicExternalities
@@ -721,8 +728,25 @@ pub mod module {
 			);
 
 			let source = T::NetworkContractSource::get();
-			let info =
-				T::Runner::create_at_address(source, target, init, value, gas_limit, storage_limit, T::config())?;
+
+			let info = if init.len().is_zero() {
+				// deposit ED for mirrored token
+				T::Currency::transfer(
+					&T::TreasuryAccount::get(),
+					&T::AddressMapping::get_account_id(&target),
+					T::Currency::minimum_balance(),
+					ExistenceRequirement::AllowDeath,
+				)?;
+				CreateInfo {
+					value: target,
+					exit_reason: ExitReason::Succeed(ExitSucceed::Stopped),
+					used_gas: 0.into(),
+					used_storage: 0,
+					logs: vec![],
+				}
+			} else {
+				T::Runner::create_at_address(source, target, init, value, gas_limit, storage_limit, T::config())?
+			};
 
 			if info.exit_reason.is_succeed() {
 				Pallet::<T>::deposit_event(Event::<T>::Created(info.value));
@@ -1249,15 +1273,14 @@ impl<T: Config> Pallet<T> {
 			return Ok(());
 		}
 
+		let user = T::AddressMapping::get_account_id(caller);
+		let amount = T::StorageDepositPerByte::get().saturating_mul(limit.into());
+
 		log::debug!(
 			target: "evm",
-			"reserve_storage: from {:?} limit {:?}",
-			caller, limit,
+			"reserve_storage: [from: {:?}, account: {:?}, limit: {:?}, amount: {:?}]",
+			caller, user, limit, amount
 		);
-
-		let user = T::AddressMapping::get_account_id(caller);
-
-		let amount = T::StorageDepositPerByte::get().saturating_mul(limit.into());
 
 		T::Currency::reserve_named(&RESERVE_ID_STORAGE_DEPOSIT, &user, amount)
 	}
@@ -1269,14 +1292,14 @@ impl<T: Config> Pallet<T> {
 			return Ok(());
 		}
 
-		log::debug!(
-			target: "evm",
-			"unreserve_storage: from {:?} used {:?} refunded {:?} unused {:?}",
-			caller, used, refunded, unused
-		);
-
 		let user = T::AddressMapping::get_account_id(caller);
 		let amount = T::StorageDepositPerByte::get().saturating_mul(unused.into());
+
+		log::debug!(
+			target: "evm",
+			"unreserve_storage: [from: {:?}, account: {:?}, used: {:?}, refunded: {:?}, unused: {:?}, amount: {:?}]",
+			caller, user, used, refunded, unused, amount
+		);
 
 		// should always be able to unreserve the amount
 		// but otherwise we will just ignore the issue here.
@@ -1290,18 +1313,17 @@ impl<T: Config> Pallet<T> {
 			return Ok(());
 		}
 
-		log::debug!(
-			target: "evm",
-			"charge_storage: from {:?} contract {:?} storage {:?}",
-			caller, contract, storage
-		);
-
 		let user = T::AddressMapping::get_account_id(caller);
 		let contract_acc = T::AddressMapping::get_account_id(contract);
+		let amount = T::StorageDepositPerByte::get().saturating_mul((storage.abs() as u32).into());
+
+		log::debug!(
+			target: "evm",
+			"charge_storage: [from: {:?}, account: {:?}, contract: {:?}, contract_acc: {:?}, storage: {:?}, amount: {:?}]",
+			caller, user, contract, contract_acc, storage, amount
+		);
 
 		if storage.is_positive() {
-			let amount = T::StorageDepositPerByte::get().saturating_mul((storage as u32).into());
-
 			// `repatriate_reserved` requires beneficiary is an existing account but
 			// contract_acc could be a new account so we need to do
 			// unreserve/transfer/reserve.
@@ -1312,8 +1334,6 @@ impl<T: Config> Pallet<T> {
 			T::Currency::transfer(&user, &contract_acc, amount, ExistenceRequirement::AllowDeath)?;
 			T::Currency::reserve_named(&RESERVE_ID_STORAGE_DEPOSIT, &contract_acc, amount)?;
 		} else {
-			let amount = T::StorageDepositPerByte::get().saturating_mul((storage.abs() as u32).into());
-
 			// user can't be a dead account
 			let val = T::Currency::repatriate_reserved_named(
 				&RESERVE_ID_STORAGE_DEPOSIT,

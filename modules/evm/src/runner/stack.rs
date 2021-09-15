@@ -83,7 +83,16 @@ impl<T: Config> Runner<T> {
 		// let fee = T::ChargeTransactionPayment::withdraw_fee(&source, total_fee)?;
 
 		if !config.estimate {
-			Pallet::<T>::reserve_storage(&origin, storage_limit).map_err(|_| Error::<T>::ReserveStorageFailed)?;
+			Pallet::<T>::reserve_storage(&origin, storage_limit).map_err(|e| {
+				log::debug!(
+					target: "evm",
+					"ReserveStorageFailed {:?} [source: {:?}, storage_limit: {:?}]",
+					e,
+					origin,
+					storage_limit
+				);
+				Error::<T>::ReserveStorageFailed
+			})?;
 		}
 
 		// Execute the EVM call.
@@ -124,18 +133,33 @@ impl<T: Config> Runner<T> {
 		let used_storage = state.metadata().storage_meter().total_used();
 		let refunded_storage = state.metadata().storage_meter().total_refunded();
 		for (target, storage) in &state.substate.storage_logs {
-			log::debug!(
-				target: "evm",
-				"target {:?} used storage: {:?}",
-				target, storage
-			);
 			if !config.estimate {
-				Pallet::<T>::charge_storage(&origin, target, *storage).map_err(|_| Error::<T>::ChargeStorageFailed)?;
+				Pallet::<T>::charge_storage(&origin, target, *storage).map_err(|e| {
+					log::debug!(
+						target: "evm",
+						"ChargeStorageFailed {:?} [source: {:?}, target: {:?}, storage: {:?}]",
+						e,
+						origin,
+						target,
+						storage
+					);
+					Error::<T>::ChargeStorageFailed
+				})?;
 			}
 		}
 		if !config.estimate {
-			Pallet::<T>::unreserve_storage(&origin, storage_limit, used_storage, refunded_storage)
-				.map_err(|_| Error::<T>::UnreserveStorageFailed)?;
+			Pallet::<T>::unreserve_storage(&origin, storage_limit, used_storage, refunded_storage).map_err(|e| {
+				log::debug!(
+					target: "evm",
+					"UnreserveStorageFailed {:?} [source: {:?}, storage_limit: {:?}, used_storage: {:?}, refunded_storage: {:?}]",
+					e,
+					origin,
+					storage_limit,
+					used_storage,
+					refunded_storage
+				);
+				Error::<T>::UnreserveStorageFailed
+			})?;
 		}
 
 		for address in state.substate.deletes {
@@ -144,7 +168,15 @@ impl<T: Config> Runner<T> {
 				"Deleting account at {:?}",
 				address
 			);
-			Pallet::<T>::remove_contract(&address).map_err(|_| Error::<T>::CannotKillContract)?;
+			Pallet::<T>::remove_contract(&address).map_err(|e| {
+				log::debug!(
+					target: "evm",
+					"CannotKillContract address {:?}, reason: {:?}",
+					address,
+					e
+				);
+				Error::<T>::CannotKillContract
+			})?;
 		}
 
 		for log in &state.substate.logs {

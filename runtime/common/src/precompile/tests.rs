@@ -227,11 +227,11 @@ fn multicurrency_precompile_should_work() {
 		input[0..4].copy_from_slice(&Into::<u32>::into(multicurrency::Action::QueryTotalIssuance).to_be_bytes());
 
 		// Token
-		context.caller = aca_evm_address();
+		context.caller = ausd_evm_address();
 		let resp = MultiCurrencyPrecompile::execute(&input, None, &context).unwrap();
 		assert_eq!(resp.exit_status, ExitSucceed::Returned);
 		let mut expected_output = [0u8; 32];
-		expected_output[16..32].copy_from_slice(&(INITIAL_BALANCE * 2).to_be_bytes()[..]);
+		expected_output[28..32].copy_from_slice(&1_000_000_000u32.to_be_bytes()[..]);
 		assert_eq!(resp.output, expected_output);
 		assert_eq!(resp.cost, 0);
 
