@@ -649,12 +649,17 @@ impl<T: Config> Pallet<T> {
 		let max_iterations = StorageValueRef::persistent(OFFCHAIN_WORKER_MAX_ITERATIONS)
 			.get::<u32>()
 			.unwrap_or(Some(DEFAULT_MAX_ITERATIONS))
-			.ok_or(OffchainErr::OffchainStore)?;
+			.unwrap_or(DEFAULT_MAX_ITERATIONS);
 
 		let currency_id = collateral_currency_ids[collateral_position as usize];
 		let is_shutdown = T::EmergencyShutdown::is_shutdown();
-		let mut map_iterator =
-			<loans::Positions<T>>::iter_prefix_from(currency_id, start_key.clone().ok_or(OffchainErr::OffchainStore)?);
+
+		// If start key is Some(value) continue iterating from that point in storage otherwise start
+		// iterating from the beginning of <loans::Positons<T>>
+		let mut map_iterator = match start_key.clone() {
+			Some(key) => <loans::Positions<T>>::iter_prefix_from(currency_id, key),
+			None => <loans::Positions<T>>::iter_prefix(currency_id),
+		};
 
 		let mut finished = true;
 		let mut iteration_count = 0;
@@ -662,11 +667,6 @@ impl<T: Config> Pallet<T> {
 
 		#[allow(clippy::while_let_on_iterator)]
 		while let Some((who, Position { collateral, debit })) = map_iterator.next() {
-			if iteration_count >= max_iterations {
-				finished = false;
-				break;
-			}
-
 			if !is_shutdown
 				&& matches!(
 					Self::check_cdp_status(currency_id, collateral, debit),
@@ -680,7 +680,10 @@ impl<T: Config> Pallet<T> {
 			}
 
 			iteration_count += 1;
-
+			if iteration_count == max_iterations {
+				finished = false;
+				break;
+			}
 			// extend offchain worker lock
 			guard.extend_lock().map_err(|_| OffchainErr::OffchainLock)?;
 		}
