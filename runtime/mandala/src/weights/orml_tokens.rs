@@ -72,4 +72,13 @@ impl<T: frame_system::Config> orml_tokens::WeightInfo for WeightInfo<T> {
 			.saturating_add(T::DbWeight::get().reads(5 as Weight))
 			.saturating_add(T::DbWeight::get().writes(4 as Weight))
 	}
+	fn sweep_dust(c: u32, ) -> Weight {
+		(3_100_000 as Weight)
+			// Standard Error: 597_000
+			.saturating_add((27_100_000 as Weight).saturating_mul(c as Weight))
+			.saturating_add(T::DbWeight::get().reads(1 as Weight))
+			.saturating_add(T::DbWeight::get().reads((2 as Weight).saturating_mul(c as Weight)))
+			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+			.saturating_add(T::DbWeight::get().writes((2 as Weight).saturating_mul(c as Weight)))
+	}
 }
