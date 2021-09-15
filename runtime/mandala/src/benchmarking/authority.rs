@@ -21,7 +21,10 @@ use crate::{AccountId, Authority, AuthoritysOriginId, BlockNumber, Call, Origin,
 use sp_runtime::{traits::Hash, Perbill};
 use sp_std::prelude::*;
 
-use frame_support::traits::{schedule::DispatchTime, OriginTrait};
+use frame_support::{
+	traits::{schedule::DispatchTime, OriginTrait},
+	weights::GetDispatchInfo,
+};
 use frame_system::RawOrigin;
 use orml_benchmarking::{runtime_benchmarks, whitelisted_caller};
 
@@ -174,9 +177,10 @@ runtime_benchmarks! {
 			Box::new(ensure_root_call.clone()),
 		));
 		let hash = <Runtime as frame_system::Config>::Hashing::hash_of(&call);
+		let call_weight_bound = call.get_dispatch_info().weight;
 		System::set_block_number(1u32);
 		Authority::authorize_call(Origin::root(), Box::new(call.clone()), Some(caller.clone()))?;
-	}: _(RawOrigin::Signed(caller), hash)
+	}: _(RawOrigin::Signed(caller), hash, call_weight_bound)
 	verify {
 		assert_eq!(Authority::saved_calls(&hash), None);
 	}
