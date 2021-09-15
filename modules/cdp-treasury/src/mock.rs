@@ -86,6 +86,7 @@ impl orml_tokens::Config for Runtime {
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
+	type SweepOrigin = EnsureSignedBy<One, AccountId>;
 	type WeightInfo = ();
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = ();
