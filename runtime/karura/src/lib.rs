@@ -1704,9 +1704,8 @@ impl orml_xcm::Config for Runtime {
 pub struct OnRuntimeUpgrade;
 impl frame_support::traits::OnRuntimeUpgrade for OnRuntimeUpgrade {
 	fn on_runtime_upgrade() -> u64 {
-		frame_support::migrations::migrate_from_pallet_version_to_storage_version::<AllPalletsWithSystem>(
-			&RocksDbWeight::get(),
-		)
+		// no migration
+		0
 	}
 }
 
