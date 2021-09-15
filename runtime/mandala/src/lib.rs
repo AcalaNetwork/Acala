@@ -1894,37 +1894,49 @@ impl nutsfinance_stable_asset::Config for Runtime {
 
 // This is required in order to make `CurrencyId` usable within PINT's runtime-benchmarks
 #[cfg(feature = "runtime-benchmarks")]
-impl pint_primitives::traits::MaybeAssetIdConvert<u8, CurrencyId> for Runtime {
-
+impl pint_primitives::MaybeAssetIdConvert<u8, CurrencyId> for Runtime {
 	fn try_convert(value: u8) -> Option<CurrencyId> {
 		use sp_std::convert::TryFrom;
+		// only use `CurrencyId::Token`
 		TokenSymbol::try_from(value).ok().map(CurrencyId::Token)
 	}
 }
 
+// This is currently required to satisfy PINT's chainlink dependency for benchmarks
+#[cfg(feature = "runtime-benchmarks")]
+struct PriceFeedBenchmarks;
+#[cfg(feature = "runtime-benchmarks")]
+impl pint_price_feed::traits::PriceFeedBenchmarks<AccountId, CurrencyId> for PriceFeedBenchmarks {
+	fn create_feed(_: AccountId, _: CurrencyId) -> frame_support::dispatch::DispatchResultWithPostInfo {
+		Ok(().into())
+	}
+}
+
 parameter_types! {
-	pub const MinCouncilVotes: usize = 4;
+	pub const MinCouncilVotes: usize = 1;
 	pub const ProposalSubmissionPeriod: BlockNumber = 10 * MINUTES;
 	pub const MinimumRedemption: u32 = 0;
 	pub const WithdrawalPeriod: BlockNumber = 10 * MINUTES;
 	pub const LockupPeriod: BlockNumber = 5 * MINUTES;
-	pub DOTContributionLimit: Balance = 100_000 * dollar(CurrencyId::Token(TokenSymbol::DOT));
 	pub const IndexTokenLockIdentifier: LockIdentifier = *b"pint/lck";
 	pub const BaseWithdrawalFee: pint_primitives::fee::FeeRate = pint_primitives::fee::FeeRate{ numerator: 3, denominator: 1_000,};
 	pub const AssetIndexStringLimit: u32 = 50;
 	pub const PINTAssetId: CurrencyId = CurrencyId::Token(TokenSymbol::PINT);
+	pub const MaxActiveDeposits: u32 = 50;
+	pub const MaxDecimals: u8 = 18;
 }
 
-type EnsureApprovedByCommittee = frame_system::EnsureOneOf<
+type PintGovernanceOrigin<AccountId, Runtime> = frame_system::EnsureOneOf<
 	AccountId,
 	pint_committee::EnsureApprovedByCommittee<Runtime>,
 	frame_system::EnsureRoot<AccountId>,
 >;
 
 impl pint_saft_registry::Config for Runtime {
-	// Using signed as the admin origin for now
-	type AdminOrigin = frame_system::EnsureSigned<AccountId>;
+	type AdminOrigin = pint_committee::EnsureApprovedByCommittee<Runtime>;
 	type AssetRecorder = AssetIndex;
+	#[cfg(feature = "runtime-benchmarks")]
+	type AssetRecorderBenchmarks = AssetIndex;
 	type Balance = Balance;
 	type AssetId = CurrencyId;
 	type Event = Event;
@@ -1932,8 +1944,7 @@ impl pint_saft_registry::Config for Runtime {
 }
 
 impl pint_local_treasury::Config for Runtime {
-	// Using root as the admin origin for now
-	type AdminOrigin = frame_system::EnsureRoot<AccountId>;
+	type AdminOrigin = pint_committee::EnsureApprovedByCommittee<Runtime>;
 	type PalletId = TreasuryPalletId;
 	type Currency = Balances;
 	type Event = Event;
@@ -1947,30 +1958,31 @@ impl pint_committee::Config for Runtime {
 	type ProposalSubmissionPeriod = ProposalSubmissionPeriod;
 	type VotingPeriod = VotingPeriod;
 	type MinCouncilVotes = MinCouncilVotes;
-	type ProposalSubmissionOrigin = frame_system::EnsureSigned<AccountId>;
+	type ProposalSubmissionOrigin = pint_committee::EnsureMember<Self>;
 	type ProposalExecutionOrigin = pint_committee::EnsureMember<Self>;
-	type ApprovedByCommitteeOrigin = EnsureApprovedByCommittee;
+	type ApprovedByCommitteeOrigin = PintGovernanceOrigin<AccountId, Runtime>;
 	type Event = Event;
 	type WeightInfo = ();
 }
 
 impl pint_asset_index::Config for Runtime {
-	// Using signed as the admin origin for testing now
-	type AdminOrigin = EnsureApprovedByCommittee;
+	type AdminOrigin = pint_committee::EnsureApprovedByCommittee<Runtime>;
 	type IndexToken = Balances;
 	type Balance = Balance;
+	type MaxActiveDeposits = MaxActiveDeposits;
+	type MaxDecimals = MaxDecimals;
+	type RedemptionFee = ();
 	type LockupPeriod = LockupPeriod;
 	type IndexTokenLockIdentifier = IndexTokenLockIdentifier;
 	type MinimumRedemption = MinimumRedemption;
 	type WithdrawalPeriod = WithdrawalPeriod;
-	type DOTContributionLimit = DOTContributionLimit;
 	type RemoteAssetManager = MockRemoteAssetManager;
 	type AssetId = CurrencyId;
 	type SelfAssetId = PINTAssetId;
 	type Currency = Currencies;
 	type PriceFeed = AggregatedDataProvider;
-	// #[cfg(feature = "runtime-benchmarks")]
-	// type PriceFeedBenchmarks = PriceFeed;
+	#[cfg(feature = "runtime-benchmarks")]
+	type PriceFeedBenchmarks = PriceFeedBenchmarks;
 	type SaftRegistry = SaftRegistry;
 	type BaseWithdrawalFee = BaseWithdrawalFee;
 	type TreasuryPalletId = TreasuryPalletId;
@@ -2169,8 +2181,8 @@ construct_runtime! {
 
 		// PINT
 		AssetIndex: pint_asset_index::{Pallet, Call, Storage, Event<T>} = 210,
-		Committee: pint_committee::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 211,
-		LocalTreasury: pint_local_treasury::{Pallet, Call, Storage, Event<T>} = 212,
+		PintCommittee: pint_committee::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 211,
+		PintLocalTreasury: pint_local_treasury::{Pallet, Call, Storage, Event<T>} = 212,
 		SaftRegistry: pint_saft_registry::{Pallet, Call, Storage, Event<T>} = 213,
 
 		// Dev
