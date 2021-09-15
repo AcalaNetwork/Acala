@@ -102,7 +102,7 @@ pub fn evm_genesis() -> BTreeMap<H160, GenesisAccount<Balance, Nonce>> {
 	for (_, address, code_string) in contracts {
 		let account = GenesisAccount {
 			nonce: 0u32,
-			balance: mandala_runtime::NativeTokenExistentialDeposit::get(),
+			balance: 0u128,
 			storage: BTreeMap::new(),
 			code: if code_string.len().is_zero() {
 				vec![]
