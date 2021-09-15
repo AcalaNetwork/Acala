@@ -132,6 +132,13 @@ ecosystem-starport = { path = "../../ecosystem-modules/starport", default-featur
 ecosystem-compound-cash = { path = "../../ecosystem-modules/compound-cash", default-features = false }
 chainbridge = { git = "https://github.com/AcalaNetwork/chainbridge-substrate", default-features = false }
 
+pint-asset-index = { path = "../../ecosystem-modules/pint/pallets/asset-index", package = "pallet-asset-index", default-features = false }
+pint-committee = { path = "../../ecosystem-modules/pint/pallets/committee", package = "pallet-committee", default-features = false }
+pint-local-treasury = { path = "../../ecosystem-modules/pint/pallets/local-treasury", package = "pallet-local-treasury", default-features = false }
+pint-price-feed = { path = "../../ecosystem-modules/pint/pallets/price-feed", package = "pallet-price-feed", default-features = false }
+pint-saft-registry = { path = "../../ecosystem-modules/pint/pallets/saft-registry", package = "pallet-saft-registry", default-features = false }
+pint-primitives = { path = "../../ecosystem-modules/pint/primitives/primitives", package = "primitives", default-features = false }
+
 [build-dependencies]
 substrate-wasm-builder = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.9" }
 
@@ -266,6 +273,13 @@ std = [
 	"ecosystem-starport/std",
 	"ecosystem-compound-cash/std",
 	"chainbridge/std",
+
+	"pint-committee/std",
+	"pint-saft-registry/std",
+	"pint-asset-index/std",
+	"pint-local-treasury/std",
+	"pint-primitives/std",
+	"pint-price-feed/std"
 ]
 runtime-benchmarks = [
 	"frame-benchmarking",
@@ -288,6 +302,13 @@ runtime-benchmarks = [
 	"module-homa-lite/runtime-benchmarks",
 
 	"sp-api/disable-logging",
+
+	"pint-committee/runtime-benchmarks",
+	"pint-saft-registry/runtime-benchmarks",
+	"pint-asset-index/runtime-benchmarks",
+	"pint-local-treasury/runtime-benchmarks",
+	"pint-price-feed/runtime-benchmarks",
+	"pint-primitives/runtime-benchmarks"
 ]
 # When enabled, the runtime api will not be build.
 #

@@ -125,6 +125,14 @@ pub use runtime_common::{
 /// Import the stable_asset pallet.
 pub use nutsfinance_stable_asset;
 
+/// Import the PINT pallets
+pub use pint_asset_index;
+pub use pint_committee;
+pub use pint_local_treasury;
+pub use pint_price_feed;
+pub use pint_primitives;
+pub use pint_saft_registry;
+
 mod authority;
 mod benchmarking;
 pub mod constants;
@@ -177,6 +185,7 @@ parameter_types! {
 	// Ecosystem modules
 	pub const StarportPalletId: PalletId = PalletId(*b"aca/stpt");
 	pub const StableAssetPalletId: PalletId = PalletId(*b"nuts/sta");
+	pub const PintTreasuryPalletId: PalletId = PalletId(*b"pint/trs");
 }
 
 pub fn get_all_module_accounts() -> Vec<AccountId> {
@@ -799,7 +808,9 @@ parameter_type_with_key! {
 				TokenSymbol::LKSM |
 				TokenSymbol::RENBTC |
 				TokenSymbol::ACA |
-				TokenSymbol::CASH => Balance::max_value() // unsupported
+				TokenSymbol::CASH => Balance::max_value(), // unsupported
+
+				TokenSymbol::PINT => 1, // TODO: update this before we enable PINT
 			},
 			CurrencyId::DexShare(dex_share_0, _) => {
 				let currency_id_0: CurrencyId = (*dex_share_0).into();
@@ -1882,6 +1893,139 @@ impl nutsfinance_stable_asset::Config for Runtime {
 	type EnsurePoolAssetId = EnsurePoolAssetId;
 }
 
+// PINT pallet implementations
+
+// This is required in order to make `CurrencyId` usable within PINT's runtime-benchmarks
+#[cfg(feature = "runtime-benchmarks")]
+impl pint_primitives::traits::MaybeAssetIdConvert<u8, CurrencyId> for Runtime {
+	fn try_convert(value: u8) -> Option<CurrencyId> {
+		use sp_std::convert::TryFrom;
+		// only use `CurrencyId::Token`
+		TokenSymbol::try_from(value).ok().map(CurrencyId::Token)
+	}
+}
+
+// This is currently required to satisfy PINT's chainlink dependency for benchmarks
+#[cfg(feature = "runtime-benchmarks")]
+pub struct PriceFeedBenchmarks;
+#[cfg(feature = "runtime-benchmarks")]
+impl pint_price_feed::PriceFeedBenchmarks<AccountId, CurrencyId> for PriceFeedBenchmarks {
+	fn create_feed(_: AccountId, _: CurrencyId) -> frame_support::dispatch::DispatchResultWithPostInfo {
+		Ok(().into())
+	}
+}
+
+parameter_types! {
+	pub const MinCouncilVotes: usize = 1;
+	pub const ProposalSubmissionPeriod: BlockNumber = 10 * MINUTES;
+	pub const MinimumRedemption: u32 = 0;
+	pub const WithdrawalPeriod: BlockNumber = 10 * MINUTES;
+	pub const LockupPeriod: BlockNumber = 5 * MINUTES;
+	pub const IndexTokenLockIdentifier: LockIdentifier = *b"pint/lck";
+	pub const BaseWithdrawalFee: pint_primitives::fee::FeeRate = pint_primitives::fee::FeeRate{ numerator: 3, denominator: 1_000,};
+	pub const AssetIndexStringLimit: u32 = 50;
+	pub const PINTAssetId: CurrencyId = CurrencyId::Token(TokenSymbol::PINT);
+	pub const MaxActiveDeposits: u32 = 50;
+	pub const MaxDecimals: u8 = 18;
+}
+
+type PintGovernanceOrigin<AccountId, Runtime> = frame_system::EnsureOneOf<
+	AccountId,
+	pint_committee::EnsureApprovedByCommittee<Runtime>,
+	frame_system::EnsureRoot<AccountId>,
+>;
+
+impl pint_saft_registry::Config for Runtime {
+	type AdminOrigin = pint_committee::EnsureApprovedByCommittee<Runtime>;
+	type AssetRecorder = AssetIndex;
+	#[cfg(feature = "runtime-benchmarks")]
+	type AssetRecorderBenchmarks = AssetIndex;
+	type Balance = Balance;
+	type AssetId = CurrencyId;
+	type Event = Event;
+	type WeightInfo = ();
+}
+
+impl pint_local_treasury::Config for Runtime {
+	type AdminOrigin = pint_committee::EnsureApprovedByCommittee<Runtime>;
+	type PalletId = TreasuryPalletId;
+	type Currency = Balances;
+	type Event = Event;
+	type WeightInfo = ();
+}
+
+impl pint_committee::Config for Runtime {
+	type Origin = Origin;
+	type Action = Call;
+	type ProposalNonce = u32;
+	type ProposalSubmissionPeriod = ProposalSubmissionPeriod;
+	type VotingPeriod = VotingPeriod;
+	type MinCouncilVotes = MinCouncilVotes;
+	type ProposalSubmissionOrigin = pint_committee::EnsureMember<Self>;
+	type ProposalExecutionOrigin = pint_committee::EnsureMember<Self>;
+	type ApprovedByCommitteeOrigin = PintGovernanceOrigin<AccountId, Runtime>;
+	type Event = Event;
+	type WeightInfo = ();
+}
+
+impl pint_asset_index::Config for Runtime {
+	type AdminOrigin = pint_committee::EnsureApprovedByCommittee<Runtime>;
+	type IndexToken = Balances;
+	type Balance = Balance;
+	type MaxActiveDeposits = MaxActiveDeposits;
+	type MaxDecimals = MaxDecimals;
+	type RedemptionFee = ();
+	type LockupPeriod = LockupPeriod;
+	type IndexTokenLockIdentifier = IndexTokenLockIdentifier;
+	type MinimumRedemption = MinimumRedemption;
+	type WithdrawalPeriod = WithdrawalPeriod;
+	type RemoteAssetManager = MockRemoteAssetManager;
+	type AssetId = CurrencyId;
+	type SelfAssetId = PINTAssetId;
+	type Currency = Currencies;
+	type PriceFeed = AggregatedDataProvider;
+	#[cfg(feature = "runtime-benchmarks")]
+	type PriceFeedBenchmarks = PriceFeedBenchmarks;
+	type SaftRegistry = SaftRegistry;
+	type BaseWithdrawalFee = BaseWithdrawalFee;
+	type TreasuryPalletId = TreasuryPalletId;
+	type Event = Event;
+	type StringLimit = AssetIndexStringLimit;
+	type WeightInfo = ();
+}
+
+// Wrapper for the `AggregatedDataProvider` until chainlink pallet is supported
+impl pint_price_feed::PriceFeed<CurrencyId> for AggregatedDataProvider {
+	fn get_price(base: CurrencyId) -> Result<Price, sp_runtime::DispatchError> {
+		<Self as orml_traits::DataProvider<_, _>>::get(&base)
+			.ok_or_else(|| module_prices::Error::<Runtime>::AccessPriceFailed.into())
+	}
+	fn get_relative_price_pair(
+		base: CurrencyId,
+		quote: CurrencyId,
+	) -> Result<pint_price_feed::AssetPricePair<CurrencyId>, sp_runtime::DispatchError> {
+		use frame_support::sp_runtime::traits::CheckedDiv;
+		let base_price = Self::get_price(base.clone())?;
+		let quote_price = Self::get_price(quote.clone())?;
+		let price = base_price
+			.checked_div(&quote_price)
+			.ok_or(module_prices::Error::<Runtime>::AccessPriceFailed)?;
+		Ok(pint_price_feed::AssetPricePair::new(base, quote, price))
+	}
+}
+
+/// Remote Asset manager that does nothing
+pub struct MockRemoteAssetManager;
+impl pint_primitives::traits::RemoteAssetManager<AccountId, CurrencyId, Balance> for MockRemoteAssetManager {
+	fn transfer_asset(_: AccountId, _: CurrencyId, _: Balance) -> DispatchResult {
+		Ok(())
+	}
+
+	fn deposit(_: CurrencyId, _: Balance) {}
+
+	fn announce_withdrawal(_: CurrencyId, _: Balance) {}
+}
+
 impl cumulus_pallet_aura_ext::Config for Runtime {}
 
 /// The address format for describing accounts.
@@ -2037,6 +2181,12 @@ construct_runtime! {
 
 		// Stable asset
 		StableAsset: nutsfinance_stable_asset::{Pallet, Call, Storage, Event<T>} = 200,
+
+		// PINT
+		AssetIndex: pint_asset_index::{Pallet, Call, Storage, Event<T>} = 210,
+		PintCommittee: pint_committee::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 211,
+		PintLocalTreasury: pint_local_treasury::{Pallet, Call, Storage, Event<T>} = 212,
+		SaftRegistry: pint_saft_registry::{Pallet, Call, Storage, Event<T>} = 213,
 
 		// Dev
 		Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>} = 255,

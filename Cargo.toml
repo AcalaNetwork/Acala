@@ -28,7 +28,7 @@ members = [
 	"orml/nft",
 	"orml/oracle",
 	"orml/oracle/rpc",
- 	"orml/oracle/rpc/runtime-api",
+	"orml/oracle/rpc/runtime-api",
 	"orml/rewards",
 	"orml/tokens",
 	"orml/traits",
@@ -46,6 +46,9 @@ members = [
 	"ecosystem-modules/starport",
 	"ecosystem-modules/compound-cash",
 	"ecosystem-modules/stable-asset/lib/stable-asset",
+]
+exclude = [
+	"ecosystem-modules/pint"
 ]
 
 resolver = "2"
@@ -300,3 +303,10 @@ pallet-beefy = { git = "https://github.com/paritytech//grandpa-bridge-gadget", r
 beefy-primitives = { git = "https://github.com/paritytech//grandpa-bridge-gadget", rev = "f40c0ab7b327e874d5c8d699bfa5d762f1759ee0" }
 beefy-gadget = { git = "https://github.com/paritytech//grandpa-bridge-gadget", rev = "f40c0ab7b327e874d5c8d699bfa5d762f1759ee0" }
 beefy-gadget-rpc = { git = "https://github.com/paritytech//grandpa-bridge-gadget", rev = "f40c0ab7b327e874d5c8d699bfa5d762f1759ee0" }
+
+[patch."https://github.com/open-web3-stack/open-runtime-module-library"]
+orml-currencies = { path = "./orml/currencies" }
+orml-tokens = { path = "./orml/tokens" }
+orml-xtokens = { path = "./orml/xtokens" }
+orml-xcm-support = {  path = "./orml/xcm-support" }
+orml-traits = { path = "./orml/traits" }

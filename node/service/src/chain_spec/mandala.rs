@@ -237,9 +237,9 @@ fn testnet_genesis(
 		CollatorSelectionConfig, DexConfig, EVMConfig, EnabledTradingPairs, FinancialCouncilMembershipConfig,
 		GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig, IndicesConfig, NativeTokenExistentialDeposit,
 		OperatorMembershipAcalaConfig, OperatorMembershipBandConfig, OrmlNFTConfig, ParachainInfoConfig, Period,
-		RenVmBridgeConfig, SessionConfig, SessionKeys, SessionManagerConfig, StakingPoolConfig, StarportConfig,
-		SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig, ACA, AUSD, DOT,
-		LDOT, RENBTC,
+		PintCommitteeConfig, RenVmBridgeConfig, SessionConfig, SessionKeys, SessionManagerConfig, StakingPoolConfig,
+		StarportConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig, ACA,
+		AUSD, DOT, LDOT, RENBTC,
 	};
 
 	let existential_deposit = NativeTokenExistentialDeposit::get();
@@ -366,7 +366,7 @@ fn testnet_genesis(
 		},
 		evm: EVMConfig {
 			accounts: evm_genesis_accounts,
-			treasury: root_key,
+			treasury: root_key.clone(),
 		},
 		staking_pool: StakingPoolConfig {
 			staking_pool_params: module_staking_pool::Params {
@@ -430,6 +430,12 @@ fn testnet_genesis(
 		aura: Default::default(),
 		aura_ext: Default::default(),
 		parachain_system: Default::default(),
+
+		// pint configs
+		pint_committee: PintCommitteeConfig {
+			council_members: vec![root_key],
+			..Default::default()
+		},
 	}
 }
 
@@ -444,9 +450,9 @@ fn mandala_genesis(
 		CdpEngineConfig, CdpTreasuryConfig, CollatorSelectionConfig, DexConfig, EVMConfig, EnabledTradingPairs,
 		FinancialCouncilMembershipConfig, GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig, IndicesConfig,
 		NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OperatorMembershipBandConfig, OrmlNFTConfig,
-		ParachainInfoConfig, Period, RenVmBridgeConfig, SessionConfig, SessionKeys, SessionManagerConfig,
-		StakingPoolConfig, StarportConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig,
-		VestingConfig, ACA, AUSD, DOT, LDOT, RENBTC,
+		ParachainInfoConfig, Period, PintCommitteeConfig, RenVmBridgeConfig, SessionConfig, SessionKeys,
+		SessionManagerConfig, StakingPoolConfig, StarportConfig, SudoConfig, SystemConfig,
+		TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig, ACA, AUSD, DOT, LDOT, RENBTC,
 	};
 
 	let existential_deposit = NativeTokenExistentialDeposit::get();
@@ -578,7 +584,7 @@ fn mandala_genesis(
 		},
 		evm: EVMConfig {
 			accounts: evm_genesis_accounts,
-			treasury: root_key,
+			treasury: root_key.clone(),
 		},
 		staking_pool: StakingPoolConfig {
 			staking_pool_params: module_staking_pool::Params {
@@ -659,5 +665,11 @@ fn mandala_genesis(
 		aura: Default::default(),
 		aura_ext: Default::default(),
 		parachain_system: Default::default(),
+
+		// pint configs
+		pint_committee: PintCommitteeConfig {
+			council_members: vec![root_key],
+			..Default::default()
+		},
 	}
 }
