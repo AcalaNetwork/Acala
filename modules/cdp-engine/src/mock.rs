@@ -380,4 +380,13 @@ impl ExtBuilder {
 
 		t.into()
 	}
+
+	pub fn lots_of_accounts() -> Self {
+		let mut balances = Vec::new();
+		for i in 0..1001 {
+			let account_id: AccountId = i;
+			balances.push((account_id, BTC, 1000));
+		}
+		Self { balances }
+	}
 }
