@@ -142,11 +142,7 @@ runtime_benchmarks! {
 	// authorize a call that can be triggered later
 	authorize_call {
 		let caller: AccountId = whitelisted_caller();
-		let ensure_root_call = Call::System(frame_system::Call::fill_block(Perbill::from_percent(1)));
-		let call = Call::Authority(orml_authority::Call::dispatch_as(
-			AuthoritysOriginId::Root,
-			Box::new(ensure_root_call.clone()),
-		));
+		let call = Call::System(frame_system::Call::fill_block(Perbill::from_percent(1)));
 		let hash = <Runtime as frame_system::Config>::Hashing::hash_of(&call);
 		System::set_block_number(1u32);
 	}: _(RawOrigin::Root, Box::new(call.clone()), Some(caller.clone()))
@@ -156,11 +152,7 @@ runtime_benchmarks! {
 
 	remove_authorized_call {
 		let caller: AccountId = whitelisted_caller();
-		let ensure_root_call = Call::System(frame_system::Call::fill_block(Perbill::from_percent(1)));
-		let call = Call::Authority(orml_authority::Call::dispatch_as(
-			AuthoritysOriginId::Root,
-			Box::new(ensure_root_call.clone()),
-		));
+		let call = Call::System(frame_system::Call::fill_block(Perbill::from_percent(1)));
 		let hash = <Runtime as frame_system::Config>::Hashing::hash_of(&call);
 		System::set_block_number(1u32);
 		Authority::authorize_call(Origin::root(), Box::new(call.clone()), Some(caller.clone()))?;
@@ -171,11 +163,7 @@ runtime_benchmarks! {
 
 	trigger_call {
 		let caller: AccountId = whitelisted_caller();
-		let ensure_root_call = Call::System(frame_system::Call::fill_block(Perbill::from_percent(1)));
-		let call = Call::Authority(orml_authority::Call::dispatch_as(
-			AuthoritysOriginId::Root,
-			Box::new(ensure_root_call.clone()),
-		));
+		let call = Call::System(frame_system::Call::fill_block(Perbill::from_percent(1)));
 		let hash = <Runtime as frame_system::Config>::Hashing::hash_of(&call);
 		let call_weight_bound = call.get_dispatch_info().weight;
 		System::set_block_number(1u32);
