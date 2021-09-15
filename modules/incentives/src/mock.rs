@@ -25,6 +25,7 @@ use frame_support::{
 	construct_runtime,
 	dispatch::{DispatchError, DispatchResult},
 	ord_parameter_types, parameter_types,
+	weights::constants::RocksDbWeight,
 };
 use frame_system::EnsureSignedBy;
 use orml_traits::parameter_type_with_key;
@@ -55,8 +56,7 @@ ord_parameter_types! {
 	pub const ALICE: AccountId = AccountId::from([1u8; 32]);
 	pub const BOB: AccountId = AccountId::from([2u8; 32]);
 	pub const VAULT: AccountId = IncentivesModule::account_id();
-	pub const UNRELEASED: AccountId = AccountId::from([3u8; 32]);
-	pub const VALIDATOR: AccountId = AccountId::from([4u8; 32]);
+	pub const RewardsSource: AccountId = AccountId::from([3u8; 32]);
 	pub const ROOT: AccountId = AccountId32::new([255u8; 32]);
 }
 
@@ -83,7 +83,7 @@ impl frame_system::Config for Runtime {
 	type AccountData = pallet_balances::AccountData<Balance>;
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
-	type DbWeight = ();
+	type DbWeight = RocksDbWeight;
 	type BaseCallFilter = ();
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
@@ -243,12 +243,14 @@ impl EmergencyShutdown for MockEmergencyShutdown {
 impl orml_rewards::Config for Runtime {
 	type Share = Balance;
 	type Balance = Balance;
-	type PoolId = PoolId<AccountId>;
+	type PoolIdV0 = PoolIdV0<AccountId>;
+	type PoolIdConvertor = PoolIdConvertor<Runtime>;
+	type PoolId = PoolId;
+	type CurrencyId = CurrencyId;
 	type Handler = IncentivesModule;
 }
 
 parameter_types! {
-	pub NativeRewardsSource: AccountId = UNRELEASED::get();
 	pub const AccumulatePeriod: BlockNumber = 10;
 	pub const NativeCurrencyId: CurrencyId = ACA;
 	pub const StableCurrencyId: CurrencyId = AUSD;
@@ -263,12 +265,12 @@ ord_parameter_types! {
 impl Config for Runtime {
 	type Event = Event;
 	type RelaychainAccountId = AccountId;
-	type NativeRewardsSource = NativeRewardsSource;
+	type RewardsSource = RewardsSource;
 	type AccumulatePeriod = AccumulatePeriod;
 	type NativeCurrencyId = NativeCurrencyId;
 	type StableCurrencyId = StableCurrencyId;
 	type LiquidCurrencyId = LiquidCurrencyId;
-	type UpdateOrigin = EnsureSignedBy<Root, AccountId>;
+	type UpdateOrigin = EnsureSignedBy<ROOT, AccountId>;
 	type CDPTreasury = MockCDPTreasury;
 	type Currency = TokensModule;
 	type DEX = MockDEX;
@@ -299,9 +301,7 @@ pub struct ExtBuilder {
 
 impl Default for ExtBuilder {
 	fn default() -> Self {
-		Self {
-			balances: vec![(UNRELEASED::get(), ACA, 10_000)],
-		}
+		Self { balances: vec![] }
 	}
 }
 
