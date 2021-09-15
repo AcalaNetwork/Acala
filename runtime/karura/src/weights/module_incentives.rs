@@ -81,15 +81,10 @@ impl<T: frame_system::Config> module_incentives::WeightInfo for WeightInfo<T> {
 			.saturating_add((19_798_000 as Weight).saturating_mul(c as Weight))
 			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(c as Weight)))
 	}
-	fn update_payout_deduction_rates(c: u32, ) -> Weight {
+	fn update_claim_reward_deduction_rates(c: u32, ) -> Weight {
 		(1_850_000 as Weight)
 			// Standard Error: 54_000
 			.saturating_add((19_603_000 as Weight).saturating_mul(c as Weight))
 			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(c as Weight)))
-	}
-	fn add_allowance() -> Weight {
-		(79_658_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(4 as Weight))
-			.saturating_add(T::DbWeight::get().writes(4 as Weight))
 	}
 }

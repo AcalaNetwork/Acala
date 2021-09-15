@@ -60,11 +60,11 @@ mod mandala_imports {
 		create_x2_parachain_multilocation, get_all_module_accounts, AcalaOracle, AccountId, AuctionManager, Authority,
 		AuthoritysOriginId, Balance, Balances, BlockNumber, Call, CdpEngine, CdpTreasury, CreateClassDeposit,
 		CreateTokenDeposit, Currencies, CurrencyId, CurrencyIdConvert, DataDepositPerByte, Dex, EmergencyShutdown,
-		EnabledTradingPairs, Event, EvmAccounts, ExistentialDeposits, Get, GetNativeCurrencyId, HomaLite, Loans,
-		MultiLocation, NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, Origin, OriginCaller,
+		EnabledTradingPairs, Event, EvmAccounts, ExistentialDeposits, Get, GetNativeCurrencyId, HomaLite, Honzon,
+		Loans, MultiLocation, NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, Origin, OriginCaller,
 		ParachainInfo, ParachainSystem, Perbill, Proxy, RelaychainSovereignSubAccount, Runtime, Scheduler, Session,
-		SessionManager, SevenDays, System, TokenSymbol, Tokens, TreasuryAccount, TreasuryPalletId, Utility, Vesting,
-		XcmConfig, XcmExecutor, NFT,
+		SessionManager, SevenDays, System, Timestamp, TokenSymbol, Tokens, TreasuryAccount, TreasuryPalletId, Utility,
+		Vesting, XcmConfig, XcmExecutor, NFT,
 	};
 
 	pub use runtime_common::{dollar, ACA, AUSD, DOT, LDOT};
@@ -87,11 +87,11 @@ mod karura_imports {
 		create_x2_parachain_multilocation, get_all_module_accounts, AcalaOracle, AccountId, AuctionManager, Authority,
 		AuthoritysOriginId, Balance, Balances, BlockNumber, Call, CdpEngine, CdpTreasury, CreateClassDeposit,
 		CreateTokenDeposit, Currencies, CurrencyId, CurrencyIdConvert, DataDepositPerByte, Dex, EmergencyShutdown,
-		Event, EvmAccounts, ExistentialDeposits, Get, GetNativeCurrencyId, HomaLite, KaruraFoundationAccounts, Loans,
-		MultiLocation, NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, Origin, OriginCaller,
+		Event, EvmAccounts, ExistentialDeposits, Get, GetNativeCurrencyId, HomaLite, Honzon, KaruraFoundationAccounts,
+		Loans, MultiLocation, NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, Origin, OriginCaller,
 		ParachainInfo, ParachainSystem, Perbill, Proxy, RelaychainSovereignSubAccount, Runtime, Scheduler, Session,
-		SessionManager, SevenDays, System, TokenSymbol, Tokens, TreasuryPalletId, Utility, Vesting, XTokens, XcmConfig,
-		XcmExecutor, NFT,
+		SessionManager, SevenDays, System, Timestamp, TokenSymbol, Tokens, TreasuryPalletId, Utility, Vesting, XTokens,
+		XcmConfig, XcmExecutor, NFT,
 	};
 	pub use primitives::TradingPair;
 	pub use runtime_common::{dollar, KAR, KSM, KUSD, LKSM};
@@ -125,10 +125,15 @@ const ORACLE5: [u8; 32] = [4u8; 32];
 pub const ALICE: [u8; 32] = [4u8; 32];
 pub const BOB: [u8; 32] = [5u8; 32];
 
+pub const INIT_TIMESTAMP: u64 = 30_000;
+pub const BLOCK_TIME: u64 = 1000;
+
 fn run_to_block(n: u32) {
 	while System::block_number() < n {
 		Scheduler::on_finalize(System::block_number());
 		System::set_block_number(System::block_number() + 1);
+		Timestamp::set_timestamp((System::block_number() as u64 * BLOCK_TIME) + INIT_TIMESTAMP);
+		CdpEngine::on_initialize(System::block_number());
 		Scheduler::on_initialize(System::block_number());
 		Scheduler::on_initialize(System::block_number());
 		Session::on_initialize(System::block_number());
@@ -1403,15 +1408,7 @@ fn treasury_should_take_xcm_execution_revenue() {
 		assert_eq!(debt, shallow_weight);
 
 		assert_eq!(Tokens::free_balance(RELAY_CHAIN_CURRENCY, &ALICE.into()), 0);
-		assert_ok!(Currencies::deposit(
-			RELAY_CHAIN_CURRENCY,
-			&TreasuryAccount::get(),
-			ExistentialDeposits::get(&RELAY_CHAIN_CURRENCY)
-		));
-		assert_eq!(
-			Tokens::free_balance(RELAY_CHAIN_CURRENCY, &TreasuryAccount::get()),
-			ExistentialDeposits::get(&RELAY_CHAIN_CURRENCY)
-		);
+		assert_eq!(Tokens::free_balance(RELAY_CHAIN_CURRENCY, &TreasuryAccount::get()), 0);
 
 		let weight_limit = debt + deep + 1;
 		assert_eq!(
@@ -1422,7 +1419,7 @@ fn treasury_should_take_xcm_execution_revenue() {
 		assert_eq!(Tokens::free_balance(RELAY_CHAIN_CURRENCY, &ALICE.into()), actual_amount);
 		assert_eq!(
 			Tokens::free_balance(RELAY_CHAIN_CURRENCY, &TreasuryAccount::get()),
-			ExistentialDeposits::get(&RELAY_CHAIN_CURRENCY) + dot_amount - actual_amount
+			dot_amount - actual_amount
 		);
 	});
 }
@@ -1601,4 +1598,287 @@ fn parachain_subaccounts_are_unique() {
 			)
 		);
 	});
+}
+
+#[test]
+fn treasury_handles_dust_correctly() {
+	ExtBuilder::default()
+		.balances(vec![
+			(
+				AccountId::from(BOB),
+				RELAY_CHAIN_CURRENCY,
+				ExistentialDeposits::get(&RELAY_CHAIN_CURRENCY),
+			),
+			(
+				AccountId::from(ALICE),
+				RELAY_CHAIN_CURRENCY,
+				ExistentialDeposits::get(&RELAY_CHAIN_CURRENCY),
+			),
+			(
+				AccountId::from(BOB),
+				LIQUID_CURRENCY,
+				ExistentialDeposits::get(&LIQUID_CURRENCY),
+			),
+			(
+				AccountId::from(ALICE),
+				LIQUID_CURRENCY,
+				ExistentialDeposits::get(&LIQUID_CURRENCY),
+			),
+			(
+				AccountId::from(BOB),
+				USD_CURRENCY,
+				ExistentialDeposits::get(&USD_CURRENCY),
+			),
+			(
+				AccountId::from(ALICE),
+				USD_CURRENCY,
+				ExistentialDeposits::get(&USD_CURRENCY),
+			),
+		])
+		.build()
+		.execute_with(|| {
+			let relay_ed = ExistentialDeposits::get(&RELAY_CHAIN_CURRENCY);
+			let liquid_ed = ExistentialDeposits::get(&LIQUID_CURRENCY);
+			let usd_ed = ExistentialDeposits::get(&USD_CURRENCY);
+
+			// Test empty treasury recieves dust tokens of relay
+			assert_eq!(
+				Currencies::free_balance(RELAY_CHAIN_CURRENCY, &TreasuryAccount::get()),
+				0
+			);
+			assert_ok!(Currencies::transfer(
+				Origin::signed(AccountId::from(ALICE)),
+				sp_runtime::MultiAddress::Id(AccountId::from(BOB)),
+				RELAY_CHAIN_CURRENCY,
+				1
+			));
+			assert_eq!(
+				Currencies::free_balance(RELAY_CHAIN_CURRENCY, &AccountId::from(BOB)),
+				relay_ed + 1
+			);
+
+			// ALICE account is reaped and treasury recieves dust tokens
+			assert_eq!(
+				Currencies::free_balance(RELAY_CHAIN_CURRENCY, &AccountId::from(ALICE)),
+				0
+			);
+			// Treasury can have under the existential deposit
+			assert_eq!(
+				Currencies::free_balance(RELAY_CHAIN_CURRENCY, &TreasuryAccount::get()),
+				relay_ed - 1
+			);
+
+			// treasury can send funds when under existential deposit
+			assert_ok!(Currencies::transfer(
+				Origin::signed(TreasuryAccount::get()),
+				sp_runtime::MultiAddress::Id(AccountId::from(BOB)),
+				RELAY_CHAIN_CURRENCY,
+				relay_ed - 2
+			));
+			assert_eq!(
+				Currencies::free_balance(RELAY_CHAIN_CURRENCY, &TreasuryAccount::get()),
+				1
+			);
+
+			assert_ok!(Currencies::transfer(
+				Origin::signed(AccountId::from(BOB)),
+				sp_runtime::MultiAddress::Id(AccountId::from(ALICE)),
+				RELAY_CHAIN_CURRENCY,
+				relay_ed
+			));
+			assert_eq!(
+				Currencies::free_balance(RELAY_CHAIN_CURRENCY, &AccountId::from(ALICE)),
+				relay_ed
+			);
+			assert_eq!(Currencies::free_balance(RELAY_CHAIN_CURRENCY, &AccountId::from(BOB)), 0);
+			assert_eq!(
+				Currencies::free_balance(RELAY_CHAIN_CURRENCY, &TreasuryAccount::get()),
+				relay_ed
+			);
+			assert_ok!(Currencies::transfer(
+				Origin::signed(AccountId::from(ALICE)),
+				sp_runtime::MultiAddress::Id(TreasuryAccount::get()),
+				RELAY_CHAIN_CURRENCY,
+				relay_ed
+			));
+
+			// Treasury is not reaped when going from over existential deposit to back under it
+			assert_eq!(
+				Currencies::free_balance(RELAY_CHAIN_CURRENCY, &TreasuryAccount::get()),
+				2 * relay_ed
+			);
+			assert_ok!(Currencies::transfer(
+				Origin::signed(TreasuryAccount::get()),
+				sp_runtime::MultiAddress::Id(AccountId::from(ALICE)),
+				RELAY_CHAIN_CURRENCY,
+				relay_ed + 1
+			));
+			assert_eq!(
+				Currencies::free_balance(RELAY_CHAIN_CURRENCY, &AccountId::from(ALICE)),
+				relay_ed + 1
+			);
+			assert_eq!(
+				Currencies::free_balance(RELAY_CHAIN_CURRENCY, &TreasuryAccount::get()),
+				relay_ed - 1
+			);
+
+			// Test empty treasury recieves dust tokens of Liquid Currency
+			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY, &TreasuryAccount::get()), 0);
+			assert_ok!(Currencies::transfer(
+				Origin::signed(AccountId::from(ALICE)),
+				sp_runtime::MultiAddress::Id(AccountId::from(BOB)),
+				LIQUID_CURRENCY,
+				1
+			));
+			assert_eq!(
+				Currencies::free_balance(LIQUID_CURRENCY, &AccountId::from(BOB)),
+				liquid_ed + 1
+			);
+			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY, &AccountId::from(ALICE)), 0);
+			assert_eq!(
+				Currencies::free_balance(LIQUID_CURRENCY, &TreasuryAccount::get()),
+				liquid_ed - 1
+			);
+
+			// Test empty treasury recieves dust tokens of USD Currency using Tokens pallet
+			assert_eq!(Tokens::free_balance(USD_CURRENCY, &TreasuryAccount::get()), 0);
+			assert_ok!(Tokens::transfer(
+				Origin::signed(AccountId::from(ALICE)),
+				sp_runtime::MultiAddress::Id(AccountId::from(BOB)),
+				USD_CURRENCY,
+				1
+			));
+			assert_eq!(Tokens::free_balance(USD_CURRENCY, &AccountId::from(BOB)), usd_ed + 1);
+			assert_eq!(Tokens::free_balance(USD_CURRENCY, &AccountId::from(ALICE)), 0);
+			assert_eq!(Tokens::free_balance(USD_CURRENCY, &TreasuryAccount::get()), usd_ed - 1);
+		});
+}
+
+// Honzon's surplus can be transfered and DebitExchangeRate updates accordingly
+#[test]
+fn cdp_treasury_handles_honzon_surplus_correctly() {
+	ExtBuilder::default()
+		.balances(vec![
+			(
+				AccountId::from(ALICE),
+				RELAY_CHAIN_CURRENCY,
+				100 * dollar(RELAY_CHAIN_CURRENCY),
+			),
+			(AccountId::from(BOB), USD_CURRENCY, 10_000 * dollar(USD_CURRENCY)),
+			(
+				AccountId::from(BOB),
+				RELAY_CHAIN_CURRENCY,
+				100 * dollar(RELAY_CHAIN_CURRENCY),
+			),
+		])
+		.build()
+		.execute_with(|| {
+			System::set_block_number(1);
+			assert_ok!(set_oracle_price(vec![(
+				RELAY_CHAIN_CURRENCY,
+				Price::saturating_from_rational(100, 1)
+			)]));
+			assert_ok!(CdpEngine::set_collateral_params(
+				Origin::root(),
+				RELAY_CHAIN_CURRENCY,
+				Change::NewValue(Some(Rate::saturating_from_rational(1, 10000))),
+				Change::NewValue(Some(Ratio::saturating_from_rational(200, 100))),
+				Change::NewValue(Some(Rate::saturating_from_rational(20, 100))),
+				Change::NewValue(Some(Ratio::saturating_from_rational(200, 100))),
+				Change::NewValue(1_000_000 * dollar(USD_CURRENCY)),
+			));
+			assert_ok!(Dex::add_liquidity(
+				Origin::signed(AccountId::from(BOB)),
+				RELAY_CHAIN_CURRENCY,
+				USD_CURRENCY,
+				100 * dollar(RELAY_CHAIN_CURRENCY),
+				10_000 * dollar(USD_CURRENCY),
+				0,
+				false,
+			));
+
+			// Honzon loans work
+			assert_ok!(Honzon::adjust_loan(
+				Origin::signed(AccountId::from(ALICE)),
+				RELAY_CHAIN_CURRENCY,
+				50 * dollar(RELAY_CHAIN_CURRENCY) as i128,
+				500 * dollar(USD_CURRENCY) as i128
+			));
+			assert_eq!(
+				Loans::positions(RELAY_CHAIN_CURRENCY, AccountId::from(ALICE)).collateral,
+				50 * dollar(RELAY_CHAIN_CURRENCY)
+			);
+			assert_eq!(
+				Loans::positions(RELAY_CHAIN_CURRENCY, AccountId::from(ALICE)).debit,
+				500 * dollar(USD_CURRENCY)
+			);
+			assert_eq!(
+				Currencies::free_balance(RELAY_CHAIN_CURRENCY, &AccountId::from(ALICE)),
+				50 * dollar(RELAY_CHAIN_CURRENCY)
+			);
+			assert_eq!(
+				Currencies::free_balance(USD_CURRENCY, &AccountId::from(ALICE)),
+				50 * dollar(USD_CURRENCY)
+			);
+			assert_eq!(Currencies::free_balance(USD_CURRENCY, &CdpTreasury::account_id()), 0);
+			assert_eq!(CdpTreasury::get_surplus_pool(), 0);
+			assert_eq!(CdpTreasury::get_debit_pool(), 0);
+			run_to_block(2);
+
+			// Empty treasury recieves stablecoins into surplus pool from loan
+			assert_eq!(CdpTreasury::get_surplus_pool(), 160248248179);
+			assert_eq!(CdpTreasury::get_debit_pool(), 0);
+			// Honzon generated cdp treasury surplus can be transfered
+			assert_eq!(Currencies::free_balance(USD_CURRENCY, &AccountId::from(BOB)), 0);
+			assert_eq!(
+				CdpEngine::debit_exchange_rate(RELAY_CHAIN_CURRENCY),
+				// about 1/10
+				Some(Ratio::saturating_from_rational(
+					100320496496359801 as i64,
+					1000000000000000000 as i64
+				))
+			);
+			// Cdp treasury cannot be reaped
+			assert_ok!(Currencies::transfer(
+				Origin::signed(CdpTreasury::account_id()),
+				sp_runtime::MultiAddress::Id(AccountId::from(BOB)),
+				USD_CURRENCY,
+				CdpTreasury::get_surplus_pool() - 1
+			));
+			assert_eq!(
+				Currencies::free_balance(USD_CURRENCY, &AccountId::from(BOB)),
+				160248248178
+			);
+			assert_eq!(Currencies::free_balance(USD_CURRENCY, &CdpTreasury::account_id()), 1);
+			run_to_block(3);
+			// Debt exchange rate updates
+			assert_eq!(
+				CdpEngine::debit_exchange_rate(RELAY_CHAIN_CURRENCY),
+				// Around 1/10, increasing from last check
+				Some(Ratio::saturating_from_rational(
+					100330528546009436 as i64,
+					1000000000000000000 as i64
+				))
+			);
+
+			// Closing loan will add to treasury debit_pool
+			assert_ok!(Honzon::close_loan_has_debit_by_dex(
+				Origin::signed(AccountId::from(ALICE)),
+				RELAY_CHAIN_CURRENCY,
+				5 * dollar(RELAY_CHAIN_CURRENCY),
+				None
+			));
+			// Just over 50 dollar(USD_CURRENCY), due to interest on loan
+			assert_eq!(CdpTreasury::get_debit_pool(), 50165264273004);
+			assert_eq!(Loans::total_positions(RELAY_CHAIN_CURRENCY).debit, 0);
+			run_to_block(4);
+			// Debt exchange rate doesn't update due to no debit positions
+			assert_eq!(
+				CdpEngine::debit_exchange_rate(RELAY_CHAIN_CURRENCY),
+				Some(Ratio::saturating_from_rational(
+					100330528546009436 as i64,
+					1000000000000000000 as i64
+				))
+			)
+		});
 }

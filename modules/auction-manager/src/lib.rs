@@ -352,7 +352,7 @@ impl<T: Config> Pallet<T> {
 		let max_iterations = StorageValueRef::persistent(OFFCHAIN_WORKER_MAX_ITERATIONS)
 			.get::<u32>()
 			.unwrap_or(Some(DEFAULT_MAX_ITERATIONS))
-			.ok_or(OffchainErr::OffchainStore)?;
+			.unwrap_or(DEFAULT_MAX_ITERATIONS);
 
 		log::debug!(
 			target: "auction-manager",
@@ -361,16 +361,16 @@ impl<T: Config> Pallet<T> {
 		);
 
 		// start iterations to cancel collateral auctions
-		let mut iterator = <CollateralAuctions<T>>::iter_from(start_key.ok_or(OffchainErr::OffchainStore)?);
+		let mut iterator = match start_key {
+			Some(key) => <CollateralAuctions<T>>::iter_from(key),
+			None => <CollateralAuctions<T>>::iter(),
+		};
+
 		let mut iteration_count = 0;
 		let mut finished = true;
 
 		#[allow(clippy::while_let_on_iterator)]
 		while let Some((collateral_auction_id, _)) = iterator.next() {
-			if iteration_count >= max_iterations {
-				finished = false;
-				break;
-			}
 			iteration_count += 1;
 
 			if let (Some(collateral_auction), Some((_, last_bid_price))) = (
@@ -380,10 +380,19 @@ impl<T: Config> Pallet<T> {
 				// if collateral auction has already been in reverse stage,
 				// should skip it.
 				if collateral_auction.in_reverse_stage(last_bid_price) {
+					if iteration_count == max_iterations {
+						finished = false;
+						break;
+					}
 					continue;
 				}
 			}
 			Self::submit_cancel_auction_tx(collateral_auction_id);
+
+			if iteration_count == max_iterations {
+				finished = false;
+				break;
+			}
 			guard.extend_lock().map_err(|_| OffchainErr::OffchainLock)?;
 		}
 
