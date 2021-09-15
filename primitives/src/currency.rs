@@ -200,6 +200,7 @@ create_currency_id! {
 		// 150: Reserved for CASH
 		// 168 - 255: Kusama parachain tokens
 		BNC("Bifrost Native Token", 12) = 168,
+		PINT("PINT", 12) = 169,
 	}
 }
 
