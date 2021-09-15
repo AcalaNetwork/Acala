@@ -138,6 +138,7 @@ pint-local-treasury = { path = "../../ecosystem-modules/pint/pallets/local-treas
 pint-price-feed = { path = "../../ecosystem-modules/pint/pallets/price-feed", package = "pallet-price-feed", default-features = false }
 pint-saft-registry = { path = "../../ecosystem-modules/pint/pallets/saft-registry", package = "pallet-saft-registry", default-features = false }
 pint-primitives = { path = "../../ecosystem-modules/pint/primitives/primitives", package = "primitives", default-features = false }
+pint-runtime-common = { path = "../../ecosystem-modules/pint/runtime/common", package = "pint-runtime-common", default-features = false }
 
 [build-dependencies]
 substrate-wasm-builder = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.9" }
@@ -279,7 +280,8 @@ std = [
 	"pint-asset-index/std",
 	"pint-local-treasury/std",
 	"pint-primitives/std",
-	"pint-price-feed/std"
+	"pint-price-feed/std",
+	"pint-runtime-common/std"
 ]
 runtime-benchmarks = [
 	"frame-benchmarking",

@@ -5179,6 +5179,7 @@ dependencies = [
  "pallet-xcm",
  "parachain-info",
  "parity-scale-codec",
+ "pint-runtime-common",
  "polkadot-parachain",
  "primitives",
  "runtime-common",
@@ -7309,6 +7310,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-remote-asset-manager"
+version = "0.0.1"
+dependencies = [
+ "cumulus-pallet-xcm",
+ "cumulus-primitives-core",
+ "frame-support",
+ "frame-system",
+ "log",
+ "orml-traits",
+ "orml-xtokens",
+ "pallet-staking",
+ "parity-scale-codec",
+ "primitives",
+ "serde",
+ "xcm",
+ "xcm-calls",
+ "xcm-executor",
+]
+
+[[package]]
 name = "pallet-saft-registry"
 version = "0.0.1"
 dependencies = [
@@ -7981,6 +8002,27 @@ name = "pin-utils"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8b870d8c151b6f2fb93e84a13146138f05d02ed11c7e7c54f8826aaaf7c9f184"
+
+[[package]]
+name = "pint-runtime-common"
+version = "0.0.1"
+dependencies = [
+ "cumulus-pallet-xcm",
+ "frame-support",
+ "frame-system",
+ "orml-traits",
+ "pallet-asset-index",
+ "pallet-chainlink-feed",
+ "pallet-committee",
+ "pallet-local-treasury",
+ "pallet-price-feed",
+ "pallet-remote-asset-manager",
+ "pallet-saft-registry",
+ "primitives",
+ "sp-std",
+ "xcm",
+ "xcm-calls",
+]
 
 [[package]]
 name = "pkg-config"
@@ -14209,6 +14251,16 @@ dependencies = [
  "sp-std",
  "xcm",
  "xcm-executor",
+]
+
+[[package]]
+name = "xcm-calls"
+version = "0.0.1"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "serde",
 ]
 
 [[package]]

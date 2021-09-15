@@ -1943,7 +1943,7 @@ impl pint_saft_registry::Config for Runtime {
 	type Balance = Balance;
 	type AssetId = CurrencyId;
 	type Event = Event;
-	type WeightInfo = ();
+	type WeightInfo = pint_runtime_common::weights::pallet_saft_registry::WeightInfo<Runtime>;
 }
 
 impl pint_local_treasury::Config for Runtime {
@@ -1951,7 +1951,7 @@ impl pint_local_treasury::Config for Runtime {
 	type PalletId = TreasuryPalletId;
 	type Currency = Balances;
 	type Event = Event;
-	type WeightInfo = ();
+	type WeightInfo = pint_runtime_common::weights::pallet_local_treasury::WeightInfo<Runtime>;
 }
 
 impl pint_committee::Config for Runtime {
@@ -1965,7 +1965,7 @@ impl pint_committee::Config for Runtime {
 	type ProposalExecutionOrigin = pint_committee::EnsureMember<Self>;
 	type ApprovedByCommitteeOrigin = PintGovernanceOrigin<AccountId, Runtime>;
 	type Event = Event;
-	type WeightInfo = ();
+	type WeightInfo = pint_runtime_common::weights::pallet_committee::WeightInfo<Runtime>;
 }
 
 impl pint_asset_index::Config for Runtime {
@@ -1991,7 +1991,7 @@ impl pint_asset_index::Config for Runtime {
 	type TreasuryPalletId = TreasuryPalletId;
 	type Event = Event;
 	type StringLimit = AssetIndexStringLimit;
-	type WeightInfo = ();
+	type WeightInfo = pint_runtime_common::weights::pallet_asset_index::WeightInfo<Runtime>;
 }
 
 // Wrapper for the `AggregatedDataProvider` until chainlink pallet is supported
