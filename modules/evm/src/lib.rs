@@ -56,7 +56,7 @@ pub use module_support::{
 pub use orml_traits::currency::TransferAll;
 use primitive_types::{H160, H256, U256};
 pub use primitives::{
-	evm::{Account, CallInfo, CreateInfo, EvmAddress, ExecutionInfo, Log, Vicinity},
+	evm::{Account, CallInfo, CreateInfo, EvmAddress, ExecutionInfo, Log, TransactionAction, Vicinity},
 	ReserveIdentifier, H160_PREFIX_DEXSHARE, H160_PREFIX_TOKEN, MIRRORED_NFT_ADDRESS_START, PRECOMPILE_ADDRESS_START,
 	SYSTEM_CONTRACT_ADDRESS_PREFIX,
 };
@@ -480,6 +480,23 @@ pub mod module {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
+		#[pallet::weight(T::GasToWeight::convert(*gas_limit))]
+		#[transactional]
+		pub fn eth_call(
+			origin: OriginFor<T>,
+			action: TransactionAction,
+			input: Vec<u8>,
+			value: BalanceOf<T>,
+			gas_limit: u64,
+			storage_limit: u32,
+			_valid_until: T::BlockNumber, // checked by tx validation logic
+		) -> DispatchResultWithPostInfo {
+			match action {
+				TransactionAction::Call(target) => Self::call(origin, target, input, value, gas_limit, storage_limit),
+				TransactionAction::Create => Self::create(origin, input, value, gas_limit, storage_limit),
+			}
+		}
+
 		/// Issue an EVM call operation. This is similar to a message call
 		/// transaction in Ethereum.
 		///

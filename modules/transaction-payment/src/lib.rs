@@ -653,7 +653,7 @@ where
 /// Require the transactor pay for themselves and maybe include a tip to
 /// gain additional priority in the queue.
 #[derive(Encode, Decode, Clone, Eq, PartialEq)]
-pub struct ChargeTransactionPayment<T: Config + Send + Sync>(#[codec(compact)] PalletBalanceOf<T>);
+pub struct ChargeTransactionPayment<T: Config + Send + Sync>(#[codec(compact)] pub PalletBalanceOf<T>);
 
 impl<T: Config + Send + Sync> sp_std::fmt::Debug for ChargeTransactionPayment<T> {
 	#[cfg(feature = "std")]
@@ -695,6 +695,10 @@ where
 			WithdrawReasons::TRANSACTION_PAYMENT
 		} else {
 			WithdrawReasons::TRANSACTION_PAYMENT | WithdrawReasons::TIP
+		};
+
+		sp_std::if_std! {
+			println!("{:?}", who);
 		};
 
 		Pallet::<T>::ensure_can_charge_fee(who, fee, reason);
