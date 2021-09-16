@@ -121,7 +121,7 @@ impl<T: Config> Runner<T> {
 			.metadata()
 			.storage_meter()
 			.finish()
-			.map_err(|_| Error::<T>::OutOfStorage)?;
+			.ok_or(Error::<T>::OutOfStorage)?;
 		let used_storage = state.metadata().storage_meter().total_used();
 		let refunded_storage = state.metadata().storage_meter().total_refunded();
 		for (target, storage) in &state.substate.storage_logs {

@@ -86,7 +86,7 @@ impl StorageMeter {
 		}
 	}
 
-	pub fn finish(&self) -> Result<i32, ()> {
+	pub fn finish(&self) -> Option<i32> {
 		let total_used = self.total_used();
 		let total_refunded = self.total_refunded();
 		log::trace!(
@@ -96,13 +96,13 @@ impl StorageMeter {
 		);
 		if self.limit < total_used.saturating_sub(total_refunded) {
 			// OutOfStorage
-			return Err(());
+			return None;
 		}
 
 		if total_used > total_refunded {
-			Ok((total_used - total_refunded) as i32)
+			Some((total_used - total_refunded) as i32)
 		} else {
-			Ok(-((total_refunded - total_used) as i32))
+			Some(-((total_refunded - total_used) as i32))
 		}
 	}
 
@@ -180,7 +180,7 @@ mod tests {
 		assert_eq!(storage_meter.available_storage(), 1);
 
 		// finish
-		assert_eq!(storage_meter.finish(), Ok(-1));
+		assert_eq!(storage_meter.finish(), Some(-1));
 	}
 
 	#[test]
@@ -190,10 +190,10 @@ mod tests {
 		assert_eq!(storage_meter.extra_bytes(), 100);
 
 		storage_meter.charge(200);
-		assert_eq!(storage_meter.finish(), Ok(200));
+		assert_eq!(storage_meter.finish(), Some(200));
 
 		storage_meter.charge_with_extra_bytes(200);
-		assert_eq!(storage_meter.finish(), Ok(500));
+		assert_eq!(storage_meter.finish(), Some(500));
 	}
 
 	#[test]
@@ -202,13 +202,13 @@ mod tests {
 		assert_eq!(storage_meter.available_storage(), 1000);
 
 		storage_meter.charge(200);
-		assert_eq!(storage_meter.finish(), Ok(200));
+		assert_eq!(storage_meter.finish(), Some(200));
 
 		storage_meter.charge(2000);
-		assert_eq!(storage_meter.finish(), Err(()));
+		assert_eq!(storage_meter.finish(), None);
 
 		storage_meter.refund(2000);
-		assert_eq!(storage_meter.finish(), Ok(200));
+		assert_eq!(storage_meter.finish(), Some(200));
 	}
 
 	#[test]
@@ -227,8 +227,8 @@ mod tests {
 		let child_meter = storage_meter.child_meter();
 		assert_eq!(storage_meter.available_storage(), 100);
 
-		assert_eq!(child_meter.finish(), Ok(0));
-		assert_eq!(storage_meter.finish(), Ok(900));
+		assert_eq!(child_meter.finish(), Some(0));
+		assert_eq!(storage_meter.finish(), Some(900));
 	}
 
 	#[test]
@@ -251,19 +251,19 @@ mod tests {
 		child_meter_2.charge(20);
 		assert_eq!(child_meter_2.available_storage(), 830);
 
-		assert_eq!(child_meter_2.finish(), Ok(20));
+		assert_eq!(child_meter_2.finish(), Some(20));
 
-		assert_eq!(child_meter.finish(), Ok(50));
+		assert_eq!(child_meter.finish(), Some(50));
 
 		let mut child_meter_3 = storage_meter.child_meter();
 		assert_eq!(child_meter_3.available_storage(), 900);
 
 		child_meter_3.charge(30);
 		assert_eq!(child_meter_3.available_storage(), 870);
-		assert_eq!(child_meter_3.finish(), Ok(30));
+		assert_eq!(child_meter_3.finish(), Some(30));
 
 		assert_eq!(storage_meter.available_storage(), 900);
-		assert_eq!(storage_meter.finish(), Ok(100));
+		assert_eq!(storage_meter.finish(), Some(100));
 	}
 
 	#[test]
@@ -286,9 +286,9 @@ mod tests {
 		child_meter_2.charge(20);
 		assert_eq!(child_meter_2.available_storage(), 830);
 
-		assert_eq!(child_meter_2.finish(), Ok(20));
+		assert_eq!(child_meter_2.finish(), Some(20));
 
-		assert_eq!(child_meter.finish(), Ok(50));
+		assert_eq!(child_meter.finish(), Some(50));
 		child_meter.merge(&child_meter_2);
 		assert_eq!(child_meter.available_storage(), 830);
 
@@ -297,12 +297,12 @@ mod tests {
 
 		child_meter_3.charge(30);
 		assert_eq!(child_meter_3.available_storage(), 870);
-		assert_eq!(child_meter_3.finish(), Ok(30));
+		assert_eq!(child_meter_3.finish(), Some(30));
 		storage_meter.merge(&child_meter_3);
 
 		assert_eq!(storage_meter.available_storage(), 870);
-		assert_eq!(child_meter.finish(), Ok(70));
-		assert_eq!(storage_meter.finish(), Ok(130));
+		assert_eq!(child_meter.finish(), Some(70));
+		assert_eq!(storage_meter.finish(), Some(130));
 		storage_meter.merge(&child_meter);
 		assert_eq!(storage_meter.available_storage(), 800);
 	}
