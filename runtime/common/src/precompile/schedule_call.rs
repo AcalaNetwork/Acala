@@ -171,7 +171,9 @@ impl<
 				let mut _fee: PalletBalanceOf<Runtime> = Default::default();
 				#[cfg(not(feature = "with-ethereum-compatibility"))]
 				{
-					// reserve the transaction fee for gas_limit
+					// reserve the transaction fee for gas_limit and storage_limit
+					// TODO: reserve storage_limit here
+					// Manually charge weight fee in scheduled_call
 					use sp_runtime::traits::Convert;
 					let from_account = AddressMapping::get_account_id(&from);
 					let weight = <Runtime as module_evm::Config>::GasToWeight::convert(gas_limit);

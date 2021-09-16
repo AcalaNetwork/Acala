@@ -139,17 +139,12 @@ where
 				let from = input.account_id_at(1)?;
 				let to = input.account_id_at(2)?;
 				let amount = input.balance_at(3)?;
-
-				log::debug!(target: "evm", "multicurrency: from: {:?}", from);
-				log::debug!(target: "evm", "multicurrency: to: {:?}", to);
-				log::debug!(target: "evm", "multicurrency: amount: {:?}", amount);
+				log::debug!(target: "evm", "multicurrency: transfer from: {:?}, to: {:?}, amount: {:?}", from, to, amount);
 
 				MultiCurrency::transfer(currency_id, &from, &to, amount).map_err(|e| {
 					let err_msg: &str = e.into();
 					ExitError::Other(err_msg.into())
 				})?;
-
-				log::debug!(target: "evm", "multicurrency: transfer success!");
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
