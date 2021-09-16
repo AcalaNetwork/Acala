@@ -68,10 +68,10 @@ pub use polkadot_parachain::primitives::Sibling;
 pub use xcm::latest::prelude::*;
 
 pub use xcm_builder::{
-	AccountId32Aliases, AllowTopLevelPaidExecutionFrom, AllowUnpaidExecutionFrom, EnsureXcmOrigin,
-	FixedRateOfConcreteFungible, FixedWeightBounds, IsConcrete, LocationInverter, NativeAsset, ParentAsSuperuser,
-	ParentIsDefault, RelayChainAsNative, SiblingParachainAsNative, SiblingParachainConvertsVia,
-	SignedAccountId32AsNative, SignedToAccountId32, SovereignSignedViaLocation, TakeRevenue, TakeWeightCredit,
+	AccountId32Aliases, AllowTopLevelPaidExecutionFrom, AllowUnpaidExecutionFrom, EnsureXcmOrigin, FixedRateOfFungible,
+	FixedWeightBounds, IsConcrete, LocationInverter, NativeAsset, ParentAsSuperuser, ParentIsDefault,
+	RelayChainAsNative, SiblingParachainAsNative, SiblingParachainConvertsVia, SignedAccountId32AsNative,
+	SignedToAccountId32, SovereignSignedViaLocation, TakeRevenue, TakeWeightCredit,
 };
 pub use xcm_executor::{traits::WeightTrader, Assets, Config, XcmExecutor};
 
@@ -1399,7 +1399,7 @@ pub type XcmOriginToCallOrigin = (
 parameter_types! {
 	// One XCM operation is 200_000_000 weight, cross-chain transfer ~= 2x of transfer.
 	pub const UnitWeightCost: Weight = 200_000_000;
-	pub KsmPerSecond: (MultiLocation, u128) = (MultiLocation::parent(), ksm_per_second());
+	pub KsmPerSecond: (AssetId, u128) = (MultiLocation::parent().into(), ksm_per_second());
 }
 
 pub type Barrier = (TakeWeightCredit, AllowTopLevelPaidExecutionFrom<Everything>);
@@ -1422,16 +1422,19 @@ impl TakeRevenue for ToTreasury {
 }
 
 parameter_types! {
-	pub BncPerSecond: (MultiLocation, u128) = (
-		MultiLocation::new(1, X2(Parachain(parachains::bifrost::ID), GeneralKey(parachains::bifrost::BNC_KEY.to_vec()))),
+	pub BncPerSecond: (AssetId, u128) = (
+		MultiLocation::new(
+			1,
+			X2(Parachain(parachains::bifrost::ID), GeneralKey(parachains::bifrost::BNC_KEY.to_vec())),
+		).into(),
 		// BNC:KSM = 80:1
 		ksm_per_second() * 80
 	);
 }
 
 pub type Trader = (
-	FixedRateOfConcreteFungible<KsmPerSecond, ToTreasury>,
-	FixedRateOfConcreteFungible<BncPerSecond, ToTreasury>,
+	FixedRateOfFungible<KsmPerSecond, ToTreasury>,
+	FixedRateOfFungible<BncPerSecond, ToTreasury>,
 );
 
 pub struct XcmConfig;
@@ -1583,7 +1586,7 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 			} if parents == 1 => {
 				match (para_id, &key[..]) {
 					(parachains::bifrost::ID, parachains::bifrost::BNC_KEY) => Some(Token(BNC)),
-					(para_id, key) if para_id == u32::from(ParachainInfo::get()) => {
+					(para_id, key) if ParaId::from(para_id) == ParachainInfo::get() => {
 						// Karura
 						if let Ok(currency_id) = CurrencyId::decode(&mut &*key) {
 							// check `currency_id` is cross-chain asset
