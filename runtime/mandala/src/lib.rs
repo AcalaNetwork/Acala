@@ -112,14 +112,14 @@ pub use primitives::{
 pub use runtime_common::{
 	cent, dollar, microcent, millicent, CurveFeeModel, EnsureRootOrAllGeneralCouncil,
 	EnsureRootOrAllTechnicalCommittee, EnsureRootOrHalfFinancialCouncil, EnsureRootOrHalfGeneralCouncil,
-	EnsureRootOrHalfHomaCouncil, EnsureRootOrOneThirdsTechnicalCommittee, EnsureRootOrThreeFourthsGeneralCouncil,
-	EnsureRootOrTwoThirdsGeneralCouncil, EnsureRootOrTwoThirdsTechnicalCommittee, ExchangeRate,
-	FinancialCouncilInstance, FinancialCouncilMembershipInstance, GasToWeight, GeneralCouncilInstance,
-	GeneralCouncilMembershipInstance, HomaCouncilInstance, HomaCouncilMembershipInstance, OffchainSolutionWeightLimit,
-	OperatorMembershipInstanceAcala, OperatorMembershipInstanceBand, Price, ProxyType, Rate, Ratio,
-	RelaychainBlockNumberProvider, RelaychainSubAccountId, RuntimeBlockLength, RuntimeBlockWeights,
-	SystemContractsFilter, TechnicalCommitteeInstance, TechnicalCommitteeMembershipInstance, TimeStampedPrice, ACA,
-	AUSD, DOT, LDOT, RENBTC,
+	EnsureRootOrHalfHomaCouncil, EnsureRootOrOneGeneralCouncil, EnsureRootOrOneThirdsTechnicalCommittee,
+	EnsureRootOrThreeFourthsGeneralCouncil, EnsureRootOrTwoThirdsGeneralCouncil,
+	EnsureRootOrTwoThirdsTechnicalCommittee, ExchangeRate, FinancialCouncilInstance,
+	FinancialCouncilMembershipInstance, GasToWeight, GeneralCouncilInstance, GeneralCouncilMembershipInstance,
+	HomaCouncilInstance, HomaCouncilMembershipInstance, OffchainSolutionWeightLimit, OperatorMembershipInstanceAcala,
+	OperatorMembershipInstanceBand, Price, ProxyType, Rate, Ratio, RelaychainBlockNumberProvider,
+	RelaychainSubAccountId, RuntimeBlockLength, RuntimeBlockWeights, SystemContractsFilter, TechnicalCommitteeInstance,
+	TechnicalCommitteeMembershipInstance, TimeStampedPrice, ACA, AUSD, DOT, LDOT, RENBTC,
 };
 
 /// Import the stable_asset pallet.
@@ -831,7 +831,7 @@ impl orml_tokens::Config for Runtime {
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
-	type SweepOrigin = EnsureRootOrAllGeneralCouncil;
+	type SweepOrigin = EnsureRootOrOneGeneralCouncil;
 	type WeightInfo = weights::orml_tokens::WeightInfo<Runtime>;
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = orml_tokens::TransferDust<Runtime, TreasuryAccount>;

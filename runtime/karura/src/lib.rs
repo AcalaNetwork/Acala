@@ -111,14 +111,14 @@ pub use primitives::{
 pub use runtime_common::{
 	cent, dollar, microcent, millicent, CurveFeeModel, EnsureRootOrAllGeneralCouncil,
 	EnsureRootOrAllTechnicalCommittee, EnsureRootOrHalfFinancialCouncil, EnsureRootOrHalfGeneralCouncil,
-	EnsureRootOrHalfHomaCouncil, EnsureRootOrOneThirdsTechnicalCommittee, EnsureRootOrThreeFourthsGeneralCouncil,
-	EnsureRootOrTwoThirdsGeneralCouncil, EnsureRootOrTwoThirdsTechnicalCommittee, ExchangeRate,
-	FinancialCouncilInstance, FinancialCouncilMembershipInstance, GasToWeight, GeneralCouncilInstance,
-	GeneralCouncilMembershipInstance, HomaCouncilInstance, HomaCouncilMembershipInstance,
-	OperatorMembershipInstanceAcala, OperatorMembershipInstanceBand, Price, ProxyType, Rate, Ratio,
-	RelaychainBlockNumberProvider, RelaychainSubAccountId, RuntimeBlockLength, RuntimeBlockWeights,
-	SystemContractsFilter, TechnicalCommitteeInstance, TechnicalCommitteeMembershipInstance, TimeStampedPrice, BNC,
-	KAR, KSM, KUSD, LKSM, RENBTC,
+	EnsureRootOrHalfHomaCouncil, EnsureRootOrOneGeneralCouncil, EnsureRootOrOneThirdsTechnicalCommittee,
+	EnsureRootOrThreeFourthsGeneralCouncil, EnsureRootOrTwoThirdsGeneralCouncil,
+	EnsureRootOrTwoThirdsTechnicalCommittee, ExchangeRate, FinancialCouncilInstance,
+	FinancialCouncilMembershipInstance, GasToWeight, GeneralCouncilInstance, GeneralCouncilMembershipInstance,
+	HomaCouncilInstance, HomaCouncilMembershipInstance, OperatorMembershipInstanceAcala,
+	OperatorMembershipInstanceBand, Price, ProxyType, Rate, Ratio, RelaychainBlockNumberProvider,
+	RelaychainSubAccountId, RuntimeBlockLength, RuntimeBlockWeights, SystemContractsFilter, TechnicalCommitteeInstance,
+	TechnicalCommitteeMembershipInstance, TimeStampedPrice, BNC, KAR, KSM, KUSD, LKSM, RENBTC,
 };
 
 mod authority;
@@ -131,7 +131,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("karura"),
 	impl_name: create_runtime_str!("karura"),
 	authoring_version: 1,
-	spec_version: 1009,
+	spec_version: 1010,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -783,7 +783,7 @@ impl orml_tokens::Config for Runtime {
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
-	type SweepOrigin = EnsureRootOrAllGeneralCouncil;
+	type SweepOrigin = EnsureRootOrOneGeneralCouncil;
 	type WeightInfo = weights::orml_tokens::WeightInfo<Runtime>;
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = orml_tokens::TransferDust<Runtime, KaruraTreasuryAccount>;
@@ -1704,9 +1704,8 @@ impl orml_xcm::Config for Runtime {
 pub struct OnRuntimeUpgrade;
 impl frame_support::traits::OnRuntimeUpgrade for OnRuntimeUpgrade {
 	fn on_runtime_upgrade() -> u64 {
-		frame_support::migrations::migrate_from_pallet_version_to_storage_version::<AllPalletsWithSystem>(
-			&RocksDbWeight::get(),
-		)
+		// no migration
+		0
 	}
 }
 

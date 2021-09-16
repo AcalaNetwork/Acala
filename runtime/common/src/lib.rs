@@ -224,6 +224,9 @@ pub type EnsureRootOrThreeFourthsGeneralCouncil = EnsureOneOf<
 	pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, GeneralCouncilInstance>,
 >;
 
+pub type EnsureRootOrOneGeneralCouncil =
+	EnsureOneOf<AccountId, EnsureRoot<AccountId>, pallet_collective::EnsureMember<AccountId, GeneralCouncilInstance>>;
+
 // Financial Council
 pub type EnsureRootOrAllFinancialCouncil = EnsureOneOf<
 	AccountId,
