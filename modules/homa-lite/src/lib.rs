@@ -34,7 +34,7 @@ use sp_runtime::{
 	ArithmeticError, FixedPointNumber, Permill,
 };
 use sp_std::{convert::TryInto, ops::Mul, prelude::*};
-use xcm::opaque::v0::MultiLocation;
+use xcm::latest::prelude::*;
 
 pub use module::*;
 pub use weights::WeightInfo;
