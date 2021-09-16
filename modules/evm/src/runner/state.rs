@@ -89,7 +89,7 @@ impl<'config> StackSubstateMetadata<'config> {
 		self.gasometer.record_refund(other.gasometer().refunded_gas())?;
 
 		// merge child meter into parent meter
-		self.storage_meter.merge(other.storage_meter())?;
+		self.storage_meter.merge(other.storage_meter());
 
 		Ok(())
 	}
@@ -612,8 +612,8 @@ impl<'config, S: StackState<'config>> StackExecutor<'config, S> {
 							.storage_meter_mut()
 							.charge_with_extra_bytes(out.len() as u32);
 						let e = self.exit_substate(StackExitKind::Succeeded);
-						self.state.set_code(address, out);
 						try_or_fail!(e);
+						self.state.set_code(address, out);
 						Capture::Exit((ExitReason::Succeed(s), Some(address), Vec::new()))
 					}
 					Err(e) => {

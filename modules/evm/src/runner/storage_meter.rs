@@ -16,7 +16,6 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use evm::ExitError;
 use frame_support::log;
 
 pub struct StorageMeter {
@@ -87,7 +86,7 @@ impl StorageMeter {
 		}
 	}
 
-	pub fn finish(&self) -> Result<i32, ExitError> {
+	pub fn finish(&self) -> Result<i32, ()> {
 		let total_used = self.total_used();
 		let total_refunded = self.total_refunded();
 		log::trace!(
@@ -96,7 +95,8 @@ impl StorageMeter {
 			total_used, total_refunded
 		);
 		if self.limit < total_used.saturating_sub(total_refunded) {
-			return Err(ExitError::Other("OutOfStorage".into()));
+			// OutOfStorage
+			return Err(());
 		}
 
 		if total_used > total_refunded {
@@ -142,11 +142,9 @@ impl StorageMeter {
 		self.refunded = self.refunded.saturating_add(storage);
 	}
 
-	pub fn merge(&mut self, other: &Self) -> Result<(), ExitError> {
-		other.finish()?;
+	pub fn merge(&mut self, other: &Self) {
 		self.child_used = self.child_used.saturating_add(other.total_used());
 		self.child_refunded = self.child_refunded.saturating_add(other.total_refunded());
-		Ok(())
 	}
 }
 
@@ -207,7 +205,7 @@ mod tests {
 		assert_eq!(storage_meter.finish(), Ok(200));
 
 		storage_meter.charge(2000);
-		assert_eq!(storage_meter.finish(), Err(ExitError::Other("OutOfStorage".into())));
+		assert_eq!(storage_meter.finish(), Err(()));
 
 		storage_meter.refund(2000);
 		assert_eq!(storage_meter.finish(), Ok(200));
@@ -291,7 +289,7 @@ mod tests {
 		assert_eq!(child_meter_2.finish(), Ok(20));
 
 		assert_eq!(child_meter.finish(), Ok(50));
-		assert_eq!(child_meter.merge(&child_meter_2), Ok(()));
+		child_meter.merge(&child_meter_2);
 		assert_eq!(child_meter.available_storage(), 830);
 
 		let mut child_meter_3 = storage_meter.child_meter();
@@ -300,12 +298,12 @@ mod tests {
 		child_meter_3.charge(30);
 		assert_eq!(child_meter_3.available_storage(), 870);
 		assert_eq!(child_meter_3.finish(), Ok(30));
-		assert_eq!(storage_meter.merge(&child_meter_3), Ok(()));
+		storage_meter.merge(&child_meter_3);
 
 		assert_eq!(storage_meter.available_storage(), 870);
 		assert_eq!(child_meter.finish(), Ok(70));
 		assert_eq!(storage_meter.finish(), Ok(130));
-		assert_eq!(storage_meter.merge(&child_meter), Ok(()));
+		storage_meter.merge(&child_meter);
 		assert_eq!(storage_meter.available_storage(), 800);
 	}
 }

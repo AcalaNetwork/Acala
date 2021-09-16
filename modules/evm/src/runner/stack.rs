@@ -17,7 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 //! EVM stack-based runner.
-// Synchronize with https://github.com/rust-blockchain/evm/blob/master/src/executor/stack/mod.rs
+// Synchronize with https://github.com/paritytech/frontier/blob/master/frame/evm/src/runner/stack.rs
 
 use crate::{
 	precompiles::PrecompileSet,
@@ -110,21 +110,13 @@ impl<T: Config> Runner<T> {
 			actual_fee
 		);
 
-		// Refund fees to the `source` account if deducted more before,
 		// NOTE: refund from transaction-payment
+		// Refund fees to the `source` account if deducted more before,
 		// T::OnChargeTransaction::correct_and_deposit_fee(&source, actual_fee, fee)?;
 
 		let state = executor.into_state();
 
 		// charge storage
-		match reason {
-			_ if reason == ExitReason::Error(ExitError::Other("OutOfStorage".into())) => {
-				// TODO: Looking for a better way
-				sp_io::storage::rollback_transaction();
-				return Err(DispatchError::from(Error::<T>::OutOfStorage));
-			}
-			_ => {}
-		}
 		let actual_storage = state
 			.metadata()
 			.storage_meter()
@@ -325,13 +317,13 @@ impl<'config> SubstrateStackSubstate<'config> {
 		let mut exited = *self.parent.take().expect("Cannot commit on root substate");
 		mem::swap(&mut exited, self);
 
-		let target = self
-			.metadata()
-			.target()
-			.ok_or(ExitError::Other("Storage target is none".into()))?;
+		let target = self.metadata().target().expect("Storage target is none");
 		let storage = exited.metadata().storage_meter().used_storage();
 
-		self.metadata.swallow_commit(exited.metadata)?;
+		self.metadata.swallow_commit(exited.metadata).map_err(|e| {
+			sp_io::storage::rollback_transaction();
+			e
+		})?;
 		self.logs.append(&mut exited.logs);
 		self.deletes.append(&mut exited.deletes);
 
@@ -345,7 +337,10 @@ impl<'config> SubstrateStackSubstate<'config> {
 	pub fn exit_revert(&mut self) -> Result<(), ExitError> {
 		let mut exited = *self.parent.take().expect("Cannot discard on root substate");
 		mem::swap(&mut exited, self);
-		self.metadata.swallow_revert(exited.metadata)?;
+		self.metadata.swallow_revert(exited.metadata).map_err(|e| {
+			sp_io::storage::rollback_transaction();
+			e
+		})?;
 
 		sp_io::storage::rollback_transaction();
 		Ok(())
@@ -354,7 +349,10 @@ impl<'config> SubstrateStackSubstate<'config> {
 	pub fn exit_discard(&mut self) -> Result<(), ExitError> {
 		let mut exited = *self.parent.take().expect("Cannot discard on root substate");
 		mem::swap(&mut exited, self);
-		self.metadata.swallow_discard(exited.metadata)?;
+		self.metadata.swallow_discard(exited.metadata).map_err(|e| {
+			sp_io::storage::rollback_transaction();
+			e
+		})?;
 
 		sp_io::storage::rollback_transaction();
 		Ok(())

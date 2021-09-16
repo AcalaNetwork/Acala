@@ -1267,19 +1267,24 @@ fn storage_limit_should_work() {
 		let amount = 1000000000;
 		let create_contract =
 			from_hex("0x9db8d7d50000000000000000000000000000000000000000000000000000000000000001").unwrap();
-		let result = <Runtime as Config>::Runner::call(
-			alice(),
-			alice(),
-			factory_contract_address,
-			create_contract,
-			amount,
-			1000000000,
-			0,
-			<Runtime as Config>::config(),
-		)
-		.unwrap();
-		assert_eq!(result.exit_reason, ExitReason::Revert(ExitRevert::Reverted));
-		assert_eq!(result.used_storage, 0);
+		let alice_account_id = <Runtime as Config>::AddressMapping::get_account_id(&alice());
+		assert_noop!(
+			EVM::call(
+				Origin::signed(alice_account_id.clone()),
+				factory_contract_address,
+				create_contract,
+				amount,
+				1000000000,
+				0,
+			),
+			DispatchErrorWithPostInfo {
+				post_info: PostDispatchInfo {
+					actual_weight: None,
+					pays_fee: Pays::Yes,
+				},
+				error: DispatchError::from(Error::<Runtime>::OutOfStorage)
+			}
+		);
 
 		// Factory.createContract(1)
 		let amount = 1000000000;
@@ -1303,19 +1308,23 @@ fn storage_limit_should_work() {
 		let amount = 1000000000;
 		let create_contract =
 			from_hex("0x9db8d7d50000000000000000000000000000000000000000000000000000000000000002").unwrap();
-		let result = <Runtime as Config>::Runner::call(
-			alice(),
-			alice(),
-			factory_contract_address,
-			create_contract,
-			amount,
-			1000000000,
-			127,
-			<Runtime as Config>::config(),
-		)
-		.unwrap();
-		assert_eq!(result.exit_reason, ExitReason::Revert(ExitRevert::Reverted));
-		assert_eq!(result.used_storage, 0);
+		assert_noop!(
+			EVM::call(
+				Origin::signed(alice_account_id),
+				factory_contract_address,
+				create_contract,
+				amount,
+				1000000000,
+				127,
+			),
+			DispatchErrorWithPostInfo {
+				post_info: PostDispatchInfo {
+					actual_weight: None,
+					pays_fee: Pays::Yes,
+				},
+				error: DispatchError::from(Error::<Runtime>::OutOfStorage)
+			}
+		);
 
 		// Factory.createContract(2)
 		let amount = 1000000000;
@@ -1435,24 +1444,16 @@ fn evm_execute_mode_should_work() {
 		// Factory.createContract(1)
 		let create_contract =
 			from_hex("0x9db8d7d50000000000000000000000000000000000000000000000000000000000000001").unwrap();
-		let result = EVM::execute(
-			context,
-			create_contract,
-			Default::default(),
-			2_100_000,
-			0,
-			ExecutionMode::Execute,
-		)
-		.unwrap();
-		assert_eq!(
-			result,
-			CallInfo {
-				exit_reason: ExitReason::Revert(ExitRevert::Reverted),
-				value: vec![],
-				used_gas: U256::from(66018),
-				used_storage: 0,
-				logs: vec![]
-			}
+		assert_noop!(
+			EVM::execute(
+				context,
+				create_contract,
+				Default::default(),
+				2_100_000,
+				0,
+				ExecutionMode::Execute,
+			),
+			Error::<Runtime>::OutOfStorage
 		);
 		assert_eq!(balance(alice()), alice_balance);
 
