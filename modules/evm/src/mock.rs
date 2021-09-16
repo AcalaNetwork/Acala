@@ -266,9 +266,11 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		},
 	);
 
-	pallet_balances::GenesisConfig::<Runtime>::default()
-		.assimilate_storage(&mut t)
-		.unwrap();
+	pallet_balances::GenesisConfig::<Runtime> {
+		balances: vec![(TreasuryAccount::get(), INITIAL_BALANCE)],
+	}
+	.assimilate_storage(&mut t)
+	.unwrap();
 	evm_mod::GenesisConfig::<Runtime> {
 		accounts,
 		treasury: Default::default(),
