@@ -1133,8 +1133,6 @@ impl module_evm_manager::Config for Runtime {
 impl orml_rewards::Config for Runtime {
 	type Share = Balance;
 	type Balance = Balance;
-	type PoolIdV0 = module_incentives::PoolIdV0<AccountId>;
-	type PoolIdConvertor = module_incentives::PoolIdConvertor<Runtime>;
 	type PoolId = module_incentives::PoolId;
 	type CurrencyId = CurrencyId;
 	type Handler = Incentives;
@@ -1146,11 +1144,8 @@ parameter_types! {
 
 impl module_incentives::Config for Runtime {
 	type Event = Event;
-	type RelaychainAccountId = AccountId;
 	type RewardsSource = UnreleasedNativeVaultAccountId;
-	type NativeCurrencyId = GetNativeCurrencyId;
 	type StableCurrencyId = GetStableCurrencyId;
-	type LiquidCurrencyId = GetLiquidCurrencyId;
 	type AccumulatePeriod = AccumulatePeriod;
 	type UpdateOrigin = EnsureRootOrThreeFourthsGeneralCouncil;
 	type CDPTreasury = CdpTreasury;
