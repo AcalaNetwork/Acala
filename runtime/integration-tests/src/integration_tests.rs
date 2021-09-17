@@ -1916,10 +1916,7 @@ fn proxy_behavior_correct() {
 				0
 			));
 			// takes deposit from bobs account for proxy
-			assert_eq!(
-				Currencies::free_balance(NATIVE_CURRENCY, &AccountId::from(BOB)),
-				97995900000000
-			);
+			assert!(Currencies::free_balance(NATIVE_CURRENCY, &AccountId::from(BOB)) < 100 * dollar(NATIVE_CURRENCY));
 
 			// alice can now make calls for bob's account
 			assert_ok!(Proxy::proxy(
@@ -2037,9 +2034,6 @@ fn proxy_permissions_correct() {
 			));
 
 			// the transfer call fails as Bob only had governence permission for alice
-			assert_eq!(
-				Currencies::free_balance(NATIVE_CURRENCY, &AccountId::from(BOB)),
-				97995900000000
-			);
+			assert!(Currencies::free_balance(NATIVE_CURRENCY, &AccountId::from(BOB)) < 100 * dollar(NATIVE_CURRENCY));
 		});
 }
