@@ -37,7 +37,7 @@ pub use primitives::currency::*;
 pub use sp_core::H160;
 use sp_io::hashing::keccak_256;
 pub use sp_runtime::{
-	traits::{AccountIdConversion, BadOrigin, Convert, Zero},
+	traits::{AccountIdConversion, BadOrigin, BlakeTwo256, Convert, Hash, Zero},
 	DispatchError, DispatchResult, FixedPointNumber, MultiAddress,
 };
 
@@ -62,9 +62,9 @@ mod mandala_imports {
 		CreateTokenDeposit, Currencies, CurrencyId, CurrencyIdConvert, DataDepositPerByte, Dex, EmergencyShutdown,
 		EnabledTradingPairs, Event, EvmAccounts, ExistentialDeposits, Get, GetNativeCurrencyId, HomaLite, Honzon,
 		Loans, MultiLocation, NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, Origin, OriginCaller,
-		ParachainInfo, ParachainSystem, Perbill, Proxy, RelaychainSovereignSubAccount, Runtime, Scheduler, Session,
-		SessionManager, SevenDays, System, Timestamp, TokenSymbol, Tokens, TreasuryAccount, TreasuryPalletId, Utility,
-		Vesting, XcmConfig, XcmExecutor, NFT,
+		ParachainInfo, ParachainSystem, Perbill, Proxy, ProxyType, RelaychainSovereignSubAccount, Runtime, Scheduler,
+		Session, SessionManager, SevenDays, System, Timestamp, TokenSymbol, Tokens, TreasuryAccount, TreasuryPalletId,
+		Utility, Vesting, XcmConfig, XcmExecutor, NFT,
 	};
 
 	pub use runtime_common::{dollar, ACA, AUSD, DOT, LDOT};
@@ -89,9 +89,9 @@ mod karura_imports {
 		CreateTokenDeposit, Currencies, CurrencyId, CurrencyIdConvert, DataDepositPerByte, Dex, EmergencyShutdown,
 		Event, EvmAccounts, ExistentialDeposits, Get, GetNativeCurrencyId, HomaLite, Honzon, KaruraFoundationAccounts,
 		Loans, MultiLocation, NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, Origin, OriginCaller,
-		ParachainInfo, ParachainSystem, Perbill, Proxy, RelaychainSovereignSubAccount, Runtime, Scheduler, Session,
-		SessionManager, SevenDays, System, Timestamp, TokenSymbol, Tokens, TreasuryPalletId, Utility, Vesting, XTokens,
-		XcmConfig, XcmExecutor, NFT,
+		ParachainInfo, ParachainSystem, Perbill, Proxy, ProxyType, RelaychainSovereignSubAccount, Runtime, Scheduler,
+		Session, SessionManager, SevenDays, System, Timestamp, TokenSymbol, Tokens, TreasuryPalletId, Utility, Vesting,
+		XTokens, XcmConfig, XcmExecutor, NFT,
 	};
 	pub use primitives::TradingPair;
 	pub use runtime_common::{dollar, KAR, KSM, KUSD, LKSM};
@@ -1880,5 +1880,166 @@ fn cdp_treasury_handles_honzon_surplus_correctly() {
 					1000000000000000000 as i64
 				))
 			)
+		});
+}
+
+#[test]
+fn proxy_behavior_correct() {
+	ExtBuilder::default()
+		.balances(vec![
+			(AccountId::from(ALICE), NATIVE_CURRENCY, 100 * dollar(NATIVE_CURRENCY)),
+			(AccountId::from(BOB), NATIVE_CURRENCY, 100 * dollar(NATIVE_CURRENCY)),
+		])
+		.build()
+		.execute_with(|| {
+			// proxy fails for account with no NATIVE_CURRENCY
+			assert_noop!(
+				Proxy::add_proxy(
+					Origin::signed(AccountId::from([21; 32])),
+					AccountId::from(ALICE),
+					ProxyType::Any,
+					0
+				),
+				pallet_balances::Error::<Runtime, _>::InsufficientBalance
+			);
+			let call = Box::new(Call::Currencies(module_currencies::Call::transfer(
+				AccountId::from(ALICE).into(),
+				NATIVE_CURRENCY,
+				10 * dollar(NATIVE_CURRENCY),
+			)));
+
+			// Alice has all Bob's permissions now
+			assert_ok!(Proxy::add_proxy(
+				Origin::signed(AccountId::from(BOB)),
+				AccountId::from(ALICE),
+				ProxyType::Any,
+				0
+			));
+			// takes deposit from bobs account for proxy
+			assert_eq!(
+				Currencies::free_balance(NATIVE_CURRENCY, &AccountId::from(BOB)),
+				97995900000000
+			);
+
+			// alice can now make calls for bob's account
+			assert_ok!(Proxy::proxy(
+				Origin::signed(AccountId::from(ALICE)),
+				AccountId::from(BOB),
+				None,
+				call.clone()
+			));
+			assert_eq!(
+				Currencies::free_balance(NATIVE_CURRENCY, &AccountId::from(ALICE)),
+				110 * dollar(NATIVE_CURRENCY)
+			);
+
+			// alice cannot make calls for bob's account anymore
+			assert_ok!(Proxy::remove_proxy(
+				Origin::signed(AccountId::from(BOB)),
+				AccountId::from(ALICE),
+				ProxyType::Any,
+				0
+			));
+			assert_noop!(
+				Proxy::proxy(
+					Origin::signed(AccountId::from(ALICE)),
+					AccountId::from(BOB),
+					None,
+					call.clone()
+				),
+				pallet_proxy::Error::<Runtime>::NotProxy
+			);
+			// bob's deposit is returned
+			assert_eq!(
+				Currencies::free_balance(NATIVE_CURRENCY, &AccountId::from(BOB)),
+				90000000000000
+			);
+		});
+}
+
+#[test]
+fn proxy_permissions_correct() {
+	ExtBuilder::default()
+		.balances(vec![
+			(AccountId::from(ALICE), NATIVE_CURRENCY, 100 * dollar(NATIVE_CURRENCY)),
+			(AccountId::from(BOB), NATIVE_CURRENCY, 100 * dollar(NATIVE_CURRENCY)),
+		])
+		.build()
+		.execute_with(|| {
+			// Alice has all Bob's permissions now
+			assert_ok!(Proxy::add_proxy(
+				Origin::signed(AccountId::from(BOB)),
+				AccountId::from(ALICE),
+				ProxyType::Any,
+				0
+			));
+			let root_call = Box::new(Call::Currencies(module_currencies::Call::update_balance(
+				AccountId::from(ALICE).into(),
+				NATIVE_CURRENCY,
+				1000 * dollar(NATIVE_CURRENCY) as i128,
+			)));
+			let gov_call = Box::new(Call::Tips(pallet_tips::Call::report_awesome(
+				b"bob is awesome".to_vec(),
+				AccountId::from(BOB),
+			)));
+			let transfer_call = Box::new(Call::Currencies(module_currencies::Call::transfer(
+				AccountId::from(BOB).into(),
+				NATIVE_CURRENCY,
+				10 * dollar(NATIVE_CURRENCY),
+			)));
+
+			// Proxy calls do not bypass root permision
+			assert_ok!(Proxy::proxy(
+				Origin::signed(AccountId::from(ALICE)),
+				AccountId::from(BOB),
+				None,
+				root_call.clone()
+			));
+			// while the proxy call executes the call being proxied fails
+			assert_eq!(
+				Currencies::free_balance(NATIVE_CURRENCY, &AccountId::from(ALICE)),
+				100 * dollar(NATIVE_CURRENCY)
+			);
+
+			// Alice's gives governance permissions to Bob
+			assert_ok!(Proxy::add_proxy(
+				Origin::signed(AccountId::from(ALICE)),
+				AccountId::from(BOB),
+				ProxyType::Governance,
+				0
+			));
+
+			// Bob can be a proxy for alice gov call
+			assert_ok!(Proxy::proxy(
+				Origin::signed(AccountId::from(BOB)),
+				AccountId::from(ALICE),
+				None,
+				gov_call.clone()
+			));
+			let hash = BlakeTwo256::hash_of(&(BlakeTwo256::hash(b"bob is awesome"), AccountId::from(BOB)));
+			// last event was sucessful tip call (proxy will suceed if account is called in add_proxy)
+			assert_eq!(
+				System::events()
+					.into_iter()
+					.map(|r| r.event)
+					.filter_map(|e| if let Event::Tips(inner) = e { Some(inner) } else { None })
+					.last()
+					.unwrap(),
+				pallet_tips::Event::<Runtime>::NewTip(hash)
+			);
+
+			// Bob can't proxy for alice in a non gov call, once again proxy call works but nested call fails
+			assert_ok!(Proxy::proxy(
+				Origin::signed(AccountId::from(BOB)),
+				AccountId::from(ALICE),
+				None,
+				transfer_call.clone()
+			));
+
+			// the transfer call fails as Bob only had governence permission for alice
+			assert_eq!(
+				Currencies::free_balance(NATIVE_CURRENCY, &AccountId::from(BOB)),
+				97995900000000
+			);
 		});
 }
