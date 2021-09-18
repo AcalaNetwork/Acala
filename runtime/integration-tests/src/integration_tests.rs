@@ -884,7 +884,6 @@ fn test_cdp_engine_module() {
 		});
 }
 
-/*
 #[test]
 fn test_authority_module() {
 	#[cfg(feature = "with-mandala-runtime")]
@@ -1130,7 +1129,7 @@ fn test_authority_module() {
 				6,
 			)));
 		});
-} */
+}
 
 #[test]
 fn test_nft_module() {
