@@ -61,10 +61,10 @@ mod mandala_imports {
 		AuthoritysOriginId, Balance, Balances, BlockNumber, Call, CdpEngine, CdpTreasury, CreateClassDeposit,
 		CreateTokenDeposit, Currencies, CurrencyId, CurrencyIdConvert, DataDepositPerByte, Dex, EmergencyShutdown,
 		EnabledTradingPairs, Event, EvmAccounts, ExistentialDeposits, Get, GetNativeCurrencyId, HomaLite, Honzon,
-		Loans, MultiLocation, NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, Origin, OriginCaller,
-		ParachainInfo, ParachainSystem, Perbill, Proxy, ProxyType, RelaychainSovereignSubAccount, Runtime, Scheduler,
-		Session, SessionManager, SevenDays, System, Timestamp, TokenSymbol, Tokens, TreasuryAccount, TreasuryPalletId,
-		Utility, Vesting, XcmConfig, XcmExecutor, NFT,
+		Loans, MinimumDebitValue, MultiLocation, NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, Origin,
+		OriginCaller, ParachainInfo, ParachainSystem, Perbill, Proxy, ProxyType, RelaychainSovereignSubAccount,
+		Runtime, Scheduler, Session, SessionManager, SevenDays, System, Timestamp, TokenSymbol, Tokens,
+		TreasuryAccount, TreasuryPalletId, Utility, Vesting, XcmConfig, XcmExecutor, NFT,
 	};
 
 	pub use runtime_common::{dollar, ACA, AUSD, DOT, LDOT};
@@ -88,10 +88,10 @@ mod karura_imports {
 		AuthoritysOriginId, Balance, Balances, BlockNumber, Call, CdpEngine, CdpTreasury, CreateClassDeposit,
 		CreateTokenDeposit, Currencies, CurrencyId, CurrencyIdConvert, DataDepositPerByte, Dex, EmergencyShutdown,
 		Event, EvmAccounts, ExistentialDeposits, Get, GetNativeCurrencyId, HomaLite, Honzon, KaruraFoundationAccounts,
-		Loans, MultiLocation, NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, Origin, OriginCaller,
-		ParachainInfo, ParachainSystem, Perbill, Proxy, ProxyType, RelaychainSovereignSubAccount, Runtime, Scheduler,
-		Session, SessionManager, SevenDays, System, Timestamp, TokenSymbol, Tokens, TreasuryPalletId, Utility, Vesting,
-		XTokens, XcmConfig, XcmExecutor, NFT,
+		Loans, MinimumDebitValue, MultiLocation, NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, Origin,
+		OriginCaller, ParachainInfo, ParachainSystem, Perbill, Proxy, ProxyType, RelaychainSovereignSubAccount,
+		Runtime, Scheduler, Session, SessionManager, SevenDays, System, Timestamp, TokenSymbol, Tokens,
+		TreasuryPalletId, Utility, Vesting, XTokens, XcmConfig, XcmExecutor, NFT,
 	};
 	pub use primitives::TradingPair;
 	pub use runtime_common::{dollar, KAR, KSM, KUSD, LKSM};
@@ -1975,6 +1975,8 @@ fn proxy_permissions_correct() {
 		])
 		.build()
 		.execute_with(|| {
+			// runtimes have different minimum debit dust requirements
+			let min_debit: Balance = 100 * MinimumDebitValue::get();
 			assert_ok!(set_oracle_price(vec![(
 				RELAY_CHAIN_CURRENCY,
 				Price::saturating_from_rational(100, 1)
@@ -2021,7 +2023,7 @@ fn proxy_permissions_correct() {
 			let adjust_loan_call = Box::new(Call::Honzon(module_honzon::Call::adjust_loan(
 				RELAY_CHAIN_CURRENCY,
 				10 * dollar(RELAY_CHAIN_CURRENCY) as i128,
-				10 * dollar(USD_CURRENCY) as i128,
+				min_debit as i128,
 			)));
 			let authorize_loan_call = Box::new(Call::Honzon(module_honzon::Call::authorize(
 				RELAY_CHAIN_CURRENCY,
@@ -2108,7 +2110,7 @@ fn proxy_permissions_correct() {
 			);
 			assert_eq!(
 				Loans::positions(RELAY_CHAIN_CURRENCY, AccountId::from(ALICE)).debit,
-				10 * dollar(USD_CURRENCY)
+				min_debit
 			);
 			// authorize call is part of the Honzon module but is not in the Loan ProxyType filter
 			assert_ok!(Proxy::proxy(
@@ -2161,7 +2163,7 @@ fn proxy_permissions_correct() {
 			);
 			assert_eq!(
 				Loans::positions(RELAY_CHAIN_CURRENCY, AccountId::from(ALICE)).debit,
-				20 * dollar(USD_CURRENCY)
+				2 * min_debit
 			);
 
 			// remove proxy works
