@@ -2065,7 +2065,7 @@ fn proxy_permissions_correct() {
 			assert_ok!(Proxy::proxy(
 				Origin::signed(AccountId::from(BOB)),
 				AccountId::from(ALICE),
-				None,
+				Some(ProxyType::Governance),
 				gov_call.clone()
 			));
 			let hash = BlakeTwo256::hash_of(&(BlakeTwo256::hash(b"bob is awesome"), AccountId::from(BOB)));
@@ -2084,19 +2084,12 @@ fn proxy_permissions_correct() {
 			assert_ok!(Proxy::proxy(
 				Origin::signed(AccountId::from(BOB)),
 				AccountId::from(ALICE),
-				None,
+				Some(ProxyType::Governance),
 				transfer_call.clone()
 			));
 			// the transfer call fails as Bob only had governence permission for alice
 			assert!(Currencies::free_balance(NATIVE_CURRENCY, &AccountId::from(BOB)) < 100 * dollar(NATIVE_CURRENCY));
 
-			// Alice gives loan permissions to Bob
-			assert_ok!(Proxy::remove_proxy(
-				Origin::signed(AccountId::from(ALICE)),
-				AccountId::from(BOB),
-				ProxyType::Governance,
-				0
-			));
 			assert_ok!(Proxy::add_proxy(
 				Origin::signed(AccountId::from(ALICE)),
 				AccountId::from(BOB),
@@ -2106,7 +2099,7 @@ fn proxy_permissions_correct() {
 			assert_ok!(Proxy::proxy(
 				Origin::signed(AccountId::from(BOB)),
 				AccountId::from(ALICE),
-				None,
+				Some(ProxyType::Loan),
 				adjust_loan_call.clone()
 			));
 			assert_eq!(
@@ -2121,7 +2114,7 @@ fn proxy_permissions_correct() {
 			assert_ok!(Proxy::proxy(
 				Origin::signed(AccountId::from(BOB)),
 				AccountId::from(ALICE),
-				None,
+				Some(ProxyType::Loan),
 				authorize_loan_call.clone()
 			));
 			// hence the failure
@@ -2139,7 +2132,7 @@ fn proxy_permissions_correct() {
 			assert_ok!(Proxy::proxy(
 				Origin::signed(AccountId::from(BOB)),
 				AccountId::from(ALICE),
-				None,
+				Some(ProxyType::Swap),
 				dex_swap_call.clone()
 			));
 			let post_swap = Currencies::free_balance(USD_CURRENCY, &AccountId::from(ALICE));
@@ -2148,10 +2141,44 @@ fn proxy_permissions_correct() {
 			assert_ok!(Proxy::proxy(
 				Origin::signed(AccountId::from(BOB)),
 				AccountId::from(ALICE),
-				None,
+				Some(ProxyType::Swap),
 				dex_add_liquidity_call.clone()
 			));
-			// again add liquidity call is part of the Dex module but is not allowed in the Swap ProxyType filter
+			// again add liquidity call is part of the Dex module but is not allowed in the Swap ProxyType
+			// filter
 			System::assert_last_event(pallet_proxy::Event::ProxyExecuted(Err(DispatchError::BadOrigin)).into());
+
+			// Tests that adding more ProxyType permssions does not effect others
+			assert_ok!(Proxy::proxy(
+				Origin::signed(AccountId::from(BOB)),
+				AccountId::from(ALICE),
+				Some(ProxyType::Loan),
+				adjust_loan_call.clone()
+			));
+			assert_eq!(
+				Loans::positions(RELAY_CHAIN_CURRENCY, AccountId::from(ALICE)).collateral,
+				20 * dollar(RELAY_CHAIN_CURRENCY)
+			);
+			assert_eq!(
+				Loans::positions(RELAY_CHAIN_CURRENCY, AccountId::from(ALICE)).debit,
+				20 * dollar(USD_CURRENCY)
+			);
+
+			// remove proxy works
+			assert_ok!(Proxy::remove_proxy(
+				Origin::signed(AccountId::from(ALICE)),
+				AccountId::from(BOB),
+				ProxyType::Loan,
+				0
+			));
+			assert_noop!(
+				Proxy::proxy(
+					Origin::signed(AccountId::from(BOB)),
+					AccountId::from(ALICE),
+					Some(ProxyType::Loan),
+					adjust_loan_call.clone()
+				),
+				pallet_proxy::Error::<Runtime>::NotProxy
+			);
 		});
 }
