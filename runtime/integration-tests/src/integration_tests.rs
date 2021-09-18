@@ -884,6 +884,7 @@ fn test_cdp_engine_module() {
 		});
 }
 
+/*
 #[test]
 fn test_authority_module() {
 	#[cfg(feature = "with-mandala-runtime")]
@@ -1129,7 +1130,7 @@ fn test_authority_module() {
 				6,
 			)));
 		});
-}
+} */
 
 #[test]
 fn test_nft_module() {
@@ -1960,9 +1961,43 @@ fn proxy_permissions_correct() {
 		.balances(vec![
 			(AccountId::from(ALICE), NATIVE_CURRENCY, 100 * dollar(NATIVE_CURRENCY)),
 			(AccountId::from(BOB), NATIVE_CURRENCY, 100 * dollar(NATIVE_CURRENCY)),
+			(
+				AccountId::from(BOB),
+				RELAY_CHAIN_CURRENCY,
+				100 * dollar(RELAY_CHAIN_CURRENCY),
+			),
+			(
+				AccountId::from(ALICE),
+				RELAY_CHAIN_CURRENCY,
+				100 * dollar(RELAY_CHAIN_CURRENCY),
+			),
+			(AccountId::from(BOB), USD_CURRENCY, 100 * dollar(USD_CURRENCY)),
+			(AccountId::from(ALICE), USD_CURRENCY, 100 * dollar(USD_CURRENCY)),
 		])
 		.build()
 		.execute_with(|| {
+			assert_ok!(set_oracle_price(vec![(
+				RELAY_CHAIN_CURRENCY,
+				Price::saturating_from_rational(100, 1)
+			)]));
+			assert_ok!(CdpEngine::set_collateral_params(
+				Origin::root(),
+				RELAY_CHAIN_CURRENCY,
+				Change::NewValue(Some(Rate::saturating_from_rational(1, 10000))),
+				Change::NewValue(Some(Ratio::saturating_from_rational(200, 100))),
+				Change::NewValue(Some(Rate::saturating_from_rational(20, 100))),
+				Change::NewValue(Some(Ratio::saturating_from_rational(200, 100))),
+				Change::NewValue(1_000_000 * dollar(USD_CURRENCY)),
+			));
+			assert_ok!(Dex::add_liquidity(
+				Origin::signed(AccountId::from(BOB)),
+				RELAY_CHAIN_CURRENCY,
+				USD_CURRENCY,
+				5 * dollar(RELAY_CHAIN_CURRENCY),
+				10 * dollar(USD_CURRENCY),
+				0,
+				false,
+			));
 			// Alice has all Bob's permissions now
 			assert_ok!(Proxy::add_proxy(
 				Origin::signed(AccountId::from(BOB)),
@@ -1983,6 +2018,28 @@ fn proxy_permissions_correct() {
 				AccountId::from(BOB).into(),
 				NATIVE_CURRENCY,
 				10 * dollar(NATIVE_CURRENCY),
+			)));
+			let adjust_loan_call = Box::new(Call::Honzon(module_honzon::Call::adjust_loan(
+				RELAY_CHAIN_CURRENCY,
+				10 * dollar(RELAY_CHAIN_CURRENCY) as i128,
+				10 * dollar(USD_CURRENCY) as i128,
+			)));
+			let authorize_loan_call = Box::new(Call::Honzon(module_honzon::Call::authorize(
+				RELAY_CHAIN_CURRENCY,
+				AccountId::from(BOB).into(),
+			)));
+			let dex_swap_call = Box::new(Call::Dex(module_dex::Call::swap_with_exact_target(
+				vec![RELAY_CHAIN_CURRENCY, USD_CURRENCY],
+				dollar(USD_CURRENCY),
+				dollar(RELAY_CHAIN_CURRENCY),
+			)));
+			let dex_add_liquidity_call = Box::new(Call::Dex(module_dex::Call::add_liquidity(
+				RELAY_CHAIN_CURRENCY,
+				USD_CURRENCY,
+				10 * dollar(RELAY_CHAIN_CURRENCY),
+				10 * dollar(USD_CURRENCY),
+				0,
+				false,
 			)));
 
 			// Proxy calls do not bypass root permision
@@ -2005,7 +2062,6 @@ fn proxy_permissions_correct() {
 				ProxyType::Governance,
 				0
 			));
-
 			// Bob can be a proxy for alice gov call
 			assert_ok!(Proxy::proxy(
 				Origin::signed(AccountId::from(BOB)),
@@ -2014,7 +2070,7 @@ fn proxy_permissions_correct() {
 				gov_call.clone()
 			));
 			let hash = BlakeTwo256::hash_of(&(BlakeTwo256::hash(b"bob is awesome"), AccountId::from(BOB)));
-			// last event was sucessful tip call (proxy will suceed if account is called in add_proxy)
+			// last event was sucessful tip call
 			assert_eq!(
 				System::events()
 					.into_iter()
@@ -2032,8 +2088,71 @@ fn proxy_permissions_correct() {
 				None,
 				transfer_call.clone()
 			));
-
 			// the transfer call fails as Bob only had governence permission for alice
 			assert!(Currencies::free_balance(NATIVE_CURRENCY, &AccountId::from(BOB)) < 100 * dollar(NATIVE_CURRENCY));
+
+			// Alice gives loan permissions to Bob
+			assert_ok!(Proxy::remove_proxy(
+				Origin::signed(AccountId::from(ALICE)),
+				AccountId::from(BOB),
+				ProxyType::Governance,
+				0
+			));
+			assert_ok!(Proxy::add_proxy(
+				Origin::signed(AccountId::from(ALICE)),
+				AccountId::from(BOB),
+				ProxyType::Loan,
+				0
+			));
+			assert_ok!(Proxy::proxy(
+				Origin::signed(AccountId::from(BOB)),
+				AccountId::from(ALICE),
+				None,
+				adjust_loan_call.clone()
+			));
+			assert_eq!(
+				Loans::positions(RELAY_CHAIN_CURRENCY, AccountId::from(ALICE)).collateral,
+				10 * dollar(RELAY_CHAIN_CURRENCY)
+			);
+			assert_eq!(
+				Loans::positions(RELAY_CHAIN_CURRENCY, AccountId::from(ALICE)).debit,
+				10 * dollar(USD_CURRENCY)
+			);
+			// authorize call is part of the Honzon module but is not in the Loan ProxyType filter
+			assert_ok!(Proxy::proxy(
+				Origin::signed(AccountId::from(BOB)),
+				AccountId::from(ALICE),
+				None,
+				authorize_loan_call.clone()
+			));
+			// hence the failure
+			System::assert_last_event(pallet_proxy::Event::ProxyExecuted(Err(DispatchError::BadOrigin)).into());
+
+			// gives Bob ability to proxy alice's account for dex swaps
+			assert_ok!(Proxy::add_proxy(
+				Origin::signed(AccountId::from(ALICE)),
+				AccountId::from(BOB),
+				ProxyType::Swap,
+				0
+			));
+
+			let pre_swap = Currencies::free_balance(USD_CURRENCY, &AccountId::from(ALICE));
+			assert_ok!(Proxy::proxy(
+				Origin::signed(AccountId::from(BOB)),
+				AccountId::from(ALICE),
+				None,
+				dex_swap_call.clone()
+			));
+			let post_swap = Currencies::free_balance(USD_CURRENCY, &AccountId::from(ALICE));
+			assert_eq!(post_swap - pre_swap, dollar(USD_CURRENCY));
+
+			assert_ok!(Proxy::proxy(
+				Origin::signed(AccountId::from(BOB)),
+				AccountId::from(ALICE),
+				None,
+				dex_add_liquidity_call.clone()
+			));
+			// again add liquidity call is part of the Dex module but is not allowed in the Swap ProxyType filter
+			System::assert_last_event(pallet_proxy::Event::ProxyExecuted(Err(DispatchError::BadOrigin)).into());
 		});
 }
