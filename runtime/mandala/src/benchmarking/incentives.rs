@@ -17,8 +17,8 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-	dollar, AccountId, AccumulatePeriod, CollateralCurrencyIds, Currencies, CurrencyId, GetLiquidCurrencyId,
-	GetNativeCurrencyId, GetStableCurrencyId, GetStakingCurrencyId, Incentives, Rate, Rewards, Runtime, System,
+	dollar, AccountId, AccumulatePeriod, CollateralCurrencyIds, Currencies, CurrencyId, GetNativeCurrencyId,
+	GetStableCurrencyId, GetStakingCurrencyId, Incentives, Rate, Rewards, Runtime, System,
 };
 
 use super::utils::set_balance;
@@ -36,7 +36,6 @@ const SEED: u32 = 0;
 const NATIVE: CurrencyId = GetNativeCurrencyId::get();
 const STAKING: CurrencyId = GetStakingCurrencyId::get();
 const STABLECOIN: CurrencyId = GetStableCurrencyId::get();
-const LIQUID: CurrencyId = GetLiquidCurrencyId::get();
 
 runtime_benchmarks! {
 	{ Runtime, module_incentives }
@@ -48,10 +47,10 @@ runtime_benchmarks! {
 
 		for i in 0 .. c {
 			let currency_id = currency_ids[i as usize];
-			let pool_id = PoolId::LoansIncentive(currency_id);
+			let pool_id = PoolId::Loans(currency_id);
 
-			Incentives::update_incentive_rewards(RawOrigin::Root.into(), vec![(pool_id.clone(), 100 * dollar(NATIVE))])?;
-			orml_rewards::Pools::<Runtime>::mutate(pool_id, |pool_info| {
+			Incentives::update_incentive_rewards(RawOrigin::Root.into(), vec![(pool_id.clone(), vec![(NATIVE, 100 * dollar(NATIVE))])])?;
+			orml_rewards::PoolInfos::<Runtime>::mutate(pool_id, |pool_info| {
 				pool_info.total_shares += 100;
 			});
 		}
@@ -81,12 +80,12 @@ runtime_benchmarks! {
 
 	claim_rewards {
 		let caller: AccountId = whitelisted_caller();
-		let pool_id = PoolId::LoansIncentive(STAKING);
+		let pool_id = PoolId::Loans(STAKING);
 		let native_currency_id = GetNativeCurrencyId::get();
 
 		Rewards::add_share(&caller, &pool_id, 100);
 		Currencies::deposit(native_currency_id, &Incentives::account_id(), 80 * dollar(native_currency_id))?;
-		Rewards::accumulate_reward(&pool_id, 80 * dollar(native_currency_id));
+		Rewards::accumulate_reward(&pool_id, native_currency_id, 80 * dollar(native_currency_id))?;
 	}: _(RawOrigin::Signed(caller), pool_id)
 
 	update_incentive_rewards {
@@ -96,7 +95,7 @@ runtime_benchmarks! {
 
 		for i in 0 .. c {
 			let currency_id = currency_ids[i as usize];
-			updates.push((PoolId::LoansIncentive(currency_id), 100 * dollar(NATIVE)));
+			updates.push((PoolId::Loans(currency_id), vec![(NATIVE, dollar(NATIVE))]));
 		}
 	}: _(RawOrigin::Root, updates)
 
@@ -115,26 +114,20 @@ runtime_benchmarks! {
 				}
 				_ => return Err("invalid currency id"),
 			};
-			updates.push((PoolId::DexSaving(lp_share_currency_id), Rate::default()));
+			updates.push((PoolId::Dex(lp_share_currency_id), Rate::default()));
 		}
 	}: _(RawOrigin::Root, updates)
 
-	update_payout_deduction_rates {
+	update_claim_reward_deduction_rates {
 		let c in 0 .. CollateralCurrencyIds::get().len().saturating_sub(1) as u32;
 		let currency_ids = CollateralCurrencyIds::get();
 		let mut updates = vec![];
 
 		for i in 0 .. c {
 			let currency_id = currency_ids[i as usize];
-			updates.push((PoolId::LoansIncentive(currency_id), Rate::default()));
+			updates.push((PoolId::Loans(currency_id), Rate::default()));
 		}
 	}: _(RawOrigin::Root, updates)
-
-	add_allowance {
-		let caller: AccountId = whitelisted_caller();
-		set_balance(LIQUID, &caller, 10_000 * dollar(STABLECOIN));
-		let pool_id = PoolId::HomaValidatorAllowance(caller.clone());
-	}: _(RawOrigin::Signed(caller), pool_id, 1 * dollar(LIQUID))
 }
 
 #[cfg(test)]

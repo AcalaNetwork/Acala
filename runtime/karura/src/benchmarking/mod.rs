@@ -84,6 +84,6 @@ pub mod vesting {
 	include!("../../../mandala/src/benchmarking/vesting.rs");
 }
 
-pub fn get_treasury_account() -> super::AccountId {
+pub fn get_vesting_account() -> super::AccountId {
 	super::KaruraFoundationAccounts::get()[0].clone()
 }
