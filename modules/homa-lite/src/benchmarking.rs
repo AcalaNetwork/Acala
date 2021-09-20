@@ -149,6 +149,8 @@ mod benchmark_mock {
 		type WeightInfo = ();
 		type AddressMapping = MockAddressMapping;
 		type EVMBridge = ();
+		type SweepOrigin = EnsureSignedBy<Root, AccountId>;
+		type OnDust = ();
 	}
 
 	parameter_types! {
