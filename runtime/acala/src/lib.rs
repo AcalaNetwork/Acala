@@ -822,6 +822,8 @@ impl module_currencies::Config for Runtime {
 	type WeightInfo = weights::module_currencies::WeightInfo<Runtime>;
 	type AddressMapping = EvmAddressMapping<Runtime>;
 	type EVMBridge = EVMBridge;
+	type SweepOrigin = EnsureRootOrOneGeneralCouncil;
+	type OnDust = module_currencies::TransferDust<Runtime, TreasuryAccount>;
 }
 
 pub struct EnsureRootOrTreasury;
