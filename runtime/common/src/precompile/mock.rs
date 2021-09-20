@@ -169,6 +169,8 @@ impl module_currencies::Config for Test {
 	type WeightInfo = ();
 	type AddressMapping = MockAddressMapping;
 	type EVMBridge = EVMBridge;
+	type SweepOrigin = EnsureSignedBy<CouncilAccount, AccountId>;
+	type OnDust = ();
 }
 
 impl module_evm_bridge::Config for Test {

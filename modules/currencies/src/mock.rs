@@ -108,7 +108,7 @@ parameter_types! {
 }
 
 parameter_types! {
-	pub const ExistentialDeposit: u64 = 1;
+	pub const ExistentialDeposit: u64 = 2;
 	pub const MaxReserves: u32 = 50;
 }
 
