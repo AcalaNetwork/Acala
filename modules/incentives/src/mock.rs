@@ -244,8 +244,6 @@ impl EmergencyShutdown for MockEmergencyShutdown {
 impl orml_rewards::Config for Runtime {
 	type Share = Balance;
 	type Balance = Balance;
-	type PoolIdV0 = PoolIdV0<AccountId>;
-	type PoolIdConvertor = PoolIdConvertor<Runtime>;
 	type PoolId = PoolId;
 	type CurrencyId = CurrencyId;
 	type Handler = IncentivesModule;
@@ -253,9 +251,7 @@ impl orml_rewards::Config for Runtime {
 
 parameter_types! {
 	pub const AccumulatePeriod: BlockNumber = 10;
-	pub const NativeCurrencyId: CurrencyId = ACA;
 	pub const StableCurrencyId: CurrencyId = AUSD;
-	pub const LiquidCurrencyId: CurrencyId = LDOT;
 	pub const IncentivesPalletId: PalletId = PalletId(*b"aca/inct");
 }
 
@@ -265,12 +261,9 @@ ord_parameter_types! {
 
 impl Config for Runtime {
 	type Event = Event;
-	type RelaychainAccountId = AccountId;
 	type RewardsSource = RewardsSource;
 	type AccumulatePeriod = AccumulatePeriod;
-	type NativeCurrencyId = NativeCurrencyId;
 	type StableCurrencyId = StableCurrencyId;
-	type LiquidCurrencyId = LiquidCurrencyId;
 	type UpdateOrigin = EnsureSignedBy<ROOT, AccountId>;
 	type CDPTreasury = MockCDPTreasury;
 	type Currency = TokensModule;
