@@ -19,6 +19,7 @@
 // Disable the following lints
 #![allow(clippy::type_complexity)]
 
+use crate::precompile::PrecompileOutput;
 use frame_support::{
 	dispatch::Dispatchable,
 	ensure, log, parameter_types,
@@ -30,11 +31,11 @@ use frame_support::{
 use module_evm::{Context, ExitError, ExitSucceed, Precompile};
 use module_support::{AddressMapping as AddressMappingT, CurrencyIdMapping as CurrencyIdMappingT, TransactionPayment};
 use primitives::{Balance, BlockNumber};
-use sp_core::{H160, U256};
+use sp_core::H160;
 use sp_runtime::RuntimeDebug;
 use sp_std::{fmt::Debug, marker::PhantomData, prelude::*, result};
 
-use super::input::{Input, InputT};
+use super::input::{Input, InputT, Output};
 use codec::{Decode, Encode};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use pallet_scheduler::TaskAddress;
@@ -136,9 +137,7 @@ impl<
 		input: &[u8],
 		_target_gas: Option<u64>,
 		_context: &Context,
-	) -> result::Result<(ExitSucceed, Vec<u8>, u64), ExitError> {
-		log::debug!(target: "evm", "schedule call: input: {:?}", input);
-
+	) -> result::Result<PrecompileOutput, ExitError> {
 		let input = Input::<Action, AccountId, AddressMapping, CurrencyIdMapping>::new(input);
 
 		let action = input.action()?;
@@ -172,7 +171,9 @@ impl<
 				let mut _fee: PalletBalanceOf<Runtime> = Default::default();
 				#[cfg(not(feature = "with-ethereum-compatibility"))]
 				{
-					// reserve the transaction fee for gas_limit
+					// reserve the transaction fee for gas_limit and storage_limit
+					// TODO: reserve storage_limit here
+					// Manually charge weight fee in scheduled_call
 					use sp_runtime::traits::Convert;
 					let from_account = AddressMapping::get_account_id(&from);
 					let weight = <Runtime as module_evm::Config>::GasToWeight::convert(gas_limit);
@@ -222,12 +223,12 @@ impl<
 				)
 				.map_err(|_| ExitError::Other("Schedule failed".into()))?;
 
-				// add task_id len prefix
-				let mut task_id_with_len = [0u8; 96];
-				U256::from(task_id.len()).to_big_endian(&mut task_id_with_len[0..32]);
-				task_id_with_len[32..32 + task_id.len()].copy_from_slice(&task_id[..]);
-
-				Ok((ExitSucceed::Returned, task_id_with_len.to_vec(), 0))
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: 0,
+					output: Output::default().encode_bytes(&task_id),
+					logs: Default::default(),
+				})
 			}
 			Action::Cancel => {
 				let from = input.evm_address_at(1)?;
@@ -255,7 +256,12 @@ impl<
 					ChargeTransactionPayment::unreserve_fee(&from_account, task_info.fee.into());
 				}
 
-				Ok((ExitSucceed::Returned, vec![], 0))
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: 0,
+					output: vec![],
+					logs: Default::default(),
+				})
 			}
 			Action::Reschedule => {
 				let from = input.evm_address_at(1)?;
@@ -281,7 +287,12 @@ impl<
 					ExitError::Other(err_msg.into())
 				})?;
 
-				Ok((ExitSucceed::Returned, vec![], 0))
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: 0,
+					output: vec![],
+					logs: Default::default(),
+				})
 			}
 		}
 	}

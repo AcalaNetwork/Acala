@@ -2589,6 +2589,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "ethabi"
+version = "14.1.0"
+source = "git+https://github.com/rust-ethereum/ethabi?rev=8bd90d13956edf18bb47c6e39dcf7ab99bf264c7#8bd90d13956edf18bb47c6e39dcf7ab99bf264c7"
+dependencies = [
+ "anyhow",
+ "ethereum-types",
+ "hex",
+ "sha3 0.9.1",
+ "thiserror",
+ "uint",
+]
+
+[[package]]
 name = "ethbloom"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5626,6 +5639,7 @@ dependencies = [
  "evm-runtime",
  "frame-support",
  "frame-system",
+ "hex-literal 0.3.3",
  "impl-trait-for-tuples 0.1.3",
  "module-support",
  "orml-currencies",
@@ -9724,6 +9738,7 @@ dependencies = [
  "acala-primitives",
  "acala-service",
  "cumulus-pallet-parachain-system",
+ "ethabi",
  "frame-support",
  "frame-system",
  "hex-literal 0.3.3",
@@ -13312,8 +13327,8 @@ version = "1.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1f559b464de2e2bdabcac6a210d12e9b5a5973c251e102c44c585c71d51bd78e"
 dependencies = [
- "cfg-if 0.1.10",
- "rand 0.3.23",
+ "cfg-if 1.0.0",
+ "rand 0.8.4",
  "static_assertions",
 ]
 

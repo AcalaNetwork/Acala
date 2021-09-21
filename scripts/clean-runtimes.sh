@@ -9,6 +9,7 @@ declare -a CLEAN_LIST=(
     "e2e-tests"
     "mandala-runtime"
     "karura-runtime"
+    "runtime-common"
 )
 
 for val in "${CLEAN_LIST[@]}"; do
