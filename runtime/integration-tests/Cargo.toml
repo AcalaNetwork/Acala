@@ -35,6 +35,7 @@ pallet-tips = { git = "https://github.com/paritytech/substrate", branch = "polka
 pallet-transaction-payment = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.9", default-features = false }
 pallet-transaction-payment-rpc-runtime-api = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.9", default-features = false }
 pallet-treasury = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.9", default-features = false }
+pallet-staking = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
 pallet-utility = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.9", default-features = false }
 sp-api = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.9", default-features = false }
 sp-application-crypto = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.9", default-features = false }
@@ -146,7 +147,7 @@ xcm-emulator = { git = "https://github.com/shaunxw/xcm-simulator", branch = "pol
 acala-service = { path = "../../node/service", features = ["with-all-runtime"] }
 
 [features]
-default = ["std"]
+default = ["std", "with-karura-runtime"]
 no_std = []
 with-mandala-runtime=[
 	"acala-service/with-mandala-runtime"
@@ -179,6 +180,7 @@ std = [
 	"pallet-recovery/std",
 	"pallet-session/std",
 	"pallet-scheduler/std",
+	"pallet-staking/std",
 	"pallet-sudo/std",
 	"pallet-timestamp/std",
 	"pallet-tips/std",

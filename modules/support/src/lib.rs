@@ -19,7 +19,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::upper_case_acronyms)]
 
-use codec::{Codec, Decode, Encode, FullCodec, HasCompact};
+use codec::{Decode, Encode, FullCodec, HasCompact};
 use frame_support::pallet_prelude::{DispatchClass, Pays, Weight};
 use primitives::{
 	evm::{CallInfo, EvmAddress},
@@ -564,9 +564,9 @@ pub trait CompoundCashTrait<Balance, Moment> {
 }
 
 pub trait CallBuilder {
-	type AccountId: Codec;
-	type Balance: Codec;
-	type RelaychainCall: Codec;
+	type AccountId: FullCodec;
+	type Balance: FullCodec;
+	type RelaychainCall: FullCodec;
 
 	fn utility_batch_call(call: Vec<Self::RelaychainCall>) -> Self::RelaychainCall;
 	fn staking_withdraw_unbonded(num_slashing_spans: u32) -> Self::RelaychainCall;

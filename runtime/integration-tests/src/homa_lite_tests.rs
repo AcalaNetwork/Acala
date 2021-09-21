@@ -223,9 +223,10 @@ mod karura_only_tests {
 	use crate::integration_tests::*;
 	use crate::kusama_test_net::*;
 
-	use frame_support::assert_ok;
+	use frame_support::{assert_ok, traits::Hooks};
 	use orml_traits::MultiCurrency;
-	use sp_runtime::MultiAddress;
+	use pallet_staking::RewardDestination;
+	use sp_runtime::{traits::BlockNumberProvider, MultiAddress};
 
 	use xcm::v0::{
 		Junction::{self, Parachain},
@@ -277,7 +278,7 @@ mod karura_only_tests {
 
 			// Set the exchange rate to 1(S) : 5(L)
 			assert_ok!(HomaLite::set_total_staking_currency(Origin::root(), staking_total));
-			assert_ok!(HomaLite::set_xcm_dest_weight(Origin::root(), 1_000_000_000_000));
+			assert_ok!(HomaLite::set_xcm_base_weight(Origin::root(), 1_000_000_000_000));
 
 			assert_ok!(HomaLite::set_minting_cap(Origin::root(), 10 * staking_total));
 
@@ -294,6 +295,104 @@ mod karura_only_tests {
 			assert_eq!(
 				kusama_runtime::Balances::free_balance(&homa_lite_sub_account),
 				1_999_946_666_669_999
+			);
+		});
+	}
+
+	#[test]
+	fn homa_lite_xcm_unbonding_works() {
+		let homa_lite_sub_account: AccountId =
+			hex_literal::hex!["d7b8926b326dd349355a9a7cca6606c1e0eb6fd2b506066b518c7155ff0d8297"].into();
+
+		Kusama::execute_with(|| {
+			kusama_runtime::Staking::trigger_new_era(0, vec![]);
+
+			// Transfer some KSM into the parachain.
+			assert_ok!(kusama_runtime::Balances::transfer(
+				kusama_runtime::Origin::signed(ALICE.into()),
+				MultiAddress::Id(homa_lite_sub_account.clone()),
+				1_100_000_000_000_000
+			));
+
+			assert_eq!(
+				kusama_runtime::Balances::free_balance(&homa_lite_sub_account.clone()),
+				1_100_000_000_000_000
+			);
+
+			// bond and unbond some fund for staking
+			assert_ok!(kusama_runtime::Staking::bond(
+				kusama_runtime::Origin::signed(homa_lite_sub_account.clone()),
+				MultiAddress::Id(homa_lite_sub_account.clone()),
+				1_000_000_000_000_000,
+				RewardDestination::Staked,
+			));
+
+			kusama_runtime::System::set_block_number(100);
+			assert_ok!(kusama_runtime::Staking::unbond(
+				kusama_runtime::Origin::signed(homa_lite_sub_account.clone()),
+				1_000_000_000_000_000
+			));
+
+			// Kusama's unbonding period is 27 days = 100_800 blocks
+			kusama_runtime::System::set_block_number(101_000);
+			for _i in 0..29 {
+				kusama_runtime::Staking::trigger_new_era(0, vec![]);
+			}
+			assert_eq!(kusama_runtime::Balances::free_balance(&ParachainAccount::get()), 0);
+
+			// assert_ok!(kusama_runtime::Staking::withdraw_unbonded(
+			// 	kusama_runtime::Origin::signed(homa_lite_sub_account.clone()),
+			// 	5
+			// ));
+			// assert_ok!(kusama_runtime::Balances::transfer_keep_alive(
+			// 	kusama_runtime::Origin::signed(homa_lite_sub_account.clone()),
+			// 	MultiAddress::Id(ParachainAccount::get()),
+			// 	1_000_000_000_000_000
+			// ));
+			// assert_eq!(kusama_runtime::Balances::free_balance(&ParachainAccount::get()),
+			// 1_000_000_000_000_000);
+		});
+
+		Karura::execute_with(|| {
+			assert_ok!(Tokens::set_balance(
+				Origin::root(),
+				MultiAddress::Id(AccountId::from(bob())),
+				LIQUID_CURRENCY,
+				1_000_000 * dollar(LIQUID_CURRENCY),
+				0
+			));
+
+			assert_ok!(HomaLite::set_xcm_base_weight(Origin::root(), 10_000_000));
+			assert_ok!(HomaLite::set_xcm_unbond_fee(Origin::root(), 1_000_000_000));
+
+			assert_ok!(HomaLite::schedule_unbond(
+				Origin::root(),
+				1000 * dollar(RELAY_CHAIN_CURRENCY),
+				100_900
+			));
+			set_relaychain_block_number(101_000);
+			run_to_block(5);
+			assert_eq!(
+				RelaychainBlockNumberProvider::<Runtime>::current_block_number(),
+				101_000
+			);
+			HomaLite::on_idle(5, 1_000_000_000);
+			assert_eq!(HomaLite::scheduled_unbond(), vec![]);
+			assert_eq!(
+				HomaLite::available_staking_balance(),
+				1000 * dollar(RELAY_CHAIN_CURRENCY)
+			);
+		});
+
+		Kusama::execute_with(|| {
+			println!("{:?}", kusama_runtime::System::events());
+			assert_eq!(
+				kusama_runtime::Balances::free_balance(&homa_lite_sub_account),
+				100_000_000_000_000
+			);
+			assert_eq!(
+				kusama_runtime::Balances::free_balance(&ParachainAccount::get()),
+				1_000_000_000_000_000
 			);
 		});
 	}

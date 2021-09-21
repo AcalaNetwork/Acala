@@ -13,6 +13,7 @@ frame-support = { git = "https://github.com/paritytech/substrate", branch = "pol
 frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.9", default-features = false }
 module-support = { path = "../support", default-features = false }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
+xcm = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.9", default-features = false }
 
 [dev-dependencies]
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.9" }
@@ -31,5 +32,6 @@ std = [
 	"frame-system/std",
 	"module-support/std",
 	"primitives/std",
+	"xcm/std",
 ]
 try-runtime = ["frame-support/try-runtime"]

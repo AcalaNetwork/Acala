@@ -23,32 +23,69 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
 
-use codec::{Codec, Decode, Encode};
-use sp_runtime::MultiAddress;
+use codec::{Decode, Encode, FullCodec};
+use sp_runtime::traits::StaticLookup;
 
 // mod mock;
 // mod tests;
 use frame_support::RuntimeDebug;
 use module_support::CallBuilder;
-use primitives::{AccountIndex, Balance};
-use sp_std::{marker::PhantomData, vec::Vec};
+use primitives::Balance;
+use sp_std::{boxed::Box, marker::PhantomData, vec::Vec};
+
+use frame_system::Config;
 
 #[derive(Encode, Decode, RuntimeDebug)]
-pub enum BalancesCall<AccountId> {
+pub enum BalancesCall<T: Config> {
 	#[codec(index = 3)]
-	TransferKeepAlive(MultiAddress<AccountId, AccountIndex>, #[codec(compact)] u128),
+	TransferKeepAlive(BalancesTransferKeepAliveCall<T>),
+}
+
+/// Relaychain balances.transfer_keep_alive call arguments
+#[derive(Clone, Encode, Decode, RuntimeDebug)]
+pub struct BalancesTransferKeepAliveCall<T: Config> {
+	/// dest account
+	pub dest: <T::Lookup as StaticLookup>::Source,
+	/// transfer amount
+	#[codec(compact)]
+	pub value: Balance,
 }
 
 #[derive(Encode, Decode, RuntimeDebug)]
 pub enum UtilityCall<RelaychainCall> {
+	#[codec(index = 1)]
+	AsDerivative(UtilityAsDerivativeCall<RelaychainCall>),
 	#[codec(index = 2)]
-	BatchAll(Vec<RelaychainCall>),
+	BatchAll(UtilityBatchAllCall<RelaychainCall>),
+}
+
+/// Relaychain utility.as_derivative call arguments
+#[derive(Encode, Decode, RuntimeDebug)]
+pub struct UtilityAsDerivativeCall<RelaychainCall> {
+	/// derivative index
+	pub index: u16,
+	/// call
+	pub call: RelaychainCall,
+}
+
+/// Relaychain utility.batch_all call arguments
+#[derive(Encode, Decode, RuntimeDebug)]
+pub struct UtilityBatchAllCall<RelaychainCall> {
+	/// calls
+	pub calls: Vec<RelaychainCall>,
 }
 
 #[derive(Encode, Decode, RuntimeDebug)]
 pub enum StakingCall {
 	#[codec(index = 3)]
-	WithdrawUnbonded(#[codec(compact)] u32),
+	WithdrawUnbonded(StakingWithdrawUnbondedCall),
+}
+
+/// Argument for withdraw_unbond call
+#[derive(Clone, Encode, Decode, RuntimeDebug)]
+pub struct StakingWithdrawUnbondedCall {
+	/// Withdraw amount
+	pub num_slashing_spans: u32,
 }
 
 mod kusama {
@@ -57,13 +94,13 @@ mod kusama {
 	/// The encoded index correspondes to Kusama's Runtime module configuration.
 	/// https://github.com/paritytech/polkadot/blob/444e96ae34bcec8362f0f947a07bd912b32ca48f/runtime/kusama/src/lib.rs#L1379
 	#[derive(Encode, Decode, RuntimeDebug)]
-	pub enum RelaychainCall<AccountId> {
+	pub enum RelaychainCall<T: Config> {
 		#[codec(index = 4)]
-		Balances(BalancesCall<AccountId>),
+		Balances(BalancesCall<T>),
 		#[codec(index = 6)]
 		Staking(StakingCall),
 		#[codec(index = 24)]
-		Utility(UtilityCall<Self>),
+		Utility(Box<UtilityCall<Self>>),
 	}
 }
 
@@ -73,13 +110,13 @@ mod polkadot {
 	/// The encoded index correspondes to Polkadot's Runtime module configuration.
 	/// https://github.com/paritytech/polkadot/blob/84a3962e76151ac5ed3afa4ef1e0af829531ab42/runtime/polkadot/src/lib.rs#L1040
 	#[derive(Encode, Decode, RuntimeDebug)]
-	pub enum RelaychainCall<AccountId> {
+	pub enum RelaychainCall<T: Config> {
 		#[codec(index = 5)]
-		Balances(BalancesCall<AccountId>),
+		Balances(BalancesCall<T>),
 		#[codec(index = 7)]
 		Staking(StakingCall),
 		#[codec(index = 26)]
-		Utility(UtilityCall<Self>),
+		Utility(Box<UtilityCall<Self>>),
 	}
 }
 
@@ -89,26 +126,31 @@ pub use kusama::*;
 #[cfg(feature = "polkadot")]
 pub use polkadot::*;
 
-pub struct RelaychainCallBuilder<AccountId>(PhantomData<AccountId>);
+pub struct RelaychainCallBuilder<T: Config>(PhantomData<T>);
 
-impl<AccountId> CallBuilder for RelaychainCallBuilder<AccountId>
+impl<T: Config> CallBuilder for RelaychainCallBuilder<T>
 where
-	AccountId: Codec,
-	RelaychainCall<AccountId>: Codec,
+	T::AccountId: FullCodec,
+	RelaychainCall<T>: FullCodec,
 {
-	type AccountId = AccountId;
+	type AccountId = T::AccountId;
 	type Balance = Balance;
-	type RelaychainCall = RelaychainCall<Self::AccountId>;
+	type RelaychainCall = RelaychainCall<T>;
 
-	fn utility_batch_call(call: Vec<Self::RelaychainCall>) -> Self::RelaychainCall {
-		RelaychainCall::Utility(UtilityCall::BatchAll(call))
+	fn utility_batch_call(calls: Vec<Self::RelaychainCall>) -> Self::RelaychainCall {
+		RelaychainCall::Utility(Box::new(UtilityCall::BatchAll(UtilityBatchAllCall { calls })))
 	}
 
 	fn staking_withdraw_unbonded(num_slashing_spans: u32) -> Self::RelaychainCall {
-		RelaychainCall::Staking(StakingCall::WithdrawUnbonded(num_slashing_spans))
+		RelaychainCall::Staking(StakingCall::WithdrawUnbonded(StakingWithdrawUnbondedCall {
+			num_slashing_spans,
+		}))
 	}
 
-	fn balances_transfer_keep_alive(to: AccountId, amount: Balance) -> Self::RelaychainCall {
-		RelaychainCall::Balances(BalancesCall::TransferKeepAlive(MultiAddress::Id(to), amount))
+	fn balances_transfer_keep_alive(to: Self::AccountId, amount: Self::Balance) -> Self::RelaychainCall {
+		RelaychainCall::Balances(BalancesCall::TransferKeepAlive(BalancesTransferKeepAliveCall {
+			dest: T::Lookup::unlookup(to),
+			value: amount,
+		}))
 	}
 }

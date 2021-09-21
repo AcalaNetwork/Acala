@@ -97,21 +97,16 @@ impl XcmTransfer<AccountId, Balance, CurrencyId> for MockXcm {
 	}
 }
 
-impl ExecuteXcm<Call> for MockXcm {
-	fn execute_xcm(_origin: MultiLocation, _message: Xcm<Call>, _weight_limit: Weight) -> Outcome {
-		Outcome::Complete(0)
-	}
-
+impl ExecuteXcm<RelaychainCall<Runtime>> for MockXcm {
 	fn execute_xcm_in_credit(
 		origin: MultiLocation,
-		_message: Xcm<Call>,
+		_message: Xcm<RelaychainCall<Runtime>>,
 		_weight_limit: Weight,
-		_weight_credit: Weight,
+		mut _weight_credit: Weight,
 	) -> Outcome {
-		if origin == MOCK_XCM_DESTINATION {
-			Outcome::Complete(0)
-		} else {
-			Outcome::Error(XcmError::BadOrigin)
+		match origin {
+			MOCK_XCM_DESTINATION => Outcome::Complete(0),
+			_ => Outcome::Error(XcmError::Undefined),
 		}
 	}
 }
@@ -194,6 +189,7 @@ impl module_currencies::Config for Runtime {
 
 parameter_types! {
 	pub const StakingCurrencyId: CurrencyId = KSM;
+	pub StakingCurrencyIdMultiLocation: MultiLocation = MultiLocation::X1(Junction::Parent);
 	pub const LiquidCurrencyId: CurrencyId = LKSM;
 	pub MinimumMintThreshold: Balance = millicent(1);
 	pub const MockXcmDestination: MultiLocation = MOCK_XCM_DESTINATION;
@@ -204,7 +200,7 @@ parameter_types! {
 	pub const ParachainAccount: AccountId = ROOT;
 	pub const MaximumRedeemRequestMatchesForMint: u32 = 2;
 	pub static MockRelayBlockNumberProvider: u64 = 0;
-	pub const RelaychainUnboundingSlashingSpans: u32 = 5;
+	pub const RelaychainUnbondingSlashingSpans: u32 = 5;
 }
 ord_parameter_types! {
 	pub const Root: AccountId = ROOT;
@@ -223,6 +219,7 @@ impl Config for Runtime {
 	type WeightInfo = ();
 	type Currency = Currencies;
 	type StakingCurrencyId = StakingCurrencyId;
+	type StakingCurrencyIdMultiLocation = StakingCurrencyIdMultiLocation;
 	type LiquidCurrencyId = LiquidCurrencyId;
 	type GovernanceOrigin = EnsureSignedBy<Root, AccountId>;
 	type MinimumMintThreshold = MinimumMintThreshold;
@@ -232,12 +229,12 @@ impl Config for Runtime {
 	type MaxRewardPerEra = MaxRewardPerEra;
 	type MintFee = MintFee;
 	type XcmExecutor = MockXcm;
-	type RelaychainCallBuilder = RelaychainCallBuilder<AccountId>;
+	type RelaychainCallBuilder = RelaychainCallBuilder<Runtime>;
 	type BaseWithdrawFee = BaseWithdrawFee;
 	type RelaychainBlockNumber = MockRelayBlockNumberProvider;
 	type ParachainAccount = ParachainAccount;
 	type MaximumRedeemRequestMatchesForMint = MaximumRedeemRequestMatchesForMint;
-	type RelaychainUnboundingSlashingSpans = RelaychainUnboundingSlashingSpans;
+	type RelaychainUnbondingSlashingSpans = RelaychainUnbondingSlashingSpans;
 }
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;

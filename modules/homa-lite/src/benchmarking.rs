@@ -46,7 +46,7 @@ benchmarks! {
 	set_minting_cap {
 	}: _(RawOrigin::Root, 1_000_000_000_000_000_000)
 
-	set_xcm_dest_weight {
+	set_xcm_base_weight {
 	}: _(RawOrigin::Root, 1_000_000_000)
 }
 
@@ -152,12 +152,18 @@ mod benchmark_mock {
 
 	parameter_types! {
 		pub const StakingCurrencyId: CurrencyId = KSM;
+		pub StakingCurrencyIdMultiLocation: MultiLocation = MultiLocation::X1(Junction::Parent);
 		pub const LiquidCurrencyId: CurrencyId = LKSM;
-		pub const MinimumMintThreshold: Balance = 1_000_000_000;
+		pub MinimumMintThreshold: Balance = millicent(1);
 		pub const MockXcmDestination: MultiLocation = MOCK_XCM_DESTINATION;
-		pub DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
-		pub MaxRewardPerEra: Permill = Permill::from_rational(411u32, 1_000_000u32);
-		pub const MintFee: Balance = 10_000_000;
+		pub DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(10, 1);
+		pub const MaxRewardPerEra: Permill = Permill::from_percent(1);
+		pub MintFee: Balance = millicent(1000);
+		pub BaseWithdrawFee: Permill = Permill::from_rational(1u32, 1_000u32); // 0.1%
+		pub const ParachainAccount: AccountId = ROOT;
+		pub const MaximumRedeemRequestMatchesForMint: u32 = 2;
+		pub static MockRelayBlockNumberProvider: u64 = 0;
+		pub const RelaychainUnbondingSlashingSpans: u32 = 5;
 	}
 	ord_parameter_types! {
 		pub const Root: AccountId = ROOT;
@@ -168,14 +174,22 @@ mod benchmark_mock {
 		type WeightInfo = ();
 		type Currency = Currencies;
 		type StakingCurrencyId = StakingCurrencyId;
+		type StakingCurrencyIdMultiLocation = StakingCurrencyIdMultiLocation;
 		type LiquidCurrencyId = LiquidCurrencyId;
-		type GovernanceOrigin = EnsureRoot<AccountId>;
+		type GovernanceOrigin = EnsureSignedBy<Root, AccountId>;
 		type MinimumMintThreshold = MinimumMintThreshold;
 		type XcmTransfer = MockXcm;
 		type SovereignSubAccountLocation = MockXcmDestination;
 		type DefaultExchangeRate = DefaultExchangeRate;
 		type MaxRewardPerEra = MaxRewardPerEra;
 		type MintFee = MintFee;
+		type XcmSender = MockXcm;
+		type RelaychainCallBuilder = RelaychainCallBuilder<Runtime>;
+		type BaseWithdrawFee = BaseWithdrawFee;
+		type RelaychainBlockNumber = MockRelayBlockNumberProvider;
+		type ParachainAccount = ParachainAccount;
+		type MaximumRedeemRequestMatchesForMint = MaximumRedeemRequestMatchesForMint;
+		type RelaychainUnbondingSlashingSpans = RelaychainUnbondingSlashingSpans;
 	}
 
 	type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
@@ -247,9 +261,9 @@ mod tests {
 		});
 	}
 	#[test]
-	fn test_set_xcm_dest_weight() {
+	fn test_set_xcm_base_weight() {
 		ExtBuilder::default().build().execute_with(|| {
-			assert_ok!(Pallet::<Runtime>::test_benchmark_set_xcm_dest_weight());
+			assert_ok!(Pallet::<Runtime>::test_benchmark_set_xcm_base_weight());
 		});
 	}
 }

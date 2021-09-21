@@ -1565,6 +1565,7 @@ pub fn create_x2_parachain_multilocation(index: u16) -> MultiLocation {
 
 parameter_types! {
 	pub const KSMCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::KSM);
+	pub StakingCurrencyIdMultiLocation: MultiLocation = CurrencyIdConvert::convert(CurrencyId::Token(TokenSymbol::KSM)).unwrap();
 	pub const LKSMCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::LKSM);
 	pub MinimumMintThreshold: Balance = 10 * cent(KSM);
 	pub RelaychainSovereignSubAccount: MultiLocation = create_x2_parachain_multilocation(RelaychainSubAccountId::HomaLite as u16);
@@ -1573,7 +1574,7 @@ parameter_types! {
 	pub DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(10, 1);
 	pub BaseWithdrawFee: Permill = Permill::from_rational(7338u32, 1_000_000); // 10% yield per year, unbounding period = 28 days. 1.1^(28/365) = 1.0073382
 	pub MaximumRedeemRequestMatchesForMint: u32 = 20;
-	pub RelaychainUnboundingSlashingSpans: u32 = 5;
+	pub RelaychainUnbondingSlashingSpans: u32 = 5;
 	pub ParachainAccount: AccountId = ParachainInfo::get().into_account();
 }
 impl module_homa_lite::Config for Runtime {
@@ -1581,6 +1582,7 @@ impl module_homa_lite::Config for Runtime {
 	type WeightInfo = weights::module_homa_lite::WeightInfo<Runtime>;
 	type Currency = Currencies;
 	type StakingCurrencyId = KSMCurrencyId;
+	type StakingCurrencyIdMultiLocation = StakingCurrencyIdMultiLocation;
 	type LiquidCurrencyId = LKSMCurrencyId;
 	type GovernanceOrigin = EnsureRootOrHalfGeneralCouncil;
 	type MinimumMintThreshold = MinimumMintThreshold;
@@ -1590,12 +1592,12 @@ impl module_homa_lite::Config for Runtime {
 	type MaxRewardPerEra = MaxRewardPerEra;
 	type MintFee = MintFee;
 	type XcmExecutor = XcmExecutor<XcmConfig>;
-	type RelaychainCallBuilder = RelaychainCallBuilder<AccountId>;
+	type RelaychainCallBuilder = RelaychainCallBuilder<Runtime>;
 	type BaseWithdrawFee = BaseWithdrawFee;
 	type RelaychainBlockNumber = RelaychainBlockNumberProvider<Runtime>;
 	type ParachainAccount = ParachainAccount;
 	type MaximumRedeemRequestMatchesForMint = MaximumRedeemRequestMatchesForMint;
-	type RelaychainUnboundingSlashingSpans = RelaychainUnboundingSlashingSpans;
+	type RelaychainUnbondingSlashingSpans = RelaychainUnbondingSlashingSpans;
 }
 
 pub type LocalAssetTransactor = MultiCurrencyAdapter<

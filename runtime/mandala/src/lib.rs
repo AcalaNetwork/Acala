@@ -1287,16 +1287,18 @@ parameter_types! {
 	pub HomaLiteDefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(10, 1);
 	pub MaxRewardPerEra: Permill = Permill::from_rational(383u32, 1_000_000u32); // 1.15^(1/365) = 1.0003829827
 	pub MintFee: Balance = millicent(DOT);
-	pub BaseWithdrawFee: Permill = Permill::from_rational(2684u32, 1_000_000u32); // 15% yield per year, unbounding period = 7 days. 1.15^(7 / 365) = 1.00268396141
+	pub BaseWithdrawFee: Permill = Permill::from_rational(2684u32, 1_000_000u32); // 15% yield per year, unbonding period = 7 days. 1.15^(7 / 365) = 1.00268396141
 	pub MaximumRedeemRequestMatchesForMint: u32 = 20;
-	pub RelaychainUnboundingSlashingSpans: u32 = 5;
+	pub RelaychainUnbondingSlashingSpans: u32 = 5;
 	pub ParachainAccount: AccountId = ParachainInfo::get().into_account();
+	pub StakingCurrencyIdMultiLocation: MultiLocation = CurrencyIdConvert::convert(CurrencyId::Token(TokenSymbol::DOT)).unwrap();
 }
 impl module_homa_lite::Config for Runtime {
 	type Event = Event;
 	type WeightInfo = weights::module_homa_lite::WeightInfo<Runtime>;
 	type Currency = Currencies;
 	type StakingCurrencyId = GetStakingCurrencyId;
+	type StakingCurrencyIdMultiLocation = StakingCurrencyIdMultiLocation;
 	type LiquidCurrencyId = GetLiquidCurrencyId;
 	type GovernanceOrigin = EnsureRootOrHalfGeneralCouncil;
 	type MinimumMintThreshold = MinimumMintThreshold;
@@ -1306,12 +1308,12 @@ impl module_homa_lite::Config for Runtime {
 	type MaxRewardPerEra = MaxRewardPerEra;
 	type MintFee = MintFee;
 	type XcmExecutor = XcmExecutor<XcmConfig>;
-	type RelaychainCallBuilder = RelaychainCallBuilder<AccountId>;
+	type RelaychainCallBuilder = RelaychainCallBuilder<Runtime>;
 	type BaseWithdrawFee = BaseWithdrawFee;
 	type RelaychainBlockNumber = RelaychainBlockNumberProvider<Runtime>;
 	type ParachainAccount = ParachainAccount;
 	type MaximumRedeemRequestMatchesForMint = MaximumRedeemRequestMatchesForMint;
-	type RelaychainUnboundingSlashingSpans = RelaychainUnboundingSlashingSpans;
+	type RelaychainUnbondingSlashingSpans = RelaychainUnbondingSlashingSpans;
 }
 
 parameter_types! {

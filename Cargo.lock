@@ -5958,6 +5958,7 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
+ "xcm",
 ]
 
 [[package]]
@@ -9866,6 +9867,7 @@ dependencies = [
  "pallet-recovery",
  "pallet-scheduler",
  "pallet-session",
+ "pallet-staking",
  "pallet-sudo",
  "pallet-timestamp",
  "pallet-tips",

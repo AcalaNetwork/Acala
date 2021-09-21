@@ -284,73 +284,73 @@ fn can_set_mint_cap() {
 }
 
 #[test]
-fn can_set_xcm_dest_weight() {
+fn can_set_xcm_base_weight() {
 	ExtBuilder::default().build().execute_with(|| {
 		// Requires Root previlege.
 		assert_noop!(
-			HomaLite::set_xcm_dest_weight(Origin::signed(ALICE), 1_000_000),
+			HomaLite::set_xcm_base_weight(Origin::signed(ALICE), 1_000_000),
 			BadOrigin
 		);
 
 		// Set the cap.
-		assert_ok!(HomaLite::set_xcm_dest_weight(Origin::signed(ROOT), 1_000_000));
+		assert_ok!(HomaLite::set_xcm_base_weight(Origin::signed(ROOT), 1_000_000));
 
 		// Cap should be set now.
-		assert_eq!(XcmDestWeight::<Runtime>::get(), 1_000_000);
+		assert_eq!(XcmBaseWeight::<Runtime>::get(), 1_000_000);
 
-		System::assert_last_event(Event::HomaLite(crate::Event::XcmDestWeightSet(1_000_000)));
+		System::assert_last_event(Event::HomaLite(crate::Event::XcmBaseWeightSet(1_000_000)));
 	});
 }
 
 #[test]
-fn can_schedule_unbound() {
+fn can_schedule_unbond() {
 	ExtBuilder::default().build().execute_with(|| {
 		// Requires Root previlege.
 		assert_noop!(
-			HomaLite::schedule_unbound(Origin::signed(ALICE), 1_000_000, 100),
+			HomaLite::schedule_unbond(Origin::signed(ALICE), 1_000_000, 100),
 			BadOrigin
 		);
 
-		// Schedule an unbound.
-		assert_ok!(HomaLite::schedule_unbound(Origin::signed(ROOT), 1_000_000, 100));
+		// Schedule an unbond.
+		assert_ok!(HomaLite::schedule_unbond(Origin::signed(ROOT), 1_000_000, 100));
 
 		// Storage should be updated now.
-		assert_eq!(ScheduledUnbound::<Runtime>::get(), vec![(1_000_000, 100)]);
+		assert_eq!(ScheduledUnbond::<Runtime>::get(), vec![(1_000_000, 100)]);
 
-		System::assert_last_event(Event::HomaLite(crate::Event::ScheduledUnboundAdded(1_000_000, 100)));
+		System::assert_last_event(Event::HomaLite(crate::Event::ScheduledUnbondAdded(1_000_000, 100)));
 
-		// Schedule another unbound.
-		assert_ok!(HomaLite::schedule_unbound(Origin::signed(ROOT), 200, 80));
+		// Schedule another unbond.
+		assert_ok!(HomaLite::schedule_unbond(Origin::signed(ROOT), 200, 80));
 
 		// Storage should be updated now.
-		assert_eq!(ScheduledUnbound::<Runtime>::get(), vec![(1_000_000, 100), (200, 80)]);
+		assert_eq!(ScheduledUnbond::<Runtime>::get(), vec![(1_000_000, 100), (200, 80)]);
 
-		System::assert_last_event(Event::HomaLite(crate::Event::ScheduledUnboundAdded(200, 80)));
+		System::assert_last_event(Event::HomaLite(crate::Event::ScheduledUnbondAdded(200, 80)));
 	});
 }
 
 #[test]
-fn can_replace_schedule_unbound() {
+fn can_replace_schedule_unbond() {
 	ExtBuilder::default().build().execute_with(|| {
 		// Requires Root previlege.
 		assert_noop!(
-			HomaLite::replace_schedule_unbound(Origin::signed(ALICE), vec![(1_000_000, 100)]),
+			HomaLite::replace_schedule_unbond(Origin::signed(ALICE), vec![(1_000_000, 100)]),
 			BadOrigin
 		);
 
-		// Schedule an unbound.
-		assert_ok!(HomaLite::schedule_unbound(Origin::signed(ROOT), 1_000_000, 100));
-		assert_ok!(HomaLite::schedule_unbound(Origin::signed(ROOT), 200, 80));
-		assert_eq!(ScheduledUnbound::<Runtime>::get(), vec![(1_000_000, 100), (200, 80)]);
+		// Schedule an unbond.
+		assert_ok!(HomaLite::schedule_unbond(Origin::signed(ROOT), 1_000_000, 100));
+		assert_ok!(HomaLite::schedule_unbond(Origin::signed(ROOT), 200, 80));
+		assert_eq!(ScheduledUnbond::<Runtime>::get(), vec![(1_000_000, 100), (200, 80)]);
 
 		// replace the current storage.
-		assert_ok!(HomaLite::replace_schedule_unbound(
+		assert_ok!(HomaLite::replace_schedule_unbond(
 			Origin::signed(ROOT),
 			vec![(800, 2), (1357, 120)],
 		));
-		assert_eq!(ScheduledUnbound::<Runtime>::get(), vec![(800, 2), (1357, 120)]);
+		assert_eq!(ScheduledUnbond::<Runtime>::get(), vec![(800, 2), (1357, 120)]);
 
-		System::assert_last_event(Event::HomaLite(crate::Event::ScheduledUnboundReplaced));
+		System::assert_last_event(Event::HomaLite(crate::Event::ScheduledUnbondReplaced));
 	});
 }
 
@@ -358,33 +358,33 @@ fn can_replace_schedule_unbound() {
 #[test]
 fn on_idle_can_process_xcm_to_increase_available_staking_balance() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(HomaLite::replace_schedule_unbound(
+		assert_ok!(HomaLite::replace_schedule_unbond(
 			Origin::signed(ROOT),
 			vec![(100, 1), (200, 2), (30, 2)],
 		));
-		assert_eq!(ScheduledUnbound::<Runtime>::get(), vec![(100, 1), (200, 2), (30, 2)]);
+		assert_eq!(ScheduledUnbond::<Runtime>::get(), vec![(100, 1), (200, 2), (30, 2)]);
 		assert_eq!(AvailableStakingBalance::<Runtime>::get(), 0);
 
 		// Block number 0 has nothing scheduled
 		MockRelayBlockNumberProvider::set(0);
 		HomaLite::on_idle(MockRelayBlockNumberProvider::get(), 1_000_000_000);
-		assert_eq!(ScheduledUnbound::<Runtime>::get(), vec![(100, 1), (200, 2), (30, 2)]);
+		assert_eq!(ScheduledUnbond::<Runtime>::get(), vec![(100, 1), (200, 2), (30, 2)]);
 		assert_eq!(AvailableStakingBalance::<Runtime>::get(), 0);
 
 		// Block number 1
 		MockRelayBlockNumberProvider::set(1);
 		HomaLite::on_idle(MockRelayBlockNumberProvider::get(), 1_000_000_000);
-		assert_eq!(ScheduledUnbound::<Runtime>::get(), vec![(200, 2), (30, 2)]);
+		assert_eq!(ScheduledUnbond::<Runtime>::get(), vec![(200, 2), (30, 2)]);
 		assert_eq!(AvailableStakingBalance::<Runtime>::get(), 100);
 
-		// Block number 2. Each on_idle call should unbound one item.
+		// Block number 2. Each on_idle call should unbond one item.
 		MockRelayBlockNumberProvider::set(2);
 		HomaLite::on_idle(MockRelayBlockNumberProvider::get(), 1_000_000_000);
-		assert_eq!(ScheduledUnbound::<Runtime>::get(), vec![(30, 2)]);
+		assert_eq!(ScheduledUnbond::<Runtime>::get(), vec![(30, 2)]);
 		assert_eq!(AvailableStakingBalance::<Runtime>::get(), 300);
 
 		HomaLite::on_idle(MockRelayBlockNumberProvider::get(), 1_000_000_000);
-		assert_eq!(ScheduledUnbound::<Runtime>::get(), vec![]);
+		assert_eq!(ScheduledUnbond::<Runtime>::get(), vec![]);
 		assert_eq!(AvailableStakingBalance::<Runtime>::get(), 330);
 	});
 }
@@ -393,7 +393,7 @@ fn on_idle_can_process_xcm_to_increase_available_staking_balance() {
 #[test]
 fn new_available_staking_currency_can_handle_redeem_requests() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(HomaLite::replace_schedule_unbound(
+		assert_ok!(HomaLite::replace_schedule_unbond(
 			Origin::signed(ROOT),
 			vec![(dollar(1_000), 1)],
 		));
@@ -427,7 +427,7 @@ fn new_available_staking_currency_can_handle_redeem_requests() {
 		);
 
 		// Add more staking currency to fully satify the last redeem request
-		assert_ok!(HomaLite::replace_schedule_unbound(
+		assert_ok!(HomaLite::replace_schedule_unbond(
 			Origin::signed(ROOT),
 			vec![(dollar(150), 2)],
 		));
@@ -464,7 +464,7 @@ fn on_idle_can_handle_changes_in_exchange_rate() {
 			dollar(200_000)
 		));
 
-		assert_ok!(HomaLite::replace_schedule_unbound(
+		assert_ok!(HomaLite::replace_schedule_unbond(
 			Origin::signed(ROOT),
 			vec![(dollar(100_000), 1)],
 		));
@@ -485,7 +485,7 @@ fn on_idle_can_handle_changes_in_exchange_rate() {
 #[test]
 fn request_redeem_works() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(HomaLite::replace_schedule_unbound(
+		assert_ok!(HomaLite::replace_schedule_unbond(
 			Origin::signed(ROOT),
 			vec![(dollar(50_000), 1)],
 		));

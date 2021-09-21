@@ -70,7 +70,11 @@ impl<T: frame_system::Config> module_homa_lite::WeightInfo for WeightInfo<T> {
 		(19_211_000 as Weight)
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
-	fn set_xcm_dest_weight() -> Weight {
+	fn set_xcm_base_weight() -> Weight {
+		(18_883_000 as Weight)
+			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+	}
+	fn set_xcm_unbond_fee() -> Weight {
 		(18_883_000 as Weight)
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
@@ -78,12 +82,12 @@ impl<T: frame_system::Config> module_homa_lite::WeightInfo for WeightInfo<T> {
 		(20_346_000 as Weight)
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
-	fn schedule_unbound() -> Weight {
+	fn schedule_unbond() -> Weight {
 		(98_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(11 as Weight))
 			.saturating_add(T::DbWeight::get().writes(6 as Weight))
 	}
-	fn replace_schedule_unbound() -> Weight {
+	fn replace_schedule_unbond() -> Weight {
 		(98_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(11 as Weight))
 			.saturating_add(T::DbWeight::get().writes(6 as Weight))

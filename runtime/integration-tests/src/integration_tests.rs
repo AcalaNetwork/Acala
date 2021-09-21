@@ -89,9 +89,9 @@ mod karura_imports {
 		CreateTokenDeposit, Currencies, CurrencyId, CurrencyIdConvert, DataDepositPerByte, Dex, EmergencyShutdown,
 		Event, EvmAccounts, ExistentialDeposits, Get, GetNativeCurrencyId, HomaLite, KaruraFoundationAccounts, Loans,
 		MultiLocation, NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, Origin, OriginCaller,
-		ParachainInfo, ParachainSystem, Perbill, Permill, Proxy, RelaychainSovereignSubAccount, Runtime, Scheduler,
-		Session, SessionManager, SevenDays, System, TokenSymbol, Tokens, TreasuryPalletId, Utility, Vesting, XTokens,
-		XcmConfig, XcmExecutor, NFT,
+		ParachainAccount, ParachainInfo, ParachainSystem, Perbill, Permill, Proxy, RelaychainBlockNumberProvider,
+		RelaychainSovereignSubAccount, Runtime, Scheduler, Session, SessionManager, SevenDays, System, TokenSymbol,
+		Tokens, TreasuryPalletId, Utility, Vesting, XTokens, XcmConfig, XcmExecutor, NFT,
 	};
 	pub use primitives::TradingPair;
 	pub use runtime_common::{dollar, KAR, KSM, KUSD, LKSM};
@@ -127,7 +127,7 @@ pub const BOB: [u8; 32] = [5u8; 32];
 pub const CHARLIE: [u8; 32] = [6u8; 32];
 pub const DAVE: [u8; 32] = [7u8; 32];
 
-fn run_to_block(n: u32) {
+pub fn run_to_block(n: u32) {
 	while System::block_number() < n {
 		Scheduler::on_finalize(System::block_number());
 		System::set_block_number(System::block_number() + 1);
@@ -138,7 +138,7 @@ fn run_to_block(n: u32) {
 	}
 }
 
-fn set_relaychain_block_number(number: BlockNumber) {
+pub fn set_relaychain_block_number(number: BlockNumber) {
 	ParachainSystem::on_initialize(number);
 
 	let (relay_storage_root, proof) = RelayStateSproofBuilder::default().into_state_root_and_proof();

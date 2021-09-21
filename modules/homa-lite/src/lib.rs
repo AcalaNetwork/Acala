@@ -42,7 +42,10 @@ use sp_std::{
 	ops::Mul,
 	prelude::*,
 };
-use xcm::v0::{ExecuteXcm, MultiLocation, Xcm};
+use xcm::{
+	v0::{ExecuteXcm, MultiAsset, MultiLocation, Order, Xcm},
+	DoubleEncoded,
+};
 
 pub use module::*;
 pub use weights::WeightInfo;
@@ -69,6 +72,9 @@ pub mod module {
 		/// The Currency ID for the Staking asset
 		#[pallet::constant]
 		type StakingCurrencyId: Get<CurrencyId>;
+
+		/// The Staking assets currency ID in MultiLocation format.
+		type StakingCurrencyIdMultiLocation: Get<MultiLocation>;
 
 		/// The Currency ID for the Liquid asset
 		#[pallet::constant]
@@ -121,9 +127,9 @@ pub mod module {
 		#[pallet::constant]
 		type MaximumRedeemRequestMatchesForMint: Get<u32>;
 
-		/// Unbounding slashing spans for unbounding on the relaychain.
+		/// Unbonding slashing spans for unbonding on the relaychain.
 		#[pallet::constant]
-		type RelaychainUnboundingSlashingSpans: Get<u32>;
+		type RelaychainUnbondingSlashingSpans: Get<u32>;
 	}
 
 	#[pallet::error]
@@ -158,7 +164,10 @@ pub mod module {
 		StakingCurrencyMintCapUpdated(Balance),
 
 		/// A new weight for XCM transfers has been set.\[new_weight\]
-		XcmDestWeightSet(Weight),
+		XcmBaseWeightSet(Weight),
+
+		/// Unbond fee for XCM transactions has been set.\[new_fee\]
+		XcmUnbondFeeSet(Balance),
 
 		/// The redeem request has been cancelled, and funds un-reserved.
 		/// \[who, liquid_amount_unreserved\]
@@ -172,16 +181,16 @@ pub mod module {
 		/// \[user, staking_amount_redeemed, liquid_amount_deducted\]
 		Redeemed(T::AccountId, Balance, Balance),
 
-		/// A new Unbound request added to the schedule.
+		/// A new Unbond request added to the schedule.
 		/// \[staking_amount, relaychain_blocknumber\]
-		ScheduledUnboundAdded(Balance, RelaychainBlockNumberOf<T>),
+		ScheduledUnbondAdded(Balance, RelaychainBlockNumberOf<T>),
 
-		/// The ScheduledUnbound has been replaced.
-		ScheduledUnboundReplaced,
+		/// The ScheduledUnbond has been replaced.
+		ScheduledUnbondReplaced,
 
-		/// The scheduled Unbound has been withdrew from the Relaychain.
+		/// The scheduled Unbond has been withdrew from the Relaychain.
 		///\[staking_amount_added\]
-		ScheduledUnboundWithdrew(Balance),
+		ScheduledUnbondWithdrew(Balance),
 	}
 
 	/// The total amount of the staking currency on the relaychain.
@@ -198,10 +207,16 @@ pub mod module {
 	pub type StakingCurrencyMintCap<T: Config> = StorageValue<_, Balance, ValueQuery>;
 
 	/// The extra weight for cross-chain XCM transfers.
-	/// xcm_dest_weight: value: Weight
+	/// xcm_base_weight: value: Weight
 	#[pallet::storage]
-	#[pallet::getter(fn xcm_dest_weight)]
-	pub type XcmDestWeight<T: Config> = StorageValue<_, Weight, ValueQuery>;
+	#[pallet::getter(fn xcm_base_weight)]
+	pub type XcmBaseWeight<T: Config> = StorageValue<_, Weight, ValueQuery>;
+
+	/// Fee in Staking currency to be paid for XCM Unbond requests.
+	/// xcm_unbond_fee: value: Balance (Fee in Staking Currency)
+	#[pallet::storage]
+	#[pallet::getter(fn xcm_unbond_fee)]
+	pub type XcmUnbondFee<T: Config> = StorageValue<_, Balance, ValueQuery>;
 
 	/// Requests to redeem staked currencies.
 	/// RedeemRequests: Map: AccountId => Option<(liquid_amount: Balance, addtional_fee: Permill)>
@@ -215,11 +230,11 @@ pub mod module {
 	#[pallet::getter(fn available_staking_balance)]
 	pub type AvailableStakingBalance<T: Config> = StorageValue<_, Balance, ValueQuery>;
 
-	/// Funds that will be unbounded in the future
-	/// ScheduledUnbound:
+	/// Funds that will be unbonded in the future
+	/// ScheduledUnbond:
 	#[pallet::storage]
-	#[pallet::getter(fn scheduled_unbound)]
-	pub type ScheduledUnbound<T: Config> = StorageValue<_, Vec<(Balance, RelaychainBlockNumberOf<T>)>, ValueQuery>;
+	#[pallet::getter(fn scheduled_unbond)]
+	pub type ScheduledUnbond<T: Config> = StorageValue<_, Vec<(Balance, RelaychainBlockNumberOf<T>)>, ValueQuery>;
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
@@ -230,16 +245,16 @@ pub mod module {
 			let required_weight = <T as Config>::WeightInfo::on_idle();
 			let mut current_weight = 0;
 			if remaining_weight > required_weight {
-				let mut scheduled_unbound = Self::scheduled_unbound();
-				if !scheduled_unbound.is_empty() {
-					let (staking_amount, block_number) = scheduled_unbound[0];
+				let mut scheduled_unbond = Self::scheduled_unbond();
+				if !scheduled_unbond.is_empty() {
+					let (staking_amount, block_number) = scheduled_unbond[0];
 					if T::RelaychainBlockNumber::current_block_number() >= block_number {
-						let res = Self::process_scheduled_unbound(staking_amount);
+						let res = Self::process_scheduled_unbond(staking_amount);
 						if res.is_ok() {
 							current_weight = required_weight;
 
-							scheduled_unbound.remove(0);
-							ScheduledUnbound::<T>::put(scheduled_unbound);
+							scheduled_unbond.remove(0);
+							ScheduledUnbond::<T>::put(scheduled_unbond);
 						} else {
 							log::debug!("{:?}", res);
 							debug_assert!(res.is_ok());
@@ -358,23 +373,38 @@ pub mod module {
 			Ok(())
 		}
 
-		/// Sets the xcm_dest_weight for XCM transfers.
+		/// Sets the xcm_base_weight for XCM transfers.
 		/// Requires `T::GovernanceOrigin`
 		///
 		/// Parameters:
-		/// - `xcm_dest_weight`: The new weight for XCM transfers.
-		#[pallet::weight(< T as Config >::WeightInfo::set_xcm_dest_weight())]
+		/// - `xcm_base_weight`: The new weight for XCM transfers.
+		#[pallet::weight(< T as Config >::WeightInfo::set_xcm_base_weight())]
 		#[transactional]
-		pub fn set_xcm_dest_weight(origin: OriginFor<T>, xcm_dest_weight: Weight) -> DispatchResult {
+		pub fn set_xcm_base_weight(origin: OriginFor<T>, xcm_base_weight: Weight) -> DispatchResult {
 			T::GovernanceOrigin::ensure_origin(origin)?;
 
-			XcmDestWeight::<T>::put(xcm_dest_weight);
-			Self::deposit_event(Event::<T>::XcmDestWeightSet(xcm_dest_weight));
+			XcmBaseWeight::<T>::put(xcm_base_weight);
+			Self::deposit_event(Event::<T>::XcmBaseWeightSet(xcm_base_weight));
+			Ok(())
+		}
+
+		/// Sets the xcm_unbond_fee for XCM transaction. Fee is paid in Staking Currency.
+		/// Requires `T::GovernanceOrigin`
+		///
+		/// Parameters:
+		/// - `xcm_unbond_fee`: The new fee for XCM transfers.
+		#[pallet::weight(< T as Config >::WeightInfo::set_xcm_unbond_fee())]
+		#[transactional]
+		pub fn set_xcm_unbond_fee(origin: OriginFor<T>, xcm_unbond_fee: Balance) -> DispatchResult {
+			T::GovernanceOrigin::ensure_origin(origin)?;
+
+			XcmUnbondFee::<T>::put(xcm_unbond_fee);
+			Self::deposit_event(Event::<T>::XcmUnbondFeeSet(xcm_unbond_fee));
 			Ok(())
 		}
 
 		/// Put in an request to redeem Staking currencies used to mint Liquid currency.
-		/// The redemption will happen after the currencies are unbounded on the relaychain.
+		/// The redemption will happen after the currencies are unbonded on the relaychain.
 		///
 		/// Parameters:
 		/// - `liquid_amount`: The amount of liquid currency to be redeemed into Staking currency.
@@ -441,47 +471,47 @@ pub mod module {
 			Ok(())
 		}
 
-		/// Request staking currencies to be unbounded from the Relaychain.
+		/// Request staking currencies to be unbonded from the Relaychain.
 		///
 		/// Requires `T::GovernanceOrigin`
 		///
 		/// Parameters:
-		/// - `staking_amount`: The amount of staking currency to be unbounded.
-		/// - `unbound_block`: The relaychain block number to unbound.
-		#[pallet::weight(< T as Config >::WeightInfo::schedule_unbound())]
+		/// - `staking_amount`: The amount of staking currency to be unbonded.
+		/// - `unbond_block`: The relaychain block number to unbond.
+		#[pallet::weight(< T as Config >::WeightInfo::schedule_unbond())]
 		#[transactional]
-		pub fn schedule_unbound(
+		pub fn schedule_unbond(
 			origin: OriginFor<T>,
 			staking_amount: Balance,
-			unbound_block: RelaychainBlockNumberOf<T>,
+			unbond_block: RelaychainBlockNumberOf<T>,
 		) -> DispatchResult {
 			T::GovernanceOrigin::ensure_origin(origin)?;
 
-			ScheduledUnbound::<T>::append((staking_amount, unbound_block));
+			ScheduledUnbond::<T>::append((staking_amount, unbond_block));
 
-			Self::deposit_event(Event::<T>::ScheduledUnboundAdded(staking_amount, unbound_block));
+			Self::deposit_event(Event::<T>::ScheduledUnbondAdded(staking_amount, unbond_block));
 			Ok(())
 		}
 
-		/// Replace the current storage for `ScheduledUnbound`.
+		/// Replace the current storage for `ScheduledUnbond`.
 		/// This should only be used to correct mistaken call of schedule_unbond or if something
 		/// unexpected happened on relaychain.
 		///
 		/// Requires `T::GovernanceOrigin`
 		///
 		/// Parameters:
-		/// - `new_unbounds`: The new ScheduledUnbound storage to replace the currrent storage.
-		#[pallet::weight(< T as Config >::WeightInfo::replace_schedule_unbound())]
+		/// - `new_unbonds`: The new ScheduledUnbond storage to replace the currrent storage.
+		#[pallet::weight(< T as Config >::WeightInfo::replace_schedule_unbond())]
 		#[transactional]
-		pub fn replace_schedule_unbound(
+		pub fn replace_schedule_unbond(
 			origin: OriginFor<T>,
-			new_unbounds: Vec<(Balance, RelaychainBlockNumberOf<T>)>,
+			new_unbonds: Vec<(Balance, RelaychainBlockNumberOf<T>)>,
 		) -> DispatchResult {
 			T::GovernanceOrigin::ensure_origin(origin)?;
 
-			ScheduledUnbound::<T>::put(new_unbounds);
+			ScheduledUnbond::<T>::put(new_unbonds);
 
-			Self::deposit_event(Event::<T>::ScheduledUnboundReplaced);
+			Self::deposit_event(Event::<T>::ScheduledUnbondReplaced);
 
 			Ok(())
 		}
@@ -606,7 +636,7 @@ pub mod module {
 			let staking_currency = T::StakingCurrencyId::get();
 
 			// ensure the user has enough funds on their account.
-			T::Currency::ensure_can_withdraw(staking_currency, &minter, amount)?;
+			T::Currency::ensure_can_withdraw(staking_currency, minter, amount)?;
 
 			// Attempt to match redeem requests if there are any.
 			let total_liquid_to_mint = Self::convert_staking_to_liquid(amount)?;
@@ -627,7 +657,7 @@ pub mod module {
 				// Check if the redeem request exists
 				if let Some((request_amount, extra_fee)) = Self::redeem_requests(&redeemer) {
 					Self::match_mint_with_redeem_request(
-						&minter,
+						minter,
 						&redeemer,
 						request_amount,
 						extra_fee,
@@ -656,7 +686,7 @@ pub mod module {
 					break;
 				}
 				Self::match_mint_with_redeem_request(
-					&minter,
+					minter,
 					&redeemer,
 					request_amount,
 					extra_fee,
@@ -703,9 +733,9 @@ pub mod module {
 					staking_currency,
 					staking_remaining,
 					T::SovereignSubAccountLocation::get(),
-					Self::xcm_dest_weight(),
+					Self::xcm_base_weight(),
 				)?;
-				T::Currency::deposit(T::LiquidCurrencyId::get(), &minter, liquid_to_mint)?;
+				T::Currency::deposit(T::LiquidCurrencyId::get(), minter, liquid_to_mint)?;
 
 				staking_remaining = Balance::zero();
 				liquid_remaining = liquid_remaining
@@ -725,40 +755,21 @@ pub mod module {
 			Ok(())
 		}
 
-		/// Construct a XCM message
-		fn construct_xcm_unreserve_message(
-			parachain_account: T::AccountId,
-			amount: Balance,
-			weight_limit: u64,
-		) -> Xcm<T::Call> {
-			let xcm_message = T::RelaychainCallBuilder::utility_batch_call(vec![
-				T::RelaychainCallBuilder::staking_withdraw_unbonded(T::RelaychainUnboundingSlashingSpans::get()),
-				T::RelaychainCallBuilder::balances_transfer_keep_alive(parachain_account, amount),
-			]);
-
-			Xcm::Transact {
-				origin_type: xcm::v0::OriginKind::SovereignAccount,
-				require_weight_at_most: weight_limit,
-				call: xcm_message.encode().into(),
-			}
-		}
-
 		#[transactional]
-		fn process_scheduled_unbound(staking_amount: Balance) -> DispatchResult {
-			let xcm_call = Self::construct_xcm_unreserve_message(
+		fn process_scheduled_unbond(staking_amount: Balance) -> DispatchResult {
+			let msg = Self::construct_xcm_unreserve_message(
 				T::ParachainAccount::get(),
 				staking_amount,
-				Self::xcm_dest_weight(),
+				Self::xcm_base_weight(),
 			);
-			// make XCM call to trigger withdraw_unbound and transfer
-			let origin_location = T::SovereignSubAccountLocation::get();
-			let outcome = T::XcmExecutor::execute_xcm_in_credit(
-				origin_location,
-				xcm_call,
-				Self::xcm_dest_weight(),
-				Self::xcm_dest_weight(),
+			// make XCM call to trigger withdraw_unbond and transfer
+			let res = T::XcmExecutor::execute_xcm_in_credit(
+				T::SovereignSubAccountLocation::get(),
+				msg,
+				Self::xcm_base_weight(),
+				Self::xcm_base_weight(),
 			);
-			if outcome.ensure_complete().is_ok() {
+			if res.ensure_complete().is_ok() {
 				// Now that there's available staking balance, automatically match existing
 				// redeem_requests.
 				let mut new_balances: Vec<(T::AccountId, Balance, Permill)> = vec![];
@@ -805,10 +816,48 @@ pub mod module {
 				}
 
 				AvailableStakingBalance::<T>::put(available_staking_balance);
-				Self::deposit_event(Event::<T>::ScheduledUnboundWithdrew(staking_amount));
+				Self::deposit_event(Event::<T>::ScheduledUnbondWithdrew(staking_amount));
 			}
 
 			Ok(())
+		}
+
+		/// Construct a XCM message
+		pub fn construct_xcm_unreserve_message(
+			parachain_account: T::AccountId,
+			amount: Balance,
+			weight_limit: u64,
+		) -> Xcm<T::Call> {
+			let xcm_message = T::RelaychainCallBuilder::utility_batch_call(vec![
+				T::RelaychainCallBuilder::staking_withdraw_unbonded(T::RelaychainUnbondingSlashingSpans::get()),
+				T::RelaychainCallBuilder::balances_transfer_keep_alive(parachain_account, amount),
+			]);
+			let call: Xcm<T::Call> = Xcm::WithdrawAsset {
+				assets: vec![MultiAsset::ConcreteFungible {
+					id: T::StakingCurrencyIdMultiLocation::get(),
+					amount: amount + Self::xcm_unbond_fee(),
+				}],
+				effects: vec![
+					Order::BuyExecution {
+						fees: MultiAsset::All,
+						weight: weight_limit,
+						debt: Self::xcm_base_weight(),
+						halt_on_error: true,
+						xcm: vec![Xcm::Transact {
+							origin_type: xcm::v0::OriginKind::SovereignAccount,
+							require_weight_at_most: weight_limit,
+							call: xcm_message.encode().into(),
+						}],
+					},
+					Order::DepositAsset {
+						assets: vec![MultiAsset::All],
+						dest: T::SovereignSubAccountLocation::get(),
+					},
+				],
+			};
+			// let mut db_encode: DoubleEncoded<T::Call> = call.encode().into();
+			// let res = db_encode.ensure_decoded();
+			call
 		}
 
 		pub fn get_staking_exchange_rate() -> ExchangeRate {
