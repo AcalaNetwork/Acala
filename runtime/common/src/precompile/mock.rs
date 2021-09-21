@@ -124,7 +124,6 @@ impl orml_tokens::Config for Test {
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
-	type SweepOrigin = EnsureSignedBy<CouncilAccount, AccountId>;
 	type WeightInfo = ();
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = ();

@@ -91,7 +91,6 @@ impl tokens::Config for Runtime {
 	type Balance = Balance;
 	type Amount = i64;
 	type CurrencyId = CurrencyId;
-	type SweepOrigin = EnsureSignedBy<CouncilAccount, AccountId>;
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = tokens::TransferDust<Runtime, DustAccount>;
 	type WeightInfo = ();
