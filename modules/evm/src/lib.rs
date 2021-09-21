@@ -729,7 +729,7 @@ pub mod module {
 
 			let source = T::NetworkContractSource::get();
 
-			let info = if init.len().is_zero() {
+			let info = if init.is_empty() {
 				// deposit ED for mirrored token
 				T::Currency::transfer(
 					&T::TreasuryAccount::get(),
@@ -1066,7 +1066,9 @@ impl<T: Config> Pallet<T> {
 			contract_info.code_hash
 		} else {
 			// The same as `code_hash(&[])`, hardcode here.
-			H256::from_slice(&hex!("c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470").to_vec())
+			H256::from_slice(&hex!(
+				"c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"
+			))
 		}
 	}
 
