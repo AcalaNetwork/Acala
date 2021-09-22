@@ -362,7 +362,7 @@ mod karura_only_tests {
 				0
 			));
 
-			assert_ok!(HomaLite::set_xcm_base_weight(Origin::root(), 10_000_000));
+			assert_ok!(HomaLite::set_xcm_base_weight(Origin::root(), 1_000_000_000));
 			assert_ok!(HomaLite::set_xcm_unbond_fee(Origin::root(), 1_000_000_000));
 
 			assert_ok!(HomaLite::schedule_unbond(
