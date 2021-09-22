@@ -101,7 +101,8 @@ pub mod module {
 		MintAmountBelowMinimumThreshold,
 		/// The amount of Staking currency used has exceeded the cap allowed.
 		ExceededStakingCurrencyMintCap,
-		/// Too large of a cdp position was attempted to move from Staking currency to Liquid currency
+		/// Too large of a cdp position was attempted to move from Staking currency to Liquid
+		/// currency
 		TooLargePosition,
 	}
 
