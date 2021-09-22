@@ -22,7 +22,6 @@
 
 use super::*;
 use frame_support::{ord_parameter_types, parameter_types};
-use frame_system::EnsureSignedBy;
 use orml_currencies::BasicCurrencyAdapter;
 use orml_traits::parameter_type_with_key;
 use primitives::{Amount, CurrencyId, TokenSymbol};
@@ -107,7 +106,6 @@ impl orml_tokens::Config for Runtime {
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
-	type SweepOrigin = EnsureSignedBy<One, AccountId>;
 	type WeightInfo = ();
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = ();

@@ -832,7 +832,6 @@ impl orml_tokens::Config for Runtime {
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
-	type SweepOrigin = EnsureRootOrOneGeneralCouncil;
 	type WeightInfo = weights::orml_tokens::WeightInfo<Runtime>;
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = orml_tokens::TransferDust<Runtime, TreasuryAccount>;
@@ -879,6 +878,8 @@ impl module_currencies::Config for Runtime {
 	type WeightInfo = weights::module_currencies::WeightInfo<Runtime>;
 	type AddressMapping = EvmAddressMapping<Runtime>;
 	type EVMBridge = EVMBridge;
+	type SweepOrigin = EnsureRootOrOneGeneralCouncil;
+	type OnDust = module_currencies::TransferDust<Runtime, TreasuryAccount>;
 }
 
 pub struct EnsureRootOrTreasury;

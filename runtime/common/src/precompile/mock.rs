@@ -124,7 +124,6 @@ impl orml_tokens::Config for Test {
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
-	type SweepOrigin = EnsureSignedBy<CouncilAccount, AccountId>;
 	type WeightInfo = ();
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = ();
@@ -169,6 +168,8 @@ impl module_currencies::Config for Test {
 	type WeightInfo = ();
 	type AddressMapping = MockAddressMapping;
 	type EVMBridge = EVMBridge;
+	type SweepOrigin = EnsureSignedBy<CouncilAccount, AccountId>;
+	type OnDust = ();
 }
 
 impl module_evm_bridge::Config for Test {
