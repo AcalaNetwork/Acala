@@ -563,9 +563,13 @@ pub trait CompoundCashTrait<Balance, Moment> {
 	fn set_future_yield(next_cash_yield: Balance, yield_index: u128, timestamp_effective: Moment) -> DispatchResult;
 }
 
+/// Allows homa modules to atomically swap loans from Staking currency to Liquid Currency
 pub trait UpdateLoan<AccountId, Amount> {
+	// Gets active CDPs collateralized with Staking currency for user
 	fn get_position(who: &AccountId, staking_id: CurrencyId) -> Result<Position, DispatchError>;
 
+	// Swaps loan to Liquid currency while closing out Staking currency position
+	// Unsafe as it closes out position without refunding user's collateral (assumed to have already occured)
 	fn swap_position_to_liquid(
 		who: &AccountId,
 		staking_id: CurrencyId,
@@ -575,6 +579,8 @@ pub trait UpdateLoan<AccountId, Amount> {
 		debit_adjustment: Amount,
 	) -> Result<(), DispatchError>;
 
+	// Transfers collateral from Staking currency loan to user.
+	// Unsafe as it does not close out loan
 	fn transfer_collateral_from_loan(
 		currency_id: CurrencyId,
 		to: &AccountId,

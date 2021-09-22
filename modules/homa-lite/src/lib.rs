@@ -123,6 +123,10 @@ pub mod module {
 
 		/// A new weight for XCM transfers has been set.\[new_weight\]
 		XcmDestWeightSet(Weight),
+
+		/// The user has transfered Staking currency backed CDP to Liquid currency backed CDP.
+		/// \[user, amount_staked, amount_minted\]
+		MintedFromCDP(T::AccountId, Amount, Amount),
 	}
 
 	/// The total amount of the staking currency on the relaychain.
@@ -217,16 +221,21 @@ pub mod module {
 			Ok(())
 		}
 
+		/// Mint Liquid currency from a CDP using the Staking currency as collateral.
+		/// This allows for atomic swap of collateral without repaying loan
 		#[pallet::weight(0)]
 		#[transactional]
 		pub fn mint_from_cdp_loan(origin: OriginFor<T>) -> DispatchResult {
 			let who = ensure_signed(origin.clone())?;
 			let staking_id = T::StakingCurrencyId::get();
 			let liquid_id = T::LiquidCurrencyId::get();
+			// Gets the users current active position using Staking currency as collateral
 			let position = T::Loan::get_position(&who, staking_id)?;
 
 			// transfers collateral from loan to user to be able to mint Liquid Currency
 			T::Loan::transfer_collateral_from_loan(staking_id, &who, position.collateral)?;
+
+			// Mint the liquid currency
 			let pre_mint_liquid_amount = T::Currency::free_balance(liquid_id, &who);
 			Self::mint(origin, position.collateral)?;
 			let post_mint_liquid_amount = T::Currency::free_balance(liquid_id, &who);
@@ -236,6 +245,7 @@ pub mod module {
 			let staking_collateral: Amount = position.collateral.checked_into().ok_or(Error::<T>::TooLargePosition)?;
 			let debt_amount: Amount = position.debit.checked_into().ok_or(Error::<T>::TooLargePosition)?;
 
+			// Adjust loans so Liquid Currency is now backing same debt, while staking currency CDP is closed
 			T::Loan::swap_position_to_liquid(
 				&who,
 				staking_id,
@@ -245,6 +255,7 @@ pub mod module {
 				debt_amount,
 			)?;
 
+			Self::deposit_event(Event::<T>::MintedFromCDP(who, staking_collateral, liquid_collateral));
 			Ok(())
 		}
 
