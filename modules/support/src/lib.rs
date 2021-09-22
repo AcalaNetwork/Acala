@@ -19,11 +19,11 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::upper_case_acronyms)]
 
-use codec::{Decode, Encode, FullCodec, HasCompact};
+use codec::{Decode, Encode, FullCodec, HasCompact, MaxEncodedLen};
 use frame_support::pallet_prelude::{DispatchClass, Pays, Weight};
 use primitives::{
 	evm::{CallInfo, EvmAddress},
-	CurrencyId,
+	Balance, CurrencyId,
 };
 use sp_core::H160;
 use sp_runtime::{
@@ -561,4 +561,30 @@ impl CurrencyIdMapping for () {
 /// Used to interface with the Compound's Cash module
 pub trait CompoundCashTrait<Balance, Moment> {
 	fn set_future_yield(next_cash_yield: Balance, yield_index: u128, timestamp_effective: Moment) -> DispatchResult;
+}
+
+pub trait UpdateLoan<AccountId, Amount> {
+	fn get_position(who: &AccountId, staking_id: CurrencyId) -> Result<Position, DispatchError>;
+
+	fn swap_position_to_liquid(
+		who: &AccountId,
+		currency_id: CurrencyId,
+		collateral_adjustment: Amount,
+		debit_adjustment: Amount,
+	) -> Result<(), DispatchError>;
+
+	fn transfer_collateral_from_loan(
+		currency_id: CurrencyId,
+		to: &AccountId,
+		balance: Balance,
+	) -> Result<(), DispatchError>;
+}
+
+/// A collateralized debit position.
+#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, Default, MaxEncodedLen)]
+pub struct Position {
+	/// The amount of collateral.
+	pub collateral: Balance,
+	/// The amount of debit.
+	pub debit: Balance,
 }

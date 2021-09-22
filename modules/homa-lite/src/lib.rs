@@ -26,12 +26,12 @@ pub mod weights;
 
 use frame_support::{pallet_prelude::*, transactional};
 use frame_system::{ensure_signed, pallet_prelude::*};
-use module_support::{ExchangeRate, ExchangeRateProvider, Ratio};
+use module_support::{ExchangeRate, ExchangeRateProvider, Ratio, UpdateLoan};
 use orml_traits::{arithmetic::Signed, MultiCurrency, MultiCurrencyExtended, XcmTransfer};
-use primitives::{Balance, CurrencyId};
+use primitives::{Amount, Balance, CurrencyId};
 use sp_runtime::{
 	traits::{Bounded, Zero},
-	ArithmeticError, FixedPointNumber, Permill,
+	ArithmeticError, FixedPointNumber, Permill, SaturatedConversion,
 };
 use sp_std::{convert::TryInto, ops::Mul, prelude::*};
 use xcm::opaque::v0::MultiLocation;
@@ -55,6 +55,8 @@ pub mod module {
 
 		/// Multi-currency support for asset management
 		type Currency: MultiCurrencyExtended<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
+
+		type Loan: UpdateLoan<Self::AccountId, Amount>;
 
 		/// The Currency ID for the Staking asset
 		#[pallet::constant]
@@ -208,6 +210,28 @@ pub mod module {
 			TotalStakingCurrency::<T>::put(new_total_staked);
 
 			Self::deposit_event(Event::<T>::Minted(who, amount, liquid_to_mint));
+
+			Ok(())
+		}
+
+		#[pallet::weight(0)]
+		#[transactional]
+		pub fn mint_from_cdp_loan(origin: OriginFor<T>) -> DispatchResult {
+			let who = ensure_signed(origin.clone())?;
+			let staking_id = T::StakingCurrencyId::get();
+			let liquid_id = T::LiquidCurrencyId::get();
+			let position = T::Loan::get_position(&who, staking_id)?;
+
+			// transfers collateral from loan to user to be able to mint Liquid Currency
+			T::Loan::transfer_collateral_from_loan(staking_id, &who, position.collateral)?;
+
+			Self::mint(origin, position.collateral)?;
+			T::Loan::swap_position_to_liquid(
+				&who,
+				liquid_id,
+				position.collateral.saturated_into(),
+				position.debit.saturated_into(),
+			)?;
 
 			Ok(())
 		}

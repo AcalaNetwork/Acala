@@ -21,13 +21,21 @@
 #![cfg(test)]
 
 use super::*;
-use frame_support::{ord_parameter_types, parameter_types};
-use frame_system::EnsureSignedBy;
-use module_support::mocks::MockAddressMapping;
-use orml_traits::{parameter_type_with_key, XcmTransfer};
-use primitives::{Amount, TokenSymbol};
+use frame_support::{ord_parameter_types, parameter_types, PalletId};
+use frame_system::{offchain::SendTransactionTypes, EnsureSignedBy};
+use module_support::{
+	mocks::MockAddressMapping, AuctionManager, EmergencyShutdown, Price, PriceProvider, Rate, RiskManager,
+};
+use orml_traits::{parameter_type_with_key, Happened, XcmTransfer};
+use primitives::{Amount, AuctionId, Moment, TokenSymbol, TradingPair};
 use sp_core::H256;
-use sp_runtime::{testing::Header, traits::IdentityLookup, AccountId32};
+use sp_runtime::{
+	testing::{Header, TestXt},
+	traits::{AccountIdConversion, Convert, IdentityLookup, One as OneT},
+	AccountId32,
+};
+use sp_std::cell::RefCell;
+use std::collections::HashMap;
 use xcm::opaque::v0::{Junction, MultiAsset, MultiLocation, NetworkId};
 
 pub type AccountId = AccountId32;
@@ -45,6 +53,7 @@ pub const INVALID_CALLER: AccountId = AccountId32::new([254u8; 32]);
 pub const ACALA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const KSM: CurrencyId = CurrencyId::Token(TokenSymbol::KSM);
 pub const LKSM: CurrencyId = CurrencyId::Token(TokenSymbol::LKSM);
+pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
 pub const INITIAL_BALANCE: Balance = 1_000_000;
 pub const MOCK_XCM_DESTINATION: MultiLocation = MultiLocation::X1(Junction::AccountId32 {
 	network: NetworkId::Kusama,
@@ -169,6 +178,246 @@ impl module_currencies::Config for Runtime {
 	type EVMBridge = ();
 }
 
+// mock convert
+pub struct MockConvert;
+impl Convert<(CurrencyId, Balance), Balance> for MockConvert {
+	fn convert(a: (CurrencyId, Balance)) -> Balance {
+		a.1 / Balance::from(2u64)
+	}
+}
+
+// mock risk manager
+pub struct MockRiskManager;
+impl RiskManager<AccountId, CurrencyId, Balance, Balance> for MockRiskManager {
+	fn get_bad_debt_value(currency_id: CurrencyId, debit_balance: Balance) -> Balance {
+		MockConvert::convert((currency_id, debit_balance))
+	}
+
+	fn check_position_valid(
+		currency_id: CurrencyId,
+		_collateral_balance: Balance,
+		_debit_balance: Balance,
+		check_required_ratio: bool,
+	) -> DispatchResult {
+		match currency_id {
+			KSM => {
+				if check_required_ratio {
+					Err(sp_runtime::DispatchError::Other(
+						"mock below required collateral ratio error",
+					))
+				} else {
+					Err(sp_runtime::DispatchError::Other("mock below liquidation ratio error"))
+				}
+			}
+			_ => Err(sp_runtime::DispatchError::Other("mock below liquidation ratio error")),
+		}
+	}
+
+	fn check_debit_cap(currency_id: CurrencyId, total_debit_balance: Balance) -> DispatchResult {
+		match (currency_id, total_debit_balance) {
+			(KSM, 1000) => Err(sp_runtime::DispatchError::Other("mock exceed debit value cap error")),
+			(_, _) => Ok(()),
+		}
+	}
+}
+
+thread_local! {
+	pub static DOT_SHARES: RefCell<HashMap<AccountId, Balance>> = RefCell::new(HashMap::new());
+}
+
+pub struct MockOnUpdateLoan;
+impl Happened<(AccountId, CurrencyId, Amount, Balance)> for MockOnUpdateLoan {
+	fn happened(info: &(AccountId, CurrencyId, Amount, Balance)) {
+		let (who, currency_id, adjustment, previous_amount) = info;
+		let adjustment_abs =
+			sp_std::convert::TryInto::<Balance>::try_into(adjustment.saturating_abs()).unwrap_or_default();
+		let new_share_amount = if adjustment.is_positive() {
+			previous_amount.saturating_add(adjustment_abs)
+		} else {
+			previous_amount.saturating_sub(adjustment_abs)
+		};
+
+		if *currency_id == KSM {
+			DOT_SHARES.with(|v| {
+				let mut old_map = v.borrow().clone();
+				old_map.insert(who.clone(), new_share_amount);
+				*v.borrow_mut() = old_map;
+			});
+		}
+	}
+}
+
+parameter_types! {
+	pub const LoansPalletId: PalletId = PalletId(*b"aca/loan");
+}
+
+impl module_loans::Config for Runtime {
+	type Event = Event;
+	type Convert = MockConvert;
+	type Currency = Currencies;
+	type RiskManager = MockRiskManager;
+	type CDPTreasury = CDPTreasury;
+	type PalletId = LoansPalletId;
+	type OnUpdateLoan = MockOnUpdateLoan;
+}
+
+thread_local! {
+	static RELATIVE_PRICE: RefCell<Option<Price>> = RefCell::new(Some(Price::one()));
+}
+
+pub struct MockPriceSource;
+impl MockPriceSource {
+	pub fn set_relative_price(price: Option<Price>) {
+		RELATIVE_PRICE.with(|v| *v.borrow_mut() = price);
+	}
+}
+impl PriceProvider<CurrencyId> for MockPriceSource {
+	fn get_relative_price(base: CurrencyId, quote: CurrencyId) -> Option<Price> {
+		match (base, quote) {
+			(AUSD, KSM) => RELATIVE_PRICE.with(|v| *v.borrow_mut()),
+			(KSM, AUSD) => RELATIVE_PRICE.with(|v| *v.borrow_mut()),
+			_ => None,
+		}
+	}
+
+	fn get_price(_currency_id: CurrencyId) -> Option<Price> {
+		unimplemented!()
+	}
+}
+
+pub struct MockAuctionManager;
+impl AuctionManager<AccountId> for MockAuctionManager {
+	type Balance = Balance;
+	type CurrencyId = CurrencyId;
+	type AuctionId = AuctionId;
+
+	fn new_collateral_auction(
+		_refund_recipient: &AccountId,
+		_currency_id: Self::CurrencyId,
+		_amount: Self::Balance,
+		_target: Self::Balance,
+	) -> DispatchResult {
+		Ok(())
+	}
+
+	fn cancel_auction(_id: Self::AuctionId) -> DispatchResult {
+		Ok(())
+	}
+
+	fn get_total_target_in_auction() -> Self::Balance {
+		Default::default()
+	}
+
+	fn get_total_collateral_in_auction(_id: Self::CurrencyId) -> Self::Balance {
+		Default::default()
+	}
+}
+
+parameter_types! {
+	pub const GetStableCurrencyId: CurrencyId = AUSD;
+	pub const MaxAuctionsCount: u32 = 10_000;
+	pub const CDPTreasuryPalletId: PalletId = PalletId(*b"aca/cdpt");
+	pub TreasuryAccount: AccountId = PalletId(*b"aca/hztr").into_account();
+}
+
+impl cdp_treasury::Config for Runtime {
+	type Event = Event;
+	type Currency = Currencies;
+	type GetStableCurrencyId = GetStableCurrencyId;
+	type AuctionManagerHandler = MockAuctionManager;
+	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
+	type DEX = DEXModule;
+	type MaxAuctionsCount = MaxAuctionsCount;
+	type PalletId = CDPTreasuryPalletId;
+	type TreasuryAccount = TreasuryAccount;
+	type WeightInfo = ();
+}
+
+parameter_types! {
+	pub const DEXPalletId: PalletId = PalletId(*b"aca/dexm");
+	pub const GetExchangeFee: (u32, u32) = (0, 100);
+	pub const TradingPathLimit: u32 = 3;
+	pub EnabledTradingPairs: Vec<TradingPair> = vec![
+		TradingPair::from_currency_ids(AUSD, KSM).unwrap(),
+		TradingPair::from_currency_ids(ACALA, KSM).unwrap(),
+		TradingPair::from_currency_ids(ACALA, AUSD).unwrap(),
+	];
+}
+
+impl dex::Config for Runtime {
+	type Event = Event;
+	type Currency = Currencies;
+	type GetExchangeFee = GetExchangeFee;
+	type TradingPathLimit = TradingPathLimit;
+	type PalletId = DEXPalletId;
+	type CurrencyIdMapping = ();
+	type DEXIncentives = ();
+	type WeightInfo = ();
+	type ListingOrigin = EnsureSignedBy<One, AccountId>;
+}
+
+parameter_types! {
+	pub const MinimumPeriod: Moment = 1000;
+}
+impl pallet_timestamp::Config for Runtime {
+	type Moment = Moment;
+	type OnTimestampSet = ();
+	type MinimumPeriod = MinimumPeriod;
+	type WeightInfo = ();
+}
+
+thread_local! {
+	static IS_SHUTDOWN: RefCell<bool> = RefCell::new(false);
+}
+
+pub fn mock_shutdown() {
+	IS_SHUTDOWN.with(|v| *v.borrow_mut() = true)
+}
+
+pub struct MockEmergencyShutdown;
+impl EmergencyShutdown for MockEmergencyShutdown {
+	fn is_shutdown() -> bool {
+		IS_SHUTDOWN.with(|v| *v.borrow_mut())
+	}
+}
+
+ord_parameter_types! {
+	pub const One: AccountId = ALICE;
+}
+
+parameter_types! {
+	pub DefaultLiquidationRatio: Ratio = Ratio::saturating_from_rational(3, 2);
+	pub DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
+	pub DefaultLiquidationPenalty: Rate = Rate::saturating_from_rational(10, 100);
+	pub const MinimumDebitValue: Balance = 2;
+	pub MaxSwapSlippageCompareToOracle: Ratio = Ratio::saturating_from_rational(50, 100);
+	pub const UnsignedPriority: u64 = 1 << 20;
+	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![KSM];
+	pub DefaultSwapParitalPathList: Vec<Vec<CurrencyId>> = vec![
+		vec![AUSD],
+		vec![ACALA, AUSD],
+	];
+}
+
+impl cdp_engine::Config for Runtime {
+	type Event = Event;
+	type PriceSource = MockPriceSource;
+	type CollateralCurrencyIds = CollateralCurrencyIds;
+	type DefaultLiquidationRatio = DefaultLiquidationRatio;
+	type DefaultDebitExchangeRate = DefaultDebitExchangeRate;
+	type DefaultLiquidationPenalty = DefaultLiquidationPenalty;
+	type MinimumDebitValue = MinimumDebitValue;
+	type GetStableCurrencyId = GetStableCurrencyId;
+	type CDPTreasury = CDPTreasury;
+	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
+	type MaxSwapSlippageCompareToOracle = MaxSwapSlippageCompareToOracle;
+	type UnsignedPriority = UnsignedPriority;
+	type EmergencyShutdown = MockEmergencyShutdown;
+	type UnixTime = Timestamp;
+	type DefaultSwapParitalPathList = DefaultSwapParitalPathList;
+	type WeightInfo = ();
+}
+
 parameter_types! {
 	pub const StakingCurrencyId: CurrencyId = KSM;
 	pub const LiquidCurrencyId: CurrencyId = LKSM;
@@ -189,6 +438,7 @@ impl Config for Runtime {
 	type StakingCurrencyId = StakingCurrencyId;
 	type LiquidCurrencyId = LiquidCurrencyId;
 	type GovernanceOrigin = EnsureSignedBy<Root, AccountId>;
+	type Loan = CDPEngine;
 	type MinimumMintThreshold = MinimumMintThreshold;
 	type XcmTransfer = MockXcm;
 	type SovereignSubAccountLocation = MockXcmDestination;
@@ -211,8 +461,24 @@ frame_support::construct_runtime!(
 		PalletBalances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
 		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
 		Currencies: module_currencies::{Pallet, Call, Event<T>},
+		Loans: module_loans::{Pallet, Storage, Call, Event<T>},
+		CDPTreasury: cdp_treasury::{Pallet, Storage, Call, Event<T>},
+		DEXModule: dex::{Pallet, Storage, Call, Event<T>, Config<T>},
+		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
+		CDPEngine: cdp_engine::{Pallet, Storage, Call, Event<T>, Config, ValidateUnsigned},
 	}
 );
+
+/// An extrinsic type used for tests.
+pub type Extrinsic = TestXt<Call, ()>;
+
+impl<LocalCall> SendTransactionTypes<LocalCall> for Runtime
+where
+	Call: From<LocalCall>,
+{
+	type OverarchingCall = Call;
+	type Extrinsic = Extrinsic;
+}
 
 pub struct ExtBuilder {
 	tokens_balances: Vec<(AccountId, CurrencyId, Balance)>,

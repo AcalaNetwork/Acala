@@ -33,8 +33,7 @@ use frame_system::{
 	offchain::{SendTransactionTypes, SubmitTransaction},
 	pallet_prelude::*,
 };
-use loans::Position;
-use orml_traits::Change;
+use orml_traits::{Change, MultiCurrency};
 use orml_utilities::OffchainErr;
 use primitives::{Amount, Balance, CurrencyId};
 use rand_chacha::{
@@ -55,7 +54,8 @@ use sp_runtime::{
 };
 use sp_std::prelude::*;
 use support::{
-	CDPTreasury, CDPTreasuryExtended, EmergencyShutdown, ExchangeRate, Price, PriceProvider, Rate, Ratio, RiskManager,
+	CDPTreasury, CDPTreasuryExtended, EmergencyShutdown, ExchangeRate, Position, Price, PriceProvider, Rate, Ratio,
+	RiskManager, UpdateLoan,
 };
 
 mod debit_exchange_rate_convertor;
@@ -1041,4 +1041,29 @@ impl<T: Config> RiskManager<T::AccountId, CurrencyId, Balance, Balance> for Pall
 /// Pick a new PRN, in the range [0, `max`) (exclusive).
 fn pick_u32<R: RngCore>(rng: &mut R, max: u32) -> u32 {
 	rng.next_u32() % max
+}
+
+impl<T: Config> UpdateLoan<T::AccountId, Amount> for Pallet<T> {
+	fn get_position(who: &T::AccountId, staking_id: CurrencyId) -> Result<Position, DispatchError> {
+		match loans::Positions::<T>::try_get(staking_id, who) {
+			Ok(val) => Ok(val),
+			Err(_e) => Err(DispatchError::Other("No Loan Present")),
+		}
+	}
+
+	fn transfer_collateral_from_loan(currency_id: CurrencyId, to: &T::AccountId, balance: Balance) -> DispatchResult {
+		let module_id = loans::Pallet::<T>::account_id();
+		T::Currency::transfer(currency_id, &module_id, &to, balance)?;
+		Ok(())
+	}
+
+	fn swap_position_to_liquid(
+		who: &T::AccountId,
+		currency_id: CurrencyId,
+		collateral_adjustment: Amount,
+		debit_adjustment: Amount,
+	) -> DispatchResult {
+		Self::adjust_position(who, currency_id, collateral_adjustment, debit_adjustment)?;
+		loans::Pallet::<T>::update_loan(who, currency_id, -collateral_adjustment, -debit_adjustment)
+	}
 }

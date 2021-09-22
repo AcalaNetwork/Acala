@@ -22,6 +22,11 @@ sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.9" }
 module-currencies = { path = "../../modules/currencies" }
 orml-tokens = { path = "../../orml/tokens" }
+module-loans = { path = "../loans" }
+cdp-treasury = { package = "module-cdp-treasury", path = "../cdp-treasury" }
+dex = { package = "module-dex", path = "../dex"}
+pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.9" }
+cdp-engine = { package = "module-cdp-engine", path = "../cdp-engine" }
 
 [features]
 default = ["std"]

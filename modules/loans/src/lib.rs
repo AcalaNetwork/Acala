@@ -27,30 +27,20 @@
 #![allow(clippy::unused_unit)]
 #![allow(clippy::collapsible_if)]
 
-use codec::MaxEncodedLen;
 use frame_support::{log, pallet_prelude::*, transactional, PalletId};
 use orml_traits::{Happened, MultiCurrency, MultiCurrencyExtended};
 use primitives::{Amount, Balance, CurrencyId};
 use sp_runtime::{
 	traits::{AccountIdConversion, Convert, Zero},
-	ArithmeticError, DispatchResult, RuntimeDebug,
+	ArithmeticError, DispatchResult,
 };
 use sp_std::{convert::TryInto, result};
-use support::{CDPTreasury, RiskManager};
+use support::{CDPTreasury, Position, RiskManager};
 
 mod mock;
 mod tests;
 
 pub use module::*;
-
-/// A collateralized debit position.
-#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, Default, MaxEncodedLen)]
-pub struct Position {
-	/// The amount of collateral.
-	pub collateral: Balance,
-	/// The amount of debit.
-	pub debit: Balance,
-}
 
 #[frame_support::pallet]
 pub mod module {
@@ -268,7 +258,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	/// mutate records of collaterals and debits
-	fn update_loan(
+	pub fn update_loan(
 		who: &T::AccountId,
 		currency_id: CurrencyId,
 		collateral_adjustment: Amount,
