@@ -31,7 +31,7 @@ pub use module_support::{
 	mocks::MockAddressMapping, AddressMapping, CDPTreasury, DEXManager, Price, Rate, Ratio, RiskManager,
 };
 use orml_authority::DelayedOrigin;
-pub use orml_traits::{Change, GetByKey, MultiCurrency};
+pub use orml_traits::{location::RelativeLocations, Change, GetByKey, MultiCurrency};
 use orml_vesting::VestingSchedule;
 pub use primitives::currency::*;
 pub use sp_core::H160;
@@ -1424,30 +1424,28 @@ fn currency_id_convert() {
 			CurrencyIdConvert::convert(RELAY_CHAIN_CURRENCY),
 			Some(MultiLocation::parent())
 		);
+
 		assert_eq!(
 			CurrencyIdConvert::convert(NATIVE_CURRENCY),
-			Some(MultiLocation::new(
-				1,
-				X2(Parachain(id), GeneralKey(NATIVE_CURRENCY.encode()))
+			Some(MultiLocation::sibling_parachain_general_key(
+				id,
+				NativeCurrency.encode()
 			))
 		);
 		assert_eq!(
 			CurrencyIdConvert::convert(USD_CURRENCY),
-			Some(MultiLocation::new(
-				1,
-				X2(Parachain(id), GeneralKey(USD_CURRENCY.encode()))
-			))
+			Some(MultiLocation::sibling_parachain_general_key(id, USD_CURRENCY.encode()))
 		);
 		assert_eq!(
 			CurrencyIdConvert::convert(LIQUID_CURRENCY),
-			Some(MultiLocation::new(
-				1,
-				X2(Parachain(id), GeneralKey(LIQUID_CURRENCY.encode()))
+			Some(MultiLocation::sibling_parachain_general_key(
+				id,
+				LIQUID_CURRENCY.encode()
 			))
 		);
 		assert_eq!(
 			CurrencyIdConvert::convert(RENBTC),
-			Some(MultiLocation::new(1, X2(Parachain(id), GeneralKey(RENBTC.encode()))))
+			Some(MultiLocation::sibling_parachain_general_key(id, RENBTC.encode()))
 		);
 
 		#[cfg(feature = "with-mandala-runtime")]
@@ -1462,57 +1460,54 @@ fn currency_id_convert() {
 				Some(RELAY_CHAIN_CURRENCY)
 			);
 			assert_eq!(
-				CurrencyIdConvert::convert(MultiLocation::new(
-					1,
-					X2(Parachain(id), GeneralKey(NATIVE_CURRENCY.encode()))
+				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(
+					id,
+					NATIVE_CURRENCY.encode()
 				)),
 				Some(NATIVE_CURRENCY)
 			);
 			assert_eq!(
-				CurrencyIdConvert::convert(MultiLocation::new(
-					1,
-					X2(Parachain(id), GeneralKey(USD_CURRENCY.encode()))
-				)),
+				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(id, USD_CURRENCY.encode())),
 				Some(USD_CURRENCY)
 			);
 			assert_eq!(
-				CurrencyIdConvert::convert(MultiLocation::new(
-					1,
-					X2(Parachain(id), GeneralKey(LIQUID_CURRENCY.encode()))
+				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(
+					id,
+					LIQUID_CURRENCY.encode()
 				)),
 				Some(LIQUID_CURRENCY)
 			);
 			assert_eq!(
-				CurrencyIdConvert::convert(MultiLocation::new(1, X2(Parachain(id), GeneralKey(RENBTC.encode())))),
+				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(id, RENBTC.encode())),
 				Some(RENBTC)
 			);
 			assert_eq!(
-				CurrencyIdConvert::convert(MultiLocation::new(1, X2(Parachain(id), GeneralKey(KAR.encode())))),
+				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(id, KAR.encode())),
 				None
 			);
 			assert_eq!(
-				CurrencyIdConvert::convert(MultiLocation::new(1, X2(Parachain(id), GeneralKey(KUSD.encode())))),
+				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(id, KSUD.encode())),
 				None
 			);
 			assert_eq!(
-				CurrencyIdConvert::convert(MultiLocation::new(1, X2(Parachain(id), GeneralKey(KSM.encode())))),
+				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(id, KSM.encode())),
 				None
 			);
 			assert_eq!(
-				CurrencyIdConvert::convert(MultiLocation::new(1, X2(Parachain(id), GeneralKey(LKSM.encode())))),
+				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(id, KSM.encode())),
 				None
 			);
 
 			assert_eq!(
-				CurrencyIdConvert::convert(MultiLocation::new(
-					1,
-					X2(Parachain(id + 1), GeneralKey(RENBTC.encode()))
-				)),
+				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(id + 1, RENBTC.encode())),
 				None
 			);
 
 			let native_currency: MultiAsset = (
-				MultiLocation::new(1, X2(Parachain(id), GeneralKey(NATIVE_CURRENCY.encode()))),
+				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(
+					id,
+					NATIVE_CURRENCY.encode(),
+				)),
 				1,
 			)
 				.into();
@@ -1530,49 +1525,49 @@ fn currency_id_convert() {
 				Some(RELAY_CHAIN_CURRENCY)
 			);
 			assert_eq!(
-				CurrencyIdConvert::convert(MultiLocation::new(
-					1,
-					X2(Parachain(id), GeneralKey(NATIVE_CURRENCY.encode()))
+				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(
+					id,
+					NATIVE_CURRENCY.encode()
 				)),
 				Some(NATIVE_CURRENCY)
 			);
 			assert_eq!(
-				CurrencyIdConvert::convert(MultiLocation::new(
-					1,
-					X2(Parachain(id), GeneralKey(USD_CURRENCY.encode()))
-				)),
+				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(id, USD_CURRENCY.encode())),
 				Some(USD_CURRENCY)
 			);
 			assert_eq!(
-				CurrencyIdConvert::convert(MultiLocation::new(
-					1,
-					X2(Parachain(id), GeneralKey(LIQUID_CURRENCY.encode()))
+				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(
+					id,
+					LIQUID_CURRENCY.encode()
 				)),
 				Some(LIQUID_CURRENCY)
 			);
 			assert_eq!(
-				CurrencyIdConvert::convert(MultiLocation::new(1, X2(Parachain(id), GeneralKey(RENBTC.encode())))),
+				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(id, RENBTC.encode())),
 				Some(RENBTC)
 			);
 			assert_eq!(
-				CurrencyIdConvert::convert(MultiLocation::new(1, X2(Parachain(id), GeneralKey(ACA.encode())))),
+				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(id, ACA.encode())),
 				None
 			);
 			assert_eq!(
-				CurrencyIdConvert::convert(MultiLocation::new(1, X2(Parachain(id), GeneralKey(AUSD.encode())))),
+				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(id, AUSD.encode())),
 				None
 			);
 			assert_eq!(
-				CurrencyIdConvert::convert(MultiLocation::new(1, X2(Parachain(id), GeneralKey(DOT.encode())))),
+				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(id, DOT.encode())),
 				None
 			);
 			assert_eq!(
-				CurrencyIdConvert::convert(MultiLocation::new(1, X2(Parachain(id), GeneralKey(LDOT.encode())))),
+				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(id, LDOT.encode())),
 				None
 			);
 
 			let native_currency: MultiAsset = (
-				MultiLocation::new(1, X2(Parachain(id), GeneralKey(NATIVE_CURRENCY.encode()))),
+				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(
+					id,
+					NATIVE_CURRENCY.encode(),
+				)),
 				1,
 			)
 				.into();
