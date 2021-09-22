@@ -569,7 +569,8 @@ pub trait UpdateLoan<AccountId, Amount> {
 	fn get_position(who: &AccountId, staking_id: CurrencyId) -> Result<Position, DispatchError>;
 
 	// Swaps loan to Liquid currency while closing out Staking currency position
-	// Unsafe as it closes out position without refunding user's collateral (assumed to have already occured)
+	// Unsafe as it closes out position without refunding user's collateral (assumed to have already
+	// occured)
 	fn swap_position_to_liquid(
 		who: &AccountId,
 		staking_id: CurrencyId,
