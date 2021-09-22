@@ -1429,7 +1429,7 @@ fn currency_id_convert() {
 			CurrencyIdConvert::convert(NATIVE_CURRENCY),
 			Some(MultiLocation::sibling_parachain_general_key(
 				id,
-				NativeCurrency.encode()
+				NATIVE_CURRENCY.encode()
 			))
 		);
 		assert_eq!(
@@ -1486,7 +1486,7 @@ fn currency_id_convert() {
 				None
 			);
 			assert_eq!(
-				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(id, KSUD.encode())),
+				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(id, KUSD.encode())),
 				None
 			);
 			assert_eq!(
@@ -1504,10 +1504,7 @@ fn currency_id_convert() {
 			);
 
 			let native_currency: MultiAsset = (
-				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(
-					id,
-					NATIVE_CURRENCY.encode(),
-				)),
+				MultiLocation::sibling_parachain_general_key(id, NATIVE_CURRENCY.encode()),
 				1,
 			)
 				.into();
@@ -1564,10 +1561,7 @@ fn currency_id_convert() {
 			);
 
 			let native_currency: MultiAsset = (
-				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(
-					id,
-					NATIVE_CURRENCY.encode(),
-				)),
+				MultiLocation::sibling_parachain_general_key(id, NATIVE_CURRENCY.encode()),
 				1,
 			)
 				.into();
