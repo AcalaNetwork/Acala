@@ -16,16 +16,16 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::precompile::PrecompileOutput;
 use frame_support::log;
 use module_evm::{Context, ExitError, ExitSucceed, Precompile};
 use module_support::{AddressMapping as AddressMappingT, CurrencyIdMapping as CurrencyIdMappingT};
-use sp_core::U256;
 use sp_runtime::RuntimeDebug;
 use sp_std::{fmt::Debug, marker::PhantomData, prelude::*, result};
 
 use orml_traits::MultiCurrency as MultiCurrencyT;
 
-use super::input::{Input, InputT};
+use super::input::{Input, InputT, Output};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use primitives::{Balance, CurrencyId};
 
@@ -66,11 +66,7 @@ where
 		input: &[u8],
 		_target_gas: Option<u64>,
 		context: &Context,
-	) -> result::Result<(ExitSucceed, Vec<u8>, u64), ExitError> {
-		//TODO: evaluate cost
-
-		log::debug!(target: "evm", "multicurrency: input: {:?}", input);
-
+	) -> result::Result<PrecompileOutput, ExitError> {
 		let input = Input::<Action, AccountId, AddressMapping, CurrencyIdMapping>::new(input);
 
 		let action = input.action()?;
@@ -85,73 +81,78 @@ where
 					CurrencyIdMapping::name(currency_id).ok_or_else(|| ExitError::Other("Get name failed".into()))?;
 				log::debug!(target: "evm", "multicurrency: name: {:?}", name);
 
-				Ok((ExitSucceed::Returned, vec_u8_from_str(&name), 0))
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: 0,
+					output: Output::default().encode_bytes(&name),
+					logs: Default::default(),
+				})
 			}
 			Action::QuerySymbol => {
 				let symbol = CurrencyIdMapping::symbol(currency_id)
 					.ok_or_else(|| ExitError::Other("Get symbol failed".into()))?;
 				log::debug!(target: "evm", "multicurrency: symbol: {:?}", symbol);
 
-				Ok((ExitSucceed::Returned, vec_u8_from_str(&symbol), 0))
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: 0,
+					output: Output::default().encode_bytes(&symbol),
+					logs: Default::default(),
+				})
 			}
 			Action::QueryDecimals => {
 				let decimals = CurrencyIdMapping::decimals(currency_id)
 					.ok_or_else(|| ExitError::Other("Get decimals failed".into()))?;
 				log::debug!(target: "evm", "multicurrency: decimals: {:?}", decimals);
 
-				Ok((ExitSucceed::Returned, vec_u8_from_u8(decimals), 0))
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: 0,
+					output: Output::default().encode_u8(decimals),
+					logs: Default::default(),
+				})
 			}
 			Action::QueryTotalIssuance => {
-				let total_issuance = vec_u8_from_balance(MultiCurrency::total_issuance(currency_id));
+				let total_issuance = MultiCurrency::total_issuance(currency_id);
 				log::debug!(target: "evm", "multicurrency: total issuance: {:?}", total_issuance);
 
-				Ok((ExitSucceed::Returned, total_issuance, 0))
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: 0,
+					output: Output::default().encode_u128(total_issuance),
+					logs: Default::default(),
+				})
 			}
 			Action::QueryBalance => {
 				let who = input.account_id_at(1)?;
-				log::debug!(target: "evm", "multicurrency: who: {:?}", who);
+				let balance = MultiCurrency::total_balance(currency_id, &who);
+				log::debug!(target: "evm", "multicurrency: who: {:?}, balance: {:?}", who, balance);
 
-				let balance = vec_u8_from_balance(MultiCurrency::total_balance(currency_id, &who));
-				log::debug!(target: "evm", "multicurrency: balance: {:?}", balance);
-
-				Ok((ExitSucceed::Returned, balance, 0))
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: 0,
+					output: Output::default().encode_u128(balance),
+					logs: Default::default(),
+				})
 			}
 			Action::Transfer => {
 				let from = input.account_id_at(1)?;
 				let to = input.account_id_at(2)?;
 				let amount = input.balance_at(3)?;
-
-				log::debug!(target: "evm", "multicurrency: from: {:?}", from);
-				log::debug!(target: "evm", "multicurrency: to: {:?}", to);
-				log::debug!(target: "evm", "multicurrency: amount: {:?}", amount);
+				log::debug!(target: "evm", "multicurrency: transfer from: {:?}, to: {:?}, amount: {:?}", from, to, amount);
 
 				MultiCurrency::transfer(currency_id, &from, &to, amount).map_err(|e| {
 					let err_msg: &str = e.into();
 					ExitError::Other(err_msg.into())
 				})?;
 
-				log::debug!(target: "evm", "multicurrency: transfer success!");
-
-				Ok((ExitSucceed::Returned, vec![], 0))
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: 0,
+					output: vec![],
+					logs: Default::default(),
+				})
 			}
 		}
 	}
-}
-
-fn vec_u8_from_balance(balance: Balance) -> Vec<u8> {
-	let mut be_bytes = [0u8; 32];
-	U256::from(balance).to_big_endian(&mut be_bytes[..]);
-	be_bytes.to_vec()
-}
-
-fn vec_u8_from_u8(b: u8) -> Vec<u8> {
-	let mut be_bytes = [0u8; 32];
-	U256::from(b).to_big_endian(&mut be_bytes[..]);
-	be_bytes.to_vec()
-}
-
-fn vec_u8_from_str(b: &[u8]) -> Vec<u8> {
-	let mut be_bytes = [0u8; 32];
-	U256::from_big_endian(b).to_big_endian(&mut be_bytes[..]);
-	be_bytes.to_vec()
 }

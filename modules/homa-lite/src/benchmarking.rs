@@ -110,7 +110,6 @@ mod benchmark_mock {
 		type Balance = Balance;
 		type Amount = Amount;
 		type CurrencyId = CurrencyId;
-		type SweepOrigin = EnsureSignedBy<Root, AccountId>;
 		type WeightInfo = ();
 		type ExistentialDeposits = ExistentialDeposits;
 		type OnDust = ();
@@ -149,6 +148,8 @@ mod benchmark_mock {
 		type WeightInfo = ();
 		type AddressMapping = MockAddressMapping;
 		type EVMBridge = ();
+		type SweepOrigin = EnsureSignedBy<Root, AccountId>;
+		type OnDust = ();
 	}
 
 	parameter_types! {

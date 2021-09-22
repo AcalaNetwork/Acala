@@ -24,7 +24,6 @@ use super::*;
 
 use crate as nominees_election;
 use frame_support::{construct_runtime, ord_parameter_types, parameter_types};
-use frame_system::EnsureSignedBy;
 use orml_traits::parameter_type_with_key;
 use primitives::{Amount, CurrencyId, TokenSymbol};
 use sp_core::H256;
@@ -87,7 +86,6 @@ impl orml_tokens::Config for Runtime {
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
-	type SweepOrigin = EnsureSignedBy<One, AccountId>;
 	type WeightInfo = ();
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = ();

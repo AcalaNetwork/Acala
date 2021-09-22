@@ -49,6 +49,7 @@ pub use frame_support::{
 use frame_system::{EnsureRoot, RawOrigin};
 use hex_literal::hex;
 use module_currencies::{BasicCurrencyAdapter, Currency};
+use module_evm::Runner;
 use module_evm::{CallInfo, CreateInfo};
 use module_evm_accounts::EvmAddressMapping;
 pub use module_evm_manager::EvmCurrencyIdMapping;
@@ -826,7 +827,6 @@ impl orml_tokens::Config for Runtime {
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
-	type SweepOrigin = EnsureRootOrOneGeneralCouncil;
 	type WeightInfo = weights::orml_tokens::WeightInfo<Runtime>;
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = orml_tokens::TransferDust<Runtime, TreasuryAccount>;
@@ -873,6 +873,8 @@ impl module_currencies::Config for Runtime {
 	type WeightInfo = weights::module_currencies::WeightInfo<Runtime>;
 	type AddressMapping = EvmAddressMapping<Runtime>;
 	type EVMBridge = EVMBridge;
+	type SweepOrigin = EnsureRootOrOneGeneralCouncil;
+	type OnDust = module_currencies::TransferDust<Runtime, TreasuryAccount>;
 }
 
 pub struct EnsureRootOrTreasury;
@@ -1196,8 +1198,6 @@ impl module_evm_manager::Config for Runtime {
 impl orml_rewards::Config for Runtime {
 	type Share = Balance;
 	type Balance = Balance;
-	type PoolIdV0 = module_incentives::PoolIdV0<AccountId>;
-	type PoolIdConvertor = module_incentives::PoolIdConvertor<Runtime>;
 	type PoolId = module_incentives::PoolId;
 	type CurrencyId = CurrencyId;
 	type Handler = Incentives;
@@ -1209,11 +1209,8 @@ parameter_types! {
 
 impl module_incentives::Config for Runtime {
 	type Event = Event;
-	type RelaychainAccountId = AccountId;
 	type RewardsSource = UnreleasedNativeVaultAccountId;
-	type NativeCurrencyId = GetNativeCurrencyId;
 	type StableCurrencyId = GetStableCurrencyId;
-	type LiquidCurrencyId = GetLiquidCurrencyId;
 	type AccumulatePeriod = AccumulatePeriod;
 	type UpdateOrigin = EnsureRootOrThreeFourthsGeneralCouncil;
 	type CDPTreasury = CdpTreasury;
@@ -1494,7 +1491,6 @@ parameter_types! {
 	pub NativeTokenExistentialDeposit: Balance = 10 * cent(ACA);
 	pub const NewContractExtraBytes: u32 = 0;
 	pub const StorageDepositPerByte: Balance = 0;
-	pub const MaxCodeSize: u32 = 0x6000;
 	pub const DeveloperDeposit: Balance = 0;
 	pub const DeploymentFee: Balance = 0;
 }
@@ -1504,7 +1500,6 @@ parameter_types! {
 	pub NativeTokenExistentialDeposit: Balance = 10 * cent(ACA);
 	pub const NewContractExtraBytes: u32 = 10_000;
 	pub StorageDepositPerByte: Balance = deposit(0, 1);
-	pub const MaxCodeSize: u32 = 60 * 1024;
 	pub DeveloperDeposit: Balance = dollar(ACA);
 	pub DeploymentFee: Balance = dollar(ACA);
 }
@@ -1549,8 +1544,6 @@ impl module_evm::Config for Runtime {
 	type TransferAll = Currencies;
 	type NewContractExtraBytes = NewContractExtraBytes;
 	type StorageDepositPerByte = StorageDepositPerByte;
-	type MaxCodeSize = MaxCodeSize;
-
 	type Event = Event;
 	type Precompiles = runtime_common::AllPrecompiles<
 		SystemContractsFilter,
@@ -1570,6 +1563,8 @@ impl module_evm::Config for Runtime {
 	type DeploymentFee = DeploymentFee;
 	type TreasuryAccount = TreasuryAccount;
 	type FreeDeploymentOrigin = EnsureRootOrHalfGeneralCouncil;
+	type Runner = module_evm::runner::stack::Runner<Self>;
+	type FindAuthor = ();
 	type WeightInfo = weights::module_evm::WeightInfo<Runtime>;
 
 	#[cfg(feature = "with-ethereum-compatibility")]
@@ -2211,7 +2206,7 @@ impl_runtime_apis! {
 				None
 			};
 
-			module_evm::Runner::<Runtime>::call(
+			module_evm::runner::stack::Runner::<Runtime>::call(
 				from,
 				from,
 				to,
@@ -2239,7 +2234,7 @@ impl_runtime_apis! {
 				None
 			};
 
-			module_evm::Runner::<Runtime>::create(
+			module_evm::runner::stack::Runner::<Runtime>::create(
 				from,
 				data,
 				value,

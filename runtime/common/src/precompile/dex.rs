@@ -16,13 +16,13 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use super::input::{Input, InputT};
+use super::input::{Input, InputT, Output};
+use crate::precompile::PrecompileOutput;
 use frame_support::log;
 use module_evm::{Context, ExitError, ExitSucceed, Precompile};
 use module_support::{AddressMapping as AddressMappingT, CurrencyIdMapping as CurrencyIdMappingT, DEXManager};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use primitives::{Balance, CurrencyId};
-use sp_core::U256;
 use sp_runtime::RuntimeDebug;
 use sp_std::{fmt::Debug, marker::PhantomData, prelude::*, result};
 
@@ -65,11 +65,7 @@ where
 		input: &[u8],
 		_target_gas: Option<u64>,
 		_context: &Context,
-	) -> result::Result<(ExitSucceed, Vec<u8>, u64), ExitError> {
-		//TODO: evaluate cost
-
-		log::debug!(target: "evm", "dex: input: {:?}", input);
-
+	) -> result::Result<PrecompileOutput, ExitError> {
 		let input = Input::<Action, AccountId, AddressMapping, CurrencyIdMapping>::new(input);
 
 		let action = input.action()?;
@@ -86,12 +82,12 @@ where
 
 				let (balance_a, balance_b) = Dex::get_liquidity_pool(currency_id_a, currency_id_b);
 
-				// output
-				let mut be_bytes = [0u8; 64];
-				U256::from(balance_a).to_big_endian(&mut be_bytes[..32]);
-				U256::from(balance_b).to_big_endian(&mut be_bytes[32..64]);
-
-				Ok((ExitSucceed::Returned, be_bytes.to_vec(), 0))
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: 0,
+					output: Output::default().encode_u128_tuple(balance_a, balance_b),
+					logs: Default::default(),
+				})
 			}
 			Action::GetLiquidityTokenAddress => {
 				let currency_id_a = input.currency_id_at(1)?;
@@ -105,11 +101,12 @@ where
 				let value = Dex::get_liquidity_token_address(currency_id_a, currency_id_b)
 					.ok_or_else(|| ExitError::Other("Dex get_liquidity_token_address failed".into()))?;
 
-				// output
-				let mut be_bytes = [0u8; 32];
-				U256::from(value.as_bytes()).to_big_endian(&mut be_bytes[..32]);
-
-				Ok((ExitSucceed::Returned, be_bytes.to_vec(), 0))
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: 0,
+					output: Output::default().encode_address(&value),
+					logs: Default::default(),
+				})
 			}
 			Action::GetSwapTargetAmount => {
 				// solidity abi enocde array will add an offset at input[1]
@@ -128,11 +125,12 @@ where
 				let value = Dex::get_swap_target_amount(&path, supply_amount)
 					.ok_or_else(|| ExitError::Other("Dex get_swap_target_amount failed".into()))?;
 
-				// output
-				let mut be_bytes = [0u8; 32];
-				U256::from(value).to_big_endian(&mut be_bytes[..32]);
-
-				Ok((ExitSucceed::Returned, be_bytes.to_vec(), 0))
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: 0,
+					output: Output::default().encode_u128(value),
+					logs: Default::default(),
+				})
 			}
 			Action::GetSwapSupplyAmount => {
 				// solidity abi enocde array will add an offset at input[1]
@@ -151,11 +149,12 @@ where
 				let value = Dex::get_swap_supply_amount(&path, target_amount)
 					.ok_or_else(|| ExitError::Other("Dex get_swap_supply_amount failed".into()))?;
 
-				// output
-				let mut be_bytes = [0u8; 32];
-				U256::from(value).to_big_endian(&mut be_bytes[..32]);
-
-				Ok((ExitSucceed::Returned, be_bytes.to_vec(), 0))
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: 0,
+					output: Output::default().encode_u128(value),
+					logs: Default::default(),
+				})
 			}
 			Action::SwapWithExactSupply => {
 				let who = input.account_id_at(1)?;
@@ -179,11 +178,12 @@ where
 						ExitError::Other(err_msg.into())
 					})?;
 
-				// output
-				let mut be_bytes = [0u8; 32];
-				U256::from(value).to_big_endian(&mut be_bytes[..32]);
-
-				Ok((ExitSucceed::Returned, be_bytes.to_vec(), 0))
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: 0,
+					output: Output::default().encode_u128(value),
+					logs: Default::default(),
+				})
 			}
 			Action::SwapWithExactTarget => {
 				let who = input.account_id_at(1)?;
@@ -207,11 +207,12 @@ where
 						ExitError::Other(err_msg.into())
 					})?;
 
-				// output
-				let mut be_bytes = [0u8; 32];
-				U256::from(value).to_big_endian(&mut be_bytes[..32]);
-
-				Ok((ExitSucceed::Returned, be_bytes.to_vec(), 0))
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: 0,
+					output: Output::default().encode_u128(value),
+					logs: Default::default(),
+				})
 			}
 			Action::AddLiquidity => {
 				let who = input.account_id_at(1)?;
@@ -241,7 +242,12 @@ where
 					ExitError::Other(err_msg.into())
 				})?;
 
-				Ok((ExitSucceed::Returned, vec![], 0))
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: 0,
+					output: vec![],
+					logs: Default::default(),
+				})
 			}
 			Action::RemoveLiquidity => {
 				let who = input.account_id_at(1)?;
@@ -271,7 +277,12 @@ where
 					ExitError::Other(err_msg.into())
 				})?;
 
-				Ok((ExitSucceed::Returned, vec![], 0))
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: 0,
+					output: vec![],
+					logs: Default::default(),
+				})
 			}
 		}
 	}
