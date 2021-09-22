@@ -1059,11 +1059,13 @@ impl<T: Config> UpdateLoan<T::AccountId, Amount> for Pallet<T> {
 
 	fn swap_position_to_liquid(
 		who: &T::AccountId,
-		currency_id: CurrencyId,
-		collateral_adjustment: Amount,
+		staking_id: CurrencyId,
+		liquid_id: CurrencyId,
+		liquid_adjustment: Amount,
+		staking_adjustment: Amount,
 		debit_adjustment: Amount,
 	) -> DispatchResult {
-		Self::adjust_position(who, currency_id, collateral_adjustment, debit_adjustment)?;
-		loans::Pallet::<T>::update_loan(who, currency_id, -collateral_adjustment, -debit_adjustment)
+		Self::adjust_position(who, liquid_id, liquid_adjustment, debit_adjustment)?;
+		loans::Pallet::<T>::update_loan(who, staking_id, -staking_adjustment, -debit_adjustment)
 	}
 }

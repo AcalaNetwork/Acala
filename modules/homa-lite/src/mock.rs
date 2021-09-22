@@ -16,22 +16,20 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-//! Mocks for the Starport module.
+//! Mocks for the Homa Lite module.
 
 #![cfg(test)]
 
 use super::*;
 use frame_support::{ord_parameter_types, parameter_types, PalletId};
 use frame_system::{offchain::SendTransactionTypes, EnsureSignedBy};
-use module_support::{
-	mocks::MockAddressMapping, AuctionManager, EmergencyShutdown, Price, PriceProvider, Rate, RiskManager,
-};
+use module_support::{mocks::MockAddressMapping, AuctionManager, EmergencyShutdown, Price, PriceProvider, Rate};
 use orml_traits::{parameter_type_with_key, Happened, XcmTransfer};
 use primitives::{Amount, AuctionId, Moment, TokenSymbol, TradingPair};
 use sp_core::H256;
 use sp_runtime::{
 	testing::{Header, TestXt},
-	traits::{AccountIdConversion, Convert, IdentityLookup, One as OneT},
+	traits::{AccountIdConversion, Convert, IdentityLookup, One},
 	AccountId32,
 };
 use sp_std::cell::RefCell;
@@ -186,41 +184,6 @@ impl Convert<(CurrencyId, Balance), Balance> for MockConvert {
 	}
 }
 
-// mock risk manager
-pub struct MockRiskManager;
-impl RiskManager<AccountId, CurrencyId, Balance, Balance> for MockRiskManager {
-	fn get_bad_debt_value(currency_id: CurrencyId, debit_balance: Balance) -> Balance {
-		MockConvert::convert((currency_id, debit_balance))
-	}
-
-	fn check_position_valid(
-		currency_id: CurrencyId,
-		_collateral_balance: Balance,
-		_debit_balance: Balance,
-		check_required_ratio: bool,
-	) -> DispatchResult {
-		match currency_id {
-			KSM => {
-				if check_required_ratio {
-					Err(sp_runtime::DispatchError::Other(
-						"mock below required collateral ratio error",
-					))
-				} else {
-					Err(sp_runtime::DispatchError::Other("mock below liquidation ratio error"))
-				}
-			}
-			_ => Err(sp_runtime::DispatchError::Other("mock below liquidation ratio error")),
-		}
-	}
-
-	fn check_debit_cap(currency_id: CurrencyId, total_debit_balance: Balance) -> DispatchResult {
-		match (currency_id, total_debit_balance) {
-			(KSM, 1000) => Err(sp_runtime::DispatchError::Other("mock exceed debit value cap error")),
-			(_, _) => Ok(()),
-		}
-	}
-}
-
 thread_local! {
 	pub static DOT_SHARES: RefCell<HashMap<AccountId, Balance>> = RefCell::new(HashMap::new());
 }
@@ -255,7 +218,7 @@ impl module_loans::Config for Runtime {
 	type Event = Event;
 	type Convert = MockConvert;
 	type Currency = Currencies;
-	type RiskManager = MockRiskManager;
+	type RiskManager = CDPEngine;
 	type CDPTreasury = CDPTreasury;
 	type PalletId = LoansPalletId;
 	type OnUpdateLoan = MockOnUpdateLoan;
@@ -276,6 +239,8 @@ impl PriceProvider<CurrencyId> for MockPriceSource {
 		match (base, quote) {
 			(AUSD, KSM) => RELATIVE_PRICE.with(|v| *v.borrow_mut()),
 			(KSM, AUSD) => RELATIVE_PRICE.with(|v| *v.borrow_mut()),
+			(AUSD, LKSM) => RELATIVE_PRICE.with(|v| *v.borrow_mut()),
+			(LKSM, AUSD) => RELATIVE_PRICE.with(|v| *v.borrow_mut()),
 			_ => None,
 		}
 	}
@@ -325,7 +290,7 @@ impl cdp_treasury::Config for Runtime {
 	type Currency = Currencies;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type AuctionManagerHandler = MockAuctionManager;
-	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
+	type UpdateOrigin = EnsureSignedBy<RootCall, AccountId>;
 	type DEX = DEXModule;
 	type MaxAuctionsCount = MaxAuctionsCount;
 	type PalletId = CDPTreasuryPalletId;
@@ -353,7 +318,7 @@ impl dex::Config for Runtime {
 	type CurrencyIdMapping = ();
 	type DEXIncentives = ();
 	type WeightInfo = ();
-	type ListingOrigin = EnsureSignedBy<One, AccountId>;
+	type ListingOrigin = EnsureSignedBy<RootCall, AccountId>;
 }
 
 parameter_types! {
@@ -370,9 +335,10 @@ thread_local! {
 	static IS_SHUTDOWN: RefCell<bool> = RefCell::new(false);
 }
 
+/*
 pub fn mock_shutdown() {
 	IS_SHUTDOWN.with(|v| *v.borrow_mut() = true)
-}
+} */
 
 pub struct MockEmergencyShutdown;
 impl EmergencyShutdown for MockEmergencyShutdown {
@@ -382,7 +348,7 @@ impl EmergencyShutdown for MockEmergencyShutdown {
 }
 
 ord_parameter_types! {
-	pub const One: AccountId = ALICE;
+	pub const RootCall: AccountId = ROOT;
 }
 
 parameter_types! {
@@ -392,7 +358,7 @@ parameter_types! {
 	pub const MinimumDebitValue: Balance = 2;
 	pub MaxSwapSlippageCompareToOracle: Ratio = Ratio::saturating_from_rational(50, 100);
 	pub const UnsignedPriority: u64 = 1 << 20;
-	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![KSM];
+	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![KSM, LKSM];
 	pub DefaultSwapParitalPathList: Vec<Vec<CurrencyId>> = vec![
 		vec![AUSD],
 		vec![ACALA, AUSD],
@@ -409,7 +375,7 @@ impl cdp_engine::Config for Runtime {
 	type MinimumDebitValue = MinimumDebitValue;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type CDPTreasury = CDPTreasury;
-	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
+	type UpdateOrigin = EnsureSignedBy<RootCall, AccountId>;
 	type MaxSwapSlippageCompareToOracle = MaxSwapSlippageCompareToOracle;
 	type UnsignedPriority = UnsignedPriority;
 	type EmergencyShutdown = MockEmergencyShutdown;

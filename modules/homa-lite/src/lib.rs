@@ -224,11 +224,16 @@ pub mod module {
 
 			// transfers collateral from loan to user to be able to mint Liquid Currency
 			T::Loan::transfer_collateral_from_loan(staking_id, &who, position.collateral)?;
-
+			let pre_mint_liquid_amount = T::Currency::free_balance(liquid_id, &who);
 			Self::mint(origin, position.collateral)?;
+			let post_mint_liquid_amount = T::Currency::free_balance(liquid_id, &who);
+			let liquid_collateral = post_mint_liquid_amount - pre_mint_liquid_amount;
+
 			T::Loan::swap_position_to_liquid(
 				&who,
+				staking_id,
 				liquid_id,
+				liquid_collateral.saturated_into(),
 				position.collateral.saturated_into(),
 				position.debit.saturated_into(),
 			)?;

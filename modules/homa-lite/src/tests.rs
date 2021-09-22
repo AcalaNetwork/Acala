@@ -23,10 +23,12 @@
 use super::*;
 use frame_support::{assert_noop, assert_ok};
 use mock::{
-	dollar, Currencies, Event, ExtBuilder, HomaLite, Origin, Runtime, System, ACALA, ALICE, BOB, INITIAL_BALANCE,
-	INVALID_CALLER, KSM, LKSM, ROOT,
+	dollar, CDPEngine, Currencies, Event, ExtBuilder, HomaLite, Loans, MockPriceSource, Origin, Runtime, System, ACALA,
+	ALICE, BOB, INITIAL_BALANCE, INVALID_CALLER, KSM, LKSM, ROOT,
 };
-use sp_runtime::traits::BadOrigin;
+use module_support::{Position, Price, Rate};
+use orml_traits::Change;
+use sp_runtime::traits::{BadOrigin, One};
 
 #[test]
 fn mock_initialize_token_works() {
@@ -311,5 +313,67 @@ fn can_set_xcm_dest_weight() {
 			System::events().iter().last().unwrap().event,
 			Event::HomaLite(crate::Event::XcmDestWeightSet(1_000_000))
 		);
+	});
+}
+
+#[test]
+fn mint_from_loan_works() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(CDPEngine::set_collateral_params(
+			Origin::signed(ROOT),
+			KSM,
+			Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
+			Change::NewValue(Some(Rate::saturating_from_rational(2, 10))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
+			Change::NewValue(dollar(1_000_000)),
+		));
+		assert_ok!(CDPEngine::set_collateral_params(
+			Origin::signed(ROOT),
+			LKSM,
+			Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
+			Change::NewValue(Some(Rate::saturating_from_rational(2, 10))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
+			Change::NewValue(dollar(1_000_000)),
+		));
+		MockPriceSource::set_relative_price(Some(Price::one()));
+		assert_eq!(Currencies::free_balance(LKSM, &ALICE), 0);
+		assert_eq!(Currencies::free_balance(KSM, &ALICE), dollar(1_000_000));
+		assert_eq!(
+			Loans::total_positions(KSM),
+			Position {
+				collateral: 0,
+				debit: 0
+			}
+		);
+		assert_eq!(Loans::positions(KSM, &ALICE).debit, 0);
+		assert_eq!(Loans::positions(KSM, &ALICE).collateral, 0);
+
+		assert_ok!(CDPEngine::adjust_position(
+			&ALICE,
+			KSM,
+			dollar(100).try_into().unwrap(),
+			dollar(500).try_into().unwrap()
+		));
+		assert_eq!(Loans::positions(KSM, &ALICE).debit, dollar(500));
+		assert_eq!(Loans::positions(KSM, &ALICE).collateral, dollar(100));
+		assert_eq!(Loans::total_positions(KSM).debit, dollar(500));
+		assert_eq!(Loans::total_positions(KSM).collateral, dollar(100));
+
+		assert_ok!(HomaLite::set_minting_cap(Origin::signed(ROOT), dollar(1_000_000)));
+		assert_ok!(HomaLite::mint_from_cdp_loan(Origin::signed(ALICE)));
+
+		assert_eq!(Loans::positions(KSM, &ALICE).collateral, 0);
+		assert_eq!(Loans::positions(KSM, &ALICE).debit, 0);
+		assert_eq!(Loans::positions(LKSM, &ALICE).debit, dollar(500));
+		// just under the original collateral due to fees
+		assert_eq!(Loans::positions(LKSM, &ALICE).collateral, 989901000000000);
+
+		// Loans has the correct total positions
+		assert_eq!(Loans::total_positions(KSM).debit, 0);
+		assert_eq!(Loans::total_positions(KSM).collateral, 0);
+		assert_eq!(Loans::total_positions(LKSM).debit, dollar(500));
+		assert_eq!(Loans::total_positions(LKSM).collateral, 989901000000000);
 	});
 }

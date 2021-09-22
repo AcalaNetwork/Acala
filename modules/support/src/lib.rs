@@ -568,7 +568,9 @@ pub trait UpdateLoan<AccountId, Amount> {
 
 	fn swap_position_to_liquid(
 		who: &AccountId,
-		currency_id: CurrencyId,
+		staking_id: CurrencyId,
+		liquid_id: CurrencyId,
+		liquid_adjustment: Amount,
 		collateral_adjustment: Amount,
 		debit_adjustment: Amount,
 	) -> Result<(), DispatchError>;
