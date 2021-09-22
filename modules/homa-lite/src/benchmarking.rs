@@ -58,7 +58,7 @@ mod benchmark_mock {
 	use crate as module_homa_lite;
 	use frame_support::{ord_parameter_types, parameter_types};
 	use frame_system::EnsureRoot;
-	use mock::{MockXcm, ACALA, KSM, LKSM, MOCK_XCM_DESTINATION, ROOT};
+	use mock::{MockXcm, ACALA, KSM, LKSM, MOCK_XCM_ACCOUNTID, MOCK_XCM_DESTINATION, ROOT};
 	use module_support::mocks::MockAddressMapping;
 	use orml_traits::parameter_type_with_key;
 	use primitives::Amount;
@@ -156,6 +156,7 @@ mod benchmark_mock {
 		pub const LiquidCurrencyId: CurrencyId = LKSM;
 		pub MinimumMintThreshold: Balance = millicent(1);
 		pub const MockXcmDestination: MultiLocation = MOCK_XCM_DESTINATION;
+		pub const MockXcmAccountId: AccountId = MOCK_XCM_ACCOUNTID;
 		pub DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(10, 1);
 		pub const MaxRewardPerEra: Permill = Permill::from_percent(1);
 		pub MintFee: Balance = millicent(1000);
@@ -180,6 +181,7 @@ mod benchmark_mock {
 		type MinimumMintThreshold = MinimumMintThreshold;
 		type XcmTransfer = MockXcm;
 		type SovereignSubAccountLocation = MockXcmDestination;
+		type SovereignSubAccountId = MockXcmAccountId;
 		type DefaultExchangeRate = DefaultExchangeRate;
 		type MaxRewardPerEra = MaxRewardPerEra;
 		type MintFee = MintFee;

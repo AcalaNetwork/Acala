@@ -1284,6 +1284,10 @@ pub fn create_x2_parachain_multilocation(index: u16) -> MultiLocation {
 parameter_types! {
 	pub MinimumMintThreshold: Balance = 10 * cent(DOT);
 	pub RelaychainSovereignSubAccount: MultiLocation = create_x2_parachain_multilocation(RelaychainSubAccountId::HomaLite as u16);
+	pub RelaychainSovereignSubAccountId: AccountId = Utility::derivative_account_id(
+		ParachainInfo::get().into_account(),
+		RelaychainSubAccountId::HomaLite as u16
+	);
 	pub HomaLiteDefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(10, 1);
 	pub MaxRewardPerEra: Permill = Permill::from_rational(383u32, 1_000_000u32); // 1.15^(1/365) = 1.0003829827
 	pub MintFee: Balance = millicent(DOT);
@@ -1304,10 +1308,10 @@ impl module_homa_lite::Config for Runtime {
 	type MinimumMintThreshold = MinimumMintThreshold;
 	type XcmTransfer = XTokens;
 	type SovereignSubAccountLocation = RelaychainSovereignSubAccount;
+	type SovereignSubAccountId = RelaychainSovereignSubAccountId;
 	type DefaultExchangeRate = HomaLiteDefaultExchangeRate;
 	type MaxRewardPerEra = MaxRewardPerEra;
 	type MintFee = MintFee;
-	type XcmExecutor = XcmExecutor<XcmConfig>;
 	type RelaychainCallBuilder = RelaychainCallBuilder<Runtime>;
 	type BaseWithdrawFee = BaseWithdrawFee;
 	type RelaychainBlockNumber = RelaychainBlockNumberProvider<Runtime>;

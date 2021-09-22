@@ -1569,6 +1569,10 @@ parameter_types! {
 	pub const LKSMCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::LKSM);
 	pub MinimumMintThreshold: Balance = 10 * cent(KSM);
 	pub RelaychainSovereignSubAccount: MultiLocation = create_x2_parachain_multilocation(RelaychainSubAccountId::HomaLite as u16);
+	pub RelaychainSovereignSubAccountId: AccountId = Utility::derivative_account_id(
+		ParachainInfo::get().into_account(),
+		RelaychainSubAccountId::HomaLite as u16
+	);
 	pub MaxRewardPerEra: Permill = Permill::from_rational(261u32, 1_000_000u32); // 1.1^(1/365) = 1.00026115788
 	pub MintFee: Balance = 20 * millicent(KSM); // 2x XCM fee on Kusama
 	pub DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(10, 1);
@@ -1588,10 +1592,10 @@ impl module_homa_lite::Config for Runtime {
 	type MinimumMintThreshold = MinimumMintThreshold;
 	type XcmTransfer = XTokens;
 	type SovereignSubAccountLocation = RelaychainSovereignSubAccount;
+	type SovereignSubAccountId = RelaychainSovereignSubAccountId;
 	type DefaultExchangeRate = DefaultExchangeRate;
 	type MaxRewardPerEra = MaxRewardPerEra;
 	type MintFee = MintFee;
-	type XcmExecutor = XcmExecutor<XcmConfig>;
 	type RelaychainCallBuilder = RelaychainCallBuilder<Runtime>;
 	type BaseWithdrawFee = BaseWithdrawFee;
 	type RelaychainBlockNumber = RelaychainBlockNumberProvider<Runtime>;

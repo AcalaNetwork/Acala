@@ -21,7 +21,7 @@
 #![cfg(test)]
 
 use super::*;
-use frame_support::{ord_parameter_types, parameter_types};
+use frame_support::{ord_parameter_types, parameter_types, traits::Everything};
 use frame_system::EnsureSignedBy;
 use module_relaychain::RelaychainCallBuilder;
 use module_support::mocks::MockAddressMapping;
@@ -30,7 +30,8 @@ use primitives::{Amount, TokenSymbol};
 use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, AccountId32};
 
-use xcm::v0::{Error as XcmError, Junction, MultiAsset, NetworkId, Outcome};
+use xcm::v0::{Error as XcmError, ExecuteXcm, Junction, MultiAsset, NetworkId, Outcome, Result as XcmResult, SendXcm};
+use xcm_executor::traits::{InvertLocation, WeightBounds};
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
@@ -53,6 +54,7 @@ pub const MOCK_XCM_DESTINATION: MultiLocation = MultiLocation::X1(Junction::Acco
 	network: NetworkId::Kusama,
 	id: [1u8; 32],
 });
+pub const MOCK_XCM_ACCOUNTID: AccountId = AccountId32::new([255u8; 32]);
 
 /// For testing only. Does not check for overflow.
 pub fn dollar(b: Balance) -> Balance {
@@ -96,19 +98,60 @@ impl XcmTransfer<AccountId, Balance, CurrencyId> for MockXcm {
 		Ok(())
 	}
 }
+impl InvertLocation for MockXcm {
+	fn invert_location(l: &MultiLocation) -> MultiLocation {
+		l.clone()
+	}
+}
 
-impl ExecuteXcm<RelaychainCall<Runtime>> for MockXcm {
-	fn execute_xcm_in_credit(
-		origin: MultiLocation,
-		_message: Xcm<RelaychainCall<Runtime>>,
-		_weight_limit: Weight,
-		mut _weight_credit: Weight,
-	) -> Outcome {
-		match origin {
-			MOCK_XCM_DESTINATION => Outcome::Complete(0),
-			_ => Outcome::Error(XcmError::Undefined),
+impl SendXcm for MockXcm {
+	fn send_xcm(destination: MultiLocation, _message: Xcm<()>) -> XcmResult {
+		match destination {
+			MultiLocation::X1(Junction::Parent) => Ok(()),
+			_ => Err(XcmError::Undefined),
 		}
 	}
+}
+impl ExecuteXcm<Call> for MockXcm {
+	fn execute_xcm_in_credit(
+		_origin: MultiLocation,
+		_message: Xcm<Call>,
+		_weight_limit: Weight,
+		_weight_credit: Weight,
+	) -> Outcome {
+		Outcome::Complete(0)
+	}
+}
+
+pub struct MockEnsureXcmOrigin;
+impl EnsureOrigin<Origin> for MockEnsureXcmOrigin {
+	type Success = MultiLocation;
+	fn try_origin(_o: Origin) -> Result<Self::Success, Origin> {
+		Ok(MultiLocation::Null)
+	}
+}
+pub struct MockWeigher;
+impl WeightBounds<Call> for MockWeigher {
+	fn shallow(_message: &mut Xcm<Call>) -> Result<Weight, ()> {
+		Ok(0)
+	}
+
+	fn deep(_message: &mut Xcm<Call>) -> Result<Weight, ()> {
+		Ok(0)
+	}
+}
+
+impl pallet_xcm::Config for Runtime {
+	type Event = Event;
+	type SendXcmOrigin = MockEnsureXcmOrigin;
+	type XcmRouter = MockXcm;
+	type ExecuteXcmOrigin = MockEnsureXcmOrigin;
+	type XcmExecuteFilter = Everything;
+	type XcmExecutor = MockXcm;
+	type XcmTeleportFilter = ();
+	type XcmReserveTransferFilter = Everything;
+	type Weigher = MockWeigher;
+	type LocationInverter = MockXcm;
 }
 
 impl frame_system::Config for Runtime {
@@ -193,6 +236,7 @@ parameter_types! {
 	pub const LiquidCurrencyId: CurrencyId = LKSM;
 	pub MinimumMintThreshold: Balance = millicent(1);
 	pub const MockXcmDestination: MultiLocation = MOCK_XCM_DESTINATION;
+	pub const MockXcmAccountId: AccountId = MOCK_XCM_ACCOUNTID;
 	pub DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(10, 1);
 	pub const MaxRewardPerEra: Permill = Permill::from_percent(1);
 	pub MintFee: Balance = millicent(1000);
@@ -225,10 +269,10 @@ impl Config for Runtime {
 	type MinimumMintThreshold = MinimumMintThreshold;
 	type XcmTransfer = MockXcm;
 	type SovereignSubAccountLocation = MockXcmDestination;
+	type SovereignSubAccountId = MockXcmAccountId;
 	type DefaultExchangeRate = DefaultExchangeRate;
 	type MaxRewardPerEra = MaxRewardPerEra;
 	type MintFee = MintFee;
-	type XcmExecutor = MockXcm;
 	type RelaychainCallBuilder = RelaychainCallBuilder<Runtime>;
 	type BaseWithdrawFee = BaseWithdrawFee;
 	type RelaychainBlockNumber = MockRelayBlockNumberProvider;
@@ -251,6 +295,7 @@ frame_support::construct_runtime!(
 		PalletBalances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
 		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
 		Currencies: module_currencies::{Pallet, Call, Event<T>},
+		PalletXcm: pallet_xcm::{Pallet, Call, Event<T>},
 	}
 );
 

@@ -25,7 +25,7 @@ mod tests;
 pub mod weights;
 
 use frame_support::{log, pallet_prelude::*, transactional};
-use frame_system::{ensure_signed, pallet_prelude::*};
+use frame_system::{ensure_signed, pallet_prelude::*, RawOrigin};
 
 use module_support::{CallBuilder, ExchangeRate, ExchangeRateProvider, Ratio};
 use orml_traits::{
@@ -42,10 +42,7 @@ use sp_std::{
 	ops::Mul,
 	prelude::*,
 };
-use xcm::{
-	v0::{ExecuteXcm, MultiAsset, MultiLocation, Order, Xcm},
-	DoubleEncoded,
-};
+use xcm::v0::{Junction, MultiAsset, MultiLocation, Order, Xcm};
 
 pub use module::*;
 pub use weights::WeightInfo;
@@ -59,7 +56,7 @@ pub mod module {
 		<<T as Config>::Currency as MultiCurrencyExtended<<T as frame_system::Config>::AccountId>>::Amount;
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config {
+	pub trait Config: frame_system::Config + pallet_xcm::Config {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
 		/// Weight information for the extrinsics in this module.
@@ -90,13 +87,15 @@ pub mod module {
 		/// The interface to Cross-chain transfer.
 		type XcmTransfer: XcmTransfer<Self::AccountId, Balance, CurrencyId>;
 
-		/// XCM executor.
-		type XcmExecutor: ExecuteXcm<Self::Call>;
-
 		/// The Call builder for communicating with Relaychain via XCM messaging.
 		type RelaychainCallBuilder: CallBuilder<AccountId = Self::AccountId, Balance = Balance>;
 
-		/// The sovereign sub-account for where the staking currencies are sent to.
+		/// The AccountId of the sovereign sub-account for where the staking currencies are sent to.
+		#[pallet::constant]
+		type SovereignSubAccountId: Get<Self::AccountId>;
+
+		/// The MultiLocation of the sovereign sub-account for where the staking currencies are sent
+		/// to.
 		#[pallet::constant]
 		type SovereignSubAccountLocation: Get<MultiLocation>;
 
@@ -762,14 +761,10 @@ pub mod module {
 				staking_amount,
 				Self::xcm_base_weight(),
 			);
+			let origin: T::Origin = RawOrigin::Signed(T::SovereignSubAccountId::get()).into();
 			// make XCM call to trigger withdraw_unbond and transfer
-			let res = T::XcmExecutor::execute_xcm_in_credit(
-				T::SovereignSubAccountLocation::get(),
-				msg,
-				Self::xcm_base_weight(),
-				Self::xcm_base_weight(),
-			);
-			if res.ensure_complete().is_ok() {
+			let res = pallet_xcm::Pallet::<T>::send(origin, MultiLocation::X1(Junction::Parent.into()), msg);
+			if res.is_ok() {
 				// Now that there's available staking balance, automatically match existing
 				// redeem_requests.
 				let mut new_balances: Vec<(T::AccountId, Balance, Permill)> = vec![];
@@ -827,12 +822,12 @@ pub mod module {
 			parachain_account: T::AccountId,
 			amount: Balance,
 			weight_limit: u64,
-		) -> Xcm<T::Call> {
+		) -> Xcm<()> {
 			let xcm_message = T::RelaychainCallBuilder::utility_batch_call(vec![
 				T::RelaychainCallBuilder::staking_withdraw_unbonded(T::RelaychainUnbondingSlashingSpans::get()),
 				T::RelaychainCallBuilder::balances_transfer_keep_alive(parachain_account, amount),
 			]);
-			let call: Xcm<T::Call> = Xcm::WithdrawAsset {
+			Xcm::WithdrawAsset {
 				assets: vec![MultiAsset::ConcreteFungible {
 					id: T::StakingCurrencyIdMultiLocation::get(),
 					amount: amount + Self::xcm_unbond_fee(),
@@ -854,10 +849,7 @@ pub mod module {
 						dest: T::SovereignSubAccountLocation::get(),
 					},
 				],
-			};
-			// let mut db_encode: DoubleEncoded<T::Call> = call.encode().into();
-			// let res = db_encode.ensure_decoded();
-			call
+			}
 		}
 
 		pub fn get_staking_exchange_rate() -> ExchangeRate {
