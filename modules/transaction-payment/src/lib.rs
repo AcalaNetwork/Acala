@@ -697,10 +697,6 @@ where
 			WithdrawReasons::TRANSACTION_PAYMENT | WithdrawReasons::TIP
 		};
 
-		sp_std::if_std! {
-			println!("{:?}", who);
-		};
-
 		Pallet::<T>::ensure_can_charge_fee(who, fee, reason);
 
 		// withdraw native currency as fee
