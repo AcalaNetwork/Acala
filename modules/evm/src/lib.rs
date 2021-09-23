@@ -324,6 +324,8 @@ pub mod module {
 	#[pallet::genesis_build]
 	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
 		fn build(&self) {
+			use sp_std::rc::Rc;
+
 			// NOTE: Only applicable for mandala testnet, unit test and integration test.
 			// Use create_predeploy_contract to deploy predeploy contracts on the mainnet.
 			let source = T::NetworkContractSource::get();
