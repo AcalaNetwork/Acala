@@ -197,14 +197,6 @@ impl<'a, Call: Decode, Extra: SignedExtension, ConvertTx> serde::Deserialize<'a>
 	}
 }
 
-impl<Call, Extra: SignedExtension, ConvertTx> Into<UncheckedExtrinsic<Address, Call, AcalaMultiSignature, Extra>>
-	for AcalaUncheckedExtrinsic<Call, Extra, ConvertTx>
-{
-	fn into(self) -> UncheckedExtrinsic<Address, Call, AcalaMultiSignature, Extra> {
-		self.0
-	}
-}
-
 fn recover_signer(sig: &[u8; 65], msg_hash: &[u8; 32]) -> Option<H160> {
 	secp256k1_ecdsa_recover(sig, msg_hash)
 		.map(|pubkey| H160::from(H256::from_slice(&keccak_256(&pubkey))))
