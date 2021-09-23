@@ -1056,7 +1056,7 @@ impl<T: Config> UpdateLoan<T::AccountId, Amount> for Pallet<T> {
 
 	fn transfer_collateral_from_loan(currency_id: CurrencyId, to: &T::AccountId, balance: Balance) -> DispatchResult {
 		let module_id = loans::Pallet::<T>::account_id();
-		T::Currency::transfer(currency_id, &module_id, &to, balance)?;
+		T::Currency::transfer(currency_id, &module_id, to, balance)?;
 		Ok(())
 	}
 

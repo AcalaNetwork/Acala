@@ -231,6 +231,8 @@ pub mod module {
 			let liquid_id = T::LiquidCurrencyId::get();
 			// Gets the users current active position using Staking currency as collateral
 			let position = T::Loan::get_position(&who, staking_id)?;
+			let staking_collateral: Amount = position.collateral.checked_into().ok_or(Error::<T>::TooLargePosition)?;
+			let debt_amount: Amount = position.debit.checked_into().ok_or(Error::<T>::TooLargePosition)?;
 
 			// transfers collateral from loan to user to be able to mint Liquid Currency
 			T::Loan::transfer_collateral_from_loan(staking_id, &who, position.collateral)?;
@@ -242,8 +244,6 @@ pub mod module {
 			let liquid_collateral: Amount = (post_mint_liquid_amount - pre_mint_liquid_amount)
 				.checked_into()
 				.ok_or(Error::<T>::TooLargePosition)?;
-			let staking_collateral: Amount = position.collateral.checked_into().ok_or(Error::<T>::TooLargePosition)?;
-			let debt_amount: Amount = position.debit.checked_into().ok_or(Error::<T>::TooLargePosition)?;
 
 			// Adjust loans so Liquid Currency is now backing same debt, while staking currency CDP is closed
 			T::Loan::swap_position_to_liquid(
