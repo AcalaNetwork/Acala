@@ -565,24 +565,24 @@ pub trait CompoundCashTrait<Balance, Moment> {
 
 /// Allows homa modules to atomically swap loans from Staking currency to Liquid Currency
 /// These functions are unsafe individually and should not be used outside homa modules
-pub trait UpdateLoan<AccountId, Amount> {
-	// Gets active CDPs collateralized with Staking currency for user
+pub trait UpdateLoan<AccountId> {
+	/// Gets active CDPs collateralized with Staking currency for user
 	fn get_position(who: &AccountId, staking_id: CurrencyId) -> Result<Position, DispatchError>;
 
-	// Swaps loan to Liquid currency while closing out Staking currency position
-	// Unsafe as it closes out position without refunding user's collateral (assumed to have already
-	// occured)
+	/// Swaps loan to Liquid currency while closing out Staking currency position
+	/// Unsafe as it closes out position without refunding user's collateral (assumed to have
+	/// already occured)
 	fn swap_position_to_liquid(
 		who: &AccountId,
 		staking_id: CurrencyId,
 		liquid_id: CurrencyId,
-		liquid_adjustment: Amount,
-		collateral_adjustment: Amount,
-		debit_adjustment: Amount,
+		liquid_adjustment: Balance,
+		collateral_adjustment: Balance,
+		debit_adjustment: Balance,
 	) -> Result<(), DispatchError>;
 
-	// Transfers collateral from loan to user.
-	// Unsafe as it does not close out loan
+	/// Transfers collateral from loan to user.
+	/// Unsafe as it does not close out loan
 	fn transfer_collateral_from_loan(
 		currency_id: CurrencyId,
 		to: &AccountId,
@@ -590,7 +590,7 @@ pub trait UpdateLoan<AccountId, Amount> {
 	) -> Result<(), DispatchError>;
 }
 
-impl<AccountId, Amount> UpdateLoan<AccountId, Amount> for () {
+impl<AccountId> UpdateLoan<AccountId> for () {
 	fn get_position(_who: &AccountId, _staking_id: CurrencyId) -> Result<Position, DispatchError> {
 		Err(DispatchError::Other("unimplemented update loan trait"))
 	}
@@ -599,9 +599,9 @@ impl<AccountId, Amount> UpdateLoan<AccountId, Amount> for () {
 		_who: &AccountId,
 		_staking_id: CurrencyId,
 		_liquid_id: CurrencyId,
-		_liquid_adjustment: Amount,
-		_collateral_adjustment: Amount,
-		_debit_adjustment: Amount,
+		_liquid_adjustment: Balance,
+		_collateral_adjustment: Balance,
+		_debit_adjustment: Balance,
 	) -> Result<(), DispatchError> {
 		Err(DispatchError::Other("unimplemented update loan trait"))
 	}

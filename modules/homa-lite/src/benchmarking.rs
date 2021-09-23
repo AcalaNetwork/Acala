@@ -171,6 +171,7 @@ mod benchmark_mock {
 		type LiquidCurrencyId = LiquidCurrencyId;
 		type GovernanceOrigin = EnsureRoot<AccountId>;
 		type MinimumMintThreshold = MinimumMintThreshold;
+		type Loan = ();
 		type XcmTransfer = MockXcm;
 		type SovereignSubAccountLocation = MockXcmDestination;
 		type DefaultExchangeRate = DefaultExchangeRate;

@@ -28,9 +28,9 @@ use frame_support::{pallet_prelude::*, transactional};
 use frame_system::{ensure_signed, pallet_prelude::*};
 use module_support::{ExchangeRate, ExchangeRateProvider, Ratio, UpdateLoan};
 use orml_traits::{arithmetic::Signed, MultiCurrency, MultiCurrencyExtended, XcmTransfer};
-use primitives::{Amount, Balance, CurrencyId};
+use primitives::{Balance, CurrencyId};
 use sp_runtime::{
-	traits::{Bounded, CheckedConversion, Zero},
+	traits::{Bounded, Zero},
 	ArithmeticError, FixedPointNumber, Permill,
 };
 use sp_std::{convert::TryInto, ops::Mul, prelude::*};
@@ -56,7 +56,7 @@ pub mod module {
 		/// Multi-currency support for asset management
 		type Currency: MultiCurrencyExtended<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
 
-		type Loan: UpdateLoan<Self::AccountId, Amount>;
+		type Loan: UpdateLoan<Self::AccountId>;
 
 		/// The Currency ID for the Staking asset
 		#[pallet::constant]
@@ -101,9 +101,6 @@ pub mod module {
 		MintAmountBelowMinimumThreshold,
 		/// The amount of Staking currency used has exceeded the cap allowed.
 		ExceededStakingCurrencyMintCap,
-		/// Too large of a cdp position was attempted to move from Staking currency to Liquid
-		/// currency
-		TooLargePosition,
 	}
 
 	#[pallet::event]
@@ -126,7 +123,7 @@ pub mod module {
 
 		/// The user has transfered Staking currency backed CDP to Liquid currency backed CDP.
 		/// \[user, amount_staked, amount_minted\]
-		MintedFromCDP(T::AccountId, Amount, Amount),
+		MintedFromCDP(T::AccountId, Balance, Balance),
 	}
 
 	/// The total amount of the staking currency on the relaychain.
@@ -226,13 +223,11 @@ pub mod module {
 		#[pallet::weight(0)]
 		#[transactional]
 		pub fn mint_from_cdp_loan(origin: OriginFor<T>) -> DispatchResult {
-			let who = ensure_signed(origin.clone())?;
+			let who: T::AccountId = ensure_signed(origin.clone())?;
 			let staking_id = T::StakingCurrencyId::get();
 			let liquid_id = T::LiquidCurrencyId::get();
 			// Gets the users current active position using Staking currency as collateral
 			let position = T::Loan::get_position(&who, staking_id)?;
-			let staking_collateral: Amount = position.collateral.checked_into().ok_or(Error::<T>::TooLargePosition)?;
-			let debt_amount: Amount = position.debit.checked_into().ok_or(Error::<T>::TooLargePosition)?;
 
 			// transfers collateral from loan to user to be able to mint Liquid Currency
 			T::Loan::transfer_collateral_from_loan(staking_id, &who, position.collateral)?;
@@ -241,9 +236,7 @@ pub mod module {
 			let pre_mint_liquid_amount = T::Currency::free_balance(liquid_id, &who);
 			Self::mint(origin, position.collateral)?;
 			let post_mint_liquid_amount = T::Currency::free_balance(liquid_id, &who);
-			let liquid_collateral: Amount = (post_mint_liquid_amount - pre_mint_liquid_amount)
-				.checked_into()
-				.ok_or(Error::<T>::TooLargePosition)?;
+			let liquid_collateral = post_mint_liquid_amount - pre_mint_liquid_amount;
 
 			// Adjust loans so Liquid Currency is now backing same debt, while staking currency CDP is closed
 			T::Loan::swap_position_to_liquid(
@@ -251,11 +244,11 @@ pub mod module {
 				staking_id,
 				liquid_id,
 				liquid_collateral,
-				staking_collateral,
-				debt_amount,
+				position.collateral,
+				position.debit,
 			)?;
 
-			Self::deposit_event(Event::<T>::MintedFromCDP(who, staking_collateral, liquid_collateral));
+			Self::deposit_event(Event::<T>::MintedFromCDP(who, position.collateral, liquid_collateral));
 			Ok(())
 		}
 

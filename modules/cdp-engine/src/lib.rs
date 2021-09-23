@@ -46,7 +46,7 @@ use sp_runtime::{
 		storage_lock::{StorageLock, Time},
 		Duration,
 	},
-	traits::{Bounded, Convert, One, Saturating, StaticLookup, UniqueSaturatedInto, Zero},
+	traits::{Bounded, CheckedConversion, Convert, One, Saturating, StaticLookup, UniqueSaturatedInto, Zero},
 	transaction_validity::{
 		InvalidTransaction, TransactionPriority, TransactionSource, TransactionValidity, ValidTransaction,
 	},
@@ -226,6 +226,8 @@ pub mod module {
 		SwapDebitFailed,
 		/// CDP does not exist
 		NoOpenPosition,
+		/// CDP is too large to safely cast from u128 to i128
+		TooLargePosition,
 	}
 
 	#[pallet::event]
@@ -1046,7 +1048,7 @@ fn pick_u32<R: RngCore>(rng: &mut R, max: u32) -> u32 {
 }
 
 // Allows for homa-lite module to access cdp functionality
-impl<T: Config> UpdateLoan<T::AccountId, Amount> for Pallet<T> {
+impl<T: Config> UpdateLoan<T::AccountId> for Pallet<T> {
 	fn get_position(who: &T::AccountId, staking_id: CurrencyId) -> Result<Position, DispatchError> {
 		match loans::Positions::<T>::try_get(staking_id, who) {
 			Ok(val) => Ok(val),
@@ -1056,19 +1058,22 @@ impl<T: Config> UpdateLoan<T::AccountId, Amount> for Pallet<T> {
 
 	fn transfer_collateral_from_loan(currency_id: CurrencyId, to: &T::AccountId, balance: Balance) -> DispatchResult {
 		let module_id = loans::Pallet::<T>::account_id();
-		T::Currency::transfer(currency_id, &module_id, to, balance)?;
-		Ok(())
+		T::Currency::transfer(currency_id, &module_id, to, balance)
 	}
 
 	fn swap_position_to_liquid(
 		who: &T::AccountId,
 		staking_id: CurrencyId,
 		liquid_id: CurrencyId,
-		liquid_adjustment: Amount,
-		staking_adjustment: Amount,
-		debit_adjustment: Amount,
+		liquid_adjustment: Balance,
+		staking_adjustment: Balance,
+		debit_adjustment: Balance,
 	) -> DispatchResult {
-		Self::adjust_position(who, liquid_id, liquid_adjustment, debit_adjustment)?;
-		loans::Pallet::<T>::update_loan(who, staking_id, -staking_adjustment, -debit_adjustment)
+		let liquid_collateral: Amount = liquid_adjustment.checked_into().ok_or(Error::<T>::TooLargePosition)?;
+		let staking_collateral: Amount = staking_adjustment.checked_into().ok_or(Error::<T>::TooLargePosition)?;
+		let debit_amount: Amount = debit_adjustment.checked_into().ok_or(Error::<T>::TooLargePosition)?;
+
+		Self::adjust_position(who, liquid_id, liquid_collateral, debit_amount)?;
+		loans::Pallet::<T>::update_loan(who, staking_id, -staking_collateral, -debit_amount)
 	}
 }
