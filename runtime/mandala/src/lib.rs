@@ -1911,7 +1911,7 @@ impl Convert<(Call, SignedExtra), Result<EthereumTransactionMessage, InvalidTran
 
 				Ok(EthereumTransactionMessage {
 					nonce: nonce.into(),
-					tip: tip.into(),
+					tip,
 					gas_limit,
 					storage_limit,
 					action,
