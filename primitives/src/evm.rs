@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Balance, Nonce};
+use crate::{Balance, BlockNumber, Nonce};
 use codec::{Decode, Encode};
 use evm::ExitReason;
 #[cfg(feature = "std")]
@@ -91,5 +91,5 @@ pub struct EthereumTransactionMessage {
 	pub input: Vec<u8>,
 	pub chain_id: u64,
 	pub genesis: H256,
-	pub valid_until: u32,
+	pub valid_until: BlockNumber,
 }
