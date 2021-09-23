@@ -564,6 +564,7 @@ pub trait CompoundCashTrait<Balance, Moment> {
 }
 
 /// Allows homa modules to atomically swap loans from Staking currency to Liquid Currency
+/// These functions are unsafe individually and should not be used outside homa modules
 pub trait UpdateLoan<AccountId, Amount> {
 	// Gets active CDPs collateralized with Staking currency for user
 	fn get_position(who: &AccountId, staking_id: CurrencyId) -> Result<Position, DispatchError>;
@@ -580,13 +581,38 @@ pub trait UpdateLoan<AccountId, Amount> {
 		debit_adjustment: Amount,
 	) -> Result<(), DispatchError>;
 
-	// Transfers collateral from Staking currency loan to user.
+	// Transfers collateral from loan to user.
 	// Unsafe as it does not close out loan
 	fn transfer_collateral_from_loan(
 		currency_id: CurrencyId,
 		to: &AccountId,
 		balance: Balance,
 	) -> Result<(), DispatchError>;
+}
+
+impl<AccountId, Amount> UpdateLoan<AccountId, Amount> for () {
+	fn get_position(_who: &AccountId, _staking_id: CurrencyId) -> Result<Position, DispatchError> {
+		Err(DispatchError::Other("unimplemented update loan trait"))
+	}
+
+	fn swap_position_to_liquid(
+		_who: &AccountId,
+		_staking_id: CurrencyId,
+		_liquid_id: CurrencyId,
+		_liquid_adjustment: Amount,
+		_collateral_adjustment: Amount,
+		_debit_adjustment: Amount,
+	) -> Result<(), DispatchError> {
+		Err(DispatchError::Other("unimplemented update loan trait"))
+	}
+
+	fn transfer_collateral_from_loan(
+		_currency_id: CurrencyId,
+		_to: &AccountId,
+		_balance: Balance,
+	) -> Result<(), DispatchError> {
+		Err(DispatchError::Other("unimplemented update loan trait"))
+	}
 }
 
 /// A collateralized debit position.

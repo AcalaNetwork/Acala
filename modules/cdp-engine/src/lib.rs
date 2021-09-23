@@ -224,6 +224,8 @@ pub mod module {
 		MustAfterShutdown,
 		/// Failed to swap debit by default path list
 		SwapDebitFailed,
+		/// CDP does not exist
+		NoOpenPosition,
 	}
 
 	#[pallet::event]
@@ -1043,11 +1045,12 @@ fn pick_u32<R: RngCore>(rng: &mut R, max: u32) -> u32 {
 	rng.next_u32() % max
 }
 
+// Allows for homa-lite module to access cdp functionality
 impl<T: Config> UpdateLoan<T::AccountId, Amount> for Pallet<T> {
 	fn get_position(who: &T::AccountId, staking_id: CurrencyId) -> Result<Position, DispatchError> {
 		match loans::Positions::<T>::try_get(staking_id, who) {
 			Ok(val) => Ok(val),
-			Err(_e) => Err(DispatchError::Other("No Loan Present")),
+			Err(_e) => Err(Error::<T>::NoOpenPosition.into()),
 		}
 	}
 
