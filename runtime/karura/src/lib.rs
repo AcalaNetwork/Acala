@@ -1452,7 +1452,8 @@ impl<KsmTrader: WeightTrader, BncTrader: WeightTrader, VsksmTrader: WeightTrader
 		Self {
 			ksm_trader: KsmTrader::new(),
 			bnc_trader: BncTrader::new(),
-			vsksm_trader: VsksmTrader::new(), // dummy_trader: DummyTrader::new(),
+			vsksm_trader: VsksmTrader::new(),
+			// dummy_trader: DummyTrader::new(),
 		}
 	}
 	fn buy_weight(&mut self, weight: Weight, payment: Assets) -> Result<Assets, XcmError> {
