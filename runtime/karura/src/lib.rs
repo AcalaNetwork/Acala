@@ -1582,7 +1582,7 @@ impl module_homa_lite::Config for Runtime {
 	type LiquidCurrencyId = LKSMCurrencyId;
 	type GovernanceOrigin = EnsureRootOrHalfGeneralCouncil;
 	type MinimumMintThreshold = MinimumMintThreshold;
-	type Loan = ();
+	type Loan = CdpEngine;
 	type XcmTransfer = XTokens;
 	type SovereignSubAccountLocation = RelaychainSovereignSubAccount;
 	type DefaultExchangeRate = DefaultExchangeRate;

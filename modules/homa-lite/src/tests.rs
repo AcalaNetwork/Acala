@@ -317,7 +317,7 @@ fn can_set_xcm_dest_weight() {
 }
 
 #[test]
-fn mint_from_loan_works() {
+fn mint_from_cdp_loan_works() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(CDPEngine::set_collateral_params(
 			Origin::signed(ROOT),
@@ -349,6 +349,10 @@ fn mint_from_loan_works() {
 		);
 		assert_eq!(Loans::positions(KSM, &ALICE).debit, 0);
 		assert_eq!(Loans::positions(KSM, &ALICE).collateral, 0);
+		assert_noop!(
+			HomaLite::mint_from_cdp_loan(Origin::signed(ALICE)),
+			cdp_engine::Error::<Runtime>::NoOpenPosition
+		);
 
 		assert_ok!(CDPEngine::adjust_position(
 			&ALICE,
@@ -367,13 +371,78 @@ fn mint_from_loan_works() {
 		assert_eq!(Loans::positions(KSM, &ALICE).collateral, 0);
 		assert_eq!(Loans::positions(KSM, &ALICE).debit, 0);
 		assert_eq!(Loans::positions(LKSM, &ALICE).debit, dollar(500));
-		// just under the original collateral due to fees
-		assert_eq!(Loans::positions(LKSM, &ALICE).collateral, 989901000000000);
+		// About the default exchange rate of (10 Liquid / 1 Staking), or in practice mints just under dollar(1000)
+		// LKSM for collateral
+		let liquid_collateral_alice = Loans::positions(LKSM, &ALICE).collateral;
+		assert_eq!(liquid_collateral_alice, 989901000000000);
+		assert_eq!(Currencies::free_balance(LKSM, &ALICE), 0);
 
 		// Loans has the correct total positions
 		assert_eq!(Loans::total_positions(KSM).debit, 0);
 		assert_eq!(Loans::total_positions(KSM).collateral, 0);
 		assert_eq!(Loans::total_positions(LKSM).debit, dollar(500));
 		assert_eq!(Loans::total_positions(LKSM).collateral, 989901000000000);
+
+		// Will not work for alice again now that staking loan is closed
+		assert_noop!(
+			HomaLite::mint_from_cdp_loan(Origin::signed(ALICE)),
+			cdp_engine::Error::<Runtime>::NoOpenPosition
+		);
+
+		// Tests that a second mint_from_cdp_loan correctly updates LKSM total_positions
+		assert_eq!(Loans::positions(KSM, &BOB).debit, 0);
+		assert_eq!(Loans::positions(KSM, &BOB).collateral, 0);
+		assert_ok!(CDPEngine::adjust_position(
+			&BOB,
+			KSM,
+			dollar(100).try_into().unwrap(),
+			dollar(500).try_into().unwrap()
+		));
+		assert_eq!(Loans::positions(KSM, &BOB).debit, dollar(500));
+		assert_eq!(Loans::positions(KSM, &BOB).collateral, dollar(100));
+		assert_eq!(Loans::total_positions(KSM).debit, dollar(500));
+		assert_eq!(Loans::total_positions(KSM).collateral, dollar(100));
+		assert_eq!(Currencies::free_balance(LKSM, &BOB), 0);
+
+		assert_ok!(HomaLite::mint_from_cdp_loan(Origin::signed(BOB)));
+		assert_eq!(Loans::positions(LKSM, &BOB).debit, dollar(500));
+		// The exchange rate now closer to 1000 Liquid/ 1 Staking.
+		// big jump is due to Alice's using default value as staking pool was empty
+		let liquid_collateral_bob = Loans::positions(LKSM, &BOB).collateral;
+		assert_eq!(liquid_collateral_bob, 990880903989801000);
+
+		assert_eq!(Loans::total_positions(KSM).debit, 0);
+		assert_eq!(Loans::total_positions(KSM).collateral, 0);
+		assert_eq!(Loans::total_positions(LKSM).debit, dollar(1000));
+		assert_eq!(
+			Loans::total_positions(LKSM).collateral,
+			liquid_collateral_alice + liquid_collateral_bob
+		);
+		assert_eq!(Currencies::free_balance(LKSM, &BOB), 0);
+	});
+}
+
+#[test]
+fn mint_from_cdp_fails_correctly() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(CDPEngine::set_collateral_params(
+			Origin::signed(ROOT),
+			KSM,
+			Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
+			Change::NewValue(Some(Rate::saturating_from_rational(2, 10))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
+			Change::NewValue(dollar(1_000_000)),
+		));
+		assert_ok!(CDPEngine::set_collateral_params(
+			Origin::signed(ROOT),
+			LKSM,
+			Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
+			Change::NewValue(Some(Rate::saturating_from_rational(2, 10))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
+			Change::NewValue(dollar(1_000_000)),
+		));
+		MockPriceSource::set_relative_price(Some(Price::one()));
 	});
 }

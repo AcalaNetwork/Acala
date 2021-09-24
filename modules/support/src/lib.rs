@@ -590,6 +590,7 @@ pub trait UpdateLoan<AccountId> {
 	) -> Result<(), DispatchError>;
 }
 
+#[cfg(feature = "std")]
 impl<AccountId> UpdateLoan<AccountId> for () {
 	fn get_position(_who: &AccountId, _staking_id: CurrencyId) -> Result<Position, DispatchError> {
 		Err(DispatchError::Other("unimplemented update loan trait"))
