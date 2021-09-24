@@ -371,8 +371,8 @@ fn mint_from_cdp_loan_works() {
 		assert_eq!(Loans::positions(KSM, &ALICE).collateral, 0);
 		assert_eq!(Loans::positions(KSM, &ALICE).debit, 0);
 		assert_eq!(Loans::positions(LKSM, &ALICE).debit, dollar(500));
-		// About the default exchange rate of (10 Liquid / 1 Staking), or in practice mints just under dollar(1000)
-		// LKSM for collateral
+		// About the default exchange rate of (10 Liquid / 1 Staking), or in practice mints just under
+		// dollar(1000) LKSM for collateral
 		let liquid_collateral_alice = Loans::positions(LKSM, &ALICE).collateral;
 		assert_eq!(liquid_collateral_alice, 989901000000000);
 		assert_eq!(Currencies::free_balance(LKSM, &ALICE), 0);
