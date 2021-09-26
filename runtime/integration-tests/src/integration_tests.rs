@@ -1428,6 +1428,7 @@ fn treasury_should_take_xcm_execution_revenue() {
 fn currency_id_convert() {
 	ExtBuilder::default().build().execute_with(|| {
 		let id: u32 = ParachainInfo::get().into();
+		let bifrost_para_id: u32 = 2001;
 
 		assert_eq!(CurrencyIdConvert::convert(RELAY_CHAIN_CURRENCY), Some(X1(Parent)));
 		assert_eq!(
@@ -1539,6 +1540,14 @@ fn currency_id_convert() {
 			);
 			assert_eq!(
 				CurrencyIdConvert::convert(X3(Parent, Parachain(id), GeneralKey(LDOT.encode()))),
+				None
+			);
+			assert_eq!(
+				CurrencyIdConvert::convert(X3(Parent, Parachain(bifrost_para_id), GeneralKey(BNC.encode()))),
+				None
+			);
+			assert_eq!(
+				CurrencyIdConvert::convert(X3(Parent, Parachain(bifrost_para_id), GeneralKey(VSKSM.encode()))),
 				None
 			);
 
