@@ -883,23 +883,6 @@ impl pallet_scheduler::Config for Runtime {
 }
 
 parameter_types! {
-	pub const UpdateFrequency: BlockNumber = 10;
-	pub const MaxGraduallyUpdate: u32 = 100;
-	pub const MaxStorageKeyBytes: u32 = 1024;
-	pub const MaxStorageValueBytes: u32 = 1024;
-}
-
-impl orml_gradually_update::Config for Runtime {
-	type Event = Event;
-	type UpdateFrequency = UpdateFrequency;
-	type DispatchOrigin = EnsureRoot<AccountId>;
-	type WeightInfo = weights::orml_gradually_update::WeightInfo<Runtime>;
-	type MaxGraduallyUpdate = MaxGraduallyUpdate;
-	type MaxStorageKeyBytes = MaxStorageKeyBytes;
-	type MaxStorageValueBytes = MaxStorageValueBytes;
-}
-
-parameter_types! {
 	pub MinimumIncrementSize: Rate = Rate::saturating_from_rational(2, 100);
 	pub const AuctionTimeToClose: BlockNumber = 15 * MINUTES;
 	pub const AuctionDurationSoftCap: BlockNumber = 2 * HOURS;
@@ -1601,7 +1584,6 @@ construct_runtime!(
 		Proxy: pallet_proxy::{Pallet, Call, Storage, Event<T>} = 33,
 
 		Indices: pallet_indices::{Pallet, Call, Storage, Config<T>, Event<T>} = 40,
-		GraduallyUpdate: orml_gradually_update::{Pallet, Storage, Call, Event<T>} = 41,
 
 		// Governance
 		GeneralCouncil: pallet_collective::<Instance1>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 50,
@@ -1987,7 +1969,6 @@ impl_runtime_apis! {
 			// orml_list_benchmark!(list, extra, orml_auction, benchmarking::auction);
 			// orml_list_benchmark!(list, extra, orml_currencies, benchmarking::currencies);
 			// orml_list_benchmark!(list, extra, orml_authority, benchmarking::authority);
-			// orml_list_benchmark!(list, extra, orml_gradually_update, benchmarking::gradually_update);
 			// orml_list_benchmark!(list, extra, orml_oracle, benchmarking::oracle);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
@@ -2042,7 +2023,6 @@ impl_runtime_apis! {
 			// orml_add_benchmark!(params, batches, orml_auction, benchmarking::auction);
 			// orml_add_benchmark!(params, batches, orml_currencies, benchmarking::currencies);
 			// orml_add_benchmark!(params, batches, orml_authority, benchmarking::authority);
-			// orml_add_benchmark!(params, batches, orml_gradually_update, benchmarking::gradually_update);
 			// orml_add_benchmark!(params, batches, orml_oracle, benchmarking::oracle);
 
 			if batches.is_empty() { return Err("Benchmark not found for this module.".into()) }
