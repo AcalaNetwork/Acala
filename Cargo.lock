@@ -5761,6 +5761,7 @@ name = "module-homa-lite"
 version = "1.4.1"
 dependencies = [
  "acala-primitives",
+ "cumulus-primitives-core",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -5951,6 +5952,7 @@ name = "module-relaychain"
 version = "1.4.1"
 dependencies = [
  "acala-primitives",
+ "cumulus-primitives-core",
  "frame-support",
  "frame-system",
  "module-support",
@@ -6039,6 +6041,7 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
+ "xcm",
 ]
 
 [[package]]

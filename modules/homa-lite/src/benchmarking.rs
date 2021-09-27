@@ -58,7 +58,7 @@ mod benchmark_mock {
 	use crate as module_homa_lite;
 	use frame_support::{ord_parameter_types, parameter_types};
 	use frame_system::EnsureRoot;
-	use mock::{MockXcm, ACALA, KSM, LKSM, MOCK_XCM_ACCOUNTID, MOCK_XCM_DESTINATION, ROOT};
+	use mock::{MockXcm, ACALA, KSM, LKSM, MOCK_XCM_ACCOUNTID, MOCK_XCM_DESTINATION, PARACHAIN_ID, ROOT};
 	use module_support::mocks::MockAddressMapping;
 	use orml_traits::parameter_type_with_key;
 	use primitives::Amount;
@@ -152,7 +152,6 @@ mod benchmark_mock {
 
 	parameter_types! {
 		pub const StakingCurrencyId: CurrencyId = KSM;
-		pub StakingCurrencyIdMultiLocation: MultiLocation = MultiLocation::X1(Junction::Parent);
 		pub const LiquidCurrencyId: CurrencyId = LKSM;
 		pub MinimumMintThreshold: Balance = millicent(1);
 		pub const MockXcmDestination: MultiLocation = MOCK_XCM_DESTINATION;
@@ -165,6 +164,9 @@ mod benchmark_mock {
 		pub const MaximumRedeemRequestMatchesForMint: u32 = 2;
 		pub static MockRelayBlockNumberProvider: u64 = 0;
 		pub const RelaychainUnbondingSlashingSpans: u32 = 5;
+		pub const SubAccountIndex: u16 = 0;
+		pub const ParachainId: ParaId = ParaId::from(PARACHAIN_ID);
+		pub XcmUnbondFee: Balance = dollar(1);
 	}
 	ord_parameter_types! {
 		pub const Root: AccountId = ROOT;
@@ -175,19 +177,19 @@ mod benchmark_mock {
 		type WeightInfo = ();
 		type Currency = Currencies;
 		type StakingCurrencyId = StakingCurrencyId;
-		type StakingCurrencyIdMultiLocation = StakingCurrencyIdMultiLocation;
 		type LiquidCurrencyId = LiquidCurrencyId;
 		type GovernanceOrigin = EnsureSignedBy<Root, AccountId>;
 		type MinimumMintThreshold = MinimumMintThreshold;
 		type XcmTransfer = MockXcm;
 		type SovereignSubAccountLocation = MockXcmDestination;
-		type SovereignSubAccountId = MockXcmAccountId;
+		type SubAccountIndex = SubAccountIndex;
 		type DefaultExchangeRate = DefaultExchangeRate;
 		type MaxRewardPerEra = MaxRewardPerEra;
 		type MintFee = MintFee;
 		type XcmSender = MockXcm;
-		type RelaychainCallBuilder = RelaychainCallBuilder<Runtime>;
+		type RelaychainCallBuilder = RelaychainCallBuilder<Runtime, ParachainId>;
 		type BaseWithdrawFee = BaseWithdrawFee;
+		type XcmUnbondFee = XcmUnbondFee;
 		type RelaychainBlockNumber = MockRelayBlockNumberProvider;
 		type ParachainAccount = ParachainAccount;
 		type MaximumRedeemRequestMatchesForMint = MaximumRedeemRequestMatchesForMint;

@@ -1295,25 +1295,26 @@ parameter_types! {
 	pub MaximumRedeemRequestMatchesForMint: u32 = 20;
 	pub RelaychainUnbondingSlashingSpans: u32 = 5;
 	pub ParachainAccount: AccountId = ParachainInfo::get().into_account();
-	pub StakingCurrencyIdMultiLocation: MultiLocation = CurrencyIdConvert::convert(CurrencyId::Token(TokenSymbol::DOT)).unwrap();
+	pub SubAccountIndex: u16 = RelaychainSubAccountId::HomaLite as u16;
+	pub const XcmUnbondFee: Balance = 600_000_000; // From homa-lite integration test.
 }
 impl module_homa_lite::Config for Runtime {
 	type Event = Event;
 	type WeightInfo = weights::module_homa_lite::WeightInfo<Runtime>;
 	type Currency = Currencies;
 	type StakingCurrencyId = GetStakingCurrencyId;
-	type StakingCurrencyIdMultiLocation = StakingCurrencyIdMultiLocation;
 	type LiquidCurrencyId = GetLiquidCurrencyId;
 	type GovernanceOrigin = EnsureRootOrHalfGeneralCouncil;
 	type MinimumMintThreshold = MinimumMintThreshold;
 	type XcmTransfer = XTokens;
 	type SovereignSubAccountLocation = RelaychainSovereignSubAccount;
-	type SovereignSubAccountId = RelaychainSovereignSubAccountId;
+	type SubAccountIndex = SubAccountIndex;
 	type DefaultExchangeRate = HomaLiteDefaultExchangeRate;
 	type MaxRewardPerEra = MaxRewardPerEra;
 	type MintFee = MintFee;
-	type RelaychainCallBuilder = RelaychainCallBuilder<Runtime>;
+	type RelaychainCallBuilder = RelaychainCallBuilder<Runtime, ParachainInfo>;
 	type BaseWithdrawFee = BaseWithdrawFee;
+	type XcmUnbondFee = XcmUnbondFee;
 	type RelaychainBlockNumber = RelaychainBlockNumberProvider<Runtime>;
 	type ParachainAccount = ParachainAccount;
 	type MaximumRedeemRequestMatchesForMint = MaximumRedeemRequestMatchesForMint;

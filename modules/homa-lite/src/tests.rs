@@ -416,9 +416,9 @@ fn new_available_staking_currency_can_handle_redeem_requests() {
 
 		HomaLite::on_idle(MockRelayBlockNumberProvider::get(), 1_000_000_000);
 
-		// All available staking currency should be redeemed.
+		// All available staking currency should be redeemed, paying the `XcmUnbondFee`
 		assert_eq!(AvailableStakingBalance::<Runtime>::get(), 0);
-		assert_eq!(Currencies::free_balance(KSM, &ROOT), dollar(1_000));
+		assert_eq!(Currencies::free_balance(KSM, &ROOT), dollar(999));
 		assert_eq!(Currencies::free_balance(LKSM, &ROOT), dollar(989_000));
 		assert_eq!(Currencies::reserved_balance(LKSM, &ROOT), dollar(1_000));
 		assert_eq!(
@@ -436,7 +436,7 @@ fn new_available_staking_currency_can_handle_redeem_requests() {
 
 		// The last request is redeemed, the leftover is stored.
 		assert_eq!(AvailableStakingBalance::<Runtime>::get(), dollar(50));
-		assert_eq!(Currencies::free_balance(KSM, &ROOT), dollar(1_100));
+		assert_eq!(Currencies::free_balance(KSM, &ROOT), dollar(1_098));
 		assert_eq!(Currencies::free_balance(LKSM, &ROOT), dollar(989_000));
 		assert_eq!(Currencies::reserved_balance(LKSM, &ROOT), dollar(0));
 		assert_eq!(RedeemRequests::<Runtime>::get(&ROOT), None);
@@ -473,7 +473,7 @@ fn on_idle_can_handle_changes_in_exchange_rate() {
 
 		// All available staking currency should be redeemed.
 		assert_eq!(AvailableStakingBalance::<Runtime>::get(), dollar(80_000));
-		assert_eq!(Currencies::free_balance(KSM, &ROOT), dollar(20_000));
+		assert_eq!(Currencies::free_balance(KSM, &ROOT), dollar(19_999));
 		assert_eq!(Currencies::free_balance(LKSM, &ROOT), dollar(900_000));
 		assert_eq!(Currencies::reserved_balance(LKSM, &ROOT), 0);
 		assert_eq!(RedeemRequests::<Runtime>::get(&ROOT), None);
@@ -500,7 +500,7 @@ fn request_redeem_works() {
 			Permill::zero()
 		));
 		assert_eq!(AvailableStakingBalance::<Runtime>::get(), dollar(40_000));
-		assert_eq!(Currencies::free_balance(KSM, &ROOT), dollar(10_000));
+		assert_eq!(Currencies::free_balance(KSM, &ROOT), dollar(9_999));
 		assert_eq!(Currencies::free_balance(LKSM, &ROOT), dollar(900_000));
 		assert_eq!(Currencies::reserved_balance(LKSM, &ROOT), 0);
 		assert_eq!(RedeemRequests::<Runtime>::get(&ROOT), None);
@@ -512,7 +512,7 @@ fn request_redeem_works() {
 			Permill::zero()
 		));
 		assert_eq!(AvailableStakingBalance::<Runtime>::get(), 0);
-		assert_eq!(Currencies::free_balance(KSM, &ROOT), dollar(50_000));
+		assert_eq!(Currencies::free_balance(KSM, &ROOT), dollar(49_998));
 		assert_eq!(Currencies::free_balance(LKSM, &ROOT), dollar(400_000));
 		assert_eq!(Currencies::reserved_balance(LKSM, &ROOT), dollar(100_000));
 		assert_eq!(
@@ -527,7 +527,7 @@ fn request_redeem_works() {
 			Permill::zero()
 		));
 		assert_eq!(AvailableStakingBalance::<Runtime>::get(), 0);
-		assert_eq!(Currencies::free_balance(KSM, &ROOT), dollar(50_000));
+		assert_eq!(Currencies::free_balance(KSM, &ROOT), dollar(49_998));
 		assert_eq!(Currencies::free_balance(LKSM, &ROOT), dollar(250_000));
 		assert_eq!(Currencies::reserved_balance(LKSM, &ROOT), dollar(250_000));
 		// request_redeem replaces existing item in the queue, not add to it.

@@ -30,6 +30,7 @@ use primitives::{Amount, TokenSymbol};
 use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, AccountId32};
 
+pub use cumulus_primitives_core::ParaId;
 use xcm::v0::{Error as XcmError, ExecuteXcm, Junction, MultiAsset, NetworkId, Outcome, Result as XcmResult, SendXcm};
 use xcm_executor::traits::{InvertLocation, WeightBounds};
 
@@ -55,6 +56,7 @@ pub const MOCK_XCM_DESTINATION: MultiLocation = MultiLocation::X1(Junction::Acco
 	id: [1u8; 32],
 });
 pub const MOCK_XCM_ACCOUNTID: AccountId = AccountId32::new([255u8; 32]);
+pub const PARACHAIN_ID: u32 = 2000;
 
 /// For testing only. Does not check for overflow.
 pub fn dollar(b: Balance) -> Balance {
@@ -232,7 +234,6 @@ impl module_currencies::Config for Runtime {
 
 parameter_types! {
 	pub const StakingCurrencyId: CurrencyId = KSM;
-	pub StakingCurrencyIdMultiLocation: MultiLocation = MultiLocation::X1(Junction::Parent);
 	pub const LiquidCurrencyId: CurrencyId = LKSM;
 	pub MinimumMintThreshold: Balance = millicent(1);
 	pub const MockXcmDestination: MultiLocation = MOCK_XCM_DESTINATION;
@@ -241,10 +242,13 @@ parameter_types! {
 	pub const MaxRewardPerEra: Permill = Permill::from_percent(1);
 	pub MintFee: Balance = millicent(1000);
 	pub BaseWithdrawFee: Permill = Permill::from_rational(1u32, 1_000u32); // 0.1%
+	pub XcmUnbondFee: Balance = dollar(1);
 	pub const ParachainAccount: AccountId = ROOT;
 	pub const MaximumRedeemRequestMatchesForMint: u32 = 2;
 	pub static MockRelayBlockNumberProvider: u64 = 0;
 	pub const RelaychainUnbondingSlashingSpans: u32 = 5;
+	pub const SubAccountIndex: u16 = 0;
+	pub ParachainId: ParaId = ParaId::from(PARACHAIN_ID);
 }
 ord_parameter_types! {
 	pub const Root: AccountId = ROOT;
@@ -263,18 +267,18 @@ impl Config for Runtime {
 	type WeightInfo = ();
 	type Currency = Currencies;
 	type StakingCurrencyId = StakingCurrencyId;
-	type StakingCurrencyIdMultiLocation = StakingCurrencyIdMultiLocation;
 	type LiquidCurrencyId = LiquidCurrencyId;
 	type GovernanceOrigin = EnsureSignedBy<Root, AccountId>;
 	type MinimumMintThreshold = MinimumMintThreshold;
 	type XcmTransfer = MockXcm;
 	type SovereignSubAccountLocation = MockXcmDestination;
-	type SovereignSubAccountId = MockXcmAccountId;
+	type SubAccountIndex = SubAccountIndex;
 	type DefaultExchangeRate = DefaultExchangeRate;
 	type MaxRewardPerEra = MaxRewardPerEra;
 	type MintFee = MintFee;
-	type RelaychainCallBuilder = RelaychainCallBuilder<Runtime>;
+	type RelaychainCallBuilder = RelaychainCallBuilder<Runtime, ParachainId>;
 	type BaseWithdrawFee = BaseWithdrawFee;
+	type XcmUnbondFee = XcmUnbondFee;
 	type RelaychainBlockNumber = MockRelayBlockNumberProvider;
 	type ParachainAccount = ParachainAccount;
 	type MaximumRedeemRequestMatchesForMint = MaximumRedeemRequestMatchesForMint;

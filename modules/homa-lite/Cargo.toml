@@ -23,8 +23,9 @@ sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.9" }
 module-currencies = { path = "../../modules/currencies" }
 orml-tokens = { path = "../../orml/tokens" }
-module-relaychain = { path = "../relaychain", features=["kusama"]}
 xcm-executor = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.9" }
+cumulus-primitives-core = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.9" }
+module-relaychain = { path = "../relaychain", features=["kusama"]}
 
 [features]
 default = ["std"]
@@ -36,11 +37,11 @@ std = [
 	"sp-runtime/std",
 	"sp-core/std",
 	"sp-std/std",
+	"pallet-xcm/std",
+	"xcm/std",
 	"primitives/std",
 	"orml-traits/std",
 	"module-support/std",
-	"xcm/std",
-	"pallet-xcm/std",
 ]
 runtime-benchmarks = [
 	"frame-benchmarking",

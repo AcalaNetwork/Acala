@@ -1565,7 +1565,6 @@ pub fn create_x2_parachain_multilocation(index: u16) -> MultiLocation {
 
 parameter_types! {
 	pub const KSMCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::KSM);
-	pub StakingCurrencyIdMultiLocation: MultiLocation = CurrencyIdConvert::convert(CurrencyId::Token(TokenSymbol::KSM)).unwrap();
 	pub const LKSMCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::LKSM);
 	pub MinimumMintThreshold: Balance = 10 * cent(KSM);
 	pub RelaychainSovereignSubAccount: MultiLocation = create_x2_parachain_multilocation(RelaychainSubAccountId::HomaLite as u16);
@@ -1580,24 +1579,26 @@ parameter_types! {
 	pub MaximumRedeemRequestMatchesForMint: u32 = 20;
 	pub RelaychainUnbondingSlashingSpans: u32 = 5;
 	pub ParachainAccount: AccountId = ParachainInfo::get().into_account();
+	pub SubAccountIndex: u16 = RelaychainSubAccountId::HomaLite as u16;
+	pub const XcmUnbondFee: Balance = 600_000_000; // From homa-lite integration test.
 }
 impl module_homa_lite::Config for Runtime {
 	type Event = Event;
 	type WeightInfo = weights::module_homa_lite::WeightInfo<Runtime>;
 	type Currency = Currencies;
 	type StakingCurrencyId = KSMCurrencyId;
-	type StakingCurrencyIdMultiLocation = StakingCurrencyIdMultiLocation;
 	type LiquidCurrencyId = LKSMCurrencyId;
 	type GovernanceOrigin = EnsureRootOrHalfGeneralCouncil;
 	type MinimumMintThreshold = MinimumMintThreshold;
 	type XcmTransfer = XTokens;
 	type SovereignSubAccountLocation = RelaychainSovereignSubAccount;
-	type SovereignSubAccountId = RelaychainSovereignSubAccountId;
+	type SubAccountIndex = SubAccountIndex;
 	type DefaultExchangeRate = DefaultExchangeRate;
 	type MaxRewardPerEra = MaxRewardPerEra;
 	type MintFee = MintFee;
-	type RelaychainCallBuilder = RelaychainCallBuilder<Runtime>;
+	type RelaychainCallBuilder = RelaychainCallBuilder<Runtime, ParachainInfo>;
 	type BaseWithdrawFee = BaseWithdrawFee;
+	type XcmUnbondFee = XcmUnbondFee;
 	type RelaychainBlockNumber = RelaychainBlockNumberProvider<Runtime>;
 	type ParachainAccount = ParachainAccount;
 	type MaximumRedeemRequestMatchesForMint = MaximumRedeemRequestMatchesForMint;

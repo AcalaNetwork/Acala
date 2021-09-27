@@ -25,7 +25,7 @@ mod tests;
 pub mod weights;
 
 use frame_support::{log, pallet_prelude::*, transactional};
-use frame_system::{ensure_signed, pallet_prelude::*, RawOrigin};
+use frame_system::{ensure_signed, pallet_prelude::*};
 
 use module_support::{CallBuilder, ExchangeRate, ExchangeRateProvider, Ratio};
 use orml_traits::{
@@ -42,7 +42,7 @@ use sp_std::{
 	ops::Mul,
 	prelude::*,
 };
-use xcm::v0::{Junction, MultiAsset, MultiLocation, Order, Xcm};
+use xcm::v0::{Junction, MultiLocation, Xcm};
 
 pub use module::*;
 pub use weights::WeightInfo;
@@ -70,9 +70,6 @@ pub mod module {
 		#[pallet::constant]
 		type StakingCurrencyId: Get<CurrencyId>;
 
-		/// The Staking assets currency ID in MultiLocation format.
-		type StakingCurrencyIdMultiLocation: Get<MultiLocation>;
-
 		/// The Currency ID for the Liquid asset
 		#[pallet::constant]
 		type LiquidCurrencyId: Get<CurrencyId>;
@@ -90,14 +87,14 @@ pub mod module {
 		/// The Call builder for communicating with Relaychain via XCM messaging.
 		type RelaychainCallBuilder: CallBuilder<AccountId = Self::AccountId, Balance = Balance>;
 
-		/// The AccountId of the sovereign sub-account for where the staking currencies are sent to.
-		#[pallet::constant]
-		type SovereignSubAccountId: Get<Self::AccountId>;
-
 		/// The MultiLocation of the sovereign sub-account for where the staking currencies are sent
 		/// to.
 		#[pallet::constant]
 		type SovereignSubAccountLocation: Get<MultiLocation>;
+
+		/// The Index to the Homa Lite Sub-account
+		#[pallet::constant]
+		type SubAccountIndex: Get<u16>;
 
 		/// The default exchange rate for liquid currency to staking currency.
 		#[pallet::constant]
@@ -111,9 +108,13 @@ pub mod module {
 		#[pallet::constant]
 		type MintFee: Get<Balance>;
 
-		/// The fixed cost of withdrawing Staking currency via redeem.
+		/// Equivalent to the loss of % staking reward from unbonding on the Relaychain.
 		#[pallet::constant]
 		type BaseWithdrawFee: Get<Permill>;
+
+		/// The fixed cost of withdrawing Staking currency via redeem. In Staking currency.
+		#[pallet::constant]
+		type XcmUnbondFee: Get<Balance>;
 
 		/// Block number provider for the relaychain.
 		type RelaychainBlockNumber: BlockNumberProvider<BlockNumber = Self::BlockNumber>;
@@ -136,7 +137,7 @@ pub mod module {
 		/// The total amount for the Staking currency must be more than zero.
 		InvalidTotalStakingCurrency,
 		/// The mint amount is below the minimum threshold allowed.
-		MintAmountBelowMinimumThreshold,
+		AmountBelowMinimumThreshold,
 		/// The amount of Staking currency used has exceeded the cap allowed.
 		ExceededStakingCurrencyMintCap,
 		/// There isn't enough reserved currencies to cancel the redeem request.
@@ -164,9 +165,6 @@ pub mod module {
 
 		/// A new weight for XCM transfers has been set.\[new_weight\]
 		XcmBaseWeightSet(Weight),
-
-		/// Unbond fee for XCM transactions has been set.\[new_fee\]
-		XcmUnbondFeeSet(Balance),
 
 		/// The redeem request has been cancelled, and funds un-reserved.
 		/// \[who, liquid_amount_unreserved\]
@@ -210,12 +208,6 @@ pub mod module {
 	#[pallet::storage]
 	#[pallet::getter(fn xcm_base_weight)]
 	pub type XcmBaseWeight<T: Config> = StorageValue<_, Weight, ValueQuery>;
-
-	/// Fee in Staking currency to be paid for XCM Unbond requests.
-	/// xcm_unbond_fee: value: Balance (Fee in Staking Currency)
-	#[pallet::storage]
-	#[pallet::getter(fn xcm_unbond_fee)]
-	pub type XcmUnbondFee<T: Config> = StorageValue<_, Balance, ValueQuery>;
 
 	/// Requests to redeem staked currencies.
 	/// RedeemRequests: Map: AccountId => Option<(liquid_amount: Balance, addtional_fee: Permill)>
@@ -387,21 +379,6 @@ pub mod module {
 			Ok(())
 		}
 
-		/// Sets the xcm_unbond_fee for XCM transaction. Fee is paid in Staking Currency.
-		/// Requires `T::GovernanceOrigin`
-		///
-		/// Parameters:
-		/// - `xcm_unbond_fee`: The new fee for XCM transfers.
-		#[pallet::weight(< T as Config >::WeightInfo::set_xcm_unbond_fee())]
-		#[transactional]
-		pub fn set_xcm_unbond_fee(origin: OriginFor<T>, xcm_unbond_fee: Balance) -> DispatchResult {
-			T::GovernanceOrigin::ensure_origin(origin)?;
-
-			XcmUnbondFee::<T>::put(xcm_unbond_fee);
-			Self::deposit_event(Event::<T>::XcmUnbondFeeSet(xcm_unbond_fee));
-			Ok(())
-		}
-
 		/// Put in an request to redeem Staking currencies used to mint Liquid currency.
 		/// The redemption will happen after the currencies are unbonded on the relaychain.
 		///
@@ -424,6 +401,12 @@ pub mod module {
 					Self::deposit_event(Event::<T>::RedeemRequestCancelled(who, request_amount));
 				}
 			} else {
+				// Redeem amount must be above a certain limit.
+				ensure!(
+					Self::convert_liquid_to_staking(liquid_amount)? > T::XcmUnbondFee::get(),
+					Error::<T>::AmountBelowMinimumThreshold
+				);
+
 				// If there are available_staking_balances, redeem immediately with no additional fee.
 				let mut available_staking_balance = Self::available_staking_balance();
 				let actual_liquid_amount = min(
@@ -431,12 +414,18 @@ pub mod module {
 					Self::convert_staking_to_liquid(available_staking_balance)?,
 				);
 
-				if !actual_liquid_amount.is_zero() {
+				if Self::convert_liquid_to_staking(actual_liquid_amount)? > T::XcmUnbondFee::get() {
 					// Immediately redeem from the available_staking_balances
 					let actual_staking_amount = Self::convert_liquid_to_staking(actual_liquid_amount)?;
 
 					// Redeem from the available_staking_balances costs no extra fee.
-					T::Currency::deposit(T::StakingCurrencyId::get(), &who, actual_staking_amount)?;
+					T::Currency::deposit(
+						T::StakingCurrencyId::get(),
+						&who,
+						actual_staking_amount
+							.checked_sub(T::XcmUnbondFee::get())
+							.expect("Ensured amount is larger than fee; qed"),
+					)?;
 					let slash_amount = T::Currency::slash(T::LiquidCurrencyId::get(), &who, actual_liquid_amount);
 					ensure!(slash_amount.is_zero(), Error::<T>::InsufficientLiquidBalance);
 
@@ -629,7 +618,7 @@ pub mod module {
 			// Ensure the amount is above the minimum, after the MintFee is deducted.
 			ensure!(
 				amount > T::MinimumMintThreshold::get().saturating_add(T::MintFee::get()),
-				Error::<T>::MintAmountBelowMinimumThreshold
+				Error::<T>::AmountBelowMinimumThreshold
 			);
 
 			let staking_currency = T::StakingCurrencyId::get();
@@ -756,14 +745,10 @@ pub mod module {
 
 		#[transactional]
 		fn process_scheduled_unbond(staking_amount: Balance) -> DispatchResult {
-			let msg = Self::construct_xcm_unreserve_message(
-				T::ParachainAccount::get(),
-				staking_amount,
-				Self::xcm_base_weight(),
-			);
-			let origin: T::Origin = RawOrigin::Signed(T::SovereignSubAccountId::get()).into();
-			// make XCM call to trigger withdraw_unbond and transfer
-			let res = pallet_xcm::Pallet::<T>::send(origin, MultiLocation::X1(Junction::Parent.into()), msg);
+			let msg = Self::construct_xcm_unreserve_message(T::ParachainAccount::get(), staking_amount);
+
+			let res = pallet_xcm::Pallet::<T>::send_xcm(MultiLocation::Null, MultiLocation::X1(Junction::Parent), msg);
+			//(origin, MultiLocation::X1(Junction::Parent.into()), msg.into());
 			if res.is_ok() {
 				// Now that there's available staking balance, automatically match existing
 				// redeem_requests.
@@ -783,8 +768,12 @@ pub mod module {
 
 					let actual_staking_amount = Self::convert_liquid_to_staking(actual_liquid_amount)?;
 
-					// Redeem from the available_staking_balances costs no extra fee.
-					T::Currency::deposit(T::StakingCurrencyId::get(), &redeemer, actual_staking_amount)?;
+					// Redeem from the available_staking_balances costs only the xcm unbond fee.
+					T::Currency::deposit(
+						T::StakingCurrencyId::get(),
+						&redeemer,
+						actual_staking_amount.saturating_sub(T::XcmUnbondFee::get()),
+					)?;
 					T::Currency::unreserve(T::LiquidCurrencyId::get(), &redeemer, actual_liquid_amount);
 					let slashed_amount =
 						T::Currency::slash(T::LiquidCurrencyId::get(), &redeemer, actual_liquid_amount);
@@ -818,38 +807,20 @@ pub mod module {
 		}
 
 		/// Construct a XCM message
-		pub fn construct_xcm_unreserve_message(
-			parachain_account: T::AccountId,
-			amount: Balance,
-			weight_limit: u64,
-		) -> Xcm<()> {
-			let xcm_message = T::RelaychainCallBuilder::utility_batch_call(vec![
-				T::RelaychainCallBuilder::staking_withdraw_unbonded(T::RelaychainUnbondingSlashingSpans::get()),
-				T::RelaychainCallBuilder::balances_transfer_keep_alive(parachain_account, amount),
-			]);
-			Xcm::WithdrawAsset {
-				assets: vec![MultiAsset::ConcreteFungible {
-					id: T::StakingCurrencyIdMultiLocation::get(),
-					amount: amount + Self::xcm_unbond_fee(),
-				}],
-				effects: vec![
-					Order::BuyExecution {
-						fees: MultiAsset::All,
-						weight: weight_limit,
-						debt: Self::xcm_base_weight(),
-						halt_on_error: true,
-						xcm: vec![Xcm::Transact {
-							origin_type: xcm::v0::OriginKind::SovereignAccount,
-							require_weight_at_most: weight_limit,
-							call: xcm_message.encode().into(),
-						}],
-					},
-					Order::DepositAsset {
-						assets: vec![MultiAsset::All],
-						dest: T::SovereignSubAccountLocation::get(),
-					},
-				],
-			}
+		pub fn construct_xcm_unreserve_message(parachain_account: T::AccountId, amount: Balance) -> Xcm<()> {
+			let xcm_message = T::RelaychainCallBuilder::utility_as_derivative_call(
+				T::RelaychainCallBuilder::utility_batch_call(vec![
+					T::RelaychainCallBuilder::staking_withdraw_unbonded(T::RelaychainUnbondingSlashingSpans::get()),
+					T::RelaychainCallBuilder::balances_transfer_keep_alive(parachain_account, amount),
+				]),
+				T::SubAccountIndex::get(),
+			);
+			T::RelaychainCallBuilder::finalize_call(
+				xcm_message,
+				T::XcmUnbondFee::get(),
+				Self::xcm_base_weight(),
+				Self::xcm_base_weight(),
+			)
 		}
 
 		pub fn get_staking_exchange_rate() -> ExchangeRate {

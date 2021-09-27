@@ -26,12 +26,13 @@
 use codec::{Decode, Encode, FullCodec};
 use sp_runtime::traits::StaticLookup;
 
-// mod mock;
-// mod tests;
-use frame_support::RuntimeDebug;
+use frame_support::{traits::Get, weights::Weight, RuntimeDebug};
 use module_support::CallBuilder;
 use primitives::Balance;
-use sp_std::{boxed::Box, marker::PhantomData, vec::Vec};
+use sp_std::{boxed::Box, marker::PhantomData, prelude::*};
+
+pub use cumulus_primitives_core::ParaId;
+use xcm::v0::{Junction, MultiAsset, MultiLocation, Order, Xcm};
 
 use frame_system::Config;
 
@@ -126,9 +127,9 @@ pub use kusama::*;
 #[cfg(feature = "polkadot")]
 pub use polkadot::*;
 
-pub struct RelaychainCallBuilder<T: Config>(PhantomData<T>);
+pub struct RelaychainCallBuilder<T: Config, ParachainId: Get<ParaId>>(PhantomData<(T, ParachainId)>);
 
-impl<T: Config> CallBuilder for RelaychainCallBuilder<T>
+impl<T: Config, ParachainId: Get<ParaId>> CallBuilder for RelaychainCallBuilder<T, ParachainId>
 where
 	T::AccountId: FullCodec,
 	RelaychainCall<T>: FullCodec,
@@ -139,6 +140,13 @@ where
 
 	fn utility_batch_call(calls: Vec<Self::RelaychainCall>) -> Self::RelaychainCall {
 		RelaychainCall::Utility(Box::new(UtilityCall::BatchAll(UtilityBatchAllCall { calls })))
+	}
+
+	fn utility_as_derivative_call(call: Self::RelaychainCall, index: u16) -> Self::RelaychainCall {
+		RelaychainCall::Utility(Box::new(UtilityCall::AsDerivative(UtilityAsDerivativeCall {
+			index,
+			call,
+		})))
 	}
 
 	fn staking_withdraw_unbonded(num_slashing_spans: u32) -> Self::RelaychainCall {
@@ -152,5 +160,31 @@ where
 			dest: T::Lookup::unlookup(to),
 			value: amount,
 		}))
+	}
+
+	fn finalize_call(call: Self::RelaychainCall, extra_fee: Self::Balance, weight: Weight, debt: Weight) -> Xcm<()> {
+		Xcm::WithdrawAsset {
+			assets: vec![MultiAsset::ConcreteFungible {
+				id: MultiLocation::Null,
+				amount: extra_fee,
+			}],
+			effects: vec![
+				Order::BuyExecution {
+					fees: MultiAsset::All,
+					weight,
+					debt,
+					halt_on_error: true,
+					xcm: vec![Xcm::Transact {
+						origin_type: xcm::v0::OriginKind::SovereignAccount,
+						require_weight_at_most: weight,
+						call: call.encode().into(),
+					}],
+				},
+				Order::DepositAsset {
+					assets: vec![MultiAsset::All],
+					dest: MultiLocation::X1(Junction::Parachain(ParachainId::get().into())),
+				},
+			],
+		}
 	}
 }

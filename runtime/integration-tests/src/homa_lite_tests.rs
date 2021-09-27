@@ -303,7 +303,10 @@ mod karura_only_tests {
 	fn homa_lite_xcm_unbonding_works() {
 		let homa_lite_sub_account: AccountId =
 			hex_literal::hex!["d7b8926b326dd349355a9a7cca6606c1e0eb6fd2b506066b518c7155ff0d8297"].into();
-
+		let mut parachain_account: AccountId = AccountId::default();
+		Karura::execute_with(|| {
+			parachain_account = ParachainAccount::get();
+		});
 		Kusama::execute_with(|| {
 			kusama_runtime::Staking::trigger_new_era(0, vec![]);
 
@@ -311,12 +314,12 @@ mod karura_only_tests {
 			assert_ok!(kusama_runtime::Balances::transfer(
 				kusama_runtime::Origin::signed(ALICE.into()),
 				MultiAddress::Id(homa_lite_sub_account.clone()),
-				1_100_000_000_000_000
+				1_001_000_000_000_000
 			));
 
 			assert_eq!(
 				kusama_runtime::Balances::free_balance(&homa_lite_sub_account.clone()),
-				1_100_000_000_000_000
+				1_001_000_000_000_000
 			);
 
 			// bond and unbond some fund for staking
@@ -338,7 +341,12 @@ mod karura_only_tests {
 			for _i in 0..29 {
 				kusama_runtime::Staking::trigger_new_era(0, vec![]);
 			}
-			assert_eq!(kusama_runtime::Balances::free_balance(&ParachainAccount::get()), 0);
+
+			// Endowed from kusama_ext()
+			assert_eq!(
+				kusama_runtime::Balances::free_balance(&parachain_account.clone()),
+				2_000_000_000_000
+			);
 
 			// assert_ok!(kusama_runtime::Staking::withdraw_unbonded(
 			// 	kusama_runtime::Origin::signed(homa_lite_sub_account.clone()),
@@ -350,7 +358,7 @@ mod karura_only_tests {
 			// 	1_000_000_000_000_000
 			// ));
 			// assert_eq!(kusama_runtime::Balances::free_balance(&ParachainAccount::get()),
-			// 1_000_000_000_000_000);
+			// 1_001_000_000_000_000);
 		});
 
 		Karura::execute_with(|| {
@@ -362,8 +370,8 @@ mod karura_only_tests {
 				0
 			));
 
-			assert_ok!(HomaLite::set_xcm_base_weight(Origin::root(), 1_000_000_000));
-			assert_ok!(HomaLite::set_xcm_unbond_fee(Origin::root(), 1_000_000_000));
+			// Weight is around 5_775_663_000
+			assert_ok!(HomaLite::set_xcm_base_weight(Origin::root(), 10_000_000_000));
 
 			assert_ok!(HomaLite::schedule_unbond(
 				Origin::root(),
@@ -385,14 +393,14 @@ mod karura_only_tests {
 		});
 
 		Kusama::execute_with(|| {
-			println!("{:?}", kusama_runtime::System::events());
 			assert_eq!(
 				kusama_runtime::Balances::free_balance(&homa_lite_sub_account),
-				100_000_000_000_000
+				1_000_000_000_000
 			);
+			// Final parachain balance is: unbond_withdrew($1000) + initial_endowment($2) - xcm_fee
 			assert_eq!(
-				kusama_runtime::Balances::free_balance(&ParachainAccount::get()),
-				1_000_000_000_000_000
+				kusama_runtime::Balances::free_balance(&parachain_account.clone()),
+				1_001_999_659_315_675
 			);
 		});
 	}
