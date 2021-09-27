@@ -1889,8 +1889,19 @@ impl Contains<CurrencyId> for IsLiquidToken {
 	}
 }
 
-type RebaseTokens =
-	orml_tokens::Combiner<AccountId, IsLiquidToken, CurrencyAdapter<Runtime, GetLiquidCurrencyId>, Tokens>;
+pub struct GetCurrencyId;
+impl Get<CurrencyId> for GetCurrencyId {
+	fn get() -> CurrencyId {
+		CurrencyId::Token(TokenSymbol::LDOT)
+	}
+}
+
+type RebaseTokens = orml_tokens::Combiner<
+	AccountId,
+	IsLiquidToken,
+	orml_tokens::Mapper<AccountId, Tokens, ConvertBalanceHoamLite, Balance, GetCurrencyId>,
+	Tokens,
+>;
 
 impl nutsfinance_stable_asset::Config for Runtime {
 	type Event = Event;
