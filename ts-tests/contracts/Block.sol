@@ -15,4 +15,13 @@ contract Block {
     function blockHash(uint number) public view returns(bytes32) {
         return blockhash(number);
     }
+    function chainId() public view returns(uint) {
+        return block.chainid;
+    }
+    function coinbase() public view returns(address) {
+        return block.coinbase;
+    }
+    function timestamp() public view returns(uint) {
+        return block.timestamp;
+    }
 }
