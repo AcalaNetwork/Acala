@@ -22,8 +22,19 @@
 
 use super::*;
 use frame_support::{assert_noop, assert_ok};
-use mock::{Event, *};
+use mock::{Call as MockCall, Event, *};
+use sp_core::offchain::{testing, DbExternalities, OffchainDbExt, OffchainWorkerExt, StorageKind, TransactionPoolExt};
+use sp_io::offchain;
 use sp_runtime::traits::One;
+
+fn run_to_block_offchain(n: u64) {
+	while System::block_number() < n {
+		System::set_block_number(System::block_number() + 1);
+		AuctionManagerModule::offchain_worker(System::block_number());
+		// this unlocks the concurrency storage lock so offchain_worker will fire next block
+		offchain::sleep_until(offchain::timestamp().add(Duration::from_millis(LOCK_DURATION + 200)));
+	}
+}
 
 #[test]
 fn get_auction_time_to_close_work() {
@@ -469,5 +480,117 @@ fn cancel_collateral_auction_work() {
 		assert_eq!(alice_ref_count_1, alice_ref_count_0 - 1);
 		let bob_ref_count_1 = System::consumers(&BOB);
 		assert_eq!(bob_ref_count_1, bob_ref_count_0 - 1);
+	});
+}
+
+#[test]
+fn offchain_worker_cancels_auction_in_shutdown() {
+	let (offchain, _offchain_state) = testing::TestOffchainExt::new();
+	let (pool, pool_state) = testing::TestTransactionPoolExt::new();
+	let mut ext = ExtBuilder::default().build();
+	ext.register_extension(OffchainWorkerExt::new(offchain.clone()));
+	ext.register_extension(TransactionPoolExt::new(pool));
+	ext.register_extension(OffchainDbExt::new(offchain.clone()));
+
+	ext.execute_with(|| {
+		System::set_block_number(1);
+		assert_ok!(AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 10, 100));
+		assert!(AuctionManagerModule::collateral_auctions(0).is_some());
+		run_to_block_offchain(2);
+		// offchain worker does not have any tx because shutdown is false
+		assert!(!MockEmergencyShutdown::is_shutdown());
+		assert!(pool_state.write().transactions.pop().is_none());
+		mock_shutdown();
+		assert!(MockEmergencyShutdown::is_shutdown());
+
+		// now offchain worker will cancel auction as shutdown is true
+		run_to_block_offchain(3);
+		let tx = pool_state.write().transactions.pop().unwrap();
+		let tx = Extrinsic::decode(&mut &*tx).unwrap();
+		if let MockCall::AuctionManagerModule(crate::Call::cancel(auction_id)) = tx.call {
+			assert_ok!(AuctionManagerModule::cancel(Origin::none(), auction_id));
+		}
+
+		// auction is canceled
+		assert!(AuctionManagerModule::collateral_auctions(0).is_none());
+		assert!(pool_state.write().transactions.pop().is_none());
+	});
+}
+
+#[test]
+fn offchain_worker_max_iterations_check() {
+	let (mut offchain, _offchain_state) = testing::TestOffchainExt::new();
+	let (pool, pool_state) = testing::TestTransactionPoolExt::new();
+	let mut ext = ExtBuilder::default().build();
+	ext.register_extension(OffchainWorkerExt::new(offchain.clone()));
+	ext.register_extension(TransactionPoolExt::new(pool));
+	ext.register_extension(OffchainDbExt::new(offchain.clone()));
+
+	ext.execute_with(|| {
+		System::set_block_number(1);
+		// sets max iterations value to 1
+		offchain.local_storage_set(StorageKind::PERSISTENT, OFFCHAIN_WORKER_MAX_ITERATIONS, &1u32.encode());
+		assert_ok!(AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 10, 100));
+		assert_ok!(AuctionManagerModule::new_collateral_auction(&BOB, BTC, 10, 100));
+		assert!(AuctionManagerModule::collateral_auctions(1).is_some());
+		assert!(AuctionManagerModule::collateral_auctions(0).is_some());
+		mock_shutdown();
+		assert!(MockEmergencyShutdown::is_shutdown());
+
+		run_to_block_offchain(2);
+		// now offchain worker will cancel one auction but the other one will cancel next block
+		let tx = pool_state.write().transactions.pop().unwrap();
+		let tx = Extrinsic::decode(&mut &*tx).unwrap();
+		if let MockCall::AuctionManagerModule(crate::Call::cancel(auction_id)) = tx.call {
+			assert_ok!(AuctionManagerModule::cancel(Origin::none(), auction_id));
+		}
+		assert!(
+			AuctionManagerModule::collateral_auctions(1).is_some()
+				|| AuctionManagerModule::collateral_auctions(0).is_some()
+		);
+		// only one auction canceled so offchain tx pool is empty
+		assert!(pool_state.write().transactions.pop().is_none());
+
+		run_to_block_offchain(3);
+		// now offchain worker will cancel the next auction
+		let tx = pool_state.write().transactions.pop().unwrap();
+		let tx = Extrinsic::decode(&mut &*tx).unwrap();
+		if let MockCall::AuctionManagerModule(crate::Call::cancel(auction_id)) = tx.call {
+			assert_ok!(AuctionManagerModule::cancel(Origin::none(), auction_id));
+		}
+		assert!(AuctionManagerModule::collateral_auctions(1).is_none());
+		assert!(AuctionManagerModule::collateral_auctions(0).is_none());
+		assert!(pool_state.write().transactions.pop().is_none());
+	});
+}
+
+#[test]
+fn offchain_default_max_iterator_works() {
+	let (mut offchain, _offchain_state) = testing::TestOffchainExt::new();
+	let (pool, pool_state) = testing::TestTransactionPoolExt::new();
+	let mut ext = ExtBuilder::lots_of_accounts().build();
+	ext.register_extension(OffchainWorkerExt::new(offchain.clone()));
+	ext.register_extension(TransactionPoolExt::new(pool));
+	ext.register_extension(OffchainDbExt::new(offchain.clone()));
+
+	ext.execute_with(|| {
+		System::set_block_number(1);
+		// checks that max iterations is stored as none
+		assert!(offchain
+			.local_storage_get(StorageKind::PERSISTENT, OFFCHAIN_WORKER_MAX_ITERATIONS)
+			.is_none());
+
+		for i in 0..1001 {
+			let account_id: AccountId = i;
+			assert_ok!(AuctionManagerModule::new_collateral_auction(&account_id, BTC, 1, 10));
+		}
+
+		mock_shutdown();
+		run_to_block_offchain(2);
+		// should only run 1000 iterations stopping due to DEFAULT_MAX_ITERATION
+		assert_eq!(pool_state.write().transactions.len(), 1000);
+		run_to_block_offchain(3);
+		// next block iterator starts where it left off and adds the final account to tx pool
+		assert_eq!(pool_state.write().transactions.len(), 1001);
 	});
 }

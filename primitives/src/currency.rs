@@ -199,6 +199,8 @@ create_currency_id! {
 		// 149: Reserved for renBTC
 		// 150: Reserved for CASH
 		// 168 - 255: Kusama parachain tokens
+		BNC("Bifrost Native Token", 12) = 168,
+		VSKSM("Bifrost Voucher Slot KSM", 12) = 169,
 	}
 }
 
@@ -225,6 +227,7 @@ pub enum CurrencyId {
 	DexShare(DexShare, DexShare),
 	Erc20(EvmAddress),
 	ChainSafe(chainbridge::ResourceId),
+	StableAssetPoolToken(nutsfinance_stable_asset::PoolId),
 }
 
 impl CurrencyId {
@@ -309,6 +312,7 @@ impl TryFrom<CurrencyId> for EvmAddress {
 			}
 			CurrencyId::Erc20(address) => Ok(address),
 			CurrencyId::ChainSafe(_) => Err(()),
+			CurrencyId::StableAssetPoolToken(_) => Err(()),
 		}
 	}
 }

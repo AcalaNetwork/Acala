@@ -55,7 +55,7 @@ pub use precompile::{
 	StateRentPrecompile,
 };
 pub use primitives::{
-	currency::{TokenInfo, ACA, AUSD, DOT, KAR, KSM, KUSD, LDOT, LKSM, RENBTC},
+	currency::{TokenInfo, ACA, AUSD, BNC, DOT, KAR, KSM, KUSD, LDOT, LKSM, RENBTC, VSKSM},
 	AccountId,
 };
 
@@ -223,6 +223,9 @@ pub type EnsureRootOrThreeFourthsGeneralCouncil = EnsureOneOf<
 	EnsureRoot<AccountId>,
 	pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, GeneralCouncilInstance>,
 >;
+
+pub type EnsureRootOrOneGeneralCouncil =
+	EnsureOneOf<AccountId, EnsureRoot<AccountId>, pallet_collective::EnsureMember<AccountId, GeneralCouncilInstance>>;
 
 // Financial Council
 pub type EnsureRootOrAllFinancialCouncil = EnsureOneOf<

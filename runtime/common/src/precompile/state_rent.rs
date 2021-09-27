@@ -16,16 +16,16 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::precompile::PrecompileOutput;
 use frame_support::log;
 use module_evm::{Context, ExitError, ExitSucceed, Precompile};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
-use sp_core::U256;
 use sp_runtime::RuntimeDebug;
 use sp_std::{borrow::Cow, fmt::Debug, marker::PhantomData, prelude::*, result};
 
 use module_support::{AddressMapping as AddressMappingT, CurrencyIdMapping as CurrencyIdMappingT, EVMStateRentTrait};
 
-use super::input::{Input, InputT};
+use super::input::{Input, InputT, Output};
 use primitives::Balance;
 
 /// The `EVM` impl precompile.
@@ -67,20 +67,29 @@ where
 		input: &[u8],
 		_target_gas: Option<u64>,
 		_context: &Context,
-	) -> result::Result<(ExitSucceed, Vec<u8>, u64), ExitError> {
-		log::debug!(target: "evm", "state_rent input: {:?}", input);
+	) -> result::Result<PrecompileOutput, ExitError> {
 		let input = Input::<Action, AccountId, AddressMapping, CurrencyIdMapping>::new(input);
 
 		let action = input.action()?;
 
 		match action {
 			Action::QueryNewContractExtraBytes => {
-				let bytes = vec_u8_from_u32(EVM::query_new_contract_extra_bytes());
-				Ok((ExitSucceed::Returned, bytes, 0))
+				let output = EVM::query_new_contract_extra_bytes();
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: 0,
+					output: Output::default().encode_u32(output),
+					logs: Default::default(),
+				})
 			}
 			Action::QueryStorageDepositPerByte => {
-				let deposit = vec_u8_from_balance(EVM::query_storage_deposit_per_byte());
-				Ok((ExitSucceed::Returned, deposit, 0))
+				let deposit = EVM::query_storage_deposit_per_byte();
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: 0,
+					output: Output::default().encode_u128(deposit),
+					logs: Default::default(),
+				})
 			}
 			Action::QueryMaintainer => {
 				let contract = input.evm_address_at(1)?;
@@ -88,18 +97,30 @@ where
 				let maintainer =
 					EVM::query_maintainer(contract).map_err(|e| ExitError::Other(Cow::Borrowed(e.into())))?;
 
-				let mut address = [0u8; 32];
-				address[12..].copy_from_slice(&maintainer.as_bytes().to_vec());
-
-				Ok((ExitSucceed::Returned, address.to_vec(), 0))
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: 0,
+					output: Output::default().encode_address(&maintainer),
+					logs: Default::default(),
+				})
 			}
 			Action::QueryDeveloperDeposit => {
-				let deposit = vec_u8_from_balance(EVM::query_developer_deposit());
-				Ok((ExitSucceed::Returned, deposit, 0))
+				let deposit = EVM::query_developer_deposit();
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: 0,
+					output: Output::default().encode_u128(deposit),
+					logs: Default::default(),
+				})
 			}
 			Action::QueryDeploymentFee => {
-				let fee = vec_u8_from_balance(EVM::query_deployment_fee());
-				Ok((ExitSucceed::Returned, fee, 0))
+				let fee = EVM::query_deployment_fee();
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: 0,
+					output: Output::default().encode_u128(fee),
+					logs: Default::default(),
+				})
 			}
 			Action::TransferMaintainer => {
 				let from = input.account_id_at(1)?;
@@ -115,20 +136,13 @@ where
 				EVM::transfer_maintainer(from, contract, new_maintainer)
 					.map_err(|e| ExitError::Other(Cow::Borrowed(e.into())))?;
 
-				Ok((ExitSucceed::Returned, vec![], 0))
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: 0,
+					output: vec![],
+					logs: Default::default(),
+				})
 			}
 		}
 	}
-}
-
-fn vec_u8_from_balance(b: Balance) -> Vec<u8> {
-	let mut be_bytes = [0u8; 32];
-	U256::from(b).to_big_endian(&mut be_bytes[..]);
-	be_bytes.to_vec()
-}
-
-fn vec_u8_from_u32(b: u32) -> Vec<u8> {
-	let mut be_bytes = [0u8; 32];
-	U256::from(b).to_big_endian(&mut be_bytes[..]);
-	be_bytes.to_vec()
 }

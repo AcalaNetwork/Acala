@@ -35,7 +35,7 @@ use frame_system::{
 	pallet_prelude::*,
 };
 use orml_traits::{Auction, AuctionHandler, Change, MultiCurrency, OnNewBidResult};
-use orml_utilities::{IterableStorageMapExtended, OffchainErr};
+use orml_utilities::OffchainErr;
 use primitives::{AuctionId, Balance, CurrencyId};
 use sp_runtime::{
 	offchain::{
@@ -351,7 +351,8 @@ impl<T: Config> Pallet<T> {
 		// get the max iterationns config
 		let max_iterations = StorageValueRef::persistent(OFFCHAIN_WORKER_MAX_ITERATIONS)
 			.get::<u32>()
-			.unwrap_or(Some(DEFAULT_MAX_ITERATIONS));
+			.unwrap_or(Some(DEFAULT_MAX_ITERATIONS))
+			.unwrap_or(DEFAULT_MAX_ITERATIONS);
 
 		log::debug!(
 			target: "auction-manager",
@@ -360,10 +361,18 @@ impl<T: Config> Pallet<T> {
 		);
 
 		// start iterations to cancel collateral auctions
-		let mut iterator = <CollateralAuctions<T> as IterableStorageMapExtended<_, _>>::iter(max_iterations, start_key);
+		let mut iterator = match start_key {
+			Some(key) => <CollateralAuctions<T>>::iter_from(key),
+			None => <CollateralAuctions<T>>::iter(),
+		};
+
+		let mut iteration_count = 0;
+		let mut finished = true;
 
 		#[allow(clippy::while_let_on_iterator)]
 		while let Some((collateral_auction_id, _)) = iterator.next() {
+			iteration_count += 1;
+
 			if let (Some(collateral_auction), Some((_, last_bid_price))) = (
 				Self::collateral_auctions(collateral_auction_id),
 				Self::get_last_bid(collateral_auction_id),
@@ -371,17 +380,26 @@ impl<T: Config> Pallet<T> {
 				// if collateral auction has already been in reverse stage,
 				// should skip it.
 				if collateral_auction.in_reverse_stage(last_bid_price) {
+					if iteration_count == max_iterations {
+						finished = false;
+						break;
+					}
 					continue;
 				}
 			}
 			Self::submit_cancel_auction_tx(collateral_auction_id);
+
+			if iteration_count == max_iterations {
+				finished = false;
+				break;
+			}
 			guard.extend_lock().map_err(|_| OffchainErr::OffchainLock)?;
 		}
 
-		if iterator.finished {
+		if finished {
 			to_be_continue.clear();
 		} else {
-			to_be_continue.set(&iterator.storage_map_iterator.previous_key);
+			to_be_continue.set(&iterator.last_raw_key());
 		}
 
 		// Consume the guard but **do not** unlock the underlying lock.

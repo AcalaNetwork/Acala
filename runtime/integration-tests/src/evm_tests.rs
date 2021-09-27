@@ -621,6 +621,7 @@ fn should_not_kill_contract_on_transfer_all_tokens() {
 
 			assert_ok!(EVM::call(Origin::signed(alice()), contract.clone(), hex_literal::hex!("41c0e1b5").to_vec(), 0, 1000000000, 100000));
 
+			assert_eq!(System::providers(&contract_account_id), 0);
 			assert!(EVM::accounts(contract).is_none());
 
 			// should be gone

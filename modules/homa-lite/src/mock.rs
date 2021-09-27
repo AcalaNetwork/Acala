@@ -167,6 +167,8 @@ impl module_currencies::Config for Runtime {
 	type WeightInfo = ();
 	type AddressMapping = MockAddressMapping;
 	type EVMBridge = ();
+	type SweepOrigin = EnsureSignedBy<Root, AccountId>;
+	type OnDust = ();
 }
 
 parameter_types! {

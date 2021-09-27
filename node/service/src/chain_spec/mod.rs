@@ -25,7 +25,7 @@ use serde::{Deserialize, Serialize};
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_core::{bytes::from_hex, sr25519, Bytes, Pair, Public, H160};
 use sp_finality_grandpa::AuthorityId as GrandpaId;
-use sp_runtime::traits::IdentifyAccount;
+use sp_runtime::traits::{IdentifyAccount, Zero};
 use sp_std::{collections::btree_map::BTreeMap, str::FromStr};
 
 #[cfg(feature = "with-acala-runtime")]
@@ -94,6 +94,7 @@ pub fn get_karura_authority_keys_from_seed(seed: &str) -> (AccountId, AuraId) {
 }
 
 /// Returns `evm_genesis_accounts`
+#[cfg(feature = "with-mandala-runtime")]
 pub fn evm_genesis() -> BTreeMap<H160, GenesisAccount<Balance, Nonce>> {
 	let contracts_json = &include_bytes!("../../../../predeploy-contracts/resources/bytecodes.json")[..];
 	let contracts: Vec<(String, String, String)> = serde_json::from_slice(contracts_json).unwrap();
@@ -103,7 +104,11 @@ pub fn evm_genesis() -> BTreeMap<H160, GenesisAccount<Balance, Nonce>> {
 			nonce: 0u32,
 			balance: 0u128,
 			storage: BTreeMap::new(),
-			code: Bytes::from_str(&code_string).unwrap().0,
+			code: if code_string.len().is_zero() {
+				vec![]
+			} else {
+				Bytes::from_str(&code_string).unwrap().0
+			},
 		};
 
 		let addr = H160::from_slice(

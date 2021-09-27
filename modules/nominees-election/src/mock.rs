@@ -23,7 +23,7 @@
 use super::*;
 
 use crate as nominees_election;
-use frame_support::{construct_runtime, parameter_types};
+use frame_support::{construct_runtime, ord_parameter_types, parameter_types};
 use orml_traits::parameter_type_with_key;
 use primitives::{Amount, CurrencyId, TokenSymbol};
 use sp_core::H256;
@@ -75,6 +75,10 @@ parameter_type_with_key! {
 
 parameter_types! {
 	pub const MaxLocks: u32 = 100;
+}
+
+ord_parameter_types! {
+	pub const One: AccountId = ALICE;
 }
 
 impl orml_tokens::Config for Runtime {
