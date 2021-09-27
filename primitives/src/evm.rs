@@ -16,15 +16,16 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::Balance;
+use crate::{Balance, BlockNumber, Nonce};
 use codec::{Decode, Encode};
 use evm::ExitReason;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
-use sp_core::{H160, U256};
+use sp_core::{H160, H256, U256};
 use sp_runtime::RuntimeDebug;
 use sp_std::vec::Vec;
 
+pub use ethereum::TransactionAction;
 pub use evm::backend::{Basic as Account, Log};
 pub use evm::Config;
 
@@ -78,4 +79,17 @@ pub struct EstimateResourcesRequest {
 	pub value: Option<Balance>,
 	/// Data
 	pub data: Option<Vec<u8>>,
+}
+
+pub struct EthereumTransactionMessage {
+	pub nonce: Nonce,
+	pub tip: Balance,
+	pub gas_limit: u64,
+	pub storage_limit: u32,
+	pub action: TransactionAction,
+	pub value: Balance,
+	pub input: Vec<u8>,
+	pub chain_id: u64,
+	pub genesis: H256,
+	pub valid_until: BlockNumber,
 }

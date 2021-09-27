@@ -75,7 +75,8 @@ impl frame_system::Config for Runtime {
 type Balance = u128;
 
 parameter_type_with_key! {
-	pub ExistentialDeposits: |_currency_id: CurrencyId| -> Balance {
+	pub ExistentialDeposits: |currency_id: CurrencyId| -> Balance {
+		if *currency_id == DOT { return 2; }
 		Default::default()
 	};
 }
@@ -90,7 +91,6 @@ impl tokens::Config for Runtime {
 	type Balance = Balance;
 	type Amount = i64;
 	type CurrencyId = CurrencyId;
-	type SweepOrigin = EnsureSignedBy<CouncilAccount, AccountId>;
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = tokens::TransferDust<Runtime, DustAccount>;
 	type WeightInfo = ();
@@ -100,13 +100,14 @@ impl tokens::Config for Runtime {
 
 pub const NATIVE_CURRENCY_ID: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const X_TOKEN_ID: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
+pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
 
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = NATIVE_CURRENCY_ID;
 }
 
 parameter_types! {
-	pub const ExistentialDeposit: u64 = 1;
+	pub const ExistentialDeposit: u64 = 2;
 	pub const MaxReserves: u32 = 50;
 }
 
@@ -184,6 +185,8 @@ impl Config for Runtime {
 	type WeightInfo = ();
 	type AddressMapping = MockAddressMapping;
 	type EVMBridge = EVMBridge;
+	type SweepOrigin = EnsureSignedBy<CouncilAccount, AccountId>;
+	type OnDust = crate::TransferDust<Runtime, DustAccount>;
 }
 
 pub type NativeCurrency = Currency<Runtime, GetNativeCurrencyId>;

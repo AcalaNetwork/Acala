@@ -23,8 +23,9 @@
 use super::*;
 use frame_support::{assert_noop, assert_ok};
 use mock::{
-	alice, bob, deploy_contracts, erc20_address, eva, AccountId, AdaptedBasicCurrency, Currencies, Event, ExtBuilder,
-	NativeCurrency, Origin, PalletBalances, Runtime, System, Tokens, EVM, ID_1, NATIVE_CURRENCY_ID, X_TOKEN_ID,
+	alice, bob, deploy_contracts, erc20_address, eva, AccountId, AdaptedBasicCurrency, CouncilAccount, Currencies,
+	DustAccount, Event, ExtBuilder, NativeCurrency, Origin, PalletBalances, Runtime, System, Tokens, DOT, EVM, ID_1,
+	NATIVE_CURRENCY_ID, X_TOKEN_ID,
 };
 use sp_core::H160;
 use sp_runtime::traits::BadOrigin;
@@ -814,4 +815,162 @@ fn erc20_invalid_operation() {
 				Error::<Runtime>::Erc20InvalidOperation,
 			);
 		});
+}
+
+#[test]
+fn sweep_dust_tokens_works() {
+	ExtBuilder::default().build().execute_with(|| {
+		tokens::Accounts::<Runtime>::insert(
+			bob(),
+			DOT,
+			tokens::AccountData {
+				free: 1,
+				frozen: 0,
+				reserved: 0,
+			},
+		);
+		tokens::Accounts::<Runtime>::insert(
+			eva(),
+			DOT,
+			tokens::AccountData {
+				free: 2,
+				frozen: 0,
+				reserved: 0,
+			},
+		);
+		tokens::Accounts::<Runtime>::insert(
+			alice(),
+			DOT,
+			tokens::AccountData {
+				free: 0,
+				frozen: 1,
+				reserved: 0,
+			},
+		);
+		tokens::Accounts::<Runtime>::insert(
+			DustAccount::get(),
+			DOT,
+			tokens::AccountData {
+				free: 100,
+				frozen: 0,
+				reserved: 0,
+			},
+		);
+		tokens::TotalIssuance::<Runtime>::insert(DOT, 104);
+
+		let accounts = vec![bob(), eva(), alice()];
+
+		assert_noop!(
+			Currencies::sweep_dust(Origin::signed(bob()), DOT, accounts.clone()),
+			DispatchError::BadOrigin
+		);
+
+		assert_ok!(Currencies::sweep_dust(
+			Origin::signed(CouncilAccount::get()),
+			DOT,
+			accounts.clone()
+		));
+		System::assert_last_event(Event::Currencies(crate::Event::DustSwept(DOT, bob(), 1)));
+
+		// bob's account is gone
+		assert_eq!(tokens::Accounts::<Runtime>::contains_key(bob(), DOT), false);
+		assert_eq!(Currencies::free_balance(DOT, &bob()), 0);
+
+		// eva's account remains, not below ED
+		assert_eq!(Currencies::free_balance(DOT, &eva()), 2);
+
+		// Dust transferred to dust receiver
+		assert_eq!(Currencies::free_balance(DOT, &DustAccount::get()), 101);
+		// Total issuance remains the same
+		assert_eq!(Currencies::total_issuance(DOT), 104);
+	});
+}
+
+#[test]
+fn sweep_dust_native_currency_works() {
+	use frame_support::traits::StoredMap;
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(<Runtime as pallet_balances::Config>::AccountStore::insert(
+			&bob(),
+			pallet_balances::AccountData {
+				free: 1,
+				reserved: 0,
+				misc_frozen: 0,
+				fee_frozen: 0,
+			},
+		));
+		assert_ok!(<Runtime as pallet_balances::Config>::AccountStore::insert(
+			&eva(),
+			pallet_balances::AccountData {
+				free: 2,
+				reserved: 0,
+				misc_frozen: 0,
+				fee_frozen: 0,
+			},
+		));
+		assert_ok!(<Runtime as pallet_balances::Config>::AccountStore::insert(
+			&alice(),
+			pallet_balances::AccountData {
+				free: 0,
+				reserved: 0,
+				misc_frozen: 2,
+				fee_frozen: 2,
+			},
+		));
+		assert_ok!(<Runtime as pallet_balances::Config>::AccountStore::insert(
+			&DustAccount::get(),
+			pallet_balances::AccountData {
+				free: 100,
+				reserved: 0,
+				misc_frozen: 0,
+				fee_frozen: 0,
+			},
+		));
+		pallet_balances::TotalIssuance::<Runtime>::put(104);
+
+		assert_eq!(Currencies::free_balance(NATIVE_CURRENCY_ID, &bob()), 1);
+		assert_eq!(Currencies::free_balance(NATIVE_CURRENCY_ID, &eva()), 2);
+		assert_eq!(Currencies::free_balance(NATIVE_CURRENCY_ID, &alice()), 0);
+		assert_eq!(Currencies::free_balance(NATIVE_CURRENCY_ID, &DustAccount::get()), 100);
+
+		let accounts = vec![bob(), eva(), alice()];
+
+		assert_noop!(
+			Currencies::sweep_dust(Origin::signed(bob()), NATIVE_CURRENCY_ID, accounts.clone()),
+			DispatchError::BadOrigin
+		);
+
+		assert_ok!(Currencies::sweep_dust(
+			Origin::signed(CouncilAccount::get()),
+			NATIVE_CURRENCY_ID,
+			accounts.clone()
+		));
+		System::assert_last_event(Event::Currencies(crate::Event::DustSwept(NATIVE_CURRENCY_ID, bob(), 1)));
+
+		// bob's account is gone
+		assert_eq!(System::account_exists(&bob()), false);
+		assert_eq!(Currencies::free_balance(NATIVE_CURRENCY_ID, &bob()), 0);
+
+		// eva's account remains, not below ED
+		assert_eq!(Currencies::free_balance(NATIVE_CURRENCY_ID, &eva()), 2);
+
+		// Dust transferred to dust receiver
+		assert_eq!(Currencies::free_balance(NATIVE_CURRENCY_ID, &DustAccount::get()), 101);
+		// Total issuance remains the same
+		assert_eq!(Currencies::total_issuance(NATIVE_CURRENCY_ID), 104);
+	});
+}
+
+#[test]
+fn sweep_dust_erc20_not_allowed() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_noop!(
+			Currencies::sweep_dust(
+				Origin::signed(CouncilAccount::get()),
+				CurrencyId::Erc20(erc20_address()),
+				vec![]
+			),
+			Error::<Runtime>::Erc20InvalidOperation
+		);
+	});
 }

@@ -109,7 +109,7 @@ pub use sp_runtime::{Perbill, Percent, Permill, Perquintill};
 pub use authority::AuthorityConfigImpl;
 pub use constants::{fee::*, parachains, time::*};
 pub use primitives::{
-	evm::EstimateResourcesRequest, AccountId, AccountIndex, Amount, AuctionId, AuthoritysOriginId, Balance,
+	evm::EstimateResourcesRequest, AccountId, AccountIndex, Address, Amount, AuctionId, AuthoritysOriginId, Balance,
 	BlockNumber, CurrencyId, DataProviderId, EraIndex, Hash, Moment, Nonce, ReserveIdentifier, Share, Signature,
 	TokenSymbol, TradingPair,
 };
@@ -123,7 +123,7 @@ pub use runtime_common::{
 	HomaCouncilInstance, HomaCouncilMembershipInstance, OperatorMembershipInstanceAcala,
 	OperatorMembershipInstanceBand, Price, ProxyType, Rate, Ratio, RelaychainBlockNumberProvider,
 	RelaychainSubAccountId, RuntimeBlockLength, RuntimeBlockWeights, SystemContractsFilter, TechnicalCommitteeInstance,
-	TechnicalCommitteeMembershipInstance, TimeStampedPrice, BNC, KAR, KSM, KUSD, LKSM, RENBTC,
+	TechnicalCommitteeMembershipInstance, TimeStampedPrice, BNC, KAR, KSM, KUSD, LKSM, RENBTC, VSKSM,
 };
 
 mod authority;
@@ -136,7 +136,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("karura"),
 	impl_name: create_runtime_str!("karura"),
 	authoring_version: 1,
-	spec_version: 1010,
+	spec_version: 1011,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -742,6 +742,7 @@ parameter_type_with_key! {
 				TokenSymbol::KSM => 10 * millicent(*currency_id),
 				TokenSymbol::LKSM => 50 * millicent(*currency_id),
 				TokenSymbol::BNC => 800 * millicent(*currency_id),  // 80BNC = 1KSM
+				TokenSymbol::VSKSM => 10 * millicent(*currency_id),  // 1VSKSM = 1KSM
 
 				TokenSymbol::ACA |
 				TokenSymbol::AUSD |
@@ -788,7 +789,6 @@ impl orml_tokens::Config for Runtime {
 	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
-	type SweepOrigin = EnsureRootOrOneGeneralCouncil;
 	type WeightInfo = weights::orml_tokens::WeightInfo<Runtime>;
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = orml_tokens::TransferDust<Runtime, KaruraTreasuryAccount>;
@@ -830,6 +830,8 @@ impl module_currencies::Config for Runtime {
 	type WeightInfo = weights::module_currencies::WeightInfo<Runtime>;
 	type AddressMapping = EvmAddressMapping<Runtime>;
 	type EVMBridge = EVMBridge;
+	type SweepOrigin = EnsureRootOrOneGeneralCouncil;
+	type OnDust = module_currencies::TransferDust<Runtime, KaruraTreasuryAccount>;
 }
 
 parameter_types! {
@@ -1442,6 +1444,11 @@ parameter_types! {
 		// BNC:KSM = 80:1
 		ksm_per_second() * 80
 	);
+	pub VsksmPerSecond: (MultiLocation, u128) = (
+		X3(Parent, Parachain(parachains::bifrost::ID), GeneralKey(parachains::bifrost::VSKSM_KEY.to_vec())),
+		// VSKSM:KSM = 1:1
+		ksm_per_second()
+	);
 }
 /// TODO: this is a temp solution for multi traders, should be replaced after tuple impl is
 /// available https://github.com/paritytech/polkadot/pull/3601
@@ -1451,15 +1458,19 @@ parameter_types! {
 /// 2. Add a new trader field.
 /// 3. Call this new trader type's new/buy_weight/refund functions in `WeightTrader` impl,
 ///   like the way of `KsmTrader`.
-pub struct MultiWeightTraders<KsmTrader, BncTrader> {
+pub struct MultiWeightTraders<KsmTrader, BncTrader, VsksmTrader> {
 	ksm_trader: KsmTrader,
 	bnc_trader: BncTrader,
+	vsksm_trader: VsksmTrader,
 }
-impl<KsmTrader: WeightTrader, BncTrader: WeightTrader> WeightTrader for MultiWeightTraders<KsmTrader, BncTrader> {
+impl<KsmTrader: WeightTrader, BncTrader: WeightTrader, VsksmTrader: WeightTrader> WeightTrader
+	for MultiWeightTraders<KsmTrader, BncTrader, VsksmTrader>
+{
 	fn new() -> Self {
 		Self {
 			ksm_trader: KsmTrader::new(),
 			bnc_trader: BncTrader::new(),
+			vsksm_trader: VsksmTrader::new(),
 			// dummy_trader: DummyTrader::new(),
 		}
 	}
@@ -1468,7 +1479,11 @@ impl<KsmTrader: WeightTrader, BncTrader: WeightTrader> WeightTrader for MultiWei
 			return Ok(assets);
 		}
 
-		if let Ok(assets) = self.bnc_trader.buy_weight(weight, payment) {
+		if let Ok(assets) = self.bnc_trader.buy_weight(weight, payment.clone()) {
+			return Ok(assets);
+		}
+
+		if let Ok(assets) = self.vsksm_trader.buy_weight(weight, payment) {
 			return Ok(assets);
 		}
 
@@ -1491,6 +1506,12 @@ impl<KsmTrader: WeightTrader, BncTrader: WeightTrader> WeightTrader for MultiWei
 			_ => {}
 		}
 
+		let vsksm = self.vsksm_trader.refund_weight(weight);
+		match vsksm {
+			MultiAsset::ConcreteFungible { amount, .. } if !amount.is_zero() => return vsksm,
+			_ => {}
+		}
+
 		// let dummy = self.dummy_trader.refund_weight(weight);
 		// match dummy {
 		// 	MultiAsset::ConcreteFungible { amount, .. } if !amount.is_zero() => return dummy,
@@ -1504,6 +1525,7 @@ impl<KsmTrader: WeightTrader, BncTrader: WeightTrader> WeightTrader for MultiWei
 pub type Trader = MultiWeightTraders<
 	FixedRateOfConcreteFungible<KsmPerSecond, ToTreasury>,
 	FixedRateOfConcreteFungible<BncPerSecond, ToTreasury>,
+	FixedRateOfConcreteFungible<VsksmPerSecond, ToTreasury>,
 >;
 
 pub struct XcmConfig;
@@ -1632,6 +1654,12 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 				Parachain(parachains::bifrost::ID),
 				GeneralKey(parachains::bifrost::BNC_KEY.to_vec()),
 			)),
+			// Bifrost Voucher Slot KSM
+			Token(VSKSM) => Some(X3(
+				Parent,
+				Parachain(parachains::bifrost::ID),
+				GeneralKey(parachains::bifrost::VSKSM_KEY.to_vec()),
+			)),
 			_ => None,
 		}
 	}
@@ -1645,6 +1673,7 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 			X3(Parent, Parachain(id), GeneralKey(key)) => {
 				match (id, &key[..]) {
 					(parachains::bifrost::ID, parachains::bifrost::BNC_KEY) => Some(Token(BNC)),
+					(parachains::bifrost::ID, parachains::bifrost::VSKSM_KEY) => Some(Token(VSKSM)),
 					(id, key) if id == u32::from(ParachainInfo::get()) => {
 						// Karura
 						if let Ok(currency_id) = CurrencyId::decode(&mut &*key) {
@@ -1829,8 +1858,6 @@ construct_runtime!(
 	}
 );
 
-/// The address format for describing accounts.
-pub type Address = sp_runtime::MultiAddress<AccountId, AccountIndex>;
 /// Block header type as expected by this runtime.
 pub type Header = generic::Header<BlockNumber, BlakeTwo256>;
 /// Block type as expected by this runtime.

@@ -30,7 +30,7 @@ use karura_runtime::{
 	DexConfig, FinancialCouncilMembershipConfig, GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig,
 	OperatorMembershipAcalaConfig, OrmlNFTConfig, ParachainInfoConfig, Period, SS58Prefix, SessionConfig, SessionKeys,
 	SessionManagerConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig,
-	BNC, KAR, KSM, KUSD, LKSM,
+	BNC, KAR, KSM, KUSD, LKSM, VSKSM,
 };
 use runtime_common::TokenInfo;
 
@@ -46,7 +46,7 @@ fn karura_properties() -> Properties {
 	let mut properties = Map::new();
 	let mut token_symbol: Vec<String> = vec![];
 	let mut token_decimals: Vec<u32> = vec![];
-	[KAR, KUSD, KSM, LKSM, BNC].iter().for_each(|token| {
+	[KAR, KUSD, KSM, LKSM, BNC, VSKSM].iter().for_each(|token| {
 		token_symbol.push(token.symbol().unwrap().to_string());
 		token_decimals.push(token.decimals().unwrap() as u32);
 	});
