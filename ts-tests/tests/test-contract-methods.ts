@@ -16,9 +16,6 @@ describeWithAcala("Acala RPC (Contract Methods)", (context) => {
 		contract = await deployContract(alice as any, Block);
 	});
 
-	// Unimplemented
-	//it("get transaction by hash", async () => {});
-
 	it("should return contract method result", async function () {
 		expect((await contract.multiply(3)).toString()).to.equal("21");
 	});

@@ -19,7 +19,7 @@
 		"ethers": "^5.4.6",
 		"@acala-network/api": "^2.2.2-1",
 		"@polkadot/api": "^5.2.1",
-		"@acala-network/bodhi": "1.0.2-12",
+		"@acala-network/bodhi": "1.0.2-14",
 		"@openzeppelin/contracts": "4.3.1"
 	}
 }
