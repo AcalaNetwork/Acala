@@ -20,24 +20,56 @@
 
 #![cfg(feature = "runtime-benchmarks")]
 
+pub use crate::*;
 use frame_benchmarking::{account, benchmarks};
 use frame_support::traits::Get;
 use frame_system::RawOrigin;
-
-pub use crate::*;
 
 pub struct Module<T: Config>(crate::Pallet<T>);
 
 const SEED: u32 = 0;
 
 benchmarks! {
-	// Benchmark mint
+	on_idle {
+		let amount = 1_000_000_000_000;
+		let caller: T::AccountId = account("caller", 0, SEED);
+		let caller1: T::AccountId = account("callera", 0, SEED);
+		let caller2: T::AccountId = account("callerb", 0, SEED);
+		let caller3: T::AccountId = account("callerc", 0, SEED);
+		<T as module::Config>::Currency::deposit(T::LiquidCurrencyId::get(), &caller1, amount)?;
+		<T as module::Config>::Currency::deposit(T::LiquidCurrencyId::get(), &caller2, amount)?;
+		<T as module::Config>::Currency::deposit(T::LiquidCurrencyId::get(), &caller3, amount)?;
+		let _ = crate::Pallet::<T>::request_redeem(RawOrigin::Signed(caller1).into(), amount, Permill::default());
+		let _ = crate::Pallet::<T>::request_redeem(RawOrigin::Signed(caller2.clone()).into(), amount, Permill::default());
+		let _ = crate::Pallet::<T>::request_redeem(RawOrigin::Signed(caller3.clone()).into(), amount, Permill::default());
+		let _ = crate::Pallet::<T>::schedule_unbond(RawOrigin::Root.into(), amount*2, <T as frame_system::Config>::BlockNumber::default());
+	}: {
+		let _ = crate::Pallet::<T>::on_idle(<T as frame_system::Config>::BlockNumber::default(), 1_000_000_000);
+	}
+
 	mint {
 		let amount = 1_000_000_000_000;
 		let caller: T::AccountId = account("caller", 0, SEED);
 		<T as module::Config>::Currency::deposit(T::StakingCurrencyId::get(), &caller, amount)?;
-		module::Pallet::<T>::set_minting_cap(RawOrigin::Root.into(), amount)?;
+		let _ = crate::Pallet::<T>::set_minting_cap(RawOrigin::Root.into(), amount)?;
 	}: _(RawOrigin::Signed(caller), amount)
+
+	mint_for_requests {
+		let amount = 1_000_000_000_000;
+		let caller: T::AccountId = account("caller", 0, SEED);
+		let caller1: T::AccountId = account("callera", 0, SEED);
+		let caller2: T::AccountId = account("callerb", 0, SEED);
+		let caller3: T::AccountId = account("callerc", 0, SEED);
+		<T as module::Config>::Currency::deposit(T::LiquidCurrencyId::get(), &caller1, amount)?;
+		<T as module::Config>::Currency::deposit(T::LiquidCurrencyId::get(), &caller2, amount)?;
+		<T as module::Config>::Currency::deposit(T::LiquidCurrencyId::get(), &caller3, amount)?;
+		let _ = crate::Pallet::<T>::request_redeem(RawOrigin::Signed(caller1).into(), amount, Permill::default());
+		let _ = crate::Pallet::<T>::request_redeem(RawOrigin::Signed(caller2.clone()).into(), amount, Permill::default());
+		let _ = crate::Pallet::<T>::request_redeem(RawOrigin::Signed(caller3.clone()).into(), amount, Permill::default());
+
+		<T as module::Config>::Currency::deposit(T::StakingCurrencyId::get(), &caller, amount*2)?;
+		crate::Pallet::<T>::set_minting_cap(RawOrigin::Root.into(), amount*2)?;
+	}: _(RawOrigin::Signed(caller), amount*2, vec![caller2, caller3])
 
 	set_total_staking_currency {}: _(RawOrigin::Root, 1_000_000_000_000)
 
@@ -48,6 +80,16 @@ benchmarks! {
 
 	set_xcm_base_weight {
 	}: _(RawOrigin::Root, 1_000_000_000)
+
+	request_redeem {
+		let amount = 1_000_000_000_000;
+		let caller: T::AccountId = account("caller", 0, SEED);
+		<T as module::Config>::Currency::deposit(T::LiquidCurrencyId::get(), &caller, amount)?;
+	}: _(RawOrigin::Signed(caller), amount, Permill::default())
+
+	schedule_unbond {}: _(RawOrigin::Root, 1_000_000_000_000, <T as frame_system::Config>::BlockNumber::default())
+
+	replace_schedule_unbond {}: _(RawOrigin::Root, vec![(1_000_000, <T as frame_system::Config>::BlockNumber::default()), (1_000_000_000, <T as frame_system::Config>::BlockNumber::default())])
 }
 
 #[cfg(test)]
@@ -247,6 +289,12 @@ mod tests {
 		});
 	}
 	#[test]
+	fn test_mint_for_requests() {
+		ExtBuilder::default().build().execute_with(|| {
+			assert_ok!(Pallet::<Runtime>::test_benchmark_mint_for_requests());
+		});
+	}
+	#[test]
 	fn test_set_total_staking_currency() {
 		ExtBuilder::default().build().execute_with(|| {
 			assert_ok!(Pallet::<Runtime>::test_benchmark_set_total_staking_currency());
@@ -268,6 +316,24 @@ mod tests {
 	fn test_set_xcm_base_weight() {
 		ExtBuilder::default().build().execute_with(|| {
 			assert_ok!(Pallet::<Runtime>::test_benchmark_set_xcm_base_weight());
+		});
+	}
+	#[test]
+	fn test_request_redeem() {
+		ExtBuilder::default().build().execute_with(|| {
+			assert_ok!(Pallet::<Runtime>::test_benchmark_request_redeem());
+		});
+	}
+	#[test]
+	fn test_schedule_unbond() {
+		ExtBuilder::default().build().execute_with(|| {
+			assert_ok!(Pallet::<Runtime>::test_benchmark_schedule_unbond());
+		});
+	}
+	#[test]
+	fn test_replace_schedule_unbond() {
+		ExtBuilder::default().build().execute_with(|| {
+			assert_ok!(Pallet::<Runtime>::test_benchmark_replace_schedule_unbond());
 		});
 	}
 }

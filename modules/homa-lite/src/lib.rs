@@ -24,7 +24,7 @@ mod mock;
 mod tests;
 pub mod weights;
 
-use frame_support::{log, pallet_prelude::*, transactional};
+use frame_support::{log, pallet_prelude::*, transactional, weights::Weight};
 use frame_system::{ensure_signed, pallet_prelude::*};
 
 use module_support::{CallBuilder, ExchangeRate, ExchangeRateProvider, Ratio};
@@ -232,7 +232,7 @@ pub mod module {
 
 	#[pallet::hooks]
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
-		fn on_idle(_n: T::BlockNumber, remaining_weight: crate::weights::Weight) -> crate::weights::Weight {
+		fn on_idle(_n: T::BlockNumber, remaining_weight: Weight) -> Weight {
 			let required_weight = <T as Config>::WeightInfo::on_idle();
 			let mut current_weight = 0;
 			if remaining_weight > required_weight {
