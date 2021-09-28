@@ -16,18 +16,18 @@ describeWithAcala("Acala RPC (Contract Methods)", (context) => {
 		contract = await deployContract(alice as any, Block);
 	});
 
-	//it("should return contract method result", async function () {
-	//	expect((await contract.multiply(3)).toString()).to.equal("21");
-	//});
+	it("should return contract method result", async function () {
+		expect((await contract.multiply(3)).toString()).to.equal("21");
+	});
 
-	//it("should get correct environmental block number", async function () {
-	//	// Solidity `block.number` is expected to return the same height at which the runtime call was made.
-	//	let height = await contract.currentBlock();
-	//	let current_block_number = await context.provider.api.query.system.number();
+	it("should get correct environmental block number", async function () {
+		// Solidity `block.number` is expected to return the same height at which the runtime call was made.
+		let height = await contract.currentBlock();
+		let current_block_number = await context.provider.api.query.system.number();
 
-	//	expect(await height.toString()).to.eq(current_block_number.toString());
-	//	expect((await context.provider.getBlockNumber()).toString()).to.equal(current_block_number.toString());
-	//});
+		expect(await height.toString()).to.eq(current_block_number.toString());
+		expect((await context.provider.getBlockNumber()).toString()).to.equal(current_block_number.toString());
+	});
 
 	it("should get correct environmental block hash", async function () {
 		this.timeout(15000);
@@ -58,72 +58,72 @@ describeWithAcala("Acala RPC (Contract Methods)", (context) => {
 		//);
 	});
 
-	//it("should get correct environmental chainId", async function () {
-	//	expect((await contract.chainId()).toString()).to.eq('595');
-	//});
+	it("should get correct environmental chainId", async function () {
+		expect((await contract.chainId()).toString()).to.eq('595');
+	});
 
-	//it("should get correct environmental coinbase", async function () {
-	//	expect((await contract.coinbase()).toString()).to.eq('0x0000000000000000000000000000000000000000');
-	//});
+	it("should get correct environmental coinbase", async function () {
+		expect((await contract.coinbase()).toString()).to.eq('0x0000000000000000000000000000000000000000');
+	});
 
-	//it("should get correct environmental block timestamp", async function () {
-	//	expect((await contract.timestamp()).toString()).to.eq((parseInt(await context.provider.api.query.timestamp.now() / 1000)).toString());
-	//});
+	it("should get correct environmental block timestamp", async function () {
+		expect((await contract.timestamp()).toString()).to.eq((parseInt(await context.provider.api.query.timestamp.now() / 1000)).toString());
+	});
 
-	//it("should get correct environmental block gaslimit", async function () {
-	//	expect((await contract.gasLimit()).toString()).to.eq('0');
-	//});
+	it("should get correct environmental block gaslimit", async function () {
+		expect((await contract.gasLimit()).toString()).to.eq('0');
+	});
 
-	//// Requires error handling
-	//it("should fail for missing parameters", async function () {
-	//	const mock = new Contract(contract.address, [
-	//		{
-	//			...Block.abi.filter(function (entry) { return entry.name === "multiply"; })[0],
-	//			inputs: [],
-	//		}
-	//	], alice);
+	// Requires error handling
+	it("should fail for missing parameters", async function () {
+		const mock = new Contract(contract.address, [
+			{
+				...Block.abi.filter(function (entry) { return entry.name === "multiply"; })[0],
+				inputs: [],
+			}
+		], alice);
 
-	//	await mock
-	//		.multiply()
-	//		.catch((err) =>
-	//			expect(err.message).to.equal(`-32603: execution revert: 0x`)
-	//		);
-	//});
+		await mock
+			.multiply()
+			.catch((err) =>
+				expect(err.message).to.equal(`-32603: execution revert: 0x`)
+			);
+	});
 
-	//// Requires error handling
-	//it("should fail for too many parameters", async function () {
-	//	const mock = new Contract(contract.address, [
-	//		{
-	//			...Block.abi.filter(function (entry) { return entry.name === "multiply"; })[0],
-	//			inputs: [
-	//				{ internalType: "uint256", name: "a", type: "uint256" },
-	//				{ internalType: "uint256", name: "b", type: "uint256" },
-	//			],
-	//		}
-	//	], alice);
+	// Requires error handling
+	it("should fail for too many parameters", async function () {
+		const mock = new Contract(contract.address, [
+			{
+				...Block.abi.filter(function (entry) { return entry.name === "multiply"; })[0],
+				inputs: [
+					{ internalType: "uint256", name: "a", type: "uint256" },
+					{ internalType: "uint256", name: "b", type: "uint256" },
+				],
+			}
+		], alice);
 
-	//	await mock
-	//		.multiply(3, 4)
-	//		.catch((err) =>
-	//			expect(err.message).to.equal(`-32603: execution revert: 0x`)
-	//		);
-	//});
+		await mock
+			.multiply(3, 4)
+			.catch((err) =>
+				expect(err.message).to.equal(`-32603: execution revert: 0x`)
+			);
+	});
 
-	//// Requires error handling
-	//it("should fail for invalid parameters", async function () {
-	//	const mock = new Contract(contract.address, [
-	//		{
-	//			...Block.abi.filter(function (entry) { return entry.name === "multiply"; })[0],
-	//			inputs: [
-	//				{ internalType: "address", name: "a", type: "address" },
-	//			],
-	//		}
-	//	], alice);
+	// Requires error handling
+	it("should fail for invalid parameters", async function () {
+		const mock = new Contract(contract.address, [
+			{
+				...Block.abi.filter(function (entry) { return entry.name === "multiply"; })[0],
+				inputs: [
+					{ internalType: "address", name: "a", type: "address" },
+				],
+			}
+		], alice);
 
-	//	await mock
-	//		.multiply("0x0123456789012345678901234567890123456789")
-	//		.catch((err) =>
-	//			expect(err.message).to.equal(`-32603: execution revert: 0x`)
-	//		);
-	//});
+		await mock
+			.multiply("0x0123456789012345678901234567890123456789")
+			.catch((err) =>
+				expect(err.message).to.equal(`-32603: execution revert: 0x`)
+			);
+	});
 });

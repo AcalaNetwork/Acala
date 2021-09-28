@@ -49,7 +49,7 @@ describeWithAcala("Acala RPC (bodhi.js)", (context) => {
 
 	step("should get code", async function () {
 		const code = await context.provider.getCode(contract.address);
-		expect(code.length).to.be.equal(1334);
+		expect(code.length).to.be.equal(1844);
 	});
 
 	step("should storage at", async function () {
@@ -86,15 +86,15 @@ describeWithAcala("Acala RPC (bodhi.js)", (context) => {
 	step("should estimateGas", async function () {
 		expect(await context.provider.estimateGas(
 			contract.populateTransaction.multiply(3)
-		)).to.deep.equal(BigNumber.from(0x5600));
+		)).to.deep.equal(BigNumber.from("22038"));
 
 		expect(await context.provider.estimateGas(
 			contract.populateTransaction.multiply(3), "latest"
-		)).to.deep.equal(BigNumber.from(0x5600));
+		)).to.deep.equal(BigNumber.from("22038"));
 
 		expect(await context.provider.estimateGas(
 			contract.populateTransaction.multiply(3), "pending"
-		)).to.deep.equal(BigNumber.from(0x5600));
+		)).to.deep.equal(BigNumber.from("22038"));
 
 		try {
 			await context.provider.estimateGas(contract.populateTransaction.multiply(3), "earliest")
@@ -107,7 +107,7 @@ describeWithAcala("Acala RPC (bodhi.js)", (context) => {
 		expect(await context.provider.estimateResources(
 			contract.populateTransaction.multiply(3)
 		)).to.deep.include({
-			gas: BigNumber.from(0x5600),
+			gas: BigNumber.from("22038"),
 			storage: BigNumber.from(0),
 			weightFee: BigNumber.from(0),
 		});
@@ -115,7 +115,7 @@ describeWithAcala("Acala RPC (bodhi.js)", (context) => {
 		expect(await context.provider.estimateResources(
 			contract.populateTransaction.multiply(3), "latest"
 		)).to.deep.include({
-			gas: BigNumber.from(0x5600),
+			gas: BigNumber.from("22038"),
 			storage: BigNumber.from(0),
 			weightFee: BigNumber.from(0),
 		});
@@ -123,7 +123,7 @@ describeWithAcala("Acala RPC (bodhi.js)", (context) => {
 		expect(await context.provider.estimateResources(
 			contract.populateTransaction.multiply(3), "pending"
 		)).to.deep.include({
-			gas: BigNumber.from(0x5600),
+			gas: BigNumber.from("22038"),
 			storage: BigNumber.from(0),
 			weightFee: BigNumber.from(0),
 		});
