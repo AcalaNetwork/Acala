@@ -30,10 +30,10 @@ describeWithAcala("Acala RPC (Contract Methods)", (context) => {
 	});
 
 	it("should get correct environmental block hash", async function () {
-		this.timeout(15000);
+		this.timeout(15000000);
 		// Solidity `blockhash` is expected to return the ethereum block hash at a given height.
 		let number = await context.provider.getBlockNumber();
-		let last = number + 900;
+		let last = number + (await context.provider.api.consts.system.blockHashCount).toNumber();
 
 		// TODO
 		expect(await contract.blockHash(number)).to.eq(
@@ -42,20 +42,20 @@ describeWithAcala("Acala RPC (Contract Methods)", (context) => {
 		expect(await contract.blockHash(number + 1)).to.eq(
 			"0x0000000000000000000000000000000000000000000000000000000000000000"
 		);
-		console.log(number);
+
 		console.log((await contract.blockHash(number)).toString());
 		console.log((await context.provider.api.query.system.blockHash(number)).toString());
 		console.log((await context.provider.api.rpc.chain.getBlockHash(number)).toString());
 
-		//for(let i = number; i <= last; i++) {
+		for(let i = number; i <= last; i++) {
 		//	let hash = await context.provider.api.query.system.blockHash(i);
 		//	expect(await contract.blockHash(i)).to.eq(hash.toString());
-		//	await nextBlock(context.provider);
-		//}
-		//// should not store more than 900 hashes
-		//expect(await contract.blockHash(number)).to.eq(
-		//	"0x0000000000000000000000000000000000000000000000000000000000000000"
-		//);
+			await nextBlock(context.provider);
+		}
+		// should not store more than BlockHashCount
+		expect(await contract.blockHash(number)).to.eq(
+			"0x0000000000000000000000000000000000000000000000000000000000000000"
+		);
 	});
 
 	it("should get correct environmental chainId", async function () {

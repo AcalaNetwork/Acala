@@ -110,7 +110,8 @@ export function describeWithAcala(title: string, cb: (context: { provider: TestP
 export async function nextBlock(provider: TestProvider) {
     return new Promise(async (resolve) => {
         let [ alice ] = await provider.getWallets();
-        provider.api.tx.system.remark('').signAndSend(await alice.getSubstrateAddress(), (result) => {
+        let block_number = await provider.api.query.system.number();
+        provider.api.tx.system.remark(block_number.toString(16)).signAndSend(await alice.getSubstrateAddress(), (result) => {
             if (result.status.isInBlock) {
 				resolve(undefined);
             }
