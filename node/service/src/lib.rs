@@ -74,6 +74,7 @@ pub use sp_api::ConstructRuntimeApi;
 
 pub mod chain_spec;
 mod client;
+mod instant_finalize;
 
 pub fn default_mock_parachain_inherent_data_provider() -> MockValidationDataInherentDataProvider {
 	MockValidationDataInherentDataProvider {
@@ -247,7 +248,7 @@ where
 	} else {
 		let slot_duration = cumulus_client_consensus_aura::slot_duration(&*client)?;
 
-		cumulus_client_consensus_aura::import_queue::<sp_consensus_aura::sr25519::AuthorityPair, _, _, _, _, _, _>(
+		cumulus_client_consensus_aura::import_queue::<AuraPair, _, _, _, _, _, _>(
 			cumulus_client_consensus_aura::ImportQueueParams {
 				block_import: client.clone(),
 				client: client.clone(),
@@ -679,7 +680,7 @@ fn inner_mandala_dev(config: Configuration, instant_sealing: bool) -> Result<Tas
 				slot_duration: sc_consensus_aura::slot_duration(&*client)?,
 				client: client.clone(),
 				select_chain,
-				block_import: client.clone(),
+				block_import: instant_finalize::InstantFinalizeBlockImport::new(client.clone()),
 				proposer_factory,
 				create_inherent_data_providers: move |_, ()| async move {
 					let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
