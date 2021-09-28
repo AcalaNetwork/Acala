@@ -2508,6 +2508,7 @@ mod tests {
 		);
 	}
 
+	//TODO: remove after paritytech/substrate#9890
 	#[test]
 	fn ensure_block_hash_count_less_than_democracy_launch_period() {
 		// Ensure LaunchPeriod > BlockHashCount
