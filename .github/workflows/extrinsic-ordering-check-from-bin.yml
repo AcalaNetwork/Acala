@@ -70,7 +70,7 @@ jobs:
           echo "-------------------------------------------" >> output.txt
 
       - name: Start local node
-        run: ./target/release/acala --chain=${{ env.CHAIN }} --rpc-cors=all --ws-external --no-telemetry --no-prometheus --no-mdns --no-grandpa --sync=fast &
+        run: ./target/release/acala --chain=${{ env.CHAIN }} --rpc-cors=all --ws-external --no-telemetry --no-prometheus --no-mdns --no-grandpa &
 
       - name: Compare the metadata
         run: |
