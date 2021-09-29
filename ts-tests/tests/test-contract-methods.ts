@@ -35,21 +35,17 @@ describeWithAcala("Acala RPC (Contract Methods)", (context) => {
 		let number = await context.provider.getBlockNumber();
 		let last = number + (await context.provider.api.consts.system.blockHashCount).toNumber();
 
-		// TODO
+		expect(await contract.blockHash(number -1)).to.not.eq(
+			"0x0000000000000000000000000000000000000000000000000000000000000000"
+		);
+		// most recent blocks of the `BlockHashCount`, excluding current block
 		expect(await contract.blockHash(number)).to.eq(
 			"0x0000000000000000000000000000000000000000000000000000000000000000"
 		);
-		expect(await contract.blockHash(number + 1)).to.eq(
-			"0x0000000000000000000000000000000000000000000000000000000000000000"
-		);
 
-		console.log((await contract.blockHash(number)).toString());
-		console.log((await context.provider.api.query.system.blockHash(number)).toString());
-		console.log((await context.provider.api.rpc.chain.getBlockHash(number)).toString());
-
-		for(let i = number; i <= last; i++) {
-		//	let hash = await context.provider.api.query.system.blockHash(i);
-		//	expect(await contract.blockHash(i)).to.eq(hash.toString());
+		for(let i = number - 1; i <= last; i++) {
+			let hash = await context.provider.api.query.system.blockHash(i);
+			expect(await contract.blockHash(i)).to.eq(hash.toString());
 			await nextBlock(context.provider);
 		}
 		// should not store more than BlockHashCount

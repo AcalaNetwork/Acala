@@ -636,8 +636,8 @@ impl pallet_recovery::Config for Runtime {
 
 parameter_types! {
 	pub const LaunchPeriod: BlockNumber = 2 * HOURS;
-	pub const VotingPeriod: BlockNumber = 1 * HOURS;
-	pub const FastTrackVotingPeriod: BlockNumber = 1 * HOURS;
+	pub const VotingPeriod: BlockNumber = HOURS;
+	pub const FastTrackVotingPeriod: BlockNumber = HOURS;
 	pub MinimumDeposit: Balance = 100 * cent(ACA);
 	pub const EnactmentPeriod: BlockNumber = MINUTES;
 	pub const CooloffPeriod: BlockNumber = MINUTES;
