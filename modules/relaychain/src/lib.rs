@@ -39,54 +39,21 @@ use frame_system::Config;
 #[derive(Encode, Decode, RuntimeDebug)]
 pub enum BalancesCall<T: Config> {
 	#[codec(index = 3)]
-	TransferKeepAlive(BalancesTransferKeepAliveCall<T>),
-}
-
-/// Relaychain balances.transfer_keep_alive call arguments
-#[derive(Clone, Encode, Decode, RuntimeDebug)]
-pub struct BalancesTransferKeepAliveCall<T: Config> {
-	/// dest account
-	pub dest: <T::Lookup as StaticLookup>::Source,
-	/// transfer amount
-	#[codec(compact)]
-	pub value: Balance,
+	TransferKeepAlive(<T::Lookup as StaticLookup>::Source, #[codec(compact)] Balance),
 }
 
 #[derive(Encode, Decode, RuntimeDebug)]
 pub enum UtilityCall<RelaychainCall> {
 	#[codec(index = 1)]
-	AsDerivative(UtilityAsDerivativeCall<RelaychainCall>),
+	AsDerivative(u16, RelaychainCall),
 	#[codec(index = 2)]
-	BatchAll(UtilityBatchAllCall<RelaychainCall>),
-}
-
-/// Relaychain utility.as_derivative call arguments
-#[derive(Encode, Decode, RuntimeDebug)]
-pub struct UtilityAsDerivativeCall<RelaychainCall> {
-	/// derivative index
-	pub index: u16,
-	/// call
-	pub call: RelaychainCall,
-}
-
-/// Relaychain utility.batch_all call arguments
-#[derive(Encode, Decode, RuntimeDebug)]
-pub struct UtilityBatchAllCall<RelaychainCall> {
-	/// calls
-	pub calls: Vec<RelaychainCall>,
+	BatchAll(Vec<RelaychainCall>),
 }
 
 #[derive(Encode, Decode, RuntimeDebug)]
 pub enum StakingCall {
 	#[codec(index = 3)]
-	WithdrawUnbonded(StakingWithdrawUnbondedCall),
-}
-
-/// Argument for withdraw_unbond call
-#[derive(Clone, Encode, Decode, RuntimeDebug)]
-pub struct StakingWithdrawUnbondedCall {
-	/// Withdraw amount
-	pub num_slashing_spans: u32,
+	WithdrawUnbonded(u32),
 }
 
 mod kusama {
@@ -139,27 +106,19 @@ where
 	type RelaychainCall = RelaychainCall<T>;
 
 	fn utility_batch_call(calls: Vec<Self::RelaychainCall>) -> Self::RelaychainCall {
-		RelaychainCall::Utility(Box::new(UtilityCall::BatchAll(UtilityBatchAllCall { calls })))
+		RelaychainCall::Utility(Box::new(UtilityCall::BatchAll(calls)))
 	}
 
 	fn utility_as_derivative_call(call: Self::RelaychainCall, index: u16) -> Self::RelaychainCall {
-		RelaychainCall::Utility(Box::new(UtilityCall::AsDerivative(UtilityAsDerivativeCall {
-			index,
-			call,
-		})))
+		RelaychainCall::Utility(Box::new(UtilityCall::AsDerivative(index, call)))
 	}
 
 	fn staking_withdraw_unbonded(num_slashing_spans: u32) -> Self::RelaychainCall {
-		RelaychainCall::Staking(StakingCall::WithdrawUnbonded(StakingWithdrawUnbondedCall {
-			num_slashing_spans,
-		}))
+		RelaychainCall::Staking(StakingCall::WithdrawUnbonded(num_slashing_spans))
 	}
 
 	fn balances_transfer_keep_alive(to: Self::AccountId, amount: Self::Balance) -> Self::RelaychainCall {
-		RelaychainCall::Balances(BalancesCall::TransferKeepAlive(BalancesTransferKeepAliveCall {
-			dest: T::Lookup::unlookup(to),
-			value: amount,
-		}))
+		RelaychainCall::Balances(BalancesCall::TransferKeepAlive(T::Lookup::unlookup(to), amount))
 	}
 
 	fn finalize_call_into_xcm_message(
