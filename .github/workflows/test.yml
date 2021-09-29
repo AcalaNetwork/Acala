@@ -65,6 +65,6 @@ jobs:
     - name: Use Node.js
       uses: actions/setup-node@v1
       with:
-        node-version: [14.x]
+        node-version: 14.x
     - name: Run ts tests
       run: make test-ts
