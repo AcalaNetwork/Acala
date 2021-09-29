@@ -32,7 +32,8 @@
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
-use codec::{Decode, Encode};
+use codec::{Compact, Decode, Encode};
+use frame_support::pallet_prelude::InvalidTransaction;
 pub use frame_support::{
 	construct_runtime, log, parameter_types,
 	traits::{
@@ -59,6 +60,7 @@ use orml_traits::{
 	create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended, MultiCurrency,
 };
 use pallet_transaction_payment::{FeeDetails, RuntimeDispatchInfo};
+use primitives::{evm::EthereumTransactionMessage, unchecked_extrinsic::AcalaUncheckedExtrinsic};
 use sp_api::impl_runtime_apis;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_core::{crypto::KeyTypeId, OpaqueMetadata, H160};
@@ -101,9 +103,9 @@ pub use sp_runtime::{Perbill, Percent, Permill, Perquintill};
 pub use authority::AuthorityConfigImpl;
 pub use constants::{fee::*, time::*};
 pub use primitives::{
-	evm::EstimateResourcesRequest, AccountId, AccountIndex, AirDropCurrencyId, Amount, AuctionId, AuthoritysOriginId,
-	Balance, BlockNumber, CurrencyId, DataProviderId, EraIndex, Hash, Moment, Nonce, ReserveIdentifier, Share,
-	Signature, TokenSymbol, TradingPair,
+	evm::EstimateResourcesRequest, AccountId, AccountIndex, Address, AirDropCurrencyId, Amount, AuctionId,
+	AuthoritysOriginId, Balance, BlockNumber, CurrencyId, DataProviderId, EraIndex, Hash, Moment, Nonce,
+	ReserveIdentifier, Share, Signature, TokenSymbol, TradingPair,
 };
 pub use runtime_common::{
 	cent, dollar, microcent, millicent, CurveFeeModel, EnsureRootOrAllGeneralCouncil,
@@ -788,6 +790,7 @@ parameter_type_with_key! {
 				TokenSymbol::DOT => 10 * millicent(*currency_id),
 				TokenSymbol::LDOT => 50 * millicent(*currency_id),
 				TokenSymbol::BNC => 800 * millicent(*currency_id),  // 80BNC = 1KSM
+				TokenSymbol::VSKSM => 10 * millicent(*currency_id),  // 1VSKSM = 1KSM
 
 				TokenSymbol::KAR |
 				TokenSymbol::KUSD |
@@ -930,23 +933,6 @@ impl pallet_scheduler::Config for Runtime {
 	type ScheduleOrigin = EnsureRoot<AccountId>;
 	type MaxScheduledPerBlock = MaxScheduledPerBlock;
 	type WeightInfo = ();
-}
-
-parameter_types! {
-	pub const UpdateFrequency: BlockNumber = 10;
-	pub const MaxGraduallyUpdate: u32 = 100;
-	pub const MaxStorageKeyBytes: u32 = 1024;
-	pub const MaxStorageValueBytes: u32 = 1024;
-}
-
-impl orml_gradually_update::Config for Runtime {
-	type Event = Event;
-	type UpdateFrequency = UpdateFrequency;
-	type DispatchOrigin = EnsureRoot<AccountId>;
-	type WeightInfo = weights::orml_gradually_update::WeightInfo<Runtime>;
-	type MaxGraduallyUpdate = MaxGraduallyUpdate;
-	type MaxStorageKeyBytes = MaxStorageKeyBytes;
-	type MaxStorageValueBytes = MaxStorageValueBytes;
 }
 
 parameter_types! {
@@ -1893,8 +1879,51 @@ impl nutsfinance_stable_asset::Config for Runtime {
 
 impl cumulus_pallet_aura_ext::Config for Runtime {}
 
-/// The address format for describing accounts.
-pub type Address = sp_runtime::MultiAddress<AccountId, AccountIndex>;
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
+pub struct ConvertEthereumTx;
+
+impl Convert<(Call, SignedExtra), Result<EthereumTransactionMessage, InvalidTransaction>> for ConvertEthereumTx {
+	fn convert((call, extra): (Call, SignedExtra)) -> Result<EthereumTransactionMessage, InvalidTransaction> {
+		match call {
+			Call::EVM(module_evm::Call::eth_call(action, input, value, gas_limit, storage_limit, valid_until)) => {
+				if System::block_number() > valid_until {
+					return Err(InvalidTransaction::Stale);
+				}
+
+				let era: frame_system::CheckEra<Runtime> = extra.3;
+				if era != frame_system::CheckEra::from(sp_runtime::generic::Era::Immortal) {
+					// require immortal
+					return Err(InvalidTransaction::BadProof);
+				}
+
+				let nonce: frame_system::CheckNonce<Runtime> = extra.4;
+				// TODO: this is a hack access private nonce field
+				// remove this after https://github.com/paritytech/substrate/pull/9810
+				let nonce = nonce
+					.using_encoded(|mut encoded| Compact::<Nonce>::decode(&mut encoded))
+					.map_err(|_| InvalidTransaction::BadProof)?;
+
+				let tip: module_transaction_payment::ChargeTransactionPayment<Runtime> = extra.6;
+				let tip = tip.0;
+
+				Ok(EthereumTransactionMessage {
+					nonce: nonce.into(),
+					tip,
+					gas_limit,
+					storage_limit,
+					action,
+					value,
+					input,
+					chain_id: ChainId::get(),
+					genesis: System::block_hash(0),
+					valid_until,
+				})
+			}
+			_ => Err(InvalidTransaction::BadProof),
+		}
+	}
+}
+
 /// Block header type as expected by this runtime.
 pub type Header = generic::Header<BlockNumber, BlakeTwo256>;
 /// Block type as expected by this runtime.
@@ -1915,7 +1944,7 @@ pub type SignedExtra = (
 	module_evm::SetEvmOrigin<Runtime>,
 );
 /// Unchecked extrinsic type as expected by this runtime.
-pub type UncheckedExtrinsic = generic::UncheckedExtrinsic<Address, Call, Signature, SignedExtra>;
+pub type UncheckedExtrinsic = AcalaUncheckedExtrinsic<Call, SignedExtra, ConvertEthereumTx>;
 /// The payload being signed in transactions.
 pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 /// Extrinsic type that has already been checked.
@@ -1956,7 +1985,6 @@ construct_runtime! {
 		Proxy: pallet_proxy::{Pallet, Call, Storage, Event<T>} = 33,
 
 		Indices: pallet_indices::{Pallet, Call, Storage, Config<T>, Event<T>} = 40,
-		GraduallyUpdate: orml_gradually_update::{Pallet, Storage, Call, Event<T>} = 41,
 
 		// Governance
 		GeneralCouncil: pallet_collective::<Instance1>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 50,
@@ -2248,7 +2276,7 @@ impl_runtime_apis! {
 			let utx = UncheckedExtrinsic::decode(&mut &*extrinsic)
 				.map_err(|_| sp_runtime::DispatchError::Other("Invalid parameter extrinsic, decode failed"))?;
 
-			let request = match utx.function {
+			let request = match utx.0.function {
 				Call::EVM(module_evm::Call::call(to, data, value, gas_limit, storage_limit)) => {
 					Some(EstimateResourcesRequest {
 						from: None,
@@ -2332,7 +2360,6 @@ impl_runtime_apis! {
 			orml_list_benchmark!(list, extra, orml_auction, benchmarking::auction);
 
 			orml_list_benchmark!(list, extra, orml_authority, benchmarking::authority);
-			orml_list_benchmark!(list, extra, orml_gradually_update, benchmarking::gradually_update);
 			orml_list_benchmark!(list, extra, orml_oracle, benchmarking::oracle);
 
 			orml_list_benchmark!(list, extra, ecosystem_chainsafe, benchmarking::chainsafe_transfer);
@@ -2397,7 +2424,6 @@ impl_runtime_apis! {
 			orml_add_benchmark!(params, batches, orml_auction, benchmarking::auction);
 
 			orml_add_benchmark!(params, batches, orml_authority, benchmarking::authority);
-			orml_add_benchmark!(params, batches, orml_gradually_update, benchmarking::gradually_update);
 			orml_add_benchmark!(params, batches, orml_oracle, benchmarking::oracle);
 
 			orml_add_benchmark!(params, batches, ecosystem_chainsafe, benchmarking::chainsafe_transfer);

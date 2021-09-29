@@ -1,6 +1,6 @@
 [package]
 name = "acala-runtime"
-version = "1.4.2"
+version = "1.4.3"
 authors = ["Acala Developers"]
 edition = "2018"
 build = "build.rs"
@@ -70,7 +70,6 @@ orml-authority = { path = "../../orml/authority", default-features = false }
 orml-benchmarking = { path = "../../orml/benchmarking", default-features = false, optional = true }
 orml-oracle = { path = "../../orml/oracle", default-features = false }
 orml-oracle-rpc-runtime-api = { path = "../../orml/oracle/rpc/runtime-api", default-features = false }
-orml-gradually-update = { path = "../../orml/gradually-update", default-features = false }
 orml-tokens = { path = "../../orml/tokens", default-features = false }
 orml-traits = { path = "../../orml/traits", default-features = false }
 orml-vesting = { path = "../../orml/vesting", default-features = false }
@@ -183,7 +182,6 @@ std = [
 	"orml-benchmarking/std",
 	"orml-oracle-rpc-runtime-api/std",
 	"orml-oracle/std",
-	"orml-gradually-update/std",
 	"orml-tokens/std",
 	"orml-traits/std",
 	"orml-vesting/std",
@@ -288,7 +286,6 @@ try-runtime = [
 	"orml-auction/try-runtime",
 	"orml-authority/try-runtime",
 	"orml-oracle/try-runtime",
-	"orml-gradually-update/try-runtime",
 	"orml-tokens/try-runtime",
 	"orml-vesting/try-runtime",
 	"orml-rewards/try-runtime",

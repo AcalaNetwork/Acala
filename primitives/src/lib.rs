@@ -22,13 +22,15 @@
 
 pub mod currency;
 pub mod evm;
+pub mod signature;
+pub mod unchecked_extrinsic;
 
 use codec::{Decode, Encode, MaxEncodedLen};
 use core::ops::Range;
 use sp_runtime::{
 	generic,
 	traits::{BlakeTwo256, IdentifyAccount, Verify},
-	MultiSignature, RuntimeDebug,
+	RuntimeDebug,
 };
 use sp_std::{convert::Into, prelude::*};
 
@@ -45,7 +47,7 @@ pub type BlockNumber = u32;
 
 /// Alias to 512-bit hash when used in the context of a transaction signature on
 /// the chain.
-pub type Signature = MultiSignature;
+pub type Signature = signature::AcalaMultiSignature;
 
 /// Alias to the public key used for this chain, actually a `MultiSigner`. Like
 /// the signature, this also isn't a fixed size when encoded, as different
@@ -59,6 +61,9 @@ pub type AccountId = <AccountPublic as IdentifyAccount>::AccountId;
 /// The type for looking up accounts. We don't expect more than 4 billion of
 /// them.
 pub type AccountIndex = u32;
+
+/// The address format for describing accounts.
+pub type Address = sp_runtime::MultiAddress<AccountId, AccountIndex>;
 
 /// Index of a transaction in the chain. 32-bit should be plenty.
 pub type Nonce = u32;
