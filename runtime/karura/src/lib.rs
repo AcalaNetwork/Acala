@@ -1397,6 +1397,14 @@ parameter_types! {
 	// One XCM operation is 200_000_000 weight, cross-chain transfer ~= 2x of transfer.
 	pub const UnitWeightCost: Weight = 200_000_000;
 	pub KsmPerSecond: (AssetId, u128) = (MultiLocation::parent().into(), ksm_per_second());
+	pub KusdPerSecond: (AssetId, u128) = (
+		MultiLocation::new(
+			1,
+			X2(Parachain(u32::from(ParachainInfo::get())), GeneralKey(KUSD.encode())),
+		).into(),
+		// kUSD:KSM = 400:1
+		ksm_per_second() * 400
+	);
 }
 
 pub type Barrier = (TakeWeightCredit, AllowTopLevelPaidExecutionFrom<Everything>);
@@ -1427,8 +1435,11 @@ parameter_types! {
 		// BNC:KSM = 80:1
 		ksm_per_second() * 80
 	);
-	pub VsksmPerSecond: (MultiLocation, u128) = (
-		X3(Parent, Parachain(parachains::bifrost::ID), GeneralKey(parachains::bifrost::VSKSM_KEY.to_vec())),
+	pub VsksmPerSecond: (AssetId, u128) = (
+		MultiLocation::new(
+			1,
+			X2(Parachain(parachains::bifrost::ID), GeneralKey(parachains::bifrost::VSKSM_KEY.to_vec())),
+		).into(),
 		// VSKSM:KSM = 1:1
 		ksm_per_second()
 	);
@@ -1436,7 +1447,9 @@ parameter_types! {
 
 pub type Trader = (
 	FixedRateOfFungible<KsmPerSecond, ToTreasury>,
+	FixedRateOfFungible<KusdPerSecond, ToTreasury>,
 	FixedRateOfFungible<BncPerSecond, ToTreasury>,
+	FixedRateOfFungible<VsksmPerSecond, ToTreasury>,
 );
 
 pub struct XcmConfig;
@@ -1570,10 +1583,12 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 				),
 			)),
 			// Bifrost Voucher Slot KSM
-			Token(VSKSM) => Some(X3(
-				Parent,
-				Parachain(parachains::bifrost::ID),
-				GeneralKey(parachains::bifrost::VSKSM_KEY.to_vec()),
+			Token(VSKSM) => Some(MultiLocation::new(
+				1,
+				X2(
+					Parachain(parachains::bifrost::ID),
+					GeneralKey(parachains::bifrost::VSKSM_KEY.to_vec()),
+				),
 			)),
 			_ => None,
 		}
