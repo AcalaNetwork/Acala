@@ -32,8 +32,8 @@ jobs:
     name: Run check
     runs-on: [self-hosted, linux]
     env:
-      CHAIN: ${{github.event.inputs.chain}}
-      REF_URL: ${{github.event.inputs.reference_url}}
+      CHAIN: karura
+      REF_URL: wss://karura-rpc-0.aca-api.network
     needs: clean-up-actions
 
     steps:
