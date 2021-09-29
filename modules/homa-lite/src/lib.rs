@@ -282,6 +282,62 @@ pub mod module {
 			Self::do_mint_with_requests(&minter, amount, vec![])
 		}
 
+		/// Sets the total amount of the Staking currency that are currently on the relaychain.
+		/// Requires `T::GovernanceOrigin`
+		///
+		/// Parameters:
+		/// - `staking_total`: The current amount of the Staking currency. Used to calculate
+		///   conversion rate.
+		#[pallet::weight(< T as Config >::WeightInfo::set_total_staking_currency())]
+		#[transactional]
+		pub fn set_total_staking_currency(origin: OriginFor<T>, staking_total: Balance) -> DispatchResult {
+			T::GovernanceOrigin::ensure_origin(origin)?;
+			ensure!(!staking_total.is_zero(), Error::<T>::InvalidTotalStakingCurrency);
+
+			TotalStakingCurrency::<T>::put(staking_total);
+			Self::deposit_event(Event::<T>::TotalStakingCurrencySet(staking_total));
+
+			Ok(())
+		}
+
+		/// Adjusts the total_staking_currency by the given difference.
+		/// Requires `T::GovernanceOrigin`
+		///
+		/// Parameters:
+		/// - `adjustment`: The difference in amount the total_staking_currency should be adjusted
+		///   by.
+		#[pallet::weight(< T as Config >::WeightInfo::adjust_total_staking_currency())]
+		#[transactional]
+		pub fn adjust_total_staking_currency(origin: OriginFor<T>, by_amount: AmountOf<T>) -> DispatchResult {
+			T::GovernanceOrigin::ensure_origin(origin)?;
+			let mut current_staking_total = Self::total_staking_currency();
+
+			// Convert AmountOf<T> into Balance safely.
+			let by_amount_abs = if by_amount == AmountOf::<T>::min_value() {
+				AmountOf::<T>::max_value()
+			} else {
+				by_amount.abs()
+			};
+
+			let by_balance = TryInto::<Balance>::try_into(by_amount_abs).map_err(|_| ArithmeticError::Overflow)?;
+
+			// Adjust the current total.
+			if by_amount.is_positive() {
+				current_staking_total = current_staking_total
+					.checked_add(by_balance)
+					.ok_or(ArithmeticError::Overflow)?;
+			} else {
+				current_staking_total = current_staking_total
+					.checked_sub(by_balance)
+					.ok_or(ArithmeticError::Underflow)?;
+			}
+
+			TotalStakingCurrency::<T>::put(current_staking_total);
+			Self::deposit_event(Event::<T>::TotalStakingCurrencySet(current_staking_total));
+
+			Ok(())
+		}
+
 		/// Updates the cap for how much Staking currency can be used to Mint liquid currency.
 		/// Requires `T::GovernanceOrigin`
 		///
@@ -419,62 +475,6 @@ pub mod module {
 					Self::deposit_event(Event::<T>::RedeemRequested(who, liquid_remaining, additional_fee));
 				}
 			}
-			Ok(())
-		}
-
-		/// Sets the total amount of the Staking currency that are currently on the relaychain.
-		/// Requires `T::GovernanceOrigin`
-		///
-		/// Parameters:
-		/// - `staking_total`: The current amount of the Staking currency. Used to calculate
-		///   conversion rate.
-		#[pallet::weight(< T as Config >::WeightInfo::set_total_staking_currency())]
-		#[transactional]
-		pub fn set_total_staking_currency(origin: OriginFor<T>, staking_total: Balance) -> DispatchResult {
-			T::GovernanceOrigin::ensure_origin(origin)?;
-			ensure!(!staking_total.is_zero(), Error::<T>::InvalidTotalStakingCurrency);
-
-			TotalStakingCurrency::<T>::put(staking_total);
-			Self::deposit_event(Event::<T>::TotalStakingCurrencySet(staking_total));
-
-			Ok(())
-		}
-
-		/// Adjusts the total_staking_currency by the given difference.
-		/// Requires `T::GovernanceOrigin`
-		///
-		/// Parameters:
-		/// - `adjustment`: The difference in amount the total_staking_currency should be adjusted
-		///   by.
-		#[pallet::weight(< T as Config >::WeightInfo::adjust_total_staking_currency())]
-		#[transactional]
-		pub fn adjust_total_staking_currency(origin: OriginFor<T>, by_amount: AmountOf<T>) -> DispatchResult {
-			T::GovernanceOrigin::ensure_origin(origin)?;
-			let mut current_staking_total = Self::total_staking_currency();
-
-			// Convert AmountOf<T> into Balance safely.
-			let by_amount_abs = if by_amount == AmountOf::<T>::min_value() {
-				AmountOf::<T>::max_value()
-			} else {
-				by_amount.abs()
-			};
-
-			let by_balance = TryInto::<Balance>::try_into(by_amount_abs).map_err(|_| ArithmeticError::Overflow)?;
-
-			// Adjust the current total.
-			if by_amount.is_positive() {
-				current_staking_total = current_staking_total
-					.checked_add(by_balance)
-					.ok_or(ArithmeticError::Overflow)?;
-			} else {
-				current_staking_total = current_staking_total
-					.checked_sub(by_balance)
-					.ok_or(ArithmeticError::Underflow)?;
-			}
-
-			TotalStakingCurrency::<T>::put(current_staking_total);
-			Self::deposit_event(Event::<T>::TotalStakingCurrencySet(current_staking_total));
-
 			Ok(())
 		}
 
