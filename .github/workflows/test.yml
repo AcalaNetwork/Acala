@@ -62,3 +62,9 @@ jobs:
       run: make check-benchmarks
     - name: Check try-runtime
       run: make check-try-runtime
+    - name: Use Node.js
+      uses: actions/setup-node@v1
+      with:
+        node-version: [14.x]
+    - name: Run ts tests
+      run: make test-ts
