@@ -37,7 +37,7 @@ use sp_runtime::{
 	ArithmeticError, FixedPointNumber, Permill,
 };
 use sp_std::{
-	cmp::min,
+	cmp::{min, Ordering},
 	convert::{From, TryInto},
 	ops::Mul,
 	prelude::*,
@@ -453,21 +453,23 @@ pub mod module {
 					// Check if there's already a queued redeem request.
 					let (request_amount, _) = Self::redeem_requests(&who).unwrap_or((0, Permill::default()));
 
-					if liquid_remaining > request_amount {
+					match liquid_remaining.cmp(&request_amount) {
 						// Lock more liquid currency.
-						T::Currency::reserve(
+						Ordering::Greater => T::Currency::reserve(
 							T::LiquidCurrencyId::get(),
 							&who,
 							liquid_remaining.checked_sub(request_amount).expect("GE checked; qed"),
-						)?;
-					} else if liquid_remaining < request_amount {
-						// Unlock some liquid currency.
-						let _ = T::Currency::unreserve(
-							T::LiquidCurrencyId::get(),
-							&who,
-							request_amount.checked_sub(liquid_remaining).expect("LE checked; qed"),
-						);
-					}
+						),
+						Ordering::Less => {
+							T::Currency::unreserve(
+								T::LiquidCurrencyId::get(),
+								&who,
+								request_amount.checked_sub(liquid_remaining).expect("LE checked; qed"),
+							);
+							Ok(())
+						}
+						_ => Ok(()),
+					}?;
 
 					// Insert/replace the new redeem request into storage.
 					RedeemRequests::<T>::insert(&who, (liquid_remaining, additional_fee));
@@ -806,6 +808,7 @@ pub mod module {
 			Ok(())
 		}
 
+		#[allow(clippy::ptr_arg)]
 		fn update_redeem_requests(new_balances: &Vec<(T::AccountId, Balance, Permill)>) {
 			// Update storage with the new balances. Remove Redeem requests that have been filled.
 			for (redeemer, new_balance, extra_fee) in new_balances {
@@ -814,7 +817,7 @@ pub mod module {
 				} else {
 					if !new_balance.is_zero() {
 						// Unlock the dust and remove the request.
-						T::Currency::unreserve(T::LiquidCurrencyId::get(), &redeemer, *new_balance);
+						T::Currency::unreserve(T::LiquidCurrencyId::get(), redeemer, *new_balance);
 					}
 					RedeemRequests::<T>::remove(&redeemer);
 				}
