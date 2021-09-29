@@ -70,7 +70,6 @@ jobs:
           with:
             node-version: '14.x'
             registry-url: 'https://registry.npmjs.org'
-
         run: |
           git clone https://github.com/ermalkaleci/tools.git
           cd tools
