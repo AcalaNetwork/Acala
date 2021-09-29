@@ -132,13 +132,13 @@ impl Convert<u64, u64> for GasToWeight {
 	}
 }
 
-pub struct FindAuthorTruncated;
-impl FindAuthor<H160> for FindAuthorTruncated {
-	fn find_author<'a, I>(_digests: I) -> Option<H160>
+pub struct AuthorGiven;
+impl FindAuthor<AccountId32> for AuthorGiven {
+	fn find_author<'a, I>(_digests: I) -> Option<AccountId32>
 	where
 		I: 'a + IntoIterator<Item = (ConsensusEngineId, &'a [u8])>,
 	{
-		Some(H160::from_str("1234500000000000000000000000000000000000").unwrap())
+		Some(AccountId32::from_str("1234500000000000000000000000000000000000").unwrap())
 	}
 }
 
@@ -178,7 +178,7 @@ impl Config for Runtime {
 	type FreeDeploymentOrigin = EnsureSignedBy<CouncilAccount, AccountId32>;
 
 	type Runner = crate::runner::stack::Runner<Self>;
-	type FindAuthor = FindAuthorTruncated;
+	type FindAuthor = AuthorGiven;
 	type WeightInfo = ();
 }
 
