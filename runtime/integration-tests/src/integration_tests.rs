@@ -89,7 +89,7 @@ mod karura_imports {
 		CreateTokenDeposit, Currencies, CurrencyId, CurrencyIdConvert, DataDepositPerByte, Dex, EmergencyShutdown,
 		Event, EvmAccounts, ExistentialDeposits, Get, GetNativeCurrencyId, HomaLite, Honzon, KaruraFoundationAccounts,
 		Loans, MinimumDebitValue, MultiLocation, NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, Origin,
-		OriginCaller, ParachainInfo, ParachainSystem, Perbill, Permill, Proxy, ProxyType,
+		OriginCaller, ParachainAccount, ParachainInfo, ParachainSystem, Perbill, Permill, Proxy, ProxyType,
 		RelaychainBlockNumberProvider, RelaychainSovereignSubAccount, Runtime, Scheduler, Session, SessionManager,
 		SevenDays, System, Timestamp, TokenSymbol, Tokens, TreasuryPalletId, Utility, Vesting, XTokens, XcmConfig,
 		XcmExecutor, NFT,
