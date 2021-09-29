@@ -236,6 +236,7 @@ parameter_types! {
 	pub const StakingCurrencyId: CurrencyId = KSM;
 	pub const LiquidCurrencyId: CurrencyId = LKSM;
 	pub MinimumMintThreshold: Balance = millicent(1);
+	pub MinimumRedeemThreshold: Balance = millicent(1);
 	pub const MockXcmDestination: MultiLocation = MOCK_XCM_DESTINATION;
 	pub const MockXcmAccountId: AccountId = MOCK_XCM_ACCOUNTID;
 	pub DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(10, 1);
@@ -270,6 +271,7 @@ impl Config for Runtime {
 	type LiquidCurrencyId = LiquidCurrencyId;
 	type GovernanceOrigin = EnsureSignedBy<Root, AccountId>;
 	type MinimumMintThreshold = MinimumMintThreshold;
+	type MinimumRedeemThreshold = MinimumRedeemThreshold;
 	type XcmTransfer = MockXcm;
 	type SovereignSubAccountLocation = MockXcmDestination;
 	type SubAccountIndex = SubAccountIndex;

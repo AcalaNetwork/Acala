@@ -367,23 +367,23 @@ fn on_idle_can_process_xcm_to_increase_available_staking_balance() {
 
 		// Block number 0 has nothing scheduled
 		MockRelayBlockNumberProvider::set(0);
-		HomaLite::on_idle(MockRelayBlockNumberProvider::get(), 1_000_000_000);
+		HomaLite::on_idle(MockRelayBlockNumberProvider::get(), 5_000_000_000);
 		assert_eq!(ScheduledUnbond::<Runtime>::get(), vec![(100, 1), (200, 2), (30, 2)]);
 		assert_eq!(AvailableStakingBalance::<Runtime>::get(), 0);
 
 		// Block number 1
 		MockRelayBlockNumberProvider::set(1);
-		HomaLite::on_idle(MockRelayBlockNumberProvider::get(), 1_000_000_000);
+		HomaLite::on_idle(MockRelayBlockNumberProvider::get(), 5_000_000_000);
 		assert_eq!(ScheduledUnbond::<Runtime>::get(), vec![(200, 2), (30, 2)]);
 		assert_eq!(AvailableStakingBalance::<Runtime>::get(), 100);
 
 		// Block number 2. Each on_idle call should unbond one item.
 		MockRelayBlockNumberProvider::set(2);
-		HomaLite::on_idle(MockRelayBlockNumberProvider::get(), 1_000_000_000);
+		HomaLite::on_idle(MockRelayBlockNumberProvider::get(), 5_000_000_000);
 		assert_eq!(ScheduledUnbond::<Runtime>::get(), vec![(30, 2)]);
 		assert_eq!(AvailableStakingBalance::<Runtime>::get(), 300);
 
-		HomaLite::on_idle(MockRelayBlockNumberProvider::get(), 1_000_000_000);
+		HomaLite::on_idle(MockRelayBlockNumberProvider::get(), 5_000_000_000);
 		assert_eq!(ScheduledUnbond::<Runtime>::get(), vec![]);
 		assert_eq!(AvailableStakingBalance::<Runtime>::get(), 330);
 	});
@@ -414,7 +414,7 @@ fn new_available_staking_currency_can_handle_redeem_requests() {
 		assert_eq!(Currencies::free_balance(LKSM, &ROOT), dollar(989_000));
 		assert_eq!(Currencies::reserved_balance(LKSM, &ROOT), dollar(11_000));
 
-		HomaLite::on_idle(MockRelayBlockNumberProvider::get(), 1_000_000_000);
+		HomaLite::on_idle(MockRelayBlockNumberProvider::get(), 5_000_000_000);
 
 		// All available staking currency should be redeemed, paying the `XcmUnbondFee`
 		assert_eq!(AvailableStakingBalance::<Runtime>::get(), 0);
@@ -432,7 +432,7 @@ fn new_available_staking_currency_can_handle_redeem_requests() {
 			vec![(dollar(150), 2)],
 		));
 		MockRelayBlockNumberProvider::set(2);
-		HomaLite::on_idle(MockRelayBlockNumberProvider::get(), 1_000_000_000);
+		HomaLite::on_idle(MockRelayBlockNumberProvider::get(), 5_000_000_000);
 
 		// The last request is redeemed, the leftover is stored.
 		assert_eq!(AvailableStakingBalance::<Runtime>::get(), dollar(50));
@@ -469,7 +469,7 @@ fn on_idle_can_handle_changes_in_exchange_rate() {
 			vec![(dollar(100_000), 1)],
 		));
 		MockRelayBlockNumberProvider::set(1);
-		HomaLite::on_idle(MockRelayBlockNumberProvider::get(), 1_000_000_000);
+		HomaLite::on_idle(MockRelayBlockNumberProvider::get(), 5_000_000_000);
 
 		// All available staking currency should be redeemed.
 		assert_eq!(AvailableStakingBalance::<Runtime>::get(), dollar(80_000));
@@ -490,8 +490,14 @@ fn request_redeem_works() {
 			vec![(dollar(50_000), 1)],
 		));
 		MockRelayBlockNumberProvider::set(1);
-		HomaLite::on_idle(MockRelayBlockNumberProvider::get(), 1_000_000_000);
+		HomaLite::on_idle(MockRelayBlockNumberProvider::get(), 5_000_000_000);
 		assert_eq!(AvailableStakingBalance::<Runtime>::get(), dollar(50_000));
+
+		// Redeem amount has to be above a threshold.
+		assert_noop!(
+			HomaLite::request_redeem(Origin::signed(ROOT), dollar(1), Permill::zero()),
+			Error::<Runtime>::AmountBelowMinimumThreshold
+		);
 
 		// When there are staking balances available, redeem requests are completed immediately, with fee
 		assert_ok!(HomaLite::request_redeem(
@@ -528,13 +534,84 @@ fn request_redeem_works() {
 		));
 		assert_eq!(AvailableStakingBalance::<Runtime>::get(), 0);
 		assert_eq!(Currencies::free_balance(KSM, &ROOT), dollar(49_998));
-		assert_eq!(Currencies::free_balance(LKSM, &ROOT), dollar(250_000));
-		assert_eq!(Currencies::reserved_balance(LKSM, &ROOT), dollar(250_000));
+		assert_eq!(Currencies::free_balance(LKSM, &ROOT), dollar(350_000));
+		assert_eq!(Currencies::reserved_balance(LKSM, &ROOT), dollar(150_000));
 		// request_redeem replaces existing item in the queue, not add to it.
 		assert_eq!(
 			RedeemRequests::<Runtime>::get(&ROOT),
 			Some((dollar(150_000), Permill::zero()))
 		);
+	});
+}
+
+// request_redeem can handle dust redeem requests
+#[test]
+fn request_redeem_can_handle_dust_redeem_requests() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(HomaLite::replace_schedule_unbond(
+			Origin::signed(ROOT),
+			vec![(dollar(50_000), 1)],
+		));
+		MockRelayBlockNumberProvider::set(1);
+		HomaLite::on_idle(MockRelayBlockNumberProvider::get(), 5_000_000_000);
+		assert_eq!(AvailableStakingBalance::<Runtime>::get(), dollar(50_000));
+
+		// Remaining `dollar(1)` is below the xcm_unbond_fee, therefore returned and requests filled.
+		assert_ok!(HomaLite::request_redeem(
+			Origin::signed(ROOT),
+			dollar(500_010),
+			Permill::zero()
+		));
+		assert_eq!(AvailableStakingBalance::<Runtime>::get(), 0);
+		assert_eq!(Currencies::free_balance(KSM, &ROOT), dollar(49_999));
+		assert_eq!(Currencies::free_balance(LKSM, &ROOT), dollar(500_000));
+		assert_eq!(Currencies::reserved_balance(LKSM, &ROOT), 0);
+		assert_eq!(RedeemRequests::<Runtime>::get(&ROOT), None);
+	});
+}
+
+// on_idle can handle dust redeem requests
+#[test]
+fn on_idle_can_handle_dust_redeem_requests() {
+	ExtBuilder::default().build().execute_with(|| {
+		// Test that on_idle doesn't add dust redeem requests into the queue.
+		assert_ok!(HomaLite::request_redeem(
+			Origin::signed(ROOT),
+			dollar(500_010),
+			Permill::zero()
+		));
+		assert_ok!(HomaLite::replace_schedule_unbond(
+			Origin::signed(ROOT),
+			vec![(dollar(50_000), 2)],
+		));
+		MockRelayBlockNumberProvider::set(2);
+		HomaLite::on_idle(MockRelayBlockNumberProvider::get(), 5_000_000_000);
+
+		assert_eq!(AvailableStakingBalance::<Runtime>::get(), 0);
+		assert_eq!(Currencies::free_balance(KSM, &ROOT), dollar(49_999));
+		assert_eq!(Currencies::free_balance(LKSM, &ROOT), dollar(500_000));
+		assert_eq!(Currencies::reserved_balance(LKSM, &ROOT), 0);
+		assert_eq!(RedeemRequests::<Runtime>::get(&ROOT), None);
+	});
+}
+
+// mint can handle dust redeem requests
+#[test]
+fn mint_can_handle_dust_redeem_requests() {
+	ExtBuilder::default().build().execute_with(|| {
+		// Test that on_idle doesn't add dust redeem requests into the queue.
+		assert_ok!(HomaLite::request_redeem(
+			Origin::signed(ROOT),
+			dollar(500_010),
+			Permill::zero()
+		));
+
+		assert_ok!(HomaLite::mint(Origin::signed(ALICE), dollar(50_000)));
+
+		assert_eq!(Currencies::free_balance(KSM, &ROOT), dollar(49_950));
+		assert_eq!(Currencies::free_balance(LKSM, &ROOT), dollar(500_000));
+		assert_eq!(Currencies::reserved_balance(LKSM, &ROOT), 0);
+		assert_eq!(RedeemRequests::<Runtime>::get(&ROOT), None);
 	});
 }
 
@@ -556,6 +633,47 @@ fn can_cancel_requested_redeem() {
 		assert_ok!(HomaLite::request_redeem(Origin::signed(ROOT), 0, Permill::zero()));
 		assert_eq!(Currencies::reserved_balance(LKSM, &ROOT), 0);
 		assert_eq!(RedeemRequests::<Runtime>::get(&ROOT), None);
+	});
+}
+
+// can replace redeem requests
+#[test]
+fn can_replace_requested_redeem() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(HomaLite::request_redeem(
+			Origin::signed(ROOT),
+			dollar(100_000),
+			Permill::zero()
+		));
+		assert_eq!(Currencies::reserved_balance(LKSM, &ROOT), dollar(100_000));
+		assert_eq!(
+			RedeemRequests::<Runtime>::get(&ROOT),
+			Some((dollar(100_000), Permill::zero()))
+		);
+
+		// Reducing the amount unlocks the difference.
+		assert_ok!(HomaLite::request_redeem(
+			Origin::signed(ROOT),
+			dollar(50_000),
+			Permill::from_percent(50)
+		));
+		assert_eq!(Currencies::reserved_balance(LKSM, &ROOT), dollar(50_000));
+		assert_eq!(
+			RedeemRequests::<Runtime>::get(&ROOT),
+			Some((dollar(50_000), Permill::from_percent(50)))
+		);
+
+		// Increasing the amount locks additional liquid currency.
+		assert_ok!(HomaLite::request_redeem(
+			Origin::signed(ROOT),
+			dollar(150_000),
+			Permill::from_percent(10)
+		));
+		assert_eq!(Currencies::reserved_balance(LKSM, &ROOT), dollar(150_000));
+		assert_eq!(
+			RedeemRequests::<Runtime>::get(&ROOT),
+			Some((dollar(150_000), Permill::from_percent(10)))
+		);
 	});
 }
 

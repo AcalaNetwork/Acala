@@ -162,7 +162,12 @@ where
 		}))
 	}
 
-	fn finalize_call(call: Self::RelaychainCall, extra_fee: Self::Balance, weight: Weight, debt: Weight) -> Xcm<()> {
+	fn finalize_call_into_xcm_message(
+		call: Self::RelaychainCall,
+		extra_fee: Self::Balance,
+		weight: Weight,
+		debt: Weight,
+	) -> Xcm<()> {
 		Xcm::WithdrawAsset {
 			assets: vec![MultiAsset::ConcreteFungible {
 				id: MultiLocation::Null,
