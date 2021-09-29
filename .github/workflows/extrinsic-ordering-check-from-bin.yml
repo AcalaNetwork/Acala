@@ -63,7 +63,7 @@ jobs:
           echo "-------------------------------------------" >> output.txt
 
       - name: Start local node
-        run: ./target/release/acala --chain=${{ env.CHAIN }} --rpc-cors=all --ws-external
+        run: ./target/release/acala --chain=${{ env.CHAIN }} --rpc-cors=all --ws-external --no-telemetry --no-prometheus --no-mdns --no-grandpa --sync=fast &
       
       - name: Install Yarn
         run: npm install -g yarn
@@ -77,11 +77,11 @@ jobs:
           cd ..
           sed -z -i 's/\n\n/\n/g' output.txt
 
-      - name: Show result
-        run: cat output.txt
-
       - name: Stop our local node
         run: pkill acala
+
+      - name: Show result
+        run: cat output.txt
 
       - name: Save output as artifact
         uses: actions/upload-artifact@v2
