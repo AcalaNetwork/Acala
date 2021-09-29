@@ -500,7 +500,7 @@ fn schedule_call_precompile_should_work() {
 		{
 			assert_eq!(Balances::free_balance(from_account.clone()), 999999972553);
 			assert_eq!(Balances::reserved_balance(from_account), 0);
-			assert_eq!(Balances::free_balance(to_account), 1000000000000);
+			assert_eq!(Balances::free_balance(to_account), 1000000001000);
 		}
 		#[cfg(feature = "with-ethereum-compatibility")]
 		{
