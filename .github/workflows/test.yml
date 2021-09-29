@@ -67,4 +67,6 @@ jobs:
       with:
         node-version: 14.x
     - name: Run ts tests
-      run: make test-ts
+      run: |
+        npm install -g yarn
+        make test-ts
