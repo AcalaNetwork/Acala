@@ -1,0 +1,45 @@
+name: e2e test
+
+on:
+  pull_request:
+    branches:
+      - master
+    paths-ignore:
+      - '**/README.md'
+  push:
+    branches:
+      - master
+    paths-ignore:
+      - '**/README.md'
+
+jobs:
+  clean-up-actions:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cancel Previous Runs
+        # Only cancel non-master branch runs
+        if: ${{ github.ref != 'refs/heads/master' }}
+        uses: styfle/cancel-workflow-action@0.9.0
+        with:
+          access_token: ${{ github.token }}
+  checks-and-tests:
+    runs-on: ubuntu-latest
+    needs: clean-up-actions
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: recursive
+    - name: Install toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: nightly-2021-06-17
+        components: rustfmt
+        target: wasm32-unknown-unknown
+        default: true
+    - name: Use Node.js
+      uses: actions/setup-node@v2
+      with:
+        node-version: 14.x
+    - name: Run ts tests
+      run: make test-ts
