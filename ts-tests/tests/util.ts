@@ -37,7 +37,7 @@ export async function startAcalaNode(): Promise<{ provider: TestProvider; binary
 	binary.on("error", (err) => {
 		if ((err as any).errno == "ENOENT") {
 			console.error(
-				`\x1b[31mMissing Acala binary (${BINARY_PATH}).\nPlease compile the Acala project:\ncargo build\x1b[0m`
+				`\x1b[31mMissing Acala binary (${BINARY_PATH}).\nPlease compile the Acala project:\nmake test-ts\x1b[0m`
 			);
 		} else {
 			console.error(err);
