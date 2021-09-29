@@ -20,23 +20,25 @@
 
 #![cfg(test)]
 
-use super::*;
-use frame_support::{ord_parameter_types, parameter_types, traits::Everything};
-use frame_system::EnsureSignedBy;
-use module_relaychain::RelaychainCallBuilder;
-use module_support::mocks::MockAddressMapping;
-use orml_traits::{parameter_type_with_key, XcmTransfer};
-use primitives::{Amount, TokenSymbol};
-use sp_core::H256;
-use sp_runtime::{testing::Header, traits::IdentityLookup, AccountId32};
+pub use super::*;
+pub use frame_support::{ord_parameter_types, parameter_types, traits::Everything};
+pub use frame_system::{EnsureSignedBy, RawOrigin};
+pub use module_relaychain::RelaychainCallBuilder;
+pub use module_support::mocks::MockAddressMapping;
+pub use orml_traits::{parameter_type_with_key, XcmTransfer};
+pub use primitives::{Amount, TokenSymbol};
+pub use sp_core::H256;
+pub use sp_runtime::{testing::Header, traits::IdentityLookup, AccountId32};
 
 pub use cumulus_primitives_core::ParaId;
-use xcm::v0::{Error as XcmError, ExecuteXcm, Junction, MultiAsset, NetworkId, Outcome, Result as XcmResult, SendXcm};
-use xcm_executor::traits::{InvertLocation, WeightBounds};
+pub use xcm::v0::{
+	Error as XcmError, ExecuteXcm, Junction, MultiAsset, NetworkId, Outcome, Result as XcmResult, SendXcm,
+};
+pub use xcm_executor::traits::{InvertLocation, WeightBounds};
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
-use crate as module_homa_lite;
+pub use crate as module_homa_lite;
 
 mod homa_lite {
 	pub use super::super::*;
@@ -130,6 +132,11 @@ impl EnsureOrigin<Origin> for MockEnsureXcmOrigin {
 	type Success = MultiLocation;
 	fn try_origin(_o: Origin) -> Result<Self::Success, Origin> {
 		Ok(MultiLocation::Null)
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	fn successful_origin() -> Origin {
+		Origin::from(RawOrigin::Signed(Default::default()))
 	}
 }
 pub struct MockWeigher;

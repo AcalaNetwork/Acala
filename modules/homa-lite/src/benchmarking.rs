@@ -21,9 +21,9 @@
 #![cfg(feature = "runtime-benchmarks")]
 
 pub use crate::*;
-use frame_benchmarking::{account, benchmarks};
-use frame_support::traits::Get;
-use frame_system::RawOrigin;
+pub use frame_benchmarking::{account, benchmarks};
+pub use frame_support::traits::Get;
+pub use frame_system::RawOrigin;
 
 pub struct Module<T: Config>(crate::Pallet<T>);
 
@@ -98,15 +98,22 @@ mod benchmark_mock {
 	type AccountId = AccountId32;
 	type BlockNumber = u64;
 	use crate as module_homa_lite;
-	use frame_support::{ord_parameter_types, parameter_types};
-	use frame_system::{EnsureRoot, EnsureSignedBy};
-	use mock::{MockXcm, ACALA, KSM, LKSM, MOCK_XCM_ACCOUNTID, MOCK_XCM_DESTINATION, PARACHAIN_ID, ROOT};
+	use cumulus_primitives_core::ParaId;
+	use frame_support::{ord_parameter_types, parameter_types, traits::Everything};
+	use frame_system::EnsureSignedBy;
+	use module_relaychain::RelaychainCallBuilder;
 	use module_support::mocks::MockAddressMapping;
 	use orml_traits::parameter_type_with_key;
 	use primitives::Amount;
 	use sp_core::H256;
 	use sp_runtime::{testing::Header, traits::IdentityLookup, AccountId32};
+	use xcm::v0::{ExecuteXcm, Outcome};
+	use xcm_executor::traits::WeightBounds;
 
+	use mock::{
+		dollar, millicent, MockRelayBlockNumberProvider, MockXcm, ACALA, KSM, LKSM, MOCK_XCM_ACCOUNTID,
+		MOCK_XCM_DESTINATION, PARACHAIN_ID, ROOT,
+	};
 	mod homa_lite {
 		pub use super::super::*;
 	}
@@ -194,6 +201,55 @@ mod benchmark_mock {
 		type OnDust = ();
 	}
 
+	pub struct MockBenchmarkingEnsureXcmOrigin;
+	impl EnsureOrigin<Origin> for MockBenchmarkingEnsureXcmOrigin {
+		type Success = MultiLocation;
+		fn try_origin(_o: Origin) -> Result<Self::Success, Origin> {
+			Ok(MultiLocation::Null)
+		}
+
+		#[cfg(feature = "runtime-benchmarks")]
+		fn successful_origin() -> Origin {
+			unimplemented!()
+		}
+	}
+
+	pub struct MockBenchmarkingWeigher;
+	impl WeightBounds<Call> for MockBenchmarkingWeigher {
+		fn shallow(_message: &mut Xcm<Call>) -> Result<Weight, ()> {
+			Ok(0)
+		}
+
+		fn deep(_message: &mut Xcm<Call>) -> Result<Weight, ()> {
+			Ok(0)
+		}
+	}
+
+	pub struct MockBenchmarkingXcmExecutor;
+	impl ExecuteXcm<Call> for MockBenchmarkingXcmExecutor {
+		fn execute_xcm_in_credit(
+			_origin: MultiLocation,
+			_message: Xcm<Call>,
+			_weight_limit: Weight,
+			_weight_credit: Weight,
+		) -> Outcome {
+			Outcome::Complete(0)
+		}
+	}
+
+	impl pallet_xcm::Config for Runtime {
+		type Event = Event;
+		type SendXcmOrigin = MockBenchmarkingEnsureXcmOrigin;
+		type XcmRouter = MockXcm;
+		type ExecuteXcmOrigin = MockBenchmarkingEnsureXcmOrigin;
+		type XcmExecuteFilter = Everything;
+		type XcmExecutor = MockBenchmarkingXcmExecutor;
+		type XcmTeleportFilter = ();
+		type XcmReserveTransferFilter = Everything;
+		type Weigher = MockBenchmarkingWeigher;
+		type LocationInverter = MockXcm;
+	}
+
 	parameter_types! {
 		pub const StakingCurrencyId: CurrencyId = KSM;
 		pub const LiquidCurrencyId: CurrencyId = LKSM;
@@ -207,10 +263,9 @@ mod benchmark_mock {
 		pub BaseWithdrawFee: Permill = Permill::from_rational(1u32, 1_000u32); // 0.1%
 		pub const ParachainAccount: AccountId = ROOT;
 		pub const MaximumRedeemRequestMatchesForMint: u32 = 2;
-		pub static MockRelayBlockNumberProvider: u64 = 0;
 		pub const RelaychainUnbondingSlashingSpans: u32 = 5;
 		pub const SubAccountIndex: u16 = 0;
-		pub const ParachainId: ParaId = ParaId::from(PARACHAIN_ID);
+		pub ParachainId: ParaId = ParaId::from(PARACHAIN_ID);
 		pub XcmUnbondFee: Balance = dollar(1);
 	}
 	ord_parameter_types! {
@@ -232,7 +287,6 @@ mod benchmark_mock {
 		type DefaultExchangeRate = DefaultExchangeRate;
 		type MaxRewardPerEra = MaxRewardPerEra;
 		type MintFee = MintFee;
-		type XcmSender = MockXcm;
 		type RelaychainCallBuilder = RelaychainCallBuilder<Runtime, ParachainId>;
 		type BaseWithdrawFee = BaseWithdrawFee;
 		type XcmUnbondFee = XcmUnbondFee;
@@ -256,6 +310,7 @@ mod benchmark_mock {
 			PalletBalances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
 			Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
 			Currencies: module_currencies::{Pallet, Call, Event<T>},
+			PalletXcm: pallet_xcm::{Pallet, Call, Event<T>},
 		}
 	);
 
@@ -285,6 +340,13 @@ mod tests {
 	use super::*;
 	use benchmark_mock::*;
 	use frame_support::assert_ok;
+
+	#[test]
+	fn test_on_idle() {
+		ExtBuilder::default().build().execute_with(|| {
+			assert_ok!(Pallet::<Runtime>::test_benchmark_on_idle());
+		});
+	}
 
 	#[test]
 	fn test_mint() {
