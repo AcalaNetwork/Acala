@@ -16,16 +16,17 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::precompile::PrecompileOutput;
 use frame_support::log;
 use module_evm::{Context, ExitError, ExitSucceed, Precompile};
 use module_support::{AddressMapping as AddressMappingT, CurrencyIdMapping as CurrencyIdMappingT};
-use sp_core::{H160, U256};
+use sp_core::H160;
 use sp_runtime::RuntimeDebug;
 use sp_std::{borrow::Cow, fmt::Debug, marker::PhantomData, prelude::*, result};
 
 use orml_traits::NFT as NFTT;
 
-use super::input::{Input, InputT};
+use super::input::{Input, InputT, Output};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use primitives::NFTBalance;
 
@@ -62,9 +63,7 @@ where
 		input: &[u8],
 		_target_gas: Option<u64>,
 		_context: &Context,
-	) -> result::Result<(ExitSucceed, Vec<u8>, u64), ExitError> {
-		log::debug!(target: "evm", "nft: input: {:?}", input);
-
+	) -> result::Result<PrecompileOutput, ExitError> {
 		let input = Input::<Action, AccountId, AddressMapping, CurrencyIdMapping>::new(input);
 
 		let action = input.action()?;
@@ -75,9 +74,14 @@ where
 
 				log::debug!(target: "evm", "nft: query_balance who: {:?}", who);
 
-				let balance = vec_u8_from_balance(NFT::balance(&who));
+				let balance = NFT::balance(&who);
 
-				Ok((ExitSucceed::Returned, balance, 0))
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: 0,
+					output: Output::default().encode_u128(balance),
+					logs: Default::default(),
+				})
 			}
 			Action::QueryOwner => {
 				let class_id = input.u32_at(1)?;
@@ -91,10 +95,12 @@ where
 					Default::default()
 				};
 
-				let mut address = [0u8; 32];
-				address[12..].copy_from_slice(&owner.as_bytes().to_vec());
-
-				Ok((ExitSucceed::Returned, address.to_vec(), 0))
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: 0,
+					output: Output::default().encode_address(&owner),
+					logs: Default::default(),
+				})
 			}
 			Action::Transfer => {
 				let from = input.account_id_at(1)?;
@@ -108,14 +114,13 @@ where
 				NFT::transfer(&from, &to, (class_id, token_id))
 					.map_err(|e| ExitError::Other(Cow::Borrowed(e.into())))?;
 
-				Ok((ExitSucceed::Returned, vec![], 0))
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: 0,
+					output: vec![],
+					logs: Default::default(),
+				})
 			}
 		}
 	}
-}
-
-fn vec_u8_from_balance(b: NFTBalance) -> Vec<u8> {
-	let mut be_bytes = [0u8; 32];
-	U256::from(b).to_big_endian(&mut be_bytes[..]);
-	be_bytes.to_vec()
 }

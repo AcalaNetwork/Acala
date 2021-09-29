@@ -99,7 +99,7 @@ mod benchmark_mock {
 	type BlockNumber = u64;
 	use crate as module_homa_lite;
 	use frame_support::{ord_parameter_types, parameter_types};
-	use frame_system::EnsureRoot;
+	use frame_system::{EnsureRoot, EnsureSignedBy};
 	use mock::{MockXcm, ACALA, KSM, LKSM, MOCK_XCM_ACCOUNTID, MOCK_XCM_DESTINATION, PARACHAIN_ID, ROOT};
 	use module_support::mocks::MockAddressMapping;
 	use orml_traits::parameter_type_with_key;
@@ -190,6 +190,8 @@ mod benchmark_mock {
 		type WeightInfo = ();
 		type AddressMapping = MockAddressMapping;
 		type EVMBridge = ();
+		type SweepOrigin = EnsureSignedBy<Root, AccountId>;
+		type OnDust = ();
 	}
 
 	parameter_types! {
