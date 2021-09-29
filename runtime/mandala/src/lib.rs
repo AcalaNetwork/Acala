@@ -37,8 +37,8 @@ use frame_support::pallet_prelude::InvalidTransaction;
 pub use frame_support::{
 	construct_runtime, log, parameter_types,
 	traits::{
-		Contains, ContainsLengthBound, Currency as PalletCurrency, EnsureOrigin, Everything, FindAuthor, Get,
-		Imbalance, InstanceFilter, IsSubType, IsType, KeyOwnerProofSystem, LockIdentifier, OnUnbalanced, Randomness,
+		Contains, ContainsLengthBound, Currency as PalletCurrency, EnsureOrigin, Everything, Get, Imbalance,
+		InstanceFilter, IsSubType, IsType, KeyOwnerProofSystem, LockIdentifier, OnUnbalanced, Randomness,
 		SortedMembers, U128CurrencyToVote, WithdrawReasons,
 	},
 	weights::{
@@ -63,10 +63,7 @@ use pallet_transaction_payment::{FeeDetails, RuntimeDispatchInfo};
 use primitives::{evm::EthereumTransactionMessage, unchecked_extrinsic::AcalaUncheckedExtrinsic};
 use sp_api::impl_runtime_apis;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
-use sp_core::{
-	crypto::{KeyTypeId, Public},
-	OpaqueMetadata, H160,
-};
+use sp_core::{crypto::KeyTypeId, OpaqueMetadata, H160};
 use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{
@@ -75,7 +72,6 @@ use sp_runtime::{
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, DispatchResult, FixedPointNumber,
 };
-use sp_std::marker::PhantomData;
 use sp_std::prelude::*;
 
 #[cfg(feature = "std")]
@@ -1533,20 +1529,6 @@ pub type DexPrecompile =
 #[cfg(feature = "with-ethereum-compatibility")]
 static ISTANBUL_CONFIG: evm::Config = evm::Config::istanbul();
 
-pub struct FindAuthorTruncated<F>(PhantomData<F>);
-impl<F: FindAuthor<u32>> FindAuthor<H160> for FindAuthorTruncated<F> {
-	fn find_author<'a, I>(digests: I) -> Option<H160>
-	where
-		I: 'a + IntoIterator<Item = (ConsensusEngineId, &'a [u8])>,
-	{
-		if let Some(author_index) = F::find_author(digests) {
-			let authority_id = Aura::authorities()[author_index as usize].clone();
-			return Some(H160::from_slice(&authority_id.to_raw_vec()[4..24]));
-		}
-		None
-	}
-}
-
 impl module_evm::Config for Runtime {
 	type AddressMapping = EvmAddressMapping<Runtime>;
 	type Currency = Balances;
@@ -1573,7 +1555,7 @@ impl module_evm::Config for Runtime {
 	type TreasuryAccount = TreasuryAccount;
 	type FreeDeploymentOrigin = EnsureRootOrHalfGeneralCouncil;
 	type Runner = module_evm::runner::stack::Runner<Self>;
-	type FindAuthor = FindAuthorTruncated<Aura>;
+	type FindAuthor = pallet_session::FindAccountFromAuthorIndex<Self, Aura>;
 	type WeightInfo = weights::module_evm::WeightInfo<Runtime>;
 
 	#[cfg(feature = "with-ethereum-compatibility")]

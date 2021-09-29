@@ -36,17 +36,13 @@ use codec::{Decode, Encode};
 use hex_literal::hex;
 use sp_api::impl_runtime_apis;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
-use sp_core::{
-	crypto::{KeyTypeId, Public},
-	OpaqueMetadata, H160,
-};
+use sp_core::{crypto::KeyTypeId, OpaqueMetadata, H160};
 use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{AccountIdConversion, BadOrigin, BlakeTwo256, Block as BlockT, SaturatedConversion, StaticLookup, Zero},
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, DispatchResult, FixedPointNumber,
 };
-use sp_std::marker::PhantomData;
 use sp_std::prelude::*;
 #[cfg(feature = "std")]
 use sp_version::NativeVersion;
@@ -84,9 +80,8 @@ mod weights;
 pub use frame_support::{
 	construct_runtime, log, parameter_types,
 	traits::{
-		Contains, ContainsLengthBound, Currency as PalletCurrency, EnsureOrigin, FindAuthor, Get, Imbalance,
-		InstanceFilter, IsType, KeyOwnerProofSystem, LockIdentifier, OnUnbalanced, Randomness, SortedMembers,
-		U128CurrencyToVote,
+		Contains, ContainsLengthBound, Currency as PalletCurrency, EnsureOrigin, Get, Imbalance, InstanceFilter,
+		IsType, KeyOwnerProofSystem, LockIdentifier, OnUnbalanced, Randomness, SortedMembers, U128CurrencyToVote,
 	},
 	weights::{constants::RocksDbWeight, IdentityFee, Weight},
 	ConsensusEngineId, PalletId, RuntimeDebug, StorageValue,
@@ -1356,20 +1351,6 @@ pub type ScheduleCallPrecompile = runtime_common::ScheduleCallPrecompile<
 pub type DexPrecompile =
 	runtime_common::DexPrecompile<AccountId, EvmAddressMapping<Runtime>, EvmCurrencyIdMapping<Runtime>, Dex>;
 
-pub struct FindAuthorTruncated<F>(PhantomData<F>);
-impl<F: FindAuthor<u32>> FindAuthor<H160> for FindAuthorTruncated<F> {
-	fn find_author<'a, I>(digests: I) -> Option<H160>
-	where
-		I: 'a + IntoIterator<Item = (ConsensusEngineId, &'a [u8])>,
-	{
-		if let Some(author_index) = F::find_author(digests) {
-			let authority_id = Aura::authorities()[author_index as usize].clone();
-			return Some(H160::from_slice(&authority_id.to_raw_vec()[4..24]));
-		}
-		None
-	}
-}
-
 impl module_evm::Config for Runtime {
 	type AddressMapping = EvmAddressMapping<Runtime>;
 	type Currency = Balances;
@@ -1396,7 +1377,7 @@ impl module_evm::Config for Runtime {
 	type TreasuryAccount = TreasuryAccount;
 	type FreeDeploymentOrigin = EnsureRootOrHalfGeneralCouncil;
 	type Runner = module_evm::runner::stack::Runner<Self>;
-	type FindAuthor = FindAuthorTruncated<Aura>;
+	type FindAuthor = pallet_session::FindAccountFromAuthorIndex<Self, Aura>;
 	type WeightInfo = weights::module_evm::WeightInfo<Runtime>;
 }
 
