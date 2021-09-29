@@ -3,9 +3,11 @@
 name: Extrinsic Ordering Check from Binary
 on:
   workflow_dispatch:
-  push: # for testing workflow
+  pull_request: # for testing workflow
     branches:
-      - workflow-check-extrinsic-order
+      - master
+    paths-ignore:
+      - '**/README.md'
     inputs:
       reference_url:
         description: The WebSocket url of the reference node
@@ -65,9 +67,9 @@ jobs:
 
       - name: Compare the metadata
         uses: actions/setup-node@v2
-          with:
-            node-version: '14.x'
-            registry-url: 'https://registry.npmjs.org'
+        with:
+          node-version: '14.x'
+          registry-url: 'https://registry.npmjs.org'
         run: |
           git clone https://github.com/ermalkaleci/tools.git
           cd tools
