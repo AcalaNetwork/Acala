@@ -64,11 +64,13 @@ jobs:
 
       - name: Start local node
         run: ./target/release/acala --chain=${{ env.CHAIN }} --rpc-cors=all --ws-external --no-telemetry --no-prometheus --no-mdns --no-grandpa --sync=fast &
-      
-      - name: Install Yarn
-        run: npm install -g yarn
 
       - name: Compare the metadata
+        uses: actions/setup-node@v2
+          with:
+            node-version: '14.x'
+            registry-url: 'https://registry.npmjs.org'
+
         run: |
           git clone https://github.com/ermalkaleci/tools.git
           cd tools
