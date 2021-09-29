@@ -3,11 +3,9 @@
 name: Extrinsic Ordering Check from Binary
 on:
   workflow_dispatch:
-  pull_request: # for testing workflow
+  push: # for testing workflow
     branches:
-      - master
-    paths-ignore:
-      - '**/README.md'
+      - workflow-check-extrinsic-order
     inputs:
       reference_url:
         description: The WebSocket url of the reference node
