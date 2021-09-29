@@ -1,4 +1,4 @@
-name: e2e test
+name: Test e2e
 
 on:
   pull_request:
@@ -42,4 +42,5 @@ jobs:
       with:
         node-version: 14.x
     - name: Run ts tests
-      run: make test-ts
+      # TODO: remove ACALA_LOG
+      run: ACALA_LOG=true make test-ts

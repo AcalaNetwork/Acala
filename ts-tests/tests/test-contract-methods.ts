@@ -42,17 +42,16 @@ describeWithAcala("Acala RPC (Contract Methods)", (context) => {
 			"0x0000000000000000000000000000000000000000000000000000000000000000"
 		);
 
-		// TODO: `ACALA_LOG=true yarn run test` works
-		// let last = number + (await context.provider.api.consts.system.blockHashCount).toNumber();
-		// for(let i = number - 1; i <= last; i++) {
-		// 	let hash = await context.provider.api.query.system.blockHash(i);
-		// 	expect(await contract.blockHash(i)).to.eq(hash.toString());
-		// 	await nextBlock(context.provider);
-		// }
-		// // should not store more than BlockHashCount
-		// expect(await contract.blockHash(number)).to.eq(
-		// 	"0x0000000000000000000000000000000000000000000000000000000000000000"
-		// );
+		let last = number + (await context.provider.api.consts.system.blockHashCount).toNumber();
+		for(let i = number - 1; i <= last; i++) {
+			let hash = await context.provider.api.query.system.blockHash(i);
+			expect(await contract.blockHash(i)).to.eq(hash.toString());
+			await nextBlock(context.provider);
+		}
+		// should not store more than BlockHashCount
+		expect(await contract.blockHash(number)).to.eq(
+			"0x0000000000000000000000000000000000000000000000000000000000000000"
+		);
 	});
 
 	it("should get correct environmental chainId", async function () {
