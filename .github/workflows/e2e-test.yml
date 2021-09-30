@@ -41,6 +41,10 @@ jobs:
       uses: actions/setup-node@v2
       with:
         node-version: 14.x
+    # Empty the airdrop file to speed up the start
+    - name: Empty the airdrop file
+      run: |
+        cat /dev/null > resources/mandala-airdrop-ACA.json
+        cat /dev/null > resources/mandala-airdrop-NFT.json
     - name: Run ts tests
-      # TODO: remove ACALA_LOG
-      run: ACALA_LOG=true make test-ts
+      run: make test-ts
