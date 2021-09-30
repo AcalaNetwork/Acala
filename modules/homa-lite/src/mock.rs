@@ -22,7 +22,7 @@
 
 pub use super::*;
 pub use frame_support::{ord_parameter_types, parameter_types, traits::Everything};
-pub use frame_system::{EnsureSignedBy, RawOrigin};
+pub use frame_system::{EnsureRoot, EnsureSignedBy, RawOrigin};
 pub use module_relaychain::RelaychainCallBuilder;
 pub use module_support::mocks::MockAddressMapping;
 pub use orml_traits::{parameter_type_with_key, XcmTransfer};
@@ -278,7 +278,7 @@ impl Config for Runtime {
 	type Currency = Currencies;
 	type StakingCurrencyId = StakingCurrencyId;
 	type LiquidCurrencyId = LiquidCurrencyId;
-	type GovernanceOrigin = EnsureSignedBy<Root, AccountId>;
+	type GovernanceOrigin = EnsureRoot<AccountId>;
 	type MinimumMintThreshold = MinimumMintThreshold;
 	type MinimumRedeemThreshold = MinimumRedeemThreshold;
 	type XcmTransfer = MockXcm;

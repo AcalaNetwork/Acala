@@ -46,10 +46,7 @@ fn mint_works() {
 	ExtBuilder::default().build().execute_with(|| {
 		let amount = dollar(1000);
 
-		assert_ok!(HomaLite::set_minting_cap(
-			Origin::signed(ROOT),
-			5 * dollar(INITIAL_BALANCE)
-		));
+		assert_ok!(HomaLite::set_minting_cap(Origin::root(), 5 * dollar(INITIAL_BALANCE)));
 
 		assert_noop!(
 			HomaLite::mint(Origin::signed(ROOT), amount),
@@ -71,10 +68,7 @@ fn mint_works() {
 		assert_eq!(lksm_issuance, 1_009_899_901_000_000_000);
 
 		// Set the exchange rate to 1(S) : 5(L)
-		assert_ok!(HomaLite::set_total_staking_currency(
-			Origin::signed(ROOT),
-			lksm_issuance / 5
-		));
+		assert_ok!(HomaLite::set_total_staking_currency(Origin::root(), lksm_issuance / 5));
 
 		assert_eq!(
 			HomaLite::get_staking_exchange_rate(),
@@ -99,20 +93,14 @@ fn repeated_mints_have_similar_exchange_rate() {
 	ExtBuilder::default().build().execute_with(|| {
 		let amount = dollar(1000);
 
-		assert_ok!(HomaLite::set_minting_cap(
-			Origin::signed(ROOT),
-			5 * dollar(INITIAL_BALANCE)
-		));
+		assert_ok!(HomaLite::set_minting_cap(Origin::root(), 5 * dollar(INITIAL_BALANCE)));
 
 		// Set the total staking amount
 		let mut lksm_issuance = Currencies::total_issuance(LKSM);
 		assert_eq!(lksm_issuance, dollar(1_000_000));
 
 		// Set the exchange rate to 1(S) : 5(L)
-		assert_ok!(HomaLite::set_total_staking_currency(
-			Origin::signed(ROOT),
-			lksm_issuance / 5
-		));
+		assert_ok!(HomaLite::set_total_staking_currency(Origin::root(), lksm_issuance / 5));
 
 		// The exchange rate is now 1:5 ratio
 		// liquid = (1000 - 0.01) * 1000 / 200 * 0.99
@@ -146,10 +134,7 @@ fn repeated_mints_have_similar_exchange_rate() {
 
 		// Now increase the Staking total by 1%
 		assert_eq!(TotalStakingCurrency::<Runtime>::get(), 201_999_999_999_999_999);
-		assert_ok!(HomaLite::set_total_staking_currency(
-			Origin::signed(ROOT),
-			dollar(204_020)
-		));
+		assert_ok!(HomaLite::set_total_staking_currency(Origin::root(), dollar(204_020)));
 		lksm_issuance = Currencies::total_issuance(LKSM);
 		assert_eq!(lksm_issuance, 1_009_899_654_490_002_433);
 
@@ -170,7 +155,7 @@ fn repeated_mints_have_similar_exchange_rate() {
 #[test]
 fn mint_fails_when_cap_is_exceeded() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(HomaLite::set_minting_cap(Origin::signed(ROOT), dollar(1_000)));
+		assert_ok!(HomaLite::set_minting_cap(Origin::root(), dollar(1_000)));
 
 		assert_noop!(
 			HomaLite::mint(Origin::signed(ALICE), dollar(1_001)),
@@ -189,7 +174,7 @@ fn mint_fails_when_cap_is_exceeded() {
 #[test]
 fn failed_xcm_transfer_is_handled() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(HomaLite::set_minting_cap(Origin::signed(ROOT), dollar(1_000)));
+		assert_ok!(HomaLite::set_minting_cap(Origin::root(), dollar(1_000)));
 
 		// XCM transfer fails if it is called by INVALID_CALLER.
 		assert_noop!(
@@ -203,10 +188,10 @@ fn failed_xcm_transfer_is_handled() {
 fn cannot_set_total_staking_currency_to_zero() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_noop!(
-			HomaLite::set_total_staking_currency(Origin::signed(ROOT), 0),
+			HomaLite::set_total_staking_currency(Origin::root(), 0),
 			Error::<Runtime>::InvalidTotalStakingCurrency
 		);
-		assert_ok!(HomaLite::set_total_staking_currency(Origin::signed(ROOT), 1));
+		assert_ok!(HomaLite::set_total_staking_currency(Origin::root(), 1));
 		assert_eq!(TotalStakingCurrency::<Runtime>::get(), 1);
 		System::assert_last_event(Event::HomaLite(crate::Event::TotalStakingCurrencySet(1)));
 	});
@@ -215,7 +200,7 @@ fn cannot_set_total_staking_currency_to_zero() {
 #[test]
 fn can_adjust_total_staking_currency() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(HomaLite::set_total_staking_currency(Origin::signed(ROOT), 1));
+		assert_ok!(HomaLite::set_total_staking_currency(Origin::root(), 1));
 		assert_eq!(HomaLite::total_staking_currency(), 1);
 
 		assert_noop!(
@@ -224,26 +209,26 @@ fn can_adjust_total_staking_currency() {
 		);
 
 		// Can adjust total_staking_currency with ROOT.
-		assert_ok!(HomaLite::adjust_total_staking_currency(Origin::signed(ROOT), 5000));
+		assert_ok!(HomaLite::adjust_total_staking_currency(Origin::root(), 5000));
 
 		assert_eq!(HomaLite::total_staking_currency(), 5001);
 		System::assert_last_event(Event::HomaLite(crate::Event::TotalStakingCurrencySet(5001)));
 
 		// Underflow / overflow causes error
 		assert_noop!(
-			HomaLite::adjust_total_staking_currency(Origin::signed(ROOT), -5002),
+			HomaLite::adjust_total_staking_currency(Origin::root(), -5002),
 			ArithmeticError::Underflow
 		);
 
 		assert_eq!(HomaLite::total_staking_currency(), 5001);
 
 		assert_ok!(HomaLite::set_total_staking_currency(
-			Origin::signed(ROOT),
+			Origin::root(),
 			Balance::max_value()
 		));
 
 		assert_noop!(
-			HomaLite::adjust_total_staking_currency(Origin::signed(ROOT), 1),
+			HomaLite::adjust_total_staking_currency(Origin::root(), 1),
 			ArithmeticError::Overflow
 		);
 	});
@@ -272,7 +257,7 @@ fn can_set_mint_cap() {
 		);
 
 		// Set the cap.
-		assert_ok!(HomaLite::set_minting_cap(Origin::signed(ROOT), dollar(1_000)));
+		assert_ok!(HomaLite::set_minting_cap(Origin::root(), dollar(1_000)));
 
 		// Cap should be set now.
 		assert_eq!(StakingCurrencyMintCap::<Runtime>::get(), dollar(1_000));
@@ -293,7 +278,7 @@ fn can_set_xcm_base_weight() {
 		);
 
 		// Set the cap.
-		assert_ok!(HomaLite::set_xcm_base_weight(Origin::signed(ROOT), 1_000_000));
+		assert_ok!(HomaLite::set_xcm_base_weight(Origin::root(), 1_000_000));
 
 		// Cap should be set now.
 		assert_eq!(XcmBaseWeight::<Runtime>::get(), 1_000_000);
@@ -312,7 +297,7 @@ fn can_schedule_unbond() {
 		);
 
 		// Schedule an unbond.
-		assert_ok!(HomaLite::schedule_unbond(Origin::signed(ROOT), 1_000_000, 100));
+		assert_ok!(HomaLite::schedule_unbond(Origin::root(), 1_000_000, 100));
 
 		// Storage should be updated now.
 		assert_eq!(ScheduledUnbond::<Runtime>::get(), vec![(1_000_000, 100)]);
@@ -320,7 +305,7 @@ fn can_schedule_unbond() {
 		System::assert_last_event(Event::HomaLite(crate::Event::ScheduledUnbondAdded(1_000_000, 100)));
 
 		// Schedule another unbond.
-		assert_ok!(HomaLite::schedule_unbond(Origin::signed(ROOT), 200, 80));
+		assert_ok!(HomaLite::schedule_unbond(Origin::root(), 200, 80));
 
 		// Storage should be updated now.
 		assert_eq!(ScheduledUnbond::<Runtime>::get(), vec![(1_000_000, 100), (200, 80)]);
@@ -339,13 +324,13 @@ fn can_replace_schedule_unbond() {
 		);
 
 		// Schedule an unbond.
-		assert_ok!(HomaLite::schedule_unbond(Origin::signed(ROOT), 1_000_000, 100));
-		assert_ok!(HomaLite::schedule_unbond(Origin::signed(ROOT), 200, 80));
+		assert_ok!(HomaLite::schedule_unbond(Origin::root(), 1_000_000, 100));
+		assert_ok!(HomaLite::schedule_unbond(Origin::root(), 200, 80));
 		assert_eq!(ScheduledUnbond::<Runtime>::get(), vec![(1_000_000, 100), (200, 80)]);
 
 		// replace the current storage.
 		assert_ok!(HomaLite::replace_schedule_unbond(
-			Origin::signed(ROOT),
+			Origin::root(),
 			vec![(800, 2), (1357, 120)],
 		));
 		assert_eq!(ScheduledUnbond::<Runtime>::get(), vec![(800, 2), (1357, 120)]);
@@ -359,7 +344,7 @@ fn can_replace_schedule_unbond() {
 fn on_idle_can_process_xcm_to_increase_available_staking_balance() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(HomaLite::replace_schedule_unbond(
-			Origin::signed(ROOT),
+			Origin::root(),
 			vec![(100, 1), (200, 2), (30, 2)],
 		));
 		assert_eq!(ScheduledUnbond::<Runtime>::get(), vec![(100, 1), (200, 2), (30, 2)]);
@@ -394,7 +379,7 @@ fn on_idle_can_process_xcm_to_increase_available_staking_balance() {
 fn new_available_staking_currency_can_handle_redeem_requests() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(HomaLite::replace_schedule_unbond(
-			Origin::signed(ROOT),
+			Origin::root(),
 			vec![(dollar(1_000), 1)],
 		));
 		MockRelayBlockNumberProvider::set(1);
@@ -428,7 +413,7 @@ fn new_available_staking_currency_can_handle_redeem_requests() {
 
 		// Add more staking currency to fully satify the last redeem request
 		assert_ok!(HomaLite::replace_schedule_unbond(
-			Origin::signed(ROOT),
+			Origin::root(),
 			vec![(dollar(150), 2)],
 		));
 		MockRelayBlockNumberProvider::set(2);
@@ -459,13 +444,10 @@ fn on_idle_can_handle_changes_in_exchange_rate() {
 		assert_eq!(Currencies::total_issuance(LKSM), dollar(1_000_000));
 
 		// Change the exchange rate to 1(S) : 5(L)
-		assert_ok!(HomaLite::set_total_staking_currency(
-			Origin::signed(ROOT),
-			dollar(200_000)
-		));
+		assert_ok!(HomaLite::set_total_staking_currency(Origin::root(), dollar(200_000)));
 
 		assert_ok!(HomaLite::replace_schedule_unbond(
-			Origin::signed(ROOT),
+			Origin::root(),
 			vec![(dollar(100_000), 1)],
 		));
 		MockRelayBlockNumberProvider::set(1);
@@ -486,7 +468,7 @@ fn on_idle_can_handle_changes_in_exchange_rate() {
 fn request_redeem_works() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(HomaLite::replace_schedule_unbond(
-			Origin::signed(ROOT),
+			Origin::root(),
 			vec![(dollar(50_000), 1)],
 		));
 		MockRelayBlockNumberProvider::set(1);
@@ -549,7 +531,7 @@ fn request_redeem_works() {
 fn request_redeem_can_handle_dust_redeem_requests() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(HomaLite::replace_schedule_unbond(
-			Origin::signed(ROOT),
+			Origin::root(),
 			vec![(dollar(50_000), 1)],
 		));
 		MockRelayBlockNumberProvider::set(1);
@@ -581,7 +563,7 @@ fn on_idle_can_handle_dust_redeem_requests() {
 			Permill::zero()
 		));
 		assert_ok!(HomaLite::replace_schedule_unbond(
-			Origin::signed(ROOT),
+			Origin::root(),
 			vec![(dollar(50_000), 2)],
 		));
 		MockRelayBlockNumberProvider::set(2);
@@ -682,7 +664,7 @@ fn can_replace_requested_redeem() {
 #[test]
 fn mint_can_match_requested_redeem() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(HomaLite::set_minting_cap(Origin::signed(ROOT), dollar(INITIAL_BALANCE)));
+		assert_ok!(HomaLite::set_minting_cap(Origin::root(), dollar(INITIAL_BALANCE)));
 		assert_ok!(Currencies::deposit(LKSM, &ALICE, dollar(200)));
 		assert_ok!(Currencies::deposit(LKSM, &BOB, dollar(200)));
 		assert_ok!(Currencies::deposit(KSM, &CHARLIE, dollar(100)));
@@ -720,10 +702,7 @@ fn mint_can_match_requested_redeem() {
 #[test]
 fn can_mint_for_request() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(HomaLite::set_minting_cap(
-			Origin::signed(ROOT),
-			5 * dollar(INITIAL_BALANCE)
-		));
+		assert_ok!(HomaLite::set_minting_cap(Origin::root(), 5 * dollar(INITIAL_BALANCE)));
 		assert_ok!(Currencies::deposit(LKSM, &ALICE, dollar(200)));
 		assert_ok!(Currencies::deposit(LKSM, &BOB, dollar(300)));
 		assert_ok!(Currencies::deposit(KSM, &CHARLIE, dollar(40)));
@@ -769,10 +748,7 @@ fn can_mint_for_request() {
 #[test]
 fn request_redeem_extra_fee_works() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(HomaLite::set_minting_cap(
-			Origin::signed(ROOT),
-			5 * dollar(INITIAL_BALANCE)
-		));
+		assert_ok!(HomaLite::set_minting_cap(Origin::root(), 5 * dollar(INITIAL_BALANCE)));
 		assert_ok!(Currencies::deposit(LKSM, &ALICE, dollar(200)));
 		assert_ok!(Currencies::deposit(KSM, &CHARLIE, dollar(30)));
 
