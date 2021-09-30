@@ -893,7 +893,8 @@ parameter_types! {
 	pub const AuctionTimeToClose: BlockNumber = 15 * MINUTES;
 	pub const AuctionDurationSoftCap: BlockNumber = 2 * HOURS;
 	pub DefaultSwapParitalPathList: Vec<Vec<CurrencyId>> = vec![
-		vec![GetStableCurrencyId::get()],
+		vec![KUSD],
+		vec![KSM, KUSD],
 	];
 }
 
@@ -1075,7 +1076,7 @@ impl module_transaction_pause::Config for Runtime {
 
 parameter_types! {
 	// Sort by fee charge order
-	pub DefaultFeeSwapPathList: Vec<Vec<CurrencyId>> = vec![vec![KUSD, KSM, KAR], vec![KSM, KAR], vec![LKSM, KAR]];
+	pub DefaultFeeSwapPathList: Vec<Vec<CurrencyId>> = vec![vec![KUSD, KSM, KAR], vec![KSM, KAR], vec![LKSM, KSM, KAR]];
 }
 
 type NegativeImbalance = <Balances as PalletCurrency<AccountId>>::NegativeImbalance;
