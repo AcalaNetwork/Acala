@@ -20,7 +20,7 @@ export async function startAcalaNode(): Promise<{ provider: TestProvider; binary
 		`-lruntime=debug`,
 		`-levm=debug`,
 		`--instant-sealing`,
-		`--execution=Native`, // Faster execution using native
+		`--execution=native`, // Faster execution using native
 		`--no-telemetry`,
 		`--no-prometheus`,
 		`--port=${P2P_PORT}`,
