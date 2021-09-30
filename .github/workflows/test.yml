@@ -26,7 +26,6 @@ jobs:
     runs-on: [self-hosted, linux]
     env:
       SCCACHE_CACHE_SIZE: "50G"
-      CARGO_INCREMENTAL: 0
     needs: clean-up-actions
     steps:
     - uses: actions/checkout@v2
@@ -42,6 +41,8 @@ jobs:
         default: true
     - name: Check format
       run: cargo fmt --all -- --check
+    - name: Clean runtimes
+      run: clean-runtimes
     - name: Build
       run: make build-all
     - name: Install clippy
@@ -67,7 +68,6 @@ jobs:
     runs-on: [self-hosted, linux]
     env:
       SCCACHE_CACHE_SIZE: "50G"
-      CARGO_INCREMENTAL: 0
     needs: clean-up-actions
     steps:
     - uses: actions/checkout@v2
@@ -85,6 +85,8 @@ jobs:
       uses: actions/setup-node@v2
       with:
         node-version: 14.x
+    - name: Clean runtimes
+      run: clean-runtimes
     - name: Run ts tests
       run: |
         npm install -g yarn
