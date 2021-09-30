@@ -77,7 +77,7 @@ test-runtimes:
 .PHONY: test-ts
 test-ts:
 	cargo build --features with-mandala-runtime
-	cd ts-tests && yarn && yarn run build && ACALA_LOG=true yarn run test # TODO: remove ACALA_LOG=true
+	cd ts-tests && yarn && yarn run build && yarn run test
 
 .PHONY: test-benchmarking
 test-benchmarking:
