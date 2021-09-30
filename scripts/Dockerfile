@@ -1,4 +1,4 @@
-FROM rust as builder
+FROM rust:buster as builder
 WORKDIR /app
 
 RUN rustup default nightly-2021-06-17 && \
@@ -18,7 +18,7 @@ RUN cargo build --release $BUILD_ARGS
 
 # =============
 
-FROM phusion/baseimage:focal-1.1.0
+FROM phusion/baseimage:bionic-1.0.0
 LABEL maintainer="hello@acala.network"
 
 # RUN mv /usr/share/ca* /tmp && \
