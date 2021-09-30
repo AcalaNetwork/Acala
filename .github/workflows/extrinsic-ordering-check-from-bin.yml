@@ -43,7 +43,7 @@ jobs:
           default: true
 
       - name: Build
-        run: cargo build --release --features=with-${{ env.CHAIN }}-runtime
+        run: cargo build --release --features=with-${{ env.CHAIN }}-runtime --features=rococo-native
 
       - name: Prepare output
         run: |
@@ -55,7 +55,7 @@ jobs:
           echo "-------------------------------------------" >> output.txt
 
       - name: Start local node
-        run: ./target/release/acala --chain=${{ env.CHAIN }} --rpc-cors=all --ws-external --no-telemetry --no-prometheus --no-mdns --no-grandpa &
+        run: ./target/release/acala --chain=${{ env.CHAIN }}-dev --rpc-cors=all --ws-external &
 
       - name: Compare the metadata
         run: |
