@@ -1889,17 +1889,10 @@ impl Contains<CurrencyId> for IsLiquidToken {
 	}
 }
 
-pub struct GetCurrencyId;
-impl Get<CurrencyId> for GetCurrencyId {
-	fn get() -> CurrencyId {
-		CurrencyId::Token(TokenSymbol::LDOT)
-	}
-}
-
 type RebaseTokens = orml_tokens::Combiner<
 	AccountId,
 	IsLiquidToken,
-	orml_tokens::Mapper<AccountId, Tokens, ConvertBalanceHoamLite, Balance, GetCurrencyId>,
+	orml_tokens::Mapper<AccountId, Tokens, ConvertBalanceHoamLite, Balance, GetLiquidCurrencyId>,
 	Tokens,
 >;
 
