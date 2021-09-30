@@ -3,38 +3,23 @@
 name: Extrinsic Ordering Check from Binary
 on:
   workflow_dispatch:
-  pull_request: # for testing workflow
-    branches:
-      - master
-    paths-ignore:
-      - '**/README.md'
     inputs:
       reference_url:
         description: The WebSocket url of the reference node
         default: wss://karura-rpc-0.aca-api.network
         required: true
       chain:
-        description: The name of the chain under test. Usually, you would pass a local chain
+        description: The name of the chain under test.
         default: karura
         required: true
 
 jobs:
-  clean-up-actions:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Cancel Previous Runs
-        # Only cancel non-master branch runs
-        if: ${{ github.ref != 'refs/heads/master' }}
-        uses: styfle/cancel-workflow-action@0.9.0
-        with:
-          access_token: ${{ github.token }}
   check:
     name: Run check
     runs-on: [self-hosted, linux]
     env:
-      CHAIN: karura
-      REF_URL: wss://karura-rpc-0.aca-api.network
-    needs: clean-up-actions
+      CHAIN: ${{ github.event.inputs.chain }}
+      REF_URL: ${{ github.event.inputs.reference_url }}
 
     steps:
       - uses: actions/checkout@v2
