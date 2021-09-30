@@ -42,7 +42,7 @@ jobs:
     - name: Check format
       run: cargo fmt --all -- --check
     - name: Clean runtimes
-      run: clean-runtimes
+      run: make clean-runtimes
     - name: Build
       run: make build-all
     - name: Install clippy
@@ -86,7 +86,7 @@ jobs:
       with:
         node-version: 14.x
     - name: Clean runtimes
-      run: clean-runtimes
+      run: make clean-runtimes
     - name: Run ts tests
       run: |
         npm install -g yarn
