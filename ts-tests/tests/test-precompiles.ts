@@ -28,7 +28,7 @@ describeWithAcala("Acala RPC (Precompile)", (context) => {
 
 		const hash = ethers.utils.keccak256("0x" + Buffer.from('\x19Ethereum Signed Message:\n' + message.length + message).toString('hex')).slice(2);
 
-		expect(await contract.ecrecover(`0x${hash.toString()}${sigPart}`)).to.deep.include({
+		expect(await contract.ecrecoverTest(`0x${hash.toString()}${sigPart}`)).to.deep.include({
 			//hash: '0x14a18665b97477ba224a133a82798f2f895dfa13902a73be6199473aa13a8465',
 			from: await alice.getAddress(),
 			confirmations: 0,
