@@ -168,7 +168,7 @@ pub mod module {
 		StakingCurrencyMintCapUpdated(Balance),
 
 		/// A new weight for XCM transfers has been set.\[new_weight\]
-		XcmBaseWeightSet(Weight),
+		XcmDestWeightSet(Weight),
 
 		/// The redeem request has been cancelled, and funds un-reserved.
 		/// \[who, liquid_amount_unreserved\]
@@ -208,10 +208,10 @@ pub mod module {
 	pub type StakingCurrencyMintCap<T: Config> = StorageValue<_, Balance, ValueQuery>;
 
 	/// The extra weight for cross-chain XCM transfers.
-	/// xcm_base_weight: value: Weight
+	/// xcm_dest_weight: value: Weight
 	#[pallet::storage]
-	#[pallet::getter(fn xcm_base_weight)]
-	pub type XcmBaseWeight<T: Config> = StorageValue<_, Weight, ValueQuery>;
+	#[pallet::getter(fn xcm_dest_weight)]
+	pub type XcmDestWeight<T: Config> = StorageValue<_, Weight, ValueQuery>;
 
 	/// Requests to redeem staked currencies.
 	/// RedeemRequests: Map: AccountId => Option<(liquid_amount: Balance, addtional_fee: Permill)>
@@ -353,18 +353,18 @@ pub mod module {
 			Ok(())
 		}
 
-		/// Sets the xcm_base_weight for XCM transfers.
+		/// Sets the xcm_dest_weight for XCM transfers.
 		/// Requires `T::GovernanceOrigin`
 		///
 		/// Parameters:
-		/// - `xcm_base_weight`: The new weight for XCM transfers.
-		#[pallet::weight(< T as Config >::WeightInfo::set_xcm_base_weight())]
+		/// - `xcm_dest_weight`: The new weight for XCM transfers.
+		#[pallet::weight(< T as Config >::WeightInfo::set_xcm_dest_weight())]
 		#[transactional]
-		pub fn set_xcm_base_weight(origin: OriginFor<T>, xcm_base_weight: Weight) -> DispatchResult {
+		pub fn set_xcm_dest_weight(origin: OriginFor<T>, xcm_dest_weight: Weight) -> DispatchResult {
 			T::GovernanceOrigin::ensure_origin(origin)?;
 
-			XcmBaseWeight::<T>::put(xcm_base_weight);
-			Self::deposit_event(Event::<T>::XcmBaseWeightSet(xcm_base_weight));
+			XcmDestWeight::<T>::put(xcm_dest_weight);
+			Self::deposit_event(Event::<T>::XcmDestWeightSet(xcm_dest_weight));
 			Ok(())
 		}
 
@@ -731,7 +731,7 @@ pub mod module {
 					staking_currency,
 					staking_remaining,
 					T::SovereignSubAccountLocation::get(),
-					Self::xcm_base_weight(),
+					Self::xcm_dest_weight(),
 				)?;
 				T::Currency::deposit(T::LiquidCurrencyId::get(), minter, liquid_to_mint)?;
 
@@ -841,8 +841,8 @@ pub mod module {
 			T::RelaychainCallBuilder::finalize_call_into_xcm_message(
 				xcm_message,
 				T::XcmUnbondFee::get(),
-				Self::xcm_base_weight(),
-				Self::xcm_base_weight(),
+				Self::xcm_dest_weight(),
+				Self::xcm_dest_weight(),
 			)
 		}
 

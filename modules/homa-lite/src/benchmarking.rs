@@ -78,7 +78,7 @@ benchmarks! {
 	set_minting_cap {
 	}: _(RawOrigin::Root, 1_000_000_000_000_000_000)
 
-	set_xcm_base_weight {
+	set_xcm_dest_weight {
 	}: _(RawOrigin::Root, 1_000_000_000)
 
 	request_redeem {
@@ -136,9 +136,9 @@ mod tests {
 		});
 	}
 	#[test]
-	fn test_set_xcm_base_weight() {
+	fn test_set_xcm_dest_weight() {
 		ExtBuilder::default().build().execute_with(|| {
-			assert_ok!(Pallet::<Runtime>::test_benchmark_set_xcm_base_weight());
+			assert_ok!(Pallet::<Runtime>::test_benchmark_set_xcm_dest_weight());
 		});
 	}
 	#[test]

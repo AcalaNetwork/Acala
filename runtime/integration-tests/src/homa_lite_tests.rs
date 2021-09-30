@@ -278,7 +278,7 @@ mod karura_only_tests {
 
 			// Set the exchange rate to 1(S) : 5(L)
 			assert_ok!(HomaLite::set_total_staking_currency(Origin::root(), staking_total));
-			assert_ok!(HomaLite::set_xcm_base_weight(Origin::root(), 1_000_000_000_000));
+			assert_ok!(HomaLite::set_xcm_dest_weight(Origin::root(), 1_000_000_000_000));
 
 			assert_ok!(HomaLite::set_minting_cap(Origin::root(), 10 * staking_total));
 
@@ -371,7 +371,7 @@ mod karura_only_tests {
 			));
 
 			// Weight is around 5_775_663_000
-			assert_ok!(HomaLite::set_xcm_base_weight(Origin::root(), 10_000_000_000));
+			assert_ok!(HomaLite::set_xcm_dest_weight(Origin::root(), 10_000_000_000));
 
 			assert_ok!(HomaLite::schedule_unbond(
 				Origin::root(),

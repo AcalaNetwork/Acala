@@ -53,7 +53,7 @@ pub trait WeightInfo {
 	fn set_total_staking_currency() -> Weight;
 	fn adjust_total_staking_currency() -> Weight;
 	fn set_minting_cap() -> Weight;
-	fn set_xcm_base_weight() -> Weight;
+	fn set_xcm_dest_weight() -> Weight;
 	fn request_redeem() -> Weight;
 	fn schedule_unbond() -> Weight;
 	fn replace_schedule_unbond() -> Weight;
@@ -90,7 +90,7 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 		(11_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
-	fn set_xcm_base_weight() -> Weight {
+	fn set_xcm_dest_weight() -> Weight {
 		(10_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
@@ -140,7 +140,7 @@ impl WeightInfo for () {
 		(11_000_000 as Weight)
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
-	fn set_xcm_base_weight() -> Weight {
+	fn set_xcm_dest_weight() -> Weight {
 		(10_000_000 as Weight)
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}

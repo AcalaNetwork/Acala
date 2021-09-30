@@ -269,21 +269,21 @@ fn can_set_mint_cap() {
 }
 
 #[test]
-fn can_set_xcm_base_weight() {
+fn can_set_xcm_dest_weight() {
 	ExtBuilder::default().build().execute_with(|| {
 		// Requires Root previlege.
 		assert_noop!(
-			HomaLite::set_xcm_base_weight(Origin::signed(ALICE), 1_000_000),
+			HomaLite::set_xcm_dest_weight(Origin::signed(ALICE), 1_000_000),
 			BadOrigin
 		);
 
 		// Set the cap.
-		assert_ok!(HomaLite::set_xcm_base_weight(Origin::root(), 1_000_000));
+		assert_ok!(HomaLite::set_xcm_dest_weight(Origin::root(), 1_000_000));
 
 		// Cap should be set now.
-		assert_eq!(XcmBaseWeight::<Runtime>::get(), 1_000_000);
+		assert_eq!(XcmDestWeight::<Runtime>::get(), 1_000_000);
 
-		System::assert_last_event(Event::HomaLite(crate::Event::XcmBaseWeightSet(1_000_000)));
+		System::assert_last_event(Event::HomaLite(crate::Event::XcmDestWeightSet(1_000_000)));
 	});
 }
 
