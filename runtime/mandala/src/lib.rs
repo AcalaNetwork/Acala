@@ -197,7 +197,7 @@ pub fn get_all_module_accounts() -> Vec<AccountId> {
 }
 
 parameter_types! {
-	pub const BlockHashCount: BlockNumber = 900; // mortal tx can be valid up to 1 hour after signing
+	pub const BlockHashCount: BlockNumber = HOURS; // mortal tx can be valid up to 1 hour after signing
 	pub const Version: RuntimeVersion = VERSION;
 	pub const SS58Prefix: u8 = 42; // Ss58AddressFormat::SubstrateAccount
 }
@@ -626,9 +626,9 @@ impl pallet_recovery::Config for Runtime {
 }
 
 parameter_types! {
-	pub const LaunchPeriod: BlockNumber = 20 * MINUTES;
-	pub const VotingPeriod: BlockNumber = 10 * MINUTES;
-	pub const FastTrackVotingPeriod: BlockNumber = 10 * MINUTES;
+	pub const LaunchPeriod: BlockNumber = 2 * HOURS;
+	pub const VotingPeriod: BlockNumber = HOURS;
+	pub const FastTrackVotingPeriod: BlockNumber = HOURS;
 	pub MinimumDeposit: Balance = 100 * cent(ACA);
 	pub const EnactmentPeriod: BlockNumber = MINUTES;
 	pub const CooloffPeriod: BlockNumber = MINUTES;
@@ -1550,7 +1550,7 @@ impl module_evm::Config for Runtime {
 	type TreasuryAccount = TreasuryAccount;
 	type FreeDeploymentOrigin = EnsureRootOrHalfGeneralCouncil;
 	type Runner = module_evm::runner::stack::Runner<Self>;
-	type FindAuthor = ();
+	type FindAuthor = pallet_session::FindAccountFromAuthorIndex<Self, Aura>;
 	type WeightInfo = weights::module_evm::WeightInfo<Runtime>;
 
 	#[cfg(feature = "with-ethereum-compatibility")]
@@ -2501,5 +2501,14 @@ mod tests {
 					.unwrap()
 			) > 0
 		);
+	}
+
+	//TODO: remove after paritytech/substrate#9890
+	#[test]
+	fn ensure_block_hash_count_less_than_democracy_launch_period() {
+		// Ensure LaunchPeriod > BlockHashCount
+		// Democracy will take full block weight.
+		// `ts-tests` need to reach BlockHashCount.
+		assert!(BlockHashCount::get() < LaunchPeriod::get());
 	}
 }

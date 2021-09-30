@@ -207,7 +207,7 @@ pub mod module {
 		type Runner: Runner<Self>;
 
 		/// Find author for the current block.
-		type FindAuthor: FindAuthor<H160>;
+		type FindAuthor: FindAuthor<Self::AccountId>;
 
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
@@ -1072,7 +1072,8 @@ impl<T: Config> Pallet<T> {
 		let digest = <frame_system::Pallet<T>>::digest();
 		let pre_runtime_digests = digest.logs.iter().filter_map(|d| d.as_pre_runtime());
 
-		T::FindAuthor::find_author(pre_runtime_digests).unwrap_or_default()
+		let author = T::FindAuthor::find_author(pre_runtime_digests).unwrap_or_default();
+		T::AddressMapping::get_default_evm_address(&author)
 	}
 
 	/// Get code hash at given address.
