@@ -62,25 +62,6 @@ jobs:
       run: make check-benchmarks
     - name: Check try-runtime
       run: make check-try-runtime
-
-  checks-and-e2e-tests:
-    runs-on: [self-hosted, linux]
-    env:
-      SCCACHE_CACHE_SIZE: "50G"
-      CARGO_INCREMENTAL: 0
-    needs: clean-up-actions
-    steps:
-    - uses: actions/checkout@v2
-      with:
-        submodules: recursive
-    - name: Install toolchain
-      uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: nightly-2021-06-17
-        components: rustfmt
-        target: wasm32-unknown-unknown
-        default: true
     - name: Use Node.js
       uses: actions/setup-node@v2
       with:
