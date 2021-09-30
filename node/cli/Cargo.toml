@@ -62,3 +62,6 @@ with-all-runtime = [
 	"with-acala-runtime",
 	"service/with-all-runtime",
 ]
+rococo-native = [
+	"polkadot-cli/rococo-native"
+]

@@ -8024,6 +8024,7 @@ dependencies = [
  "pallet-transaction-payment-rpc-runtime-api",
  "polkadot-primitives",
  "polkadot-runtime",
+ "rococo-runtime",
  "sc-client-api",
  "sc-consensus",
  "sc-executor",
