@@ -75,14 +75,14 @@ pub use karura_imports::*;
 mod karura_imports {
 	pub use frame_support::parameter_types;
 	pub use karura_runtime::{
-		create_x2_parachain_multilocation, get_all_module_accounts, AcalaOracle, AccountId, AuctionManager, Authority,
-		AuthoritysOriginId, Balance, Balances, BlockNumber, Call, CdpEngine, CdpTreasury, CreateClassDeposit,
-		CreateTokenDeposit, Currencies, CurrencyId, CurrencyIdConvert, DataDepositPerByte, Dex, EmergencyShutdown,
-		Event, EvmAccounts, ExistentialDeposits, Get, GetNativeCurrencyId, HomaLite, Honzon, KaruraFoundationAccounts,
-		Loans, MinimumDebitValue, MultiLocation, NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, Origin,
-		OriginCaller, ParachainInfo, ParachainSystem, Perbill, Proxy, ProxyType, RelaychainSovereignSubAccount,
-		Runtime, Scheduler, Session, SessionManager, SevenDays, System, Timestamp, TokenSymbol, Tokens,
-		TreasuryPalletId, Utility, Vesting, XTokens, XcmConfig, XcmExecutor, NFT,
+		constants::parachains, create_x2_parachain_multilocation, get_all_module_accounts, AcalaOracle, AccountId,
+		AuctionManager, Authority, AuthoritysOriginId, Balance, Balances, BlockNumber, Call, CdpEngine, CdpTreasury,
+		CreateClassDeposit, CreateTokenDeposit, Currencies, CurrencyId, CurrencyIdConvert, DataDepositPerByte, Dex,
+		EmergencyShutdown, Event, EvmAccounts, ExistentialDeposits, Get, GetNativeCurrencyId, HomaLite, Honzon,
+		KaruraFoundationAccounts, Loans, MinimumDebitValue, MultiLocation, NativeTokenExistentialDeposit, NetworkId,
+		NftPalletId, OneDay, Origin, OriginCaller, ParachainInfo, ParachainSystem, Perbill, Proxy, ProxyType,
+		RelaychainSovereignSubAccount, Runtime, Scheduler, Session, SessionManager, SevenDays, System, Timestamp,
+		TokenSymbol, Tokens, TreasuryPalletId, Utility, Vesting, XTokens, XcmConfig, XcmExecutor, NFT,
 	};
 	pub use primitives::TradingPair;
 	pub use runtime_common::{dollar, KAR, KSM, KUSD, LKSM};
@@ -1419,7 +1419,6 @@ fn treasury_should_take_xcm_execution_revenue() {
 fn currency_id_convert() {
 	ExtBuilder::default().build().execute_with(|| {
 		let id: u32 = ParachainInfo::get().into();
-		let bifrost_para_id: u32 = 2001;
 
 		assert_eq!(
 			CurrencyIdConvert::convert(RELAY_CHAIN_CURRENCY),
@@ -1449,6 +1448,29 @@ fn currency_id_convert() {
 			Some(MultiLocation::sibling_parachain_general_key(id, RENBTC.encode()))
 		);
 
+		assert_eq!(
+			CurrencyIdConvert::convert(MultiLocation::parent()),
+			Some(RELAY_CHAIN_CURRENCY)
+		);
+		assert_eq!(
+			CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(
+				id,
+				NATIVE_CURRENCY.encode()
+			)),
+			Some(NATIVE_CURRENCY)
+		);
+		assert_eq!(
+			CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(id, USD_CURRENCY.encode())),
+			Some(USD_CURRENCY)
+		);
+		assert_eq!(
+			CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(
+				id,
+				LIQUID_CURRENCY.encode()
+			)),
+			Some(LIQUID_CURRENCY)
+		);
+
 		#[cfg(feature = "with-mandala-runtime")]
 		{
 			assert_eq!(CurrencyIdConvert::convert(KAR), None);
@@ -1456,28 +1478,6 @@ fn currency_id_convert() {
 			assert_eq!(CurrencyIdConvert::convert(KSM), None);
 			assert_eq!(CurrencyIdConvert::convert(LKSM), None);
 
-			assert_eq!(
-				CurrencyIdConvert::convert(MultiLocation::parent()),
-				Some(RELAY_CHAIN_CURRENCY)
-			);
-			assert_eq!(
-				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(
-					id,
-					NATIVE_CURRENCY.encode()
-				)),
-				Some(NATIVE_CURRENCY)
-			);
-			assert_eq!(
-				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(id, USD_CURRENCY.encode())),
-				Some(USD_CURRENCY)
-			);
-			assert_eq!(
-				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(
-					id,
-					LIQUID_CURRENCY.encode()
-				)),
-				Some(LIQUID_CURRENCY)
-			);
 			assert_eq!(
 				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(id, RENBTC.encode())),
 				Some(RENBTC)
@@ -1518,28 +1518,7 @@ fn currency_id_convert() {
 			assert_eq!(CurrencyIdConvert::convert(AUSD), None);
 			assert_eq!(CurrencyIdConvert::convert(DOT), None);
 			assert_eq!(CurrencyIdConvert::convert(LDOT), None);
-			assert_eq!(
-				CurrencyIdConvert::convert(MultiLocation::parent()),
-				Some(RELAY_CHAIN_CURRENCY)
-			);
-			assert_eq!(
-				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(
-					id,
-					NATIVE_CURRENCY.encode()
-				)),
-				Some(NATIVE_CURRENCY)
-			);
-			assert_eq!(
-				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(id, USD_CURRENCY.encode())),
-				Some(USD_CURRENCY)
-			);
-			assert_eq!(
-				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(
-					id,
-					LIQUID_CURRENCY.encode()
-				)),
-				Some(LIQUID_CURRENCY)
-			);
+
 			assert_eq!(
 				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(id, RENBTC.encode())),
 				Some(RENBTC)
@@ -1561,12 +1540,33 @@ fn currency_id_convert() {
 				None
 			);
 			assert_eq!(
-				CurrencyIdConvert::convert(X3(Parent, Parachain(bifrost_para_id), GeneralKey(BNC.encode()))),
-				None
+				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(
+					parachains::bifrost::ID,
+					parachains::bifrost::BNC_KEY.to_vec()
+				)),
+				Some(BNC)
 			);
 			assert_eq!(
-				CurrencyIdConvert::convert(X3(Parent, Parachain(bifrost_para_id), GeneralKey(VSKSM.encode()))),
-				None
+				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(
+					parachains::bifrost::ID,
+					parachains::bifrost::VSKSM_KEY.to_vec()
+				)),
+				Some(VSKSM)
+			);
+
+			assert_eq!(
+				CurrencyIdConvert::convert(BNC),
+				Some(MultiLocation::sibling_parachain_general_key(
+					parachains::bifrost::ID,
+					parachains::bifrost::BNC_KEY.to_vec()
+				))
+			);
+			assert_eq!(
+				CurrencyIdConvert::convert(VSKSM),
+				Some(MultiLocation::sibling_parachain_general_key(
+					parachains::bifrost::ID,
+					parachains::bifrost::VSKSM_KEY.to_vec()
+				))
 			);
 
 			let native_currency: MultiAsset = (
