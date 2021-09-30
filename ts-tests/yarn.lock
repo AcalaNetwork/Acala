@@ -729,10 +729,10 @@
   resolved "https://registry.yarnpkg.com/@open-web3/scanner/-/scanner-0.9.4-38.tgz#6af5c7a95f93b9cb3209fe9e2b0d482337834e34"
   integrity sha512-DTqFtfSsLK9xbEBKTYxNHjS6jIPdSblmLUykaqORe2LpD8lDc1Rz8Ywb7dZDuxtA7LFhCBPrH/STmSoaP+QrxA==
 
-"@openzeppelin/contracts@4.3.1":
-  version "4.3.1"
-  resolved "https://registry.yarnpkg.com/@openzeppelin/contracts/-/contracts-4.3.1.tgz#c01f791ce6c9d3989ac1a643267501dbe336b9e3"
-  integrity sha512-QjgbPPlmDK2clK1hzjw2ROfY8KA5q+PfhDUUxZFEBCZP9fi6d5FuNoh/Uq0oCTMEKPmue69vhX2jcl0N/tFKGw==
+"@openzeppelin/contracts@4.3.2":
+  version "4.3.2"
+  resolved "https://registry.yarnpkg.com/@openzeppelin/contracts/-/contracts-4.3.2.tgz#ff80affd6d352dbe1bbc5b4e1833c41afd6283b6"
+  integrity sha512-AybF1cesONZStg5kWf6ao9OlqTZuPqddvprc0ky7lrUVOjXeKpmQ2Y9FK+6ygxasb+4aic4O5pneFBfwVsRRRg==
 
 "@polkadot/api-derive@5.9.1", "@polkadot/api-derive@^5.9.1":
   version "5.9.1"
