@@ -93,7 +93,7 @@ pub use frame_support::{
 		SortedMembers, U128CurrencyToVote,
 	},
 	weights::{constants::RocksDbWeight, IdentityFee, Weight},
-	ConsensusEngineId, PalletId, RuntimeDebug, StorageValue,
+	PalletId, RuntimeDebug, StorageValue,
 };
 
 pub use pallet_staking::StakerStatus;

@@ -84,7 +84,7 @@ pub use frame_support::{
 		IsType, KeyOwnerProofSystem, LockIdentifier, OnUnbalanced, Randomness, SortedMembers, U128CurrencyToVote,
 	},
 	weights::{constants::RocksDbWeight, IdentityFee, Weight},
-	ConsensusEngineId, PalletId, RuntimeDebug, StorageValue,
+	PalletId, RuntimeDebug, StorageValue,
 };
 
 pub use pallet_timestamp::Call as TimestampCall;

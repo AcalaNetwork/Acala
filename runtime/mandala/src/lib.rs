@@ -45,7 +45,7 @@ pub use frame_support::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight, WEIGHT_PER_SECOND},
 		DispatchClass, IdentityFee, Weight,
 	},
-	ConsensusEngineId, PalletId, RuntimeDebug, StorageValue,
+	PalletId, RuntimeDebug, StorageValue,
 };
 use frame_system::{EnsureRoot, RawOrigin};
 use hex_literal::hex;
