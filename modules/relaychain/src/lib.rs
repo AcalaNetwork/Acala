@@ -32,7 +32,7 @@ use primitives::Balance;
 use sp_std::{boxed::Box, marker::PhantomData, prelude::*};
 
 pub use cumulus_primitives_core::ParaId;
-use xcm::v0::{Junction, MultiAsset, MultiLocation, Order, Xcm};
+use xcm::latest::prelude::*;
 
 use frame_system::Config;
 
@@ -127,26 +127,31 @@ where
 		weight: Weight,
 		debt: Weight,
 	) -> Xcm<()> {
+		let asset = MultiAsset {
+			id: Concrete(MultiLocation::here()),
+			fun: Fungibility::Fungible(extra_fee),
+		};
 		Xcm::WithdrawAsset {
-			assets: vec![MultiAsset::ConcreteFungible {
-				id: MultiLocation::Null,
-				amount: extra_fee,
-			}],
+			assets: vec![asset.clone()].into(),
 			effects: vec![
 				Order::BuyExecution {
-					fees: MultiAsset::All,
+					fees: asset,
 					weight,
 					debt,
 					halt_on_error: true,
-					xcm: vec![Xcm::Transact {
-						origin_type: xcm::v0::OriginKind::SovereignAccount,
+					instructions: vec![Xcm::Transact {
+						origin_type: OriginKind::SovereignAccount,
 						require_weight_at_most: weight,
 						call: call.encode().into(),
 					}],
 				},
 				Order::DepositAsset {
-					assets: vec![MultiAsset::All],
-					dest: MultiLocation::X1(Junction::Parachain(ParachainId::get().into())),
+					assets: Wild(WildMultiAsset::All),
+					max_assets: 1,
+					beneficiary: MultiLocation {
+						parents: 1,
+						interior: X1(Parachain(ParachainId::get().into())),
+					},
 				},
 			],
 		}

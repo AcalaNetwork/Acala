@@ -1,5 +1,5 @@
-FROM rust as builder
-WORKDIR app
+FROM rust:buster as builder
+WORKDIR /app
 
 RUN rustup default nightly-2021-06-17 && \
 	rustup target add wasm32-unknown-unknown --toolchain nightly-2021-06-17

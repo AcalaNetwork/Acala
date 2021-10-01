@@ -42,7 +42,7 @@ use sp_std::{
 	ops::Mul,
 	prelude::*,
 };
-use xcm::v0::{Junction, MultiLocation, Xcm};
+use xcm::latest::prelude::*;
 
 pub use module::*;
 pub use weights::WeightInfo;
@@ -757,7 +757,7 @@ pub mod module {
 		fn process_scheduled_unbond(staking_amount: Balance) -> DispatchResult {
 			let msg = Self::construct_xcm_unreserve_message(T::ParachainAccount::get(), staking_amount);
 
-			let res = pallet_xcm::Pallet::<T>::send_xcm(MultiLocation::Null, MultiLocation::X1(Junction::Parent), msg);
+			let res = pallet_xcm::Pallet::<T>::send_xcm(Here, Parent.into(), msg);
 			//(origin, MultiLocation::X1(Junction::Parent.into()), msg.into());
 			if res.is_ok() {
 				// Now that there's available staking balance, automatically match existing

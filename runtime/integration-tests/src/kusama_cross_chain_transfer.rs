@@ -22,29 +22,26 @@ use crate::integration_tests::*;
 use crate::kusama_test_net::*;
 
 use frame_support::assert_ok;
-use xcm::v0::{
-	Junction::{self, Parachain, Parent},
-	MultiAsset::*,
-	MultiLocation::*,
-};
+use xcm::{latest::prelude::*, VersionedMultiAssets, VersionedMultiLocation};
 
 use orml_traits::MultiCurrency;
 use xcm_emulator::TestExt;
 
 #[test]
 fn transfer_from_relay_chain() {
-	Kusama::execute_with(|| {
+	KusamaNet::execute_with(|| {
 		assert_ok!(kusama_runtime::XcmPallet::reserve_transfer_assets(
 			kusama_runtime::Origin::signed(ALICE.into()),
-			X1(Parachain(2000)),
-			X1(Junction::AccountId32 {
-				id: BOB,
-				network: NetworkId::Any
-			}),
-			vec![ConcreteFungible {
-				id: Null,
-				amount: dollar(KSM)
-			}],
+			Box::new(VersionedMultiLocation::V1(X1(Parachain(2000)).into())),
+			Box::new(VersionedMultiLocation::V1(
+				X1(Junction::AccountId32 {
+					id: BOB,
+					network: NetworkId::Any
+				})
+				.into()
+			)),
+			Box::new(VersionedMultiAssets::V1((Here, dollar(KSM)).into())),
+			0,
 			600_000_000
 		));
 	});
@@ -61,18 +58,18 @@ fn transfer_to_relay_chain() {
 			Origin::signed(ALICE.into()),
 			KSM,
 			dollar(KSM),
-			Box::new(X2(
-				Parent,
-				Junction::AccountId32 {
+			Box::new(MultiLocation::new(
+				1,
+				X1(Junction::AccountId32 {
 					id: BOB,
 					network: NetworkId::Any,
-				}
+				})
 			)),
 			3_000_000_000
 		));
 	});
 
-	Kusama::execute_with(|| {
+	KusamaNet::execute_with(|| {
 		assert_eq!(
 			kusama_runtime::Balances::free_balance(&AccountId::from(BOB)),
 			999_920_000_005

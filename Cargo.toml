@@ -73,8 +73,6 @@ panic = "unwind"
 #
 # This list is ordered alphabetically.
 [profile.dev.package]
-aes-soft = { opt-level = 3 }
-aesni = { opt-level = 3 }
 blake2 = { opt-level = 3 }
 blake2-rfc = { opt-level = 3 }
 blake2b_simd = { opt-level = 3 }
@@ -83,14 +81,12 @@ cranelift-codegen = { opt-level = 3 }
 cranelift-wasm = { opt-level = 3 }
 crc32fast = { opt-level = 3 }
 crossbeam-deque = { opt-level = 3 }
-crossbeam-queue = { opt-level = 3 }
 crypto-mac = { opt-level = 3 }
 curve25519-dalek = { opt-level = 3 }
 ed25519-dalek = { opt-level = 3 }
 flate2 = { opt-level = 3 }
 futures-channel = { opt-level = 3 }
 hashbrown = { opt-level = 3 }
-h2 = { opt-level = 3 }
 hash-db = { opt-level = 3 }
 hmac = { opt-level = 3 }
 httparse = { opt-level = 3 }
@@ -106,6 +102,7 @@ num-bigint = { opt-level = 3 }
 parking_lot = { opt-level = 3 }
 parking_lot_core = { opt-level = 3 }
 percent-encoding = { opt-level = 3 }
+primitive-types = { opt-level = 3 }
 ring = { opt-level = 3 }
 rustls = { opt-level = 3 }
 sha2 = { opt-level = 3 }
@@ -120,183 +117,183 @@ yamux = { opt-level = 3 }
 zeroize = { opt-level = 3 }
 
 [patch."https://github.com/paritytech/substrate"]
-frame-benchmarking = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-frame-benchmarking-cli = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-frame-election-provider-support = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-frame-executive = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-frame-support = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-frame-support-procedural = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-frame-support-procedural-tools = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-frame-support-procedural-tools-derive = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-frame-system = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-frame-system-rpc-runtime-api = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-frame-try-runtime = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-pallet-aura = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-pallet-authority-discovery = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-pallet-authorship = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-pallet-babe = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-pallet-balances = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-pallet-bounties = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-pallet-collective = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-pallet-democracy = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-pallet-election-provider-multi-phase = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-pallet-elections-phragmen = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-pallet-grandpa = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-pallet-identity = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-pallet-im-online = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-pallet-indices = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-pallet-membership = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-pallet-mmr = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-pallet-mmr-primitives = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-pallet-mmr-rpc = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-pallet-multisig = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-pallet-nicks = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-pallet-offences = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-pallet-proxy = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-pallet-recovery = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-pallet-scheduler = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-pallet-session = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-pallet-society = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-pallet-staking = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-pallet-staking-reward-curve = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-pallet-sudo = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-pallet-timestamp = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-pallet-tips = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-pallet-transaction-payment = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-pallet-transaction-payment-rpc = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-pallet-transaction-payment-rpc-runtime-api = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-pallet-treasury = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-pallet-utility = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-pallet-vesting = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-remote-externalities = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sc-authority-discovery = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sc-basic-authorship = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sc-block-builder = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sc-chain-spec = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sc-client-api = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sc-client-db = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sc-consensus = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sc-consensus-aura = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sc-consensus-babe = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sc-consensus-babe-rpc = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sc-consensus-epochs = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sc-consensus-manual-seal = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sc-consensus-slots = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sc-cli = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sc-executor = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sc-executor-common = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sc-executor-wasmtime = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sc-finality-grandpa = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sc-finality-grandpa-rpc = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sc-informant = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sc-keystore = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sc-network = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sc-network-gossip = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sc-offchain = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sc-rpc = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sc-rpc-api = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sc-rpc-server = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sc-service = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sc-sync-state-rpc = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sc-telemetry = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sc-tracing = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sc-transaction-pool = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sc-transaction-pool-api = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sp-api = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sp-application-crypto = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sp-arithmetic = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sp-authority-discovery = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sp-block-builder = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sp-blockchain = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sp-consensus = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sp-consensus-aura = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sp-consensus-babe = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sp-consensus-slots = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sp-consensus-vrf = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sp-core = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sp-debug-derive = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sp-externalities = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sp-finality-grandpa = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sp-inherents = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sp-io = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sp-keystore = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sp-maybe-compressed-blob = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sp-npos-elections = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sp-offchain = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sp-rpc = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sp-runtime = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sp-runtime-interface = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sp-runtime-interface-proc-macro = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sp-serializer = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sp-session = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sp-staking = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sp-state-machine = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sp-std = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sp-storage = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sp-timestamp = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sp-tracing = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sp-transaction-pool = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sp-trie = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sp-utils = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sp-version = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sp-wasm-interface = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-substrate-build-script-utils = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-substrate-frame-rpc-system = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-substrate-prometheus-endpoint = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-try-runtime-cli = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-frame-system-benchmarking = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-pallet-gilt = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-pallet-offences-benchmarking = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-pallet-session-benchmarking  = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-pallet-staking-reward-fn = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sc-consensus-uncles = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
-sp-authorship = { git = "https://github.com/paritytech//substrate", rev = "91061a7d925b5bc597804293da283477512ba4ff" }
+frame-benchmarking = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+frame-benchmarking-cli = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+frame-election-provider-support = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+frame-executive = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+frame-support = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+frame-support-procedural = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+frame-support-procedural-tools = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+frame-support-procedural-tools-derive = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+frame-system = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+frame-system-rpc-runtime-api = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+frame-try-runtime = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+pallet-aura = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+pallet-authority-discovery = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+pallet-authorship = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+pallet-babe = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+pallet-balances = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+pallet-bounties = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+pallet-collective = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+pallet-democracy = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+pallet-election-provider-multi-phase = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+pallet-elections-phragmen = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+pallet-grandpa = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+pallet-identity = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+pallet-im-online = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+pallet-indices = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+pallet-membership = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+pallet-mmr = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+pallet-mmr-primitives = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+pallet-mmr-rpc = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+pallet-multisig = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+pallet-nicks = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+pallet-offences = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+pallet-proxy = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+pallet-recovery = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+pallet-scheduler = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+pallet-session = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+pallet-society = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+pallet-staking = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+pallet-staking-reward-curve = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+pallet-sudo = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+pallet-timestamp = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+pallet-tips = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+pallet-transaction-payment = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+pallet-transaction-payment-rpc = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+pallet-transaction-payment-rpc-runtime-api = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+pallet-treasury = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+pallet-utility = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+pallet-vesting = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+remote-externalities = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sc-authority-discovery = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sc-basic-authorship = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sc-block-builder = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sc-chain-spec = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sc-client-api = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sc-client-db = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sc-consensus = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sc-consensus-aura = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sc-consensus-babe = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sc-consensus-babe-rpc = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sc-consensus-epochs = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sc-consensus-manual-seal = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sc-consensus-slots = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sc-cli = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sc-executor = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sc-executor-common = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sc-executor-wasmtime = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sc-finality-grandpa = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sc-finality-grandpa-rpc = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sc-informant = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sc-keystore = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sc-network = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sc-network-gossip = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sc-offchain = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sc-rpc = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sc-rpc-api = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sc-rpc-server = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sc-service = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sc-sync-state-rpc = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sc-telemetry = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sc-tracing = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sc-transaction-pool = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sc-transaction-pool-api = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sp-api = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sp-application-crypto = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sp-arithmetic = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sp-authority-discovery = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sp-block-builder = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sp-blockchain = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sp-consensus = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sp-consensus-aura = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sp-consensus-babe = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sp-consensus-slots = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sp-consensus-vrf = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sp-core = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sp-debug-derive = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sp-externalities = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sp-finality-grandpa = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sp-inherents = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sp-io = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sp-keystore = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sp-maybe-compressed-blob = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sp-npos-elections = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sp-offchain = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sp-rpc = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sp-runtime = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sp-runtime-interface = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sp-runtime-interface-proc-macro = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sp-serializer = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sp-session = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sp-staking = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sp-state-machine = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sp-std = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sp-storage = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sp-timestamp = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sp-tracing = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sp-transaction-pool = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sp-trie = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sp-utils = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sp-version = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sp-wasm-interface = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+substrate-build-script-utils = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+substrate-frame-rpc-system = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+substrate-prometheus-endpoint = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+try-runtime-cli = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+frame-system-benchmarking = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+pallet-gilt = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+pallet-offences-benchmarking = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+pallet-session-benchmarking  = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+pallet-staking-reward-fn = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sc-consensus-uncles = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
+sp-authorship = { git = "https://github.com/paritytech//substrate", rev = "420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7" }
 
 [patch."https://github.com/paritytech/polkadot"]
-xcm = { git = "https://github.com/paritytech//polkadot", rev = "7a9f624777ad2d2adb3a1e6797a31f9d653c9587" }
-xcm-executor = { git = "https://github.com/paritytech//polkadot", rev = "7a9f624777ad2d2adb3a1e6797a31f9d653c9587" }
-xcm-builder = { git = "https://github.com/paritytech//polkadot", rev = "7a9f624777ad2d2adb3a1e6797a31f9d653c9587" }
-pallet-xcm = { git = "https://github.com/paritytech//polkadot", rev = "7a9f624777ad2d2adb3a1e6797a31f9d653c9587" }
-polkadot-parachain = { git = "https://github.com/paritytech//polkadot", rev = "7a9f624777ad2d2adb3a1e6797a31f9d653c9587" }
-polkadot-primitives = { git = "https://github.com/paritytech//polkadot", rev = "7a9f624777ad2d2adb3a1e6797a31f9d653c9587" }
-polkadot-core-primitives = { git = "https://github.com/paritytech//polkadot", rev = "7a9f624777ad2d2adb3a1e6797a31f9d653c9587" }
-polkadot-runtime = { git = "https://github.com/paritytech//polkadot", rev = "7a9f624777ad2d2adb3a1e6797a31f9d653c9587" }
-polkadot-runtime-common = { git = "https://github.com/paritytech//polkadot", rev = "7a9f624777ad2d2adb3a1e6797a31f9d653c9587" }
-rococo-runtime = { git = "https://github.com/paritytech//polkadot", rev = "7a9f624777ad2d2adb3a1e6797a31f9d653c9587" }
-westend-runtime = { git = "https://github.com/paritytech//polkadot", rev = "7a9f624777ad2d2adb3a1e6797a31f9d653c9587" }
-kusama-runtime = { git = "https://github.com/paritytech//polkadot", rev = "7a9f624777ad2d2adb3a1e6797a31f9d653c9587" }
-polkadot-runtime-parachains = { git = "https://github.com/paritytech//polkadot", rev = "7a9f624777ad2d2adb3a1e6797a31f9d653c9587" }
-polkadot-node-network-protocol = { git = "https://github.com/paritytech//polkadot", rev = "7a9f624777ad2d2adb3a1e6797a31f9d653c9587" }
-polkadot-node-subsystem = { git = "https://github.com/paritytech//polkadot", rev = "7a9f624777ad2d2adb3a1e6797a31f9d653c9587" }
-polkadot-statement-table = { git = "https://github.com/paritytech//polkadot", rev = "7a9f624777ad2d2adb3a1e6797a31f9d653c9587" }
-polkadot-overseer = { git = "https://github.com/paritytech//polkadot", rev = "7a9f624777ad2d2adb3a1e6797a31f9d653c9587" }
-polkadot-node-primitives = { git = "https://github.com/paritytech//polkadot", rev = "7a9f624777ad2d2adb3a1e6797a31f9d653c9587" }
-polkadot-service = { git = "https://github.com/paritytech//polkadot", rev = "7a9f624777ad2d2adb3a1e6797a31f9d653c9587" }
-polkadot-cli = { git = "https://github.com/paritytech//polkadot", rev = "7a9f624777ad2d2adb3a1e6797a31f9d653c9587" }
-polkadot-node-core-pvf = { git = "https://github.com/paritytech//polkadot", rev = "7a9f624777ad2d2adb3a1e6797a31f9d653c9587" }
-polkadot-client = { git = "https://github.com/paritytech//polkadot", rev = "7a9f624777ad2d2adb3a1e6797a31f9d653c9587" }
+xcm = { git = "https://github.com/paritytech//polkadot", rev = "aeea9b7bd81919e014f7621f6c4b2eb9709d918f" }
+xcm-executor = { git = "https://github.com/paritytech//polkadot", rev = "aeea9b7bd81919e014f7621f6c4b2eb9709d918f" }
+xcm-builder = { git = "https://github.com/paritytech//polkadot", rev = "aeea9b7bd81919e014f7621f6c4b2eb9709d918f" }
+pallet-xcm = { git = "https://github.com/paritytech//polkadot", rev = "aeea9b7bd81919e014f7621f6c4b2eb9709d918f" }
+polkadot-parachain = { git = "https://github.com/paritytech//polkadot", rev = "aeea9b7bd81919e014f7621f6c4b2eb9709d918f" }
+polkadot-primitives = { git = "https://github.com/paritytech//polkadot", rev = "aeea9b7bd81919e014f7621f6c4b2eb9709d918f" }
+polkadot-core-primitives = { git = "https://github.com/paritytech//polkadot", rev = "aeea9b7bd81919e014f7621f6c4b2eb9709d918f" }
+polkadot-runtime = { git = "https://github.com/paritytech//polkadot", rev = "aeea9b7bd81919e014f7621f6c4b2eb9709d918f" }
+polkadot-runtime-common = { git = "https://github.com/paritytech//polkadot", rev = "aeea9b7bd81919e014f7621f6c4b2eb9709d918f" }
+rococo-runtime = { git = "https://github.com/paritytech//polkadot", rev = "aeea9b7bd81919e014f7621f6c4b2eb9709d918f" }
+westend-runtime = { git = "https://github.com/paritytech//polkadot", rev = "aeea9b7bd81919e014f7621f6c4b2eb9709d918f" }
+kusama-runtime = { git = "https://github.com/paritytech//polkadot", rev = "aeea9b7bd81919e014f7621f6c4b2eb9709d918f" }
+polkadot-runtime-parachains = { git = "https://github.com/paritytech//polkadot", rev = "aeea9b7bd81919e014f7621f6c4b2eb9709d918f" }
+polkadot-node-network-protocol = { git = "https://github.com/paritytech//polkadot", rev = "aeea9b7bd81919e014f7621f6c4b2eb9709d918f" }
+polkadot-node-subsystem = { git = "https://github.com/paritytech//polkadot", rev = "aeea9b7bd81919e014f7621f6c4b2eb9709d918f" }
+polkadot-statement-table = { git = "https://github.com/paritytech//polkadot", rev = "aeea9b7bd81919e014f7621f6c4b2eb9709d918f" }
+polkadot-overseer = { git = "https://github.com/paritytech//polkadot", rev = "aeea9b7bd81919e014f7621f6c4b2eb9709d918f" }
+polkadot-node-primitives = { git = "https://github.com/paritytech//polkadot", rev = "aeea9b7bd81919e014f7621f6c4b2eb9709d918f" }
+polkadot-service = { git = "https://github.com/paritytech//polkadot", rev = "aeea9b7bd81919e014f7621f6c4b2eb9709d918f" }
+polkadot-cli = { git = "https://github.com/paritytech//polkadot", rev = "aeea9b7bd81919e014f7621f6c4b2eb9709d918f" }
+polkadot-node-core-pvf = { git = "https://github.com/paritytech//polkadot", rev = "aeea9b7bd81919e014f7621f6c4b2eb9709d918f" }
+polkadot-client = { git = "https://github.com/paritytech//polkadot", rev = "aeea9b7bd81919e014f7621f6c4b2eb9709d918f" }
 
 [patch."https://github.com/paritytech/cumulus"]
-cumulus-primitives-core = { git = "https://github.com/paritytech//cumulus", rev = "fd80849dde5c209c20a996cfcc5aaacd4666dcbe" }
-cumulus-primitives-utility = { git = "https://github.com/paritytech//cumulus", rev = "fd80849dde5c209c20a996cfcc5aaacd4666dcbe" }
-cumulus-primitives-timestamp = { git = "https://github.com/paritytech//cumulus", rev = "fd80849dde5c209c20a996cfcc5aaacd4666dcbe" }
-cumulus-pallet-dmp-queue = { git = "https://github.com/paritytech//cumulus", rev = "fd80849dde5c209c20a996cfcc5aaacd4666dcbe" }
-cumulus-pallet-xcmp-queue = { git = "https://github.com/paritytech//cumulus", rev = "fd80849dde5c209c20a996cfcc5aaacd4666dcbe" }
-cumulus-pallet-xcm = { git = "https://github.com/paritytech//cumulus", rev = "fd80849dde5c209c20a996cfcc5aaacd4666dcbe" }
-cumulus-pallet-parachain-system  = { git = "https://github.com/paritytech//cumulus", rev = "fd80849dde5c209c20a996cfcc5aaacd4666dcbe" }
-cumulus-pallet-aura-ext = { git = "https://github.com/paritytech//cumulus", rev = "fd80849dde5c209c20a996cfcc5aaacd4666dcbe" }
-parachain-info  = { git = "https://github.com/paritytech//cumulus", rev = "fd80849dde5c209c20a996cfcc5aaacd4666dcbe" }
-cumulus-client-cli = { git = "https://github.com/paritytech//cumulus", rev = "fd80849dde5c209c20a996cfcc5aaacd4666dcbe" }
-cumulus-client-network = { git = "https://github.com/paritytech//cumulus", rev = "fd80849dde5c209c20a996cfcc5aaacd4666dcbe" }
-cumulus-client-service = { git = "https://github.com/paritytech//cumulus", rev = "fd80849dde5c209c20a996cfcc5aaacd4666dcbe" }
-cumulus-client-consensus-relay-chain = { git = "https://github.com/paritytech//cumulus", rev = "fd80849dde5c209c20a996cfcc5aaacd4666dcbe" }
-cumulus-client-consensus-aura = { git = "https://github.com/paritytech//cumulus", rev = "fd80849dde5c209c20a996cfcc5aaacd4666dcbe" }
-cumulus-client-consensus-common = { git = "https://github.com/paritytech//cumulus", rev = "fd80849dde5c209c20a996cfcc5aaacd4666dcbe" }
-cumulus-primitives-parachain-inherent = { git = "https://github.com/paritytech//cumulus", rev = "fd80849dde5c209c20a996cfcc5aaacd4666dcbe" }
-cumulus-test-relay-sproof-builder = { git = "https://github.com/paritytech//cumulus", rev = "fd80849dde5c209c20a996cfcc5aaacd4666dcbe" }
+cumulus-primitives-core = { git = "https://github.com/paritytech//cumulus", rev = "870b214693856e768ba482fe2d3b9a83b24e4540" }
+cumulus-primitives-utility = { git = "https://github.com/paritytech//cumulus", rev = "870b214693856e768ba482fe2d3b9a83b24e4540" }
+cumulus-primitives-timestamp = { git = "https://github.com/paritytech//cumulus", rev = "870b214693856e768ba482fe2d3b9a83b24e4540" }
+cumulus-pallet-dmp-queue = { git = "https://github.com/paritytech//cumulus", rev = "870b214693856e768ba482fe2d3b9a83b24e4540" }
+cumulus-pallet-xcmp-queue = { git = "https://github.com/paritytech//cumulus", rev = "870b214693856e768ba482fe2d3b9a83b24e4540" }
+cumulus-pallet-xcm = { git = "https://github.com/paritytech//cumulus", rev = "870b214693856e768ba482fe2d3b9a83b24e4540" }
+cumulus-pallet-parachain-system  = { git = "https://github.com/paritytech//cumulus", rev = "870b214693856e768ba482fe2d3b9a83b24e4540" }
+cumulus-pallet-aura-ext = { git = "https://github.com/paritytech//cumulus", rev = "870b214693856e768ba482fe2d3b9a83b24e4540" }
+parachain-info  = { git = "https://github.com/paritytech//cumulus", rev = "870b214693856e768ba482fe2d3b9a83b24e4540" }
+cumulus-client-cli = { git = "https://github.com/paritytech//cumulus", rev = "870b214693856e768ba482fe2d3b9a83b24e4540" }
+cumulus-client-network = { git = "https://github.com/paritytech//cumulus", rev = "870b214693856e768ba482fe2d3b9a83b24e4540" }
+cumulus-client-service = { git = "https://github.com/paritytech//cumulus", rev = "870b214693856e768ba482fe2d3b9a83b24e4540" }
+cumulus-client-consensus-relay-chain = { git = "https://github.com/paritytech//cumulus", rev = "870b214693856e768ba482fe2d3b9a83b24e4540" }
+cumulus-client-consensus-aura = { git = "https://github.com/paritytech//cumulus", rev = "870b214693856e768ba482fe2d3b9a83b24e4540" }
+cumulus-client-consensus-common = { git = "https://github.com/paritytech//cumulus", rev = "870b214693856e768ba482fe2d3b9a83b24e4540" }
+cumulus-primitives-parachain-inherent = { git = "https://github.com/paritytech//cumulus", rev = "870b214693856e768ba482fe2d3b9a83b24e4540" }
+cumulus-test-relay-sproof-builder = { git = "https://github.com/paritytech//cumulus", rev = "870b214693856e768ba482fe2d3b9a83b24e4540" }
 
 [patch."https://github.com/paritytech/grandpa-bridge-gadget"]
-pallet-beefy = { git = "https://github.com/paritytech//grandpa-bridge-gadget", rev = "f40c0ab7b327e874d5c8d699bfa5d762f1759ee0" }
-beefy-primitives = { git = "https://github.com/paritytech//grandpa-bridge-gadget", rev = "f40c0ab7b327e874d5c8d699bfa5d762f1759ee0" }
-beefy-gadget = { git = "https://github.com/paritytech//grandpa-bridge-gadget", rev = "f40c0ab7b327e874d5c8d699bfa5d762f1759ee0" }
-beefy-gadget-rpc = { git = "https://github.com/paritytech//grandpa-bridge-gadget", rev = "f40c0ab7b327e874d5c8d699bfa5d762f1759ee0" }
+pallet-beefy = { git = "https://github.com/paritytech//grandpa-bridge-gadget", rev = "9954b61657dc8899a21b4f2501ee6bd3b7a2dc23" }
+beefy-primitives = { git = "https://github.com/paritytech//grandpa-bridge-gadget", rev = "9954b61657dc8899a21b4f2501ee6bd3b7a2dc23" }
+beefy-gadget = { git = "https://github.com/paritytech//grandpa-bridge-gadget", rev = "9954b61657dc8899a21b4f2501ee6bd3b7a2dc23" }
+beefy-gadget-rpc = { git = "https://github.com/paritytech//grandpa-bridge-gadget", rev = "9954b61657dc8899a21b4f2501ee6bd3b7a2dc23" }

@@ -31,9 +31,7 @@ pub use sp_core::H256;
 pub use sp_runtime::{testing::Header, traits::IdentityLookup, AccountId32};
 
 pub use cumulus_primitives_core::ParaId;
-pub use xcm::v0::{
-	Error as XcmError, ExecuteXcm, Junction, MultiAsset, NetworkId, Outcome, Result as XcmResult, SendXcm,
-};
+pub use xcm::latest::prelude::*;
 pub use xcm_executor::traits::{InvertLocation, WeightBounds};
 
 pub type AccountId = AccountId32;
@@ -53,10 +51,11 @@ pub const ACALA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const KSM: CurrencyId = CurrencyId::Token(TokenSymbol::KSM);
 pub const LKSM: CurrencyId = CurrencyId::Token(TokenSymbol::LKSM);
 pub const INITIAL_BALANCE: Balance = 1_000_000;
-pub const MOCK_XCM_DESTINATION: MultiLocation = MultiLocation::X1(Junction::AccountId32 {
+pub const MOCK_XCM_DESTINATION: MultiLocation = X1(Junction::AccountId32 {
 	network: NetworkId::Kusama,
 	id: [1u8; 32],
-});
+})
+.into();
 pub const MOCK_XCM_ACCOUNTID: AccountId = AccountId32::new([255u8; 32]);
 pub const PARACHAIN_ID: u32 = 2000;
 
@@ -111,7 +110,10 @@ impl InvertLocation for MockXcm {
 impl SendXcm for MockXcm {
 	fn send_xcm(destination: MultiLocation, _message: Xcm<()>) -> XcmResult {
 		match destination {
-			MultiLocation::X1(Junction::Parent) => Ok(()),
+			MultiLocation {
+				parents: 1,
+				interior: Junctions::Here,
+			} => Ok(()),
 			_ => Err(XcmError::Undefined),
 		}
 	}
@@ -131,7 +133,7 @@ pub struct MockEnsureXcmOrigin;
 impl EnsureOrigin<Origin> for MockEnsureXcmOrigin {
 	type Success = MultiLocation;
 	fn try_origin(_o: Origin) -> Result<Self::Success, Origin> {
-		Ok(MultiLocation::Null)
+		Ok(MultiLocation::here())
 	}
 
 	#[cfg(feature = "runtime-benchmarks")]

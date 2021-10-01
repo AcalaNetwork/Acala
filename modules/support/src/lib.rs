@@ -37,7 +37,7 @@ use sp_std::{
 	prelude::*,
 };
 
-use xcm::v0::Xcm;
+use xcm::latest::prelude::*;
 
 pub mod homa;
 pub mod mocks;
