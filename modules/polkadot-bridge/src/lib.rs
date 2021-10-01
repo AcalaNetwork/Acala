@@ -39,10 +39,8 @@ pub use module::*;
 #[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, Default)]
 pub struct SubAccountStatus<Unbonding> {
 	/// Bonded amount
-	#[codec(compact)]
 	pub bonded: Balance,
 	/// Free amount
-	#[codec(compact)]
 	pub available: Balance,
 	/// Unbonding list
 	pub unbonding: Unbonding,

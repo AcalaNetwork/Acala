@@ -90,7 +90,6 @@ impl Decode for Properties {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct ClassData<Balance> {
 	/// Deposit reserved to create token class
-	#[codec(compact)]
 	pub deposit: Balance,
 	/// Class properties
 	pub properties: Properties,
@@ -102,7 +101,6 @@ pub struct ClassData<Balance> {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct TokenData<Balance> {
 	/// Deposit reserved to create token
-	#[codec(compact)]
 	pub deposit: Balance,
 	/// Token attributes
 	pub attributes: Attributes,

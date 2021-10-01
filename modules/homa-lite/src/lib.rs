@@ -241,10 +241,7 @@ pub mod module {
 		///   by.
 		#[pallet::weight(< T as Config >::WeightInfo::adjust_total_staking_currency())]
 		#[transactional]
-		pub fn adjust_total_staking_currency(
-			origin: OriginFor<T>,
-			#[pallet::compact] by_amount: AmountOf<T>,
-		) -> DispatchResult {
+		pub fn adjust_total_staking_currency(origin: OriginFor<T>, by_amount: AmountOf<T>) -> DispatchResult {
 			T::GovernanceOrigin::ensure_origin(origin)?;
 			let mut current_staking_total = Self::total_staking_currency();
 

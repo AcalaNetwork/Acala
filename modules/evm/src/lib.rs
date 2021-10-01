@@ -222,7 +222,6 @@ pub mod module {
 
 	#[derive(Clone, Eq, PartialEq, RuntimeDebug, Encode, Decode)]
 	pub struct AccountInfo<T: Config> {
-		#[codec(compact)]
 		pub nonce: T::Index,
 		pub contract_info: Option<ContractInfo>,
 	}
@@ -235,9 +234,7 @@ pub mod module {
 
 	#[derive(Clone, Copy, Eq, PartialEq, RuntimeDebug, Encode, Decode, MaxEncodedLen)]
 	pub struct CodeInfo {
-		#[codec(compact)]
 		pub code_size: u32,
-		#[codec(compact)]
 		pub ref_count: u32,
 	}
 
@@ -246,10 +243,8 @@ pub mod module {
 	/// Account definition used for genesis block construction.
 	pub struct GenesisAccount<Balance, Index> {
 		/// Account nonce.
-		#[codec(compact)]
 		pub nonce: Index,
 		/// Account balance.
-		#[codec(compact)]
 		pub balance: Balance,
 		/// Full account storage.
 		pub storage: BTreeMap<H256, H256>,

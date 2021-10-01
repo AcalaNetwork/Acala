@@ -48,10 +48,8 @@ pub use weights::WeightInfo;
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, MaxEncodedLen)]
 pub struct UnlockChunk {
 	/// Amount of funds to be unlocked.
-	#[codec(compact)]
 	value: Balance,
 	/// Era number at which point it'll be unlocked.
-	#[codec(compact)]
 	era: EraIndex,
 }
 
@@ -64,11 +62,9 @@ where
 	/// The total amount of the account's balance that we are currently
 	/// accounting for. It's just `active` plus all the `unlocking`
 	/// balances.
-	#[codec(compact)]
 	pub total: Balance,
 	/// The total amount of the account's balance that will be at stake in
 	/// any forthcoming rounds.
-	#[codec(compact)]
 	pub active: Balance,
 	/// Any balance that is becoming free, which may eventually be
 	/// transferred out of the account.
