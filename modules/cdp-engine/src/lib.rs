@@ -81,6 +81,7 @@ pub struct RiskManagementParams {
 	/// Maximum total debit value generated from it, when reach the hard
 	/// cap, CDP's owner cannot issue more stablecoin under the collateral
 	/// type.
+	#[codec(compact)]
 	pub maximum_total_debit_value: Balance,
 
 	/// Extra interest rate per sec, `None` value means not set

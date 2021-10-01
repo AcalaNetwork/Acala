@@ -47,8 +47,10 @@ pub use module::*;
 #[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, Default, MaxEncodedLen)]
 pub struct Position {
 	/// The amount of collateral.
+	#[codec(compact)]
 	pub collateral: Balance,
 	/// The amount of debit.
+	#[codec(compact)]
 	pub debit: Balance,
 }
 

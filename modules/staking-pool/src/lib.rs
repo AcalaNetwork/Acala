@@ -80,10 +80,13 @@ impl Default for Phase {
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, Default)]
 pub struct Ledger {
 	/// The amount of total bonded.
+	#[codec(compact)]
 	pub bonded: Balance,
 	/// The amount of total unbonding to free pool.
+	#[codec(compact)]
 	pub unbonding_to_free: Balance,
 	/// The amount of free pool.
+	#[codec(compact)]
 	pub free_pool: Balance,
 	/// The amount to unbond when next era beginning.
 	pub to_unbond_next_era: (Balance, Balance),

@@ -151,8 +151,8 @@ pub mod module {
 		#[pallet::weight(T::WeightInfo::schedule_session_duration())]
 		pub fn schedule_session_duration(
 			origin: OriginFor<T>,
-			start_session: SessionIndex,
-			duration: T::BlockNumber,
+			#[pallet::compact] start_session: SessionIndex,
+			#[pallet::compact] duration: T::BlockNumber,
 		) -> DispatchResult {
 			ensure_root(origin)?;
 

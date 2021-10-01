@@ -88,8 +88,10 @@ impl WeightInfo for () {
 #[derive(Encode, Decode, Clone, Copy, RuntimeDebug, Default, PartialEq, MaxEncodedLen)]
 pub struct Guarantee<BlockNumber> {
 	/// The total tokens the validator has in insurance
+	#[codec(compact)]
 	total: Balance,
 	/// The number of tokens that are actively bonded for insurance
+	#[codec(compact)]
 	bonded: Balance,
 	/// The number of tokens that are in the process of unbonding for insurance
 	unbonding: Option<(Balance, BlockNumber)>,
