@@ -781,7 +781,7 @@ dependencies = [
 [[package]]
 name = "beefy-merkle-tree"
 version = "0.1.0"
-source = "git+https://github.com/paritytech/grandpa-bridge-gadget?branch=polkadot-v0.9.10#9954b61657dc8899a21b4f2501ee6bd3b7a2dc23"
+source = "git+https://github.com/paritytech//grandpa-bridge-gadget?rev=9954b61657dc8899a21b4f2501ee6bd3b7a2dc23#9954b61657dc8899a21b4f2501ee6bd3b7a2dc23"
 
 [[package]]
 name = "beefy-primitives"
@@ -2351,7 +2351,7 @@ dependencies = [
  "sp-consensus-babe",
  "sp-core",
  "sp-inherents",
- "sp-keyring 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.10)",
+ "sp-keyring",
  "sp-keystore",
  "sp-runtime",
  "sp-timestamp",
@@ -6858,7 +6858,7 @@ dependencies = [
 [[package]]
 name = "pallet-beefy-mmr"
 version = "0.1.0"
-source = "git+https://github.com/paritytech/grandpa-bridge-gadget?branch=polkadot-v0.9.10#9954b61657dc8899a21b4f2501ee6bd3b7a2dc23"
+source = "git+https://github.com/paritytech//grandpa-bridge-gadget?rev=9954b61657dc8899a21b4f2501ee6bd3b7a2dc23#9954b61657dc8899a21b4f2501ee6bd3b7a2dc23"
 dependencies = [
  "beefy-merkle-tree",
  "beefy-primitives",
@@ -7102,7 +7102,7 @@ dependencies = [
  "parity-scale-codec",
  "sp-core",
  "sp-io",
- "sp-keyring 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7)",
+ "sp-keyring",
  "sp-runtime",
  "sp-std",
 ]
@@ -10173,7 +10173,7 @@ dependencies = [
  "serde_json",
  "sp-blockchain",
  "sp-core",
- "sp-keyring 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7)",
+ "sp-keyring",
  "sp-keystore",
  "sp-panic-handler",
  "sp-runtime",
@@ -10418,7 +10418,7 @@ dependencies = [
  "sp-consensus-slots",
  "sp-core",
  "sp-inherents",
- "sp-keyring 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7)",
+ "sp-keyring",
  "sp-keystore",
  "sp-runtime",
  "sp-timestamp",
@@ -10652,25 +10652,6 @@ dependencies = [
 [[package]]
 name = "sc-light"
 version = "4.0.0-dev"
-source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.10#58f0223a75933e3226f330b8458bcb78e12164cf"
-dependencies = [
- "hash-db",
- "lazy_static",
- "parity-scale-codec",
- "parking_lot 0.11.1",
- "sc-client-api",
- "sc-executor",
- "sp-api",
- "sp-blockchain",
- "sp-core",
- "sp-externalities",
- "sp-runtime",
- "sp-state-machine",
-]
-
-[[package]]
-name = "sc-light"
-version = "4.0.0-dev"
 source = "git+https://github.com/paritytech//substrate?rev=420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7#420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7"
 dependencies = [
  "hash-db",
@@ -10762,7 +10743,7 @@ dependencies = [
 [[package]]
 name = "sc-network-test"
 version = "0.8.0"
-source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.10#58f0223a75933e3226f330b8458bcb78e12164cf"
+source = "git+https://github.com/paritytech//substrate?rev=420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7#420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7"
 dependencies = [
  "async-std",
  "async-trait",
@@ -10945,7 +10926,7 @@ dependencies = [
  "sc-executor",
  "sc-informant",
  "sc-keystore",
- "sc-light 4.0.0-dev (git+https://github.com/paritytech//substrate?rev=420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7)",
+ "sc-light",
  "sc-network",
  "sc-offchain",
  "sc-rpc",
@@ -11914,17 +11895,6 @@ dependencies = [
 [[package]]
 name = "sp-keyring"
 version = "4.0.0-dev"
-source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.10#58f0223a75933e3226f330b8458bcb78e12164cf"
-dependencies = [
- "lazy_static",
- "sp-core",
- "sp-runtime",
- "strum",
-]
-
-[[package]]
-name = "sp-keyring"
-version = "4.0.0-dev"
 source = "git+https://github.com/paritytech//substrate?rev=420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7#420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7"
 dependencies = [
  "lazy_static",
@@ -12460,7 +12430,7 @@ dependencies = [
 [[package]]
 name = "substrate-test-client"
 version = "2.0.1"
-source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.10#58f0223a75933e3226f330b8458bcb78e12164cf"
+source = "git+https://github.com/paritytech//substrate?rev=420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7#420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7"
 dependencies = [
  "async-trait",
  "futures 0.1.31",
@@ -12472,7 +12442,7 @@ dependencies = [
  "sc-client-db",
  "sc-consensus",
  "sc-executor",
- "sc-light 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.10)",
+ "sc-light",
  "sc-offchain",
  "sc-service",
  "serde",
@@ -12480,7 +12450,7 @@ dependencies = [
  "sp-blockchain",
  "sp-consensus",
  "sp-core",
- "sp-keyring 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.10)",
+ "sp-keyring",
  "sp-keystore",
  "sp-runtime",
  "sp-state-machine",
@@ -12489,7 +12459,7 @@ dependencies = [
 [[package]]
 name = "substrate-test-runtime"
 version = "2.0.0"
-source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.10#58f0223a75933e3226f330b8458bcb78e12164cf"
+source = "git+https://github.com/paritytech//substrate?rev=420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7#420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7"
 dependencies = [
  "cfg-if 1.0.0",
  "frame-support",
@@ -12513,7 +12483,7 @@ dependencies = [
  "sp-finality-grandpa",
  "sp-inherents",
  "sp-io",
- "sp-keyring 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.10)",
+ "sp-keyring",
  "sp-offchain",
  "sp-runtime",
  "sp-runtime-interface",
@@ -12530,14 +12500,14 @@ dependencies = [
 [[package]]
 name = "substrate-test-runtime-client"
 version = "2.0.0"
-source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.10#58f0223a75933e3226f330b8458bcb78e12164cf"
+source = "git+https://github.com/paritytech//substrate?rev=420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7#420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7"
 dependencies = [
  "futures 0.3.16",
  "parity-scale-codec",
  "sc-block-builder",
  "sc-client-api",
  "sc-consensus",
- "sc-light 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.10)",
+ "sc-light",
  "sc-service",
  "sp-api",
  "sp-blockchain",
@@ -12551,7 +12521,7 @@ dependencies = [
 [[package]]
 name = "substrate-wasm-builder"
 version = "5.0.0-dev"
-source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.10#58f0223a75933e3226f330b8458bcb78e12164cf"
+source = "git+https://github.com/paritytech//substrate?rev=420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7#420db18eaa1a1f5ce9ba40dd6ccb69f7b3dd9bb7"
 dependencies = [
  "ansi_term 0.12.1",
  "atty",
@@ -12681,7 +12651,7 @@ dependencies = [
  "sp-externalities",
  "sp-inherents",
  "sp-io",
- "sp-keyring 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.10)",
+ "sp-keyring",
  "sp-keystore",
  "sp-offchain",
  "sp-runtime",
@@ -14182,7 +14152,7 @@ dependencies = [
 [[package]]
 name = "xcm-simulator"
 version = "0.9.10"
-source = "git+https://github.com/paritytech/polkadot?branch=release-v0.9.10#d348ba982f823adeb700b54db98169520f323595"
+source = "git+https://github.com/paritytech//polkadot?rev=aeea9b7bd81919e014f7621f6c4b2eb9709d918f#aeea9b7bd81919e014f7621f6c4b2eb9709d918f"
 dependencies = [
  "frame-support",
  "parity-scale-codec",
