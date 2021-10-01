@@ -74,13 +74,16 @@ pub struct CollateralAuctionItem<AccountId, BlockNumber> {
 	/// Collateral type for sale
 	currency_id: CurrencyId,
 	/// Initial collateral amount for sale
+	#[codec(compact)]
 	initial_amount: Balance,
 	/// Current collateral amount for sale
+	#[codec(compact)]
 	amount: Balance,
 	/// Target sales amount of this auction
 	/// if zero, collateral auction will never be reverse stage,
 	/// otherwise, target amount is the actual payment amount of active
 	/// bidder
+	#[codec(compact)]
 	target: Balance,
 	/// Auction start time
 	start_time: BlockNumber,
