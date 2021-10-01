@@ -488,10 +488,10 @@ pub mod module {
 			origin: OriginFor<T>,
 			action: TransactionAction,
 			input: Vec<u8>,
-			value: BalanceOf<T>,
-			gas_limit: u64,
-			storage_limit: u32,
-			_valid_until: T::BlockNumber, // checked by tx validation logic
+			#[pallet::compact] value: BalanceOf<T>,
+			#[pallet::compact] gas_limit: u64,
+			#[pallet::compact] storage_limit: u32,
+			#[pallet::compact] _valid_until: T::BlockNumber, // checked by tx validation logic
 		) -> DispatchResultWithPostInfo {
 			match action {
 				TransactionAction::Call(target) => Self::call(origin, target, input, value, gas_limit, storage_limit),
@@ -513,9 +513,9 @@ pub mod module {
 			origin: OriginFor<T>,
 			target: EvmAddress,
 			input: Vec<u8>,
-			value: BalanceOf<T>,
-			gas_limit: u64,
-			storage_limit: u32,
+			#[pallet::compact] value: BalanceOf<T>,
+			#[pallet::compact] gas_limit: u64,
+			#[pallet::compact] storage_limit: u32,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 			let source = T::AddressMapping::get_or_create_evm_address(&who);
@@ -561,9 +561,9 @@ pub mod module {
 			from: EvmAddress,
 			target: EvmAddress,
 			input: Vec<u8>,
-			value: BalanceOf<T>,
-			gas_limit: u64,
-			storage_limit: u32,
+			#[pallet::compact] value: BalanceOf<T>,
+			#[pallet::compact] gas_limit: u64,
+			#[pallet::compact] storage_limit: u32,
 		) -> DispatchResultWithPostInfo {
 			ensure_root(origin)?;
 
@@ -622,9 +622,9 @@ pub mod module {
 		pub fn create(
 			origin: OriginFor<T>,
 			init: Vec<u8>,
-			value: BalanceOf<T>,
-			gas_limit: u64,
-			storage_limit: u32,
+			#[pallet::compact] value: BalanceOf<T>,
+			#[pallet::compact] gas_limit: u64,
+			#[pallet::compact] storage_limit: u32,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 			let source = T::AddressMapping::get_or_create_evm_address(&who);
@@ -659,9 +659,9 @@ pub mod module {
 			origin: OriginFor<T>,
 			init: Vec<u8>,
 			salt: H256,
-			value: BalanceOf<T>,
-			gas_limit: u64,
-			storage_limit: u32,
+			#[pallet::compact] value: BalanceOf<T>,
+			#[pallet::compact] gas_limit: u64,
+			#[pallet::compact] storage_limit: u32,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 			let source = T::AddressMapping::get_or_create_evm_address(&who);
@@ -694,9 +694,9 @@ pub mod module {
 		pub fn create_network_contract(
 			origin: OriginFor<T>,
 			init: Vec<u8>,
-			value: BalanceOf<T>,
-			gas_limit: u64,
-			storage_limit: u32,
+			#[pallet::compact] value: BalanceOf<T>,
+			#[pallet::compact] gas_limit: u64,
+			#[pallet::compact] storage_limit: u32,
 		) -> DispatchResultWithPostInfo {
 			T::NetworkContractOrigin::ensure_origin(origin)?;
 
@@ -735,9 +735,9 @@ pub mod module {
 			origin: OriginFor<T>,
 			target: EvmAddress,
 			init: Vec<u8>,
-			value: BalanceOf<T>,
-			gas_limit: u64,
-			storage_limit: u32,
+			#[pallet::compact] value: BalanceOf<T>,
+			#[pallet::compact] gas_limit: u64,
+			#[pallet::compact] storage_limit: u32,
 		) -> DispatchResultWithPostInfo {
 			T::NetworkContractOrigin::ensure_origin(origin)?;
 

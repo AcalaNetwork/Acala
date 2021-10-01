@@ -162,7 +162,7 @@ pub mod module {
 		pub fn close_loan_has_debit_by_dex(
 			origin: OriginFor<T>,
 			currency_id: CurrencyId,
-			max_collateral_amount: Balance,
+			#[pallet::compact] max_collateral_amount: Balance,
 			maybe_path: Option<Vec<CurrencyId>>,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;

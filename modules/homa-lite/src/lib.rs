@@ -153,7 +153,7 @@ pub mod module {
 		/// - `amount`: The amount of Staking currency to be exchanged.
 		#[pallet::weight(< T as Config >::WeightInfo::mint())]
 		#[transactional]
-		pub fn mint(origin: OriginFor<T>, amount: Balance) -> DispatchResult {
+		pub fn mint(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			// Ensure the amount is above the minimum, after the MintFee is deducted.
 			ensure!(
@@ -220,7 +220,10 @@ pub mod module {
 		///   conversion rate.
 		#[pallet::weight(< T as Config >::WeightInfo::set_total_staking_currency())]
 		#[transactional]
-		pub fn set_total_staking_currency(origin: OriginFor<T>, staking_total: Balance) -> DispatchResult {
+		pub fn set_total_staking_currency(
+			origin: OriginFor<T>,
+			#[pallet::compact] staking_total: Balance,
+		) -> DispatchResult {
 			T::GovernanceOrigin::ensure_origin(origin)?;
 			ensure!(!staking_total.is_zero(), Error::<T>::InvalidTotalStakingCurrency);
 
@@ -275,7 +278,7 @@ pub mod module {
 		/// - `new_cap`: The new cap for staking currency.
 		#[pallet::weight(< T as Config >::WeightInfo::set_minting_cap())]
 		#[transactional]
-		pub fn set_minting_cap(origin: OriginFor<T>, new_cap: Balance) -> DispatchResult {
+		pub fn set_minting_cap(origin: OriginFor<T>, #[pallet::compact] new_cap: Balance) -> DispatchResult {
 			T::GovernanceOrigin::ensure_origin(origin)?;
 
 			StakingCurrencyMintCap::<T>::put(new_cap);
@@ -290,7 +293,7 @@ pub mod module {
 		/// - `xcm_dest_weight`: The new weight for XCM transfers.
 		#[pallet::weight(< T as Config >::WeightInfo::set_xcm_dest_weight())]
 		#[transactional]
-		pub fn set_xcm_dest_weight(origin: OriginFor<T>, xcm_dest_weight: Weight) -> DispatchResult {
+		pub fn set_xcm_dest_weight(origin: OriginFor<T>, #[pallet::compact] xcm_dest_weight: Weight) -> DispatchResult {
 			T::GovernanceOrigin::ensure_origin(origin)?;
 
 			XcmDestWeight::<T>::put(xcm_dest_weight);
