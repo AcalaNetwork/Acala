@@ -463,11 +463,11 @@ pub mod module {
 			origin: OriginFor<T>,
 			currency_id_a: CurrencyId,
 			currency_id_b: CurrencyId,
-			min_contribution_a: Balance,
-			min_contribution_b: Balance,
-			target_provision_a: Balance,
-			target_provision_b: Balance,
-			not_before: T::BlockNumber,
+			#[pallet::compact] min_contribution_a: Balance,
+			#[pallet::compact] min_contribution_b: Balance,
+			#[pallet::compact] target_provision_a: Balance,
+			#[pallet::compact] target_provision_b: Balance,
+			#[pallet::compact] not_before: T::BlockNumber,
 		) -> DispatchResult {
 			T::ListingOrigin::ensure_origin(origin)?;
 
@@ -526,11 +526,11 @@ pub mod module {
 			origin: OriginFor<T>,
 			currency_id_a: CurrencyId,
 			currency_id_b: CurrencyId,
-			min_contribution_a: Balance,
-			min_contribution_b: Balance,
-			target_provision_a: Balance,
-			target_provision_b: Balance,
-			not_before: T::BlockNumber,
+			#[pallet::compact] min_contribution_a: Balance,
+			#[pallet::compact] min_contribution_b: Balance,
+			#[pallet::compact] target_provision_a: Balance,
+			#[pallet::compact] target_provision_b: Balance,
+			#[pallet::compact] not_before: T::BlockNumber,
 		) -> DispatchResult {
 			T::ListingOrigin::ensure_origin(origin)?;
 			let trading_pair =

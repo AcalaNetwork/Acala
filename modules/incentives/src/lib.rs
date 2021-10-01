@@ -233,7 +233,11 @@ pub mod module {
 		/// - `amount`: amount to stake
 		#[pallet::weight(<T as Config>::WeightInfo::deposit_dex_share())]
 		#[transactional]
-		pub fn deposit_dex_share(origin: OriginFor<T>, lp_currency_id: CurrencyId, amount: Balance) -> DispatchResult {
+		pub fn deposit_dex_share(
+			origin: OriginFor<T>,
+			lp_currency_id: CurrencyId,
+			#[pallet::compact] amount: Balance,
+		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			Self::do_deposit_dex_share(&who, lp_currency_id, amount)?;
 			Ok(())
@@ -247,7 +251,11 @@ pub mod module {
 		/// - `amount`: amount to unstake
 		#[pallet::weight(<T as Config>::WeightInfo::withdraw_dex_share())]
 		#[transactional]
-		pub fn withdraw_dex_share(origin: OriginFor<T>, lp_currency_id: CurrencyId, amount: Balance) -> DispatchResult {
+		pub fn withdraw_dex_share(
+			origin: OriginFor<T>,
+			lp_currency_id: CurrencyId,
+			#[pallet::compact] amount: Balance,
+		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			Self::do_withdraw_dex_share(&who, lp_currency_id, amount)?;
 			Ok(())

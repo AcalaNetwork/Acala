@@ -20,6 +20,7 @@
 
 use crate::runner::state::PrecompileOutput;
 use evm::{Context, ExitError, ExitSucceed};
+use frame_support::log;
 use impl_trait_for_tuples::impl_for_tuples;
 use primitive_types::H160;
 use ripemd160::Digest;
@@ -109,7 +110,7 @@ where
 		context: &Context,
 	) -> Option<core::result::Result<PrecompileOutput, ExitError>> {
 		// https://github.com/ethereum/go-ethereum/blob/9357280fce5c5d57111d690a336cca5f89e34da6/core/vm/contracts.go#L83
-		if address == H160::from_low_u64_be(1) {
+		let result = if address == H160::from_low_u64_be(1) {
 			Some(ECRecover::execute(input, target_gas, context))
 		} else if address == H160::from_low_u64_be(2) {
 			Some(Sha256::execute(input, target_gas, context))
@@ -127,7 +128,12 @@ where
 			Some(Sha3FIPS512::execute(input, target_gas, context))
 		} else {
 			None
+		};
+
+		if result.is_some() {
+			log::debug!(target: "evm", "Precompile end, address: {:?}, input: {:?}, target_gas: {:?}, context: {:?}, result: {:?}", address, input, target_gas, context, result);
 		}
+		result
 	}
 }
 
@@ -383,6 +389,27 @@ mod tests {
 		let cost: u64 = 1;
 
 		match <Sha3FIPS512 as LinearCostPrecompile>::execute(input, cost) {
+			Ok((_, out)) => {
+				assert_eq!(out, expected);
+				Ok(())
+			}
+			Err(e) => {
+				panic!("Test not expected to fail: {:?}", e);
+			}
+		}
+	}
+
+	#[test]
+	fn ecrecover() -> std::result::Result<(), ExitError> {
+		let input = sp_core::bytes::from_hex("0xe63325d74baa84af003dfb6a974f41672be881b56aa2c12c093f8259321bd460000000000000000000000000000000000000000000000000000000000000001c6273e55c6b942c7a701ae05195fa24395cd1db99e81c705b8c2eb4d7156ff85a3ecf6b591a30105fef03717fa608c887bd02ba548876e93ce818f90dc46ac374").unwrap();
+		let expected = b"\
+		\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\
+		\x6b\xe0\x2d\x1d\x36\x65\x66\x0d\x22\xff\x96\x24\xb7\xbe\x05\x51\xee\x1a\xc9\x1b\
+		";
+
+		let cost: u64 = 1;
+
+		match <ECRecover as LinearCostPrecompile>::execute(&input, cost) {
 			Ok((_, out)) => {
 				assert_eq!(out, expected);
 				Ok(())

@@ -262,7 +262,7 @@ pub mod module {
 			class_id: ClassIdOf<T>,
 			metadata: CID,
 			attributes: Attributes,
-			quantity: u32,
+			#[pallet::compact] quantity: u32,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			let to = T::Lookup::lookup(to)?;

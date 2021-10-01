@@ -233,8 +233,6 @@ where
 		};
 
 		let calculate_gas_used = |request| -> Result<(U256, i32)> {
-			let hash = self.client.info().best_hash;
-
 			let CallRequest {
 				from,
 				to,

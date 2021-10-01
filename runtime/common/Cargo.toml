@@ -9,7 +9,7 @@ static_assertions = "1.1.0"
 num_enum = { version = "0.5.1", default-features = false }
 serde = { version = "1.0.124", optional = true, default-features = false }
 codec = { package = "parity-scale-codec", version = "2.2.0", default-features = false, features = ["max-encoded-len"] }
-ethabi = { git = "https://github.com/rust-ethereum/ethabi", rev = "8bd90d13956edf18bb47c6e39dcf7ab99bf264c7", default-features = false }
+ethabi = { version = "15.0.0", default-features = false }
 
 frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.10", default-features = false }
 frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.10", default-features = false }

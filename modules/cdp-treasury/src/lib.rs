@@ -166,7 +166,7 @@ pub mod module {
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight(T::WeightInfo::extract_surplus_to_treasury())]
 		#[transactional]
-		pub fn extract_surplus_to_treasury(origin: OriginFor<T>, amount: Balance) -> DispatchResult {
+		pub fn extract_surplus_to_treasury(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
 			T::Currency::transfer(
 				T::GetStableCurrencyId::get(),
@@ -182,8 +182,8 @@ pub mod module {
 		pub fn auction_collateral(
 			origin: OriginFor<T>,
 			currency_id: CurrencyId,
-			amount: Balance,
-			target: Balance,
+			#[pallet::compact] amount: Balance,
+			#[pallet::compact] target: Balance,
 			splited: bool,
 		) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
@@ -209,7 +209,7 @@ pub mod module {
 		pub fn set_expected_collateral_auction_size(
 			origin: OriginFor<T>,
 			currency_id: CurrencyId,
-			size: Balance,
+			#[pallet::compact] size: Balance,
 		) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
 			ExpectedCollateralAuctionSize::<T>::insert(currency_id, size);
