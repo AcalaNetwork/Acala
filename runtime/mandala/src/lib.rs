@@ -2503,6 +2503,16 @@ mod tests {
 		);
 	}
 
+	#[test]
+	fn check_call_size() {
+		assert!(
+			core::mem::size_of::<Call>() <= 230,
+			"size of Call is more than 230 bytes: some calls have too big arguments, use Box to \
+			reduce the size of Call.
+			If the limit is too strong, maybe consider increasing the limit",
+		);
+	}
+
 	//TODO: remove after paritytech/substrate#9890
 	#[test]
 	fn ensure_block_hash_count_less_than_democracy_launch_period() {
