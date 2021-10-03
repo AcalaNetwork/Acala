@@ -2279,105 +2279,6 @@ mod tests {
 	}
 
 	#[test]
-	fn foo() {
-		println!("System{}", std::mem::size_of::<frame_system::Call::<Runtime>>());
-		println!("Utility{}", std::mem::size_of::<pallet_utility::Call::<Runtime>>());
-		println!("Timestamp{}", std::mem::size_of::<pallet_timestamp::Call::<Runtime>>());
-		println!(
-			"Authorship{}",
-			std::mem::size_of::<pallet_authorship::Call::<Runtime>>()
-		);
-		println!("Balances{}", std::mem::size_of::<pallet_balances::Call::<Runtime>>());
-		println!("Session{}", std::mem::size_of::<pallet_session::Call::<Runtime>>());
-		println!("Democracy{}", std::mem::size_of::<pallet_democracy::Call::<Runtime>>());
-		println!(
-			"Council{}",
-			std::mem::size_of::<pallet_collective::Call::<Runtime, pallet_collective::Instance1>>()
-		);
-		println!("Scheduler{}", std::mem::size_of::<pallet_scheduler::Call::<Runtime>>());
-		println!("Proxy{}", std::mem::size_of::<pallet_proxy::Call::<Runtime>>());
-		println!("Multisig{}", std::mem::size_of::<pallet_multisig::Call::<Runtime>>());
-		println!(
-			"TransactionPause{}",
-			std::mem::size_of::<module_transaction_pause::Call::<Runtime>>()
-		);
-		println!("Tokens{}", std::mem::size_of::<orml_tokens::Call::<Runtime>>());
-		println!(
-			"Currencies{}",
-			std::mem::size_of::<module_currencies::Call::<Runtime>>()
-		);
-		println!("Vesting{}", std::mem::size_of::<orml_vesting::Call::<Runtime>>());
-		println!(
-			"TransactionPayment{}",
-			std::mem::size_of::<module_transaction_payment::Call::<Runtime>>()
-		);
-		println!("Bounties{}", std::mem::size_of::<pallet_bounties::Call::<Runtime>>());
-		println!("Tips{}", std::mem::size_of::<pallet_tips::Call::<Runtime>>());
-		println!("Treasury{}", std::mem::size_of::<pallet_treasury::Call::<Runtime>>());
-		println!(
-			"ParachainSystem{}",
-			std::mem::size_of::<cumulus_pallet_parachain_system::Call::<Runtime>>()
-		);
-		println!(
-			"ParachainInfo{}",
-			std::mem::size_of::<parachain_info::Call::<Runtime>>()
-		);
-		println!(
-			"CollatorSelection{}",
-			std::mem::size_of::<module_collator_selection::Call::<Runtime>>()
-		);
-		println!(
-			"SessionManager{}",
-			std::mem::size_of::<module_session_manager::Call::<Runtime>>()
-		);
-		println!(
-			"XcmpQueue{}",
-			std::mem::size_of::<cumulus_pallet_xcmp_queue::Call::<Runtime>>()
-		);
-		println!("PolkadotXcm{}", std::mem::size_of::<pallet_xcm::Call::<Runtime>>());
-		println!(
-			"DmpQueue{}",
-			std::mem::size_of::<cumulus_pallet_dmp_queue::Call::<Runtime>>()
-		);
-		println!("XTokens{}", std::mem::size_of::<orml_xtokens::Call::<Runtime>>());
-		println!("OrmlXcm{}", std::mem::size_of::<orml_xcm::Call::<Runtime>>());
-		println!("Authority{}", std::mem::size_of::<orml_authority::Call::<Runtime>>());
-		//println!("AcalaOracle{}", std::mem::size_of::<orml_oracle::<Instance1>::Call::<Runtime>>());
-		println!("Auction{}", std::mem::size_of::<orml_auction::Call::<Runtime>>());
-		println!("Rewards{}", std::mem::size_of::<orml_rewards::Call::<Runtime>>());
-		println!("Prices{}", std::mem::size_of::<module_prices::Call::<Runtime>>());
-		println!("Dex{}", std::mem::size_of::<module_dex::Call::<Runtime>>());
-		println!(
-			"AuctionManager{}",
-			std::mem::size_of::<module_auction_manager::Call::<Runtime>>()
-		);
-		println!("Loans{}", std::mem::size_of::<module_loans::Call::<Runtime>>());
-		println!("Honzon{}", std::mem::size_of::<module_honzon::Call::<Runtime>>());
-		println!(
-			"CdpTreasury{}",
-			std::mem::size_of::<module_cdp_treasury::Call::<Runtime>>()
-		);
-		println!("CdpEngine{}", std::mem::size_of::<module_cdp_engine::Call::<Runtime>>());
-		println!(
-			"EmergencyShutdown{}",
-			std::mem::size_of::<module_emergency_shutdown::Call::<Runtime>>()
-		);
-		println!("HomaLite{}", std::mem::size_of::<module_homa_lite::Call::<Runtime>>());
-		println!(
-			"Incentives{}",
-			std::mem::size_of::<module_incentives::Call::<Runtime>>()
-		);
-		println!("NFT{}", std::mem::size_of::<module_nft::Call::<Runtime>>());
-		println!("EVM{}", std::mem::size_of::<module_evm::Call::<Runtime>>());
-		println!(
-			"EvmAccounts{}",
-			std::mem::size_of::<module_evm_accounts::Call::<Runtime>>()
-		);
-
-		panic!();
-	}
-
-	/*#[test]
 	fn check_call_size() {
 		assert!(
 			core::mem::size_of::<Call>() <= 230,
@@ -2385,5 +2286,5 @@ mod tests {
 			reduce the size of Call.
 			If the limit is too strong, maybe consider increasing the limit",
 		);
-	}*/
+	}
 }

@@ -2503,7 +2503,6 @@ mod tests {
 		);
 	}
 
-	/*
 	#[test]
 	fn check_call_size() {
 		assert!(
@@ -2512,7 +2511,7 @@ mod tests {
 			reduce the size of Call.
 			If the limit is too strong, maybe consider increasing the limit",
 		);
-	}*/
+	}
 
 	//TODO: remove after paritytech/substrate#9890
 	#[test]
