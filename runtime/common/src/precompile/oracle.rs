@@ -16,17 +16,17 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::precompile::PrecompileOutput;
 use frame_support::{log, sp_runtime::FixedPointNumber};
 use module_evm::{Context, ExitError, ExitSucceed, Precompile};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use primitives::CurrencyId;
-use sp_core::U256;
 use sp_runtime::RuntimeDebug;
 use sp_std::{fmt::Debug, marker::PhantomData, prelude::*, result};
 
-use super::input::{Input, InputT};
+use super::input::{Input, InputT, Output};
 use module_support::{
-	AddressMapping as AddressMappingT, CurrencyIdMapping as CurrencyIdMappingT, Price, PriceProvider as PriceProviderT,
+	AddressMapping as AddressMappingT, CurrencyIdMapping as CurrencyIdMappingT, PriceProvider as PriceProviderT,
 };
 
 /// The `Oracle` impl precompile.
@@ -59,11 +59,7 @@ where
 		input: &[u8],
 		_target_gas: Option<u64>,
 		_context: &Context,
-	) -> result::Result<(ExitSucceed, Vec<u8>, u64), ExitError> {
-		//TODO: evaluate cost
-
-		log::debug!(target: "evm", "oracle: input: {:?}", input);
-
+	) -> result::Result<PrecompileOutput, ExitError> {
 		let input = Input::<Action, AccountId, AddressMapping, CurrencyIdMapping>::new(input);
 
 		let action = input.action()?;
@@ -95,19 +91,16 @@ where
 					}
 				};
 
-				log::debug!(target: "evm", "oracle: getPrice currency_id: {:?}, price: {:?}, adjustment_multiplier: {:?}", currency_id, price, adjustment_multiplier);
-				Ok((
-					ExitSucceed::Returned,
-					vec_u8_from_price(price, adjustment_multiplier),
-					0,
-				))
+				let output = price.into_inner().wrapping_div(adjustment_multiplier);
+
+				log::debug!(target: "evm", "oracle: getPrice currency_id: {:?}, price: {:?}, adjustment_multiplier: {:?}, output: {:?}", currency_id, price, adjustment_multiplier, output);
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: 0,
+					output: Output::default().encode_u128(output),
+					logs: Default::default(),
+				})
 			}
 		}
 	}
-}
-
-fn vec_u8_from_price(price: Price, adjustment_multiplier: u128) -> Vec<u8> {
-	let mut be_bytes = [0u8; 32];
-	U256::from(price.into_inner().wrapping_div(adjustment_multiplier)).to_big_endian(&mut be_bytes[..32]);
-	be_bytes.to_vec()
 }

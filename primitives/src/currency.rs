@@ -199,6 +199,8 @@ create_currency_id! {
 		// 149: Reserved for renBTC
 		// 150: Reserved for CASH
 		// 168 - 255: Kusama parachain tokens
+		BNC("Bifrost Native Token", 12) = 168,
+		VSKSM("Bifrost Voucher Slot KSM", 12) = 169,
 	}
 }
 

@@ -64,4 +64,13 @@ impl<T: frame_system::Config> module_currencies::WeightInfo for WeightInfo<T> {
 	fn update_balance_native_currency_killing() -> Weight {
 		(24_402_000 as Weight)
 	}
+	fn sweep_dust(c: u32) -> Weight {
+		(7_400_000 as Weight)
+			// Standard Error: 111_000
+			.saturating_add((25_100_000 as Weight).saturating_mul(c as Weight))
+			.saturating_add(T::DbWeight::get().reads(1 as Weight))
+			.saturating_add(T::DbWeight::get().reads((2 as Weight).saturating_mul(c as Weight)))
+			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+			.saturating_add(T::DbWeight::get().writes((2 as Weight).saturating_mul(c as Weight)))
+	}
 }

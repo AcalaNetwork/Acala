@@ -45,7 +45,6 @@ pub mod transaction_payment;
 // orml benchmarking
 pub mod auction;
 pub mod authority;
-pub mod gradually_update;
 pub mod oracle;
 pub mod tokens;
 pub mod vesting;
@@ -53,6 +52,6 @@ pub mod vesting;
 // ecosystem benchmarking
 pub mod chainsafe_transfer;
 
-pub fn get_treasury_account() -> super::AccountId {
+pub fn get_vesting_account() -> super::AccountId {
 	super::TreasuryPalletId::get().into_account()
 }

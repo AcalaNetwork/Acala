@@ -96,7 +96,7 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for Pallet<T> {
 		let info = T::EVM::execute(context, input, Default::default(), 2_100_000, 0, ExecutionMode::View)?;
 
 		Self::handle_exit_reason(info.exit_reason)?;
-		Self::decode_string(info.output.as_slice().to_vec())
+		Self::decode_string(info.value.as_slice().to_vec())
 	}
 
 	// Calls the symbol method on an ERC20 contract using the given context
@@ -108,7 +108,7 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for Pallet<T> {
 		let info = T::EVM::execute(context, input, Default::default(), 2_100_000, 0, ExecutionMode::View)?;
 
 		Self::handle_exit_reason(info.exit_reason)?;
-		Self::decode_string(info.output.as_slice().to_vec())
+		Self::decode_string(info.value.as_slice().to_vec())
 	}
 
 	// Calls the decimals method on an ERC20 contract using the given context
@@ -121,8 +121,8 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for Pallet<T> {
 
 		Self::handle_exit_reason(info.exit_reason)?;
 
-		ensure!(info.output.len() == 32, Error::<T>::InvalidReturnValue);
-		let value = U256::from(info.output.as_slice()).saturated_into::<u8>();
+		ensure!(info.value.len() == 32, Error::<T>::InvalidReturnValue);
+		let value = U256::from(info.value.as_slice()).saturated_into::<u8>();
 		Ok(value)
 	}
 
@@ -136,8 +136,8 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for Pallet<T> {
 
 		Self::handle_exit_reason(info.exit_reason)?;
 
-		ensure!(info.output.len() == 32, Error::<T>::InvalidReturnValue);
-		let value = U256::from(info.output.as_slice()).saturated_into::<u128>();
+		ensure!(info.value.len() == 32, Error::<T>::InvalidReturnValue);
+		let value = U256::from(info.value.as_slice()).saturated_into::<u128>();
 		Ok(value.saturated_into::<BalanceOf<T>>())
 	}
 
@@ -153,7 +153,7 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for Pallet<T> {
 
 		Self::handle_exit_reason(info.exit_reason)?;
 
-		Ok(U256::from(info.output.as_slice())
+		Ok(U256::from(info.value.as_slice())
 			.saturated_into::<u128>()
 			.saturated_into::<BalanceOf<T>>())
 	}
@@ -186,7 +186,7 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for Pallet<T> {
 
 		// Check return value to make sure not calling on empty contracts.
 		ensure!(
-			!info.output.is_empty() && info.output == bytes,
+			!info.value.is_empty() && info.value == bytes,
 			Error::<T>::InvalidReturnValue
 		);
 		Ok(())

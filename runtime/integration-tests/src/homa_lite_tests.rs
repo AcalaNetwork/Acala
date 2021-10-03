@@ -109,30 +109,27 @@ mod karura_only_tests {
 	use orml_traits::MultiCurrency;
 	use sp_runtime::MultiAddress;
 
-	use xcm::v0::{
-		Junction::{self, Parachain},
-		MultiAsset::*,
-		MultiLocation::*,
-	};
+	use xcm::{latest::prelude::*, VersionedMultiAssets, VersionedMultiLocation};
 	use xcm_emulator::TestExt;
 
 	#[test]
 	fn homa_lite_xcm_transfer() {
 		let homa_lite_sub_account: AccountId =
 			hex_literal::hex!["d7b8926b326dd349355a9a7cca6606c1e0eb6fd2b506066b518c7155ff0d8297"].into();
-		Kusama::execute_with(|| {
+		KusamaNet::execute_with(|| {
 			// Transfer some KSM into the parachain.
 			assert_ok!(kusama_runtime::XcmPallet::reserve_transfer_assets(
 				kusama_runtime::Origin::signed(ALICE.into()),
-				X1(Parachain(2000)),
-				X1(Junction::AccountId32 {
-					id: alice().into(),
-					network: NetworkId::Any
-				}),
-				vec![ConcreteFungible {
-					id: Null,
-					amount: 2001 * dollar(KSM)
-				}],
+				Box::new(VersionedMultiLocation::V1(X1(Parachain(2000)).into())),
+				Box::new(VersionedMultiLocation::V1(
+					X1(Junction::AccountId32 {
+						id: alice().into(),
+						network: NetworkId::Any
+					})
+					.into()
+				)),
+				Box::new(VersionedMultiAssets::V1((Here, 2001 * dollar(KSM)).into())),
+				0,
 				600_000_000
 			));
 
@@ -171,7 +168,7 @@ mod karura_only_tests {
 			assert_eq!(Tokens::free_balance(RELAY_CHAIN_CURRENCY, &alice()), 999_952_000_000);
 		});
 
-		Kusama::execute_with(|| {
+		KusamaNet::execute_with(|| {
 			// Check of 2000 dollars (minus some fee) are transferred into the Kusama chain.
 			assert_eq!(
 				kusama_runtime::Balances::free_balance(&homa_lite_sub_account),

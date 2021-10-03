@@ -35,7 +35,7 @@ use frame_system::{
 };
 use loans::Position;
 use orml_traits::Change;
-use orml_utilities::{IterableStorageDoubleMapExtended, OffchainErr};
+use orml_utilities::OffchainErr;
 use primitives::{Amount, Balance, CurrencyId};
 use rand_chacha::{
 	rand_core::{RngCore, SeedableRng},
@@ -648,16 +648,20 @@ impl<T: Config> Pallet<T> {
 		// get the max iterationns config
 		let max_iterations = StorageValueRef::persistent(OFFCHAIN_WORKER_MAX_ITERATIONS)
 			.get::<u32>()
-			.unwrap_or(Some(DEFAULT_MAX_ITERATIONS));
+			.unwrap_or(Some(DEFAULT_MAX_ITERATIONS))
+			.unwrap_or(DEFAULT_MAX_ITERATIONS);
 
 		let currency_id = collateral_currency_ids[collateral_position as usize];
 		let is_shutdown = T::EmergencyShutdown::is_shutdown();
-		let mut map_iterator = <loans::Positions<T> as IterableStorageDoubleMapExtended<_, _, _>>::iter_prefix(
-			currency_id,
-			max_iterations,
-			start_key.clone(),
-		);
 
+		// If start key is Some(value) continue iterating from that point in storage otherwise start
+		// iterating from the beginning of <loans::Positons<T>>
+		let mut map_iterator = match start_key.clone() {
+			Some(key) => <loans::Positions<T>>::iter_prefix_from(currency_id, key),
+			None => <loans::Positions<T>>::iter_prefix(currency_id),
+		};
+
+		let mut finished = true;
 		let mut iteration_count = 0;
 		let iteration_start_time = sp_io::offchain::timestamp();
 
@@ -676,7 +680,10 @@ impl<T: Config> Pallet<T> {
 			}
 
 			iteration_count += 1;
-
+			if iteration_count == max_iterations {
+				finished = false;
+				break;
+			}
 			// extend offchain worker lock
 			guard.extend_lock().map_err(|_| OffchainErr::OffchainLock)?;
 		}
@@ -695,7 +702,7 @@ impl<T: Config> Pallet<T> {
 
 		// if iteration for map storage finished, clear to be continue record
 		// otherwise, update to be continue record
-		if map_iterator.finished {
+		if finished {
 			let next_collateral_position =
 				if collateral_position < collateral_currency_ids.len().saturating_sub(1) as u32 {
 					collateral_position + 1
@@ -704,7 +711,7 @@ impl<T: Config> Pallet<T> {
 				};
 			to_be_continue.set(&(next_collateral_position, Option::<Vec<u8>>::None));
 		} else {
-			to_be_continue.set(&(collateral_position, Some(map_iterator.map_iterator.previous_key)));
+			to_be_continue.set(&(collateral_position, Some(map_iterator.last_raw_key())));
 		}
 
 		// Consume the guard but **do not** unlock the underlying lock.

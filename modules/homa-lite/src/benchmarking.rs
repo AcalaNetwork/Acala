@@ -41,6 +41,8 @@ benchmarks! {
 
 	set_total_staking_currency {}: _(RawOrigin::Root, 1_000_000_000_000)
 
+	adjust_total_staking_currency {}: _(RawOrigin::Root, AmountOf::<T>::default())
+
 	set_minting_cap {
 	}: _(RawOrigin::Root, 1_000_000_000_000_000_000)
 
@@ -55,7 +57,7 @@ mod benchmark_mock {
 	type BlockNumber = u64;
 	use crate as module_homa_lite;
 	use frame_support::{ord_parameter_types, parameter_types};
-	use frame_system::EnsureRoot;
+	use frame_system::{EnsureRoot, EnsureSignedBy};
 	use mock::{MockXcm, ACALA, KSM, LKSM, MOCK_XCM_DESTINATION, ROOT};
 	use module_support::mocks::MockAddressMapping;
 	use orml_traits::parameter_type_with_key;
@@ -146,6 +148,8 @@ mod benchmark_mock {
 		type WeightInfo = ();
 		type AddressMapping = MockAddressMapping;
 		type EVMBridge = ();
+		type SweepOrigin = EnsureSignedBy<Root, AccountId>;
+		type OnDust = ();
 	}
 
 	parameter_types! {
@@ -230,6 +234,12 @@ mod tests {
 	fn test_set_total_staking_currency() {
 		ExtBuilder::default().build().execute_with(|| {
 			assert_ok!(Pallet::<Runtime>::test_benchmark_set_total_staking_currency());
+		});
+	}
+	#[test]
+	fn test_adjust_total_staking_currency() {
+		ExtBuilder::default().build().execute_with(|| {
+			assert_ok!(Pallet::<Runtime>::test_benchmark_adjust_total_staking_currency());
 		});
 	}
 	#[test]

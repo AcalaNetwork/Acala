@@ -120,8 +120,8 @@ pub mod module {
 	}
 }
 
-pub struct NonPausedTransactionFilter<T>(sp_std::marker::PhantomData<T>);
-impl<T: Config> Contains<T::Call> for NonPausedTransactionFilter<T>
+pub struct PausedTransactionFilter<T>(sp_std::marker::PhantomData<T>);
+impl<T: Config> Contains<T::Call> for PausedTransactionFilter<T>
 where
 	<T as frame_system::Config>::Call: GetCallMetadata,
 {
@@ -130,6 +130,6 @@ where
 			function_name,
 			pallet_name,
 		} = call.get_call_metadata();
-		PausedTransactions::<T>::get((pallet_name.as_bytes(), function_name.as_bytes())).is_none()
+		PausedTransactions::<T>::contains_key((pallet_name.as_bytes(), function_name.as_bytes()))
 	}
 }
