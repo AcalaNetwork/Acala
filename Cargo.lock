@@ -4198,6 +4198,7 @@ dependencies = [
  "module-nominees-election",
  "module-polkadot-bridge",
  "module-prices",
+ "module-relaychain",
  "module-session-manager",
  "module-staking-pool",
  "module-staking-pool-rpc-runtime-api",
@@ -5131,6 +5132,7 @@ dependencies = [
  "module-nominees-election",
  "module-polkadot-bridge",
  "module-prices",
+ "module-relaychain",
  "module-session-manager",
  "module-staking-pool",
  "module-staking-pool-rpc-runtime-api",
@@ -5763,20 +5765,24 @@ name = "module-homa-lite"
 version = "1.5.0"
 dependencies = [
  "acala-primitives",
+ "cumulus-primitives-core",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
  "module-currencies",
+ "module-relaychain",
  "module-support",
  "orml-tokens",
  "orml-traits",
  "pallet-balances",
+ "pallet-xcm",
  "parity-scale-codec",
  "sp-core",
  "sp-io",
  "sp-runtime",
  "sp-std",
  "xcm",
+ "xcm-executor",
 ]
 
 [[package]]
@@ -5946,6 +5952,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "module-relaychain"
+version = "1.4.1"
+dependencies = [
+ "acala-primitives",
+ "cumulus-primitives-core",
+ "frame-support",
+ "frame-system",
+ "module-support",
+ "parity-scale-codec",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "xcm",
+]
+
+[[package]]
 name = "module-session-manager"
 version = "1.5.0"
 dependencies = [
@@ -6021,6 +6045,7 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
+ "xcm",
 ]
 
 [[package]]
@@ -9872,6 +9897,7 @@ dependencies = [
  "pallet-recovery",
  "pallet-scheduler",
  "pallet-session",
+ "pallet-staking",
  "pallet-sudo",
  "pallet-timestamp",
  "pallet-tips",

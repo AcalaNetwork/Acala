@@ -396,7 +396,7 @@ mod karura_only_tests {
 			// Final parachain balance is: unbond_withdrew($1000) + initial_endowment($2) - xcm_fee
 			assert_eq!(
 				kusama_runtime::Balances::free_balance(&parachain_account.clone()),
-				1_001_999_659_315_675
+				1_001_999_400_000_000
 			);
 		});
 	}
