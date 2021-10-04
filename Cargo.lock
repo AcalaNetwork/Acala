@@ -6957,6 +6957,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-bridge-messages"
+version = "0.1.0"
+source = "git+https://github.com/paritytech//polkadot?rev=aeea9b7bd81919e014f7621f6c4b2eb9709d918f#aeea9b7bd81919e014f7621f6c4b2eb9709d918f"
+dependencies = [
+ "bitvec 0.20.4",
+ "bp-message-dispatch",
+ "bp-messages",
+ "bp-rialto",
+ "bp-runtime",
+ "frame-support",
+ "frame-system",
+ "log",
+ "num-traits",
+ "parity-scale-codec",
+ "serde",
+ "sp-core",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-chainlink-feed"
 version = "0.1.0"
 source = "git+https://github.com/smartcontractkit/chainlink-polkadot#03edf5f73503432e23c938a47e877902e743da50"
