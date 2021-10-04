@@ -25,6 +25,7 @@ use crate as transaction_payment;
 use frame_support::{
 	construct_runtime, ord_parameter_types, parameter_types, weights::WeightToFeeCoefficients, PalletId,
 };
+use frame_system::EnsureSignedBy;
 use orml_traits::parameter_type_with_key;
 use primitives::{Amount, ReserveIdentifier, TokenSymbol, TradingPair};
 use smallvec::smallvec;
@@ -54,7 +55,7 @@ impl Get<frame_system::limits::BlockWeights> for BlockWeights {
 		frame_system::limits::BlockWeights::builder()
 			.base_block(0)
 			.for_class(DispatchClass::all(), |weights| {
-				weights.base_extrinsic = EXTRINSIC_BASE_WEIGHT.with(|v| *v.borrow()).into();
+				weights.base_extrinsic = EXTRINSIC_BASE_WEIGHT.with(|v| *v.borrow());
 			})
 			.for_class(DispatchClass::non_mandatory(), |weights| {
 				weights.max_total = 1024.into();
@@ -138,6 +139,8 @@ impl module_currencies::Config for Runtime {
 	type WeightInfo = ();
 	type AddressMapping = MockAddressMapping;
 	type EVMBridge = ();
+	type SweepOrigin = EnsureSignedBy<Zero, AccountId>;
+	type OnDust = ();
 }
 
 thread_local! {

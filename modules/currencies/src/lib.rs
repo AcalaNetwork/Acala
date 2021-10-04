@@ -36,7 +36,7 @@ use orml_traits::{
 	arithmetic::{Signed, SimpleArithmetic},
 	currency::TransferAll,
 	BalanceStatus, BasicCurrency, BasicCurrencyExtended, BasicLockableCurrency, BasicReservableCurrency,
-	LockIdentifier, MultiCurrency, MultiCurrencyExtended, MultiLockableCurrency, MultiReservableCurrency,
+	LockIdentifier, MultiCurrency, MultiCurrencyExtended, MultiLockableCurrency, MultiReservableCurrency, OnDust,
 };
 use primitives::{evm::EvmAddress, CurrencyId};
 use sp_io::hashing::blake2_256;
@@ -48,6 +48,7 @@ use sp_std::{
 	convert::{TryFrom, TryInto},
 	fmt::Debug,
 	marker, result,
+	vec::Vec,
 };
 use support::{AddressMapping, EVMBridge, InvokeContext};
 
@@ -90,6 +91,12 @@ pub mod module {
 		/// Mapping from address to account id.
 		type AddressMapping: AddressMapping<Self::AccountId>;
 		type EVMBridge: EVMBridge<Self::AccountId, BalanceOf<Self>>;
+
+		/// The AccountId that can perform a sweep dust.
+		type SweepOrigin: EnsureOrigin<Self::Origin>;
+
+		/// Handler to burn or transfer account's dust
+		type OnDust: OnDust<Self::AccountId, CurrencyId, BalanceOf<Self>>;
 	}
 
 	#[pallet::error]
@@ -102,6 +109,8 @@ pub mod module {
 		Erc20InvalidOperation,
 		/// EVM account not found
 		EvmAccountNotFound,
+		/// Real origin not found
+		RealOriginNotFound,
 	}
 
 	#[pallet::event]
@@ -116,6 +125,8 @@ pub mod module {
 		Deposited(CurrencyIdOf<T>, T::AccountId, BalanceOf<T>),
 		/// Withdraw success. \[currency_id, who, amount\]
 		Withdrawn(CurrencyIdOf<T>, T::AccountId, BalanceOf<T>),
+		/// Dust swept. \[currency_id, who, amount\]
+		DustSwept(CurrencyIdOf<T>, T::AccountId, BalanceOf<T>),
 	}
 
 	#[pallet::pallet]
@@ -176,6 +187,33 @@ pub mod module {
 			<Self as MultiCurrencyExtended<T::AccountId>>::update_balance(currency_id, &dest, amount)?;
 			Ok(())
 		}
+
+		#[pallet::weight(T::WeightInfo::sweep_dust(accounts.len() as u32))]
+		pub fn sweep_dust(
+			origin: OriginFor<T>,
+			currency_id: CurrencyIdOf<T>,
+			accounts: Vec<T::AccountId>,
+		) -> DispatchResult {
+			T::SweepOrigin::ensure_origin(origin)?;
+			if let CurrencyId::Erc20(_) = currency_id {
+				return Err(Error::<T>::Erc20InvalidOperation.into());
+			}
+			for account in accounts {
+				let free_balance = Self::free_balance(currency_id, &account);
+				if free_balance.is_zero() {
+					continue;
+				}
+				let total_balance = Self::total_balance(currency_id, &account);
+				if free_balance != total_balance {
+					continue;
+				}
+				if free_balance < Self::minimum_balance(currency_id) {
+					T::OnDust::on_dust(&account, currency_id, free_balance);
+					Self::deposit_event(Event::DustSwept(currency_id, account, free_balance));
+				}
+			}
+			Ok(())
+		}
 	}
 }
 
@@ -207,7 +245,7 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 	fn total_balance(currency_id: Self::CurrencyId, who: &T::AccountId) -> Self::Balance {
 		match currency_id {
 			CurrencyId::Erc20(contract) => {
-				if let Some(address) = T::AddressMapping::get_evm_address(&who) {
+				if let Some(address) = T::AddressMapping::get_evm_address(who) {
 					let context = InvokeContext {
 						contract,
 						sender: Default::default(),
@@ -225,7 +263,7 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 	fn free_balance(currency_id: Self::CurrencyId, who: &T::AccountId) -> Self::Balance {
 		match currency_id {
 			CurrencyId::Erc20(contract) => {
-				if let Some(address) = T::AddressMapping::get_evm_address(&who) {
+				if let Some(address) = T::AddressMapping::get_evm_address(who) {
 					let context = InvokeContext {
 						contract,
 						sender: Default::default(),
@@ -243,7 +281,7 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 	fn ensure_can_withdraw(currency_id: Self::CurrencyId, who: &T::AccountId, amount: Self::Balance) -> DispatchResult {
 		match currency_id {
 			CurrencyId::Erc20(contract) => {
-				let address = T::AddressMapping::get_evm_address(&who).ok_or(Error::<T>::EvmAccountNotFound)?;
+				let address = T::AddressMapping::get_evm_address(who).ok_or(Error::<T>::EvmAccountNotFound)?;
 				let balance = T::EVMBridge::balance_of(
 					InvokeContext {
 						contract,
@@ -273,10 +311,10 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 
 		match currency_id {
 			CurrencyId::Erc20(contract) => {
-				let sender = T::AddressMapping::get_evm_address(&from).ok_or(Error::<T>::EvmAccountNotFound)?;
-				let origin = T::EVMBridge::get_origin().unwrap_or_default();
+				let sender = T::AddressMapping::get_evm_address(from).ok_or(Error::<T>::EvmAccountNotFound)?;
+				let origin = T::EVMBridge::get_origin().ok_or(Error::<T>::RealOriginNotFound)?;
 				let origin_address = T::AddressMapping::get_or_create_evm_address(&origin);
-				let address = T::AddressMapping::get_or_create_evm_address(&to);
+				let address = T::AddressMapping::get_or_create_evm_address(to);
 				T::EVMBridge::transfer(
 					InvokeContext {
 						contract,
@@ -410,7 +448,7 @@ impl<T: Config> MultiReservableCurrency<T::AccountId> for Pallet<T> {
 	fn reserved_balance(currency_id: Self::CurrencyId, who: &T::AccountId) -> Self::Balance {
 		match currency_id {
 			CurrencyId::Erc20(contract) => {
-				if let Some(address) = T::AddressMapping::get_evm_address(&who) {
+				if let Some(address) = T::AddressMapping::get_evm_address(who) {
 					return T::EVMBridge::balance_of(
 						InvokeContext {
 							contract,
@@ -434,7 +472,7 @@ impl<T: Config> MultiReservableCurrency<T::AccountId> for Pallet<T> {
 				if value.is_zero() {
 					return Ok(());
 				}
-				let address = T::AddressMapping::get_evm_address(&who).ok_or(Error::<T>::EvmAccountNotFound)?;
+				let address = T::AddressMapping::get_evm_address(who).ok_or(Error::<T>::EvmAccountNotFound)?;
 				T::EVMBridge::transfer(
 					InvokeContext {
 						contract,
@@ -456,7 +494,7 @@ impl<T: Config> MultiReservableCurrency<T::AccountId> for Pallet<T> {
 				if value.is_zero() {
 					return value;
 				}
-				if let Some(address) = T::AddressMapping::get_evm_address(&who) {
+				if let Some(address) = T::AddressMapping::get_evm_address(who) {
 					let sender = reserve_address(address);
 					let reserved_balance = T::EVMBridge::balance_of(
 						InvokeContext {
@@ -510,8 +548,8 @@ impl<T: Config> MultiReservableCurrency<T::AccountId> for Pallet<T> {
 				}
 
 				let slashed_address =
-					T::AddressMapping::get_evm_address(&slashed).ok_or(Error::<T>::EvmAccountNotFound)?;
-				let beneficiary_address = T::AddressMapping::get_or_create_evm_address(&beneficiary);
+					T::AddressMapping::get_evm_address(slashed).ok_or(Error::<T>::EvmAccountNotFound)?;
+				let beneficiary_address = T::AddressMapping::get_or_create_evm_address(beneficiary);
 
 				let slashed_reserve_address = reserve_address(slashed_address);
 				let beneficiary_reserve_address = reserve_address(beneficiary_address);
@@ -848,4 +886,21 @@ impl<T: Config> TransferAll<T::AccountId> for Pallet<T> {
 fn reserve_address(address: EvmAddress) -> EvmAddress {
 	let payload = (b"erc20:", address);
 	EvmAddress::from_slice(&payload.using_encoded(blake2_256)[0..20])
+}
+
+pub struct TransferDust<T, GetAccountId>(marker::PhantomData<(T, GetAccountId)>);
+impl<T: Config, GetAccountId> OnDust<T::AccountId, CurrencyIdOf<T>, BalanceOf<T>> for TransferDust<T, GetAccountId>
+where
+	T: Config,
+	GetAccountId: Get<T::AccountId>,
+{
+	fn on_dust(who: &T::AccountId, currency_id: CurrencyIdOf<T>, amount: BalanceOf<T>) {
+		// transfer the dust to treasury account, ignore the result,
+		// if failed will leave some dust which still could be recycled.
+		let _ = match currency_id {
+			CurrencyId::Erc20(_) => Ok(()),
+			id if id == T::GetNativeCurrencyId::get() => T::NativeCurrency::transfer(who, &GetAccountId::get(), amount),
+			_ => T::MultiCurrency::transfer(currency_id, who, &GetAccountId::get(), amount),
+		};
+	}
 }

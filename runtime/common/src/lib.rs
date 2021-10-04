@@ -20,10 +20,10 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use codec::{Decode, Encode};
+use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	parameter_types,
-	traits::{Contains, MaxEncodedLen},
+	traits::Contains,
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, WEIGHT_PER_MILLIS},
 		DispatchClass, Weight,
@@ -40,9 +40,7 @@ use sp_core::{
 	H160,
 };
 use sp_runtime::{
-	// TODO: move after https://github.com/paritytech/substrate/pull/9209
-	offchain::storage_lock::BlockNumberProvider,
-	traits::Convert,
+	traits::{BlockNumberProvider, Convert},
 	transaction_validity::TransactionPriority,
 	Perbill,
 };
@@ -57,7 +55,7 @@ pub use precompile::{
 	StateRentPrecompile,
 };
 pub use primitives::{
-	currency::{TokenInfo, ACA, AUSD, DOT, KAR, KSM, KUSD, LDOT, LKSM, RENBTC},
+	currency::{TokenInfo, ACA, AUSD, BNC, DOT, KAR, KSM, KUSD, LDOT, LKSM, RENBTC, VSKSM},
 	AccountId,
 };
 
@@ -225,6 +223,9 @@ pub type EnsureRootOrThreeFourthsGeneralCouncil = EnsureOneOf<
 	EnsureRoot<AccountId>,
 	pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, GeneralCouncilInstance>,
 >;
+
+pub type EnsureRootOrOneGeneralCouncil =
+	EnsureOneOf<AccountId, EnsureRoot<AccountId>, pallet_collective::EnsureMember<AccountId, GeneralCouncilInstance>>;
 
 // Financial Council
 pub type EnsureRootOrAllFinancialCouncil = EnsureOneOf<

@@ -152,6 +152,7 @@ impl<T: Config> CurrencyIdMapping for EvmCurrencyIdMapping<T> {
 				.filter(|v| v.address == address)
 				.map(|v| v.name),
 			CurrencyId::ChainSafe(_) => None,
+			CurrencyId::StableAssetPoolToken(_) => None,
 		}?;
 
 		// More than 32 bytes will be truncated.
@@ -193,6 +194,7 @@ impl<T: Config> CurrencyIdMapping for EvmCurrencyIdMapping<T> {
 				.filter(|v| v.address == address)
 				.map(|v| v.symbol),
 			CurrencyId::ChainSafe(_) => None,
+			CurrencyId::StableAssetPoolToken(_) => None,
 		}?;
 
 		// More than 32 bytes will be truncated.
@@ -223,6 +225,7 @@ impl<T: Config> CurrencyIdMapping for EvmCurrencyIdMapping<T> {
 				.filter(|v| v.address == address)
 				.map(|v| v.decimals),
 			CurrencyId::ChainSafe(_) => None,
+			CurrencyId::StableAssetPoolToken(_) => None,
 		}
 	}
 

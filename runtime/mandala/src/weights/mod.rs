@@ -41,10 +41,10 @@ pub mod module_transaction_payment;
 
 pub mod orml_auction;
 pub mod orml_authority;
-pub mod orml_gradually_update;
 pub mod orml_oracle;
 pub mod orml_tokens;
 pub mod orml_vesting;
 
 pub mod ecosystem_chainlink_adaptor;
 pub mod ecosystem_chainsafe;
+pub mod nutsfinance_stable_asset;

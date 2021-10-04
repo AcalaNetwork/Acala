@@ -330,6 +330,14 @@ pub fn run() -> sc_cli::Result<()> {
 		Some(Subcommand::PurgeChain(cmd)) => {
 			let runner = cli.create_runner(cmd)?;
 			runner.sync_run(|config| {
+				// cumulus_client_cli::PurgeCommand fails to account for whether we are running --dev
+				let is_dev = cmd.base.shared_params.is_dev();
+
+				// uses base instead to run substrate's sc_cli::PurgeChain command
+				if is_dev {
+					return cmd.base.run(config.database);
+				}
+
 				let polkadot_cli = RelayChainCli::new(
 					&config,
 					[RelayChainCli::executable_name()]

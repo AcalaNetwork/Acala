@@ -303,7 +303,7 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(T::WeightInfo::set_desired_candidates())]
-		pub fn set_desired_candidates(origin: OriginFor<T>, max: u32) -> DispatchResult {
+		pub fn set_desired_candidates(origin: OriginFor<T>, #[pallet::compact] max: u32) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
 			if max > T::MaxCandidates::get() {
 				Err(Error::<T>::MaxCandidatesExceeded)?;
@@ -314,7 +314,7 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(T::WeightInfo::set_candidacy_bond())]
-		pub fn set_candidacy_bond(origin: OriginFor<T>, bond: BalanceOf<T>) -> DispatchResult {
+		pub fn set_candidacy_bond(origin: OriginFor<T>, #[pallet::compact] bond: BalanceOf<T>) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
 			<CandidacyBond<T>>::put(&bond);
 			Self::deposit_event(Event::NewCandidacyBond(bond));
@@ -413,8 +413,8 @@ pub mod pallet {
 				(length as u32) < Self::desired_candidates(),
 				Error::<T>::MaxCandidatesExceeded
 			);
-			ensure!(!Self::invulnerables().contains(&who), Error::<T>::AlreadyInvulnerable);
-			ensure!(T::ValidatorSet::is_registered(&who), Error::<T>::RequireSessionKey);
+			ensure!(!Self::invulnerables().contains(who), Error::<T>::AlreadyInvulnerable);
+			ensure!(T::ValidatorSet::is_registered(who), Error::<T>::RequireSessionKey);
 
 			<Candidates<T>>::try_mutate(|candidates| -> Result<usize, DispatchError> {
 				ensure!(!candidates.contains(who), Error::<T>::AlreadyCandidate);
@@ -422,7 +422,7 @@ pub mod pallet {
 				candidates
 					.try_insert(who.clone())
 					.map_err(|_| Error::<T>::MaxCandidatesExceeded)?;
-				T::Currency::ensure_reserved_named(&RESERVE_ID, &who, deposit)?;
+				T::Currency::ensure_reserved_named(&RESERVE_ID, who, deposit)?;
 				Ok(candidates.len())
 			})
 		}
@@ -491,7 +491,7 @@ pub mod pallet {
 			let mut collators = vec![];
 
 			candidates.iter().for_each(|candidate| {
-				if validators.contains(&candidate) {
+				if validators.contains(candidate) {
 					collators.push(candidate);
 					<SessionPoints<T>>::insert(&candidate, 0);
 				}

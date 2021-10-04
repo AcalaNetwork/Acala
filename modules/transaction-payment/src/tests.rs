@@ -139,8 +139,8 @@ fn signed_extension_transaction_payment_work() {
 
 			let refund = 200; // 1000 - 800
 			assert_eq!(Currencies::free_balance(ACA, &ALICE), 100000 - fee + refund);
-			assert_eq!(FEE_UNBALANCED_AMOUNT.with(|a| a.borrow().clone()), fee - refund);
-			assert_eq!(TIP_UNBALANCED_AMOUNT.with(|a| a.borrow().clone()), 0);
+			assert_eq!(FEE_UNBALANCED_AMOUNT.with(|a| *a.borrow()), fee - refund);
+			assert_eq!(TIP_UNBALANCED_AMOUNT.with(|a| *a.borrow()), 0);
 
 			FEE_UNBALANCED_AMOUNT.with(|a| *a.borrow_mut() = 0);
 
@@ -156,8 +156,8 @@ fn signed_extension_transaction_payment_work() {
 				&Ok(())
 			));
 			assert_eq!(Currencies::free_balance(ACA, &CHARLIE), 100000 - fee - 5 + refund);
-			assert_eq!(FEE_UNBALANCED_AMOUNT.with(|a| a.borrow().clone()), fee - refund);
-			assert_eq!(TIP_UNBALANCED_AMOUNT.with(|a| a.borrow().clone()), 5);
+			assert_eq!(FEE_UNBALANCED_AMOUNT.with(|a| *a.borrow()), fee - refund);
+			assert_eq!(TIP_UNBALANCED_AMOUNT.with(|a| *a.borrow()), 5);
 		});
 }
 

@@ -182,9 +182,9 @@ where
 					.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
 					.map_err(|err| internal_err(format!("execution fatal: {:?}", err)))?;
 
-				error_on_execution_failure(&info.exit_reason, &info.output)?;
+				error_on_execution_failure(&info.exit_reason, &info.value)?;
 
-				Ok(Bytes(info.output))
+				Ok(Bytes(info.value))
 			}
 			None => {
 				let info = api
@@ -200,9 +200,9 @@ where
 					.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
 					.map_err(|err| internal_err(format!("execution fatal: {:?}", err)))?;
 
-				error_on_execution_failure(&info.exit_reason, &info.output)?;
+				error_on_execution_failure(&info.exit_reason, &[])?;
 
-				Ok(Bytes(info.output[..].to_vec()))
+				Ok(Bytes(info.value[..].to_vec()))
 			}
 		}
 	}
@@ -233,8 +233,6 @@ where
 		};
 
 		let calculate_gas_used = |request| -> Result<(U256, i32)> {
-			let hash = self.client.info().best_hash;
-
 			let CallRequest {
 				from,
 				to,
@@ -278,7 +276,7 @@ where
 						.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
 						.map_err(|err| internal_err(format!("execution fatal: {:?}", err)))?;
 
-					error_on_execution_failure(&info.exit_reason, &info.output)?;
+					error_on_execution_failure(&info.exit_reason, &info.value)?;
 
 					(info.used_gas, info.used_storage)
 				}

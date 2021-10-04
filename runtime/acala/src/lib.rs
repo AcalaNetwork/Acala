@@ -50,6 +50,7 @@ use sp_version::RuntimeVersion;
 
 use frame_system::{EnsureRoot, RawOrigin};
 use module_currencies::{BasicCurrencyAdapter, Currency};
+use module_evm::Runner;
 use module_evm::{CallInfo, CreateInfo};
 use module_evm_accounts::EvmAddressMapping;
 use module_evm_manager::EvmCurrencyIdMapping;
@@ -79,9 +80,8 @@ mod weights;
 pub use frame_support::{
 	construct_runtime, log, parameter_types,
 	traits::{
-		Contains, ContainsLengthBound, Currency as PalletCurrency, EnsureOrigin, Filter, Get, Imbalance,
-		InstanceFilter, IsType, KeyOwnerProofSystem, LockIdentifier, MaxEncodedLen, OnUnbalanced, Randomness,
-		SortedMembers, U128CurrencyToVote,
+		Contains, ContainsLengthBound, Currency as PalletCurrency, EnsureOrigin, Get, Imbalance, InstanceFilter,
+		IsType, KeyOwnerProofSystem, LockIdentifier, OnUnbalanced, Randomness, SortedMembers, U128CurrencyToVote,
 	},
 	weights::{constants::RocksDbWeight, IdentityFee, Weight},
 	PalletId, RuntimeDebug, StorageValue,
@@ -95,20 +95,21 @@ pub use sp_runtime::{Perbill, Percent, Permill, Perquintill};
 pub use authority::AuthorityConfigImpl;
 pub use constants::{fee::*, time::*};
 pub use primitives::{
-	evm::EstimateResourcesRequest, AccountId, AccountIndex, Amount, AuctionId, AuthoritysOriginId, Balance,
+	evm::EstimateResourcesRequest, AccountId, AccountIndex, Address, Amount, AuctionId, AuthoritysOriginId, Balance,
 	BlockNumber, CurrencyId, DataProviderId, EraIndex, Hash, Moment, Nonce, ReserveIdentifier, Share, Signature,
 	TokenSymbol, TradingPair,
 };
 pub use runtime_common::{
 	cent, dollar, microcent, millicent, CurveFeeModel, EnsureRootOrAllGeneralCouncil,
 	EnsureRootOrAllTechnicalCommittee, EnsureRootOrHalfFinancialCouncil, EnsureRootOrHalfGeneralCouncil,
-	EnsureRootOrHalfHomaCouncil, EnsureRootOrOneThirdsTechnicalCommittee, EnsureRootOrThreeFourthsGeneralCouncil,
-	EnsureRootOrTwoThirdsGeneralCouncil, EnsureRootOrTwoThirdsTechnicalCommittee, ExchangeRate,
-	FinancialCouncilInstance, FinancialCouncilMembershipInstance, GasToWeight, GeneralCouncilInstance,
-	GeneralCouncilMembershipInstance, HomaCouncilInstance, HomaCouncilMembershipInstance, OffchainSolutionWeightLimit,
-	OperatorMembershipInstanceAcala, OperatorMembershipInstanceBand, Price, ProxyType, Rate, Ratio,
-	RelaychainBlockNumberProvider, RuntimeBlockLength, RuntimeBlockWeights, SystemContractsFilter,
-	TechnicalCommitteeInstance, TechnicalCommitteeMembershipInstance, TimeStampedPrice, ACA, AUSD, DOT, LDOT, RENBTC,
+	EnsureRootOrHalfHomaCouncil, EnsureRootOrOneGeneralCouncil, EnsureRootOrOneThirdsTechnicalCommittee,
+	EnsureRootOrThreeFourthsGeneralCouncil, EnsureRootOrTwoThirdsGeneralCouncil,
+	EnsureRootOrTwoThirdsTechnicalCommittee, ExchangeRate, FinancialCouncilInstance,
+	FinancialCouncilMembershipInstance, GasToWeight, GeneralCouncilInstance, GeneralCouncilMembershipInstance,
+	HomaCouncilInstance, HomaCouncilMembershipInstance, OffchainSolutionWeightLimit, OperatorMembershipInstanceAcala,
+	OperatorMembershipInstanceBand, Price, ProxyType, Rate, Ratio, RelaychainBlockNumberProvider, RuntimeBlockLength,
+	RuntimeBlockWeights, SystemContractsFilter, TechnicalCommitteeInstance, TechnicalCommitteeMembershipInstance,
+	TimeStampedPrice, ACA, AUSD, DOT, LDOT, RENBTC,
 };
 
 mod authority;
@@ -215,6 +216,7 @@ impl frame_system::Config for Runtime {
 
 impl pallet_aura::Config for Runtime {
 	type AuthorityId = AuraId;
+	type DisabledValidators = ();
 }
 
 parameter_types! {
@@ -820,6 +822,8 @@ impl module_currencies::Config for Runtime {
 	type WeightInfo = weights::module_currencies::WeightInfo<Runtime>;
 	type AddressMapping = EvmAddressMapping<Runtime>;
 	type EVMBridge = EVMBridge;
+	type SweepOrigin = EnsureRootOrOneGeneralCouncil;
+	type OnDust = module_currencies::TransferDust<Runtime, TreasuryAccount>;
 }
 
 pub struct EnsureRootOrTreasury;
@@ -876,23 +880,6 @@ impl pallet_scheduler::Config for Runtime {
 	type ScheduleOrigin = EnsureRoot<AccountId>;
 	type MaxScheduledPerBlock = MaxScheduledPerBlock;
 	type WeightInfo = ();
-}
-
-parameter_types! {
-	pub const UpdateFrequency: BlockNumber = 10;
-	pub const MaxGraduallyUpdate: u32 = 100;
-	pub const MaxStorageKeyBytes: u32 = 1024;
-	pub const MaxStorageValueBytes: u32 = 1024;
-}
-
-impl orml_gradually_update::Config for Runtime {
-	type Event = Event;
-	type UpdateFrequency = UpdateFrequency;
-	type DispatchOrigin = EnsureRoot<AccountId>;
-	type WeightInfo = weights::orml_gradually_update::WeightInfo<Runtime>;
-	type MaxGraduallyUpdate = MaxGraduallyUpdate;
-	type MaxStorageKeyBytes = MaxStorageKeyBytes;
-	type MaxStorageValueBytes = MaxStorageValueBytes;
 }
 
 parameter_types! {
@@ -1131,7 +1118,8 @@ impl module_evm_manager::Config for Runtime {
 impl orml_rewards::Config for Runtime {
 	type Share = Balance;
 	type Balance = Balance;
-	type PoolId = module_incentives::PoolId<AccountId>;
+	type PoolId = module_incentives::PoolId;
+	type CurrencyId = CurrencyId;
 	type Handler = Incentives;
 }
 
@@ -1141,11 +1129,8 @@ parameter_types! {
 
 impl module_incentives::Config for Runtime {
 	type Event = Event;
-	type RelaychainAccountId = AccountId;
-	type NativeRewardsSource = UnreleasedNativeVaultAccountId;
-	type NativeCurrencyId = GetNativeCurrencyId;
+	type RewardsSource = UnreleasedNativeVaultAccountId;
 	type StableCurrencyId = GetStableCurrencyId;
-	type LiquidCurrencyId = GetLiquidCurrencyId;
 	type AccumulatePeriod = AccumulatePeriod;
 	type UpdateOrigin = EnsureRootOrThreeFourthsGeneralCouncil;
 	type CDPTreasury = CdpTreasury;
@@ -1234,8 +1219,8 @@ impl module_homa_validator_list::Config for Runtime {
 	type OnSlash = module_staking_pool::OnSlash<Runtime>;
 	type LiquidStakingExchangeRateProvider = LiquidStakingExchangeRateProvider;
 	type WeightInfo = ();
-	type OnIncreaseGuarantee = module_incentives::OnIncreaseGuarantee<Runtime>;
-	type OnDecreaseGuarantee = module_incentives::OnDecreaseGuarantee<Runtime>;
+	type OnIncreaseGuarantee = ();
+	type OnDecreaseGuarantee = ();
 	type BlockNumberProvider = RelaychainBlockNumberProvider<Runtime>;
 }
 
@@ -1329,7 +1314,6 @@ parameter_types! {
 	pub const ChainId: u64 = 787;
 	pub const NewContractExtraBytes: u32 = 10_000;
 	pub StorageDepositPerByte: Balance = microcent(ACA);
-	pub const MaxCodeSize: u32 = 60 * 1024;
 	pub NetworkContractSource: H160 = H160::from_low_u64_be(0);
 	pub DeveloperDeposit: Balance = dollar(ACA);
 	pub DeploymentFee: Balance = dollar(ACA);
@@ -1373,7 +1357,6 @@ impl module_evm::Config for Runtime {
 	type TransferAll = Currencies;
 	type NewContractExtraBytes = NewContractExtraBytes;
 	type StorageDepositPerByte = StorageDepositPerByte;
-	type MaxCodeSize = MaxCodeSize;
 	type Event = Event;
 	type Precompiles = runtime_common::AllPrecompiles<
 		SystemContractsFilter,
@@ -1393,6 +1376,8 @@ impl module_evm::Config for Runtime {
 	type DeploymentFee = DeploymentFee;
 	type TreasuryAccount = TreasuryAccount;
 	type FreeDeploymentOrigin = EnsureRootOrHalfGeneralCouncil;
+	type Runner = module_evm::runner::stack::Runner<Self>;
+	type FindAuthor = pallet_session::FindAccountFromAuthorIndex<Self, Aura>;
 	type WeightInfo = weights::module_evm::WeightInfo<Runtime>;
 }
 
@@ -1599,7 +1584,6 @@ construct_runtime!(
 		Proxy: pallet_proxy::{Pallet, Call, Storage, Event<T>} = 33,
 
 		Indices: pallet_indices::{Pallet, Call, Storage, Config<T>, Event<T>} = 40,
-		GraduallyUpdate: orml_gradually_update::{Pallet, Storage, Call, Event<T>} = 41,
 
 		// Governance
 		GeneralCouncil: pallet_collective::<Instance1>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 50,
@@ -1682,8 +1666,6 @@ construct_runtime!(
 	}
 );
 
-/// The address format for describing accounts.
-pub type Address = sp_runtime::MultiAddress<AccountId, AccountIndex>;
 /// Block header type as expected by this runtime.
 pub type Header = generic::Header<BlockNumber, BlakeTwo256>;
 /// Block type as expected by this runtime.
@@ -1868,7 +1850,7 @@ impl_runtime_apis! {
 				None
 			};
 
-			module_evm::Runner::<Runtime>::call(
+			module_evm::runner::stack::Runner::<Runtime>::call(
 				from,
 				from,
 				to,
@@ -1896,7 +1878,7 @@ impl_runtime_apis! {
 				None
 			};
 
-			module_evm::Runner::<Runtime>::create(
+			module_evm::runner::stack::Runner::<Runtime>::create(
 				from,
 				data,
 				value,
@@ -1955,6 +1937,45 @@ impl_runtime_apis! {
 	// benchmarks for acala modules
 	#[cfg(feature = "runtime-benchmarks")]
 	impl frame_benchmarking::Benchmark<Block> for Runtime {
+		fn benchmark_metadata(extra: bool) -> (
+			Vec<frame_benchmarking::BenchmarkList>,
+			Vec<frame_support::traits::StorageInfo>,
+		) {
+			use frame_benchmarking::{list_benchmark, Benchmarking, BenchmarkList};
+			use frame_support::traits::StorageInfoTrait;
+			// use orml_benchmarking::list_benchmark as orml_list_benchmark;
+
+			use module_nft::benchmarking::Pallet as NftBench;
+
+			let mut list = Vec::<BenchmarkList>::new();
+
+			list_benchmark!(list, extra, module_nft, NftBench::<Runtime>);
+
+			// orml_list_benchmark!(list, extra, dex, benchmarking::dex);
+			// orml_list_benchmark!(list, extra, auction_manager, benchmarking::auction_manager);
+			// orml_list_benchmark!(list, extra, cdp_engine, benchmarking::cdp_engine);
+			// orml_list_benchmark!(list, extra, collator_selection, benchmarking::collator_selection);
+			// orml_list_benchmark!(list, extra, module_nominees_election, benchmarking::nominees_election);
+			// orml_list_benchmark!(list, extra, emergency_shutdown, benchmarking::emergency_shutdown);
+			// orml_list_benchmark!(list, extra, honzon, benchmarking::honzon);
+			// orml_list_benchmark!(list, extra, cdp_treasury, benchmarking::cdp_treasury);
+			// orml_list_benchmark!(list, extra, transaction_payment, benchmarking::transaction_payment);
+			// orml_list_benchmark!(list, extra, incentives, benchmarking::incentives);
+			// orml_list_benchmark!(list, extra, prices, benchmarking::prices);
+			// orml_list_benchmark!(list, extra, module_session_manager, benchmarking::session_manager);
+
+			// orml_list_benchmark!(list, extra, orml_tokens, benchmarking::tokens);
+			// orml_list_benchmark!(list, extra, orml_vesting, benchmarking::vesting);
+			// orml_list_benchmark!(list, extra, orml_auction, benchmarking::auction);
+			// orml_list_benchmark!(list, extra, orml_currencies, benchmarking::currencies);
+			// orml_list_benchmark!(list, extra, orml_authority, benchmarking::authority);
+			// orml_list_benchmark!(list, extra, orml_oracle, benchmarking::oracle);
+
+			let storage_info = AllPalletsWithSystem::storage_info();
+
+			return (list, storage_info)
+		}
+
 		fn dispatch_benchmark(
 			config: frame_benchmarking::BenchmarkConfig
 		) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString> {
@@ -2001,9 +2022,7 @@ impl_runtime_apis! {
 			// orml_add_benchmark!(params, batches, orml_vesting, benchmarking::vesting);
 			// orml_add_benchmark!(params, batches, orml_auction, benchmarking::auction);
 			// orml_add_benchmark!(params, batches, orml_currencies, benchmarking::currencies);
-
 			// orml_add_benchmark!(params, batches, orml_authority, benchmarking::authority);
-			// orml_add_benchmark!(params, batches, orml_gradually_update, benchmarking::gradually_update);
 			// orml_add_benchmark!(params, batches, orml_oracle, benchmarking::oracle);
 
 			if batches.is_empty() { return Err("Benchmark not found for this module.".into()) }
@@ -2030,7 +2049,7 @@ impl cumulus_pallet_parachain_system::CheckInherents<Block> for CheckInherents {
 		.create_inherent_data()
 		.expect("Could not create the timestamp inherent data");
 
-		inherent_data.check_extrinsics(&block)
+		inherent_data.check_extrinsics(block)
 	}
 }
 
@@ -2076,6 +2095,16 @@ mod tests {
 					.checked_div(MaxCandidates::get())
 					.unwrap()
 			) > 0
+		);
+	}
+
+	#[test]
+	fn check_call_size() {
+		assert!(
+			core::mem::size_of::<Call>() <= 230,
+			"size of Call is more than 230 bytes: some calls have too big arguments, use Box to \
+			reduce the size of Call.
+			If the limit is too strong, maybe consider increasing the limit",
 		);
 	}
 }

@@ -36,7 +36,7 @@ fn mint_ren_btc(
 ) -> Result<DispatchResult, TransactionValidityError> {
 	<RenVmBridge as ValidateUnsigned>::validate_unsigned(
 		TransactionSource::External,
-		&Call::mint(who.clone(), p_hash, amount, n_hash, sig.clone()),
+		&Call::mint(who, p_hash, amount, n_hash, sig.clone()),
 	)?;
 
 	Ok(RenVmBridge::mint(Origin::none(), who, p_hash, amount, n_hash, sig))
@@ -57,27 +57,27 @@ fn burn_works() {
 		let issuer: H256 = hex!["d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d"].into();
 		assert_ok!(
 			mint_ren_btc(
-				issuer.clone(),
+				issuer,
 				hex!["4fe557069c2424260b9d0cca31049e70ede95c49964578044d80c74f3a118505"],
 				93802,
 				hex!["64c1212efd301721c9343fdf299f022778ea336608c1ae089136045b8d6f3e5c"],
 				EcdsaSignature::from_slice(&hex!["5566d8eb9fec05a6636381302ad7dd6b28a0ec62e6e45038fbb095c6503ee08a69a450c566ce60ccca1233d32c24a366176d189bbe5613ae633ce3ae4b6b9a7e1b"]),
 			)
 		);
-		assert_eq!(Balances::free_balance(issuer.clone()), 93802);
+		assert_eq!(Balances::free_balance(issuer), 93802);
 
 		let to: Vec<u8> = vec![2, 3, 4];
 		assert_eq!(RenVmBridge::burn_events(0), None);
-		assert_ok!(RenVmBridge::burn(Origin::signed(issuer.clone()), to.clone(), 1000));
+		assert_ok!(RenVmBridge::burn(Origin::signed(issuer), to.clone(), 1000));
 		assert_eq!(Balances::free_balance(&issuer), 92802);
 		assert_eq!(RenVmBridge::burn_events(0), Some((0, to.clone(), 1000)));
 		assert_eq!(RenVmBridge::next_burn_event_id(), 1);
 
 		System::set_block_number(15);
 
-		assert_ok!(RenVmBridge::burn(Origin::signed(issuer.clone()), to.clone(), 2000));
+		assert_ok!(RenVmBridge::burn(Origin::signed(issuer), to.clone(), 2000));
 		assert_eq!(Balances::free_balance(&issuer), 90802);
-		assert_eq!(RenVmBridge::burn_events(1), Some((15, to.clone(), 2000)));
+		assert_eq!(RenVmBridge::burn_events(1), Some((15, to, 2000)));
 		assert_eq!(RenVmBridge::next_burn_event_id(), 2);
 	});
 }
@@ -144,7 +144,7 @@ fn mint_works() {
 
 		assert_ok!(
 			mint_ren_btc(
-				to.clone(),
+				to,
 				hex!["67028f26328144de6ef80b8cd3b05e0cefb488762c340d1574c0542f752996cb"],
 				93963,
 				hex!["f6a75cc370a2dda6dfc8d016529766bb6099d7fa0d787d9fe5d3a7e60c9ac2a0"],
@@ -152,11 +152,11 @@ fn mint_works() {
 			)
 		);
 
-		assert_eq!(Balances::free_balance(to.clone()), 93963);
+		assert_eq!(Balances::free_balance(to), 93963);
 
 		assert_ok!(
 			mint_ren_btc(
-				to.clone(),
+				to,
 				hex!["425673f98610064b76dbd334783f45ea192f0e954db75ba2ae6b6058a8143d67"],
 				87266,
 				hex!["fe125f912d2de05e3e34b96a0ce8a8e35d9ed883e830b978871f3e1f5d393726"],
@@ -164,11 +164,11 @@ fn mint_works() {
 			)
 		);
 
-		assert_eq!(Balances::free_balance(to.clone()), 93963 + 87266);
+		assert_eq!(Balances::free_balance(to), 93963 + 87266);
 
 		assert_noop!(
 			mint_ren_btc(
-				to.clone(),
+				to,
 				hex!["425673f98610064b76dbd334783f45ea192f0e954db75ba2ae6b6058a8143d67"],
 				87266,
 				hex!["fe125f912d2de05e3e34b96a0ce8a8e35d9ed883e830b978871f3e1f5d393726"],
@@ -179,7 +179,7 @@ fn mint_works() {
 
 		assert_noop!(
 			mint_ren_btc(
-				to.clone(),
+				to,
 				hex!["425673f98610064b76dbd334783f45ea192f0e954db75ba2ae6b6058a8143d67"],
 				87266,
 				hex!["fe125f912d2de05e3e34b96a0ce8a8e35d9ed883e830b978871f3e1f5d393726"],

@@ -23,10 +23,11 @@ use super::*;
 use crate as nft;
 use codec::{Decode, Encode};
 use frame_support::{
-	construct_runtime, parameter_types,
-	traits::{Filter, InstanceFilter},
+	construct_runtime, ord_parameter_types, parameter_types,
+	traits::{Contains, InstanceFilter},
 	RuntimeDebug,
 };
+use frame_system::EnsureSignedBy;
 use orml_traits::parameter_type_with_key;
 use primitives::{Amount, Balance, BlockNumber, CurrencyId, ReserveIdentifier, TokenSymbol};
 use sp_core::{crypto::AccountId32, H256};
@@ -119,8 +120,8 @@ impl InstanceFilter<Call> for ProxyType {
 	}
 }
 pub struct BaseFilter;
-impl Filter<Call> for BaseFilter {
-	fn filter(c: &Call) -> bool {
+impl Contains<Call> for BaseFilter {
+	fn contains(c: &Call) -> bool {
 		match *c {
 			// Remark is used as a no-op call in the benchmarking
 			Call::System(SystemCall::remark(_)) => true,
@@ -152,6 +153,10 @@ parameter_type_with_key! {
 	};
 }
 
+ord_parameter_types! {
+	pub const One: AccountId = ALICE;
+}
+
 impl orml_tokens::Config for Runtime {
 	type Event = Event;
 	type Balance = Balance;
@@ -178,6 +183,8 @@ impl module_currencies::Config for Runtime {
 	type WeightInfo = ();
 	type AddressMapping = MockAddressMapping;
 	type EVMBridge = ();
+	type SweepOrigin = EnsureSignedBy<One, AccountId>;
+	type OnDust = ();
 }
 
 parameter_types! {
