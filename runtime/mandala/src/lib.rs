@@ -82,17 +82,12 @@ pub use cumulus_primitives_core::ParaId;
 pub use orml_xcm_support::{IsNativeConcrete, MultiCurrencyAdapter, MultiNativeAsset};
 use pallet_xcm::XcmPassthrough;
 pub use polkadot_parachain::primitives::Sibling;
-pub use xcm::v0::{
-	Junction::{self, AccountId32, GeneralKey, Parachain, Parent},
-	MultiAsset,
-	MultiLocation::{self, X1, X2, X3},
-	NetworkId, Xcm,
-};
+pub use xcm::latest::prelude::*;
 pub use xcm_builder::{
-	AccountId32Aliases, AllowTopLevelPaidExecutionFrom, AllowUnpaidExecutionFrom, EnsureXcmOrigin,
-	FixedRateOfConcreteFungible, FixedWeightBounds, IsConcrete, LocationInverter, NativeAsset, ParentAsSuperuser,
-	ParentIsDefault, RelayChainAsNative, SiblingParachainAsNative, SiblingParachainConvertsVia,
-	SignedAccountId32AsNative, SignedToAccountId32, SovereignSignedViaLocation, TakeRevenue, TakeWeightCredit,
+	AccountId32Aliases, AllowTopLevelPaidExecutionFrom, AllowUnpaidExecutionFrom, EnsureXcmOrigin, FixedRateOfFungible,
+	FixedWeightBounds, IsConcrete, LocationInverter, NativeAsset, ParentAsSuperuser, ParentIsDefault,
+	RelayChainAsNative, SiblingParachainAsNative, SiblingParachainConvertsVia, SignedAccountId32AsNative,
+	SignedToAccountId32, SovereignSignedViaLocation, TakeRevenue, TakeWeightCredit,
 };
 pub use xcm_executor::{Config, XcmExecutor};
 
@@ -202,7 +197,7 @@ pub fn get_all_module_accounts() -> Vec<AccountId> {
 }
 
 parameter_types! {
-	pub const BlockHashCount: BlockNumber = 900; // mortal tx can be valid up to 1 hour after signing
+	pub const BlockHashCount: BlockNumber = HOURS; // mortal tx can be valid up to 1 hour after signing
 	pub const Version: RuntimeVersion = VERSION;
 	pub const SS58Prefix: u8 = 42; // Ss58AddressFormat::SubstrateAccount
 }
@@ -631,9 +626,9 @@ impl pallet_recovery::Config for Runtime {
 }
 
 parameter_types! {
-	pub const LaunchPeriod: BlockNumber = 20 * MINUTES;
-	pub const VotingPeriod: BlockNumber = 10 * MINUTES;
-	pub const FastTrackVotingPeriod: BlockNumber = 10 * MINUTES;
+	pub const LaunchPeriod: BlockNumber = 2 * HOURS;
+	pub const VotingPeriod: BlockNumber = HOURS;
+	pub const FastTrackVotingPeriod: BlockNumber = HOURS;
 	pub MinimumDeposit: Balance = 100 * cent(ACA);
 	pub const EnactmentPeriod: BlockNumber = MINUTES;
 	pub const CooloffPeriod: BlockNumber = MINUTES;
@@ -795,6 +790,7 @@ parameter_type_with_key! {
 				TokenSymbol::DOT => 10 * millicent(*currency_id),
 				TokenSymbol::LDOT => 50 * millicent(*currency_id),
 				TokenSymbol::BNC => 800 * millicent(*currency_id),  // 80BNC = 1KSM
+				TokenSymbol::VSKSM => 10 * millicent(*currency_id),  // 1VSKSM = 1KSM
 
 				TokenSymbol::KAR |
 				TokenSymbol::KUSD |
@@ -937,23 +933,6 @@ impl pallet_scheduler::Config for Runtime {
 	type ScheduleOrigin = EnsureRoot<AccountId>;
 	type MaxScheduledPerBlock = MaxScheduledPerBlock;
 	type WeightInfo = ();
-}
-
-parameter_types! {
-	pub const UpdateFrequency: BlockNumber = 10;
-	pub const MaxGraduallyUpdate: u32 = 100;
-	pub const MaxStorageKeyBytes: u32 = 1024;
-	pub const MaxStorageValueBytes: u32 = 1024;
-}
-
-impl orml_gradually_update::Config for Runtime {
-	type Event = Event;
-	type UpdateFrequency = UpdateFrequency;
-	type DispatchOrigin = EnsureRoot<AccountId>;
-	type WeightInfo = weights::orml_gradually_update::WeightInfo<Runtime>;
-	type MaxGraduallyUpdate = MaxGraduallyUpdate;
-	type MaxStorageKeyBytes = MaxStorageKeyBytes;
-	type MaxStorageValueBytes = MaxStorageValueBytes;
 }
 
 parameter_types! {
@@ -1274,12 +1253,12 @@ impl module_homa::Config for Runtime {
 }
 
 pub fn create_x2_parachain_multilocation(index: u16) -> MultiLocation {
-	MultiLocation::X2(
-		Junction::Parent,
-		Junction::AccountId32 {
+	MultiLocation::new(
+		1,
+		X1(AccountId32 {
 			network: NetworkId::Any,
 			id: Utility::derivative_account_id(ParachainInfo::get().into_account(), index).into(),
-		},
+		}),
 	)
 }
 
@@ -1571,7 +1550,7 @@ impl module_evm::Config for Runtime {
 	type TreasuryAccount = TreasuryAccount;
 	type FreeDeploymentOrigin = EnsureRootOrHalfGeneralCouncil;
 	type Runner = module_evm::runner::stack::Runner<Self>;
-	type FindAuthor = ();
+	type FindAuthor = pallet_session::FindAccountFromAuthorIndex<Self, Aura>;
 	type WeightInfo = weights::module_evm::WeightInfo<Runtime>;
 
 	#[cfg(feature = "with-ethereum-compatibility")]
@@ -1631,7 +1610,7 @@ impl cumulus_pallet_parachain_system::Config for Runtime {
 impl parachain_info::Config for Runtime {}
 
 parameter_types! {
-	pub const DotLocation: MultiLocation = MultiLocation::X1(Parent);
+	pub const DotLocation: MultiLocation = MultiLocation::parent();
 	pub const RelayNetwork: NetworkId = NetworkId::Polkadot;
 	pub RelayChainOrigin: Origin = cumulus_pallet_xcm::Origin::Relay.into();
 	pub Ancestry: MultiLocation = Parachain(ParachainInfo::parachain_id().into()).into();
@@ -1673,7 +1652,7 @@ pub type XcmOriginToCallOrigin = (
 parameter_types! {
 	// One XCM operation is 1_000_000 weight - almost certainly a conservative estimate.
 	pub UnitWeightCost: Weight = 1_000_000;
-	pub DotPerSecond: (MultiLocation, u128) = (X1(Parent), dot_per_second());
+	pub DotPerSecond: (AssetId, u128) = (MultiLocation::parent().into(), dot_per_second());
 }
 
 pub type Barrier = (TakeWeightCredit, AllowTopLevelPaidExecutionFrom<Everything>);
@@ -1681,8 +1660,12 @@ pub type Barrier = (TakeWeightCredit, AllowTopLevelPaidExecutionFrom<Everything>
 pub struct ToTreasury;
 impl TakeRevenue for ToTreasury {
 	fn take_revenue(revenue: MultiAsset) {
-		if let MultiAsset::ConcreteFungible { id, amount } = revenue {
-			if let Some(currency_id) = CurrencyIdConvert::convert(id) {
+		if let MultiAsset {
+			id: Concrete(location),
+			fun: Fungible(amount),
+		} = revenue
+		{
+			if let Some(currency_id) = CurrencyIdConvert::convert(location) {
 				// ensure KaruraTreasuryAccount have ed for all of the cross-chain asset.
 				// Ignore the result.
 				let _ = Currencies::deposit(currency_id, &TreasuryAccount::get(), amount);
@@ -1705,8 +1688,9 @@ impl xcm_executor::Config for XcmConfig {
 	type Barrier = Barrier;
 	type Weigher = FixedWeightBounds<UnitWeightCost, Call>;
 	// Only receiving DOT is handled, and all fees must be paid in DOT.
-	type Trader = FixedRateOfConcreteFungible<DotPerSecond, ToTreasury>;
+	type Trader = FixedRateOfFungible<DotPerSecond, ToTreasury>;
 	type ResponseHandler = (); // Don't handle responses for now.
+	type SubscriptionService = PolkadotXcm;
 }
 
 parameter_types! {
@@ -1720,7 +1704,7 @@ pub type LocalOriginToLocation = SignedToAccountId32<Origin, AccountId, RelayNet
 /// queues.
 pub type XcmRouter = (
 	// Two routers - use UMP to communicate with the relay chain:
-	cumulus_primitives_utility::ParentAsUmp<ParachainSystem>,
+	cumulus_primitives_utility::ParentAsUmp<ParachainSystem, ()>,
 	// ..and XCMP to communicate with the sibling chains.
 	XcmpQueue,
 );
@@ -1747,6 +1731,7 @@ impl cumulus_pallet_xcmp_queue::Config for Runtime {
 	type Event = Event;
 	type XcmExecutor = XcmExecutor<XcmConfig>;
 	type ChannelInfo = ParachainSystem;
+	type VersionWrapper = ();
 }
 
 impl cumulus_pallet_dmp_queue::Config for Runtime {
@@ -1767,7 +1752,7 @@ pub type LocalAssetTransactor = MultiCurrencyAdapter<
 
 //TODO: use token registry currency type encoding
 fn native_currency_location(id: CurrencyId) -> MultiLocation {
-	X3(Parent, Parachain(ParachainInfo::get().into()), GeneralKey(id.encode()))
+	MultiLocation::new(1, X2(Parachain(ParachainInfo::get().into()), GeneralKey(id.encode())))
 }
 
 pub struct CurrencyIdConvert;
@@ -1776,7 +1761,7 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 		use CurrencyId::Token;
 		use TokenSymbol::*;
 		match id {
-			Token(DOT) => Some(X1(Parent)),
+			Token(DOT) => Some(MultiLocation::parent()),
 			Token(ACA) | Token(AUSD) | Token(LDOT) | Token(RENBTC) => Some(native_currency_location(id)),
 			_ => None,
 		}
@@ -1786,9 +1771,16 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 	fn convert(location: MultiLocation) -> Option<CurrencyId> {
 		use CurrencyId::Token;
 		use TokenSymbol::*;
+
+		if location == MultiLocation::parent() {
+			return Some(Token(DOT));
+		}
+
 		match location {
-			X1(Parent) => Some(Token(DOT)),
-			X3(Parent, Parachain(id), GeneralKey(key)) if ParaId::from(id) == ParachainInfo::get() => {
+			MultiLocation {
+				parents,
+				interior: X2(Parachain(para_id), GeneralKey(key)),
+			} if parents == 1 && ParaId::from(para_id) == ParachainInfo::get() => {
 				// decode the general key
 				if let Ok(currency_id) = CurrencyId::decode(&mut &key[..]) {
 					// check if `currency_id` is cross-chain asset
@@ -1806,8 +1798,11 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 }
 impl Convert<MultiAsset, Option<CurrencyId>> for CurrencyIdConvert {
 	fn convert(asset: MultiAsset) -> Option<CurrencyId> {
-		if let MultiAsset::ConcreteFungible { id, amount: _ } = asset {
-			Self::convert(id)
+		if let MultiAsset {
+			id: Concrete(location), ..
+		} = asset
+		{
+			Self::convert(location)
 		} else {
 			None
 		}
@@ -1815,7 +1810,7 @@ impl Convert<MultiAsset, Option<CurrencyId>> for CurrencyIdConvert {
 }
 
 parameter_types! {
-	pub SelfLocation: MultiLocation = X2(Parent, Parachain(ParachainInfo::get().into()));
+	pub SelfLocation: MultiLocation = MultiLocation::new(1, X1(Parachain(ParachainInfo::get().into())));
 }
 
 pub struct AccountIdToMultiLocation;
@@ -1825,6 +1820,7 @@ impl Convert<AccountId, MultiLocation> for AccountIdToMultiLocation {
 			network: NetworkId::Any,
 			id: account.into(),
 		})
+		.into()
 	}
 }
 
@@ -1842,6 +1838,7 @@ impl orml_xtokens::Config for Runtime {
 	type XcmExecutor = XcmExecutor<XcmConfig>;
 	type Weigher = FixedWeightBounds<UnitWeightCost, Call>;
 	type BaseXcmWeight = BaseXcmWeight;
+	type LocationInverter = LocationInverter<Ancestry>;
 }
 
 impl orml_unknown_tokens::Config for Runtime {
@@ -2019,7 +2016,6 @@ construct_runtime! {
 		Proxy: pallet_proxy::{Pallet, Call, Storage, Event<T>} = 33,
 
 		Indices: pallet_indices::{Pallet, Call, Storage, Config<T>, Event<T>} = 40,
-		GraduallyUpdate: orml_gradually_update::{Pallet, Storage, Call, Event<T>} = 41,
 
 		// Governance
 		GeneralCouncil: pallet_collective::<Instance1>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 50,
@@ -2395,7 +2391,6 @@ impl_runtime_apis! {
 			orml_list_benchmark!(list, extra, orml_auction, benchmarking::auction);
 
 			orml_list_benchmark!(list, extra, orml_authority, benchmarking::authority);
-			orml_list_benchmark!(list, extra, orml_gradually_update, benchmarking::gradually_update);
 			orml_list_benchmark!(list, extra, orml_oracle, benchmarking::oracle);
 
 			orml_list_benchmark!(list, extra, ecosystem_chainsafe, benchmarking::chainsafe_transfer);
@@ -2460,7 +2455,6 @@ impl_runtime_apis! {
 			orml_add_benchmark!(params, batches, orml_auction, benchmarking::auction);
 
 			orml_add_benchmark!(params, batches, orml_authority, benchmarking::authority);
-			orml_add_benchmark!(params, batches, orml_gradually_update, benchmarking::gradually_update);
 			orml_add_benchmark!(params, batches, orml_oracle, benchmarking::oracle);
 
 			orml_add_benchmark!(params, batches, ecosystem_chainsafe, benchmarking::chainsafe_transfer);
@@ -2538,5 +2532,24 @@ mod tests {
 					.unwrap()
 			) > 0
 		);
+	}
+
+	#[test]
+	fn check_call_size() {
+		assert!(
+			core::mem::size_of::<Call>() <= 230,
+			"size of Call is more than 230 bytes: some calls have too big arguments, use Box to \
+			reduce the size of Call.
+			If the limit is too strong, maybe consider increasing the limit",
+		);
+	}
+
+	//TODO: remove after paritytech/substrate#9890
+	#[test]
+	fn ensure_block_hash_count_less_than_democracy_launch_period() {
+		// Ensure LaunchPeriod > BlockHashCount
+		// Democracy will take full block weight.
+		// `ts-tests` need to reach BlockHashCount.
+		assert!(BlockHashCount::get() < LaunchPeriod::get());
 	}
 }

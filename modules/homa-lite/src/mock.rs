@@ -28,7 +28,7 @@ use orml_traits::{parameter_type_with_key, XcmTransfer};
 use primitives::{Amount, TokenSymbol};
 use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, AccountId32};
-use xcm::opaque::v0::{Junction, MultiAsset, MultiLocation, NetworkId};
+use xcm::latest::prelude::*;
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
@@ -46,10 +46,11 @@ pub const ACALA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const KSM: CurrencyId = CurrencyId::Token(TokenSymbol::KSM);
 pub const LKSM: CurrencyId = CurrencyId::Token(TokenSymbol::LKSM);
 pub const INITIAL_BALANCE: Balance = 1_000_000;
-pub const MOCK_XCM_DESTINATION: MultiLocation = MultiLocation::X1(Junction::AccountId32 {
+pub const MOCK_XCM_DESTINATION: MultiLocation = X1(Junction::AccountId32 {
 	network: NetworkId::Kusama,
 	id: [1u8; 32],
-});
+})
+.into();
 
 /// For testing only. Does not check for overflow.
 pub fn dollar(b: Balance) -> Balance {

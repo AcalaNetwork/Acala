@@ -165,7 +165,7 @@ impl Default for ExtBuilder {
 }
 
 pub fn erc20_address() -> EvmAddress {
-	EvmAddress::from_str("0000000000000000000000000000000002000000").unwrap()
+	EvmAddress::from_str("5dddfce53ee040d9eb21afbc0ae1bb4dbb0ba643").unwrap()
 }
 
 pub fn alice() -> AccountId {
@@ -186,13 +186,7 @@ pub fn bob_evm_addr() -> EvmAddress {
 
 pub fn deploy_contracts() {
 	let code = from_hex(include!("./erc20_demo_contract")).unwrap();
-	assert_ok!(EVM::create_network_contract(
-		Origin::signed(NetworkContractAccount::get()),
-		code,
-		0,
-		2_100_000,
-		10000
-	));
+	assert_ok!(EVM::create(Origin::signed(alice()), code, 0, 2_100_000, 10000));
 
 	let event = Event::EVM(module_evm::Event::Created(erc20_address()));
 	assert_eq!(System::events().iter().last().unwrap().event, event);

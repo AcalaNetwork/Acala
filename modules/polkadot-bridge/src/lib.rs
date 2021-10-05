@@ -114,7 +114,11 @@ pub mod module {
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight(10_000)]
 		#[transactional]
-		pub fn set_mock_reward_rate(origin: OriginFor<T>, account_index: u32, reward_rate: Rate) -> DispatchResult {
+		pub fn set_mock_reward_rate(
+			origin: OriginFor<T>,
+			#[pallet::compact] account_index: u32,
+			reward_rate: Rate,
+		) -> DispatchResult {
 			ensure_root(origin)?;
 			SubAccounts::<T>::mutate(account_index, |status| {
 				status.mock_reward_rate = reward_rate;
@@ -124,7 +128,11 @@ pub mod module {
 
 		#[pallet::weight(10_000)]
 		#[transactional]
-		pub fn simulate_bond_extra(origin: OriginFor<T>, account_index: u32, amount: Balance) -> DispatchResult {
+		pub fn simulate_bond_extra(
+			origin: OriginFor<T>,
+			#[pallet::compact] account_index: u32,
+			#[pallet::compact] amount: Balance,
+		) -> DispatchResult {
 			ensure_root(origin)?;
 			Self::sub_account_bond_extra(account_index, amount)?;
 			Ok(())
@@ -132,7 +140,11 @@ pub mod module {
 
 		#[pallet::weight(10_000)]
 		#[transactional]
-		pub fn simulate_unbond(origin: OriginFor<T>, account_index: u32, amount: Balance) -> DispatchResult {
+		pub fn simulate_unbond(
+			origin: OriginFor<T>,
+			#[pallet::compact] account_index: u32,
+			#[pallet::compact] amount: Balance,
+		) -> DispatchResult {
 			ensure_root(origin)?;
 			Self::sub_account_unbond(account_index, amount)?;
 			Ok(())
@@ -140,7 +152,11 @@ pub mod module {
 
 		#[pallet::weight(10_000)]
 		#[transactional]
-		pub fn simulate_rebond(origin: OriginFor<T>, account_index: u32, amount: Balance) -> DispatchResult {
+		pub fn simulate_rebond(
+			origin: OriginFor<T>,
+			#[pallet::compact] account_index: u32,
+			#[pallet::compact] amount: Balance,
+		) -> DispatchResult {
 			ensure_signed(origin)?;
 			Self::sub_account_rebond(account_index, amount)?;
 			Ok(())
@@ -148,7 +164,10 @@ pub mod module {
 
 		#[pallet::weight(10_000)]
 		#[transactional]
-		pub fn simulate_withdraw_unbonded(origin: OriginFor<T>, account_index: u32) -> DispatchResult {
+		pub fn simulate_withdraw_unbonded(
+			origin: OriginFor<T>,
+			#[pallet::compact] account_index: u32,
+		) -> DispatchResult {
 			// ignore because we don't care who send the message
 			let _ = ensure_signed(origin)?;
 			Self::sub_account_withdraw_unbonded(account_index);
@@ -157,7 +176,11 @@ pub mod module {
 
 		#[pallet::weight(10_000)]
 		#[transactional]
-		pub fn simulate_payout_stakers(origin: OriginFor<T>, account_index: u32, era: EraIndex) -> DispatchResult {
+		pub fn simulate_payout_stakers(
+			origin: OriginFor<T>,
+			#[pallet::compact] account_index: u32,
+			#[pallet::compact] era: EraIndex,
+		) -> DispatchResult {
 			ensure_signed(origin)?;
 			Self::payout_stakers(account_index, era);
 			Ok(())
@@ -167,8 +190,8 @@ pub mod module {
 		#[transactional]
 		pub fn simulate_transfer_to_sub_account(
 			origin: OriginFor<T>,
-			account_index: u32,
-			amount: Balance,
+			#[pallet::compact] account_index: u32,
+			#[pallet::compact] amount: Balance,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			Self::transfer_to_sub_account(account_index, &who, amount)?;
@@ -179,9 +202,9 @@ pub mod module {
 		#[transactional]
 		pub fn simualte_receive_from_sub_account(
 			origin: OriginFor<T>,
-			account_index: u32,
+			#[pallet::compact] account_index: u32,
 			to: <T::Lookup as StaticLookup>::Source,
-			amount: Balance,
+			#[pallet::compact] amount: Balance,
 		) -> DispatchResult {
 			ensure_root(origin)?;
 			let to = T::Lookup::lookup(to)?;
@@ -191,7 +214,11 @@ pub mod module {
 
 		#[pallet::weight(10_000)]
 		#[transactional]
-		pub fn simulate_slash_sub_account(origin: OriginFor<T>, account_index: u32, amount: Balance) -> DispatchResult {
+		pub fn simulate_slash_sub_account(
+			origin: OriginFor<T>,
+			#[pallet::compact] account_index: u32,
+			#[pallet::compact] amount: Balance,
+		) -> DispatchResult {
 			ensure_root(origin)?;
 			SubAccounts::<T>::mutate(account_index, |status| {
 				status.bonded = status.bonded.saturating_sub(amount);
@@ -201,7 +228,7 @@ pub mod module {
 
 		#[pallet::weight(10_000)]
 		#[transactional]
-		pub fn force_era(origin: OriginFor<T>, at: T::BlockNumber) -> DispatchResult {
+		pub fn force_era(origin: OriginFor<T>, #[pallet::compact] at: T::BlockNumber) -> DispatchResult {
 			ensure_root(origin)?;
 			if at > <frame_system::Pallet<T>>::block_number() {
 				ForcedEra::<T>::put(at);

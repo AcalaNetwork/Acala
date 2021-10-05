@@ -66,19 +66,13 @@ pub use cumulus_primitives_core::ParaId;
 pub use orml_xcm_support::{IsNativeConcrete, MultiCurrencyAdapter, MultiNativeAsset};
 use pallet_xcm::XcmPassthrough;
 pub use polkadot_parachain::primitives::Sibling;
-pub use xcm::v0::{
-	Error as XcmError,
-	Junction::{self, AccountId32, GeneralKey, Parachain, Parent},
-	MultiAsset,
-	MultiLocation::{self, X1, X2, X3},
-	NetworkId, Xcm,
-};
+pub use xcm::latest::prelude::*;
 
 pub use xcm_builder::{
-	AccountId32Aliases, AllowTopLevelPaidExecutionFrom, AllowUnpaidExecutionFrom, EnsureXcmOrigin,
-	FixedRateOfConcreteFungible, FixedWeightBounds, IsConcrete, LocationInverter, NativeAsset, ParentAsSuperuser,
-	ParentIsDefault, RelayChainAsNative, SiblingParachainAsNative, SiblingParachainConvertsVia,
-	SignedAccountId32AsNative, SignedToAccountId32, SovereignSignedViaLocation, TakeRevenue, TakeWeightCredit,
+	AccountId32Aliases, AllowTopLevelPaidExecutionFrom, AllowUnpaidExecutionFrom, EnsureXcmOrigin, FixedRateOfFungible,
+	FixedWeightBounds, IsConcrete, LocationInverter, NativeAsset, ParentAsSuperuser, ParentIsDefault,
+	RelayChainAsNative, SiblingParachainAsNative, SiblingParachainConvertsVia, SignedAccountId32AsNative,
+	SignedToAccountId32, SovereignSignedViaLocation, TakeRevenue, TakeWeightCredit,
 };
 pub use xcm_executor::{traits::WeightTrader, Assets, Config, XcmExecutor};
 
@@ -119,7 +113,7 @@ pub use runtime_common::{
 	HomaCouncilInstance, HomaCouncilMembershipInstance, OperatorMembershipInstanceAcala,
 	OperatorMembershipInstanceBand, Price, ProxyType, Rate, Ratio, RelaychainBlockNumberProvider,
 	RelaychainSubAccountId, RuntimeBlockLength, RuntimeBlockWeights, SystemContractsFilter, TechnicalCommitteeInstance,
-	TechnicalCommitteeMembershipInstance, TimeStampedPrice, BNC, KAR, KSM, KUSD, LKSM, RENBTC,
+	TechnicalCommitteeMembershipInstance, TimeStampedPrice, BNC, KAR, KSM, KUSD, LKSM, RENBTC, VSKSM,
 };
 
 mod authority;
@@ -132,7 +126,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("karura"),
 	impl_name: create_runtime_str!("karura"),
 	authoring_version: 1,
-	spec_version: 1010,
+	spec_version: 1012,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -738,6 +732,7 @@ parameter_type_with_key! {
 				TokenSymbol::KSM => 10 * millicent(*currency_id),
 				TokenSymbol::LKSM => 50 * millicent(*currency_id),
 				TokenSymbol::BNC => 800 * millicent(*currency_id),  // 80BNC = 1KSM
+				TokenSymbol::VSKSM => 10 * millicent(*currency_id),  // 1VSKSM = 1KSM
 
 				TokenSymbol::ACA |
 				TokenSymbol::AUSD |
@@ -898,7 +893,8 @@ parameter_types! {
 	pub const AuctionTimeToClose: BlockNumber = 15 * MINUTES;
 	pub const AuctionDurationSoftCap: BlockNumber = 2 * HOURS;
 	pub DefaultSwapParitalPathList: Vec<Vec<CurrencyId>> = vec![
-		vec![GetStableCurrencyId::get()],
+		vec![KUSD],
+		vec![KSM, KUSD],
 	];
 }
 
@@ -1080,7 +1076,7 @@ impl module_transaction_pause::Config for Runtime {
 
 parameter_types! {
 	// Sort by fee charge order
-	pub DefaultFeeSwapPathList: Vec<Vec<CurrencyId>> = vec![vec![KUSD, KSM, KAR], vec![KSM, KAR], vec![LKSM, KAR]];
+	pub DefaultFeeSwapPathList: Vec<Vec<CurrencyId>> = vec![vec![KUSD, KSM, KAR], vec![KSM, KAR], vec![LKSM, KSM, KAR]];
 }
 
 type NegativeImbalance = <Balances as PalletCurrency<AccountId>>::NegativeImbalance;
@@ -1324,7 +1320,7 @@ impl module_evm::Config for Runtime {
 	type TreasuryAccount = KaruraTreasuryAccount;
 	type FreeDeploymentOrigin = EnsureRootOrHalfGeneralCouncil;
 	type Runner = module_evm::runner::stack::Runner<Self>;
-	type FindAuthor = ();
+	type FindAuthor = pallet_session::FindAccountFromAuthorIndex<Self, Aura>;
 	type WeightInfo = weights::module_evm::WeightInfo<Runtime>;
 }
 
@@ -1359,7 +1355,7 @@ impl parachain_info::Config for Runtime {}
 impl cumulus_pallet_aura_ext::Config for Runtime {}
 
 parameter_types! {
-	pub const KsmLocation: MultiLocation = MultiLocation::X1(Parent);
+	pub KsmLocation: MultiLocation = MultiLocation::parent();
 	pub const RelayNetwork: NetworkId = NetworkId::Kusama;
 	pub RelayChainOrigin: Origin = cumulus_pallet_xcm::Origin::Relay.into();
 	pub Ancestry: MultiLocation = Parachain(ParachainInfo::parachain_id().into()).into();
@@ -1401,7 +1397,15 @@ pub type XcmOriginToCallOrigin = (
 parameter_types! {
 	// One XCM operation is 200_000_000 weight, cross-chain transfer ~= 2x of transfer.
 	pub const UnitWeightCost: Weight = 200_000_000;
-	pub KsmPerSecond: (MultiLocation, u128) = (X1(Parent), ksm_per_second());
+	pub KsmPerSecond: (AssetId, u128) = (MultiLocation::parent().into(), ksm_per_second());
+	pub KusdPerSecond: (AssetId, u128) = (
+		MultiLocation::new(
+			1,
+			X2(Parachain(u32::from(ParachainInfo::get())), GeneralKey(KUSD.encode())),
+		).into(),
+		// kUSD:KSM = 400:1
+		ksm_per_second() * 400
+	);
 }
 
 pub type Barrier = (TakeWeightCredit, AllowTopLevelPaidExecutionFrom<Everything>);
@@ -1409,8 +1413,12 @@ pub type Barrier = (TakeWeightCredit, AllowTopLevelPaidExecutionFrom<Everything>
 pub struct ToTreasury;
 impl TakeRevenue for ToTreasury {
 	fn take_revenue(revenue: MultiAsset) {
-		if let MultiAsset::ConcreteFungible { id, amount } = revenue {
-			if let Some(currency_id) = CurrencyIdConvert::convert(id) {
+		if let MultiAsset {
+			id: Concrete(location),
+			fun: Fungible(amount),
+		} = revenue
+		{
+			if let Some(currency_id) = CurrencyIdConvert::convert(location) {
 				// ensure KaruraTreasuryAccount have ed for all of the cross-chain asset.
 				// Ignore the result.
 				let _ = Currencies::deposit(currency_id, &KaruraTreasuryAccount::get(), amount);
@@ -1420,74 +1428,30 @@ impl TakeRevenue for ToTreasury {
 }
 
 parameter_types! {
-	pub BncPerSecond: (MultiLocation, u128) = (
-		X3(Parent, Parachain(parachains::bifrost::ID), GeneralKey(parachains::bifrost::BNC_KEY.to_vec())),
+	pub BncPerSecond: (AssetId, u128) = (
+		MultiLocation::new(
+			1,
+			X2(Parachain(parachains::bifrost::ID), GeneralKey(parachains::bifrost::BNC_KEY.to_vec())),
+		).into(),
 		// BNC:KSM = 80:1
 		ksm_per_second() * 80
 	);
-}
-/// TODO: this is a temp solution for multi traders, should be replaced after tuple impl is
-/// available https://github.com/paritytech/polkadot/pull/3601
-///
-/// To add more traders:
-/// 1. Add a new trader generic type after `KsmTrader`.
-/// 2. Add a new trader field.
-/// 3. Call this new trader type's new/buy_weight/refund functions in `WeightTrader` impl,
-///   like the way of `KsmTrader`.
-pub struct MultiWeightTraders<KsmTrader, BncTrader> {
-	ksm_trader: KsmTrader,
-	bnc_trader: BncTrader,
-}
-impl<KsmTrader: WeightTrader, BncTrader: WeightTrader> WeightTrader for MultiWeightTraders<KsmTrader, BncTrader> {
-	fn new() -> Self {
-		Self {
-			ksm_trader: KsmTrader::new(),
-			bnc_trader: BncTrader::new(),
-			// dummy_trader: DummyTrader::new(),
-		}
-	}
-	fn buy_weight(&mut self, weight: Weight, payment: Assets) -> Result<Assets, XcmError> {
-		if let Ok(assets) = self.ksm_trader.buy_weight(weight, payment.clone()) {
-			return Ok(assets);
-		}
-
-		if let Ok(assets) = self.bnc_trader.buy_weight(weight, payment) {
-			return Ok(assets);
-		}
-
-		// if let Ok(asset) = self.dummy_trader.buy_weight(weight, payment) {
-		// 	return Ok(assets)
-		// }
-
-		Err(XcmError::TooExpensive)
-	}
-	fn refund_weight(&mut self, weight: Weight) -> MultiAsset {
-		let ksm = self.ksm_trader.refund_weight(weight);
-		match ksm {
-			MultiAsset::ConcreteFungible { amount, .. } if !amount.is_zero() => return ksm,
-			_ => {}
-		}
-
-		let bnc = self.bnc_trader.refund_weight(weight);
-		match bnc {
-			MultiAsset::ConcreteFungible { amount, .. } if !amount.is_zero() => return bnc,
-			_ => {}
-		}
-
-		// let dummy = self.dummy_trader.refund_weight(weight);
-		// match dummy {
-		// 	MultiAsset::ConcreteFungible { amount, .. } if !amount.is_zero() => return dummy,
-		// 	_ => {},
-		// }
-
-		MultiAsset::None
-	}
+	pub VsksmPerSecond: (AssetId, u128) = (
+		MultiLocation::new(
+			1,
+			X2(Parachain(parachains::bifrost::ID), GeneralKey(parachains::bifrost::VSKSM_KEY.to_vec())),
+		).into(),
+		// VSKSM:KSM = 1:1
+		ksm_per_second()
+	);
 }
 
-pub type Trader = MultiWeightTraders<
-	FixedRateOfConcreteFungible<KsmPerSecond, ToTreasury>,
-	FixedRateOfConcreteFungible<BncPerSecond, ToTreasury>,
->;
+pub type Trader = (
+	FixedRateOfFungible<KsmPerSecond, ToTreasury>,
+	FixedRateOfFungible<KusdPerSecond, ToTreasury>,
+	FixedRateOfFungible<BncPerSecond, ToTreasury>,
+	FixedRateOfFungible<VsksmPerSecond, ToTreasury>,
+);
 
 pub struct XcmConfig;
 impl xcm_executor::Config for XcmConfig {
@@ -1505,6 +1469,7 @@ impl xcm_executor::Config for XcmConfig {
 	// Only receiving KSM is handled, and all fees must be paid in KSM.
 	type Trader = Trader;
 	type ResponseHandler = (); // Don't handle responses for now.
+	type SubscriptionService = PolkadotXcm;
 }
 
 parameter_types! {
@@ -1517,7 +1482,7 @@ pub type LocalOriginToLocation = SignedToAccountId32<Origin, AccountId, RelayNet
 /// queues.
 pub type XcmRouter = (
 	// Two routers - use UMP to communicate with the relay chain:
-	cumulus_primitives_utility::ParentAsUmp<ParachainSystem>,
+	cumulus_primitives_utility::ParentAsUmp<ParachainSystem, ()>,
 	// ..and XCMP to communicate with the sibling chains.
 	XcmpQueue,
 );
@@ -1544,6 +1509,7 @@ impl cumulus_pallet_xcmp_queue::Config for Runtime {
 	type Event = Event;
 	type XcmExecutor = XcmExecutor<XcmConfig>;
 	type ChannelInfo = ParachainSystem;
+	type VersionWrapper = ();
 }
 
 impl cumulus_pallet_dmp_queue::Config for Runtime {
@@ -1553,12 +1519,12 @@ impl cumulus_pallet_dmp_queue::Config for Runtime {
 }
 
 pub fn create_x2_parachain_multilocation(index: u16) -> MultiLocation {
-	MultiLocation::X2(
-		Junction::Parent,
-		Junction::AccountId32 {
+	MultiLocation::new(
+		1,
+		X1(AccountId32 {
 			network: NetworkId::Any,
 			id: Utility::derivative_account_id(ParachainInfo::get().into_account(), index).into(),
-		},
+		}),
 	)
 }
 
@@ -1598,7 +1564,7 @@ pub type LocalAssetTransactor = MultiCurrencyAdapter<
 
 //TODO: use token registry currency type encoding
 fn native_currency_location(id: CurrencyId) -> MultiLocation {
-	X3(Parent, Parachain(ParachainInfo::get().into()), GeneralKey(id.encode()))
+	MultiLocation::new(1, X2(Parachain(ParachainInfo::get().into()), GeneralKey(id.encode())))
 }
 
 pub struct CurrencyIdConvert;
@@ -1607,13 +1573,23 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 		use CurrencyId::Token;
 		use TokenSymbol::*;
 		match id {
-			Token(KSM) => Some(X1(Parent)),
+			Token(KSM) => Some(MultiLocation::parent()),
 			Token(KAR) | Token(KUSD) | Token(LKSM) | Token(RENBTC) => Some(native_currency_location(id)),
 			// Bifrost native token
-			Token(BNC) => Some(X3(
-				Parent,
-				Parachain(parachains::bifrost::ID),
-				GeneralKey(parachains::bifrost::BNC_KEY.to_vec()),
+			Token(BNC) => Some(MultiLocation::new(
+				1,
+				X2(
+					Parachain(parachains::bifrost::ID),
+					GeneralKey(parachains::bifrost::BNC_KEY.to_vec()),
+				),
+			)),
+			// Bifrost Voucher Slot KSM
+			Token(VSKSM) => Some(MultiLocation::new(
+				1,
+				X2(
+					Parachain(parachains::bifrost::ID),
+					GeneralKey(parachains::bifrost::VSKSM_KEY.to_vec()),
+				),
 			)),
 			_ => None,
 		}
@@ -1623,11 +1599,18 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 	fn convert(location: MultiLocation) -> Option<CurrencyId> {
 		use CurrencyId::Token;
 		use TokenSymbol::*;
+
+		if location == MultiLocation::parent() {
+			return Some(Token(KSM));
+		}
 		match location {
-			X1(Parent) => Some(Token(KSM)),
-			X3(Parent, Parachain(id), GeneralKey(key)) => {
-				match (id, &key[..]) {
+			MultiLocation {
+				parents,
+				interior: X2(Parachain(para_id), GeneralKey(key)),
+			} if parents == 1 => {
+				match (para_id, &key[..]) {
 					(parachains::bifrost::ID, parachains::bifrost::BNC_KEY) => Some(Token(BNC)),
+					(parachains::bifrost::ID, parachains::bifrost::VSKSM_KEY) => Some(Token(VSKSM)),
 					(id, key) if id == u32::from(ParachainInfo::get()) => {
 						// Karura
 						if let Ok(currency_id) = CurrencyId::decode(&mut &*key) {
@@ -1650,8 +1633,11 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 }
 impl Convert<MultiAsset, Option<CurrencyId>> for CurrencyIdConvert {
 	fn convert(asset: MultiAsset) -> Option<CurrencyId> {
-		if let MultiAsset::ConcreteFungible { id, amount: _ } = asset {
-			Self::convert(id)
+		if let MultiAsset {
+			id: Concrete(location), ..
+		} = asset
+		{
+			Self::convert(location)
 		} else {
 			None
 		}
@@ -1659,7 +1645,7 @@ impl Convert<MultiAsset, Option<CurrencyId>> for CurrencyIdConvert {
 }
 
 parameter_types! {
-	pub SelfLocation: MultiLocation = X2(Parent, Parachain(ParachainInfo::get().into()));
+	pub SelfLocation: MultiLocation = MultiLocation::new(1, X1(Parachain(ParachainInfo::get().into())));
 }
 
 pub struct AccountIdToMultiLocation;
@@ -1669,6 +1655,7 @@ impl Convert<AccountId, MultiLocation> for AccountIdToMultiLocation {
 			network: NetworkId::Any,
 			id: account.into(),
 		})
+		.into()
 	}
 }
 
@@ -1686,6 +1673,7 @@ impl orml_xtokens::Config for Runtime {
 	type XcmExecutor = XcmExecutor<XcmConfig>;
 	type Weigher = FixedWeightBounds<UnitWeightCost, Call>;
 	type BaseXcmWeight = BaseXcmWeight;
+	type LocationInverter = LocationInverter<Ancestry>;
 }
 
 impl orml_unknown_tokens::Config for Runtime {
@@ -2287,6 +2275,16 @@ mod tests {
 					.checked_div(MaxCandidates::get())
 					.unwrap()
 			) > 0
+		);
+	}
+
+	#[test]
+	fn check_call_size() {
+		assert!(
+			core::mem::size_of::<Call>() <= 230,
+			"size of Call is more than 230 bytes: some calls have too big arguments, use Box to \
+			reduce the size of Call.
+			If the limit is too strong, maybe consider increasing the limit",
 		);
 	}
 }
