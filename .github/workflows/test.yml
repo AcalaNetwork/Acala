@@ -70,3 +70,7 @@ jobs:
       run: |
         npm install -g yarn
         make test-ts
+    - name: Run predeploy contracts tests
+      run: |
+        npm install -g yarn
+        make test-predeployed

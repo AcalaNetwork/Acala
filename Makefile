@@ -79,6 +79,11 @@ test-ts:
 	cargo build --features with-mandala-runtime
 	cd ts-tests && yarn && yarn run build && yarn run test
 
+.PHONY: test-predeployed
+test-predeployed:
+	cargo build --features with-mandala-runtime
+	cd predeploy-contracts && yarn && yarn build && yarn test
+
 .PHONY: test-benchmarking
 test-benchmarking:
 	cargo test --features runtime-benchmarks --features with-all-runtime --features --all benchmarking
