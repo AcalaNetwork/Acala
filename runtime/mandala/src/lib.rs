@@ -1862,11 +1862,50 @@ impl nutsfinance_stable_asset::traits::ValidateAssetId<CurrencyId> for EnsurePoo
 	}
 }
 
+pub struct ConvertBalanceHoamLite;
+impl orml_tokens::ConvertBalance<Balance, Balance> for ConvertBalanceHoamLite {
+	type AssetId = CurrencyId;
+
+	fn convert_balance(balance: Balance, asset_id: CurrencyId) -> Balance {
+		match asset_id {
+			CurrencyId::Token(TokenSymbol::LDOT) => HomaLite::get_staking_exchange_rate()
+				.reciprocal()
+				.unwrap_or_default()
+				.checked_mul_int(balance)
+				.unwrap_or_default(),
+			_ => balance,
+		}
+	}
+
+	fn convert_balance_back(balance: Balance, asset_id: CurrencyId) -> Balance {
+		match asset_id {
+			CurrencyId::Token(TokenSymbol::LDOT) => HomaLite::get_staking_exchange_rate()
+				.checked_mul_int(balance)
+				.unwrap_or_default(),
+			_ => balance,
+		}
+	}
+}
+
+pub struct IsLiquidToken;
+impl Contains<CurrencyId> for IsLiquidToken {
+	fn contains(currency_id: &CurrencyId) -> bool {
+		matches!(currency_id, CurrencyId::Token(TokenSymbol::LDOT))
+	}
+}
+
+type RebaseTokens = orml_tokens::Combiner<
+	AccountId,
+	IsLiquidToken,
+	orml_tokens::Mapper<AccountId, Tokens, ConvertBalanceHoamLite, Balance, GetLiquidCurrencyId>,
+	Tokens,
+>;
+
 impl nutsfinance_stable_asset::Config for Runtime {
 	type Event = Event;
 	type AssetId = CurrencyId;
 	type Balance = Balance;
-	type Assets = Tokens;
+	type Assets = RebaseTokens;
 	type PalletId = StableAssetPalletId;
 
 	type AtLeast64BitUnsigned = u128;
