@@ -1539,12 +1539,13 @@ parameter_types! {
 		ParachainInfo::get().into_account(),
 		RelaychainSubAccountId::HomaLite as u16
 	);
-	pub MaxRewardPerEra: Permill = Permill::from_rational(261u32, 1_000_000u32); // 1.1^(1/365) = 1.00026115788
+	pub MaxRewardPerEra: Permill = Permill::from_rational(500u32, 1_000_000u32); // 1.2 ^ (1/365) = 1.0004996359
 	pub MintFee: Balance = 20 * millicent(KSM); // 2x XCM fee on Kusama
-	pub DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(10, 1);
-	pub BaseWithdrawFee: Permill = Permill::from_rational(7338u32, 1_000_000); // 10% yield per year, unbounding period = 28 days. 1.1^(28/365) = 1.0073382
+	pub DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
+	pub BaseWithdrawFee: Permill = Permill::from_rational(35u32, 10_000u32); // 20% yield per year, unbonding period = 7 days. 1.2^(7 / 365) = 1.00350
 	pub MaximumRedeemRequestMatchesForMint: u32 = 20;
 	pub RelaychainUnbondingSlashingSpans: u32 = 5;
+	pub MaxScheduledUnbonds: u32 = 14;
 	pub ParachainAccount: AccountId = ParachainInfo::get().into_account();
 	pub SubAccountIndex: u16 = RelaychainSubAccountId::HomaLite as u16;
 	pub const XcmUnbondFee: Balance = 600_000_000; // From homa-lite integration test.
@@ -1571,6 +1572,7 @@ impl module_homa_lite::Config for Runtime {
 	type ParachainAccount = ParachainAccount;
 	type MaximumRedeemRequestMatchesForMint = MaximumRedeemRequestMatchesForMint;
 	type RelaychainUnbondingSlashingSpans = RelaychainUnbondingSlashingSpans;
+	type MaxScheduledUnbonds = MaxScheduledUnbonds;
 }
 
 pub type LocalAssetTransactor = MultiCurrencyAdapter<

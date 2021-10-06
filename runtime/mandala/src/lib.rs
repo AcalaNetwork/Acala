@@ -1271,12 +1271,12 @@ parameter_types! {
 		ParachainInfo::get().into_account(),
 		RelaychainSubAccountId::HomaLite as u16
 	);
-	pub HomaLiteDefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(10, 1);
-	pub MaxRewardPerEra: Permill = Permill::from_rational(383u32, 1_000_000u32); // 1.15^(1/365) = 1.0003829827
+	pub MaxRewardPerEra: Permill = Permill::from_rational(500u32, 1_000_000u32); // 1.2 ^ (1/365) = 1.0004996359
 	pub MintFee: Balance = millicent(DOT);
-	pub BaseWithdrawFee: Permill = Permill::from_rational(2684u32, 1_000_000u32); // 15% yield per year, unbonding period = 7 days. 1.15^(7 / 365) = 1.00268396141
+	pub BaseWithdrawFee: Permill = Permill::from_rational(14_085u32, 1_000_000u32); // 20% yield per year, unbounding period = 28 days. 1.2^(28/365) = 1.014085
 	pub MaximumRedeemRequestMatchesForMint: u32 = 20;
 	pub RelaychainUnbondingSlashingSpans: u32 = 5;
+	pub MaxScheduledUnbonds: u32 = 35;
 	pub ParachainAccount: AccountId = ParachainInfo::get().into_account();
 	pub SubAccountIndex: u16 = RelaychainSubAccountId::HomaLite as u16;
 	pub const XcmUnbondFee: Balance = 600_000_000; // From homa-lite integration test.
@@ -1293,7 +1293,7 @@ impl module_homa_lite::Config for Runtime {
 	type XcmTransfer = XTokens;
 	type SovereignSubAccountLocation = RelaychainSovereignSubAccount;
 	type SubAccountIndex = SubAccountIndex;
-	type DefaultExchangeRate = HomaLiteDefaultExchangeRate;
+	type DefaultExchangeRate = DefaultExchangeRate;
 	type MaxRewardPerEra = MaxRewardPerEra;
 	type MintFee = MintFee;
 	type RelaychainCallBuilder = RelaychainCallBuilder<Runtime, ParachainInfo>;
@@ -1303,6 +1303,7 @@ impl module_homa_lite::Config for Runtime {
 	type ParachainAccount = ParachainAccount;
 	type MaximumRedeemRequestMatchesForMint = MaximumRedeemRequestMatchesForMint;
 	type RelaychainUnbondingSlashingSpans = RelaychainUnbondingSlashingSpans;
+	type MaxScheduledUnbonds = MaxScheduledUnbonds;
 }
 
 parameter_types! {

@@ -25,10 +25,11 @@ module-currencies = { path = "../../modules/currencies" }
 orml-tokens = { path = "../../orml/tokens" }
 xcm-executor = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.10" }
 cumulus-primitives-core = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.10" }
-module-relaychain = { path = "../relaychain", features=["kusama"]}
+module-relaychain = { path = "../relaychain"}
 
 [features]
-default = ["std"]
+default = ["std", "kusama"]
+kusama = ["module-relaychain/kusama"]
 std = [
 	"codec/std",
 	"frame-benchmarking/std",

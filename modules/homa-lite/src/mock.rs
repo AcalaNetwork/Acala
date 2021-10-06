@@ -250,7 +250,7 @@ parameter_types! {
 	pub MinimumRedeemThreshold: Balance = millicent(1);
 	pub const MockXcmDestination: MultiLocation = MOCK_XCM_DESTINATION;
 	pub const MockXcmAccountId: AccountId = MOCK_XCM_ACCOUNTID;
-	pub DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(10, 1);
+	pub DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
 	pub const MaxRewardPerEra: Permill = Permill::from_percent(1);
 	pub MintFee: Balance = millicent(1000);
 	pub BaseWithdrawFee: Permill = Permill::from_rational(1u32, 1_000u32); // 0.1%
@@ -259,6 +259,7 @@ parameter_types! {
 	pub const MaximumRedeemRequestMatchesForMint: u32 = 2;
 	pub static MockRelayBlockNumberProvider: u64 = 0;
 	pub const RelaychainUnbondingSlashingSpans: u32 = 5;
+	pub const MaxScheduledUnbonds: u32 = 14;
 	pub const SubAccountIndex: u16 = 0;
 	pub ParachainId: ParaId = ParaId::from(PARACHAIN_ID);
 }
@@ -296,6 +297,7 @@ impl Config for Runtime {
 	type ParachainAccount = ParachainAccount;
 	type MaximumRedeemRequestMatchesForMint = MaximumRedeemRequestMatchesForMint;
 	type RelaychainUnbondingSlashingSpans = RelaychainUnbondingSlashingSpans;
+	type MaxScheduledUnbonds = MaxScheduledUnbonds;
 }
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;

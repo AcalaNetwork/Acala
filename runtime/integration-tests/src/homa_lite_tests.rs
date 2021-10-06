@@ -55,9 +55,9 @@ mod common_tests {
 				// Exchange rate set to 1(Staking) : 5(Liquid) ratio
 				// liquid = (amount - MintFee) * exchange_rate * (1 - MaxRewardPerEra)
 				#[cfg(feature = "with-mandala-runtime")]
-				let liquid_amount_1 = 49_980_849_500_190;
+				let liquid_amount_1 = 49_974_999_500_250;
 				#[cfg(feature = "with-karura-runtime")]
-				let liquid_amount_1 = 4_998_694_000_261_000;
+				let liquid_amount_1 = 4_997_499_000_500_000;
 
 				assert_ok!(HomaLite::mint(Origin::signed(alice()), amount));
 				assert_eq!(Currencies::free_balance(LIQUID_CURRENCY, &alice()), liquid_amount_1);
@@ -70,15 +70,15 @@ mod common_tests {
 				// Total issuance for liquid currnecy increased.
 				let new_liquid_issuance = Currencies::total_issuance(LIQUID_CURRENCY);
 				#[cfg(feature = "with-mandala-runtime")]
-				assert_eq!(new_liquid_issuance, 10_049_980_849_500_190);
+				assert_eq!(new_liquid_issuance, 10_049_974_999_500_250);
 				#[cfg(feature = "with-karura-runtime")]
-				assert_eq!(new_liquid_issuance, 1_004_998_694_000_261_000);
+				assert_eq!(new_liquid_issuance, 1_004_997_499_000_500_000);
 
 				// liquid = (amount - MintFee) * (new_liquid_issuance / new_staking_total) * (1 - MaxRewardPerEra)
 				#[cfg(feature = "with-mandala-runtime")] // Mandala uses DOT, which has 10 d.p. accuracy.
-				let liquid_amount_2 = 49_980_754_260_558;
+				let liquid_amount_2 = 49_974_875_181_840;
 				#[cfg(feature = "with-karura-runtime")] // Karura uses KSM, which has 12 d.p. accuracy.
-				let liquid_amount_2 = 4_998_687_504_447_005;
+				let liquid_amount_2 = 4_997_486_563_940_292;
 
 				assert_ok!(HomaLite::mint(Origin::signed(alice()), amount));
 				System::assert_last_event(Event::HomaLite(module_homa_lite::Event::Minted(
@@ -88,11 +88,11 @@ mod common_tests {
 				)));
 
 				#[cfg(feature = "with-mandala-runtime")]
-				assert_eq!(Currencies::free_balance(LIQUID_CURRENCY, &alice()), 99_961_603_760_748);
+				assert_eq!(Currencies::free_balance(LIQUID_CURRENCY, &alice()), 99_949_874_682_090);
 				#[cfg(feature = "with-karura-runtime")]
 				assert_eq!(
 					Currencies::free_balance(LIQUID_CURRENCY, &alice()),
-					9_997_381_504_708_005
+					9_994_985_564_440_292
 				);
 			});
 	}
@@ -147,33 +147,34 @@ mod common_tests {
 
 				#[cfg(feature = "with-mandala-runtime")]
 				{
-					// Base withdraw fee = 0.007338
-					// for ALICE:  staking_amount = +500 - redeem_fee = 500 - 1.342 = 498.658
+					// Base withdraw fee = 0.014085
+					// for ALICE:  staking_amount = +500 - redeem_fee = 500 - 7.0425 = 492.9575
 					//             liquid_amount  = -5_000
-					// for BOB:    staking_amount = +500 - redeem_fee - extra_fee(10%) = 500 - 1.342 - 50 = 448.658
+					// for BOB:    staking_amount = +500 - redeem_fee - extra_fee(10%) = 500 - 7.0425  - 50 = 442.9575
 					//             liquid_amount  = -5_000
-					// for CHARlIE:staking_amount = +200 - redeem_fee - extra_fee(1%) = 200 - 0.5368 - 2 = 197.4632
+					// for CHARlIE:staking_amount = +200 - redeem_fee - extra_fee(1%) = 200 - 2.817 - 2 = 195.183
 					//             liquid_amount  = -5_000
-					// for minter: staking_amount = 1200 -1_200 + redeem_fee + extra_fee = 55.2208
+					// for minter: staking_amount = 1200 -1_200 + redeem_fee * 3 + extra_fee =
+					// 						      = 7.0425 + 7.0425 + 50 + 2.817 + 2 = 68.902
 					//             liquid_amount  = +12_000
 					assert_eq!(
 						Currencies::free_balance(RELAY_CHAIN_CURRENCY, &AccountId::from(ALICE)),
-						4_986_580_000_000
+						4_929_575_000_000
 					);
 					assert_eq!(Currencies::free_balance(LIQUID_CURRENCY, &AccountId::from(ALICE)), 0);
 					assert_eq!(
 						Currencies::free_balance(RELAY_CHAIN_CURRENCY, &AccountId::from(BOB)),
-						4_486_580_000_000
+						4_429_575_000_000
 					);
 					assert_eq!(Currencies::free_balance(LIQUID_CURRENCY, &AccountId::from(BOB)), 0);
 					assert_eq!(
 						Currencies::free_balance(RELAY_CHAIN_CURRENCY, &AccountId::from(CHARLIE)),
-						1_974_632_000_000
+						1_951_830_000_000
 					);
 					assert_eq!(Currencies::free_balance(LIQUID_CURRENCY, &AccountId::from(CHARLIE)), 0);
 					assert_eq!(
 						Currencies::free_balance(RELAY_CHAIN_CURRENCY, &AccountId::from(DAVE)),
-						552_208_000_000
+						689_020_000_000
 					);
 					assert_eq!(
 						Currencies::free_balance(LIQUID_CURRENCY, &AccountId::from(DAVE)),
@@ -182,32 +183,34 @@ mod common_tests {
 				}
 				#[cfg(feature = "with-karura-runtime")]
 				{
-					// for ALICE:  staking_amount = +500 - redeem_fee = 500 - 3.669 = 496.331
+					// Base redeem fee: 0.0035
+					// for ALICE:  staking_amount = +500 - redeem_fee = 500 - 1.75 = 498.25
 					//             liquid_amount  = -5_000
-					// for BOB:    staking_amount = +500 - redeem_fee - extra_fee(10%) = 500 - 3.669 - 50 = 446.331
+					// for BOB:    staking_amount = +500 - redeem_fee - extra_fee(10%) = 500 - 1.75 - 50 = 448.25
 					//             liquid_amount  = -5_000
-					// for CHARlIE:staking_amount = +200 - redeem_fee - extra_fee(1%) = 200 - 1.4676 - 2 = 196.5324
+					// for CHARlIE:staking_amount = +200 - redeem_fee - extra_fee(1%) = 200 - 0.7 - 2 = 197.3
 					//             liquid_amount  = -5_000
-					// for minter: staking_amount = 1200 -1_200 + redeem_fee + extra_fee = 60.8056
+					// for minter: staking_amount = 1200 -1_200 + redeem_fee + extra_fee =
+					//                            = 1.75 + 1.75 + 50 + 0.7 + 2 = 56.2
 					//             liquid_amount  = +12_000
 					assert_eq!(
 						Currencies::free_balance(RELAY_CHAIN_CURRENCY, &AccountId::from(ALICE)),
-						496_331_000_000_000
+						498_250_000_000_000
 					);
 					assert_eq!(Currencies::free_balance(LIQUID_CURRENCY, &AccountId::from(ALICE)), 0);
 					assert_eq!(
 						Currencies::free_balance(RELAY_CHAIN_CURRENCY, &AccountId::from(BOB)),
-						446_331_000_000_000
+						448_250_000_000_000
 					);
 					assert_eq!(Currencies::free_balance(LIQUID_CURRENCY, &AccountId::from(BOB)), 0);
 					assert_eq!(
 						Currencies::free_balance(RELAY_CHAIN_CURRENCY, &AccountId::from(CHARLIE)),
-						196_532_400_000_000
+						197_300_000_000_000
 					);
 					assert_eq!(Currencies::free_balance(LIQUID_CURRENCY, &AccountId::from(CHARLIE)), 0);
 					assert_eq!(
 						Currencies::free_balance(RELAY_CHAIN_CURRENCY, &AccountId::from(DAVE)),
-						60_805_600_000_000
+						56_200_000_000_000
 					);
 					assert_eq!(
 						Currencies::free_balance(LIQUID_CURRENCY, &AccountId::from(DAVE)),

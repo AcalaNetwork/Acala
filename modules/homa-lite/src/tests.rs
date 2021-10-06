@@ -71,12 +71,12 @@ fn mint_works() {
 		assert_ok!(HomaLite::set_total_staking_currency(Origin::root(), lksm_issuance / 5));
 
 		assert_eq!(
-			HomaLite::get_staking_exchange_rate(),
-			ExchangeRate::saturating_from_rational(lksm_issuance, lksm_issuance / 5)
+			HomaLite::get_exchange_rate(),
+			ExchangeRate::saturating_from_rational(lksm_issuance / 5, lksm_issuance)
 		);
 		assert_eq!(
 			LiquidExchangeProvider::<Runtime>::get_exchange_rate(),
-			ExchangeRate::saturating_from_rational(lksm_issuance / 5, lksm_issuance)
+			ExchangeRate::saturating_from_rational(lksm_issuance, lksm_issuance / 5)
 		);
 
 		// The exchange rate is now 1:5 ratio
@@ -776,5 +776,26 @@ fn request_redeem_extra_fee_works() {
 		// Extra fee + mint fee are rewarded to the minter
 		assert_eq!(Currencies::free_balance(KSM, &CHARLIE), 7_030_000_000_000);
 		assert_eq!(Currencies::free_balance(LKSM, &CHARLIE), dollar(300));
+	});
+}
+
+// Test staking and liquid conversion work
+#[test]
+fn staking_and_liquid_conversion_works() {
+	ExtBuilder::default().build().execute_with(|| {
+		// Default exchange rate is 1(S) : 10(L)
+		assert_eq!(HomaLite::get_exchange_rate(), Ratio::saturating_from_rational(1, 10));
+
+		assert_eq!(HomaLite::convert_staking_to_liquid(1_000_000), Ok(10_000_000));
+		assert_eq!(HomaLite::convert_liquid_to_staking(10_000_000), Ok(1_000_000));
+
+		// Set the total staking amount so the exchange rate is 1(S) : 5(L)
+		assert_eq!(Currencies::total_issuance(LKSM), dollar(1_000_000));
+		assert_ok!(HomaLite::set_total_staking_currency(Origin::root(), dollar(200_000)));
+
+		assert_eq!(HomaLite::get_exchange_rate(), Ratio::saturating_from_rational(1, 5));
+
+		assert_eq!(HomaLite::convert_staking_to_liquid(1_000_000), Ok(5_000_000));
+		assert_eq!(HomaLite::convert_liquid_to_staking(5_000_000), Ok(1_000_000));
 	});
 }
