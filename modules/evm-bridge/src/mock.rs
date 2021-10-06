@@ -191,7 +191,7 @@ pub fn deploy_contracts() {
 	System::assert_last_event(Event::EVM(module_evm::Event::Created(
 		erc20_address(),
 		vec![module_evm::Log {
-			address: H160::from_str("0x0000000000000000000000000000000002000000").unwrap(),
+			address: erc20_address(),
 			topics: vec![
 				H256::from_str("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef").unwrap(),
 				H256::from_str("0x0000000000000000000000000000000000000000000000000000000000000000").unwrap(),

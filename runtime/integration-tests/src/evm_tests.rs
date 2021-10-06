@@ -23,7 +23,7 @@ use module_evm_accounts::EvmAddressMapping;
 use module_support::CurrencyIdMapping;
 use module_support::{EVMBridge as EVMBridgeT, EVM as EVMTrait};
 use primitives::evm::EvmAddress;
-use sp_core::bytes::from_hex;
+use sp_core::{bytes::from_hex, H256};
 use std::str::FromStr;
 
 #[cfg(feature = "with-karura-runtime")]
@@ -66,15 +66,41 @@ pub fn deploy_erc20_contracts() {
 		100000
 	));
 
-	let event = Event::EVM(module_evm::Event::<Runtime>::Created(erc20_address_0()));
-	assert_eq!(System::events().iter().last().unwrap().event, event);
+	System::assert_last_event(Event::EVM(module_evm::Event::Created(
+		erc20_address_0(),
+		vec![module_evm::Log {
+			address: erc20_address_0(),
+			topics: vec![
+				H256::from_str("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef").unwrap(),
+				H256::from_str("0x0000000000000000000000000000000000000000000000000000000000000000").unwrap(),
+				H256::from_str("0x0000000000000000000000001000000000000000000000000000000000000001").unwrap(),
+			],
+			data: [
+				0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 39, 16,
+			]
+			.to_vec(),
+		}],
+	)));
 
 	assert_ok!(EVM::deploy_free(Origin::root(), erc20_address_0()));
 
 	assert_ok!(EVM::create_network_contract(Origin::root(), code, 0, 2100_000, 100000));
 
-	let event = Event::EVM(module_evm::Event::<Runtime>::Created(erc20_address_1()));
-	assert_eq!(System::events().iter().last().unwrap().event, event);
+	System::assert_last_event(Event::EVM(module_evm::Event::Created(
+		erc20_address_1(),
+		vec![module_evm::Log {
+			address: erc20_address_1(),
+			topics: vec![
+				H256::from_str("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef").unwrap(),
+				H256::from_str("0x0000000000000000000000000000000000000000000000000000000000000000").unwrap(),
+				H256::from_str("0x0000000000000000000000001000000000000000000000000000000000000001").unwrap(),
+			],
+			data: [
+				0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 39, 16,
+			]
+			.to_vec(),
+		}],
+	)));
 
 	assert_ok!(EVM::deploy_free(Origin::root(), erc20_address_1()));
 }
@@ -96,7 +122,8 @@ fn deploy_contract(account: AccountId) -> Result<H160, DispatchError> {
 
 	EVM::create(Origin::signed(account), contract, 0, 1000000000, 100000).map_or_else(|e| Err(e.error), |_| Ok(()))?;
 
-	if let Event::EVM(module_evm::Event::<Runtime>::Created(address)) = System::events().iter().last().unwrap().event {
+	if let Event::EVM(module_evm::Event::<Runtime>::Created(address, _)) = System::events().iter().last().unwrap().event
+	{
 		Ok(address)
 	} else {
 		Err("deploy_contract failed".into())
@@ -291,7 +318,7 @@ fn test_evm_module() {
 			let bob_address = EvmAccounts::eth_address(&bob_key());
 
 			let contract = deploy_contract(alice()).unwrap();
-			System::assert_last_event(Event::EVM(module_evm::Event::Created(contract)));
+			System::assert_last_event(Event::EVM(module_evm::Event::Created(contract, vec![])));
 
 			assert_ok!(EVM::transfer_maintainer(Origin::signed(alice()), contract, bob_address));
 			System::assert_last_event(Event::EVM(module_evm::Event::TransferredMaintainer(
@@ -477,7 +504,7 @@ fn should_not_kill_contract_on_transfer_all() {
 
 			assert_ok!(EVM::create(Origin::signed(alice()), code, 2 * dollar(NATIVE_CURRENCY), 1000000000, 100000));
 
-			let contract = if let Event::EVM(module_evm::Event::Created(address)) = System::events().iter().last().unwrap().event {
+			let contract = if let Event::EVM(module_evm::Event::Created(address, _)) = System::events().iter().last().unwrap().event {
 				address
 			} else {
 				panic!("deploy contract failed");
@@ -537,7 +564,7 @@ fn should_not_kill_contract_on_transfer_all_tokens() {
 			// }
 			let code = hex_literal::hex!("608060405260848060116000396000f3fe6080604052348015600f57600080fd5b506004361060285760003560e01c806341c0e1b514602d575b600080fd5b60336035565b005b600073ffffffffffffffffffffffffffffffffffffffff16fffea265627a7a72315820ed64a7551098c4afc823bee1663309079d9cb8798a6bdd71be2cd3ccee52d98e64736f6c63430005110032").to_vec();
 			assert_ok!(EVM::create(Origin::signed(alice()), code, 0, 1000000000, 100000));
-			let contract = if let Event::EVM(module_evm::Event::Created(address)) = System::events().iter().last().unwrap().event {
+			let contract = if let Event::EVM(module_evm::Event::Created(address, _)) = System::events().iter().last().unwrap().event {
 				address
 			} else {
 				panic!("deploy contract failed");
