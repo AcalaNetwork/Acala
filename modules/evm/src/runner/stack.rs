@@ -171,6 +171,12 @@ impl<T: Config> Runner<T> {
 			})?;
 		}
 
+		log::debug!(
+			target: "evm",
+			"Execution logs {:?}",
+			state.substate.logs
+		);
+
 		Ok(ExecutionInfo {
 			value: retv,
 			exit_reason: reason,

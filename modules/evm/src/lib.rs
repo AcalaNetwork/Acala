@@ -400,24 +400,8 @@ pub mod module {
 		/// A contract has been executed with errors. States are reverted with
 		/// only gas fees applied. \[contract, exit_reason, output, logs\]
 		ExecutedFailed(EvmAddress, ExitReason, Vec<u8>, Vec<Log>),
-		/// A deposit has been made at a given address. \[sender, address,
-		/// value\]
-		BalanceDeposit(T::AccountId, EvmAddress, U256),
-		/// A withdrawal has been made from a given address. \[sender, address,
-		/// value\]
-		BalanceWithdraw(T::AccountId, EvmAddress, U256),
-		/// A quota has been added at a given address. \[address, bytes\]
-		AddStorageQuota(EvmAddress, u32),
-		/// A quota has been removed at a given address. \[address, bytes\]
-		RemoveStorageQuota(EvmAddress, u32),
 		/// Transferred maintainer. \[contract, address\]
 		TransferredMaintainer(EvmAddress, EvmAddress),
-		/// Canceled the transfer maintainer. \[contract, address\]
-		CanceledTransferMaintainer(EvmAddress, EvmAddress),
-		/// Confirmed the transfer maintainer. \[contract, address\]
-		ConfirmedTransferMaintainer(EvmAddress, EvmAddress),
-		/// Rejected the transfer maintainer. \[contract, address\]
-		RejectedTransferMaintainer(EvmAddress, EvmAddress),
 		/// Enabled contract development. \[who\]
 		ContractDevelopmentEnabled(T::AccountId),
 		/// Disabled contract development. \[who\]
@@ -438,10 +422,6 @@ pub mod module {
 		ContractNotFound,
 		/// No permission
 		NoPermission,
-		/// Number out of bound in calculation.
-		NumOutOfBound,
-		/// Storage exceeds max code size
-		StorageExceedsStorageLimit,
 		/// Contract development is not enabled
 		ContractDevelopmentNotEnabled,
 		/// Contract development is already enabled
@@ -458,12 +438,6 @@ pub mod module {
 		ChargeFeeFailed,
 		/// Contract cannot be killed due to reference count
 		CannotKillContract,
-		/// Not enough balance to perform action
-		BalanceLow,
-		/// Calculating total fee overflowed
-		FeeOverflow,
-		/// Calculating total payment overflowed
-		PaymentOverflow,
 		/// Reserve storage failed
 		ReserveStorageFailed,
 		/// Unreserve storage failed
