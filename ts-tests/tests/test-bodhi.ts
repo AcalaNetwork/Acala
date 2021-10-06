@@ -79,7 +79,7 @@ describeWithAcala("Acala RPC (bodhi.js)", (context) => {
 		try {
 			await context.provider.call(contract.populateTransaction.multiply(3), "earliest")
 		} catch(err) {
-			expect(err.toString()).to.equal('Error: -32603: execution fatal: Module { index: 180, error: 16, message: Some("ReserveStorageFailed") }');
+			expect(err.toString()).to.equal('Error: -32603: execution fatal: Module { index: 180, error: 11, message: Some("ReserveStorageFailed") }');
 		}
 	});
 
@@ -99,7 +99,7 @@ describeWithAcala("Acala RPC (bodhi.js)", (context) => {
 		try {
 			await context.provider.estimateGas(contract.populateTransaction.multiply(3), "earliest")
 		} catch(err) {
-			expect(err.toString()).to.equal('Error: -32603: execution fatal: Module { index: 180, error: 16, message: Some("ReserveStorageFailed") }');
+			expect(err.toString()).to.equal('Error: -32603: execution fatal: Module { index: 180, error: 11, message: Some("ReserveStorageFailed") }');
 		}
 	});
 
@@ -131,7 +131,7 @@ describeWithAcala("Acala RPC (bodhi.js)", (context) => {
 		try {
 			await context.provider.estimateResources(contract.populateTransaction.multiply(3), "earliest")
 		} catch(err) {
-			expect(err.toString()).to.equal('Error: -32603: execution fatal: Module { index: 180, error: 16, message: Some("ReserveStorageFailed") }');
+			expect(err.toString()).to.equal('Error: -32603: execution fatal: Module { index: 180, error: 11, message: Some("ReserveStorageFailed") }');
 		}
 	});
 });
