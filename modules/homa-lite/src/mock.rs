@@ -20,19 +20,23 @@
 
 #![cfg(test)]
 
-use super::*;
-use frame_support::{ord_parameter_types, parameter_types};
-use frame_system::EnsureSignedBy;
-use module_support::mocks::MockAddressMapping;
-use orml_traits::{parameter_type_with_key, XcmTransfer};
-use primitives::{Amount, TokenSymbol};
-use sp_core::H256;
-use sp_runtime::{testing::Header, traits::IdentityLookup, AccountId32};
-use xcm::latest::prelude::*;
+pub use super::*;
+pub use frame_support::{ord_parameter_types, parameter_types, traits::Everything};
+pub use frame_system::{EnsureRoot, EnsureSignedBy, RawOrigin};
+pub use module_relaychain::RelaychainCallBuilder;
+pub use module_support::mocks::MockAddressMapping;
+pub use orml_traits::{parameter_type_with_key, XcmTransfer};
+pub use primitives::{Amount, TokenSymbol};
+pub use sp_core::H256;
+pub use sp_runtime::{testing::Header, traits::IdentityLookup, AccountId32};
+
+pub use cumulus_primitives_core::ParaId;
+pub use xcm::latest::prelude::*;
+pub use xcm_executor::traits::{InvertLocation, WeightBounds};
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
-use crate as module_homa_lite;
+pub use crate as module_homa_lite;
 
 mod homa_lite {
 	pub use super::super::*;
@@ -41,6 +45,7 @@ mod homa_lite {
 pub const ROOT: AccountId = AccountId32::new([255u8; 32]);
 pub const ALICE: AccountId = AccountId32::new([1u8; 32]);
 pub const BOB: AccountId = AccountId32::new([2u8; 32]);
+pub const CHARLIE: AccountId = AccountId32::new([3u8; 32]);
 pub const INVALID_CALLER: AccountId = AccountId32::new([254u8; 32]);
 pub const ACALA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const KSM: CurrencyId = CurrencyId::Token(TokenSymbol::KSM);
@@ -51,6 +56,8 @@ pub const MOCK_XCM_DESTINATION: MultiLocation = X1(Junction::AccountId32 {
 	id: [1u8; 32],
 })
 .into();
+pub const MOCK_XCM_ACCOUNTID: AccountId = AccountId32::new([255u8; 32]);
+pub const PARACHAIN_ID: u32 = 2000;
 
 /// For testing only. Does not check for overflow.
 pub fn dollar(b: Balance) -> Balance {
@@ -73,10 +80,11 @@ impl XcmTransfer<AccountId, Balance, CurrencyId> for MockXcm {
 	fn transfer(
 		who: AccountId,
 		_currency_id: CurrencyId,
-		_amount: Balance,
+		amount: Balance,
 		_dest: MultiLocation,
 		_dest_weight: Weight,
 	) -> DispatchResult {
+		Currencies::slash(KSM, &who, amount);
 		match who {
 			INVALID_CALLER => Err(DispatchError::Other("invalid caller")),
 			_ => Ok(()),
@@ -92,6 +100,69 @@ impl XcmTransfer<AccountId, Balance, CurrencyId> for MockXcm {
 	) -> DispatchResult {
 		Ok(())
 	}
+}
+impl InvertLocation for MockXcm {
+	fn invert_location(l: &MultiLocation) -> MultiLocation {
+		l.clone()
+	}
+}
+
+impl SendXcm for MockXcm {
+	fn send_xcm(destination: MultiLocation, _message: Xcm<()>) -> XcmResult {
+		match destination {
+			MultiLocation {
+				parents: 1,
+				interior: Junctions::Here,
+			} => Ok(()),
+			_ => Err(XcmError::Undefined),
+		}
+	}
+}
+impl ExecuteXcm<Call> for MockXcm {
+	fn execute_xcm_in_credit(
+		_origin: MultiLocation,
+		_message: Xcm<Call>,
+		_weight_limit: Weight,
+		_weight_credit: Weight,
+	) -> Outcome {
+		Outcome::Complete(0)
+	}
+}
+
+pub struct MockEnsureXcmOrigin;
+impl EnsureOrigin<Origin> for MockEnsureXcmOrigin {
+	type Success = MultiLocation;
+	fn try_origin(_o: Origin) -> Result<Self::Success, Origin> {
+		Ok(MultiLocation::here())
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	fn successful_origin() -> Origin {
+		Origin::from(RawOrigin::Signed(Default::default()))
+	}
+}
+pub struct MockWeigher;
+impl WeightBounds<Call> for MockWeigher {
+	fn shallow(_message: &mut Xcm<Call>) -> Result<Weight, ()> {
+		Ok(0)
+	}
+
+	fn deep(_message: &mut Xcm<Call>) -> Result<Weight, ()> {
+		Ok(0)
+	}
+}
+
+impl pallet_xcm::Config for Runtime {
+	type Event = Event;
+	type SendXcmOrigin = MockEnsureXcmOrigin;
+	type XcmRouter = MockXcm;
+	type ExecuteXcmOrigin = MockEnsureXcmOrigin;
+	type XcmExecuteFilter = Everything;
+	type XcmExecutor = MockXcm;
+	type XcmTeleportFilter = ();
+	type XcmReserveTransferFilter = Everything;
+	type Weigher = MockWeigher;
+	type LocationInverter = MockXcm;
 }
 
 impl frame_system::Config for Runtime {
@@ -176,13 +247,32 @@ parameter_types! {
 	pub const StakingCurrencyId: CurrencyId = KSM;
 	pub const LiquidCurrencyId: CurrencyId = LKSM;
 	pub MinimumMintThreshold: Balance = millicent(1);
+	pub MinimumRedeemThreshold: Balance = millicent(1);
 	pub const MockXcmDestination: MultiLocation = MOCK_XCM_DESTINATION;
-	pub DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(10, 1);
+	pub const MockXcmAccountId: AccountId = MOCK_XCM_ACCOUNTID;
+	pub DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
 	pub const MaxRewardPerEra: Permill = Permill::from_percent(1);
 	pub MintFee: Balance = millicent(1000);
+	pub BaseWithdrawFee: Permill = Permill::from_rational(1u32, 1_000u32); // 0.1%
+	pub XcmUnbondFee: Balance = dollar(1);
+	pub const ParachainAccount: AccountId = ROOT;
+	pub const MaximumRedeemRequestMatchesForMint: u32 = 2;
+	pub static MockRelayBlockNumberProvider: u64 = 0;
+	pub const RelaychainUnbondingSlashingSpans: u32 = 5;
+	pub const MaxScheduledUnbonds: u32 = 14;
+	pub const SubAccountIndex: u16 = 0;
+	pub ParachainId: ParaId = ParaId::from(PARACHAIN_ID);
 }
 ord_parameter_types! {
 	pub const Root: AccountId = ROOT;
+}
+
+impl BlockNumberProvider for MockRelayBlockNumberProvider {
+	type BlockNumber = BlockNumber;
+
+	fn current_block_number() -> Self::BlockNumber {
+		Self::get()
+	}
 }
 
 impl Config for Runtime {
@@ -191,13 +281,23 @@ impl Config for Runtime {
 	type Currency = Currencies;
 	type StakingCurrencyId = StakingCurrencyId;
 	type LiquidCurrencyId = LiquidCurrencyId;
-	type GovernanceOrigin = EnsureSignedBy<Root, AccountId>;
+	type GovernanceOrigin = EnsureRoot<AccountId>;
 	type MinimumMintThreshold = MinimumMintThreshold;
+	type MinimumRedeemThreshold = MinimumRedeemThreshold;
 	type XcmTransfer = MockXcm;
 	type SovereignSubAccountLocation = MockXcmDestination;
+	type SubAccountIndex = SubAccountIndex;
 	type DefaultExchangeRate = DefaultExchangeRate;
 	type MaxRewardPerEra = MaxRewardPerEra;
 	type MintFee = MintFee;
+	type RelaychainCallBuilder = RelaychainCallBuilder<Runtime, ParachainId>;
+	type BaseWithdrawFee = BaseWithdrawFee;
+	type XcmUnbondFee = XcmUnbondFee;
+	type RelaychainBlockNumber = MockRelayBlockNumberProvider;
+	type ParachainAccount = ParachainAccount;
+	type MaximumRedeemRequestMatchesForMint = MaximumRedeemRequestMatchesForMint;
+	type RelaychainUnbondingSlashingSpans = RelaychainUnbondingSlashingSpans;
+	type MaxScheduledUnbonds = MaxScheduledUnbonds;
 }
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
@@ -214,6 +314,7 @@ frame_support::construct_runtime!(
 		PalletBalances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
 		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
 		Currencies: module_currencies::{Pallet, Call, Event<T>},
+		PalletXcm: pallet_xcm::{Pallet, Call, Event<T>},
 	}
 );
 

@@ -13,6 +13,7 @@ sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.10", default-features = false }
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.10", default-features = false }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
+xcm = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.10", default-features = false }
 
 [features]
 default = ["std"]
@@ -24,4 +25,5 @@ std = [
 	"sp-io/std",
 	"frame-support/std",
 	"primitives/std",
+	"xcm/std",
 ]

@@ -1,6 +1,10 @@
 import { TestProvider } from "@acala-network/bodhi";
 import { WsProvider } from "@polkadot/api";
 import { spawn, ChildProcess } from "child_process";
+import chaiAsPromised from "chai-as-promised";
+import chai from "chai";
+
+chai.use(chaiAsPromised);
 
 export const P2P_PORT = 19931;
 export const RPC_PORT = 19932;

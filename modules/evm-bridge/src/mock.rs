@@ -188,8 +188,21 @@ pub fn deploy_contracts() {
 	let code = from_hex(include!("./erc20_demo_contract")).unwrap();
 	assert_ok!(EVM::create(Origin::signed(alice()), code, 0, 2_100_000, 10000));
 
-	let event = Event::EVM(module_evm::Event::Created(erc20_address()));
-	assert_eq!(System::events().iter().last().unwrap().event, event);
+	System::assert_last_event(Event::EVM(module_evm::Event::Created(
+		erc20_address(),
+		vec![module_evm::Log {
+			address: erc20_address(),
+			topics: vec![
+				H256::from_str("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef").unwrap(),
+				H256::from_str("0x0000000000000000000000000000000000000000000000000000000000000000").unwrap(),
+				H256::from_str("0x0000000000000000000000001000000000000000000000000000000000000001").unwrap(),
+			],
+			data: [
+				0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 39, 16,
+			]
+			.to_vec(),
+		}],
+	)));
 
 	assert_ok!(EVM::deploy_free(Origin::signed(CouncilAccount::get()), erc20_address()));
 }

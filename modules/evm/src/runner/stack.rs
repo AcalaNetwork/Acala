@@ -171,22 +171,11 @@ impl<T: Config> Runner<T> {
 			})?;
 		}
 
-		for log in &state.substate.logs {
-			log::trace!(
-				target: "evm",
-				"Inserting log for {:?}, topics ({}) {:?}, data ({}): {:?}]",
-				log.address,
-				log.topics.len(),
-				log.topics,
-				log.data.len(),
-				log.data
-			);
-			Pallet::<T>::deposit_event(Event::<T>::Log(Log {
-				address: log.address,
-				topics: log.topics.clone(),
-				data: log.data.clone(),
-			}));
-		}
+		log::debug!(
+			target: "evm",
+			"Execution logs {:?}",
+			state.substate.logs
+		);
 
 		Ok(ExecutionInfo {
 			value: retv,
@@ -217,9 +206,22 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 		);
 
 		let value = U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(value));
-		Self::execute(source, origin, value, gas_limit, storage_limit, config, |executor| {
+		let info = Self::execute(source, origin, value, gas_limit, storage_limit, config, |executor| {
 			executor.transact_call(source, target, value, input, gas_limit)
-		})
+		})?;
+
+		if info.exit_reason.is_succeed() {
+			Pallet::<T>::deposit_event(Event::<T>::Executed(target, info.logs.clone()));
+		} else {
+			Pallet::<T>::deposit_event(Event::<T>::ExecutedFailed(
+				target,
+				info.exit_reason.clone(),
+				info.value.clone(),
+				info.logs.clone(),
+			));
+		}
+
+		Ok(info)
 	}
 
 	fn create(
@@ -231,12 +233,24 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 		config: &evm::Config,
 	) -> Result<CreateInfo, DispatchError> {
 		let value = U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(value));
-		Self::execute(source, source, value, gas_limit, storage_limit, config, |executor| {
+		let info = Self::execute(source, source, value, gas_limit, storage_limit, config, |executor| {
 			let address = executor
 				.create_address(evm::CreateScheme::Legacy { caller: source })
 				.unwrap_or_default(); // transact_create will check the address
 			(executor.transact_create(source, value, init, gas_limit), address)
-		})
+		})?;
+
+		if info.exit_reason.is_succeed() {
+			Pallet::<T>::deposit_event(Event::<T>::Created(info.value, info.logs.clone()));
+		} else {
+			Pallet::<T>::deposit_event(Event::<T>::CreatedFailed(
+				info.value,
+				info.exit_reason.clone(),
+				info.logs.clone(),
+			));
+		}
+
+		Ok(info)
 	}
 
 	fn create2(
@@ -250,7 +264,7 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 	) -> Result<CreateInfo, DispatchError> {
 		let value = U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(value));
 		let code_hash = H256::from_slice(Keccak256::digest(&init).as_slice());
-		Self::execute(source, source, value, gas_limit, storage_limit, config, |executor| {
+		let info = Self::execute(source, source, value, gas_limit, storage_limit, config, |executor| {
 			let address = executor
 				.create_address(evm::CreateScheme::Create2 {
 					caller: source,
@@ -259,7 +273,19 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 				})
 				.unwrap_or_default(); // transact_create2 will check the address
 			(executor.transact_create2(source, value, init, salt, gas_limit), address)
-		})
+		})?;
+
+		if info.exit_reason.is_succeed() {
+			Pallet::<T>::deposit_event(Event::<T>::Created(info.value, info.logs.clone()));
+		} else {
+			Pallet::<T>::deposit_event(Event::<T>::CreatedFailed(
+				info.value,
+				info.exit_reason.clone(),
+				info.logs.clone(),
+			));
+		}
+
+		Ok(info)
 	}
 
 	fn create_at_address(
@@ -272,12 +298,24 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 		config: &evm::Config,
 	) -> Result<CreateInfo, DispatchError> {
 		let value = U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(value));
-		Self::execute(source, source, value, gas_limit, storage_limit, config, |executor| {
+		let info = Self::execute(source, source, value, gas_limit, storage_limit, config, |executor| {
 			(
 				executor.transact_create_at_address(source, address, value, init, gas_limit),
 				address,
 			)
-		})
+		})?;
+
+		if info.exit_reason.is_succeed() {
+			Pallet::<T>::deposit_event(Event::<T>::Created(info.value, info.logs.clone()));
+		} else {
+			Pallet::<T>::deposit_event(Event::<T>::CreatedFailed(
+				info.value,
+				info.exit_reason.clone(),
+				info.logs.clone(),
+			));
+		}
+
+		Ok(info)
 	}
 }
 
