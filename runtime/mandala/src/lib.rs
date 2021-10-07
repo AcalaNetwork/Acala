@@ -54,6 +54,7 @@ use module_evm::Runner;
 use module_evm::{CallInfo, CreateInfo};
 use module_evm_accounts::EvmAddressMapping;
 pub use module_evm_manager::EvmCurrencyIdMapping;
+use module_relaychain::RelaychainCallBuilder;
 use module_transaction_payment::{Multiplier, TargetedFeeAdjustment};
 use orml_tokens::CurrencyAdapter;
 use orml_traits::{
@@ -1264,9 +1265,21 @@ pub fn create_x2_parachain_multilocation(index: u16) -> MultiLocation {
 
 parameter_types! {
 	pub MinimumMintThreshold: Balance = 10 * cent(DOT);
+	pub MinimumRedeemThreshold: Balance = 100 * cent(LDOT);
 	pub RelaychainSovereignSubAccount: MultiLocation = create_x2_parachain_multilocation(RelaychainSubAccountId::HomaLite as u16);
+	pub RelaychainSovereignSubAccountId: AccountId = Utility::derivative_account_id(
+		ParachainInfo::get().into_account(),
+		RelaychainSubAccountId::HomaLite as u16
+	);
 	pub MaxRewardPerEra: Permill = Permill::from_rational(500u32, 1_000_000u32); // 1.2 ^ (1/365) = 1.0004996359
-	pub MintFee: Balance = 20 * millicent(DOT); // 2x XCM fee on Kusama
+	pub MintFee: Balance = millicent(DOT);
+	pub BaseWithdrawFee: Permill = Permill::from_rational(14_085u32, 1_000_000u32); // 20% yield per year, unbounding period = 28 days. 1.2^(28/365) = 1.014085
+	pub MaximumRedeemRequestMatchesForMint: u32 = 20;
+	pub RelaychainUnbondingSlashingSpans: u32 = 5;
+	pub MaxScheduledUnbonds: u32 = 35;
+	pub ParachainAccount: AccountId = ParachainInfo::get().into_account();
+	pub SubAccountIndex: u16 = RelaychainSubAccountId::HomaLite as u16;
+	pub const XcmUnbondFee: Balance = 600_000_000; // From homa-lite integration test.
 }
 impl module_homa_lite::Config for Runtime {
 	type Event = Event;
@@ -1276,11 +1289,21 @@ impl module_homa_lite::Config for Runtime {
 	type LiquidCurrencyId = GetLiquidCurrencyId;
 	type GovernanceOrigin = EnsureRootOrHalfGeneralCouncil;
 	type MinimumMintThreshold = MinimumMintThreshold;
+	type MinimumRedeemThreshold = MinimumRedeemThreshold;
 	type XcmTransfer = XTokens;
 	type SovereignSubAccountLocation = RelaychainSovereignSubAccount;
+	type SubAccountIndex = SubAccountIndex;
 	type DefaultExchangeRate = DefaultExchangeRate;
 	type MaxRewardPerEra = MaxRewardPerEra;
 	type MintFee = MintFee;
+	type RelaychainCallBuilder = RelaychainCallBuilder<Runtime, ParachainInfo>;
+	type BaseWithdrawFee = BaseWithdrawFee;
+	type XcmUnbondFee = XcmUnbondFee;
+	type RelaychainBlockNumber = RelaychainBlockNumberProvider<Runtime>;
+	type ParachainAccount = ParachainAccount;
+	type MaximumRedeemRequestMatchesForMint = MaximumRedeemRequestMatchesForMint;
+	type RelaychainUnbondingSlashingSpans = RelaychainUnbondingSlashingSpans;
+	type MaxScheduledUnbonds = MaxScheduledUnbonds;
 }
 
 parameter_types! {
@@ -1862,15 +1885,13 @@ impl nutsfinance_stable_asset::traits::ValidateAssetId<CurrencyId> for EnsurePoo
 	}
 }
 
-pub struct ConvertBalanceHoamLite;
-impl orml_tokens::ConvertBalance<Balance, Balance> for ConvertBalanceHoamLite {
+pub struct ConvertBalanceHomaLite;
+impl orml_tokens::ConvertBalance<Balance, Balance> for ConvertBalanceHomaLite {
 	type AssetId = CurrencyId;
 
 	fn convert_balance(balance: Balance, asset_id: CurrencyId) -> Balance {
 		match asset_id {
-			CurrencyId::Token(TokenSymbol::LDOT) => HomaLite::get_staking_exchange_rate()
-				.reciprocal()
-				.unwrap_or_default()
+			CurrencyId::Token(TokenSymbol::LDOT) => HomaLite::get_exchange_rate()
 				.checked_mul_int(balance)
 				.unwrap_or_default(),
 			_ => balance,
@@ -1879,7 +1900,9 @@ impl orml_tokens::ConvertBalance<Balance, Balance> for ConvertBalanceHoamLite {
 
 	fn convert_balance_back(balance: Balance, asset_id: CurrencyId) -> Balance {
 		match asset_id {
-			CurrencyId::Token(TokenSymbol::LDOT) => HomaLite::get_staking_exchange_rate()
+			CurrencyId::Token(TokenSymbol::LDOT) => HomaLite::get_exchange_rate()
+				.reciprocal()
+				.unwrap_or_default()
 				.checked_mul_int(balance)
 				.unwrap_or_default(),
 			_ => balance,
@@ -1897,7 +1920,7 @@ impl Contains<CurrencyId> for IsLiquidToken {
 type RebaseTokens = orml_tokens::Combiner<
 	AccountId,
 	IsLiquidToken,
-	orml_tokens::Mapper<AccountId, Tokens, ConvertBalanceHoamLite, Balance, GetLiquidCurrencyId>,
+	orml_tokens::Mapper<AccountId, Tokens, ConvertBalanceHomaLite, Balance, GetLiquidCurrencyId>,
 	Tokens,
 >;
 
