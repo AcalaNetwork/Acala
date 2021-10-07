@@ -151,7 +151,6 @@ impl<T: Config> CurrencyIdMapping for EvmCurrencyIdMapping<T> {
 			CurrencyId::Erc20(address) => CurrencyIdMap::<T>::get(Into::<u32>::into(DexShare::Erc20(address)))
 				.filter(|v| v.address == address)
 				.map(|v| v.name),
-			CurrencyId::ChainSafe(_) => None,
 			CurrencyId::StableAssetPoolToken(_) => None,
 		}?;
 
@@ -193,7 +192,6 @@ impl<T: Config> CurrencyIdMapping for EvmCurrencyIdMapping<T> {
 			CurrencyId::Erc20(address) => CurrencyIdMap::<T>::get(Into::<u32>::into(DexShare::Erc20(address)))
 				.filter(|v| v.address == address)
 				.map(|v| v.symbol),
-			CurrencyId::ChainSafe(_) => None,
 			CurrencyId::StableAssetPoolToken(_) => None,
 		}?;
 
@@ -224,7 +222,6 @@ impl<T: Config> CurrencyIdMapping for EvmCurrencyIdMapping<T> {
 			CurrencyId::Erc20(address) => CurrencyIdMap::<T>::get(Into::<u32>::into(DexShare::Erc20(address)))
 				.filter(|v| v.address == address)
 				.map(|v| v.decimals),
-			CurrencyId::ChainSafe(_) => None,
 			CurrencyId::StableAssetPoolToken(_) => None,
 		}
 	}
@@ -255,7 +252,7 @@ impl<T: Config> CurrencyIdMapping for EvmCurrencyIdMapping<T> {
 				Some(prefix | EvmAddress::from_low_u64_be(u64::from(symbol_0) << 32 | u64::from(symbol_1)))
 			}
 
-			// Token or Erc20 or ChainSafe
+			// Token or Erc20
 			_ => EvmAddress::try_from(v).ok(),
 		}
 	}

@@ -2359,25 +2359,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ecosystem-chainsafe"
-version = "1.5.0"
-dependencies = [
- "acala-primitives",
- "chainbridge",
- "frame-support",
- "frame-system",
- "module-support",
- "orml-tokens",
- "orml-traits",
- "parity-scale-codec",
- "serde",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
 name = "ecosystem-compound-cash"
 version = "1.5.0"
 dependencies = [
@@ -5095,7 +5076,6 @@ dependencies = [
  "cumulus-primitives-timestamp",
  "cumulus-primitives-utility",
  "cumulus-test-relay-sproof-builder",
- "ecosystem-chainsafe",
  "ecosystem-compound-cash",
  "ecosystem-renvm-bridge",
  "ecosystem-starport",
@@ -9828,7 +9808,6 @@ dependencies = [
  "cumulus-primitives-timestamp",
  "cumulus-primitives-utility",
  "cumulus-test-relay-sproof-builder",
- "ecosystem-chainsafe",
  "ecosystem-compound-cash",
  "ecosystem-renvm-bridge",
  "ecosystem-starport",

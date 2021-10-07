@@ -127,7 +127,6 @@ runtime-common = { path = "../common", default-features = false }
 module-evm-rpc-runtime-api = { path = "../../modules/evm/rpc/runtime_api",  default-features = false }
 
 ecosystem-renvm-bridge = { path = "../../ecosystem-modules/ren/renvm-bridge", default-features = false }
-ecosystem-chainsafe = { path = "../../ecosystem-modules/chainsafe", default-features = false }
 ecosystem-starport = { path = "../../ecosystem-modules/starport", default-features = false }
 ecosystem-compound-cash = { path = "../../ecosystem-modules/compound-cash", default-features = false }
 chainbridge = { git = "https://github.com/AcalaNetwork/chainbridge-substrate", default-features = false }
@@ -262,7 +261,6 @@ std = [
 	"module-evm-rpc-runtime-api/std",
 
 	"ecosystem-renvm-bridge/std",
-	"ecosystem-chainsafe/std",
 	"ecosystem-starport/std",
 	"ecosystem-compound-cash/std",
 	"chainbridge/std",
@@ -361,7 +359,6 @@ try-runtime = [
 	"module-polkadot-bridge/try-runtime",
 
 	"ecosystem-renvm-bridge/try-runtime",
-	"ecosystem-chainsafe/try-runtime",
 	"ecosystem-starport/try-runtime",
 	"ecosystem-compound-cash/try-runtime",
 ]
