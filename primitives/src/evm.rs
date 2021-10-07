@@ -81,6 +81,8 @@ pub struct EstimateResourcesRequest {
 	pub data: Option<Vec<u8>>,
 }
 
+#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct EthereumTransactionMessage {
 	pub nonce: Nonce,
 	pub tip: Balance,
