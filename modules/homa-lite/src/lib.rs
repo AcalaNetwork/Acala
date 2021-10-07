@@ -156,6 +156,8 @@ pub mod module {
 		InsufficientLiquidBalance,
 		/// Too many Scheduled unbonds
 		TooManyScheduledUnbonds,
+		/// The xcm operation have failed
+		XcmFailed,
 	}
 
 	#[pallet::event]
@@ -772,7 +774,7 @@ pub mod module {
 
 			let res = pallet_xcm::Pallet::<T>::send_xcm(Here, Parent.into(), msg);
 			log::debug!("on_idle XCM result: {:?}", res);
-			debug_assert!(res.is_ok());
+			ensure!(res.is_ok(), Error::<T>::XcmFailed);
 
 			// Now that there's available staking balance, automatically match existing
 			// redeem_requests.
