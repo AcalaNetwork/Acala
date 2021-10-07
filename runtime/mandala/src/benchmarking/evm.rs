@@ -24,7 +24,7 @@ use frame_system::RawOrigin;
 use orml_benchmarking::{runtime_benchmarks, whitelist_account};
 use sp_core::H160;
 use sp_io::hashing::keccak_256;
-use sp_std::str::FromStr;
+use sp_std::{str::FromStr, vec};
 
 const NATIVE: CurrencyId = GetNativeCurrencyId::get();
 
@@ -59,7 +59,7 @@ fn deploy_contract(caller: AccountId) -> Result<H160, DispatchError> {
 	EVM::create(Origin::signed(caller), contract, 0, 1000000000, 1000000000)
 		.map_or_else(|e| Err(e.error), |_| Ok(()))?;
 
-	System::assert_last_event(Event::EVM(module_evm::Event::Created(contract_addr())));
+	System::assert_last_event(Event::EVM(module_evm::Event::Created(contract_addr(), vec![])));
 	Ok(contract_addr())
 }
 

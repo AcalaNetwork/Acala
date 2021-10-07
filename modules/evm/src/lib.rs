@@ -390,36 +390,18 @@ pub mod module {
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	#[pallet::metadata(T::AccountId = "AccountId")]
 	pub enum Event<T: Config> {
-		/// Ethereum events from contracts.
-		Log(Log),
-		/// A contract has been created at given \[address\].
-		Created(EvmAddress),
+		/// A contract has been created at given \[address, logs\].
+		Created(EvmAddress, Vec<Log>),
 		/// A contract was attempted to be created, but the execution failed.
-		/// \[contract, exit_reason\]
-		CreatedFailed(EvmAddress, ExitReason),
-		/// A \[contract\] has been executed successfully with states applied.
-		Executed(EvmAddress),
+		/// \[contract, exit_reason, logs\]
+		CreatedFailed(EvmAddress, ExitReason, Vec<Log>),
+		/// A contract has been executed successfully with states applied. \[contract, logs]\
+		Executed(EvmAddress, Vec<Log>),
 		/// A contract has been executed with errors. States are reverted with
-		/// only gas fees applied. \[contract, exit_reason, output\]
-		ExecutedFailed(EvmAddress, ExitReason, Vec<u8>),
-		/// A deposit has been made at a given address. \[sender, address,
-		/// value\]
-		BalanceDeposit(T::AccountId, EvmAddress, U256),
-		/// A withdrawal has been made from a given address. \[sender, address,
-		/// value\]
-		BalanceWithdraw(T::AccountId, EvmAddress, U256),
-		/// A quota has been added at a given address. \[address, bytes\]
-		AddStorageQuota(EvmAddress, u32),
-		/// A quota has been removed at a given address. \[address, bytes\]
-		RemoveStorageQuota(EvmAddress, u32),
+		/// only gas fees applied. \[contract, exit_reason, output, logs\]
+		ExecutedFailed(EvmAddress, ExitReason, Vec<u8>, Vec<Log>),
 		/// Transferred maintainer. \[contract, address\]
 		TransferredMaintainer(EvmAddress, EvmAddress),
-		/// Canceled the transfer maintainer. \[contract, address\]
-		CanceledTransferMaintainer(EvmAddress, EvmAddress),
-		/// Confirmed the transfer maintainer. \[contract, address\]
-		ConfirmedTransferMaintainer(EvmAddress, EvmAddress),
-		/// Rejected the transfer maintainer. \[contract, address\]
-		RejectedTransferMaintainer(EvmAddress, EvmAddress),
 		/// Enabled contract development. \[who\]
 		ContractDevelopmentEnabled(T::AccountId),
 		/// Disabled contract development. \[who\]
@@ -440,10 +422,6 @@ pub mod module {
 		ContractNotFound,
 		/// No permission
 		NoPermission,
-		/// Number out of bound in calculation.
-		NumOutOfBound,
-		/// Storage exceeds max code size
-		StorageExceedsStorageLimit,
 		/// Contract development is not enabled
 		ContractDevelopmentNotEnabled,
 		/// Contract development is already enabled
@@ -460,12 +438,6 @@ pub mod module {
 		ChargeFeeFailed,
 		/// Contract cannot be killed due to reference count
 		CannotKillContract,
-		/// Not enough balance to perform action
-		BalanceLow,
-		/// Calculating total fee overflowed
-		FeeOverflow,
-		/// Calculating total payment overflowed
-		PaymentOverflow,
 		/// Reserve storage failed
 		ReserveStorageFailed,
 		/// Unreserve storage failed
@@ -531,12 +503,6 @@ pub mod module {
 				T::config(),
 			)?;
 
-			if info.exit_reason.is_succeed() {
-				Pallet::<T>::deposit_event(Event::<T>::Executed(target));
-			} else {
-				Pallet::<T>::deposit_event(Event::<T>::ExecutedFailed(target, info.exit_reason, info.value));
-			}
-
 			let used_gas: u64 = info.used_gas.unique_saturated_into();
 
 			Ok(PostDispatchInfo {
@@ -579,12 +545,6 @@ pub mod module {
 			}
 
 			let info = T::Runner::call(from, from, target, input, value, gas_limit, storage_limit, T::config())?;
-
-			if info.exit_reason.is_succeed() {
-				Pallet::<T>::deposit_event(Event::<T>::Executed(target));
-			} else {
-				Pallet::<T>::deposit_event(Event::<T>::ExecutedFailed(target, info.exit_reason, info.value));
-			}
 
 			let used_gas: u64 = info.used_gas.unique_saturated_into();
 
@@ -631,12 +591,6 @@ pub mod module {
 
 			let info = T::Runner::create(source, init, value, gas_limit, storage_limit, T::config())?;
 
-			if info.exit_reason.is_succeed() {
-				Pallet::<T>::deposit_event(Event::<T>::Created(info.value));
-			} else {
-				Pallet::<T>::deposit_event(Event::<T>::CreatedFailed(info.value, info.exit_reason));
-			}
-
 			let used_gas: u64 = info.used_gas.unique_saturated_into();
 
 			Ok(PostDispatchInfo {
@@ -667,12 +621,6 @@ pub mod module {
 			let source = T::AddressMapping::get_or_create_evm_address(&who);
 
 			let info = T::Runner::create2(source, init, salt, value, gas_limit, storage_limit, T::config())?;
-
-			if info.exit_reason.is_succeed() {
-				Pallet::<T>::deposit_event(Event::<T>::Created(info.value));
-			} else {
-				Pallet::<T>::deposit_event(Event::<T>::CreatedFailed(info.value, info.exit_reason));
-			}
 
 			let used_gas: u64 = info.used_gas.unique_saturated_into();
 
@@ -706,12 +654,6 @@ pub mod module {
 				T::Runner::create_at_address(source, address, init, value, gas_limit, storage_limit, T::config())?;
 
 			NetworkContractIndex::<T>::mutate(|v| *v = v.saturating_add(One::one()));
-
-			if info.exit_reason.is_succeed() {
-				Pallet::<T>::deposit_event(Event::<T>::Created(info.value));
-			} else {
-				Pallet::<T>::deposit_event(Event::<T>::CreatedFailed(info.value, info.exit_reason));
-			}
 
 			let used_gas: u64 = info.used_gas.unique_saturated_into();
 
@@ -766,12 +708,6 @@ pub mod module {
 			} else {
 				T::Runner::create_at_address(source, target, init, value, gas_limit, storage_limit, T::config())?
 			};
-
-			if info.exit_reason.is_succeed() {
-				Pallet::<T>::deposit_event(Event::<T>::Created(info.value));
-			} else {
-				Pallet::<T>::deposit_event(Event::<T>::CreatedFailed(info.value, info.exit_reason));
-			}
 
 			let used_gas: u64 = info.used_gas.unique_saturated_into();
 
@@ -1402,14 +1338,8 @@ impl<T: Config> EVMTrait<T::AccountId> for Pallet<T> {
 				Ok(info) => match mode {
 					ExecutionMode::Execute => {
 						if info.exit_reason.is_succeed() {
-							Pallet::<T>::deposit_event(Event::<T>::Executed(context.contract));
 							TransactionOutcome::Commit(Ok(info))
 						} else {
-							Pallet::<T>::deposit_event(Event::<T>::ExecutedFailed(
-								context.contract,
-								info.exit_reason.clone(),
-								info.value.clone(),
-							));
 							TransactionOutcome::Rollback(Ok(info))
 						}
 					}

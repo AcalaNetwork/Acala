@@ -75,6 +75,10 @@ fn dev_testnet_config_from_chain_id(chain_id: &str) -> Result<ChainSpec, String>
 					get_account_id_from_seed::<sr25519::Public>("Bob"),
 					get_account_id_from_seed::<sr25519::Public>("Alice//stash"),
 					get_account_id_from_seed::<sr25519::Public>("Bob//stash"),
+					// EVM dev accounts
+					// 5EMjsczjoEZaNbWzoXDcZtZDSHN1SLmu4ArJcEJVorNDfUH3
+					// mnemonic: 'fox sight canyon orphan hotel grow hedgehog build bless august weather swarm',
+					hex!["65766d3a75e480db528101a381ce68544611c169ad7eb3420000000000000000"].into(),
 				],
 			)
 		},

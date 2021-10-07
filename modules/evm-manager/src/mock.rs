@@ -26,7 +26,7 @@ use frame_system::EnsureSignedBy;
 use module_support::{mocks::MockAddressMapping, AddressMapping};
 use orml_traits::parameter_type_with_key;
 use primitives::{Amount, Balance, CurrencyId, ReserveIdentifier, TokenSymbol};
-use sp_core::{bytes::from_hex, crypto::AccountId32, H256};
+use sp_core::{bytes::from_hex, crypto::AccountId32, H160, H256};
 use sp_runtime::{testing::Header, traits::IdentityLookup};
 use std::str::FromStr;
 
@@ -217,8 +217,21 @@ pub fn deploy_contracts() {
 		10000
 	));
 
-	let event = Event::EVM(module_evm::Event::Created(erc20_address()));
-	assert_eq!(System::events().iter().last().unwrap().event, event);
+	System::assert_last_event(Event::EVM(module_evm::Event::Created(
+		erc20_address(),
+		vec![module_evm::Log {
+			address: H160::from_str("0x0000000000000000000000000000000002000000").unwrap(),
+			topics: vec![
+				H256::from_str("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef").unwrap(),
+				H256::from_str("0x0000000000000000000000000000000000000000000000000000000000000000").unwrap(),
+				H256::from_str("0x0000000000000000000000001000000000000000000000000000000000000001").unwrap(),
+			],
+			data: [
+				0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 39, 16,
+			]
+			.to_vec(),
+		}],
+	)));
 
 	assert_ok!(EVM::deploy_free(Origin::signed(CouncilAccount::get()), erc20_address()));
 }
