@@ -46,5 +46,5 @@ pub mod orml_tokens;
 pub mod orml_vesting;
 
 pub mod ecosystem_chainlink_adaptor;
-pub mod ecosystem_chainsafe;
+
 pub mod nutsfinance_stable_asset;

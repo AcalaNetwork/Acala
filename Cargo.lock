@@ -2382,25 +2382,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ecosystem-chainsafe"
-version = "1.5.0"
-dependencies = [
- "acala-primitives",
- "chainbridge",
- "frame-support",
- "frame-system",
- "module-support",
- "orml-tokens",
- "orml-traits",
- "parity-scale-codec",
- "serde",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
 name = "ecosystem-compound-cash"
 version = "1.5.0"
 dependencies = [
@@ -4221,6 +4202,7 @@ dependencies = [
  "module-nominees-election",
  "module-polkadot-bridge",
  "module-prices",
+ "module-relaychain",
  "module-session-manager",
  "module-staking-pool",
  "module-staking-pool-rpc-runtime-api",
@@ -5118,7 +5100,6 @@ dependencies = [
  "cumulus-primitives-utility",
  "cumulus-test-relay-sproof-builder",
  "ecosystem-chainlink-adaptor",
- "ecosystem-chainsafe",
  "ecosystem-compound-cash",
  "ecosystem-renvm-bridge",
  "ecosystem-starport",
@@ -5155,6 +5136,7 @@ dependencies = [
  "module-nominees-election",
  "module-polkadot-bridge",
  "module-prices",
+ "module-relaychain",
  "module-session-manager",
  "module-staking-pool",
  "module-staking-pool-rpc-runtime-api",
@@ -5788,20 +5770,24 @@ name = "module-homa-lite"
 version = "1.5.0"
 dependencies = [
  "acala-primitives",
+ "cumulus-primitives-core",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
  "module-currencies",
+ "module-relaychain",
  "module-support",
  "orml-tokens",
  "orml-traits",
  "pallet-balances",
+ "pallet-xcm",
  "parity-scale-codec",
  "sp-core",
  "sp-io",
  "sp-runtime",
  "sp-std",
  "xcm",
+ "xcm-executor",
 ]
 
 [[package]]
@@ -5971,6 +5957,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "module-relaychain"
+version = "1.4.1"
+dependencies = [
+ "acala-primitives",
+ "cumulus-primitives-core",
+ "frame-support",
+ "frame-system",
+ "module-support",
+ "parity-scale-codec",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "xcm",
+]
+
+[[package]]
 name = "module-session-manager"
 version = "1.5.0"
 dependencies = [
@@ -6046,6 +6050,7 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
+ "xcm",
 ]
 
 [[package]]
@@ -9844,7 +9849,6 @@ dependencies = [
  "cumulus-primitives-timestamp",
  "cumulus-primitives-utility",
  "cumulus-test-relay-sproof-builder",
- "ecosystem-chainsafe",
  "ecosystem-compound-cash",
  "ecosystem-renvm-bridge",
  "ecosystem-starport",
@@ -9913,6 +9917,7 @@ dependencies = [
  "pallet-recovery",
  "pallet-scheduler",
  "pallet-session",
+ "pallet-staking",
  "pallet-sudo",
  "pallet-timestamp",
  "pallet-tips",

@@ -12,6 +12,7 @@ frame-system = { git = "https://github.com/paritytech/substrate", branch = "polk
 sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.10", default-features = false }
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.10", default-features = false  }
 sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.10", default-features = false  }
+pallet-xcm = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.10", default-features = false }
 xcm = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.10", default-features = false }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 orml-traits = { path = "../../orml/traits", default-features = false }
@@ -22,9 +23,13 @@ sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.10" }
 module-currencies = { path = "../../modules/currencies" }
 orml-tokens = { path = "../../orml/tokens" }
+xcm-executor = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.10" }
+cumulus-primitives-core = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.10" }
+module-relaychain = { path = "../relaychain"}
 
 [features]
-default = ["std"]
+default = ["std", "kusama"]
+kusama = ["module-relaychain/kusama"]
 std = [
 	"codec/std",
 	"frame-benchmarking/std",
@@ -33,10 +38,11 @@ std = [
 	"sp-runtime/std",
 	"sp-core/std",
 	"sp-std/std",
+	"pallet-xcm/std",
+	"xcm/std",
 	"primitives/std",
 	"orml-traits/std",
 	"module-support/std",
-	"xcm/std",
 ]
 runtime-benchmarks = [
 	"frame-benchmarking",

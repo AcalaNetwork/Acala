@@ -65,73 +65,33 @@ describeWithAcala("Acala RPC (bodhi.js)", (context) => {
 
 	step("should call", async function () {
 		expect(await context.provider.call(
-			contract.populateTransaction.multiply(3)
+			await contract.populateTransaction.multiply(3)
 		)).to.equal("0x0000000000000000000000000000000000000000000000000000000000000015");
 
 		expect(await context.provider.call(
-			contract.populateTransaction.multiply(3), "latest"
+			await contract.populateTransaction.multiply(3), "latest"
 		)).to.equal("0x0000000000000000000000000000000000000000000000000000000000000015");
 
 		expect(await context.provider.call(
-			contract.populateTransaction.multiply(3), "pending"
+			await contract.populateTransaction.multiply(3), "pending"
 		)).to.equal("0x0000000000000000000000000000000000000000000000000000000000000015");
 
-		try {
-			await context.provider.call(contract.populateTransaction.multiply(3), "earliest")
-		} catch(err) {
-			expect(err.toString()).to.equal('Error: -32603: execution fatal: Module { index: 180, error: 16, message: Some("ReserveStorageFailed") }');
-		}
+		// TODO: decide if we want to support for earliest
 	});
 
 	step("should estimateGas", async function () {
 		expect(await context.provider.estimateGas(
-			contract.populateTransaction.multiply(3)
+			await contract.populateTransaction.multiply(3)
 		)).to.deep.equal(BigNumber.from("22038"));
-
-		expect(await context.provider.estimateGas(
-			contract.populateTransaction.multiply(3), "latest"
-		)).to.deep.equal(BigNumber.from("22038"));
-
-		expect(await context.provider.estimateGas(
-			contract.populateTransaction.multiply(3), "pending"
-		)).to.deep.equal(BigNumber.from("22038"));
-
-		try {
-			await context.provider.estimateGas(contract.populateTransaction.multiply(3), "earliest")
-		} catch(err) {
-			expect(err.toString()).to.equal('Error: -32603: execution fatal: Module { index: 180, error: 16, message: Some("ReserveStorageFailed") }');
-		}
 	});
 
 	step("should estimateResources", async function () {
 		expect(await context.provider.estimateResources(
-			contract.populateTransaction.multiply(3)
+			await contract.populateTransaction.multiply(3)
 		)).to.deep.include({
 			gas: BigNumber.from("22038"),
 			storage: BigNumber.from(0),
 			weightFee: BigNumber.from(0),
 		});
-
-		expect(await context.provider.estimateResources(
-			contract.populateTransaction.multiply(3), "latest"
-		)).to.deep.include({
-			gas: BigNumber.from("22038"),
-			storage: BigNumber.from(0),
-			weightFee: BigNumber.from(0),
-		});
-
-		expect(await context.provider.estimateResources(
-			contract.populateTransaction.multiply(3), "pending"
-		)).to.deep.include({
-			gas: BigNumber.from("22038"),
-			storage: BigNumber.from(0),
-			weightFee: BigNumber.from(0),
-		});
-
-		try {
-			await context.provider.estimateResources(contract.populateTransaction.multiply(3), "earliest")
-		} catch(err) {
-			expect(err.toString()).to.equal('Error: -32603: execution fatal: Module { index: 180, error: 16, message: Some("ReserveStorageFailed") }');
-		}
 	});
 });

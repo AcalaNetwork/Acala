@@ -24,10 +24,10 @@
     "@polkadot/api" "^5.9.1"
     "@polkadot/rpc-core" "^5.9.1"
 
-"@acala-network/bodhi@1.0.2-14":
-  version "1.0.2-14"
-  resolved "https://registry.yarnpkg.com/@acala-network/bodhi/-/bodhi-1.0.2-14.tgz#52fd7774887b886b10b23b63e405e003705ce3ae"
-  integrity sha512-lW4sK0ahyf+bcjmDkgK2uwZ1kgNNRq/xhuwtBS+TOeC5Tt+48L0/JEORFXjpDHg5Rcz+2nL75Q/3ZkmEGRMG9A==
+"@acala-network/bodhi@^1.0.4-0":
+  version "1.0.4-0"
+  resolved "https://registry.yarnpkg.com/@acala-network/bodhi/-/bodhi-1.0.4-0.tgz#7b1635343f002c98f96879c2cf9a06126816caae"
+  integrity sha512-x12AlZC5x2epEvr6SetTybnkKbW4U/KCn4R0QFBBC06bNAIEwTfWHSO0omVXbil3Rs6EXhb1oDxy53IGWcloTA==
   dependencies:
     "@open-web3/scanner" "^0.9.4-19"
     blakejs "^1.1.0"
@@ -1029,6 +1029,18 @@
   integrity sha512-QSSVYj7pYFN49kW77o2s9xTCwZ8F2xLbjLLSEVh8D2F4JUhZtPAGOFLTD+ffqksBx/u4cE/KImFjyhqCjn/LIA==
   dependencies:
     "@types/node" "*"
+
+"@types/chai-as-promised@^7.1.4":
+  version "7.1.4"
+  resolved "https://registry.yarnpkg.com/@types/chai-as-promised/-/chai-as-promised-7.1.4.tgz#caf64e76fb056b8c8ced4b761ed499272b737601"
+  integrity sha512-1y3L1cHePcIm5vXkh1DSGf/zQq5n5xDKG1fpCvf18+uOkpce0Z1ozNFPkyWsVswK7ntN1sZBw3oU6gmN+pDUcA==
+  dependencies:
+    "@types/chai" "*"
+
+"@types/chai@*":
+  version "4.2.22"
+  resolved "https://registry.yarnpkg.com/@types/chai/-/chai-4.2.22.tgz#47020d7e4cf19194d43b5202f35f75bd2ad35ce7"
+  integrity sha512-tFfcE+DSTzWAgifkjik9AySNqIyNoYwmR+uecPwwD/XRNfvOjmC/FjCxpiUGDkDVDphPfCUecSQVFw+lN3M3kQ==
 
 "@types/chai@^4.2.11":
   version "4.2.21"
@@ -2228,6 +2240,13 @@ caseless@~0.12.0:
   version "0.12.0"
   resolved "https://registry.yarnpkg.com/caseless/-/caseless-0.12.0.tgz#1b681c21ff84033c826543090689420d187151dc"
   integrity sha1-G2gcIf+EAzyCZUMJBolCDRhxUdw=
+
+chai-as-promised@^7.1.1:
+  version "7.1.1"
+  resolved "https://registry.yarnpkg.com/chai-as-promised/-/chai-as-promised-7.1.1.tgz#08645d825deb8696ee61725dbf590c012eb00ca0"
+  integrity sha512-azL6xMoi+uxu6z4rhWQ1jbdUhOMhis2PvscD/xjLqNMkv3BPPp2JyyuTHOrf9BOosGpNQ11v6BKv/g57RXbiaA==
+  dependencies:
+    check-error "^1.0.2"
 
 chai@^4.2.0:
   version "4.3.4"

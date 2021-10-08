@@ -54,6 +54,7 @@ use module_evm::Runner;
 use module_evm::{CallInfo, CreateInfo};
 use module_evm_accounts::EvmAddressMapping;
 pub use module_evm_manager::EvmCurrencyIdMapping;
+use module_relaychain::RelaychainCallBuilder;
 use module_transaction_payment::{Multiplier, TargetedFeeAdjustment};
 use orml_tokens::CurrencyAdapter;
 use orml_traits::{
@@ -863,7 +864,6 @@ parameter_type_with_key! {
 				}
 			},
 			CurrencyId::Erc20(_) => Balance::max_value(), // not handled by orml-tokens
-			CurrencyId::ChainSafe(_) => 1, // TODO: update this before we enable ChainSafe bridge
 			CurrencyId::StableAssetPoolToken(_) => 1, // TODO: update this before we enable StableAsset
 		}
 	};
@@ -1312,9 +1312,21 @@ pub fn create_x2_parachain_multilocation(index: u16) -> MultiLocation {
 
 parameter_types! {
 	pub MinimumMintThreshold: Balance = 10 * cent(DOT);
+	pub MinimumRedeemThreshold: Balance = 100 * cent(LDOT);
 	pub RelaychainSovereignSubAccount: MultiLocation = create_x2_parachain_multilocation(RelaychainSubAccountId::HomaLite as u16);
+	pub RelaychainSovereignSubAccountId: AccountId = Utility::derivative_account_id(
+		ParachainInfo::get().into_account(),
+		RelaychainSubAccountId::HomaLite as u16
+	);
 	pub MaxRewardPerEra: Permill = Permill::from_rational(500u32, 1_000_000u32); // 1.2 ^ (1/365) = 1.0004996359
-	pub MintFee: Balance = 20 * millicent(DOT); // 2x XCM fee on Kusama
+	pub MintFee: Balance = millicent(DOT);
+	pub BaseWithdrawFee: Permill = Permill::from_rational(14_085u32, 1_000_000u32); // 20% yield per year, unbounding period = 28 days. 1.2^(28/365) = 1.014085
+	pub MaximumRedeemRequestMatchesForMint: u32 = 20;
+	pub RelaychainUnbondingSlashingSpans: u32 = 5;
+	pub MaxScheduledUnbonds: u32 = 35;
+	pub ParachainAccount: AccountId = ParachainInfo::get().into_account();
+	pub SubAccountIndex: u16 = RelaychainSubAccountId::HomaLite as u16;
+	pub const XcmUnbondFee: Balance = 600_000_000; // From homa-lite integration test.
 }
 impl module_homa_lite::Config for Runtime {
 	type Event = Event;
@@ -1324,11 +1336,21 @@ impl module_homa_lite::Config for Runtime {
 	type LiquidCurrencyId = GetLiquidCurrencyId;
 	type GovernanceOrigin = EnsureRootOrHalfGeneralCouncil;
 	type MinimumMintThreshold = MinimumMintThreshold;
+	type MinimumRedeemThreshold = MinimumRedeemThreshold;
 	type XcmTransfer = XTokens;
 	type SovereignSubAccountLocation = RelaychainSovereignSubAccount;
+	type SubAccountIndex = SubAccountIndex;
 	type DefaultExchangeRate = DefaultExchangeRate;
 	type MaxRewardPerEra = MaxRewardPerEra;
 	type MintFee = MintFee;
+	type RelaychainCallBuilder = RelaychainCallBuilder<Runtime, ParachainInfo>;
+	type BaseWithdrawFee = BaseWithdrawFee;
+	type XcmUnbondFee = XcmUnbondFee;
+	type RelaychainBlockNumber = RelaychainBlockNumberProvider<Runtime>;
+	type ParachainAccount = ParachainAccount;
+	type MaximumRedeemRequestMatchesForMint = MaximumRedeemRequestMatchesForMint;
+	type RelaychainUnbondingSlashingSpans = RelaychainUnbondingSlashingSpans;
+	type MaxScheduledUnbonds = MaxScheduledUnbonds;
 }
 
 parameter_types! {
@@ -1630,15 +1652,6 @@ impl chainbridge::Config for Runtime {
 	type ProposalLifetime = ProposalLifetime;
 }
 
-impl ecosystem_chainsafe::Config for Runtime {
-	type Event = Event;
-	type Currency = Currencies;
-	type NativeCurrencyId = GetNativeCurrencyId;
-	type RegistorOrigin = EnsureRootOrHalfGeneralCouncil;
-	type BridgeOrigin = chainbridge::EnsureBridge<Runtime>;
-	type WeightInfo = weights::ecosystem_chainsafe::WeightInfo<Runtime>;
-}
-
 parameter_types! {
 	pub ReservedXcmpWeight: Weight = RuntimeBlockWeights::get().max_block / 4;
 	pub ReservedDmpWeight: Weight = RuntimeBlockWeights::get().max_block / 4;
@@ -1910,11 +1923,50 @@ impl nutsfinance_stable_asset::traits::ValidateAssetId<CurrencyId> for EnsurePoo
 	}
 }
 
+pub struct ConvertBalanceHomaLite;
+impl orml_tokens::ConvertBalance<Balance, Balance> for ConvertBalanceHomaLite {
+	type AssetId = CurrencyId;
+
+	fn convert_balance(balance: Balance, asset_id: CurrencyId) -> Balance {
+		match asset_id {
+			CurrencyId::Token(TokenSymbol::LDOT) => HomaLite::get_exchange_rate()
+				.checked_mul_int(balance)
+				.unwrap_or_default(),
+			_ => balance,
+		}
+	}
+
+	fn convert_balance_back(balance: Balance, asset_id: CurrencyId) -> Balance {
+		match asset_id {
+			CurrencyId::Token(TokenSymbol::LDOT) => HomaLite::get_exchange_rate()
+				.reciprocal()
+				.unwrap_or_default()
+				.checked_mul_int(balance)
+				.unwrap_or_default(),
+			_ => balance,
+		}
+	}
+}
+
+pub struct IsLiquidToken;
+impl Contains<CurrencyId> for IsLiquidToken {
+	fn contains(currency_id: &CurrencyId) -> bool {
+		matches!(currency_id, CurrencyId::Token(TokenSymbol::LDOT))
+	}
+}
+
+type RebaseTokens = orml_tokens::Combiner<
+	AccountId,
+	IsLiquidToken,
+	orml_tokens::Mapper<AccountId, Tokens, ConvertBalanceHomaLite, Balance, GetLiquidCurrencyId>,
+	Tokens,
+>;
+
 impl nutsfinance_stable_asset::Config for Runtime {
 	type Event = Event;
 	type AssetId = CurrencyId;
 	type Balance = Balance;
-	type Assets = Tokens;
+	type Assets = RebaseTokens;
 	type PalletId = StableAssetPalletId;
 
 	type AtLeast64BitUnsigned = u128;
@@ -2089,7 +2141,6 @@ construct_runtime! {
 		// Ecosystem modules
 		RenVmBridge: ecosystem_renvm_bridge::{Pallet, Call, Config, Storage, Event<T>, ValidateUnsigned} = 150,
 		ChainBridge: chainbridge::{Pallet, Call, Storage, Event<T>} = 151,
-		ChainSafeTransfer: ecosystem_chainsafe::{Pallet, Call, Storage, Event<T>} = 152,
 		Starport: ecosystem_starport::{Pallet, Call, Storage, Event<T>, Config} = 153,
 		CompoundCash: ecosystem_compound_cash::{Pallet, Storage, Event<T>} = 154,
 		ChainlinkFeed: pallet_chainlink_feed::{Pallet, Call, Storage, Event<T>} = 155,
@@ -2412,8 +2463,6 @@ impl_runtime_apis! {
 			orml_list_benchmark!(list, extra, orml_authority, benchmarking::authority);
 			orml_list_benchmark!(list, extra, orml_oracle, benchmarking::oracle);
 
-			orml_list_benchmark!(list, extra, ecosystem_chainsafe, benchmarking::chainsafe_transfer);
-
 			let storage_info = AllPalletsWithSystem::storage_info();
 
 			return (list, storage_info)
@@ -2476,7 +2525,6 @@ impl_runtime_apis! {
 			orml_add_benchmark!(params, batches, orml_authority, benchmarking::authority);
 			orml_add_benchmark!(params, batches, orml_oracle, benchmarking::oracle);
 
-			orml_add_benchmark!(params, batches, ecosystem_chainsafe, benchmarking::chainsafe_transfer);
 			orml_add_benchmark!(params, batches, ecosystem_chainlink_adaptor, benchmarking::chainlink_adaptor);
 			orml_add_benchmark!(params, batches, nutsfinance_stable_asset, benchmarking::nutsfinance_stable_asset);
 
