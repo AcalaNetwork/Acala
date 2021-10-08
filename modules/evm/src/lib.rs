@@ -390,16 +390,16 @@ pub mod module {
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	#[pallet::metadata(T::AccountId = "AccountId")]
 	pub enum Event<T: Config> {
-		/// A contract has been created at given \[address, logs\].
-		Created(EvmAddress, Vec<Log>),
+		/// A contract has been created at given \[from, address, logs\].
+		Created(EvmAddress, EvmAddress, Vec<Log>),
 		/// A contract was attempted to be created, but the execution failed.
-		/// \[contract, exit_reason, logs\]
-		CreatedFailed(EvmAddress, ExitReason, Vec<Log>),
-		/// A contract has been executed successfully with states applied. \[contract, logs]\
-		Executed(EvmAddress, Vec<Log>),
+		/// \[from, contract, exit_reason, logs\]
+		CreatedFailed(EvmAddress, EvmAddress, ExitReason, Vec<Log>),
+		/// A contract has been executed successfully with states applied. \[from, contract, logs]\
+		Executed(EvmAddress, EvmAddress, Vec<Log>),
 		/// A contract has been executed with errors. States are reverted with
-		/// only gas fees applied. \[contract, exit_reason, output, logs\]
-		ExecutedFailed(EvmAddress, ExitReason, Vec<u8>, Vec<Log>),
+		/// only gas fees applied. \[from, contract, exit_reason, output, logs\]
+		ExecutedFailed(EvmAddress, EvmAddress, ExitReason, Vec<u8>, Vec<Log>),
 		/// Transferred maintainer. \[contract, address\]
 		TransferredMaintainer(EvmAddress, EvmAddress),
 		/// Enabled contract development. \[who\]

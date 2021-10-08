@@ -189,6 +189,7 @@ pub fn deploy_contracts() {
 	assert_ok!(EVM::create(Origin::signed(alice()), code, 0, 2_100_000, 10000));
 
 	System::assert_last_event(Event::EVM(module_evm::Event::Created(
+		alice_evm_addr(),
 		erc20_address(),
 		vec![module_evm::Log {
 			address: erc20_address(),
@@ -197,10 +198,7 @@ pub fn deploy_contracts() {
 				H256::from_str("0x0000000000000000000000000000000000000000000000000000000000000000").unwrap(),
 				H256::from_str("0x0000000000000000000000001000000000000000000000000000000000000001").unwrap(),
 			],
-			data: [
-				0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 39, 16,
-			]
-			.to_vec(),
+			data: H256::from_low_u64_be(10000).as_bytes().to_vec(),
 		}],
 	)));
 

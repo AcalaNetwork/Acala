@@ -218,7 +218,9 @@ impl<T: Config> Pallet<T> {
 		secp256k1::PublicKey::from_secret_key(secret)
 	}
 
+	#[cfg(any(feature = "runtime-benchmarks", feature = "std"))]
 	// Returns an Etherum address derived from an Ethereum secret key.
+	// Only for tests
 	pub fn eth_address(secret: &secp256k1::SecretKey) -> EvmAddress {
 		EvmAddress::from_slice(&keccak_256(&Self::eth_public(secret).serialize()[1..65])[12..])
 	}

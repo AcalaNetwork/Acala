@@ -13,11 +13,6 @@ describeWithAcala("Acala RPC (Transaction cost)", (context) => {
 		const contract = await deployContract(alice as any, Erc20DemoContract, [1000000000]);
 		const to = await ethers.Wallet.createRandom().getAddress();
 
-		try {
-			await contract.transfer(to, 1000, { gasLimit: 0 });
-		}
-		catch(err) {
-			expect(err).to.equal('{"error":{"outofgas":null}} ');
-		}
+		await expect(contract.transfer(to, 1000, { gasLimit: 0 })).to.be.rejectedWith('{"error":{"outofgas":null}} ');
 	});
 });
