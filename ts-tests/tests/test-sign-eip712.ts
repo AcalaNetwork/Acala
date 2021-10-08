@@ -36,7 +36,7 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 		await context.provider.api.tx.balances.transfer(subAddr, "10_000_000_000_000")
 			.signAndSend(await alice.getSubstrateAddress());
 
-		factory = new ethers.ContractFactory(Erc20DemoContract.abi, Erc20DemoContract.bytecode, signer);
+		factory = new ethers.ContractFactory(Erc20DemoContract.abi, Erc20DemoContract.bytecode);
 	});
 
 	it("create should sign and verify", async function () {
@@ -187,7 +187,7 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 			data: input.data,
 			value: '0',
 			gasLimit: 210000,
-			storageLimit: 100,
+			storageLimit: 1000,
 			validUntil: (await context.provider.api.rpc.chain.getHeader()).number.toNumber() + 100,
 		};
 
@@ -238,7 +238,7 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 						"input": "${ input.data }",
 						"value": 0,
 						"gas_limit": 210000,
-						"storage_limit": 100,
+						"storage_limit": 1000,
 						"_valid_until": 106
 					}
 				}
@@ -255,8 +255,18 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 			});
 		}();
 
-		// TODO: Does not support both provider and signer
-		// console.log(await erc20.attach(contract).connect(signer).connect(context.provider).balanceOf(receiver));
-		// expect(await iface.balanceOf(receiver)).to.equal(100);
+		await async function () {
+			return new Promise(async (resolve) => {
+				context.provider.api.tx.sudo.sudo(context.provider.api.tx.evm.deployFree(contract)).signAndSend(await alice.getSubstrateAddress(), ((result) => {
+					if (result.status.isInBlock) {
+						resolve(undefined);
+					}
+				}));
+			});
+		}();
+
+		const erc20 = new ethers.Contract(contract, Erc20DemoContract.abi, alice);
+		expect((await erc20.balanceOf(signer.address)).toString()).to.equal("99900");
+		expect((await erc20.balanceOf(receiver)).toString()).to.equal("100");
 	});
 });

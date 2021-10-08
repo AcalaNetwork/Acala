@@ -33,7 +33,8 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 
 		expect(subAddr).to.equal("5EMjsczQH4R2WZaB5Svau8HWZp1aAfMqjxfv3GeLWotYSkLc");
 
-		await context.provider.api.tx.balances.transfer(subAddr, "10_000_000_000_000").signAndSend(await alice.getSubstrateAddress());
+		await context.provider.api.tx.balances.transfer(subAddr, "10_000_000_000_000")
+			.signAndSend(await alice.getSubstrateAddress());
 
 		factory = new ethers.ContractFactory(Erc20DemoContract.abi, Erc20DemoContract.bytecode);
 	});
@@ -127,7 +128,7 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 					"_valid_until": 104
 				  }
 				}
-			  }`.toString().replace(/\n/g, '').replace(/\t/g, '').replace(/ /g, '')
+			  }`.toString().replace(/\s/g, '')
 		);
 
 		await async function () {
@@ -157,7 +158,7 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 		const chanid = +context.provider.api.consts.evm.chainId.toString()
 		const nonce = (await context.provider.api.query.system.account(subAddr)).nonce.toNumber()
 		const validUntil = (await context.provider.api.rpc.chain.getHeader()).number.toNumber() + 100
-		const storageLimit = 100
+		const storageLimit = 1000
 
 		const gasPrice = '0x' + (BigInt(storageLimit) << BigInt(32) | BigInt(validUntil)).toString(16);
 		const receiver = '0x1111222233334444555566667777888899990000';
@@ -178,7 +179,7 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 
 		expect(rawtx).to.deep.include({
 			nonce: 1,
-			gasPrice: BigNumber.from('0x640000006a'),
+			gasPrice: BigNumber.from('0x03e80000006a'),
 			gasLimit: BigNumber.from(210000),
 			to: ethers.utils.getAddress(contract),
 			value: BigNumber.from(0),
@@ -238,7 +239,7 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 					"input": "${ input.data }",
 					"value": 0,
 					"gas_limit": 210000,
-					"storage_limit": 100,
+					"storage_limit": 1000,
 					"_valid_until": 106
 				  }
 				}
@@ -255,6 +256,18 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 			});
 		}();
 
-		expect(await factory.attach(contract).balanceOf(receiver)).to.equal(100);
+		await async function () {
+			return new Promise(async (resolve) => {
+				context.provider.api.tx.sudo.sudo(context.provider.api.tx.evm.deployFree(contract)).signAndSend(await alice.getSubstrateAddress(), ((result) => {
+					if (result.status.isInBlock) {
+						resolve(undefined);
+					}
+				}));
+			});
+		}();
+
+		const erc20 = new ethers.Contract(contract, Erc20DemoContract.abi, alice);
+		expect((await erc20.balanceOf(signer.address)).toString()).to.equal("99900");
+		expect((await erc20.balanceOf(receiver)).toString()).to.equal("100");
 	});
 });
