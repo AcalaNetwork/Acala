@@ -61,7 +61,7 @@ fn deploy_contract(caller: AccountId) -> Result<H160, DispatchError> {
 		.map_or_else(|e| Err(e.error), |_| Ok(()))?;
 
 	System::assert_last_event(Event::EVM(module_evm::Event::Created(
-		module_evm_accounts::EvmAddressMapping::<Runtime>::get_default_evm_address(&caller),
+		module_evm_accounts::EvmAddressMapping::<Runtime>::get_evm_address(&caller).unwrap(),
 		contract_addr(),
 		vec![],
 	)));
