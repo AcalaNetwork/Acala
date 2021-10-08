@@ -149,7 +149,7 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 		expect(event.length).to.equal(1);
 		// console.log(event[0].toString())
 
-		// get checksum address
+		// get address
 		contract = event[0].event.data[0].toString();
 	});
 
