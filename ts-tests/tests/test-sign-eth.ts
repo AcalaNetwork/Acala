@@ -12,7 +12,7 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 	let alice: Signer;
 	let signer: Wallet;
 	let subAddr: string;
-	let erc20: ContractFactory;
+	let factory: ContractFactory;
 	let contract: string;
 
 	before("init", async function () {
@@ -35,7 +35,7 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 
 		await context.provider.api.tx.balances.transfer(subAddr, "10_000_000_000_000").signAndSend(await alice.getSubstrateAddress());
 
-		erc20 = new ethers.ContractFactory(Erc20DemoContract.abi, Erc20DemoContract.bytecode, signer);
+		factory = new ethers.ContractFactory(Erc20DemoContract.abi, Erc20DemoContract.bytecode);
 	});
 
 	it("create should sign and verify", async function () {
@@ -46,7 +46,7 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 
 		const gasPrice = '0x' + (BigInt(storageLimit) << BigInt(32) | BigInt(validUntil)).toString(16);
 
-		const deploy = erc20.getDeployTransaction(100000);
+		const deploy = factory.getDeployTransaction(100000);
 
 		const value = {
 			// to: "0x0000000000000000000000000000000000000000",
@@ -149,7 +149,7 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 		expect(event.length).to.equal(1);
 		// console.log(event[0].toString())
 
-		// get checksum address
+		// get address
 		contract = event[0].event.data[0].toString();
 	});
 
@@ -161,7 +161,7 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 
 		const gasPrice = '0x' + (BigInt(storageLimit) << BigInt(32) | BigInt(validUntil)).toString(16);
 		const receiver = '0x1111222233334444555566667777888899990000';
-		const input = await erc20.attach(contract).populateTransaction.transfer(receiver, 100);
+		const input = await factory.attach(contract).populateTransaction.transfer(receiver, 100);
 
 		const value = {
 			to: contract,
@@ -242,7 +242,7 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 					"_valid_until": 106
 				  }
 				}
-			  }`.toString().replace(/\n/g, '').replace(/\t/g, '').replace(/ /g, '')
+			  }`.toString().replace(/\s/g, '')
 		);
 
 		await async function () {
@@ -255,8 +255,6 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 			});
 		}();
 
-		// TODO: Does not support both provider and signer
-		// console.log(await erc20.attach(contract).connect(signer).connect(context.provider).balanceOf(receiver));
-		// expect(await iface.balanceOf(receiver)).to.equal(100);
+		expect(await factory.attach(contract).balanceOf(receiver)).to.equal(100);
 	});
 });

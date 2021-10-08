@@ -12,7 +12,7 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 	let alice: Signer;
 	let signer: Wallet;
 	let subAddr: string;
-	let erc20: ContractFactory;
+	let factory: ContractFactory;
 	let contract: string;
 
 	before("init", async function () {
@@ -36,7 +36,7 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 		await context.provider.api.tx.balances.transfer(subAddr, "10_000_000_000_000")
 			.signAndSend(await alice.getSubstrateAddress());
 
-		erc20 = new ethers.ContractFactory(Erc20DemoContract.abi, Erc20DemoContract.bytecode, signer);
+		factory = new ethers.ContractFactory(Erc20DemoContract.abi, Erc20DemoContract.bytecode, signer);
 	});
 
 	it("create should sign and verify", async function () {
@@ -61,7 +61,7 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 			],
 		};
 
-		const deploy = erc20.getDeployTransaction(100000);
+		const deploy = factory.getDeployTransaction(100000);
 
 		// The data to sign
 		const value = {
@@ -127,7 +127,7 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 						"_valid_until": 104
 					}
 				}
-			  }`.toString().replace(/\n/g, '').replace(/\t/g, '').replace(/ /g, '')
+			  }`.toString().replace(/\s/g, '')
 		);
 
 		await async function () {
@@ -176,7 +176,7 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 		};
 
 		const receiver = '0x1111222233334444555566667777888899990000';
-		const input = await erc20.attach(contract).populateTransaction.transfer(receiver, 100);
+		const input = await factory.attach(contract).populateTransaction.transfer(receiver, 100);
 
 		// The data to sign
 		const value = {
@@ -242,7 +242,7 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 						"_valid_until": 106
 					}
 				}
-			  }`.toString().replace(/\n/g, '').replace(/\t/g, '').replace(/ /g, '')
+			  }`.toString().replace(/\s/g, '')
 		);
 
 		await async function () {
