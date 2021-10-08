@@ -67,6 +67,7 @@ pub fn deploy_erc20_contracts() {
 	));
 
 	System::assert_last_event(Event::EVM(module_evm::Event::Created(
+		Default::default(),
 		erc20_address_0(),
 		vec![module_evm::Log {
 			address: erc20_address_0(),
@@ -75,10 +76,7 @@ pub fn deploy_erc20_contracts() {
 				H256::from_str("0x0000000000000000000000000000000000000000000000000000000000000000").unwrap(),
 				H256::from_str("0x0000000000000000000000001000000000000000000000000000000000000001").unwrap(),
 			],
-			data: [
-				0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 39, 16,
-			]
-			.to_vec(),
+			data: H256::from_low_u64_be(10000).as_bytes().to_vec(),
 		}],
 	)));
 
@@ -87,6 +85,7 @@ pub fn deploy_erc20_contracts() {
 	assert_ok!(EVM::create_network_contract(Origin::root(), code, 0, 2100_000, 100000));
 
 	System::assert_last_event(Event::EVM(module_evm::Event::Created(
+		Default::default(),
 		erc20_address_1(),
 		vec![module_evm::Log {
 			address: erc20_address_1(),
@@ -95,10 +94,7 @@ pub fn deploy_erc20_contracts() {
 				H256::from_str("0x0000000000000000000000000000000000000000000000000000000000000000").unwrap(),
 				H256::from_str("0x0000000000000000000000001000000000000000000000000000000000000001").unwrap(),
 			],
-			data: [
-				0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 39, 16,
-			]
-			.to_vec(),
+			data: H256::from_low_u64_be(10000).as_bytes().to_vec(),
 		}],
 	)));
 
@@ -122,8 +118,7 @@ fn deploy_contract(account: AccountId) -> Result<H160, DispatchError> {
 
 	EVM::create(Origin::signed(account), contract, 0, 1000000000, 100000).map_or_else(|e| Err(e.error), |_| Ok(()))?;
 
-	if let Event::EVM(module_evm::Event::<Runtime>::Created(address, _)) = System::events().iter().last().unwrap().event
-	{
+	if let Event::EVM(module_evm::Event::<Runtime>::Created(_, address, _)) = System::events().last().unwrap().event {
 		Ok(address)
 	} else {
 		Err("deploy_contract failed".into())
@@ -314,11 +309,11 @@ fn test_evm_module() {
 			assert_eq!(Balances::free_balance(alice()), 1_000 * dollar(NATIVE_CURRENCY));
 			assert_eq!(Balances::free_balance(bob()), 1_000 * dollar(NATIVE_CURRENCY));
 
-			let _alice_address = EvmAccounts::eth_address(&alice_key());
+			let alice_address = EvmAccounts::eth_address(&alice_key());
 			let bob_address = EvmAccounts::eth_address(&bob_key());
 
 			let contract = deploy_contract(alice()).unwrap();
-			System::assert_last_event(Event::EVM(module_evm::Event::Created(contract, vec![])));
+			System::assert_last_event(Event::EVM(module_evm::Event::Created(alice_address, contract, vec![])));
 
 			assert_ok!(EVM::transfer_maintainer(Origin::signed(alice()), contract, bob_address));
 			System::assert_last_event(Event::EVM(module_evm::Event::TransferredMaintainer(
@@ -504,7 +499,7 @@ fn should_not_kill_contract_on_transfer_all() {
 
 			assert_ok!(EVM::create(Origin::signed(alice()), code, 2 * dollar(NATIVE_CURRENCY), 1000000000, 100000));
 
-			let contract = if let Event::EVM(module_evm::Event::Created(address, _)) = System::events().iter().last().unwrap().event {
+			let contract = if let Event::EVM(module_evm::Event::Created(_, address, _)) = System::events().last().unwrap().event {
 				address
 			} else {
 				panic!("deploy contract failed");
@@ -564,7 +559,8 @@ fn should_not_kill_contract_on_transfer_all_tokens() {
 			// }
 			let code = hex_literal::hex!("608060405260848060116000396000f3fe6080604052348015600f57600080fd5b506004361060285760003560e01c806341c0e1b514602d575b600080fd5b60336035565b005b600073ffffffffffffffffffffffffffffffffffffffff16fffea265627a7a72315820ed64a7551098c4afc823bee1663309079d9cb8798a6bdd71be2cd3ccee52d98e64736f6c63430005110032").to_vec();
 			assert_ok!(EVM::create(Origin::signed(alice()), code, 0, 1000000000, 100000));
-			let contract = if let Event::EVM(module_evm::Event::Created(address, _)) = System::events().iter().last().unwrap().event {
+
+			let contract = if let Event::EVM(module_evm::Event::Created(_, address, _)) = System::events().last().unwrap().event {
 				address
 			} else {
 				panic!("deploy contract failed");

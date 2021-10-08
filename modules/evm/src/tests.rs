@@ -645,6 +645,7 @@ fn create_network_contract_works() {
 			2.into()
 		);
 		System::assert_last_event(Event::EVM(crate::Event::Created(
+			NetworkContractSource::get(),
 			H160::from_low_u64_be(MIRRORED_NFT_ADDRESS_START),
 			vec![],
 		)));
@@ -709,7 +710,11 @@ fn create_predeploy_contract_works() {
 
 		assert_eq!(Pallet::<Runtime>::is_account_empty(&addr), false);
 
-		System::assert_last_event(Event::EVM(crate::Event::Created(addr, vec![])));
+		System::assert_last_event(Event::EVM(crate::Event::Created(
+			NetworkContractSource::get(),
+			addr,
+			vec![],
+		)));
 
 		assert_noop!(
 			EVM::create_predeploy_contract(

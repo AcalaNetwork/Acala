@@ -256,6 +256,7 @@ runtime-benchmarks = [
 
 	"module-nft/runtime-benchmarks",
 	"module-homa-lite/runtime-benchmarks",
+	"module-evm-accounts/runtime-benchmarks",
 
 	"sp-api/disable-logging",
 ]
