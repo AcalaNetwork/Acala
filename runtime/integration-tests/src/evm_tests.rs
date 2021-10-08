@@ -118,9 +118,7 @@ fn deploy_contract(account: AccountId) -> Result<H160, DispatchError> {
 
 	EVM::create(Origin::signed(account), contract, 0, 1000000000, 100000).map_or_else(|e| Err(e.error), |_| Ok(()))?;
 
-	if let Event::EVM(module_evm::Event::<Runtime>::Created(_, address, _)) =
-		System::events().last().unwrap().event
-	{
+	if let Event::EVM(module_evm::Event::<Runtime>::Created(_, address, _)) = System::events().last().unwrap().event {
 		Ok(address)
 	} else {
 		Err("deploy_contract failed".into())
