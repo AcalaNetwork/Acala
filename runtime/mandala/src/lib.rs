@@ -816,7 +816,6 @@ parameter_type_with_key! {
 				}
 			},
 			CurrencyId::Erc20(_) => Balance::max_value(), // not handled by orml-tokens
-			CurrencyId::ChainSafe(_) => 1, // TODO: update this before we enable ChainSafe bridge
 			CurrencyId::StableAssetPoolToken(_) => 1, // TODO: update this before we enable StableAsset
 		}
 	};
@@ -1605,15 +1604,6 @@ impl chainbridge::Config for Runtime {
 	type ProposalLifetime = ProposalLifetime;
 }
 
-impl ecosystem_chainsafe::Config for Runtime {
-	type Event = Event;
-	type Currency = Currencies;
-	type NativeCurrencyId = GetNativeCurrencyId;
-	type RegistorOrigin = EnsureRootOrHalfGeneralCouncil;
-	type BridgeOrigin = chainbridge::EnsureBridge<Runtime>;
-	type WeightInfo = weights::ecosystem_chainsafe::WeightInfo<Runtime>;
-}
-
 parameter_types! {
 	pub ReservedXcmpWeight: Weight = RuntimeBlockWeights::get().max_block / 4;
 	pub ReservedDmpWeight: Weight = RuntimeBlockWeights::get().max_block / 4;
@@ -2103,9 +2093,8 @@ construct_runtime! {
 		// Ecosystem modules
 		RenVmBridge: ecosystem_renvm_bridge::{Pallet, Call, Config, Storage, Event<T>, ValidateUnsigned} = 150,
 		ChainBridge: chainbridge::{Pallet, Call, Storage, Event<T>} = 151,
-		ChainSafeTransfer: ecosystem_chainsafe::{Pallet, Call, Storage, Event<T>} = 152,
-		Starport: ecosystem_starport::{Pallet, Call, Storage, Event<T>, Config} = 153,
-		CompoundCash: ecosystem_compound_cash::{Pallet, Storage, Event<T>} = 154,
+		Starport: ecosystem_starport::{Pallet, Call, Storage, Event<T>, Config} = 152,
+		CompoundCash: ecosystem_compound_cash::{Pallet, Storage, Event<T>} = 153,
 
 		// Parachain
 		ParachainSystem: cumulus_pallet_parachain_system::{Pallet, Call, Storage, Inherent, Config, Event<T>} = 160,
@@ -2424,8 +2413,6 @@ impl_runtime_apis! {
 			orml_list_benchmark!(list, extra, orml_authority, benchmarking::authority);
 			orml_list_benchmark!(list, extra, orml_oracle, benchmarking::oracle);
 
-			orml_list_benchmark!(list, extra, ecosystem_chainsafe, benchmarking::chainsafe_transfer);
-
 			let storage_info = AllPalletsWithSystem::storage_info();
 
 			return (list, storage_info)
@@ -2488,7 +2475,6 @@ impl_runtime_apis! {
 			orml_add_benchmark!(params, batches, orml_authority, benchmarking::authority);
 			orml_add_benchmark!(params, batches, orml_oracle, benchmarking::oracle);
 
-			orml_add_benchmark!(params, batches, ecosystem_chainsafe, benchmarking::chainsafe_transfer);
 			orml_add_benchmark!(params, batches, nutsfinance_stable_asset, benchmarking::nutsfinance_stable_asset);
 
 			if batches.is_empty() { return Err("Benchmark not found for this module.".into()) }
