@@ -177,33 +177,25 @@ where
 						balance_value,
 						gas_limit,
 						storage_limit,
-						false,
+						true,
 					)
 					.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
 					.map_err(|err| internal_err(format!("execution fatal: {:?}", err)))?;
 
+				log::debug!(
+					target: "evm",
+					"rpc call, info.exit_reason: {:?}, info.value: {:?}",
+					info.exit_reason, info.value,
+				);
 				error_on_execution_failure(&info.exit_reason, &info.value)?;
 
 				Ok(Bytes(info.value))
 			}
-			None => {
-				let info = api
-					.create(
-						&BlockId::Hash(hash),
-						from.unwrap_or_default(),
-						data,
-						balance_value,
-						gas_limit,
-						storage_limit,
-						false,
-					)
-					.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
-					.map_err(|err| internal_err(format!("execution fatal: {:?}", err)))?;
-
-				error_on_execution_failure(&info.exit_reason, &[])?;
-
-				Ok(Bytes(info.value[..].to_vec()))
-			}
+			None => Err(Error {
+				code: ErrorCode::InternalError,
+				message: "Not supported".into(),
+				data: None,
+			}),
 		}
 	}
 
