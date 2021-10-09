@@ -249,11 +249,11 @@ fn verify_eip712_signature(eth_msg: EthereumTransactionMessage, sig: [u8; 65]) -
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use std::str::FromStr;
+	use std::{ops::Add, str::FromStr};
 
 	#[test]
-	fn test() {
-		let acc = verify_eip712_signature(EthereumTransactionMessage {
+	fn verify_eip712_should_works() {
+		let msg = EthereumTransactionMessage {
 			nonce: 1,
 			tip: 2,
 			gas_limit: 222,
@@ -264,11 +264,96 @@ mod tests {
 			chain_id: 595,
 			genesis: H256::from_str("0xc3751fc073ec83e6aa13e2be395d21b05dce0692618a129324261c80ede07d4c").unwrap(),
 			valid_until: 444,
-		}, hex_literal::hex!("acb56f12b407bd0bc8f7abefe2e2585affe28009abcb6980aa33aecb815c56b324ab60a41eff339a88631c4b0e5183427be1fcfde3c05fb9b6c71a691e977c4a1b"));
+		};
+		let sign = hex_literal::hex!("acb56f12b407bd0bc8f7abefe2e2585affe28009abcb6980aa33aecb815c56b324ab60a41eff339a88631c4b0e5183427be1fcfde3c05fb9b6c71a691e977c4a1b");
+		let sender = Some(H160::from_str("0x14791697260E4c9A71f18484C9f997B308e59325").unwrap());
 
-		assert_eq!(
-			acc,
-			Some(H160::from_str("0x14791697260E4c9A71f18484C9f997B308e59325").unwrap())
-		);
+		assert_eq!(verify_eip712_signature(msg.clone(), sign), sender);
+
+		let mut new_msg = msg.clone();
+		new_msg.nonce += 1;
+		assert_ne!(verify_eip712_signature(new_msg, sign), sender);
+
+		let mut new_msg = msg.clone();
+		new_msg.tip += 1;
+		assert_ne!(verify_eip712_signature(new_msg, sign), sender);
+
+		let mut new_msg = msg.clone();
+		new_msg.gas_limit += 1;
+		assert_ne!(verify_eip712_signature(new_msg, sign), sender);
+
+		let mut new_msg = msg.clone();
+		new_msg.storage_limit += 1;
+		assert_ne!(verify_eip712_signature(new_msg, sign), sender);
+
+		let mut new_msg = msg.clone();
+		new_msg.action = TransactionAction::Create;
+		assert_ne!(verify_eip712_signature(new_msg, sign), sender);
+
+		let mut new_msg = msg.clone();
+		new_msg.value += 1;
+		assert_ne!(verify_eip712_signature(new_msg, sign), sender);
+
+		let mut new_msg = msg.clone();
+		new_msg.input = vec![0x00];
+		assert_ne!(verify_eip712_signature(new_msg, sign), sender);
+
+		let mut new_msg = msg.clone();
+		new_msg.chain_id += 1;
+		assert_ne!(verify_eip712_signature(new_msg, sign), sender);
+
+		let mut new_msg = msg.clone();
+		new_msg.genesis = Default::default();
+		assert_ne!(verify_eip712_signature(new_msg, sign), sender);
+
+		let mut new_msg = msg.clone();
+		new_msg.valid_until += 1;
+		assert_ne!(verify_eip712_signature(new_msg, sign), sender);
+	}
+
+	#[test]
+	fn verify_eth_should_works() {
+		let msg = LegacyTransactionMessage {
+			nonce: U256::from(1),
+			gas_price: U256::from("0x640000006a"),
+			gas_limit: U256::from(21000),
+			action: TransactionAction::Call(H160::from_str("0x1111111111222222222233333333334444444444").unwrap()),
+			value: U256::from(123123),
+			input: vec![],
+			chain_id: Some(595),
+		};
+
+		let sign = hex_literal::hex!("f84345a6459785986a1b2df711fe02597d70c1393757a243f8f924ea541d2ecb51476de1aa437cd820d59e1d9836e37e643fec711fe419464e637cab592918751c");
+		let sender = Some(H160::from_str("0x14791697260E4c9A71f18484C9f997B308e59325").unwrap());
+
+		assert_eq!(recover_signer(&sign, msg.hash().as_fixed_bytes()), sender);
+
+		let mut new_msg = msg.clone();
+		new_msg.nonce = new_msg.nonce.add(U256::one());
+		assert_ne!(recover_signer(&sign, new_msg.hash().as_fixed_bytes()), sender);
+
+		let mut new_msg = msg.clone();
+		new_msg.gas_price = new_msg.gas_price.add(U256::one());
+		assert_ne!(recover_signer(&sign, new_msg.hash().as_fixed_bytes()), sender);
+
+		let mut new_msg = msg.clone();
+		new_msg.gas_limit = new_msg.gas_limit.add(U256::one());
+		assert_ne!(recover_signer(&sign, new_msg.hash().as_fixed_bytes()), sender);
+
+		let mut new_msg = msg.clone();
+		new_msg.action = TransactionAction::Create;
+		assert_ne!(recover_signer(&sign, new_msg.hash().as_fixed_bytes()), sender);
+
+		let mut new_msg = msg.clone();
+		new_msg.value = new_msg.value.add(U256::one());
+		assert_ne!(recover_signer(&sign, new_msg.hash().as_fixed_bytes()), sender);
+
+		let mut new_msg = msg.clone();
+		new_msg.input = vec![0x00];
+		assert_ne!(recover_signer(&sign, new_msg.hash().as_fixed_bytes()), sender);
+
+		let mut new_msg = msg.clone();
+		new_msg.chain_id = None;
+		assert_ne!(recover_signer(&sign, new_msg.hash().as_fixed_bytes()), sender);
 	}
 }
