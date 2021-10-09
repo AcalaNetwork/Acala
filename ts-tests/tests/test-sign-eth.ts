@@ -151,7 +151,7 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 		// console.log(event[0].toString())
 
 		// get address
-		contract = event[0].event.data[0].toString();
+		contract = event[0].event.data[1].toString();
 	});
 
 	it("call should sign and verify", async function () {
