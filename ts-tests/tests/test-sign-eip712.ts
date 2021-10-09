@@ -40,6 +40,8 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 	});
 
 	it("create should sign and verify", async function () {
+		this.timeout(150000);
+
 		const domain = {
 			name: "Acala EVM",
 			version: "1",
@@ -154,6 +156,8 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 	});
 
 	it("call should sign and verify", async function () {
+		this.timeout(150000);
+
 		const domain = {
 			name: "Acala EVM",
 			version: "1",
