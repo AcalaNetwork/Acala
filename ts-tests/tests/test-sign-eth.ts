@@ -40,6 +40,8 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 	});
 
 	it("create should sign and verify", async function () {
+		this.timeout(150000);
+
 		const chanid = +context.provider.api.consts.evm.chainId.toString()
 		const nonce = (await context.provider.api.query.system.account(subAddr)).nonce.toNumber()
 		const validUntil = (await context.provider.api.rpc.chain.getHeader()).number.toNumber() + 100
@@ -155,6 +157,8 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 	});
 
 	it("call should sign and verify", async function () {
+		this.timeout(150000);
+
 		const chanid = +context.provider.api.consts.evm.chainId.toString()
 		const nonce = (await context.provider.api.query.system.account(subAddr)).nonce.toNumber()
 		const validUntil = (await context.provider.api.rpc.chain.getHeader()).number.toNumber() + 100
