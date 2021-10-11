@@ -106,10 +106,7 @@ pub mod module {
 	pub type LastUpdatedTimestamp<T: Config> = StorageMap<_, Twox64Concat, FeedIdOf<T>, MomentOf<T>, ValueQuery>;
 
 	#[pallet::pallet]
-	pub struct Pallet<T>(PhantomData<T>);
-
-	#[pallet::hooks]
-	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {}
+	pub struct Pallet<T>(_);
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {

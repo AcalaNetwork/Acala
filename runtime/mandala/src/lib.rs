@@ -773,12 +773,6 @@ parameter_types! {
 	pub const OracleCountLimit: u32 = 25;
 	// Maximum number of feeds.
 	pub const FeedLimit: FeedId = 100;
-	// TODO: should set it by chainlink
-	pub ChainlinkAdmin: AccountId = AccountId::from([111u8; 32]);
-	// TODO: should set it by chainlink
-	pub FeedCreators: Vec<AccountId> = vec![
-		AccountId::from([111u8; 32])
-	];
 }
 
 impl pallet_chainlink_feed::Config for Runtime {
