@@ -183,8 +183,8 @@ mod karura_tests {
 			let withdraw_unbond_call = msg.take_decoded().unwrap();
 			assert_eq!(format!("{:?}", msg), "[6, 3, 5, 0, 0, 0]");
 			assert_eq!(
-				format!("{:?}", withdraw_unbond_call),
-				"Call::Staking(Call::withdraw_unbonded(5))"
+				withdraw_unbond_call,
+				kusama_runtime::Call::Staking(pallet_staking::Call::withdraw_unbonded(5))
 			);
 
 			let mut msg: DoubleEncoded<kusama_runtime::Call> =
@@ -194,7 +194,13 @@ mod karura_tests {
 			assert_ok!(msg.ensure_decoded());
 			let transfer_call = msg.take_decoded().unwrap();
 			assert_eq!(format!("{:?}", msg), "[4, 3, 0, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4]");
-			assert_eq!(format!("{:?}", transfer_call), "Call::Balances(Call::transfer_keep_alive(MultiAddress::Id(0404040404040404040404040404040404040404040404040404040404040404 (5C9yEy27...)), 1))");
+			assert_eq!(
+				transfer_call,
+				kusama_runtime::Call::Balances(pallet_balances::Call::transfer_keep_alive(
+					MultiAddress::Id(AccountId::from([4u8; 32])),
+					1
+				))
+			);
 
 			let mut msg: DoubleEncoded<kusama_runtime::Call> =
 				KusamaCallBuilder::utility_batch_call(vec![KusamaCallBuilder::staking_withdraw_unbonded(5)])
@@ -204,8 +210,10 @@ mod karura_tests {
 			let batch_call = msg.take_decoded().unwrap();
 			assert_eq!(format!("{:?}", msg), "[24, 2, 4, 6, 3, 5, 0, 0, 0]");
 			assert_eq!(
-				format!("{:?}", batch_call),
-				"Call::Utility(Call::batch_all([Call::Staking(Call::withdraw_unbonded(5))]))"
+				batch_call,
+				kusama_runtime::Call::Utility(pallet_utility::Call::batch_all(vec![kusama_runtime::Call::Staking(
+					pallet_staking::Call::withdraw_unbonded(5)
+				)]))
 			);
 
 			let mut msg: DoubleEncoded<kusama_runtime::Call> =
@@ -216,8 +224,13 @@ mod karura_tests {
 			let batch_as_call = msg.take_decoded().unwrap();
 			assert_eq!(format!("{:?}", msg), "[24, 1, 10, 0, 6, 3, 5, 0, 0, 0]");
 			assert_eq!(
-				format!("{:?}", batch_as_call),
-				"Call::Utility(Call::as_derivative(10, Call::Staking(Call::withdraw_unbonded(5))))"
+				batch_as_call,
+				kusama_runtime::Call::Utility(pallet_utility::Call::as_derivative(
+					10,
+					Box::new(kusama_runtime::Call::Staking(pallet_staking::Call::withdraw_unbonded(
+						5
+					)))
+				))
 			);
 		});
 	}
