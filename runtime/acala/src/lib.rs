@@ -107,7 +107,7 @@ pub use runtime_common::{
 	EnsureRootOrTwoThirdsTechnicalCommittee, ExchangeRate, FinancialCouncilInstance,
 	FinancialCouncilMembershipInstance, GasToWeight, GeneralCouncilInstance, GeneralCouncilMembershipInstance,
 	HomaCouncilInstance, HomaCouncilMembershipInstance, OffchainSolutionWeightLimit, OperatorMembershipInstanceAcala,
-	OperatorMembershipInstanceBand, Price, ProxyType, Rate, Ratio, RelaychainBlockNumberProvider, RuntimeBlockLength,
+	OperatorMembershipInstanceBand, Price, ProxyType, Rate, Ratio, RelayChainBlockNumberProvider, RuntimeBlockLength,
 	RuntimeBlockWeights, SystemContractsFilter, TechnicalCommitteeInstance, TechnicalCommitteeMembershipInstance,
 	TimeStampedPrice, ACA, AUSD, DOT, LDOT, RENBTC,
 };
@@ -862,7 +862,7 @@ impl orml_vesting::Config for Runtime {
 	type VestedTransferOrigin = EnsureRootOrTreasury;
 	type WeightInfo = weights::orml_vesting::WeightInfo<Runtime>;
 	type MaxVestingSchedules = MaxVestingSchedules;
-	type BlockNumberProvider = RelaychainBlockNumberProvider<Runtime>;
+	type BlockNumberProvider = RelayChainBlockNumberProvider<Runtime>;
 }
 
 parameter_types! {
@@ -1221,7 +1221,7 @@ impl module_homa_validator_list::Config for Runtime {
 	type WeightInfo = ();
 	type OnIncreaseGuarantee = ();
 	type OnDecreaseGuarantee = ();
-	type BlockNumberProvider = RelaychainBlockNumberProvider<Runtime>;
+	type BlockNumberProvider = RelayChainBlockNumberProvider<Runtime>;
 }
 
 parameter_types! {
