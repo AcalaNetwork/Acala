@@ -26,12 +26,12 @@ mod karura_tests {
 
 	use frame_support::{assert_noop, assert_ok};
 
-	use module_relaychain::RelaychainCallBuilder;
+	use module_relaychain::RelayChainCallBuilder;
 	use module_support::CallBuilder;
 	use xcm::{latest::prelude::*, DoubleEncoded};
 	use xcm_emulator::TestExt;
 
-	type KusamaCallBuilder = RelaychainCallBuilder<Runtime, ParachainInfo>;
+	type KusamaCallBuilder = RelayChainCallBuilder<Runtime, ParachainInfo>;
 
 	#[test]
 	/// Tests the staking_withdraw_unbonded call.

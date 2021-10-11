@@ -24,11 +24,11 @@ For Karura network:
 * Liquid currency: LKSM
 
 ## Test
-Homa-lite uses XCM transfer to upload Staking currency into the Relaychain. Therefore a setup that allows successful XCM transfer to the relaychain is required for full end-to-end test of the Homa-lite module.
+Homa-lite uses XCM transfer to upload Staking currency into the RelayChain. Therefore a setup that allows successful XCM transfer to the relaychain is required for full end-to-end test of the Homa-lite module.
 
 ### Local node
 1. Pull the Master branch of the Acala codebase
-2. Follow the README.md to setup local Relaychain and parachains.
+2. Follow the README.md to setup local RelayChain and parachains.
 
    This should launch some local test nodes running Karura(parachain) and Rococo(relaychain)
 3. Open a new web browser, go to `https://polkadot.js.org/apps/#/explorer`
