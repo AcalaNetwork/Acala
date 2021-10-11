@@ -434,6 +434,7 @@ pub mod module {
 					Self::convert_staking_to_liquid(available_staking_balance)?,
 				);
 
+				let mut liquid_remaining = liquid_amount;
 				if Self::convert_liquid_to_staking(actual_liquid_amount)? > T::XcmUnbondFee::get() {
 					// Immediately redeem from the available_staking_balances
 					let actual_staking_amount = Self::convert_liquid_to_staking(actual_liquid_amount)?;
@@ -456,10 +457,10 @@ pub mod module {
 						actual_staking_amount,
 						actual_liquid_amount,
 					));
+					liquid_remaining = liquid_remaining.saturating_sub(actual_liquid_amount);
 				}
 
 				// Unredeemed requests are added to a queue.
-				let liquid_remaining = liquid_amount.saturating_sub(actual_liquid_amount);
 				if Self::liquid_amount_is_above_minimum_threshold(liquid_remaining) {
 					// Check if there's already a queued redeem request.
 					let (request_amount, _) = Self::redeem_requests(&who).unwrap_or((0, Permill::default()));
