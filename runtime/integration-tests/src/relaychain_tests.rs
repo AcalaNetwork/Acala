@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-//! Tests Relaychain related things.
+//! Tests RelayChain related things.
 //! Currently only Karura XCM is tested.
 
 #[cfg(feature = "with-karura-runtime")]
@@ -26,12 +26,12 @@ mod karura_tests {
 
 	use frame_support::{assert_noop, assert_ok};
 
-	use module_relaychain::RelaychainCallBuilder;
+	use module_relaychain::RelayChainCallBuilder;
 	use module_support::CallBuilder;
-	use xcm::latest::prelude::*;
+	use xcm::{latest::prelude::*, DoubleEncoded};
 	use xcm_emulator::TestExt;
 
-	type KusamaCallBuilder = RelaychainCallBuilder<Runtime, ParachainInfo>;
+	type KusamaCallBuilder = RelayChainCallBuilder<Runtime, ParachainInfo>;
 
 	#[test]
 	/// Tests the staking_withdraw_unbonded call.
@@ -172,4 +172,36 @@ mod karura_tests {
 			);
 		});
 	}
+
+	#[test]
+	/// Tests the calls built by the call builder are encoded and decoded correctly
+	fn relaychain_call_codec_works() {
+		KusamaNet::execute_with(|| {
+			let mut msg: DoubleEncoded<kusama_runtime::Call> =
+				KusamaCallBuilder::staking_withdraw_unbonded(5).encode().into();
+			assert_ok!(msg.ensure_decoded());
+			let staking_call = msg.take_decoded().unwrap();
+			assert_eq!(msg, vec![6, 3, 5, 0, 0, 0]);
+			assert_eq!(call, Call::Staking(Call::withdraw_unbonded(5)));
+			println!("Encoded:{:?} \nDecoded:{:?}", msg, call);
+
+			let mut msg: DoubleEncoded<kusama_runtime::Call> =
+				KusamaCallBuilder::utility_batch_call(vec![staking_call])
+					.encode()
+					.into();
+			assert_ok!(msg.ensure_decoded());
+			let call = msg.take_decoded().unwrap();
+			assert_eq!(call, Call::Staking(Call::withdraw_unbonded(5)));
+			println!("Encoded:{:?} \nDecoded:{:?}", msg, call);
+		});
+	}
 }
+
+// fn utility_batch_call(calls: Vec<Self::RelayChainCall>) -> Self::RelayChainCall;
+
+// fn utility_as_derivative_call(call: Self::RelayChainCall, index: u16) -> Self::RelayChainCall;
+
+// fn staking_withdraw_unbonded(num_slashing_spans: u32) -> Self::RelayChainCall;
+
+// fn balances_transfer_keep_alive(to: Self::AccountId, amount: Self::Balance) ->
+// Self::RelayChainCall;
