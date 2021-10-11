@@ -162,7 +162,7 @@ pub mod module {
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
-	#[pallet::metadata(T::AccountId = "AccountId", RelayChainBlockNumberOf<T> = "RelayChainBlockNumner")]
+	#[pallet::metadata(T::AccountId = "AccountId", RelayChainBlockNumberOf<T> = "RelayChainBlockNumber")]
 	pub enum Event<T: Config> {
 		/// The user has Staked some currencies to mint Liquid Currency.
 		/// \[user, amount_staked, amount_minted\]
