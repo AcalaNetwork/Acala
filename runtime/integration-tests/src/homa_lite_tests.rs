@@ -335,7 +335,8 @@ mod karura_only_tests {
 				1_000_000_000_000_000
 			));
 
-			// Kusama's unbonding period is 27 days = 100_800 blocks
+			// Kusama's unbonding period is 7 days = 100_800 blocks
+			// Kusama: 6 hour per era. 7 days = 28 eras
 			kusama_runtime::System::set_block_number(101_000);
 			for _i in 0..29 {
 				kusama_runtime::Staking::trigger_new_era(0, vec![]);
