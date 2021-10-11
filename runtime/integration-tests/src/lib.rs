@@ -34,3 +34,5 @@ mod weights_test;
 mod kusama_cross_chain_transfer;
 #[cfg(feature = "with-karura-runtime")]
 mod kusama_test_net;
+#[cfg(feature = "with-karura-runtime")]
+mod relay_chain_tests;
