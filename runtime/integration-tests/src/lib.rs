@@ -24,6 +24,9 @@ mod integration_tests;
 #[cfg(any(feature = "with-mandala-runtime", feature = "with-karura-runtime"))]
 mod homa_lite_tests;
 
+#[cfg(feature = "with-karura-runtime")]
+mod relaychain_tests;
+
 #[cfg(any(feature = "with-mandala-runtime", feature = "with-karura-runtime"))]
 mod evm_tests;
 
