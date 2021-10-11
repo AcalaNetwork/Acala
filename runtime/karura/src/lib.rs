@@ -56,7 +56,7 @@ use module_evm::Runner;
 use module_evm::{CallInfo, CreateInfo};
 use module_evm_accounts::EvmAddressMapping;
 use module_evm_manager::EvmCurrencyIdMapping;
-use module_relaychain::RelaychainCallBuilder;
+use module_relaychain::RelayChainCallBuilder;
 use module_transaction_payment::{Multiplier, TargetedFeeAdjustment};
 use orml_traits::{
 	create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended, MultiCurrency,
@@ -112,8 +112,8 @@ pub use runtime_common::{
 	EnsureRootOrTwoThirdsTechnicalCommittee, ExchangeRate, FinancialCouncilInstance,
 	FinancialCouncilMembershipInstance, GasToWeight, GeneralCouncilInstance, GeneralCouncilMembershipInstance,
 	HomaCouncilInstance, HomaCouncilMembershipInstance, OperatorMembershipInstanceAcala,
-	OperatorMembershipInstanceBand, Price, ProxyType, Rate, Ratio, RelaychainBlockNumberProvider,
-	RelaychainSubAccountId, RuntimeBlockLength, RuntimeBlockWeights, SystemContractsFilter, TechnicalCommitteeInstance,
+	OperatorMembershipInstanceBand, Price, ProxyType, Rate, Ratio, RelayChainBlockNumberProvider,
+	RelayChainSubAccountId, RuntimeBlockLength, RuntimeBlockWeights, SystemContractsFilter, TechnicalCommitteeInstance,
 	TechnicalCommitteeMembershipInstance, TimeStampedPrice, BNC, KAR, KSM, KUSD, LKSM, RENBTC, VSKSM,
 };
 
@@ -869,7 +869,7 @@ impl orml_vesting::Config for Runtime {
 	type VestedTransferOrigin = EnsureKaruraFoundation;
 	type WeightInfo = weights::orml_vesting::WeightInfo<Runtime>;
 	type MaxVestingSchedules = MaxVestingSchedules;
-	type BlockNumberProvider = RelaychainBlockNumberProvider<Runtime>;
+	type BlockNumberProvider = RelayChainBlockNumberProvider<Runtime>;
 }
 
 parameter_types! {
@@ -1533,20 +1533,20 @@ parameter_types! {
 	pub const LKSMCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::LKSM);
 	pub MinimumMintThreshold: Balance = 10 * cent(KSM);
 	pub MinimumRedeemThreshold: Balance = 100 * cent(LKSM);
-	pub RelaychainSovereignSubAccount: MultiLocation = create_x2_parachain_multilocation(RelaychainSubAccountId::HomaLite as u16);
-	pub RelaychainSovereignSubAccountId: AccountId = Utility::derivative_account_id(
+	pub RelayChainSovereignSubAccount: MultiLocation = create_x2_parachain_multilocation(RelayChainSubAccountId::HomaLite as u16);
+	pub RelayChainSovereignSubAccountId: AccountId = Utility::derivative_account_id(
 		ParachainInfo::get().into_account(),
-		RelaychainSubAccountId::HomaLite as u16
+		RelayChainSubAccountId::HomaLite as u16
 	);
 	pub MaxRewardPerEra: Permill = Permill::from_rational(500u32, 1_000_000u32); // 1.2 ^ (1/365) = 1.0004996359
 	pub MintFee: Balance = 20 * millicent(KSM); // 2x XCM fee on Kusama
 	pub DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
 	pub BaseWithdrawFee: Permill = Permill::from_rational(35u32, 10_000u32); // 20% yield per year, unbonding period = 7 days. 1.2^(7 / 365) = 1.00350
 	pub MaximumRedeemRequestMatchesForMint: u32 = 20;
-	pub RelaychainUnbondingSlashingSpans: u32 = 5;
+	pub RelayChainUnbondingSlashingSpans: u32 = 5;
 	pub MaxScheduledUnbonds: u32 = 14;
 	pub ParachainAccount: AccountId = ParachainInfo::get().into_account();
-	pub SubAccountIndex: u16 = RelaychainSubAccountId::HomaLite as u16;
+	pub SubAccountIndex: u16 = RelayChainSubAccountId::HomaLite as u16;
 	pub const XcmUnbondFee: Balance = 600_000_000; // From homa-lite integration test.
 }
 impl module_homa_lite::Config for Runtime {
@@ -1559,18 +1559,18 @@ impl module_homa_lite::Config for Runtime {
 	type MinimumMintThreshold = MinimumMintThreshold;
 	type MinimumRedeemThreshold = MinimumRedeemThreshold;
 	type XcmTransfer = XTokens;
-	type SovereignSubAccountLocation = RelaychainSovereignSubAccount;
+	type SovereignSubAccountLocation = RelayChainSovereignSubAccount;
 	type SubAccountIndex = SubAccountIndex;
 	type DefaultExchangeRate = DefaultExchangeRate;
 	type MaxRewardPerEra = MaxRewardPerEra;
 	type MintFee = MintFee;
-	type RelaychainCallBuilder = RelaychainCallBuilder<Runtime, ParachainInfo>;
+	type RelayChainCallBuilder = RelayChainCallBuilder<Runtime, ParachainInfo>;
 	type BaseWithdrawFee = BaseWithdrawFee;
 	type XcmUnbondFee = XcmUnbondFee;
-	type RelaychainBlockNumber = RelaychainBlockNumberProvider<Runtime>;
+	type RelayChainBlockNumber = RelayChainBlockNumberProvider<Runtime>;
 	type ParachainAccount = ParachainAccount;
 	type MaximumRedeemRequestMatchesForMint = MaximumRedeemRequestMatchesForMint;
-	type RelaychainUnbondingSlashingSpans = RelaychainUnbondingSlashingSpans;
+	type RelayChainUnbondingSlashingSpans = RelayChainUnbondingSlashingSpans;
 	type MaxScheduledUnbonds = MaxScheduledUnbonds;
 }
 

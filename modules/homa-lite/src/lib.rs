@@ -51,7 +51,7 @@ pub use weights::WeightInfo;
 pub mod module {
 	use super::*;
 
-	pub type RelaychainBlockNumberOf<T> = <<T as Config>::RelaychainBlockNumber as BlockNumberProvider>::BlockNumber;
+	pub type RelayChainBlockNumberOf<T> = <<T as Config>::RelayChainBlockNumber as BlockNumberProvider>::BlockNumber;
 	pub(crate) type AmountOf<T> =
 		<<T as Config>::Currency as MultiCurrencyExtended<<T as frame_system::Config>::AccountId>>::Amount;
 
@@ -88,8 +88,8 @@ pub mod module {
 		/// The interface to Cross-chain transfer.
 		type XcmTransfer: XcmTransfer<Self::AccountId, Balance, CurrencyId>;
 
-		/// The Call builder for communicating with Relaychain via XCM messaging.
-		type RelaychainCallBuilder: CallBuilder<AccountId = Self::AccountId, Balance = Balance>;
+		/// The Call builder for communicating with RelayChain via XCM messaging.
+		type RelayChainCallBuilder: CallBuilder<AccountId = Self::AccountId, Balance = Balance>;
 
 		/// The MultiLocation of the sovereign sub-account for where the staking currencies are sent
 		/// to.
@@ -112,7 +112,7 @@ pub mod module {
 		#[pallet::constant]
 		type MintFee: Get<Balance>;
 
-		/// Equivalent to the loss of % staking reward from unbonding on the Relaychain.
+		/// Equivalent to the loss of % staking reward from unbonding on the RelayChain.
 		#[pallet::constant]
 		type BaseWithdrawFee: Get<Permill>;
 
@@ -121,7 +121,7 @@ pub mod module {
 		type XcmUnbondFee: Get<Balance>;
 
 		/// Block number provider for the relaychain.
-		type RelaychainBlockNumber: BlockNumberProvider<BlockNumber = Self::BlockNumber>;
+		type RelayChainBlockNumber: BlockNumberProvider<BlockNumber = Self::BlockNumber>;
 
 		/// The account ID to redeem from on the relaychain.
 		#[pallet::constant]
@@ -133,7 +133,7 @@ pub mod module {
 
 		/// Unbonding slashing spans for unbonding on the relaychain.
 		#[pallet::constant]
-		type RelaychainUnbondingSlashingSpans: Get<u32>;
+		type RelayChainUnbondingSlashingSpans: Get<u32>;
 
 		/// Maximum number of scheduled unbonds allowed
 		#[pallet::constant]
@@ -162,7 +162,7 @@ pub mod module {
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
-	#[pallet::metadata(T::AccountId = "AccountId", RelaychainBlockNumberOf<T> = "RelaychainBlockNumner")]
+	#[pallet::metadata(T::AccountId = "AccountId", RelayChainBlockNumberOf<T> = "RelayChainBlockNumber")]
 	pub enum Event<T: Config> {
 		/// The user has Staked some currencies to mint Liquid Currency.
 		/// \[user, amount_staked, amount_minted\]
@@ -192,12 +192,12 @@ pub mod module {
 
 		/// A new Unbond request added to the schedule.
 		/// \[staking_amount, relaychain_blocknumber\]
-		ScheduledUnbondAdded(Balance, RelaychainBlockNumberOf<T>),
+		ScheduledUnbondAdded(Balance, RelayChainBlockNumberOf<T>),
 
 		/// The ScheduledUnbond has been replaced.
 		ScheduledUnbondReplaced,
 
-		/// The scheduled Unbond has been withdrew from the Relaychain.
+		/// The scheduled Unbond has been withdrew from the RelayChain.
 		///\[staking_amount_added\]
 		ScheduledUnbondWithdrew(Balance),
 	}
@@ -234,11 +234,11 @@ pub mod module {
 	pub type AvailableStakingBalance<T: Config> = StorageValue<_, Balance, ValueQuery>;
 
 	/// Funds that will be unbonded in the future
-	/// ScheduledUnbond: Vec<(staking_amount: Balance, unbond_at: RelaychainBlockNumber>
+	/// ScheduledUnbond: Vec<(staking_amount: Balance, unbond_at: RelayChainBlockNumber>
 	#[pallet::storage]
 	#[pallet::getter(fn scheduled_unbond)]
 	pub type ScheduledUnbond<T: Config> =
-		StorageValue<_, BoundedVec<(Balance, RelaychainBlockNumberOf<T>), T::MaxScheduledUnbonds>, ValueQuery>;
+		StorageValue<_, BoundedVec<(Balance, RelayChainBlockNumberOf<T>), T::MaxScheduledUnbonds>, ValueQuery>;
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
@@ -252,7 +252,7 @@ pub mod module {
 				let mut scheduled_unbond = Self::scheduled_unbond();
 				if !scheduled_unbond.is_empty() {
 					let (staking_amount, block_number) = scheduled_unbond[0];
-					if T::RelaychainBlockNumber::current_block_number() >= block_number {
+					if T::RelayChainBlockNumber::current_block_number() >= block_number {
 						let res = Self::process_scheduled_unbond(staking_amount);
 						log::debug!("{:?}", res);
 						debug_assert!(res.is_ok());
@@ -492,7 +492,7 @@ pub mod module {
 			Ok(())
 		}
 
-		/// Request staking currencies to be unbonded from the Relaychain.
+		/// Request staking currencies to be unbonded from the RelayChain.
 		///
 		/// Requires `T::GovernanceOrigin`
 		///
@@ -504,7 +504,7 @@ pub mod module {
 		pub fn schedule_unbond(
 			origin: OriginFor<T>,
 			#[pallet::compact] staking_amount: Balance,
-			unbond_block: RelaychainBlockNumberOf<T>,
+			unbond_block: RelayChainBlockNumberOf<T>,
 		) -> DispatchResult {
 			T::GovernanceOrigin::ensure_origin(origin)?;
 
@@ -531,7 +531,7 @@ pub mod module {
 		#[transactional]
 		pub fn replace_schedule_unbond(
 			origin: OriginFor<T>,
-			new_unbonds: Vec<(Balance, RelaychainBlockNumberOf<T>)>,
+			new_unbonds: Vec<(Balance, RelayChainBlockNumberOf<T>)>,
 		) -> DispatchResult {
 			T::GovernanceOrigin::ensure_origin(origin)?;
 
@@ -648,7 +648,7 @@ pub mod module {
 		/// Mint some Liquid currency, by locking up the given amount of Staking currency.
 		/// The redeem requests given in `requests` are prioritized to be matched. All other redeem
 		/// requests are matched after. The remaining amount is minted through Staking on the
-		/// Relaychain (via XCM).
+		/// RelayChain (via XCM).
 		///
 		/// Parameters:
 		/// - `amount`: The amount of Staking currency to be exchanged.
@@ -847,14 +847,14 @@ pub mod module {
 
 		/// Construct a XCM message
 		pub fn construct_xcm_unreserve_message(parachain_account: T::AccountId, amount: Balance) -> Xcm<()> {
-			let xcm_message = T::RelaychainCallBuilder::utility_as_derivative_call(
-				T::RelaychainCallBuilder::utility_batch_call(vec![
-					T::RelaychainCallBuilder::staking_withdraw_unbonded(T::RelaychainUnbondingSlashingSpans::get()),
-					T::RelaychainCallBuilder::balances_transfer_keep_alive(parachain_account, amount),
+			let xcm_message = T::RelayChainCallBuilder::utility_as_derivative_call(
+				T::RelayChainCallBuilder::utility_batch_call(vec![
+					T::RelayChainCallBuilder::staking_withdraw_unbonded(T::RelayChainUnbondingSlashingSpans::get()),
+					T::RelayChainCallBuilder::balances_transfer_keep_alive(parachain_account, amount),
 				]),
 				T::SubAccountIndex::get(),
 			);
-			T::RelaychainCallBuilder::finalize_call_into_xcm_message(
+			T::RelayChainCallBuilder::finalize_call_into_xcm_message(
 				xcm_message,
 				T::XcmUnbondFee::get(),
 				Self::xcm_dest_weight(),

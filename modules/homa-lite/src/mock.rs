@@ -23,7 +23,7 @@
 pub use super::*;
 pub use frame_support::{ord_parameter_types, parameter_types, traits::Everything};
 pub use frame_system::{EnsureRoot, EnsureSignedBy, RawOrigin};
-pub use module_relaychain::RelaychainCallBuilder;
+pub use module_relaychain::RelayChainCallBuilder;
 pub use module_support::mocks::MockAddressMapping;
 pub use orml_traits::{parameter_type_with_key, XcmTransfer};
 pub use primitives::{Amount, TokenSymbol};
@@ -258,7 +258,7 @@ parameter_types! {
 	pub const ParachainAccount: AccountId = ROOT;
 	pub const MaximumRedeemRequestMatchesForMint: u32 = 2;
 	pub static MockRelayBlockNumberProvider: u64 = 0;
-	pub const RelaychainUnbondingSlashingSpans: u32 = 5;
+	pub const RelayChainUnbondingSlashingSpans: u32 = 5;
 	pub const MaxScheduledUnbonds: u32 = 14;
 	pub const SubAccountIndex: u16 = 0;
 	pub ParachainId: ParaId = ParaId::from(PARACHAIN_ID);
@@ -290,13 +290,13 @@ impl Config for Runtime {
 	type DefaultExchangeRate = DefaultExchangeRate;
 	type MaxRewardPerEra = MaxRewardPerEra;
 	type MintFee = MintFee;
-	type RelaychainCallBuilder = RelaychainCallBuilder<Runtime, ParachainId>;
+	type RelayChainCallBuilder = RelayChainCallBuilder<Runtime, ParachainId>;
 	type BaseWithdrawFee = BaseWithdrawFee;
 	type XcmUnbondFee = XcmUnbondFee;
-	type RelaychainBlockNumber = MockRelayBlockNumberProvider;
+	type RelayChainBlockNumber = MockRelayBlockNumberProvider;
 	type ParachainAccount = ParachainAccount;
 	type MaximumRedeemRequestMatchesForMint = MaximumRedeemRequestMatchesForMint;
-	type RelaychainUnbondingSlashingSpans = RelaychainUnbondingSlashingSpans;
+	type RelayChainUnbondingSlashingSpans = RelayChainUnbondingSlashingSpans;
 	type MaxScheduledUnbonds = MaxScheduledUnbonds;
 }
 
