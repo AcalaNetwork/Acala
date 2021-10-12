@@ -1550,7 +1550,10 @@ fn currency_id_convert() {
 				)),
 				Some(VSKSM)
 			);
-
+			assert_eq!(
+				CurrencyIdConvert::convert(X2(Parent, Parachain(parachains::phala::ID))),
+				Some(PHA)
+			);
 			assert_eq!(
 				CurrencyIdConvert::convert(BNC),
 				Some(MultiLocation::sibling_parachain_general_key(
@@ -1563,6 +1566,13 @@ fn currency_id_convert() {
 				Some(MultiLocation::sibling_parachain_general_key(
 					parachains::bifrost::ID,
 					parachains::bifrost::VSKSM_KEY.to_vec()
+				))
+			);
+			assert_eq!(
+				CurrencyIdConvert::convert(PHA),
+				Some(MultiLocation::new(
+					1,
+					X1(Junction::Parachain(parachains::phala::ID))
 				))
 			);
 
