@@ -1714,6 +1714,7 @@ impl orml_xtokens::Config for Runtime {
 	type XcmExecutor = XcmExecutor<XcmConfig>;
 	type Weigher = FixedWeightBounds<UnitWeightCost, Call>;
 	type BaseXcmWeight = BaseXcmWeight;
+	type LocationInverter = LocationInverter<Ancestry>;
 }
 
 impl orml_unknown_tokens::Config for Runtime {
