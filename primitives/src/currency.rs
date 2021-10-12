@@ -201,6 +201,7 @@ create_currency_id! {
 		// 168 - 255: Kusama parachain tokens
 		BNC("Bifrost Native Token", 12) = 168,
 		VSKSM("Bifrost Voucher Slot KSM", 12) = 169,
+		PHA("Phala Native Token", 12) = 170,
 	}
 }
 
