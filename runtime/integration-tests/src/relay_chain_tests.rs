@@ -85,6 +85,9 @@ mod karura_tests {
 				),
 				pallet_balances::Error::<kusama_runtime::Runtime>::LiquidityRestrictions
 			);
+
+			// Uncomment this to test if withdraw_unbonded and transfer_keep_alive
+			// work without XCM. Used to isolate error when the test fails.
 			// assert_ok!(kusama_runtime::Staking::withdraw_unbonded(
 			// 	kusama_runtime::Origin::signed(homa_lite_sub_account.clone()),
 			// 	5
