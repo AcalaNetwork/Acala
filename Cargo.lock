@@ -6985,7 +6985,7 @@ dependencies = [
 [[package]]
 name = "pallet-chainlink-feed"
 version = "0.1.0"
-source = "git+https://github.com/smartcontractkit/chainlink-polkadot#03edf5f73503432e23c938a47e877902e743da50"
+source = "git+https://github.com/smartcontractkit//chainlink-polkadot?rev=215c22351856aac1dca82d9249b33a5bf209eb32#215c22351856aac1dca82d9249b33a5bf209eb32"
 dependencies = [
  "frame-benchmarking",
  "frame-support",

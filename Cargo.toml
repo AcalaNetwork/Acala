@@ -305,3 +305,6 @@ beefy-merkle-tree = { git = "https://github.com/paritytech//grandpa-bridge-gadge
 beefy-primitives = { git = "https://github.com/paritytech//grandpa-bridge-gadget", rev = "9954b61657dc8899a21b4f2501ee6bd3b7a2dc23" }
 pallet-beefy = { git = "https://github.com/paritytech//grandpa-bridge-gadget", rev = "9954b61657dc8899a21b4f2501ee6bd3b7a2dc23" }
 pallet-beefy-mmr = { git = "https://github.com/paritytech//grandpa-bridge-gadget", rev = "9954b61657dc8899a21b4f2501ee6bd3b7a2dc23" }
+
+[patch."https://github.com/smartcontractkit/chainlink-polkadot"]
+pallet-chainlink-feed = { git = "https://github.com/smartcontractkit//chainlink-polkadot", rev = "215c22351856aac1dca82d9249b33a5bf209eb32" }

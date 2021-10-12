@@ -181,6 +181,7 @@ impl ExtBuilder {
 		pallet_chainlink_feed::GenesisConfig::<Runtime> {
 			pallet_admin: None,
 			feed_creators: vec![ALICE],
+			feeds: vec![],
 		}
 		.assimilate_storage(&mut t)
 		.unwrap();
