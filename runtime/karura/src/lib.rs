@@ -734,7 +734,7 @@ parameter_type_with_key! {
 				TokenSymbol::LKSM => 50 * millicent(*currency_id),
 				TokenSymbol::BNC => 800 * millicent(*currency_id),  // 80BNC = 1KSM
 				TokenSymbol::VSKSM => 10 * millicent(*currency_id),  // 1VSKSM = 1KSM
-				TokenSymbol::PHA => 400 * millicent(*currency_id),  // 400PHA = 1KSM
+				TokenSymbol::PHA => 4000 * millicent(*currency_id),  // 400PHA = 1KSM
 
 				TokenSymbol::ACA |
 				TokenSymbol::AUSD |
