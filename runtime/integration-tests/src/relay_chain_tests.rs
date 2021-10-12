@@ -26,9 +26,10 @@ mod karura_tests {
 
 	use frame_support::{assert_noop, assert_ok};
 
+	use codec::Decode;
 	use module_relaychain::RelayChainCallBuilder;
 	use module_support::CallBuilder;
-	use xcm::{latest::prelude::*, DoubleEncoded};
+	use xcm::latest::prelude::*;
 	use xcm_emulator::TestExt;
 
 	type KusamaCallBuilder = RelayChainCallBuilder<Runtime, ParachainInfo>;
@@ -177,23 +178,20 @@ mod karura_tests {
 	/// Tests the calls built by the call builder are encoded and decoded correctly
 	fn relaychain_call_codec_works() {
 		KusamaNet::execute_with(|| {
-			let mut msg: DoubleEncoded<kusama_runtime::Call> =
-				KusamaCallBuilder::staking_withdraw_unbonded(5).encode().into();
-			assert_ok!(msg.ensure_decoded());
-			let withdraw_unbond_call = msg.take_decoded().unwrap();
-			assert_eq!(format!("{:?}", msg), "[6, 3, 5, 0, 0, 0]");
+			let encoded = KusamaCallBuilder::staking_withdraw_unbonded(5).encode();
+			let withdraw_unbond_call = kusama_runtime::Call::decode(&mut &encoded[..]).unwrap();
+			assert_eq!(encoded, hex_literal::hex!["060305000000"]);
 			assert_eq!(
 				withdraw_unbond_call,
 				kusama_runtime::Call::Staking(pallet_staking::Call::withdraw_unbonded(5))
 			);
 
-			let mut msg: DoubleEncoded<kusama_runtime::Call> =
-				KusamaCallBuilder::balances_transfer_keep_alive(ALICE.into(), 1)
-					.encode()
-					.into();
-			assert_ok!(msg.ensure_decoded());
-			let transfer_call = msg.take_decoded().unwrap();
-			assert_eq!(format!("{:?}", msg), "[4, 3, 0, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4]");
+			let encoded = KusamaCallBuilder::balances_transfer_keep_alive(ALICE.into(), 1).encode();
+			let transfer_call = kusama_runtime::Call::decode(&mut &encoded[..]).unwrap();
+			assert_eq!(
+				encoded,
+				hex_literal::hex!["040300040404040404040404040404040404040404040404040404040404040404040404"]
+			);
 			assert_eq!(
 				transfer_call,
 				kusama_runtime::Call::Balances(pallet_balances::Call::transfer_keep_alive(
@@ -202,13 +200,10 @@ mod karura_tests {
 				))
 			);
 
-			let mut msg: DoubleEncoded<kusama_runtime::Call> =
-				KusamaCallBuilder::utility_batch_call(vec![KusamaCallBuilder::staking_withdraw_unbonded(5)])
-					.encode()
-					.into();
-			assert_ok!(msg.ensure_decoded());
-			let batch_call = msg.take_decoded().unwrap();
-			assert_eq!(format!("{:?}", msg), "[24, 2, 4, 6, 3, 5, 0, 0, 0]");
+			let encoded =
+				KusamaCallBuilder::utility_batch_call(vec![KusamaCallBuilder::staking_withdraw_unbonded(5)]).encode();
+			let batch_call = kusama_runtime::Call::decode(&mut &encoded[..]).unwrap();
+			assert_eq!(encoded, hex_literal::hex!["180204060305000000"]);
 			assert_eq!(
 				batch_call,
 				kusama_runtime::Call::Utility(pallet_utility::Call::batch_all(vec![kusama_runtime::Call::Staking(
@@ -216,13 +211,11 @@ mod karura_tests {
 				)]))
 			);
 
-			let mut msg: DoubleEncoded<kusama_runtime::Call> =
+			let encoded =
 				KusamaCallBuilder::utility_as_derivative_call(KusamaCallBuilder::staking_withdraw_unbonded(5), 10)
-					.encode()
-					.into();
-			assert_ok!(msg.ensure_decoded());
-			let batch_as_call = msg.take_decoded().unwrap();
-			assert_eq!(format!("{:?}", msg), "[24, 1, 10, 0, 6, 3, 5, 0, 0, 0]");
+					.encode();
+			let batch_as_call = kusama_runtime::Call::decode(&mut &encoded[..]).unwrap();
+			assert_eq!(encoded, hex_literal::hex!["18010a00060305000000"]);
 			assert_eq!(
 				batch_as_call,
 				kusama_runtime::Call::Utility(pallet_utility::Call::as_derivative(
