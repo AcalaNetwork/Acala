@@ -1,4 +1,4 @@
-# Note: You can use any Debian/Ubuntu based image you want. 
+# Note: You can use any Debian/Ubuntu based image you want.
 FROM mcr.microsoft.com/vscode/devcontainers/rust:0-1
 
 # [Option] Install zsh
@@ -22,11 +22,11 @@ RUN apt-get update \
     && /bin/bash /tmp/library-scripts/docker-in-docker-debian.sh "${ENABLE_NONROOT_DOCKER}" "${USERNAME}" "${USE_MOBY}" \
     # Clean up
     && apt-get autoremove -y && apt-get clean -y && rm -rf /var/lib/apt/lists/* /tmp/library-scripts/
-    
+
 VOLUME [ "/var/lib/docker" ]
 
-# Setting the ENTRYPOINT to docker-init.sh will start up the Docker Engine 
-# inside the container "overrideCommand": false is set in devcontainer.json. 
+# Setting the ENTRYPOINT to docker-init.sh will start up the Docker Engine
+# inside the container "overrideCommand": false is set in devcontainer.json.
 # The script will also execute CMD if you need to alter startup behaviors.
 ENTRYPOINT [ "/usr/local/share/docker-init.sh" ]
 CMD [ "sleep", "infinity" ]
@@ -36,6 +36,7 @@ RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
     && apt-get -y install --no-install-recommends cmake pkg-config libssl-dev git clang libclang-dev bash-completion
 
 RUN rustup default nightly-2021-06-17 && \
-	rustup target add wasm32-unknown-unknown --toolchain nightly-2021-06-17
+	rustup target add wasm32-unknown-unknown --toolchain nightly-2021-06-17 \
+	rustup component add rustfmt
 
 RUN git config --global submodule.recurse true
