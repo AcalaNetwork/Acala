@@ -30,7 +30,7 @@ use karura_runtime::{
 	DexConfig, FinancialCouncilMembershipConfig, GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig,
 	OperatorMembershipAcalaConfig, OrmlNFTConfig, ParachainInfoConfig, Period, SS58Prefix, SessionConfig, SessionKeys,
 	SessionManagerConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig,
-	BNC, KAR, KSM, KUSD, LKSM, VSKSM, PHA,
+	BNC, KAR, KSM, KUSD, LKSM, PHA, VSKSM,
 };
 use runtime_common::TokenInfo;
 
