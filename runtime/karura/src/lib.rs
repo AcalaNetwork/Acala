@@ -1624,6 +1624,13 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 					GeneralKey(parachains::bifrost::VSKSM_KEY.to_vec()),
 				),
 			)),
+			// Phala Native token
+			Token(PHA) => Some(MultiLocation::new(
+				1,
+				X1(
+					Parachain(parachains::phala::ID)
+				),
+			)),
 			_ => None,
 		}
 	}
