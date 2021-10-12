@@ -9842,6 +9842,7 @@ dependencies = [
  "module-nominees-election",
  "module-polkadot-bridge",
  "module-prices",
+ "module-relaychain",
  "module-session-manager",
  "module-staking-pool",
  "module-staking-pool-rpc-runtime-api",

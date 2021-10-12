@@ -113,6 +113,7 @@ module-session-manager = { path = "../../modules/session-manager", default-featu
 module-staking-pool = { path = "../../modules/staking-pool", default-features = false }
 module-staking-pool-rpc-runtime-api = { path = "../../modules/staking-pool/rpc/runtime-api", default-features = false }
 module-polkadot-bridge = { path = "../../modules/polkadot-bridge", default-features = false }
+module-relaychain = {path = "../../modules/relaychain", default-features = false }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 runtime-common = { path = "../common", default-features = false }
 
@@ -148,10 +149,12 @@ acala-service = { path = "../../node/service", features = ["with-all-runtime"] }
 default = ["std"]
 no_std = []
 with-mandala-runtime=[
-	"acala-service/with-mandala-runtime"
+	"acala-service/with-mandala-runtime",
+	"module-relaychain/polkadot"
 ]
 with-karura-runtime=[
-	"acala-service/with-karura-runtime"
+	"acala-service/with-karura-runtime",
+	"module-relaychain/kusama"
 ]
 with-ethereum-compatibility=[
 	"mandala-runtime/with-ethereum-compatibility",
@@ -258,6 +261,7 @@ std = [
 	"module-staking-pool/std",
 	"module-staking-pool-rpc-runtime-api/std",
 	"module-polkadot-bridge/std",
+	"module-relaychain/std",
 	"primitives/std",
 	"runtime-common/std",
 	"mandala-runtime/std",
