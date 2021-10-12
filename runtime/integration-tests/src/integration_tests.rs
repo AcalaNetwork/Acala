@@ -1570,10 +1570,7 @@ fn currency_id_convert() {
 			);
 			assert_eq!(
 				CurrencyIdConvert::convert(PHA),
-				Some(MultiLocation::new(
-					1,
-					X1(Junction::Parachain(parachains::phala::ID))
-				))
+				Some(MultiLocation::new(1, X1(Junction::Parachain(parachains::phala::ID))))
 			);
 
 			let native_currency: MultiAsset = (

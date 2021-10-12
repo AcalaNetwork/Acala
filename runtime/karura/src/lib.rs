@@ -114,7 +114,7 @@ pub use runtime_common::{
 	HomaCouncilInstance, HomaCouncilMembershipInstance, OperatorMembershipInstanceAcala,
 	OperatorMembershipInstanceBand, Price, ProxyType, Rate, Ratio, RelayChainBlockNumberProvider,
 	RelayChainSubAccountId, RuntimeBlockLength, RuntimeBlockWeights, SystemContractsFilter, TechnicalCommitteeInstance,
-	TechnicalCommitteeMembershipInstance, TimeStampedPrice, BNC, KAR, KSM, KUSD, LKSM, RENBTC, PHA, VSKSM,
+	TechnicalCommitteeMembershipInstance, TimeStampedPrice, BNC, KAR, KSM, KUSD, LKSM, PHA, RENBTC, VSKSM,
 };
 
 mod authority;
@@ -1659,15 +1659,13 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 					}
 					_ => None,
 				}
-			},
+			}
 			MultiLocation {
 				parents,
 				interior: X1(Parachain(para_id)),
-			} if parents == 1 => {
-				match para_id {
-					parachains::phala::ID => Some(Token(PHA)),
-					_ => None,
-				}
+			} if parents == 1 => match para_id {
+				parachains::phala::ID => Some(Token(PHA)),
+				_ => None,
 			},
 			_ => None,
 		}
