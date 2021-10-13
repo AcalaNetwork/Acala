@@ -6,7 +6,7 @@
 
 [![GitHub Workflow Status](https://img.shields.io/github/workflow/status/AcalaNetwork/Acala/Test?label=Actions&logo=github)](https://github.com/AcalaNetwork/Acala/actions?query=workflow%3ATest)
 [![GitHub tag (latest by date)](https://img.shields.io/github/v/tag/AcalaNetwork/Acala)](https://github.com/AcalaNetwork/Acala/tags)
-[![Substrate version](https://img.shields.io/badge/Substrate-2.0.0-brightgreen?logo=Parity%20Substrate)](https://substrate.dev/)
+[![Substrate version](https://img.shields.io/badge/Substrate-2.0.0-brightgreen?logo=Parity%20Substrate)](https://substrate.io/)
 [![codecov](https://codecov.io/gh/AcalaNetwork/Acala/branch/master/graph/badge.svg?token=ERf7EDgafw)](https://codecov.io/gh/AcalaNetwork/Acala)
 [![License](https://img.shields.io/github/license/AcalaNetwork/Acala?color=green)](https://github.com/AcalaNetwork/Acala/blob/master/LICENSE)
  <br />
@@ -89,7 +89,7 @@ Install Rust:
 curl https://sh.rustup.rs -sSf | sh
 ```
 
-You may need additional dependencies, checkout [substrate.dev](https://substrate.dev/docs/en/knowledgebase/getting-started/) for more info
+You may need additional dependencies, checkout [substrate.io](https://docs.substrate.io/v3/getting-started/installation) for more info
 
 ```bash
 sudo apt-get install -y git clang curl libssl-dev llvm libudev-dev
@@ -187,8 +187,8 @@ cargo run --features with-mandala-runtime --features try-runtime -- try-runtime 
 cargo run --features with-mandala-runtime --features try-runtime -- try-runtime --wasm-execution=compiled --block-at=0x9def608d5674f6d16574f53849218fe13d80ec1042ef7c2d4de7d4c50abab806 --url="wss://karura.api.onfinality.io/public-ws" offchain-worker snap -s snapshot.bin
 ```
 
-# 8. Run local testnet with `Relaychain` and `Parachain`
-Build Relaychain and Parachain local testnet to develop.
+# 8. Run local testnet with `RelayChain` and `Parachain`
+Build RelayChain and Parachain local testnet to develop.
 
 ```bash
 cd launch

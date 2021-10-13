@@ -169,9 +169,9 @@ pub fn microcent(currency_id: CurrencyId) -> Balance {
 	millicent(currency_id) / 1000
 }
 
-pub struct RelaychainBlockNumberProvider<T>(sp_std::marker::PhantomData<T>);
+pub struct RelayChainBlockNumberProvider<T>(sp_std::marker::PhantomData<T>);
 
-impl<T: cumulus_pallet_parachain_system::Config> BlockNumberProvider for RelaychainBlockNumberProvider<T> {
+impl<T: cumulus_pallet_parachain_system::Config> BlockNumberProvider for RelayChainBlockNumberProvider<T> {
 	type BlockNumber = BlockNumber;
 
 	fn current_block_number() -> Self::BlockNumber {
@@ -337,7 +337,7 @@ impl Default for ProxyType {
 }
 
 #[repr(u16)]
-pub enum RelaychainSubAccountId {
+pub enum RelayChainSubAccountId {
 	HomaLite = 0,
 }
 

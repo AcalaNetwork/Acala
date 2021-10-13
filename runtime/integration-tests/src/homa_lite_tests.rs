@@ -347,6 +347,8 @@ mod karura_only_tests {
 				2_000_000_000_000
 			);
 
+			// Uncomment this to test if withdraw_unbonded and transfer_keep_alive
+			// work without XCM. Used to isolate error when the test fails.
 			// assert_ok!(kusama_runtime::Staking::withdraw_unbonded(
 			// 	kusama_runtime::Origin::signed(homa_lite_sub_account.clone()),
 			// 	5
@@ -380,7 +382,7 @@ mod karura_only_tests {
 			set_relaychain_block_number(101_000);
 			run_to_block(5);
 			assert_eq!(
-				RelaychainBlockNumberProvider::<Runtime>::current_block_number(),
+				RelayChainBlockNumberProvider::<Runtime>::current_block_number(),
 				101_000
 			);
 			HomaLite::on_idle(5, 1_000_000_000);

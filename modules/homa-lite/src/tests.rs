@@ -799,3 +799,30 @@ fn staking_and_liquid_conversion_works() {
 		assert_eq!(HomaLite::convert_liquid_to_staking(5_000_000), Ok(1_000_000));
 	});
 }
+
+#[test]
+fn redeem_can_handle_dust_available_staking_currency() {
+	ExtBuilder::default().build().execute_with(|| {
+		// If AvailableStakingBalance is not enough to pay for the unbonding fee, ignore it.
+		// pub XcmUnbondFee: Balance = dollar(1);
+		assert_ok!(HomaLite::schedule_unbond(Origin::root(), 999_000_000, 0));
+		MockRelayBlockNumberProvider::set(0);
+		HomaLite::on_idle(MockRelayBlockNumberProvider::get(), 5_000_000_000);
+
+		assert_eq!(AvailableStakingBalance::<Runtime>::get(), 999_000_000);
+
+		// Ignore the dust AvailableStakingBalance and put the full amount onto the queue.
+		assert_ok!(HomaLite::request_redeem(
+			Origin::signed(ROOT),
+			dollar(1000),
+			Permill::zero()
+		));
+
+		assert_eq!(HomaLite::redeem_requests(ROOT), Some((dollar(1000), Permill::zero())));
+		System::assert_last_event(Event::HomaLite(crate::Event::RedeemRequested(
+			ROOT,
+			dollar(1000),
+			Permill::zero(),
+		)));
+	});
+}

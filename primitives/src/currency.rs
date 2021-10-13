@@ -226,7 +226,7 @@ pub enum CurrencyId {
 	Token(TokenSymbol),
 	DexShare(DexShare, DexShare),
 	Erc20(EvmAddress),
-	StableAssetPoolToken(nutsfinance_stable_asset::PoolId),
+	StableAssetPoolToken(nutsfinance_stable_asset::StableAssetPoolId),
 }
 
 impl CurrencyId {

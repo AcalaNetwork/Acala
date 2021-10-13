@@ -568,29 +568,29 @@ pub trait CompoundCashTrait<Balance, Moment> {
 pub trait CallBuilder {
 	type AccountId: FullCodec;
 	type Balance: FullCodec;
-	type RelaychainCall: FullCodec;
+	type RelayChainCall: FullCodec;
 
 	/// Execute multiple calls in a batch.
 	/// Param:
 	/// - calls: List of calls to be executed
-	fn utility_batch_call(calls: Vec<Self::RelaychainCall>) -> Self::RelaychainCall;
+	fn utility_batch_call(calls: Vec<Self::RelayChainCall>) -> Self::RelayChainCall;
 
 	/// Execute a call, replacing the `Origin` with a sub-account.
 	///  params:
 	/// - call: The call to be executed. Can be nested with `utility_batch_call`
 	/// - index: The index of sub-account to be used as the new origin.
-	fn utility_as_derivative_call(call: Self::RelaychainCall, index: u16) -> Self::RelaychainCall;
+	fn utility_as_derivative_call(call: Self::RelayChainCall, index: u16) -> Self::RelayChainCall;
 
 	/// Withdraw unbonded staking on the relay-chain.
 	///  params:
 	/// - num_slashing_spans: The number of slashing spans to withdraw from.
-	fn staking_withdraw_unbonded(num_slashing_spans: u32) -> Self::RelaychainCall;
+	fn staking_withdraw_unbonded(num_slashing_spans: u32) -> Self::RelayChainCall;
 
 	/// Transfer Staking currency to another account, disallowing "death".
 	///  params:
 	/// - to: The destination for the transfer
 	/// - amount: The amount of staking currency to be transferred.
-	fn balances_transfer_keep_alive(to: Self::AccountId, amount: Self::Balance) -> Self::RelaychainCall;
+	fn balances_transfer_keep_alive(to: Self::AccountId, amount: Self::Balance) -> Self::RelayChainCall;
 
 	/// Wrap the final calls into the Xcm format.
 	///  params:
@@ -599,7 +599,7 @@ pub trait CallBuilder {
 	/// - weight: the weight limit used for XCM.
 	/// - debt: the weight limit used to process the `call`.
 	fn finalize_call_into_xcm_message(
-		call: Self::RelaychainCall,
+		call: Self::RelayChainCall,
 		extra_fee: Self::Balance,
 		weight: Weight,
 		debt: Weight,
