@@ -22,7 +22,7 @@ on:
 jobs:
   release-notes:
     name: Build release note
-    runs-on: [self-hosted, linux]
+    runs-on: ubuntu-latest
     env:
       NETWORK: ${{ github.event.inputs.network }}
       SCOPE: ${{ github.event.inputs.scope }}
