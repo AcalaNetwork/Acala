@@ -89,7 +89,7 @@ Install Rust:
 curl https://sh.rustup.rs -sSf | sh
 ```
 
-You may need additional dependencies, checkout [substrate.dev](https://substrate.dev/docs/en/knowledgebase/getting-started/) for more info
+You may need additional dependencies, checkout [substrate.dev](https://docs.substrate.io/v3/getting-started/installation) for more info
 
 ```bash
 sudo apt-get install -y git clang curl libssl-dev llvm libudev-dev
