@@ -3,6 +3,8 @@ name: Release Notes
 env:
   SUBWASM_VERSION: 0.13.2
   SRTOOL_TAG: 1.53.0-0.9.16
+  NETWORK: karura
+  SCOPE: full
 
 on:
   workflow_dispatch:
