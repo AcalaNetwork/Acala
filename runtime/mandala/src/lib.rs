@@ -1280,7 +1280,7 @@ parameter_types! {
 	pub SubAccountIndex: u16 = RelayChainSubAccountId::HomaLite as u16;
 	// Calculated from polkadot/xcm/xcm-builder: fn buy_weight
 	// This is a place holder value since XCM is not tested for Mandala yet.
-	pub const XcmUnbondFee: Balance = 60 * millicent(DOT);
+	pub XcmUnbondFee: Balance = 60 * millicent(DOT);
 }
 impl module_homa_lite::Config for Runtime {
 	type Event = Event;

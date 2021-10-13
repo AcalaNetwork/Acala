@@ -1549,7 +1549,7 @@ parameter_types! {
 	pub SubAccountIndex: u16 = RelayChainSubAccountId::HomaLite as u16;
 	// Calculated from polkadot/xcm/xcm-builder: fn buy_weight
 	// We must charge higher than what Kusama required (533_333_300, obtained from integration test)
-	pub const XcmUnbondFee: Balance = 60 * millicent(KSM);
+	pub XcmUnbondFee: Balance = 60 * millicent(KSM);
 }
 impl module_homa_lite::Config for Runtime {
 	type Event = Event;
