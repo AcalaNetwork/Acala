@@ -74,7 +74,7 @@ jobs:
 
       - name: Generate note
         id: generate-note
-        uses: ./.github/acala-release-note-action
+        uses: AcalaNetwork/acala-release-note-action@master
         with:
           scope: ${{ env.SCOPE }}
           network: ${{ env.NETWORK }}
