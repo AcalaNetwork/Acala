@@ -1596,7 +1596,7 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 		use TokenSymbol::*;
 		match id {
 			Token(KSM) => Some(MultiLocation::parent()),
-			Token(KAR) | Token(KUSD) | Token(LKSM) | Token(RENBTC) => Some(native_currency_location(id)),
+			Token(KAR) | Token(KUSD) | Token(LKSM) => Some(native_currency_location(id)),
 			// Bifrost native token
 			Token(BNC) => Some(MultiLocation::new(
 				1,

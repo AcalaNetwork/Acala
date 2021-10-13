@@ -722,11 +722,11 @@ parameter_type_with_key! {
 
 				TokenSymbol::KAR |
 				TokenSymbol::KUSD |
-				TokenSymbol::KSM |
-				TokenSymbol::LKSM |
+				TokenSymbol::DOT |
+				TokenSymbol::LDOT |
 				TokenSymbol::RENBTC |
 				TokenSymbol::BNC |
-				TokenSymbol::VSKSM |
+				TokenSymbol::VSDOT |
 				TokenSymbol::ACA |
 				TokenSymbol::CASH => Balance::max_value() // unsupported
 			},
@@ -795,8 +795,8 @@ impl module_prices::Config for Runtime {
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = KAR;
 	pub const GetStableCurrencyId: CurrencyId = KUSD;
-	pub const GetLiquidCurrencyId: CurrencyId = LKSM;
-	pub const GetStakingCurrencyId: CurrencyId = KSM;
+	pub const GetLiquidCurrencyId: CurrencyId = LDOT;
+	pub const GetStakingCurrencyId: CurrencyId = DOT;
 }
 
 impl module_currencies::Config for Runtime {
@@ -1341,7 +1341,12 @@ impl parachain_info::Config for Runtime {}
 
 impl cumulus_pallet_aura_ext::Config for Runtime {}
 
-// TODO ----------------
+parameter_types! {
+	pub DotLocation: MultiLocation = MultiLocation::parent();
+	pub const RelayNetwork: NetworkId = NetworkId::Polkadot;
+	pub RelayChainOrigin: Origin = cumulus_pallet_xcm::Origin::Relay.into();
+	pub Ancestry: MultiLocation = Parachain(ParachainInfo::parachain_id().into()).into();
+}
 
 /// Type for specifying how a `MultiLocation` can be converted into an `AccountId`. This is used
 /// when determining ownership of accounts for asset transacting and when attempting to use XCM
@@ -1379,14 +1384,14 @@ pub type XcmOriginToCallOrigin = (
 parameter_types! {
 	// One XCM operation is 200_000_000 weight, cross-chain transfer ~= 2x of transfer.
 	pub const UnitWeightCost: Weight = 200_000_000;
-	pub KsmPerSecond: (AssetId, u128) = (MultiLocation::parent().into(), ksm_per_second());
-	pub KusdPerSecond: (AssetId, u128) = (
+	pub DotPerSecond: (AssetId, u128) = (MultiLocation::parent().into(), dot_per_second());
+	pub AusdPerSecond: (AssetId, u128) = (
 		MultiLocation::new(
 			1,
-			X2(Parachain(u32::from(ParachainInfo::get())), GeneralKey(KUSD.encode())),
+			X2(Parachain(u32::from(ParachainInfo::get())), GeneralKey(AUSD.encode())),
 		).into(),
-		// kUSD:KSM = 400:1
-		ksm_per_second() * 400
+		// aUSD:DOT = 40:1
+		dot_per_second() * 40
 	);
 }
 
@@ -1401,38 +1406,17 @@ impl TakeRevenue for ToTreasury {
 		} = revenue
 		{
 			if let Some(currency_id) = CurrencyIdConvert::convert(location) {
-				// ensure KaruraTreasuryAccount have ed for all of the cross-chain asset.
+				// ensure AcalaTreasuryAccount have ed for all of the cross-chain asset.
 				// Ignore the result.
-				let _ = Currencies::deposit(currency_id, &KaruraTreasuryAccount::get(), amount);
+				let _ = Currencies::deposit(currency_id, &AcalaTreasuryAccount::get(), amount);
 			}
 		}
 	}
 }
 
-parameter_types! {
-	pub BncPerSecond: (AssetId, u128) = (
-		MultiLocation::new(
-			1,
-			X2(Parachain(parachains::bifrost::ID), GeneralKey(parachains::bifrost::BNC_KEY.to_vec())),
-		).into(),
-		// BNC:KSM = 80:1
-		ksm_per_second() * 80
-	);
-	pub VsksmPerSecond: (AssetId, u128) = (
-		MultiLocation::new(
-			1,
-			X2(Parachain(parachains::bifrost::ID), GeneralKey(parachains::bifrost::VSKSM_KEY.to_vec())),
-		).into(),
-		// VSKSM:KSM = 1:1
-		ksm_per_second()
-	);
-}
-
 pub type Trader = (
-	FixedRateOfFungible<KsmPerSecond, ToTreasury>,
-	FixedRateOfFungible<KusdPerSecond, ToTreasury>,
-	FixedRateOfFungible<BncPerSecond, ToTreasury>,
-	FixedRateOfFungible<VsksmPerSecond, ToTreasury>,
+	FixedRateOfFungible<DotPerSecond, ToTreasury>,
+	FixedRateOfFungible<AusdPerSecond, ToTreasury>,
 );
 
 pub struct XcmConfig;
@@ -1448,7 +1432,7 @@ impl xcm_executor::Config for XcmConfig {
 	type LocationInverter = LocationInverter<Ancestry>;
 	type Barrier = Barrier;
 	type Weigher = FixedWeightBounds<UnitWeightCost, Call>;
-	// Only receiving KSM is handled, and all fees must be paid in KSM.
+	// Only receiving DOT is handled, and all fees must be paid in DOT.
 	type Trader = Trader;
 	type ResponseHandler = (); // Don't handle responses for now.
 	type SubscriptionService = PolkadotXcm;
@@ -1511,32 +1495,32 @@ pub fn create_x2_parachain_multilocation(index: u16) -> MultiLocation {
 }
 
 parameter_types! {
-	pub const KSMCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::KSM);
-	pub const LKSMCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::LKSM);
-	pub MinimumMintThreshold: Balance = 10 * cent(KSM);
-	pub MinimumRedeemThreshold: Balance = 100 * cent(LKSM);
+	pub const DOTCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
+	pub const LDOTCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
+	pub MinimumMintThreshold: Balance = 2 * dollar(DOT);
+	pub MinimumRedeemThreshold: Balance = 20 * dollar(LDOT);
 	pub RelaychainSovereignSubAccount: MultiLocation = create_x2_parachain_multilocation(RelaychainSubAccountId::HomaLite as u16);
 	pub RelaychainSovereignSubAccountId: AccountId = Utility::derivative_account_id(
 		ParachainInfo::get().into_account(),
 		RelaychainSubAccountId::HomaLite as u16
 	);
 	pub MaxRewardPerEra: Permill = Permill::from_rational(500u32, 1_000_000u32); // 1.2 ^ (1/365) = 1.0004996359
-	pub MintFee: Balance = 20 * millicent(KSM); // 2x XCM fee on Kusama
+	pub MintFee: Balance = 20 * millicent(DOT); // 2x XCM fee on Polkadot TODO: identify xcm fee
 	pub DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
-	pub BaseWithdrawFee: Permill = Permill::from_rational(35u32, 10_000u32); // 20% yield per year, unbonding period = 7 days. 1.2^(7 / 365) = 1.00350
+	pub BaseWithdrawFee: Permill = Permill::from_rational(1408u32, 100_000u32); // 20% yield per year, unbonding period = 28 days. 1.2^(28 / 365) = 1.01408
 	pub MaximumRedeemRequestMatchesForMint: u32 = 20;
 	pub RelaychainUnbondingSlashingSpans: u32 = 5;
 	pub MaxScheduledUnbonds: u32 = 14;
 	pub ParachainAccount: AccountId = ParachainInfo::get().into_account();
 	pub SubAccountIndex: u16 = RelaychainSubAccountId::HomaLite as u16;
-	pub const XcmUnbondFee: Balance = 600_000_000; // From homa-lite integration test.
+	pub const XcmUnbondFee: Balance = 600_000_000; // TODO identify unbon fee
 }
 impl module_homa_lite::Config for Runtime {
 	type Event = Event;
 	type WeightInfo = weights::module_homa_lite::WeightInfo<Runtime>;
 	type Currency = Currencies;
-	type StakingCurrencyId = KSMCurrencyId;
-	type LiquidCurrencyId = LKSMCurrencyId;
+	type StakingCurrencyId = DOTCurrencyId;
+	type LiquidCurrencyId = LDOTCurrencyId;
 	type GovernanceOrigin = EnsureRootOrHalfGeneralCouncil;
 	type MinimumMintThreshold = MinimumMintThreshold;
 	type MinimumRedeemThreshold = MinimumRedeemThreshold;
@@ -1577,24 +1561,8 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 		use CurrencyId::Token;
 		use TokenSymbol::*;
 		match id {
-			Token(KSM) => Some(MultiLocation::parent()),
-			Token(KAR) | Token(KUSD) | Token(LKSM) | Token(RENBTC) => Some(native_currency_location(id)),
-			// Bifrost native token
-			Token(BNC) => Some(MultiLocation::new(
-				1,
-				X2(
-					Parachain(parachains::bifrost::ID),
-					GeneralKey(parachains::bifrost::BNC_KEY.to_vec()),
-				),
-			)),
-			// Bifrost Voucher Slot KSM
-			Token(VSKSM) => Some(MultiLocation::new(
-				1,
-				X2(
-					Parachain(parachains::bifrost::ID),
-					GeneralKey(parachains::bifrost::VSKSM_KEY.to_vec()),
-				),
-			)),
+			Token(DOT) => Some(MultiLocation::parent()),
+			Token(ACA) | Token(AUSD) | Token(LDOT) => Some(native_currency_location(id)),
 			_ => None,
 		}
 	}
@@ -1605,7 +1573,7 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 		use TokenSymbol::*;
 
 		if location == MultiLocation::parent() {
-			return Some(Token(KSM));
+			return Some(Token(DOT));
 		}
 		match location {
 			MultiLocation {
@@ -1614,13 +1582,13 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 			} if parents == 1 => {
 				match (para_id, &key[..]) {
 					(parachains::bifrost::ID, parachains::bifrost::BNC_KEY) => Some(Token(BNC)),
-					(parachains::bifrost::ID, parachains::bifrost::VSKSM_KEY) => Some(Token(VSKSM)),
+					(parachains::bifrost::ID, parachains::bifrost::VSDOT_KEY) => Some(Token(VSDOT)),
 					(id, key) if id == u32::from(ParachainInfo::get()) => {
 						// Karura
 						if let Ok(currency_id) = CurrencyId::decode(&mut &*key) {
 							// check `currency_id` is cross-chain asset
 							match currency_id {
-								Token(KAR) | Token(KUSD) | Token(LKSM) | Token(RENBTC) => Some(currency_id),
+								Token(KAR) | Token(KUSD) | Token(LDOT) | Token(RENBTC) => Some(currency_id),
 								_ => None,
 							}
 						} else {
@@ -1664,7 +1632,7 @@ impl Convert<AccountId, MultiLocation> for AccountIdToMultiLocation {
 }
 
 parameter_types! {
-	pub const BaseXcmWeight: Weight = 100_000_000;
+	pub const BaseXcmWeight: Weight = 100_000_000; // TODO: recheck this
 }
 
 impl orml_xtokens::Config for Runtime {
@@ -1704,10 +1672,14 @@ construct_runtime!(
 		NodeBlock = primitives::Block,
 		UncheckedExtrinsic = UncheckedExtrinsic
 	{
-		// Core
+		// Core & Utility
 		System: frame_system::{Pallet, Call, Storage, Config, Event<T>} = 0,
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent} = 1,
 		Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>} = 2,
+		Utility: pallet_utility::{Pallet, Call, Event} = 3,
+		Multisig: pallet_multisig::{Pallet, Call, Storage, Event<T>} = 4,
+		Proxy: pallet_proxy::{Pallet, Call, Storage, Event<T>} = 5,
+		TransactionPause: module_transaction_pause::{Pallet, Call, Storage, Event<T>} = 6,
 
 		// Tokens & Related
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 10,
@@ -1721,91 +1693,81 @@ construct_runtime!(
 		Bounties: pallet_bounties::{Pallet, Call, Storage, Event<T>} = 21,
 		Tips: pallet_tips::{Pallet, Call, Storage, Event<T>} = 22,
 
-		// Utility
-		Utility: pallet_utility::{Pallet, Call, Event} = 30,
-		Multisig: pallet_multisig::{Pallet, Call, Storage, Event<T>} = 31,
-		Recovery: pallet_recovery::{Pallet, Call, Storage, Event<T>} = 32,
-		Proxy: pallet_proxy::{Pallet, Call, Storage, Event<T>} = 33,
+		// Parachain
+		ParachainSystem: cumulus_pallet_parachain_system::{Pallet, Call, Storage, Inherent, Config, Event<T>} = 30,
+		ParachainInfo: parachain_info::{Pallet, Storage, Config} = 31,
 
-		Indices: pallet_indices::{Pallet, Call, Storage, Config<T>, Event<T>} = 40,
+		// Collator. The order of the 4 below are important and shall not change.
+		Authorship: pallet_authorship::{Pallet, Storage} = 40,
+		CollatorSelection: module_collator_selection::{Pallet, Call, Storage, Event<T>, Config<T>} = 41,
+		Session: pallet_session::{Pallet, Call, Storage, Event, Config<T>} = 42,
+		Aura: pallet_aura::{Pallet, Storage, Config<T>} = 43,
+		AuraExt: cumulus_pallet_aura_ext::{Pallet, Storage, Config} = 44,
+		SessionManager: module_session_manager::{Pallet, Call, Storage, Event<T>, Config<T>} = 45,
+
+		// XCM
+		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Storage, Event<T>} = 50,
+		PolkadotXcm: pallet_xcm::{Pallet, Call, Event<T>, Origin} = 51,
+		CumulusXcm: cumulus_pallet_xcm::{Pallet, Event<T>, Origin} = 52,
+		DmpQueue: cumulus_pallet_dmp_queue::{Pallet, Call, Storage, Event<T>} = 53,
+		XTokens: orml_xtokens::{Pallet, Storage, Call, Event<T>} = 54,
+		UnknownTokens: orml_unknown_tokens::{Pallet, Storage, Event} = 55,
+		OrmlXcm: orml_xcm::{Pallet, Call, Event<T>} = 56,
 
 		// Governance
-		GeneralCouncil: pallet_collective::<Instance1>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 50,
-		GeneralCouncilMembership: pallet_membership::<Instance1>::{Pallet, Call, Storage, Event<T>, Config<T>} = 51,
-		FinancialCouncil: pallet_collective::<Instance2>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 52,
-		FinancialCouncilMembership: pallet_membership::<Instance2>::{Pallet, Call, Storage, Event<T>, Config<T>} = 53,
-		HomaCouncil: pallet_collective::<Instance3>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 54,
-		HomaCouncilMembership: pallet_membership::<Instance3>::{Pallet, Call, Storage, Event<T>, Config<T>} = 55,
-		TechnicalCommittee: pallet_collective::<Instance4>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 56,
-		TechnicalCommitteeMembership: pallet_membership::<Instance4>::{Pallet, Call, Storage, Event<T>, Config<T>} = 57,
-
-		Authority: orml_authority::{Pallet, Call, Storage, Event<T>, Origin<T>} = 70,
-		PhragmenElection: pallet_elections_phragmen::{Pallet, Call, Storage, Event<T>} = 71,
-		Democracy: pallet_democracy::{Pallet, Call, Storage, Config<T>, Event<T>} = 72,
+		Authority: orml_authority::{Pallet, Call, Storage, Event<T>, Origin<T>} = 60,
+		GeneralCouncil: pallet_collective::<Instance1>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 61,
+		GeneralCouncilMembership: pallet_membership::<Instance1>::{Pallet, Call, Storage, Event<T>, Config<T>} = 62,
+		FinancialCouncil: pallet_collective::<Instance2>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 63,
+		FinancialCouncilMembership: pallet_membership::<Instance2>::{Pallet, Call, Storage, Event<T>, Config<T>} = 64,
+		HomaCouncil: pallet_collective::<Instance3>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 65,
+		HomaCouncilMembership: pallet_membership::<Instance3>::{Pallet, Call, Storage, Event<T>, Config<T>} = 66,
+		TechnicalCommittee: pallet_collective::<Instance4>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 67,
+		TechnicalCommitteeMembership: pallet_membership::<Instance4>::{Pallet, Call, Storage, Event<T>, Config<T>} = 68,
+		Democracy: pallet_democracy::{Pallet, Call, Storage, Config<T>, Event<T>} = 69,
 
 		// Oracle
 		//
 		// NOTE: OperatorMembership must be placed after Oracle or else will have race condition on initialization
-		AcalaOracle: orml_oracle::<Instance1>::{Pallet, Storage, Call, Event<T>} = 80,
-		OperatorMembershipAcala: pallet_membership::<Instance5>::{Pallet, Call, Storage, Event<T>, Config<T>} = 82,
-		BandOracle: orml_oracle::<Instance2>::{Pallet, Storage, Call, Event<T>} = 81,
-		OperatorMembershipBand: pallet_membership::<Instance6>::{Pallet, Call, Storage, Event<T>, Config<T>} = 83,
+		AcalaOracle: orml_oracle::<Instance1>::{Pallet, Storage, Call, Event<T>} = 70,
+		OperatorMembershipAcala: pallet_membership::<Instance5>::{Pallet, Call, Storage, Event<T>, Config<T>} = 71,
 
 		// ORML Core
-		Auction: orml_auction::{Pallet, Storage, Call, Event<T>} = 100,
-		Rewards: orml_rewards::{Pallet, Storage, Call} = 101,
-		OrmlNFT: orml_nft::{Pallet, Storage, Config<T>} = 102,
+		Auction: orml_auction::{Pallet, Storage, Call, Event<T>} = 80,
+		Rewards: orml_rewards::{Pallet, Storage, Call} = 81,
+		OrmlNFT: orml_nft::{Pallet, Storage, Config<T>} = 82,
 
-		// Acala Core
-		Prices: module_prices::{Pallet, Storage, Call, Event<T>} = 110,
-		Dex: module_dex::{Pallet, Storage, Call, Event<T>, Config<T>} = 111,
+		// Karura Core
+		Prices: module_prices::{Pallet, Storage, Call, Event<T>} = 90,
+		Dex: module_dex::{Pallet, Storage, Call, Event<T>, Config<T>} = 91,
 
 		// Honzon
-		AuctionManager: module_auction_manager::{Pallet, Storage, Call, Event<T>, ValidateUnsigned} = 120,
-		Loans: module_loans::{Pallet, Storage, Call, Event<T>} = 121,
-		Honzon: module_honzon::{Pallet, Storage, Call, Event<T>} = 122,
-		CdpTreasury: module_cdp_treasury::{Pallet, Storage, Call, Config, Event<T>} = 123,
-		CdpEngine: module_cdp_engine::{Pallet, Storage, Call, Event<T>, Config, ValidateUnsigned} = 124,
-		EmergencyShutdown: module_emergency_shutdown::{Pallet, Storage, Call, Event<T>} = 125,
+		AuctionManager: module_auction_manager::{Pallet, Storage, Call, Event<T>, ValidateUnsigned} = 100,
+		Loans: module_loans::{Pallet, Storage, Call, Event<T>} = 101,
+		Honzon: module_honzon::{Pallet, Storage, Call, Event<T>} = 102,
+		CdpTreasury: module_cdp_treasury::{Pallet, Storage, Call, Config, Event<T>} = 103,
+		CdpEngine: module_cdp_engine::{Pallet, Storage, Call, Event<T>, Config, ValidateUnsigned} = 104,
+		EmergencyShutdown: module_emergency_shutdown::{Pallet, Storage, Call, Event<T>} = 105,
 
 		// Homa
-		Homa: module_homa::{Pallet, Call} = 130,
-		NomineesElection: module_nominees_election::{Pallet, Call, Storage, Event<T>} = 131,
-		StakingPool: module_staking_pool::{Pallet, Call, Storage, Event<T>, Config} = 132,
-		PolkadotBridge: module_polkadot_bridge::{Pallet, Call, Storage} = 133,
-		HomaValidatorListModule: module_homa_validator_list::{Pallet, Call, Storage, Event<T>} = 134,
+		// Homa: module_homa::{Pallet, Call} = 110,
+		// NomineesElection: module_nominees_election::{Pallet, Call, Storage, Event<T>} = 111,
+		// StakingPool: module_staking_pool::{Pallet, Call, Storage, Event<T>, Config} = 112,
+		// PolkadotBridge: module_polkadot_bridge::{Pallet, Call, Storage} = 113,
+		// HomaValidatorListModule: module_homa_validator_list::{Pallet, Call, Storage, Event<T>} = 114,
+		HomaLite: module_homa_lite::{Pallet, Call, Storage, Event<T>} = 115,
 
-		// Acala Other
-		Incentives: module_incentives::{Pallet, Storage, Call, Event<T>} = 140,
-		NFT: module_nft::{Pallet, Call, Event<T>} = 141,
-
-		// Ecosystem modules
-		RenVmBridge: ecosystem_renvm_bridge::{Pallet, Call, Config, Storage, Event<T>, ValidateUnsigned} = 150,
-
-		// Parachain
-		ParachainSystem: cumulus_pallet_parachain_system::{Pallet, Call, Storage, Inherent, Config, Event<T>} = 161,
-		ParachainInfo: parachain_info::{Pallet, Storage, Config} = 162,
-
-		// // XCM
-		// XcmHandler: cumulus_pallet_xcm_handler::{Pallet, Call, Event<T>, Origin} = 170,
-		// XTokens: orml_xtokens::{Pallet, Storage, Call, Event<T>} = 171,
-		// UnknownTokens: orml_unknown_tokens::{Pallet, Storage, Event} = 172,
+		// Karura Other
+		Incentives: module_incentives::{Pallet, Storage, Call, Event<T>} = 120,
+		NFT: module_nft::{Pallet, Call, Event<T>} = 121,
 
 		// Smart contracts
-		EVM: module_evm::{Pallet, Config<T>, Call, Storage, Event<T>} = 180,
-		EVMBridge: module_evm_bridge::{Pallet} = 181,
-		EvmAccounts: module_evm_accounts::{Pallet, Call, Storage, Event<T>} = 182,
-		EvmManager: module_evm_manager::{Pallet, Storage} = 183,
+		EVM: module_evm::{Pallet, Config<T>, Call, Storage, Event<T>} = 130,
+		EVMBridge: module_evm_bridge::{Pallet} = 131,
+		EvmAccounts: module_evm_accounts::{Pallet, Call, Storage, Event<T>} = 132,
+		EvmManager: module_evm_manager::{Pallet, Storage} = 133,
 
-		// Collator support. the order of these 4 are important and shall not change.
-		Authorship: pallet_authorship::{Pallet, Call, Storage} = 190,
-		CollatorSelection: module_collator_selection::{Pallet, Call, Storage, Event<T>, Config<T>} = 191,
-		Session: pallet_session::{Pallet, Call, Storage, Event, Config<T>} = 192,
-		Aura: pallet_aura::{Pallet, Storage, Config<T>} = 193,
-		AuraExt: cumulus_pallet_aura_ext::{Pallet, Storage, Config} = 194,
-		SessionManager: module_session_manager::{Pallet, Call, Storage, Event<T>, Config<T>} = 195,
-
-		// Dev
+		// Temporary
 		Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>} = 255,
 	}
 );
@@ -1836,8 +1798,14 @@ pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExtra>;
 /// Executive: handles dispatch to the various modules.
-pub type Executive =
-	frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllPallets, ()>;
+pub type Executive = frame_executive::Executive<
+	Runtime,
+	Block,
+	frame_system::ChainContext<Runtime>,
+	Runtime,
+	AllPallets,
+	OnRuntimeUpgrade,
+>;
 
 #[cfg(not(feature = "disable-runtime-api"))]
 impl_runtime_apis! {
@@ -1965,14 +1933,14 @@ impl_runtime_apis! {
 		AccountId,
 		Balance,
 	> for Runtime {
-		fn get_available_unbonded(account: AccountId) -> module_staking_pool_rpc_runtime_api::BalanceInfo<Balance> {
+		fn get_available_unbonded(_account: AccountId) -> module_staking_pool_rpc_runtime_api::BalanceInfo<Balance> {
 			module_staking_pool_rpc_runtime_api::BalanceInfo {
-				amount: StakingPool::get_available_unbonded(&account)
+				amount: Zero::zero()
 			}
 		}
 
 		fn get_liquid_staking_exchange_rate() -> ExchangeRate {
-			StakingPool::liquid_exchange_rate()
+			ExchangeRate::zero()
 		}
 	}
 
@@ -2087,33 +2055,38 @@ impl_runtime_apis! {
 		) {
 			use frame_benchmarking::{list_benchmark, Benchmarking, BenchmarkList};
 			use frame_support::traits::StorageInfoTrait;
-			// use orml_benchmarking::list_benchmark as orml_list_benchmark;
+			use orml_benchmarking::list_benchmark as orml_list_benchmark;
 
 			use module_nft::benchmarking::Pallet as NftBench;
+			use module_homa_lite::benchmarking::Pallet as HomaLiteBench;
 
 			let mut list = Vec::<BenchmarkList>::new();
 
 			list_benchmark!(list, extra, module_nft, NftBench::<Runtime>);
+			list_benchmark!(list, extra, module_homa_lite, HomaLiteBench::<Runtime>);
 
-			// orml_list_benchmark!(list, extra, dex, benchmarking::dex);
-			// orml_list_benchmark!(list, extra, auction_manager, benchmarking::auction_manager);
-			// orml_list_benchmark!(list, extra, cdp_engine, benchmarking::cdp_engine);
-			// orml_list_benchmark!(list, extra, collator_selection, benchmarking::collator_selection);
+			orml_list_benchmark!(list, extra, module_dex, benchmarking::dex);
+			orml_list_benchmark!(list, extra, module_auction_manager, benchmarking::auction_manager);
+			orml_list_benchmark!(list, extra, module_cdp_engine, benchmarking::cdp_engine);
+			orml_list_benchmark!(list, extra, module_emergency_shutdown, benchmarking::emergency_shutdown);
+			orml_list_benchmark!(list, extra, module_evm, benchmarking::evm);
+			orml_list_benchmark!(list, extra, module_honzon, benchmarking::honzon);
+			orml_list_benchmark!(list, extra, module_cdp_treasury, benchmarking::cdp_treasury);
+			orml_list_benchmark!(list, extra, module_collator_selection, benchmarking::collator_selection);
 			// orml_list_benchmark!(list, extra, module_nominees_election, benchmarking::nominees_election);
-			// orml_list_benchmark!(list, extra, emergency_shutdown, benchmarking::emergency_shutdown);
-			// orml_list_benchmark!(list, extra, honzon, benchmarking::honzon);
-			// orml_list_benchmark!(list, extra, cdp_treasury, benchmarking::cdp_treasury);
-			// orml_list_benchmark!(list, extra, transaction_payment, benchmarking::transaction_payment);
-			// orml_list_benchmark!(list, extra, incentives, benchmarking::incentives);
-			// orml_list_benchmark!(list, extra, prices, benchmarking::prices);
-			// orml_list_benchmark!(list, extra, module_session_manager, benchmarking::session_manager);
-
-			// orml_list_benchmark!(list, extra, orml_tokens, benchmarking::tokens);
-			// orml_list_benchmark!(list, extra, orml_vesting, benchmarking::vesting);
-			// orml_list_benchmark!(list, extra, orml_auction, benchmarking::auction);
-			// orml_list_benchmark!(list, extra, orml_currencies, benchmarking::currencies);
-			// orml_list_benchmark!(list, extra, orml_authority, benchmarking::authority);
-			// orml_list_benchmark!(list, extra, orml_oracle, benchmarking::oracle);
+			orml_list_benchmark!(list, extra, module_transaction_pause, benchmarking::transaction_pause);
+			orml_list_benchmark!(list, extra, module_transaction_payment, benchmarking::transaction_payment);
+			orml_list_benchmark!(list, extra, module_incentives, benchmarking::incentives);
+			orml_list_benchmark!(list, extra, module_prices, benchmarking::prices);
+			orml_list_benchmark!(list, extra, module_evm_accounts, benchmarking::evm_accounts);
+			// orml_list_benchmark!(list, extra, module_homa, benchmarking::homa);
+			orml_list_benchmark!(list, extra, module_currencies, benchmarking::currencies);
+			orml_list_benchmark!(list, extra, module_session_manager, benchmarking::session_manager);
+			orml_list_benchmark!(list, extra, orml_tokens, benchmarking::tokens);
+			orml_list_benchmark!(list, extra, orml_vesting, benchmarking::vesting);
+			orml_list_benchmark!(list, extra, orml_auction, benchmarking::auction);
+			orml_list_benchmark!(list, extra, orml_authority, benchmarking::authority);
+			orml_list_benchmark!(list, extra, orml_oracle, benchmarking::oracle);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -2124,9 +2097,10 @@ impl_runtime_apis! {
 			config: frame_benchmarking::BenchmarkConfig
 		) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString> {
 			use frame_benchmarking::{Benchmarking, BenchmarkBatch, add_benchmark, TrackedStorageKey};
-			// use orml_benchmarking::{add_benchmark as orml_add_benchmark};
+			use orml_benchmarking::{add_benchmark as orml_add_benchmark};
 
 			use module_nft::benchmarking::Pallet as NftBench;
+			use module_homa_lite::benchmarking::Pallet as HomaLiteBench;
 
 			let whitelist: Vec<TrackedStorageKey> = vec![
 				// Block Number
@@ -2148,26 +2122,31 @@ impl_runtime_apis! {
 			let mut batches = Vec::<BenchmarkBatch>::new();
 			let params = (&config, &whitelist);
 
-			add_benchmark!(params, batches, nft, NftBench::<Runtime>);
-			// orml_add_benchmark!(params, batches, dex, benchmarking::dex);
-			// orml_add_benchmark!(params, batches, auction_manager, benchmarking::auction_manager);
-			// orml_add_benchmark!(params, batches, cdp_engine, benchmarking::cdp_engine);
-			// orml_add_benchmark!(params, batches, collator_selection, benchmarking::collator_selection);
-			// orml_add_benchmark!(params, batches, module_nominees_election, benchmarking::nominees_election);
-			// orml_add_benchmark!(params, batches, emergency_shutdown, benchmarking::emergency_shutdown);
-			// orml_add_benchmark!(params, batches, honzon, benchmarking::honzon);
-			// orml_add_benchmark!(params, batches, cdp_treasury, benchmarking::cdp_treasury);
-			// orml_add_benchmark!(params, batches, transaction_payment, benchmarking::transaction_payment);
-			// orml_add_benchmark!(params, batches, incentives, benchmarking::incentives);
-			// orml_add_benchmark!(params, batches, prices, benchmarking::prices);
-			// orml_add_benchmark!(params, batches, module_session_manager, benchmarking::session_manager);
+			add_benchmark!(params, batches, module_nft, NftBench::<Runtime>);
+			add_benchmark!(params, batches, module_homa_lite, HomaLiteBench::<Runtime>);
 
-			// orml_add_benchmark!(params, batches, orml_tokens, benchmarking::tokens);
-			// orml_add_benchmark!(params, batches, orml_vesting, benchmarking::vesting);
-			// orml_add_benchmark!(params, batches, orml_auction, benchmarking::auction);
-			// orml_add_benchmark!(params, batches, orml_currencies, benchmarking::currencies);
-			// orml_add_benchmark!(params, batches, orml_authority, benchmarking::authority);
-			// orml_add_benchmark!(params, batches, orml_oracle, benchmarking::oracle);
+			orml_add_benchmark!(params, batches, module_dex, benchmarking::dex);
+			orml_add_benchmark!(params, batches, module_auction_manager, benchmarking::auction_manager);
+			orml_add_benchmark!(params, batches, module_cdp_engine, benchmarking::cdp_engine);
+			orml_add_benchmark!(params, batches, module_emergency_shutdown, benchmarking::emergency_shutdown);
+			orml_add_benchmark!(params, batches, module_evm, benchmarking::evm);
+			orml_add_benchmark!(params, batches, module_honzon, benchmarking::honzon);
+			orml_add_benchmark!(params, batches, module_cdp_treasury, benchmarking::cdp_treasury);
+			orml_add_benchmark!(params, batches, module_collator_selection, benchmarking::collator_selection);
+			// orml_add_benchmark!(params, batches, module_nominees_election, benchmarking::nominees_election);
+			orml_add_benchmark!(params, batches, module_transaction_pause, benchmarking::transaction_pause);
+			orml_add_benchmark!(params, batches, module_transaction_payment, benchmarking::transaction_payment);
+			orml_add_benchmark!(params, batches, module_incentives, benchmarking::incentives);
+			orml_add_benchmark!(params, batches, module_prices, benchmarking::prices);
+			orml_add_benchmark!(params, batches, module_evm_accounts, benchmarking::evm_accounts);
+			// orml_add_benchmark!(params, batches, module_homa, benchmarking::homa);
+			orml_add_benchmark!(params, batches, module_currencies, benchmarking::currencies);
+			orml_add_benchmark!(params, batches, module_session_manager, benchmarking::session_manager);
+			orml_add_benchmark!(params, batches, orml_tokens, benchmarking::tokens);
+			orml_add_benchmark!(params, batches, orml_vesting, benchmarking::vesting);
+			orml_add_benchmark!(params, batches, orml_auction, benchmarking::auction);
+			orml_add_benchmark!(params, batches, orml_authority, benchmarking::authority);
+			orml_add_benchmark!(params, batches, orml_oracle, benchmarking::oracle);
 
 			if batches.is_empty() { return Err("Benchmark not found for this module.".into()) }
 			Ok(batches)
@@ -2206,7 +2185,23 @@ cumulus_pallet_parachain_system::register_validate_block!(
 #[cfg(test)]
 mod tests {
 	use super::*;
+	use frame_support::weights::DispatchClass;
 	use frame_system::offchain::CreateSignedTransaction;
+	use sp_runtime::traits::Convert;
+
+	fn run_with_system_weight<F>(w: Weight, mut assertions: F)
+	where
+		F: FnMut(),
+	{
+		let mut t: sp_io::TestExternalities = frame_system::GenesisConfig::default()
+			.build_storage::<Runtime>()
+			.unwrap()
+			.into();
+		t.execute_with(|| {
+			System::set_block_consumed_resources(w, 0);
+			assertions()
+		});
+	}
 
 	#[test]
 	fn validate_transaction_submitter_bounds() {
@@ -2217,6 +2212,19 @@ mod tests {
 		}
 
 		is_submit_signed_transaction::<Runtime>();
+	}
+
+	#[test]
+	fn multiplier_can_grow_from_zero() {
+		let minimum_multiplier = MinimumMultiplier::get();
+		let target =
+			TargetBlockFullness::get() * RuntimeBlockWeights::get().get(DispatchClass::Normal).max_total.unwrap();
+		// if the min is too small, then this will not change, and we are doomed forever.
+		// the weight is 1/100th bigger than target.
+		run_with_system_weight(target * 101 / 100, || {
+			let next = SlowAdjustingFeeUpdate::<Runtime>::convert(minimum_multiplier);
+			assert!(next > minimum_multiplier, "{:?} !>= {:?}", next, minimum_multiplier);
+		})
 	}
 
 	#[test]
@@ -2235,7 +2243,7 @@ mod tests {
 		// Ensure that `required_point` > 0, collator can be kicked out normally.
 		assert!(
 			CollatorKickThreshold::get().mul_floor(
-				(Period::get() * module_collator_selection::POINT_PER_BLOCK)
+				(HOURS * module_collator_selection::POINT_PER_BLOCK)
 					.checked_div(MaxCandidates::get())
 					.unwrap()
 			) > 0
