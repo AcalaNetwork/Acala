@@ -1278,7 +1278,9 @@ parameter_types! {
 	pub MaxScheduledUnbonds: u32 = 35;
 	pub ParachainAccount: AccountId = ParachainInfo::get().into_account();
 	pub SubAccountIndex: u16 = RelayChainSubAccountId::HomaLite as u16;
-	pub const XcmUnbondFee: Balance = 600_000_000; // From homa-lite integration test.
+	// Calculated from polkadot/xcm/xcm-builder: fn buy_weight
+	// This is a place holder value since XCM is not tested for Mandala yet.
+	pub XcmUnbondFee: Balance = 60 * millicent(DOT);
 }
 impl module_homa_lite::Config for Runtime {
 	type Event = Event;
