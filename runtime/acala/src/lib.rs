@@ -33,13 +33,15 @@
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
 use codec::{Decode, Encode};
-use hex_literal::hex;
 use sp_api::impl_runtime_apis;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_core::{crypto::KeyTypeId, OpaqueMetadata, H160};
 use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
-	traits::{AccountIdConversion, BadOrigin, BlakeTwo256, Block as BlockT, SaturatedConversion, StaticLookup, Zero},
+	traits::{
+		AccountIdConversion, AccountIdLookup, BadOrigin, BlakeTwo256, Block as BlockT, Convert, SaturatedConversion,
+		StaticLookup, Zero,
+	},
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, DispatchResult, FixedPointNumber,
 };
@@ -49,30 +51,31 @@ use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 
 use frame_system::{EnsureRoot, RawOrigin};
-use module_currencies::{BasicCurrencyAdapter, Currency};
+use module_currencies::BasicCurrencyAdapter;
 use module_evm::Runner;
 use module_evm::{CallInfo, CreateInfo};
 use module_evm_accounts::EvmAddressMapping;
 use module_evm_manager::EvmCurrencyIdMapping;
+use module_relaychain::RelayChainCallBuilder;
 use module_transaction_payment::{Multiplier, TargetedFeeAdjustment};
-use orml_tokens::CurrencyAdapter;
-use orml_traits::{create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended};
+use orml_traits::{
+	create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended, MultiCurrency,
+};
 use pallet_transaction_payment::RuntimeDispatchInfo;
 
-use cumulus_primitives_core::ParaId;
-use orml_xcm_support::{IsNativeConcrete, MultiCurrencyAdapter, MultiNativeAsset, XcmHandler as XcmHandlerT};
-use polkadot_parachain::primitives::Sibling;
-use xcm::v0::{
-	Junction::{GeneralKey, Parachain, Parent},
-	MultiAsset,
-	MultiLocation::{self, X1, X2, X3},
-	NetworkId, Xcm,
+pub use cumulus_primitives_core::ParaId;
+pub use orml_xcm_support::{IsNativeConcrete, MultiCurrencyAdapter, MultiNativeAsset};
+use pallet_xcm::XcmPassthrough;
+pub use polkadot_parachain::primitives::Sibling;
+pub use xcm::latest::prelude::*;
+
+pub use xcm_builder::{
+	AccountId32Aliases, AllowTopLevelPaidExecutionFrom, AllowUnpaidExecutionFrom, EnsureXcmOrigin, FixedRateOfFungible,
+	FixedWeightBounds, IsConcrete, LocationInverter, NativeAsset, ParentAsSuperuser, ParentIsDefault,
+	RelayChainAsNative, SiblingParachainAsNative, SiblingParachainConvertsVia, SignedAccountId32AsNative,
+	SignedToAccountId32, SovereignSignedViaLocation, TakeRevenue, TakeWeightCredit,
 };
-use xcm_builder::{
-	AccountId32Aliases, LocationInverter, ParentIsDefault, RelayChainAsNative, SiblingParachainAsNative,
-	SiblingParachainConvertsVia, SignedAccountId32AsNative, SovereignSignedViaLocation,
-};
-use xcm_executor::{Config, XcmExecutor};
+pub use xcm_executor::{traits::WeightTrader, Assets, Config, XcmExecutor};
 
 /// Weights for pallets used in the runtime.
 mod weights;
@@ -80,13 +83,15 @@ mod weights;
 pub use frame_support::{
 	construct_runtime, log, parameter_types,
 	traits::{
-		Contains, ContainsLengthBound, Currency as PalletCurrency, EnsureOrigin, Get, Imbalance, InstanceFilter,
-		IsType, KeyOwnerProofSystem, LockIdentifier, OnUnbalanced, Randomness, SortedMembers, U128CurrencyToVote,
+		Contains, ContainsLengthBound, Currency as PalletCurrency, EnsureOrigin, Everything, Get, Imbalance,
+		InstanceFilter, IsSubType, IsType, KeyOwnerProofSystem, LockIdentifier, OnUnbalanced, Randomness,
+		SortedMembers, U128CurrencyToVote,
 	},
 	weights::{constants::RocksDbWeight, IdentityFee, Weight},
 	PalletId, RuntimeDebug, StorageValue,
 };
 
+pub use pallet_staking::StakerStatus;
 pub use pallet_timestamp::Call as TimestampCall;
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
@@ -107,13 +112,14 @@ pub use runtime_common::{
 	EnsureRootOrTwoThirdsTechnicalCommittee, ExchangeRate, FinancialCouncilInstance,
 	FinancialCouncilMembershipInstance, GasToWeight, GeneralCouncilInstance, GeneralCouncilMembershipInstance,
 	HomaCouncilInstance, HomaCouncilMembershipInstance, OffchainSolutionWeightLimit, OperatorMembershipInstanceAcala,
-	OperatorMembershipInstanceBand, Price, ProxyType, Rate, Ratio, RelayChainBlockNumberProvider, RuntimeBlockLength,
-	RuntimeBlockWeights, SystemContractsFilter, TechnicalCommitteeInstance, TechnicalCommitteeMembershipInstance,
-	TimeStampedPrice, ACA, AUSD, DOT, LDOT, RENBTC,
+	OperatorMembershipInstanceBand, Price, ProxyType, Rate, Ratio, RelayChainBlockNumberProvider,
+	RelayChainSubAccountId, RuntimeBlockLength, RuntimeBlockWeights, SystemContractsFilter, TechnicalCommitteeInstance,
+	TechnicalCommitteeMembershipInstance, TimeStampedPrice, ACA, AUSD, DOT, LDOT, RENBTC,
 };
 
 mod authority;
-mod constants;
+mod benchmarking;
+pub mod constants;
 
 /// This runtime version.
 #[sp_version::runtime_version]
@@ -197,7 +203,7 @@ impl Contains<Call> for BaseCallFilter {
 			Call::Scheduler(_) | Call::Utility(_) | Call::Multisig(_) | Call::Proxy(_) | // utility
 			Call::Treasury(_) | Call::Bounties(_) | Call::Tips(_) | // treasury
 			// Call::CollatorSelection(_) | Call::Session(_) | Call::SessionManager(_) | // collator
-			Call::XcmpQueue(_) | Call::DmpQueue(_) | Call::OrmlXcm(_) | // xcm
+			Call::DmpQueue(_) | Call::OrmlXcm(_) | // xcm
 			// Call::PolkadotXcm(_) | Call::XTokens | // not allow user to make xcm call
 			Call::Authority(_) |
 			Call::GeneralCouncil(_) | Call::GeneralCouncilMembership(_) |
@@ -205,7 +211,7 @@ impl Contains<Call> for BaseCallFilter {
 			Call::HomaCouncil(_) | Call::HomaCouncilMembership(_) |
 			Call::TechnicalCommittee(_) | Call::TechnicalCommitteeMembership(_) | // governance
 			// Call::Democracy(_) | // democracy
-			Call::AcalaOracle(_) | Call::OperatorMembershipAcala(_) | // oracle
+			Call::AcalaOracle(_) | Call::OperatorMembershipAcala(_) // oracle
 		);
 		if is_whitelisted {
 			// allow whitelisted calls
@@ -722,11 +728,11 @@ parameter_type_with_key! {
 
 				TokenSymbol::KAR |
 				TokenSymbol::KUSD |
-				TokenSymbol::DOT |
-				TokenSymbol::LDOT |
+				TokenSymbol::KSM |
+				TokenSymbol::LKSM |
 				TokenSymbol::RENBTC |
 				TokenSymbol::BNC |
-				TokenSymbol::VSDOT |
+				TokenSymbol::VSKSM |
 				TokenSymbol::ACA |
 				TokenSymbol::CASH => Balance::max_value() // unsupported
 			},
@@ -793,8 +799,8 @@ impl module_prices::Config for Runtime {
 }
 
 parameter_types! {
-	pub const GetNativeCurrencyId: CurrencyId = KAR;
-	pub const GetStableCurrencyId: CurrencyId = KUSD;
+	pub const GetNativeCurrencyId: CurrencyId = ACA;
+	pub const GetStableCurrencyId: CurrencyId = AUSD;
 	pub const GetLiquidCurrencyId: CurrencyId = LDOT;
 	pub const GetStakingCurrencyId: CurrencyId = DOT;
 }
@@ -1499,20 +1505,20 @@ parameter_types! {
 	pub const LDOTCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
 	pub MinimumMintThreshold: Balance = 2 * dollar(DOT);
 	pub MinimumRedeemThreshold: Balance = 20 * dollar(LDOT);
-	pub RelaychainSovereignSubAccount: MultiLocation = create_x2_parachain_multilocation(RelaychainSubAccountId::HomaLite as u16);
-	pub RelaychainSovereignSubAccountId: AccountId = Utility::derivative_account_id(
+	pub RelayChainSovereignSubAccount: MultiLocation = create_x2_parachain_multilocation(RelayChainSubAccountId::HomaLite as u16);
+	pub RelayChainSovereignSubAccountId: AccountId = Utility::derivative_account_id(
 		ParachainInfo::get().into_account(),
-		RelaychainSubAccountId::HomaLite as u16
+		RelayChainSubAccountId::HomaLite as u16
 	);
 	pub MaxRewardPerEra: Permill = Permill::from_rational(500u32, 1_000_000u32); // 1.2 ^ (1/365) = 1.0004996359
 	pub MintFee: Balance = 20 * millicent(DOT); // 2x XCM fee on Polkadot TODO: identify xcm fee
 	pub DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
 	pub BaseWithdrawFee: Permill = Permill::from_rational(1408u32, 100_000u32); // 20% yield per year, unbonding period = 28 days. 1.2^(28 / 365) = 1.01408
 	pub MaximumRedeemRequestMatchesForMint: u32 = 20;
-	pub RelaychainUnbondingSlashingSpans: u32 = 5;
+	pub RelayChainUnbondingSlashingSpans: u32 = 5;
 	pub MaxScheduledUnbonds: u32 = 14;
 	pub ParachainAccount: AccountId = ParachainInfo::get().into_account();
-	pub SubAccountIndex: u16 = RelaychainSubAccountId::HomaLite as u16;
+	pub SubAccountIndex: u16 = RelayChainSubAccountId::HomaLite as u16;
 	pub const XcmUnbondFee: Balance = 600_000_000; // TODO identify unbon fee
 }
 impl module_homa_lite::Config for Runtime {
@@ -1525,18 +1531,18 @@ impl module_homa_lite::Config for Runtime {
 	type MinimumMintThreshold = MinimumMintThreshold;
 	type MinimumRedeemThreshold = MinimumRedeemThreshold;
 	type XcmTransfer = XTokens;
-	type SovereignSubAccountLocation = RelaychainSovereignSubAccount;
+	type SovereignSubAccountLocation = RelayChainSovereignSubAccount;
 	type SubAccountIndex = SubAccountIndex;
 	type DefaultExchangeRate = DefaultExchangeRate;
 	type MaxRewardPerEra = MaxRewardPerEra;
 	type MintFee = MintFee;
-	type RelaychainCallBuilder = RelaychainCallBuilder<Runtime, ParachainInfo>;
+	type RelayChainCallBuilder = RelayChainCallBuilder<Runtime, ParachainInfo>;
 	type BaseWithdrawFee = BaseWithdrawFee;
 	type XcmUnbondFee = XcmUnbondFee;
-	type RelaychainBlockNumber = RelaychainBlockNumberProvider<Runtime>;
+	type RelayChainBlockNumber = RelayChainBlockNumberProvider<Runtime>;
 	type ParachainAccount = ParachainAccount;
 	type MaximumRedeemRequestMatchesForMint = MaximumRedeemRequestMatchesForMint;
-	type RelaychainUnbondingSlashingSpans = RelaychainUnbondingSlashingSpans;
+	type RelayChainUnbondingSlashingSpans = RelayChainUnbondingSlashingSpans;
 	type MaxScheduledUnbonds = MaxScheduledUnbonds;
 }
 
@@ -1581,14 +1587,12 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 				interior: X2(Parachain(para_id), GeneralKey(key)),
 			} if parents == 1 => {
 				match (para_id, &key[..]) {
-					(parachains::bifrost::ID, parachains::bifrost::BNC_KEY) => Some(Token(BNC)),
-					(parachains::bifrost::ID, parachains::bifrost::VSDOT_KEY) => Some(Token(VSDOT)),
 					(id, key) if id == u32::from(ParachainInfo::get()) => {
-						// Karura
+						// Acala
 						if let Ok(currency_id) = CurrencyId::decode(&mut &*key) {
 							// check `currency_id` is cross-chain asset
 							match currency_id {
-								Token(KAR) | Token(KUSD) | Token(LDOT) | Token(RENBTC) => Some(currency_id),
+								Token(ACA) | Token(AUSD) | Token(LDOT) | Token(RENBTC) => Some(currency_id),
 								_ => None,
 							}
 						} else {
