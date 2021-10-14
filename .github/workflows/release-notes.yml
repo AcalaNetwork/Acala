@@ -5,6 +5,8 @@ env:
   SRTOOL_TAG: 1.53.0-0.9.16
   NETWORK: karura
   SCOPE: full
+  TAG: 1.5.0
+  PREVIOUS_TAG: 1.4.3
 
 on:
   workflow_dispatch:
@@ -81,13 +83,20 @@ jobs:
           template: .github/release-template.hbs
           srtool_details: ${{ env.NETWORK }}-srtool-digest.json
           subwasm_info: ${{ env.NETWORK }}-diff.txt
-          tag: 1.5.0
-          previous_tag: 1.4.3
+          tag: ${{ env.TAG }}
+          previous_tag: ${{ env.PREVIOUS_TAG }}
 
-      - name: Archive Release Note
-        uses: actions/upload-artifact@v2
+      - name: Crate Release Checklist issue
+        uses: JasonEtco/create-an-issue@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          name: ${{ env.NETWORK }}-release-note
-          path: |
-            ${{ steps.generate-note.outputs.release-note }}
+          filename: ${{ steps.generate-note.outputs.release-note }}
+          
+      # - name: Archive Release Note
+      #   uses: actions/upload-artifact@v2
+      #   with:
+      #     name: ${{ env.NETWORK }}-release-note
+      #     path: |
+      #       ${{ steps.generate-note.outputs.release-note }}
  
