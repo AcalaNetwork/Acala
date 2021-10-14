@@ -81,6 +81,8 @@ jobs:
           template: .github/release-template.hbs
           srtool_details: ${{ env.NETWORK }}-srtool-digest.json
           subwasm_info: ${{ env.NETWORK }}-diff.txt
+          tag: 1.5.0
+          previous_tag: 1.4.3
 
       - name: Archive Release Note
         uses: actions/upload-artifact@v2
