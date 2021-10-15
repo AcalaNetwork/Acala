@@ -94,7 +94,7 @@ jobs:
 
       - name: Upload wasm to pinata
         if: ${{ !env.ACT && false }}
-        uses: aquiladev/ipfs-action@v0.1
+        uses: aquiladev/ipfs-action@v1
         with:
           path: ${{ steps.srtool_build.outputs.wasm_compressed }}
           service: pinata
@@ -113,7 +113,7 @@ jobs:
           previous_tag: ${{ env.PREVIOUS_TAG }}
 
       - name: Save release note
-        uses: DamianReeves/write-file-action
+        uses: DamianReeves/write-file-action@v1
         with:
           path: release_note.md
           contents: |
