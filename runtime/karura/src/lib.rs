@@ -214,11 +214,11 @@ impl Contains<Call> for BaseCallFilter {
 
 		let is_bnc_transfer = matches!(
 			call,
-			Call::Currencies(module_currencies::Call::transfer(
-				_,
-				CurrencyId::Token(TokenSymbol::BNC),
-				_
-			))
+			Call::Currencies(module_currencies::Call::transfer {
+				dest: _,
+				currency_id: CurrencyId::Token(TokenSymbol::BNC),
+				amount: _
+			})
 		);
 		if is_bnc_transfer {
 			// BNC transfer disabled by request of Bifrost team
