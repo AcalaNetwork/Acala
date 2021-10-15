@@ -66,16 +66,16 @@ jobs:
             ${{ steps.srtool_build.outputs.wasm_compressed }}
             ${{ env.CHAIN }}-srtool-digest.json
 
+      - name: Run node
+        run: |
+          cargo run --features=with-${{ env.CHAIN }}-runtime --features=rococo-native -- --chain=${{ env.CHAIN }}-dev &
+
       # We now get extra information thanks to subwasm,
       - name: Install subwasm ${{ env.SUBWASM_VERSION }}
         run: |
           wget https://github.com/chevdor/subwasm/releases/download/v${{ env.SUBWASM_VERSION }}/subwasm_linux_amd64_v${{ env.SUBWASM_VERSION }}.deb
           sudo dpkg -i subwasm_linux_amd64_v${{ env.SUBWASM_VERSION }}.deb
           subwasm --version
-
-      - name: Run node
-        run: |
-          cargo run --features=with-${{ env.CHAIN }}-runtime --features=rococo-native -- --chain=${{ env.CHAIN }}-dev &
 
       - name: Subwasm info
         run: |
