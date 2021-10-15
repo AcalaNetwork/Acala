@@ -73,9 +73,12 @@ jobs:
           sudo dpkg -i subwasm_linux_amd64_v${{ env.SUBWASM_VERSION }}.deb
           subwasm --version
 
+      - name: Run node
+        run: |
+          cargo run --features=with-${{ env.CHAIN }}-runtime --features=rococo-native -- --chain=${{ env.CHAIN }}-dev &
+
       - name: Subwasm info
         run: |
-          cargo run --features=with-${{ env.CHAIN }}-runtime --features=rococo-native -- --chain=${{ env.CHAIN }}-dev
           subwasm info ws://localhost:9944 > ${{ env.CHAIN }}-subwam-info.txt
           pkill acala
 
