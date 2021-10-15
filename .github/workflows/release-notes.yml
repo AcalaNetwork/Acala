@@ -73,6 +73,12 @@ jobs:
           sudo dpkg -i subwasm_linux_amd64_v${{ env.SUBWASM_VERSION }}.deb
           subwasm --version
 
+      - name: Subwasm info
+        run: |
+          cargo run --features=with-${{ env.CHAIN }}-runtime --features=rococo-native -- --chain=${{ env.CHAIN }}-dev
+          subwasm info ws://localhost:9944 > ${{ env.CHAIN }}-subwam-info.txt
+          pkill acala
+
       - name: Extract the metadata
         run: |
           subwasm meta ${{ steps.srtool_build.outputs.wasm }}
@@ -91,6 +97,7 @@ jobs:
             ${{ env.CHAIN }}-info_compressed.json
             ${{ env.CHAIN }}-metadata.json
             ${{ env.CHAIN }}-diff.txt
+            ${{ env.CHAIN }}-subwam-info.txt
 
       - name: Upload wasm to pinata
         if: ${{ !env.ACT && false }}
@@ -108,7 +115,7 @@ jobs:
           scope: ${{ env.SCOPE }}
           chain: ${{ env.CHAIN }}
           srtool_details: ${{ env.CHAIN }}-srtool-digest.json
-          subwasm_info: ${{ env.CHAIN }}-diff.txt
+          subwasm_info: ${{ env.CHAIN }}-subwam-info.txt
           tag: ${{ env.TAG }}
           previous_tag: ${{ env.PREVIOUS_TAG }}
 
