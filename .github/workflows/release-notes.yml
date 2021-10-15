@@ -3,7 +3,7 @@ name: Release Notes
 env:
   SUBWASM_VERSION: 0.13.2
   SRTOOL_TAG: 1.53.0-0.9.16
-  NETWORK: karura
+  CHAIN: karura
   SCOPE: full
   TAG: 1.5.0
   PREVIOUS_TAG: 1.4.3
@@ -11,7 +11,7 @@ env:
 on:
   workflow_dispatch:
     inputs:
-      network:
+      chain:
         description: Network [mandala | karura | acala]
         default: karura
         required: true
@@ -28,7 +28,7 @@ jobs:
     name: Build release note
     runs-on: ubuntu-latest
     # env:
-    #   NETWORK: ${{ github.event.inputs.network }}
+    #   CHAIN: ${{ github.event.inputs.chain }}
     #   SCOPE: ${{ github.event.inputs.scope }}
     steps:
       - uses: actions/checkout@v2
@@ -48,14 +48,23 @@ jobs:
         id: srtool_build
         uses: chevdor/srtool-actions@v0.3.0
         with:
-          chain: ${{ env.NETWORK }}
+          chain: ${{ env.CHAIN }}
           tag: ${{ github.event.inputs.srtool_tag || env.SRTOOL_TAG }}
 
       - name: Summary
         run: |
-          echo '${{ steps.srtool_build.outputs.json }}' | jq > ${{ env.NETWORK }}-srtool-digest.json
-          cat ${{ env.NETWORK }}-srtool-digest.json
+          echo '${{ steps.srtool_build.outputs.json }}' | jq > ${{ env.CHAIN }}-srtool-digest.json
+          cat ${{ env.CHAIN }}-srtool-digest.json
           echo "Runtime location: ${{ steps.srtool_build.outputs.wasm }}"
+
+      - name: Archive Artifacts for ${{ env.CHAIN }}
+        uses: actions/upload-artifact@v2
+        with:
+          name: ${{ env.CHAIN }}-runtime
+          path: |
+            ${{ steps.srtool_build.outputs.wasm }}
+            ${{ steps.srtool_build.outputs.wasm_compressed }}
+            ${{ env.CHAIN }}-srtool-digest.json
 
       # We now get extra information thanks to subwasm,
       - name: Install subwasm ${{ env.SUBWASM_VERSION }}
@@ -67,36 +76,37 @@ jobs:
       - name: Extract the metadata
         run: |
           subwasm meta ${{ steps.srtool_build.outputs.wasm }}
-          subwasm --json meta ${{ steps.srtool_build.outputs.wasm }} > ${{ env.NETWORK }}-metadata.json
+          subwasm --json meta ${{ steps.srtool_build.outputs.wasm }} > ${{ env.CHAIN }}-metadata.json
       - name: Check the metadata diff
         run: |
           subwasm get wss://karura-rpc-2.aca-api.network/ws --output runtime_mainnet.wasm
-          subwasm diff ${{ steps.srtool_build.outputs.wasm }} runtime_mainnet.wasm | tee ${{ env.NETWORK }}-diff.txt
+          subwasm diff ${{ steps.srtool_build.outputs.wasm }} runtime_mainnet.wasm | tee ${{ env.CHAIN }}-diff.txt
 
+      - name: Archive Subwasm results
+        uses: actions/upload-artifact@v2
+        with:
+          name: ${{ env.CHAIN }}-runtime
+          path: |
+            ${{ env.CHAIN }}-info.json
+            ${{ env.CHAIN }}-info_compressed.json
+            ${{ env.CHAIN }}-metadata.json
+            ${{ env.CHAIN }}-diff.txt
 
       - name: Generate note
         id: generate-note
         uses: AcalaNetwork/acala-release-note-action@master
         with:
           scope: ${{ env.SCOPE }}
-          network: ${{ env.NETWORK }}
-          template: .github/release-template.hbs
-          srtool_details: ${{ env.NETWORK }}-srtool-digest.json
-          subwasm_info: ${{ env.NETWORK }}-diff.txt
+          chain: ${{ env.CHAIN }}
+          srtool_details: ${{ env.CHAIN }}-srtool-digest.json
+          subwasm_info: ${{ env.CHAIN }}-diff.txt
           tag: ${{ env.TAG }}
           previous_tag: ${{ env.PREVIOUS_TAG }}
 
       - name: Crate Release Checklist issue
+        if: ${{ !env.ACT }}
         uses: JasonEtco/create-an-issue@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           filename: ${{ steps.generate-note.outputs.release-note }}
-          
-      # - name: Archive Release Note
-      #   uses: actions/upload-artifact@v2
-      #   with:
-      #     name: ${{ env.NETWORK }}-release-note
-      #     path: |
-      #       ${{ steps.generate-note.outputs.release-note }}
- 
