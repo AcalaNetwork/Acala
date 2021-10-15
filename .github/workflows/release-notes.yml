@@ -116,8 +116,7 @@ jobs:
         uses: DamianReeves/write-file-action@v1.0
         with:
           path: release_note.md
-          contents: |
-            echo ${{ steps.generate-note.outputs.release-note }}
+          contents: ${{ steps.generate-note.outputs.release-note }}
           write-mode: overwrite
 
       - name: Crate Release Checklist issue
