@@ -14,7 +14,7 @@ dependencies = [
 
 [[package]]
 name = "acala"
-version = "1.5.0"
+version = "1.5.1"
 dependencies = [
  "acala-cli",
  "acala-service",
@@ -24,7 +24,7 @@ dependencies = [
 
 [[package]]
 name = "acala-cli"
-version = "1.5.0"
+version = "1.5.1"
 dependencies = [
  "acala-inspect",
  "acala-service",
@@ -50,7 +50,7 @@ dependencies = [
 
 [[package]]
 name = "acala-inspect"
-version = "1.5.0"
+version = "1.5.1"
 dependencies = [
  "derive_more",
  "log",
@@ -66,7 +66,7 @@ dependencies = [
 
 [[package]]
 name = "acala-primitives"
-version = "1.5.0"
+version = "1.5.1"
 dependencies = [
  "bstringify",
  "chainbridge",
@@ -91,7 +91,7 @@ dependencies = [
 
 [[package]]
 name = "acala-rpc"
-version = "1.5.0"
+version = "1.5.1"
 dependencies = [
  "acala-primitives",
  "evm-rpc",
@@ -114,7 +114,7 @@ dependencies = [
 
 [[package]]
 name = "acala-runtime"
-version = "1.5.0"
+version = "1.5.1"
 dependencies = [
  "acala-primitives",
  "chainbridge",
@@ -214,7 +214,7 @@ dependencies = [
 
 [[package]]
 name = "acala-service"
-version = "1.5.0"
+version = "1.5.1"
 dependencies = [
  "acala-primitives",
  "acala-rpc",
@@ -1306,7 +1306,7 @@ dependencies = [
 [[package]]
 name = "chainbridge"
 version = "0.0.2"
-source = "git+https://github.com/AcalaNetwork/chainbridge-substrate?branch=v0.9.11#0225037e7a7fd50e676bdafa1ae35c973dc3f06e"
+source = "git+https://github.com/AcalaNetwork/chainbridge-substrate?branch=v0.9.11#c53a85772e1c0ccdc90a9c5ac12bba51b64607e1"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -1451,9 +1451,9 @@ checksum = "6245d59a3e82a7fc217c5828a6692dbc6dfb63a0c8c90495621f7b9d79704a0e"
 
 [[package]]
 name = "core-foundation"
-version = "0.9.1"
+version = "0.9.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0a89e2ae426ea83155dccf10c0fa6b1463ef6d5fcb44cee0b224a408fa640a62"
+checksum = "6888e10551bb93e424d8df1d07f1a8b4fceb0001a3a4b048bfc47554946f47b3"
 dependencies = [
  "core-foundation-sys",
  "libc",
@@ -1461,9 +1461,9 @@ dependencies = [
 
 [[package]]
 name = "core-foundation-sys"
-version = "0.8.2"
+version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ea221b5284a47e40033bf9b66f35f984ec0ea2931eb03505246cd27a963f981b"
+checksum = "5827cebf4670468b8772dd191856768aedcb1b0278a04f989f7766351917b9dc"
 
 [[package]]
 name = "cpp_demangle"
@@ -2268,7 +2268,7 @@ checksum = "ee2626afccd7561a06cf1367e2950c4718ea04565e20fb5029b6c7d8ad09abcf"
 
 [[package]]
 name = "ecosystem-compound-cash"
-version = "1.5.0"
+version = "1.5.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -2285,7 +2285,7 @@ dependencies = [
 
 [[package]]
 name = "ecosystem-renvm-bridge"
-version = "1.5.0"
+version = "1.5.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -2307,7 +2307,7 @@ dependencies = [
 
 [[package]]
 name = "ecosystem-starport"
-version = "1.5.0"
+version = "1.5.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -2628,7 +2628,7 @@ dependencies = [
 
 [[package]]
 name = "evm-rpc"
-version = "1.5.0"
+version = "1.5.1"
 dependencies = [
  "ethereum-types",
  "frame-support",
@@ -3939,7 +3939,7 @@ dependencies = [
 
 [[package]]
 name = "karura-runtime"
-version = "1.5.0"
+version = "1.5.1"
 dependencies = [
  "acala-primitives",
  "cumulus-pallet-aura-ext",
@@ -4933,7 +4933,7 @@ dependencies = [
 
 [[package]]
 name = "mandala-runtime"
-version = "1.5.0"
+version = "1.5.1"
 dependencies = [
  "acala-primitives",
  "acala-service",
@@ -5276,7 +5276,7 @@ dependencies = [
 
 [[package]]
 name = "module-airdrop"
-version = "1.5.0"
+version = "1.5.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -5291,7 +5291,7 @@ dependencies = [
 
 [[package]]
 name = "module-auction-manager"
-version = "1.5.0"
+version = "1.5.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -5315,7 +5315,7 @@ dependencies = [
 
 [[package]]
 name = "module-cdp-engine"
-version = "1.5.0"
+version = "1.5.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -5343,7 +5343,7 @@ dependencies = [
 
 [[package]]
 name = "module-cdp-treasury"
-version = "1.5.0"
+version = "1.5.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -5366,7 +5366,7 @@ dependencies = [
 
 [[package]]
 name = "module-collator-selection"
-version = "1.5.0"
+version = "1.5.1"
 dependencies = [
  "acala-primitives",
  "frame-benchmarking",
@@ -5392,7 +5392,7 @@ dependencies = [
 
 [[package]]
 name = "module-currencies"
-version = "1.5.0"
+version = "1.5.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -5416,7 +5416,7 @@ dependencies = [
 
 [[package]]
 name = "module-dex"
-version = "1.5.0"
+version = "1.5.1"
 dependencies = [
  "acala-primitives",
  "frame-benchmarking",
@@ -5437,7 +5437,7 @@ dependencies = [
 
 [[package]]
 name = "module-emergency-shutdown"
-version = "1.5.0"
+version = "1.5.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -5460,7 +5460,7 @@ dependencies = [
 
 [[package]]
 name = "module-evm"
-version = "1.5.0"
+version = "1.5.1"
 dependencies = [
  "acala-primitives",
  "env_logger 0.7.1",
@@ -5493,7 +5493,7 @@ dependencies = [
 
 [[package]]
 name = "module-evm-accounts"
-version = "1.5.0"
+version = "1.5.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -5515,7 +5515,7 @@ dependencies = [
 
 [[package]]
 name = "module-evm-bridge"
-version = "1.5.0"
+version = "1.5.1"
 dependencies = [
  "acala-primitives",
  "ethereum-types",
@@ -5540,7 +5540,7 @@ dependencies = [
 
 [[package]]
 name = "module-evm-manager"
-version = "1.5.0"
+version = "1.5.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -5565,7 +5565,7 @@ dependencies = [
 
 [[package]]
 name = "module-evm-rpc-runtime-api"
-version = "1.5.0"
+version = "1.5.1"
 dependencies = [
  "acala-primitives",
  "ethereum-types",
@@ -5577,7 +5577,7 @@ dependencies = [
 
 [[package]]
 name = "module-example"
-version = "1.5.0"
+version = "1.5.1"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -5591,7 +5591,7 @@ dependencies = [
 
 [[package]]
 name = "module-homa"
-version = "1.5.0"
+version = "1.5.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -5606,7 +5606,7 @@ dependencies = [
 
 [[package]]
 name = "module-homa-lite"
-version = "1.5.0"
+version = "1.5.1"
 dependencies = [
  "acala-primitives",
  "cumulus-primitives-core",
@@ -5632,7 +5632,7 @@ dependencies = [
 
 [[package]]
 name = "module-homa-validator-list"
-version = "1.5.0"
+version = "1.5.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -5654,7 +5654,7 @@ dependencies = [
 
 [[package]]
 name = "module-honzon"
-version = "1.5.0"
+version = "1.5.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -5679,7 +5679,7 @@ dependencies = [
 
 [[package]]
 name = "module-incentives"
-version = "1.5.0"
+version = "1.5.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -5700,7 +5700,7 @@ dependencies = [
 
 [[package]]
 name = "module-loans"
-version = "1.5.0"
+version = "1.5.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -5722,7 +5722,7 @@ dependencies = [
 
 [[package]]
 name = "module-nft"
-version = "1.5.0"
+version = "1.5.1"
 dependencies = [
  "acala-primitives",
  "enumflags2",
@@ -5748,7 +5748,7 @@ dependencies = [
 
 [[package]]
 name = "module-nominees-election"
-version = "1.5.0"
+version = "1.5.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -5769,7 +5769,7 @@ dependencies = [
 
 [[package]]
 name = "module-polkadot-bridge"
-version = "1.5.0"
+version = "1.5.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -5787,7 +5787,7 @@ dependencies = [
 
 [[package]]
 name = "module-prices"
-version = "1.5.0"
+version = "1.5.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -5824,7 +5824,7 @@ dependencies = [
 
 [[package]]
 name = "module-session-manager"
-version = "1.5.0"
+version = "1.5.1"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -5841,7 +5841,7 @@ dependencies = [
 
 [[package]]
 name = "module-staking-pool"
-version = "1.5.0"
+version = "1.5.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -5862,7 +5862,7 @@ dependencies = [
 
 [[package]]
 name = "module-staking-pool-rpc"
-version = "1.5.0"
+version = "1.5.1"
 dependencies = [
  "jsonrpc-core",
  "jsonrpc-core-client",
@@ -5878,7 +5878,7 @@ dependencies = [
 
 [[package]]
 name = "module-staking-pool-rpc-runtime-api"
-version = "1.5.0"
+version = "1.5.1"
 dependencies = [
  "module-support",
  "parity-scale-codec",
@@ -5890,7 +5890,7 @@ dependencies = [
 
 [[package]]
 name = "module-support"
-version = "1.5.0"
+version = "1.5.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -5905,7 +5905,7 @@ dependencies = [
 
 [[package]]
 name = "module-transaction-pause"
-version = "1.5.0"
+version = "1.5.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -5926,7 +5926,7 @@ dependencies = [
 
 [[package]]
 name = "module-transaction-payment"
-version = "1.5.0"
+version = "1.5.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -9183,9 +9183,9 @@ dependencies = [
 
 [[package]]
 name = "ppv-lite86"
-version = "0.2.10"
+version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ac74c624d6b2d21f425f752262f42188365d7b8ff1aff74c82e45136510a4857"
+checksum = "c3ca011bd0129ff4ae15cd04c4eef202cadf6c51c21e47aba319b4e0501db741"
 
 [[package]]
 name = "primitive-types"
@@ -9203,7 +9203,7 @@ dependencies = [
 
 [[package]]
 name = "primitives-proc-macro"
-version = "1.5.0"
+version = "1.5.1"
 dependencies = [
  "proc-macro-crate 1.1.0",
  "proc-macro2",
@@ -9295,9 +9295,9 @@ checksum = "bc881b2c22681370c6a780e47af9840ef841837bc98118431d4e1868bd0c1086"
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.29"
+version = "1.0.30"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b9f5105d4fdaab20335ca9565e106a5d9b82b6219b5ba735731124ac6711d23d"
+checksum = "edc3358ebc67bc8b7fa0c007f945b0b18226f78437d61bec735a9eb96b61ee70"
 dependencies = [
  "unicode-xid",
 ]
@@ -9857,7 +9857,7 @@ dependencies = [
 
 [[package]]
 name = "runtime-common"
-version = "1.5.0"
+version = "1.5.1"
 dependencies = [
  "acala-primitives",
  "acala-service",
@@ -11272,9 +11272,9 @@ dependencies = [
 
 [[package]]
 name = "sharded-slab"
-version = "0.1.3"
+version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "740223c51853f3145fe7c90360d2d4232f2b62e3449489c207eccde818979982"
+checksum = "900fba806f70c630b0a382d0d825e17a0f19fcd059a2ade1ff237bcddf446b31"
 dependencies = [
  "lazy_static",
 ]
@@ -11324,9 +11324,9 @@ dependencies = [
 
 [[package]]
 name = "slab"
-version = "0.4.4"
+version = "0.4.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c307a32c1c5c437f38c7fd45d753050587732ba8628319fbdf12a7e289ccc590"
+checksum = "9def91fd1e018fe007022791f865d0ccc9b3a0d5001e01aabb8b40e46000afb5"
 
 [[package]]
 name = "slog"
@@ -12602,9 +12602,9 @@ dependencies = [
 
 [[package]]
 name = "tokio-macros"
-version = "1.4.1"
+version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "154794c8f499c2619acd19e839294703e9e32e7630ef5f46ea80d4ef0fbee5eb"
+checksum = "b2dd85aeaba7b68df939bd357c6afb36c87951be9e80bf9c859f2fc3e9fca0fd"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -13767,21 +13767,6 @@ dependencies = [
 ]
 
 [[patch.unused]]
-name = "sc-network-test"
-version = "0.8.0"
-source = "git+https://github.com/paritytech//substrate?rev=11e6bb0e0f472fc08b6b42348ee92545adb5dbbc#11e6bb0e0f472fc08b6b42348ee92545adb5dbbc"
-
-[[patch.unused]]
-name = "substrate-test-runtime"
-version = "2.0.0"
-source = "git+https://github.com/paritytech//substrate?rev=11e6bb0e0f472fc08b6b42348ee92545adb5dbbc#11e6bb0e0f472fc08b6b42348ee92545adb5dbbc"
-
-[[patch.unused]]
-name = "substrate-test-runtime-client"
-version = "2.0.0"
-source = "git+https://github.com/paritytech//substrate?rev=11e6bb0e0f472fc08b6b42348ee92545adb5dbbc#11e6bb0e0f472fc08b6b42348ee92545adb5dbbc"
-
-[[patch.unused]]
 name = "beefy-gadget"
 version = "0.1.0"
 source = "git+https://github.com/paritytech//grandpa-bridge-gadget?rev=9954b61657dc8899a21b4f2501ee6bd3b7a2dc23#9954b61657dc8899a21b4f2501ee6bd3b7a2dc23"
@@ -13810,3 +13795,18 @@ source = "git+https://github.com/paritytech//grandpa-bridge-gadget?rev=9954b6165
 name = "pallet-beefy-mmr"
 version = "0.1.0"
 source = "git+https://github.com/paritytech//grandpa-bridge-gadget?rev=9954b61657dc8899a21b4f2501ee6bd3b7a2dc23#9954b61657dc8899a21b4f2501ee6bd3b7a2dc23"
+
+[[patch.unused]]
+name = "sc-network-test"
+version = "0.8.0"
+source = "git+https://github.com/paritytech//substrate?rev=11e6bb0e0f472fc08b6b42348ee92545adb5dbbc#11e6bb0e0f472fc08b6b42348ee92545adb5dbbc"
+
+[[patch.unused]]
+name = "substrate-test-runtime"
+version = "2.0.0"
+source = "git+https://github.com/paritytech//substrate?rev=11e6bb0e0f472fc08b6b42348ee92545adb5dbbc#11e6bb0e0f472fc08b6b42348ee92545adb5dbbc"
+
+[[patch.unused]]
+name = "substrate-test-runtime-client"
+version = "2.0.0"
+source = "git+https://github.com/paritytech//substrate?rev=11e6bb0e0f472fc08b6b42348ee92545adb5dbbc#11e6bb0e0f472fc08b6b42348ee92545adb5dbbc"
