@@ -5811,6 +5811,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "module-idle-scheduler"
+version = "1.5.0"
+dependencies = [
+ "acala-primitives",
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "module-incentives"
 version = "1.5.0"
 dependencies = [

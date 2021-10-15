@@ -51,7 +51,7 @@ pub mod module {
 	}
 
 	#[pallet::event]
-	#[pallet::generate_deposit(fn deposit_event)]
+	#[pallet::generate_deposit(pub fn deposit_event)]
 	#[pallet::metadata(T::Balance = "Balance")]
 	pub enum Event<T: Config> {
 		/// Dummy event, just here so there's a generic type that's used.
