@@ -1600,19 +1600,6 @@ impl module_session_manager::Config for Runtime {
 }
 
 parameter_types! {
-	pub const LocalChainId: chainbridge::ChainId = 2;
-	pub const ProposalLifetime: BlockNumber = 15 * MINUTES;
-}
-
-impl chainbridge::Config for Runtime {
-	type Event = Event;
-	type AdminOrigin = EnsureRoot<AccountId>;
-	type Proposal = Call;
-	type ChainId = LocalChainId;
-	type ProposalLifetime = ProposalLifetime;
-}
-
-parameter_types! {
 	pub ReservedXcmpWeight: Weight = RuntimeBlockWeights::get().max_block / 4;
 	pub ReservedDmpWeight: Weight = RuntimeBlockWeights::get().max_block / 4;
 }
@@ -2114,9 +2101,8 @@ construct_runtime! {
 
 		// Ecosystem modules
 		RenVmBridge: ecosystem_renvm_bridge::{Pallet, Call, Config, Storage, Event<T>, ValidateUnsigned} = 150,
-		ChainBridge: chainbridge::{Pallet, Call, Storage, Event<T>} = 151,
-		Starport: ecosystem_starport::{Pallet, Call, Storage, Event<T>, Config} = 152,
-		CompoundCash: ecosystem_compound_cash::{Pallet, Storage, Event<T>} = 153,
+		Starport: ecosystem_starport::{Pallet, Call, Storage, Event<T>, Config} = 151,
+		CompoundCash: ecosystem_compound_cash::{Pallet, Storage, Event<T>} = 152,
 
 		// Parachain
 		ParachainSystem: cumulus_pallet_parachain_system::{Pallet, Call, Storage, Inherent, Config, Event<T>} = 160,

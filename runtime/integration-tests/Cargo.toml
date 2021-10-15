@@ -125,8 +125,6 @@ module-evm-rpc-runtime-api = { path = "../../modules/evm/rpc/runtime_api",  defa
 ecosystem-renvm-bridge = { path = "../../ecosystem-modules/ren/renvm-bridge", default-features = false }
 ecosystem-starport = { path = "../../ecosystem-modules/starport", default-features = false }
 ecosystem-compound-cash = { path = "../../ecosystem-modules/compound-cash", default-features = false }
-# TODO: merge
-chainbridge = { git = "https://github.com/AcalaNetwork/chainbridge-substrate", branch = "v0.9.11", default-features = false }
 
 [dev-dependencies]
 libsecp256k1 = "0.3.4"
@@ -273,5 +271,4 @@ std = [
 	"ecosystem-renvm-bridge/std",
 	"ecosystem-starport/std",
 	"ecosystem-compound-cash/std",
-	"chainbridge/std",
 ]

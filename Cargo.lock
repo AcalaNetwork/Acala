@@ -69,7 +69,6 @@ name = "acala-primitives"
 version = "1.5.1"
 dependencies = [
  "bstringify",
- "chainbridge",
  "ethereum 0.9.0 (git+https://github.com/PureStake/ethereum?branch=joshy-scale-info)",
  "evm 0.30.1 (git+https://github.com/PureStake/evm?branch=joshy-scale-info)",
  "frame-support",
@@ -117,7 +116,6 @@ name = "acala-runtime"
 version = "1.5.1"
 dependencies = [
  "acala-primitives",
- "chainbridge",
  "cumulus-pallet-aura-ext",
  "cumulus-pallet-parachain-system",
  "cumulus-primitives-core",
@@ -1301,23 +1299,6 @@ dependencies = [
  "cipher",
  "poly1305",
  "zeroize",
-]
-
-[[package]]
-name = "chainbridge"
-version = "0.0.2"
-source = "git+https://github.com/AcalaNetwork/chainbridge-substrate?branch=v0.9.11#c53a85772e1c0ccdc90a9c5ac12bba51b64607e1"
-dependencies = [
- "frame-support",
- "frame-system",
- "pallet-balances",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
 ]
 
 [[package]]
@@ -4937,7 +4918,6 @@ version = "1.5.1"
 dependencies = [
  "acala-primitives",
  "acala-service",
- "chainbridge",
  "cumulus-pallet-aura-ext",
  "cumulus-pallet-dmp-queue",
  "cumulus-pallet-parachain-system",
@@ -13767,6 +13747,21 @@ dependencies = [
 ]
 
 [[patch.unused]]
+name = "sc-network-test"
+version = "0.8.0"
+source = "git+https://github.com/paritytech//substrate?rev=11e6bb0e0f472fc08b6b42348ee92545adb5dbbc#11e6bb0e0f472fc08b6b42348ee92545adb5dbbc"
+
+[[patch.unused]]
+name = "substrate-test-runtime"
+version = "2.0.0"
+source = "git+https://github.com/paritytech//substrate?rev=11e6bb0e0f472fc08b6b42348ee92545adb5dbbc#11e6bb0e0f472fc08b6b42348ee92545adb5dbbc"
+
+[[patch.unused]]
+name = "substrate-test-runtime-client"
+version = "2.0.0"
+source = "git+https://github.com/paritytech//substrate?rev=11e6bb0e0f472fc08b6b42348ee92545adb5dbbc#11e6bb0e0f472fc08b6b42348ee92545adb5dbbc"
+
+[[patch.unused]]
 name = "beefy-gadget"
 version = "0.1.0"
 source = "git+https://github.com/paritytech//grandpa-bridge-gadget?rev=9954b61657dc8899a21b4f2501ee6bd3b7a2dc23#9954b61657dc8899a21b4f2501ee6bd3b7a2dc23"
@@ -13795,18 +13790,3 @@ source = "git+https://github.com/paritytech//grandpa-bridge-gadget?rev=9954b6165
 name = "pallet-beefy-mmr"
 version = "0.1.0"
 source = "git+https://github.com/paritytech//grandpa-bridge-gadget?rev=9954b61657dc8899a21b4f2501ee6bd3b7a2dc23#9954b61657dc8899a21b4f2501ee6bd3b7a2dc23"
-
-[[patch.unused]]
-name = "sc-network-test"
-version = "0.8.0"
-source = "git+https://github.com/paritytech//substrate?rev=11e6bb0e0f472fc08b6b42348ee92545adb5dbbc#11e6bb0e0f472fc08b6b42348ee92545adb5dbbc"
-
-[[patch.unused]]
-name = "substrate-test-runtime"
-version = "2.0.0"
-source = "git+https://github.com/paritytech//substrate?rev=11e6bb0e0f472fc08b6b42348ee92545adb5dbbc#11e6bb0e0f472fc08b6b42348ee92545adb5dbbc"
-
-[[patch.unused]]
-name = "substrate-test-runtime-client"
-version = "2.0.0"
-source = "git+https://github.com/paritytech//substrate?rev=11e6bb0e0f472fc08b6b42348ee92545adb5dbbc#11e6bb0e0f472fc08b6b42348ee92545adb5dbbc"

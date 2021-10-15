@@ -111,8 +111,6 @@ runtime-common = { path = "../common", default-features = false }
 module-evm-rpc-runtime-api = { path = "../../modules/evm/rpc/runtime_api",  default-features = false }
 
 ecosystem-renvm-bridge = { path = "../../ecosystem-modules/ren/renvm-bridge", default-features = false }
-# TODO: merge
-chainbridge = { git = "https://github.com/AcalaNetwork/chainbridge-substrate", branch = "v0.9.11", default-features = false }
 
 [build-dependencies]
 substrate-wasm-builder = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.11" }
@@ -236,7 +234,6 @@ runtime-benchmarks = [
 	"orml-vesting/runtime-benchmarks",
 	"orml-tokens/runtime-benchmarks",
 	"pallet-timestamp/runtime-benchmarks",
-	"chainbridge/runtime-benchmarks",
 
 	"module-nft/runtime-benchmarks",
 

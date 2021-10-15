@@ -26,8 +26,6 @@ frame-support = { git = "https://github.com/paritytech/substrate", branch = "pol
 ethereum = { git = "https://github.com/PureStake/ethereum", branch = "joshy-scale-info", default-features = false, features = ["with-codec"] }
 evm = { git = "https://github.com/PureStake/evm", branch = "joshy-scale-info", default-features = false, features = ["with-codec"] }
 
-# TODO: merge
-chainbridge = { git = "https://github.com/AcalaNetwork/chainbridge-substrate", branch = "v0.9.11", default-features = false }
 nutsfinance-stable-asset = { version = "0.1.0", default-features = false, path = "../ecosystem-modules/stable-asset/lib/stable-asset", package = "nutsfinance-stable-asset" }
 
 [dev-dependencies]
@@ -57,9 +55,5 @@ std = [
 	"ethereum/std",
 	"ethereum/with-serde",
 
-	"chainbridge/std",
 	"nutsfinance-stable-asset/std",
-]
-runtime-benchmarks = [
-	"chainbridge/runtime-benchmarks",
 ]
