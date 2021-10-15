@@ -46,6 +46,7 @@ use frame_support::{log, pallet_prelude::*, transactional, PalletId};
 use frame_system::pallet_prelude::*;
 use orml_traits::{Happened, MultiCurrency, RewardHandler};
 use primitives::{Amount, Balance, CurrencyId};
+use scale_info::TypeInfo;
 use sp_runtime::{
 	traits::{AccountIdConversion, One, UniqueSaturatedInto, Zero},
 	DispatchResult, FixedPointNumber, RuntimeDebug,
@@ -61,7 +62,7 @@ pub use module::*;
 pub use weights::WeightInfo;
 
 /// PoolId for various rewards pools
-#[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, RuntimeDebug)]
+#[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, RuntimeDebug, TypeInfo)]
 pub enum PoolId {
 	/// Rewards and shares pool for users who open CDP(CollateralCurrencyId)
 	Loans(CurrencyId),
@@ -130,7 +131,6 @@ pub mod module {
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
-	#[pallet::metadata(T::AccountId = "AccountId", PoolId = "PoolId")]
 	pub enum Event<T: Config> {
 		/// Deposit DEX share. \[who, dex_share_type, deposit_amount\]
 		DepositDexShare(T::AccountId, CurrencyId, Balance),

@@ -23,7 +23,7 @@ use acala_service::chain_spec::evm_genesis;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	assert_ok, ord_parameter_types, parameter_types,
-	traits::{GenesisBuild, InstanceFilter, OnFinalize, OnInitialize, SortedMembers},
+	traits::{Everything, GenesisBuild, InstanceFilter, OnFinalize, OnInitialize, SortedMembers},
 	weights::IdentityFee,
 	PalletId, RuntimeDebug,
 };
@@ -52,7 +52,7 @@ parameter_types! {
 	pub const BlockHashCount: u32 = 250;
 }
 impl frame_system::Config for Test {
-	type BaseCallFilter = ();
+	type BaseCallFilter = Everything;
 	type BlockWeights = RuntimeBlockWeights;
 	type BlockLength = ();
 	type Origin = Origin;
@@ -128,7 +128,7 @@ impl orml_tokens::Config for Test {
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = ();
 	type MaxLocks = ();
-	type DustRemovalWhitelist = ();
+	type DustRemovalWhitelist = Everything;
 }
 
 parameter_types! {

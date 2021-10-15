@@ -35,6 +35,7 @@ use frame_support::{
 use frame_system::pallet_prelude::*;
 use orml_traits::NFT;
 use primitives::{NFTBalance, ReserveIdentifier};
+use scale_info::{build::Fields, meta_type, Path, Type, TypeInfo, TypeParameter};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_runtime::{
@@ -55,7 +56,7 @@ pub type CID = Vec<u8>;
 pub type Attributes = BTreeMap<Vec<u8>, Vec<u8>>;
 
 #[repr(u8)]
-#[derive(Encode, Decode, Clone, Copy, BitFlags, RuntimeDebug, PartialEq, Eq)]
+#[derive(Encode, Decode, Clone, Copy, BitFlags, RuntimeDebug, PartialEq, Eq, TypeInfo)]
 pub enum ClassProperty {
 	/// Is token transferable
 	Transferable = 0b00000001,
@@ -86,7 +87,18 @@ impl Decode for Properties {
 	}
 }
 
-#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq)]
+impl TypeInfo for Properties {
+	type Identity = Self;
+
+	fn type_info() -> Type {
+		Type::builder()
+			.path(Path::new("BitFlags", module_path!()))
+			.type_params(vec![TypeParameter::new("T", Some(meta_type::<ClassProperty>()))])
+			.composite(Fields::unnamed().field(|f| f.ty::<u8>().type_name("ClassProperty")))
+	}
+}
+
+#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct ClassData<Balance> {
 	/// Deposit reserved to create token class
@@ -97,7 +109,7 @@ pub struct ClassData<Balance> {
 	pub attributes: Attributes,
 }
 
-#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq)]
+#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct TokenData<Balance> {
 	/// Deposit reserved to create token
@@ -183,7 +195,6 @@ pub mod module {
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
-	#[pallet::metadata(T::AccountId = "AccountId", ClassIdOf<T> = "ClassId", TokenIdOf<T> = "TokenId", T::Hash = "Hash")]
 	pub enum Event<T: Config> {
 		/// Created NFT class. \[owner, class_id\]
 		CreatedClass(T::AccountId, ClassIdOf<T>),

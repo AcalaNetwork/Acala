@@ -102,19 +102,19 @@ impl XcmTransfer<AccountId, Balance, CurrencyId> for MockXcm {
 	}
 }
 impl InvertLocation for MockXcm {
-	fn invert_location(l: &MultiLocation) -> MultiLocation {
+	fn invert_location(l: &MultiLocation) -> Result<MultiLocation, ()> {
 		l.clone()
 	}
 }
 
 impl SendXcm for MockXcm {
-	fn send_xcm(destination: MultiLocation, _message: Xcm<()>) -> XcmResult {
-		match destination {
+	fn send_xcm(dest: impl Into<MultiLocation>, msg: Xcm<()>) -> SendResult {
+		match dest {
 			MultiLocation {
 				parents: 1,
 				interior: Junctions::Here,
 			} => Ok(()),
-			_ => Err(XcmError::Undefined),
+			_ => Err(SendError::Undefined),
 		}
 	}
 }
@@ -163,10 +163,14 @@ impl pallet_xcm::Config for Runtime {
 	type XcmReserveTransferFilter = Everything;
 	type Weigher = MockWeigher;
 	type LocationInverter = MockXcm;
+	type Origin = Origin;
+	type Call = Call;
+	const VERSION_DISCOVERY_QUEUE_SIZE: u32 = 100;
+	type AdvertisedXcmVersion = pallet_xcm::CurrentXcmVersion;
 }
 
 impl frame_system::Config for Runtime {
-	type BaseCallFilter = ();
+	type BaseCallFilter = Everything;
 	type BlockWeights = ();
 	type BlockLength = ();
 	type Origin = Origin;
@@ -206,7 +210,7 @@ impl orml_tokens::Config for Runtime {
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = ();
 	type MaxLocks = ();
-	type DustRemovalWhitelist = ();
+	type DustRemovalWhitelist = Everything;
 }
 
 parameter_types! {
@@ -314,7 +318,7 @@ frame_support::construct_runtime!(
 		PalletBalances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
 		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
 		Currencies: module_currencies::{Pallet, Call, Event<T>},
-		PalletXcm: pallet_xcm::{Pallet, Call, Event<T>},
+		PalletXcm: pallet_xcm::{Pallet, Call, Event<T>, Origin},
 	}
 );
 

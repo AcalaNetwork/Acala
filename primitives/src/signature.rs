@@ -17,6 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use codec::{Decode, Encode};
+use scale_info::TypeInfo;
 use sp_runtime::{
 	traits::{Lazy, Verify},
 	AccountId32, MultiSigner, RuntimeDebug,
@@ -26,7 +27,7 @@ use sp_core::{crypto::Public, ecdsa, ed25519, sr25519};
 
 use sp_std::{convert::TryFrom, prelude::*};
 
-#[derive(Eq, PartialEq, Clone, Encode, Decode, RuntimeDebug)]
+#[derive(Eq, PartialEq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
 pub enum AcalaMultiSignature {
 	/// An Ed25519 signature.
 	Ed25519(ed25519::Signature),

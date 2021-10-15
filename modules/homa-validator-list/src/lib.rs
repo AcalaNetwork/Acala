@@ -33,6 +33,7 @@ use frame_support::{pallet_prelude::*, traits::Contains, transactional};
 use frame_system::pallet_prelude::*;
 use orml_traits::{BasicCurrency, BasicLockableCurrency, Happened, LockIdentifier};
 use primitives::Balance;
+use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_runtime::{
@@ -85,7 +86,7 @@ impl WeightInfo for () {
 }
 
 /// Insurance for a validator from a single address
-#[derive(Encode, Decode, Clone, Copy, RuntimeDebug, Default, PartialEq, MaxEncodedLen)]
+#[derive(Encode, Decode, Clone, Copy, RuntimeDebug, Default, PartialEq, MaxEncodedLen, TypeInfo)]
 pub struct Guarantee<BlockNumber> {
 	/// The total tokens the validator has in insurance
 	total: Balance,
@@ -142,7 +143,7 @@ impl<BlockNumber: PartialOrd> Guarantee<BlockNumber> {
 }
 
 /// Information on a relay chain validator's slash
-#[derive(Encode, Decode, Clone, RuntimeDebug, Eq, PartialEq, MaxEncodedLen)]
+#[derive(Encode, Decode, Clone, RuntimeDebug, Eq, PartialEq, MaxEncodedLen, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct SlashInfo<Balance, RelaychainAccountId> {
 	/// Address of a validator on the relay chain
@@ -152,7 +153,7 @@ pub struct SlashInfo<Balance, RelaychainAccountId> {
 }
 
 /// Validator insurance and frozen status
-#[derive(Encode, Decode, Clone, Copy, RuntimeDebug, Default, MaxEncodedLen)]
+#[derive(Encode, Decode, Clone, Copy, RuntimeDebug, Default, MaxEncodedLen, TypeInfo)]
 pub struct ValidatorBacking {
 	/// Total insurance from all guarantors
 	total_insurance: Balance,
@@ -207,7 +208,6 @@ pub mod module {
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
-	#[pallet::metadata(T::AccountId = "AccountId", T::RelaychainAccountId = "RelaychainAccountId")]
 	pub enum Event<T: Config> {
 		FreezeValidator(T::RelaychainAccountId),
 		ThawValidator(T::RelaychainAccountId),
