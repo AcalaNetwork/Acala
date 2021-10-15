@@ -21,7 +21,10 @@
 #![cfg(test)]
 
 pub use super::*;
-pub use frame_support::{ord_parameter_types, parameter_types, traits::Everything};
+pub use frame_support::{
+	ord_parameter_types, parameter_types,
+	traits::{Everything, Nothing},
+};
 pub use frame_system::{EnsureRoot, EnsureSignedBy, RawOrigin};
 pub use module_relaychain::RelayChainCallBuilder;
 pub use module_support::mocks::MockAddressMapping;
@@ -157,7 +160,7 @@ impl pallet_xcm::Config for Runtime {
 	type SendXcmOrigin = MockEnsureXcmOrigin;
 	type XcmRouter = MockXcm;
 	type ExecuteXcmOrigin = MockEnsureXcmOrigin;
-	type XcmExecuteFilter = Everything;
+	type XcmExecuteFilter = Nothing;
 	type XcmExecutor = MockXcm;
 	type XcmTeleportFilter = ();
 	type XcmReserveTransferFilter = Everything;
