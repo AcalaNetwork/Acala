@@ -92,6 +92,15 @@ jobs:
             ${{ env.CHAIN }}-metadata.json
             ${{ env.CHAIN }}-diff.txt
 
+      # - name: Upload wasm to pinata
+      #   if: ${{ !env.ACT }}
+      #   uses: aquiladev/ipfs-action@v1
+      #   with:
+      #     path: ${{ steps.srtool_build.outputs.wasm_compressed }}
+      #     service: pinata
+      #     pinataKey: ${{ secrets.PINATA_KEY }}
+      #     pinataSecret: ${{ secrets.PINATA_SECRET }}
+
       - name: Generate note
         id: generate-note
         uses: AcalaNetwork/acala-release-note-action@master
@@ -104,8 +113,12 @@ jobs:
           previous_tag: ${{ env.PREVIOUS_TAG }}
 
       - name: Save release note
-        run: |
-          echo ${{ steps.generate-note.outputs.release-note }} >> release_note.md
+        uses: DamianReeves/write-file-action
+        with:
+          path: release_note.md
+          contents: |
+            echo ${{ steps.generate-note.outputs.release-note }}
+          write-mode: overwrite
 
       - name: Crate Release Checklist issue
         if: ${{ !env.ACT }}
