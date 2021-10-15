@@ -70,7 +70,7 @@ version = "1.5.1"
 dependencies = [
  "bstringify",
  "ethereum 0.9.0 (git+https://github.com/PureStake/ethereum?branch=joshy-scale-info)",
- "evm 0.30.1 (git+https://github.com/PureStake/evm?branch=joshy-scale-info)",
+ "evm",
  "frame-support",
  "hex-literal 0.3.3",
  "num_enum",
@@ -2531,29 +2531,13 @@ checksum = "f7531096570974c3a9dcf9e4b8e1cede1ec26cf5046219fb3b9d897503b9be59"
 [[package]]
 name = "evm"
 version = "0.30.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3144301c57a81101003055c7cab61b58e68060f3bd1c54aa419f663e4f0e6347"
-dependencies = [
- "ethereum 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "evm-core 0.30.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "evm-gasometer 0.30.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "evm-runtime 0.30.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "log",
- "primitive-types",
- "rlp",
- "sha3 0.8.2",
-]
-
-[[package]]
-name = "evm"
-version = "0.30.1"
 source = "git+https://github.com/PureStake/evm?branch=joshy-scale-info#608b9ce0021b90d2067e040b7bb45c3490db6388"
 dependencies = [
  "environmental",
  "ethereum 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "evm-core 0.30.0 (git+https://github.com/PureStake/evm?branch=joshy-scale-info)",
- "evm-gasometer 0.30.0 (git+https://github.com/PureStake/evm?branch=joshy-scale-info)",
- "evm-runtime 0.30.0 (git+https://github.com/PureStake/evm?branch=joshy-scale-info)",
+ "evm-core",
+ "evm-gasometer",
+ "evm-runtime",
  "log",
  "parity-scale-codec",
  "primitive-types",
@@ -2561,16 +2545,6 @@ dependencies = [
  "scale-info",
  "serde",
  "sha3 0.8.2",
-]
-
-[[package]]
-name = "evm-core"
-version = "0.30.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a7bfa2dae9a2c6c0172d83c37eb406bfabf6a9d1af17b7ab4958e89853ddae97"
-dependencies = [
- "funty",
- "primitive-types",
 ]
 
 [[package]]
@@ -2588,22 +2562,11 @@ dependencies = [
 [[package]]
 name = "evm-gasometer"
 version = "0.30.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "14d5b12117cb9a5a9b9f031296ea86416da2cd9d8c9a9e3a2fa10275ae55f3ea"
-dependencies = [
- "evm-core 0.30.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "evm-runtime 0.30.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "primitive-types",
-]
-
-[[package]]
-name = "evm-gasometer"
-version = "0.30.0"
 source = "git+https://github.com/PureStake/evm?branch=joshy-scale-info#608b9ce0021b90d2067e040b7bb45c3490db6388"
 dependencies = [
  "environmental",
- "evm-core 0.30.0 (git+https://github.com/PureStake/evm?branch=joshy-scale-info)",
- "evm-runtime 0.30.0 (git+https://github.com/PureStake/evm?branch=joshy-scale-info)",
+ "evm-core",
+ "evm-runtime",
  "primitive-types",
 ]
 
@@ -2634,21 +2597,10 @@ dependencies = [
 [[package]]
 name = "evm-runtime"
 version = "0.30.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3921ac8964cf13d12693392fef6686ef94470328ccd8eea384c6ff9ac0125b01"
-dependencies = [
- "evm-core 0.30.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "primitive-types",
- "sha3 0.8.2",
-]
-
-[[package]]
-name = "evm-runtime"
-version = "0.30.0"
 source = "git+https://github.com/PureStake/evm?branch=joshy-scale-info#608b9ce0021b90d2067e040b7bb45c3490db6388"
 dependencies = [
  "environmental",
- "evm-core 0.30.0 (git+https://github.com/PureStake/evm?branch=joshy-scale-info)",
+ "evm-core",
  "primitive-types",
  "sha3 0.8.2",
 ]
@@ -4931,7 +4883,7 @@ dependencies = [
  "ecosystem-compound-cash",
  "ecosystem-renvm-bridge",
  "ecosystem-starport",
- "evm 0.30.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "evm",
  "frame-benchmarking",
  "frame-executive",
  "frame-support",
@@ -5444,9 +5396,9 @@ version = "1.5.1"
 dependencies = [
  "acala-primitives",
  "env_logger 0.7.1",
- "evm 0.30.1 (git+https://github.com/PureStake/evm?branch=joshy-scale-info)",
- "evm-gasometer 0.30.0 (git+https://github.com/PureStake/evm?branch=joshy-scale-info)",
- "evm-runtime 0.30.0 (git+https://github.com/PureStake/evm?branch=joshy-scale-info)",
+ "evm",
+ "evm-gasometer",
+ "evm-runtime",
  "frame-support",
  "frame-system",
  "hex-literal 0.3.3",
@@ -13747,21 +13699,6 @@ dependencies = [
 ]
 
 [[patch.unused]]
-name = "sc-network-test"
-version = "0.8.0"
-source = "git+https://github.com/paritytech//substrate?rev=11e6bb0e0f472fc08b6b42348ee92545adb5dbbc#11e6bb0e0f472fc08b6b42348ee92545adb5dbbc"
-
-[[patch.unused]]
-name = "substrate-test-runtime"
-version = "2.0.0"
-source = "git+https://github.com/paritytech//substrate?rev=11e6bb0e0f472fc08b6b42348ee92545adb5dbbc#11e6bb0e0f472fc08b6b42348ee92545adb5dbbc"
-
-[[patch.unused]]
-name = "substrate-test-runtime-client"
-version = "2.0.0"
-source = "git+https://github.com/paritytech//substrate?rev=11e6bb0e0f472fc08b6b42348ee92545adb5dbbc#11e6bb0e0f472fc08b6b42348ee92545adb5dbbc"
-
-[[patch.unused]]
 name = "beefy-gadget"
 version = "0.1.0"
 source = "git+https://github.com/paritytech//grandpa-bridge-gadget?rev=9954b61657dc8899a21b4f2501ee6bd3b7a2dc23#9954b61657dc8899a21b4f2501ee6bd3b7a2dc23"
@@ -13790,3 +13727,18 @@ source = "git+https://github.com/paritytech//grandpa-bridge-gadget?rev=9954b6165
 name = "pallet-beefy-mmr"
 version = "0.1.0"
 source = "git+https://github.com/paritytech//grandpa-bridge-gadget?rev=9954b61657dc8899a21b4f2501ee6bd3b7a2dc23#9954b61657dc8899a21b4f2501ee6bd3b7a2dc23"
+
+[[patch.unused]]
+name = "sc-network-test"
+version = "0.8.0"
+source = "git+https://github.com/paritytech//substrate?rev=11e6bb0e0f472fc08b6b42348ee92545adb5dbbc#11e6bb0e0f472fc08b6b42348ee92545adb5dbbc"
+
+[[patch.unused]]
+name = "substrate-test-runtime"
+version = "2.0.0"
+source = "git+https://github.com/paritytech//substrate?rev=11e6bb0e0f472fc08b6b42348ee92545adb5dbbc#11e6bb0e0f472fc08b6b42348ee92545adb5dbbc"
+
+[[patch.unused]]
+name = "substrate-test-runtime-client"
+version = "2.0.0"
+source = "git+https://github.com/paritytech//substrate?rev=11e6bb0e0f472fc08b6b42348ee92545adb5dbbc#11e6bb0e0f472fc08b6b42348ee92545adb5dbbc"

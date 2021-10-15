@@ -103,25 +103,26 @@ impl XcmTransfer<AccountId, Balance, CurrencyId> for MockXcm {
 }
 impl InvertLocation for MockXcm {
 	fn invert_location(l: &MultiLocation) -> Result<MultiLocation, ()> {
-		l.clone()
+		Ok(l.clone())
 	}
 }
 
 impl SendXcm for MockXcm {
 	fn send_xcm(dest: impl Into<MultiLocation>, msg: Xcm<()>) -> SendResult {
+		let dest = dest.into();
 		match dest {
 			MultiLocation {
 				parents: 1,
 				interior: Junctions::Here,
 			} => Ok(()),
-			_ => Err(SendError::Undefined),
+			_ => Err(SendError::CannotReachDestination(dest, msg)),
 		}
 	}
 }
 impl ExecuteXcm<Call> for MockXcm {
 	fn execute_xcm_in_credit(
-		_origin: MultiLocation,
-		_message: Xcm<Call>,
+		_origin: impl Into<MultiLocation>,
+		mut _message: Xcm<Call>,
 		_weight_limit: Weight,
 		_weight_credit: Weight,
 	) -> Outcome {
@@ -143,11 +144,11 @@ impl EnsureOrigin<Origin> for MockEnsureXcmOrigin {
 }
 pub struct MockWeigher;
 impl WeightBounds<Call> for MockWeigher {
-	fn shallow(_message: &mut Xcm<Call>) -> Result<Weight, ()> {
+	fn weight(_message: &mut Xcm<Call>) -> Result<Weight, ()> {
 		Ok(0)
 	}
 
-	fn deep(_message: &mut Xcm<Call>) -> Result<Weight, ()> {
+	fn instr_weight(_message: &Instruction<Call>) -> Result<Weight, ()> {
 		Ok(0)
 	}
 }
@@ -159,7 +160,7 @@ impl pallet_xcm::Config for Runtime {
 	type ExecuteXcmOrigin = MockEnsureXcmOrigin;
 	type XcmExecuteFilter = Everything;
 	type XcmExecutor = MockXcm;
-	type XcmTeleportFilter = ();
+	type XcmTeleportFilter = Everything;
 	type XcmReserveTransferFilter = Everything;
 	type Weigher = MockWeigher;
 	type LocationInverter = MockXcm;
