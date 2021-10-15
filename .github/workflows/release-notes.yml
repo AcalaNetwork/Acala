@@ -92,14 +92,14 @@ jobs:
             ${{ env.CHAIN }}-metadata.json
             ${{ env.CHAIN }}-diff.txt
 
-      # - name: Upload wasm to pinata
-      #   if: ${{ !env.ACT }}
-      #   uses: aquiladev/ipfs-action@v1
-      #   with:
-      #     path: ${{ steps.srtool_build.outputs.wasm_compressed }}
-      #     service: pinata
-      #     pinataKey: ${{ secrets.PINATA_KEY }}
-      #     pinataSecret: ${{ secrets.PINATA_SECRET }}
+      - name: Upload wasm to pinata
+        if: ${{ !env.ACT && false }}
+        uses: aquiladev/ipfs-action@v0.1
+        with:
+          path: ${{ steps.srtool_build.outputs.wasm_compressed }}
+          service: pinata
+          pinataKey: ${{ secrets.PINATA_KEY }}
+          pinataSecret: ${{ secrets.PINATA_SECRET }}
 
       - name: Generate note
         id: generate-note
