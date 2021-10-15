@@ -44,31 +44,10 @@ jobs:
           target: wasm32-unknown-unknown
           default: true
 
-      - name: Srtool build
-        id: srtool_build
-        uses: chevdor/srtool-actions@v0.3.0
-        with:
-          chain: ${{ env.CHAIN }}
-          tag: ${{ github.event.inputs.srtool_tag || env.SRTOOL_TAG }}
-
-      - name: Summary
-        run: |
-          echo '${{ steps.srtool_build.outputs.json }}' | jq > ${{ env.CHAIN }}-srtool-digest.json
-          cat ${{ env.CHAIN }}-srtool-digest.json
-          echo "Runtime location: ${{ steps.srtool_build.outputs.wasm }}"
-
-      - name: Archive Artifacts for ${{ env.CHAIN }}
-        uses: actions/upload-artifact@v2
-        with:
-          name: ${{ env.CHAIN }}-runtime
-          path: |
-            ${{ steps.srtool_build.outputs.wasm }}
-            ${{ steps.srtool_build.outputs.wasm_compressed }}
-            ${{ env.CHAIN }}-srtool-digest.json
-
       - name: Run node
         run: |
-          cargo run --features=with-${{ env.CHAIN }}-runtime --features=rococo-native -- --chain=${{ env.CHAIN }}-dev &
+          cargo build --release --features=with-${{ env.CHAIN }}-runtime --features=rococo-native
+          ./target/release/acala --chain=${{ env.CHAIN }}-dev &
 
       # We now get extra information thanks to subwasm,
       - name: Install subwasm ${{ env.SUBWASM_VERSION }}
@@ -82,6 +61,19 @@ jobs:
           subwasm info ws://localhost:9944 > ${{ env.CHAIN }}-subwam-info.txt
           pkill acala
 
+      - name: Srtool build
+        id: srtool_build
+        uses: chevdor/srtool-actions@v0.3.0
+        with:
+          chain: ${{ env.CHAIN }}
+          tag: ${{ github.event.inputs.srtool_tag || env.SRTOOL_TAG }}
+
+      - name: Summary
+        run: |
+          echo '${{ steps.srtool_build.outputs.json }}' | jq > ${{ env.CHAIN }}-srtool-digest.json
+          cat ${{ env.CHAIN }}-srtool-digest.json
+          echo "Runtime location: ${{ steps.srtool_build.outputs.wasm }}"
+
       - name: Extract the metadata
         run: |
           subwasm meta ${{ steps.srtool_build.outputs.wasm }}
@@ -90,6 +82,15 @@ jobs:
         run: |
           subwasm get wss://karura-rpc-2.aca-api.network/ws --output runtime_mainnet.wasm
           subwasm diff ${{ steps.srtool_build.outputs.wasm }} runtime_mainnet.wasm | tee ${{ env.CHAIN }}-diff.txt
+
+      - name: Archive Artifacts for ${{ env.CHAIN }}
+        uses: actions/upload-artifact@v2
+        with:
+          name: ${{ env.CHAIN }}-runtime
+          path: |
+            ${{ steps.srtool_build.outputs.wasm }}
+            ${{ steps.srtool_build.outputs.wasm_compressed }}
+            ${{ env.CHAIN }}-srtool-digest.json
 
       - name: Archive Subwasm results
         uses: actions/upload-artifact@v2
