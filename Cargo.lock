@@ -13701,6 +13701,21 @@ dependencies = [
 ]
 
 [[patch.unused]]
+name = "sc-network-test"
+version = "0.8.0"
+source = "git+https://github.com/paritytech//substrate?rev=57346f6b24875f8935280dba51fa8ab0a9ba1e39#57346f6b24875f8935280dba51fa8ab0a9ba1e39"
+
+[[patch.unused]]
+name = "substrate-test-runtime"
+version = "2.0.0"
+source = "git+https://github.com/paritytech//substrate?rev=57346f6b24875f8935280dba51fa8ab0a9ba1e39#57346f6b24875f8935280dba51fa8ab0a9ba1e39"
+
+[[patch.unused]]
+name = "substrate-test-runtime-client"
+version = "2.0.0"
+source = "git+https://github.com/paritytech//substrate?rev=57346f6b24875f8935280dba51fa8ab0a9ba1e39#57346f6b24875f8935280dba51fa8ab0a9ba1e39"
+
+[[patch.unused]]
 name = "beefy-gadget"
 version = "0.1.0"
 source = "git+https://github.com/paritytech//grandpa-bridge-gadget?rev=9954b61657dc8899a21b4f2501ee6bd3b7a2dc23#9954b61657dc8899a21b4f2501ee6bd3b7a2dc23"
@@ -13729,18 +13744,3 @@ source = "git+https://github.com/paritytech//grandpa-bridge-gadget?rev=9954b6165
 name = "pallet-beefy-mmr"
 version = "0.1.0"
 source = "git+https://github.com/paritytech//grandpa-bridge-gadget?rev=9954b61657dc8899a21b4f2501ee6bd3b7a2dc23#9954b61657dc8899a21b4f2501ee6bd3b7a2dc23"
-
-[[patch.unused]]
-name = "sc-network-test"
-version = "0.8.0"
-source = "git+https://github.com/paritytech//substrate?rev=57346f6b24875f8935280dba51fa8ab0a9ba1e39#57346f6b24875f8935280dba51fa8ab0a9ba1e39"
-
-[[patch.unused]]
-name = "substrate-test-runtime"
-version = "2.0.0"
-source = "git+https://github.com/paritytech//substrate?rev=57346f6b24875f8935280dba51fa8ab0a9ba1e39#57346f6b24875f8935280dba51fa8ab0a9ba1e39"
-
-[[patch.unused]]
-name = "substrate-test-runtime-client"
-version = "2.0.0"
-source = "git+https://github.com/paritytech//substrate?rev=57346f6b24875f8935280dba51fa8ab0a9ba1e39#57346f6b24875f8935280dba51fa8ab0a9ba1e39"

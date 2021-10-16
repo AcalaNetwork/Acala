@@ -11,7 +11,6 @@ codec = { package = "parity-scale-codec", version = "2.3.1", default-features = 
 scale-info = { version = "1.0", default-features = false, features = ["derive"] }
 serde = { version = "1.0.124", optional = true }
 hex-literal = { version = "0.3.1" }
-scale-info = { version = "1.0", default-features = false, features = ["derive"] }
 
 frame-executive = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.11", default-features = false }
 frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.11", default-features = false }
@@ -136,7 +135,6 @@ std = [
 	"codec/std",
 	"scale-info/std",
 	"serde",
-	"scale-info/std",
 
 	"frame-benchmarking/std",
 	"frame-executive/std",
