@@ -22,7 +22,7 @@
 
 use frame_support::{
 	assert_ok, ord_parameter_types, parameter_types,
-	traits::{Everything, GenesisBuild},
+	traits::{Everything, GenesisBuild, Nothing},
 	PalletId,
 };
 use orml_traits::parameter_type_with_key;
@@ -99,7 +99,7 @@ impl tokens::Config for Runtime {
 	type OnDust = tokens::TransferDust<Runtime, DustAccount>;
 	type WeightInfo = ();
 	type MaxLocks = MaxLocks;
-	type DustRemovalWhitelist = Everything;
+	type DustRemovalWhitelist = Nothing;
 }
 
 pub const NATIVE_CURRENCY_ID: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);

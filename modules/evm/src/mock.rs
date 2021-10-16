@@ -22,7 +22,7 @@ use super::*;
 
 use frame_support::{
 	construct_runtime, ord_parameter_types, parameter_types,
-	traits::{Everything, FindAuthor},
+	traits::{Everything, FindAuthor, Nothing},
 	ConsensusEngineId,
 };
 use frame_system::EnsureSignedBy;
@@ -112,7 +112,7 @@ impl orml_tokens::Config for Runtime {
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = ();
 	type MaxLocks = ();
-	type DustRemovalWhitelist = Everything;
+	type DustRemovalWhitelist = Nothing;
 }
 
 parameter_types! {

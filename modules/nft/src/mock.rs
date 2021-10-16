@@ -24,7 +24,7 @@ use crate as nft;
 use codec::{Decode, Encode};
 use frame_support::{
 	construct_runtime, ord_parameter_types, parameter_types,
-	traits::{Contains, Everything, InstanceFilter},
+	traits::{Contains, InstanceFilter, Nothing},
 	RuntimeDebug,
 };
 use frame_system::EnsureSignedBy;
@@ -166,7 +166,7 @@ impl orml_tokens::Config for Runtime {
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = ();
 	type MaxLocks = ();
-	type DustRemovalWhitelist = Everything;
+	type DustRemovalWhitelist = Nothing;
 }
 
 pub const NATIVE_CURRENCY_ID: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);

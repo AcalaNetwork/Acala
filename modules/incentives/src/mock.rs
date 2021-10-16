@@ -25,7 +25,7 @@ use frame_support::{
 	construct_runtime,
 	dispatch::{DispatchError, DispatchResult},
 	ord_parameter_types, parameter_types,
-	traits::Everything,
+	traits::{Everything, Nothing},
 	weights::constants::RocksDbWeight,
 };
 use frame_system::EnsureSignedBy;
@@ -106,7 +106,7 @@ impl orml_tokens::Config for Runtime {
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = ();
 	type MaxLocks = ();
-	type DustRemovalWhitelist = Everything;
+	type DustRemovalWhitelist = Nothing;
 }
 
 pub struct MockCDPTreasury;

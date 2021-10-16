@@ -23,7 +23,9 @@
 use super::*;
 use crate as transaction_payment;
 use frame_support::{
-	construct_runtime, ord_parameter_types, parameter_types, traits::Everything, weights::WeightToFeeCoefficients,
+	construct_runtime, ord_parameter_types, parameter_types,
+	traits::{Everything, Nothing},
+	weights::WeightToFeeCoefficients,
 	PalletId,
 };
 use frame_system::EnsureSignedBy;
@@ -106,7 +108,7 @@ impl orml_tokens::Config for Runtime {
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = ();
 	type MaxLocks = ();
-	type DustRemovalWhitelist = Everything;
+	type DustRemovalWhitelist = Nothing;
 }
 
 parameter_types! {
