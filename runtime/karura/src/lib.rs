@@ -212,19 +212,6 @@ impl Contains<Call> for BaseCallFilter {
 			return false;
 		}
 
-		let is_bnc_transfer = matches!(
-			call,
-			Call::Currencies(module_currencies::Call::transfer(
-				_,
-				CurrencyId::Token(TokenSymbol::BNC),
-				_
-			))
-		);
-		if is_bnc_transfer {
-			// BNC transfer disabled by request of Bifrost team
-			return false;
-		}
-
 		true
 	}
 }
@@ -1076,7 +1063,7 @@ impl module_cdp_treasury::Config for Runtime {
 
 impl module_transaction_pause::Config for Runtime {
 	type Event = Event;
-	type UpdateOrigin = EnsureRootOrThreeFourthsGeneralCouncil;
+	type UpdateOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
 	type WeightInfo = weights::module_transaction_pause::WeightInfo<Runtime>;
 }
 
@@ -1501,7 +1488,7 @@ impl pallet_xcm::Config for Runtime {
 	type SendXcmOrigin = EnsureXcmOrigin<Origin, LocalOriginToLocation>;
 	type XcmRouter = XcmRouter;
 	type ExecuteXcmOrigin = EnsureXcmOrigin<Origin, LocalOriginToLocation>;
-	type XcmExecuteFilter = Everything;
+	type XcmExecuteFilter = Nothing;
 	type XcmExecutor = XcmExecutor<XcmConfig>;
 	type XcmTeleportFilter = Nothing;
 	type XcmReserveTransferFilter = Everything;
