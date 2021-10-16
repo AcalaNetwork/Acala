@@ -41,8 +41,7 @@ fn transfer_from_relay_chain() {
 				.into()
 			)),
 			Box::new(VersionedMultiAssets::V1((Here, dollar(KSM)).into())),
-			0,
-			600_000_000
+			0
 		));
 	});
 

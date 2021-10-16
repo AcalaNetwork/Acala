@@ -133,12 +133,11 @@ where
 		};
 		Xcm(vec![
 			WithdrawAsset(asset.clone().into()),
-			// TODO: ensure Limited(weight + debt)
 			BuyExecution {
 				fees: asset,
-				weight_limit: Limited(weight + debt),
+				weight_limit: Limited(debt),
 			},
-			Instruction::Transact {
+			Transact {
 				origin_type: OriginKind::SovereignAccount,
 				require_weight_at_most: weight,
 				call: call.encode().into(),

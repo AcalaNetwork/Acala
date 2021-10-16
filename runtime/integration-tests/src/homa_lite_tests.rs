@@ -250,8 +250,7 @@ mod karura_only_tests {
 					.into()
 				)),
 				Box::new(VersionedMultiAssets::V1((Here, 2001 * dollar(KSM)).into())),
-				0,
-				600_000_000
+				0
 			));
 
 			// This account starts off with no fund.
