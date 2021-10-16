@@ -203,8 +203,10 @@ mod karura_tests {
 				})
 			);
 
-			let encoded =
-				KusamaCallBuilder::utility_batch_call(vec![KusamaCallBuilder::staking_withdraw_unbonded(5)]).encode();
+			let encoded = KusamaCallBuilder::utility_batch_call {
+				calls: vec![KusamaCallBuilder::staking_withdraw_unbonded(5)],
+			}
+			.encode();
 			let batch_call = kusama_runtime::Call::decode(&mut &encoded[..]).unwrap();
 			assert_eq!(encoded, hex_literal::hex!["180204060305000000"]);
 			assert_eq!(

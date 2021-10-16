@@ -4,7 +4,7 @@ cargo-features = ["resolver"]
 members = [
 	"node",
 	"node/cli",
-	#"node/e2e-tests",
+	"node/e2e-tests",
 	"node/service",
 
 	"modules/*",

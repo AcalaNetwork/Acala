@@ -375,12 +375,12 @@ pub fn run() -> sc_cli::Result<()> {
 				{
 					let block: Block = generate_genesis_block(&chain_spec).map_err(|e| format!("{:?}", e))?;
 					let raw_header = block.header().encode();
-					let output_buf = if params.raw {
+					let buf = if params.raw {
 						raw_header
 					} else {
 						format!("0x{:?}", HexDisplay::from(&block.header().encode())).into_bytes()
 					};
-					output_buf
+					buf
 				}
 			});
 
