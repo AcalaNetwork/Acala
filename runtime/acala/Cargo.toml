@@ -126,7 +126,6 @@ std = [
 	"codec/std",
 	"scale-info/std",
 	"serde",
-	"scale-info/std",
 
 	"frame-benchmarking/std",
 	"frame-executive/std",
