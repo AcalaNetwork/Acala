@@ -1070,7 +1070,7 @@ impl module_cdp_treasury::Config for Runtime {
 
 impl module_transaction_pause::Config for Runtime {
 	type Event = Event;
-	type UpdateOrigin = EnsureRootOrThreeFourthsGeneralCouncil;
+	type UpdateOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
 	type WeightInfo = weights::module_transaction_pause::WeightInfo<Runtime>;
 }
 
