@@ -99,12 +99,8 @@ mod karura_tests {
 			let xcm_message =
 				KusamaCallBuilder::utility_as_derivative_call(KusamaCallBuilder::staking_withdraw_unbonded(5), 0);
 
-			let msg = KusamaCallBuilder::finalize_call_into_xcm_message(
-				xcm_message,
-				XcmUnbondFee::get(),
-				10_000_000_000,
-				10_000_000_000,
-			);
+			let msg =
+				KusamaCallBuilder::finalize_call_into_xcm_message(xcm_message, XcmUnbondFee::get(), 10_000_000_000);
 
 			// Withdraw unbonded
 			assert_ok!(pallet_xcm::Pallet::<Runtime>::send_xcm(Here, Parent, msg));
@@ -153,12 +149,8 @@ mod karura_tests {
 			// Transfer all remaining, but leave enough fund to pay for the XCM transaction.
 			let xcm_message = KusamaCallBuilder::balances_transfer_keep_alive(ALICE.into(), 1_990_000_000_000);
 
-			let msg = KusamaCallBuilder::finalize_call_into_xcm_message(
-				xcm_message,
-				XcmUnbondFee::get(),
-				10_000_000_000,
-				10_000_000_000,
-			);
+			let msg =
+				KusamaCallBuilder::finalize_call_into_xcm_message(xcm_message, XcmUnbondFee::get(), 10_000_000_000);
 
 			// Withdraw unbonded
 			assert_ok!(pallet_xcm::Pallet::<Runtime>::send_xcm(Here, Parent, msg));

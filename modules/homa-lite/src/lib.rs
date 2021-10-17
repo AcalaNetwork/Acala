@@ -857,7 +857,6 @@ pub mod module {
 				xcm_message,
 				T::XcmUnbondFee::get(),
 				Self::xcm_dest_weight(),
-				Self::xcm_dest_weight(),
 			)
 		}
 	}

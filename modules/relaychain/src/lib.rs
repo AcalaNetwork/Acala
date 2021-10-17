@@ -121,12 +121,7 @@ where
 		RelayChainCall::Balances(BalancesCall::TransferKeepAlive(T::Lookup::unlookup(to), amount))
 	}
 
-	fn finalize_call_into_xcm_message(
-		call: Self::RelayChainCall,
-		extra_fee: Self::Balance,
-		weight: Weight,
-		debt: Weight,
-	) -> Xcm<()> {
+	fn finalize_call_into_xcm_message(call: Self::RelayChainCall, extra_fee: Self::Balance, weight: Weight) -> Xcm<()> {
 		let asset = MultiAsset {
 			id: Concrete(MultiLocation::here()),
 			fun: Fungibility::Fungible(extra_fee),
@@ -135,7 +130,7 @@ where
 			WithdrawAsset(asset.clone().into()),
 			BuyExecution {
 				fees: asset,
-				weight_limit: Limited(debt),
+				weight_limit: Unlimited,
 			},
 			Transact {
 				origin_type: OriginKind::SovereignAccount,
