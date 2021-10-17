@@ -243,7 +243,7 @@ fn testnet_genesis(
 		OperatorMembershipAcalaConfig, OperatorMembershipBandConfig, OrmlNFTConfig, ParachainInfoConfig, Period,
 		RenVmBridgeConfig, SessionConfig, SessionKeys, SessionManagerConfig, StakingPoolConfig, StarportConfig,
 		SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig, ACA, AUSD, DOT,
-		LDOT, RENBTC,
+		LDOT, LINK, RENBTC,
 	};
 
 	let existential_deposit = NativeTokenExistentialDeposit::get();
@@ -322,7 +322,13 @@ fn testnet_genesis(
 		tokens: TokensConfig {
 			balances: endowed_accounts
 				.iter()
-				.flat_map(|x| vec![(x.clone(), DOT, initial_balance), (x.clone(), AUSD, initial_balance)])
+				.flat_map(|x| {
+					vec![
+						(x.clone(), DOT, initial_balance),
+						(x.clone(), AUSD, initial_balance),
+						(x.clone(), LINK, initial_balance),
+					]
+				})
 				.collect(),
 		},
 		vesting: VestingConfig { vesting: vec![] },
