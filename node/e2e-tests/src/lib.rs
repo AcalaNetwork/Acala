@@ -155,7 +155,7 @@ mod tests {
 				dest: MultiAddress::from(bob_account_id.clone()),
 				value: amount,
 			};
-			node.submit_extrinsic(tx, Some(alice_account_id)).await;
+			node.submit_extrinsic(tx, Some(alice_account_id)).await.unwrap();
 
 			// Produce blocks in action, Powered by manual-seal™.
 			node.seal_blocks(1).await;
