@@ -176,7 +176,7 @@ parameter_types! {
 	// Ecosystem modules
 	pub const StarportPalletId: PalletId = PalletId(*b"aca/stpt");
 	pub const StableAssetPalletId: PalletId = PalletId(*b"nuts/sta");
-	pub const FeedPalletId: PalletId = PalletId(*b"linkfeed");
+	pub const FeedPalletId: PalletId = PalletId(*b"link/feed");
 }
 
 pub fn get_all_module_accounts() -> Vec<AccountId> {
