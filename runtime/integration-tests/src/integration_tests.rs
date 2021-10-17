@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use acala_service::chain_spec::evm_genesis;
+use acala_service::chain_spec::mandala::evm_genesis;
 pub use codec::Encode;
 use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
 use frame_support::{
