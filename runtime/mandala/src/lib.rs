@@ -118,7 +118,7 @@ pub use runtime_common::{
 	HomaCouncilInstance, HomaCouncilMembershipInstance, OffchainSolutionWeightLimit, OperatorMembershipInstanceAcala,
 	OperatorMembershipInstanceBand, Price, ProxyType, Rate, Ratio, RelayChainBlockNumberProvider,
 	RelayChainSubAccountId, RuntimeBlockLength, RuntimeBlockWeights, SystemContractsFilter, TechnicalCommitteeInstance,
-	TechnicalCommitteeMembershipInstance, TimeStampedPrice, ACA, AUSD, DOT, LDOT, RENBTC,
+	TechnicalCommitteeMembershipInstance, TimeStampedPrice, ACA, AUSD, DOT, LDOT, LINK, RENBTC,
 };
 
 /// Import the stable_asset pallet.
@@ -176,6 +176,7 @@ parameter_types! {
 	// Ecosystem modules
 	pub const StarportPalletId: PalletId = PalletId(*b"aca/stpt");
 	pub const StableAssetPalletId: PalletId = PalletId(*b"nuts/sta");
+	pub const FeedPalletId: PalletId = PalletId(*b"linkfeed");
 }
 
 pub fn get_all_module_accounts() -> Vec<AccountId> {
@@ -763,8 +764,6 @@ impl orml_oracle::Config<BandDataProvider> for Runtime {
 }
 
 parameter_types! {
-	// Used to generate the fund account that pools oracle payments.
-	pub const FeedPalletId: PalletId = PalletId(*b"linkfeed");
 	// The minimum amount of tokens to keep in reserve for oracle payment.
 	pub MinimumReserve: Balance = NativeTokenExistentialDeposit::get() * 10;
 	// Maximum length of the feed description.
@@ -773,13 +772,15 @@ parameter_types! {
 	pub const OracleCountLimit: u32 = 25;
 	// Maximum number of feeds.
 	pub const FeedLimit: FeedId = 100;
+	// LINK CurrencyId
+	pub const LINKCurrencyId: CurrencyId = LINK;
 }
 
 impl pallet_chainlink_feed::Config for Runtime {
 	type Event = Event;
 	type FeedId = FeedId;
 	type Value = u128;
-	type Currency = Balances;
+	type Currency = CurrencyAdapter<Runtime, LINKCurrencyId>;
 	type PalletId = FeedPalletId;
 	type MinimumReserve = MinimumReserve;
 	type StringLimit = StringLimit;
@@ -834,6 +835,7 @@ parameter_type_with_key! {
 				TokenSymbol::LDOT => 50 * millicent(*currency_id),
 				TokenSymbol::BNC => 800 * millicent(*currency_id),  // 80BNC = 1KSM
 				TokenSymbol::VSKSM => 10 * millicent(*currency_id),  // 1VSKSM = 1KSM
+				TokenSymbol::LINK => 10 * millicent(*currency_id),
 
 				TokenSymbol::KAR |
 				TokenSymbol::KUSD |

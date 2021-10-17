@@ -32,7 +32,7 @@ use sp_runtime::{
 	traits::{BlakeTwo256, IdentifyAccount, Verify},
 	RuntimeDebug,
 };
-use sp_std::{convert::Into, prelude::*};
+use sp_std::prelude::*;
 
 pub use currency::{CurrencyId, DexShare, TokenSymbol};
 

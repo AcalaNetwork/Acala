@@ -188,6 +188,7 @@ create_currency_id! {
 		// 20 - 39: External tokens (e.g. bridged)
 		RENBTC("Ren Protocol BTC", 8) = 20,
 		CASH("Compound CASH", 8) = 21,
+		LINK("Chainlink", 18) = 22,
 		// 40 - 127: Polkadot parachain tokens
 
 		// 128 - 147: Karura & Kusama native tokens

@@ -130,7 +130,7 @@ ecosystem-renvm-bridge = { path = "../../ecosystem-modules/ren/renvm-bridge", de
 ecosystem-starport = { path = "../../ecosystem-modules/starport", default-features = false }
 ecosystem-compound-cash = { path = "../../ecosystem-modules/compound-cash", default-features = false }
 chainbridge = { git = "https://github.com/AcalaNetwork/chainbridge-substrate", default-features = false }
-pallet-chainlink-feed = { git = "https://github.com/smartcontractkit/chainlink-polkadot", default-features = false }
+pallet-chainlink-feed = { git = "https://github.com/smartcontractkit/chainlink-polkadot", branch = "polkadot-v0.9.11", default-features = false }
 ecosystem-chainlink-adaptor = { path = "../../ecosystem-modules/chainlink/chainlink-adaptor", default-features = false }
 
 [build-dependencies]
