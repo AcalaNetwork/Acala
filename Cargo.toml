@@ -296,11 +296,3 @@ cumulus-primitives-timestamp = { git = "https://github.com/paritytech//cumulus",
 cumulus-primitives-utility = { git = "https://github.com/paritytech//cumulus", rev = "ede4d527c4fc5d84c43216b408a873625488574b" }
 cumulus-test-relay-sproof-builder = { git = "https://github.com/paritytech//cumulus", rev = "ede4d527c4fc5d84c43216b408a873625488574b" }
 parachain-info  = { git = "https://github.com/paritytech//cumulus", rev = "ede4d527c4fc5d84c43216b408a873625488574b" }
-
-[patch."https://github.com/paritytech/grandpa-bridge-gadget"]
-beefy-gadget = { git = "https://github.com/paritytech//grandpa-bridge-gadget", rev = "9954b61657dc8899a21b4f2501ee6bd3b7a2dc23" }
-beefy-gadget-rpc = { git = "https://github.com/paritytech//grandpa-bridge-gadget", rev = "9954b61657dc8899a21b4f2501ee6bd3b7a2dc23" }
-beefy-merkle-tree = { git = "https://github.com/paritytech//grandpa-bridge-gadget", rev = "9954b61657dc8899a21b4f2501ee6bd3b7a2dc23" }
-beefy-primitives = { git = "https://github.com/paritytech//grandpa-bridge-gadget", rev = "9954b61657dc8899a21b4f2501ee6bd3b7a2dc23" }
-pallet-beefy = { git = "https://github.com/paritytech//grandpa-bridge-gadget", rev = "9954b61657dc8899a21b4f2501ee6bd3b7a2dc23" }
-pallet-beefy-mmr = { git = "https://github.com/paritytech//grandpa-bridge-gadget", rev = "9954b61657dc8899a21b4f2501ee6bd3b7a2dc23" }
