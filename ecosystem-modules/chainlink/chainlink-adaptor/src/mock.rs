@@ -36,7 +36,7 @@ pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
 pub const KSM: CurrencyId = CurrencyId::Token(TokenSymbol::KSM);
 
 mod chainlink_adaptor {
-	pub use super::super::*;
+	pub use crate::*;
 }
 
 parameter_types! {
