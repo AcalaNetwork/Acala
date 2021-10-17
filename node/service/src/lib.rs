@@ -57,6 +57,7 @@ pub use sp_api::ConstructRuntimeApi;
 
 pub mod chain_spec;
 mod client;
+#[cfg(feature = "with-mandala-runtime")]
 mod instant_finalize;
 
 pub fn default_mock_parachain_inherent_data_provider() -> MockValidationDataInherentDataProvider {

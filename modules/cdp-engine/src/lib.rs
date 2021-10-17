@@ -594,7 +594,7 @@ impl<T: Config> Pallet<T> {
 	fn submit_unsigned_liquidation_tx(currency_id: CurrencyId, who: T::AccountId) {
 		let who = T::Lookup::unlookup(who);
 		let call = Call::<T>::liquidate {
-			currency_id: currency_id,
+			currency_id,
 			who: who.clone(),
 		};
 		if SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(call.into()).is_err() {
@@ -609,7 +609,7 @@ impl<T: Config> Pallet<T> {
 	fn submit_unsigned_settlement_tx(currency_id: CurrencyId, who: T::AccountId) {
 		let who = T::Lookup::unlookup(who);
 		let call = Call::<T>::settle {
-			currency_id: currency_id,
+			currency_id,
 			who: who.clone(),
 		};
 		if SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(call.into()).is_err() {
