@@ -598,10 +598,5 @@ pub trait CallBuilder {
 	/// - extra_fee: Extra fee (in staking currency) used for buy the `weight` and `debt`.
 	/// - weight: the weight limit used for XCM.
 	/// - debt: the weight limit used to process the `call`.
-	fn finalize_call_into_xcm_message(
-		call: Self::RelayChainCall,
-		extra_fee: Self::Balance,
-		weight: Weight,
-		debt: Weight,
-	) -> Xcm<()>;
+	fn finalize_call_into_xcm_message(call: Self::RelayChainCall, extra_fee: Self::Balance, weight: Weight) -> Xcm<()>;
 }

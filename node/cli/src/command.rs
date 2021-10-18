@@ -213,7 +213,7 @@ macro_rules! with_runtime_or_err {
 		if $chain_spec.is_acala() {
 			#[cfg(feature = "with-acala-runtime")]
 			#[allow(unused_imports)]
-			use service::{acala_runtime::{Block, RuntimeApi}, AcalaExecutor as Executor};
+			use service::{acala_runtime::{Block, RuntimeApi}, AcalaExecutorDispatch as Executor};
 			#[cfg(feature = "with-acala-runtime")]
 			$( $code )*
 
@@ -222,7 +222,7 @@ macro_rules! with_runtime_or_err {
 		} else if $chain_spec.is_karura() {
 			#[cfg(feature = "with-karura-runtime")]
 			#[allow(unused_imports)]
-			use service::{karura_runtime::{Block, RuntimeApi}, KaruraExecutor as Executor};
+			use service::{karura_runtime::{Block, RuntimeApi}, KaruraExecutorDispatch as Executor};
 			#[cfg(feature = "with-karura-runtime")]
 			$( $code )*
 
@@ -231,7 +231,7 @@ macro_rules! with_runtime_or_err {
 		} else {
 			#[cfg(feature = "with-mandala-runtime")]
 			#[allow(unused_imports)]
-			use service::{mandala_runtime::{Block, RuntimeApi}, MandalaExecutor as Executor};
+			use service::{mandala_runtime::{Block, RuntimeApi}, MandalaExecutorDispatch as Executor};
 			#[cfg(feature = "with-mandala-runtime")]
 			$( $code )*
 
@@ -346,7 +346,7 @@ pub fn run() -> sc_cli::Result<()> {
 				);
 
 				let polkadot_config =
-					SubstrateCli::create_configuration(&polkadot_cli, &polkadot_cli, config.task_executor.clone())
+					SubstrateCli::create_configuration(&polkadot_cli, &polkadot_cli, config.tokio_handle.clone())
 						.map_err(|err| format!("Relay chain argument error: {}", err))?;
 
 				cmd.run(config, polkadot_config)
@@ -375,12 +375,12 @@ pub fn run() -> sc_cli::Result<()> {
 				{
 					let block: Block = generate_genesis_block(&chain_spec).map_err(|e| format!("{:?}", e))?;
 					let raw_header = block.header().encode();
-					let output_buf = if params.raw {
+					let buf = if params.raw {
 						raw_header
 					} else {
 						format!("0x{:?}", HexDisplay::from(&block.header().encode())).into_bytes()
 					};
-					output_buf
+					buf
 				}
 			});
 
@@ -424,7 +424,7 @@ pub fn run() -> sc_cli::Result<()> {
 			with_runtime_or_err!(chain_spec, {
 				return runner.async_run(|config| {
 					let registry = config.prometheus_config.as_ref().map(|cfg| &cfg.registry);
-					let task_manager = sc_service::TaskManager::new(config.task_executor.clone(), registry)
+					let task_manager = sc_service::TaskManager::new(config.tokio_handle.clone(), registry)
 						.map_err(|e| sc_cli::Error::Service(sc_service::Error::Prometheus(e)))?;
 					Ok((cmd.run::<Block, Executor>(config), task_manager))
 				});
@@ -460,7 +460,7 @@ pub fn run() -> sc_cli::Result<()> {
 				let id = ParaId::from(cli.run.parachain_id.or(para_id).unwrap_or(2000));
 
 				let polkadot_config =
-					SubstrateCli::create_configuration(&polkadot_cli, &polkadot_cli, config.task_executor.clone())
+					SubstrateCli::create_configuration(&polkadot_cli, &polkadot_cli, config.tokio_handle.clone())
 						.map_err(|err| format!("Relay chain argument error: {}", err))?;
 
 				info!("Parachain id: {:?}", id);
@@ -576,10 +576,6 @@ impl CliConfiguration<Self> for RelayChainCli {
 
 	fn rpc_cors(&self, is_dev: bool) -> Result<Option<Vec<String>>> {
 		self.base.base.rpc_cors(is_dev)
-	}
-
-	fn telemetry_external_transport(&self) -> Result<Option<sc_service::config::ExtTransport>> {
-		self.base.base.telemetry_external_transport()
 	}
 
 	fn default_heap_pages(&self) -> Result<Option<u64>> {

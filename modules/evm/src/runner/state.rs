@@ -252,8 +252,15 @@ impl<'config, S: StackState<'config>> StackExecutor<'config, S> {
 	}
 
 	/// Execute a `CREATE` transaction.
-	pub fn transact_create(&mut self, caller: H160, value: U256, init_code: Vec<u8>, gas_limit: u64) -> ExitReason {
-		let transaction_cost = gasometer::create_transaction_cost(&init_code);
+	pub fn transact_create(
+		&mut self,
+		caller: H160,
+		value: U256,
+		init_code: Vec<u8>,
+		gas_limit: u64,
+		access_list: Vec<(H160, Vec<H256>)>, // See EIP-2930
+	) -> ExitReason {
+		let transaction_cost = gasometer::create_transaction_cost(&init_code, &access_list);
 		match self
 			.state
 			.metadata_mut()
@@ -285,8 +292,9 @@ impl<'config, S: StackState<'config>> StackExecutor<'config, S> {
 		init_code: Vec<u8>,
 		salt: H256,
 		gas_limit: u64,
+		access_list: Vec<(H160, Vec<H256>)>, // See EIP-2930
 	) -> ExitReason {
-		let transaction_cost = gasometer::create_transaction_cost(&init_code);
+		let transaction_cost = gasometer::create_transaction_cost(&init_code, &access_list);
 		match self
 			.state
 			.metadata_mut()
@@ -323,8 +331,9 @@ impl<'config, S: StackState<'config>> StackExecutor<'config, S> {
 		value: U256,
 		init_code: Vec<u8>,
 		gas_limit: u64,
+		access_list: Vec<(H160, Vec<H256>)>, // See EIP-2930
 	) -> ExitReason {
-		let transaction_cost = gasometer::create_transaction_cost(&init_code);
+		let transaction_cost = gasometer::create_transaction_cost(&init_code, &access_list);
 		match self
 			.state
 			.metadata_mut()
@@ -356,8 +365,9 @@ impl<'config, S: StackState<'config>> StackExecutor<'config, S> {
 		value: U256,
 		data: Vec<u8>,
 		gas_limit: u64,
+		access_list: Vec<(H160, Vec<H256>)>, // See EIP-2930
 	) -> (ExitReason, Vec<u8>) {
-		let transaction_cost = gasometer::call_transaction_cost(&data);
+		let transaction_cost = gasometer::call_transaction_cost(&data, &access_list);
 		match self
 			.state
 			.metadata_mut()
@@ -828,6 +838,13 @@ impl<'config, S: StackState<'config>> Handler for StackExecutor<'config, S> {
 		}
 	}
 
+	fn is_cold(&self, address: H160, maybe_index: Option<H256>) -> bool {
+		match maybe_index {
+			None => self.state.is_cold(address),
+			Some(index) => self.state.is_storage_cold(address, index),
+		}
+	}
+
 	fn gas_left(&self) -> U256 {
 		U256::from(self.state.metadata().gasometer().gas())
 	}
@@ -935,7 +952,8 @@ impl<'config, S: StackState<'config>> Handler for StackExecutor<'config, S> {
 			self.state.metadata_mut().gasometer_mut().record_cost(cost)?;
 		} else {
 			let is_static = self.state.metadata().is_static();
-			let (gas_cost, memory_cost) =
+			// TODO: EIP-2930
+			let (gas_cost, _storage_target, memory_cost) =
 				gasometer::dynamic_opcode_cost(context.address, opcode, stack, is_static, self.config, self)?;
 
 			let gasometer = &mut self.state.metadata_mut().gasometer_mut();

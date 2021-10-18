@@ -69,7 +69,6 @@ pub mod module {
 
 	#[pallet::event]
 	#[pallet::generate_deposit(fn deposit_event)]
-	#[pallet::metadata(T::BlockNumber = "BlockNumber")]
 	pub enum Event<T: Config> {
 		/// Scheduled session duration. \[block_number, session_index, session_duration\]
 		ScheduledSessionDuration(T::BlockNumber, SessionIndex, T::BlockNumber),

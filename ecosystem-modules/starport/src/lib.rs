@@ -45,6 +45,7 @@ use frame_system::{ensure_signed, pallet_prelude::*};
 use module_support::CompoundCashTrait;
 use orml_traits::MultiCurrency;
 use primitives::{Balance, CashYieldIndex, CurrencyId, Moment, TokenSymbol};
+use scale_info::TypeInfo;
 use sp_core::H256;
 use sp_runtime::{
 	traits::{AccountIdConversion, BlakeTwo256, Hash},
@@ -110,7 +111,6 @@ pub mod module {
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
-	#[pallet::metadata(Balance = "Balance", T::AccountId = "AccountId")]
 	pub enum Event<T: Config> {
 		/// User has locked some asset and uploaded them into Compound. [currency_id, amount, user]
 		AssetLockedTo(CurrencyId, Balance, T::AccountId),
@@ -129,7 +129,7 @@ pub mod module {
 		FutureYieldSet(Balance, CashYieldIndex, Moment),
 	}
 
-	#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq)]
+	#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, TypeInfo)]
 	pub struct GatewayNotice<AccountId> {
 		pub id: u64,
 		pub payload: GatewayNoticePayload<AccountId>,
@@ -141,7 +141,7 @@ pub mod module {
 		}
 	}
 
-	#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq)]
+	#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, TypeInfo)]
 	pub enum GatewayNoticePayload<AccountId> {
 		/// Update the current supply cap for an asset. Only assets that have spare supplies.
 		/// can be locked or uploaded to the Compound chain.

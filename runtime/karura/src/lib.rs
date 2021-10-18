@@ -84,7 +84,7 @@ pub use frame_support::{
 	construct_runtime, log, parameter_types,
 	traits::{
 		Contains, ContainsLengthBound, Currency as PalletCurrency, EnsureOrigin, Everything, Get, Imbalance,
-		InstanceFilter, IsSubType, IsType, KeyOwnerProofSystem, LockIdentifier, OnUnbalanced, Randomness,
+		InstanceFilter, IsSubType, IsType, KeyOwnerProofSystem, LockIdentifier, Nothing, OnUnbalanced, Randomness,
 		SortedMembers, U128CurrencyToVote,
 	},
 	weights::{constants::RocksDbWeight, IdentityFee, Weight},
@@ -212,19 +212,6 @@ impl Contains<Call> for BaseCallFilter {
 			return false;
 		}
 
-		let is_bnc_transfer = matches!(
-			call,
-			Call::Currencies(module_currencies::Call::transfer(
-				_,
-				CurrencyId::Token(TokenSymbol::BNC),
-				_
-			))
-		);
-		if is_bnc_transfer {
-			// BNC transfer disabled by request of Bifrost team
-			return false;
-		}
-
 		true
 	}
 }
@@ -258,9 +245,14 @@ impl frame_system::Config for Runtime {
 	type OnSetCode = cumulus_pallet_parachain_system::ParachainSetCode<Self>;
 }
 
+parameter_types! {
+	pub const MaxAuthorities: u32 = 32;
+}
+
 impl pallet_aura::Config for Runtime {
 	type AuthorityId = AuraId;
 	type DisabledValidators = ();
+	type MaxAuthorities = MaxAuthorities;
 }
 
 parameter_types! {
@@ -636,6 +628,7 @@ impl pallet_democracy::Config for Runtime {
 	type EnactmentPeriod = EnactmentPeriod;
 	type LaunchPeriod = LaunchPeriod;
 	type VotingPeriod = VotingPeriod;
+	type VoteLockingPeriod = EnactmentPeriod; // Same as EnactmentPeriod
 	type MinimumDeposit = MinimumDeposit;
 	/// A straight majority of the council can decide what their next motion is.
 	type ExternalOrigin = EnsureRootOrHalfGeneralCouncil;
@@ -1070,7 +1063,7 @@ impl module_cdp_treasury::Config for Runtime {
 
 impl module_transaction_pause::Config for Runtime {
 	type Event = Event;
-	type UpdateOrigin = EnsureRootOrThreeFourthsGeneralCouncil;
+	type UpdateOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
 	type WeightInfo = weights::module_transaction_pause::WeightInfo<Runtime>;
 }
 
@@ -1198,7 +1191,7 @@ impl InstanceFilter<Call> for ProxyType {
 			// otherwise `BadOrigin` will be returned in Call::Utility.
 			_ if matches!(c, Call::Utility(..)) => true,
 			ProxyType::Any => true,
-			ProxyType::CancelProxy => matches!(c, Call::Proxy(pallet_proxy::Call::reject_announcement(..))),
+			ProxyType::CancelProxy => matches!(c, Call::Proxy(pallet_proxy::Call::reject_announcement { .. })),
 			ProxyType::Governance => {
 				matches!(
 					c,
@@ -1211,20 +1204,20 @@ impl InstanceFilter<Call> for ProxyType {
 				)
 			}
 			ProxyType::Auction => {
-				matches!(c, Call::Auction(orml_auction::Call::bid(..)))
+				matches!(c, Call::Auction(orml_auction::Call::bid { .. }))
 			}
 			ProxyType::Swap => {
 				matches!(
 					c,
-					Call::Dex(module_dex::Call::swap_with_exact_supply(..))
-						| Call::Dex(module_dex::Call::swap_with_exact_target(..))
+					Call::Dex(module_dex::Call::swap_with_exact_supply { .. })
+						| Call::Dex(module_dex::Call::swap_with_exact_target { .. })
 				)
 			}
 			ProxyType::Loan => {
 				matches!(
 					c,
-					Call::Honzon(module_honzon::Call::adjust_loan(..))
-						| Call::Honzon(module_honzon::Call::close_loan_has_debit_by_dex(..))
+					Call::Honzon(module_honzon::Call::adjust_loan { .. })
+						| Call::Honzon(module_honzon::Call::close_loan_has_debit_by_dex { .. })
 				)
 			}
 		}
@@ -1397,6 +1390,7 @@ pub type XcmOriginToCallOrigin = (
 parameter_types! {
 	// One XCM operation is 200_000_000 weight, cross-chain transfer ~= 2x of transfer.
 	pub const UnitWeightCost: Weight = 200_000_000;
+	pub const MaxInstructions: u32 = 100;
 	pub KsmPerSecond: (AssetId, u128) = (MultiLocation::parent().into(), ksm_per_second());
 	pub KusdPerSecond: (AssetId, u128) = (
 		MultiLocation::new(
@@ -1465,10 +1459,11 @@ impl xcm_executor::Config for XcmConfig {
 	type IsTeleporter = ();
 	type LocationInverter = LocationInverter<Ancestry>;
 	type Barrier = Barrier;
-	type Weigher = FixedWeightBounds<UnitWeightCost, Call>;
-	// Only receiving KSM is handled, and all fees must be paid in KSM.
+	type Weigher = FixedWeightBounds<UnitWeightCost, Call, MaxInstructions>;
 	type Trader = Trader;
-	type ResponseHandler = (); // Don't handle responses for now.
+	type ResponseHandler = PolkadotXcm;
+	type AssetTrap = PolkadotXcm;
+	type AssetClaims = PolkadotXcm;
 	type SubscriptionService = PolkadotXcm;
 }
 
@@ -1492,12 +1487,16 @@ impl pallet_xcm::Config for Runtime {
 	type SendXcmOrigin = EnsureXcmOrigin<Origin, LocalOriginToLocation>;
 	type XcmRouter = XcmRouter;
 	type ExecuteXcmOrigin = EnsureXcmOrigin<Origin, LocalOriginToLocation>;
-	type XcmExecuteFilter = Everything;
+	type XcmExecuteFilter = Nothing;
 	type XcmExecutor = XcmExecutor<XcmConfig>;
-	type XcmTeleportFilter = ();
+	type XcmTeleportFilter = Nothing;
 	type XcmReserveTransferFilter = Everything;
-	type Weigher = FixedWeightBounds<UnitWeightCost, Call>;
+	type Weigher = FixedWeightBounds<UnitWeightCost, Call, MaxInstructions>;
 	type LocationInverter = LocationInverter<Ancestry>;
+	type Origin = Origin;
+	type Call = Call;
+	const VERSION_DISCOVERY_QUEUE_SIZE: u32 = 100;
+	type AdvertisedXcmVersion = pallet_xcm::CurrentXcmVersion;
 }
 
 impl cumulus_pallet_xcm::Config for Runtime {
@@ -1547,7 +1546,9 @@ parameter_types! {
 	pub MaxScheduledUnbonds: u32 = 14;
 	pub ParachainAccount: AccountId = ParachainInfo::get().into_account();
 	pub SubAccountIndex: u16 = RelayChainSubAccountId::HomaLite as u16;
-	pub const XcmUnbondFee: Balance = 600_000_000; // From homa-lite integration test.
+	// Calculated from polkadot/xcm/xcm-builder: fn buy_weight
+	// We must charge higher than what Kusama required (533_333_300, obtained from integration test)
+	pub XcmUnbondFee: Balance = 60 * millicent(KSM);
 }
 impl module_homa_lite::Config for Runtime {
 	type Event = Event;
@@ -1693,7 +1694,7 @@ impl orml_xtokens::Config for Runtime {
 	type AccountIdToMultiLocation = AccountIdToMultiLocation;
 	type SelfLocation = SelfLocation;
 	type XcmExecutor = XcmExecutor<XcmConfig>;
-	type Weigher = FixedWeightBounds<UnitWeightCost, Call>;
+	type Weigher = FixedWeightBounds<UnitWeightCost, Call, MaxInstructions>;
 	type BaseXcmWeight = BaseXcmWeight;
 	type LocationInverter = LocationInverter<Ancestry>;
 }
@@ -1875,7 +1876,7 @@ impl_runtime_apis! {
 
 	impl sp_api::Metadata<Block> for Runtime {
 		fn metadata() -> OpaqueMetadata {
-			Runtime::metadata().into()
+			OpaqueMetadata::new(Runtime::metadata().into())
 		}
 	}
 
@@ -1922,7 +1923,7 @@ impl_runtime_apis! {
 		}
 
 		fn authorities() -> Vec<AuraId> {
-			Aura::authorities()
+			Aura::authorities().into_inner()
 		}
 	}
 
@@ -2055,24 +2056,24 @@ impl_runtime_apis! {
 				.map_err(|_| sp_runtime::DispatchError::Other("Invalid parameter extrinsic, decode failed"))?;
 
 			let request = match utx.function {
-				Call::EVM(module_evm::Call::call(to, data, value, gas_limit, storage_limit)) => {
+				Call::EVM(module_evm::Call::call{target, input, value, gas_limit, storage_limit}) => {
 					Some(EstimateResourcesRequest {
 						from: None,
-						to: Some(to),
+						to: Some(target),
 						gas_limit: Some(gas_limit),
 						storage_limit: Some(storage_limit),
 						value: Some(value),
-						data: Some(data),
+						data: Some(input),
 					})
 				}
-				Call::EVM(module_evm::Call::create(data, value, gas_limit, storage_limit)) => {
+				Call::EVM(module_evm::Call::create{init, value, gas_limit, storage_limit}) => {
 					Some(EstimateResourcesRequest {
 						from: None,
 						to: None,
 						gas_limit: Some(gas_limit),
 						storage_limit: Some(storage_limit),
 						value: Some(value),
-						data: Some(data),
+						data: Some(init),
 					})
 				}
 				_ => None,
@@ -2090,9 +2091,16 @@ impl_runtime_apis! {
 
 	#[cfg(feature = "try-runtime")]
 	impl frame_try_runtime::TryRuntime<Block> for Runtime {
-		fn on_runtime_upgrade() -> Result<(Weight, Weight), sp_runtime::RuntimeString> {
-			let weight = Executive::try_runtime_upgrade()?;
-			Ok((weight, RuntimeBlockWeights::get().max_block))
+		fn on_runtime_upgrade() -> (Weight, Weight) {
+			// NOTE: intentional unwrap: we don't want to propagate the error backwards, and want to
+			// have a backtrace here. If any of the pre/post migration checks fail, we shall stop
+			// right here and right now.
+			let weight = Executive::try_runtime_upgrade().unwrap();
+			(weight, RuntimeBlockWeights::get().max_block)
+		}
+
+		fn execute_block_no_check(block: Block) -> Weight {
+			Executive::execute_block_no_check(block)
 		}
 	}
 

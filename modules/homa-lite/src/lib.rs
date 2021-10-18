@@ -75,7 +75,7 @@ pub mod module {
 		type LiquidCurrencyId: Get<CurrencyId>;
 
 		/// Origin represented Governance
-		type GovernanceOrigin: EnsureOrigin<Self::Origin>;
+		type GovernanceOrigin: EnsureOrigin<<Self as frame_system::Config>::Origin>;
 
 		/// The minimal amount of Staking currency to be locked
 		#[pallet::constant]
@@ -162,7 +162,6 @@ pub mod module {
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
-	#[pallet::metadata(T::AccountId = "AccountId", RelayChainBlockNumberOf<T> = "RelayChainBlockNumber")]
 	pub enum Event<T: Config> {
 		/// The user has Staked some currencies to mint Liquid Currency.
 		/// \[user, amount_staked, amount_minted\]
@@ -773,7 +772,7 @@ pub mod module {
 		fn process_scheduled_unbond(staking_amount: Balance) -> DispatchResult {
 			let msg = Self::construct_xcm_unreserve_message(T::ParachainAccount::get(), staking_amount);
 
-			let res = pallet_xcm::Pallet::<T>::send_xcm(Here, Parent.into(), msg);
+			let res = pallet_xcm::Pallet::<T>::send_xcm(Here, Parent, msg);
 			log::debug!("on_idle XCM result: {:?}", res);
 			ensure!(res.is_ok(), Error::<T>::XcmFailed);
 
@@ -857,7 +856,6 @@ pub mod module {
 			T::RelayChainCallBuilder::finalize_call_into_xcm_message(
 				xcm_message,
 				T::XcmUnbondFee::get(),
-				Self::xcm_dest_weight(),
 				Self::xcm_dest_weight(),
 			)
 		}

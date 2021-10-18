@@ -20,7 +20,11 @@
 
 #![cfg(test)]
 
-use frame_support::{assert_ok, ord_parameter_types, parameter_types, traits::GenesisBuild, PalletId};
+use frame_support::{
+	assert_ok, ord_parameter_types, parameter_types,
+	traits::{Everything, GenesisBuild, Nothing},
+	PalletId,
+};
 use orml_traits::parameter_type_with_key;
 use primitives::{CurrencyId, ReserveIdentifier, TokenSymbol};
 use sp_core::H256;
@@ -66,7 +70,7 @@ impl frame_system::Config for Runtime {
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
 	type DbWeight = ();
-	type BaseCallFilter = ();
+	type BaseCallFilter = Everything;
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
 	type OnSetCode = ();
@@ -95,7 +99,7 @@ impl tokens::Config for Runtime {
 	type OnDust = tokens::TransferDust<Runtime, DustAccount>;
 	type WeightInfo = ();
 	type MaxLocks = MaxLocks;
-	type DustRemovalWhitelist = ();
+	type DustRemovalWhitelist = Nothing;
 }
 
 pub const NATIVE_CURRENCY_ID: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
