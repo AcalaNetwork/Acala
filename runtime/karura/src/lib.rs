@@ -2012,7 +2012,7 @@ impl OnRuntimeUpgrade for TechnicalCommitteeMembershipStoragePrefixMigration {
 	#[cfg(feature = "try-runtime")]
 	fn post_upgrade() -> Result<(), &'static str> {
 		use frame_support::traits::PalletInfo;
-		let name = <Runtime as frame_system::Config>::PalletInfo::name::<OperatorMembershipAcala>()
+		let name = <Runtime as frame_system::Config>::PalletInfo::name::<TechnicalCommitteeMembership>()
 			.expect("TechnicalCommitteeMembership is part of runtime, so it has a name; qed");
 		pallet_membership::migrations::v4::post_migrate::<TechnicalCommitteeMembership, _>(
 			TECHNICAL_COMMITTEE_MEMBERSHIP_OLD_PREFIX,
