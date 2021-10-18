@@ -113,14 +113,23 @@ jobs:
           pinataKey: ${{ secrets.PINATA_KEY }}
           pinataSecret: ${{ secrets.PINATA_SECRET }}
 
+      - name: Read files
+        id: read_files
+        run: |
+          echo "::set-output name=subwasm_info::$(cat ${{ env.CHAIN }}-subwam-info.txt)"
+          echo "::set-output name=srtool_details::$(cat ${{ env.CHAIN }}-srtool-digest.json)"
+          echo "::set-output name=wasm_diff::$(cat ${{ env.CHAIN }}-diff.txt)"
+
       - name: Generate note
         id: generate-note
         uses: AcalaNetwork/acala-release-note-action@master
+        env:
+          subwasm_info: ${{steps.read_files.outputs.subwasm_info}}
+          srtool_details: ${{steps.read_files.outputs.srtool_details}}
+          wasm_diff: ${{steps.read_files.outputs.wasm_diff}}
         with:
           scope: ${{ env.SCOPE }}
           chain: ${{ env.CHAIN }}
-          srtool_details: ${{ env.CHAIN }}-srtool-digest.json
-          subwasm_info: ${{ env.CHAIN }}-subwam-info.txt
           tag: ${{ env.TAG }}
           previous_tag: ${{ env.PREVIOUS_TAG }}
 
