@@ -27,6 +27,7 @@ use frame_support::{
 	traits::ExtrinsicCall,
 	weights::{DispatchInfo, GetDispatchInfo},
 };
+use scale_info::TypeInfo;
 use sp_core::{H160, H256, U256};
 use sp_io::{crypto::secp256k1_ecdsa_recover, hashing::keccak_256};
 use sp_runtime::{
@@ -37,7 +38,8 @@ use sp_runtime::{
 };
 use sp_std::{marker::PhantomData, prelude::*};
 
-#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug)]
+#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo)]
+#[scale_info(skip_type_params(ConvertTx))]
 pub struct AcalaUncheckedExtrinsic<Call, Extra: SignedExtension, ConvertTx>(
 	pub UncheckedExtrinsic<Address, Call, AcalaMultiSignature, Extra>,
 	PhantomData<ConvertTx>,

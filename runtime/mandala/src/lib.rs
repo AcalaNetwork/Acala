@@ -207,7 +207,7 @@ pub struct BaseCallFilter;
 impl Contains<Call> for BaseCallFilter {
 	fn contains(call: &Call) -> bool {
 		!module_transaction_pause::PausedTransactionFilter::<Runtime>::contains(call)
-			&& !matches!(call, Call::Democracy(pallet_democracy::Call::propose(..)),)
+			&& !matches!(call, Call::Democracy(pallet_democracy::Call::propose { .. }),)
 	}
 }
 
@@ -240,9 +240,14 @@ impl frame_system::Config for Runtime {
 	type OnSetCode = cumulus_pallet_parachain_system::ParachainSetCode<Self>;
 }
 
+parameter_types! {
+	pub const MaxAuthorities: u32 = 32;
+}
+
 impl pallet_aura::Config for Runtime {
 	type AuthorityId = AuraId;
 	type DisabledValidators = ();
+	type MaxAuthorities = MaxAuthorities;
 }
 
 parameter_types! {
@@ -646,6 +651,7 @@ impl pallet_democracy::Config for Runtime {
 	type EnactmentPeriod = EnactmentPeriod;
 	type LaunchPeriod = LaunchPeriod;
 	type VotingPeriod = VotingPeriod;
+	type VoteLockingPeriod = EnactmentPeriod; // Same as EnactmentPeriod
 	type MinimumDeposit = MinimumDeposit;
 	/// A straight majority of the council can decide what their next motion is.
 	type ExternalOrigin = EnsureRootOrHalfGeneralCouncil;
@@ -1399,7 +1405,7 @@ impl InstanceFilter<Call> for ProxyType {
 			// otherwise `BadOrigin` will be returned in Call::Utility.
 			_ if matches!(c, Call::Utility(..)) => true,
 			ProxyType::Any => true,
-			ProxyType::CancelProxy => matches!(c, Call::Proxy(pallet_proxy::Call::reject_announcement(..))),
+			ProxyType::CancelProxy => matches!(c, Call::Proxy(pallet_proxy::Call::reject_announcement { .. })),
 			ProxyType::Governance => {
 				matches!(
 					c,
@@ -1413,20 +1419,20 @@ impl InstanceFilter<Call> for ProxyType {
 				)
 			}
 			ProxyType::Auction => {
-				matches!(c, Call::Auction(orml_auction::Call::bid(..)))
+				matches!(c, Call::Auction(orml_auction::Call::bid { .. }))
 			}
 			ProxyType::Swap => {
 				matches!(
 					c,
-					Call::Dex(module_dex::Call::swap_with_exact_supply(..))
-						| Call::Dex(module_dex::Call::swap_with_exact_target(..))
+					Call::Dex(module_dex::Call::swap_with_exact_supply { .. })
+						| Call::Dex(module_dex::Call::swap_with_exact_target { .. })
 				)
 			}
 			ProxyType::Loan => {
 				matches!(
 					c,
-					Call::Honzon(module_honzon::Call::adjust_loan(..))
-						| Call::Honzon(module_honzon::Call::close_loan_has_debit_by_dex(..))
+					Call::Honzon(module_honzon::Call::adjust_loan { .. })
+						| Call::Honzon(module_honzon::Call::close_loan_has_debit_by_dex { .. })
 				)
 			}
 		}
@@ -1594,19 +1600,6 @@ impl module_session_manager::Config for Runtime {
 }
 
 parameter_types! {
-	pub const LocalChainId: chainbridge::ChainId = 2;
-	pub const ProposalLifetime: BlockNumber = 15 * MINUTES;
-}
-
-impl chainbridge::Config for Runtime {
-	type Event = Event;
-	type AdminOrigin = EnsureRoot<AccountId>;
-	type Proposal = Call;
-	type ChainId = LocalChainId;
-	type ProposalLifetime = ProposalLifetime;
-}
-
-parameter_types! {
 	pub ReservedXcmpWeight: Weight = RuntimeBlockWeights::get().max_block / 4;
 	pub ReservedDmpWeight: Weight = RuntimeBlockWeights::get().max_block / 4;
 }
@@ -1667,6 +1660,7 @@ pub type XcmOriginToCallOrigin = (
 parameter_types! {
 	// One XCM operation is 1_000_000 weight - almost certainly a conservative estimate.
 	pub UnitWeightCost: Weight = 1_000_000;
+	pub const MaxInstructions: u32 = 100;
 	pub DotPerSecond: (AssetId, u128) = (MultiLocation::parent().into(), dot_per_second());
 }
 
@@ -1701,10 +1695,12 @@ impl xcm_executor::Config for XcmConfig {
 	type IsTeleporter = ();
 	type LocationInverter = LocationInverter<Ancestry>;
 	type Barrier = Barrier;
-	type Weigher = FixedWeightBounds<UnitWeightCost, Call>;
+	type Weigher = FixedWeightBounds<UnitWeightCost, Call, MaxInstructions>;
 	// Only receiving DOT is handled, and all fees must be paid in DOT.
 	type Trader = FixedRateOfFungible<DotPerSecond, ToTreasury>;
 	type ResponseHandler = (); // Don't handle responses for now.
+	type AssetTrap = ();
+	type AssetClaims = ();
 	type SubscriptionService = PolkadotXcm;
 }
 
@@ -1731,10 +1727,14 @@ impl pallet_xcm::Config for Runtime {
 	type ExecuteXcmOrigin = EnsureXcmOrigin<Origin, LocalOriginToLocation>;
 	type XcmExecuteFilter = Nothing;
 	type XcmExecutor = XcmExecutor<XcmConfig>;
-	type XcmTeleportFilter = ();
+	type XcmTeleportFilter = Nothing;
 	type XcmReserveTransferFilter = Everything;
-	type Weigher = FixedWeightBounds<UnitWeightCost, Call>;
+	type Weigher = FixedWeightBounds<UnitWeightCost, Call, MaxInstructions>;
 	type LocationInverter = LocationInverter<Ancestry>;
+	type Origin = Origin;
+	type Call = Call;
+	const VERSION_DISCOVERY_QUEUE_SIZE: u32 = 100;
+	type AdvertisedXcmVersion = pallet_xcm::CurrentXcmVersion;
 }
 
 impl cumulus_pallet_xcm::Config for Runtime {
@@ -1851,7 +1851,7 @@ impl orml_xtokens::Config for Runtime {
 	type AccountIdToMultiLocation = AccountIdToMultiLocation;
 	type SelfLocation = SelfLocation;
 	type XcmExecutor = XcmExecutor<XcmConfig>;
-	type Weigher = FixedWeightBounds<UnitWeightCost, Call>;
+	type Weigher = FixedWeightBounds<UnitWeightCost, Call, MaxInstructions>;
 	type BaseXcmWeight = BaseXcmWeight;
 	type LocationInverter = LocationInverter<Ancestry>;
 }
@@ -1939,7 +1939,14 @@ pub struct ConvertEthereumTx;
 impl Convert<(Call, SignedExtra), Result<EthereumTransactionMessage, InvalidTransaction>> for ConvertEthereumTx {
 	fn convert((call, extra): (Call, SignedExtra)) -> Result<EthereumTransactionMessage, InvalidTransaction> {
 		match call {
-			Call::EVM(module_evm::Call::eth_call(action, input, value, gas_limit, storage_limit, valid_until)) => {
+			Call::EVM(module_evm::Call::eth_call {
+				action,
+				input,
+				value,
+				gas_limit,
+				storage_limit,
+				valid_until,
+			}) => {
 				if System::block_number() > valid_until {
 					return Err(InvalidTransaction::Stale);
 				}
@@ -2094,9 +2101,8 @@ construct_runtime! {
 
 		// Ecosystem modules
 		RenVmBridge: ecosystem_renvm_bridge::{Pallet, Call, Config, Storage, Event<T>, ValidateUnsigned} = 150,
-		ChainBridge: chainbridge::{Pallet, Call, Storage, Event<T>} = 151,
-		Starport: ecosystem_starport::{Pallet, Call, Storage, Event<T>, Config} = 152,
-		CompoundCash: ecosystem_compound_cash::{Pallet, Storage, Event<T>} = 153,
+		Starport: ecosystem_starport::{Pallet, Call, Storage, Event<T>, Config} = 151,
+		CompoundCash: ecosystem_compound_cash::{Pallet, Storage, Event<T>} = 152,
 
 		// Parachain
 		ParachainSystem: cumulus_pallet_parachain_system::{Pallet, Call, Storage, Inherent, Config, Event<T>} = 160,
@@ -2151,7 +2157,7 @@ impl_runtime_apis! {
 
 	impl sp_api::Metadata<Block> for Runtime {
 		fn metadata() -> OpaqueMetadata {
-			Runtime::metadata().into()
+			OpaqueMetadata::new(Runtime::metadata().into())
 		}
 	}
 
@@ -2198,7 +2204,7 @@ impl_runtime_apis! {
 		}
 
 		fn authorities() -> Vec<AuraId> {
-			Aura::authorities()
+			Aura::authorities().into_inner()
 		}
 	}
 
@@ -2330,24 +2336,24 @@ impl_runtime_apis! {
 				.map_err(|_| sp_runtime::DispatchError::Other("Invalid parameter extrinsic, decode failed"))?;
 
 			let request = match utx.0.function {
-				Call::EVM(module_evm::Call::call(to, data, value, gas_limit, storage_limit)) => {
+				Call::EVM(module_evm::Call::call{target, input, value, gas_limit, storage_limit}) => {
 					Some(EstimateResourcesRequest {
 						from: None,
-						to: Some(to),
+						to: Some(target),
 						gas_limit: Some(gas_limit),
 						storage_limit: Some(storage_limit),
 						value: Some(value),
-						data: Some(data),
+						data: Some(input),
 					})
 				}
-				Call::EVM(module_evm::Call::create(data, value, gas_limit, storage_limit)) => {
+				Call::EVM(module_evm::Call::create{init, value, gas_limit, storage_limit}) => {
 					Some(EstimateResourcesRequest {
 						from: None,
 						to: None,
 						gas_limit: Some(gas_limit),
 						storage_limit: Some(storage_limit),
 						value: Some(value),
-						data: Some(data),
+						data: Some(init),
 					})
 				}
 				_ => None,
@@ -2365,9 +2371,16 @@ impl_runtime_apis! {
 
 	#[cfg(feature = "try-runtime")]
 	impl frame_try_runtime::TryRuntime<Block> for Runtime {
-		fn on_runtime_upgrade() -> Result<(Weight, Weight), sp_runtime::RuntimeString> {
-			let weight = Executive::try_runtime_upgrade()?;
-			Ok((weight, RuntimeBlockWeights::get().max_block))
+		fn on_runtime_upgrade() -> (Weight, Weight) {
+			// NOTE: intentional unwrap: we don't want to propagate the error backwards, and want to
+			// have a backtrace here. If any of the pre/post migration checks fail, we shall stop
+			// right here and right now.
+			let weight = Executive::try_runtime_upgrade().unwrap();
+			(weight, RuntimeBlockWeights::get().max_block)
+		}
+
+		fn execute_block_no_check(block: Block) -> Weight {
+			Executive::execute_block_no_check(block)
 		}
 	}
 
@@ -2561,14 +2574,5 @@ mod tests {
 			reduce the size of Call.
 			If the limit is too strong, maybe consider increasing the limit",
 		);
-	}
-
-	//TODO: remove after paritytech/substrate#9890
-	#[test]
-	fn ensure_block_hash_count_less_than_democracy_launch_period() {
-		// Ensure LaunchPeriod > BlockHashCount
-		// Democracy will take full block weight.
-		// `ts-tests` need to reach BlockHashCount.
-		assert!(BlockHashCount::get() < LaunchPeriod::get());
 	}
 }

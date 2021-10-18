@@ -507,7 +507,7 @@ fn offchain_worker_cancels_auction_in_shutdown() {
 		run_to_block_offchain(3);
 		let tx = pool_state.write().transactions.pop().unwrap();
 		let tx = Extrinsic::decode(&mut &*tx).unwrap();
-		if let MockCall::AuctionManagerModule(crate::Call::cancel(auction_id)) = tx.call {
+		if let MockCall::AuctionManagerModule(crate::Call::cancel { id: auction_id }) = tx.call {
 			assert_ok!(AuctionManagerModule::cancel(Origin::none(), auction_id));
 		}
 
@@ -541,7 +541,7 @@ fn offchain_worker_max_iterations_check() {
 		// now offchain worker will cancel one auction but the other one will cancel next block
 		let tx = pool_state.write().transactions.pop().unwrap();
 		let tx = Extrinsic::decode(&mut &*tx).unwrap();
-		if let MockCall::AuctionManagerModule(crate::Call::cancel(auction_id)) = tx.call {
+		if let MockCall::AuctionManagerModule(crate::Call::cancel { id: auction_id }) = tx.call {
 			assert_ok!(AuctionManagerModule::cancel(Origin::none(), auction_id));
 		}
 		assert!(
@@ -555,7 +555,7 @@ fn offchain_worker_max_iterations_check() {
 		// now offchain worker will cancel the next auction
 		let tx = pool_state.write().transactions.pop().unwrap();
 		let tx = Extrinsic::decode(&mut &*tx).unwrap();
-		if let MockCall::AuctionManagerModule(crate::Call::cancel(auction_id)) = tx.call {
+		if let MockCall::AuctionManagerModule(crate::Call::cancel { id: auction_id }) = tx.call {
 			assert_ok!(AuctionManagerModule::cancel(Origin::none(), auction_id));
 		}
 		assert!(AuctionManagerModule::collateral_auctions(1).is_none());

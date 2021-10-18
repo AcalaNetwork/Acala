@@ -79,7 +79,7 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 			// hash: '0x456d37c868520b362bbf5baf1b19752818eba49cc92c1a512e2e80d1ccfbc18b',
 			type: null
 		});
-		
+
 		const tx = context.provider.api.tx.evm.ethCall(
 			{ Create: null },
 			value.data,
@@ -127,7 +127,7 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 					"value": 0,
 					"gas_limit": 2100000,
 					"storage_limit": 20000,
-					"_valid_until": 104
+					"valid_until": 104
 				  }
 				}
 			  }`.toString().replace(/\s/g, '')
@@ -196,7 +196,7 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 			// hash: '0x67274cd0347795d0e2986021a19b1347948a0a93e1fb31a315048320fbfcae8a',
 			type: null
 		});
-		
+
 		const tx = context.provider.api.tx.evm.ethCall(
 			{ Call: value.to },
 			value.data,
@@ -244,7 +244,7 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 					"value": 0,
 					"gas_limit": 210000,
 					"storage_limit": 1000,
-					"_valid_until": 106
+					"valid_until": 106
 				  }
 				}
 			  }`.toString().replace(/\s/g, '')

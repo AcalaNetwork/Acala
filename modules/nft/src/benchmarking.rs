@@ -229,7 +229,7 @@ mod mock {
 		pub const AnnouncementDepositBase: u64 = 1;
 		pub const AnnouncementDepositFactor: u64 = 1;
 	}
-	#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Encode, Decode, RuntimeDebug, MaxEncodedLen)]
+	#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Encode, Decode, RuntimeDebug, MaxEncodedLen, TypeInfo)]
 	pub enum ProxyType {
 		Any,
 		JustTransfer,
@@ -244,7 +244,7 @@ mod mock {
 		fn filter(&self, c: &Call) -> bool {
 			match self {
 				ProxyType::Any => true,
-				ProxyType::JustTransfer => matches!(c, Call::Balances(pallet_balances::Call::transfer(..))),
+				ProxyType::JustTransfer => matches!(c, Call::Balances(pallet_balances::Call::transfer { .. })),
 				ProxyType::JustUtility => matches!(c, Call::Utility(..)),
 			}
 		}
@@ -257,7 +257,7 @@ mod mock {
 		fn contains(c: &Call) -> bool {
 			match *c {
 				// Remark is used as a no-op call in the benchmarking
-				Call::System(SystemCall::remark(_)) => true,
+				Call::System(SystemCall::remark { .. }) => true,
 				Call::System(_) => false,
 				_ => true,
 			}

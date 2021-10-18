@@ -24,7 +24,7 @@ use crate as nft;
 use codec::{Decode, Encode};
 use frame_support::{
 	construct_runtime, ord_parameter_types, parameter_types,
-	traits::{Contains, InstanceFilter},
+	traits::{Contains, InstanceFilter, Nothing},
 	RuntimeDebug,
 };
 use frame_system::EnsureSignedBy;
@@ -96,7 +96,7 @@ parameter_types! {
 	pub const AnnouncementDepositBase: u64 = 1;
 	pub const AnnouncementDepositFactor: u64 = 1;
 }
-#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Encode, Decode, RuntimeDebug, MaxEncodedLen)]
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Encode, Decode, RuntimeDebug, MaxEncodedLen, TypeInfo)]
 pub enum ProxyType {
 	Any,
 	JustTransfer,
@@ -111,8 +111,8 @@ impl InstanceFilter<Call> for ProxyType {
 	fn filter(&self, c: &Call) -> bool {
 		match self {
 			ProxyType::Any => true,
-			ProxyType::JustTransfer => matches!(c, Call::Balances(pallet_balances::Call::transfer(..))),
-			ProxyType::JustUtility => matches!(c, Call::Utility(..)),
+			ProxyType::JustTransfer => matches!(c, Call::Balances(pallet_balances::Call::transfer { .. })),
+			ProxyType::JustUtility => matches!(c, Call::Utility { .. }),
 		}
 	}
 	fn is_superset(&self, o: &Self) -> bool {
@@ -124,7 +124,7 @@ impl Contains<Call> for BaseFilter {
 	fn contains(c: &Call) -> bool {
 		match *c {
 			// Remark is used as a no-op call in the benchmarking
-			Call::System(SystemCall::remark(_)) => true,
+			Call::System(SystemCall::remark { .. }) => true,
 			Call::System(_) => false,
 			_ => true,
 		}
@@ -166,7 +166,7 @@ impl orml_tokens::Config for Runtime {
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = ();
 	type MaxLocks = ();
-	type DustRemovalWhitelist = ();
+	type DustRemovalWhitelist = Nothing;
 }
 
 pub const NATIVE_CURRENCY_ID: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);

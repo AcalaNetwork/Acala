@@ -105,26 +105,27 @@ impl XcmTransfer<AccountId, Balance, CurrencyId> for MockXcm {
 	}
 }
 impl InvertLocation for MockXcm {
-	fn invert_location(l: &MultiLocation) -> MultiLocation {
-		l.clone()
+	fn invert_location(l: &MultiLocation) -> Result<MultiLocation, ()> {
+		Ok(l.clone())
 	}
 }
 
 impl SendXcm for MockXcm {
-	fn send_xcm(destination: MultiLocation, _message: Xcm<()>) -> XcmResult {
-		match destination {
+	fn send_xcm(dest: impl Into<MultiLocation>, msg: Xcm<()>) -> SendResult {
+		let dest = dest.into();
+		match dest {
 			MultiLocation {
 				parents: 1,
 				interior: Junctions::Here,
 			} => Ok(()),
-			_ => Err(XcmError::Undefined),
+			_ => Err(SendError::CannotReachDestination(dest, msg)),
 		}
 	}
 }
 impl ExecuteXcm<Call> for MockXcm {
 	fn execute_xcm_in_credit(
-		_origin: MultiLocation,
-		_message: Xcm<Call>,
+		_origin: impl Into<MultiLocation>,
+		mut _message: Xcm<Call>,
 		_weight_limit: Weight,
 		_weight_credit: Weight,
 	) -> Outcome {
@@ -146,11 +147,11 @@ impl EnsureOrigin<Origin> for MockEnsureXcmOrigin {
 }
 pub struct MockWeigher;
 impl WeightBounds<Call> for MockWeigher {
-	fn shallow(_message: &mut Xcm<Call>) -> Result<Weight, ()> {
+	fn weight(_message: &mut Xcm<Call>) -> Result<Weight, ()> {
 		Ok(0)
 	}
 
-	fn deep(_message: &mut Xcm<Call>) -> Result<Weight, ()> {
+	fn instr_weight(_message: &Instruction<Call>) -> Result<Weight, ()> {
 		Ok(0)
 	}
 }
@@ -162,14 +163,18 @@ impl pallet_xcm::Config for Runtime {
 	type ExecuteXcmOrigin = MockEnsureXcmOrigin;
 	type XcmExecuteFilter = Nothing;
 	type XcmExecutor = MockXcm;
-	type XcmTeleportFilter = ();
+	type XcmTeleportFilter = Everything;
 	type XcmReserveTransferFilter = Everything;
 	type Weigher = MockWeigher;
 	type LocationInverter = MockXcm;
+	type Origin = Origin;
+	type Call = Call;
+	const VERSION_DISCOVERY_QUEUE_SIZE: u32 = 100;
+	type AdvertisedXcmVersion = pallet_xcm::CurrentXcmVersion;
 }
 
 impl frame_system::Config for Runtime {
-	type BaseCallFilter = ();
+	type BaseCallFilter = Everything;
 	type BlockWeights = ();
 	type BlockLength = ();
 	type Origin = Origin;
@@ -209,7 +214,7 @@ impl orml_tokens::Config for Runtime {
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = ();
 	type MaxLocks = ();
-	type DustRemovalWhitelist = ();
+	type DustRemovalWhitelist = Nothing;
 }
 
 parameter_types! {
@@ -317,7 +322,7 @@ frame_support::construct_runtime!(
 		PalletBalances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
 		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
 		Currencies: module_currencies::{Pallet, Call, Event<T>},
-		PalletXcm: pallet_xcm::{Pallet, Call, Event<T>},
+		PalletXcm: pallet_xcm::{Pallet, Call, Event<T>, Origin},
 	}
 );
 
