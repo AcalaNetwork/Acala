@@ -22,7 +22,7 @@ use crate::integration_tests::*;
 use crate::kusama_test_net::*;
 
 use frame_support::assert_ok;
-use xcm::{latest::prelude::*, VersionedMultiAssets, VersionedMultiLocation};
+use xcm::latest::prelude::*;
 
 use orml_traits::MultiCurrency;
 use xcm_emulator::TestExt;
@@ -30,23 +30,28 @@ use xcm_emulator::TestExt;
 #[test]
 fn transfer_from_relay_chain() {
 	KusamaNet::execute_with(|| {
+		assert_ok!(kusama_runtime::XcmPallet::force_default_xcm_version(
+			kusama_runtime::Origin::root(),
+			Some(0)
+		));
 		assert_ok!(kusama_runtime::XcmPallet::reserve_transfer_assets(
 			kusama_runtime::Origin::signed(ALICE.into()),
-			Box::new(VersionedMultiLocation::V1(X1(Parachain(2000)).into())),
-			Box::new(VersionedMultiLocation::V1(
-				X1(Junction::AccountId32 {
+			Box::new(Parachain(2000).into().into()),
+			Box::new(
+				Junction::AccountId32 {
 					id: BOB,
 					network: NetworkId::Any
-				})
+				}
 				.into()
-			)),
-			Box::new(VersionedMultiAssets::V1((Here, dollar(KSM)).into())),
+				.into()
+			),
+			Box::new((Here, dollar(KSM)).into()),
 			0
 		));
 	});
 
 	Karura::execute_with(|| {
-		assert_eq!(Tokens::free_balance(KSM, &AccountId::from(BOB)), 999_952_000_000);
+		assert_eq!(Tokens::free_balance(KSM, &AccountId::from(BOB)), 999_936_000_000);
 	});
 }
 
