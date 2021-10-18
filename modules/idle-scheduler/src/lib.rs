@@ -31,11 +31,11 @@ use acala_primitives::{
 use codec::{Codec, EncodeLike};
 use frame_support::pallet_prelude::*;
 use frame_system::pallet_prelude::*;
-use sp_runtime::traits::One;
+use sp_runtime::traits::{One, Zero};
 use sp_std::{cmp::PartialEq, fmt::Debug};
 
-// mod mock;
-// mod tests;
+mod mock;
+mod tests;
 mod weights;
 pub use module::*;
 pub use weights::WeightInfo;
@@ -82,6 +82,13 @@ pub mod module {
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
 
+	#[pallet::hooks]
+	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
+		fn on_idle(_n: T::BlockNumber, remaining_weight: Weight) -> Weight {
+			Self::do_dispatch_tasks(remaining_weight)
+		}
+	}
+
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight(< T as Config >::WeightInfo::schedule_task())]
@@ -93,6 +100,7 @@ pub mod module {
 }
 
 impl<T: Config> Pallet<T> {
+	/// Add the task to the queue to be dispatched later
 	fn do_schedule_task(task: T::Task) -> DispatchResult {
 		let id = Self::get_next_task_id();
 		Tasks::<T>::insert(id, task);
@@ -100,16 +108,18 @@ impl<T: Config> Pallet<T> {
 		Ok(())
 	}
 
+	/// Retrieves the next task ID from storage, and increment it by one.
 	fn get_next_task_id() -> Nonce {
 		let next_id = Self::next_task_id();
 		NextTaskId::<T>::put(next_id.saturating_add(One::one()));
 		next_id
 	}
 
-	pub fn on_idle(total_weight: Weight) {
+	/// Keep dispatching tasks in Storage, until insufficient weight remains.
+	pub fn do_dispatch_tasks(total_weight: Weight) -> Weight {
 		let mut weight_remaining = total_weight;
 		if weight_remaining <= T::MinimumWeightRemainInBlock::get() {
-			return;
+			return Zero::zero();
 		}
 
 		let mut completed_tasks: Vec<Nonce> = vec![];
@@ -130,6 +140,8 @@ impl<T: Config> Pallet<T> {
 			Self::deposit_event(Event::<T>::TaskDispatched(id));
 			Tasks::<T>::remove(id);
 		}
+
+		total_weight.saturating_sub(weight_remaining)
 	}
 }
 

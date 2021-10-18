@@ -47,7 +47,7 @@ use sp_std::marker::PhantomData;
 /// Weight functions for module_homa_lite.
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> module_homa_lite::WeightInfo for WeightInfo<T> {
-	fn on_idle() -> Weight {
+	fn xcm_withdraw_unbonded() -> Weight {
 		(0 as Weight)
 	}
 	fn mint() -> Weight {

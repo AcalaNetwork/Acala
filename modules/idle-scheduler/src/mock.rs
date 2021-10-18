@@ -20,15 +20,24 @@
 
 #![cfg(test)]
 
-use crate as example;
-use frame_support::pallet_prelude::GenesisBuild;
+use crate as module_idle_scheduler;
+use acala_primitives::{
+	define_combined_task,
+	task::{DispatchableTask, TaskResult},
+};
+use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
+use frame_system::EnsureRoot;
+
+use codec::{Decode, Encode};
+
+pub const BASE_WEIGHT: Weight = 1_000_000;
 
 parameter_types!(
-	pub const SomeConst: u64 = 10;
 	pub const BlockHashCount: u32 = 250;
 );
 
+pub type AccountId = u32;
 impl frame_system::Config for Runtime {
 	type BaseCallFilter = ();
 	type Origin = Origin;
@@ -37,7 +46,7 @@ impl frame_system::Config for Runtime {
 	type Call = Call;
 	type Hash = sp_runtime::testing::H256;
 	type Hashing = sp_runtime::traits::BlakeTwo256;
-	type AccountId = u64;
+	type AccountId = AccountId;
 	type Lookup = sp_runtime::traits::IdentityLookup<Self::AccountId>;
 	type Header = sp_runtime::testing::Header;
 	type Event = Event;
@@ -55,10 +64,52 @@ impl frame_system::Config for Runtime {
 	type OnSetCode = ();
 }
 
-impl example::Config for Runtime {
+parameter_types!(
+	pub const MinimumWeightRemainInBlock: Weight = 100_000_000_000;
+);
+
+impl module_idle_scheduler::Config for Runtime {
 	type Event = Event;
-	type SomeConst = SomeConst;
-	type Balance = u64;
+	type WeightInfo = ();
+	type Task = ScheduledTasks;
+	type MinimumWeightRemainInBlock = MinimumWeightRemainInBlock;
+	type SchedulerOrigin = EnsureRoot<AccountId>;
+}
+
+// Mock dispatachable tasks
+#[derive(Clone, Debug, PartialEq, Encode, Decode)]
+pub enum BalancesTask {
+	#[codec(index = 0)]
+	OnIdle,
+}
+impl DispatchableTask for BalancesTask {
+	fn dispatch(self, weight: Weight) -> TaskResult {
+		TaskResult {
+			used_weight: BASE_WEIGHT,
+			finished: weight >= BASE_WEIGHT,
+		}
+	}
+}
+
+#[derive(Clone, Debug, PartialEq, Encode, Decode)]
+pub enum HomaLiteTask {
+	#[codec(index = 0)]
+	OnIdle,
+}
+impl DispatchableTask for HomaLiteTask {
+	fn dispatch(self, weight: Weight) -> TaskResult {
+		TaskResult {
+			used_weight: BASE_WEIGHT,
+			finished: weight >= BASE_WEIGHT,
+		}
+	}
+}
+
+define_combined_task! {
+	pub enum ScheduledTasks {
+		BalancesTask,
+		HomaLiteTask,
+	}
 }
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
@@ -72,21 +123,20 @@ construct_runtime!(
 	{
 		System: frame_system::{Pallet, Call, Event<T>},
 		// NOTE: name Example here is needed in order to have same module prefix
-		Example: example::{Pallet, Call, Event<T>, Config<T>, Storage},
+		IdleScheduler: module_idle_scheduler::{Pallet, Call, Event<T>, Storage},
 	}
 );
 
-pub fn new_test_ext() -> sp_io::TestExternalities {
-	let mut t = frame_system::GenesisConfig::default()
-		.build_storage::<Runtime>()
-		.unwrap();
-	example::GenesisConfig::<Runtime> {
-		bar: vec![(1, 100), (2, 200)],
-		..Default::default()
+#[derive(Default)]
+pub struct ExtBuilder;
+impl ExtBuilder {
+	pub fn build(self) -> sp_io::TestExternalities {
+		let t = frame_system::GenesisConfig::default()
+			.build_storage::<Runtime>()
+			.unwrap();
+
+		let mut ext = sp_io::TestExternalities::new(t);
+		ext.execute_with(|| System::set_block_number(1));
+		ext
 	}
-	.assimilate_storage(&mut t)
-	.unwrap();
-	let mut ext = sp_io::TestExternalities::new(t);
-	ext.execute_with(|| System::set_block_number(1));
-	ext
 }

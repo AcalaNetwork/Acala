@@ -5106,6 +5106,7 @@ dependencies = [
  "module-homa-lite",
  "module-homa-validator-list",
  "module-honzon",
+ "module-idle-scheduler",
  "module-incentives",
  "module-loans",
  "module-nft",

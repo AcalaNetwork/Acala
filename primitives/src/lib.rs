@@ -23,6 +23,7 @@
 pub mod currency;
 pub mod evm;
 pub mod signature;
+#[macro_use]
 pub mod task;
 pub mod unchecked_extrinsic;
 

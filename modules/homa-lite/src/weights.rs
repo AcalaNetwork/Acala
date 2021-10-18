@@ -47,7 +47,7 @@ use sp_std::marker::PhantomData;
 
 /// Weight functions needed for module_homa_lite.
 pub trait WeightInfo {
-	fn on_idle() -> Weight;
+	fn xcm_withdraw_unbonded() -> Weight;
 	fn mint() -> Weight;
 	fn mint_for_requests() -> Weight;
 	fn set_total_staking_currency() -> Weight;
@@ -62,7 +62,7 @@ pub trait WeightInfo {
 /// Weights for module_homa_lite using the Acala node and recommended hardware.
 pub struct AcalaWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
-	fn on_idle() -> Weight {
+	fn xcm_withdraw_unbonded() -> Weight {
 		(34_000_000 as Weight)
 		.saturating_add(T::DbWeight::get().reads(8 as Weight))
 		.saturating_add(T::DbWeight::get().writes(3 as Weight))
@@ -112,7 +112,7 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 
 // For backwards compatibility and tests
 impl WeightInfo for () {
-	fn on_idle() -> Weight {
+	fn xcm_withdraw_unbonded() -> Weight {
 		(34_000_000 as Weight)
 		.saturating_add(RocksDbWeight::get().reads(8 as Weight))
 		.saturating_add(RocksDbWeight::get().writes(3 as Weight))

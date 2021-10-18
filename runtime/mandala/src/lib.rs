@@ -61,7 +61,12 @@ use orml_traits::{
 	create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended, MultiCurrency,
 };
 use pallet_transaction_payment::{FeeDetails, RuntimeDispatchInfo};
-use primitives::{evm::EthereumTransactionMessage, unchecked_extrinsic::AcalaUncheckedExtrinsic};
+use primitives::{
+	define_combined_task,
+	evm::EthereumTransactionMessage,
+	task::{DispatchableTask, TaskResult},
+	unchecked_extrinsic::AcalaUncheckedExtrinsic,
+};
 use sp_api::impl_runtime_apis;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_core::{crypto::KeyTypeId, OpaqueMetadata, H160};
@@ -98,8 +103,7 @@ mod weights;
 // pub use pallet_staking::StakerStatus;
 pub use pallet_timestamp::Call as TimestampCall;
 #[cfg(any(feature = "std", test))]
-pub use sp_runtime::BuildStorage;
-pub use sp_runtime::{Perbill, Percent, Permill, Perquintill};
+pub use sp_runtime::{traits::BlockNumberProvider, BuildStorage, Perbill, Percent, Permill, Perquintill};
 
 pub use authority::AuthorityConfigImpl;
 pub use constants::{fee::*, time::*};
@@ -1378,6 +1382,44 @@ impl orml_nft::Config for Runtime {
 	type MaxTokenMetadata = MaxTokenMetadata;
 }
 
+// Mock dispatachable tasks
+#[derive(Clone, Debug, PartialEq, Encode, Decode)]
+pub enum HomaLiteTask {
+	#[codec(index = 0)]
+	WithdrawUnbonded,
+}
+impl DispatchableTask for HomaLiteTask {
+	fn dispatch(self, weight: Weight) -> TaskResult {
+		TaskResult {
+			used_weight: match self {
+				HomaLiteTask::WithdrawUnbonded => HomaLite::xcm_withdraw_unbonded(
+					weight,
+					RelayChainBlockNumberProvider::<Runtime>::current_block_number(),
+				),
+			},
+			finished: true,
+		}
+	}
+}
+parameter_types! {
+	// Minimum of 10% of weights must remain for each block.
+	pub MinimumWeightRemainInBlock: Weight = RuntimeBlockWeights::get().max_block / 10;
+}
+
+define_combined_task! {
+	pub enum ScheduledTasks {
+		HomaLiteTask,
+	}
+}
+
+impl module_idle_scheduler::Config for Runtime {
+	type Event = Event;
+	type WeightInfo = ();
+	type Task = ScheduledTasks;
+	type MinimumWeightRemainInBlock = MinimumWeightRemainInBlock;
+	type SchedulerOrigin = EnsureRootOrHalfGeneralCouncil;
+}
+
 parameter_types! {
 	// One storage item; key size 32, value size 8; .
 	pub ProxyDepositBase: Balance = deposit(1, 8);
@@ -2035,6 +2077,7 @@ construct_runtime! {
 		Multisig: pallet_multisig::{Pallet, Call, Storage, Event<T>} = 31,
 		Recovery: pallet_recovery::{Pallet, Call, Storage, Event<T>} = 32,
 		Proxy: pallet_proxy::{Pallet, Call, Storage, Event<T>} = 33,
+		IdleScheduler: module_idle_scheduler::{Pallet, Call, Storage, Event<T>} = 34,
 
 		Indices: pallet_indices::{Pallet, Call, Storage, Config<T>, Event<T>} = 40,
 

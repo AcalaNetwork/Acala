@@ -35,18 +35,20 @@ pub trait IdelScheduler<Task> {
 	fn schedule(task: Task);
 }
 
+/// Produce a new combined Enum that wraps the individual enum and their subcomponents.
+/// Each enum must derive Encode and Decode.
 #[macro_export]
 macro_rules! define_combined_task {
 	(
-		enum $combined_name:ident {
+		pub enum $combined_name:ident {
 			$($task:ident), *$(,)?
 		}
 	) => {
-		enum $combined_name {
+		#[derive(Clone, Debug, PartialEq, Encode, Decode)]
+		pub enum $combined_name {
 			$(
 				$task($task),
 			)*
-
 		}
 
 		impl DispatchableTask for $combined_name {

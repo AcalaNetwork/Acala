@@ -339,9 +339,9 @@ fn can_replace_schedule_unbond() {
 	});
 }
 
-// on_idle can call xcm to increase AvailableStakingBalance
+// xcm_withdraw_unbonded can call xcm to increase AvailableStakingBalance
 #[test]
-fn on_idle_can_process_xcm_to_increase_available_staking_balance() {
+fn can_process_xcm_to_increase_available_staking_balance() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(HomaLite::replace_schedule_unbond(
 			Origin::root(),
@@ -352,23 +352,23 @@ fn on_idle_can_process_xcm_to_increase_available_staking_balance() {
 
 		// Block number 0 has nothing scheduled
 		MockRelayBlockNumberProvider::set(0);
-		HomaLite::on_idle(MockRelayBlockNumberProvider::get(), 5_000_000_000);
+		HomaLite::xcm_withdraw_unbonded(5_000_000_000, MockRelayBlockNumberProvider::get());
 		assert_eq!(ScheduledUnbond::<Runtime>::get(), vec![(100, 1), (200, 2), (30, 2)]);
 		assert_eq!(AvailableStakingBalance::<Runtime>::get(), 0);
 
 		// Block number 1
 		MockRelayBlockNumberProvider::set(1);
-		HomaLite::on_idle(MockRelayBlockNumberProvider::get(), 5_000_000_000);
+		HomaLite::xcm_withdraw_unbonded(5_000_000_000, MockRelayBlockNumberProvider::get());
 		assert_eq!(ScheduledUnbond::<Runtime>::get(), vec![(200, 2), (30, 2)]);
 		assert_eq!(AvailableStakingBalance::<Runtime>::get(), 100);
 
-		// Block number 2. Each on_idle call should unbond one item.
+		// Block number 2. Each xcm_withdraw_unbonded call should unbond one item.
 		MockRelayBlockNumberProvider::set(2);
-		HomaLite::on_idle(MockRelayBlockNumberProvider::get(), 5_000_000_000);
+		HomaLite::xcm_withdraw_unbonded(5_000_000_000, MockRelayBlockNumberProvider::get());
 		assert_eq!(ScheduledUnbond::<Runtime>::get(), vec![(30, 2)]);
 		assert_eq!(AvailableStakingBalance::<Runtime>::get(), 300);
 
-		HomaLite::on_idle(MockRelayBlockNumberProvider::get(), 5_000_000_000);
+		HomaLite::xcm_withdraw_unbonded(5_000_000_000, MockRelayBlockNumberProvider::get());
 		assert_eq!(ScheduledUnbond::<Runtime>::get(), vec![]);
 		assert_eq!(AvailableStakingBalance::<Runtime>::get(), 330);
 	});
@@ -399,7 +399,7 @@ fn new_available_staking_currency_can_handle_redeem_requests() {
 		assert_eq!(Currencies::free_balance(LKSM, &ROOT), dollar(989_000));
 		assert_eq!(Currencies::reserved_balance(LKSM, &ROOT), dollar(11_000));
 
-		HomaLite::on_idle(MockRelayBlockNumberProvider::get(), 5_000_000_000);
+		HomaLite::xcm_withdraw_unbonded(5_000_000_000, MockRelayBlockNumberProvider::get());
 
 		// All available staking currency should be redeemed, paying the `XcmUnbondFee`
 		assert_eq!(AvailableStakingBalance::<Runtime>::get(), 0);
@@ -417,7 +417,7 @@ fn new_available_staking_currency_can_handle_redeem_requests() {
 			vec![(dollar(150), 2)],
 		));
 		MockRelayBlockNumberProvider::set(2);
-		HomaLite::on_idle(MockRelayBlockNumberProvider::get(), 5_000_000_000);
+		HomaLite::xcm_withdraw_unbonded(5_000_000_000, MockRelayBlockNumberProvider::get());
 
 		// The last request is redeemed, the leftover is stored.
 		assert_eq!(AvailableStakingBalance::<Runtime>::get(), dollar(50));
@@ -429,9 +429,9 @@ fn new_available_staking_currency_can_handle_redeem_requests() {
 }
 
 // Exchange rate can change when redeem requests are waiting in queue.
-// Test if on_idle can handle exchange ratio changes
+// Test if xcm_withdraw_unbonded can handle exchange ratio changes
 #[test]
-fn on_idle_can_handle_changes_in_exchange_rate() {
+fn xcm_withdraw_unbonded_can_handle_changes_in_exchange_rate() {
 	ExtBuilder::default().build().execute_with(|| {
 		// When redeem was requested, 100_000 is redeemed to 10_000 staking currency
 		assert_ok!(HomaLite::request_redeem(
@@ -451,7 +451,7 @@ fn on_idle_can_handle_changes_in_exchange_rate() {
 			vec![(dollar(100_000), 1)],
 		));
 		MockRelayBlockNumberProvider::set(1);
-		HomaLite::on_idle(MockRelayBlockNumberProvider::get(), 5_000_000_000);
+		HomaLite::xcm_withdraw_unbonded(5_000_000_000, MockRelayBlockNumberProvider::get());
 
 		// All available staking currency should be redeemed.
 		assert_eq!(AvailableStakingBalance::<Runtime>::get(), dollar(80_000));
@@ -472,7 +472,7 @@ fn request_redeem_works() {
 			vec![(dollar(50_000), 1)],
 		));
 		MockRelayBlockNumberProvider::set(1);
-		HomaLite::on_idle(MockRelayBlockNumberProvider::get(), 5_000_000_000);
+		HomaLite::xcm_withdraw_unbonded(5_000_000_000, MockRelayBlockNumberProvider::get());
 		assert_eq!(AvailableStakingBalance::<Runtime>::get(), dollar(50_000));
 
 		// Redeem amount has to be above a threshold.
@@ -535,7 +535,7 @@ fn request_redeem_can_handle_dust_redeem_requests() {
 			vec![(dollar(50_000), 1)],
 		));
 		MockRelayBlockNumberProvider::set(1);
-		HomaLite::on_idle(MockRelayBlockNumberProvider::get(), 5_000_000_000);
+		HomaLite::xcm_withdraw_unbonded(5_000_000_000, MockRelayBlockNumberProvider::get());
 		assert_eq!(AvailableStakingBalance::<Runtime>::get(), dollar(50_000));
 
 		// Remaining `dollar(1)` is below the xcm_unbond_fee, therefore returned and requests filled.
@@ -552,11 +552,11 @@ fn request_redeem_can_handle_dust_redeem_requests() {
 	});
 }
 
-// on_idle can handle dust redeem requests
+// xcm_withdraw_unbonded can handle dust redeem requests
 #[test]
-fn on_idle_can_handle_dust_redeem_requests() {
+fn xcm_withdraw_unbonded_can_handle_dust_redeem_requests() {
 	ExtBuilder::default().build().execute_with(|| {
-		// Test that on_idle doesn't add dust redeem requests into the queue.
+		// Test that xcm_withdraw_unbonded doesn't add dust redeem requests into the queue.
 		assert_ok!(HomaLite::request_redeem(
 			Origin::signed(ROOT),
 			dollar(500_010),
@@ -567,7 +567,7 @@ fn on_idle_can_handle_dust_redeem_requests() {
 			vec![(dollar(50_000), 2)],
 		));
 		MockRelayBlockNumberProvider::set(2);
-		HomaLite::on_idle(MockRelayBlockNumberProvider::get(), 5_000_000_000);
+		HomaLite::xcm_withdraw_unbonded(5_000_000_000, MockRelayBlockNumberProvider::get());
 
 		assert_eq!(AvailableStakingBalance::<Runtime>::get(), 0);
 		assert_eq!(Currencies::free_balance(KSM, &ROOT), dollar(49_999));
@@ -581,7 +581,7 @@ fn on_idle_can_handle_dust_redeem_requests() {
 #[test]
 fn mint_can_handle_dust_redeem_requests() {
 	ExtBuilder::default().build().execute_with(|| {
-		// Test that on_idle doesn't add dust redeem requests into the queue.
+		// Test that xcm_withdraw_unbonded doesn't add dust redeem requests into the queue.
 		assert_ok!(HomaLite::request_redeem(
 			Origin::signed(ROOT),
 			dollar(500_010),
@@ -807,7 +807,7 @@ fn redeem_can_handle_dust_available_staking_currency() {
 		// pub XcmUnbondFee: Balance = dollar(1);
 		assert_ok!(HomaLite::schedule_unbond(Origin::root(), 999_000_000, 0));
 		MockRelayBlockNumberProvider::set(0);
-		HomaLite::on_idle(MockRelayBlockNumberProvider::get(), 5_000_000_000);
+		HomaLite::xcm_withdraw_unbonded(5_000_000_000, MockRelayBlockNumberProvider::get());
 
 		assert_eq!(AvailableStakingBalance::<Runtime>::get(), 999_000_000);
 
