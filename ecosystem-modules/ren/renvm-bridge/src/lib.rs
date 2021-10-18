@@ -89,7 +89,6 @@ pub mod module {
 
 	#[pallet::event]
 	#[pallet::generate_deposit(fn deposit_event)]
-	#[pallet::metadata(T::Balance = "Balance")]
 	pub enum Event<T: Config> {
 		/// Asset minted. \[owner, amount\]
 		Minted(T::AccountId, Balance),
@@ -239,7 +238,13 @@ pub mod module {
 
 		fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {
 			match call {
-				Call::mint(who, p_hash, amount, n_hash, sig) => {
+				Call::mint {
+					who,
+					p_hash,
+					amount,
+					n_hash,
+					sig,
+				} => {
 					// check if already exists
 					if Signatures::<T>::contains_key(&sig) {
 						return InvalidTransaction::Stale.into();
@@ -261,7 +266,7 @@ pub mod module {
 						.propagate(true)
 						.build()
 				}
-				Call::rotate_key(new_key, sig) => {
+				Call::rotate_key { new_key, sig } => {
 					// check if already exists
 					if Signatures::<T>::contains_key(&sig) {
 						return InvalidTransaction::Stale.into();

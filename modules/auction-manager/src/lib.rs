@@ -37,6 +37,7 @@ use frame_system::{
 use orml_traits::{Auction, AuctionHandler, Change, MultiCurrency, OnNewBidResult};
 use orml_utilities::OffchainErr;
 use primitives::{AuctionId, Balance, CurrencyId};
+use scale_info::TypeInfo;
 use sp_runtime::{
 	offchain::{
 		storage::StorageValueRef,
@@ -67,7 +68,7 @@ pub const DEFAULT_MAX_ITERATIONS: u32 = 1000;
 
 /// Information of an collateral auction
 #[cfg_attr(feature = "std", derive(PartialEq, Eq))]
-#[derive(Encode, Decode, Clone, RuntimeDebug)]
+#[derive(Encode, Decode, Clone, RuntimeDebug, TypeInfo)]
 pub struct CollateralAuctionItem<AccountId, BlockNumber> {
 	/// Refund recipient for may receive refund
 	refund_recipient: AccountId,
@@ -201,7 +202,6 @@ pub mod module {
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
-	#[pallet::metadata(T::AccountId = "AccountId")]
 	pub enum Event<T: Config> {
 		/// Collateral auction created. \[auction_id, collateral_type,
 		/// collateral_amount, target_bid_price\]
@@ -291,7 +291,7 @@ pub mod module {
 	impl<T: Config> ValidateUnsigned for Pallet<T> {
 		type Call = Call<T>;
 		fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {
-			if let Call::cancel(auction_id) = call {
+			if let Call::cancel { id: auction_id } = call {
 				if !T::EmergencyShutdown::is_shutdown() {
 					return InvalidTransaction::Call.into();
 				}
@@ -326,7 +326,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	fn submit_cancel_auction_tx(auction_id: AuctionId) {
-		let call = Call::<T>::cancel(auction_id);
+		let call = Call::<T>::cancel { id: auction_id };
 		if let Err(err) = SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(call.into()) {
 			log::info!(
 				target: "auction-manager",

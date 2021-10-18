@@ -26,9 +26,12 @@ use mock::{Event, *};
 use sp_runtime::traits::BadOrigin;
 
 const BALANCE_TRANSFER: &<Runtime as frame_system::Config>::Call =
-	&mock::Call::Balances(pallet_balances::Call::transfer(ALICE, 10));
-const TOKENS_TRANSFER: &<Runtime as frame_system::Config>::Call =
-	&mock::Call::Tokens(orml_tokens::Call::transfer(ALICE, AUSD, 10));
+	&mock::Call::Balances(pallet_balances::Call::transfer { dest: ALICE, value: 10 });
+const TOKENS_TRANSFER: &<Runtime as frame_system::Config>::Call = &mock::Call::Tokens(orml_tokens::Call::transfer {
+	dest: ALICE,
+	currency_id: AUSD,
+	amount: 10,
+});
 
 #[test]
 fn pause_transaction_work() {

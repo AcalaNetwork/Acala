@@ -41,6 +41,7 @@ use rand_chacha::{
 	rand_core::{RngCore, SeedableRng},
 	ChaChaRng,
 };
+use scale_info::TypeInfo;
 use sp_runtime::{
 	offchain::{
 		storage::StorageValueRef,
@@ -76,7 +77,7 @@ pub const DEFAULT_MAX_ITERATIONS: u32 = 1000;
 pub type LoansOf<T> = loans::Pallet<T>;
 
 /// Risk management params
-#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, Default)]
+#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, Default, TypeInfo)]
 pub struct RiskManagementParams {
 	/// Maximum total debit value generated from it, when reach the hard
 	/// cap, CDP's owner cannot issue more stablecoin under the collateral
@@ -109,7 +110,7 @@ type ChangeOptionRatio = Change<Option<Ratio>>;
 type ChangeBalance = Change<Balance>;
 
 /// Liquidation strategy available
-#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq)]
+#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, TypeInfo)]
 pub enum LiquidationStrategy {
 	/// Liquidation CDP's collateral by create collateral auction
 	Auction,
@@ -118,7 +119,7 @@ pub enum LiquidationStrategy {
 }
 
 /// Status of CDP
-#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq)]
+#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, TypeInfo)]
 pub enum CDPStatus {
 	Safe,
 	Unsafe,
@@ -228,7 +229,6 @@ pub mod module {
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
-	#[pallet::metadata(T::AccountId = "AccountId", Option<Rate> = "OptionRate", Option<Ratio> = "OptionRatio")]
 	pub enum Event<T: Config> {
 		/// Liquidate the unsafe CDP. \[collateral_type, owner,
 		/// collateral_amount, bad_debt_value, liquidation_strategy\]
@@ -508,7 +508,7 @@ pub mod module {
 
 		fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {
 			match call {
-				Call::liquidate(currency_id, who) => {
+				Call::liquidate { currency_id, who } => {
 					let account = T::Lookup::lookup(who.clone())?;
 					let Position { collateral, debit } = <LoansOf<T>>::positions(currency_id, &account);
 					if !matches!(
@@ -526,7 +526,7 @@ pub mod module {
 						.propagate(true)
 						.build()
 				}
-				Call::settle(currency_id, who) => {
+				Call::settle { currency_id, who } => {
 					let account = T::Lookup::lookup(who.clone())?;
 					let Position { debit, .. } = <LoansOf<T>>::positions(currency_id, account);
 					if debit.is_zero() || !T::EmergencyShutdown::is_shutdown() {
@@ -593,7 +593,10 @@ impl<T: Config> Pallet<T> {
 
 	fn submit_unsigned_liquidation_tx(currency_id: CurrencyId, who: T::AccountId) {
 		let who = T::Lookup::unlookup(who);
-		let call = Call::<T>::liquidate(currency_id, who.clone());
+		let call = Call::<T>::liquidate {
+			currency_id,
+			who: who.clone(),
+		};
 		if SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(call.into()).is_err() {
 			log::info!(
 				target: "cdp-engine offchain worker",
@@ -605,7 +608,10 @@ impl<T: Config> Pallet<T> {
 
 	fn submit_unsigned_settlement_tx(currency_id: CurrencyId, who: T::AccountId) {
 		let who = T::Lookup::unlookup(who);
-		let call = Call::<T>::settle(currency_id, who.clone());
+		let call = Call::<T>::settle {
+			currency_id,
+			who: who.clone(),
+		};
 		if SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(call.into()).is_err() {
 			log::info!(
 				target: "cdp-engine offchain worker",

@@ -121,39 +121,30 @@ where
 		RelayChainCall::Balances(BalancesCall::TransferKeepAlive(T::Lookup::unlookup(to), amount))
 	}
 
-	fn finalize_call_into_xcm_message(
-		call: Self::RelayChainCall,
-		extra_fee: Self::Balance,
-		weight: Weight,
-		debt: Weight,
-	) -> Xcm<()> {
+	fn finalize_call_into_xcm_message(call: Self::RelayChainCall, extra_fee: Self::Balance, weight: Weight) -> Xcm<()> {
 		let asset = MultiAsset {
 			id: Concrete(MultiLocation::here()),
 			fun: Fungibility::Fungible(extra_fee),
 		};
-		Xcm::WithdrawAsset {
-			assets: vec![asset.clone()].into(),
-			effects: vec![
-				Order::BuyExecution {
-					fees: asset,
-					weight,
-					debt,
-					halt_on_error: true,
-					instructions: vec![Xcm::Transact {
-						origin_type: OriginKind::SovereignAccount,
-						require_weight_at_most: weight,
-						call: call.encode().into(),
-					}],
+		Xcm(vec![
+			WithdrawAsset(asset.clone().into()),
+			BuyExecution {
+				fees: asset,
+				weight_limit: Unlimited,
+			},
+			Transact {
+				origin_type: OriginKind::SovereignAccount,
+				require_weight_at_most: weight,
+				call: call.encode().into(),
+			},
+			DepositAsset {
+				assets: All.into(),
+				max_assets: u32::max_value(),
+				beneficiary: MultiLocation {
+					parents: 1,
+					interior: X1(Parachain(ParachainId::get().into())),
 				},
-				Order::DepositAsset {
-					assets: Wild(WildMultiAsset::All),
-					max_assets: 1,
-					beneficiary: MultiLocation {
-						parents: 1,
-						interior: X1(Parachain(ParachainId::get().into())),
-					},
-				},
-			],
-		}
+			},
+		])
 	}
 }

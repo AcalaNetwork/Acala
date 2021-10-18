@@ -31,6 +31,7 @@ use codec::MaxEncodedLen;
 use frame_support::{log, pallet_prelude::*, transactional, PalletId};
 use orml_traits::{Happened, MultiCurrency, MultiCurrencyExtended};
 use primitives::{Amount, Balance, CurrencyId};
+use scale_info::TypeInfo;
 use sp_runtime::{
 	traits::{AccountIdConversion, Convert, Zero},
 	ArithmeticError, DispatchResult, RuntimeDebug,
@@ -44,7 +45,7 @@ mod tests;
 pub use module::*;
 
 /// A collateralized debit position.
-#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, Default, MaxEncodedLen)]
+#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, Default, MaxEncodedLen, TypeInfo)]
 pub struct Position {
 	/// The amount of collateral.
 	pub collateral: Balance,
@@ -95,7 +96,6 @@ pub mod module {
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
-	#[pallet::metadata(T::AccountId = "AccountId")]
 	pub enum Event<T: Config> {
 		/// Position updated. \[owner, collateral_type, collateral_adjustment,
 		/// debit_adjustment\]

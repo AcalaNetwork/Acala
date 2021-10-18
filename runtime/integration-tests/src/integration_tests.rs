@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use acala_service::chain_spec::evm_genesis;
+use acala_service::chain_spec::mandala::evm_genesis;
 pub use codec::Encode;
 use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
 use frame_support::{
@@ -899,11 +899,11 @@ fn test_authority_module() {
 		])
 		.build()
 		.execute_with(|| {
-			let ensure_root_call = Call::System(frame_system::Call::fill_block(Perbill::one()));
-			let call = Call::Authority(orml_authority::Call::dispatch_as(
-				AuthoritysOriginId::Root,
-				Box::new(ensure_root_call.clone()),
-			));
+			let ensure_root_call = Call::System(frame_system::Call::fill_block { ratio: Perbill::one() });
+			let call = Call::Authority(orml_authority::Call::dispatch_as {
+				as_origin: AuthoritysOriginId::Root,
+				call: Box::new(ensure_root_call.clone()),
+			});
 
 			// dispatch_as
 			assert_ok!(Authority::dispatch_as(
@@ -933,15 +933,15 @@ fn test_authority_module() {
 			// schedule_dispatch
 			run_to_block(1);
 			// Treasury transfer
-			let transfer_call = Call::Currencies(module_currencies::Call::transfer(
-				AccountId::from(BOB).into(),
-				USD_CURRENCY,
-				500 * dollar(USD_CURRENCY),
-			));
-			let treasury_reserve_call = Call::Authority(orml_authority::Call::dispatch_as(
-				AuthoritysOriginId::Treasury,
-				Box::new(transfer_call.clone()),
-			));
+			let transfer_call = Call::Currencies(module_currencies::Call::transfer {
+				dest: AccountId::from(BOB).into(),
+				currency_id: USD_CURRENCY,
+				amount: 500 * dollar(USD_CURRENCY),
+			});
+			let treasury_reserve_call = Call::Authority(orml_authority::Call::dispatch_as {
+				as_origin: AuthoritysOriginId::Treasury,
+				call: Box::new(transfer_call.clone()),
+			});
 
 			let one_day_later = OneDay::get() + 1;
 
@@ -1375,37 +1375,30 @@ fn treasury_should_take_xcm_execution_revenue() {
 
 		// receive relay chain token
 		let asset: MultiAsset = (MultiLocation::parent(), dot_amount).into();
-		let mut msg = Xcm::<Call>::ReserveAssetDeposited {
-			assets: asset.clone().into(),
-			effects: vec![
-				BuyExecution {
-					fees: asset,
-					weight: 0,
-					debt: shallow_weight,
-					halt_on_error: true,
-					instructions: vec![],
-				},
-				DepositAsset {
-					assets: All.into(),
-					beneficiary: X1(Junction::AccountId32 {
-						network: NetworkId::Any,
-						id: ALICE,
-					})
-					.into(),
-					max_assets: u32::max_value(),
-				},
-			],
-		};
+		let mut msg = Xcm(vec![
+			ReserveAssetDeposited(asset.clone().into()),
+			BuyExecution {
+				fees: asset,
+				weight_limit: Limited(shallow_weight),
+			},
+			DepositAsset {
+				assets: All.into(),
+				max_assets: u32::max_value(),
+				beneficiary: X1(Junction::AccountId32 {
+					network: NetworkId::Any,
+					id: ALICE,
+				})
+				.into(),
+			},
+		]);
 		use xcm_executor::traits::WeightBounds;
-		let debt = <XcmConfig as xcm_executor::Config>::Weigher::shallow(&mut msg).unwrap_or_default();
-		let deep = <XcmConfig as xcm_executor::Config>::Weigher::deep(&mut msg).unwrap_or_default();
-		// println!("debt = {:?}, deep = {:?}", debt, deep);
+		let debt = <XcmConfig as xcm_executor::Config>::Weigher::weight(&mut msg).unwrap_or_default();
 		assert_eq!(debt, shallow_weight);
 
 		assert_eq!(Tokens::free_balance(RELAY_CHAIN_CURRENCY, &ALICE.into()), 0);
 		assert_eq!(Tokens::free_balance(RELAY_CHAIN_CURRENCY, &TreasuryAccount::get()), 0);
 
-		let weight_limit = debt + deep + 1;
+		let weight_limit = debt;
 		assert_eq!(
 			XcmExecutor::<XcmConfig>::execute_xcm(origin, msg, weight_limit),
 			Outcome::Complete(shallow_weight)
@@ -1932,11 +1925,11 @@ fn proxy_behavior_correct() {
 				),
 				pallet_balances::Error::<Runtime, _>::InsufficientBalance
 			);
-			let call = Box::new(Call::Currencies(module_currencies::Call::transfer(
-				AccountId::from(ALICE).into(),
-				NATIVE_CURRENCY,
-				10 * dollar(NATIVE_CURRENCY),
-			)));
+			let call = Box::new(Call::Currencies(module_currencies::Call::transfer {
+				dest: AccountId::from(ALICE).into(),
+				currency_id: NATIVE_CURRENCY,
+				amount: 10 * dollar(NATIVE_CURRENCY),
+			}));
 
 			// Alice has all Bob's permissions now
 			assert_ok!(Proxy::add_proxy(
@@ -2036,42 +2029,42 @@ fn proxy_permissions_correct() {
 				ProxyType::Any,
 				0
 			));
-			let root_call = Box::new(Call::Currencies(module_currencies::Call::update_balance(
-				AccountId::from(ALICE).into(),
-				NATIVE_CURRENCY,
-				1000 * dollar(NATIVE_CURRENCY) as i128,
-			)));
-			let gov_call = Box::new(Call::Tips(pallet_tips::Call::report_awesome(
-				b"bob is awesome".to_vec(),
-				AccountId::from(BOB),
-			)));
-			let transfer_call = Box::new(Call::Currencies(module_currencies::Call::transfer(
-				AccountId::from(BOB).into(),
-				NATIVE_CURRENCY,
-				10 * dollar(NATIVE_CURRENCY),
-			)));
-			let adjust_loan_call = Box::new(Call::Honzon(module_honzon::Call::adjust_loan(
-				RELAY_CHAIN_CURRENCY,
-				10 * dollar(RELAY_CHAIN_CURRENCY) as i128,
-				min_debit as i128,
-			)));
-			let authorize_loan_call = Box::new(Call::Honzon(module_honzon::Call::authorize(
-				RELAY_CHAIN_CURRENCY,
-				AccountId::from(BOB).into(),
-			)));
-			let dex_swap_call = Box::new(Call::Dex(module_dex::Call::swap_with_exact_target(
-				vec![RELAY_CHAIN_CURRENCY, USD_CURRENCY],
-				dollar(USD_CURRENCY),
-				dollar(RELAY_CHAIN_CURRENCY),
-			)));
-			let dex_add_liquidity_call = Box::new(Call::Dex(module_dex::Call::add_liquidity(
-				RELAY_CHAIN_CURRENCY,
-				USD_CURRENCY,
-				10 * dollar(RELAY_CHAIN_CURRENCY),
-				10 * dollar(USD_CURRENCY),
-				0,
-				false,
-			)));
+			let root_call = Box::new(Call::Currencies(module_currencies::Call::update_balance {
+				who: AccountId::from(ALICE).into(),
+				currency_id: NATIVE_CURRENCY,
+				amount: 1000 * dollar(NATIVE_CURRENCY) as i128,
+			}));
+			let gov_call = Box::new(Call::Tips(pallet_tips::Call::report_awesome {
+				reason: b"bob is awesome".to_vec(),
+				who: AccountId::from(BOB),
+			}));
+			let transfer_call = Box::new(Call::Currencies(module_currencies::Call::transfer {
+				dest: AccountId::from(BOB).into(),
+				currency_id: NATIVE_CURRENCY,
+				amount: 10 * dollar(NATIVE_CURRENCY),
+			}));
+			let adjust_loan_call = Box::new(Call::Honzon(module_honzon::Call::adjust_loan {
+				currency_id: RELAY_CHAIN_CURRENCY,
+				collateral_adjustment: 10 * dollar(RELAY_CHAIN_CURRENCY) as i128,
+				debit_adjustment: min_debit as i128,
+			}));
+			let authorize_loan_call = Box::new(Call::Honzon(module_honzon::Call::authorize {
+				currency_id: RELAY_CHAIN_CURRENCY,
+				to: AccountId::from(BOB).into(),
+			}));
+			let dex_swap_call = Box::new(Call::Dex(module_dex::Call::swap_with_exact_target {
+				path: vec![RELAY_CHAIN_CURRENCY, USD_CURRENCY],
+				target_amount: dollar(USD_CURRENCY),
+				max_supply_amount: dollar(RELAY_CHAIN_CURRENCY),
+			}));
+			let dex_add_liquidity_call = Box::new(Call::Dex(module_dex::Call::add_liquidity {
+				currency_id_a: RELAY_CHAIN_CURRENCY,
+				currency_id_b: USD_CURRENCY,
+				max_amount_a: 10 * dollar(RELAY_CHAIN_CURRENCY),
+				max_amount_b: 10 * dollar(USD_CURRENCY),
+				min_share_increment: 0,
+				stake_increment_share: false,
+			}));
 
 			// Proxy calls do not bypass root permision
 			assert_ok!(Proxy::proxy(

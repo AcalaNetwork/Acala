@@ -255,7 +255,6 @@ pub mod pallet {
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
-	#[pallet::metadata(T::AccountId = "AccountId", Vec<T::AccountId> = "Vec<AccountId>", BalanceOf<T> = "Balance")]
 	pub enum Event<T: Config> {
 		/// Invulnurable was updated. \[new_invulnerables\]
 		NewInvulnerables(Vec<T::AccountId>),

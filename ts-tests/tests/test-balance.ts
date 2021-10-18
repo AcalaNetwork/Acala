@@ -36,9 +36,9 @@ describeWithAcala("Acala RPC (Balance)", (context) => {
 		expect((await context.provider.getBalance(alice_stash.getAddress())).toString()).to.equal("10100000986219149180");
 
 		await transfer();
-		expect((await context.provider.getBalance(alice.getAddress())).toString()).to.equal("8999999969441326709");
+		expect((await context.provider.getBalance(alice.getAddress())).toString()).to.equal("8999999969451542608");
 		expect((await context.provider.getBalance(alice_stash.getAddress())).toString()).to.equal("10100000986219150180");
-		expect((await context.provider.getBalance(alice.getAddress(), "latest")).toString()).to.equal("8999999969441326709");
+		expect((await context.provider.getBalance(alice.getAddress(), "latest")).toString()).to.equal("8999999969451542608");
 		expect((await context.provider.getBalance(alice_stash.getAddress(), "earliest")).toString()).to.equal("10100001000000000000");
 	});
 });

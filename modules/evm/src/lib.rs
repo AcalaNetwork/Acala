@@ -60,6 +60,7 @@ pub use primitives::{
 	ReserveIdentifier, H160_PREFIX_DEXSHARE, H160_PREFIX_TOKEN, MIRRORED_NFT_ADDRESS_START, PRECOMPILE_ADDRESS_START,
 	SYSTEM_CONTRACT_ADDRESS_PREFIX,
 };
+use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sha3::{Digest, Keccak256};
@@ -98,6 +99,7 @@ static ACALA_CONFIG: EvmConfig = EvmConfig {
 	gas_ext_code_hash: 700,
 	gas_balance: 700,
 	gas_sload: 800,
+	gas_sload_cold: 0,
 	gas_sstore_set: 20000,
 	gas_sstore_reset: 5000,
 	refund_sstore_clears: 0, // no gas refund
@@ -109,8 +111,13 @@ static ACALA_CONFIG: EvmConfig = EvmConfig {
 	gas_transaction_call: 21000,
 	gas_transaction_zero_data: 4,
 	gas_transaction_non_zero_data: 16,
+	gas_access_list_address: 0,
+	gas_access_list_storage_key: 0,
+	gas_account_access_cold: 0,
+	gas_storage_read_warm: 0,
 	sstore_gas_metering: false,         // no gas refund
 	sstore_revert_under_stipend: false, // ignored
+	increase_state_access_gas: false,
 	err_on_call_with_more_gas: false,
 	empty_considered_exists: false,
 	create_increase_nonce: true,
@@ -213,32 +220,32 @@ pub mod module {
 		type WeightInfo: WeightInfo;
 	}
 
-	#[derive(Clone, Eq, PartialEq, RuntimeDebug, Encode, Decode)]
+	#[derive(Clone, Eq, PartialEq, RuntimeDebug, Encode, Decode, TypeInfo)]
 	pub struct ContractInfo {
 		pub code_hash: H256,
 		pub maintainer: EvmAddress,
 		pub deployed: bool,
 	}
 
-	#[derive(Clone, Eq, PartialEq, RuntimeDebug, Encode, Decode)]
-	pub struct AccountInfo<T: Config> {
-		pub nonce: T::Index,
+	#[derive(Clone, Eq, PartialEq, RuntimeDebug, Encode, Decode, TypeInfo)]
+	pub struct AccountInfo<Index> {
+		pub nonce: Index,
 		pub contract_info: Option<ContractInfo>,
 	}
 
-	impl<T: Config> AccountInfo<T> {
-		pub fn new(nonce: T::Index, contract_info: Option<ContractInfo>) -> Self {
+	impl<Index> AccountInfo<Index> {
+		pub fn new(nonce: Index, contract_info: Option<ContractInfo>) -> Self {
 			Self { nonce, contract_info }
 		}
 	}
 
-	#[derive(Clone, Copy, Eq, PartialEq, RuntimeDebug, Encode, Decode, MaxEncodedLen)]
+	#[derive(Clone, Copy, Eq, PartialEq, RuntimeDebug, Encode, Decode, MaxEncodedLen, TypeInfo)]
 	pub struct CodeInfo {
 		pub code_size: u32,
 		pub ref_count: u32,
 	}
 
-	#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug)]
+	#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]
 	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 	/// Account definition used for genesis block construction.
 	pub struct GenesisAccount<Balance, Index> {
@@ -257,7 +264,7 @@ pub mod module {
 	/// Accounts: map EvmAddress => Option<AccountInfo<T>>
 	#[pallet::storage]
 	#[pallet::getter(fn accounts)]
-	pub type Accounts<T: Config> = StorageMap<_, Twox64Concat, EvmAddress, AccountInfo<T>, OptionQuery>;
+	pub type Accounts<T: Config> = StorageMap<_, Twox64Concat, EvmAddress, AccountInfo<T::Index>, OptionQuery>;
 
 	/// The storage usage for contracts. Including code size, extra bytes and total AccountStorages
 	/// size.
@@ -333,7 +340,7 @@ pub mod module {
 			self.accounts.iter().for_each(|(address, account)| {
 				let account_id = T::AddressMapping::get_account_id(address);
 
-				let account_info = <AccountInfo<T>>::new(account.nonce, None);
+				let account_info = <AccountInfo<T::Index>>::new(account.nonce, None);
 				<Accounts<T>>::insert(address, account_info);
 
 				let amount = if account.balance.is_zero() {
@@ -388,7 +395,6 @@ pub mod module {
 	/// EVM events
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
-	#[pallet::metadata(T::AccountId = "AccountId")]
 	pub enum Event<T: Config> {
 		/// A contract has been created at given \[from, address, logs\].
 		Created(EvmAddress, EvmAddress, Vec<Log>),
@@ -982,7 +988,7 @@ impl<T: Config> Pallet<T> {
 			if let Some(account_info) = maybe_account_info.as_mut() {
 				account_info.contract_info = Some(contract_info.clone());
 			} else {
-				let account_info = AccountInfo::<T>::new(Default::default(), Some(contract_info.clone()));
+				let account_info = AccountInfo::<T::Index>::new(Default::default(), Some(contract_info.clone()));
 				*maybe_account_info = Some(account_info);
 			}
 		});
@@ -1423,7 +1429,8 @@ fn encode_revert_message(e: &ExitError) -> Vec<u8> {
 	data
 }
 
-#[derive(Encode, Decode, Clone, Eq, PartialEq)]
+#[derive(Encode, Decode, Clone, Eq, PartialEq, TypeInfo)]
+#[scale_info(skip_type_params(T))]
 pub struct SetEvmOrigin<T: Config + Send + Sync>(PhantomData<T>);
 
 impl<T: Config + Send + Sync> sp_std::fmt::Debug for SetEvmOrigin<T> {

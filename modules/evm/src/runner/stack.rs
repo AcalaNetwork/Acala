@@ -43,7 +43,7 @@ use sha3::{Digest, Keccak256};
 use sp_core::{H160, H256, U256};
 use sp_io::KillStorageResult::{AllRemoved, SomeRemaining};
 use sp_runtime::traits::UniqueSaturatedInto;
-use sp_std::{boxed::Box, collections::btree_set::BTreeSet, marker::PhantomData, mem, vec::Vec};
+use sp_std::{boxed::Box, collections::btree_set::BTreeSet, marker::PhantomData, mem, vec, vec::Vec};
 
 #[derive(Default)]
 pub struct Runner<T: Config> {
@@ -207,7 +207,8 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 
 		let value = U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(value));
 		let info = Self::execute(source, origin, value, gas_limit, storage_limit, config, |executor| {
-			executor.transact_call(source, target, value, input, gas_limit)
+			// TODO: EIP-2930
+			executor.transact_call(source, target, value, input, gas_limit, vec![])
 		})?;
 
 		if info.exit_reason.is_succeed() {
@@ -238,7 +239,11 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 			let address = executor
 				.create_address(evm::CreateScheme::Legacy { caller: source })
 				.unwrap_or_default(); // transact_create will check the address
-			(executor.transact_create(source, value, init, gas_limit), address)
+			(
+				// TODO: EIP-2930
+				executor.transact_create(source, value, init, gas_limit, vec![]),
+				address,
+			)
 		})?;
 
 		if info.exit_reason.is_succeed() {
@@ -274,7 +279,11 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 					salt,
 				})
 				.unwrap_or_default(); // transact_create2 will check the address
-			(executor.transact_create2(source, value, init, salt, gas_limit), address)
+			(
+				// TODO: EIP-2930
+				executor.transact_create2(source, value, init, salt, gas_limit, vec![]),
+				address,
+			)
 		})?;
 
 		if info.exit_reason.is_succeed() {
@@ -303,7 +312,8 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 		let value = U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(value));
 		let info = Self::execute(source, source, value, gas_limit, storage_limit, config, |executor| {
 			(
-				executor.transact_create_at_address(source, address, value, init, gas_limit),
+				// TODO: EIP-2930
+				executor.transact_create_at_address(source, address, value, init, gas_limit, vec![]),
 				address,
 			)
 		})?;
@@ -547,12 +557,22 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 		self.substate.deleted(address)
 	}
 
+	fn is_cold(&self, _address: H160) -> bool {
+		// TODO: EIP-2930
+		false
+	}
+
+	fn is_storage_cold(&self, _address: H160, _key: H256) -> bool {
+		// TODO: EIP-2930
+		false
+	}
+
 	fn inc_nonce(&mut self, address: H160) {
 		Accounts::<T>::mutate(&address, |maybe_account| {
 			if let Some(account) = maybe_account.as_mut() {
 				account.nonce += One::one()
 			} else {
-				let mut account_info = <AccountInfo<T>>::new(Default::default(), None);
+				let mut account_info = <AccountInfo<T::Index>>::new(Default::default(), None);
 				account_info.nonce += One::one();
 				*maybe_account = Some(account_info);
 			}
