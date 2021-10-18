@@ -32,7 +32,7 @@ use codec::{Codec, EncodeLike};
 use frame_support::pallet_prelude::*;
 use frame_system::pallet_prelude::*;
 use sp_runtime::traits::{One, Zero};
-use sp_std::{cmp::PartialEq, fmt::Debug};
+use sp_std::{cmp::PartialEq, fmt::Debug, prelude::*};
 
 mod mock;
 mod tests;

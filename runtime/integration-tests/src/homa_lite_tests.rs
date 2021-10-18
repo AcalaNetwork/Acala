@@ -385,7 +385,7 @@ mod karura_only_tests {
 				RelayChainBlockNumberProvider::<Runtime>::current_block_number(),
 				101_000
 			);
-			HomaLite::xcm_withdraw_unbonded(1_000_000_000, 5);
+			HomaLite::on_idle(5, 1_000_000_000);
 			assert_eq!(HomaLite::scheduled_unbond(), vec![]);
 			assert_eq!(
 				HomaLite::available_staking_balance(),

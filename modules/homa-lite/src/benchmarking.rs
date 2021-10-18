@@ -30,7 +30,7 @@ pub struct Module<T: Config>(crate::Pallet<T>);
 const SEED: u32 = 0;
 
 benchmarks! {
-	xcm_withdraw_unbonded {
+	on_idle {
 		let amount = 1_000_000_000_000;
 		let caller: T::AccountId = account("caller", 0, SEED);
 		let caller1: T::AccountId = account("callera", 0, SEED);
@@ -44,7 +44,7 @@ benchmarks! {
 		let _ = crate::Pallet::<T>::request_redeem(RawOrigin::Signed(caller3.clone()).into(), amount, Permill::default());
 		let _ = crate::Pallet::<T>::schedule_unbond(RawOrigin::Root.into(), amount*2, <T as frame_system::Config>::BlockNumber::default());
 	}: {
-		let _ = crate::Pallet::<T>::xcm_withdraw_unbonded(<T as frame_system::Config>::BlockNumber::default(), 1_000_000_000);
+		let _ = crate::Pallet::<T>::on_idle(<T as frame_system::Config>::BlockNumber::default(), 1_000_000_000);
 	}
 
 	mint {
@@ -99,9 +99,9 @@ mod tests {
 	use frame_support::assert_ok;
 
 	#[test]
-	fn test_xcm_withdraw_unbonded() {
+	fn test_on_idle() {
 		ExtBuilder::default().build().execute_with(|| {
-			assert_ok!(Pallet::<Runtime>::test_benchmark_xcm_withdraw_unbonded());
+			assert_ok!(Pallet::<Runtime>::test_benchmark_on_idle());
 		});
 	}
 

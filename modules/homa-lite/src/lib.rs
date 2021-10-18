@@ -243,6 +243,33 @@ pub mod module {
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
 
+	#[pallet::hooks]
+	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
+		fn on_idle(_n: T::BlockNumber, remaining_weight: Weight) -> Weight {
+			let required_weight = <T as Config>::WeightInfo::on_idle();
+			let mut current_weight = 0;
+			if remaining_weight > required_weight {
+				let mut scheduled_unbond = Self::scheduled_unbond();
+				if !scheduled_unbond.is_empty() {
+					let (staking_amount, block_number) = scheduled_unbond[0];
+					if T::RelayChainBlockNumber::current_block_number() >= block_number {
+						let res = Self::process_scheduled_unbond(staking_amount);
+						log::debug!("{:?}", res);
+						debug_assert!(res.is_ok());
+
+						if res.is_ok() {
+							current_weight = required_weight;
+
+							scheduled_unbond.remove(0);
+							ScheduledUnbond::<T>::put(scheduled_unbond);
+						}
+					}
+				}
+			}
+			current_weight
+		}
+	}
+
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		/// Mint some Liquid currency, by locking up the given amount of Staking currency.
@@ -742,37 +769,12 @@ pub mod module {
 			Ok(())
 		}
 
-		// Should be called by the on_idle_scheduler.
-		pub fn xcm_withdraw_unbonded(remaining_weight: Weight, _n: T::BlockNumber) -> Weight {
-			let required_weight = <T as Config>::WeightInfo::xcm_withdraw_unbonded();
-			let mut current_weight = 0;
-			if remaining_weight > required_weight {
-				let mut scheduled_unbond = Self::scheduled_unbond();
-				if !scheduled_unbond.is_empty() {
-					let (staking_amount, block_number) = scheduled_unbond[0];
-					if T::RelayChainBlockNumber::current_block_number() >= block_number {
-						let res = Self::process_scheduled_unbond(staking_amount);
-						log::debug!("{:?}", res);
-						debug_assert!(res.is_ok());
-
-						if res.is_ok() {
-							current_weight = required_weight;
-
-							scheduled_unbond.remove(0);
-							ScheduledUnbond::<T>::put(scheduled_unbond);
-						}
-					}
-				}
-			}
-			current_weight
-		}
-
 		#[transactional]
 		fn process_scheduled_unbond(staking_amount: Balance) -> DispatchResult {
 			let msg = Self::construct_xcm_unreserve_message(T::ParachainAccount::get(), staking_amount);
 
 			let res = pallet_xcm::Pallet::<T>::send_xcm(Here, Parent.into(), msg);
-			log::debug!("withdraw_unbonded XCM result: {:?}", res);
+			log::debug!("on_idle XCM result: {:?}", res);
 			ensure!(res.is_ok(), Error::<T>::XcmFailed);
 
 			// Now that there's available staking balance, automatically match existing

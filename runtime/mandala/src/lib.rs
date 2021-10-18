@@ -1382,33 +1382,15 @@ impl orml_nft::Config for Runtime {
 	type MaxTokenMetadata = MaxTokenMetadata;
 }
 
-// Mock dispatachable tasks
-#[derive(Clone, Debug, PartialEq, Encode, Decode)]
-pub enum HomaLiteTask {
-	#[codec(index = 0)]
-	WithdrawUnbonded,
-}
-impl DispatchableTask for HomaLiteTask {
-	fn dispatch(self, weight: Weight) -> TaskResult {
-		TaskResult {
-			used_weight: match self {
-				HomaLiteTask::WithdrawUnbonded => HomaLite::xcm_withdraw_unbonded(
-					weight,
-					RelayChainBlockNumberProvider::<Runtime>::current_block_number(),
-				),
-			},
-			finished: true,
-		}
-	}
-}
 parameter_types! {
 	// Minimum of 10% of weights must remain for each block.
 	pub MinimumWeightRemainInBlock: Weight = RuntimeBlockWeights::get().max_block / 10;
 }
 
+// Used to handle dispathable tasks for the Idle Scheduler.
+// Add the Enum of tasks declared in each modules into the macro
 define_combined_task! {
 	pub enum ScheduledTasks {
-		HomaLiteTask,
 	}
 }
 

@@ -47,7 +47,7 @@ use sp_std::marker::PhantomData;
 /// Weight functions for module_homa_lite.
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> module_homa_lite::WeightInfo for WeightInfo<T> {
-	fn xcm_withdraw_unbonded() -> Weight {
+	fn on_idle() -> Weight {
 		(63_233_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(8 as Weight))
 			.saturating_add(T::DbWeight::get().writes(3 as Weight))
