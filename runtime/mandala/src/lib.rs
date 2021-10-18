@@ -32,7 +32,7 @@
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
-use codec::{Compact, Decode, Encode};
+use codec::{Decode, Encode};
 use frame_support::pallet_prelude::InvalidTransaction;
 pub use frame_support::{
 	construct_runtime, log, parameter_types,
@@ -1958,11 +1958,7 @@ impl Convert<(Call, SignedExtra), Result<EthereumTransactionMessage, InvalidTran
 				}
 
 				let nonce: frame_system::CheckNonce<Runtime> = extra.4;
-				// TODO: this is a hack access private nonce field
-				// remove this after https://github.com/paritytech/substrate/pull/9810
-				let nonce = nonce
-					.using_encoded(|mut encoded| Compact::<Nonce>::decode(&mut encoded))
-					.map_err(|_| InvalidTransaction::BadProof)?;
+				let nonce = nonce.0;
 
 				let tip: module_transaction_payment::ChargeTransactionPayment<Runtime> = extra.6;
 				let tip = tip.0;
