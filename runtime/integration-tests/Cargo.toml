@@ -147,15 +147,15 @@ acala-service = { path = "../../node/service", features = ["with-all-runtime"] }
 [features]
 default = ["std"]
 no_std = []
-with-mandala-runtime=[
+with-mandala-runtime = [
 	"acala-service/with-mandala-runtime",
 	"module-relaychain/polkadot"
 ]
-with-karura-runtime=[
+with-karura-runtime = [
 	"acala-service/with-karura-runtime",
 	"module-relaychain/kusama"
 ]
-with-ethereum-compatibility=[
+with-ethereum-compatibility = [
 	"mandala-runtime/with-ethereum-compatibility",
 	"module-evm/with-ethereum-compatibility",
 ]

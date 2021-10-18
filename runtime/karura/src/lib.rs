@@ -1460,11 +1460,10 @@ impl xcm_executor::Config for XcmConfig {
 	type LocationInverter = LocationInverter<Ancestry>;
 	type Barrier = Barrier;
 	type Weigher = FixedWeightBounds<UnitWeightCost, Call, MaxInstructions>;
-	// Only receiving KSM is handled, and all fees must be paid in KSM.
 	type Trader = Trader;
-	type ResponseHandler = (); // Don't handle responses for now.
-	type AssetTrap = ();
-	type AssetClaims = ();
+	type ResponseHandler = PolkadotXcm;
+	type AssetTrap = PolkadotXcm;
+	type AssetClaims = PolkadotXcm;
 	type SubscriptionService = PolkadotXcm;
 }
 

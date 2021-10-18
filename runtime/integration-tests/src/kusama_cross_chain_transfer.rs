@@ -64,14 +64,14 @@ fn transfer_to_relay_chain() {
 					network: NetworkId::Any,
 				})
 			)),
-			3_000_000_000
+			4_000_000_000
 		));
 	});
 
 	KusamaNet::execute_with(|| {
 		assert_eq!(
 			kusama_runtime::Balances::free_balance(&AccountId::from(BOB)),
-			999_920_000_005
+			999_893_333_340
 		);
 	});
 }
