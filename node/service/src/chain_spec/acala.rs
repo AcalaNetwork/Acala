@@ -62,7 +62,7 @@ fn acala_properties() -> Properties {
 }
 
 pub fn latest_acala_config() -> Result<ChainSpec, String> {
-	let wasm_binary = karura_runtime::WASM_BINARY.ok_or("Acala runtime wasm binary not available")?;
+	let wasm_binary = acala_runtime::WASM_BINARY.ok_or("Acala runtime wasm binary not available")?;
 
 	Ok(ChainSpec::from_genesis(
 		"Acala",
