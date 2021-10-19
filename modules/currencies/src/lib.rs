@@ -111,7 +111,7 @@ pub mod module {
 		EvmAccountNotFound,
 		/// Real origin not found
 		RealOriginNotFound,
-		/// Native currency
+		/// Deposit result is not expected
 		DepositFailed,
 	}
 
