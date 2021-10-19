@@ -110,12 +110,11 @@ impl<T: Config> Pallet<T> {
 
 	/// Retrieves the next task ID from storage, and increment it by one.
 	fn get_next_task_id() -> Nonce {
-		let next_id = NextTaskId::<T>::mutate(|current| {
+		NextTaskId::<T>::mutate(|current| {
 			let id = *current;
 			*current = current.saturating_add(One::one());
 			id
-		});
-		next_id
+		})
 	}
 
 	/// Keep dispatching tasks in Storage, until insufficient weight remains.
