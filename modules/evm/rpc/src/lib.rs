@@ -229,8 +229,9 @@ where
 
 		log::debug!(
 			target: "evm",
-			"estimate_resources, from: {:?}, to: {:?}, gas_limit: {:?}, storage_limit: {:?}, value: {:?}, at_hash: {:?}", request.from, request.to, request.gas_limit, request.storage_limit, request.value,
-			hash);
+			"estimate_resources, from: {:?}, to: {:?}, gas_limit: {:?}, storage_limit: {:?}, value: {:?}, at_hash: {:?}",
+			request.from, request.to, request.gas_limit, request.storage_limit, request.value, hash
+		);
 
 		// Create a helper to check if a gas allowance results in an executable transaction
 		let executable = move |request: CallRequest, gas| -> Result<Option<(U256, i32)>> {
@@ -311,11 +312,7 @@ where
 		let (used_gas, used_storage) = executable(request.clone(), highest.as_u64())?
 			.ok_or_else(|| internal_err(format!("gas required exceeds allowance {}", highest)))?;
 
-		#[cfg(not(feature = "rpc_binary_search_estimate"))]
-		{
-			highest = U256::from(used_gas);
-		}
-		#[cfg(feature = "rpc_binary_search_estimate")]
+		// rpc_binary_search_estimate block
 		{
 			// Define the lower bound of the binary search
 			const MIN_GAS_PER_TX: U256 = U256([21_000, 0, 0, 0]);
