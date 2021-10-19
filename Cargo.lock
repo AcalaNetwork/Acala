@@ -5555,6 +5555,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "module-evm-utiltity"
+version = "1.5.1"
+dependencies = [
+ "proc-macro-crate 1.1.0",
+ "proc-macro2",
+ "quote",
+ "sha3 0.9.1",
+ "syn",
+]
+
+[[package]]
 name = "module-example"
 version = "1.5.1"
 dependencies = [
