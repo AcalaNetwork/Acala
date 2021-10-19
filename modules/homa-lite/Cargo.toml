@@ -29,7 +29,7 @@ cumulus-primitives-core = { git = "https://github.com/paritytech/cumulus", branc
 module-relaychain = { path = "../relaychain"}
 
 [features]
-default = ["std", "kusama"]
+default = ["std"]
 kusama = ["module-relaychain/kusama"]
 std = [
 	"codec/std",

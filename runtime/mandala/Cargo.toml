@@ -137,7 +137,6 @@ ecosystem-compound-cash = { path = "../../ecosystem-modules/compound-cash", defa
 substrate-wasm-builder = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.11" }
 
 [dev-dependencies]
-libsecp256k1 = "0.3.4"
 hex = "0.4.0"
 
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.11" }
