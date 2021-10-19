@@ -39,7 +39,7 @@ use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_core::{crypto::KeyTypeId, OpaqueMetadata, H160};
 use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
-	traits::{AccountIdConversion, BadOrigin, BlakeTwo256, Block as BlockT, SaturatedConversion, StaticLookup, Zero},
+	traits::{AccountIdConversion, BadOrigin, BlakeTwo256, Block as BlockT, SaturatedConversion, StaticLookup},
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, DispatchResult, FixedPointNumber,
 };
@@ -1901,8 +1901,9 @@ impl_runtime_apis! {
 
 			let request = match utx.function {
 				Call::EVM(module_evm::Call::call{target, input, value, gas_limit, storage_limit}) => {
-					let gas_limit = if gas_limit.is_zero() { None } else { Some(gas_limit) };
-					let storage_limit = if storage_limit.is_zero() { None } else { Some(storage_limit) };
+					// use MAX_VALUE for no limit
+					let gas_limit = if gas_limit < u64::MAX { Some(gas_limit) } else { None };
+					let storage_limit = if storage_limit < u32::MAX { Some(storage_limit) } else { None };
 					Some(EstimateResourcesRequest {
 						from: None,
 						to: Some(target),
@@ -1913,8 +1914,9 @@ impl_runtime_apis! {
 					})
 				}
 				Call::EVM(module_evm::Call::create{init, value, gas_limit, storage_limit}) => {
-					let gas_limit = if gas_limit.is_zero() { None } else { Some(gas_limit) };
-					let storage_limit = if storage_limit.is_zero() { None } else { Some(storage_limit) };
+					// use MAX_VALUE for no limit
+					let gas_limit = if gas_limit < u64::MAX { Some(gas_limit) } else { None };
+					let storage_limit = if storage_limit < u32::MAX { Some(storage_limit) } else { None };
 					Some(EstimateResourcesRequest {
 						from: None,
 						to: None,

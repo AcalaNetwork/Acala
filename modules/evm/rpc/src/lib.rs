@@ -309,7 +309,7 @@ where
 
 		// verify that the transaction suceed with highest capacity
 		let (used_gas, used_storage) = executable(request.clone(), highest.as_u64())?
-			.ok_or(internal_err(format!("gas required exceeds allowance {}", highest)))?;
+			.ok_or_else(|| internal_err(format!("gas required exceeds allowance {}", highest)))?;
 
 		#[cfg(not(feature = "rpc_binary_search_estimate"))]
 		{
