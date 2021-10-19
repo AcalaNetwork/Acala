@@ -100,5 +100,6 @@ pub mod parachains {
 
 	pub mod phala {
 		pub const ID: u32 = 2004;
+		pub const XCM_VERSION: u32 = 1;
 	}
 }

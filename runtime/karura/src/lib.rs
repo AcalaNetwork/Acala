@@ -45,7 +45,7 @@ use sp_runtime::{
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, DispatchResult, FixedPointNumber,
 };
-use sp_std::prelude::*;
+use sp_std::{collections::btree_map::BTreeMap, prelude::*};
 #[cfg(feature = "std")]
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
@@ -64,10 +64,10 @@ use orml_traits::{
 use pallet_transaction_payment::RuntimeDispatchInfo;
 
 pub use cumulus_primitives_core::ParaId;
-pub use orml_xcm_support::{IsNativeConcrete, MultiCurrencyAdapter, MultiNativeAsset};
+pub use orml_xcm_support::{IsNativeConcrete, MultiCurrencyAdapter, MultiNativeAsset, VersionWrapper};
 use pallet_xcm::XcmPassthrough;
 pub use polkadot_parachain::primitives::Sibling;
-pub use xcm::latest::prelude::*;
+pub use xcm::{latest::prelude::*, Version as XcmVersion};
 
 pub use xcm_builder::{
 	AccountId32Aliases, AllowTopLevelPaidExecutionFrom, AllowUnpaidExecutionFrom, EnsureXcmOrigin, FixedRateOfFungible,
@@ -1514,11 +1514,18 @@ impl cumulus_pallet_xcm::Config for Runtime {
 	type XcmExecutor = XcmExecutor<XcmConfig>;
 }
 
+parameter_types! {
+    pub SafeXcmVersion: BTreeMap<MultiLocation, XcmVersion> = {
+        let mut t = BTreeMap::<MultiLocation, XcmVersion>::new();
+        t.insert(MultiLocation::new(1, X1(Parachain(parachains::phala::ID))), parachains::phala::XCM_VERSION.into());
+        t
+    };
+}
 impl cumulus_pallet_xcmp_queue::Config for Runtime {
 	type Event = Event;
 	type XcmExecutor = XcmExecutor<XcmConfig>;
 	type ChannelInfo = ParachainSystem;
-	type VersionWrapper = ();
+	type VersionWrapper = VersionWrapper<SafeXcmVersion>;
 }
 
 impl cumulus_pallet_dmp_queue::Config for Runtime {
