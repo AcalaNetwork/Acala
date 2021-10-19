@@ -74,7 +74,7 @@ pub mod module {
 	/// Some documentation
 	#[pallet::storage]
 	#[pallet::getter(fn tasks)]
-	pub type Tasks<T: Config> = StorageMap<_, Identity, Nonce, T::Task, OptionQuery>;
+	pub type Tasks<T: Config> = StorageMap<_, Twox64Concat, Nonce, T::Task, OptionQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn next_task_id)]
@@ -110,8 +110,11 @@ impl<T: Config> Pallet<T> {
 
 	/// Retrieves the next task ID from storage, and increment it by one.
 	fn get_next_task_id() -> Nonce {
-		let next_id = Self::next_task_id();
-		NextTaskId::<T>::mutate(|current| *current = current.saturating_add(One::one()));
+		let next_id = NextTaskId::<T>::mutate(|current| {
+			let id = *current;
+			*current = current.saturating_add(One::one());
+			id
+		});
 		next_id
 	}
 

@@ -1944,7 +1944,7 @@ define_combined_task! {
 }
 
 parameter_types!(
-	// Atleast 2% of max block weight should remain after idle tasks are dispatched.
+	// At least 2% of max block weight should remain before idle tasks are dispatched.
 	pub MinimumWeightRemainInBlock: Weight = RuntimeBlockWeights::get().max_block / 50;
 );
 
