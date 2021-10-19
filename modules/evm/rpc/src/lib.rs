@@ -324,7 +324,7 @@ where
 			// Execute the binary search and hone in on an executable gas limit.
 			let mut previous_highest = highest;
 			while (highest - lowest) > U256::one() {
-				if executable(request.clone(), mid.as_u64())?.is_some() {
+				if executable(request.clone(), mid.as_u64()).unwrap_or_default().is_some() {
 					highest = mid;
 					// If the variation in the estimate is less than 10%,
 					// then the estimate is considered sufficiently accurate.
