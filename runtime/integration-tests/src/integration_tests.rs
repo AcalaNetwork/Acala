@@ -282,12 +282,12 @@ fn set_oracle_price(prices: Vec<(CurrencyId, Price)>) -> DispatchResult {
 	Ok(())
 }
 
-pub fn alice_key() -> secp256k1::SecretKey {
-	secp256k1::SecretKey::parse(&keccak_256(b"Alice")).unwrap()
+pub fn alice_key() -> libsecp256k1::SecretKey {
+	libsecp256k1::SecretKey::parse(&keccak_256(b"Alice")).unwrap()
 }
 
-pub fn bob_key() -> secp256k1::SecretKey {
-	secp256k1::SecretKey::parse(&keccak_256(b"Bob")).unwrap()
+pub fn bob_key() -> libsecp256k1::SecretKey {
+	libsecp256k1::SecretKey::parse(&keccak_256(b"Bob")).unwrap()
 }
 
 pub fn alice() -> AccountId {

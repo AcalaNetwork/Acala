@@ -212,20 +212,20 @@ impl<T: Config> Pallet<T> {
 		Some(res)
 	}
 
-	#[cfg(feature = "std")]
+	#[cfg(any(feature = "runtime-benchmarks", feature = "std"))]
 	// Returns an Etherum public key derived from an Ethereum secret key.
 	pub fn eth_public(secret: &libsecp256k1::SecretKey) -> libsecp256k1::PublicKey {
 		libsecp256k1::PublicKey::from_secret_key(secret)
 	}
 
-	#[cfg(feature = "std")]
+	#[cfg(any(feature = "runtime-benchmarks", feature = "std"))]
 	// Returns an Etherum address derived from an Ethereum secret key.
 	// Only for tests
 	pub fn eth_address(secret: &libsecp256k1::SecretKey) -> EvmAddress {
 		EvmAddress::from_slice(&keccak_256(&Self::eth_public(secret).serialize()[1..65])[12..])
 	}
 
-	#[cfg(feature = "std")]
+	#[cfg(any(feature = "runtime-benchmarks", feature = "std"))]
 	// Constructs a message and signs it.
 	pub fn eth_sign(secret: &libsecp256k1::SecretKey, what: &[u8], extra: &[u8]) -> EcdsaSignature {
 		let msg = keccak_256(&Self::ethereum_signable_message(&to_ascii_hex(what)[..], extra));
