@@ -95,24 +95,23 @@ pub mod module {
 		#[pallet::weight(< T as Config >::WeightInfo::schedule_task())]
 		pub fn schedule_task(origin: OriginFor<T>, task: T::Task) -> DispatchResult {
 			T::SchedulerOrigin::ensure_origin(origin)?;
-			Self::do_schedule_task(task)
+			Self::do_schedule_task(task);
+			Ok(())
 		}
 	}
 }
 
 impl<T: Config> Pallet<T> {
 	/// Add the task to the queue to be dispatched later
-	fn do_schedule_task(task: T::Task) -> DispatchResult {
+	fn do_schedule_task(task: T::Task) {
 		let id = Self::get_next_task_id();
 		Tasks::<T>::insert(id, task);
-
-		Ok(())
 	}
 
 	/// Retrieves the next task ID from storage, and increment it by one.
 	fn get_next_task_id() -> Nonce {
 		let next_id = Self::next_task_id();
-		NextTaskId::<T>::put(next_id.saturating_add(One::one()));
+		NextTaskId::<T>::mutate(|current| *current = current.saturating_add(One::one()));
 		next_id
 	}
 
