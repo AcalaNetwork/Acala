@@ -2131,7 +2131,7 @@ construct_runtime! {
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 170,
-		PolkadotXcm: pallet_xcm::{Pallet, Call, Event<T>, Origin} = 171,
+		PolkadotXcm: pallet_xcm::{Pallet, Storage, Call, Event<T>, Origin} = 171,
 		CumulusXcm: cumulus_pallet_xcm::{Pallet, Event<T>, Origin} = 172,
 		DmpQueue: cumulus_pallet_dmp_queue::{Pallet, Call, Storage, Event<T>} = 173,
 		XTokens: orml_xtokens::{Pallet, Storage, Call, Event<T>} = 174,
