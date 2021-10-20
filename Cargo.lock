@@ -2309,6 +2309,7 @@ dependencies = [
  "pallet-chainlink-feed",
  "pallet-timestamp",
  "parity-scale-codec",
+ "scale-info",
  "serde",
  "sp-core",
  "sp-io",
@@ -7011,12 +7012,13 @@ dependencies = [
 [[package]]
 name = "pallet-chainlink-feed"
 version = "0.1.0"
-source = "git+https://github.com/smartcontractkit//chainlink-polkadot?rev=215c22351856aac1dca82d9249b33a5bf209eb32#215c22351856aac1dca82d9249b33a5bf209eb32"
+source = "git+https://github.com/smartcontractkit//chainlink-polkadot?rev=a7c95fecc274bd86dc6a49e3871c227fc0ff5798#a7c95fecc274bd86dc6a49e3871c227fc0ff5798"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
  "parity-scale-codec",
+ "scale-info",
  "serde",
  "sp-arithmetic",
  "sp-core",

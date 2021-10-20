@@ -299,4 +299,4 @@ cumulus-test-relay-sproof-builder = { git = "https://github.com/paritytech//cumu
 parachain-info  = { git = "https://github.com/paritytech//cumulus", rev = "ede4d527c4fc5d84c43216b408a873625488574b" }
 
 [patch."https://github.com/smartcontractkit/chainlink-polkadot"]
-pallet-chainlink-feed = { git = "https://github.com/smartcontractkit//chainlink-polkadot", rev = "215c22351856aac1dca82d9249b33a5bf209eb32" }
+pallet-chainlink-feed = { git = "https://github.com/smartcontractkit//chainlink-polkadot", rev = "a7c95fecc274bd86dc6a49e3871c227fc0ff5798" }
