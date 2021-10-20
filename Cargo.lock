@@ -73,6 +73,7 @@ dependencies = [
  "evm",
  "frame-support",
  "hex-literal 0.3.3",
+ "module-evm-utiltity-macro",
  "num_enum",
  "nutsfinance-stable-asset",
  "parity-scale-codec",
