@@ -21,8 +21,7 @@
 #![cfg(test)]
 
 use crate as example;
-use frame_support::pallet_prelude::GenesisBuild;
-use frame_support::{construct_runtime, parameter_types};
+use frame_support::{construct_runtime, pallet_prelude::GenesisBuild, parameter_types, traits::Everything};
 
 parameter_types!(
 	pub const SomeConst: u64 = 10;
@@ -30,7 +29,7 @@ parameter_types!(
 );
 
 impl frame_system::Config for Runtime {
-	type BaseCallFilter = ();
+	type BaseCallFilter = Everything;
 	type Origin = Origin;
 	type Index = u64;
 	type BlockNumber = u64;

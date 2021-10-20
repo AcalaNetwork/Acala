@@ -33,35 +33,35 @@ runtime_benchmarks! {
 
 	// dispatch a dispatchable as other origin
 	dispatch_as {
-		let ensure_root_call = Call::System(frame_system::Call::fill_block(Perbill::from_percent(1)));
+		let ensure_root_call = Call::System(frame_system::Call::fill_block { ratio: Perbill::from_percent(1) });
 	}: _(RawOrigin::Root, AuthoritysOriginId::Root, Box::new(ensure_root_call.clone()))
 
 	// schdule a dispatchable to be dispatched at later block.
 	schedule_dispatch_without_delay {
-		let ensure_root_call = Call::System(frame_system::Call::fill_block(Perbill::from_percent(1)));
-		let call = Call::Authority(orml_authority::Call::dispatch_as(
-			AuthoritysOriginId::Root,
-			Box::new(ensure_root_call.clone()),
-		));
+		let ensure_root_call = Call::System(frame_system::Call::fill_block { ratio: Perbill::from_percent(1) });
+		let call = Call::Authority(orml_authority::Call::dispatch_as {
+			as_origin: AuthoritysOriginId::Root,
+			call: Box::new(ensure_root_call.clone()),
+		});
 	}: schedule_dispatch(RawOrigin::Root, DispatchTime::At(2), 0, false, Box::new(call.clone()))
 
 	// schdule a dispatchable to be dispatched at later block.
 	// ensure that the delay is reached when scheduling
 	schedule_dispatch_with_delay {
-		let ensure_root_call = Call::System(frame_system::Call::fill_block(Perbill::from_percent(1)));
-		let call = Call::Authority(orml_authority::Call::dispatch_as(
-			AuthoritysOriginId::Root,
-			Box::new(ensure_root_call.clone()),
-		));
+		let ensure_root_call = Call::System(frame_system::Call::fill_block { ratio: Perbill::from_percent(1) });
+		let call = Call::Authority(orml_authority::Call::dispatch_as {
+			as_origin: AuthoritysOriginId::Root,
+			call: Box::new(ensure_root_call.clone()),
+		});
 	}: schedule_dispatch(RawOrigin::Root, DispatchTime::At(2), 0, true, Box::new(call.clone()))
 
 	// fast track a scheduled dispatchable.
 	fast_track_scheduled_dispatch {
-		let ensure_root_call = Call::System(frame_system::Call::fill_block(Perbill::from_percent(1)));
-		let call = Call::Authority(orml_authority::Call::dispatch_as(
-			AuthoritysOriginId::Root,
-			Box::new(ensure_root_call.clone()),
-		));
+		let ensure_root_call = Call::System(frame_system::Call::fill_block { ratio: Perbill::from_percent(1) });
+		let call = Call::Authority(orml_authority::Call::dispatch_as {
+			as_origin: AuthoritysOriginId::Root,
+			call: Box::new(ensure_root_call.clone()),
+		});
 		System::set_block_number(1u32);
 		Authority::schedule_dispatch(
 			Origin::root(),
@@ -85,11 +85,11 @@ runtime_benchmarks! {
 
 	// delay a scheduled dispatchable.
 	delay_scheduled_dispatch {
-		let ensure_root_call = Call::System(frame_system::Call::fill_block(Perbill::from_percent(1)));
-		let call = Call::Authority(orml_authority::Call::dispatch_as(
-			AuthoritysOriginId::Root,
-			Box::new(ensure_root_call.clone()),
-		));
+		let ensure_root_call = Call::System(frame_system::Call::fill_block { ratio: Perbill::from_percent(1) });
+		let call = Call::Authority(orml_authority::Call::dispatch_as {
+			as_origin: AuthoritysOriginId::Root,
+			call: Box::new(ensure_root_call.clone()),
+		});
 		System::set_block_number(1u32);
 		Authority::schedule_dispatch(
 			Origin::root(),
@@ -113,11 +113,11 @@ runtime_benchmarks! {
 
 	// cancel a scheduled dispatchable
 	cancel_scheduled_dispatch {
-		let ensure_root_call = Call::System(frame_system::Call::fill_block(Perbill::from_percent(1)));
-		let call = Call::Authority(orml_authority::Call::dispatch_as(
-			AuthoritysOriginId::Root,
-			Box::new(ensure_root_call.clone()),
-		));
+		let ensure_root_call = Call::System(frame_system::Call::fill_block { ratio: Perbill::from_percent(1) });
+		let call = Call::Authority(orml_authority::Call::dispatch_as {
+			as_origin: AuthoritysOriginId::Root,
+			call: Box::new(ensure_root_call.clone()),
+		});
 		System::set_block_number(1u32);
 		Authority::schedule_dispatch(
 			Origin::root(),
@@ -142,7 +142,7 @@ runtime_benchmarks! {
 	// authorize a call that can be triggered later
 	authorize_call {
 		let caller: AccountId = whitelisted_caller();
-		let call = Call::System(frame_system::Call::fill_block(Perbill::from_percent(1)));
+		let call = Call::System(frame_system::Call::fill_block { ratio: Perbill::from_percent(1) });
 		let hash = <Runtime as frame_system::Config>::Hashing::hash_of(&call);
 		System::set_block_number(1u32);
 	}: _(RawOrigin::Root, Box::new(call.clone()), Some(caller.clone()))
@@ -152,7 +152,7 @@ runtime_benchmarks! {
 
 	remove_authorized_call {
 		let caller: AccountId = whitelisted_caller();
-		let call = Call::System(frame_system::Call::fill_block(Perbill::from_percent(1)));
+		let call = Call::System(frame_system::Call::fill_block { ratio: Perbill::from_percent(1) });
 		let hash = <Runtime as frame_system::Config>::Hashing::hash_of(&call);
 		System::set_block_number(1u32);
 		Authority::authorize_call(Origin::root(), Box::new(call.clone()), Some(caller.clone()))?;
@@ -163,7 +163,7 @@ runtime_benchmarks! {
 
 	trigger_call {
 		let caller: AccountId = whitelisted_caller();
-		let call = Call::System(frame_system::Call::fill_block(Perbill::from_percent(1)));
+		let call = Call::System(frame_system::Call::fill_block { ratio: Perbill::from_percent(1) });
 		let hash = <Runtime as frame_system::Config>::Hashing::hash_of(&call);
 		let call_weight_bound = call.get_dispatch_info().weight;
 		System::set_block_number(1u32);

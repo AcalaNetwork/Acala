@@ -99,15 +99,11 @@ mod karura_tests {
 			let xcm_message =
 				KusamaCallBuilder::utility_as_derivative_call(KusamaCallBuilder::staking_withdraw_unbonded(5), 0);
 
-			let msg = KusamaCallBuilder::finalize_call_into_xcm_message(
-				xcm_message,
-				XcmUnbondFee::get(),
-				10_000_000_000,
-				10_000_000_000,
-			);
+			let msg =
+				KusamaCallBuilder::finalize_call_into_xcm_message(xcm_message, XcmUnbondFee::get(), 10_000_000_000);
 
 			// Withdraw unbonded
-			assert_ok!(pallet_xcm::Pallet::<Runtime>::send_xcm(Here, Parent.into(), msg));
+			assert_ok!(pallet_xcm::Pallet::<Runtime>::send_xcm(Here, Parent, msg));
 		});
 
 		KusamaNet::execute_with(|| {
@@ -153,15 +149,11 @@ mod karura_tests {
 			// Transfer all remaining, but leave enough fund to pay for the XCM transaction.
 			let xcm_message = KusamaCallBuilder::balances_transfer_keep_alive(ALICE.into(), 1_990_000_000_000);
 
-			let msg = KusamaCallBuilder::finalize_call_into_xcm_message(
-				xcm_message,
-				XcmUnbondFee::get(),
-				10_000_000_000,
-				10_000_000_000,
-			);
+			let msg =
+				KusamaCallBuilder::finalize_call_into_xcm_message(xcm_message, XcmUnbondFee::get(), 10_000_000_000);
 
 			// Withdraw unbonded
-			assert_ok!(pallet_xcm::Pallet::<Runtime>::send_xcm(Here, Parent.into(), msg));
+			assert_ok!(pallet_xcm::Pallet::<Runtime>::send_xcm(Here, Parent, msg));
 		});
 
 		KusamaNet::execute_with(|| {
@@ -186,7 +178,7 @@ mod karura_tests {
 			assert_eq!(encoded, hex_literal::hex!["060305000000"]);
 			assert_eq!(
 				withdraw_unbond_call,
-				kusama_runtime::Call::Staking(pallet_staking::Call::withdraw_unbonded(5))
+				kusama_runtime::Call::Staking(pallet_staking::Call::withdraw_unbonded { num_slashing_spans: 5 })
 			);
 
 			let encoded = KusamaCallBuilder::balances_transfer_keep_alive(ALICE.into(), 1).encode();
@@ -197,10 +189,10 @@ mod karura_tests {
 			);
 			assert_eq!(
 				transfer_call,
-				kusama_runtime::Call::Balances(pallet_balances::Call::transfer_keep_alive(
-					MultiAddress::Id(AccountId::from([4u8; 32])),
-					1
-				))
+				kusama_runtime::Call::Balances(pallet_balances::Call::transfer_keep_alive {
+					dest: MultiAddress::Id(AccountId::from([4u8; 32])),
+					value: 1
+				})
 			);
 
 			let encoded =
@@ -209,9 +201,11 @@ mod karura_tests {
 			assert_eq!(encoded, hex_literal::hex!["180204060305000000"]);
 			assert_eq!(
 				batch_call,
-				kusama_runtime::Call::Utility(pallet_utility::Call::batch_all(vec![kusama_runtime::Call::Staking(
-					pallet_staking::Call::withdraw_unbonded(5)
-				)]))
+				kusama_runtime::Call::Utility(pallet_utility::Call::batch_all {
+					calls: vec![kusama_runtime::Call::Staking(pallet_staking::Call::withdraw_unbonded {
+						num_slashing_spans: 5
+					})]
+				})
 			);
 
 			let encoded =
@@ -221,12 +215,12 @@ mod karura_tests {
 			assert_eq!(encoded, hex_literal::hex!["18010a00060305000000"]);
 			assert_eq!(
 				batch_as_call,
-				kusama_runtime::Call::Utility(pallet_utility::Call::as_derivative(
-					10,
-					Box::new(kusama_runtime::Call::Staking(pallet_staking::Call::withdraw_unbonded(
-						5
-					)))
-				))
+				kusama_runtime::Call::Utility(pallet_utility::Call::as_derivative {
+					index: 10,
+					call: Box::new(kusama_runtime::Call::Staking(pallet_staking::Call::withdraw_unbonded {
+						num_slashing_spans: 5
+					}))
+				})
 			);
 		});
 	}

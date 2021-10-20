@@ -1305,7 +1305,7 @@ fn storage_limit_should_work() {
 					actual_weight: None,
 					pays_fee: Pays::Yes,
 				},
-				error: DispatchError::from(Error::<Runtime>::OutOfStorage)
+				error: Error::<Runtime>::OutOfStorage.into()
 			}
 		);
 
@@ -1345,7 +1345,7 @@ fn storage_limit_should_work() {
 					actual_weight: None,
 					pays_fee: Pays::Yes,
 				},
-				error: DispatchError::from(Error::<Runtime>::OutOfStorage)
+				error: Error::<Runtime>::OutOfStorage.into()
 			}
 		);
 
@@ -1589,7 +1589,7 @@ fn should_update_storage() {
 					actual_weight: None,
 					pays_fee: Pays::Yes,
 				},
-				error: DispatchError::from(Error::<Runtime>::OutOfStorage)
+				error: Error::<Runtime>::OutOfStorage.into()
 			}
 		);
 

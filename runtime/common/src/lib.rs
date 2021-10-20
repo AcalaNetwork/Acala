@@ -35,6 +35,7 @@ pub use module_support::{ExchangeRate, PrecompileCallerFilter, Price, Rate, Rati
 use primitives::{
 	Balance, BlockNumber, CurrencyId, PRECOMPILE_ADDRESS_START, PREDEPLOY_ADDRESS_START, SYSTEM_CONTRACT_ADDRESS_PREFIX,
 };
+use scale_info::TypeInfo;
 use sp_core::{
 	u32_trait::{_1, _2, _3, _4},
 	H160,
@@ -321,7 +322,7 @@ pub type EnsureRootOrThreeFourthsTechnicalCommittee = EnsureOneOf<
 >;
 
 /// The type used to represent the kinds of proxying allowed.
-#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Encode, Decode, RuntimeDebug, MaxEncodedLen)]
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Encode, Decode, RuntimeDebug, MaxEncodedLen, TypeInfo)]
 pub enum ProxyType {
 	Any,
 	CancelProxy,

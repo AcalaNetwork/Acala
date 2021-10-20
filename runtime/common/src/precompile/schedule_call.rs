@@ -183,14 +183,14 @@ impl<
 					})?;
 				}
 
-				let call = module_evm::Call::<Runtime>::scheduled_call(
+				let call = module_evm::Call::<Runtime>::scheduled_call {
 					from,
 					target,
-					input_data,
-					value.into(),
+					input: input_data,
+					value: value.into(),
 					gas_limit,
 					storage_limit,
-				)
+				}
 				.into();
 
 				let current_id = EvmSchedulerNextID::get();

@@ -21,7 +21,7 @@
 #![cfg(test)]
 
 use super::*;
-use frame_support::{assert_ok, construct_runtime, ord_parameter_types, parameter_types};
+use frame_support::{assert_ok, construct_runtime, ord_parameter_types, parameter_types, traits::Everything};
 use frame_system::EnsureSignedBy;
 use primitives::{evm::EvmAddress, ReserveIdentifier};
 use sp_core::{bytes::from_hex, crypto::AccountId32, H256};
@@ -42,7 +42,7 @@ parameter_types! {
 }
 
 impl frame_system::Config for Runtime {
-	type BaseCallFilter = ();
+	type BaseCallFilter = Everything;
 	type Origin = Origin;
 	type Call = Call;
 	type Index = u64;

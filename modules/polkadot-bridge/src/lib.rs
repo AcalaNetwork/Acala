@@ -23,6 +23,7 @@ use frame_support::{log, pallet_prelude::*, traits::Get, transactional, BoundedV
 use frame_system::pallet_prelude::*;
 use orml_traits::BasicCurrency;
 use primitives::{Balance, EraIndex};
+use scale_info::TypeInfo;
 use sp_runtime::{
 	traits::{CheckedSub, MaybeDisplay, MaybeSerializeDeserialize, Member, StaticLookup, Zero},
 	ArithmeticError, DispatchResult, FixedPointNumber, RuntimeDebug,
@@ -36,7 +37,7 @@ use support::{
 pub use module::*;
 
 /// The params related to rebalance per era
-#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, Default)]
+#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, Default, TypeInfo)]
 pub struct SubAccountStatus<Unbonding> {
 	/// Bonded amount
 	pub bonded: Balance,

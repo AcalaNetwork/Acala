@@ -23,6 +23,7 @@ use frame_support::{pallet_prelude::*, transactional, PalletId};
 use frame_system::pallet_prelude::*;
 use orml_traits::{Change, Happened, MultiCurrency};
 use primitives::{Balance, CurrencyId, EraIndex};
+use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_runtime::{
@@ -41,7 +42,7 @@ mod tests;
 pub use module::*;
 
 /// The configurable params of staking pool.
-#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, Default)]
+#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, Default, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct Params {
 	/// The target max ratio of the free pool to the total communal DOT.
@@ -57,7 +58,7 @@ pub struct Params {
 	pub base_fee_rate: Rate,
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug)]
+#[derive(Copy, Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]
 pub enum Phase {
 	/// Rebalance process started.
 	Started,
@@ -77,7 +78,7 @@ impl Default for Phase {
 }
 
 /// The ledger of staking pool.
-#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, Default)]
+#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, Default, TypeInfo)]
 pub struct Ledger {
 	/// The amount of total bonded.
 	pub bonded: Balance,
@@ -202,7 +203,6 @@ pub mod module {
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
-	#[pallet::metadata(T::AccountId = "AccountId")]
 	pub enum Event<T: Config> {
 		/// Deposit staking currency(DOT) to staking pool and issue liquid
 		/// currency(LDOT). \[who, staking_amount_deposited,

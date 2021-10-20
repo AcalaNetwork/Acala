@@ -92,7 +92,6 @@ pub mod module {
 
 	#[pallet::event]
 	#[pallet::generate_deposit(fn deposit_event)]
-	#[pallet::metadata(T::AccountId = "AccountId", T::BlockNumber = "BlockNumber")]
 	pub enum Event<T: Config> {
 		/// Emergency shutdown occurs. \[block_number\]
 		Shutdown(T::BlockNumber),

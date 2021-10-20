@@ -32,6 +32,7 @@ use codec::MaxEncodedLen;
 use frame_support::{pallet_prelude::*, transactional};
 use frame_system::pallet_prelude::*;
 use primitives::{Balance, EraIndex};
+use scale_info::TypeInfo;
 use sp_runtime::RuntimeDebug;
 use support::HomaProtocol;
 
@@ -50,7 +51,7 @@ pub use weights::WeightInfo;
 /// 3. WaitFor Unbonding: User request unbond, the staking
 /// pool will process unbonding in the next era, and user needs to wait for
 /// the complete unbonding era which determined by Polkadot.
-#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, MaxEncodedLen)]
+#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, MaxEncodedLen, TypeInfo)]
 pub enum RedeemStrategy {
 	Immediately,
 	Target(EraIndex),

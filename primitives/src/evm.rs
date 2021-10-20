@@ -18,21 +18,22 @@
 
 use crate::{Balance, BlockNumber, Nonce};
 use codec::{Decode, Encode};
+pub use ethereum::{Log, TransactionAction};
 use evm::ExitReason;
+use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_core::{H160, H256, U256};
 use sp_runtime::RuntimeDebug;
 use sp_std::vec::Vec;
 
-pub use ethereum::TransactionAction;
-pub use evm::backend::{Basic as Account, Log};
+pub use evm::backend::Basic as Account;
 pub use evm::Config;
 
 /// Evm Address.
 pub type EvmAddress = sp_core::H160;
 
-#[derive(Clone, Eq, PartialEq, Encode, Decode, Default, RuntimeDebug)]
+#[derive(Clone, Eq, PartialEq, Encode, Decode, Default, RuntimeDebug, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 /// External input from the transaction.
 pub struct Vicinity {
@@ -42,7 +43,7 @@ pub struct Vicinity {
 	pub origin: EvmAddress,
 }
 
-#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug)]
+#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct ExecutionInfo<T> {
 	pub exit_reason: ExitReason,
@@ -55,7 +56,7 @@ pub struct ExecutionInfo<T> {
 pub type CallInfo = ExecutionInfo<Vec<u8>>;
 pub type CreateInfo = ExecutionInfo<H160>;
 
-#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug)]
+#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct Erc20Info {
 	pub address: EvmAddress,
@@ -64,7 +65,7 @@ pub struct Erc20Info {
 	pub decimals: u8,
 }
 
-#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug)]
+#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct EstimateResourcesRequest {
 	/// From
@@ -81,7 +82,7 @@ pub struct EstimateResourcesRequest {
 	pub data: Option<Vec<u8>>,
 }
 
-#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug)]
+#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct EthereumTransactionMessage {
 	pub nonce: Nonce,

@@ -995,7 +995,11 @@ fn offchain_worker_works_cdp() {
 		// offchain worker will liquidate alice
 		let tx = pool_state.write().transactions.pop().unwrap();
 		let tx = Extrinsic::decode(&mut &*tx).unwrap();
-		if let MockCall::CDPEngineModule(crate::Call::liquidate(currency_call, who_call)) = tx.call {
+		if let MockCall::CDPEngineModule(crate::Call::liquidate {
+			currency_id: currency_call,
+			who: who_call,
+		}) = tx.call
+		{
 			assert_ok!(CDPEngineModule::liquidate(Origin::none(), currency_call, who_call));
 		}
 		// empty offchain tx pool (Bob was not liquidated)
@@ -1013,7 +1017,11 @@ fn offchain_worker_works_cdp() {
 		// offchain worker will settle bob's position
 		let tx = pool_state.write().transactions.pop().unwrap();
 		let tx = Extrinsic::decode(&mut &*tx).unwrap();
-		if let MockCall::CDPEngineModule(crate::Call::settle(currency_call, who_call)) = tx.call {
+		if let MockCall::CDPEngineModule(crate::Call::settle {
+			currency_id: currency_call,
+			who: who_call,
+		}) = tx.call
+		{
 			assert_ok!(CDPEngineModule::settle(Origin::none(), currency_call, who_call));
 		}
 		// emergency shutdown settles bob's debit position
@@ -1060,7 +1068,11 @@ fn offchain_worker_iteration_limit_works() {
 		run_to_block_offchain(2);
 		let tx = pool_state.write().transactions.pop().unwrap();
 		let tx = Extrinsic::decode(&mut &*tx).unwrap();
-		if let MockCall::CDPEngineModule(crate::Call::liquidate(currency_call, who_call)) = tx.call {
+		if let MockCall::CDPEngineModule(crate::Call::liquidate {
+			currency_id: currency_call,
+			who: who_call,
+		}) = tx.call
+		{
 			assert_ok!(CDPEngineModule::liquidate(Origin::none(), currency_call, who_call));
 		}
 		// alice is liquidated but not bob, he will get liquidated next block due to iteration limit
@@ -1073,7 +1085,11 @@ fn offchain_worker_iteration_limit_works() {
 		run_to_block_offchain(3);
 		let tx = pool_state.write().transactions.pop().unwrap();
 		let tx = Extrinsic::decode(&mut &*tx).unwrap();
-		if let MockCall::CDPEngineModule(crate::Call::liquidate(currency_call, who_call)) = tx.call {
+		if let MockCall::CDPEngineModule(crate::Call::liquidate {
+			currency_id: currency_call,
+			who: who_call,
+		}) = tx.call
+		{
 			assert_ok!(CDPEngineModule::liquidate(Origin::none(), currency_call, who_call));
 		}
 		assert_eq!(LoansModule::positions(BTC, BOB).debit, 0);
