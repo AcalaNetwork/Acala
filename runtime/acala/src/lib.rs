@@ -277,7 +277,7 @@ impl pallet_authorship::Config for Runtime {
 
 parameter_types! {
 	pub const DisabledValidatorsThreshold: Perbill = Perbill::from_percent(33);
-	// pub const Period: u32 = 6 * HOURS; // TODO: delete this
+	pub const SessionDuration: BlockNumber = 2 * HOURS; // used in SessionManagerConfig of genesis
 }
 
 impl pallet_session::Config for Runtime {
@@ -2285,7 +2285,7 @@ mod tests {
 		// Ensure that `required_point` > 0, collator can be kicked out normally.
 		assert!(
 			CollatorKickThreshold::get().mul_floor(
-				(HOURS * module_collator_selection::POINT_PER_BLOCK)
+				(SessionDuration::get() * module_collator_selection::POINT_PER_BLOCK)
 					.checked_div(MaxCandidates::get())
 					.unwrap()
 			) > 0

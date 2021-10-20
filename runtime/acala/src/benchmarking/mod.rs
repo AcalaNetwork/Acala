@@ -85,5 +85,5 @@ pub mod vesting {
 }
 
 pub fn get_vesting_account() -> super::AccountId {
-	super::KaruraFoundationAccounts::get()[0].clone()
+	super::AcalaFoundationAccounts::get()[0].clone()
 }

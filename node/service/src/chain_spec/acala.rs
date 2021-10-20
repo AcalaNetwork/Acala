@@ -32,9 +32,9 @@ use acala_runtime::{
 	constants::time::HOURS, dollar, get_all_module_accounts, Balance, BalancesConfig, BlockNumber, CdpEngineConfig,
 	CdpTreasuryConfig, CollatorSelectionConfig, DexConfig, FinancialCouncilMembershipConfig,
 	GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig, NativeTokenExistentialDeposit,
-	OperatorMembershipAcalaConfig, OrmlNFTConfig, ParachainInfoConfig, SS58Prefix, SessionConfig, SessionKeys,
-	SessionManagerConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig,
-	ACA, AUSD, DOT, LDOT,
+	OperatorMembershipAcalaConfig, OrmlNFTConfig, ParachainInfoConfig, SS58Prefix, SessionConfig, SessionDuration,
+	SessionKeys, SessionManagerConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig,
+	VestingConfig, ACA, AUSD, DOT, LDOT,
 };
 use runtime_common::TokenInfo;
 
@@ -313,7 +313,7 @@ fn acala_genesis(
 				.collect(),
 		},
 		session_manager: SessionManagerConfig {
-			session_duration: 2 * HOURS,
+			session_duration: SessionDuration::get(),
 		},
 		// no need to pass anything to aura, in fact it will panic if we do. Session will take care
 		// of this.
