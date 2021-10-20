@@ -73,11 +73,11 @@ dependencies = [
  "evm",
  "frame-support",
  "hex-literal 0.3.3",
+ "module-evm-utiltity-macro",
  "num_enum",
  "nutsfinance-stable-asset",
  "parity-scale-codec",
  "parity-util-mem",
- "primitives-proc-macro",
  "scale-info",
  "serde",
  "serde_json",
@@ -5505,13 +5505,13 @@ dependencies = [
  "frame-system",
  "impl-trait-for-tuples 0.2.1",
  "module-evm",
+ "module-evm-utiltity-macro",
  "module-support",
  "num_enum",
  "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec",
  "primitive-types",
- "primitives-proc-macro",
  "scale-info",
  "serde",
  "sp-core",
@@ -5555,6 +5555,23 @@ dependencies = [
  "sp-core",
  "sp-runtime",
  "sp-std",
+]
+
+[[package]]
+name = "module-evm-utiltity"
+version = "1.5.1"
+dependencies = [
+ "sha3 0.9.1",
+]
+
+[[package]]
+name = "module-evm-utiltity-macro"
+version = "1.5.1"
+dependencies = [
+ "module-evm-utiltity",
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
@@ -9200,17 +9217,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "primitives-proc-macro"
-version = "1.5.1"
-dependencies = [
- "proc-macro-crate 1.1.0",
- "proc-macro2",
- "quote",
- "sha3 0.9.1",
- "syn",
-]
-
-[[package]]
 name = "proc-macro-crate"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -9869,6 +9875,7 @@ dependencies = [
  "module-evm",
  "module-evm-bridge",
  "module-evm-manager",
+ "module-evm-utiltity-macro",
  "module-nft",
  "module-prices",
  "module-staking-pool",
@@ -9887,7 +9894,6 @@ dependencies = [
  "pallet-timestamp",
  "pallet-utility",
  "parity-scale-codec",
- "primitives-proc-macro",
  "scale-info",
  "serde",
  "serde_json",

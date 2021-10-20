@@ -27,6 +27,7 @@ use frame_support::{
 	traits::ExtrinsicCall,
 	weights::{DispatchInfo, GetDispatchInfo},
 };
+use module_evm_utiltity_macro::keccak256;
 use scale_info::TypeInfo;
 use sp_core::{H160, H256, U256};
 use sp_io::{crypto::secp256k1_ecdsa_recover, hashing::keccak_256};
@@ -206,16 +207,12 @@ fn recover_signer(sig: &[u8; 65], msg_hash: &[u8; 32]) -> Option<H160> {
 }
 
 fn verify_eip712_signature(eth_msg: EthereumTransactionMessage, sig: [u8; 65]) -> Option<H160> {
-	// TODO: do the hash at compile time
-	let eip712_domain = b"EIP712Domain(string name,string version,uint256 chainId,bytes32 salt)";
-	let tx_type = b"Transaction(string action,address to,uint256 nonce,uint256 tip,bytes data,uint256 value,uint256 gasLimit,uint256 storageLimit,uint256 validUntil)";
-
-	let domain_hash = keccak_256(eip712_domain);
-	let tx_type_hash = keccak_256(tx_type);
+	let domain_hash = keccak256!("EIP712Domain(string name,string version,uint256 chainId,bytes32 salt)");
+	let tx_type_hash = keccak256!("Transaction(string action,address to,uint256 nonce,uint256 tip,bytes data,uint256 value,uint256 gasLimit,uint256 storageLimit,uint256 validUntil)");
 
 	let mut domain_seperator_msg = domain_hash.to_vec();
-	domain_seperator_msg.extend_from_slice(&keccak_256(b"Acala EVM")); // name
-	domain_seperator_msg.extend_from_slice(&keccak_256(b"1")); // version
+	domain_seperator_msg.extend_from_slice(keccak256!("Acala EVM")); // name
+	domain_seperator_msg.extend_from_slice(keccak256!("1")); // version
 	domain_seperator_msg.extend_from_slice(&to_bytes(eth_msg.chain_id)); // chain id
 	domain_seperator_msg.extend_from_slice(eth_msg.genesis.as_bytes()); // salt
 	let domain_separator = keccak_256(domain_seperator_msg.as_slice());
@@ -223,11 +220,11 @@ fn verify_eip712_signature(eth_msg: EthereumTransactionMessage, sig: [u8; 65]) -
 	let mut tx_msg = tx_type_hash.to_vec();
 	match eth_msg.action {
 		TransactionAction::Call(to) => {
-			tx_msg.extend_from_slice(&keccak_256(b"Call"));
+			tx_msg.extend_from_slice(keccak256!("Call"));
 			tx_msg.extend_from_slice(H256::from(to).as_bytes());
 		}
 		TransactionAction::Create => {
-			tx_msg.extend_from_slice(&keccak_256(b"Create"));
+			tx_msg.extend_from_slice(keccak256!("Create"));
 			tx_msg.extend_from_slice(H256::default().as_bytes());
 		}
 	}
