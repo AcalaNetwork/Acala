@@ -8,6 +8,7 @@ members = [
 	"node/service",
 
 	"modules/*",
+	"modules/evm-utiltity/macro",
 	"inspect",
 	"primitives",
 	"primitives/proc-macro",

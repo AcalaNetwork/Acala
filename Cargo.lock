@@ -5558,10 +5558,16 @@ dependencies = [
 name = "module-evm-utiltity"
 version = "1.5.1"
 dependencies = [
- "proc-macro-crate 1.1.0",
+ "sha3 0.9.1",
+]
+
+[[package]]
+name = "module-evm-utiltity-macro"
+version = "1.5.1"
+dependencies = [
+ "module-evm-utiltity",
  "proc-macro2",
  "quote",
- "sha3 0.9.1",
  "syn",
 ]
 

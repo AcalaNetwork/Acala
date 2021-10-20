@@ -19,9 +19,7 @@
 use proc_macro::TokenStream;
 use proc_macro2::Literal;
 use quote::quote;
-use sha3::{Digest, Keccak256};
-use std::convert::TryInto;
-use syn::{parse_macro_input, Expr, ExprLit, Ident, ItemEnum, Lit};
+use syn::{parse_macro_input, Expr, ExprLit, Ident, ItemEnum, Lit, LitByteStr, LitStr};
 
 #[proc_macro_attribute]
 pub fn generate_function_selector(_: TokenStream, input: TokenStream) -> TokenStream {
@@ -41,7 +39,7 @@ pub fn generate_function_selector(_: TokenStream, input: TokenStream) -> TokenSt
 	for variant in variants {
 		if let Some((_, Expr::Lit(ExprLit { lit, .. }))) = variant.discriminant {
 			if let Lit::Str(token) = lit {
-				let selector = get_function_selector(&token.value());
+				let selector = module_evm_utiltity::get_function_selector(&token.value());
 				// println!("method: {:?}, selector: {:?}", token.value(), selector);
 				ident_expressions.push(variant.ident);
 				variant_expressions.push(Expr::Lit(ExprLit {
@@ -67,12 +65,13 @@ pub fn generate_function_selector(_: TokenStream, input: TokenStream) -> TokenSt
 	.into()
 }
 
-fn get_function_selector(s: &str) -> u32 {
-	// create a SHA3-256 object
-	let mut hasher = Keccak256::new();
-	// write input message
-	hasher.update(s);
-	// read hash digest
-	let result = hasher.finalize();
-	u32::from_be_bytes(result[..4].try_into().unwrap())
+#[proc_macro]
+pub fn keccak256(input: TokenStream) -> TokenStream {
+	let lit_str = parse_macro_input!(input as LitStr);
+
+	let result = module_evm_utiltity::sha3_256(&lit_str.value());
+
+	let eval = Lit::ByteStr(LitByteStr::new(&result.to_vec(), proc_macro2::Span::call_site()));
+
+	quote!(#eval).into()
 }

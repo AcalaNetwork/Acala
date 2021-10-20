@@ -39,4 +39,16 @@ mod tests {
 		assert_eq!(Action::BalanceOf as u32, 0x70a08231_u32);
 		assert_eq!(Action::Transfer as u32, 0xa9059cbb_u32);
 	}
+
+	#[test]
+	fn keccak256_works() {
+		assert_eq!(
+			*module_evm_utiltity_macro::keccak256!(""),
+			module_evm_utiltity::sha3_256("")
+		);
+		assert_eq!(
+			*module_evm_utiltity_macro::keccak256!("keccak256"),
+			module_evm_utiltity::sha3_256("keccak256")
+		);
+	}
 }
