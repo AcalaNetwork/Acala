@@ -44,7 +44,7 @@ use sp_runtime::{
 		StaticLookup, Zero,
 	},
 	transaction_validity::{TransactionSource, TransactionValidity},
-	ApplyExtrinsicResult, DispatchResult, FixedPointNumber,
+	ApplyExtrinsicResult, DispatchResult, FixedPointNumber, Perbill, Percent, Permill, Perquintill,
 };
 use sp_std::prelude::*;
 #[cfg(feature = "std")]
@@ -97,7 +97,6 @@ pub use pallet_staking::StakerStatus;
 pub use pallet_timestamp::Call as TimestampCall;
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
-pub use sp_runtime::{Perbill, Percent, Permill, Perquintill};
 
 pub use authority::AuthorityConfigImpl;
 pub use constants::{fee::*, parachains, time::*};
@@ -2079,21 +2078,27 @@ impl_runtime_apis! {
 
 			let request = match utx.function {
 				Call::EVM(module_evm::Call::call{target, input, value, gas_limit, storage_limit}) => {
+					// use MAX_VALUE for no limit
+					let gas_limit = if gas_limit < u64::MAX { Some(gas_limit) } else { None };
+					let storage_limit = if storage_limit < u32::MAX { Some(storage_limit) } else { None };
 					Some(EstimateResourcesRequest {
 						from: None,
 						to: Some(target),
-						gas_limit: Some(gas_limit),
-						storage_limit: Some(storage_limit),
+						gas_limit,
+						storage_limit,
 						value: Some(value),
 						data: Some(input),
 					})
 				}
 				Call::EVM(module_evm::Call::create{init, value, gas_limit, storage_limit}) => {
+					// use MAX_VALUE for no limit
+					let gas_limit = if gas_limit < u64::MAX { Some(gas_limit) } else { None };
+					let storage_limit = if storage_limit < u32::MAX { Some(storage_limit) } else { None };
 					Some(EstimateResourcesRequest {
 						from: None,
 						to: None,
-						gas_limit: Some(gas_limit),
-						storage_limit: Some(storage_limit),
+						gas_limit,
+						storage_limit,
 						value: Some(value),
 						data: Some(init),
 					})

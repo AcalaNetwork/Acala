@@ -32,7 +32,7 @@
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
-use codec::{Compact, Decode, Encode};
+use codec::{Decode, Encode};
 use frame_support::pallet_prelude::InvalidTransaction;
 pub use frame_support::{
 	construct_runtime, log, parameter_types,
@@ -1982,17 +1982,13 @@ impl Convert<(Call, SignedExtra), Result<EthereumTransactionMessage, InvalidTran
 				}
 
 				let nonce: frame_system::CheckNonce<Runtime> = extra.4;
-				// TODO: this is a hack access private nonce field
-				// remove this after https://github.com/paritytech/substrate/pull/9810
-				let nonce = nonce
-					.using_encoded(|mut encoded| Compact::<Nonce>::decode(&mut encoded))
-					.map_err(|_| InvalidTransaction::BadProof)?;
+				let nonce = nonce.0;
 
 				let tip: module_transaction_payment::ChargeTransactionPayment<Runtime> = extra.6;
 				let tip = tip.0;
 
 				Ok(EthereumTransactionMessage {
-					nonce: nonce.into(),
+					nonce,
 					tip,
 					gas_limit,
 					storage_limit,
@@ -2362,21 +2358,27 @@ impl_runtime_apis! {
 
 			let request = match utx.0.function {
 				Call::EVM(module_evm::Call::call{target, input, value, gas_limit, storage_limit}) => {
+					// use MAX_VALUE for no limit
+					let gas_limit = if gas_limit < u64::MAX { Some(gas_limit) } else { None };
+					let storage_limit = if storage_limit < u32::MAX { Some(storage_limit) } else { None };
 					Some(EstimateResourcesRequest {
 						from: None,
 						to: Some(target),
-						gas_limit: Some(gas_limit),
-						storage_limit: Some(storage_limit),
+						gas_limit,
+						storage_limit,
 						value: Some(value),
 						data: Some(input),
 					})
 				}
 				Call::EVM(module_evm::Call::create{init, value, gas_limit, storage_limit}) => {
+					// use MAX_VALUE for no limit
+					let gas_limit = if gas_limit < u64::MAX { Some(gas_limit) } else { None };
+					let storage_limit = if storage_limit < u32::MAX { Some(storage_limit) } else { None };
 					Some(EstimateResourcesRequest {
 						from: None,
 						to: None,
-						gas_limit: Some(gas_limit),
-						storage_limit: Some(storage_limit),
+						gas_limit,
+						storage_limit,
 						value: Some(value),
 						data: Some(init),
 					})
