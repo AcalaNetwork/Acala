@@ -5674,7 +5674,7 @@ dependencies = [
 
 [[package]]
 name = "module-idle-scheduler"
-version = "1.5.0"
+version = "1.5.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -5817,7 +5817,7 @@ dependencies = [
 
 [[package]]
 name = "module-relaychain"
-version = "1.4.1"
+version = "1.5.1"
 dependencies = [
  "acala-primitives",
  "cumulus-primitives-core",

@@ -1441,11 +1441,6 @@ fn currency_id_convert() {
 			))
 		);
 		assert_eq!(
-			CurrencyIdConvert::convert(RENBTC),
-			Some(MultiLocation::sibling_parachain_general_key(id, RENBTC.encode()))
-		);
-
-		assert_eq!(
 			CurrencyIdConvert::convert(MultiLocation::parent()),
 			Some(RELAY_CHAIN_CURRENCY)
 		);

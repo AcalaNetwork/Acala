@@ -146,11 +146,14 @@ default = ["std"]
 no_std = []
 with-mandala-runtime = [
 	"acala-service/with-mandala-runtime",
-	"module-relaychain/polkadot"
 ]
 with-karura-runtime = [
 	"acala-service/with-karura-runtime",
 	"module-relaychain/kusama"
+]
+with-acala-runtime = [
+	"acala-service/with-karura-runtime",
+	"module-relaychain/polkadot"
 ]
 with-ethereum-compatibility = [
 	"mandala-runtime/with-ethereum-compatibility",
