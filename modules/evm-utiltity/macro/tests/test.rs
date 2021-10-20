@@ -44,7 +44,7 @@ mod tests {
 	fn keccak256_works() {
 		assert_eq!(
 			module_evm_utiltity_macro::keccak256!(""),
-			module_evm_utiltity::sha3_256("")
+			&module_evm_utiltity::sha3_256("")
 		);
 		assert_eq!(
 			module_evm_utiltity_macro::keccak256!("keccak256"),
