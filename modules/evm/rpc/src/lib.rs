@@ -216,7 +216,8 @@ where
 			.map_err(|err| internal_err(format!("execution fatal: {:?}", err)))?;
 
 		// Determine the highest possible gas limits
-		let mut highest = U256::from(request.gas_limit.unwrap_or_else(u64::max_value)); // TODO: set a limit
+		let max_gas_limit = u64::max_value(); // TODO: set a limit
+		let mut highest = U256::from(request.gas_limit.unwrap_or(max_gas_limit));
 
 		let request = CallRequest {
 			from: Some(from),
@@ -233,8 +234,15 @@ where
 			request.from, request.to, request.gas_limit, request.storage_limit, request.value, hash
 		);
 
+		struct ExecutableResult {
+			data: Vec<u8>,
+			exit_reason: ExitReason,
+			used_gas: U256,
+			used_storage: i32,
+		}
+
 		// Create a helper to check if a gas allowance results in an executable transaction
-		let executable = move |request: CallRequest, gas| -> Result<Option<(U256, i32)>> {
+		let executable = move |request: CallRequest, gas| -> Result<ExecutableResult> {
 			let CallRequest {
 				from,
 				to,
@@ -301,16 +309,51 @@ where
 				}
 			};
 
-			match exit_reason {
-				ExitReason::Succeed(_) => Ok(Some((used_gas, used_storage))),
-				ExitReason::Error(ExitError::OutOfGas) => Ok(None),
-				other => error_on_execution_failure(&other, &data).map(|()| Some((used_gas, used_storage))),
-			}
+			Ok(ExecutableResult {
+				exit_reason,
+				data,
+				used_gas,
+				used_storage,
+			})
 		};
 
-		// verify that the transaction suceed with highest capacity
-		let (used_gas, used_storage) = executable(request.clone(), highest.as_u64())?
-			.ok_or_else(|| internal_err(format!("gas required exceeds allowance {}", highest)))?;
+		// Verify that the transaction succeed with highest capacity
+		let cap = highest;
+		let ExecutableResult {
+			data,
+			exit_reason,
+			used_gas,
+			used_storage,
+		} = executable(request.clone(), highest.as_u64())?;
+		match exit_reason {
+			ExitReason::Succeed(_) => (),
+			ExitReason::Error(ExitError::OutOfGas) => {
+				return Err(internal_err(format!("gas required exceeds allowance {}", cap)))
+			}
+			// If the transaction reverts, there are two possible cases,
+			// it can revert because the called contract feels that it does not have enough
+			// gas left to continue, or it can revert for another reason unrelated to gas.
+			ExitReason::Revert(revert) => {
+				if request.gas_limit.is_some() {
+					// If the user has provided a gas limit, then we have executed
+					// with less block gas limit, so we must reexecute with block gas limit to
+					// know if the revert is due to a lack of gas or not.
+					let ExecutableResult { data, exit_reason, .. } = executable(request.clone(), max_gas_limit)?;
+					match exit_reason {
+						ExitReason::Succeed(_) => {
+							return Err(internal_err(format!("gas required exceeds allowance {}", cap)))
+						}
+						// The execution has been done with block gas limit, so it is not a lack of gas from the user.
+						other => error_on_execution_failure(&other, &data)?,
+					}
+				} else {
+					// The execution has already been done with block gas limit, so it is not a lack of gas from the
+					// user.
+					error_on_execution_failure(&ExitReason::Revert(revert), &data)?
+				}
+			}
+			other => error_on_execution_failure(&other, &data)?,
+		};
 
 		// rpc_binary_search_estimate block
 		{
@@ -324,16 +367,21 @@ where
 			// Execute the binary search and hone in on an executable gas limit.
 			let mut previous_highest = highest;
 			while (highest - lowest) > U256::one() {
-				if executable(request.clone(), mid.as_u64()).unwrap_or_default().is_some() {
-					highest = mid;
-					// If the variation in the estimate is less than 10%,
-					// then the estimate is considered sufficiently accurate.
-					if (previous_highest - highest) * 10 / previous_highest < U256::one() {
-						break;
+				let ExecutableResult { data, exit_reason, .. } = executable(request.clone(), mid.as_u64())?;
+				match exit_reason {
+					ExitReason::Succeed(_) => {
+						highest = mid;
+						// If the variation in the estimate is less than 10%,
+						// then the estimate is considered sufficiently accurate.
+						if (previous_highest - highest) * 10 / previous_highest < U256::one() {
+							break;
+						}
+						previous_highest = highest;
 					}
-					previous_highest = highest;
-				} else {
-					lowest = mid;
+					ExitReason::Revert(_) | ExitReason::Error(ExitError::OutOfGas) => {
+						lowest = mid;
+					}
+					other => error_on_execution_failure(&other, &data)?,
 				}
 				mid = (highest + lowest) / 2;
 			}
