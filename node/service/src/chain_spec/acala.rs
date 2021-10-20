@@ -29,12 +29,11 @@ use sp_std::collections::btree_map::BTreeMap;
 use crate::chain_spec::{get_account_id_from_seed, get_parachain_authority_keys_from_seed, Extensions, TELEMETRY_URL};
 
 use acala_runtime::{
-	constants::time::HOURS, dollar, get_all_module_accounts, Balance, BalancesConfig, BlockNumber, CdpEngineConfig,
-	CdpTreasuryConfig, CollatorSelectionConfig, DexConfig, FinancialCouncilMembershipConfig,
-	GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig, NativeTokenExistentialDeposit,
-	OperatorMembershipAcalaConfig, OrmlNFTConfig, ParachainInfoConfig, SS58Prefix, SessionConfig, SessionDuration,
-	SessionKeys, SessionManagerConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig,
-	VestingConfig, ACA, AUSD, DOT, LDOT,
+	dollar, get_all_module_accounts, Balance, BalancesConfig, BlockNumber, CdpEngineConfig, CdpTreasuryConfig,
+	CollatorSelectionConfig, DexConfig, FinancialCouncilMembershipConfig, GeneralCouncilMembershipConfig,
+	HomaCouncilMembershipConfig, NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OrmlNFTConfig,
+	ParachainInfoConfig, SS58Prefix, SessionConfig, SessionDuration, SessionKeys, SessionManagerConfig, SudoConfig,
+	SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig, ACA, AUSD, DOT, LDOT,
 };
 use runtime_common::TokenInfo;
 
