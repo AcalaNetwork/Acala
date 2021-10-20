@@ -211,8 +211,8 @@ fn verify_eip712_signature(eth_msg: EthereumTransactionMessage, sig: [u8; 65]) -
 	let tx_type_hash = keccak256!("Transaction(string action,address to,uint256 nonce,uint256 tip,bytes data,uint256 value,uint256 gasLimit,uint256 storageLimit,uint256 validUntil)");
 
 	let mut domain_seperator_msg = domain_hash.to_vec();
-	domain_seperator_msg.extend_from_slice(&keccak256!("Acala EVM").to_vec()); // name
-	domain_seperator_msg.extend_from_slice(&keccak256!("1").to_vec()); // version
+	domain_seperator_msg.extend_from_slice(keccak256!("Acala EVM")); // name
+	domain_seperator_msg.extend_from_slice(keccak256!("1")); // version
 	domain_seperator_msg.extend_from_slice(&to_bytes(eth_msg.chain_id)); // chain id
 	domain_seperator_msg.extend_from_slice(eth_msg.genesis.as_bytes()); // salt
 	let domain_separator = keccak_256(domain_seperator_msg.as_slice());
@@ -220,11 +220,11 @@ fn verify_eip712_signature(eth_msg: EthereumTransactionMessage, sig: [u8; 65]) -
 	let mut tx_msg = tx_type_hash.to_vec();
 	match eth_msg.action {
 		TransactionAction::Call(to) => {
-			tx_msg.extend_from_slice(&keccak256!("Call").to_vec());
+			tx_msg.extend_from_slice(keccak256!("Call"));
 			tx_msg.extend_from_slice(H256::from(to).as_bytes());
 		}
 		TransactionAction::Create => {
-			tx_msg.extend_from_slice(&keccak256!("Create").to_vec());
+			tx_msg.extend_from_slice(keccak256!("Create"));
 			tx_msg.extend_from_slice(H256::default().as_bytes());
 		}
 	}
