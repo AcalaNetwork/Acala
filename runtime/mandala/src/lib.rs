@@ -56,12 +56,19 @@ use module_evm_accounts::EvmAddressMapping;
 pub use module_evm_manager::EvmCurrencyIdMapping;
 use module_relaychain::RelayChainCallBuilder;
 use module_transaction_payment::{Multiplier, TargetedFeeAdjustment};
+use scale_info::TypeInfo;
+
 use orml_tokens::CurrencyAdapter;
 use orml_traits::{
 	create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended, MultiCurrency,
 };
 use pallet_transaction_payment::{FeeDetails, RuntimeDispatchInfo};
-use primitives::{evm::EthereumTransactionMessage, unchecked_extrinsic::AcalaUncheckedExtrinsic};
+use primitives::{
+	define_combined_task,
+	evm::EthereumTransactionMessage,
+	task::{DispatchableTask, TaskResult},
+	unchecked_extrinsic::AcalaUncheckedExtrinsic,
+};
 use sp_api::impl_runtime_apis;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_core::{crypto::KeyTypeId, OpaqueMetadata, H160};
@@ -1931,6 +1938,23 @@ impl nutsfinance_stable_asset::Config for Runtime {
 	type EnsurePoolAssetId = EnsurePoolAssetId;
 }
 
+define_combined_task! {
+	pub enum ScheduledTasks {
+	}
+}
+
+parameter_types!(
+	// At least 2% of max block weight should remain before idle tasks are dispatched.
+	pub MinimumWeightRemainInBlock: Weight = RuntimeBlockWeights::get().max_block / 50;
+);
+
+impl module_idle_scheduler::Config for Runtime {
+	type Event = Event;
+	type WeightInfo = ();
+	type Task = ScheduledTasks;
+	type MinimumWeightRemainInBlock = MinimumWeightRemainInBlock;
+}
+
 impl cumulus_pallet_aura_ext::Config for Runtime {}
 
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
@@ -2044,6 +2068,7 @@ construct_runtime! {
 		Multisig: pallet_multisig::{Pallet, Call, Storage, Event<T>} = 31,
 		Recovery: pallet_recovery::{Pallet, Call, Storage, Event<T>} = 32,
 		Proxy: pallet_proxy::{Pallet, Call, Storage, Event<T>} = 33,
+		IdleScheduler: module_idle_scheduler::{Pallet, Call, Storage, Event<T>} = 34,
 
 		Indices: pallet_indices::{Pallet, Call, Storage, Config<T>, Event<T>} = 40,
 

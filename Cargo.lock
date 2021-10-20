@@ -149,6 +149,7 @@ dependencies = [
  "module-homa-lite",
  "module-homa-validator-list",
  "module-honzon",
+ "module-idle-scheduler",
  "module-incentives",
  "module-loans",
  "module-nft",
@@ -3967,6 +3968,7 @@ dependencies = [
  "module-homa-lite",
  "module-homa-validator-list",
  "module-honzon",
+ "module-idle-scheduler",
  "module-incentives",
  "module-loans",
  "module-nft",
@@ -4970,6 +4972,7 @@ dependencies = [
  "module-homa-lite",
  "module-homa-validator-list",
  "module-honzon",
+ "module-idle-scheduler",
  "module-incentives",
  "module-loans",
  "module-nft",
@@ -5660,6 +5663,22 @@ dependencies = [
  "orml-traits",
  "pallet-balances",
  "pallet-timestamp",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "module-idle-scheduler"
+version = "1.5.0"
+dependencies = [
+ "acala-primitives",
+ "frame-support",
+ "frame-system",
  "parity-scale-codec",
  "scale-info",
  "serde",

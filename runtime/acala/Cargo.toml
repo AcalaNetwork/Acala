@@ -113,6 +113,7 @@ module-staking-pool = { path = "../../modules/staking-pool", default-features = 
 module-staking-pool-rpc-runtime-api = { path = "../../modules/staking-pool/rpc/runtime-api", default-features = false }
 module-polkadot-bridge = { path = "../../modules/polkadot-bridge", default-features = false }
 module-relaychain = { path = "../../modules/relaychain", default-features = false, features = ["kusama"]}
+module-idle-scheduler = { path = "../../modules/idle-scheduler", default-features = false }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 runtime-common = { path = "../common", default-features = false }
 
@@ -234,6 +235,7 @@ std = [
 	"module-staking-pool-rpc-runtime-api/std",
 	"module-polkadot-bridge/std",
 	"module-relaychain/std",
+	"module-idle-scheduler/std",
 	"primitives/std",
 	"runtime-common/std",
 
