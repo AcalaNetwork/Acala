@@ -27,7 +27,6 @@ use acala_primitives::{
 };
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types, traits::Everything};
-use frame_system::EnsureRoot;
 
 use codec::{Decode, Encode};
 use scale_info::TypeInfo;
@@ -74,7 +73,6 @@ impl module_idle_scheduler::Config for Runtime {
 	type WeightInfo = ();
 	type Task = ScheduledTasks;
 	type MinimumWeightRemainInBlock = MinimumWeightRemainInBlock;
-	type SchedulerOrigin = EnsureRoot<AccountId>;
 }
 
 // Mock dispatachable tasks

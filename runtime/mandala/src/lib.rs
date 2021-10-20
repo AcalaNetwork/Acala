@@ -1953,7 +1953,6 @@ impl module_idle_scheduler::Config for Runtime {
 	type WeightInfo = ();
 	type Task = ScheduledTasks;
 	type MinimumWeightRemainInBlock = MinimumWeightRemainInBlock;
-	type SchedulerOrigin = EnsureRootOrHalfGeneralCouncil;
 }
 
 impl cumulus_pallet_aura_ext::Config for Runtime {}

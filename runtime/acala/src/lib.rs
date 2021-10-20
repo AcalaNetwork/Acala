@@ -1435,7 +1435,6 @@ impl module_idle_scheduler::Config for Runtime {
 	type WeightInfo = ();
 	type Task = ScheduledTasks;
 	type MinimumWeightRemainInBlock = MinimumWeightRemainInBlock;
-	type SchedulerOrigin = EnsureRootOrHalfGeneralCouncil;
 }
 
 // parameter_types! {

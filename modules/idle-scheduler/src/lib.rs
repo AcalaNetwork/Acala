@@ -55,12 +55,9 @@ pub mod module {
 		/// Dispatchable tasks
 		type Task: DispatchableTask + Codec + EncodeLike + Debug + Clone + PartialEq + TypeInfo;
 
-		/// The maximum amount of weight to be used to dispatch tasks
+		/// The minimum weight that should remain before idle tasks are dispatched.
 		#[pallet::constant]
 		type MinimumWeightRemainInBlock: Get<Weight>;
-
-		/// Origin represented Governance
-		type SchedulerOrigin: EnsureOrigin<Self::Origin>;
 	}
 
 	#[pallet::event]
@@ -94,7 +91,7 @@ pub mod module {
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight(< T as Config >::WeightInfo::schedule_task())]
 		pub fn schedule_task(origin: OriginFor<T>, task: T::Task) -> DispatchResult {
-			T::SchedulerOrigin::ensure_origin(origin)?;
+			ensure_root(origin)?;
 			Self::do_schedule_task(task);
 			Ok(())
 		}
@@ -127,17 +124,19 @@ impl<T: Config> Pallet<T> {
 		let mut completed_tasks: Vec<Nonce> = vec![];
 
 		for (id, task) in Tasks::<T>::iter() {
-			// If remaining weight falls below the minimmum, return.
-			if weight_remaining <= T::MinimumWeightRemainInBlock::get() {
-				break;
-			}
 			let result = task.dispatch(weight_remaining);
 			weight_remaining = weight_remaining.saturating_sub(result.used_weight);
 			if result.finished {
 				completed_tasks.push(id);
 			}
+
+			// If remaining weight falls below the minimmum, break from the loop.
+			if weight_remaining <= T::MinimumWeightRemainInBlock::get() {
+				break;
+			}
 		}
 
+		// Deposit event and remove completed tasks.
 		for id in completed_tasks {
 			Self::deposit_event(Event::<T>::TaskDispatched(id));
 			Tasks::<T>::remove(id);
