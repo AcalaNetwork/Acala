@@ -21,7 +21,7 @@
 #![cfg(test)]
 
 use super::*;
-use frame_support::{construct_runtime, ord_parameter_types, parameter_types, PalletId};
+use frame_support::{PalletId, construct_runtime, ord_parameter_types, parameter_types, traits::Everything};
 use frame_system::EnsureSignedBy;
 use primitives::{Balance, FeedId, Moment, TokenSymbol};
 use sp_core::H256;
@@ -63,7 +63,7 @@ impl frame_system::Config for Runtime {
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
 	type DbWeight = ();
-	type BaseCallFilter = ();
+	type BaseCallFilter = Everything;
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
 	type OnSetCode = ();
