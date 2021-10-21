@@ -18,11 +18,7 @@
 
 #![cfg(test)]
 
-#[cfg(any(
-	feature = "with-mandala-runtime",
-	feature = "with-karura-runtime",
-	feature = "with-acala-runtime"
-))]
+#[cfg(any(feature = "with-mandala-runtime", feature = "with-karura-runtime",))]
 mod integration_tests;
 
 #[cfg(any(

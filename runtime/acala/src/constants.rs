@@ -91,11 +91,3 @@ pub mod fee {
 		aca_per_second / 100
 	}
 }
-
-pub mod parachains {
-	pub mod bifrost {
-		pub const ID: u32 = 2001;
-		pub const BNC_KEY: &[u8] = &[0, 1];
-		pub const VSKSM_KEY: &[u8] = &[4, 4];
-	}
-}
