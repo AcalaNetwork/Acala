@@ -117,10 +117,13 @@ version = "1.5.1"
 dependencies = [
  "acala-primitives",
  "cumulus-pallet-aura-ext",
+ "cumulus-pallet-dmp-queue",
  "cumulus-pallet-parachain-system",
+ "cumulus-pallet-xcm",
+ "cumulus-pallet-xcmp-queue",
  "cumulus-primitives-core",
  "cumulus-primitives-timestamp",
- "ecosystem-renvm-bridge",
+ "cumulus-primitives-utility",
  "frame-benchmarking",
  "frame-executive",
  "frame-support",
@@ -128,6 +131,7 @@ dependencies = [
  "frame-system-rpc-runtime-api",
  "frame-try-runtime",
  "hex-literal 0.3.3",
+ "libsecp256k1 0.6.0",
  "module-airdrop",
  "module-auction-manager",
  "module-cdp-engine",
@@ -142,6 +146,7 @@ dependencies = [
  "module-evm-manager",
  "module-evm-rpc-runtime-api",
  "module-homa",
+ "module-homa-lite",
  "module-homa-validator-list",
  "module-honzon",
  "module-idle-scheduler",
@@ -151,10 +156,12 @@ dependencies = [
  "module-nominees-election",
  "module-polkadot-bridge",
  "module-prices",
+ "module-relaychain",
  "module-session-manager",
  "module-staking-pool",
  "module-staking-pool-rpc-runtime-api",
  "module-support",
+ "module-transaction-pause",
  "module-transaction-payment",
  "orml-auction",
  "orml-authority",
@@ -165,22 +172,24 @@ dependencies = [
  "orml-rewards",
  "orml-tokens",
  "orml-traits",
+ "orml-unknown-tokens",
  "orml-vesting",
+ "orml-xcm",
+ "orml-xcm-support",
+ "orml-xtokens",
  "pallet-aura",
  "pallet-authorship",
  "pallet-balances",
  "pallet-bounties",
  "pallet-collective",
  "pallet-democracy",
- "pallet-elections-phragmen",
- "pallet-indices",
  "pallet-membership",
  "pallet-multisig",
- "pallet-offences",
  "pallet-proxy",
- "pallet-recovery",
  "pallet-scheduler",
  "pallet-session",
+ "pallet-staking",
+ "pallet-staking-reward-curve",
  "pallet-sudo",
  "pallet-timestamp",
  "pallet-tips",
@@ -188,6 +197,7 @@ dependencies = [
  "pallet-transaction-payment-rpc-runtime-api",
  "pallet-treasury",
  "pallet-utility",
+ "pallet-xcm",
  "parachain-info",
  "parity-scale-codec",
  "polkadot-parachain",
@@ -210,6 +220,9 @@ dependencies = [
  "sp-transaction-pool",
  "sp-version",
  "substrate-wasm-builder",
+ "xcm",
+ "xcm-builder",
+ "xcm-executor",
 ]
 
 [[package]]
@@ -3937,7 +3950,7 @@ dependencies = [
  "frame-system-rpc-runtime-api",
  "frame-try-runtime",
  "hex-literal 0.3.3",
- "libsecp256k1 0.3.5",
+ "libsecp256k1 0.6.0",
  "module-airdrop",
  "module-auction-manager",
  "module-cdp-engine",
@@ -4941,7 +4954,7 @@ dependencies = [
  "frame-try-runtime",
  "hex",
  "hex-literal 0.3.3",
- "libsecp256k1 0.3.5",
+ "libsecp256k1 0.6.0",
  "module-airdrop",
  "module-auction-manager",
  "module-cdp-engine",
@@ -5480,7 +5493,7 @@ dependencies = [
  "acala-primitives",
  "frame-support",
  "frame-system",
- "libsecp256k1 0.3.5",
+ "libsecp256k1 0.6.0",
  "module-support",
  "orml-currencies",
  "orml-tokens",
@@ -5678,7 +5691,7 @@ dependencies = [
 
 [[package]]
 name = "module-idle-scheduler"
-version = "1.5.0"
+version = "1.5.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -5821,7 +5834,7 @@ dependencies = [
 
 [[package]]
 name = "module-relaychain"
-version = "1.4.1"
+version = "1.5.1"
 dependencies = [
  "acala-primitives",
  "cumulus-primitives-core",
@@ -9912,6 +9925,7 @@ name = "runtime-integration-tests"
 version = "1.5.1"
 dependencies = [
  "acala-primitives",
+ "acala-runtime",
  "acala-service",
  "cumulus-pallet-aura-ext",
  "cumulus-pallet-dmp-queue",
@@ -9932,7 +9946,7 @@ dependencies = [
  "hex-literal 0.3.3",
  "karura-runtime",
  "kusama-runtime",
- "libsecp256k1 0.3.5",
+ "libsecp256k1 0.6.0",
  "mandala-runtime",
  "module-airdrop",
  "module-auction-manager",

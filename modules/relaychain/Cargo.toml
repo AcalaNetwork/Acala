@@ -1,6 +1,6 @@
 [package]
 name = "module-relaychain"
-version = "1.4.1"
+version = "1.5.1"
 authors = ["Acala Developers"]
 edition = "2018"
 
@@ -21,7 +21,7 @@ sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.11" }
 
 [features]
-default = ["std", "kusama"]
+default = ["std"]
 kusama = []
 polkadot = []
 std = [

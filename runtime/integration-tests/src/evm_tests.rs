@@ -26,6 +26,8 @@ use primitives::evm::EvmAddress;
 use sp_core::{bytes::from_hex, H256};
 use std::str::FromStr;
 
+#[cfg(feature = "with-acala-runtime")]
+use acala_runtime::{EVMBridge, EVM};
 #[cfg(feature = "with-karura-runtime")]
 use karura_runtime::{EVMBridge, EVM};
 #[cfg(feature = "with-mandala-runtime")]
