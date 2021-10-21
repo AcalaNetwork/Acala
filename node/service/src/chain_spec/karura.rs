@@ -30,7 +30,7 @@ use karura_runtime::{
 	DexConfig, FinancialCouncilMembershipConfig, GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig,
 	OperatorMembershipAcalaConfig, OrmlNFTConfig, ParachainInfoConfig, SS58Prefix, SessionConfig, SessionDuration,
 	SessionKeys, SessionManagerConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig,
-	VestingConfig, BNC, KAR, KSM, KUSD, LKSM, VSKSM,
+	VestingConfig, XcmPalletConfig, BNC, KAR, KSM, KUSD, LKSM, VSKSM,
 };
 use runtime_common::TokenInfo;
 
@@ -183,5 +183,8 @@ fn karura_genesis(
 		aura: Default::default(),
 		aura_ext: Default::default(),
 		parachain_system: Default::default(),
+		xcm_pallet: XcmPalletConfig {
+			safe_xcm_version: Some(2),
+		},
 	}
 }

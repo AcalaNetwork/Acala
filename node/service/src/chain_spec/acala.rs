@@ -33,7 +33,8 @@ use acala_runtime::{
 	CollatorSelectionConfig, DexConfig, FinancialCouncilMembershipConfig, GeneralCouncilMembershipConfig,
 	HomaCouncilMembershipConfig, NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OrmlNFTConfig,
 	ParachainInfoConfig, SS58Prefix, SessionConfig, SessionDuration, SessionKeys, SessionManagerConfig, SudoConfig,
-	SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig, ACA, AUSD, DOT, LDOT,
+	SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig, XcmPalletConfig, ACA, AUSD, DOT,
+	LDOT,
 };
 use runtime_common::TokenInfo;
 
@@ -319,5 +320,8 @@ fn acala_genesis(
 		aura: Default::default(),
 		aura_ext: Default::default(),
 		parachain_system: Default::default(),
+		xcm_pallet: XcmPalletConfig {
+			safe_xcm_version: Some(2),
+		},
 	}
 }
