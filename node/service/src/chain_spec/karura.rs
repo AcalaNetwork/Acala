@@ -28,9 +28,9 @@ use crate::chain_spec::{get_account_id_from_seed, get_parachain_authority_keys_f
 use karura_runtime::{
 	dollar, Balance, BalancesConfig, BlockNumber, CdpEngineConfig, CdpTreasuryConfig, CollatorSelectionConfig,
 	DexConfig, FinancialCouncilMembershipConfig, GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig,
-	OperatorMembershipAcalaConfig, OrmlNFTConfig, ParachainInfoConfig, SS58Prefix, SessionConfig, SessionDuration,
-	SessionKeys, SessionManagerConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig,
-	VestingConfig, BNC, KAR, KSM, KUSD, LKSM, VSKSM,
+	OperatorMembershipAcalaConfig, OrmlNFTConfig, ParachainInfoConfig, PolkadotXcmConfig, SS58Prefix, SessionConfig,
+	SessionDuration, SessionKeys, SessionManagerConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig,
+	TokensConfig, VestingConfig, BNC, KAR, KSM, KUSD, LKSM, VSKSM,
 };
 use runtime_common::TokenInfo;
 
@@ -183,5 +183,8 @@ fn karura_genesis(
 		aura: Default::default(),
 		aura_ext: Default::default(),
 		parachain_system: Default::default(),
+		polkadot_xcm: PolkadotXcmConfig {
+			safe_xcm_version: Some(2),
+		},
 	}
 }
