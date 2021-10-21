@@ -21,11 +21,20 @@
 #![cfg(test)]
 
 use super::*;
-use frame_support::{construct_runtime, ord_parameter_types, parameter_types, traits::Everything, PalletId};
+use frame_support::{
+	construct_runtime, ord_parameter_types, parameter_types,
+	traits::{Everything, Nothing},
+	PalletId,
+};
 use frame_system::EnsureSignedBy;
+use orml_tokens::CurrencyAdapter;
+use orml_traits::parameter_type_with_key;
 use primitives::{Balance, FeedId, Moment, TokenSymbol};
 use sp_core::H256;
-use sp_runtime::{testing::Header, traits::IdentityLookup};
+use sp_runtime::{
+	testing::Header,
+	traits::{AccountIdConversion, IdentityLookup},
+};
 
 pub type BlockNumber = u64;
 pub type AccountId = u128;
@@ -34,6 +43,7 @@ pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
 pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
 pub const KSM: CurrencyId = CurrencyId::Token(TokenSymbol::KSM);
+pub const LINK: CurrencyId = CurrencyId::Token(TokenSymbol::LINK);
 
 mod chainlink_adaptor {
 	pub use crate::*;
@@ -98,17 +108,42 @@ impl pallet_timestamp::Config for Runtime {
 }
 
 parameter_types! {
+	pub DustAccount: AccountId = PalletId(*b"orml/dst").into_account();
+	pub const MaxLocks: u32 = 100;
+}
+
+parameter_type_with_key! {
+	pub ExistentialDeposits: |currency_id: CurrencyId| -> Balance {
+		if *currency_id == DOT { return 2; }
+		Default::default()
+	};
+}
+
+impl orml_tokens::Config for Runtime {
+	type Event = Event;
+	type Balance = Balance;
+	type Amount = i64;
+	type CurrencyId = CurrencyId;
+	type WeightInfo = ();
+	type ExistentialDeposits = ExistentialDeposits;
+	type OnDust = orml_tokens::TransferDust<Runtime, DustAccount>;
+	type MaxLocks = MaxLocks;
+	type DustRemovalWhitelist = Nothing;
+}
+
+parameter_types! {
 	pub const FeedPalletId: PalletId = PalletId(*b"linkfeed");
 	pub const StringLimit: u32 = 15;
 	pub const OracleLimit: u32 = 10;
 	pub const FeedLimit: FeedId = 10;
+	pub const Link: CurrencyId = LINK;
 }
 
 impl pallet_chainlink_feed::Config for Runtime {
 	type Event = Event;
 	type FeedId = FeedId;
 	type Value = u128;
-	type Currency = Balances;
+	type Currency = CurrencyAdapter<Runtime, Link>;
 	type PalletId = FeedPalletId;
 	type MinimumReserve = ExistentialDeposit;
 	type StringLimit = StringLimit;
@@ -151,6 +186,7 @@ construct_runtime!(
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
 		ChainlinkFeed: pallet_chainlink_feed::{Pallet, Call, Storage, Event<T>, Config<T>},
 		ChainlinkAdaptor: chainlink_adaptor::{Pallet, Call, Storage, Event<T>},
+		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
 	}
 );
 
