@@ -18,16 +18,32 @@
 
 #![cfg(test)]
 
-#[cfg(any(feature = "with-mandala-runtime", feature = "with-karura-runtime"))]
+#[cfg(any(
+	feature = "with-mandala-runtime",
+	feature = "with-karura-runtime",
+	feature = "with-acala-runtime"
+))]
 mod integration_tests;
 
-#[cfg(any(feature = "with-mandala-runtime", feature = "with-karura-runtime"))]
+#[cfg(any(
+	feature = "with-mandala-runtime",
+	feature = "with-karura-runtime",
+	feature = "with-acala-runtime"
+))]
 mod homa_lite_tests;
 
-#[cfg(any(feature = "with-mandala-runtime", feature = "with-karura-runtime"))]
+#[cfg(any(
+	feature = "with-mandala-runtime",
+	feature = "with-karura-runtime",
+	feature = "with-acala-runtime"
+))]
 mod evm_tests;
 
-#[cfg(any(feature = "with-mandala-runtime", feature = "with-karura-runtime"))]
+#[cfg(any(
+	feature = "with-mandala-runtime",
+	feature = "with-karura-runtime",
+	feature = "with-acala-runtime"
+))]
 mod weights_test;
 
 #[cfg(feature = "with-karura-runtime")]
