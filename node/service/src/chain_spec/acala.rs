@@ -150,7 +150,7 @@ pub fn latest_acala_config() -> Result<ChainSpec, String> {
 			assert_eq!(
 				total_allocated,
 				1_000_000_000 * dollar(ACA), // 1 billion ACA
-				"total allocation must be equal to 1 billion KAR"
+				"total allocation must be equal to 1 billion ACA"
 			);
 
 			let vesting_list_json = &include_bytes!("../../../../resources/acala-vesting-ACA.json")[..];

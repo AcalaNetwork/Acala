@@ -109,6 +109,45 @@ mod karura_imports {
 	);
 }
 
+#[cfg(feature = "with-acala-runtime")]
+pub use acala_imports::*;
+#[cfg(feature = "with-acala-runtime")]
+mod acala_imports {
+	pub use acala_runtime::{
+		constants::parachains, create_x2_parachain_multilocation, get_all_module_accounts, AcalaFoundationAccounts,
+		AcalaOracle, AccountId, AuctionManager, Authority, AuthoritysOriginId, Balance, Balances, BlockNumber, Call,
+		CdpEngine, CdpTreasury, CreateClassDeposit, CreateTokenDeposit, Currencies, CurrencyId, CurrencyIdConvert,
+		DataDepositPerByte, Dex, EmergencyShutdown, Event, EvmAccounts, ExistentialDeposits, Get, GetNativeCurrencyId,
+		HomaLite, Honzon, Loans, MinimumDebitValue, MultiLocation, NativeTokenExistentialDeposit, NetworkId,
+		NftPalletId, OneDay, Origin, OriginCaller, ParachainAccount, ParachainInfo, ParachainSystem, Perbill, Permill,
+		Proxy, ProxyType, RelayChainBlockNumberProvider, RelayChainSovereignSubAccount, Runtime, Scheduler, Session,
+		SessionManager, SevenDays, System, Timestamp, TokenSymbol, Tokens, TreasuryPalletId, Utility, Vesting, XTokens,
+		XcmConfig, XcmExecutor, XcmUnbondFee, NFT,
+	};
+	pub use frame_support::parameter_types;
+	pub use primitives::TradingPair;
+	pub use runtime_common::{dollar, ACA, AUSD, DOT, LDOT};
+	pub use sp_runtime::traits::AccountIdConversion;
+
+	parameter_types! {
+		pub EnabledTradingPairs: Vec<TradingPair> = vec![
+			TradingPair::from_currency_ids(USD_CURRENCY, NATIVE_CURRENCY).unwrap(),
+			TradingPair::from_currency_ids(USD_CURRENCY, RELAY_CHAIN_CURRENCY).unwrap(),
+			TradingPair::from_currency_ids(USD_CURRENCY, LIQUID_CURRENCY).unwrap(),
+		];
+		pub TreasuryAccount: AccountId = TreasuryPalletId::get().into_account();
+	}
+
+	pub const NATIVE_CURRENCY: CurrencyId = ACA;
+	pub const LIQUID_CURRENCY: CurrencyId = LDOT;
+	pub const RELAY_CHAIN_CURRENCY: CurrencyId = DOT;
+	pub const USD_CURRENCY: CurrencyId = AUSD;
+	pub const LPTOKEN: CurrencyId = CurrencyId::DexShare(
+		primitives::DexShare::Token(TokenSymbol::AUSD),
+		primitives::DexShare::Token(TokenSymbol::DOT),
+	);
+}
+
 const ORACLE1: [u8; 32] = [0u8; 32];
 const ORACLE2: [u8; 32] = [1u8; 32];
 const ORACLE3: [u8; 32] = [2u8; 32];
@@ -1270,6 +1309,8 @@ fn test_vesting_use_relaychain_block_number() {
 		let signer: AccountId = TreasuryPalletId::get().into_account();
 		#[cfg(feature = "with-karura-runtime")]
 		let signer: AccountId = KaruraFoundationAccounts::get()[0].clone();
+		#[cfg(feature = "with-acala-runtime")]
+		let signer: AccountId = AcalaFoundationAccounts::get()[0].clone();
 
 		assert_ok!(Balances::set_balance(
 			Origin::root(),
@@ -1366,10 +1407,14 @@ fn treasury_should_take_xcm_execution_revenue() {
 		let actual_amount = 9_999_999_760_000;
 		#[cfg(feature = "with-karura-runtime")]
 		let actual_amount = 999_999_952_000_000;
+		#[cfg(feature = "with-acala-runtime")]
+		let actual_amount = 999_999_952_000_000;
 
 		#[cfg(feature = "with-mandala-runtime")]
 		let shallow_weight = 3_000_000;
 		#[cfg(feature = "with-karura-runtime")]
+		let shallow_weight = 600_000_000;
+		#[cfg(feature = "with-acala-runtime")]
 		let shallow_weight = 600_000_000;
 		let origin = MultiLocation::parent();
 
@@ -1544,6 +1589,71 @@ fn currency_id_convert() {
 					parachains::bifrost::VSKSM_KEY.to_vec()
 				)),
 				Some(VSKSM)
+			);
+
+			assert_eq!(
+				CurrencyIdConvert::convert(BNC),
+				Some(MultiLocation::sibling_parachain_general_key(
+					parachains::bifrost::ID,
+					parachains::bifrost::BNC_KEY.to_vec()
+				))
+			);
+			assert_eq!(
+				CurrencyIdConvert::convert(VSKSM),
+				Some(MultiLocation::sibling_parachain_general_key(
+					parachains::bifrost::ID,
+					parachains::bifrost::VSKSM_KEY.to_vec()
+				))
+			);
+
+			let native_currency: MultiAsset = (
+				MultiLocation::sibling_parachain_general_key(id, NATIVE_CURRENCY.encode()),
+				1,
+			)
+				.into();
+			assert_eq!(CurrencyIdConvert::convert(native_currency), Some(NATIVE_CURRENCY));
+		}
+
+		#[cfg(feature = "with-acala-runtime")]
+		{
+			assert_eq!(CurrencyIdConvert::convert(KAR), None);
+			assert_eq!(CurrencyIdConvert::convert(KUSD), None);
+			assert_eq!(CurrencyIdConvert::convert(KSM), None);
+			assert_eq!(CurrencyIdConvert::convert(LKSM), None);
+
+			assert_eq!(
+				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(id, RENBTC.encode())),
+				Some(RENBTC)
+			);
+			assert_eq!(
+				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(id, KAR.encode())),
+				None
+			);
+			assert_eq!(
+				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(id, KUSD.encode())),
+				None
+			);
+			assert_eq!(
+				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(id, KSM.encode())),
+				None
+			);
+			assert_eq!(
+				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(id, LKSM.encode())),
+				None
+			);
+			assert_eq!(
+				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(
+					parachains::bifrost::ID,
+					parachains::bifrost::BNC_KEY.to_vec()
+				)),
+				None
+			);
+			assert_eq!(
+				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(
+					parachains::bifrost::ID,
+					parachains::bifrost::VSKSM_KEY.to_vec()
+				)),
+				None
 			);
 
 			assert_eq!(

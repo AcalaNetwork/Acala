@@ -9916,6 +9916,7 @@ name = "runtime-integration-tests"
 version = "1.5.1"
 dependencies = [
  "acala-primitives",
+ "acala-runtime",
  "acala-service",
  "cumulus-pallet-aura-ext",
  "cumulus-pallet-dmp-queue",
