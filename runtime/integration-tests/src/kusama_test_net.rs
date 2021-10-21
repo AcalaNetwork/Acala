@@ -112,6 +112,15 @@ pub fn kusama_ext() -> sp_io::TestExternalities {
 	.assimilate_storage(&mut t)
 	.unwrap();
 
+	// TODO: https://github.com/paritytech/polkadot/pull/4116
+	// remove force_default_xcm_version
+	//pallet_xcm::GenesisConfig::<Runtime> {
+	//	safe_xcm_version: Some(2),
+	//	..Default::default()
+	//}
+	//.assimilate_storage(&mut t)
+	//.unwrap();
+
 	let mut ext = sp_io::TestExternalities::new(t);
 	ext.execute_with(|| System::set_block_number(1));
 	ext

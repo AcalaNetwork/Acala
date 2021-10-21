@@ -205,7 +205,7 @@ impl Contains<Call> for BaseCallFilter {
 			Call::Treasury(_) | Call::Bounties(_) | Call::Tips(_) | // treasury
 			// Call::CollatorSelection(_) | Call::Session(_) | Call::SessionManager(_) | // collator
 			Call::DmpQueue(_) | Call::OrmlXcm(_) | // xcm
-			// Call::XcmPallet(_) | Call::XTokens | // not allow user to make xcm call
+			// Call::PolkadotXcm(_) | Call::XTokens | // not allow user to make xcm call
 			Call::Authority(_) |
 			Call::GeneralCouncil(_) | Call::GeneralCouncilMembership(_) |
 			Call::FinancialCouncil(_) | Call::FinancialCouncilMembership(_) |
@@ -1447,10 +1447,10 @@ impl xcm_executor::Config for XcmConfig {
 	type Barrier = Barrier;
 	type Weigher = FixedWeightBounds<UnitWeightCost, Call, MaxInstructions>;
 	type Trader = Trader;
-	type ResponseHandler = XcmPallet;
-	type AssetTrap = XcmPallet;
-	type AssetClaims = XcmPallet;
-	type SubscriptionService = XcmPallet;
+	type ResponseHandler = PolkadotXcm;
+	type AssetTrap = PolkadotXcm;
+	type AssetClaims = PolkadotXcm;
+	type SubscriptionService = PolkadotXcm;
 }
 
 parameter_types! {
@@ -1741,7 +1741,7 @@ construct_runtime!(
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Storage, Event<T>} = 50,
-		XcmPallet: pallet_xcm::{Pallet, Storage, Call, Event<T>, Origin, Config} = 51,
+		PolkadotXcm: pallet_xcm::{Pallet, Storage, Call, Event<T>, Origin, Config} = 51,
 		CumulusXcm: cumulus_pallet_xcm::{Pallet, Event<T>, Origin} = 52,
 		DmpQueue: cumulus_pallet_dmp_queue::{Pallet, Call, Storage, Event<T>} = 53,
 		XTokens: orml_xtokens::{Pallet, Storage, Call, Event<T>} = 54,

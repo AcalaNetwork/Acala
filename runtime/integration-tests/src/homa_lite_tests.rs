@@ -238,6 +238,10 @@ mod karura_only_tests {
 		let homa_lite_sub_account: AccountId =
 			hex_literal::hex!["d7b8926b326dd349355a9a7cca6606c1e0eb6fd2b506066b518c7155ff0d8297"].into();
 		KusamaNet::execute_with(|| {
+			assert_ok!(kusama_runtime::XcmPallet::force_default_xcm_version(
+				kusama_runtime::Origin::root(),
+				Some(0)
+			));
 			// Transfer some KSM into the parachain.
 			assert_ok!(kusama_runtime::XcmPallet::reserve_transfer_assets(
 				kusama_runtime::Origin::signed(ALICE.into()),
