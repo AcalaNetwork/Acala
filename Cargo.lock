@@ -73,11 +73,11 @@ dependencies = [
  "evm",
  "frame-support",
  "hex-literal 0.3.3",
+ "module-evm-utiltity-macro",
  "num_enum",
  "nutsfinance-stable-asset",
  "parity-scale-codec",
  "parity-util-mem",
- "primitives-proc-macro",
  "scale-info",
  "serde",
  "serde_json",
@@ -117,10 +117,13 @@ version = "1.5.1"
 dependencies = [
  "acala-primitives",
  "cumulus-pallet-aura-ext",
+ "cumulus-pallet-dmp-queue",
  "cumulus-pallet-parachain-system",
+ "cumulus-pallet-xcm",
+ "cumulus-pallet-xcmp-queue",
  "cumulus-primitives-core",
  "cumulus-primitives-timestamp",
- "ecosystem-renvm-bridge",
+ "cumulus-primitives-utility",
  "frame-benchmarking",
  "frame-executive",
  "frame-support",
@@ -128,6 +131,7 @@ dependencies = [
  "frame-system-rpc-runtime-api",
  "frame-try-runtime",
  "hex-literal 0.3.3",
+ "libsecp256k1 0.6.0",
  "module-airdrop",
  "module-auction-manager",
  "module-cdp-engine",
@@ -142,18 +146,22 @@ dependencies = [
  "module-evm-manager",
  "module-evm-rpc-runtime-api",
  "module-homa",
+ "module-homa-lite",
  "module-homa-validator-list",
  "module-honzon",
+ "module-idle-scheduler",
  "module-incentives",
  "module-loans",
  "module-nft",
  "module-nominees-election",
  "module-polkadot-bridge",
  "module-prices",
+ "module-relaychain",
  "module-session-manager",
  "module-staking-pool",
  "module-staking-pool-rpc-runtime-api",
  "module-support",
+ "module-transaction-pause",
  "module-transaction-payment",
  "orml-auction",
  "orml-authority",
@@ -164,22 +172,24 @@ dependencies = [
  "orml-rewards",
  "orml-tokens",
  "orml-traits",
+ "orml-unknown-tokens",
  "orml-vesting",
+ "orml-xcm",
+ "orml-xcm-support",
+ "orml-xtokens",
  "pallet-aura",
  "pallet-authorship",
  "pallet-balances",
  "pallet-bounties",
  "pallet-collective",
  "pallet-democracy",
- "pallet-elections-phragmen",
- "pallet-indices",
  "pallet-membership",
  "pallet-multisig",
- "pallet-offences",
  "pallet-proxy",
- "pallet-recovery",
  "pallet-scheduler",
  "pallet-session",
+ "pallet-staking",
+ "pallet-staking-reward-curve",
  "pallet-sudo",
  "pallet-timestamp",
  "pallet-tips",
@@ -187,6 +197,7 @@ dependencies = [
  "pallet-transaction-payment-rpc-runtime-api",
  "pallet-treasury",
  "pallet-utility",
+ "pallet-xcm",
  "parachain-info",
  "parity-scale-codec",
  "polkadot-parachain",
@@ -209,6 +220,9 @@ dependencies = [
  "sp-transaction-pool",
  "sp-version",
  "substrate-wasm-builder",
+ "xcm",
+ "xcm-builder",
+ "xcm-executor",
 ]
 
 [[package]]
@@ -1372,9 +1386,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "3.0.0-beta.4"
+version = "3.0.0-beta.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fcd70aa5597dbc42f7217a543f9ef2768b2ef823ba29036072d30e1d88e98406"
+checksum = "feff3878564edb93745d58cf63e17b63f24142506e7a20c87a5521ed7bfb1d63"
 dependencies = [
  "atty",
  "bitflags",
@@ -1385,14 +1399,14 @@ dependencies = [
  "strsim 0.10.0",
  "termcolor",
  "textwrap 0.14.2",
- "vec_map",
+ "unicase",
 ]
 
 [[package]]
 name = "clap_derive"
-version = "3.0.0-beta.4"
+version = "3.0.0-beta.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0b5bb0d655624a0b8770d1c178fb8ffcb1f91cc722cb08f451e3dc72465421ac"
+checksum = "8b15c6b4f786ffb6192ffe65a36855bc1fc2444bcd0945ae16748dcd6ed7d0d3"
 dependencies = [
  "heck",
  "proc-macro-error 1.0.4",
@@ -3960,7 +3974,7 @@ dependencies = [
  "frame-system-rpc-runtime-api",
  "frame-try-runtime",
  "hex-literal 0.3.3",
- "libsecp256k1 0.3.5",
+ "libsecp256k1 0.6.0",
  "module-airdrop",
  "module-auction-manager",
  "module-cdp-engine",
@@ -3978,6 +3992,7 @@ dependencies = [
  "module-homa-lite",
  "module-homa-validator-list",
  "module-honzon",
+ "module-idle-scheduler",
  "module-incentives",
  "module-loans",
  "module-nft",
@@ -4964,7 +4979,7 @@ dependencies = [
  "frame-try-runtime",
  "hex",
  "hex-literal 0.3.3",
- "libsecp256k1 0.3.5",
+ "libsecp256k1 0.6.0",
  "module-airdrop",
  "module-auction-manager",
  "module-cdp-engine",
@@ -4982,6 +4997,7 @@ dependencies = [
  "module-homa-lite",
  "module-homa-validator-list",
  "module-honzon",
+ "module-idle-scheduler",
  "module-incentives",
  "module-loans",
  "module-nft",
@@ -5503,7 +5519,7 @@ dependencies = [
  "acala-primitives",
  "frame-support",
  "frame-system",
- "libsecp256k1 0.3.5",
+ "libsecp256k1 0.6.0",
  "module-support",
  "orml-currencies",
  "orml-tokens",
@@ -5528,13 +5544,13 @@ dependencies = [
  "frame-system",
  "impl-trait-for-tuples 0.2.1",
  "module-evm",
+ "module-evm-utiltity-macro",
  "module-support",
  "num_enum",
  "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec",
  "primitive-types",
- "primitives-proc-macro",
  "scale-info",
  "serde",
  "sp-core",
@@ -5578,6 +5594,23 @@ dependencies = [
  "sp-core",
  "sp-runtime",
  "sp-std",
+]
+
+[[package]]
+name = "module-evm-utiltity"
+version = "1.5.1"
+dependencies = [
+ "sha3 0.9.1",
+]
+
+[[package]]
+name = "module-evm-utiltity-macro"
+version = "1.5.1"
+dependencies = [
+ "module-evm-utiltity",
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
@@ -5673,6 +5706,22 @@ dependencies = [
  "orml-traits",
  "pallet-balances",
  "pallet-timestamp",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "module-idle-scheduler"
+version = "1.5.1"
+dependencies = [
+ "acala-primitives",
+ "frame-support",
+ "frame-system",
  "parity-scale-codec",
  "scale-info",
  "serde",
@@ -5811,7 +5860,7 @@ dependencies = [
 
 [[package]]
 name = "module-relaychain"
-version = "1.4.1"
+version = "1.5.1"
 dependencies = [
  "acala-primitives",
  "cumulus-primitives-core",
@@ -6756,9 +6805,12 @@ dependencies = [
 
 [[package]]
 name = "os_str_bytes"
-version = "3.1.0"
+version = "4.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6acbef58a60fe69ab50510a55bc8cdd4d6cf2283d27ad338f54cb52747a9cf2d"
+checksum = "addaa943333a514159c80c97ff4a93306530d965d27e139188283cd13e06a799"
+dependencies = [
+ "memchr",
+]
 
 [[package]]
 name = "owning_ref"
@@ -9224,17 +9276,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "primitives-proc-macro"
-version = "1.5.1"
-dependencies = [
- "proc-macro-crate 1.1.0",
- "proc-macro2",
- "quote",
- "sha3 0.9.1",
- "syn",
-]
-
-[[package]]
 name = "proc-macro-crate"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -9893,6 +9934,7 @@ dependencies = [
  "module-evm",
  "module-evm-bridge",
  "module-evm-manager",
+ "module-evm-utiltity-macro",
  "module-nft",
  "module-prices",
  "module-staking-pool",
@@ -9911,7 +9953,6 @@ dependencies = [
  "pallet-timestamp",
  "pallet-utility",
  "parity-scale-codec",
- "primitives-proc-macro",
  "scale-info",
  "serde",
  "serde_json",
@@ -9927,6 +9968,7 @@ name = "runtime-integration-tests"
 version = "1.5.1"
 dependencies = [
  "acala-primitives",
+ "acala-runtime",
  "acala-service",
  "cumulus-pallet-aura-ext",
  "cumulus-pallet-dmp-queue",
@@ -9947,7 +9989,7 @@ dependencies = [
  "hex-literal 0.3.3",
  "karura-runtime",
  "kusama-runtime",
- "libsecp256k1 0.3.5",
+ "libsecp256k1 0.6.0",
  "mandala-runtime",
  "module-airdrop",
  "module-auction-manager",
@@ -13733,7 +13775,7 @@ dependencies = [
 name = "weight-gen"
 version = "0.4.1-dev"
 dependencies = [
- "clap 3.0.0-beta.4",
+ "clap 3.0.0-beta.5",
  "handlebars",
  "serde",
  "serde_json",

@@ -23,14 +23,14 @@ use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_core::sr25519;
 use sp_runtime::traits::Zero;
 
-use crate::chain_spec::{get_account_id_from_seed, get_karura_authority_keys_from_seed, Extensions};
+use crate::chain_spec::{get_account_id_from_seed, get_parachain_authority_keys_from_seed, Extensions};
 
 use karura_runtime::{
 	dollar, Balance, BalancesConfig, BlockNumber, CdpEngineConfig, CdpTreasuryConfig, CollatorSelectionConfig,
 	DexConfig, FinancialCouncilMembershipConfig, GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig,
-	OperatorMembershipAcalaConfig, OrmlNFTConfig, ParachainInfoConfig, Period, SS58Prefix, SessionConfig, SessionKeys,
-	SessionManagerConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig,
-	BNC, KAR, KSM, KUSD, LKSM, VSKSM,
+	OperatorMembershipAcalaConfig, OrmlNFTConfig, ParachainInfoConfig, PolkadotXcmConfig, SS58Prefix, SessionConfig,
+	SessionDuration, SessionKeys, SessionManagerConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig,
+	TokensConfig, VestingConfig, BNC, KAR, KSM, KUSD, LKSM, VSKSM,
 };
 use runtime_common::TokenInfo;
 
@@ -68,7 +68,7 @@ pub fn karura_dev_config() -> Result<ChainSpec, String> {
 			karura_genesis(
 				wasm_binary,
 				// Initial PoA authorities
-				vec![get_karura_authority_keys_from_seed("Alice")],
+				vec![get_parachain_authority_keys_from_seed("Alice")],
 				// Sudo account
 				get_account_id_from_seed::<sr25519::Public>("Alice"),
 				vec![
@@ -176,12 +176,15 @@ fn karura_genesis(
 				.collect(),
 		},
 		session_manager: SessionManagerConfig {
-			session_duration: Period::get(),
+			session_duration: SessionDuration::get(),
 		},
 		// no need to pass anything to aura, in fact it will panic if we do. Session will take care
 		// of this.
 		aura: Default::default(),
 		aura_ext: Default::default(),
 		parachain_system: Default::default(),
+		polkadot_xcm: PolkadotXcmConfig {
+			safe_xcm_version: Some(2),
+		},
 	}
 }

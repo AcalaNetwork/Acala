@@ -82,16 +82,16 @@ describeWithAcala("Acala RPC (bodhi.js)", (context) => {
 	step("should estimateGas", async function () {
 		expect(await context.provider.estimateGas(
 			await contract.populateTransaction.multiply(3)
-		)).to.deep.equal(BigNumber.from("22038"));
+		)).to.deep.equal(BigNumber.from("22409"));
 	});
 
 	step("should estimateResources", async function () {
 		expect(await context.provider.estimateResources(
 			await contract.populateTransaction.multiply(3)
 		)).to.deep.include({
-			gas: BigNumber.from("22038"),
+			gas: BigNumber.from("22409"),
 			storage: BigNumber.from(0),
-			weightFee: BigNumber.from(0),
+			weightFee: BigNumber.from("3999950190673"),
 		});
 	});
 });

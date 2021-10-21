@@ -239,10 +239,10 @@ fn testnet_genesis(
 		dollar, get_all_module_accounts, AirDropConfig, BalancesConfig, CdpEngineConfig, CdpTreasuryConfig,
 		CollatorSelectionConfig, DexConfig, EVMConfig, EnabledTradingPairs, FinancialCouncilMembershipConfig,
 		GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig, IndicesConfig, NativeTokenExistentialDeposit,
-		OperatorMembershipAcalaConfig, OperatorMembershipBandConfig, OrmlNFTConfig, ParachainInfoConfig, Period,
-		RenVmBridgeConfig, SessionConfig, SessionKeys, SessionManagerConfig, StakingPoolConfig, StarportConfig,
-		SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig, ACA, AUSD, DOT,
-		LDOT, LINK, RENBTC,
+		OperatorMembershipAcalaConfig, OperatorMembershipBandConfig, OrmlNFTConfig, ParachainInfoConfig,
+		PolkadotXcmConfig, RenVmBridgeConfig, SessionConfig, SessionDuration, SessionKeys, SessionManagerConfig,
+		StakingPoolConfig, StarportConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig,
+		VestingConfig, ACA, AUSD, DOT, LDOT, LINK, RENBTC,
 	};
 
 	let existential_deposit = NativeTokenExistentialDeposit::get();
@@ -431,13 +431,16 @@ fn testnet_genesis(
 				.collect(),
 		},
 		session_manager: SessionManagerConfig {
-			session_duration: Period::get(),
+			session_duration: SessionDuration::get(),
 		},
 		// no need to pass anything to aura, in fact it will panic if we do. Session will take care
 		// of this.
 		aura: Default::default(),
 		aura_ext: Default::default(),
 		parachain_system: Default::default(),
+		polkadot_xcm: PolkadotXcmConfig {
+			safe_xcm_version: Some(2),
+		},
 	}
 }
 
@@ -452,9 +455,9 @@ fn mandala_genesis(
 		CdpTreasuryConfig, CollatorSelectionConfig, DexConfig, EVMConfig, EnabledTradingPairs,
 		FinancialCouncilMembershipConfig, GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig, IndicesConfig,
 		NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OperatorMembershipBandConfig, OrmlNFTConfig,
-		ParachainInfoConfig, Period, RenVmBridgeConfig, SessionConfig, SessionKeys, SessionManagerConfig,
-		StakingPoolConfig, StarportConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig,
-		VestingConfig, ACA, AUSD, DOT, LDOT, RENBTC,
+		ParachainInfoConfig, PolkadotXcmConfig, RenVmBridgeConfig, SessionConfig, SessionDuration, SessionKeys,
+		SessionManagerConfig, StakingPoolConfig, StarportConfig, SudoConfig, SystemConfig,
+		TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig, ACA, AUSD, DOT, LDOT, RENBTC,
 	};
 
 	let existential_deposit = NativeTokenExistentialDeposit::get();
@@ -660,13 +663,16 @@ fn mandala_genesis(
 				.collect(),
 		},
 		session_manager: SessionManagerConfig {
-			session_duration: Period::get(),
+			session_duration: SessionDuration::get(),
 		},
 		// no need to pass anything to aura, in fact it will panic if we do. Session will take care
 		// of this.
 		aura: Default::default(),
 		aura_ext: Default::default(),
 		parachain_system: Default::default(),
+		polkadot_xcm: PolkadotXcmConfig {
+			safe_xcm_version: Some(2),
+		},
 	}
 }
 

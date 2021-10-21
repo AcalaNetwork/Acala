@@ -18,7 +18,7 @@
 
 use crate::{
 	AccountId, Balance, Balances, CollatorKickThreshold, CollatorSelection, Event, MaxCandidates, MaxInvulnerables,
-	MinCandidates, Period, Runtime, Session, SessionKeys, System,
+	MinCandidates, Runtime, Session, SessionDuration, SessionKeys, System,
 };
 
 use frame_benchmarking::{account, whitelisted_caller};
@@ -157,12 +157,12 @@ runtime_benchmarks! {
 		module_collator_selection::DesiredCandidates::<Runtime>::put(c);
 		register_candidates(c);
 
-		module_session_manager::SessionDuration::<Runtime>::put(Period::get());
+		module_session_manager::SessionDuration::<Runtime>::put(SessionDuration::get());
 		let leaving = module_collator_selection::Candidates::<Runtime>::get().into_iter().last().unwrap();
 		whitelist_account!(leaving);
 		CollatorSelection::leave_intent(RawOrigin::Signed(leaving.clone()).into())?;
-		Session::on_initialize(Period::get());
-		Session::on_initialize(2*Period::get());
+		Session::on_initialize(SessionDuration::get());
+		Session::on_initialize(2*SessionDuration::get());
 	}: _(RawOrigin::Signed(leaving))
 
 	// worse case is paying a non-existing candidate account.
@@ -211,10 +211,10 @@ runtime_benchmarks! {
 		System::set_block_number(0u32.into());
 		register_candidates(c);
 
-		module_session_manager::SessionDuration::<Runtime>::put(Period::get());
+		module_session_manager::SessionDuration::<Runtime>::put(SessionDuration::get());
 		System::set_block_number(20u32.into());
-		Session::on_initialize(Period::get());
-		Session::on_initialize(2*Period::get());
+		Session::on_initialize(SessionDuration::get());
+		Session::on_initialize(2*SessionDuration::get());
 
 		assert!(module_collator_selection::Candidates::<Runtime>::get().len() == c as usize);
 	}: {
@@ -240,7 +240,7 @@ runtime_benchmarks! {
 				// point = 0, will be removed.
 				module_collator_selection::SessionPoints::<Runtime>::insert(&candidate, 0);
 			} else {
-				module_collator_selection::SessionPoints::<Runtime>::insert(&candidate, CollatorKickThreshold::get().mul_floor(Period::get() * POINT_PER_BLOCK));
+				module_collator_selection::SessionPoints::<Runtime>::insert(&candidate, CollatorKickThreshold::get().mul_floor(SessionDuration::get() * POINT_PER_BLOCK));
 			}
 			count += 1;
 		});

@@ -168,12 +168,12 @@ impl ExtBuilder {
 	}
 }
 
-pub fn alice() -> secp256k1::SecretKey {
-	secp256k1::SecretKey::parse(&keccak_256(b"Alice")).unwrap()
+pub fn alice() -> libsecp256k1::SecretKey {
+	libsecp256k1::SecretKey::parse(&keccak_256(b"Alice")).unwrap()
 }
 
-pub fn bob() -> secp256k1::SecretKey {
-	secp256k1::SecretKey::parse(&keccak_256(b"Bob")).unwrap()
+pub fn bob() -> libsecp256k1::SecretKey {
+	libsecp256k1::SecretKey::parse(&keccak_256(b"Bob")).unwrap()
 }
 
 pub fn bob_account_id() -> AccountId {

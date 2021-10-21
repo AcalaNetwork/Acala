@@ -26,7 +26,7 @@ use codec::Codec;
 use frame_support::{
 	pallet_prelude::*,
 	traits::{
-		Currency as PalletCurrency, ExistenceRequirement, Get, LockableCurrency as PalletLockableCurrency,
+		Currency as PalletCurrency, ExistenceRequirement, Get, Imbalance, LockableCurrency as PalletLockableCurrency,
 		ReservableCurrency as PalletReservableCurrency, WithdrawReasons,
 	},
 	transactional,
@@ -111,6 +111,8 @@ pub mod module {
 		EvmAccountNotFound,
 		/// Real origin not found
 		RealOriginNotFound,
+		/// Deposit result is not expected
+		DepositFailed,
 	}
 
 	#[pallet::event]
@@ -759,7 +761,12 @@ where
 	}
 
 	fn deposit(who: &AccountId, amount: Self::Balance) -> DispatchResult {
-		let _ = Currency::deposit_creating(who, amount);
+		if !amount.is_zero() {
+			let deposit_result = Currency::deposit_creating(who, amount);
+			let actual_deposit = deposit_result.peek();
+			ensure!(actual_deposit == amount, Error::<T>::DepositFailed);
+		}
+
 		Ok(())
 	}
 

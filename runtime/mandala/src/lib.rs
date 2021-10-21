@@ -32,7 +32,7 @@
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
-use codec::{Compact, Decode, Encode};
+use codec::{Decode, Encode};
 use frame_support::pallet_prelude::InvalidTransaction;
 pub use frame_support::{
 	construct_runtime, log, parameter_types,
@@ -56,12 +56,19 @@ use module_evm_accounts::EvmAddressMapping;
 pub use module_evm_manager::EvmCurrencyIdMapping;
 use module_relaychain::RelayChainCallBuilder;
 use module_transaction_payment::{Multiplier, TargetedFeeAdjustment};
+use scale_info::TypeInfo;
+
 use orml_tokens::CurrencyAdapter;
 use orml_traits::{
 	create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended, MultiCurrency,
 };
 use pallet_transaction_payment::{FeeDetails, RuntimeDispatchInfo};
-use primitives::{evm::EthereumTransactionMessage, unchecked_extrinsic::AcalaUncheckedExtrinsic};
+use primitives::{
+	define_combined_task,
+	evm::EthereumTransactionMessage,
+	task::{DispatchableTask, TaskResult},
+	unchecked_extrinsic::AcalaUncheckedExtrinsic,
+};
 use sp_api::impl_runtime_apis;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_core::{crypto::KeyTypeId, OpaqueMetadata, H160};
@@ -264,7 +271,7 @@ impl pallet_authorship::Config for Runtime {
 
 parameter_types! {
 	pub const DisabledValidatorsThreshold: Perbill = Perbill::from_percent(33);
-	pub const Period: BlockNumber = DAYS;
+	pub const SessionDuration: BlockNumber = DAYS; // used in SessionManagerConfig of genesis
 }
 
 impl pallet_session::Config for Runtime {
@@ -1975,6 +1982,23 @@ impl nutsfinance_stable_asset::Config for Runtime {
 	type EnsurePoolAssetId = EnsurePoolAssetId;
 }
 
+define_combined_task! {
+	pub enum ScheduledTasks {
+	}
+}
+
+parameter_types!(
+	// At least 2% of max block weight should remain before idle tasks are dispatched.
+	pub MinimumWeightRemainInBlock: Weight = RuntimeBlockWeights::get().max_block / 50;
+);
+
+impl module_idle_scheduler::Config for Runtime {
+	type Event = Event;
+	type WeightInfo = ();
+	type Task = ScheduledTasks;
+	type MinimumWeightRemainInBlock = MinimumWeightRemainInBlock;
+}
+
 impl cumulus_pallet_aura_ext::Config for Runtime {}
 
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
@@ -2002,17 +2026,13 @@ impl Convert<(Call, SignedExtra), Result<EthereumTransactionMessage, InvalidTran
 				}
 
 				let nonce: frame_system::CheckNonce<Runtime> = extra.4;
-				// TODO: this is a hack access private nonce field
-				// remove this after https://github.com/paritytech/substrate/pull/9810
-				let nonce = nonce
-					.using_encoded(|mut encoded| Compact::<Nonce>::decode(&mut encoded))
-					.map_err(|_| InvalidTransaction::BadProof)?;
+				let nonce = nonce.0;
 
 				let tip: module_transaction_payment::ChargeTransactionPayment<Runtime> = extra.6;
 				let tip = tip.0;
 
 				Ok(EthereumTransactionMessage {
-					nonce: nonce.into(),
+					nonce,
 					tip,
 					gas_limit,
 					storage_limit,
@@ -2088,6 +2108,7 @@ construct_runtime! {
 		Multisig: pallet_multisig::{Pallet, Call, Storage, Event<T>} = 31,
 		Recovery: pallet_recovery::{Pallet, Call, Storage, Event<T>} = 32,
 		Proxy: pallet_proxy::{Pallet, Call, Storage, Event<T>} = 33,
+		IdleScheduler: module_idle_scheduler::{Pallet, Call, Storage, Event<T>} = 34,
 
 		Indices: pallet_indices::{Pallet, Call, Storage, Config<T>, Event<T>} = 40,
 
@@ -2156,7 +2177,7 @@ construct_runtime! {
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 170,
-		PolkadotXcm: pallet_xcm::{Pallet, Call, Event<T>, Origin} = 171,
+		PolkadotXcm: pallet_xcm::{Pallet, Storage, Call, Event<T>, Origin, Config} = 171,
 		CumulusXcm: cumulus_pallet_xcm::{Pallet, Event<T>, Origin} = 172,
 		DmpQueue: cumulus_pallet_dmp_queue::{Pallet, Call, Storage, Event<T>} = 173,
 		XTokens: orml_xtokens::{Pallet, Storage, Call, Event<T>} = 174,
@@ -2383,21 +2404,27 @@ impl_runtime_apis! {
 
 			let request = match utx.0.function {
 				Call::EVM(module_evm::Call::call{target, input, value, gas_limit, storage_limit}) => {
+					// use MAX_VALUE for no limit
+					let gas_limit = if gas_limit < u64::MAX { Some(gas_limit) } else { None };
+					let storage_limit = if storage_limit < u32::MAX { Some(storage_limit) } else { None };
 					Some(EstimateResourcesRequest {
 						from: None,
 						to: Some(target),
-						gas_limit: Some(gas_limit),
-						storage_limit: Some(storage_limit),
+						gas_limit,
+						storage_limit,
 						value: Some(value),
 						data: Some(input),
 					})
 				}
 				Call::EVM(module_evm::Call::create{init, value, gas_limit, storage_limit}) => {
+					// use MAX_VALUE for no limit
+					let gas_limit = if gas_limit < u64::MAX { Some(gas_limit) } else { None };
+					let storage_limit = if storage_limit < u32::MAX { Some(storage_limit) } else { None };
 					Some(EstimateResourcesRequest {
 						from: None,
 						to: None,
-						gas_limit: Some(gas_limit),
-						storage_limit: Some(storage_limit),
+						gas_limit,
+						storage_limit,
 						value: Some(value),
 						data: Some(init),
 					})
@@ -2606,7 +2633,7 @@ mod tests {
 		// Ensure that `required_point` > 0, collator can be kicked out normally.
 		assert!(
 			CollatorKickThreshold::get().mul_floor(
-				(Period::get() * module_collator_selection::POINT_PER_BLOCK)
+				(SessionDuration::get() * module_collator_selection::POINT_PER_BLOCK)
 					.checked_div(MaxCandidates::get())
 					.unwrap()
 			) > 0

@@ -29,12 +29,12 @@ const SEED: u32 = 0;
 
 const NATIVE: CurrencyId = GetNativeCurrencyId::get();
 
-fn alice() -> secp256k1::SecretKey {
-	secp256k1::SecretKey::parse(&keccak_256(b"Alice")).unwrap()
+fn alice() -> libsecp256k1::SecretKey {
+	libsecp256k1::SecretKey::parse(&keccak_256(b"Alice")).unwrap()
 }
 
-fn bob() -> secp256k1::SecretKey {
-	secp256k1::SecretKey::parse(&keccak_256(b"Bob")).unwrap()
+fn bob() -> libsecp256k1::SecretKey {
+	libsecp256k1::SecretKey::parse(&keccak_256(b"Bob")).unwrap()
 }
 
 pub fn bob_account_id() -> AccountId {

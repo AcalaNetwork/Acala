@@ -23,6 +23,7 @@
 pub mod currency;
 pub mod evm;
 pub mod signature;
+pub mod task;
 pub mod unchecked_extrinsic;
 
 use codec::{Decode, Encode, MaxEncodedLen};
