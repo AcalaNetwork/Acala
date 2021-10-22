@@ -114,7 +114,6 @@ parameter_types! {
 
 parameter_type_with_key! {
 	pub ExistentialDeposits: |currency_id: CurrencyId| -> Balance {
-		if *currency_id == DOT { return 2; }
 		Default::default()
 	};
 }

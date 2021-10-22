@@ -2166,10 +2166,10 @@ construct_runtime! {
 
 		// Ecosystem modules
 		RenVmBridge: ecosystem_renvm_bridge::{Pallet, Call, Config, Storage, Event<T>, ValidateUnsigned} = 150,
-		Starport: ecosystem_starport::{Pallet, Call, Storage, Event<T>, Config} = 153,
-		CompoundCash: ecosystem_compound_cash::{Pallet, Storage, Event<T>} = 154,
-		ChainlinkFeed: pallet_chainlink_feed::{Pallet, Call, Storage, Event<T>} = 155,
-		ChainlinkAdaptor: ecosystem_chainlink_adaptor::{Pallet, Call, Storage, Event<T>} = 156,
+		Starport: ecosystem_starport::{Pallet, Call, Storage, Event<T>, Config} = 151,
+		CompoundCash: ecosystem_compound_cash::{Pallet, Storage, Event<T>} = 152,
+		ChainlinkFeed: pallet_chainlink_feed::{Pallet, Call, Storage, Event<T>} = 153,
+		ChainlinkAdaptor: ecosystem_chainlink_adaptor::{Pallet, Call, Storage, Event<T>} = 154,
 
 		// Parachain
 		ParachainSystem: cumulus_pallet_parachain_system::{Pallet, Call, Storage, Inherent, Config, Event<T>} = 160,
