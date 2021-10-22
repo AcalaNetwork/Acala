@@ -214,23 +214,51 @@ fn can_adjust_total_staking_currency() {
 		assert_eq!(HomaLite::total_staking_currency(), 5001);
 		System::assert_last_event(Event::HomaLite(crate::Event::TotalStakingCurrencySet(5001)));
 
-		// Underflow / overflow causes error
-		assert_noop!(
-			HomaLite::adjust_total_staking_currency(Origin::root(), -5002),
-			ArithmeticError::Underflow
-		);
-
-		assert_eq!(HomaLite::total_staking_currency(), 5001);
+		// Underflow / overflow can be handled
+		assert_ok!(HomaLite::adjust_total_staking_currency(Origin::root(), -5002));
+		assert_eq!(HomaLite::total_staking_currency(), 0);
 
 		assert_ok!(HomaLite::set_total_staking_currency(
 			Origin::root(),
 			Balance::max_value()
 		));
 
+		assert_ok!(HomaLite::adjust_total_staking_currency(Origin::root(), 1));
+		assert_eq!(HomaLite::total_staking_currency(), Balance::max_value());
+	});
+}
+
+#[test]
+fn can_adjust_available_staking_balance() {
+	ExtBuilder::default().build().execute_with(|| {
 		assert_noop!(
-			HomaLite::adjust_total_staking_currency(Origin::root(), 1),
-			ArithmeticError::Overflow
+			HomaLite::adjust_available_staking_balance(Origin::signed(ALICE), 5000),
+			BadOrigin
 		);
+
+		// Can adjust total_staking_currency with ROOT.
+		assert_ok!(HomaLite::adjust_available_staking_balance(Origin::root(), 5001));
+
+		assert_eq!(HomaLite::available_staking_balance(), 5001);
+		System::assert_last_event(Event::HomaLite(crate::Event::AvailableStakingBalanceSet(5001)));
+
+		// Underflow / overflow can be handled due to the use of saturating arithmetic
+		assert_ok!(HomaLite::adjust_available_staking_balance(Origin::root(), -5002));
+		assert_eq!(HomaLite::available_staking_balance(), 0);
+
+		assert_ok!(HomaLite::adjust_available_staking_balance(
+			Origin::root(),
+			i128::max_value()
+		));
+		assert_ok!(HomaLite::adjust_available_staking_balance(
+			Origin::root(),
+			i128::max_value()
+		));
+		assert_ok!(HomaLite::adjust_available_staking_balance(
+			Origin::root(),
+			i128::max_value()
+		));
+		assert_eq!(HomaLite::available_staking_balance(), Balance::max_value());
 	});
 }
 
@@ -411,13 +439,12 @@ fn new_available_staking_currency_can_handle_redeem_requests() {
 			Some((dollar(1_000), Permill::zero()))
 		);
 
-		// Add more staking currency to fully satify the last redeem request
-		assert_ok!(HomaLite::replace_schedule_unbond(
+		// Add more staking currency by adjust_available_staking_balance also
+		// automatically fullfill pending redeem request.
+		assert_ok!(HomaLite::adjust_available_staking_balance(
 			Origin::root(),
-			vec![(dollar(150), 2)],
+			150_000_000_000_000
 		));
-		MockRelayBlockNumberProvider::set(2);
-		HomaLite::on_idle(MockRelayBlockNumberProvider::get(), 5_000_000_000);
 
 		// The last request is redeemed, the leftover is stored.
 		assert_eq!(AvailableStakingBalance::<Runtime>::get(), dollar(50));
@@ -467,12 +494,11 @@ fn on_idle_can_handle_changes_in_exchange_rate() {
 #[test]
 fn request_redeem_works() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(HomaLite::replace_schedule_unbond(
+		assert_ok!(HomaLite::adjust_available_staking_balance(
 			Origin::root(),
-			vec![(dollar(50_000), 1)],
+			50_000_000_000_000_000
 		));
-		MockRelayBlockNumberProvider::set(1);
-		HomaLite::on_idle(MockRelayBlockNumberProvider::get(), 5_000_000_000);
+
 		assert_eq!(AvailableStakingBalance::<Runtime>::get(), dollar(50_000));
 
 		// Redeem amount has to be above a threshold.
@@ -530,12 +556,11 @@ fn request_redeem_works() {
 #[test]
 fn request_redeem_can_handle_dust_redeem_requests() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(HomaLite::replace_schedule_unbond(
+		assert_ok!(HomaLite::adjust_available_staking_balance(
 			Origin::root(),
-			vec![(dollar(50_000), 1)],
+			50_000_000_000_000_000
 		));
-		MockRelayBlockNumberProvider::set(1);
-		HomaLite::on_idle(MockRelayBlockNumberProvider::get(), 5_000_000_000);
+
 		assert_eq!(AvailableStakingBalance::<Runtime>::get(), dollar(50_000));
 
 		// Remaining `dollar(1)` is below the xcm_unbond_fee, therefore returned and requests filled.
@@ -805,9 +830,7 @@ fn redeem_can_handle_dust_available_staking_currency() {
 	ExtBuilder::default().build().execute_with(|| {
 		// If AvailableStakingBalance is not enough to pay for the unbonding fee, ignore it.
 		// pub XcmUnbondFee: Balance = dollar(1);
-		assert_ok!(HomaLite::schedule_unbond(Origin::root(), 999_000_000, 0));
-		MockRelayBlockNumberProvider::set(0);
-		HomaLite::on_idle(MockRelayBlockNumberProvider::get(), 5_000_000_000);
+		assert_ok!(HomaLite::adjust_available_staking_balance(Origin::root(), 999_000_000));
 
 		assert_eq!(AvailableStakingBalance::<Runtime>::get(), 999_000_000);
 

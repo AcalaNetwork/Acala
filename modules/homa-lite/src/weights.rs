@@ -52,6 +52,7 @@ pub trait WeightInfo {
 	fn mint_for_requests() -> Weight;
 	fn set_total_staking_currency() -> Weight;
 	fn adjust_total_staking_currency() -> Weight;
+	fn adjust_available_staking_balance() -> Weight;
 	fn set_minting_cap() -> Weight;
 	fn set_xcm_dest_weight() -> Weight;
 	fn request_redeem() -> Weight;
@@ -82,6 +83,11 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn adjust_total_staking_currency() -> Weight {
+		(12_000_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(1 as Weight))
+			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+	}
+	fn adjust_available_staking_balance() -> Weight {
 		(12_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
@@ -132,6 +138,11 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
 	fn adjust_total_staking_currency() -> Weight {
+		(12_000_000 as Weight)
+			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
+			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
+	}
+	fn adjust_available_staking_balance() -> Weight {
 		(12_000_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))

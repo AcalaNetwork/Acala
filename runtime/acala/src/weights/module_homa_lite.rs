@@ -71,6 +71,11 @@ impl<T: frame_system::Config> module_homa_lite::WeightInfo for WeightInfo<T> {
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
+	fn adjust_available_staking_balance() -> Weight {
+		(21_634_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(1 as Weight))
+			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+	}
 	fn set_minting_cap() -> Weight {
 		(19_501_000 as Weight)
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))

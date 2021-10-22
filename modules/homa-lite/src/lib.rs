@@ -199,6 +199,10 @@ pub mod module {
 		/// The scheduled Unbond has been withdrew from the RelayChain.
 		///\[staking_amount_added\]
 		ScheduledUnbondWithdrew(Balance),
+
+		/// The amount of the staking currency available to be redeemed is set.
+		/// \[total_available_staking_balance\]
+		AvailableStakingBalanceSet(Balance),
 	}
 
 	/// The total amount of the staking currency on the relaychain.
@@ -318,7 +322,6 @@ pub mod module {
 		#[transactional]
 		pub fn adjust_total_staking_currency(origin: OriginFor<T>, by_amount: AmountOf<T>) -> DispatchResult {
 			T::GovernanceOrigin::ensure_origin(origin)?;
-			let mut current_staking_total = Self::total_staking_currency();
 
 			// Convert AmountOf<T> into Balance safely.
 			let by_amount_abs = if by_amount == AmountOf::<T>::min_value() {
@@ -330,18 +333,19 @@ pub mod module {
 			let by_balance = TryInto::<Balance>::try_into(by_amount_abs).map_err(|_| ArithmeticError::Overflow)?;
 
 			// Adjust the current total.
-			if by_amount.is_positive() {
-				current_staking_total = current_staking_total
-					.checked_add(by_balance)
-					.ok_or(ArithmeticError::Overflow)?;
+			let new_total = if by_amount.is_positive() {
+				TotalStakingCurrency::<T>::mutate(|current| {
+					*current = current.saturating_add(by_balance);
+					current.clone()
+				})
 			} else {
-				current_staking_total = current_staking_total
-					.checked_sub(by_balance)
-					.ok_or(ArithmeticError::Underflow)?;
-			}
+				TotalStakingCurrency::<T>::mutate(|current| {
+					*current = current.saturating_sub(by_balance);
+					current.clone()
+				})
+			};
 
-			TotalStakingCurrency::<T>::put(current_staking_total);
-			Self::deposit_event(Event::<T>::TotalStakingCurrencySet(current_staking_total));
+			Self::deposit_event(Event::<T>::TotalStakingCurrencySet(new_total));
 
 			Ok(())
 		}
@@ -544,6 +548,46 @@ pub mod module {
 			Self::deposit_event(Event::<T>::ScheduledUnbondReplaced);
 
 			Ok(())
+		}
+
+		/// Adjusts the AvailableStakingBalance by the given difference.
+		/// Also attempt to process queued redeem request with the new Staking Balance.
+		/// Requires `T::GovernanceOrigin`
+		///
+		/// Parameters:
+		/// - `adjustment`: The difference in amount the AvailableStakingBalance should be adjusted
+		///   by.
+		#[pallet::weight(< T as Config >::WeightInfo::adjust_available_staking_balance())]
+		#[transactional]
+		pub fn adjust_available_staking_balance(origin: OriginFor<T>, by_amount: AmountOf<T>) -> DispatchResult {
+			T::GovernanceOrigin::ensure_origin(origin)?;
+
+			// Convert AmountOf<T> into Balance safely.
+			let by_amount_abs = if by_amount == AmountOf::<T>::min_value() {
+				AmountOf::<T>::max_value()
+			} else {
+				by_amount.abs()
+			};
+
+			let by_balance = TryInto::<Balance>::try_into(by_amount_abs).map_err(|_| ArithmeticError::Overflow)?;
+
+			// Adjust the current total.
+			let new_amount = if by_amount.is_positive() {
+				AvailableStakingBalance::<T>::mutate(|current| {
+					*current = current.saturating_add(by_balance);
+					current.clone()
+				})
+			} else {
+				AvailableStakingBalance::<T>::mutate(|current| {
+					*current = current.saturating_sub(by_balance);
+					current.clone()
+				})
+			};
+
+			Self::deposit_event(Event::<T>::AvailableStakingBalanceSet(new_amount));
+
+			// With new staking balance available, process pending redeem requests.
+			Self::process_redeem_requests_with_available_staking_balance()
 		}
 	}
 
@@ -768,6 +812,9 @@ pub mod module {
 			Ok(())
 		}
 
+		/// Construct XCM message and sent it to the relaychain to withdraw_unbonded Staking
+		/// currency. The staking currency withdrew becomes available to be redeemed. Process
+		/// through redeem requests to fullfill the redeem order.
 		#[transactional]
 		fn process_scheduled_unbond(staking_amount: Balance) -> DispatchResult {
 			let msg = Self::construct_xcm_unreserve_message(T::ParachainAccount::get(), staking_amount);
@@ -776,12 +823,24 @@ pub mod module {
 			log::debug!("on_idle XCM result: {:?}", res);
 			ensure!(res.is_ok(), Error::<T>::XcmFailed);
 
+			// Update storage with the new available amount
+			AvailableStakingBalance::<T>::mutate(|current| {
+				*current = current.saturating_add(staking_amount);
+			});
+
+			Self::deposit_event(Event::<T>::ScheduledUnbondWithdrew(staking_amount));
+
 			// Now that there's available staking balance, automatically match existing
 			// redeem_requests.
+			Self::process_redeem_requests_with_available_staking_balance()
+		}
+
+		/// Iterate through all redeem requests, then match them with available_staking_balance.
+		/// This should be call when new available_staking_balance becomes available.
+		#[transactional]
+		fn process_redeem_requests_with_available_staking_balance() -> DispatchResult {
 			let mut new_balances: Vec<(T::AccountId, Balance, Permill)> = vec![];
-			let mut available_staking_balance = Self::available_staking_balance()
-				.checked_add(staking_amount)
-				.ok_or(ArithmeticError::Overflow)?;
+			let mut available_staking_balance = Self::available_staking_balance();
 			for (redeemer, (request_amount, extra_fee)) in RedeemRequests::<T>::iter() {
 				// If all the currencies are minted, return.
 				if available_staking_balance.is_zero() {
@@ -818,7 +877,6 @@ pub mod module {
 			Self::update_redeem_requests(&new_balances);
 
 			AvailableStakingBalance::<T>::put(available_staking_balance);
-			Self::deposit_event(Event::<T>::ScheduledUnbondWithdrew(staking_amount));
 
 			Ok(())
 		}
