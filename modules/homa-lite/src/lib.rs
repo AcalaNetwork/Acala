@@ -432,7 +432,7 @@ pub mod module {
 				ensure!(slash_amount.is_zero(), Error::<T>::InsufficientLiquidBalance);
 
 				// Deduct BaseWithdrawFee from the liquid amount.
-				let liquid_amount = liquid_amount.saturating_sub(T::BaseWithdrawFee::get().mul(liquid_amount));
+				let liquid_amount = liquid_amount.saturating_sub(base_withdraw_fee);
 
 				// If there are available_staking_balances, redeem immediately with no additional fee.
 				let available_staking_balance = Self::available_staking_balance();
