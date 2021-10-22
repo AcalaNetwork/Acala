@@ -426,6 +426,14 @@ pub mod module {
 					Error::<T>::AmountBelowMinimumThreshold
 				);
 
+				// Withdraw fee is burned.
+				let base_withdraw_fee = T::BaseWithdrawFee::get().mul(liquid_amount);
+				let slash_amount = T::Currency::slash(T::LiquidCurrencyId::get(), &who, base_withdraw_fee);
+				ensure!(slash_amount.is_zero(), Error::<T>::InsufficientLiquidBalance);
+
+				// Deduct BaseWithdrawFee from the liquid amount.
+				let liquid_amount = liquid_amount.saturating_sub(base_withdraw_fee);
+
 				// If there are available_staking_balances, redeem immediately with no additional fee.
 				let available_staking_balance = Self::available_staking_balance();
 				let actual_liquid_amount = min(
@@ -623,12 +631,10 @@ pub mod module {
 			)?;
 			ensure!(amount_repatriated.is_zero(), Error::<T>::InsufficientReservedBalances);
 
-			// Fee is charged on the staking currency that is to be transferred.
-			// staking_amount = original_staking_amount * ( 1 - base_with_fee - additional_fee )
+			// The extra_fee is rewarded to the minter. Minter gets to keep it instead of transferring it to the
+			// redeemer. staking_amount = original_staking_amount * ( 1 - additional_fee )
 			let mut staking_amount = Self::convert_liquid_to_staking(liquid_amount_can_be_redeemed)?;
-			let fee_deducted_percentage = Permill::one()
-				.saturating_sub(T::BaseWithdrawFee::get())
-				.saturating_sub(request_extra_fee);
+			let fee_deducted_percentage = Permill::one().saturating_sub(request_extra_fee);
 			staking_amount = fee_deducted_percentage.mul(staking_amount);
 
 			// Transfer the reduced staking currency from Minter to Redeemer
