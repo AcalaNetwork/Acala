@@ -1879,8 +1879,17 @@ pub type Executive = frame_executive::Executive<
 		TechnicalCommitteeStoragePrefixMigration,
 		MigrateTipsPalletPrefix,
 		BountiesPrefixMigration,
+		SetXcmVersion,
 	),
 >;
+
+pub struct SetXcmVersion;
+impl OnRuntimeUpgrade for SetXcmVersion {
+	fn on_runtime_upgrade() -> u64 {
+		let _ = PolkadotXcm::force_default_xcm_version(Origin::root(), Some(2));
+		RocksDbWeight::get().writes(1)
+	}
+}
 
 const GENERAL_COUNCIL_MEMBERSHIP_OLD_PREFIX: &str = "Instance1Membership";
 /// Migrate from `Instance1Membership` to the new pallet prefix `GeneralCouncilMembership`
