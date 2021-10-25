@@ -3,8 +3,6 @@ name: Release Notes
 env:
   SUBWASM_VERSION: 0.13.2
   SRTOOL_TAG: 1.53.0-0.9.16
-  CHAIN: karura
-  SCOPE: full
 
 on:
   workflow_dispatch:
@@ -17,15 +15,14 @@ on:
         description: Release scope [client | runtime | full]
         default: full
         required: true
-  push:
 
 jobs:
   release-notes:
     name: Crate release note
     runs-on: [self-hosted, linux]
-    # env:
-    #   CHAIN: ${{ github.event.inputs.chain }}
-    #   SCOPE: ${{ github.event.inputs.scope }}
+    env:
+      CHAIN: ${{ github.event.inputs.chain }}
+      SCOPE: ${{ github.event.inputs.scope }}
     steps:
       - uses: actions/checkout@v2
         with:
@@ -101,7 +98,7 @@ jobs:
             ${{ env.CHAIN }}-subwam-info.txt
 
       # - name: Upload wasm to pinata
-      #   if: ${{ !env.ACT && false }}
+      #   if: ${{ !env.ACT }}
       #   uses: aquiladev/ipfs-action@v0.1.6
       #   with:
       #     path: ${{ steps.srtool_build.outputs.wasm_compressed }}
@@ -122,13 +119,10 @@ jobs:
       - name: Save release note
         run: echo "${{ steps.generate-note.outputs.release-note }}" >> release_note.md
 
-      - name: Output
-        run: cat release_note.md
-
-      # - name: Crate Release Checklist issue
-      #   if: ${{ !env.ACT }}
-      #   uses: JasonEtco/create-an-issue@v2
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      #   with:
-      #     filename: release_note.md
+      - name: Crate Release Checklist issue
+        if: ${{ !env.ACT }}
+        uses: JasonEtco/create-an-issue@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          filename: release_note.md
