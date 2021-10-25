@@ -782,6 +782,9 @@ pub mod module {
 			log::debug!("on_idle XCM result: {:?}", res);
 			ensure!(res.is_ok(), Error::<T>::XcmFailed);
 
+			// TODO: test this
+			TotalStakingCurrency::<T>::mutate(|x| *x = x.saturating_sub(staking_amount));
+
 			// Now that there's available staking balance, automatically match existing
 			// redeem_requests.
 			let mut new_balances: Vec<(T::AccountId, Balance, Permill)> = vec![];
@@ -869,7 +872,7 @@ pub mod module {
 	pub struct LiquidExchangeProvider<T>(sp_std::marker::PhantomData<T>);
 	impl<T: Config> ExchangeRateProvider for LiquidExchangeProvider<T> {
 		fn get_exchange_rate() -> ExchangeRate {
-			Pallet::<T>::get_exchange_rate().reciprocal().unwrap_or_default()
+			Pallet::<T>::get_exchange_rate()
 		}
 	}
 }
