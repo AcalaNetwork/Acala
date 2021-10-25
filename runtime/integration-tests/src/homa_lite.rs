@@ -20,7 +20,7 @@
 
 #[cfg(any(feature = "with-mandala-runtime", feature = "with-karura-runtime"))]
 mod common_tests {
-	use crate::integration_tests::*;
+	use crate::setup::*;
 	use frame_support::{assert_noop, assert_ok};
 	use orml_traits::{MultiCurrency, MultiReservableCurrency};
 
@@ -248,14 +248,13 @@ mod common_tests {
 
 #[cfg(feature = "with-karura-runtime")]
 mod karura_only_tests {
-	use crate::integration_tests::*;
-	use crate::kusama_test_net::*;
+	use crate::relaychain::kusama_test_net::*;
+	use crate::setup::*;
 
 	use frame_support::{assert_ok, traits::Hooks};
 	use orml_traits::MultiCurrency;
 	use sp_runtime::{traits::BlockNumberProvider, MultiAddress};
 
-	use xcm::latest::prelude::*;
 	use xcm_emulator::TestExt;
 
 	#[test]

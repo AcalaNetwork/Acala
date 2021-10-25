@@ -21,15 +21,14 @@
 
 #[cfg(feature = "with-karura-runtime")]
 mod karura_tests {
-	use crate::integration_tests::*;
-	use crate::kusama_test_net::*;
+	use crate::relaychain::kusama_test_net::*;
+	use crate::setup::*;
 
 	use frame_support::{assert_noop, assert_ok};
 
 	use codec::Decode;
 	use module_relaychain::RelayChainCallBuilder;
 	use module_support::CallBuilder;
-	use xcm::latest::prelude::*;
 	use xcm_emulator::TestExt;
 
 	type KusamaCallBuilder = RelayChainCallBuilder<Runtime, ParachainInfo>;
