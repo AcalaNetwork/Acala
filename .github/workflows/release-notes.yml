@@ -22,7 +22,7 @@ on:
 jobs:
   release-notes:
     name: Crate release note
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux]
     # env:
     #   CHAIN: ${{ github.event.inputs.chain }}
     #   SCOPE: ${{ github.event.inputs.scope }}
