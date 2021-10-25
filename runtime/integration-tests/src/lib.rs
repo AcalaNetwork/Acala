@@ -19,20 +19,43 @@
 #![cfg(test)]
 
 #[cfg(any(feature = "with-mandala-runtime", feature = "with-karura-runtime",))]
-mod integration_tests;
+mod setup;
 
 #[cfg(any(feature = "with-mandala-runtime", feature = "with-karura-runtime",))]
-mod homa_lite_tests;
+mod authority;
 
 #[cfg(any(feature = "with-mandala-runtime", feature = "with-karura-runtime",))]
-mod evm_tests;
+mod dex;
 
 #[cfg(any(feature = "with-mandala-runtime", feature = "with-karura-runtime",))]
-mod weights_test;
+mod evm;
+
+#[cfg(any(feature = "with-mandala-runtime", feature = "with-karura-runtime",))]
+mod homa_lite;
+
+#[cfg(any(feature = "with-mandala-runtime", feature = "with-karura-runtime",))]
+mod honzon;
+
+#[cfg(any(feature = "with-mandala-runtime", feature = "with-karura-runtime",))]
+mod nft;
+
+#[cfg(any(feature = "with-mandala-runtime", feature = "with-karura-runtime",))]
+mod proxy;
+
+#[cfg(any(feature = "with-mandala-runtime", feature = "with-karura-runtime",))]
+mod runtime;
+
+#[cfg(any(feature = "with-mandala-runtime", feature = "with-karura-runtime",))]
+mod session_manager;
+
+#[cfg(any(feature = "with-mandala-runtime", feature = "with-karura-runtime",))]
+mod treasury;
+
+#[cfg(any(feature = "with-mandala-runtime", feature = "with-karura-runtime",))]
+mod vesting;
+
+#[cfg(any(feature = "with-mandala-runtime", feature = "with-karura-runtime",))]
+mod weights;
 
 #[cfg(feature = "with-karura-runtime")]
-mod kusama_cross_chain_transfer;
-#[cfg(feature = "with-karura-runtime")]
-mod kusama_test_net;
-#[cfg(feature = "with-karura-runtime")]
-mod relay_chain_tests;
+mod relaychain;

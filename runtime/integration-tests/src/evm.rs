@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::integration_tests::*;
+use crate::setup::*;
 
 use frame_support::assert_ok;
 use module_evm_accounts::EvmAddressMapping;
@@ -600,5 +600,61 @@ fn should_not_kill_contract_on_transfer_all_tokens() {
 
 			// should be gone
 			assert!(!System::account_exists(&contract_account_id));
+		});
+}
+
+#[test]
+fn test_evm_accounts_module() {
+	ExtBuilder::default()
+		.balances(vec![(bob(), NATIVE_CURRENCY, 1_000 * dollar(NATIVE_CURRENCY))])
+		.build()
+		.execute_with(|| {
+			assert_eq!(Balances::free_balance(AccountId::from(ALICE)), 0);
+			assert_eq!(Balances::free_balance(bob()), 1_000 * dollar(NATIVE_CURRENCY));
+			assert_ok!(EvmAccounts::claim_account(
+				Origin::signed(AccountId::from(ALICE)),
+				EvmAccounts::eth_address(&alice_key()),
+				EvmAccounts::eth_sign(&alice_key(), &AccountId::from(ALICE).encode(), &[][..])
+			));
+			System::assert_last_event(Event::EvmAccounts(module_evm_accounts::Event::ClaimAccount(
+				AccountId::from(ALICE),
+				EvmAccounts::eth_address(&alice_key()),
+			)));
+
+			// claim another eth address
+			assert_noop!(
+				EvmAccounts::claim_account(
+					Origin::signed(AccountId::from(ALICE)),
+					EvmAccounts::eth_address(&alice_key()),
+					EvmAccounts::eth_sign(&alice_key(), &AccountId::from(ALICE).encode(), &[][..])
+				),
+				module_evm_accounts::Error::<Runtime>::AccountIdHasMapped
+			);
+			assert_noop!(
+				EvmAccounts::claim_account(
+					Origin::signed(AccountId::from(BOB)),
+					EvmAccounts::eth_address(&alice_key()),
+					EvmAccounts::eth_sign(&alice_key(), &AccountId::from(BOB).encode(), &[][..])
+				),
+				module_evm_accounts::Error::<Runtime>::EthAddressHasMapped
+			);
+
+			// evm padded address will transfer_all to origin.
+			assert_eq!(Balances::free_balance(bob()), 1_000 * dollar(NATIVE_CURRENCY));
+			assert_eq!(Balances::free_balance(&AccountId::from(BOB)), 0);
+			assert_eq!(System::providers(&bob()), 1);
+			assert_eq!(System::providers(&AccountId::from(BOB)), 0);
+			assert_ok!(EvmAccounts::claim_account(
+				Origin::signed(AccountId::from(BOB)),
+				EvmAccounts::eth_address(&bob_key()),
+				EvmAccounts::eth_sign(&bob_key(), &AccountId::from(BOB).encode(), &[][..])
+			));
+			assert_eq!(System::providers(&bob()), 0);
+			assert_eq!(System::providers(&AccountId::from(BOB)), 1);
+			assert_eq!(Balances::free_balance(bob()), 0);
+			assert_eq!(
+				Balances::free_balance(&AccountId::from(BOB)),
+				1_000 * dollar(NATIVE_CURRENCY)
+			);
 		});
 }
