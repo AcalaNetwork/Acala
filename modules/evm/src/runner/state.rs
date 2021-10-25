@@ -20,16 +20,19 @@
 
 use crate::{encode_revert_message, runner::StackState, StorageMeter};
 use core::{cmp::min, convert::Infallible};
-use evm::{
-	Capture, Config, Context, CreateScheme, ExitError, ExitReason, ExitRevert, ExitSucceed, Opcode, Runtime, Stack,
-	Transfer,
-};
-use evm_gasometer::{self as gasometer, Gasometer};
-use evm_runtime::Handler;
 use frame_support::log;
+use module_evm_utiltity::{
+	ethereum::Log,
+	evm::{
+		Capture, Config, Context, CreateScheme, ExitError, ExitReason, ExitRevert, ExitSucceed, Opcode, Runtime, Stack,
+		Transfer,
+	},
+	evm_gasometer::{self as gasometer, Gasometer},
+	evm_runtime::Handler,
+};
 use primitive_types::{H160, H256, U256};
 pub use primitives::{
-	evm::{Account, EvmAddress, Log, Vicinity},
+	evm::{EvmAddress, Vicinity},
 	ReserveIdentifier, H160_PREFIX_DEXSHARE, H160_PREFIX_TOKEN, MIRRORED_NFT_ADDRESS_START, PREDEPLOY_ADDRESS_START,
 	SYSTEM_CONTRACT_ADDRESS_PREFIX,
 };

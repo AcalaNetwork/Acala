@@ -19,9 +19,9 @@
 //! Builtin precompiles.
 
 use crate::runner::state::PrecompileOutput;
-use evm::{Context, ExitError, ExitSucceed};
 use frame_support::log;
 use impl_trait_for_tuples::impl_for_tuples;
+use module_evm_utiltity::evm::{Context, ExitError, ExitSucceed};
 use primitive_types::H160;
 use ripemd160::Digest;
 use sp_std::{cmp::min, marker::PhantomData, vec::Vec};

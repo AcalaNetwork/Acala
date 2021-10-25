@@ -5,4 +5,28 @@ authors = ["Acala Developers"]
 edition = "2018"
 
 [dependencies]
-sha3 = { version = "0.9.1" }
+sha3 = { version = "0.9.1", default-features = false }
+
+sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.11", default-features = false }
+
+evm = { git = "https://github.com/rust-blockchain/evm", rev = "c5c69e0a21c2bd9ee5376b70139eb0464c430010", default-features = false, features = ["with-codec"] }
+evm-gasometer = { git = "https://github.com/rust-blockchain/evm", rev = "c5c69e0a21c2bd9ee5376b70139eb0464c430010", default-features = false }
+evm-runtime = { git = "https://github.com/rust-blockchain/evm", rev = "c5c69e0a21c2bd9ee5376b70139eb0464c430010", default-features = false }
+ethereum = { version = "0.10.0", default-features = false, features = ["with-codec"] }
+
+[features]
+default = ["std"]
+std = [
+	"sha3/std",
+	"sp-std/std",
+	"evm/std",
+	"evm/with-serde",
+	"evm-runtime/std",
+	"evm-gasometer/std",
+	"ethereum/with-serde",
+]
+tracing = [
+	"evm/tracing",
+	"evm-gasometer/tracing",
+	"evm-runtime/tracing",
+]
