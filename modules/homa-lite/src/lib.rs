@@ -816,8 +816,8 @@ pub mod module {
 		/// currency. The staking currency withdrew becomes available to be redeemed. Process
 		/// through redeem requests to fullfill the redeem order.
 		#[transactional]
-		fn process_scheduled_unbond(staking_amount: Balance) -> DispatchResult {
-			let msg = Self::construct_xcm_unreserve_message(T::ParachainAccount::get(), staking_amount);
+		fn process_scheduled_unbond(staking_amount_unbonded: Balance) -> DispatchResult {
+			let msg = Self::construct_xcm_unreserve_message(T::ParachainAccount::get(), staking_amount_unbonded);
 
 			let res = pallet_xcm::Pallet::<T>::send_xcm(Here, Parent, msg);
 			log::debug!("on_idle XCM result: {:?}", res);
@@ -825,10 +825,10 @@ pub mod module {
 
 			// Update storage with the new available amount
 			AvailableStakingBalance::<T>::mutate(|current| {
-				*current = current.saturating_add(staking_amount);
+				*current = current.saturating_add(staking_amount_unbonded);
 			});
 
-			Self::deposit_event(Event::<T>::ScheduledUnbondWithdrew(staking_amount));
+			Self::deposit_event(Event::<T>::ScheduledUnbondWithdrew(staking_amount_unbonded));
 
 			// Now that there's available staking balance, automatically match existing
 			// redeem_requests.
@@ -836,7 +836,7 @@ pub mod module {
 		}
 
 		/// Iterate through all redeem requests, then match them with available_staking_balance.
-		/// This should be call when new available_staking_balance becomes available.
+		/// This should be called when new available_staking_balance becomes available.
 		#[transactional]
 		fn process_redeem_requests_with_available_staking_balance() -> DispatchResult {
 			let mut new_balances: Vec<(T::AccountId, Balance, Permill)> = vec![];
@@ -880,10 +880,10 @@ pub mod module {
 
 			Ok(())
 		}
-
+		/// Update the RedeemRequests storage with the new balances.
+		/// Remove Redeem requests that are dust, or have been filled.
 		#[allow(clippy::ptr_arg)]
 		fn update_redeem_requests(new_balances: &Vec<(T::AccountId, Balance, Permill)>) {
-			// Update storage with the new balances. Remove Redeem requests that have been filled.
 			for (redeemer, new_balance, extra_fee) in new_balances {
 				if Self::liquid_amount_is_above_minimum_threshold(*new_balance) {
 					RedeemRequests::<T>::insert(&redeemer, (*new_balance, *extra_fee));
