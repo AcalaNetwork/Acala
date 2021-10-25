@@ -27,7 +27,7 @@ fn treasury_should_take_xcm_execution_revenue() {
 		#[cfg(feature = "with-karura-runtime")]
 		let actual_amount = 999_999_952_000_000;
 		#[cfg(feature = "with-acala-runtime")]
-		let actual_amount = 999_999_952_000_000;
+		let actual_amount = 9_999_952_000_000;
 
 		#[cfg(feature = "with-mandala-runtime")]
 		let shallow_weight = 3_000_000;
