@@ -4949,6 +4949,7 @@ dependencies = [
  "module-evm-bridge",
  "module-evm-manager",
  "module-evm-rpc-runtime-api",
+ "module-evm-utiltity",
  "module-homa",
  "module-homa-lite",
  "module-homa-validator-list",
