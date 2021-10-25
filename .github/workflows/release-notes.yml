@@ -21,7 +21,7 @@ on:
 
 jobs:
   release-notes:
-    name: Build release note
+    name: Crate release note
     runs-on: ubuntu-latest
     # env:
     #   CHAIN: ${{ github.event.inputs.chain }}
@@ -127,7 +127,7 @@ jobs:
           write-mode: overwrite
 
       - name: Crate Release Checklist issue
-        if: ${{ !env.ACT }}
+        if: ${{ !env.ACT && false }}
         uses: JasonEtco/create-an-issue@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
