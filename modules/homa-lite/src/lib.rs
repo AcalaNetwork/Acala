@@ -769,9 +769,6 @@ pub mod module {
 			log::debug!("on_idle XCM result: {:?}", res);
 			ensure!(res.is_ok(), Error::<T>::XcmFailed);
 
-			// TODO: test this
-			TotalStakingCurrency::<T>::mutate(|x| *x = x.saturating_sub(staking_amount));
-
 			// Now that there's available staking balance, automatically match existing
 			// redeem_requests.
 			let mut new_balances: Vec<(T::AccountId, Balance, Permill)> = vec![];
@@ -788,6 +785,8 @@ pub mod module {
 					Self::convert_staking_to_liquid(available_staking_balance)?,
 				);
 				let actual_staking_amount = Self::convert_liquid_to_staking(actual_liquid_amount)?;
+
+				TotalStakingCurrency::<T>::mutate(|x| *x = x.saturating_sub(actual_staking_amount));
 
 				// Redeem from the available_staking_balances costs only the xcm unbond fee.
 				T::Currency::deposit(
