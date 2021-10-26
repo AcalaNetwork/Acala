@@ -74,10 +74,6 @@ fn mint_works() {
 			HomaLite::get_exchange_rate(),
 			ExchangeRate::saturating_from_rational(lksm_issuance / 5, lksm_issuance)
 		);
-		assert_eq!(
-			LiquidExchangeProvider::<Runtime>::get_exchange_rate(),
-			ExchangeRate::saturating_from_rational(lksm_issuance, lksm_issuance / 5)
-		);
 
 		// The exchange rate is now 1:5 ratio
 		// liquid = (1000 - 0.01) * 1_009_899_901_000_000_000 / 201_979_980_200_000_000 * 0.99

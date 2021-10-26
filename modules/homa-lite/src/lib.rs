@@ -556,19 +556,6 @@ pub mod module {
 	}
 
 	impl<T: Config> Pallet<T> {
-		/// Calculate the exchange rate between the Staking and Liquid currency.
-		/// returns Ratio(staking : liquid) = total_staking_amount / liquid_total_issuance
-		/// If the exchange rate cannot be calculated, T::DefaultExchangeRate is used
-		pub fn get_exchange_rate() -> Ratio {
-			let staking_total = Self::total_staking_currency();
-			let liquid_total = T::Currency::total_issuance(T::LiquidCurrencyId::get());
-			if staking_total.is_zero() {
-				T::DefaultExchangeRate::get()
-			} else {
-				Ratio::checked_from_rational(staking_total, liquid_total).unwrap_or_else(T::DefaultExchangeRate::get)
-			}
-		}
-
 		/// Calculate the amount of Staking currency converted from Liquid currency.
 		/// staking_amount = (total_staking_amount / liquid_total_issuance) * liquid_amount
 		/// If the exchange rate cannot be calculated, T::DefaultExchangeRate is used
@@ -869,10 +856,19 @@ pub mod module {
 			)
 		}
 	}
-	pub struct LiquidExchangeProvider<T>(sp_std::marker::PhantomData<T>);
-	impl<T: Config> ExchangeRateProvider for LiquidExchangeProvider<T> {
-		fn get_exchange_rate() -> ExchangeRate {
-			Pallet::<T>::get_exchange_rate()
+
+	impl<T: Config> ExchangeRateProvider for Pallet<T> {
+		/// Calculate the exchange rate between the Staking and Liquid currency.
+		/// returns Ratio(staking : liquid) = total_staking_amount / liquid_total_issuance
+		/// If the exchange rate cannot be calculated, T::DefaultExchangeRate is used
+		fn get_exchange_rate() -> Ratio {
+			let staking_total = Self::total_staking_currency();
+			let liquid_total = T::Currency::total_issuance(T::LiquidCurrencyId::get());
+			if staking_total.is_zero() {
+				T::DefaultExchangeRate::get()
+			} else {
+				Ratio::checked_from_rational(staking_total, liquid_total).unwrap_or_else(T::DefaultExchangeRate::get)
+			}
 		}
 	}
 }

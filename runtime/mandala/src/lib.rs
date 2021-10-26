@@ -55,6 +55,7 @@ use module_evm::{CallInfo, CreateInfo};
 use module_evm_accounts::EvmAddressMapping;
 pub use module_evm_manager::EvmCurrencyIdMapping;
 use module_relaychain::RelayChainCallBuilder;
+use module_support::ExchangeRateProvider;
 use module_transaction_payment::{Multiplier, TargetedFeeAdjustment};
 use scale_info::TypeInfo;
 
