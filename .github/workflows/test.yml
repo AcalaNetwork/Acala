@@ -41,28 +41,28 @@ jobs:
         components: rustfmt
         target: wasm32-unknown-unknown
         default: true
-    - name: Check format
-      run: cargo fmt --all -- --check
-    - name: Build
-      run: make build-all
-    - name: Install clippy
-      run: rustup component add clippy
-    - name: Run mandala-runtime clippy
-      run: cargo clippy --features with-mandala-runtime -- -D warnings
-    - name: Run karura-runtime clippy
-      run: cargo clippy --features with-karura-runtime -- -D warnings
-    - name: Run acala-runtime clippy
-      run: cargo clippy --features with-acala-runtime -- -D warnings
-    - name: Run runtime tests
-      run: make test-runtimes
-    - name: Run eth tests
-      run: make test-eth
-    - name: Run benchmarking tests
-      run: make test-benchmarking
-    - name: Check benchmarks
-      run: make check-benchmarks
-    - name: Check try-runtime
-      run: make check-try-runtime
+    #- name: Check format
+    #  run: cargo fmt --all -- --check
+    #- name: Build
+    #  run: make build-all
+    #- name: Install clippy
+    #  run: rustup component add clippy
+    #- name: Run mandala-runtime clippy
+    #  run: cargo clippy --features with-mandala-runtime -- -D warnings
+    #- name: Run karura-runtime clippy
+    #  run: cargo clippy --features with-karura-runtime -- -D warnings
+    #- name: Run acala-runtime clippy
+    #  run: cargo clippy --features with-acala-runtime -- -D warnings
+    #- name: Run runtime tests
+    #  run: make test-runtimes
+    #- name: Run eth tests
+    #  run: make test-eth
+    #- name: Run benchmarking tests
+    #  run: make test-benchmarking
+    #- name: Check benchmarks
+    #  run: make check-benchmarks
+    #- name: Check try-runtime
+    #  run: make check-try-runtime
     - name: Use Node.js
       uses: actions/setup-node@v2
       with:
