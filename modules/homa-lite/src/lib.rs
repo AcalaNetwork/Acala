@@ -336,12 +336,12 @@ pub mod module {
 			let new_total = if by_amount.is_positive() {
 				TotalStakingCurrency::<T>::mutate(|current| {
 					*current = current.saturating_add(by_balance);
-					current.clone()
+					*current
 				})
 			} else {
 				TotalStakingCurrency::<T>::mutate(|current| {
 					*current = current.saturating_sub(by_balance);
-					current.clone()
+					*current
 				})
 			};
 
@@ -575,12 +575,12 @@ pub mod module {
 			let new_amount = if by_amount.is_positive() {
 				AvailableStakingBalance::<T>::mutate(|current| {
 					*current = current.saturating_add(by_balance);
-					current.clone()
+					*current
 				})
 			} else {
 				AvailableStakingBalance::<T>::mutate(|current| {
 					*current = current.saturating_sub(by_balance);
-					current.clone()
+					*current
 				})
 			};
 
