@@ -3,12 +3,9 @@ import { WsProvider } from "@polkadot/api";
 import { spawn, ChildProcess } from "child_process";
 import chaiAsPromised from "chai-as-promised";
 import chai from "chai";
+import getPort from 'get-port';
 
 chai.use(chaiAsPromised);
-
-export const P2P_PORT = 19931;
-export const RPC_PORT = 19932;
-export const WS_PORT = 19933;
 
 export const DISPLAY_LOG = process.env.ACALA_LOG || false;
 export const ACALA_LOG = process.env.ACALA_LOG || "info";
@@ -18,6 +15,10 @@ export const BINARY_PATH = `../target/${ACALA_BUILD}/acala`;
 export const SPAWNING_TIME = 60000;
 
 export async function startAcalaNode(): Promise<{ provider: TestProvider; binary: ChildProcess }> {
+	const P2P_PORT = await getPort({port: getPort.makeRange(19931, 22000)});
+	const RPC_PORT = await getPort({port: getPort.makeRange(19931, 22000)});
+	const WS_PORT = await getPort({port: getPort.makeRange(19931, 22000)});
+
 	const cmd = BINARY_PATH;
 	const args = [
 		`--dev`,
@@ -37,6 +38,8 @@ export async function startAcalaNode(): Promise<{ provider: TestProvider; binary
 		`--tmp`,
 	];
 	const binary = spawn(cmd, args);
+
+	//console.log("Node start: " + args);
 
 	binary.on("error", (err) => {
 		if ((err as any).errno == "ENOENT") {

@@ -30,7 +30,7 @@ describeWithAcala("Acala RPC (Contract Methods)", (context) => {
 	});
 
 	it("should get correct environmental block hash", async function () {
-		this.timeout(15000000);
+		this.timeout(15000);
 		// Solidity `blockhash` is expected to return the ethereum block hash at a given height.
 		let number = await context.provider.getBlockNumber();
 
