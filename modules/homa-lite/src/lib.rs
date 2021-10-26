@@ -850,6 +850,7 @@ pub mod module {
 
 		fn liquid_amount_is_above_minimum_threshold(liquid_amount: Balance) -> bool {
 			liquid_amount > T::MinimumRedeemThreshold::get()
+				&& Self::convert_liquid_to_staking(liquid_amount).unwrap_or_default() > T::XcmUnbondFee::get()
 		}
 
 		/// Construct a XCM message

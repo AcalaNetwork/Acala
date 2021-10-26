@@ -513,11 +513,11 @@ fn request_redeem_works() {
 		assert_eq!(AvailableStakingBalance::<Runtime>::get(), 0);
 		assert_eq!(Currencies::free_balance(KSM, &ROOT), dollar(49_998));
 		assert_eq!(Currencies::free_balance(LKSM, &ROOT), dollar(349_400));
-		assert_eq!(Currencies::reserved_balance(LKSM, &ROOT), 149_850_000_000_000_000);
+		assert_eq!(Currencies::reserved_balance(LKSM, &ROOT), 149949400000000000);
 		// request_redeem replaces existing item in the queue, not add to it.
 		assert_eq!(
 			RedeemRequests::<Runtime>::get(&ROOT),
-			Some((149_850_000_000_000_000, Permill::zero()))
+			Some((149949400000000000, Permill::zero()))
 		);
 	});
 }
@@ -637,10 +637,10 @@ fn can_replace_requested_redeem() {
 			dollar(50_000),
 			Permill::from_percent(50)
 		));
-		assert_eq!(Currencies::reserved_balance(LKSM, &ROOT), dollar(49_950));
+		assert_eq!(Currencies::reserved_balance(LKSM, &ROOT), dollar(50_000));
 		assert_eq!(
 			RedeemRequests::<Runtime>::get(&ROOT),
-			Some((dollar(49_950), Permill::from_percent(50)))
+			Some((dollar(50_000), Permill::from_percent(50)))
 		);
 
 		// Increasing the amount locks additional liquid currency.
@@ -649,10 +649,10 @@ fn can_replace_requested_redeem() {
 			dollar(150_000),
 			Permill::from_percent(10)
 		));
-		assert_eq!(Currencies::reserved_balance(LKSM, &ROOT), dollar(149_850));
+		assert_eq!(Currencies::reserved_balance(LKSM, &ROOT), dollar(149_900));
 		assert_eq!(
 			RedeemRequests::<Runtime>::get(&ROOT),
-			Some((dollar(149_850), Permill::from_percent(10)))
+			Some((dollar(149_900), Permill::from_percent(10)))
 		);
 	});
 }
@@ -934,11 +934,11 @@ fn not_overcharge_redeem_fee() {
 
 		assert_ok!(HomaLite::request_redeem(
 			Origin::signed(ALICE),
-			dollar(10) - fee * 2,
+			dollar(20) - fee * 2,
 			Permill::zero()
 		));
 
-		assert_eq!(Currencies::free_balance(LKSM, &ALICE), dollar(90));
-		assert_eq!(Currencies::reserved_balance(LKSM, &ALICE), dollar(10) - fee * 2);
+		assert_eq!(Currencies::free_balance(LKSM, &ALICE), dollar(80));
+		assert_eq!(Currencies::reserved_balance(LKSM, &ALICE), dollar(20) - fee * 2);
 	});
 }
