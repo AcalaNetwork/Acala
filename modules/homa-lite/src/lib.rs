@@ -419,17 +419,26 @@ pub mod module {
 
 					Self::deposit_event(Event::<T>::RedeemRequestCancelled(who, request_amount));
 				}
-			} else {
-				// Redeem amount must be above a certain limit.
-				ensure!(
-					Self::liquid_amount_is_above_minimum_threshold(liquid_amount),
-					Error::<T>::AmountBelowMinimumThreshold
-				);
+				return Ok(());
+			}
 
-				// Withdraw fee is burned.
-				let base_withdraw_fee = T::BaseWithdrawFee::get().mul(liquid_amount);
-				let slash_amount = T::Currency::slash(T::LiquidCurrencyId::get(), &who, base_withdraw_fee);
-				ensure!(slash_amount.is_zero(), Error::<T>::InsufficientLiquidBalance);
+			// Redeem amount must be above a certain limit.
+			ensure!(
+				Self::liquid_amount_is_above_minimum_threshold(liquid_amount),
+				Error::<T>::AmountBelowMinimumThreshold
+			);
+
+			RedeemRequests::<T>::try_mutate(&who, |request| -> DispatchResult {
+				let old_amount = request.take().map(|(amount, _)| amount).unwrap_or_default();
+
+				let diff_amount = liquid_amount.saturating_sub(old_amount);
+
+				let base_withdraw_fee = T::BaseWithdrawFee::get().mul(diff_amount);
+				if !base_withdraw_fee.is_zero() {
+					// Burn withdraw fee for increased amount
+					let slash_amount = T::Currency::slash(T::LiquidCurrencyId::get(), &who, base_withdraw_fee);
+					ensure!(slash_amount.is_zero(), Error::<T>::InsufficientLiquidBalance);
+				}
 
 				// Deduct BaseWithdrawFee from the liquid amount.
 				let liquid_amount = liquid_amount.saturating_sub(base_withdraw_fee);
@@ -491,12 +500,17 @@ pub mod module {
 					}?;
 
 					// Insert/replace the new redeem request into storage.
-					RedeemRequests::<T>::insert(&who, (liquid_remaining, additional_fee));
+					*request = Some((liquid_remaining, additional_fee));
 
-					Self::deposit_event(Event::<T>::RedeemRequested(who, liquid_remaining, additional_fee));
+					Self::deposit_event(Event::<T>::RedeemRequested(
+						who.clone(),
+						liquid_remaining,
+						additional_fee,
+					));
 				}
-			}
-			Ok(())
+
+				Ok(())
+			})
 		}
 
 		/// Request staking currencies to be unbonded from the RelayChain.
@@ -836,7 +850,6 @@ pub mod module {
 
 		fn liquid_amount_is_above_minimum_threshold(liquid_amount: Balance) -> bool {
 			liquid_amount > T::MinimumRedeemThreshold::get()
-				&& Self::convert_liquid_to_staking(liquid_amount).unwrap_or_default() > T::XcmUnbondFee::get()
 		}
 
 		/// Construct a XCM message
