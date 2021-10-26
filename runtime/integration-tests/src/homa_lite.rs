@@ -20,6 +20,7 @@
 
 use crate::setup::*;
 use frame_support::{assert_noop, assert_ok};
+use module_support::ExchangeRateProvider;
 use orml_traits::{MultiCurrency, MultiReservableCurrency};
 
 #[test]
