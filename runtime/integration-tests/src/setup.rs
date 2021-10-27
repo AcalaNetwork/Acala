@@ -46,12 +46,13 @@ mod mandala_imports {
 	pub use mandala_runtime::{
 		create_x2_parachain_multilocation, get_all_module_accounts, AcalaOracle, AccountId, AuctionManager, Authority,
 		AuthoritysOriginId, Balance, Balances, BlockNumber, Call, CdpEngine, CdpTreasury, CreateClassDeposit,
-		CreateTokenDeposit, Currencies, CurrencyId, CurrencyIdConvert, DataDepositPerByte, Dex, EmergencyShutdown,
-		EnabledTradingPairs, Event, EvmAccounts, ExistentialDeposits, Get, GetNativeCurrencyId, HomaLite, Honzon,
-		Loans, MinimumDebitValue, MultiLocation, NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, Origin,
-		OriginCaller, ParachainInfo, ParachainSystem, Proxy, ProxyType, RelayChainSovereignSubAccount, Runtime,
-		Scheduler, Session, SessionManager, SevenDays, System, Timestamp, TokenSymbol, Tokens, TreasuryAccount,
-		TreasuryPalletId, Utility, Vesting, XcmConfig, XcmExecutor, XcmUnbondFee, NFT,
+		CreateTokenDeposit, Currencies, CurrencyId, CurrencyIdConvert, DataDepositPerByte, DefaultExchangeRate, Dex,
+		EmergencyShutdown, EnabledTradingPairs, Event, EvmAccounts, ExistentialDeposits, Get, GetNativeCurrencyId,
+		HomaLite, Honzon, Loans, MinimumDebitValue, MultiLocation, NativeTokenExistentialDeposit, NetworkId,
+		NftPalletId, OneDay, Origin, OriginCaller, ParachainInfo, ParachainSystem, Proxy, ProxyType,
+		RelayChainSovereignSubAccount, Runtime, Scheduler, Session, SessionManager, SevenDays, System, Timestamp,
+		TokenSymbol, Tokens, TreasuryAccount, TreasuryPalletId, Utility, Vesting, XcmConfig, XcmExecutor, XcmUnbondFee,
+		NFT,
 	};
 
 	pub use runtime_common::{dollar, ACA, AUSD, DOT, LDOT};
@@ -73,13 +74,13 @@ mod karura_imports {
 	pub use karura_runtime::{
 		constants::parachains, create_x2_parachain_multilocation, get_all_module_accounts, AcalaOracle, AccountId,
 		AuctionManager, Authority, AuthoritysOriginId, Balance, Balances, BlockNumber, Call, CdpEngine, CdpTreasury,
-		CreateClassDeposit, CreateTokenDeposit, Currencies, CurrencyId, CurrencyIdConvert, DataDepositPerByte, Dex,
-		EmergencyShutdown, Event, EvmAccounts, ExistentialDeposits, Get, GetNativeCurrencyId, HomaLite, Honzon,
-		KaruraFoundationAccounts, Loans, MinimumDebitValue, MultiLocation, NativeTokenExistentialDeposit, NetworkId,
-		NftPalletId, OneDay, Origin, OriginCaller, ParachainAccount, ParachainInfo, ParachainSystem, Proxy, ProxyType,
-		RelayChainBlockNumberProvider, RelayChainSovereignSubAccount, Runtime, Scheduler, Session, SessionManager,
-		SevenDays, System, Timestamp, TokenSymbol, Tokens, TreasuryPalletId, Utility, Vesting, XTokens, XcmConfig,
-		XcmExecutor, XcmUnbondFee, NFT,
+		CreateClassDeposit, CreateTokenDeposit, Currencies, CurrencyId, CurrencyIdConvert, DataDepositPerByte,
+		DefaultExchangeRate, Dex, EmergencyShutdown, Event, EvmAccounts, ExistentialDeposits, Get, GetNativeCurrencyId,
+		HomaLite, Honzon, KaruraFoundationAccounts, Loans, MinimumDebitValue, MultiLocation,
+		NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, Origin, OriginCaller, ParachainAccount,
+		ParachainInfo, ParachainSystem, Proxy, ProxyType, RelayChainBlockNumberProvider, RelayChainSovereignSubAccount,
+		Runtime, Scheduler, Session, SessionManager, SevenDays, System, Timestamp, TokenSymbol, Tokens,
+		TreasuryPalletId, Utility, Vesting, XTokens, XcmConfig, XcmExecutor, XcmUnbondFee, NFT,
 	};
 	pub use primitives::TradingPair;
 	pub use runtime_common::{dollar, KAR, KSM, KUSD, LKSM};
@@ -112,12 +113,12 @@ mod acala_imports {
 		constants::parachains, create_x2_parachain_multilocation, get_all_module_accounts, AcalaFoundationAccounts,
 		AcalaOracle, AccountId, AuctionManager, Authority, AuthoritysOriginId, Balance, Balances, BlockNumber, Call,
 		CdpEngine, CdpTreasury, CreateClassDeposit, CreateTokenDeposit, Currencies, CurrencyId, CurrencyIdConvert,
-		DataDepositPerByte, Dex, EmergencyShutdown, Event, EvmAccounts, ExistentialDeposits, Get, GetNativeCurrencyId,
-		HomaLite, Honzon, Loans, MinimumDebitValue, MultiLocation, NativeTokenExistentialDeposit, NetworkId,
-		NftPalletId, OneDay, Origin, OriginCaller, ParachainAccount, ParachainInfo, ParachainSystem, Perbill, Permill,
-		Proxy, ProxyType, RelayChainBlockNumberProvider, RelayChainSovereignSubAccount, Runtime, Scheduler, Session,
-		SessionManager, SevenDays, System, Timestamp, TokenSymbol, Tokens, TreasuryPalletId, Utility, Vesting, XTokens,
-		XcmConfig, XcmExecutor, XcmUnbondFee, NFT,
+		DataDepositPerByte, DefaultExchangeRate, Dex, EmergencyShutdown, Event, EvmAccounts, ExistentialDeposits, Get,
+		GetNativeCurrencyId, HomaLite, Honzon, Loans, MinimumDebitValue, MultiLocation, NativeTokenExistentialDeposit,
+		NetworkId, NftPalletId, OneDay, Origin, OriginCaller, ParachainAccount, ParachainInfo, ParachainSystem,
+		Perbill, Permill, Proxy, ProxyType, RelayChainBlockNumberProvider, RelayChainSovereignSubAccount, Runtime,
+		Scheduler, Session, SessionManager, SevenDays, System, Timestamp, TokenSymbol, Tokens, TreasuryPalletId,
+		Utility, Vesting, XTokens, XcmConfig, XcmExecutor, XcmUnbondFee, NFT,
 	};
 	pub use frame_support::parameter_types;
 	pub use primitives::TradingPair;
@@ -285,13 +286,21 @@ impl ExtBuilder {
 		)
 		.unwrap();
 
+		<pallet_xcm::GenesisConfig as GenesisBuild<Runtime>>::assimilate_storage(
+			&pallet_xcm::GenesisConfig {
+				safe_xcm_version: Some(2),
+			},
+			&mut t,
+		)
+		.unwrap();
+
 		let mut ext = sp_io::TestExternalities::new(t);
 		ext.execute_with(|| System::set_block_number(1));
 		ext
 	}
 }
 
-pub fn set_oracle_price(prices: Vec<(CurrencyId, Price)>) -> DispatchResult {
+pub fn set_oracle_price(prices: Vec<(CurrencyId, Price)>) {
 	AcalaOracle::on_finalize(0);
 	assert_ok!(AcalaOracle::feed_values(
 		Origin::signed(AccountId::from(ORACLE1)),
@@ -313,7 +322,6 @@ pub fn set_oracle_price(prices: Vec<(CurrencyId, Price)>) -> DispatchResult {
 		Origin::signed(AccountId::from(ORACLE5)),
 		prices,
 	));
-	Ok(())
 }
 
 pub fn alice_key() -> libsecp256k1::SecretKey {
