@@ -40,6 +40,9 @@ mod honzon;
 mod nft;
 
 #[cfg(any(feature = "with-mandala-runtime", feature = "with-karura-runtime",))]
+mod prices;
+
+#[cfg(any(feature = "with-mandala-runtime", feature = "with-karura-runtime",))]
 mod proxy;
 
 #[cfg(any(feature = "with-mandala-runtime", feature = "with-karura-runtime",))]
