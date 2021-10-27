@@ -40,9 +40,6 @@ jobs:
       - name: Build node
         run: cargo build --release --features=with-${{ env.CHAIN }}-runtime --features=rococo-native
 
-      - name: Run node
-        run: ./target/release/acala --chain=${{ env.CHAIN }}-dev --rpc-cors=all --ws-external &
-
       # We now get extra information thanks to subwasm,
       - name: Install subwasm ${{ env.SUBWASM_VERSION }}
         run: |
@@ -52,6 +49,8 @@ jobs:
 
       - name: Subwasm info
         run: |
+          ./target/release/acala --chain=${{ env.CHAIN }}-dev --rpc-cors=all --ws-external &
+          sleep 30
           subwasm info ws://localhost:9944 > ${{ env.CHAIN }}-subwam-info.txt
           pkill acala
 
