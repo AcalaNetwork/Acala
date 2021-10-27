@@ -8,7 +8,7 @@ import Erc20DemoContract from "../build/Erc20DemoContract.json"
 
 describeWithAcala("Acala RPC (Nonce)", (context) => {
 	step("get nonce", async function () {
-		this.timeout(10_000);
+		this.timeout(20000);
 		const [alice, alice_stash] = await context.provider.getWallets();
 
 		expect(await context.provider.getTransactionCount(await alice.getAddress(), 'earliest')).to.eq(0);

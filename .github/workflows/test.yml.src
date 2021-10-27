@@ -1,5 +1,6 @@
 # generate by yq eval 'explode(.)' test.yml.src > test.yml
 # https://github.com/mikefarah/yq
+
 name: Test
 on:
   pull_request:
@@ -24,17 +25,20 @@ jobs:
         uses: styfle/cancel-workflow-action@0.9.0
         with:
           access_token: ${{ github.token }}
-  build:
-    runs-on: [self-hosted, linux]
+  build: &setup
+    runs-on:
+      [self-hosted, linux]
     env:
       SCCACHE_CACHE_SIZE: "50G"
       CARGO_INCREMENTAL: 0
     needs: clean-up-actions
     steps:
-      - uses: actions/checkout@v2
+      - &checkout
+        uses: actions/checkout@v2
         with:
           submodules: recursive
-      - name: Install toolchain
+      - &toolchain
+        name: Install toolchain
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
@@ -55,69 +59,31 @@ jobs:
       - name: Run acala-runtime clippy
         run: cargo clippy --features with-acala-runtime -- -D warnings
   benchmarking:
-    runs-on: [self-hosted, linux]
-    env:
-      SCCACHE_CACHE_SIZE: "50G"
-      CARGO_INCREMENTAL: 0
-    needs: clean-up-actions
+    <<: *setup
     steps:
-      - uses: actions/checkout@v2
-        with:
-          submodules: recursive
-      - name: Install toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: nightly-2021-06-17
-          components: rustfmt
-          target: wasm32-unknown-unknown
-          default: true
+      - *checkout
+      - *toolchain
       - name: Run benchmarking tests
         run: make test-benchmarking
   checks-and-tests:
-    runs-on: [self-hosted, linux]
-    env:
-      SCCACHE_CACHE_SIZE: "50G"
-      CARGO_INCREMENTAL: 0
-    needs: clean-up-actions
+    <<: *setup
     steps:
-      - uses: actions/checkout@v2
-        with:
-          submodules: recursive
-      - name: Install toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: nightly-2021-06-17
-          components: rustfmt
-          target: wasm32-unknown-unknown
-          default: true
+      - *checkout
+      - *toolchain
       - name: Run runtime tests
         run: make test-runtimes
       - name: Run eth tests
         run: make test-eth
+
       - name: Check benchmarks
         run: make check-benchmarks
       - name: Check try-runtime
         run: make check-try-runtime
   e2e-tests:
-    runs-on: [self-hosted, linux]
-    env:
-      SCCACHE_CACHE_SIZE: "50G"
-      CARGO_INCREMENTAL: 0
-    needs: clean-up-actions
+    <<: *setup
     steps:
-      - uses: actions/checkout@v2
-        with:
-          submodules: recursive
-      - name: Install toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: nightly-2021-06-17
-          components: rustfmt
-          target: wasm32-unknown-unknown
-          default: true
+      - *checkout
+      - *toolchain
       - name: Use Node.js
         uses: actions/setup-node@v2
         with:
