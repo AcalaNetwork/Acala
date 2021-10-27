@@ -206,14 +206,10 @@ fn can_adjust_total_staking_currency() {
 
 		// Can adjust total_staking_currency with ROOT.
 		assert_ok!(HomaLite::adjust_total_staking_currency(Origin::root(), 5000));
-
 		assert_eq!(HomaLite::total_staking_currency(), 5001);
 		System::assert_last_event(Event::HomaLite(crate::Event::TotalStakingCurrencySet(5001)));
 
-		// Underflow / overflow can be handled
-		assert_ok!(HomaLite::adjust_total_staking_currency(Origin::root(), -5002));
-		assert_eq!(HomaLite::total_staking_currency(), 0);
-
+		// overflow can be handled
 		assert_ok!(HomaLite::set_total_staking_currency(
 			Origin::root(),
 			Balance::max_value()
@@ -221,6 +217,17 @@ fn can_adjust_total_staking_currency() {
 
 		assert_ok!(HomaLite::adjust_total_staking_currency(Origin::root(), 1));
 		assert_eq!(HomaLite::total_staking_currency(), Balance::max_value());
+
+		// Do not allow TotalStakingCurrency to become 0
+		assert_ok!(HomaLite::set_total_staking_currency(Origin::root(), 5000));
+		assert_noop!(
+			HomaLite::adjust_total_staking_currency(Origin::root(), -5000),
+			Error::<Runtime>::InvalidTotalStakingCurrency
+		);
+		assert_eq!(HomaLite::total_staking_currency(), 5000);
+
+		// TotalStakingCurrency must be atleast 1
+		assert_ok!(HomaLite::adjust_total_staking_currency(Origin::root(), -4999));
 	});
 }
 

@@ -332,20 +332,21 @@ pub mod module {
 
 			let by_balance = TryInto::<Balance>::try_into(by_amount_abs).map_err(|_| ArithmeticError::Overflow)?;
 
-			// Adjust the current total.
-			let new_total = if by_amount.is_positive() {
-				TotalStakingCurrency::<T>::mutate(|current| {
-					*current = current.saturating_add(by_balance);
-					*current
-				})
-			} else {
-				TotalStakingCurrency::<T>::mutate(|current| {
-					*current = current.saturating_sub(by_balance);
-					*current
-				})
-			};
+			// ensure TotalStakingCurrency doesn't become 0
+			ensure!(
+				by_amount.is_positive() || by_balance < Self::total_staking_currency(),
+				Error::<T>::InvalidTotalStakingCurrency
+			);
 
-			Self::deposit_event(Event::<T>::TotalStakingCurrencySet(new_total));
+			// Adjust the current total.
+			TotalStakingCurrency::<T>::mutate(|current| {
+				if by_amount.is_positive() {
+					*current = current.saturating_add(by_balance);
+				} else {
+					*current = current.saturating_sub(by_balance);
+				}
+				Self::deposit_event(Event::<T>::TotalStakingCurrencySet(*current));
+			});
 
 			Ok(())
 		}
@@ -594,19 +595,14 @@ pub mod module {
 			let by_balance = TryInto::<Balance>::try_into(by_amount_abs).map_err(|_| ArithmeticError::Overflow)?;
 
 			// Adjust the current total.
-			let new_amount = if by_amount.is_positive() {
-				AvailableStakingBalance::<T>::mutate(|current| {
+			AvailableStakingBalance::<T>::mutate(|current| {
+				if by_amount.is_positive() {
 					*current = current.saturating_add(by_balance);
-					*current
-				})
-			} else {
-				AvailableStakingBalance::<T>::mutate(|current| {
+				} else {
 					*current = current.saturating_sub(by_balance);
-					*current
-				})
-			};
-
-			Self::deposit_event(Event::<T>::AvailableStakingBalanceSet(new_amount));
+				}
+				Self::deposit_event(Event::<T>::AvailableStakingBalanceSet(*current));
+			});
 
 			// With new staking balance available, process pending redeem requests.
 			Self::process_redeem_requests_with_available_staking_balance()
