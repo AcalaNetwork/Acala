@@ -200,14 +200,19 @@ fn can_adjust_total_staking_currency() {
 		assert_eq!(HomaLite::total_staking_currency(), 1);
 
 		assert_noop!(
-			HomaLite::adjust_total_staking_currency(Origin::signed(ALICE), 5000),
+			HomaLite::adjust_total_staking_currency(Origin::signed(ALICE), 5000i128),
 			BadOrigin
 		);
 
 		// Can adjust total_staking_currency with ROOT.
-		assert_ok!(HomaLite::adjust_total_staking_currency(Origin::root(), 5000));
+		assert_ok!(HomaLite::adjust_total_staking_currency(Origin::root(), 5000i128));
 		assert_eq!(HomaLite::total_staking_currency(), 5001);
 		System::assert_last_event(Event::HomaLite(crate::Event::TotalStakingCurrencySet(5001)));
+
+		// Can decrease total_staking_currency.
+		assert_ok!(HomaLite::adjust_total_staking_currency(Origin::root(), -5000i128));
+		assert_eq!(HomaLite::total_staking_currency(), 1);
+		System::assert_last_event(Event::HomaLite(crate::Event::TotalStakingCurrencySet(1)));
 
 		// overflow can be handled
 		assert_ok!(HomaLite::set_total_staking_currency(
@@ -215,19 +220,19 @@ fn can_adjust_total_staking_currency() {
 			Balance::max_value()
 		));
 
-		assert_ok!(HomaLite::adjust_total_staking_currency(Origin::root(), 1));
+		assert_ok!(HomaLite::adjust_total_staking_currency(Origin::root(), 1i128));
 		assert_eq!(HomaLite::total_staking_currency(), Balance::max_value());
 
 		// Do not allow TotalStakingCurrency to become 0
 		assert_ok!(HomaLite::set_total_staking_currency(Origin::root(), 5000));
 		assert_noop!(
-			HomaLite::adjust_total_staking_currency(Origin::root(), -5000),
+			HomaLite::adjust_total_staking_currency(Origin::root(), -5000i128),
 			Error::<Runtime>::InvalidTotalStakingCurrency
 		);
 		assert_eq!(HomaLite::total_staking_currency(), 5000);
 
 		// TotalStakingCurrency must be atleast 1
-		assert_ok!(HomaLite::adjust_total_staking_currency(Origin::root(), -4999));
+		assert_ok!(HomaLite::adjust_total_staking_currency(Origin::root(), -4999i128));
 	});
 }
 
@@ -235,18 +240,22 @@ fn can_adjust_total_staking_currency() {
 fn can_adjust_available_staking_balance() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_noop!(
-			HomaLite::adjust_available_staking_balance(Origin::signed(ALICE), 5000),
+			HomaLite::adjust_available_staking_balance(Origin::signed(ALICE), 5000i128),
 			BadOrigin
 		);
 
-		// Can adjust total_staking_currency with ROOT.
-		assert_ok!(HomaLite::adjust_available_staking_balance(Origin::root(), 5001));
-
+		// Can adjust available_staking_balance with ROOT.
+		assert_ok!(HomaLite::adjust_available_staking_balance(Origin::root(), 5001i128));
 		assert_eq!(HomaLite::available_staking_balance(), 5001);
 		System::assert_last_event(Event::HomaLite(crate::Event::AvailableStakingBalanceSet(5001)));
 
+		// Can decrease available_staking_balance.
+		assert_ok!(HomaLite::adjust_available_staking_balance(Origin::root(), -5001i128));
+		assert_eq!(HomaLite::total_staking_currency(), 0);
+		System::assert_last_event(Event::HomaLite(crate::Event::AvailableStakingBalanceSet(0)));
+
 		// Underflow / overflow can be handled due to the use of saturating arithmetic
-		assert_ok!(HomaLite::adjust_available_staking_balance(Origin::root(), -5002));
+		assert_ok!(HomaLite::adjust_available_staking_balance(Origin::root(), -10_000i128));
 		assert_eq!(HomaLite::available_staking_balance(), 0);
 
 		assert_ok!(HomaLite::adjust_available_staking_balance(
