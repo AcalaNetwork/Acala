@@ -113,10 +113,7 @@ fn liquidate_cdp() {
 		])
 		.build()
 		.execute_with(|| {
-			assert_ok!(set_oracle_price(vec![(
-				RELAY_CHAIN_CURRENCY,
-				Price::saturating_from_rational(10000, 1)
-			)])); // 10000 usd
+			set_oracle_price(vec![(RELAY_CHAIN_CURRENCY, Price::saturating_from_rational(10000, 1))]); // 10000 usd
 
 			assert_ok!(Dex::add_liquidity(
 				Origin::signed(AccountId::from(BOB)),
@@ -242,10 +239,7 @@ fn test_honzon_module() {
 		)])
 		.build()
 		.execute_with(|| {
-			assert_ok!(set_oracle_price(vec![(
-				RELAY_CHAIN_CURRENCY,
-				Price::saturating_from_rational(1, 1)
-			)]));
+			set_oracle_price(vec![(RELAY_CHAIN_CURRENCY, Price::saturating_from_rational(1, 1))]);
 
 			assert_ok!(CdpEngine::set_collateral_params(
 				Origin::root(),
@@ -404,10 +398,10 @@ fn test_cdp_engine_module() {
 				module_cdp_engine::Error::<Runtime>::NoDebitValue,
 			);
 
-			assert_ok!(set_oracle_price(vec![
+			set_oracle_price(vec![
 				(USD_CURRENCY, Price::saturating_from_rational(1, 1)),
-				(RELAY_CHAIN_CURRENCY, Price::saturating_from_rational(3, 1))
-			]));
+				(RELAY_CHAIN_CURRENCY, Price::saturating_from_rational(3, 1)),
+			]);
 
 			assert_ok!(CdpEngine::adjust_position(
 				&AccountId::from(ALICE),
@@ -465,10 +459,7 @@ fn cdp_treasury_handles_honzon_surplus_correctly() {
 		.build()
 		.execute_with(|| {
 			System::set_block_number(1);
-			assert_ok!(set_oracle_price(vec![(
-				RELAY_CHAIN_CURRENCY,
-				Price::saturating_from_rational(100, 1)
-			)]));
+			set_oracle_price(vec![(RELAY_CHAIN_CURRENCY, Price::saturating_from_rational(100, 1))]);
 			assert_ok!(CdpEngine::set_collateral_params(
 				Origin::root(),
 				RELAY_CHAIN_CURRENCY,
