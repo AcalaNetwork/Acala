@@ -20,14 +20,9 @@ sp-api = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v
 
 frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.11", default-features = false }
 
-# TODO
-#evm = { version = "0.30.0", default-features = false, features = ["with-codec"] }
-#ethereum = { version = "0.9.0", default-features = false, features = ["with-codec"] }
-ethereum = { git = "https://github.com/PureStake/ethereum", branch = "joshy-scale-info", default-features = false, features = ["with-codec"] }
-evm = { git = "https://github.com/PureStake/evm", branch = "joshy-scale-info", default-features = false, features = ["with-codec"] }
-
-nutsfinance-stable-asset = { version = "0.1.0", default-features = false, path = "../ecosystem-modules/stable-asset/lib/stable-asset", package = "nutsfinance-stable-asset" }
+module-evm-utiltity = { path = "../modules/evm-utiltity", default-features = false }
 module-evm-utiltity-macro = { path = "../modules/evm-utiltity/macro" }
+nutsfinance-stable-asset = { version = "0.1.0", default-features = false, path = "../ecosystem-modules/stable-asset/lib/stable-asset", package = "nutsfinance-stable-asset" }
 
 [dev-dependencies]
 serde_json = { version = "1.0.64" }
@@ -50,10 +45,6 @@ std = [
 
 	"frame-support/std",
 
-	"evm/std",
-	"evm/with-serde",
-	"ethereum/std",
-	"ethereum/with-serde",
-
+	"module-evm-utiltity/std",
 	"nutsfinance-stable-asset/std",
 ]

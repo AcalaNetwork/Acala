@@ -69,10 +69,9 @@ name = "acala-primitives"
 version = "1.6.0"
 dependencies = [
  "bstringify",
- "ethereum 0.9.0 (git+https://github.com/PureStake/ethereum?branch=joshy-scale-info)",
- "evm",
  "frame-support",
  "hex-literal 0.3.3",
+ "module-evm-utiltity",
  "module-evm-utiltity-macro",
  "num_enum",
  "nutsfinance-stable-asset",
@@ -2532,26 +2531,9 @@ dependencies = [
 
 [[package]]
 name = "ethereum"
-version = "0.9.0"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4a67be3eaf296ef668733f54c637e84d0ca34eaf194f0077455135981ad464c3"
-dependencies = [
- "bytes 1.1.0",
- "ethereum-types",
- "hash-db",
- "hash256-std-hasher",
- "parity-scale-codec",
- "rlp",
- "rlp-derive",
- "serde",
- "sha3 0.9.1",
- "triehash",
-]
-
-[[package]]
-name = "ethereum"
-version = "0.9.0"
-source = "git+https://github.com/PureStake/ethereum?branch=joshy-scale-info#2b98173bd88c05bfeefad421d260101b9008497b"
+checksum = "81fb916554a4dba293ea69c69ad5653e21d770a9d0c2496b5fa0a1f5a3946d87"
 dependencies = [
  "bytes 1.1.0",
  "ethereum-types",
@@ -2590,11 +2572,11 @@ checksum = "f7531096570974c3a9dcf9e4b8e1cede1ec26cf5046219fb3b9d897503b9be59"
 
 [[package]]
 name = "evm"
-version = "0.30.1"
-source = "git+https://github.com/PureStake/evm?branch=joshy-scale-info#608b9ce0021b90d2067e040b7bb45c3490db6388"
+version = "0.31.1"
+source = "git+https://github.com/rust-blockchain/evm?rev=966cf3abe4143451e408c3f586d51c6513d9a48e#966cf3abe4143451e408c3f586d51c6513d9a48e"
 dependencies = [
  "environmental",
- "ethereum 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ethereum",
  "evm-core",
  "evm-gasometer",
  "evm-runtime",
@@ -2609,8 +2591,8 @@ dependencies = [
 
 [[package]]
 name = "evm-core"
-version = "0.30.0"
-source = "git+https://github.com/PureStake/evm?branch=joshy-scale-info#608b9ce0021b90d2067e040b7bb45c3490db6388"
+version = "0.31.0"
+source = "git+https://github.com/rust-blockchain/evm?rev=966cf3abe4143451e408c3f586d51c6513d9a48e#966cf3abe4143451e408c3f586d51c6513d9a48e"
 dependencies = [
  "funty",
  "parity-scale-codec",
@@ -2621,8 +2603,8 @@ dependencies = [
 
 [[package]]
 name = "evm-gasometer"
-version = "0.30.0"
-source = "git+https://github.com/PureStake/evm?branch=joshy-scale-info#608b9ce0021b90d2067e040b7bb45c3490db6388"
+version = "0.31.0"
+source = "git+https://github.com/rust-blockchain/evm?rev=966cf3abe4143451e408c3f586d51c6513d9a48e#966cf3abe4143451e408c3f586d51c6513d9a48e"
 dependencies = [
  "environmental",
  "evm-core",
@@ -2656,8 +2638,8 @@ dependencies = [
 
 [[package]]
 name = "evm-runtime"
-version = "0.30.0"
-source = "git+https://github.com/PureStake/evm?branch=joshy-scale-info#608b9ce0021b90d2067e040b7bb45c3490db6388"
+version = "0.31.0"
+source = "git+https://github.com/rust-blockchain/evm?rev=966cf3abe4143451e408c3f586d51c6513d9a48e#966cf3abe4143451e408c3f586d51c6513d9a48e"
 dependencies = [
  "environmental",
  "evm-core",
@@ -4945,7 +4927,6 @@ dependencies = [
  "ecosystem-compound-cash",
  "ecosystem-renvm-bridge",
  "ecosystem-starport",
- "evm",
  "frame-benchmarking",
  "frame-executive",
  "frame-support",
@@ -4968,6 +4949,7 @@ dependencies = [
  "module-evm-bridge",
  "module-evm-manager",
  "module-evm-rpc-runtime-api",
+ "module-evm-utiltity",
  "module-homa",
  "module-homa-lite",
  "module-homa-validator-list",
@@ -5459,13 +5441,11 @@ version = "1.6.0"
 dependencies = [
  "acala-primitives",
  "env_logger 0.7.1",
- "evm",
- "evm-gasometer",
- "evm-runtime",
  "frame-support",
  "frame-system",
  "hex-literal 0.3.3",
  "impl-trait-for-tuples 0.1.3",
+ "module-evm-utiltity",
  "module-support",
  "orml-currencies",
  "orml-tokens",
@@ -5574,7 +5554,12 @@ dependencies = [
 name = "module-evm-utiltity"
 version = "1.6.0"
 dependencies = [
+ "ethereum",
+ "evm",
+ "evm-gasometer",
+ "evm-runtime",
  "sha3 0.9.1",
+ "sp-std",
 ]
 
 [[package]]

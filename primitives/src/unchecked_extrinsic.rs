@@ -16,17 +16,13 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-	evm::{EthereumTransactionMessage, TransactionAction},
-	signature::AcalaMultiSignature,
-	Address,
-};
+use crate::{evm::EthereumTransactionMessage, signature::AcalaMultiSignature, Address};
 use codec::{Decode, Encode};
-use ethereum::LegacyTransactionMessage;
 use frame_support::{
 	traits::ExtrinsicCall,
 	weights::{DispatchInfo, GetDispatchInfo},
 };
+use module_evm_utiltity::ethereum::{LegacyTransactionMessage, TransactionAction};
 use module_evm_utiltity_macro::keccak256;
 use scale_info::TypeInfo;
 use sp_core::{H160, H256, U256};
