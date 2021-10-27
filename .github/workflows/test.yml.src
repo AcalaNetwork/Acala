@@ -50,11 +50,6 @@ jobs:
         run: cargo fmt --all -- --check
       - name: Build
         run: make build-all
-  clippy:
-    <<: *setup
-    steps:
-      - *checkout
-      - *toolchain
       - name: Install clippy
         run: rustup component add clippy
       - name: Run mandala-runtime clippy
@@ -63,7 +58,14 @@ jobs:
         run: cargo clippy --features with-karura-runtime -- -D warnings
       - name: Run acala-runtime clippy
         run: cargo clippy --features with-acala-runtime -- -D warnings
-  tests:
+  benchmarking:
+    <<: *setup
+    steps:
+      - *checkout
+      - *toolchain
+      - name: Run benchmarking tests
+        run: make test-benchmarking
+  checks-and-tests:
     <<: *setup
     steps:
       - *checkout
@@ -72,8 +74,7 @@ jobs:
         run: make test-runtimes
       - name: Run eth tests
         run: make test-eth
-      - name: Run benchmarking tests
-        run: make test-benchmarking
+
       - name: Check benchmarks
         run: make check-benchmarks
       - name: Check try-runtime
