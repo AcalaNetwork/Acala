@@ -10,7 +10,7 @@ describeWithAcala("Acala RPC (Precompile)", (context) => {
 	let contract: Contract;
 
 	before(async () => {
-		[ alice ] = await context.provider.getWallets();
+		[alice] = await context.provider.getWallets();
 		contract = await deployContract(alice as any, ECRecoverTests);
 		signer = new Wallet(
 			"0x99B3C12287537E38C90A9219D4CB074A89A16E9CDB20BF85728EBD97C343E342"
