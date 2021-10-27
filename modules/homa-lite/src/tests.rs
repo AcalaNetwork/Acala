@@ -442,19 +442,49 @@ fn new_available_staking_currency_can_handle_redeem_requests() {
 			Some((dollar(989), Permill::zero()))
 		);
 
+		// Add more redeem request
+		assert_ok!(Currencies::update_balance(
+			Origin::root(),
+			ALICE,
+			LKSM,
+			dollar(1_000) as i128
+		));
+		assert_ok!(HomaLite::request_redeem(
+			Origin::signed(ALICE),
+			dollar(1_000),
+			Permill::zero()
+		));
+		// 1000 - withdraw_fee = 999
+		assert_eq!(
+			RedeemRequests::<Runtime>::get(&ALICE),
+			Some((dollar(999), Permill::zero()))
+		);
 		// Add more staking currency by adjust_available_staking_balance also
 		// automatically fullfill pending redeem request.
 		assert_ok!(HomaLite::adjust_available_staking_balance(
 			Origin::root(),
-			150_000_000_000_000
+			dollar(200) as i128
 		));
 
-		// The last request is redeemed, the leftover is stored.
-		assert_eq!(AvailableStakingBalance::<Runtime>::get(), 51_100_000_000_000);
-		assert_eq!(Currencies::free_balance(KSM, &ROOT), 1_096_900_000_000_000);
-		assert_eq!(Currencies::free_balance(LKSM, &ROOT), dollar(989_000));
-		assert_eq!(Currencies::reserved_balance(LKSM, &ROOT), dollar(0));
+		// The 2 remaining requests are redeemed, the leftover is stored.
+		// available_staking_remain = 200 - 98.9 - 99.9 = 1.2
+		assert_eq!(AvailableStakingBalance::<Runtime>::get(), dollar(12) / 10);
+
+		assert_eq!(RedeemRequests::<Runtime>::get(&ALICE), None);
+		assert_eq!(HomaLite::get_exchange_rate(), Ratio::saturating_from_rational(1, 10));
+		// staking_gained = 99.9 - 1 (xcm_fee) = 98.9
+		assert_eq!(
+			Currencies::free_balance(KSM, &ALICE),
+			dollar(INITIAL_BALANCE) + dollar(989) / 10
+		);
+		assert_eq!(Currencies::free_balance(LKSM, &ALICE), 0);
+		assert_eq!(Currencies::reserved_balance(LKSM, &ALICE), 0);
+
 		assert_eq!(RedeemRequests::<Runtime>::get(&ROOT), None);
+		// staking = 999(first redeem) + 98.9(this redeem) - 1(xcm_fee) = 1096.9
+		assert_eq!(Currencies::free_balance(KSM, &ROOT), dollar(10_969) / 10);
+		assert_eq!(Currencies::free_balance(LKSM, &ROOT), dollar(989_000));
+		assert_eq!(Currencies::reserved_balance(LKSM, &ROOT), 0);
 	});
 }
 
