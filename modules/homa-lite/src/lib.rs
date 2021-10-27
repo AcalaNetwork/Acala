@@ -280,14 +280,14 @@ pub mod module {
 			// Update the total amount of Staking balance by acrueing the interest periodically.
 			if !T::StakingInterestRatePerUpdate::get().is_zero() && n % T::StakingUpdateFrequency::get() == Zero::zero()
 			{
-				let new_total = TotalStakingCurrency::<T>::mutate(|current| {
+				TotalStakingCurrency::<T>::mutate(|current| {
 					*current = current.saturating_add(T::StakingInterestRatePerUpdate::get().mul(*current));
-					*current
+					Self::deposit_event(Event::<T>::TotalStakingCurrencySet(*current));
 				});
-				Self::deposit_event(Event::<T>::TotalStakingCurrencySet(new_total));
-				return <T as Config>::WeightInfo::on_initialize();
+				<T as Config>::WeightInfo::on_initialize()
+			} else {
+				0
 			}
-			0
 		}
 	}
 
