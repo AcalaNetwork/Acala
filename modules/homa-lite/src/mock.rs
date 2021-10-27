@@ -331,6 +331,15 @@ pub struct ExtBuilder {
 	native_balances: Vec<(AccountId, Balance)>,
 }
 
+impl ExtBuilder {
+	pub fn empty() -> Self {
+		Self {
+			tokens_balances: vec![],
+			native_balances: vec![],
+		}
+	}
+}
+
 impl Default for ExtBuilder {
 	fn default() -> Self {
 		let initial = dollar(INITIAL_BALANCE);

@@ -419,17 +419,26 @@ pub mod module {
 
 					Self::deposit_event(Event::<T>::RedeemRequestCancelled(who, request_amount));
 				}
-			} else {
-				// Redeem amount must be above a certain limit.
-				ensure!(
-					Self::liquid_amount_is_above_minimum_threshold(liquid_amount),
-					Error::<T>::AmountBelowMinimumThreshold
-				);
+				return Ok(());
+			}
 
-				// Withdraw fee is burned.
-				let base_withdraw_fee = T::BaseWithdrawFee::get().mul(liquid_amount);
-				let slash_amount = T::Currency::slash(T::LiquidCurrencyId::get(), &who, base_withdraw_fee);
-				ensure!(slash_amount.is_zero(), Error::<T>::InsufficientLiquidBalance);
+			// Redeem amount must be above a certain limit.
+			ensure!(
+				Self::liquid_amount_is_above_minimum_threshold(liquid_amount),
+				Error::<T>::AmountBelowMinimumThreshold
+			);
+
+			RedeemRequests::<T>::try_mutate(&who, |request| -> DispatchResult {
+				let old_amount = request.take().map(|(amount, _)| amount).unwrap_or_default();
+
+				let diff_amount = liquid_amount.saturating_sub(old_amount);
+
+				let base_withdraw_fee = T::BaseWithdrawFee::get().mul(diff_amount);
+				if !base_withdraw_fee.is_zero() {
+					// Burn withdraw fee for increased amount
+					let slash_amount = T::Currency::slash(T::LiquidCurrencyId::get(), &who, base_withdraw_fee);
+					ensure!(slash_amount.is_zero(), Error::<T>::InsufficientLiquidBalance);
+				}
 
 				// Deduct BaseWithdrawFee from the liquid amount.
 				let liquid_amount = liquid_amount.saturating_sub(base_withdraw_fee);
@@ -491,12 +500,17 @@ pub mod module {
 					}?;
 
 					// Insert/replace the new redeem request into storage.
-					RedeemRequests::<T>::insert(&who, (liquid_remaining, additional_fee));
+					*request = Some((liquid_remaining, additional_fee));
 
-					Self::deposit_event(Event::<T>::RedeemRequested(who, liquid_remaining, additional_fee));
+					Self::deposit_event(Event::<T>::RedeemRequested(
+						who.clone(),
+						liquid_remaining,
+						additional_fee,
+					));
 				}
-			}
-			Ok(())
+
+				Ok(())
+			})
 		}
 
 		/// Request staking currencies to be unbonded from the RelayChain.
@@ -556,19 +570,6 @@ pub mod module {
 	}
 
 	impl<T: Config> Pallet<T> {
-		/// Calculate the exchange rate between the Staking and Liquid currency.
-		/// returns Ratio(staking : liquid) = total_staking_amount / liquid_total_issuance
-		/// If the exchange rate cannot be calculated, T::DefaultExchangeRate is used
-		pub fn get_exchange_rate() -> Ratio {
-			let staking_total = Self::total_staking_currency();
-			let liquid_total = T::Currency::total_issuance(T::LiquidCurrencyId::get());
-			if staking_total.is_zero() {
-				T::DefaultExchangeRate::get()
-			} else {
-				Ratio::checked_from_rational(staking_total, liquid_total).unwrap_or_else(T::DefaultExchangeRate::get)
-			}
-		}
-
 		/// Calculate the amount of Staking currency converted from Liquid currency.
 		/// staking_amount = (total_staking_amount / liquid_total_issuance) * liquid_amount
 		/// If the exchange rate cannot be calculated, T::DefaultExchangeRate is used
@@ -799,6 +800,8 @@ pub mod module {
 				);
 				let actual_staking_amount = Self::convert_liquid_to_staking(actual_liquid_amount)?;
 
+				TotalStakingCurrency::<T>::mutate(|x| *x = x.saturating_sub(actual_staking_amount));
+
 				// Redeem from the available_staking_balances costs only the xcm unbond fee.
 				T::Currency::deposit(
 					T::StakingCurrencyId::get(),
@@ -866,10 +869,19 @@ pub mod module {
 			)
 		}
 	}
-	pub struct LiquidExchangeProvider<T>(sp_std::marker::PhantomData<T>);
-	impl<T: Config> ExchangeRateProvider for LiquidExchangeProvider<T> {
-		fn get_exchange_rate() -> ExchangeRate {
-			Pallet::<T>::get_exchange_rate().reciprocal().unwrap_or_default()
+
+	impl<T: Config> ExchangeRateProvider for Pallet<T> {
+		/// Calculate the exchange rate between the Staking and Liquid currency.
+		/// returns Ratio(staking : liquid) = total_staking_amount / liquid_total_issuance
+		/// If the exchange rate cannot be calculated, T::DefaultExchangeRate is used
+		fn get_exchange_rate() -> Ratio {
+			let staking_total = Self::total_staking_currency();
+			let liquid_total = T::Currency::total_issuance(T::LiquidCurrencyId::get());
+			if staking_total.is_zero() {
+				T::DefaultExchangeRate::get()
+			} else {
+				Ratio::checked_from_rational(staking_total, liquid_total).unwrap_or_else(T::DefaultExchangeRate::get)
+			}
 		}
 	}
 }

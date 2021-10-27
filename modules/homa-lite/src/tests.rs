@@ -74,10 +74,6 @@ fn mint_works() {
 			HomaLite::get_exchange_rate(),
 			ExchangeRate::saturating_from_rational(lksm_issuance / 5, lksm_issuance)
 		);
-		assert_eq!(
-			LiquidExchangeProvider::<Runtime>::get_exchange_rate(),
-			ExchangeRate::saturating_from_rational(lksm_issuance, lksm_issuance / 5)
-		);
 
 		// The exchange rate is now 1:5 ratio
 		// liquid = (1000 - 0.01) * 1_009_899_901_000_000_000 / 201_979_980_200_000_000 * 0.99
@@ -517,11 +513,11 @@ fn request_redeem_works() {
 		assert_eq!(AvailableStakingBalance::<Runtime>::get(), 0);
 		assert_eq!(Currencies::free_balance(KSM, &ROOT), dollar(49_998));
 		assert_eq!(Currencies::free_balance(LKSM, &ROOT), dollar(349_400));
-		assert_eq!(Currencies::reserved_balance(LKSM, &ROOT), 149_850_000_000_000_000);
+		assert_eq!(Currencies::reserved_balance(LKSM, &ROOT), 149949400000000000);
 		// request_redeem replaces existing item in the queue, not add to it.
 		assert_eq!(
 			RedeemRequests::<Runtime>::get(&ROOT),
-			Some((149_850_000_000_000_000, Permill::zero()))
+			Some((149949400000000000, Permill::zero()))
 		);
 	});
 }
@@ -641,10 +637,10 @@ fn can_replace_requested_redeem() {
 			dollar(50_000),
 			Permill::from_percent(50)
 		));
-		assert_eq!(Currencies::reserved_balance(LKSM, &ROOT), dollar(49_950));
+		assert_eq!(Currencies::reserved_balance(LKSM, &ROOT), dollar(50_000));
 		assert_eq!(
 			RedeemRequests::<Runtime>::get(&ROOT),
-			Some((dollar(49_950), Permill::from_percent(50)))
+			Some((dollar(50_000), Permill::from_percent(50)))
 		);
 
 		// Increasing the amount locks additional liquid currency.
@@ -653,10 +649,10 @@ fn can_replace_requested_redeem() {
 			dollar(150_000),
 			Permill::from_percent(10)
 		));
-		assert_eq!(Currencies::reserved_balance(LKSM, &ROOT), dollar(149_850));
+		assert_eq!(Currencies::reserved_balance(LKSM, &ROOT), dollar(149_900));
 		assert_eq!(
 			RedeemRequests::<Runtime>::get(&ROOT),
-			Some((dollar(149_850), Permill::from_percent(10)))
+			Some((dollar(149_900), Permill::from_percent(10)))
 		);
 	});
 }
@@ -822,5 +818,127 @@ fn redeem_can_handle_dust_available_staking_currency() {
 			dollar(999),
 			Permill::zero(),
 		)));
+	});
+}
+
+#[test]
+fn process_scheduled_unbond_with_multiple_requests() {
+	ExtBuilder::empty().build().execute_with(|| {
+		assert_ok!(Currencies::update_balance(
+			Origin::root(),
+			ALICE,
+			LKSM,
+			dollar(100) as i128
+		));
+		assert_ok!(Currencies::update_balance(
+			Origin::root(),
+			BOB,
+			LKSM,
+			dollar(100) as i128
+		));
+		assert_ok!(Currencies::update_balance(
+			Origin::root(),
+			CHARLIE,
+			LKSM,
+			dollar(200) as i128
+		));
+
+		assert_ok!(HomaLite::set_total_staking_currency(Origin::root(), dollar(40)));
+
+		let rate1 = HomaLite::get_exchange_rate();
+		assert_eq!(HomaLite::get_exchange_rate(), Ratio::saturating_from_rational(1, 10));
+
+		assert_ok!(HomaLite::request_redeem(
+			Origin::signed(ALICE),
+			dollar(100),
+			Permill::zero()
+		));
+
+		assert_ok!(HomaLite::request_redeem(
+			Origin::signed(BOB),
+			dollar(100),
+			Permill::zero()
+		));
+
+		assert_ok!(HomaLite::request_redeem(
+			Origin::signed(CHARLIE),
+			dollar(200),
+			Permill::zero()
+		));
+
+		assert_ok!(HomaLite::replace_schedule_unbond(Origin::root(), vec![(dollar(30), 1)],));
+		MockRelayBlockNumberProvider::set(1);
+		HomaLite::on_idle(MockRelayBlockNumberProvider::get(), 5_000_000_000);
+
+		let rate2 = HomaLite::get_exchange_rate();
+		assert!(rate1 < rate2);
+
+		// Some rounding error
+		assert_eq!(AvailableStakingBalance::<Runtime>::get(), 1);
+
+		// Some rounding error, 10 KSM - 1 KSM unbond fee
+		assert_eq!(Currencies::free_balance(KSM, &ALICE), 8999999999999);
+		assert_eq!(Currencies::free_balance(LKSM, &ALICE), 0);
+
+		// 10 KSM - 1 KSM unbond fee
+		assert_eq!(Currencies::free_balance(KSM, &BOB), 9000000000000);
+		assert_eq!(Currencies::free_balance(LKSM, &BOB), 0);
+
+		// 10 KSM - 1 KSM unbond fee
+		assert_eq!(Currencies::free_balance(KSM, &CHARLIE), 9000000000000);
+		// 100 LKSM minus fee
+		assert_eq!(Currencies::reserved_balance(LKSM, &CHARLIE), 99899999999996);
+	});
+}
+
+#[test]
+fn not_overcharge_redeem_fee() {
+	ExtBuilder::empty().build().execute_with(|| {
+		assert_ok!(Currencies::update_balance(
+			Origin::root(),
+			ALICE,
+			LKSM,
+			dollar(100) as i128
+		));
+
+		assert_ok!(HomaLite::set_total_staking_currency(Origin::root(), dollar(10)));
+
+		assert_ok!(HomaLite::request_redeem(
+			Origin::signed(ALICE),
+			dollar(50),
+			Permill::zero()
+		));
+
+		let fee = dollar(50) / 1000;
+
+		assert_eq!(Currencies::free_balance(LKSM, &ALICE), dollar(50));
+		assert_eq!(Currencies::reserved_balance(LKSM, &ALICE), dollar(50) - fee);
+
+		assert_ok!(HomaLite::request_redeem(
+			Origin::signed(ALICE),
+			dollar(50) - fee,
+			Permill::zero()
+		));
+
+		assert_eq!(Currencies::free_balance(LKSM, &ALICE), dollar(50));
+		assert_eq!(Currencies::reserved_balance(LKSM, &ALICE), dollar(50) - fee);
+
+		assert_ok!(HomaLite::request_redeem(
+			Origin::signed(ALICE),
+			dollar(100) - fee,
+			Permill::zero()
+		));
+
+		assert_eq!(Currencies::free_balance(LKSM, &ALICE), 0);
+		assert_eq!(Currencies::reserved_balance(LKSM, &ALICE), dollar(100) - fee * 2);
+
+		assert_ok!(HomaLite::request_redeem(
+			Origin::signed(ALICE),
+			dollar(20) - fee * 2,
+			Permill::zero()
+		));
+
+		assert_eq!(Currencies::free_balance(LKSM, &ALICE), dollar(80));
+		assert_eq!(Currencies::reserved_balance(LKSM, &ALICE), dollar(20) - fee * 2);
 	});
 }

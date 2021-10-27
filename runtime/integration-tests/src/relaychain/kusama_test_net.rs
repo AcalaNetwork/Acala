@@ -18,7 +18,7 @@
 
 //! Relay chain and parachains emulation.
 
-use crate::integration_tests::*;
+use crate::setup::*;
 
 use cumulus_primitives_core::ParaId;
 use frame_support::traits::GenesisBuild;

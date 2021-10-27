@@ -18,11 +18,10 @@
 
 //! Cross-chain transfer tests within Kusama network.
 
-use crate::integration_tests::*;
-use crate::kusama_test_net::*;
+use crate::relaychain::kusama_test_net::*;
+use crate::setup::*;
 
 use frame_support::assert_ok;
-use xcm::latest::prelude::*;
 
 use orml_traits::MultiCurrency;
 use xcm_emulator::TestExt;
@@ -62,13 +61,16 @@ fn transfer_to_relay_chain() {
 			Origin::signed(ALICE.into()),
 			KSM,
 			dollar(KSM),
-			Box::new(MultiLocation::new(
-				1,
-				X1(Junction::AccountId32 {
-					id: BOB,
-					network: NetworkId::Any,
-				})
-			)),
+			Box::new(
+				MultiLocation::new(
+					1,
+					X1(Junction::AccountId32 {
+						id: BOB,
+						network: NetworkId::Any,
+					})
+				)
+				.into()
+			),
 			4_000_000_000
 		));
 	});
