@@ -46,8 +46,8 @@ macro_rules! event {
 #[cfg(feature = "tracing")]
 mod tracing {
 	pub struct Tracer;
-	impl evm_runtime::tracing::EventListener for Tracer {
-		fn event(&mut self, event: evm_runtime::tracing::Event) {
+	impl module_evm_utiltity::evm_runtime::tracing::EventListener for Tracer {
+		fn event(&mut self, event: module_evm_utiltity::evm_runtime::tracing::Event) {
 			frame_support::log::debug!(
 				target: "evm", "evm_runtime tracing: {:?}", event
 			);
@@ -769,7 +769,7 @@ impl<'config, S: StackState<'config>> StackExecutor<'config, S> {
 		#[cfg(not(feature = "tracing"))]
 		let reason = self.execute(&mut runtime);
 		#[cfg(feature = "tracing")]
-		let reason = evm_runtime::tracing::using(&mut Tracer, || self.execute(&mut runtime));
+		let reason = module_evm_utiltity::evm_runtime::tracing::using(&mut Tracer, || self.execute(&mut runtime));
 
 		log::debug!(target: "evm", "Call execution using address {}: {:?}", code_address, reason);
 
