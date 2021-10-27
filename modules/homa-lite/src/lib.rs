@@ -138,6 +138,14 @@ pub mod module {
 		/// Maximum number of scheduled unbonds allowed
 		#[pallet::constant]
 		type MaxScheduledUnbonds: Get<u32>;
+
+		/// The number of blocks to pass before TotalStakingCurrency is updated.
+		#[pallet::constant]
+		type StakingUpdateFrequency: Get<Self::BlockNumber>;
+
+		/// Interest rate per update
+		#[pallet::constant]
+		type StakingInterestRatePerUpdate: Get<Permill>;
 	}
 
 	#[pallet::error]
@@ -266,6 +274,20 @@ pub mod module {
 				}
 			}
 			current_weight
+		}
+
+		fn on_initialize(n: T::BlockNumber) -> Weight {
+			// Update the total amount of Staking balance by acrueing the interest periodically.
+			if !T::StakingInterestRatePerUpdate::get().is_zero() && n % T::StakingUpdateFrequency::get() == Zero::zero()
+			{
+				let new_total = TotalStakingCurrency::<T>::mutate(|current| {
+					*current = current.saturating_add(T::StakingInterestRatePerUpdate::get().mul(*current));
+					*current
+				});
+				Self::deposit_event(Event::<T>::TotalStakingCurrencySet(new_total));
+				return <T as Config>::WeightInfo::on_initialize();
+			}
+			0
 		}
 	}
 

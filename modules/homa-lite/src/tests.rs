@@ -824,3 +824,26 @@ fn redeem_can_handle_dust_available_staking_currency() {
 		)));
 	});
 }
+
+#[test]
+fn total_staking_currency_update_periodically() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(HomaLite::set_total_staking_currency(Origin::root(), dollar(1_000_000)));
+
+		HomaLite::on_initialize(0);
+		// Inflate by 1%: 1_000_000 * 1.01
+		assert_eq!(TotalStakingCurrency::<Runtime>::get(), dollar(1_010_000));
+
+		for i in 1..101 {
+			HomaLite::on_initialize(i);
+		}
+		// 1_010_000 * 1.01
+		assert_eq!(TotalStakingCurrency::<Runtime>::get(), dollar(1_020_100));
+
+		for i in 101..201 {
+			HomaLite::on_initialize(i);
+		}
+		//1_020_100 * 1.01
+		assert_eq!(TotalStakingCurrency::<Runtime>::get(), dollar(1_030_301));
+	});
+}

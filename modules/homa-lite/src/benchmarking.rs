@@ -47,6 +47,12 @@ benchmarks! {
 		let _ = crate::Pallet::<T>::on_idle(<T as frame_system::Config>::BlockNumber::default(), 1_000_000_000);
 	}
 
+	on_initialize {
+		let _ = crate::Pallet::<T>::set_total_staking_currency(RawOrigin::Root.into(), 1_000_000_000_000_000_000);
+	}: {
+		let _ = crate::Pallet::<T>::on_initialize(<T as frame_system::Config>::BlockNumber::default());
+	}
+
 	mint {
 		let amount = 1_000_000_000_000;
 		let caller: T::AccountId = account("caller", 0, SEED);
@@ -102,6 +108,12 @@ mod tests {
 	fn test_on_idle() {
 		ExtBuilder::default().build().execute_with(|| {
 			assert_ok!(Pallet::<Runtime>::test_benchmark_on_idle());
+		});
+	}
+	#[test]
+	fn test_on_initialize() {
+		ExtBuilder::default().build().execute_with(|| {
+			assert_ok!(Pallet::<Runtime>::test_benchmark_on_initialize());
 		});
 	}
 
