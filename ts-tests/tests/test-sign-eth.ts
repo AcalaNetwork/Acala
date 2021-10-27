@@ -137,6 +137,7 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 		await async function () {
 			return new Promise(async (resolve) => {
 				tx.send((result) => {
+					console.log("send:", result)
 					if (result.status.isInBlock) {
 						resolve(undefined);
 					}

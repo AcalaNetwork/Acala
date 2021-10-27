@@ -15,6 +15,7 @@ describeWithAcala("Acala RPC (Nonce)", (context) => {
 			return new Promise(async (resolve) => {
 				let [ alice ] = await context.provider.getWallets();
 				context.provider.api.tx.balances.transfer(await alice_stash.getSubstrateAddress(), 1000).signAndSend(await alice.getSubstrateAddress(), (result) => {
+					console.log("transfer:", result)
 					if (result.status.isInBlock) {
 						resolve(undefined);
 					}
