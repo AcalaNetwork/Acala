@@ -22,21 +22,28 @@ describeWithAcala("Acala RPC (Nonce)", (context) => {
 			});
 		}
 
+		console.log("get nonce")
 		expect(await context.provider.getTransactionCount(await alice.getAddress(), 'earliest')).to.eq(0);
 		expect(await context.provider.getTransactionCount(await alice.getAddress(), 'latest')).to.eq(0);
 
+		console.log("transfer before")
 		await transfer();
+		console.log("transfer after")
 		expect(await context.provider.getTransactionCount(await alice.getAddress(), 'latest')).to.eq(0);
 		expect(await context.provider.getTransactionCount(await alice.getAddress(), 'pending')).to.eq(0);
 
+		console.log("deployContract before")
 		const contract = await deployContract(alice as any, Erc20DemoContract, [1000000000]);
 		const to = await ethers.Wallet.createRandom().getAddress();
+		console.log("deployContract after")
 
 		expect(await context.provider.getTransactionCount(await alice.getAddress(), 'latest')).to.eq(1);
 		expect(await context.provider.getTransactionCount(await alice.getAddress(), 'pending')).to.eq(1);
 		expect(await context.provider.getTransactionCount(await alice.getAddress(), 'earliest')).to.eq(0);
 
+		console.log("transfer before")
 		await contract.transfer(to, 1000);
+		console.log("transfer after")
 		expect(await context.provider.getTransactionCount(await alice.getAddress(), 'latest')).to.eq(2);
 		expect(await context.provider.getTransactionCount(await alice.getAddress(), 'pending')).to.eq(2);
 		expect(await context.provider.getTransactionCount(await alice.getAddress(), 'earliest')).to.eq(0);

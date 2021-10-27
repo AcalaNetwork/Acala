@@ -39,8 +39,6 @@ export async function startAcalaNode(): Promise<{ provider: TestProvider; binary
 	];
 	const binary = spawn(cmd, args);
 
-	//console.log("Node start: " + args);
-
 	binary.on("error", (err) => {
 		if ((err as any).errno == "ENOENT") {
 			console.error(
