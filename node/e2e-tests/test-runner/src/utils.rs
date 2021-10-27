@@ -64,7 +64,7 @@ pub fn default_config(tokio_handle: Handle, mut chain_spec: Box<dyn ChainSpec>) 
 	network_config.allow_non_globals_in_dht = true;
 
 	network_config
-		.listen_addresseas
+		.listen_addresses
 		.push(multiaddr::Protocol::Memory(0).into());
 
 	network_config.transport = TransportConfig::MemoryOnly;
