@@ -1,7 +1,6 @@
 import { expect } from "chai";
 import { step } from "mocha-steps";
 import { describeWithAcala } from "./util";
-import { ethers } from "ethers";
 
 describeWithAcala("Acala RPC (Block)", (context) => {
 	step("should be at block 0 at genesis", async function () {

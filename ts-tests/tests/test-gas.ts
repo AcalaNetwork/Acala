@@ -10,7 +10,7 @@ describeWithAcala("Acala RPC (Gas)", (context) => {
 
 	before("create the contract", async function () {
 		this.timeout(15000);
-		[ alice ] = await context.provider.getWallets();
+		[alice] = await context.provider.getWallets();
 	});
 
 	it("eth_estimateGas for contract creation", async function () {
@@ -43,7 +43,7 @@ describeWithAcala("Acala RPC (Gas)", (context) => {
 		const contract = await deployContract(alice as any, Block);
 
 		expect(await context.provider.estimateResources(
-			contract.populateTransaction.multiply(3)
+			await contract.populateTransaction.multiply(3)
 		)).to.deep.include({
 			gas: BigNumber.from("22409"),
 			storage: BigNumber.from("0"),

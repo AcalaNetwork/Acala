@@ -20,16 +20,19 @@
 
 use crate::{encode_revert_message, runner::StackState, StorageMeter};
 use core::{cmp::min, convert::Infallible};
-use evm::{
-	Capture, Config, Context, CreateScheme, ExitError, ExitReason, ExitRevert, ExitSucceed, Opcode, Runtime, Stack,
-	Transfer,
-};
-use evm_gasometer::{self as gasometer, Gasometer};
-use evm_runtime::Handler;
 use frame_support::log;
+use module_evm_utiltity::{
+	ethereum::Log,
+	evm::{
+		Capture, Config, Context, CreateScheme, ExitError, ExitReason, ExitRevert, ExitSucceed, Opcode, Runtime, Stack,
+		Transfer,
+	},
+	evm_gasometer::{self as gasometer, Gasometer},
+	evm_runtime::Handler,
+};
 use primitive_types::{H160, H256, U256};
 pub use primitives::{
-	evm::{Account, EvmAddress, Log, Vicinity},
+	evm::{EvmAddress, Vicinity},
 	ReserveIdentifier, H160_PREFIX_DEXSHARE, H160_PREFIX_TOKEN, MIRRORED_NFT_ADDRESS_START, PREDEPLOY_ADDRESS_START,
 	SYSTEM_CONTRACT_ADDRESS_PREFIX,
 };
@@ -43,8 +46,8 @@ macro_rules! event {
 #[cfg(feature = "tracing")]
 mod tracing {
 	pub struct Tracer;
-	impl evm_runtime::tracing::EventListener for Tracer {
-		fn event(&mut self, event: evm_runtime::tracing::Event) {
+	impl module_evm_utiltity::evm_runtime::tracing::EventListener for Tracer {
+		fn event(&mut self, event: module_evm_utiltity::evm_runtime::tracing::Event) {
 			frame_support::log::debug!(
 				target: "evm", "evm_runtime tracing: {:?}", event
 			);
@@ -766,7 +769,7 @@ impl<'config, S: StackState<'config>> StackExecutor<'config, S> {
 		#[cfg(not(feature = "tracing"))]
 		let reason = self.execute(&mut runtime);
 		#[cfg(feature = "tracing")]
-		let reason = evm_runtime::tracing::using(&mut Tracer, || self.execute(&mut runtime));
+		let reason = module_evm_utiltity::evm_runtime::tracing::using(&mut Tracer, || self.execute(&mut runtime));
 
 		log::debug!(target: "evm", "Call execution using address {}: {:?}", code_address, reason);
 
