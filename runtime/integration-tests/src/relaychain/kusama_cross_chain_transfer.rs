@@ -18,11 +18,10 @@
 
 //! Cross-chain transfer tests within Kusama network.
 
-use crate::integration_tests::*;
-use crate::kusama_test_net::*;
+use crate::relaychain::kusama_test_net::*;
+use crate::setup::*;
 
 use frame_support::assert_ok;
-use xcm::latest::prelude::*;
 
 use orml_traits::MultiCurrency;
 use xcm_emulator::TestExt;
