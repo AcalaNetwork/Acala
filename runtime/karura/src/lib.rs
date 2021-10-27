@@ -130,7 +130,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("karura"),
 	impl_name: create_runtime_str!("karura"),
 	authoring_version: 1,
-	spec_version: 1017,
+	spec_version: 1019,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -1479,7 +1479,7 @@ pub type LocalOriginToLocation = SignedToAccountId32<Origin, AccountId, RelayNet
 /// queues.
 pub type XcmRouter = (
 	// Two routers - use UMP to communicate with the relay chain:
-	cumulus_primitives_utility::ParentAsUmp<ParachainSystem, ()>,
+	cumulus_primitives_utility::ParentAsUmp<ParachainSystem, PolkadotXcm>,
 	// ..and XCMP to communicate with the sibling chains.
 	XcmpQueue,
 );
@@ -1510,7 +1510,7 @@ impl cumulus_pallet_xcmp_queue::Config for Runtime {
 	type Event = Event;
 	type XcmExecutor = XcmExecutor<XcmConfig>;
 	type ChannelInfo = ParachainSystem;
-	type VersionWrapper = ();
+	type VersionWrapper = PolkadotXcm;
 }
 
 impl cumulus_pallet_dmp_queue::Config for Runtime {
@@ -1878,8 +1878,17 @@ pub type Executive = frame_executive::Executive<
 		TechnicalCommitteeStoragePrefixMigration,
 		MigrateTipsPalletPrefix,
 		BountiesPrefixMigration,
+		SetXcmVersion,
 	),
 >;
+
+pub struct SetXcmVersion;
+impl OnRuntimeUpgrade for SetXcmVersion {
+	fn on_runtime_upgrade() -> u64 {
+		let _ = PolkadotXcm::force_default_xcm_version(Origin::root(), Some(2));
+		RocksDbWeight::get().writes(1)
+	}
+}
 
 const GENERAL_COUNCIL_MEMBERSHIP_OLD_PREFIX: &str = "Instance1Membership";
 /// Migrate from `Instance1Membership` to the new pallet prefix `GeneralCouncilMembership`
