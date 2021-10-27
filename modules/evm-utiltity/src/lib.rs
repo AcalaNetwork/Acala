@@ -20,8 +20,15 @@
 //!
 //! A pallet provides some utility methods.
 
+#![cfg_attr(not(feature = "std"), no_std)]
+
 use sha3::{Digest, Keccak256};
-use std::convert::TryInto;
+use sp_std::convert::TryInto;
+
+pub use ethereum;
+pub use evm::{self, backend::Basic as Account};
+pub use evm_gasometer;
+pub use evm_runtime;
 
 pub fn sha3_256(s: &str) -> [u8; 32] {
 	let mut result = [0u8; 32];

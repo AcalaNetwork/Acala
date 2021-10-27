@@ -1,7 +1,7 @@
 name: Srtool build
 
 env:
-  SUBWASM_VERSION: 0.13.2
+  SUBWASM_VERSION: 0.14.1
   SRTOOL_TAG: 1.53.0
 
 on:
