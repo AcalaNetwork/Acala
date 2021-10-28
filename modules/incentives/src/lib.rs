@@ -69,6 +69,9 @@ pub enum PoolId {
 
 	/// Rewards and shares pool for DEX makers who stake LP token(LPCurrencyId)
 	Dex(CurrencyId),
+
+	/// Rewards and shares pool for StableAsset makers who stake LP token(LPCurrencyId)
+	StableAsset(CurrencyId),
 }
 
 #[frame_support::pallet]
@@ -136,6 +139,10 @@ pub mod module {
 		DepositDexShare(T::AccountId, CurrencyId, Balance),
 		/// Withdraw DEX share. \[who, dex_share_type, withdraw_amount\]
 		WithdrawDexShare(T::AccountId, CurrencyId, Balance),
+		/// Deposit DEX share. \[who, dex_share_type, deposit_amount\]
+		DepositStableAssetShare(T::AccountId, CurrencyId, Balance),
+		/// Withdraw DEX share. \[who, dex_share_type, withdraw_amount\]
+		WithdrawStableAssetShare(T::AccountId, CurrencyId, Balance),
 		/// Claim rewards. \[who, pool_id, reward_currency_id, actual_amount, deduction_amount\]
 		ClaimRewards(T::AccountId, PoolId, CurrencyId, Balance, Balance),
 		/// Incentive reward amount updated. \[pool_id, reward_currency_id,
@@ -203,6 +210,10 @@ pub mod module {
 								count += 1;
 								Self::accumulate_incentives(pool_id);
 							}
+							PoolId::StableAsset(_) if !shutdown => {
+								count += 1;
+								Self::accumulate_incentives(pool_id);
+							}
 							PoolId::Dex(lp_currency_id) => {
 								// do not accumulate dex saving any more after shutdown
 								if !shutdown {
@@ -258,6 +269,42 @@ pub mod module {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			Self::do_withdraw_dex_share(&who, lp_currency_id, amount)?;
+			Ok(())
+		}
+
+		/// Stake LP token to add shares of Pool::StableAsset
+		///
+		/// The dispatch origin of this call must be `Signed` by the transactor.
+		///
+		/// - `lp_currency_id`: LP token type
+		/// - `amount`: amount to stake
+		#[pallet::weight(<T as Config>::WeightInfo::deposit_dex_share())]
+		#[transactional]
+		pub fn deposit_stable_asset_share(
+			origin: OriginFor<T>,
+			lp_currency_id: CurrencyId,
+			#[pallet::compact] amount: Balance,
+		) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+			Self::do_deposit_stable_asset_share(&who, lp_currency_id, amount)?;
+			Ok(())
+		}
+
+		/// Unstake LP token to remove shares of Pool::StableAsset
+		///
+		/// The dispatch origin of this call must be `Signed` by the transactor.
+		///
+		/// - `lp_currency_id`: LP token type
+		/// - `amount`: amount to unstake
+		#[pallet::weight(<T as Config>::WeightInfo::withdraw_dex_share())]
+		#[transactional]
+		pub fn withdraw_stable_asset_share(
+			origin: OriginFor<T>,
+			lp_currency_id: CurrencyId,
+			#[pallet::compact] amount: Balance,
+		) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+			Self::do_withdraw_stable_asset_share(&who, lp_currency_id, amount)?;
 			Ok(())
 		}
 
@@ -325,6 +372,9 @@ pub mod module {
 			for (pool_id, update_list) in updates {
 				if let PoolId::Dex(currency_id) = pool_id {
 					ensure!(currency_id.is_dex_share_currency_id(), Error::<T>::InvalidPoolId);
+				}
+				if let PoolId::StableAsset(currency_id) = pool_id {
+					ensure!(currency_id.is_stable_asset_currency_id(), Error::<T>::InvalidPoolId);
 				}
 
 				for (currency_id, amount) in update_list {
@@ -395,6 +445,10 @@ pub mod module {
 				if let PoolId::Dex(currency_id) = pool_id {
 					ensure!(currency_id.is_dex_share_currency_id(), Error::<T>::InvalidPoolId);
 				}
+				if let PoolId::StableAsset(currency_id) = pool_id {
+					ensure!(currency_id.is_stable_asset_currency_id(), Error::<T>::InvalidPoolId);
+				}
+
 				ensure!(deduction_rate <= Rate::one(), Error::<T>::InvalidRate);
 				ClaimRewardDeductionRates::<T>::mutate_exists(&pool_id, |maybe_rate| {
 					let mut v = maybe_rate.unwrap_or_default();
@@ -508,6 +562,53 @@ impl<T: Config> Pallet<T> {
 				}
 			}
 		}
+	}
+
+	fn do_deposit_stable_asset_share(
+		who: &T::AccountId,
+		lp_currency_id: CurrencyId,
+		amount: Balance,
+	) -> DispatchResult {
+		ensure!(
+			lp_currency_id.is_stable_asset_currency_id(),
+			Error::<T>::InvalidCurrencyId
+		);
+
+		T::Currency::transfer(lp_currency_id, who, &Self::account_id(), amount)?;
+		<orml_rewards::Pallet<T>>::add_share(
+			who,
+			&PoolId::StableAsset(lp_currency_id),
+			amount.unique_saturated_into(),
+		);
+
+		Self::deposit_event(Event::DepositStableAssetShare(who.clone(), lp_currency_id, amount));
+		Ok(())
+	}
+
+	fn do_withdraw_stable_asset_share(
+		who: &T::AccountId,
+		lp_currency_id: CurrencyId,
+		amount: Balance,
+	) -> DispatchResult {
+		ensure!(
+			lp_currency_id.is_stable_asset_currency_id(),
+			Error::<T>::InvalidCurrencyId
+		);
+		ensure!(
+			<orml_rewards::Pallet<T>>::shares_and_withdrawn_rewards(&PoolId::StableAsset(lp_currency_id), &who).0
+				>= amount,
+			Error::<T>::NotEnough,
+		);
+
+		T::Currency::transfer(lp_currency_id, &Self::account_id(), who, amount)?;
+		<orml_rewards::Pallet<T>>::remove_share(
+			who,
+			&PoolId::StableAsset(lp_currency_id),
+			amount.unique_saturated_into(),
+		);
+
+		Self::deposit_event(Event::WithdrawStableAssetShare(who.clone(), lp_currency_id, amount));
+		Ok(())
 	}
 }
 

@@ -239,6 +239,10 @@ impl CurrencyId {
 		matches!(self, CurrencyId::DexShare(_, _))
 	}
 
+	pub fn is_stable_asset_currency_id(&self) -> bool {
+		matches!(self, CurrencyId::StableAssetPoolToken(_))
+	}
+
 	pub fn is_erc20_currency_id(&self) -> bool {
 		matches!(self, CurrencyId::Erc20(_))
 	}
