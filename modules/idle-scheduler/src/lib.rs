@@ -31,7 +31,10 @@ use codec::{Codec, EncodeLike};
 use frame_support::pallet_prelude::*;
 use frame_system::pallet_prelude::*;
 use scale_info::TypeInfo;
-use sp_runtime::traits::{One, Zero};
+use sp_runtime::{
+	traits::{One, Zero},
+	ArithmeticError,
+};
 use sp_std::{cmp::PartialEq, fmt::Debug, prelude::*};
 
 mod mock;
@@ -91,25 +94,25 @@ pub mod module {
 		#[pallet::weight(< T as Config >::WeightInfo::schedule_task())]
 		pub fn schedule_task(origin: OriginFor<T>, task: T::Task) -> DispatchResult {
 			ensure_root(origin)?;
-			Self::do_schedule_task(task);
-			Ok(())
+			Self::do_schedule_task(task)
 		}
 	}
 }
 
 impl<T: Config> Pallet<T> {
 	/// Add the task to the queue to be dispatched later
-	fn do_schedule_task(task: T::Task) {
-		let id = Self::get_next_task_id();
+	fn do_schedule_task(task: T::Task) -> DispatchResult {
+		let id = Self::get_next_task_id()?;
 		Tasks::<T>::insert(id, task);
+		Ok(())
 	}
 
 	/// Retrieves the next task ID from storage, and increment it by one.
-	fn get_next_task_id() -> Nonce {
-		NextTaskId::<T>::mutate(|current| {
+	fn get_next_task_id() -> Result<Nonce, DispatchError> {
+		NextTaskId::<T>::mutate(|current| -> Result<Nonce, DispatchError> {
 			let id = *current;
-			*current = current.saturating_add(One::one());
-			id
+			*current = current.checked_add(One::one()).ok_or(ArithmeticError::Overflow)?;
+			Ok(id)
 		})
 	}
 
