@@ -44,7 +44,6 @@ dependencies = [
  "sc-tracing",
  "sp-core",
  "sp-runtime",
- "ss58-registry",
  "structopt",
  "try-runtime-cli",
 ]

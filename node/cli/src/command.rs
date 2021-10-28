@@ -188,7 +188,7 @@ impl SubstrateCli for RelayChainCli {
 }
 
 fn set_default_ss58_version(spec: &Box<dyn service::ChainSpec>) {
-	use ss58_registry::Ss58AddressFormatRegistry;
+	use sp_core::crypto::Ss58AddressFormatRegistry;
 
 	let ss58_version = if spec.is_karura() {
 		Ss58AddressFormatRegistry::KaruraAccount
