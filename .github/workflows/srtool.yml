@@ -16,8 +16,8 @@ on:
         description: The ref to be used for the repo
         default: master
         required: false
-  schedule:
-    - cron: "00 03 * * 1" # 3AM weekly on mondays
+  # schedule:
+  #   - cron: "00 03 * * 1" # 3AM weekly on mondays
   push:
     tags:
       - "*"
