@@ -16,14 +16,6 @@ sha3 = { version = "0.9.1", default-features = false }
 tiny-keccak = { version = "2.0", features = ["fips202"] }
 scale-info = { version = "1.0", default-features = false, features = ["derive"] }
 
-# TODO
-#evm = { version = "0.30.0", default-features = false, features = ["with-codec"] }
-#evm-gasometer = { version = "0.30.1", default-features = false }
-#evm-runtime = { version = "0.30.1", default-features = false }
-evm = { git = "https://github.com/PureStake/evm", branch = "joshy-scale-info", default-features = false, features = ["with-codec"] }
-evm-gasometer = { git = "https://github.com/PureStake/evm", branch = "joshy-scale-info", default-features = false }
-evm-runtime = { git = "https://github.com/PureStake/evm", branch = "joshy-scale-info", default-features = false }
-
 frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.12", default-features = false }
 frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.12", default-features = false }
 pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.12", default-features = false }

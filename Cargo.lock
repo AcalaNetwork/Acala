@@ -667,18 +667,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "auto_impl"
-version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "42cbf586c80ada5e5ccdecae80d3ef0854f224e2dd74435f8d87e6831b8d0a38"
-dependencies = [
- "proc-macro-error 1.0.4",
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
 name = "autocfg"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2562,31 +2550,13 @@ checksum = "f7531096570974c3a9dcf9e4b8e1cede1ec26cf5046219fb3b9d897503b9be59"
 [[package]]
 name = "evm"
 version = "0.31.1"
-source = "git+https://github.com/PureStake/evm?branch=joshy-scale-info#866c8cfb5a43eea5b82f4e85e2006f15f6b221a4"
-dependencies = [
- "auto_impl",
- "ethereum",
- "evm-core 0.31.0 (git+https://github.com/PureStake/evm?branch=joshy-scale-info)",
- "evm-gasometer 0.31.0 (git+https://github.com/PureStake/evm?branch=joshy-scale-info)",
- "evm-runtime 0.31.0 (git+https://github.com/PureStake/evm?branch=joshy-scale-info)",
- "log",
- "parity-scale-codec",
- "primitive-types",
- "rlp",
- "scale-info",
- "sha3 0.8.2",
-]
-
-[[package]]
-name = "evm"
-version = "0.31.1"
 source = "git+https://github.com/rust-blockchain/evm?rev=966cf3abe4143451e408c3f586d51c6513d9a48e#966cf3abe4143451e408c3f586d51c6513d9a48e"
 dependencies = [
  "environmental",
  "ethereum",
- "evm-core 0.31.0 (git+https://github.com/rust-blockchain/evm?rev=966cf3abe4143451e408c3f586d51c6513d9a48e)",
- "evm-gasometer 0.31.0 (git+https://github.com/rust-blockchain/evm?rev=966cf3abe4143451e408c3f586d51c6513d9a48e)",
- "evm-runtime 0.31.0 (git+https://github.com/rust-blockchain/evm?rev=966cf3abe4143451e408c3f586d51c6513d9a48e)",
+ "evm-core",
+ "evm-gasometer",
+ "evm-runtime",
  "log",
  "parity-scale-codec",
  "primitive-types",
@@ -2594,17 +2564,6 @@ dependencies = [
  "scale-info",
  "serde",
  "sha3 0.8.2",
-]
-
-[[package]]
-name = "evm-core"
-version = "0.31.0"
-source = "git+https://github.com/PureStake/evm?branch=joshy-scale-info#866c8cfb5a43eea5b82f4e85e2006f15f6b221a4"
-dependencies = [
- "funty",
- "parity-scale-codec",
- "primitive-types",
- "scale-info",
 ]
 
 [[package]]
@@ -2622,21 +2581,11 @@ dependencies = [
 [[package]]
 name = "evm-gasometer"
 version = "0.31.0"
-source = "git+https://github.com/PureStake/evm?branch=joshy-scale-info#866c8cfb5a43eea5b82f4e85e2006f15f6b221a4"
-dependencies = [
- "evm-core 0.31.0 (git+https://github.com/PureStake/evm?branch=joshy-scale-info)",
- "evm-runtime 0.31.0 (git+https://github.com/PureStake/evm?branch=joshy-scale-info)",
- "primitive-types",
-]
-
-[[package]]
-name = "evm-gasometer"
-version = "0.31.0"
 source = "git+https://github.com/rust-blockchain/evm?rev=966cf3abe4143451e408c3f586d51c6513d9a48e#966cf3abe4143451e408c3f586d51c6513d9a48e"
 dependencies = [
  "environmental",
- "evm-core 0.31.0 (git+https://github.com/rust-blockchain/evm?rev=966cf3abe4143451e408c3f586d51c6513d9a48e)",
- "evm-runtime 0.31.0 (git+https://github.com/rust-blockchain/evm?rev=966cf3abe4143451e408c3f586d51c6513d9a48e)",
+ "evm-core",
+ "evm-runtime",
  "primitive-types",
 ]
 
@@ -2667,21 +2616,10 @@ dependencies = [
 [[package]]
 name = "evm-runtime"
 version = "0.31.0"
-source = "git+https://github.com/PureStake/evm?branch=joshy-scale-info#866c8cfb5a43eea5b82f4e85e2006f15f6b221a4"
-dependencies = [
- "auto_impl",
- "evm-core 0.31.0 (git+https://github.com/PureStake/evm?branch=joshy-scale-info)",
- "primitive-types",
- "sha3 0.8.2",
-]
-
-[[package]]
-name = "evm-runtime"
-version = "0.31.0"
 source = "git+https://github.com/rust-blockchain/evm?rev=966cf3abe4143451e408c3f586d51c6513d9a48e#966cf3abe4143451e408c3f586d51c6513d9a48e"
 dependencies = [
  "environmental",
- "evm-core 0.31.0 (git+https://github.com/rust-blockchain/evm?rev=966cf3abe4143451e408c3f586d51c6513d9a48e)",
+ "evm-core",
  "primitive-types",
  "sha3 0.8.2",
 ]
@@ -5452,9 +5390,6 @@ version = "1.6.0"
 dependencies = [
  "acala-primitives",
  "env_logger 0.7.1",
- "evm 0.31.1 (git+https://github.com/PureStake/evm?branch=joshy-scale-info)",
- "evm-gasometer 0.31.0 (git+https://github.com/PureStake/evm?branch=joshy-scale-info)",
- "evm-runtime 0.31.0 (git+https://github.com/PureStake/evm?branch=joshy-scale-info)",
  "frame-support",
  "frame-system",
  "hex-literal 0.3.3",
@@ -5569,9 +5504,9 @@ name = "module-evm-utiltity"
 version = "1.6.0"
 dependencies = [
  "ethereum",
- "evm 0.31.1 (git+https://github.com/rust-blockchain/evm?rev=966cf3abe4143451e408c3f586d51c6513d9a48e)",
- "evm-gasometer 0.31.0 (git+https://github.com/rust-blockchain/evm?rev=966cf3abe4143451e408c3f586d51c6513d9a48e)",
- "evm-runtime 0.31.0 (git+https://github.com/rust-blockchain/evm?rev=966cf3abe4143451e408c3f586d51c6513d9a48e)",
+ "evm",
+ "evm-gasometer",
+ "evm-runtime",
  "sha3 0.9.1",
  "sp-std",
 ]
