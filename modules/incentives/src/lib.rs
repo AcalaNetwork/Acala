@@ -272,42 +272,6 @@ pub mod module {
 			Ok(())
 		}
 
-		/// Stake LP token to add shares of Pool::StableAsset
-		///
-		/// The dispatch origin of this call must be `Signed` by the transactor.
-		///
-		/// - `lp_currency_id`: LP token type
-		/// - `amount`: amount to stake
-		#[pallet::weight(<T as Config>::WeightInfo::deposit_dex_share())]
-		#[transactional]
-		pub fn deposit_stable_asset_share(
-			origin: OriginFor<T>,
-			lp_currency_id: CurrencyId,
-			#[pallet::compact] amount: Balance,
-		) -> DispatchResult {
-			let who = ensure_signed(origin)?;
-			Self::do_deposit_stable_asset_share(&who, lp_currency_id, amount)?;
-			Ok(())
-		}
-
-		/// Unstake LP token to remove shares of Pool::StableAsset
-		///
-		/// The dispatch origin of this call must be `Signed` by the transactor.
-		///
-		/// - `lp_currency_id`: LP token type
-		/// - `amount`: amount to unstake
-		#[pallet::weight(<T as Config>::WeightInfo::withdraw_dex_share())]
-		#[transactional]
-		pub fn withdraw_stable_asset_share(
-			origin: OriginFor<T>,
-			lp_currency_id: CurrencyId,
-			#[pallet::compact] amount: Balance,
-		) -> DispatchResult {
-			let who = ensure_signed(origin)?;
-			Self::do_withdraw_stable_asset_share(&who, lp_currency_id, amount)?;
-			Ok(())
-		}
-
 		/// Claim all avalible multi currencies rewards for specific PoolId.
 		///
 		/// The dispatch origin of this call must be `Signed` by the transactor.
@@ -464,6 +428,42 @@ pub mod module {
 					}
 				});
 			}
+			Ok(())
+		}
+
+		/// Stake LP token to add shares of Pool::StableAsset
+		///
+		/// The dispatch origin of this call must be `Signed` by the transactor.
+		///
+		/// - `lp_currency_id`: LP token type
+		/// - `amount`: amount to stake
+		#[pallet::weight(<T as Config>::WeightInfo::deposit_dex_share())]
+		#[transactional]
+		pub fn deposit_stable_asset_share(
+			origin: OriginFor<T>,
+			lp_currency_id: CurrencyId,
+			#[pallet::compact] amount: Balance,
+		) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+			Self::do_deposit_stable_asset_share(&who, lp_currency_id, amount)?;
+			Ok(())
+		}
+
+		/// Unstake LP token to remove shares of Pool::StableAsset
+		///
+		/// The dispatch origin of this call must be `Signed` by the transactor.
+		///
+		/// - `lp_currency_id`: LP token type
+		/// - `amount`: amount to unstake
+		#[pallet::weight(<T as Config>::WeightInfo::withdraw_dex_share())]
+		#[transactional]
+		pub fn withdraw_stable_asset_share(
+			origin: OriginFor<T>,
+			lp_currency_id: CurrencyId,
+			#[pallet::compact] amount: Balance,
+		) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+			Self::do_withdraw_stable_asset_share(&who, lp_currency_id, amount)?;
 			Ok(())
 		}
 	}
