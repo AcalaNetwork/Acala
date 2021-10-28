@@ -64,7 +64,11 @@ mod honzon;
 ))]
 mod nft;
 
-#[cfg(any(feature = "with-karura-runtime"))]
+#[cfg(any(
+	feature = "with-mandala-runtime",
+	feature = "with-karura-runtime",
+	feature = "with-acala-runtime"
+))]
 mod prices;
 
 // TODO: blocked by BaseCallFilter on acala-runtime
