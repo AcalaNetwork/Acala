@@ -116,7 +116,10 @@ jobs:
           wasm_diff: ${{ env.CHAIN }}-diff.txt
 
       - name: Save release note
-        run: echo "${{ steps.generate-note.outputs.release-note }}" >> release_note.md
+        run: |
+          cat <<EOT >> release_note.md
+          $(echo ${{ steps.generate-note.outputs.release-note }})
+          EOT
 
       - name: Crate Release Checklist issue
         if: ${{ !env.ACT }}
