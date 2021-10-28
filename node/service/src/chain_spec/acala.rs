@@ -77,22 +77,26 @@ pub fn latest_acala_config() -> Result<ChainSpec, String> {
 			let other_allocation_json = &include_bytes!("../../../../resources/acala-allocation-ACA.json")[..];
 			let other_allocation: Vec<(AccountId, Balance)> = serde_json::from_slice(other_allocation_json).unwrap();
 
-			// TODO: update
 			let initial_authorities: Vec<(AccountId, AuraId)> = vec![
 				(
-					// qkFZUE2Dod2Y9LX8ZQzkvF5T2wE5hpBuPe9hT1gpP3drH1v
-					hex!["6c47c55604029bd43ed443ddaad370d5f4c10fa439d22dddb8120a9615444b6b"].into(),
-					hex!["36589a134ccdbeb45a3ac535cc2c8cd71ae45ffc3af86d4a020cc2e411a98875"].unchecked_into(),
+					// 24j2ECgfuGHw2bv2YHLoFz88eKr39QAczGTz23bNLZKHEXdt
+					hex!["aa66ae1c82621f3439a821974bfd285885ed2a513fc7ed660aa10dcf50161c7a"].into(),
+					hex!["9ee6d04b7ae198f77cd4f4ed53ae2ce65ba978b9e140c67a52242b7b0c3ca425"].unchecked_into(),
 				),
 				(
-					// pSCWXtDyPZsyfTQNbVkmubVRGyoSi9N2a6AxpWHWFsxLjXs
-					hex!["3246d9cb076cd554f250fc03bf70988cbaa9cbb2c4b1b8e015dd97fd19405d43"].into(),
-					hex!["3266d0febeacc5d111c9df7f2ced2f533e7732dda46b2b84f104be5d6e395b76"].unchecked_into(),
+					// 211oiNyWbThWJmuFSVJnGwdq4kPiYoMQ3fUKDHuHJnRxEymL
+					hex!["0642caac4bb7be8367c277371825e1314be4ec99d9a0d0e2ed12289693009a6f"].into(),
+					hex!["94231e6fe4b7868794b2c926e4e44c51a9944457559fd927ee078d465ef3bf1f"].unchecked_into(),
 				),
 				(
-					// qZhHE2FJGGAJtvu9f21PPFVDxvcnm65ebezZBsAJjGFa4kn
-					hex!["643aa70071341b904e6e5b4e41d6dfc02b4cfcdc4c9c7a66f41fc0e59c07e24c"].into(),
-					hex!["60fdcbd860869ee9b1230731b82604e8cf63c6c66e69277b59e337f1f25af225"].unchecked_into(),
+					// 21vkHrN6nQnZt5a3YWExxkAwMPepKyXHHDowG22fjxGbBLai
+					hex!["2ea346904b62daeb65e158f15a7b4f74fa162b0e95a30dc9b6187f245f16bd0a"].into(),
+					hex!["d2bc5f639405b8d36ebe2fc5700f17f65ee99386566d492a0882c2bf5ab28e10"].unchecked_into(),
+				),
+				(
+					// 25j9RvPux27vBAk5qa919rf8BnihvMWPjr3gZLP3zT2HTWDa
+					hex!["d6bb2868fa5a24d6776bc039a1689c9f1a9762f29266cc0519541a659abd5f76"].into(),
+					hex!["30c13525850f92a53901c1d046f11a4a8859afa28051d44003617d1fb935d655"].unchecked_into(),
 				),
 			];
 
