@@ -942,3 +942,68 @@ fn not_overcharge_redeem_fee() {
 		assert_eq!(Currencies::reserved_balance(LKSM, &ALICE), dollar(20) - fee * 2);
 	});
 }
+
+#[test]
+fn available_staking_balances_can_handle_dust() {
+	ExtBuilder::empty().build().execute_with(|| {
+		assert_ok!(Currencies::update_balance(
+			Origin::root(),
+			ALICE,
+			LKSM,
+			dollar(5_000) as i128
+		));
+		assert_ok!(Currencies::update_balance(
+			Origin::root(),
+			BOB,
+			LKSM,
+			dollar(2_000) as i128
+		));
+		assert_ok!(Currencies::update_balance(
+			Origin::root(),
+			ROOT,
+			LKSM,
+			dollar(3_000) as i128
+		));
+
+		// find exchange rate with roudning error
+		HomaLite::set_total_staking_currency(Origin::root(), 1000237000000000000);
+		let staking_amount = 999_999_999_999;
+		let liquid_amount = HomaLite::convert_staking_to_liquid(staking_amount).unwrap();
+		let staking_amount2 = HomaLite::convert_liquid_to_staking(liquid_amount).unwrap();
+		assert_ne!(staking_amount, staking_amount2);
+
+		assert_ok!(HomaLite::request_redeem(
+			Origin::signed(ALICE),
+			dollar(5_000),
+			Permill::zero()
+		));
+		assert_ok!(HomaLite::request_redeem(
+			Origin::signed(BOB),
+			dollar(2_000),
+			Permill::zero()
+		));
+		assert_ok!(HomaLite::request_redeem(
+			Origin::signed(ROOT),
+			dollar(3_000),
+			Permill::zero()
+		));
+		assert_ok!(HomaLite::replace_schedule_unbond(
+			Origin::root(),
+			vec![(999_999_999_999, 1)],
+		));
+		MockRelayBlockNumberProvider::set(1);
+
+		HomaLite::on_idle(MockRelayBlockNumberProvider::get(), 5_000_000_000);
+
+		assert_eq!(HomaLite::available_staking_balance(), 0);
+		let events = System::events();
+		assert_eq!(
+			events[events.len() - 2].event,
+			Event::HomaLite(crate::Event::Redeemed(ALICE, 999999999900, 9987632930))
+		);
+		assert_eq!(
+			events[events.len() - 1].event,
+			Event::HomaLite(crate::Event::ScheduledUnbondWithdrew(999_999_999_999))
+		);
+	});
+}
