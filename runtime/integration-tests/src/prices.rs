@@ -20,7 +20,6 @@ use crate::setup::*;
 use module_prices::RealTimePriceProvider;
 use module_support::PriceProvider;
 
-#[cfg(any(feature = "with-karura-runtime"))]
 #[test]
 fn test_default_liquid_currency_price() {
 	ExtBuilder::default()
@@ -56,7 +55,6 @@ fn test_default_liquid_currency_price() {
 		});
 }
 
-#[cfg(any(feature = "with-karura-runtime"))]
 #[test]
 fn test_update_liquid_currency_price() {
 	ExtBuilder::default()

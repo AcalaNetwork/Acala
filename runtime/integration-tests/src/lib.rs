@@ -25,8 +25,8 @@
 ))]
 mod setup;
 
-#[cfg(any(feature = "with-mandala-runtime", feature = "with-karura-runtime"))]
 // TODO: blocked by BaseCallFilter on acala-runtime
+#[cfg(any(feature = "with-mandala-runtime", feature = "with-karura-runtime"))]
 mod authority;
 
 #[cfg(any(
@@ -64,15 +64,11 @@ mod honzon;
 ))]
 mod nft;
 
-#[cfg(any(
-	feature = "with-mandala-runtime",
-	feature = "with-karura-runtime",
-	feature = "with-acala-runtime"
-))]
+#[cfg(any(feature = "with-karura-runtime"))]
 mod prices;
 
-#[cfg(any(feature = "with-mandala-runtime", feature = "with-karura-runtime"))]
 // TODO: blocked by BaseCallFilter on acala-runtime
+#[cfg(any(feature = "with-mandala-runtime", feature = "with-karura-runtime"))]
 mod proxy;
 
 #[cfg(any(
@@ -110,5 +106,6 @@ mod vesting;
 ))]
 mod weights;
 
-#[cfg(feature = "with-karura-runtime")] // TODO: polkadot_runtime not support XCM
+// TODO: polkadot_runtime not support XCM
+#[cfg(feature = "with-karura-runtime")]
 mod relaychain;
