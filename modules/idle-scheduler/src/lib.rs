@@ -16,10 +16,9 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-//! # Example Module
+//! # Idle scheduler Module
 //!
-//! A simple example of a FRAME pallet demonstrating
-//! concepts, APIs and structures common to most FRAME runtimes.
+//! Allow pallets and chain maintainer to schedule a task to be dispatched when chain is idle.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
