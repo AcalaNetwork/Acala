@@ -3,12 +3,10 @@ import { WsProvider } from "@polkadot/api";
 import { spawn, ChildProcess } from "child_process";
 import chaiAsPromised from "chai-as-promised";
 import chai from "chai";
+import getPort from 'get-port';
+import { Balance } from "@polkadot/types/interfaces";
 
 chai.use(chaiAsPromised);
-
-export const P2P_PORT = 19931;
-export const RPC_PORT = 19932;
-export const WS_PORT = 19933;
 
 export const DISPLAY_LOG = process.env.ACALA_LOG || false;
 export const ACALA_LOG = process.env.ACALA_LOG || "info";
@@ -18,6 +16,10 @@ export const BINARY_PATH = `../target/${ACALA_BUILD}/acala`;
 export const SPAWNING_TIME = 60000;
 
 export async function startAcalaNode(): Promise<{ provider: TestProvider; binary: ChildProcess }> {
+	const P2P_PORT = await getPort({ port: getPort.makeRange(19931, 22000) });
+	const RPC_PORT = await getPort({ port: getPort.makeRange(19931, 22000) });
+	const WS_PORT = await getPort({ port: getPort.makeRange(19931, 22000) });
+
 	const cmd = BINARY_PATH;
 	const args = [
 		`--dev`,
@@ -129,14 +131,24 @@ export function describeWithAcala(title: string, cb: (context: { provider: TestP
 	});
 }
 
-export async function nextBlock(provider: TestProvider) {
-    return new Promise(async (resolve) => {
-        let [ alice ] = await provider.getWallets();
-        let block_number = await provider.api.query.system.number();
-        provider.api.tx.system.remark(block_number.toString(16)).signAndSend(await alice.getSubstrateAddress(), (result) => {
-            if (result.status.isInBlock) {
+export async function nextBlock(context: { provider: TestProvider }) {
+	return new Promise(async (resolve) => {
+		let [alice] = await context.provider.getWallets();
+		let block_number = await context.provider.api.query.system.number();
+		context.provider.api.tx.system.remark(block_number.toString(16)).signAndSend(await alice.getSubstrateAddress(), (result) => {
+			if (result.status.isFinalized || result.status.isInBlock) {
 				resolve(undefined);
-            }
-        });
-    });
+			}
+		});
+	});
+}
+
+export async function transfer(context: { provider: TestProvider }, from: string, to: string, amount: number) {
+	return new Promise(async (resolve) => {
+		context.provider.api.tx.balances.transfer(to, amount).signAndSend(from, (result) => {
+			if (result.status.isFinalized || result.status.isInBlock) {
+				resolve(undefined);
+			}
+		});
+	});
 }

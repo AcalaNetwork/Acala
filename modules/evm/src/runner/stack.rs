@@ -28,15 +28,18 @@ use crate::{
 	AccountInfo, AccountStorages, Accounts, BalanceOf, CallInfo, Config, ContractStorageSizes, CreateInfo, Error,
 	Event, ExecutionInfo, One, Pallet, STORAGE_SIZE,
 };
-use evm::{backend::Backend as BackendT, ExitError, ExitReason, Transfer};
 use frame_support::{
 	dispatch::DispatchError,
 	ensure, log,
 	traits::{Currency, ExistenceRequirement, Get},
 };
+use module_evm_utiltity::{
+	ethereum::Log,
+	evm::{self, backend::Backend as BackendT, ExitError, ExitReason, Transfer},
+};
 use module_support::AddressMapping;
 pub use primitives::{
-	evm::{Account, EvmAddress, Log, Vicinity},
+	evm::{EvmAddress, Vicinity},
 	ReserveIdentifier, MIRRORED_NFT_ADDRESS_START,
 };
 use sha3::{Digest, Keccak256};

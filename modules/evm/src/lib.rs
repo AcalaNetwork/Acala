@@ -32,7 +32,6 @@ pub use crate::{
 	},
 };
 use codec::{Decode, Encode, MaxEncodedLen};
-pub use evm::{Config as EvmConfig, Context, ExitError, ExitFatal, ExitReason, ExitRevert, ExitSucceed};
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult, DispatchResultWithPostInfo},
 	ensure,
@@ -50,13 +49,18 @@ use frame_support::{
 };
 use frame_system::{ensure_root, ensure_signed, pallet_prelude::*, EnsureOneOf, EnsureRoot, EnsureSigned};
 use hex_literal::hex;
+pub use module_evm_utiltity::{
+	ethereum::{Log, TransactionAction},
+	evm::{self, Config as EvmConfig, Context, ExitError, ExitFatal, ExitReason, ExitRevert, ExitSucceed},
+	Account,
+};
 pub use module_support::{
 	AddressMapping, EVMStateRentTrait, ExecutionMode, InvokeContext, TransactionPayment, EVM as EVMTrait,
 };
 pub use orml_traits::currency::TransferAll;
 use primitive_types::{H160, H256, U256};
 pub use primitives::{
-	evm::{Account, CallInfo, CreateInfo, EvmAddress, ExecutionInfo, Log, TransactionAction, Vicinity},
+	evm::{CallInfo, CreateInfo, EvmAddress, ExecutionInfo, Vicinity},
 	ReserveIdentifier, H160_PREFIX_DEXSHARE, H160_PREFIX_TOKEN, MIRRORED_NFT_ADDRESS_START, PRECOMPILE_ADDRESS_START,
 	SYSTEM_CONTRACT_ADDRESS_PREFIX,
 };

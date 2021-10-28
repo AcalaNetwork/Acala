@@ -18,17 +18,16 @@
 
 use crate::{Balance, BlockNumber, Nonce};
 use codec::{Decode, Encode};
-pub use ethereum::{Log, TransactionAction};
-use evm::ExitReason;
+use module_evm_utiltity::{
+	ethereum::{Log, TransactionAction},
+	evm::ExitReason,
+};
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_core::{H160, H256, U256};
 use sp_runtime::RuntimeDebug;
 use sp_std::vec::Vec;
-
-pub use evm::backend::Basic as Account;
-pub use evm::Config;
 
 /// Evm Address.
 pub type EvmAddress = sp_core::H160;

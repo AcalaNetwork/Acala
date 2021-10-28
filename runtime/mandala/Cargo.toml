@@ -12,9 +12,6 @@ serde = { version = "1.0.124", optional = true, default-features = false }
 serde_json = "1.0.64"
 hex = { version = "0.4", default-features = false, optional = true }
 hex-literal = { version = "0.3.1" }
-# TODO
-#evm = { version = "0.30.0", optional = true, default-features = false }
-evm = { git = "https://github.com/PureStake/evm", branch = "joshy-scale-info", default-features = false, features = ["with-codec"] }
 scale-info = { version = "1.0", default-features = false, features = ["derive"] }
 
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.11", default-features = false, optional = true }
@@ -108,6 +105,7 @@ module-evm = { path = "../../modules/evm", default-features = false }
 module-evm-accounts = { path = "../../modules/evm-accounts", default-features = false }
 module-evm-bridge = { path = "../../modules/evm-bridge", default-features = false }
 module-evm-manager = { path = "../../modules/evm-manager", default-features = false }
+module-evm-utiltity = { path = "../../modules/evm-utiltity", default-features = false }
 module-honzon = { path = "../../modules/honzon", default-features = false }
 module-loans = { path = "../../modules/loans", default-features = false }
 module-nft = { path = "../../modules/nft", default-features = false }
@@ -244,6 +242,7 @@ std = [
 	"module-evm-accounts/std",
 	"module-evm-bridge/std",
 	"module-evm-manager/std",
+	"module-evm-utiltity/std",
 	"module-honzon/std",
 	"module-loans/std",
 	"module-nft/std",
