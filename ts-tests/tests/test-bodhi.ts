@@ -11,7 +11,7 @@ describeWithAcala("Acala RPC (bodhi.js)", (context) => {
 	let contract: Contract;
 
 	before(async () => {
-		[ alice ] = await context.provider.getWallets();
+		[alice] = await context.provider.getWallets();
 		contract = await deployContract(alice as any, Block);
 	});
 

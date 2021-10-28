@@ -112,10 +112,7 @@ fn proxy_permissions_correct() {
 		.execute_with(|| {
 			// runtimes have different minimum debit dust requirements
 			let min_debit: Balance = 100 * MinimumDebitValue::get();
-			assert_ok!(set_oracle_price(vec![(
-				RELAY_CHAIN_CURRENCY,
-				Price::saturating_from_rational(100, 1)
-			)]));
+			set_oracle_price(vec![(RELAY_CHAIN_CURRENCY, Price::saturating_from_rational(100, 1))]);
 			assert_ok!(CdpEngine::set_collateral_params(
 				Origin::root(),
 				RELAY_CHAIN_CURRENCY,

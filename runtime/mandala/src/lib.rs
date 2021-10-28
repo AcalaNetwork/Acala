@@ -55,6 +55,7 @@ use module_evm::{CallInfo, CreateInfo};
 use module_evm_accounts::EvmAddressMapping;
 pub use module_evm_manager::EvmCurrencyIdMapping;
 use module_relaychain::RelayChainCallBuilder;
+use module_support::ExchangeRateProvider;
 use module_transaction_payment::{Multiplier, TargetedFeeAdjustment};
 use scale_info::TypeInfo;
 
@@ -1094,7 +1095,7 @@ impl module_emergency_shutdown::Config for Runtime {
 
 parameter_types! {
 	pub const GetExchangeFee: (u32, u32) = (1, 1000);	// 0.1%
-	pub const TradingPathLimit: u32 = 3;
+	pub const TradingPathLimit: u32 = 4;
 	pub EnabledTradingPairs: Vec<TradingPair> = vec![
 		TradingPair::from_currency_ids(AUSD, ACA).unwrap(),
 		TradingPair::from_currency_ids(AUSD, DOT).unwrap(),
@@ -1559,7 +1560,7 @@ pub type DexPrecompile =
 	runtime_common::DexPrecompile<AccountId, EvmAddressMapping<Runtime>, EvmCurrencyIdMapping<Runtime>, Dex>;
 
 #[cfg(feature = "with-ethereum-compatibility")]
-static ISTANBUL_CONFIG: evm::Config = evm::Config::istanbul();
+static ISTANBUL_CONFIG: module_evm_utiltity::evm::Config = module_evm_utiltity::evm::Config::istanbul();
 
 impl module_evm::Config for Runtime {
 	type AddressMapping = EvmAddressMapping<Runtime>;
@@ -1591,7 +1592,7 @@ impl module_evm::Config for Runtime {
 	type WeightInfo = weights::module_evm::WeightInfo<Runtime>;
 
 	#[cfg(feature = "with-ethereum-compatibility")]
-	fn config() -> &'static evm::Config {
+	fn config() -> &'static module_evm_utiltity::evm::Config {
 		&ISTANBUL_CONFIG
 	}
 }
