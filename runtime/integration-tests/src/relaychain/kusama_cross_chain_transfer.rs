@@ -29,10 +29,6 @@ use xcm_emulator::TestExt;
 #[test]
 fn transfer_from_relay_chain() {
 	KusamaNet::execute_with(|| {
-		assert_ok!(kusama_runtime::XcmPallet::force_default_xcm_version(
-			kusama_runtime::Origin::root(),
-			Some(0)
-		));
 		assert_ok!(kusama_runtime::XcmPallet::reserve_transfer_assets(
 			kusama_runtime::Origin::signed(ALICE.into()),
 			Box::new(Parachain(2000).into().into()),
