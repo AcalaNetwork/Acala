@@ -110,15 +110,15 @@ pub use acala_imports::*;
 #[cfg(feature = "with-acala-runtime")]
 mod acala_imports {
 	pub use acala_runtime::{
-		constants::parachains, create_x2_parachain_multilocation, get_all_module_accounts, AcalaFoundationAccounts,
-		AcalaOracle, AccountId, AuctionManager, Authority, AuthoritysOriginId, Balance, Balances, BlockNumber, Call,
-		CdpEngine, CdpTreasury, CreateClassDeposit, CreateTokenDeposit, Currencies, CurrencyId, CurrencyIdConvert,
-		DataDepositPerByte, DefaultExchangeRate, Dex, EmergencyShutdown, Event, EvmAccounts, ExistentialDeposits, Get,
-		GetNativeCurrencyId, HomaLite, Honzon, Loans, MinimumDebitValue, MultiLocation, NativeTokenExistentialDeposit,
-		NetworkId, NftPalletId, OneDay, Origin, OriginCaller, ParachainAccount, ParachainInfo, ParachainSystem,
-		Perbill, Permill, Proxy, ProxyType, RelayChainBlockNumberProvider, RelayChainSovereignSubAccount, Runtime,
-		Scheduler, Session, SessionManager, SevenDays, System, Timestamp, TokenSymbol, Tokens, TreasuryPalletId,
-		Utility, Vesting, XTokens, XcmConfig, XcmExecutor, XcmUnbondFee, NFT,
+		create_x2_parachain_multilocation, get_all_module_accounts, AcalaFoundationAccounts, AcalaOracle, AccountId,
+		AuctionManager, Authority, AuthoritysOriginId, Balance, Balances, BlockNumber, Call, CdpEngine, CdpTreasury,
+		CreateClassDeposit, CreateTokenDeposit, Currencies, CurrencyId, CurrencyIdConvert, DataDepositPerByte,
+		DefaultExchangeRate, Dex, EmergencyShutdown, Event, EvmAccounts, ExistentialDeposits, Get, GetNativeCurrencyId,
+		HomaLite, Honzon, Loans, MinimumDebitValue, MultiLocation, NativeTokenExistentialDeposit, NetworkId,
+		NftPalletId, OneDay, Origin, OriginCaller, ParachainAccount, ParachainInfo, ParachainSystem, Proxy, ProxyType,
+		RelayChainBlockNumberProvider, RelayChainSovereignSubAccount, Runtime, Scheduler, Session, SessionManager,
+		SevenDays, System, Timestamp, TokenSymbol, Tokens, TreasuryPalletId, Utility, Vesting, XTokens, XcmConfig,
+		XcmExecutor, XcmUnbondFee, NFT,
 	};
 	pub use frame_support::parameter_types;
 	pub use primitives::TradingPair;

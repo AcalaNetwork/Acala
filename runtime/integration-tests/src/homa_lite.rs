@@ -57,6 +57,8 @@ fn homa_lite_mint_works() {
 			let liquid_amount_1 = 49_974_999_500_250;
 			#[cfg(feature = "with-karura-runtime")]
 			let liquid_amount_1 = 4_997_499_000_500_000;
+			#[cfg(feature = "with-acala-runtime")]
+			let liquid_amount_1 = 49_974_990_005_000;
 
 			assert_ok!(HomaLite::mint(Origin::signed(alice()), amount));
 			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY, &alice()), liquid_amount_1);
@@ -72,12 +74,16 @@ fn homa_lite_mint_works() {
 			assert_eq!(new_liquid_issuance, 10_049_974_999_500_250);
 			#[cfg(feature = "with-karura-runtime")]
 			assert_eq!(new_liquid_issuance, 1_004_997_499_000_500_000);
+			#[cfg(feature = "with-acala-runtime")]
+			assert_eq!(new_liquid_issuance, 10_049_974_990_005_000);
 
 			// liquid = (amount - MintFee) * (new_liquid_issuance / new_staking_total) * (1 - MaxRewardPerEra)
 			#[cfg(feature = "with-mandala-runtime")] // Mandala uses DOT, which has 10 d.p. accuracy.
 			let liquid_amount_2 = 49_974_875_181_840;
 			#[cfg(feature = "with-karura-runtime")] // Karura uses KSM, which has 12 d.p. accuracy.
 			let liquid_amount_2 = 4_997_486_563_940_292;
+			#[cfg(feature = "with-acala-runtime")] // Acala uses DOT, which has 10 d.p. accuracy.
+			let liquid_amount_2 = 49_974_865_639_397;
 
 			assert_ok!(HomaLite::mint(Origin::signed(alice()), amount));
 			System::assert_last_event(Event::HomaLite(module_homa_lite::Event::Minted(
@@ -93,6 +99,8 @@ fn homa_lite_mint_works() {
 				Currencies::free_balance(LIQUID_CURRENCY, &alice()),
 				9_994_985_564_440_292
 			);
+			#[cfg(feature = "with-acala-runtime")]
+			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY, &alice()), 99_949_855_644_397);
 		});
 }
 
@@ -321,10 +329,6 @@ mod karura_only_tests {
 		let homa_lite_sub_account: AccountId =
 			hex_literal::hex!["d7b8926b326dd349355a9a7cca6606c1e0eb6fd2b506066b518c7155ff0d8297"].into();
 		KusamaNet::execute_with(|| {
-			assert_ok!(kusama_runtime::XcmPallet::force_default_xcm_version(
-				kusama_runtime::Origin::root(),
-				Some(0)
-			));
 			// Transfer some KSM into the parachain.
 			assert_ok!(kusama_runtime::XcmPallet::reserve_transfer_assets(
 				kusama_runtime::Origin::signed(ALICE.into()),

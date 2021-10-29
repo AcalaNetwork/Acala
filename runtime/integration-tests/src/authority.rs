@@ -28,6 +28,9 @@ fn test_authority_module() {
 	#[cfg(feature = "with-karura-runtime")]
 	const AUTHORITY_ORIGIN_ID: u8 = 60u8;
 
+	#[cfg(feature = "with-acala-runtime")]
+	const AUTHORITY_ORIGIN_ID: u8 = 60u8;
+
 	ExtBuilder::default()
 		.balances(vec![
 			(AccountId::from(ALICE), USD_CURRENCY, 1_000 * dollar(USD_CURRENCY)),
@@ -133,6 +136,12 @@ fn test_authority_module() {
 				Some([AUTHORITY_ORIGIN_ID, 32, 28, 0, 0, 0, 0, 1, 0, 0, 0].to_vec()),
 				Err(DispatchError::BadOrigin),
 			)));
+			#[cfg(feature = "with-acala-runtime")]
+			System::assert_last_event(Event::Scheduler(pallet_scheduler::Event::<Runtime>::Dispatched(
+				(OneDay::get() + 1, 1),
+				Some([AUTHORITY_ORIGIN_ID, 32, 28, 0, 0, 0, 0, 1, 0, 0, 0].to_vec()),
+				Err(DispatchError::BadOrigin),
+			)));
 
 			let seven_days_later = one_day_later + SevenDays::get() + 1;
 
@@ -155,6 +164,13 @@ fn test_authority_module() {
 			)));
 
 			#[cfg(feature = "with-karura-runtime")]
+			System::assert_last_event(Event::Scheduler(pallet_scheduler::Event::<Runtime>::Dispatched(
+				(seven_days_later, 0),
+				Some([AUTHORITY_ORIGIN_ID, 225, 196, 0, 0, 0, 0, 2, 0, 0, 0].to_vec()),
+				Ok(()),
+			)));
+
+			#[cfg(feature = "with-acala-runtime")]
 			System::assert_last_event(Event::Scheduler(pallet_scheduler::Event::<Runtime>::Dispatched(
 				(seven_days_later, 0),
 				Some([AUTHORITY_ORIGIN_ID, 225, 196, 0, 0, 0, 0, 2, 0, 0, 0].to_vec()),
