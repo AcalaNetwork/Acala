@@ -206,6 +206,8 @@ impl Contains<Call> for BaseCallFilter {
 				| Call::PolkadotXcm(pallet_xcm::Call::execute { .. })
 				| Call::PolkadotXcm(pallet_xcm::Call::teleport_assets { .. })
 				| Call::PolkadotXcm(pallet_xcm::Call::reserve_transfer_assets { .. })
+				| Call::PolkadotXcm(pallet_xcm::Call::limited_reserve_transfer_assets { .. })
+				| Call::PolkadotXcm(pallet_xcm::Call::limited_teleport_assets { .. })
 		);
 		if is_xcm_call {
 			return false;
