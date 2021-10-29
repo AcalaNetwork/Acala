@@ -24,23 +24,21 @@ use serde_json::map::Map;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_core::{crypto::UncheckedInto, sr25519};
 use sp_runtime::traits::Zero;
-use sp_std::collections::btree_map::BTreeMap;
 
 use crate::chain_spec::{get_account_id_from_seed, get_parachain_authority_keys_from_seed, Extensions, TELEMETRY_URL};
 
 use acala_runtime::{
-	dollar, get_all_module_accounts, Balance, BalancesConfig, BlockNumber, CdpEngineConfig, CdpTreasuryConfig,
-	CollatorSelectionConfig, DexConfig, FinancialCouncilMembershipConfig, GeneralCouncilMembershipConfig,
-	HomaCouncilMembershipConfig, NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OrmlNFTConfig,
-	ParachainInfoConfig, PolkadotXcmConfig, SS58Prefix, SessionConfig, SessionDuration, SessionKeys,
-	SessionManagerConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig,
-	ACA, AUSD, DOT, LDOT,
+	dollar, Balance, BalancesConfig, BlockNumber, CdpEngineConfig, CdpTreasuryConfig, CollatorSelectionConfig,
+	DexConfig, FinancialCouncilMembershipConfig, GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig,
+	NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OrmlNFTConfig, ParachainInfoConfig,
+	PolkadotXcmConfig, SS58Prefix, SessionConfig, SessionDuration, SessionKeys, SessionManagerConfig, SudoConfig,
+	SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig, ACA, AUSD, DOT, LDOT,
 };
 use runtime_common::TokenInfo;
 
 pub type ChainSpec = sc_service::GenericChainSpec<acala_runtime::GenesisConfig, Extensions>;
 
-pub const PARA_ID: u32 = 2000;
+pub const PARA_ID: u32 = 2000; // TODO: need confirm
 
 pub fn acala_config() -> Result<ChainSpec, String> {
 	ChainSpec::from_json_bytes(&include_bytes!("../../../../resources/acala-dist.json")[..])
@@ -72,11 +70,8 @@ pub fn latest_acala_config() -> Result<ChainSpec, String> {
 			let existential_deposit = NativeTokenExistentialDeposit::get();
 			let mut total_allocated: Balance = Zero::zero();
 
-			let airdrop_accounts_json = &include_bytes!("../../../../resources/mandala-airdrop-ACA.json")[..];
-			let airdrop_accounts: Vec<(AccountId, Balance)> = serde_json::from_slice(airdrop_accounts_json).unwrap();
-			let other_allocation_json = &include_bytes!("../../../../resources/acala-allocation-ACA.json")[..];
-			let other_allocation: Vec<(AccountId, Balance)> = serde_json::from_slice(other_allocation_json).unwrap();
-
+			let allocation_json = &include_bytes!("../../../../resources/acala-allocation-ACA.json")[..];
+			let initial_allocation: Vec<(AccountId, Balance)> = serde_json::from_slice(allocation_json).unwrap();
 			let initial_authorities: Vec<(AccountId, AuraId)> = vec![
 				(
 					// 24j2ECgfuGHw2bv2YHLoFz88eKr39QAczGTz23bNLZKHEXdt
@@ -100,58 +95,40 @@ pub fn latest_acala_config() -> Result<ChainSpec, String> {
 				),
 			];
 
-			// TODO: update
 			let general_councils: Vec<AccountId> = vec![
-				// ouJX1WJQ9s4RMukAx5zvMwPY2zJZ9Xr5euzRG97Ne6UTNG9
-				hex!["1ab677fa2007fb1e8ac2f5f6d253d5a2bd9c2ed4e5d3c1565c5d84436f81325d"].into(),
-				// qMJYLJEP2HTBFhxqTFAJz9RcsT9UQ3VW2tFHRBmyaxPdj1n
-				hex!["5ac728d31a0046274f1c5bece1867555c6728c8e8219ff77bb7a8afef4ab8137"].into(),
-				// qPnkT89PRdiCbBgvE6a6gLcFCqWC8F1UoCZUhFvjbBkXMXc
-				hex!["5cac9c2837017a40f90cc15b292acdf1ee28ae03005dff8d13d32fdf7d2e237c"].into(),
-				// sZCH1stvMnSuDK1EDpdNepMYcpZWoDt3yF3PnUENS21f2tA
+				// 23RDJ7SyVgpKqC6M9ad8wvbBsbSr3R4Xqr5NQAKEhWPHbLbs
+				hex!["7095491dc941e21b9269fe67b322311df5daafd75f0bf8868afd8fa828b06329"].into(),
+				// 263KsUutx8qhRmG7hq6fEaSKE3fdi3KeeEKafkAMJ1cg1AYc
+				hex!["e498b8bed2069371dc5ece389d7d60fe34a91fe4936f7f8eb8a84cd3e8dae34c"].into(),
+				// 26VNG6LyuRag3xfuck7eoAjKk4ZLg9GeN6LDjxMw4ib3E8yg
+				hex!["f87525a8a29cc3a1c56fb231a165d5fd38c42459f38c638c3a1d0f29061c101a"].into(),
+				// 258WnzxhgwXuDL7w3Hag8TMCqb79dAUvRrMJd9kqJ9CzDf7v
 				hex!["bc517c01c4b663efdfea3dd9ab71bdc3ea607e8a35ba3d1872e5b0942821cd2f"].into(),
-				// ra6MmAYU2qdCVsMS3REKZ82CJ1EwMWq6H6Zo475xTzedctJ
+				// 249QskFMEcb5WcgHF7BH5MesVGHq3imsUACq2RPgtBBdCPMa
 				hex!["90c492f38270b5512370886c392ff6ec7624b14185b4b610b30248a28c94c953"].into(),
-				// ts9q95ZJmaCMCPKuKTY4g5ZeK65GdFVz6ZDD8LEnYJ3jpbm
+				// 26SUM8AN5MKefKCFiPDapUcQwHNfNzWYMyfUSVcqiFV2JYWc
 				hex!["f63fe694d0c8a0703fc45362efc2852c8b8c9c4061b5f0cf9bd0329a984fc95d"].into(),
 			];
 
-			// TODO: update
-			// sWcq8FAQXPdXGSaxSTBKS614hCB8YutkVWWacBKG1GbGS23
-			let root_key: AccountId = hex!["ba5a672d05b5db2ff433ee3dc24cf021e301bc9d44232046ce7bd45a9360fa50"].into();
+			// 26Jo633eujX7UwGDp9tTwTuSqTq5thopn2QUKoFQhM4gvCZp
+			let root_key: AccountId = hex!["f065057e73a3ffceff273f4555a0ea3d731ec8ef4d79954473b4ffda046d836d"].into();
 
-			let initial_allocation = initial_authorities
+			let unique_allocation_accounts = initial_allocation
 				.iter()
-				.map(|x| (x.0.clone(), existential_deposit))
-				.chain(airdrop_accounts)
-				.chain(other_allocation)
-				.chain(
-					get_all_module_accounts()
-						.iter()
-						.map(|x| (x.clone(), existential_deposit)), // add ED for module accounts
-				)
-				.fold(
-					BTreeMap::<AccountId, Balance>::new(),
-					|mut acc, (account_id, amount)| {
-						// merge duplicated accounts
-						if let Some(balance) = acc.get_mut(&account_id) {
-							*balance = balance
-								.checked_add(amount)
-								.expect("balance cannot overflow when building genesis");
-						} else {
-							acc.insert(account_id.clone(), amount);
-						}
+				.map(|(account_id, amount)| {
+					assert!(*amount >= existential_deposit, "allocation amount must gte ED");
+					total_allocated = total_allocated
+						.checked_add(*amount)
+						.expect("shouldn't overflow when building genesis");
 
-						total_allocated = total_allocated
-							.checked_add(amount)
-							.expect("total insurance cannot overflow when building genesis");
-						acc
-					},
-				)
-				.into_iter()
-				.collect::<Vec<(AccountId, Balance)>>();
-
-			// check total allocated
+					account_id
+				})
+				.cloned()
+				.collect::<std::collections::BTreeSet<_>>();
+			assert!(
+				unique_allocation_accounts.len() == initial_allocation.len(),
+				"duplicate allocation accounts in genesis."
+			);
 			assert_eq!(
 				total_allocated,
 				1_000_000_000 * dollar(ACA), // 1 billion ACA
