@@ -200,6 +200,17 @@ impl Contains<Call> for BaseCallFilter {
 			return true;
 		}
 
+		let is_xcm_call = matches!(
+			call,
+			Call::PolkadotXcm(pallet_xcm::Call::send { .. })
+				| Call::PolkadotXcm(pallet_xcm::Call::execute { .. })
+				| Call::PolkadotXcm(pallet_xcm::Call::teleport_assets { .. })
+				| Call::PolkadotXcm(pallet_xcm::Call::reserve_transfer_assets { .. })
+		);
+		if is_xcm_call {
+			return false;
+		}
+
 		let is_paused = module_transaction_pause::PausedTransactionFilter::<Runtime>::contains(call);
 		if is_paused {
 			// no paused call
