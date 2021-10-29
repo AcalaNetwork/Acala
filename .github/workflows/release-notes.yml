@@ -115,16 +115,10 @@ jobs:
           srtool_details: ${{ env.CHAIN }}-srtool-digest.json
           wasm_diff: ${{ env.CHAIN }}-diff.txt
 
-      - name: Save release note
-        run: |
-          cat <<EOT >> release_note.md
-          $(echo ${{ steps.generate-note.outputs.release-note }})
-          EOT
-
       - name: Crate Release Checklist issue
         if: ${{ !env.ACT }}
         uses: JasonEtco/create-an-issue@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          filename: release_note.md
+          filename: ${{ steps.generate-note.outputs.release-note }}
