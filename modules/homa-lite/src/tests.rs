@@ -876,18 +876,27 @@ fn total_staking_currency_update_periodically() {
 		}
 		// Inflate by 1%: 1_000_000 * 1.01
 		assert_eq!(TotalStakingCurrency::<Runtime>::get(), dollar(1_010_000));
+		System::assert_last_event(Event::HomaLite(crate::Event::TotalStakingCurrencySet(dollar(
+			1_010_000,
+		))));
 
 		for i in 201..301 {
 			HomaLite::on_initialize(i);
 		}
 		// 1_010_000 * 1.01
 		assert_eq!(TotalStakingCurrency::<Runtime>::get(), dollar(1_020_100));
+		System::assert_last_event(Event::HomaLite(crate::Event::TotalStakingCurrencySet(dollar(
+			1_020_100,
+		))));
 
 		for i in 301..401 {
 			HomaLite::on_initialize(i);
 		}
 		//1_020_100 * 1.01
 		assert_eq!(TotalStakingCurrency::<Runtime>::get(), dollar(1_030_301));
+		System::assert_last_event(Event::HomaLite(crate::Event::TotalStakingCurrencySet(dollar(
+			1_030_301,
+		))));
 	});
 }
 
