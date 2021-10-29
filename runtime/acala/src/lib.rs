@@ -824,11 +824,10 @@ impl module_currencies::Config for Runtime {
 }
 
 parameter_types! {
-	// TODO: update this
 	pub AcalaFoundationAccounts: Vec<AccountId> = vec![
-		hex_literal::hex!["efd29d0d6e63911ae3727fc71506bc3365c5d3b39e3a1680c857b4457cf8afad"].into(),	// tij5W2NzmtxxAbwudwiZpif9ScmZfgFYdzrJWKYq6oNbSNH
-		hex_literal::hex!["41dd2515ea11692c02306b68a2c6ff69b6606ebddaac40682789cfab300971c4"].into(),	// pndshZqDAC9GutDvv7LzhGhgWeGv5YX9puFA8xDidHXCyjd
-		hex_literal::hex!["dad0a28c620ba73b51234b1b2ae35064d90ee847e2c37f9268294646c5af65eb"].into(),	// tFBV65Ts7wpQPxGM6PET9euNzp4pXdi9DVtgLZDJoFveR9F
+		hex_literal::hex!["5336f96b54fa1832d517549bbffdfba2cae8983b8dcf65caff82d616014f5951"].into(),	// 22khtd8Zu9CpCY7DR4EPmmX66Aqsc91ShRAhehSWKGL7XDpL
+		hex_literal::hex!["26adf1c3a5b73f8640404d59ccb81de3ede79965b140addc7d8c0ff8736b5c53"].into(),	// 21kK5T9tvL8nVdAAWizjtBgRbGcAs466iU6ZxeNWb7mFgg5i
+		hex_literal::hex!["7e32626ae20238b3f2c63299bdc1eb4729c7aadc995ce2abaa4e42130209f5d5"].into(),	// 23j4ay2zBSgaSs18xstipmHBNi39W2Su9n8G89kWrz8eCe8F
 		TreasuryPalletId::get().into_account(),
 		TreasuryReservePalletId::get().into_account(),
 	];
@@ -1069,7 +1068,7 @@ impl module_cdp_treasury::Config for Runtime {
 
 impl module_transaction_pause::Config for Runtime {
 	type Event = Event;
-	type UpdateOrigin = EnsureRootOrThreeFourthsGeneralCouncil;
+	type UpdateOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
 	type WeightInfo = weights::module_transaction_pause::WeightInfo<Runtime>;
 }
 
@@ -1770,7 +1769,7 @@ construct_runtime!(
 		Rewards: orml_rewards::{Pallet, Storage, Call} = 81,
 		OrmlNFT: orml_nft::{Pallet, Storage, Config<T>} = 82,
 
-		// Karura Core
+		// Acala Core
 		Prices: module_prices::{Pallet, Storage, Call, Event<T>} = 90,
 		Dex: module_dex::{Pallet, Storage, Call, Event<T>, Config<T>} = 91,
 
@@ -1783,14 +1782,9 @@ construct_runtime!(
 		EmergencyShutdown: module_emergency_shutdown::{Pallet, Storage, Call, Event<T>} = 105,
 
 		// Homa
-		// Homa: module_homa::{Pallet, Call} = 110,
-		// NomineesElection: module_nominees_election::{Pallet, Call, Storage, Event<T>} = 111,
-		// StakingPool: module_staking_pool::{Pallet, Call, Storage, Event<T>, Config} = 112,
-		// PolkadotBridge: module_polkadot_bridge::{Pallet, Call, Storage} = 113,
-		// HomaValidatorListModule: module_homa_validator_list::{Pallet, Call, Storage, Event<T>} = 114,
 		HomaLite: module_homa_lite::{Pallet, Call, Storage, Event<T>} = 115,
 
-		// Karura Other
+		// Acala Other
 		Incentives: module_incentives::{Pallet, Storage, Call, Event<T>} = 120,
 		NFT: module_nft::{Pallet, Call, Event<T>} = 121,
 
@@ -2119,13 +2113,11 @@ impl_runtime_apis! {
 			orml_list_benchmark!(list, extra, module_honzon, benchmarking::honzon);
 			orml_list_benchmark!(list, extra, module_cdp_treasury, benchmarking::cdp_treasury);
 			orml_list_benchmark!(list, extra, module_collator_selection, benchmarking::collator_selection);
-			// orml_list_benchmark!(list, extra, module_nominees_election, benchmarking::nominees_election);
 			orml_list_benchmark!(list, extra, module_transaction_pause, benchmarking::transaction_pause);
 			orml_list_benchmark!(list, extra, module_transaction_payment, benchmarking::transaction_payment);
 			orml_list_benchmark!(list, extra, module_incentives, benchmarking::incentives);
 			orml_list_benchmark!(list, extra, module_prices, benchmarking::prices);
 			orml_list_benchmark!(list, extra, module_evm_accounts, benchmarking::evm_accounts);
-			// orml_list_benchmark!(list, extra, module_homa, benchmarking::homa);
 			orml_list_benchmark!(list, extra, module_currencies, benchmarking::currencies);
 			orml_list_benchmark!(list, extra, module_session_manager, benchmarking::session_manager);
 			orml_list_benchmark!(list, extra, orml_tokens, benchmarking::tokens);
@@ -2179,13 +2171,11 @@ impl_runtime_apis! {
 			orml_add_benchmark!(params, batches, module_honzon, benchmarking::honzon);
 			orml_add_benchmark!(params, batches, module_cdp_treasury, benchmarking::cdp_treasury);
 			orml_add_benchmark!(params, batches, module_collator_selection, benchmarking::collator_selection);
-			// orml_add_benchmark!(params, batches, module_nominees_election, benchmarking::nominees_election);
 			orml_add_benchmark!(params, batches, module_transaction_pause, benchmarking::transaction_pause);
 			orml_add_benchmark!(params, batches, module_transaction_payment, benchmarking::transaction_payment);
 			orml_add_benchmark!(params, batches, module_incentives, benchmarking::incentives);
 			orml_add_benchmark!(params, batches, module_prices, benchmarking::prices);
 			orml_add_benchmark!(params, batches, module_evm_accounts, benchmarking::evm_accounts);
-			// orml_add_benchmark!(params, batches, module_homa, benchmarking::homa);
 			orml_add_benchmark!(params, batches, module_currencies, benchmarking::currencies);
 			orml_add_benchmark!(params, batches, module_session_manager, benchmarking::session_manager);
 			orml_add_benchmark!(params, batches, orml_tokens, benchmarking::tokens);
