@@ -1296,7 +1296,6 @@ parameter_types! {
 	// This is a place holder value since XCM is not tested for Mandala yet.
 	pub XcmUnbondFee: Balance = 60 * millicent(DOT);
 	pub const StakingUpdateFrequency: BlockNumber = 14_400; // Update staking total Once per day
-	pub StakingInterestRatePerUpdate: Permill = Permill::from_rational(383u32, 1_000_000u32); // 1.15^(1/365) = 1.000383
 }
 impl module_homa_lite::Config for Runtime {
 	type Event = Event;
@@ -1322,7 +1321,6 @@ impl module_homa_lite::Config for Runtime {
 	type RelayChainUnbondingSlashingSpans = RelayChainUnbondingSlashingSpans;
 	type MaxScheduledUnbonds = MaxScheduledUnbonds;
 	type StakingUpdateFrequency = StakingUpdateFrequency;
-	type StakingInterestRatePerUpdate = StakingInterestRatePerUpdate;
 }
 
 parameter_types! {

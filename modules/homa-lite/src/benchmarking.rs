@@ -96,6 +96,8 @@ benchmarks! {
 	schedule_unbond {}: _(RawOrigin::Root, 1_000_000_000_000, <T as frame_system::Config>::BlockNumber::default())
 
 	replace_schedule_unbond {}: _(RawOrigin::Root, vec![(1_000_000, <T as frame_system::Config>::BlockNumber::default()), (1_000_000_000, <T as frame_system::Config>::BlockNumber::default())])
+
+	set_staking_interest_rate_per_update {}: _(RawOrigin::Root, Permill::default())
 }
 
 #[cfg(test)]
@@ -169,6 +171,13 @@ mod tests {
 	fn test_replace_schedule_unbond() {
 		ExtBuilder::default().build().execute_with(|| {
 			assert_ok!(Pallet::<Runtime>::test_benchmark_replace_schedule_unbond());
+		});
+	}
+
+	#[test]
+	fn test_set_staking_interest_rate_per_update() {
+		ExtBuilder::default().build().execute_with(|| {
+			assert_ok!(Pallet::<Runtime>::test_benchmark_set_staking_interest_rate_per_update());
 		});
 	}
 }

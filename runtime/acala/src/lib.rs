@@ -1534,7 +1534,6 @@ parameter_types! {
 	pub SubAccountIndex: u16 = RelayChainSubAccountId::HomaLite as u16;
 	pub const XcmUnbondFee: Balance = 600_000_000; // TODO identify unbon fee
 	pub const StakingUpdateFrequency: BlockNumber = 14_400; // Update staking total Once per day
-	pub StakingInterestRatePerUpdate: Permill = Permill::from_rational(383u32, 1_000_000u32); // 1.15^(1/365) = 1.000383
 }
 impl module_homa_lite::Config for Runtime {
 	type Event = Event;
@@ -1560,7 +1559,6 @@ impl module_homa_lite::Config for Runtime {
 	type RelayChainUnbondingSlashingSpans = RelayChainUnbondingSlashingSpans;
 	type MaxScheduledUnbonds = MaxScheduledUnbonds;
 	type StakingUpdateFrequency = StakingUpdateFrequency;
-	type StakingInterestRatePerUpdate = StakingInterestRatePerUpdate;
 }
 
 pub type LocalAssetTransactor = MultiCurrencyAdapter<

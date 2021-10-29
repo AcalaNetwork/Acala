@@ -58,6 +58,7 @@ pub trait WeightInfo {
 	fn request_redeem() -> Weight;
 	fn schedule_unbond() -> Weight;
 	fn replace_schedule_unbond() -> Weight;
+	fn set_staking_interest_rate_per_update() -> Weight;
 }
 
 /// Weights for module_homa_lite using the Acala node and recommended hardware.
@@ -114,6 +115,10 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 		(20_300_000 as Weight)
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
+	fn set_staking_interest_rate_per_update() -> Weight {
+		(19_059_000 as Weight)
+			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+	}
 }
 
 // For backwards compatibility and tests
@@ -167,6 +172,10 @@ impl WeightInfo for () {
 	}
 	fn replace_schedule_unbond() -> Weight {
 		(20_300_000 as Weight)
+			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
+	}
+	fn set_staking_interest_rate_per_update() -> Weight {
+		(19_059_000 as Weight)
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
 }

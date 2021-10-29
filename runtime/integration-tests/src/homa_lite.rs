@@ -315,6 +315,10 @@ fn liquid_value_goes_up_periodically() {
 				Origin::root(),
 				1_000_000 * dollar(RELAY_CHAIN_CURRENCY)
 			));
+			assert_ok!(HomaLite::set_staking_interest_rate_per_update(
+				Origin::root(),
+				Permill::from_rational(383u32, 1_000_000u32)
+			));
 
 			let rate1 = HomaLite::get_exchange_rate();
 

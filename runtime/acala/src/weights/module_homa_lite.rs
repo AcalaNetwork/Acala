@@ -98,4 +98,8 @@ impl<T: frame_system::Config> module_homa_lite::WeightInfo for WeightInfo<T> {
 		(11_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
+	fn set_staking_interest_rate_per_update() -> Weight {
+		(11_000_000 as Weight)
+			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+	}
 }

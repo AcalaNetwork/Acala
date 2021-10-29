@@ -271,7 +271,6 @@ parameter_types! {
 	pub const SubAccountIndex: u16 = 0;
 	pub ParachainId: ParaId = ParaId::from(PARACHAIN_ID);
 	pub const StakingUpdateFrequency: BlockNumber = 100;
-	pub StakingInterestRatePerUpdate: Permill = Permill::from_rational(1u32, 100u32);
 }
 ord_parameter_types! {
 	pub const Root: AccountId = ROOT;
@@ -309,7 +308,6 @@ impl Config for Runtime {
 	type RelayChainUnbondingSlashingSpans = RelayChainUnbondingSlashingSpans;
 	type MaxScheduledUnbonds = MaxScheduledUnbonds;
 	type StakingUpdateFrequency = StakingUpdateFrequency;
-	type StakingInterestRatePerUpdate = StakingInterestRatePerUpdate;
 }
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;

@@ -142,10 +142,6 @@ pub mod module {
 		/// The number of blocks to pass before TotalStakingCurrency is updated.
 		#[pallet::constant]
 		type StakingUpdateFrequency: Get<Self::BlockNumber>;
-
-		/// Interest rate per update
-		#[pallet::constant]
-		type StakingInterestRatePerUpdate: Get<Permill>;
 	}
 
 	#[pallet::error]
@@ -207,6 +203,9 @@ pub mod module {
 		/// The scheduled Unbond has been withdrew from the RelayChain.
 		///\[staking_amount_added\]
 		ScheduledUnbondWithdrew(Balance),
+
+		/// Interest rate for TotalStakingCurrency is set
+		StakingInterestRatePerUpdateSet(Permill),
 	}
 
 	/// The total amount of the staking currency on the relaychain.
@@ -247,6 +246,12 @@ pub mod module {
 	pub type ScheduledUnbond<T: Config> =
 		StorageValue<_, BoundedVec<(Balance, RelayChainBlockNumberOf<T>), T::MaxScheduledUnbonds>, ValueQuery>;
 
+	/// Every T::StakingUpdateFrequency blocks, TotalStakingCurrency gain interest by this rate.
+	/// StakingInterestRatePerUpdate: Value: Permill
+	#[pallet::storage]
+	#[pallet::getter(fn staking_interest_rate_per_update)]
+	pub type StakingInterestRatePerUpdate<T: Config> = StorageValue<_, Permill, ValueQuery>;
+
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
 
@@ -278,12 +283,13 @@ pub mod module {
 
 		fn on_initialize(n: T::BlockNumber) -> Weight {
 			// Update the total amount of Staking balance by acrueing the interest periodically.
-			if !T::StakingInterestRatePerUpdate::get().is_zero() && n % T::StakingUpdateFrequency::get() == Zero::zero()
+			if !Self::staking_interest_rate_per_update().is_zero()
+				&& !T::StakingUpdateFrequency::get().is_zero()
+				&& n % T::StakingUpdateFrequency::get() == Zero::zero()
 			{
-				TotalStakingCurrency::<T>::mutate(|current| {
-					*current = current.saturating_add(T::StakingInterestRatePerUpdate::get().mul(*current));
-					Self::deposit_event(Event::<T>::TotalStakingCurrencySet(*current));
-				});
+				let current = Self::total_staking_currency();
+				let new_total = current.saturating_add(Self::staking_interest_rate_per_update().mul(current));
+				let _ = Self::update_total_staking_currency_storage(new_total);
 				<T as Config>::WeightInfo::on_initialize()
 			} else {
 				0
@@ -322,12 +328,7 @@ pub mod module {
 		#[transactional]
 		pub fn set_total_staking_currency(origin: OriginFor<T>, staking_total: Balance) -> DispatchResult {
 			T::GovernanceOrigin::ensure_origin(origin)?;
-			ensure!(!staking_total.is_zero(), Error::<T>::InvalidTotalStakingCurrency);
-
-			TotalStakingCurrency::<T>::put(staking_total);
-			Self::deposit_event(Event::<T>::TotalStakingCurrencySet(staking_total));
-
-			Ok(())
+			Self::update_total_staking_currency_storage(staking_total)
 		}
 
 		/// Adjusts the total_staking_currency by the given difference.
@@ -362,10 +363,7 @@ pub mod module {
 					.ok_or(ArithmeticError::Underflow)?;
 			}
 
-			TotalStakingCurrency::<T>::put(current_staking_total);
-			Self::deposit_event(Event::<T>::TotalStakingCurrencySet(current_staking_total));
-
-			Ok(())
+			Self::update_total_staking_currency_storage(current_staking_total)
 		}
 
 		/// Updates the cap for how much Staking currency can be used to Mint liquid currency.
@@ -589,6 +587,25 @@ pub mod module {
 
 			Ok(())
 		}
+
+		/// Set the interest rate for TotalStakingCurrency.
+		/// TotakStakingCurrency is incremented every `T::StakingUpdateFrequency` blocks
+		///
+		/// Requires `T::GovernanceOrigin`
+		///
+		/// Parameters:
+		/// - `interest_rate`: the new interest rate for TotalStakingCurrency.
+		#[pallet::weight(< T as Config >::WeightInfo::set_staking_interest_rate_per_update())]
+		#[transactional]
+		pub fn set_staking_interest_rate_per_update(origin: OriginFor<T>, interest_rate: Permill) -> DispatchResult {
+			T::GovernanceOrigin::ensure_origin(origin)?;
+
+			StakingInterestRatePerUpdate::<T>::put(interest_rate);
+
+			Self::deposit_event(Event::<T>::StakingInterestRatePerUpdateSet(interest_rate));
+
+			Ok(())
+		}
 	}
 
 	impl<T: Config> Pallet<T> {
@@ -773,7 +790,7 @@ pub mod module {
 					Error::<T>::ExceededStakingCurrencyMintCap
 				);
 
-				TotalStakingCurrency::<T>::put(new_total_staking_currency);
+				Self::update_total_staking_currency_storage(new_total_staking_currency)?;
 
 				// All checks pass. Proceed with Xcm transfer.
 				T::XcmTransfer::transfer(
@@ -811,6 +828,7 @@ pub mod module {
 			let mut available_staking_balance = Self::available_staking_balance()
 				.checked_add(staking_amount)
 				.ok_or(ArithmeticError::Overflow)?;
+			let mut total_staking_currency = Self::total_staking_currency();
 			for (redeemer, (request_amount, extra_fee)) in RedeemRequests::<T>::iter() {
 				// If all the currencies are minted, return.
 				if available_staking_balance.is_zero() {
@@ -822,7 +840,8 @@ pub mod module {
 				);
 				let actual_staking_amount = Self::convert_liquid_to_staking(actual_liquid_amount)?;
 
-				TotalStakingCurrency::<T>::mutate(|x| *x = x.saturating_sub(actual_staking_amount));
+				total_staking_currency = total_staking_currency.saturating_sub(actual_staking_amount);
+				Self::update_total_staking_currency_storage(total_staking_currency)?;
 
 				// Redeem from the available_staking_balances costs only the xcm unbond fee.
 				T::Currency::deposit(
@@ -889,6 +908,18 @@ pub mod module {
 				T::XcmUnbondFee::get(),
 				Self::xcm_dest_weight(),
 			)
+		}
+
+		/// Helper function that update the storage with the new
+		fn update_total_staking_currency_storage(new_total: Balance) -> DispatchResult {
+			ensure!(!new_total.is_zero(), Error::<T>::InvalidTotalStakingCurrency);
+
+			// Update storage and emit event.
+			TotalStakingCurrency::<T>::mutate(|current| {
+				*current = new_total;
+				Self::deposit_event(Event::<T>::TotalStakingCurrencySet(*current));
+			});
+			Ok(())
 		}
 	}
 
