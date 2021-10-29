@@ -127,6 +127,7 @@ ecosystem-starport = { path = "../../ecosystem-modules/starport" }
 ecosystem-compound-cash = { path = "../../ecosystem-modules/compound-cash" }
 
 [dev-dependencies]
+env_logger = "0.8.3"
 
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.11" }
 sp-trie = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.11" }

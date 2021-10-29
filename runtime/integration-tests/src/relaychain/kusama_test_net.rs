@@ -53,6 +53,17 @@ decl_test_network! {
 	}
 }
 
+pub type RelayChainPalletXcm = pallet_xcm::Pallet<kusama_runtime::Runtime>;
+pub type ParachainPalletXcm = pallet_xcm::Pallet<karura_runtime::Runtime>;
+pub type RelayBalances = pallet_balances::Pallet<kusama_runtime::Runtime>;
+pub type ParaBalances = pallet_balances::Pallet<karura_runtime::Runtime>;
+pub type ParaTokens = orml_tokens::Pallet<karura_runtime::Runtime>;
+pub type ParaXTokens = orml_xtokens::Pallet<karura_runtime::Runtime>;
+
+pub fn para_karura_account() -> sp_runtime::AccountId32 {
+	ParaId::from(2000).into_account()
+}
+
 fn default_parachains_host_configuration() -> HostConfiguration<BlockNumber> {
 	HostConfiguration {
 		validation_upgrade_frequency: 1u32,
