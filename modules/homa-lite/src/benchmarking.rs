@@ -79,7 +79,7 @@ benchmarks! {
 
 	set_total_staking_currency {}: _(RawOrigin::Root, 1_000_000_000_000)
 
-	adjust_total_staking_currency {}: _(RawOrigin::Root, AmountOf::<T>::default())
+	adjust_total_staking_currency {}: _(RawOrigin::Root, AmountOf::<T>::max_value())
 
 	set_minting_cap {
 	}: _(RawOrigin::Root, 1_000_000_000_000_000_000)
