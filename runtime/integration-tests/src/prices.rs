@@ -20,7 +20,6 @@ use crate::setup::*;
 use module_prices::RealTimePriceProvider;
 use module_support::PriceProvider;
 
-#[cfg(any(feature = "with-karura-runtime"))]
 #[test]
 fn test_default_liquid_currency_price() {
 	ExtBuilder::default()
@@ -38,12 +37,37 @@ fn test_default_liquid_currency_price() {
 
 			set_oracle_price(vec![(RELAY_CHAIN_CURRENCY, relaychain_price)]);
 
-			assert_eq!(
-				RealTimePriceProvider::<Runtime>::get_relative_price(RELAY_CHAIN_CURRENCY, USD_CURRENCY),
-				Some(relaychain_price)
-			);
+			#[cfg(any(feature = "with-mandala-runtime", feature = "with-acala-runtime"))]
+			{
+				assert_eq!(
+					RealTimePriceProvider::<Runtime>::get_price(RELAY_CHAIN_CURRENCY),
+					Some(Price::saturating_from_integer(1_000_000_000u128))
+				);
+				assert_eq!(
+					RealTimePriceProvider::<Runtime>::get_price(LIQUID_CURRENCY),
+					Some(Price::saturating_from_integer(100_000_000u128))
+				);
+			}
+			#[cfg(feature = "with-karura-runtime")]
+			{
+				assert_eq!(
+					RealTimePriceProvider::<Runtime>::get_price(RELAY_CHAIN_CURRENCY),
+					Some(Price::saturating_from_integer(10_000_000u128))
+				);
+				assert_eq!(
+					RealTimePriceProvider::<Runtime>::get_price(LIQUID_CURRENCY),
+					Some(Price::saturating_from_integer(1_000_000u128))
+				);
+			}
 
 			let default_ratio = DefaultExchangeRate::get();
+
+			#[cfg(any(feature = "with-mandala-runtime", feature = "with-acala-runtime"))]
+			assert_eq!(
+				RealTimePriceProvider::<Runtime>::get_relative_price(LIQUID_CURRENCY, USD_CURRENCY),
+				Some(relaychain_price * default_ratio * 100.into())
+			);
+			#[cfg(feature = "with-karura-runtime")]
 			assert_eq!(
 				RealTimePriceProvider::<Runtime>::get_relative_price(LIQUID_CURRENCY, USD_CURRENCY),
 				Some(relaychain_price * default_ratio)
@@ -56,7 +80,6 @@ fn test_default_liquid_currency_price() {
 		});
 }
 
-#[cfg(any(feature = "with-karura-runtime"))]
 #[test]
 fn test_update_liquid_currency_price() {
 	ExtBuilder::default()
@@ -82,6 +105,12 @@ fn test_update_liquid_currency_price() {
 				110 * dollar(RELAY_CHAIN_CURRENCY)
 			));
 
+			#[cfg(feature = "with-mandala-runtime")]
+			assert_eq!(
+				RealTimePriceProvider::<Runtime>::get_relative_price(LIQUID_CURRENCY, RELAY_CHAIN_CURRENCY),
+				Some(Ratio::saturating_from_rational(100, 1000))
+			);
+			#[cfg(any(feature = "with-karura-runtime", feature = "with-acala-runtime"))]
 			assert_eq!(
 				RealTimePriceProvider::<Runtime>::get_relative_price(LIQUID_CURRENCY, RELAY_CHAIN_CURRENCY),
 				Some(Ratio::saturating_from_rational(110, 1000))
