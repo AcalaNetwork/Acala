@@ -1782,7 +1782,7 @@ construct_runtime!(
 		EmergencyShutdown: module_emergency_shutdown::{Pallet, Storage, Call, Event<T>} = 105,
 
 		// Homa
-		HomaLite: module_homa_lite::{Pallet, Call, Storage, Event<T>} = 110,
+		HomaLite: module_homa_lite::{Pallet, Call, Storage, Event<T>} = 115,
 
 		// Acala Other
 		Incentives: module_incentives::{Pallet, Storage, Call, Event<T>} = 120,
