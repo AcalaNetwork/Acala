@@ -48,7 +48,7 @@ use sp_std::marker::PhantomData;
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> module_auction_manager::WeightInfo for WeightInfo<T> {
 	fn cancel_collateral_auction() -> Weight {
-		(148_427_000 as Weight)
+		(148_426_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(11 as Weight))
 			.saturating_add(T::DbWeight::get().writes(8 as Weight))
 	}
