@@ -34,7 +34,7 @@ pub mod time {
 	pub const SLOT_DURATION: Moment = MILLISECS_PER_BLOCK;
 
 	pub fn deposit(items: u32, bytes: u32) -> Balance {
-		items as Balance * 2 * dollar(ACA) + (bytes as Balance) * 30 * millicent(ACA)
+		items as Balance * 4 * dollar(ACA) + (bytes as Balance) * 60 * millicent(ACA)
 	}
 }
 
