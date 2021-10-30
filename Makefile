@@ -139,7 +139,7 @@ cargo-update:
 
 .PHONY: build-wasm-mandala
 build-wasm-mandala:
-	./scripts/build-only-wasm.sh -p mandala-runtime --features=with-ethereum-compatibility
+	./scripts/build-only-wasm.sh -p mandala-runtime --features=on-chain-release-build
 
 .PHONY: build-wasm-karura
 build-wasm-karura:
@@ -151,7 +151,7 @@ build-wasm-acala:
 
 .PHONY: srtool-build-wasm-mandala
 srtool-build-wasm-mandala:
-	PACKAGE=mandala-runtime BUILD_OPTS="--features with-ethereum-compatibility" ./scripts/srtool-build.sh
+	PACKAGE=mandala-runtime BUILD_OPTS="--features on-chain-release-build" ./scripts/srtool-build.sh
 
 .PHONY: srtool-build-wasm-karura
 srtool-build-wasm-karura:
