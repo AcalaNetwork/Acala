@@ -72,10 +72,11 @@ pub use polkadot_parachain::primitives::Sibling;
 pub use xcm::latest::prelude::*;
 
 pub use xcm_builder::{
-	AccountId32Aliases, AllowTopLevelPaidExecutionFrom, AllowUnpaidExecutionFrom, EnsureXcmOrigin, FixedRateOfFungible,
-	FixedWeightBounds, IsConcrete, LocationInverter, NativeAsset, ParentAsSuperuser, ParentIsDefault,
-	RelayChainAsNative, SiblingParachainAsNative, SiblingParachainConvertsVia, SignedAccountId32AsNative,
-	SignedToAccountId32, SovereignSignedViaLocation, TakeRevenue, TakeWeightCredit,
+	AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom, AllowTopLevelPaidExecutionFrom,
+	AllowUnpaidExecutionFrom, EnsureXcmOrigin, FixedRateOfFungible, FixedWeightBounds, IsConcrete, LocationInverter,
+	NativeAsset, ParentAsSuperuser, ParentIsDefault, RelayChainAsNative, SiblingParachainAsNative,
+	SiblingParachainConvertsVia, SignedAccountId32AsNative, SignedToAccountId32, SovereignSignedViaLocation,
+	TakeRevenue, TakeWeightCredit,
 };
 pub use xcm_executor::{traits::WeightTrader, Assets, Config, XcmExecutor};
 
@@ -1409,7 +1410,14 @@ parameter_types! {
 	);
 }
 
-pub type Barrier = (TakeWeightCredit, AllowTopLevelPaidExecutionFrom<Everything>);
+pub type Barrier = (
+	TakeWeightCredit,
+	AllowTopLevelPaidExecutionFrom<Everything>,
+	// Expected responses are OK.
+	AllowKnownQueryResponses<PolkadotXcm>,
+	// Subscriptions for version tracking are OK.
+	AllowSubscriptionsFrom<Everything>,
+);
 
 pub struct ToTreasury;
 impl TakeRevenue for ToTreasury {
