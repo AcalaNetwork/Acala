@@ -118,10 +118,6 @@ fn currency_id_convert() {
 			assert_eq!(CurrencyIdConvert::convert(LDOT), None);
 
 			assert_eq!(
-				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(id, RENBTC.encode())),
-				Some(RENBTC)
-			);
-			assert_eq!(
 				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(id, ACA.encode())),
 				None
 			);
