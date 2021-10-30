@@ -87,7 +87,7 @@ pub mod fee {
 		let base_weight = Balance::from(ExtrinsicBaseWeight::get());
 		let base_tx_per_second = (WEIGHT_PER_SECOND as u128) / base_weight;
 		let kar_per_second = base_tx_per_second * base_tx_in_kar();
-		kar_per_second / 100
+		kar_per_second / 50
 	}
 }
 

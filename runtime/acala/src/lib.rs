@@ -199,14 +199,21 @@ impl Contains<Call> for BaseCallFilter {
 			return true;
 		}
 
+		let is_paused = module_transaction_pause::PausedTransactionFilter::<Runtime>::contains(call);
+		if is_paused {
+			// no paused call
+			return false;
+		}
+
 		let is_whitelisted = matches!(
 			call,
 			Call::Sudo(_) | // sudo
 			Call::Scheduler(_) | Call::Utility(_) | Call::Multisig(_) | Call::Proxy(_) | // utility
+			Call::TransactionPause(_) | // transaction pause
 			Call::Treasury(_) | Call::Bounties(_) | Call::Tips(_) | // treasury
 			// Call::CollatorSelection(_) | Call::Session(_) | Call::SessionManager(_) | // collator
 			Call::DmpQueue(_) | Call::OrmlXcm(_) | // xcm
-			// Call::PolkadotXcm(_) | Call::XTokens | // not allow user to make xcm call
+			// Call::PolkadotXcm(_) | Call::XTokens(_) | // not allow user to make xcm call
 			Call::Authority(_) |
 			Call::GeneralCouncil(_) | Call::GeneralCouncilMembership(_) |
 			Call::FinancialCouncil(_) | Call::FinancialCouncilMembership(_) |
@@ -276,7 +283,6 @@ impl pallet_authorship::Config for Runtime {
 }
 
 parameter_types! {
-	pub const DisabledValidatorsThreshold: Perbill = Perbill::from_percent(33);
 	pub const SessionDuration: BlockNumber = 2 * HOURS; // used in SessionManagerConfig of genesis
 }
 
@@ -295,7 +301,7 @@ impl pallet_session::Config for Runtime {
 }
 
 parameter_types! {
-	pub const MinCandidates: u32 = 3;
+	pub const MinCandidates: u32 = 1;
 	pub const MaxCandidates: u32 = 50;
 	pub const MaxInvulnerables: u32 = 10;
 	pub const KickPenaltySessionLength: u32 = 8;
@@ -371,7 +377,7 @@ impl pallet_sudo::Config for Runtime {
 }
 
 parameter_types! {
-	pub const GeneralCouncilMotionDuration: BlockNumber = 7 * DAYS;
+	pub const GeneralCouncilMotionDuration: BlockNumber = 3 * DAYS;
 	pub const GeneralCouncilMaxProposals: u32 = 20;
 	pub const GeneralCouncilMaxMembers: u32 = 30;
 }
@@ -401,7 +407,7 @@ impl pallet_membership::Config<GeneralCouncilMembershipInstance> for Runtime {
 }
 
 parameter_types! {
-	pub const FinancialCouncilMotionDuration: BlockNumber = 7 * DAYS;
+	pub const FinancialCouncilMotionDuration: BlockNumber = 3 * DAYS;
 	pub const FinancialCouncilMaxProposals: u32 = 20;
 	pub const FinancialCouncilMaxMembers: u32 = 30;
 }
@@ -431,7 +437,7 @@ impl pallet_membership::Config<FinancialCouncilMembershipInstance> for Runtime {
 }
 
 parameter_types! {
-	pub const HomaCouncilMotionDuration: BlockNumber = 7 * DAYS;
+	pub const HomaCouncilMotionDuration: BlockNumber = 3 * DAYS;
 	pub const HomaCouncilMaxProposals: u32 = 20;
 	pub const HomaCouncilMaxMembers: u32 = 30;
 }
@@ -461,7 +467,7 @@ impl pallet_membership::Config<HomaCouncilMembershipInstance> for Runtime {
 }
 
 parameter_types! {
-	pub const TechnicalCommitteeMotionDuration: BlockNumber = 7 * DAYS;
+	pub const TechnicalCommitteeMotionDuration: BlockNumber = 3 * DAYS;
 	pub const TechnicalCommitteeMaxProposals: u32 = 20;
 	pub const TechnicalCouncilMaxMembers: u32 = 30;
 }
@@ -617,11 +623,12 @@ impl pallet_tips::Config for Runtime {
 }
 
 parameter_types! {
-	pub const LaunchPeriod: BlockNumber = 7 * DAYS;
-	pub const VotingPeriod: BlockNumber = 7 * DAYS;
+	pub const LaunchPeriod: BlockNumber = 5 * DAYS;
+	pub const VotingPeriod: BlockNumber = 5 * DAYS;
 	pub const FastTrackVotingPeriod: BlockNumber = 3 * HOURS;
-	pub MinimumDeposit: Balance = 100 * dollar(ACA);
-	pub const EnactmentPeriod: BlockNumber = 7 * DAYS;
+	pub MinimumDeposit: Balance = 200 * dollar(ACA);
+	pub const EnactmentPeriod: BlockNumber = 2 * DAYS;
+	pub const VoteLockingPeriod: BlockNumber = 14 * DAYS;
 	pub const CooloffPeriod: BlockNumber = 7 * DAYS;
 	pub PreimageByteDeposit: Balance = deposit(0, 1);
 	pub const InstantAllowed: bool = true;
@@ -636,7 +643,7 @@ impl pallet_democracy::Config for Runtime {
 	type EnactmentPeriod = EnactmentPeriod;
 	type LaunchPeriod = LaunchPeriod;
 	type VotingPeriod = VotingPeriod;
-	type VoteLockingPeriod = EnactmentPeriod; // Same as EnactmentPeriod
+	type VoteLockingPeriod = VoteLockingPeriod;
 	type MinimumDeposit = MinimumDeposit;
 	/// A straight majority of the council can decide what their next motion is.
 	type ExternalOrigin = EnsureRootOrHalfGeneralCouncil;
@@ -729,9 +736,9 @@ parameter_type_with_key! {
 	pub ExistentialDeposits: |currency_id: CurrencyId| -> Balance {
 		match currency_id {
 			CurrencyId::Token(symbol) => match symbol {
-				TokenSymbol::AUSD => cent(*currency_id),
-				TokenSymbol::DOT => 10 * millicent(*currency_id),
-				TokenSymbol::LDOT => 50 * millicent(*currency_id),
+				TokenSymbol::AUSD => 10 * cent(*currency_id),
+				TokenSymbol::DOT => cent(*currency_id),
+				TokenSymbol::LDOT => 5 * cent(*currency_id),
 
 				TokenSymbol::KAR |
 				TokenSymbol::KUSD |
@@ -1469,7 +1476,7 @@ pub type LocalOriginToLocation = SignedToAccountId32<Origin, AccountId, RelayNet
 /// queues.
 pub type XcmRouter = (
 	// Two routers - use UMP to communicate with the relay chain:
-	cumulus_primitives_utility::ParentAsUmp<ParachainSystem, ()>,
+	cumulus_primitives_utility::ParentAsUmp<ParachainSystem, PolkadotXcm>,
 	// ..and XCMP to communicate with the sibling chains.
 	XcmpQueue,
 );
@@ -1500,7 +1507,7 @@ impl cumulus_pallet_xcmp_queue::Config for Runtime {
 	type Event = Event;
 	type XcmExecutor = XcmExecutor<XcmConfig>;
 	type ChannelInfo = ParachainSystem;
-	type VersionWrapper = ();
+	type VersionWrapper = PolkadotXcm;
 }
 
 impl cumulus_pallet_dmp_queue::Config for Runtime {
@@ -1538,7 +1545,7 @@ parameter_types! {
 	pub MaxScheduledUnbonds: u32 = 14;
 	pub ParachainAccount: AccountId = ParachainInfo::get().into_account();
 	pub SubAccountIndex: u16 = RelayChainSubAccountId::HomaLite as u16;
-	pub const XcmUnbondFee: Balance = 600_000_000; // TODO identify unbon fee
+	pub const XcmUnbondFee: Balance = 600_000_000; // TODO identify unbond fee
 }
 impl module_homa_lite::Config for Runtime {
 	type Event = Event;
@@ -1611,7 +1618,7 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 						if let Ok(currency_id) = CurrencyId::decode(&mut &*key) {
 							// check `currency_id` is cross-chain asset
 							match currency_id {
-								Token(ACA) | Token(AUSD) | Token(LDOT) | Token(RENBTC) => Some(currency_id),
+								Token(ACA) | Token(AUSD) | Token(LDOT) => Some(currency_id),
 								_ => None,
 							}
 						} else {

@@ -377,7 +377,7 @@ mod karura_only_tests {
 			assert_ok!(HomaLite::mint(Origin::signed(alice()), amount));
 
 			// Most balances transferred into Kusama. Some extra fee is deducted as gas
-			assert_eq!(Tokens::free_balance(RELAY_CHAIN_CURRENCY, &alice()), 999_936_000_001);
+			assert_eq!(Tokens::free_balance(RELAY_CHAIN_CURRENCY, &alice()), 999_872_000_001);
 		});
 
 		KusamaNet::execute_with(|| {

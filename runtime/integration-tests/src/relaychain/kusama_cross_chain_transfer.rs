@@ -46,7 +46,7 @@ fn transfer_from_relay_chain() {
 	});
 
 	Karura::execute_with(|| {
-		assert_eq!(Tokens::free_balance(KSM, &AccountId::from(BOB)), 999_936_000_000);
+		assert_eq!(Tokens::free_balance(KSM, &AccountId::from(BOB)), 999_872_000_000);
 	});
 }
 
