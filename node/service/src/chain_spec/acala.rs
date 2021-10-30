@@ -159,9 +159,8 @@ pub fn latest_acala_config() -> Result<ChainSpec, String> {
 				general_councils,
 			)
 		},
-		// TODO: update
 		vec![
-			"/dns/karura-rpc-0.aca-api.network/tcp/30333/p2p/12D3KooWDVQHcjsM5UkWKhfpxiNhWofmX5bvJd5Wn9qPFZk1C8t8"
+			"/dns/acala-rpc-0.aca-api.network/tcp/30333/p2p/12D3KooWASu892sCwPezdcqRbmS7HVYJcAfeMKQdewiRywYLeKL9"
 				.parse()
 				.unwrap(),
 		],
