@@ -40,21 +40,11 @@ jobs:
           target: wasm32-unknown-unknown
           default: true
 
-      - name: Build node
-        run: cargo build --release --features=with-${{ env.CHAIN }}-runtime --features=rococo-native
-
       - name: Install subwasm ${{ env.SUBWASM_VERSION }}
         run: |
           wget https://github.com/chevdor/subwasm/releases/download/v${{ env.SUBWASM_VERSION }}/subwasm_linux_amd64_v${{ env.SUBWASM_VERSION }}.deb
           sudo dpkg -i subwasm_linux_amd64_v${{ env.SUBWASM_VERSION }}.deb
           subwasm --version
-
-      - name: Subwasm info
-        run: |
-          ./target/release/acala --chain=${{ env.CHAIN }}-dev --rpc-cors=all --ws-external &
-          sleep 30
-          subwasm info ws://localhost:9944 > ${{ env.CHAIN }}-subwam-info.txt
-          pkill acala
 
       - name: Srtool build & subwasm info
         id: srtool_build
@@ -71,6 +61,9 @@ jobs:
 
           echo ::set-output name=wasm::$WASM_PATH
           echo ::set-output name=wasm_compressed::$WASM_COMPRESSED_PATH
+
+          subwasm info $WASM_PATH > ${{ env.CHAIN }}-subwam-info.txt
+          cat ${{ env.CHAIN }}-subwam-info.txt
 
           subwasm meta $WASM_PATH
           subwasm --json meta $WASM_PATH > ${{ env.CHAIN }}-metadata.json
