@@ -53,7 +53,7 @@ jobs:
           RUNTIME_DIR: runtime/${{ env.CHAIN }}
           SRTOOL_IMAGE: ${{ github.event.inputs.srtool_image }}
         run: |
-          docker run -i --rm -e PACKAGE=${{ env.PACKAGE }} -e RUNTIME_DIR=${{ env.RUNTIME_DIR }} -v ${{ env.GITHUB_WORKSPACE }}:/build ${{ env.SRTOOL_IMAGE }} build  | sed -e '1,/Your Substrate WASM Runtime is ready!/d' > ${{ env.CHAIN }}-srtool-details.txt
+          docker run -i --rm -e PACKAGE=${{ env.PACKAGE }} -e RUNTIME_DIR=${{ env.RUNTIME_DIR }} -v ${{ github.workspace }}:/build ${{ env.SRTOOL_IMAGE }} build  | sed -e '1,/Your Substrate WASM Runtime is ready!/d' > ${{ env.CHAIN }}-srtool-details.txt
           cat ${{ env.CHAIN }}-srtool-details.txt
 
           WASM_PATH='runtime/${{ env.CHAIN }}/target/srtool/release/wbuild/${{ env.CHAIN }}-runtime/${{ env.CHAIN }}_runtime.compact.wasm'
