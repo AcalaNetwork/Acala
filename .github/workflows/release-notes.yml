@@ -79,7 +79,6 @@ jobs:
           chain: ${{ env.CHAIN }}
           subwasm_info: ${{ env.CHAIN }}-subwam-info.txt
           srtool_details: ${{ env.CHAIN }}-srtool-details.txt
-          wasm_diff: ${{ env.CHAIN }}-diff.txt
 
       - name: Crate Release Checklist issue
         uses: JasonEtco/create-an-issue@v2
