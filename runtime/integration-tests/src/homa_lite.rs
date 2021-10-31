@@ -346,8 +346,11 @@ fn liquid_value_goes_up_periodically() {
 			// 1_000_383 * 1.000383 = 1000766.14669 (with rounding error)
 			#[cfg(any(feature = "with-mandala-runtime", feature = "with-acala-runtime"))]
 			assert_eq!(HomaLite::total_staking_currency(), 10_007_661_466_890_000);
+
+			// Karura ias 12 sec block time
+			// 1_000_383 * 1.000383 * 1.000383 = 1001149.440123181887
 			#[cfg(feature = "with-karura-runtime")]
-			assert_eq!(HomaLite::total_staking_currency(), 1_000_766_146_689_000_000);
+			assert_eq!(HomaLite::total_staking_currency(), 1_001_149_440_123_181_887);
 
 			let rate3 = HomaLite::get_exchange_rate();
 			assert!(rate3 > rate2);
@@ -358,8 +361,10 @@ fn liquid_value_goes_up_periodically() {
 			// 1000766.146689 * 1.000383 = 1.001149440123181887
 			#[cfg(any(feature = "with-mandala-runtime", feature = "with-acala-runtime"))]
 			assert_eq!(HomaLite::total_staking_currency(), 10_011_494_401_231_819);
+
+			// 1001149.440123181887 * 1.000383 * 1.000383 = 1001916.46745192646655
 			#[cfg(feature = "with-karura-runtime")]
-			assert_eq!(HomaLite::total_staking_currency(), 1_001_149_440_123_181_887);
+			assert_eq!(HomaLite::total_staking_currency(), 1_001_916_467_451_926_467);
 
 			let rate4 = HomaLite::get_exchange_rate();
 			assert!(rate4 > rate3);
