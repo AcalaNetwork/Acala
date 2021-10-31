@@ -2,7 +2,6 @@ name: Release Notes
 
 env:
   SUBWASM_VERSION: 0.14.1
-  SRTOOL_TAG: 1.53.0
 
 on:
   workflow_dispatch:
@@ -14,6 +13,10 @@ on:
       scope:
         description: Release scope [client | runtime | full]
         default: full
+        required: true
+      srtool_image:
+        description: You can use an alternate image, use with caution!
+        default: paritytech/srtool:1.53.0
         required: true
 
 jobs:
@@ -37,73 +40,36 @@ jobs:
           target: wasm32-unknown-unknown
           default: true
 
-      - name: Build node
-        run: cargo build --release --features=with-${{ env.CHAIN }}-runtime --features=rococo-native
-
-      # We now get extra information thanks to subwasm,
-      - name: Install subwasm ${{ env.SUBWASM_VERSION }}
+      - name: Install subwasm
         run: |
           wget https://github.com/chevdor/subwasm/releases/download/v${{ env.SUBWASM_VERSION }}/subwasm_linux_amd64_v${{ env.SUBWASM_VERSION }}.deb
           sudo dpkg -i subwasm_linux_amd64_v${{ env.SUBWASM_VERSION }}.deb
           subwasm --version
 
-      - name: Subwasm info
-        run: |
-          ./target/release/acala --chain=${{ env.CHAIN }}-dev --rpc-cors=all --ws-external &
-          sleep 30
-          subwasm info ws://localhost:9944 > ${{ env.CHAIN }}-subwam-info.txt
-          pkill acala
-
-      - name: Srtool build
+      - name: Srtool build & subwasm info
         id: srtool_build
-        uses: chevdor/srtool-actions@v0.3.0
-        with:
-          chain: ${{ env.CHAIN }}
-          tag: ${{ github.event.inputs.srtool_tag || env.SRTOOL_TAG }}
+        env:
+          PACKAGE: ${{ env.CHAIN }}-runtime
+          RUNTIME_DIR: runtime/${{ env.CHAIN }}
+          SRTOOL_IMAGE: ${{ github.event.inputs.srtool_image }}
+        run: |
+          docker run -i --rm -e PACKAGE=${{ env.PACKAGE }} -e RUNTIME_DIR=${{ env.RUNTIME_DIR }} -v ${{ github.workspace }}:/build ${{ env.SRTOOL_IMAGE }} build  | sed -e '1,/Your Substrate WASM Runtime is ready!/d' > ${{ env.CHAIN }}-srtool-details.txt
+          cat ${{ env.CHAIN }}-srtool-details.txt
 
-      - name: Summary
-        run: |
-          echo '${{ steps.srtool_build.outputs.json }}' | jq > ${{ env.CHAIN }}-srtool-digest.json
-          cat ${{ env.CHAIN }}-srtool-digest.json
-          echo "Runtime location: ${{ steps.srtool_build.outputs.wasm }}"
+          WASM_PATH='runtime/${{ env.CHAIN }}/target/srtool/release/wbuild/${{ env.CHAIN }}-runtime/${{ env.CHAIN }}_runtime.compact.wasm'
+          WASM_COMPRESSED_PATH='runtime/${{ env.CHAIN }}/target/srtool/release/wbuild/${{ env.CHAIN }}-runtime/${{ env.CHAIN }}_runtime.compact.compressed.wasm'
 
-      - name: Extract the metadata
-        run: |
-          subwasm meta ${{ steps.srtool_build.outputs.wasm }}
-          subwasm --json meta ${{ steps.srtool_build.outputs.wasm }} > ${{ env.CHAIN }}-metadata.json
-      - name: Check the metadata diff
-        run: |
+          echo ::set-output name=wasm::$WASM_PATH
+          echo ::set-output name=wasm_compressed::$WASM_COMPRESSED_PATH
+
+          subwasm info $WASM_COMPRESSED_PATH > ${{ env.CHAIN }}-subwam-info.txt
+          cat ${{ env.CHAIN }}-subwam-info.txt
+
+          subwasm meta $WASM_PATH
+          subwasm --json meta $WASM_PATH > ${{ env.CHAIN }}-metadata.json
+
           subwasm get wss://karura-rpc-2.aca-api.network/ws --output runtime_mainnet.wasm
-          subwasm diff ${{ steps.srtool_build.outputs.wasm }} runtime_mainnet.wasm | tee ${{ env.CHAIN }}-diff.txt
-
-      - name: Archive Artifacts for ${{ env.CHAIN }}
-        uses: actions/upload-artifact@v2
-        with:
-          name: ${{ env.CHAIN }}-runtime
-          path: |
-            ${{ steps.srtool_build.outputs.wasm }}
-            ${{ steps.srtool_build.outputs.wasm_compressed }}
-            ${{ env.CHAIN }}-srtool-digest.json
-
-      - name: Archive Subwasm results
-        uses: actions/upload-artifact@v2
-        with:
-          name: ${{ env.CHAIN }}-runtime
-          path: |
-            ${{ env.CHAIN }}-info.json
-            ${{ env.CHAIN }}-info_compressed.json
-            ${{ env.CHAIN }}-metadata.json
-            ${{ env.CHAIN }}-diff.txt
-            ${{ env.CHAIN }}-subwam-info.txt
-
-      # - name: Upload wasm to pinata
-      #   if: ${{ !env.ACT }}
-      #   uses: aquiladev/ipfs-action@v0.1.6
-      #   with:
-      #     path: ${{ steps.srtool_build.outputs.wasm_compressed }}
-      #     service: pinata
-      #     pinataKey: ${{ secrets.PINATA_KEY }}
-      #     pinataSecret: ${{ secrets.PINATA_SECRET }}
+          subwasm diff $WASM_PATH runtime_mainnet.wasm | tee ${{ env.CHAIN }}-diff.txt
 
       - name: Generate note
         id: generate-note
@@ -112,13 +78,31 @@ jobs:
           scope: ${{ env.SCOPE }}
           chain: ${{ env.CHAIN }}
           subwasm_info: ${{ env.CHAIN }}-subwam-info.txt
-          srtool_details: ${{ env.CHAIN }}-srtool-digest.json
-          wasm_diff: ${{ env.CHAIN }}-diff.txt
+          srtool_details: ${{ env.CHAIN }}-srtool-details.txt
 
       - name: Crate Release Checklist issue
-        if: ${{ !env.ACT }}
         uses: JasonEtco/create-an-issue@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           filename: ${{ steps.generate-note.outputs.release-note }}
+
+      - name: Archive Artifacts for ${{ env.CHAIN }}
+        uses: actions/upload-artifact@v2
+        with:
+          name: ${{ env.CHAIN }}-runtime
+          path: |
+            ${{ steps.srtool_build.outputs.wasm }}
+            ${{ steps.srtool_build.outputs.wasm_compressed }}
+            ${{ env.CHAIN }}-srtool-details.txt
+            ${{ env.CHAIN }}-metadata.json
+            ${{ env.CHAIN }}-subwam-info.txt
+            ${{ env.CHAIN }}-diff.txt
+
+      - name: Upload wasm to pinata
+        uses: aquiladev/ipfs-action@v0.1.6
+        with:
+          path: ${{ steps.srtool_build.outputs.wasm_compressed }}
+          service: pinata
+          pinataKey: ${{ secrets.PINATA_KEY }}
+          pinataSecret: ${{ secrets.PINATA_SECRET }}
