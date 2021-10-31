@@ -1532,8 +1532,8 @@ parameter_types! {
 	pub ParachainAccount: AccountId = ParachainInfo::get().into_account();
 	pub SubAccountIndex: u16 = RelayChainSubAccountId::HomaLite as u16;
 	pub const XcmUnbondFee: Balance = 600_000_000; // TODO identify unbon fee
-	pub const StakingUpdateFrequency: BlockNumber = 14_400; // Update staking total Once per day
 }
+
 impl module_homa_lite::Config for Runtime {
 	type Event = Event;
 	type WeightInfo = weights::module_homa_lite::WeightInfo<Runtime>;
@@ -1557,7 +1557,7 @@ impl module_homa_lite::Config for Runtime {
 	type MaximumRedeemRequestMatchesForMint = MaximumRedeemRequestMatchesForMint;
 	type RelayChainUnbondingSlashingSpans = RelayChainUnbondingSlashingSpans;
 	type MaxScheduledUnbonds = MaxScheduledUnbonds;
-	type StakingUpdateFrequency = StakingUpdateFrequency;
+	type StakingUpdateFrequency = OneDay;
 }
 
 pub type LocalAssetTransactor = MultiCurrencyAdapter<

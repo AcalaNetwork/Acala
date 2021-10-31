@@ -282,10 +282,11 @@ pub mod module {
 		}
 
 		fn on_initialize(n: T::BlockNumber) -> Weight {
+			let update_frequency = T::StakingUpdateFrequency::get();
 			// Update the total amount of Staking balance by acrueing the interest periodically.
 			if !Self::staking_interest_rate_per_update().is_zero()
-				&& !T::StakingUpdateFrequency::get().is_zero()
-				&& n % T::StakingUpdateFrequency::get() == Zero::zero()
+				&& !update_frequency.is_zero()
+				&& n % update_frequency == Zero::zero()
 			{
 				let current = Self::total_staking_currency();
 				let new_total = current.saturating_add(Self::staking_interest_rate_per_update().mul(current));
