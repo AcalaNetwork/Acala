@@ -47,11 +47,6 @@ use sp_std::marker::PhantomData;
 /// Weight functions for module_homa_lite.
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> module_homa_lite::WeightInfo for WeightInfo<T> {
-	fn on_idle() -> Weight {
-		(254_000_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(23 as Weight))
-			.saturating_add(T::DbWeight::get().writes(17 as Weight))
-	}
 	fn mint() -> Weight {
 		(134_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(14 as Weight))
@@ -71,7 +66,7 @@ impl<T: frame_system::Config> module_homa_lite::WeightInfo for WeightInfo<T> {
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
-	fn adjust_available_staking_balance() -> Weight {
+	fn adjust_available_staking_balance_with_no_matches() -> Weight {
 		(17_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
@@ -96,6 +91,14 @@ impl<T: frame_system::Config> module_homa_lite::WeightInfo for WeightInfo<T> {
 	}
 	fn replace_schedule_unbond() -> Weight {
 		(11_000_000 as Weight)
+			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+	}
+	fn redeem_with_available_staking_balance() -> Weight {
+		(21_316_000 as Weight)
+			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+	}
+	fn xcm_unbond() -> Weight {
+		(21_316_000 as Weight)
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 }

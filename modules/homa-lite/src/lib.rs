@@ -249,9 +249,9 @@ pub mod module {
 	#[pallet::hooks]
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
 		fn on_idle(_n: T::BlockNumber, remaining_weight: Weight) -> Weight {
-			let required_weight = <T as Config>::WeightInfo::on_idle();
 			let mut current_weight = 0;
-			if remaining_weight > required_weight {
+			// If enough weight, process the next XCM unbond.
+			if remaining_weight > <T as Config>::WeightInfo::xcm_unbond() {
 				let mut scheduled_unbond = Self::scheduled_unbond();
 				if !scheduled_unbond.is_empty() {
 					let (staking_amount, block_number) = scheduled_unbond[0];
@@ -261,7 +261,7 @@ pub mod module {
 						debug_assert!(res.is_ok());
 
 						if res.is_ok() {
-							current_weight = required_weight;
+							current_weight = <T as Config>::WeightInfo::xcm_unbond();
 
 							scheduled_unbond.remove(0);
 							ScheduledUnbond::<T>::put(scheduled_unbond);
@@ -269,6 +269,22 @@ pub mod module {
 					}
 				}
 			}
+
+			// With remaining weight, calculate max number of redeems that can be matched
+			let num_redeem_matches = remaining_weight
+				.saturating_sub(current_weight)
+				.checked_div(<T as Config>::WeightInfo::redeem_with_available_staking_balance())
+				.unwrap_or_default();
+
+			// Iterate through existing redeem_requests, and try to match them with `available_staking_balance`
+			let res = Self::process_redeem_requests_with_available_staking_balance(num_redeem_matches);
+			debug_assert!(res.is_ok());
+			if res.is_ok() {
+				current_weight = current_weight.saturating_add(
+					<T as Config>::WeightInfo::redeem_with_available_staking_balance().saturating_mul(res.unwrap()),
+				);
+			}
+
 			current_weight
 		}
 	}
@@ -580,9 +596,17 @@ pub mod module {
 		/// Parameters:
 		/// - `adjustment`: The difference in amount the AvailableStakingBalance should be adjusted
 		///   by.
-		#[pallet::weight(< T as Config >::WeightInfo::adjust_available_staking_balance())]
+		#[pallet::weight(
+			< T as Config >::WeightInfo::adjust_available_staking_balance_with_no_matches().saturating_add(
+			max_num_matches.saturating_mul(< T as Config >::WeightInfo::redeem_with_available_staking_balance())
+			)
+		)]
 		#[transactional]
-		pub fn adjust_available_staking_balance(origin: OriginFor<T>, by_amount: AmountOf<T>) -> DispatchResult {
+		pub fn adjust_available_staking_balance(
+			origin: OriginFor<T>,
+			by_amount: AmountOf<T>,
+			max_num_matches: u64,
+		) -> DispatchResult {
 			T::GovernanceOrigin::ensure_origin(origin)?;
 
 			// Convert AmountOf<T> into Balance safely.
@@ -605,7 +629,8 @@ pub mod module {
 			});
 
 			// With new staking balance available, process pending redeem requests.
-			Self::process_redeem_requests_with_available_staking_balance()
+			let _ = Self::process_redeem_requests_with_available_staking_balance(max_num_matches)?;
+			Ok(())
 		}
 	}
 
@@ -816,10 +841,9 @@ pub mod module {
 		}
 
 		/// Construct XCM message and sent it to the relaychain to withdraw_unbonded Staking
-		/// currency. The staking currency withdrew becomes available to be redeemed. Process
-		/// through redeem requests to fullfill the redeem order.
+		/// currency. The staking currency withdrew becomes available to be redeemed.
 		#[transactional]
-		fn process_scheduled_unbond(staking_amount_unbonded: Balance) -> DispatchResult {
+		pub fn process_scheduled_unbond(staking_amount_unbonded: Balance) -> DispatchResult {
 			let msg = Self::construct_xcm_unreserve_message(T::ParachainAccount::get(), staking_amount_unbonded);
 
 			let res = pallet_xcm::Pallet::<T>::send_xcm(Here, Parent, msg);
@@ -832,23 +856,26 @@ pub mod module {
 			});
 
 			Self::deposit_event(Event::<T>::ScheduledUnbondWithdrew(staking_amount_unbonded));
-
-			// Now that there's available staking balance, automatically match existing
-			// redeem_requests.
-			Self::process_redeem_requests_with_available_staking_balance()
+			Ok(())
 		}
 
 		/// Iterate through all redeem requests, then match them with available_staking_balance.
 		/// This should be called when new available_staking_balance becomes available.
 		#[transactional]
-		fn process_redeem_requests_with_available_staking_balance() -> DispatchResult {
-			let mut new_balances: Vec<(T::AccountId, Balance, Permill)> = vec![];
+		pub fn process_redeem_requests_with_available_staking_balance(
+			max_num_matches: u64,
+		) -> Result<u64, sp_runtime::DispatchError> {
+			if max_num_matches.is_zero() {
+				return Ok(0);
+			}
 			let mut available_staking_balance = Self::available_staking_balance();
+			if available_staking_balance.is_zero() {
+				return Ok(0);
+			}
+
+			let mut new_balances: Vec<(T::AccountId, Balance, Permill)> = vec![];
+			let mut num_matched = 0u64;
 			for (redeemer, (request_amount, extra_fee)) in RedeemRequests::<T>::iter() {
-				// If all the currencies are minted, return.
-				if available_staking_balance.is_zero() {
-					break;
-				}
 				let actual_liquid_amount = min(
 					request_amount,
 					Self::convert_staking_to_liquid(available_staking_balance)?,
@@ -876,6 +903,12 @@ pub mod module {
 					actual_staking_amount,
 					actual_liquid_amount,
 				));
+				num_matched += 1u64;
+
+				// If all the currencies are minted, return.
+				if available_staking_balance.is_zero() || num_matched >= max_num_matches {
+					break;
+				}
 			}
 
 			// Update storage to the new balances. Remove Redeem requests that have been filled.
@@ -883,8 +916,9 @@ pub mod module {
 
 			AvailableStakingBalance::<T>::put(available_staking_balance);
 
-			Ok(())
+			Ok(num_matched)
 		}
+
 		/// Update the RedeemRequests storage with the new balances.
 		/// Remove Redeem requests that are dust, or have been filled.
 		#[allow(clippy::ptr_arg)]
