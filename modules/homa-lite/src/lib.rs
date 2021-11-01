@@ -284,13 +284,14 @@ pub mod module {
 
 		fn on_initialize(n: T::BlockNumber) -> Weight {
 			// Update the total amount of Staking balance by acrueing the interest periodically.
-			if !Self::staking_interest_rate_per_update().is_zero()
+			let interest_rate = Self::staking_interest_rate_per_update();
+			if !interest_rate.is_zero()
 				&& n.checked_rem(&T::StakingUpdateFrequency::get())
 					.unwrap_or_else(One::one)
 					.is_zero()
 			{
 				let current = Self::total_staking_currency();
-				let new_total = current.saturating_add(Self::staking_interest_rate_per_update().mul(current));
+				let new_total = current.saturating_add(interest_rate.mul(current));
 				let _ = Self::update_total_staking_currency_storage(new_total);
 				<T as Config>::WeightInfo::on_initialize()
 			} else {
