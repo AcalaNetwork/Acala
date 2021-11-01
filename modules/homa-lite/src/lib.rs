@@ -286,7 +286,7 @@ pub mod module {
 			// Update the total amount of Staking balance by acrueing the interest periodically.
 			if !Self::staking_interest_rate_per_update().is_zero()
 				&& n.checked_rem(&T::StakingUpdateFrequency::get())
-					.unwrap_or(One::one())
+					.unwrap_or_else(One::one)
 					.is_zero()
 			{
 				let current = Self::total_staking_currency();
