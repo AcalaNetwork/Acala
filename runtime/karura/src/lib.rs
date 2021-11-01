@@ -231,7 +231,7 @@ impl Contains<Call> for BaseCallFilter {
 				| pallet_xcm::Call::force_unsubscribe_version_notify { .. } => {
 					return true;
 				}
-				_ => {
+				pallet_xcm::Call::__Ignore { .. } => {
 					unimplemented!()
 				}
 			}
