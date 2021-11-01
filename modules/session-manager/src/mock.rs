@@ -79,7 +79,7 @@ impl pallet_session::SessionHandler<u64> for TestSessionHandler {
 	const KEY_TYPE_IDS: &'static [sp_runtime::KeyTypeId] = &[UintAuthorityId::ID];
 	fn on_genesis_session<T: OpaqueKeys>(_validators: &[(u64, T)]) {}
 	fn on_new_session<T: OpaqueKeys>(_changed: bool, _validators: &[(u64, T)], _queued_validators: &[(u64, T)]) {}
-	fn on_disabled(_validator_index: usize) {}
+	fn on_disabled(_validator_index: u32) {}
 }
 
 impl pallet_session::Config for Runtime {
@@ -92,7 +92,6 @@ impl pallet_session::Config for Runtime {
 	type SessionManager = ();
 	type SessionHandler = TestSessionHandler;
 	type Keys = MockSessionKeys;
-	type DisabledValidatorsThreshold = ();
 	type WeightInfo = ();
 }
 

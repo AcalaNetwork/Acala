@@ -118,10 +118,6 @@ fn currency_id_convert() {
 			assert_eq!(CurrencyIdConvert::convert(LDOT), None);
 
 			assert_eq!(
-				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(id, RENBTC.encode())),
-				Some(RENBTC)
-			);
-			assert_eq!(
 				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(id, ACA.encode())),
 				None
 			);
@@ -184,7 +180,7 @@ fn currency_id_convert() {
 
 			assert_eq!(
 				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(id, RENBTC.encode())),
-				Some(RENBTC)
+				None
 			);
 			assert_eq!(
 				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(id, KAR.encode())),
@@ -201,35 +197,6 @@ fn currency_id_convert() {
 			assert_eq!(
 				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(id, LKSM.encode())),
 				None
-			);
-			assert_eq!(
-				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(
-					parachains::bifrost::ID,
-					parachains::bifrost::BNC_KEY.to_vec()
-				)),
-				None
-			);
-			assert_eq!(
-				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(
-					parachains::bifrost::ID,
-					parachains::bifrost::VSKSM_KEY.to_vec()
-				)),
-				None
-			);
-
-			assert_eq!(
-				CurrencyIdConvert::convert(BNC),
-				Some(MultiLocation::sibling_parachain_general_key(
-					parachains::bifrost::ID,
-					parachains::bifrost::BNC_KEY.to_vec()
-				))
-			);
-			assert_eq!(
-				CurrencyIdConvert::convert(VSKSM),
-				Some(MultiLocation::sibling_parachain_general_key(
-					parachains::bifrost::ID,
-					parachains::bifrost::VSKSM_KEY.to_vec()
-				))
 			);
 
 			let native_currency: MultiAsset = (

@@ -72,10 +72,11 @@ pub use polkadot_parachain::primitives::Sibling;
 pub use xcm::latest::prelude::*;
 
 pub use xcm_builder::{
-	AccountId32Aliases, AllowTopLevelPaidExecutionFrom, AllowUnpaidExecutionFrom, EnsureXcmOrigin, FixedRateOfFungible,
-	FixedWeightBounds, IsConcrete, LocationInverter, NativeAsset, ParentAsSuperuser, ParentIsDefault,
-	RelayChainAsNative, SiblingParachainAsNative, SiblingParachainConvertsVia, SignedAccountId32AsNative,
-	SignedToAccountId32, SovereignSignedViaLocation, TakeRevenue, TakeWeightCredit,
+	AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom, AllowTopLevelPaidExecutionFrom,
+	AllowUnpaidExecutionFrom, EnsureXcmOrigin, FixedRateOfFungible, FixedWeightBounds, IsConcrete, LocationInverter,
+	NativeAsset, ParentAsSuperuser, ParentIsDefault, RelayChainAsNative, SiblingParachainAsNative,
+	SiblingParachainConvertsVia, SignedAccountId32AsNative, SignedToAccountId32, SovereignSignedViaLocation,
+	TakeRevenue, TakeWeightCredit,
 };
 pub use xcm_executor::{traits::WeightTrader, Assets, Config, XcmExecutor};
 
@@ -86,8 +87,8 @@ pub use frame_support::{
 	construct_runtime, log, parameter_types,
 	traits::{
 		Contains, ContainsLengthBound, Currency as PalletCurrency, EnsureOrigin, Everything, Get, Imbalance,
-		InstanceFilter, IsSubType, IsType, KeyOwnerProofSystem, LockIdentifier, Nothing, OnRuntimeUpgrade,
-		OnUnbalanced, Randomness, SortedMembers, U128CurrencyToVote,
+		InstanceFilter, IsSubType, IsType, KeyOwnerProofSystem, LockIdentifier, Nothing, OnUnbalanced, Randomness,
+		SortedMembers, U128CurrencyToVote,
 	},
 	weights::{constants::RocksDbWeight, IdentityFee, Weight},
 	PalletId, RuntimeDebug, StorageValue,
@@ -130,7 +131,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("karura"),
 	impl_name: create_runtime_str!("karura"),
 	authoring_version: 1,
-	spec_version: 1019,
+	spec_version: 2000,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -270,7 +271,6 @@ impl pallet_authorship::Config for Runtime {
 }
 
 parameter_types! {
-	pub const DisabledValidatorsThreshold: Perbill = Perbill::from_percent(33);
 	pub const SessionDuration: BlockNumber = 6 * HOURS; // used in SessionManagerConfig of genesis
 }
 
@@ -285,7 +285,6 @@ impl pallet_session::Config for Runtime {
 	// Essentially just Aura, but lets be pedantic.
 	type SessionHandler = <SessionKeys as sp_runtime::traits::OpaqueKeys>::KeyTypeIdProviders;
 	type Keys = SessionKeys;
-	type DisabledValidatorsThreshold = DisabledValidatorsThreshold;
 	type WeightInfo = ();
 }
 
@@ -617,6 +616,7 @@ parameter_types! {
 	pub const FastTrackVotingPeriod: BlockNumber = 3 * HOURS;
 	pub MinimumDeposit: Balance = 100 * dollar(KAR);
 	pub const EnactmentPeriod: BlockNumber = 2 * DAYS;
+	pub const VoteLockingPeriod: BlockNumber = 7 * DAYS;
 	pub const CooloffPeriod: BlockNumber = 7 * DAYS;
 	pub PreimageByteDeposit: Balance = deposit(0, 1);
 	pub const InstantAllowed: bool = true;
@@ -631,7 +631,7 @@ impl pallet_democracy::Config for Runtime {
 	type EnactmentPeriod = EnactmentPeriod;
 	type LaunchPeriod = LaunchPeriod;
 	type VotingPeriod = VotingPeriod;
-	type VoteLockingPeriod = EnactmentPeriod; // Same as EnactmentPeriod
+	type VoteLockingPeriod = VoteLockingPeriod;
 	type MinimumDeposit = MinimumDeposit;
 	/// A straight majority of the council can decide what their next motion is.
 	type ExternalOrigin = EnsureRootOrHalfGeneralCouncil;
@@ -1410,7 +1410,14 @@ parameter_types! {
 	);
 }
 
-pub type Barrier = (TakeWeightCredit, AllowTopLevelPaidExecutionFrom<Everything>);
+pub type Barrier = (
+	TakeWeightCredit,
+	AllowTopLevelPaidExecutionFrom<Everything>,
+	// Expected responses are OK.
+	AllowKnownQueryResponses<PolkadotXcm>,
+	// Subscriptions for version tracking are OK.
+	AllowSubscriptionsFrom<Everything>,
+);
 
 pub struct ToTreasury;
 impl TakeRevenue for ToTreasury {
@@ -1647,7 +1654,7 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 						if let Ok(currency_id) = CurrencyId::decode(&mut &*key) {
 							// check `currency_id` is cross-chain asset
 							match currency_id {
-								Token(KAR) | Token(KUSD) | Token(LKSM) | Token(RENBTC) => Some(currency_id),
+								Token(KAR) | Token(KUSD) | Token(LKSM) => Some(currency_id),
 								_ => None,
 							}
 						} else {
@@ -1774,7 +1781,8 @@ construct_runtime!(
 		AuraExt: cumulus_pallet_aura_ext::{Pallet, Storage, Config} = 44,
 		SessionManager: module_session_manager::{Pallet, Call, Storage, Event<T>, Config<T>} = 45,
 
-		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 50,
+		// XCM
+		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Storage, Event<T>} = 50,
 		PolkadotXcm: pallet_xcm::{Pallet, Storage, Call, Event<T>, Origin, Config} = 51,
 		CumulusXcm: cumulus_pallet_xcm::{Pallet, Event<T>, Origin} = 52,
 		DmpQueue: cumulus_pallet_dmp_queue::{Pallet, Call, Storage, Event<T>} = 53,
@@ -1861,376 +1869,8 @@ pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExtra>;
 /// Executive: handles dispatch to the various modules.
-pub type Executive = frame_executive::Executive<
-	Runtime,
-	Block,
-	frame_system::ChainContext<Runtime>,
-	Runtime,
-	AllPallets,
-	(
-		GeneralCouncilMembershipStoragePrefixMigration,
-		FinancialCouncilMembershipStoragePrefixMigration,
-		HomaCouncilMembershipStoragePrefixMigration,
-		TechnicalCommitteeMembershipStoragePrefixMigration,
-		OperatorMembershipAcalaStoragePrefixMigration,
-		GeneralCouncilStoragePrefixMigration,
-		FinancialCouncilStoragePrefixMigration,
-		HomaCouncilStoragePrefixMigration,
-		TechnicalCommitteeStoragePrefixMigration,
-		MigrateTipsPalletPrefix,
-		BountiesPrefixMigration,
-		SetXcmVersion,
-	),
->;
-
-pub struct SetXcmVersion;
-impl OnRuntimeUpgrade for SetXcmVersion {
-	fn on_runtime_upgrade() -> u64 {
-		let _ = PolkadotXcm::force_default_xcm_version(Origin::root(), Some(2));
-		RocksDbWeight::get().writes(1)
-	}
-}
-
-const GENERAL_COUNCIL_MEMBERSHIP_OLD_PREFIX: &str = "Instance1Membership";
-/// Migrate from `Instance1Membership` to the new pallet prefix `GeneralCouncilMembership`
-pub struct GeneralCouncilMembershipStoragePrefixMigration;
-
-impl OnRuntimeUpgrade for GeneralCouncilMembershipStoragePrefixMigration {
-	fn on_runtime_upgrade() -> frame_support::weights::Weight {
-		use frame_support::traits::PalletInfo;
-		let name = <Runtime as frame_system::Config>::PalletInfo::name::<GeneralCouncilMembership>()
-			.expect("GeneralCouncilMembership is part of runtime, so it has a name; qed");
-		pallet_membership::migrations::v4::migrate::<Runtime, GeneralCouncilMembership, _>(
-			GENERAL_COUNCIL_MEMBERSHIP_OLD_PREFIX,
-			name,
-		)
-	}
-
-	#[cfg(feature = "try-runtime")]
-	fn pre_upgrade() -> Result<(), &'static str> {
-		use frame_support::traits::PalletInfo;
-		let name = <Runtime as frame_system::Config>::PalletInfo::name::<GeneralCouncilMembership>()
-			.expect("GeneralCouncilMembership is part of runtime, so it has a name; qed");
-		pallet_membership::migrations::v4::pre_migrate::<GeneralCouncilMembership, _>(
-			GENERAL_COUNCIL_MEMBERSHIP_OLD_PREFIX,
-			name,
-		);
-		Ok(())
-	}
-
-	#[cfg(feature = "try-runtime")]
-	fn post_upgrade() -> Result<(), &'static str> {
-		use frame_support::traits::PalletInfo;
-		let name = <Runtime as frame_system::Config>::PalletInfo::name::<GeneralCouncilMembership>()
-			.expect("GeneralCouncilMembership is part of runtime, so it has a name; qed");
-		pallet_membership::migrations::v4::post_migrate::<GeneralCouncilMembership, _>(
-			GENERAL_COUNCIL_MEMBERSHIP_OLD_PREFIX,
-			name,
-		);
-		Ok(())
-	}
-}
-
-const FINANCIAL_COUNCIL_MEMBERSHIP_OLD_PREFIX: &str = "Instance2Membership";
-/// Migrate from `Instance2Membership` to the new pallet prefix `FinancialCouncilMembership`
-pub struct FinancialCouncilMembershipStoragePrefixMigration;
-
-impl OnRuntimeUpgrade for FinancialCouncilMembershipStoragePrefixMigration {
-	fn on_runtime_upgrade() -> frame_support::weights::Weight {
-		use frame_support::traits::PalletInfo;
-		let name = <Runtime as frame_system::Config>::PalletInfo::name::<FinancialCouncilMembership>()
-			.expect("FinancialCouncilMembership is part of runtime, so it has a name; qed");
-		pallet_membership::migrations::v4::migrate::<Runtime, FinancialCouncilMembership, _>(
-			FINANCIAL_COUNCIL_MEMBERSHIP_OLD_PREFIX,
-			name,
-		)
-	}
-
-	#[cfg(feature = "try-runtime")]
-	fn pre_upgrade() -> Result<(), &'static str> {
-		use frame_support::traits::PalletInfo;
-		let name = <Runtime as frame_system::Config>::PalletInfo::name::<FinancialCouncilMembership>()
-			.expect("FinancialCouncilMembership is part of runtime, so it has a name; qed");
-		pallet_membership::migrations::v4::pre_migrate::<FinancialCouncilMembership, _>(
-			FINANCIAL_COUNCIL_MEMBERSHIP_OLD_PREFIX,
-			name,
-		);
-		Ok(())
-	}
-
-	#[cfg(feature = "try-runtime")]
-	fn post_upgrade() -> Result<(), &'static str> {
-		use frame_support::traits::PalletInfo;
-		let name = <Runtime as frame_system::Config>::PalletInfo::name::<FinancialCouncilMembership>()
-			.expect("FinancialCouncilMembership is part of runtime, so it has a name; qed");
-		pallet_membership::migrations::v4::post_migrate::<FinancialCouncilMembership, _>(
-			FINANCIAL_COUNCIL_MEMBERSHIP_OLD_PREFIX,
-			name,
-		);
-		Ok(())
-	}
-}
-
-const HOMA_COUNCIL_MEMBERSHIP_OLD_PREFIX: &str = "Instance3Membership";
-/// Migrate from `Instance3Membership` to the new pallet prefix `HomaCouncilMembership`
-pub struct HomaCouncilMembershipStoragePrefixMigration;
-
-impl OnRuntimeUpgrade for HomaCouncilMembershipStoragePrefixMigration {
-	fn on_runtime_upgrade() -> frame_support::weights::Weight {
-		use frame_support::traits::PalletInfo;
-		let name = <Runtime as frame_system::Config>::PalletInfo::name::<HomaCouncilMembership>()
-			.expect("HomaCouncilMembership is part of runtime, so it has a name; qed");
-		pallet_membership::migrations::v4::migrate::<Runtime, HomaCouncilMembership, _>(
-			HOMA_COUNCIL_MEMBERSHIP_OLD_PREFIX,
-			name,
-		)
-	}
-
-	#[cfg(feature = "try-runtime")]
-	fn pre_upgrade() -> Result<(), &'static str> {
-		use frame_support::traits::PalletInfo;
-		let name = <Runtime as frame_system::Config>::PalletInfo::name::<HomaCouncilMembership>()
-			.expect("HomaCouncilMembership is part of runtime, so it has a name; qed");
-		pallet_membership::migrations::v4::pre_migrate::<HomaCouncilMembership, _>(
-			HOMA_COUNCIL_MEMBERSHIP_OLD_PREFIX,
-			name,
-		);
-		Ok(())
-	}
-
-	#[cfg(feature = "try-runtime")]
-	fn post_upgrade() -> Result<(), &'static str> {
-		use frame_support::traits::PalletInfo;
-		let name = <Runtime as frame_system::Config>::PalletInfo::name::<HomaCouncilMembership>()
-			.expect("HomaCouncilMembership is part of runtime, so it has a name; qed");
-		pallet_membership::migrations::v4::post_migrate::<HomaCouncilMembership, _>(
-			HOMA_COUNCIL_MEMBERSHIP_OLD_PREFIX,
-			name,
-		);
-		Ok(())
-	}
-}
-
-const TECHNICAL_COMMITTEE_MEMBERSHIP_OLD_PREFIX: &str = "Instance4Membership";
-/// Migrate from `Instance4Membership` to the new pallet prefix `TechnicalCommitteeMembership`
-pub struct TechnicalCommitteeMembershipStoragePrefixMigration;
-
-impl OnRuntimeUpgrade for TechnicalCommitteeMembershipStoragePrefixMigration {
-	fn on_runtime_upgrade() -> frame_support::weights::Weight {
-		use frame_support::traits::PalletInfo;
-		let name = <Runtime as frame_system::Config>::PalletInfo::name::<TechnicalCommitteeMembership>()
-			.expect("TechnicalCommitteeMembership is part of runtime, so it has a name; qed");
-		pallet_membership::migrations::v4::migrate::<Runtime, TechnicalCommitteeMembership, _>(
-			TECHNICAL_COMMITTEE_MEMBERSHIP_OLD_PREFIX,
-			name,
-		)
-	}
-
-	#[cfg(feature = "try-runtime")]
-	fn pre_upgrade() -> Result<(), &'static str> {
-		use frame_support::traits::PalletInfo;
-		let name = <Runtime as frame_system::Config>::PalletInfo::name::<TechnicalCommitteeMembership>()
-			.expect("TechnicalCommitteeMembership is part of runtime, so it has a name; qed");
-		pallet_membership::migrations::v4::pre_migrate::<TechnicalCommitteeMembership, _>(
-			TECHNICAL_COMMITTEE_MEMBERSHIP_OLD_PREFIX,
-			name,
-		);
-		Ok(())
-	}
-
-	#[cfg(feature = "try-runtime")]
-	fn post_upgrade() -> Result<(), &'static str> {
-		use frame_support::traits::PalletInfo;
-		let name = <Runtime as frame_system::Config>::PalletInfo::name::<TechnicalCommitteeMembership>()
-			.expect("TechnicalCommitteeMembership is part of runtime, so it has a name; qed");
-		pallet_membership::migrations::v4::post_migrate::<TechnicalCommitteeMembership, _>(
-			TECHNICAL_COMMITTEE_MEMBERSHIP_OLD_PREFIX,
-			name,
-		);
-		Ok(())
-	}
-}
-
-const OPERATOR_MEMBERSHIP_OLD_PREFIX: &str = "Instance5Membership";
-/// Migrate from `Instance5Membership` to the new pallet prefix `OperatorMembershipAcala`
-pub struct OperatorMembershipAcalaStoragePrefixMigration;
-
-impl OnRuntimeUpgrade for OperatorMembershipAcalaStoragePrefixMigration {
-	fn on_runtime_upgrade() -> frame_support::weights::Weight {
-		use frame_support::traits::PalletInfo;
-		let name = <Runtime as frame_system::Config>::PalletInfo::name::<OperatorMembershipAcala>()
-			.expect("OperatorMembershipAcala is part of runtime, so it has a name; qed");
-		pallet_membership::migrations::v4::migrate::<Runtime, OperatorMembershipAcala, _>(
-			OPERATOR_MEMBERSHIP_OLD_PREFIX,
-			name,
-		)
-	}
-
-	#[cfg(feature = "try-runtime")]
-	fn pre_upgrade() -> Result<(), &'static str> {
-		use frame_support::traits::PalletInfo;
-		let name = <Runtime as frame_system::Config>::PalletInfo::name::<OperatorMembershipAcala>()
-			.expect("OperatorMembershipAcala is part of runtime, so it has a name; qed");
-		pallet_membership::migrations::v4::pre_migrate::<OperatorMembershipAcala, _>(
-			OPERATOR_MEMBERSHIP_OLD_PREFIX,
-			name,
-		);
-		Ok(())
-	}
-
-	#[cfg(feature = "try-runtime")]
-	fn post_upgrade() -> Result<(), &'static str> {
-		use frame_support::traits::PalletInfo;
-		let name = <Runtime as frame_system::Config>::PalletInfo::name::<OperatorMembershipAcala>()
-			.expect("OperatorMembershipAcala is part of runtime, so it has a name; qed");
-		pallet_membership::migrations::v4::post_migrate::<OperatorMembershipAcala, _>(
-			OPERATOR_MEMBERSHIP_OLD_PREFIX,
-			name,
-		);
-		Ok(())
-	}
-}
-
-const GENERAL_COUNCIL_OLD_PREFIX: &str = "Instance1Collective";
-/// Migrate from `Instance1Collective` to the new pallet prefix `GeneralCouncil`
-pub struct GeneralCouncilStoragePrefixMigration;
-
-impl OnRuntimeUpgrade for GeneralCouncilStoragePrefixMigration {
-	fn on_runtime_upgrade() -> frame_support::weights::Weight {
-		pallet_collective::migrations::v4::migrate::<Runtime, GeneralCouncil, _>(GENERAL_COUNCIL_OLD_PREFIX)
-	}
-
-	#[cfg(feature = "try-runtime")]
-	fn pre_upgrade() -> Result<(), &'static str> {
-		pallet_collective::migrations::v4::pre_migrate::<GeneralCouncil, _>(GENERAL_COUNCIL_OLD_PREFIX);
-		Ok(())
-	}
-
-	#[cfg(feature = "try-runtime")]
-	fn post_upgrade() -> Result<(), &'static str> {
-		pallet_collective::migrations::v4::post_migrate::<GeneralCouncil, _>(GENERAL_COUNCIL_OLD_PREFIX);
-		Ok(())
-	}
-}
-
-const FINANCIAL_COUNCIL_OLD_PREFIX: &str = "Instance2Collective";
-/// Migrate from `Instance2Collective` to the new pallet prefix `FinancialCouncil`
-pub struct FinancialCouncilStoragePrefixMigration;
-
-impl OnRuntimeUpgrade for FinancialCouncilStoragePrefixMigration {
-	fn on_runtime_upgrade() -> frame_support::weights::Weight {
-		pallet_collective::migrations::v4::migrate::<Runtime, FinancialCouncil, _>(FINANCIAL_COUNCIL_OLD_PREFIX)
-	}
-
-	#[cfg(feature = "try-runtime")]
-	fn pre_upgrade() -> Result<(), &'static str> {
-		pallet_collective::migrations::v4::pre_migrate::<FinancialCouncil, _>(FINANCIAL_COUNCIL_OLD_PREFIX);
-		Ok(())
-	}
-
-	#[cfg(feature = "try-runtime")]
-	fn post_upgrade() -> Result<(), &'static str> {
-		pallet_collective::migrations::v4::post_migrate::<FinancialCouncil, _>(FINANCIAL_COUNCIL_OLD_PREFIX);
-		Ok(())
-	}
-}
-
-const HOMA_COUNCIL_OLD_PREFIX: &str = "Instance3Collective";
-/// Migrate from `Instance3Collective` to the new pallet prefix `HomaCouncil`
-pub struct HomaCouncilStoragePrefixMigration;
-
-impl OnRuntimeUpgrade for HomaCouncilStoragePrefixMigration {
-	fn on_runtime_upgrade() -> frame_support::weights::Weight {
-		pallet_collective::migrations::v4::migrate::<Runtime, HomaCouncil, _>(HOMA_COUNCIL_OLD_PREFIX)
-	}
-
-	#[cfg(feature = "try-runtime")]
-	fn pre_upgrade() -> Result<(), &'static str> {
-		pallet_collective::migrations::v4::pre_migrate::<HomaCouncil, _>(HOMA_COUNCIL_OLD_PREFIX);
-		Ok(())
-	}
-
-	#[cfg(feature = "try-runtime")]
-	fn post_upgrade() -> Result<(), &'static str> {
-		pallet_collective::migrations::v4::post_migrate::<HomaCouncil, _>(HOMA_COUNCIL_OLD_PREFIX);
-		Ok(())
-	}
-}
-
-const TECHNICAL_COMMITTEE_OLD_PREFIX: &str = "Instance4Collective";
-/// Migrate from `Instance4Collective` to the new pallet prefix `TechnicalCommittee`
-pub struct TechnicalCommitteeStoragePrefixMigration;
-
-impl OnRuntimeUpgrade for TechnicalCommitteeStoragePrefixMigration {
-	fn on_runtime_upgrade() -> frame_support::weights::Weight {
-		pallet_collective::migrations::v4::migrate::<Runtime, TechnicalCommittee, _>(TECHNICAL_COMMITTEE_OLD_PREFIX)
-	}
-
-	#[cfg(feature = "try-runtime")]
-	fn pre_upgrade() -> Result<(), &'static str> {
-		pallet_collective::migrations::v4::pre_migrate::<TechnicalCommittee, _>(TECHNICAL_COMMITTEE_OLD_PREFIX);
-		Ok(())
-	}
-
-	#[cfg(feature = "try-runtime")]
-	fn post_upgrade() -> Result<(), &'static str> {
-		pallet_collective::migrations::v4::post_migrate::<TechnicalCommittee, _>(TECHNICAL_COMMITTEE_OLD_PREFIX);
-		Ok(())
-	}
-}
-
-const TIPS_OLD_PREFIX: &str = "Treasury";
-/// Migrate pallet-tips from `Treasury` to the new pallet prefix `Tips`
-pub struct MigrateTipsPalletPrefix;
-
-impl OnRuntimeUpgrade for MigrateTipsPalletPrefix {
-	fn on_runtime_upgrade() -> frame_support::weights::Weight {
-		pallet_tips::migrations::v4::migrate::<Runtime, Tips, _>(TIPS_OLD_PREFIX)
-	}
-
-	#[cfg(feature = "try-runtime")]
-	fn pre_upgrade() -> Result<(), &'static str> {
-		pallet_tips::migrations::v4::pre_migrate::<Runtime, Tips, _>(TIPS_OLD_PREFIX);
-		Ok(())
-	}
-
-	#[cfg(feature = "try-runtime")]
-	fn post_upgrade() -> Result<(), &'static str> {
-		pallet_tips::migrations::v4::post_migrate::<Runtime, Tips, _>(TIPS_OLD_PREFIX);
-		Ok(())
-	}
-}
-
-const BOUNTIES_OLD_PREFIX: &str = "Treasury";
-
-/// Migrate from 'Treasury' to the new prefix 'Bounties'
-pub struct BountiesPrefixMigration;
-
-impl OnRuntimeUpgrade for BountiesPrefixMigration {
-	fn on_runtime_upgrade() -> frame_support::weights::Weight {
-		use frame_support::traits::PalletInfo;
-		let name = <Runtime as frame_system::Config>::PalletInfo::name::<Bounties>()
-			.expect("Bounties is part of runtime, so it has a name; qed");
-		pallet_bounties::migrations::v4::migrate::<Runtime, Bounties, _>(BOUNTIES_OLD_PREFIX, name)
-	}
-	#[cfg(feature = "try-runtime")]
-	fn pre_upgrade() -> Result<(), &'static str> {
-		use frame_support::traits::PalletInfo;
-		let name = <Runtime as frame_system::Config>::PalletInfo::name::<Bounties>()
-			.expect("Bounties is part of runtime, so it has a name; qed");
-		pallet_bounties::migrations::v4::pre_migration::<Runtime, Bounties, _>(BOUNTIES_OLD_PREFIX, name);
-		Ok(())
-	}
-
-	#[cfg(feature = "try-runtime")]
-	fn post_upgrade() -> Result<(), &'static str> {
-		use frame_support::traits::PalletInfo;
-		let name = <Runtime as frame_system::Config>::PalletInfo::name::<Bounties>()
-			.expect("Bounties is part of runtime, so it has a name; qed");
-		pallet_bounties::migrations::v4::post_migration::<Runtime, Bounties, _>(BOUNTIES_OLD_PREFIX, name);
-		Ok(())
-	}
-}
+pub type Executive =
+	frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllPallets, ()>;
 
 #[cfg(not(feature = "disable-runtime-api"))]
 impl_runtime_apis! {
@@ -2569,13 +2209,11 @@ impl_runtime_apis! {
 			orml_add_benchmark!(params, batches, module_honzon, benchmarking::honzon);
 			orml_add_benchmark!(params, batches, module_cdp_treasury, benchmarking::cdp_treasury);
 			orml_add_benchmark!(params, batches, module_collator_selection, benchmarking::collator_selection);
-			// orml_add_benchmark!(params, batches, module_nominees_election, benchmarking::nominees_election);
 			orml_add_benchmark!(params, batches, module_transaction_pause, benchmarking::transaction_pause);
 			orml_add_benchmark!(params, batches, module_transaction_payment, benchmarking::transaction_payment);
 			orml_add_benchmark!(params, batches, module_incentives, benchmarking::incentives);
 			orml_add_benchmark!(params, batches, module_prices, benchmarking::prices);
 			orml_add_benchmark!(params, batches, module_evm_accounts, benchmarking::evm_accounts);
-			// orml_add_benchmark!(params, batches, module_homa, benchmarking::homa);
 			orml_add_benchmark!(params, batches, module_currencies, benchmarking::currencies);
 			orml_add_benchmark!(params, batches, module_session_manager, benchmarking::session_manager);
 			orml_add_benchmark!(params, batches, orml_tokens, benchmarking::tokens);

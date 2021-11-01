@@ -24,23 +24,21 @@ use serde_json::map::Map;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_core::{crypto::UncheckedInto, sr25519};
 use sp_runtime::traits::Zero;
-use sp_std::collections::btree_map::BTreeMap;
 
 use crate::chain_spec::{get_account_id_from_seed, get_parachain_authority_keys_from_seed, Extensions, TELEMETRY_URL};
 
 use acala_runtime::{
-	dollar, get_all_module_accounts, Balance, BalancesConfig, BlockNumber, CdpEngineConfig, CdpTreasuryConfig,
-	CollatorSelectionConfig, DexConfig, FinancialCouncilMembershipConfig, GeneralCouncilMembershipConfig,
-	HomaCouncilMembershipConfig, NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OrmlNFTConfig,
-	ParachainInfoConfig, PolkadotXcmConfig, SS58Prefix, SessionConfig, SessionDuration, SessionKeys,
-	SessionManagerConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig,
-	ACA, AUSD, DOT, LDOT,
+	dollar, Balance, BalancesConfig, BlockNumber, CdpEngineConfig, CdpTreasuryConfig, CollatorSelectionConfig,
+	DexConfig, FinancialCouncilMembershipConfig, GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig,
+	NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OrmlNFTConfig, ParachainInfoConfig,
+	PolkadotXcmConfig, SS58Prefix, SessionConfig, SessionDuration, SessionKeys, SessionManagerConfig, SudoConfig,
+	SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig, ACA, AUSD, DOT, LDOT,
 };
 use runtime_common::TokenInfo;
 
 pub type ChainSpec = sc_service::GenericChainSpec<acala_runtime::GenesisConfig, Extensions>;
 
-pub const PARA_ID: u32 = 2000;
+pub const PARA_ID: u32 = 2000; // TODO: need confirm
 
 pub fn acala_config() -> Result<ChainSpec, String> {
 	ChainSpec::from_json_bytes(&include_bytes!("../../../../resources/acala-dist.json")[..])
@@ -72,82 +70,65 @@ pub fn latest_acala_config() -> Result<ChainSpec, String> {
 			let existential_deposit = NativeTokenExistentialDeposit::get();
 			let mut total_allocated: Balance = Zero::zero();
 
-			let airdrop_accounts_json = &include_bytes!("../../../../resources/mandala-airdrop-ACA.json")[..];
-			let airdrop_accounts: Vec<(AccountId, Balance)> = serde_json::from_slice(airdrop_accounts_json).unwrap();
-			let other_allocation_json = &include_bytes!("../../../../resources/acala-allocation-ACA.json")[..];
-			let other_allocation: Vec<(AccountId, Balance)> = serde_json::from_slice(other_allocation_json).unwrap();
-
-			// TODO: update
+			let allocation_json = &include_bytes!("../../../../resources/acala-allocation-ACA.json")[..];
+			let initial_allocation: Vec<(AccountId, Balance)> = serde_json::from_slice(allocation_json).unwrap();
 			let initial_authorities: Vec<(AccountId, AuraId)> = vec![
 				(
-					// qkFZUE2Dod2Y9LX8ZQzkvF5T2wE5hpBuPe9hT1gpP3drH1v
-					hex!["6c47c55604029bd43ed443ddaad370d5f4c10fa439d22dddb8120a9615444b6b"].into(),
-					hex!["36589a134ccdbeb45a3ac535cc2c8cd71ae45ffc3af86d4a020cc2e411a98875"].unchecked_into(),
+					// 24j2ECgfuGHw2bv2YHLoFz88eKr39QAczGTz23bNLZKHEXdt
+					hex!["aa66ae1c82621f3439a821974bfd285885ed2a513fc7ed660aa10dcf50161c7a"].into(),
+					hex!["9ee6d04b7ae198f77cd4f4ed53ae2ce65ba978b9e140c67a52242b7b0c3ca425"].unchecked_into(),
 				),
 				(
-					// pSCWXtDyPZsyfTQNbVkmubVRGyoSi9N2a6AxpWHWFsxLjXs
-					hex!["3246d9cb076cd554f250fc03bf70988cbaa9cbb2c4b1b8e015dd97fd19405d43"].into(),
-					hex!["3266d0febeacc5d111c9df7f2ced2f533e7732dda46b2b84f104be5d6e395b76"].unchecked_into(),
+					// 211oiNyWbThWJmuFSVJnGwdq4kPiYoMQ3fUKDHuHJnRxEymL
+					hex!["0642caac4bb7be8367c277371825e1314be4ec99d9a0d0e2ed12289693009a6f"].into(),
+					hex!["94231e6fe4b7868794b2c926e4e44c51a9944457559fd927ee078d465ef3bf1f"].unchecked_into(),
 				),
 				(
-					// qZhHE2FJGGAJtvu9f21PPFVDxvcnm65ebezZBsAJjGFa4kn
-					hex!["643aa70071341b904e6e5b4e41d6dfc02b4cfcdc4c9c7a66f41fc0e59c07e24c"].into(),
-					hex!["60fdcbd860869ee9b1230731b82604e8cf63c6c66e69277b59e337f1f25af225"].unchecked_into(),
+					// 21vkHrN6nQnZt5a3YWExxkAwMPepKyXHHDowG22fjxGbBLai
+					hex!["2ea346904b62daeb65e158f15a7b4f74fa162b0e95a30dc9b6187f245f16bd0a"].into(),
+					hex!["d2bc5f639405b8d36ebe2fc5700f17f65ee99386566d492a0882c2bf5ab28e10"].unchecked_into(),
+				),
+				(
+					// 25j9RvPux27vBAk5qa919rf8BnihvMWPjr3gZLP3zT2HTWDa
+					hex!["d6bb2868fa5a24d6776bc039a1689c9f1a9762f29266cc0519541a659abd5f76"].into(),
+					hex!["30c13525850f92a53901c1d046f11a4a8859afa28051d44003617d1fb935d655"].unchecked_into(),
 				),
 			];
 
-			// TODO: update
 			let general_councils: Vec<AccountId> = vec![
-				// ouJX1WJQ9s4RMukAx5zvMwPY2zJZ9Xr5euzRG97Ne6UTNG9
-				hex!["1ab677fa2007fb1e8ac2f5f6d253d5a2bd9c2ed4e5d3c1565c5d84436f81325d"].into(),
-				// qMJYLJEP2HTBFhxqTFAJz9RcsT9UQ3VW2tFHRBmyaxPdj1n
-				hex!["5ac728d31a0046274f1c5bece1867555c6728c8e8219ff77bb7a8afef4ab8137"].into(),
-				// qPnkT89PRdiCbBgvE6a6gLcFCqWC8F1UoCZUhFvjbBkXMXc
-				hex!["5cac9c2837017a40f90cc15b292acdf1ee28ae03005dff8d13d32fdf7d2e237c"].into(),
-				// sZCH1stvMnSuDK1EDpdNepMYcpZWoDt3yF3PnUENS21f2tA
+				// 23RDJ7SyVgpKqC6M9ad8wvbBsbSr3R4Xqr5NQAKEhWPHbLbs
+				hex!["7095491dc941e21b9269fe67b322311df5daafd75f0bf8868afd8fa828b06329"].into(),
+				// 263KsUutx8qhRmG7hq6fEaSKE3fdi3KeeEKafkAMJ1cg1AYc
+				hex!["e498b8bed2069371dc5ece389d7d60fe34a91fe4936f7f8eb8a84cd3e8dae34c"].into(),
+				// 26VNG6LyuRag3xfuck7eoAjKk4ZLg9GeN6LDjxMw4ib3E8yg
+				hex!["f87525a8a29cc3a1c56fb231a165d5fd38c42459f38c638c3a1d0f29061c101a"].into(),
+				// 258WnzxhgwXuDL7w3Hag8TMCqb79dAUvRrMJd9kqJ9CzDf7v
 				hex!["bc517c01c4b663efdfea3dd9ab71bdc3ea607e8a35ba3d1872e5b0942821cd2f"].into(),
-				// ra6MmAYU2qdCVsMS3REKZ82CJ1EwMWq6H6Zo475xTzedctJ
+				// 249QskFMEcb5WcgHF7BH5MesVGHq3imsUACq2RPgtBBdCPMa
 				hex!["90c492f38270b5512370886c392ff6ec7624b14185b4b610b30248a28c94c953"].into(),
-				// ts9q95ZJmaCMCPKuKTY4g5ZeK65GdFVz6ZDD8LEnYJ3jpbm
+				// 26SUM8AN5MKefKCFiPDapUcQwHNfNzWYMyfUSVcqiFV2JYWc
 				hex!["f63fe694d0c8a0703fc45362efc2852c8b8c9c4061b5f0cf9bd0329a984fc95d"].into(),
 			];
 
-			// TODO: update
-			// sWcq8FAQXPdXGSaxSTBKS614hCB8YutkVWWacBKG1GbGS23
-			let root_key: AccountId = hex!["ba5a672d05b5db2ff433ee3dc24cf021e301bc9d44232046ce7bd45a9360fa50"].into();
+			// 26Jo633eujX7UwGDp9tTwTuSqTq5thopn2QUKoFQhM4gvCZp
+			let root_key: AccountId = hex!["f065057e73a3ffceff273f4555a0ea3d731ec8ef4d79954473b4ffda046d836d"].into();
 
-			let initial_allocation = initial_authorities
+			let unique_allocation_accounts = initial_allocation
 				.iter()
-				.map(|x| (x.0.clone(), existential_deposit))
-				.chain(airdrop_accounts)
-				.chain(other_allocation)
-				.chain(
-					get_all_module_accounts()
-						.iter()
-						.map(|x| (x.clone(), existential_deposit)), // add ED for module accounts
-				)
-				.fold(
-					BTreeMap::<AccountId, Balance>::new(),
-					|mut acc, (account_id, amount)| {
-						// merge duplicated accounts
-						if let Some(balance) = acc.get_mut(&account_id) {
-							*balance = balance
-								.checked_add(amount)
-								.expect("balance cannot overflow when building genesis");
-						} else {
-							acc.insert(account_id.clone(), amount);
-						}
+				.map(|(account_id, amount)| {
+					assert!(*amount >= existential_deposit, "allocation amount must gte ED");
+					total_allocated = total_allocated
+						.checked_add(*amount)
+						.expect("shouldn't overflow when building genesis");
 
-						total_allocated = total_allocated
-							.checked_add(amount)
-							.expect("total insurance cannot overflow when building genesis");
-						acc
-					},
-				)
-				.into_iter()
-				.collect::<Vec<(AccountId, Balance)>>();
-
-			// check total allocated
+					account_id
+				})
+				.cloned()
+				.collect::<std::collections::BTreeSet<_>>();
+			assert!(
+				unique_allocation_accounts.len() == initial_allocation.len(),
+				"duplicate allocation accounts in genesis."
+			);
 			assert_eq!(
 				total_allocated,
 				1_000_000_000 * dollar(ACA), // 1 billion ACA
@@ -178,9 +159,8 @@ pub fn latest_acala_config() -> Result<ChainSpec, String> {
 				general_councils,
 			)
 		},
-		// TODO: update
 		vec![
-			"/dns/karura-rpc-0.aca-api.network/tcp/30333/p2p/12D3KooWDVQHcjsM5UkWKhfpxiNhWofmX5bvJd5Wn9qPFZk1C8t8"
+			"/dns/acala-rpc-0.aca-api.network/tcp/30333/p2p/12D3KooWASu892sCwPezdcqRbmS7HVYJcAfeMKQdewiRywYLeKL9"
 				.parse()
 				.unwrap(),
 		],

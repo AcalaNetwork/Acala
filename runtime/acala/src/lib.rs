@@ -70,10 +70,11 @@ pub use polkadot_parachain::primitives::Sibling;
 pub use xcm::latest::prelude::*;
 
 pub use xcm_builder::{
-	AccountId32Aliases, AllowTopLevelPaidExecutionFrom, AllowUnpaidExecutionFrom, EnsureXcmOrigin, FixedRateOfFungible,
-	FixedWeightBounds, IsConcrete, LocationInverter, NativeAsset, ParentAsSuperuser, ParentIsDefault,
-	RelayChainAsNative, SiblingParachainAsNative, SiblingParachainConvertsVia, SignedAccountId32AsNative,
-	SignedToAccountId32, SovereignSignedViaLocation, TakeRevenue, TakeWeightCredit,
+	AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom, AllowTopLevelPaidExecutionFrom,
+	AllowUnpaidExecutionFrom, EnsureXcmOrigin, FixedRateOfFungible, FixedWeightBounds, IsConcrete, LocationInverter,
+	NativeAsset, ParentAsSuperuser, ParentIsDefault, RelayChainAsNative, SiblingParachainAsNative,
+	SiblingParachainConvertsVia, SignedAccountId32AsNative, SignedToAccountId32, SovereignSignedViaLocation,
+	TakeRevenue, TakeWeightCredit,
 };
 pub use xcm_executor::{traits::WeightTrader, Assets, Config, XcmExecutor};
 
@@ -128,7 +129,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("acala"),
 	impl_name: create_runtime_str!("acala"),
 	authoring_version: 1,
-	spec_version: 1000,
+	spec_version: 2000,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -198,14 +199,21 @@ impl Contains<Call> for BaseCallFilter {
 			return true;
 		}
 
+		let is_paused = module_transaction_pause::PausedTransactionFilter::<Runtime>::contains(call);
+		if is_paused {
+			// no paused call
+			return false;
+		}
+
 		let is_whitelisted = matches!(
 			call,
 			Call::Sudo(_) | // sudo
 			Call::Scheduler(_) | Call::Utility(_) | Call::Multisig(_) | Call::Proxy(_) | // utility
+			Call::TransactionPause(_) | // transaction pause
 			Call::Treasury(_) | Call::Bounties(_) | Call::Tips(_) | // treasury
 			// Call::CollatorSelection(_) | Call::Session(_) | Call::SessionManager(_) | // collator
 			Call::DmpQueue(_) | Call::OrmlXcm(_) | // xcm
-			// Call::PolkadotXcm(_) | Call::XTokens | // not allow user to make xcm call
+			// Call::PolkadotXcm(_) | Call::XTokens(_) | // not allow user to make xcm call
 			Call::Authority(_) |
 			Call::GeneralCouncil(_) | Call::GeneralCouncilMembership(_) |
 			Call::FinancialCouncil(_) | Call::FinancialCouncilMembership(_) |
@@ -275,7 +283,6 @@ impl pallet_authorship::Config for Runtime {
 }
 
 parameter_types! {
-	pub const DisabledValidatorsThreshold: Perbill = Perbill::from_percent(33);
 	pub const SessionDuration: BlockNumber = 2 * HOURS; // used in SessionManagerConfig of genesis
 }
 
@@ -290,12 +297,11 @@ impl pallet_session::Config for Runtime {
 	// Essentially just Aura, but lets be pedantic.
 	type SessionHandler = <SessionKeys as sp_runtime::traits::OpaqueKeys>::KeyTypeIdProviders;
 	type Keys = SessionKeys;
-	type DisabledValidatorsThreshold = DisabledValidatorsThreshold;
 	type WeightInfo = ();
 }
 
 parameter_types! {
-	pub const MinCandidates: u32 = 3;
+	pub const MinCandidates: u32 = 1;
 	pub const MaxCandidates: u32 = 50;
 	pub const MaxInvulnerables: u32 = 10;
 	pub const KickPenaltySessionLength: u32 = 8;
@@ -371,7 +377,7 @@ impl pallet_sudo::Config for Runtime {
 }
 
 parameter_types! {
-	pub const GeneralCouncilMotionDuration: BlockNumber = 7 * DAYS;
+	pub const GeneralCouncilMotionDuration: BlockNumber = 3 * DAYS;
 	pub const GeneralCouncilMaxProposals: u32 = 20;
 	pub const GeneralCouncilMaxMembers: u32 = 30;
 }
@@ -401,7 +407,7 @@ impl pallet_membership::Config<GeneralCouncilMembershipInstance> for Runtime {
 }
 
 parameter_types! {
-	pub const FinancialCouncilMotionDuration: BlockNumber = 7 * DAYS;
+	pub const FinancialCouncilMotionDuration: BlockNumber = 3 * DAYS;
 	pub const FinancialCouncilMaxProposals: u32 = 20;
 	pub const FinancialCouncilMaxMembers: u32 = 30;
 }
@@ -431,7 +437,7 @@ impl pallet_membership::Config<FinancialCouncilMembershipInstance> for Runtime {
 }
 
 parameter_types! {
-	pub const HomaCouncilMotionDuration: BlockNumber = 7 * DAYS;
+	pub const HomaCouncilMotionDuration: BlockNumber = 3 * DAYS;
 	pub const HomaCouncilMaxProposals: u32 = 20;
 	pub const HomaCouncilMaxMembers: u32 = 30;
 }
@@ -461,7 +467,7 @@ impl pallet_membership::Config<HomaCouncilMembershipInstance> for Runtime {
 }
 
 parameter_types! {
-	pub const TechnicalCommitteeMotionDuration: BlockNumber = 7 * DAYS;
+	pub const TechnicalCommitteeMotionDuration: BlockNumber = 3 * DAYS;
 	pub const TechnicalCommitteeMaxProposals: u32 = 20;
 	pub const TechnicalCouncilMaxMembers: u32 = 30;
 }
@@ -617,11 +623,12 @@ impl pallet_tips::Config for Runtime {
 }
 
 parameter_types! {
-	pub const LaunchPeriod: BlockNumber = 7 * DAYS;
-	pub const VotingPeriod: BlockNumber = 7 * DAYS;
+	pub const LaunchPeriod: BlockNumber = 5 * DAYS;
+	pub const VotingPeriod: BlockNumber = 5 * DAYS;
 	pub const FastTrackVotingPeriod: BlockNumber = 3 * HOURS;
-	pub MinimumDeposit: Balance = 100 * dollar(ACA);
-	pub const EnactmentPeriod: BlockNumber = 7 * DAYS;
+	pub MinimumDeposit: Balance = 200 * dollar(ACA);
+	pub const EnactmentPeriod: BlockNumber = 2 * DAYS;
+	pub const VoteLockingPeriod: BlockNumber = 14 * DAYS;
 	pub const CooloffPeriod: BlockNumber = 7 * DAYS;
 	pub PreimageByteDeposit: Balance = deposit(0, 1);
 	pub const InstantAllowed: bool = true;
@@ -636,7 +643,7 @@ impl pallet_democracy::Config for Runtime {
 	type EnactmentPeriod = EnactmentPeriod;
 	type LaunchPeriod = LaunchPeriod;
 	type VotingPeriod = VotingPeriod;
-	type VoteLockingPeriod = EnactmentPeriod; // Same as EnactmentPeriod
+	type VoteLockingPeriod = VoteLockingPeriod;
 	type MinimumDeposit = MinimumDeposit;
 	/// A straight majority of the council can decide what their next motion is.
 	type ExternalOrigin = EnsureRootOrHalfGeneralCouncil;
@@ -729,9 +736,9 @@ parameter_type_with_key! {
 	pub ExistentialDeposits: |currency_id: CurrencyId| -> Balance {
 		match currency_id {
 			CurrencyId::Token(symbol) => match symbol {
-				TokenSymbol::AUSD => cent(*currency_id),
-				TokenSymbol::DOT => 10 * millicent(*currency_id),
-				TokenSymbol::LDOT => 50 * millicent(*currency_id),
+				TokenSymbol::AUSD => 10 * cent(*currency_id),
+				TokenSymbol::DOT => cent(*currency_id),
+				TokenSymbol::LDOT => 5 * cent(*currency_id),
 
 				TokenSymbol::KAR |
 				TokenSymbol::KUSD |
@@ -825,11 +832,10 @@ impl module_currencies::Config for Runtime {
 }
 
 parameter_types! {
-	// TODO: update this
 	pub AcalaFoundationAccounts: Vec<AccountId> = vec![
-		hex_literal::hex!["efd29d0d6e63911ae3727fc71506bc3365c5d3b39e3a1680c857b4457cf8afad"].into(),	// tij5W2NzmtxxAbwudwiZpif9ScmZfgFYdzrJWKYq6oNbSNH
-		hex_literal::hex!["41dd2515ea11692c02306b68a2c6ff69b6606ebddaac40682789cfab300971c4"].into(),	// pndshZqDAC9GutDvv7LzhGhgWeGv5YX9puFA8xDidHXCyjd
-		hex_literal::hex!["dad0a28c620ba73b51234b1b2ae35064d90ee847e2c37f9268294646c5af65eb"].into(),	// tFBV65Ts7wpQPxGM6PET9euNzp4pXdi9DVtgLZDJoFveR9F
+		hex_literal::hex!["5336f96b54fa1832d517549bbffdfba2cae8983b8dcf65caff82d616014f5951"].into(),	// 22khtd8Zu9CpCY7DR4EPmmX66Aqsc91ShRAhehSWKGL7XDpL
+		hex_literal::hex!["26adf1c3a5b73f8640404d59ccb81de3ede79965b140addc7d8c0ff8736b5c53"].into(),	// 21kK5T9tvL8nVdAAWizjtBgRbGcAs466iU6ZxeNWb7mFgg5i
+		hex_literal::hex!["7e32626ae20238b3f2c63299bdc1eb4729c7aadc995ce2abaa4e42130209f5d5"].into(),	// 23j4ay2zBSgaSs18xstipmHBNi39W2Su9n8G89kWrz8eCe8F
 		TreasuryPalletId::get().into_account(),
 		TreasuryReservePalletId::get().into_account(),
 	];
@@ -1070,7 +1076,7 @@ impl module_cdp_treasury::Config for Runtime {
 
 impl module_transaction_pause::Config for Runtime {
 	type Event = Event;
-	type UpdateOrigin = EnsureRootOrThreeFourthsGeneralCouncil;
+	type UpdateOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
 	type WeightInfo = weights::module_transaction_pause::WeightInfo<Runtime>;
 }
 
@@ -1409,7 +1415,14 @@ parameter_types! {
 	);
 }
 
-pub type Barrier = (TakeWeightCredit, AllowTopLevelPaidExecutionFrom<Everything>);
+pub type Barrier = (
+	TakeWeightCredit,
+	AllowTopLevelPaidExecutionFrom<Everything>,
+	// Expected responses are OK.
+	AllowKnownQueryResponses<PolkadotXcm>,
+	// Subscriptions for version tracking are OK.
+	AllowSubscriptionsFrom<Everything>,
+);
 
 pub struct ToTreasury;
 impl TakeRevenue for ToTreasury {
@@ -1463,7 +1476,7 @@ pub type LocalOriginToLocation = SignedToAccountId32<Origin, AccountId, RelayNet
 /// queues.
 pub type XcmRouter = (
 	// Two routers - use UMP to communicate with the relay chain:
-	cumulus_primitives_utility::ParentAsUmp<ParachainSystem, ()>,
+	cumulus_primitives_utility::ParentAsUmp<ParachainSystem, PolkadotXcm>,
 	// ..and XCMP to communicate with the sibling chains.
 	XcmpQueue,
 );
@@ -1494,7 +1507,7 @@ impl cumulus_pallet_xcmp_queue::Config for Runtime {
 	type Event = Event;
 	type XcmExecutor = XcmExecutor<XcmConfig>;
 	type ChannelInfo = ParachainSystem;
-	type VersionWrapper = ();
+	type VersionWrapper = PolkadotXcm;
 }
 
 impl cumulus_pallet_dmp_queue::Config for Runtime {
@@ -1532,7 +1545,7 @@ parameter_types! {
 	pub MaxScheduledUnbonds: u32 = 14;
 	pub ParachainAccount: AccountId = ParachainInfo::get().into_account();
 	pub SubAccountIndex: u16 = RelayChainSubAccountId::HomaLite as u16;
-	pub const XcmUnbondFee: Balance = 600_000_000; // TODO identify unbon fee
+	pub const XcmUnbondFee: Balance = 600_000_000; // TODO identify unbond fee
 }
 impl module_homa_lite::Config for Runtime {
 	type Event = Event;
@@ -1605,7 +1618,7 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 						if let Ok(currency_id) = CurrencyId::decode(&mut &*key) {
 							// check `currency_id` is cross-chain asset
 							match currency_id {
-								Token(ACA) | Token(AUSD) | Token(LDOT) | Token(RENBTC) => Some(currency_id),
+								Token(ACA) | Token(AUSD) | Token(LDOT) => Some(currency_id),
 								_ => None,
 							}
 						} else {
@@ -1771,7 +1784,7 @@ construct_runtime!(
 		Rewards: orml_rewards::{Pallet, Storage, Call} = 81,
 		OrmlNFT: orml_nft::{Pallet, Storage, Config<T>} = 82,
 
-		// Karura Core
+		// Acala Core
 		Prices: module_prices::{Pallet, Storage, Call, Event<T>} = 90,
 		Dex: module_dex::{Pallet, Storage, Call, Event<T>, Config<T>} = 91,
 
@@ -1784,14 +1797,9 @@ construct_runtime!(
 		EmergencyShutdown: module_emergency_shutdown::{Pallet, Storage, Call, Event<T>} = 105,
 
 		// Homa
-		// Homa: module_homa::{Pallet, Call} = 110,
-		// NomineesElection: module_nominees_election::{Pallet, Call, Storage, Event<T>} = 111,
-		// StakingPool: module_staking_pool::{Pallet, Call, Storage, Event<T>, Config} = 112,
-		// PolkadotBridge: module_polkadot_bridge::{Pallet, Call, Storage} = 113,
-		// HomaValidatorListModule: module_homa_validator_list::{Pallet, Call, Storage, Event<T>} = 114,
 		HomaLite: module_homa_lite::{Pallet, Call, Storage, Event<T>} = 115,
 
-		// Karura Other
+		// Acala Other
 		Incentives: module_incentives::{Pallet, Storage, Call, Event<T>} = 120,
 		NFT: module_nft::{Pallet, Call, Event<T>} = 121,
 
@@ -2120,13 +2128,11 @@ impl_runtime_apis! {
 			orml_list_benchmark!(list, extra, module_honzon, benchmarking::honzon);
 			orml_list_benchmark!(list, extra, module_cdp_treasury, benchmarking::cdp_treasury);
 			orml_list_benchmark!(list, extra, module_collator_selection, benchmarking::collator_selection);
-			// orml_list_benchmark!(list, extra, module_nominees_election, benchmarking::nominees_election);
 			orml_list_benchmark!(list, extra, module_transaction_pause, benchmarking::transaction_pause);
 			orml_list_benchmark!(list, extra, module_transaction_payment, benchmarking::transaction_payment);
 			orml_list_benchmark!(list, extra, module_incentives, benchmarking::incentives);
 			orml_list_benchmark!(list, extra, module_prices, benchmarking::prices);
 			orml_list_benchmark!(list, extra, module_evm_accounts, benchmarking::evm_accounts);
-			// orml_list_benchmark!(list, extra, module_homa, benchmarking::homa);
 			orml_list_benchmark!(list, extra, module_currencies, benchmarking::currencies);
 			orml_list_benchmark!(list, extra, module_session_manager, benchmarking::session_manager);
 			orml_list_benchmark!(list, extra, orml_tokens, benchmarking::tokens);
@@ -2180,13 +2186,11 @@ impl_runtime_apis! {
 			orml_add_benchmark!(params, batches, module_honzon, benchmarking::honzon);
 			orml_add_benchmark!(params, batches, module_cdp_treasury, benchmarking::cdp_treasury);
 			orml_add_benchmark!(params, batches, module_collator_selection, benchmarking::collator_selection);
-			// orml_add_benchmark!(params, batches, module_nominees_election, benchmarking::nominees_election);
 			orml_add_benchmark!(params, batches, module_transaction_pause, benchmarking::transaction_pause);
 			orml_add_benchmark!(params, batches, module_transaction_payment, benchmarking::transaction_payment);
 			orml_add_benchmark!(params, batches, module_incentives, benchmarking::incentives);
 			orml_add_benchmark!(params, batches, module_prices, benchmarking::prices);
 			orml_add_benchmark!(params, batches, module_evm_accounts, benchmarking::evm_accounts);
-			// orml_add_benchmark!(params, batches, module_homa, benchmarking::homa);
 			orml_add_benchmark!(params, batches, module_currencies, benchmarking::currencies);
 			orml_add_benchmark!(params, batches, module_session_manager, benchmarking::session_manager);
 			orml_add_benchmark!(params, batches, orml_tokens, benchmarking::tokens);
