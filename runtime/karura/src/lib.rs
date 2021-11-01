@@ -216,6 +216,28 @@ impl Contains<Call> for BaseCallFilter {
 			return false;
 		}
 
+		if let Call::PolkadotXcm(xcm_method) = call {
+			match xcm_method {
+				pallet_xcm::Call::send { .. }
+				| pallet_xcm::Call::execute { .. }
+				| pallet_xcm::Call::teleport_assets { .. }
+				| pallet_xcm::Call::reserve_transfer_assets { .. }
+				| pallet_xcm::Call::limited_reserve_transfer_assets { .. }
+				| pallet_xcm::Call::limited_teleport_assets { .. } => {
+					return false;
+				}
+				pallet_xcm::Call::force_xcm_version { .. }
+				| pallet_xcm::Call::force_default_xcm_version { .. }
+				| pallet_xcm::Call::force_subscribe_version_notify { .. }
+				| pallet_xcm::Call::force_unsubscribe_version_notify { .. } => {
+					return true;
+				}
+				pallet_xcm::Call::__Ignore { .. } => {
+					unimplemented!()
+				}
+			}
+		}
+
 		true
 	}
 }
