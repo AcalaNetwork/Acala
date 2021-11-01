@@ -34,7 +34,7 @@ pub mod time {
 	pub const SLOT_DURATION: Moment = MILLISECS_PER_BLOCK;
 
 	pub fn deposit(items: u32, bytes: u32) -> Balance {
-		items as Balance * 2 * dollar(ACA) + (bytes as Balance) * 30 * millicent(ACA)
+		items as Balance * 4 * dollar(ACA) + (bytes as Balance) * 60 * millicent(ACA)
 	}
 }
 
@@ -45,7 +45,7 @@ pub mod fee {
 		WeightToFeeCoefficient, WeightToFeeCoefficients, WeightToFeePolynomial,
 	};
 	use primitives::Balance;
-	use runtime_common::{cent, ACA};
+	use runtime_common::{cent, dollar, ACA, DOT};
 	use smallvec::smallvec;
 	use sp_runtime::Perbill;
 
@@ -84,10 +84,10 @@ pub mod fee {
 	}
 
 	pub fn dot_per_second() -> u128 {
-		// TODO: recheck this
 		let base_weight = Balance::from(ExtrinsicBaseWeight::get());
 		let base_tx_per_second = (WEIGHT_PER_SECOND as u128) / base_weight;
 		let aca_per_second = base_tx_per_second * base_tx_in_aca();
-		aca_per_second / 100
+		// TODO: recheck this https://github.com/AcalaNetwork/Acala/issues/1562
+		aca_per_second / 50 * dollar(DOT) / dollar(ACA)
 	}
 }
