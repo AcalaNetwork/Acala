@@ -281,7 +281,8 @@ pub mod module {
 			debug_assert!(res.is_ok());
 			if res.is_ok() {
 				current_weight = current_weight.saturating_add(
-					<T as Config>::WeightInfo::redeem_with_available_staking_balance().saturating_mul(res.unwrap()),
+					<T as Config>::WeightInfo::redeem_with_available_staking_balance()
+						.saturating_mul(res.unwrap_or_default()),
 				);
 			}
 
@@ -596,6 +597,9 @@ pub mod module {
 		/// Parameters:
 		/// - `adjustment`: The difference in amount the AvailableStakingBalance should be adjusted
 		///   by.
+		///
+		/// Weight: Weight(xcm unbond) + n * Weight(match redeem requests), where n is number of
+		/// redeem requests matched.
 		#[pallet::weight(
 			< T as Config >::WeightInfo::adjust_available_staking_balance_with_no_matches().saturating_add(
 			max_num_matches.saturating_mul(< T as Config >::WeightInfo::redeem_with_available_staking_balance())
@@ -842,6 +846,9 @@ pub mod module {
 
 		/// Construct XCM message and sent it to the relaychain to withdraw_unbonded Staking
 		/// currency. The staking currency withdrew becomes available to be redeemed.
+		///
+		/// params:
+		/// 	- `staking_amount_unbonded`: amount of staking currency to withdraw unbond via XCM
 		#[transactional]
 		pub fn process_scheduled_unbond(staking_amount_unbonded: Balance) -> DispatchResult {
 			let msg = Self::construct_xcm_unreserve_message(T::ParachainAccount::get(), staking_amount_unbonded);
@@ -861,6 +868,12 @@ pub mod module {
 
 		/// Iterate through all redeem requests, then match them with available_staking_balance.
 		/// This should be called when new available_staking_balance becomes available.
+		///
+		/// params:
+		/// 	- `max_num_matches`: Maximum number of redeem requests to be matched.
+		///
+		/// return:
+		/// 	Result<u64, DispatchError>: The number of redeem reqeusts actually matched.
 		#[transactional]
 		pub fn process_redeem_requests_with_available_staking_balance(
 			max_num_matches: u64,
