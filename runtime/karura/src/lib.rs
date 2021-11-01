@@ -200,19 +200,6 @@ impl Contains<Call> for BaseCallFilter {
 			return true;
 		}
 
-		let is_xcm_call = matches!(
-			call,
-			Call::PolkadotXcm(pallet_xcm::Call::send { .. })
-				| Call::PolkadotXcm(pallet_xcm::Call::execute { .. })
-				| Call::PolkadotXcm(pallet_xcm::Call::teleport_assets { .. })
-				| Call::PolkadotXcm(pallet_xcm::Call::reserve_transfer_assets { .. })
-				| Call::PolkadotXcm(pallet_xcm::Call::limited_reserve_transfer_assets { .. })
-				| Call::PolkadotXcm(pallet_xcm::Call::limited_teleport_assets { .. })
-		);
-		if is_xcm_call {
-			return false;
-		}
-
 		let is_paused = module_transaction_pause::PausedTransactionFilter::<Runtime>::contains(call);
 		if is_paused {
 			// no paused call
@@ -226,6 +213,28 @@ impl Contains<Call> for BaseCallFilter {
 		if is_evm {
 			// no evm call
 			return false;
+		}
+
+		if let Call::PolkadotXcm(xcm_method) = call {
+			match xcm_method {
+				pallet_xcm::Call::send { .. }
+				| pallet_xcm::Call::execute { .. }
+				| pallet_xcm::Call::teleport_assets { .. }
+				| pallet_xcm::Call::reserve_transfer_assets { .. }
+				| pallet_xcm::Call::limited_reserve_transfer_assets { .. }
+				| pallet_xcm::Call::limited_teleport_assets { .. } => {
+					return false;
+				}
+				pallet_xcm::Call::force_xcm_version { .. }
+				| pallet_xcm::Call::force_default_xcm_version { .. }
+				| pallet_xcm::Call::force_subscribe_version_notify { .. }
+				| pallet_xcm::Call::force_unsubscribe_version_notify { .. } => {
+					return true;
+				}
+				_ => {
+					unimplemented!()
+				}
+			}
 		}
 
 		true
