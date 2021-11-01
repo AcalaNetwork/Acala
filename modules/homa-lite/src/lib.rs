@@ -32,8 +32,9 @@ use orml_traits::{
 	arithmetic::Signed, BalanceStatus, MultiCurrency, MultiCurrencyExtended, MultiReservableCurrency, XcmTransfer,
 };
 use primitives::{Balance, CurrencyId};
+use sp_arithmetic::traits::CheckedRem;
 use sp_runtime::{
-	traits::{BlockNumberProvider, Bounded, Saturating, Zero},
+	traits::{BlockNumberProvider, Bounded, One, Saturating, Zero},
 	ArithmeticError, FixedPointNumber, Permill,
 };
 use sp_std::{
@@ -282,11 +283,11 @@ pub mod module {
 		}
 
 		fn on_initialize(n: T::BlockNumber) -> Weight {
-			let update_frequency = T::StakingUpdateFrequency::get();
 			// Update the total amount of Staking balance by acrueing the interest periodically.
 			if !Self::staking_interest_rate_per_update().is_zero()
-				&& !update_frequency.is_zero()
-				&& n % update_frequency == Zero::zero()
+				&& n.checked_rem(&T::StakingUpdateFrequency::get())
+					.unwrap_or(One::one())
+					.is_zero()
 			{
 				let current = Self::total_staking_currency();
 				let new_total = current.saturating_add(Self::staking_interest_rate_per_update().mul(current));
