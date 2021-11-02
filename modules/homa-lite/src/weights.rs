@@ -63,49 +63,49 @@ pub trait WeightInfo {
 pub struct AcalaWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	fn on_idle() -> Weight {
-		(455_492_000 as Weight)
+		(441_803_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(23 as Weight))
 			.saturating_add(T::DbWeight::get().writes(18 as Weight))
 	}
 	fn mint() -> Weight {
-		(275_603_000 as Weight)
+		(242_301_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(14 as Weight))
 			.saturating_add(T::DbWeight::get().writes(7 as Weight))
 	}
 	fn mint_for_requests() -> Weight {
-		(637_241_000 as Weight)
+		(595_632_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(30 as Weight))
 			.saturating_add(T::DbWeight::get().writes(21 as Weight))
 	}
 	fn set_total_staking_currency() -> Weight {
-		(19_723_000 as Weight)
+		(18_973_000 as Weight)
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn adjust_total_staking_currency() -> Weight {
-		(22_054_000 as Weight)
+		(21_394_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn set_minting_cap() -> Weight {
-		(20_452_000 as Weight)
+		(19_435_000 as Weight)
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn set_xcm_dest_weight() -> Weight {
-		(19_964_000 as Weight)
+		(18_605_000 as Weight)
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn request_redeem() -> Weight {
-		(148_644_000 as Weight)
+		(145_491_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(7 as Weight))
 			.saturating_add(T::DbWeight::get().writes(4 as Weight))
 	}
 	fn schedule_unbond() -> Weight {
-		(23_990_000 as Weight)
+		(23_033_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn replace_schedule_unbond() -> Weight {
-		(20_711_000 as Weight)
+		(19_978_000 as Weight)
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 }
@@ -113,49 +113,49 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 // For backwards compatibility and tests
 impl WeightInfo for () {
 	fn on_idle() -> Weight {
-		(455_492_000 as Weight)
+		(441_803_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(23 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(18 as Weight))
 	}
 	fn mint() -> Weight {
-		(275_603_000 as Weight)
+		(242_301_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(14 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(7 as Weight))
 	}
 	fn mint_for_requests() -> Weight {
-		(637_241_000 as Weight)
+		(595_632_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(30 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(21 as Weight))
 	}
 	fn set_total_staking_currency() -> Weight {
-		(19_723_000 as Weight)
+		(18_973_000 as Weight)
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
 	fn adjust_total_staking_currency() -> Weight {
-		(22_054_000 as Weight)
+		(21_394_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
 	fn set_minting_cap() -> Weight {
-		(20_452_000 as Weight)
+		(19_435_000 as Weight)
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
 	fn set_xcm_dest_weight() -> Weight {
-		(19_964_000 as Weight)
+		(18_605_000 as Weight)
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
 	fn request_redeem() -> Weight {
-		(148_644_000 as Weight)
+		(145_491_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(7 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(4 as Weight))
 	}
 	fn schedule_unbond() -> Weight {
-		(23_990_000 as Weight)
+		(23_033_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
 	fn replace_schedule_unbond() -> Weight {
-		(20_711_000 as Weight)
+		(19_978_000 as Weight)
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
 }
