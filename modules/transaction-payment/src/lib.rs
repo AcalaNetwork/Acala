@@ -408,7 +408,7 @@ where
 	///
 	/// All dispatchables must be annotated with weight and will have some
 	/// fee info. This function always returns.
-	pub fn query_info<Extrinsic: GetDispatchInfo>(
+	pub fn query_info<Extrinsic: sp_runtime::traits::Extrinsic + GetDispatchInfo>(
 		unchecked_extrinsic: Extrinsic,
 		len: u32,
 	) -> RuntimeDispatchInfo<PalletBalanceOf<T>>
@@ -425,7 +425,13 @@ where
 		// potential gain in the future.
 		let dispatch_info = <Extrinsic as GetDispatchInfo>::get_dispatch_info(&unchecked_extrinsic);
 
-		let partial_fee = Self::compute_fee(len, &dispatch_info, 0u32.into());
+		let partial_fee = if unchecked_extrinsic.is_signed().unwrap_or(false) {
+			Self::compute_fee(len, &dispatch_info, 0u32.into())
+		} else {
+			// Unsigned extrinsics have no partial fee.
+			0u32.into()
+		};
+
 		let DispatchInfo { weight, class, .. } = dispatch_info;
 
 		RuntimeDispatchInfo {
@@ -436,7 +442,7 @@ where
 	}
 
 	/// Query the detailed fee of a given `call`.
-	pub fn query_fee_details<Extrinsic: GetDispatchInfo>(
+	pub fn query_fee_details<Extrinsic: sp_runtime::traits::Extrinsic + GetDispatchInfo>(
 		unchecked_extrinsic: Extrinsic,
 		len: u32,
 	) -> FeeDetails<PalletBalanceOf<T>>
@@ -444,7 +450,16 @@ where
 		T::Call: Dispatchable<Info = DispatchInfo>,
 	{
 		let dispatch_info = <Extrinsic as GetDispatchInfo>::get_dispatch_info(&unchecked_extrinsic);
-		Self::compute_fee_details(len, &dispatch_info, 0u32.into())
+
+		if unchecked_extrinsic.is_signed().unwrap_or(false) {
+			Self::compute_fee_details(len, &dispatch_info, 0u32.into())
+		} else {
+			// Unsigned extrinsics have no inclusion fee.
+			FeeDetails {
+				inclusion_fee: None,
+				tip: 0u32.into(),
+			}
+		}
 	}
 
 	/// Compute the fee details for a particular transaction.

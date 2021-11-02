@@ -395,22 +395,54 @@ fn query_info_works() {
 			});
 			let origin = 111111;
 			let extra = ();
-			let xt = TestXt::new(call, Some((origin, extra)));
+			let xt = TestXt::new(call.clone(), Some((origin, extra)));
 			let info = xt.get_dispatch_info();
 			let ext = xt.encode();
 			let len = ext.len() as u32;
+
+			let unsigned_xt = TestXt::<_, ()>::new(call, None);
+			let unsigned_xt_info = unsigned_xt.get_dispatch_info();
 
 			// all fees should be x1.5
 			NextFeeMultiplier::<Runtime>::put(Multiplier::saturating_from_rational(3, 2));
 
 			assert_eq!(
-				TransactionPayment::query_info(xt, len),
+				TransactionPayment::query_info(xt.clone(), len),
 				RuntimeDispatchInfo {
 					weight: info.weight,
 					class: info.class,
 					partial_fee: 5 * 2 /* base * weight_fee */
 						+ len as u128  /* len * 1 */
 						+ info.weight.min(BlockWeights::get().max_block) as u128 * 2 * 3 / 2 /* weight */
+				},
+			);
+
+			assert_eq!(
+				TransactionPayment::query_info(unsigned_xt.clone(), len),
+				RuntimeDispatchInfo {
+					weight: unsigned_xt_info.weight,
+					class: unsigned_xt_info.class,
+					partial_fee: 0,
+				},
+			);
+
+			assert_eq!(
+				TransactionPayment::query_fee_details(xt, len),
+				FeeDetails {
+					inclusion_fee: Some(InclusionFee {
+						base_fee: 5 * 2,
+						len_fee: len as u128,
+						adjusted_weight_fee: info.weight.min(BlockWeights::get().max_block) as u128 * 2 * 3 / 2
+					}),
+					tip: 0,
+				},
+			);
+
+			assert_eq!(
+				TransactionPayment::query_fee_details(unsigned_xt, len),
+				FeeDetails {
+					inclusion_fee: None,
+					tip: 0
 				},
 			);
 		});
