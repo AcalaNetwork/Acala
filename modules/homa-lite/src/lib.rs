@@ -914,9 +914,9 @@ pub mod module {
 			)
 		}
 
-		/// Helper function that update the storage with the new
+		/// Helper function that update the storage of total_staking_currency and emit event.
+		#[transactional]
 		fn update_total_staking_currency_storage(f: impl FnOnce(Balance) -> Balance) -> DispatchResult {
-			// Update storage with given function and emit event.
 			let new_total = TotalStakingCurrency::<T>::mutate(|current| {
 				*current = f(*current);
 				*current
