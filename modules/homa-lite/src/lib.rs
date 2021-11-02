@@ -916,7 +916,6 @@ pub mod module {
 		}
 
 		/// Helper function that update the storage of total_staking_currency and emit event.
-		#[transactional]
 		fn update_total_staking_currency_storage(
 			f: impl FnOnce(Balance) -> Result<Balance, DispatchError>,
 		) -> DispatchResult {
