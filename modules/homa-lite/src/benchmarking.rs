@@ -62,13 +62,13 @@ benchmarks! {
 		<T as module::Config>::Currency::deposit(T::LiquidCurrencyId::get(), &caller3, amount)?;
 		<T as module::Config>::Currency::deposit(T::LiquidCurrencyId::get(), &caller4, amount)?;
 		<T as module::Config>::Currency::deposit(T::LiquidCurrencyId::get(), &caller5, amount)?;
-		let _ = crate::Pallet::<T>::set_minting_cap(RawOrigin::Root.into(), amount)?;
+		let _ = crate::Pallet::<T>::set_minting_cap(RawOrigin::Root.into(), 10 * amount)?;
 		let _ = crate::Pallet::<T>::request_redeem(RawOrigin::Signed(caller2.clone()).into(), amount, Permill::default());
 		let _ = crate::Pallet::<T>::request_redeem(RawOrigin::Signed(caller3.clone()).into(), amount, Permill::default());
 		let _ = crate::Pallet::<T>::request_redeem(RawOrigin::Signed(caller4.clone()).into(), amount, Permill::default());
 		let _ = crate::Pallet::<T>::request_redeem(RawOrigin::Signed(caller5.clone()).into(), amount, Permill::default());
 		let _ = crate::Pallet::<T>::request_redeem(RawOrigin::Signed(caller6.clone()).into(), amount, Permill::default());
-	}: _(RawOrigin::Signed(caller), amount)
+	}: _(RawOrigin::Signed(caller), 8 * amount)
 
 	mint_for_requests {
 		let amount = 1_000_000_000_000;
@@ -90,7 +90,6 @@ benchmarks! {
 		let _ = crate::Pallet::<T>::request_redeem(RawOrigin::Signed(caller4.clone()).into(), amount, Permill::default());
 		let _ = crate::Pallet::<T>::request_redeem(RawOrigin::Signed(caller5.clone()).into(), amount, Permill::default());
 		let _ = crate::Pallet::<T>::request_redeem(RawOrigin::Signed(caller6.clone()).into(), amount, Permill::default());
-
 
 		<T as module::Config>::Currency::deposit(T::StakingCurrencyId::get(), &caller, amount*5)?;
 		crate::Pallet::<T>::set_minting_cap(RawOrigin::Root.into(), amount*10)?;
