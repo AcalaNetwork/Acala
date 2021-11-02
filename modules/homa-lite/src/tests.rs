@@ -200,33 +200,88 @@ fn can_adjust_total_staking_currency() {
 		assert_eq!(HomaLite::total_staking_currency(), 1);
 
 		assert_noop!(
-			HomaLite::adjust_total_staking_currency(Origin::signed(ALICE), 5000),
+			HomaLite::adjust_total_staking_currency(Origin::signed(ALICE), 5000i128),
 			BadOrigin
 		);
 
 		// Can adjust total_staking_currency with ROOT.
-		assert_ok!(HomaLite::adjust_total_staking_currency(Origin::root(), 5000));
-
+		assert_ok!(HomaLite::adjust_total_staking_currency(Origin::root(), 5000i128));
 		assert_eq!(HomaLite::total_staking_currency(), 5001);
 		System::assert_last_event(Event::HomaLite(crate::Event::TotalStakingCurrencySet(5001)));
 
-		// Underflow / overflow causes error
-		assert_noop!(
-			HomaLite::adjust_total_staking_currency(Origin::root(), -5002),
-			ArithmeticError::Underflow
-		);
+		// Can decrease total_staking_currency.
+		assert_ok!(HomaLite::adjust_total_staking_currency(Origin::root(), -5000i128));
+		assert_eq!(HomaLite::total_staking_currency(), 1);
+		System::assert_last_event(Event::HomaLite(crate::Event::TotalStakingCurrencySet(1)));
 
-		assert_eq!(HomaLite::total_staking_currency(), 5001);
-
+		// overflow can be handled
 		assert_ok!(HomaLite::set_total_staking_currency(
 			Origin::root(),
 			Balance::max_value()
 		));
 
+		assert_ok!(HomaLite::adjust_total_staking_currency(Origin::root(), 1i128));
+		assert_eq!(HomaLite::total_staking_currency(), Balance::max_value());
+
+		// Do not allow TotalStakingCurrency to become 0
+		assert_ok!(HomaLite::set_total_staking_currency(Origin::root(), 5000));
 		assert_noop!(
-			HomaLite::adjust_total_staking_currency(Origin::root(), 1),
-			ArithmeticError::Overflow
+			HomaLite::adjust_total_staking_currency(Origin::root(), -5000i128),
+			Error::<Runtime>::InvalidTotalStakingCurrency
 		);
+		assert_eq!(HomaLite::total_staking_currency(), 5000);
+
+		// TotalStakingCurrency must be atleast 1
+		assert_ok!(HomaLite::adjust_total_staking_currency(Origin::root(), -4999i128));
+	});
+}
+
+#[test]
+fn can_adjust_available_staking_balance_with_no_matches() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_noop!(
+			HomaLite::adjust_available_staking_balance(Origin::signed(ALICE), 5000i128, 10),
+			BadOrigin
+		);
+
+		// Can adjust available_staking_balance with ROOT.
+		assert_ok!(HomaLite::adjust_available_staking_balance(Origin::root(), 5001i128, 10));
+		assert_eq!(HomaLite::available_staking_balance(), 5001);
+		System::assert_last_event(Event::HomaLite(crate::Event::AvailableStakingBalanceSet(5001)));
+
+		// Can decrease available_staking_balance.
+		assert_ok!(HomaLite::adjust_available_staking_balance(
+			Origin::root(),
+			-5001i128,
+			10
+		));
+		assert_eq!(HomaLite::total_staking_currency(), 0);
+		System::assert_last_event(Event::HomaLite(crate::Event::AvailableStakingBalanceSet(0)));
+
+		// Underflow / overflow can be handled due to the use of saturating arithmetic
+		assert_ok!(HomaLite::adjust_available_staking_balance(
+			Origin::root(),
+			-10_000i128,
+			10
+		));
+		assert_eq!(HomaLite::available_staking_balance(), 0);
+
+		assert_ok!(HomaLite::adjust_available_staking_balance(
+			Origin::root(),
+			i128::max_value(),
+			10
+		));
+		assert_ok!(HomaLite::adjust_available_staking_balance(
+			Origin::root(),
+			i128::max_value(),
+			10
+		));
+		assert_ok!(HomaLite::adjust_available_staking_balance(
+			Origin::root(),
+			i128::max_value(),
+			10
+		));
+		assert_eq!(HomaLite::available_staking_balance(), Balance::max_value());
 	});
 }
 
@@ -407,20 +462,50 @@ fn new_available_staking_currency_can_handle_redeem_requests() {
 			Some((dollar(989), Permill::zero()))
 		);
 
-		// Add more staking currency to fully satify the last redeem request
-		assert_ok!(HomaLite::replace_schedule_unbond(
+		// Add more redeem request
+		assert_ok!(Currencies::update_balance(
 			Origin::root(),
-			vec![(dollar(150), 2)],
+			ALICE,
+			LKSM,
+			dollar(1_000) as i128
 		));
-		MockRelayBlockNumberProvider::set(2);
-		HomaLite::on_idle(MockRelayBlockNumberProvider::get(), 5_000_000_000);
+		assert_ok!(HomaLite::request_redeem(
+			Origin::signed(ALICE),
+			dollar(1_000),
+			Permill::zero()
+		));
+		// 1000 - withdraw_fee = 999
+		assert_eq!(
+			RedeemRequests::<Runtime>::get(&ALICE),
+			Some((dollar(999), Permill::zero()))
+		);
+		// Add more staking currency by adjust_available_staking_balance also
+		// automatically fullfill pending redeem request.
+		assert_ok!(HomaLite::adjust_available_staking_balance(
+			Origin::root(),
+			dollar(200) as i128,
+			10
+		));
 
-		// The last request is redeemed, the leftover is stored.
-		assert_eq!(AvailableStakingBalance::<Runtime>::get(), 51_100_000_000_000);
-		assert_eq!(Currencies::free_balance(KSM, &ROOT), 1_096_900_000_000_000);
-		assert_eq!(Currencies::free_balance(LKSM, &ROOT), dollar(989_000));
-		assert_eq!(Currencies::reserved_balance(LKSM, &ROOT), dollar(0));
+		// The 2 remaining requests are redeemed, the leftover is stored.
+		// available_staking_remain = 200 - 98.9 - 99.9 = 1.2
+		assert_eq!(AvailableStakingBalance::<Runtime>::get(), dollar(12) / 10);
+
+		assert_eq!(RedeemRequests::<Runtime>::get(&ALICE), None);
+		assert_eq!(HomaLite::get_exchange_rate(), Ratio::saturating_from_rational(1, 10));
+		// staking_gained = 99.9 - 1 (xcm_fee) = 98.9
+		assert_eq!(
+			Currencies::free_balance(KSM, &ALICE),
+			dollar(INITIAL_BALANCE) + dollar(989) / 10
+		);
+		assert_eq!(Currencies::free_balance(LKSM, &ALICE), 0);
+		assert_eq!(Currencies::reserved_balance(LKSM, &ALICE), 0);
+
 		assert_eq!(RedeemRequests::<Runtime>::get(&ROOT), None);
+		// staking = 999(first redeem) + 98.9(this redeem) - 1(xcm_fee) = 1096.9
+		assert_eq!(Currencies::free_balance(KSM, &ROOT), dollar(10_969) / 10);
+		assert_eq!(Currencies::free_balance(LKSM, &ROOT), dollar(989_000));
+		assert_eq!(Currencies::reserved_balance(LKSM, &ROOT), 0);
 	});
 }
 
@@ -463,12 +548,12 @@ fn on_idle_can_handle_changes_in_exchange_rate() {
 #[test]
 fn request_redeem_works() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(HomaLite::replace_schedule_unbond(
+		assert_ok!(HomaLite::adjust_available_staking_balance(
 			Origin::root(),
-			vec![(dollar(50_000), 1)],
+			50_000_000_000_000_000,
+			10
 		));
-		MockRelayBlockNumberProvider::set(1);
-		HomaLite::on_idle(MockRelayBlockNumberProvider::get(), 5_000_000_000);
+
 		assert_eq!(AvailableStakingBalance::<Runtime>::get(), dollar(50_000));
 
 		// Redeem amount has to be above a threshold.
@@ -526,12 +611,12 @@ fn request_redeem_works() {
 #[test]
 fn request_redeem_can_handle_dust_redeem_requests() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(HomaLite::replace_schedule_unbond(
+		assert_ok!(HomaLite::adjust_available_staking_balance(
 			Origin::root(),
-			vec![(dollar(50_000), 1)],
+			50_000_000_000_000_000,
+			10
 		));
-		MockRelayBlockNumberProvider::set(1);
-		HomaLite::on_idle(MockRelayBlockNumberProvider::get(), 5_000_000_000);
+
 		assert_eq!(AvailableStakingBalance::<Runtime>::get(), dollar(50_000));
 
 		// Remaining `dollar(1)` is below the xcm_unbond_fee, therefore returned and requests filled.
@@ -576,22 +661,80 @@ fn on_idle_can_handle_dust_redeem_requests() {
 // mint can handle dust redeem requests
 #[test]
 fn mint_can_handle_dust_redeem_requests() {
-	ExtBuilder::default().build().execute_with(|| {
+	ExtBuilder::empty().build().execute_with(|| {
 		assert_ok!(HomaLite::set_minting_cap(Origin::root(), dollar(INITIAL_BALANCE)));
-
-		// Test that on_idle doesn't add dust redeem requests into the queue.
-		assert_ok!(HomaLite::request_redeem(
-			Origin::signed(ROOT),
-			dollar(500_010),
-			Permill::zero()
+		assert_ok!(Currencies::update_balance(
+			Origin::root(),
+			ALICE,
+			LKSM,
+			1_001_001_101_101_101 as i128
+		));
+		assert_ok!(Currencies::update_balance(
+			Origin::root(),
+			BOB,
+			KSM,
+			dollar(101) as i128
 		));
 
-		assert_ok!(HomaLite::mint(Origin::signed(ALICE), dollar(50_000)));
+		assert_ok!(HomaLite::set_total_staking_currency(
+			Origin::root(),
+			Currencies::total_issuance(LKSM) / 10
+		));
 
-		assert_eq!(Currencies::free_balance(KSM, &ROOT), 49_950_999_000_000_000);
-		assert_eq!(Currencies::free_balance(LKSM, &ROOT), dollar(499_990));
-		assert_eq!(Currencies::reserved_balance(LKSM, &ROOT), 0);
-		assert_eq!(RedeemRequests::<Runtime>::get(&ROOT), None);
+		// Redeem enough for 100 KSM with dust remaining
+		assert_ok!(HomaLite::request_redeem(
+			Origin::signed(ALICE),
+			1_001_001_101_101_101,
+			Permill::zero()
+		));
+		assert_eq!(
+			RedeemRequests::<Runtime>::get(&ALICE),
+			Some((1_000_000_100_000_000, Permill::zero()))
+		);
+		assert_eq!(Currencies::free_balance(LKSM, &ALICE), 0);
+		assert_eq!(Currencies::reserved_balance(LKSM, &ALICE), 1_000_000_100_000_000);
+
+		let mint_amount = HomaLite::convert_liquid_to_staking(1_000_000_000_000_000).unwrap();
+		assert_eq!(mint_amount, 100_100_100_100_099);
+		// Mint 100 KSM, remaning dust should be returned to the redeemer.
+		assert_ok!(HomaLite::mint(Origin::signed(BOB), mint_amount));
+
+		// some dust due to rounding error left
+		assert_eq!(Currencies::free_balance(KSM, &BOB), 899_899_899_902);
+		// Minted appox. $1000 LKSM
+		assert_eq!(Currencies::free_balance(LKSM, &BOB), 999_999_999_999_990);
+
+		// Redeemed $100 KSM for ALICE, with rounding error
+		assert_eq!(Currencies::free_balance(KSM, &ALICE), 100_100_100_100_098);
+		// Dust LKSM is returned to the redeemer.
+		assert_eq!(Currencies::free_balance(LKSM, &ALICE), 100_000_010);
+		assert_eq!(Currencies::reserved_balance(LKSM, &ALICE), 0);
+		assert_eq!(RedeemRequests::<Runtime>::get(&ALICE), None);
+
+		let events = System::events();
+		assert_eq!(
+			events[events.len() - 4].event,
+			Event::Currencies(module_currencies::Event::Transferred(
+				KSM,
+				BOB,
+				ALICE,
+				100_100_100_100_098
+			))
+		);
+		assert_eq!(
+			events[events.len() - 3].event,
+			Event::HomaLite(crate::Event::Redeemed(ALICE, 100_100_100_100_098, 999_999_999_999_990))
+		);
+		// Dust returned to redeemer
+		assert_eq!(
+			events[events.len() - 2].event,
+			Event::Tokens(orml_tokens::Event::Unreserved(LKSM, ALICE, 100_000_010))
+		);
+		// total amount minted, with rounding error
+		assert_eq!(
+			events[events.len() - 1].event,
+			Event::HomaLite(crate::Event::Minted(BOB, 100_100_100_100_099, 999_999_999_999_990))
+		);
 	});
 }
 
@@ -799,9 +942,11 @@ fn redeem_can_handle_dust_available_staking_currency() {
 	ExtBuilder::default().build().execute_with(|| {
 		// If AvailableStakingBalance is not enough to pay for the unbonding fee, ignore it.
 		// pub XcmUnbondFee: Balance = dollar(1);
-		assert_ok!(HomaLite::schedule_unbond(Origin::root(), 999_000_000, 0));
-		MockRelayBlockNumberProvider::set(0);
-		HomaLite::on_idle(MockRelayBlockNumberProvider::get(), 5_000_000_000);
+		assert_ok!(HomaLite::adjust_available_staking_balance(
+			Origin::root(),
+			999_000_000,
+			10
+		));
 
 		assert_eq!(AvailableStakingBalance::<Runtime>::get(), 999_000_000);
 
@@ -940,5 +1085,307 @@ fn not_overcharge_redeem_fee() {
 
 		assert_eq!(Currencies::free_balance(LKSM, &ALICE), dollar(80));
 		assert_eq!(Currencies::reserved_balance(LKSM, &ALICE), dollar(20) - fee * 2);
+	});
+}
+
+#[test]
+fn on_idle_matches_redeem_based_on_weights() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(Currencies::update_balance(
+			Origin::root(),
+			ALICE,
+			LKSM,
+			dollar(INITIAL_BALANCE) as i128
+		));
+
+		assert_ok!(HomaLite::set_total_staking_currency(
+			Origin::root(),
+			Currencies::total_issuance(LKSM) / 10
+		));
+
+		// Schedule an unbond.
+		assert_ok!(HomaLite::schedule_unbond(Origin::root(), dollar(1_000_000), 0));
+		MockRelayBlockNumberProvider::set(0);
+
+		assert_ok!(HomaLite::request_redeem(
+			Origin::signed(ROOT),
+			dollar(1_000),
+			Permill::zero()
+		));
+		assert_ok!(HomaLite::request_redeem(
+			Origin::signed(ALICE),
+			dollar(1_000),
+			Permill::zero()
+		));
+
+		// Get the currently benchmarked weight.
+		let xcm_weight = <Runtime as crate::Config>::WeightInfo::xcm_unbond();
+		let redeem = <Runtime as crate::Config>::WeightInfo::redeem_with_available_staking_balance();
+
+		// on_idle does nothing with insufficient weight
+		assert_eq!(HomaLite::on_idle(MockRelayBlockNumberProvider::get(), 0), 0);
+		assert_eq!(ScheduledUnbond::<Runtime>::get(), vec![(dollar(1_000_000), 0)]);
+		assert_eq!(
+			RedeemRequests::<Runtime>::get(ROOT),
+			Some((dollar(999), Permill::zero()))
+		);
+		assert_eq!(
+			RedeemRequests::<Runtime>::get(ALICE),
+			Some((dollar(999), Permill::zero()))
+		);
+
+		// on_idle only perform XCM unbond with sufficient weight
+		assert_eq!(
+			HomaLite::on_idle(MockRelayBlockNumberProvider::get(), xcm_weight + 1),
+			xcm_weight
+		);
+		assert_eq!(ScheduledUnbond::<Runtime>::get(), vec![]);
+		assert_eq!(
+			RedeemRequests::<Runtime>::get(ROOT),
+			Some((dollar(999), Permill::zero()))
+		);
+		assert_eq!(
+			RedeemRequests::<Runtime>::get(ALICE),
+			Some((dollar(999), Permill::zero()))
+		);
+
+		// on_idle has weights to match only one redeem
+		assert_ok!(HomaLite::schedule_unbond(Origin::root(), dollar(1_000_000), 0));
+		assert_eq!(ScheduledUnbond::<Runtime>::get(), vec![(dollar(1_000_000), 0)]);
+		assert_eq!(
+			HomaLite::on_idle(MockRelayBlockNumberProvider::get(), xcm_weight + redeem + 1),
+			xcm_weight + redeem
+		);
+		assert_eq!(ScheduledUnbond::<Runtime>::get(), vec![]);
+		assert_eq!(
+			RedeemRequests::<Runtime>::get(ROOT),
+			Some((dollar(999), Permill::zero()))
+		);
+		assert_eq!(RedeemRequests::<Runtime>::get(ALICE), None);
+
+		// on_idle will match the remaining redeem request, even with no scheduled unbond.
+		assert_ok!(HomaLite::schedule_unbond(Origin::root(), dollar(1_000_000), 10));
+		assert_eq!(ScheduledUnbond::<Runtime>::get(), vec![(dollar(1_000_000), 10)]);
+		assert_eq!(
+			HomaLite::on_idle(MockRelayBlockNumberProvider::get(), redeem + 1),
+			redeem
+		);
+		assert_eq!(ScheduledUnbond::<Runtime>::get(), vec![(dollar(1_000_000), 10)]);
+		assert_eq!(RedeemRequests::<Runtime>::get(ROOT), None);
+		assert_eq!(RedeemRequests::<Runtime>::get(ALICE), None);
+	});
+}
+
+#[test]
+fn adjust_available_staking_balance_matches_redeem_based_on_input() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(Currencies::update_balance(
+			Origin::root(),
+			ALICE,
+			LKSM,
+			dollar(INITIAL_BALANCE) as i128
+		));
+
+		assert_ok!(Currencies::update_balance(
+			Origin::root(),
+			BOB,
+			LKSM,
+			dollar(INITIAL_BALANCE) as i128
+		));
+
+		assert_ok!(HomaLite::request_redeem(
+			Origin::signed(ROOT),
+			dollar(1_000),
+			Permill::zero()
+		));
+		assert_ok!(HomaLite::request_redeem(
+			Origin::signed(ALICE),
+			dollar(1_000),
+			Permill::zero()
+		));
+		assert_ok!(HomaLite::request_redeem(
+			Origin::signed(BOB),
+			dollar(1_000),
+			Permill::zero()
+		));
+
+		assert_ok!(HomaLite::set_total_staking_currency(
+			Origin::root(),
+			Currencies::total_issuance(LKSM) / 10
+		));
+
+		// match no redeem requests
+		assert_ok!(HomaLite::adjust_available_staking_balance(
+			Origin::root(),
+			dollar(1_000_000) as i128,
+			0
+		));
+		assert_eq!(AvailableStakingBalance::<Runtime>::get(), dollar(1_000_000));
+
+		// match only one request
+		assert_ok!(HomaLite::adjust_available_staking_balance(Origin::root(), 1i128, 1));
+		assert_eq!(
+			RedeemRequests::<Runtime>::get(ROOT),
+			Some((dollar(999), Permill::zero()))
+		);
+		assert_eq!(RedeemRequests::<Runtime>::get(ALICE), None);
+		assert_eq!(
+			RedeemRequests::<Runtime>::get(BOB),
+			Some((dollar(999), Permill::zero()))
+		);
+
+		// match the remaining requests
+		assert_ok!(HomaLite::adjust_available_staking_balance(Origin::root(), 1, 10));
+		assert_eq!(RedeemRequests::<Runtime>::get(ROOT), None);
+		assert_eq!(RedeemRequests::<Runtime>::get(ALICE), None);
+		assert_eq!(RedeemRequests::<Runtime>::get(BOB), None);
+	});
+}
+
+#[test]
+fn available_staking_balances_can_handle_rounding_error_dust() {
+	ExtBuilder::empty().build().execute_with(|| {
+		assert_ok!(Currencies::update_balance(
+			Origin::root(),
+			ALICE,
+			LKSM,
+			dollar(5_000) as i128
+		));
+		assert_ok!(Currencies::update_balance(
+			Origin::root(),
+			BOB,
+			LKSM,
+			dollar(2_000) as i128
+		));
+		assert_ok!(Currencies::update_balance(
+			Origin::root(),
+			ROOT,
+			LKSM,
+			dollar(3_000) as i128
+		));
+
+		assert_ok!(HomaLite::set_total_staking_currency(
+			Origin::root(),
+			1_000_237_000_000_000
+		));
+		let staking_amount = 999_999_999_999;
+		let liquid_amount = HomaLite::convert_staking_to_liquid(staking_amount).unwrap();
+		let staking_amount2 = HomaLite::convert_liquid_to_staking(liquid_amount).unwrap();
+		assert_ne!(staking_amount, staking_amount2);
+
+		assert_ok!(HomaLite::request_redeem(
+			Origin::signed(ALICE),
+			dollar(5_000),
+			Permill::zero()
+		));
+		assert_ok!(HomaLite::request_redeem(
+			Origin::signed(BOB),
+			dollar(2_000),
+			Permill::zero()
+		));
+		assert_ok!(HomaLite::request_redeem(
+			Origin::signed(ROOT),
+			dollar(3_000),
+			Permill::zero()
+		));
+		assert_ok!(HomaLite::replace_schedule_unbond(
+			Origin::root(),
+			vec![(999_999_999_999, 1)],
+		));
+		MockRelayBlockNumberProvider::set(1);
+
+		HomaLite::on_idle(MockRelayBlockNumberProvider::get(), 5_000_000_000);
+
+		// Dust AvailableStakingBalance remains
+		assert_eq!(HomaLite::available_staking_balance(), 1);
+		let events = System::events();
+		assert_eq!(
+			events[events.len() - 3].event,
+			Event::HomaLite(crate::Event::ScheduledUnbondWithdrew(999_999_999_999))
+		);
+		assert_eq!(
+			events[events.len() - 2].event,
+			Event::Tokens(orml_tokens::Event::Unreserved(LKSM, ALICE, 9987632930985))
+		);
+		assert_eq!(
+			events[events.len() - 1].event,
+			Event::HomaLite(crate::Event::Redeemed(ALICE, 999999999998, 9987632930985))
+		);
+	});
+}
+
+#[test]
+fn mint_can_handle_rounding_error_dust() {
+	ExtBuilder::empty().build().execute_with(|| {
+		assert_ok!(Currencies::update_balance(
+			Origin::root(),
+			ALICE,
+			LKSM,
+			dollar(5_000) as i128
+		));
+		assert_ok!(Currencies::update_balance(
+			Origin::root(),
+			BOB,
+			LKSM,
+			dollar(2_000) as i128
+		));
+		assert_ok!(Currencies::update_balance(
+			Origin::root(),
+			ROOT,
+			LKSM,
+			dollar(3_000) as i128
+		));
+		assert_ok!(Currencies::update_balance(
+			Origin::root(),
+			ROOT,
+			KSM,
+			1_999_999_999_999 as i128
+		));
+
+		assert_ok!(HomaLite::set_total_staking_currency(
+			Origin::root(),
+			1_000_237_000_000_000
+		));
+		let staking_amount = 999_999_999_999;
+		let liquid_amount = HomaLite::convert_staking_to_liquid(staking_amount).unwrap();
+		let staking_amount2 = HomaLite::convert_liquid_to_staking(liquid_amount).unwrap();
+		assert_ne!(staking_amount, staking_amount2);
+
+		assert_ok!(HomaLite::request_redeem(
+			Origin::signed(ALICE),
+			dollar(5_000),
+			Permill::zero()
+		));
+		assert_ok!(HomaLite::request_redeem(
+			Origin::signed(BOB),
+			dollar(2_000),
+			Permill::zero()
+		));
+		assert_ok!(HomaLite::request_redeem(
+			Origin::signed(ROOT),
+			dollar(3_000),
+			Permill::zero()
+		));
+		assert_ok!(HomaLite::mint(Origin::signed(ROOT), 999_999_999_999,));
+
+		// Dust is un-transferred from minter
+		assert_eq!(Currencies::free_balance(KSM, &ROOT), 1000000000001);
+		assert_eq!(Currencies::free_balance(LKSM, &ROOT), 9_987_632_930_985);
+
+		let events = System::events();
+		assert_eq!(
+			events[events.len() - 3].event,
+			Event::Currencies(module_currencies::Event::Transferred(KSM, ROOT, ALICE, 999999999998))
+		);
+		// actual staking transfered is off due to rounding error
+		assert_eq!(
+			events[events.len() - 2].event,
+			Event::HomaLite(crate::Event::Redeemed(ALICE, 999999999998, 9_987_632_930_985))
+		);
+		// total amount minted includes dust caused by rounding error
+		assert_eq!(
+			events[events.len() - 1].event,
+			Event::HomaLite(crate::Event::Minted(ROOT, 999999999999, 9_987_632_930_985))
+		);
 	});
 }
