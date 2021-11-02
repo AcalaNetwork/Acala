@@ -277,12 +277,11 @@ pub mod module {
 				.unwrap_or_default();
 
 			// Iterate through existing redeem_requests, and try to match them with `available_staking_balance`
-			let res = Self::process_redeem_requests_with_available_staking_balance(num_redeem_matches);
+			let res = Self::process_redeem_requests_with_available_staking_balance(num_redeem_matches as u32);
 			debug_assert!(res.is_ok());
-			if res.is_ok() {
+			if let Ok(count) = res {
 				current_weight = current_weight.saturating_add(
-					<T as Config>::WeightInfo::redeem_with_available_staking_balance()
-						.saturating_mul(res.unwrap_or_default()),
+					<T as Config>::WeightInfo::redeem_with_available_staking_balance().saturating_mul(count as Weight),
 				);
 			}
 
@@ -602,14 +601,14 @@ pub mod module {
 		/// redeem requests matched.
 		#[pallet::weight(
 			< T as Config >::WeightInfo::adjust_available_staking_balance_with_no_matches().saturating_add(
-			max_num_matches.saturating_mul(< T as Config >::WeightInfo::redeem_with_available_staking_balance())
+			(*max_num_matches as Weight).saturating_mul(< T as Config >::WeightInfo::redeem_with_available_staking_balance())
 			)
 		)]
 		#[transactional]
 		pub fn adjust_available_staking_balance(
 			origin: OriginFor<T>,
 			by_amount: AmountOf<T>,
-			max_num_matches: u64,
+			max_num_matches: u32,
 		) -> DispatchResult {
 			T::GovernanceOrigin::ensure_origin(origin)?;
 
@@ -873,21 +872,21 @@ pub mod module {
 		/// 	- `max_num_matches`: Maximum number of redeem requests to be matched.
 		///
 		/// return:
-		/// 	Result<u64, DispatchError>: The number of redeem reqeusts actually matched.
+		/// 	Result<u32, DispatchError>: The number of redeem reqeusts actually matched.
 		#[transactional]
 		pub fn process_redeem_requests_with_available_staking_balance(
-			max_num_matches: u64,
-		) -> Result<u64, sp_runtime::DispatchError> {
+			max_num_matches: u32,
+		) -> Result<u32, sp_runtime::DispatchError> {
 			if max_num_matches.is_zero() {
 				return Ok(0);
 			}
 			let mut available_staking_balance = Self::available_staking_balance();
-			if available_staking_balance.is_zero() {
+			if available_staking_balance < T::MinimumMintThreshold::get() {
 				return Ok(0);
 			}
 
 			let mut new_balances: Vec<(T::AccountId, Balance, Permill)> = vec![];
-			let mut num_matched = 0u64;
+			let mut num_matched = 0u32;
 			for (redeemer, (request_amount, extra_fee)) in RedeemRequests::<T>::iter() {
 				let actual_liquid_amount = min(
 					request_amount,
@@ -916,10 +915,10 @@ pub mod module {
 					actual_staking_amount,
 					actual_liquid_amount,
 				));
-				num_matched += 1u64;
+				num_matched += 1u32;
 
 				// If all the currencies are minted, return.
-				if available_staking_balance.is_zero() || num_matched >= max_num_matches {
+				if available_staking_balance < T::MinimumMintThreshold::get() || num_matched >= max_num_matches {
 					break;
 				}
 			}

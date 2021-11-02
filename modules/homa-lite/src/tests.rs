@@ -661,22 +661,80 @@ fn on_idle_can_handle_dust_redeem_requests() {
 // mint can handle dust redeem requests
 #[test]
 fn mint_can_handle_dust_redeem_requests() {
-	ExtBuilder::default().build().execute_with(|| {
+	ExtBuilder::empty().build().execute_with(|| {
 		assert_ok!(HomaLite::set_minting_cap(Origin::root(), dollar(INITIAL_BALANCE)));
-
-		// Test that on_idle doesn't add dust redeem requests into the queue.
-		assert_ok!(HomaLite::request_redeem(
-			Origin::signed(ROOT),
-			dollar(500_010),
-			Permill::zero()
+		assert_ok!(Currencies::update_balance(
+			Origin::root(),
+			ALICE,
+			LKSM,
+			1_001_001_101_101_101 as i128
+		));
+		assert_ok!(Currencies::update_balance(
+			Origin::root(),
+			BOB,
+			KSM,
+			dollar(101) as i128
 		));
 
-		assert_ok!(HomaLite::mint(Origin::signed(ALICE), dollar(50_000)));
+		assert_ok!(HomaLite::set_total_staking_currency(
+			Origin::root(),
+			Currencies::total_issuance(LKSM) / 10
+		));
 
-		assert_eq!(Currencies::free_balance(KSM, &ROOT), 49_950_999_000_000_000);
-		assert_eq!(Currencies::free_balance(LKSM, &ROOT), dollar(499_990));
-		assert_eq!(Currencies::reserved_balance(LKSM, &ROOT), 0);
-		assert_eq!(RedeemRequests::<Runtime>::get(&ROOT), None);
+		// Redeem enough for 100 KSM with dust remaining
+		assert_ok!(HomaLite::request_redeem(
+			Origin::signed(ALICE),
+			1_001_001_101_101_101,
+			Permill::zero()
+		));
+		assert_eq!(
+			RedeemRequests::<Runtime>::get(&ALICE),
+			Some((1_000_000_100_000_000, Permill::zero()))
+		);
+		assert_eq!(Currencies::free_balance(LKSM, &ALICE), 0);
+		assert_eq!(Currencies::reserved_balance(LKSM, &ALICE), 1_000_000_100_000_000);
+
+		let mint_amount = HomaLite::convert_liquid_to_staking(1_000_000_000_000_000).unwrap();
+		assert_eq!(mint_amount, 100_100_100_100_099);
+		// Mint 100 KSM, remaning dust should be returned to the redeemer.
+		assert_ok!(HomaLite::mint(Origin::signed(BOB), mint_amount));
+
+		// some dust due to rounding error left
+		assert_eq!(Currencies::free_balance(KSM, &BOB), 899_899_899_902);
+		// Minted appox. $1000 LKSM
+		assert_eq!(Currencies::free_balance(LKSM, &BOB), 999_999_999_999_990);
+
+		// Redeemed $100 KSM for ALICE, with rounding error
+		assert_eq!(Currencies::free_balance(KSM, &ALICE), 100_100_100_100_098);
+		// Dust LKSM is returned to the redeemer.
+		assert_eq!(Currencies::free_balance(LKSM, &ALICE), 100_000_010);
+		assert_eq!(Currencies::reserved_balance(LKSM, &ALICE), 0);
+		assert_eq!(RedeemRequests::<Runtime>::get(&ALICE), None);
+
+		let events = System::events();
+		assert_eq!(
+			events[events.len() - 4].event,
+			Event::Currencies(module_currencies::Event::Transferred(
+				KSM,
+				BOB,
+				ALICE,
+				100_100_100_100_098
+			))
+		);
+		assert_eq!(
+			events[events.len() - 3].event,
+			Event::HomaLite(crate::Event::Redeemed(ALICE, 100_100_100_100_098, 999_999_999_999_990))
+		);
+		// Dust returned to redeemer
+		assert_eq!(
+			events[events.len() - 2].event,
+			Event::Tokens(orml_tokens::Event::Unreserved(LKSM, ALICE, 100_000_010))
+		);
+		// total amount minted, with rounding error
+		assert_eq!(
+			events[events.len() - 1].event,
+			Event::HomaLite(crate::Event::Minted(BOB, 100_100_100_100_099, 999_999_999_999_990))
+		);
 	});
 }
 
@@ -1181,5 +1239,153 @@ fn adjust_available_staking_balance_matches_redeem_based_on_input() {
 		assert_eq!(RedeemRequests::<Runtime>::get(ROOT), None);
 		assert_eq!(RedeemRequests::<Runtime>::get(ALICE), None);
 		assert_eq!(RedeemRequests::<Runtime>::get(BOB), None);
+	});
+}
+
+#[test]
+fn available_staking_balances_can_handle_rounding_error_dust() {
+	ExtBuilder::empty().build().execute_with(|| {
+		assert_ok!(Currencies::update_balance(
+			Origin::root(),
+			ALICE,
+			LKSM,
+			dollar(5_000) as i128
+		));
+		assert_ok!(Currencies::update_balance(
+			Origin::root(),
+			BOB,
+			LKSM,
+			dollar(2_000) as i128
+		));
+		assert_ok!(Currencies::update_balance(
+			Origin::root(),
+			ROOT,
+			LKSM,
+			dollar(3_000) as i128
+		));
+
+		assert_ok!(HomaLite::set_total_staking_currency(
+			Origin::root(),
+			1_000_237_000_000_000
+		));
+		let staking_amount = 999_999_999_999;
+		let liquid_amount = HomaLite::convert_staking_to_liquid(staking_amount).unwrap();
+		let staking_amount2 = HomaLite::convert_liquid_to_staking(liquid_amount).unwrap();
+		assert_ne!(staking_amount, staking_amount2);
+
+		assert_ok!(HomaLite::request_redeem(
+			Origin::signed(ALICE),
+			dollar(5_000),
+			Permill::zero()
+		));
+		assert_ok!(HomaLite::request_redeem(
+			Origin::signed(BOB),
+			dollar(2_000),
+			Permill::zero()
+		));
+		assert_ok!(HomaLite::request_redeem(
+			Origin::signed(ROOT),
+			dollar(3_000),
+			Permill::zero()
+		));
+		assert_ok!(HomaLite::replace_schedule_unbond(
+			Origin::root(),
+			vec![(999_999_999_999, 1)],
+		));
+		MockRelayBlockNumberProvider::set(1);
+
+		HomaLite::on_idle(MockRelayBlockNumberProvider::get(), 5_000_000_000);
+
+		// Dust AvailableStakingBalance remains
+		assert_eq!(HomaLite::available_staking_balance(), 1);
+		let events = System::events();
+		assert_eq!(
+			events[events.len() - 3].event,
+			Event::HomaLite(crate::Event::ScheduledUnbondWithdrew(999_999_999_999))
+		);
+		assert_eq!(
+			events[events.len() - 2].event,
+			Event::Tokens(orml_tokens::Event::Unreserved(LKSM, ALICE, 9987632930985))
+		);
+		assert_eq!(
+			events[events.len() - 1].event,
+			Event::HomaLite(crate::Event::Redeemed(ALICE, 999999999998, 9987632930985))
+		);
+	});
+}
+
+#[test]
+fn mint_can_handle_rounding_error_dust() {
+	ExtBuilder::empty().build().execute_with(|| {
+		assert_ok!(Currencies::update_balance(
+			Origin::root(),
+			ALICE,
+			LKSM,
+			dollar(5_000) as i128
+		));
+		assert_ok!(Currencies::update_balance(
+			Origin::root(),
+			BOB,
+			LKSM,
+			dollar(2_000) as i128
+		));
+		assert_ok!(Currencies::update_balance(
+			Origin::root(),
+			ROOT,
+			LKSM,
+			dollar(3_000) as i128
+		));
+		assert_ok!(Currencies::update_balance(
+			Origin::root(),
+			ROOT,
+			KSM,
+			1_999_999_999_999 as i128
+		));
+
+		assert_ok!(HomaLite::set_total_staking_currency(
+			Origin::root(),
+			1_000_237_000_000_000
+		));
+		let staking_amount = 999_999_999_999;
+		let liquid_amount = HomaLite::convert_staking_to_liquid(staking_amount).unwrap();
+		let staking_amount2 = HomaLite::convert_liquid_to_staking(liquid_amount).unwrap();
+		assert_ne!(staking_amount, staking_amount2);
+
+		assert_ok!(HomaLite::request_redeem(
+			Origin::signed(ALICE),
+			dollar(5_000),
+			Permill::zero()
+		));
+		assert_ok!(HomaLite::request_redeem(
+			Origin::signed(BOB),
+			dollar(2_000),
+			Permill::zero()
+		));
+		assert_ok!(HomaLite::request_redeem(
+			Origin::signed(ROOT),
+			dollar(3_000),
+			Permill::zero()
+		));
+		assert_ok!(HomaLite::mint(Origin::signed(ROOT), 999_999_999_999,));
+
+		// Dust is un-transferred from minter
+		assert_eq!(Currencies::free_balance(KSM, &ROOT), 1000000000001);
+		assert_eq!(Currencies::free_balance(LKSM, &ROOT), 9_987_632_930_985);
+
+		let events = System::events();
+		assert_eq!(
+			events[events.len() - 3].event,
+			Event::Currencies(module_currencies::Event::Transferred(KSM, ROOT, ALICE, 999999999998))
+		);
+		// actual staking transfered is off due to rounding error
+		assert_eq!(
+			events[events.len() - 2].event,
+			Event::HomaLite(crate::Event::Redeemed(ALICE, 999999999998, 9_987_632_930_985))
+		);
+		// total amount minted includes dust caused by rounding error
+		assert_eq!(
+			events[events.len() - 1].event,
+			Event::HomaLite(crate::Event::Minted(ROOT, 999999999999, 9_987_632_930_985))
+		);
 	});
 }
