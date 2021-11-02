@@ -852,14 +852,16 @@ fn total_staking_currency_update_periodically() {
 		let on_initialize_weight = <Runtime as Config>::WeightInfo::on_initialize();
 		let on_initialize_without_work_weight = <Runtime as Config>::WeightInfo::on_initialize_without_work();
 
-		assert_eq!(HomaLite::on_initialize(0), on_initialize_weight);
+		// Interst rate isn't set yet - no interest rate calculation is done.
+		assert_eq!(HomaLite::on_initialize(0), on_initialize_without_work_weight);
 		// Default inflation rate is 0%
 		assert_eq!(TotalStakingCurrency::<Runtime>::get(), dollar(1_000_000));
 
 		for i in 1..100 {
 			assert_eq!(HomaLite::on_initialize(i), on_initialize_without_work_weight);
 		}
-		assert_eq!(HomaLite::on_initialize(100), on_initialize_weight);
+		// Interst rate isn't set yet - no interest rate calculation is done.
+		assert_eq!(HomaLite::on_initialize(0), on_initialize_without_work_weight);
 		assert_eq!(TotalStakingCurrency::<Runtime>::get(), dollar(1_000_000));
 
 		// Interest rate can only be set by governance
