@@ -63,49 +63,49 @@ pub trait WeightInfo {
 pub struct AcalaWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	fn on_idle() -> Weight {
-		(441_803_000 as Weight)
+		(430_563_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(23 as Weight))
 			.saturating_add(T::DbWeight::get().writes(18 as Weight))
 	}
 	fn mint() -> Weight {
-		(242_301_000 as Weight)
+		(230_493_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(14 as Weight))
 			.saturating_add(T::DbWeight::get().writes(7 as Weight))
 	}
 	fn mint_for_requests() -> Weight {
-		(595_632_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(30 as Weight))
-			.saturating_add(T::DbWeight::get().writes(21 as Weight))
+		(831_000_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(42 as Weight))
+			.saturating_add(T::DbWeight::get().writes(31 as Weight))
 	}
 	fn set_total_staking_currency() -> Weight {
-		(18_973_000 as Weight)
+		(18_196_000 as Weight)
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn adjust_total_staking_currency() -> Weight {
-		(21_394_000 as Weight)
+		(20_606_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn set_minting_cap() -> Weight {
-		(19_435_000 as Weight)
+		(18_635_000 as Weight)
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn set_xcm_dest_weight() -> Weight {
-		(18_605_000 as Weight)
+		(17_973_000 as Weight)
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn request_redeem() -> Weight {
-		(145_491_000 as Weight)
+		(141_470_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(7 as Weight))
 			.saturating_add(T::DbWeight::get().writes(4 as Weight))
 	}
 	fn schedule_unbond() -> Weight {
-		(23_033_000 as Weight)
+		(22_390_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn replace_schedule_unbond() -> Weight {
-		(19_978_000 as Weight)
+		(19_186_000 as Weight)
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 }
@@ -113,49 +113,49 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 // For backwards compatibility and tests
 impl WeightInfo for () {
 	fn on_idle() -> Weight {
-		(441_803_000 as Weight)
+		(430_563_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(23 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(18 as Weight))
 	}
 	fn mint() -> Weight {
-		(242_301_000 as Weight)
+		(230_493_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(14 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(7 as Weight))
 	}
 	fn mint_for_requests() -> Weight {
-		(595_632_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(30 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(21 as Weight))
+		(831_000_000 as Weight)
+			.saturating_add(RocksDbWeight::get().reads(42 as Weight))
+			.saturating_add(RocksDbWeight::get().writes(31 as Weight))
 	}
 	fn set_total_staking_currency() -> Weight {
-		(18_973_000 as Weight)
+		(18_196_000 as Weight)
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
 	fn adjust_total_staking_currency() -> Weight {
-		(21_394_000 as Weight)
+		(20_606_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
 	fn set_minting_cap() -> Weight {
-		(19_435_000 as Weight)
+		(18_635_000 as Weight)
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
 	fn set_xcm_dest_weight() -> Weight {
-		(18_605_000 as Weight)
+		(17_973_000 as Weight)
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
 	fn request_redeem() -> Weight {
-		(145_491_000 as Weight)
+		(141_470_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(7 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(4 as Weight))
 	}
 	fn schedule_unbond() -> Weight {
-		(23_033_000 as Weight)
+		(22_390_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
 	fn replace_schedule_unbond() -> Weight {
-		(19_978_000 as Weight)
+		(19_186_000 as Weight)
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
 }
