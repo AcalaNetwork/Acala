@@ -292,7 +292,7 @@ pub mod module {
 				// Inflate the staking total by the interest rate.
 				// This will only fail when current TotalStakingCurrency is 0. In this case it is OK to fail.
 				let _ = Self::update_total_staking_currency_storage(|current| {
-					current.saturating_add(interest_rate.mul(current))
+					Ok(current.saturating_add(interest_rate.mul(current)))
 				});
 				<T as Config>::WeightInfo::on_initialize()
 			} else {
@@ -332,7 +332,7 @@ pub mod module {
 		#[transactional]
 		pub fn set_total_staking_currency(origin: OriginFor<T>, staking_total: Balance) -> DispatchResult {
 			T::GovernanceOrigin::ensure_origin(origin)?;
-			Self::update_total_staking_currency_storage(|_n| staking_total)
+			Self::update_total_staking_currency_storage(|_n| Ok(staking_total))
 		}
 
 		/// Adjusts the total_staking_currency by the given difference.
@@ -345,7 +345,6 @@ pub mod module {
 		#[transactional]
 		pub fn adjust_total_staking_currency(origin: OriginFor<T>, by_amount: AmountOf<T>) -> DispatchResult {
 			T::GovernanceOrigin::ensure_origin(origin)?;
-			let mut current_staking_total = Self::total_staking_currency();
 
 			// Convert AmountOf<T> into Balance safely.
 			let by_amount_abs = if by_amount == AmountOf::<T>::min_value() {
@@ -357,17 +356,18 @@ pub mod module {
 			let by_balance = TryInto::<Balance>::try_into(by_amount_abs).map_err(|_| ArithmeticError::Overflow)?;
 
 			// Adjust the current total.
-			if by_amount.is_positive() {
-				current_staking_total = current_staking_total
-					.checked_add(by_balance)
-					.ok_or(ArithmeticError::Overflow)?;
-			} else {
-				current_staking_total = current_staking_total
-					.checked_sub(by_balance)
-					.ok_or(ArithmeticError::Underflow)?;
-			}
-
-			Self::update_total_staking_currency_storage(|_n| current_staking_total)
+			Self::update_total_staking_currency_storage(|current_staking_total| {
+				let new_total = if by_amount.is_positive() {
+					current_staking_total
+						.checked_add(by_balance)
+						.ok_or(ArithmeticError::Overflow)
+				} else {
+					current_staking_total
+						.checked_sub(by_balance)
+						.ok_or(ArithmeticError::Underflow)
+				}?;
+				Ok(new_total)
+			})
 		}
 
 		/// Updates the cap for how much Staking currency can be used to Mint liquid currency.
@@ -785,16 +785,17 @@ pub mod module {
 				liquid_to_mint = (Permill::one().saturating_sub(T::MaxRewardPerEra::get())).mul(liquid_to_mint);
 				liquid_to_mint = Self::convert_staking_to_liquid(liquid_to_mint)?;
 
-				// Ensure the total amount staked doesn't exceed the cap.
-				let new_total_staking_currency = Self::total_staking_currency()
-					.checked_add(staking_remaining)
-					.ok_or(ArithmeticError::Overflow)?;
-				ensure!(
-					new_total_staking_currency <= Self::staking_currency_mint_cap(),
-					Error::<T>::ExceededStakingCurrencyMintCap
-				);
-
-				Self::update_total_staking_currency_storage(|_n| new_total_staking_currency)?;
+				// Update staking total and ensure the new total doesn't exceed the cap.
+				Self::update_total_staking_currency_storage(|total_staking_currency| {
+					let new_total_staking_currency = total_staking_currency
+						.checked_add(staking_remaining)
+						.ok_or(ArithmeticError::Overflow)?;
+					ensure!(
+						new_total_staking_currency <= Self::staking_currency_mint_cap(),
+						Error::<T>::ExceededStakingCurrencyMintCap
+					);
+					Ok(new_total_staking_currency)
+				})?;
 
 				// All checks pass. Proceed with Xcm transfer.
 				T::XcmTransfer::transfer(
@@ -845,7 +846,7 @@ pub mod module {
 				let actual_staking_amount = Self::convert_liquid_to_staking(actual_liquid_amount)?;
 
 				total_staking_currency = total_staking_currency.saturating_sub(actual_staking_amount);
-				Self::update_total_staking_currency_storage(|_n| total_staking_currency)?;
+				Self::update_total_staking_currency_storage(|_n| Ok(total_staking_currency))?;
 
 				// Redeem from the available_staking_balances costs only the xcm unbond fee.
 				T::Currency::deposit(
@@ -916,14 +917,15 @@ pub mod module {
 
 		/// Helper function that update the storage of total_staking_currency and emit event.
 		#[transactional]
-		fn update_total_staking_currency_storage(f: impl FnOnce(Balance) -> Balance) -> DispatchResult {
-			let new_total = TotalStakingCurrency::<T>::mutate(|current| {
-				*current = f(*current);
-				*current
-			});
-			ensure!(!new_total.is_zero(), Error::<T>::InvalidTotalStakingCurrency);
-			Self::deposit_event(Event::<T>::TotalStakingCurrencySet(new_total));
-			Ok(())
+		fn update_total_staking_currency_storage(
+			f: impl FnOnce(Balance) -> Result<Balance, DispatchError>,
+		) -> DispatchResult {
+			TotalStakingCurrency::<T>::try_mutate(|current| {
+				*current = f(*current)?;
+				ensure!(!current.is_zero(), Error::<T>::InvalidTotalStakingCurrency);
+				Self::deposit_event(Event::<T>::TotalStakingCurrencySet(*current));
+				Ok(())
+			})
 		}
 	}
 
