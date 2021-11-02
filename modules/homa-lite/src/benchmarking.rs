@@ -71,9 +71,9 @@ benchmarks! {
 		let _ = crate::Pallet::<T>::request_redeem(RawOrigin::Signed(caller2.clone()).into(), amount, Permill::default());
 		let _ = crate::Pallet::<T>::request_redeem(RawOrigin::Signed(caller3.clone()).into(), amount, Permill::default());
 
-		<T as module::Config>::Currency::deposit(T::StakingCurrencyId::get(), &caller, amount*3)?;
-		crate::Pallet::<T>::set_minting_cap(RawOrigin::Root.into(), amount*3)?;
-	}: _(RawOrigin::Signed(caller), amount*3, vec![caller1, caller2, caller3])
+		<T as module::Config>::Currency::deposit(T::StakingCurrencyId::get(), &caller, amount*5)?;
+		crate::Pallet::<T>::set_minting_cap(RawOrigin::Root.into(), amount*10)?;
+	}: _(RawOrigin::Signed(caller), amount*5, vec![caller1, caller2, caller3])
 
 	set_total_staking_currency {}: _(RawOrigin::Root, 1_000_000_000_000)
 
