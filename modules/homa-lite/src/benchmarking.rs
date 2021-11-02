@@ -56,7 +56,7 @@ benchmarks! {
 		let caller4: T::AccountId = account("callerd", 0, SEED);
 		let caller5: T::AccountId = account("callere", 0, SEED);
 		let caller6: T::AccountId = account("callerf", 0, SEED);
-		<T as module::Config>::Currency::deposit(T::StakingCurrencyId::get(), &caller, amount)?;
+		<T as module::Config>::Currency::deposit(T::StakingCurrencyId::get(), &caller, 6 * amount)?;
 		<T as module::Config>::Currency::deposit(T::LiquidCurrencyId::get(), &caller1, amount)?;
 		<T as module::Config>::Currency::deposit(T::LiquidCurrencyId::get(), &caller2, amount)?;
 		<T as module::Config>::Currency::deposit(T::LiquidCurrencyId::get(), &caller3, amount)?;
