@@ -48,8 +48,17 @@ benchmarks! {
 	}
 
 	on_initialize {
+		let _ = crate::Pallet::<T>::set_staking_interest_rate_per_update(
+			RawOrigin::Root.into(),
+			Permill::from_percent(1)
+		);
 		let _ = crate::Pallet::<T>::set_total_staking_currency(RawOrigin::Root.into(), 1_000_000_000_000_000_000);
 	}: {
+		let _ = crate::Pallet::<T>::on_initialize(<T as frame_system::Config>::BlockNumber::default());
+	}
+
+	on_initialize_without_work {}: {
+		// interest rate is not calculated becasue `set_staking_interest_rate_per_update` is not called.
 		let _ = crate::Pallet::<T>::on_initialize(<T as frame_system::Config>::BlockNumber::default());
 	}
 
@@ -118,7 +127,12 @@ mod tests {
 			assert_ok!(Pallet::<Runtime>::test_benchmark_on_initialize());
 		});
 	}
-
+	#[test]
+	fn test_on_initialize_without_work() {
+		ExtBuilder::default().build().execute_with(|| {
+			assert_ok!(Pallet::<Runtime>::test_benchmark_on_initialize_without_work());
+		});
+	}
 	#[test]
 	fn test_mint() {
 		ExtBuilder::default().build().execute_with(|| {

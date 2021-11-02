@@ -296,7 +296,7 @@ pub mod module {
 				});
 				<T as Config>::WeightInfo::on_initialize()
 			} else {
-				0
+				<T as Config>::WeightInfo::on_initialize_without_work()
 			}
 		}
 	}

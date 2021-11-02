@@ -849,13 +849,17 @@ fn total_staking_currency_update_periodically() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(HomaLite::set_total_staking_currency(Origin::root(), dollar(1_000_000)));
 
-		HomaLite::on_initialize(0);
+		let on_initialize_weight = <Runtime as Config>::WeightInfo::on_initialize();
+		let on_initialize_without_work_weight = <Runtime as Config>::WeightInfo::on_initialize_without_work();
+
+		assert_eq!(HomaLite::on_initialize(0), on_initialize_weight);
 		// Default inflation rate is 0%
 		assert_eq!(TotalStakingCurrency::<Runtime>::get(), dollar(1_000_000));
 
-		for i in 1..101 {
-			HomaLite::on_initialize(i);
+		for i in 1..100 {
+			assert_eq!(HomaLite::on_initialize(i), on_initialize_without_work_weight);
 		}
+		assert_eq!(HomaLite::on_initialize(100), on_initialize_weight);
 		assert_eq!(TotalStakingCurrency::<Runtime>::get(), dollar(1_000_000));
 
 		// Interest rate can only be set by governance
@@ -871,27 +875,30 @@ fn total_staking_currency_update_periodically() {
 			Permill::from_percent(1),
 		)));
 
-		for i in 101..201 {
-			HomaLite::on_initialize(i);
+		for i in 101..200 {
+			assert_eq!(HomaLite::on_initialize(i), on_initialize_without_work_weight);
 		}
+		assert_eq!(HomaLite::on_initialize(200), on_initialize_weight);
 		// Inflate by 1%: 1_000_000 * 1.01
 		assert_eq!(TotalStakingCurrency::<Runtime>::get(), dollar(1_010_000));
 		System::assert_last_event(Event::HomaLite(crate::Event::TotalStakingCurrencySet(dollar(
 			1_010_000,
 		))));
 
-		for i in 201..301 {
-			HomaLite::on_initialize(i);
+		for i in 201..300 {
+			assert_eq!(HomaLite::on_initialize(i), on_initialize_without_work_weight);
 		}
+		assert_eq!(HomaLite::on_initialize(300), on_initialize_weight);
 		// 1_010_000 * 1.01
 		assert_eq!(TotalStakingCurrency::<Runtime>::get(), dollar(1_020_100));
 		System::assert_last_event(Event::HomaLite(crate::Event::TotalStakingCurrencySet(dollar(
 			1_020_100,
 		))));
 
-		for i in 301..401 {
-			HomaLite::on_initialize(i);
+		for i in 301..400 {
+			assert_eq!(HomaLite::on_initialize(i), on_initialize_without_work_weight);
 		}
+		assert_eq!(HomaLite::on_initialize(400), on_initialize_weight);
 		//1_020_100 * 1.01
 		assert_eq!(TotalStakingCurrency::<Runtime>::get(), dollar(1_030_301));
 		System::assert_last_event(Event::HomaLite(crate::Event::TotalStakingCurrencySet(dollar(
