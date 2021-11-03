@@ -207,6 +207,10 @@ pub mod module {
 
 		/// Interest rate for TotalStakingCurrency is set
 		StakingInterestRatePerUpdateSet(Permill),
+
+		/// The amount of the staking currency available to be redeemed is set.
+		/// \[total_available_staking_balance\]
+		AvailableStakingBalanceSet(Balance),
 	}
 
 	/// The total amount of the staking currency on the relaychain.
@@ -259,9 +263,9 @@ pub mod module {
 	#[pallet::hooks]
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
 		fn on_idle(_n: T::BlockNumber, remaining_weight: Weight) -> Weight {
-			let required_weight = <T as Config>::WeightInfo::on_idle();
 			let mut current_weight = 0;
-			if remaining_weight > required_weight {
+			// If enough weight, process the next XCM unbond.
+			if remaining_weight > <T as Config>::WeightInfo::xcm_unbond() {
 				let mut scheduled_unbond = Self::scheduled_unbond();
 				if !scheduled_unbond.is_empty() {
 					let (staking_amount, block_number) = scheduled_unbond[0];
@@ -271,7 +275,7 @@ pub mod module {
 						debug_assert!(res.is_ok());
 
 						if res.is_ok() {
-							current_weight = required_weight;
+							current_weight = <T as Config>::WeightInfo::xcm_unbond();
 
 							scheduled_unbond.remove(0);
 							ScheduledUnbond::<T>::put(scheduled_unbond);
@@ -279,6 +283,22 @@ pub mod module {
 					}
 				}
 			}
+
+			// With remaining weight, calculate max number of redeems that can be matched
+			let num_redeem_matches = remaining_weight
+				.saturating_sub(current_weight)
+				.checked_div(<T as Config>::WeightInfo::redeem_with_available_staking_balance())
+				.unwrap_or_default();
+
+			// Iterate through existing redeem_requests, and try to match them with `available_staking_balance`
+			let res = Self::process_redeem_requests_with_available_staking_balance(num_redeem_matches as u32);
+			debug_assert!(res.is_ok());
+			if let Ok(count) = res {
+				current_weight = current_weight.saturating_add(
+					<T as Config>::WeightInfo::redeem_with_available_staking_balance().saturating_mul(count as Weight),
+				);
+			}
+
 			current_weight
 		}
 
@@ -355,18 +375,19 @@ pub mod module {
 
 			let by_balance = TryInto::<Balance>::try_into(by_amount_abs).map_err(|_| ArithmeticError::Overflow)?;
 
+			// ensure TotalStakingCurrency doesn't become 0
+			ensure!(
+				by_amount.is_positive() || by_balance < Self::total_staking_currency(),
+				Error::<T>::InvalidTotalStakingCurrency
+			);
+
 			// Adjust the current total.
 			Self::update_total_staking_currency_storage(|current_staking_total| {
-				let new_total = if by_amount.is_positive() {
-					current_staking_total
-						.checked_add(by_balance)
-						.ok_or(ArithmeticError::Overflow)
+				Ok(if by_amount.is_positive() {
+					current_staking_total.saturating_add(by_balance)
 				} else {
-					current_staking_total
-						.checked_sub(by_balance)
-						.ok_or(ArithmeticError::Underflow)
-				}?;
-				Ok(new_total)
+					current_staking_total.saturating_sub(by_balance)
+				})
 			})
 		}
 
@@ -589,6 +610,53 @@ pub mod module {
 
 			Self::deposit_event(Event::<T>::ScheduledUnbondReplaced);
 
+			Ok(())
+		}
+
+		/// Adjusts the AvailableStakingBalance by the given difference.
+		/// Also attempt to process queued redeem request with the new Staking Balance.
+		/// Requires `T::GovernanceOrigin`
+		///
+		/// Parameters:
+		/// - `adjustment`: The difference in amount the AvailableStakingBalance should be adjusted
+		///   by.
+		///
+		/// Weight: Weight(xcm unbond) + n * Weight(match redeem requests), where n is number of
+		/// redeem requests matched.
+		#[pallet::weight(
+			< T as Config >::WeightInfo::adjust_available_staking_balance_with_no_matches().saturating_add(
+			(*max_num_matches as Weight).saturating_mul(< T as Config >::WeightInfo::redeem_with_available_staking_balance())
+			)
+		)]
+		#[transactional]
+		pub fn adjust_available_staking_balance(
+			origin: OriginFor<T>,
+			by_amount: AmountOf<T>,
+			max_num_matches: u32,
+		) -> DispatchResult {
+			T::GovernanceOrigin::ensure_origin(origin)?;
+
+			// Convert AmountOf<T> into Balance safely.
+			let by_amount_abs = if by_amount == AmountOf::<T>::min_value() {
+				AmountOf::<T>::max_value()
+			} else {
+				by_amount.abs()
+			};
+
+			let by_balance = TryInto::<Balance>::try_into(by_amount_abs).map_err(|_| ArithmeticError::Overflow)?;
+
+			// Adjust the current total.
+			AvailableStakingBalance::<T>::mutate(|current| {
+				if by_amount.is_positive() {
+					*current = current.saturating_add(by_balance);
+				} else {
+					*current = current.saturating_sub(by_balance);
+				}
+				Self::deposit_event(Event::<T>::AvailableStakingBalanceSet(*current));
+			});
+
+			// With new staking balance available, process pending redeem requests.
+			let _ = Self::process_redeem_requests_with_available_staking_balance(max_num_matches)?;
 			Ok(())
 		}
 
@@ -819,26 +887,52 @@ pub mod module {
 			Ok(())
 		}
 
+		/// Construct XCM message and sent it to the relaychain to withdraw_unbonded Staking
+		/// currency. The staking currency withdrew becomes available to be redeemed.
+		///
+		/// params:
+		/// 	- `staking_amount_unbonded`: amount of staking currency to withdraw unbond via XCM
 		#[transactional]
-		fn process_scheduled_unbond(staking_amount: Balance) -> DispatchResult {
-			let msg = Self::construct_xcm_unreserve_message(T::ParachainAccount::get(), staking_amount);
+		pub fn process_scheduled_unbond(staking_amount_unbonded: Balance) -> DispatchResult {
+			let msg = Self::construct_xcm_unreserve_message(T::ParachainAccount::get(), staking_amount_unbonded);
 
 			let res = pallet_xcm::Pallet::<T>::send_xcm(Here, Parent, msg);
 			log::debug!("on_idle XCM result: {:?}", res);
 			ensure!(res.is_ok(), Error::<T>::XcmFailed);
 
-			// Now that there's available staking balance, automatically match existing
-			// redeem_requests.
+			// Update storage with the new available amount
+			AvailableStakingBalance::<T>::mutate(|current| {
+				*current = current.saturating_add(staking_amount_unbonded);
+			});
+
+			Self::deposit_event(Event::<T>::ScheduledUnbondWithdrew(staking_amount_unbonded));
+			Ok(())
+		}
+
+		/// Iterate through all redeem requests, then match them with available_staking_balance.
+		/// This should be called when new available_staking_balance becomes available.
+		///
+		/// params:
+		/// 	- `max_num_matches`: Maximum number of redeem requests to be matched.
+		///
+		/// return:
+		/// 	Result<u32, DispatchError>: The number of redeem reqeusts actually matched.
+		#[transactional]
+		pub fn process_redeem_requests_with_available_staking_balance(
+			max_num_matches: u32,
+		) -> Result<u32, sp_runtime::DispatchError> {
+			if max_num_matches.is_zero() {
+				return Ok(0);
+			}
+			let mut available_staking_balance = Self::available_staking_balance();
+			if available_staking_balance < T::MinimumMintThreshold::get() {
+				return Ok(0);
+			}
+
 			let mut new_balances: Vec<(T::AccountId, Balance, Permill)> = vec![];
-			let mut available_staking_balance = Self::available_staking_balance()
-				.checked_add(staking_amount)
-				.ok_or(ArithmeticError::Overflow)?;
 			let mut total_staking_currency = Self::total_staking_currency();
+			let mut num_matched = 0u32;
 			for (redeemer, (request_amount, extra_fee)) in RedeemRequests::<T>::iter() {
-				// If all the currencies are minted, return.
-				if available_staking_balance.is_zero() {
-					break;
-				}
 				let actual_liquid_amount = min(
 					request_amount,
 					Self::convert_staking_to_liquid(available_staking_balance)?,
@@ -867,20 +961,26 @@ pub mod module {
 					actual_staking_amount,
 					actual_liquid_amount,
 				));
+				num_matched += 1u32;
+
+				// If all the currencies are minted, return.
+				if available_staking_balance < T::MinimumMintThreshold::get() || num_matched >= max_num_matches {
+					break;
+				}
 			}
 
 			// Update storage to the new balances. Remove Redeem requests that have been filled.
 			Self::update_redeem_requests(&new_balances);
 
 			AvailableStakingBalance::<T>::put(available_staking_balance);
-			Self::deposit_event(Event::<T>::ScheduledUnbondWithdrew(staking_amount));
 
-			Ok(())
+			Ok(num_matched)
 		}
 
+		/// Update the RedeemRequests storage with the new balances.
+		/// Remove Redeem requests that are dust, or have been filled.
 		#[allow(clippy::ptr_arg)]
 		fn update_redeem_requests(new_balances: &Vec<(T::AccountId, Balance, Permill)>) {
-			// Update storage with the new balances. Remove Redeem requests that have been filled.
 			for (redeemer, new_balance, extra_fee) in new_balances {
 				if Self::liquid_amount_is_above_minimum_threshold(*new_balance) {
 					RedeemRequests::<T>::insert(&redeemer, (*new_balance, *extra_fee));
