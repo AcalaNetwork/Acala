@@ -847,7 +847,7 @@ fn mint_can_match_requested_redeem() {
 		// Matching CHARLIE's mint with ALICE's redeem
 		assert_eq!(
 			events[events.len() - 8].event,
-			Event::Tokens(orml_tokens::Event::Repatriated(
+			Event::Tokens(orml_tokens::Event::RepatriatedReserve(
 				LKSM,
 				ALICE,
 				CHARLIE,
@@ -872,7 +872,7 @@ fn mint_can_match_requested_redeem() {
 		// Matching CHARLIE's mint with BOB's redeem
 		assert_eq!(
 			events[events.len() - 5].event,
-			Event::Tokens(orml_tokens::Event::Repatriated(
+			Event::Tokens(orml_tokens::Event::RepatriatedReserve(
 				LKSM,
 				BOB,
 				CHARLIE,
@@ -1446,7 +1446,7 @@ fn mint_can_handle_rounding_error_dust() {
 		let events = System::events();
 		assert_eq!(
 			events[events.len() - 5].event,
-			Event::Tokens(orml_tokens::Event::Repatriated(
+			Event::Tokens(orml_tokens::Event::RepatriatedReserve(
 				LKSM,
 				ALICE,
 				ROOT,
