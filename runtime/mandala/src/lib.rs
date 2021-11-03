@@ -50,8 +50,7 @@ pub use frame_support::{
 use frame_system::{EnsureRoot, RawOrigin};
 use hex_literal::hex;
 use module_currencies::{BasicCurrencyAdapter, Currency};
-use module_evm::Runner;
-use module_evm::{CallInfo, CreateInfo};
+use module_evm::{CallInfo, CreateInfo, EvmTask, Runner};
 use module_evm_accounts::EvmAddressMapping;
 pub use module_evm_manager::EvmCurrencyIdMapping;
 use module_relaychain::RelayChainCallBuilder;
@@ -1588,6 +1587,8 @@ impl module_evm::Config for Runtime {
 	type FreeDeploymentOrigin = EnsureRootOrHalfGeneralCouncil;
 	type Runner = module_evm::runner::stack::Runner<Self>;
 	type FindAuthor = pallet_session::FindAccountFromAuthorIndex<Self, Aura>;
+	type Task = ScheduledTasks;
+	type IdleScheduler = IdleScheduler;
 	type WeightInfo = weights::module_evm::WeightInfo<Runtime>;
 
 	#[cfg(feature = "with-ethereum-compatibility")]
@@ -1939,7 +1940,9 @@ impl nutsfinance_stable_asset::Config for Runtime {
 }
 
 define_combined_task! {
+	#[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo)]
 	pub enum ScheduledTasks {
+		EvmTask(EvmTask<Runtime>),
 	}
 }
 

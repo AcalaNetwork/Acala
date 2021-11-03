@@ -44,7 +44,6 @@ pub use primitives::{
 };
 use sha3::{Digest, Keccak256};
 use sp_core::{H160, H256, U256};
-use sp_io::KillStorageResult::{AllRemoved, SomeRemaining};
 use sp_runtime::traits::UniqueSaturatedInto;
 use sp_std::{boxed::Box, collections::btree_set::BTreeSet, marker::PhantomData, mem, vec, vec::Vec};
 
@@ -163,7 +162,7 @@ impl<T: Config> Runner<T> {
 				"Deleting account at {:?}",
 				address
 			);
-			Pallet::<T>::remove_contract(&address).map_err(|e| {
+			Pallet::<T>::remove_contract(&origin, &address).map_err(|e| {
 				log::debug!(
 					target: "evm",
 					"CannotKillContract address {:?}, reason: {:?}",
@@ -607,15 +606,13 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 		}
 	}
 
+	// Unused
 	fn reset_storage(&mut self, address: H160) {
-		match <AccountStorages<T>>::remove_prefix(address, None) {
-			AllRemoved(count) | SomeRemaining(count) => {
-				// should not happen
-				let storage = count.saturating_mul(STORAGE_SIZE);
-				Pallet::<T>::update_contract_storage_size(&address, -(storage as i32));
-				self.substate.metadata.storage_meter_mut().refund(storage);
-			}
-		}
+		<AccountStorages<T>>::remove_prefix(address, None);
+	}
+
+	fn storage_size(&mut self, address: H160) -> u32 {
+		ContractStorageSizes::<T>::get(address)
 	}
 
 	fn log(&mut self, address: H160, topics: Vec<H256>, data: Vec<u8>) {
@@ -624,8 +621,6 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 
 	fn set_deleted(&mut self, address: H160) {
 		self.substate.set_deleted(address);
-		let size = ContractStorageSizes::<T>::get(address);
-		self.substate.metadata.storage_meter_mut().refund(size);
 	}
 
 	fn set_code(&mut self, address: H160, code: Vec<u8>) {
@@ -670,7 +665,12 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 			}
 		}
 
+		let code_size = code.len() as u32;
 		Pallet::<T>::create_contract(caller, address, code);
+
+		let used_storage = code_size.saturating_add(T::NewContractExtraBytes::get());
+		Pallet::<T>::update_contract_storage_size(&address, used_storage as i32);
+		self.substate.metadata.storage_meter_mut().charge(used_storage);
 	}
 
 	fn transfer(&mut self, transfer: Transfer) -> Result<(), ExitError> {

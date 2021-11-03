@@ -21,7 +21,7 @@
 #![cfg(test)]
 
 use super::*;
-use crate::mock::*;
+use crate::mock::{IdleScheduler, *};
 use frame_support::assert_ok;
 
 // Can schedule tasks

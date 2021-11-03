@@ -37,6 +37,7 @@ pub use primitives::{
 	SYSTEM_CONTRACT_ADDRESS_PREFIX,
 };
 use sha3::{Digest, Keccak256};
+use sp_runtime::traits::Zero;
 use sp_std::{rc::Rc, vec::Vec};
 
 macro_rules! event {
@@ -576,7 +577,13 @@ impl<'config, S: StackState<'config>> StackExecutor<'config, S> {
 				return Capture::Exit((ExitError::CreateCollision.into(), None, Vec::new()));
 			}
 
-			self.state.reset_storage(address);
+			if !self.state.storage_size(address).is_zero() {
+				let _ = self.exit_substate(StackExitKind::Failed);
+				return Capture::Exit((ExitError::CreateCollision.into(), None, Vec::new()));
+			}
+
+			// Check instead of reset.
+			// self.state.reset_storage(address);
 		}
 
 		let context = Context {

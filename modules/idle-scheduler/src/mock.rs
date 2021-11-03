@@ -105,9 +105,10 @@ impl DispatchableTask for HomaLiteTask {
 }
 
 define_combined_task! {
+	#[derive(Clone, Debug, PartialEq, Encode, Decode, TypeInfo)]
 	pub enum ScheduledTasks {
-		BalancesTask,
-		HomaLiteTask,
+		BalancesTask(BalancesTask),
+		HomaLiteTask(HomaLiteTask),
 	}
 }
 
@@ -121,7 +122,6 @@ construct_runtime!(
 		UncheckedExtrinsic = UncheckedExtrinsic
 	{
 		System: frame_system::{Pallet, Call, Event<T>},
-		// NOTE: name Example here is needed in order to have same module prefix
 		IdleScheduler: module_idle_scheduler::{Pallet, Call, Event<T>, Storage},
 	}
 );

@@ -24,10 +24,10 @@
 #![allow(clippy::unused_unit)]
 #![allow(unused_must_use)]
 use acala_primitives::{
-	task::{DispatchableTask, IdelScheduler},
+	task::{DispatchableTask, IdleScheduler, TaskResult},
 	Nonce,
 };
-use codec::{Codec, EncodeLike};
+use codec::FullCodec;
 use frame_support::pallet_prelude::*;
 use frame_system::pallet_prelude::*;
 use scale_info::TypeInfo;
@@ -55,7 +55,7 @@ pub mod module {
 		type WeightInfo: WeightInfo;
 
 		/// Dispatchable tasks
-		type Task: DispatchableTask + Codec + EncodeLike + Debug + Clone + PartialEq + TypeInfo;
+		type Task: DispatchableTask + FullCodec + Debug + Clone + PartialEq + TypeInfo;
 
 		/// The minimum weight that should remain before idle tasks are dispatched.
 		#[pallet::constant]
@@ -66,8 +66,8 @@ pub mod module {
 	#[pallet::generate_deposit(pub fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// A task has been dispatched on_idle.
-		/// \[TaskId\]
-		TaskDispatched(Nonce),
+		/// \[TaskId, DispatchResult\]
+		TaskDispatched(Nonce, DispatchResult),
 	}
 
 	/// Some documentation
@@ -123,13 +123,13 @@ impl<T: Config> Pallet<T> {
 			return Zero::zero();
 		}
 
-		let mut completed_tasks: Vec<Nonce> = vec![];
+		let mut completed_tasks: Vec<(Nonce, TaskResult)> = vec![];
 
 		for (id, task) in Tasks::<T>::iter() {
 			let result = task.dispatch(weight_remaining);
 			weight_remaining = weight_remaining.saturating_sub(result.used_weight);
 			if result.finished {
-				completed_tasks.push(id);
+				completed_tasks.push((id, result));
 			}
 
 			// If remaining weight falls below the minimmum, break from the loop.
@@ -139,8 +139,8 @@ impl<T: Config> Pallet<T> {
 		}
 
 		// Deposit event and remove completed tasks.
-		for id in completed_tasks {
-			Self::deposit_event(Event::<T>::TaskDispatched(id));
+		for (id, result) in completed_tasks {
+			Self::deposit_event(Event::<T>::TaskDispatched(id, result.result));
 			Tasks::<T>::remove(id);
 		}
 
@@ -148,8 +148,8 @@ impl<T: Config> Pallet<T> {
 	}
 }
 
-impl<T: Config> IdelScheduler<T::Task> for Pallet<T> {
-	fn schedule(task: T::Task) {
-		Self::do_schedule_task(task);
+impl<T: Config> IdleScheduler<T::Task> for Pallet<T> {
+	fn schedule(task: T::Task) -> DispatchResult {
+		Self::do_schedule_task(task)
 	}
 }
