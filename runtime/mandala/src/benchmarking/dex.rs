@@ -35,7 +35,7 @@ const SEED: u32 = 0;
 const NATIVE: CurrencyId = GetNativeCurrencyId::get();
 const STABLECOIN: CurrencyId = GetStableCurrencyId::get();
 const LIQUID: CurrencyId = GetLiquidCurrencyId::get();
-const STAKING: CurrencyId = GetStakingCurrency::get();
+const STAKING: CurrencyId = GetStakingCurrencyId::get();
 
 fn assert_last_event(generic_event: Event) {
 	System::assert_last_event(generic_event.into());
@@ -329,9 +329,9 @@ runtime_benchmarks! {
 
 		let maker: AccountId = account("maker", 0, SEED);
 		let taker: AccountId = whitelisted_caller();
-		inject_liquidity(maker, trading_pair.first(), trading_pair.second(), 10_000 * dollar(trading_pair.first()), 10_000 * dollar(trading_pair.second()), false)?;
-		inject_liquidity(maker, STABLECOIN, STAKING, 10_000 * dollar(STABLECOIN), 10_000 * dollar(STAKING), false)?;
-		inject_liquidity(maker, STAKING, LIQUID, 10_000 * dollar(STAKING), 10_000 * dollar(LIQUID), false)?;
+		inject_liquidity(maker.clone(), trading_pair.first(), trading_pair.second(), 10_000 * dollar(trading_pair.first()), 10_000 * dollar(trading_pair.second()), false)?;
+		inject_liquidity(maker.clone(), STABLECOIN, STAKING, 10_000 * dollar(STABLECOIN), 10_000 * dollar(STAKING), false)?;
+		inject_liquidity(maker.clone(), STAKING, LIQUID, 10_000 * dollar(STAKING), 10_000 * dollar(LIQUID), false)?;
 
 		<Currencies as MultiCurrencyExtended<_>>::update_balance(path[0], &taker, (10_000 * dollar(path[0])).unique_saturated_into())?;
 	}: swap_with_exact_target(RawOrigin::Signed(taker.clone()), path.clone(), 10 * dollar(path[path.len() - 1]), 100 * dollar(path[0]))
