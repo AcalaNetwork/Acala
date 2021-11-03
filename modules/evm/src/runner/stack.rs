@@ -69,7 +69,7 @@ impl<T: Config> Runner<T> {
 		let gas_price = U256::one();
 		let vicinity = Vicinity { gas_price, origin };
 
-		let metadata = StackSubstateMetadata::new(gas_limit, storage_limit, T::NewContractExtraBytes::get(), config);
+		let metadata = StackSubstateMetadata::new(gas_limit, storage_limit, config);
 		let state = SubstrateStackState::new(&vicinity, metadata);
 		let mut executor = StackExecutor::new_with_precompile(state, config, T::Precompiles::execute);
 
@@ -116,7 +116,7 @@ impl<T: Config> Runner<T> {
 		// Refund fees to the `source` account if deducted more before,
 		// T::OnChargeTransaction::correct_and_deposit_fee(&source, actual_fee, fee)?;
 
-		let state = executor.into_state();
+		let mut state = executor.into_state();
 
 		// charge storage
 		let actual_storage = state
@@ -126,7 +126,20 @@ impl<T: Config> Runner<T> {
 			.ok_or(Error::<T>::OutOfStorage)?;
 		let used_storage = state.metadata().storage_meter().total_used();
 		let refunded_storage = state.metadata().storage_meter().total_refunded();
+
+		// add used storage from self
+		let target = state.metadata().target().expect("Storage target is none");
+		state
+			.substate
+			.storage_logs
+			.push((target, state.metadata().storage_meter().used_storage()));
+		let mut sum_storage: i32 = 0;
 		for (target, storage) in &state.substate.storage_logs {
+			log::debug!(
+				target: "evm",
+				"Storage logs: target: {:?}, storage: {:?}",
+				target, storage
+			);
 			if !config.estimate {
 				Pallet::<T>::charge_storage(&origin, target, *storage).map_err(|e| {
 					log::debug!(
@@ -140,7 +153,17 @@ impl<T: Config> Runner<T> {
 					Error::<T>::ChargeStorageFailed
 				})?;
 			}
+			sum_storage += storage;
 		}
+		if actual_storage != sum_storage {
+			log::debug!(
+				target: "evm",
+				"ChargeStorageFailed [actual_storage: {:?}, sum_storage: {:?}]",
+				actual_storage, sum_storage
+			);
+			return Err(Error::<T>::ChargeStorageFailed.into());
+		}
+
 		if !config.estimate {
 			Pallet::<T>::unreserve_storage(&origin, storage_limit, used_storage, refunded_storage).map_err(|e| {
 				log::debug!(

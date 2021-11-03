@@ -136,7 +136,7 @@ define_combined_task! {
 }
 
 parameter_types!(
-	pub MinimumWeightRemainInBlock: Weight = u64::MAX;
+	pub MinimumWeightRemainInBlock: Weight = u64::MIN;
 );
 
 impl module_idle_scheduler::Config for Runtime {

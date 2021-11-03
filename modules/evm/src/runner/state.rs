@@ -77,10 +77,10 @@ pub struct StackSubstateMetadata<'config> {
 }
 
 impl<'config> StackSubstateMetadata<'config> {
-	pub fn new(gas_limit: u64, storage_limit: u32, extra_bytes: u32, config: &'config Config) -> Self {
+	pub fn new(gas_limit: u64, storage_limit: u32, config: &'config Config) -> Self {
 		Self {
 			gasometer: Gasometer::new(gas_limit, config),
-			storage_meter: StorageMeter::new(storage_limit, extra_bytes),
+			storage_meter: StorageMeter::new(storage_limit),
 			is_static: false,
 			depth: None,
 			caller: None,
@@ -111,10 +111,7 @@ impl<'config> StackSubstateMetadata<'config> {
 	pub fn spit_child(&self, gas_limit: u64, is_static: bool) -> Self {
 		Self {
 			gasometer: Gasometer::new(gas_limit, self.gasometer().config()),
-			storage_meter: StorageMeter::new(
-				self.storage_meter().available_storage(),
-				self.storage_meter().extra_bytes(),
-			),
+			storage_meter: StorageMeter::new(self.storage_meter().available_storage()),
 			is_static: is_static || self.is_static,
 			depth: match self.depth {
 				None => Some(0),
@@ -627,10 +624,6 @@ impl<'config, S: StackState<'config>> StackExecutor<'config, S> {
 
 				match self.state.metadata_mut().gasometer_mut().record_deposit(out.len()) {
 					Ok(()) => {
-						self.state
-							.metadata_mut()
-							.storage_meter_mut()
-							.charge_with_extra_bytes(out.len() as u32);
 						let e = self.exit_substate(StackExitKind::Succeeded);
 						try_or_fail!(e);
 						self.state.set_code(address, out);

@@ -5388,7 +5388,7 @@ name = "module-evm"
 version = "1.6.0"
 dependencies = [
  "acala-primitives",
- "env_logger 0.7.1",
+ "env_logger 0.9.0",
  "frame-support",
  "frame-system",
  "hex-literal 0.3.3",

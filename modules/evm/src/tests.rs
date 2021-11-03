@@ -19,7 +19,7 @@
 #![cfg(test)]
 
 use super::*;
-use mock::{Event, *};
+use mock::{Event, IdleScheduler, *};
 
 use crate::runner::{
 	stack::SubstrateStackState,
@@ -57,7 +57,7 @@ fn should_calculate_contract_address() {
 			gas_price: U256::one(),
 			origin: Default::default(),
 		};
-		let metadata = StackSubstateMetadata::new(1000, 1000, NewContractExtraBytes::get(), &ACALA_CONFIG);
+		let metadata = StackSubstateMetadata::new(1000, 1000, &ACALA_CONFIG);
 		let state = SubstrateStackState::<Runtime>::new(&vicinity, metadata);
 		let mut executor = StackExecutor::new(state, &ACALA_CONFIG);
 
@@ -286,7 +286,7 @@ fn should_deploy_payable_contract() {
 
 		let result = <Runtime as Config>::Runner::create(
 			alice(),
-			contract,
+			contract.clone(),
 			amount,
 			1000000,
 			100000,
@@ -513,10 +513,13 @@ fn contract_should_deploy_contracts() {
 			alice_balance - amount - 281 * <Runtime as Config>::StorageDepositPerByte::get()
 		);
 		assert_eq!(balance(factory_contract_address), amount);
-		assert_eq!(reserved_balance(factory_contract_address), 5950);
+		assert_eq!(
+			reserved_balance(factory_contract_address),
+			(467 + 281) * <Runtime as Config>::StorageDepositPerByte::get()
+		);
 		let contract_address = H160::from_str("7b8f8ca099f6e33cf1817cf67d0556429cfc54e4").unwrap();
 		assert_eq!(balance(contract_address), 0);
-		assert_eq!(reserved_balance(contract_address), 1530);
+		assert_eq!(reserved_balance(contract_address), 0);
 	});
 }
 
@@ -579,7 +582,10 @@ fn contract_should_deploy_contracts_without_payable() {
 			alice_balance - (result.used_storage as u64 * <Runtime as Config>::StorageDepositPerByte::get())
 		);
 		assert_eq!(balance(factory_contract_address), 0);
-		assert_eq!(reserved_balance(factory_contract_address), 5920);
+		assert_eq!(
+			reserved_balance(factory_contract_address),
+			(464 + 290) * <Runtime as Config>::StorageDepositPerByte::get()
+		);
 	});
 }
 
@@ -1230,6 +1236,9 @@ fn should_selfdestruct() {
 		assert_eq!(System::providers(&contract_account_id), 2);
 		assert_ok!(EVM::selfdestruct(Origin::signed(alice_account_id), contract_address));
 
+		assert_eq!(System::providers(&contract_account_id), 1);
+		assert!(System::account_exists(&contract_account_id));
+		IdleScheduler::on_idle(0, 1_000_000_000_000);
 		assert_eq!(System::providers(&contract_account_id), 0);
 		assert!(!System::account_exists(&contract_account_id));
 		assert!(!Accounts::<Runtime>::contains_key(&contract_address));

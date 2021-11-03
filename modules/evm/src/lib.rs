@@ -381,8 +381,7 @@ pub mod module {
 						address: *address,
 						apparent_value: Default::default(),
 					};
-					let metadata =
-						StackSubstateMetadata::new(210_000, 1000, T::NewContractExtraBytes::get(), T::config());
+					let metadata = StackSubstateMetadata::new(210_000, 1000, T::config());
 					let state = SubstrateStackState::<T>::new(&vicinity, metadata);
 					let mut executor = StackExecutor::new(state, T::config());
 
@@ -1307,7 +1306,7 @@ impl<T: Config> Pallet<T> {
 				&contract_acc,
 				&user,
 				amount,
-				BalanceStatus::Free,
+				BalanceStatus::Reserved,
 			)?;
 			debug_assert!(val.is_zero());
 		};
@@ -1333,7 +1332,7 @@ impl<T: Config> Pallet<T> {
 			&contract_acc,
 			&user,
 			amount,
-			BalanceStatus::Reserved,
+			BalanceStatus::Free,
 		)?;
 		debug_assert!(val.is_zero());
 
