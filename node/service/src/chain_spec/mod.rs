@@ -38,6 +38,8 @@ mod tests;
 // The URL for the telemetry server.
 pub const TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/";
 
+pub type DummyChainSpec = sc_service::GenericChainSpec<(), Extensions>;
+
 /// Node `ChainSpec` extensions.
 ///
 /// Additional parameters for some Substrate core modules,
