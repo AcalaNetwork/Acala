@@ -1435,7 +1435,7 @@ parameter_types! {
 			1,
 			X2(Parachain(u32::from(ParachainInfo::get())), GeneralKey(KAR.encode())),
 		).into(),
-		kar_per_second() * 400
+		kar_per_second()
 	);
 	pub LksmPerSecond: (AssetId, u128) = (
 		MultiLocation::new(
