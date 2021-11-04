@@ -604,12 +604,13 @@ fn should_not_kill_contract_on_transfer_all_tokens() {
 			#[cfg(not(feature = "with-ethereum-compatibility"))]
 			assert_eq!(System::providers(&contract_account_id), 1);
 
-			assert!(EVM::accounts(contract).is_none());
+			assert!(EVM::accounts(contract).is_some());
 
 			// use IdleScheduler to remove contract
 			run_to_block(System::block_number() + 1);
 
 			assert_eq!(System::providers(&contract_account_id), 0);
+			assert!(EVM::accounts(contract).is_none());
 
 			// should be gone
 			assert!(!System::account_exists(&contract_account_id));
