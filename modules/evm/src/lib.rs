@@ -1585,8 +1585,9 @@ impl<T: Config> DispatchableTask for EvmTask<T> {
 
 						TaskResult {
 							result: res,
-							used_weight: <T as frame_system::Config>::DbWeight::get().write.saturating_mul(count)
-								as u64,
+							used_weight: <T as frame_system::Config>::DbWeight::get()
+								.write
+								.saturating_mul(count.into()),
 							finished: true,
 						}
 					}
@@ -1599,8 +1600,9 @@ impl<T: Config> DispatchableTask for EvmTask<T> {
 
 						TaskResult {
 							result: Ok(()),
-							used_weight: <T as frame_system::Config>::DbWeight::get().write.saturating_mul(count)
-								as u64,
+							used_weight: <T as frame_system::Config>::DbWeight::get()
+								.write
+								.saturating_mul(count.into()),
 							finished: false,
 						}
 					}
