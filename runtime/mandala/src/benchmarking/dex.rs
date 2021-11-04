@@ -286,34 +286,6 @@ runtime_benchmarks! {
 			if i == 1 {
 				path.push(trading_pair.first());
 				path.push(trading_pair.second());
-			} else {
-				if i % 2 == 0 {
-					path.push(trading_pair.first());
-				} else {
-					path.push(trading_pair.second());
-				}
-			}
-		}
-
-		let maker: AccountId = account("maker", 0, SEED);
-		let taker: AccountId = whitelisted_caller();
-		inject_liquidity(maker, trading_pair.first(), trading_pair.second(), 10_000 * dollar(trading_pair.first()), 10_000 * dollar(trading_pair.second()), false)?;
-
-		<Currencies as MultiCurrencyExtended<_>>::update_balance(path[0], &taker, (10_000 * dollar(path[0])).unique_saturated_into())?;
-	}: swap_with_exact_supply(RawOrigin::Signed(taker.clone()), path.clone(), 100 * dollar(path[0]), 0)
-	verify {
-		//assert_last_event(module_dex::Event::Swap(taker, vec![trading_pair.first(), trading_pair.second()], vec![100 * dollar(trading_pair.first()), 98715803439706]).into())
-	}
-
-	swap_with_exact_target {
-		let u in 2 .. TradingPathLimit::get() as u32;
-
-		let trading_pair = TradingPair::from_currency_ids(STABLECOIN, NATIVE).unwrap();
-		let mut path: Vec<CurrencyId> = vec![];
-		for i in 1 .. u {
-			if i == 1 {
-				path.push(NATIVE);
-				path.push(STABLECOIN);
 			} else if i == 2 {
 				path.push(STAKING);
 			} else if i == 3 {
@@ -330,13 +302,50 @@ runtime_benchmarks! {
 		let maker: AccountId = account("maker", 0, SEED);
 		let taker: AccountId = whitelisted_caller();
 		inject_liquidity(maker.clone(), trading_pair.first(), trading_pair.second(), 10_000 * dollar(trading_pair.first()), 10_000 * dollar(trading_pair.second()), false)?;
-		inject_liquidity(maker.clone(), STABLECOIN, STAKING, 10_000 * dollar(STABLECOIN), 10_000 * dollar(STAKING), false)?;
+		inject_liquidity(maker.clone(), trading_pair.second(), STAKING, 10_000 * dollar(trading_pair.second()), 10_000 * dollar(STAKING), false)?;
+		inject_liquidity(maker.clone(), STAKING, LIQUID, 10_000 * dollar(STAKING), 10_000 * dollar(LIQUID), false)?;
+
+		<Currencies as MultiCurrencyExtended<_>>::update_balance(path[0], &taker, (10_000 * dollar(path[0])).unique_saturated_into())?;
+	}: swap_with_exact_supply(RawOrigin::Signed(taker.clone()), path.clone(), 100 * dollar(path[0]), 0)
+	verify {
+		//assert_last_event(module_dex::Event::Swap(taker, vec![trading_pair.first(), trading_pair.second()], vec![100 * dollar(trading_pair.first()), 98715803439706]).into())
+	}
+
+	swap_with_exact_target {
+		let u in 2 .. TradingPathLimit::get() as u32;
+
+		let trading_pair = TradingPair::from_currency_ids(STABLECOIN, NATIVE).unwrap();
+		let mut path: Vec<CurrencyId> = vec![];
+		for i in 1 .. u {
+			if i == 1 {
+				path.push(trading_pair.first());
+				path.push(trading_pair.second());
+			} else if i == 2 {
+				path.push(STAKING);
+			} else if i == 3 {
+				path.push(LIQUID);
+			} else {
+				if i % 2 == 0 {
+					path.push(trading_pair.first());
+				} else {
+					path.push(trading_pair.second());
+				}
+			}
+		}
+
+		let maker: AccountId = account("maker", 0, SEED);
+		let taker: AccountId = whitelisted_caller();
+		inject_liquidity(maker.clone(), trading_pair.first(), trading_pair.second(), 10_000 * dollar(trading_pair.first()), 10_000 * dollar(trading_pair.second()), false)?;
+		inject_liquidity(maker.clone(), trading_pair.second(), STAKING, 10_000 * dollar(trading_pair.second()), 10_000 * dollar(STAKING), false)?;
 		inject_liquidity(maker.clone(), STAKING, LIQUID, 10_000 * dollar(STAKING), 10_000 * dollar(LIQUID), false)?;
 
 		<Currencies as MultiCurrencyExtended<_>>::update_balance(path[0], &taker, (10_000 * dollar(path[0])).unique_saturated_into())?;
 	}: swap_with_exact_target(RawOrigin::Signed(taker.clone()), path.clone(), 10 * dollar(path[path.len() - 1]), 100 * dollar(path[0]))
 	verify {
-		//assert_last_event(module_dex::Event::Swap(taker, vec![trading_pair.first(), trading_pair.second()], vec![10236586214033, 10 * dollar(trading_pair.second())]).into())
+		assert_eq!(Dex::trading_pair_statuses(trading_pair), TradingPairStatus::Enabled);
+		assert_eq!(Dex::trading_pair_statuses(TradingPair::from_currency_ids(STAKING, LIQUID).unwrap()), TradingPairStatus::Enabled);
+		assert_eq!(Dex::trading_pair_statuses(TradingPair::from_currency_ids(STAKING, trading_pair.second()).unwrap()), TradingPairStatus::Enabled);
+		//assert_last_event(module_dex::Event::Swap(taker, vec![trading_pair.first(), trading_pair.second()], vec![100 * dollar(trading_pair.first()), 98715803439706]).into())
 	}
 }
 
