@@ -19,7 +19,7 @@ env:
 jobs:
   test:
     name: Coverage Report
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest 
     container:
       image: xd009642/tarpaulin:develop-nightly
       options: --security-opt seccomp=unconfined
@@ -48,16 +48,8 @@ jobs:
           default: true
       - name: Generate code coverage
         run: |
-            sudu apt update
-            sudu apt install -y cmake 
-            sudu apt install -y pkg-config
-            sudu apt install -y libssl-dev
-            sudu apt install -y git
-            sudu apt install -y gcc
-            sudu apt install -y build-essential
-            sudu apt install -y git
-            sudu apt install -y clang
-            sudu apt install -y libclang-dev
+            sudo apt update -y &&
+            sudo apt install -y cmake pkg-config libssl-dev git gcc build-essential git clang libclang-dev
             cargo tarpaulin --avoid-cfg-tarpaulin --debug --verbose --features with-mandala-runtime --no-fail-fast --workspace --timeout 300 --out Xml
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v1
