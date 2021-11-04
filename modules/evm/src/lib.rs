@@ -531,7 +531,7 @@ pub mod module {
 			let used_gas: u64 = info.used_gas.unique_saturated_into();
 
 			Ok(PostDispatchInfo {
-				actual_weight: Some(T::GasToWeight::convert(used_gas)),
+				actual_weight: Some(T::GasToWeight::convert(used_gas).saturating_add(info.extra_weight)),
 				pays_fee: Pays::Yes,
 			})
 		}
@@ -590,7 +590,7 @@ pub mod module {
 			}
 
 			Ok(PostDispatchInfo {
-				actual_weight: Some(T::GasToWeight::convert(used_gas)),
+				actual_weight: Some(T::GasToWeight::convert(used_gas).saturating_add(info.extra_weight)),
 				pays_fee: Pays::Yes,
 			})
 		}
@@ -728,6 +728,7 @@ pub mod module {
 					exit_reason: ExitReason::Succeed(ExitSucceed::Stopped),
 					used_gas: 0.into(),
 					used_storage: 0,
+					extra_weight: 0,
 					logs: vec![],
 				}
 			} else {
@@ -848,11 +849,14 @@ pub mod module {
 		pub fn selfdestruct(origin: OriginFor<T>, contract: EvmAddress) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 			let caller = T::AddressMapping::get_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
-			Self::do_selfdestruct(&caller, &contract)?;
+			let extra_weight = Self::do_selfdestruct(&caller, &contract)?;
 
 			Pallet::<T>::deposit_event(Event::<T>::ContractSelfdestructed(contract));
 
-			Ok(().into())
+			Ok(PostDispatchInfo {
+				actual_weight: Some(<T as Config>::WeightInfo::selfdestruct().saturating_add(extra_weight)),
+				pays_fee: Pays::Yes,
+			})
 		}
 	}
 }
@@ -882,7 +886,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	#[transactional]
-	pub fn remove_contract(caller: &EvmAddress, address: &EvmAddress) -> DispatchResult {
+	pub fn remove_contract(caller: &EvmAddress, address: &EvmAddress) -> Result<Weight, DispatchError> {
 		let address_account = T::AddressMapping::get_account_id(address);
 
 		Accounts::<T>::try_mutate_exists(address, |account_info| -> DispatchResult {
@@ -919,7 +923,12 @@ impl<T: Config> Pallet<T> {
 		// `Accounts`
 		frame_system::Pallet::<T>::dec_providers(&address_account)?;
 
-		Ok(())
+		// estimate weight
+		let weight = (ContractStorageSizes::<T>::get(address)
+			.checked_div(STORAGE_SIZE)
+			.unwrap_or_default() as u64)
+			.saturating_mul(<T as frame_system::Config>::DbWeight::get().write);
+		Ok(weight)
 	}
 
 	/// Removes an account from Accounts and AccountStorages.
@@ -1192,7 +1201,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	/// Selfdestruct a contract at a given address.
-	fn do_selfdestruct(caller: &EvmAddress, contract: &EvmAddress) -> DispatchResult {
+	fn do_selfdestruct(caller: &EvmAddress, contract: &EvmAddress) -> Result<Weight, DispatchError> {
 		let account_info = Self::accounts(contract).ok_or(Error::<T>::ContractNotFound)?;
 		let contract_info = account_info
 			.contract_info
@@ -1576,7 +1585,8 @@ impl<T: Config> DispatchableTask for EvmTask<T> {
 
 						TaskResult {
 							result: res,
-							used_weight: <T as frame_system::Config>::DbWeight::get().write * count as u64,
+							used_weight: <T as frame_system::Config>::DbWeight::get().write.saturating_mul(count)
+								as u64,
 							finished: true,
 						}
 					}
@@ -1589,7 +1599,8 @@ impl<T: Config> DispatchableTask for EvmTask<T> {
 
 						TaskResult {
 							result: Ok(()),
-							used_weight: <T as frame_system::Config>::DbWeight::get().write * count as u64,
+							used_weight: <T as frame_system::Config>::DbWeight::get().write.saturating_mul(count)
+								as u64,
 							finished: false,
 						}
 					}

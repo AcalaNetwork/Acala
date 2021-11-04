@@ -18,6 +18,7 @@
 
 use crate::{Balance, BlockNumber, Nonce};
 use codec::{Decode, Encode};
+use frame_support::weights::Weight;
 use module_evm_utiltity::{
 	ethereum::{Log, TransactionAction},
 	evm::ExitReason,
@@ -49,6 +50,7 @@ pub struct ExecutionInfo<T> {
 	pub value: T,
 	pub used_gas: U256,
 	pub used_storage: i32,
+	pub extra_weight: Weight,
 	pub logs: Vec<Log>,
 }
 

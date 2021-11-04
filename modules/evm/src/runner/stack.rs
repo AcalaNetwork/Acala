@@ -172,13 +172,14 @@ impl<T: Config> Runner<T> {
 			})?;
 		}
 
+		let mut extra_weight = Default::default();
 		for address in state.substate.deletes {
 			log::debug!(
 				target: "evm",
 				"Deleting account at {:?}",
 				address
 			);
-			Pallet::<T>::remove_contract(&origin, &address).map_err(|e| {
+			extra_weight = Pallet::<T>::remove_contract(&origin, &address).map_err(|e| {
 				log::debug!(
 					target: "evm",
 					"CannotKillContract address {:?}, reason: {:?}",
@@ -200,6 +201,7 @@ impl<T: Config> Runner<T> {
 			exit_reason: reason,
 			used_gas,
 			used_storage: actual_storage,
+			extra_weight,
 			logs: state.substate.logs,
 		})
 	}
