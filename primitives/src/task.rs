@@ -18,7 +18,6 @@
 use frame_support::weights::Weight;
 use sp_runtime::DispatchResult;
 
-#[allow(dead_code)]
 pub struct TaskResult {
 	pub result: DispatchResult,
 	pub used_weight: Weight,

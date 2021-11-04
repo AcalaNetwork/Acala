@@ -65,6 +65,7 @@ pub trait RiskManager<AccountId, CurrencyId, Balance, DebitBalance> {
 	fn check_debit_cap(currency_id: CurrencyId, total_debit_balance: DebitBalance) -> DispatchResult;
 }
 
+#[cfg(feature = "std")]
 impl<AccountId, CurrencyId, Balance: Default, DebitBalance> RiskManager<AccountId, CurrencyId, Balance, DebitBalance>
 	for ()
 {
@@ -146,6 +147,7 @@ pub trait DEXManager<AccountId, CurrencyId, Balance> {
 	) -> DispatchResult;
 }
 
+#[cfg(feature = "std")]
 impl<AccountId, CurrencyId, Balance> DEXManager<AccountId, CurrencyId, Balance> for ()
 where
 	Balance: Default,
@@ -305,6 +307,7 @@ pub trait DEXIncentives<AccountId, CurrencyId, Balance> {
 	fn do_withdraw_dex_share(who: &AccountId, lp_currency_id: CurrencyId, amount: Balance) -> DispatchResult;
 }
 
+#[cfg(feature = "std")]
 impl<AccountId, CurrencyId, Balance> DEXIncentives<AccountId, CurrencyId, Balance> for () {
 	fn do_deposit_dex_share(_: &AccountId, _: CurrencyId, _: Balance) -> DispatchResult {
 		Ok(())
@@ -612,12 +615,14 @@ pub trait IdleScheduler<Task> {
 	fn schedule(task: Task) -> DispatchResult;
 }
 
+#[cfg(feature = "std")]
 impl DispatchableTask for () {
 	fn dispatch(self, _weight: Weight) -> TaskResult {
 		unimplemented!()
 	}
 }
 
+#[cfg(feature = "std")]
 impl<Task> IdleScheduler<Task> for () {
 	fn schedule(_task: Task) -> DispatchResult {
 		unimplemented!()

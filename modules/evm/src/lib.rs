@@ -1612,6 +1612,7 @@ impl<T: Config> DispatchableTask for EvmTask<T> {
 	}
 }
 
+#[cfg(feature = "std")]
 impl<T: Config> From<EvmTask<T>> for () {
 	fn from(_task: EvmTask<T>) -> Self {
 		unimplemented!()
