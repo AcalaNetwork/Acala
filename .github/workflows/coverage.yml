@@ -48,7 +48,9 @@ jobs:
           default: true
       - name: Generate code coverage
         run: |
-           cargo +nightly tarpaulin --avoid-cfg-tarpaulin --debug --verbose --features with-mandala-runtime --no-fail-fast --workspace --timeout 300 --out Xml
+            sudo apt-get update -y
+            sudo apt-get install -y libclang-dev
+            cargo tarpaulin --avoid-cfg-tarpaulin --debug --verbose --features with-mandala-runtime --no-fail-fast --workspace --timeout 300 --out Xml
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v1
         with:
