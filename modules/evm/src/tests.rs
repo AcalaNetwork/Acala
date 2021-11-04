@@ -1462,7 +1462,6 @@ fn evm_execute_mode_should_work() {
 				value: vec![],
 				used_gas: U256::from(139845),
 				used_storage: 290,
-				extra_weight: 0,
 				logs: vec![]
 			}
 		);
@@ -1486,7 +1485,6 @@ fn evm_execute_mode_should_work() {
 				value: vec![],
 				used_gas: U256::from(256402),
 				used_storage: 580,
-				extra_weight: 0,
 				logs: vec![]
 			}
 		);
@@ -1527,7 +1525,6 @@ fn evm_execute_mode_should_work() {
 				value: vec![],
 				used_gas: U256::from(107869),
 				used_storage: 290,
-				extra_weight: 0,
 				logs: vec![]
 			}
 		);
@@ -1556,7 +1553,6 @@ fn evm_execute_mode_should_work() {
 				value: vec![],
 				used_gas: U256::from(92869),
 				used_storage: 290,
-				extra_weight: 0,
 				logs: vec![]
 			}
 		);

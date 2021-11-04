@@ -15,9 +15,16 @@
 
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
+use codec::{Decode, Encode};
 use frame_support::weights::Weight;
+use scale_info::TypeInfo;
+#[cfg(feature = "std")]
+use serde::{Deserialize, Serialize};
 use sp_runtime::DispatchResult;
+use sp_runtime::RuntimeDebug;
 
+#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct TaskResult {
 	pub result: DispatchResult,
 	pub used_weight: Weight,
