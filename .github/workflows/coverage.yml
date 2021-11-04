@@ -48,8 +48,7 @@ jobs:
           default: true
       - name: Generate code coverage
         run: |
-            sudo apt-get update -y
-            sudo apt-get install -y libclang-dev
+            wget -O - https://apt.llvm.org/llvm.sh
             cargo tarpaulin --avoid-cfg-tarpaulin --debug --verbose --features with-mandala-runtime --no-fail-fast --workspace --timeout 300 --out Xml
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v1
