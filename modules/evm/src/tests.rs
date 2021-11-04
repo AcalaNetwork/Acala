@@ -1240,14 +1240,30 @@ fn should_selfdestruct() {
 
 		assert_eq!(System::providers(&contract_account_id), 1);
 		assert!(System::account_exists(&contract_account_id));
-		IdleScheduler::on_idle(0, 1_000_000_000_000);
-		assert_eq!(System::providers(&contract_account_id), 0);
-		assert!(!System::account_exists(&contract_account_id));
 		assert!(!Accounts::<Runtime>::contains_key(&contract_address));
-		assert!(!ContractStorageSizes::<Runtime>::contains_key(&contract_address));
-		assert_eq!(AccountStorages::<Runtime>::iter_prefix(&contract_address).count(), 0);
+		assert!(ContractStorageSizes::<Runtime>::contains_key(&contract_address));
+		assert_eq!(AccountStorages::<Runtime>::iter_prefix(&contract_address).count(), 1);
 		assert!(!CodeInfos::<Runtime>::contains_key(&code_hash));
 		assert!(!Codes::<Runtime>::contains_key(&code_hash));
+
+		assert_eq!(balance(alice()), alice_balance);
+		assert_eq!(balance(contract_address), 1000);
+		assert_eq!(
+			reserved_balance(contract_address),
+			287 * <Runtime as Config>::StorageDepositPerByte::get()
+		);
+
+		IdleScheduler::on_idle(0, 1_000_000_000_000);
+
+		// refund storage deposit
+		assert_eq!(balance(alice()), alice_balance + 3870);
+		assert_eq!(balance(contract_address), 0);
+		assert_eq!(reserved_balance(contract_address), 0);
+
+		assert_eq!(System::providers(&contract_account_id), 0);
+		assert!(!System::account_exists(&contract_account_id));
+		assert!(!ContractStorageSizes::<Runtime>::contains_key(&contract_address));
+		assert_eq!(AccountStorages::<Runtime>::iter_prefix(&contract_address).count(), 0);
 	});
 }
 
