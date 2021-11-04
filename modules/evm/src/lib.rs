@@ -882,15 +882,14 @@ impl<T: Config> Pallet<T> {
 	}
 
 	#[transactional]
-	pub fn remove_contract(caller: &EvmAddress, address: &EvmAddress) -> DispatchResult {
-		let address_account = T::AddressMapping::get_account_id(address);
+	pub fn remove_contract(caller: &EvmAddress, contract: &EvmAddress) -> DispatchResult {
+		let contract_account = T::AddressMapping::get_account_id(contract);
 
-		Accounts::<T>::try_mutate_exists(address, |account_info| -> DispatchResult {
-			let account_info = account_info.take().ok_or(Error::<T>::ContractNotFound)?;
-			let contract_info = account_info
-				.contract_info
-				.as_ref()
-				.ok_or(Error::<T>::ContractNotFound)?;
+		Accounts::<T>::try_mutate_exists(contract, |account_info| -> DispatchResult {
+			// We will keep the nonce until the storages are cleared.
+			// Only remove the `contract_info`
+			let account_info = account_info.as_mut().ok_or(Error::<T>::ContractNotFound)?;
+			let contract_info = account_info.contract_info.take().ok_or(Error::<T>::ContractNotFound)?;
 
 			CodeInfos::<T>::mutate_exists(&contract_info.code_hash, |maybe_code_info| {
 				if let Some(code_info) = maybe_code_info.as_mut() {
@@ -905,10 +904,12 @@ impl<T: Config> Pallet<T> {
 				}
 			});
 
+			ContractStorageSizes::<T>::take(contract);
+
 			T::IdleScheduler::schedule(
 				EvmTask::Remove {
 					caller: *caller,
-					contract: *address,
+					contract: *contract,
 					maintainer: contract_info.maintainer,
 				}
 				.into(),
@@ -917,7 +918,7 @@ impl<T: Config> Pallet<T> {
 
 		// this should happen after `Accounts` is updated because this could trigger another updates on
 		// `Accounts`
-		frame_system::Pallet::<T>::dec_providers(&address_account)?;
+		frame_system::Pallet::<T>::dec_providers(&contract_account)?;
 
 		Ok(())
 	}
@@ -1572,7 +1573,9 @@ impl<T: Config> DispatchableTask for EvmTask<T> {
 							"EvmTask::Remove: [from: {:?}, contract: {:?}, maintainer: {:?}, count: {:?}, result: {:?}]",
 							caller, contract, maintainer, count, res
 						);
-						ContractStorageSizes::<T>::take(contract);
+
+						// Remove account after all of the storages are cleared.
+						Accounts::<T>::take(contract);
 
 						TaskResult {
 							result: res,

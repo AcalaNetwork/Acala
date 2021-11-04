@@ -90,7 +90,6 @@ pub trait StackState<'config>: Backend {
 	fn inc_nonce(&mut self, address: H160);
 	fn set_storage(&mut self, address: H160, key: H256, value: H256);
 	fn reset_storage(&mut self, address: H160);
-	fn storage_size(&mut self, address: H160) -> u32;
 	fn log(&mut self, address: H160, topics: Vec<H256>, data: Vec<u8>);
 	fn set_deleted(&mut self, address: H160);
 	fn set_code(&mut self, address: H160, code: Vec<u8>);

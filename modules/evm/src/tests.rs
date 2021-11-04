@@ -1240,8 +1240,8 @@ fn should_selfdestruct() {
 
 		assert_eq!(System::providers(&contract_account_id), 1);
 		assert!(System::account_exists(&contract_account_id));
-		assert!(!Accounts::<Runtime>::contains_key(&contract_address));
-		assert!(ContractStorageSizes::<Runtime>::contains_key(&contract_address));
+		assert!(Accounts::<Runtime>::contains_key(&contract_address));
+		assert!(!ContractStorageSizes::<Runtime>::contains_key(&contract_address));
 		assert_eq!(AccountStorages::<Runtime>::iter_prefix(&contract_address).count(), 1);
 		assert!(!CodeInfos::<Runtime>::contains_key(&code_hash));
 		assert!(!Codes::<Runtime>::contains_key(&code_hash));
@@ -1253,6 +1253,25 @@ fn should_selfdestruct() {
 			287 * <Runtime as Config>::StorageDepositPerByte::get()
 		);
 
+		// can't deploy at the same address until everything is wiped out
+		assert_noop!(
+			EVM::create_predeploy_contract(
+				Origin::signed(NetworkContractAccount::get()),
+				contract_address,
+				vec![],
+				0,
+				1000000,
+				1000000,
+			),
+			DispatchErrorWithPostInfo {
+				post_info: PostDispatchInfo {
+					actual_weight: None,
+					pays_fee: Pays::Yes,
+				},
+				error: Error::<Runtime>::ContractAlreadyExisted.into()
+			}
+		);
+
 		IdleScheduler::on_idle(0, 1_000_000_000_000);
 
 		// refund storage deposit
@@ -1262,8 +1281,17 @@ fn should_selfdestruct() {
 
 		assert_eq!(System::providers(&contract_account_id), 0);
 		assert!(!System::account_exists(&contract_account_id));
-		assert!(!ContractStorageSizes::<Runtime>::contains_key(&contract_address));
+		assert!(!Accounts::<Runtime>::contains_key(&contract_address));
 		assert_eq!(AccountStorages::<Runtime>::iter_prefix(&contract_address).count(), 0);
+
+		assert_ok!(EVM::create_predeploy_contract(
+			Origin::signed(NetworkContractAccount::get()),
+			contract_address,
+			vec![],
+			0,
+			1000000,
+			1000000,
+		));
 	});
 }
 

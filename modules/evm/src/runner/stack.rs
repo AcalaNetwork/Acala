@@ -25,8 +25,8 @@ use crate::{
 		state::{StackExecutor, StackSubstateMetadata},
 		Runner as RunnerT, StackState as StackStateT,
 	},
-	AccountInfo, AccountStorages, Accounts, BalanceOf, CallInfo, Config, ContractStorageSizes, CreateInfo, Error,
-	Event, ExecutionInfo, One, Pallet, STORAGE_SIZE,
+	AccountInfo, AccountStorages, Accounts, BalanceOf, CallInfo, Config, CreateInfo, Error, Event, ExecutionInfo, One,
+	Pallet, STORAGE_SIZE,
 };
 use frame_support::{
 	dispatch::DispatchError,
@@ -622,13 +622,8 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 		}
 	}
 
-	// Unused
 	fn reset_storage(&mut self, address: H160) {
 		<AccountStorages<T>>::remove_prefix(address, None);
-	}
-
-	fn storage_size(&mut self, address: H160) -> u32 {
-		ContractStorageSizes::<T>::get(address)
 	}
 
 	fn log(&mut self, address: H160, topics: Vec<H256>, data: Vec<u8>) {
