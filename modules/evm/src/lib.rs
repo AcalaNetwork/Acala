@@ -55,13 +55,14 @@ pub use module_evm_utiltity::{
 	Account,
 };
 pub use module_support::{
-	AddressMapping, EVMStateRentTrait, ExecutionMode, InvokeContext, TransactionPayment, EVM as EVMTrait,
+	AddressMapping, DispatchableTask, EVMStateRentTrait, ExecutionMode, IdleScheduler, InvokeContext,
+	TransactionPayment, EVM as EVMTrait,
 };
 pub use orml_traits::currency::TransferAll;
 use primitive_types::{H160, H256, U256};
 pub use primitives::{
 	evm::{CallInfo, CreateInfo, EvmAddress, ExecutionInfo, Vicinity},
-	task::{DispatchableTask, IdleScheduler, TaskResult},
+	task::TaskResult,
 	ReserveIdentifier, H160_PREFIX_DEXSHARE, H160_PREFIX_TOKEN, MIRRORED_NFT_ADDRESS_START, PRECOMPILE_ADDRESS_START,
 	SYSTEM_CONTRACT_ADDRESS_PREFIX,
 };
@@ -1522,6 +1523,7 @@ impl<T: Config + Send + Sync> SignedExtension for SetEvmOrigin<T> {
 
 #[derive(Clone, RuntimeDebug, PartialEq, Encode, Decode, TypeInfo)]
 pub enum EvmTask<T: Config> {
+	// TODO: update
 	Schedule {
 		from: EvmAddress,
 		target: EvmAddress,
@@ -1540,7 +1542,7 @@ pub enum EvmTask<T: Config> {
 impl<T: Config> DispatchableTask for EvmTask<T> {
 	fn dispatch(self, weight: Weight) -> TaskResult {
 		match self {
-			// TODO
+			// TODO: update
 			EvmTask::Schedule { .. } => {
 				// check weight and call `scheduled_call`
 				TaskResult {
@@ -1554,7 +1556,7 @@ impl<T: Config> DispatchableTask for EvmTask<T> {
 				contract,
 				maintainer,
 			} => {
-				// default remove 100
+				// default limit 100
 				let limit = cmp::min(
 					weight
 						.checked_div(<T as frame_system::Config>::DbWeight::get().write)
@@ -1565,13 +1567,11 @@ impl<T: Config> DispatchableTask for EvmTask<T> {
 				match <AccountStorages<T>>::remove_prefix(contract, Some(limit)) {
 					AllRemoved(count) => {
 						let res = Pallet::<T>::refund_storage(&caller, &contract, &maintainer);
-						if res.is_err() {
-							log::error!(
-								target: "evm",
-								"refund_storage failed: [from: {:?}, contract: {:?}, maintainer: {:?}], error: {:?}",
-								caller, contract, maintainer, res
-							);
-						}
+						log::debug!(
+							target: "evm",
+							"EvmTask::Remove: [from: {:?}, contract: {:?}, maintainer: {:?}, count: {:?}, result: {:?}]",
+							caller, contract, maintainer, count, res
+						);
 						ContractStorageSizes::<T>::take(contract);
 
 						TaskResult {
@@ -1580,13 +1580,27 @@ impl<T: Config> DispatchableTask for EvmTask<T> {
 							finished: true,
 						}
 					}
-					SomeRemaining(count) => TaskResult {
-						result: Ok(()),
-						used_weight: <T as frame_system::Config>::DbWeight::get().write * count as u64,
-						finished: false,
-					},
+					SomeRemaining(count) => {
+						log::debug!(
+							target: "evm",
+							"EvmTask::Remove: [from: {:?}, contract: {:?}, maintainer: {:?}, count: {:?}]",
+							caller, contract, maintainer, count
+						);
+
+						TaskResult {
+							result: Ok(()),
+							used_weight: <T as frame_system::Config>::DbWeight::get().write * count as u64,
+							finished: false,
+						}
+					}
 				}
 			}
 		}
+	}
+}
+
+impl<T: Config> From<EvmTask<T>> for () {
+	fn from(_task: EvmTask<T>) -> Self {
+		unimplemented!()
 	}
 }

@@ -574,13 +574,13 @@ impl<'config, S: StackState<'config>> StackExecutor<'config, S> {
 				return Capture::Exit((ExitError::CreateCollision.into(), None, Vec::new()));
 			}
 
+			// use `storage_size` instead of `reset_storage`.
+			// self.state.reset_storage(address);
+
 			if !self.state.storage_size(address).is_zero() {
 				let _ = self.exit_substate(StackExitKind::Failed);
 				return Capture::Exit((ExitError::CreateCollision.into(), None, Vec::new()));
 			}
-
-			// Check instead of reset.
-			// self.state.reset_storage(address);
 		}
 
 		let context = Context {
@@ -624,9 +624,9 @@ impl<'config, S: StackState<'config>> StackExecutor<'config, S> {
 
 				match self.state.metadata_mut().gasometer_mut().record_deposit(out.len()) {
 					Ok(()) => {
+						self.state.set_code(address, out);
 						let e = self.exit_substate(StackExitKind::Succeeded);
 						try_or_fail!(e);
-						self.state.set_code(address, out);
 						Capture::Exit((ExitReason::Succeed(s), Some(address), Vec::new()))
 					}
 					Err(e) => {

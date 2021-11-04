@@ -515,11 +515,14 @@ fn contract_should_deploy_contracts() {
 		assert_eq!(balance(factory_contract_address), amount);
 		assert_eq!(
 			reserved_balance(factory_contract_address),
-			(467 + 281) * <Runtime as Config>::StorageDepositPerByte::get()
+			(467 + 128) * <Runtime as Config>::StorageDepositPerByte::get()
 		);
 		let contract_address = H160::from_str("7b8f8ca099f6e33cf1817cf67d0556429cfc54e4").unwrap();
 		assert_eq!(balance(contract_address), 0);
-		assert_eq!(reserved_balance(contract_address), 0);
+		assert_eq!(
+			reserved_balance(contract_address),
+			153 * <Runtime as Config>::StorageDepositPerByte::get()
+		);
 	});
 }
 
@@ -584,7 +587,7 @@ fn contract_should_deploy_contracts_without_payable() {
 		assert_eq!(balance(factory_contract_address), 0);
 		assert_eq!(
 			reserved_balance(factory_contract_address),
-			(464 + 290) * <Runtime as Config>::StorageDepositPerByte::get()
+			(464 + 128) * <Runtime as Config>::StorageDepositPerByte::get()
 		);
 	});
 }
@@ -753,7 +756,6 @@ fn create_predeploy_contract_works() {
 	});
 }
 
-#[test]
 #[test]
 fn should_transfer_maintainer() {
 	// pragma solidity ^0.5.0;

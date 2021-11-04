@@ -23,6 +23,7 @@ use codec::{Decode, Encode, FullCodec, HasCompact};
 use frame_support::pallet_prelude::{DispatchClass, Pays, Weight};
 use primitives::{
 	evm::{CallInfo, EvmAddress},
+	task::TaskResult,
 	CurrencyId,
 };
 use sp_core::H160;
@@ -599,4 +600,26 @@ pub trait CallBuilder {
 	/// - weight: the weight limit used for XCM.
 	/// - debt: the weight limit used to process the `call`.
 	fn finalize_call_into_xcm_message(call: Self::RelayChainCall, extra_fee: Self::Balance, weight: Weight) -> Xcm<()>;
+}
+
+/// Dispatchable tasks
+pub trait DispatchableTask {
+	fn dispatch(self, weight: Weight) -> TaskResult;
+}
+
+/// Idle scheduler trait
+pub trait IdleScheduler<Task> {
+	fn schedule(task: Task) -> DispatchResult;
+}
+
+impl DispatchableTask for () {
+	fn dispatch(self, _weight: Weight) -> TaskResult {
+		unimplemented!()
+	}
+}
+
+impl<Task> IdleScheduler<Task> for () {
+	fn schedule(_task: Task) -> DispatchResult {
+		unimplemented!()
+	}
 }

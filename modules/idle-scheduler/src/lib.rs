@@ -23,13 +23,11 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
 #![allow(unused_must_use)]
-use acala_primitives::{
-	task::{DispatchableTask, IdleScheduler, TaskResult},
-	Nonce,
-};
+use acala_primitives::{task::TaskResult, Nonce};
 use codec::FullCodec;
 use frame_support::pallet_prelude::*;
 use frame_system::pallet_prelude::*;
+pub use module_support::{DispatchableTask, IdleScheduler};
 use scale_info::TypeInfo;
 use sp_runtime::{
 	traits::{One, Zero},

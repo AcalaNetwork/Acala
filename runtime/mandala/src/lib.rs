@@ -54,7 +54,7 @@ use module_evm::{CallInfo, CreateInfo, EvmTask, Runner};
 use module_evm_accounts::EvmAddressMapping;
 pub use module_evm_manager::EvmCurrencyIdMapping;
 use module_relaychain::RelayChainCallBuilder;
-use module_support::ExchangeRateProvider;
+use module_support::{DispatchableTask, ExchangeRateProvider};
 use module_transaction_payment::{Multiplier, TargetedFeeAdjustment};
 use scale_info::TypeInfo;
 
@@ -64,9 +64,7 @@ use orml_traits::{
 };
 use pallet_transaction_payment::{FeeDetails, RuntimeDispatchInfo};
 use primitives::{
-	define_combined_task,
-	evm::EthereumTransactionMessage,
-	task::{DispatchableTask, TaskResult},
+	define_combined_task, evm::EthereumTransactionMessage, task::TaskResult,
 	unchecked_extrinsic::AcalaUncheckedExtrinsic,
 };
 use sp_api::impl_runtime_apis;

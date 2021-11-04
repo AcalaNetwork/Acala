@@ -18,6 +18,13 @@
 use frame_support::weights::Weight;
 use sp_runtime::DispatchResult;
 
+#[allow(dead_code)]
+pub struct TaskResult {
+	pub result: DispatchResult,
+	pub used_weight: Weight,
+	pub finished: bool,
+}
+
 #[macro_export]
 macro_rules! define_combined_task {
 	(
@@ -53,19 +60,4 @@ macro_rules! define_combined_task {
             }
         )*
 	};
-}
-
-#[allow(dead_code)]
-pub struct TaskResult {
-	pub result: DispatchResult,
-	pub used_weight: Weight,
-	pub finished: bool,
-}
-
-pub trait DispatchableTask {
-	fn dispatch(self, weight: Weight) -> TaskResult;
-}
-
-pub trait IdleScheduler<Task> {
-	fn schedule(task: Task) -> DispatchResult;
 }

@@ -116,7 +116,7 @@ impl<T: Config> Runner<T> {
 		// Refund fees to the `source` account if deducted more before,
 		// T::OnChargeTransaction::correct_and_deposit_fee(&source, actual_fee, fee)?;
 
-		let mut state = executor.into_state();
+		let state = executor.into_state();
 
 		// charge storage
 		let actual_storage = state
@@ -126,20 +126,13 @@ impl<T: Config> Runner<T> {
 			.ok_or(Error::<T>::OutOfStorage)?;
 		let used_storage = state.metadata().storage_meter().total_used();
 		let refunded_storage = state.metadata().storage_meter().total_refunded();
-
-		// add used storage from self
-		let target = state.metadata().target().expect("Storage target is none");
-		state
-			.substate
-			.storage_logs
-			.push((target, state.metadata().storage_meter().used_storage()));
+		log::debug!(
+			target: "evm",
+			"Storage logs: {:?}",
+			state.substate.storage_logs
+		);
 		let mut sum_storage: i32 = 0;
 		for (target, storage) in &state.substate.storage_logs {
-			log::debug!(
-				target: "evm",
-				"Storage logs: target: {:?}, storage: {:?}",
-				target, storage
-			);
 			if !config.estimate {
 				Pallet::<T>::charge_storage(&origin, target, *storage).map_err(|e| {
 					log::debug!(
@@ -658,35 +651,36 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 		let mut substate = &self.substate;
 
 		loop {
-			if let Some(c) = substate.metadata().caller() {
-				// the caller maybe is contract and not deployed.
-				// get the parent's maintainer.
-				if Pallet::<T>::is_account_empty(c) {
-					if substate.parent.is_none() {
-						log::error!(
-							target: "evm",
-							"get parent's maintainer failed. caller: {:?}, address: {:?}",
-							c,
-							address
-						);
-						debug_assert!(false);
-						return;
-					}
-					substate = substate.parent.as_ref().expect("has checked; qed");
-				} else {
-					caller = *c;
-					break;
-				}
-			} else {
+			// get maintainer from parent caller
+			// `enter_substate` will do `spit_child`
+			if substate.parent.is_none() {
 				log::error!(
 					target: "evm",
-					"get maintainer failed. address: {:?}",
+					"get parent's maintainer failed. address: {:?}",
 					address
 				);
 				debug_assert!(false);
 				return;
 			}
+
+			substate = substate.parent.as_ref().expect("has checked; qed");
+
+			if let Some(c) = substate.metadata().caller() {
+				// the caller maybe is contract and not deployed.
+				// get the parent's maintainer.
+				if !Pallet::<T>::is_account_empty(c) {
+					caller = *c;
+					break;
+				}
+			}
 		}
+
+		log::debug!(
+			target: "evm",
+			"set_code: address: {:?}, maintainer: {:?}",
+			address,
+			caller
+		);
 
 		let code_size = code.len() as u32;
 		Pallet::<T>::create_contract(caller, address, code);
