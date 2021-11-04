@@ -93,14 +93,10 @@ impl SubstrateCli for Cli {
 			path => {
 				let path = std::path::PathBuf::from(path);
 
-				let starts_with = |prefix: &str| {
-					path.file_name()
-						.map(|f| f.to_str().map(|s| s.starts_with(&prefix)))
-						.flatten()
-						.unwrap_or(false)
-				};
+				let chain_spec = Box::new(service::chain_spec::DummyChainSpec::from_json_file(path.clone())?)
+					as Box<dyn service::ChainSpec>;
 
-				if starts_with("karura") {
+				if chain_spec.is_karura() {
 					#[cfg(feature = "with-karura-runtime")]
 					{
 						Box::new(chain_spec::karura::ChainSpec::from_json_file(path)?)
@@ -108,7 +104,7 @@ impl SubstrateCli for Cli {
 
 					#[cfg(not(feature = "with-karura-runtime"))]
 					return Err(service::KARURA_RUNTIME_NOT_AVAILABLE.into());
-				} else if starts_with("acala") {
+				} else if chain_spec.is_acala() {
 					#[cfg(feature = "with-acala-runtime")]
 					{
 						Box::new(chain_spec::acala::ChainSpec::from_json_file(path)?)
