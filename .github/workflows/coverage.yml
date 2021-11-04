@@ -20,6 +20,9 @@ jobs:
   test:
     name: Coverage Report
     runs-on: ubuntu-latest
+    container:
+      image: xd009642/tarpaulin:develop-nightly
+      options: --security-opt seccomp=unconfined
     steps:
       - name: Cancel Previous Runs
         # Only cancel non-master branch runs
@@ -45,10 +48,7 @@ jobs:
           default: true
       - name: Generate code coverage
         run: |
-          wget https://github.com/xd009642/tarpaulin/releases/download/${{ env.TARPAULIN_VERSION }}/cargo-tarpaulin-${{ env.TARPAULIN_VERSION }}-travis.tar.gz
-          tar -zxvf cargo-tarpaulin-${{ env.TARPAULIN_VERSION }}-travis.tar.gz -C $HOME/.cargo/bin
-          # TODO: remove `--avoid-cfg-tarpaulin` after https://github.com/xd009642/tarpaulin/issues/756
-          cargo tarpaulin --avoid-cfg-tarpaulin --debug --verbose --features with-mandala-runtime --no-fail-fast --workspace --timeout 300 --out Xml
+           cargo +nightly tarpaulin --avoid-cfg-tarpaulin --debug --verbose --features with-mandala-runtime --no-fail-fast --workspace --timeout 300 --out Xml
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v1
         with:
