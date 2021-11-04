@@ -14,7 +14,7 @@ on:
       - '**/README.md'
 
 env:
-  TARPAULIN_VERSION: 0.18.2
+  TARPAULIN_VERSION: 0.18.3
 
 jobs:
   test:
