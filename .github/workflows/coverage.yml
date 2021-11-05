@@ -48,9 +48,9 @@ jobs:
           default: true
       - name: Generate code coverage
         run: |
-            sudo apt update -y &&
-            sudo apt install -y cmake pkg-config libssl-dev git gcc build-essential git clang libclang-dev
-            export LIBCLANG_PATH="/usr/lib/llvm-10/lib/libclang.so:${LIBCLANG_PATH}"
+            apt update -y &&
+            apt install -y cmake pkg-config libssl-dev git gcc build-essential git clang libclang-dev &&
+            export LIBCLANG_PATH="/usr/lib/llvm-10/lib/libclang.so:${LIBCLANG_PATH}" &&
             cargo tarpaulin --avoid-cfg-tarpaulin --debug --verbose --features with-mandala-runtime --no-fail-fast --workspace --timeout 300 --out Xml
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v1
