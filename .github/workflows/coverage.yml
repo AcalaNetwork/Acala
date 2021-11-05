@@ -15,7 +15,7 @@ on:
 
 env:
   TARPAULIN_VERSION: 0.18.3
-  LIBCLANG_PATH: "/usr/lib/llvm-10/lib"
+  LIBCLANG_PATH: "/usr/lib/llvm-7/lib"
 
 jobs:
   test:
