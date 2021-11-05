@@ -14,7 +14,7 @@ on:
       - '**/README.md'
 
 env:
-  LIBCLANG_PATH:"/usr/lib/llvm-10/lib"
+  LIBCLANG_PATH:/usr/lib/llvm-10/lib
 
 jobs:
   test:
@@ -49,7 +49,7 @@ jobs:
       - name: Generate code coverage
         run: |
             apt update -y &&
-            apt install -y cmake pkg-config libssl-dev git gcc build-essential git clang libclang-dev &&
+            apt install -y cmake pkg-config libssl-dev git gcc build-essential git clang libclang-dev
             cargo tarpaulin --avoid-cfg-tarpaulin --debug --verbose --features with-mandala-runtime --no-fail-fast --workspace --timeout 300 --out Xml
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v1
