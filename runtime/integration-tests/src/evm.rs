@@ -604,6 +604,9 @@ fn should_not_kill_contract_on_transfer_all_tokens() {
 			#[cfg(not(feature = "with-ethereum-compatibility"))]
 			assert_eq!(System::providers(&contract_account_id), 1);
 
+			#[cfg(feature = "with-ethereum-compatibility")]
+			assert!(EVM::accounts(contract).is_none());
+			#[cfg(not(feature = "with-ethereum-compatibility"))]
 			assert!(EVM::accounts(contract).is_some());
 
 			// use IdleScheduler to remove contract
