@@ -14,7 +14,7 @@ on:
       - '**/README.md'
 
 env:
-  LIBCLANG_PATH=/usr/lib/llvm-10/lib
+  LIBCLANG_PATH:"/usr/lib/llvm-10/lib"
 
 jobs:
   test:
