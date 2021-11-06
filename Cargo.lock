@@ -5215,6 +5215,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "module-asset-registry"
+version = "2.0.0"
+dependencies = [
+ "acala-primitives",
+ "frame-support",
+ "frame-system",
+ "pallet-balances",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "xcm",
+]
+
+[[package]]
 name = "module-auction-manager"
 version = "2.0.0"
 dependencies = [

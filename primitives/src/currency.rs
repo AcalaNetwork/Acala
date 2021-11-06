@@ -212,12 +212,17 @@ pub trait TokenInfo {
 	fn decimals(&self) -> Option<u8>;
 }
 
+pub type ForeignAssetId = u16;
+pub type Lease = BlockNumber;
+
 #[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 pub enum DexShare {
 	Token(TokenSymbol),
 	Erc20(EvmAddress),
+	LiquidCroadloan(Lease),
+	ForeignAsset(ForeignAssetId),
 }
 
 #[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord, TypeInfo)]
@@ -228,6 +233,8 @@ pub enum CurrencyId {
 	DexShare(DexShare, DexShare),
 	Erc20(EvmAddress),
 	StableAssetPoolToken(nutsfinance_stable_asset::StableAssetPoolId),
+	LiquidCroadloan(Lease),
+	ForeignAsset(ForeignAssetId),
 }
 
 impl CurrencyId {
@@ -282,6 +289,12 @@ impl From<DexShare> for u32 {
 				let index = if leading_zeros > 16 { 16 } else { leading_zeros };
 				bytes[..].copy_from_slice(&address[index..index + 4][..]);
 			}
+			DexShare::LiquidCroadloan(_) => {
+				unimplemented!()
+			}
+			DexShare::ForeignAsset(_) => {
+				unimplemented!()
+			}
 		}
 		u32::from_be_bytes(bytes)
 	}
@@ -300,10 +313,14 @@ impl TryFrom<CurrencyId> for EvmAddress {
 				let symbol_0 = match token_symbol_0 {
 					DexShare::Token(token) => CurrencyId::Token(token).currency_id().ok_or(()),
 					DexShare::Erc20(_) => Err(()),
+					DexShare::LiquidCroadloan(_) => Err(()),
+					DexShare::ForeignAsset(_) => Err(()),
 				}?;
 				let symbol_1 = match token_symbol_1 {
 					DexShare::Token(token) => CurrencyId::Token(token).currency_id().ok_or(()),
 					DexShare::Erc20(_) => Err(()),
+					DexShare::LiquidCroadloan(_) => Err(()),
+					DexShare::ForeignAsset(_) => Err(()),
 				}?;
 
 				let mut prefix = EvmAddress::default();
@@ -312,6 +329,8 @@ impl TryFrom<CurrencyId> for EvmAddress {
 			}
 			CurrencyId::Erc20(address) => Ok(address),
 			CurrencyId::StableAssetPoolToken(_) => Err(()),
+			CurrencyId::LiquidCroadloan(_) => Err(()),
+			CurrencyId::ForeignAsset(_) => Err(()),
 		}
 	}
 }
@@ -321,6 +340,8 @@ impl Into<CurrencyId> for DexShare {
 		match self {
 			DexShare::Token(token) => CurrencyId::Token(token),
 			DexShare::Erc20(address) => CurrencyId::Erc20(address),
+			DexShare::LiquidCroadloan(lease) => CurrencyId::LiquidCroadloan(lease),
+			DexShare::ForeignAsset(foreign_asset_id) => CurrencyId::ForeignAsset(foreign_asset_id),
 		}
 	}
 }

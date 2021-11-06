@@ -405,7 +405,7 @@ pub mod module {
 		/// A contract was attempted to be created, but the execution failed.
 		/// \[from, contract, exit_reason, logs\]
 		CreatedFailed(EvmAddress, EvmAddress, ExitReason, Vec<Log>),
-		/// A contract has been executed successfully with states applied. \[from, contract, logs]\
+		/// A contract has been executed successfully with states applied. \[from, contract, logs\]
 		Executed(EvmAddress, EvmAddress, Vec<Log>),
 		/// A contract has been executed with errors. States are reverted with
 		/// only gas fees applied. \[from, contract, exit_reason, output, logs\]
