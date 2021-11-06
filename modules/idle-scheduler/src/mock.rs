@@ -16,17 +16,15 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-//! Mocks for example module.
+//! Mocks for idle-scheduler module.
 
 #![cfg(test)]
 
 use crate as module_idle_scheduler;
-use acala_primitives::{
-	define_combined_task,
-	task::{DispatchableTask, TaskResult},
-};
+use acala_primitives::{define_combined_task, task::TaskResult};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types, traits::Everything};
+use module_support::DispatchableTask;
 
 use codec::{Decode, Encode};
 use scale_info::TypeInfo;
@@ -84,6 +82,7 @@ pub enum BalancesTask {
 impl DispatchableTask for BalancesTask {
 	fn dispatch(self, weight: Weight) -> TaskResult {
 		TaskResult {
+			result: Ok(()),
 			used_weight: BASE_WEIGHT,
 			finished: weight >= BASE_WEIGHT,
 		}
@@ -98,6 +97,7 @@ pub enum HomaLiteTask {
 impl DispatchableTask for HomaLiteTask {
 	fn dispatch(self, weight: Weight) -> TaskResult {
 		TaskResult {
+			result: Ok(()),
 			used_weight: BASE_WEIGHT,
 			finished: weight >= BASE_WEIGHT,
 		}
@@ -105,9 +105,10 @@ impl DispatchableTask for HomaLiteTask {
 }
 
 define_combined_task! {
+	#[derive(Clone, Debug, PartialEq, Encode, Decode, TypeInfo)]
 	pub enum ScheduledTasks {
-		BalancesTask,
-		HomaLiteTask,
+		BalancesTask(BalancesTask),
+		HomaLiteTask(HomaLiteTask),
 	}
 }
 
@@ -121,7 +122,6 @@ construct_runtime!(
 		UncheckedExtrinsic = UncheckedExtrinsic
 	{
 		System: frame_system::{Pallet, Call, Event<T>},
-		// NOTE: name Example here is needed in order to have same module prefix
 		IdleScheduler: module_idle_scheduler::{Pallet, Call, Event<T>, Storage},
 	}
 );

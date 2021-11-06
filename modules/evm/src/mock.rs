@@ -28,7 +28,7 @@ use frame_support::{
 use frame_system::EnsureSignedBy;
 use module_support::mocks::MockAddressMapping;
 use orml_traits::parameter_type_with_key;
-use primitives::{Amount, BlockNumber, CurrencyId, ReserveIdentifier, TokenSymbol};
+use primitives::{define_combined_task, Amount, BlockNumber, CurrencyId, ReserveIdentifier, TokenSymbol};
 use sp_core::{H160, H256};
 use sp_runtime::{
 	testing::Header,
@@ -128,6 +128,24 @@ impl orml_currencies::Config for Runtime {
 }
 pub type AdaptedBasicCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
 
+define_combined_task! {
+	#[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo)]
+	pub enum ScheduledTasks {
+		EvmTask(EvmTask<Runtime>),
+	}
+}
+
+parameter_types!(
+	pub MinimumWeightRemainInBlock: Weight = u64::MIN;
+);
+
+impl module_idle_scheduler::Config for Runtime {
+	type Event = Event;
+	type WeightInfo = ();
+	type Task = ScheduledTasks;
+	type MinimumWeightRemainInBlock = MinimumWeightRemainInBlock;
+}
+
 pub struct GasToWeight;
 
 impl Convert<u64, u64> for GasToWeight {
@@ -183,6 +201,8 @@ impl Config for Runtime {
 
 	type Runner = crate::runner::stack::Runner<Self>;
 	type FindAuthor = AuthorGiven;
+	type Task = ScheduledTasks;
+	type IdleScheduler = IdleScheduler;
 	type WeightInfo = ();
 }
 
@@ -200,6 +220,7 @@ construct_runtime!(
 		Tokens: orml_tokens::{Pallet, Storage, Event<T>},
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
 		Currencies: orml_currencies::{Pallet, Call, Event<T>},
+		IdleScheduler: module_idle_scheduler::{Pallet, Call, Storage, Event<T>},
 	}
 );
 

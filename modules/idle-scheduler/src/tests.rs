@@ -16,12 +16,12 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-//! Unit tests for example module.
+//! Unit tests for idle-scheduler module.
 
 #![cfg(test)]
 
 use super::*;
-use crate::mock::*;
+use crate::mock::{IdleScheduler, *};
 use frame_support::assert_ok;
 
 // Can schedule tasks

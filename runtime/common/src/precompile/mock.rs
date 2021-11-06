@@ -28,13 +28,15 @@ use frame_support::{
 	PalletId, RuntimeDebug,
 };
 use frame_system::{EnsureRoot, EnsureSignedBy};
+use module_evm::EvmTask;
+use module_support::DispatchableTask;
 use module_support::{
 	mocks::MockAddressMapping, AddressMapping as AddressMappingT, DEXIncentives, ExchangeRate, ExchangeRateProvider,
 };
 use orml_traits::{parameter_type_with_key, MultiReservableCurrency};
 pub use primitives::{
-	evm::EvmAddress, Amount, BlockNumber, CurrencyId, DexShare, Header, Nonce, ReserveIdentifier, TokenSymbol,
-	TradingPair,
+	define_combined_task, evm::EvmAddress, task::TaskResult, Amount, BlockNumber, CurrencyId, DexShare, Header, Nonce,
+	ReserveIdentifier, TokenSymbol, TradingPair,
 };
 use scale_info::TypeInfo;
 use sp_core::{crypto::AccountId32, H160, H256};
@@ -174,12 +176,30 @@ impl module_currencies::Config for Test {
 }
 
 impl module_evm_bridge::Config for Test {
-	type EVM = ModuleEVM;
+	type EVM = EVMModule;
 }
 
 impl module_evm_manager::Config for Test {
 	type Currency = Balances;
 	type EVMBridge = EVMBridge;
+}
+
+define_combined_task! {
+	#[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo)]
+	pub enum ScheduledTasks {
+		EvmTask(EvmTask<Test>),
+	}
+}
+
+parameter_types!(
+	pub MinimumWeightRemainInBlock: Weight = u64::MIN;
+);
+
+impl module_idle_scheduler::Config for Test {
+	type Event = Event;
+	type WeightInfo = ();
+	type Task = ScheduledTasks;
+	type MinimumWeightRemainInBlock = MinimumWeightRemainInBlock;
 }
 
 parameter_types! {
@@ -350,7 +370,7 @@ pub type MultiCurrencyPrecompile =
 
 pub type NFTPrecompile = crate::NFTPrecompile<AccountId, MockAddressMapping, EvmCurrencyIdMapping, NFTModule>;
 pub type StateRentPrecompile =
-	crate::StateRentPrecompile<AccountId, MockAddressMapping, EvmCurrencyIdMapping, ModuleEVM>;
+	crate::StateRentPrecompile<AccountId, MockAddressMapping, EvmCurrencyIdMapping, EVMModule>;
 pub type OraclePrecompile = crate::OraclePrecompile<
 	AccountId,
 	MockAddressMapping,
@@ -419,6 +439,8 @@ impl module_evm::Config for Test {
 	type FreeDeploymentOrigin = EnsureSignedBy<CouncilAccount, AccountId>;
 	type Runner = module_evm::runner::stack::Runner<Self>;
 	type FindAuthor = ();
+	type Task = ScheduledTasks;
+	type IdleScheduler = IdleScheduler;
 	type WeightInfo = ();
 }
 
@@ -520,7 +542,8 @@ frame_support::construct_runtime!(
 		Utility: pallet_utility::{Pallet, Call, Event},
 		Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>},
 		DexModule: module_dex::{Pallet, Storage, Call, Event<T>, Config<T>},
-		ModuleEVM: module_evm::{Pallet, Config<T>, Call, Storage, Event<T>},
+		EVMModule: module_evm::{Pallet, Config<T>, Call, Storage, Event<T>},
+		IdleScheduler: module_idle_scheduler::{Pallet, Call, Storage, Event<T>},
 	}
 );
 

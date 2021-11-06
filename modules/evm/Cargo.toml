@@ -31,10 +31,11 @@ module-evm-utiltity = { path = "../evm-utiltity", default-features = false }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 
 [dev-dependencies]
-env_logger = "0.7"
+env_logger = "0.9.0"
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.12" }
 orml-currencies = { path = "../../orml/currencies" }
 orml-tokens = { path = "../../orml/tokens" }
+module-idle-scheduler = { path = "../idle-scheduler" }
 
 [features]
 default = ["std"]

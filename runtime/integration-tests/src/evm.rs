@@ -591,9 +591,26 @@ fn should_not_kill_contract_on_transfer_all_tokens() {
 			assert_eq!(Currencies::free_balance(USD_CURRENCY, &alice()), 1000 * dollar(USD_CURRENCY));
 
 			// assert the contract account is not purged
+			#[cfg(feature = "with-ethereum-compatibility")]
+			assert_eq!(System::providers(&contract_account_id), 1);
+			#[cfg(not(feature = "with-ethereum-compatibility"))]
+			assert_eq!(System::providers(&contract_account_id), 2);
 			assert!(EVM::accounts(contract).is_some());
 
 			assert_ok!(EVM::call(Origin::signed(alice()), contract.clone(), hex_literal::hex!("41c0e1b5").to_vec(), 0, 1000000000, 100000));
+
+			#[cfg(feature = "with-ethereum-compatibility")]
+			assert_eq!(System::providers(&contract_account_id), 0);
+			#[cfg(not(feature = "with-ethereum-compatibility"))]
+			assert_eq!(System::providers(&contract_account_id), 1);
+
+			#[cfg(feature = "with-ethereum-compatibility")]
+			assert!(EVM::accounts(contract).is_none());
+			#[cfg(not(feature = "with-ethereum-compatibility"))]
+			assert!(EVM::accounts(contract).is_some());
+
+			// use IdleScheduler to remove contract
+			run_to_block(System::block_number() + 1);
 
 			assert_eq!(System::providers(&contract_account_id), 0);
 			assert!(EVM::accounts(contract).is_none());
