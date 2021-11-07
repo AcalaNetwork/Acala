@@ -23,7 +23,6 @@ orml-traits = { path = "../../orml/traits", default-features = false }
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.12" }
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.12" }
 orml-tokens = { path = "../../orml/tokens" }
-module-staking-pool = { path = "../staking-pool" }
 module-currencies = { path = "../../modules/currencies" }
 module-dex = { path = "../dex" }
 smallvec = "1.4.1"

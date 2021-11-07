@@ -104,14 +104,8 @@ module-nft = { path = "../../modules/nft" }
 module-prices = { path = "../../modules/prices" }
 module-incentives = { path = "../../modules/incentives" }
 module-support = { path = "../../modules/support" }
-module-homa = { path = "../../modules/homa" }
 module-homa-lite = { path = "../../modules/homa-lite" }
-module-homa-validator-list = { path = "../../modules/homa-validator-list" }
-module-nominees-election = { path = "../../modules/nominees-election" }
 module-session-manager = { path = "../../modules/session-manager" }
-module-staking-pool = { path = "../../modules/staking-pool" }
-module-staking-pool-rpc-runtime-api = { path = "../../modules/staking-pool/rpc/runtime-api" }
-module-polkadot-bridge = { path = "../../modules/polkadot-bridge" }
 module-relaychain = {path = "../../modules/relaychain" }
 primitives = { package = "acala-primitives", path = "../../primitives" }
 runtime-common = { path = "../common" }
