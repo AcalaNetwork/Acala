@@ -476,7 +476,7 @@ pub mod module {
 					// Immediately redeem from the available_staking_balances
 					let actual_staking_amount = Self::convert_liquid_to_staking(actual_liquid_amount)?;
 
-					// Redeem from the available_staking_balances costs no extra fee.
+					// Redeem from the available_staking_balances costs additional fee for Xcm unbond.
 					T::Currency::deposit(
 						T::StakingCurrencyId::get(),
 						&who,

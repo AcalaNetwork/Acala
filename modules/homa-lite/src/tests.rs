@@ -834,6 +834,77 @@ fn mint_can_match_requested_redeem() {
 
 		// XCM will cost some fee
 		assert_eq!(Currencies::free_balance(LKSM, &CHARLIE), 993_897_000_000_000);
+
+		assert_eq!(RedeemRequests::<Runtime>::get(&ALICE), None);
+		assert_eq!(RedeemRequests::<Runtime>::get(&BOB), None);
+		assert_eq!(
+			RedeemRequests::<Runtime>::get(&ROOT),
+			Some((dollar(999) / 10, Permill::zero()))
+		);
+
+		let events = System::events();
+
+		// Matching CHARLIE's mint with ALICE's redeem
+		assert_eq!(
+			events[events.len() - 8].event,
+			Event::Tokens(orml_tokens::Event::RepatriatedReserve(
+				LKSM,
+				ALICE,
+				CHARLIE,
+				199_800_000_000_000,
+				BalanceStatus::Free
+			))
+		);
+		assert_eq!(
+			events[events.len() - 7].event,
+			Event::Currencies(module_currencies::Event::Transferred(
+				KSM,
+				CHARLIE,
+				ALICE,
+				19_980_000_000_000
+			))
+		);
+		assert_eq!(
+			events[events.len() - 6].event,
+			Event::HomaLite(crate::Event::Redeemed(ALICE, 19_980_000_000_000, 199_800_000_000_000))
+		);
+
+		// Matching CHARLIE's mint with BOB's redeem
+		assert_eq!(
+			events[events.len() - 5].event,
+			Event::Tokens(orml_tokens::Event::RepatriatedReserve(
+				LKSM,
+				BOB,
+				CHARLIE,
+				199_800_000_000_000,
+				BalanceStatus::Free
+			))
+		);
+		assert_eq!(
+			events[events.len() - 4].event,
+			Event::Currencies(module_currencies::Event::Transferred(
+				KSM,
+				CHARLIE,
+				BOB,
+				19_980_000_000_000
+			))
+		);
+		assert_eq!(
+			events[events.len() - 3].event,
+			Event::HomaLite(crate::Event::Redeemed(BOB, 19_980_000_000_000, 199_800_000_000_000))
+		);
+
+		// Mint via XCM: 600 LKSM - XCM fee
+		assert_eq!(
+			events[events.len() - 2].event,
+			Event::Currencies(module_currencies::Event::Deposited(LKSM, CHARLIE, 594_297_000_000_000))
+		);
+
+		// Finally the minted event that contains total KSM and LKSM minted
+		assert_eq!(
+			events[events.len() - 1].event,
+			Event::HomaLite(crate::Event::Minted(CHARLIE, 100000000000000, 993_897_000_000_000))
+		);
 	});
 }
 
@@ -1374,18 +1445,28 @@ fn mint_can_handle_rounding_error_dust() {
 
 		let events = System::events();
 		assert_eq!(
+			events[events.len() - 5].event,
+			Event::Tokens(orml_tokens::Event::RepatriatedReserve(
+				LKSM,
+				ALICE,
+				ROOT,
+				9_987_632_930_985,
+				BalanceStatus::Free
+			))
+		);
+		assert_eq!(
 			events[events.len() - 3].event,
-			Event::Currencies(module_currencies::Event::Transferred(KSM, ROOT, ALICE, 999999999998))
+			Event::Currencies(module_currencies::Event::Transferred(KSM, ROOT, ALICE, 999_999_999_998))
 		);
 		// actual staking transfered is off due to rounding error
 		assert_eq!(
 			events[events.len() - 2].event,
-			Event::HomaLite(crate::Event::Redeemed(ALICE, 999999999998, 9_987_632_930_985))
+			Event::HomaLite(crate::Event::Redeemed(ALICE, 999_999_999_998, 9_987_632_930_985))
 		);
 		// total amount minted includes dust caused by rounding error
 		assert_eq!(
 			events[events.len() - 1].event,
-			Event::HomaLite(crate::Event::Minted(ROOT, 999999999999, 9_987_632_930_985))
+			Event::HomaLite(crate::Event::Minted(ROOT, 999_999_999_999, 9_987_632_930_985))
 		);
 	});
 }
