@@ -930,7 +930,6 @@ pub mod module {
 			}
 
 			let mut new_balances: Vec<(T::AccountId, Balance, Permill)> = vec![];
-			let mut total_staking_currency = Self::total_staking_currency();
 			let mut num_matched = 0u32;
 			for (redeemer, (request_amount, extra_fee)) in RedeemRequests::<T>::iter() {
 				let actual_liquid_amount = min(
@@ -939,8 +938,7 @@ pub mod module {
 				);
 				let actual_staking_amount = Self::convert_liquid_to_staking(actual_liquid_amount)?;
 
-				total_staking_currency = total_staking_currency.saturating_sub(actual_staking_amount);
-				Self::update_total_staking_currency_storage(|_n| Ok(total_staking_currency))?;
+				Self::update_total_staking_currency_storage(|total| Ok(total.saturating_sub(actual_staking_amount)))?;
 
 				// Redeem from the available_staking_balances costs only the xcm unbond fee.
 				T::Currency::deposit(
