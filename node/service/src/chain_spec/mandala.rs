@@ -239,10 +239,10 @@ fn testnet_genesis(
 		dollar, get_all_module_accounts, AirDropConfig, BalancesConfig, CdpEngineConfig, CdpTreasuryConfig,
 		CollatorSelectionConfig, DexConfig, EVMConfig, EnabledTradingPairs, FinancialCouncilMembershipConfig,
 		GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig, IndicesConfig, NativeTokenExistentialDeposit,
-		OperatorMembershipAcalaConfig, OperatorMembershipBandConfig, OrmlNFTConfig, ParachainInfoConfig,
-		PolkadotXcmConfig, RenVmBridgeConfig, SessionConfig, SessionDuration, SessionKeys, SessionManagerConfig,
-		StakingPoolConfig, StarportConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig,
-		VestingConfig, ACA, AUSD, DOT, LDOT, RENBTC,
+		OperatorMembershipAcalaConfig, OrmlNFTConfig, ParachainInfoConfig, PolkadotXcmConfig, RenVmBridgeConfig,
+		SessionConfig, SessionDuration, SessionKeys, SessionManagerConfig, StakingPoolConfig, StarportConfig,
+		SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig, ACA, AUSD, DOT,
+		LDOT, RENBTC,
 	};
 
 	let existential_deposit = NativeTokenExistentialDeposit::get();
@@ -309,10 +309,6 @@ fn testnet_genesis(
 			phantom: Default::default(),
 		},
 		operator_membership_acala: OperatorMembershipAcalaConfig {
-			members: vec![root_key.clone()],
-			phantom: Default::default(),
-		},
-		operator_membership_band: OperatorMembershipBandConfig {
 			members: vec![root_key.clone()],
 			phantom: Default::default(),
 		},
@@ -448,10 +444,10 @@ fn mandala_genesis(
 		cent, dollar, get_all_module_accounts, AirDropConfig, AirDropCurrencyId, BalancesConfig, CdpEngineConfig,
 		CdpTreasuryConfig, CollatorSelectionConfig, DexConfig, EVMConfig, EnabledTradingPairs,
 		FinancialCouncilMembershipConfig, GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig, IndicesConfig,
-		NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OperatorMembershipBandConfig, OrmlNFTConfig,
-		ParachainInfoConfig, PolkadotXcmConfig, RenVmBridgeConfig, SessionConfig, SessionDuration, SessionKeys,
-		SessionManagerConfig, StakingPoolConfig, StarportConfig, SudoConfig, SystemConfig,
-		TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig, ACA, AUSD, DOT, LDOT, RENBTC,
+		NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OrmlNFTConfig, ParachainInfoConfig,
+		PolkadotXcmConfig, RenVmBridgeConfig, SessionConfig, SessionDuration, SessionKeys, SessionManagerConfig,
+		StakingPoolConfig, StarportConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig,
+		VestingConfig, ACA, AUSD, DOT, LDOT, RENBTC,
 	};
 
 	let existential_deposit = NativeTokenExistentialDeposit::get();
@@ -521,10 +517,6 @@ fn mandala_genesis(
 			members: endowed_accounts.clone(),
 			phantom: Default::default(),
 		},
-		operator_membership_band: OperatorMembershipBandConfig {
-			members: endowed_accounts,
-			phantom: Default::default(),
-		},
 		democracy: Default::default(),
 		treasury: Default::default(),
 		tokens: TokensConfig {
@@ -570,16 +562,7 @@ fn mandala_genesis(
 			), /* 5% APR */
 		},
 		air_drop: AirDropConfig {
-			airdrop_accounts: {
-				let aca_airdrop_accounts_json = &include_bytes!("../../../../resources/mandala-airdrop-ACA.json")[..];
-				let aca_airdrop_accounts: Vec<(AccountId, Balance)> =
-					serde_json::from_slice(aca_airdrop_accounts_json).unwrap();
-
-				aca_airdrop_accounts
-					.iter()
-					.map(|(account_id, aca_amount)| (account_id.clone(), AirDropCurrencyId::ACA, *aca_amount))
-					.collect::<Vec<_>>()
-			},
+			airdrop_accounts: vec![],
 		},
 		evm: EVMConfig {
 			accounts: evm_genesis_accounts,
@@ -605,39 +588,7 @@ fn mandala_genesis(
 		ren_vm_bridge: RenVmBridgeConfig {
 			ren_vm_public_key: hex!["4b939fc8ade87cb50b78987b1dda927460dc456a"],
 		},
-		orml_nft: OrmlNFTConfig {
-			#[cfg(feature = "runtime-benchmarks")]
-			tokens: vec![],
-			#[cfg(not(feature = "runtime-benchmarks"))]
-			tokens: {
-				let nft_airdrop_json = &include_bytes!("../../../../resources/mandala-airdrop-NFT.json")[..];
-				let nft_airdrop: Vec<(
-					AccountId,
-					Vec<u8>,
-					module_nft::ClassData<Balance>,
-					Vec<(Vec<u8>, module_nft::TokenData<Balance>, Vec<AccountId>)>,
-				)> = serde_json::from_slice(nft_airdrop_json).unwrap();
-
-				let mut tokens = vec![];
-				for (class_owner, class_meta, class_data, nfts) in nft_airdrop {
-					let mut tokens_of_class = vec![];
-					for (token_meta, token_data, token_owners) in nfts {
-						token_owners.iter().for_each(|account_id| {
-							tokens_of_class.push((account_id.clone(), token_meta.clone(), token_data.clone()));
-						});
-					}
-
-					tokens.push((
-						class_owner.clone(),
-						class_meta.clone(),
-						class_data.clone(),
-						tokens_of_class,
-					));
-				}
-
-				tokens
-			},
-		},
+		orml_nft: OrmlNFTConfig { tokens: vec![] },
 		collator_selection: CollatorSelectionConfig {
 			invulnerables: initial_authorities.iter().cloned().map(|(acc, _, _, _)| acc).collect(),
 			candidacy_bond: initial_staking,
