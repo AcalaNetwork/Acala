@@ -30,6 +30,21 @@ pub struct Module<T: Config>(crate::Pallet<T>);
 const SEED: u32 = 0;
 
 benchmarks! {
+	on_initialize {
+		let _ = crate::Pallet::<T>::set_staking_interest_rate_per_update(
+			RawOrigin::Root.into(),
+			Permill::from_percent(1)
+		);
+		let _ = crate::Pallet::<T>::set_total_staking_currency(RawOrigin::Root.into(), 1_000_000_000_000_000_000);
+	}: {
+		let _ = crate::Pallet::<T>::on_initialize(<T as frame_system::Config>::BlockNumber::default());
+	}
+
+	on_initialize_without_work {}: {
+		// interest rate is not calculated becasue `set_staking_interest_rate_per_update` is not called.
+		let _ = crate::Pallet::<T>::on_initialize(<T as frame_system::Config>::BlockNumber::default());
+	}
+
 	mint {
 		let amount = 1_000_000_000_000;
 		let caller: T::AccountId = account("caller", 0, SEED);
@@ -78,6 +93,7 @@ benchmarks! {
 
 	replace_schedule_unbond {}: _(RawOrigin::Root, vec![(1_000_000, <T as frame_system::Config>::BlockNumber::default()), (1_000_000_000, <T as frame_system::Config>::BlockNumber::default())])
 
+	set_staking_interest_rate_per_update {}: _(RawOrigin::Root, Permill::default())
 	redeem_with_available_staking_balance {
 		let amount = 1_000_000_000_000_000;
 		let caller: T::AccountId = account("caller", 0, SEED);
@@ -99,6 +115,18 @@ mod tests {
 	use crate::mock::*;
 	use frame_support::assert_ok;
 
+	#[test]
+	fn test_on_initialize() {
+		ExtBuilder::default().build().execute_with(|| {
+			assert_ok!(Pallet::<Runtime>::test_benchmark_on_initialize());
+		});
+	}
+	#[test]
+	fn test_on_initialize_without_work() {
+		ExtBuilder::default().build().execute_with(|| {
+			assert_ok!(Pallet::<Runtime>::test_benchmark_on_initialize_without_work());
+		});
+	}
 	#[test]
 	fn test_mint() {
 		ExtBuilder::default().build().execute_with(|| {
@@ -158,6 +186,13 @@ mod tests {
 	fn test_replace_schedule_unbond() {
 		ExtBuilder::default().build().execute_with(|| {
 			assert_ok!(Pallet::<Runtime>::test_benchmark_replace_schedule_unbond());
+		});
+	}
+
+	#[test]
+	fn test_set_staking_interest_rate_per_update() {
+		ExtBuilder::default().build().execute_with(|| {
+			assert_ok!(Pallet::<Runtime>::test_benchmark_set_staking_interest_rate_per_update());
 		});
 	}
 	#[test]

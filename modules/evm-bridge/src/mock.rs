@@ -130,6 +130,8 @@ impl module_evm::Config for Runtime {
 
 	type Runner = module_evm::runner::stack::Runner<Self>;
 	type FindAuthor = ();
+	type Task = ();
+	type IdleScheduler = ();
 	type WeightInfo = ();
 }
 
