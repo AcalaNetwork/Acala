@@ -270,6 +270,7 @@ parameter_types! {
 	pub const MaxScheduledUnbonds: u32 = 14;
 	pub const SubAccountIndex: u16 = 0;
 	pub ParachainId: ParaId = ParaId::from(PARACHAIN_ID);
+	pub const StakingUpdateFrequency: BlockNumber = 100;
 }
 ord_parameter_types! {
 	pub const Root: AccountId = ROOT;
@@ -306,6 +307,7 @@ impl Config for Runtime {
 	type MaximumRedeemRequestMatchesForMint = MaximumRedeemRequestMatchesForMint;
 	type RelayChainUnbondingSlashingSpans = RelayChainUnbondingSlashingSpans;
 	type MaxScheduledUnbonds = MaxScheduledUnbonds;
+	type StakingUpdateFrequency = StakingUpdateFrequency;
 }
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;

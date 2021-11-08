@@ -32,6 +32,7 @@ use orml_traits::{
 	arithmetic::Signed, BalanceStatus, MultiCurrency, MultiCurrencyExtended, MultiReservableCurrency, XcmTransfer,
 };
 use primitives::{Balance, CurrencyId};
+use sp_arithmetic::traits::CheckedRem;
 use sp_runtime::{
 	traits::{BlockNumberProvider, Bounded, Saturating, Zero},
 	ArithmeticError, FixedPointNumber, Permill,
@@ -138,6 +139,10 @@ pub mod module {
 		/// Maximum number of scheduled unbonds allowed
 		#[pallet::constant]
 		type MaxScheduledUnbonds: Get<u32>;
+
+		/// The number of blocks to pass before TotalStakingCurrency is updated.
+		#[pallet::constant]
+		type StakingUpdateFrequency: Get<Self::BlockNumber>;
 	}
 
 	#[pallet::error]
@@ -200,6 +205,9 @@ pub mod module {
 		///\[staking_amount_added\]
 		ScheduledUnbondWithdrew(Balance),
 
+		/// Interest rate for TotalStakingCurrency is set
+		StakingInterestRatePerUpdateSet(Permill),
+
 		/// The amount of the staking currency available to be redeemed is set.
 		/// \[total_available_staking_balance\]
 		AvailableStakingBalanceSet(Balance),
@@ -242,6 +250,12 @@ pub mod module {
 	#[pallet::getter(fn scheduled_unbond)]
 	pub type ScheduledUnbond<T: Config> =
 		StorageValue<_, BoundedVec<(Balance, RelayChainBlockNumberOf<T>), T::MaxScheduledUnbonds>, ValueQuery>;
+
+	/// Every T::StakingUpdateFrequency blocks, TotalStakingCurrency gain interest by this rate.
+	/// StakingInterestRatePerUpdate: Value: Permill
+	#[pallet::storage]
+	#[pallet::getter(fn staking_interest_rate_per_update)]
+	pub type StakingInterestRatePerUpdate<T: Config> = StorageValue<_, Permill, ValueQuery>;
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
@@ -287,6 +301,24 @@ pub mod module {
 
 			current_weight
 		}
+
+		fn on_initialize(n: T::BlockNumber) -> Weight {
+			// Update the total amount of Staking balance by acrueing the interest periodically.
+			let interest_rate = Self::staking_interest_rate_per_update();
+			if !interest_rate.is_zero()
+				&& n.checked_rem(&T::StakingUpdateFrequency::get())
+					.map_or(false, |n| n.is_zero())
+			{
+				// Inflate the staking total by the interest rate.
+				// This will only fail when current TotalStakingCurrency is 0. In this case it is OK to fail.
+				let _ = Self::update_total_staking_currency_storage(|current| {
+					Ok(current.saturating_add(interest_rate.mul(current)))
+				});
+				<T as Config>::WeightInfo::on_initialize()
+			} else {
+				<T as Config>::WeightInfo::on_initialize_without_work()
+			}
+		}
 	}
 
 	#[pallet::call]
@@ -320,12 +352,7 @@ pub mod module {
 		#[transactional]
 		pub fn set_total_staking_currency(origin: OriginFor<T>, staking_total: Balance) -> DispatchResult {
 			T::GovernanceOrigin::ensure_origin(origin)?;
-			ensure!(!staking_total.is_zero(), Error::<T>::InvalidTotalStakingCurrency);
-
-			TotalStakingCurrency::<T>::put(staking_total);
-			Self::deposit_event(Event::<T>::TotalStakingCurrencySet(staking_total));
-
-			Ok(())
+			Self::update_total_staking_currency_storage(|_n| Ok(staking_total))
 		}
 
 		/// Adjusts the total_staking_currency by the given difference.
@@ -355,16 +382,13 @@ pub mod module {
 			);
 
 			// Adjust the current total.
-			TotalStakingCurrency::<T>::mutate(|current| {
-				if by_amount.is_positive() {
-					*current = current.saturating_add(by_balance);
+			Self::update_total_staking_currency_storage(|current_staking_total| {
+				Ok(if by_amount.is_positive() {
+					current_staking_total.saturating_add(by_balance)
 				} else {
-					*current = current.saturating_sub(by_balance);
-				}
-				Self::deposit_event(Event::<T>::TotalStakingCurrencySet(*current));
-			});
-
-			Ok(())
+					current_staking_total.saturating_sub(by_balance)
+				})
+			})
 		}
 
 		/// Updates the cap for how much Staking currency can be used to Mint liquid currency.
@@ -635,6 +659,25 @@ pub mod module {
 			let _ = Self::process_redeem_requests_with_available_staking_balance(max_num_matches)?;
 			Ok(())
 		}
+
+		/// Set the interest rate for TotalStakingCurrency.
+		/// TotakStakingCurrency is incremented every `T::StakingUpdateFrequency` blocks
+		///
+		/// Requires `T::GovernanceOrigin`
+		///
+		/// Parameters:
+		/// - `interest_rate`: the new interest rate for TotalStakingCurrency.
+		#[pallet::weight(< T as Config >::WeightInfo::set_staking_interest_rate_per_update())]
+		#[transactional]
+		pub fn set_staking_interest_rate_per_update(origin: OriginFor<T>, interest_rate: Permill) -> DispatchResult {
+			T::GovernanceOrigin::ensure_origin(origin)?;
+
+			StakingInterestRatePerUpdate::<T>::put(interest_rate);
+
+			Self::deposit_event(Event::<T>::StakingInterestRatePerUpdateSet(interest_rate));
+
+			Ok(())
+		}
 	}
 
 	impl<T: Config> Pallet<T> {
@@ -810,16 +853,17 @@ pub mod module {
 				liquid_to_mint = (Permill::one().saturating_sub(T::MaxRewardPerEra::get())).mul(liquid_to_mint);
 				liquid_to_mint = Self::convert_staking_to_liquid(liquid_to_mint)?;
 
-				// Ensure the total amount staked doesn't exceed the cap.
-				let new_total_staking_currency = Self::total_staking_currency()
-					.checked_add(staking_remaining)
-					.ok_or(ArithmeticError::Overflow)?;
-				ensure!(
-					new_total_staking_currency <= Self::staking_currency_mint_cap(),
-					Error::<T>::ExceededStakingCurrencyMintCap
-				);
-
-				TotalStakingCurrency::<T>::put(new_total_staking_currency);
+				// Update staking total and ensure the new total doesn't exceed the cap.
+				Self::update_total_staking_currency_storage(|total_staking_currency| {
+					let new_total_staking_currency = total_staking_currency
+						.checked_add(staking_remaining)
+						.ok_or(ArithmeticError::Overflow)?;
+					ensure!(
+						new_total_staking_currency <= Self::staking_currency_mint_cap(),
+						Error::<T>::ExceededStakingCurrencyMintCap
+					);
+					Ok(new_total_staking_currency)
+				})?;
 
 				// All checks pass. Proceed with Xcm transfer.
 				T::XcmTransfer::transfer(
@@ -894,7 +938,7 @@ pub mod module {
 				);
 				let actual_staking_amount = Self::convert_liquid_to_staking(actual_liquid_amount)?;
 
-				TotalStakingCurrency::<T>::mutate(|x| *x = x.saturating_sub(actual_staking_amount));
+				Self::update_total_staking_currency_storage(|total| Ok(total.saturating_sub(actual_staking_amount)))?;
 
 				// Redeem from the available_staking_balances costs only the xcm unbond fee.
 				T::Currency::deposit(
@@ -967,6 +1011,18 @@ pub mod module {
 				T::XcmUnbondFee::get(),
 				Self::xcm_dest_weight(),
 			)
+		}
+
+		/// Helper function that update the storage of total_staking_currency and emit event.
+		fn update_total_staking_currency_storage(
+			f: impl FnOnce(Balance) -> Result<Balance, DispatchError>,
+		) -> DispatchResult {
+			TotalStakingCurrency::<T>::try_mutate(|current| {
+				*current = f(*current)?;
+				ensure!(!current.is_zero(), Error::<T>::InvalidTotalStakingCurrency);
+				Self::deposit_event(Event::<T>::TotalStakingCurrencySet(*current));
+				Ok(())
+			})
 		}
 	}
 

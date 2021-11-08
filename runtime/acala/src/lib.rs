@@ -1548,6 +1548,7 @@ parameter_types! {
 	pub SubAccountIndex: u16 = RelayChainSubAccountId::HomaLite as u16;
 	pub const XcmUnbondFee: Balance = 600_000_000; // TODO identify unbond fee
 }
+
 impl module_homa_lite::Config for Runtime {
 	type Event = Event;
 	type WeightInfo = weights::module_homa_lite::WeightInfo<Runtime>;
@@ -1571,6 +1572,7 @@ impl module_homa_lite::Config for Runtime {
 	type MaximumRedeemRequestMatchesForMint = MaximumRedeemRequestMatchesForMint;
 	type RelayChainUnbondingSlashingSpans = RelayChainUnbondingSlashingSpans;
 	type MaxScheduledUnbonds = MaxScheduledUnbonds;
+	type StakingUpdateFrequency = OneDay;
 }
 
 pub type LocalAssetTransactor = MultiCurrencyAdapter<

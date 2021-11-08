@@ -19,7 +19,7 @@
 //! Tests the Homa-lite module, and its cross-chain functionalities.
 
 use crate::setup::*;
-use frame_support::{assert_noop, assert_ok};
+use frame_support::{assert_noop, assert_ok, traits::Hooks};
 use module_support::ExchangeRateProvider;
 use orml_traits::{MultiCurrency, MultiReservableCurrency};
 
@@ -310,6 +310,68 @@ fn homa_lite_mint_and_redeem() {
 
 			let rate6 = HomaLite::get_exchange_rate();
 			assert!(rate5 < rate6);
+		});
+}
+
+#[test]
+fn liquid_value_goes_up_periodically() {
+	ExtBuilder::default()
+		.balances(vec![(alice(), LIQUID_CURRENCY, 10_000_000 * dollar(LIQUID_CURRENCY))])
+		.build()
+		.execute_with(|| {
+			assert_ok!(HomaLite::set_total_staking_currency(
+				Origin::root(),
+				1_000_000 * dollar(RELAY_CHAIN_CURRENCY)
+			));
+			assert_ok!(HomaLite::set_staking_interest_rate_per_update(
+				Origin::root(),
+				Permill::from_rational(383u32, 1_000_000u32)
+			));
+
+			let rate1 = HomaLite::get_exchange_rate();
+
+			HomaLite::on_initialize(0);
+			// Inflate by 1.000383 every 1 day (14400 blocks)
+			// 1_000_000 * 1.000383 = 1_000_383
+			assert_eq!(
+				HomaLite::total_staking_currency(),
+				1_000_383 * dollar(RELAY_CHAIN_CURRENCY)
+			);
+			let rate2 = HomaLite::get_exchange_rate();
+			assert!(rate2 > rate1);
+
+			for i in 1..14401 {
+				HomaLite::on_initialize(i);
+			}
+			// 1_000_383 * 1.000383 = 1000766.14669 (with rounding error)
+			#[cfg(feature = "with-mandala-runtime")]
+			assert_eq!(HomaLite::total_staking_currency(), 10_007_661_466_890_000);
+
+			// Karura ias 12 sec block time
+			// 1_000_383 * 1.000383 * 1.000383 = 1001149.440123181887
+			#[cfg(feature = "with-karura-runtime")]
+			assert_eq!(HomaLite::total_staking_currency(), 1_001_149_440_123_181_887);
+			#[cfg(feature = "with-acala-runtime")]
+			assert_eq!(HomaLite::total_staking_currency(), 10_011_494_401_231_819);
+
+			let rate3 = HomaLite::get_exchange_rate();
+			assert!(rate3 > rate2);
+
+			for i in 14401..28802 {
+				HomaLite::on_initialize(i);
+			}
+			// 1000766.146689 * 1.000383 = 1.001149440123181887
+			#[cfg(feature = "with-mandala-runtime")]
+			assert_eq!(HomaLite::total_staking_currency(), 10_011_494_401_231_819);
+
+			// 1001149.440123181887 * 1.000383 * 1.000383 = 1001916.46745192646655
+			#[cfg(feature = "with-karura-runtime")]
+			assert_eq!(HomaLite::total_staking_currency(), 1_001_916_467_451_926_467);
+			#[cfg(feature = "with-acala-runtime")]
+			assert_eq!(HomaLite::total_staking_currency(), 10_019_164_674_519_265);
+
+			let rate4 = HomaLite::get_exchange_rate();
+			assert!(rate4 > rate3);
 		});
 }
 

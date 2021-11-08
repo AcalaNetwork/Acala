@@ -1627,6 +1627,7 @@ impl module_homa_lite::Config for Runtime {
 	type MaximumRedeemRequestMatchesForMint = MaximumRedeemRequestMatchesForMint;
 	type RelayChainUnbondingSlashingSpans = RelayChainUnbondingSlashingSpans;
 	type MaxScheduledUnbonds = MaxScheduledUnbonds;
+	type StakingUpdateFrequency = OneDay;
 }
 
 pub type LocalAssetTransactor = MultiCurrencyAdapter<
