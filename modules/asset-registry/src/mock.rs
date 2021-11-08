@@ -21,8 +21,15 @@
 #![cfg(test)]
 
 use crate as asset_registry;
-use frame_support::{construct_runtime, parameter_types, traits::Everything};
-use frame_system::EnsureRoot;
+use frame_support::{
+	assert_ok, construct_runtime, ord_parameter_types, pallet_prelude::GenesisBuild, parameter_types,
+	traits::Everything,
+};
+use frame_system::{EnsureRoot, EnsureSignedBy};
+use module_support::{mocks::MockAddressMapping, AddressMapping};
+use primitives::{evm::EvmAddress, AccountId, Balance, ReserveIdentifier};
+use sp_core::{bytes::from_hex, H160, H256};
+use std::str::FromStr;
 
 parameter_types!(
 	pub const SomeConst: u64 = 10;
@@ -37,7 +44,7 @@ impl frame_system::Config for Runtime {
 	type Call = Call;
 	type Hash = sp_runtime::testing::H256;
 	type Hashing = sp_runtime::traits::BlakeTwo256;
-	type AccountId = u64;
+	type AccountId = AccountId;
 	type Lookup = sp_runtime::traits::IdentityLookup<Self::AccountId>;
 	type Header = sp_runtime::testing::Header;
 	type Event = Event;
@@ -47,7 +54,7 @@ impl frame_system::Config for Runtime {
 	type DbWeight = ();
 	type Version = ();
 	type PalletInfo = PalletInfo;
-	type AccountData = pallet_balances::AccountData<u64>;
+	type AccountData = pallet_balances::AccountData<Balance>;
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
 	type SystemWeightInfo = ();
@@ -60,21 +67,76 @@ parameter_types! {
 	pub const MaxReserves: u32 = 50;
 }
 impl pallet_balances::Config for Runtime {
-	type Balance = u64;
+	type Balance = Balance;
 	type DustRemoval = ();
 	type Event = Event;
 	type ExistentialDeposit = ExistentialDeposit;
 	type AccountStore = System;
 	type MaxLocks = ();
 	type MaxReserves = MaxReserves;
-	type ReserveIdentifier = [u8; 8];
+	type ReserveIdentifier = ReserveIdentifier;
 	type WeightInfo = ();
+}
+
+parameter_types! {
+	pub const MinimumPeriod: u64 = 1000;
+}
+impl pallet_timestamp::Config for Runtime {
+	type Moment = u64;
+	type OnTimestampSet = ();
+	type MinimumPeriod = MinimumPeriod;
+	type WeightInfo = ();
+}
+
+parameter_types! {
+	pub const NewContractExtraBytes: u32 = 1;
+	pub NetworkContractSource: EvmAddress = alice_evm_addr();
+}
+
+ord_parameter_types! {
+	pub const CouncilAccount: AccountId = AccountId::from([1u8; 32]);
+	pub const TreasuryAccount: AccountId = AccountId::from([2u8; 32]);
+	pub const NetworkContractAccount: AccountId = AccountId::from([0u8; 32]);
+	pub const StorageDepositPerByte: u128 = 10;
+	pub const DeveloperDeposit: u64 = 1000;
+	pub const DeploymentFee: u64 = 200;
+}
+
+impl module_evm::Config for Runtime {
+	type AddressMapping = MockAddressMapping;
+	type Currency = Balances;
+	type TransferAll = ();
+	type NewContractExtraBytes = NewContractExtraBytes;
+	type StorageDepositPerByte = StorageDepositPerByte;
+	type Event = Event;
+	type Precompiles = ();
+	type ChainId = ();
+	type GasToWeight = ();
+	type ChargeTransactionPayment = ();
+	type NetworkContractOrigin = EnsureSignedBy<NetworkContractAccount, AccountId>;
+	type NetworkContractSource = NetworkContractSource;
+
+	type DeveloperDeposit = DeveloperDeposit;
+	type DeploymentFee = DeploymentFee;
+	type TreasuryAccount = TreasuryAccount;
+	type FreeDeploymentOrigin = EnsureSignedBy<CouncilAccount, AccountId>;
+
+	type Runner = module_evm::runner::stack::Runner<Self>;
+	type FindAuthor = ();
+	type Task = ();
+	type IdleScheduler = ();
+	type WeightInfo = ();
+}
+
+impl module_evm_bridge::Config for Runtime {
+	type EVM = EVM;
 }
 
 impl asset_registry::Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
-	type RegisterOrigin = EnsureRoot<u64>;
+	type EVMBridge = EVMBridge;
+	type RegisterOrigin = EnsureSignedBy<CouncilAccount, AccountId>;
 	type WeightInfo = ();
 }
 
@@ -90,15 +152,87 @@ construct_runtime!(
 		System: frame_system::{Pallet, Call, Event<T>},
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
 		AssetRegistry: asset_registry::{Pallet, Call, Event<T>, Storage},
+		EVM: module_evm::{Pallet, Config<T>, Call, Storage, Event<T>},
+		EVMBridge: module_evm_bridge::{Pallet},
 	}
 );
 
-pub fn new_test_ext() -> sp_io::TestExternalities {
-	let t = frame_system::GenesisConfig::default()
-		.build_storage::<Runtime>()
+pub fn erc20_address() -> EvmAddress {
+	EvmAddress::from_str("0000000000000000000000000000000002000000").unwrap()
+}
+
+pub fn erc20_address_not_exists() -> EvmAddress {
+	EvmAddress::from_str("0000000000000000000000000000000002000001").unwrap()
+}
+
+pub fn alice() -> AccountId {
+	<Runtime as module_evm::Config>::AddressMapping::get_account_id(&alice_evm_addr())
+}
+
+pub fn alice_evm_addr() -> EvmAddress {
+	EvmAddress::from_str("1000000000000000000000000000000000000001").unwrap()
+}
+
+pub fn deploy_contracts() {
+	let code = from_hex(include!("../../evm-bridge/src/erc20_demo_contract")).unwrap();
+	assert_ok!(EVM::create_network_contract(
+		Origin::signed(NetworkContractAccount::get()),
+		code,
+		0,
+		2_100_000,
+		10000
+	));
+
+	System::assert_last_event(Event::EVM(module_evm::Event::Created(
+		alice_evm_addr(),
+		erc20_address(),
+		vec![module_evm::Log {
+			address: H160::from_str("0x0000000000000000000000000000000002000000").unwrap(),
+			topics: vec![
+				H256::from_str("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef").unwrap(),
+				H256::from_str("0x0000000000000000000000000000000000000000000000000000000000000000").unwrap(),
+				H256::from_str("0x0000000000000000000000001000000000000000000000000000000000000001").unwrap(),
+			],
+			data: H256::from_low_u64_be(10000).as_bytes().to_vec(),
+		}],
+	)));
+
+	assert_ok!(EVM::deploy_free(Origin::signed(CouncilAccount::get()), erc20_address()));
+}
+
+pub struct ExtBuilder {
+	balances: Vec<(AccountId, Balance)>,
+}
+
+impl Default for ExtBuilder {
+	fn default() -> Self {
+		Self { balances: vec![] }
+	}
+}
+
+impl ExtBuilder {
+	pub fn balances(mut self, balances: Vec<(AccountId, Balance)>) -> Self {
+		self.balances = balances;
+		self
+	}
+
+	pub fn build(self) -> sp_io::TestExternalities {
+		let mut t = frame_system::GenesisConfig::default()
+			.build_storage::<Runtime>()
+			.unwrap();
+
+		pallet_balances::GenesisConfig::<Runtime> {
+			balances: self.balances.into_iter().collect::<Vec<_>>(),
+		}
+		.assimilate_storage(&mut t)
 		.unwrap();
 
-	let mut ext = sp_io::TestExternalities::new(t);
-	ext.execute_with(|| System::set_block_number(1));
-	ext
+		module_evm::GenesisConfig::<Runtime>::default()
+			.assimilate_storage(&mut t)
+			.unwrap();
+
+		let mut ext = sp_io::TestExternalities::new(t);
+		ext.execute_with(|| System::set_block_number(1));
+		ext
+	}
 }

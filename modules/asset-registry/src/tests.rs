@@ -22,11 +22,11 @@
 
 use super::*;
 use frame_support::{assert_noop, assert_ok};
-use mock::{new_test_ext, AssetRegistry, Event, Origin, Runtime, System};
+use mock::{AssetRegistry, CouncilAccount, Event, ExtBuilder, Origin, Runtime, System};
 
 #[test]
 fn versioned_multi_location_convert_work() {
-	new_test_ext().execute_with(|| {
+	ExtBuilder::default().build().execute_with(|| {
 		// v0
 		let v0_location = VersionedMultiLocation::V0(xcm::v0::MultiLocation::X1(xcm::v0::Junction::Parachain(1000)));
 		let location: MultiLocation = v0_location.try_into().unwrap();
@@ -61,11 +61,11 @@ fn versioned_multi_location_convert_work() {
 
 #[test]
 fn register_foreign_asset_work() {
-	new_test_ext().execute_with(|| {
+	ExtBuilder::default().build().execute_with(|| {
 		let v0_location = VersionedMultiLocation::V0(xcm::v0::MultiLocation::X1(xcm::v0::Junction::Parachain(1000)));
 
 		assert_ok!(AssetRegistry::register_foreign_asset(
-			Origin::root(),
+			Origin::signed(CouncilAccount::get()),
 			v0_location.clone(),
 			AssetMetadata {
 				name: b"Token Name".to_vec(),
@@ -99,9 +99,9 @@ fn register_foreign_asset_work() {
 
 #[test]
 fn register_foreign_asset_should_not_work() {
-	new_test_ext().execute_with(|| {
+	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(AssetRegistry::register_foreign_asset(
-			Origin::root(),
+			Origin::signed(CouncilAccount::get()),
 			VersionedMultiLocation::V0(xcm::v0::MultiLocation::X1(xcm::v0::Junction::Parachain(1000))),
 			AssetMetadata {
 				name: b"Token Name".to_vec(),
@@ -114,7 +114,7 @@ fn register_foreign_asset_should_not_work() {
 		// v0
 		assert_noop!(
 			AssetRegistry::register_foreign_asset(
-				Origin::root(),
+				Origin::signed(CouncilAccount::get()),
 				VersionedMultiLocation::V0(xcm::v0::MultiLocation::X1(xcm::v0::Junction::Parachain(1000))),
 				AssetMetadata {
 					name: b"Token Name".to_vec(),
@@ -129,7 +129,7 @@ fn register_foreign_asset_should_not_work() {
 		// v1
 		assert_noop!(
 			AssetRegistry::register_foreign_asset(
-				Origin::root(),
+				Origin::signed(CouncilAccount::get()),
 				VersionedMultiLocation::V1(MultiLocation {
 					parents: 0,
 					interior: xcm::v1::Junctions::X1(xcm::v1::Junction::Parachain(1000))
@@ -148,11 +148,11 @@ fn register_foreign_asset_should_not_work() {
 
 #[test]
 fn update_foreign_asset_work() {
-	new_test_ext().execute_with(|| {
+	ExtBuilder::default().build().execute_with(|| {
 		let v0_location = VersionedMultiLocation::V0(xcm::v0::MultiLocation::X1(xcm::v0::Junction::Parachain(1000)));
 
 		assert_ok!(AssetRegistry::register_foreign_asset(
-			Origin::root(),
+			Origin::signed(CouncilAccount::get()),
 			v0_location.clone(),
 			AssetMetadata {
 				name: b"Token Name".to_vec(),
@@ -163,7 +163,7 @@ fn update_foreign_asset_work() {
 		));
 
 		assert_ok!(AssetRegistry::update_foreign_asset(
-			Origin::root(),
+			Origin::signed(CouncilAccount::get()),
 			v0_location.clone(),
 			AssetMetadata {
 				name: b"New Token Name".to_vec(),
@@ -195,12 +195,12 @@ fn update_foreign_asset_work() {
 
 #[test]
 fn update_foreign_asset_should_not_work() {
-	new_test_ext().execute_with(|| {
+	ExtBuilder::default().build().execute_with(|| {
 		let v0_location = VersionedMultiLocation::V0(xcm::v0::MultiLocation::X1(xcm::v0::Junction::Parachain(1000)));
 
 		assert_noop!(
 			AssetRegistry::update_foreign_asset(
-				Origin::root(),
+				Origin::signed(CouncilAccount::get()),
 				v0_location.clone(),
 				AssetMetadata {
 					name: b"New Token Name".to_vec(),
@@ -213,7 +213,7 @@ fn update_foreign_asset_should_not_work() {
 		);
 
 		assert_ok!(AssetRegistry::register_foreign_asset(
-			Origin::root(),
+			Origin::signed(CouncilAccount::get()),
 			v0_location,
 			AssetMetadata {
 				name: b"Token Name".to_vec(),
