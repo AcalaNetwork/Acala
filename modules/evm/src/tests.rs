@@ -19,7 +19,7 @@
 #![cfg(test)]
 
 use super::*;
-use mock::{Event, *};
+use mock::{Event, IdleScheduler, *};
 
 use crate::runner::{
 	stack::SubstrateStackState,
@@ -57,7 +57,7 @@ fn should_calculate_contract_address() {
 			gas_price: U256::one(),
 			origin: Default::default(),
 		};
-		let metadata = StackSubstateMetadata::new(1000, 1000, NewContractExtraBytes::get(), &ACALA_CONFIG);
+		let metadata = StackSubstateMetadata::new(1000, 1000, &ACALA_CONFIG);
 		let state = SubstrateStackState::<Runtime>::new(&vicinity, metadata);
 		let mut executor = StackExecutor::new(state, &ACALA_CONFIG);
 
@@ -286,7 +286,7 @@ fn should_deploy_payable_contract() {
 
 		let result = <Runtime as Config>::Runner::create(
 			alice(),
-			contract,
+			contract.clone(),
 			amount,
 			1000000,
 			100000,
@@ -513,10 +513,16 @@ fn contract_should_deploy_contracts() {
 			alice_balance - amount - 281 * <Runtime as Config>::StorageDepositPerByte::get()
 		);
 		assert_eq!(balance(factory_contract_address), amount);
-		assert_eq!(reserved_balance(factory_contract_address), 5950);
+		assert_eq!(
+			reserved_balance(factory_contract_address),
+			(467 + 128) * <Runtime as Config>::StorageDepositPerByte::get()
+		);
 		let contract_address = H160::from_str("7b8f8ca099f6e33cf1817cf67d0556429cfc54e4").unwrap();
 		assert_eq!(balance(contract_address), 0);
-		assert_eq!(reserved_balance(contract_address), 1530);
+		assert_eq!(
+			reserved_balance(contract_address),
+			153 * <Runtime as Config>::StorageDepositPerByte::get()
+		);
 	});
 }
 
@@ -579,7 +585,10 @@ fn contract_should_deploy_contracts_without_payable() {
 			alice_balance - (result.used_storage as u64 * <Runtime as Config>::StorageDepositPerByte::get())
 		);
 		assert_eq!(balance(factory_contract_address), 0);
-		assert_eq!(reserved_balance(factory_contract_address), 5920);
+		assert_eq!(
+			reserved_balance(factory_contract_address),
+			(464 + 128) * <Runtime as Config>::StorageDepositPerByte::get()
+		);
 	});
 }
 
@@ -747,7 +756,6 @@ fn create_predeploy_contract_works() {
 	});
 }
 
-#[test]
 #[test]
 fn should_transfer_maintainer() {
 	// pragma solidity ^0.5.0;
@@ -1230,13 +1238,60 @@ fn should_selfdestruct() {
 		assert_eq!(System::providers(&contract_account_id), 2);
 		assert_ok!(EVM::selfdestruct(Origin::signed(alice_account_id), contract_address));
 
+		assert_eq!(System::providers(&contract_account_id), 1);
+		assert!(System::account_exists(&contract_account_id));
+		assert!(Accounts::<Runtime>::contains_key(&contract_address));
+		assert!(!ContractStorageSizes::<Runtime>::contains_key(&contract_address));
+		assert_eq!(AccountStorages::<Runtime>::iter_prefix(&contract_address).count(), 1);
+		assert!(!CodeInfos::<Runtime>::contains_key(&code_hash));
+		assert!(!Codes::<Runtime>::contains_key(&code_hash));
+
+		assert_eq!(balance(alice()), alice_balance);
+		assert_eq!(balance(contract_address), 1000);
+		assert_eq!(
+			reserved_balance(contract_address),
+			287 * <Runtime as Config>::StorageDepositPerByte::get()
+		);
+
+		// can't deploy at the same address until everything is wiped out
+		assert_noop!(
+			EVM::create_predeploy_contract(
+				Origin::signed(NetworkContractAccount::get()),
+				contract_address,
+				vec![],
+				0,
+				1000000,
+				1000000,
+			),
+			DispatchErrorWithPostInfo {
+				post_info: PostDispatchInfo {
+					actual_weight: None,
+					pays_fee: Pays::Yes,
+				},
+				error: Error::<Runtime>::ContractAlreadyExisted.into()
+			}
+		);
+
+		IdleScheduler::on_idle(0, 1_000_000_000_000);
+
+		// refund storage deposit
+		assert_eq!(balance(alice()), alice_balance + 3870);
+		assert_eq!(balance(contract_address), 0);
+		assert_eq!(reserved_balance(contract_address), 0);
+
 		assert_eq!(System::providers(&contract_account_id), 0);
 		assert!(!System::account_exists(&contract_account_id));
 		assert!(!Accounts::<Runtime>::contains_key(&contract_address));
-		assert!(!ContractStorageSizes::<Runtime>::contains_key(&contract_address));
 		assert_eq!(AccountStorages::<Runtime>::iter_prefix(&contract_address).count(), 0);
-		assert!(!CodeInfos::<Runtime>::contains_key(&code_hash));
-		assert!(!Codes::<Runtime>::contains_key(&code_hash));
+
+		assert_ok!(EVM::create_predeploy_contract(
+			Origin::signed(NetworkContractAccount::get()),
+			contract_address,
+			vec![],
+			0,
+			1000000,
+			1000000,
+		));
 	});
 }
 

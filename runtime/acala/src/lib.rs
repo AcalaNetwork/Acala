@@ -41,7 +41,7 @@ use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{
 		AccountIdConversion, AccountIdLookup, BadOrigin, BlakeTwo256, Block as BlockT, Convert, SaturatedConversion,
-		StaticLookup, Zero,
+		StaticLookup,
 	},
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, DispatchResult, FixedPointNumber, Perbill, Percent, Permill, Perquintill,
@@ -53,10 +53,11 @@ use sp_version::RuntimeVersion;
 
 use frame_system::{EnsureRoot, RawOrigin};
 use module_currencies::BasicCurrencyAdapter;
-use module_evm::{CallInfo, CreateInfo, Runner};
+use module_evm::{CallInfo, CreateInfo, EvmTask, Runner};
 use module_evm_accounts::EvmAddressMapping;
 use module_evm_manager::EvmCurrencyIdMapping;
 use module_relaychain::RelayChainCallBuilder;
+use module_support::DispatchableTask;
 use module_transaction_payment::{Multiplier, TargetedFeeAdjustment};
 use orml_traits::{
 	create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended, MultiCurrency,
@@ -100,23 +101,21 @@ pub use sp_runtime::BuildStorage;
 pub use authority::AuthorityConfigImpl;
 pub use constants::{fee::*, time::*};
 pub use primitives::{
-	define_combined_task,
-	evm::EstimateResourcesRequest,
-	task::{DispatchableTask, TaskResult},
-	AccountId, AccountIndex, Address, Amount, AuctionId, AuthoritysOriginId, Balance, BlockNumber, CurrencyId,
-	DataProviderId, EraIndex, Hash, Moment, Nonce, ReserveIdentifier, Share, Signature, TokenSymbol, TradingPair,
+	define_combined_task, evm::EstimateResourcesRequest, task::TaskResult, AccountId, AccountIndex, Address, Amount,
+	AuctionId, AuthoritysOriginId, Balance, BlockNumber, CurrencyId, DataProviderId, EraIndex, Hash, Moment, Nonce,
+	ReserveIdentifier, Share, Signature, TokenSymbol, TradingPair,
 };
 pub use runtime_common::{
-	cent, dollar, microcent, millicent, CurveFeeModel, EnsureRootOrAllGeneralCouncil,
-	EnsureRootOrAllTechnicalCommittee, EnsureRootOrHalfFinancialCouncil, EnsureRootOrHalfGeneralCouncil,
-	EnsureRootOrHalfHomaCouncil, EnsureRootOrOneGeneralCouncil, EnsureRootOrOneThirdsTechnicalCommittee,
-	EnsureRootOrThreeFourthsGeneralCouncil, EnsureRootOrTwoThirdsGeneralCouncil,
-	EnsureRootOrTwoThirdsTechnicalCommittee, ExchangeRate, FinancialCouncilInstance,
-	FinancialCouncilMembershipInstance, GasToWeight, GeneralCouncilInstance, GeneralCouncilMembershipInstance,
-	HomaCouncilInstance, HomaCouncilMembershipInstance, OffchainSolutionWeightLimit, OperatorMembershipInstanceAcala,
-	OperatorMembershipInstanceBand, Price, ProxyType, Rate, Ratio, RelayChainBlockNumberProvider,
-	RelayChainSubAccountId, RuntimeBlockLength, RuntimeBlockWeights, SystemContractsFilter, TechnicalCommitteeInstance,
-	TechnicalCommitteeMembershipInstance, TimeStampedPrice, ACA, AUSD, DOT, LDOT, RENBTC,
+	cent, dollar, microcent, millicent, EnsureRootOrAllGeneralCouncil, EnsureRootOrAllTechnicalCommittee,
+	EnsureRootOrHalfFinancialCouncil, EnsureRootOrHalfGeneralCouncil, EnsureRootOrHalfHomaCouncil,
+	EnsureRootOrOneGeneralCouncil, EnsureRootOrOneThirdsTechnicalCommittee, EnsureRootOrThreeFourthsGeneralCouncil,
+	EnsureRootOrTwoThirdsGeneralCouncil, EnsureRootOrTwoThirdsTechnicalCommittee, ExchangeRate,
+	FinancialCouncilInstance, FinancialCouncilMembershipInstance, GasToWeight, GeneralCouncilInstance,
+	GeneralCouncilMembershipInstance, HomaCouncilInstance, HomaCouncilMembershipInstance, OffchainSolutionWeightLimit,
+	OperatorMembershipInstanceAcala, OperatorMembershipInstanceBand, Price, ProxyType, Rate, Ratio,
+	RelayChainBlockNumberProvider, RelayChainSubAccountId, RuntimeBlockLength, RuntimeBlockWeights,
+	SystemContractsFilter, TechnicalCommitteeInstance, TechnicalCommitteeMembershipInstance, TimeStampedPrice, ACA,
+	AUSD, DOT, LDOT, RENBTC,
 };
 
 mod authority;
@@ -1327,6 +1326,8 @@ impl module_evm::Config for Runtime {
 	type FreeDeploymentOrigin = EnsureRootOrHalfGeneralCouncil;
 	type Runner = module_evm::runner::stack::Runner<Self>;
 	type FindAuthor = pallet_session::FindAccountFromAuthorIndex<Self, Aura>;
+	type Task = ScheduledTasks;
+	type IdleScheduler = IdleScheduler;
 	type WeightInfo = weights::module_evm::WeightInfo<Runtime>;
 }
 
@@ -1547,6 +1548,7 @@ parameter_types! {
 	pub SubAccountIndex: u16 = RelayChainSubAccountId::HomaLite as u16;
 	pub const XcmUnbondFee: Balance = 600_000_000; // TODO identify unbond fee
 }
+
 impl module_homa_lite::Config for Runtime {
 	type Event = Event;
 	type WeightInfo = weights::module_homa_lite::WeightInfo<Runtime>;
@@ -1570,6 +1572,7 @@ impl module_homa_lite::Config for Runtime {
 	type MaximumRedeemRequestMatchesForMint = MaximumRedeemRequestMatchesForMint;
 	type RelayChainUnbondingSlashingSpans = RelayChainUnbondingSlashingSpans;
 	type MaxScheduledUnbonds = MaxScheduledUnbonds;
+	type StakingUpdateFrequency = OneDay;
 }
 
 pub type LocalAssetTransactor = MultiCurrencyAdapter<
@@ -1696,7 +1699,10 @@ impl frame_support::traits::OnRuntimeUpgrade for OnRuntimeUpgrade {
 }
 
 define_combined_task! {
-	pub enum ScheduledTasks {}
+	#[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo)]
+	pub enum ScheduledTasks {
+		EvmTask(EvmTask<Runtime>),
+	}
 }
 
 parameter_types!(
@@ -1967,22 +1973,6 @@ impl_runtime_apis! {
 				DataProviderId::Acala => AcalaOracle::get_all_values(),
 				DataProviderId::Aggregated => <AggregatedDataProvider as DataProviderExtended<_, _>>::get_all_values()
 			}
-		}
-	}
-
-	impl module_staking_pool_rpc_runtime_api::StakingPoolApi<
-		Block,
-		AccountId,
-		Balance,
-	> for Runtime {
-		fn get_available_unbonded(_account: AccountId) -> module_staking_pool_rpc_runtime_api::BalanceInfo<Balance> {
-			module_staking_pool_rpc_runtime_api::BalanceInfo {
-				amount: Zero::zero()
-			}
-		}
-
-		fn get_liquid_staking_exchange_rate() -> ExchangeRate {
-			ExchangeRate::zero()
 		}
 	}
 

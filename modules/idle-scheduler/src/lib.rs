@@ -16,23 +16,23 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-//! # Example Module
+//! # Idle scheduler Module
 //!
-//! A simple example of a FRAME pallet demonstrating
-//! concepts, APIs and structures common to most FRAME runtimes.
+//! Allow pallets and chain maintainer to schedule a task to be dispatched when chain is idle.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
 #![allow(unused_must_use)]
-use acala_primitives::{
-	task::{DispatchableTask, IdelScheduler},
-	Nonce,
-};
-use codec::{Codec, EncodeLike};
+use acala_primitives::{task::TaskResult, Nonce};
+use codec::FullCodec;
 use frame_support::pallet_prelude::*;
 use frame_system::pallet_prelude::*;
+pub use module_support::{DispatchableTask, IdleScheduler};
 use scale_info::TypeInfo;
-use sp_runtime::traits::{One, Zero};
+use sp_runtime::{
+	traits::{One, Zero},
+	ArithmeticError,
+};
 use sp_std::{cmp::PartialEq, fmt::Debug, prelude::*};
 
 mod mock;
@@ -53,7 +53,7 @@ pub mod module {
 		type WeightInfo: WeightInfo;
 
 		/// Dispatchable tasks
-		type Task: DispatchableTask + Codec + EncodeLike + Debug + Clone + PartialEq + TypeInfo;
+		type Task: DispatchableTask + FullCodec + Debug + Clone + PartialEq + TypeInfo;
 
 		/// The minimum weight that should remain before idle tasks are dispatched.
 		#[pallet::constant]
@@ -64,8 +64,8 @@ pub mod module {
 	#[pallet::generate_deposit(pub fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// A task has been dispatched on_idle.
-		/// \[TaskId\]
-		TaskDispatched(Nonce),
+		/// \[TaskId, DispatchResult\]
+		TaskDispatched(Nonce, DispatchResult),
 	}
 
 	/// Some documentation
@@ -92,25 +92,25 @@ pub mod module {
 		#[pallet::weight(< T as Config >::WeightInfo::schedule_task())]
 		pub fn schedule_task(origin: OriginFor<T>, task: T::Task) -> DispatchResult {
 			ensure_root(origin)?;
-			Self::do_schedule_task(task);
-			Ok(())
+			Self::do_schedule_task(task)
 		}
 	}
 }
 
 impl<T: Config> Pallet<T> {
 	/// Add the task to the queue to be dispatched later
-	fn do_schedule_task(task: T::Task) {
-		let id = Self::get_next_task_id();
+	fn do_schedule_task(task: T::Task) -> DispatchResult {
+		let id = Self::get_next_task_id()?;
 		Tasks::<T>::insert(id, task);
+		Ok(())
 	}
 
 	/// Retrieves the next task ID from storage, and increment it by one.
-	fn get_next_task_id() -> Nonce {
-		NextTaskId::<T>::mutate(|current| {
+	fn get_next_task_id() -> Result<Nonce, DispatchError> {
+		NextTaskId::<T>::mutate(|current| -> Result<Nonce, DispatchError> {
 			let id = *current;
-			*current = current.saturating_add(One::one());
-			id
+			*current = current.checked_add(One::one()).ok_or(ArithmeticError::Overflow)?;
+			Ok(id)
 		})
 	}
 
@@ -121,13 +121,13 @@ impl<T: Config> Pallet<T> {
 			return Zero::zero();
 		}
 
-		let mut completed_tasks: Vec<Nonce> = vec![];
+		let mut completed_tasks: Vec<(Nonce, TaskResult)> = vec![];
 
 		for (id, task) in Tasks::<T>::iter() {
 			let result = task.dispatch(weight_remaining);
 			weight_remaining = weight_remaining.saturating_sub(result.used_weight);
 			if result.finished {
-				completed_tasks.push(id);
+				completed_tasks.push((id, result));
 			}
 
 			// If remaining weight falls below the minimmum, break from the loop.
@@ -137,8 +137,8 @@ impl<T: Config> Pallet<T> {
 		}
 
 		// Deposit event and remove completed tasks.
-		for id in completed_tasks {
-			Self::deposit_event(Event::<T>::TaskDispatched(id));
+		for (id, result) in completed_tasks {
+			Self::deposit_event(Event::<T>::TaskDispatched(id, result.result));
 			Tasks::<T>::remove(id);
 		}
 
@@ -146,8 +146,8 @@ impl<T: Config> Pallet<T> {
 	}
 }
 
-impl<T: Config> IdelScheduler<T::Task> for Pallet<T> {
-	fn schedule(task: T::Task) {
-		Self::do_schedule_task(task);
+impl<T: Config> IdleScheduler<T::Task> for Pallet<T> {
+	fn schedule(task: T::Task) -> DispatchResult {
+		Self::do_schedule_task(task)
 	}
 }

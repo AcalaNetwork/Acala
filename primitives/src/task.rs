@@ -15,19 +15,36 @@
 
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
+use codec::{Decode, Encode};
 use frame_support::weights::Weight;
+use scale_info::TypeInfo;
+#[cfg(feature = "std")]
+use serde::{Deserialize, Serialize};
+use sp_runtime::DispatchResult;
+use sp_runtime::RuntimeDebug;
+
+#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub struct TaskResult {
+	pub result: DispatchResult,
+	pub used_weight: Weight,
+	pub finished: bool,
+}
 
 #[macro_export]
 macro_rules! define_combined_task {
 	(
-		pub enum $combined_name:ident {
-			$($task:ident), *$(,)?
+		$(#[$meta:meta])*
+		$vis:vis enum $combined_name:ident {
+			$(
+				$task:ident ( $vtask:ident $(<$($generic:tt),*>)? )
+			),+ $(,)?
 		}
 	) => {
-		#[derive(Debug, Clone, PartialEq, Encode, Decode, TypeInfo)]
-		pub enum $combined_name {
+		$(#[$meta])*
+		$vis enum $combined_name {
 			$(
-				$task($task),
+				$task($vtask $(<$($generic),*>)?),
 			)*
 		}
 
@@ -42,25 +59,11 @@ macro_rules! define_combined_task {
 		}
 
         $(
-            impl From<$task> for $combined_name {
-                fn from(t: $task) -> Self{
+            impl From<$vtask $(<$($generic),*>)?> for $combined_name {
+                fn from(t: $vtask $(<$($generic),*>)?) -> Self{
                     $combined_name::$task(t)
                 }
             }
         )*
 	};
-}
-
-#[allow(dead_code)]
-pub struct TaskResult {
-	pub used_weight: Weight,
-	pub finished: bool,
-}
-
-pub trait DispatchableTask {
-	fn dispatch(self, weight: Weight) -> TaskResult;
-}
-
-pub trait IdelScheduler<Task> {
-	fn schedule(task: Task);
 }
