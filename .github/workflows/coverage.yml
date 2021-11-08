@@ -54,7 +54,11 @@ jobs:
             apt install -y cmake pkg-config libssl-dev git gcc build-essential git clang libclang-dev &&
             cargo tarpaulin --avoid-cfg-tarpaulin --debug --verbose --features with-mandala-runtime --no-fail-fast --workspace --timeout 300 --out Xml
       - name: Upload to codecov.io
-        uses: codecov/codecov-action@v1
-        with:
-          # token: ${{secrets.CODECOV_TOKEN}} # not required for public repos
-          fail_ci_if_error: true
+        - uses: codecov/codecov-action@v2
+          with:
+            #token: ${{ secrets.CODECOV_TOKEN }} # not required for public repos
+            #files: ./coverage1.xml,./coverage2.xml # optional
+            #flags: unittests # optional
+            #name: codecov-umbrella # optional
+            fail_ci_if_error: true # optional (default = false)
+            verbose: true # optional (default = false)
