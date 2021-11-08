@@ -877,7 +877,7 @@ fn mint_can_match_requested_redeem() {
 
 		// Matching CHARLIE's mint with ALICE's redeem
 		assert_eq!(
-			events[events.len() - 8].event,
+			events[events.len() - 9].event,
 			Event::Tokens(orml_tokens::Event::RepatriatedReserve(
 				LKSM,
 				ALICE,
@@ -887,7 +887,7 @@ fn mint_can_match_requested_redeem() {
 			))
 		);
 		assert_eq!(
-			events[events.len() - 7].event,
+			events[events.len() - 8].event,
 			Event::Currencies(module_currencies::Event::Transferred(
 				KSM,
 				CHARLIE,
@@ -896,13 +896,13 @@ fn mint_can_match_requested_redeem() {
 			))
 		);
 		assert_eq!(
-			events[events.len() - 6].event,
+			events[events.len() - 7].event,
 			Event::HomaLite(crate::Event::Redeemed(ALICE, 19_980_000_000_000, 199_800_000_000_000))
 		);
 
 		// Matching CHARLIE's mint with BOB's redeem
 		assert_eq!(
-			events[events.len() - 5].event,
+			events[events.len() - 6].event,
 			Event::Tokens(orml_tokens::Event::RepatriatedReserve(
 				LKSM,
 				BOB,
@@ -912,7 +912,7 @@ fn mint_can_match_requested_redeem() {
 			))
 		);
 		assert_eq!(
-			events[events.len() - 4].event,
+			events[events.len() - 5].event,
 			Event::Currencies(module_currencies::Event::Transferred(
 				KSM,
 				CHARLIE,
@@ -921,11 +921,16 @@ fn mint_can_match_requested_redeem() {
 			))
 		);
 		assert_eq!(
-			events[events.len() - 3].event,
+			events[events.len() - 4].event,
 			Event::HomaLite(crate::Event::Redeemed(BOB, 19_980_000_000_000, 199_800_000_000_000))
 		);
 
 		// Mint via XCM: 600 LKSM - XCM fee
+		assert_eq!(
+			events[events.len() - 3].event,
+			Event::HomaLite(crate::Event::TotalStakingCurrencySet(60_040_000_000_000))
+		);
+
 		assert_eq!(
 			events[events.len() - 2].event,
 			Event::Currencies(module_currencies::Event::Deposited(LKSM, CHARLIE, 594_297_000_000_000))
