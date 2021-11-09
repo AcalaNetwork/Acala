@@ -1197,7 +1197,7 @@ impl module_asset_registry::Config for Runtime {
 	type Currency = Balances;
 	type EVMBridge = EVMBridge;
 	type RegisterOrigin = EnsureRootOrHalfGeneralCouncil;
-	type WeightInfo = ();
+	type WeightInfo = weights::module_asset_registry::WeightInfo<Runtime>;
 }
 
 impl orml_rewards::Config for Runtime {
@@ -2449,6 +2449,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, module_homa_lite, HomaLiteBench::<Runtime>);
 
 			orml_list_benchmark!(list, extra, module_dex, benchmarking::dex);
+			orml_list_benchmark!(list, extra, module_asset_registry, benchmarking::asset_registry);
 			orml_list_benchmark!(list, extra, module_auction_manager, benchmarking::auction_manager);
 			orml_list_benchmark!(list, extra, module_cdp_engine, benchmarking::cdp_engine);
 			orml_list_benchmark!(list, extra, module_collator_selection, benchmarking::collator_selection);
@@ -2511,6 +2512,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, module_nft, NftBench::<Runtime>);
 			add_benchmark!(params, batches, module_homa_lite, HomaLiteBench::<Runtime>);
 			orml_add_benchmark!(params, batches, module_dex, benchmarking::dex);
+			orml_add_benchmark!(params, batches, module_asset_registry, benchmarking::asset_registry);
 			orml_add_benchmark!(params, batches, module_auction_manager, benchmarking::auction_manager);
 			orml_add_benchmark!(params, batches, module_cdp_engine, benchmarking::cdp_engine);
 			orml_add_benchmark!(params, batches, module_collator_selection, benchmarking::collator_selection);
