@@ -34,7 +34,7 @@ use frame_support::{
 use frame_system::pallet_prelude::*;
 use module_support::{CurrencyIdMapping, EVMBridge, ForeignAssetIdMapping, InvokeContext};
 use primitives::{
-	currency::TokenInfo,
+	currency::{ForeignAssetId, TokenInfo},
 	evm::{Erc20Info, EvmAddress},
 	CurrencyId, DexShare, H160_POSITION_DEXSHARE_LEFT, H160_POSITION_DEXSHARE_RIGHT, H160_POSITION_TOKEN,
 	H160_PREFIX_DEXSHARE, H160_PREFIX_TOKEN,
@@ -56,7 +56,6 @@ pub use weights::WeightInfo;
 
 /// Type alias for currency balance.
 pub type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
-pub type ForeignAssetId = u16;
 
 #[frame_support::pallet]
 pub mod module {

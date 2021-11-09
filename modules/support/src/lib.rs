@@ -504,7 +504,6 @@ pub trait AddressMapping<AccountId> {
 }
 
 /// A mapping between ForeignAssetId and AssetMetadata.
-/// provide a way to encode/decode for CurrencyId;
 pub trait ForeignAssetIdMapping<ForeignAssetId, AssetMetadata> {
 	/// Returns the AssetMetadata associated with a given ForeignAssetId.
 	fn get_asset_metadata(foreign_asset_id: ForeignAssetId) -> Option<AssetMetadata>;
