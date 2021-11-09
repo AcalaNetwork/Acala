@@ -25,7 +25,7 @@ jobs:
     timeout-minutes: 150
     container:
       image: xd009642/tarpaulin:develop-nightly
-      options: --security-opt seccomp=unconfined --memory-reservation="8g"
+      options: --security-opt seccomp=unconfined --oom-kill-disable
     steps:
       - name: Cancel Previous Runs
         # Only cancel non-master branch runs
