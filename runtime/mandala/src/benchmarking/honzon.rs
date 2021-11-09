@@ -107,7 +107,7 @@ runtime_benchmarks! {
 	}: _(RawOrigin::Signed(caller), STAKING, to_lookup)
 
 	unauthorize_all {
-		let c in 0 .. CollateralCurrencyIds::get().len() as u32;
+		let c in 0 .. CollateralCurrencyIds::get().len().saturating_sub(1) as u32;
 
 		let caller: AccountId = whitelisted_caller();
 		let currency_ids = CollateralCurrencyIds::get();
@@ -116,10 +116,10 @@ runtime_benchmarks! {
 
 		// set balance
 		set_balance(NATIVE, &caller, DepositPerAuthorization::get().saturating_mul(c.into()));
-		for i in 1 .. c {
+		for i in 0 .. c {
 			Honzon::authorize(
 				RawOrigin::Signed(caller.clone()).into(),
-				currency_ids[i as usize - 1],
+				currency_ids[i as usize],
 				to_lookup.clone(),
 			)?;
 		}
@@ -217,24 +217,11 @@ runtime_benchmarks! {
 		let collateral_amount = Price::saturating_from_rational(dollar(currency_id), dollar(STABLECOIN)).saturating_mul_int(collateral_value);
 
 		// set balance
-		set_balance(currency_id, &sender, collateral_amount + ExistentialDeposits::get(&currency_id));
-
-		inject_liquidity(
-			maker.clone(),
-			currency_id,
-			STABLECOIN,
-			collateral_amount,
-			debit_value * 100,
-			false,
-		)?;
-		inject_liquidity(
-			maker.clone(),
-			currency_id,
-			NATIVE,
-			collateral_amount,
-			collateral_amount,
-			false,
-		)?;
+		set_balance(currency_id, &sender, 10_000 * dollar(currency_id));
+		set_balance(NATIVE, &sender, 10_000 * dollar(NATIVE));
+		set_balance(currency_id, &maker, 10_000 * dollar(currency_id));
+		set_balance(NATIVE, &maker, 10_000 * dollar(NATIVE));
+		set_balance(STABLECOIN, &maker, debit_value * 200);
 
 		let mut path = vec![currency_id];
 		for i in 2 .. u {
