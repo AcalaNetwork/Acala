@@ -25,7 +25,7 @@ jobs:
     timeout-minutes: 150
     container:
       image: xd009642/tarpaulin:develop-nightly
-      options: --security-opt seccomp=unconfined
+      options: --security-opt seccomp=unconfined --memory-reservation="8g"
     steps:
       - name: Cancel Previous Runs
         # Only cancel non-master branch runs
@@ -51,11 +51,10 @@ jobs:
           default: true
       - name: Generate code coverage
         run: |
+            grep MemTotal /proc/meminfo
             apt update -y &&
             apt install -y cmake pkg-config libssl-dev git gcc build-essential git clang libclang-dev &&
-            df -h
             exec cargo tarpaulin --features with-mandala-runtime --avoid-cfg-tarpaulin --no-fail-fast --timeout 900 --out Xml
-            df -h
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v2
         with:
