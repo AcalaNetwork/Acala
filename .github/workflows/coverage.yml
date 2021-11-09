@@ -52,7 +52,7 @@ jobs:
         run: |
             apt update -y &&
             apt install -y cmake pkg-config libssl-dev git gcc build-essential git clang libclang-dev &&
-            cargo tarpaulin --features with-mandala-runtime --avoid-cfg-tarpaulin --no-fail-fast --timeout 900 --out Xml
+            cargo tarpaulin --features with-mandala-runtime --verbose --avoid-cfg-tarpaulin --no-fail-fast --timeout 900 --out Xml
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v2
         with:
