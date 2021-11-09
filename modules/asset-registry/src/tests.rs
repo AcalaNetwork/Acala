@@ -83,6 +83,7 @@ fn register_foreign_asset_work() {
 		));
 
 		System::assert_last_event(Event::AssetRegistry(crate::Event::RegisteredForeignAsset(
+			0,
 			AssetMetadata {
 				name: b"Token Name".to_vec(),
 				symbol: b"TN".to_vec(),

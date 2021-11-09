@@ -49,12 +49,12 @@ pub use frame_support::{
 };
 use frame_system::{EnsureRoot, RawOrigin};
 use hex_literal::hex;
+use module_asset_registry::{EvmCurrencyIdMapping, XcmForeignAssetIdMapping};
 use module_currencies::{BasicCurrencyAdapter, Currency};
 use module_evm::{CallInfo, CreateInfo, EvmTask, Runner};
 use module_evm_accounts::EvmAddressMapping;
-pub use module_evm_manager::EvmCurrencyIdMapping;
 use module_relaychain::RelayChainCallBuilder;
-use module_support::{DispatchableTask, ExchangeRateProvider};
+use module_support::{DispatchableTask, ExchangeRateProvider, ForeignAssetIdMapping};
 use module_transaction_payment::{Multiplier, TargetedFeeAdjustment};
 use scale_info::TypeInfo;
 
@@ -828,6 +828,11 @@ parameter_type_with_key! {
 			},
 			CurrencyId::Erc20(_) => Balance::max_value(), // not handled by orml-tokens
 			CurrencyId::StableAssetPoolToken(_) => 1, // TODO: update this before we enable StableAsset
+			CurrencyId::LiquidCroadloan(_) => ExistentialDeposits::get(&CurrencyId::Token(TokenSymbol::DOT)), // the same as DOT
+			CurrencyId::ForeignAsset(foreign_asset_id) => {
+				XcmForeignAssetIdMapping::<Runtime>::get_asset_metadata(*foreign_asset_id).
+					map_or(Balance::max_value(), |metatata| metatata.minimal_balance)
+			},
 		}
 	};
 }
@@ -1187,9 +1192,12 @@ impl module_evm_accounts::Config for Runtime {
 	type WeightInfo = weights::module_evm_accounts::WeightInfo<Runtime>;
 }
 
-impl module_evm_manager::Config for Runtime {
+impl module_asset_registry::Config for Runtime {
+	type Event = Event;
 	type Currency = Balances;
 	type EVMBridge = EVMBridge;
+	type RegisterOrigin = EnsureRootOrHalfGeneralCouncil;
+	type WeightInfo = ();
 }
 
 impl orml_rewards::Config for Runtime {
@@ -2129,6 +2137,7 @@ construct_runtime! {
 		Incentives: module_incentives::{Pallet, Storage, Call, Event<T>} = 140,
 		NFT: module_nft::{Pallet, Call, Event<T>} = 141,
 		AirDrop: module_airdrop::{Pallet, Call, Storage, Event<T>, Config<T>} = 142,
+		AssetRegistry: module_asset_registry::{Pallet, Call, Storage, Event<T>} = 143,
 
 		// Ecosystem modules
 		RenVmBridge: ecosystem_renvm_bridge::{Pallet, Call, Config, Storage, Event<T>, ValidateUnsigned} = 150,
@@ -2152,7 +2161,6 @@ construct_runtime! {
 		EVM: module_evm::{Pallet, Config<T>, Call, Storage, Event<T>} = 180,
 		EVMBridge: module_evm_bridge::{Pallet} = 181,
 		EvmAccounts: module_evm_accounts::{Pallet, Call, Storage, Event<T>} = 182,
-		EvmManager: module_evm_manager::{Pallet, Storage} = 183,
 
 		// Collator support. the order of these 4 are important and shall not change.
 		Authorship: pallet_authorship::{Pallet, Call, Storage} = 190,

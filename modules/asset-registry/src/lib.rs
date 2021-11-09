@@ -32,7 +32,7 @@ use frame_support::{
 	RuntimeDebug,
 };
 use frame_system::pallet_prelude::*;
-use module_support::{CurrencyIdMapping, EVMBridge, InvokeContext};
+use module_support::{CurrencyIdMapping, EVMBridge, ForeignAssetIdMapping, InvokeContext};
 use primitives::{
 	currency::TokenInfo,
 	evm::{Erc20Info, EvmAddress},
@@ -40,7 +40,11 @@ use primitives::{
 	H160_PREFIX_DEXSHARE, H160_PREFIX_TOKEN,
 };
 use scale_info::TypeInfo;
-use sp_std::convert::{TryFrom, TryInto};
+use sp_runtime::{traits::One, ArithmeticError};
+use sp_std::{
+	convert::{TryFrom, TryInto},
+	vec::Vec,
+};
 use xcm::{v1::MultiLocation, VersionedMultiLocation};
 
 mod mock;
@@ -52,6 +56,7 @@ pub use weights::WeightInfo;
 
 /// Type alias for currency balance.
 pub type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
+pub type ForeignAssetId = u16;
 
 #[frame_support::pallet]
 pub mod module {
@@ -99,15 +104,29 @@ pub mod module {
 	#[pallet::event]
 	#[pallet::generate_deposit(fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// Registered foreign asset. \[AssetMetadata\]
-		RegisteredForeignAsset(AssetMetadata<BalanceOf<T>>),
+		/// Registered foreign asset. \[ForeignAssetId, AssetMetadata\]
+		RegisteredForeignAsset(ForeignAssetId, AssetMetadata<BalanceOf<T>>),
 		/// Updated foreign asset. \[AssetMetadata\]
 		UpdatedForeignAsset(AssetMetadata<BalanceOf<T>>),
 	}
 
+	/// Next available Foreign AssetId ID.
+	///
+	/// NextForeignAssetId: ForeignAssetId
+	#[pallet::storage]
+	#[pallet::getter(fn next_foreign_asset_id)]
+	pub type NextForeignAssetId<T: Config> = StorageValue<_, ForeignAssetId, ValueQuery>;
+
+	/// The storages for MultiLocations.
+	///
+	/// MultiLocations: map ForeignAssetId => Option<MultiLocation>
+	#[pallet::storage]
+	#[pallet::getter(fn multi_locations)]
+	pub type MultiLocations<T: Config> = StorageMap<_, Twox64Concat, ForeignAssetId, MultiLocation, OptionQuery>;
+
 	/// The storages for AssetMetadatas.
 	///
-	/// AssetMetadatas: map v1::MultiLocation => AssetMetadata
+	/// AssetMetadatas: map MultiLocation => Option<AssetMetadata>
 	#[pallet::storage]
 	#[pallet::getter(fn asset_metadatas)]
 	pub type AssetMetadatas<T: Config> =
@@ -134,9 +153,9 @@ pub mod module {
 			metadata: AssetMetadata<BalanceOf<T>>,
 		) -> DispatchResult {
 			T::RegisterOrigin::ensure_origin(origin)?;
-			Self::do_register_foreign_asset(&location, &metadata)?;
+			let foreign_asset_id = Self::do_register_foreign_asset(&location, &metadata)?;
 
-			Self::deposit_event(Event::<T>::RegisteredForeignAsset(metadata));
+			Self::deposit_event(Event::<T>::RegisteredForeignAsset(foreign_asset_id, metadata));
 			Ok(())
 		}
 
@@ -156,18 +175,33 @@ pub mod module {
 }
 
 impl<T: Config> Pallet<T> {
+	fn get_next_foreign_asset_id() -> Result<ForeignAssetId, DispatchError> {
+		NextForeignAssetId::<T>::mutate(|current| -> Result<ForeignAssetId, DispatchError> {
+			let id = *current;
+			*current = current.checked_add(One::one()).ok_or(ArithmeticError::Overflow)?;
+			Ok(id)
+		})
+	}
+
 	fn do_register_foreign_asset(
 		location: &VersionedMultiLocation,
 		metadata: &AssetMetadata<BalanceOf<T>>,
-	) -> DispatchResult {
+	) -> Result<ForeignAssetId, DispatchError> {
 		let location: MultiLocation = location.clone().try_into().map_err(|()| Error::<T>::BadLocation)?;
 
-		AssetMetadatas::<T>::mutate(location, |maybe_asset_metadatas| -> DispatchResult {
-			ensure!(maybe_asset_metadatas.is_none(), Error::<T>::AssetMetadataExisted);
+		AssetMetadatas::<T>::mutate(
+			location.clone(),
+			|maybe_asset_metadatas| -> Result<ForeignAssetId, DispatchError> {
+				ensure!(maybe_asset_metadatas.is_none(), Error::<T>::AssetMetadataExisted);
 
-			*maybe_asset_metadatas = Some(metadata.clone());
-			Ok(())
-		})
+				let id = Self::get_next_foreign_asset_id()?;
+				MultiLocations::<T>::insert(id, location);
+
+				*maybe_asset_metadatas = Some(metadata.clone());
+
+				Ok(id)
+			},
+		)
 	}
 
 	fn do_update_foreign_asset(
@@ -182,6 +216,14 @@ impl<T: Config> Pallet<T> {
 			*maybe_asset_metadatas = Some(metadata.clone());
 			Ok(())
 		})
+	}
+}
+
+pub struct XcmForeignAssetIdMapping<T>(sp_std::marker::PhantomData<T>);
+
+impl<T: Config> ForeignAssetIdMapping<ForeignAssetId, AssetMetadata<BalanceOf<T>>> for XcmForeignAssetIdMapping<T> {
+	fn get_asset_metadata(foreign_asset_id: ForeignAssetId) -> Option<AssetMetadata<BalanceOf<T>>> {
+		Pallet::<T>::asset_metadatas(Pallet::<T>::multi_locations(foreign_asset_id)?)
 	}
 }
 
