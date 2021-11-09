@@ -15,7 +15,7 @@ on:
 
 env:
   TARPAULIN_VERSION: 0.18.5
-  LIBCLANG_PATH: "/usr/lib/llvm-7/lib"
+  LIBCLANG_PATH: "/usr/lib/llvm-10/lib"
   SCCACHE_CACHE_SIZE: "100G"
   CARGO_INCREMENTAL: 0
 jobs:
@@ -45,8 +45,7 @@ jobs:
         run: |
             sudo apt update -y &&
             sudo apt install -y cmake pkg-config libssl-dev git gcc build-essential git clang libclang-dev &&
-            cargo install cargo-tarpaulin
-            export LIBCLANG_PATH="/usr/lib/llvm-7/lib"
+            cargo install cargo-tarpaulin &&
             cargo tarpaulin --features with-mandala-runtime --avoid-cfg-tarpaulin --no-fail-fast --timeout 900 --out Xml
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v2
