@@ -18,8 +18,8 @@
 
 use crate::{
 	dollar, AccountId, Amount, Balance, CdpEngine, CollateralCurrencyIds, Currencies, CurrencyId,
-	DepositPerAuthorization, Dex, ExistentialDeposits, GetNativeCurrencyId, GetStableCurrencyId, GetStakingCurrencyId,
-	Honzon, Price, Rate, Ratio, Runtime, TradingPathLimit,
+	DepositPerAuthorization, Dex, ExistentialDeposits, GetLiquidCurrencyId, GetNativeCurrencyId, GetStableCurrencyId,
+	GetStakingCurrencyId, Honzon, Price, Rate, Ratio, Runtime, TradingPathLimit,
 };
 
 use super::utils::{feed_price, set_balance};
@@ -42,8 +42,9 @@ const SEED: u32 = 0;
 const NATIVE: CurrencyId = GetNativeCurrencyId::get();
 const STABLECOIN: CurrencyId = GetStableCurrencyId::get();
 const STAKING: CurrencyId = GetStakingCurrencyId::get();
+const LIQUID: CurrencyId = GetLiquidCurrencyId::get();
 
-const CURRENCY_LIST: [CurrencyId; 3] = [BNC, VSKSM, RENBTC];
+const CURRENCY_LIST: [CurrencyId; 5] = [NATIVE, LIQUID, BNC, VSKSM, RENBTC];
 
 fn inject_liquidity(
 	maker: AccountId,
@@ -217,11 +218,7 @@ runtime_benchmarks! {
 		let collateral_amount = Price::saturating_from_rational(dollar(currency_id), dollar(STABLECOIN)).saturating_mul_int(collateral_value);
 
 		// set balance
-		set_balance(currency_id, &sender, 10_000 * dollar(currency_id));
-		set_balance(NATIVE, &sender, 10_000 * dollar(NATIVE));
-		set_balance(currency_id, &maker, 10_000 * dollar(currency_id));
-		set_balance(NATIVE, &maker, 10_000 * dollar(NATIVE));
-		set_balance(STABLECOIN, &maker, debit_value * 200);
+		set_balance(currency_id, &sender, collateral_amount + ExistentialDeposits::get(&currency_id));
 
 		let mut path = vec![currency_id];
 		for i in 2 .. u {
