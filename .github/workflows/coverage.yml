@@ -31,7 +31,6 @@ jobs:
   coverage-test:
     name: Coverage Report
     runs-on: [self-hosted, linux]
-    timeout-minutes: 150
     needs: clean-up-actions
     steps:
       - name: Checkout repository
@@ -51,8 +50,8 @@ jobs:
             grep MemTotal /proc/meminfo
             apt update -y &&
             apt install -y cmake pkg-config libssl-dev git gcc build-essential git clang libclang-dev &&
-            cargo install cargo-tarpaulin
-            exec cargo tarpaulin --features with-mandala-runtime --avoid-cfg-tarpaulin --no-fail-fast --timeout 900 --out Xml
+            cargo install cargo-tarpaulin &&
+            cargo tarpaulin --features with-mandala-runtime --avoid-cfg-tarpaulin --no-fail-fast --timeout 900 --out Xml
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v2
         with:
