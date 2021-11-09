@@ -107,7 +107,7 @@ runtime_benchmarks! {
 	}: _(RawOrigin::Signed(caller), STAKING, to_lookup)
 
 	unauthorize_all {
-		let c in 0 .. CollateralCurrencyIds::get().len().saturating_sub(1) as u32;
+		let c in 0 .. CollateralCurrencyIds::get().len() as u32;
 
 		let caller: AccountId = whitelisted_caller();
 		let currency_ids = CollateralCurrencyIds::get();
@@ -116,10 +116,10 @@ runtime_benchmarks! {
 
 		// set balance
 		set_balance(NATIVE, &caller, DepositPerAuthorization::get().saturating_mul(c.into()));
-		for i in 0 .. c {
+		for i in 1 .. c {
 			Honzon::authorize(
 				RawOrigin::Signed(caller.clone()).into(),
-				currency_ids[i as usize],
+				currency_ids[i as usize - 1],
 				to_lookup.clone(),
 			)?;
 		}
