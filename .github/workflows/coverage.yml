@@ -19,10 +19,8 @@ env:
   SCCACHE_CACHE_SIZE: "100G"
   CARGO_INCREMENTAL: 0
 jobs:
-  test:
-    name: Coverage Report
-    runs-on: [self-hosted, linux]
-    timeout-minutes: 150
+  clean-up-actions:
+    runs-on: ubuntu-latest
     steps:
       - name: Cancel Previous Runs
         # Only cancel non-master branch runs
@@ -30,10 +28,12 @@ jobs:
         uses: styfle/cancel-workflow-action@0.9.0
         with:
           access_token: ${{ github.token }}
-      - name: Clean
-        run: |
-          df -h
-          curl -s https://raw.githubusercontent.com/apache/flink/master/tools/azure-pipelines/free_disk_space.sh | bash
+  coverage-test:
+    name: Coverage Report
+    runs-on: [self-hosted, linux]
+    timeout-minutes: 150
+    needs: clean-up-actions
+    steps:
       - name: Checkout repository
         uses: actions/checkout@v2
         with:
@@ -48,6 +48,7 @@ jobs:
           default: true
       - name: Generate code coverage
         run: |
+            grep MemTotal /proc/meminfo
             apt update -y &&
             apt install -y cmake pkg-config libssl-dev git gcc build-essential git clang libclang-dev &&
             cargo install cargo-tarpaulin
