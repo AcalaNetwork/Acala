@@ -42,6 +42,7 @@ use primitives::{
 use scale_info::TypeInfo;
 use sp_runtime::{traits::One, ArithmeticError};
 use sp_std::{
+	boxed::Box,
 	convert::{TryFrom, TryInto},
 	vec::Vec,
 };
@@ -104,9 +105,9 @@ pub mod module {
 	#[pallet::generate_deposit(fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// Registered foreign asset. \[ForeignAssetId, AssetMetadata\]
-		RegisteredForeignAsset(ForeignAssetId, AssetMetadata<BalanceOf<T>>),
+		RegisteredForeignAsset(ForeignAssetId, MultiLocation, AssetMetadata<BalanceOf<T>>),
 		/// Updated foreign asset. \[AssetMetadata\]
-		UpdatedForeignAsset(AssetMetadata<BalanceOf<T>>),
+		UpdatedForeignAsset(MultiLocation, AssetMetadata<BalanceOf<T>>),
 	}
 
 	/// Next available Foreign AssetId ID.
@@ -148,26 +149,34 @@ pub mod module {
 		#[pallet::weight(1000)]
 		pub fn register_foreign_asset(
 			origin: OriginFor<T>,
-			location: VersionedMultiLocation,
-			metadata: AssetMetadata<BalanceOf<T>>,
+			location: Box<VersionedMultiLocation>,
+			metadata: Box<AssetMetadata<BalanceOf<T>>>,
 		) -> DispatchResult {
 			T::RegisterOrigin::ensure_origin(origin)?;
+
+			let location: MultiLocation = (*location).try_into().map_err(|()| Error::<T>::BadLocation)?;
 			let foreign_asset_id = Self::do_register_foreign_asset(&location, &metadata)?;
 
-			Self::deposit_event(Event::<T>::RegisteredForeignAsset(foreign_asset_id, metadata));
+			Self::deposit_event(Event::<T>::RegisteredForeignAsset(
+				foreign_asset_id,
+				location,
+				*metadata,
+			));
 			Ok(())
 		}
 
 		#[pallet::weight(1000)]
 		pub fn update_foreign_asset(
 			origin: OriginFor<T>,
-			location: VersionedMultiLocation,
-			metadata: AssetMetadata<BalanceOf<T>>,
+			location: Box<VersionedMultiLocation>,
+			metadata: Box<AssetMetadata<BalanceOf<T>>>,
 		) -> DispatchResult {
 			T::RegisterOrigin::ensure_origin(origin)?;
+
+			let location: MultiLocation = (*location).try_into().map_err(|()| Error::<T>::BadLocation)?;
 			Self::do_update_foreign_asset(&location, &metadata)?;
 
-			Self::deposit_event(Event::<T>::UpdatedForeignAsset(metadata));
+			Self::deposit_event(Event::<T>::UpdatedForeignAsset(location, *metadata));
 			Ok(())
 		}
 	}
@@ -183,11 +192,9 @@ impl<T: Config> Pallet<T> {
 	}
 
 	fn do_register_foreign_asset(
-		location: &VersionedMultiLocation,
+		location: &MultiLocation,
 		metadata: &AssetMetadata<BalanceOf<T>>,
 	) -> Result<ForeignAssetId, DispatchError> {
-		let location: MultiLocation = location.clone().try_into().map_err(|()| Error::<T>::BadLocation)?;
-
 		AssetMetadatas::<T>::mutate(
 			location.clone(),
 			|maybe_asset_metadatas| -> Result<ForeignAssetId, DispatchError> {
@@ -203,12 +210,7 @@ impl<T: Config> Pallet<T> {
 		)
 	}
 
-	fn do_update_foreign_asset(
-		location: &VersionedMultiLocation,
-		metadata: &AssetMetadata<BalanceOf<T>>,
-	) -> DispatchResult {
-		let location: MultiLocation = location.clone().try_into().map_err(|()| Error::<T>::BadLocation)?;
-
+	fn do_update_foreign_asset(location: &MultiLocation, metadata: &AssetMetadata<BalanceOf<T>>) -> DispatchResult {
 		AssetMetadatas::<T>::mutate(location, |maybe_asset_metadatas| -> DispatchResult {
 			ensure!(maybe_asset_metadatas.is_some(), Error::<T>::AssetMetadataNotExists);
 

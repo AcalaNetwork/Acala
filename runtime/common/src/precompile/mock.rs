@@ -179,9 +179,12 @@ impl module_evm_bridge::Config for Test {
 	type EVM = EVMModule;
 }
 
-impl module_evm_manager::Config for Test {
+impl module_asset_registry::Config for Test {
+	type Event = Event;
 	type Currency = Balances;
 	type EVMBridge = EVMBridge;
+	type RegisterOrigin = EnsureSignedBy<CouncilAccount, AccountId>;
+	type WeightInfo = ();
 }
 
 define_combined_task! {
@@ -364,7 +367,7 @@ impl module_dex::Config for Test {
 
 pub type AdaptedBasicCurrency = module_currencies::BasicCurrencyAdapter<Test, Balances, Amount, BlockNumber>;
 
-pub type EvmCurrencyIdMapping = module_evm_manager::EvmCurrencyIdMapping<Test>;
+pub type EvmCurrencyIdMapping = module_asset_registry::EvmCurrencyIdMapping<Test>;
 pub type MultiCurrencyPrecompile =
 	crate::MultiCurrencyPrecompile<AccountId, MockAddressMapping, EvmCurrencyIdMapping, Currencies>;
 
@@ -534,7 +537,7 @@ frame_support::construct_runtime!(
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
 		Currencies: module_currencies::{Pallet, Call, Event<T>},
 		EVMBridge: module_evm_bridge::{Pallet},
-		EVMManager: module_evm_manager::{Pallet, Storage},
+		AssetRegistry: module_asset_registry::{Pallet, Call, Storage, Event<T>},
 		NFTModule: module_nft::{Pallet, Call, Event<T>},
 		TransactionPayment: module_transaction_payment::{Pallet, Call, Storage},
 		Prices: module_prices::{Pallet, Storage, Call, Event<T>},

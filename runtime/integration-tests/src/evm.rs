@@ -32,7 +32,7 @@ use acala_runtime::{EVMBridge, EVM};
 use karura_runtime::{EVMBridge, EVM};
 #[cfg(feature = "with-mandala-runtime")]
 use mandala_runtime::{EVMBridge, EVM};
-pub use module_evm_manager::EvmCurrencyIdMapping;
+use module_asset_registry::EvmCurrencyIdMapping;
 
 pub fn erc20_address_0() -> EvmAddress {
 	EvmAddress::from_str("0000000000000000000000000000000002000000").unwrap()
