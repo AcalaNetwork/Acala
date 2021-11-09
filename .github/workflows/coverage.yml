@@ -19,16 +19,7 @@ env:
   SCCACHE_CACHE_SIZE: "100G"
   CARGO_INCREMENTAL: 0
 jobs:
-  clean-up-actions:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Cancel Previous Runs
-        # Only cancel non-master branch runs
-        if: ${{ github.ref != 'refs/heads/master' }}
-        uses: styfle/cancel-workflow-action@0.9.0
-        with:
-          access_token: ${{ github.token }}
-  coverage-test:
+  test:
     name: Coverage Report
     runs-on: [self-hosted, linux]
     needs: clean-up-actions
@@ -45,12 +36,13 @@ jobs:
           components: rustfmt
           target: wasm32-unknown-unknown
           default: true
-      - name: Generate code coverage
+      - name: Install dependency packages
         run: |
-            grep MemTotal /proc/meminfo
             apt update -y &&
             apt install -y cmake pkg-config libssl-dev git gcc build-essential git clang libclang-dev &&
-            cargo install cargo-tarpaulin &&
+            cargo install cargo-tarpaulin
+      - name: Generate code coverage
+        run: |
             cargo tarpaulin --features with-mandala-runtime --avoid-cfg-tarpaulin --no-fail-fast --timeout 900 --out Xml
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v2
