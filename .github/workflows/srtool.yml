@@ -1,8 +1,8 @@
 name: Srtool build
 
 env:
-  SUBWASM_VERSION: 0.14.1
-  SRTOOL_TAG: 1.53.0
+  SUBWASM_VERSION: 0.15.0
+  SRTOOL_TAG: 1.56.1
 
 on:
   workflow_dispatch:
@@ -10,7 +10,7 @@ on:
       srtool_tag:
         description: The SRTOOL tag to use
         # keep the same as `env.SRTOOL_TAG`
-        default: 1.53.0
+        default: 1.56.1
         required: false
       ref:
         description: The ref to be used for the repo
