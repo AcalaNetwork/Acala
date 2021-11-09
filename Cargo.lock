@@ -5210,6 +5210,7 @@ dependencies = [
  "module-evm",
  "module-evm-bridge",
  "module-support",
+ "orml-utilities",
  "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec",

@@ -25,7 +25,7 @@ use frame_support::{
 	assert_ok, construct_runtime, ord_parameter_types, pallet_prelude::GenesisBuild, parameter_types,
 	traits::Everything,
 };
-use frame_system::{EnsureRoot, EnsureSignedBy};
+use frame_system::EnsureSignedBy;
 use module_support::{mocks::MockAddressMapping, AddressMapping};
 use primitives::{evm::EvmAddress, AccountId, Balance, ReserveIdentifier};
 use sp_core::{bytes::from_hex, H160, H256};
