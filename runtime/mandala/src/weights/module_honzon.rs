@@ -83,4 +83,7 @@ impl<T: frame_system::Config> module_honzon::WeightInfo for WeightInfo<T> {
 			.saturating_add(T::DbWeight::get().writes(12 as Weight))
 			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(u as Weight)))
 	}
+	fn close_loan_has_debit_by_dex_no_path() -> Weight {
+		(10_000_000 as Weight)
+	}
 }

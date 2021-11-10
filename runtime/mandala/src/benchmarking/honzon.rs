@@ -265,8 +265,8 @@ runtime_benchmarks! {
 	}: _(RawOrigin::Signed(sender), currency_id, collateral_amount, Some(path))
 
 	close_loan_has_debit_by_dex_no_path {
-		let currency_id: CurrencyId = CollateralCurrencyIds::get()[0];
-		let default_path: Vec<CurrencyId> = DefaultSwapParitalPathList::get().last().unwrap().clone();
+		let currency_id: CurrencyId = LIQUID;
+		let mut default_path: Vec<CurrencyId> = DefaultSwapParitalPathList::get().last().unwrap().clone();
 
 		let sender: AccountId = whitelisted_caller();
 		let maker: AccountId = account("maker", 0, SEED);
@@ -277,11 +277,16 @@ runtime_benchmarks! {
 		let collateral_value = 10 * debit_value;
 		let collateral_amount = Price::saturating_from_rational(dollar(currency_id), dollar(STABLECOIN)).saturating_mul_int(collateral_value);
 		// set balance and trading path
-		set_balance(currency_id, &sender, collateral_amount + ExistentialDeposits::get(&currency_id));
+		set_balance(currency_id, &sender, (10 * collateral_amount) + ExistentialDeposits::get(&currency_id));
 
-		inject_liquidity(maker.clone(), currency_id, STABLECOIN, 10_000 * dollar(currency_id), 10_000 * dollar(STABLECOIN), false)?;
+		default_path.insert(0, currency_id);
+		for i in 0..default_path.len() {
+			if i != 0 {
+				inject_liquidity(maker.clone(), default_path[i], default_path[i-1], 10_000 * dollar(default_path[i]), 10_000 * dollar(default_path[i-1]), false)?;
+			}
+		}
 
-		feed_price(vec![(currency_id, Price::one())])?;
+		feed_price(vec![(STAKING, Price::one())])?;
 
 		// set risk params
 		CdpEngine::set_collateral_params(
@@ -298,7 +303,7 @@ runtime_benchmarks! {
 		Honzon::adjust_loan(
 			RawOrigin::Signed(sender.clone()).into(),
 			currency_id,
-			collateral_amount.try_into().unwrap(),
+			(10 * collateral_amount).try_into().unwrap(),
 			debit_amount,
 		)?;
 
