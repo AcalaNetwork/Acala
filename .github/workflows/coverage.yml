@@ -48,8 +48,10 @@ jobs:
       - name: Run cargo-tarpaulin
         uses: actions-rs/tarpaulin@v0.1
         with:
-          version: $TARPAULIN_VERSION
-          args: '--features with-mandala-runtime --avoid-cfg-tarpaulin --no-fail-fast --timeout 900 --out Xml'
+          version: ${ TARPAULIN_VERSION }
+          timeout: 900
+          out-type: Xml
+          args: '--features with-mandala-runtime --avoid-cfg-tarpaulin --no-fail-fast'
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v2
         with:
