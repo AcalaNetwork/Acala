@@ -54,6 +54,7 @@ pub trait WeightInfo {
 	fn adjust_loan() -> Weight;
 	fn transfer_loan_from() -> Weight;
 	fn close_loan_has_debit_by_dex(u: u32, ) -> Weight;
+	fn close_loan_has_debit_by_dex_no_path() -> Weight;
 }
 
 /// Weights for module_honzon using the Acala node and recommended hardware.
@@ -90,6 +91,9 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(21 as Weight))
 			.saturating_add(T::DbWeight::get().writes(7 as Weight))
 	}
+	fn close_loan_has_debit_by_dex_no_path() -> Weight {
+		(14_000_000 as Weight)
+	}
 }
 
 // For backwards compatibility and tests
@@ -124,5 +128,8 @@ impl WeightInfo for () {
 			.saturating_add((654_000 as Weight).saturating_mul(u as Weight))
 			.saturating_add(RocksDbWeight::get().reads(21 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(7 as Weight))
+	}
+	fn close_loan_has_debit_by_dex_no_path() -> Weight {
+		(14_000_000 as Weight)
 	}
 }
