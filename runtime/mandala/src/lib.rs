@@ -110,9 +110,9 @@ pub use sp_runtime::{Perbill, Percent, Permill, Perquintill};
 pub use authority::AuthorityConfigImpl;
 pub use constants::{fee::*, time::*};
 pub use primitives::{
-	evm::EstimateResourcesRequest, AccountId, AccountIndex, Address, AirDropCurrencyId, Amount, AuctionId,
-	AuthoritysOriginId, Balance, BlockNumber, CurrencyId, DataProviderId, EraIndex, Hash, Moment, Nonce,
-	ReserveIdentifier, Share, Signature, TokenSymbol, TradingPair,
+	evm::EstimateResourcesRequest, AccountId, AccountIndex, Address, Amount, AuctionId, AuthoritysOriginId, Balance,
+	BlockNumber, CurrencyId, DataProviderId, EraIndex, Hash, Moment, Nonce, ReserveIdentifier, Share, Signature,
+	TokenSymbol, TradingPair,
 };
 pub use runtime_common::{
 	cent, dollar, microcent, millicent, CurveFeeModel, EnsureRootOrAllGeneralCouncil,
@@ -1190,10 +1190,6 @@ impl module_incentives::Config for Runtime {
 	type WeightInfo = weights::module_incentives::WeightInfo<Runtime>;
 }
 
-impl module_airdrop::Config for Runtime {
-	type Event = Event;
-}
-
 parameter_types! {
 	pub const PolkadotBondingDuration: EraIndex = 7;
 	pub const EraLength: BlockNumber = DAYS;
@@ -2098,7 +2094,6 @@ construct_runtime! {
 		// Acala Other
 		Incentives: module_incentives::{Pallet, Storage, Call, Event<T>} = 140,
 		NFT: module_nft::{Pallet, Call, Event<T>} = 141,
-		AirDrop: module_airdrop::{Pallet, Call, Storage, Event<T>, Config<T>} = 142,
 
 		// Ecosystem modules
 		RenVmBridge: ecosystem_renvm_bridge::{Pallet, Call, Config, Storage, Event<T>, ValidateUnsigned} = 150,

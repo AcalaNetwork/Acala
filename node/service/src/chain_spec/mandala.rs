@@ -236,13 +236,12 @@ fn testnet_genesis(
 	endowed_accounts: Vec<AccountId>,
 ) -> mandala_runtime::GenesisConfig {
 	use mandala_runtime::{
-		dollar, get_all_module_accounts, AirDropConfig, BalancesConfig, CdpEngineConfig, CdpTreasuryConfig,
-		CollatorSelectionConfig, DexConfig, EVMConfig, EnabledTradingPairs, FinancialCouncilMembershipConfig,
-		GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig, IndicesConfig, NativeTokenExistentialDeposit,
-		OperatorMembershipAcalaConfig, OrmlNFTConfig, ParachainInfoConfig, PolkadotXcmConfig, RenVmBridgeConfig,
-		SessionConfig, SessionDuration, SessionKeys, SessionManagerConfig, StakingPoolConfig, StarportConfig,
-		SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig, ACA, AUSD, DOT,
-		LDOT, RENBTC,
+		dollar, get_all_module_accounts, BalancesConfig, CdpEngineConfig, CdpTreasuryConfig, CollatorSelectionConfig,
+		DexConfig, EVMConfig, EnabledTradingPairs, FinancialCouncilMembershipConfig, GeneralCouncilMembershipConfig,
+		HomaCouncilMembershipConfig, IndicesConfig, NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig,
+		OrmlNFTConfig, ParachainInfoConfig, PolkadotXcmConfig, RenVmBridgeConfig, SessionConfig, SessionDuration,
+		SessionKeys, SessionManagerConfig, StakingPoolConfig, StarportConfig, SudoConfig, SystemConfig,
+		TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig, ACA, AUSD, DOT, LDOT, RENBTC,
 	};
 
 	let existential_deposit = NativeTokenExistentialDeposit::get();
@@ -359,9 +358,6 @@ fn testnet_genesis(
 				1_000_000_000_000_000_000u128,
 			), /* 5% APR */
 		},
-		air_drop: AirDropConfig {
-			airdrop_accounts: vec![],
-		},
 		evm: EVMConfig {
 			accounts: evm_genesis_accounts,
 			treasury: root_key,
@@ -441,13 +437,13 @@ fn mandala_genesis(
 	endowed_accounts: Vec<AccountId>,
 ) -> mandala_runtime::GenesisConfig {
 	use mandala_runtime::{
-		cent, dollar, get_all_module_accounts, AirDropConfig, AirDropCurrencyId, BalancesConfig, CdpEngineConfig,
-		CdpTreasuryConfig, CollatorSelectionConfig, DexConfig, EVMConfig, EnabledTradingPairs,
-		FinancialCouncilMembershipConfig, GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig, IndicesConfig,
-		NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OrmlNFTConfig, ParachainInfoConfig,
-		PolkadotXcmConfig, RenVmBridgeConfig, SessionConfig, SessionDuration, SessionKeys, SessionManagerConfig,
-		StakingPoolConfig, StarportConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig,
-		VestingConfig, ACA, AUSD, DOT, LDOT, RENBTC,
+		cent, dollar, get_all_module_accounts, BalancesConfig, CdpEngineConfig, CdpTreasuryConfig,
+		CollatorSelectionConfig, DexConfig, EVMConfig, EnabledTradingPairs, FinancialCouncilMembershipConfig,
+		GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig, IndicesConfig, NativeTokenExistentialDeposit,
+		OperatorMembershipAcalaConfig, OrmlNFTConfig, ParachainInfoConfig, PolkadotXcmConfig, RenVmBridgeConfig,
+		SessionConfig, SessionDuration, SessionKeys, SessionManagerConfig, StakingPoolConfig, StarportConfig,
+		SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig, ACA, AUSD, DOT,
+		LDOT, RENBTC,
 	};
 
 	let existential_deposit = NativeTokenExistentialDeposit::get();
@@ -560,9 +556,6 @@ fn mandala_genesis(
 				1_547_126_000u128,
 				1_000_000_000_000_000_000u128,
 			), /* 5% APR */
-		},
-		air_drop: AirDropConfig {
-			airdrop_accounts: vec![],
 		},
 		evm: EVMConfig {
 			accounts: evm_genesis_accounts,

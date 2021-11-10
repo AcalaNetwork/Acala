@@ -130,7 +130,6 @@ dependencies = [
  "frame-try-runtime",
  "hex-literal 0.3.3",
  "libsecp256k1 0.6.0",
- "module-airdrop",
  "module-auction-manager",
  "module-cdp-engine",
  "module-cdp-treasury",
@@ -3880,7 +3879,6 @@ dependencies = [
  "frame-try-runtime",
  "hex-literal 0.3.3",
  "libsecp256k1 0.6.0",
- "module-airdrop",
  "module-auction-manager",
  "module-cdp-engine",
  "module-cdp-treasury",
@@ -4870,7 +4868,6 @@ dependencies = [
  "hex",
  "hex-literal 0.3.3",
  "libsecp256k1 0.6.0",
- "module-airdrop",
  "module-auction-manager",
  "module-cdp-engine",
  "module-cdp-treasury",
@@ -5183,21 +5180,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b9f1c5b025cda876f66ef43a113f91ebc9f4ccef34843000e0adf6ebbab84e21"
 dependencies = [
  "winapi 0.3.9",
-]
-
-[[package]]
-name = "module-airdrop"
-version = "2.0.0"
-dependencies = [
- "acala-primitives",
- "frame-support",
- "frame-system",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sp-core",
- "sp-io",
- "sp-runtime",
 ]
 
 [[package]]
@@ -9852,7 +9834,6 @@ dependencies = [
  "kusama-runtime",
  "libsecp256k1 0.6.0",
  "mandala-runtime",
- "module-airdrop",
  "module-auction-manager",
  "module-cdp-engine",
  "module-cdp-treasury",
