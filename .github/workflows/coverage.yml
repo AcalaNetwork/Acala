@@ -41,12 +41,15 @@ jobs:
           components: rustfmt
           target: wasm32-unknown-unknown
           default: true
-      - name: Generate code coverage
+      - name: Install additional dependencies
         run: |
             sudo apt update -y &&
-            sudo apt install -y cmake pkg-config libssl-dev git gcc build-essential git clang libclang-dev &&
-            cargo install cargo-tarpaulin &&
-            cargo tarpaulin --features with-mandala-runtime --avoid-cfg-tarpaulin --no-fail-fast --timeout 900 --out Xml
+            sudo apt install -y cmake pkg-config libssl-dev git gcc build-essential git clang libclang-dev
+      - name: Run cargo-tarpaulin
+        uses: actions-rs/tarpaulin@v0.1
+        with:
+          version: $TARPAULIN_VERSION
+          args: '--features with-mandala-runtime --avoid-cfg-tarpaulin --no-fail-fast --timeout 900 --out Xml'
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v2
         with:
