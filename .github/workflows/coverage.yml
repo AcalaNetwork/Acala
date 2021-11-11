@@ -51,7 +51,7 @@ jobs:
           version: '0.18.5'
           timeout: 900
           out-type: Xml
-          args: '--features with-mandala-runtime --avoid-cfg-tarpaulin --no-fail-fast ---all -exclude runtime-integration-tests'
+          args: '--features with-mandala-runtime --avoid-cfg-tarpaulin --no-fail-fast ---all --exclude runtime-integration-tests'
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v2
         with:
