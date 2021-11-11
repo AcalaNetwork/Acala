@@ -510,7 +510,7 @@ fn mandala_genesis(
 			phantom: Default::default(),
 		},
 		operator_membership_acala: OperatorMembershipAcalaConfig {
-			members: endowed_accounts.clone(),
+			members: endowed_accounts,
 			phantom: Default::default(),
 		},
 		democracy: Default::default(),
