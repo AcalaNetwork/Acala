@@ -192,7 +192,6 @@ pub type FinancialCouncilMembershipInstance = pallet_membership::Instance2;
 pub type HomaCouncilMembershipInstance = pallet_membership::Instance3;
 pub type TechnicalCommitteeMembershipInstance = pallet_membership::Instance4;
 pub type OperatorMembershipInstanceAcala = pallet_membership::Instance5;
-pub type OperatorMembershipInstanceBand = pallet_membership::Instance6;
 
 // General Council
 pub type EnsureRootOrAllGeneralCouncil = EnsureOneOf<
