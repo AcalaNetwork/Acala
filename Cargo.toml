@@ -296,3 +296,6 @@ cumulus-primitives-timestamp = { git = "https://github.com/paritytech//cumulus",
 cumulus-primitives-utility = { git = "https://github.com/paritytech//cumulus", rev = "935bac869a72baef17e46d2ae1abc8c0c650cef5" }
 cumulus-test-relay-sproof-builder = { git = "https://github.com/paritytech//cumulus", rev = "935bac869a72baef17e46d2ae1abc8c0c650cef5" }
 parachain-info  = { git = "https://github.com/paritytech//cumulus", rev = "935bac869a72baef17e46d2ae1abc8c0c650cef5" }
+
+[patch.crates-io]
+bindgen = { git = "https://github.com/rust-lang/rust-bindgen", rev="2aed6b0216805e27228ed39988ffe1a1ffd7e940" }
