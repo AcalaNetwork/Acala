@@ -30,6 +30,7 @@ runtime_benchmarks! {
 	{ Runtime, module_cdp_treasury }
 
 	auction_collateral {
+		CdpTreasury::set_expected_collateral_auction_size(RawOrigin::Root.into(), STAKING, 1)?;
 		Currencies::deposit(STAKING, &CdpTreasury::account_id(), 10_000 * dollar(STAKING))?;
 	}: _(RawOrigin::Root, STAKING, 1_000 * dollar(STAKING), 1_000 * dollar(STABLECOIN), true)
 
