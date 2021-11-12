@@ -110,9 +110,9 @@ pub use sp_runtime::{Perbill, Percent, Permill, Perquintill};
 pub use authority::AuthorityConfigImpl;
 pub use constants::{fee::*, time::*};
 pub use primitives::{
-	evm::EstimateResourcesRequest, AccountId, AccountIndex, Address, AirDropCurrencyId, Amount, AuctionId,
-	AuthoritysOriginId, Balance, BlockNumber, CurrencyId, DataProviderId, EraIndex, Hash, Moment, Nonce,
-	ReserveIdentifier, Share, Signature, TokenSymbol, TradingPair,
+	evm::EstimateResourcesRequest, AccountId, AccountIndex, Address, Amount, AuctionId, AuthoritysOriginId, Balance,
+	BlockNumber, CurrencyId, DataProviderId, EraIndex, Hash, Moment, Nonce, ReserveIdentifier, Share, Signature,
+	TokenSymbol, TradingPair,
 };
 pub use runtime_common::{
 	cent, dollar, microcent, millicent, CurveFeeModel, EnsureRootOrAllGeneralCouncil,
@@ -122,9 +122,9 @@ pub use runtime_common::{
 	EnsureRootOrTwoThirdsTechnicalCommittee, ExchangeRate, FinancialCouncilInstance,
 	FinancialCouncilMembershipInstance, GasToWeight, GeneralCouncilInstance, GeneralCouncilMembershipInstance,
 	HomaCouncilInstance, HomaCouncilMembershipInstance, OffchainSolutionWeightLimit, OperatorMembershipInstanceAcala,
-	OperatorMembershipInstanceBand, Price, ProxyType, Rate, Ratio, RelayChainBlockNumberProvider,
-	RelayChainSubAccountId, RuntimeBlockLength, RuntimeBlockWeights, SystemContractsFilter, TechnicalCommitteeInstance,
-	TechnicalCommitteeMembershipInstance, TimeStampedPrice, ACA, AUSD, DOT, LDOT, RENBTC,
+	Price, ProxyType, Rate, Ratio, RelayChainBlockNumberProvider, RelayChainSubAccountId, RuntimeBlockLength,
+	RuntimeBlockWeights, SystemContractsFilter, TechnicalCommitteeInstance, TechnicalCommitteeMembershipInstance,
+	TimeStampedPrice, ACA, AUSD, DOT, LDOT, RENBTC,
 };
 
 /// Import the stable_asset pallet.
@@ -485,8 +485,7 @@ impl pallet_membership::Config<TechnicalCommitteeMembershipInstance> for Runtime
 }
 
 parameter_types! {
-	// TODO: update
-	pub const OracleMaxMembers: u32 = 100;
+	pub const OracleMaxMembers: u32 = 50;
 }
 
 impl pallet_membership::Config<OperatorMembershipInstanceAcala> for Runtime {
@@ -498,19 +497,6 @@ impl pallet_membership::Config<OperatorMembershipInstanceAcala> for Runtime {
 	type PrimeOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
 	type MembershipInitialized = ();
 	type MembershipChanged = AcalaOracle;
-	type MaxMembers = OracleMaxMembers;
-	type WeightInfo = ();
-}
-
-impl pallet_membership::Config<OperatorMembershipInstanceBand> for Runtime {
-	type Event = Event;
-	type AddOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
-	type RemoveOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
-	type SwapOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
-	type ResetOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
-	type PrimeOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
-	type MembershipInitialized = ();
-	type MembershipChanged = BandOracle;
 	type MaxMembers = OracleMaxMembers;
 	type WeightInfo = ();
 }
@@ -759,26 +745,12 @@ impl orml_oracle::Config<AcalaDataProvider> for Runtime {
 	type WeightInfo = weights::orml_oracle::WeightInfo<Runtime>;
 }
 
-type BandDataProvider = orml_oracle::Instance2;
-impl orml_oracle::Config<BandDataProvider> for Runtime {
-	type Event = Event;
-	type OnNewData = ();
-	type CombineData = orml_oracle::DefaultCombineData<Runtime, MinimumCount, ExpiresIn, BandDataProvider>;
-	type Time = Timestamp;
-	type OracleKey = CurrencyId;
-	type OracleValue = Price;
-	type RootOperatorAccountId = ZeroAccountId;
-	type Members = OperatorMembershipBand;
-	type MaxHasDispatchedSize = MaxHasDispatchedSize;
-	type WeightInfo = weights::orml_oracle::WeightInfo<Runtime>;
-}
-
 create_median_value_data_provider!(
 	AggregatedDataProvider,
 	CurrencyId,
 	Price,
 	TimeStampedPrice,
-	[AcalaOracle, BandOracle]
+	[AcalaOracle]
 );
 // Aggregated data provider cannot feed.
 impl DataFeeder<CurrencyId, Price, AccountId> for AggregatedDataProvider {
@@ -1216,10 +1188,6 @@ impl module_incentives::Config for Runtime {
 	type EmergencyShutdown = EmergencyShutdown;
 	type PalletId = IncentivesPalletId;
 	type WeightInfo = weights::module_incentives::WeightInfo<Runtime>;
-}
-
-impl module_airdrop::Config for Runtime {
-	type Event = Event;
 }
 
 parameter_types! {
@@ -2097,8 +2065,6 @@ construct_runtime! {
 		// NOTE: OperatorMembership must be placed after Oracle or else will have race condition on initialization
 		AcalaOracle: orml_oracle::<Instance1>::{Pallet, Storage, Call, Event<T>} = 80,
 		OperatorMembershipAcala: pallet_membership::<Instance5>::{Pallet, Call, Storage, Event<T>, Config<T>} = 82,
-		BandOracle: orml_oracle::<Instance2>::{Pallet, Storage, Call, Event<T>} = 81,
-		OperatorMembershipBand: pallet_membership::<Instance6>::{Pallet, Call, Storage, Event<T>, Config<T>} = 83,
 
 		// ORML Core
 		Auction: orml_auction::{Pallet, Storage, Call, Event<T>} = 100,
@@ -2128,7 +2094,6 @@ construct_runtime! {
 		// Acala Other
 		Incentives: module_incentives::{Pallet, Storage, Call, Event<T>} = 140,
 		NFT: module_nft::{Pallet, Call, Event<T>} = 141,
-		AirDrop: module_airdrop::{Pallet, Call, Storage, Event<T>, Config<T>} = 142,
 
 		// Ecosystem modules
 		RenVmBridge: ecosystem_renvm_bridge::{Pallet, Call, Config, Storage, Event<T>, ValidateUnsigned} = 150,
