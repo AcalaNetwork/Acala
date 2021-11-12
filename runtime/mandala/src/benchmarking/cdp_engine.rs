@@ -18,9 +18,9 @@
 
 use crate::{
 	dollar, AccountId, Address, Amount, Balance, CdpEngine, CollateralCurrencyIds, CurrencyId,
-	DefaultDebitExchangeRate, DefaultFeeSwapPathList, Dex, EmergencyShutdown, ExistentialDeposits, GetLiquidCurrencyId,
-	GetStableCurrencyId, GetStakingCurrencyId, MaxSwapSlippageCompareToOracle, MinimumDebitValue, Price, Rate, Ratio,
-	Runtime, Timestamp, MILLISECS_PER_BLOCK,
+	DefaultDebitExchangeRate, DefaultSwapParitalPathList, Dex, EmergencyShutdown, ExistentialDeposits,
+	GetLiquidCurrencyId, GetStableCurrencyId, GetStakingCurrencyId, MinimumDebitValue, Price, Rate, Ratio, Runtime,
+	Timestamp, MILLISECS_PER_BLOCK,
 };
 
 use super::utils::{feed_price, set_balance};
@@ -58,8 +58,8 @@ fn inject_liquidity(
 
 	Dex::add_liquidity(
 		RawOrigin::Signed(maker.clone()).into(),
-		currency_id_b,
 		currency_id_a,
+		currency_id_b,
 		amount_a,
 		amount_b,
 		Default::default(),
@@ -183,7 +183,7 @@ runtime_benchmarks! {
 		let owner: AccountId = account("owner", 0, SEED);
 		let owner_lookup = AccountIdLookup::unlookup(owner.clone());
 		let funder: AccountId = account("funder", 0, SEED);
-		let mut path: Vec<CurrencyId> = DefaultFeeSwapPathList::get().last().unwrap().clone();
+		let mut path: Vec<CurrencyId> = DefaultSwapParitalPathList::get().last().unwrap().clone();
 
 		let debit_value = 100 * dollar(STABLECOIN);
 		let debit_exchange_rate = CdpEngine::get_debit_exchange_rate(LIQUID);
@@ -192,9 +192,6 @@ runtime_benchmarks! {
 		let collateral_value = 2 * debit_value;
 		let collateral_amount = Price::saturating_from_rational(dollar(LIQUID), dollar(STABLECOIN)).saturating_mul_int(collateral_value);
 		let collateral_price = Price::one();		// 1 USD
-		let max_slippage_swap_with_dex = MaxSwapSlippageCompareToOracle::get();
-		let collateral_amount_in_dex = max_slippage_swap_with_dex.reciprocal().unwrap().saturating_mul_int(collateral_amount);
-		let base_amount_in_dex = max_slippage_swap_with_dex.reciprocal().unwrap().saturating_mul_int(debit_value * 2);
 
 		path.insert(0, LIQUID);
 		for i in 0..path.len() {
@@ -202,8 +199,8 @@ runtime_benchmarks! {
 				inject_liquidity(funder.clone(), path[i], path[i-1], 10_000 * dollar(path[i]), 10_000 * dollar(path[i-1]))?;
 			}
 		}
-		// set balance
-		set_balance(LIQUID, &owner, collateral_amount + ExistentialDeposits::get(&LIQUID));
+
+		set_balance(LIQUID, &owner, (10 * collateral_amount) + ExistentialDeposits::get(&LIQUID));
 
 		// feed price
 		feed_price(vec![(STAKING, collateral_price)])?;
@@ -234,9 +231,10 @@ runtime_benchmarks! {
 		)?;
 	}: liquidate(RawOrigin::None, LIQUID, owner_lookup)
 	verify {
-		let (other_currency_amount, base_currency_amount) = Dex::get_liquidity_pool(LIQUID, STABLECOIN);
-		assert!(other_currency_amount > collateral_amount_in_dex);
-		assert!(base_currency_amount < base_amount_in_dex);
+		let (_, liquid_amount) = Dex::get_liquidity_pool(LIQUID, STAKING);
+		let (stable_amount, _) = Dex::get_liquidity_pool(STAKING, STABLECOIN);
+		//assert!(liquid_amount > 10_000 * dollar(LIQUID));
+		//assert!((stable_amount >= (10_000 * dollar(STABLECOIN))) || (stable_amount <= (10_000 * dollar(STABLECOIN))));
 	}
 
 	settle {
