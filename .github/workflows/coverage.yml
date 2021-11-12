@@ -22,6 +22,7 @@ jobs:
   test:
     name: Coverage Report
     runs-on: [self-hosted, linux]
+    security-opt: ["seccomp:unconfined"]
     steps:
       - name: Cancel Previous Runs
         # Only cancel non-master branch runs
@@ -51,7 +52,7 @@ jobs:
           version: '0.18.5'
           timeout: 900
           out-type: Xml
-          args: '--features with-mandala-runtime --avoid-cfg-tarpaulin --no-fail-fast --all --exclude runtime-integration-tests'
+          args: '--features with-mandala-runtime --avoid-cfg-tarpaulin --no-fail-fast'
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v2
         with:
