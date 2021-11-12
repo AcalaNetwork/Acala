@@ -45,6 +45,7 @@ jobs:
         run: |
             sudo apt update -y &&
             sudo apt install -y cmake pkg-config libssl-dev git gcc build-essential git clang libclang-dev
+            sudo echo 0 | tee /proc/sys/kernel/randomize_va_space
       - name: Run cargo-tarpaulin
         uses: actions-rs/tarpaulin@v0.1
         with:
