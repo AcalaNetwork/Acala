@@ -231,10 +231,14 @@ runtime_benchmarks! {
 		)?;
 	}: liquidate(RawOrigin::None, LIQUID, owner_lookup)
 	verify {
-		let (_, liquid_amount) = Dex::get_liquidity_pool(LIQUID, STAKING);
 		let (stable_amount, _) = Dex::get_liquidity_pool(STAKING, STABLECOIN);
-		//assert!(liquid_amount > 10_000 * dollar(LIQUID));
-		//assert!((stable_amount >= (10_000 * dollar(STABLECOIN))) || (stable_amount <= (10_000 * dollar(STABLECOIN))));
+		let (stable_amount_mandala, _) = Dex::get_liquidity_pool(LIQUID, STABLECOIN);
+		// paths of karura and acala are LIQUID => STAKING => STABLECOIN
+		#[cfg(any(feature = "with-karura-runtime", feature = "with-acala-runtime"))]
+		assert!(stable_amount > 10_000 * dollar(STABLECOIN));
+		// path of mandala is LIQUID => STABLECOIN
+		#[cfg(feature = "with-mandala-runtime")]
+		assert!(stable_amount_mandala > 10_000 * dollar(STABLECOIN));
 	}
 
 	settle {
