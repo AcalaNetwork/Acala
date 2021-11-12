@@ -52,7 +52,7 @@ jobs:
           version: ${{ env.TARPAULIN_VERSION }}
           timeout: 900
           out-type: Xml
-          args: '--features with-mandala-runtime --avoid-cfg-tarpaulin --no-fail-fast --all --exclude-files /runtime/*'
+          args: '--features with-mandala-runtime --avoid-cfg-tarpaulin --no-fail-fast --all --exclude-files ./runtime/*'
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v2
         with:
