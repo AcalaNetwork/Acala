@@ -22,7 +22,6 @@ jobs:
   test:
     name: Coverage Report
     runs-on: [self-hosted, linux]
-    security-opt: ["seccomp:unconfined"]
     steps:
       - name: Cancel Previous Runs
         # Only cancel non-master branch runs
