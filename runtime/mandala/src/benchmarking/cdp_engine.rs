@@ -17,7 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-	dollar, AccountId, Address, Amount, Balance, CdpEngine, CollateralCurrencyIds, CurrencyId,
+	dollar, AccountId, Address, Amount, Balance, CdpEngine, CdpTreasury, CollateralCurrencyIds, CurrencyId,
 	DefaultDebitExchangeRate, DefaultSwapParitalPathList, Dex, EmergencyShutdown, ExistentialDeposits,
 	GetLiquidCurrencyId, GetStableCurrencyId, GetStakingCurrencyId, MinimumDebitValue, Price, Rate, Ratio, Runtime,
 	Timestamp, MILLISECS_PER_BLOCK,
