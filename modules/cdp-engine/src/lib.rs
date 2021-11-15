@@ -396,7 +396,7 @@ pub mod module {
 		///
 		/// - `currency_id`: CDP's collateral type.
 		/// - `who`: CDP's owner.
-		#[pallet::weight(<T as Config>::WeightInfo::liquidate_by_dex())]
+		#[pallet::weight(<T as Config>::WeightInfo::liquidate_by_auction())]
 		#[transactional]
 		pub fn liquidate(
 			origin: OriginFor<T>,
