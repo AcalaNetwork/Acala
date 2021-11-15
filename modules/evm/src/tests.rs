@@ -655,7 +655,7 @@ fn create_network_contract_works() {
 		);
 		System::assert_last_event(Event::EVM(crate::Event::Created(
 			NetworkContractSource::get(),
-			H160::from_low_u64_be(MIRRORED_NFT_ADDRESS_START),
+			MIRRORED_TOKENS_ADDRESS_START | H160::from_low_u64_be(MIRRORED_NFT_ADDRESS_START),
 			vec![],
 		)));
 		assert_eq!(EVM::network_contract_index(), MIRRORED_NFT_ADDRESS_START + 1);

@@ -34,12 +34,15 @@ use frame_support::{
 use frame_system::pallet_prelude::*;
 use module_support::{CurrencyIdMapping, EVMBridge, ForeignAssetIdMapping, InvokeContext};
 use primitives::{
-	currency::{ForeignAssetId, TokenInfo},
-	evm::{Erc20Info, EvmAddress},
-	CurrencyId, DexShare, H160_POSITION_DEXSHARE_LEFT, H160_POSITION_DEXSHARE_RIGHT, H160_POSITION_TOKEN,
-	H160_PREFIX_DEXSHARE, H160_PREFIX_TOKEN,
+	currency::{CurrencyIdType, DexShare, DexShareType, ForeignAssetId, Lease, TokenInfo, TokenSymbol},
+	evm::{
+		is_system_contract, Erc20Info, EvmAddress, H160_POSITION_CURRENCY_ID_TYPE, H160_POSITION_DEXSHARE_LEFT_FIELD,
+		H160_POSITION_DEXSHARE_LEFT_TYPE, H160_POSITION_DEXSHARE_RIGHT_FIELD, H160_POSITION_DEXSHARE_RIGHT_TYPE,
+		H160_POSITION_FOREIGN_ASSET, H160_POSITION_LIQUID_CROADLOAN, H160_POSITION_TOKEN,
+	},
+	CurrencyId,
 };
-use scale_info::TypeInfo;
+use scale_info::{prelude::format, TypeInfo};
 use sp_runtime::{traits::One, ArithmeticError};
 use sp_std::{
 	boxed::Box,
@@ -93,10 +96,8 @@ pub mod module {
 		/// The given location could not be used (e.g. because it cannot be expressed in the
 		/// desired version of XCM).
 		BadLocation,
-		/// AssetMetadata already existed
-		AssetMetadataExisted,
-		/// AssetMetadata not exists
-		AssetMetadataNotExists,
+		/// ForeignAssetId not exists
+		ForeignAssetIdNotExists,
 		/// CurrencyId existed
 		CurrencyIdExisted,
 	}
@@ -130,7 +131,7 @@ pub mod module {
 	#[pallet::storage]
 	#[pallet::getter(fn asset_metadatas)]
 	pub type AssetMetadatas<T: Config> =
-		StorageMap<_, Twox64Concat, MultiLocation, AssetMetadata<BalanceOf<T>>, OptionQuery>;
+		StorageMap<_, Twox64Concat, ForeignAssetId, AssetMetadata<BalanceOf<T>>, OptionQuery>;
 
 	/// Mapping between u32 and Erc20 address.
 	/// Erc20 address is 20 byte, take the first 4 non-zero bytes, if it is less
@@ -168,13 +169,14 @@ pub mod module {
 		#[pallet::weight(1000)]
 		pub fn update_foreign_asset(
 			origin: OriginFor<T>,
+			foreign_asset_id: ForeignAssetId,
 			location: Box<VersionedMultiLocation>,
 			metadata: Box<AssetMetadata<BalanceOf<T>>>,
 		) -> DispatchResult {
 			T::RegisterOrigin::ensure_origin(origin)?;
 
 			let location: MultiLocation = (*location).try_into().map_err(|()| Error::<T>::BadLocation)?;
-			Self::do_update_foreign_asset(&location, &metadata)?;
+			Self::do_update_foreign_asset(foreign_asset_id, &location, &metadata)?;
 
 			Self::deposit_event(Event::<T>::UpdatedForeignAsset(location, *metadata));
 			Ok(())
@@ -195,28 +197,33 @@ impl<T: Config> Pallet<T> {
 		location: &MultiLocation,
 		metadata: &AssetMetadata<BalanceOf<T>>,
 	) -> Result<ForeignAssetId, DispatchError> {
-		AssetMetadatas::<T>::mutate(
-			location.clone(),
-			|maybe_asset_metadatas| -> Result<ForeignAssetId, DispatchError> {
-				ensure!(maybe_asset_metadatas.is_none(), Error::<T>::AssetMetadataExisted);
+		let id = Self::get_next_foreign_asset_id()?;
+		MultiLocations::<T>::insert(id, location);
+		AssetMetadatas::<T>::insert(id, metadata);
 
-				let id = Self::get_next_foreign_asset_id()?;
-				MultiLocations::<T>::insert(id, location);
-
-				*maybe_asset_metadatas = Some(metadata.clone());
-
-				Ok(id)
-			},
-		)
+		Ok(id)
 	}
 
-	fn do_update_foreign_asset(location: &MultiLocation, metadata: &AssetMetadata<BalanceOf<T>>) -> DispatchResult {
-		AssetMetadatas::<T>::mutate(location, |maybe_asset_metadatas| -> DispatchResult {
-			ensure!(maybe_asset_metadatas.is_some(), Error::<T>::AssetMetadataNotExists);
+	fn do_update_foreign_asset(
+		foreign_asset_id: ForeignAssetId,
+		location: &MultiLocation,
+		metadata: &AssetMetadata<BalanceOf<T>>,
+	) -> DispatchResult {
+		MultiLocations::<T>::mutate(foreign_asset_id, |maybe_multi_locations| -> DispatchResult {
+			ensure!(maybe_multi_locations.is_some(), Error::<T>::ForeignAssetIdNotExists);
 
-			*maybe_asset_metadatas = Some(metadata.clone());
-			Ok(())
+			AssetMetadatas::<T>::mutate(foreign_asset_id, |maybe_asset_metadatas| -> DispatchResult {
+				ensure!(maybe_asset_metadatas.is_some(), Error::<T>::ForeignAssetIdNotExists);
+
+				*maybe_asset_metadatas = Some(metadata.clone());
+				*maybe_multi_locations = Some(location.clone());
+				Ok(())
+			})
 		})
+	}
+
+	fn get_erc20_mapping(address: EvmAddress) -> Option<Erc20Info> {
+		CurrencyIdMap::<T>::get(Into::<u32>::into(DexShare::Erc20(address))).filter(|v| v.address == address)
 	}
 }
 
@@ -224,7 +231,7 @@ pub struct XcmForeignAssetIdMapping<T>(sp_std::marker::PhantomData<T>);
 
 impl<T: Config> ForeignAssetIdMapping<ForeignAssetId, AssetMetadata<BalanceOf<T>>> for XcmForeignAssetIdMapping<T> {
 	fn get_asset_metadata(foreign_asset_id: ForeignAssetId) -> Option<AssetMetadata<BalanceOf<T>>> {
-		Pallet::<T>::asset_metadatas(Pallet::<T>::multi_locations(foreign_asset_id)?)
+		Pallet::<T>::asset_metadatas(foreign_asset_id)
 	}
 }
 
@@ -239,6 +246,7 @@ impl<T: Config> CurrencyIdMapping for EvmCurrencyIdMapping<T> {
 			Into::<u32>::into(DexShare::Erc20(address)),
 			|maybe_erc20_info| -> DispatchResult {
 				if let Some(erc20_info) = maybe_erc20_info.as_mut() {
+					// Multiple settings are allowed, such as enabling multiple LP tokens
 					ensure!(erc20_info.address == address, Error::<T>::CurrencyIdExisted);
 				} else {
 					let invoke_context = InvokeContext {
@@ -275,26 +283,18 @@ impl<T: Config> CurrencyIdMapping for EvmCurrencyIdMapping<T> {
 			CurrencyId::DexShare(symbol_0, symbol_1) => {
 				let name_0 = match symbol_0 {
 					DexShare::Token(symbol) => CurrencyId::Token(symbol).name().map(|v| v.as_bytes().to_vec()),
-					DexShare::Erc20(address) => CurrencyIdMap::<T>::get(Into::<u32>::into(symbol_0))
-						.filter(|v| v.address == address)
-						.map(|v| v.name),
-					DexShare::LiquidCroadloan(_) => {
-						unimplemented!()
-					}
-					DexShare::ForeignAsset(_) => {
-						unimplemented!()
+					DexShare::Erc20(address) => Pallet::<T>::get_erc20_mapping(address).map(|v| v.name),
+					DexShare::LiquidCroadloan(lease) => Some(format!("LiquidCroadloan-{}", lease).into_bytes()),
+					DexShare::ForeignAsset(foreign_asset_id) => {
+						AssetMetadatas::<T>::get(foreign_asset_id).map(|v| v.name)
 					}
 				}?;
 				let name_1 = match symbol_1 {
 					DexShare::Token(symbol) => CurrencyId::Token(symbol).name().map(|v| v.as_bytes().to_vec()),
-					DexShare::Erc20(address) => CurrencyIdMap::<T>::get(Into::<u32>::into(symbol_1))
-						.filter(|v| v.address == address)
-						.map(|v| v.name),
-					DexShare::LiquidCroadloan(_) => {
-						unimplemented!()
-					}
-					DexShare::ForeignAsset(_) => {
-						unimplemented!()
+					DexShare::Erc20(address) => Pallet::<T>::get_erc20_mapping(address).map(|v| v.name),
+					DexShare::LiquidCroadloan(lease) => Some(format!("LiquidCroadloan-{}", lease).into_bytes()),
+					DexShare::ForeignAsset(foreign_asset_id) => {
+						AssetMetadatas::<T>::get(foreign_asset_id).map(|v| v.name)
 					}
 				}?;
 
@@ -305,12 +305,10 @@ impl<T: Config> CurrencyIdMapping for EvmCurrencyIdMapping<T> {
 				vec.extend_from_slice(&name_1);
 				Some(vec)
 			}
-			CurrencyId::Erc20(address) => CurrencyIdMap::<T>::get(Into::<u32>::into(DexShare::Erc20(address)))
-				.filter(|v| v.address == address)
-				.map(|v| v.name),
+			CurrencyId::Erc20(address) => Pallet::<T>::get_erc20_mapping(address).map(|v| v.name),
 			CurrencyId::StableAssetPoolToken(_) => None,
-			CurrencyId::LiquidCroadloan(_) => None,
-			CurrencyId::ForeignAsset(_) => None,
+			CurrencyId::LiquidCroadloan(lease) => Some(format!("LiquidCroadloan-{}", lease).into_bytes()),
+			CurrencyId::ForeignAsset(foreign_asset_id) => AssetMetadatas::<T>::get(foreign_asset_id).map(|v| v.name),
 		}?;
 
 		// More than 32 bytes will be truncated.
@@ -330,26 +328,18 @@ impl<T: Config> CurrencyIdMapping for EvmCurrencyIdMapping<T> {
 			CurrencyId::DexShare(symbol_0, symbol_1) => {
 				let token_symbol_0 = match symbol_0 {
 					DexShare::Token(symbol) => CurrencyId::Token(symbol).symbol().map(|v| v.as_bytes().to_vec()),
-					DexShare::Erc20(address) => CurrencyIdMap::<T>::get(Into::<u32>::into(symbol_0))
-						.filter(|v| v.address == address)
-						.map(|v| v.symbol),
-					DexShare::LiquidCroadloan(_) => {
-						unimplemented!()
-					}
-					DexShare::ForeignAsset(_) => {
-						unimplemented!()
+					DexShare::Erc20(address) => Pallet::<T>::get_erc20_mapping(address).map(|v| v.symbol),
+					DexShare::LiquidCroadloan(lease) => Some(format!("LCDOT-{}", lease).into_bytes()),
+					DexShare::ForeignAsset(foreign_asset_id) => {
+						AssetMetadatas::<T>::get(foreign_asset_id).map(|v| v.symbol)
 					}
 				}?;
 				let token_symbol_1 = match symbol_1 {
 					DexShare::Token(symbol) => CurrencyId::Token(symbol).symbol().map(|v| v.as_bytes().to_vec()),
-					DexShare::Erc20(address) => CurrencyIdMap::<T>::get(Into::<u32>::into(symbol_1))
-						.filter(|v| v.address == address)
-						.map(|v| v.symbol),
-					DexShare::LiquidCroadloan(_) => {
-						unimplemented!()
-					}
-					DexShare::ForeignAsset(_) => {
-						unimplemented!()
+					DexShare::Erc20(address) => Pallet::<T>::get_erc20_mapping(address).map(|v| v.symbol),
+					DexShare::LiquidCroadloan(lease) => Some(format!("LCDOT-{}", lease).into_bytes()),
+					DexShare::ForeignAsset(foreign_asset_id) => {
+						AssetMetadatas::<T>::get(foreign_asset_id).map(|v| v.symbol)
 					}
 				}?;
 
@@ -360,12 +350,10 @@ impl<T: Config> CurrencyIdMapping for EvmCurrencyIdMapping<T> {
 				vec.extend_from_slice(&token_symbol_1);
 				Some(vec)
 			}
-			CurrencyId::Erc20(address) => CurrencyIdMap::<T>::get(Into::<u32>::into(DexShare::Erc20(address)))
-				.filter(|v| v.address == address)
-				.map(|v| v.symbol),
+			CurrencyId::Erc20(address) => Pallet::<T>::get_erc20_mapping(address).map(|v| v.symbol),
 			CurrencyId::StableAssetPoolToken(_) => None,
-			CurrencyId::LiquidCroadloan(_) => None,
-			CurrencyId::ForeignAsset(_) => None,
+			CurrencyId::LiquidCroadloan(lease) => Some(format!("LCDOT-{}", lease).into_bytes()),
+			CurrencyId::ForeignAsset(foreign_asset_id) => AssetMetadatas::<T>::get(foreign_asset_id).map(|v| v.symbol),
 		}?;
 
 		// More than 32 bytes will be truncated.
@@ -387,23 +375,19 @@ impl<T: Config> CurrencyIdMapping for EvmCurrencyIdMapping<T> {
 				// use the decimals of currency_id_0 as the decimals of lp token.
 				match symbol_0 {
 					DexShare::Token(symbol) => CurrencyId::Token(symbol).decimals(),
-					DexShare::Erc20(address) => CurrencyIdMap::<T>::get(Into::<u32>::into(symbol_0))
-						.filter(|v| v.address == address)
-						.map(|v| v.decimals),
-					DexShare::LiquidCroadloan(_) => {
-						unimplemented!()
-					}
-					DexShare::ForeignAsset(_) => {
-						unimplemented!()
+					DexShare::Erc20(address) => Pallet::<T>::get_erc20_mapping(address).map(|v| v.decimals),
+					DexShare::LiquidCroadloan(_) => CurrencyId::Token(TokenSymbol::DOT).decimals(),
+					DexShare::ForeignAsset(foreign_asset_id) => {
+						AssetMetadatas::<T>::get(foreign_asset_id).map(|v| v.decimals)
 					}
 				}
 			}
-			CurrencyId::Erc20(address) => CurrencyIdMap::<T>::get(Into::<u32>::into(DexShare::Erc20(address)))
-				.filter(|v| v.address == address)
-				.map(|v| v.decimals),
+			CurrencyId::Erc20(address) => Pallet::<T>::get_erc20_mapping(address).map(|v| v.decimals),
 			CurrencyId::StableAssetPoolToken(_) => None,
-			CurrencyId::LiquidCroadloan(_) => None,
-			CurrencyId::ForeignAsset(_) => None,
+			CurrencyId::LiquidCroadloan(_) => CurrencyId::Token(TokenSymbol::DOT).decimals(),
+			CurrencyId::ForeignAsset(foreign_asset_id) => {
+				AssetMetadatas::<T>::get(foreign_asset_id).map(|v| v.decimals)
+			}
 		}
 	}
 
@@ -413,88 +397,98 @@ impl<T: Config> CurrencyIdMapping for EvmCurrencyIdMapping<T> {
 	fn encode_evm_address(v: CurrencyId) -> Option<EvmAddress> {
 		match v {
 			CurrencyId::DexShare(left, right) => {
-				let symbol_0 = match left {
-					DexShare::Token(_) => Some(left.into()),
-					DexShare::Erc20(address) => {
-						let id: u32 = left.into();
-						CurrencyIdMap::<T>::get(id).filter(|v| v.address == address).map(|_| id)
+				match left {
+					DexShare::Erc20(addr) => {
+						// ensure erc20 is mapped
+						Pallet::<T>::get_erc20_mapping(addr).map(|_| ())?;
 					}
-					DexShare::LiquidCroadloan(_) => {
-						unimplemented!()
+					DexShare::Token(_) | DexShare::LiquidCroadloan(_) | DexShare::ForeignAsset(_) => {}
+				};
+				match right {
+					DexShare::Erc20(addr) => {
+						// ensure erc20 is mapped
+						Pallet::<T>::get_erc20_mapping(addr).map(|_| ())?;
 					}
-					DexShare::ForeignAsset(_) => {
-						unimplemented!()
-					}
-				}?;
-				let symbol_1 = match right {
-					DexShare::Token(_) => Some(right.into()),
-					DexShare::Erc20(address) => {
-						let id: u32 = right.into();
-						CurrencyIdMap::<T>::get(id).filter(|v| v.address == address).map(|_| id)
-					}
-					DexShare::LiquidCroadloan(_) => {
-						unimplemented!()
-					}
-					DexShare::ForeignAsset(_) => {
-						unimplemented!()
-					}
-				}?;
-
-				let mut prefix = EvmAddress::default();
-				prefix[0..H160_PREFIX_DEXSHARE.len()].copy_from_slice(&H160_PREFIX_DEXSHARE);
-				Some(prefix | EvmAddress::from_low_u64_be(u64::from(symbol_0) << 32 | u64::from(symbol_1)))
+					DexShare::Token(_) | DexShare::LiquidCroadloan(_) | DexShare::ForeignAsset(_) => {}
+				};
 			}
+			CurrencyId::Token(_)
+			| CurrencyId::Erc20(_)
+			| CurrencyId::StableAssetPoolToken(_)
+			| CurrencyId::LiquidCroadloan(_)
+			| CurrencyId::ForeignAsset(_) => {}
+		};
 
-			// Token or Erc20
-			_ => EvmAddress::try_from(v).ok(),
-		}
+		EvmAddress::try_from(v).ok()
 	}
 
 	// Decode the CurrencyId from EvmAddress.
 	// If is CurrencyId::DexShare and contain DexShare::Erc20,
 	// will use the u32 to get the DexShare::Erc20 from the mapping.
 	fn decode_evm_address(addr: EvmAddress) -> Option<CurrencyId> {
+		if !is_system_contract(addr) {
+			return Some(CurrencyId::Erc20(addr));
+		}
+
 		let address = addr.as_bytes();
-
-		// Token
-		if address.starts_with(&H160_PREFIX_TOKEN) {
-			return address[H160_POSITION_TOKEN].try_into().map(CurrencyId::Token).ok();
-		}
-
-		// DexShare
-		if address.starts_with(&H160_PREFIX_DEXSHARE) {
-			let left = {
-				if address[H160_POSITION_DEXSHARE_LEFT].starts_with(&[0u8; 3]) {
-					// Token
-					address[H160_POSITION_DEXSHARE_LEFT][3]
+		let currency_id = match CurrencyIdType::try_from(address[H160_POSITION_CURRENCY_ID_TYPE]).ok()? {
+			CurrencyIdType::Token => address[H160_POSITION_TOKEN].try_into().map(CurrencyId::Token).ok(),
+			CurrencyIdType::DexShare => {
+				let left = match DexShareType::try_from(address[H160_POSITION_DEXSHARE_LEFT_TYPE]).ok()? {
+					DexShareType::Token => address[H160_POSITION_DEXSHARE_LEFT_FIELD][3]
 						.try_into()
 						.map(DexShare::Token)
-						.ok()
-				} else {
-					// Erc20
-					let id = u32::from_be_bytes(address[H160_POSITION_DEXSHARE_LEFT].try_into().ok()?);
-					CurrencyIdMap::<T>::get(id).map(|v| DexShare::Erc20(v.address))
-				}
-			}?;
-			let right = {
-				if address[H160_POSITION_DEXSHARE_RIGHT].starts_with(&[0u8; 3]) {
-					// Token
-					address[H160_POSITION_DEXSHARE_RIGHT][3]
+						.ok(),
+					DexShareType::Erc20 => {
+						let id = u32::from_be_bytes(address[H160_POSITION_DEXSHARE_LEFT_FIELD].try_into().ok()?);
+						CurrencyIdMap::<T>::get(id).map(|v| DexShare::Erc20(v.address))
+					}
+					DexShareType::LiquidCroadloan => {
+						let id = Lease::from_be_bytes(address[H160_POSITION_DEXSHARE_LEFT_FIELD].try_into().ok()?);
+						Some(DexShare::LiquidCroadloan(id))
+					}
+					DexShareType::ForeignAsset => {
+						let id = ForeignAssetId::from_be_bytes(
+							address[H160_POSITION_DEXSHARE_LEFT_FIELD][2..].try_into().ok()?,
+						);
+						Some(DexShare::ForeignAsset(id))
+					}
+				}?;
+				let right = match DexShareType::try_from(address[H160_POSITION_DEXSHARE_RIGHT_TYPE]).ok()? {
+					DexShareType::Token => address[H160_POSITION_DEXSHARE_RIGHT_FIELD][3]
 						.try_into()
 						.map(DexShare::Token)
-						.ok()
-				} else {
-					// Erc20
-					let id = u32::from_be_bytes(address[H160_POSITION_DEXSHARE_RIGHT].try_into().ok()?);
-					CurrencyIdMap::<T>::get(id).map(|v| DexShare::Erc20(v.address))
-				}
-			}?;
+						.ok(),
+					DexShareType::Erc20 => {
+						let id = u32::from_be_bytes(address[H160_POSITION_DEXSHARE_RIGHT_FIELD].try_into().ok()?);
+						CurrencyIdMap::<T>::get(id).map(|v| DexShare::Erc20(v.address))
+					}
+					DexShareType::LiquidCroadloan => {
+						let id = Lease::from_be_bytes(address[H160_POSITION_DEXSHARE_RIGHT_FIELD].try_into().ok()?);
+						Some(DexShare::LiquidCroadloan(id))
+					}
+					DexShareType::ForeignAsset => {
+						let id = ForeignAssetId::from_be_bytes(
+							address[H160_POSITION_DEXSHARE_RIGHT_FIELD][2..].try_into().ok()?,
+						);
+						Some(DexShare::ForeignAsset(id))
+					}
+				}?;
 
-			return Some(CurrencyId::DexShare(left, right));
-		}
+				Some(CurrencyId::DexShare(left, right))
+			}
+			CurrencyIdType::StableAsset => None,
+			CurrencyIdType::LiquidCroadloan => {
+				let id = Lease::from_be_bytes(address[H160_POSITION_LIQUID_CROADLOAN].try_into().ok()?);
+				Some(CurrencyId::LiquidCroadloan(id))
+			}
+			CurrencyIdType::ForeignAsset => {
+				let id = ForeignAssetId::from_be_bytes(address[H160_POSITION_FOREIGN_ASSET].try_into().ok()?);
+				Some(CurrencyId::ForeignAsset(id))
+			}
+		};
 
-		// Erc20
-		let id = Into::<u32>::into(DexShare::Erc20(addr));
-		CurrencyIdMap::<T>::get(id).map(|v| CurrencyId::Erc20(v.address))
+		// Make sure that every bit of the address is the same
+		Self::encode_evm_address(currency_id?).map_or(None, |encoded| if encoded == addr { currency_id } else { None })
 	}
 }

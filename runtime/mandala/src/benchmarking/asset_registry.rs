@@ -53,7 +53,7 @@ runtime_benchmarks! {
 		};
 
 		AssetRegistry::register_foreign_asset(RawOrigin::Root.into(), Box::new(location.clone()), Box::new(asset_metadata.clone()))?;
-	}: _(RawOrigin::Root, Box::new(location), Box::new(asset_metadata))
+	}: _(RawOrigin::Root, 0, Box::new(location), Box::new(asset_metadata))
 }
 
 #[cfg(test)]

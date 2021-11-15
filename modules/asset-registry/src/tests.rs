@@ -96,7 +96,7 @@ fn register_foreign_asset_work() {
 
 		assert_eq!(MultiLocations::<Runtime>::get(0), Some(location.clone()));
 		assert_eq!(
-			AssetMetadatas::<Runtime>::get(location),
+			AssetMetadatas::<Runtime>::get(0),
 			Some(AssetMetadata {
 				name: b"Token Name".to_vec(),
 				symbol: b"TN".to_vec(),
@@ -110,20 +110,7 @@ fn register_foreign_asset_work() {
 #[test]
 fn register_foreign_asset_should_not_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(AssetRegistry::register_foreign_asset(
-			Origin::signed(CouncilAccount::get()),
-			Box::new(VersionedMultiLocation::V0(xcm::v0::MultiLocation::X1(
-				xcm::v0::Junction::Parachain(1000)
-			))),
-			Box::new(AssetMetadata {
-				name: b"Token Name".to_vec(),
-				symbol: b"TN".to_vec(),
-				decimals: 12,
-				minimal_balance: 1,
-			})
-		));
-
-		// v0
+		NextForeignAssetId::<Runtime>::set(u16::MAX);
 		assert_noop!(
 			AssetRegistry::register_foreign_asset(
 				Origin::signed(CouncilAccount::get()),
@@ -137,25 +124,7 @@ fn register_foreign_asset_should_not_work() {
 					minimal_balance: 1,
 				})
 			),
-			Error::<Runtime>::AssetMetadataExisted
-		);
-
-		// v1
-		assert_noop!(
-			AssetRegistry::register_foreign_asset(
-				Origin::signed(CouncilAccount::get()),
-				Box::new(VersionedMultiLocation::V1(MultiLocation {
-					parents: 0,
-					interior: xcm::v1::Junctions::X1(xcm::v1::Junction::Parachain(1000))
-				})),
-				Box::new(AssetMetadata {
-					name: b"Token Name".to_vec(),
-					symbol: b"TN".to_vec(),
-					decimals: 12,
-					minimal_balance: 1,
-				})
-			),
-			Error::<Runtime>::AssetMetadataExisted
+			ArithmeticError::Overflow
 		);
 	});
 }
@@ -178,6 +147,7 @@ fn update_foreign_asset_work() {
 
 		assert_ok!(AssetRegistry::update_foreign_asset(
 			Origin::signed(CouncilAccount::get()),
+			0,
 			Box::new(v0_location.clone()),
 			Box::new(AssetMetadata {
 				name: b"New Token Name".to_vec(),
@@ -199,7 +169,7 @@ fn update_foreign_asset_work() {
 		)));
 
 		assert_eq!(
-			AssetMetadatas::<Runtime>::get(location),
+			AssetMetadatas::<Runtime>::get(0),
 			Some(AssetMetadata {
 				name: b"New Token Name".to_vec(),
 				symbol: b"NTN".to_vec(),
@@ -218,6 +188,7 @@ fn update_foreign_asset_should_not_work() {
 		assert_noop!(
 			AssetRegistry::update_foreign_asset(
 				Origin::signed(CouncilAccount::get()),
+				0,
 				Box::new(v0_location.clone()),
 				Box::new(AssetMetadata {
 					name: b"New Token Name".to_vec(),
@@ -226,17 +197,29 @@ fn update_foreign_asset_should_not_work() {
 					minimal_balance: 2,
 				})
 			),
-			Error::<Runtime>::AssetMetadataNotExists
+			Error::<Runtime>::ForeignAssetIdNotExists
 		);
 
 		assert_ok!(AssetRegistry::register_foreign_asset(
 			Origin::signed(CouncilAccount::get()),
-			Box::new(v0_location),
+			Box::new(v0_location.clone()),
 			Box::new(AssetMetadata {
 				name: b"Token Name".to_vec(),
 				symbol: b"TN".to_vec(),
 				decimals: 12,
 				minimal_balance: 1,
+			})
+		));
+
+		assert_ok!(AssetRegistry::update_foreign_asset(
+			Origin::signed(CouncilAccount::get()),
+			0,
+			Box::new(v0_location.clone()),
+			Box::new(AssetMetadata {
+				name: b"New Token Name".to_vec(),
+				symbol: b"NTN".to_vec(),
+				decimals: 13,
+				minimal_balance: 2,
 			})
 		));
 	});
@@ -259,18 +242,10 @@ fn set_erc20_mapping_works() {
 
 			assert_noop!(
 				with_transaction_result(|| -> DispatchResult {
-					EvmCurrencyIdMapping::<Runtime>::set_erc20_mapping(
-						EvmAddress::from_str("0000000000000000000000000000000200000000").unwrap(),
-					)
-				}),
-				Error::<Runtime>::CurrencyIdExisted,
-			);
-
-			assert_noop!(
-				with_transaction_result(|| -> DispatchResult {
-					EvmCurrencyIdMapping::<Runtime>::set_erc20_mapping(
-						EvmAddress::from_str("0000000000000000000000000000000200000001").unwrap(),
-					)
+					let mut addr = erc20_address();
+					let addr = addr.as_bytes_mut();
+					addr[19] += 1;
+					EvmCurrencyIdMapping::<Runtime>::set_erc20_mapping(EvmAddress::from_slice(addr))
 				}),
 				Error::<Runtime>::CurrencyIdExisted,
 			);
@@ -488,10 +463,14 @@ fn encode_evm_address_works() {
 			assert_ok!(with_transaction_result(|| -> DispatchResult {
 				EvmCurrencyIdMapping::<Runtime>::set_erc20_mapping(erc20_address())
 			}));
+
+			// Token
 			assert_eq!(
 				EvmCurrencyIdMapping::<Runtime>::encode_evm_address(CurrencyId::Token(TokenSymbol::ACA)),
-				H160::from_str("0x0000000000000000000000000000000001000000").ok()
+				H160::from_str("0x0000000000000000000100000000000000000000").ok()
 			);
+
+			// Erc20
 			assert_eq!(
 				EvmCurrencyIdMapping::<Runtime>::encode_evm_address(CurrencyId::Erc20(erc20_address())),
 				Some(erc20_address())
@@ -502,12 +481,13 @@ fn encode_evm_address_works() {
 				Some(erc20_address_not_exists())
 			);
 
+			// DexShare
 			assert_eq!(
 				EvmCurrencyIdMapping::<Runtime>::encode_evm_address(CurrencyId::DexShare(
 					DexShare::Token(TokenSymbol::ACA),
 					DexShare::Token(TokenSymbol::AUSD)
 				)),
-				H160::from_str("0x0000000000000000000000010000000000000001").ok()
+				H160::from_str("0x0000000000000000000200000000000000000001").ok()
 			);
 
 			assert_eq!(
@@ -515,7 +495,7 @@ fn encode_evm_address_works() {
 					DexShare::Erc20(erc20_address()),
 					DexShare::Token(TokenSymbol::AUSD)
 				)),
-				H160::from_str("0x0000000000000000000000010200000000000001").ok()
+				H160::from_str("0x00000000000000000002015dddfce50000000001").ok()
 			);
 
 			assert_eq!(
@@ -523,7 +503,7 @@ fn encode_evm_address_works() {
 					DexShare::Token(TokenSymbol::AUSD),
 					DexShare::Erc20(erc20_address())
 				)),
-				H160::from_str("0x0000000000000000000000010000000102000000").ok()
+				H160::from_str("0x000000000000000000020000000001015dddfce5").ok()
 			);
 
 			assert_eq!(
@@ -531,7 +511,7 @@ fn encode_evm_address_works() {
 					DexShare::Erc20(erc20_address()),
 					DexShare::Erc20(erc20_address())
 				)),
-				H160::from_str("0x0000000000000000000000010200000002000000").ok()
+				H160::from_str("0x00000000000000000002015dddfce5015dddfce5").ok()
 			);
 
 			assert_eq!(
@@ -548,6 +528,39 @@ fn encode_evm_address_works() {
 					DexShare::Erc20(erc20_address_not_exists())
 				)),
 				None
+			);
+
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::encode_evm_address(CurrencyId::DexShare(
+					DexShare::LiquidCroadloan(1),
+					DexShare::ForeignAsset(2)
+				)),
+				H160::from_str("0x0000000000000000000202000000010300000002").ok()
+			);
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::encode_evm_address(CurrencyId::DexShare(
+					DexShare::ForeignAsset(2),
+					DexShare::LiquidCroadloan(1)
+				)),
+				H160::from_str("0x0000000000000000000203000000020200000001").ok()
+			);
+
+			// StableAssetPoolToken
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::encode_evm_address(CurrencyId::StableAssetPoolToken(1)),
+				None
+			);
+
+			// LiquidCroadloan
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::encode_evm_address(CurrencyId::LiquidCroadloan(1)),
+				H160::from_str("0x0000000000000000000400000000000000000001").ok()
+			);
+
+			// ForeignAsset
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::encode_evm_address(CurrencyId::ForeignAsset(1)),
+				H160::from_str("0x0000000000000000000500000000000000000001").ok()
 			);
 		});
 }
@@ -562,12 +575,16 @@ fn decode_evm_address_works() {
 			assert_ok!(with_transaction_result(|| -> DispatchResult {
 				EvmCurrencyIdMapping::<Runtime>::set_erc20_mapping(erc20_address())
 			}));
+
+			// Token
 			assert_eq!(
 				EvmCurrencyIdMapping::<Runtime>::decode_evm_address(
 					EvmCurrencyIdMapping::<Runtime>::encode_evm_address(CurrencyId::Token(TokenSymbol::ACA)).unwrap()
 				),
 				Some(CurrencyId::Token(TokenSymbol::ACA))
 			);
+
+			// Erc20
 			assert_eq!(
 				EvmCurrencyIdMapping::<Runtime>::decode_evm_address(
 					EvmCurrencyIdMapping::<Runtime>::encode_evm_address(CurrencyId::Erc20(erc20_address())).unwrap()
@@ -583,6 +600,7 @@ fn decode_evm_address_works() {
 				None,
 			);
 
+			// DexShare
 			assert_eq!(
 				EvmCurrencyIdMapping::<Runtime>::decode_evm_address(
 					EvmCurrencyIdMapping::<Runtime>::encode_evm_address(CurrencyId::DexShare(
@@ -645,28 +663,62 @@ fn decode_evm_address_works() {
 				None
 			);
 
-			// decode invalid evm address
 			// Allow non-system contracts
 			let non_system_contracts = H160::from_str("0x1000000000000000000000000000000000000000").unwrap();
 			assert_eq!(
 				EvmCurrencyIdMapping::<Runtime>::decode_evm_address(non_system_contracts),
-				None
+				Some(CurrencyId::Erc20(non_system_contracts))
 			);
 
-			let id = Into::<u32>::into(DexShare::Erc20(non_system_contracts));
-			CurrencyIdMap::<Runtime>::mutate(id, |maybe_erc20_info| {
-				let info = Erc20Info {
-					address: non_system_contracts,
-					name: b"Test".to_vec(),
-					symbol: b"T".to_vec(),
-					decimals: 17,
-				};
-
-				*maybe_erc20_info = Some(info);
-			});
 			assert_eq!(
-				EvmCurrencyIdMapping::<Runtime>::decode_evm_address(non_system_contracts),
-				Some(CurrencyId::Erc20(non_system_contracts))
+				EvmCurrencyIdMapping::<Runtime>::decode_evm_address(
+					EvmCurrencyIdMapping::<Runtime>::encode_evm_address(CurrencyId::DexShare(
+						DexShare::LiquidCroadloan(1),
+						DexShare::ForeignAsset(2)
+					))
+					.unwrap()
+				),
+				Some(CurrencyId::DexShare(
+					DexShare::LiquidCroadloan(1),
+					DexShare::ForeignAsset(2)
+				))
+			);
+
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::decode_evm_address(
+					EvmCurrencyIdMapping::<Runtime>::encode_evm_address(CurrencyId::DexShare(
+						DexShare::ForeignAsset(2),
+						DexShare::LiquidCroadloan(1),
+					))
+					.unwrap()
+				),
+				Some(CurrencyId::DexShare(
+					DexShare::ForeignAsset(2),
+					DexShare::LiquidCroadloan(1)
+				))
+			);
+
+			// StableAssetPoolToken
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::decode_evm_address(
+					H160::from_str("0x0000000000000000000000030000000000000000").unwrap()
+				),
+				None
+			);
+			// LiquidCroadloan
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::decode_evm_address(
+					EvmCurrencyIdMapping::<Runtime>::encode_evm_address(CurrencyId::LiquidCroadloan(1)).unwrap()
+				),
+				Some(CurrencyId::LiquidCroadloan(1))
+			);
+
+			// ForeignAsset
+			assert_eq!(
+				EvmCurrencyIdMapping::<Runtime>::decode_evm_address(
+					EvmCurrencyIdMapping::<Runtime>::encode_evm_address(CurrencyId::ForeignAsset(1)).unwrap()
+				),
+				Some(CurrencyId::ForeignAsset(1))
 			);
 		});
 }

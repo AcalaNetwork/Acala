@@ -61,10 +61,12 @@ pub use module_support::{
 pub use orml_traits::currency::TransferAll;
 use primitive_types::{H160, H256, U256};
 pub use primitives::{
-	evm::{CallInfo, CreateInfo, EvmAddress, ExecutionInfo, Vicinity},
+	evm::{
+		CallInfo, CreateInfo, EvmAddress, ExecutionInfo, Vicinity, MIRRORED_NFT_ADDRESS_START,
+		MIRRORED_TOKENS_ADDRESS_START,
+	},
 	task::TaskResult,
-	ReserveIdentifier, H160_PREFIX_DEXSHARE, H160_PREFIX_TOKEN, MIRRORED_NFT_ADDRESS_START, PRECOMPILE_ADDRESS_START,
-	SYSTEM_CONTRACT_ADDRESS_PREFIX,
+	ReserveIdentifier,
 };
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
@@ -674,7 +676,7 @@ pub mod module {
 			T::NetworkContractOrigin::ensure_origin(origin)?;
 
 			let source = T::NetworkContractSource::get();
-			let address = EvmAddress::from_low_u64_be(Self::network_contract_index());
+			let address = MIRRORED_TOKENS_ADDRESS_START | EvmAddress::from_low_u64_be(Self::network_contract_index());
 			let info =
 				T::Runner::create_at_address(source, address, init, value, gas_limit, storage_limit, T::config())?;
 

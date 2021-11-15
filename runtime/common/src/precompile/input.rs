@@ -302,7 +302,7 @@ mod tests {
 		assert_err!(input.currency_id_at(1), ExitError::Other("invalid currency id".into()));
 
 		let mut raw_input = [0u8; 36];
-		raw_input[32] = 1;
+		raw_input[25] = 1;
 		let input = TestInput::new(&raw_input[..]);
 		assert_ok!(input.currency_id_at(1), CurrencyId::Token(TokenSymbol::ACA));
 
