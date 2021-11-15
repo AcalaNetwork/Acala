@@ -163,6 +163,8 @@ runtime_benchmarks! {
 			Change::NewValue(min_debit_value * 100),
 		)?;
 
+		// adjust auction size so we hit MaxAuctionCount
+		CdpTreasury::set_expected_collateral_auction_size(RawOrigin::Root.into(), STAKING, 1)?;
 		// adjust position
 		CdpEngine::adjust_position(&owner, STAKING, collateral_amount.try_into().unwrap(), min_debit_amount)?;
 
