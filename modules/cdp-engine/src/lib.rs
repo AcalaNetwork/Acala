@@ -112,9 +112,9 @@ type ChangeBalance = Change<Balance>;
 /// Liquidation strategy available
 #[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, TypeInfo)]
 pub enum LiquidationStrategy {
-	/// Liquidation CDP's collateral by create collateral auction, u32 represents number of auctions
-	/// created
-	Auction(u32),
+	/// Liquidation CDP's collateral by create collateral auction, auction_count
+	/// being the number of new auctions created
+	Auction { auction_count: u32 },
 	/// Liquidation CDP's collateral by swap with DEX
 	Exchange,
 }
@@ -977,7 +977,9 @@ impl<T: Config> Pallet<T> {
 				true,
 			)?;
 
-			Ok(LiquidationStrategy::Auction(created_auctions))
+			Ok(LiquidationStrategy::Auction {
+				auction_count: created_auctions,
+			})
 		})()?;
 
 		Self::deposit_event(Event::LiquidateUnsafeCDP(
@@ -988,7 +990,7 @@ impl<T: Config> Pallet<T> {
 			liquidation_strategy.clone(),
 		));
 		match liquidation_strategy {
-			LiquidationStrategy::Auction(auction_num) => Ok(T::WeightInfo::liquidate_by_auction(auction_num)),
+			LiquidationStrategy::Auction { auction_count } => Ok(T::WeightInfo::liquidate_by_auction(auction_count)),
 			LiquidationStrategy::Exchange => Ok(T::WeightInfo::liquidate_by_dex()),
 		}
 	}
