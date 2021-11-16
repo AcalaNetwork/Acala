@@ -177,7 +177,7 @@ pub mod module {
 			Ok(())
 		}
 
-		#[pallet::weight(T::WeightInfo::auction_collateral(T::MaxAuctionsCount()))]
+		#[pallet::weight(T::WeightInfo::auction_collateral(T::MaxAuctionsCount::get()))]
 		#[transactional]
 		pub fn auction_collateral(
 			origin: OriginFor<T>,
