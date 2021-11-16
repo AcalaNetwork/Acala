@@ -188,7 +188,7 @@ fn liquidate_cdp() {
 				AccountId::from(ALICE),
 				50 * dollar(RELAY_CHAIN_CURRENCY),
 				250_000 * dollar(USD_CURRENCY),
-				LiquidationStrategy::Auction,
+				LiquidationStrategy::Auction(1),
 			));
 
 			assert!(System::events()
