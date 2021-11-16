@@ -191,12 +191,12 @@ impl TryFrom<CurrencyId> for EvmAddress {
 				return Err(());
 			}
 			CurrencyId::LiquidCroadloan(lease) => {
-				let id: Lease = lease.into();
+				let id: Lease = lease;
 				address[H160_POSITION_CURRENCY_ID_TYPE] = CurrencyIdType::LiquidCroadloan.into();
 				address[H160_POSITION_LIQUID_CROADLOAN].copy_from_slice(&id.to_be_bytes());
 			}
 			CurrencyId::ForeignAsset(foreign_asset_id) => {
-				let id: ForeignAssetId = foreign_asset_id.into();
+				let id: ForeignAssetId = foreign_asset_id;
 				address[H160_POSITION_CURRENCY_ID_TYPE] = CurrencyIdType::ForeignAsset.into();
 				address[H160_POSITION_FOREIGN_ASSET].copy_from_slice(&id.to_be_bytes());
 			}

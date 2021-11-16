@@ -1676,6 +1676,9 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 					GeneralKey(parachains::bifrost::VSKSM_KEY.to_vec()),
 				),
 			)),
+			CurrencyId::ForeignAsset(foreign_asset_id) => {
+				XcmForeignAssetIdMapping::<Runtime>::get_multi_location(foreign_asset_id)
+			}
 			_ => None,
 		}
 	}
@@ -1688,6 +1691,9 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 		if location == MultiLocation::parent() {
 			return Some(Token(KSM));
 		}
+
+		XcmForeignAssetIdMapping::<Runtime>::get_currency_id(location.clone()).map(|v| return v);
+
 		match location {
 			MultiLocation {
 				parents,

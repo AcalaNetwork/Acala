@@ -1605,6 +1605,9 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 		match id {
 			Token(DOT) => Some(MultiLocation::parent()),
 			Token(ACA) | Token(AUSD) | Token(LDOT) => Some(native_currency_location(id)),
+			CurrencyId::ForeignAsset(foreign_asset_id) => {
+				XcmForeignAssetIdMapping::<Runtime>::get_multi_location(foreign_asset_id)
+			}
 			_ => None,
 		}
 	}
@@ -1617,6 +1620,9 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 		if location == MultiLocation::parent() {
 			return Some(Token(DOT));
 		}
+
+		XcmForeignAssetIdMapping::<Runtime>::get_currency_id(location.clone()).map(|v| return v);
+
 		match location {
 			MultiLocation {
 				parents,

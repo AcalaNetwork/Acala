@@ -504,9 +504,13 @@ pub trait AddressMapping<AccountId> {
 }
 
 /// A mapping between ForeignAssetId and AssetMetadata.
-pub trait ForeignAssetIdMapping<ForeignAssetId, AssetMetadata> {
+pub trait ForeignAssetIdMapping<ForeignAssetId, MultiLocation, AssetMetadata> {
 	/// Returns the AssetMetadata associated with a given ForeignAssetId.
 	fn get_asset_metadata(foreign_asset_id: ForeignAssetId) -> Option<AssetMetadata>;
+	/// Returns the MultiLocation associated with a given ForeignAssetId.
+	fn get_multi_location(foreign_asset_id: ForeignAssetId) -> Option<MultiLocation>;
+	/// Returns the CurrencyId associated with a given MultiLocation.
+	fn get_currency_id(multi_location: MultiLocation) -> Option<CurrencyId>;
 }
 
 /// A mapping between u32 and Erc20 address.

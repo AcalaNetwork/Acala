@@ -29,7 +29,7 @@ use frame_support::{
 	pallet_prelude::*,
 	require_transactional,
 	traits::{Currency, EnsureOrigin},
-	RuntimeDebug,
+	transactional, RuntimeDebug,
 };
 use frame_system::pallet_prelude::*;
 use module_support::{CurrencyIdMapping, EVMBridge, ForeignAssetIdMapping, InvokeContext};
@@ -96,6 +96,8 @@ pub mod module {
 		/// The given location could not be used (e.g. because it cannot be expressed in the
 		/// desired version of XCM).
 		BadLocation,
+		/// MultiLocation existed
+		MultiLocationExisted,
 		/// ForeignAssetId not exists
 		ForeignAssetIdNotExists,
 		/// CurrencyId existed
@@ -125,9 +127,16 @@ pub mod module {
 	#[pallet::getter(fn multi_locations)]
 	pub type MultiLocations<T: Config> = StorageMap<_, Twox64Concat, ForeignAssetId, MultiLocation, OptionQuery>;
 
+	/// The storages for CurrencyIds.
+	///
+	/// MultiLocations: map MultiLocation => Option<CurrencyId>
+	#[pallet::storage]
+	#[pallet::getter(fn currency_ids)]
+	pub type CurrencyIds<T: Config> = StorageMap<_, Twox64Concat, MultiLocation, CurrencyId, OptionQuery>;
+
 	/// The storages for AssetMetadatas.
 	///
-	/// AssetMetadatas: map MultiLocation => Option<AssetMetadata>
+	/// AssetMetadatas: map ForeignAssetId => Option<AssetMetadata>
 	#[pallet::storage]
 	#[pallet::getter(fn asset_metadatas)]
 	pub type AssetMetadatas<T: Config> =
@@ -147,7 +156,8 @@ pub mod module {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		#[pallet::weight(1000)]
+		#[pallet::weight(T::WeightInfo::register_foreign_asset())]
+		#[transactional]
 		pub fn register_foreign_asset(
 			origin: OriginFor<T>,
 			location: Box<VersionedMultiLocation>,
@@ -166,7 +176,8 @@ pub mod module {
 			Ok(())
 		}
 
-		#[pallet::weight(1000)]
+		#[pallet::weight(T::WeightInfo::update_foreign_asset())]
+		#[transactional]
 		pub fn update_foreign_asset(
 			origin: OriginFor<T>,
 			foreign_asset_id: ForeignAssetId,
@@ -198,6 +209,11 @@ impl<T: Config> Pallet<T> {
 		metadata: &AssetMetadata<BalanceOf<T>>,
 	) -> Result<ForeignAssetId, DispatchError> {
 		let id = Self::get_next_foreign_asset_id()?;
+		CurrencyIds::<T>::try_mutate(location, |maybe_currency_ids| -> DispatchResult {
+			ensure!(maybe_currency_ids.is_none(), Error::<T>::MultiLocationExisted);
+			*maybe_currency_ids = Some(CurrencyId::ForeignAsset(id));
+			Ok(())
+		})?;
 		MultiLocations::<T>::insert(id, location);
 		AssetMetadatas::<T>::insert(id, metadata);
 
@@ -210,13 +226,24 @@ impl<T: Config> Pallet<T> {
 		metadata: &AssetMetadata<BalanceOf<T>>,
 	) -> DispatchResult {
 		MultiLocations::<T>::mutate(foreign_asset_id, |maybe_multi_locations| -> DispatchResult {
-			ensure!(maybe_multi_locations.is_some(), Error::<T>::ForeignAssetIdNotExists);
+			let old_multi_locations = maybe_multi_locations
+				.as_mut()
+				.ok_or(Error::<T>::ForeignAssetIdNotExists)?;
 
 			AssetMetadatas::<T>::mutate(foreign_asset_id, |maybe_asset_metadatas| -> DispatchResult {
 				ensure!(maybe_asset_metadatas.is_some(), Error::<T>::ForeignAssetIdNotExists);
 
+				// modify location
+				if location != old_multi_locations {
+					CurrencyIds::<T>::remove(old_multi_locations.clone());
+					CurrencyIds::<T>::try_mutate(location, |maybe_currency_ids| -> DispatchResult {
+						ensure!(maybe_currency_ids.is_none(), Error::<T>::MultiLocationExisted);
+						*maybe_currency_ids = Some(CurrencyId::ForeignAsset(foreign_asset_id));
+						Ok(())
+					})?;
+				}
 				*maybe_asset_metadatas = Some(metadata.clone());
-				*maybe_multi_locations = Some(location.clone());
+				*old_multi_locations = location.clone();
 				Ok(())
 			})
 		})
@@ -229,9 +256,19 @@ impl<T: Config> Pallet<T> {
 
 pub struct XcmForeignAssetIdMapping<T>(sp_std::marker::PhantomData<T>);
 
-impl<T: Config> ForeignAssetIdMapping<ForeignAssetId, AssetMetadata<BalanceOf<T>>> for XcmForeignAssetIdMapping<T> {
+impl<T: Config> ForeignAssetIdMapping<ForeignAssetId, MultiLocation, AssetMetadata<BalanceOf<T>>>
+	for XcmForeignAssetIdMapping<T>
+{
 	fn get_asset_metadata(foreign_asset_id: ForeignAssetId) -> Option<AssetMetadata<BalanceOf<T>>> {
 		Pallet::<T>::asset_metadatas(foreign_asset_id)
+	}
+
+	fn get_multi_location(foreign_asset_id: ForeignAssetId) -> Option<MultiLocation> {
+		Pallet::<T>::multi_locations(foreign_asset_id)
+	}
+
+	fn get_currency_id(multi_location: MultiLocation) -> Option<CurrencyId> {
+		Pallet::<T>::currency_ids(multi_location)
 	}
 }
 

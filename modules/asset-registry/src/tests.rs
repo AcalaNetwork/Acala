@@ -104,12 +104,39 @@ fn register_foreign_asset_work() {
 				minimal_balance: 1,
 			})
 		);
+		assert_eq!(CurrencyIds::<Runtime>::get(location), Some(CurrencyId::ForeignAsset(0)));
 	});
 }
 
 #[test]
 fn register_foreign_asset_should_not_work() {
 	ExtBuilder::default().build().execute_with(|| {
+		let v0_location = VersionedMultiLocation::V0(xcm::v0::MultiLocation::X1(xcm::v0::Junction::Parachain(1000)));
+		assert_ok!(AssetRegistry::register_foreign_asset(
+			Origin::signed(CouncilAccount::get()),
+			Box::new(v0_location.clone()),
+			Box::new(AssetMetadata {
+				name: b"Token Name".to_vec(),
+				symbol: b"TN".to_vec(),
+				decimals: 12,
+				minimal_balance: 1,
+			})
+		));
+
+		assert_noop!(
+			AssetRegistry::register_foreign_asset(
+				Origin::signed(CouncilAccount::get()),
+				Box::new(v0_location.clone()),
+				Box::new(AssetMetadata {
+					name: b"Token Name".to_vec(),
+					symbol: b"TN".to_vec(),
+					decimals: 12,
+					minimal_balance: 1,
+				})
+			),
+			Error::<Runtime>::MultiLocationExisted
+		);
+
 		NextForeignAssetId::<Runtime>::set(u16::MAX);
 		assert_noop!(
 			AssetRegistry::register_foreign_asset(
@@ -177,6 +204,41 @@ fn update_foreign_asset_work() {
 				minimal_balance: 2,
 			})
 		);
+		assert_eq!(MultiLocations::<Runtime>::get(0), Some(location.clone()));
+		assert_eq!(
+			CurrencyIds::<Runtime>::get(location.clone()),
+			Some(CurrencyId::ForeignAsset(0))
+		);
+
+		// modify location
+		let new_location = VersionedMultiLocation::V0(xcm::v0::MultiLocation::X1(xcm::v0::Junction::Parachain(2000)));
+		assert_ok!(AssetRegistry::update_foreign_asset(
+			Origin::signed(CouncilAccount::get()),
+			0,
+			Box::new(new_location.clone()),
+			Box::new(AssetMetadata {
+				name: b"New Token Name".to_vec(),
+				symbol: b"NTN".to_vec(),
+				decimals: 13,
+				minimal_balance: 2,
+			})
+		));
+		assert_eq!(
+			AssetMetadatas::<Runtime>::get(0),
+			Some(AssetMetadata {
+				name: b"New Token Name".to_vec(),
+				symbol: b"NTN".to_vec(),
+				decimals: 13,
+				minimal_balance: 2,
+			})
+		);
+		let new_location: MultiLocation = new_location.try_into().unwrap();
+		assert_eq!(MultiLocations::<Runtime>::get(0), Some(new_location.clone()));
+		assert_eq!(CurrencyIds::<Runtime>::get(location), None);
+		assert_eq!(
+			CurrencyIds::<Runtime>::get(new_location),
+			Some(CurrencyId::ForeignAsset(0))
+		);
 	});
 }
 
@@ -222,6 +284,33 @@ fn update_foreign_asset_should_not_work() {
 				minimal_balance: 2,
 			})
 		));
+
+		// existed location
+		let new_location = VersionedMultiLocation::V0(xcm::v0::MultiLocation::X1(xcm::v0::Junction::Parachain(2000)));
+		assert_ok!(AssetRegistry::register_foreign_asset(
+			Origin::signed(CouncilAccount::get()),
+			Box::new(new_location.clone()),
+			Box::new(AssetMetadata {
+				name: b"Token Name".to_vec(),
+				symbol: b"TN".to_vec(),
+				decimals: 12,
+				minimal_balance: 1,
+			})
+		));
+		assert_noop!(
+			AssetRegistry::update_foreign_asset(
+				Origin::signed(CouncilAccount::get()),
+				0,
+				Box::new(new_location.clone()),
+				Box::new(AssetMetadata {
+					name: b"New Token Name".to_vec(),
+					symbol: b"NTN".to_vec(),
+					decimals: 13,
+					minimal_balance: 2,
+				})
+			),
+			Error::<Runtime>::MultiLocationExisted
+		);
 	});
 }
 
