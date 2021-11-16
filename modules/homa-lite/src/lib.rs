@@ -22,6 +22,9 @@
 pub mod benchmarking;
 mod mock;
 mod tests;
+
+mod mock_no_fees;
+mod tests_no_fees;
 pub mod weights;
 
 use frame_support::{log, pallet_prelude::*, transactional, weights::Weight, BoundedVec};
