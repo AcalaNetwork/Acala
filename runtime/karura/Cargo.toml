@@ -86,7 +86,6 @@ orml-xcm = { path = "../../orml/xcm", default-features = false }
 
 module-transaction-pause = { path = "../../modules/transaction-pause", default-features = false }
 module-transaction-payment = { path = "../../modules/transaction-payment", default-features = false }
-module-airdrop = { path = "../../modules/airdrop", default-features = false }
 module-asset-registry = { path = "../../modules/asset-registry", default-features = false }
 module-auction-manager = { path = "../../modules/auction-manager", default-features = false }
 module-cdp-engine = { path = "../../modules/cdp-engine", default-features = false }
@@ -203,7 +202,6 @@ std = [
 
 	"module-transaction-pause/std",
 	"module-transaction-payment/std",
-	"module-airdrop/std",
 	"module-asset-registry/std",
 	"module-auction-manager/std",
 	"module-cdp-engine/std",
@@ -301,7 +299,6 @@ try-runtime = [
 
 	"module-transaction-pause/try-runtime",
 	"module-transaction-payment/try-runtime",
-	"module-airdrop/try-runtime",
 	"module-asset-registry/try-runtime",
 	"module-auction-manager/try-runtime",
 	"module-cdp-engine/try-runtime",

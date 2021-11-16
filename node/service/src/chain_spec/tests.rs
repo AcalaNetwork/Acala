@@ -71,20 +71,3 @@ fn check_acala_allocation() {
 	// ensure total allocation.
 	assert_eq!(total, 1_000_000_000_000_000_000_000);
 }
-
-#[test]
-fn check_mandala_airdrop() {
-	let airdrop_json = &include_bytes!("../../../../resources/mandala-airdrop-ACA.json")[..];
-	let _: Vec<(AccountId, Balance)> = serde_json::from_slice(airdrop_json).unwrap();
-}
-
-#[test]
-fn check_nfts() {
-	let nfts_json = &include_bytes!("../../../../resources/mandala-airdrop-NFT.json")[..];
-	let _: Vec<(
-		AccountId,
-		Vec<u8>,
-		module_nft::ClassData<Balance>,
-		Vec<(Vec<u8>, module_nft::TokenData<Balance>, Vec<AccountId>)>,
-	)> = serde_json::from_slice(nfts_json).unwrap();
-}

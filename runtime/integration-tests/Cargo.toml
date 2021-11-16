@@ -86,7 +86,6 @@ orml-unknown-tokens = { path = "../../orml/unknown-tokens" }
 orml-xcm = { path = "../../orml/xcm" }
 
 module-transaction-payment = { path = "../../modules/transaction-payment" }
-module-airdrop = { path = "../../modules/airdrop" }
 module-asset-registry = { path = "../../modules/asset-registry" }
 module-auction-manager = { path = "../../modules/auction-manager" }
 module-cdp-engine = { path = "../../modules/cdp-engine" }

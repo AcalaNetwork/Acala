@@ -154,9 +154,12 @@ pub mod module {
 		/// - `max_collateral_amount`: the max collateral amount which is used to swap enough
 		/// 	stable token to clear debit.
 		/// - `maybe_path`: the custom swap path.
-		#[pallet::weight(<T as Config>::WeightInfo::close_loan_has_debit_by_dex(
-			maybe_path.clone().map(|p| p.len() as u32).unwrap_or(2)
-		))]
+		#[pallet::weight(
+			match maybe_path {
+				Some(path) => <T as Config>::WeightInfo::close_loan_has_debit_by_dex(path.len() as u32),
+				None => <T as Config>::WeightInfo::close_loan_has_debit_by_dex_no_path(),
+			}
+		)]
 		#[transactional]
 		pub fn close_loan_has_debit_by_dex(
 			origin: OriginFor<T>,

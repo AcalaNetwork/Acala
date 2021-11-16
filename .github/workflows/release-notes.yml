@@ -1,7 +1,7 @@
 name: Release Notes
 
 env:
-  SUBWASM_VERSION: 0.14.1
+  SUBWASM_VERSION: 0.15.0
 
 on:
   workflow_dispatch:
@@ -16,7 +16,7 @@ on:
         required: true
       srtool_image:
         description: You can use an alternate image, use with caution!
-        default: paritytech/srtool:1.53.0
+        default: paritytech/srtool:1.56.1
         required: true
 
 jobs:
