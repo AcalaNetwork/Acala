@@ -78,3 +78,49 @@ fn transfer_to_relay_chain() {
 		);
 	});
 }
+
+#[test]
+fn relay_transact_to_para_call_transfer() {
+	env_logger::init();
+	Karura::execute_with(|| {
+		let _ = ParaBalances::deposit_creating(&AccountId::from(ALICE), 1000 * dollar(KAR));
+	});
+
+	let alice = Junctions::X1(Junction::AccountId32 {
+		network: NetworkId::Kusama,
+		id: ALICE,
+	});
+	let call = Call::Balances(pallet_balances::Call::<Runtime>::transfer {
+		dest: MultiAddress::Id(AccountId::from(BOB)),
+		value: 500 * dollar(KAR),
+	});
+	let assets: MultiAsset = (Parent, dollar(KSM)).into();
+
+	KusamaNet::execute_with(|| {
+		let xcm = vec![
+			WithdrawAsset(assets.clone().into()),
+			BuyExecution {
+				fees: assets,
+				weight_limit: Limited(dollar(KSM) as u64),
+			},
+			Transact {
+				origin_type: OriginKind::SovereignAccount,
+				require_weight_at_most: (dollar(KSM) as u64) / 10 as u64,
+				call: call.encode().into(),
+			},
+		];
+		assert_ok!(RelayChainPalletXcm::send_xcm(alice, Parachain(2000).into(), Xcm(xcm),));
+	});
+
+	Karura::execute_with(|| {
+		use {Event, System};
+		assert_eq!(9 * dollar(KAR), ParaTokens::free_balance(KSM, &AccountId::from(ALICE)));
+		assert_eq!(500 * dollar(KAR), ParaBalances::free_balance(&AccountId::from(ALICE)));
+		assert_eq!(500 * dollar(KAR), ParaBalances::free_balance(&AccountId::from(BOB)));
+		System::assert_has_event(Event::Balances(pallet_balances::Event::Transfer(
+			AccountId::from(ALICE),
+			AccountId::from(BOB),
+			500 * dollar(KAR),
+		)));
+	});
+}
