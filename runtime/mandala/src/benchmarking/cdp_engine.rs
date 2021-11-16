@@ -17,9 +17,10 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-	dollar, AccountId, Address, Amount, Balance, CdpEngine, CollateralCurrencyIds, CurrencyId,
-	DefaultDebitExchangeRate, Dex, EmergencyShutdown, ExistentialDeposits, GetStableCurrencyId, GetStakingCurrencyId,
-	MaxSwapSlippageCompareToOracle, MinimumDebitValue, Price, Rate, Ratio, Runtime, MILLISECS_PER_BLOCK,
+	dollar, AccountId, Address, Amount, Balance, CdpEngine, CdpTreasury, CollateralCurrencyIds, CurrencyId,
+	DefaultDebitExchangeRate, DefaultSwapParitalPathList, Dex, EmergencyShutdown, ExistentialDeposits,
+	GetLiquidCurrencyId, GetStableCurrencyId, GetStakingCurrencyId, MinimumDebitValue, Price, Rate, Ratio, Runtime,
+	Timestamp, MILLISECS_PER_BLOCK,
 };
 
 use super::utils::{feed_price, set_balance};
@@ -40,27 +41,27 @@ const SEED: u32 = 0;
 
 const STABLECOIN: CurrencyId = GetStableCurrencyId::get();
 const STAKING: CurrencyId = GetStakingCurrencyId::get();
+const LIQUID: CurrencyId = GetLiquidCurrencyId::get();
 
 fn inject_liquidity(
 	maker: AccountId,
-	currency_id: CurrencyId,
-	max_amount: Balance,
-	max_other_currency_amount: Balance,
+	currency_id_a: CurrencyId,
+	currency_id_b: CurrencyId,
+	amount_a: Balance,
+	amount_b: Balance,
 ) -> Result<(), &'static str> {
-	let base_currency_id = GetStableCurrencyId::get();
-
 	// set balance
-	set_balance(currency_id, &maker, max_other_currency_amount.unique_saturated_into());
-	set_balance(base_currency_id, &maker, max_amount.unique_saturated_into());
+	set_balance(currency_id_a, &maker, amount_a.unique_saturated_into());
+	set_balance(currency_id_b, &maker, amount_b.unique_saturated_into());
 
-	let _ = Dex::enable_trading_pair(RawOrigin::Root.into(), currency_id, base_currency_id);
+	let _ = Dex::enable_trading_pair(RawOrigin::Root.into(), currency_id_a, currency_id_b);
 
 	Dex::add_liquidity(
 		RawOrigin::Signed(maker.clone()).into(),
-		base_currency_id,
-		currency_id,
-		max_amount,
-		max_other_currency_amount,
+		currency_id_a,
+		currency_id_b,
+		amount_a,
+		amount_b,
 		Default::default(),
 		false,
 	)?;
@@ -111,19 +112,11 @@ runtime_benchmarks! {
 			// adjust position
 			CdpEngine::adjust_position(&owner, currency_id, collateral_amount.try_into().unwrap(), min_debit_amount)?;
 		}
-
-		// set timestamp by set storage, this is deprecated,
-		// replace it by following after https://github.com/paritytech/substrate/pull/8601 is available:
-		// Timestamp::set_timestamp(MILLISECS_PER_BLOCK);
-		pallet_timestamp::Now::<Runtime>::put(MILLISECS_PER_BLOCK);
+		Timestamp::set_timestamp(MILLISECS_PER_BLOCK);
 
 		CdpEngine::on_initialize(2);
 	}: {
-		// set timestamp by set storage, this is deprecated,
-		// replace it by following after https://github.com/paritytech/substrate/pull/8601 is available:
-		// Timestamp::set_timestamp(MILLISECS_PER_BLOCK * 2);
-		pallet_timestamp::Now::<Runtime>::put(MILLISECS_PER_BLOCK * 2);
-
+		Timestamp::set_timestamp(MILLISECS_PER_BLOCK * 2);
 		CdpEngine::on_initialize(3);
 	}
 
@@ -170,6 +163,8 @@ runtime_benchmarks! {
 			Change::NewValue(min_debit_value * 100),
 		)?;
 
+		// adjust auction size so we hit MaxAuctionCount
+		CdpTreasury::set_expected_collateral_auction_size(RawOrigin::Root.into(), STAKING, 1)?;
 		// adjust position
 		CdpEngine::adjust_position(&owner, STAKING, collateral_amount.try_into().unwrap(), min_debit_amount)?;
 
@@ -190,22 +185,24 @@ runtime_benchmarks! {
 		let owner: AccountId = account("owner", 0, SEED);
 		let owner_lookup = AccountIdLookup::unlookup(owner.clone());
 		let funder: AccountId = account("funder", 0, SEED);
+		let mut path: Vec<CurrencyId> = DefaultSwapParitalPathList::get().last().unwrap().clone();
 
 		let debit_value = 100 * dollar(STABLECOIN);
-		let debit_exchange_rate = CdpEngine::get_debit_exchange_rate(STAKING);
+		let debit_exchange_rate = CdpEngine::get_debit_exchange_rate(LIQUID);
 		let debit_amount = debit_exchange_rate.reciprocal().unwrap().saturating_mul_int(debit_value);
 		let debit_amount: Amount = debit_amount.unique_saturated_into();
 		let collateral_value = 2 * debit_value;
-		let collateral_amount = Price::saturating_from_rational(dollar(STAKING), dollar(STABLECOIN)).saturating_mul_int(collateral_value);
+		let collateral_amount = Price::saturating_from_rational(dollar(LIQUID), dollar(STABLECOIN)).saturating_mul_int(collateral_value);
 		let collateral_price = Price::one();		// 1 USD
-		let max_slippage_swap_with_dex = MaxSwapSlippageCompareToOracle::get();
-		let collateral_amount_in_dex = max_slippage_swap_with_dex.reciprocal().unwrap().saturating_mul_int(collateral_amount);
-		let base_amount_in_dex = max_slippage_swap_with_dex.reciprocal().unwrap().saturating_mul_int(debit_value * 2);
 
-		inject_liquidity(funder.clone(), STAKING, base_amount_in_dex, collateral_amount_in_dex)?;
+		path.insert(0, LIQUID);
+		for i in 0..path.len() {
+			if i != 0 {
+				inject_liquidity(funder.clone(), path[i], path[i-1], 10_000 * dollar(path[i]), 10_000 * dollar(path[i-1]))?;
+			}
+		}
 
-		// set balance
-		set_balance(STAKING, &owner, collateral_amount + ExistentialDeposits::get(&STAKING));
+		set_balance(LIQUID, &owner, (10 * collateral_amount) + ExistentialDeposits::get(&LIQUID));
 
 		// feed price
 		feed_price(vec![(STAKING, collateral_price)])?;
@@ -213,7 +210,7 @@ runtime_benchmarks! {
 		// set risk params
 		CdpEngine::set_collateral_params(
 			RawOrigin::Root.into(),
-			STAKING,
+			LIQUID,
 			Change::NoChange,
 			Change::NewValue(Some(Ratio::saturating_from_rational(150, 100))),
 			Change::NewValue(Some(Rate::saturating_from_rational(10, 100))),
@@ -222,23 +219,28 @@ runtime_benchmarks! {
 		)?;
 
 		// adjust position
-		CdpEngine::adjust_position(&owner, STAKING, collateral_amount.try_into().unwrap(), debit_amount)?;
+		CdpEngine::adjust_position(&owner, LIQUID, (10 * collateral_amount).try_into().unwrap(), debit_amount)?;
 
 		// modify liquidation rate to make the cdp unsafe
 		CdpEngine::set_collateral_params(
 			RawOrigin::Root.into(),
-			STAKING,
+			LIQUID,
 			Change::NoChange,
 			Change::NewValue(Some(Ratio::saturating_from_rational(1000, 100))),
 			Change::NoChange,
 			Change::NoChange,
 			Change::NoChange,
 		)?;
-	}: liquidate(RawOrigin::None, STAKING, owner_lookup)
+	}: liquidate(RawOrigin::None, LIQUID, owner_lookup)
 	verify {
-		let (other_currency_amount, base_currency_amount) = Dex::get_liquidity_pool(STAKING, STABLECOIN);
-		assert!(other_currency_amount > collateral_amount_in_dex);
-		assert!(base_currency_amount < base_amount_in_dex);
+		let (_, stable_amount) = Dex::get_liquidity_pool(STAKING, STABLECOIN);
+		let (_, stable_amount_mandala) = Dex::get_liquidity_pool(LIQUID, STABLECOIN);
+		// paths of karura and acala are LIQUID => STAKING => STABLECOIN
+		#[cfg(any(feature = "with-karura-runtime", feature = "with-acala-runtime"))]
+		assert!(stable_amount < 10_000 * dollar(STABLECOIN));
+		// path of mandala is LIQUID => STABLECOIN
+		#[cfg(feature = "with-mandala-runtime")]
+		assert!(stable_amount_mandala < 10_000 * dollar(STABLECOIN));
 	}
 
 	settle {
