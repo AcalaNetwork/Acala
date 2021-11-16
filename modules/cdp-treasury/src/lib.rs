@@ -36,6 +36,7 @@ use sp_runtime::{
 	traits::{AccountIdConversion, One, Zero},
 	ArithmeticError, DispatchError, DispatchResult, FixedPointNumber,
 };
+use sp_std::convert::TryInto;
 use support::{AuctionManager, CDPTreasury, CDPTreasuryExtended, DEXManager, Ratio};
 
 mod mock;
@@ -194,7 +195,7 @@ pub mod module {
 				Self::account_id(),
 				splited,
 			)?;
-			Ok(Some(T::WeightInfo::auction_collateral(created_auctions as u32)).into())
+			Ok(Some(T::WeightInfo::auction_collateral(created_auctions)).into())
 		}
 
 		/// Update parameters related to collateral auction under specific
@@ -399,7 +400,7 @@ impl<T: Config> CDPTreasuryExtended<T::AccountId> for Pallet<T> {
 		target: Balance,
 		refund_receiver: T::AccountId,
 		splited: bool,
-	) -> Result<u128, DispatchError> {
+	) -> Result<u32, DispatchError> {
 		ensure!(
 			Self::total_collaterals_not_in_auction(currency_id) >= amount,
 			Error::<T>::CollateralNotEnough,
@@ -451,7 +452,12 @@ impl<T: Config> CDPTreasuryExtended<T::AccountId> for Pallet<T> {
 			unhandled_collateral_amount = unhandled_collateral_amount.saturating_sub(lot_collateral_amount);
 			unhandled_target = unhandled_target.saturating_sub(lot_target);
 		}
-		Ok(created_lots)
+		let created_auctions: u32 = created_lots.try_into().map_err(|_| ArithmeticError::Overflow)?;
+		Ok(created_auctions)
+	}
+
+	fn max_auction() -> u32 {
+		T::MaxAuctionsCount::get()
 	}
 }
 

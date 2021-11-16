@@ -275,7 +275,9 @@ pub trait CDPTreasuryExtended<AccountId>: CDPTreasury<AccountId> {
 		target: Self::Balance,
 		refund_receiver: AccountId,
 		splited: bool,
-	) -> sp_std::result::Result<u128, DispatchError>;
+	) -> sp_std::result::Result<u32, DispatchError>;
+
+	fn max_auction() -> u32;
 }
 
 pub trait PriceProvider<CurrencyId> {

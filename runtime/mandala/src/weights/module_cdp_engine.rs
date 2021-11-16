@@ -65,7 +65,7 @@ impl<T: frame_system::Config> module_cdp_engine::WeightInfo for WeightInfo<T> {
 		(18_769_000 as Weight)
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
-	fn liquidate_by_auction() -> Weight {
+	fn liquidate_by_auction(_b: u32) -> Weight {
 		(3_060_628_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(23 as Weight))
 			.saturating_add(T::DbWeight::get().writes(313 as Weight))

@@ -19,8 +19,8 @@
 use crate::{
 	dollar, AccountId, Address, Amount, Balance, CdpEngine, CdpTreasury, CollateralCurrencyIds, CurrencyId,
 	DefaultDebitExchangeRate, DefaultSwapParitalPathList, Dex, EmergencyShutdown, ExistentialDeposits,
-	GetLiquidCurrencyId, GetStableCurrencyId, GetStakingCurrencyId, MinimumDebitValue, Price, Rate, Ratio, Runtime,
-	Timestamp, MILLISECS_PER_BLOCK,
+	GetLiquidCurrencyId, GetStableCurrencyId, GetStakingCurrencyId, MaxAuctionsCount, MinimumDebitValue, Price, Rate,
+	Ratio, Runtime, Timestamp, MILLISECS_PER_BLOCK,
 };
 
 use super::utils::{feed_price, set_balance};
@@ -136,6 +136,8 @@ runtime_benchmarks! {
 
 	// `liquidate` by_auction
 	liquidate_by_auction {
+		let b in 1 .. MaxAuctionsCount::get();
+
 		let owner: AccountId = account("owner", 0, SEED);
 		let owner_lookup = AccountIdLookup::unlookup(owner.clone());
 		let min_debit_value = MinimumDebitValue::get();
@@ -163,8 +165,9 @@ runtime_benchmarks! {
 			Change::NewValue(min_debit_value * 100),
 		)?;
 
+		let auction_size = collateral_amount / b as u128;
 		// adjust auction size so we hit MaxAuctionCount
-		CdpTreasury::set_expected_collateral_auction_size(RawOrigin::Root.into(), STAKING, 1)?;
+		CdpTreasury::set_expected_collateral_auction_size(RawOrigin::Root.into(), STAKING, auction_size)?;
 		// adjust position
 		CdpEngine::adjust_position(&owner, STAKING, collateral_amount.try_into().unwrap(), min_debit_amount)?;
 
