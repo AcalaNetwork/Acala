@@ -177,7 +177,7 @@ pub mod module {
 			Ok(())
 		}
 
-		#[pallet::weight(T::WeightInfo::auction_collateral())]
+		#[pallet::weight(T::WeightInfo::auction_collateral(10))]
 		#[transactional]
 		pub fn auction_collateral(
 			origin: OriginFor<T>,
@@ -185,16 +185,16 @@ pub mod module {
 			#[pallet::compact] amount: Balance,
 			#[pallet::compact] target: Balance,
 			splited: bool,
-		) -> DispatchResult {
+		) -> DispatchResultWithPostInfo {
 			T::UpdateOrigin::ensure_origin(origin)?;
-			<Self as CDPTreasuryExtended<T::AccountId>>::create_collateral_auctions(
+			let created_auctions = <Self as CDPTreasuryExtended<T::AccountId>>::create_collateral_auctions(
 				currency_id,
 				amount,
 				target,
 				Self::account_id(),
 				splited,
 			)?;
-			Ok(())
+			Ok(Some(T::WeightInfo::auction_collateral(created_auctions as u32)).into())
 		}
 
 		/// Update parameters related to collateral auction under specific
@@ -399,7 +399,7 @@ impl<T: Config> CDPTreasuryExtended<T::AccountId> for Pallet<T> {
 		target: Balance,
 		refund_receiver: T::AccountId,
 		splited: bool,
-	) -> DispatchResult {
+	) -> Result<u128, DispatchError> {
 		ensure!(
 			Self::total_collaterals_not_in_auction(currency_id) >= amount,
 			Error::<T>::CollateralNotEnough,
@@ -451,7 +451,7 @@ impl<T: Config> CDPTreasuryExtended<T::AccountId> for Pallet<T> {
 			unhandled_collateral_amount = unhandled_collateral_amount.saturating_sub(lot_collateral_amount);
 			unhandled_target = unhandled_target.saturating_sub(lot_target);
 		}
-		Ok(())
+		Ok(created_lots)
 	}
 }
 
