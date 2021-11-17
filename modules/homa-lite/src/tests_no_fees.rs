@@ -263,3 +263,39 @@ fn redeem_with_available_staking_does_not_change_exchange_rate() {
 		assert_eq!(Currencies::reserved_balance(LKSM, &DAVE), 0);
 	});
 }
+
+#[test]
+fn mint_and_redeem_at_the_same_time_does_not_change_exchange_rate() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(HomaLite::set_total_staking_currency(
+			Origin::root(),
+			Currencies::total_issuance(LKSM) / 10
+		));
+		assert_ok!(HomaLite::set_minting_cap(Origin::root(), dollar(1_000_000)));
+		assert_ok!(HomaLite::adjust_available_staking_balance(
+			Origin::root(),
+			dollar(5_000) as i128,
+			0
+		));
+
+		let exchange_rate = HomaLite::get_exchange_rate();
+
+		// The first 50 redeems are done using available_staking_balance.
+		// The next 50 redeems are matched with mint.
+		for _ in 0..100 {
+			assert_ok!(HomaLite::request_redeem(
+				Origin::signed(DAVE),
+				dollar(1000),
+				Permill::zero()
+			));
+			assert_ok!(HomaLite::mint(Origin::signed(ALICE), dollar(100)));
+			assert_eq!(exchange_rate, HomaLite::get_exchange_rate());
+		}
+
+		assert_eq!(Currencies::free_balance(KSM, &ALICE), dollar(990_000));
+		assert_eq!(Currencies::free_balance(LKSM, &ALICE), dollar(100_000));
+
+		assert_eq!(Currencies::free_balance(KSM, &DAVE), dollar(10_000));
+		assert_eq!(Currencies::free_balance(LKSM, &DAVE), dollar(900_000));
+	});
+}
