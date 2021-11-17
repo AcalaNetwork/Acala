@@ -50,7 +50,7 @@ pub trait WeightInfo {
 	fn on_initialize(c: u32) -> Weight;
 	fn set_collateral_params() -> Weight;
 	fn set_global_params() -> Weight;
-	fn liquidate_by_auction() -> Weight;
+	fn liquidate_by_auction(b: u32) -> Weight;
 	fn liquidate_by_dex() -> Weight;
 	fn settle() -> Weight;
 }
@@ -73,7 +73,7 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 		(11_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
-	fn liquidate_by_auction() -> Weight {
+	fn liquidate_by_auction(_b: u32) -> Weight {
 		(203_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(28 as Weight))
 			.saturating_add(T::DbWeight::get().writes(17 as Weight))
@@ -107,7 +107,7 @@ impl WeightInfo for () {
 		(11_000_000 as Weight)
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
-	fn liquidate_by_auction() -> Weight {
+	fn liquidate_by_auction(_b: u32) -> Weight {
 		(203_000_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(28 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(17 as Weight))
