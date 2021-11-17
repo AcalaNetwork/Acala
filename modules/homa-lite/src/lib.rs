@@ -476,6 +476,7 @@ pub mod module {
 				Error::<T>::AmountBelowMinimumThreshold
 			);
 
+			// Deduct base withdraw fee and add the redeem request to the queue.
 			let _ = RedeemRequests::<T>::try_mutate(&who, |request| -> DispatchResult {
 				let old_amount = request.take().map(|(amount, _)| amount).unwrap_or_default();
 
@@ -491,6 +492,7 @@ pub mod module {
 				// Deduct BaseWithdrawFee from the liquid amount.
 				let liquid_amount = liquid_amount.saturating_sub(base_withdraw_fee);
 
+				// Reserve/unreserve the difference amount.
 				match liquid_amount.cmp(&old_amount) {
 					// Lock more liquid currency.
 					Ordering::Greater => T::Currency::reserve(
@@ -510,6 +512,7 @@ pub mod module {
 					_ => Ok(()),
 				}?;
 
+				// Set the new amount into storage.
 				*request = Some((liquid_amount, additional_fee));
 
 				Self::deposit_event(Event::<T>::RedeemRequested(

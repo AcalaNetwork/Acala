@@ -187,10 +187,11 @@ fn mint_with_redeem_does_not_change_exchange_rate() {
 		assert_eq!(Currencies::free_balance(LKSM, &DAVE), 0);
 		assert_eq!(Currencies::reserved_balance(LKSM, &DAVE), dollar(500_000));
 
+		// Add redeem with 50% extra reward.
 		assert_ok!(HomaLite::request_redeem(
 			Origin::signed(ALICE),
 			dollar(500_000),
-			Permill::zero()
+			Permill::from_percent(50)
 		));
 
 		for _ in 0..100 {
@@ -198,10 +199,12 @@ fn mint_with_redeem_does_not_change_exchange_rate() {
 			assert_eq!(exchange_rate, HomaLite::get_exchange_rate());
 		}
 
-		assert_eq!(Currencies::free_balance(KSM, &ALICE), dollar(1_000_000));
+		// 950_000 + 50_000 * 50%, since the other 50% went to the minter as rewards.
+		assert_eq!(Currencies::free_balance(KSM, &ALICE), dollar(975_000));
 		assert_eq!(Currencies::free_balance(LKSM, &ALICE), 0);
 
-		assert_eq!(Currencies::free_balance(KSM, &BOB), dollar(900_000));
+		// Got 25_000 extra as extra rewards
+		assert_eq!(Currencies::free_balance(KSM, &BOB), dollar(925_000));
 		assert_eq!(Currencies::free_balance(LKSM, &BOB), dollar(1_000_000));
 
 		assert_eq!(Currencies::free_balance(KSM, &DAVE), dollar(100_000));

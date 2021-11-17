@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-//! Mocks for the Starport module.
+//! Mocks for the HomaLite module.
 
 #![cfg(test)]
 
