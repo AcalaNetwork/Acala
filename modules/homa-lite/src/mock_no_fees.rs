@@ -283,6 +283,7 @@ pub struct ExtBuilder {
 	native_balances: Vec<(AccountId, Balance)>,
 }
 
+#[allow(dead_code)]
 impl ExtBuilder {
 	pub fn empty() -> Self {
 		Self {
