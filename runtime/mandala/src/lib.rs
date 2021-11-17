@@ -1785,7 +1785,9 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 			return Some(Token(DOT));
 		}
 
-		XcmForeignAssetIdMapping::<Runtime>::get_currency_id(location.clone()).map(|v| return v);
+		if let Some(currency_id) = XcmForeignAssetIdMapping::<Runtime>::get_currency_id(location.clone()) {
+			return Some(currency_id);
+		}
 
 		match location {
 			MultiLocation {

@@ -526,6 +526,6 @@ impl<T: Config> CurrencyIdMapping for EvmCurrencyIdMapping<T> {
 		};
 
 		// Make sure that every bit of the address is the same
-		Self::encode_evm_address(currency_id?).map_or(None, |encoded| if encoded == addr { currency_id } else { None })
+		Self::encode_evm_address(currency_id?).and_then(|encoded| if encoded == addr { currency_id } else { None })
 	}
 }

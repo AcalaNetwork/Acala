@@ -17,7 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-	currency::{CurrencyId, CurrencyIdType, DexShareType, ForeignAssetId, Lease},
+	currency::{CurrencyId, CurrencyIdType, DexShareType},
 	Balance, BlockNumber, Nonce,
 };
 use codec::{Decode, Encode};
@@ -191,14 +191,12 @@ impl TryFrom<CurrencyId> for EvmAddress {
 				return Err(());
 			}
 			CurrencyId::LiquidCroadloan(lease) => {
-				let id: Lease = lease;
 				address[H160_POSITION_CURRENCY_ID_TYPE] = CurrencyIdType::LiquidCroadloan.into();
-				address[H160_POSITION_LIQUID_CROADLOAN].copy_from_slice(&id.to_be_bytes());
+				address[H160_POSITION_LIQUID_CROADLOAN].copy_from_slice(&lease.to_be_bytes());
 			}
 			CurrencyId::ForeignAsset(foreign_asset_id) => {
-				let id: ForeignAssetId = foreign_asset_id;
 				address[H160_POSITION_CURRENCY_ID_TYPE] = CurrencyIdType::ForeignAsset.into();
-				address[H160_POSITION_FOREIGN_ASSET].copy_from_slice(&id.to_be_bytes());
+				address[H160_POSITION_FOREIGN_ASSET].copy_from_slice(&foreign_asset_id.to_be_bytes());
 			}
 		};
 

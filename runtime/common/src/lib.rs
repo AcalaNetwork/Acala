@@ -141,7 +141,7 @@ impl<AccountId> Contains<AccountId> for DummyNomineeFilter {
 
 // TODO: make those const fn
 pub fn dollar(currency_id: CurrencyId) -> Balance {
-	10u128.saturating_pow(currency_id.decimals().expect("Not support Erc20 decimals").into())
+	10u128.saturating_pow(currency_id.decimals().expect("Not support Non-Token decimals").into())
 }
 
 pub fn cent(currency_id: CurrencyId) -> Balance {
