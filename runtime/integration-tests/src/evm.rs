@@ -20,8 +20,7 @@ use crate::setup::*;
 
 use frame_support::assert_ok;
 use module_evm_accounts::EvmAddressMapping;
-use module_support::CurrencyIdMapping;
-use module_support::{EVMBridge as EVMBridgeT, EVM as EVMTrait};
+use module_support::{EVMBridge as EVMBridgeT, Erc20InfoMapping, EVM as EVMTrait};
 use primitives::evm::EvmAddress;
 use sp_core::{bytes::from_hex, H256};
 use std::str::FromStr;
@@ -32,7 +31,7 @@ use acala_runtime::{EVMBridge, EVM};
 use karura_runtime::{EVMBridge, EVM};
 #[cfg(feature = "with-mandala-runtime")]
 use mandala_runtime::{EVMBridge, EVM};
-use module_asset_registry::EvmCurrencyIdMapping;
+use module_asset_registry::EvmErc20InfoMapping;
 
 pub fn erc20_address_0() -> EvmAddress {
 	EvmAddress::from_str("0x5e0b4bfa0b55932a3587e648c3552a6515ba56b1").unwrap()
@@ -55,7 +54,7 @@ pub fn lp_erc20() -> CurrencyId {
 }
 
 pub fn lp_erc20_evm_address() -> EvmAddress {
-	EvmCurrencyIdMapping::<Runtime>::encode_evm_address(lp_erc20()).unwrap()
+	EvmErc20InfoMapping::<Runtime>::encode_evm_address(lp_erc20()).unwrap()
 }
 
 pub fn deploy_erc20_contracts() {

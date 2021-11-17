@@ -29,7 +29,7 @@ use frame_support::{
 	},
 };
 use module_evm::{Context, ExitError, ExitSucceed, Precompile};
-use module_support::{AddressMapping as AddressMappingT, CurrencyIdMapping as CurrencyIdMappingT, TransactionPayment};
+use module_support::{AddressMapping as AddressMappingT, Erc20InfoMapping as Erc20InfoMappingT, TransactionPayment};
 use primitives::{Balance, BlockNumber};
 use sp_core::H160;
 use sp_runtime::RuntimeDebug;
@@ -64,7 +64,7 @@ pub struct TaskInfo {
 pub struct ScheduleCallPrecompile<
 	AccountId,
 	AddressMapping,
-	CurrencyIdMapping,
+	Erc20InfoMapping,
 	Scheduler,
 	ChargeTransactionPayment,
 	Call,
@@ -75,7 +75,7 @@ pub struct ScheduleCallPrecompile<
 	PhantomData<(
 		AccountId,
 		AddressMapping,
-		CurrencyIdMapping,
+		Erc20InfoMapping,
 		Scheduler,
 		ChargeTransactionPayment,
 		Call,
@@ -102,7 +102,7 @@ type NegativeImbalanceOf<T> =
 impl<
 		AccountId,
 		AddressMapping,
-		CurrencyIdMapping,
+		Erc20InfoMapping,
 		Scheduler,
 		ChargeTransactionPayment,
 		Call,
@@ -113,7 +113,7 @@ impl<
 	for ScheduleCallPrecompile<
 		AccountId,
 		AddressMapping,
-		CurrencyIdMapping,
+		Erc20InfoMapping,
 		Scheduler,
 		ChargeTransactionPayment,
 		Call,
@@ -123,7 +123,7 @@ impl<
 	> where
 	AccountId: Debug + Clone,
 	AddressMapping: AddressMappingT<AccountId>,
-	CurrencyIdMapping: CurrencyIdMappingT,
+	Erc20InfoMapping: Erc20InfoMappingT,
 	Scheduler: ScheduleNamed<BlockNumber, Call, PalletsOrigin, Address = TaskAddress<BlockNumber>>,
 	ChargeTransactionPayment: TransactionPayment<AccountId, PalletBalanceOf<Runtime>, NegativeImbalanceOf<Runtime>>,
 	Call: Dispatchable<Origin = Origin> + Debug + From<module_evm::Call<Runtime>>,
@@ -138,7 +138,7 @@ impl<
 		_target_gas: Option<u64>,
 		_context: &Context,
 	) -> result::Result<PrecompileOutput, ExitError> {
-		let input = Input::<Action, AccountId, AddressMapping, CurrencyIdMapping>::new(input);
+		let input = Input::<Action, AccountId, AddressMapping, Erc20InfoMapping>::new(input);
 
 		let action = input.action()?;
 

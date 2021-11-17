@@ -515,7 +515,7 @@ pub trait ForeignAssetIdMapping<ForeignAssetId, MultiLocation, AssetMetadata> {
 
 /// A mapping between u32 and Erc20 address.
 /// provide a way to encode/decode for CurrencyId;
-pub trait CurrencyIdMapping {
+pub trait Erc20InfoMapping {
 	/// Use first 4 non-zero bytes as u32 to the mapping between u32 and evm
 	/// address.
 	fn set_erc20_mapping(address: EvmAddress) -> DispatchResult;
@@ -544,7 +544,7 @@ pub trait CurrencyIdMapping {
 }
 
 #[cfg(feature = "std")]
-impl CurrencyIdMapping for () {
+impl Erc20InfoMapping for () {
 	fn set_erc20_mapping(_address: EvmAddress) -> DispatchResult {
 		Err(DispatchError::Other("unimplemented CurrencyIdMapping"))
 	}

@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AddressMapping, CurrencyId, CurrencyIdMapping};
+use crate::{AddressMapping, CurrencyId, Erc20InfoMapping};
 use codec::Encode;
 use frame_support::pallet_prelude::DispatchResult;
 use primitives::{
@@ -66,9 +66,9 @@ impl AddressMapping<AccountId32> for MockAddressMapping {
 	}
 }
 
-pub struct MockCurrencyIdMapping;
+pub struct MockErc20InfoMapping;
 
-impl CurrencyIdMapping for MockCurrencyIdMapping {
+impl Erc20InfoMapping for MockErc20InfoMapping {
 	fn set_erc20_mapping(_address: EvmAddress) -> DispatchResult {
 		Ok(())
 	}

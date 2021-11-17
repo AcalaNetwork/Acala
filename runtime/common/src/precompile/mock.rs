@@ -359,7 +359,7 @@ impl module_dex::Config for Test {
 	type GetExchangeFee = GetExchangeFee;
 	type TradingPathLimit = TradingPathLimit;
 	type PalletId = DEXPalletId;
-	type CurrencyIdMapping = EvmCurrencyIdMapping;
+	type Erc20InfoMapping = EvmErc20InfoMapping;
 	type WeightInfo = ();
 	type DEXIncentives = MockDEXIncentives;
 	type ListingOrigin = EnsureSignedBy<ListingOrigin, AccountId>;
@@ -367,23 +367,23 @@ impl module_dex::Config for Test {
 
 pub type AdaptedBasicCurrency = module_currencies::BasicCurrencyAdapter<Test, Balances, Amount, BlockNumber>;
 
-pub type EvmCurrencyIdMapping = module_asset_registry::EvmCurrencyIdMapping<Test>;
+pub type EvmErc20InfoMapping = module_asset_registry::EvmErc20InfoMapping<Test>;
 pub type MultiCurrencyPrecompile =
-	crate::MultiCurrencyPrecompile<AccountId, MockAddressMapping, EvmCurrencyIdMapping, Currencies>;
+	crate::MultiCurrencyPrecompile<AccountId, MockAddressMapping, EvmErc20InfoMapping, Currencies>;
 
-pub type NFTPrecompile = crate::NFTPrecompile<AccountId, MockAddressMapping, EvmCurrencyIdMapping, NFTModule>;
+pub type NFTPrecompile = crate::NFTPrecompile<AccountId, MockAddressMapping, EvmErc20InfoMapping, NFTModule>;
 pub type StateRentPrecompile =
-	crate::StateRentPrecompile<AccountId, MockAddressMapping, EvmCurrencyIdMapping, EVMModule>;
+	crate::StateRentPrecompile<AccountId, MockAddressMapping, EvmErc20InfoMapping, EVMModule>;
 pub type OraclePrecompile = crate::OraclePrecompile<
 	AccountId,
 	MockAddressMapping,
-	EvmCurrencyIdMapping,
+	EvmErc20InfoMapping,
 	module_prices::PriorityLockedPriceProvider<Test>,
 >;
 pub type ScheduleCallPrecompile = crate::ScheduleCallPrecompile<
 	AccountId,
 	MockAddressMapping,
-	EvmCurrencyIdMapping,
+	EvmErc20InfoMapping,
 	Scheduler,
 	ChargeTransactionPayment,
 	Call,
@@ -391,7 +391,7 @@ pub type ScheduleCallPrecompile = crate::ScheduleCallPrecompile<
 	OriginCaller,
 	Test,
 >;
-pub type DexPrecompile = crate::DexPrecompile<AccountId, MockAddressMapping, EvmCurrencyIdMapping, DexModule>;
+pub type DexPrecompile = crate::DexPrecompile<AccountId, MockAddressMapping, EvmErc20InfoMapping, DexModule>;
 
 parameter_types! {
 	pub NetworkContractSource: H160 = alice_evm_addr();
@@ -475,7 +475,7 @@ impl module_prices::Config for Test {
 	type LiquidStakingExchangeRateProvider = MockLiquidStakingExchangeProvider;
 	type DEX = DexModule;
 	type Currency = Currencies;
-	type CurrencyIdMapping = EvmCurrencyIdMapping;
+	type Erc20InfoMapping = EvmErc20InfoMapping;
 	type WeightInfo = ();
 }
 

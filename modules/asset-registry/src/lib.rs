@@ -18,7 +18,7 @@
 
 //! # Asset Registry Module
 //!
-//! Allow to support foreign asset without runtime upgrade
+//! Local and foreign assets management. The foreign assets can be updated without runtime upgrade.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
@@ -32,7 +32,7 @@ use frame_support::{
 	transactional, RuntimeDebug,
 };
 use frame_system::pallet_prelude::*;
-use module_support::{CurrencyIdMapping, EVMBridge, ForeignAssetIdMapping, InvokeContext};
+use module_support::{EVMBridge, Erc20InfoMapping, ForeignAssetIdMapping, InvokeContext};
 use primitives::{
 	currency::{CurrencyIdType, DexShare, DexShareType, ForeignAssetId, Lease, TokenInfo, TokenSymbol},
 	evm::{
@@ -49,6 +49,9 @@ use sp_std::{
 	convert::{TryFrom, TryInto},
 	vec::Vec,
 };
+
+// NOTE:v1::MultiLocation is used in storages, we would need to do migration if upgrade the
+// MultiLocation in the future.
 use xcm::{v1::MultiLocation, VersionedMultiLocation};
 
 mod mock;
@@ -107,10 +110,10 @@ pub mod module {
 	#[pallet::event]
 	#[pallet::generate_deposit(fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// Registered foreign asset. \[ForeignAssetId, AssetMetadata\]
-		RegisteredForeignAsset(ForeignAssetId, MultiLocation, AssetMetadata<BalanceOf<T>>),
-		/// Updated foreign asset. \[AssetMetadata\]
-		UpdatedForeignAsset(MultiLocation, AssetMetadata<BalanceOf<T>>),
+		/// The foreign asset registered. \[ForeignAssetId, AssetMetadata\]
+		ForeignAssetRegistered(ForeignAssetId, MultiLocation, AssetMetadata<BalanceOf<T>>),
+		/// The foreign asset updated. \[AssetMetadata\]
+		ForeignAssetUpdated(MultiLocation, AssetMetadata<BalanceOf<T>>),
 	}
 
 	/// Next available Foreign AssetId ID.
@@ -122,17 +125,17 @@ pub mod module {
 
 	/// The storages for MultiLocations.
 	///
-	/// MultiLocations: map ForeignAssetId => Option<MultiLocation>
+	/// ForeignAssetLocations: map ForeignAssetId => Option<MultiLocation>
 	#[pallet::storage]
-	#[pallet::getter(fn multi_locations)]
-	pub type MultiLocations<T: Config> = StorageMap<_, Twox64Concat, ForeignAssetId, MultiLocation, OptionQuery>;
+	#[pallet::getter(fn foreign_asset_locations)]
+	pub type ForeignAssetLocations<T: Config> = StorageMap<_, Twox64Concat, ForeignAssetId, MultiLocation, OptionQuery>;
 
 	/// The storages for CurrencyIds.
 	///
-	/// MultiLocations: map MultiLocation => Option<CurrencyId>
+	/// LocationToCurrencyIds: map MultiLocation => Option<CurrencyId>
 	#[pallet::storage]
-	#[pallet::getter(fn currency_ids)]
-	pub type CurrencyIds<T: Config> = StorageMap<_, Twox64Concat, MultiLocation, CurrencyId, OptionQuery>;
+	#[pallet::getter(fn location_to_currency_ids)]
+	pub type LocationToCurrencyIds<T: Config> = StorageMap<_, Twox64Concat, MultiLocation, CurrencyId, OptionQuery>;
 
 	/// The storages for AssetMetadatas.
 	///
@@ -149,7 +152,7 @@ pub mod module {
 	/// map u32 => Option<Erc20Info>
 	#[pallet::storage]
 	#[pallet::getter(fn currency_id_map)]
-	pub type CurrencyIdMap<T: Config> = StorageMap<_, Twox64Concat, u32, Erc20Info, OptionQuery>;
+	pub type Erc20InfoMap<T: Config> = StorageMap<_, Twox64Concat, u32, Erc20Info, OptionQuery>;
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
@@ -168,7 +171,7 @@ pub mod module {
 			let location: MultiLocation = (*location).try_into().map_err(|()| Error::<T>::BadLocation)?;
 			let foreign_asset_id = Self::do_register_foreign_asset(&location, &metadata)?;
 
-			Self::deposit_event(Event::<T>::RegisteredForeignAsset(
+			Self::deposit_event(Event::<T>::ForeignAssetRegistered(
 				foreign_asset_id,
 				location,
 				*metadata,
@@ -189,7 +192,7 @@ pub mod module {
 			let location: MultiLocation = (*location).try_into().map_err(|()| Error::<T>::BadLocation)?;
 			Self::do_update_foreign_asset(foreign_asset_id, &location, &metadata)?;
 
-			Self::deposit_event(Event::<T>::UpdatedForeignAsset(location, *metadata));
+			Self::deposit_event(Event::<T>::ForeignAssetUpdated(location, *metadata));
 			Ok(())
 		}
 	}
@@ -197,7 +200,7 @@ pub mod module {
 
 impl<T: Config> Pallet<T> {
 	fn get_next_foreign_asset_id() -> Result<ForeignAssetId, DispatchError> {
-		NextForeignAssetId::<T>::mutate(|current| -> Result<ForeignAssetId, DispatchError> {
+		NextForeignAssetId::<T>::try_mutate(|current| -> Result<ForeignAssetId, DispatchError> {
 			let id = *current;
 			*current = current.checked_add(One::one()).ok_or(ArithmeticError::Overflow)?;
 			Ok(id)
@@ -209,12 +212,12 @@ impl<T: Config> Pallet<T> {
 		metadata: &AssetMetadata<BalanceOf<T>>,
 	) -> Result<ForeignAssetId, DispatchError> {
 		let id = Self::get_next_foreign_asset_id()?;
-		CurrencyIds::<T>::try_mutate(location, |maybe_currency_ids| -> DispatchResult {
+		LocationToCurrencyIds::<T>::try_mutate(location, |maybe_currency_ids| -> DispatchResult {
 			ensure!(maybe_currency_ids.is_none(), Error::<T>::MultiLocationExisted);
 			*maybe_currency_ids = Some(CurrencyId::ForeignAsset(id));
 			Ok(())
 		})?;
-		MultiLocations::<T>::insert(id, location);
+		ForeignAssetLocations::<T>::insert(id, location);
 		AssetMetadatas::<T>::insert(id, metadata);
 
 		Ok(id)
@@ -225,18 +228,18 @@ impl<T: Config> Pallet<T> {
 		location: &MultiLocation,
 		metadata: &AssetMetadata<BalanceOf<T>>,
 	) -> DispatchResult {
-		MultiLocations::<T>::mutate(foreign_asset_id, |maybe_multi_locations| -> DispatchResult {
+		ForeignAssetLocations::<T>::try_mutate(foreign_asset_id, |maybe_multi_locations| -> DispatchResult {
 			let old_multi_locations = maybe_multi_locations
 				.as_mut()
 				.ok_or(Error::<T>::ForeignAssetIdNotExists)?;
 
-			AssetMetadatas::<T>::mutate(foreign_asset_id, |maybe_asset_metadatas| -> DispatchResult {
+			AssetMetadatas::<T>::try_mutate(foreign_asset_id, |maybe_asset_metadatas| -> DispatchResult {
 				ensure!(maybe_asset_metadatas.is_some(), Error::<T>::ForeignAssetIdNotExists);
 
 				// modify location
 				if location != old_multi_locations {
-					CurrencyIds::<T>::remove(old_multi_locations.clone());
-					CurrencyIds::<T>::try_mutate(location, |maybe_currency_ids| -> DispatchResult {
+					LocationToCurrencyIds::<T>::remove(old_multi_locations.clone());
+					LocationToCurrencyIds::<T>::try_mutate(location, |maybe_currency_ids| -> DispatchResult {
 						ensure!(maybe_currency_ids.is_none(), Error::<T>::MultiLocationExisted);
 						*maybe_currency_ids = Some(CurrencyId::ForeignAsset(foreign_asset_id));
 						Ok(())
@@ -250,7 +253,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	fn get_erc20_mapping(address: EvmAddress) -> Option<Erc20Info> {
-		CurrencyIdMap::<T>::get(Into::<u32>::into(DexShare::Erc20(address))).filter(|v| v.address == address)
+		Erc20InfoMap::<T>::get(Into::<u32>::into(DexShare::Erc20(address))).filter(|v| v.address == address)
 	}
 }
 
@@ -264,22 +267,22 @@ impl<T: Config> ForeignAssetIdMapping<ForeignAssetId, MultiLocation, AssetMetada
 	}
 
 	fn get_multi_location(foreign_asset_id: ForeignAssetId) -> Option<MultiLocation> {
-		Pallet::<T>::multi_locations(foreign_asset_id)
+		Pallet::<T>::foreign_asset_locations(foreign_asset_id)
 	}
 
 	fn get_currency_id(multi_location: MultiLocation) -> Option<CurrencyId> {
-		Pallet::<T>::currency_ids(multi_location)
+		Pallet::<T>::location_to_currency_ids(multi_location)
 	}
 }
 
-pub struct EvmCurrencyIdMapping<T>(sp_std::marker::PhantomData<T>);
+pub struct EvmErc20InfoMapping<T>(sp_std::marker::PhantomData<T>);
 
-impl<T: Config> CurrencyIdMapping for EvmCurrencyIdMapping<T> {
+impl<T: Config> Erc20InfoMapping for EvmErc20InfoMapping<T> {
 	// Use first 4 non-zero bytes as u32 to the mapping between u32 and evm address.
 	// Take the first 4 non-zero bytes, if it is less than 4, add 0 to the left.
 	#[require_transactional]
 	fn set_erc20_mapping(address: EvmAddress) -> DispatchResult {
-		CurrencyIdMap::<T>::mutate(
+		Erc20InfoMap::<T>::try_mutate(
 			Into::<u32>::into(DexShare::Erc20(address)),
 			|maybe_erc20_info| -> DispatchResult {
 				if let Some(erc20_info) = maybe_erc20_info.as_mut() {
@@ -308,7 +311,7 @@ impl<T: Config> CurrencyIdMapping for EvmCurrencyIdMapping<T> {
 
 	// Returns the EvmAddress associated with a given u32.
 	fn get_evm_address(currency_id: u32) -> Option<EvmAddress> {
-		CurrencyIdMap::<T>::get(currency_id).map(|v| v.address)
+		Erc20InfoMap::<T>::get(currency_id).map(|v| v.address)
 	}
 
 	// Returns the name associated with a given CurrencyId.
@@ -478,7 +481,7 @@ impl<T: Config> CurrencyIdMapping for EvmCurrencyIdMapping<T> {
 						.ok(),
 					DexShareType::Erc20 => {
 						let id = u32::from_be_bytes(address[H160_POSITION_DEXSHARE_LEFT_FIELD].try_into().ok()?);
-						CurrencyIdMap::<T>::get(id).map(|v| DexShare::Erc20(v.address))
+						Erc20InfoMap::<T>::get(id).map(|v| DexShare::Erc20(v.address))
 					}
 					DexShareType::LiquidCroadloan => {
 						let id = Lease::from_be_bytes(address[H160_POSITION_DEXSHARE_LEFT_FIELD].try_into().ok()?);
@@ -498,7 +501,7 @@ impl<T: Config> CurrencyIdMapping for EvmCurrencyIdMapping<T> {
 						.ok(),
 					DexShareType::Erc20 => {
 						let id = u32::from_be_bytes(address[H160_POSITION_DEXSHARE_RIGHT_FIELD].try_into().ok()?);
-						CurrencyIdMap::<T>::get(id).map(|v| DexShare::Erc20(v.address))
+						Erc20InfoMap::<T>::get(id).map(|v| DexShare::Erc20(v.address))
 					}
 					DexShareType::LiquidCroadloan => {
 						let id = Lease::from_be_bytes(address[H160_POSITION_DEXSHARE_RIGHT_FIELD].try_into().ok()?);

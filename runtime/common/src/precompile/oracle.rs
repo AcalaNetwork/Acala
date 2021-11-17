@@ -26,7 +26,7 @@ use sp_std::{fmt::Debug, marker::PhantomData, prelude::*, result};
 
 use super::input::{Input, InputT, Output};
 use module_support::{
-	AddressMapping as AddressMappingT, CurrencyIdMapping as CurrencyIdMappingT, PriceProvider as PriceProviderT,
+	AddressMapping as AddressMappingT, Erc20InfoMapping as Erc20InfoMappingT, PriceProvider as PriceProviderT,
 };
 
 /// The `Oracle` impl precompile.
@@ -36,8 +36,8 @@ use module_support::{
 ///
 /// Actions:
 /// - Get price. Rest `input` bytes: `currency_id`.
-pub struct OraclePrecompile<AccountId, AddressMapping, CurrencyIdMapping, PriceProvider>(
-	PhantomData<(AccountId, AddressMapping, CurrencyIdMapping, PriceProvider)>,
+pub struct OraclePrecompile<AccountId, AddressMapping, Erc20InfoMapping, PriceProvider>(
+	PhantomData<(AccountId, AddressMapping, Erc20InfoMapping, PriceProvider)>,
 );
 
 #[module_evm_utiltity_macro::generate_function_selector]
@@ -47,12 +47,12 @@ pub enum Action {
 	GetPrice = "getPrice(address)",
 }
 
-impl<AccountId, AddressMapping, CurrencyIdMapping, PriceProvider> Precompile
-	for OraclePrecompile<AccountId, AddressMapping, CurrencyIdMapping, PriceProvider>
+impl<AccountId, AddressMapping, Erc20InfoMapping, PriceProvider> Precompile
+	for OraclePrecompile<AccountId, AddressMapping, Erc20InfoMapping, PriceProvider>
 where
 	AccountId: Debug + Clone,
 	AddressMapping: AddressMappingT<AccountId>,
-	CurrencyIdMapping: CurrencyIdMappingT,
+	Erc20InfoMapping: Erc20InfoMappingT,
 	PriceProvider: PriceProviderT<CurrencyId>,
 {
 	fn execute(
@@ -60,7 +60,7 @@ where
 		_target_gas: Option<u64>,
 		_context: &Context,
 	) -> result::Result<PrecompileOutput, ExitError> {
-		let input = Input::<Action, AccountId, AddressMapping, CurrencyIdMapping>::new(input);
+		let input = Input::<Action, AccountId, AddressMapping, Erc20InfoMapping>::new(input);
 
 		let action = input.action()?;
 
@@ -69,7 +69,7 @@ where
 				let currency_id = input.currency_id_at(1)?;
 				let mut price = PriceProvider::get_price(currency_id).unwrap_or_default();
 
-				let maybe_decimals = CurrencyIdMapping::decimals(currency_id);
+				let maybe_decimals = Erc20InfoMapping::decimals(currency_id);
 				let decimals = match maybe_decimals {
 					Some(decimals) => decimals,
 					None => {

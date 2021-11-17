@@ -23,7 +23,7 @@ use num_enum::{IntoPrimitive, TryFromPrimitive};
 use sp_runtime::RuntimeDebug;
 use sp_std::{borrow::Cow, fmt::Debug, marker::PhantomData, prelude::*, result};
 
-use module_support::{AddressMapping as AddressMappingT, CurrencyIdMapping as CurrencyIdMappingT, EVMStateRentTrait};
+use module_support::{AddressMapping as AddressMappingT, EVMStateRentTrait, Erc20InfoMapping as Erc20InfoMappingT};
 
 use super::input::{Input, InputT, Output};
 use primitives::Balance;
@@ -39,8 +39,8 @@ use primitives::Balance;
 /// - QueryDeveloperDeposit.
 /// - QueryDeploymentFee.
 /// - TransferMaintainer. Rest `input` bytes: `from`, `contract`, `new_maintainer`.
-pub struct StateRentPrecompile<AccountId, AddressMapping, CurrencyIdMapping, EVM>(
-	PhantomData<(AccountId, AddressMapping, CurrencyIdMapping, EVM)>,
+pub struct StateRentPrecompile<AccountId, AddressMapping, Erc20InfoMapping, EVM>(
+	PhantomData<(AccountId, AddressMapping, Erc20InfoMapping, EVM)>,
 );
 
 #[module_evm_utiltity_macro::generate_function_selector]
@@ -55,12 +55,12 @@ pub enum Action {
 	TransferMaintainer = "transferMaintainer(address,address,address)",
 }
 
-impl<AccountId, AddressMapping, CurrencyIdMapping, EVM> Precompile
-	for StateRentPrecompile<AccountId, AddressMapping, CurrencyIdMapping, EVM>
+impl<AccountId, AddressMapping, Erc20InfoMapping, EVM> Precompile
+	for StateRentPrecompile<AccountId, AddressMapping, Erc20InfoMapping, EVM>
 where
 	AccountId: Clone + Debug,
 	AddressMapping: AddressMappingT<AccountId>,
-	CurrencyIdMapping: CurrencyIdMappingT,
+	Erc20InfoMapping: Erc20InfoMappingT,
 	EVM: EVMStateRentTrait<AccountId, Balance>,
 {
 	fn execute(
@@ -68,7 +68,7 @@ where
 		_target_gas: Option<u64>,
 		_context: &Context,
 	) -> result::Result<PrecompileOutput, ExitError> {
-		let input = Input::<Action, AccountId, AddressMapping, CurrencyIdMapping>::new(input);
+		let input = Input::<Action, AccountId, AddressMapping, Erc20InfoMapping>::new(input);
 
 		let action = input.action()?;
 

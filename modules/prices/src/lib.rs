@@ -36,7 +36,7 @@ use primitives::{Balance, CurrencyId};
 use sp_core::U256;
 use sp_runtime::{traits::CheckedMul, FixedPointNumber};
 use sp_std::{convert::TryInto, marker::PhantomData};
-use support::{CurrencyIdMapping, DEXManager, ExchangeRateProvider, LockablePrice, Price, PriceProvider};
+use support::{DEXManager, Erc20InfoMapping, ExchangeRateProvider, LockablePrice, Price, PriceProvider};
 
 mod mock;
 mod tests;
@@ -86,7 +86,7 @@ pub mod module {
 		type Currency: MultiCurrency<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
 
 		/// Mapping between CurrencyId and ERC20 address so user can use Erc20.
-		type CurrencyIdMapping: CurrencyIdMapping;
+		type Erc20InfoMapping: Erc20InfoMapping;
 
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
@@ -184,7 +184,7 @@ impl<T: Config> Pallet<T> {
 			T::Source::get(&currency_id)
 		};
 
-		let maybe_adjustment_multiplier = 10u128.checked_pow(T::CurrencyIdMapping::decimals(currency_id)?.into());
+		let maybe_adjustment_multiplier = 10u128.checked_pow(T::Erc20InfoMapping::decimals(currency_id)?.into());
 
 		if let (Some(price), Some(adjustment_multiplier)) = (maybe_price, maybe_adjustment_multiplier) {
 			// return the price for 1 basic unit
