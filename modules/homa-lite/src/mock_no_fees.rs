@@ -16,68 +16,16 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-//! Mocks for the HomaLite module.
+//! Mocks for the HomaLite module that costs no Fees.
 
 #![cfg(test)]
 
-pub use super::*;
-pub use frame_support::{
-	ord_parameter_types, parameter_types,
-	traits::{Everything, Nothing},
-};
-pub use frame_system::{EnsureRoot, EnsureSignedBy, RawOrigin};
-pub use module_relaychain::RelayChainCallBuilder;
-pub use module_support::mocks::MockAddressMapping;
-pub use orml_traits::{parameter_type_with_key, XcmTransfer};
-pub use primitives::{Amount, TokenSymbol};
-pub use sp_core::H256;
-pub use sp_runtime::{testing::Header, traits::IdentityLookup, AccountId32};
-
-pub use cumulus_primitives_core::ParaId;
-pub use xcm::latest::prelude::*;
-pub use xcm_executor::traits::{InvertLocation, WeightBounds};
-
-pub type AccountId = AccountId32;
-pub type BlockNumber = u64;
 pub use crate as module_homa_lite;
+pub use crate::mock::*;
 
 mod homa_lite {
 	pub use super::super::*;
 }
-
-pub const DAVE: AccountId = AccountId32::new([255u8; 32]);
-pub const ALICE: AccountId = AccountId32::new([1u8; 32]);
-pub const BOB: AccountId = AccountId32::new([2u8; 32]);
-pub const CHARLIE: AccountId = AccountId32::new([3u8; 32]);
-pub const INVALID_CALLER: AccountId = AccountId32::new([254u8; 32]);
-pub const ACALA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
-pub const KSM: CurrencyId = CurrencyId::Token(TokenSymbol::KSM);
-pub const LKSM: CurrencyId = CurrencyId::Token(TokenSymbol::LKSM);
-pub const INITIAL_BALANCE: Balance = 1_000_000;
-pub const MOCK_XCM_DESTINATION: MultiLocation = X1(Junction::AccountId32 {
-	network: NetworkId::Kusama,
-	id: [1u8; 32],
-})
-.into();
-pub const MOCK_XCM_ACCOUNTID: AccountId = AccountId32::new([255u8; 32]);
-pub const PARACHAIN_ID: u32 = 2000;
-
-/// For testing only. Does not check for overflow.
-pub fn dollar(b: Balance) -> Balance {
-	b * 1_000_000_000_000
-}
-
-/// For testing only. Does not check for overflow.
-pub fn millicent(b: Balance) -> Balance {
-	b * 10_000_000
-}
-
-parameter_types! {
-	pub const BlockHashCount: u64 = 250;
-}
-
-/// A mock XCM transfer.
-/// Only fails if it is called by "INVALID_CALLER". Otherwise returns OK with 0 weight.
 pub struct MockXcm;
 impl XcmTransfer<AccountId, Balance, CurrencyId> for MockXcm {
 	fn transfer(
@@ -157,7 +105,7 @@ impl WeightBounds<Call> for MockWeigher {
 	}
 }
 
-impl pallet_xcm::Config for Runtime {
+impl pallet_xcm::Config for NoFeeRuntime {
 	type Event = Event;
 	type SendXcmOrigin = MockEnsureXcmOrigin;
 	type XcmRouter = MockXcm;
@@ -174,7 +122,7 @@ impl pallet_xcm::Config for Runtime {
 	type AdvertisedXcmVersion = pallet_xcm::CurrentXcmVersion;
 }
 
-impl frame_system::Config for Runtime {
+impl frame_system::Config for NoFeeRuntime {
 	type BaseCallFilter = Everything;
 	type BlockWeights = ();
 	type BlockLength = ();
@@ -206,7 +154,7 @@ parameter_type_with_key! {
 	};
 }
 
-impl orml_tokens::Config for Runtime {
+impl orml_tokens::Config for NoFeeRuntime {
 	type Event = Event;
 	type Balance = Balance;
 	type Amount = Amount;
@@ -222,25 +170,26 @@ parameter_types! {
 	pub const NativeTokenExistentialDeposit: Balance = 0;
 }
 
-impl pallet_balances::Config for Runtime {
+impl pallet_balances::Config for NoFeeRuntime {
 	type Balance = Balance;
 	type DustRemoval = ();
 	type Event = Event;
 	type ExistentialDeposit = NativeTokenExistentialDeposit;
-	type AccountStore = frame_system::Pallet<Runtime>;
+	type AccountStore = frame_system::Pallet<NoFeeRuntime>;
 	type MaxLocks = ();
 	type WeightInfo = ();
 	type MaxReserves = ();
 	type ReserveIdentifier = ();
 }
 
-pub type AdaptedBasicCurrency = module_currencies::BasicCurrencyAdapter<Runtime, PalletBalances, Amount, BlockNumber>;
+pub type AdaptedBasicCurrency =
+	module_currencies::BasicCurrencyAdapter<NoFeeRuntime, PalletBalances, Amount, BlockNumber>;
 
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = ACALA;
 }
 
-impl module_currencies::Config for Runtime {
+impl module_currencies::Config for NoFeeRuntime {
 	type Event = Event;
 	type MultiCurrency = Tokens;
 	type NativeCurrency = AdaptedBasicCurrency;
@@ -255,17 +204,17 @@ impl module_currencies::Config for Runtime {
 parameter_types! {
 	pub const StakingCurrencyId: CurrencyId = KSM;
 	pub const LiquidCurrencyId: CurrencyId = LKSM;
-	pub MinimumMintThreshold: Balance = millicent(1000);
-	pub MinimumRedeemThreshold: Balance = millicent(1000);
+	pub MinimumMintThreshold: Balance = 0;
+	pub MinimumRedeemThreshold: Balance = 0;
 	pub const MockXcmDestination: MultiLocation = MOCK_XCM_DESTINATION;
 	pub const MockXcmAccountId: AccountId = MOCK_XCM_ACCOUNTID;
 	pub DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
-	pub const MaxRewardPerEra: Permill = Permill::from_percent(1);
-	pub MintFee: Balance = millicent(1000);
-	pub BaseWithdrawFee: Permill = Permill::from_rational(1u32, 1_000u32); // 0.1%
-	pub XcmUnbondFee: Balance = dollar(1);
+	pub const MaxRewardPerEra: Permill = Permill::zero();
+	pub MintFee: Balance = 0;
+	pub BaseWithdrawFee: Permill = Permill::zero(); // 0.1%
+	pub XcmUnbondFee: Balance = 0;
 	pub const ParachainAccount: AccountId = DAVE;
-	pub const MaximumRedeemRequestMatchesForMint: u32 = 2;
+	pub const MaximumRedeemRequestMatchesForMint: u32 = 100;
 	pub static MockRelayBlockNumberProvider: u64 = 0;
 	pub const RelayChainUnbondingSlashingSpans: u32 = 5;
 	pub const MaxScheduledUnbonds: u32 = 14;
@@ -285,7 +234,7 @@ impl BlockNumberProvider for MockRelayBlockNumberProvider {
 	}
 }
 
-impl Config for Runtime {
+impl Config for NoFeeRuntime {
 	type Event = Event;
 	type WeightInfo = ();
 	type Currency = Currencies;
@@ -300,7 +249,7 @@ impl Config for Runtime {
 	type DefaultExchangeRate = DefaultExchangeRate;
 	type MaxRewardPerEra = MaxRewardPerEra;
 	type MintFee = MintFee;
-	type RelayChainCallBuilder = RelayChainCallBuilder<Runtime, ParachainId>;
+	type RelayChainCallBuilder = RelayChainCallBuilder<NoFeeRuntime, ParachainId>;
 	type BaseWithdrawFee = BaseWithdrawFee;
 	type XcmUnbondFee = XcmUnbondFee;
 	type RelayChainBlockNumber = MockRelayBlockNumberProvider;
@@ -311,11 +260,11 @@ impl Config for Runtime {
 	type StakingUpdateFrequency = StakingUpdateFrequency;
 }
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
-type Block = frame_system::mocking::MockBlock<Runtime>;
+type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<NoFeeRuntime>;
+type Block = frame_system::mocking::MockBlock<NoFeeRuntime>;
 
 frame_support::construct_runtime!(
-	pub enum Runtime where
+	pub enum NoFeeRuntime where
 		Block = Block,
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic
@@ -334,6 +283,7 @@ pub struct ExtBuilder {
 	native_balances: Vec<(AccountId, Balance)>,
 }
 
+#[allow(dead_code)]
 impl ExtBuilder {
 	pub fn empty() -> Self {
 		Self {
@@ -366,16 +316,16 @@ impl Default for ExtBuilder {
 impl ExtBuilder {
 	pub fn build(self) -> sp_io::TestExternalities {
 		let mut t = frame_system::GenesisConfig::default()
-			.build_storage::<Runtime>()
+			.build_storage::<NoFeeRuntime>()
 			.unwrap();
 
-		pallet_balances::GenesisConfig::<Runtime> {
+		pallet_balances::GenesisConfig::<NoFeeRuntime> {
 			balances: self.native_balances,
 		}
 		.assimilate_storage(&mut t)
 		.unwrap();
 
-		orml_tokens::GenesisConfig::<Runtime> {
+		orml_tokens::GenesisConfig::<NoFeeRuntime> {
 			balances: self.tokens_balances,
 		}
 		.assimilate_storage(&mut t)
