@@ -52,12 +52,12 @@ use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 
 use frame_system::{EnsureRoot, RawOrigin};
+use module_asset_registry::{EvmErc20InfoMapping, XcmForeignAssetIdMapping};
 use module_currencies::BasicCurrencyAdapter;
 use module_evm::{CallInfo, CreateInfo, EvmTask, Runner};
 use module_evm_accounts::EvmAddressMapping;
-use module_evm_manager::EvmCurrencyIdMapping;
 use module_relaychain::RelayChainCallBuilder;
-use module_support::DispatchableTask;
+use module_support::{DispatchableTask, ForeignAssetIdMapping};
 use module_transaction_payment::{Multiplier, TargetedFeeAdjustment};
 use orml_traits::{
 	create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended, MultiCurrency,
@@ -764,6 +764,11 @@ parameter_type_with_key! {
 			},
 			CurrencyId::Erc20(_) => Balance::max_value(), // not handled by orml-tokens
 			CurrencyId::StableAssetPoolToken(_) => Balance::max_value(), // TODO: update this before we enable StableAsset
+			CurrencyId::LiquidCroadloan(_) => ExistentialDeposits::get(&CurrencyId::Token(TokenSymbol::DOT)), // the same as DOT
+			CurrencyId::ForeignAsset(foreign_asset_id) => {
+				XcmForeignAssetIdMapping::<Runtime>::get_asset_metadata(*foreign_asset_id).
+					map_or(Balance::max_value(), |metatata| metatata.minimal_balance)
+			},
 		}
 	};
 }
@@ -806,7 +811,7 @@ impl module_prices::Config for Runtime {
 	type LiquidStakingExchangeRateProvider = HomaLite;
 	type DEX = Dex;
 	type Currency = Currencies;
-	type CurrencyIdMapping = EvmCurrencyIdMapping<Runtime>;
+	type Erc20InfoMapping = EvmErc20InfoMapping<Runtime>;
 	type WeightInfo = weights::module_prices::WeightInfo<Runtime>;
 }
 
@@ -1048,7 +1053,7 @@ impl module_dex::Config for Runtime {
 	type GetExchangeFee = GetExchangeFee;
 	type TradingPathLimit = TradingPathLimit;
 	type PalletId = DEXPalletId;
-	type CurrencyIdMapping = EvmCurrencyIdMapping<Runtime>;
+	type Erc20InfoMapping = EvmErc20InfoMapping<Runtime>;
 	type DEXIncentives = Incentives;
 	type WeightInfo = weights::module_dex::WeightInfo<Runtime>;
 	type ListingOrigin = EnsureRootOrHalfGeneralCouncil;
@@ -1121,9 +1126,12 @@ impl module_evm_accounts::Config for Runtime {
 	type WeightInfo = weights::module_evm_accounts::WeightInfo<Runtime>;
 }
 
-impl module_evm_manager::Config for Runtime {
+impl module_asset_registry::Config for Runtime {
+	type Event = Event;
 	type Currency = Balances;
 	type EVMBridge = EVMBridge;
+	type RegisterOrigin = EnsureRootOrHalfGeneralCouncil;
+	type WeightInfo = weights::module_asset_registry::WeightInfo<Runtime>;
 }
 
 impl orml_rewards::Config for Runtime {
@@ -1270,24 +1278,24 @@ parameter_types! {
 pub type MultiCurrencyPrecompile = runtime_common::MultiCurrencyPrecompile<
 	AccountId,
 	EvmAddressMapping<Runtime>,
-	EvmCurrencyIdMapping<Runtime>,
+	EvmErc20InfoMapping<Runtime>,
 	Currencies,
 >;
 
 pub type NFTPrecompile =
-	runtime_common::NFTPrecompile<AccountId, EvmAddressMapping<Runtime>, EvmCurrencyIdMapping<Runtime>, NFT>;
+	runtime_common::NFTPrecompile<AccountId, EvmAddressMapping<Runtime>, EvmErc20InfoMapping<Runtime>, NFT>;
 pub type StateRentPrecompile =
-	runtime_common::StateRentPrecompile<AccountId, EvmAddressMapping<Runtime>, EvmCurrencyIdMapping<Runtime>, EVM>;
+	runtime_common::StateRentPrecompile<AccountId, EvmAddressMapping<Runtime>, EvmErc20InfoMapping<Runtime>, EVM>;
 pub type OraclePrecompile = runtime_common::OraclePrecompile<
 	AccountId,
 	EvmAddressMapping<Runtime>,
-	EvmCurrencyIdMapping<Runtime>,
+	EvmErc20InfoMapping<Runtime>,
 	module_prices::RealTimePriceProvider<Runtime>,
 >;
 pub type ScheduleCallPrecompile = runtime_common::ScheduleCallPrecompile<
 	AccountId,
 	EvmAddressMapping<Runtime>,
-	EvmCurrencyIdMapping<Runtime>,
+	EvmErc20InfoMapping<Runtime>,
 	Scheduler,
 	module_transaction_payment::ChargeTransactionPayment<Runtime>,
 	Call,
@@ -1296,7 +1304,7 @@ pub type ScheduleCallPrecompile = runtime_common::ScheduleCallPrecompile<
 	Runtime,
 >;
 pub type DexPrecompile =
-	runtime_common::DexPrecompile<AccountId, EvmAddressMapping<Runtime>, EvmCurrencyIdMapping<Runtime>, Dex>;
+	runtime_common::DexPrecompile<AccountId, EvmAddressMapping<Runtime>, EvmErc20InfoMapping<Runtime>, Dex>;
 
 impl module_evm::Config for Runtime {
 	type AddressMapping = EvmAddressMapping<Runtime>;
@@ -1597,6 +1605,9 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 		match id {
 			Token(DOT) => Some(MultiLocation::parent()),
 			Token(ACA) | Token(AUSD) | Token(LDOT) => Some(native_currency_location(id)),
+			CurrencyId::ForeignAsset(foreign_asset_id) => {
+				XcmForeignAssetIdMapping::<Runtime>::get_multi_location(foreign_asset_id)
+			}
 			_ => None,
 		}
 	}
@@ -1609,6 +1620,11 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 		if location == MultiLocation::parent() {
 			return Some(Token(DOT));
 		}
+
+		if let Some(currency_id) = XcmForeignAssetIdMapping::<Runtime>::get_currency_id(location.clone()) {
+			return Some(currency_id);
+		}
+
 		match location {
 			MultiLocation {
 				parents,
@@ -1807,12 +1823,12 @@ construct_runtime!(
 		// Acala Other
 		Incentives: module_incentives::{Pallet, Storage, Call, Event<T>} = 120,
 		NFT: module_nft::{Pallet, Call, Event<T>} = 121,
+		AssetRegistry: module_asset_registry::{Pallet, Call, Storage, Event<T>} = 122,
 
 		// Smart contracts
 		EVM: module_evm::{Pallet, Config<T>, Call, Storage, Event<T>} = 130,
 		EVMBridge: module_evm_bridge::{Pallet} = 131,
 		EvmAccounts: module_evm_accounts::{Pallet, Call, Storage, Event<T>} = 132,
-		EvmManager: module_evm_manager::{Pallet, Storage} = 133,
 
 		// Temporary
 		Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>} = 255,
@@ -2110,6 +2126,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, module_homa_lite, HomaLiteBench::<Runtime>);
 
 			orml_list_benchmark!(list, extra, module_dex, benchmarking::dex);
+			orml_list_benchmark!(list, extra, module_asset_registry, benchmarking::asset_registry);
 			orml_list_benchmark!(list, extra, module_auction_manager, benchmarking::auction_manager);
 			orml_list_benchmark!(list, extra, module_cdp_engine, benchmarking::cdp_engine);
 			orml_list_benchmark!(list, extra, module_emergency_shutdown, benchmarking::emergency_shutdown);
@@ -2168,6 +2185,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, module_homa_lite, HomaLiteBench::<Runtime>);
 
 			orml_add_benchmark!(params, batches, module_dex, benchmarking::dex);
+			orml_add_benchmark!(params, batches, module_asset_registry, benchmarking::asset_registry);
 			orml_add_benchmark!(params, batches, module_auction_manager, benchmarking::auction_manager);
 			orml_add_benchmark!(params, batches, module_cdp_engine, benchmarking::cdp_engine);
 			orml_add_benchmark!(params, batches, module_emergency_shutdown, benchmarking::emergency_shutdown);

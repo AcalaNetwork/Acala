@@ -130,6 +130,7 @@ dependencies = [
  "frame-try-runtime",
  "hex-literal 0.3.3",
  "libsecp256k1 0.6.0",
+ "module-asset-registry",
  "module-auction-manager",
  "module-cdp-engine",
  "module-cdp-treasury",
@@ -140,7 +141,6 @@ dependencies = [
  "module-evm",
  "module-evm-accounts",
  "module-evm-bridge",
- "module-evm-manager",
  "module-evm-rpc-runtime-api",
  "module-homa-lite",
  "module-honzon",
@@ -3879,6 +3879,7 @@ dependencies = [
  "frame-try-runtime",
  "hex-literal 0.3.3",
  "libsecp256k1 0.6.0",
+ "module-asset-registry",
  "module-auction-manager",
  "module-cdp-engine",
  "module-cdp-treasury",
@@ -3889,7 +3890,6 @@ dependencies = [
  "module-evm",
  "module-evm-accounts",
  "module-evm-bridge",
- "module-evm-manager",
  "module-evm-rpc-runtime-api",
  "module-homa-lite",
  "module-honzon",
@@ -4868,6 +4868,7 @@ dependencies = [
  "hex",
  "hex-literal 0.3.3",
  "libsecp256k1 0.6.0",
+ "module-asset-registry",
  "module-auction-manager",
  "module-cdp-engine",
  "module-cdp-treasury",
@@ -4878,7 +4879,6 @@ dependencies = [
  "module-evm",
  "module-evm-accounts",
  "module-evm-bridge",
- "module-evm-manager",
  "module-evm-rpc-runtime-api",
  "module-evm-utiltity",
  "module-homa",
@@ -5183,6 +5183,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "module-asset-registry"
+version = "2.0.0"
+dependencies = [
+ "acala-primitives",
+ "frame-support",
+ "frame-system",
+ "module-evm",
+ "module-evm-bridge",
+ "module-support",
+ "orml-utilities",
+ "pallet-balances",
+ "pallet-timestamp",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "xcm",
+]
+
+[[package]]
 name = "module-auction-manager"
 version = "2.0.0"
 dependencies = [
@@ -5422,31 +5445,6 @@ dependencies = [
  "pallet-timestamp",
  "parity-scale-codec",
  "primitive-types",
- "scale-info",
- "serde",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "module-evm-manager"
-version = "2.0.0"
-dependencies = [
- "acala-primitives",
- "frame-support",
- "frame-system",
- "module-evm",
- "module-evm-bridge",
- "module-support",
- "orml-currencies",
- "orml-tokens",
- "orml-traits",
- "orml-utilities",
- "pallet-balances",
- "pallet-timestamp",
- "parity-scale-codec",
  "scale-info",
  "serde",
  "sp-core",
@@ -9770,11 +9768,11 @@ dependencies = [
  "frame-support",
  "frame-system",
  "hex-literal 0.3.3",
+ "module-asset-registry",
  "module-currencies",
  "module-dex",
  "module-evm",
  "module-evm-bridge",
- "module-evm-manager",
  "module-evm-utiltity-macro",
  "module-idle-scheduler",
  "module-nft",
@@ -9834,6 +9832,7 @@ dependencies = [
  "kusama-runtime",
  "libsecp256k1 0.6.0",
  "mandala-runtime",
+ "module-asset-registry",
  "module-auction-manager",
  "module-cdp-engine",
  "module-cdp-treasury",
@@ -9844,7 +9843,6 @@ dependencies = [
  "module-evm",
  "module-evm-accounts",
  "module-evm-bridge",
- "module-evm-manager",
  "module-evm-rpc-runtime-api",
  "module-homa-lite",
  "module-honzon",

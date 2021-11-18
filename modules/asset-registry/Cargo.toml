@@ -1,33 +1,32 @@
 [package]
-name = "module-evm-manager"
+name = "module-asset-registry"
 version = "2.0.0"
 authors = ["Acala Developers"]
 edition = "2018"
 
 [dependencies]
 serde = { version = "1.0.124", optional = true }
-codec = { package = "parity-scale-codec", version = "2.3.1", default-features = false }
 scale-info = { version = "1.0", default-features = false, features = ["derive"] }
-
+codec = { package = "parity-scale-codec", version = "2.3.1", default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.12", default-features = false }
+sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.12", default-features = false  }
 frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.12", default-features = false }
 frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.12", default-features = false }
-sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.12", default-features = false }
-sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.12", default-features = false }
-sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.12", default-features = false }
-sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.12", default-features = false }
-
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
+
+xcm = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.12", default-features = false }
+
 module-support = { path = "../support", default-features = false }
 
 [dev-dependencies]
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.12" }
+sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.12" }
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.12" }
 pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.12" }
-orml-currencies = { path = "../../orml/currencies" }
-orml-tokens = { path = "../../orml/tokens" }
-orml-traits = { path = "../../orml/traits" }
-orml-utilities = { path = "../../orml/utilities" }
+
 module-evm = { path = "../evm" }
 module-evm-bridge = { path = "../evm-bridge" }
+orml-utilities = { path = "../../orml/utilities" }
 
 [features]
 default = ["std"]
@@ -35,13 +34,12 @@ std = [
 	"serde",
 	"codec/std",
 	"scale-info/std",
-	"sp-core/std",
 	"sp-runtime/std",
-	"sp-io/std",
 	"sp-std/std",
 	"frame-support/std",
 	"frame-system/std",
 	"primitives/std",
+	"xcm/std",
 	"module-support/std",
 ]
 try-runtime = ["frame-support/try-runtime"]

@@ -86,6 +86,7 @@ orml-unknown-tokens = { path = "../../orml/unknown-tokens" }
 orml-xcm = { path = "../../orml/xcm" }
 
 module-transaction-payment = { path = "../../modules/transaction-payment" }
+module-asset-registry = { path = "../../modules/asset-registry" }
 module-auction-manager = { path = "../../modules/auction-manager" }
 module-cdp-engine = { path = "../../modules/cdp-engine" }
 module-cdp-treasury = { path = "../../modules/cdp-treasury" }
@@ -96,7 +97,6 @@ module-emergency-shutdown = { path = "../../modules/emergency-shutdown" }
 module-evm = { path = "../../modules/evm" }
 module-evm-accounts = { path = "../../modules/evm-accounts" }
 module-evm-bridge = { path = "../../modules/evm-bridge" }
-module-evm-manager = { path = "../../modules/evm-manager" }
 module-honzon = { path = "../../modules/honzon" }
 module-loans = { path = "../../modules/loans" }
 module-nft = { path = "../../modules/nft" }

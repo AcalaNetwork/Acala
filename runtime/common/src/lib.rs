@@ -32,9 +32,7 @@ use frame_support::{
 };
 use frame_system::{limits, EnsureOneOf, EnsureRoot};
 pub use module_support::{ExchangeRate, PrecompileCallerFilter, Price, Rate, Ratio};
-use primitives::{
-	Balance, BlockNumber, CurrencyId, PRECOMPILE_ADDRESS_START, PREDEPLOY_ADDRESS_START, SYSTEM_CONTRACT_ADDRESS_PREFIX,
-};
+use primitives::{evm::is_system_contract, Balance, BlockNumber, CurrencyId};
 use scale_info::TypeInfo;
 use sp_core::{
 	u32_trait::{_1, _2, _3, _4},
@@ -69,18 +67,6 @@ parameter_types! {
 	pub const CdpEngineUnsignedPriority: TransactionPriority = TransactionPriority::max_value() / 2;      // 50%
 	pub const AuctionManagerUnsignedPriority: TransactionPriority = TransactionPriority::max_value() / 5; // 20%
 	pub const RenvmBridgeUnsignedPriority: TransactionPriority = TransactionPriority::max_value() / 10;   // 10%
-}
-
-/// Check if the given `address` is a system contract.
-///
-/// It's system contract if the address starts with SYSTEM_CONTRACT_ADDRESS_PREFIX.
-pub fn is_system_contract(address: H160) -> bool {
-	address.as_bytes().starts_with(&SYSTEM_CONTRACT_ADDRESS_PREFIX)
-}
-
-pub fn is_acala_precompile(address: H160) -> bool {
-	address >= H160::from_low_u64_be(PRECOMPILE_ADDRESS_START)
-		&& address < H160::from_low_u64_be(PREDEPLOY_ADDRESS_START)
 }
 
 /// The call is allowed only if caller is a system contract.
@@ -155,7 +141,7 @@ impl<AccountId> Contains<AccountId> for DummyNomineeFilter {
 
 // TODO: make those const fn
 pub fn dollar(currency_id: CurrencyId) -> Balance {
-	10u128.saturating_pow(currency_id.decimals().expect("Not support Erc20 decimals").into())
+	10u128.saturating_pow(currency_id.decimals().expect("Not support Non-Token decimals").into())
 }
 
 pub fn cent(currency_id: CurrencyId) -> Balance {
@@ -344,6 +330,7 @@ pub enum RelayChainSubAccountId {
 #[cfg(test)]
 mod tests {
 	use super::*;
+	use primitives::evm::SYSTEM_CONTRACT_ADDRESS_PREFIX;
 
 	#[test]
 	fn system_contracts_filter_works() {
@@ -356,33 +343,5 @@ mod tests {
 		let mut min_blocked_addr = [0u8; 20];
 		min_blocked_addr[SYSTEM_CONTRACT_ADDRESS_PREFIX.len() - 1] = 1u8;
 		assert!(!SystemContractsFilter::is_allowed(min_blocked_addr.into()));
-	}
-
-	#[test]
-	fn is_system_contract_works() {
-		assert!(is_system_contract(H160::from_low_u64_be(0)));
-		assert!(is_system_contract(H160::from_low_u64_be(u64::max_value())));
-
-		let mut bytes = [0u8; 20];
-		bytes[SYSTEM_CONTRACT_ADDRESS_PREFIX.len() - 1] = 1u8;
-
-		assert!(!is_system_contract(bytes.into()));
-
-		bytes = [0u8; 20];
-		bytes[0] = 1u8;
-
-		assert!(!is_system_contract(bytes.into()));
-	}
-
-	#[test]
-	fn is_acala_precompile_works() {
-		assert!(!is_acala_precompile(H160::from_low_u64_be(0)));
-		assert!(!is_acala_precompile(H160::from_low_u64_be(
-			PRECOMPILE_ADDRESS_START - 1
-		)));
-		assert!(is_acala_precompile(H160::from_low_u64_be(PRECOMPILE_ADDRESS_START)));
-		assert!(is_acala_precompile(H160::from_low_u64_be(PREDEPLOY_ADDRESS_START - 1)));
-		assert!(!is_acala_precompile(H160::from_low_u64_be(PREDEPLOY_ADDRESS_START)));
-		assert!(!is_acala_precompile([1u8; 20].into()));
 	}
 }

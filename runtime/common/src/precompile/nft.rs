@@ -19,7 +19,7 @@
 use crate::precompile::PrecompileOutput;
 use frame_support::log;
 use module_evm::{Context, ExitError, ExitSucceed, Precompile};
-use module_support::{AddressMapping as AddressMappingT, CurrencyIdMapping as CurrencyIdMappingT};
+use module_support::{AddressMapping as AddressMappingT, Erc20InfoMapping as Erc20InfoMappingT};
 use sp_core::H160;
 use sp_runtime::RuntimeDebug;
 use sp_std::{borrow::Cow, fmt::Debug, marker::PhantomData, prelude::*, result};
@@ -38,8 +38,8 @@ use primitives::NFTBalance;
 /// - Query balance. Rest `input` bytes: `account_id`.
 /// - Query owner. Rest `input` bytes: `class_id`, `token_id`.
 /// - Transfer. Rest `input`bytes: `from`, `to`, `class_id`, `token_id`.
-pub struct NFTPrecompile<AccountId, AddressMapping, CurrencyIdMapping, NFT>(
-	PhantomData<(AccountId, AddressMapping, CurrencyIdMapping, NFT)>,
+pub struct NFTPrecompile<AccountId, AddressMapping, Erc20InfoMapping, NFT>(
+	PhantomData<(AccountId, AddressMapping, Erc20InfoMapping, NFT)>,
 );
 
 #[module_evm_utiltity_macro::generate_function_selector]
@@ -51,12 +51,12 @@ pub enum Action {
 	Transfer = "transfer(address,address,uint256,uint256)",
 }
 
-impl<AccountId, AddressMapping, CurrencyIdMapping, NFT> Precompile
-	for NFTPrecompile<AccountId, AddressMapping, CurrencyIdMapping, NFT>
+impl<AccountId, AddressMapping, Erc20InfoMapping, NFT> Precompile
+	for NFTPrecompile<AccountId, AddressMapping, Erc20InfoMapping, NFT>
 where
 	AccountId: Clone + Debug,
 	AddressMapping: AddressMappingT<AccountId>,
-	CurrencyIdMapping: CurrencyIdMappingT,
+	Erc20InfoMapping: Erc20InfoMappingT,
 	NFT: NFTT<AccountId, Balance = NFTBalance, ClassId = u32, TokenId = u64>,
 {
 	fn execute(
@@ -64,7 +64,7 @@ where
 		_target_gas: Option<u64>,
 		_context: &Context,
 	) -> result::Result<PrecompileOutput, ExitError> {
-		let input = Input::<Action, AccountId, AddressMapping, CurrencyIdMapping>::new(input);
+		let input = Input::<Action, AccountId, AddressMapping, Erc20InfoMapping>::new(input);
 
 		let action = input.action()?;
 
