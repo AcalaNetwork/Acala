@@ -707,7 +707,7 @@ pub mod module {
 			let liquid_amount_can_be_redeemed = min(request_amount, *liquid_amount_remaining);
 
 			// Ensure the redeemer have enough liquid currency in their account.
-			if T::Currency::reserved_balance(T::LiquidCurrencyId::get(), &redeemer) >= liquid_amount_can_be_redeemed {
+			if T::Currency::reserved_balance(T::LiquidCurrencyId::get(), redeemer) >= liquid_amount_can_be_redeemed {
 				let new_amount = request_amount.saturating_sub(liquid_amount_can_be_redeemed);
 				*liquid_amount_remaining = liquid_amount_remaining.saturating_sub(liquid_amount_can_be_redeemed);
 
