@@ -195,14 +195,14 @@ pub fn set_relaychain_block_number(number: BlockNumber) {
 
 pub struct ExtBuilder {
 	balances: Vec<(AccountId, CurrencyId, Balance)>,
-	parachain_id: u32,
+	parachain_id: Option<u32>,
 }
 
 impl Default for ExtBuilder {
 	fn default() -> Self {
 		Self {
 			balances: vec![],
-			parachain_id: 2000,
+			parachain_id: None,
 		}
 	}
 }
@@ -214,7 +214,7 @@ impl ExtBuilder {
 	}
 
 	pub fn parachain_id(mut self, parachain_id: u32) -> Self {
-		self.parachain_id = parachain_id;
+		self.parachain_id = Some(parachain_id);
 		self
 	}
 
@@ -290,7 +290,7 @@ impl ExtBuilder {
 
 		<parachain_info::GenesisConfig as GenesisBuild<Runtime>>::assimilate_storage(
 			&parachain_info::GenesisConfig {
-				parachain_id: self.parachain_id.into(),
+				parachain_id: self.parachain_id.unwrap().into(),
 			},
 			&mut t,
 		)
