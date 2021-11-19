@@ -154,3 +154,93 @@ fn transfer_to_sibling() {
 		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(ALICE)), 94_989_760_000_000);
 	});
 }
+
+#[test]
+fn test_asset_registry_module() {
+	env_logger::init();
+	TestNet::reset();
+
+	fn sibling_2000_account() -> AccountId {
+		use sp_runtime::traits::AccountIdConversion;
+		polkadot_parachain::primitives::Sibling::from(2000).into_account()
+	}
+
+	Karura::execute_with(|| {
+		// register foreign asset
+		assert_ok!(AssetRegistry::register_foreign_asset(
+			Origin::root(),
+			Box::new(CurrencyIdConvert::convert(BNC).unwrap().into()),
+			Box::new(AssetMetadata {
+				name: b"Sibling Token".to_vec(),
+				symbol: b"ST".to_vec(),
+				decimals: 12,
+				minimal_balance: 1,
+			})
+		));
+	});
+
+	Statemine::execute_with(|| {
+		assert_eq!(Balances::free_balance(&sibling_2000_account()), 0);
+		assert_eq!(Balances::free_balance(&AccountId::from(BOB)), 1_000_000_000_000_000);
+
+		assert_ok!(PolkadotXcm::reserve_transfer_assets(
+			Origin::signed(BOB.into()),
+			Box::new(X1(Parachain(2000)).into().into()),
+			Box::new(
+				X1(AccountId32 {
+					network: Any,
+					id: ALICE.into()
+				})
+				.into()
+				.into()
+			),
+			Box::new((Here, 5_000_000_000_000).into()),
+			0,
+		));
+
+		assert_eq!(statemine_runtime::Balances::free_balance(&sibling_2000_account()), 0);
+		assert_eq!(
+			statemine_runtime::Balances::free_balance(&AccountId::from(BOB)),
+			95_000_000_000_000
+		);
+	});
+
+	Karura::execute_with(|| {
+		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(ALICE)), 90_000_000_000_000);
+		assert_eq!(
+			Tokens::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(ALICE)),
+			4_989_760_000_000
+		);
+
+		assert_ok!(XTokens::transfer(
+			Origin::signed(ALICE.into()),
+			CurrencyId::ForeignAsset(0),
+			1_000_000_000_000,
+			Box::new(
+				MultiLocation::new(
+					1,
+					X2(
+						Parachain(2001),
+						Junction::AccountId32 {
+							network: NetworkId::Any,
+							id: BOB.into(),
+						}
+					)
+				)
+				.into()
+			),
+			1_000_000_000,
+		));
+
+		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(ALICE)), 90_000_000_000_000);
+		assert_eq!(
+			Tokens::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(ALICE)),
+			3_989_760_000_000
+		);
+	});
+
+	Statemine::execute_with(|| {
+		assert_eq!(Balances::free_balance(&sibling_2000_account()), 94_000_000_000_000);
+		assert_eq!(Balances::free_balance(&AccountId::from(BOB)), 5_979_520_000_000);
+	});
+}

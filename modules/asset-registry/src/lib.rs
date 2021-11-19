@@ -29,7 +29,9 @@ use frame_support::{
 	pallet_prelude::*,
 	require_transactional,
 	traits::{Currency, EnsureOrigin},
-	transactional, RuntimeDebug,
+	transactional,
+	weights::constants::WEIGHT_PER_SECOND,
+	RuntimeDebug,
 };
 use frame_system::pallet_prelude::*;
 use module_support::{EVMBridge, Erc20InfoMapping, ForeignAssetIdMapping, InvokeContext};
@@ -52,7 +54,10 @@ use sp_std::{
 
 // NOTE:v1::MultiLocation is used in storages, we would need to do migration if upgrade the
 // MultiLocation in the future.
+use xcm::opaque::latest::{prelude::XcmError, AssetId, Fungibility::Fungible, MultiAsset};
 use xcm::{v1::MultiLocation, VersionedMultiLocation};
+use xcm_builder::TakeRevenue;
+use xcm_executor::{traits::WeightTrader, Assets};
 
 mod mock;
 mod tests;
@@ -272,6 +277,88 @@ impl<T: Config> ForeignAssetIdMapping<ForeignAssetId, MultiLocation, AssetMetada
 
 	fn get_currency_id(multi_location: MultiLocation) -> Option<CurrencyId> {
 		Pallet::<T>::location_to_currency_ids(multi_location)
+	}
+}
+
+pub struct FixedRateOfForeignAsset<T, F: Get<u128>, R: TakeRevenue>(
+	Weight,
+	u128,
+	Option<MultiLocation>,
+	PhantomData<(T, F, R)>,
+);
+
+impl<T: Config, F: Get<u128>, R: TakeRevenue> WeightTrader for FixedRateOfForeignAsset<T, F, R> {
+	fn new() -> Self {
+		Self(0, 0, None, PhantomData)
+	}
+
+	fn buy_weight(&mut self, weight: Weight, payment: Assets) -> Result<Assets, XcmError> {
+		log::trace!(target: "asset-registry::weight", "buy_weight weight: {:?}, payment: {:?}", weight, payment);
+
+		for (index, multi_asset) in payment.fungible.iter().enumerate() {
+			// TODO: only support first fungible assets now.
+			// Maybe be removed in the future.
+			if index > 0 {
+				log::trace!(target: "asset-registry::weight", "buy_weight only support one fungible assets");
+				return Err(XcmError::TooExpensive);
+			}
+
+			match multi_asset.0 {
+				AssetId::Concrete(ref multi_location) => {
+					log::debug!(target: "asset-registry::weight", "buy_weight multi_location: {:?}", multi_location);
+					if let Some(CurrencyId::ForeignAsset(_)) =
+						Pallet::<T>::location_to_currency_ids(multi_location.clone())
+					{
+						let amount = F::get() * (weight as u128) / (WEIGHT_PER_SECOND as u128);
+						let required = MultiAsset {
+							id: multi_asset.0.clone(),
+							fun: Fungible(amount),
+						};
+
+						log::trace!(target: "asset-registry::weight", "buy_weight payment: {:?}, required: {:?}", payment, required);
+						let unused = payment
+							.clone()
+							.checked_sub(required)
+							.map_err(|_| XcmError::TooExpensive)?;
+						self.0 = self.0.saturating_add(weight);
+						self.1 = self.1.saturating_add(amount);
+						self.2 = Some(multi_location.clone());
+						return Ok(unused);
+					}
+				}
+				AssetId::Abstract(_) => {
+					// do nothing
+				}
+			}
+		}
+
+		log::trace!(target: "asset-registry::weight", "Did not match");
+		Err(XcmError::TooExpensive)
+	}
+
+	fn refund_weight(&mut self, weight: Weight) -> Option<MultiAsset> {
+		log::trace!(target: "asset-registry::weight", "refund_weight weight: {:?}, weight: {:?}, amount: {:?}, multi_location: {:?}", weight, self.0, self.1, self.2);
+		let weight = weight.min(self.0);
+		let amount = F::get() * (weight as u128) / (WEIGHT_PER_SECOND as u128);
+
+		self.0 = self.0.saturating_sub(weight);
+		self.1 = self.1.saturating_sub(amount);
+
+		log::trace!(target: "asset-registry::weight", "refund_weight amount: {:?}", amount);
+		if amount > 0 && self.2.is_some() {
+			Some((self.2.as_ref().expect("checked; qed").clone(), amount).into())
+		} else {
+			None
+		}
+	}
+}
+
+impl<T, F: Get<u128>, R: TakeRevenue> Drop for FixedRateOfForeignAsset<T, F, R> {
+	fn drop(&mut self) {
+		log::trace!(target: "asset-registry::weight", "take revenue, weight: {:?}, amount: {:?}, multi_location: {:?}", self.0, self.1, self.2);
+		if self.1 > 0 && self.2.is_some() {
+			R::take_revenue((self.2.as_ref().expect("checked; qed").clone(), self.1).into());
+		}
 	}
 }
 
