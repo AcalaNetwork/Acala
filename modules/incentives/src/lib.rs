@@ -127,6 +127,8 @@ pub mod module {
 		InvalidPoolId,
 		/// Invalid rate
 		InvalidRate,
+		/// Empty Update List
+		EmptyUpdate,
 	}
 
 	#[pallet::event]
@@ -326,6 +328,7 @@ pub mod module {
 				if let PoolId::Dex(currency_id) = pool_id {
 					ensure!(currency_id.is_dex_share_currency_id(), Error::<T>::InvalidPoolId);
 				}
+				ensure!(update_list.len() != 0, Error::<T>::EmptyUpdate);
 
 				for (currency_id, amount) in update_list {
 					IncentiveRewardAmounts::<T>::mutate_exists(pool_id, currency_id, |maybe_amount| {
