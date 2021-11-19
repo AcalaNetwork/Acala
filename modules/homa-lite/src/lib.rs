@@ -260,6 +260,12 @@ pub mod module {
 	#[pallet::getter(fn staking_interest_rate_per_update)]
 	pub type StakingInterestRatePerUpdate<T: Config> = StorageValue<_, Permill, ValueQuery>;
 
+	/// Next redeem request to iterate from when matching redeem requests.
+	/// NextRedeemRequestToMatch: Value: T::AccountId
+	#[pallet::storage]
+	#[pallet::getter(fn next_redeem_request_to_match)]
+	pub type NextRedeemRequestToMatch<T: Config> = StorageValue<_, T::AccountId, ValueQuery>;
+
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
 
@@ -910,7 +916,17 @@ pub mod module {
 
 			let mut new_balances: Vec<(T::AccountId, Balance, Permill)> = vec![];
 			let mut num_matched = 0u32;
-			for (redeemer, (request_amount, extra_fee)) in RedeemRequests::<T>::iter() {
+
+			// Define the function to be executed for each of the redeem request:
+			// Redeem the given requests using available_staking_balance.
+			//
+			// Params: redeemer: T::AccountId, request_amount: Balance, extra_fee: Permill
+			// Returns: Result< should_break, Error>
+			//
+			// Capturing: &mut available_staking_balance
+			//            &mut num_matched
+			//            &mut new_balances
+			let mut f = |redeemer, request_amount, extra_fee| -> Result<bool, DispatchError> {
 				let actual_liquid_amount = min(
 					request_amount,
 					Self::convert_staking_to_liquid(available_staking_balance)?,
@@ -945,8 +961,12 @@ pub mod module {
 					num_matched += 1u32;
 				}
 
-				// If all the currencies are minted, return.
-				if available_staking_balance < T::MinimumMintThreshold::get() || num_matched >= max_num_matches {
+				// If all the currencies are minted, return `should_break` as true
+				Ok(available_staking_balance < T::MinimumMintThreshold::get() || num_matched >= max_num_matches)
+			};
+
+			for (redeemer, (request_amount, extra_fee)) in RedeemRequests::<T>::iter() {
+				if f(redeemer, request_amount, extra_fee)? {
 					break;
 				}
 			}
@@ -1007,6 +1027,51 @@ pub mod module {
 				Self::deposit_event(Event::<T>::TotalStakingCurrencySet(*current));
 				Ok(())
 			})
+		}
+
+		/// Helper function that iterates `RedeemRequests` storage from `NextRedeemRequestToMatch`.
+		/// If `NextRedeemRequestToMatch` is not found in storage, iterate from the start.
+		pub fn iterate_from_next_redeem_request(
+			f: &mut impl FnMut(T::AccountId, Balance, Permill) -> Result<bool, DispatchError>,
+		) -> DispatchResult {
+			let first_element = match RedeemRequests::<T>::iter().next() {
+				// Current storage is empty. Do nothing and return
+				None => return Ok(()),
+				Some(element) => element,
+			};
+
+			let starting_element = match Self::redeem_requests(Self::next_redeem_request_to_match()) {
+				Some(request) => (Self::next_redeem_request_to_match(), request),
+				None => first_element,
+			};
+			let mut iterator = RedeemRequests::<T>::iter();
+			let mut current = iterator.next();
+
+			// Skip elements until `starting_element` is found.
+			while current.is_some() && current.clone().unwrap_or_default() != starting_element {
+				current = iterator.next();
+			}
+
+			// Iterate until the end of the storage, calling f() for each element
+			while current.is_some() {
+				let (redeemer, (request_amount, extra_fee)) = current.unwrap_or_default();
+				if f(redeemer, request_amount, extra_fee)? {
+					return Ok(());
+				}
+				current = iterator.next();
+			}
+
+			// Iterate from the start of the storage until `starting_element`, calling f() for each element.
+			iterator = RedeemRequests::<T>::iter();
+			current = iterator.next();
+			while current.is_some() && current.clone().unwrap_or_default() != starting_element {
+				let (redeemer, (request_amount, extra_fee)) = current.unwrap_or_default();
+				if f(redeemer, request_amount, extra_fee)? {
+					return Ok(());
+				}
+				current = iterator.next();
+			}
+			Ok(())
 		}
 	}
 

@@ -23,7 +23,10 @@
 
 use super::*;
 use frame_support::assert_ok;
-use mock_no_fees::{dollar, Currencies, Event, ExtBuilder, HomaLite, Origin, System, ALICE, BOB, DAVE, KSM, LKSM};
+use mock_no_fees::{
+	dollar, AccountId, Currencies, Event, ExtBuilder, HomaLite, NoFeeRuntime, Origin, System, ALICE, BOB, DAVE, KSM,
+	LKSM,
+};
 
 #[test]
 fn no_fee_runtime_has_no_fees() {
@@ -304,7 +307,7 @@ fn mint_and_redeem_at_the_same_time_does_not_change_exchange_rate() {
 }
 
 #[test]
-fn updaing_and_cancelling_redeem_requests_does_not_change_exchange_rate() {
+fn updating_and_cancelling_redeem_requests_does_not_change_exchange_rate() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(HomaLite::set_total_staking_currency(
 			Origin::root(),
@@ -336,5 +339,293 @@ fn updaing_and_cancelling_redeem_requests_does_not_change_exchange_rate() {
 
 		assert_eq!(Currencies::free_balance(KSM, &DAVE), 0);
 		assert_eq!(Currencies::free_balance(LKSM, &DAVE), dollar(1_000_000));
+	});
+}
+
+#[test]
+fn iterate_redeem_requests_from_next_works() {
+	ExtBuilder::empty().build().execute_with(|| {
+		// iterate works with empty redeem requests
+		let mut empty: Vec<Balance> = vec![];
+		NextRedeemRequestToMatch::<NoFeeRuntime>::put(AccountId::from([0; 32]));
+		{
+			assert_ok!(HomaLite::iterate_from_next_redeem_request(
+				&mut |_redeemer: AccountId, amount: Balance, _extra_fee: Permill| -> Result<bool, DispatchError> {
+					&empty.push(amount);
+					Ok(false)
+				}
+			));
+		}
+		assert_eq!(empty, vec![]);
+
+		// iterate works with 1 redeem request
+		{
+			let account = AccountId::from([1u8; 32]);
+			assert_ok!(Currencies::update_balance(
+				Origin::root(),
+				account.clone(),
+				LKSM,
+				dollar(1) as i128
+			));
+			assert_ok!(HomaLite::request_redeem(
+				Origin::signed(account),
+				dollar(1),
+				Permill::zero()
+			));
+		}
+
+		let mut one_request: Vec<Balance> = vec![];
+		NextRedeemRequestToMatch::<NoFeeRuntime>::put(AccountId::from([0; 32]));
+		{
+			assert_ok!(HomaLite::iterate_from_next_redeem_request(
+				&mut |_redeemer: AccountId, amount: Balance, _extra_fee: Permill| -> Result<bool, DispatchError> {
+					&one_request.push(amount);
+					Ok(false)
+				}
+			));
+		}
+		assert_eq!(one_request, vec![dollar(1)]);
+
+		let mut one_request_2: Vec<Balance> = vec![];
+		NextRedeemRequestToMatch::<NoFeeRuntime>::put(AccountId::from([1; 32]));
+		{
+			assert_ok!(HomaLite::iterate_from_next_redeem_request(
+				&mut |_redeemer: AccountId, amount: Balance, _extra_fee: Permill| -> Result<bool, DispatchError> {
+					&one_request_2.push(amount);
+					Ok(false)
+				}
+			));
+		}
+		assert_eq!(one_request_2, vec![dollar(1)]);
+
+		// iterate works with 2 redeem requests
+		{
+			let account = AccountId::from([2u8; 32]);
+			assert_ok!(Currencies::update_balance(
+				Origin::root(),
+				account.clone(),
+				LKSM,
+				dollar(2) as i128
+			));
+			assert_ok!(HomaLite::request_redeem(
+				Origin::signed(account),
+				dollar(2),
+				Permill::zero()
+			));
+		}
+
+		let mut two_requests_1: Vec<Balance> = vec![];
+		NextRedeemRequestToMatch::<NoFeeRuntime>::put(AccountId::from([0; 32]));
+		{
+			assert_ok!(HomaLite::iterate_from_next_redeem_request(
+				&mut |_redeemer: AccountId, amount: Balance, _extra_fee: Permill| -> Result<bool, DispatchError> {
+					&two_requests_1.push(amount);
+					Ok(false)
+				}
+			));
+		}
+		assert_eq!(two_requests_1, vec![dollar(1), dollar(2)]);
+
+		let mut two_requests_2: Vec<Balance> = vec![];
+		NextRedeemRequestToMatch::<NoFeeRuntime>::put(AccountId::from([2; 32]));
+		{
+			assert_ok!(HomaLite::iterate_from_next_redeem_request(
+				&mut |_redeemer: AccountId, amount: Balance, _extra_fee: Permill| -> Result<bool, DispatchError> {
+					&two_requests_2.push(amount);
+					Ok(false)
+				}
+			));
+		}
+		assert_eq!(two_requests_2, vec![dollar(2), dollar(1)]);
+
+		let mut two_requests_3: Vec<Balance> = vec![];
+		NextRedeemRequestToMatch::<NoFeeRuntime>::put(AccountId::from([1; 32]));
+		{
+			assert_ok!(HomaLite::iterate_from_next_redeem_request(
+				&mut |_redeemer: AccountId, amount: Balance, _extra_fee: Permill| -> Result<bool, DispatchError> {
+					&two_requests_3.push(amount);
+					Ok(false)
+				}
+			));
+		}
+		assert_eq!(two_requests_3, vec![dollar(1), dollar(2)]);
+
+		// Test with larger number of requests in storage
+		for i in 3u8..10u8 {
+			let account = AccountId::from([i; 32]);
+			assert_ok!(Currencies::update_balance(
+				Origin::root(),
+				account.clone(),
+				LKSM,
+				dollar(i as u128) as i128
+			));
+			assert_ok!(HomaLite::request_redeem(
+				Origin::signed(account),
+				dollar(i as u128),
+				Permill::zero()
+			));
+		}
+
+		// This is the default order the redeem requests are iterated.
+		let mut default_order = vec![];
+		for (_, (request_amount, _)) in RedeemRequests::<NoFeeRuntime>::iter() {
+			default_order.push(request_amount);
+		}
+		assert_eq!(
+			default_order,
+			vec![
+				dollar(1),
+				dollar(6),
+				dollar(2),
+				dollar(3),
+				dollar(8),
+				dollar(9),
+				dollar(7),
+				dollar(4),
+				dollar(5)
+			]
+		);
+
+		// iterate from the middle
+		let mut output_1: Vec<Balance> = vec![];
+		NextRedeemRequestToMatch::<NoFeeRuntime>::put(AccountId::from([8; 32]));
+		{
+			assert_ok!(HomaLite::iterate_from_next_redeem_request(
+				&mut |_redeemer: AccountId, amount: Balance, _extra_fee: Permill| -> Result<bool, DispatchError> {
+					&output_1.push(amount);
+					Ok(false)
+				}
+			));
+		}
+		assert_eq!(
+			output_1,
+			vec![
+				dollar(8),
+				dollar(9),
+				dollar(7),
+				dollar(4),
+				dollar(5),
+				dollar(1),
+				dollar(6),
+				dollar(2),
+				dollar(3)
+			]
+		);
+
+		// Iterate from the start
+		let mut output_2: Vec<Balance> = vec![];
+		NextRedeemRequestToMatch::<NoFeeRuntime>::put(AccountId::from([1; 32]));
+		{
+			assert_ok!(HomaLite::iterate_from_next_redeem_request(
+				&mut |_redeemer: AccountId, amount: Balance, _extra_fee: Permill| -> Result<bool, DispatchError> {
+					&output_2.push(amount);
+					Ok(false)
+				}
+			));
+		}
+		assert_eq!(
+			output_2,
+			vec![
+				dollar(1),
+				dollar(6),
+				dollar(2),
+				dollar(3),
+				dollar(8),
+				dollar(9),
+				dollar(7),
+				dollar(4),
+				dollar(5)
+			]
+		);
+
+		// Iterate from the end
+		let mut output_3: Vec<Balance> = vec![];
+		NextRedeemRequestToMatch::<NoFeeRuntime>::put(AccountId::from([5; 32]));
+		{
+			assert_ok!(HomaLite::iterate_from_next_redeem_request(
+				&mut |_redeemer: AccountId, amount: Balance, _extra_fee: Permill| -> Result<bool, DispatchError> {
+					&output_3.push(amount);
+					Ok(false)
+				}
+			));
+		}
+		assert_eq!(
+			output_3,
+			vec![
+				dollar(5),
+				dollar(1),
+				dollar(6),
+				dollar(2),
+				dollar(3),
+				dollar(8),
+				dollar(9),
+				dollar(7),
+				dollar(4)
+			]
+		);
+
+		// If `NextRedeemRequestToMatch` is not found, iterate from the start
+		let mut output_4: Vec<Balance> = vec![];
+		NextRedeemRequestToMatch::<NoFeeRuntime>::put(AccountId::from([100; 32]));
+		{
+			assert_ok!(HomaLite::iterate_from_next_redeem_request(
+				&mut |_redeemer: AccountId, amount: Balance, _extra_fee: Permill| -> Result<bool, DispatchError> {
+					&output_4.push(amount);
+					Ok(false)
+				}
+			));
+		}
+		assert_eq!(
+			output_4,
+			vec![
+				dollar(1),
+				dollar(6),
+				dollar(2),
+				dollar(3),
+				dollar(8),
+				dollar(9),
+				dollar(7),
+				dollar(4),
+				dollar(5)
+			]
+		);
+
+		// If breaking half way through, return immediately.
+		let mut output_5: Vec<Balance> = vec![];
+		NextRedeemRequestToMatch::<NoFeeRuntime>::put(AccountId::from([8; 32]));
+		{
+			assert_ok!(HomaLite::iterate_from_next_redeem_request(
+				&mut |_redeemer: AccountId, amount: Balance, _extra_fee: Permill| -> Result<bool, DispatchError> {
+					&output_5.push(amount);
+					Ok(amount == dollar(7))
+				}
+			));
+		}
+		assert_eq!(output_5, vec![dollar(8), dollar(9), dollar(7)]);
+
+		// If breaking half way through, return immediately.
+		let mut output_6: Vec<Balance> = vec![];
+		NextRedeemRequestToMatch::<NoFeeRuntime>::put(AccountId::from([8; 32]));
+		{
+			assert_ok!(HomaLite::iterate_from_next_redeem_request(
+				&mut |_redeemer: AccountId, amount: Balance, _extra_fee: Permill| -> Result<bool, DispatchError> {
+					&output_6.push(amount);
+					Ok(amount == dollar(2))
+				}
+			));
+		}
+		assert_eq!(
+			output_6,
+			vec![
+				dollar(8),
+				dollar(9),
+				dollar(7),
+				dollar(4),
+				dollar(5),
+				dollar(1),
+				dollar(6),
+				dollar(2)
+			]
+		);
 	});
 }
