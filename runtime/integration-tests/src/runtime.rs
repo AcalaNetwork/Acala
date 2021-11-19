@@ -17,6 +17,13 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::setup::*;
+use frame_support::{
+	assert_ok, parameter_types,
+	traits::{Everything, IsInVec},
+	weights::Weight,
+};
+use xcm_builder::{AllowSubscriptionsFrom, AllowTopLevelPaidExecutionFrom, TakeWeightCredit};
+use xcm_executor::{traits::*, Config, XcmExecutor};
 
 #[test]
 fn currency_id_convert() {
@@ -243,5 +250,249 @@ fn parachain_subaccounts_are_unique() {
 				})
 			),
 		);
+	});
+}
+
+#[test]
+fn weigher_weight_and_take_weight_credit_barrier_works() {
+	let mut message = Xcm(vec![
+		ReserveAssetDeposited((Parent, 100).into()),
+		BuyExecution {
+			fees: (Parent, 1).into(),
+			weight_limit: Limited(10),
+		},
+		DepositAsset {
+			assets: All.into(),
+			max_assets: 1,
+			beneficiary: Here.into(),
+		},
+	]);
+
+	#[cfg(feature = "with-karura-runtime")]
+	{
+		let expect_weight: Weight = 600_000_000;
+		let mut weight_credit = 1_000_000_000;
+		assert_eq!(<XcmConfig as Config>::Weigher::weight(&mut message), Ok(expect_weight));
+		let r = TakeWeightCredit::should_execute(&Parent.into(), &mut message, expect_weight, &mut weight_credit);
+		assert_ok!(r);
+		assert_eq!(weight_credit, 400_000_000);
+
+		let r = TakeWeightCredit::should_execute(&Parent.into(), &mut message, expect_weight, &mut weight_credit);
+		assert_eq!(r, Err(()));
+		assert_eq!(weight_credit, 400_000_000);
+
+		let r = XcmExecutor::<XcmConfig>::execute_xcm(Parent, message.clone(), 10);
+		assert_eq!(r, Outcome::Error(XcmError::WeightLimitReached(expect_weight)));
+	}
+
+	#[cfg(feature = "with-mandala-runtime")]
+	{
+		let expect_weight: Weight = 3_000_000;
+		let mut weight_credit = 4_000_000;
+		assert_eq!(<XcmConfig as Config>::Weigher::weight(&mut message), Ok(expect_weight));
+		let r = TakeWeightCredit::should_execute(&Parent.into(), &mut message, expect_weight, &mut weight_credit);
+		assert_ok!(r);
+		assert_eq!(weight_credit, 1_000_000);
+
+		let r = TakeWeightCredit::should_execute(&Parent.into(), &mut message, expect_weight, &mut weight_credit);
+		assert_eq!(r, Err(()));
+		assert_eq!(weight_credit, 1_000_000);
+
+		let r = XcmExecutor::<XcmConfig>::execute_xcm(Parent, message.clone(), 10);
+		assert_eq!(r, Outcome::Error(XcmError::WeightLimitReached(expect_weight)));
+	}
+
+	#[cfg(feature = "with-acala-runtime")]
+	{
+		assert_eq!(<XcmConfig as Config>::Weigher::weight(&mut message), Ok(600_000_000));
+	}
+}
+
+#[cfg(feature = "with-karura-runtime")]
+#[test]
+fn top_level_paid_execution_barrier_works() {
+	let mut message = Xcm::<karura_runtime::Call>(vec![
+		ReserveAssetDeposited((Parent, 100).into()),
+		BuyExecution {
+			fees: (Parent, 1).into(),
+			weight_limit: Limited(10),
+		},
+		DepositAsset {
+			assets: All.into(),
+			max_assets: 1,
+			beneficiary: Here.into(),
+		},
+	]);
+
+	// BuyExecution weight_limit set to 10
+	let r = AllowTopLevelPaidExecutionFrom::<Everything>::should_execute(&Parent.into(), &mut message, 10, &mut 0);
+	assert_ok!(r);
+
+	// BuyExecution weight_limit less than max_weight, error
+	let r = AllowTopLevelPaidExecutionFrom::<Everything>::should_execute(&Parent.into(), &mut message, 20, &mut 0);
+	assert_eq!(r, Err(()));
+}
+
+#[test]
+fn barrier_contains_works() {
+	parameter_types! {
+		pub static AllowUnpaidFrom: Vec<MultiLocation> = vec![];
+		pub static AllowPaidFrom: Vec<MultiLocation> = vec![];
+		pub static AllowSubsFrom: Vec<MultiLocation> = vec![Parent.into()];
+	}
+	let mut message1 = Xcm::<()>(vec![
+		ReserveAssetDeposited((Parent, 100).into()),
+		BuyExecution {
+			fees: (Parent, 1).into(),
+			weight_limit: Limited(20),
+		},
+		DepositAsset {
+			assets: All.into(),
+			max_assets: 1,
+			beneficiary: Here.into(),
+		},
+	]);
+	let mut message2 = Xcm::<()>(vec![SubscribeVersion {
+		query_id: 42,
+		max_response_weight: 5000,
+	}]);
+
+	AllowSubsFrom::set(vec![Parent.into()]);
+	let r = AllowTopLevelPaidExecutionFrom::<IsInVec<AllowSubsFrom>>::should_execute(
+		&Parent.into(),
+		&mut message1,
+		10,
+		&mut 0,
+	);
+	assert_ok!(r);
+	let r = AllowSubscriptionsFrom::<IsInVec<AllowSubsFrom>>::should_execute(&Parent.into(), &mut message2, 20, &mut 0);
+	assert_ok!(r);
+
+	AllowSubsFrom::set(vec![Parachain(1000).into()]);
+	let r = AllowTopLevelPaidExecutionFrom::<IsInVec<AllowSubsFrom>>::should_execute(
+		&Parent.into(),
+		&mut message1,
+		10,
+		&mut 0,
+	);
+	assert_eq!(r, Err(()));
+	let r = AllowSubscriptionsFrom::<IsInVec<AllowSubsFrom>>::should_execute(&Parent.into(), &mut message2, 20, &mut 0);
+	assert_eq!(r, Err(()));
+
+	AllowSubsFrom::set(vec![]);
+	let r = AllowTopLevelPaidExecutionFrom::<IsInVec<AllowSubsFrom>>::should_execute(
+		&Parent.into(),
+		&mut message1,
+		10,
+		&mut 0,
+	);
+	assert_eq!(r, Err(()));
+	let r = AllowSubscriptionsFrom::<IsInVec<AllowSubsFrom>>::should_execute(&Parent.into(), &mut message2, 20, &mut 0);
+	assert_eq!(r, Err(()));
+	let r = AllowTopLevelPaidExecutionFrom::<Everything>::should_execute(&Parent.into(), &mut message1, 10, &mut 0);
+	assert_ok!(r);
+	let r = AllowSubscriptionsFrom::<Everything>::should_execute(&Parent.into(), &mut message2, 20, &mut 0);
+	assert_ok!(r);
+}
+
+#[test]
+fn xcm_executor_execute_xcm() {
+	#[cfg(feature = "with-karura-runtime")]
+	{
+		ExtBuilder::default().build().execute_with(|| {
+			let message = Xcm::<karura_runtime::Call>(vec![
+				ReserveAssetDeposited((Parent, 600_000_000).into()),
+				BuyExecution {
+					fees: (Parent, 600_000_000).into(),
+					weight_limit: Unlimited,
+				},
+				DepositAsset {
+					assets: All.into(),
+					max_assets: 1,
+					beneficiary: Here.into(),
+				},
+			]);
+
+			let r = XcmExecutor::<XcmConfig>::execute_xcm(Parent, message, 600_000_000);
+			assert_eq!(r, Outcome::Complete(600_000_000));
+		});
+	}
+
+	#[cfg(feature = "with-acala-runtime")]
+	{
+		ExtBuilder::default().build().execute_with(|| {
+			let message = Xcm::<acala_runtime::Call>(vec![
+				ReserveAssetDeposited((Parent, 600_000_000).into()),
+				BuyExecution {
+					fees: (Parent, 600_000_000).into(),
+					weight_limit: Limited(6_000_000_000),
+				},
+				DepositAsset {
+					assets: All.into(),
+					max_assets: 1,
+					beneficiary: Here.into(),
+				},
+			]);
+
+			let r = XcmExecutor::<acala_runtime::XcmConfig>::execute_xcm(Parent, message, 600_000_000);
+			assert_eq!(r, Outcome::Complete(600_000_000));
+		});
+	}
+
+	#[cfg(feature = "with-mandala-runtime")]
+	{
+		ExtBuilder::default().build().execute_with(|| {
+			let message = Xcm::<mandala_runtime::Call>(vec![
+				ReserveAssetDeposited((Parent, 3_000_000).into()),
+				BuyExecution {
+					fees: (Parent, 3_000_000).into(),
+					weight_limit: Limited(300_000),
+				},
+				DepositAsset {
+					assets: All.into(),
+					max_assets: 1,
+					beneficiary: Here.into(),
+				},
+			]);
+
+			let r = XcmExecutor::<mandala_runtime::XcmConfig>::execute_xcm(Parent, message, 3_000_000);
+			assert_eq!(r, Outcome::Error(XcmError::Barrier));
+		});
+	}
+}
+
+#[cfg(feature = "with-karura-runtime")]
+#[test]
+fn subscribe_version_barrier_works() {
+	ExtBuilder::default().build().execute_with(|| {
+		let origin = Parachain(1000).into();
+		let message = Xcm(vec![
+			DescendOrigin(X1(AccountIndex64 { index: 1, network: Any })),
+			SubscribeVersion {
+				query_id: 42,
+				max_response_weight: 5000,
+			},
+		]);
+		let weight_limit = 2_000_000_000;
+		let r = XcmExecutor::<kusama_runtime::XcmConfig>::execute_xcm_in_credit(
+			origin.clone(),
+			message.clone(),
+			weight_limit,
+			weight_limit,
+		);
+		assert_eq!(r, Outcome::Incomplete(weight_limit, XcmError::BadOrigin));
+
+		let message = Xcm(vec![SubscribeVersion {
+			query_id: 42,
+			max_response_weight: 5000,
+		}]);
+		let weight_limit = 1_000_000_000;
+		let r = XcmExecutor::<karura_runtime::XcmConfig>::execute_xcm_in_credit(
+			Parent,
+			message.clone(),
+			weight_limit,
+			weight_limit,
+		);
+		assert_eq!(r, Outcome::Complete(200_000_000));
 	});
 }
