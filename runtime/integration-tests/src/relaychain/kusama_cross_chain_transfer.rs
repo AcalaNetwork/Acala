@@ -176,6 +176,11 @@ fn test_asset_registry_module() {
 				minimal_balance: 1,
 			})
 		));
+
+		assert_eq!(
+			Tokens::free_balance(CurrencyId::ForeignAsset(0), &TreasuryAccount::get()),
+			0
+		);
 	});
 
 	Sibling::execute_with(|| {
@@ -212,6 +217,11 @@ fn test_asset_registry_module() {
 			Tokens::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(ALICE)),
 			4_999_872_000_000
 		);
+		// ToTreasury
+		assert_eq!(
+			Tokens::free_balance(CurrencyId::ForeignAsset(0), &TreasuryAccount::get()),
+			128_000_000
+		);
 
 		assert_ok!(XTokens::transfer(
 			Origin::signed(ALICE.into()),
@@ -242,5 +252,57 @@ fn test_asset_registry_module() {
 	Sibling::execute_with(|| {
 		assert_eq!(Balances::free_balance(&sibling_2000_account()), 4_000_000_000_000);
 		assert_eq!(Balances::free_balance(&AccountId::from(BOB)), 95_993_600_000_000);
+	});
+
+	// remove it
+	Karura::execute_with(|| {
+		// register foreign asset
+		assert_ok!(AssetRegistry::update_foreign_asset(
+			Origin::root(),
+			0,
+			Box::new(MultiLocation::new(1, X2(Parachain(9999), GeneralKey(KAR.encode()))).into()),
+			Box::new(AssetMetadata {
+				name: b"Sibling Token".to_vec(),
+				symbol: b"ST".to_vec(),
+				decimals: 12,
+				minimal_balance: 1,
+			})
+		));
+	});
+
+	Sibling::execute_with(|| {
+		assert_eq!(Balances::free_balance(&sibling_2000_account()), 4_000_000_000_000);
+		assert_eq!(Balances::free_balance(&AccountId::from(BOB)), 95_993_600_000_000);
+
+		assert_ok!(XTokens::transfer(
+			Origin::signed(BOB.into()),
+			KAR,
+			5_000_000_000_000,
+			Box::new(
+				MultiLocation::new(
+					1,
+					X2(
+						Parachain(2000),
+						Junction::AccountId32 {
+							network: NetworkId::Any,
+							id: ALICE.into(),
+						}
+					)
+				)
+				.into()
+			),
+			1_000_000_000,
+		));
+
+		assert_eq!(Balances::free_balance(&sibling_2000_account()), 9_000_000_000_000);
+		assert_eq!(Balances::free_balance(&AccountId::from(BOB)), 90_993_600_000_000);
+	});
+
+	// unreceived
+	Karura::execute_with(|| {
+		assert_eq!(
+			Tokens::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(ALICE)),
+			3_999_872_000_000
+		);
 	});
 }
