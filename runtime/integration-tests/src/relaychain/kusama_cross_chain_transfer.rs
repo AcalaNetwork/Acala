@@ -80,8 +80,7 @@ fn transfer_to_relay_chain() {
 }
 
 #[test]
-fn relay_transact_to_para_call_transfer() {
-	env_logger::init();
+fn transact_transfer_call_to_para_chain_use_ksm() {
 	Karura::execute_with(|| {
 		let _ = ParaBalances::deposit_creating(&AccountId::from(ALICE), 1000 * dollar(KAR));
 	});
@@ -108,13 +107,18 @@ fn relay_transact_to_para_call_transfer() {
 				require_weight_at_most: (dollar(KSM) as u64) / 10 as u64,
 				call: call.encode().into(),
 			},
+			DepositAsset {
+				assets: All.into(),
+				max_assets: 1,
+				beneficiary: { (1, alice.clone()).into() },
+			},
 		];
 		assert_ok!(RelayChainPalletXcm::send_xcm(alice, Parachain(2000).into(), Xcm(xcm),));
 	});
 
 	Karura::execute_with(|| {
 		use {Event, System};
-		assert_eq!(9 * dollar(KAR), ParaTokens::free_balance(KSM, &AccountId::from(ALICE)));
+		assert_eq!(9983840000000, ParaTokens::free_balance(KSM, &AccountId::from(ALICE)));
 		assert_eq!(500 * dollar(KAR), ParaBalances::free_balance(&AccountId::from(ALICE)));
 		assert_eq!(500 * dollar(KAR), ParaBalances::free_balance(&AccountId::from(BOB)));
 		System::assert_has_event(Event::Balances(pallet_balances::Event::Transfer(
@@ -122,5 +126,132 @@ fn relay_transact_to_para_call_transfer() {
 			AccountId::from(BOB),
 			500 * dollar(KAR),
 		)));
+	});
+}
+
+#[test]
+fn transact_transfer_call_to_para_chain_use_kusd() {
+	Karura::execute_with(|| {
+		let _ = ParaBalances::deposit_creating(&AccountId::from(ALICE), 1000 * dollar(KUSD));
+		assert_ok!(ParaTokens::deposit(KUSD, &AccountId::from(ALICE), 1000 * dollar(KUSD)));
+	});
+
+	let alice = Junctions::X1(Junction::AccountId32 {
+		network: NetworkId::Kusama,
+		id: ALICE,
+	});
+	let call = Call::Balances(pallet_balances::Call::<Runtime>::transfer {
+		dest: MultiAddress::Id(AccountId::from(BOB)),
+		value: 500 * dollar(KUSD),
+	});
+	let assets: MultiAsset = (
+		(Parent, X2(Parachain(2000), GeneralKey(KUSD.encode()))),
+		100 * dollar(KUSD),
+	)
+		.into();
+
+	KusamaNet::execute_with(|| {
+		let xcm = vec![
+			WithdrawAsset(assets.clone().into()),
+			BuyExecution {
+				fees: assets,
+				weight_limit: Limited(100 * dollar(KUSD) as u64),
+			},
+			Transact {
+				origin_type: OriginKind::SovereignAccount,
+				require_weight_at_most: dollar(KUSD) as u64,
+				call: call.encode().into(),
+			},
+			DepositAsset {
+				assets: All.into(),
+				max_assets: 1,
+				beneficiary: { (0, alice.clone()).into() },
+			},
+		];
+		assert_ok!(RelayChainPalletXcm::send_xcm(alice, Parachain(2000).into(), Xcm(xcm),));
+	});
+
+	Karura::execute_with(|| {
+		assert_eq!(935936000000000, ParaTokens::free_balance(KUSD, &AccountId::from(ALICE)));
+		assert_eq!(500 * dollar(KUSD), ParaBalances::free_balance(&AccountId::from(ALICE)));
+		assert_eq!(500 * dollar(KUSD), ParaBalances::free_balance(&AccountId::from(BOB)));
+		System::assert_has_event(Event::Balances(pallet_balances::Event::Transfer(
+			AccountId::from(ALICE),
+			AccountId::from(BOB),
+			500 * dollar(KUSD),
+		)));
+	});
+}
+
+#[test]
+fn batch_cdall_execute_then_send_xcm_to_para_chain() {
+	Karura::execute_with(|| {
+		assert_ok!(ParaTokens::deposit(KUSD, &AccountId::from(ALICE), 2000 * dollar(KUSD)));
+	});
+
+	let alice = Junctions::X1(Junction::AccountId32 {
+		network: NetworkId::Kusama,
+		id: ALICE,
+	});
+	let bob = X1(Junction::AccountId32 {
+		network: NetworkId::Kusama,
+		id: BOB,
+	});
+	KusamaNet::execute_with(|| {
+		// current XcmExecuteFilter = Nothing cause xcm_relay_call Filtered error
+		let _xcm_relay_call = kusama_runtime::Call::XcmPallet(pallet_xcm::Call::<kusama_runtime::Runtime>::execute {
+			message: Box::new(xcm::VersionedXcm::from(Xcm(vec![
+				WithdrawAsset((Here, 1100 * dollar(KSM)).into()),
+				BuyExecution {
+					fees: (Here, 1100 * dollar(KSM)).into(),
+					weight_limit: Limited(dollar(KSM) as u64),
+				},
+				DepositAsset {
+					assets: All.into(),
+					max_assets: 1,
+					beneficiary: { (0, alice.clone()).into() },
+				},
+			]))),
+			max_weight: dollar(KSM) as u64,
+		});
+
+		let xcm_para_call = kusama_runtime::Call::XcmPallet(pallet_xcm::Call::<kusama_runtime::Runtime>::send {
+			dest: Box::new(xcm::VersionedMultiLocation::from(Parachain(2000).into())),
+			message: Box::new(xcm::VersionedXcm::from(Xcm(vec![
+				WithdrawAsset(
+					(
+						(Parent, X2(Parachain(2000), GeneralKey(KUSD.encode()))),
+						1000 * dollar(KUSD),
+					)
+						.into(),
+				),
+				BuyExecution {
+					fees: (
+						(Parent, X2(Parachain(2000), GeneralKey(KUSD.encode()))),
+						1000 * dollar(KUSD),
+					)
+						.into(),
+					weight_limit: Limited(dollar(KUSD) as u64),
+				},
+				DepositAsset {
+					assets: All.into(),
+					max_assets: 1,
+					beneficiary: { (0, bob).into() },
+				},
+			]))),
+		});
+
+		assert_ok!(pallet_utility::Pallet::<kusama_runtime::Runtime>::batch_all(
+			kusama_runtime::Origin::signed(AccountId::from(ALICE)),
+			vec![xcm_para_call]
+		));
+	});
+
+	Karura::execute_with(|| {
+		assert_eq!(
+			1000 * dollar(KUSD),
+			ParaTokens::free_balance(KUSD, &AccountId::from(ALICE))
+		);
+		assert_eq!(999948800000000, ParaTokens::free_balance(KUSD, &AccountId::from(BOB)));
 	});
 }
