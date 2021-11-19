@@ -131,8 +131,6 @@ polkadot-primitives = { git = "https://github.com/paritytech/polkadot", branch =
 polkadot-runtime-parachains = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.12" }
 kusama-runtime = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.12" }
 
-statemine-runtime = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.12" }
-
 xcm-emulator = { git = "https://github.com/shaunxw/xcm-simulator", rev = "4d3bb9dd4fa2cd554a9970ffff816d9346269eaa" }
 
 acala-service = { path = "../../node/service", features = ["with-all-runtime"] }

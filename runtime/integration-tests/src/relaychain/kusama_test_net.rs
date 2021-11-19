@@ -52,19 +52,10 @@ decl_test_parachain! {
 	}
 }
 
-decl_test_parachain! {
-	pub struct Statemine {
-		Runtime = statemine_runtime::Runtime,
-		Origin = statemine_runtime::Origin,
-		new_ext = statemine_ext(1000),
-	}
-}
-
 decl_test_network! {
 	pub struct TestNet {
 		relay_chain = KusamaNet,
 		parachains = vec![
-			(1000, Statemine),
 			(2000, Karura),
 			(2001, Sibling),
 		],
@@ -148,41 +139,4 @@ pub fn para_ext(parachain_id: u32) -> sp_io::TestExternalities {
 		.balances(vec![(AccountId::from(ALICE), KSM, 10 * dollar(KSM))])
 		.parachain_id(parachain_id)
 		.build()
-}
-
-pub fn statemine_ext(parachain_id: u32) -> sp_io::TestExternalities {
-	use statemine_runtime::{Runtime, System};
-
-	let mut t = frame_system::GenesisConfig::default()
-		.build_storage::<Runtime>()
-		.unwrap();
-
-	pallet_balances::GenesisConfig::<Runtime> {
-		balances: vec![
-			(AccountId::from(BOB), 1000 * dollar(KSM)),
-			//(ParaId::from(2000).into_account(), 2 * dollar(KSM)),
-		],
-	}
-	.assimilate_storage(&mut t)
-	.unwrap();
-
-	<parachain_info::GenesisConfig as GenesisBuild<Runtime>>::assimilate_storage(
-		&parachain_info::GenesisConfig {
-			parachain_id: parachain_id.into(),
-		},
-		&mut t,
-	)
-	.unwrap();
-
-	<pallet_xcm::GenesisConfig as GenesisBuild<Runtime>>::assimilate_storage(
-		&pallet_xcm::GenesisConfig {
-			safe_xcm_version: Some(2),
-		},
-		&mut t,
-	)
-	.unwrap();
-
-	let mut ext = sp_io::TestExternalities::new(t);
-	ext.execute_with(|| System::set_block_number(1));
-	ext
 }
