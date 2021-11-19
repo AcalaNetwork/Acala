@@ -53,6 +53,12 @@ decl_test_network! {
 	}
 }
 
+pub type ParaBalances = pallet_balances::Pallet<Runtime>;
+
+pub type ParaTokens = orml_tokens::Pallet<Runtime>;
+
+pub type RelayChainPalletXcm = pallet_xcm::Pallet<kusama_runtime::Runtime>;
+
 fn default_parachains_host_configuration() -> HostConfiguration<BlockNumber> {
 	HostConfiguration {
 		validation_upgrade_frequency: 1u32,

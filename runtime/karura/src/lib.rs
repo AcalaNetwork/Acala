@@ -101,6 +101,7 @@ pub use sp_runtime::BuildStorage;
 
 pub use authority::AuthorityConfigImpl;
 pub use constants::{fee::*, parachains, time::*};
+use orml_xcm_support::{AllowRelayedPaidExecutionFromParent, RelayChainAccountId32Aliases};
 pub use primitives::{
 	define_combined_task, evm::EstimateResourcesRequest, task::TaskResult, AccountId, AccountIndex, Address, Amount,
 	AuctionId, AuthoritysOriginId, Balance, BlockNumber, CurrencyId, DataProviderId, EraIndex, Hash, Moment, Nonce,
@@ -1401,6 +1402,7 @@ pub type LocationToAccountId = (
 	SiblingParachainConvertsVia<Sibling, AccountId>,
 	// Straight up local `AccountId32` origins just alias directly to `AccountId`.
 	AccountId32Aliases<RelayNetwork, AccountId>,
+	RelayChainAccountId32Aliases<RelayNetwork, AccountId>,
 );
 
 /// This is the type we use to convert an (incoming) XCM origin into a local `Origin` instance,
@@ -1461,6 +1463,7 @@ pub type Barrier = (
 	AllowKnownQueryResponses<PolkadotXcm>,
 	// Subscriptions for version tracking are OK.
 	AllowSubscriptionsFrom<Everything>,
+	AllowRelayedPaidExecutionFromParent<RelayNetwork>,
 );
 
 pub struct ToTreasury;
