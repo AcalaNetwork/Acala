@@ -40,7 +40,15 @@ decl_test_parachain! {
 	pub struct Karura {
 		Runtime = Runtime,
 		Origin = Origin,
-		new_ext = karura_ext(),
+		new_ext = para_ext(2000),
+	}
+}
+
+decl_test_parachain! {
+	pub struct Sibling {
+		Runtime = Runtime,
+		Origin = Origin,
+		new_ext = para_ext(2001),
 	}
 }
 
@@ -49,6 +57,7 @@ decl_test_network! {
 		relay_chain = KusamaNet,
 		parachains = vec![
 			(2000, Karura),
+			(2001, Sibling),
 		],
 	}
 }
@@ -125,8 +134,9 @@ pub fn kusama_ext() -> sp_io::TestExternalities {
 	ext
 }
 
-pub fn karura_ext() -> sp_io::TestExternalities {
+pub fn para_ext(parachain_id: u32) -> sp_io::TestExternalities {
 	ExtBuilder::default()
 		.balances(vec![(AccountId::from(ALICE), KSM, 10 * dollar(KSM))])
+		.parachain_id(parachain_id)
 		.build()
 }

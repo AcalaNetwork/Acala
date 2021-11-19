@@ -82,42 +82,75 @@ fn transfer_to_relay_chain() {
 }
 
 #[test]
-fn foreign_asset_transfer_to_relay_chain() {
-	Karura::execute_with(|| {
-		// register KSM as foreign asset
-		assert_ok!(AssetRegistry::register_foreign_asset(
-			Origin::root(),
-			Box::new(MultiLocation::parent().into()),
-			Box::new(AssetMetadata {
-				name: b"Kusama".to_vec(),
-				symbol: b"KSM".to_vec(),
-				decimals: 12,
-				minimal_balance: 1,
-			})
-		));
+fn transfer_to_sibling() {
+	TestNet::reset();
 
+	fn sibling_2000_account() -> AccountId {
+		use sp_runtime::traits::AccountIdConversion;
+		polkadot_parachain::primitives::Sibling::from(2000).into_account()
+	}
+
+	Karura::execute_with(|| {
+		assert_ok!(Tokens::deposit(BNC, &AccountId::from(ALICE), 100_000_000_000_000));
+	});
+
+	Sibling::execute_with(|| {
+		assert_ok!(Tokens::deposit(BNC, &sibling_2000_account(), 100_000_000_000_000));
+	});
+
+	Karura::execute_with(|| {
 		assert_ok!(XTokens::transfer(
 			Origin::signed(ALICE.into()),
-			CurrencyId::ForeignAsset(0),
-			dollar(KSM),
+			BNC,
+			10_000_000_000_000,
 			Box::new(
 				MultiLocation::new(
 					1,
-					X1(Junction::AccountId32 {
-						id: BOB,
-						network: NetworkId::Any,
-					})
+					X2(
+						Parachain(2001),
+						Junction::AccountId32 {
+							network: NetworkId::Any,
+							id: BOB.into(),
+						}
+					)
 				)
 				.into()
 			),
-			4_000_000_000
+			1_000_000_000,
 		));
+
+		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(ALICE)), 90_000_000_000_000);
 	});
 
-	KusamaNet::execute_with(|| {
-		assert_eq!(
-			kusama_runtime::Balances::free_balance(&AccountId::from(BOB)),
-			999_893_333_340
-		);
+	Sibling::execute_with(|| {
+		assert_eq!(Tokens::free_balance(BNC, &sibling_2000_account()), 90_000_000_000_000);
+		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(BOB)), 9_989_760_000_000);
+
+		assert_ok!(XTokens::transfer(
+			Origin::signed(BOB.into()),
+			BNC,
+			5_000_000_000_000,
+			Box::new(
+				MultiLocation::new(
+					1,
+					X2(
+						Parachain(2000),
+						Junction::AccountId32 {
+							network: NetworkId::Any,
+							id: ALICE.into(),
+						}
+					)
+				)
+				.into()
+			),
+			1_000_000_000,
+		));
+
+		assert_eq!(Tokens::free_balance(BNC, &sibling_2000_account()), 95_000_000_000_000);
+		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(BOB)), 4_989_760_000_000);
+	});
+
+	Karura::execute_with(|| {
+		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(ALICE)), 94_989_760_000_000);
 	});
 }
