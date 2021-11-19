@@ -48,7 +48,7 @@ decl_test_parachain! {
 	pub struct Sibling {
 		Runtime = Runtime,
 		Origin = Origin,
-		new_ext = sibling_ext(),
+		new_ext = sibling_ext(2001),
 	}
 }
 
@@ -140,9 +140,9 @@ pub fn karura_ext() -> sp_io::TestExternalities {
 		.build()
 }
 
-pub fn sibling_ext() -> sp_io::TestExternalities {
+pub fn sibling_ext(parachain_id: u32) -> sp_io::TestExternalities {
 	ExtBuilder::default()
 		.balances(vec![(AccountId::from(ALICE), KAR, 10 * dollar(KAR))])
-		.parachain_id(2001)
+		.parachain_id(parachain_id)
 		.build()
 }
