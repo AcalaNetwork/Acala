@@ -184,7 +184,7 @@ fn transact_transfer_call_to_para_chain_use_kusd() {
 }
 
 #[test]
-fn batch_cdall_execute_then_send_xcm_to_para_chain() {
+fn batch_call_execute_then_send_xcm_to_para_chain() {
 	Karura::execute_with(|| {
 		assert_ok!(ParaTokens::deposit(KUSD, &AccountId::from(ALICE), 2000 * dollar(KUSD)));
 	});
@@ -198,7 +198,7 @@ fn batch_cdall_execute_then_send_xcm_to_para_chain() {
 		id: BOB,
 	});
 	KusamaNet::execute_with(|| {
-		// current XcmExecuteFilter = Nothing cause xcm_relay_call Filtered error
+		// current kusama runtime `XcmExecuteFilter = Nothing` cause xcm_relay_call `Filtered` error
 		let _xcm_relay_call = kusama_runtime::Call::XcmPallet(pallet_xcm::Call::<kusama_runtime::Runtime>::execute {
 			message: Box::new(xcm::VersionedXcm::from(Xcm(vec![
 				WithdrawAsset((Here, 1100 * dollar(KSM)).into()),
