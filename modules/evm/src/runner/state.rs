@@ -32,9 +32,11 @@ use module_evm_utiltity::{
 };
 use primitive_types::{H160, H256, U256};
 pub use primitives::{
-	evm::{EvmAddress, Vicinity},
-	ReserveIdentifier, H160_PREFIX_DEXSHARE, H160_PREFIX_TOKEN, MIRRORED_NFT_ADDRESS_START, PREDEPLOY_ADDRESS_START,
-	SYSTEM_CONTRACT_ADDRESS_PREFIX,
+	evm::{
+		is_mirrored_tokens_address_prefix, EvmAddress, Vicinity, MIRRORED_NFT_ADDRESS_START, PREDEPLOY_ADDRESS_START,
+		SYSTEM_CONTRACT_ADDRESS_PREFIX,
+	},
+	ReserveIdentifier,
 };
 use sha3::{Digest, Keccak256};
 use sp_std::{rc::Rc, vec::Vec};
@@ -432,14 +434,9 @@ impl<'config, S: StackState<'config>> StackExecutor<'config, S> {
 			address,
 		);
 
-		let addr = address.as_bytes();
-		if !addr.starts_with(&SYSTEM_CONTRACT_ADDRESS_PREFIX) {
-			return address;
-		}
-
-		if addr.starts_with(&H160_PREFIX_TOKEN) || addr.starts_with(&H160_PREFIX_DEXSHARE) {
+		if is_mirrored_tokens_address_prefix(address) {
 			// `Token` predeploy contract.
-			let token_address = H160::from_low_u64_be(PREDEPLOY_ADDRESS_START);
+			let token_address = PREDEPLOY_ADDRESS_START;
 			log::debug!(
 				target: "evm",
 				"handle_mirrored_token: origin address: {:?}, token address: {:?}",

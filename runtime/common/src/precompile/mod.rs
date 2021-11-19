@@ -24,7 +24,6 @@
 mod mock;
 mod tests;
 
-use crate::is_acala_precompile;
 use frame_support::log;
 use module_evm::{
 	precompiles::{
@@ -35,7 +34,7 @@ use module_evm::{
 	Context, ExitError,
 };
 use module_support::PrecompileCallerFilter as PrecompileCallerFilterT;
-use primitives::PRECOMPILE_ADDRESS_START;
+use primitives::evm::{is_acala_precompile, PRECOMPILE_ADDRESS_START};
 use sp_core::H160;
 use sp_std::marker::PhantomData;
 
@@ -122,17 +121,17 @@ impl<
 
 			log::debug!(target: "evm", "Precompile begin, address: {:?}, input: {:?}, target_gas: {:?}, context: {:?}", address, input, target_gas, context);
 
-			let result = if address == H160::from_low_u64_be(PRECOMPILE_ADDRESS_START) {
+			let result = if address == PRECOMPILE_ADDRESS_START {
 				Some(MultiCurrencyPrecompile::execute(input, target_gas, context))
-			} else if address == H160::from_low_u64_be(PRECOMPILE_ADDRESS_START + 1) {
+			} else if address == PRECOMPILE_ADDRESS_START | H160::from_low_u64_be(1) {
 				Some(NFTPrecompile::execute(input, target_gas, context))
-			} else if address == H160::from_low_u64_be(PRECOMPILE_ADDRESS_START + 2) {
+			} else if address == PRECOMPILE_ADDRESS_START | H160::from_low_u64_be(2) {
 				Some(StateRentPrecompile::execute(input, target_gas, context))
-			} else if address == H160::from_low_u64_be(PRECOMPILE_ADDRESS_START + 3) {
+			} else if address == PRECOMPILE_ADDRESS_START | H160::from_low_u64_be(3) {
 				Some(OraclePrecompile::execute(input, target_gas, context))
-			} else if address == H160::from_low_u64_be(PRECOMPILE_ADDRESS_START + 4) {
+			} else if address == PRECOMPILE_ADDRESS_START | H160::from_low_u64_be(4) {
 				Some(ScheduleCallPrecompile::execute(input, target_gas, context))
-			} else if address == H160::from_low_u64_be(PRECOMPILE_ADDRESS_START + 5) {
+			} else if address == PRECOMPILE_ADDRESS_START | H160::from_low_u64_be(5) {
 				Some(DexPrecompile::execute(input, target_gas, context))
 			} else {
 				None

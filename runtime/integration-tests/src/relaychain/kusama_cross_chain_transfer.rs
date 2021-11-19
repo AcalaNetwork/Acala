@@ -23,6 +23,8 @@ use crate::setup::*;
 
 use frame_support::assert_ok;
 
+use karura_runtime::AssetRegistry;
+use module_asset_registry::AssetMetadata;
 use orml_traits::MultiCurrency;
 use xcm_emulator::TestExt;
 
@@ -253,5 +255,45 @@ fn batch_call_execute_then_send_xcm_to_para_chain() {
 			ParaTokens::free_balance(KUSD, &AccountId::from(ALICE))
 		);
 		assert_eq!(999948800000000, ParaTokens::free_balance(KUSD, &AccountId::from(BOB)));
+	});
+}
+
+fn foreign_asset_transfer_to_relay_chain() {
+	Karura::execute_with(|| {
+		// register KSM as foreign asset
+		assert_ok!(AssetRegistry::register_foreign_asset(
+			Origin::root(),
+			Box::new(MultiLocation::parent().into()),
+			Box::new(AssetMetadata {
+				name: b"Kusama".to_vec(),
+				symbol: b"KSM".to_vec(),
+				decimals: 12,
+				minimal_balance: 1,
+			})
+		));
+
+		assert_ok!(XTokens::transfer(
+			Origin::signed(ALICE.into()),
+			CurrencyId::ForeignAsset(0),
+			dollar(KSM),
+			Box::new(
+				MultiLocation::new(
+					1,
+					X1(Junction::AccountId32 {
+						id: BOB,
+						network: NetworkId::Any,
+					})
+				)
+				.into()
+			),
+			4_000_000_000
+		));
+	});
+
+	KusamaNet::execute_with(|| {
+		assert_eq!(
+			kusama_runtime::Balances::free_balance(&AccountId::from(BOB)),
+			999_893_333_340
+		);
 	});
 }

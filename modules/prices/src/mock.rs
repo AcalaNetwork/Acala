@@ -35,7 +35,7 @@ use sp_runtime::{
 	DispatchError, FixedPointNumber,
 };
 use sp_std::cell::RefCell;
-use support::{mocks::MockCurrencyIdMapping, ExchangeRate};
+use support::{mocks::MockErc20InfoMapping, ExchangeRate};
 
 pub type AccountId = u128;
 pub type BlockNumber = u64;
@@ -237,7 +237,7 @@ impl Config for Runtime {
 	type LiquidStakingExchangeRateProvider = MockLiquidStakingExchangeProvider;
 	type DEX = MockDEX;
 	type Currency = Tokens;
-	type CurrencyIdMapping = MockCurrencyIdMapping;
+	type Erc20InfoMapping = MockErc20InfoMapping;
 	type WeightInfo = ();
 }
 

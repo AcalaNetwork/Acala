@@ -19,7 +19,7 @@
 use crate::precompile::PrecompileOutput;
 use frame_support::log;
 use module_evm::{Context, ExitError, ExitSucceed, Precompile};
-use module_support::{AddressMapping as AddressMappingT, CurrencyIdMapping as CurrencyIdMappingT};
+use module_support::{AddressMapping as AddressMappingT, Erc20InfoMapping as Erc20InfoMappingT};
 use sp_runtime::RuntimeDebug;
 use sp_std::{fmt::Debug, marker::PhantomData, prelude::*, result};
 
@@ -38,8 +38,8 @@ use primitives::{Balance, CurrencyId};
 /// - Query total issuance.
 /// - Query balance. Rest `input` bytes: `account_id`.
 /// - Transfer. Rest `input` bytes: `from`, `to`, `amount`.
-pub struct MultiCurrencyPrecompile<AccountId, AddressMapping, CurrencyIdMapping, MultiCurrency>(
-	PhantomData<(AccountId, AddressMapping, CurrencyIdMapping, MultiCurrency)>,
+pub struct MultiCurrencyPrecompile<AccountId, AddressMapping, Erc20InfoMapping, MultiCurrency>(
+	PhantomData<(AccountId, AddressMapping, Erc20InfoMapping, MultiCurrency)>,
 );
 
 #[module_evm_utiltity_macro::generate_function_selector]
@@ -54,12 +54,12 @@ pub enum Action {
 	Transfer = "transfer(address,address,uint256)",
 }
 
-impl<AccountId, AddressMapping, CurrencyIdMapping, MultiCurrency> Precompile
-	for MultiCurrencyPrecompile<AccountId, AddressMapping, CurrencyIdMapping, MultiCurrency>
+impl<AccountId, AddressMapping, Erc20InfoMapping, MultiCurrency> Precompile
+	for MultiCurrencyPrecompile<AccountId, AddressMapping, Erc20InfoMapping, MultiCurrency>
 where
 	AccountId: Debug + Clone,
 	AddressMapping: AddressMappingT<AccountId>,
-	CurrencyIdMapping: CurrencyIdMappingT,
+	Erc20InfoMapping: Erc20InfoMappingT,
 	MultiCurrency: MultiCurrencyT<AccountId, Balance = Balance, CurrencyId = CurrencyId>,
 {
 	fn execute(
@@ -67,10 +67,10 @@ where
 		_target_gas: Option<u64>,
 		context: &Context,
 	) -> result::Result<PrecompileOutput, ExitError> {
-		let input = Input::<Action, AccountId, AddressMapping, CurrencyIdMapping>::new(input);
+		let input = Input::<Action, AccountId, AddressMapping, Erc20InfoMapping>::new(input);
 
 		let action = input.action()?;
-		let currency_id = CurrencyIdMapping::decode_evm_address(context.caller)
+		let currency_id = Erc20InfoMapping::decode_evm_address(context.caller)
 			.ok_or_else(|| ExitError::Other("invalid currency id".into()))?;
 
 		log::debug!(target: "evm", "multicurrency: currency id: {:?}", currency_id);
@@ -78,7 +78,7 @@ where
 		match action {
 			Action::QueryName => {
 				let name =
-					CurrencyIdMapping::name(currency_id).ok_or_else(|| ExitError::Other("Get name failed".into()))?;
+					Erc20InfoMapping::name(currency_id).ok_or_else(|| ExitError::Other("Get name failed".into()))?;
 				log::debug!(target: "evm", "multicurrency: name: {:?}", name);
 
 				Ok(PrecompileOutput {
@@ -89,7 +89,7 @@ where
 				})
 			}
 			Action::QuerySymbol => {
-				let symbol = CurrencyIdMapping::symbol(currency_id)
+				let symbol = Erc20InfoMapping::symbol(currency_id)
 					.ok_or_else(|| ExitError::Other("Get symbol failed".into()))?;
 				log::debug!(target: "evm", "multicurrency: symbol: {:?}", symbol);
 
@@ -101,7 +101,7 @@ where
 				})
 			}
 			Action::QueryDecimals => {
-				let decimals = CurrencyIdMapping::decimals(currency_id)
+				let decimals = Erc20InfoMapping::decimals(currency_id)
 					.ok_or_else(|| ExitError::Other("Get decimals failed".into()))?;
 				log::debug!(target: "evm", "multicurrency: decimals: {:?}", decimals);
 
