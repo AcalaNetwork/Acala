@@ -1,6 +1,6 @@
 [package]
 name = "karura-runtime"
-version = "2.0.0"
+version = "2.0.1"
 authors = ["Acala Developers"]
 edition = "2018"
 build = "build.rs"
@@ -86,6 +86,7 @@ orml-xcm = { path = "../../orml/xcm", default-features = false }
 
 module-transaction-pause = { path = "../../modules/transaction-pause", default-features = false }
 module-transaction-payment = { path = "../../modules/transaction-payment", default-features = false }
+module-asset-registry = { path = "../../modules/asset-registry", default-features = false }
 module-auction-manager = { path = "../../modules/auction-manager", default-features = false }
 module-cdp-engine = { path = "../../modules/cdp-engine", default-features = false }
 module-cdp-treasury = { path = "../../modules/cdp-treasury", default-features = false }
@@ -96,7 +97,6 @@ module-emergency-shutdown = { path = "../../modules/emergency-shutdown", default
 module-evm = { path = "../../modules/evm", default-features = false }
 module-evm-accounts = { path = "../../modules/evm-accounts", default-features = false }
 module-evm-bridge = { path = "../../modules/evm-bridge", default-features = false }
-module-evm-manager = { path = "../../modules/evm-manager", default-features = false }
 module-honzon = { path = "../../modules/honzon", default-features = false }
 module-loans = { path = "../../modules/loans", default-features = false }
 module-nft = { path = "../../modules/nft", default-features = false }
@@ -202,6 +202,7 @@ std = [
 
 	"module-transaction-pause/std",
 	"module-transaction-payment/std",
+	"module-asset-registry/std",
 	"module-auction-manager/std",
 	"module-cdp-engine/std",
 	"module-cdp-treasury/std",
@@ -212,7 +213,6 @@ std = [
 	"module-evm/std",
 	"module-evm-accounts/std",
 	"module-evm-bridge/std",
-	"module-evm-manager/std",
 	"module-honzon/std",
 	"module-loans/std",
 	"module-nft/std",
@@ -299,6 +299,7 @@ try-runtime = [
 
 	"module-transaction-pause/try-runtime",
 	"module-transaction-payment/try-runtime",
+	"module-asset-registry/try-runtime",
 	"module-auction-manager/try-runtime",
 	"module-cdp-engine/try-runtime",
 	"module-cdp-treasury/try-runtime",
@@ -309,7 +310,6 @@ try-runtime = [
 	"module-evm/try-runtime",
 	"module-evm-accounts/try-runtime",
 	"module-evm-bridge/try-runtime",
-	"module-evm-manager/try-runtime",
 	"module-honzon/try-runtime",
 	"module-loans/try-runtime",
 	"module-nft/try-runtime",

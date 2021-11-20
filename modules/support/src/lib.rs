@@ -275,7 +275,9 @@ pub trait CDPTreasuryExtended<AccountId>: CDPTreasury<AccountId> {
 		target: Self::Balance,
 		refund_receiver: AccountId,
 		splited: bool,
-	) -> DispatchResult;
+	) -> sp_std::result::Result<u32, DispatchError>;
+
+	fn max_auction() -> u32;
 }
 
 pub trait PriceProvider<CurrencyId> {
@@ -503,9 +505,19 @@ pub trait AddressMapping<AccountId> {
 	fn is_linked(account_id: &AccountId, evm: &EvmAddress) -> bool;
 }
 
+/// A mapping between ForeignAssetId and AssetMetadata.
+pub trait ForeignAssetIdMapping<ForeignAssetId, MultiLocation, AssetMetadata> {
+	/// Returns the AssetMetadata associated with a given ForeignAssetId.
+	fn get_asset_metadata(foreign_asset_id: ForeignAssetId) -> Option<AssetMetadata>;
+	/// Returns the MultiLocation associated with a given ForeignAssetId.
+	fn get_multi_location(foreign_asset_id: ForeignAssetId) -> Option<MultiLocation>;
+	/// Returns the CurrencyId associated with a given MultiLocation.
+	fn get_currency_id(multi_location: MultiLocation) -> Option<CurrencyId>;
+}
+
 /// A mapping between u32 and Erc20 address.
 /// provide a way to encode/decode for CurrencyId;
-pub trait CurrencyIdMapping {
+pub trait Erc20InfoMapping {
 	/// Use first 4 non-zero bytes as u32 to the mapping between u32 and evm
 	/// address.
 	fn set_erc20_mapping(address: EvmAddress) -> DispatchResult;
@@ -534,7 +546,7 @@ pub trait CurrencyIdMapping {
 }
 
 #[cfg(feature = "std")]
-impl CurrencyIdMapping for () {
+impl Erc20InfoMapping for () {
 	fn set_erc20_mapping(_address: EvmAddress) -> DispatchResult {
 		Err(DispatchError::Other("unimplemented CurrencyIdMapping"))
 	}

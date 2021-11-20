@@ -1,6 +1,6 @@
 [package]
 name = "runtime-common"
-version = "2.0.0"
+version = "2.0.1"
 authors = ["Acala Developers"]
 edition = "2018"
 
@@ -46,9 +46,9 @@ pallet-utility = { git = "https://github.com/paritytech/substrate", branch = "po
 acala-service = { path = "../../node/service", features = ["with-mandala-runtime"] }
 orml-tokens = { path = "../../orml/tokens" }
 orml-nft = { path = "../../orml/nft" }
+module-asset-registry = { path = "../../modules/asset-registry" }
 module-currencies = { path = "../../modules/currencies" }
 module-evm-bridge = { path = "../../modules/evm-bridge" }
-module-evm-manager = { path = "../../modules/evm-manager" }
 module-nft = { path = "../../modules/nft" }
 module-dex = { path = "../../modules/dex" }
 module-prices = { path = "../../modules/prices" }

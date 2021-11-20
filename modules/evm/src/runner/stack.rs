@@ -39,8 +39,8 @@ use module_evm_utiltity::{
 };
 use module_support::AddressMapping;
 pub use primitives::{
-	evm::{EvmAddress, Vicinity},
-	ReserveIdentifier, MIRRORED_NFT_ADDRESS_START,
+	evm::{EvmAddress, Vicinity, MIRRORED_NFT_ADDRESS_START},
+	ReserveIdentifier,
 };
 use sha3::{Digest, Keccak256};
 use sp_core::{H160, H256, U256};

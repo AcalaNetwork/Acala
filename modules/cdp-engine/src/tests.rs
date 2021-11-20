@@ -462,7 +462,7 @@ fn liquidate_unsafe_cdp_by_collateral_auction() {
 			ALICE,
 			100,
 			50,
-			LiquidationStrategy::Auction,
+			LiquidationStrategy::Auction { auction_count: 1 },
 		)));
 		assert_eq!(CDPTreasuryModule::debit_pool(), 50);
 		assert_eq!(Currencies::free_balance(BTC, &ALICE), 900);
@@ -528,7 +528,7 @@ fn liquidate_unsafe_cdp_by_collateral_auction_when_limited_by_slippage() {
 			ALICE,
 			100,
 			50,
-			LiquidationStrategy::Auction,
+			LiquidationStrategy::Auction { auction_count: 1 },
 		)));
 
 		assert_eq!(DEXModule::get_liquidity_pool(BTC, AUSD), (100, 121));

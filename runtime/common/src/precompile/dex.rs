@@ -20,7 +20,7 @@ use super::input::{Input, InputT, Output};
 use crate::precompile::PrecompileOutput;
 use frame_support::log;
 use module_evm::{Context, ExitError, ExitSucceed, Precompile};
-use module_support::{AddressMapping as AddressMappingT, CurrencyIdMapping as CurrencyIdMappingT, DEXManager};
+use module_support::{AddressMapping as AddressMappingT, DEXManager, Erc20InfoMapping as Erc20InfoMappingT};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use primitives::{Balance, CurrencyId};
 use sp_runtime::RuntimeDebug;
@@ -35,8 +35,8 @@ use sp_std::{fmt::Debug, marker::PhantomData, prelude::*, result};
 /// - Get liquidity. Rest `input` bytes: `currency_id_a`, `currency_id_b`.
 /// - Swap with exact supply. Rest `input` bytes: `who`, `currency_id_a`, `currency_id_b`,
 ///   `supply_amount`, `min_target_amount`.
-pub struct DexPrecompile<AccountId, AddressMapping, CurrencyIdMapping, Dex>(
-	PhantomData<(AccountId, AddressMapping, CurrencyIdMapping, Dex)>,
+pub struct DexPrecompile<AccountId, AddressMapping, Erc20InfoMapping, Dex>(
+	PhantomData<(AccountId, AddressMapping, Erc20InfoMapping, Dex)>,
 );
 
 #[module_evm_utiltity_macro::generate_function_selector]
@@ -53,12 +53,12 @@ pub enum Action {
 	RemoveLiquidity = "removeLiquidity(address,address,address,uint256,uint256,uint256)",
 }
 
-impl<AccountId, AddressMapping, CurrencyIdMapping, Dex> Precompile
-	for DexPrecompile<AccountId, AddressMapping, CurrencyIdMapping, Dex>
+impl<AccountId, AddressMapping, Erc20InfoMapping, Dex> Precompile
+	for DexPrecompile<AccountId, AddressMapping, Erc20InfoMapping, Dex>
 where
 	AccountId: Debug + Clone,
 	AddressMapping: AddressMappingT<AccountId>,
-	CurrencyIdMapping: CurrencyIdMappingT,
+	Erc20InfoMapping: Erc20InfoMappingT,
 	Dex: DEXManager<AccountId, CurrencyId, Balance>,
 {
 	fn execute(
@@ -66,7 +66,7 @@ where
 		_target_gas: Option<u64>,
 		_context: &Context,
 	) -> result::Result<PrecompileOutput, ExitError> {
-		let input = Input::<Action, AccountId, AddressMapping, CurrencyIdMapping>::new(input);
+		let input = Input::<Action, AccountId, AddressMapping, Erc20InfoMapping>::new(input);
 
 		let action = input.action()?;
 

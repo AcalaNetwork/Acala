@@ -45,7 +45,7 @@ use sp_runtime::{
 	ArithmeticError, DispatchError, DispatchResult, FixedPointNumber, RuntimeDebug, SaturatedConversion,
 };
 use sp_std::{convert::TryInto, prelude::*, vec};
-use support::{CurrencyIdMapping, DEXIncentives, DEXManager, ExchangeRate, Ratio};
+use support::{DEXIncentives, DEXManager, Erc20InfoMapping, ExchangeRate, Ratio};
 
 mod mock;
 mod tests;
@@ -116,7 +116,7 @@ pub mod module {
 
 		/// Mapping between CurrencyId and ERC20 address so user can use Erc20
 		/// address as LP token.
-		type CurrencyIdMapping: CurrencyIdMapping;
+		type Erc20InfoMapping: Erc20InfoMapping;
 
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
@@ -487,10 +487,10 @@ pub mod module {
 			);
 
 			if let CurrencyId::Erc20(address) = currency_id_a {
-				T::CurrencyIdMapping::set_erc20_mapping(address)?;
+				T::Erc20InfoMapping::set_erc20_mapping(address)?;
 			}
 			if let CurrencyId::Erc20(address) = currency_id_b {
-				T::CurrencyIdMapping::set_erc20_mapping(address)?;
+				T::Erc20InfoMapping::set_erc20_mapping(address)?;
 			}
 
 			let (min_contribution, target_provision) = if currency_id_a == trading_pair.first() {
@@ -1224,7 +1224,7 @@ impl<T: Config> DEXManager<T::AccountId, CurrencyId, Balance> for Pallet<T> {
 
 	fn get_liquidity_token_address(currency_id_a: CurrencyId, currency_id_b: CurrencyId) -> Option<H160> {
 		let trading_pair = TradingPair::from_currency_ids(currency_id_a, currency_id_b)?;
-		T::CurrencyIdMapping::encode_evm_address(trading_pair.dex_share_currency_id())
+		T::Erc20InfoMapping::encode_evm_address(trading_pair.dex_share_currency_id())
 	}
 
 	fn get_swap_target_amount(path: &[CurrencyId], supply_amount: Balance) -> Option<Balance> {
