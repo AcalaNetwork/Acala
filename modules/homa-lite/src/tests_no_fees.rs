@@ -629,3 +629,239 @@ fn iterate_redeem_requests_from_next_works() {
 		);
 	});
 }
+
+#[test]
+fn mint_match_from_next_redeem_requests() {
+	ExtBuilder::empty().build().execute_with(|| {
+		assert_ok!(HomaLite::set_minting_cap(Origin::root(), dollar(1_000_000)));
+
+		for i in 0..10 {
+			let account = AccountId::from([i as u8; 32]);
+			assert_ok!(Currencies::update_balance(
+				Origin::root(),
+				account.clone(),
+				LKSM,
+				dollar(1000 as u128) as i128
+			));
+			assert_ok!(HomaLite::request_redeem(
+				Origin::signed(account),
+				dollar(1000),
+				Permill::zero()
+			));
+		}
+
+		assert_ok!(HomaLite::set_total_staking_currency(
+			Origin::root(),
+			Currencies::total_issuance(LKSM) / 10
+		));
+
+		// This is the default order the redeem requests are iterated.
+		let mut default_order = vec![];
+		for (redeemer, _) in RedeemRequests::<NoFeeRuntime>::iter() {
+			default_order.push(redeemer);
+		}
+		assert_eq!(
+			default_order,
+			vec![
+				AccountId::from([1u8; 32]),
+				AccountId::from([6u8; 32]),
+				AccountId::from([2u8; 32]),
+				AccountId::from([3u8; 32]),
+				AccountId::from([8u8; 32]),
+				AccountId::from([9u8; 32]),
+				AccountId::from([7u8; 32]),
+				AccountId::from([4u8; 32]),
+				AccountId::from([5u8; 32]),
+				AccountId::from([0u8; 32]),
+			]
+		);
+
+		let minter = AccountId::from([255u8; 32]);
+		assert_ok!(Currencies::update_balance(
+			Origin::root(),
+			minter.clone(),
+			KSM,
+			dollar(100 as u128) as i128
+		));
+
+		// If unset, `NextRedeemRequestToMatch` should be the default account Id
+		assert_eq!(HomaLite::next_redeem_request_to_match(), AccountId::default());
+		// Set this to an non-existent item. Redeem should start from the very beginning.
+		NextRedeemRequestToMatch::<NoFeeRuntime>::put(AccountId::from([100u8; 32]));
+
+		// Minting once for each item in redeem request should be iterated once
+		for i in 0..9 {
+			assert_ok!(HomaLite::mint(Origin::signed(minter.clone()), dollar(10)));
+			// Each item should be iterated once
+			assert_eq!(
+				HomaLite::redeem_requests(default_order[i].clone()),
+				Some((dollar(900), Permill::zero()))
+			);
+			assert_eq!(Currencies::free_balance(KSM, &default_order[i]), dollar(10));
+			// Ensure `NextRedeemRequestToMatch` is setup correctly.
+			assert_eq!(HomaLite::next_redeem_request_to_match(), default_order[i + 1]);
+		}
+
+		// Check the last item can be iterated on correctly
+		assert_ok!(HomaLite::mint(Origin::signed(minter.clone()), dollar(10)));
+		assert_eq!(
+			HomaLite::redeem_requests(default_order[9].clone()),
+			Some((dollar(900), Permill::zero()))
+		);
+		// Ensure `NextRedeemRequestToMatch` is setup correctly.
+		assert_eq!(HomaLite::next_redeem_request_to_match(), AccountId::default());
+
+		// Check mint operations are successful.
+		assert_eq!(Currencies::free_balance(KSM, &minter), 0);
+		assert_eq!(Currencies::free_balance(LKSM, &minter), dollar(1000));
+
+		// Test iterate only wrap around once without double-redeem.
+		assert_ok!(Currencies::update_balance(
+			Origin::root(),
+			minter.clone(),
+			KSM,
+			dollar(1000 as u128) as i128
+		));
+
+		assert_eq!(HomaLite::total_staking_currency(), dollar(1000));
+
+		// 900 should be minted from redeem requests, 100 from XCM.
+		assert_ok!(HomaLite::mint(Origin::signed(minter.clone()), dollar(1000)));
+
+		// All redeem requests should be fulfilled, and only once.
+		for i in 0..9 {
+			assert_eq!(HomaLite::redeem_requests(default_order[i].clone()), None);
+			assert_eq!(Currencies::free_balance(KSM, &default_order[i]), dollar(100));
+			assert_eq!(Currencies::free_balance(LKSM, &default_order[i]), 0);
+			assert_eq!(Currencies::reserved_balance(LKSM, &default_order[i]), 0);
+		}
+
+		assert_eq!(Currencies::free_balance(KSM, &minter), 0);
+		assert_eq!(Currencies::free_balance(LKSM, &minter), dollar(11000));
+
+		// 100 KSM redeemed from XCM, increasing the staking total.
+		assert_eq!(HomaLite::total_staking_currency(), dollar(1100));
+	});
+}
+
+#[test]
+fn unbonded_staking_match_from_next_redeem_requests() {
+	let mut unbond = |amount: Balance| -> DispatchResult {
+		assert_ok!(HomaLite::schedule_unbond(Origin::root(), amount, 0));
+		HomaLite::on_idle(0, 5_000_000_000);
+		Ok(())
+	};
+
+	let mut adjust_available_staking_balance = |amount: Balance| -> DispatchResult {
+		HomaLite::adjust_available_staking_balance(Origin::root(), amount as i128, 1_000)
+	};
+
+	// Test unbonding can iterate from `NextRedeemRequestToMatch`
+	test_increase_staking_match_from_next_redeem_requests(&mut unbond);
+
+	// Test `adjust_available_staking_balance` can iterate from `NextRedeemRequestToMatch`
+	test_increase_staking_match_from_next_redeem_requests(&mut adjust_available_staking_balance);
+}
+
+// Helper function that tests when increaasing Staking currency, the redeem requests are processed
+// from the `NextRedeemRequestToMatch`. Takes a Function that increases the StakingCurrency and
+// matches redeem requests.
+fn test_increase_staking_match_from_next_redeem_requests(mut increase_staking: impl FnMut(Balance) -> DispatchResult) {
+	ExtBuilder::empty().build().execute_with(|| {
+		assert_ok!(HomaLite::set_minting_cap(Origin::root(), dollar(1_000_000)));
+
+		// Give someone extra fund so total staking does not reduce to zero.
+		assert_ok!(Currencies::update_balance(
+			Origin::root(),
+			AccountId::from([255u8; 32]),
+			LKSM,
+			dollar(10 as u128) as i128
+		));
+
+		for i in 0..10 {
+			let account = AccountId::from([i as u8; 32]);
+			assert_ok!(Currencies::update_balance(
+				Origin::root(),
+				account.clone(),
+				LKSM,
+				dollar(1000 as u128) as i128
+			));
+			assert_ok!(HomaLite::request_redeem(
+				Origin::signed(account),
+				dollar(1000),
+				Permill::zero()
+			));
+		}
+
+		assert_ok!(HomaLite::set_total_staking_currency(
+			Origin::root(),
+			Currencies::total_issuance(LKSM) / 10
+		));
+
+		// This is the default order the redeem requests are iterated.
+		let mut default_order = vec![];
+		for (redeemer, _) in RedeemRequests::<NoFeeRuntime>::iter() {
+			default_order.push(redeemer);
+		}
+		assert_eq!(
+			default_order,
+			vec![
+				AccountId::from([1u8; 32]),
+				AccountId::from([6u8; 32]),
+				AccountId::from([2u8; 32]),
+				AccountId::from([3u8; 32]),
+				AccountId::from([8u8; 32]),
+				AccountId::from([9u8; 32]),
+				AccountId::from([7u8; 32]),
+				AccountId::from([4u8; 32]),
+				AccountId::from([5u8; 32]),
+				AccountId::from([0u8; 32]),
+			]
+		);
+
+		// If unset, `NextRedeemRequestToMatch` should be the default account Id
+		assert_eq!(HomaLite::next_redeem_request_to_match(), AccountId::default());
+		// Set this to an non-existent item. Redeem should start from the very beginning.
+		NextRedeemRequestToMatch::<NoFeeRuntime>::put(AccountId::from([100u8; 32]));
+
+		assert_eq!(HomaLite::total_staking_currency(), dollar(1001));
+
+		// Minting once for each item in redeem request should be iterated once
+		for i in 0..9 {
+			assert_ok!(increase_staking(dollar(10)));
+			assert_eq!(HomaLite::total_staking_currency(), dollar(1001 - (i as u128 + 1) * 10));
+			// Each item should be iterated once
+			assert_eq!(
+				HomaLite::redeem_requests(default_order[i].clone()),
+				Some((dollar(900), Permill::zero()))
+			);
+			assert_eq!(Currencies::free_balance(KSM, &default_order[i]), dollar(10));
+			// Ensure `NextRedeemRequestToMatch` is setup correctly.
+			assert_eq!(HomaLite::next_redeem_request_to_match(), default_order[i + 1]);
+		}
+		assert_ok!(increase_staking(dollar(10)));
+		assert_eq!(
+			HomaLite::redeem_requests(default_order[9].clone()),
+			Some((dollar(900), Permill::zero()))
+		);
+		// Ensure `NextRedeemRequestToMatch` is setup correctly.
+		assert_eq!(HomaLite::next_redeem_request_to_match(), AccountId::default());
+
+		assert_eq!(HomaLite::total_staking_currency(), dollar(901));
+
+		// Test iterate only wrap around once without double-redeem.
+		// 900 should be used to clear all redeem requests, 100 is then left over.
+		assert_ok!(increase_staking(dollar(1000)));
+
+		// All redeem requests should be fulfilled, and only once.
+		for i in 0..9 {
+			assert_eq!(HomaLite::redeem_requests(default_order[i].clone()), None);
+			assert_eq!(Currencies::free_balance(KSM, &default_order[i]), dollar(100));
+			assert_eq!(Currencies::free_balance(LKSM, &default_order[i]), 0);
+			assert_eq!(Currencies::reserved_balance(LKSM, &default_order[i]), 0);
+		}
+
+		assert_eq!(HomaLite::total_staking_currency(), dollar(1));
+		assert_eq!(HomaLite::available_staking_balance(), dollar(100));
+	});
+}
