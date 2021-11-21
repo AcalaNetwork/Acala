@@ -32,7 +32,7 @@ use crate::chain_spec::{get_account_id_from_seed, get_authority_keys_from_seed, 
 
 pub type ChainSpec = sc_service::GenericChainSpec<mandala_runtime::GenesisConfig, Extensions>;
 
-pub const PARA_ID: u32 = 1000;
+pub const PARA_ID: u32 = 2000;
 
 /// Development testnet config (single validator Alice), non-parachain
 pub fn dev_testnet_config() -> Result<ChainSpec, String> {

@@ -175,7 +175,15 @@ impl SubstrateCli for RelayChainCli {
 	}
 
 	fn load_spec(&self, id: &str) -> std::result::Result<Box<dyn sc_service::ChainSpec>, String> {
-		polkadot_cli::Cli::from_iter([RelayChainCli::executable_name()].iter()).load_spec(id)
+		println!("Loading chain spec {}", id);
+		if id == "rococo-mandala" {
+			let spec = sc_service::GenericChainSpec::<(), polkadot_service::chain_spec::Extensions>::from_json_bytes(
+				&include_bytes!("../../../resources/rococo-mandala.json")[..],
+			)?;
+			Ok(Box::new(spec))
+		} else {
+			polkadot_cli::Cli::from_iter([RelayChainCli::executable_name()].iter()).load_spec(id)
+		}
 	}
 
 	fn native_runtime_version(chain_spec: &Box<dyn ChainSpec>) -> &'static RuntimeVersion {
