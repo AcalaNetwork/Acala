@@ -312,7 +312,7 @@ pub mod module {
 		}
 
 		fn on_initialize(n: T::BlockNumber) -> Weight {
-			// Update the total amount of Staking balance by acrueing the interest periodically.
+			// Update the total amount of Staking balance by accruing the interest periodically.
 			let interest_rate = Self::staking_interest_rate_per_update();
 			if !interest_rate.is_zero()
 				&& n.checked_rem(&T::StakingUpdateFrequency::get())
@@ -807,7 +807,7 @@ pub mod module {
 			new_balances.clear();
 
 			let mut redeem_requests_limit_remaining = T::MaximumRedeemRequestMatchesForMint::get();
-			if !liquid_remaining.is_zero() {
+			if !liquid_remaining.is_zero() && !redeem_requests_limit_remaining.is_zero() {
 				// Define the function to be executed for each of the redeem request:
 				// Redeem the given requests with the current minting request.
 				//
@@ -817,7 +817,7 @@ pub mod module {
 				// Capturing: &mut liquid_remaining
 				//            &mut redeem_requests_limit_remaining
 				//            &mut new_balances
-				// If all the currencies are minted, return.
+				// If all the currencies are minted, return `should_break` as true.
 				let mut f = |redeemer, request_amount, extra_fee| -> Result<bool, DispatchError> {
 					Self::match_mint_with_redeem_request(
 						minter,
@@ -832,6 +832,8 @@ pub mod module {
 					// Should break when all currencies are minted
 					Ok(liquid_remaining.is_zero() || redeem_requests_limit_remaining.is_zero())
 				};
+
+				// Call the function on redeem requests - iterating from the `NextRedeemRequestToMatch`
 				Self::iterate_from_next_redeem_request(&mut f)?;
 			}
 
@@ -977,13 +979,10 @@ pub mod module {
 					// If all the currencies are minted, return `should_break` as true
 					Ok(available_staking_balance <= T::MinimumMintThreshold::get() || num_matched >= max_num_matches)
 				};
+
+				// Redeem requests from `NextRedeemRequestToMatch` using available_staking_balance.
 				Self::iterate_from_next_redeem_request(&mut f)?;
 			}
-			// for (redeemer, (request_amount, extra_fee)) in RedeemRequests::<T>::iter() {
-			// 	if f(redeemer, request_amount, extra_fee)? {
-			// 		break;
-			// 	}
-			// }
 
 			// Update storage to the new balances. Remove Redeem requests that have been filled.
 			Self::update_redeem_requests(&new_balances);
@@ -1010,12 +1009,22 @@ pub mod module {
 			}
 		}
 
+		// Helper function that checks if the `liquid_amount` is above the minimum redeem threshold, and
+		// is enough to pay for the XCM unbond fee.
 		fn liquid_amount_is_above_minimum_threshold(liquid_amount: Balance) -> bool {
 			liquid_amount > T::MinimumRedeemThreshold::get()
 				&& Self::convert_liquid_to_staking(liquid_amount).unwrap_or_default() > T::XcmUnbondFee::get()
 		}
 
-		/// Construct a XCM message
+		/// Helper function that construct an XCM message that:
+		/// 1. `withdraw_unbonded` from HomaLite sub-account.
+		/// 2. Transfer the withdrew fund into Sovereign account.
+		///
+		/// Param:
+		/// 	- `parachain_account` : sovereign account's AccountId
+		/// 	- `amount` : amount to withdraw from unbonded.
+		/// Return:
+		/// 	Xcm<()>: the Xcm message constructed.
 		pub fn construct_xcm_unreserve_message(parachain_account: T::AccountId, amount: Balance) -> Xcm<()> {
 			let xcm_message = T::RelayChainCallBuilder::utility_as_derivative_call(
 				T::RelayChainCallBuilder::utility_batch_call(vec![
@@ -1031,7 +1040,8 @@ pub mod module {
 			)
 		}
 
-		/// Helper function that update the storage of total_staking_currency and emit event.
+		/// Helper function that update the storage of total_staking_currency.
+		/// Ensures that the total staking amount would not become zero, and emit an event.
 		fn update_total_staking_currency_storage(
 			f: impl FnOnce(Balance) -> Result<Balance, DispatchError>,
 		) -> DispatchResult {
@@ -1043,8 +1053,18 @@ pub mod module {
 			})
 		}
 
-		/// Helper function that iterates `RedeemRequests` storage from `NextRedeemRequestToMatch`.
+		/// Helper function that iterates `RedeemRequests` storage from `NextRedeemRequestToMatch`,
+		/// and call the MutFn f() on that request.
+		///
 		/// If `NextRedeemRequestToMatch` is not found in storage, iterate from the start.
+		///
+		/// Param for FnMut f:
+		/// 	- `redeemer`: AccountId of the redeemer
+		/// 	- `amount`: The amount to be redeemed
+		/// 	- `extra_fee`: The extra fee to be paid to the minter from the redeemer
+		/// Return for FnMut f:
+		/// 	Result<should_break, error>: If Ok, return if the iteration should end. Otherwise return
+		/// the Error
 		pub fn iterate_from_next_redeem_request(
 			f: &mut impl FnMut(T::AccountId, Balance, Permill) -> Result<bool, DispatchError>,
 		) -> DispatchResult {
@@ -1054,39 +1074,47 @@ pub mod module {
 				Some(element) => element,
 			};
 
-			let starting_element = match Self::redeem_requests(Self::next_redeem_request_to_match()) {
-				Some(request) => (Self::next_redeem_request_to_match(), request),
+			// If "next" exists in storage, use it as the "starting_item". Otherwise use the first item.
+			let starting_redeemer = Self::next_redeem_request_to_match();
+			let starting_element = match Self::redeem_requests(starting_redeemer.clone()) {
+				Some(request) => (starting_redeemer, request),
 				None => first_element,
 			};
-			let mut iterator = RedeemRequests::<T>::iter();
-			let mut current = iterator.next();
+			let starting_key = RedeemRequests::<T>::hashed_key_for(starting_element.0.clone());
+			let mut iterator = RedeemRequests::<T>::iter_from(starting_key);
 
-			// Skip elements until `starting_element` is found.
-			while current.is_some() && current.clone().unwrap_or_default() != starting_element {
-				current = iterator.next();
+			// Call the function for the first item
+			let (redeemer, (request_amount, extra_fee)) = starting_element.clone();
+			if f(redeemer, request_amount, extra_fee)? {
+				// Store the `next` element as `NextRedeemRequestToMatch`
+				NextRedeemRequestToMatch::<T>::put(iterator.next().unwrap_or_default().0);
+				return Ok(());
 			}
 
 			// Iterate until the end of the storage, calling f() for each element
-			while current.is_some() {
-				let (redeemer, (request_amount, extra_fee)) = current.unwrap_or_default();
+			#[allow(clippy::while_let_on_iterator)]
+			while let Some((redeemer, (request_amount, extra_fee))) = iterator.next() {
 				if f(redeemer, request_amount, extra_fee)? {
 					// Store the `next` element as `NextRedeemRequestToMatch`
 					NextRedeemRequestToMatch::<T>::put(iterator.next().unwrap_or_default().0);
 					return Ok(());
 				}
-				current = iterator.next();
 			}
 
-			// Iterate from the start of the storage until `starting_element`, calling f() for each element.
+			// Reset the iterator and start from the beginning of the storage until `starting_redeemer`, calling
+			// f() for each element.
 			iterator = RedeemRequests::<T>::iter();
-			current = iterator.next();
-			while current.is_some() && current.clone().unwrap_or_default() != starting_element {
-				let (redeemer, (request_amount, extra_fee)) = current.unwrap_or_default();
+
+			#[allow(clippy::while_let_on_iterator)]
+			while let Some((redeemer, (request_amount, extra_fee))) = iterator.next() {
+				if redeemer == starting_element.0 {
+					// We have wrapped to the beginning. Return.
+					return Ok(());
+				}
 				if f(redeemer, request_amount, extra_fee)? {
 					NextRedeemRequestToMatch::<T>::put(iterator.next().unwrap_or_default().0);
 					return Ok(());
 				}
-				current = iterator.next();
 			}
 			Ok(())
 		}

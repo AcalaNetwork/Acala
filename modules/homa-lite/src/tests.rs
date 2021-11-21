@@ -231,7 +231,7 @@ fn can_adjust_total_staking_currency() {
 		);
 		assert_eq!(HomaLite::total_staking_currency(), 5000);
 
-		// TotalStakingCurrency must be atleast 1
+		// TotalStakingCurrency must be at least 1
 		assert_ok!(HomaLite::adjust_total_staking_currency(Origin::root(), -4999i128));
 	});
 }
@@ -301,7 +301,7 @@ fn can_set_mint_cap() {
 		// Current cap is not set
 		assert_eq!(StakingCurrencyMintCap::<Runtime>::get(), 0);
 
-		// Requires Root previlege.
+		// Requires Root privilege.
 		assert_noop!(
 			HomaLite::set_minting_cap(Origin::signed(ALICE), dollar(1_000)),
 			BadOrigin
@@ -322,7 +322,7 @@ fn can_set_mint_cap() {
 #[test]
 fn can_set_xcm_dest_weight() {
 	ExtBuilder::default().build().execute_with(|| {
-		// Requires Root previlege.
+		// Requires Root privilege.
 		assert_noop!(
 			HomaLite::set_xcm_dest_weight(Origin::signed(ALICE), 1_000_000),
 			BadOrigin
@@ -341,7 +341,7 @@ fn can_set_xcm_dest_weight() {
 #[test]
 fn can_schedule_unbond() {
 	ExtBuilder::default().build().execute_with(|| {
-		// Requires Root previlege.
+		// Requires Root privilege.
 		assert_noop!(
 			HomaLite::schedule_unbond(Origin::signed(ALICE), 1_000_000, 100),
 			BadOrigin
@@ -368,7 +368,7 @@ fn can_schedule_unbond() {
 #[test]
 fn can_replace_schedule_unbond() {
 	ExtBuilder::default().build().execute_with(|| {
-		// Requires Root previlege.
+		// Requires Root privilege.
 		assert_noop!(
 			HomaLite::replace_schedule_unbond(Origin::signed(ALICE), vec![(1_000_000, 100)]),
 			BadOrigin
@@ -562,7 +562,7 @@ fn on_idle_can_handle_changes_in_exchange_rate() {
 }
 
 // Redeem can be redeemed immediately if there are staking staking balance.
-// Redeem requests unfullfilled are added to the queue.
+// Redeem requests unfulfilled are added to the queue.
 #[test]
 fn request_redeem_works() {
 	ExtBuilder::default().build().execute_with(|| {
@@ -604,7 +604,7 @@ fn request_redeem_works() {
 		assert_eq!(Currencies::reserved_balance(LKSM, &DAVE), 0);
 		assert_eq!(RedeemRequests::<Runtime>::get(&DAVE), None);
 
-		// check the correct events are emited
+		// check the correct events are emitted
 		let events = System::events();
 
 		// Reserved LKSM with withdraw fee deducted
@@ -727,7 +727,7 @@ fn update_redeem_request_works() {
 			Some((new_redeem_amount, Permill::zero()))
 		);
 
-		// check the correct events are emited
+		// check the correct events are emitted
 		let events = System::events();
 		// Reserved the extra LKSM
 		assert_eq!(
@@ -762,9 +762,9 @@ fn update_redeem_request_works() {
 			Some((dollar(1_000), Permill::zero()))
 		);
 
-		// check the correct events are emited
+		// check the correct events are emitted
 		let events = System::events();
-		// Uneserved the difference
+		// Unreserved the difference
 		assert_eq!(
 			events[events.len() - 2].event,
 			Event::Tokens(orml_tokens::Event::Unreserved(LKSM, DAVE, 998_999_000_000_000))
@@ -966,12 +966,12 @@ fn mint_can_handle_dust_redeem_requests() {
 
 		let mint_amount = HomaLite::convert_liquid_to_staking(1_000_000_000_000_000).unwrap();
 		assert_eq!(mint_amount, 100_100_100_100_099);
-		// Mint 100 KSM, remaning dust should be returned to the redeemer.
+		// Mint 100 KSM, remaining dust should be returned to the redeemer.
 		assert_ok!(HomaLite::mint(Origin::signed(BOB), mint_amount));
 
 		// some dust due to rounding error left
 		assert_eq!(Currencies::free_balance(KSM, &BOB), 899_899_899_902);
-		// Minted appox. $1000 LKSM
+		// Minted approximately $1000 LKSM
 		assert_eq!(Currencies::free_balance(LKSM, &BOB), 999_999_999_999_990);
 
 		// Redeemed $100 KSM for ALICE, with rounding error
@@ -1321,7 +1321,7 @@ fn total_staking_currency_update_periodically() {
 		let on_initialize_weight = <Runtime as Config>::WeightInfo::on_initialize();
 		let on_initialize_without_work_weight = <Runtime as Config>::WeightInfo::on_initialize_without_work();
 
-		// Interst rate isn't set yet - no interest rate calculation is done.
+		// Interest rate isn't set yet - no interest rate calculation is done.
 		assert_eq!(HomaLite::on_initialize(0), on_initialize_without_work_weight);
 		// Default inflation rate is 0%
 		assert_eq!(TotalStakingCurrency::<Runtime>::get(), dollar(1_000_000));
@@ -1329,7 +1329,7 @@ fn total_staking_currency_update_periodically() {
 		for i in 1..100 {
 			assert_eq!(HomaLite::on_initialize(i), on_initialize_without_work_weight);
 		}
-		// Interst rate isn't set yet - no interest rate calculation is done.
+		// Interest rate isn't set yet - no interest rate calculation is done.
 		assert_eq!(HomaLite::on_initialize(0), on_initialize_without_work_weight);
 		assert_eq!(TotalStakingCurrency::<Runtime>::get(), dollar(1_000_000));
 
@@ -1804,7 +1804,7 @@ fn mint_can_handle_rounding_error_dust() {
 			events[events.len() - 3].event,
 			Event::Currencies(module_currencies::Event::Transferred(KSM, DAVE, ALICE, 999_999_999_998))
 		);
-		// actual staking transfered is off due to rounding error
+		// actual staking transferred is off due to rounding error
 		assert_eq!(
 			events[events.len() - 2].event,
 			Event::HomaLite(crate::Event::Redeemed(ALICE, 999_999_999_998, 9_987_632_930_985))

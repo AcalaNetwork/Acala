@@ -59,7 +59,7 @@ pub const MOCK_XCM_DESTINATION: MultiLocation = X1(Junction::AccountId32 {
 	id: [1u8; 32],
 })
 .into();
-pub const MOCK_XCM_ACCOUNTID: AccountId = AccountId32::new([255u8; 32]);
+pub const MOCK_XCM_ACCOUNT_ID: AccountId = AccountId32::new([255u8; 32]);
 pub const PARACHAIN_ID: u32 = 2000;
 
 /// For testing only. Does not check for overflow.
@@ -258,7 +258,7 @@ parameter_types! {
 	pub MinimumMintThreshold: Balance = millicent(1000);
 	pub MinimumRedeemThreshold: Balance = millicent(1000);
 	pub const MockXcmDestination: MultiLocation = MOCK_XCM_DESTINATION;
-	pub const MockXcmAccountId: AccountId = MOCK_XCM_ACCOUNTID;
+	pub const MockXcmAccountId: AccountId = MOCK_XCM_ACCOUNT_ID;
 	pub DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
 	pub const MaxRewardPerEra: Permill = Permill::from_percent(1);
 	pub MintFee: Balance = millicent(1000);

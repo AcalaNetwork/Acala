@@ -763,7 +763,7 @@ fn unbonded_staking_match_from_next_redeem_requests() {
 	test_increase_staking_match_from_next_redeem_requests(&mut adjust_available_staking_balance);
 }
 
-// Helper function that tests when increaasing Staking currency, the redeem requests are processed
+// Helper function that tests when increasing Staking currency, the redeem requests are processed
 // from the `NextRedeemRequestToMatch`. Takes a Function that increases the StakingCurrency and
 // matches redeem requests.
 fn test_increase_staking_match_from_next_redeem_requests(mut increase_staking: impl FnMut(Balance) -> DispatchResult) {
