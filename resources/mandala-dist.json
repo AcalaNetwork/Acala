@@ -1,6 +1,6 @@
 {
   "name": "Acala Mandala TC7",
-  "id": "mandala-dev-tc7",
+  "id": "mandala-tc7",
   "chainType": "Live",
   "bootNodes": [
     "/ip4/54.254.37.221/tcp/30333/p2p/12D3KooWNUPp9ervpypz95DCMHfb3CAbQdfrmmBbYehUaJsFvRvT"
@@ -11,7 +11,7 @@
       0
     ]
   ],
-  "protocolId": "mandala-dev-tc7",
+  "protocolId": "mandala-tc7",
   "properties": {
     "tokenDecimals": [
       12,
@@ -42,8 +42,8 @@
       "VSKSM"
     ]
   },
-  "relayChain": "dev",
-  "paraId": 1000,
+  "relayChain": "rococo-mandala",
+  "paraId": 2000,
   "consensusEngine": null,
   "codeSubstitutes": {},
   "genesis": {
