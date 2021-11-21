@@ -72,7 +72,7 @@ impl<T: frame_system::Config> module_evm::WeightInfo for WeightInfo<T> {
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
-	fn set_code() -> Weight {
+	fn set_code(_c: u32) -> Weight {
 		(271_588_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(10 as Weight))
 			.saturating_add(T::DbWeight::get().writes(9 as Weight))
