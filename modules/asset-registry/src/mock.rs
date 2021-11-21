@@ -16,55 +16,47 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-//! Mocks for the evm-manager module.
+//! Mocks for asset registry module.
 
 #![cfg(test)]
 
-use super::*;
+use crate as asset_registry;
 use frame_support::{
-	assert_ok, construct_runtime, ord_parameter_types, parameter_types,
-	traits::{Everything, Nothing},
+	assert_ok, construct_runtime, ord_parameter_types, pallet_prelude::GenesisBuild, parameter_types,
+	traits::Everything,
 };
 use frame_system::EnsureSignedBy;
 use module_support::{mocks::MockAddressMapping, AddressMapping};
-use orml_traits::parameter_type_with_key;
-use primitives::{Amount, Balance, CurrencyId, ReserveIdentifier, TokenSymbol};
-use sp_core::{bytes::from_hex, crypto::AccountId32, H160, H256};
-use sp_runtime::{testing::Header, traits::IdentityLookup};
+use primitives::{evm::EvmAddress, AccountId, Balance, ReserveIdentifier};
+use sp_core::{bytes::from_hex, H160, H256};
 use std::str::FromStr;
 
-pub type AccountId = AccountId32;
-pub type BlockNumber = u64;
-
-mod evm_manager {
-	pub use super::super::*;
-}
-
-parameter_types! {
-	pub const BlockHashCount: u64 = 250;
-}
+parameter_types!(
+	pub const SomeConst: u64 = 10;
+	pub const BlockHashCount: u32 = 250;
+);
 
 impl frame_system::Config for Runtime {
+	type BaseCallFilter = Everything;
 	type Origin = Origin;
 	type Index = u64;
-	type BlockNumber = BlockNumber;
+	type BlockNumber = u64;
 	type Call = Call;
-	type Hash = H256;
-	type Hashing = ::sp_runtime::traits::BlakeTwo256;
+	type Hash = sp_runtime::testing::H256;
+	type Hashing = sp_runtime::traits::BlakeTwo256;
 	type AccountId = AccountId;
-	type Lookup = IdentityLookup<Self::AccountId>;
-	type Header = Header;
+	type Lookup = sp_runtime::traits::IdentityLookup<Self::AccountId>;
+	type Header = sp_runtime::testing::Header;
 	type Event = Event;
 	type BlockHashCount = BlockHashCount;
 	type BlockWeights = ();
 	type BlockLength = ();
+	type DbWeight = ();
 	type Version = ();
 	type PalletInfo = PalletInfo;
 	type AccountData = pallet_balances::AccountData<Balance>;
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
-	type DbWeight = ();
-	type BaseCallFilter = Everything;
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
 	type OnSetCode = ();
@@ -76,46 +68,15 @@ parameter_types! {
 }
 impl pallet_balances::Config for Runtime {
 	type Balance = Balance;
-	type Event = Event;
 	type DustRemoval = ();
+	type Event = Event;
 	type ExistentialDeposit = ExistentialDeposit;
-	type AccountStore = frame_system::Pallet<Runtime>;
+	type AccountStore = System;
 	type MaxLocks = ();
 	type MaxReserves = MaxReserves;
 	type ReserveIdentifier = ReserveIdentifier;
 	type WeightInfo = ();
 }
-
-parameter_type_with_key! {
-	pub ExistentialDeposits: |_currency_id: CurrencyId| -> Balance {
-		Default::default()
-	};
-}
-
-impl orml_tokens::Config for Runtime {
-	type Event = Event;
-	type Balance = Balance;
-	type Amount = Amount;
-	type CurrencyId = CurrencyId;
-	type WeightInfo = ();
-	type ExistentialDeposits = ExistentialDeposits;
-	type OnDust = ();
-	type MaxLocks = ();
-	type DustRemovalWhitelist = Nothing;
-}
-
-parameter_types! {
-	pub const GetNativeCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
-}
-
-impl orml_currencies::Config for Runtime {
-	type Event = Event;
-	type MultiCurrency = Tokens;
-	type NativeCurrency = AdaptedBasicCurrency;
-	type GetNativeCurrencyId = GetNativeCurrencyId;
-	type WeightInfo = ();
-}
-pub type AdaptedBasicCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
 
 parameter_types! {
 	pub const MinimumPeriod: u64 = 1000;
@@ -133,9 +94,9 @@ parameter_types! {
 }
 
 ord_parameter_types! {
-	pub const CouncilAccount: AccountId32 = AccountId32::from([1u8; 32]);
-	pub const TreasuryAccount: AccountId32 = AccountId32::from([2u8; 32]);
-	pub const NetworkContractAccount: AccountId32 = AccountId32::from([0u8; 32]);
+	pub const CouncilAccount: AccountId = AccountId::from([1u8; 32]);
+	pub const TreasuryAccount: AccountId = AccountId::from([2u8; 32]);
+	pub const NetworkContractAccount: AccountId = AccountId::from([0u8; 32]);
 	pub const StorageDepositPerByte: u128 = 10;
 	pub const DeveloperDeposit: u64 = 1000;
 	pub const DeploymentFee: u64 = 200;
@@ -158,7 +119,7 @@ impl module_evm::Config for Runtime {
 	type DeveloperDeposit = DeveloperDeposit;
 	type DeploymentFee = DeploymentFee;
 	type TreasuryAccount = TreasuryAccount;
-	type FreeDeploymentOrigin = EnsureSignedBy<CouncilAccount, AccountId32>;
+	type FreeDeploymentOrigin = EnsureSignedBy<CouncilAccount, AccountId>;
 
 	type Runner = module_evm::runner::stack::Runner<Self>;
 	type FindAuthor = ();
@@ -171,20 +132,37 @@ impl module_evm_bridge::Config for Runtime {
 	type EVM = EVM;
 }
 
-impl Config for Runtime {
+impl asset_registry::Config for Runtime {
+	type Event = Event;
 	type Currency = Balances;
 	type EVMBridge = EVMBridge;
+	type RegisterOrigin = EnsureSignedBy<CouncilAccount, AccountId>;
+	type WeightInfo = ();
 }
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
+construct_runtime!(
+	pub enum Runtime where
+		Block = Block,
+		NodeBlock = Block,
+		UncheckedExtrinsic = UncheckedExtrinsic
+	{
+		System: frame_system::{Pallet, Call, Event<T>},
+		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
+		AssetRegistry: asset_registry::{Pallet, Call, Event<T>, Storage},
+		EVM: module_evm::{Pallet, Config<T>, Call, Storage, Event<T>},
+		EVMBridge: module_evm_bridge::{Pallet},
+	}
+);
+
 pub fn erc20_address() -> EvmAddress {
-	EvmAddress::from_str("0000000000000000000000000000000002000000").unwrap()
+	EvmAddress::from_str("0x5dddfce53ee040d9eb21afbc0ae1bb4dbb0ba643").unwrap()
 }
 
 pub fn erc20_address_not_exists() -> EvmAddress {
-	EvmAddress::from_str("0000000000000000000000000000000002000001").unwrap()
+	EvmAddress::from_str("0000000000000000000100000000000002000001").unwrap()
 }
 
 pub fn alice() -> AccountId {
@@ -195,38 +173,15 @@ pub fn alice_evm_addr() -> EvmAddress {
 	EvmAddress::from_str("1000000000000000000000000000000000000001").unwrap()
 }
 
-construct_runtime!(
-	pub enum Runtime where
-		Block = Block,
-		NodeBlock = Block,
-		UncheckedExtrinsic = UncheckedExtrinsic,
-	{
-		System: frame_system::{Pallet, Call, Storage, Config, Event<T>},
-		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
-		EvmManager: evm_manager::{Pallet, Storage},
-		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
-		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
-		Currencies: orml_currencies::{Pallet, Call, Event<T>},
-		EVM: module_evm::{Pallet, Config<T>, Call, Storage, Event<T>},
-		EVMBridge: module_evm_bridge::{Pallet},
-	}
-);
-
 pub fn deploy_contracts() {
 	let code = from_hex(include!("../../evm-bridge/src/erc20_demo_contract")).unwrap();
-	assert_ok!(EVM::create_network_contract(
-		Origin::signed(NetworkContractAccount::get()),
-		code,
-		0,
-		2_100_000,
-		10000
-	));
+	assert_ok!(EVM::create(Origin::signed(alice()), code, 0, 2_100_000, 10000));
 
 	System::assert_last_event(Event::EVM(module_evm::Event::Created(
 		alice_evm_addr(),
 		erc20_address(),
 		vec![module_evm::Log {
-			address: H160::from_str("0x0000000000000000000000000000000002000000").unwrap(),
+			address: H160::from_str("0x5dddfce53ee040d9eb21afbc0ae1bb4dbb0ba643").unwrap(),
 			topics: vec![
 				H256::from_str("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef").unwrap(),
 				H256::from_str("0x0000000000000000000000000000000000000000000000000000000000000000").unwrap(),

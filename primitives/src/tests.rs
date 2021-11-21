@@ -17,8 +17,12 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use crate::evm::EvmAddress;
+use crate::evm::{
+	is_acala_precompile, is_system_contract, EvmAddress, PRECOMPILE_ADDRESS_START, PREDEPLOY_ADDRESS_START,
+	SYSTEM_CONTRACT_ADDRESS_PREFIX,
+};
 use frame_support::assert_ok;
+use sp_core::H160;
 use std::{
 	convert::{TryFrom, TryInto},
 	str::FromStr,
@@ -96,7 +100,7 @@ fn currency_id_into_u32_works() {
 fn currency_id_try_into_evm_address_works() {
 	assert_eq!(
 		EvmAddress::try_from(CurrencyId::Token(TokenSymbol::ACA,)),
-		Ok(EvmAddress::from_str("0x0000000000000000000000000000000001000000").unwrap())
+		Ok(EvmAddress::from_str("0x0000000000000000000100000000000000000000").unwrap())
 	);
 
 	assert_eq!(
@@ -104,15 +108,16 @@ fn currency_id_try_into_evm_address_works() {
 			DexShare::Token(TokenSymbol::ACA),
 			DexShare::Token(TokenSymbol::AUSD),
 		)),
-		Ok(EvmAddress::from_str("0x0000000000000000000000010000000000000001").unwrap())
+		Ok(EvmAddress::from_str("0x0000000000000000000200000000000000000001").unwrap())
 	);
 
+	// No check the erc20 is mapped
 	assert_eq!(
 		EvmAddress::try_from(CurrencyId::DexShare(
 			DexShare::Erc20(Default::default()),
 			DexShare::Erc20(Default::default())
 		)),
-		Err(())
+		Ok(EvmAddress::from_str("0x0000000000000000000201000000000100000000").unwrap())
 	);
 
 	let erc20 = EvmAddress::from_str("0x1111111111111111111111111111111111111111").unwrap();
@@ -139,4 +144,34 @@ fn generate_function_selector_works() {
 	assert_eq!(Action::TotalSupply as u32, 0x18160ddd_u32);
 	assert_eq!(Action::BalanceOf as u32, 0x70a08231_u32);
 	assert_eq!(Action::Transfer as u32, 0xa9059cbb_u32);
+}
+
+#[test]
+fn is_system_contract_works() {
+	assert!(is_system_contract(H160::from_low_u64_be(0)));
+	assert!(is_system_contract(H160::from_low_u64_be(u64::max_value())));
+
+	let mut bytes = [0u8; 20];
+	bytes[SYSTEM_CONTRACT_ADDRESS_PREFIX.len() - 1] = 1u8;
+
+	assert!(!is_system_contract(bytes.into()));
+
+	bytes = [0u8; 20];
+	bytes[0] = 1u8;
+
+	assert!(!is_system_contract(bytes.into()));
+}
+
+#[test]
+fn is_acala_precompile_works() {
+	assert!(!is_acala_precompile(H160::from_low_u64_be(0)));
+	assert!(!is_acala_precompile(H160::from_low_u64_be(
+		PRECOMPILE_ADDRESS_START.to_low_u64_be() - 1
+	)));
+	assert!(is_acala_precompile(PRECOMPILE_ADDRESS_START));
+	assert!(is_acala_precompile(H160::from_low_u64_be(
+		PREDEPLOY_ADDRESS_START.to_low_u64_be() - 1
+	)));
+	assert!(!is_acala_precompile(PREDEPLOY_ADDRESS_START));
+	assert!(!is_acala_precompile([1u8; 20].into()));
 }

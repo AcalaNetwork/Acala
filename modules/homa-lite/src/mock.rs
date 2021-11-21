@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-//! Mocks for the Starport module.
+//! Mocks for the HomaLite module.
 
 #![cfg(test)]
 
@@ -45,7 +45,7 @@ mod homa_lite {
 	pub use super::super::*;
 }
 
-pub const ROOT: AccountId = AccountId32::new([255u8; 32]);
+pub const DAVE: AccountId = AccountId32::new([255u8; 32]);
 pub const ALICE: AccountId = AccountId32::new([1u8; 32]);
 pub const BOB: AccountId = AccountId32::new([2u8; 32]);
 pub const CHARLIE: AccountId = AccountId32::new([3u8; 32]);
@@ -122,6 +122,7 @@ impl SendXcm for MockXcm {
 		}
 	}
 }
+
 impl ExecuteXcm<Call> for MockXcm {
 	fn execute_xcm_in_credit(
 		_origin: impl Into<MultiLocation>,
@@ -263,7 +264,7 @@ parameter_types! {
 	pub MintFee: Balance = millicent(1000);
 	pub BaseWithdrawFee: Permill = Permill::from_rational(1u32, 1_000u32); // 0.1%
 	pub XcmUnbondFee: Balance = dollar(1);
-	pub const ParachainAccount: AccountId = ROOT;
+	pub const ParachainAccount: AccountId = DAVE;
 	pub const MaximumRedeemRequestMatchesForMint: u32 = 2;
 	pub static MockRelayBlockNumberProvider: u64 = 0;
 	pub const RelayChainUnbondingSlashingSpans: u32 = 5;
@@ -273,7 +274,7 @@ parameter_types! {
 	pub const StakingUpdateFrequency: BlockNumber = 100;
 }
 ord_parameter_types! {
-	pub const Root: AccountId = ROOT;
+	pub const Root: AccountId = DAVE;
 }
 
 impl BlockNumberProvider for MockRelayBlockNumberProvider {
@@ -349,13 +350,13 @@ impl Default for ExtBuilder {
 			tokens_balances: vec![
 				(ALICE, KSM, initial),
 				(BOB, KSM, initial),
-				(ROOT, LKSM, initial),
+				(DAVE, LKSM, initial),
 				(INVALID_CALLER, KSM, initial),
 			],
 			native_balances: vec![
 				(ALICE, initial),
 				(BOB, initial),
-				(ROOT, initial),
+				(DAVE, initial),
 				(INVALID_CALLER, initial),
 			],
 		}

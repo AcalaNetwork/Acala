@@ -20,8 +20,7 @@ use crate::setup::*;
 
 use frame_support::assert_ok;
 use module_evm_accounts::EvmAddressMapping;
-use module_support::CurrencyIdMapping;
-use module_support::{EVMBridge as EVMBridgeT, EVM as EVMTrait};
+use module_support::{EVMBridge as EVMBridgeT, Erc20InfoMapping, EVM as EVMTrait};
 use primitives::evm::EvmAddress;
 use sp_core::{bytes::from_hex, H256};
 use std::str::FromStr;
@@ -32,14 +31,14 @@ use acala_runtime::{EVMBridge, EVM};
 use karura_runtime::{EVMBridge, EVM};
 #[cfg(feature = "with-mandala-runtime")]
 use mandala_runtime::{EVMBridge, EVM};
-pub use module_evm_manager::EvmCurrencyIdMapping;
+use module_asset_registry::EvmErc20InfoMapping;
 
 pub fn erc20_address_0() -> EvmAddress {
-	EvmAddress::from_str("0000000000000000000000000000000002000000").unwrap()
+	EvmAddress::from_str("0x5e0b4bfa0b55932a3587e648c3552a6515ba56b1").unwrap()
 }
 
 pub fn erc20_address_1() -> EvmAddress {
-	EvmAddress::from_str("0000000000000000000000000000000002000001").unwrap()
+	EvmAddress::from_str("0xec2a41295171e2028542ca82f1801ca1f356388b").unwrap()
 }
 
 pub fn alice_evm_addr() -> EvmAddress {
@@ -55,21 +54,15 @@ pub fn lp_erc20() -> CurrencyId {
 }
 
 pub fn lp_erc20_evm_address() -> EvmAddress {
-	EvmCurrencyIdMapping::<Runtime>::encode_evm_address(lp_erc20()).unwrap()
+	EvmErc20InfoMapping::<Runtime>::encode_evm_address(lp_erc20()).unwrap()
 }
 
 pub fn deploy_erc20_contracts() {
 	let code = from_hex(include!("../../../modules/evm-bridge/src/erc20_demo_contract")).unwrap();
-	assert_ok!(EVM::create_network_contract(
-		Origin::root(),
-		code.clone(),
-		0,
-		2100_000,
-		100000
-	));
+	assert_ok!(EVM::create(Origin::signed(alice()), code.clone(), 0, 2100_000, 100000));
 
 	System::assert_last_event(Event::EVM(module_evm::Event::Created(
-		Default::default(),
+		EvmAddress::from_str("0xbf0b5a4099f0bf6c8bc4252ebec548bae95602ea").unwrap(),
 		erc20_address_0(),
 		vec![module_evm::Log {
 			address: erc20_address_0(),
@@ -84,10 +77,10 @@ pub fn deploy_erc20_contracts() {
 
 	assert_ok!(EVM::deploy_free(Origin::root(), erc20_address_0()));
 
-	assert_ok!(EVM::create_network_contract(Origin::root(), code, 0, 2100_000, 100000));
+	assert_ok!(EVM::create(Origin::signed(alice()), code, 0, 2100_000, 100000));
 
 	System::assert_last_event(Event::EVM(module_evm::Event::Created(
-		Default::default(),
+		EvmAddress::from_str("0xbf0b5a4099f0bf6c8bc4252ebec548bae95602ea").unwrap(),
 		erc20_address_1(),
 		vec![module_evm::Log {
 			address: erc20_address_1(),
@@ -131,12 +124,7 @@ fn deploy_contract(account: AccountId) -> Result<H160, DispatchError> {
 fn dex_module_works_with_evm_contract() {
 	ExtBuilder::default()
 		.balances(vec![
-			(
-				// NetworkContractSource
-				MockAddressMapping::get_account_id(&H160::from_low_u64_be(0)),
-				NATIVE_CURRENCY,
-				1_000_000_000 * dollar(NATIVE_CURRENCY),
-			),
+			(alice(), NATIVE_CURRENCY, 1_000_000_000 * dollar(NATIVE_CURRENCY)),
 			(
 				// evm alice
 				MockAddressMapping::get_account_id(&alice_evm_addr()),
@@ -352,10 +340,7 @@ fn test_multicurrency_precompile_module() {
 	ExtBuilder::default()
 		.balances(vec![
 			(
-				// NetworkContractSource
-				MockAddressMapping::get_account_id(&H160::from_low_u64_be(0)),
-				NATIVE_CURRENCY,
-				(1_000_000_000_000_000_000u128),
+				alice(), NATIVE_CURRENCY, 1_000_000_000 * dollar(NATIVE_CURRENCY),
 			),
 			(
 				// evm alice

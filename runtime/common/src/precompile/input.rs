@@ -28,7 +28,7 @@ use sp_std::{
 
 use ethabi::Token;
 use module_evm::ExitError;
-use module_support::{AddressMapping as AddressMappingT, CurrencyIdMapping as CurrencyIdMappingT};
+use module_support::{AddressMapping as AddressMappingT, Erc20InfoMapping as Erc20InfoMappingT};
 use primitives::{Amount, Balance, CurrencyId};
 use sp_core::{H160, U256};
 
@@ -62,12 +62,12 @@ pub trait InputT {
 	fn bytes_at(&self, start: usize, len: usize) -> Result<Vec<u8>, Self::Error>;
 }
 
-pub struct Input<'a, Action, AccountId, AddressMapping, CurrencyIdMapping> {
+pub struct Input<'a, Action, AccountId, AddressMapping, Erc20InfoMapping> {
 	content: &'a [u8],
-	_marker: PhantomData<(Action, AccountId, AddressMapping, CurrencyIdMapping)>,
+	_marker: PhantomData<(Action, AccountId, AddressMapping, Erc20InfoMapping)>,
 }
-impl<'a, Action, AccountId, AddressMapping, CurrencyIdMapping>
-	Input<'a, Action, AccountId, AddressMapping, CurrencyIdMapping>
+impl<'a, Action, AccountId, AddressMapping, Erc20InfoMapping>
+	Input<'a, Action, AccountId, AddressMapping, Erc20InfoMapping>
 {
 	pub fn new(content: &'a [u8]) -> Self {
 		Self {
@@ -77,12 +77,12 @@ impl<'a, Action, AccountId, AddressMapping, CurrencyIdMapping>
 	}
 }
 
-impl<Action, AccountId, AddressMapping, CurrencyIdMapping> InputT
-	for Input<'_, Action, AccountId, AddressMapping, CurrencyIdMapping>
+impl<Action, AccountId, AddressMapping, Erc20InfoMapping> InputT
+	for Input<'_, Action, AccountId, AddressMapping, Erc20InfoMapping>
 where
 	Action: TryFrom<u32>,
 	AddressMapping: AddressMappingT<AccountId>,
-	CurrencyIdMapping: CurrencyIdMappingT,
+	Erc20InfoMapping: Erc20InfoMappingT,
 {
 	type Error = ExitError;
 	type Action = Action;
@@ -137,7 +137,7 @@ where
 	fn currency_id_at(&self, index: usize) -> Result<CurrencyId, Self::Error> {
 		let address = self.evm_address_at(index)?;
 
-		CurrencyIdMapping::decode_evm_address(address).ok_or_else(|| ExitError::Other("invalid currency id".into()))
+		Erc20InfoMapping::decode_evm_address(address).ok_or_else(|| ExitError::Other("invalid currency id".into()))
 	}
 
 	fn balance_at(&self, index: usize) -> Result<Balance, Self::Error> {
@@ -231,7 +231,7 @@ mod tests {
 	use sp_core::H160;
 	use sp_runtime::RuntimeDebug;
 
-	use module_support::mocks::{MockAddressMapping, MockCurrencyIdMapping};
+	use module_support::mocks::{MockAddressMapping, MockErc20InfoMapping};
 	use primitives::{AccountId, CurrencyId, TokenSymbol};
 
 	#[derive(RuntimeDebug, PartialEq, Eq, TryFromPrimitive)]
@@ -242,7 +242,7 @@ mod tests {
 		Unknown = 2,
 	}
 
-	pub type TestInput<'a> = Input<'a, Action, AccountId, MockAddressMapping, MockCurrencyIdMapping>;
+	pub type TestInput<'a> = Input<'a, Action, AccountId, MockAddressMapping, MockErc20InfoMapping>;
 
 	#[test]
 	fn nth_param_works() {
@@ -302,7 +302,7 @@ mod tests {
 		assert_err!(input.currency_id_at(1), ExitError::Other("invalid currency id".into()));
 
 		let mut raw_input = [0u8; 36];
-		raw_input[32] = 1;
+		raw_input[25] = 1;
 		let input = TestInput::new(&raw_input[..]);
 		assert_ok!(input.currency_id_at(1), CurrencyId::Token(TokenSymbol::ACA));
 

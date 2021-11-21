@@ -21,6 +21,9 @@
 pub mod utils;
 
 // module benchmarking
+pub mod asset_registry {
+	include!("../../../mandala/src/benchmarking/asset_registry.rs");
+}
 pub mod auction_manager {
 	include!("../../../mandala/src/benchmarking/auction_manager.rs");
 }
