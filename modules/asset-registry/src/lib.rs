@@ -314,9 +314,7 @@ impl<T: Config, FixedRate: Get<u128>, R: TakeRevenue> WeightTrader for FixedRate
 		if let AssetId::Concrete(ref multi_location) = asset_id {
 			log::debug!(target: "asset-registry::weight", "buy_weight multi_location: {:?}", multi_location);
 			if let Some(CurrencyId::ForeignAsset(_)) = Pallet::<T>::location_to_currency_ids(multi_location.clone()) {
-				let amount = FixedRate::get()
-					.saturating_mul(weight as u128)
-					.saturating_div(WEIGHT_PER_SECOND as u128);
+				let amount = FixedRate::get().saturating_mul(weight as u128) / (WEIGHT_PER_SECOND as u128); // TODO: use saturating_div after update rust version
 				let required = MultiAsset {
 					id: asset_id.clone(),
 					fun: Fungible(amount),
@@ -341,9 +339,7 @@ impl<T: Config, FixedRate: Get<u128>, R: TakeRevenue> WeightTrader for FixedRate
 	fn refund_weight(&mut self, weight: Weight) -> Option<MultiAsset> {
 		log::trace!(target: "asset-registry::weight", "refund_weight weight: {:?}, weight: {:?}, amount: {:?}, multi_location: {:?}", weight, self.weight, self.amount, self.multi_location);
 		let weight = weight.min(self.weight);
-		let amount = FixedRate::get()
-			.saturating_mul(weight as u128)
-			.saturating_div(WEIGHT_PER_SECOND as u128);
+		let amount = FixedRate::get().saturating_mul(weight as u128) / (WEIGHT_PER_SECOND as u128); // TODO: use saturating_div after update rust version
 
 		self.weight = self.weight.saturating_sub(weight);
 		self.amount = self.amount.saturating_sub(amount);
