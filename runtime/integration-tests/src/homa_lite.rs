@@ -396,24 +396,31 @@ fn cannot_mint_below_minimum_threshold() {
 				1_000_000 * dollar(RELAY_CHAIN_CURRENCY)
 			));
 
-			// Mint threshold is 0.5 * dollar(RELAY_CHAIN_CURRENCY)
-			assert_noop!(
-				HomaLite::mint(Origin::signed(alice()), 50 * cent(RELAY_CHAIN_CURRENCY)),
-				module_homa_lite::Error::<Runtime>::AmountBelowMinimumThreshold
-			);
-			assert_noop!(
-				HomaLite::mint(Origin::signed(alice()), cent(RELAY_CHAIN_CURRENCY)),
-				module_homa_lite::Error::<Runtime>::AmountBelowMinimumThreshold
-			);
-
-			assert_ok!(HomaLite::mint(Origin::signed(alice()), 51 * cent(RELAY_CHAIN_CURRENCY)));
-
-			#[cfg(feature = "with-mandala-runtime")]
-			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY, &alice()), 50_954_510_000);
 			#[cfg(feature = "with-karura-runtime")]
-			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY, &alice()), 5_095_451_000_000);
-			#[cfg(feature = "with-acala-runtime")]
-			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY, &alice()), 50_954_510_000);
+			{
+				// Minimum mint threshold + mint fee
+				let threshold = 50 * cent(RELAY_CHAIN_CURRENCY) + 20 * millicent(RELAY_CHAIN_CURRENCY);
+				assert_noop!(
+					HomaLite::mint(Origin::signed(alice()), threshold),
+					module_homa_lite::Error::<Runtime>::AmountBelowMinimumThreshold
+				);
+
+				assert_ok!(HomaLite::mint(Origin::signed(alice()), threshold + 1));
+				assert_eq!(Currencies::free_balance(LIQUID_CURRENCY, &alice()), 4_997_500_000_010);
+			}
+
+			#[cfg(any(feature = "with-mandala-runtime", feature = "with-acala-runtime"))]
+			{
+				// // Minimum mint threshold + mint fee
+				let threshold = 5 * dollar(RELAY_CHAIN_CURRENCY) + 20 * millicent(RELAY_CHAIN_CURRENCY);
+				assert_noop!(
+					HomaLite::mint(Origin::signed(alice()), threshold),
+					module_homa_lite::Error::<Runtime>::AmountBelowMinimumThreshold
+				);
+
+				assert_ok!(HomaLite::mint(Origin::signed(alice()), threshold + 1));
+				assert_eq!(Currencies::free_balance(LIQUID_CURRENCY, &alice()), 499_750_000_010);
+			}
 		});
 }
 
@@ -428,45 +435,53 @@ fn cannot_request_redeem_below_minimum_threshold() {
 				1_000_000 * dollar(RELAY_CHAIN_CURRENCY)
 			));
 
-			// Mint threshold is 5 * dollar(LIQUID_CURRENCY)
-			assert_noop!(
-				HomaLite::request_redeem(
-					Origin::signed(alice()),
-					5 * dollar(RELAY_CHAIN_CURRENCY),
-					Permill::zero()
-				),
-				module_homa_lite::Error::<Runtime>::AmountBelowMinimumThreshold
-			);
-			assert_noop!(
-				HomaLite::request_redeem(
-					Origin::signed(alice()),
-					5 * dollar(RELAY_CHAIN_CURRENCY) - 1,
-					Permill::zero()
-				),
-				module_homa_lite::Error::<Runtime>::AmountBelowMinimumThreshold
-			);
-
-			assert_ok!(HomaLite::request_redeem(
-				Origin::signed(alice()),
-				5 * dollar(RELAY_CHAIN_CURRENCY) + 1,
-				Permill::zero()
-			));
-
 			#[cfg(feature = "with-karura-runtime")]
-			assert_eq!(
-				HomaLite::redeem_requests(alice()),
-				Some((4_982_500_000_001, Permill::zero()))
-			);
-			#[cfg(feature = "with-mandala-runtime")]
-			assert_eq!(
-				HomaLite::redeem_requests(alice()),
-				Some((49_295_750_001, Permill::zero()))
-			);
-			#[cfg(feature = "with-acala-runtime")]
-			assert_eq!(
-				HomaLite::redeem_requests(alice()),
-				Some((49_295_750_001, Permill::zero()))
-			);
+			{
+				// Redeem threshold is 5 * dollar(LIQUID_CURRENCY)
+				assert_noop!(
+					HomaLite::request_redeem(
+						Origin::signed(alice()),
+						5 * dollar(RELAY_CHAIN_CURRENCY),
+						Permill::zero()
+					),
+					module_homa_lite::Error::<Runtime>::AmountBelowMinimumThreshold
+				);
+
+				assert_ok!(HomaLite::request_redeem(
+					Origin::signed(alice()),
+					5 * dollar(RELAY_CHAIN_CURRENCY) + 1,
+					Permill::zero()
+				));
+
+				assert_eq!(
+					HomaLite::redeem_requests(alice()),
+					Some((4_982_500_000_001, Permill::zero()))
+				);
+			}
+
+			#[cfg(any(feature = "with-mandala-runtime", feature = "with-acala-runtime"))]
+			{
+				// Redeem threshold is 50 * dollar(LIQUID_CURRENCY)
+				assert_noop!(
+					HomaLite::request_redeem(
+						Origin::signed(alice()),
+						50 * dollar(RELAY_CHAIN_CURRENCY),
+						Permill::zero()
+					),
+					module_homa_lite::Error::<Runtime>::AmountBelowMinimumThreshold
+				);
+
+				assert_ok!(HomaLite::request_redeem(
+					Origin::signed(alice()),
+					50 * dollar(RELAY_CHAIN_CURRENCY) + 1,
+					Permill::zero()
+				));
+
+				assert_eq!(
+					HomaLite::redeem_requests(alice()),
+					Some((492_957_500_001, Permill::zero()))
+				);
+			}
 		});
 }
 

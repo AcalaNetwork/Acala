@@ -1250,8 +1250,8 @@ pub fn create_x2_parachain_multilocation(index: u16) -> MultiLocation {
 }
 
 parameter_types! {
-	pub MinimumMintThreshold: Balance = 50 * cent(DOT);
-	pub MinimumRedeemThreshold: Balance = 5 * dollar(LDOT);
+	pub MinimumMintThreshold: Balance = 5 * dollar(DOT);
+	pub MinimumRedeemThreshold: Balance = 50 * dollar(LDOT);
 	pub RelayChainSovereignSubAccount: MultiLocation = create_x2_parachain_multilocation(RelayChainSubAccountId::HomaLite as u16);
 	pub RelayChainSovereignSubAccountId: AccountId = Utility::derivative_account_id(
 		ParachainInfo::get().into_account(),
