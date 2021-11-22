@@ -290,6 +290,8 @@ pub mod module {
 	pub type LastAccumulationSecs<T: Config> = StorageValue<_, u64, ValueQuery>;
 
 	#[pallet::genesis_config]
+	#[cfg_attr(feature = "std", derive(Default))]
+
 	pub struct GenesisConfig {
 		#[allow(clippy::type_complexity)]
 		pub collaterals_params: Vec<(
@@ -301,16 +303,6 @@ pub mod module {
 			Balance,
 		)>,
 		pub global_interest_rate_per_sec: Rate,
-	}
-
-	#[cfg(feature = "std")]
-	impl Default for GenesisConfig {
-		fn default() -> Self {
-			GenesisConfig {
-				collaterals_params: vec![],
-				global_interest_rate_per_sec: Default::default(),
-			}
-		}
 	}
 
 	#[pallet::genesis_build]

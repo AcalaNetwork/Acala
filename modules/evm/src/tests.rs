@@ -40,7 +40,7 @@ fn fail_call_return_ok() {
 	new_test_ext().execute_with(|| {
 		let mut data = [0u8; 32];
 		data[0..4].copy_from_slice(b"evm:");
-		let signer: AccountId32 = AccountId32::from(data).into();
+		let signer: AccountId32 = AccountId32::from(data);
 
 		let origin = Origin::signed(signer);
 		assert_ok!(EVM::call(origin.clone(), contract_a(), Vec::new(), 0, 1000000, 0));
@@ -104,7 +104,7 @@ fn should_create_and_call_contract() {
 		// deploy contract
 		let caller = alice();
 		let result = <Runtime as Config>::Runner::create(
-			caller.clone(),
+			caller,
 			contract,
 			0,
 			1000000,
@@ -806,12 +806,12 @@ fn should_transfer_maintainer() {
 		assert_eq!(balance(bob()), INITIAL_BALANCE);
 
 		assert_noop!(
-			EVM::transfer_maintainer(Origin::signed(bob_account_id.clone()), H160::default(), alice()),
+			EVM::transfer_maintainer(Origin::signed(bob_account_id), H160::default(), alice()),
 			Error::<Runtime>::ContractNotFound
 		);
 
 		assert_noop!(
-			EVM::transfer_maintainer(Origin::signed(alice_account_id.clone()), contract_address, bob()),
+			EVM::transfer_maintainer(Origin::signed(alice_account_id), contract_address, bob()),
 			Error::<Runtime>::NoPermission
 		);
 		assert_eq!(balance(alice()), alice_balance);
@@ -972,7 +972,7 @@ fn should_deploy_free() {
 			bob(),
 			alice(),
 			contract_address,
-			multiply.clone(),
+			multiply,
 			0,
 			1000000,
 			1000000,
@@ -1195,7 +1195,7 @@ fn should_selfdestruct() {
 
 		let stored_value: Vec<u8> =
 			from_hex("0x000000000000000000000000000000000000000000000000000000000000007b").unwrap();
-		contract.append(&mut stored_value.clone());
+		contract.append(&mut stored_value);
 
 		// create contract
 		let result = <Runtime as Config>::Runner::create(
