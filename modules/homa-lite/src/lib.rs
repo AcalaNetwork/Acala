@@ -261,10 +261,10 @@ pub mod module {
 	pub type StakingInterestRatePerUpdate<T: Config> = StorageValue<_, Permill, ValueQuery>;
 
 	/// Next redeem request to iterate from when matching redeem requests.
-	/// NextRedeemRequestToMatch: Value: T::AccountId
+	/// RedeemRequestKeyToIterFrom: Value: T::AccountId
 	#[pallet::storage]
-	#[pallet::getter(fn next_redeem_request_to_match)]
-	pub type NextRedeemRequestToMatch<T: Config> = StorageValue<_, T::AccountId, ValueQuery>;
+	#[pallet::getter(fn redeem_request_key_to_iter_from)]
+	pub type RedeemRequestKeyToIterFrom<T: Config> = StorageValue<_, Vec<u8>, ValueQuery>;
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
@@ -833,7 +833,7 @@ pub mod module {
 					Ok(liquid_remaining.is_zero() || redeem_requests_limit_remaining.is_zero())
 				};
 
-				// Call the function on redeem requests - iterating from the `NextRedeemRequestToMatch`
+				// Call the function on redeem requests - iterating from the `RedeemRequestKeyToIterFrom`
 				Self::iterate_from_next_redeem_request(&mut f)?;
 			}
 
@@ -980,7 +980,7 @@ pub mod module {
 					Ok(available_staking_balance <= T::MinimumMintThreshold::get() || num_matched >= max_num_matches)
 				};
 
-				// Redeem requests from `NextRedeemRequestToMatch` using available_staking_balance.
+				// Redeem requests from `RedeemRequestKeyToIterFrom` using available_staking_balance.
 				Self::iterate_from_next_redeem_request(&mut f)?;
 			}
 
@@ -1053,10 +1053,11 @@ pub mod module {
 			})
 		}
 
-		/// Helper function that iterates `RedeemRequests` storage from `NextRedeemRequestToMatch`,
-		/// and call the MutFn f() on that request.
+		/// Helper function that iterates `RedeemRequests` storage from
+		/// `RedeemRequestKeyToIterFrom`, and call the MutFn f() on that request.
 		///
-		/// If `NextRedeemRequestToMatch` is not found in storage, iterate from the start.
+		/// If the item after `RedeemRequestKeyToIterFrom` is the end of the iterator, then start
+		/// from the beginning.
 		///
 		/// Param for FnMut f:
 		/// 	- `redeemer`: AccountId of the redeemer
@@ -1068,35 +1069,36 @@ pub mod module {
 		pub fn iterate_from_next_redeem_request(
 			f: &mut impl FnMut(T::AccountId, Balance, Permill) -> Result<bool, DispatchError>,
 		) -> DispatchResult {
-			let first_element = match RedeemRequests::<T>::iter().next() {
-				// Current storage is empty. Do nothing and return
-				None => return Ok(()),
-				Some(element) => element,
-			};
-
-			// If "next" exists in storage, use it as the "starting_item". Otherwise use the first item.
-			let starting_redeemer = Self::next_redeem_request_to_match();
-			let starting_element = match Self::redeem_requests(starting_redeemer.clone()) {
-				Some(request) => (starting_redeemer, request),
-				None => first_element,
-			};
-			let starting_key = RedeemRequests::<T>::hashed_key_for(starting_element.0.clone());
+			// If "next" after starting key exists in storage, use it as the "starting_item". Otherwise use the
+			// first item.
+			let starting_key = Self::redeem_request_key_to_iter_from();
 			let mut iterator = RedeemRequests::<T>::iter_from(starting_key);
+			let starting_element = match iterator.next() {
+				Some(request) => request,
+				None => {
+					iterator = RedeemRequests::<T>::iter();
+					match iterator.next() {
+						// Current storage is empty. Do nothing and return
+						None => return Ok(()),
+						Some(element) => element,
+					}
+				}
+			};
 
 			// Call the function for the first item
 			let (redeemer, (request_amount, extra_fee)) = starting_element.clone();
-			if f(redeemer, request_amount, extra_fee)? {
-				// Store the `next` element as `NextRedeemRequestToMatch`
-				NextRedeemRequestToMatch::<T>::put(iterator.next().unwrap_or_default().0);
+			if f(redeemer.clone(), request_amount, extra_fee)? {
+				// Store the `current` element as `RedeemRequestKeyToIterFrom`
+				RedeemRequestKeyToIterFrom::<T>::put(RedeemRequests::<T>::hashed_key_for(redeemer));
 				return Ok(());
 			}
 
 			// Iterate until the end of the storage, calling f() for each element
 			#[allow(clippy::while_let_on_iterator)]
 			while let Some((redeemer, (request_amount, extra_fee))) = iterator.next() {
-				if f(redeemer, request_amount, extra_fee)? {
-					// Store the `next` element as `NextRedeemRequestToMatch`
-					NextRedeemRequestToMatch::<T>::put(iterator.next().unwrap_or_default().0);
+				if f(redeemer.clone(), request_amount, extra_fee)? {
+					// Store the `current` element as `RedeemRequestKeyToIterFrom`
+					RedeemRequestKeyToIterFrom::<T>::put(RedeemRequests::<T>::hashed_key_for(redeemer));
 					return Ok(());
 				}
 			}
@@ -1111,8 +1113,9 @@ pub mod module {
 					// We have wrapped to the beginning. Return.
 					return Ok(());
 				}
-				if f(redeemer, request_amount, extra_fee)? {
-					NextRedeemRequestToMatch::<T>::put(iterator.next().unwrap_or_default().0);
+				if f(redeemer.clone(), request_amount, extra_fee)? {
+					// Store the `current` element as `RedeemRequestKeyToIterFrom`
+					RedeemRequestKeyToIterFrom::<T>::put(RedeemRequests::<T>::hashed_key_for(redeemer));
 					return Ok(());
 				}
 			}

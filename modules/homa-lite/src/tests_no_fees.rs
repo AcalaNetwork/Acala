@@ -347,7 +347,9 @@ fn iterate_redeem_requests_from_next_works() {
 	ExtBuilder::empty().build().execute_with(|| {
 		// iterate works with empty redeem requests
 		let mut empty: Vec<Balance> = vec![];
-		NextRedeemRequestToMatch::<NoFeeRuntime>::put(AccountId::from([0; 32]));
+		RedeemRequestKeyToIterFrom::<NoFeeRuntime>::put(RedeemRequests::<NoFeeRuntime>::hashed_key_for(
+			AccountId::from([0; 32]),
+		));
 		{
 			assert_ok!(HomaLite::iterate_from_next_redeem_request(
 				&mut |_redeemer: AccountId, amount: Balance, _extra_fee: Permill| -> Result<bool, DispatchError> {
@@ -375,7 +377,9 @@ fn iterate_redeem_requests_from_next_works() {
 		}
 
 		let mut one_request: Vec<Balance> = vec![];
-		NextRedeemRequestToMatch::<NoFeeRuntime>::put(AccountId::from([0; 32]));
+		RedeemRequestKeyToIterFrom::<NoFeeRuntime>::put(RedeemRequests::<NoFeeRuntime>::hashed_key_for(
+			AccountId::from([0; 32]),
+		));
 		{
 			assert_ok!(HomaLite::iterate_from_next_redeem_request(
 				&mut |_redeemer: AccountId, amount: Balance, _extra_fee: Permill| -> Result<bool, DispatchError> {
@@ -387,7 +391,9 @@ fn iterate_redeem_requests_from_next_works() {
 		assert_eq!(one_request, vec![dollar(1)]);
 
 		let mut one_request_2: Vec<Balance> = vec![];
-		NextRedeemRequestToMatch::<NoFeeRuntime>::put(AccountId::from([1; 32]));
+		RedeemRequestKeyToIterFrom::<NoFeeRuntime>::put(RedeemRequests::<NoFeeRuntime>::hashed_key_for(
+			AccountId::from([1; 32]),
+		));
 		{
 			assert_ok!(HomaLite::iterate_from_next_redeem_request(
 				&mut |_redeemer: AccountId, amount: Balance, _extra_fee: Permill| -> Result<bool, DispatchError> {
@@ -415,7 +421,9 @@ fn iterate_redeem_requests_from_next_works() {
 		}
 
 		let mut two_requests_1: Vec<Balance> = vec![];
-		NextRedeemRequestToMatch::<NoFeeRuntime>::put(AccountId::from([0; 32]));
+		RedeemRequestKeyToIterFrom::<NoFeeRuntime>::put(RedeemRequests::<NoFeeRuntime>::hashed_key_for(
+			AccountId::from([0; 32]),
+		));
 		{
 			assert_ok!(HomaLite::iterate_from_next_redeem_request(
 				&mut |_redeemer: AccountId, amount: Balance, _extra_fee: Permill| -> Result<bool, DispatchError> {
@@ -427,7 +435,10 @@ fn iterate_redeem_requests_from_next_works() {
 		assert_eq!(two_requests_1, vec![dollar(1), dollar(2)]);
 
 		let mut two_requests_2: Vec<Balance> = vec![];
-		NextRedeemRequestToMatch::<NoFeeRuntime>::put(AccountId::from([2; 32]));
+		// Iterate from 1: next item is 2
+		RedeemRequestKeyToIterFrom::<NoFeeRuntime>::put(RedeemRequests::<NoFeeRuntime>::hashed_key_for(
+			AccountId::from([1; 32]),
+		));
 		{
 			assert_ok!(HomaLite::iterate_from_next_redeem_request(
 				&mut |_redeemer: AccountId, amount: Balance, _extra_fee: Permill| -> Result<bool, DispatchError> {
@@ -439,7 +450,9 @@ fn iterate_redeem_requests_from_next_works() {
 		assert_eq!(two_requests_2, vec![dollar(2), dollar(1)]);
 
 		let mut two_requests_3: Vec<Balance> = vec![];
-		NextRedeemRequestToMatch::<NoFeeRuntime>::put(AccountId::from([1; 32]));
+		RedeemRequestKeyToIterFrom::<NoFeeRuntime>::put(RedeemRequests::<NoFeeRuntime>::hashed_key_for(
+			AccountId::from([2; 32]),
+		));
 		{
 			assert_ok!(HomaLite::iterate_from_next_redeem_request(
 				&mut |_redeemer: AccountId, amount: Balance, _extra_fee: Permill| -> Result<bool, DispatchError> {
@@ -488,7 +501,10 @@ fn iterate_redeem_requests_from_next_works() {
 
 		// iterate from the middle
 		let mut output_1: Vec<Balance> = vec![];
-		NextRedeemRequestToMatch::<NoFeeRuntime>::put(AccountId::from([8; 32]));
+		// Set iter_from key to 3, so iteration starts from 8
+		RedeemRequestKeyToIterFrom::<NoFeeRuntime>::put(RedeemRequests::<NoFeeRuntime>::hashed_key_for(
+			AccountId::from([3; 32]),
+		));
 		{
 			assert_ok!(HomaLite::iterate_from_next_redeem_request(
 				&mut |_redeemer: AccountId, amount: Balance, _extra_fee: Permill| -> Result<bool, DispatchError> {
@@ -514,7 +530,9 @@ fn iterate_redeem_requests_from_next_works() {
 
 		// Iterate from the start
 		let mut output_2: Vec<Balance> = vec![];
-		NextRedeemRequestToMatch::<NoFeeRuntime>::put(AccountId::from([1; 32]));
+		RedeemRequestKeyToIterFrom::<NoFeeRuntime>::put(RedeemRequests::<NoFeeRuntime>::hashed_key_for(
+			AccountId::from([5; 32]),
+		));
 		{
 			assert_ok!(HomaLite::iterate_from_next_redeem_request(
 				&mut |_redeemer: AccountId, amount: Balance, _extra_fee: Permill| -> Result<bool, DispatchError> {
@@ -540,7 +558,9 @@ fn iterate_redeem_requests_from_next_works() {
 
 		// Iterate from the end
 		let mut output_3: Vec<Balance> = vec![];
-		NextRedeemRequestToMatch::<NoFeeRuntime>::put(AccountId::from([5; 32]));
+		RedeemRequestKeyToIterFrom::<NoFeeRuntime>::put(RedeemRequests::<NoFeeRuntime>::hashed_key_for(
+			AccountId::from([4; 32]),
+		));
 		{
 			assert_ok!(HomaLite::iterate_from_next_redeem_request(
 				&mut |_redeemer: AccountId, amount: Balance, _extra_fee: Permill| -> Result<bool, DispatchError> {
@@ -564,35 +584,11 @@ fn iterate_redeem_requests_from_next_works() {
 			]
 		);
 
-		// If `NextRedeemRequestToMatch` is not found, iterate from the start
-		let mut output_4: Vec<Balance> = vec![];
-		NextRedeemRequestToMatch::<NoFeeRuntime>::put(AccountId::from([100; 32]));
-		{
-			assert_ok!(HomaLite::iterate_from_next_redeem_request(
-				&mut |_redeemer: AccountId, amount: Balance, _extra_fee: Permill| -> Result<bool, DispatchError> {
-					&output_4.push(amount);
-					Ok(false)
-				}
-			));
-		}
-		assert_eq!(
-			output_4,
-			vec![
-				dollar(1),
-				dollar(6),
-				dollar(2),
-				dollar(3),
-				dollar(8),
-				dollar(9),
-				dollar(7),
-				dollar(4),
-				dollar(5)
-			]
-		);
-
 		// If breaking half way through, return immediately.
 		let mut output_5: Vec<Balance> = vec![];
-		NextRedeemRequestToMatch::<NoFeeRuntime>::put(AccountId::from([8; 32]));
+		RedeemRequestKeyToIterFrom::<NoFeeRuntime>::put(RedeemRequests::<NoFeeRuntime>::hashed_key_for(
+			AccountId::from([3; 32]),
+		));
 		{
 			assert_ok!(HomaLite::iterate_from_next_redeem_request(
 				&mut |_redeemer: AccountId, amount: Balance, _extra_fee: Permill| -> Result<bool, DispatchError> {
@@ -605,7 +601,9 @@ fn iterate_redeem_requests_from_next_works() {
 
 		// If breaking half way through, return immediately.
 		let mut output_6: Vec<Balance> = vec![];
-		NextRedeemRequestToMatch::<NoFeeRuntime>::put(AccountId::from([8; 32]));
+		RedeemRequestKeyToIterFrom::<NoFeeRuntime>::put(RedeemRequests::<NoFeeRuntime>::hashed_key_for(
+			AccountId::from([3; 32]),
+		));
 		{
 			assert_ok!(HomaLite::iterate_from_next_redeem_request(
 				&mut |_redeemer: AccountId, amount: Balance, _extra_fee: Permill| -> Result<bool, DispatchError> {
@@ -684,13 +682,11 @@ fn mint_match_from_next_redeem_requests() {
 			dollar(100 as u128) as i128
 		));
 
-		// If unset, `NextRedeemRequestToMatch` should be the default account Id
-		assert_eq!(HomaLite::next_redeem_request_to_match(), AccountId::default());
-		// Set this to an non-existent item. Redeem should start from the very beginning.
-		NextRedeemRequestToMatch::<NoFeeRuntime>::put(AccountId::from([100u8; 32]));
+		// If unset, `RedeemRequestKeyToIterFrom` should be the default account Id
+		assert!(HomaLite::redeem_request_key_to_iter_from().is_empty());
 
 		// Minting once for each item in redeem request should be iterated once
-		for i in 0..9 {
+		for i in 0..10 {
 			assert_ok!(HomaLite::mint(Origin::signed(minter.clone()), dollar(10)));
 			// Each item should be iterated once
 			assert_eq!(
@@ -698,18 +694,12 @@ fn mint_match_from_next_redeem_requests() {
 				Some((dollar(900), Permill::zero()))
 			);
 			assert_eq!(Currencies::free_balance(KSM, &default_order[i]), dollar(10));
-			// Ensure `NextRedeemRequestToMatch` is setup correctly.
-			assert_eq!(HomaLite::next_redeem_request_to_match(), default_order[i + 1]);
+			// Ensure `RedeemRequestKeyToIterFrom` is setup correctly.
+			assert_eq!(
+				HomaLite::redeem_request_key_to_iter_from(),
+				RedeemRequests::<NoFeeRuntime>::hashed_key_for(default_order[i].clone())
+			);
 		}
-
-		// Check the last item can be iterated on correctly
-		assert_ok!(HomaLite::mint(Origin::signed(minter.clone()), dollar(10)));
-		assert_eq!(
-			HomaLite::redeem_requests(default_order[9].clone()),
-			Some((dollar(900), Permill::zero()))
-		);
-		// Ensure `NextRedeemRequestToMatch` is setup correctly.
-		assert_eq!(HomaLite::next_redeem_request_to_match(), AccountId::default());
 
 		// Check mint operations are successful.
 		assert_eq!(Currencies::free_balance(KSM, &minter), 0);
@@ -729,7 +719,7 @@ fn mint_match_from_next_redeem_requests() {
 		assert_ok!(HomaLite::mint(Origin::signed(minter.clone()), dollar(1000)));
 
 		// All redeem requests should be fulfilled, and only once.
-		for i in 0..9 {
+		for i in 0..10 {
 			assert_eq!(HomaLite::redeem_requests(default_order[i].clone()), None);
 			assert_eq!(Currencies::free_balance(KSM, &default_order[i]), dollar(100));
 			assert_eq!(Currencies::free_balance(LKSM, &default_order[i]), 0);
@@ -756,15 +746,15 @@ fn unbonded_staking_match_from_next_redeem_requests() {
 		HomaLite::adjust_available_staking_balance(Origin::root(), amount as i128, 1_000)
 	};
 
-	// Test unbonding can iterate from `NextRedeemRequestToMatch`
+	// Test unbonding can iterate from `RedeemRequestKeyToIterFrom`
 	test_increase_staking_match_from_next_redeem_requests(&mut unbond);
 
-	// Test `adjust_available_staking_balance` can iterate from `NextRedeemRequestToMatch`
+	// Test `adjust_available_staking_balance` can iterate from `RedeemRequestKeyToIterFrom`
 	test_increase_staking_match_from_next_redeem_requests(&mut adjust_available_staking_balance);
 }
 
 // Helper function that tests when increasing Staking currency, the redeem requests are processed
-// from the `NextRedeemRequestToMatch`. Takes a Function that increases the StakingCurrency and
+// from the `RedeemRequestKeyToIterFrom`. Takes a Function that increases the StakingCurrency and
 // matches redeem requests.
 fn test_increase_staking_match_from_next_redeem_requests(mut increase_staking: impl FnMut(Balance) -> DispatchResult) {
 	ExtBuilder::empty().build().execute_with(|| {
@@ -819,15 +809,13 @@ fn test_increase_staking_match_from_next_redeem_requests(mut increase_staking: i
 			]
 		);
 
-		// If unset, `NextRedeemRequestToMatch` should be the default account Id
-		assert_eq!(HomaLite::next_redeem_request_to_match(), AccountId::default());
-		// Set this to an non-existent item. Redeem should start from the very beginning.
-		NextRedeemRequestToMatch::<NoFeeRuntime>::put(AccountId::from([100u8; 32]));
+		// If unset, `RedeemRequestKeyToIterFrom` should be the default account Id
+		assert!(HomaLite::redeem_request_key_to_iter_from().is_empty());
 
 		assert_eq!(HomaLite::total_staking_currency(), dollar(1001));
 
 		// Minting once for each item in redeem request should be iterated once
-		for i in 0..9 {
+		for i in 0..10 {
 			assert_ok!(increase_staking(dollar(10)));
 			assert_eq!(HomaLite::total_staking_currency(), dollar(1001 - (i as u128 + 1) * 10));
 			// Each item should be iterated once
@@ -836,16 +824,18 @@ fn test_increase_staking_match_from_next_redeem_requests(mut increase_staking: i
 				Some((dollar(900), Permill::zero()))
 			);
 			assert_eq!(Currencies::free_balance(KSM, &default_order[i]), dollar(10));
-			// Ensure `NextRedeemRequestToMatch` is setup correctly.
-			assert_eq!(HomaLite::next_redeem_request_to_match(), default_order[i + 1]);
+			// Ensure `RedeemRequestKeyToIterFrom` is setup correctly.
+			assert_eq!(
+				HomaLite::redeem_request_key_to_iter_from(),
+				RedeemRequests::<NoFeeRuntime>::hashed_key_for(default_order[i].clone())
+			);
 		}
-		assert_ok!(increase_staking(dollar(10)));
+
+		// Ensure `RedeemRequestKeyToIterFrom` is setup correctly.
 		assert_eq!(
-			HomaLite::redeem_requests(default_order[9].clone()),
-			Some((dollar(900), Permill::zero()))
+			HomaLite::redeem_request_key_to_iter_from(),
+			RedeemRequests::<NoFeeRuntime>::hashed_key_for(AccountId::default().clone())
 		);
-		// Ensure `NextRedeemRequestToMatch` is setup correctly.
-		assert_eq!(HomaLite::next_redeem_request_to_match(), AccountId::default());
 
 		assert_eq!(HomaLite::total_staking_currency(), dollar(901));
 
@@ -854,7 +844,7 @@ fn test_increase_staking_match_from_next_redeem_requests(mut increase_staking: i
 		assert_ok!(increase_staking(dollar(1000)));
 
 		// All redeem requests should be fulfilled, and only once.
-		for i in 0..9 {
+		for i in 0..10 {
 			assert_eq!(HomaLite::redeem_requests(default_order[i].clone()), None);
 			assert_eq!(Currencies::free_balance(KSM, &default_order[i]), dollar(100));
 			assert_eq!(Currencies::free_balance(LKSM, &default_order[i]), 0);
@@ -863,5 +853,103 @@ fn test_increase_staking_match_from_next_redeem_requests(mut increase_staking: i
 
 		assert_eq!(HomaLite::total_staking_currency(), dollar(1));
 		assert_eq!(HomaLite::available_staking_balance(), dollar(100));
+	});
+}
+
+#[test]
+fn redeem_doesn_not_restart_if_next_key_is_removed() {
+	ExtBuilder::empty().build().execute_with(|| {
+		assert_ok!(HomaLite::set_minting_cap(Origin::root(), dollar(1_000_000)));
+
+		for i in 0..5 {
+			let account = AccountId::from([i as u8; 32]);
+			assert_ok!(Currencies::update_balance(
+				Origin::root(),
+				account.clone(),
+				LKSM,
+				dollar(1000 as u128) as i128
+			));
+			assert_ok!(HomaLite::request_redeem(
+				Origin::signed(account),
+				dollar(1000),
+				Permill::zero()
+			));
+		}
+
+		assert_ok!(HomaLite::set_total_staking_currency(
+			Origin::root(),
+			Currencies::total_issuance(LKSM) / 10
+		));
+
+		// This is the default order the redeem requests are iterated.
+		let mut default_order = vec![];
+		for (redeemer, _) in RedeemRequests::<NoFeeRuntime>::iter() {
+			default_order.push(redeemer);
+		}
+		assert_eq!(
+			default_order,
+			vec![
+				AccountId::from([1u8; 32]),
+				AccountId::from([2u8; 32]),
+				AccountId::from([3u8; 32]),
+				AccountId::from([4u8; 32]),
+				AccountId::from([0u8; 32]),
+			]
+		);
+
+		let minter = AccountId::from([255u8; 32]);
+		assert_ok!(Currencies::update_balance(
+			Origin::root(),
+			minter.clone(),
+			KSM,
+			dollar(100 as u128) as i128
+		));
+
+		// Mint from the first element in the iterator
+		assert_ok!(HomaLite::mint(Origin::signed(minter.clone()), dollar(10)));
+		assert_eq!(
+			HomaLite::redeem_requests(AccountId::from([1u8; 32])),
+			Some((dollar(900), Permill::zero()))
+		);
+
+		assert_eq!(Currencies::free_balance(KSM, &AccountId::from([1u8; 32])), dollar(10));
+		assert_eq!(
+			HomaLite::redeem_request_key_to_iter_from(),
+			RedeemRequests::<NoFeeRuntime>::hashed_key_for(AccountId::from([1u8; 32]))
+		);
+
+		// Remove the next element
+		RedeemRequests::<NoFeeRuntime>::remove(AccountId::from([2u8; 32]));
+		assert_eq!(HomaLite::redeem_requests(AccountId::from([2u8; 32])), None);
+
+		// Next mint should continue without restarting
+		assert_ok!(HomaLite::mint(Origin::signed(minter.clone()), dollar(10)));
+		assert_eq!(
+			HomaLite::redeem_requests(AccountId::from([3u8; 32])),
+			Some((dollar(900), Permill::zero()))
+		);
+
+		assert_eq!(Currencies::free_balance(KSM, &AccountId::from([3u8; 32])), dollar(10));
+		assert_eq!(
+			HomaLite::redeem_request_key_to_iter_from(),
+			RedeemRequests::<NoFeeRuntime>::hashed_key_for(AccountId::from([3u8; 32]))
+		);
+
+		// remove the last final 2 elements
+		RedeemRequests::<NoFeeRuntime>::remove(AccountId::from([4u8; 32]));
+		RedeemRequests::<NoFeeRuntime>::remove(AccountId::from([0u8; 32]));
+
+		// Next mint should start from the beginning
+		assert_ok!(HomaLite::mint(Origin::signed(minter.clone()), dollar(10)));
+		assert_eq!(
+			HomaLite::redeem_requests(AccountId::from([1u8; 32])),
+			Some((dollar(800), Permill::zero()))
+		);
+
+		assert_eq!(Currencies::free_balance(KSM, &AccountId::from([1u8; 32])), dollar(20));
+		assert_eq!(
+			HomaLite::redeem_request_key_to_iter_from(),
+			RedeemRequests::<NoFeeRuntime>::hashed_key_for(AccountId::from([1u8; 32]))
+		);
 	});
 }
