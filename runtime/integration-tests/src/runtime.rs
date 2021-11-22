@@ -357,6 +357,7 @@ fn barrier_contains_works() {
 		max_response_weight: 5000,
 	}]);
 
+	// T::Contains set to Parent
 	AllowSubsFrom::set(vec![Parent.into()]);
 	let r = AllowTopLevelPaidExecutionFrom::<IsInVec<AllowSubsFrom>>::should_execute(
 		&Parent.into(),
@@ -368,6 +369,7 @@ fn barrier_contains_works() {
 	let r = AllowSubscriptionsFrom::<IsInVec<AllowSubsFrom>>::should_execute(&Parent.into(), &mut message2, 20, &mut 0);
 	assert_ok!(r);
 
+	// T::Contains set to Parachain(1000)
 	AllowSubsFrom::set(vec![Parachain(1000).into()]);
 	let r = AllowTopLevelPaidExecutionFrom::<IsInVec<AllowSubsFrom>>::should_execute(
 		&Parent.into(),
@@ -379,6 +381,7 @@ fn barrier_contains_works() {
 	let r = AllowSubscriptionsFrom::<IsInVec<AllowSubsFrom>>::should_execute(&Parent.into(), &mut message2, 20, &mut 0);
 	assert_eq!(r, Err(()));
 
+	// T::Contains set to empty
 	AllowSubsFrom::set(vec![]);
 	let r = AllowTopLevelPaidExecutionFrom::<IsInVec<AllowSubsFrom>>::should_execute(
 		&Parent.into(),
@@ -400,6 +403,7 @@ fn xcm_executor_execute_xcm() {
 	#[cfg(feature = "with-karura-runtime")]
 	{
 		ExtBuilder::default().build().execute_with(|| {
+			// weight limited set to Unlimited, it's ok
 			let message = Xcm::<karura_runtime::Call>(vec![
 				ReserveAssetDeposited((Parent, 600_000_000).into()),
 				BuyExecution {
@@ -421,6 +425,7 @@ fn xcm_executor_execute_xcm() {
 	#[cfg(feature = "with-acala-runtime")]
 	{
 		ExtBuilder::default().build().execute_with(|| {
+			// weight limited large than xcm_weight, it's ok
 			let message = Xcm::<acala_runtime::Call>(vec![
 				ReserveAssetDeposited((Parent, 600_000_000).into()),
 				BuyExecution {
@@ -442,6 +447,7 @@ fn xcm_executor_execute_xcm() {
 	#[cfg(feature = "with-mandala-runtime")]
 	{
 		ExtBuilder::default().build().execute_with(|| {
+			// weight limited less than xcm_weight, it's error
 			let message = Xcm::<mandala_runtime::Call>(vec![
 				ReserveAssetDeposited((Parent, 3_000_000).into()),
 				BuyExecution {
@@ -465,6 +471,7 @@ fn xcm_executor_execute_xcm() {
 #[test]
 fn subscribe_version_barrier_works() {
 	ExtBuilder::default().build().execute_with(|| {
+		// BadOrigin if original origin is not equal to origin
 		let origin = Parachain(1000).into();
 		let message = Xcm(vec![
 			DescendOrigin(X1(AccountIndex64 { index: 1, network: Any })),
@@ -482,6 +489,7 @@ fn subscribe_version_barrier_works() {
 		);
 		assert_eq!(r, Outcome::Incomplete(weight_limit, XcmError::BadOrigin));
 
+		// relay chain force subscribe version notify of karura para chain
 		let message = Xcm(vec![SubscribeVersion {
 			query_id: 42,
 			max_response_weight: 5000,
