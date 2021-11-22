@@ -332,7 +332,7 @@ impl<T: Config, F: Get<u128>, R: TakeRevenue> WeightTrader for FixedRateOfForeig
 			}
 		}
 
-		log::trace!(target: "asset-registry::weight", "Did not match");
+		log::trace!(target: "asset-registry::weight", "no concrete fungible asset");
 		Err(XcmError::TooExpensive)
 	}
 
