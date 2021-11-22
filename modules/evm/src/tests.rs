@@ -1193,7 +1193,7 @@ fn should_selfdestruct() {
 
 		let amount = 1000u64;
 
-		let stored_value: Vec<u8> =
+		let mut stored_value: Vec<u8> =
 			from_hex("0x000000000000000000000000000000000000000000000000000000000000007b").unwrap();
 		contract.append(&mut stored_value);
 
