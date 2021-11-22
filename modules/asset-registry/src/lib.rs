@@ -280,14 +280,18 @@ impl<T: Config> ForeignAssetIdMapping<ForeignAssetId, MultiLocation, AssetMetada
 	}
 }
 
-pub struct FixedRateOfForeignAsset<T, F: Get<u128>, R: TakeRevenue>(
+/// Simple fee calculator that requires payment in a single fungible at a fixed rate.
+///
+/// The constant `FixedRate` type parameter should be the concrete fungible ID and the amount of it
+/// required for one second of weight.
+pub struct FixedRateOfForeignAsset<T, FixedRate: Get<u128>, R: TakeRevenue>(
 	Weight,
 	u128,
 	Option<MultiLocation>,
-	PhantomData<(T, F, R)>,
+	PhantomData<(T, FixedRate, R)>,
 );
 
-impl<T: Config, F: Get<u128>, R: TakeRevenue> WeightTrader for FixedRateOfForeignAsset<T, F, R> {
+impl<T: Config, FixedRate: Get<u128>, R: TakeRevenue> WeightTrader for FixedRateOfForeignAsset<T, FixedRate, R> {
 	fn new() -> Self {
 		Self(0, 0, None, PhantomData)
 	}
@@ -303,31 +307,27 @@ impl<T: Config, F: Get<u128>, R: TakeRevenue> WeightTrader for FixedRateOfForeig
 				return Err(XcmError::TooExpensive);
 			}
 
-			match multi_asset.0 {
-				AssetId::Concrete(ref multi_location) => {
-					log::debug!(target: "asset-registry::weight", "buy_weight multi_location: {:?}", multi_location);
-					if let Some(CurrencyId::ForeignAsset(_)) =
-						Pallet::<T>::location_to_currency_ids(multi_location.clone())
-					{
-						let amount = F::get() * (weight as u128) / (WEIGHT_PER_SECOND as u128);
-						let required = MultiAsset {
-							id: multi_asset.0.clone(),
-							fun: Fungible(amount),
-						};
+			if let AssetId::Concrete(ref multi_location) = multi_asset.0 {
+				log::debug!(target: "asset-registry::weight", "buy_weight multi_location: {:?}", multi_location);
+				if let Some(CurrencyId::ForeignAsset(_)) = Pallet::<T>::location_to_currency_ids(multi_location.clone())
+				{
+					let amount = FixedRate::get()
+						.saturating_mul(weight as u128)
+						.saturating_div(WEIGHT_PER_SECOND as u128);
+					let required = MultiAsset {
+						id: multi_asset.0.clone(),
+						fun: Fungible(amount),
+					};
 
-						log::trace!(target: "asset-registry::weight", "buy_weight payment: {:?}, required: {:?}", payment, required);
-						let unused = payment
-							.clone()
-							.checked_sub(required)
-							.map_err(|_| XcmError::TooExpensive)?;
-						self.0 = self.0.saturating_add(weight);
-						self.1 = self.1.saturating_add(amount);
-						self.2 = Some(multi_location.clone());
-						return Ok(unused);
-					}
-				}
-				AssetId::Abstract(_) => {
-					// do nothing
+					log::trace!(target: "asset-registry::weight", "buy_weight payment: {:?}, required: {:?}", payment, required);
+					let unused = payment
+						.clone()
+						.checked_sub(required)
+						.map_err(|_| XcmError::TooExpensive)?;
+					self.0 = self.0.saturating_add(weight);
+					self.1 = self.1.saturating_add(amount);
+					self.2 = Some(multi_location.clone());
+					return Ok(unused);
 				}
 			}
 		}
@@ -339,25 +339,27 @@ impl<T: Config, F: Get<u128>, R: TakeRevenue> WeightTrader for FixedRateOfForeig
 	fn refund_weight(&mut self, weight: Weight) -> Option<MultiAsset> {
 		log::trace!(target: "asset-registry::weight", "refund_weight weight: {:?}, weight: {:?}, amount: {:?}, multi_location: {:?}", weight, self.0, self.1, self.2);
 		let weight = weight.min(self.0);
-		let amount = F::get() * (weight as u128) / (WEIGHT_PER_SECOND as u128);
+		let amount = FixedRate::get()
+			.saturating_mul(weight as u128)
+			.saturating_div(WEIGHT_PER_SECOND as u128);
 
 		self.0 = self.0.saturating_sub(weight);
 		self.1 = self.1.saturating_sub(amount);
 
 		log::trace!(target: "asset-registry::weight", "refund_weight amount: {:?}", amount);
 		if amount > 0 && self.2.is_some() {
-			Some((self.2.as_ref().expect("checked; qed").clone(), amount).into())
+			Some((self.2.as_ref().expect("checked is non-empty; qed").clone(), amount).into())
 		} else {
 			None
 		}
 	}
 }
 
-impl<T, F: Get<u128>, R: TakeRevenue> Drop for FixedRateOfForeignAsset<T, F, R> {
+impl<T, FixedRate: Get<u128>, R: TakeRevenue> Drop for FixedRateOfForeignAsset<T, FixedRate, R> {
 	fn drop(&mut self) {
 		log::trace!(target: "asset-registry::weight", "take revenue, weight: {:?}, amount: {:?}, multi_location: {:?}", self.0, self.1, self.2);
 		if self.1 > 0 && self.2.is_some() {
-			R::take_revenue((self.2.as_ref().expect("checked; qed").clone(), self.1).into());
+			R::take_revenue((self.2.as_ref().expect("checked is non-empty; qed").clone(), self.1).into());
 		}
 	}
 }
