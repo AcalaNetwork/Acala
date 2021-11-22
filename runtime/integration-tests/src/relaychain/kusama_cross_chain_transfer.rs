@@ -157,6 +157,7 @@ fn transfer_to_sibling() {
 fn xcm_transfer_execution_barrier_trader_works() {
 	let expect_weight_limit = 600_000_000;
 	let weight_limit_too_low = 500_000_000;
+	let unit_instruction_weight = 200_000_000;
 
 	// relay-chain use normal account to send xcm, destination para-chain can't pass Barrier check
 	{
@@ -229,15 +230,11 @@ fn xcm_transfer_execution_barrier_trader_works() {
 				beneficiary: Here.into(),
 			},
 		]);
-		let deposit_un_execution_weight = 200_000_000 as u64;
 		Karura::execute_with(|| {
 			let r = XcmExecutor::<XcmConfig>::execute_xcm(Parent, message, expect_weight_limit);
 			assert_eq!(
 				r,
-				Outcome::Incomplete(
-					expect_weight_limit - deposit_un_execution_weight,
-					XcmError::TooExpensive
-				)
+				Outcome::Incomplete(expect_weight_limit - unit_instruction_weight, XcmError::TooExpensive)
 			);
 		});
 	}
@@ -245,9 +242,9 @@ fn xcm_transfer_execution_barrier_trader_works() {
 	// all situation fulfilled, execute success
 	{
 		let message = Xcm::<karura_runtime::Call>(vec![
-			ReserveAssetDeposited((Parent, 200_000_000).into()),
+			ReserveAssetDeposited((Parent, 96_000_000).into()),
 			BuyExecution {
-				fees: (Parent, 200_000_000).into(),
+				fees: (Parent, 96_000_000).into(),
 				weight_limit: Limited(expect_weight_limit),
 			},
 			DepositAsset {
