@@ -1250,15 +1250,15 @@ pub fn create_x2_parachain_multilocation(index: u16) -> MultiLocation {
 }
 
 parameter_types! {
-	pub MinimumMintThreshold: Balance = 10 * cent(DOT);
-	pub MinimumRedeemThreshold: Balance = 100 * cent(LDOT);
+	pub MinimumMintThreshold: Balance = 50 * cent(DOT);
+	pub MinimumRedeemThreshold: Balance = 5 * dollar(LDOT);
 	pub RelayChainSovereignSubAccount: MultiLocation = create_x2_parachain_multilocation(RelayChainSubAccountId::HomaLite as u16);
 	pub RelayChainSovereignSubAccountId: AccountId = Utility::derivative_account_id(
 		ParachainInfo::get().into_account(),
 		RelayChainSubAccountId::HomaLite as u16
 	);
 	pub MaxRewardPerEra: Permill = Permill::from_rational(500u32, 1_000_000u32); // 1.2 ^ (1/365) = 1.0004996359
-	pub MintFee: Balance = millicent(DOT);
+	pub MintFee: Balance = 20 * millicent(DOT);
 	pub BaseWithdrawFee: Permill = Permill::from_rational(14_085u32, 1_000_000u32); // 20% yield per year, unbounding period = 28 days. 1.2^(28/365) = 1.014085
 	pub MaximumRedeemRequestMatchesForMint: u32 = 20;
 	pub RelayChainUnbondingSlashingSpans: u32 = 5;

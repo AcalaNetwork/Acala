@@ -1537,8 +1537,8 @@ pub fn create_x2_parachain_multilocation(index: u16) -> MultiLocation {
 parameter_types! {
 	pub const DOTCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
 	pub const LDOTCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
-	pub MinimumMintThreshold: Balance = 2 * dollar(DOT);
-	pub MinimumRedeemThreshold: Balance = 20 * dollar(LDOT);
+	pub MinimumMintThreshold: Balance = 50 * cent(DOT);
+	pub MinimumRedeemThreshold: Balance = 5 * dollar(LDOT);
 	pub RelayChainSovereignSubAccount: MultiLocation = create_x2_parachain_multilocation(RelayChainSubAccountId::HomaLite as u16);
 	pub RelayChainSovereignSubAccountId: AccountId = Utility::derivative_account_id(
 		ParachainInfo::get().into_account(),
@@ -1547,13 +1547,13 @@ parameter_types! {
 	pub MaxRewardPerEra: Permill = Permill::from_rational(500u32, 1_000_000u32); // 1.2 ^ (1/365) = 1.0004996359
 	pub MintFee: Balance = 20 * millicent(DOT); // 2x XCM fee on Polkadot TODO: identify xcm fee
 	pub DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
-	pub BaseWithdrawFee: Permill = Permill::from_rational(1408u32, 100_000u32); // 20% yield per year, unbonding period = 28 days. 1.2^(28 / 365) = 1.01408
+	pub BaseWithdrawFee: Permill = Permill::from_rational(14_085u32, 1_000_000u32); // 20% yield per year, unbounding period = 28 days. 1.2^(28/365) = 1.014085
 	pub MaximumRedeemRequestMatchesForMint: u32 = 20;
 	pub RelayChainUnbondingSlashingSpans: u32 = 5;
-	pub MaxScheduledUnbonds: u32 = 14;
+	pub MaxScheduledUnbonds: u32 = 35;
 	pub ParachainAccount: AccountId = ParachainInfo::get().into_account();
 	pub SubAccountIndex: u16 = RelayChainSubAccountId::HomaLite as u16;
-	pub const XcmUnbondFee: Balance = 600_000_000; // TODO identify unbond fee
+	pub XcmUnbondFee: Balance = 60 * millicent(DOT); // TODO identify unbond fee
 }
 
 impl module_homa_lite::Config for Runtime {
