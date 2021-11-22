@@ -299,36 +299,33 @@ impl<T: Config, FixedRate: Get<u128>, R: TakeRevenue> WeightTrader for FixedRate
 	fn buy_weight(&mut self, weight: Weight, payment: Assets) -> Result<Assets, XcmError> {
 		log::trace!(target: "asset-registry::weight", "buy_weight weight: {:?}, payment: {:?}", weight, payment);
 
-		for (index, multi_asset) in payment.fungible.iter().enumerate() {
-			// TODO: only support first fungible assets now.
-			// Maybe be removed in the future.
-			if index > 0 {
-				log::trace!(target: "asset-registry::weight", "buy_weight only support one fungible assets");
-				return Err(XcmError::TooExpensive);
-			}
+		// only support first fungible assets now.
+		let asset_id = payment
+			.fungible
+			.iter()
+			.next()
+			.map_or(Err(XcmError::TooExpensive), |v| Ok(v.0))?;
 
-			if let AssetId::Concrete(ref multi_location) = multi_asset.0 {
-				log::debug!(target: "asset-registry::weight", "buy_weight multi_location: {:?}", multi_location);
-				if let Some(CurrencyId::ForeignAsset(_)) = Pallet::<T>::location_to_currency_ids(multi_location.clone())
-				{
-					let amount = FixedRate::get()
-						.saturating_mul(weight as u128)
-						.saturating_div(WEIGHT_PER_SECOND as u128);
-					let required = MultiAsset {
-						id: multi_asset.0.clone(),
-						fun: Fungible(amount),
-					};
+		if let AssetId::Concrete(ref multi_location) = asset_id {
+			log::debug!(target: "asset-registry::weight", "buy_weight multi_location: {:?}", multi_location);
+			if let Some(CurrencyId::ForeignAsset(_)) = Pallet::<T>::location_to_currency_ids(multi_location.clone()) {
+				let amount = FixedRate::get()
+					.saturating_mul(weight as u128)
+					.saturating_div(WEIGHT_PER_SECOND as u128);
+				let required = MultiAsset {
+					id: asset_id.clone(),
+					fun: Fungible(amount),
+				};
 
-					log::trace!(target: "asset-registry::weight", "buy_weight payment: {:?}, required: {:?}", payment, required);
-					let unused = payment
-						.clone()
-						.checked_sub(required)
-						.map_err(|_| XcmError::TooExpensive)?;
-					self.0 = self.0.saturating_add(weight);
-					self.1 = self.1.saturating_add(amount);
-					self.2 = Some(multi_location.clone());
-					return Ok(unused);
-				}
+				log::trace!(target: "asset-registry::weight", "buy_weight payment: {:?}, required: {:?}", payment, required);
+				let unused = payment
+					.clone()
+					.checked_sub(required)
+					.map_err(|_| XcmError::TooExpensive)?;
+				self.0 = self.0.saturating_add(weight);
+				self.1 = self.1.saturating_add(amount);
+				self.2 = Some(multi_location.clone());
+				return Ok(unused);
 			}
 		}
 
