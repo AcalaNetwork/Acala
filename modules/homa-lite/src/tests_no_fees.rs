@@ -352,9 +352,12 @@ fn iterate_redeem_requests_from_next_works() {
 		));
 		{
 			assert_ok!(HomaLite::iterate_from_next_redeem_request(
-				&mut |_redeemer: AccountId, amount: Balance, _extra_fee: Permill| -> Result<bool, DispatchError> {
+				&mut |_redeemer: AccountId,
+				      amount: Balance,
+				      _extra_fee: Permill|
+				 -> Result<(bool, Balance), DispatchError> {
 					&empty.push(amount);
-					Ok(false)
+					Ok((false, amount))
 				}
 			));
 		}
@@ -382,9 +385,12 @@ fn iterate_redeem_requests_from_next_works() {
 		));
 		{
 			assert_ok!(HomaLite::iterate_from_next_redeem_request(
-				&mut |_redeemer: AccountId, amount: Balance, _extra_fee: Permill| -> Result<bool, DispatchError> {
+				&mut |_redeemer: AccountId,
+				      amount: Balance,
+				      _extra_fee: Permill|
+				 -> Result<(bool, Balance), DispatchError> {
 					&one_request.push(amount);
-					Ok(false)
+					Ok((false, amount))
 				}
 			));
 		}
@@ -396,9 +402,12 @@ fn iterate_redeem_requests_from_next_works() {
 		));
 		{
 			assert_ok!(HomaLite::iterate_from_next_redeem_request(
-				&mut |_redeemer: AccountId, amount: Balance, _extra_fee: Permill| -> Result<bool, DispatchError> {
+				&mut |_redeemer: AccountId,
+				      amount: Balance,
+				      _extra_fee: Permill|
+				 -> Result<(bool, Balance), DispatchError> {
 					&one_request_2.push(amount);
-					Ok(false)
+					Ok((false, amount))
 				}
 			));
 		}
@@ -426,9 +435,12 @@ fn iterate_redeem_requests_from_next_works() {
 		));
 		{
 			assert_ok!(HomaLite::iterate_from_next_redeem_request(
-				&mut |_redeemer: AccountId, amount: Balance, _extra_fee: Permill| -> Result<bool, DispatchError> {
+				&mut |_redeemer: AccountId,
+				      amount: Balance,
+				      _extra_fee: Permill|
+				 -> Result<(bool, Balance), DispatchError> {
 					&two_requests_1.push(amount);
-					Ok(false)
+					Ok((false, amount))
 				}
 			));
 		}
@@ -441,9 +453,12 @@ fn iterate_redeem_requests_from_next_works() {
 		));
 		{
 			assert_ok!(HomaLite::iterate_from_next_redeem_request(
-				&mut |_redeemer: AccountId, amount: Balance, _extra_fee: Permill| -> Result<bool, DispatchError> {
+				&mut |_redeemer: AccountId,
+				      amount: Balance,
+				      _extra_fee: Permill|
+				 -> Result<(bool, Balance), DispatchError> {
 					&two_requests_2.push(amount);
-					Ok(false)
+					Ok((false, amount))
 				}
 			));
 		}
@@ -455,9 +470,12 @@ fn iterate_redeem_requests_from_next_works() {
 		));
 		{
 			assert_ok!(HomaLite::iterate_from_next_redeem_request(
-				&mut |_redeemer: AccountId, amount: Balance, _extra_fee: Permill| -> Result<bool, DispatchError> {
+				&mut |_redeemer: AccountId,
+				      amount: Balance,
+				      _extra_fee: Permill|
+				 -> Result<(bool, Balance), DispatchError> {
 					&two_requests_3.push(amount);
-					Ok(false)
+					Ok((false, amount))
 				}
 			));
 		}
@@ -507,9 +525,12 @@ fn iterate_redeem_requests_from_next_works() {
 		));
 		{
 			assert_ok!(HomaLite::iterate_from_next_redeem_request(
-				&mut |_redeemer: AccountId, amount: Balance, _extra_fee: Permill| -> Result<bool, DispatchError> {
+				&mut |_redeemer: AccountId,
+				      amount: Balance,
+				      _extra_fee: Permill|
+				 -> Result<(bool, Balance), DispatchError> {
 					&output_1.push(amount);
-					Ok(false)
+					Ok((false, amount))
 				}
 			));
 		}
@@ -535,9 +556,12 @@ fn iterate_redeem_requests_from_next_works() {
 		));
 		{
 			assert_ok!(HomaLite::iterate_from_next_redeem_request(
-				&mut |_redeemer: AccountId, amount: Balance, _extra_fee: Permill| -> Result<bool, DispatchError> {
+				&mut |_redeemer: AccountId,
+				      amount: Balance,
+				      _extra_fee: Permill|
+				 -> Result<(bool, Balance), DispatchError> {
 					&output_2.push(amount);
-					Ok(false)
+					Ok((false, amount))
 				}
 			));
 		}
@@ -563,9 +587,12 @@ fn iterate_redeem_requests_from_next_works() {
 		));
 		{
 			assert_ok!(HomaLite::iterate_from_next_redeem_request(
-				&mut |_redeemer: AccountId, amount: Balance, _extra_fee: Permill| -> Result<bool, DispatchError> {
+				&mut |_redeemer: AccountId,
+				      amount: Balance,
+				      _extra_fee: Permill|
+				 -> Result<(bool, Balance), DispatchError> {
 					&output_3.push(amount);
-					Ok(false)
+					Ok((false, amount))
 				}
 			));
 		}
@@ -591,9 +618,12 @@ fn iterate_redeem_requests_from_next_works() {
 		));
 		{
 			assert_ok!(HomaLite::iterate_from_next_redeem_request(
-				&mut |_redeemer: AccountId, amount: Balance, _extra_fee: Permill| -> Result<bool, DispatchError> {
+				&mut |_redeemer: AccountId,
+				      amount: Balance,
+				      _extra_fee: Permill|
+				 -> Result<(bool, Balance), DispatchError> {
 					&output_5.push(amount);
-					Ok(amount == dollar(7))
+					Ok((amount == dollar(7), amount))
 				}
 			));
 		}
@@ -606,9 +636,12 @@ fn iterate_redeem_requests_from_next_works() {
 		));
 		{
 			assert_ok!(HomaLite::iterate_from_next_redeem_request(
-				&mut |_redeemer: AccountId, amount: Balance, _extra_fee: Permill| -> Result<bool, DispatchError> {
+				&mut |_redeemer: AccountId,
+				      amount: Balance,
+				      _extra_fee: Permill|
+				 -> Result<(bool, Balance), DispatchError> {
 					&output_6.push(amount);
-					Ok(amount == dollar(2))
+					Ok((amount == dollar(2), amount))
 				}
 			));
 		}

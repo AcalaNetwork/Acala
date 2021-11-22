@@ -699,52 +699,47 @@ pub mod module {
 		/// - `request_extra_fee`: The RedeemRequest's extra fee
 		/// - `liquid_amount_remaining`: The amount of liquid currency still remain to be minted.
 		///   Only redeem up to this amount.
-		/// - `new_balances`: Stores the new `RedeemRequest` balances. This should be iterated after
-		///   to update the actual storage in bulk. Actual `RedeemRequest` storage is NOT modified
-		///   here.
+		/// Return:
+		/// - `Balance`: actual amount of liquid currency minted.
 		fn match_mint_with_redeem_request(
 			minter: &T::AccountId,
 			redeemer: &T::AccountId,
 			request_amount: Balance,
 			request_extra_fee: Permill,
-			liquid_amount_remaining: &mut Balance,
-			new_balances: &mut Vec<(T::AccountId, Balance, Permill)>,
-		) -> DispatchResult {
-			let liquid_amount_can_be_redeemed = min(request_amount, *liquid_amount_remaining);
+			liquid_amount_remaining: Balance,
+		) -> Result<Balance, DispatchError> {
+			let actual_liquid_amount = min(request_amount, liquid_amount_remaining);
 
 			// Ensure the redeemer have enough liquid currency in their account.
-			if T::Currency::reserved_balance(T::LiquidCurrencyId::get(), redeemer) >= liquid_amount_can_be_redeemed {
-				let new_amount = request_amount.saturating_sub(liquid_amount_can_be_redeemed);
-				*liquid_amount_remaining = liquid_amount_remaining.saturating_sub(liquid_amount_can_be_redeemed);
-
-				// Full amount of Liquid is transferred to the minter.
-				// The redeemer is guaranteed to have enough reserved balance for the repatriate.
-				T::Currency::repatriate_reserved(
-					T::LiquidCurrencyId::get(),
-					redeemer,
-					minter,
-					liquid_amount_can_be_redeemed,
-					BalanceStatus::Free,
-				)?;
-
-				// The extra_fee is rewarded to the minter. Minter gets to keep it instead of transferring it to the
-				// redeemer. staking_amount = original_staking_amount * ( 1 - additional_fee )
-				let mut staking_amount = Self::convert_liquid_to_staking(liquid_amount_can_be_redeemed)?;
-				let fee_deducted_percentage = Permill::one().saturating_sub(request_extra_fee);
-				staking_amount = fee_deducted_percentage.mul(staking_amount);
-
-				// Transfer the reduced staking currency from Minter to Redeemer
-				T::Currency::transfer(T::StakingCurrencyId::get(), minter, redeemer, staking_amount)?;
-
-				new_balances.push((redeemer.clone(), new_amount, request_extra_fee));
-				Self::deposit_event(Event::<T>::Redeemed(
-					redeemer.clone(),
-					staking_amount,
-					liquid_amount_can_be_redeemed,
-				));
+			if T::Currency::reserved_balance(T::LiquidCurrencyId::get(), redeemer) < actual_liquid_amount {
+				return Ok(0);
 			}
+			// Full amount of Liquid is transferred to the minter.
+			// The redeemer is guaranteed to have enough reserved balance for the repatriate.
+			T::Currency::repatriate_reserved(
+				T::LiquidCurrencyId::get(),
+				redeemer,
+				minter,
+				actual_liquid_amount,
+				BalanceStatus::Free,
+			)?;
 
-			Ok(())
+			// The extra_fee is rewarded to the minter. Minter gets to keep it instead of transferring it to the
+			// redeemer. staking_amount = original_staking_amount * ( 1 - additional_fee )
+			let mut staking_amount = Self::convert_liquid_to_staking(actual_liquid_amount)?;
+			let fee_deducted_percentage = Permill::one().saturating_sub(request_extra_fee);
+			staking_amount = fee_deducted_percentage.mul(staking_amount);
+
+			// Transfer the reduced staking currency from Minter to Redeemer
+			T::Currency::transfer(T::StakingCurrencyId::get(), minter, redeemer, staking_amount)?;
+
+			Self::deposit_event(Event::<T>::Redeemed(
+				redeemer.clone(),
+				staking_amount,
+				actual_liquid_amount,
+			));
+
+			Ok(actual_liquid_amount)
 		}
 
 		/// Mint some Liquid currency, by locking up the given amount of Staking currency.
@@ -789,56 +784,58 @@ pub mod module {
 
 				// Check if the redeem request exists
 				if let Some((request_amount, extra_fee)) = Self::redeem_requests(&redeemer) {
-					Self::match_mint_with_redeem_request(
+					let actual_liquid_redeemed = Self::match_mint_with_redeem_request(
 						minter,
 						&redeemer,
 						request_amount,
 						extra_fee,
-						&mut liquid_remaining,
-						&mut new_balances,
+						liquid_remaining,
 					)?;
+					liquid_remaining = liquid_remaining.saturating_sub(actual_liquid_redeemed);
+					new_balances.push((
+						redeemer,
+						request_amount.saturating_sub(actual_liquid_redeemed),
+						extra_fee,
+					));
 				}
 			}
 
 			// Update storage to the new balances. Remove Redeem requests that have been filled.
 			Self::update_redeem_requests(&new_balances);
 
-			// Redeem request storage has now been updated.
 			new_balances.clear();
-
 			let mut redeem_requests_limit_remaining = T::MaximumRedeemRequestMatchesForMint::get();
 			if !liquid_remaining.is_zero() && !redeem_requests_limit_remaining.is_zero() {
 				// Define the function to be executed for each of the redeem request:
 				// Redeem the given requests with the current minting request.
 				//
 				// Params: redeemer: T::AccountId, request_amount: Balance, extra_fee: Permill
-				// Returns: Result<should_break, Error>
+				// Returns: Result<(new_redeem_amount, should_break), Error>
 				//
 				// Capturing: &mut liquid_remaining
 				//            &mut redeem_requests_limit_remaining
-				//            &mut new_balances
 				// If all the currencies are minted, return `should_break` as true.
-				let mut f = |redeemer, request_amount, extra_fee| -> Result<bool, DispatchError> {
-					Self::match_mint_with_redeem_request(
+				let mut f = |redeemer, request_amount, extra_fee| -> Result<(bool, Balance), DispatchError> {
+					let actual_liquid_redeemed = Self::match_mint_with_redeem_request(
 						minter,
 						&redeemer,
 						request_amount,
 						extra_fee,
-						&mut liquid_remaining,
-						&mut new_balances,
+						liquid_remaining,
 					)?;
 					redeem_requests_limit_remaining -= 1;
+					liquid_remaining = liquid_remaining.saturating_sub(actual_liquid_redeemed);
 
 					// Should break when all currencies are minted
-					Ok(liquid_remaining.is_zero() || redeem_requests_limit_remaining.is_zero())
+					Ok((
+						liquid_remaining.is_zero() || redeem_requests_limit_remaining.is_zero(),
+						request_amount.saturating_sub(actual_liquid_redeemed),
+					))
 				};
 
 				// Call the function on redeem requests - iterating from the `RedeemRequestKeyToIterFrom`
 				Self::iterate_from_next_redeem_request(&mut f)?;
 			}
-
-			// Update storage to the new balances. Remove Redeem requests that have been filled.
-			Self::update_redeem_requests(&new_balances);
 
 			// If significant balance is left over, the remaining liquid currencies are minted through XCM.
 			let mut staking_remaining = Self::convert_liquid_to_staking(liquid_remaining)?;
@@ -927,7 +924,6 @@ pub mod module {
 				return Ok(0);
 			}
 
-			let mut new_balances: Vec<(T::AccountId, Balance, Permill)> = vec![];
 			let mut num_matched = 0u32;
 
 			{
@@ -935,57 +931,58 @@ pub mod module {
 				// Redeem the given requests using available_staking_balance.
 				//
 				// Params: redeemer: T::AccountId, request_amount: Balance, extra_fee: Permill
-				// Returns: Result< should_break, Error>
+				// Returns: Result<(should_break, new_redeem_amount), Error>
 				//
 				// Capturing: &mut available_staking_balance
 				//            &mut num_matched
-				//            &mut new_balances
-				let mut f = |redeemer, request_amount, extra_fee| -> Result<bool, DispatchError> {
+				let mut f = |redeemer, request_amount, _extra_fee| -> Result<(bool, Balance), DispatchError> {
 					let actual_liquid_amount = min(
 						request_amount,
 						Self::convert_staking_to_liquid(available_staking_balance)?,
 					);
 
 					// Ensure the redeemer have enough liquid currency in their account.
-					if T::Currency::reserved_balance(T::LiquidCurrencyId::get(), &redeemer) >= actual_liquid_amount {
-						let actual_staking_amount = Self::convert_liquid_to_staking(actual_liquid_amount)?;
-
-						Self::update_total_staking_currency_storage(|total| {
-							Ok(total.saturating_sub(actual_staking_amount))
-						})?;
-
-						//Actual deposit amount has `T::XcmUnbondFee` deducted.
-						let actual_staking_amount_deposited =
-							actual_staking_amount.saturating_sub(T::XcmUnbondFee::get());
-						T::Currency::deposit(T::StakingCurrencyId::get(), &redeemer, actual_staking_amount_deposited)?;
-
-						// Burn the corresponding amount of Liquid currency from the user.
-						// The redeemer is guaranteed to have enough fund
-						T::Currency::unreserve(T::LiquidCurrencyId::get(), &redeemer, actual_liquid_amount);
-						T::Currency::slash(T::LiquidCurrencyId::get(), &redeemer, actual_liquid_amount);
-
-						available_staking_balance = available_staking_balance.saturating_sub(actual_staking_amount);
-						let request_amount_remaining = request_amount.saturating_sub(actual_liquid_amount);
-						new_balances.push((redeemer.clone(), request_amount_remaining, extra_fee));
-
-						Self::deposit_event(Event::<T>::Redeemed(
-							redeemer,
-							actual_staking_amount_deposited,
-							actual_liquid_amount,
+					if T::Currency::reserved_balance(T::LiquidCurrencyId::get(), &redeemer) < actual_liquid_amount {
+						return Ok((
+							available_staking_balance <= T::MinimumMintThreshold::get()
+								|| num_matched >= max_num_matches,
+							request_amount,
 						));
-						num_matched += 1u32;
 					}
+					let actual_staking_amount = Self::convert_liquid_to_staking(actual_liquid_amount)?;
+
+					Self::update_total_staking_currency_storage(|total| {
+						Ok(total.saturating_sub(actual_staking_amount))
+					})?;
+
+					//Actual deposit amount has `T::XcmUnbondFee` deducted.
+					let actual_staking_amount_deposited = actual_staking_amount.saturating_sub(T::XcmUnbondFee::get());
+					T::Currency::deposit(T::StakingCurrencyId::get(), &redeemer, actual_staking_amount_deposited)?;
+
+					// Burn the corresponding amount of Liquid currency from the user.
+					// The redeemer is guaranteed to have enough fund
+					T::Currency::unreserve(T::LiquidCurrencyId::get(), &redeemer, actual_liquid_amount);
+					T::Currency::slash(T::LiquidCurrencyId::get(), &redeemer, actual_liquid_amount);
+
+					available_staking_balance = available_staking_balance.saturating_sub(actual_staking_amount);
+
+					Self::deposit_event(Event::<T>::Redeemed(
+						redeemer,
+						actual_staking_amount_deposited,
+						actual_liquid_amount,
+					));
+					num_matched += 1u32;
 
 					// If all the currencies are minted, return `should_break` as true
-					Ok(available_staking_balance <= T::MinimumMintThreshold::get() || num_matched >= max_num_matches)
+					Ok((
+						available_staking_balance <= T::MinimumMintThreshold::get() || num_matched >= max_num_matches,
+						request_amount.saturating_sub(actual_liquid_amount),
+					))
 				};
 
 				// Redeem requests from `RedeemRequestKeyToIterFrom` using available_staking_balance.
 				Self::iterate_from_next_redeem_request(&mut f)?;
 			}
-
-			// Update storage to the new balances. Remove Redeem requests that have been filled.
-			Self::update_redeem_requests(&new_balances);
 
 			AvailableStakingBalance::<T>::put(available_staking_balance);
 
@@ -1054,51 +1051,53 @@ pub mod module {
 		}
 
 		/// Helper function that iterates `RedeemRequests` storage from
-		/// `RedeemRequestKeyToIterFrom`, and call the MutFn f() on that request.
+		/// `RedeemRequestKeyToIterFrom`, and call the MutFn f() on that request, returning
+		///  an updated redeem amount.
+		/// At the end of iteration, `RedeemRequests` storage is updated.
 		///
 		/// If the item after `RedeemRequestKeyToIterFrom` is the end of the iterator, then start
 		/// from the beginning.
 		///
-		/// Param for FnMut f:
+		/// Param: FnMut f:
 		/// 	- `redeemer`: AccountId of the redeemer
 		/// 	- `amount`: The amount to be redeemed
 		/// 	- `extra_fee`: The extra fee to be paid to the minter from the redeemer
-		/// Return for FnMut f:
-		/// 	Result<should_break, error>: If Ok, return if the iteration should end. Otherwise return
-		/// the Error
+		/// 	Return for FnMut f:
+		/// 	Result<(should_break, new_amount), error>: If Ok, return if the iteration should end,
+		/// and the new 		value of the redeem request. Otherwise return the Error.
 		pub fn iterate_from_next_redeem_request(
-			f: &mut impl FnMut(T::AccountId, Balance, Permill) -> Result<bool, DispatchError>,
+			f: &mut impl FnMut(T::AccountId, Balance, Permill) -> Result<(bool, Balance), DispatchError>,
 		) -> DispatchResult {
 			// If "next" after starting key exists in storage, use it as the "starting_item". Otherwise use the
 			// first item.
 			let starting_key = Self::redeem_request_key_to_iter_from();
-			let mut iterator = RedeemRequests::<T>::iter_from(starting_key);
-			let starting_element = match iterator.next() {
-				Some(request) => request,
+			let (mut iterator, starting_element) = match RedeemRequests::<T>::iter_from(starting_key.clone()).next() {
+				Some(request) => {
+					// reset the iterator
+					(RedeemRequests::<T>::iter_from(starting_key), request)
+				}
 				None => {
-					iterator = RedeemRequests::<T>::iter();
-					match iterator.next() {
+					// iterate from the start
+					match RedeemRequests::<T>::iter().next() {
 						// Current storage is empty. Do nothing and return
 						None => return Ok(()),
-						Some(element) => element,
+						Some(element) => (RedeemRequests::<T>::iter(), element),
 					}
 				}
 			};
 
-			// Call the function for the first item
-			let (redeemer, (request_amount, extra_fee)) = starting_element.clone();
-			if f(redeemer.clone(), request_amount, extra_fee)? {
-				// Store the `current` element as `RedeemRequestKeyToIterFrom`
-				RedeemRequestKeyToIterFrom::<T>::put(RedeemRequests::<T>::hashed_key_for(redeemer));
-				return Ok(());
-			}
+			// Store the new redeem amount
+			let mut new_redeem_amounts: Vec<(T::AccountId, Balance, Permill)> = vec![];
 
 			// Iterate until the end of the storage, calling f() for each element
 			#[allow(clippy::while_let_on_iterator)]
 			while let Some((redeemer, (request_amount, extra_fee))) = iterator.next() {
-				if f(redeemer.clone(), request_amount, extra_fee)? {
+				let (should_break, new_balance) = f(redeemer.clone(), request_amount, extra_fee)?;
+				new_redeem_amounts.push((redeemer.clone(), new_balance, extra_fee));
+				if should_break {
 					// Store the `current` element as `RedeemRequestKeyToIterFrom`
 					RedeemRequestKeyToIterFrom::<T>::put(RedeemRequests::<T>::hashed_key_for(redeemer));
+					Self::update_redeem_requests(&new_redeem_amounts);
 					return Ok(());
 				}
 			}
@@ -1110,15 +1109,18 @@ pub mod module {
 			#[allow(clippy::while_let_on_iterator)]
 			while let Some((redeemer, (request_amount, extra_fee))) = iterator.next() {
 				if redeemer == starting_element.0 {
-					// We have wrapped to the beginning. Return.
-					return Ok(());
+					// We have wrapped to the beginning. Stop the loop.
+					break;
 				}
-				if f(redeemer.clone(), request_amount, extra_fee)? {
+				let (should_break, new_balance) = f(redeemer.clone(), request_amount, extra_fee)?;
+				new_redeem_amounts.push((redeemer.clone(), new_balance, extra_fee));
+				if should_break {
 					// Store the `current` element as `RedeemRequestKeyToIterFrom`
 					RedeemRequestKeyToIterFrom::<T>::put(RedeemRequests::<T>::hashed_key_for(redeemer));
-					return Ok(());
+					break;
 				}
 			}
+			Self::update_redeem_requests(&new_redeem_amounts);
 			Ok(())
 		}
 	}
