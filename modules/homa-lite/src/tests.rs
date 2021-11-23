@@ -1257,8 +1257,8 @@ fn request_redeem_extra_fee_works() {
 		assert_eq!(Currencies::reserved_balance(LKSM, &ALICE), 0);
 
 		// Extra fee + mint fee are rewarded to the minter
-		assert_eq!(Currencies::free_balance(KSM, &CHARLIE), 6_993_000_000_000);
-		assert_eq!(Currencies::free_balance(LKSM, &CHARLIE), 299_898_000_000_000);
+		assert_eq!(Currencies::free_balance(KSM, &CHARLIE), 7_023_000_000_000);
+		assert_eq!(Currencies::free_balance(LKSM, &CHARLIE), 299_700_000_000_000);
 	});
 }
 
