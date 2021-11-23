@@ -1640,9 +1640,9 @@ fn adjust_available_staking_balance_matches_redeem_based_on_input() {
 			RedeemRequests::<Runtime>::get(DAVE),
 			Some((dollar(999), Permill::zero()))
 		);
-		assert_eq!(RedeemRequests::<Runtime>::get(ALICE), None);
+		assert_eq!(RedeemRequests::<Runtime>::get(BOB), None);
 		assert_eq!(
-			RedeemRequests::<Runtime>::get(BOB),
+			RedeemRequests::<Runtime>::get(ALICE),
 			Some((dollar(999), Permill::zero()))
 		);
 
