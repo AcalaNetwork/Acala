@@ -85,7 +85,7 @@ fn transfer_to_relay_chain() {
 fn transfer_to_sibling() {
 	TestNet::reset();
 
-	fn sibling_2000_account() -> AccountId {
+	fn karura_reserve_account() -> AccountId {
 		use sp_runtime::traits::AccountIdConversion;
 		polkadot_parachain::primitives::Sibling::from(2000).into_account()
 	}
@@ -95,7 +95,7 @@ fn transfer_to_sibling() {
 	});
 
 	Sibling::execute_with(|| {
-		assert_ok!(Tokens::deposit(BNC, &sibling_2000_account(), 100_000_000_000_000));
+		assert_ok!(Tokens::deposit(BNC, &karura_reserve_account(), 100_000_000_000_000));
 	});
 
 	Karura::execute_with(|| {
@@ -123,7 +123,7 @@ fn transfer_to_sibling() {
 	});
 
 	Sibling::execute_with(|| {
-		assert_eq!(Tokens::free_balance(BNC, &sibling_2000_account()), 90_000_000_000_000);
+		assert_eq!(Tokens::free_balance(BNC, &karura_reserve_account()), 90_000_000_000_000);
 		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(BOB)), 9_989_760_000_000);
 
 		assert_ok!(XTokens::transfer(
@@ -146,7 +146,7 @@ fn transfer_to_sibling() {
 			1_000_000_000,
 		));
 
-		assert_eq!(Tokens::free_balance(BNC, &sibling_2000_account()), 95_000_000_000_000);
+		assert_eq!(Tokens::free_balance(BNC, &karura_reserve_account()), 95_000_000_000_000);
 		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(BOB)), 4_989_760_000_000);
 	});
 
@@ -159,7 +159,7 @@ fn transfer_to_sibling() {
 fn test_asset_registry_module() {
 	TestNet::reset();
 
-	fn sibling_2000_account() -> AccountId {
+	fn karura_reserve_account() -> AccountId {
 		use sp_runtime::traits::AccountIdConversion;
 		polkadot_parachain::primitives::Sibling::from(2000).into_account()
 	}
@@ -185,7 +185,7 @@ fn test_asset_registry_module() {
 
 	Sibling::execute_with(|| {
 		let _ = Balances::deposit_creating(&AccountId::from(BOB), 100_000_000_000_000);
-		assert_eq!(Balances::free_balance(&sibling_2000_account()), 0);
+		assert_eq!(Balances::free_balance(&karura_reserve_account()), 0);
 		assert_eq!(Balances::free_balance(&AccountId::from(BOB)), 100_000_000_000_000);
 
 		assert_ok!(XTokens::transfer(
@@ -208,7 +208,7 @@ fn test_asset_registry_module() {
 			1_000_000_000,
 		));
 
-		assert_eq!(Balances::free_balance(&sibling_2000_account()), 5_000_000_000_000);
+		assert_eq!(Balances::free_balance(&karura_reserve_account()), 5_000_000_000_000);
 		assert_eq!(Balances::free_balance(&AccountId::from(BOB)), 95_000_000_000_000);
 	});
 
@@ -250,7 +250,7 @@ fn test_asset_registry_module() {
 	});
 
 	Sibling::execute_with(|| {
-		assert_eq!(Balances::free_balance(&sibling_2000_account()), 4_000_000_000_000);
+		assert_eq!(Balances::free_balance(&karura_reserve_account()), 4_000_000_000_000);
 		assert_eq!(Balances::free_balance(&AccountId::from(BOB)), 95_993_600_000_000);
 	});
 
@@ -271,7 +271,7 @@ fn test_asset_registry_module() {
 	});
 
 	Sibling::execute_with(|| {
-		assert_eq!(Balances::free_balance(&sibling_2000_account()), 4_000_000_000_000);
+		assert_eq!(Balances::free_balance(&karura_reserve_account()), 4_000_000_000_000);
 		assert_eq!(Balances::free_balance(&AccountId::from(BOB)), 95_993_600_000_000);
 
 		assert_ok!(XTokens::transfer(
@@ -294,7 +294,7 @@ fn test_asset_registry_module() {
 			1_000_000_000,
 		));
 
-		assert_eq!(Balances::free_balance(&sibling_2000_account()), 9_000_000_000_000);
+		assert_eq!(Balances::free_balance(&karura_reserve_account()), 9_000_000_000_000);
 		assert_eq!(Balances::free_balance(&AccountId::from(BOB)), 90_993_600_000_000);
 	});
 
