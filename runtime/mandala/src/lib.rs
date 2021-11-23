@@ -2412,13 +2412,34 @@ impl_runtime_apis! {
 			use frame_support::traits::StorageInfoTrait;
 			use orml_benchmarking::list_benchmark as orml_list_benchmark;
 
-			use module_nft::benchmarking::Pallet as NftBench;
-			use module_homa_lite::benchmarking::Pallet as HomaLiteBench;
+			//use cumulus_pallet_session_benchmarking::Pallet as SessionBench;
+			use frame_system_benchmarking::Pallet as SystemBench;
 
 			let mut list = Vec::<BenchmarkList>::new();
 
-			list_benchmark!(list, extra, module_nft, NftBench::<Runtime>);
-			list_benchmark!(list, extra, module_homa_lite, HomaLiteBench::<Runtime>);
+			list_benchmark!(list, extra, module_nft, NFT);
+			list_benchmark!(list, extra, module_homa_lite, HomaLite);
+			// substrate pallets
+			list_benchmark!(list, extra, pallet_balances, Balances);
+			list_benchmark!(list, extra, pallet_bounties, Bounties);
+			list_benchmark!(list, extra, pallet_collective, GeneralCouncil);
+			list_benchmark!(list, extra, pallet_collective, FinancialCouncil);
+			list_benchmark!(list, extra, pallet_collective, HomaCouncil);
+			list_benchmark!(list, extra, pallet_collective, TechnicalCommittee);
+			list_benchmark!(list, extra, pallet_membership, GeneralCouncilMembership);
+			list_benchmark!(list, extra, pallet_membership, FinancialCouncilMembership);
+			list_benchmark!(list, extra, pallet_membership, HomaCouncilMembership);
+			list_benchmark!(list, extra, pallet_membership, TechnicalCommitteeMembership);
+			list_benchmark!(list, extra, pallet_membership, OperatorMembershipAcala);
+			list_benchmark!(list, extra, pallet_multisig, Multisig);
+			list_benchmark!(list, extra, pallet_proxy, Proxy);
+			list_benchmark!(list, extra, pallet_scheduler, Scheduler);
+			//list_benchmark!(list, extra, pallet_session, SessionBench::<Runtime>);
+			list_benchmark!(list, extra, frame_system, SystemBench::<Runtime>);
+			list_benchmark!(list, extra, pallet_timestamp, Timestamp);
+			list_benchmark!(list, extra, pallet_tips, Tips);
+			list_benchmark!(list, extra, pallet_treasury, Treasury);
+			list_benchmark!(list, extra, pallet_utility, Utility);
 
 			orml_list_benchmark!(list, extra, module_dex, benchmarking::dex);
 			orml_list_benchmark!(list, extra, module_asset_registry, benchmarking::asset_registry);
@@ -2457,9 +2478,11 @@ impl_runtime_apis! {
 			use frame_benchmarking::{Benchmarking, BenchmarkBatch, add_benchmark, TrackedStorageKey};
 			use orml_benchmarking::{add_benchmark as orml_add_benchmark};
 
-			use module_nft::benchmarking::Pallet as NftBench;
-			use module_homa_lite::benchmarking::Pallet as HomaLiteBench;
+			use frame_system_benchmarking::Pallet as SystemBench;
+			impl frame_system_benchmarking::Config for Runtime {}
 
+			//use cumulus_pallet_session_benchmarking::Pallet as SessionBench;
+			//impl cumulus_pallet_session_benchmarking::Config for Runtime {}
 
 			let whitelist: Vec<TrackedStorageKey> = vec![
 				// Block Number
@@ -2481,8 +2504,31 @@ impl_runtime_apis! {
 			let mut batches = Vec::<BenchmarkBatch>::new();
 			let params = (&config, &whitelist);
 
-			add_benchmark!(params, batches, module_nft, NftBench::<Runtime>);
-			add_benchmark!(params, batches, module_homa_lite, HomaLiteBench::<Runtime>);
+			add_benchmark!(params, batches, module_nft, NFT);
+			add_benchmark!(params, batches, module_homa_lite, HomaLite);
+
+			//substrate pallets
+			add_benchmark!(params, batches, pallet_balances, Balances);
+			add_benchmark!(params, batches, pallet_bounties, Bounties);
+			add_benchmark!(params, batches, pallet_collective, GeneralCouncil);
+			add_benchmark!(params, batches, pallet_collective, FinancialCouncil);
+			add_benchmark!(params, batches, pallet_collective, HomaCouncil);
+			add_benchmark!(params, batches, pallet_collective, TechnicalCommittee);
+			add_benchmark!(params, batches, pallet_membership, GeneralCouncilMembership);
+			add_benchmark!(params, batches, pallet_membership, FinancialCouncilMembership);
+			add_benchmark!(params, batches, pallet_membership, HomaCouncilMembership);
+			add_benchmark!(params, batches, pallet_membership, TechnicalCommitteeMembership);
+			add_benchmark!(params, batches, pallet_membership, OperatorMembershipAcala);
+			add_benchmark!(params, batches, pallet_multisig, Multisig);
+			add_benchmark!(params, batches, pallet_proxy, Proxy);
+			add_benchmark!(params, batches, pallet_scheduler, Scheduler);
+			//add_benchmark!(params, batches, pallet_session, SessionBench::<Runtime>);
+			add_benchmark!(params, batches, frame_system, SystemBench::<Runtime>);
+			add_benchmark!(params, batches, pallet_timestamp, Timestamp);
+			add_benchmark!(params, batches, pallet_tips, Tips);
+			add_benchmark!(params, batches, pallet_treasury, Treasury);
+			add_benchmark!(params, batches, pallet_utility, Utility);
+
 			orml_add_benchmark!(params, batches, module_dex, benchmarking::dex);
 			orml_add_benchmark!(params, batches, module_asset_registry, benchmarking::asset_registry);
 			orml_add_benchmark!(params, batches, module_auction_manager, benchmarking::auction_manager);

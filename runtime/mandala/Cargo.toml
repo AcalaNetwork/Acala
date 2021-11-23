@@ -14,7 +14,6 @@ hex = { version = "0.4", default-features = false, optional = true }
 hex-literal = { version = "0.3.1" }
 scale-info = { version = "1.0", default-features = false, features = ["derive"] }
 
-frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.12", default-features = false, optional = true }
 frame-executive = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.12", default-features = false }
 frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.12", default-features = false }
 frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.12", default-features = false }
@@ -56,8 +55,6 @@ sp-staking = { git = "https://github.com/paritytech/substrate", branch = "polkad
 sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.12", default-features = false }
 sp-transaction-pool = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.12", default-features = false }
 sp-version = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.12", default-features = false }
-
-libsecp256k1 = { version = "0.6", default-features = false, optional = true }
 
 # cumulus
 cumulus-pallet-aura-ext = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.12", default-features = false }
@@ -130,6 +127,12 @@ module-evm-rpc-runtime-api = { path = "../../modules/evm/rpc/runtime_api",  defa
 ecosystem-renvm-bridge = { path = "../../ecosystem-modules/ren/renvm-bridge", default-features = false }
 ecosystem-starport = { path = "../../ecosystem-modules/starport", default-features = false }
 ecosystem-compound-cash = { path = "../../ecosystem-modules/compound-cash", default-features = false }
+
+# benchmarking deps
+frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.12", default-features = false, optional = true }
+libsecp256k1 = { version = "0.6", default-features = false, optional = true }
+cumulus-pallet-session-benchmarking = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.12", default-features = false, optional = true }
+frame-system-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.12", default-features = false, optional = true }
 
 [build-dependencies]
 substrate-wasm-builder = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.12" }
@@ -270,14 +273,26 @@ runtime-benchmarks = [
 	"orml-benchmarking",
 	"libsecp256k1/hmac",
 
+	"pallet-balances/runtime-benchmarks",
+	"pallet-collective/runtime-benchmarks",
+	"pallet-membership/runtime-benchmarks",
+	"pallet-multisig/runtime-benchmarks",
+	"pallet-proxy/runtime-benchmarks",
+	"pallet-scheduler/runtime-benchmarks",
+	"pallet-timestamp/runtime-benchmarks",
+	"pallet-treasury/runtime-benchmarks",
+	"pallet-bounties/runtime-benchmarks",
+	"pallet-tips/runtime-benchmarks",
+	"pallet-utility/runtime-benchmarks",
+	"cumulus-pallet-session-benchmarking",
+	"frame-system-benchmarking",
+
 	"frame-support/runtime-benchmarks",
 	"frame-system/runtime-benchmarks",
-	"pallet-collective/runtime-benchmarks",
 	"sp-runtime/runtime-benchmarks",
 	"orml-authority/runtime-benchmarks",
 	"orml-vesting/runtime-benchmarks",
 	"orml-tokens/runtime-benchmarks",
-	"pallet-timestamp/runtime-benchmarks",
 	"xcm-builder/runtime-benchmarks",
 	"pallet-xcm/runtime-benchmarks",
 
