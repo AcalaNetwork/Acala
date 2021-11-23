@@ -160,102 +160,159 @@ fn xcm_transfer_execution_barrier_trader_works() {
 	let unit_instruction_weight = 200_000_000;
 
 	// relay-chain use normal account to send xcm, destination para-chain can't pass Barrier check
-	{
-		let message = Xcm(vec![
-			ReserveAssetDeposited((Parent, 100).into()),
-			BuyExecution {
-				fees: (Parent, 100).into(),
-				weight_limit: Unlimited,
-			},
-			DepositAsset {
-				assets: All.into(),
-				max_assets: 1,
-				beneficiary: Here.into(),
-			},
-		]);
-		KusamaNet::execute_with(|| {
-			let r = pallet_xcm::Pallet::<kusama_runtime::Runtime>::send(
-				kusama_runtime::Origin::signed(ALICE.into()),
-				Box::new(Parachain(2000).into().into()),
-				Box::new(xcm::VersionedXcm::from(message)),
-			);
-			assert_ok!(r);
-		});
-		Karura::execute_with(|| {
-			assert!(System::events().iter().any(|r| matches!(
-				r.event,
-				Event::DmpQueue(cumulus_pallet_dmp_queue::Event::ExecutedDownward(
-					_,
-					Outcome::Error(XcmError::Barrier)
-				))
-			)));
-		});
-	}
+	let message = Xcm(vec![
+		ReserveAssetDeposited((Parent, 100).into()),
+		BuyExecution {
+			fees: (Parent, 100).into(),
+			weight_limit: Unlimited,
+		},
+		DepositAsset {
+			assets: All.into(),
+			max_assets: 1,
+			beneficiary: Here.into(),
+		},
+	]);
+	KusamaNet::execute_with(|| {
+		let r = pallet_xcm::Pallet::<kusama_runtime::Runtime>::send(
+			kusama_runtime::Origin::signed(ALICE.into()),
+			Box::new(Parachain(2000).into().into()),
+			Box::new(xcm::VersionedXcm::from(message)),
+		);
+		assert_ok!(r);
+	});
+	Karura::execute_with(|| {
+		assert!(System::events().iter().any(|r| matches!(
+			r.event,
+			Event::DmpQueue(cumulus_pallet_dmp_queue::Event::ExecutedDownward(
+				_,
+				Outcome::Error(XcmError::Barrier)
+			))
+		)));
+	});
 
 	// AllowTopLevelPaidExecutionFrom barrier test case:
 	// para-chain use XcmExecutor `execute_xcm()` method to execute xcm.
 	// if `weight_limit` in BuyExecution is less than `xcm_weight(max_weight)`, then Barrier can't pass.
 	// other situation when `weight_limit` is `Unlimited` or large than `xcm_weight`, then it's ok.
-	{
-		let message = Xcm::<karura_runtime::Call>(vec![
-			ReserveAssetDeposited((Parent, 100).into()),
-			BuyExecution {
-				fees: (Parent, 100).into(),
-				weight_limit: Limited(weight_limit_too_low),
-			},
-			DepositAsset {
-				assets: All.into(),
-				max_assets: 1,
-				beneficiary: Here.into(),
-			},
-		]);
-		Karura::execute_with(|| {
-			let r = XcmExecutor::<XcmConfig>::execute_xcm(Parent, message, expect_weight_limit);
-			assert_eq!(r, Outcome::Error(XcmError::Barrier));
-		});
-	}
+	let message = Xcm::<karura_runtime::Call>(vec![
+		ReserveAssetDeposited((Parent, 100).into()),
+		BuyExecution {
+			fees: (Parent, 100).into(),
+			weight_limit: Limited(weight_limit_too_low),
+		},
+		DepositAsset {
+			assets: All.into(),
+			max_assets: 1,
+			beneficiary: Here.into(),
+		},
+	]);
+	Karura::execute_with(|| {
+		let r = XcmExecutor::<XcmConfig>::execute_xcm(Parent, message, expect_weight_limit);
+		assert_eq!(r, Outcome::Error(XcmError::Barrier));
+	});
 
 	// trader inside BuyExecution have TooExpensive error if payment less than calculated weight amount.
 	// the minimum of calculated weight amount(`FixedRateOfFungible<KsmPerSecond>`) is 96_000_000
-	{
-		let message = Xcm::<karura_runtime::Call>(vec![
-			ReserveAssetDeposited((Parent, 95_999_999).into()),
-			BuyExecution {
-				fees: (Parent, 95_999_999).into(),
-				weight_limit: Limited(expect_weight_limit),
-			},
-			DepositAsset {
-				assets: All.into(),
-				max_assets: 1,
-				beneficiary: Here.into(),
-			},
-		]);
-		Karura::execute_with(|| {
-			let r = XcmExecutor::<XcmConfig>::execute_xcm(Parent, message, expect_weight_limit);
-			assert_eq!(
-				r,
-				Outcome::Incomplete(expect_weight_limit - unit_instruction_weight, XcmError::TooExpensive)
-			);
-		});
-	}
+	let message = Xcm::<karura_runtime::Call>(vec![
+		ReserveAssetDeposited((Parent, 95_999_999).into()),
+		BuyExecution {
+			fees: (Parent, 95_999_999).into(),
+			weight_limit: Limited(expect_weight_limit),
+		},
+		DepositAsset {
+			assets: All.into(),
+			max_assets: 1,
+			beneficiary: Here.into(),
+		},
+	]);
+	Karura::execute_with(|| {
+		let r = XcmExecutor::<XcmConfig>::execute_xcm(Parent, message, expect_weight_limit);
+		assert_eq!(
+			r,
+			Outcome::Incomplete(expect_weight_limit - unit_instruction_weight, XcmError::TooExpensive)
+		);
+	});
 
 	// all situation fulfilled, execute success
-	{
-		let message = Xcm::<karura_runtime::Call>(vec![
-			ReserveAssetDeposited((Parent, 96_000_000).into()),
-			BuyExecution {
-				fees: (Parent, 96_000_000).into(),
-				weight_limit: Limited(expect_weight_limit),
-			},
-			DepositAsset {
-				assets: All.into(),
-				max_assets: 1,
-				beneficiary: Here.into(),
-			},
-		]);
-		Karura::execute_with(|| {
-			let r = XcmExecutor::<XcmConfig>::execute_xcm(Parent, message, expect_weight_limit);
-			assert_eq!(r, Outcome::Complete(expect_weight_limit));
-		});
-	}
+	let message = Xcm::<karura_runtime::Call>(vec![
+		ReserveAssetDeposited((Parent, 96_000_000).into()),
+		BuyExecution {
+			fees: (Parent, 96_000_000).into(),
+			weight_limit: Limited(expect_weight_limit),
+		},
+		DepositAsset {
+			assets: All.into(),
+			max_assets: 1,
+			beneficiary: Here.into(),
+		},
+	]);
+	Karura::execute_with(|| {
+		let r = XcmExecutor::<XcmConfig>::execute_xcm(Parent, message, expect_weight_limit);
+		assert_eq!(r, Outcome::Complete(expect_weight_limit));
+	});
+}
+
+#[test]
+fn subscribe_version_notify_works() {
+	// relay chain subscribe version notify of para chain
+	KusamaNet::execute_with(|| {
+		let r = pallet_xcm::Pallet::<kusama_runtime::Runtime>::force_subscribe_version_notify(
+			kusama_runtime::Origin::root(),
+			Box::new(Parachain(2000).into().into()),
+		);
+		assert_ok!(r);
+	});
+	KusamaNet::execute_with(|| {
+		kusama_runtime::System::assert_has_event(kusama_runtime::Event::XcmPallet(
+			pallet_xcm::Event::SupportedVersionChanged(
+				MultiLocation {
+					parents: 0,
+					interior: X1(Parachain(2000)),
+				},
+				2,
+			),
+		));
+	});
+
+	// para chain subscribe version notify of relay chain
+	Karura::execute_with(|| {
+		let r = pallet_xcm::Pallet::<karura_runtime::Runtime>::force_subscribe_version_notify(
+			Origin::root(),
+			Box::new(Parent.into()),
+		);
+		assert_ok!(r);
+	});
+	Karura::execute_with(|| {
+		System::assert_has_event(karura_runtime::Event::PolkadotXcm(
+			pallet_xcm::Event::SupportedVersionChanged(
+				MultiLocation {
+					parents: 1,
+					interior: Here,
+				},
+				2,
+			),
+		));
+	});
+
+	// para chain subscribe version notify of sibling chain
+	Karura::execute_with(|| {
+		let r = pallet_xcm::Pallet::<karura_runtime::Runtime>::force_subscribe_version_notify(
+			Origin::root(),
+			Box::new((Parent, Parachain(2001)).into()),
+		);
+		assert_ok!(r);
+	});
+	Karura::execute_with(|| {
+		assert!(karura_runtime::System::events().iter().any(|r| matches!(
+			r.event,
+			karura_runtime::Event::XcmpQueue(cumulus_pallet_xcmp_queue::Event::XcmpMessageSent(Some(_)))
+		)));
+	});
+	Sibling::execute_with(|| {
+		assert!(System::events().iter().any(|r| matches!(
+			r.event,
+			karura_runtime::Event::XcmpQueue(cumulus_pallet_xcmp_queue::Event::XcmpMessageSent(Some(_)))
+				| karura_runtime::Event::XcmpQueue(cumulus_pallet_xcmp_queue::Event::Success(Some(_)))
+		)));
+	});
 }
