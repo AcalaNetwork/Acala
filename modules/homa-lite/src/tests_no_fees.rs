@@ -346,18 +346,15 @@ fn updating_and_cancelling_redeem_requests_does_not_change_exchange_rate() {
 fn iterate_redeem_requests_from_next_works() {
 	ExtBuilder::empty().build().execute_with(|| {
 		// iterate works with empty redeem requests
-		let mut empty: Vec<Balance> = vec![];
+		let mut empty: Vec<AccountId> = vec![];
 		RedeemRequestKeyToIterFrom::<NoFeeRuntime>::put(RedeemRequests::<NoFeeRuntime>::hashed_key_for(
 			AccountId::from([0; 32]),
 		));
 		{
 			assert_ok!(HomaLite::iterate_from_next_redeem_request(
-				&mut |_redeemer: AccountId,
-				      amount: Balance,
-				      _extra_fee: Permill|
-				 -> Result<(bool, Balance), DispatchError> {
-					&empty.push(amount);
-					Ok((false, amount))
+				&mut |redeemer: AccountId| -> Result<bool, DispatchError> {
+					&empty.push(redeemer);
+					Ok(false)
 				}
 			));
 		}
@@ -379,39 +376,33 @@ fn iterate_redeem_requests_from_next_works() {
 			));
 		}
 
-		let mut one_request: Vec<Balance> = vec![];
+		let mut one_request: Vec<AccountId> = vec![];
 		RedeemRequestKeyToIterFrom::<NoFeeRuntime>::put(RedeemRequests::<NoFeeRuntime>::hashed_key_for(
 			AccountId::from([0; 32]),
 		));
 		{
 			assert_ok!(HomaLite::iterate_from_next_redeem_request(
-				&mut |_redeemer: AccountId,
-				      amount: Balance,
-				      _extra_fee: Permill|
-				 -> Result<(bool, Balance), DispatchError> {
-					&one_request.push(amount);
-					Ok((false, amount))
+				&mut |redeemer: AccountId| -> Result<bool, DispatchError> {
+					&one_request.push(redeemer);
+					Ok(false)
 				}
 			));
 		}
-		assert_eq!(one_request, vec![dollar(1)]);
+		assert_eq!(one_request, vec![AccountId::from([1u8; 32])]);
 
-		let mut one_request_2: Vec<Balance> = vec![];
+		let mut one_request_2: Vec<AccountId> = vec![];
 		RedeemRequestKeyToIterFrom::<NoFeeRuntime>::put(RedeemRequests::<NoFeeRuntime>::hashed_key_for(
 			AccountId::from([1; 32]),
 		));
 		{
 			assert_ok!(HomaLite::iterate_from_next_redeem_request(
-				&mut |_redeemer: AccountId,
-				      amount: Balance,
-				      _extra_fee: Permill|
-				 -> Result<(bool, Balance), DispatchError> {
-					&one_request_2.push(amount);
-					Ok((false, amount))
+				&mut |redeemer: AccountId| -> Result<bool, DispatchError> {
+					&one_request_2.push(redeemer);
+					Ok(false)
 				}
 			));
 		}
-		assert_eq!(one_request_2, vec![dollar(1)]);
+		assert_eq!(one_request_2, vec![AccountId::from([1u8; 32])]);
 
 		// iterate works with 2 redeem requests
 		{
@@ -429,57 +420,57 @@ fn iterate_redeem_requests_from_next_works() {
 			));
 		}
 
-		let mut two_requests_1: Vec<Balance> = vec![];
+		let mut two_requests_1: Vec<AccountId> = vec![];
 		RedeemRequestKeyToIterFrom::<NoFeeRuntime>::put(RedeemRequests::<NoFeeRuntime>::hashed_key_for(
 			AccountId::from([0; 32]),
 		));
 		{
 			assert_ok!(HomaLite::iterate_from_next_redeem_request(
-				&mut |_redeemer: AccountId,
-				      amount: Balance,
-				      _extra_fee: Permill|
-				 -> Result<(bool, Balance), DispatchError> {
-					&two_requests_1.push(amount);
-					Ok((false, amount))
+				&mut |redeemer: AccountId| -> Result<bool, DispatchError> {
+					&two_requests_1.push(redeemer);
+					Ok(false)
 				}
 			));
 		}
-		assert_eq!(two_requests_1, vec![dollar(1), dollar(2)]);
+		assert_eq!(
+			two_requests_1,
+			vec![AccountId::from([1u8; 32]), AccountId::from([2u8; 32])]
+		);
 
-		let mut two_requests_2: Vec<Balance> = vec![];
+		let mut two_requests_2: Vec<AccountId> = vec![];
 		// Iterate from 1: next item is 2
 		RedeemRequestKeyToIterFrom::<NoFeeRuntime>::put(RedeemRequests::<NoFeeRuntime>::hashed_key_for(
 			AccountId::from([1; 32]),
 		));
 		{
 			assert_ok!(HomaLite::iterate_from_next_redeem_request(
-				&mut |_redeemer: AccountId,
-				      amount: Balance,
-				      _extra_fee: Permill|
-				 -> Result<(bool, Balance), DispatchError> {
-					&two_requests_2.push(amount);
-					Ok((false, amount))
+				&mut |redeemer: AccountId| -> Result<bool, DispatchError> {
+					&two_requests_2.push(redeemer);
+					Ok(false)
 				}
 			));
 		}
-		assert_eq!(two_requests_2, vec![dollar(2), dollar(1)]);
+		assert_eq!(
+			two_requests_2,
+			vec![AccountId::from([2u8; 32]), AccountId::from([1u8; 32])]
+		);
 
-		let mut two_requests_3: Vec<Balance> = vec![];
+		let mut two_requests_3: Vec<AccountId> = vec![];
 		RedeemRequestKeyToIterFrom::<NoFeeRuntime>::put(RedeemRequests::<NoFeeRuntime>::hashed_key_for(
 			AccountId::from([2; 32]),
 		));
 		{
 			assert_ok!(HomaLite::iterate_from_next_redeem_request(
-				&mut |_redeemer: AccountId,
-				      amount: Balance,
-				      _extra_fee: Permill|
-				 -> Result<(bool, Balance), DispatchError> {
-					&two_requests_3.push(amount);
-					Ok((false, amount))
+				&mut |redeemer: AccountId| -> Result<bool, DispatchError> {
+					&two_requests_3.push(redeemer);
+					Ok(false)
 				}
 			));
 		}
-		assert_eq!(two_requests_3, vec![dollar(1), dollar(2)]);
+		assert_eq!(
+			two_requests_3,
+			vec![AccountId::from([1u8; 32]), AccountId::from([2u8; 32])]
+		);
 
 		// Test with larger number of requests in storage
 		for i in 3u8..10u8 {
@@ -499,163 +490,155 @@ fn iterate_redeem_requests_from_next_works() {
 
 		// This is the default order the redeem requests are iterated.
 		let mut default_order = vec![];
-		for (_, (request_amount, _)) in RedeemRequests::<NoFeeRuntime>::iter() {
-			default_order.push(request_amount);
+		for (redeemer, _) in RedeemRequests::<NoFeeRuntime>::iter() {
+			default_order.push(redeemer);
 		}
 		assert_eq!(
 			default_order,
 			vec![
-				dollar(1),
-				dollar(6),
-				dollar(2),
-				dollar(3),
-				dollar(8),
-				dollar(9),
-				dollar(7),
-				dollar(4),
-				dollar(5)
+				AccountId::from([1u8; 32]),
+				AccountId::from([6u8; 32]),
+				AccountId::from([2u8; 32]),
+				AccountId::from([3u8; 32]),
+				AccountId::from([8u8; 32]),
+				AccountId::from([9u8; 32]),
+				AccountId::from([7u8; 32]),
+				AccountId::from([4u8; 32]),
+				AccountId::from([5u8; 32])
 			]
 		);
 
 		// iterate from the middle
-		let mut output_1: Vec<Balance> = vec![];
+		let mut output_1: Vec<AccountId> = vec![];
 		// Set iter_from key to 3, so iteration starts from 8
 		RedeemRequestKeyToIterFrom::<NoFeeRuntime>::put(RedeemRequests::<NoFeeRuntime>::hashed_key_for(
 			AccountId::from([3; 32]),
 		));
 		{
 			assert_ok!(HomaLite::iterate_from_next_redeem_request(
-				&mut |_redeemer: AccountId,
-				      amount: Balance,
-				      _extra_fee: Permill|
-				 -> Result<(bool, Balance), DispatchError> {
-					&output_1.push(amount);
-					Ok((false, amount))
+				&mut |redeemer: AccountId| -> Result<bool, DispatchError> {
+					&output_1.push(redeemer);
+					Ok(false)
 				}
 			));
 		}
 		assert_eq!(
 			output_1,
 			vec![
-				dollar(8),
-				dollar(9),
-				dollar(7),
-				dollar(4),
-				dollar(5),
-				dollar(1),
-				dollar(6),
-				dollar(2),
-				dollar(3)
+				AccountId::from([8u8; 32]),
+				AccountId::from([9u8; 32]),
+				AccountId::from([7u8; 32]),
+				AccountId::from([4u8; 32]),
+				AccountId::from([5u8; 32]),
+				AccountId::from([1u8; 32]),
+				AccountId::from([6u8; 32]),
+				AccountId::from([2u8; 32]),
+				AccountId::from([3u8; 32]),
 			]
 		);
 
 		// Iterate from the start
-		let mut output_2: Vec<Balance> = vec![];
+		let mut output_2: Vec<AccountId> = vec![];
 		RedeemRequestKeyToIterFrom::<NoFeeRuntime>::put(RedeemRequests::<NoFeeRuntime>::hashed_key_for(
 			AccountId::from([5; 32]),
 		));
 		{
 			assert_ok!(HomaLite::iterate_from_next_redeem_request(
-				&mut |_redeemer: AccountId,
-				      amount: Balance,
-				      _extra_fee: Permill|
-				 -> Result<(bool, Balance), DispatchError> {
-					&output_2.push(amount);
-					Ok((false, amount))
+				&mut |redeemer: AccountId| -> Result<bool, DispatchError> {
+					&output_2.push(redeemer);
+					Ok(false)
 				}
 			));
 		}
 		assert_eq!(
 			output_2,
 			vec![
-				dollar(1),
-				dollar(6),
-				dollar(2),
-				dollar(3),
-				dollar(8),
-				dollar(9),
-				dollar(7),
-				dollar(4),
-				dollar(5)
+				AccountId::from([1u8; 32]),
+				AccountId::from([6u8; 32]),
+				AccountId::from([2u8; 32]),
+				AccountId::from([3u8; 32]),
+				AccountId::from([8u8; 32]),
+				AccountId::from([9u8; 32]),
+				AccountId::from([7u8; 32]),
+				AccountId::from([4u8; 32]),
+				AccountId::from([5u8; 32]),
 			]
 		);
 
 		// Iterate from the end
-		let mut output_3: Vec<Balance> = vec![];
+		let mut output_3: Vec<AccountId> = vec![];
 		RedeemRequestKeyToIterFrom::<NoFeeRuntime>::put(RedeemRequests::<NoFeeRuntime>::hashed_key_for(
 			AccountId::from([4; 32]),
 		));
 		{
 			assert_ok!(HomaLite::iterate_from_next_redeem_request(
-				&mut |_redeemer: AccountId,
-				      amount: Balance,
-				      _extra_fee: Permill|
-				 -> Result<(bool, Balance), DispatchError> {
-					&output_3.push(amount);
-					Ok((false, amount))
+				&mut |redeemer: AccountId| -> Result<bool, DispatchError> {
+					&output_3.push(redeemer);
+					Ok(false)
 				}
 			));
 		}
 		assert_eq!(
 			output_3,
 			vec![
-				dollar(5),
-				dollar(1),
-				dollar(6),
-				dollar(2),
-				dollar(3),
-				dollar(8),
-				dollar(9),
-				dollar(7),
-				dollar(4)
+				AccountId::from([5u8; 32]),
+				AccountId::from([1u8; 32]),
+				AccountId::from([6u8; 32]),
+				AccountId::from([2u8; 32]),
+				AccountId::from([3u8; 32]),
+				AccountId::from([8u8; 32]),
+				AccountId::from([9u8; 32]),
+				AccountId::from([7u8; 32]),
+				AccountId::from([4u8; 32]),
 			]
 		);
 
 		// If breaking half way through, return immediately.
-		let mut output_5: Vec<Balance> = vec![];
+		let mut output_5: Vec<AccountId> = vec![];
 		RedeemRequestKeyToIterFrom::<NoFeeRuntime>::put(RedeemRequests::<NoFeeRuntime>::hashed_key_for(
 			AccountId::from([3; 32]),
 		));
 		{
 			assert_ok!(HomaLite::iterate_from_next_redeem_request(
-				&mut |_redeemer: AccountId,
-				      amount: Balance,
-				      _extra_fee: Permill|
-				 -> Result<(bool, Balance), DispatchError> {
-					&output_5.push(amount);
-					Ok((amount == dollar(7), amount))
+				&mut |redeemer: AccountId| -> Result<bool, DispatchError> {
+					&output_5.push(redeemer.clone());
+					Ok(redeemer == AccountId::from([7u8; 32]))
 				}
 			));
 		}
-		assert_eq!(output_5, vec![dollar(8), dollar(9), dollar(7)]);
+		assert_eq!(
+			output_5,
+			vec![
+				AccountId::from([8u8; 32]),
+				AccountId::from([9u8; 32]),
+				AccountId::from([7u8; 32])
+			]
+		);
 
 		// If breaking half way through, return immediately.
-		let mut output_6: Vec<Balance> = vec![];
+		let mut output_6: Vec<AccountId> = vec![];
 		RedeemRequestKeyToIterFrom::<NoFeeRuntime>::put(RedeemRequests::<NoFeeRuntime>::hashed_key_for(
 			AccountId::from([3; 32]),
 		));
 		{
 			assert_ok!(HomaLite::iterate_from_next_redeem_request(
-				&mut |_redeemer: AccountId,
-				      amount: Balance,
-				      _extra_fee: Permill|
-				 -> Result<(bool, Balance), DispatchError> {
-					&output_6.push(amount);
-					Ok((amount == dollar(2), amount))
+				&mut |redeemer: AccountId| -> Result<bool, DispatchError> {
+					&output_6.push(redeemer.clone());
+					Ok(redeemer == AccountId::from([2u8; 32]))
 				}
 			));
 		}
 		assert_eq!(
 			output_6,
 			vec![
-				dollar(8),
-				dollar(9),
-				dollar(7),
-				dollar(4),
-				dollar(5),
-				dollar(1),
-				dollar(6),
-				dollar(2)
+				AccountId::from([8u8; 32]),
+				AccountId::from([9u8; 32]),
+				AccountId::from([7u8; 32]),
+				AccountId::from([4u8; 32]),
+				AccountId::from([5u8; 32]),
+				AccountId::from([1u8; 32]),
+				AccountId::from([6u8; 32]),
+				AccountId::from([2u8; 32]),
 			]
 		);
 	});
