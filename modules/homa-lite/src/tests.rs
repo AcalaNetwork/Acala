@@ -740,6 +740,7 @@ fn update_redeem_request_works() {
 		assert_eq!(
 			events[events.len() - 4..],
 			vec![
+				// Reserve the newly added amount
 				Event::Tokens(orml_tokens::Event::Reserved(LKSM, DAVE, amount_reserved)),
 				Event::HomaLite(crate::Event::RedeemRequested(
 					DAVE,
@@ -747,6 +748,7 @@ fn update_redeem_request_works() {
 					Permill::zero(),
 					withdraw_fee
 				)),
+				// Unreserve the reduced amount
 				Event::Tokens(orml_tokens::Event::Unreserved(LKSM, DAVE, 998_999_000_000_000)),
 				Event::HomaLite(crate::Event::RedeemRequested(DAVE, dollar(1000), Permill::zero(), 0)),
 			]
