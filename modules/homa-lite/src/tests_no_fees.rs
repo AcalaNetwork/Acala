@@ -104,36 +104,32 @@ fn no_fee_runtime_has_no_fees() {
 
 		let events = System::events();
 		assert_eq!(
-			events[events.len() - 9].event,
+			events[events.len() - 8].event,
 			Event::HomaLite(crate::Event::ScheduledUnbondAdded(dollar(50_000), 0))
 		);
 		assert_eq!(
-			events[events.len() - 8].event,
+			events[events.len() - 7].event,
 			Event::HomaLite(crate::Event::ScheduledUnbondWithdrew(dollar(50_000)))
 		);
 		assert_eq!(
-			events[events.len() - 7].event,
+			events[events.len() - 6].event,
 			Event::Tokens(orml_tokens::Event::Reserved(LKSM, DAVE, dollar(100_000)))
 		);
 		assert_eq!(
-			events[events.len() - 6].event,
+			events[events.len() - 5].event,
 			Event::HomaLite(crate::Event::RedeemRequested(DAVE, dollar(100_000), Permill::zero(), 0))
 		);
 		assert_eq!(
-			events[events.len() - 5].event,
+			events[events.len() - 4].event,
 			Event::HomaLite(crate::Event::TotalStakingCurrencySet(dollar(96_000)))
 		);
 		assert_eq!(
-			events[events.len() - 4].event,
+			events[events.len() - 3].event,
 			Event::Tokens(orml_tokens::Event::Endowed(KSM, DAVE, dollar(10_000)))
 		);
 		assert_eq!(
-			events[events.len() - 3].event,
-			Event::Currencies(module_currencies::Event::Deposited(KSM, DAVE, dollar(10_000)))
-		);
-		assert_eq!(
 			events[events.len() - 2].event,
-			Event::Tokens(orml_tokens::Event::Unreserved(LKSM, DAVE, dollar(100_000)))
+			Event::Currencies(module_currencies::Event::Deposited(KSM, DAVE, dollar(10_000)))
 		);
 		assert_eq!(
 			events[events.len() - 1].event,

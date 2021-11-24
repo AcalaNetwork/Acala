@@ -606,15 +606,14 @@ fn request_redeem_works() {
 
 		// check the correct events are emitted
 		let events = System::events();
-
 		// Reserved LKSM with withdraw fee deducted
 		assert_eq!(
-			events[events.len() - 7].event,
+			events[events.len() - 6].event,
 			Event::Tokens(orml_tokens::Event::Reserved(LKSM, DAVE, dollar(99_900)))
 		);
 		// Redeem requested, with some withdraw fee deducted.
 		assert_eq!(
-			events[events.len() - 6].event,
+			events[events.len() - 5].event,
 			Event::HomaLite(crate::Event::RedeemRequested(
 				DAVE,
 				dollar(99_900),
@@ -624,22 +623,17 @@ fn request_redeem_works() {
 		);
 		// The request is redeemed with available_staking_balances. TotalStaking is adjusted.
 		assert_eq!(
-			events[events.len() - 5].event,
+			events[events.len() - 4].event,
 			Event::HomaLite(crate::Event::TotalStakingCurrencySet(90_009_000_900_090_010))
 		);
 		// Deposit KSM into redeemer's account
 		assert_eq!(
-			events[events.len() - 4].event,
+			events[events.len() - 3].event,
 			Event::Tokens(orml_tokens::Event::Endowed(KSM, DAVE, 9_989_999_099_909_990))
 		);
 		assert_eq!(
-			events[events.len() - 3].event,
-			Event::Currencies(module_currencies::Event::Deposited(KSM, DAVE, 9_989_999_099_909_990))
-		);
-		// Reserved LKSM is unreserved and slashed.
-		assert_eq!(
 			events[events.len() - 2].event,
-			Event::Tokens(orml_tokens::Event::Unreserved(LKSM, DAVE, dollar(99_900)))
+			Event::Currencies(module_currencies::Event::Deposited(KSM, DAVE, 9_989_999_099_909_990))
 		);
 		// Some amount of the request is redeemed
 		assert_eq!(
