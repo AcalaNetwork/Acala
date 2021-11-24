@@ -19,7 +19,7 @@ describeWithAcala("Acala RPC (Gas)", (context) => {
 				from: alice.getAddress(),
 				data: "0x" + Block.bytecode,
 			})
-		).to.deep.equal(BigNumber.from("284294"));
+		).to.deep.equal(BigNumber.from("273373"));
 	});
 
 	it("eth_estimateResources for contract creation", async function () {
