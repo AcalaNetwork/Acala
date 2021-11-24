@@ -267,7 +267,7 @@ pub mod module {
 	pub type StakingInterestRatePerUpdate<T: Config> = StorageValue<_, Permill, ValueQuery>;
 
 	/// Next redeem request to iterate from when matching redeem requests.
-	/// LastRedeemRequestKeyIterated: Value: T::AccountId
+	/// LastRedeemRequestKeyIterated: Value: Vec<u8>
 	#[pallet::storage]
 	#[pallet::getter(fn last_redeem_request_key_iterated)]
 	pub type LastRedeemRequestKeyIterated<T: Config> = StorageValue<_, Vec<u8>, ValueQuery>;
