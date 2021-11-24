@@ -1248,17 +1248,25 @@ fn request_redeem_extra_fee_works() {
 
 		assert_ok!(HomaLite::mint(Origin::signed(CHARLIE), dollar(30)));
 
-		// DAVE exchanges 50L-> 5S + 5S(fee)
+		// DAVE exchanges 100L - 0.1L(BaseWithdrawFee) -> 4.995S + 4.995S(extra_fee to Minter)
 		assert_eq!(HomaLite::redeem_requests(DAVE), None);
 		assert_eq!(Currencies::reserved_balance(LKSM, &DAVE), 0);
+		assert_eq!(Currencies::free_balance(KSM, &DAVE), 4_995_000_000_000);
 
-		// ALICE exchanges 180L->18S + 2S(fee)
+		// ALICE exchanges 200L - 0.2L(BaseWithdrawFee) -> 17.982L + 1.998L(extra_fee to Minter)
 		assert_eq!(HomaLite::redeem_requests(ALICE), None);
 		assert_eq!(Currencies::reserved_balance(LKSM, &ALICE), 0);
+		assert_eq!(
+			Currencies::free_balance(KSM, &ALICE),
+			dollar(1_000_000) + 17_982_000_000_000
+		);
 
 		// Extra fee + mint fee are rewarded to the minter
-		assert_eq!(Currencies::free_balance(KSM, &CHARLIE), 6_993_000_000_000);
-		assert_eq!(Currencies::free_balance(LKSM, &CHARLIE), 299_898_000_000_000);
+		// Staking: 30(initial) - 9.99(DAVE) + 4.995(fee from dave) - 19.98(ALICE) + 1.998(fee from alice)
+		// = 7.023
+		assert_eq!(Currencies::free_balance(KSM, &CHARLIE), 7_023_000_000_000);
+		// Liquid: 300 - 0.1 - 0.2 = 299.7
+		assert_eq!(Currencies::free_balance(LKSM, &CHARLIE), 299_700_000_000_000);
 	});
 }
 
