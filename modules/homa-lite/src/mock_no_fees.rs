@@ -204,8 +204,8 @@ impl module_currencies::Config for NoFeeRuntime {
 parameter_types! {
 	pub const StakingCurrencyId: CurrencyId = KSM;
 	pub const LiquidCurrencyId: CurrencyId = LKSM;
-	pub MinimumMintThreshold: Balance = 0;
-	pub MinimumRedeemThreshold: Balance = 0;
+	pub MinimumMintThreshold: Balance = millicent(1);
+	pub MinimumRedeemThreshold: Balance = millicent(1);
 	pub const MockXcmDestination: MultiLocation = MOCK_XCM_DESTINATION;
 	pub const MockXcmAccountId: AccountId = MOCK_XCM_ACCOUNT_ID;
 	pub DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
@@ -222,6 +222,7 @@ parameter_types! {
 	pub ParachainId: ParaId = ParaId::from(PARACHAIN_ID);
 	pub const StakingUpdateFrequency: BlockNumber = 100;
 }
+
 ord_parameter_types! {
 	pub const Root: AccountId = DAVE;
 }

@@ -831,7 +831,7 @@ pub mod module {
 		///
 		/// - `contract`: The contract whose code is being set, must not be marked as deployed
 		/// - `code`: The new ABI bundle for the contract
-		#[pallet::weight(<T as Config>::WeightInfo::set_code())]
+		#[pallet::weight(<T as Config>::WeightInfo::set_code(code.len() as u32))]
 		#[transactional]
 		pub fn set_code(origin: OriginFor<T>, contract: EvmAddress, code: Vec<u8>) -> DispatchResultWithPostInfo {
 			let root_or_signed = Self::ensure_root_or_signed(origin)?;

@@ -337,6 +337,17 @@ pub mod module {
 				<T as Config>::WeightInfo::on_initialize_without_work()
 			}
 		}
+
+		// ensure that minimum_mint_redeem_amount * (1 - withdraw fee) > xcm unbond fee
+		fn integrity_test() {
+			sp_std::if_std! {
+				sp_io::TestExternalities::new_empty().execute_with(||
+					assert!(
+						Permill::one().saturating_sub(T::BaseWithdrawFee::get()).mul(
+						T::MinimumRedeemThreshold::get()) > T::XcmUnbondFee::get()
+					));
+			}
+		}
 	}
 
 	#[pallet::call]
@@ -964,7 +975,6 @@ pub mod module {
 		// is enough to pay for the XCM unbond fee.
 		fn liquid_amount_is_above_minimum_threshold(liquid_amount: Balance) -> bool {
 			liquid_amount > T::MinimumRedeemThreshold::get()
-				&& Self::convert_liquid_to_staking(liquid_amount).unwrap_or_default() > T::XcmUnbondFee::get()
 		}
 
 		/// Helper function that construct an XCM message that:

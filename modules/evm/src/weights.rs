@@ -53,7 +53,7 @@ pub trait WeightInfo {
 	fn deploy_free() -> Weight;
 	fn enable_contract_development() -> Weight;
 	fn disable_contract_development() -> Weight;
-	fn set_code() -> Weight;
+	fn set_code(c: u32) -> Weight;
 	fn selfdestruct() -> Weight;
 }
 
@@ -85,7 +85,7 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
-	fn set_code() -> Weight {
+	fn set_code(_c: u32) -> Weight {
 		(83_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes(3 as Weight))
@@ -124,7 +124,7 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().reads(3 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(2 as Weight))
 	}
-	fn set_code() -> Weight {
+	fn set_code(_c: u32) -> Weight {
 		(83_000_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(3 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(3 as Weight))
