@@ -119,17 +119,9 @@ pub mod module {
 	type NextBurnEventId<T: Config> = StorageValue<_, u32, ValueQuery>;
 
 	#[pallet::genesis_config]
+	#[cfg_attr(feature = "std", derive(Default))]
 	pub struct GenesisConfig {
 		pub ren_vm_public_key: PublicKey,
-	}
-
-	#[cfg(feature = "std")]
-	impl Default for GenesisConfig {
-		fn default() -> Self {
-			GenesisConfig {
-				ren_vm_public_key: Default::default(),
-			}
-		}
 	}
 
 	#[pallet::genesis_build]

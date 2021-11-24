@@ -21,8 +21,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 // `construct_runtime!` does a lot of recursion and requires us to increase the limit to 256.
 #![recursion_limit = "256"]
-// The `large_enum_variant` warning originates from `construct_runtime` macro.
-#![allow(clippy::large_enum_variant)]
 #![allow(clippy::unnecessary_mut_passed)]
 #![allow(clippy::or_fun_call)]
 #![allow(clippy::from_over_into)]
@@ -2027,7 +2025,6 @@ pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExt
 pub type Executive =
 	frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllPallets, ()>;
 
-#[allow(clippy::large_enum_variant)]
 construct_runtime! {
 	pub enum Runtime where
 		Block = Block,

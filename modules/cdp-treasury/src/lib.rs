@@ -127,17 +127,9 @@ pub mod module {
 	pub type DebitPool<T: Config> = StorageValue<_, Balance, ValueQuery>;
 
 	#[pallet::genesis_config]
+	#[cfg_attr(feature = "std", derive(Default))]
 	pub struct GenesisConfig {
 		pub expected_collateral_auction_size: Vec<(CurrencyId, Balance)>,
-	}
-
-	#[cfg(feature = "std")]
-	impl Default for GenesisConfig {
-		fn default() -> Self {
-			GenesisConfig {
-				expected_collateral_auction_size: vec![],
-			}
-		}
 	}
 
 	#[pallet::genesis_build]
