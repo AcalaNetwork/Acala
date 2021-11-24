@@ -101,7 +101,7 @@ benchmarks! {
 		let _ = crate::Pallet::<T>::adjust_available_staking_balance(RawOrigin::Root.into(), AmountOf::<T>::max_value(), 1);
 		let _ = crate::Pallet::<T>::request_redeem(RawOrigin::Signed(caller.clone()).into(), amount, Permill::default());
 	}: {
-		let _ = crate::Pallet::<T>::process_redeem_requests_with_available_staking_balance(caller);
+		let _ = crate::Pallet::<T>::process_redeem_requests_with_available_staking_balance(&caller);
 	}
 
 	xcm_unbond {}: {

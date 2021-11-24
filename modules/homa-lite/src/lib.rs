@@ -1050,7 +1050,7 @@ pub mod module {
 					}
 					RedeemType::WithMint(minter, _) => {
 						let amount_redeemed =
-							Self::match_mint_with_redeem_request(&minter, &redeemer, redeem_amount_remaining)?;
+							Self::match_mint_with_redeem_request(minter, &redeemer, redeem_amount_remaining)?;
 						total_amount_redeemed = total_amount_redeemed.saturating_add(amount_redeemed);
 						redeem_amount_remaining = redeem_amount_remaining.saturating_sub(amount_redeemed);
 						if !Self::liquid_amount_is_above_minimum_threshold(redeem_amount_remaining) {
