@@ -1,4 +1,4 @@
-name: update tokens
+name: Update tokens
 
 on:
   workflow_dispatch:
