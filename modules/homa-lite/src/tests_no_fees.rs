@@ -36,6 +36,7 @@ fn no_fee_runtime_has_no_fees() {
 			Currencies::total_issuance(LKSM) / 10
 		));
 		assert_ok!(HomaLite::set_minting_cap(Origin::root(), dollar(1_000_000)));
+		System::reset_events();
 
 		// Mint costs no fees
 		assert_ok!(HomaLite::mint(Origin::signed(ALICE), dollar(1_000)));
@@ -105,8 +106,6 @@ fn no_fee_runtime_has_no_fees() {
 		assert_eq!(
 			events,
 			vec![
-				crate::Event::TotalStakingCurrencySet(dollar(100_000)),
-				crate::Event::StakingCurrencyMintCapUpdated(dollar(1_000_000)),
 				crate::Event::TotalStakingCurrencySet(dollar(101_000)),
 				crate::Event::Minted(ALICE, dollar(1_000), dollar(10_000)),
 				crate::Event::TotalStakingCurrencySet(dollar(106_000)),

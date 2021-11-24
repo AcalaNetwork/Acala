@@ -578,6 +578,7 @@ fn request_redeem_works() {
 			Origin::root(),
 			Currencies::total_issuance(LKSM) / 10
 		));
+		System::reset_events();
 
 		// Redeem amount has to be above a threshold.
 		assert_noop!(
@@ -616,8 +617,6 @@ fn request_redeem_works() {
 		assert_eq!(
 			events,
 			vec![
-				crate::Event::AvailableStakingBalanceSet(dollar(50_000)),
-				crate::Event::TotalStakingCurrencySet(dollar(100_000)),
 				// Redeem requested, with some withdraw fee deducted.
 				crate::Event::RedeemRequested(DAVE, dollar(99_900), Permill::zero(), dollar(100)),
 				crate::Event::TotalStakingCurrencySet(90_009_000_900_090_010),
@@ -683,6 +682,8 @@ fn update_redeem_request_works() {
 		assert_eq!(Currencies::free_balance(LKSM, &DAVE), dollar(999_000));
 		assert_eq!(Currencies::reserved_balance(LKSM, &DAVE), dollar(999));
 
+		System::reset_events();
+
 		// Adding extra value to the queue should only charge BaseWithdrawFee on the difference.
 		// Also reserve the difference.
 		assert_ok!(HomaLite::request_redeem(
@@ -738,7 +739,7 @@ fn update_redeem_request_works() {
 			.collect::<Vec<_>>();
 		// Reserved the extra LKSM
 		assert_eq!(
-			events[events.len() - 4..],
+			events,
 			vec![
 				// Reserve the newly added amount
 				Event::Tokens(orml_tokens::Event::Reserved(LKSM, DAVE, amount_reserved)),
@@ -929,6 +930,7 @@ fn mint_can_handle_dust_redeem_requests() {
 			Origin::root(),
 			Currencies::total_issuance(LKSM) / 10
 		));
+		System::reset_events();
 
 		// Redeem enough for 100 KSM with dust remaining
 		assert_ok!(HomaLite::request_redeem(
@@ -972,8 +974,6 @@ fn mint_can_handle_dust_redeem_requests() {
 		assert_eq!(
 			events,
 			vec![
-				crate::Event::StakingCurrencyMintCapUpdated(dollar(1_000_000)),
-				crate::Event::TotalStakingCurrencySet(100_100_110_110_110),
 				crate::Event::RedeemRequested(ALICE, 1_000_000_100_000_000, Permill::zero(), 1_001_001_101_101),
 				crate::Event::Redeemed(ALICE, 100_100_100_100_098, 999_999_999_999_990),
 				crate::Event::Minted(BOB, 100_100_100_100_099, 999_999_999_999_990),
@@ -1636,6 +1636,7 @@ fn available_staking_balances_can_handle_rounding_error_dust() {
 			vec![(999_999_999_999, 1)],
 		));
 		MockRelayBlockNumberProvider::set(1);
+		System::reset_events();
 
 		HomaLite::on_idle(MockRelayBlockNumberProvider::get(), 5_000_000_000);
 
@@ -1652,14 +1653,8 @@ fn available_staking_balances_can_handle_rounding_error_dust() {
 		assert_eq!(
 			events,
 			vec![
-				crate::Event::TotalStakingCurrencySet(1_000_237_000_000_000),
-				crate::Event::RedeemRequested(ALICE, 4_995_000_000_000_000, Permill::zero(), 5_000_000_000_000),
-				crate::Event::RedeemRequested(BOB, 1_998_000_000_000_000, Permill::zero(), 2_000_000_000_000),
-				crate::Event::RedeemRequested(DAVE, 2_997_000_000_000_000, Permill::zero(), 3_000_000_000_000),
-				crate::Event::ScheduledUnbondReplaced,
 				crate::Event::ScheduledUnbondWithdrew(999_999_999_999),
 				crate::Event::TotalStakingCurrencySet(999_237_000_000_002),
-				// Actual staking deposited has `T::XcmUnbondFee` deducted
 				crate::Event::Redeemed(ALICE, 0, 9_987_632_930_985),
 			]
 		);
