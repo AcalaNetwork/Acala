@@ -326,16 +326,12 @@ where
 				Pallet::<T>::location_to_currency_ids(multi_location.clone())
 			{
 				if let Some(asset_metadatas) = Pallet::<T>::asset_metadatas(foreign_asset_id) {
-					let ed = T::Currency::minimum_balance();
-
-					log::trace!(
-						target: "asset-registry::weight",
-						"buy_weight FixedRate: {:?}, asset minimal_balance: {:?}, native token ed: {:?}",
-						FixedRate::get(), asset_metadatas.minimal_balance, ed
+					// The integration tests can ensure the ed is non-zero.
+					let ed_ratio = FixedU128::saturating_from_rational(
+						asset_metadatas.minimal_balance.into(),
+						T::Currency::minimum_balance().into(),
 					);
-
-					let ed_ratio =
-						FixedU128::saturating_from_rational(asset_metadatas.minimal_balance.into(), ed.into()); // The integration tests can ensure the ed is non-zero.
+					// The WEIGHT_PER_SECOND is non-zero.
 					let weight_ratio = FixedU128::saturating_from_rational(weight as u128, WEIGHT_PER_SECOND as u128);
 					let amount = ed_ratio.saturating_mul_int(weight_ratio.saturating_mul_int(FixedRate::get()));
 
@@ -344,7 +340,10 @@ where
 						fun: Fungible(amount),
 					};
 
-					log::trace!(target: "asset-registry::weight", "buy_weight payment: {:?}, required: {:?}", payment, required);
+					log::trace!(
+						target: "asset-registry::weight", "buy_weight payment: {:?}, required: {:?}, fixed_rate: {:?}, ed_ratio: {:?}, weight_ratio: {:?}",
+						payment, required, FixedRate::get(), ed_ratio, weight_ratio
+					);
 					let unused = payment
 						.clone()
 						.checked_sub(required)
