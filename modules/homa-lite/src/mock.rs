@@ -255,8 +255,8 @@ impl module_currencies::Config for Runtime {
 parameter_types! {
 	pub const StakingCurrencyId: CurrencyId = KSM;
 	pub const LiquidCurrencyId: CurrencyId = LKSM;
-	pub MinimumMintThreshold: Balance = millicent(1000);
-	pub MinimumRedeemThreshold: Balance = millicent(1000);
+	pub MinimumMintThreshold: Balance = millicent(50000);
+	pub MinimumRedeemThreshold: Balance = dollar(5);
 	pub const MockXcmDestination: MultiLocation = MOCK_XCM_DESTINATION;
 	pub const MockXcmAccountId: AccountId = MOCK_XCM_ACCOUNTID;
 	pub DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);

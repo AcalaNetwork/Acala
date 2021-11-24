@@ -55,7 +55,7 @@ mod mandala_imports {
 		NFT,
 	};
 
-	pub use runtime_common::{dollar, ACA, AUSD, DOT, LDOT};
+	pub use runtime_common::{cent, dollar, millicent, ACA, AUSD, DOT, LDOT};
 	pub const NATIVE_CURRENCY: CurrencyId = ACA;
 	pub const LIQUID_CURRENCY: CurrencyId = LDOT;
 	pub const RELAY_CHAIN_CURRENCY: CurrencyId = DOT;
@@ -83,7 +83,7 @@ mod karura_imports {
 		TokenSymbol, Tokens, TreasuryPalletId, Utility, Vesting, XTokens, XcmConfig, XcmExecutor, XcmUnbondFee, NFT,
 	};
 	pub use primitives::TradingPair;
-	pub use runtime_common::{dollar, KAR, KSM, KUSD, LKSM};
+	pub use runtime_common::{cent, dollar, millicent, KAR, KSM, KUSD, LKSM};
 	pub use sp_runtime::traits::AccountIdConversion;
 
 	parameter_types! {
@@ -122,7 +122,7 @@ mod acala_imports {
 	};
 	pub use frame_support::parameter_types;
 	pub use primitives::TradingPair;
-	pub use runtime_common::{dollar, ACA, AUSD, DOT, LDOT};
+	pub use runtime_common::{cent, dollar, millicent, ACA, AUSD, DOT, LDOT};
 	pub use sp_runtime::traits::AccountIdConversion;
 
 	parameter_types! {

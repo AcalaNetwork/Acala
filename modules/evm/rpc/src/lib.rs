@@ -418,7 +418,7 @@ where
 #[test]
 fn decode_revert_message_should_work() {
 	use sp_core::bytes::from_hex;
-	assert_eq!(decode_revert_message(&vec![]), None);
+	assert_eq!(decode_revert_message(&[]), None);
 
 	let data = from_hex("0x8c379a00000000000000000000000000000000000000000000000000000000000000020").unwrap();
 	assert_eq!(decode_revert_message(&data), None);

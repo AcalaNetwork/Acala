@@ -21,8 +21,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 // `construct_runtime!` does a lot of recursion and requires us to increase the limit to 256.
 #![recursion_limit = "256"]
-// The `large_enum_variant` warning originates from `construct_runtime` macro.
-#![allow(clippy::large_enum_variant)]
 #![allow(clippy::unnecessary_mut_passed)]
 #![allow(clippy::or_fun_call)]
 #![allow(clippy::from_over_into)]
@@ -140,7 +138,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("mandala"),
 	impl_name: create_runtime_str!("mandala"),
 	authoring_version: 1,
-	spec_version: 2000,
+	spec_version: 2001,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -1250,15 +1248,15 @@ pub fn create_x2_parachain_multilocation(index: u16) -> MultiLocation {
 }
 
 parameter_types! {
-	pub MinimumMintThreshold: Balance = 10 * cent(DOT);
-	pub MinimumRedeemThreshold: Balance = 100 * cent(LDOT);
+	pub MinimumMintThreshold: Balance = 5 * dollar(DOT);
+	pub MinimumRedeemThreshold: Balance = 50 * dollar(LDOT);
 	pub RelayChainSovereignSubAccount: MultiLocation = create_x2_parachain_multilocation(RelayChainSubAccountId::HomaLite as u16);
 	pub RelayChainSovereignSubAccountId: AccountId = Utility::derivative_account_id(
 		ParachainInfo::get().into_account(),
 		RelayChainSubAccountId::HomaLite as u16
 	);
 	pub MaxRewardPerEra: Permill = Permill::from_rational(500u32, 1_000_000u32); // 1.2 ^ (1/365) = 1.0004996359
-	pub MintFee: Balance = millicent(DOT);
+	pub MintFee: Balance = 20 * millicent(DOT);
 	pub BaseWithdrawFee: Permill = Permill::from_rational(14_085u32, 1_000_000u32); // 20% yield per year, unbounding period = 28 days. 1.2^(28/365) = 1.014085
 	pub MaximumRedeemRequestMatchesForMint: u32 = 20;
 	pub RelayChainUnbondingSlashingSpans: u32 = 5;
@@ -2033,7 +2031,6 @@ pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExt
 pub type Executive =
 	frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllPallets, ()>;
 
-#[allow(clippy::large_enum_variant)]
 construct_runtime! {
 	pub enum Runtime where
 		Block = Block,

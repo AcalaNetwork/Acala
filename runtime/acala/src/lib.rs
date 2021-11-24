@@ -21,8 +21,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 // `construct_runtime!` does a lot of recursion and requires us to increase the limit to 256.
 #![recursion_limit = "256"]
-// The `large_enum_variant` warning originates from `construct_runtime` macro.
-#![allow(clippy::large_enum_variant)]
 #![allow(clippy::unnecessary_mut_passed)]
 #![allow(clippy::or_fun_call)]
 #![allow(clippy::from_over_into)]
@@ -127,7 +125,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("acala"),
 	impl_name: create_runtime_str!("acala"),
 	authoring_version: 1,
-	spec_version: 2000,
+	spec_version: 2001,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -1539,8 +1537,8 @@ pub fn create_x2_parachain_multilocation(index: u16) -> MultiLocation {
 parameter_types! {
 	pub const DOTCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
 	pub const LDOTCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
-	pub MinimumMintThreshold: Balance = 2 * dollar(DOT);
-	pub MinimumRedeemThreshold: Balance = 20 * dollar(LDOT);
+	pub MinimumMintThreshold: Balance = 5 * dollar(DOT);
+	pub MinimumRedeemThreshold: Balance = 50 * dollar(LDOT);
 	pub RelayChainSovereignSubAccount: MultiLocation = create_x2_parachain_multilocation(RelayChainSubAccountId::HomaLite as u16);
 	pub RelayChainSovereignSubAccountId: AccountId = Utility::derivative_account_id(
 		ParachainInfo::get().into_account(),
@@ -1549,13 +1547,13 @@ parameter_types! {
 	pub MaxRewardPerEra: Permill = Permill::from_rational(500u32, 1_000_000u32); // 1.2 ^ (1/365) = 1.0004996359
 	pub MintFee: Balance = 20 * millicent(DOT); // 2x XCM fee on Polkadot TODO: identify xcm fee
 	pub DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
-	pub BaseWithdrawFee: Permill = Permill::from_rational(1408u32, 100_000u32); // 20% yield per year, unbonding period = 28 days. 1.2^(28 / 365) = 1.01408
+	pub BaseWithdrawFee: Permill = Permill::from_rational(14_085u32, 1_000_000u32); // 20% yield per year, unbounding period = 28 days. 1.2^(28/365) = 1.014085
 	pub MaximumRedeemRequestMatchesForMint: u32 = 20;
 	pub RelayChainUnbondingSlashingSpans: u32 = 5;
-	pub MaxScheduledUnbonds: u32 = 14;
+	pub MaxScheduledUnbonds: u32 = 35;
 	pub ParachainAccount: AccountId = ParachainInfo::get().into_account();
 	pub SubAccountIndex: u16 = RelayChainSubAccountId::HomaLite as u16;
-	pub const XcmUnbondFee: Balance = 600_000_000; // TODO identify unbond fee
+	pub XcmUnbondFee: Balance = 60 * millicent(DOT); // TODO identify unbond fee
 }
 
 impl module_homa_lite::Config for Runtime {
@@ -1734,7 +1732,6 @@ impl module_idle_scheduler::Config for Runtime {
 	type MinimumWeightRemainInBlock = MinimumWeightRemainInBlock;
 }
 
-#[allow(clippy::large_enum_variant)]
 construct_runtime!(
 	pub enum Runtime where
 		Block = Block,

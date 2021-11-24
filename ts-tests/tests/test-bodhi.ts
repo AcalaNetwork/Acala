@@ -43,7 +43,7 @@ describeWithAcala("Acala RPC (bodhi.js)", (context) => {
 	step("should get transaction count", async function () {
 		expect(await context.provider.getTransactionCount(await alice.getAddress())).to.be.equal(1);
 		expect(await context.provider.getTransactionCount(await alice.getAddress(), "latest")).to.be.equal(1);
-		expect(await context.provider.getTransactionCount(await alice.getAddress(), "pending")).to.be.equal(1);
+		//expect(await context.provider.getTransactionCount(await alice.getAddress(), "pending")).to.be.equal(1);
 		expect(await context.provider.getTransactionCount(await alice.getAddress(), "earliest")).to.be.equal(0);
 	});
 
@@ -57,8 +57,8 @@ describeWithAcala("Acala RPC (bodhi.js)", (context) => {
 			.to.equal("0x0000000000000000000000000000000000000000000000000000000000000000");
 		expect(await context.provider.getStorageAt(contract.address, "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc", "latest"))
 			.to.equal("0x0000000000000000000000000000000000000000000000000000000000000000");
-		expect(await context.provider.getStorageAt(contract.address, "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc", "pending"))
-			.to.equal("0x0000000000000000000000000000000000000000000000000000000000000000");
+		//expect(await context.provider.getStorageAt(contract.address, "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc", "pending"))
+		//	.to.equal("0x0000000000000000000000000000000000000000000000000000000000000000");
 		expect(await context.provider.getStorageAt(contract.address, "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc", "earliest"))
 			.to.equal("0x0000000000000000000000000000000000000000000000000000000000000000");
 	});
@@ -72,9 +72,9 @@ describeWithAcala("Acala RPC (bodhi.js)", (context) => {
 			await contract.populateTransaction.multiply(3), "latest"
 		)).to.equal("0x0000000000000000000000000000000000000000000000000000000000000015");
 
-		expect(await context.provider.call(
-			await contract.populateTransaction.multiply(3), "pending"
-		)).to.equal("0x0000000000000000000000000000000000000000000000000000000000000015");
+		//expect(await context.provider.call(
+		//	await contract.populateTransaction.multiply(3), "pending"
+		//)).to.equal("0x0000000000000000000000000000000000000000000000000000000000000015");
 
 		// TODO: decide if we want to support for earliest
 	});

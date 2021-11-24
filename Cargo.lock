@@ -38,6 +38,7 @@ dependencies = [
  "polkadot-cli",
  "polkadot-parachain",
  "polkadot-primitives",
+ "polkadot-service",
  "sc-cli",
  "sc-service",
  "sc-telemetry",

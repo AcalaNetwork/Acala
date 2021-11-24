@@ -70,24 +70,6 @@ export async function startAcalaNode(): Promise<{ provider: TestProvider; binary
 			if (chunk.toString().match(/Listening for new connections on/)) {
 				provider = new TestProvider({
 					provider: new WsProvider(`ws://localhost:${WS_PORT}`),
-					// TODO: add types and remove
-					types: {
-						TransactionAction: {
-							_enum: {
-								Call: "H160",
-								Create: "Null",
-							},
-						},
-						ExtrinsicSignature: {
-							_enum: {
-								Ed25519: "Ed25519Signature",
-								Sr25519: "Sr25519Signature",
-								Ecdsa: "EcdsaSignature",
-								Ethereum: "[u8; 65]",
-								AcalaEip712: "[u8; 65]",
-							},
-						},
-					},
 				});
 
 				// This is needed as the EVM runtime needs to warmup with a first call
