@@ -605,40 +605,24 @@ fn request_redeem_works() {
 		assert_eq!(RedeemRequests::<Runtime>::get(&DAVE), None);
 
 		// check the correct events are emitted
-		let events = System::events();
+		let events = System::events()
+			.into_iter()
+			.filter_map(|e| match e.event {
+				Event::HomaLite(x) => Some(x),
+				_ => None,
+			})
+			.collect::<Vec<_>>();
 		// Reserved LKSM with withdraw fee deducted
 		assert_eq!(
-			events[events.len() - 6].event,
-			Event::Tokens(orml_tokens::Event::Reserved(LKSM, DAVE, dollar(99_900)))
-		);
-		// Redeem requested, with some withdraw fee deducted.
-		assert_eq!(
-			events[events.len() - 5].event,
-			Event::HomaLite(crate::Event::RedeemRequested(
-				DAVE,
-				dollar(99_900),
-				Permill::zero(),
-				dollar(100)
-			))
-		);
-		// The request is redeemed with available_staking_balances. TotalStaking is adjusted.
-		assert_eq!(
-			events[events.len() - 4].event,
-			Event::HomaLite(crate::Event::TotalStakingCurrencySet(90_009_000_900_090_010))
-		);
-		// Deposit KSM into redeemer's account
-		assert_eq!(
-			events[events.len() - 3].event,
-			Event::Tokens(orml_tokens::Event::Endowed(KSM, DAVE, 9_989_999_099_909_990))
-		);
-		assert_eq!(
-			events[events.len() - 2].event,
-			Event::Currencies(module_currencies::Event::Deposited(KSM, DAVE, 9_989_999_099_909_990))
-		);
-		// Some amount of the request is redeemed
-		assert_eq!(
-			events[events.len() - 1].event,
-			Event::HomaLite(crate::Event::Redeemed(DAVE, 9_989_999_099_909_990, dollar(99_900)))
+			events,
+			vec![
+				crate::Event::AvailableStakingBalanceSet(dollar(50_000)),
+				crate::Event::TotalStakingCurrencySet(dollar(100_000)),
+				// Redeem requested, with some withdraw fee deducted.
+				crate::Event::RedeemRequested(DAVE, dollar(99_900), Permill::zero(), dollar(100)),
+				crate::Event::TotalStakingCurrencySet(90_009_000_900_090_010),
+				crate::Event::Redeemed(DAVE, 9_989_999_099_909_990, dollar(99_900))
+			]
 		);
 
 		// Redeem requests can be partially filled.
@@ -721,24 +705,6 @@ fn update_redeem_request_works() {
 			Some((new_redeem_amount, Permill::zero()))
 		);
 
-		// check the correct events are emitted
-		let events = System::events();
-		// Reserved the extra LKSM
-		assert_eq!(
-			events[events.len() - 2].event,
-			Event::Tokens(orml_tokens::Event::Reserved(LKSM, DAVE, amount_reserved))
-		);
-		// Redeem requested, with some withdraw fee deducted.
-		assert_eq!(
-			events[events.len() - 1].event,
-			Event::HomaLite(crate::Event::RedeemRequested(
-				DAVE,
-				new_redeem_amount,
-				Permill::zero(),
-				withdraw_fee
-			))
-		);
-
 		// Reducing the redeem amount unlocks the fund, but doesn't refund fee.
 		assert_ok!(HomaLite::request_redeem(
 			Origin::signed(DAVE),
@@ -757,16 +723,33 @@ fn update_redeem_request_works() {
 		);
 
 		// check the correct events are emitted
-		let events = System::events();
-		// Unreserved the difference
+		let events = System::events()
+			.into_iter()
+			.filter_map(|e| match e.event {
+				Event::HomaLite(x) => Some(Event::HomaLite(x)),
+				Event::Tokens(orml_tokens::Event::Unreserved(currency, who, amount)) => {
+					Some(Event::Tokens(orml_tokens::Event::Unreserved(currency, who, amount)))
+				}
+				Event::Tokens(orml_tokens::Event::Reserved(currency, who, amount)) => {
+					Some(Event::Tokens(orml_tokens::Event::Reserved(currency, who, amount)))
+				}
+				_ => None,
+			})
+			.collect::<Vec<_>>();
+		// Reserved the extra LKSM
 		assert_eq!(
-			events[events.len() - 2].event,
-			Event::Tokens(orml_tokens::Event::Unreserved(LKSM, DAVE, 998_999_000_000_000))
-		);
-		// Redeem requested, with no withdraw fee charged.
-		assert_eq!(
-			events[events.len() - 1].event,
-			Event::HomaLite(crate::Event::RedeemRequested(DAVE, dollar(1000), Permill::zero(), 0))
+			events[events.len() - 4..],
+			vec![
+				Event::Tokens(orml_tokens::Event::Reserved(LKSM, DAVE, amount_reserved)),
+				Event::HomaLite(crate::Event::RedeemRequested(
+					DAVE,
+					new_redeem_amount,
+					Permill::zero(),
+					withdraw_fee
+				)),
+				Event::Tokens(orml_tokens::Event::Unreserved(LKSM, DAVE, 998_999_000_000_000)),
+				Event::HomaLite(crate::Event::RedeemRequested(DAVE, dollar(1000), Permill::zero(), 0)),
+			]
 		);
 
 		// When updating redeem request, the user must have enough liquid currency.
@@ -975,29 +958,24 @@ fn mint_can_handle_dust_redeem_requests() {
 		assert_eq!(Currencies::reserved_balance(LKSM, &ALICE), 0);
 		assert_eq!(RedeemRequests::<Runtime>::get(&ALICE), None);
 
-		let events = System::events();
+		// check the correct events are emitted
+		let events = System::events()
+			.into_iter()
+			.filter_map(|e| match e.event {
+				Event::HomaLite(x) => Some(x),
+				_ => None,
+			})
+			.collect::<Vec<_>>();
+		// Reserved the extra LKSM
 		assert_eq!(
-			events[events.len() - 4].event,
-			Event::Currencies(module_currencies::Event::Transferred(
-				KSM,
-				BOB,
-				ALICE,
-				100_100_100_100_098
-			))
-		);
-		assert_eq!(
-			events[events.len() - 3].event,
-			Event::HomaLite(crate::Event::Redeemed(ALICE, 100_100_100_100_098, 999_999_999_999_990))
-		);
-		// Dust returned to redeemer
-		assert_eq!(
-			events[events.len() - 2].event,
-			Event::Tokens(orml_tokens::Event::Unreserved(LKSM, ALICE, 100_000_010))
-		);
-		// total amount minted, with rounding error
-		assert_eq!(
-			events[events.len() - 1].event,
-			Event::HomaLite(crate::Event::Minted(BOB, 100_100_100_100_099, 999_999_999_999_990))
+			events,
+			vec![
+				crate::Event::StakingCurrencyMintCapUpdated(dollar(1_000_000)),
+				crate::Event::TotalStakingCurrencySet(100_100_110_110_110),
+				crate::Event::RedeemRequested(ALICE, 1_000_000_100_000_000, Permill::zero(), 1_001_001_101_101),
+				crate::Event::Redeemed(ALICE, 100_100_100_100_098, 999_999_999_999_990),
+				crate::Event::Minted(BOB, 100_100_100_100_099, 999_999_999_999_990),
+			]
 		);
 	});
 }
@@ -1106,73 +1084,30 @@ fn mint_can_match_requested_redeem() {
 			Some((dollar(999) / 10, Permill::zero()))
 		);
 
-		let events = System::events();
-
-		// Matching CHARLIE's mint with ALICE's redeem
+		// check the correct events are emitted
+		let events = System::events()
+			.into_iter()
+			.filter_map(|e| match e.event {
+				Event::HomaLite(x) => Some(x),
+				_ => None,
+			})
+			.collect::<Vec<_>>();
+		// Reserved the extra LKSM
 		assert_eq!(
-			events[events.len() - 9].event,
-			Event::Tokens(orml_tokens::Event::RepatriatedReserve(
-				LKSM,
-				ALICE,
-				CHARLIE,
-				199_800_000_000_000,
-				BalanceStatus::Free
-			))
-		);
-		assert_eq!(
-			events[events.len() - 8].event,
-			Event::Currencies(module_currencies::Event::Transferred(
-				KSM,
-				CHARLIE,
-				ALICE,
-				19_980_000_000_000
-			))
-		);
-		assert_eq!(
-			events[events.len() - 7].event,
-			Event::HomaLite(crate::Event::Redeemed(ALICE, 19_980_000_000_000, 199_800_000_000_000))
-		);
-
-		// Matching CHARLIE's mint with BOB's redeem
-		assert_eq!(
-			events[events.len() - 6].event,
-			Event::Tokens(orml_tokens::Event::RepatriatedReserve(
-				LKSM,
-				BOB,
-				CHARLIE,
-				199_800_000_000_000,
-				BalanceStatus::Free
-			))
-		);
-		assert_eq!(
-			events[events.len() - 5].event,
-			Event::Currencies(module_currencies::Event::Transferred(
-				KSM,
-				CHARLIE,
-				BOB,
-				19_980_000_000_000
-			))
-		);
-		assert_eq!(
-			events[events.len() - 4].event,
-			Event::HomaLite(crate::Event::Redeemed(BOB, 19_980_000_000_000, 199_800_000_000_000))
-		);
-
-		// Mint via XCM: 600 LKSM - XCM fee
-		assert_eq!(
-			events[events.len() - 3].event,
-			Event::HomaLite(crate::Event::TotalStakingCurrencySet(60_040_000_000_000))
-		);
-
-		assert_eq!(
-			events[events.len() - 2].event,
-			Event::Currencies(module_currencies::Event::Deposited(LKSM, CHARLIE, 594_297_000_000_000))
-		);
-
-		// Finally the minted event that contains total KSM and LKSM minted
-		assert_eq!(
-			events[events.len() - 1].event,
-			Event::HomaLite(crate::Event::Minted(CHARLIE, 100000000000000, 993_897_000_000_000))
+			events,
+			vec![
+				crate::Event::StakingCurrencyMintCapUpdated(1000000000000000000),
+				// Request redeem
+				crate::Event::RedeemRequested(DAVE, 99_900_000_000_000, Permill::zero(), 100_000_000_000),
+				crate::Event::RedeemRequested(ALICE, 199_800_000_000_000, Permill::zero(), 200_000_000_000),
+				crate::Event::RedeemRequested(BOB, 199_800_000_000_000, Permill::zero(), 200_000_000_000),
+				// Redeemed
+				crate::Event::Redeemed(ALICE, 19_980_000_000_000, 199_800_000_000_000),
+				crate::Event::Redeemed(BOB, 19_980_000_000_000, 199_800_000_000_000),
+				// Mint via XCM: 600 LKSM - XCM fee
+				crate::Event::TotalStakingCurrencySet(60_040_000_000_000),
+				crate::Event::Minted(CHARLIE, 100000000000000, 993_897_000_000_000),
+			]
 		);
 	});
 }
@@ -1787,30 +1722,24 @@ fn mint_can_handle_rounding_error_dust() {
 		assert_eq!(Currencies::free_balance(KSM, &DAVE), 1000000000001);
 		assert_eq!(Currencies::free_balance(LKSM, &DAVE), 9_987_632_930_985);
 
-		let events = System::events();
+		let events = System::events()
+			.into_iter()
+			.filter_map(|e| match e.event {
+				Event::HomaLite(x) => Some(x),
+				_ => None,
+			})
+			.collect::<Vec<_>>();
+
 		assert_eq!(
-			events[events.len() - 5].event,
-			Event::Tokens(orml_tokens::Event::RepatriatedReserve(
-				LKSM,
-				ALICE,
-				DAVE,
-				9_987_632_930_985,
-				BalanceStatus::Free
-			))
-		);
-		assert_eq!(
-			events[events.len() - 3].event,
-			Event::Currencies(module_currencies::Event::Transferred(KSM, DAVE, ALICE, 999_999_999_998))
-		);
-		// actual staking transferred is off due to rounding error
-		assert_eq!(
-			events[events.len() - 2].event,
-			Event::HomaLite(crate::Event::Redeemed(ALICE, 999_999_999_998, 9_987_632_930_985))
-		);
-		// total amount minted includes dust caused by rounding error
-		assert_eq!(
-			events[events.len() - 1].event,
-			Event::HomaLite(crate::Event::Minted(DAVE, 999_999_999_999, 9_987_632_930_985))
+			events,
+			vec![
+				crate::Event::TotalStakingCurrencySet(1_000_237_000_000_000),
+				crate::Event::RedeemRequested(ALICE, dollar(4_995), Permill::zero(), dollar(5)),
+				crate::Event::RedeemRequested(BOB, dollar(1_998), Permill::zero(), dollar(2)),
+				crate::Event::RedeemRequested(DAVE, dollar(2_997), Permill::zero(), dollar(3)),
+				crate::Event::Redeemed(ALICE, 999_999_999_998, 9_987_632_930_985),
+				crate::Event::Minted(DAVE, 999_999_999_999, 9_987_632_930_985)
+			]
 		);
 	});
 }
