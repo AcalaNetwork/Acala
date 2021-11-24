@@ -937,7 +937,7 @@ fn mint_can_handle_dust_redeem_requests() {
 			Origin::root(),
 			ALICE,
 			LKSM,
-			1_001_001_101_101_101 as i128
+			1_001_001_101_101_101_i128
 		));
 		assert_ok!(Currencies::update_balance(
 			Origin::root(),
@@ -1764,7 +1764,7 @@ fn mint_can_handle_rounding_error_dust() {
 			Origin::root(),
 			DAVE,
 			KSM,
-			1_999_999_999_999 as i128
+			1_999_999_999_999_i128
 		));
 
 		assert_ok!(HomaLite::set_total_staking_currency(
