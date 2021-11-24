@@ -1452,7 +1452,7 @@ parameter_types! {
 		// LKSM:KSM = 10:1
 		ksm_per_second() * 10
 	);
-	pub ForeignAssetUnitsPerSecond: u128 = ksm_per_second();
+	pub ForeignAssetUnitsPerSecond: u128 = kar_per_second();
 }
 
 pub type Barrier = (

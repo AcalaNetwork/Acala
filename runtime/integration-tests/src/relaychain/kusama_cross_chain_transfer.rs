@@ -173,7 +173,7 @@ fn test_asset_registry_module() {
 				name: b"Sibling Token".to_vec(),
 				symbol: b"ST".to_vec(),
 				decimals: 12,
-				minimal_balance: 1,
+				minimal_balance: Balances::minimum_balance() / 10, // 10%
 			})
 		));
 
@@ -215,12 +215,12 @@ fn test_asset_registry_module() {
 	Karura::execute_with(|| {
 		assert_eq!(
 			Tokens::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(ALICE)),
-			4_999_872_000_000
+			4_999_360_000_000
 		);
 		// ToTreasury
 		assert_eq!(
 			Tokens::free_balance(CurrencyId::ForeignAsset(0), &TreasuryAccount::get()),
-			128_000_000
+			640_000_000
 		);
 
 		assert_ok!(XTokens::transfer(
@@ -245,7 +245,7 @@ fn test_asset_registry_module() {
 
 		assert_eq!(
 			Tokens::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(ALICE)),
-			3_999_872_000_000
+			3_999_360_000_000
 		);
 	});
 
@@ -260,12 +260,12 @@ fn test_asset_registry_module() {
 		assert_ok!(AssetRegistry::update_foreign_asset(
 			Origin::root(),
 			0,
-			Box::new(MultiLocation::new(1, X2(Parachain(9999), GeneralKey(KAR.encode()))).into()),
+			Box::new(MultiLocation::new(1, X2(Parachain(2001), GeneralKey(KAR.encode()))).into()),
 			Box::new(AssetMetadata {
 				name: b"Sibling Token".to_vec(),
 				symbol: b"ST".to_vec(),
 				decimals: 12,
-				minimal_balance: 1,
+				minimal_balance: 0, // buy_weight 0
 			})
 		));
 	});
@@ -298,11 +298,16 @@ fn test_asset_registry_module() {
 		assert_eq!(Balances::free_balance(&AccountId::from(BOB)), 90_993_600_000_000);
 	});
 
-	// unreceived
 	Karura::execute_with(|| {
 		assert_eq!(
 			Tokens::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(ALICE)),
-			3_999_872_000_000
+			8_999_360_000_000
+		);
+
+		// ToTreasury
+		assert_eq!(
+			Tokens::free_balance(CurrencyId::ForeignAsset(0), &TreasuryAccount::get()),
+			640_000_000
 		);
 	});
 }

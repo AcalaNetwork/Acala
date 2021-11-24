@@ -45,7 +45,10 @@ use primitives::{
 	CurrencyId,
 };
 use scale_info::{prelude::format, TypeInfo};
-use sp_runtime::{traits::One, ArithmeticError};
+use sp_runtime::{
+	traits::{One, Zero},
+	ArithmeticError, FixedPointNumber, FixedU128,
+};
 use sp_std::{
 	boxed::Box,
 	convert::{TryFrom, TryInto},
@@ -287,15 +290,20 @@ impl<T: Config> ForeignAssetIdMapping<ForeignAssetId, MultiLocation, AssetMetada
 pub struct FixedRateOfForeignAsset<T, FixedRate: Get<u128>, R: TakeRevenue> {
 	weight: Weight,
 	amount: u128,
+	ed_ratio: FixedU128,
 	multi_location: Option<MultiLocation>,
 	_marker: PhantomData<(T, FixedRate, R)>,
 }
 
-impl<T: Config, FixedRate: Get<u128>, R: TakeRevenue> WeightTrader for FixedRateOfForeignAsset<T, FixedRate, R> {
+impl<T: Config, FixedRate: Get<u128>, R: TakeRevenue> WeightTrader for FixedRateOfForeignAsset<T, FixedRate, R>
+where
+	BalanceOf<T>: Into<u128>,
+{
 	fn new() -> Self {
 		Self {
 			weight: 0,
 			amount: 0,
+			ed_ratio: Default::default(),
 			multi_location: None,
 			_marker: PhantomData,
 		}
@@ -313,25 +321,43 @@ impl<T: Config, FixedRate: Get<u128>, R: TakeRevenue> WeightTrader for FixedRate
 
 		if let AssetId::Concrete(ref multi_location) = asset_id {
 			log::debug!(target: "asset-registry::weight", "buy_weight multi_location: {:?}", multi_location);
-			if let Some(CurrencyId::ForeignAsset(_)) = Pallet::<T>::location_to_currency_ids(multi_location.clone()) {
-				let amount = FixedRate::get()
-					.saturating_mul(weight as u128)
-					.checked_div(WEIGHT_PER_SECOND as u128)
-					.map_or(Err(XcmError::TooExpensive), Ok)?;
-				let required = MultiAsset {
-					id: asset_id.clone(),
-					fun: Fungible(amount),
-				};
 
-				log::trace!(target: "asset-registry::weight", "buy_weight payment: {:?}, required: {:?}", payment, required);
-				let unused = payment
-					.clone()
-					.checked_sub(required)
-					.map_err(|_| XcmError::TooExpensive)?;
-				self.weight = self.weight.saturating_add(weight);
-				self.amount = self.amount.saturating_add(amount);
-				self.multi_location = Some(multi_location.clone());
-				return Ok(unused);
+			if let Some(CurrencyId::ForeignAsset(foreign_asset_id)) =
+				Pallet::<T>::location_to_currency_ids(multi_location.clone())
+			{
+				if let Some(asset_metadatas) = Pallet::<T>::asset_metadatas(foreign_asset_id) {
+					let ed = T::Currency::minimum_balance();
+
+					log::trace!(
+						target: "asset-registry::weight",
+						"buy_weight FixedRate: {:?}, asset minimal_balance: {:?}, native token ed: {:?}",
+						FixedRate::get(), asset_metadatas.minimal_balance, ed
+					);
+
+					ensure!(!ed.is_zero(), XcmError::TooExpensive);
+					ensure!(!WEIGHT_PER_SECOND.is_zero(), XcmError::TooExpensive);
+
+					let ed_ratio =
+						FixedU128::saturating_from_rational(asset_metadatas.minimal_balance.into(), ed.into());
+					let weight_ratio = FixedU128::saturating_from_rational(weight as u128, WEIGHT_PER_SECOND as u128);
+					let amount = ed_ratio.saturating_mul_int(weight_ratio.saturating_mul_int(FixedRate::get()));
+
+					let required = MultiAsset {
+						id: asset_id.clone(),
+						fun: Fungible(amount),
+					};
+
+					log::trace!(target: "asset-registry::weight", "buy_weight payment: {:?}, required: {:?}", payment, required);
+					let unused = payment
+						.clone()
+						.checked_sub(required)
+						.map_err(|_| XcmError::TooExpensive)?;
+					self.weight = self.weight.saturating_add(weight);
+					self.amount = self.amount.saturating_add(amount);
+					self.ed_ratio = ed_ratio;
+					self.multi_location = Some(multi_location.clone());
+					return Ok(unused);
+				}
 			}
 		}
 
@@ -340,11 +366,15 @@ impl<T: Config, FixedRate: Get<u128>, R: TakeRevenue> WeightTrader for FixedRate
 	}
 
 	fn refund_weight(&mut self, weight: Weight) -> Option<MultiAsset> {
-		log::trace!(target: "asset-registry::weight", "refund_weight weight: {:?}, weight: {:?}, amount: {:?}, multi_location: {:?}", weight, self.weight, self.amount, self.multi_location);
+		log::trace!(
+			target: "asset-registry::weight", "refund_weight weight: {:?}, weight: {:?}, amount: {:?}, ed_ratio: {:?}, multi_location: {:?}",
+			weight, self.weight, self.amount, self.ed_ratio, self.multi_location
+		);
 		let weight = weight.min(self.weight);
-		let amount = FixedRate::get()
-			.saturating_mul(weight as u128)
-			.checked_div(WEIGHT_PER_SECOND as u128)?;
+		let weight_ratio = FixedU128::saturating_from_rational(weight as u128, WEIGHT_PER_SECOND as u128);
+		let amount = self
+			.ed_ratio
+			.saturating_mul_int(weight_ratio.saturating_mul_int(FixedRate::get()));
 
 		self.weight = self.weight.saturating_sub(weight);
 		self.amount = self.amount.saturating_sub(amount);

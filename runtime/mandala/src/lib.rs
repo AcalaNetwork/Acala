@@ -1646,7 +1646,7 @@ parameter_types! {
 	pub UnitWeightCost: Weight = 1_000_000;
 	pub const MaxInstructions: u32 = 100;
 	pub DotPerSecond: (AssetId, u128) = (MultiLocation::parent().into(), dot_per_second());
-	pub ForeignAssetUnitsPerSecond: u128 = dot_per_second();
+	pub ForeignAssetUnitsPerSecond: u128 = aca_per_second();
 }
 
 pub type Barrier = (

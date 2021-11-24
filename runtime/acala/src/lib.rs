@@ -1421,7 +1421,7 @@ parameter_types! {
 		// aUSD:DOT = 40:1
 		dot_per_second() * 40
 	);
-	pub ForeignAssetUnitsPerSecond: u128 = dot_per_second();
+	pub ForeignAssetUnitsPerSecond: u128 = aca_per_second();
 }
 
 pub type Barrier = (
