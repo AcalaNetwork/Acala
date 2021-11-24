@@ -291,7 +291,6 @@ pub mod module {
 
 	#[pallet::genesis_config]
 	#[cfg_attr(feature = "std", derive(Default))]
-
 	pub struct GenesisConfig {
 		#[allow(clippy::type_complexity)]
 		pub collaterals_params: Vec<(
