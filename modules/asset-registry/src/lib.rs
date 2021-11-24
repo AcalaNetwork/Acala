@@ -334,11 +334,8 @@ where
 						FixedRate::get(), asset_metadatas.minimal_balance, ed
 					);
 
-					ensure!(!ed.is_zero(), XcmError::TooExpensive);
-					ensure!(!WEIGHT_PER_SECOND.is_zero(), XcmError::TooExpensive);
-
 					let ed_ratio =
-						FixedU128::saturating_from_rational(asset_metadatas.minimal_balance.into(), ed.into());
+						FixedU128::saturating_from_rational(asset_metadatas.minimal_balance.into(), ed.into()); // The integration tests can ensure the ed is non-zero.
 					let weight_ratio = FixedU128::saturating_from_rational(weight as u128, WEIGHT_PER_SECOND as u128);
 					let amount = ed_ratio.saturating_mul_int(weight_ratio.saturating_mul_int(FixedRate::get()));
 
