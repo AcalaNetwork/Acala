@@ -59,7 +59,7 @@ pub mod module {
 	pub(crate) type AmountOf<T> =
 		<<T as Config>::Currency as MultiCurrencyExtended<<T as frame_system::Config>::AccountId>>::Amount;
 
-	#[derive(Debug, Clone, Copy, PartialEq)]
+	#[derive(RuntimeDebug, Clone, Copy, PartialEq)]
 	pub enum RedeemType<AccountId> {
 		WithAvailableStakingBalance,
 		WithMint(AccountId, Balance),
@@ -542,7 +542,7 @@ pub mod module {
 			})?;
 
 			// With redeem request added to the queue, try to redeem it with available staking balance.
-			Self::process_redeem_requests_with_available_staking_balance(who)?;
+			Self::process_redeem_requests_with_available_staking_balance(&who)?;
 			Ok(())
 		}
 
@@ -895,7 +895,7 @@ pub mod module {
 		///  -`Result<actual_amount_redeemed, DispatchError>`: The liquid amount actually redeemed.
 		#[transactional]
 		pub fn process_redeem_requests_with_available_staking_balance(
-			redeemer: T::AccountId,
+			redeemer: &T::AccountId,
 		) -> Result<Balance, DispatchError> {
 			let available_staking_balance = Self::available_staking_balance();
 			if available_staking_balance <= T::MinimumMintThreshold::get() {
@@ -906,6 +906,8 @@ pub mod module {
 				let (request_amount, extra_fee) = request.unwrap_or_default();
 				// If the redeem request doesn't exist, return.
 				if request_amount.is_zero() {
+					// this should not happen, but if it does, do some cleanup
+					*request = None;
 					return Ok(0);
 				}
 
@@ -915,7 +917,7 @@ pub mod module {
 				);
 
 				// Ensure the redeemer have enough liquid currency in their account.
-				if T::Currency::reserved_balance(T::LiquidCurrencyId::get(), &redeemer) < actual_liquid_amount {
+				if T::Currency::reserved_balance(T::LiquidCurrencyId::get(), redeemer) < actual_liquid_amount {
 					return Ok(0);
 				}
 				let actual_staking_amount = Self::convert_liquid_to_staking(actual_liquid_amount)?;
@@ -924,12 +926,12 @@ pub mod module {
 
 				//Actual deposit amount has `T::XcmUnbondFee` deducted.
 				let actual_staking_amount_deposited = actual_staking_amount.saturating_sub(T::XcmUnbondFee::get());
-				T::Currency::deposit(T::StakingCurrencyId::get(), &redeemer, actual_staking_amount_deposited)?;
+				T::Currency::deposit(T::StakingCurrencyId::get(), redeemer, actual_staking_amount_deposited)?;
 
 				// Burn the corresponding amount of Liquid currency from the user.
 				// The redeemer is guaranteed to have enough fund
-				T::Currency::unreserve(T::LiquidCurrencyId::get(), &redeemer, actual_liquid_amount);
-				T::Currency::slash(T::LiquidCurrencyId::get(), &redeemer, actual_liquid_amount);
+				let unslashed = T::Currency::slash_reserved(T::LiquidCurrencyId::get(), redeemer, actual_liquid_amount);
+				debug_assert!(unslashed.is_zero());
 
 				AvailableStakingBalance::<T>::mutate(|current| {
 					*current = current.saturating_sub(actual_staking_amount)
@@ -948,7 +950,8 @@ pub mod module {
 				} else {
 					// Unlock the dust and remove the request.
 					if !new_amount.is_zero() {
-						T::Currency::unreserve(T::LiquidCurrencyId::get(), &redeemer, new_amount);
+						let unreserved = T::Currency::unreserve(T::LiquidCurrencyId::get(), redeemer, new_amount);
+						debug_assert!(unreserved.is_zero());
 					}
 					*request = None;
 				}
@@ -1018,23 +1021,8 @@ pub mod module {
 			redeem_type: RedeemType<T::AccountId>,
 			max_num_matches: u32,
 		) -> Result<(Balance, u32), DispatchError> {
-			// If "next" after starting key exists in storage, use it as the "starting_item". Otherwise use the
-			// first item.
 			let starting_key = Self::last_redeem_request_key_iterated();
-			let (mut iterator, starting_element) = match RedeemRequests::<T>::iter_from(starting_key.clone()).next() {
-				Some(request) => {
-					// reset the iterator
-					(RedeemRequests::<T>::iter_from(starting_key), request)
-				}
-				None => {
-					// iterate from the start
-					match RedeemRequests::<T>::iter().next() {
-						// Current storage is empty. Do nothing and return
-						None => return Ok((0, 0)),
-						Some(element) => (RedeemRequests::<T>::iter(), element),
-					}
-				}
-			};
+			let mut iterator = RedeemRequests::<T>::iter_keys_from(starting_key);
 
 			let mut redeem_amount_remaining = if let RedeemType::WithMint(_, amount) = redeem_type {
 				amount
@@ -1046,21 +1034,18 @@ pub mod module {
 			let mut num_matched = 0u32;
 			let mut finished_iteration = false;
 
-			#[allow(clippy::while_let_on_iterator)]
-			while let Some((redeemer, _)) = iterator.next() {
+			let mut body = |redeemer: T::AccountId| -> sp_std::result::Result<bool, DispatchError> {
 				if num_matched >= max_num_matches {
-					finished_iteration = true;
-					break;
+					return Ok(true);
 				}
 				num_matched += 1;
-				match redeem_type.clone() {
+
+				match &redeem_type {
 					RedeemType::WithAvailableStakingBalance => {
-						let amount_redeemed =
-							Self::process_redeem_requests_with_available_staking_balance(redeemer.clone())?;
+						let amount_redeemed = Self::process_redeem_requests_with_available_staking_balance(&redeemer)?;
 						total_amount_redeemed = total_amount_redeemed.saturating_add(amount_redeemed);
 						if Self::available_staking_balance() <= T::MinimumMintThreshold::get() {
-							finished_iteration = true;
-							break;
+							return Ok(true);
 						}
 					}
 					RedeemType::WithMint(minter, _) => {
@@ -1069,42 +1054,28 @@ pub mod module {
 						total_amount_redeemed = total_amount_redeemed.saturating_add(amount_redeemed);
 						redeem_amount_remaining = redeem_amount_remaining.saturating_sub(amount_redeemed);
 						if !Self::liquid_amount_is_above_minimum_threshold(redeem_amount_remaining) {
-							finished_iteration = true;
-							break;
+							return Ok(true);
 						}
 					}
+				}
+				Ok(false)
+			};
+
+			#[allow(clippy::while_let_on_iterator)]
+			while let Some(redeemer) = iterator.next() {
+				if body(redeemer)? {
+					finished_iteration = true;
+					break;
 				}
 			}
 
 			if !finished_iteration {
-				// Reset the iterator and start from the beginning of the storage until `starting_redeemer`, calling
-				// f() for each element.
-				iterator = RedeemRequests::<T>::iter();
+				iterator = RedeemRequests::<T>::iter_keys();
 
 				#[allow(clippy::while_let_on_iterator)]
-				while let Some((redeemer, _)) = iterator.next() {
-					if redeemer == starting_element.0 || num_matched >= max_num_matches {
+				while let Some(redeemer) = iterator.next() {
+					if body(redeemer)? {
 						break;
-					}
-					num_matched += 1;
-					match redeem_type.clone() {
-						RedeemType::WithAvailableStakingBalance => {
-							let amount_redeemed =
-								Self::process_redeem_requests_with_available_staking_balance(redeemer.clone())?;
-							total_amount_redeemed = total_amount_redeemed.saturating_add(amount_redeemed);
-							if Self::available_staking_balance() <= T::MinimumMintThreshold::get() {
-								break;
-							}
-						}
-						RedeemType::WithMint(minter, _) => {
-							let amount_redeemed =
-								Self::match_mint_with_redeem_request(&minter, &redeemer, redeem_amount_remaining)?;
-							total_amount_redeemed = total_amount_redeemed.saturating_add(amount_redeemed);
-							redeem_amount_remaining = redeem_amount_remaining.saturating_sub(amount_redeemed);
-							if !Self::liquid_amount_is_above_minimum_threshold(redeem_amount_remaining) {
-								break;
-							}
-						}
 					}
 				}
 			}

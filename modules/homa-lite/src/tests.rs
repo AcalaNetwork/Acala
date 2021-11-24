@@ -1710,23 +1710,27 @@ fn available_staking_balances_can_handle_rounding_error_dust() {
 
 		// Dust AvailableStakingBalance remains
 		assert_eq!(HomaLite::available_staking_balance(), 1);
-		let events = System::events();
+		let events = System::events()
+			.into_iter()
+			.filter_map(|e| match e.event {
+				Event::HomaLite(x) => Some(x),
+				_ => None,
+			})
+			.collect::<Vec<_>>();
+
 		assert_eq!(
-			events[events.len() - 4].event,
-			Event::HomaLite(crate::Event::ScheduledUnbondWithdrew(999_999_999_999))
-		);
-		assert_eq!(
-			events[events.len() - 3].event,
-			Event::HomaLite(crate::Event::TotalStakingCurrencySet(999_237_000_000_002))
-		);
-		assert_eq!(
-			events[events.len() - 2].event,
-			Event::Tokens(orml_tokens::Event::Unreserved(LKSM, ALICE, 9_987_632_930_985))
-		);
-		// Actual staking deposited has `T::XcmUnbondFee` deducted
-		assert_eq!(
-			events[events.len() - 1].event,
-			Event::HomaLite(crate::Event::Redeemed(ALICE, 0, 9_987_632_930_985))
+			events,
+			vec![
+				crate::Event::TotalStakingCurrencySet(1_000_237_000_000_000),
+				crate::Event::RedeemRequested(ALICE, 4_995_000_000_000_000, Permill::zero(), 5_000_000_000_000),
+				crate::Event::RedeemRequested(BOB, 1_998_000_000_000_000, Permill::zero(), 2_000_000_000_000),
+				crate::Event::RedeemRequested(DAVE, 2_997_000_000_000_000, Permill::zero(), 3_000_000_000_000),
+				crate::Event::ScheduledUnbondReplaced,
+				crate::Event::ScheduledUnbondWithdrew(999_999_999_999),
+				crate::Event::TotalStakingCurrencySet(999_237_000_000_002),
+				// Actual staking deposited has `T::XcmUnbondFee` deducted
+				crate::Event::Redeemed(ALICE, 0, 9_987_632_930_985),
+			]
 		);
 	});
 }
