@@ -45,10 +45,7 @@ use primitives::{
 	CurrencyId,
 };
 use scale_info::{prelude::format, TypeInfo};
-use sp_runtime::{
-	traits::{One, Zero},
-	ArithmeticError, FixedPointNumber, FixedU128,
-};
+use sp_runtime::{traits::One, ArithmeticError, FixedPointNumber, FixedU128};
 use sp_std::{
 	boxed::Box,
 	convert::{TryFrom, TryInto},
