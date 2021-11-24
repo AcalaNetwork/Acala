@@ -2126,7 +2126,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, module_homa_lite, HomaLite);
 			// substrate pallets
 			list_benchmark!(list, extra, pallet_balances, Balances);
-			list_benchmark!(list, extra, pallet_bounties, Bounties);
+			//list_benchmark!(list, extra, pallet_bounties, Bounties);
 			list_benchmark!(list, extra, pallet_collective, GeneralCouncil);
 			list_benchmark!(list, extra, pallet_collective, FinancialCouncil);
 			list_benchmark!(list, extra, pallet_collective, HomaCouncil);
@@ -2142,7 +2142,7 @@ impl_runtime_apis! {
 			//list_benchmark!(list, extra, pallet_session, SessionBench::<Runtime>);
 			list_benchmark!(list, extra, frame_system, SystemBench::<Runtime>);
 			list_benchmark!(list, extra, pallet_timestamp, Timestamp);
-			list_benchmark!(list, extra, pallet_tips, Tips);
+			//list_benchmark!(list, extra, pallet_tips, Tips);
 			list_benchmark!(list, extra, pallet_treasury, Treasury);
 			list_benchmark!(list, extra, pallet_utility, Utility);
 
@@ -2210,7 +2210,7 @@ impl_runtime_apis! {
 
 			//substrate pallets
 			add_benchmark!(params, batches, pallet_balances, Balances);
-			add_benchmark!(params, batches, pallet_bounties, Bounties);
+			//add_benchmark!(params, batches, pallet_bounties, Bounties);
 			add_benchmark!(params, batches, pallet_collective, GeneralCouncil);
 			add_benchmark!(params, batches, pallet_collective, FinancialCouncil);
 			add_benchmark!(params, batches, pallet_collective, HomaCouncil);
@@ -2226,7 +2226,7 @@ impl_runtime_apis! {
 			//add_benchmark!(params, batches, pallet_session, SessionBench::<Runtime>);
 			add_benchmark!(params, batches, frame_system, SystemBench::<Runtime>);
 			add_benchmark!(params, batches, pallet_timestamp, Timestamp);
-			add_benchmark!(params, batches, pallet_tips, Tips);
+			//add_benchmark!(params, batches, pallet_tips, Tips);
 			add_benchmark!(params, batches, pallet_treasury, Treasury);
 			add_benchmark!(params, batches, pallet_utility, Utility);
 
