@@ -113,7 +113,7 @@ pub use runtime_common::{
 	GeneralCouncilMembershipInstance, HomaCouncilInstance, HomaCouncilMembershipInstance,
 	OperatorMembershipInstanceAcala, Price, ProxyType, Rate, Ratio, RelayChainBlockNumberProvider,
 	RelayChainSubAccountId, RuntimeBlockLength, RuntimeBlockWeights, SystemContractsFilter, TechnicalCommitteeInstance,
-	TechnicalCommitteeMembershipInstance, TimeStampedPrice, BNC, KAR, KSM, KUSD, LKSM, RENBTC, VSKSM,
+	TechnicalCommitteeMembershipInstance, TimeStampedPrice, BNC, KAR, KSM, KUSD, LKSM, PHA, RENBTC, VSKSM,
 };
 
 mod authority;
@@ -747,6 +747,7 @@ parameter_type_with_key! {
 				TokenSymbol::LKSM => 50 * millicent(*currency_id),
 				TokenSymbol::BNC => 800 * millicent(*currency_id),  // 80BNC = 1KSM
 				TokenSymbol::VSKSM => 10 * millicent(*currency_id),  // 1VSKSM = 1KSM
+				TokenSymbol::PHA => 4000 * millicent(*currency_id), // 400PHA = 1KSM
 
 				TokenSymbol::ACA |
 				TokenSymbol::AUSD |
@@ -1411,6 +1412,14 @@ parameter_types! {
 		// LKSM:KSM = 10:1
 		ksm_per_second() * 10
 	);
+	pub PHAPerSecond: (AssetId, u128) = (
+		MultiLocation::new(
+			1,
+			X1(Parachain(parachains::phala::ID)),
+		).into(),
+		// PHA:KSM = 400:1
+		ksm_per_second() * 400
+	);
 	pub ForeignAssetUnitsPerSecond: u128 = kar_per_second();
 }
 
@@ -1466,6 +1475,7 @@ pub type Trader = (
 	FixedRateOfFungible<LksmPerSecond, ToTreasury>,
 	FixedRateOfFungible<BncPerSecond, ToTreasury>,
 	FixedRateOfFungible<VsksmPerSecond, ToTreasury>,
+	FixedRateOfFungible<PHAPerSecond, ToTreasury>,
 	FixedRateOfForeignAsset<Runtime, ForeignAssetUnitsPerSecond, ToTreasury>,
 );
 
@@ -1637,6 +1647,8 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 					GeneralKey(parachains::bifrost::VSKSM_KEY.to_vec()),
 				),
 			)),
+			// Phala Native token
+			Token(PHA) => Some(MultiLocation::new(1, X1(Parachain(parachains::phala::ID)))),
 			CurrencyId::ForeignAsset(foreign_asset_id) => {
 				XcmForeignAssetIdMapping::<Runtime>::get_multi_location(foreign_asset_id)
 			}
@@ -1665,6 +1677,7 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 				match (para_id, &key[..]) {
 					(parachains::bifrost::ID, parachains::bifrost::BNC_KEY) => Some(Token(BNC)),
 					(parachains::bifrost::ID, parachains::bifrost::VSKSM_KEY) => Some(Token(VSKSM)),
+
 					(id, key) if id == u32::from(ParachainInfo::get()) => {
 						// Karura
 						if let Ok(currency_id) = CurrencyId::decode(&mut &*key) {
@@ -1681,6 +1694,13 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 					_ => None,
 				}
 			}
+			MultiLocation {
+				parents,
+				interior: X1(Parachain(para_id)),
+			} if parents == 1 => match para_id {
+				parachains::phala::ID => Some(Token(PHA)),
+				_ => None,
+			},
 			_ => None,
 		}
 	}

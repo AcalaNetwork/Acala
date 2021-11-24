@@ -54,7 +54,7 @@ pub use precompile::{
 	StateRentPrecompile,
 };
 pub use primitives::{
-	currency::{TokenInfo, ACA, AUSD, BNC, DOT, KAR, KSM, KUSD, LDOT, LKSM, RENBTC, VSKSM},
+	currency::{TokenInfo, ACA, AUSD, BNC, DOT, KAR, KSM, KUSD, LDOT, LKSM, PHA, RENBTC, VSKSM},
 	AccountId,
 };
 
