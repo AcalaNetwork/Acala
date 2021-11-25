@@ -301,7 +301,7 @@ mod tests {
 		new_msg.genesis = Default::default();
 		assert_ne!(verify_eip712_signature(new_msg, sign), sender);
 
-		let mut new_msg = msg.clone();
+		let mut new_msg = msg;
 		new_msg.valid_until += 1;
 		assert_ne!(verify_eip712_signature(new_msg, sign), sender);
 	}
@@ -347,7 +347,7 @@ mod tests {
 		new_msg.input = vec![0x00];
 		assert_ne!(recover_signer(&sign, new_msg.hash().as_fixed_bytes()), sender);
 
-		let mut new_msg = msg.clone();
+		let mut new_msg = msg;
 		new_msg.chain_id = None;
 		assert_ne!(recover_signer(&sign, new_msg.hash().as_fixed_bytes()), sender);
 	}

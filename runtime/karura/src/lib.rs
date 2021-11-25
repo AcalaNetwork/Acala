@@ -21,8 +21,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 // `construct_runtime!` does a lot of recursion and requires us to increase the limit to 256.
 #![recursion_limit = "256"]
-// The `large_enum_variant` warning originates from `construct_runtime` macro.
-#![allow(clippy::large_enum_variant)]
 #![allow(clippy::unnecessary_mut_passed)]
 #![allow(clippy::or_fun_call)]
 #![allow(clippy::from_over_into)]
@@ -52,7 +50,7 @@ use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 
 use frame_system::{EnsureRoot, RawOrigin};
-use module_asset_registry::{EvmErc20InfoMapping, XcmForeignAssetIdMapping};
+use module_asset_registry::{EvmErc20InfoMapping, FixedRateOfForeignAsset, XcmForeignAssetIdMapping};
 use module_currencies::BasicCurrencyAdapter;
 use module_evm::{CallInfo, CreateInfo, EvmTask, Runner};
 use module_evm_accounts::EvmAddressMapping;
@@ -128,7 +126,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("karura"),
 	impl_name: create_runtime_str!("karura"),
 	authoring_version: 1,
-	spec_version: 2000,
+	spec_version: 2001,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -1291,37 +1289,6 @@ parameter_types! {
 	pub DeploymentFee: Balance = 10000 * dollar(KAR);
 }
 
-pub type MultiCurrencyPrecompile = runtime_common::MultiCurrencyPrecompile<
-	AccountId,
-	EvmAddressMapping<Runtime>,
-	EvmErc20InfoMapping<Runtime>,
-	Currencies,
->;
-
-pub type NFTPrecompile =
-	runtime_common::NFTPrecompile<AccountId, EvmAddressMapping<Runtime>, EvmErc20InfoMapping<Runtime>, NFT>;
-pub type StateRentPrecompile =
-	runtime_common::StateRentPrecompile<AccountId, EvmAddressMapping<Runtime>, EvmErc20InfoMapping<Runtime>, EVM>;
-pub type OraclePrecompile = runtime_common::OraclePrecompile<
-	AccountId,
-	EvmAddressMapping<Runtime>,
-	EvmErc20InfoMapping<Runtime>,
-	module_prices::RealTimePriceProvider<Runtime>,
->;
-pub type ScheduleCallPrecompile = runtime_common::ScheduleCallPrecompile<
-	AccountId,
-	EvmAddressMapping<Runtime>,
-	EvmErc20InfoMapping<Runtime>,
-	Scheduler,
-	module_transaction_payment::ChargeTransactionPayment<Runtime>,
-	Call,
-	Origin,
-	OriginCaller,
-	Runtime,
->;
-pub type DexPrecompile =
-	runtime_common::DexPrecompile<AccountId, EvmAddressMapping<Runtime>, EvmErc20InfoMapping<Runtime>, Dex>;
-
 impl module_evm::Config for Runtime {
 	type AddressMapping = EvmAddressMapping<Runtime>;
 	type Currency = Balances;
@@ -1329,15 +1296,7 @@ impl module_evm::Config for Runtime {
 	type NewContractExtraBytes = NewContractExtraBytes;
 	type StorageDepositPerByte = StorageDepositPerByte;
 	type Event = Event;
-	type Precompiles = runtime_common::AllPrecompiles<
-		SystemContractsFilter,
-		MultiCurrencyPrecompile,
-		NFTPrecompile,
-		StateRentPrecompile,
-		OraclePrecompile,
-		ScheduleCallPrecompile,
-		DexPrecompile,
-	>;
+	type Precompiles = runtime_common::AllPrecompiles<Self>;
 	type ChainId = ChainId;
 	type GasToWeight = GasToWeight;
 	type ChargeTransactionPayment = module_transaction_payment::ChargeTransactionPayment<Runtime>;
@@ -1452,6 +1411,7 @@ parameter_types! {
 		// LKSM:KSM = 10:1
 		ksm_per_second() * 10
 	);
+	pub ForeignAssetUnitsPerSecond: u128 = kar_per_second();
 }
 
 pub type Barrier = (
@@ -1506,6 +1466,7 @@ pub type Trader = (
 	FixedRateOfFungible<LksmPerSecond, ToTreasury>,
 	FixedRateOfFungible<BncPerSecond, ToTreasury>,
 	FixedRateOfFungible<VsksmPerSecond, ToTreasury>,
+	FixedRateOfForeignAsset<Runtime, ForeignAssetUnitsPerSecond, ToTreasury>,
 );
 
 pub struct XcmConfig;
@@ -1591,8 +1552,8 @@ pub fn create_x2_parachain_multilocation(index: u16) -> MultiLocation {
 parameter_types! {
 	pub const KSMCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::KSM);
 	pub const LKSMCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::LKSM);
-	pub MinimumMintThreshold: Balance = 10 * cent(KSM);
-	pub MinimumRedeemThreshold: Balance = 100 * cent(LKSM);
+	pub MinimumMintThreshold: Balance = 50 * cent(KSM);
+	pub MinimumRedeemThreshold: Balance = 5 * dollar(LKSM);
 	pub RelayChainSovereignSubAccount: MultiLocation = create_x2_parachain_multilocation(RelayChainSubAccountId::HomaLite as u16);
 	pub RelayChainSovereignSubAccountId: AccountId = Utility::derivative_account_id(
 		ParachainInfo::get().into_account(),
@@ -1797,7 +1758,6 @@ impl module_idle_scheduler::Config for Runtime {
 	type MinimumWeightRemainInBlock = MinimumWeightRemainInBlock;
 }
 
-#[allow(clippy::large_enum_variant)]
 construct_runtime!(
 	pub enum Runtime where
 		Block = Block,

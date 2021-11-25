@@ -53,10 +53,10 @@ fn homa_lite_mint_works() {
 
 			// Exchange rate set to 1(Staking) : 5(Liquid) ratio
 			// liquid = (amount - MintFee) * exchange_rate * (1 - MaxRewardPerEra)
-			#[cfg(feature = "with-mandala-runtime")]
-			let liquid_amount_1 = 49_974_999_500_250;
 			#[cfg(feature = "with-karura-runtime")]
 			let liquid_amount_1 = 4_997_499_000_500_000;
+			#[cfg(feature = "with-mandala-runtime")]
+			let liquid_amount_1 = 49_974_990_005_000;
 			#[cfg(feature = "with-acala-runtime")]
 			let liquid_amount_1 = 49_974_990_005_000;
 
@@ -70,18 +70,18 @@ fn homa_lite_mint_works() {
 
 			// Total issuance for liquid currnecy increased.
 			let new_liquid_issuance = Currencies::total_issuance(LIQUID_CURRENCY);
-			#[cfg(feature = "with-mandala-runtime")]
-			assert_eq!(new_liquid_issuance, 10_049_974_999_500_250);
 			#[cfg(feature = "with-karura-runtime")]
 			assert_eq!(new_liquid_issuance, 1_004_997_499_000_500_000);
+			#[cfg(feature = "with-mandala-runtime")]
+			assert_eq!(new_liquid_issuance, 10_049_974_990_005_000);
 			#[cfg(feature = "with-acala-runtime")]
 			assert_eq!(new_liquid_issuance, 10_049_974_990_005_000);
 
 			// liquid = (amount - MintFee) * (new_liquid_issuance / new_staking_total) * (1 - MaxRewardPerEra)
-			#[cfg(feature = "with-mandala-runtime")] // Mandala uses DOT, which has 10 d.p. accuracy.
-			let liquid_amount_2 = 49_974_875_181_840;
 			#[cfg(feature = "with-karura-runtime")] // Karura uses KSM, which has 12 d.p. accuracy.
 			let liquid_amount_2 = 4_997_486_563_940_292;
+			#[cfg(feature = "with-mandala-runtime")] // Mandala uses DOT, which has 10 d.p. accuracy.
+			let liquid_amount_2 = 49_974_865_639_397;
 			#[cfg(feature = "with-acala-runtime")] // Acala uses DOT, which has 10 d.p. accuracy.
 			let liquid_amount_2 = 49_974_865_639_397;
 
@@ -91,14 +91,13 @@ fn homa_lite_mint_works() {
 				amount,
 				liquid_amount_2,
 			)));
-
-			#[cfg(feature = "with-mandala-runtime")]
-			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY, &alice()), 99_949_874_682_090);
 			#[cfg(feature = "with-karura-runtime")]
 			assert_eq!(
 				Currencies::free_balance(LIQUID_CURRENCY, &alice()),
 				9_994_985_564_440_292
 			);
+			#[cfg(feature = "with-mandala-runtime")]
+			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY, &alice()), 99_949_855_644_397);
 			#[cfg(feature = "with-acala-runtime")]
 			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY, &alice()), 99_949_855_644_397);
 		});
@@ -319,6 +318,7 @@ fn liquid_value_goes_up_periodically() {
 		.balances(vec![(alice(), LIQUID_CURRENCY, 10_000_000 * dollar(LIQUID_CURRENCY))])
 		.build()
 		.execute_with(|| {
+			let one_day = OneDay::get();
 			assert_ok!(HomaLite::set_total_staking_currency(
 				Origin::root(),
 				1_000_000 * dollar(RELAY_CHAIN_CURRENCY)
@@ -340,38 +340,141 @@ fn liquid_value_goes_up_periodically() {
 			let rate2 = HomaLite::get_exchange_rate();
 			assert!(rate2 > rate1);
 
-			for i in 1..14401 {
+			for i in 1..one_day * 2 + 1 {
 				HomaLite::on_initialize(i);
 			}
-			// 1_000_383 * 1.000383 = 1000766.14669 (with rounding error)
-			#[cfg(feature = "with-mandala-runtime")]
-			assert_eq!(HomaLite::total_staking_currency(), 10_007_661_466_890_000);
-
-			// Karura ias 12 sec block time
+			// Karura is 12 sec block time
 			// 1_000_383 * 1.000383 * 1.000383 = 1001149.440123181887
 			#[cfg(feature = "with-karura-runtime")]
 			assert_eq!(HomaLite::total_staking_currency(), 1_001_149_440_123_181_887);
-			#[cfg(feature = "with-acala-runtime")]
+
+			#[cfg(any(feature = "with-mandala-runtime", feature = "with-acala-runtime"))]
 			assert_eq!(HomaLite::total_staking_currency(), 10_011_494_401_231_819);
 
 			let rate3 = HomaLite::get_exchange_rate();
 			assert!(rate3 > rate2);
 
-			for i in 14401..28802 {
+			for i in one_day * 2 + 1..one_day * 4 + 1 {
 				HomaLite::on_initialize(i);
 			}
-			// 1000766.146689 * 1.000383 = 1.001149440123181887
-			#[cfg(feature = "with-mandala-runtime")]
-			assert_eq!(HomaLite::total_staking_currency(), 10_011_494_401_231_819);
-
 			// 1001149.440123181887 * 1.000383 * 1.000383 = 1001916.46745192646655
 			#[cfg(feature = "with-karura-runtime")]
 			assert_eq!(HomaLite::total_staking_currency(), 1_001_916_467_451_926_467);
-			#[cfg(feature = "with-acala-runtime")]
+
+			#[cfg(any(feature = "with-mandala-runtime", feature = "with-acala-runtime"))]
 			assert_eq!(HomaLite::total_staking_currency(), 10_019_164_674_519_265);
 
 			let rate4 = HomaLite::get_exchange_rate();
 			assert!(rate4 > rate3);
+		});
+}
+
+#[test]
+fn cannot_mint_below_minimum_threshold() {
+	ExtBuilder::default()
+		.balances(vec![
+			(alice(), RELAY_CHAIN_CURRENCY, 10_000_000 * dollar(RELAY_CHAIN_CURRENCY)),
+			(bob(), LIQUID_CURRENCY, 10_000_000 * dollar(LIQUID_CURRENCY)),
+		])
+		.build()
+		.execute_with(|| {
+			assert_ok!(HomaLite::set_minting_cap(
+				Origin::root(),
+				1_000_000_000_000 * dollar(RELAY_CHAIN_CURRENCY)
+			));
+
+			// sets the staking total so the exchange rate is 1S : 10L
+			assert_ok!(HomaLite::set_total_staking_currency(
+				Origin::root(),
+				1_000_000 * dollar(RELAY_CHAIN_CURRENCY)
+			));
+
+			#[cfg(feature = "with-karura-runtime")]
+			{
+				// Minimum mint threshold + mint fee
+				let threshold = 50 * cent(RELAY_CHAIN_CURRENCY) + 20 * millicent(RELAY_CHAIN_CURRENCY);
+				assert_noop!(
+					HomaLite::mint(Origin::signed(alice()), threshold),
+					module_homa_lite::Error::<Runtime>::AmountBelowMinimumThreshold
+				);
+
+				assert_ok!(HomaLite::mint(Origin::signed(alice()), threshold + 1));
+				assert_eq!(Currencies::free_balance(LIQUID_CURRENCY, &alice()), 4_997_500_000_010);
+			}
+
+			#[cfg(any(feature = "with-mandala-runtime", feature = "with-acala-runtime"))]
+			{
+				// // Minimum mint threshold + mint fee
+				let threshold = 5 * dollar(RELAY_CHAIN_CURRENCY) + 20 * millicent(RELAY_CHAIN_CURRENCY);
+				assert_noop!(
+					HomaLite::mint(Origin::signed(alice()), threshold),
+					module_homa_lite::Error::<Runtime>::AmountBelowMinimumThreshold
+				);
+
+				assert_ok!(HomaLite::mint(Origin::signed(alice()), threshold + 1));
+				assert_eq!(Currencies::free_balance(LIQUID_CURRENCY, &alice()), 499_750_000_010);
+			}
+		});
+}
+
+#[test]
+fn cannot_request_redeem_below_minimum_threshold() {
+	ExtBuilder::default()
+		.balances(vec![(alice(), LIQUID_CURRENCY, 10_000_000 * dollar(LIQUID_CURRENCY))])
+		.build()
+		.execute_with(|| {
+			assert_ok!(HomaLite::set_total_staking_currency(
+				Origin::root(),
+				1_000_000 * dollar(RELAY_CHAIN_CURRENCY)
+			));
+
+			#[cfg(feature = "with-karura-runtime")]
+			{
+				// Redeem threshold is 5 * dollar(LIQUID_CURRENCY)
+				assert_noop!(
+					HomaLite::request_redeem(
+						Origin::signed(alice()),
+						5 * dollar(RELAY_CHAIN_CURRENCY),
+						Permill::zero()
+					),
+					module_homa_lite::Error::<Runtime>::AmountBelowMinimumThreshold
+				);
+
+				assert_ok!(HomaLite::request_redeem(
+					Origin::signed(alice()),
+					5 * dollar(RELAY_CHAIN_CURRENCY) + 1,
+					Permill::zero()
+				));
+
+				assert_eq!(
+					HomaLite::redeem_requests(alice()),
+					Some((4_982_500_000_001, Permill::zero()))
+				);
+			}
+
+			#[cfg(any(feature = "with-mandala-runtime", feature = "with-acala-runtime"))]
+			{
+				// Redeem threshold is 50 * dollar(LIQUID_CURRENCY)
+				assert_noop!(
+					HomaLite::request_redeem(
+						Origin::signed(alice()),
+						50 * dollar(RELAY_CHAIN_CURRENCY),
+						Permill::zero()
+					),
+					module_homa_lite::Error::<Runtime>::AmountBelowMinimumThreshold
+				);
+
+				assert_ok!(HomaLite::request_redeem(
+					Origin::signed(alice()),
+					50 * dollar(RELAY_CHAIN_CURRENCY) + 1,
+					Permill::zero()
+				));
+
+				assert_eq!(
+					HomaLite::redeem_requests(alice()),
+					Some((492_957_500_001, Permill::zero()))
+				);
+			}
 		});
 }
 

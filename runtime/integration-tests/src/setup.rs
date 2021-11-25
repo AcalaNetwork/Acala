@@ -55,7 +55,7 @@ mod mandala_imports {
 		NFT,
 	};
 
-	pub use runtime_common::{dollar, ACA, AUSD, DOT, LDOT};
+	pub use runtime_common::{cent, dollar, millicent, ACA, AUSD, DOT, LDOT};
 	pub const NATIVE_CURRENCY: CurrencyId = ACA;
 	pub const LIQUID_CURRENCY: CurrencyId = LDOT;
 	pub const RELAY_CHAIN_CURRENCY: CurrencyId = DOT;
@@ -78,12 +78,12 @@ mod karura_imports {
 		DefaultExchangeRate, Dex, EmergencyShutdown, Event, EvmAccounts, ExistentialDeposits, Get, GetNativeCurrencyId,
 		HomaLite, Honzon, IdleScheduler, KaruraFoundationAccounts, Loans, MinimumDebitValue, MultiLocation,
 		NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, Origin, OriginCaller, ParachainAccount,
-		ParachainInfo, ParachainSystem, Proxy, ProxyType, RelayChainBlockNumberProvider, RelayChainSovereignSubAccount,
-		Runtime, Scheduler, Session, SessionManager, SevenDays, System, Timestamp, TokenSymbol, Tokens,
-		TreasuryPalletId, Utility, Vesting, XTokens, XcmConfig, XcmExecutor, XcmUnbondFee, NFT,
+		ParachainInfo, ParachainSystem, PolkadotXcm, Proxy, ProxyType, RelayChainBlockNumberProvider,
+		RelayChainSovereignSubAccount, Runtime, Scheduler, Session, SessionManager, SevenDays, System, Timestamp,
+		TokenSymbol, Tokens, TreasuryPalletId, Utility, Vesting, XTokens, XcmConfig, XcmExecutor, XcmUnbondFee, NFT,
 	};
 	pub use primitives::TradingPair;
-	pub use runtime_common::{dollar, KAR, KSM, KUSD, LKSM};
+	pub use runtime_common::{cent, dollar, millicent, KAR, KSM, KUSD, LKSM};
 	pub use sp_runtime::traits::AccountIdConversion;
 
 	parameter_types! {
@@ -115,14 +115,14 @@ mod acala_imports {
 		CreateClassDeposit, CreateTokenDeposit, Currencies, CurrencyId, CurrencyIdConvert, DataDepositPerByte,
 		DefaultExchangeRate, Dex, EmergencyShutdown, Event, EvmAccounts, ExistentialDeposits, Get, GetNativeCurrencyId,
 		HomaLite, Honzon, IdleScheduler, Loans, MinimumDebitValue, MultiLocation, NativeTokenExistentialDeposit,
-		NetworkId, NftPalletId, OneDay, Origin, OriginCaller, ParachainAccount, ParachainInfo, ParachainSystem, Proxy,
-		ProxyType, RelayChainBlockNumberProvider, RelayChainSovereignSubAccount, Runtime, Scheduler, Session,
-		SessionManager, SevenDays, System, Timestamp, TokenSymbol, Tokens, TreasuryPalletId, Utility, Vesting, XTokens,
-		XcmConfig, XcmExecutor, XcmUnbondFee, NFT,
+		NetworkId, NftPalletId, OneDay, Origin, OriginCaller, ParachainAccount, ParachainInfo, ParachainSystem,
+		PolkadotXcm, Proxy, ProxyType, RelayChainBlockNumberProvider, RelayChainSovereignSubAccount, Runtime,
+		Scheduler, Session, SessionManager, SevenDays, System, Timestamp, TokenSymbol, Tokens, TreasuryPalletId,
+		Utility, Vesting, XTokens, XcmConfig, XcmExecutor, XcmUnbondFee, NFT,
 	};
 	pub use frame_support::parameter_types;
 	pub use primitives::TradingPair;
-	pub use runtime_common::{dollar, ACA, AUSD, DOT, LDOT};
+	pub use runtime_common::{cent, dollar, millicent, ACA, AUSD, DOT, LDOT};
 	pub use sp_runtime::traits::AccountIdConversion;
 
 	parameter_types! {

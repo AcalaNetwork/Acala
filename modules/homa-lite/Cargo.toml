@@ -11,6 +11,7 @@ frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch =
 frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.12", default-features = false }
 frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.12", default-features = false }
 sp-arithmetic = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.12", default-features = false }
+sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.12", default-features = false  }
 sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.12", default-features = false }
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.12", default-features = false  }
 sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.12", default-features = false  }
@@ -20,12 +21,14 @@ primitives = { package = "acala-primitives", path = "../../primitives", default-
 orml-traits = { path = "../../orml/traits", default-features = false }
 module-support = { path = "../../modules/support", default-features = false }
 
+# TODO: move this to dev-dependencies when https://github.com/paritytech/polkadot/pull/4355 is available
+xcm-executor = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.12", default-features = false }
+
 [dev-dependencies]
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.12" }
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.12" }
 module-currencies = { path = "../../modules/currencies" }
 orml-tokens = { path = "../../orml/tokens" }
-xcm-executor = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.12" }
 cumulus-primitives-core = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.12" }
 module-relaychain = { path = "../relaychain", features = ["kusama"] }
 
@@ -38,6 +41,7 @@ std = [
 	"frame-system/std",
 	"scale-info/std",
 	"sp-arithmetic/std",
+	"sp-io/std",
 	"sp-runtime/std",
 	"sp-core/std",
 	"sp-std/std",
@@ -46,6 +50,7 @@ std = [
 	"primitives/std",
 	"orml-traits/std",
 	"module-support/std",
+	"xcm-executor/std",
 ]
 runtime-benchmarks = [
 	"frame-benchmarking",

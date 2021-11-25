@@ -21,6 +21,7 @@ use crate::{dollar, AccountId, CurrencyId, Event, EvmAccounts, GetNativeCurrency
 use super::utils::set_balance;
 use frame_support::dispatch::DispatchError;
 use frame_system::RawOrigin;
+use module_evm::MaxCodeSize;
 use module_support::AddressMapping;
 use orml_benchmarking::{runtime_benchmarks, whitelist_account};
 use sp_core::H160;
@@ -134,12 +135,13 @@ runtime_benchmarks! {
 	}: _(RawOrigin::Signed(alice_account_id()))
 
 	set_code {
+		let c in 0..MaxCodeSize::get();
 		let alice_account = alice_account_id();
 
 		set_balance(NATIVE, &alice_account, 1_000_000 * dollar(NATIVE));
 		let contract = deploy_contract(alice_account_id())?;
 
-		let new_contract = hex_literal::hex!("608060405234801561001057600080fd5b5061016f806100206000396000f3fe608060405260043610610041576000357c0100000000000000000000000000000000000000000000000000000000900463ffffffff168063412a5a6d14610046575b600080fd5b61004e610050565b005b600061005a6100e2565b604051809103906000f080158015610076573d6000803e3d6000fd5b50905060008190806001815401808255809150509060018203906000526020600020016000909192909190916101000a81548173ffffffffffffffffffffffffffffffffffffffff021916908373ffffffffffffffffffffffffffffffffffffffff1602179055505050565b6040516052806100f28339019056fe6080604052348015600f57600080fd5b50603580601d6000396000f3fe6080604052600080fdfea165627a7a7230582092dc1966a8880ddf11e067f9dd56a632c11a78a4afd4a9f05924d427367958cc0029a165627a7a723058202b2cc7384e11c452cdbf39b68dada2d5e10a632cc0174a354b8b8c83237e28a400291234").to_vec();
+		let new_contract = vec![0; c as usize];
 
 		whitelist_account!(alice_account);
 	}: _(RawOrigin::Signed(alice_account_id()), contract, new_contract)

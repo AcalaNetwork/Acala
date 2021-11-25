@@ -23,7 +23,7 @@ pub mod time {
 	use primitives::{Balance, BlockNumber, Moment};
 	use runtime_common::{dollar, millicent, ACA};
 
-	pub const SECS_PER_BLOCK: Moment = 6;
+	pub const SECS_PER_BLOCK: Moment = 12;
 	pub const MILLISECS_PER_BLOCK: Moment = SECS_PER_BLOCK * 1000;
 
 	// These time units are defined in number of blocks.
@@ -84,10 +84,13 @@ pub mod fee {
 		}
 	}
 
-	pub fn dot_per_second() -> u128 {
+	pub fn aca_per_second() -> u128 {
 		let base_weight = Balance::from(ExtrinsicBaseWeight::get());
 		let base_tx_per_second = (WEIGHT_PER_SECOND as u128) / base_weight;
-		let aca_per_second = base_tx_per_second * base_tx_in_aca();
-		aca_per_second / 100
+		base_tx_per_second * base_tx_in_aca()
+	}
+
+	pub fn dot_per_second() -> u128 {
+		aca_per_second() / 100
 	}
 }
