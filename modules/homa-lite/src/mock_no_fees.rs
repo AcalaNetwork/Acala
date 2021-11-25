@@ -207,7 +207,7 @@ parameter_types! {
 	pub MinimumMintThreshold: Balance = millicent(1);
 	pub MinimumRedeemThreshold: Balance = millicent(1);
 	pub const MockXcmDestination: MultiLocation = MOCK_XCM_DESTINATION;
-	pub const MockXcmAccountId: AccountId = MOCK_XCM_ACCOUNTID;
+	pub const MockXcmAccountId: AccountId = MOCK_XCM_ACCOUNT_ID;
 	pub DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
 	pub const MaxRewardPerEra: Permill = Permill::zero();
 	pub MintFee: Balance = 0;

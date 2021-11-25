@@ -99,9 +99,9 @@ benchmarks! {
 		let caller: T::AccountId = account("caller", 0, SEED);
 		<T as module::Config>::Currency::deposit(T::LiquidCurrencyId::get(), &caller, amount)?;
 		let _ = crate::Pallet::<T>::adjust_available_staking_balance(RawOrigin::Root.into(), AmountOf::<T>::max_value(), 1);
-		let _ = crate::Pallet::<T>::request_redeem(RawOrigin::Signed(caller).into(), amount, Permill::default());
+		let _ = crate::Pallet::<T>::request_redeem(RawOrigin::Signed(caller.clone()).into(), amount, Permill::default());
 	}: {
-		let _ = crate::Pallet::<T>::process_redeem_requests_with_available_staking_balance(1);
+		let _ = crate::Pallet::<T>::process_redeem_requests_with_available_staking_balance(&caller);
 	}
 
 	xcm_unbond {}: {
