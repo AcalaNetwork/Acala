@@ -69,7 +69,10 @@ std = [
 	"orml-traits/std",
 	"module-support/std",
 	"orml-bencher/std",
-	"orml-weight-meter/std"
+	"orml-weight-meter/std",
+	"orml-currencies/std",
+	"orml-tokens/std",
+	"module-idle-scheduler/std"
 ]
 with-ethereum-compatibility = []
 try-runtime = ["frame-support/try-runtime"]
