@@ -318,6 +318,7 @@ fn liquid_value_goes_up_periodically() {
 		.balances(vec![(alice(), LIQUID_CURRENCY, 10_000_000 * dollar(LIQUID_CURRENCY))])
 		.build()
 		.execute_with(|| {
+			let one_day = OneDay::get();
 			assert_ok!(HomaLite::set_total_staking_currency(
 				Origin::root(),
 				1_000_000 * dollar(RELAY_CHAIN_CURRENCY)
@@ -339,7 +340,7 @@ fn liquid_value_goes_up_periodically() {
 			let rate2 = HomaLite::get_exchange_rate();
 			assert!(rate2 > rate1);
 
-			for i in 1..14401 {
+			for i in 1..one_day * 2 + 1 {
 				HomaLite::on_initialize(i);
 			}
 			// Karura is 12 sec block time
@@ -347,26 +348,20 @@ fn liquid_value_goes_up_periodically() {
 			#[cfg(feature = "with-karura-runtime")]
 			assert_eq!(HomaLite::total_staking_currency(), 1_001_149_440_123_181_887);
 
-			#[cfg(feature = "with-mandala-runtime")]
-			assert_eq!(HomaLite::total_staking_currency(), 10_011_494_401_231_819);
-
-			#[cfg(feature = "with-acala-runtime")]
+			#[cfg(any(feature = "with-mandala-runtime", feature = "with-acala-runtime"))]
 			assert_eq!(HomaLite::total_staking_currency(), 10_011_494_401_231_819);
 
 			let rate3 = HomaLite::get_exchange_rate();
 			assert!(rate3 > rate2);
 
-			for i in 14401..28802 {
+			for i in one_day * 2 + 1..one_day * 4 + 1 {
 				HomaLite::on_initialize(i);
 			}
 			// 1001149.440123181887 * 1.000383 * 1.000383 = 1001916.46745192646655
 			#[cfg(feature = "with-karura-runtime")]
 			assert_eq!(HomaLite::total_staking_currency(), 1_001_916_467_451_926_467);
 
-			#[cfg(feature = "with-mandala-runtime")]
-			assert_eq!(HomaLite::total_staking_currency(), 10_019_164_674_519_265);
-
-			#[cfg(feature = "with-acala-runtime")]
+			#[cfg(any(feature = "with-mandala-runtime", feature = "with-acala-runtime"))]
 			assert_eq!(HomaLite::total_staking_currency(), 10_019_164_674_519_265);
 
 			let rate4 = HomaLite::get_exchange_rate();
