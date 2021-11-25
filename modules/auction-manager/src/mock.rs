@@ -156,7 +156,7 @@ impl PriceProvider<CurrencyId> for MockPriceSource {
 parameter_types! {
 	pub const DEXPalletId: PalletId = PalletId(*b"aca/dexm");
 	pub const GetExchangeFee: (u32, u32) = (0, 100);
-	pub const TradingPathLimit: u32 = 3;
+	pub const TradingPathLimit: u32 = 4;
 	pub EnabledTradingPairs: Vec<TradingPair> = vec![
 		TradingPair::from_currency_ids(AUSD, BTC).unwrap(),
 		TradingPair::from_currency_ids(DOT, BTC).unwrap(),
@@ -170,7 +170,7 @@ impl module_dex::Config for Runtime {
 	type GetExchangeFee = GetExchangeFee;
 	type TradingPathLimit = TradingPathLimit;
 	type PalletId = DEXPalletId;
-	type CurrencyIdMapping = ();
+	type Erc20InfoMapping = ();
 	type DEXIncentives = ();
 	type WeightInfo = ();
 	type ListingOrigin = EnsureSignedBy<One, AccountId>;

@@ -112,8 +112,9 @@ type ChangeBalance = Change<Balance>;
 /// Liquidation strategy available
 #[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, TypeInfo)]
 pub enum LiquidationStrategy {
-	/// Liquidation CDP's collateral by create collateral auction
-	Auction,
+	/// Liquidation CDP's collateral by create collateral auction, auction_count
+	/// being the number of new auctions created
+	Auction { auction_count: u32 },
 	/// Liquidation CDP's collateral by swap with DEX
 	Exchange,
 }
@@ -289,6 +290,7 @@ pub mod module {
 	pub type LastAccumulationSecs<T: Config> = StorageValue<_, u64, ValueQuery>;
 
 	#[pallet::genesis_config]
+	#[cfg_attr(feature = "std", derive(Default))]
 	pub struct GenesisConfig {
 		#[allow(clippy::type_complexity)]
 		pub collaterals_params: Vec<(
@@ -300,16 +302,6 @@ pub mod module {
 			Balance,
 		)>,
 		pub global_interest_rate_per_sec: Rate,
-	}
-
-	#[cfg(feature = "std")]
-	impl Default for GenesisConfig {
-		fn default() -> Self {
-			GenesisConfig {
-				collaterals_params: vec![],
-				global_interest_rate_per_sec: Default::default(),
-			}
-		}
 	}
 
 	#[pallet::genesis_build]
@@ -396,18 +388,18 @@ pub mod module {
 		///
 		/// - `currency_id`: CDP's collateral type.
 		/// - `who`: CDP's owner.
-		#[pallet::weight(<T as Config>::WeightInfo::liquidate_by_dex())]
+		#[pallet::weight(<T as Config>::WeightInfo::liquidate_by_auction(<T as Config>::CDPTreasury::max_auction()))]
 		#[transactional]
 		pub fn liquidate(
 			origin: OriginFor<T>,
 			currency_id: CurrencyId,
 			who: <T::Lookup as StaticLookup>::Source,
-		) -> DispatchResult {
+		) -> DispatchResultWithPostInfo {
 			ensure_none(origin)?;
 			let who = T::Lookup::lookup(who)?;
 			ensure!(!T::EmergencyShutdown::is_shutdown(), Error::<T>::AlreadyShutdown);
-			Self::liquidate_unsafe_cdp(who, currency_id)?;
-			Ok(())
+			let consumed_weight: Weight = Self::liquidate_unsafe_cdp(who, currency_id)?;
+			Ok(Some(consumed_weight).into())
 		}
 
 		/// Settle CDP has debit after system shutdown
@@ -907,7 +899,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	// liquidate unsafe cdp
-	pub fn liquidate_unsafe_cdp(who: T::AccountId, currency_id: CurrencyId) -> DispatchResult {
+	pub fn liquidate_unsafe_cdp(who: T::AccountId, currency_id: CurrencyId) -> Result<Weight, DispatchError> {
 		let Position { collateral, debit } = <LoansOf<T>>::positions(currency_id, &who);
 
 		// ensure the cdp is unsafe
@@ -968,7 +960,7 @@ impl<T: Config> Pallet<T> {
 			}
 
 			// if cannot liquidate by swap, create collateral auctions by cdp treasury
-			<T as Config>::CDPTreasury::create_collateral_auctions(
+			let created_auctions = <T as Config>::CDPTreasury::create_collateral_auctions(
 				currency_id,
 				collateral,
 				target_stable_amount,
@@ -976,7 +968,9 @@ impl<T: Config> Pallet<T> {
 				true,
 			)?;
 
-			Ok(LiquidationStrategy::Auction)
+			Ok(LiquidationStrategy::Auction {
+				auction_count: created_auctions,
+			})
 		})()?;
 
 		Self::deposit_event(Event::LiquidateUnsafeCDP(
@@ -984,9 +978,12 @@ impl<T: Config> Pallet<T> {
 			who,
 			collateral,
 			bad_debt_value,
-			liquidation_strategy,
+			liquidation_strategy.clone(),
 		));
-		Ok(())
+		match liquidation_strategy {
+			LiquidationStrategy::Auction { auction_count } => Ok(T::WeightInfo::liquidate_by_auction(auction_count)),
+			LiquidationStrategy::Exchange => Ok(T::WeightInfo::liquidate_by_dex()),
+		}
 	}
 }
 

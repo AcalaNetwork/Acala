@@ -18,21 +18,98 @@
 
 #![cfg(test)]
 
-#[cfg(any(feature = "with-mandala-runtime", feature = "with-karura-runtime"))]
-mod integration_tests;
+#[cfg(any(
+	feature = "with-mandala-runtime",
+	feature = "with-karura-runtime",
+	feature = "with-acala-runtime"
+))]
+mod setup;
 
+// TODO: blocked by BaseCallFilter on acala-runtime
 #[cfg(any(feature = "with-mandala-runtime", feature = "with-karura-runtime"))]
-mod homa_lite_tests;
+mod authority;
 
+#[cfg(any(
+	feature = "with-mandala-runtime",
+	feature = "with-karura-runtime",
+	feature = "with-acala-runtime"
+))]
+mod dex;
+
+#[cfg(any(
+	feature = "with-mandala-runtime",
+	feature = "with-karura-runtime",
+	feature = "with-acala-runtime"
+))]
+mod evm;
+
+#[cfg(any(
+	feature = "with-mandala-runtime",
+	feature = "with-karura-runtime",
+	feature = "with-acala-runtime"
+))]
+mod homa_lite;
+
+#[cfg(any(
+	feature = "with-mandala-runtime",
+	feature = "with-karura-runtime",
+	feature = "with-acala-runtime"
+))]
+mod honzon;
+
+#[cfg(any(
+	feature = "with-mandala-runtime",
+	feature = "with-karura-runtime",
+	feature = "with-acala-runtime"
+))]
+mod nft;
+
+#[cfg(any(
+	feature = "with-mandala-runtime",
+	feature = "with-karura-runtime",
+	feature = "with-acala-runtime"
+))]
+mod prices;
+
+// TODO: blocked by BaseCallFilter on acala-runtime
 #[cfg(any(feature = "with-mandala-runtime", feature = "with-karura-runtime"))]
-mod evm_tests;
+mod proxy;
 
-#[cfg(any(feature = "with-mandala-runtime", feature = "with-karura-runtime"))]
-mod weights_test;
+#[cfg(any(
+	feature = "with-mandala-runtime",
+	feature = "with-karura-runtime",
+	feature = "with-acala-runtime"
+))]
+mod runtime;
 
+#[cfg(any(
+	feature = "with-mandala-runtime",
+	feature = "with-karura-runtime",
+	feature = "with-acala-runtime"
+))]
+mod session_manager;
+
+#[cfg(any(
+	feature = "with-mandala-runtime",
+	feature = "with-karura-runtime",
+	feature = "with-acala-runtime"
+))]
+mod treasury;
+
+#[cfg(any(
+	feature = "with-mandala-runtime",
+	feature = "with-karura-runtime",
+	feature = "with-acala-runtime"
+))]
+mod vesting;
+
+#[cfg(any(
+	feature = "with-mandala-runtime",
+	feature = "with-karura-runtime",
+	feature = "with-acala-runtime"
+))]
+mod weights;
+
+// TODO: polkadot_runtime not support XCM
 #[cfg(feature = "with-karura-runtime")]
-mod kusama_cross_chain_transfer;
-#[cfg(feature = "with-karura-runtime")]
-mod kusama_test_net;
-#[cfg(feature = "with-karura-runtime")]
-mod relay_chain_tests;
+mod relaychain;

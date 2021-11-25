@@ -23,8 +23,7 @@ use crate::precompile::{
 	mock::{
 		aca_evm_address, alice, alice_evm_addr, ausd_evm_address, bob, bob_evm_addr, erc20_address_not_exists,
 		get_task_id, lp_aca_ausd_evm_address, new_test_ext, renbtc_evm_address, run_to_block, Balances, DexModule,
-		DexPrecompile, Event as TestEvent, MultiCurrencyPrecompile, Oracle, OraclePrecompile, Origin, Price,
-		ScheduleCallPrecompile, System, Test, ALICE, AUSD, INITIAL_BALANCE, RENBTC,
+		Event as TestEvent, Oracle, Origin, Price, System, Test, ALICE, AUSD, INITIAL_BALANCE, RENBTC,
 	},
 	schedule_call::TaskInfo,
 };
@@ -34,40 +33,23 @@ use hex_literal::hex;
 use module_evm::{Context, ExitError, ExitSucceed, Precompile};
 use module_support::AddressMapping;
 use orml_traits::DataFeeder;
-use primitives::{Balance, PREDEPLOY_ADDRESS_START};
+use primitives::{
+	evm::{PRECOMPILE_ADDRESS_START, PREDEPLOY_ADDRESS_START},
+	Balance,
+};
 use sp_core::{H160, U256};
 use sp_runtime::FixedPointNumber;
 use std::str::FromStr;
 
-pub struct DummyPrecompile;
-impl Precompile for DummyPrecompile {
-	fn execute(
-		_input: &[u8],
-		_target_gas: Option<u64>,
-		_context: &Context,
-	) -> core::result::Result<PrecompileOutput, ExitError> {
-		Ok(PrecompileOutput {
-			exit_status: ExitSucceed::Returned,
-			cost: 0,
-			output: vec![],
-			logs: Default::default(),
-		})
-	}
-}
-
-pub type WithSystemContractFilter = AllPrecompiles<
-	crate::SystemContractsFilter,
-	DummyPrecompile,
-	DummyPrecompile,
-	DummyPrecompile,
-	DummyPrecompile,
-	DummyPrecompile,
-	DummyPrecompile,
->;
+pub type WithSystemContractFilter = AllPrecompiles<Test>;
+type MultiCurrencyPrecompile = crate::MultiCurrencyPrecompile<Test>;
+type OraclePrecompile = crate::OraclePrecompile<Test>;
+type DexPrecompile = crate::DexPrecompile<Test>;
+type ScheduleCallPrecompile = crate::ScheduleCallPrecompile<Test>;
 
 #[test]
 fn precompile_filter_works_on_acala_precompiles() {
-	let precompile = H160::from_low_u64_be(PRECOMPILE_ADDRESS_START);
+	let precompile = PRECOMPILE_ADDRESS_START;
 
 	let mut non_system = [0u8; 20];
 	non_system[0] = 1;
@@ -85,7 +67,7 @@ fn precompile_filter_works_on_acala_precompiles() {
 
 #[test]
 fn precompile_filter_does_not_work_on_system_contracts() {
-	let system = H160::from_low_u64_be(PREDEPLOY_ADDRESS_START);
+	let system = PREDEPLOY_ADDRESS_START;
 
 	let mut non_system = [0u8; 20];
 	non_system[0] = 1;
@@ -669,7 +651,7 @@ fn dex_precompile_get_liquidity_token_address_should_work() {
 		U256::from_big_endian(ausd_evm_address().as_bytes()).to_big_endian(&mut input[4 + 1 * 32..4 + 2 * 32]);
 
 		let mut expected_output = [0u8; 32];
-		let address = H160::from_str("0x0000000000000000000000010000000100000014").unwrap();
+		let address = H160::from_str("0x0000000000000000000200000000010000000014").unwrap();
 		U256::from(address.as_bytes()).to_big_endian(&mut expected_output[..32]);
 
 		let resp = DexPrecompile::execute(&input, None, &context).unwrap();
@@ -679,8 +661,9 @@ fn dex_precompile_get_liquidity_token_address_should_work() {
 
 		// unkonwn token
 		let mut id = [0u8; 32];
+		id[21] = 1; // token type
 		id[31] = u8::MAX; // not exists
-		U256::from_big_endian(&id.to_vec()).to_big_endian(&mut input[2 * 32..3 * 32]);
+		U256::from_big_endian(&id.to_vec()).to_big_endian(&mut input[4 + 1 * 32..4 + 2 * 32]);
 		assert_noop!(
 			DexPrecompile::execute(&input, None, &context),
 			ExitError::Other("invalid currency id".into())

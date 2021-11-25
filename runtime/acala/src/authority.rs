@@ -23,7 +23,7 @@ use crate::{
 	EnsureRootOrHalfFinancialCouncil, EnsureRootOrHalfGeneralCouncil, EnsureRootOrHalfHomaCouncil,
 	EnsureRootOrOneThirdsTechnicalCommittee, EnsureRootOrThreeFourthsGeneralCouncil,
 	EnsureRootOrTwoThirdsTechnicalCommittee, HomaTreasuryPalletId, HonzonTreasuryPalletId, OneDay, Origin,
-	OriginCaller, SevenDays, TreasuryPalletId, TreasuryReservePalletId, ZeroDay, HOURS,
+	OriginCaller, SevenDays, TreasuryPalletId, TreasuryReservePalletId, HOURS,
 };
 pub use frame_support::traits::{schedule::Priority, EnsureOrigin, OriginTrait};
 use frame_system::ensure_root;
@@ -92,39 +92,36 @@ impl orml_authority::AsOriginId<Origin, OriginCaller> for AuthoritysOriginId {
 	}
 
 	fn check_dispatch_from(&self, origin: Origin) -> DispatchResult {
-		ensure_root(origin.clone()).or_else(|_| match self {
-			AuthoritysOriginId::Root => <EnsureDelayed<
-				SevenDays,
-				EnsureRootOrThreeFourthsGeneralCouncil,
-				BlockNumber,
-				OriginCaller,
-			> as EnsureOrigin<Origin>>::ensure_origin(origin)
-			.map_or_else(|_| Err(BadOrigin.into()), |_| Ok(())),
-			AuthoritysOriginId::Treasury => {
-				<EnsureDelayed<OneDay, EnsureRootOrHalfGeneralCouncil, BlockNumber, OriginCaller> as EnsureOrigin<
-					Origin,
-				>>::ensure_origin(origin)
-				.map_or_else(|_| Err(BadOrigin.into()), |_| Ok(()))
+		ensure_root(origin.clone()).or_else(|_| {
+			match self {
+				AuthoritysOriginId::Root => <EnsureDelayed<
+					SevenDays,
+					EnsureRootOrThreeFourthsGeneralCouncil,
+					BlockNumber,
+					OriginCaller,
+				> as EnsureOrigin<Origin>>::ensure_origin(origin)
+				.map_or_else(|_| Err(BadOrigin.into()), |_| Ok(())),
+				AuthoritysOriginId::Treasury => {
+					<EnsureDelayed<OneDay, EnsureRootOrHalfGeneralCouncil, BlockNumber, OriginCaller> as EnsureOrigin<
+						Origin,
+					>>::ensure_origin(origin)
+					.map_or_else(|_| Err(BadOrigin.into()), |_| Ok(()))
+				}
+				AuthoritysOriginId::HonzonTreasury => <EnsureDelayed<
+					OneDay,
+					EnsureRootOrHalfFinancialCouncil,
+					BlockNumber,
+					OriginCaller,
+				> as EnsureOrigin<Origin>>::ensure_origin(origin)
+				.map_or_else(|_| Err(BadOrigin.into()), |_| Ok(())),
+				AuthoritysOriginId::HomaTreasury => {
+					<EnsureDelayed<OneDay, EnsureRootOrHalfHomaCouncil, BlockNumber, OriginCaller> as EnsureOrigin<
+						Origin,
+					>>::ensure_origin(origin)
+					.map_or_else(|_| Err(BadOrigin.into()), |_| Ok(()))
+				}
+				AuthoritysOriginId::TreasuryReserve => Err(BadOrigin.into()), // only allow root
 			}
-			AuthoritysOriginId::HonzonTreasury => {
-				<EnsureDelayed<OneDay, EnsureRootOrHalfFinancialCouncil, BlockNumber, OriginCaller> as EnsureOrigin<
-					Origin,
-				>>::ensure_origin(origin)
-				.map_or_else(|_| Err(BadOrigin.into()), |_| Ok(()))
-			}
-			AuthoritysOriginId::HomaTreasury => {
-				<EnsureDelayed<OneDay, EnsureRootOrHalfHomaCouncil, BlockNumber, OriginCaller> as EnsureOrigin<
-					Origin,
-				>>::ensure_origin(origin)
-				.map_or_else(|_| Err(BadOrigin.into()), |_| Ok(()))
-			}
-			AuthoritysOriginId::TreasuryReserve => <EnsureDelayed<
-				ZeroDay,
-				EnsureRoot<AccountId>,
-				BlockNumber,
-				OriginCaller,
-			> as EnsureOrigin<Origin>>::ensure_origin(origin)
-			.map_or_else(|_| Err(BadOrigin.into()), |_| Ok(())),
 		})
 	}
 }

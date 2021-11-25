@@ -20,18 +20,23 @@
 
 use crate::{encode_revert_message, runner::StackState, StorageMeter};
 use core::{cmp::min, convert::Infallible};
-use evm::{
-	Capture, Config, Context, CreateScheme, ExitError, ExitReason, ExitRevert, ExitSucceed, Opcode, Runtime, Stack,
-	Transfer,
-};
-use evm_gasometer::{self as gasometer, Gasometer};
-use evm_runtime::Handler;
 use frame_support::log;
+use module_evm_utiltity::{
+	ethereum::Log,
+	evm::{
+		Capture, Config, Context, CreateScheme, ExitError, ExitReason, ExitRevert, ExitSucceed, Opcode, Runtime, Stack,
+		Transfer,
+	},
+	evm_gasometer::{self as gasometer, Gasometer},
+	evm_runtime::Handler,
+};
 use primitive_types::{H160, H256, U256};
 pub use primitives::{
-	evm::{Account, EvmAddress, Log, Vicinity},
-	ReserveIdentifier, H160_PREFIX_DEXSHARE, H160_PREFIX_TOKEN, MIRRORED_NFT_ADDRESS_START, PREDEPLOY_ADDRESS_START,
-	SYSTEM_CONTRACT_ADDRESS_PREFIX,
+	evm::{
+		is_mirrored_tokens_address_prefix, EvmAddress, Vicinity, MIRRORED_NFT_ADDRESS_START, PREDEPLOY_ADDRESS_START,
+		SYSTEM_CONTRACT_ADDRESS_PREFIX,
+	},
+	ReserveIdentifier,
 };
 use sha3::{Digest, Keccak256};
 use sp_std::{rc::Rc, vec::Vec};
@@ -43,8 +48,8 @@ macro_rules! event {
 #[cfg(feature = "tracing")]
 mod tracing {
 	pub struct Tracer;
-	impl evm_runtime::tracing::EventListener for Tracer {
-		fn event(&mut self, event: evm_runtime::tracing::Event) {
+	impl module_evm_utiltity::evm_runtime::tracing::EventListener for Tracer {
+		fn event(&mut self, event: module_evm_utiltity::evm_runtime::tracing::Event) {
 			frame_support::log::debug!(
 				target: "evm", "evm_runtime tracing: {:?}", event
 			);
@@ -73,10 +78,10 @@ pub struct StackSubstateMetadata<'config> {
 }
 
 impl<'config> StackSubstateMetadata<'config> {
-	pub fn new(gas_limit: u64, storage_limit: u32, extra_bytes: u32, config: &'config Config) -> Self {
+	pub fn new(gas_limit: u64, storage_limit: u32, config: &'config Config) -> Self {
 		Self {
 			gasometer: Gasometer::new(gas_limit, config),
-			storage_meter: StorageMeter::new(storage_limit, extra_bytes),
+			storage_meter: StorageMeter::new(storage_limit),
 			is_static: false,
 			depth: None,
 			caller: None,
@@ -107,10 +112,7 @@ impl<'config> StackSubstateMetadata<'config> {
 	pub fn spit_child(&self, gas_limit: u64, is_static: bool) -> Self {
 		Self {
 			gasometer: Gasometer::new(gas_limit, self.gasometer().config()),
-			storage_meter: StorageMeter::new(
-				self.storage_meter().available_storage(),
-				self.storage_meter().extra_bytes(),
-			),
+			storage_meter: StorageMeter::new(self.storage_meter().available_storage()),
 			is_static: is_static || self.is_static,
 			depth: match self.depth {
 				None => Some(0),
@@ -432,14 +434,9 @@ impl<'config, S: StackState<'config>> StackExecutor<'config, S> {
 			address,
 		);
 
-		let addr = address.as_bytes();
-		if !addr.starts_with(&SYSTEM_CONTRACT_ADDRESS_PREFIX) {
-			return address;
-		}
-
-		if addr.starts_with(&H160_PREFIX_TOKEN) || addr.starts_with(&H160_PREFIX_DEXSHARE) {
+		if is_mirrored_tokens_address_prefix(address) {
 			// `Token` predeploy contract.
-			let token_address = H160::from_low_u64_be(PREDEPLOY_ADDRESS_START);
+			let token_address = PREDEPLOY_ADDRESS_START;
 			log::debug!(
 				target: "evm",
 				"handle_mirrored_token: origin address: {:?}, token address: {:?}",
@@ -568,11 +565,13 @@ impl<'config, S: StackState<'config>> StackExecutor<'config, S> {
 				return Capture::Exit((ExitError::CreateCollision.into(), None, Vec::new()));
 			}
 
+			// We will keep the nonce until the storages are cleared.
 			if self.nonce(address) > U256::zero() {
 				let _ = self.exit_substate(StackExitKind::Failed);
 				return Capture::Exit((ExitError::CreateCollision.into(), None, Vec::new()));
 			}
 
+			// Still do this, although it is superfluous.
 			self.state.reset_storage(address);
 		}
 
@@ -617,13 +616,9 @@ impl<'config, S: StackState<'config>> StackExecutor<'config, S> {
 
 				match self.state.metadata_mut().gasometer_mut().record_deposit(out.len()) {
 					Ok(()) => {
-						self.state
-							.metadata_mut()
-							.storage_meter_mut()
-							.charge_with_extra_bytes(out.len() as u32);
+						self.state.set_code(address, out);
 						let e = self.exit_substate(StackExitKind::Succeeded);
 						try_or_fail!(e);
-						self.state.set_code(address, out);
 						Capture::Exit((ExitReason::Succeed(s), Some(address), Vec::new()))
 					}
 					Err(e) => {
@@ -766,7 +761,7 @@ impl<'config, S: StackState<'config>> StackExecutor<'config, S> {
 		#[cfg(not(feature = "tracing"))]
 		let reason = self.execute(&mut runtime);
 		#[cfg(feature = "tracing")]
-		let reason = evm_runtime::tracing::using(&mut Tracer, || self.execute(&mut runtime));
+		let reason = module_evm_utiltity::evm_runtime::tracing::using(&mut Tracer, || self.execute(&mut runtime));
 
 		log::debug!(target: "evm", "Call execution using address {}: {:?}", code_address, reason);
 

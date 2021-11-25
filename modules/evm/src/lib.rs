@@ -31,8 +31,7 @@ pub use crate::{
 		Runner,
 	},
 };
-use codec::{Decode, Encode, MaxEncodedLen};
-pub use evm::{Config as EvmConfig, Context, ExitError, ExitFatal, ExitReason, ExitRevert, ExitSucceed};
+use codec::{Decode, Encode, FullCodec, MaxEncodedLen};
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult, DispatchResultWithPostInfo},
 	ensure,
@@ -50,20 +49,30 @@ use frame_support::{
 };
 use frame_system::{ensure_root, ensure_signed, pallet_prelude::*, EnsureOneOf, EnsureRoot, EnsureSigned};
 use hex_literal::hex;
+pub use module_evm_utiltity::{
+	ethereum::{Log, TransactionAction},
+	evm::{self, Config as EvmConfig, Context, ExitError, ExitFatal, ExitReason, ExitRevert, ExitSucceed},
+	Account,
+};
 pub use module_support::{
-	AddressMapping, EVMStateRentTrait, ExecutionMode, InvokeContext, TransactionPayment, EVM as EVMTrait,
+	AddressMapping, DispatchableTask, EVMStateRentTrait, ExecutionMode, IdleScheduler, InvokeContext,
+	TransactionPayment, EVM as EVMTrait,
 };
 pub use orml_traits::currency::TransferAll;
 use primitive_types::{H160, H256, U256};
 pub use primitives::{
-	evm::{Account, CallInfo, CreateInfo, EvmAddress, ExecutionInfo, Log, TransactionAction, Vicinity},
-	ReserveIdentifier, H160_PREFIX_DEXSHARE, H160_PREFIX_TOKEN, MIRRORED_NFT_ADDRESS_START, PRECOMPILE_ADDRESS_START,
-	SYSTEM_CONTRACT_ADDRESS_PREFIX,
+	evm::{
+		CallInfo, CreateInfo, EvmAddress, ExecutionInfo, Vicinity, MIRRORED_NFT_ADDRESS_START,
+		MIRRORED_TOKENS_ADDRESS_START,
+	},
+	task::TaskResult,
+	ReserveIdentifier,
 };
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sha3::{Digest, Keccak256};
+use sp_io::KillStorageResult::{AllRemoved, SomeRemaining};
 use sp_runtime::{
 	traits::{
 		Convert, DispatchInfoOf, One, PostDispatchInfoOf, Saturating, SignedExtension, UniqueSaturatedInto, Zero,
@@ -71,7 +80,14 @@ use sp_runtime::{
 	transaction_validity::TransactionValidityError,
 	Either, TransactionOutcome,
 };
-use sp_std::{collections::btree_map::BTreeMap, convert::TryInto, fmt::Write, marker::PhantomData, prelude::*};
+use sp_std::{
+	cmp,
+	collections::btree_map::BTreeMap,
+	convert::TryInto,
+	fmt::{Debug, Write},
+	marker::PhantomData,
+	prelude::*,
+};
 
 pub mod precompiles;
 pub mod runner;
@@ -217,6 +233,12 @@ pub mod module {
 
 		/// Find author for the current block.
 		type FindAuthor: FindAuthor<Self::AccountId>;
+
+		/// Dispatchable tasks
+		type Task: DispatchableTask + FullCodec + Debug + Clone + PartialEq + TypeInfo + From<EvmTask<Self>>;
+
+		/// Idle scheduler for the evm task.
+		type IdleScheduler: IdleScheduler<Self::Task>;
 
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
@@ -364,8 +386,7 @@ pub mod module {
 						address: *address,
 						apparent_value: Default::default(),
 					};
-					let metadata =
-						StackSubstateMetadata::new(210_000, 1000, T::NewContractExtraBytes::get(), T::config());
+					let metadata = StackSubstateMetadata::new(210_000, 1000, T::config());
 					let state = SubstrateStackState::<T>::new(&vicinity, metadata);
 					let mut executor = StackExecutor::new(state, T::config());
 
@@ -403,7 +424,7 @@ pub mod module {
 		/// A contract was attempted to be created, but the execution failed.
 		/// \[from, contract, exit_reason, logs\]
 		CreatedFailed(EvmAddress, EvmAddress, ExitReason, Vec<Log>),
-		/// A contract has been executed successfully with states applied. \[from, contract, logs]\
+		/// A contract has been executed successfully with states applied. \[from, contract, logs\]
 		Executed(EvmAddress, EvmAddress, Vec<Log>),
 		/// A contract has been executed with errors. States are reverted with
 		/// only gas fees applied. \[from, contract, exit_reason, output, logs\]
@@ -657,7 +678,7 @@ pub mod module {
 			T::NetworkContractOrigin::ensure_origin(origin)?;
 
 			let source = T::NetworkContractSource::get();
-			let address = EvmAddress::from_low_u64_be(Self::network_contract_index());
+			let address = MIRRORED_TOKENS_ADDRESS_START | EvmAddress::from_low_u64_be(Self::network_contract_index());
 			let info =
 				T::Runner::create_at_address(source, address, init, value, gas_limit, storage_limit, T::config())?;
 
@@ -812,7 +833,7 @@ pub mod module {
 		///
 		/// - `contract`: The contract whose code is being set, must not be marked as deployed
 		/// - `code`: The new ABI bundle for the contract
-		#[pallet::weight(<T as Config>::WeightInfo::set_code())]
+		#[pallet::weight(<T as Config>::WeightInfo::set_code(code.len() as u32))]
 		#[transactional]
 		pub fn set_code(origin: OriginFor<T>, contract: EvmAddress, code: Vec<u8>) -> DispatchResultWithPostInfo {
 			let root_or_signed = Self::ensure_root_or_signed(origin)?;
@@ -830,8 +851,8 @@ pub mod module {
 		#[transactional]
 		pub fn selfdestruct(origin: OriginFor<T>, contract: EvmAddress) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
-			let maintainer = T::AddressMapping::get_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
-			Self::do_selfdestruct(who, &maintainer, contract)?;
+			let caller = T::AddressMapping::get_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
+			Self::do_selfdestruct(&caller, &contract)?;
 
 			Pallet::<T>::deposit_event(Event::<T>::ContractSelfdestructed(contract));
 
@@ -865,15 +886,14 @@ impl<T: Config> Pallet<T> {
 	}
 
 	#[transactional]
-	pub fn remove_contract(address: &EvmAddress) -> Result<u32, DispatchError> {
-		let address_account = T::AddressMapping::get_account_id(address);
+	pub fn remove_contract(caller: &EvmAddress, contract: &EvmAddress) -> DispatchResult {
+		let contract_account = T::AddressMapping::get_account_id(contract);
 
-		let size = Accounts::<T>::try_mutate_exists(address, |account_info| -> Result<u32, DispatchError> {
+		Accounts::<T>::try_mutate_exists(contract, |account_info| -> DispatchResult {
+			// We will keep the nonce until the storages are cleared.
+			// Only remove the `contract_info`
 			let account_info = account_info.as_mut().ok_or(Error::<T>::ContractNotFound)?;
 			let contract_info = account_info.contract_info.take().ok_or(Error::<T>::ContractNotFound)?;
-
-			let maintainer_account = T::AddressMapping::get_account_id(&contract_info.maintainer);
-			T::TransferAll::transfer_all(&address_account, &maintainer_account)?;
 
 			CodeInfos::<T>::mutate_exists(&contract_info.code_hash, |maybe_code_info| {
 				if let Some(code_info) = maybe_code_info.as_mut() {
@@ -888,18 +908,23 @@ impl<T: Config> Pallet<T> {
 				}
 			});
 
-			AccountStorages::<T>::remove_prefix(address, None);
+			ContractStorageSizes::<T>::take(contract);
 
-			let size = ContractStorageSizes::<T>::take(address);
-
-			Ok(size)
+			T::IdleScheduler::schedule(
+				EvmTask::Remove {
+					caller: *caller,
+					contract: *contract,
+					maintainer: contract_info.maintainer,
+				}
+				.into(),
+			)
 		})?;
 
 		// this should happen after `Accounts` is updated because this could trigger another updates on
 		// `Accounts`
-		frame_system::Pallet::<T>::dec_providers(&address_account)?;
+		frame_system::Pallet::<T>::dec_providers(&contract_account)?;
 
-		Ok(size)
+		Ok(())
 	}
 
 	/// Removes an account from Accounts and AccountStorages.
@@ -966,11 +991,6 @@ impl<T: Config> Pallet<T> {
 			#[cfg(not(feature = "with-ethereum-compatibility"))]
 			deployed: false,
 		};
-
-		Self::update_contract_storage_size(
-			&address,
-			code_size.saturating_add(T::NewContractExtraBytes::get()) as i32,
-		);
 
 		CodeInfos::<T>::mutate_exists(&code_hash, |maybe_code_info| {
 			if let Some(code_info) = maybe_code_info.as_mut() {
@@ -1177,31 +1197,17 @@ impl<T: Config> Pallet<T> {
 	}
 
 	/// Selfdestruct a contract at a given address.
-	fn do_selfdestruct(who: T::AccountId, maintainer: &EvmAddress, contract: EvmAddress) -> DispatchResult {
+	fn do_selfdestruct(caller: &EvmAddress, contract: &EvmAddress) -> DispatchResult {
 		let account_info = Self::accounts(contract).ok_or(Error::<T>::ContractNotFound)?;
 		let contract_info = account_info
 			.contract_info
 			.as_ref()
 			.ok_or(Error::<T>::ContractNotFound)?;
 
-		ensure!(contract_info.maintainer == *maintainer, Error::<T>::NoPermission);
+		ensure!(contract_info.maintainer == *caller, Error::<T>::NoPermission);
 		ensure!(!contract_info.deployed, Error::<T>::ContractAlreadyDeployed);
 
-		let storage = Self::remove_contract(&contract)?;
-
-		let contract_account = T::AddressMapping::get_account_id(&contract);
-
-		let amount = T::StorageDepositPerByte::get().saturating_mul(storage.into());
-		let val = T::Currency::repatriate_reserved_named(
-			&RESERVE_ID_STORAGE_DEPOSIT,
-			&contract_account,
-			&who,
-			amount,
-			BalanceStatus::Free,
-		)?;
-		debug_assert!(val.is_zero());
-
-		Ok(())
+		Self::remove_contract(caller, contract)
 	}
 
 	fn ensure_root_or_signed(o: T::Origin) -> Result<Either<(), T::AccountId>, BadOrigin> {
@@ -1310,6 +1316,33 @@ impl<T: Config> Pallet<T> {
 			)?;
 			debug_assert!(val.is_zero());
 		};
+
+		Ok(())
+	}
+
+	fn refund_storage(caller: &H160, contract: &H160, maintainer: &H160) -> DispatchResult {
+		let user = T::AddressMapping::get_account_id(caller);
+		let contract_acc = T::AddressMapping::get_account_id(contract);
+		let maintainer_acc = T::AddressMapping::get_account_id(maintainer);
+		let amount = T::Currency::reserved_balance_named(&RESERVE_ID_STORAGE_DEPOSIT, &contract_acc);
+
+		log::debug!(
+			target: "evm",
+			"refund_storage: [from: {:?}, account: {:?}, contract: {:?}, contract_acc: {:?}, maintainer: {:?}, maintainer_acc: {:?}, amount: {:?}]",
+			caller, user, contract, contract_acc, maintainer, maintainer_acc, amount
+		);
+
+		// user can't be a dead account
+		let val = T::Currency::repatriate_reserved_named(
+			&RESERVE_ID_STORAGE_DEPOSIT,
+			&contract_acc,
+			&user,
+			amount,
+			BalanceStatus::Free,
+		)?;
+		debug_assert!(val.is_zero());
+
+		T::TransferAll::transfer_all(&contract_acc, &maintainer_acc)?;
 
 		Ok(())
 	}
@@ -1490,5 +1523,96 @@ impl<T: Config + Send + Sync> SignedExtension for SetEvmOrigin<T> {
 	) -> Result<(), TransactionValidityError> {
 		ExtrinsicOrigin::<T>::kill();
 		Ok(())
+	}
+}
+
+#[derive(Clone, RuntimeDebug, PartialEq, Encode, Decode, TypeInfo)]
+pub enum EvmTask<T: Config> {
+	// TODO: update
+	Schedule {
+		from: EvmAddress,
+		target: EvmAddress,
+		input: Vec<u8>,
+		value: BalanceOf<T>,
+		gas_limit: u64,
+		storage_limit: u32,
+	},
+	Remove {
+		caller: EvmAddress,
+		contract: EvmAddress,
+		maintainer: EvmAddress,
+	},
+}
+
+impl<T: Config> DispatchableTask for EvmTask<T> {
+	fn dispatch(self, weight: Weight) -> TaskResult {
+		match self {
+			// TODO: update
+			EvmTask::Schedule { .. } => {
+				// check weight and call `scheduled_call`
+				TaskResult {
+					result: Ok(()),
+					used_weight: 0,
+					finished: false,
+				}
+			}
+			EvmTask::Remove {
+				caller,
+				contract,
+				maintainer,
+			} => {
+				// default limit 100
+				let limit = cmp::min(
+					weight
+						.checked_div(<T as frame_system::Config>::DbWeight::get().write)
+						.unwrap_or(100),
+					100,
+				) as u32;
+
+				match <AccountStorages<T>>::remove_prefix(contract, Some(limit)) {
+					AllRemoved(count) => {
+						let res = Pallet::<T>::refund_storage(&caller, &contract, &maintainer);
+						log::debug!(
+							target: "evm",
+							"EvmTask::Remove: [from: {:?}, contract: {:?}, maintainer: {:?}, count: {:?}, result: {:?}]",
+							caller, contract, maintainer, count, res
+						);
+
+						// Remove account after all of the storages are cleared.
+						Accounts::<T>::take(contract);
+
+						TaskResult {
+							result: res,
+							used_weight: <T as frame_system::Config>::DbWeight::get()
+								.write
+								.saturating_mul(count.into()),
+							finished: true,
+						}
+					}
+					SomeRemaining(count) => {
+						log::debug!(
+							target: "evm",
+							"EvmTask::Remove: [from: {:?}, contract: {:?}, maintainer: {:?}, count: {:?}]",
+							caller, contract, maintainer, count
+						);
+
+						TaskResult {
+							result: Ok(()),
+							used_weight: <T as frame_system::Config>::DbWeight::get()
+								.write
+								.saturating_mul(count.into()),
+							finished: false,
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+#[cfg(feature = "std")]
+impl<T: Config> From<EvmTask<T>> for () {
+	fn from(_task: EvmTask<T>) -> Self {
+		unimplemented!()
 	}
 }

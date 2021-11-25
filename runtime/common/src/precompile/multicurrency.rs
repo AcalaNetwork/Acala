@@ -19,15 +19,14 @@
 use crate::precompile::PrecompileOutput;
 use frame_support::log;
 use module_evm::{Context, ExitError, ExitSucceed, Precompile};
-use module_support::{AddressMapping as AddressMappingT, CurrencyIdMapping as CurrencyIdMappingT};
+use module_support::Erc20InfoMapping as Erc20InfoMappingT;
 use sp_runtime::RuntimeDebug;
-use sp_std::{fmt::Debug, marker::PhantomData, prelude::*, result};
+use sp_std::{marker::PhantomData, prelude::*, result};
 
 use orml_traits::MultiCurrency as MultiCurrencyT;
 
 use super::input::{Input, InputT, Output};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
-use primitives::{Balance, CurrencyId};
 
 /// The `MultiCurrency` impl precompile.
 ///
@@ -38,11 +37,9 @@ use primitives::{Balance, CurrencyId};
 /// - Query total issuance.
 /// - Query balance. Rest `input` bytes: `account_id`.
 /// - Transfer. Rest `input` bytes: `from`, `to`, `amount`.
-pub struct MultiCurrencyPrecompile<AccountId, AddressMapping, CurrencyIdMapping, MultiCurrency>(
-	PhantomData<(AccountId, AddressMapping, CurrencyIdMapping, MultiCurrency)>,
-);
+pub struct MultiCurrencyPrecompile<R>(PhantomData<R>);
 
-#[primitives_proc_macro::generate_function_selector]
+#[module_evm_utiltity_macro::generate_function_selector]
 #[derive(RuntimeDebug, Eq, PartialEq, TryFromPrimitive, IntoPrimitive)]
 #[repr(u32)]
 pub enum Action {
@@ -54,31 +51,27 @@ pub enum Action {
 	Transfer = "transfer(address,address,uint256)",
 }
 
-impl<AccountId, AddressMapping, CurrencyIdMapping, MultiCurrency> Precompile
-	for MultiCurrencyPrecompile<AccountId, AddressMapping, CurrencyIdMapping, MultiCurrency>
+impl<Runtime> Precompile for MultiCurrencyPrecompile<Runtime>
 where
-	AccountId: Debug + Clone,
-	AddressMapping: AddressMappingT<AccountId>,
-	CurrencyIdMapping: CurrencyIdMappingT,
-	MultiCurrency: MultiCurrencyT<AccountId, Balance = Balance, CurrencyId = CurrencyId>,
+	Runtime: module_evm::Config + module_prices::Config + module_transaction_payment::Config,
 {
 	fn execute(
 		input: &[u8],
 		_target_gas: Option<u64>,
 		context: &Context,
 	) -> result::Result<PrecompileOutput, ExitError> {
-		let input = Input::<Action, AccountId, AddressMapping, CurrencyIdMapping>::new(input);
+		let input = Input::<Action, Runtime::AccountId, Runtime::AddressMapping, Runtime::Erc20InfoMapping>::new(input);
 
 		let action = input.action()?;
-		let currency_id = CurrencyIdMapping::decode_evm_address(context.caller)
+		let currency_id = Runtime::Erc20InfoMapping::decode_evm_address(context.caller)
 			.ok_or_else(|| ExitError::Other("invalid currency id".into()))?;
 
 		log::debug!(target: "evm", "multicurrency: currency id: {:?}", currency_id);
 
 		match action {
 			Action::QueryName => {
-				let name =
-					CurrencyIdMapping::name(currency_id).ok_or_else(|| ExitError::Other("Get name failed".into()))?;
+				let name = Runtime::Erc20InfoMapping::name(currency_id)
+					.ok_or_else(|| ExitError::Other("Get name failed".into()))?;
 				log::debug!(target: "evm", "multicurrency: name: {:?}", name);
 
 				Ok(PrecompileOutput {
@@ -89,7 +82,7 @@ where
 				})
 			}
 			Action::QuerySymbol => {
-				let symbol = CurrencyIdMapping::symbol(currency_id)
+				let symbol = Runtime::Erc20InfoMapping::symbol(currency_id)
 					.ok_or_else(|| ExitError::Other("Get symbol failed".into()))?;
 				log::debug!(target: "evm", "multicurrency: symbol: {:?}", symbol);
 
@@ -101,7 +94,7 @@ where
 				})
 			}
 			Action::QueryDecimals => {
-				let decimals = CurrencyIdMapping::decimals(currency_id)
+				let decimals = Runtime::Erc20InfoMapping::decimals(currency_id)
 					.ok_or_else(|| ExitError::Other("Get decimals failed".into()))?;
 				log::debug!(target: "evm", "multicurrency: decimals: {:?}", decimals);
 
@@ -113,7 +106,7 @@ where
 				})
 			}
 			Action::QueryTotalIssuance => {
-				let total_issuance = MultiCurrency::total_issuance(currency_id);
+				let total_issuance = Runtime::MultiCurrency::total_issuance(currency_id);
 				log::debug!(target: "evm", "multicurrency: total issuance: {:?}", total_issuance);
 
 				Ok(PrecompileOutput {
@@ -125,7 +118,7 @@ where
 			}
 			Action::QueryBalance => {
 				let who = input.account_id_at(1)?;
-				let balance = MultiCurrency::total_balance(currency_id, &who);
+				let balance = Runtime::MultiCurrency::total_balance(currency_id, &who);
 				log::debug!(target: "evm", "multicurrency: who: {:?}, balance: {:?}", who, balance);
 
 				Ok(PrecompileOutput {
@@ -141,7 +134,7 @@ where
 				let amount = input.balance_at(3)?;
 				log::debug!(target: "evm", "multicurrency: transfer from: {:?}, to: {:?}, amount: {:?}", from, to, amount);
 
-				MultiCurrency::transfer(currency_id, &from, &to, amount).map_err(|e| {
+				Runtime::MultiCurrency::transfer(currency_id, &from, &to, amount).map_err(|e| {
 					let err_msg: &str = e.into();
 					ExitError::Other(err_msg.into())
 				})?;

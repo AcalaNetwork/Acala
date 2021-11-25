@@ -10,7 +10,7 @@ describeWithAcala("Acala RPC (Precompile)", (context) => {
 	let contract: Contract;
 
 	before(async () => {
-		[ alice ] = await context.provider.getWallets();
+		[alice] = await context.provider.getWallets();
 		contract = await deployContract(alice as any, ECRecoverTests);
 		signer = new Wallet(
 			"0x99B3C12287537E38C90A9219D4CB074A89A16E9CDB20BF85728EBD97C343E342"
@@ -33,7 +33,7 @@ describeWithAcala("Acala RPC (Precompile)", (context) => {
 			from: await alice.getAddress(),
 			confirmations: 0,
 			nonce: 1,
-			gasLimit: BigNumber.from("32781"),
+			gasLimit: BigNumber.from("30216"),
 			gasPrice: BigNumber.from("1"),
 			//data: "",
 			value: BigNumber.from(0),

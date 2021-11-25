@@ -128,7 +128,7 @@ impl orml_currencies::Config for Runtime {
 parameter_types! {
 	pub const GetStableCurrencyId: CurrencyId = AUSD;
 	pub const GetExchangeFee: (u32, u32) = (0, 100);
-	pub const TradingPathLimit: u32 = 3;
+	pub const TradingPathLimit: u32 = 4;
 	pub EnabledTradingPairs: Vec<TradingPair> = vec![
 		TradingPair::from_currency_ids(AUSD, BTC).unwrap(),
 		TradingPair::from_currency_ids(AUSD, DOT).unwrap(),
@@ -143,7 +143,7 @@ impl module_dex::Config for Runtime {
 	type GetExchangeFee = GetExchangeFee;
 	type TradingPathLimit = TradingPathLimit;
 	type PalletId = DEXPalletId;
-	type CurrencyIdMapping = ();
+	type Erc20InfoMapping = ();
 	type DEXIncentives = ();
 	type WeightInfo = ();
 	type ListingOrigin = EnsureSignedBy<One, AccountId>;

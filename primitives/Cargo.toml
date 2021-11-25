@@ -1,6 +1,6 @@
 [package]
 name = "acala-primitives"
-version = "1.5.1"
+version = "2.0.2"
 authors = ["Acala Developers"]
 edition = "2018"
 
@@ -12,26 +12,21 @@ num_enum = { version = "0.5.1", default-features = false }
 parity-util-mem = { version = "0.10.0", default-features = false, features = ["primitive-types"] }
 scale-info = { version = "1.0", default-features = false, features = ["derive"] }
 
-sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.11", default-features = false }
-sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.11", default-features = false }
-sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.11", default-features = false }
-sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.11", default-features = false }
-sp-api = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.11", default-features = false }
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.12", default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.12", default-features = false }
+sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.12", default-features = false }
+sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.12", default-features = false }
+sp-api = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.12", default-features = false }
 
-frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.11", default-features = false }
+frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.12", default-features = false }
 
-# TODO
-#evm = { version = "0.30.0", default-features = false, features = ["with-codec"] }
-#ethereum = { version = "0.9.0", default-features = false, features = ["with-codec"] }
-ethereum = { git = "https://github.com/PureStake/ethereum", branch = "joshy-scale-info", default-features = false, features = ["with-codec"] }
-evm = { git = "https://github.com/PureStake/evm", branch = "joshy-scale-info", default-features = false, features = ["with-codec"] }
-
+module-evm-utiltity = { path = "../modules/evm-utiltity", default-features = false }
+module-evm-utiltity-macro = { path = "../modules/evm-utiltity/macro" }
 nutsfinance-stable-asset = { version = "0.1.0", default-features = false, path = "../ecosystem-modules/stable-asset/lib/stable-asset", package = "nutsfinance-stable-asset" }
 
 [dev-dependencies]
 serde_json = { version = "1.0.64" }
 hex-literal = "0.3.1"
-primitives-proc-macro = { path = "./proc-macro" }
 
 [features]
 default = ["std"]
@@ -50,10 +45,6 @@ std = [
 
 	"frame-support/std",
 
-	"evm/std",
-	"evm/with-serde",
-	"ethereum/std",
-	"ethereum/with-serde",
-
+	"module-evm-utiltity/std",
 	"nutsfinance-stable-asset/std",
 ]

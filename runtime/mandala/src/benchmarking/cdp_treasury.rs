@@ -16,7 +16,9 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{dollar, CdpTreasury, Currencies, CurrencyId, GetStableCurrencyId, GetStakingCurrencyId, Runtime};
+use crate::{
+	dollar, CdpTreasury, Currencies, CurrencyId, GetStableCurrencyId, GetStakingCurrencyId, MaxAuctionsCount, Runtime,
+};
 
 use frame_system::RawOrigin;
 use module_support::CDPTreasury;
@@ -30,6 +32,11 @@ runtime_benchmarks! {
 	{ Runtime, module_cdp_treasury }
 
 	auction_collateral {
+		let b in 1 .. MaxAuctionsCount::get();
+
+		let auction_size = (1_000 * dollar(STAKING)) / b as u128;
+		CdpTreasury::set_expected_collateral_auction_size(RawOrigin::Root.into(), STAKING, auction_size)?;
+
 		Currencies::deposit(STAKING, &CdpTreasury::account_id(), 10_000 * dollar(STAKING))?;
 	}: _(RawOrigin::Root, STAKING, 1_000 * dollar(STAKING), 1_000 * dollar(STABLECOIN), true)
 

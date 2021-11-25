@@ -21,12 +21,9 @@ pub mod state;
 pub mod storage_meter;
 
 use crate::{BalanceOf, CallInfo, Config, CreateInfo, ExitError};
-use evm::{backend::Backend, Transfer};
 use frame_support::dispatch::DispatchError;
-pub use primitives::{
-	evm::{Account, EvmAddress, Log, Vicinity},
-	ReserveIdentifier, MIRRORED_NFT_ADDRESS_START,
-};
+use module_evm_utiltity::evm::{self, backend::Backend, Transfer};
+pub use primitives::evm::{EvmAddress, Vicinity};
 use sp_core::{H160, H256};
 use sp_std::vec::Vec;
 use state::StackSubstateMetadata;

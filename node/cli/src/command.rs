@@ -87,18 +87,16 @@ impl SubstrateCli for Cli {
 			#[cfg(feature = "with-acala-runtime")]
 			"acala" => Box::new(chain_spec::acala::acala_config()?),
 			#[cfg(feature = "with-acala-runtime")]
+			"acala-dev" => Box::new(chain_spec::acala::acala_dev_config()?),
+			#[cfg(feature = "with-acala-runtime")]
 			"acala-latest" => Box::new(chain_spec::acala::latest_acala_config()?),
 			path => {
 				let path = std::path::PathBuf::from(path);
 
-				let starts_with = |prefix: &str| {
-					path.file_name()
-						.map(|f| f.to_str().map(|s| s.starts_with(&prefix)))
-						.flatten()
-						.unwrap_or(false)
-				};
+				let chain_spec = Box::new(service::chain_spec::DummyChainSpec::from_json_file(path.clone())?)
+					as Box<dyn service::ChainSpec>;
 
-				if starts_with("karura") {
+				if chain_spec.is_karura() {
 					#[cfg(feature = "with-karura-runtime")]
 					{
 						Box::new(chain_spec::karura::ChainSpec::from_json_file(path)?)
@@ -106,7 +104,7 @@ impl SubstrateCli for Cli {
 
 					#[cfg(not(feature = "with-karura-runtime"))]
 					return Err(service::KARURA_RUNTIME_NOT_AVAILABLE.into());
-				} else if starts_with("acala") {
+				} else if chain_spec.is_acala() {
 					#[cfg(feature = "with-acala-runtime")]
 					{
 						Box::new(chain_spec::acala::ChainSpec::from_json_file(path)?)
@@ -177,7 +175,15 @@ impl SubstrateCli for RelayChainCli {
 	}
 
 	fn load_spec(&self, id: &str) -> std::result::Result<Box<dyn sc_service::ChainSpec>, String> {
-		polkadot_cli::Cli::from_iter([RelayChainCli::executable_name()].iter()).load_spec(id)
+		println!("Loading chain spec {}", id);
+		if id == "rococo-mandala" {
+			let spec = sc_service::GenericChainSpec::<(), polkadot_service::chain_spec::Extensions>::from_json_bytes(
+				&include_bytes!("../../../resources/rococo-mandala.json")[..],
+			)?;
+			Ok(Box::new(spec))
+		} else {
+			polkadot_cli::Cli::from_iter([RelayChainCli::executable_name()].iter()).load_spec(id)
+		}
 	}
 
 	fn native_runtime_version(chain_spec: &Box<dyn ChainSpec>) -> &'static RuntimeVersion {
@@ -186,17 +192,17 @@ impl SubstrateCli for RelayChainCli {
 }
 
 fn set_default_ss58_version(spec: &Box<dyn service::ChainSpec>) {
-	use sp_core::crypto::Ss58AddressFormat;
+	use sp_core::crypto::Ss58AddressFormatRegistry;
 
 	let ss58_version = if spec.is_karura() {
-		Ss58AddressFormat::KaruraAccount
+		Ss58AddressFormatRegistry::KaruraAccount
 	} else if spec.is_acala() {
-		Ss58AddressFormat::AcalaAccount
+		Ss58AddressFormatRegistry::AcalaAccount
 	} else {
-		Ss58AddressFormat::SubstrateAccount
+		Ss58AddressFormatRegistry::SubstrateAccount
 	};
 
-	sp_core::crypto::set_default_ss58_version(ss58_version);
+	sp_core::crypto::set_default_ss58_version(ss58_version.into());
 }
 
 fn extract_genesis_wasm(chain_spec: &Box<dyn service::ChainSpec>) -> Result<Vec<u8>> {

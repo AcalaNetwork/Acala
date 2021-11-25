@@ -56,6 +56,7 @@ pub enum StakingCall {
 	WithdrawUnbonded(u32),
 }
 
+#[cfg(feature = "kusama")]
 mod kusama {
 	use crate::*;
 
@@ -72,6 +73,7 @@ mod kusama {
 	}
 }
 
+#[cfg(feature = "polkadot")]
 mod polkadot {
 	use crate::*;
 

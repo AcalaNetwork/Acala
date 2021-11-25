@@ -25,23 +25,25 @@ use crate::{
 		state::{StackExecutor, StackSubstateMetadata},
 		Runner as RunnerT, StackState as StackStateT,
 	},
-	AccountInfo, AccountStorages, Accounts, BalanceOf, CallInfo, Config, ContractStorageSizes, CreateInfo, Error,
-	Event, ExecutionInfo, One, Pallet, STORAGE_SIZE,
+	AccountInfo, AccountStorages, Accounts, BalanceOf, CallInfo, Config, CreateInfo, Error, Event, ExecutionInfo, One,
+	Pallet, STORAGE_SIZE,
 };
-use evm::{backend::Backend as BackendT, ExitError, ExitReason, Transfer};
 use frame_support::{
 	dispatch::DispatchError,
 	ensure, log,
 	traits::{Currency, ExistenceRequirement, Get},
 };
+use module_evm_utiltity::{
+	ethereum::Log,
+	evm::{self, backend::Backend as BackendT, ExitError, ExitReason, Transfer},
+};
 use module_support::AddressMapping;
 pub use primitives::{
-	evm::{Account, EvmAddress, Log, Vicinity},
-	ReserveIdentifier, MIRRORED_NFT_ADDRESS_START,
+	evm::{EvmAddress, Vicinity, MIRRORED_NFT_ADDRESS_START},
+	ReserveIdentifier,
 };
 use sha3::{Digest, Keccak256};
 use sp_core::{H160, H256, U256};
-use sp_io::KillStorageResult::{AllRemoved, SomeRemaining};
 use sp_runtime::traits::UniqueSaturatedInto;
 use sp_std::{boxed::Box, collections::btree_set::BTreeSet, marker::PhantomData, mem, vec, vec::Vec};
 
@@ -67,7 +69,7 @@ impl<T: Config> Runner<T> {
 		let gas_price = U256::one();
 		let vicinity = Vicinity { gas_price, origin };
 
-		let metadata = StackSubstateMetadata::new(gas_limit, storage_limit, T::NewContractExtraBytes::get(), config);
+		let metadata = StackSubstateMetadata::new(gas_limit, storage_limit, config);
 		let state = SubstrateStackState::new(&vicinity, metadata);
 		let mut executor = StackExecutor::new_with_precompile(state, config, T::Precompiles::execute);
 
@@ -124,6 +126,12 @@ impl<T: Config> Runner<T> {
 			.ok_or(Error::<T>::OutOfStorage)?;
 		let used_storage = state.metadata().storage_meter().total_used();
 		let refunded_storage = state.metadata().storage_meter().total_refunded();
+		log::debug!(
+			target: "evm",
+			"Storage logs: {:?}",
+			state.substate.storage_logs
+		);
+		let mut sum_storage: i32 = 0;
 		for (target, storage) in &state.substate.storage_logs {
 			if !config.estimate {
 				Pallet::<T>::charge_storage(&origin, target, *storage).map_err(|e| {
@@ -138,7 +146,17 @@ impl<T: Config> Runner<T> {
 					Error::<T>::ChargeStorageFailed
 				})?;
 			}
+			sum_storage += storage;
 		}
+		if actual_storage != sum_storage {
+			log::debug!(
+				target: "evm",
+				"ChargeStorageFailed [actual_storage: {:?}, sum_storage: {:?}]",
+				actual_storage, sum_storage
+			);
+			return Err(Error::<T>::ChargeStorageFailed.into());
+		}
+
 		if !config.estimate {
 			Pallet::<T>::unreserve_storage(&origin, storage_limit, used_storage, refunded_storage).map_err(|e| {
 				log::debug!(
@@ -160,7 +178,7 @@ impl<T: Config> Runner<T> {
 				"Deleting account at {:?}",
 				address
 			);
-			Pallet::<T>::remove_contract(&address).map_err(|e| {
+			Pallet::<T>::remove_contract(&origin, &address).map_err(|e| {
 				log::debug!(
 					target: "evm",
 					"CannotKillContract address {:?}, reason: {:?}",
@@ -605,14 +623,7 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 	}
 
 	fn reset_storage(&mut self, address: H160) {
-		match <AccountStorages<T>>::remove_prefix(address, None) {
-			AllRemoved(count) | SomeRemaining(count) => {
-				// should not happen
-				let storage = count.saturating_mul(STORAGE_SIZE);
-				Pallet::<T>::update_contract_storage_size(&address, -(storage as i32));
-				self.substate.metadata.storage_meter_mut().refund(storage);
-			}
-		}
+		<AccountStorages<T>>::remove_prefix(address, None);
 	}
 
 	fn log(&mut self, address: H160, topics: Vec<H256>, data: Vec<u8>) {
@@ -621,8 +632,6 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 
 	fn set_deleted(&mut self, address: H160) {
 		self.substate.set_deleted(address);
-		let size = ContractStorageSizes::<T>::get(address);
-		self.substate.metadata.storage_meter_mut().refund(size);
 	}
 
 	fn set_code(&mut self, address: H160, code: Vec<u8>) {
@@ -637,37 +646,43 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 		let mut substate = &self.substate;
 
 		loop {
-			if let Some(c) = substate.metadata().caller() {
-				// the caller maybe is contract and not deployed.
-				// get the parent's maintainer.
-				if Pallet::<T>::is_account_empty(c) {
-					if substate.parent.is_none() {
-						log::error!(
-							target: "evm",
-							"get parent's maintainer failed. caller: {:?}, address: {:?}",
-							c,
-							address
-						);
-						debug_assert!(false);
-						return;
-					}
-					substate = substate.parent.as_ref().expect("has checked; qed");
-				} else {
-					caller = *c;
-					break;
-				}
-			} else {
+			// get maintainer from parent caller
+			// `enter_substate` will do `spit_child`
+			if substate.parent.is_none() {
 				log::error!(
 					target: "evm",
-					"get maintainer failed. address: {:?}",
+					"get parent's maintainer failed. address: {:?}",
 					address
 				);
 				debug_assert!(false);
 				return;
 			}
+
+			substate = substate.parent.as_ref().expect("has checked; qed");
+
+			if let Some(c) = substate.metadata().caller() {
+				// the caller maybe is contract and not deployed.
+				// get the parent's maintainer.
+				if !Pallet::<T>::is_account_empty(c) {
+					caller = *c;
+					break;
+				}
+			}
 		}
 
+		log::debug!(
+			target: "evm",
+			"set_code: address: {:?}, maintainer: {:?}",
+			address,
+			caller
+		);
+
+		let code_size = code.len() as u32;
 		Pallet::<T>::create_contract(caller, address, code);
+
+		let used_storage = code_size.saturating_add(T::NewContractExtraBytes::get());
+		Pallet::<T>::update_contract_storage_size(&address, used_storage as i32);
+		self.substate.metadata.storage_meter_mut().charge(used_storage);
 	}
 
 	fn transfer(&mut self, transfer: Transfer) -> Result<(), ExitError> {

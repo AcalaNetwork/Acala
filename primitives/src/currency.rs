@@ -21,6 +21,7 @@
 use crate::{evm::EvmAddress, *};
 use bstringify::bstringify;
 use codec::{Decode, Encode};
+use num_enum::{IntoPrimitive, TryFromPrimitive};
 use scale_info::TypeInfo;
 use sp_runtime::RuntimeDebug;
 use sp_std::{
@@ -212,12 +213,17 @@ pub trait TokenInfo {
 	fn decimals(&self) -> Option<u8>;
 }
 
+pub type ForeignAssetId = u16;
+pub type Lease = BlockNumber;
+
 #[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 pub enum DexShare {
 	Token(TokenSymbol),
 	Erc20(EvmAddress),
+	LiquidCroadloan(Lease),
+	ForeignAsset(ForeignAssetId),
 }
 
 #[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord, TypeInfo)]
@@ -228,6 +234,8 @@ pub enum CurrencyId {
 	DexShare(DexShare, DexShare),
 	Erc20(EvmAddress),
 	StableAssetPoolToken(nutsfinance_stable_asset::StableAssetPoolId),
+	LiquidCroadloan(Lease),
+	ForeignAsset(ForeignAssetId),
 }
 
 impl CurrencyId {
@@ -258,12 +266,18 @@ impl CurrencyId {
 		let dex_share_0 = match currency_id_0 {
 			CurrencyId::Token(symbol) => DexShare::Token(symbol),
 			CurrencyId::Erc20(address) => DexShare::Erc20(address),
-			_ => return None,
+			CurrencyId::LiquidCroadloan(lease) => DexShare::LiquidCroadloan(lease),
+			CurrencyId::ForeignAsset(foreign_asset_id) => DexShare::ForeignAsset(foreign_asset_id),
+			// Unsupported
+			CurrencyId::DexShare(..) | CurrencyId::StableAssetPoolToken(_) => return None,
 		};
 		let dex_share_1 = match currency_id_1 {
 			CurrencyId::Token(symbol) => DexShare::Token(symbol),
 			CurrencyId::Erc20(address) => DexShare::Erc20(address),
-			_ => return None,
+			CurrencyId::LiquidCroadloan(lease) => DexShare::LiquidCroadloan(lease),
+			CurrencyId::ForeignAsset(foreign_asset_id) => DexShare::ForeignAsset(foreign_asset_id),
+			// Unsupported
+			CurrencyId::DexShare(..) | CurrencyId::StableAssetPoolToken(_) => return None,
 		};
 		Some(CurrencyId::DexShare(dex_share_0, dex_share_1))
 	}
@@ -282,37 +296,14 @@ impl From<DexShare> for u32 {
 				let index = if leading_zeros > 16 { 16 } else { leading_zeros };
 				bytes[..].copy_from_slice(&address[index..index + 4][..]);
 			}
+			DexShare::LiquidCroadloan(lease) => {
+				bytes[..].copy_from_slice(&lease.to_be_bytes());
+			}
+			DexShare::ForeignAsset(foreign_asset_id) => {
+				bytes[2..].copy_from_slice(&foreign_asset_id.to_be_bytes());
+			}
 		}
 		u32::from_be_bytes(bytes)
-	}
-}
-
-/// Generate the EvmAddress from CurrencyId so that evm contracts can call the erc20 contract.
-impl TryFrom<CurrencyId> for EvmAddress {
-	type Error = ();
-
-	fn try_from(val: CurrencyId) -> Result<Self, Self::Error> {
-		match val {
-			CurrencyId::Token(_) => Ok(EvmAddress::from_low_u64_be(
-				MIRRORED_TOKENS_ADDRESS_START | u64::from(val.currency_id().unwrap()),
-			)),
-			CurrencyId::DexShare(token_symbol_0, token_symbol_1) => {
-				let symbol_0 = match token_symbol_0 {
-					DexShare::Token(token) => CurrencyId::Token(token).currency_id().ok_or(()),
-					DexShare::Erc20(_) => Err(()),
-				}?;
-				let symbol_1 = match token_symbol_1 {
-					DexShare::Token(token) => CurrencyId::Token(token).currency_id().ok_or(()),
-					DexShare::Erc20(_) => Err(()),
-				}?;
-
-				let mut prefix = EvmAddress::default();
-				prefix[0..H160_PREFIX_DEXSHARE.len()].copy_from_slice(&H160_PREFIX_DEXSHARE);
-				Ok(prefix | EvmAddress::from_low_u64_be(u64::from(symbol_0) << 32 | u64::from(symbol_1)))
-			}
-			CurrencyId::Erc20(address) => Ok(address),
-			CurrencyId::StableAssetPoolToken(_) => Err(()),
-		}
 	}
 }
 
@@ -321,6 +312,43 @@ impl Into<CurrencyId> for DexShare {
 		match self {
 			DexShare::Token(token) => CurrencyId::Token(token),
 			DexShare::Erc20(address) => CurrencyId::Erc20(address),
+			DexShare::LiquidCroadloan(lease) => CurrencyId::LiquidCroadloan(lease),
+			DexShare::ForeignAsset(foreign_asset_id) => CurrencyId::ForeignAsset(foreign_asset_id),
+		}
+	}
+}
+
+/// H160 CurrencyId Type enum
+#[derive(
+	Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord, TryFromPrimitive, IntoPrimitive, TypeInfo,
+)]
+#[repr(u8)]
+pub enum CurrencyIdType {
+	Token = 1, // 0 is prefix of precompile and predeploy
+	DexShare,
+	StableAsset,
+	LiquidCroadloan,
+	ForeignAsset,
+}
+
+#[derive(
+	Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord, TryFromPrimitive, IntoPrimitive, TypeInfo,
+)]
+#[repr(u8)]
+pub enum DexShareType {
+	Token,
+	Erc20,
+	LiquidCroadloan,
+	ForeignAsset,
+}
+
+impl Into<DexShareType> for DexShare {
+	fn into(self) -> DexShareType {
+		match self {
+			DexShare::Token(_) => DexShareType::Token,
+			DexShare::Erc20(_) => DexShareType::Erc20,
+			DexShare::LiquidCroadloan(_) => DexShareType::LiquidCroadloan,
+			DexShare::ForeignAsset(_) => DexShareType::ForeignAsset,
 		}
 	}
 }

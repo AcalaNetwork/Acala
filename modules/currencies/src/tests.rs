@@ -206,6 +206,26 @@ fn basic_currency_adapting_pallet_balances_deposit() {
 }
 
 #[test]
+fn basic_currency_adapting_pallet_balances_deposit_throw_error_when_actual_deposit_is_not_expected() {
+	ExtBuilder::default()
+		.one_hundred_for_alice_n_bob()
+		.build()
+		.execute_with(|| {
+			assert_eq!(PalletBalances::total_balance(&eva()), 0);
+			assert_eq!(PalletBalances::total_issuance(), 200);
+			assert_noop!(
+				AdaptedBasicCurrency::deposit(&eva(), 1),
+				Error::<Runtime>::DepositFailed
+			);
+			assert_eq!(PalletBalances::total_balance(&eva()), 0);
+			assert_eq!(PalletBalances::total_issuance(), 200);
+			assert_ok!(AdaptedBasicCurrency::deposit(&eva(), 2));
+			assert_eq!(PalletBalances::total_balance(&eva()), 2);
+			assert_eq!(PalletBalances::total_issuance(), 202);
+		});
+}
+
+#[test]
 fn basic_currency_adapting_pallet_balances_withdraw() {
 	ExtBuilder::default()
 		.one_hundred_for_alice_n_bob()
@@ -868,7 +888,7 @@ fn sweep_dust_tokens_works() {
 		assert_ok!(Currencies::sweep_dust(
 			Origin::signed(CouncilAccount::get()),
 			DOT,
-			accounts.clone()
+			accounts
 		));
 		System::assert_last_event(Event::Currencies(crate::Event::DustSwept(DOT, bob(), 1)));
 
@@ -943,7 +963,7 @@ fn sweep_dust_native_currency_works() {
 		assert_ok!(Currencies::sweep_dust(
 			Origin::signed(CouncilAccount::get()),
 			NATIVE_CURRENCY_ID,
-			accounts.clone()
+			accounts
 		));
 		System::assert_last_event(Event::Currencies(crate::Event::DustSwept(NATIVE_CURRENCY_ID, bob(), 1)));
 

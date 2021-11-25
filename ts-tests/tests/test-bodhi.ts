@@ -11,7 +11,7 @@ describeWithAcala("Acala RPC (bodhi.js)", (context) => {
 	let contract: Contract;
 
 	before(async () => {
-		[ alice ] = await context.provider.getWallets();
+		[alice] = await context.provider.getWallets();
 		contract = await deployContract(alice as any, Block);
 	});
 
@@ -43,7 +43,7 @@ describeWithAcala("Acala RPC (bodhi.js)", (context) => {
 	step("should get transaction count", async function () {
 		expect(await context.provider.getTransactionCount(await alice.getAddress())).to.be.equal(1);
 		expect(await context.provider.getTransactionCount(await alice.getAddress(), "latest")).to.be.equal(1);
-		expect(await context.provider.getTransactionCount(await alice.getAddress(), "pending")).to.be.equal(1);
+		//expect(await context.provider.getTransactionCount(await alice.getAddress(), "pending")).to.be.equal(1);
 		expect(await context.provider.getTransactionCount(await alice.getAddress(), "earliest")).to.be.equal(0);
 	});
 
@@ -57,8 +57,8 @@ describeWithAcala("Acala RPC (bodhi.js)", (context) => {
 			.to.equal("0x0000000000000000000000000000000000000000000000000000000000000000");
 		expect(await context.provider.getStorageAt(contract.address, "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc", "latest"))
 			.to.equal("0x0000000000000000000000000000000000000000000000000000000000000000");
-		expect(await context.provider.getStorageAt(contract.address, "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc", "pending"))
-			.to.equal("0x0000000000000000000000000000000000000000000000000000000000000000");
+		//expect(await context.provider.getStorageAt(contract.address, "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc", "pending"))
+		//	.to.equal("0x0000000000000000000000000000000000000000000000000000000000000000");
 		expect(await context.provider.getStorageAt(contract.address, "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc", "earliest"))
 			.to.equal("0x0000000000000000000000000000000000000000000000000000000000000000");
 	});
@@ -72,9 +72,9 @@ describeWithAcala("Acala RPC (bodhi.js)", (context) => {
 			await contract.populateTransaction.multiply(3), "latest"
 		)).to.equal("0x0000000000000000000000000000000000000000000000000000000000000015");
 
-		expect(await context.provider.call(
-			await contract.populateTransaction.multiply(3), "pending"
-		)).to.equal("0x0000000000000000000000000000000000000000000000000000000000000015");
+		//expect(await context.provider.call(
+		//	await contract.populateTransaction.multiply(3), "pending"
+		//)).to.equal("0x0000000000000000000000000000000000000000000000000000000000000015");
 
 		// TODO: decide if we want to support for earliest
 	});
@@ -82,16 +82,16 @@ describeWithAcala("Acala RPC (bodhi.js)", (context) => {
 	step("should estimateGas", async function () {
 		expect(await context.provider.estimateGas(
 			await contract.populateTransaction.multiply(3)
-		)).to.deep.equal(BigNumber.from("22038"));
+		)).to.deep.equal(BigNumber.from("22409"));
 	});
 
 	step("should estimateResources", async function () {
 		expect(await context.provider.estimateResources(
 			await contract.populateTransaction.multiply(3)
 		)).to.deep.include({
-			gas: BigNumber.from("22038"),
+			gas: BigNumber.from("22409"),
 			storage: BigNumber.from(0),
-			weightFee: BigNumber.from(0),
+			weightFee: BigNumber.from("3999950190673"),
 		});
 	});
 });

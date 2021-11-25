@@ -21,8 +21,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 // `construct_runtime!` does a lot of recursion and requires us to increase the limit to 256.
 #![recursion_limit = "256"]
-// The `large_enum_variant` warning originates from `construct_runtime` macro.
-#![allow(clippy::large_enum_variant)]
 #![allow(clippy::unnecessary_mut_passed)]
 #![allow(clippy::or_fun_call)]
 #![allow(clippy::from_over_into)]
@@ -32,7 +30,7 @@
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
-use codec::{Compact, Decode, Encode};
+use codec::{Decode, Encode};
 use frame_support::pallet_prelude::InvalidTransaction;
 pub use frame_support::{
 	construct_runtime, log, parameter_types,
@@ -49,19 +47,24 @@ pub use frame_support::{
 };
 use frame_system::{EnsureRoot, RawOrigin};
 use hex_literal::hex;
+use module_asset_registry::{EvmErc20InfoMapping, FixedRateOfForeignAsset, XcmForeignAssetIdMapping};
 use module_currencies::{BasicCurrencyAdapter, Currency};
-use module_evm::Runner;
-use module_evm::{CallInfo, CreateInfo};
+use module_evm::{CallInfo, CreateInfo, EvmTask, Runner};
 use module_evm_accounts::EvmAddressMapping;
-pub use module_evm_manager::EvmCurrencyIdMapping;
 use module_relaychain::RelayChainCallBuilder;
+use module_support::{DispatchableTask, ExchangeRateProvider, ForeignAssetIdMapping};
 use module_transaction_payment::{Multiplier, TargetedFeeAdjustment};
+use scale_info::TypeInfo;
+
 use orml_tokens::CurrencyAdapter;
 use orml_traits::{
 	create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended, MultiCurrency,
 };
 use pallet_transaction_payment::{FeeDetails, RuntimeDispatchInfo};
-use primitives::{evm::EthereumTransactionMessage, unchecked_extrinsic::AcalaUncheckedExtrinsic};
+use primitives::{
+	define_combined_task, evm::EthereumTransactionMessage, task::TaskResult,
+	unchecked_extrinsic::AcalaUncheckedExtrinsic,
+};
 use sp_api::impl_runtime_apis;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_core::{crypto::KeyTypeId, OpaqueMetadata, H160};
@@ -85,10 +88,11 @@ use pallet_xcm::XcmPassthrough;
 pub use polkadot_parachain::primitives::Sibling;
 pub use xcm::latest::prelude::*;
 pub use xcm_builder::{
-	AccountId32Aliases, AllowTopLevelPaidExecutionFrom, AllowUnpaidExecutionFrom, EnsureXcmOrigin, FixedRateOfFungible,
-	FixedWeightBounds, IsConcrete, LocationInverter, NativeAsset, ParentAsSuperuser, ParentIsDefault,
-	RelayChainAsNative, SiblingParachainAsNative, SiblingParachainConvertsVia, SignedAccountId32AsNative,
-	SignedToAccountId32, SovereignSignedViaLocation, TakeRevenue, TakeWeightCredit,
+	AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom, AllowTopLevelPaidExecutionFrom,
+	AllowUnpaidExecutionFrom, EnsureXcmOrigin, FixedRateOfFungible, FixedWeightBounds, IsConcrete, LocationInverter,
+	NativeAsset, ParentAsSuperuser, ParentIsDefault, RelayChainAsNative, SiblingParachainAsNative,
+	SiblingParachainConvertsVia, SignedAccountId32AsNative, SignedToAccountId32, SovereignSignedViaLocation,
+	TakeRevenue, TakeWeightCredit,
 };
 pub use xcm_executor::{Config, XcmExecutor};
 
@@ -104,9 +108,9 @@ pub use sp_runtime::{Perbill, Percent, Permill, Perquintill};
 pub use authority::AuthorityConfigImpl;
 pub use constants::{fee::*, time::*};
 pub use primitives::{
-	evm::EstimateResourcesRequest, AccountId, AccountIndex, Address, AirDropCurrencyId, Amount, AuctionId,
-	AuthoritysOriginId, Balance, BlockNumber, CurrencyId, DataProviderId, EraIndex, Hash, Moment, Nonce,
-	ReserveIdentifier, Share, Signature, TokenSymbol, TradingPair,
+	evm::EstimateResourcesRequest, AccountId, AccountIndex, Address, Amount, AuctionId, AuthoritysOriginId, Balance,
+	BlockNumber, CurrencyId, DataProviderId, EraIndex, Hash, Moment, Nonce, ReserveIdentifier, Share, Signature,
+	TokenSymbol, TradingPair,
 };
 pub use runtime_common::{
 	cent, dollar, microcent, millicent, CurveFeeModel, EnsureRootOrAllGeneralCouncil,
@@ -116,9 +120,9 @@ pub use runtime_common::{
 	EnsureRootOrTwoThirdsTechnicalCommittee, ExchangeRate, FinancialCouncilInstance,
 	FinancialCouncilMembershipInstance, GasToWeight, GeneralCouncilInstance, GeneralCouncilMembershipInstance,
 	HomaCouncilInstance, HomaCouncilMembershipInstance, OffchainSolutionWeightLimit, OperatorMembershipInstanceAcala,
-	OperatorMembershipInstanceBand, Price, ProxyType, Rate, Ratio, RelayChainBlockNumberProvider,
-	RelayChainSubAccountId, RuntimeBlockLength, RuntimeBlockWeights, SystemContractsFilter, TechnicalCommitteeInstance,
-	TechnicalCommitteeMembershipInstance, TimeStampedPrice, ACA, AUSD, DOT, LDOT, RENBTC,
+	Price, ProxyType, Rate, Ratio, RelayChainBlockNumberProvider, RelayChainSubAccountId, RuntimeBlockLength,
+	RuntimeBlockWeights, SystemContractsFilter, TechnicalCommitteeInstance, TechnicalCommitteeMembershipInstance,
+	TimeStampedPrice, ACA, AUSD, DOT, LDOT, RENBTC,
 };
 
 /// Import the stable_asset pallet.
@@ -134,7 +138,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("mandala"),
 	impl_name: create_runtime_str!("mandala"),
 	authoring_version: 1,
-	spec_version: 1100,
+	spec_version: 2002,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -263,7 +267,7 @@ impl pallet_authorship::Config for Runtime {
 
 parameter_types! {
 	pub const DisabledValidatorsThreshold: Perbill = Perbill::from_percent(33);
-	pub const Period: BlockNumber = DAYS;
+	pub const SessionDuration: BlockNumber = DAYS; // used in SessionManagerConfig of genesis
 }
 
 impl pallet_session::Config for Runtime {
@@ -277,7 +281,6 @@ impl pallet_session::Config for Runtime {
 	// Essentially just Aura, but lets be pedantic.
 	type SessionHandler = <SessionKeys as sp_runtime::traits::OpaqueKeys>::KeyTypeIdProviders;
 	type Keys = SessionKeys;
-	type DisabledValidatorsThreshold = DisabledValidatorsThreshold;
 	type WeightInfo = ();
 }
 
@@ -480,8 +483,7 @@ impl pallet_membership::Config<TechnicalCommitteeMembershipInstance> for Runtime
 }
 
 parameter_types! {
-	// TODO: update
-	pub const OracleMaxMembers: u32 = 100;
+	pub const OracleMaxMembers: u32 = 50;
 }
 
 impl pallet_membership::Config<OperatorMembershipInstanceAcala> for Runtime {
@@ -493,19 +495,6 @@ impl pallet_membership::Config<OperatorMembershipInstanceAcala> for Runtime {
 	type PrimeOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
 	type MembershipInitialized = ();
 	type MembershipChanged = AcalaOracle;
-	type MaxMembers = OracleMaxMembers;
-	type WeightInfo = ();
-}
-
-impl pallet_membership::Config<OperatorMembershipInstanceBand> for Runtime {
-	type Event = Event;
-	type AddOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
-	type RemoveOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
-	type SwapOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
-	type ResetOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
-	type PrimeOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
-	type MembershipInitialized = ();
-	type MembershipChanged = BandOracle;
 	type MaxMembers = OracleMaxMembers;
 	type WeightInfo = ();
 }
@@ -754,26 +743,12 @@ impl orml_oracle::Config<AcalaDataProvider> for Runtime {
 	type WeightInfo = weights::orml_oracle::WeightInfo<Runtime>;
 }
 
-type BandDataProvider = orml_oracle::Instance2;
-impl orml_oracle::Config<BandDataProvider> for Runtime {
-	type Event = Event;
-	type OnNewData = ();
-	type CombineData = orml_oracle::DefaultCombineData<Runtime, MinimumCount, ExpiresIn, BandDataProvider>;
-	type Time = Timestamp;
-	type OracleKey = CurrencyId;
-	type OracleValue = Price;
-	type RootOperatorAccountId = ZeroAccountId;
-	type Members = OperatorMembershipBand;
-	type MaxHasDispatchedSize = MaxHasDispatchedSize;
-	type WeightInfo = weights::orml_oracle::WeightInfo<Runtime>;
-}
-
 create_median_value_data_provider!(
 	AggregatedDataProvider,
 	CurrencyId,
 	Price,
 	TimeStampedPrice,
-	[AcalaOracle, BandOracle]
+	[AcalaOracle]
 );
 // Aggregated data provider cannot feed.
 impl DataFeeder<CurrencyId, Price, AccountId> for AggregatedDataProvider {
@@ -823,6 +798,11 @@ parameter_type_with_key! {
 			},
 			CurrencyId::Erc20(_) => Balance::max_value(), // not handled by orml-tokens
 			CurrencyId::StableAssetPoolToken(_) => 1, // TODO: update this before we enable StableAsset
+			CurrencyId::LiquidCroadloan(_) => ExistentialDeposits::get(&CurrencyId::Token(TokenSymbol::DOT)), // the same as DOT
+			CurrencyId::ForeignAsset(foreign_asset_id) => {
+				XcmForeignAssetIdMapping::<Runtime>::get_asset_metadata(*foreign_asset_id).
+					map_or(Balance::max_value(), |metatata| metatata.minimal_balance)
+			},
 		}
 	};
 }
@@ -858,7 +838,7 @@ impl module_prices::Config for Runtime {
 	type LiquidStakingExchangeRateProvider = LiquidStakingExchangeRateProvider;
 	type DEX = Dex;
 	type Currency = Currencies;
-	type CurrencyIdMapping = EvmCurrencyIdMapping<Runtime>;
+	type Erc20InfoMapping = EvmErc20InfoMapping<Runtime>;
 	type WeightInfo = weights::module_prices::WeightInfo<Runtime>;
 }
 
@@ -1087,7 +1067,7 @@ impl module_emergency_shutdown::Config for Runtime {
 
 parameter_types! {
 	pub const GetExchangeFee: (u32, u32) = (1, 1000);	// 0.1%
-	pub const TradingPathLimit: u32 = 3;
+	pub const TradingPathLimit: u32 = 4;
 	pub EnabledTradingPairs: Vec<TradingPair> = vec![
 		TradingPair::from_currency_ids(AUSD, ACA).unwrap(),
 		TradingPair::from_currency_ids(AUSD, DOT).unwrap(),
@@ -1102,14 +1082,14 @@ impl module_dex::Config for Runtime {
 	type GetExchangeFee = GetExchangeFee;
 	type TradingPathLimit = TradingPathLimit;
 	type PalletId = DEXPalletId;
-	type CurrencyIdMapping = EvmCurrencyIdMapping<Runtime>;
+	type Erc20InfoMapping = EvmErc20InfoMapping<Runtime>;
 	type DEXIncentives = Incentives;
 	type WeightInfo = weights::module_dex::WeightInfo<Runtime>;
 	type ListingOrigin = EnsureRootOrHalfGeneralCouncil;
 }
 
 parameter_types! {
-	pub const MaxAuctionsCount: u32 = 100;
+	pub const MaxAuctionsCount: u32 = 50;
 	pub HonzonTreasuryAccount: AccountId = HonzonTreasuryPalletId::get().into_account();
 }
 
@@ -1182,9 +1162,12 @@ impl module_evm_accounts::Config for Runtime {
 	type WeightInfo = weights::module_evm_accounts::WeightInfo<Runtime>;
 }
 
-impl module_evm_manager::Config for Runtime {
+impl module_asset_registry::Config for Runtime {
+	type Event = Event;
 	type Currency = Balances;
 	type EVMBridge = EVMBridge;
+	type RegisterOrigin = EnsureRootOrHalfGeneralCouncil;
+	type WeightInfo = weights::module_asset_registry::WeightInfo<Runtime>;
 }
 
 impl orml_rewards::Config for Runtime {
@@ -1211,10 +1194,6 @@ impl module_incentives::Config for Runtime {
 	type EmergencyShutdown = EmergencyShutdown;
 	type PalletId = IncentivesPalletId;
 	type WeightInfo = weights::module_incentives::WeightInfo<Runtime>;
-}
-
-impl module_airdrop::Config for Runtime {
-	type Event = Event;
 }
 
 parameter_types! {
@@ -1269,15 +1248,15 @@ pub fn create_x2_parachain_multilocation(index: u16) -> MultiLocation {
 }
 
 parameter_types! {
-	pub MinimumMintThreshold: Balance = 10 * cent(DOT);
-	pub MinimumRedeemThreshold: Balance = 100 * cent(LDOT);
+	pub MinimumMintThreshold: Balance = 5 * dollar(DOT);
+	pub MinimumRedeemThreshold: Balance = 50 * dollar(LDOT);
 	pub RelayChainSovereignSubAccount: MultiLocation = create_x2_parachain_multilocation(RelayChainSubAccountId::HomaLite as u16);
 	pub RelayChainSovereignSubAccountId: AccountId = Utility::derivative_account_id(
 		ParachainInfo::get().into_account(),
 		RelayChainSubAccountId::HomaLite as u16
 	);
 	pub MaxRewardPerEra: Permill = Permill::from_rational(500u32, 1_000_000u32); // 1.2 ^ (1/365) = 1.0004996359
-	pub MintFee: Balance = millicent(DOT);
+	pub MintFee: Balance = 20 * millicent(DOT);
 	pub BaseWithdrawFee: Permill = Permill::from_rational(14_085u32, 1_000_000u32); // 20% yield per year, unbounding period = 28 days. 1.2^(28/365) = 1.014085
 	pub MaximumRedeemRequestMatchesForMint: u32 = 20;
 	pub RelayChainUnbondingSlashingSpans: u32 = 5;
@@ -1311,6 +1290,7 @@ impl module_homa_lite::Config for Runtime {
 	type MaximumRedeemRequestMatchesForMint = MaximumRedeemRequestMatchesForMint;
 	type RelayChainUnbondingSlashingSpans = RelayChainUnbondingSlashingSpans;
 	type MaxScheduledUnbonds = MaxScheduledUnbonds;
+	type StakingUpdateFrequency = OneDay;
 }
 
 parameter_types! {
@@ -1520,39 +1500,8 @@ parameter_types! {
 	pub DeploymentFee: Balance = dollar(ACA);
 }
 
-pub type MultiCurrencyPrecompile = runtime_common::MultiCurrencyPrecompile<
-	AccountId,
-	EvmAddressMapping<Runtime>,
-	EvmCurrencyIdMapping<Runtime>,
-	Currencies,
->;
-
-pub type NFTPrecompile =
-	runtime_common::NFTPrecompile<AccountId, EvmAddressMapping<Runtime>, EvmCurrencyIdMapping<Runtime>, NFT>;
-pub type StateRentPrecompile =
-	runtime_common::StateRentPrecompile<AccountId, EvmAddressMapping<Runtime>, EvmCurrencyIdMapping<Runtime>, EVM>;
-pub type OraclePrecompile = runtime_common::OraclePrecompile<
-	AccountId,
-	EvmAddressMapping<Runtime>,
-	EvmCurrencyIdMapping<Runtime>,
-	module_prices::RealTimePriceProvider<Runtime>,
->;
-pub type ScheduleCallPrecompile = runtime_common::ScheduleCallPrecompile<
-	AccountId,
-	EvmAddressMapping<Runtime>,
-	EvmCurrencyIdMapping<Runtime>,
-	Scheduler,
-	module_transaction_payment::ChargeTransactionPayment<Runtime>,
-	Call,
-	Origin,
-	OriginCaller,
-	Runtime,
->;
-pub type DexPrecompile =
-	runtime_common::DexPrecompile<AccountId, EvmAddressMapping<Runtime>, EvmCurrencyIdMapping<Runtime>, Dex>;
-
 #[cfg(feature = "with-ethereum-compatibility")]
-static ISTANBUL_CONFIG: evm::Config = evm::Config::istanbul();
+static ISTANBUL_CONFIG: module_evm_utiltity::evm::Config = module_evm_utiltity::evm::Config::istanbul();
 
 impl module_evm::Config for Runtime {
 	type AddressMapping = EvmAddressMapping<Runtime>;
@@ -1561,15 +1510,7 @@ impl module_evm::Config for Runtime {
 	type NewContractExtraBytes = NewContractExtraBytes;
 	type StorageDepositPerByte = StorageDepositPerByte;
 	type Event = Event;
-	type Precompiles = runtime_common::AllPrecompiles<
-		SystemContractsFilter,
-		MultiCurrencyPrecompile,
-		NFTPrecompile,
-		StateRentPrecompile,
-		OraclePrecompile,
-		ScheduleCallPrecompile,
-		DexPrecompile,
-	>;
+	type Precompiles = runtime_common::AllPrecompiles<Self>;
 	type ChainId = ChainId;
 	type GasToWeight = GasToWeight;
 	type ChargeTransactionPayment = module_transaction_payment::ChargeTransactionPayment<Runtime>;
@@ -1581,10 +1522,12 @@ impl module_evm::Config for Runtime {
 	type FreeDeploymentOrigin = EnsureRootOrHalfGeneralCouncil;
 	type Runner = module_evm::runner::stack::Runner<Self>;
 	type FindAuthor = pallet_session::FindAccountFromAuthorIndex<Self, Aura>;
+	type Task = ScheduledTasks;
+	type IdleScheduler = IdleScheduler;
 	type WeightInfo = weights::module_evm::WeightInfo<Runtime>;
 
 	#[cfg(feature = "with-ethereum-compatibility")]
-	fn config() -> &'static evm::Config {
+	fn config() -> &'static module_evm_utiltity::evm::Config {
 		&ISTANBUL_CONFIG
 	}
 }
@@ -1662,9 +1605,17 @@ parameter_types! {
 	pub UnitWeightCost: Weight = 1_000_000;
 	pub const MaxInstructions: u32 = 100;
 	pub DotPerSecond: (AssetId, u128) = (MultiLocation::parent().into(), dot_per_second());
+	pub ForeignAssetUnitsPerSecond: u128 = aca_per_second();
 }
 
-pub type Barrier = (TakeWeightCredit, AllowTopLevelPaidExecutionFrom<Everything>);
+pub type Barrier = (
+	TakeWeightCredit,
+	AllowTopLevelPaidExecutionFrom<Everything>,
+	// Expected responses are OK.
+	AllowKnownQueryResponses<PolkadotXcm>,
+	// Subscriptions for version tracking are OK.
+	AllowSubscriptionsFrom<Everything>,
+);
 
 pub struct ToTreasury;
 impl TakeRevenue for ToTreasury {
@@ -1683,6 +1634,11 @@ impl TakeRevenue for ToTreasury {
 	}
 }
 
+pub type Trader = (
+	FixedRateOfFungible<DotPerSecond, ToTreasury>,
+	FixedRateOfForeignAsset<Runtime, ForeignAssetUnitsPerSecond, ToTreasury>,
+);
+
 pub struct XcmConfig;
 impl xcm_executor::Config for XcmConfig {
 	type Call = Call;
@@ -1697,7 +1653,7 @@ impl xcm_executor::Config for XcmConfig {
 	type Barrier = Barrier;
 	type Weigher = FixedWeightBounds<UnitWeightCost, Call, MaxInstructions>;
 	// Only receiving DOT is handled, and all fees must be paid in DOT.
-	type Trader = FixedRateOfFungible<DotPerSecond, ToTreasury>;
+	type Trader = Trader;
 	type ResponseHandler = (); // Don't handle responses for now.
 	type AssetTrap = ();
 	type AssetClaims = ();
@@ -1778,6 +1734,9 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 		match id {
 			Token(DOT) => Some(MultiLocation::parent()),
 			Token(ACA) | Token(AUSD) | Token(LDOT) | Token(RENBTC) => Some(native_currency_location(id)),
+			CurrencyId::ForeignAsset(foreign_asset_id) => {
+				XcmForeignAssetIdMapping::<Runtime>::get_multi_location(foreign_asset_id)
+			}
 			_ => None,
 		}
 	}
@@ -1789,6 +1748,10 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 
 		if location == MultiLocation::parent() {
 			return Some(Token(DOT));
+		}
+
+		if let Some(currency_id) = XcmForeignAssetIdMapping::<Runtime>::get_currency_id(location.clone()) {
+			return Some(currency_id);
 		}
 
 		match location {
@@ -1931,6 +1894,25 @@ impl nutsfinance_stable_asset::Config for Runtime {
 	type EnsurePoolAssetId = EnsurePoolAssetId;
 }
 
+define_combined_task! {
+	#[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo)]
+	pub enum ScheduledTasks {
+		EvmTask(EvmTask<Runtime>),
+	}
+}
+
+parameter_types!(
+	// At least 2% of max block weight should remain before idle tasks are dispatched.
+	pub MinimumWeightRemainInBlock: Weight = RuntimeBlockWeights::get().max_block / 50;
+);
+
+impl module_idle_scheduler::Config for Runtime {
+	type Event = Event;
+	type WeightInfo = ();
+	type Task = ScheduledTasks;
+	type MinimumWeightRemainInBlock = MinimumWeightRemainInBlock;
+}
+
 impl cumulus_pallet_aura_ext::Config for Runtime {}
 
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
@@ -1958,17 +1940,13 @@ impl Convert<(Call, SignedExtra), Result<EthereumTransactionMessage, InvalidTran
 				}
 
 				let nonce: frame_system::CheckNonce<Runtime> = extra.4;
-				// TODO: this is a hack access private nonce field
-				// remove this after https://github.com/paritytech/substrate/pull/9810
-				let nonce = nonce
-					.using_encoded(|mut encoded| Compact::<Nonce>::decode(&mut encoded))
-					.map_err(|_| InvalidTransaction::BadProof)?;
+				let nonce = nonce.0;
 
 				let tip: module_transaction_payment::ChargeTransactionPayment<Runtime> = extra.6;
 				let tip = tip.0;
 
 				Ok(EthereumTransactionMessage {
-					nonce: nonce.into(),
+					nonce,
 					tip,
 					gas_limit,
 					storage_limit,
@@ -2014,7 +1992,6 @@ pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExt
 pub type Executive =
 	frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllPallets, ()>;
 
-#[allow(clippy::large_enum_variant)]
 construct_runtime! {
 	pub enum Runtime where
 		Block = Block,
@@ -2044,6 +2021,7 @@ construct_runtime! {
 		Multisig: pallet_multisig::{Pallet, Call, Storage, Event<T>} = 31,
 		Recovery: pallet_recovery::{Pallet, Call, Storage, Event<T>} = 32,
 		Proxy: pallet_proxy::{Pallet, Call, Storage, Event<T>} = 33,
+		IdleScheduler: module_idle_scheduler::{Pallet, Call, Storage, Event<T>} = 34,
 
 		Indices: pallet_indices::{Pallet, Call, Storage, Config<T>, Event<T>} = 40,
 
@@ -2066,8 +2044,6 @@ construct_runtime! {
 		// NOTE: OperatorMembership must be placed after Oracle or else will have race condition on initialization
 		AcalaOracle: orml_oracle::<Instance1>::{Pallet, Storage, Call, Event<T>} = 80,
 		OperatorMembershipAcala: pallet_membership::<Instance5>::{Pallet, Call, Storage, Event<T>, Config<T>} = 82,
-		BandOracle: orml_oracle::<Instance2>::{Pallet, Storage, Call, Event<T>} = 81,
-		OperatorMembershipBand: pallet_membership::<Instance6>::{Pallet, Call, Storage, Event<T>, Config<T>} = 83,
 
 		// ORML Core
 		Auction: orml_auction::{Pallet, Storage, Call, Event<T>} = 100,
@@ -2097,7 +2073,7 @@ construct_runtime! {
 		// Acala Other
 		Incentives: module_incentives::{Pallet, Storage, Call, Event<T>} = 140,
 		NFT: module_nft::{Pallet, Call, Event<T>} = 141,
-		AirDrop: module_airdrop::{Pallet, Call, Storage, Event<T>, Config<T>} = 142,
+		AssetRegistry: module_asset_registry::{Pallet, Call, Storage, Event<T>} = 142,
 
 		// Ecosystem modules
 		RenVmBridge: ecosystem_renvm_bridge::{Pallet, Call, Config, Storage, Event<T>, ValidateUnsigned} = 150,
@@ -2110,7 +2086,7 @@ construct_runtime! {
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 170,
-		PolkadotXcm: pallet_xcm::{Pallet, Call, Event<T>, Origin} = 171,
+		PolkadotXcm: pallet_xcm::{Pallet, Storage, Call, Event<T>, Origin, Config} = 171,
 		CumulusXcm: cumulus_pallet_xcm::{Pallet, Event<T>, Origin} = 172,
 		DmpQueue: cumulus_pallet_dmp_queue::{Pallet, Call, Storage, Event<T>} = 173,
 		XTokens: orml_xtokens::{Pallet, Storage, Call, Event<T>} = 174,
@@ -2121,7 +2097,6 @@ construct_runtime! {
 		EVM: module_evm::{Pallet, Config<T>, Call, Storage, Event<T>} = 180,
 		EVMBridge: module_evm_bridge::{Pallet} = 181,
 		EvmAccounts: module_evm_accounts::{Pallet, Call, Storage, Event<T>} = 182,
-		EvmManager: module_evm_manager::{Pallet, Storage} = 183,
 
 		// Collator support. the order of these 4 are important and shall not change.
 		Authorship: pallet_authorship::{Pallet, Call, Storage} = 190,
@@ -2337,21 +2312,27 @@ impl_runtime_apis! {
 
 			let request = match utx.0.function {
 				Call::EVM(module_evm::Call::call{target, input, value, gas_limit, storage_limit}) => {
+					// use MAX_VALUE for no limit
+					let gas_limit = if gas_limit < u64::MAX { Some(gas_limit) } else { None };
+					let storage_limit = if storage_limit < u32::MAX { Some(storage_limit) } else { None };
 					Some(EstimateResourcesRequest {
 						from: None,
 						to: Some(target),
-						gas_limit: Some(gas_limit),
-						storage_limit: Some(storage_limit),
+						gas_limit,
+						storage_limit,
 						value: Some(value),
 						data: Some(input),
 					})
 				}
 				Call::EVM(module_evm::Call::create{init, value, gas_limit, storage_limit}) => {
+					// use MAX_VALUE for no limit
+					let gas_limit = if gas_limit < u64::MAX { Some(gas_limit) } else { None };
+					let storage_limit = if storage_limit < u32::MAX { Some(storage_limit) } else { None };
 					Some(EstimateResourcesRequest {
 						from: None,
 						to: None,
-						gas_limit: Some(gas_limit),
-						storage_limit: Some(storage_limit),
+						gas_limit,
+						storage_limit,
 						value: Some(value),
 						data: Some(init),
 					})
@@ -2404,6 +2385,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, module_homa_lite, HomaLiteBench::<Runtime>);
 
 			orml_list_benchmark!(list, extra, module_dex, benchmarking::dex);
+			orml_list_benchmark!(list, extra, module_asset_registry, benchmarking::asset_registry);
 			orml_list_benchmark!(list, extra, module_auction_manager, benchmarking::auction_manager);
 			orml_list_benchmark!(list, extra, module_cdp_engine, benchmarking::cdp_engine);
 			orml_list_benchmark!(list, extra, module_collator_selection, benchmarking::collator_selection);
@@ -2466,6 +2448,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, module_nft, NftBench::<Runtime>);
 			add_benchmark!(params, batches, module_homa_lite, HomaLiteBench::<Runtime>);
 			orml_add_benchmark!(params, batches, module_dex, benchmarking::dex);
+			orml_add_benchmark!(params, batches, module_asset_registry, benchmarking::asset_registry);
 			orml_add_benchmark!(params, batches, module_auction_manager, benchmarking::auction_manager);
 			orml_add_benchmark!(params, batches, module_cdp_engine, benchmarking::cdp_engine);
 			orml_add_benchmark!(params, batches, module_collator_selection, benchmarking::collator_selection);
@@ -2559,7 +2542,7 @@ mod tests {
 		// Ensure that `required_point` > 0, collator can be kicked out normally.
 		assert!(
 			CollatorKickThreshold::get().mul_floor(
-				(Period::get() * module_collator_selection::POINT_PER_BLOCK)
+				(SessionDuration::get() * module_collator_selection::POINT_PER_BLOCK)
 					.checked_div(MaxCandidates::get())
 					.unwrap()
 			) > 0

@@ -17,7 +17,7 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 
 	before("init", async function () {
 		this.timeout(15000);
-		[ alice ] = await context.provider.getWallets();
+		[alice] = await context.provider.getWallets();
 
 		signer = new Wallet(
 			"0x0123456789012345678901234567890123456789012345678901234567890123"
@@ -108,7 +108,7 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 						"id": "5EMjsczQH4R2WZaB5Svau8HWZp1aAfMqjxfv3GeLWotYSkLc"
 					},
 					"signature": {
-						"acalaEip712": "${ signature }"
+						"acalaEip712": "${signature}"
 					},
 					"era": {
 						"immortalEra": "0x00"
@@ -122,7 +122,7 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 						"action": {
 							"create": null
 						},
-						"input": "${ deploy.data }",
+						"input": "${deploy.data}",
 						"value": 0,
 						"gas_limit": 2100000,
 						"storage_limit": 20000,
@@ -132,15 +132,13 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 			  }`.toString().replace(/\s/g, '')
 		);
 
-		await async function () {
-			return new Promise(async (resolve) => {
-				tx.send((result) => {
-					if (result.status.isInBlock) {
-						resolve(undefined);
-					}
-				});
+		await new Promise(async (resolve) => {
+			tx.send((result) => {
+				if (result.status.isFinalized || result.status.isInBlock) {
+					resolve(undefined);
+				}
 			});
-		}();
+		});
 
 		let current_block_number = (await context.provider.api.query.system.number()).toNumber();
 		let block_hash = await context.provider.api.rpc.chain.getBlockHash(current_block_number);
@@ -225,7 +223,7 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 						"id": "5EMjsczQH4R2WZaB5Svau8HWZp1aAfMqjxfv3GeLWotYSkLc"
 					},
 					"signature": {
-						"acalaEip712": "${ signature }"
+						"acalaEip712": "${signature}"
 					},
 					"era": {
 						"immortalEra": "0x00"
@@ -237,9 +235,9 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 					"callIndex": "0xb400",
 					"args": {
 						"action": {
-							"call": "${ contract }"
+							"call": "${contract}"
 						},
-						"input": "${ input.data }",
+						"input": "${input.data}",
 						"value": 0,
 						"gas_limit": 210000,
 						"storage_limit": 1000,
@@ -249,25 +247,21 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 			  }`.toString().replace(/\s/g, '')
 		);
 
-		await async function () {
-			return new Promise(async (resolve) => {
-				tx.send((result) => {
-					if (result.status.isInBlock) {
-						resolve(undefined);
-					}
-				});
+		await new Promise(async (resolve) => {
+			tx.send((result) => {
+				if (result.status.isFinalized || result.status.isInBlock) {
+					resolve(undefined);
+				}
 			});
-		}();
+		});
 
-		await async function () {
-			return new Promise(async (resolve) => {
-				context.provider.api.tx.sudo.sudo(context.provider.api.tx.evm.deployFree(contract)).signAndSend(await alice.getSubstrateAddress(), ((result) => {
-					if (result.status.isInBlock) {
-						resolve(undefined);
-					}
-				}));
-			});
-		}();
+		await new Promise(async (resolve) => {
+			context.provider.api.tx.sudo.sudo(context.provider.api.tx.evm.deployFree(contract)).signAndSend(await alice.getSubstrateAddress(), ((result) => {
+				if (result.status.isFinalized || result.status.isInBlock) {
+					resolve(undefined);
+				}
+			}));
+		});
 
 		const erc20 = new ethers.Contract(contract, Erc20DemoContract.abi, alice);
 		expect((await erc20.balanceOf(signer.address)).toString()).to.equal("99900");

@@ -12,7 +12,7 @@ describeWithAcala("Acala RPC (Contract Methods)", (context) => {
 
 	before("create the contract", async function () {
 		this.timeout(15000);
-		[ alice ] = await context.provider.getWallets();
+		[alice] = await context.provider.getWallets();
 		contract = await deployContract(alice as any, Block);
 	});
 
@@ -30,11 +30,11 @@ describeWithAcala("Acala RPC (Contract Methods)", (context) => {
 	});
 
 	it("should get correct environmental block hash", async function () {
-		this.timeout(15000000);
+		this.timeout(15000);
 		// Solidity `blockhash` is expected to return the ethereum block hash at a given height.
 		let number = await context.provider.getBlockNumber();
 
-		expect(await contract.blockHash(number -1)).to.not.eq(
+		expect(await contract.blockHash(number - 1)).to.not.eq(
 			"0x0000000000000000000000000000000000000000000000000000000000000000"
 		);
 		// most recent blocks of the `BlockHashCount`, excluding current block
@@ -44,11 +44,11 @@ describeWithAcala("Acala RPC (Contract Methods)", (context) => {
 
 		// Too many requests to process
 		// let last = number + (await context.provider.api.consts.system.blockHashCount).toNumber();
-		let last = number + 10;
-		for(let i = number - 1; i <= last; i++) {
+		let last = number + 1;
+		for (let i = number - 1; i <= last; i++) {
 			let hash = await context.provider.api.query.system.blockHash(i);
 			expect(await contract.blockHash(i)).to.eq(hash.toString());
-			await nextBlock(context.provider);
+			await nextBlock(context);
 		}
 		//// should not store more than BlockHashCount
 		//expect(await contract.blockHash(number + 1)).to.eq(

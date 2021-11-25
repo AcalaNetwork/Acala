@@ -18,7 +18,7 @@
 
 #![cfg(test)]
 
-use crate::{AllPrecompiles, Ratio, RuntimeBlockWeights, SystemContractsFilter, Weight};
+use crate::{AllPrecompiles, Ratio, RuntimeBlockWeights, Weight};
 use acala_service::chain_spec::mandala::evm_genesis;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
@@ -28,13 +28,15 @@ use frame_support::{
 	PalletId, RuntimeDebug,
 };
 use frame_system::{EnsureRoot, EnsureSignedBy};
+use module_evm::EvmTask;
+use module_support::DispatchableTask;
 use module_support::{
 	mocks::MockAddressMapping, AddressMapping as AddressMappingT, DEXIncentives, ExchangeRate, ExchangeRateProvider,
 };
 use orml_traits::{parameter_type_with_key, MultiReservableCurrency};
 pub use primitives::{
-	evm::EvmAddress, Amount, BlockNumber, CurrencyId, DexShare, Header, Nonce, ReserveIdentifier, TokenSymbol,
-	TradingPair,
+	define_combined_task, evm::EvmAddress, task::TaskResult, Amount, BlockNumber, CurrencyId, DexShare, Header, Nonce,
+	ReserveIdentifier, TokenSymbol, TradingPair,
 };
 use scale_info::TypeInfo;
 use sp_core::{crypto::AccountId32, H160, H256};
@@ -174,12 +176,33 @@ impl module_currencies::Config for Test {
 }
 
 impl module_evm_bridge::Config for Test {
-	type EVM = ModuleEVM;
+	type EVM = EVMModule;
 }
 
-impl module_evm_manager::Config for Test {
+impl module_asset_registry::Config for Test {
+	type Event = Event;
 	type Currency = Balances;
 	type EVMBridge = EVMBridge;
+	type RegisterOrigin = EnsureSignedBy<CouncilAccount, AccountId>;
+	type WeightInfo = ();
+}
+
+define_combined_task! {
+	#[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo)]
+	pub enum ScheduledTasks {
+		EvmTask(EvmTask<Test>),
+	}
+}
+
+parameter_types!(
+	pub MinimumWeightRemainInBlock: Weight = u64::MIN;
+);
+
+impl module_idle_scheduler::Config for Test {
+	type Event = Event;
+	type WeightInfo = ();
+	type Task = ScheduledTasks;
+	type MinimumWeightRemainInBlock = MinimumWeightRemainInBlock;
 }
 
 parameter_types! {
@@ -326,7 +349,7 @@ ord_parameter_types! {
 
 parameter_types! {
 	pub const GetExchangeFee: (u32, u32) = (1, 100);
-	pub const TradingPathLimit: u32 = 3;
+	pub const TradingPathLimit: u32 = 4;
 	pub const DEXPalletId: PalletId = PalletId(*b"aca/dexm");
 }
 
@@ -336,7 +359,7 @@ impl module_dex::Config for Test {
 	type GetExchangeFee = GetExchangeFee;
 	type TradingPathLimit = TradingPathLimit;
 	type PalletId = DEXPalletId;
-	type CurrencyIdMapping = EvmCurrencyIdMapping;
+	type Erc20InfoMapping = EvmErc20InfoMapping;
 	type WeightInfo = ();
 	type DEXIncentives = MockDEXIncentives;
 	type ListingOrigin = EnsureSignedBy<ListingOrigin, AccountId>;
@@ -344,31 +367,7 @@ impl module_dex::Config for Test {
 
 pub type AdaptedBasicCurrency = module_currencies::BasicCurrencyAdapter<Test, Balances, Amount, BlockNumber>;
 
-pub type EvmCurrencyIdMapping = module_evm_manager::EvmCurrencyIdMapping<Test>;
-pub type MultiCurrencyPrecompile =
-	crate::MultiCurrencyPrecompile<AccountId, MockAddressMapping, EvmCurrencyIdMapping, Currencies>;
-
-pub type NFTPrecompile = crate::NFTPrecompile<AccountId, MockAddressMapping, EvmCurrencyIdMapping, NFTModule>;
-pub type StateRentPrecompile =
-	crate::StateRentPrecompile<AccountId, MockAddressMapping, EvmCurrencyIdMapping, ModuleEVM>;
-pub type OraclePrecompile = crate::OraclePrecompile<
-	AccountId,
-	MockAddressMapping,
-	EvmCurrencyIdMapping,
-	module_prices::PriorityLockedPriceProvider<Test>,
->;
-pub type ScheduleCallPrecompile = crate::ScheduleCallPrecompile<
-	AccountId,
-	MockAddressMapping,
-	EvmCurrencyIdMapping,
-	Scheduler,
-	ChargeTransactionPayment,
-	Call,
-	Origin,
-	OriginCaller,
-	Test,
->;
-pub type DexPrecompile = crate::DexPrecompile<AccountId, MockAddressMapping, EvmCurrencyIdMapping, DexModule>;
+pub type EvmErc20InfoMapping = module_asset_registry::EvmErc20InfoMapping<Test>;
 
 parameter_types! {
 	pub NetworkContractSource: H160 = alice_evm_addr();
@@ -399,15 +398,7 @@ impl module_evm::Config for Test {
 	type NewContractExtraBytes = NewContractExtraBytes;
 	type StorageDepositPerByte = StorageDepositPerByte;
 	type Event = Event;
-	type Precompiles = AllPrecompiles<
-		SystemContractsFilter,
-		MultiCurrencyPrecompile,
-		NFTPrecompile,
-		StateRentPrecompile,
-		OraclePrecompile,
-		ScheduleCallPrecompile,
-		DexPrecompile,
-	>;
+	type Precompiles = AllPrecompiles<Self>;
 	type ChainId = ChainId;
 	type GasToWeight = GasToWeight;
 	type ChargeTransactionPayment = ChargeTransactionPayment;
@@ -419,6 +410,8 @@ impl module_evm::Config for Test {
 	type FreeDeploymentOrigin = EnsureSignedBy<CouncilAccount, AccountId>;
 	type Runner = module_evm::runner::stack::Runner<Self>;
 	type FindAuthor = ();
+	type Task = ScheduledTasks;
+	type IdleScheduler = IdleScheduler;
 	type WeightInfo = ();
 }
 
@@ -450,7 +443,7 @@ impl module_prices::Config for Test {
 	type LiquidStakingExchangeRateProvider = MockLiquidStakingExchangeProvider;
 	type DEX = DexModule;
 	type Currency = Currencies;
-	type CurrencyIdMapping = EvmCurrencyIdMapping;
+	type Erc20InfoMapping = EvmErc20InfoMapping;
 	type WeightInfo = ();
 }
 
@@ -512,7 +505,7 @@ frame_support::construct_runtime!(
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
 		Currencies: module_currencies::{Pallet, Call, Event<T>},
 		EVMBridge: module_evm_bridge::{Pallet},
-		EVMManager: module_evm_manager::{Pallet, Storage},
+		AssetRegistry: module_asset_registry::{Pallet, Call, Storage, Event<T>},
 		NFTModule: module_nft::{Pallet, Call, Event<T>},
 		TransactionPayment: module_transaction_payment::{Pallet, Call, Storage},
 		Prices: module_prices::{Pallet, Storage, Call, Event<T>},
@@ -520,7 +513,8 @@ frame_support::construct_runtime!(
 		Utility: pallet_utility::{Pallet, Call, Event},
 		Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>},
 		DexModule: module_dex::{Pallet, Storage, Call, Event<T>, Config<T>},
-		ModuleEVM: module_evm::{Pallet, Config<T>, Call, Storage, Event<T>},
+		EVMModule: module_evm::{Pallet, Config<T>, Call, Storage, Event<T>},
+		IdleScheduler: module_idle_scheduler::{Pallet, Call, Storage, Event<T>},
 	}
 );
 

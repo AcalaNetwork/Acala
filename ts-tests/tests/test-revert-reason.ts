@@ -10,7 +10,7 @@ describeWithAcala("Acala RPC (Revert Reason)", (context) => {
 
 	before("create the contract", async function () {
 		this.timeout(15000);
-		[ alice ] = await context.provider.getWallets();
+		[alice] = await context.provider.getWallets();
 		contract = await deployContract(alice as any, ExplicitRevertReason);
 	});
 
