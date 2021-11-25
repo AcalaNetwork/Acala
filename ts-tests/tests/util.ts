@@ -13,7 +13,7 @@ export const ACALA_LOG = process.env.ACALA_LOG || "info";
 export const ACALA_BUILD = process.env.ACALA_BUILD || "debug";
 
 export const BINARY_PATH = `../target/${ACALA_BUILD}/acala`;
-export const SPAWNING_TIME = 60000;
+export const SPAWNING_TIME = 120000;
 
 export async function startAcalaNode(): Promise<{ provider: TestProvider; binary: ChildProcess }> {
 	const P2P_PORT = await getPort({ port: getPort.makeRange(19931, 22000) });

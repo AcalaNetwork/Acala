@@ -5190,6 +5190,7 @@ dependencies = [
  "acala-primitives",
  "frame-support",
  "frame-system",
+ "log",
  "module-evm",
  "module-evm-bridge",
  "module-support",
@@ -5204,6 +5205,8 @@ dependencies = [
  "sp-runtime",
  "sp-std",
  "xcm",
+ "xcm-builder",
+ "xcm-executor",
 ]
 
 [[package]]
