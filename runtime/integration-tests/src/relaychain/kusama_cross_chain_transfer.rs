@@ -23,6 +23,8 @@ use crate::setup::*;
 
 use frame_support::assert_ok;
 
+use karura_runtime::AssetRegistry;
+use module_asset_registry::AssetMetadata;
 use orml_traits::MultiCurrency;
 use xcm_emulator::TestExt;
 
@@ -314,9 +316,10 @@ fn subscribe_version_notify_works() {
 			karura_runtime::Event::XcmpQueue(cumulus_pallet_xcmp_queue::Event::XcmpMessageSent(Some(_)))
 				| karura_runtime::Event::XcmpQueue(cumulus_pallet_xcmp_queue::Event::Success(Some(_)))
 		)));
-  });
+	});
 }
 
+#[test]
 fn test_asset_registry_module() {
 	TestNet::reset();
 
