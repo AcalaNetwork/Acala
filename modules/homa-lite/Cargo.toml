@@ -1,6 +1,6 @@
 [package]
 name = "module-homa-lite"
-version = "2.0.1"
+version = "2.0.2"
 authors = ["Acala Developers"]
 edition = "2018"
 
@@ -21,12 +21,14 @@ primitives = { package = "acala-primitives", path = "../../primitives", default-
 orml-traits = { path = "../../orml/traits", default-features = false }
 module-support = { path = "../../modules/support", default-features = false }
 
+# TODO: move this to dev-dependencies when https://github.com/paritytech/polkadot/pull/4355 is available
+xcm-executor = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.12", default-features = false }
+
 [dev-dependencies]
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.12" }
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.12" }
 module-currencies = { path = "../../modules/currencies" }
 orml-tokens = { path = "../../orml/tokens" }
-xcm-executor = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.12" }
 cumulus-primitives-core = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.12" }
 module-relaychain = { path = "../relaychain", features = ["kusama"] }
 
@@ -48,6 +50,7 @@ std = [
 	"primitives/std",
 	"orml-traits/std",
 	"module-support/std",
+	"xcm-executor/std",
 ]
 runtime-benchmarks = [
 	"frame-benchmarking",

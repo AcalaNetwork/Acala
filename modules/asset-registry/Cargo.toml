@@ -1,10 +1,11 @@
 [package]
 name = "module-asset-registry"
-version = "2.0.1"
+version = "2.0.2"
 authors = ["Acala Developers"]
 edition = "2018"
 
 [dependencies]
+log = { version = "0.4.14", default-features = false }
 serde = { version = "1.0.124", optional = true }
 scale-info = { version = "1.0", default-features = false, features = ["derive"] }
 codec = { package = "parity-scale-codec", version = "2.3.1", default-features = false }
@@ -15,6 +16,8 @@ frame-system = { git = "https://github.com/paritytech/substrate", branch = "polk
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 
 xcm = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.12", default-features = false }
+xcm-builder = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.12", default-features = false }
+xcm-executor = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.12", default-features = false }
 
 module-support = { path = "../support", default-features = false }
 
@@ -32,6 +35,7 @@ orml-utilities = { path = "../../orml/utilities" }
 default = ["std"]
 std = [
 	"serde",
+	"log/std",
 	"codec/std",
 	"scale-info/std",
 	"sp-runtime/std",
@@ -40,6 +44,8 @@ std = [
 	"frame-system/std",
 	"primitives/std",
 	"xcm/std",
+	"xcm-builder/std",
+	"xcm-executor/std",
 	"module-support/std",
 ]
 try-runtime = ["frame-support/try-runtime"]
