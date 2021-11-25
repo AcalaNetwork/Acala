@@ -76,6 +76,8 @@ use sp_std::{collections::btree_map::BTreeMap, convert::TryInto, fmt::Write, mar
 pub mod precompiles;
 pub mod runner;
 
+pub mod bench_mock;
+pub mod benches;
 mod mock;
 mod tests;
 pub mod weights;

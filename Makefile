@@ -162,3 +162,7 @@ clippy-fix:
 .PHONY: clean-runtimes
 clean-runtimes:
 	./scripts/clean-runtimes.sh
+
+.PHONY: bench-evm
+bench-evm:
+	cargo bench --package=module-evm --features bench | node ./scripts/analyze-evm-benches.js
