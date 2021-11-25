@@ -1,6 +1,6 @@
 [package]
 name = "mandala-runtime"
-version = "2.0.1"
+version = "2.0.2"
 authors = ["Acala Developers"]
 edition = "2018"
 build = "build.rs"
