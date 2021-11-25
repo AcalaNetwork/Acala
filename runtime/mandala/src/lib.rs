@@ -1486,7 +1486,6 @@ parameter_types! {
 parameter_types! {
 	pub NativeTokenExistentialDeposit: Balance = 10 * cent(ACA);
 	pub const NewContractExtraBytes: u32 = 0;
-	pub const StorageDepositPerByte: Balance = 0;
 	pub const DeveloperDeposit: Balance = 0;
 	pub const DeploymentFee: Balance = 0;
 }
@@ -1495,9 +1494,27 @@ parameter_types! {
 parameter_types! {
 	pub NativeTokenExistentialDeposit: Balance = 10 * cent(ACA);
 	pub const NewContractExtraBytes: u32 = 10_000;
-	pub StorageDepositPerByte: Balance = deposit(0, 1);
 	pub DeveloperDeposit: Balance = dollar(ACA);
 	pub DeploymentFee: Balance = dollar(ACA);
+}
+
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, TypeInfo)]
+pub struct StorageDepositPerByte;
+impl<I: From<Balance>> frame_support::traits::Get<I> for StorageDepositPerByte {
+	fn get() -> I {
+		#[cfg(not(feature = "with-ethereum-compatibility"))]
+		return I::from(100 * dollar(ACA)); // NOTE: use 18 decimals
+		#[cfg(feature = "with-ethereum-compatibility")]
+		return I::from(0);
+	}
+}
+
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, TypeInfo)]
+pub struct TxFeePerGas;
+impl<I: From<Balance>> frame_support::traits::Get<I> for TxFeePerGas {
+	fn get() -> I {
+		I::from(20 * cent(ACA)) // NOTE: use 18 decimals
+	}
 }
 
 #[cfg(feature = "with-ethereum-compatibility")]
@@ -1509,6 +1526,7 @@ impl module_evm::Config for Runtime {
 	type TransferAll = Currencies;
 	type NewContractExtraBytes = NewContractExtraBytes;
 	type StorageDepositPerByte = StorageDepositPerByte;
+	type TxFeePerGas = TxFeePerGas;
 	type Event = Event;
 	type Precompiles = runtime_common::AllPrecompiles<Self>;
 	type ChainId = ChainId;
@@ -1983,7 +2001,8 @@ pub type SignedExtra = (
 	module_evm::SetEvmOrigin<Runtime>,
 );
 /// Unchecked extrinsic type as expected by this runtime.
-pub type UncheckedExtrinsic = AcalaUncheckedExtrinsic<Call, SignedExtra, ConvertEthereumTx>;
+pub type UncheckedExtrinsic =
+	AcalaUncheckedExtrinsic<Call, SignedExtra, ConvertEthereumTx, StorageDepositPerByte, TxFeePerGas>;
 /// The payload being signed in transactions.
 pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 /// Extrinsic type that has already been checked.

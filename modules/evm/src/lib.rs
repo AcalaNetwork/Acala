@@ -75,7 +75,8 @@ use sha3::{Digest, Keccak256};
 use sp_io::KillStorageResult::{AllRemoved, SomeRemaining};
 use sp_runtime::{
 	traits::{
-		Convert, DispatchInfoOf, One, PostDispatchInfoOf, Saturating, SignedExtension, UniqueSaturatedInto, Zero,
+		CheckedDiv, CheckedMul, Convert, DispatchInfoOf, One, PostDispatchInfoOf, Saturating, SignedExtension,
+		UniqueSaturatedInto, Zero,
 	},
 	transaction_validity::TransactionValidityError,
 	Either, TransactionOutcome,
@@ -184,6 +185,11 @@ pub mod module {
 		/// Storage required for per byte.
 		#[pallet::constant]
 		type StorageDepositPerByte: Get<BalanceOf<Self>>;
+
+		/// Tx fee required for per gas.
+		/// Provide to the client
+		#[pallet::constant]
+		type TxFeePerGas: Get<BalanceOf<Self>>;
 
 		/// The overarching event type.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
@@ -860,6 +866,23 @@ pub mod module {
 }
 
 impl<T: Config> Pallet<T> {
+	pub fn pad_zero(b: BalanceOf<T>, num: usize) -> BalanceOf<T> {
+		//TODO
+		b.checked_mul(&BalanceOf::<T>::from(10u32).saturating_pow(num))
+			.expect("")
+	}
+
+	pub fn truncate_zero(b: BalanceOf<T>, num: usize) -> BalanceOf<T> {
+		//TODO
+		b.checked_div(&BalanceOf::<T>::from(10u32).saturating_pow(num))
+			.expect("")
+	}
+
+	/// Get StorageDepositPerByte of actual decimals
+	pub fn get_storage_deposit_per_byte() -> BalanceOf<T> {
+		Self::truncate_zero(T::StorageDepositPerByte::get(), 6)
+	}
+
 	/// Check whether an account is empty.
 	pub fn is_account_empty(address: &H160) -> bool {
 		let account_id = T::AddressMapping::get_account_id(address);
@@ -1244,7 +1267,7 @@ impl<T: Config> Pallet<T> {
 		}
 
 		let user = T::AddressMapping::get_account_id(caller);
-		let amount = T::StorageDepositPerByte::get().saturating_mul(limit.into());
+		let amount = Self::get_storage_deposit_per_byte().saturating_mul(limit.into());
 
 		log::debug!(
 			target: "evm",
@@ -1263,7 +1286,7 @@ impl<T: Config> Pallet<T> {
 		}
 
 		let user = T::AddressMapping::get_account_id(caller);
-		let amount = T::StorageDepositPerByte::get().saturating_mul(unused.into());
+		let amount = Self::get_storage_deposit_per_byte().saturating_mul(unused.into());
 
 		log::debug!(
 			target: "evm",
@@ -1285,7 +1308,7 @@ impl<T: Config> Pallet<T> {
 
 		let user = T::AddressMapping::get_account_id(caller);
 		let contract_acc = T::AddressMapping::get_account_id(contract);
-		let amount = T::StorageDepositPerByte::get().saturating_mul((storage.abs() as u32).into());
+		let amount = Self::get_storage_deposit_per_byte().saturating_mul((storage.abs() as u32).into());
 
 		log::debug!(
 			target: "evm",
