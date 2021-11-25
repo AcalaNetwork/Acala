@@ -1513,7 +1513,8 @@ impl<I: From<Balance>> frame_support::traits::Get<I> for StorageDepositPerByte {
 pub struct TxFeePerGas;
 impl<I: From<Balance>> frame_support::traits::Get<I> for TxFeePerGas {
 	fn get() -> I {
-		I::from(20 * cent(ACA)) // NOTE: use 18 decimals
+		// ensure suffix is 0x0000
+		I::from(20 * cent(ACA) >> 16 << 16) // NOTE: use 18 decimals
 	}
 }
 
