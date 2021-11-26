@@ -18,9 +18,9 @@ on:
         required: false
   # schedule:
   #   - cron: "00 03 * * 1" # 3AM weekly on mondays
-  push:
-    tags:
-      - "*"
+  # push:
+  #   tags:
+  #     - "*"
 
 jobs:
   build:
