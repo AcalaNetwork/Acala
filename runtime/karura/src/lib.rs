@@ -1671,9 +1671,9 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 
 		match location {
 			MultiLocation {
-				parents,
+				parents: 1,
 				interior: X2(Parachain(para_id), GeneralKey(key)),
-			} if parents == 1 => {
+			} => {
 				match (para_id, &key[..]) {
 					(parachains::bifrost::ID, parachains::bifrost::BNC_KEY) => Some(Token(BNC)),
 					(parachains::bifrost::ID, parachains::bifrost::VSKSM_KEY) => Some(Token(VSKSM)),
@@ -1695,12 +1695,9 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 				}
 			}
 			MultiLocation {
-				parents,
-				interior: X1(Parachain(para_id)),
-			} if parents == 1 => match para_id {
-				parachains::phala::ID => Some(Token(PHA)),
-				_ => None,
-			},
+				parents: 1,
+				interior: X1(Parachain(parachains::phala::ID)),
+			} => Some(Token(PHA)),
 			_ => None,
 		}
 	}
