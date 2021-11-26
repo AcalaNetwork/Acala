@@ -2269,10 +2269,10 @@ mod tests {
 		// Ensure that the `ExistentialDeposit` for creating the contract >= account `ExistentialDeposit`.
 		// Otherwise, the creation of the contract account will fail because it is less than
 		// ExistentialDeposit.
-		use sp_runtime::traits::UniqueSaturatedInto;
 		assert!(
-			StorageDepositPerByte::get() / 10u128.saturating_pow(6) * NewContractExtraBytes::get()
-				>= NativeTokenExistentialDeposit::get()
+			Balance::from(NewContractExtraBytes::get()).saturating_mul(
+				<StorageDepositPerByte as frame_support::traits::Get<Balance>>::get() / 10u128.saturating_pow(6)
+			) >= NativeTokenExistentialDeposit::get()
 		);
 	}
 
