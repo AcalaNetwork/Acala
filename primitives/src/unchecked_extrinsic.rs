@@ -19,6 +19,7 @@
 use crate::{evm::EthereumTransactionMessage, signature::AcalaMultiSignature, Address, Balance};
 use codec::{Decode, Encode};
 use frame_support::{
+	log,
 	traits::{ExtrinsicCall, Get},
 	weights::{DispatchInfo, GetDispatchInfo},
 };
@@ -120,7 +121,7 @@ where
 				}
 
 				// tx_gas_price = tx_fee_per_gas + block_period << 16 + storage_entry_limit
-				// tx_gas_limit = gas_limit + storage_entry_limit * storage_entry_deposit / tx_fee_per_gas
+				// tx_gas_limit = gas_limit + storage_entry_deposit / tx_fee_per_gas * storage_entry_limit
 				let block_period = eth_msg.valid_until.saturating_div(30);
 				// u16: max value 0xffff * 64 = 4194240 bytes = 4MB
 				let storage_entry_limit: u16 = eth_msg
@@ -132,10 +133,17 @@ where
 				let tx_gas_price = TxFeePerGas::get()
 					.saturating_add((block_period << 16).into())
 					.saturating_add(storage_entry_limit.into());
+				// There is a loss of precision here, so the order of calculation must be guaranteed
+				// must ensure storage_deposit / tx_fee_per_gas * storage_limit
 				let tx_gas_limit = storage_entry_deposit
 					.saturating_div(TxFeePerGas::get())
 					.saturating_mul(storage_entry_limit.into())
 					.saturating_add(eth_msg.gas_limit.into());
+
+				log::trace!(
+					target: "evm", "eth_msg.gas_limit: {:?}, eth_msg.storage_limit: {:?}, tx_gas_limit: {:?}, tx_gas_price: {:?}",
+					eth_msg.storage_limit, eth_msg.gas_limit, tx_gas_limit, tx_gas_price
+				);
 
 				let msg = LegacyTransactionMessage {
 					nonce: eth_msg.nonce.into(),

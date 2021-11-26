@@ -1503,7 +1503,8 @@ pub struct StorageDepositPerByte;
 impl<I: From<Balance>> frame_support::traits::Get<I> for StorageDepositPerByte {
 	fn get() -> I {
 		#[cfg(not(feature = "with-ethereum-compatibility"))]
-		return I::from(100 * dollar(ACA)); // NOTE: use 18 decimals
+		// NOTE: use 18 decimals
+		return I::from(100 * dollar(ACA));
 		#[cfg(feature = "with-ethereum-compatibility")]
 		return I::from(0);
 	}
@@ -1513,8 +1514,9 @@ impl<I: From<Balance>> frame_support::traits::Get<I> for StorageDepositPerByte {
 pub struct TxFeePerGas;
 impl<I: From<Balance>> frame_support::traits::Get<I> for TxFeePerGas {
 	fn get() -> I {
+		// NOTE: 200 GWei
 		// ensure suffix is 0x0000
-		I::from(20 * cent(ACA) >> 16 << 16) // NOTE: use 18 decimals
+		I::from(200u128.saturating_mul(10u128.saturating_pow(9)) >> 16 << 16)
 	}
 }
 

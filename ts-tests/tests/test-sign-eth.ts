@@ -39,46 +39,31 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 		factory = new ethers.ContractFactory(Erc20DemoContract.abi, Erc20DemoContract.bytecode);
 	});
 
+	const bigNumDiv = (x: BigNumber, y: BigNumber) => {
+		const res = x.div(y);
+		return res.mul(y) === x
+			? res
+			: res.add(1)
+	}
+
 	it("create should sign and verify", async function () {
 		this.timeout(150000);
 
 		const chanid = +context.provider.api.consts.evm.chainId.toString()
 		const nonce = (await context.provider.api.query.system.account(subAddr)).nonce.toNumber()
 		const validUntil = (await context.provider.api.rpc.chain.getHeader()).number.toNumber() + 100
-		const storageLimit = 20000
-
-		const bigNumDiv = (x: BigNumber, y: BigNumber) => {
-			const res = x.div(y);
-			return res.mul(y) === x
-				? res
-				: res.add(1)
-		}
+		const storageLimit = 20000;
+		const gasLimit = 2100000;
 
 		const block_period = bigNumDiv(BigNumber.from(validUntil), BigNumber.from(30));
-		console.log("block_period:", block_period.toString());
 		const storage_entry_limit = bigNumDiv(BigNumber.from(storageLimit), BigNumber.from(64));
-		console.log("storage_entry_limit:", storage_entry_limit.toString());
 		const storage_byte_deposit = BigNumber.from(context.provider.api.consts.evm.storageDepositPerByte.toString());
-		console.log("storage_byte_deposit:", storage_byte_deposit.toString());
 		const storage_entry_deposit = storage_byte_deposit.mul(64);
-		console.log("storage_entry_deposit:", storage_entry_deposit.toString());
 		const tx_fee_per_gas = BigNumber.from(context.provider.api.consts.evm.txFeePerGas.toString());
-		console.log("tx_fee_per_gas:", tx_fee_per_gas.toString());
 		const tx_gas_price = tx_fee_per_gas.add(block_period.toNumber() << 16).add(storage_entry_limit);
-		console.log("tx_gas_price:", tx_gas_price.toString());
-		console.log("tx_gas_price:", block_period.toNumber());
-
-		console.log("tx_gas_price:", (block_period.toNumber() << 16).toString(16));
-
-		console.log("tx_gas_price:", tx_fee_per_gas.add(block_period.toNumber() << 16).toHexString());
-		console.log("tx_gas_price:", storage_entry_limit.toHexString());
-
-		const gas_limit = 2100000;
-		console.log("gas_limit:", gas_limit.toString());
-		const tx_gas_limit = storage_entry_deposit.div(tx_fee_per_gas).mul(storage_entry_limit).add(gas_limit);
-		console.log("tx_gas_limit:", tx_gas_limit.toString());
-		console.log("tx_gas_limit:", tx_gas_limit.toHexString());
-		console.log("tx_gas_price:", tx_gas_price.toHexString());
+		// There is a loss of precision here, so the order of calculation must be guaranteed
+		// must ensure storage_deposit / tx_fee_per_gas * storage_limit
+		const tx_gas_limit = storage_entry_deposit.div(tx_fee_per_gas).mul(storage_entry_limit).add(gasLimit);
 
 		const deploy = factory.getDeployTransaction(100000);
 
@@ -112,23 +97,19 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 		});
 
 		// tx data to user input
-		const i_storage_entry_limit = tx_gas_price.and(0xffff);
-		console.log("i_storage_entry_limit:", i_storage_entry_limit);
-		const i_block_period = (tx_gas_price.sub(i_storage_entry_limit).sub(tx_fee_per_gas).toNumber()) >> 16
-		console.log("i_block_period:", i_block_period);
-		const i_valid_until = i_block_period * 30
-		console.log("i_valid_until:", i_valid_until);
-
-		const i_gas_limit = tx_gas_limit.sub(i_storage_entry_limit.mul(storage_entry_deposit).div(tx_fee_per_gas))
-		console.log("i_gas_limit:", i_gas_limit);
+		const input_storage_entry_limit = tx_gas_price.and(0xffff);
+		const input_storage_limit = input_storage_entry_limit.mul(64);
+		const input_block_period = (tx_gas_price.sub(input_storage_entry_limit).sub(tx_fee_per_gas).toNumber()) >> 16;
+		const input_valid_until = input_block_period * 30;
+		const input_gas_limit = tx_gas_limit.sub(storage_entry_deposit.div(tx_fee_per_gas).mul(input_storage_entry_limit));
 
 		const tx = context.provider.api.tx.evm.ethCall(
 			{ Create: null },
 			value.data,
 			value.value,
-			i_gas_limit.toNumber(),
-			i_storage_entry_limit.toNumber(),
-			i_valid_until
+			input_gas_limit.toNumber(),
+			input_storage_limit.toNumber(),
+			input_valid_until
 		);
 
 		const sig = ethers.utils.joinSignature({ r: rawtx.r!, s: rawtx.s, v: rawtx.v })
@@ -167,8 +148,8 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 					},
 					"input": "${deploy.data}",
 					"value": 0,
-					"gas_limit": 2099998,
-					"storage_limit": 313,
+					"gas_limit": 2100000,
+					"storage_limit": 20032,
 					"valid_until": 120
 				  }
 				}
@@ -199,20 +180,30 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 	it("call should sign and verify", async function () {
 		this.timeout(150000);
 
-		const chanid = +context.provider.api.consts.evm.chainId.toString()
-		const nonce = (await context.provider.api.query.system.account(subAddr)).nonce.toNumber()
-		const validUntil = (await context.provider.api.rpc.chain.getHeader()).number.toNumber() + 100
-		const storageLimit = 1000
+		const chanid = +context.provider.api.consts.evm.chainId.toString();
+		const nonce = (await context.provider.api.query.system.account(subAddr)).nonce.toNumber();
+		const validUntil = (await context.provider.api.rpc.chain.getHeader()).number.toNumber() + 100;
+		const storageLimit = 1000;
+		const gasLimit = 210000;
 
-		const gasPrice = '0x' + (BigInt(storageLimit) << BigInt(32) | BigInt(validUntil)).toString(16);
+		const block_period = bigNumDiv(BigNumber.from(validUntil), BigNumber.from(30));
+		const storage_entry_limit = bigNumDiv(BigNumber.from(storageLimit), BigNumber.from(64));
+		const storage_byte_deposit = BigNumber.from(context.provider.api.consts.evm.storageDepositPerByte.toString());
+		const storage_entry_deposit = storage_byte_deposit.mul(64);
+		const tx_fee_per_gas = BigNumber.from(context.provider.api.consts.evm.txFeePerGas.toString());
+		const tx_gas_price = tx_fee_per_gas.add(block_period.toNumber() << 16).add(storage_entry_limit);
+		// There is a loss of precision here, so the order of calculation must be guaranteed
+		// must ensure storage_deposit / tx_fee_per_gas * storage_limit
+		const tx_gas_limit = storage_entry_deposit.div(tx_fee_per_gas).mul(storage_entry_limit).add(gasLimit);
+
 		const receiver = '0x1111222233334444555566667777888899990000';
 		const input = await factory.attach(contract).populateTransaction.transfer(receiver, 100);
 
 		const value = {
 			to: contract,
 			nonce,
-			gasLimit: 210000,
-			gasPrice,
+			gasLimit: tx_gas_limit.toNumber(),
+			gasPrice: tx_gas_price.toHexString(),
 			data: input.data,
 			value: 0,
 			chainId: chanid,
@@ -223,8 +214,8 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 
 		expect(rawtx).to.deep.include({
 			nonce: 1,
-			gasPrice: BigNumber.from('0x03e80000006a'),
-			gasLimit: BigNumber.from(210000),
+			gasPrice: BigNumber.from(200000208912),
+			gasLimit: BigNumber.from(722000),
 			to: ethers.utils.getAddress(contract),
 			value: BigNumber.from(0),
 			data: input.data,
@@ -237,13 +228,20 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 			type: null
 		});
 
+		// tx data to user input
+		const input_storage_entry_limit = tx_gas_price.and(0xffff);
+		const input_storage_limit = input_storage_entry_limit.mul(64);
+		const input_block_period = (tx_gas_price.sub(input_storage_entry_limit).sub(tx_fee_per_gas).toNumber()) >> 16;
+		const input_valid_until = input_block_period * 30;
+		const input_gas_limit = tx_gas_limit.sub(storage_entry_deposit.div(tx_fee_per_gas).mul(input_storage_entry_limit));
+
 		const tx = context.provider.api.tx.evm.ethCall(
 			{ Call: value.to },
 			value.data,
 			value.value,
-			value.gasLimit,
-			storageLimit,
-			validUntil
+			input_gas_limit.toNumber(),
+			input_storage_limit.toNumber(),
+			input_valid_until
 		);
 
 		const sig = ethers.utils.joinSignature({ r: rawtx.r!, s: rawtx.s, v: rawtx.v })
@@ -283,8 +281,8 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 					"input": "${input.data}",
 					"value": 0,
 					"gas_limit": 210000,
-					"storage_limit": 1000,
-					"valid_until": 106
+					"storage_limit": 1024,
+					"valid_until": 120
 				  }
 				}
 			  }`.toString().replace(/\s/g, '')

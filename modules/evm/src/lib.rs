@@ -75,7 +75,7 @@ use sha3::{Digest, Keccak256};
 use sp_io::KillStorageResult::{AllRemoved, SomeRemaining};
 use sp_runtime::{
 	traits::{
-		CheckedDiv, CheckedMul, Convert, DispatchInfoOf, One, PostDispatchInfoOf, Saturating, SignedExtension,
+		Convert, DispatchInfoOf, One, PostDispatchInfoOf, Saturating, SignedExtension, UniqueSaturatedFrom,
 		UniqueSaturatedInto, Zero,
 	},
 	transaction_validity::TransactionValidityError,
@@ -866,16 +866,16 @@ pub mod module {
 }
 
 impl<T: Config> Pallet<T> {
-	pub fn pad_zero(b: BalanceOf<T>, num: usize) -> BalanceOf<T> {
-		//TODO
-		b.checked_mul(&BalanceOf::<T>::from(10u32).saturating_pow(num))
-			.expect("")
+	pub fn pad_zero(b: BalanceOf<T>, num: u32) -> BalanceOf<T> {
+		BalanceOf::<T>::unique_saturated_from(
+			UniqueSaturatedInto::<u128>::unique_saturated_into(b).saturating_mul(10u128.saturating_pow(num)),
+		)
 	}
 
-	pub fn truncate_zero(b: BalanceOf<T>, num: usize) -> BalanceOf<T> {
-		//TODO
-		b.checked_div(&BalanceOf::<T>::from(10u32).saturating_pow(num))
-			.expect("")
+	pub fn truncate_zero(b: BalanceOf<T>, num: u32) -> BalanceOf<T> {
+		BalanceOf::<T>::unique_saturated_from(
+			UniqueSaturatedInto::<u128>::unique_saturated_into(b).saturating_div(10u128.saturating_pow(num)),
+		)
 	}
 
 	/// Get StorageDepositPerByte of actual decimals

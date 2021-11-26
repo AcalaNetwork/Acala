@@ -223,7 +223,7 @@ fn call_reverts_with_message() {
 
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
 
-		let alice_balance = INITIAL_BALANCE - 323 * <Runtime as Config>::StorageDepositPerByte::get();
+		let alice_balance = INITIAL_BALANCE - 323 * EVM::get_storage_deposit_per_byte();
 
 		assert_eq!(balance(alice()), alice_balance);
 
@@ -301,7 +301,7 @@ fn should_deploy_payable_contract() {
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
 		assert_eq!(result.used_storage, 287);
 
-		let alice_balance = INITIAL_BALANCE - amount - 287 * <Runtime as Config>::StorageDepositPerByte::get();
+		let alice_balance = INITIAL_BALANCE - amount - 287 * EVM::get_storage_deposit_per_byte();
 		assert_eq!(balance(alice()), alice_balance);
 		assert_eq!(balance(contract_address), amount);
 
@@ -377,7 +377,7 @@ fn should_transfer_from_contract() {
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
 		assert_eq!(result.used_storage, 892);
 
-		let alice_balance = INITIAL_BALANCE - 892 * <Runtime as Config>::StorageDepositPerByte::get();
+		let alice_balance = INITIAL_BALANCE - 892 * EVM::get_storage_deposit_per_byte();
 		assert_eq!(balance(alice()), alice_balance);
 
 		let contract_address = result.value;
@@ -477,7 +477,7 @@ fn contract_should_deploy_contracts() {
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
 		assert_eq!(result.used_storage, 467);
 
-		let alice_balance = INITIAL_BALANCE - 467 * <Runtime as Config>::StorageDepositPerByte::get();
+		let alice_balance = INITIAL_BALANCE - 467 * EVM::get_storage_deposit_per_byte();
 
 		assert_eq!(balance(alice()), alice_balance);
 		let factory_contract_address = result.value;
@@ -488,7 +488,7 @@ fn contract_should_deploy_contracts() {
 		assert_eq!(balance(factory_contract_address), 0);
 		assert_eq!(
 			reserved_balance(factory_contract_address),
-			467 * <Runtime as Config>::StorageDepositPerByte::get()
+			467 * EVM::get_storage_deposit_per_byte()
 		);
 
 		// Factory.createContract
@@ -510,18 +510,18 @@ fn contract_should_deploy_contracts() {
 
 		assert_eq!(
 			balance(alice()),
-			alice_balance - amount - 281 * <Runtime as Config>::StorageDepositPerByte::get()
+			alice_balance - amount - 281 * EVM::get_storage_deposit_per_byte()
 		);
 		assert_eq!(balance(factory_contract_address), amount);
 		assert_eq!(
 			reserved_balance(factory_contract_address),
-			(467 + 128) * <Runtime as Config>::StorageDepositPerByte::get()
+			(467 + 128) * EVM::get_storage_deposit_per_byte()
 		);
 		let contract_address = H160::from_str("7b8f8ca099f6e33cf1817cf67d0556429cfc54e4").unwrap();
 		assert_eq!(balance(contract_address), 0);
 		assert_eq!(
 			reserved_balance(contract_address),
-			153 * <Runtime as Config>::StorageDepositPerByte::get()
+			153 * EVM::get_storage_deposit_per_byte()
 		);
 	});
 }
@@ -555,7 +555,7 @@ fn contract_should_deploy_contracts_without_payable() {
 		.unwrap();
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
 
-		let alice_balance = INITIAL_BALANCE - 464 * <Runtime as Config>::StorageDepositPerByte::get();
+		let alice_balance = INITIAL_BALANCE - 464 * EVM::get_storage_deposit_per_byte();
 
 		assert_eq!(balance(alice()), alice_balance);
 		let factory_contract_address = result.value;
@@ -582,12 +582,12 @@ fn contract_should_deploy_contracts_without_payable() {
 		assert_eq!(result.used_storage, 290);
 		assert_eq!(
 			balance(alice()),
-			alice_balance - (result.used_storage as u64 * <Runtime as Config>::StorageDepositPerByte::get())
+			alice_balance - (result.used_storage as u64 * EVM::get_storage_deposit_per_byte())
 		);
 		assert_eq!(balance(factory_contract_address), 0);
 		assert_eq!(
 			reserved_balance(factory_contract_address),
-			(464 + 128) * <Runtime as Config>::StorageDepositPerByte::get()
+			(464 + 128) * EVM::get_storage_deposit_per_byte()
 		);
 	});
 }
@@ -621,7 +621,7 @@ fn deploy_factory() {
 		assert_eq!(result.used_storage, 461);
 		assert_eq!(
 			balance(alice()),
-			INITIAL_BALANCE - (result.used_storage as u64 * <Runtime as Config>::StorageDepositPerByte::get())
+			INITIAL_BALANCE - (result.used_storage as u64 * EVM::get_storage_deposit_per_byte())
 		);
 	});
 }
@@ -788,7 +788,7 @@ fn should_transfer_maintainer() {
 		.unwrap();
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
 		assert_eq!(result.used_storage, 461);
-		let alice_balance = INITIAL_BALANCE - 461 * <Runtime as Config>::StorageDepositPerByte::get();
+		let alice_balance = INITIAL_BALANCE - 461 * EVM::get_storage_deposit_per_byte();
 		let contract_address = result.value;
 
 		assert_eq!(balance(alice()), alice_balance);
@@ -857,7 +857,7 @@ fn should_deploy() {
 		let contract_address = result.value;
 
 		assert_eq!(result.used_storage, 284);
-		let alice_balance = INITIAL_BALANCE - 284 * <Runtime as Config>::StorageDepositPerByte::get();
+		let alice_balance = INITIAL_BALANCE - 284 * EVM::get_storage_deposit_per_byte();
 
 		assert_eq!(balance(alice()), alice_balance);
 
@@ -908,7 +908,7 @@ fn should_deploy() {
 		let code_size = Accounts::<Runtime>::get(contract_address).map_or(0, |account_info| -> u32 {
 			account_info.contract_info.map_or(0, |contract_info| CodeInfos::<Runtime>::get(contract_info.code_hash).map_or(0, |code_info| code_info.code_size))
 		});
-		assert_eq!(balance(alice()), INITIAL_BALANCE - DeploymentFee::get() - ((NewContractExtraBytes::get() + code_size) as u64 * StorageDepositPerByte::get()));
+		assert_eq!(balance(alice()), INITIAL_BALANCE - DeploymentFee::get() - ((NewContractExtraBytes::get() + code_size) as u64 * EVM::get_storage_deposit_per_byte()));
 		assert_eq!(Balances::free_balance(TreasuryAccount::get()), INITIAL_BALANCE + DeploymentFee::get());
 
 		// call method `multiply` will work
@@ -1065,7 +1065,7 @@ fn should_set_code() {
 		.unwrap();
 		let contract_address = result.value;
 		assert_eq!(result.used_storage, 284);
-		let alice_balance = INITIAL_BALANCE - 284 * <Runtime as Config>::StorageDepositPerByte::get();
+		let alice_balance = INITIAL_BALANCE - 284 * EVM::get_storage_deposit_per_byte();
 
 		assert_eq!(balance(alice()), alice_balance);
 		assert_eq!(reserved_balance(contract_address), 2840);
@@ -1210,7 +1210,7 @@ fn should_selfdestruct() {
 
 		let contract_address = result.value;
 		assert_eq!(result.used_storage, 287);
-		let alice_balance = INITIAL_BALANCE - 287 * <Runtime as Config>::StorageDepositPerByte::get() - amount;
+		let alice_balance = INITIAL_BALANCE - 287 * EVM::get_storage_deposit_per_byte() - amount;
 
 		assert_eq!(balance(alice()), alice_balance);
 
@@ -1250,7 +1250,7 @@ fn should_selfdestruct() {
 		assert_eq!(balance(contract_address), 1000);
 		assert_eq!(
 			reserved_balance(contract_address),
-			287 * <Runtime as Config>::StorageDepositPerByte::get()
+			287 * EVM::get_storage_deposit_per_byte()
 		);
 
 		// can't deploy at the same address until everything is wiped out
@@ -1327,7 +1327,7 @@ fn storage_limit_should_work() {
 		.unwrap();
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
 		assert_eq!(result.used_storage, 516);
-		let alice_balance = INITIAL_BALANCE - 516 * <Runtime as Config>::StorageDepositPerByte::get();
+		let alice_balance = INITIAL_BALANCE - 516 * EVM::get_storage_deposit_per_byte();
 		assert_eq!(balance(alice()), alice_balance);
 
 		let factory_contract_address = result.value;
@@ -1338,7 +1338,7 @@ fn storage_limit_should_work() {
 		assert_eq!(balance(factory_contract_address), 0);
 		assert_eq!(
 			reserved_balance(factory_contract_address),
-			516 * <Runtime as Config>::StorageDepositPerByte::get()
+			516 * EVM::get_storage_deposit_per_byte()
 		);
 
 		// Factory.createContract(1)
@@ -1445,7 +1445,7 @@ fn evm_execute_mode_should_work() {
 	).unwrap();
 
 	new_test_ext().execute_with(|| {
-		let mut alice_balance = INITIAL_BALANCE - 516 * <Runtime as Config>::StorageDepositPerByte::get();
+		let mut alice_balance = INITIAL_BALANCE - 516 * EVM::get_storage_deposit_per_byte();
 
 		let result = <Runtime as Config>::Runner::create(
 			alice(),
@@ -1557,7 +1557,7 @@ fn evm_execute_mode_should_work() {
 			}
 		);
 
-		alice_balance -= 290 * <Runtime as Config>::StorageDepositPerByte::get();
+		alice_balance -= 290 * EVM::get_storage_deposit_per_byte();
 
 		assert_eq!(balance(alice()), alice_balance);
 
