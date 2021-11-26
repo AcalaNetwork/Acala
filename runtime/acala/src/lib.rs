@@ -1287,7 +1287,7 @@ impl<I: From<Balance>> frame_support::traits::Get<I> for TxFeePerGas {
 	fn get() -> I {
 		// NOTE: 200 GWei
 		// ensure suffix is 0x0000
-		I::from(200u128.saturating_mul(10u128.saturating_pow(9)) >> 16 << 16)
+		I::from(200u128.saturating_mul(10u128.saturating_pow(9)) & !0xffff)
 	}
 }
 
