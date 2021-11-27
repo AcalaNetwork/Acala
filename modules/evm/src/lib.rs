@@ -21,6 +21,7 @@
 #![allow(clippy::or_fun_call)]
 #![allow(clippy::unused_unit)]
 #![allow(clippy::upper_case_acronyms)]
+#![feature(saturating_div)] // TODO: remove after rust 1.58.0 https://github.com/rust-lang/rust/pull/88624
 
 pub use crate::{
 	precompiles::{Precompile, PrecompileSet},
