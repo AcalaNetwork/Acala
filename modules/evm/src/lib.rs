@@ -21,7 +21,6 @@
 #![allow(clippy::or_fun_call)]
 #![allow(clippy::unused_unit)]
 #![allow(clippy::upper_case_acronyms)]
-#![feature(saturating_div)] // TODO: remove after rust 1.58.0 https://github.com/rust-lang/rust/pull/88624
 
 pub use crate::{
 	precompiles::{Precompile, PrecompileSet},
@@ -875,7 +874,9 @@ impl<T: Config> Pallet<T> {
 
 	pub fn truncate_zero(b: BalanceOf<T>, num: u32) -> BalanceOf<T> {
 		BalanceOf::<T>::unique_saturated_from(
-			UniqueSaturatedInto::<u128>::unique_saturated_into(b).saturating_div(10u128.saturating_pow(num)),
+			UniqueSaturatedInto::<u128>::unique_saturated_into(b)
+				.checked_div(10u128.saturating_pow(num))
+				.expect("divisor is non-zero; qed"),
 		)
 	}
 

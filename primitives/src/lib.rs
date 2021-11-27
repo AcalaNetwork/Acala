@@ -19,7 +19,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unnecessary_cast)]
 #![allow(clippy::upper_case_acronyms)]
-#![feature(saturating_div)] // TODO: remove after rust 1.58.0 https://github.com/rust-lang/rust/pull/88624
 
 pub mod currency;
 pub mod evm;

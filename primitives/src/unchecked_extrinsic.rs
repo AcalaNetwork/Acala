@@ -122,11 +122,12 @@ where
 
 				// tx_gas_price = tx_fee_per_gas + block_period << 16 + storage_entry_limit
 				// tx_gas_limit = gas_limit + storage_entry_deposit / tx_fee_per_gas * storage_entry_limit
-				let block_period = eth_msg.valid_until.saturating_div(30);
+				let block_period = eth_msg.valid_until.checked_div(30).expect("divisor is non-zero; qed");
 				// u16: max value 0xffff * 64 = 4194240 bytes = 4MB
 				let storage_entry_limit: u16 = eth_msg
 					.storage_limit
-					.saturating_div(64)
+					.checked_div(64)
+					.expect("divisor is non-zero; qed")
 					.try_into()
 					.map_err(|_| InvalidTransaction::BadProof)?;
 				let storage_entry_deposit = StorageDepositPerByte::get().saturating_mul(64);
@@ -136,7 +137,8 @@ where
 				// There is a loss of precision here, so the order of calculation must be guaranteed
 				// must ensure storage_deposit / tx_fee_per_gas * storage_limit
 				let tx_gas_limit = storage_entry_deposit
-					.saturating_div(TxFeePerGas::get())
+					.checked_div(TxFeePerGas::get())
+					.expect("divisor is non-zero; qed")
 					.saturating_mul(storage_entry_limit.into())
 					.saturating_add(eth_msg.gas_limit.into());
 
