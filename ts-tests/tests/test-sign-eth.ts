@@ -66,7 +66,7 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 
 		expect(rawtx).to.deep.include({
 			nonce: 0,
-			gasPrice: BigNumber.from('0x4e2000000068'),
+			gasPrice: BigNumber.from('0x4e2000000069'),
 			gasLimit: BigNumber.from(2100000),
 			// to: '0x0000000000000000000000000000000000000000',
 			value: BigNumber.from(0),
@@ -127,7 +127,7 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 					"value": 0,
 					"gas_limit": 2100000,
 					"storage_limit": 20000,
-					"valid_until": 104
+					"valid_until": 105
 				  }
 				}
 			  }`.toString().replace(/\s/g, '')
