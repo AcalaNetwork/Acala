@@ -3,8 +3,9 @@
   "id": "mandala-tc7",
   "chainType": "Live",
   "bootNodes": [
-    "/dns/mandala-tc7-bootnode-1.laminar.codes/tcp/30333/p2p/12D3KooWFT9F1X4bfnAbvMfZLbhqWqGPeYvR6h4qzrYFqmPDsc49",
-    "/dns/mandala-tc7-bootnode.aca-dev.network/tcp/30334/ws/p2p/12D3KooWFejcBzyJ6z2XqQHaAZwFc5X5a6YAADYVGnLEDMiCGpXH"
+    "/dns/mandala-tc7-bootnode.aca-dev.network/tcp/30333/p2p/12D3KooWFejcBzyJ6z2XqQHaAZwFc5X5a6YAADYVGnLEDMiCGpXH",
+    "/dns/mandala-tc7-bootnode.aca-dev.network/tcp/30334/ws/p2p/12D3KooWFejcBzyJ6z2XqQHaAZwFc5X5a6YAADYVGnLEDMiCGpXH",
+	"/dns4/node-6869788355513958400-0.p2p.onfinality.io/tcp/11667/ws/p2p/12D3KooWHoGCAmPkh7x3o58K6MyzQQepcAwLHbtEQReyYn7isB47"
   ],
   "telemetryEndpoints": [
     [
