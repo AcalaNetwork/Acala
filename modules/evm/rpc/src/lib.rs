@@ -108,15 +108,15 @@ fn decode_revert_message(data: &[u8]) -> Option<String> {
 
 pub struct EVMApi<B, C, Balance> {
 	client: Arc<C>,
-	deny_unsafe: DenyUnsafe,
+	_deny_unsafe: DenyUnsafe,
 	_marker: PhantomData<(B, Balance)>,
 }
 
 impl<B, C, Balance> EVMApi<B, C, Balance> {
-	pub fn new(client: Arc<C>, deny_unsafe: DenyUnsafe) -> Self {
+	pub fn new(client: Arc<C>, _deny_unsafe: DenyUnsafe) -> Self {
 		Self {
 			client,
-			deny_unsafe,
+			_deny_unsafe,
 			_marker: Default::default(),
 		}
 	}
@@ -151,8 +151,8 @@ where
 			data,
 		} = request;
 
-		let gas_limit = gas_limit.unwrap_or_else(MAX_GAS_LIMIT);
-		let storage_limit = storage_limit.unwrap_or_else(MAX_STROAGE_LIMIT);
+		let gas_limit = gas_limit.unwrap_or(MAX_GAS_LIMIT);
+		let storage_limit = storage_limit.unwrap_or(MAX_STROAGE_LIMIT);
 		let data = data.map(|d| d.0).unwrap_or_default();
 
 		let api = self.client.runtime_api();
