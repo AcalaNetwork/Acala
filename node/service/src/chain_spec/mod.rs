@@ -51,6 +51,9 @@ pub struct Extensions {
 	pub relay_chain: String,
 	/// The id of the Parachain.
 	pub para_id: u32,
+	/// Known bad block hashes.
+	#[serde(default)]
+	pub bad_blocks: sc_client_api::BadBlocks<polkadot_primitives::v1::Block>,
 }
 
 impl Extensions {
