@@ -379,6 +379,7 @@ ord_parameter_types! {
 	pub const NetworkContractAccount: AccountId32 = AccountId32::from([0u8; 32]);
 	pub const NewContractExtraBytes: u32 = 100;
 	pub const StorageDepositPerByte: u64 = 10;
+	pub const TxFeePerGas: u64 = 10;
 	pub const DeveloperDeposit: u64 = 1000;
 	pub const DeploymentFee: u64 = 200;
 	pub const ChainId: u64 = 1;
@@ -397,6 +398,7 @@ impl module_evm::Config for Test {
 	type TransferAll = Currencies;
 	type NewContractExtraBytes = NewContractExtraBytes;
 	type StorageDepositPerByte = StorageDepositPerByte;
+	type TxFeePerGas = TxFeePerGas;
 	type Event = Event;
 	type Precompiles = AllPrecompiles<Self>;
 	type ChainId = ChainId;

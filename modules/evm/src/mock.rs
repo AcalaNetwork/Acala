@@ -173,7 +173,8 @@ ord_parameter_types! {
 	pub const TreasuryAccount: AccountId32 = AccountId32::from([2u8; 32]);
 	pub const NetworkContractAccount: AccountId32 = AccountId32::from([0u8; 32]);
 	pub const NewContractExtraBytes: u32 = 100;
-	pub const StorageDepositPerByte: u64 = 10;
+	pub const StorageDepositPerByte: u64 = 10_000_000;
+	pub const TxFeePerGas: u64 = 20_000_000;
 	pub const DeveloperDeposit: u64 = 1000;
 	pub const DeploymentFee: u64 = 200;
 	pub const ChainId: u64 = 1;
@@ -185,6 +186,7 @@ impl Config for Runtime {
 	type TransferAll = Currencies;
 	type NewContractExtraBytes = NewContractExtraBytes;
 	type StorageDepositPerByte = StorageDepositPerByte;
+	type TxFeePerGas = TxFeePerGas;
 
 	type Event = Event;
 	type Precompiles = ();
