@@ -1598,10 +1598,10 @@ parameter_types! {
 		ParachainInfo::get().into_account(),
 		RelayChainSubAccountId::HomaLite as u16
 	);
-	pub MaxRewardPerEra: Permill = Permill::from_rational(500u32, 1_000_000u32); // 1.2 ^ (1/365) = 1.0004996359
+	pub MaxRewardPerEra: Permill = Permill::from_rational(500u32, 1_000_000u32); // 1.2 ^ (1/365) - 1 ≈ 0.05%
 	pub MintFee: Balance = 20 * millicent(KSM); // 2x XCM fee on Kusama
 	pub DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
-	pub BaseWithdrawFee: Permill = Permill::from_rational(35u32, 10_000u32); // 20% yield per year, unbonding period = 7 days. 1.2^(7 / 365) = 1.00350
+	pub BaseWithdrawFee: Permill = Permill::from_rational(35u32, 10_000u32); // 20% yield per year, unbonding period = 7 days. 1.2^(7 / 365) - 1 ≈ 0.35%
 	pub MaximumRedeemRequestMatchesForMint: u32 = 20;
 	pub RelayChainUnbondingSlashingSpans: u32 = 5;
 	pub MaxScheduledUnbonds: u32 = 14;

@@ -240,7 +240,7 @@ fn testnet_genesis(
 		DexConfig, EVMConfig, EnabledTradingPairs, FinancialCouncilMembershipConfig, GeneralCouncilMembershipConfig,
 		HomaCouncilMembershipConfig, IndicesConfig, NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig,
 		OrmlNFTConfig, ParachainInfoConfig, PolkadotXcmConfig, RenVmBridgeConfig, SessionConfig, SessionDuration,
-		SessionKeys, SessionManagerConfig, StakingPoolConfig, StarportConfig, SudoConfig, SystemConfig,
+		SessionKeys, SessionManagerConfig, StarportConfig, SudoConfig, SystemConfig,
 		TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig, ACA, AUSD, DOT, LDOT, RENBTC,
 	};
 
@@ -362,15 +362,6 @@ fn testnet_genesis(
 			accounts: evm_genesis_accounts,
 			treasury: root_key,
 		},
-		staking_pool: StakingPoolConfig {
-			staking_pool_params: module_staking_pool::Params {
-				target_max_free_unbonded_ratio: FixedU128::saturating_from_rational(10, 100),
-				target_min_free_unbonded_ratio: FixedU128::saturating_from_rational(5, 100),
-				target_unbonding_to_free_ratio: FixedU128::saturating_from_rational(2, 100),
-				unbonding_to_free_adjustment: FixedU128::saturating_from_rational(1, 1000),
-				base_fee_rate: FixedU128::saturating_from_rational(2, 100),
-			},
-		},
 		dex: DexConfig {
 			initial_listing_trading_pairs: vec![],
 			initial_enabled_trading_pairs: EnabledTradingPairs::get(),
@@ -441,9 +432,8 @@ fn mandala_genesis(
 		CollatorSelectionConfig, DexConfig, EVMConfig, EnabledTradingPairs, FinancialCouncilMembershipConfig,
 		GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig, IndicesConfig, NativeTokenExistentialDeposit,
 		OperatorMembershipAcalaConfig, OrmlNFTConfig, ParachainInfoConfig, PolkadotXcmConfig, RenVmBridgeConfig,
-		SessionConfig, SessionDuration, SessionKeys, SessionManagerConfig, StakingPoolConfig, StarportConfig,
-		SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig, ACA, AUSD, DOT,
-		LDOT, RENBTC,
+		SessionConfig, SessionDuration, SessionKeys, SessionManagerConfig, StarportConfig, SudoConfig, SystemConfig,
+		TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig, ACA, AUSD, DOT, LDOT, RENBTC,
 	};
 
 	let existential_deposit = NativeTokenExistentialDeposit::get();
@@ -560,15 +550,6 @@ fn mandala_genesis(
 		evm: EVMConfig {
 			accounts: evm_genesis_accounts,
 			treasury: root_key,
-		},
-		staking_pool: StakingPoolConfig {
-			staking_pool_params: module_staking_pool::Params {
-				target_max_free_unbonded_ratio: FixedU128::saturating_from_rational(10, 100),
-				target_min_free_unbonded_ratio: FixedU128::saturating_from_rational(5, 100),
-				target_unbonding_to_free_ratio: FixedU128::saturating_from_rational(2, 100),
-				unbonding_to_free_adjustment: FixedU128::saturating_from_rational(1, 1000),
-				base_fee_rate: FixedU128::saturating_from_rational(2, 100),
-			},
 		},
 		dex: DexConfig {
 			initial_listing_trading_pairs: vec![],

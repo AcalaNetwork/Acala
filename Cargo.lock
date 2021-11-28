@@ -4884,19 +4884,15 @@ dependencies = [
  "module-evm-utiltity",
  "module-homa",
  "module-homa-lite",
- "module-homa-validator-list",
  "module-honzon",
  "module-idle-scheduler",
  "module-incentives",
  "module-loans",
  "module-nft",
  "module-nominees-election",
- "module-polkadot-bridge",
  "module-prices",
  "module-relaychain",
  "module-session-manager",
- "module-staking-pool",
- "module-staking-pool-rpc-runtime-api",
  "module-support",
  "module-transaction-pause",
  "module-transaction-payment",
@@ -5507,14 +5503,27 @@ name = "module-homa"
 version = "2.0.1"
 dependencies = [
  "acala-primitives",
+ "cumulus-primitives-core",
+ "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "module-currencies",
+ "module-relaychain",
  "module-support",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "pallet-staking",
+ "pallet-xcm",
  "parity-scale-codec",
  "scale-info",
- "serde",
+ "sp-arithmetic",
+ "sp-core",
+ "sp-io",
  "sp-runtime",
  "sp-std",
+ "xcm",
+ "xcm-executor",
 ]
 
 [[package]]
@@ -5787,18 +5796,6 @@ dependencies = [
  "serde",
  "sp-core",
  "sp-io",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "module-staking-pool-rpc-runtime-api"
-version = "2.0.1"
-dependencies = [
- "module-support",
- "parity-scale-codec",
- "serde",
- "sp-api",
  "sp-runtime",
  "sp-std",
 ]

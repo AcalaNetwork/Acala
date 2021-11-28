@@ -597,6 +597,16 @@ pub trait CallBuilder {
 	/// - index: The index of sub-account to be used as the new origin.
 	fn utility_as_derivative_call(call: Self::RelayChainCall, index: u16) -> Self::RelayChainCall;
 
+	/// Bond extra on relay-chain.
+	///  params:
+	/// - amount: The amount of staking currency to bond.
+	fn staking_bond_extra(amount: Self::Balance) -> Self::RelayChainCall;
+
+	/// Unbond on relay-chain.
+	///  params:
+	/// - amount: The amount of staking currency to unbond.
+	fn staking_unbond(amount: Self::Balance) -> Self::RelayChainCall;
+
 	/// Withdraw unbonded staking on the relay-chain.
 	///  params:
 	/// - num_slashing_spans: The number of slashing spans to withdraw from.

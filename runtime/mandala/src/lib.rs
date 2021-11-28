@@ -837,18 +837,11 @@ impl module_prices::Config for Runtime {
 	type GetStakingCurrencyId = GetStakingCurrencyId;
 	type GetLiquidCurrencyId = GetLiquidCurrencyId;
 	type LockOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
-	type LiquidStakingExchangeRateProvider = LiquidStakingExchangeRateProvider;
+	type LiquidStakingExchangeRateProvider = HomaLite;
 	type DEX = Dex;
 	type Currency = Currencies;
 	type Erc20InfoMapping = EvmErc20InfoMapping<Runtime>;
 	type WeightInfo = weights::module_prices::WeightInfo<Runtime>;
-}
-
-pub struct LiquidStakingExchangeRateProvider;
-impl module_support::ExchangeRateProvider for LiquidStakingExchangeRateProvider {
-	fn get_exchange_rate() -> ExchangeRate {
-		StakingPool::liquid_exchange_rate()
-	}
 }
 
 parameter_types! {
@@ -1199,44 +1192,9 @@ impl module_incentives::Config for Runtime {
 }
 
 parameter_types! {
-	pub const PolkadotBondingDuration: EraIndex = 7;
-	pub const EraLength: BlockNumber = DAYS;
-	pub const MaxUnbonding: u32 = 1000;
-}
-
-impl module_polkadot_bridge::Config for Runtime {
-	type DOTCurrency = Currency<Runtime, GetStakingCurrencyId>;
-	type OnNewEra = (NomineesElection, StakingPool);
-	type BondingDuration = PolkadotBondingDuration;
-	type EraLength = EraLength;
-	type PolkadotAccountId = AccountId;
-	type MaxUnbonding = MaxUnbonding;
-}
-
-parameter_types! {
 	pub const GetLiquidCurrencyId: CurrencyId = LDOT;
 	pub const GetStakingCurrencyId: CurrencyId = DOT;
 	pub DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(10, 100);	// 1 : 10
-	pub PoolAccountIndexes: Vec<u32> = vec![1, 2, 3, 4];
-}
-
-impl module_staking_pool::Config for Runtime {
-	type Event = Event;
-	type StakingCurrencyId = GetStakingCurrencyId;
-	type LiquidCurrencyId = GetLiquidCurrencyId;
-	type DefaultExchangeRate = DefaultExchangeRate;
-	type PalletId = StakingPoolPalletId;
-	type PoolAccountIndexes = PoolAccountIndexes;
-	type UpdateOrigin = EnsureRootOrHalfHomaCouncil;
-	type FeeModel = CurveFeeModel;
-	type Nominees = NomineesElection;
-	type Bridge = PolkadotBridge;
-	type Currency = Currencies;
-}
-
-impl module_homa::Config for Runtime {
-	type Homa = StakingPool;
-	type WeightInfo = weights::module_homa::WeightInfo<Runtime>;
 }
 
 pub fn create_x2_parachain_multilocation(index: u16) -> MultiLocation {
@@ -1313,28 +1271,6 @@ impl module_nominees_election::Config for Runtime {
 	type MaxUnlockingChunks = MaxUnlockingChunks;
 	type NomineeFilter = runtime_common::DummyNomineeFilter;
 	type WeightInfo = weights::module_nominees_election::WeightInfo<Runtime>;
-}
-
-parameter_types! {
-	pub MinGuaranteeAmount: Balance = dollar(LDOT);
-	pub const ValidatorInsuranceThreshold: Balance = 0;
-}
-
-impl module_homa_validator_list::Config for Runtime {
-	type Event = Event;
-	type RelaychainAccountId = AccountId;
-	type LiquidTokenCurrency = Currency<Runtime, GetLiquidCurrencyId>;
-	type MinBondAmount = MinGuaranteeAmount;
-	type BondingDuration = PolkadotBondingDuration;
-	type ValidatorInsuranceThreshold = ValidatorInsuranceThreshold;
-	type FreezeOrigin = EnsureRootOrHalfHomaCouncil;
-	type SlashOrigin = EnsureRootOrHalfHomaCouncil;
-	type OnSlash = module_staking_pool::OnSlash<Runtime>;
-	type LiquidStakingExchangeRateProvider = LiquidStakingExchangeRateProvider;
-	type WeightInfo = ();
-	type OnIncreaseGuarantee = ();
-	type OnDecreaseGuarantee = ();
-	type BlockNumberProvider = RelayChainBlockNumberProvider<Runtime>;
 }
 
 parameter_types! {
@@ -2099,11 +2035,7 @@ construct_runtime! {
 		EmergencyShutdown: module_emergency_shutdown::{Pallet, Storage, Call, Event<T>} = 125,
 
 		// Homa
-		Homa: module_homa::{Pallet, Call} = 130,
 		NomineesElection: module_nominees_election::{Pallet, Call, Storage, Event<T>} = 131,
-		StakingPool: module_staking_pool::{Pallet, Call, Storage, Event<T>, Config} = 132,
-		PolkadotBridge: module_polkadot_bridge::{Pallet, Call, Storage} = 133,
-		HomaValidatorListModule: module_homa_validator_list::{Pallet, Call, Storage, Event<T>} = 134,
 		HomaLite: module_homa_lite::{Pallet, Call, Storage, Event<T>} = 135,
 
 		// Acala Other
@@ -2267,22 +2199,6 @@ impl_runtime_apis! {
 				DataProviderId::Acala => AcalaOracle::get_all_values(),
 				DataProviderId::Aggregated => <AggregatedDataProvider as DataProviderExtended<_, _>>::get_all_values()
 			}
-		}
-	}
-
-	impl module_staking_pool_rpc_runtime_api::StakingPoolApi<
-		Block,
-		AccountId,
-		Balance,
-	> for Runtime {
-		fn get_available_unbonded(account: AccountId) -> module_staking_pool_rpc_runtime_api::BalanceInfo<Balance> {
-			module_staking_pool_rpc_runtime_api::BalanceInfo {
-				amount: StakingPool::get_available_unbonded(&account)
-			}
-		}
-
-		fn get_liquid_staking_exchange_rate() -> ExchangeRate {
-			StakingPool::liquid_exchange_rate()
 		}
 	}
 
