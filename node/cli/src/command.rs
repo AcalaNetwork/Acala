@@ -175,7 +175,6 @@ impl SubstrateCli for RelayChainCli {
 	}
 
 	fn load_spec(&self, id: &str) -> std::result::Result<Box<dyn sc_service::ChainSpec>, String> {
-		println!("Loading chain spec {}", id);
 		if id == "rococo-mandala" {
 			let spec = sc_service::GenericChainSpec::<(), polkadot_service::chain_spec::Extensions>::from_json_bytes(
 				&include_bytes!("../../../resources/rococo-mandala.json")[..],

@@ -90,6 +90,7 @@ pub fn karura_dev_config() -> Result<ChainSpec, String> {
 		Extensions {
 			relay_chain: "rococo-local".into(),
 			para_id: PARA_ID,
+			bad_blocks: None,
 		},
 	))
 }

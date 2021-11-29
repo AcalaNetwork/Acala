@@ -170,6 +170,7 @@ pub fn latest_acala_config() -> Result<ChainSpec, String> {
 		Extensions {
 			relay_chain: "polkadot".into(),
 			para_id: PARA_ID,
+			bad_blocks: None,
 		},
 	))
 }
@@ -207,6 +208,7 @@ pub fn acala_dev_config() -> Result<ChainSpec, String> {
 		Extensions {
 			relay_chain: "rococo-local".into(),
 			para_id: PARA_ID,
+			bad_blocks: None,
 		},
 	))
 }
