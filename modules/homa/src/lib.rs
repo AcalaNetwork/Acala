@@ -16,15 +16,15 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+//! Homa module.
+
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
 
 use frame_support::{log, pallet_prelude::*, transactional, weights::Weight, BoundedVec, PalletId};
 use frame_system::{ensure_signed, pallet_prelude::*};
 use module_support::{CallBuilder, ExchangeRate, ExchangeRateProvider, Rate};
-use orml_traits::{
-	arithmetic::Signed, BalanceStatus, MultiCurrency, MultiCurrencyExtended, MultiReservableCurrency, XcmTransfer,
-};
+use orml_traits::{arithmetic::Signed, BalanceStatus, MultiCurrency, MultiCurrencyExtended, XcmTransfer};
 use pallet_staking::EraIndex;
 use primitives::{Balance, CurrencyId};
 use scale_info::TypeInfo;
@@ -43,6 +43,9 @@ use sp_std::{
 use xcm::latest::prelude::*;
 
 pub use module::*;
+
+mod mock;
+mod tests;
 
 #[frame_support::pallet]
 pub mod module {
@@ -98,16 +101,13 @@ pub mod module {
 	}
 
 	pub type SubAccountIndex = u16;
-	pub(crate) type AmountOf<T> =
-		<<T as Config>::Currency as MultiCurrencyExtended<<T as frame_system::Config>::AccountId>>::Amount;
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config + pallet_xcm::Config {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
 		/// Multi-currency support for asset management
-		type Currency: MultiReservableCurrency<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>
-			+ MultiCurrencyExtended<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
+		type Currency: MultiCurrencyExtended<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
 
 		/// Origin represented Governance
 		type GovernanceOrigin: EnsureOrigin<<Self as frame_system::Config>::Origin>;
@@ -237,7 +237,7 @@ pub mod module {
 	#[pallet::getter(fn relay_chain_current_era)]
 	pub type RelayChainCurrentEra<T: Config> = StorageValue<_, EraIndex, ValueQuery>;
 
-	// /// The latest processed era on by, it should be always <= RelayChainCurrentEra
+	// /// The latest processed era of Homa, it should be always <= RelayChainCurrentEra
 	// ///
 	// /// ProcessedEra : EraIndex
 	// #[pallet::storage]
@@ -261,7 +261,8 @@ pub mod module {
 	/// The total amount of void liquid currency. It's will not be issued,
 	/// used to avoid newly issued LDOT to obtain the incoming staking income from relaychain.
 	/// And it is guaranteed that the current exchange rate between liquid currency and staking
-	/// currency will not change. It will be reset to 0 at the end of the rebalance when new era.
+	/// currency will not change. It will be reset to 0 at the beginning of the rebalance when new
+	/// era.
 	///
 	/// TotalVoidLiquid value: LiquidCurrencyAmount
 	#[pallet::storage]
@@ -289,8 +290,9 @@ pub mod module {
 	pub type Unbondings<T: Config> =
 		StorageDoubleMap<_, Twox64Concat, T::AccountId, Twox64Concat, EraIndex, Balance, ValueQuery>;
 
-	/// The weight for excution XCM msg on relaychain. Must be higher than
-	/// T::BaseXcmWeight + T::Weigher::weight(xcm_message_sended_by_homa)` on relaychain.
+	/// The weight limit for excution XCM msg on relaychain. Must be greater than the weight of
+	/// the XCM msg that sended by Homa, otherwise the execution of XCM msg will fail.
+	/// Consider all possible xcm msgs sended by Homa, and use the maximum as the limit.
 	///
 	/// xcm_dest_weight: value: Weight
 	#[pallet::storage]
@@ -304,6 +306,7 @@ pub mod module {
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
 		fn integrity_test() {
 			assert!(!T::DefaultExchangeRate::get().is_zero());
+			assert!(T::MintThreshold::get() >= T::XcmTransferFee::get());
 		}
 	}
 
@@ -321,14 +324,13 @@ pub mod module {
 			// Ensure the amount is above the mint threshold.
 			ensure!(amount > T::MintThreshold::get(), Error::<T>::BelowMintThreshold);
 
-			// TODO: is that neccesary?
+			// Ensure the total staking currency will not exceed soft cap.
 			ensure!(
 				Self::get_total_staking_currency().saturating_add(amount) <= Self::get_staking_currency_soft_cap(),
 				Error::<T>::ExceededStakingCurrencySoftCap
 			);
 
 			T::Currency::transfer(T::StakingCurrencyId::get(), &minter, &Self::account_id(), amount)?;
-			ToBondPool::<T>::mutate(|pool| *pool = pool.saturating_add(amount));
 
 			// calculate the liquid amount by the current exchange rate.
 			let liquid_amount = Self::convert_staking_to_liquid(amount)?;
@@ -340,6 +342,7 @@ pub mod module {
 			let liquid_add_to_void = liquid_amount.saturating_sub(liquid_issue_to_minter);
 
 			T::Currency::deposit(T::LiquidCurrencyId::get(), &minter, liquid_issue_to_minter)?;
+			ToBondPool::<T>::mutate(|pool| *pool = pool.saturating_add(amount));
 			TotalVoidLiquid::<T>::mutate(|total| *total = total.saturating_add(liquid_add_to_void));
 
 			Self::deposit_event(Event::<T>::Minted(minter, amount, liquid_issue_to_minter));
@@ -484,10 +487,10 @@ pub mod module {
 				ensure!(new_era > *current_era, Error::<T>::InvalidEraIndex);
 				*current_era = new_era;
 
-				// reset void liquid to zero
+				// reset void liquid to zero firstly, to guarantee
 				TotalVoidLiquid::<T>::put(0);
 
-				// TODO: consider execute rebalance on on_idle, tut before the processing is completed,
+				// TODO: consider execute rebalance on on_idle, before the processing is completed,
 				// the mint and request_redeem functions should be unavailable.
 				// Rebalance:
 				Self::process_scheduled_unbond(new_era)?;
@@ -590,11 +593,9 @@ pub mod module {
 
 		/// Calculate the total amount of staking currency belong to Homa.
 		pub fn get_total_staking_currency() -> Balance {
-			let total_bonded: Balance = StakingLedgers::<T>::iter().fold(Zero::zero(), |total_bonded, (_, ledger)| {
+			StakingLedgers::<T>::iter().fold(Self::to_bond_pool(), |total_bonded, (_, ledger)| {
 				total_bonded.saturating_add(ledger.bonded)
-			});
-			let to_bond_pool = Self::to_bond_pool();
-			total_bonded.saturating_add(to_bond_pool)
+			})
 		}
 
 		/// Calculate the current exchange rate between the staking currency and liquid currency.
@@ -851,8 +852,8 @@ pub mod module {
 			Ok(())
 		}
 
-		/// Cross-chain transfer staking currency to subaccount and bond it on relaychain by XCM
-		/// message.
+		/// Cross-chain transfer staking currency to subaccount and send XCM message to the
+		/// relaychain to bond it.
 		pub fn transfer_and_bond_to_relaychain(sub_account_index: SubAccountIndex, amount: Balance) -> DispatchResult {
 			T::XcmTransfer::transfer(
 				Self::account_id(),
@@ -862,6 +863,7 @@ pub mod module {
 				Self::xcm_dest_weight(),
 			)?;
 
+			// subaccount will pay the XcmTransferFee, so the actual staking amount received should deduct it.
 			let bond_amount = amount.saturating_sub(T::XcmTransferFee::get());
 			let xcm_message = T::RelayChainCallBuilder::finalize_call_into_xcm_message(
 				T::RelayChainCallBuilder::utility_as_derivative_call(
