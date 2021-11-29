@@ -19,7 +19,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::upper_case_acronyms)]
 
-use codec::{Decode, Encode, FullCodec, HasCompact};
+use codec::{Decode, Encode, FullCodec};
 use frame_support::pallet_prelude::{DispatchClass, Pays, Weight};
 use primitives::{
 	evm::{CallInfo, EvmAddress},
@@ -40,12 +40,7 @@ use sp_std::{
 
 use xcm::latest::prelude::*;
 
-pub mod homa;
 pub mod mocks;
-pub use homa::{
-	HomaProtocol, NomineesProvider, OnCommission, OnNewEra, PolkadotBridge, PolkadotBridgeCall, PolkadotBridgeState,
-	PolkadotBridgeType, PolkadotStakingLedger, PolkadotUnlockChunk,
-};
 
 pub type Price = FixedU128;
 pub type ExchangeRate = FixedU128;
@@ -649,4 +644,13 @@ impl<Task> IdleScheduler<Task> for () {
 	fn schedule(_task: Task) -> DispatchResult {
 		unimplemented!()
 	}
+}
+
+#[impl_trait_for_tuples::impl_for_tuples(30)]
+pub trait OnNewEra<EraIndex> {
+	fn on_new_era(era: EraIndex);
+}
+
+pub trait NomineesProvider<AccountId> {
+	fn nominees() -> Vec<AccountId>;
 }

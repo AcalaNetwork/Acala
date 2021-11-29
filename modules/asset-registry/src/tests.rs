@@ -129,7 +129,7 @@ fn register_foreign_asset_should_not_work() {
 		assert_noop!(
 			AssetRegistry::register_foreign_asset(
 				Origin::signed(CouncilAccount::get()),
-				Box::new(v0_location.clone()),
+				Box::new(v0_location),
 				Box::new(AssetMetadata {
 					name: b"Token Name".to_vec(),
 					symbol: b"TN".to_vec(),
@@ -279,7 +279,7 @@ fn update_foreign_asset_should_not_work() {
 		assert_ok!(AssetRegistry::update_foreign_asset(
 			Origin::signed(CouncilAccount::get()),
 			0,
-			Box::new(v0_location.clone()),
+			Box::new(v0_location),
 			Box::new(AssetMetadata {
 				name: b"New Token Name".to_vec(),
 				symbol: b"NTN".to_vec(),
@@ -304,7 +304,7 @@ fn update_foreign_asset_should_not_work() {
 			AssetRegistry::update_foreign_asset(
 				Origin::signed(CouncilAccount::get()),
 				0,
-				Box::new(new_location.clone()),
+				Box::new(new_location),
 				Box::new(AssetMetadata {
 					name: b"New Token Name".to_vec(),
 					symbol: b"NTN".to_vec(),

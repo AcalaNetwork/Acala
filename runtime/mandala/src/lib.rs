@@ -21,8 +21,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 // `construct_runtime!` does a lot of recursion and requires us to increase the limit to 256.
 #![recursion_limit = "256"]
-// The `large_enum_variant` warning originates from `construct_runtime` macro.
-#![allow(clippy::large_enum_variant)]
 #![allow(clippy::unnecessary_mut_passed)]
 #![allow(clippy::or_fun_call)]
 #![allow(clippy::from_over_into)]
@@ -49,7 +47,7 @@ pub use frame_support::{
 };
 use frame_system::{EnsureRoot, RawOrigin};
 use hex_literal::hex;
-use module_asset_registry::{EvmErc20InfoMapping, XcmForeignAssetIdMapping};
+use module_asset_registry::{EvmErc20InfoMapping, FixedRateOfForeignAsset, XcmForeignAssetIdMapping};
 use module_currencies::{BasicCurrencyAdapter, Currency};
 use module_evm::{CallInfo, CreateInfo, EvmTask, Runner};
 use module_evm_accounts::EvmAddressMapping;
@@ -115,16 +113,15 @@ pub use primitives::{
 	TokenSymbol, TradingPair,
 };
 pub use runtime_common::{
-	cent, dollar, microcent, millicent, CurveFeeModel, EnsureRootOrAllGeneralCouncil,
-	EnsureRootOrAllTechnicalCommittee, EnsureRootOrHalfFinancialCouncil, EnsureRootOrHalfGeneralCouncil,
-	EnsureRootOrHalfHomaCouncil, EnsureRootOrOneGeneralCouncil, EnsureRootOrOneThirdsTechnicalCommittee,
-	EnsureRootOrThreeFourthsGeneralCouncil, EnsureRootOrTwoThirdsGeneralCouncil,
-	EnsureRootOrTwoThirdsTechnicalCommittee, ExchangeRate, FinancialCouncilInstance,
-	FinancialCouncilMembershipInstance, GasToWeight, GeneralCouncilInstance, GeneralCouncilMembershipInstance,
-	HomaCouncilInstance, HomaCouncilMembershipInstance, OffchainSolutionWeightLimit, OperatorMembershipInstanceAcala,
-	Price, ProxyType, Rate, Ratio, RelayChainBlockNumberProvider, RelayChainSubAccountId, RuntimeBlockLength,
-	RuntimeBlockWeights, SystemContractsFilter, TechnicalCommitteeInstance, TechnicalCommitteeMembershipInstance,
-	TimeStampedPrice, ACA, AUSD, DOT, LDOT, RENBTC,
+	cent, dollar, microcent, millicent, EnsureRootOrAllGeneralCouncil, EnsureRootOrAllTechnicalCommittee,
+	EnsureRootOrHalfFinancialCouncil, EnsureRootOrHalfGeneralCouncil, EnsureRootOrHalfHomaCouncil,
+	EnsureRootOrOneGeneralCouncil, EnsureRootOrOneThirdsTechnicalCommittee, EnsureRootOrThreeFourthsGeneralCouncil,
+	EnsureRootOrTwoThirdsGeneralCouncil, EnsureRootOrTwoThirdsTechnicalCommittee, ExchangeRate,
+	FinancialCouncilInstance, FinancialCouncilMembershipInstance, GasToWeight, GeneralCouncilInstance,
+	GeneralCouncilMembershipInstance, HomaCouncilInstance, HomaCouncilMembershipInstance, OffchainSolutionWeightLimit,
+	OperatorMembershipInstanceAcala, Price, ProxyType, Rate, Ratio, RelayChainBlockNumberProvider,
+	RelayChainSubAccountId, RuntimeBlockLength, RuntimeBlockWeights, SystemContractsFilter, TechnicalCommitteeInstance,
+	TechnicalCommitteeMembershipInstance, TimeStampedPrice, ACA, AUSD, DOT, LDOT, RENBTC,
 };
 
 /// Import the stable_asset pallet.
@@ -140,7 +137,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("mandala"),
 	impl_name: create_runtime_str!("mandala"),
 	authoring_version: 1,
-	spec_version: 2001,
+	spec_version: 2004,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -168,7 +165,6 @@ parameter_types! {
 	pub const LoansPalletId: PalletId = PalletId(*b"aca/loan");
 	pub const DEXPalletId: PalletId = PalletId(*b"aca/dexm");
 	pub const CDPTreasuryPalletId: PalletId = PalletId(*b"aca/cdpt");
-	pub const StakingPoolPalletId: PalletId = PalletId(*b"aca/stkp");
 	pub const HonzonTreasuryPalletId: PalletId = PalletId(*b"aca/hztr");
 	pub const HomaTreasuryPalletId: PalletId = PalletId(*b"aca/hmtr");
 	pub const IncentivesPalletId: PalletId = PalletId(*b"aca/inct");
@@ -190,7 +186,6 @@ pub fn get_all_module_accounts() -> Vec<AccountId> {
 		LoansPalletId::get().into_account(),
 		DEXPalletId::get().into_account(),
 		CDPTreasuryPalletId::get().into_account(),
-		StakingPoolPalletId::get().into_account(),
 		HonzonTreasuryPalletId::get().into_account(),
 		HomaTreasuryPalletId::get().into_account(),
 		IncentivesPalletId::get().into_account(),
@@ -775,6 +770,7 @@ parameter_type_with_key! {
 				TokenSymbol::LDOT => 50 * millicent(*currency_id),
 				TokenSymbol::BNC => 800 * millicent(*currency_id),  // 80BNC = 1KSM
 				TokenSymbol::VSKSM => 10 * millicent(*currency_id),  // 1VSKSM = 1KSM
+				TokenSymbol::PHA => 4000 * millicent(*currency_id), // 400PHA = 1KSM
 
 				TokenSymbol::KAR |
 				TokenSymbol::KUSD |
@@ -1424,7 +1420,6 @@ parameter_types! {
 parameter_types! {
 	pub NativeTokenExistentialDeposit: Balance = 10 * cent(ACA);
 	pub const NewContractExtraBytes: u32 = 0;
-	pub const StorageDepositPerByte: Balance = 0;
 	pub const DeveloperDeposit: Balance = 0;
 	pub const DeploymentFee: Balance = 0;
 }
@@ -1433,41 +1428,31 @@ parameter_types! {
 parameter_types! {
 	pub NativeTokenExistentialDeposit: Balance = 10 * cent(ACA);
 	pub const NewContractExtraBytes: u32 = 10_000;
-	pub StorageDepositPerByte: Balance = deposit(0, 1);
 	pub DeveloperDeposit: Balance = dollar(ACA);
 	pub DeploymentFee: Balance = dollar(ACA);
 }
 
-pub type MultiCurrencyPrecompile = runtime_common::MultiCurrencyPrecompile<
-	AccountId,
-	EvmAddressMapping<Runtime>,
-	EvmErc20InfoMapping<Runtime>,
-	Currencies,
->;
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, TypeInfo)]
+pub struct StorageDepositPerByte;
+impl<I: From<Balance>> frame_support::traits::Get<I> for StorageDepositPerByte {
+	fn get() -> I {
+		#[cfg(not(feature = "with-ethereum-compatibility"))]
+		// NOTE: use 18 decimals
+		return I::from(100 * dollar(ACA));
+		#[cfg(feature = "with-ethereum-compatibility")]
+		return I::from(0);
+	}
+}
 
-pub type NFTPrecompile =
-	runtime_common::NFTPrecompile<AccountId, EvmAddressMapping<Runtime>, EvmErc20InfoMapping<Runtime>, NFT>;
-pub type StateRentPrecompile =
-	runtime_common::StateRentPrecompile<AccountId, EvmAddressMapping<Runtime>, EvmErc20InfoMapping<Runtime>, EVM>;
-pub type OraclePrecompile = runtime_common::OraclePrecompile<
-	AccountId,
-	EvmAddressMapping<Runtime>,
-	EvmErc20InfoMapping<Runtime>,
-	module_prices::RealTimePriceProvider<Runtime>,
->;
-pub type ScheduleCallPrecompile = runtime_common::ScheduleCallPrecompile<
-	AccountId,
-	EvmAddressMapping<Runtime>,
-	EvmErc20InfoMapping<Runtime>,
-	Scheduler,
-	module_transaction_payment::ChargeTransactionPayment<Runtime>,
-	Call,
-	Origin,
-	OriginCaller,
-	Runtime,
->;
-pub type DexPrecompile =
-	runtime_common::DexPrecompile<AccountId, EvmAddressMapping<Runtime>, EvmErc20InfoMapping<Runtime>, Dex>;
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, TypeInfo)]
+pub struct TxFeePerGas;
+impl<I: From<Balance>> frame_support::traits::Get<I> for TxFeePerGas {
+	fn get() -> I {
+		// NOTE: 200 GWei
+		// ensure suffix is 0x0000
+		I::from(200u128.saturating_mul(10u128.saturating_pow(9)) & !0xffff)
+	}
+}
 
 #[cfg(feature = "with-ethereum-compatibility")]
 static ISTANBUL_CONFIG: module_evm_utiltity::evm::Config = module_evm_utiltity::evm::Config::istanbul();
@@ -1478,16 +1463,9 @@ impl module_evm::Config for Runtime {
 	type TransferAll = Currencies;
 	type NewContractExtraBytes = NewContractExtraBytes;
 	type StorageDepositPerByte = StorageDepositPerByte;
+	type TxFeePerGas = TxFeePerGas;
 	type Event = Event;
-	type Precompiles = runtime_common::AllPrecompiles<
-		SystemContractsFilter,
-		MultiCurrencyPrecompile,
-		NFTPrecompile,
-		StateRentPrecompile,
-		OraclePrecompile,
-		ScheduleCallPrecompile,
-		DexPrecompile,
-	>;
+	type Precompiles = runtime_common::AllPrecompiles<Self>;
 	type ChainId = ChainId;
 	type GasToWeight = GasToWeight;
 	type ChargeTransactionPayment = module_transaction_payment::ChargeTransactionPayment<Runtime>;
@@ -1582,6 +1560,7 @@ parameter_types! {
 	pub UnitWeightCost: Weight = 1_000_000;
 	pub const MaxInstructions: u32 = 100;
 	pub DotPerSecond: (AssetId, u128) = (MultiLocation::parent().into(), dot_per_second());
+	pub ForeignAssetUnitsPerSecond: u128 = aca_per_second();
 }
 
 pub type Barrier = (
@@ -1610,6 +1589,11 @@ impl TakeRevenue for ToTreasury {
 	}
 }
 
+pub type Trader = (
+	FixedRateOfFungible<DotPerSecond, ToTreasury>,
+	FixedRateOfForeignAsset<Runtime, ForeignAssetUnitsPerSecond, ToTreasury>,
+);
+
 pub struct XcmConfig;
 impl xcm_executor::Config for XcmConfig {
 	type Call = Call;
@@ -1624,7 +1608,7 @@ impl xcm_executor::Config for XcmConfig {
 	type Barrier = Barrier;
 	type Weigher = FixedWeightBounds<UnitWeightCost, Call, MaxInstructions>;
 	// Only receiving DOT is handled, and all fees must be paid in DOT.
-	type Trader = FixedRateOfFungible<DotPerSecond, ToTreasury>;
+	type Trader = Trader;
 	type ResponseHandler = (); // Don't handle responses for now.
 	type AssetTrap = ();
 	type AssetClaims = ();
@@ -1954,7 +1938,8 @@ pub type SignedExtra = (
 	module_evm::SetEvmOrigin<Runtime>,
 );
 /// Unchecked extrinsic type as expected by this runtime.
-pub type UncheckedExtrinsic = AcalaUncheckedExtrinsic<Call, SignedExtra, ConvertEthereumTx>;
+pub type UncheckedExtrinsic =
+	AcalaUncheckedExtrinsic<Call, SignedExtra, ConvertEthereumTx, StorageDepositPerByte, TxFeePerGas>;
 /// The payload being signed in transactions.
 pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 /// Extrinsic type that has already been checked.
@@ -1963,7 +1948,6 @@ pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExt
 pub type Executive =
 	frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllPallets, ()>;
 
-#[allow(clippy::large_enum_variant)]
 construct_runtime! {
 	pub enum Runtime where
 		Block = Block,
@@ -2351,7 +2335,6 @@ impl_runtime_apis! {
 			orml_list_benchmark!(list, extra, module_incentives, benchmarking::incentives);
 			orml_list_benchmark!(list, extra, module_prices, benchmarking::prices);
 			orml_list_benchmark!(list, extra, module_evm_accounts, benchmarking::evm_accounts);
-			orml_list_benchmark!(list, extra, module_homa, benchmarking::homa);
 			orml_list_benchmark!(list, extra, module_currencies, benchmarking::currencies);
 			orml_list_benchmark!(list, extra, module_session_manager, benchmarking::session_manager);
 
@@ -2414,7 +2397,6 @@ impl_runtime_apis! {
 			orml_add_benchmark!(params, batches, module_incentives, benchmarking::incentives);
 			orml_add_benchmark!(params, batches, module_prices, benchmarking::prices);
 			orml_add_benchmark!(params, batches, module_evm_accounts, benchmarking::evm_accounts);
-			orml_add_benchmark!(params, batches, module_homa, benchmarking::homa);
 			orml_add_benchmark!(params, batches, module_currencies, benchmarking::currencies);
 			orml_add_benchmark!(params, batches, module_session_manager, benchmarking::session_manager);
 
@@ -2484,8 +2466,9 @@ mod tests {
 		// Otherwise, the creation of the contract account will fail because it is less than
 		// ExistentialDeposit.
 		assert!(
-			Balance::from(NewContractExtraBytes::get()) * StorageDepositPerByte::get()
-				>= NativeTokenExistentialDeposit::get()
+			Balance::from(NewContractExtraBytes::get()).saturating_mul(
+				<StorageDepositPerByte as frame_support::traits::Get<Balance>>::get() / 10u128.saturating_pow(6)
+			) >= NativeTokenExistentialDeposit::get()
 		);
 	}
 

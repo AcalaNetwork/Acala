@@ -19,7 +19,7 @@ describeWithAcala("Acala RPC (Gas)", (context) => {
 				from: alice.getAddress(),
 				data: "0x" + Block.bytecode,
 			})
-		).to.deep.equal(BigNumber.from("284294"));
+		).to.deep.equal(BigNumber.from("273373"));
 	});
 
 	it("eth_estimateResources for contract creation", async function () {
@@ -47,7 +47,7 @@ describeWithAcala("Acala RPC (Gas)", (context) => {
 		)).to.deep.include({
 			gas: BigNumber.from("22409"),
 			storage: BigNumber.from("0"),
-			weightFee: BigNumber.from("3999940205124")
+			weightFee: BigNumber.from("3999941643480")
 		});
 	});
 });

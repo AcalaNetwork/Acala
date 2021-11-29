@@ -1,6 +1,6 @@
 [package]
 name = "runtime-common"
-version = "2.0.1"
+version = "2.0.3"
 authors = ["Acala Developers"]
 edition = "2018"
 
@@ -28,10 +28,14 @@ orml-traits = { path = "../../orml/traits", default-features = false }
 
 module-evm = { path = "../../modules/evm", default-features = false }
 module-evm-utiltity-macro = { path = "../../modules/evm-utiltity/macro" }
-module-staking-pool = { path = "../../modules/staking-pool", default-features = false }
 module-support = { path = "../../modules/support", default-features = false }
 module-idle-scheduler = { path = "../../modules/idle-scheduler", default-features = false }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
+
+module-prices = { path = "../../modules/prices", default-features = false }
+module-transaction-payment = { path = "../../modules/transaction-payment", default-features = false }
+module-nft = { path = "../../modules/nft", default-features = false }
+module-dex = { path = "../../modules/dex", default-features = false }
 
 [dev-dependencies]
 serde_json = "1.0.64"
@@ -49,10 +53,6 @@ orml-nft = { path = "../../orml/nft" }
 module-asset-registry = { path = "../../modules/asset-registry" }
 module-currencies = { path = "../../modules/currencies" }
 module-evm-bridge = { path = "../../modules/evm-bridge" }
-module-nft = { path = "../../modules/nft" }
-module-dex = { path = "../../modules/dex" }
-module-prices = { path = "../../modules/prices" }
-module-transaction-payment = { path = "../../modules/transaction-payment" }
 
 [features]
 default = ["std"]
@@ -79,9 +79,12 @@ std = [
 
 	"module-evm/std",
 	"module-idle-scheduler/std",
-	"module-staking-pool/std",
 	"module-support/std",
 	"primitives/std",
+	"module-prices/std",
+	"module-transaction-payment/std",
+	"module-nft/std",
+	"module-dex/std",
 ]
 with-ethereum-compatibility = [
 	"module-evm/with-ethereum-compatibility",

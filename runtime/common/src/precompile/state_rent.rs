@@ -21,9 +21,9 @@ use frame_support::log;
 use module_evm::{Context, ExitError, ExitSucceed, Precompile};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use sp_runtime::RuntimeDebug;
-use sp_std::{borrow::Cow, fmt::Debug, marker::PhantomData, prelude::*, result};
+use sp_std::{borrow::Cow, marker::PhantomData, prelude::*, result};
 
-use module_support::{AddressMapping as AddressMappingT, EVMStateRentTrait, Erc20InfoMapping as Erc20InfoMappingT};
+use module_support::EVMStateRentTrait;
 
 use super::input::{Input, InputT, Output};
 use primitives::Balance;
@@ -39,9 +39,7 @@ use primitives::Balance;
 /// - QueryDeveloperDeposit.
 /// - QueryDeploymentFee.
 /// - TransferMaintainer. Rest `input` bytes: `from`, `contract`, `new_maintainer`.
-pub struct StateRentPrecompile<AccountId, AddressMapping, Erc20InfoMapping, EVM>(
-	PhantomData<(AccountId, AddressMapping, Erc20InfoMapping, EVM)>,
-);
+pub struct StateRentPrecompile<R>(PhantomData<R>);
 
 #[module_evm_utiltity_macro::generate_function_selector]
 #[derive(RuntimeDebug, Eq, PartialEq, TryFromPrimitive, IntoPrimitive)]
@@ -55,26 +53,23 @@ pub enum Action {
 	TransferMaintainer = "transferMaintainer(address,address,address)",
 }
 
-impl<AccountId, AddressMapping, Erc20InfoMapping, EVM> Precompile
-	for StateRentPrecompile<AccountId, AddressMapping, Erc20InfoMapping, EVM>
+impl<Runtime> Precompile for StateRentPrecompile<Runtime>
 where
-	AccountId: Clone + Debug,
-	AddressMapping: AddressMappingT<AccountId>,
-	Erc20InfoMapping: Erc20InfoMappingT,
-	EVM: EVMStateRentTrait<AccountId, Balance>,
+	Runtime: module_evm::Config + module_prices::Config,
+	module_evm::Pallet<Runtime>: EVMStateRentTrait<Runtime::AccountId, Balance>,
 {
 	fn execute(
 		input: &[u8],
 		_target_gas: Option<u64>,
 		_context: &Context,
 	) -> result::Result<PrecompileOutput, ExitError> {
-		let input = Input::<Action, AccountId, AddressMapping, Erc20InfoMapping>::new(input);
+		let input = Input::<Action, Runtime::AccountId, Runtime::AddressMapping, Runtime::Erc20InfoMapping>::new(input);
 
 		let action = input.action()?;
 
 		match action {
 			Action::QueryNewContractExtraBytes => {
-				let output = EVM::query_new_contract_extra_bytes();
+				let output = module_evm::Pallet::<Runtime>::query_new_contract_extra_bytes();
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: 0,
@@ -83,7 +78,7 @@ where
 				})
 			}
 			Action::QueryStorageDepositPerByte => {
-				let deposit = EVM::query_storage_deposit_per_byte();
+				let deposit = module_evm::Pallet::<Runtime>::query_storage_deposit_per_byte();
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: 0,
@@ -94,8 +89,8 @@ where
 			Action::QueryMaintainer => {
 				let contract = input.evm_address_at(1)?;
 
-				let maintainer =
-					EVM::query_maintainer(contract).map_err(|e| ExitError::Other(Cow::Borrowed(e.into())))?;
+				let maintainer = module_evm::Pallet::<Runtime>::query_maintainer(contract)
+					.map_err(|e| ExitError::Other(Cow::Borrowed(e.into())))?;
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
@@ -105,7 +100,7 @@ where
 				})
 			}
 			Action::QueryDeveloperDeposit => {
-				let deposit = EVM::query_developer_deposit();
+				let deposit = module_evm::Pallet::<Runtime>::query_developer_deposit();
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: 0,
@@ -114,7 +109,7 @@ where
 				})
 			}
 			Action::QueryDeploymentFee => {
-				let fee = EVM::query_deployment_fee();
+				let fee = module_evm::Pallet::<Runtime>::query_deployment_fee();
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: 0,
@@ -133,8 +128,12 @@ where
 					from, contract, new_maintainer,
 				);
 
-				EVM::transfer_maintainer(from, contract, new_maintainer)
-					.map_err(|e| ExitError::Other(Cow::Borrowed(e.into())))?;
+				<module_evm::Pallet<Runtime> as EVMStateRentTrait<Runtime::AccountId, Balance>>::transfer_maintainer(
+					from,
+					contract,
+					new_maintainer,
+				)
+				.map_err(|e| ExitError::Other(Cow::Borrowed(e.into())))?;
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,

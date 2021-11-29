@@ -13,7 +13,7 @@ export const ACALA_LOG = process.env.ACALA_LOG || "info";
 export const ACALA_BUILD = process.env.ACALA_BUILD || "debug";
 
 export const BINARY_PATH = `../target/${ACALA_BUILD}/acala`;
-export const SPAWNING_TIME = 60000;
+export const SPAWNING_TIME = 120000;
 
 export async function startAcalaNode(): Promise<{ provider: TestProvider; binary: ChildProcess }> {
 	const P2P_PORT = await getPort({ port: getPort.makeRange(19931, 22000) });
@@ -70,24 +70,6 @@ export async function startAcalaNode(): Promise<{ provider: TestProvider; binary
 			if (chunk.toString().match(/Listening for new connections on/)) {
 				provider = new TestProvider({
 					provider: new WsProvider(`ws://localhost:${WS_PORT}`),
-					// TODO: add types and remove
-					types: {
-						TransactionAction: {
-							_enum: {
-								Call: "H160",
-								Create: "Null",
-							},
-						},
-						ExtrinsicSignature: {
-							_enum: {
-								Ed25519: "Ed25519Signature",
-								Sr25519: "Sr25519Signature",
-								Ecdsa: "EcdsaSignature",
-								Ethereum: "[u8; 65]",
-								AcalaEip712: "[u8; 65]",
-							},
-						},
-					},
 				});
 
 				// This is needed as the EVM runtime needs to warmup with a first call

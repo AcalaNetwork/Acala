@@ -38,6 +38,7 @@ use sp_std::{
 	convert::{From, TryFrom, TryInto},
 	ops::Mul,
 	prelude::*,
+	vec,
 	vec::Vec,
 };
 use xcm::latest::prelude::*;

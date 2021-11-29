@@ -83,11 +83,14 @@ pub mod fee {
 		}
 	}
 
-	pub fn dot_per_second() -> u128 {
+	pub fn aca_per_second() -> u128 {
 		let base_weight = Balance::from(ExtrinsicBaseWeight::get());
 		let base_tx_per_second = (WEIGHT_PER_SECOND as u128) / base_weight;
-		let aca_per_second = base_tx_per_second * base_tx_in_aca();
+		base_tx_per_second * base_tx_in_aca()
+	}
+
+	pub fn dot_per_second() -> u128 {
 		// TODO: recheck this https://github.com/AcalaNetwork/Acala/issues/1562
-		aca_per_second / 50 * dollar(DOT) / dollar(ACA)
+		aca_per_second() / 50 * dollar(DOT) / dollar(ACA)
 	}
 }

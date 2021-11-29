@@ -18,7 +18,7 @@
 
 use crate::{
 	AccountId, CurrencyId, GetLiquidCurrencyId, MaxUnlockingChunks, MinCouncilBondThreshold, NominateesCount,
-	NomineesElection, PolkadotBondingDuration, Runtime,
+	NomineesElection, Runtime,
 };
 
 use super::utils::set_balance;
@@ -66,7 +66,7 @@ runtime_benchmarks! {
 		for _ in 0..c {
 			NomineesElection::unbond(RawOrigin::Signed(caller.clone()).into(), MinCouncilBondThreshold::get()/c as u128)?;
 		}
-		NomineesElection::on_new_era(PolkadotBondingDuration::get());
+		NomineesElection::on_new_era(1);
 	}: _(RawOrigin::Signed(caller))
 
 	nominate {

@@ -888,7 +888,7 @@ fn sweep_dust_tokens_works() {
 		assert_ok!(Currencies::sweep_dust(
 			Origin::signed(CouncilAccount::get()),
 			DOT,
-			accounts.clone()
+			accounts
 		));
 		System::assert_last_event(Event::Currencies(crate::Event::DustSwept(DOT, bob(), 1)));
 
@@ -963,7 +963,7 @@ fn sweep_dust_native_currency_works() {
 		assert_ok!(Currencies::sweep_dust(
 			Origin::signed(CouncilAccount::get()),
 			NATIVE_CURRENCY_ID,
-			accounts.clone()
+			accounts
 		));
 		System::assert_last_event(Event::Currencies(crate::Event::DustSwept(NATIVE_CURRENCY_ID, bob(), 1)));
 

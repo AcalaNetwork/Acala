@@ -105,12 +105,6 @@ fn test_update_liquid_currency_price() {
 				110 * dollar(RELAY_CHAIN_CURRENCY)
 			));
 
-			#[cfg(feature = "with-mandala-runtime")]
-			assert_eq!(
-				RealTimePriceProvider::<Runtime>::get_relative_price(LIQUID_CURRENCY, RELAY_CHAIN_CURRENCY),
-				Some(Ratio::saturating_from_rational(100, 1000))
-			);
-			#[cfg(any(feature = "with-karura-runtime", feature = "with-acala-runtime"))]
 			assert_eq!(
 				RealTimePriceProvider::<Runtime>::get_relative_price(LIQUID_CURRENCY, RELAY_CHAIN_CURRENCY),
 				Some(Ratio::saturating_from_rational(110, 1000))

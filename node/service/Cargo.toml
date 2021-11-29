@@ -1,6 +1,6 @@
 [package]
 name = "acala-service"
-version = "2.0.1"
+version = "2.0.3"
 authors = ["Acala Developers"]
 edition = "2018"
 
@@ -70,7 +70,6 @@ polkadot-service = { git = "https://github.com/paritytech/polkadot", branch = "r
 ecosystem-renvm-bridge = { path = "../../ecosystem-modules/ren/renvm-bridge" }
 module-collator-selection = { path = "../../modules/collator-selection" }
 module-evm = { path = "../../modules/evm" }
-module-staking-pool = { path = "../../modules/staking-pool" }
 module-nft = { path = "../../modules/nft" }
 orml-oracle-rpc = { path = "../../orml/oracle/rpc" }
 acala-primitives = { path = "../../primitives" }
