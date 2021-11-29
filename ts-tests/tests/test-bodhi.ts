@@ -91,7 +91,7 @@ describeWithAcala("Acala RPC (bodhi.js)", (context) => {
 		)).to.deep.include({
 			gas: BigNumber.from("22409"),
 			storage: BigNumber.from(0),
-			weightFee: BigNumber.from("3999950190673"),
+			weightFee: BigNumber.from("3999950909853"),
 		});
 	});
 });

@@ -46,6 +46,7 @@ pub mod oracle;
 pub mod schedule_call;
 pub mod state_rent;
 
+use crate::SystemContractsFilter;
 pub use dex::DexPrecompile;
 pub use multicurrency::MultiCurrencyPrecompile;
 pub use nft::NFTPrecompile;
@@ -53,51 +54,17 @@ pub use oracle::OraclePrecompile;
 pub use schedule_call::ScheduleCallPrecompile;
 pub use state_rent::StateRentPrecompile;
 
-pub struct AllPrecompiles<
-	PrecompileCallerFilter,
-	MultiCurrencyPrecompile,
-	NFTPrecompile,
-	StateRentPrecompile,
-	OraclePrecompile,
-	ScheduleCallPrecompile,
-	DexPrecompile,
->(
-	PhantomData<(
-		PrecompileCallerFilter,
-		MultiCurrencyPrecompile,
-		NFTPrecompile,
-		StateRentPrecompile,
-		OraclePrecompile,
-		ScheduleCallPrecompile,
-		DexPrecompile,
-	)>,
-);
+pub struct AllPrecompiles<R>(PhantomData<R>);
 
-impl<
-		PrecompileCallerFilter,
-		MultiCurrencyPrecompile,
-		NFTPrecompile,
-		StateRentPrecompile,
-		OraclePrecompile,
-		ScheduleCallPrecompile,
-		DexPrecompile,
-	> PrecompileSet
-	for AllPrecompiles<
-		PrecompileCallerFilter,
-		MultiCurrencyPrecompile,
-		NFTPrecompile,
-		StateRentPrecompile,
-		OraclePrecompile,
-		ScheduleCallPrecompile,
-		DexPrecompile,
-	> where
-	MultiCurrencyPrecompile: Precompile,
-	NFTPrecompile: Precompile,
-	StateRentPrecompile: Precompile,
-	OraclePrecompile: Precompile,
-	ScheduleCallPrecompile: Precompile,
-	PrecompileCallerFilter: PrecompileCallerFilterT,
-	DexPrecompile: Precompile,
+impl<R> PrecompileSet for AllPrecompiles<R>
+where
+	R: module_evm::Config,
+	MultiCurrencyPrecompile<R>: Precompile,
+	NFTPrecompile<R>: Precompile,
+	StateRentPrecompile<R>: Precompile,
+	OraclePrecompile<R>: Precompile,
+	DexPrecompile<R>: Precompile,
+	ScheduleCallPrecompile<R>: Precompile,
 {
 	#[allow(clippy::type_complexity)]
 	fn execute(
@@ -114,7 +81,7 @@ impl<
 				return None;
 			}
 
-			if !PrecompileCallerFilter::is_allowed(context.caller) {
+			if !SystemContractsFilter::is_allowed(context.caller) {
 				log::debug!(target: "evm", "Precompile no permission");
 				return Some(Err(ExitError::Other("no permission".into())));
 			}
@@ -122,17 +89,17 @@ impl<
 			log::debug!(target: "evm", "Precompile begin, address: {:?}, input: {:?}, target_gas: {:?}, context: {:?}", address, input, target_gas, context);
 
 			let result = if address == PRECOMPILE_ADDRESS_START {
-				Some(MultiCurrencyPrecompile::execute(input, target_gas, context))
+				Some(MultiCurrencyPrecompile::<R>::execute(input, target_gas, context))
 			} else if address == PRECOMPILE_ADDRESS_START | H160::from_low_u64_be(1) {
-				Some(NFTPrecompile::execute(input, target_gas, context))
+				Some(NFTPrecompile::<R>::execute(input, target_gas, context))
 			} else if address == PRECOMPILE_ADDRESS_START | H160::from_low_u64_be(2) {
-				Some(StateRentPrecompile::execute(input, target_gas, context))
+				Some(StateRentPrecompile::<R>::execute(input, target_gas, context))
 			} else if address == PRECOMPILE_ADDRESS_START | H160::from_low_u64_be(3) {
-				Some(OraclePrecompile::execute(input, target_gas, context))
+				Some(OraclePrecompile::<R>::execute(input, target_gas, context))
 			} else if address == PRECOMPILE_ADDRESS_START | H160::from_low_u64_be(4) {
-				Some(ScheduleCallPrecompile::execute(input, target_gas, context))
+				Some(ScheduleCallPrecompile::<R>::execute(input, target_gas, context))
 			} else if address == PRECOMPILE_ADDRESS_START | H160::from_low_u64_be(5) {
-				Some(DexPrecompile::execute(input, target_gas, context))
+				Some(DexPrecompile::<R>::execute(input, target_gas, context))
 			} else {
 				None
 			};

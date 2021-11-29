@@ -23,8 +23,7 @@ use crate::precompile::{
 	mock::{
 		aca_evm_address, alice, alice_evm_addr, ausd_evm_address, bob, bob_evm_addr, erc20_address_not_exists,
 		get_task_id, lp_aca_ausd_evm_address, new_test_ext, renbtc_evm_address, run_to_block, Balances, DexModule,
-		DexPrecompile, Event as TestEvent, MultiCurrencyPrecompile, Oracle, OraclePrecompile, Origin, Price,
-		ScheduleCallPrecompile, System, Test, ALICE, AUSD, INITIAL_BALANCE, RENBTC,
+		Event as TestEvent, Oracle, Origin, Price, System, Test, ALICE, AUSD, INITIAL_BALANCE, RENBTC,
 	},
 	schedule_call::TaskInfo,
 };
@@ -42,31 +41,11 @@ use sp_core::{H160, U256};
 use sp_runtime::FixedPointNumber;
 use std::str::FromStr;
 
-pub struct DummyPrecompile;
-impl Precompile for DummyPrecompile {
-	fn execute(
-		_input: &[u8],
-		_target_gas: Option<u64>,
-		_context: &Context,
-	) -> core::result::Result<PrecompileOutput, ExitError> {
-		Ok(PrecompileOutput {
-			exit_status: ExitSucceed::Returned,
-			cost: 0,
-			output: vec![],
-			logs: Default::default(),
-		})
-	}
-}
-
-pub type WithSystemContractFilter = AllPrecompiles<
-	crate::SystemContractsFilter,
-	DummyPrecompile,
-	DummyPrecompile,
-	DummyPrecompile,
-	DummyPrecompile,
-	DummyPrecompile,
-	DummyPrecompile,
->;
+pub type WithSystemContractFilter = AllPrecompiles<Test>;
+type MultiCurrencyPrecompile = crate::MultiCurrencyPrecompile<Test>;
+type OraclePrecompile = crate::OraclePrecompile<Test>;
+type DexPrecompile = crate::DexPrecompile<Test>;
+type ScheduleCallPrecompile = crate::ScheduleCallPrecompile<Test>;
 
 #[test]
 fn precompile_filter_works_on_acala_precompiles() {
