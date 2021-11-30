@@ -23,13 +23,13 @@
 
 use frame_support::{log, pallet_prelude::*, transactional, PalletId};
 use frame_system::{ensure_signed, pallet_prelude::*};
-use module_support::{ExchangeRate, ExchangeRateProvider, HomaSubAccountXcm, Rate};
+use module_support::{ExchangeRate, ExchangeRateProvider, HomaSubAccountXcm, Rate, Ratio};
 use orml_traits::MultiCurrency;
 use pallet_staking::EraIndex;
 use primitives::{Balance, CurrencyId};
 use scale_info::TypeInfo;
 use sp_runtime::{
-	traits::{AccountIdConversion, Bounded, One, Saturating, Zero},
+	traits::{AccountIdConversion, Bounded, One, Saturating, UniqueSaturatedInto, Zero},
 	ArithmeticError, FixedPointNumber,
 };
 use sp_std::{cmp::Ordering, convert::From, prelude::*, vec, vec::Vec};
@@ -181,6 +181,8 @@ pub mod module {
 		MintThresholdUpdated(Balance),
 		/// The threshold to redeem has been updated. \[redeem_threshold\]
 		RedeemThresholdUpdated(Balance),
+		/// The commission rate has been updated. \[commission_rate\]
+		CommissionRateUpdated(Rate),
 	}
 
 	/// The current era of relaychain
@@ -271,6 +273,14 @@ pub mod module {
 	#[pallet::storage]
 	#[pallet::getter(fn redeem_threshold)]
 	pub type RedeemThreshold<T: Config> = StorageValue<_, Balance, ValueQuery>;
+
+	/// The rate of Homa drawn from the staking reward as commision.
+	/// The draw will be transfer to TreasuryAccount of Homa in liquid currency.
+	///
+	/// CommissionRate: value: Rate
+	#[pallet::storage]
+	#[pallet::getter(fn commission_rate)]
+	pub type CommissionRate<T: Config> = StorageValue<_, Rate, ValueQuery>;
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
@@ -452,7 +462,6 @@ pub mod module {
 
 			RelayChainCurrentEra::<T>::try_mutate(|current_era| -> DispatchResult {
 				ensure!(new_era > *current_era, Error::<T>::InvalidEraIndex);
-				*current_era = new_era;
 
 				// reset void liquid to zero firstly, to guarantee
 				TotalVoidLiquid::<T>::put(0);
@@ -460,9 +469,13 @@ pub mod module {
 				// TODO: consider execute rebalance on on_idle, before the processing is completed,
 				// the mint and request_redeem functions should be unavailable.
 				// Rebalance:
+				Self::draw_staking_reward(new_era, *current_era)?;
 				Self::process_scheduled_unbond(new_era)?;
 				Self::process_to_bond_pool(new_era)?;
 				Self::process_redeem_requests(new_era)?;
+
+				// bump current era to latest.
+				*current_era = new_era;
 
 				Self::deposit_event(Event::<T>::CurrentEraBumped(new_era));
 				Ok(())
@@ -513,6 +526,7 @@ pub mod module {
 			estimated_reward_rate_per_era: Option<Rate>,
 			mint_threshold: Option<Balance>,
 			redeem_threshold: Option<Balance>,
+			commission_rate: Option<Rate>,
 		) -> DispatchResult {
 			T::GovernanceOrigin::ensure_origin(origin)?;
 
@@ -531,6 +545,10 @@ pub mod module {
 			if let Some(threshold) = redeem_threshold {
 				RedeemThreshold::<T>::put(threshold);
 				Self::deposit_event(Event::<T>::RedeemThresholdUpdated(threshold));
+			}
+			if let Some(rate) = commission_rate {
+				CommissionRate::<T>::put(rate);
+				Self::deposit_event(Event::<T>::CommissionRateUpdated(rate));
 			}
 
 			Ok(())
@@ -580,11 +598,16 @@ pub mod module {
 				.saturating_mul(T::ActiveSubAccountsIndexList::get().len() as Balance)
 		}
 
-		/// Calculate the total amount of staking currency belong to Homa.
-		pub fn get_total_staking_currency() -> Balance {
-			StakingLedgers::<T>::iter().fold(Self::to_bond_pool(), |total_bonded, (_, ledger)| {
+		/// Calculate the total amount of bonded staking currency.
+		pub fn get_total_bonded() -> Balance {
+			StakingLedgers::<T>::iter().fold(Zero::zero(), |total_bonded, (_, ledger)| {
 				total_bonded.saturating_add(ledger.bonded)
 			})
+		}
+
+		/// Calculate the total amount of staking currency belong to Homa.
+		pub fn get_total_staking_currency() -> Balance {
+			Self::get_total_bonded().saturating_add(Self::to_bond_pool())
 		}
 
 		/// Calculate the current exchange rate between the staking currency and liquid currency.
@@ -649,11 +672,18 @@ pub mod module {
 							.saturating_mul_int(actual_liquid_to_redeem);
 						let redeemed_staking = Self::convert_liquid_to_staking(liquid_to_burn)?;
 						let fee_in_liquid = actual_liquid_to_redeem.saturating_sub(liquid_to_burn);
+						let liquid_currency_id = T::LiquidCurrencyId::get();
 
-						// TODO: record the fee_in_liquid reward it to HomaTreasury as benifit.
+						// burn liquid_to_burn.
+						T::Currency::withdraw(liquid_currency_id, &module_account, liquid_to_burn)?;
 
-						// burn liquid_to_burn
-						T::Currency::withdraw(T::LiquidCurrencyId::get(), &module_account, liquid_to_burn)?;
+						// transfer fee_in_liquid to TreasuryAccount of Homa.
+						T::Currency::transfer(
+							liquid_currency_id,
+							&module_account,
+							&T::TreasuryAccount::get(),
+							fee_in_liquid,
+						)?;
 
 						// transfer redeemed_staking to redeemer.
 						T::Currency::transfer(
@@ -681,6 +711,31 @@ pub mod module {
 
 				Ok(())
 			})
+		}
+
+		#[transactional]
+		pub fn draw_staking_reward(new_era: EraIndex, previous_era: EraIndex) -> DispatchResult {
+			let era_interval = new_era.saturating_sub(previous_era);
+			let liquid_currency_id = T::LiquidCurrencyId::get();
+			let draw_rate = Ratio::checked_from_rational(Self::get_total_bonded(), Self::get_total_staking_currency())
+				.unwrap_or_else(Ratio::zero)
+				.saturating_mul(Self::estimated_reward_rate_per_era())
+				.saturating_add(Rate::one())
+				.saturating_pow(era_interval.unique_saturated_into())
+				.saturating_sub(Rate::one())
+				.saturating_mul(Self::commission_rate());
+			let inflation_rate = Rate::one()
+				.saturating_add(draw_rate)
+				.reciprocal()
+				.expect("shouldn't be invalid!");
+
+			let liquid_amount_as_commision =
+				inflation_rate.saturating_mul_int(T::Currency::total_issuance(liquid_currency_id));
+			T::Currency::deposit(
+				liquid_currency_id,
+				&T::TreasuryAccount::get(),
+				liquid_amount_as_commision,
+			)
 		}
 
 		/// Get back unbonded of all subaccounts on relaychain by XCM.
