@@ -115,6 +115,7 @@ pub use runtime_common::{
 	RelayChainSubAccountId, RuntimeBlockLength, RuntimeBlockWeights, SystemContractsFilter, TechnicalCommitteeInstance,
 	TechnicalCommitteeMembershipInstance, TimeStampedPrice, BNC, KAR, KSM, KUSD, LKSM, PHA, RENBTC, VSKSM,
 };
+use xcm_executor::traits::DropAssets;
 
 mod authority;
 mod benchmarking;
@@ -735,6 +736,30 @@ create_median_value_data_provider!(
 impl DataFeeder<CurrencyId, Price, AccountId> for AggregatedDataProvider {
 	fn feed_value(_: AccountId, _: CurrencyId, _: Price) -> DispatchResult {
 		Err("Not supported".into())
+	}
+}
+
+pub struct ExistentialDepositsForDropAssets;
+impl ExistentialDepositsForDropAssets {
+	fn get(currency_id: &CurrencyId) -> Balance {
+		match currency_id {
+			CurrencyId::Token(symbol) => match symbol {
+				TokenSymbol::KUSD => cent(*currency_id),
+				TokenSymbol::KSM => 10 * millicent(*currency_id),
+				TokenSymbol::LKSM => 50 * millicent(*currency_id),
+				TokenSymbol::BNC => 800 * millicent(*currency_id),  // 80BNC = 1KSM
+				TokenSymbol::VSKSM => 10 * millicent(*currency_id), // 1VSKSM = 1KSM
+				TokenSymbol::KAR => NativeTokenExistentialDeposit::get(),
+
+				TokenSymbol::ACA
+				| TokenSymbol::AUSD
+				| TokenSymbol::DOT
+				| TokenSymbol::LDOT
+				| TokenSymbol::RENBTC
+				| TokenSymbol::CASH => Balance::max_value(), // unsupported
+			},
+			_ => Balance::max_value(),
+		}
 	}
 }
 
@@ -1468,6 +1493,35 @@ impl TakeRevenue for ToTreasury {
 	}
 }
 
+pub struct AcalaDropAssets;
+impl DropAssets for AcalaDropAssets {
+	fn drop_assets(origin: &MultiLocation, assets: Assets) -> Weight {
+		let multi_assets: Vec<MultiAsset> = assets.clone().into();
+		let mut asset_traps: Vec<MultiAsset> = vec![];
+		for asset in multi_assets {
+			if let MultiAsset {
+				id: Concrete(location),
+				fun: Fungible(amount),
+			} = asset.clone()
+			{
+				let currency_id = CurrencyIdConvert::convert(location);
+				if let Some(currency_id) = currency_id {
+					let ed = ExistentialDepositsForDropAssets::get(&currency_id);
+					if amount < ed {
+						ToTreasury::take_revenue(asset);
+					} else {
+						asset_traps.push(asset);
+					}
+				}
+			}
+		}
+		if asset_traps.is_empty() {
+			PolkadotXcm::drop_assets(origin, assets);
+		}
+		0
+	}
+}
+
 parameter_types! {
 	pub BncPerSecond: (AssetId, u128) = (
 		MultiLocation::new(
@@ -1513,7 +1567,7 @@ impl xcm_executor::Config for XcmConfig {
 	type Weigher = FixedWeightBounds<UnitWeightCost, Call, MaxInstructions>;
 	type Trader = Trader;
 	type ResponseHandler = PolkadotXcm;
-	type AssetTrap = PolkadotXcm;
+	type AssetTrap = AcalaDropAssets;
 	type AssetClaims = PolkadotXcm;
 	type SubscriptionService = PolkadotXcm;
 }
