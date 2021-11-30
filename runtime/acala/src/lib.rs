@@ -58,7 +58,8 @@ use module_relaychain::RelayChainCallBuilder;
 use module_support::{DispatchableTask, ForeignAssetIdMapping};
 use module_transaction_payment::{Multiplier, TargetedFeeAdjustment};
 use orml_traits::{
-	create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended, MultiCurrency,
+	create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended, GetByKey,
+	MultiCurrency,
 };
 use pallet_transaction_payment::RuntimeDispatchInfo;
 
@@ -732,24 +733,10 @@ impl DataFeeder<CurrencyId, Price, AccountId> for AggregatedDataProvider {
 pub struct ExistentialDepositsForDropAssets;
 impl ExistentialDepositsForDropAssets {
 	fn get(currency_id: &CurrencyId) -> Balance {
-		match currency_id {
-			CurrencyId::Token(symbol) => match symbol {
-				TokenSymbol::ACA => NativeTokenExistentialDeposit::get(),
-				TokenSymbol::AUSD => 10 * cent(*currency_id),
-				TokenSymbol::DOT => cent(*currency_id),
-				TokenSymbol::LDOT => 5 * cent(*currency_id),
-
-				TokenSymbol::KAR
-				| TokenSymbol::KUSD
-				| TokenSymbol::KSM
-				| TokenSymbol::LKSM
-				| TokenSymbol::RENBTC
-				| TokenSymbol::BNC
-				| TokenSymbol::PHA
-				| TokenSymbol::VSKSM
-				| TokenSymbol::CASH => Balance::max_value(), // unsupported
-			},
-			_ => Balance::max_value(),
+		if currency_id == &GetNativeCurrencyId::get() {
+			NativeTokenExistentialDeposit::get()
+		} else {
+			<ExistentialDeposits as GetByKey<CurrencyId, Balance>>::get(currency_id)
 		}
 	}
 }

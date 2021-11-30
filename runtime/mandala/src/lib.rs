@@ -58,7 +58,8 @@ use scale_info::TypeInfo;
 
 use orml_tokens::CurrencyAdapter;
 use orml_traits::{
-	create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended, MultiCurrency,
+	create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended, GetByKey,
+	MultiCurrency,
 };
 use pallet_transaction_payment::{FeeDetails, RuntimeDispatchInfo};
 use primitives::{
@@ -104,8 +105,7 @@ pub use pallet_timestamp::Call as TimestampCall;
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
 pub use sp_runtime::{Perbill, Percent, Permill, Perquintill};
-use xcm_executor::traits::DropAssets;
-use xcm_executor::Assets;
+use xcm_executor::{traits::DropAssets, Assets};
 
 pub use authority::AuthorityConfigImpl;
 pub use constants::{fee::*, time::*};
@@ -769,24 +769,10 @@ impl Contains<AccountId> for DustRemovalWhitelist {
 pub struct ExistentialDepositsForDropAssets;
 impl ExistentialDepositsForDropAssets {
 	fn get(currency_id: &CurrencyId) -> Balance {
-		match currency_id {
-			CurrencyId::Token(symbol) => match symbol {
-				TokenSymbol::ACA => NativeTokenExistentialDeposit::get(),
-				TokenSymbol::AUSD => cent(*currency_id),
-				TokenSymbol::DOT => 10 * millicent(*currency_id),
-				TokenSymbol::LDOT => 50 * millicent(*currency_id),
-				TokenSymbol::BNC => 800 * millicent(*currency_id),  // 80BNC = 1KSM
-				TokenSymbol::VSKSM => 10 * millicent(*currency_id), // 1VSKSM = 1KSM
-				TokenSymbol::PHA => 4000 * millicent(*currency_id), // 400PHA = 1KSM
-
-				TokenSymbol::KAR
-				| TokenSymbol::KUSD
-				| TokenSymbol::KSM
-				| TokenSymbol::LKSM
-				| TokenSymbol::RENBTC
-				| TokenSymbol::CASH => Balance::max_value(), // unsupported
-			},
-			_ => Balance::max_value(),
+		if currency_id == &GetNativeCurrencyId::get() {
+			NativeTokenExistentialDeposit::get()
+		} else {
+			<ExistentialDeposits as GetByKey<CurrencyId, Balance>>::get(currency_id)
 		}
 	}
 }

@@ -59,7 +59,8 @@ use module_support::{DispatchableTask, ForeignAssetIdMapping};
 use module_transaction_payment::{Multiplier, TargetedFeeAdjustment};
 
 use orml_traits::{
-	create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended, MultiCurrency,
+	create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended, GetByKey,
+	MultiCurrency,
 };
 use pallet_transaction_payment::RuntimeDispatchInfo;
 
@@ -76,7 +77,10 @@ pub use xcm_builder::{
 	SiblingParachainConvertsVia, SignedAccountId32AsNative, SignedToAccountId32, SovereignSignedViaLocation,
 	TakeRevenue, TakeWeightCredit,
 };
-pub use xcm_executor::{traits::WeightTrader, Assets, Config, XcmExecutor};
+pub use xcm_executor::{
+	traits::{DropAssets, WeightTrader},
+	Assets, Config, XcmExecutor,
+};
 
 /// Weights for pallets used in the runtime.
 mod weights;
@@ -115,7 +119,6 @@ pub use runtime_common::{
 	RelayChainSubAccountId, RuntimeBlockLength, RuntimeBlockWeights, SystemContractsFilter, TechnicalCommitteeInstance,
 	TechnicalCommitteeMembershipInstance, TimeStampedPrice, BNC, KAR, KSM, KUSD, LKSM, PHA, RENBTC, VSKSM,
 };
-use xcm_executor::traits::DropAssets;
 
 mod authority;
 mod benchmarking;
@@ -742,24 +745,10 @@ impl DataFeeder<CurrencyId, Price, AccountId> for AggregatedDataProvider {
 pub struct ExistentialDepositsForDropAssets;
 impl ExistentialDepositsForDropAssets {
 	fn get(currency_id: &CurrencyId) -> Balance {
-		match currency_id {
-			CurrencyId::Token(symbol) => match symbol {
-				TokenSymbol::KAR => NativeTokenExistentialDeposit::get(),
-				TokenSymbol::KUSD => cent(*currency_id),
-				TokenSymbol::KSM => 10 * millicent(*currency_id),
-				TokenSymbol::LKSM => 50 * millicent(*currency_id),
-				TokenSymbol::BNC => 800 * millicent(*currency_id),  // 80BNC = 1KSM
-				TokenSymbol::VSKSM => 10 * millicent(*currency_id), // 1VSKSM = 1KSM
-				TokenSymbol::PHA => 4000 * millicent(*currency_id),
-
-				TokenSymbol::ACA
-				| TokenSymbol::AUSD
-				| TokenSymbol::DOT
-				| TokenSymbol::LDOT
-				| TokenSymbol::RENBTC
-				| TokenSymbol::CASH => Balance::max_value(), // unsupported
-			},
-			_ => Balance::max_value(),
+		if currency_id == &GetNativeCurrencyId::get() {
+			NativeTokenExistentialDeposit::get()
+		} else {
+			<ExistentialDeposits as GetByKey<CurrencyId, Balance>>::get(currency_id)
 		}
 	}
 }
