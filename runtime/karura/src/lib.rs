@@ -744,12 +744,13 @@ impl ExistentialDepositsForDropAssets {
 	fn get(currency_id: &CurrencyId) -> Balance {
 		match currency_id {
 			CurrencyId::Token(symbol) => match symbol {
+				TokenSymbol::KAR => NativeTokenExistentialDeposit::get(),
 				TokenSymbol::KUSD => cent(*currency_id),
 				TokenSymbol::KSM => 10 * millicent(*currency_id),
 				TokenSymbol::LKSM => 50 * millicent(*currency_id),
 				TokenSymbol::BNC => 800 * millicent(*currency_id),  // 80BNC = 1KSM
 				TokenSymbol::VSKSM => 10 * millicent(*currency_id), // 1VSKSM = 1KSM
-				TokenSymbol::KAR => NativeTokenExistentialDeposit::get(),
+				TokenSymbol::PHA => 4000 * millicent(*currency_id),
 
 				TokenSymbol::ACA
 				| TokenSymbol::AUSD
@@ -1505,6 +1506,7 @@ impl DropAssets for AcalaDropAssets {
 			} = asset.clone()
 			{
 				let currency_id = CurrencyIdConvert::convert(location);
+				// burn asset(do nothing here) if convert result is None
 				if let Some(currency_id) = currency_id {
 					let ed = ExistentialDepositsForDropAssets::get(&currency_id);
 					if amount < ed {
@@ -1515,8 +1517,8 @@ impl DropAssets for AcalaDropAssets {
 				}
 			}
 		}
-		if asset_traps.is_empty() {
-			PolkadotXcm::drop_assets(origin, assets);
+		if !asset_traps.is_empty() {
+			PolkadotXcm::drop_assets(origin, asset_traps.into());
 		}
 		0
 	}
@@ -1756,7 +1758,10 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 						if let Ok(currency_id) = CurrencyId::decode(&mut &*key) {
 							// check `currency_id` is cross-chain asset
 							match currency_id {
-								Token(KAR) | Token(KUSD) | Token(LKSM) => Some(currency_id),
+								Token(KAR) | Token(KUSD) | Token(LKSM) => {
+									log::info!("TOKEN:{:?}", currency_id);
+									Some(currency_id)
+								}
 								_ => None,
 							}
 						} else {
