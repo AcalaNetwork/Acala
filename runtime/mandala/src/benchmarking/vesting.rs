@@ -65,10 +65,9 @@ runtime_benchmarks! {
 		);
 	}
 
+	// Claiming after end of vesting schedule is the worst case
 	claim {
-		let i in 1 .. MaxVestingSchedules::get();
-
-		let mut schedule = Schedule {
+		let schedule = Schedule {
 			start: 0,
 			period: 2,
 			period_count: 3,
@@ -77,21 +76,18 @@ runtime_benchmarks! {
 
 		let from: AccountId = get_vesting_account();
 		// extra 1 dollar to pay fees
-		set_balance(NATIVE, &from, schedule.total_amount().unwrap() * i as u128 + dollar(NATIVE));
+		set_balance(NATIVE, &from, schedule.total_amount().unwrap() + dollar(NATIVE));
 
 		let to: AccountId = whitelisted_caller();
 		let to_lookup = lookup_of_account(to.clone());
 
-		for _ in 0..i {
-			schedule.start = i;
-			Vesting::vested_transfer(RawOrigin::Signed(from.clone()).into(), to_lookup.clone(), schedule.clone())?;
-		}
+		Vesting::vested_transfer(RawOrigin::Signed(from.clone()).into(), to_lookup.clone(), schedule.clone())?;
 		System::set_block_number(schedule.end().unwrap() + 1u32);
 	}: _(RawOrigin::Signed(to.clone()))
 	verify {
 		assert_eq!(
 			<Currencies as MultiCurrency<_>>::free_balance(NATIVE, &to),
-			schedule.total_amount().unwrap() * i as u128,
+			schedule.total_amount().unwrap(),
 		);
 	}
 
