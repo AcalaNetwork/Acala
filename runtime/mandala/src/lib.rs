@@ -77,7 +77,7 @@ use sp_runtime::{
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, DispatchResult, FixedPointNumber,
 };
-use sp_std::prelude::*;
+use sp_std::{marker::PhantomData, prelude::*};
 
 #[cfg(feature = "std")]
 use sp_version::NativeVersion;
@@ -1669,10 +1669,14 @@ impl TakeRevenue for ToTreasury {
 	}
 }
 
-pub struct AcalaDropAssets;
-impl DropAssets for AcalaDropAssets {
+pub struct AcalaDropAssets<X, T>(PhantomData<(X, T)>);
+impl<X, T> DropAssets for AcalaDropAssets<X, T>
+where
+	X: DropAssets,
+	T: TakeRevenue,
+{
 	fn drop_assets(origin: &MultiLocation, assets: Assets) -> Weight {
-		let multi_assets: Vec<MultiAsset> = assets.clone().into();
+		let multi_assets: Vec<MultiAsset> = assets.into();
 		let mut asset_traps: Vec<MultiAsset> = vec![];
 		for asset in multi_assets {
 			if let MultiAsset {
@@ -1685,7 +1689,7 @@ impl DropAssets for AcalaDropAssets {
 				if let Some(currency_id) = currency_id {
 					let ed = ExistentialDepositsForDropAssets::get(&currency_id);
 					if amount < ed {
-						ToTreasury::take_revenue(asset);
+						T::take_revenue(asset);
 					} else {
 						asset_traps.push(asset);
 					}
@@ -1693,7 +1697,7 @@ impl DropAssets for AcalaDropAssets {
 			}
 		}
 		if !asset_traps.is_empty() {
-			PolkadotXcm::drop_assets(origin, asset_traps.into());
+			X::drop_assets(origin, asset_traps.into());
 		}
 		0
 	}
