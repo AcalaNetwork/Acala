@@ -48,72 +48,72 @@ use sp_std::marker::PhantomData;
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> module_homa_lite::WeightInfo for WeightInfo<T> {
 	fn on_initialize() -> Weight {
-		(45_205_000 as Weight)
+		(44_819_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn on_initialize_without_work() -> Weight {
-		(7_964_000 as Weight)
+		(8_042_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 	}
 	fn mint() -> Weight {
-		(438_588_000 as Weight)
+		(439_004_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(16 as Weight))
 			.saturating_add(T::DbWeight::get().writes(8 as Weight))
 	}
 	fn mint_for_requests() -> Weight {
-		(1_093_977_000 as Weight)
+		(1_098_975_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(32 as Weight))
 			.saturating_add(T::DbWeight::get().writes(22 as Weight))
 	}
 	fn set_total_staking_currency() -> Weight {
-		(42_674_000 as Weight)
+		(42_883_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn adjust_total_staking_currency() -> Weight {
-		(42_079_000 as Weight)
+		(42_474_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn adjust_available_staking_balance_with_no_matches() -> Weight {
-		(65_600_000 as Weight)
+		(67_159_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(4 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
 	fn set_minting_cap() -> Weight {
-		(38_579_000 as Weight)
+		(39_138_000 as Weight)
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn set_xcm_dest_weight() -> Weight {
-		(37_784_000 as Weight)
+		(38_162_000 as Weight)
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn request_redeem() -> Weight {
-		(119_156_000 as Weight)
+		(119_522_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(4 as Weight))
 			.saturating_add(T::DbWeight::get().writes(3 as Weight))
 	}
 	fn schedule_unbond() -> Weight {
-		(44_537_000 as Weight)
+		(45_024_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn replace_schedule_unbond() -> Weight {
-		(39_445_000 as Weight)
+		(39_996_000 as Weight)
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn set_staking_interest_rate_per_update() -> Weight {
-		(37_737_000 as Weight)
+		(38_208_000 as Weight)
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn redeem_with_available_staking_balance() -> Weight {
-		(22_593_000 as Weight)
+		(22_455_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn xcm_unbond() -> Weight {
-		(79_444_000 as Weight)
+		(78_572_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(5 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
