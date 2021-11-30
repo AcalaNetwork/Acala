@@ -290,7 +290,8 @@ parameter_types! {
 	pub const MaxInvulnerables: u32 = 50;
 	pub const KickPenaltySessionLength: u32 = 8;
 	pub const CollatorKickThreshold: Permill = Permill::from_percent(50);
-	pub const MinRewardDistributeAmount: Balance = 1_000_000;
+	// 10% of transaction fee of empty remark call: 1_504_592_000
+	pub MinRewardDistributeAmount: Balance = 15 * millicent(ACA);
 }
 
 impl module_collator_selection::Config for Runtime {

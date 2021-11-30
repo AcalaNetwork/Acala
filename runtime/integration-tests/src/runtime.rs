@@ -245,3 +245,35 @@ fn parachain_subaccounts_are_unique() {
 		);
 	});
 }
+
+#[cfg(feature = "with-mandala-runtime")]
+mod mandala_only_tests {
+	use super::*;
+	use pallet_transaction_payment::InclusionFee;
+	use sp_runtime::traits::Extrinsic;
+	#[test]
+	fn check_transaction_fee_for_empty_remark() {
+		ExtBuilder::default().build().execute_with(|| {
+			let call = Call::System(frame_system::Call::remark { remark: vec![] });
+
+			let ext = UncheckedExtrinsic::new(call.into(), None).expect("This should not fail");
+			let bytes = ext.encode();
+
+			let fee = TransactionPayment::query_fee_details(ext, bytes.len() as u32);
+
+			//println!("{:?}", fee);
+			let InclusionFee {
+				base_fee,
+				len_fee,
+				adjusted_weight_fee,
+			} = fee.inclusion_fee.unwrap();
+
+			assert_eq!(base_fee, 1_000_000_000);
+			assert_eq!(len_fee, 500_000_000);
+			assert_eq!(adjusted_weight_fee, 4_592_000);
+
+			let total_fee = base_fee.saturating_add(len_fee).saturating_add(adjusted_weight_fee);
+			assert_eq!(total_fee, 1_504_592_000);
+		});
+	}
+}
