@@ -441,7 +441,7 @@ fn pot_is_rewarded_to_author() {
 		// triggers `note_author`
 		Authorship::on_initialize(1);
 
-		// balance = current + reward = 90 + (95 - 5) / 2 = 45
+		// balance = current + reward = 90 + (95 - 5) / 2 = 135
 		assert_eq!(Balances::free_balance(4), 135);
 		// balance = current - reward = 95 - (95 - 5) / 2 = 50
 		assert_eq!(Balances::free_balance(&pot), 50);

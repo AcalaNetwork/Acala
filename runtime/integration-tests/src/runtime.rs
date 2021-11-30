@@ -255,13 +255,12 @@ mod mandala_only_tests {
 	fn check_transaction_fee_for_empty_remark() {
 		ExtBuilder::default().build().execute_with(|| {
 			let call = Call::System(frame_system::Call::remark { remark: vec![] });
-
 			let ext = UncheckedExtrinsic::new(call.into(), None).expect("This should not fail");
 			let bytes = ext.encode();
 
+			// Get information on the fee for the call.
 			let fee = TransactionPayment::query_fee_details(ext, bytes.len() as u32);
 
-			//println!("{:?}", fee);
 			let InclusionFee {
 				base_fee,
 				len_fee,
