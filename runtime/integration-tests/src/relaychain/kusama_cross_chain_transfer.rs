@@ -477,15 +477,6 @@ fn test_asset_registry_module() {
 }
 
 #[test]
-fn test() {
-	use codec::{Decode, Encode};
-
-	let key = KAR.encode();
-	let curr = CurrencyId::decode(&mut &*key);
-	println!("{:?}", curr.unwrap());
-}
-
-#[test]
 fn trap_assets_larger_than_ed_works() {
 	let mut kar_before_trap: u128 = 0;
 	let mut kar_after_trap: u128 = 0;
