@@ -287,7 +287,7 @@ fn should_deploy_payable_contract() {
 		let result = <Runtime as Config>::Runner::create(
 			alice(),
 			contract.clone(),
-			amount,
+			convert_decimals_inc(amount.into()).try_into().unwrap(),
 			1000000,
 			100000,
 			<Runtime as Config>::config(),
@@ -311,7 +311,7 @@ fn should_deploy_payable_contract() {
 			alice(),
 			contract_address,
 			from_hex("0x20965255").unwrap(),
-			amount,
+			convert_decimals_inc(amount.into()).try_into().unwrap(),
 			100000,
 			100000,
 			<Runtime as Config>::config(),
@@ -379,6 +379,10 @@ fn should_transfer_from_contract() {
 
 		let alice_balance = INITIAL_BALANCE - 892 * EVM::get_storage_deposit_per_byte();
 		assert_eq!(balance(alice()), alice_balance);
+		assert_eq!(
+			eth_balance(alice()),
+			U256::from(convert_decimals_inc(balance(alice()).into()))
+		);
 
 		let contract_address = result.value;
 
@@ -394,7 +398,7 @@ fn should_transfer_from_contract() {
 			alice(),
 			contract_address,
 			via_transfer,
-			amount,
+			convert_decimals_inc(amount.into()).try_into().unwrap(),
 			1000000,
 			1000000,
 			<Runtime as Config>::config(),
@@ -402,8 +406,16 @@ fn should_transfer_from_contract() {
 		.unwrap();
 
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Stopped));
-		assert_eq!(balance(alice()), alice_balance - 1 * amount);
-		assert_eq!(balance(charlie()), 1 * amount);
+		assert_eq!(balance(alice()), alice_balance - amount);
+		assert_eq!(
+			eth_balance(alice()),
+			U256::from(convert_decimals_inc(balance(alice()).into()))
+		);
+		assert_eq!(balance(charlie()), amount);
+		assert_eq!(
+			eth_balance(charlie()),
+			U256::from(convert_decimals_inc(balance(charlie()).into()))
+		);
 
 		// send via send
 		let mut via_send = from_hex("0x74be4806").unwrap();
@@ -414,7 +426,7 @@ fn should_transfer_from_contract() {
 			alice(),
 			contract_address,
 			via_send,
-			amount,
+			convert_decimals_inc(amount.into()).try_into().unwrap(),
 			1000000,
 			1000000,
 			<Runtime as Config>::config(),
@@ -423,7 +435,15 @@ fn should_transfer_from_contract() {
 
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Stopped));
 		assert_eq!(balance(charlie()), 2 * amount);
+		assert_eq!(
+			eth_balance(charlie()),
+			U256::from(convert_decimals_inc(balance(charlie()).into()))
+		);
 		assert_eq!(balance(alice()), alice_balance - 2 * amount);
+		assert_eq!(
+			eth_balance(alice()),
+			U256::from(convert_decimals_inc(balance(alice()).into()))
+		);
 
 		// send via call
 		let mut via_call = from_hex("0x830c29ae").unwrap();
@@ -434,7 +454,7 @@ fn should_transfer_from_contract() {
 			alice(),
 			contract_address,
 			via_call,
-			amount,
+			convert_decimals_inc(amount.into()).try_into().unwrap(),
 			1000000,
 			1000000,
 			<Runtime as Config>::config(),
@@ -443,7 +463,15 @@ fn should_transfer_from_contract() {
 
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Stopped));
 		assert_eq!(balance(charlie()), 3 * amount);
+		assert_eq!(
+			eth_balance(charlie()),
+			U256::from(convert_decimals_inc(balance(charlie()).into()))
+		);
 		assert_eq!(balance(alice()), alice_balance - 3 * amount);
+		assert_eq!(
+			eth_balance(alice()),
+			U256::from(convert_decimals_inc(balance(alice()).into()))
+		);
 	})
 }
 
@@ -492,14 +520,14 @@ fn contract_should_deploy_contracts() {
 		);
 
 		// Factory.createContract
-		let amount = 1000000000;
+		let amount = 1000u64;
 		let create_contract = from_hex("0x412a5a6d").unwrap();
 		let result = <Runtime as Config>::Runner::call(
 			alice(),
 			alice(),
 			factory_contract_address,
 			create_contract,
-			amount,
+			convert_decimals_inc(amount.into()).try_into().unwrap(),
 			1000000000,
 			1000000000,
 			<Runtime as Config>::config(),
@@ -1201,7 +1229,7 @@ fn should_selfdestruct() {
 		let result = <Runtime as Config>::Runner::create(
 			alice(),
 			contract,
-			amount,
+			convert_decimals_inc(amount.into()).try_into().unwrap(),
 			1000000,
 			100000,
 			<Runtime as Config>::config(),
@@ -1692,6 +1720,40 @@ fn code_hash_with_non_existent_address_should_work() {
 		assert_eq!(
 			EVM::code_hash_at_address(&H160::from_str("0x0000000000000000000000000000000000000000").unwrap()),
 			code_hash(&[])
+		);
+	});
+}
+
+#[test]
+fn convert_decimals_should_not_work() {
+	let alice_account_id = <Runtime as Config>::AddressMapping::get_account_id(&alice());
+
+	new_test_ext().execute_with(|| {
+		assert_noop!(
+			EVM::create(Origin::signed(alice_account_id.clone()), vec![], 1, 1000000, 1000000),
+			Error::<Runtime>::InvalidDecimals
+		);
+		assert_noop!(
+			EVM::create2(
+				Origin::signed(alice_account_id.clone()),
+				vec![],
+				H256::default(),
+				1,
+				1000000,
+				1000000
+			),
+			Error::<Runtime>::InvalidDecimals
+		);
+		assert_noop!(
+			EVM::call(
+				Origin::signed(alice_account_id.clone()),
+				H160::default(),
+				vec![],
+				1,
+				1000000,
+				1000000
+			),
+			Error::<Runtime>::InvalidDecimals
 		);
 	});
 }

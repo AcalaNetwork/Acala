@@ -62,7 +62,7 @@ use orml_traits::{
 };
 use pallet_transaction_payment::{FeeDetails, RuntimeDispatchInfo};
 use primitives::{
-	define_combined_task, evm::EthereumTransactionMessage, task::TaskResult,
+	convert_decimals_inc, define_combined_task, evm::EthereumTransactionMessage, task::TaskResult,
 	unchecked_extrinsic::AcalaUncheckedExtrinsic,
 };
 use sp_api::impl_runtime_apis;
@@ -1504,8 +1504,8 @@ pub struct StorageDepositPerByte;
 impl<I: From<Balance>> frame_support::traits::Get<I> for StorageDepositPerByte {
 	fn get() -> I {
 		#[cfg(not(feature = "with-ethereum-compatibility"))]
-		// NOTE: use 18 decimals
-		return I::from(100 * dollar(ACA));
+		// NOTE: ACA decimals is 12, convert to 18.
+		return I::from(convert_decimals_inc(deposit(0, 1)));
 		#[cfg(feature = "with-ethereum-compatibility")]
 		return I::from(0);
 	}

@@ -315,6 +315,10 @@ pub fn balance(address: H160) -> u64 {
 	Balances::free_balance(account_id)
 }
 
+pub fn eth_balance(address: H160) -> U256 {
+	EVM::account_basic(&address).balance
+}
+
 pub fn reserved_balance(address: H160) -> u64 {
 	let account_id = <Runtime as Config>::AddressMapping::get_account_id(&address);
 	Balances::reserved_balance(account_id)

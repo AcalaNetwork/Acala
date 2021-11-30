@@ -39,6 +39,7 @@ use module_evm_utiltity::{
 };
 use module_support::AddressMapping;
 pub use primitives::{
+	convert_decimals_dec,
 	evm::{EvmAddress, Vicinity, MIRRORED_NFT_ADDRESS_START},
 	ReserveIdentifier,
 };
@@ -83,6 +84,10 @@ impl<T: Config> Runner<T> {
 
 		// Deduct fee from the `source` account.
 		// let fee = T::ChargeTransactionPayment::withdraw_fee(&source, total_fee)?;
+		ensure!(
+			convert_decimals_dec(value.low_u128()).is_some(),
+			Error::<T>::InvalidDecimals
+		);
 
 		if !config.estimate {
 			Pallet::<T>::reserve_storage(&origin, storage_limit).map_err(|e| {
@@ -691,14 +696,20 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 		}
 		let source = T::AddressMapping::get_account_id(&transfer.source);
 		let target = T::AddressMapping::get_account_id(&transfer.target);
+		let amount = convert_decimals_dec(transfer.value.low_u128())
+			.ok_or(ExitError::Other(Into::<&str>::into(Error::<T>::InvalidDecimals).into()))?
+			.unique_saturated_into();
 
-		T::Currency::transfer(
-			&source,
-			&target,
-			transfer.value.low_u128().unique_saturated_into(),
-			ExistenceRequirement::AllowDeath,
-		)
-		.map_err(|e| ExitError::Other(Into::<&str>::into(e).into()))
+		log::debug!(
+			target: "evm",
+			"transfer [source: {:?}, target: {:?}, amount: {:?}]",
+			source,
+			target,
+			amount
+		);
+
+		T::Currency::transfer(&source, &target, amount, ExistenceRequirement::AllowDeath)
+			.map_err(|e| ExitError::Other(Into::<&str>::into(e).into()))
 	}
 
 	fn reset_balance(&mut self, _address: H160) {

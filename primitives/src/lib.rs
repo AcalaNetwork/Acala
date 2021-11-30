@@ -30,7 +30,7 @@ use codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_runtime::{
 	generic,
-	traits::{BlakeTwo256, IdentifyAccount, Verify},
+	traits::{BlakeTwo256, IdentifyAccount, Verify, Zero},
 	RuntimeDebug,
 };
 use sp_std::prelude::*;
@@ -177,3 +177,26 @@ pub enum ReserveIdentifier {
 pub type NFTBalance = u128;
 
 pub type CashYieldIndex = u128;
+
+/// Increase decimals
+pub fn convert_decimals_inc(b: Balance) -> Balance {
+	if b.is_zero() {
+		return b;
+	}
+	b.saturating_mul(10u128.saturating_pow(6))
+}
+
+/// Decrease decimals
+pub fn convert_decimals_dec(b: Balance) -> Option<Balance> {
+	if b.is_zero() {
+		return Some(b);
+	}
+	let res = b
+		.checked_div(10u128.saturating_pow(6))
+		.expect("divisor is non-zero; qed");
+	if res.saturating_mul(10u128.saturating_pow(6)) == b {
+		Some(res)
+	} else {
+		None
+	}
+}

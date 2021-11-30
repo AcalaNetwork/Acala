@@ -61,6 +61,7 @@ pub use module_support::{
 pub use orml_traits::currency::TransferAll;
 use primitive_types::{H160, H256, U256};
 pub use primitives::{
+	convert_decimals_dec, convert_decimals_inc,
 	evm::{
 		CallInfo, CreateInfo, EvmAddress, ExecutionInfo, Vicinity, MIRRORED_NFT_ADDRESS_START,
 		MIRRORED_TOKENS_ADDRESS_START,
@@ -477,6 +478,8 @@ pub mod module {
 		UnreserveStorageFailed,
 		/// Charge storage failed
 		ChargeStorageFailed,
+		/// Invalid decimals
+		InvalidDecimals,
 	}
 
 	#[pallet::pallet]
@@ -866,23 +869,15 @@ pub mod module {
 }
 
 impl<T: Config> Pallet<T> {
-	pub fn pad_zero(b: BalanceOf<T>, num: u32) -> BalanceOf<T> {
-		BalanceOf::<T>::unique_saturated_from(
-			UniqueSaturatedInto::<u128>::unique_saturated_into(b).saturating_mul(10u128.saturating_pow(num)),
-		)
-	}
-
-	pub fn truncate_zero(b: BalanceOf<T>, num: u32) -> BalanceOf<T> {
-		BalanceOf::<T>::unique_saturated_from(
-			UniqueSaturatedInto::<u128>::unique_saturated_into(b)
-				.checked_div(10u128.saturating_pow(num))
-				.expect("divisor is non-zero; qed"),
-		)
-	}
-
 	/// Get StorageDepositPerByte of actual decimals
 	pub fn get_storage_deposit_per_byte() -> BalanceOf<T> {
-		Self::truncate_zero(T::StorageDepositPerByte::get(), 6)
+		// StorageDepositPerByte decimals is 18, KAR/ACA decimals is 12, convert to 12 here.
+		BalanceOf::<T>::unique_saturated_from(
+			convert_decimals_dec(UniqueSaturatedInto::<u128>::unique_saturated_into(
+				T::StorageDepositPerByte::get(),
+			))
+			.expect("StorageDepositPerByte generate by convert_decimals_inc; qed"),
+		)
 	}
 
 	/// Check whether an account is empty.
@@ -1050,7 +1045,9 @@ impl<T: Config> Pallet<T> {
 
 		Account {
 			nonce: U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(nonce)),
-			balance: U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(balance)),
+			balance: U256::from(convert_decimals_inc(
+				UniqueSaturatedInto::<u128>::unique_saturated_into(balance),
+			)),
 		}
 	}
 
