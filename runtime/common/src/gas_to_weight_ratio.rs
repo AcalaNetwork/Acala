@@ -16,4 +16,4 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-pub static RATIO: u64 = 31145;
+pub static RATIO: u64 = 7617;
