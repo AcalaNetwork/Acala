@@ -21,21 +21,16 @@
 #![cfg(test)]
 
 use super::*;
-use cumulus_primitives_core::ParaId;
 use frame_support::{
 	ord_parameter_types, parameter_types,
 	traits::{Everything, Nothing},
 };
-use frame_system::{EnsureRoot, EnsureSignedBy, RawOrigin};
-use module_relaychain::RelayChainCallBuilder;
+use frame_system::{EnsureRoot, EnsureSignedBy};
 use module_support::mocks::MockAddressMapping;
-use orml_traits::{parameter_type_with_key, XcmTransfer};
+use orml_traits::parameter_type_with_key;
 use primitives::{Amount, TokenSymbol};
 use sp_core::H256;
-use sp_io::hashing::blake2_256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, AccountId32};
-use xcm::latest::prelude::*;
-use xcm_executor::traits::{InvertLocation, WeightBounds};
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
@@ -47,13 +42,11 @@ mod homa {
 pub const ALICE: AccountId = AccountId32::new([1u8; 32]);
 pub const BOB: AccountId = AccountId32::new([2u8; 32]);
 pub const CHARLIE: AccountId = AccountId32::new([3u8; 32]);
-pub const DAVE: AccountId = AccountId32::new([255u8; 32]);
-pub const INVALID_CALLER: AccountId = AccountId32::new([254u8; 32]);
-pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
-pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
-pub const LDOT: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
-pub const MOCK_XCM_ACCOUNTID: AccountId = AccountId32::new([255u8; 32]);
-pub const PARACHAIN_ID: u32 = 2000;
+pub const DAVE: AccountId = AccountId32::new([4u8; 32]);
+pub const HOMA_TREASURY: AccountId = AccountId32::new([255u8; 32]);
+pub const NATIVE_CURRENCY_ID: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
+pub const STAKING_CURRENCY_ID: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
+pub const LIQUID_CURRENCY_ID: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
 
 /// For testing only. Does not check for overflow.
 pub fn dollar(b: Balance) -> Balance {
@@ -66,107 +59,27 @@ pub fn cent(b: Balance) -> Balance {
 }
 
 /// mock XCM transfer.
-pub struct MockXcmTransfer;
-impl XcmTransfer<AccountId, Balance, CurrencyId> for MockXcmTransfer {
-	fn transfer(
-		who: AccountId,
-		currency_id: CurrencyId,
-		amount: Balance,
-		dest: MultiLocation,
-		_dest_weight: Weight,
-	) -> DispatchResult {
-		match who {
-			INVALID_CALLER => Err(DispatchError::Other("invalid caller")),
-			_ => Ok(()),
-		}?;
-		match currency_id {
-			ACA => Err(DispatchError::Other("unacceptable currency id")),
-			_ => Ok(()),
-		}?;
-
-		Currencies::withdraw(ACA, &who, amount)
+pub struct MockHomaSubAccountXcm;
+impl HomaSubAccountXcm<AccountId, Balance> for MockHomaSubAccountXcm {
+	fn transfer_staking_to_sub_account(sender: &AccountId, _: u16, amount: Balance) -> DispatchResult {
+		Currencies::withdraw(StakingCurrencyId::get(), sender, amount)
 	}
 
-	fn transfer_multi_asset(
-		_who: AccountId,
-		_asset: MultiAsset,
-		_dest: MultiLocation,
-		_dest_weight: Weight,
-	) -> DispatchResult {
-		unimplemented!()
-	}
-}
-
-/// mock XCM.
-pub struct MockXcm;
-impl InvertLocation for MockXcm {
-	fn invert_location(l: &MultiLocation) -> Result<MultiLocation, ()> {
-		Ok(l.clone())
-	}
-}
-
-impl SendXcm for MockXcm {
-	fn send_xcm(dest: impl Into<MultiLocation>, msg: Xcm<()>) -> SendResult {
-		let dest = dest.into();
-		match dest {
-			MultiLocation {
-				parents: 1,
-				interior: Junctions::Here,
-			} => Ok(()),
-			_ => Err(SendError::CannotReachDestination(dest, msg)),
-		}
-	}
-}
-
-impl ExecuteXcm<Call> for MockXcm {
-	fn execute_xcm_in_credit(
-		_origin: impl Into<MultiLocation>,
-		mut _message: Xcm<Call>,
-		_weight_limit: Weight,
-		_weight_credit: Weight,
-	) -> Outcome {
-		Outcome::Complete(0)
-	}
-}
-
-pub struct MockEnsureXcmOrigin;
-impl EnsureOrigin<Origin> for MockEnsureXcmOrigin {
-	type Success = MultiLocation;
-	fn try_origin(_o: Origin) -> Result<Self::Success, Origin> {
-		Ok(MultiLocation::here())
+	fn withdraw_unbonded_from_sub_account(_: u16, _: Balance) -> DispatchResult {
+		Ok(())
 	}
 
-	#[cfg(feature = "runtime-benchmarks")]
-	fn successful_origin() -> Origin {
-		Origin::from(RawOrigin::Signed(Default::default()))
-	}
-}
-pub struct MockWeigher;
-impl WeightBounds<Call> for MockWeigher {
-	fn weight(_message: &mut Xcm<Call>) -> Result<Weight, ()> {
-		Ok(0)
+	fn bond_extra_on_sub_account(_: u16, _: Balance) -> DispatchResult {
+		Ok(())
 	}
 
-	fn instr_weight(_message: &Instruction<Call>) -> Result<Weight, ()> {
-		Ok(0)
+	fn unbond_on_sub_account(_: u16, _: Balance) -> DispatchResult {
+		Ok(())
 	}
-}
 
-impl pallet_xcm::Config for Runtime {
-	type Event = Event;
-	type SendXcmOrigin = MockEnsureXcmOrigin;
-	type XcmRouter = MockXcm;
-	type ExecuteXcmOrigin = MockEnsureXcmOrigin;
-	type XcmExecuteFilter = Nothing;
-	type XcmExecutor = MockXcm;
-	type XcmTeleportFilter = Everything;
-	type XcmReserveTransferFilter = Everything;
-	type Weigher = MockWeigher;
-	type LocationInverter = MockXcm;
-	type Origin = Origin;
-	type Call = Call;
-	const VERSION_DISCOVERY_QUEUE_SIZE: u32 = 100;
-	type AdvertisedXcmVersion = pallet_xcm::CurrentXcmVersion;
+	fn get_xcm_transfer_fee() -> Balance {
+		cent(10)
+	}
 }
 
 parameter_types! {
@@ -236,7 +149,7 @@ impl pallet_balances::Config for Runtime {
 pub type AdaptedBasicCurrency = module_currencies::BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
 
 parameter_types! {
-	pub const GetNativeCurrencyId: CurrencyId = ACA;
+	pub const GetNativeCurrencyId: CurrencyId = NATIVE_CURRENCY_ID;
 }
 
 impl module_currencies::Config for Runtime {
@@ -251,65 +164,32 @@ impl module_currencies::Config for Runtime {
 	type OnDust = ();
 }
 
-pub struct MockConvertor;
-impl Convert<SubAccountIndex, MultiLocation> for MockConvertor {
-	fn convert(index: SubAccountIndex) -> MultiLocation {
-		let entropy = (b"modlpy/utilisuba", ParachainAccount::get(), index).using_encoded(blake2_256);
-		let subaccount = AccountId32::decode(&mut &entropy[..]).unwrap_or_default();
-		MultiLocation::new(
-			1,
-			X1(Junction::AccountId32 {
-				network: NetworkId::Any,
-				id: subaccount.into(),
-			}),
-		)
-	}
-}
-
 ord_parameter_types! {
 	pub const HomaAdmin: AccountId = DAVE;
 }
 
 parameter_types! {
-	pub const LiquidCurrencyId: CurrencyId = LDOT;
+	pub const StakingCurrencyId: CurrencyId = STAKING_CURRENCY_ID;
+	pub const LiquidCurrencyId: CurrencyId = LIQUID_CURRENCY_ID;
 	pub const HomaPalletId: PalletId = PalletId(*b"aca/homa");
-	pub MintThreshold: Balance = dollar(1);
-	pub RedeemThreshold: Balance = dollar(10);
+	pub const TreasuryAccount: AccountId = HOMA_TREASURY;
 	pub DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
-	pub ParachainAccount: AccountId = AccountId32::new([250u8; 32]);
-	pub ActiveSubAccountsIndexList: Vec<SubAccountIndex> = vec![0, 1, 2];
-	pub SoftBondedCapPerSubAccount: Balance = dollar(10);
-	pub FastMatchKeepers: Vec<AccountId> = vec![CHARLIE, DAVE];
+	pub ActiveSubAccountsIndexList: Vec<u16> = vec![0, 1, 2];
 	pub const BondingDuration: EraIndex = 28;
-	pub const RelayChainUnbondingSlashingSpans: EraIndex = 7;
-	pub EstimatedRewardRatePerEra: Rate = Rate::saturating_from_rational(1, 100);
-	pub XcmTransferFee: Balance = cent(50);
-	pub XcmMessageFee: Balance = cent(50);
-	pub ParachainId: ParaId = ParaId::from(PARACHAIN_ID);
 }
 
 impl Config for Runtime {
 	type Event = Event;
 	type Currency = Currencies;
 	type GovernanceOrigin = EnsureSignedBy<HomaAdmin, AccountId>;
-	type StakingCurrencyId = GetNativeCurrencyId;
+	type StakingCurrencyId = StakingCurrencyId;
 	type LiquidCurrencyId = LiquidCurrencyId;
 	type PalletId = HomaPalletId;
+	type TreasuryAccount = TreasuryAccount;
 	type DefaultExchangeRate = DefaultExchangeRate;
-	type MintThreshold = MintThreshold;
-	type RedeemThreshold = RedeemThreshold;
-	type ParachainAccount = ParachainAccount;
 	type ActiveSubAccountsIndexList = ActiveSubAccountsIndexList;
-	type SoftBondedCapPerSubAccount = SoftBondedCapPerSubAccount;
-	type FastMatchKeepers = FastMatchKeepers;
 	type BondingDuration = BondingDuration;
-	type RelayChainUnbondingSlashingSpans = RelayChainUnbondingSlashingSpans;
-	type EstimatedRewardRatePerEra = EstimatedRewardRatePerEra;
-	type XcmTransferFee = XcmTransferFee;
-	type XcmMessageFee = XcmMessageFee;
-	type RelayChainCallBuilder = RelayChainCallBuilder<Runtime, ParachainId>;
-	type XcmTransfer = MockXcmTransfer;
-	type SovereignSubAccountLocationConvert = MockConvertor;
+	type HomaXcm = MockHomaSubAccountXcm;
 }
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
@@ -326,7 +206,6 @@ frame_support::construct_runtime!(
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
 		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
 		Currencies: module_currencies::{Pallet, Call, Event<T>},
-		PalletXcm: pallet_xcm::{Pallet, Call, Event<T>, Origin},
 	}
 );
 
@@ -356,7 +235,7 @@ impl ExtBuilder {
 				.balances
 				.clone()
 				.into_iter()
-				.filter(|(_, currency_id, _)| *currency_id == DOT)
+				.filter(|(_, currency_id, _)| *currency_id == NATIVE_CURRENCY_ID)
 				.map(|(account_id, _, initial_balance)| (account_id, initial_balance))
 				.collect::<Vec<_>>(),
 		}
@@ -367,7 +246,7 @@ impl ExtBuilder {
 			balances: self
 				.balances
 				.into_iter()
-				.filter(|(_, currency_id, _)| *currency_id != DOT)
+				.filter(|(_, currency_id, _)| *currency_id != NATIVE_CURRENCY_ID)
 				.collect::<Vec<_>>(),
 		}
 		.assimilate_storage(&mut t)

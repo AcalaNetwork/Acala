@@ -5505,27 +5505,21 @@ name = "module-homa"
 version = "2.0.3"
 dependencies = [
  "acala-primitives",
- "cumulus-primitives-core",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
  "module-currencies",
- "module-relaychain",
  "module-support",
  "orml-tokens",
  "orml-traits",
  "pallet-balances",
  "pallet-staking",
- "pallet-xcm",
  "parity-scale-codec",
  "scale-info",
- "sp-arithmetic",
  "sp-core",
  "sp-io",
  "sp-runtime",
  "sp-std",
- "xcm",
- "xcm-executor",
 ]
 
 [[package]]
@@ -5575,6 +5569,33 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
+]
+
+[[package]]
+name = "module-homa-xcm"
+version = "2.0.3"
+dependencies = [
+ "acala-primitives",
+ "cumulus-primitives-core",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "module-currencies",
+ "module-relaychain",
+ "module-support",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "pallet-staking",
+ "pallet-xcm",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "xcm",
+ "xcm-executor",
 ]
 
 [[package]]

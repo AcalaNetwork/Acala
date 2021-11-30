@@ -21,27 +21,18 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
 
-use frame_support::{log, pallet_prelude::*, transactional, weights::Weight, BoundedVec, PalletId};
+use frame_support::{log, pallet_prelude::*, transactional, PalletId};
 use frame_system::{ensure_signed, pallet_prelude::*};
-use module_support::{CallBuilder, ExchangeRate, ExchangeRateProvider, Rate};
-use orml_traits::{arithmetic::Signed, BalanceStatus, MultiCurrency, MultiCurrencyExtended, XcmTransfer};
+use module_support::{ExchangeRate, ExchangeRateProvider, HomaSubAccountXcm, Rate};
+use orml_traits::MultiCurrency;
 use pallet_staking::EraIndex;
 use primitives::{Balance, CurrencyId};
 use scale_info::TypeInfo;
-use sp_arithmetic::traits::CheckedRem;
 use sp_runtime::{
-	traits::{AccountIdConversion, BlockNumberProvider, Bounded, Convert, One, Saturating, Zero},
-	ArithmeticError, FixedPointNumber, Permill,
+	traits::{AccountIdConversion, Bounded, One, Saturating, Zero},
+	ArithmeticError, FixedPointNumber,
 };
-use sp_std::{
-	cmp::{min, Ordering},
-	convert::{From, TryFrom, TryInto},
-	ops::Mul,
-	prelude::*,
-	vec,
-	vec::Vec,
-};
-use xcm::latest::prelude::*;
+use sp_std::{cmp::Ordering, convert::From, prelude::*, vec, vec::Vec};
 
 pub use module::*;
 
@@ -101,14 +92,12 @@ pub mod module {
 		}
 	}
 
-	pub type SubAccountIndex = u16;
-
 	#[pallet::config]
-	pub trait Config: frame_system::Config + pallet_xcm::Config {
+	pub trait Config: frame_system::Config {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
 		/// Multi-currency support for asset management
-		type Currency: MultiCurrencyExtended<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
+		type Currency: MultiCurrency<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
 
 		/// Origin represented Governance
 		type GovernanceOrigin: EnsureOrigin<<Self as frame_system::Config>::Origin>;
@@ -129,61 +118,21 @@ pub mod module {
 		#[pallet::constant]
 		type DefaultExchangeRate: Get<ExchangeRate>;
 
-		/// The threshold for mint operation in staking currency.
+		/// Vault reward of Homa protocol
 		#[pallet::constant]
-		type MintThreshold: Get<Balance>;
-
-		/// The threshold for redeem operation in liquid currency.
-		#[pallet::constant]
-		type RedeemThreshold: Get<Balance>;
-
-		/// The account of parachain on the relaychain.
-		#[pallet::constant]
-		type ParachainAccount: Get<Self::AccountId>;
+		type TreasuryAccount: Get<Self::AccountId>;
 
 		/// The index list of active Homa subaccounts.
 		/// `active` means these subaccounts can continue do bond/unbond operations by Homa.
 		#[pallet::constant]
-		type ActiveSubAccountsIndexList: Get<Vec<SubAccountIndex>>;
-
-		/// The bonded soft cap for each subaccount, use len(ActiveSubAccountsIndexList) *
-		/// SoftBondedCapPerSubAccount as the staking currency cap.
-		#[pallet::constant]
-		type SoftBondedCapPerSubAccount: Get<Balance>;
-
-		/// The keepers list which are allowed to do fast match redeem request.
-		#[pallet::constant]
-		type FastMatchKeepers: Get<Vec<Self::AccountId>>;
+		type ActiveSubAccountsIndexList: Get<Vec<u16>>;
 
 		/// Number of eras for unbonding is expired on relaychain.
 		#[pallet::constant]
 		type BondingDuration: Get<EraIndex>;
 
-		/// Unbonding slashing spans for unbonding on the relaychain.
-		#[pallet::constant]
-		type RelayChainUnbondingSlashingSpans: Get<EraIndex>;
-
-		/// The estimated staking reward rate per era on relaychain.
-		#[pallet::constant]
-		type EstimatedRewardRatePerEra: Get<Rate>;
-
-		/// The fixed staking currency cost of transaction fee for XCMTransfer.
-		#[pallet::constant]
-		type XcmTransferFee: Get<Balance>;
-
-		/// The fixed staking currency cost of extra fee for xcm message
-		#[pallet::constant]
-		type XcmMessageFee: Get<Balance>;
-
-		/// The Call builder for communicating with RelayChain via XCM messaging.
-		type RelayChainCallBuilder: CallBuilder<AccountId = Self::AccountId, Balance = Balance>;
-
-		/// The interface to Cross-chain transfer.
-		type XcmTransfer: XcmTransfer<Self::AccountId, Balance, CurrencyId>;
-
-		/// The convert for convert sovereign subacocunt index to the MultiLocation where the
-		/// staking currencies are sent to.
-		type SovereignSubAccountLocationConvert: Convert<SubAccountIndex, MultiLocation>;
+		/// The HomaXcm to manage the staking of sub-account on relaychain.
+		type HomaXcm: HomaSubAccountXcm<Self::AccountId, Balance>;
 	}
 
 	#[pallet::error]
@@ -192,16 +141,12 @@ pub mod module {
 		BelowMintThreshold,
 		///	The redeem amount to request is below the threshold.
 		BelowRedeemThreshold,
-		/// The caller is not in `FastMatchKeepers` list.
-		NotAllowedKeeper,
 		/// The mint will cause staking currency of Homa exceed the soft cap.
 		ExceededStakingCurrencySoftCap,
 		/// UnclaimedRedemption is not enough, this error is not expected.
 		InsufficientUnclaimedRedemption,
 		/// Invalid era index to bump, must be greater than RelayChainCurrentEra
 		InvalidEraIndex,
-		/// The xcm operation have failed
-		XcmFailed,
 	}
 
 	#[pallet::event]
@@ -219,16 +164,23 @@ pub mod module {
 		RedeemedByFastMatch(T::AccountId, Balance, Balance, Balance),
 		/// The redeemer withdraw expired redemption. \[redeemer, redeption_amount\]
 		WithdrawRedemption(T::AccountId, Balance),
-		/// The redeemer withdraw expired redemption. \[redeemer, redeption_amount\]
-		XcmDestWeightUpdated(Weight),
 		/// The current era has been bumped. \[new_era_index\]
 		CurrentEraBumped(EraIndex),
 		/// The bonded amount of subaccount's ledger has been updated. \[sub_account_index,
 		/// new_bonded_amount\]
-		LedgerBondedUpdated(SubAccountIndex, Balance),
+		LedgerBondedUpdated(u16, Balance),
 		/// The unlocking of subaccount's ledger has been updated. \[sub_account_index,
 		/// new_unlocking\]
-		LedgerUnlockingUpdated(SubAccountIndex, Vec<UnlockChunk>),
+		LedgerUnlockingUpdated(u16, Vec<UnlockChunk>),
+		/// The soft bonded cap of per sub account has been updated. \[cap_amount\]
+		SoftBondedCapPerSubAccountUpdated(Balance),
+		/// The estimated reward rate per era of relaychain staking has been updated.
+		/// \[reward_rate\]
+		EstimatedRewardRatePerEraUpdated(Rate),
+		/// The threshold to mint has been updated. \[mint_threshold\]
+		MintThresholdUpdated(Balance),
+		/// The threshold to redeem has been updated. \[redeem_threshold\]
+		RedeemThresholdUpdated(Balance),
 	}
 
 	/// The current era of relaychain
@@ -247,10 +199,10 @@ pub mod module {
 
 	/// The staking ledger of Homa subaccounts.
 	///
-	/// StakingLedgers map: SubAccountIndex => Option<StakingLedger>
+	/// StakingLedgers map: u16 => Option<StakingLedger>
 	#[pallet::storage]
 	#[pallet::getter(fn staking_ledgers)]
-	pub type StakingLedgers<T: Config> = StorageMap<_, Twox64Concat, SubAccountIndex, StakingLedger, OptionQuery>;
+	pub type StakingLedgers<T: Config> = StorageMap<_, Twox64Concat, u16, StakingLedger, OptionQuery>;
 
 	/// The total staking currency to bond on relaychain when new era,
 	/// and that is available to be match fast redeem request.
@@ -291,25 +243,40 @@ pub mod module {
 	pub type Unbondings<T: Config> =
 		StorageDoubleMap<_, Twox64Concat, T::AccountId, Twox64Concat, EraIndex, Balance, ValueQuery>;
 
-	/// The weight limit for excution XCM msg on relaychain. Must be greater than the weight of
-	/// the XCM msg that sended by Homa, otherwise the execution of XCM msg will fail.
-	/// Consider all possible xcm msgs sended by Homa, and use the maximum as the limit.
+	/// The estimated staking reward rate per era on relaychain.
 	///
-	/// xcm_dest_weight: value: Weight
+	/// EstimatedRewardRatePerEra: value: Rate
 	#[pallet::storage]
-	#[pallet::getter(fn xcm_dest_weight)]
-	pub type XcmDestWeight<T: Config> = StorageValue<_, Weight, ValueQuery>;
+	#[pallet::getter(fn estimated_reward_rate_per_era)]
+	pub type EstimatedRewardRatePerEra<T: Config> = StorageValue<_, Rate, ValueQuery>;
+
+	/// Th maximum amount of bonded staking currency for a single sub on relaychain to obtain the
+	/// best staking rewards.
+	///
+	/// SoftBondedCapPerSubAccount: value: Balance
+	#[pallet::storage]
+	#[pallet::getter(fn soft_bonded_cap_per_sub_account)]
+	pub type SoftBondedCapPerSubAccount<T: Config> = StorageValue<_, Balance, ValueQuery>;
+
+	/// Th staking amount of threshold to mint.
+	///
+	/// MintThreshold: value: Balance
+	#[pallet::storage]
+	#[pallet::getter(fn mint_threshold)]
+	pub type MintThreshold<T: Config> = StorageValue<_, Balance, ValueQuery>;
+
+	/// Th liquid amount of threshold to redeem.
+	///
+	/// RedeemThreshold: value: Balance
+	#[pallet::storage]
+	#[pallet::getter(fn redeem_threshold)]
+	pub type RedeemThreshold<T: Config> = StorageValue<_, Balance, ValueQuery>;
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
 
 	#[pallet::hooks]
-	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
-		fn integrity_test() {
-			assert!(!T::DefaultExchangeRate::get().is_zero());
-			assert!(T::MintThreshold::get() >= T::XcmTransferFee::get());
-		}
-	}
+	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
@@ -323,7 +290,7 @@ pub mod module {
 			let minter = ensure_signed(origin)?;
 
 			// Ensure the amount is above the mint threshold.
-			ensure!(amount > T::MintThreshold::get(), Error::<T>::BelowMintThreshold);
+			ensure!(amount >= Self::mint_threshold(), Error::<T>::BelowMintThreshold);
 
 			// Ensure the total staking currency will not exceed soft cap.
 			ensure!(
@@ -336,7 +303,7 @@ pub mod module {
 			// calculate the liquid amount by the current exchange rate.
 			let liquid_amount = Self::convert_staking_to_liquid(amount)?;
 			let liquid_issue_to_minter = Rate::one()
-				.saturating_add(T::EstimatedRewardRatePerEra::get())
+				.saturating_add(Self::estimated_reward_rate_per_era())
 				.reciprocal()
 				.expect("shouldn't be invalid!")
 				.saturating_mul_int(liquid_amount);
@@ -377,7 +344,7 @@ pub mod module {
 				let liquid_currency_id = T::LiquidCurrencyId::get();
 
 				ensure!(
-					(!previous_request_amount.is_zero() && amount.is_zero()) || amount >= T::RedeemThreshold::get(),
+					(!previous_request_amount.is_zero() && amount.is_zero()) || amount >= Self::redeem_threshold(),
 					Error::<T>::BelowRedeemThreshold
 				);
 
@@ -425,19 +392,18 @@ pub mod module {
 		}
 
 		/// Execute fast match for specific redeem requests.
-		/// Caller must be in `FastMatchKeepers` list.
 		///
 		/// Parameters:
 		/// - `redeemer_list`: The list of redeem requests to execute fast redeem.
 		#[pallet::weight(10_000)]
 		#[transactional]
 		pub fn fast_match_redeems(origin: OriginFor<T>, redeemer_list: Vec<T::AccountId>) -> DispatchResult {
-			let who = ensure_signed(origin)?;
-			ensure!(T::FastMatchKeepers::get().contains(&who), Error::<T>::NotAllowedKeeper);
+			let _ = ensure_signed(origin)?;
 
 			for redeemer in redeemer_list {
 				Self::do_fast_match_redeem(&redeemer)?;
 			}
+
 			Ok(())
 		}
 
@@ -454,7 +420,7 @@ pub mod module {
 			Unbondings::<T>::iter_prefix(&redeemer)
 				.filter(|(era_index, _)| era_index <= &Self::relay_chain_current_era())
 				.for_each(|(expired_era_index, unbonded)| {
-					available_staking = available_staking.saturating_add(available_staking);
+					available_staking = available_staking.saturating_add(unbonded);
 					Unbondings::<T>::remove(&redeemer, expired_era_index);
 				});
 			UnclaimedRedemption::<T>::try_mutate(|total| -> DispatchResult {
@@ -462,7 +428,7 @@ pub mod module {
 					.checked_sub(available_staking)
 					.ok_or(Error::<T>::InsufficientUnclaimedRedemption)?;
 				Ok(())
-			});
+			})?;
 			T::Currency::transfer(
 				T::StakingCurrencyId::get(),
 				&Self::account_id(),
@@ -512,7 +478,7 @@ pub mod module {
 		#[transactional]
 		pub fn update_ledgers(
 			origin: OriginFor<T>,
-			updates: Vec<(SubAccountIndex, Option<Balance>, Option<Vec<UnlockChunk>>)>,
+			updates: Vec<(u16, Option<Balance>, Option<Vec<UnlockChunk>>)>,
 		) -> DispatchResult {
 			T::GovernanceOrigin::ensure_origin(origin)?;
 
@@ -531,21 +497,42 @@ pub mod module {
 			Ok(())
 		}
 
-		/// Sets the xcm_dest_weight for XCM staking operations.
+		/// Sets the params of Homa.
 		/// Requires `GovernanceOrigin`
 		///
 		/// Parameters:
-		/// - `xcm_dest_weight`: The new weight for XCM staking operations.
+		/// - `soft_bonded_cap_per_sub_account`:  soft cap of staking amount for a single nominator
+		///   on relaychain to obtain the best staking rewards.
+		/// - `estimated_reward_rate_per_era`: the esstaking yield of each era on the current relay
+		///   chain
 		#[pallet::weight(10_000)]
 		#[transactional]
-		pub fn update_xcm_dest_weight(
+		pub fn update_homa_params(
 			origin: OriginFor<T>,
-			#[pallet::compact] xcm_dest_weight: Weight,
+			soft_bonded_cap_per_sub_account: Option<Balance>,
+			estimated_reward_rate_per_era: Option<Rate>,
+			mint_threshold: Option<Balance>,
+			redeem_threshold: Option<Balance>,
 		) -> DispatchResult {
 			T::GovernanceOrigin::ensure_origin(origin)?;
 
-			XcmDestWeight::<T>::put(xcm_dest_weight);
-			Self::deposit_event(Event::<T>::XcmDestWeightUpdated(xcm_dest_weight));
+			if let Some(cap) = soft_bonded_cap_per_sub_account {
+				SoftBondedCapPerSubAccount::<T>::put(cap);
+				Self::deposit_event(Event::<T>::SoftBondedCapPerSubAccountUpdated(cap));
+			}
+			if let Some(rate) = estimated_reward_rate_per_era {
+				EstimatedRewardRatePerEra::<T>::put(rate);
+				Self::deposit_event(Event::<T>::EstimatedRewardRatePerEraUpdated(rate));
+			}
+			if let Some(threshold) = mint_threshold {
+				MintThreshold::<T>::put(threshold);
+				Self::deposit_event(Event::<T>::MintThresholdUpdated(threshold));
+			}
+			if let Some(threshold) = redeem_threshold {
+				RedeemThreshold::<T>::put(threshold);
+				Self::deposit_event(Event::<T>::RedeemThresholdUpdated(threshold));
+			}
+
 			Ok(())
 		}
 	}
@@ -557,7 +544,7 @@ pub mod module {
 		}
 
 		fn do_update_ledger<R, E>(
-			sub_account_index: SubAccountIndex,
+			sub_account_index: u16,
 			f: impl FnOnce(&mut StakingLedger) -> sp_std::result::Result<R, E>,
 		) -> sp_std::result::Result<R, E> {
 			StakingLedgers::<T>::try_mutate_exists(sub_account_index, |maybe_ledger| {
@@ -589,7 +576,8 @@ pub mod module {
 		/// Get the soft cap of total staking currency of Homa.
 		/// Soft cap = ActiveSubAccountsIndexList.len() * SoftBondedCapPerSubAccount
 		pub fn get_staking_currency_soft_cap() -> Balance {
-			T::SoftBondedCapPerSubAccount::get().saturating_mul(T::ActiveSubAccountsIndexList::get().len() as Balance)
+			Self::soft_bonded_cap_per_sub_account()
+				.saturating_mul(T::ActiveSubAccountsIndexList::get().len() as Balance)
 		}
 
 		/// Calculate the total amount of staking currency belong to Homa.
@@ -652,7 +640,7 @@ pub mod module {
 						request_amount
 					} else {
 						// if cannot fast match the request amount fully, at least keep RedeemThreshold as remainer.
-						liquid_limit_at_fee_rate.min(request_amount.saturating_sub(T::RedeemThreshold::get()))
+						liquid_limit_at_fee_rate.min(request_amount.saturating_sub(Self::redeem_threshold()))
 					};
 
 					if !actual_liquid_to_redeem.is_zero() {
@@ -712,7 +700,7 @@ pub mod module {
 				let (new_ledger, expired_unlocking) = ledger.consolidate_unlocked(new_era);
 
 				if !expired_unlocking.is_zero() {
-					Self::withdraw_unbonded_from_relaychain(sub_account_index, expired_unlocking)?;
+					T::HomaXcm::withdraw_unbonded_from_sub_account(sub_account_index, expired_unlocking)?;
 
 					// udpate ledger
 					Self::do_update_ledger(sub_account_index, |before| -> DispatchResult {
@@ -744,26 +732,29 @@ pub mod module {
 				new_era
 			);
 
-			let xcm_transfer_fee = T::XcmTransferFee::get();
-			let bonded_list: Vec<(SubAccountIndex, Balance)> = T::ActiveSubAccountsIndexList::get()
+			let xcm_transfer_fee = T::HomaXcm::get_xcm_transfer_fee();
+			let bonded_list: Vec<(u16, Balance)> = T::ActiveSubAccountsIndexList::get()
 				.iter()
 				.map(|index| (*index, Self::staking_ledgers(index).unwrap_or_default().bonded))
 				.collect();
-			let (distribution, remainer) = distribute_increment::<SubAccountIndex>(
+			let (distribution, remainer) = distribute_increment::<u16>(
 				bonded_list,
 				Self::to_bond_pool(),
-				Some(T::SoftBondedCapPerSubAccount::get()),
+				Some(Self::soft_bonded_cap_per_sub_account()),
 				Some(xcm_transfer_fee),
 			);
 
 			// subaccounts execute the distribution
 			for (sub_account_index, amount) in distribution {
 				if !amount.is_zero() {
-					Self::transfer_and_bond_to_relaychain(sub_account_index, amount)?;
+					T::HomaXcm::transfer_staking_to_sub_account(&Self::account_id(), sub_account_index, amount)?;
+
+					let bond_amount = amount.saturating_sub(xcm_transfer_fee);
+					T::HomaXcm::bond_extra_on_sub_account(sub_account_index, bond_amount)?;
 
 					// udpate ledger
 					Self::do_update_ledger(sub_account_index, |ledger| -> DispatchResult {
-						ledger.bonded = ledger.bonded.saturating_add(amount.saturating_sub(xcm_transfer_fee));
+						ledger.bonded = ledger.bonded.saturating_add(bond_amount);
 						Ok(())
 					})?;
 				}
@@ -795,17 +786,16 @@ pub mod module {
 
 			// calculate the distribution for unbond
 			let staking_amount_to_unbond = Self::convert_liquid_to_staking(total_redeem_amount)?;
-			let bonded_list: Vec<(SubAccountIndex, Balance)> = T::ActiveSubAccountsIndexList::get()
+			let bonded_list: Vec<(u16, Balance)> = T::ActiveSubAccountsIndexList::get()
 				.iter()
 				.map(|index| (*index, Self::staking_ledgers(index).unwrap_or_default().bonded))
 				.collect();
-			let (distribution, _) =
-				distribute_decrement::<SubAccountIndex>(bonded_list, staking_amount_to_unbond, None, None);
+			let (distribution, _) = distribute_decrement::<u16>(bonded_list, staking_amount_to_unbond, None, None);
 
 			// subaccounts execute the distribution
 			for (sub_account_index, unbond_amount) in distribution {
 				if !unbond_amount.is_zero() {
-					Self::unbond_on_relaychain(sub_account_index, unbond_amount)?;
+					T::HomaXcm::unbond_on_sub_account(sub_account_index, unbond_amount)?;
 
 					// udpate ledger
 					Self::do_update_ledger(sub_account_index, |ledger| -> DispatchResult {
@@ -820,88 +810,7 @@ pub mod module {
 			}
 
 			// burn total_redeem_amount.
-			T::Currency::withdraw(T::LiquidCurrencyId::get(), &Self::account_id(), total_redeem_amount)?;
-
-			Ok(())
-		}
-
-		/// Send XCM message to the relaychain to withdraw_unbonded staking currency from
-		/// subaccount.
-		pub fn withdraw_unbonded_from_relaychain(
-			sub_account_index: SubAccountIndex,
-			amount: Balance,
-		) -> DispatchResult {
-			let xcm_message = T::RelayChainCallBuilder::finalize_call_into_xcm_message(
-				T::RelayChainCallBuilder::utility_as_derivative_call(
-					T::RelayChainCallBuilder::utility_batch_call(vec![
-						T::RelayChainCallBuilder::staking_withdraw_unbonded(T::RelayChainUnbondingSlashingSpans::get()),
-						T::RelayChainCallBuilder::balances_transfer_keep_alive(T::ParachainAccount::get(), amount),
-					]),
-					sub_account_index,
-				),
-				T::XcmMessageFee::get(),
-				Self::xcm_dest_weight(),
-			);
-
-			let result = pallet_xcm::Pallet::<T>::send_xcm(Here, Parent, xcm_message);
-			log::debug!(
-				target: "homa",
-				"subaccount {:?} send XCM to withdraw unbonded {:?} on relaychain result: {:?}",
-				sub_account_index, amount, result
-			);
-			ensure!(result.is_ok(), Error::<T>::XcmFailed);
-			Ok(())
-		}
-
-		/// Cross-chain transfer staking currency to subaccount and send XCM message to the
-		/// relaychain to bond it.
-		pub fn transfer_and_bond_to_relaychain(sub_account_index: SubAccountIndex, amount: Balance) -> DispatchResult {
-			T::XcmTransfer::transfer(
-				Self::account_id(),
-				T::StakingCurrencyId::get(),
-				amount,
-				T::SovereignSubAccountLocationConvert::convert(sub_account_index),
-				Self::xcm_dest_weight(),
-			)?;
-
-			// subaccount will pay the XcmTransferFee, so the actual staking amount received should deduct it.
-			let bond_amount = amount.saturating_sub(T::XcmTransferFee::get());
-			let xcm_message = T::RelayChainCallBuilder::finalize_call_into_xcm_message(
-				T::RelayChainCallBuilder::utility_as_derivative_call(
-					T::RelayChainCallBuilder::staking_bond_extra(bond_amount),
-					sub_account_index,
-				),
-				T::XcmMessageFee::get(),
-				Self::xcm_dest_weight(),
-			);
-			let result = pallet_xcm::Pallet::<T>::send_xcm(Here, Parent, xcm_message);
-			log::debug!(
-				target: "homa",
-				"subaccount {:?} send XCM to bond {:?} on relaychain result: {:?}",
-				sub_account_index, bond_amount, result,
-			);
-			ensure!(result.is_ok(), Error::<T>::XcmFailed);
-			Ok(())
-		}
-
-		/// Send XCM message to the relaychain to unbond subaccount.
-		pub fn unbond_on_relaychain(sub_account_index: SubAccountIndex, amount: Balance) -> DispatchResult {
-			let xcm_message = T::RelayChainCallBuilder::finalize_call_into_xcm_message(
-				T::RelayChainCallBuilder::utility_as_derivative_call(
-					T::RelayChainCallBuilder::staking_unbond(amount),
-					sub_account_index,
-				),
-				T::XcmMessageFee::get(),
-				Self::xcm_dest_weight(),
-			);
-			let result = pallet_xcm::Pallet::<T>::send_xcm(Here, Parent, xcm_message);
-			log::debug!(
-				target: "homa",
-				"subaccount {:?} send XCM to unbond {:?} on relaychain result: {:?}",
-				sub_account_index, amount, result
-			);
-			ensure!(result.is_ok(), Error::<T>::XcmFailed);
-			Ok(())
+			T::Currency::withdraw(T::LiquidCurrencyId::get(), &Self::account_id(), total_redeem_amount)
 		}
 	}
 
