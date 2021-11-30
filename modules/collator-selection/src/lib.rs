@@ -450,8 +450,8 @@ pub mod pallet {
 				.unwrap_or_default()
 				.div(2u32.into());
 
-			// `reward` is half of pot account minus ED, this should never fail.
 			if reward >= T::MinRewardDistributeAmount::get() {
+				// `reward` is half of pot account minus ED, this should never fail.
 				let _success = T::Currency::transfer(&pot, &author, reward, KeepAlive);
 				debug_assert!(_success.is_ok());
 			}
