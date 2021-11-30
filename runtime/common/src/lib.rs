@@ -25,7 +25,7 @@ use frame_support::{
 	parameter_types,
 	traits::Contains,
 	weights::{
-		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, WEIGHT_PER_MILLIS},
+		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, WEIGHT_PER_MILLIS, WEIGHT_PER_NANOS},
 		DispatchClass, Weight,
 	},
 	RuntimeDebug,
@@ -54,7 +54,7 @@ pub use precompile::{
 	StateRentPrecompile,
 };
 pub use primitives::{
-	currency::{TokenInfo, ACA, AUSD, BNC, DOT, KAR, KSM, KUSD, LDOT, LKSM, RENBTC, VSKSM},
+	currency::{TokenInfo, ACA, AUSD, BNC, DOT, KAR, KSM, KUSD, LDOT, LKSM, PHA, RENBTC, VSKSM},
 	AccountId,
 };
 
@@ -77,12 +77,16 @@ impl PrecompileCallerFilter for SystemContractsFilter {
 	}
 }
 
+// TODO: estimate this from benchmarks
+// total block weight is 500ms, normal tx have 70% of weight = 350ms
+// 350ms / 25ns = 14M gas per block
+pub const WEIGHT_PER_GAS: u64 = 25 * WEIGHT_PER_NANOS; // 25_000
+
 /// Convert gas to weight
 pub struct GasToWeight;
 impl Convert<u64, Weight> for GasToWeight {
-	fn convert(a: u64) -> u64 {
-		// TODO: estimate this
-		a as Weight
+	fn convert(gas: u64) -> Weight {
+		gas.saturating_mul(WEIGHT_PER_GAS)
 	}
 }
 

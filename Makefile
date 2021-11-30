@@ -86,8 +86,8 @@ test-runtimes:
 
 .PHONY: test-ts
 test-ts:
-	cargo build --features with-mandala-runtime
-	cd ts-tests && yarn && yarn run build && ACALA_LOG=true yarn run test
+	cargo build --release --features with-mandala-runtime
+	cd ts-tests && yarn && yarn run build && ACALA_BUILD=release yarn run test
 
 .PHONY: test-benchmarking
 test-benchmarking:
@@ -180,7 +180,3 @@ benchmark-acala:
 .PHONY: clippy-fix
 clippy-fix:
 	CARGO_INCREMENTAL=0 ./orml/scripts/run-clippy.sh --fix -Z unstable-options --broken-code --allow-dirty
-
-.PHONY: clean-runtimes
-clean-runtimes:
-	./scripts/clean-runtimes.sh

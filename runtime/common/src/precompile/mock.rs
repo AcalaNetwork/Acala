@@ -18,7 +18,7 @@
 
 #![cfg(test)]
 
-use crate::{AllPrecompiles, Ratio, RuntimeBlockWeights, SystemContractsFilter, Weight};
+use crate::{AllPrecompiles, Ratio, RuntimeBlockWeights, Weight};
 use acala_service::chain_spec::mandala::evm_genesis;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
@@ -368,30 +368,6 @@ impl module_dex::Config for Test {
 pub type AdaptedBasicCurrency = module_currencies::BasicCurrencyAdapter<Test, Balances, Amount, BlockNumber>;
 
 pub type EvmErc20InfoMapping = module_asset_registry::EvmErc20InfoMapping<Test>;
-pub type MultiCurrencyPrecompile =
-	crate::MultiCurrencyPrecompile<AccountId, MockAddressMapping, EvmErc20InfoMapping, Currencies>;
-
-pub type NFTPrecompile = crate::NFTPrecompile<AccountId, MockAddressMapping, EvmErc20InfoMapping, NFTModule>;
-pub type StateRentPrecompile =
-	crate::StateRentPrecompile<AccountId, MockAddressMapping, EvmErc20InfoMapping, EVMModule>;
-pub type OraclePrecompile = crate::OraclePrecompile<
-	AccountId,
-	MockAddressMapping,
-	EvmErc20InfoMapping,
-	module_prices::PriorityLockedPriceProvider<Test>,
->;
-pub type ScheduleCallPrecompile = crate::ScheduleCallPrecompile<
-	AccountId,
-	MockAddressMapping,
-	EvmErc20InfoMapping,
-	Scheduler,
-	ChargeTransactionPayment,
-	Call,
-	Origin,
-	OriginCaller,
-	Test,
->;
-pub type DexPrecompile = crate::DexPrecompile<AccountId, MockAddressMapping, EvmErc20InfoMapping, DexModule>;
 
 parameter_types! {
 	pub NetworkContractSource: H160 = alice_evm_addr();
@@ -403,6 +379,7 @@ ord_parameter_types! {
 	pub const NetworkContractAccount: AccountId32 = AccountId32::from([0u8; 32]);
 	pub const NewContractExtraBytes: u32 = 100;
 	pub const StorageDepositPerByte: u64 = 10;
+	pub const TxFeePerGas: u64 = 10;
 	pub const DeveloperDeposit: u64 = 1000;
 	pub const DeploymentFee: u64 = 200;
 	pub const ChainId: u64 = 1;
@@ -421,16 +398,9 @@ impl module_evm::Config for Test {
 	type TransferAll = Currencies;
 	type NewContractExtraBytes = NewContractExtraBytes;
 	type StorageDepositPerByte = StorageDepositPerByte;
+	type TxFeePerGas = TxFeePerGas;
 	type Event = Event;
-	type Precompiles = AllPrecompiles<
-		SystemContractsFilter,
-		MultiCurrencyPrecompile,
-		NFTPrecompile,
-		StateRentPrecompile,
-		OraclePrecompile,
-		ScheduleCallPrecompile,
-		DexPrecompile,
-	>;
+	type Precompiles = AllPrecompiles<Self>;
 	type ChainId = ChainId;
 	type GasToWeight = GasToWeight;
 	type ChargeTransactionPayment = ChargeTransactionPayment;

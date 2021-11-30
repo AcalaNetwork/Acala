@@ -490,7 +490,7 @@ fn offchain_worker_cancels_auction_in_shutdown() {
 	let mut ext = ExtBuilder::default().build();
 	ext.register_extension(OffchainWorkerExt::new(offchain.clone()));
 	ext.register_extension(TransactionPoolExt::new(pool));
-	ext.register_extension(OffchainDbExt::new(offchain.clone()));
+	ext.register_extension(OffchainDbExt::new(offchain));
 
 	ext.execute_with(|| {
 		System::set_block_number(1);

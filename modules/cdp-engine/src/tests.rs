@@ -949,7 +949,7 @@ fn offchain_worker_works_cdp() {
 	let mut ext = ExtBuilder::default().build();
 	ext.register_extension(OffchainWorkerExt::new(offchain.clone()));
 	ext.register_extension(TransactionPoolExt::new(pool));
-	ext.register_extension(OffchainDbExt::new(offchain.clone()));
+	ext.register_extension(OffchainDbExt::new(offchain));
 
 	ext.execute_with(|| {
 		// number of currencies allowed as collateral (cycles through all of them)
