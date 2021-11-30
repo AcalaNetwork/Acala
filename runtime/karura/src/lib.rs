@@ -1758,10 +1758,7 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 						if let Ok(currency_id) = CurrencyId::decode(&mut &*key) {
 							// check `currency_id` is cross-chain asset
 							match currency_id {
-								Token(KAR) | Token(KUSD) | Token(LKSM) => {
-									log::info!("TOKEN:{:?}", currency_id);
-									Some(currency_id)
-								}
+								Token(KAR) | Token(KUSD) | Token(LKSM) => Some(currency_id),
 								_ => None,
 							}
 						} else {

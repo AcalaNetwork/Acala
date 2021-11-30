@@ -104,6 +104,8 @@ pub use pallet_timestamp::Call as TimestampCall;
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
 pub use sp_runtime::{Perbill, Percent, Permill, Perquintill};
+use xcm_executor::traits::DropAssets;
+use xcm_executor::Assets;
 
 pub use authority::AuthorityConfigImpl;
 pub use constants::{fee::*, time::*};
@@ -761,6 +763,31 @@ pub struct DustRemovalWhitelist;
 impl Contains<AccountId> for DustRemovalWhitelist {
 	fn contains(a: &AccountId) -> bool {
 		get_all_module_accounts().contains(a)
+	}
+}
+
+pub struct ExistentialDepositsForDropAssets;
+impl ExistentialDepositsForDropAssets {
+	fn get(currency_id: &CurrencyId) -> Balance {
+		match currency_id {
+			CurrencyId::Token(symbol) => match symbol {
+				TokenSymbol::ACA => NativeTokenExistentialDeposit::get(),
+				TokenSymbol::AUSD => cent(*currency_id),
+				TokenSymbol::DOT => 10 * millicent(*currency_id),
+				TokenSymbol::LDOT => 50 * millicent(*currency_id),
+				TokenSymbol::BNC => 800 * millicent(*currency_id),  // 80BNC = 1KSM
+				TokenSymbol::VSKSM => 10 * millicent(*currency_id), // 1VSKSM = 1KSM
+				TokenSymbol::PHA => 4000 * millicent(*currency_id), // 400PHA = 1KSM
+
+				TokenSymbol::KAR
+				| TokenSymbol::KUSD
+				| TokenSymbol::KSM
+				| TokenSymbol::LKSM
+				| TokenSymbol::RENBTC
+				| TokenSymbol::CASH => Balance::max_value(), // unsupported
+			},
+			_ => Balance::max_value(),
+		}
 	}
 }
 
@@ -1653,6 +1680,36 @@ impl TakeRevenue for ToTreasury {
 				let _ = Currencies::deposit(currency_id, &TreasuryAccount::get(), amount);
 			}
 		}
+	}
+}
+
+pub struct AcalaDropAssets;
+impl DropAssets for AcalaDropAssets {
+	fn drop_assets(origin: &MultiLocation, assets: Assets) -> Weight {
+		let multi_assets: Vec<MultiAsset> = assets.clone().into();
+		let mut asset_traps: Vec<MultiAsset> = vec![];
+		for asset in multi_assets {
+			if let MultiAsset {
+				id: Concrete(location),
+				fun: Fungible(amount),
+			} = asset.clone()
+			{
+				let currency_id = CurrencyIdConvert::convert(location);
+				// burn asset(do nothing here) if convert result is None
+				if let Some(currency_id) = currency_id {
+					let ed = ExistentialDepositsForDropAssets::get(&currency_id);
+					if amount < ed {
+						ToTreasury::take_revenue(asset);
+					} else {
+						asset_traps.push(asset);
+					}
+				}
+			}
+		}
+		if !asset_traps.is_empty() {
+			PolkadotXcm::drop_assets(origin, asset_traps.into());
+		}
+		0
 	}
 }
 
