@@ -127,6 +127,7 @@ pub use runtime_common::{
 
 /// Import the stable_asset pallet.
 pub use nutsfinance_stable_asset;
+use runtime_common::AcalaDropAssets;
 
 mod authority;
 mod benchmarking;
@@ -1680,7 +1681,14 @@ impl xcm_executor::Config for XcmConfig {
 	// Only receiving DOT is handled, and all fees must be paid in DOT.
 	type Trader = Trader;
 	type ResponseHandler = (); // Don't handle responses for now.
-	type AssetTrap = ();
+	type AssetTrap = AcalaDropAssets<
+		PolkadotXcm,
+		ToTreasury,
+		CurrencyIdConvert,
+		GetNativeCurrencyId,
+		NativeTokenExistentialDeposit,
+		ExistentialDeposits,
+	>;
 	type AssetClaims = ();
 	type SubscriptionService = PolkadotXcm;
 }
