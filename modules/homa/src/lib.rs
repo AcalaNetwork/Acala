@@ -147,6 +147,8 @@ pub mod module {
 		InsufficientUnclaimedRedemption,
 		/// Invalid era index to bump, must be greater than RelayChainCurrentEra
 		InvalidEraIndex,
+		/// Redeem request is not allowed to be fast matched.
+		FastMatchIsNotAllowed,
 	}
 
 	#[pallet::event]
@@ -155,13 +157,16 @@ pub mod module {
 		/// The minter use staking currency to mint liquid currency. \[minter,
 		/// staking_currency_amount, liquid_currency_amount_received\]
 		Minted(T::AccountId, Balance, Balance),
-		/// Request redeem. \[redeemer, liquid_amount, fast_match_fee_rate\]
-		RequestedRedeem(T::AccountId, Balance, Rate),
+		/// Request redeem. \[redeemer, liquid_amount, allow_fast_match\]
+		RequestedRedeem(T::AccountId, Balance, bool),
 		/// Redeem request has been cancelled. \[redeemer, cancelled_liquid_amount\]
 		RedeemRequestCancelled(T::AccountId, Balance),
 		/// Redeem request is redeemed partially or fully by fast match. \[redeemer,
 		/// matched_liquid_amount, fee_in_liquid, redeemed_staking_amount\]
 		RedeemedByFastMatch(T::AccountId, Balance, Balance, Balance),
+		/// Redeem request is redeemed by unbond on relaychain. \[redeemer,
+		/// era_index_when_unbond, liquid_amount, unbonding_staking_amount\]
+		RedeemedByUnbond(T::AccountId, EraIndex, Balance, Balance),
 		/// The redeemer withdraw expired redemption. \[redeemer, redeption_amount\]
 		WithdrawRedemption(T::AccountId, Balance),
 		/// The current era has been bumped. \[new_era_index\]
@@ -183,6 +188,8 @@ pub mod module {
 		RedeemThresholdUpdated(Balance),
 		/// The commission rate has been updated. \[commission_rate\]
 		CommissionRateUpdated(Rate),
+		/// The fast match fee rate has been updated. \[commission_rate\]
+		FastMatchFeeRateUpdated(Rate),
 	}
 
 	/// The current era of relaychain
@@ -232,10 +239,11 @@ pub mod module {
 	pub type UnclaimedRedemption<T: Config> = StorageValue<_, Balance, ValueQuery>;
 
 	/// Requests to redeem staked currencies.
-	/// RedeemRequests: Map: AccountId => Option<(liquid_amount: Balance, addtional_fee: Rate)>
+	///
+	/// RedeemRequests: Map: AccountId => Option<(liquid_amount: Balance, allow_fast_match: bool)>
 	#[pallet::storage]
 	#[pallet::getter(fn redeem_requests)]
-	pub type RedeemRequests<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, (Balance, Rate), OptionQuery>;
+	pub type RedeemRequests<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, (Balance, bool), OptionQuery>;
 
 	/// The records of unbonding by AccountId.
 	///
@@ -281,6 +289,13 @@ pub mod module {
 	#[pallet::storage]
 	#[pallet::getter(fn commission_rate)]
 	pub type CommissionRate<T: Config> = StorageValue<_, Rate, ValueQuery>;
+
+	/// The fixed fee rate for redeem request is fast matched.
+	///
+	/// FastMatchFeeRate: value: Rate
+	#[pallet::storage]
+	#[pallet::getter(fn fast_match_fee_rate)]
+	pub type FastMatchFeeRate<T: Config> = StorageValue<_, Rate, ValueQuery>;
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
@@ -339,13 +354,14 @@ pub mod module {
 		/// Parameters:
 		/// - `amount`: The amount of liquid currency to be requested  redeemed into Staking
 		///   currency.
-		/// - `fast_match_fee_rate`: Fee rate for pay fast match.
+		/// - `allow_fast_match`: allow the request to be fast matched, fast match will take a fixed
+		///   rate as fee.
 		#[pallet::weight(10_000)]
 		#[transactional]
 		pub fn request_redeem(
 			origin: OriginFor<T>,
 			#[pallet::compact] amount: Balance,
-			fast_match_fee_rate: Rate,
+			allow_fast_match: bool,
 		) -> DispatchResult {
 			let redeemer = ensure_signed(origin)?;
 
@@ -383,19 +399,13 @@ pub mod module {
 				}?;
 
 				if !amount.is_zero() {
-					*maybe_request = Some((amount, fast_match_fee_rate));
-					Self::deposit_event(Event::<T>::RequestedRedeem(
+					*maybe_request = Some((amount, allow_fast_match));
+					Self::deposit_event(Event::<T>::RequestedRedeem(redeemer.clone(), amount, allow_fast_match));
+				} else if !previous_request_amount.is_zero() {
+					Self::deposit_event(Event::<T>::RedeemRequestCancelled(
 						redeemer.clone(),
-						amount,
-						fast_match_fee_rate,
+						previous_request_amount,
 					));
-				} else {
-					if !previous_request_amount.is_zero() {
-						Self::deposit_event(Event::<T>::RedeemRequestCancelled(
-							redeemer.clone(),
-							previous_request_amount,
-						));
-					}
 				}
 				Ok(())
 			})
@@ -527,6 +537,7 @@ pub mod module {
 			mint_threshold: Option<Balance>,
 			redeem_threshold: Option<Balance>,
 			commission_rate: Option<Rate>,
+			fast_match_fee_rate: Option<Rate>,
 		) -> DispatchResult {
 			T::GovernanceOrigin::ensure_origin(origin)?;
 
@@ -549,6 +560,10 @@ pub mod module {
 			if let Some(rate) = commission_rate {
 				CommissionRate::<T>::put(rate);
 				Self::deposit_event(Event::<T>::CommissionRateUpdated(rate));
+			}
+			if let Some(rate) = fast_match_fee_rate {
+				FastMatchFeeRate::<T>::put(rate);
+				Self::deposit_event(Event::<T>::FastMatchFeeRateUpdated(rate));
 			}
 
 			Ok(())
@@ -647,12 +662,15 @@ pub mod module {
 		#[transactional]
 		pub fn do_fast_match_redeem(redeemer: &T::AccountId) -> DispatchResult {
 			RedeemRequests::<T>::try_mutate_exists(redeemer, |maybe_request| -> DispatchResult {
-				if let Some((request_amount, fee_rate)) = maybe_request.take() {
+				if let Some((request_amount, allow_fast_match)) = maybe_request.take() {
+					ensure!(allow_fast_match, Error::<T>::FastMatchIsNotAllowed);
+
 					// calculate the liquid currency limit can be used to redeem based on ToBondPool at fee_rate.
 					let available_staking_currency = Self::to_bond_pool();
 					let liquid_currency_limit = Self::convert_staking_to_liquid(available_staking_currency)?;
+					let fast_match_fee_rate = Self::fast_match_fee_rate();
 					let liquid_limit_at_fee_rate = Rate::one()
-						.saturating_sub(fee_rate)
+						.saturating_sub(fast_match_fee_rate)
 						.reciprocal()
 						.unwrap_or_else(Bounded::max_value)
 						.saturating_mul_int(liquid_currency_limit);
@@ -668,22 +686,14 @@ pub mod module {
 
 					if !actual_liquid_to_redeem.is_zero() {
 						let liquid_to_burn = Rate::one()
-							.saturating_sub(fee_rate)
+							.saturating_sub(fast_match_fee_rate)
 							.saturating_mul_int(actual_liquid_to_redeem);
 						let redeemed_staking = Self::convert_liquid_to_staking(liquid_to_burn)?;
 						let fee_in_liquid = actual_liquid_to_redeem.saturating_sub(liquid_to_burn);
-						let liquid_currency_id = T::LiquidCurrencyId::get();
 
-						// burn liquid_to_burn.
-						T::Currency::withdraw(liquid_currency_id, &module_account, liquid_to_burn)?;
-
-						// transfer fee_in_liquid to TreasuryAccount of Homa.
-						T::Currency::transfer(
-							liquid_currency_id,
-							&module_account,
-							&T::TreasuryAccount::get(),
-							fee_in_liquid,
-						)?;
+						// burn liquid_to_burn for redeemed_staking and burn fee_in_liquid to reward all holders of
+						// liquid currency.
+						T::Currency::withdraw(T::LiquidCurrencyId::get(), &module_account, actual_liquid_to_redeem)?;
 
 						// transfer redeemed_staking to redeemer.
 						T::Currency::transfer(
@@ -705,7 +715,7 @@ pub mod module {
 					// update request amount
 					let remainer_request_amount = request_amount.saturating_sub(actual_liquid_to_redeem);
 					if !remainer_request_amount.is_zero() {
-						*maybe_request = Some((remainer_request_amount, fee_rate));
+						*maybe_request = Some((remainer_request_amount, allow_fast_match));
 					}
 				}
 
@@ -713,12 +723,18 @@ pub mod module {
 			})
 		}
 
+		/// Draw commission to TreasuryAccount from estimated staking rewards. Commission will be
+		/// given to TreasuryAccount by issuing liquid currency. Note: This will cause some losses
+		/// to the minters in previous_era, because they have been already deducted some liquid
+		/// currency amount when mint in previous_era. Until there is a better way to calculate,
+		/// this part of the loss can only be regarded as an implicit mint fee!
 		#[transactional]
 		pub fn draw_staking_reward(new_era: EraIndex, previous_era: EraIndex) -> DispatchResult {
 			let era_interval = new_era.saturating_sub(previous_era);
 			let liquid_currency_id = T::LiquidCurrencyId::get();
-			let draw_rate = Ratio::checked_from_rational(Self::get_total_bonded(), Self::get_total_staking_currency())
-				.unwrap_or_else(Ratio::zero)
+			let bond_ratio = Ratio::checked_from_rational(Self::get_total_bonded(), Self::get_total_staking_currency())
+				.unwrap_or_else(Ratio::zero);
+			let draw_rate = bond_ratio
 				.saturating_mul(Self::estimated_reward_rate_per_era())
 				.saturating_add(Rate::one())
 				.saturating_pow(era_interval.unique_saturated_into())
@@ -836,7 +852,13 @@ pub mod module {
 			for (redeemer, (redeem_amount, _)) in RedeemRequests::<T>::drain() {
 				total_redeem_amount = total_redeem_amount.saturating_add(redeem_amount);
 				let redemption_amount = Self::convert_liquid_to_staking(redeem_amount)?;
-				Unbondings::<T>::insert(redeemer, era_index_to_expire, redemption_amount);
+				Unbondings::<T>::insert(&redeemer, era_index_to_expire, redemption_amount);
+				Self::deposit_event(Event::<T>::RedeemedByUnbond(
+					redeemer,
+					new_era,
+					redeem_amount,
+					redemption_amount,
+				));
 			}
 
 			// calculate the distribution for unbond
