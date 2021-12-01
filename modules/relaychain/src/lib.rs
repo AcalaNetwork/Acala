@@ -143,7 +143,7 @@ where
 				assets: All.into(),
 				max_assets: u32::max_value(),
 				beneficiary: MultiLocation {
-					parents: 1,
+					parents: 0,
 					interior: X1(Parachain(ParachainId::get().into())),
 				},
 			},
