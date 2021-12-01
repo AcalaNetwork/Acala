@@ -58,10 +58,10 @@ pub mod module {
 	pub struct UnlockChunk {
 		/// Amount of funds to be unlocked.
 		#[codec(compact)]
-		value: Balance,
+		pub value: Balance,
 		/// Era number at which point it'll be unlocked.
 		#[codec(compact)]
-		era: EraIndex,
+		pub era: EraIndex,
 	}
 
 	impl StakingLedger {
@@ -918,16 +918,16 @@ pub fn distribute_increment<Index>(
 	amount_list.sort_by(|a, b| a.1.cmp(&b.1));
 
 	for (index, amount) in amount_list {
-		if remain_increment.is_zero() || remain_increment < minimum_increment.unwrap_or_else(Bounded::max_value) {
+		if remain_increment.is_zero() || remain_increment < minimum_increment.unwrap_or_else(Bounded::min_value) {
 			break;
 		}
 
 		let increment_distribution = amount_cap
 			.unwrap_or_else(Bounded::max_value)
-			.saturating_add(amount)
+			.saturating_sub(amount)
 			.min(remain_increment);
 		if increment_distribution.is_zero()
-			|| increment_distribution < minimum_increment.unwrap_or_else(Bounded::max_value)
+			|| increment_distribution < minimum_increment.unwrap_or_else(Bounded::min_value)
 		{
 			continue;
 		}
@@ -951,7 +951,7 @@ pub fn distribute_decrement<Index>(
 	amount_list.sort_by(|a, b| b.1.cmp(&a.1));
 
 	for (index, amount) in amount_list {
-		if remain_decrement.is_zero() || remain_decrement < minimum_decrement.unwrap_or_else(Bounded::max_value) {
+		if remain_decrement.is_zero() || remain_decrement < minimum_decrement.unwrap_or_else(Bounded::min_value) {
 			break;
 		}
 
