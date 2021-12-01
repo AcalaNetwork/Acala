@@ -871,7 +871,7 @@ impl<T: Config> Pallet<T> {
 	/// Get StorageDepositPerByte of actual decimals
 	pub fn get_storage_deposit_per_byte() -> BalanceOf<T> {
 		// StorageDepositPerByte decimals is 18, KAR/ACA decimals is 12, convert to 12 here.
-		convert_decimals_from_evm::<BalanceOf<T>>(T::StorageDepositPerByte::get())
+		convert_decimals_from_evm(T::StorageDepositPerByte::get())
 			.expect("StorageDepositPerByte generate by convert_decimals_to_evm; qed")
 			.into()
 	}
@@ -1042,7 +1042,7 @@ impl<T: Config> Pallet<T> {
 		Account {
 			nonce: U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(nonce)),
 			balance: U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(
-				convert_decimals_to_evm::<BalanceOf<T>>(balance),
+				convert_decimals_to_evm(balance),
 			)),
 		}
 	}
@@ -1437,11 +1437,11 @@ impl<T: Config> EVMStateRentTrait<T::AccountId, BalanceOf<T>> for Pallet<T> {
 	}
 
 	fn query_developer_deposit() -> BalanceOf<T> {
-		convert_decimals_to_evm::<BalanceOf<T>>(T::DeveloperDeposit::get())
+		convert_decimals_to_evm(T::DeveloperDeposit::get())
 	}
 
 	fn query_deployment_fee() -> BalanceOf<T> {
-		convert_decimals_to_evm::<BalanceOf<T>>(T::DeploymentFee::get())
+		convert_decimals_to_evm(T::DeploymentFee::get())
 	}
 
 	fn transfer_maintainer(from: T::AccountId, contract: EvmAddress, new_maintainer: EvmAddress) -> DispatchResult {
