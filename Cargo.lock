@@ -9805,6 +9805,9 @@ dependencies = [
  "sp-runtime",
  "sp-std",
  "static_assertions",
+ "xcm",
+ "xcm-builder",
+ "xcm-executor",
 ]
 
 [[package]]

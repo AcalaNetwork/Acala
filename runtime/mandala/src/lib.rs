@@ -58,8 +58,7 @@ use scale_info::TypeInfo;
 
 use orml_tokens::CurrencyAdapter;
 use orml_traits::{
-	create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended, GetByKey,
-	MultiCurrency,
+	create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended, MultiCurrency,
 };
 use pallet_transaction_payment::{FeeDetails, RuntimeDispatchInfo};
 use primitives::{
@@ -77,7 +76,7 @@ use sp_runtime::{
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, DispatchResult, FixedPointNumber,
 };
-use sp_std::{marker::PhantomData, prelude::*};
+use sp_std::prelude::*;
 
 #[cfg(feature = "std")]
 use sp_version::NativeVersion;
@@ -105,7 +104,6 @@ pub use pallet_timestamp::Call as TimestampCall;
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
 pub use sp_runtime::{Perbill, Percent, Permill, Perquintill};
-use xcm_executor::{traits::DropAssets, Assets};
 
 pub use authority::AuthorityConfigImpl;
 pub use constants::{fee::*, time::*};
@@ -129,6 +127,7 @@ pub use runtime_common::{
 
 /// Import the stable_asset pallet.
 pub use nutsfinance_stable_asset;
+use runtime_common::AcalaDropAssets;
 
 mod authority;
 mod benchmarking;
@@ -763,17 +762,6 @@ pub struct DustRemovalWhitelist;
 impl Contains<AccountId> for DustRemovalWhitelist {
 	fn contains(a: &AccountId) -> bool {
 		get_all_module_accounts().contains(a)
-	}
-}
-
-pub struct ExistentialDepositsForDropAssets;
-impl ExistentialDepositsForDropAssets {
-	fn get(currency_id: &CurrencyId) -> Balance {
-		if currency_id == &GetNativeCurrencyId::get() {
-			NativeTokenExistentialDeposit::get()
-		} else {
-			<ExistentialDeposits as GetByKey<CurrencyId, Balance>>::get(currency_id)
-		}
 	}
 }
 
@@ -1669,40 +1657,6 @@ impl TakeRevenue for ToTreasury {
 	}
 }
 
-pub struct AcalaDropAssets<X, T>(PhantomData<(X, T)>);
-impl<X, T> DropAssets for AcalaDropAssets<X, T>
-where
-	X: DropAssets,
-	T: TakeRevenue,
-{
-	fn drop_assets(origin: &MultiLocation, assets: Assets) -> Weight {
-		let multi_assets: Vec<MultiAsset> = assets.into();
-		let mut asset_traps: Vec<MultiAsset> = vec![];
-		for asset in multi_assets {
-			if let MultiAsset {
-				id: Concrete(location),
-				fun: Fungible(amount),
-			} = asset.clone()
-			{
-				let currency_id = CurrencyIdConvert::convert(location);
-				// burn asset(do nothing here) if convert result is None
-				if let Some(currency_id) = currency_id {
-					let ed = ExistentialDepositsForDropAssets::get(&currency_id);
-					if amount < ed {
-						T::take_revenue(asset);
-					} else {
-						asset_traps.push(asset);
-					}
-				}
-			}
-		}
-		if !asset_traps.is_empty() {
-			X::drop_assets(origin, asset_traps.into());
-		}
-		0
-	}
-}
-
 pub type Trader = (
 	FixedRateOfFungible<DotPerSecond, ToTreasury>,
 	FixedRateOfForeignAsset<Runtime, ForeignAssetUnitsPerSecond, ToTreasury>,
@@ -1724,7 +1678,14 @@ impl xcm_executor::Config for XcmConfig {
 	// Only receiving DOT is handled, and all fees must be paid in DOT.
 	type Trader = Trader;
 	type ResponseHandler = (); // Don't handle responses for now.
-	type AssetTrap = ();
+	type AssetTrap = AcalaDropAssets<
+		PolkadotXcm,
+		ToTreasury,
+		CurrencyIdConvert,
+		GetNativeCurrencyId,
+		NativeTokenExistentialDeposit,
+		ExistentialDeposits,
+	>;
 	type AssetClaims = ();
 	type SubscriptionService = PolkadotXcm;
 }

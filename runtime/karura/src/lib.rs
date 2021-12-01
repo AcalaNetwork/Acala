@@ -44,7 +44,7 @@ use sp_runtime::{
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, DispatchResult, FixedPointNumber, Perbill, Percent, Permill, Perquintill,
 };
-use sp_std::{marker::PhantomData, prelude::*};
+use sp_std::prelude::*;
 #[cfg(feature = "std")]
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
@@ -59,8 +59,7 @@ use module_support::{DispatchableTask, ForeignAssetIdMapping};
 use module_transaction_payment::{Multiplier, TargetedFeeAdjustment};
 
 use orml_traits::{
-	create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended, GetByKey,
-	MultiCurrency,
+	create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended, MultiCurrency,
 };
 use pallet_transaction_payment::RuntimeDispatchInfo;
 
@@ -77,10 +76,7 @@ pub use xcm_builder::{
 	SiblingParachainConvertsVia, SignedAccountId32AsNative, SignedToAccountId32, SovereignSignedViaLocation,
 	TakeRevenue, TakeWeightCredit,
 };
-pub use xcm_executor::{
-	traits::{DropAssets, WeightTrader},
-	Assets, Config, XcmExecutor,
-};
+pub use xcm_executor::{traits::WeightTrader, Assets, Config, XcmExecutor};
 
 /// Weights for pallets used in the runtime.
 mod weights;
@@ -108,6 +104,7 @@ pub use primitives::{
 	AuctionId, AuthoritysOriginId, Balance, BlockNumber, CurrencyId, DataProviderId, EraIndex, Hash, Moment, Nonce,
 	ReserveIdentifier, Share, Signature, TokenSymbol, TradingPair,
 };
+use runtime_common::AcalaDropAssets;
 pub use runtime_common::{
 	cent, dollar, microcent, millicent, EnsureRootOrAllGeneralCouncil, EnsureRootOrAllTechnicalCommittee,
 	EnsureRootOrHalfFinancialCouncil, EnsureRootOrHalfGeneralCouncil, EnsureRootOrHalfHomaCouncil,
@@ -739,17 +736,6 @@ create_median_value_data_provider!(
 impl DataFeeder<CurrencyId, Price, AccountId> for AggregatedDataProvider {
 	fn feed_value(_: AccountId, _: CurrencyId, _: Price) -> DispatchResult {
 		Err("Not supported".into())
-	}
-}
-
-pub struct ExistentialDepositsForDropAssets;
-impl ExistentialDepositsForDropAssets {
-	fn get(currency_id: &CurrencyId) -> Balance {
-		if currency_id == &GetNativeCurrencyId::get() {
-			NativeTokenExistentialDeposit::get()
-		} else {
-			<ExistentialDeposits as GetByKey<CurrencyId, Balance>>::get(currency_id)
-		}
 	}
 }
 
@@ -1483,40 +1469,6 @@ impl TakeRevenue for ToTreasury {
 	}
 }
 
-pub struct AcalaDropAssets<X, T>(PhantomData<(X, T)>);
-impl<X, T> DropAssets for AcalaDropAssets<X, T>
-where
-	X: DropAssets,
-	T: TakeRevenue,
-{
-	fn drop_assets(origin: &MultiLocation, assets: Assets) -> Weight {
-		let multi_assets: Vec<MultiAsset> = assets.into();
-		let mut asset_traps: Vec<MultiAsset> = vec![];
-		for asset in multi_assets {
-			if let MultiAsset {
-				id: Concrete(location),
-				fun: Fungible(amount),
-			} = asset.clone()
-			{
-				let currency_id = CurrencyIdConvert::convert(location);
-				// burn asset(do nothing here) if convert result is None
-				if let Some(currency_id) = currency_id {
-					let ed = ExistentialDepositsForDropAssets::get(&currency_id);
-					if amount < ed {
-						T::take_revenue(asset);
-					} else {
-						asset_traps.push(asset);
-					}
-				}
-			}
-		}
-		if !asset_traps.is_empty() {
-			X::drop_assets(origin, asset_traps.into());
-		}
-		0
-	}
-}
-
 parameter_types! {
 	pub BncPerSecond: (AssetId, u128) = (
 		MultiLocation::new(
@@ -1562,7 +1514,14 @@ impl xcm_executor::Config for XcmConfig {
 	type Weigher = FixedWeightBounds<UnitWeightCost, Call, MaxInstructions>;
 	type Trader = Trader;
 	type ResponseHandler = PolkadotXcm;
-	type AssetTrap = AcalaDropAssets<PolkadotXcm, ToTreasury>;
+	type AssetTrap = AcalaDropAssets<
+		PolkadotXcm,
+		ToTreasury,
+		CurrencyIdConvert,
+		GetNativeCurrencyId,
+		NativeTokenExistentialDeposit,
+		ExistentialDeposits,
+	>;
 	type AssetClaims = PolkadotXcm;
 	type SubscriptionService = PolkadotXcm;
 }

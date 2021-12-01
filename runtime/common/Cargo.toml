@@ -38,6 +38,10 @@ module-transaction-payment = { path = "../../modules/transaction-payment", defau
 module-nft = { path = "../../modules/nft", default-features = false }
 module-dex = { path = "../../modules/dex", default-features = false }
 
+xcm = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.12", default-features = false }
+xcm-executor = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.12", default-features = false }
+xcm-builder = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.12", default-features = false }
+
 [dev-dependencies]
 serde_json = "1.0.64"
 hex-literal = "0.3.1"
@@ -87,6 +91,10 @@ std = [
 	"module-transaction-payment/std",
 	"module-nft/std",
 	"module-dex/std",
+
+	"xcm/std",
+	"xcm-executor/std",
+	"xcm-builder/std",
 ]
 with-ethereum-compatibility = [
 	"module-evm/with-ethereum-compatibility",
