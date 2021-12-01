@@ -87,6 +87,8 @@ impl SubstrateCli for Cli {
 			#[cfg(feature = "with-acala-runtime")]
 			"acala" => Box::new(chain_spec::acala::acala_config()?),
 			#[cfg(feature = "with-acala-runtime")]
+			"wendala" => Box::new(chain_spec::acala::wendala_config()?),
+			#[cfg(feature = "with-acala-runtime")]
 			"acala-dev" => Box::new(chain_spec::acala::acala_dev_config()?),
 			#[cfg(feature = "with-acala-runtime")]
 			"acala-latest" => Box::new(chain_spec::acala::latest_acala_config()?),
