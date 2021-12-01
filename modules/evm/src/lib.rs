@@ -61,7 +61,7 @@ pub use module_support::{
 pub use orml_traits::currency::TransferAll;
 use primitive_types::{H160, H256, U256};
 pub use primitives::{
-	convert_decimals_dec, convert_decimals_inc,
+	convert_decimals_from_evm, convert_decimals_to_evm,
 	evm::{
 		CallInfo, CreateInfo, EvmAddress, ExecutionInfo, Vicinity, MIRRORED_NFT_ADDRESS_START,
 		MIRRORED_TOKENS_ADDRESS_START,
@@ -76,8 +76,7 @@ use sha3::{Digest, Keccak256};
 use sp_io::KillStorageResult::{AllRemoved, SomeRemaining};
 use sp_runtime::{
 	traits::{
-		Convert, DispatchInfoOf, One, PostDispatchInfoOf, Saturating, SignedExtension, UniqueSaturatedFrom,
-		UniqueSaturatedInto, Zero,
+		Convert, DispatchInfoOf, One, PostDispatchInfoOf, Saturating, SignedExtension, UniqueSaturatedInto, Zero,
 	},
 	transaction_validity::TransactionValidityError,
 	Either, TransactionOutcome,
@@ -872,12 +871,9 @@ impl<T: Config> Pallet<T> {
 	/// Get StorageDepositPerByte of actual decimals
 	pub fn get_storage_deposit_per_byte() -> BalanceOf<T> {
 		// StorageDepositPerByte decimals is 18, KAR/ACA decimals is 12, convert to 12 here.
-		BalanceOf::<T>::unique_saturated_from(
-			convert_decimals_dec(UniqueSaturatedInto::<u128>::unique_saturated_into(
-				T::StorageDepositPerByte::get(),
-			))
-			.expect("StorageDepositPerByte generate by convert_decimals_inc; qed"),
-		)
+		convert_decimals_from_evm::<BalanceOf<T>>(T::StorageDepositPerByte::get())
+			.expect("StorageDepositPerByte generate by convert_decimals_to_evm; qed")
+			.into()
 	}
 
 	/// Check whether an account is empty.
@@ -1045,8 +1041,8 @@ impl<T: Config> Pallet<T> {
 
 		Account {
 			nonce: U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(nonce)),
-			balance: U256::from(convert_decimals_inc(
-				UniqueSaturatedInto::<u128>::unique_saturated_into(balance),
+			balance: U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(
+				convert_decimals_to_evm::<BalanceOf<T>>(balance),
 			)),
 		}
 	}
@@ -1441,15 +1437,11 @@ impl<T: Config> EVMStateRentTrait<T::AccountId, BalanceOf<T>> for Pallet<T> {
 	}
 
 	fn query_developer_deposit() -> BalanceOf<T> {
-		BalanceOf::<T>::unique_saturated_from(convert_decimals_inc(
-			UniqueSaturatedInto::<u128>::unique_saturated_into(T::DeveloperDeposit::get()),
-		))
+		convert_decimals_to_evm::<BalanceOf<T>>(T::DeveloperDeposit::get())
 	}
 
 	fn query_deployment_fee() -> BalanceOf<T> {
-		BalanceOf::<T>::unique_saturated_from(convert_decimals_inc(
-			UniqueSaturatedInto::<u128>::unique_saturated_into(T::DeploymentFee::get()),
-		))
+		convert_decimals_to_evm::<BalanceOf<T>>(T::DeploymentFee::get())
 	}
 
 	fn transfer_maintainer(from: T::AccountId, contract: EvmAddress, new_maintainer: EvmAddress) -> DispatchResult {

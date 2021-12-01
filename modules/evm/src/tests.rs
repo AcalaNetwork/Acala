@@ -287,7 +287,7 @@ fn should_deploy_payable_contract() {
 		let result = <Runtime as Config>::Runner::create(
 			alice(),
 			contract.clone(),
-			convert_decimals_inc(amount.into()).try_into().unwrap(),
+			convert_decimals_to_evm(amount),
 			1000000,
 			100000,
 			<Runtime as Config>::config(),
@@ -311,7 +311,7 @@ fn should_deploy_payable_contract() {
 			alice(),
 			contract_address,
 			from_hex("0x20965255").unwrap(),
-			convert_decimals_inc(amount.into()).try_into().unwrap(),
+			convert_decimals_to_evm(amount),
 			100000,
 			100000,
 			<Runtime as Config>::config(),
@@ -381,7 +381,7 @@ fn should_transfer_from_contract() {
 		assert_eq!(balance(alice()), alice_balance);
 		assert_eq!(
 			eth_balance(alice()),
-			U256::from(convert_decimals_inc(balance(alice()).into()))
+			U256::from(convert_decimals_to_evm(balance(alice())))
 		);
 
 		let contract_address = result.value;
@@ -398,7 +398,7 @@ fn should_transfer_from_contract() {
 			alice(),
 			contract_address,
 			via_transfer,
-			convert_decimals_inc(amount.into()).try_into().unwrap(),
+			convert_decimals_to_evm(amount),
 			1000000,
 			1000000,
 			<Runtime as Config>::config(),
@@ -409,12 +409,12 @@ fn should_transfer_from_contract() {
 		assert_eq!(balance(alice()), alice_balance - amount);
 		assert_eq!(
 			eth_balance(alice()),
-			U256::from(convert_decimals_inc(balance(alice()).into()))
+			U256::from(convert_decimals_to_evm(balance(alice())))
 		);
 		assert_eq!(balance(charlie()), amount);
 		assert_eq!(
 			eth_balance(charlie()),
-			U256::from(convert_decimals_inc(balance(charlie()).into()))
+			U256::from(convert_decimals_to_evm(balance(charlie())))
 		);
 
 		// send via send
@@ -426,7 +426,7 @@ fn should_transfer_from_contract() {
 			alice(),
 			contract_address,
 			via_send,
-			convert_decimals_inc(amount.into()).try_into().unwrap(),
+			convert_decimals_to_evm(amount),
 			1000000,
 			1000000,
 			<Runtime as Config>::config(),
@@ -437,12 +437,12 @@ fn should_transfer_from_contract() {
 		assert_eq!(balance(charlie()), 2 * amount);
 		assert_eq!(
 			eth_balance(charlie()),
-			U256::from(convert_decimals_inc(balance(charlie()).into()))
+			U256::from(convert_decimals_to_evm(balance(charlie())))
 		);
 		assert_eq!(balance(alice()), alice_balance - 2 * amount);
 		assert_eq!(
 			eth_balance(alice()),
-			U256::from(convert_decimals_inc(balance(alice()).into()))
+			U256::from(convert_decimals_to_evm(balance(alice())))
 		);
 
 		// send via call
@@ -454,7 +454,7 @@ fn should_transfer_from_contract() {
 			alice(),
 			contract_address,
 			via_call,
-			convert_decimals_inc(amount.into()).try_into().unwrap(),
+			convert_decimals_to_evm(amount),
 			1000000,
 			1000000,
 			<Runtime as Config>::config(),
@@ -465,12 +465,12 @@ fn should_transfer_from_contract() {
 		assert_eq!(balance(charlie()), 3 * amount);
 		assert_eq!(
 			eth_balance(charlie()),
-			U256::from(convert_decimals_inc(balance(charlie()).into()))
+			U256::from(convert_decimals_to_evm(balance(charlie())))
 		);
 		assert_eq!(balance(alice()), alice_balance - 3 * amount);
 		assert_eq!(
 			eth_balance(alice()),
-			U256::from(convert_decimals_inc(balance(alice()).into()))
+			U256::from(convert_decimals_to_evm(balance(alice())))
 		);
 	})
 }
@@ -527,7 +527,7 @@ fn contract_should_deploy_contracts() {
 			alice(),
 			factory_contract_address,
 			create_contract,
-			convert_decimals_inc(amount.into()).try_into().unwrap(),
+			convert_decimals_to_evm(amount),
 			1000000000,
 			1000000000,
 			<Runtime as Config>::config(),
@@ -1229,7 +1229,7 @@ fn should_selfdestruct() {
 		let result = <Runtime as Config>::Runner::create(
 			alice(),
 			contract,
-			convert_decimals_inc(amount.into()).try_into().unwrap(),
+			convert_decimals_to_evm(amount),
 			1000000,
 			100000,
 			<Runtime as Config>::config(),

@@ -21,7 +21,7 @@ use crate::setup::*;
 use frame_support::assert_ok;
 use module_evm_accounts::EvmAddressMapping;
 use module_support::{EVMBridge as EVMBridgeT, Erc20InfoMapping, EVM as EVMTrait};
-use primitives::{convert_decimals_inc, evm::EvmAddress};
+use primitives::{convert_decimals_to_evm, evm::EvmAddress};
 use sp_core::{bytes::from_hex, H256};
 use std::str::FromStr;
 
@@ -485,7 +485,7 @@ fn should_not_kill_contract_on_transfer_all() {
 			// }
 			let code = hex_literal::hex!("6080604052603e8060116000396000f3fe6080604052600080fdfea265627a7a72315820e816b34c9ce8a2446f3d059b4907b4572645fde734e31dabf5465c801dcb44a964736f6c63430005110032").to_vec();
 
-			assert_ok!(EVM::create(Origin::signed(alice()), code, convert_decimals_inc(2 * dollar(NATIVE_CURRENCY)), 1000000000, 100000));
+			assert_ok!(EVM::create(Origin::signed(alice()), code, convert_decimals_to_evm(2 * dollar(NATIVE_CURRENCY)), 1000000000, 100000));
 
 			let contract = if let Event::EVM(module_evm::Event::Created(_, address, _)) = System::events().last().unwrap().event {
 				address

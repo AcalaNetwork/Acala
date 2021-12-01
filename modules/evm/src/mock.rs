@@ -175,7 +175,7 @@ ord_parameter_types! {
 	pub const TreasuryAccount: AccountId32 = AccountId32::from([2u8; 32]);
 	pub const NetworkContractAccount: AccountId32 = AccountId32::from([0u8; 32]);
 	pub const NewContractExtraBytes: u32 = 100;
-	pub const StorageDepositPerByte: Balance = convert_decimals_inc(10);
+	pub const StorageDepositPerByte: Balance = convert_decimals_to_evm(10);
 	pub const TxFeePerGas: Balance = 20_000_000;
 	pub const DeveloperDeposit: Balance = 1000;
 	pub const DeploymentFee: Balance = 200;

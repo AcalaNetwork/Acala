@@ -27,7 +27,7 @@ use frame_support::{
 };
 use frame_system::EnsureSignedBy;
 use module_support::{mocks::MockAddressMapping, AddressMapping};
-use primitives::{convert_decimals_inc, evm::EvmAddress, AccountId, Balance, ReserveIdentifier};
+use primitives::{convert_decimals_to_evm, evm::EvmAddress, AccountId, Balance, ReserveIdentifier};
 use sp_core::{bytes::from_hex, H160, H256};
 use std::str::FromStr;
 
@@ -97,7 +97,7 @@ ord_parameter_types! {
 	pub const CouncilAccount: AccountId = AccountId::from([1u8; 32]);
 	pub const TreasuryAccount: AccountId = AccountId::from([2u8; 32]);
 	pub const NetworkContractAccount: AccountId = AccountId::from([0u8; 32]);
-	pub const StorageDepositPerByte: u128 = convert_decimals_inc(10);
+	pub const StorageDepositPerByte: u128 = convert_decimals_to_evm(10);
 	pub const TxFeePerGas: u128 = 10;
 	pub const DeveloperDeposit: u64 = 1000;
 	pub const DeploymentFee: u64 = 200;
