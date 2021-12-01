@@ -873,7 +873,6 @@ impl<T: Config> Pallet<T> {
 		// StorageDepositPerByte decimals is 18, KAR/ACA decimals is 12, convert to 12 here.
 		convert_decimals_from_evm(T::StorageDepositPerByte::get())
 			.expect("StorageDepositPerByte generate by convert_decimals_to_evm; qed")
-			.into()
 	}
 
 	/// Check whether an account is empty.
