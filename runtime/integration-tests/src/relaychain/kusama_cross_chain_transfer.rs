@@ -478,32 +478,20 @@ fn test_asset_registry_module() {
 
 #[test]
 fn trap_assets_larger_than_ed_works() {
-	let mut kar_before_trap: u128 = 0;
-	let mut kar_after_trap: u128 = 0;
-	let mut ksm_before_trap: u128 = 0;
-	let mut ksm_after_trap: u128 = 0;
+	TestNet::reset();
+
+	let mut kar_treasury_amount = 0;
+	let (ksm_asset_amount, kar_asset_amount) = (dollar(KSM), dollar(KAR));
 	let trader_weight_to_treasury: u128 = 96_000_000;
-	let ksm_asset_amount = dollar(KSM);
-	let kar_asset_amount = dollar(KAR);
 
 	Karura::execute_with(|| {
 		assert_ok!(Tokens::deposit(KSM, &AccountId::from(DEFAULT), 100 * dollar(KSM)));
 		let _ = pallet_balances::Pallet::<Runtime>::deposit_creating(&AccountId::from(DEFAULT), 100 * dollar(KAR));
 
-		ksm_before_trap = Currencies::free_balance(KSM, &KaruraTreasuryAccount::get());
-		kar_before_trap = Currencies::free_balance(KAR, &KaruraTreasuryAccount::get());
-		assert_eq!(0, ksm_before_trap);
+		kar_treasury_amount = Currencies::free_balance(KAR, &KaruraTreasuryAccount::get());
 	});
 
 	let assets: MultiAsset = (Parent, ksm_asset_amount).into();
-	let assets_para: MultiAsset = (
-		(Parent, X2(Parachain(2000), GeneralKey(KAR.encode()))),
-		kar_asset_amount,
-	)
-		.into();
-
-	// buy_weight use Parent(KSM) token, so they'll be `trader_weight_to_treasury` amount into the
-	// treasury account
 	KusamaNet::execute_with(|| {
 		let xcm = vec![
 			WithdrawAsset(assets.clone().into()),
@@ -511,7 +499,13 @@ fn trap_assets_larger_than_ed_works() {
 				fees: assets,
 				weight_limit: Limited(dollar(KSM) as u64),
 			},
-			WithdrawAsset(assets_para.into()),
+			WithdrawAsset(
+				(
+					(Parent, X2(Parachain(2000), GeneralKey(KAR.encode()))),
+					kar_asset_amount,
+				)
+					.into(),
+			),
 		];
 		assert_ok!(pallet_xcm::Pallet::<kusama_runtime::Runtime>::send_xcm(
 			Here,
@@ -520,42 +514,35 @@ fn trap_assets_larger_than_ed_works() {
 		));
 	});
 	Karura::execute_with(|| {
-		// they'll be two asset in AssetsTrapped event
 		assert!(System::events()
 			.iter()
 			.any(|r| matches!(r.event, Event::PolkadotXcm(pallet_xcm::Event::AssetsTrapped(_, _, _)))));
 
-		ksm_after_trap = Currencies::free_balance(KSM, &KaruraTreasuryAccount::get());
-		kar_after_trap = Currencies::free_balance(KAR, &KaruraTreasuryAccount::get());
-		assert_eq!(trader_weight_to_treasury, ksm_after_trap - ksm_before_trap);
-		assert_eq!(0, kar_after_trap - kar_after_trap);
+		assert_eq!(
+			trader_weight_to_treasury,
+			Currencies::free_balance(KSM, &KaruraTreasuryAccount::get())
+		);
+		assert_eq!(
+			kar_treasury_amount,
+			Currencies::free_balance(KAR, &KaruraTreasuryAccount::get())
+		);
 	});
 }
 
 #[test]
 fn trap_assets_lower_than_ed_works() {
-	let mut kar_before_trap: u128 = 0;
-	let mut kar_after_trap: u128 = 0;
-	let mut ksm_before_trap: u128 = 0;
-	let mut ksm_after_trap: u128 = 0;
-	let ksm_asset_amount = cent(KSM) / 100;
-	let kar_asset_amount = cent(KAR);
+	TestNet::reset();
+
+	let mut kar_treasury_amount = 0;
+	let (ksm_asset_amount, kar_asset_amount) = (cent(KSM) / 100, cent(KAR));
 
 	Karura::execute_with(|| {
 		assert_ok!(Tokens::deposit(KSM, &AccountId::from(DEFAULT), dollar(KSM)));
 		let _ = pallet_balances::Pallet::<Runtime>::deposit_creating(&AccountId::from(DEFAULT), dollar(KAR));
-		ksm_before_trap = Currencies::free_balance(KSM, &KaruraTreasuryAccount::get());
-		kar_before_trap = Currencies::free_balance(KAR, &KaruraTreasuryAccount::get());
+		kar_treasury_amount = Currencies::free_balance(KAR, &KaruraTreasuryAccount::get());
 	});
 
 	let assets: MultiAsset = (Parent, ksm_asset_amount).into();
-	let assets_para: MultiAsset = (
-		(Parent, X2(Parachain(2000), GeneralKey(KAR.encode()))),
-		kar_asset_amount,
-	)
-		.into();
-
-	// two asset left in holding register, they both lower than ED, so goes to treasury.
 	KusamaNet::execute_with(|| {
 		let xcm = vec![
 			WithdrawAsset(assets.clone().into()),
@@ -563,7 +550,14 @@ fn trap_assets_lower_than_ed_works() {
 				fees: assets,
 				weight_limit: Limited(dollar(KSM) as u64),
 			},
-			WithdrawAsset(assets_para.into()),
+			WithdrawAsset(
+				(
+					(Parent, X2(Parachain(2000), GeneralKey(KAR.encode()))),
+					kar_asset_amount,
+				)
+					.into(),
+			),
+			// two asset left in holding register, they both lower than ED, so goes to treasury.
 		];
 		assert_ok!(pallet_xcm::Pallet::<kusama_runtime::Runtime>::send_xcm(
 			Here,
@@ -580,9 +574,79 @@ fn trap_assets_lower_than_ed_works() {
 			None
 		);
 
-		ksm_after_trap = Currencies::free_balance(KSM, &KaruraTreasuryAccount::get());
-		kar_after_trap = Currencies::free_balance(KAR, &KaruraTreasuryAccount::get());
-		assert_eq!(ksm_asset_amount, ksm_after_trap - ksm_before_trap);
-		assert_eq!(kar_asset_amount, kar_after_trap - kar_before_trap);
+		assert_eq!(
+			ksm_asset_amount,
+			Currencies::free_balance(KSM, &KaruraTreasuryAccount::get())
+		);
+		assert_eq!(
+			kar_asset_amount,
+			Currencies::free_balance(KAR, &KaruraTreasuryAccount::get()) - kar_treasury_amount
+		);
+	});
+}
+
+#[test]
+fn sibling_trap_assets_works() {
+	TestNet::reset();
+
+	let mut kar_treasury_amount = 0;
+	let (bnc_asset_amount, kar_asset_amount) = (cent(BNC) / 10, cent(KAR));
+
+	fn sibling_account() -> AccountId {
+		use sp_runtime::traits::AccountIdConversion;
+		polkadot_parachain::primitives::Sibling::from(2001).into_account()
+	}
+
+	Karura::execute_with(|| {
+		assert_ok!(Tokens::deposit(BNC, &sibling_account(), dollar(BNC)));
+		let _ = pallet_balances::Pallet::<Runtime>::deposit_creating(&sibling_account(), dollar(KAR));
+		kar_treasury_amount = Currencies::free_balance(KAR, &KaruraTreasuryAccount::get());
+	});
+
+	Sibling::execute_with(|| {
+		let assets: MultiAsset = (
+			(Parent, X2(Parachain(2000), GeneralKey(KAR.encode()))),
+			kar_asset_amount,
+		)
+			.into();
+		let xcm = vec![
+			WithdrawAsset(assets.clone().into()),
+			BuyExecution {
+				fees: assets,
+				weight_limit: Unlimited,
+			},
+			WithdrawAsset(
+				(
+					(
+						Parent,
+						X2(Parachain(2001), GeneralKey(parachains::bifrost::BNC_KEY.to_vec())),
+					),
+					bnc_asset_amount,
+				)
+					.into(),
+			),
+		];
+		assert_ok!(pallet_xcm::Pallet::<Runtime>::send_xcm(
+			Here,
+			(Parent, Parachain(2000)),
+			Xcm(xcm),
+		));
+	});
+
+	Karura::execute_with(|| {
+		assert_eq!(
+			System::events()
+				.iter()
+				.find(|r| matches!(r.event, Event::PolkadotXcm(pallet_xcm::Event::AssetsTrapped(_, _, _)))),
+			None
+		);
+		assert_eq!(
+			Currencies::free_balance(KAR, &KaruraTreasuryAccount::get()) - kar_treasury_amount,
+			kar_asset_amount
+		);
+		assert_eq!(
+			Currencies::free_balance(BNC, &KaruraTreasuryAccount::get()),
+			bnc_asset_amount
+		);
 	});
 }
