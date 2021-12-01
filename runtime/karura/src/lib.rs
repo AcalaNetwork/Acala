@@ -104,6 +104,7 @@ pub use primitives::{
 	AuctionId, AuthoritysOriginId, Balance, BlockNumber, CurrencyId, DataProviderId, EraIndex, Hash, Moment, Nonce,
 	ReserveIdentifier, Share, Signature, TokenSymbol, TradingPair,
 };
+use runtime_common::AcalaDropAssets;
 pub use runtime_common::{
 	cent, dollar, microcent, millicent, EnsureRootOrAllGeneralCouncil, EnsureRootOrAllTechnicalCommittee,
 	EnsureRootOrHalfFinancialCouncil, EnsureRootOrHalfGeneralCouncil, EnsureRootOrHalfHomaCouncil,
@@ -1515,7 +1516,14 @@ impl xcm_executor::Config for XcmConfig {
 	type Weigher = FixedWeightBounds<UnitWeightCost, Call, MaxInstructions>;
 	type Trader = Trader;
 	type ResponseHandler = PolkadotXcm;
-	type AssetTrap = PolkadotXcm;
+	type AssetTrap = AcalaDropAssets<
+		PolkadotXcm,
+		ToTreasury,
+		CurrencyIdConvert,
+		GetNativeCurrencyId,
+		NativeTokenExistentialDeposit,
+		ExistentialDeposits,
+	>;
 	type AssetClaims = PolkadotXcm;
 	type SubscriptionService = PolkadotXcm;
 }
