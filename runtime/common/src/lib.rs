@@ -337,6 +337,12 @@ pub enum RelayChainSubAccountId {
 	HomaLite = 0,
 }
 
+/// `DropAssets` implementation support asset amount lower thant ED handled by `TakeRevenue`.
+///
+/// parameters type:
+/// - `NC`: native currency_id type.
+/// - `NB`: the ExistentialDeposit amount of native currency_id.
+/// - `GK`: the ExistentialDeposit amount of tokens.
 pub struct AcalaDropAssets<X, T, C, NC, NB, GK>(PhantomData<(X, T, C, NC, NB, GK)>);
 impl<X, T, C, NC, NB, GK> DropAssets for AcalaDropAssets<X, T, C, NC, NB, GK>
 where
@@ -375,6 +381,13 @@ where
 	}
 }
 
+/// `ExistentialDeposit` for tokens, give priority to match native token, then handled by
+/// `ExistentialDeposits`.
+///
+/// parameters type:
+/// - `NC`: native currency_id type.
+/// - `NB`: the ExistentialDeposit amount of native currency_id.
+/// - `GK`: the ExistentialDeposit amount of tokens.
 pub struct ExistentialDepositsForDropAssets<NC, NB, GK>(PhantomData<(NC, NB, GK)>);
 impl<NC, NB, GK> ExistentialDepositsForDropAssets<NC, NB, GK>
 where
