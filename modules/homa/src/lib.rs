@@ -527,7 +527,12 @@ pub mod module {
 		/// - `soft_bonded_cap_per_sub_account`:  soft cap of staking amount for a single nominator
 		///   on relaychain to obtain the best staking rewards.
 		/// - `estimated_reward_rate_per_era`: the esstaking yield of each era on the current relay
-		///   chain
+		///   chain.
+		/// - `mint_threshold`: the staking currency amount of threshold when mint.
+		/// - `redeem_threshold`: the liquid currency amount of threshold when request redeem.
+		/// - `commission_rate`: the rate to draw from estimated staking rewards as commission to
+		///   HomaTreasury
+		/// - `fast_match_fee_rate`: the fixed fee rate when redeem request is been fast matched.
 		#[pallet::weight(10_000)]
 		#[transactional]
 		pub fn update_homa_params(
