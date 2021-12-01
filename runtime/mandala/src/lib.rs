@@ -62,7 +62,7 @@ use orml_traits::{
 };
 use pallet_transaction_payment::{FeeDetails, RuntimeDispatchInfo};
 use primitives::{
-	define_combined_task, evm::EthereumTransactionMessage, task::TaskResult,
+	convert_decimals_to_evm, define_combined_task, evm::EthereumTransactionMessage, task::TaskResult,
 	unchecked_extrinsic::AcalaUncheckedExtrinsic,
 };
 use sp_api::impl_runtime_apis;
@@ -340,6 +340,7 @@ parameter_types! {
 	// This number may need to be adjusted in the future if this assumption no longer holds true.
 	pub const MaxLocks: u32 = 50;
 	pub const MaxReserves: u32 = ReserveIdentifier::Count as u32;
+	pub NativeTokenExistentialDeposit: Balance = 10 * cent(ACA);
 }
 
 impl pallet_balances::Config for Runtime {
@@ -1489,7 +1490,6 @@ parameter_types! {
 
 #[cfg(feature = "with-ethereum-compatibility")]
 parameter_types! {
-	pub NativeTokenExistentialDeposit: Balance = 10 * cent(ACA);
 	pub const NewContractExtraBytes: u32 = 0;
 	pub const DeveloperDeposit: Balance = 0;
 	pub const DeploymentFee: Balance = 0;
@@ -1497,7 +1497,6 @@ parameter_types! {
 
 #[cfg(not(feature = "with-ethereum-compatibility"))]
 parameter_types! {
-	pub NativeTokenExistentialDeposit: Balance = 10 * cent(ACA);
 	pub const NewContractExtraBytes: u32 = 10_000;
 	pub DeveloperDeposit: Balance = dollar(ACA);
 	pub DeploymentFee: Balance = dollar(ACA);
@@ -1508,8 +1507,8 @@ pub struct StorageDepositPerByte;
 impl<I: From<Balance>> frame_support::traits::Get<I> for StorageDepositPerByte {
 	fn get() -> I {
 		#[cfg(not(feature = "with-ethereum-compatibility"))]
-		// NOTE: use 18 decimals
-		return I::from(100 * dollar(ACA));
+		// NOTE: ACA decimals is 12, convert to 18.
+		return I::from(convert_decimals_to_evm(deposit(0, 1)));
 		#[cfg(feature = "with-ethereum-compatibility")]
 		return I::from(0);
 	}

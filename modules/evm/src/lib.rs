@@ -61,6 +61,7 @@ pub use module_support::{
 pub use orml_traits::currency::TransferAll;
 use primitive_types::{H160, H256, U256};
 pub use primitives::{
+	convert_decimals_from_evm, convert_decimals_to_evm,
 	evm::{
 		CallInfo, CreateInfo, EvmAddress, ExecutionInfo, Vicinity, MIRRORED_NFT_ADDRESS_START,
 		MIRRORED_TOKENS_ADDRESS_START,
@@ -75,8 +76,7 @@ use sha3::{Digest, Keccak256};
 use sp_io::KillStorageResult::{AllRemoved, SomeRemaining};
 use sp_runtime::{
 	traits::{
-		Convert, DispatchInfoOf, One, PostDispatchInfoOf, Saturating, SignedExtension, UniqueSaturatedFrom,
-		UniqueSaturatedInto, Zero,
+		Convert, DispatchInfoOf, One, PostDispatchInfoOf, Saturating, SignedExtension, UniqueSaturatedInto, Zero,
 	},
 	transaction_validity::TransactionValidityError,
 	Either, TransactionOutcome,
@@ -477,13 +477,19 @@ pub mod module {
 		UnreserveStorageFailed,
 		/// Charge storage failed
 		ChargeStorageFailed,
+		/// Invalid decimals
+		InvalidDecimals,
 	}
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
 
 	#[pallet::hooks]
-	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {}
+	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
+		fn integrity_test() {
+			assert!(convert_decimals_from_evm(T::StorageDepositPerByte::get()).is_some());
+		}
+	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
@@ -866,23 +872,10 @@ pub mod module {
 }
 
 impl<T: Config> Pallet<T> {
-	pub fn pad_zero(b: BalanceOf<T>, num: u32) -> BalanceOf<T> {
-		BalanceOf::<T>::unique_saturated_from(
-			UniqueSaturatedInto::<u128>::unique_saturated_into(b).saturating_mul(10u128.saturating_pow(num)),
-		)
-	}
-
-	pub fn truncate_zero(b: BalanceOf<T>, num: u32) -> BalanceOf<T> {
-		BalanceOf::<T>::unique_saturated_from(
-			UniqueSaturatedInto::<u128>::unique_saturated_into(b)
-				.checked_div(10u128.saturating_pow(num))
-				.expect("divisor is non-zero; qed"),
-		)
-	}
-
 	/// Get StorageDepositPerByte of actual decimals
 	pub fn get_storage_deposit_per_byte() -> BalanceOf<T> {
-		Self::truncate_zero(T::StorageDepositPerByte::get(), 6)
+		// StorageDepositPerByte decimals is 18, KAR/ACA decimals is 12, convert to 12 here.
+		convert_decimals_from_evm(T::StorageDepositPerByte::get()).expect("checked in integrity_test; qed")
 	}
 
 	/// Check whether an account is empty.
@@ -1050,7 +1043,9 @@ impl<T: Config> Pallet<T> {
 
 		Account {
 			nonce: U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(nonce)),
-			balance: U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(balance)),
+			balance: U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(
+				convert_decimals_to_evm(balance),
+			)),
 		}
 	}
 
@@ -1431,6 +1426,7 @@ impl<T: Config> EVMStateRentTrait<T::AccountId, BalanceOf<T>> for Pallet<T> {
 	}
 
 	fn query_storage_deposit_per_byte() -> BalanceOf<T> {
+		// the decimals is already 18
 		T::StorageDepositPerByte::get()
 	}
 
@@ -1443,11 +1439,11 @@ impl<T: Config> EVMStateRentTrait<T::AccountId, BalanceOf<T>> for Pallet<T> {
 	}
 
 	fn query_developer_deposit() -> BalanceOf<T> {
-		T::DeveloperDeposit::get()
+		convert_decimals_to_evm(T::DeveloperDeposit::get())
 	}
 
 	fn query_deployment_fee() -> BalanceOf<T> {
-		T::DeploymentFee::get()
+		convert_decimals_to_evm(T::DeploymentFee::get())
 	}
 
 	fn transfer_maintainer(from: T::AccountId, contract: EvmAddress, new_maintainer: EvmAddress) -> DispatchResult {

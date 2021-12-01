@@ -26,7 +26,7 @@ use frame_support::{
 	PalletId,
 };
 use orml_traits::parameter_type_with_key;
-use primitives::{CurrencyId, ReserveIdentifier, TokenSymbol};
+use primitives::{convert_decimals_to_evm, CurrencyId, ReserveIdentifier, TokenSymbol};
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
@@ -148,7 +148,7 @@ ord_parameter_types! {
 	pub const CouncilAccount: AccountId32 = AccountId32::from([1u8; 32]);
 	pub const TreasuryAccount: AccountId32 = AccountId32::from([2u8; 32]);
 	pub const NetworkContractAccount: AccountId32 = AccountId32::from([0u8; 32]);
-	pub const StorageDepositPerByte: u128 = 10;
+	pub const StorageDepositPerByte: u128 = convert_decimals_to_evm(10);
 	pub const TxFeePerGas: u128 = 10;
 	pub const DeveloperDeposit: u64 = 1000;
 	pub const DeploymentFee: u64 = 200;

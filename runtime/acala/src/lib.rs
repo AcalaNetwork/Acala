@@ -99,9 +99,9 @@ pub use sp_runtime::BuildStorage;
 pub use authority::AuthorityConfigImpl;
 pub use constants::{fee::*, time::*};
 pub use primitives::{
-	define_combined_task, evm::EstimateResourcesRequest, task::TaskResult, AccountId, AccountIndex, Address, Amount,
-	AuctionId, AuthoritysOriginId, Balance, BlockNumber, CurrencyId, DataProviderId, EraIndex, Hash, Moment, Nonce,
-	ReserveIdentifier, Share, Signature, TokenSymbol, TradingPair,
+	convert_decimals_to_evm, define_combined_task, evm::EstimateResourcesRequest, task::TaskResult, AccountId,
+	AccountIndex, Address, Amount, AuctionId, AuthoritysOriginId, Balance, BlockNumber, CurrencyId, DataProviderId,
+	EraIndex, Hash, Moment, Nonce, ReserveIdentifier, Share, Signature, TokenSymbol, TradingPair,
 };
 use runtime_common::AcalaDropAssets;
 pub use runtime_common::{
@@ -1280,8 +1280,8 @@ parameter_types! {
 pub struct StorageDepositPerByte;
 impl<I: From<Balance>> frame_support::traits::Get<I> for StorageDepositPerByte {
 	fn get() -> I {
-		// NOTE: use 18 decimals
-		I::from(100 * dollar(ACA))
+		// NOTE: ACA decimals is 12, convert to 18.
+		I::from(convert_decimals_to_evm(deposit(0, 1)))
 	}
 }
 
