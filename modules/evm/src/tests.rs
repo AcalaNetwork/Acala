@@ -278,7 +278,7 @@ fn should_deploy_payable_contract() {
 	).unwrap();
 
 	new_test_ext().execute_with(|| {
-		let amount = 1000u64;
+		let amount = 1000u128;
 
 		let stored_value: Vec<u8> =
 			from_hex("0x000000000000000000000000000000000000000000000000000000000000007b").unwrap();
@@ -363,7 +363,7 @@ fn should_transfer_from_contract() {
 		"0x608060405234801561001057600080fd5b50610318806100206000396000f3fe6080604052600436106100345760003560e01c8063636e082b1461003957806374be48061461007d578063830c29ae146100c1575b600080fd5b61007b6004803603602081101561004f57600080fd5b81019080803573ffffffffffffffffffffffffffffffffffffffff169060200190929190505050610105565b005b6100bf6004803603602081101561009357600080fd5b81019080803573ffffffffffffffffffffffffffffffffffffffff16906020019092919050505061014f565b005b610103600480360360208110156100d757600080fd5b81019080803573ffffffffffffffffffffffffffffffffffffffff1690602001909291905050506101ff565b005b8073ffffffffffffffffffffffffffffffffffffffff166108fc349081150290604051600060405180830381858888f1935050505015801561014b573d6000803e3d6000fd5b5050565b60008173ffffffffffffffffffffffffffffffffffffffff166108fc349081150290604051600060405180830381858888f193505050509050806101fb576040517f08c379a00000000000000000000000000000000000000000000000000000000081526004018080602001828103825260148152602001807f4661696c656420746f2073656e6420457468657200000000000000000000000081525060200191505060405180910390fd5b5050565b600060608273ffffffffffffffffffffffffffffffffffffffff163460405180600001905060006040518083038185875af1925050503d8060008114610261576040519150601f19603f3d011682016040523d82523d6000602084013e610266565b606091505b5091509150816102de576040517f08c379a00000000000000000000000000000000000000000000000000000000081526004018080602001828103825260148152602001807f4661696c656420746f2073656e6420457468657200000000000000000000000081525060200191505060405180910390fd5b50505056fea265627a7a723158201b401be037c87d59ec386e75b0166702abb5a64f93ea20080904b6791bd88d1564736f6c63430005110032"
 	).unwrap();
 	new_test_ext().execute_with(|| {
-		let amount = 1000u64;
+		let amount = 1000u128;
 
 		let result = <Runtime as Config>::Runner::create(
 			alice(),
@@ -520,7 +520,7 @@ fn contract_should_deploy_contracts() {
 		);
 
 		// Factory.createContract
-		let amount = 1000u64;
+		let amount = 1000u128;
 		let create_contract = from_hex("0x412a5a6d").unwrap();
 		let result = <Runtime as Config>::Runner::call(
 			alice(),
@@ -610,7 +610,7 @@ fn contract_should_deploy_contracts_without_payable() {
 		assert_eq!(result.used_storage, 290);
 		assert_eq!(
 			balance(alice()),
-			alice_balance - (result.used_storage as u64 * EVM::get_storage_deposit_per_byte())
+			alice_balance - (result.used_storage as u128 * EVM::get_storage_deposit_per_byte())
 		);
 		assert_eq!(balance(factory_contract_address), 0);
 		assert_eq!(
@@ -649,7 +649,7 @@ fn deploy_factory() {
 		assert_eq!(result.used_storage, 461);
 		assert_eq!(
 			balance(alice()),
-			INITIAL_BALANCE - (result.used_storage as u64 * EVM::get_storage_deposit_per_byte())
+			INITIAL_BALANCE - (result.used_storage as u128 * EVM::get_storage_deposit_per_byte())
 		);
 	});
 }
@@ -936,7 +936,7 @@ fn should_deploy() {
 		let code_size = Accounts::<Runtime>::get(contract_address).map_or(0, |account_info| -> u32 {
 			account_info.contract_info.map_or(0, |contract_info| CodeInfos::<Runtime>::get(contract_info.code_hash).map_or(0, |code_info| code_info.code_size))
 		});
-		assert_eq!(balance(alice()), INITIAL_BALANCE - DeploymentFee::get() - ((NewContractExtraBytes::get() + code_size) as u64 * EVM::get_storage_deposit_per_byte()));
+		assert_eq!(balance(alice()), INITIAL_BALANCE - DeploymentFee::get() - ((NewContractExtraBytes::get() + code_size) as u128* EVM::get_storage_deposit_per_byte()));
 		assert_eq!(Balances::free_balance(TreasuryAccount::get()), INITIAL_BALANCE + DeploymentFee::get());
 
 		// call method `multiply` will work
@@ -1219,7 +1219,7 @@ fn should_selfdestruct() {
 		let alice_account_id = <Runtime as Config>::AddressMapping::get_account_id(&alice());
 		let bob_account_id = <Runtime as Config>::AddressMapping::get_account_id(&bob());
 
-		let amount = 1000u64;
+		let amount = 1000u128;
 
 		let mut stored_value: Vec<u8> =
 			from_hex("0x000000000000000000000000000000000000000000000000000000000000007b").unwrap();

@@ -21,7 +21,7 @@ use crate::setup::*;
 use frame_support::assert_ok;
 use module_evm_accounts::EvmAddressMapping;
 use module_support::{EVMBridge as EVMBridgeT, Erc20InfoMapping, EVM as EVMTrait};
-use primitives::evm::EvmAddress;
+use primitives::{convert_decimals_inc, evm::EvmAddress};
 use sp_core::{bytes::from_hex, H256};
 use std::str::FromStr;
 
@@ -312,7 +312,10 @@ fn test_evm_module() {
 			)));
 
 			// test EvmAccounts Lookup
+			#[cfg(feature = "with-mandala-runtime")]
 			assert_eq!(Balances::free_balance(alice()), 998_963_300_000_000);
+			#[cfg(feature = "with-karura-runtime")]
+			assert_eq!(Balances::free_balance(alice()), 996_889_900_000_000);
 			assert_eq!(Balances::free_balance(bob()), 1_000 * dollar(NATIVE_CURRENCY));
 			let to = EvmAccounts::eth_address(&alice_key());
 			assert_ok!(Currencies::transfer(
@@ -321,7 +324,10 @@ fn test_evm_module() {
 				NATIVE_CURRENCY,
 				10 * dollar(NATIVE_CURRENCY)
 			));
+			#[cfg(feature = "with-mandala-runtime")]
 			assert_eq!(Balances::free_balance(alice()), 1_008_963_300_000_000);
+			#[cfg(feature = "with-karura-runtime")]
+			assert_eq!(Balances::free_balance(alice()), 1_006_889_900_000_000);
 			assert_eq!(
 				Balances::free_balance(bob()),
 				1_000 * dollar(NATIVE_CURRENCY) - 10 * dollar(NATIVE_CURRENCY)
@@ -463,6 +469,7 @@ fn test_multicurrency_precompile_module() {
 
 #[test]
 fn should_not_kill_contract_on_transfer_all() {
+	env_logger::init();
 	ExtBuilder::default()
 		.balances(vec![
 			(alice(), NATIVE_CURRENCY, 2_000 * dollar(NATIVE_CURRENCY)),
@@ -478,7 +485,7 @@ fn should_not_kill_contract_on_transfer_all() {
 			// }
 			let code = hex_literal::hex!("6080604052603e8060116000396000f3fe6080604052600080fdfea265627a7a72315820e816b34c9ce8a2446f3d059b4907b4572645fde734e31dabf5465c801dcb44a964736f6c63430005110032").to_vec();
 
-			assert_ok!(EVM::create(Origin::signed(alice()), code, 2 * dollar(NATIVE_CURRENCY), 1000000000, 100000));
+			assert_ok!(EVM::create(Origin::signed(alice()), code, convert_decimals_inc(2 * dollar(NATIVE_CURRENCY)), 1000000000, 100000));
 
 			let contract = if let Event::EVM(module_evm::Event::Created(_, address, _)) = System::events().last().unwrap().event {
 				address
@@ -488,8 +495,10 @@ fn should_not_kill_contract_on_transfer_all() {
 
 			assert_eq!(Balances::free_balance(EvmAddressMapping::<Runtime>::get_account_id(&contract)), 2 * dollar(NATIVE_CURRENCY));
 
-			#[cfg(not(feature = "with-ethereum-compatibility"))]
+			#[cfg(all(not(feature = "with-ethereum-compatibility"), feature = "with-mandala-runtime"))]
 			assert_eq!(Balances::free_balance(alice()), 1_996_993_800_000_000);
+			#[cfg(all(not(feature = "with-ethereum-compatibility"), feature = "with-karura-runtime"))]
+			assert_eq!(Balances::free_balance(alice()), 1_994_981_400_000_000);
 
 			#[cfg(feature = "with-ethereum-compatibility")]
 			assert_eq!(Balances::free_balance(alice()), 1_998 * dollar(NATIVE_CURRENCY));
@@ -503,8 +512,10 @@ fn should_not_kill_contract_on_transfer_all() {
 
 			assert_eq!(Balances::free_balance(EvmAddressMapping::<Runtime>::get_account_id(&contract)), 0);
 
-			#[cfg(not(feature = "with-ethereum-compatibility"))]
+			#[cfg(all(not(feature = "with-ethereum-compatibility"), feature = "with-mandala-runtime"))]
 			assert_eq!(Balances::free_balance(alice()), 1_998_993_800_000_000);
+			#[cfg(all(not(feature = "with-ethereum-compatibility"), feature = "with-karura-runtime"))]
+			assert_eq!(Balances::free_balance(alice()), 1_996_981_400_000_000);
 
 			#[cfg(feature = "with-ethereum-compatibility")]
 			assert_eq!(Balances::free_balance(alice()), 2000 * dollar(NATIVE_CURRENCY));
