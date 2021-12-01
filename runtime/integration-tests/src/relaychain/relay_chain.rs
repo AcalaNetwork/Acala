@@ -163,7 +163,7 @@ mod karura_tests {
 			// Only leftover XCM fee remains in the account
 			assert_eq!(
 				kusama_runtime::Balances::free_balance(&parachain_account.clone()),
-				9_400_000_000
+				9_626_666_690
 			);
 		});
 	}
