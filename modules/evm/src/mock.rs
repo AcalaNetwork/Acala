@@ -228,7 +228,7 @@ construct_runtime!(
 	}
 );
 
-pub const INITIAL_BALANCE: Balance = 1_000_000_000_000;
+pub const INITIAL_BALANCE: Balance = 1_000_000_000_000_000;
 
 pub fn contract_a() -> H160 {
 	H160::from_str("2000000000000000000000000000000000000001").unwrap()

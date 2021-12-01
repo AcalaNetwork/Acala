@@ -485,7 +485,11 @@ pub mod module {
 	pub struct Pallet<T>(_);
 
 	#[pallet::hooks]
-	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {}
+	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
+		fn integrity_test() {
+			assert!(convert_decimals_from_evm(T::StorageDepositPerByte::get()).is_some());
+		}
+	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
@@ -871,8 +875,7 @@ impl<T: Config> Pallet<T> {
 	/// Get StorageDepositPerByte of actual decimals
 	pub fn get_storage_deposit_per_byte() -> BalanceOf<T> {
 		// StorageDepositPerByte decimals is 18, KAR/ACA decimals is 12, convert to 12 here.
-		convert_decimals_from_evm(T::StorageDepositPerByte::get())
-			.expect("StorageDepositPerByte generate by convert_decimals_to_evm; qed")
+		convert_decimals_from_evm(T::StorageDepositPerByte::get()).expect("checked in integrity_test; qed")
 	}
 
 	/// Check whether an account is empty.
