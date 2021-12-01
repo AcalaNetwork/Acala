@@ -1428,6 +1428,7 @@ impl<T: Config> EVMStateRentTrait<T::AccountId, BalanceOf<T>> for Pallet<T> {
 	}
 
 	fn query_storage_deposit_per_byte() -> BalanceOf<T> {
+		// the decimals is already 18
 		T::StorageDepositPerByte::get()
 	}
 
@@ -1440,11 +1441,15 @@ impl<T: Config> EVMStateRentTrait<T::AccountId, BalanceOf<T>> for Pallet<T> {
 	}
 
 	fn query_developer_deposit() -> BalanceOf<T> {
-		T::DeveloperDeposit::get()
+		BalanceOf::<T>::unique_saturated_from(convert_decimals_inc(
+			UniqueSaturatedInto::<u128>::unique_saturated_into(T::DeveloperDeposit::get()),
+		))
 	}
 
 	fn query_deployment_fee() -> BalanceOf<T> {
-		T::DeploymentFee::get()
+		BalanceOf::<T>::unique_saturated_from(convert_decimals_inc(
+			UniqueSaturatedInto::<u128>::unique_saturated_into(T::DeploymentFee::get()),
+		))
 	}
 
 	fn transfer_maintainer(from: T::AccountId, contract: EvmAddress, new_maintainer: EvmAddress) -> DispatchResult {
