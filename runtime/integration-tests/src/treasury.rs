@@ -229,3 +229,87 @@ fn treasury_handles_dust_correctly() {
 			assert_eq!(Tokens::free_balance(USD_CURRENCY, &TreasuryAccount::get()), usd_ed - 1);
 		});
 }
+
+#[cfg(feature = "with-mandala-runtime")]
+mod mandala_only_tests {
+	use super::*;
+	type NegativeImbalance = <Balances as PalletCurrency<AccountId>>::NegativeImbalance;
+	use frame_support::traits::OnUnbalanced;
+	use pallet_authorship::EventHandler;
+
+	#[test]
+	fn treasury_handles_collator_rewards_correctly() {
+		ExtBuilder::default()
+			.balances(vec![(AccountId::from(ALICE), NATIVE_CURRENCY, dollar(NATIVE_CURRENCY))])
+			.build()
+			.execute_with(|| {
+				assert_ok!(Session::set_keys(
+					Origin::signed(AccountId::from(ALICE)),
+					SessionKeys::default(),
+					vec![]
+				));
+				assert_ok!(CollatorSelection::set_desired_candidates(Origin::root(), 1));
+				assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(
+					AccountId::from(ALICE)
+				)));
+
+				let pot_account_id = CollatorSelection::account_id();
+				// Currently pot has ExistentialDeposits
+				assert_eq!(
+					Currencies::free_balance(NATIVE_CURRENCY, &pot_account_id),
+					10 * cent(NATIVE_CURRENCY)
+				);
+				assert_eq!(
+					Currencies::free_balance(NATIVE_CURRENCY, &AccountId::from(ALICE)),
+					dollar(NATIVE_CURRENCY)
+				);
+
+				let min_reward = MinRewardDistributeAmount::get();
+
+				// Only 20% of the fee went into the pot
+				let tip = NegativeImbalance::new((min_reward - 1) * 10);
+				let fee = NegativeImbalance::new(0);
+				DealWithFees::on_unbalanceds(Some(fee).into_iter().chain(Some(tip)));
+
+				// The amount above existential is below the `MinRewardDistributeAmount`.
+				assert_eq!(
+					Currencies::free_balance(NATIVE_CURRENCY, &pot_account_id),
+					100_299_999_998
+				);
+
+				CollatorSelection::note_author(AccountId::from(ALICE));
+				assert_eq!(
+					Currencies::free_balance(NATIVE_CURRENCY, &pot_account_id),
+					100_299_999_998
+				);
+				assert_eq!(
+					Currencies::free_balance(NATIVE_CURRENCY, &AccountId::from(ALICE)),
+					dollar(NATIVE_CURRENCY)
+				);
+
+				// Put a little more money into the pot
+				let tip = NegativeImbalance::new(10);
+				let fee = NegativeImbalance::new(0);
+
+				DealWithFees::on_unbalanceds(Some(fee).into_iter().chain(Some(tip)));
+
+				// Now the above existential is above the `MinRewardDistributeAmount`.
+				assert_eq!(
+					Currencies::free_balance(NATIVE_CURRENCY, &pot_account_id),
+					100_300_000_000
+				);
+
+				// Splits half of 300_000_000 to ALICE
+				CollatorSelection::note_author(AccountId::from(ALICE));
+
+				assert_eq!(
+					Currencies::free_balance(NATIVE_CURRENCY, &pot_account_id),
+					100_150_000_000
+				);
+				assert_eq!(
+					Currencies::free_balance(NATIVE_CURRENCY, &AccountId::from(ALICE)),
+					dollar(NATIVE_CURRENCY) + 150_000_000
+				);
+			});
+	}
+}

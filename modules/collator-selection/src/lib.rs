@@ -158,6 +158,10 @@ pub mod pallet {
 		#[pallet::constant]
 		type CollatorKickThreshold: Get<Permill>;
 
+		/// Minimum reward to be distributed to the collators.
+		#[pallet::constant]
+		type MinRewardDistributeAmount: Get<BalanceOf<Self>>;
+
 		/// The weight information of this pallet.
 		type WeightInfo: WeightInfo;
 	}
@@ -445,9 +449,12 @@ pub mod pallet {
 				.checked_sub(&T::Currency::minimum_balance())
 				.unwrap_or_default()
 				.div(2u32.into());
-			// `reward` is half of pot account minus ED, this should never fail.
-			let _success = T::Currency::transfer(&pot, &author, reward, KeepAlive);
-			debug_assert!(_success.is_ok());
+
+			if reward >= T::MinRewardDistributeAmount::get() {
+				// `reward` is half of pot account minus ED, this should never fail.
+				let _success = T::Currency::transfer(&pot, &author, reward, KeepAlive);
+				debug_assert!(_success.is_ok());
+			}
 
 			if <SessionPoints<T>>::contains_key(&author) {
 				<SessionPoints<T>>::mutate(author, |point| *point += POINT_PER_BLOCK);

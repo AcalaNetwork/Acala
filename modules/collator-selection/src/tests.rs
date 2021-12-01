@@ -420,6 +420,44 @@ fn fees_edgecases() {
 }
 
 #[test]
+fn pot_is_rewarded_to_author() {
+	new_test_ext().execute_with(|| {
+		let pot = CollatorSelection::account_id();
+		// put some money into the pot
+		Balances::make_free_balance_be(&pot, 95);
+		// 4 is the default author.
+		assert_eq!(Balances::free_balance(4), 100);
+		assert_ok!(Session::set_keys(
+			Origin::signed(4),
+			MockSessionKeys {
+				aura: UintAuthorityId(4)
+			},
+			vec![]
+		));
+		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(4)));
+		// Paid some candidacy fee
+		assert_eq!(Balances::free_balance(4), 90);
+
+		// triggers `note_author`
+		Authorship::on_initialize(1);
+
+		// balance = current + reward = 90 + (95 - 5) / 2 = 135
+		assert_eq!(Balances::free_balance(4), 135);
+		// balance = current - reward = 95 - (95 - 5) / 2 = 50
+		assert_eq!(Balances::free_balance(&pot), 50);
+
+		// If the reward to below the min, do not give out the reward
+		Balances::make_free_balance_be(&pot, 23);
+		// triggers `note_author`
+		Authorship::on_initialize(1);
+
+		// reward = (23 - 5) / 2 = 9, below the min of 10
+		assert_eq!(Balances::free_balance(4), 135);
+		assert_eq!(Balances::free_balance(&pot), 23);
+	});
+}
+
+#[test]
 fn session_management_works() {
 	new_test_ext().execute_with(|| {
 		initialize_to_block(1);
