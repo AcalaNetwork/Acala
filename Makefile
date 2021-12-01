@@ -186,4 +186,4 @@ clean-runtimes:
 
 .PHONY: bench-evm
 bench-evm:
-	(cd evm-bench && yarn install && yarn build) && cargo bench -p module-evm --features bench | (cd evm-bench && yarn analyze-benches ../runtime/common/src/gas_to_weight_ratio.rs)
+	./scripts/bench-evm.sh
