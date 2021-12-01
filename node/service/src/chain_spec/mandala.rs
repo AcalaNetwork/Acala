@@ -88,6 +88,7 @@ fn dev_testnet_config_from_chain_id(chain_id: &str) -> Result<ChainSpec, String>
 		Extensions {
 			relay_chain: "rococo-local".into(),
 			para_id: PARA_ID,
+			bad_blocks: None,
 		},
 	))
 }
@@ -141,6 +142,7 @@ pub fn local_testnet_config() -> Result<ChainSpec, String> {
 		Extensions {
 			relay_chain: "rococo-local".into(),
 			para_id: PARA_ID,
+			bad_blocks: None,
 		},
 	))
 }
@@ -221,6 +223,7 @@ pub fn latest_mandala_testnet_config() -> Result<ChainSpec, String> {
 		Extensions {
 			relay_chain: "dev".into(),
 			para_id: PARA_ID,
+			bad_blocks: None,
 		},
 	))
 }
