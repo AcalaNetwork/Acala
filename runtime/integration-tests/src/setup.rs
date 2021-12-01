@@ -45,14 +45,15 @@ pub use mandala_imports::*;
 mod mandala_imports {
 	pub use mandala_runtime::{
 		create_x2_parachain_multilocation, get_all_module_accounts, AcalaOracle, AccountId, AuctionManager, Authority,
-		AuthoritysOriginId, Balance, Balances, BlockNumber, Call, CdpEngine, CdpTreasury, CreateClassDeposit,
-		CreateTokenDeposit, Currencies, CurrencyId, CurrencyIdConvert, DataDepositPerByte, DefaultExchangeRate, Dex,
-		EmergencyShutdown, EnabledTradingPairs, Event, EvmAccounts, ExistentialDeposits, Get, GetNativeCurrencyId,
-		HomaLite, Honzon, IdleScheduler, Loans, MinimumDebitValue, MultiLocation, NativeTokenExistentialDeposit,
-		NetworkId, NftPalletId, OneDay, Origin, OriginCaller, ParachainInfo, ParachainSystem, Proxy, ProxyType,
-		RelayChainSovereignSubAccount, Runtime, Scheduler, Session, SessionManager, SevenDays, System, Timestamp,
-		TokenSymbol, Tokens, TreasuryAccount, TreasuryPalletId, Utility, Vesting, XcmConfig, XcmExecutor, XcmUnbondFee,
-		NFT,
+		AuthoritysOriginId, Authorship, Balance, Balances, BlockNumber, Call, CdpEngine, CdpTreasury,
+		CollatorSelection, CreateClassDeposit, CreateTokenDeposit, Currencies, CurrencyId, CurrencyIdConvert,
+		DataDepositPerByte, DealWithFees, DefaultExchangeRate, Dex, EmergencyShutdown, EnabledTradingPairs, Event,
+		EvmAccounts, ExistentialDeposits, Get, GetNativeCurrencyId, HomaLite, Honzon, IdleScheduler, Loans,
+		MinRewardDistributeAmount, MinimumDebitValue, MultiLocation, NativeTokenExistentialDeposit, NetworkId,
+		NftPalletId, OneDay, Origin, OriginCaller, PalletCurrency, ParachainInfo, ParachainSystem, Proxy, ProxyType,
+		RelayChainSovereignSubAccount, Runtime, Scheduler, Session, SessionKeys, SessionManager, SevenDays, System,
+		Timestamp, TokenSymbol, Tokens, TransactionPayment, TreasuryAccount, TreasuryPalletId, UncheckedExtrinsic,
+		Utility, Vesting, XcmConfig, XcmExecutor, XcmUnbondFee, NFT,
 	};
 
 	pub use runtime_common::{cent, dollar, millicent, ACA, AUSD, DOT, LDOT};
@@ -213,6 +214,7 @@ impl ExtBuilder {
 		self
 	}
 
+	#[allow(dead_code)]
 	pub fn parachain_id(mut self, parachain_id: u32) -> Self {
 		self.parachain_id = parachain_id;
 		self
