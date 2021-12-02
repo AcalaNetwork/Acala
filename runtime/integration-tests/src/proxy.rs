@@ -18,6 +18,8 @@
 
 use crate::setup::*;
 
+type SystemError = frame_system::Error<Runtime>;
+
 #[test]
 fn proxy_behavior_correct() {
 	ExtBuilder::default()
@@ -211,7 +213,7 @@ fn proxy_permissions_correct() {
 					.filter_map(|e| if let Event::Tips(inner) = e { Some(inner) } else { None })
 					.last()
 					.unwrap(),
-				pallet_tips::Event::<Runtime>::NewTip(hash)
+				pallet_tips::Event::<Runtime>::NewTip { tip_hash: hash }
 			);
 
 			// Bob can't proxy for alice in a non gov call, once again proxy call works but nested call fails
@@ -252,7 +254,7 @@ fn proxy_permissions_correct() {
 				authorize_loan_call.clone()
 			));
 			// hence the failure
-			System::assert_last_event(pallet_proxy::Event::ProxyExecuted(Err(DispatchError::BadOrigin)).into());
+			System::assert_last_event(pallet_proxy::Event::ProxyExecuted(Err(SystemError::CallFiltered.into())).into());
 
 			// gives Bob ability to proxy alice's account for dex swaps
 			assert_ok!(Proxy::add_proxy(
@@ -280,7 +282,7 @@ fn proxy_permissions_correct() {
 			));
 			// again add liquidity call is part of the Dex module but is not allowed in the Swap ProxyType
 			// filter
-			System::assert_last_event(pallet_proxy::Event::ProxyExecuted(Err(DispatchError::BadOrigin)).into());
+			System::assert_last_event(pallet_proxy::Event::ProxyExecuted(Err(SystemError::CallFiltered.into())).into());
 
 			// Tests that adding more ProxyType permssions does not effect others
 			assert_ok!(Proxy::proxy(

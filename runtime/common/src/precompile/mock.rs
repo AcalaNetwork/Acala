@@ -23,7 +23,9 @@ use acala_service::chain_spec::mandala::evm_genesis;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	assert_ok, ord_parameter_types, parameter_types,
-	traits::{Everything, GenesisBuild, InstanceFilter, Nothing, OnFinalize, OnInitialize, SortedMembers},
+	traits::{
+		EqualPrivilegeOnly, Everything, GenesisBuild, InstanceFilter, Nothing, OnFinalize, OnInitialize, SortedMembers,
+	},
 	weights::IdentityFee,
 	PalletId, RuntimeDebug,
 };
@@ -170,7 +172,7 @@ impl module_currencies::Config for Test {
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type WeightInfo = ();
 	type AddressMapping = MockAddressMapping;
-	type EVMBridge = EVMBridge;
+	type EVMBridge = module_evm_bridge::EVMBridge<Test>;
 	type SweepOrigin = EnsureSignedBy<CouncilAccount, AccountId>;
 	type OnDust = ();
 }
@@ -182,7 +184,7 @@ impl module_evm_bridge::Config for Test {
 impl module_asset_registry::Config for Test {
 	type Event = Event;
 	type Currency = Balances;
-	type EVMBridge = EVMBridge;
+	type EVMBridge = module_evm_bridge::EVMBridge<Test>;
 	type RegisterOrigin = EnsureSignedBy<CouncilAccount, AccountId>;
 	type WeightInfo = ();
 }
@@ -312,6 +314,7 @@ impl pallet_proxy::Config for Test {
 impl pallet_utility::Config for Test {
 	type Event = Event;
 	type Call = Call;
+	type PalletsOrigin = OriginCaller;
 	type WeightInfo = ();
 }
 
@@ -329,6 +332,7 @@ impl pallet_scheduler::Config for Test {
 	type ScheduleOrigin = EnsureRoot<AccountId>;
 	type MaxScheduledPerBlock = MaxScheduledPerBlock;
 	type WeightInfo = ();
+	type OriginPrivilegeCmp = EqualPrivilegeOnly;
 }
 
 pub struct MockDEXIncentives;

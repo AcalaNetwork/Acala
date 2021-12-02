@@ -19,19 +19,13 @@
 use crate::setup::*;
 
 use frame_support::assert_ok;
+use module_asset_registry::EvmErc20InfoMapping;
 use module_evm_accounts::EvmAddressMapping;
+use module_evm_bridge::EVMBridge;
 use module_support::{EVMBridge as EVMBridgeT, Erc20InfoMapping, EVM as EVMTrait};
 use primitives::{convert_decimals_to_evm, evm::EvmAddress};
 use sp_core::{bytes::from_hex, H256};
 use std::str::FromStr;
-
-#[cfg(feature = "with-acala-runtime")]
-use acala_runtime::{EVMBridge, EVM};
-#[cfg(feature = "with-karura-runtime")]
-use karura_runtime::{EVMBridge, EVM};
-#[cfg(feature = "with-mandala-runtime")]
-use mandala_runtime::{EVMBridge, EVM};
-use module_asset_registry::EvmErc20InfoMapping;
 
 pub fn erc20_address_0() -> EvmAddress {
 	EvmAddress::from_str("0x5e0b4bfa0b55932a3587e648c3552a6515ba56b1").unwrap()
@@ -429,43 +423,43 @@ fn test_multicurrency_precompile_module() {
 			};
 
 			assert_eq!(
-				EVMBridge::name(invoke_context),
+				EVMBridge::<Runtime>::name(invoke_context),
 				Ok(b"LP long string name, long string name, long string name, long string name, long string name - long string name, long string name, long string name, long string name, long string name"[..32].to_vec())
 			);
 			assert_eq!(
-				EVMBridge::symbol(invoke_context),
+				EVMBridge::<Runtime>::symbol(invoke_context),
 				Ok(b"LP_TestToken_TestToken".to_vec())
 			);
 			assert_eq!(
-				EVMBridge::decimals(invoke_context),
+				EVMBridge::<Runtime>::decimals(invoke_context),
 				Ok(17)
 			);
 			assert_eq!(
-				EVMBridge::total_supply(invoke_context),
+				EVMBridge::<Runtime>::total_supply(invoke_context),
 				Ok(200)
 			);
 			assert_eq!(
-				EVMBridge::balance_of(invoke_context, alice_evm_addr()),
+				EVMBridge::<Runtime>::balance_of(invoke_context, alice_evm_addr()),
 				Ok(200)
 			);
 			assert_eq!(
-				EVMBridge::total_supply(invoke_context),
+				EVMBridge::<Runtime>::total_supply(invoke_context),
 				Ok(200)
 			);
 			assert_eq!(
-				EVMBridge::balance_of(invoke_context, alice_evm_addr()),
+				EVMBridge::<Runtime>::balance_of(invoke_context, alice_evm_addr()),
 				Ok(200)
 			);
 			assert_eq!(
-				EVMBridge::transfer(invoke_context, bob_evm_addr(), 1),
+				EVMBridge::<Runtime>::transfer(invoke_context, bob_evm_addr(), 1),
 				Ok(())
 			);
 			assert_eq!(
-				EVMBridge::balance_of(invoke_context, alice_evm_addr()),
+				EVMBridge::<Runtime>::balance_of(invoke_context, alice_evm_addr()),
 				Ok(199)
 			);
 			assert_eq!(
-				EVMBridge::balance_of(invoke_context, bob_evm_addr()),
+				EVMBridge::<Runtime>::balance_of(invoke_context, bob_evm_addr()),
 				Ok(1)
 			);
 		});

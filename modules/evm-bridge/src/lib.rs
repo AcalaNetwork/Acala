@@ -86,7 +86,9 @@ pub mod module {
 	impl<T: Config> Pallet<T> {}
 }
 
-impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for Pallet<T> {
+pub struct EVMBridge<T>(sp_std::marker::PhantomData<T>);
+
+impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for EVMBridge<T> {
 	// Calls the name method on an ERC20 contract using the given context
 	// and returns the token name.
 	fn name(context: InvokeContext) -> Result<Vec<u8>, DispatchError> {
@@ -95,8 +97,8 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for Pallet<T> {
 
 		let info = T::EVM::execute(context, input, Default::default(), 2_100_000, 0, ExecutionMode::View)?;
 
-		Self::handle_exit_reason(info.exit_reason)?;
-		Self::decode_string(info.value.as_slice().to_vec())
+		Pallet::<T>::handle_exit_reason(info.exit_reason)?;
+		Pallet::<T>::decode_string(info.value.as_slice().to_vec())
 	}
 
 	// Calls the symbol method on an ERC20 contract using the given context
@@ -107,8 +109,8 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for Pallet<T> {
 
 		let info = T::EVM::execute(context, input, Default::default(), 2_100_000, 0, ExecutionMode::View)?;
 
-		Self::handle_exit_reason(info.exit_reason)?;
-		Self::decode_string(info.value.as_slice().to_vec())
+		Pallet::<T>::handle_exit_reason(info.exit_reason)?;
+		Pallet::<T>::decode_string(info.value.as_slice().to_vec())
 	}
 
 	// Calls the decimals method on an ERC20 contract using the given context
@@ -119,7 +121,7 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for Pallet<T> {
 
 		let info = T::EVM::execute(context, input, Default::default(), 2_100_000, 0, ExecutionMode::View)?;
 
-		Self::handle_exit_reason(info.exit_reason)?;
+		Pallet::<T>::handle_exit_reason(info.exit_reason)?;
 
 		ensure!(info.value.len() == 32, Error::<T>::InvalidReturnValue);
 		let value = U256::from(info.value.as_slice()).saturated_into::<u8>();
@@ -134,7 +136,7 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for Pallet<T> {
 
 		let info = T::EVM::execute(context, input, Default::default(), 2_100_000, 0, ExecutionMode::View)?;
 
-		Self::handle_exit_reason(info.exit_reason)?;
+		Pallet::<T>::handle_exit_reason(info.exit_reason)?;
 
 		ensure!(info.value.len() == 32, Error::<T>::InvalidReturnValue);
 		let value = U256::from(info.value.as_slice()).saturated_into::<u128>();
@@ -151,7 +153,7 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for Pallet<T> {
 
 		let info = T::EVM::execute(context, input, Default::default(), 2_100_000, 0, ExecutionMode::View)?;
 
-		Self::handle_exit_reason(info.exit_reason)?;
+		Pallet::<T>::handle_exit_reason(info.exit_reason)?;
 
 		Ok(U256::from(info.value.as_slice())
 			.saturated_into::<u128>()
@@ -178,7 +180,7 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for Pallet<T> {
 			ExecutionMode::Execute,
 		)?;
 
-		Self::handle_exit_reason(info.exit_reason)?;
+		Pallet::<T>::handle_exit_reason(info.exit_reason)?;
 
 		// return value is true.
 		let mut bytes = [0u8; 32];
