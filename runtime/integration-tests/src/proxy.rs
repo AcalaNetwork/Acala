@@ -254,7 +254,12 @@ fn proxy_permissions_correct() {
 				authorize_loan_call.clone()
 			));
 			// hence the failure
-			System::assert_last_event(pallet_proxy::Event::ProxyExecuted(Err(SystemError::CallFiltered.into())).into());
+			System::assert_last_event(
+				pallet_proxy::Event::ProxyExecuted {
+					result: Err(SystemError::CallFiltered.into()),
+				}
+				.into(),
+			);
 
 			// gives Bob ability to proxy alice's account for dex swaps
 			assert_ok!(Proxy::add_proxy(
@@ -282,7 +287,12 @@ fn proxy_permissions_correct() {
 			));
 			// again add liquidity call is part of the Dex module but is not allowed in the Swap ProxyType
 			// filter
-			System::assert_last_event(pallet_proxy::Event::ProxyExecuted(Err(SystemError::CallFiltered.into())).into());
+			System::assert_last_event(
+				pallet_proxy::Event::ProxyExecuted {
+					result: Err(SystemError::CallFiltered.into()),
+				}
+				.into(),
+			);
 
 			// Tests that adding more ProxyType permssions does not effect others
 			assert_ok!(Proxy::proxy(
