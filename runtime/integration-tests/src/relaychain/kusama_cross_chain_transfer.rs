@@ -25,6 +25,8 @@ use frame_support::assert_ok;
 
 use karura_runtime::{AssetRegistry, KaruraTreasuryAccount};
 use module_asset_registry::AssetMetadata;
+use module_relaychain::RelayChainCallBuilder;
+use module_support::CallBuilder;
 use orml_traits::MultiCurrency;
 use xcm_emulator::TestExt;
 
@@ -472,6 +474,122 @@ fn test_asset_registry_module() {
 		assert_eq!(
 			Tokens::free_balance(CurrencyId::ForeignAsset(0), &TreasuryAccount::get()),
 			640_000_000
+		);
+	});
+}
+
+#[test]
+fn unspent_xcm_fee_is_returned_correctly() {
+	let mut parachain_account: AccountId = AccountId::default();
+	let homa_lite_sub_account: AccountId =
+		hex_literal::hex!["d7b8926b326dd349355a9a7cca6606c1e0eb6fd2b506066b518c7155ff0d8297"].into();
+	Karura::execute_with(|| {
+		parachain_account = ParachainAccount::get();
+	});
+	KusamaNet::execute_with(|| {
+		assert_ok!(kusama_runtime::Balances::transfer(
+			kusama_runtime::Origin::signed(ALICE.into()),
+			MultiAddress::Id(homa_lite_sub_account.clone()),
+			1_000 * dollar(RELAY_CHAIN_CURRENCY)
+		));
+		assert_ok!(kusama_runtime::Balances::transfer(
+			kusama_runtime::Origin::signed(ALICE.into()),
+			MultiAddress::Id(parachain_account.clone()),
+			1_000 * dollar(RELAY_CHAIN_CURRENCY)
+		));
+		assert_eq!(
+			kusama_runtime::Balances::free_balance(&AccountId::from(ALICE)),
+			2 * dollar(RELAY_CHAIN_CURRENCY)
+		);
+		assert_eq!(
+			kusama_runtime::Balances::free_balance(&homa_lite_sub_account),
+			1_000 * dollar(RELAY_CHAIN_CURRENCY)
+		);
+		assert_eq!(kusama_runtime::Balances::free_balance(&AccountId::from(BOB)), 0);
+		assert_eq!(
+			kusama_runtime::Balances::free_balance(&parachain_account.clone()),
+			1_002 * dollar(RELAY_CHAIN_CURRENCY)
+		);
+	});
+
+	Karura::execute_with(|| {
+		// Construct a transfer XCM call with returning the deposit
+		let transfer_call = RelayChainCallBuilder::<Runtime, ParachainInfo>::balances_transfer_keep_alive(
+			AccountId::from(BOB),
+			dollar(NATIVE_CURRENCY),
+		);
+		let batch_call = RelayChainCallBuilder::<Runtime, ParachainInfo>::utility_as_derivative_call(transfer_call, 0);
+		let weight = 10_000_000_000;
+		// Fee to transfer into the hold register
+		let asset = MultiAsset {
+			id: Concrete(MultiLocation::here()),
+			fun: Fungibility::Fungible(dollar(NATIVE_CURRENCY)),
+		};
+		let xcm_msg = Xcm(vec![
+			WithdrawAsset(asset.clone().into()),
+			BuyExecution {
+				fees: asset,
+				weight_limit: Unlimited,
+			},
+			Transact {
+				origin_type: OriginKind::SovereignAccount,
+				require_weight_at_most: weight,
+				call: batch_call.encode().into(),
+			},
+		]);
+
+		let res = PolkadotXcm::send_xcm(Here, Parent, xcm_msg);
+		assert!(res.is_ok());
+	});
+
+	KusamaNet::execute_with(|| {
+		// 1 dollar is transferred to BOB
+		assert_eq!(
+			kusama_runtime::Balances::free_balance(&homa_lite_sub_account),
+			999 * dollar(RELAY_CHAIN_CURRENCY)
+		);
+		assert_eq!(
+			kusama_runtime::Balances::free_balance(&AccountId::from(BOB)),
+			dollar(RELAY_CHAIN_CURRENCY)
+		);
+		// 1 dollar is given to Hold Register for XCM call and never returned.
+		assert_eq!(
+			kusama_runtime::Balances::free_balance(&parachain_account.clone()),
+			1_001 * dollar(RELAY_CHAIN_CURRENCY)
+		);
+	});
+
+	Karura::execute_with(|| {
+		// Construct a transfer using the RelaychainCallBuilder
+		let transfer_call = RelayChainCallBuilder::<Runtime, ParachainInfo>::balances_transfer_keep_alive(
+			AccountId::from(BOB),
+			dollar(NATIVE_CURRENCY),
+		);
+		let batch_call = RelayChainCallBuilder::<Runtime, ParachainInfo>::utility_as_derivative_call(transfer_call, 0);
+		let finalized_call = RelayChainCallBuilder::<Runtime, ParachainInfo>::finalize_call_into_xcm_message(
+			batch_call,
+			dollar(NATIVE_CURRENCY),
+			10_000_000_000,
+		);
+
+		let res = PolkadotXcm::send_xcm(Here, Parent, finalized_call);
+		assert!(res.is_ok());
+	});
+
+	KusamaNet::execute_with(|| {
+		// 1 dollar is transferred to BOB
+		assert_eq!(
+			kusama_runtime::Balances::free_balance(&homa_lite_sub_account),
+			998 * dollar(RELAY_CHAIN_CURRENCY)
+		);
+		assert_eq!(
+			kusama_runtime::Balances::free_balance(&AccountId::from(BOB)),
+			2 * dollar(RELAY_CHAIN_CURRENCY)
+		);
+		// Unspent fund from the 1 dollar XCM fee is returned to the sovereign account.
+		assert_eq!(
+			kusama_runtime::Balances::free_balance(&parachain_account.clone()),
+			1_000 * dollar(RELAY_CHAIN_CURRENCY) + 999_626_666_690
 		);
 	});
 }
