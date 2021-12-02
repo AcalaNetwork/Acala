@@ -16,5 +16,5 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use module_evm::bench_mock::{AllPalletsWithSystem, Block};
+use module_evm::bench::mock::{AllPalletsWithSystem, Block};
 orml_bencher::run_benches!(AllPalletsWithSystem, Block);

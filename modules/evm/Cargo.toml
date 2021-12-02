@@ -34,7 +34,6 @@ sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkad
 sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.12", default-features = false }
 orml-traits = { path = "../../orml/traits", default-features = false }
 orml-bencher = { path = "../../orml/bencher", default-features = false, optional = true }
-orml-weight-meter = { path = "../../orml/weight-meter", default-features = false, optional = true }
 orml-currencies = { path = "../../orml/currencies", default-features = false, optional = true }
 orml-tokens = { path = "../../orml/tokens", default-features = false, optional = true }
 
@@ -69,7 +68,6 @@ std = [
 	"orml-traits/std",
 	"module-support/std",
 	"orml-bencher/std",
-	"orml-weight-meter/std",
 	"orml-currencies/std",
 	"orml-tokens/std",
 	"module-idle-scheduler/std"
@@ -82,7 +80,6 @@ bench = [
 	"orml-currencies",
 	"orml-tokens",
 	"orml-bencher/bench",
-	"orml-weight-meter/bench",
 	"frame-support/runtime-benchmarks",
 	"sp-runtime/runtime-benchmarks",
 	"frame-system/runtime-benchmarks",

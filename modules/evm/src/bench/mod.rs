@@ -19,12 +19,15 @@
 #![cfg(feature = "bench")]
 #![allow(dead_code)]
 
+pub mod mock;
+
 use crate::{
-	bench_mock::*, code_hash, evm::Runtime as EVMRuntime, module::*, runner::Runner, Context, StackExecutor,
-	StackSubstateMetadata, SubstrateStackState,
+	code_hash, evm::Runtime as EVMRuntime, module::*, runner::Runner, Context, StackExecutor, StackSubstateMetadata,
+	SubstrateStackState,
 };
 use frame_support::{assert_ok, BoundedVec};
 use hex::FromHex;
+use mock::*;
 use module_support::mocks::MockAddressMapping;
 use module_support::AddressMapping;
 use orml_bencher::{benches, Bencher};
@@ -35,7 +38,7 @@ use sp_core::H160;
 use sp_std::{convert::TryInto, prelude::*, rc::Rc, str::FromStr};
 
 fn get_bench_desc(name: &str) -> (Vec<u8>, H160, Vec<u8>, u64, Vec<u8>) {
-	let benches_str = include_str!("../../../evm-bench/build/benches.json");
+	let benches_str = include_str!("../../../../evm-bench/build/benches.json");
 	let evm_benches: Value = serde_json::from_str(benches_str).unwrap();
 	let desc = evm_benches[name].clone();
 

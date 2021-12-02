@@ -92,8 +92,8 @@ use sp_std::{
 pub mod precompiles;
 pub mod runner;
 
-pub mod bench_mock;
-pub mod benches;
+pub mod bench;
+
 mod mock;
 mod tests;
 pub mod weights;

@@ -18,7 +18,7 @@
 
 #![cfg(any(feature = "std", feature = "bench"))]
 
-use super::*;
+use super::super::*;
 
 use frame_support::{
 	construct_runtime, ord_parameter_types, parameter_types,
@@ -39,7 +39,7 @@ use sp_runtime::{
 };
 
 mod evm_mod {
-	pub use super::super::*;
+	pub use super::super::super::*;
 }
 
 parameter_types! {
@@ -264,22 +264,6 @@ construct_runtime!(
 	}
 );
 
-pub fn contract_a() -> H160 {
-	H160::from_low_u64_be(1)
-}
-
-pub fn contract_b() -> H160 {
-	H160::from_low_u64_be(2)
-}
-
 pub fn alice() -> H160 {
 	H160::from_low_u64_be(3)
-}
-
-pub fn bob() -> H160 {
-	H160::from_low_u64_be(4)
-}
-
-pub fn charlie() -> H160 {
-	H160::from_low_u64_be(5)
 }

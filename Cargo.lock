@@ -5388,7 +5388,6 @@ dependencies = [
  "orml-currencies",
  "orml-tokens",
  "orml-traits",
- "orml-weight-meter",
  "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec",
