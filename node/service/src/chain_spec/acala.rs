@@ -44,6 +44,10 @@ pub fn acala_config() -> Result<ChainSpec, String> {
 	ChainSpec::from_json_bytes(&include_bytes!("../../../../resources/acala-dist.json")[..])
 }
 
+pub fn wendala_config() -> Result<ChainSpec, String> {
+	ChainSpec::from_json_bytes(&include_bytes!("../../../../resources/wendala-dist.json")[..])
+}
+
 fn acala_properties() -> Properties {
 	let mut properties = Map::new();
 	let mut token_symbol: Vec<String> = vec![];
