@@ -156,10 +156,10 @@ static ACALA_CONFIG: EvmConfig = EvmConfig {
 	estimate: false,
 };
 
-/// Deploy a empty contract `contract Empty { }`.
-pub const DEPLOY_GAS: u64 = 67_066;
+/// Create an empty contract `contract Empty { }`.
+pub const BASE_CREATE_GAS: u64 = 67_066;
 /// Call function that just set a storage `function store(uint256 num) public { number = num; }`.
-pub const CALL_GAS: u64 = 41_602;
+pub const BASE_CALL_GAS: u64 = 41_602;
 
 /// Helper method to calculate `create` weight.
 #[inline(always)]
@@ -168,10 +168,9 @@ where
 	T: Config,
 {
 	<T as Config>::WeightInfo::create()
-		// an additional of `DEPLOY_GAS` was used during `create` benchmark
-		// so we subtract that and add actual gas used
-		.saturating_sub(T::GasToWeight::convert(DEPLOY_GAS))
-		.saturating_add(T::GasToWeight::convert(gas))
+		// during `create` benchmark an additional of `BASE_CREATE_GAS` was used
+		// so user will be extra charged only for extra gas usage
+		.saturating_add(T::GasToWeight::convert(gas.saturating_sub(BASE_CREATE_GAS)))
 }
 
 /// Helper method to calculate `create2` weight.
@@ -181,10 +180,9 @@ where
 	T: Config,
 {
 	<T as Config>::WeightInfo::create2()
-		// an additional of `DEPLOY_GAS` was used during `create2` benchmark
-		// so we subtract that and add actual gas used
-		.saturating_sub(T::GasToWeight::convert(DEPLOY_GAS))
-		.saturating_add(T::GasToWeight::convert(gas))
+		// during `create2` benchmark an additional of `BASE_CREATE_GAS` was used
+		// so user will be extra charged only for extra gas usage
+		.saturating_add(T::GasToWeight::convert(gas.saturating_sub(BASE_CREATE_GAS)))
 }
 
 /// Helper method to calculate `call` weight.
@@ -194,10 +192,9 @@ where
 	T: Config,
 {
 	<T as Config>::WeightInfo::call()
-		// an additional of `CALL_GAS` was used during `call` benchmark
-		// so we subtract that and add actual gas used
-		.saturating_sub(T::GasToWeight::convert(CALL_GAS))
-		.saturating_add(T::GasToWeight::convert(gas))
+		// during `call` benchmark an additional of `BASE_CALL_GAS` was used
+		// so user will be extra charged only for extra gas usage
+		.saturating_add(T::GasToWeight::convert(gas.saturating_sub(BASE_CALL_GAS)))
 }
 
 #[frame_support::pallet]

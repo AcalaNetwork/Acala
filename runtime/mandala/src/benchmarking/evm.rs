@@ -254,7 +254,7 @@ mod tests {
 				result.value,
 				H160::from_str("0x5e0b4bfa0b55932a3587e648c3552a6515ba56b1").unwrap()
 			);
-			assert_eq!(result.used_gas.as_u64(), module_evm::DEPLOY_GAS);
+			assert_eq!(result.used_gas.as_u64(), module_evm::BASE_CREATE_GAS);
 		});
 	}
 
@@ -281,7 +281,7 @@ mod tests {
 				result.value,
 				H160::from_str("0xf6930000a8679e0c96af73e73c02f163e34b9d70").unwrap()
 			);
-			assert_eq!(result.used_gas.as_u64(), module_evm::DEPLOY_GAS);
+			assert_eq!(result.used_gas.as_u64(), module_evm::BASE_CREATE_GAS);
 		});
 	}
 
@@ -312,7 +312,7 @@ mod tests {
 			)
 			.unwrap();
 			assert!(result.exit_reason.is_succeed());
-			assert_eq!(result.used_gas.as_u64(), module_evm::CALL_GAS);
+			assert_eq!(result.used_gas.as_u64(), module_evm::BASE_CALL_GAS);
 		});
 	}
 }
