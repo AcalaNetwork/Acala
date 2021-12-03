@@ -192,7 +192,7 @@ impl Config for Runtime {
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type WeightInfo = ();
 	type AddressMapping = MockAddressMapping;
-	type EVMBridge = EVMBridge;
+	type EVMBridge = module_evm_bridge::EVMBridge<Runtime>;
 	type SweepOrigin = EnsureSignedBy<CouncilAccount, AccountId>;
 	type OnDust = crate::TransferDust<Runtime, DustAccount>;
 }
