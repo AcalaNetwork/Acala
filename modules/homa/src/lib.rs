@@ -29,7 +29,7 @@ use pallet_staking::EraIndex;
 use primitives::{Balance, CurrencyId};
 use scale_info::TypeInfo;
 use sp_runtime::{
-	traits::{AccountIdConversion, Bounded, One, Saturating, UniqueSaturatedInto, Zero},
+	traits::{AccountIdConversion, Bounded, CheckedDiv, One, Saturating, UniqueSaturatedInto, Zero},
 	ArithmeticError, FixedPointNumber,
 };
 use sp_std::{cmp::Ordering, convert::From, prelude::*, vec, vec::Vec};
@@ -145,8 +145,8 @@ pub mod module {
 		ExceededStakingCurrencySoftCap,
 		/// UnclaimedRedemption is not enough, this error is not expected.
 		InsufficientUnclaimedRedemption,
-		/// Invalid era index to bump, must be greater than RelayChainCurrentEra
-		InvalidEraIndex,
+		/// The era index to bump is outdated, must be greater than RelayChainCurrentEra
+		OutdatedEraIndex,
 		/// Redeem request is not allowed to be fast matched.
 		FastMatchIsNotAllowed,
 	}
@@ -155,8 +155,8 @@ pub mod module {
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// The minter use staking currency to mint liquid currency. \[minter,
-		/// staking_currency_amount, liquid_currency_amount_received\]
-		Minted(T::AccountId, Balance, Balance),
+		/// staking_currency_amount, liquid_amount_received, liquid_amount_added_to_void\]
+		Minted(T::AccountId, Balance, Balance, Balance),
 		/// Request redeem. \[redeemer, liquid_amount, allow_fast_match\]
 		RequestedRedeem(T::AccountId, Balance, bool),
 		/// Redeem request has been cancelled. \[redeemer, cancelled_liquid_amount\]
@@ -338,7 +338,12 @@ pub mod module {
 			ToBondPool::<T>::mutate(|pool| *pool = pool.saturating_add(amount));
 			TotalVoidLiquid::<T>::mutate(|total| *total = total.saturating_add(liquid_add_to_void));
 
-			Self::deposit_event(Event::<T>::Minted(minter, amount, liquid_issue_to_minter));
+			Self::deposit_event(Event::<T>::Minted(
+				minter,
+				amount,
+				liquid_issue_to_minter,
+				liquid_add_to_void,
+			));
 			Ok(())
 		}
 
@@ -375,9 +380,8 @@ pub mod module {
 				);
 
 				match amount.cmp(&previous_request_amount) {
-					Ordering::Greater =>
-					// pay more liquid currency.
-					{
+					Ordering::Greater => {
+						// pay more liquid currency.
 						T::Currency::transfer(
 							liquid_currency_id,
 							&redeemer,
@@ -385,9 +389,8 @@ pub mod module {
 							amount.saturating_sub(previous_request_amount),
 						)
 					}
-					Ordering::Less =>
-					// refund the difference.
-					{
+					Ordering::Less => {
+						// refund the difference.
 						T::Currency::transfer(
 							liquid_currency_id,
 							&Self::account_id(),
@@ -437,26 +440,31 @@ pub mod module {
 			let _ = ensure_signed(origin)?;
 
 			let mut available_staking: Balance = Zero::zero();
-			Unbondings::<T>::iter_prefix(&redeemer)
-				.filter(|(era_index, _)| era_index <= &Self::relay_chain_current_era())
-				.for_each(|(expired_era_index, unbonded)| {
+			let current_era = Self::relay_chain_current_era();
+			for (expired_era_index, unbonded) in Unbondings::<T>::iter_prefix(&redeemer) {
+				if expired_era_index <= current_era {
 					available_staking = available_staking.saturating_add(unbonded);
 					Unbondings::<T>::remove(&redeemer, expired_era_index);
-				});
-			UnclaimedRedemption::<T>::try_mutate(|total| -> DispatchResult {
-				*total = total
-					.checked_sub(available_staking)
-					.ok_or(Error::<T>::InsufficientUnclaimedRedemption)?;
-				Ok(())
-			})?;
-			T::Currency::transfer(
-				T::StakingCurrencyId::get(),
-				&Self::account_id(),
-				&redeemer,
-				available_staking,
-			)?;
+				}
+			}
 
-			Self::deposit_event(Event::<T>::WithdrawRedemption(redeemer, available_staking));
+			if !available_staking.is_zero() {
+				UnclaimedRedemption::<T>::try_mutate(|total| -> DispatchResult {
+					*total = total
+						.checked_sub(available_staking)
+						.ok_or(Error::<T>::InsufficientUnclaimedRedemption)?;
+					Ok(())
+				})?;
+				T::Currency::transfer(
+					T::StakingCurrencyId::get(),
+					&Self::account_id(),
+					&redeemer,
+					available_staking,
+				)?;
+
+				Self::deposit_event(Event::<T>::WithdrawRedemption(redeemer, available_staking));
+			}
+
 			Ok(())
 		}
 
@@ -471,7 +479,7 @@ pub mod module {
 			T::GovernanceOrigin::ensure_origin(origin)?;
 
 			RelayChainCurrentEra::<T>::try_mutate(|current_era| -> DispatchResult {
-				ensure!(new_era > *current_era, Error::<T>::InvalidEraIndex);
+				ensure!(new_era > *current_era, Error::<T>::OutdatedEraIndex);
 
 				// reset void liquid to zero firstly, to guarantee
 				TotalVoidLiquid::<T>::put(0);
@@ -739,17 +747,15 @@ pub mod module {
 			let liquid_currency_id = T::LiquidCurrencyId::get();
 			let bond_ratio = Ratio::checked_from_rational(Self::get_total_bonded(), Self::get_total_staking_currency())
 				.unwrap_or_else(Ratio::zero);
-			let draw_rate = bond_ratio
+			let reward_rate = bond_ratio
 				.saturating_mul(Self::estimated_reward_rate_per_era())
 				.saturating_add(Rate::one())
 				.saturating_pow(era_interval.unique_saturated_into())
-				.saturating_sub(Rate::one())
-				.saturating_mul(Self::commission_rate());
-			let inflation_rate = Rate::one()
-				.saturating_add(draw_rate)
-				.reciprocal()
+				.saturating_sub(Rate::one());
+			let commission_rate = reward_rate.saturating_mul(Self::commission_rate());
+			let inflation_rate = commission_rate
+				.checked_div(&Rate::one().saturating_add(reward_rate).saturating_sub(commission_rate))
 				.expect("shouldn't be invalid!");
-
 			let liquid_amount_as_commision =
 				inflation_rate.saturating_mul_int(T::Currency::total_issuance(liquid_currency_id));
 			T::Currency::deposit(
@@ -808,36 +814,42 @@ pub mod module {
 				new_era
 			);
 
-			let xcm_transfer_fee = T::HomaXcm::get_xcm_transfer_fee();
-			let bonded_list: Vec<(u16, Balance)> = T::ActiveSubAccountsIndexList::get()
-				.iter()
-				.map(|index| (*index, Self::staking_ledgers(index).unwrap_or_default().bonded))
-				.collect();
-			let (distribution, remainer) = distribute_increment::<u16>(
-				bonded_list,
-				Self::to_bond_pool(),
-				Some(Self::soft_bonded_cap_per_sub_account()),
-				Some(xcm_transfer_fee),
-			);
+			let to_bond_pool = Self::to_bond_pool();
 
-			// subaccounts execute the distribution
-			for (sub_account_index, amount) in distribution {
-				if !amount.is_zero() {
-					T::HomaXcm::transfer_staking_to_sub_account(&Self::account_id(), sub_account_index, amount)?;
+			// if to_bond is gte than mint_threshold, try to bond_extra on relaychain
+			if to_bond_pool >= Self::mint_threshold() {
+				let xcm_transfer_fee = T::HomaXcm::get_xcm_transfer_fee();
+				let bonded_list: Vec<(u16, Balance)> = T::ActiveSubAccountsIndexList::get()
+					.iter()
+					.map(|index| (*index, Self::staking_ledgers(index).unwrap_or_default().bonded))
+					.collect();
+				let (distribution, remainer) = distribute_increment::<u16>(
+					bonded_list,
+					to_bond_pool,
+					Some(Self::soft_bonded_cap_per_sub_account().saturating_add(xcm_transfer_fee)),
+					Some(xcm_transfer_fee),
+				);
 
-					let bond_amount = amount.saturating_sub(xcm_transfer_fee);
-					T::HomaXcm::bond_extra_on_sub_account(sub_account_index, bond_amount)?;
+				// subaccounts execute the distribution
+				for (sub_account_index, amount) in distribution {
+					if !amount.is_zero() {
+						T::HomaXcm::transfer_staking_to_sub_account(&Self::account_id(), sub_account_index, amount)?;
 
-					// udpate ledger
-					Self::do_update_ledger(sub_account_index, |ledger| -> DispatchResult {
-						ledger.bonded = ledger.bonded.saturating_add(bond_amount);
-						Ok(())
-					})?;
+						let bond_amount = amount.saturating_sub(xcm_transfer_fee);
+						T::HomaXcm::bond_extra_on_sub_account(sub_account_index, bond_amount)?;
+
+						// udpate ledger
+						Self::do_update_ledger(sub_account_index, |ledger| -> DispatchResult {
+							ledger.bonded = ledger.bonded.saturating_add(bond_amount);
+							Ok(())
+						})?;
+					}
 				}
+
+				// update pool
+				ToBondPool::<T>::mutate(|pool| *pool = remainer);
 			}
 
-			// update pool
-			ToBondPool::<T>::mutate(|pool| *pool = remainer);
 			Ok(())
 		}
 
@@ -850,24 +862,33 @@ pub mod module {
 				new_era
 			);
 
-			let mut total_redeem_amount: Balance = Zero::zero();
 			let era_index_to_expire = new_era + T::BondingDuration::get();
+			let total_bonded = Self::get_total_bonded();
+			let mut total_redeem_amount: Balance = Zero::zero();
+			let mut remain_total_bonded = total_bonded;
 
-			// drain RedeemRequests and insert to Unbondings
-			for (redeemer, (redeem_amount, _)) in RedeemRequests::<T>::drain() {
-				total_redeem_amount = total_redeem_amount.saturating_add(redeem_amount);
+			// iter RedeemRequests and insert to Unbondings if remain_total_bonded is enough.
+			for (redeemer, (redeem_amount, _)) in RedeemRequests::<T>::iter() {
 				let redemption_amount = Self::convert_liquid_to_staking(redeem_amount)?;
-				Unbondings::<T>::insert(&redeemer, era_index_to_expire, redemption_amount);
-				Self::deposit_event(Event::<T>::RedeemedByUnbond(
-					redeemer,
-					new_era,
-					redeem_amount,
-					redemption_amount,
-				));
+
+				if remain_total_bonded >= redemption_amount {
+					total_redeem_amount = total_redeem_amount.saturating_add(redeem_amount);
+					remain_total_bonded = remain_total_bonded.saturating_sub(redemption_amount);
+					RedeemRequests::<T>::remove(&redeemer);
+					Unbondings::<T>::insert(&redeemer, era_index_to_expire, redemption_amount);
+					Self::deposit_event(Event::<T>::RedeemedByUnbond(
+						redeemer,
+						new_era,
+						redeem_amount,
+						redemption_amount,
+					));
+				} else {
+					break;
+				}
 			}
 
 			// calculate the distribution for unbond
-			let staking_amount_to_unbond = Self::convert_liquid_to_staking(total_redeem_amount)?;
+			let staking_amount_to_unbond = total_bonded.saturating_sub(remain_total_bonded);
 			let bonded_list: Vec<(u16, Balance)> = T::ActiveSubAccountsIndexList::get()
 				.iter()
 				.map(|index| (*index, Self::staking_ledgers(index).unwrap_or_default().bonded))

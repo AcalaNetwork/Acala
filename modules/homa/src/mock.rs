@@ -48,16 +48,6 @@ pub const NATIVE_CURRENCY_ID: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const STAKING_CURRENCY_ID: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
 pub const LIQUID_CURRENCY_ID: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
 
-/// For testing only. Does not check for overflow.
-pub fn dollar(b: Balance) -> Balance {
-	b * 1_000_000_000_000
-}
-
-/// For testing only. Does not check for overflow.
-pub fn cent(b: Balance) -> Balance {
-	b * 10_000_000_000
-}
-
 /// mock XCM transfer.
 pub struct MockHomaSubAccountXcm;
 impl HomaSubAccountXcm<AccountId, Balance> for MockHomaSubAccountXcm {
@@ -78,7 +68,7 @@ impl HomaSubAccountXcm<AccountId, Balance> for MockHomaSubAccountXcm {
 	}
 
 	fn get_xcm_transfer_fee() -> Balance {
-		cent(10)
+		1_000_000
 	}
 }
 

@@ -27,7 +27,7 @@ use orml_traits::MultiCurrency;
 use sp_runtime::{traits::BadOrigin, FixedPointNumber};
 
 #[test]
-fn update_ledgers_work() {
+fn update_ledgers_works() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_noop!(Homa::update_ledgers(Origin::signed(ALICE), vec![]), BadOrigin);
 
@@ -102,7 +102,7 @@ fn update_ledgers_work() {
 }
 
 #[test]
-fn update_homa_params_work() {
+fn update_homa_params_works() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_noop!(
 			Homa::update_homa_params(Origin::signed(ALICE), None, None, None, None, None, None),
@@ -118,41 +118,41 @@ fn update_homa_params_work() {
 
 		assert_ok!(Homa::update_homa_params(
 			Origin::signed(HomaAdmin::get()),
-			Some(dollar(10000)),
+			Some(1_000_000_000),
 			Some(Rate::saturating_from_rational(1, 10000)),
-			Some(dollar(1)),
-			Some(dollar(10)),
+			Some(1_000_000),
+			Some(10_000_000),
 			Some(Rate::saturating_from_rational(5, 100)),
 			Some(Rate::saturating_from_rational(1, 100)),
 		));
-		System::assert_has_event(Event::Homa(crate::Event::SoftBondedCapPerSubAccountUpdated(dollar(
-			10000,
-		))));
+		System::assert_has_event(Event::Homa(crate::Event::SoftBondedCapPerSubAccountUpdated(
+			1_000_000_000,
+		)));
 		System::assert_has_event(Event::Homa(crate::Event::EstimatedRewardRatePerEraUpdated(
 			Rate::saturating_from_rational(1, 10000),
 		)));
-		System::assert_has_event(Event::Homa(crate::Event::MintThresholdUpdated(dollar(1))));
-		System::assert_has_event(Event::Homa(crate::Event::RedeemThresholdUpdated(dollar(10))));
+		System::assert_has_event(Event::Homa(crate::Event::MintThresholdUpdated(1_000_000)));
+		System::assert_has_event(Event::Homa(crate::Event::RedeemThresholdUpdated(10_000_000)));
 		System::assert_has_event(Event::Homa(crate::Event::CommissionRateUpdated(
 			Rate::saturating_from_rational(5, 100),
 		)));
 		System::assert_has_event(Event::Homa(crate::Event::FastMatchFeeRateUpdated(
 			Rate::saturating_from_rational(1, 100),
 		)));
-		assert_eq!(Homa::soft_bonded_cap_per_sub_account(), dollar(10000));
+		assert_eq!(Homa::soft_bonded_cap_per_sub_account(), 1_000_000_000);
 		assert_eq!(
 			Homa::estimated_reward_rate_per_era(),
 			Rate::saturating_from_rational(1, 10000)
 		);
-		assert_eq!(Homa::mint_threshold(), dollar(1));
-		assert_eq!(Homa::redeem_threshold(), dollar(10));
+		assert_eq!(Homa::mint_threshold(), 1_000_000);
+		assert_eq!(Homa::redeem_threshold(), 10_000_000);
 		assert_eq!(Homa::commission_rate(), Rate::saturating_from_rational(5, 100));
 		assert_eq!(Homa::fast_match_fee_rate(), Rate::saturating_from_rational(1, 100));
 	});
 }
 
 #[test]
-fn get_staking_currency_soft_cap_work() {
+fn get_staking_currency_soft_cap_works() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_eq!(Homa::get_staking_currency_soft_cap(), 0);
 		SoftBondedCapPerSubAccount::<Runtime>::put(1_000_000);
@@ -164,7 +164,7 @@ fn get_staking_currency_soft_cap_work() {
 }
 
 #[test]
-fn get_total_bonded_soft_cap_work() {
+fn get_total_bonded_soft_cap_works() {
 	ExtBuilder::default().build().execute_with(|| {
 		StakingLedgers::<Runtime>::insert(
 			0,
@@ -192,7 +192,7 @@ fn get_total_bonded_soft_cap_work() {
 }
 
 #[test]
-fn get_total_staking_currency_work() {
+fn get_total_staking_currency_works() {
 	ExtBuilder::default().build().execute_with(|| {
 		StakingLedgers::<Runtime>::insert(
 			0,
@@ -214,7 +214,7 @@ fn get_total_staking_currency_work() {
 }
 
 #[test]
-fn current_exchange_rate_work() {
+fn current_exchange_rate_works() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_eq!(Homa::current_exchange_rate(), DefaultExchangeRate::get());
 		assert_eq!(Homa::convert_liquid_to_staking(10_000_000), Ok(1_000_000));
@@ -250,7 +250,7 @@ fn current_exchange_rate_work() {
 }
 
 #[test]
-fn distribution_helpers_work() {
+fn distribution_helpers_works() {
 	ExtBuilder::default().build().execute_with(|| {
 		let bonded_list = vec![(0, 1_000_000), (1, 2_000_000), (2, 3_000_000), (3, 100_000)];
 
@@ -307,4 +307,963 @@ fn distribution_helpers_work() {
 			(vec![(2, 2_000_000)], 1_000_000)
 		);
 	});
+}
+
+#[test]
+fn mint_works() {
+	ExtBuilder::default()
+		.balances(vec![
+			(ALICE, STAKING_CURRENCY_ID, 1_000_000),
+			(BOB, STAKING_CURRENCY_ID, 1_000_000),
+		])
+		.build()
+		.execute_with(|| {
+			assert_ok!(Homa::update_homa_params(
+				Origin::signed(HomaAdmin::get()),
+				Some(1_000_000),
+				None,
+				Some(100_000),
+				None,
+				None,
+				None,
+			));
+
+			assert_noop!(
+				Homa::mint(Origin::signed(ALICE), 99_999),
+				Error::<Runtime>::BelowMintThreshold
+			);
+			assert_noop!(
+				Homa::mint(Origin::signed(ALICE), 3_000_001),
+				Error::<Runtime>::ExceededStakingCurrencySoftCap
+			);
+			assert_noop!(
+				Homa::mint(Origin::signed(ALICE), 3_000_000),
+				orml_tokens::Error::<Runtime>::BalanceTooLow
+			);
+
+			assert_eq!(Currencies::total_issuance(LIQUID_CURRENCY_ID), 0);
+			assert_eq!(Homa::total_void_liquid(), 0);
+			assert_eq!(Homa::to_bond_pool(), 0);
+			assert_eq!(Homa::get_total_staking_currency(), 0);
+			assert_eq!(Homa::current_exchange_rate(), DefaultExchangeRate::get());
+			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY_ID, &ALICE), 0);
+			assert_eq!(Currencies::free_balance(STAKING_CURRENCY_ID, &ALICE), 1_000_000);
+			assert_eq!(Currencies::free_balance(STAKING_CURRENCY_ID, &Homa::account_id()), 0);
+
+			assert_ok!(Homa::mint(Origin::signed(ALICE), 500_000));
+			System::assert_last_event(Event::Homa(crate::Event::Minted(ALICE, 500_000, 5_000_000, 0)));
+
+			assert_eq!(Currencies::total_issuance(LIQUID_CURRENCY_ID), 5_000_000);
+			assert_eq!(Homa::total_void_liquid(), 0);
+			assert_eq!(Homa::to_bond_pool(), 500_000);
+			assert_eq!(Homa::get_total_staking_currency(), 500_000);
+			assert_eq!(Homa::current_exchange_rate(), DefaultExchangeRate::get());
+			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY_ID, &ALICE), 5_000_000);
+			assert_eq!(Currencies::free_balance(STAKING_CURRENCY_ID, &ALICE), 500_000);
+			assert_eq!(
+				Currencies::free_balance(STAKING_CURRENCY_ID, &Homa::account_id()),
+				500_000
+			);
+
+			assert_ok!(Homa::update_homa_params(
+				Origin::signed(HomaAdmin::get()),
+				None,
+				Some(Rate::saturating_from_rational(10, 100)),
+				None,
+				None,
+				None,
+				None,
+			));
+			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY_ID, &BOB), 0);
+			assert_eq!(Currencies::free_balance(STAKING_CURRENCY_ID, &BOB), 1_000_000);
+
+			assert_ok!(Homa::mint(Origin::signed(BOB), 100_000));
+			System::assert_last_event(Event::Homa(crate::Event::Minted(BOB, 100_000, 909_090, 90910)));
+
+			assert_eq!(Currencies::total_issuance(LIQUID_CURRENCY_ID), 5_909_090);
+			assert_eq!(Homa::total_void_liquid(), 90910);
+			assert_eq!(Homa::to_bond_pool(), 600_000);
+			assert_eq!(Homa::get_total_staking_currency(), 600_000);
+			assert_eq!(Homa::current_exchange_rate(), DefaultExchangeRate::get());
+			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY_ID, &BOB), 909_090);
+			assert_eq!(Currencies::free_balance(STAKING_CURRENCY_ID, &BOB), 900_000);
+			assert_eq!(
+				Currencies::free_balance(STAKING_CURRENCY_ID, &Homa::account_id()),
+				600_000
+			);
+		});
+}
+
+#[test]
+fn request_redeem_works() {
+	ExtBuilder::default()
+		.balances(vec![
+			(ALICE, LIQUID_CURRENCY_ID, 10_000_000),
+			(BOB, LIQUID_CURRENCY_ID, 10_000_000),
+		])
+		.build()
+		.execute_with(|| {
+			assert_ok!(Homa::update_homa_params(
+				Origin::signed(HomaAdmin::get()),
+				None,
+				None,
+				None,
+				Some(1_000_000),
+				None,
+				None,
+			));
+
+			assert_noop!(
+				Homa::request_redeem(Origin::signed(ALICE), 999_999, false),
+				Error::<Runtime>::BelowRedeemThreshold
+			);
+
+			assert_eq!(Homa::redeem_requests(&ALICE), None);
+			assert_eq!(Homa::redeem_requests(&BOB), None);
+			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY_ID, &ALICE), 10_000_000);
+			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY_ID, &BOB), 10_000_000);
+			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY_ID, &Homa::account_id()), 0);
+
+			assert_ok!(Homa::request_redeem(Origin::signed(ALICE), 1_000_000, false));
+			System::assert_last_event(Event::Homa(crate::Event::RequestedRedeem(ALICE, 1_000_000, false)));
+			assert_eq!(Homa::redeem_requests(&ALICE), Some((1_000_000, false)));
+			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY_ID, &ALICE), 9_000_000);
+			assert_eq!(
+				Currencies::free_balance(LIQUID_CURRENCY_ID, &Homa::account_id()),
+				1_000_000
+			);
+
+			assert_ok!(Homa::request_redeem(Origin::signed(BOB), 10_000_000, true));
+			System::assert_last_event(Event::Homa(crate::Event::RequestedRedeem(BOB, 10_000_000, true)));
+			assert_eq!(Homa::redeem_requests(&BOB), Some((10_000_000, true)));
+			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY_ID, &BOB), 0);
+			assert_eq!(
+				Currencies::free_balance(LIQUID_CURRENCY_ID, &Homa::account_id()),
+				11_000_000
+			);
+
+			// Alice overwrite the redeem_request
+			assert_ok!(Homa::request_redeem(Origin::signed(ALICE), 2_000_000, true));
+			System::assert_last_event(Event::Homa(crate::Event::RequestedRedeem(ALICE, 2_000_000, true)));
+			assert_eq!(Homa::redeem_requests(&ALICE), Some((2_000_000, true)));
+			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY_ID, &ALICE), 8_000_000);
+			assert_eq!(
+				Currencies::free_balance(LIQUID_CURRENCY_ID, &Homa::account_id()),
+				12_000_000
+			);
+
+			// Bob cancel the redeem_request
+			assert_ok!(Homa::request_redeem(Origin::signed(BOB), 0, false));
+			System::assert_last_event(Event::Homa(crate::Event::RedeemRequestCancelled(BOB, 10_000_000)));
+			assert_eq!(Homa::redeem_requests(&BOB), None);
+			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY_ID, &BOB), 10_000_000);
+			assert_eq!(
+				Currencies::free_balance(LIQUID_CURRENCY_ID, &Homa::account_id()),
+				2_000_000
+			);
+		});
+}
+
+#[test]
+fn claim_redemption_works() {
+	ExtBuilder::default()
+		.balances(vec![
+			(ALICE, LIQUID_CURRENCY_ID, 10_000_000),
+			(BOB, LIQUID_CURRENCY_ID, 10_000_000),
+		])
+		.build()
+		.execute_with(|| {
+			assert_eq!(Homa::relay_chain_current_era(), 0);
+			Unbondings::<Runtime>::insert(&ALICE, 1, 1_000_000);
+			Unbondings::<Runtime>::insert(&ALICE, 2, 2_000_000);
+			Unbondings::<Runtime>::insert(&ALICE, 3, 3_000_000);
+			assert_eq!(Homa::unbondings(&ALICE, 1), 1_000_000);
+			assert_eq!(Homa::unbondings(&ALICE, 2), 2_000_000);
+			assert_eq!(Homa::unbondings(&ALICE, 3), 3_000_000);
+			assert_eq!(Currencies::free_balance(STAKING_CURRENCY_ID, &ALICE), 0);
+			assert_eq!(Currencies::free_balance(STAKING_CURRENCY_ID, &Homa::account_id()), 0);
+
+			// no available expired redemption, nothing happend.
+			assert_ok!(Homa::claim_redemption(Origin::signed(BOB), ALICE));
+			assert_eq!(Homa::unbondings(&ALICE, 1), 1_000_000);
+			assert_eq!(Homa::unbondings(&ALICE, 2), 2_000_000);
+			assert_eq!(Homa::unbondings(&ALICE, 3), 3_000_000);
+			assert_eq!(Currencies::free_balance(STAKING_CURRENCY_ID, &ALICE), 0);
+			assert_eq!(Homa::unclaimed_redemption(), 0);
+			assert_eq!(Currencies::free_balance(STAKING_CURRENCY_ID, &Homa::account_id()), 0);
+
+			// there is available expired redemption, but UnclaimedRedemption is not enought.
+			RelayChainCurrentEra::<Runtime>::put(2);
+			assert_noop!(
+				Homa::claim_redemption(Origin::signed(BOB), ALICE),
+				Error::<Runtime>::InsufficientUnclaimedRedemption
+			);
+
+			assert_ok!(Currencies::deposit(STAKING_CURRENCY_ID, &Homa::account_id(), 3_000_000));
+			UnclaimedRedemption::<Runtime>::put(3_000_000);
+			assert_eq!(Homa::unclaimed_redemption(), 3_000_000);
+			assert_eq!(
+				Currencies::free_balance(STAKING_CURRENCY_ID, &Homa::account_id()),
+				3_000_000
+			);
+
+			assert_ok!(Homa::claim_redemption(Origin::signed(BOB), ALICE));
+			assert_eq!(Homa::unbondings(&ALICE, 1), 0);
+			assert_eq!(Homa::unbondings(&ALICE, 2), 0);
+			assert_eq!(Homa::unbondings(&ALICE, 3), 3_000_000);
+			assert_eq!(Currencies::free_balance(STAKING_CURRENCY_ID, &ALICE), 3_000_000);
+			assert_eq!(Homa::unclaimed_redemption(), 0);
+			assert_eq!(Currencies::free_balance(STAKING_CURRENCY_ID, &Homa::account_id()), 0);
+		});
+}
+
+#[test]
+fn do_fast_match_redeem_works() {
+	ExtBuilder::default()
+		.balances(vec![
+			(ALICE, LIQUID_CURRENCY_ID, 20_000_000),
+			(BOB, LIQUID_CURRENCY_ID, 20_000_000),
+			(CHARLIE, STAKING_CURRENCY_ID, 1_000_000),
+		])
+		.build()
+		.execute_with(|| {
+			assert_ok!(Homa::update_ledgers(
+				Origin::signed(HomaAdmin::get()),
+				vec![(0, Some(4_000_000), None)]
+			));
+			assert_ok!(Homa::update_homa_params(
+				Origin::signed(HomaAdmin::get()),
+				Some(5_000_000),
+				None,
+				None,
+				Some(1_000_000),
+				None,
+				Some(Rate::saturating_from_rational(1, 10)),
+			));
+			assert_ok!(Homa::mint(Origin::signed(CHARLIE), 1_000_000));
+			assert_ok!(Homa::request_redeem(Origin::signed(ALICE), 5_000_000, true));
+			assert_ok!(Homa::request_redeem(Origin::signed(BOB), 6_500_000, true));
+			assert_ok!(Homa::request_redeem(Origin::signed(CHARLIE), 5_000_000, false));
+			assert_eq!(Homa::redeem_requests(&ALICE), Some((5_000_000, true)));
+			assert_eq!(Homa::redeem_requests(&BOB), Some((6_500_000, true)));
+			assert_eq!(Homa::redeem_requests(&CHARLIE), Some((5_000_000, false)));
+			assert_eq!(Currencies::free_balance(STAKING_CURRENCY_ID, &ALICE), 0);
+			assert_eq!(Currencies::free_balance(STAKING_CURRENCY_ID, &BOB), 0);
+			assert_eq!(Currencies::free_balance(STAKING_CURRENCY_ID, &CHARLIE), 0);
+			assert_eq!(
+				Currencies::free_balance(LIQUID_CURRENCY_ID, &Homa::account_id()),
+				16_500_000
+			);
+			assert_eq!(
+				Currencies::free_balance(STAKING_CURRENCY_ID, &Homa::account_id()),
+				1_000_000
+			);
+			assert_eq!(Currencies::total_issuance(LIQUID_CURRENCY_ID), 50_000_000);
+			assert_eq!(Homa::to_bond_pool(), 1_000_000);
+			assert_eq!(Homa::get_total_staking_currency(), 5_000_000);
+			assert_eq!(
+				Homa::current_exchange_rate(),
+				ExchangeRate::saturating_from_rational(5_000_000, 50_000_000)
+			);
+
+			// Charlie's redeem request is not allowed to be fast matched.
+			assert_noop!(
+				Homa::do_fast_match_redeem(&CHARLIE),
+				Error::<Runtime>::FastMatchIsNotAllowed
+			);
+
+			// Alice's redeem request is able to be fast matched fully.
+			assert_ok!(Homa::do_fast_match_redeem(&ALICE));
+			System::assert_last_event(Event::Homa(crate::Event::RedeemedByFastMatch(
+				ALICE, 5_000_000, 500_000, 450_000,
+			)));
+			assert_eq!(Homa::redeem_requests(&ALICE), None);
+			assert_eq!(Currencies::free_balance(STAKING_CURRENCY_ID, &ALICE), 450_000);
+			assert_eq!(
+				Currencies::free_balance(LIQUID_CURRENCY_ID, &Homa::account_id()),
+				11_500_000
+			);
+			assert_eq!(
+				Currencies::free_balance(STAKING_CURRENCY_ID, &Homa::account_id()),
+				550_000
+			);
+			assert_eq!(Currencies::total_issuance(LIQUID_CURRENCY_ID), 45_000_000);
+			assert_eq!(Homa::to_bond_pool(), 550_000);
+			assert_eq!(Homa::get_total_staking_currency(), 4_550_000);
+			assert_eq!(
+				Homa::current_exchange_rate(),
+				ExchangeRate::saturating_from_rational(4_550_000, 45_000_000)
+			);
+
+			// Bob's redeem request is able to be fast matched partially,
+			// because must remain `RedeemThreshold` even if `ToBondPool` is enought.
+			assert_ok!(Homa::do_fast_match_redeem(&BOB));
+			System::assert_last_event(Event::Homa(crate::Event::RedeemedByFastMatch(
+				BOB, 5_500_000, 550_000, 500_499,
+			)));
+			assert_eq!(Homa::redeem_requests(&BOB), Some((1_000_000, true)));
+			assert_eq!(Currencies::free_balance(STAKING_CURRENCY_ID, &BOB), 500_499);
+			assert_eq!(
+				Currencies::free_balance(LIQUID_CURRENCY_ID, &Homa::account_id()),
+				6_000_000
+			);
+			assert_eq!(
+				Currencies::free_balance(STAKING_CURRENCY_ID, &Homa::account_id()),
+				49_501
+			);
+			assert_eq!(Currencies::total_issuance(LIQUID_CURRENCY_ID), 39_500_000);
+			assert_eq!(Homa::to_bond_pool(), 49_501);
+			assert_eq!(Homa::get_total_staking_currency(), 4_049_501);
+			assert_eq!(
+				Homa::current_exchange_rate(),
+				ExchangeRate::saturating_from_rational(4_049_501, 39_500_000)
+			);
+		});
+}
+
+#[test]
+fn draw_staking_reward_works() {
+	ExtBuilder::default()
+		.balances(vec![
+			(ALICE, LIQUID_CURRENCY_ID, 40_000_000),
+			(CHARLIE, STAKING_CURRENCY_ID, 1_000_000),
+		])
+		.build()
+		.execute_with(|| {
+			assert_ok!(Homa::update_ledgers(
+				Origin::signed(HomaAdmin::get()),
+				vec![(0, Some(4_000_000), None)]
+			));
+			assert_ok!(Homa::update_homa_params(
+				Origin::signed(HomaAdmin::get()),
+				Some(5_000_000),
+				None,
+				None,
+				None,
+				Some(Rate::saturating_from_rational(10, 100)),
+				None,
+			));
+			assert_ok!(Homa::mint(Origin::signed(CHARLIE), 1_000_000));
+			assert_eq!(Homa::get_total_bonded(), 4_000_000);
+			assert_eq!(Homa::get_total_staking_currency(), 5_000_000);
+			assert_eq!(Homa::to_bond_pool(), 1_000_000);
+			assert_eq!(Currencies::total_issuance(LIQUID_CURRENCY_ID), 50_000_000);
+			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY_ID, &TreasuryAccount::get()), 0);
+
+			assert_ok!(Homa::draw_staking_reward(2, 1));
+			assert_eq!(Homa::get_total_bonded(), 4_000_000);
+			assert_eq!(Homa::get_total_staking_currency(), 5_000_000);
+			assert_eq!(Homa::to_bond_pool(), 1_000_000);
+			assert_eq!(Currencies::total_issuance(LIQUID_CURRENCY_ID), 50_000_000);
+			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY_ID, &TreasuryAccount::get()), 0);
+
+			assert_ok!(Homa::update_homa_params(
+				Origin::signed(HomaAdmin::get()),
+				None,
+				Some(Rate::saturating_from_rational(20, 100)),
+				None,
+				None,
+				None,
+				None,
+			));
+			assert_ok!(Homa::draw_staking_reward(3, 2));
+			assert_eq!(Homa::get_total_bonded(), 4_000_000);
+			assert_eq!(Homa::get_total_staking_currency(), 5_000_000);
+			assert_eq!(Homa::to_bond_pool(), 1_000_000);
+			assert_eq!(Currencies::total_issuance(LIQUID_CURRENCY_ID), 50_699_300);
+			assert_eq!(
+				Currencies::free_balance(LIQUID_CURRENCY_ID, &TreasuryAccount::get()),
+				699_300
+			);
+		});
+}
+
+#[test]
+fn process_scheduled_unbond_works() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(Homa::update_ledgers(
+			Origin::signed(HomaAdmin::get()),
+			vec![
+				(
+					0,
+					None,
+					Some(vec![
+						UnlockChunk {
+							value: 1_000_000,
+							era: 11
+						},
+						UnlockChunk {
+							value: 2_000_000,
+							era: 14
+						},
+					])
+				),
+				(
+					1,
+					None,
+					Some(vec![
+						UnlockChunk {
+							value: 100_000,
+							era: 12
+						},
+						UnlockChunk {
+							value: 200_000,
+							era: 13
+						},
+					])
+				),
+			]
+		));
+		assert_eq!(
+			Homa::staking_ledgers(0),
+			Some(StakingLedger {
+				bonded: 0,
+				unlocking: vec![
+					UnlockChunk {
+						value: 1_000_000,
+						era: 11
+					},
+					UnlockChunk {
+						value: 2_000_000,
+						era: 14
+					},
+				]
+			})
+		);
+		assert_eq!(
+			Homa::staking_ledgers(1),
+			Some(StakingLedger {
+				bonded: 0,
+				unlocking: vec![
+					UnlockChunk {
+						value: 100_000,
+						era: 12
+					},
+					UnlockChunk {
+						value: 200_000,
+						era: 13
+					},
+				]
+			})
+		);
+		assert_eq!(Homa::unclaimed_redemption(), 0);
+		assert_eq!(Currencies::total_issuance(STAKING_CURRENCY_ID), 0);
+		assert_eq!(Currencies::free_balance(STAKING_CURRENCY_ID, &Homa::account_id()), 0);
+
+		assert_ok!(Homa::process_scheduled_unbond(13));
+		assert_eq!(
+			Homa::staking_ledgers(0),
+			Some(StakingLedger {
+				bonded: 0,
+				unlocking: vec![UnlockChunk {
+					value: 2_000_000,
+					era: 14
+				},]
+			})
+		);
+		assert_eq!(Homa::staking_ledgers(1), None);
+		assert_eq!(Homa::unclaimed_redemption(), 1_300_000);
+		assert_eq!(Currencies::total_issuance(STAKING_CURRENCY_ID), 1_300_000);
+		assert_eq!(
+			Currencies::free_balance(STAKING_CURRENCY_ID, &Homa::account_id()),
+			1_300_000
+		);
+	});
+}
+
+#[test]
+fn process_to_bond_pool_works() {
+	ExtBuilder::default()
+		.balances(vec![(ALICE, STAKING_CURRENCY_ID, 20_000_000)])
+		.build()
+		.execute_with(|| {
+			assert_ok!(Homa::update_homa_params(
+				Origin::signed(HomaAdmin::get()),
+				Some(3_000_000),
+				None,
+				None,
+				None,
+				None,
+				None,
+			));
+			assert_ok!(Homa::update_ledgers(
+				Origin::signed(HomaAdmin::get()),
+				vec![(0, Some(1_000_000), None)]
+			));
+			assert_ok!(Homa::mint(Origin::signed(ALICE), 900_000));
+			assert_eq!(MockHomaSubAccountXcm::get_xcm_transfer_fee(), 1_000_000);
+			assert_eq!(
+				Homa::staking_ledgers(0),
+				Some(StakingLedger {
+					bonded: 1_000_000,
+					unlocking: vec![]
+				})
+			);
+			assert_eq!(Homa::staking_ledgers(1), None);
+			assert_eq!(Homa::staking_ledgers(2), None);
+			assert_eq!(Homa::to_bond_pool(), 900_000);
+			assert_eq!(Homa::get_total_bonded(), 1_000_000);
+			assert_eq!(Currencies::total_issuance(STAKING_CURRENCY_ID), 20_000_000);
+			assert_eq!(
+				Currencies::free_balance(STAKING_CURRENCY_ID, &Homa::account_id()),
+				900_000
+			);
+
+			// ToBondPool is unable to afford xcm_transfer_fee
+			assert_ok!(Homa::process_to_bond_pool(1));
+			assert_eq!(
+				Homa::staking_ledgers(0),
+				Some(StakingLedger {
+					bonded: 1_000_000,
+					unlocking: vec![]
+				})
+			);
+			assert_eq!(Homa::staking_ledgers(1), None);
+			assert_eq!(Homa::staking_ledgers(2), None);
+			assert_eq!(Homa::to_bond_pool(), 900_000);
+			assert_eq!(Homa::get_total_bonded(), 1_000_000);
+			assert_eq!(Currencies::total_issuance(STAKING_CURRENCY_ID), 20_000_000);
+			assert_eq!(
+				Currencies::free_balance(STAKING_CURRENCY_ID, &Homa::account_id()),
+				900_000
+			);
+
+			// ToBondPool is able to afford xcm_transfer_fee, but no bonded added
+			assert_ok!(Homa::mint(Origin::signed(ALICE), 100_000));
+			assert_eq!(Homa::to_bond_pool(), 1_000_000);
+			assert_eq!(Currencies::total_issuance(STAKING_CURRENCY_ID), 20_000_000);
+			assert_eq!(
+				Currencies::free_balance(STAKING_CURRENCY_ID, &Homa::account_id()),
+				1_000_000
+			);
+			assert_ok!(Homa::process_to_bond_pool(2));
+			assert_eq!(
+				Homa::staking_ledgers(0),
+				Some(StakingLedger {
+					bonded: 1_000_000,
+					unlocking: vec![]
+				})
+			);
+			assert_eq!(Homa::staking_ledgers(1), None);
+			assert_eq!(Homa::staking_ledgers(2), None);
+			assert_eq!(Homa::to_bond_pool(), 0);
+			assert_eq!(Homa::get_total_bonded(), 1_000_000);
+			assert_eq!(Currencies::total_issuance(STAKING_CURRENCY_ID), 19_000_000);
+			assert_eq!(Currencies::free_balance(STAKING_CURRENCY_ID, &Homa::account_id()), 0);
+
+			// ToBondPool is able to afford xcm_transfer_fee, and bonded added
+			assert_ok!(Homa::mint(Origin::signed(ALICE), 6_000_000));
+			assert_eq!(Homa::to_bond_pool(), 6_000_000);
+			assert_eq!(Currencies::total_issuance(STAKING_CURRENCY_ID), 19_000_000);
+			assert_eq!(
+				Currencies::free_balance(STAKING_CURRENCY_ID, &Homa::account_id()),
+				6_000_000
+			);
+			assert_ok!(Homa::process_to_bond_pool(3));
+			assert_eq!(
+				Homa::staking_ledgers(0),
+				Some(StakingLedger {
+					bonded: 1_000_000,
+					unlocking: vec![]
+				})
+			);
+			assert_eq!(
+				Homa::staking_ledgers(1),
+				Some(StakingLedger {
+					bonded: 3_000_000,
+					unlocking: vec![]
+				})
+			);
+			assert_eq!(
+				Homa::staking_ledgers(2),
+				Some(StakingLedger {
+					bonded: 1_000_000,
+					unlocking: vec![]
+				})
+			);
+			assert_eq!(Homa::to_bond_pool(), 0);
+			assert_eq!(Homa::get_total_bonded(), 5_000_000);
+			assert_eq!(Currencies::total_issuance(STAKING_CURRENCY_ID), 13_000_000);
+			assert_eq!(Currencies::free_balance(STAKING_CURRENCY_ID, &Homa::account_id()), 0);
+
+			// ToBondPool is able to afford xcm_transfer_fee, and below the mint_threshold, no bonded added.
+			assert_ok!(Homa::mint(Origin::signed(ALICE), 2_000_000));
+			assert_ok!(Homa::update_homa_params(
+				Origin::signed(HomaAdmin::get()),
+				None,
+				None,
+				Some(3_000_000),
+				None,
+				None,
+				None,
+			));
+			assert_eq!(Homa::to_bond_pool(), 2_000_000);
+			assert_eq!(Homa::get_total_bonded(), 5_000_000);
+			assert_eq!(Currencies::total_issuance(STAKING_CURRENCY_ID), 13_000_000);
+			assert_eq!(
+				Currencies::free_balance(STAKING_CURRENCY_ID, &Homa::account_id()),
+				2_000_000
+			);
+			assert_ok!(Homa::process_to_bond_pool(4));
+			assert_eq!(Homa::to_bond_pool(), 2_000_000);
+			assert_eq!(Homa::get_total_bonded(), 5_000_000);
+			assert_eq!(Currencies::total_issuance(STAKING_CURRENCY_ID), 13_000_000);
+			assert_eq!(
+				Currencies::free_balance(STAKING_CURRENCY_ID, &Homa::account_id()),
+				2_000_000
+			);
+		});
+}
+
+#[test]
+fn process_redeem_requests_works() {
+	ExtBuilder::default()
+		.balances(vec![
+			(ALICE, LIQUID_CURRENCY_ID, 20_000_000),
+			(BOB, LIQUID_CURRENCY_ID, 20_000_000),
+			(CHARLIE, LIQUID_CURRENCY_ID, 10_000_000),
+			(DAVE, LIQUID_CURRENCY_ID, 10_000_000),
+		])
+		.build()
+		.execute_with(|| {
+			assert_ok!(Homa::update_ledgers(
+				Origin::signed(HomaAdmin::get()),
+				vec![(0, Some(2_000_000), None), (1, Some(3_000_000), None),]
+			));
+			ToBondPool::<Runtime>::put(1_000_000);
+			assert_eq!(Homa::relay_chain_current_era(), 0);
+
+			assert_ok!(Homa::request_redeem(Origin::signed(ALICE), 20_000_000, false));
+			assert_eq!(Homa::redeem_requests(&ALICE), Some((20_000_000, false)));
+			assert_eq!(Homa::unbondings(&ALICE, 1 + BondingDuration::get()), 0);
+			assert_eq!(Homa::get_total_bonded(), 5_000_000);
+			assert_eq!(Currencies::total_issuance(LIQUID_CURRENCY_ID), 60_000_000);
+			assert_eq!(
+				Currencies::free_balance(LIQUID_CURRENCY_ID, &Homa::account_id()),
+				20_000_000
+			);
+			assert_eq!(
+				Homa::staking_ledgers(0),
+				Some(StakingLedger {
+					bonded: 2_000_000,
+					unlocking: vec![]
+				})
+			);
+			assert_eq!(
+				Homa::staking_ledgers(1),
+				Some(StakingLedger {
+					bonded: 3_000_000,
+					unlocking: vec![]
+				})
+			);
+
+			// total_bonded is enought to process all redeem requests
+			assert_ok!(Homa::process_redeem_requests(1));
+			System::assert_has_event(Event::Homa(crate::Event::RedeemedByUnbond(
+				ALICE, 1, 20_000_000, 2_000_000,
+			)));
+			assert_eq!(Homa::redeem_requests(&ALICE), None);
+			assert_eq!(Homa::unbondings(&ALICE, 1 + BondingDuration::get()), 2_000_000);
+			assert_eq!(Homa::get_total_bonded(), 3_000_000);
+			assert_eq!(Currencies::total_issuance(LIQUID_CURRENCY_ID), 40_000_000);
+			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY_ID, &Homa::account_id()), 0);
+			assert_eq!(
+				Homa::staking_ledgers(0),
+				Some(StakingLedger {
+					bonded: 2_000_000,
+					unlocking: vec![]
+				})
+			);
+			assert_eq!(
+				Homa::staking_ledgers(1),
+				Some(StakingLedger {
+					bonded: 1_000_000,
+					unlocking: vec![UnlockChunk {
+						value: 2_000_000,
+						era: 1 + BondingDuration::get()
+					}]
+				})
+			);
+
+			assert_ok!(Homa::request_redeem(Origin::signed(BOB), 20_000_000, false));
+			assert_ok!(Homa::request_redeem(Origin::signed(CHARLIE), 10_000_000, false));
+			assert_ok!(Homa::request_redeem(Origin::signed(DAVE), 10_000_000, false));
+			assert_eq!(Homa::redeem_requests(&BOB), Some((20_000_000, false)));
+			assert_eq!(Homa::redeem_requests(&CHARLIE), Some((10_000_000, false)));
+			assert_eq!(Homa::redeem_requests(&DAVE), Some((10_000_000, false)));
+			assert_eq!(Homa::unbondings(&BOB, 2 + BondingDuration::get()), 0);
+			assert_eq!(Homa::unbondings(&CHARLIE, 2 + BondingDuration::get()), 0);
+			assert_eq!(Homa::unbondings(&DAVE, 2 + BondingDuration::get()), 0);
+			assert_eq!(
+				Currencies::free_balance(LIQUID_CURRENCY_ID, &Homa::account_id()),
+				40_000_000
+			);
+
+			// total_bonded is not enought to process all redeem requests
+			assert_ok!(Homa::process_redeem_requests(2));
+			System::assert_has_event(Event::Homa(crate::Event::RedeemedByUnbond(
+				BOB, 2, 20_000_000, 2_000_000,
+			)));
+			System::assert_has_event(Event::Homa(crate::Event::RedeemedByUnbond(
+				CHARLIE, 2, 10_000_000, 1_000_000,
+			)));
+			assert_eq!(Homa::redeem_requests(&BOB), None);
+			assert_eq!(Homa::redeem_requests(&CHARLIE), None);
+			assert_eq!(Homa::redeem_requests(&DAVE), Some((10_000_000, false)));
+			assert_eq!(Homa::unbondings(&BOB, 2 + BondingDuration::get()), 2_000_000);
+			assert_eq!(Homa::unbondings(&CHARLIE, 2 + BondingDuration::get()), 1_000_000);
+			assert_eq!(Homa::unbondings(&DAVE, 2 + BondingDuration::get()), 0);
+			assert_eq!(Homa::get_total_bonded(), 0);
+			assert_eq!(Currencies::total_issuance(LIQUID_CURRENCY_ID), 10_000_000);
+			assert_eq!(
+				Currencies::free_balance(LIQUID_CURRENCY_ID, &Homa::account_id()),
+				10_000_000
+			);
+			assert_eq!(
+				Homa::staking_ledgers(0),
+				Some(StakingLedger {
+					bonded: 0,
+					unlocking: vec![UnlockChunk {
+						value: 2_000_000,
+						era: 2 + BondingDuration::get()
+					}]
+				})
+			);
+			assert_eq!(
+				Homa::staking_ledgers(1),
+				Some(StakingLedger {
+					bonded: 0,
+					unlocking: vec![
+						UnlockChunk {
+							value: 2_000_000,
+							era: 1 + BondingDuration::get()
+						},
+						UnlockChunk {
+							value: 1_000_000,
+							era: 2 + BondingDuration::get()
+						}
+					]
+				})
+			);
+		});
+}
+
+#[test]
+fn bump_new_era_works() {
+	ExtBuilder::default()
+		.balances(vec![(ALICE, STAKING_CURRENCY_ID, 100_000_000)])
+		.build()
+		.execute_with(|| {
+			assert_ok!(Homa::update_homa_params(
+				Origin::signed(HomaAdmin::get()),
+				Some(20_000_000),
+				Some(Rate::saturating_from_rational(1, 100)),
+				Some(2_000_000),
+				None,
+				Some(Rate::saturating_from_rational(20, 100)),
+				None,
+			));
+
+			// initial states at era #0
+			assert_eq!(Homa::relay_chain_current_era(), 0);
+			assert_eq!(Homa::staking_ledgers(0), None);
+			assert_eq!(Homa::staking_ledgers(1), None);
+			assert_eq!(Homa::staking_ledgers(2), None);
+			assert_eq!(Homa::to_bond_pool(), 0);
+			assert_eq!(Homa::unclaimed_redemption(), 0);
+			assert_eq!(Homa::total_void_liquid(), 0);
+			assert_eq!(Homa::get_total_staking_currency(), 0);
+			assert_eq!(Currencies::total_issuance(LIQUID_CURRENCY_ID), 0);
+			assert_eq!(Currencies::free_balance(STAKING_CURRENCY_ID, &Homa::account_id()), 0);
+			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY_ID, &Homa::account_id()), 0);
+			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY_ID, &TreasuryAccount::get()), 0);
+
+			assert_ok!(Homa::mint(Origin::signed(ALICE), 30_000_000));
+			assert_eq!(Homa::to_bond_pool(), 30_000_000);
+			assert_eq!(Homa::total_void_liquid(), 2_970_298);
+			assert_eq!(Homa::get_total_staking_currency(), 30_000_000);
+			assert_eq!(Currencies::total_issuance(LIQUID_CURRENCY_ID), 297_029_702);
+			assert_eq!(
+				Currencies::free_balance(STAKING_CURRENCY_ID, &Homa::account_id()),
+				30_000_000
+			);
+
+			// bump era failed when caller has no permission.
+			assert_noop!(Homa::bump_current_era(Origin::signed(ALICE), 1), BadOrigin);
+
+			// bump era failed when new era is outdated.
+			assert_noop!(
+				Homa::bump_current_era(Origin::signed(HomaAdmin::get()), 0),
+				Error::<Runtime>::OutdatedEraIndex
+			);
+
+			// bump era to #1,
+			// will process to_bond_pool.
+			assert_ok!(Homa::bump_current_era(Origin::signed(HomaAdmin::get()), 1));
+			System::assert_last_event(Event::Homa(crate::Event::CurrentEraBumped(1)));
+			assert_eq!(
+				Homa::staking_ledgers(0),
+				Some(StakingLedger {
+					bonded: 20_000_000,
+					unlocking: vec![]
+				})
+			);
+			assert_eq!(
+				Homa::staking_ledgers(1),
+				Some(StakingLedger {
+					bonded: 8_000_000,
+					unlocking: vec![]
+				})
+			);
+			assert_eq!(Homa::staking_ledgers(2), None);
+			assert_eq!(Homa::to_bond_pool(), 0);
+			assert_eq!(Homa::unclaimed_redemption(), 0);
+			assert_eq!(Homa::total_void_liquid(), 0);
+			assert_eq!(Homa::get_total_staking_currency(), 28_000_000);
+			assert_eq!(Currencies::total_issuance(LIQUID_CURRENCY_ID), 297_029_702);
+			assert_eq!(Currencies::free_balance(STAKING_CURRENCY_ID, &Homa::account_id()), 0);
+			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY_ID, &Homa::account_id()), 0);
+			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY_ID, &TreasuryAccount::get()), 0);
+
+			// mock update the staking reward to StakingLedgers
+			assert_ok!(Homa::update_ledgers(
+				Origin::signed(HomaAdmin::get()),
+				vec![(0, Some(20_300_000), None), (1, Some(8_080_000), None),]
+			));
+			assert_eq!(
+				Homa::staking_ledgers(0),
+				Some(StakingLedger {
+					bonded: 20_300_000,
+					unlocking: vec![]
+				})
+			);
+			assert_eq!(
+				Homa::staking_ledgers(1),
+				Some(StakingLedger {
+					bonded: 8_080_000,
+					unlocking: vec![]
+				})
+			);
+			assert_eq!(Homa::get_total_staking_currency(), 28_380_000);
+
+			// bump era to #2,
+			// commission drawn from the staking reward is not zero
+			assert_ok!(Homa::bump_current_era(Origin::signed(HomaAdmin::get()), 2));
+			System::assert_last_event(Event::Homa(crate::Event::CurrentEraBumped(2)));
+			assert_eq!(
+				Homa::staking_ledgers(0),
+				Some(StakingLedger {
+					bonded: 20_300_000,
+					unlocking: vec![]
+				})
+			);
+			assert_eq!(
+				Homa::staking_ledgers(1),
+				Some(StakingLedger {
+					bonded: 8_080_000,
+					unlocking: vec![]
+				})
+			);
+			assert_eq!(Homa::staking_ledgers(2), None);
+			assert_eq!(Homa::to_bond_pool(), 0);
+			assert_eq!(Homa::unclaimed_redemption(), 0);
+			assert_eq!(Homa::total_void_liquid(), 0);
+			assert_eq!(Homa::get_total_staking_currency(), 28_380_000);
+			assert_eq!(Currencies::total_issuance(LIQUID_CURRENCY_ID), 297_619_046);
+			assert_eq!(Currencies::free_balance(STAKING_CURRENCY_ID, &Homa::account_id()), 0);
+			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY_ID, &Homa::account_id()), 0);
+			assert_eq!(
+				Currencies::free_balance(LIQUID_CURRENCY_ID, &TreasuryAccount::get()),
+				589_344
+			);
+
+			// assuming now staking has no rewards any more.
+			assert_ok!(Homa::update_homa_params(
+				Origin::signed(HomaAdmin::get()),
+				None,
+				Some(Rate::zero()),
+				None,
+				None,
+				None,
+				None,
+			));
+
+			// and there's redeem request
+			assert_ok!(Homa::request_redeem(Origin::signed(ALICE), 280_000_000, false));
+			assert_eq!(
+				Currencies::free_balance(LIQUID_CURRENCY_ID, &Homa::account_id()),
+				280_000_000
+			);
+
+			// bump era to #3,
+			// will process redeem requests
+			assert_ok!(Homa::bump_current_era(Origin::signed(HomaAdmin::get()), 3));
+			System::assert_last_event(Event::Homa(crate::Event::CurrentEraBumped(3)));
+			System::assert_has_event(Event::Homa(crate::Event::RedeemedByUnbond(
+				ALICE,
+				3,
+				280_000_000,
+				26_699_904,
+			)));
+			assert_eq!(
+				Homa::staking_ledgers(0),
+				Some(StakingLedger {
+					bonded: 0,
+					unlocking: vec![UnlockChunk {
+						value: 20_300_000,
+						era: 3 + BondingDuration::get()
+					}]
+				})
+			);
+			assert_eq!(
+				Homa::staking_ledgers(1),
+				Some(StakingLedger {
+					bonded: 1_680_096,
+					unlocking: vec![UnlockChunk {
+						value: 6_399_904,
+						era: 3 + BondingDuration::get()
+					}]
+				})
+			);
+			assert_eq!(Homa::staking_ledgers(2), None);
+			assert_eq!(Homa::to_bond_pool(), 0);
+			assert_eq!(Homa::unclaimed_redemption(), 0);
+			assert_eq!(Homa::total_void_liquid(), 0);
+			assert_eq!(Homa::get_total_staking_currency(), 1_680_096);
+			assert_eq!(Currencies::total_issuance(LIQUID_CURRENCY_ID), 17_619_046);
+			assert_eq!(Currencies::free_balance(STAKING_CURRENCY_ID, &Homa::account_id()), 0);
+			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY_ID, &Homa::account_id()), 0);
+			assert_eq!(
+				Currencies::free_balance(LIQUID_CURRENCY_ID, &TreasuryAccount::get()),
+				589_344
+			);
+
+			// bump era to #31,
+			// will process scheduled unbonded
+			assert_ok!(Homa::bump_current_era(Origin::signed(HomaAdmin::get()), 31));
+			System::assert_last_event(Event::Homa(crate::Event::CurrentEraBumped(31)));
+			assert_eq!(Homa::staking_ledgers(0), None);
+			assert_eq!(
+				Homa::staking_ledgers(1),
+				Some(StakingLedger {
+					bonded: 1_680_096,
+					unlocking: vec![]
+				})
+			);
+			assert_eq!(Homa::staking_ledgers(2), None);
+			assert_eq!(Homa::to_bond_pool(), 0);
+			assert_eq!(Homa::unclaimed_redemption(), 26_699_904);
+			assert_eq!(Homa::total_void_liquid(), 0);
+			assert_eq!(Homa::get_total_staking_currency(), 1_680_096);
+			assert_eq!(Currencies::total_issuance(LIQUID_CURRENCY_ID), 17_619_046);
+			assert_eq!(
+				Currencies::free_balance(STAKING_CURRENCY_ID, &Homa::account_id()),
+				26_699_904
+			);
+			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY_ID, &Homa::account_id()), 0);
+			assert_eq!(
+				Currencies::free_balance(LIQUID_CURRENCY_ID, &TreasuryAccount::get()),
+				589_344
+			);
+		});
 }
