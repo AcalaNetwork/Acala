@@ -24,10 +24,7 @@ use codec::{Decode, Encode};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use scale_info::TypeInfo;
 use sp_runtime::RuntimeDebug;
-use sp_std::{
-	convert::{Into, TryFrom},
-	prelude::*,
-};
+use sp_std::prelude::*;
 
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};

@@ -86,7 +86,7 @@ pub use cumulus_primitives_core::ParaId;
 pub use orml_xcm_support::{IsNativeConcrete, MultiCurrencyAdapter, MultiNativeAsset};
 use pallet_xcm::XcmPassthrough;
 pub use polkadot_parachain::primitives::Sibling;
-pub use xcm::latest::prelude::*;
+pub use xcm::VersionedMultiLocation;
 pub use xcm_builder::{
 	AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom, AllowTopLevelPaidExecutionFrom,
 	AllowUnpaidExecutionFrom, EnsureXcmOrigin, FixedRateOfFungible, FixedWeightBounds, IsConcrete, LocationInverter,
@@ -1245,8 +1245,8 @@ impl module_homa::Config for Runtime {
 	type WeightInfo = weights::module_homa::WeightInfo<Runtime>;
 }
 
-pub fn create_x2_parachain_multilocation(index: u16) -> MultiLocation {
-	MultiLocation::new(
+pub fn create_x2_parachain_multilocation(index: u16) -> VersionedMultiLocation {
+	VersionedMultiLocation::new(
 		1,
 		X1(AccountId32 {
 			network: NetworkId::Any,
@@ -1588,14 +1588,14 @@ impl cumulus_pallet_parachain_system::Config for Runtime {
 impl parachain_info::Config for Runtime {}
 
 parameter_types! {
-	pub const DotLocation: MultiLocation = MultiLocation::parent();
+	pub const DotLocation: VersionedMultiLocation = VersionedMultiLocation::parent();
 	pub const RelayNetwork: NetworkId = NetworkId::Polkadot;
 	pub RelayChainOrigin: Origin = cumulus_pallet_xcm::Origin::Relay.into();
-	pub Ancestry: MultiLocation = Parachain(ParachainInfo::parachain_id().into()).into();
+	pub Ancestry: VersionedMultiLocation = Parachain(ParachainInfo::parachain_id().into()).into();
 }
 
-/// Type for specifying how a `MultiLocation` can be converted into an `AccountId`. This is used
-/// when determining ownership of accounts for asset transacting and when attempting to use XCM
+/// Type for specifying how a `VersionedMultiLocation` can be converted into an `AccountId`. This is
+/// used when determining ownership of accounts for asset transacting and when attempting to use XCM
 /// `Transact` in order to determine the dispatch Origin.
 pub type LocationToAccountId = (
 	// The parent (Relay-chain) origin converts to the default `AccountId`.
@@ -1756,17 +1756,17 @@ pub type LocalAssetTransactor = MultiCurrencyAdapter<
 >;
 
 //TODO: use token registry currency type encoding
-fn native_currency_location(id: CurrencyId) -> MultiLocation {
-	MultiLocation::new(1, X2(Parachain(ParachainInfo::get().into()), GeneralKey(id.encode())))
+fn native_currency_location(id: CurrencyId) -> VersionedMultiLocation {
+	VersionedMultiLocation::new(1, X2(Parachain(ParachainInfo::get().into()), GeneralKey(id.encode())))
 }
 
 pub struct CurrencyIdConvert;
-impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
-	fn convert(id: CurrencyId) -> Option<MultiLocation> {
+impl Convert<CurrencyId, Option<VersionedMultiLocation>> for CurrencyIdConvert {
+	fn convert(id: CurrencyId) -> Option<VersionedMultiLocation> {
 		use CurrencyId::Token;
 		use TokenSymbol::*;
 		match id {
-			Token(DOT) => Some(MultiLocation::parent()),
+			Token(DOT) => Some(VersionedMultiLocation::parent()),
 			Token(ACA) | Token(AUSD) | Token(LDOT) | Token(RENBTC) => Some(native_currency_location(id)),
 			CurrencyId::ForeignAsset(foreign_asset_id) => {
 				XcmForeignAssetIdMapping::<Runtime>::get_multi_location(foreign_asset_id)
@@ -1775,12 +1775,12 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 		}
 	}
 }
-impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
-	fn convert(location: MultiLocation) -> Option<CurrencyId> {
+impl Convert<VersionedMultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
+	fn convert(location: VersionedMultiLocation) -> Option<CurrencyId> {
 		use CurrencyId::Token;
 		use TokenSymbol::*;
 
-		if location == MultiLocation::parent() {
+		if location == VersionedMultiLocation::parent() {
 			return Some(Token(DOT));
 		}
 
@@ -1789,7 +1789,7 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 		}
 
 		match location {
-			MultiLocation {
+			VersionedMultiLocation {
 				parents,
 				interior: X2(Parachain(para_id), GeneralKey(key)),
 			} if parents == 1 && ParaId::from(para_id) == ParachainInfo::get() => {
@@ -1822,12 +1822,12 @@ impl Convert<MultiAsset, Option<CurrencyId>> for CurrencyIdConvert {
 }
 
 parameter_types! {
-	pub SelfLocation: MultiLocation = MultiLocation::new(1, X1(Parachain(ParachainInfo::get().into())));
+	pub SelfLocation: VersionedMultiLocation = VersionedMultiLocation::new(1, X1(Parachain(ParachainInfo::get().into())));
 }
 
 pub struct AccountIdToMultiLocation;
-impl Convert<AccountId, MultiLocation> for AccountIdToMultiLocation {
-	fn convert(account: AccountId) -> MultiLocation {
+impl Convert<AccountId, VersionedMultiLocation> for AccountIdToMultiLocation {
+	fn convert(account: AccountId) -> VersionedMultiLocation {
 		X1(AccountId32 {
 			network: NetworkId::Any,
 			id: account.into(),

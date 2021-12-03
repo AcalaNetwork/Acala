@@ -541,8 +541,7 @@ pub struct OnUpdateLoan<T>(sp_std::marker::PhantomData<T>);
 impl<T: Config> Happened<(T::AccountId, CurrencyId, Amount, Balance)> for OnUpdateLoan<T> {
 	fn happened(info: &(T::AccountId, CurrencyId, Amount, Balance)) {
 		let (who, currency_id, adjustment, previous_amount) = info;
-		let adjustment_abs =
-			sp_std::convert::TryInto::<Balance>::try_into(adjustment.saturating_abs()).unwrap_or_default();
+		let adjustment_abs = TryInto::<Balance>::try_into(adjustment.saturating_abs()).unwrap_or_default();
 
 		let new_share_amount = if adjustment.is_positive() {
 			previous_amount.saturating_add(adjustment_abs)

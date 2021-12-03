@@ -51,7 +51,7 @@ use sp_runtime::{
 	},
 	FixedPointNumber, FixedPointOperand, FixedU128, Perquintill,
 };
-use sp_std::{convert::TryInto, prelude::*, vec};
+use sp_std::{prelude::*, vec};
 use support::{DEXManager, PriceProvider, Ratio, TransactionPayment};
 
 mod mock;
@@ -329,7 +329,6 @@ pub mod module {
 			// given weight == u64, we build multipliers from `diff` of two weight values,
 			// which can at most be MaximumBlockWeight. Make sure that this can fit in a
 			// multiplier without loss.
-			use sp_std::convert::TryInto;
 			assert!(
 				<Multiplier as sp_runtime::traits::Bounded>::max_value()
 					>= Multiplier::checked_from_integer(T::BlockWeights::get().max_block.try_into().unwrap()).unwrap(),

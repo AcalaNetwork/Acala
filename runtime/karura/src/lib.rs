@@ -1369,14 +1369,14 @@ impl parachain_info::Config for Runtime {}
 impl cumulus_pallet_aura_ext::Config for Runtime {}
 
 parameter_types! {
-	pub KsmLocation: MultiLocation = MultiLocation::parent();
+	pub KsmLocation: VersionedMultiLocation = VersionedMultiLocation::parent();
 	pub const RelayNetwork: NetworkId = NetworkId::Kusama;
 	pub RelayChainOrigin: Origin = cumulus_pallet_xcm::Origin::Relay.into();
-	pub Ancestry: MultiLocation = Parachain(ParachainInfo::parachain_id().into()).into();
+	pub Ancestry: VersionedMultiLocation = Parachain(ParachainInfo::parachain_id().into()).into();
 }
 
-/// Type for specifying how a `MultiLocation` can be converted into an `AccountId`. This is used
-/// when determining ownership of accounts for asset transacting and when attempting to use XCM
+/// Type for specifying how a `VersionedMultiLocation` can be converted into an `AccountId`. This is
+/// used when determining ownership of accounts for asset transacting and when attempting to use XCM
 /// `Transact` in order to determine the dispatch Origin.
 pub type LocationToAccountId = (
 	// The parent (Relay-chain) origin converts to the default `AccountId`.
@@ -1412,9 +1412,9 @@ parameter_types! {
 	// One XCM operation is 200_000_000 weight, cross-chain transfer ~= 2x of transfer.
 	pub const UnitWeightCost: Weight = 200_000_000;
 	pub const MaxInstructions: u32 = 100;
-	pub KsmPerSecond: (AssetId, u128) = (MultiLocation::parent().into(), ksm_per_second());
+	pub KsmPerSecond: (AssetId, u128) = (VersionedMultiLocation::parent().into(), ksm_per_second());
 	pub KusdPerSecond: (AssetId, u128) = (
-		MultiLocation::new(
+		VersionedMultiLocation::new(
 			1,
 			X2(Parachain(u32::from(ParachainInfo::get())), GeneralKey(KUSD.encode())),
 		).into(),
@@ -1475,7 +1475,7 @@ impl TakeRevenue for ToTreasury {
 
 parameter_types! {
 	pub BncPerSecond: (AssetId, u128) = (
-		MultiLocation::new(
+		VersionedMultiLocation::new(
 			1,
 			X2(Parachain(parachains::bifrost::ID), GeneralKey(parachains::bifrost::BNC_KEY.to_vec())),
 		).into(),
@@ -1483,7 +1483,7 @@ parameter_types! {
 		ksm_per_second() * 80
 	);
 	pub VsksmPerSecond: (AssetId, u128) = (
-		MultiLocation::new(
+		VersionedMultiLocation::new(
 			1,
 			X2(Parachain(parachains::bifrost::ID), GeneralKey(parachains::bifrost::VSKSM_KEY.to_vec())),
 		).into(),
@@ -1580,8 +1580,8 @@ impl cumulus_pallet_dmp_queue::Config for Runtime {
 	type ExecuteOverweightOrigin = EnsureRoot<AccountId>;
 }
 
-pub fn create_x2_parachain_multilocation(index: u16) -> MultiLocation {
-	MultiLocation::new(
+pub fn create_x2_parachain_multilocation(index: u16) -> VersionedMultiLocation {
+	VersionedMultiLocation::new(
 		1,
 		X1(AccountId32 {
 			network: NetworkId::Any,
@@ -1650,20 +1650,20 @@ pub type LocalAssetTransactor = MultiCurrencyAdapter<
 >;
 
 //TODO: use token registry currency type encoding
-fn native_currency_location(id: CurrencyId) -> MultiLocation {
-	MultiLocation::new(1, X2(Parachain(ParachainInfo::get().into()), GeneralKey(id.encode())))
+fn native_currency_location(id: CurrencyId) -> VersionedMultiLocation {
+	VersionedMultiLocation::new(1, X2(Parachain(ParachainInfo::get().into()), GeneralKey(id.encode())))
 }
 
 pub struct CurrencyIdConvert;
-impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
-	fn convert(id: CurrencyId) -> Option<MultiLocation> {
+impl Convert<CurrencyId, Option<VersionedMultiLocation>> for CurrencyIdConvert {
+	fn convert(id: CurrencyId) -> Option<VersionedMultiLocation> {
 		use CurrencyId::Token;
 		use TokenSymbol::*;
 		match id {
-			Token(KSM) => Some(MultiLocation::parent()),
+			Token(KSM) => Some(VersionedMultiLocation::parent()),
 			Token(KAR) | Token(KUSD) | Token(LKSM) => Some(native_currency_location(id)),
 			// Bifrost native token
-			Token(BNC) => Some(MultiLocation::new(
+			Token(BNC) => Some(VersionedMultiLocation::new(
 				1,
 				X2(
 					Parachain(parachains::bifrost::ID),
@@ -1671,7 +1671,7 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 				),
 			)),
 			// Bifrost Voucher Slot KSM
-			Token(VSKSM) => Some(MultiLocation::new(
+			Token(VSKSM) => Some(VersionedMultiLocation::new(
 				1,
 				X2(
 					Parachain(parachains::bifrost::ID),
@@ -1687,12 +1687,12 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 		}
 	}
 }
-impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
-	fn convert(location: MultiLocation) -> Option<CurrencyId> {
+impl Convert<VersionedMultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
+	fn convert(location: VersionedMultiLocation) -> Option<CurrencyId> {
 		use CurrencyId::Token;
 		use TokenSymbol::*;
 
-		if location == MultiLocation::parent() {
+		if location == VersionedMultiLocation::parent() {
 			return Some(Token(KSM));
 		}
 
@@ -1747,12 +1747,12 @@ impl Convert<MultiAsset, Option<CurrencyId>> for CurrencyIdConvert {
 }
 
 parameter_types! {
-	pub SelfLocation: MultiLocation = MultiLocation::new(1, X1(Parachain(ParachainInfo::get().into())));
+	pub SelfLocation: VersionedMultiLocation= VersionedMultiLocation::new(1, X1(Parachain(ParachainInfo::get().into())));
 }
 
 pub struct AccountIdToMultiLocation;
-impl Convert<AccountId, MultiLocation> for AccountIdToMultiLocation {
-	fn convert(account: AccountId) -> MultiLocation {
+impl Convert<AccountId, VersionedMultiLocation> for AccountIdToMultiLocation {
+	fn convert(account: AccountId) -> VersionedMultiLocation {
 		X1(AccountId32 {
 			network: NetworkId::Any,
 			id: account.into(),
