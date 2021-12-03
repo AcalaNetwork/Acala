@@ -50,6 +50,9 @@ pub trait WeightInfo {
 pub struct AcalaWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	{{~#each benchmarks as |benchmark|}}
+	{{~#each benchmark.comments as |comment|}}
+	// {{comment}}
+	{{~/each}}
 	fn {{benchmark.name~}}
 	(
 		{{~#each benchmark.components as |c| ~}}

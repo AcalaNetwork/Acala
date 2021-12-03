@@ -156,6 +156,50 @@ static ACALA_CONFIG: EvmConfig = EvmConfig {
 	estimate: false,
 };
 
+/// Deploy a empty contract `contract Empty { }`.
+pub const DEPLOY_GAS: u64 = 67_066;
+/// Call function that just set a storage `function store(uint256 num) public { number = num; }`.
+pub const CALL_GAS: u64 = 41_602;
+
+/// Helper method to calculate `create` weight.
+#[inline(always)]
+fn create_weight<T>(gas: u64) -> Weight
+where
+	T: Config,
+{
+	<T as Config>::WeightInfo::create()
+		// an additional of `DEPLOY_GAS` was used during `create` benchmark
+		// so we subtract that and add actual gas used
+		.saturating_sub(T::GasToWeight::convert(DEPLOY_GAS))
+		.saturating_add(T::GasToWeight::convert(gas))
+}
+
+/// Helper method to calculate `create2` weight.
+#[inline(always)]
+fn create2_weight<T>(gas: u64) -> Weight
+where
+	T: Config,
+{
+	<T as Config>::WeightInfo::create2()
+		// an additional of `DEPLOY_GAS` was used during `create2` benchmark
+		// so we subtract that and add actual gas used
+		.saturating_sub(T::GasToWeight::convert(DEPLOY_GAS))
+		.saturating_add(T::GasToWeight::convert(gas))
+}
+
+/// Helper method to calculate `call` weight.
+#[inline(always)]
+fn call_weight<T>(gas: u64) -> Weight
+where
+	T: Config,
+{
+	<T as Config>::WeightInfo::call()
+		// an additional of `CALL_GAS` was used during `call` benchmark
+		// so we subtract that and add actual gas used
+		.saturating_sub(T::GasToWeight::convert(CALL_GAS))
+		.saturating_add(T::GasToWeight::convert(gas))
+}
+
 #[frame_support::pallet]
 pub mod module {
 	use super::*;
@@ -483,7 +527,10 @@ pub mod module {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		#[pallet::weight(T::GasToWeight::convert(*gas_limit))]
+		#[pallet::weight(match *action {
+			TransactionAction::Call(_) => call_weight::<T>(*gas_limit),
+			TransactionAction::Create => create_weight::<T>(*gas_limit)
+		})]
 		#[transactional]
 		pub fn eth_call(
 			origin: OriginFor<T>,
@@ -508,7 +555,7 @@ pub mod module {
 		/// - `value`: the amount sent for payable calls
 		/// - `gas_limit`: the maximum gas the call can use
 		/// - `storage_limit`: the total bytes the contract's storage can increase by
-		#[pallet::weight(T::GasToWeight::convert(*gas_limit))]
+		#[pallet::weight(call_weight::<T>(*gas_limit))]
 		#[transactional]
 		pub fn call(
 			origin: OriginFor<T>,
@@ -535,7 +582,7 @@ pub mod module {
 			let used_gas: u64 = info.used_gas.unique_saturated_into();
 
 			Ok(PostDispatchInfo {
-				actual_weight: Some(T::GasToWeight::convert(used_gas)),
+				actual_weight: Some(call_weight::<T>(used_gas)),
 				pays_fee: Pays::Yes,
 			})
 		}
@@ -551,6 +598,7 @@ pub mod module {
 		/// - `storage_limit`: the total bytes the contract's storage can increase by
 		#[pallet::weight(T::GasToWeight::convert(*gas_limit))]
 		#[transactional]
+		// TODO: create benchmark
 		pub fn scheduled_call(
 			origin: OriginFor<T>,
 			from: EvmAddress,
@@ -606,7 +654,7 @@ pub mod module {
 		/// - `value`: the amount sent to the contract upon creation
 		/// - `gas_limit`: the maximum gas the call can use
 		/// - `storage_limit`: the total bytes the contract's storage can increase by
-		#[pallet::weight(T::GasToWeight::convert(*gas_limit))]
+		#[pallet::weight(create_weight::<T>(*gas_limit))]
 		#[transactional]
 		pub fn create(
 			origin: OriginFor<T>,
@@ -623,7 +671,7 @@ pub mod module {
 			let used_gas: u64 = info.used_gas.unique_saturated_into();
 
 			Ok(PostDispatchInfo {
-				actual_weight: Some(T::GasToWeight::convert(used_gas)),
+				actual_weight: Some(create_weight::<T>(used_gas)),
 				pays_fee: Pays::Yes,
 			})
 		}
@@ -636,7 +684,7 @@ pub mod module {
 		/// - `value`: the amount sent for payable calls
 		/// - `gas_limit`: the maximum gas the call can use
 		/// - `storage_limit`: the total bytes the contract's storage can increase by
-		#[pallet::weight(T::GasToWeight::convert(*gas_limit))]
+		#[pallet::weight(create2_weight::<T>(*gas_limit))]
 		#[transactional]
 		pub fn create2(
 			origin: OriginFor<T>,
@@ -654,7 +702,7 @@ pub mod module {
 			let used_gas: u64 = info.used_gas.unique_saturated_into();
 
 			Ok(PostDispatchInfo {
-				actual_weight: Some(T::GasToWeight::convert(used_gas)),
+				actual_weight: Some(create2_weight::<T>(used_gas)),
 				pays_fee: Pays::Yes,
 			})
 		}
@@ -668,6 +716,7 @@ pub mod module {
 		/// - `storage_limit`: the total bytes the contract's storage can increase by
 		#[pallet::weight(T::GasToWeight::convert(*gas_limit))]
 		#[transactional]
+		// TODO: create benchmark
 		pub fn create_network_contract(
 			origin: OriginFor<T>,
 			init: Vec<u8>,
@@ -702,6 +751,7 @@ pub mod module {
 		/// - `storage_limit`: the total bytes the contract's storage can increase by
 		#[pallet::weight(T::GasToWeight::convert(*gas_limit))]
 		#[transactional]
+		// TODO: create benchmark
 		pub fn create_predeploy_contract(
 			origin: OriginFor<T>,
 			target: EvmAddress,
