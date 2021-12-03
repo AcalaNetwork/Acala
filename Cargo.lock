@@ -6735,7 +6735,6 @@ dependencies = [
  "orml-traits",
  "orml-xcm",
  "orml-xcm-support",
- "pallet-babe",
  "pallet-balances",
  "pallet-xcm",
  "parachain-info",
