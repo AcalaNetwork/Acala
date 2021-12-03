@@ -2,7 +2,7 @@
 name = "acala-service"
 version = "2.0.3"
 authors = ["Acala Developers"]
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 async-trait = { version = "0.1.48" }

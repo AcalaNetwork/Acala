@@ -44,7 +44,7 @@ use sp_runtime::{
 	traits::{AccountIdConversion, One, Zero},
 	ArithmeticError, DispatchError, DispatchResult, FixedPointNumber, RuntimeDebug, SaturatedConversion,
 };
-use sp_std::{convert::TryInto, prelude::*, vec};
+use sp_std::{prelude::*, vec};
 use support::{DEXIncentives, DEXManager, Erc20InfoMapping, ExchangeRate, Ratio};
 
 mod mock;

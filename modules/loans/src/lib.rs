@@ -36,7 +36,6 @@ use sp_runtime::{
 	traits::{AccountIdConversion, Convert, Zero},
 	ArithmeticError, DispatchResult, RuntimeDebug,
 };
-use sp_std::{convert::TryInto, result};
 use support::{CDPTreasury, RiskManager};
 
 mod mock;
@@ -360,12 +359,12 @@ impl<T: Config> Pallet<T> {
 
 impl<T: Config> Pallet<T> {
 	/// Convert `Balance` to `Amount`.
-	fn amount_try_from_balance(b: Balance) -> result::Result<Amount, Error<T>> {
+	fn amount_try_from_balance(b: Balance) -> Result<Amount, Error<T>> {
 		TryInto::<Amount>::try_into(b).map_err(|_| Error::<T>::AmountConvertFailed)
 	}
 
 	/// Convert the absolute value of `Amount` to `Balance`.
-	fn balance_try_from_amount_abs(a: Amount) -> result::Result<Balance, Error<T>> {
+	fn balance_try_from_amount_abs(a: Amount) -> Result<Balance, Error<T>> {
 		TryInto::<Balance>::try_into(a.saturating_abs()).map_err(|_| Error::<T>::AmountConvertFailed)
 	}
 }

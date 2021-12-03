@@ -2,7 +2,7 @@
 name = 'module-collator-selection'
 version = "2.0.3"
 authors = ["Acala Developers"]
-edition = "2018"
+edition = "2021"
 
 [package.metadata.docs.rs]
 targets = ['x86_64-unknown-linux-gnu']

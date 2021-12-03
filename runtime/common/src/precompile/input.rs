@@ -17,14 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use frame_support::ensure;
-use sp_std::{
-	convert::{TryFrom, TryInto},
-	marker::PhantomData,
-	mem,
-	result::Result,
-	vec,
-	vec::Vec,
-};
+use sp_std::{marker::PhantomData, mem, result::Result, vec, vec::Vec};
 
 use ethabi::Token;
 use module_evm::ExitError;

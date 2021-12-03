@@ -46,7 +46,7 @@ use sp_runtime::{
 	traits::{BlakeTwo256, Convert, IdentityLookup, One as OneT},
 	DispatchResult, FixedPointNumber, FixedU128, Perbill,
 };
-use sp_std::{collections::btree_map::BTreeMap, convert::TryFrom, str::FromStr};
+use sp_std::{collections::btree_map::BTreeMap, str::FromStr};
 
 pub type AccountId = AccountId32;
 type Key = CurrencyId;

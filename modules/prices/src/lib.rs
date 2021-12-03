@@ -35,7 +35,7 @@ use orml_traits::{DataFeeder, DataProvider, MultiCurrency};
 use primitives::{Balance, CurrencyId};
 use sp_core::U256;
 use sp_runtime::{traits::CheckedMul, FixedPointNumber};
-use sp_std::{convert::TryInto, marker::PhantomData};
+use sp_std::marker::PhantomData;
 use support::{DEXManager, Erc20InfoMapping, ExchangeRateProvider, LockablePrice, Price, PriceProvider};
 
 mod mock;

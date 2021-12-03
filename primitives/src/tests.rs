@@ -23,10 +23,7 @@ use crate::evm::{
 };
 use frame_support::assert_ok;
 use sp_core::H160;
-use std::{
-	convert::{TryFrom, TryInto},
-	str::FromStr,
-};
+use std::str::FromStr;
 
 #[test]
 fn trading_pair_works() {
