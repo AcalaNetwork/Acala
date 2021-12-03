@@ -88,6 +88,7 @@ fn dev_testnet_config_from_chain_id(chain_id: &str) -> Result<ChainSpec, String>
 		Extensions {
 			relay_chain: "rococo-local".into(),
 			para_id: PARA_ID,
+			bad_blocks: None,
 		},
 	))
 }
@@ -141,6 +142,7 @@ pub fn local_testnet_config() -> Result<ChainSpec, String> {
 		Extensions {
 			relay_chain: "rococo-local".into(),
 			para_id: PARA_ID,
+			bad_blocks: None,
 		},
 	))
 }
@@ -221,6 +223,7 @@ pub fn latest_mandala_testnet_config() -> Result<ChainSpec, String> {
 		Extensions {
 			relay_chain: "dev".into(),
 			para_id: PARA_ID,
+			bad_blocks: None,
 		},
 	))
 }
@@ -279,7 +282,6 @@ fn testnet_genesis(
 		system: SystemConfig {
 			// Add Wasm runtime to storage.
 			code: wasm_binary.to_vec(),
-			changes_trie_config: Default::default(),
 		},
 		starport: StarportConfig {
 			initial_authorities: vec![get_account_id_from_seed::<sr25519::Public>("Alice")],
@@ -481,7 +483,6 @@ fn mandala_genesis(
 		system: SystemConfig {
 			// Add Wasm runtime to storage.
 			code: wasm_binary.to_vec(),
-			changes_trie_config: Default::default(),
 		},
 		starport: StarportConfig {
 			initial_authorities: vec![get_account_id_from_seed::<sr25519::Public>("Alice")],

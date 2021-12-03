@@ -55,7 +55,7 @@ jobs:
           echo "-------------------------------------------" >> output.txt
 
       - name: Start local node
-        run: ./target/release/acala --chain=${{ env.CHAIN }}-dev --rpc-cors=all --ws-external &
+        run: ./target/release/acala --chain=${{ env.CHAIN }}-dev --rpc-cors=all --ws-external --tmp &
 
       - name: Compare the metadata
         run: |

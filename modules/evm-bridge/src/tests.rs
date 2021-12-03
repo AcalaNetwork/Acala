@@ -22,9 +22,7 @@
 
 use super::*;
 use frame_support::{assert_err, assert_ok};
-use mock::{
-	alice, alice_evm_addr, bob, bob_evm_addr, deploy_contracts, erc20_address, EvmBridgeModule, ExtBuilder, Runtime,
-};
+use mock::{alice, alice_evm_addr, bob, bob_evm_addr, deploy_contracts, erc20_address, ExtBuilder, Runtime};
 
 #[test]
 fn should_read_name() {
@@ -34,7 +32,7 @@ fn should_read_name() {
 		.execute_with(|| {
 			deploy_contracts();
 			assert_eq!(
-				<EvmBridgeModule as EVMBridgeTrait<_, _>>::name(InvokeContext {
+				EVMBridge::<Runtime>::name(InvokeContext {
 					contract: erc20_address(),
 					sender: Default::default(),
 					origin: Default::default(),
@@ -55,7 +53,7 @@ fn should_read_symbol() {
 		.execute_with(|| {
 			deploy_contracts();
 			assert_eq!(
-				EvmBridgeModule::symbol(InvokeContext {
+				EVMBridge::<Runtime>::symbol(InvokeContext {
 					contract: erc20_address(),
 					sender: Default::default(),
 					origin: Default::default(),
@@ -73,7 +71,7 @@ fn should_read_decimals() {
 		.execute_with(|| {
 			deploy_contracts();
 			assert_eq!(
-				EvmBridgeModule::decimals(InvokeContext {
+				EVMBridge::<Runtime>::decimals(InvokeContext {
 					contract: erc20_address(),
 					sender: Default::default(),
 					origin: Default::default(),
@@ -91,7 +89,7 @@ fn should_read_total_supply() {
 		.execute_with(|| {
 			deploy_contracts();
 			assert_eq!(
-				EvmBridgeModule::total_supply(InvokeContext {
+				EVMBridge::<Runtime>::total_supply(InvokeContext {
 					contract: erc20_address(),
 					sender: Default::default(),
 					origin: Default::default(),
@@ -114,11 +112,11 @@ fn should_read_balance_of() {
 				origin: Default::default(),
 			};
 
-			assert_eq!(EvmBridgeModule::balance_of(context, bob_evm_addr()), Ok(0));
+			assert_eq!(EVMBridge::<Runtime>::balance_of(context, bob_evm_addr()), Ok(0));
 
-			assert_eq!(EvmBridgeModule::balance_of(context, alice_evm_addr()), Ok(10000));
+			assert_eq!(EVMBridge::<Runtime>::balance_of(context, alice_evm_addr()), Ok(10000));
 
-			assert_eq!(EvmBridgeModule::balance_of(context, bob_evm_addr()), Ok(0));
+			assert_eq!(EVMBridge::<Runtime>::balance_of(context, bob_evm_addr()), Ok(0));
 		});
 }
 
@@ -130,7 +128,7 @@ fn should_transfer() {
 		.execute_with(|| {
 			deploy_contracts();
 			assert_err!(
-				EvmBridgeModule::transfer(
+				EVMBridge::<Runtime>::transfer(
 					InvokeContext {
 						contract: erc20_address(),
 						sender: bob_evm_addr(),
@@ -142,7 +140,7 @@ fn should_transfer() {
 				Error::<Runtime>::ExecutionRevert
 			);
 
-			assert_ok!(EvmBridgeModule::transfer(
+			assert_ok!(EVMBridge::<Runtime>::transfer(
 				InvokeContext {
 					contract: erc20_address(),
 					sender: alice_evm_addr(),
@@ -152,7 +150,7 @@ fn should_transfer() {
 				100
 			));
 			assert_eq!(
-				EvmBridgeModule::balance_of(
+				EVMBridge::<Runtime>::balance_of(
 					InvokeContext {
 						contract: erc20_address(),
 						sender: alice_evm_addr(),
@@ -163,7 +161,7 @@ fn should_transfer() {
 				Ok(100)
 			);
 
-			assert_ok!(EvmBridgeModule::transfer(
+			assert_ok!(EVMBridge::<Runtime>::transfer(
 				InvokeContext {
 					contract: erc20_address(),
 					sender: bob_evm_addr(),
@@ -174,7 +172,7 @@ fn should_transfer() {
 			));
 
 			assert_eq!(
-				EvmBridgeModule::balance_of(
+				EVMBridge::<Runtime>::balance_of(
 					InvokeContext {
 						contract: erc20_address(),
 						sender: alice_evm_addr(),
@@ -186,7 +184,7 @@ fn should_transfer() {
 			);
 
 			assert_err!(
-				EvmBridgeModule::transfer(
+				EVMBridge::<Runtime>::transfer(
 					InvokeContext {
 						contract: erc20_address(),
 						sender: bob_evm_addr(),

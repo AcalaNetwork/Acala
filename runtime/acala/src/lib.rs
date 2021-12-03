@@ -50,7 +50,7 @@ use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 
 use frame_system::{EnsureRoot, RawOrigin};
-use module_asset_registry::{EvmErc20InfoMapping, XcmForeignAssetIdMapping};
+use module_asset_registry::{EvmErc20InfoMapping, FixedRateOfForeignAsset, XcmForeignAssetIdMapping};
 use module_currencies::BasicCurrencyAdapter;
 use module_evm::{CallInfo, CreateInfo, EvmTask, Runner};
 use module_evm_accounts::EvmAddressMapping;
@@ -83,9 +83,9 @@ mod weights;
 pub use frame_support::{
 	construct_runtime, log, parameter_types,
 	traits::{
-		Contains, ContainsLengthBound, Currency as PalletCurrency, EnsureOrigin, Everything, Get, Imbalance,
-		InstanceFilter, IsSubType, IsType, KeyOwnerProofSystem, LockIdentifier, Nothing, OnUnbalanced, Randomness,
-		SortedMembers, U128CurrencyToVote,
+		Contains, ContainsLengthBound, Currency as PalletCurrency, EnsureOrigin, EqualPrivilegeOnly, Everything, Get,
+		Imbalance, InstanceFilter, IsSubType, IsType, KeyOwnerProofSystem, LockIdentifier, Nothing, OnUnbalanced,
+		Randomness, SortedMembers, U128CurrencyToVote,
 	},
 	weights::{constants::RocksDbWeight, IdentityFee, Weight},
 	PalletId, RuntimeDebug, StorageValue,
@@ -99,10 +99,11 @@ pub use sp_runtime::BuildStorage;
 pub use authority::AuthorityConfigImpl;
 pub use constants::{fee::*, time::*};
 pub use primitives::{
-	define_combined_task, evm::EstimateResourcesRequest, task::TaskResult, AccountId, AccountIndex, Address, Amount,
-	AuctionId, AuthoritysOriginId, Balance, BlockNumber, CurrencyId, DataProviderId, EraIndex, Hash, Moment, Nonce,
-	ReserveIdentifier, Share, Signature, TokenSymbol, TradingPair,
+	convert_decimals_to_evm, define_combined_task, evm::EstimateResourcesRequest, task::TaskResult, AccountId,
+	AccountIndex, Address, Amount, AuctionId, AuthoritysOriginId, Balance, BlockNumber, CurrencyId, DataProviderId,
+	EraIndex, Hash, Moment, Nonce, ReserveIdentifier, Share, Signature, TokenSymbol, TradingPair,
 };
+use runtime_common::AcalaDropAssets;
 pub use runtime_common::{
 	cent, dollar, microcent, millicent, EnsureRootOrAllGeneralCouncil, EnsureRootOrAllTechnicalCommittee,
 	EnsureRootOrHalfFinancialCouncil, EnsureRootOrHalfGeneralCouncil, EnsureRootOrHalfHomaCouncil,
@@ -302,6 +303,7 @@ parameter_types! {
 	pub const MaxInvulnerables: u32 = 10;
 	pub const KickPenaltySessionLength: u32 = 8;
 	pub const CollatorKickThreshold: Permill = Permill::from_percent(60);
+	pub MinRewardDistributeAmount: Balance = 0;
 }
 
 impl module_collator_selection::Config for Runtime {
@@ -315,6 +317,7 @@ impl module_collator_selection::Config for Runtime {
 	type MaxInvulnerables = MaxInvulnerables;
 	type KickPenaltySessionLength = KickPenaltySessionLength;
 	type CollatorKickThreshold = CollatorKickThreshold;
+	type MinRewardDistributeAmount = MinRewardDistributeAmount;
 	type WeightInfo = weights::module_collator_selection::WeightInfo<Runtime>;
 }
 
@@ -512,6 +515,7 @@ impl pallet_membership::Config<OperatorMembershipInstanceAcala> for Runtime {
 impl pallet_utility::Config for Runtime {
 	type Event = Event;
 	type Call = Call;
+	type PalletsOrigin = OriginCaller;
 	type WeightInfo = ();
 }
 
@@ -742,6 +746,7 @@ parameter_type_with_key! {
 				TokenSymbol::LKSM |
 				TokenSymbol::RENBTC |
 				TokenSymbol::BNC |
+				TokenSymbol::PHA |
 				TokenSymbol::VSKSM |
 				TokenSymbol::ACA |
 				TokenSymbol::CASH => Balance::max_value() // unsupported
@@ -827,7 +832,7 @@ impl module_currencies::Config for Runtime {
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type WeightInfo = weights::module_currencies::WeightInfo<Runtime>;
 	type AddressMapping = EvmAddressMapping<Runtime>;
-	type EVMBridge = EVMBridge;
+	type EVMBridge = module_evm_bridge::EVMBridge<Runtime>;
 	type SweepOrigin = EnsureRootOrOneGeneralCouncil;
 	type OnDust = module_currencies::TransferDust<Runtime, AcalaTreasuryAccount>;
 }
@@ -894,6 +899,7 @@ impl pallet_scheduler::Config for Runtime {
 	type ScheduleOrigin = EnsureRoot<AccountId>;
 	type MaxScheduledPerBlock = MaxScheduledPerBlock;
 	type WeightInfo = ();
+	type OriginPrivilegeCmp = EqualPrivilegeOnly;
 }
 
 parameter_types! {
@@ -1127,7 +1133,7 @@ impl module_evm_accounts::Config for Runtime {
 impl module_asset_registry::Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
-	type EVMBridge = EVMBridge;
+	type EVMBridge = module_evm_bridge::EVMBridge<Runtime>;
 	type RegisterOrigin = EnsureRootOrHalfGeneralCouncil;
 	type WeightInfo = weights::module_asset_registry::WeightInfo<Runtime>;
 }
@@ -1267,42 +1273,29 @@ impl pallet_proxy::Config for Runtime {
 parameter_types! {
 	pub const ChainId: u64 = 787;
 	pub const NewContractExtraBytes: u32 = 10_000;
-	pub StorageDepositPerByte: Balance = deposit(0, 1);
 	pub NetworkContractSource: H160 = H160::from_low_u64_be(0);
 	pub DeveloperDeposit: Balance = 100 * dollar(ACA);
 	pub DeploymentFee: Balance = 10000 * dollar(ACA);
 }
 
-pub type MultiCurrencyPrecompile = runtime_common::MultiCurrencyPrecompile<
-	AccountId,
-	EvmAddressMapping<Runtime>,
-	EvmErc20InfoMapping<Runtime>,
-	Currencies,
->;
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, TypeInfo)]
+pub struct StorageDepositPerByte;
+impl<I: From<Balance>> frame_support::traits::Get<I> for StorageDepositPerByte {
+	fn get() -> I {
+		// NOTE: ACA decimals is 12, convert to 18.
+		I::from(convert_decimals_to_evm(deposit(0, 1)))
+	}
+}
 
-pub type NFTPrecompile =
-	runtime_common::NFTPrecompile<AccountId, EvmAddressMapping<Runtime>, EvmErc20InfoMapping<Runtime>, NFT>;
-pub type StateRentPrecompile =
-	runtime_common::StateRentPrecompile<AccountId, EvmAddressMapping<Runtime>, EvmErc20InfoMapping<Runtime>, EVM>;
-pub type OraclePrecompile = runtime_common::OraclePrecompile<
-	AccountId,
-	EvmAddressMapping<Runtime>,
-	EvmErc20InfoMapping<Runtime>,
-	module_prices::RealTimePriceProvider<Runtime>,
->;
-pub type ScheduleCallPrecompile = runtime_common::ScheduleCallPrecompile<
-	AccountId,
-	EvmAddressMapping<Runtime>,
-	EvmErc20InfoMapping<Runtime>,
-	Scheduler,
-	module_transaction_payment::ChargeTransactionPayment<Runtime>,
-	Call,
-	Origin,
-	OriginCaller,
-	Runtime,
->;
-pub type DexPrecompile =
-	runtime_common::DexPrecompile<AccountId, EvmAddressMapping<Runtime>, EvmErc20InfoMapping<Runtime>, Dex>;
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, TypeInfo)]
+pub struct TxFeePerGas;
+impl<I: From<Balance>> frame_support::traits::Get<I> for TxFeePerGas {
+	fn get() -> I {
+		// NOTE: 200 GWei
+		// ensure suffix is 0x0000
+		I::from(200u128.saturating_mul(10u128.saturating_pow(9)) & !0xffff)
+	}
+}
 
 impl module_evm::Config for Runtime {
 	type AddressMapping = EvmAddressMapping<Runtime>;
@@ -1310,16 +1303,9 @@ impl module_evm::Config for Runtime {
 	type TransferAll = Currencies;
 	type NewContractExtraBytes = NewContractExtraBytes;
 	type StorageDepositPerByte = StorageDepositPerByte;
+	type TxFeePerGas = TxFeePerGas;
 	type Event = Event;
-	type Precompiles = runtime_common::AllPrecompiles<
-		SystemContractsFilter,
-		MultiCurrencyPrecompile,
-		NFTPrecompile,
-		StateRentPrecompile,
-		OraclePrecompile,
-		ScheduleCallPrecompile,
-		DexPrecompile,
-	>;
+	type Precompiles = runtime_common::AllPrecompiles<Self>;
 	type ChainId = ChainId;
 	type GasToWeight = GasToWeight;
 	type ChargeTransactionPayment = module_transaction_payment::ChargeTransactionPayment<Runtime>;
@@ -1419,6 +1405,7 @@ parameter_types! {
 		// aUSD:DOT = 40:1
 		dot_per_second() * 40
 	);
+	pub ForeignAssetUnitsPerSecond: u128 = aca_per_second();
 }
 
 pub type Barrier = (
@@ -1450,6 +1437,7 @@ impl TakeRevenue for ToTreasury {
 pub type Trader = (
 	FixedRateOfFungible<DotPerSecond, ToTreasury>,
 	FixedRateOfFungible<AusdPerSecond, ToTreasury>,
+	FixedRateOfForeignAsset<Runtime, ForeignAssetUnitsPerSecond, ToTreasury>,
 );
 
 pub struct XcmConfig;
@@ -1467,7 +1455,14 @@ impl xcm_executor::Config for XcmConfig {
 	type Weigher = FixedWeightBounds<UnitWeightCost, Call, MaxInstructions>;
 	type Trader = Trader;
 	type ResponseHandler = PolkadotXcm;
-	type AssetTrap = PolkadotXcm;
+	type AssetTrap = AcalaDropAssets<
+		PolkadotXcm,
+		ToTreasury,
+		CurrencyIdConvert,
+		GetNativeCurrencyId,
+		NativeTokenExistentialDeposit,
+		ExistentialDeposits,
+	>;
 	type AssetClaims = PolkadotXcm;
 	type SubscriptionService = PolkadotXcm;
 }
@@ -2334,8 +2329,9 @@ mod tests {
 		// Otherwise, the creation of the contract account will fail because it is less than
 		// ExistentialDeposit.
 		assert!(
-			Balance::from(NewContractExtraBytes::get()) * StorageDepositPerByte::get()
-				>= NativeTokenExistentialDeposit::get()
+			Balance::from(NewContractExtraBytes::get()).saturating_mul(
+				<StorageDepositPerByte as frame_support::traits::Get<Balance>>::get() / 10u128.saturating_pow(6)
+			) >= NativeTokenExistentialDeposit::get()
 		);
 	}
 

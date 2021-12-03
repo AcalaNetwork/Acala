@@ -25,7 +25,7 @@ use sp_runtime::{
 
 use sp_core::{crypto::Public, ecdsa, ed25519, sr25519};
 
-use sp_std::{convert::TryFrom, prelude::*};
+use sp_std::prelude::*;
 
 #[derive(Eq, PartialEq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
 pub enum AcalaMultiSignature {

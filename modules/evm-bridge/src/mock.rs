@@ -23,7 +23,7 @@
 use super::*;
 use frame_support::{assert_ok, construct_runtime, ord_parameter_types, parameter_types, traits::Everything};
 use frame_system::EnsureSignedBy;
-use primitives::{evm::EvmAddress, ReserveIdentifier};
+use primitives::{convert_decimals_to_evm, evm::EvmAddress, ReserveIdentifier};
 use sp_core::{bytes::from_hex, crypto::AccountId32, H256};
 use sp_runtime::{testing::Header, traits::IdentityLookup};
 use sp_std::str::FromStr;
@@ -104,7 +104,8 @@ ord_parameter_types! {
 	pub const CouncilAccount: AccountId32 = AccountId32::from([1u8; 32]);
 	pub const TreasuryAccount: AccountId32 = AccountId32::from([2u8; 32]);
 	pub const NetworkContractAccount: AccountId32 = AccountId32::from([0u8; 32]);
-	pub const StorageDepositPerByte: u128 = 10;
+	pub const StorageDepositPerByte: u128 = convert_decimals_to_evm(10);
+	pub const TxFeePerGas: u128 = 10;
 	pub const DeveloperDeposit: u64 = 1000;
 	pub const DeploymentFee: u64 = 200;
 }
@@ -115,6 +116,7 @@ impl module_evm::Config for Runtime {
 	type TransferAll = ();
 	type NewContractExtraBytes = NewContractExtraBytes;
 	type StorageDepositPerByte = StorageDepositPerByte;
+	type TxFeePerGas = TxFeePerGas;
 	type Event = Event;
 	type Precompiles = ();
 	type ChainId = ();
@@ -138,7 +140,6 @@ impl module_evm::Config for Runtime {
 impl Config for Runtime {
 	type EVM = EVM;
 }
-pub type EvmBridgeModule = Pallet<Runtime>;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;

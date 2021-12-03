@@ -24,10 +24,7 @@ use codec::{Decode, Encode};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use scale_info::TypeInfo;
 use sp_runtime::RuntimeDebug;
-use sp_std::{
-	convert::{Into, TryFrom},
-	prelude::*,
-};
+use sp_std::prelude::*;
 
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
@@ -203,6 +200,7 @@ create_currency_id! {
 		// 168 - 255: Kusama parachain tokens
 		BNC("Bifrost Native Token", 12) = 168,
 		VSKSM("Bifrost Voucher Slot KSM", 12) = 169,
+		PHA("Phala Native Token", 12) = 170,
 	}
 }
 

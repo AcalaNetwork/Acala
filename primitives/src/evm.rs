@@ -31,7 +31,7 @@ use scale_info::TypeInfo;
 use serde::{Deserialize, Serialize};
 use sp_core::{H160, H256, U256};
 use sp_runtime::RuntimeDebug;
-use sp_std::{convert::TryFrom, vec::Vec};
+use sp_std::vec::Vec;
 
 /// Evm Address.
 pub type EvmAddress = sp_core::H160;

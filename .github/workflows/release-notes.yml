@@ -68,7 +68,7 @@ jobs:
           subwasm meta $WASM_PATH
           subwasm --json meta $WASM_PATH > ${{ env.CHAIN }}-metadata.json
 
-          subwasm get wss://karura-rpc-2.aca-api.network/ws --output runtime_mainnet.wasm
+          subwasm get wss://karura-rpc-2.aca-api.network:443/ws --output runtime_mainnet.wasm
           subwasm diff $WASM_PATH runtime_mainnet.wasm | tee ${{ env.CHAIN }}-diff.txt
 
       - name: Generate note

@@ -29,7 +29,7 @@ use sp_runtime::{
 	traits::{BlakeTwo256, Block as BlockT},
 	Justifications,
 };
-use sp_storage::{ChildInfo, PrefixedStorageKey, StorageData, StorageKey};
+use sp_storage::{ChildInfo, StorageData, StorageKey};
 use std::sync::Arc;
 
 /// A set of APIs that polkadot-like runtimes must implement.
@@ -399,38 +399,6 @@ impl sc_client_api::StorageProvider<Block, crate::FullBackend> for Client {
 			Self::Karura(client) => client.child_storage_hash(id, child_info, key),
 			#[cfg(feature = "with-acala-runtime")]
 			Self::Acala(client) => client.child_storage_hash(id, child_info, key),
-		}
-	}
-
-	fn max_key_changes_range(
-		&self,
-		first: NumberFor<Block>,
-		last: BlockId<Block>,
-	) -> sp_blockchain::Result<Option<(NumberFor<Block>, BlockId<Block>)>> {
-		match self {
-			#[cfg(feature = "with-mandala-runtime")]
-			Self::Mandala(client) => client.max_key_changes_range(first, last),
-			#[cfg(feature = "with-karura-runtime")]
-			Self::Karura(client) => client.max_key_changes_range(first, last),
-			#[cfg(feature = "with-acala-runtime")]
-			Self::Acala(client) => client.max_key_changes_range(first, last),
-		}
-	}
-
-	fn key_changes(
-		&self,
-		first: NumberFor<Block>,
-		last: BlockId<Block>,
-		storage_key: Option<&PrefixedStorageKey>,
-		key: &StorageKey,
-	) -> sp_blockchain::Result<Vec<(NumberFor<Block>, u32)>> {
-		match self {
-			#[cfg(feature = "with-mandala-runtime")]
-			Self::Mandala(client) => client.key_changes(first, last, storage_key, key),
-			#[cfg(feature = "with-karura-runtime")]
-			Self::Karura(client) => client.key_changes(first, last, storage_key, key),
-			#[cfg(feature = "with-acala-runtime")]
-			Self::Acala(client) => client.key_changes(first, last, storage_key, key),
 		}
 	}
 }

@@ -36,7 +36,6 @@ use sp_runtime::{
 	traits::{AccountIdConversion, One, Zero},
 	ArithmeticError, DispatchError, DispatchResult, FixedPointNumber,
 };
-use sp_std::convert::TryInto;
 use support::{AuctionManager, CDPTreasury, CDPTreasuryExtended, DEXManager, Ratio};
 
 mod mock;
