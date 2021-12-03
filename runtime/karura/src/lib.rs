@@ -84,9 +84,9 @@ mod weights;
 pub use frame_support::{
 	construct_runtime, log, parameter_types,
 	traits::{
-		Contains, ContainsLengthBound, Currency as PalletCurrency, EnsureOrigin, Everything, Get, Imbalance,
-		InstanceFilter, IsSubType, IsType, KeyOwnerProofSystem, LockIdentifier, Nothing, OnUnbalanced, Randomness,
-		SortedMembers, U128CurrencyToVote,
+		Contains, ContainsLengthBound, Currency as PalletCurrency, EnsureOrigin, EqualPrivilegeOnly, Everything, Get,
+		Imbalance, InstanceFilter, IsSubType, IsType, KeyOwnerProofSystem, LockIdentifier, Nothing, OnUnbalanced,
+		Randomness, SortedMembers, U128CurrencyToVote,
 	},
 	weights::{constants::RocksDbWeight, IdentityFee, Weight},
 	PalletId, RuntimeDebug, StorageValue,
@@ -100,10 +100,11 @@ pub use sp_runtime::BuildStorage;
 pub use authority::AuthorityConfigImpl;
 pub use constants::{fee::*, parachains, time::*};
 pub use primitives::{
-	define_combined_task, evm::EstimateResourcesRequest, task::TaskResult, AccountId, AccountIndex, Address, Amount,
-	AuctionId, AuthoritysOriginId, Balance, BlockNumber, CurrencyId, DataProviderId, EraIndex, Hash, Moment, Nonce,
-	ReserveIdentifier, Share, Signature, TokenSymbol, TradingPair,
+	convert_decimals_to_evm, define_combined_task, evm::EstimateResourcesRequest, task::TaskResult, AccountId,
+	AccountIndex, Address, Amount, AuctionId, AuthoritysOriginId, Balance, BlockNumber, CurrencyId, DataProviderId,
+	EraIndex, Hash, Moment, Nonce, ReserveIdentifier, Share, Signature, TokenSymbol, TradingPair,
 };
+use runtime_common::AcalaDropAssets;
 pub use runtime_common::{
 	cent, dollar, microcent, millicent, EnsureRootOrAllGeneralCouncil, EnsureRootOrAllTechnicalCommittee,
 	EnsureRootOrHalfFinancialCouncil, EnsureRootOrHalfGeneralCouncil, EnsureRootOrHalfHomaCouncil,
@@ -155,6 +156,7 @@ parameter_types! {
 	pub const DEXPalletId: PalletId = PalletId(*b"aca/dexm");
 	pub const CDPTreasuryPalletId: PalletId = PalletId(*b"aca/cdpt");
 	pub const HonzonTreasuryPalletId: PalletId = PalletId(*b"aca/hztr");
+	pub const HomaPalletId: PalletId = PalletId(*b"aca/homa");
 	pub const HomaTreasuryPalletId: PalletId = PalletId(*b"aca/hmtr");
 	pub const IncentivesPalletId: PalletId = PalletId(*b"aca/inct");
 	pub const CollatorPotId: PalletId = PalletId(*b"aca/cpot");
@@ -171,6 +173,7 @@ pub fn get_all_module_accounts() -> Vec<AccountId> {
 		CDPTreasuryPalletId::get().into_account(),
 		CollatorPotId::get().into_account(),
 		DEXPalletId::get().into_account(),
+		HomaPalletId::get().into_account(),
 		HomaTreasuryPalletId::get().into_account(),
 		HonzonTreasuryPalletId::get().into_account(),
 		IncentivesPalletId::get().into_account(),
@@ -311,6 +314,7 @@ parameter_types! {
 	pub const MaxInvulnerables: u32 = 10;
 	pub const KickPenaltySessionLength: u32 = 8;
 	pub const CollatorKickThreshold: Permill = Permill::from_percent(85);
+	pub MinRewardDistributeAmount: Balance = 0;
 }
 
 impl module_collator_selection::Config for Runtime {
@@ -324,6 +328,7 @@ impl module_collator_selection::Config for Runtime {
 	type MaxInvulnerables = MaxInvulnerables;
 	type KickPenaltySessionLength = KickPenaltySessionLength;
 	type CollatorKickThreshold = CollatorKickThreshold;
+	type MinRewardDistributeAmount = MinRewardDistributeAmount;
 	type WeightInfo = weights::module_collator_selection::WeightInfo<Runtime>;
 }
 
@@ -521,6 +526,7 @@ impl pallet_membership::Config<OperatorMembershipInstanceAcala> for Runtime {
 impl pallet_utility::Config for Runtime {
 	type Event = Event;
 	type Call = Call;
+	type PalletsOrigin = OriginCaller;
 	type WeightInfo = ();
 }
 
@@ -817,6 +823,7 @@ impl module_prices::Config for Runtime {
 	type GetStakingCurrencyId = GetStakingCurrencyId;
 	type GetLiquidCurrencyId = GetLiquidCurrencyId;
 	type LockOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
+	// TODO: need to switch to Homa after open Homa and close HomaLite
 	type LiquidStakingExchangeRateProvider = HomaLite;
 	type DEX = Dex;
 	type Currency = Currencies;
@@ -838,7 +845,7 @@ impl module_currencies::Config for Runtime {
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type WeightInfo = weights::module_currencies::WeightInfo<Runtime>;
 	type AddressMapping = EvmAddressMapping<Runtime>;
-	type EVMBridge = EVMBridge;
+	type EVMBridge = module_evm_bridge::EVMBridge<Runtime>;
 	type SweepOrigin = EnsureRootOrOneGeneralCouncil;
 	type OnDust = module_currencies::TransferDust<Runtime, KaruraTreasuryAccount>;
 }
@@ -905,6 +912,7 @@ impl pallet_scheduler::Config for Runtime {
 	type ScheduleOrigin = EnsureRoot<AccountId>;
 	type MaxScheduledPerBlock = MaxScheduledPerBlock;
 	type WeightInfo = ();
+	type OriginPrivilegeCmp = EqualPrivilegeOnly;
 }
 
 parameter_types! {
@@ -1144,7 +1152,7 @@ impl module_evm_accounts::Config for Runtime {
 impl module_asset_registry::Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
-	type EVMBridge = EVMBridge;
+	type EVMBridge = module_evm_bridge::EVMBridge<Runtime>;
 	type RegisterOrigin = EnsureRootOrHalfGeneralCouncil;
 	type WeightInfo = weights::module_asset_registry::WeightInfo<Runtime>;
 }
@@ -1293,8 +1301,8 @@ parameter_types! {
 pub struct StorageDepositPerByte;
 impl<I: From<Balance>> frame_support::traits::Get<I> for StorageDepositPerByte {
 	fn get() -> I {
-		// NOTE: use 18 decimals
-		I::from(100 * dollar(KAR))
+		// NOTE: KAR decimals is 12, convert to 18.
+		I::from(convert_decimals_to_evm(deposit(0, 1)))
 	}
 }
 
@@ -1513,7 +1521,14 @@ impl xcm_executor::Config for XcmConfig {
 	type Weigher = FixedWeightBounds<UnitWeightCost, Call, MaxInstructions>;
 	type Trader = Trader;
 	type ResponseHandler = PolkadotXcm;
-	type AssetTrap = PolkadotXcm;
+	type AssetTrap = AcalaDropAssets<
+		PolkadotXcm,
+		ToTreasury,
+		CurrencyIdConvert,
+		GetNativeCurrencyId,
+		NativeTokenExistentialDeposit,
+		ExistentialDeposits,
+	>;
 	type AssetClaims = PolkadotXcm;
 	type SubscriptionService = PolkadotXcm;
 }
@@ -1625,6 +1640,44 @@ impl module_homa_lite::Config for Runtime {
 	type RelayChainUnbondingSlashingSpans = RelayChainUnbondingSlashingSpans;
 	type MaxScheduledUnbonds = MaxScheduledUnbonds;
 	type StakingUpdateFrequency = OneDay;
+}
+
+parameter_types! {
+	pub HomaTreasuryAccount: AccountId = HomaTreasuryPalletId::get().into_account();
+	pub ActiveSubAccountsIndexList: Vec<u16> = vec![RelayChainSubAccountId::HomaLite as u16];
+	pub KusamaBondingDuration: EraIndex = 7;
+}
+
+impl module_homa::Config for Runtime {
+	type Event = Event;
+	type Currency = Currencies;
+	type GovernanceOrigin = EnsureRootOrHalfGeneralCouncil;
+	type StakingCurrencyId = KSMCurrencyId;
+	type LiquidCurrencyId = LKSMCurrencyId;
+	type PalletId = HomaPalletId;
+	type TreasuryAccount = HomaTreasuryAccount;
+	type DefaultExchangeRate = DefaultExchangeRate;
+	type ActiveSubAccountsIndexList = ActiveSubAccountsIndexList;
+	type BondingDuration = KusamaBondingDuration;
+	type HomaXcm = HomaXcm;
+}
+
+pub struct SubAccountIndexMultiLocationConvertor;
+impl Convert<u16, MultiLocation> for SubAccountIndexMultiLocationConvertor {
+	fn convert(sub_account_index: u16) -> MultiLocation {
+		create_x2_parachain_multilocation(sub_account_index)
+	}
+}
+
+impl module_homa_xcm::Config for Runtime {
+	type Event = Event;
+	type UpdateOrigin = EnsureRootOrHalfGeneralCouncil;
+	type StakingCurrencyId = KSMCurrencyId;
+	type ParachainAccount = ParachainAccount;
+	type RelayChainUnbondingSlashingSpans = RelayChainUnbondingSlashingSpans;
+	type SovereignSubAccountLocationConvert = SubAccountIndexMultiLocationConvertor;
+	type RelayChainCallBuilder = RelayChainCallBuilder<Runtime, ParachainInfo>;
+	type XcmTransfer = XTokens;
 }
 
 pub type LocalAssetTransactor = MultiCurrencyAdapter<
@@ -1880,6 +1933,8 @@ construct_runtime!(
 
 		// Homa
 		HomaLite: module_homa_lite::{Pallet, Call, Storage, Event<T>} = 115,
+		Homa: module_homa::{Pallet, Call, Storage, Event<T>} = 116,
+		HomaXcm: module_homa_xcm::{Pallet, Call, Storage, Event<T>} = 117,
 
 		// Karura Other
 		Incentives: module_incentives::{Pallet, Storage, Call, Event<T>} = 120,

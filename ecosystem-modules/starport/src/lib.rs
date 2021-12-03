@@ -51,7 +51,7 @@ use sp_runtime::{
 	traits::{AccountIdConversion, BlakeTwo256, Hash},
 	AccountId32, Perbill,
 };
-use sp_std::{convert::TryFrom, prelude::*};
+use sp_std::prelude::*;
 
 pub use module::*;
 

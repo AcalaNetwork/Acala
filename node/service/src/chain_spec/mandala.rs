@@ -282,7 +282,6 @@ fn testnet_genesis(
 		system: SystemConfig {
 			// Add Wasm runtime to storage.
 			code: wasm_binary.to_vec(),
-			changes_trie_config: Default::default(),
 		},
 		starport: StarportConfig {
 			initial_authorities: vec![get_account_id_from_seed::<sr25519::Public>("Alice")],
@@ -474,7 +473,6 @@ fn mandala_genesis(
 		system: SystemConfig {
 			// Add Wasm runtime to storage.
 			code: wasm_binary.to_vec(),
-			changes_trie_config: Default::default(),
 		},
 		starport: StarportConfig {
 			initial_authorities: vec![get_account_id_from_seed::<sr25519::Public>("Alice")],

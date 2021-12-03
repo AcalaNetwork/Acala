@@ -25,8 +25,7 @@ use frame_support::{log, pallet_prelude::*, transactional, PalletId};
 use frame_system::{ensure_signed, pallet_prelude::*};
 use module_support::{ExchangeRate, ExchangeRateProvider, HomaSubAccountXcm, Rate, Ratio};
 use orml_traits::MultiCurrency;
-use pallet_staking::EraIndex;
-use primitives::{Balance, CurrencyId};
+use primitives::{Balance, CurrencyId, EraIndex};
 use scale_info::TypeInfo;
 use sp_runtime::{
 	traits::{AccountIdConversion, Bounded, CheckedDiv, One, Saturating, UniqueSaturatedInto, Zero},
