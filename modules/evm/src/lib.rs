@@ -61,6 +61,7 @@ pub use module_support::{
 pub use orml_traits::currency::TransferAll;
 use primitive_types::{H160, H256, U256};
 pub use primitives::{
+	convert_decimals_from_evm, convert_decimals_to_evm,
 	evm::{
 		CallInfo, CreateInfo, EvmAddress, ExecutionInfo, Vicinity, MIRRORED_NFT_ADDRESS_START,
 		MIRRORED_TOKENS_ADDRESS_START,
@@ -83,7 +84,6 @@ use sp_runtime::{
 use sp_std::{
 	cmp,
 	collections::btree_map::BTreeMap,
-	convert::TryInto,
 	fmt::{Debug, Write},
 	marker::PhantomData,
 	prelude::*,
@@ -236,6 +236,11 @@ pub mod module {
 		/// Storage required for per byte.
 		#[pallet::constant]
 		type StorageDepositPerByte: Get<BalanceOf<Self>>;
+
+		/// Tx fee required for per gas.
+		/// Provide to the client
+		#[pallet::constant]
+		type TxFeePerGas: Get<BalanceOf<Self>>;
 
 		/// The overarching event type.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
@@ -523,13 +528,19 @@ pub mod module {
 		UnreserveStorageFailed,
 		/// Charge storage failed
 		ChargeStorageFailed,
+		/// Invalid decimals
+		InvalidDecimals,
 	}
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
 
 	#[pallet::hooks]
-	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {}
+	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
+		fn integrity_test() {
+			assert!(convert_decimals_from_evm(T::StorageDepositPerByte::get()).is_some());
+		}
+	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
@@ -916,6 +927,12 @@ pub mod module {
 }
 
 impl<T: Config> Pallet<T> {
+	/// Get StorageDepositPerByte of actual decimals
+	pub fn get_storage_deposit_per_byte() -> BalanceOf<T> {
+		// StorageDepositPerByte decimals is 18, KAR/ACA decimals is 12, convert to 12 here.
+		convert_decimals_from_evm(T::StorageDepositPerByte::get()).expect("checked in integrity_test; qed")
+	}
+
 	/// Check whether an account is empty.
 	pub fn is_account_empty(address: &H160) -> bool {
 		let account_id = T::AddressMapping::get_account_id(address);
@@ -1081,7 +1098,9 @@ impl<T: Config> Pallet<T> {
 
 		Account {
 			nonce: U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(nonce)),
-			balance: U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(balance)),
+			balance: U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(
+				convert_decimals_to_evm(balance),
+			)),
 		}
 	}
 
@@ -1300,7 +1319,7 @@ impl<T: Config> Pallet<T> {
 		}
 
 		let user = T::AddressMapping::get_account_id(caller);
-		let amount = T::StorageDepositPerByte::get().saturating_mul(limit.into());
+		let amount = Self::get_storage_deposit_per_byte().saturating_mul(limit.into());
 
 		log::debug!(
 			target: "evm",
@@ -1319,7 +1338,7 @@ impl<T: Config> Pallet<T> {
 		}
 
 		let user = T::AddressMapping::get_account_id(caller);
-		let amount = T::StorageDepositPerByte::get().saturating_mul(unused.into());
+		let amount = Self::get_storage_deposit_per_byte().saturating_mul(unused.into());
 
 		log::debug!(
 			target: "evm",
@@ -1341,7 +1360,7 @@ impl<T: Config> Pallet<T> {
 
 		let user = T::AddressMapping::get_account_id(caller);
 		let contract_acc = T::AddressMapping::get_account_id(contract);
-		let amount = T::StorageDepositPerByte::get().saturating_mul((storage.abs() as u32).into());
+		let amount = Self::get_storage_deposit_per_byte().saturating_mul((storage.abs() as u32).into());
 
 		log::debug!(
 			target: "evm",
@@ -1462,6 +1481,7 @@ impl<T: Config> EVMStateRentTrait<T::AccountId, BalanceOf<T>> for Pallet<T> {
 	}
 
 	fn query_storage_deposit_per_byte() -> BalanceOf<T> {
+		// the decimals is already 18
 		T::StorageDepositPerByte::get()
 	}
 
@@ -1474,11 +1494,11 @@ impl<T: Config> EVMStateRentTrait<T::AccountId, BalanceOf<T>> for Pallet<T> {
 	}
 
 	fn query_developer_deposit() -> BalanceOf<T> {
-		T::DeveloperDeposit::get()
+		convert_decimals_to_evm(T::DeveloperDeposit::get())
 	}
 
 	fn query_deployment_fee() -> BalanceOf<T> {
-		T::DeploymentFee::get()
+		convert_decimals_to_evm(T::DeploymentFee::get())
 	}
 
 	fn transfer_maintainer(from: T::AccountId, contract: EvmAddress, new_maintainer: EvmAddress) -> DispatchResult {

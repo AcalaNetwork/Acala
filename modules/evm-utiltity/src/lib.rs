@@ -23,7 +23,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use sha3::{Digest, Keccak256};
-use sp_std::convert::TryInto;
 
 pub use ethereum;
 pub use evm::{self, backend::Basic as Account};

@@ -21,6 +21,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode, MaxEncodedLen};
+use frame_support::traits::Get;
 use frame_support::{
 	parameter_types,
 	traits::Contains,
@@ -49,14 +50,19 @@ mod homa;
 pub use homa::*;
 
 pub mod precompile;
+use orml_traits::GetByKey;
 pub use precompile::{
 	AllPrecompiles, DexPrecompile, MultiCurrencyPrecompile, NFTPrecompile, OraclePrecompile, ScheduleCallPrecompile,
 	StateRentPrecompile,
 };
 pub use primitives::{
-	currency::{TokenInfo, ACA, AUSD, BNC, DOT, KAR, KSM, KUSD, LDOT, LKSM, RENBTC, VSKSM},
+	currency::{TokenInfo, ACA, AUSD, BNC, DOT, KAR, KSM, KUSD, LDOT, LKSM, PHA, RENBTC, VSKSM},
 	AccountId,
 };
+use sp_std::{marker::PhantomData, prelude::*};
+pub use xcm::latest::prelude::*;
+pub use xcm_builder::TakeRevenue;
+pub use xcm_executor::{traits::DropAssets, Assets};
 
 mod gas_to_weight_ratio;
 
@@ -82,8 +88,8 @@ impl PrecompileCallerFilter for SystemContractsFilter {
 /// Convert gas to weight
 pub struct GasToWeight;
 impl Convert<u64, Weight> for GasToWeight {
-	fn convert(a: u64) -> Weight {
-		a.saturating_mul(gas_to_weight_ratio::RATIO)
+	fn convert(gas: u64) -> Weight {
+		gas.saturating_mul(gas_to_weight_ratio::RATIO)
 	}
 }
 
@@ -326,6 +332,73 @@ impl Default for ProxyType {
 #[repr(u16)]
 pub enum RelayChainSubAccountId {
 	HomaLite = 0,
+}
+
+/// `DropAssets` implementation support asset amount lower thant ED handled by `TakeRevenue`.
+///
+/// parameters type:
+/// - `NC`: native currency_id type.
+/// - `NB`: the ExistentialDeposit amount of native currency_id.
+/// - `GK`: the ExistentialDeposit amount of tokens.
+pub struct AcalaDropAssets<X, T, C, NC, NB, GK>(PhantomData<(X, T, C, NC, NB, GK)>);
+impl<X, T, C, NC, NB, GK> DropAssets for AcalaDropAssets<X, T, C, NC, NB, GK>
+where
+	X: DropAssets,
+	T: TakeRevenue,
+	C: Convert<MultiLocation, Option<CurrencyId>>,
+	NC: Get<CurrencyId>,
+	NB: Get<Balance>,
+	GK: GetByKey<CurrencyId, Balance>,
+{
+	fn drop_assets(origin: &MultiLocation, assets: Assets) -> Weight {
+		let multi_assets: Vec<MultiAsset> = assets.into();
+		let mut asset_traps: Vec<MultiAsset> = vec![];
+		for asset in multi_assets {
+			if let MultiAsset {
+				id: Concrete(location),
+				fun: Fungible(amount),
+			} = asset.clone()
+			{
+				let currency_id = C::convert(location);
+				// burn asset(do nothing here) if convert result is None
+				if let Some(currency_id) = currency_id {
+					let ed = ExistentialDepositsForDropAssets::<NC, NB, GK>::get(&currency_id);
+					if amount < ed {
+						T::take_revenue(asset);
+					} else {
+						asset_traps.push(asset);
+					}
+				}
+			}
+		}
+		if !asset_traps.is_empty() {
+			X::drop_assets(origin, asset_traps.into());
+		}
+		0
+	}
+}
+
+/// `ExistentialDeposit` for tokens, give priority to match native token, then handled by
+/// `ExistentialDeposits`.
+///
+/// parameters type:
+/// - `NC`: native currency_id type.
+/// - `NB`: the ExistentialDeposit amount of native currency_id.
+/// - `GK`: the ExistentialDeposit amount of tokens.
+pub struct ExistentialDepositsForDropAssets<NC, NB, GK>(PhantomData<(NC, NB, GK)>);
+impl<NC, NB, GK> ExistentialDepositsForDropAssets<NC, NB, GK>
+where
+	NC: Get<CurrencyId>,
+	NB: Get<Balance>,
+	GK: GetByKey<CurrencyId, Balance>,
+{
+	fn get(currency_id: &CurrencyId) -> Balance {
+		if currency_id == &NC::get() {
+			NB::get()
+		} else {
+			GK::get(currency_id)
+		}
+	}
 }
 
 #[cfg(test)]

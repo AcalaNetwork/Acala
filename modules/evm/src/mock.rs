@@ -37,6 +37,8 @@ use sp_runtime::{
 };
 use std::{collections::BTreeMap, str::FromStr};
 
+type Balance = u128;
+
 mod evm_mod {
 	pub use super::super::*;
 }
@@ -63,7 +65,7 @@ impl frame_system::Config for Runtime {
 	type DbWeight = ();
 	type Version = ();
 	type PalletInfo = PalletInfo;
-	type AccountData = pallet_balances::AccountData<u64>;
+	type AccountData = pallet_balances::AccountData<Balance>;
 	type OnNewAccount = ();
 	type OnKilledAccount = crate::CallKillAccount<Runtime>;
 	type SystemWeightInfo = ();
@@ -72,11 +74,11 @@ impl frame_system::Config for Runtime {
 }
 
 parameter_types! {
-	pub const ExistentialDeposit: u64 = 1;
+	pub const ExistentialDeposit: Balance = 1;
 	pub const MaxReserves: u32 = 50;
 }
 impl pallet_balances::Config for Runtime {
-	type Balance = u64;
+	type Balance = Balance;
 	type DustRemoval = ();
 	type Event = Event;
 	type ExistentialDeposit = ExistentialDeposit;
@@ -98,14 +100,14 @@ impl pallet_timestamp::Config for Runtime {
 }
 
 parameter_type_with_key! {
-	pub ExistentialDeposits: |_currency_id: CurrencyId| -> u64 {
+	pub ExistentialDeposits: |_currency_id: CurrencyId| -> Balance {
 		Default::default()
 	};
 }
 
 impl orml_tokens::Config for Runtime {
 	type Event = Event;
-	type Balance = u64;
+	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
 	type WeightInfo = ();
@@ -173,9 +175,10 @@ ord_parameter_types! {
 	pub const TreasuryAccount: AccountId32 = AccountId32::from([2u8; 32]);
 	pub const NetworkContractAccount: AccountId32 = AccountId32::from([0u8; 32]);
 	pub const NewContractExtraBytes: u32 = 100;
-	pub const StorageDepositPerByte: u64 = 10;
-	pub const DeveloperDeposit: u64 = 1000;
-	pub const DeploymentFee: u64 = 200;
+	pub const StorageDepositPerByte: Balance = convert_decimals_to_evm(10);
+	pub const TxFeePerGas: Balance = 20_000_000;
+	pub const DeveloperDeposit: Balance = 1000;
+	pub const DeploymentFee: Balance = 200;
 	pub const ChainId: u64 = 1;
 }
 
@@ -185,6 +188,7 @@ impl Config for Runtime {
 	type TransferAll = Currencies;
 	type NewContractExtraBytes = NewContractExtraBytes;
 	type StorageDepositPerByte = StorageDepositPerByte;
+	type TxFeePerGas = TxFeePerGas;
 
 	type Event = Event;
 	type Precompiles = ();
@@ -224,7 +228,7 @@ construct_runtime!(
 	}
 );
 
-pub const INITIAL_BALANCE: u64 = 1_000_000_000_000;
+pub const INITIAL_BALANCE: Balance = 1_000_000_000_000_000;
 
 pub fn contract_a() -> H160 {
 	H160::from_str("2000000000000000000000000000000000000001").unwrap()
@@ -308,12 +312,16 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	ext
 }
 
-pub fn balance(address: H160) -> u64 {
+pub fn balance(address: H160) -> Balance {
 	let account_id = <Runtime as Config>::AddressMapping::get_account_id(&address);
 	Balances::free_balance(account_id)
 }
 
-pub fn reserved_balance(address: H160) -> u64 {
+pub fn eth_balance(address: H160) -> U256 {
+	EVM::account_basic(&address).balance
+}
+
+pub fn reserved_balance(address: H160) -> Balance {
 	let account_id = <Runtime as Config>::AddressMapping::get_account_id(&address);
 	Balances::reserved_balance(account_id)
 }

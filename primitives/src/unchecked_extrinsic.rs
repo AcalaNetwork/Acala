@@ -16,10 +16,11 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{evm::EthereumTransactionMessage, signature::AcalaMultiSignature, Address};
+use crate::{evm::EthereumTransactionMessage, signature::AcalaMultiSignature, Address, Balance};
 use codec::{Decode, Encode};
 use frame_support::{
-	traits::ExtrinsicCall,
+	log,
+	traits::{ExtrinsicCall, Get},
 	weights::{DispatchInfo, GetDispatchInfo},
 };
 use module_evm_utiltity::ethereum::{LegacyTransactionMessage, TransactionAction};
@@ -37,13 +38,14 @@ use sp_std::{marker::PhantomData, prelude::*};
 
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo)]
 #[scale_info(skip_type_params(ConvertTx))]
-pub struct AcalaUncheckedExtrinsic<Call, Extra: SignedExtension, ConvertTx>(
+pub struct AcalaUncheckedExtrinsic<Call, Extra: SignedExtension, ConvertTx, StorageDepositPerByte, TxFeePerGas>(
 	pub UncheckedExtrinsic<Address, Call, AcalaMultiSignature, Extra>,
-	PhantomData<ConvertTx>,
+	PhantomData<(ConvertTx, StorageDepositPerByte, TxFeePerGas)>,
 );
 
 #[cfg(feature = "std")]
-impl<Call, Extra, ConvertTx> parity_util_mem::MallocSizeOf for AcalaUncheckedExtrinsic<Call, Extra, ConvertTx>
+impl<Call, Extra, ConvertTx, StorageDepositPerByte, TxFeePerGas> parity_util_mem::MallocSizeOf
+	for AcalaUncheckedExtrinsic<Call, Extra, ConvertTx, StorageDepositPerByte, TxFeePerGas>
 where
 	Extra: SignedExtension,
 {
@@ -53,7 +55,9 @@ where
 	}
 }
 
-impl<Call, Extra: SignedExtension, ConvertTx> Extrinsic for AcalaUncheckedExtrinsic<Call, Extra, ConvertTx> {
+impl<Call, Extra: SignedExtension, ConvertTx, StorageDepositPerByte, TxFeePerGas> Extrinsic
+	for AcalaUncheckedExtrinsic<Call, Extra, ConvertTx, StorageDepositPerByte, TxFeePerGas>
+{
 	type Call = Call;
 
 	type SignaturePayload = (Address, AcalaMultiSignature, Extra);
@@ -74,12 +78,16 @@ impl<Call, Extra: SignedExtension, ConvertTx> Extrinsic for AcalaUncheckedExtrin
 	}
 }
 
-impl<Call, Extra: SignedExtension, ConvertTx> ExtrinsicMetadata for AcalaUncheckedExtrinsic<Call, Extra, ConvertTx> {
+impl<Call, Extra: SignedExtension, ConvertTx, StorageDepositPerByte, TxFeePerGas> ExtrinsicMetadata
+	for AcalaUncheckedExtrinsic<Call, Extra, ConvertTx, StorageDepositPerByte, TxFeePerGas>
+{
 	const VERSION: u8 = UncheckedExtrinsic::<Address, Call, AcalaMultiSignature, Extra>::VERSION;
 	type SignedExtensions = Extra;
 }
 
-impl<Call, Extra: SignedExtension, ConvertTx> ExtrinsicCall for AcalaUncheckedExtrinsic<Call, Extra, ConvertTx> {
+impl<Call, Extra: SignedExtension, ConvertTx, StorageDepositPerByte, TxFeePerGas> ExtrinsicCall
+	for AcalaUncheckedExtrinsic<Call, Extra, ConvertTx, StorageDepositPerByte, TxFeePerGas>
+{
 	fn call(&self) -> &Self::Call {
 		self.0.call()
 	}
@@ -89,11 +97,14 @@ fn to_bytes<T: Into<U256>>(value: T) -> [u8; 32] {
 	Into::<[u8; 32]>::into(value.into())
 }
 
-impl<Call, Extra, ConvertTx, Lookup> Checkable<Lookup> for AcalaUncheckedExtrinsic<Call, Extra, ConvertTx>
+impl<Call, Extra, ConvertTx, StorageDepositPerByte, TxFeePerGas, Lookup> Checkable<Lookup>
+	for AcalaUncheckedExtrinsic<Call, Extra, ConvertTx, StorageDepositPerByte, TxFeePerGas>
 where
 	Call: Encode + Member,
 	Extra: SignedExtension<AccountId = AccountId32>,
 	ConvertTx: Convert<(Call, Extra), Result<EthereumTransactionMessage, InvalidTransaction>>,
+	StorageDepositPerByte: Get<Balance>,
+	TxFeePerGas: Get<Balance>,
 	Lookup: traits::Lookup<Source = Address, Target = AccountId32>,
 {
 	type Checked = CheckedExtrinsic<AccountId32, Call, Extra>;
@@ -109,13 +120,37 @@ where
 					return Err(InvalidTransaction::BadProof.into());
 				}
 
-				// we merge storage_limit and valid_until into gas_price
-				let gas_price = (eth_msg.storage_limit as u64) << 32 | eth_msg.valid_until as u64;
+				// tx_gas_price = tx_fee_per_gas + block_period << 16 + storage_entry_limit
+				// tx_gas_limit = gas_limit + storage_entry_deposit / tx_fee_per_gas * storage_entry_limit
+				let block_period = eth_msg.valid_until.checked_div(30).expect("divisor is non-zero; qed");
+				// u16: max value 0xffff * 64 = 4194240 bytes = 4MB
+				let storage_entry_limit: u16 = eth_msg
+					.storage_limit
+					.checked_div(64)
+					.expect("divisor is non-zero; qed")
+					.try_into()
+					.map_err(|_| InvalidTransaction::BadProof)?;
+				let storage_entry_deposit = StorageDepositPerByte::get().saturating_mul(64);
+				let tx_gas_price = TxFeePerGas::get()
+					.saturating_add((block_period << 16).into())
+					.saturating_add(storage_entry_limit.into());
+				// There is a loss of precision here, so the order of calculation must be guaranteed
+				// must ensure storage_deposit / tx_fee_per_gas * storage_limit
+				let tx_gas_limit = storage_entry_deposit
+					.checked_div(TxFeePerGas::get())
+					.expect("divisor is non-zero; qed")
+					.saturating_mul(storage_entry_limit.into())
+					.saturating_add(eth_msg.gas_limit.into());
+
+				log::trace!(
+					target: "evm", "eth_msg.gas_limit: {:?}, eth_msg.storage_limit: {:?}, tx_gas_limit: {:?}, tx_gas_price: {:?}",
+					eth_msg.storage_limit, eth_msg.gas_limit, tx_gas_limit, tx_gas_price
+				);
 
 				let msg = LegacyTransactionMessage {
 					nonce: eth_msg.nonce.into(),
-					gas_price: gas_price.into(),
-					gas_limit: eth_msg.gas_limit.into(),
+					gas_price: tx_gas_price.into(),
+					gas_limit: tx_gas_limit.into(),
 					action: eth_msg.action,
 					value: eth_msg.value.into(),
 					input: eth_msg.input,
@@ -161,7 +196,8 @@ where
 	}
 }
 
-impl<Call, Extra, ConvertTx> GetDispatchInfo for AcalaUncheckedExtrinsic<Call, Extra, ConvertTx>
+impl<Call, Extra, ConvertTx, StorageDepositPerByte, TxFeePerGas> GetDispatchInfo
+	for AcalaUncheckedExtrinsic<Call, Extra, ConvertTx, StorageDepositPerByte, TxFeePerGas>
 where
 	Call: GetDispatchInfo,
 	Extra: SignedExtension,
@@ -172,8 +208,8 @@ where
 }
 
 #[cfg(feature = "std")]
-impl<Call: Encode, Extra: SignedExtension, ConvertTx> serde::Serialize
-	for AcalaUncheckedExtrinsic<Call, Extra, ConvertTx>
+impl<Call: Encode, Extra: SignedExtension, ConvertTx, StorageDepositPerByte, TxFeePerGas> serde::Serialize
+	for AcalaUncheckedExtrinsic<Call, Extra, ConvertTx, StorageDepositPerByte, TxFeePerGas>
 {
 	fn serialize<S>(&self, seq: S) -> Result<S::Ok, S::Error>
 	where
@@ -184,8 +220,8 @@ impl<Call: Encode, Extra: SignedExtension, ConvertTx> serde::Serialize
 }
 
 #[cfg(feature = "std")]
-impl<'a, Call: Decode, Extra: SignedExtension, ConvertTx> serde::Deserialize<'a>
-	for AcalaUncheckedExtrinsic<Call, Extra, ConvertTx>
+impl<'a, Call: Decode, Extra: SignedExtension, ConvertTx, StorageDepositPerByte, TxFeePerGas> serde::Deserialize<'a>
+	for AcalaUncheckedExtrinsic<Call, Extra, ConvertTx, StorageDepositPerByte, TxFeePerGas>
 {
 	fn deserialize<D>(de: D) -> Result<Self, D::Error>
 	where

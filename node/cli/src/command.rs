@@ -87,6 +87,8 @@ impl SubstrateCli for Cli {
 			#[cfg(feature = "with-acala-runtime")]
 			"acala" => Box::new(chain_spec::acala::acala_config()?),
 			#[cfg(feature = "with-acala-runtime")]
+			"wendala" => Box::new(chain_spec::acala::wendala_config()?),
+			#[cfg(feature = "with-acala-runtime")]
 			"acala-dev" => Box::new(chain_spec::acala::acala_dev_config()?),
 			#[cfg(feature = "with-acala-runtime")]
 			"acala-latest" => Box::new(chain_spec::acala::latest_acala_config()?),
@@ -175,7 +177,6 @@ impl SubstrateCli for RelayChainCli {
 	}
 
 	fn load_spec(&self, id: &str) -> std::result::Result<Box<dyn sc_service::ChainSpec>, String> {
-		println!("Loading chain spec {}", id);
 		if id == "rococo-mandala" {
 			let spec = sc_service::GenericChainSpec::<(), polkadot_service::chain_spec::Extensions>::from_json_bytes(
 				&include_bytes!("../../../resources/rococo-mandala.json")[..],
@@ -445,7 +446,9 @@ pub fn run() -> sc_cli::Result<()> {
 			set_default_ss58_version(chain_spec);
 
 			runner.run_node_until_exit(|config| async move {
-				let para_id = chain_spec::Extensions::try_get(&*config.chain_spec).map(|e| e.para_id);
+				let para_id = chain_spec::Extensions::try_get(&*config.chain_spec)
+					.map(|e| e.para_id)
+					.ok_or("Could not find parachain extension for chain-spec.")?;
 
 				if is_mandala_dev {
 					#[cfg(feature = "with-mandala-runtime")]
@@ -463,7 +466,7 @@ pub fn run() -> sc_cli::Result<()> {
 						.chain(cli.relaychain_args.iter()),
 				);
 
-				let id = ParaId::from(cli.run.parachain_id.or(para_id).unwrap_or(2000));
+				let id = ParaId::from(para_id);
 
 				let polkadot_config =
 					SubstrateCli::create_configuration(&polkadot_cli, &polkadot_cli, config.tokio_handle.clone())

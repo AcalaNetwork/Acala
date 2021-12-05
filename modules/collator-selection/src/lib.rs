@@ -97,7 +97,7 @@ pub mod pallet {
 	use pallet_session::SessionManager;
 	use primitives::ReserveIdentifier;
 	use sp_staking::SessionIndex;
-	use sp_std::{convert::TryInto, ops::Div, vec};
+	use sp_std::{ops::Div, vec};
 
 	pub const RESERVE_ID: ReserveIdentifier = ReserveIdentifier::CollatorSelection;
 	pub const POINT_PER_BLOCK: u32 = 10;
@@ -157,6 +157,10 @@ pub mod pallet {
 		/// Will be kicked if block is not produced in threshold.
 		#[pallet::constant]
 		type CollatorKickThreshold: Get<Permill>;
+
+		/// Minimum reward to be distributed to the collators.
+		#[pallet::constant]
+		type MinRewardDistributeAmount: Get<BalanceOf<Self>>;
 
 		/// The weight information of this pallet.
 		type WeightInfo: WeightInfo;
@@ -445,9 +449,12 @@ pub mod pallet {
 				.checked_sub(&T::Currency::minimum_balance())
 				.unwrap_or_default()
 				.div(2u32.into());
-			// `reward` is half of pot account minus ED, this should never fail.
-			let _success = T::Currency::transfer(&pot, &author, reward, KeepAlive);
-			debug_assert!(_success.is_ok());
+
+			if reward >= T::MinRewardDistributeAmount::get() {
+				// `reward` is half of pot account minus ED, this should never fail.
+				let _success = T::Currency::transfer(&pot, &author, reward, KeepAlive);
+				debug_assert!(_success.is_ok());
+			}
 
 			if <SessionPoints<T>>::contains_key(&author) {
 				<SessionPoints<T>>::mutate(author, |point| *point += POINT_PER_BLOCK);

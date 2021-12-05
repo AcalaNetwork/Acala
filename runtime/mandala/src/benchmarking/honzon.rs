@@ -24,7 +24,6 @@ use crate::{
 };
 
 use super::utils::{feed_price, set_balance};
-use core::convert::TryInto;
 use frame_benchmarking::{account, whitelisted_caller};
 use frame_system::RawOrigin;
 use orml_benchmarking::runtime_benchmarks;
