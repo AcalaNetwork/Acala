@@ -16,7 +16,10 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{dollar, AccountId, CurrencyId, Event, EvmAccounts, GetNativeCurrencyId, Origin, Runtime, System, EVM};
+use crate::{
+	dollar, AccountId, Currencies, CurrencyId, Event, EvmAccounts, GetNativeCurrencyId, NetworkContractSource, Origin,
+	Runtime, System, EVM,
+};
 
 use super::utils::set_balance;
 use frame_support::dispatch::DispatchError;
@@ -24,6 +27,7 @@ use frame_system::RawOrigin;
 use module_evm::MaxCodeSize;
 use module_support::AddressMapping;
 use orml_benchmarking::{runtime_benchmarks, whitelist_account};
+use orml_traits::MultiCurrency;
 use sp_core::{H160, H256};
 use sp_io::hashing::keccak_256;
 use sp_std::{str::FromStr, vec};
@@ -63,14 +67,15 @@ fn deploy_contract(caller: AccountId) -> Result<H160, DispatchError> {
 
 pub fn alice_account_id() -> AccountId {
 	let address = EvmAccounts::eth_address(&alice());
-	let mut data = [0u8; 32];
-	data[0..4].copy_from_slice(b"evm:");
-	data[4..24].copy_from_slice(&address[..]);
-	AccountId::from(Into::<[u8; 32]>::into(data))
+	evm_to_account_id(address)
 }
 
 pub fn bob_account_id() -> AccountId {
 	let address = EvmAccounts::eth_address(&bob());
+	evm_to_account_id(address)
+}
+
+fn evm_to_account_id(address: H160) -> AccountId {
 	let mut data = [0u8; 32];
 	data[0..4].copy_from_slice(b"evm:");
 	data[4..24].copy_from_slice(&address[..]);
@@ -131,6 +136,37 @@ runtime_benchmarks! {
 		let contract_address = H160::from(hex_literal::hex!("f6930000a8679e0c96af73e73c02f163e34b9d70"));
 		let code_hash = EVM::code_hash_at_address(&contract_address);
 		assert!(module_evm::Codes::<Runtime>::contains_key(code_hash));
+	}
+
+	create_network_contract {
+		let account_id = evm_to_account_id(NetworkContractSource::get());
+		set_balance(NATIVE, &account_id, 1_000_000 * dollar(NATIVE));
+	}: _(RawOrigin::Root, EMPTY_CONTRACT.to_vec(), 0, 21_000_000, 100_000)
+	verify {
+		let code_hash = H256::from(hex_literal::hex!("6383e491a074f53be137d996a7075aae9d8707a89ce2656f2e9260525b4ec7bb"));
+		assert!(module_evm::Codes::<Runtime>::contains_key(code_hash));
+	}
+
+	create_predeploy_contract {
+		let contract_address = primitives::evm::MIRRORED_TOKENS_ADDRESS_START | H160::from_low_u64_be(EVM::network_contract_index());
+		let account_id = evm_to_account_id(NetworkContractSource::get());
+		set_balance(NATIVE, &account_id, 1_000_000 * dollar(NATIVE));
+	}: _(RawOrigin::Root, contract_address, EMPTY_CONTRACT.to_vec(), 0, 21_000_000, 100_000)
+	verify {
+		let code_hash = H256::from(hex_literal::hex!("6383e491a074f53be137d996a7075aae9d8707a89ce2656f2e9260525b4ec7bb"));
+		assert!(module_evm::Codes::<Runtime>::contains_key(code_hash));
+	}
+
+	deposit_ed {
+		let account_id = <Runtime as module_evm::Config>::TreasuryAccount::get();
+		set_balance(NATIVE, &account_id, 1_000_000 * dollar(NATIVE));
+		let address = H160::from_low_u64_be(0);
+	}: create_predeploy_contract(RawOrigin::Root, address, vec![], 0, 0, 0)
+	verify {
+		assert_eq!(
+			Currencies::free_balance(NATIVE, &evm_to_account_id(address)),
+			Currencies::minimum_balance(NATIVE)
+		);
 	}
 
 	call {
@@ -234,7 +270,7 @@ mod tests {
 	impl_benchmark_test_suite!(new_test_ext(),);
 
 	#[test]
-	fn create_empty_gas_usage() {
+	fn create_gas_usage() {
 		new_test_ext().execute_with(|| {
 			let alice_account = alice_account_id();
 			set_balance(NATIVE, &alice_account, 1_000_000 * dollar(NATIVE));
@@ -259,34 +295,7 @@ mod tests {
 	}
 
 	#[test]
-	fn create2_empty_gas_usage() {
-		new_test_ext().execute_with(|| {
-			let alice_account = alice_account_id();
-			set_balance(NATIVE, &alice_account, 1_000_000 * dollar(NATIVE));
-			let caller = module_evm_accounts::EvmAddressMapping::<Runtime>::get_or_create_evm_address(&alice_account);
-			let salt = H256::repeat_byte(1);
-			let config = <Runtime as module_evm::Config>::config();
-			let result = <Runtime as module_evm::Config>::Runner::create2(
-				caller,
-				EMPTY_CONTRACT.to_vec(),
-				salt,
-				0,
-				1_000_000,
-				100_000,
-				config,
-			)
-			.unwrap();
-			assert!(result.exit_reason.is_succeed());
-			assert_eq!(
-				result.value,
-				H160::from_str("0xf6930000a8679e0c96af73e73c02f163e34b9d70").unwrap()
-			);
-			assert_eq!(result.used_gas.as_u64(), module_evm::BASE_CREATE_GAS);
-		});
-	}
-
-	#[test]
-	fn call_store_gas_usage() {
+	fn call_gas_usage() {
 		new_test_ext().execute_with(|| {
 			let alice_account = alice_account_id();
 			set_balance(NATIVE, &alice_account, 1_000_000 * dollar(NATIVE));

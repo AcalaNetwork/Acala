@@ -163,10 +163,7 @@ pub const BASE_CALL_GAS: u64 = 41_602;
 
 /// Helper method to calculate `create` weight.
 #[inline(always)]
-fn create_weight<T>(gas: u64) -> Weight
-where
-	T: Config,
-{
+fn create_weight<T: Config>(gas: u64) -> Weight {
 	<T as Config>::WeightInfo::create()
 		// during `create` benchmark an additional of `BASE_CREATE_GAS` was used
 		// so user will be extra charged only for extra gas usage
@@ -175,22 +172,34 @@ where
 
 /// Helper method to calculate `create2` weight.
 #[inline(always)]
-fn create2_weight<T>(gas: u64) -> Weight
-where
-	T: Config,
-{
+fn create2_weight<T: Config>(gas: u64) -> Weight {
 	<T as Config>::WeightInfo::create2()
 		// during `create2` benchmark an additional of `BASE_CREATE_GAS` was used
 		// so user will be extra charged only for extra gas usage
 		.saturating_add(T::GasToWeight::convert(gas.saturating_sub(BASE_CREATE_GAS)))
 }
 
+/// Helper method to calculate `create_predeploy_contract` weight.
+#[inline(always)]
+fn create_predeploy_contract<T: Config>(gas: u64) -> Weight {
+	<T as Config>::WeightInfo::create_predeploy_contract()
+		// during `create_predeploy_contract` benchmark an additional of `BASE_CREATE_GAS`
+		// was used so user will be extra charged only for extra gas usage
+		.saturating_add(T::GasToWeight::convert(gas.saturating_sub(BASE_CREATE_GAS)))
+}
+
+/// Helper method to calculate `create_network_contract` weight.
+#[inline(always)]
+fn create_network_contract<T: Config>(gas: u64) -> Weight {
+	<T as Config>::WeightInfo::create_network_contract()
+		// during `create_network_contract` benchmark an additional of `BASE_CREATE_GAS`
+		// was used so user will be extra charged only for extra gas usage
+		.saturating_add(T::GasToWeight::convert(gas.saturating_sub(BASE_CREATE_GAS)))
+}
+
 /// Helper method to calculate `call` weight.
 #[inline(always)]
-fn call_weight<T>(gas: u64) -> Weight
-where
-	T: Config,
-{
+fn call_weight<T: Config>(gas: u64) -> Weight {
 	<T as Config>::WeightInfo::call()
 		// during `call` benchmark an additional of `BASE_CALL_GAS` was used
 		// so user will be extra charged only for extra gas usage
@@ -711,9 +720,8 @@ pub mod module {
 		/// - `value`: the amount sent for payable calls
 		/// - `gas_limit`: the maximum gas the call can use
 		/// - `storage_limit`: the total bytes the contract's storage can increase by
-		#[pallet::weight(T::GasToWeight::convert(*gas_limit))]
+		#[pallet::weight(create_network_contract::<T>(*gas_limit))]
 		#[transactional]
-		// TODO: create benchmark
 		pub fn create_network_contract(
 			origin: OriginFor<T>,
 			init: Vec<u8>,
@@ -733,7 +741,7 @@ pub mod module {
 			let used_gas: u64 = info.used_gas.unique_saturated_into();
 
 			Ok(PostDispatchInfo {
-				actual_weight: Some(T::GasToWeight::convert(used_gas)),
+				actual_weight: Some(create_network_contract::<T>(used_gas)),
 				pays_fee: Pays::Yes,
 			})
 		}
@@ -746,9 +754,12 @@ pub mod module {
 		/// - `value`: the amount sent for payable calls
 		/// - `gas_limit`: the maximum gas the call can use
 		/// - `storage_limit`: the total bytes the contract's storage can increase by
-		#[pallet::weight(T::GasToWeight::convert(*gas_limit))]
+		#[pallet::weight(if init.is_empty() {
+			<T as Config>::WeightInfo::deposit_ed()
+		} else {
+			create_predeploy_contract::<T>(*gas_limit)
+		})]
 		#[transactional]
-		// TODO: create benchmark
 		pub fn create_predeploy_contract(
 			origin: OriginFor<T>,
 			target: EvmAddress,
@@ -766,7 +777,7 @@ pub mod module {
 
 			let source = T::NetworkContractSource::get();
 
-			let info = if init.is_empty() {
+			if init.is_empty() {
 				// deposit ED for mirrored token
 				T::Currency::transfer(
 					&T::TreasuryAccount::get(),
@@ -774,23 +785,19 @@ pub mod module {
 					T::Currency::minimum_balance(),
 					ExistenceRequirement::AllowDeath,
 				)?;
-				CreateInfo {
-					value: target,
-					exit_reason: ExitReason::Succeed(ExitSucceed::Stopped),
-					used_gas: 0.into(),
-					used_storage: 0,
-					logs: vec![],
-				}
+				Ok(PostDispatchInfo {
+					actual_weight: Some(<T as Config>::WeightInfo::deposit_ed()),
+					pays_fee: Pays::Yes,
+				})
 			} else {
-				T::Runner::create_at_address(source, target, init, value, gas_limit, storage_limit, T::config())?
-			};
-
-			let used_gas: u64 = info.used_gas.unique_saturated_into();
-
-			Ok(PostDispatchInfo {
-				actual_weight: Some(T::GasToWeight::convert(used_gas)),
-				pays_fee: Pays::Yes,
-			})
+				let info =
+					T::Runner::create_at_address(source, target, init, value, gas_limit, storage_limit, T::config())?;
+				let used_gas: u64 = info.used_gas.unique_saturated_into();
+				Ok(PostDispatchInfo {
+					actual_weight: Some(create_predeploy_contract::<T>(used_gas)),
+					pays_fee: Pays::Yes,
+				})
+			}
 		}
 
 		/// Transfers Contract maintainership to a new EVM Address.
