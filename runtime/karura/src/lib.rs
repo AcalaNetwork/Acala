@@ -313,7 +313,7 @@ parameter_types! {
 	pub const MaxCandidates: u32 = 50;
 	pub const MaxInvulnerables: u32 = 10;
 	pub const KickPenaltySessionLength: u32 = 8;
-	pub const CollatorKickThreshold: Permill = Permill::from_percent(85);
+	pub const CollatorKickThreshold: Permill = Permill::from_percent(65);
 	pub MinRewardDistributeAmount: Balance = 0;
 }
 
@@ -1012,7 +1012,7 @@ where
 }
 
 parameter_types! {
-	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![KSM, LKSM];
+	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![KSM, LKSM, KAR];
 	pub DefaultLiquidationRatio: Ratio = Ratio::saturating_from_rational(150, 100);
 	pub DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
 	pub DefaultLiquidationPenalty: Rate = Rate::saturating_from_rational(8, 100);

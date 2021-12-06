@@ -201,8 +201,10 @@ pub mod module {
 					refund_ratio.saturating_mul_int(<T as Config>::CDPTreasury::get_total_collaterals(currency_id));
 
 				if !refund_amount.is_zero() {
-					<T as Config>::CDPTreasury::withdraw_collateral(&who, currency_id, refund_amount)?;
-					refund_assets.push((currency_id, refund_amount));
+					let res = <T as Config>::CDPTreasury::withdraw_collateral(&who, currency_id, refund_amount);
+					if res.is_ok() {
+						refund_assets.push((currency_id, refund_amount));
+					}
 				}
 			}
 
