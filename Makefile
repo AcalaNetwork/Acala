@@ -178,11 +178,8 @@ benchmark-acala:
 	 cargo run --release --features=runtime-benchmarks --features=with-acala-runtime -- benchmark --chain=acala-dev --steps=50 --repeat=20 '--pallet=*' '--extrinsic=*' --execution=wasm --wasm-execution=compiled --heap-pages=4096 --template=./templates/runtime-weight-template.hbs --output=./runtime/acala/src/weights/
 
 .PHONY: clippy-fix
+clippy-fix:
 	CARGO_INCREMENTAL=0 ./orml/scripts/run-clippy.sh --fix -Z unstable-options --broken-code --allow-dirty
-
-.PHONY: clean-runtimes
-clean-runtimes:
-	./scripts/clean-runtimes.sh
 
 .PHONY: bench-evm
 bench-evm:
