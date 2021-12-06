@@ -162,7 +162,6 @@ pub const BASE_CREATE_GAS: u64 = 67_066;
 pub const BASE_CALL_GAS: u64 = 41_602;
 
 /// Helper method to calculate `create` weight.
-#[inline(always)]
 fn create_weight<T: Config>(gas: u64) -> Weight {
 	<T as Config>::WeightInfo::create()
 		// during `create` benchmark an additional of `BASE_CREATE_GAS` was used
@@ -171,7 +170,6 @@ fn create_weight<T: Config>(gas: u64) -> Weight {
 }
 
 /// Helper method to calculate `create2` weight.
-#[inline(always)]
 fn create2_weight<T: Config>(gas: u64) -> Weight {
 	<T as Config>::WeightInfo::create2()
 		// during `create2` benchmark an additional of `BASE_CREATE_GAS` was used
@@ -180,7 +178,6 @@ fn create2_weight<T: Config>(gas: u64) -> Weight {
 }
 
 /// Helper method to calculate `create_predeploy_contract` weight.
-#[inline(always)]
 fn create_predeploy_contract<T: Config>(gas: u64) -> Weight {
 	<T as Config>::WeightInfo::create_predeploy_contract()
 		// during `create_predeploy_contract` benchmark an additional of `BASE_CREATE_GAS`
@@ -189,7 +186,6 @@ fn create_predeploy_contract<T: Config>(gas: u64) -> Weight {
 }
 
 /// Helper method to calculate `create_network_contract` weight.
-#[inline(always)]
 fn create_network_contract<T: Config>(gas: u64) -> Weight {
 	<T as Config>::WeightInfo::create_network_contract()
 		// during `create_network_contract` benchmark an additional of `BASE_CREATE_GAS`
@@ -198,7 +194,6 @@ fn create_network_contract<T: Config>(gas: u64) -> Weight {
 }
 
 /// Helper method to calculate `call` weight.
-#[inline(always)]
 fn call_weight<T: Config>(gas: u64) -> Weight {
 	<T as Config>::WeightInfo::call()
 		// during `call` benchmark an additional of `BASE_CALL_GAS` was used
