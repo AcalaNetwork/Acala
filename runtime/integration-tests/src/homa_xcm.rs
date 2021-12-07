@@ -27,18 +27,19 @@ use xcm_emulator::TestExt;
 use pallet_staking::StakingLedger;
 use module_homa_xcm::HomaXcmOperation;
 
-const XCM_WEIGHT: Weight = 50_000_000_000;
+// Weight and fee cost is related to the XCM_WEIGHT passed in.
+const XCM_WEIGHT: Weight = 10_000_000_000;
 const XCM_FEE: Balance = 10_000_000_000;
 
 fn get_xcm_weight() -> Vec<(HomaXcmOperation, Option<Weight>, Option<Balance>)> {
 	vec![
-		// Xcm weight = 400_000_000, fee = 639_999_960
+		// Xcm weight = 1_000_000_000, fee = 373_333_310
 		(HomaXcmOperation::XtokensTransfer, Some(XCM_WEIGHT), Some(XCM_FEE)), 
-		// Xcm weight = 24_000_000_000, fee = 639_999_960
+		// Xcm weight = 54_000_000_000, fee = 373_333_310
 		(HomaXcmOperation::XcmWithdrawUnbonded, Some(XCM_WEIGHT), Some(XCM_FEE)),
-		// Xcm weight = 24_000_000_000, fee = 639_999_960
+		// Xcm weight = 54_000_000_000, fee = 373_333_310
 		(HomaXcmOperation::XcmBondExtra, Some(XCM_WEIGHT), Some(XCM_FEE)),
-		// Xcm weight = 24_000_000_000, fee = 639_999_960
+		// Xcm weight = 54_000_000_000, fee = 373_333_310
 		(HomaXcmOperation::XcmUnbond, Some(XCM_WEIGHT), Some(XCM_FEE)),
 	]
 }
@@ -127,7 +128,7 @@ fn homa_xcm_transfer_staking_to_sub_account_works() {
 		// XCM fee is paid by the parachain account.
 		assert_eq!(
 			kusama_runtime::Balances::free_balance(&parachain_account), 
-			1003 * dollar(RELAY_CHAIN_CURRENCY) - 639_999_960
+			1003 * dollar(RELAY_CHAIN_CURRENCY) - 373_333_310
 		);
 	});
 }
@@ -209,7 +210,7 @@ fn homa_xcm_withdraw_unbonded_from_sub_account_works() {
 			// Final parachain balance is: unbond_withdrew($1000) + initial_endowment($2) - xcm_fee
 			assert_eq!(
 				kusama_runtime::Balances::free_balance(&parachain_account.clone()),
-				1002 * dollar(RELAY_CHAIN_CURRENCY) - 639_999_960
+				1002 * dollar(RELAY_CHAIN_CURRENCY) - 373_333_310
 			);
 		});
 }
@@ -272,7 +273,7 @@ fn homa_xcm_bond_extra_on_sub_account_works() {
 		);
 		assert_eq!(kusama_runtime::Balances::free_balance(&homa_lite_sub_account), 1001 * dollar(RELAY_CHAIN_CURRENCY));
 		// XCM fee is paid by the sovereign account.
-		assert_eq!(kusama_runtime::Balances::free_balance(&parachain_account), 2 * dollar(RELAY_CHAIN_CURRENCY) - 639_999_960);
+		assert_eq!(kusama_runtime::Balances::free_balance(&parachain_account), 2 * dollar(RELAY_CHAIN_CURRENCY) - 373_333_310);
 	});
 }
 
@@ -330,6 +331,6 @@ fn homa_xcm_unbond_on_sub_account_works() {
 		assert_eq!(kusama_runtime::Balances::free_balance(&homa_lite_sub_account), 1_001 * dollar(RELAY_CHAIN_CURRENCY));
 
 		// XCM fee is paid by the sovereign account.
-		assert_eq!(kusama_runtime::Balances::free_balance(&parachain_account), 2 * dollar(RELAY_CHAIN_CURRENCY) - 639_999_960);
+		assert_eq!(kusama_runtime::Balances::free_balance(&parachain_account), 2 * dollar(RELAY_CHAIN_CURRENCY) - 373_333_310);
 	});
 }
