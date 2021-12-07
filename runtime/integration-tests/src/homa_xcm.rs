@@ -33,13 +33,13 @@ const XCM_FEE: Balance = 10_000_000_000;
 
 fn get_xcm_weight() -> Vec<(HomaXcmOperation, Option<Weight>, Option<Balance>)> {
 	vec![
-		// Xcm weight = 1_000_000_000, fee = 373_333_310
+		// Xcm weight = 400_000_000, fee = 373_333_310
 		(HomaXcmOperation::XtokensTransfer, Some(XCM_WEIGHT), Some(XCM_FEE)), 
-		// Xcm weight = 54_000_000_000, fee = 373_333_310
+		// Xcm weight = 14_000_000_000, fee = 373_333_310
 		(HomaXcmOperation::XcmWithdrawUnbonded, Some(XCM_WEIGHT), Some(XCM_FEE)),
-		// Xcm weight = 54_000_000_000, fee = 373_333_310
+		// Xcm weight = 14_000_000_000, fee = 373_333_310
 		(HomaXcmOperation::XcmBondExtra, Some(XCM_WEIGHT), Some(XCM_FEE)),
-		// Xcm weight = 54_000_000_000, fee = 373_333_310
+		// Xcm weight = 14_000_000_000, fee = 373_333_310
 		(HomaXcmOperation::XcmUnbond, Some(XCM_WEIGHT), Some(XCM_FEE)),
 	]
 }
@@ -198,7 +198,7 @@ fn homa_xcm_withdraw_unbonded_from_sub_account_works() {
 
 			assert_ok!(HomaXcm::update_xcm_dest_weight_and_fee(Origin:: root(), get_xcm_weight()));
 
-			// XCM weight = 24_000_000_000
+			// XCM weight = 14_000_000_000
 			assert_ok!(HomaXcm::withdraw_unbonded_from_sub_account(0, 1000 * dollar(RELAY_CHAIN_CURRENCY)));
 		});
 
@@ -256,7 +256,7 @@ fn homa_xcm_bond_extra_on_sub_account_works() {
 		assert_ok!(HomaXcm::update_xcm_dest_weight_and_fee(Origin:: root(), get_xcm_weight()));
 
 		// Bond more
-		// xcm weight = 24_000_000_000
+		// xcm weight = 14_000_000_000
 		assert_ok!(HomaXcm::bond_extra_on_sub_account(0, 500 * dollar(RELAY_CHAIN_CURRENCY)));
 	});
 
@@ -319,7 +319,7 @@ fn homa_xcm_unbond_on_sub_account_works() {
 		assert_ok!(HomaXcm::update_xcm_dest_weight_and_fee(Origin:: root(), get_xcm_weight()));
 
 		// Call the unbond function
-		// xcm weight = 24_000_000_000
+		// xcm weight = 14_000_000_000
 		assert_ok!(HomaXcm::unbond_on_sub_account(0, 999 * dollar(RELAY_CHAIN_CURRENCY)));
 	});
 
