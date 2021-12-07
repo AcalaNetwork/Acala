@@ -183,4 +183,4 @@ clippy-fix:
 
 .PHONY: bench-evm
 bench-evm:
-	./scripts/bench-evm.sh
+	cargo bench -p module-evm --features bench | evm-bench/analyze_benches.js runtime/common/src/gas_to_weight_ratio.rs
