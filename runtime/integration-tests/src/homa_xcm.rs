@@ -16,16 +16,16 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-//! Tests the Homa-xcm module - cross-chain functionalities for the Homa module.
+//! Tests the Homa and HomaXcm module - cross-chain functionalities for the Homa module.
 
 use crate::setup::*;
 use crate::relaychain::kusama_test_net::*;
 use frame_support::{assert_ok, weights::Weight};
-use module_support::HomaSubAccountXcm;
 use sp_runtime::MultiAddress;
 use xcm_emulator::TestExt;
 use pallet_staking::StakingLedger;
 use module_homa_xcm::HomaXcmOperation;
+use module_homa::UnlockChunk;
 
 // Weight and fee cost is related to the XCM_WEIGHT passed in.
 const XCM_WEIGHT: Weight = 10_000_000_000;
@@ -65,6 +65,23 @@ impl Default for HomaParams {
 	}
 }
 
+// Helper function to setup config. Called within Karura Externalities.
+fn configure_homa_and_homa_xcm() {
+		// Configure Homa and HomaXcm
+		assert_ok!(HomaXcm::update_xcm_dest_weight_and_fee(Origin:: root(), get_xcm_weight()));
+		let param = HomaParams::default();
+		assert_ok!(Homa::update_homa_params(
+			Origin::root(),
+			param.soft_bonded_cap_per_sub_account,
+			param.estimated_reward_rate_per_era,
+			param.mint_threshold,
+			param.redeem_threshold,
+			param.commission_rate,
+			param.fast_match_fee_rate,
+		));
+}
+
+
 #[test]
 fn homa_xcm_transfer_staking_to_sub_account_works() {
 	let homa_lite_sub_account: AccountId =
@@ -103,24 +120,15 @@ fn homa_xcm_transfer_staking_to_sub_account_works() {
 			0
 		));
 
-		assert_ok!(HomaXcm::update_xcm_dest_weight_and_fee(Origin:: root(), get_xcm_weight()));
-		let param = HomaParams::default();
-		assert_ok!(Homa::update_homa_params(
-			Origin::root(),
-			param.soft_bonded_cap_per_sub_account,
-			param.estimated_reward_rate_per_era,
-			param.mint_threshold,
-			param.redeem_threshold,
-			param.commission_rate,
-			param.fast_match_fee_rate,
-		));
+		configure_homa_and_homa_xcm();
+
+		// Transfer fund via XCM by Mint
 		assert_ok!(Homa::mint(Origin::signed(bob()), 1_000 * dollar(RELAY_CHAIN_CURRENCY)));
-		// Xcm weight = 400_000_000
 		assert_ok!(Homa::process_to_bond_pool(0)); 
 	});
 
 	KusamaNet::execute_with(|| {
-		// Check of 1000 dollars (minus gas) are transferred into the Kusama chain
+		// 1000 dollars (minus fee) are transferred into the Kusama chain
 		assert_eq!(
 			kusama_runtime::Balances::free_balance(&homa_lite_sub_account),
 			999_999_893_333_340
@@ -196,13 +204,28 @@ fn homa_xcm_withdraw_unbonded_from_sub_account_works() {
 				0
 			));
 
-			assert_ok!(HomaXcm::update_xcm_dest_weight_and_fee(Origin:: root(), get_xcm_weight()));
+			configure_homa_and_homa_xcm();
 
-			// XCM weight = 14_000_000_000
-			assert_ok!(HomaXcm::withdraw_unbonded_from_sub_account(0, 1000 * dollar(RELAY_CHAIN_CURRENCY)));
+			// Add an unlock chunk to the ledger
+			assert_ok!(Homa::update_ledgers(
+				Origin::root(),
+				vec![
+					(
+						0,
+						Some(1_000 * dollar(RELAY_CHAIN_CURRENCY)),
+						Some(vec![
+							UnlockChunk { value: 1000 * dollar(RELAY_CHAIN_CURRENCY), era: 0 },
+						])
+					),
+				]
+			));
+			
+			// Process the unlocking and withdraw unbonded.
+			assert_ok!(Homa::process_scheduled_unbond(0));
 		});
 
 		KusamaNet::execute_with(|| {
+			// Fund has been withdrew and transferred.
 			assert_eq!(
 				kusama_runtime::Balances::free_balance(&homa_lite_sub_account),
 				dollar(RELAY_CHAIN_CURRENCY)
@@ -230,6 +253,7 @@ fn homa_xcm_bond_extra_on_sub_account_works() {
 			1_001 * dollar(RELAY_CHAIN_CURRENCY)
 		));
 
+		// Bond some money
 		assert_ok!(kusama_runtime::Staking::bond(
 			kusama_runtime::Origin::signed(homa_lite_sub_account.clone()),
 			MultiAddress::Id(homa_lite_sub_account.clone()),
@@ -253,11 +277,19 @@ fn homa_xcm_bond_extra_on_sub_account_works() {
 	});
 
 	Karura::execute_with(|| {
-		assert_ok!(HomaXcm::update_xcm_dest_weight_and_fee(Origin:: root(), get_xcm_weight()));
+		assert_ok!(Tokens::set_balance(
+			Origin::root(),
+			MultiAddress::Id(AccountId::from(bob())),
+			RELAY_CHAIN_CURRENCY,
+			501 * dollar(RELAY_CHAIN_CURRENCY),
+			0
+		));
 
-		// Bond more
-		// xcm weight = 14_000_000_000
-		assert_ok!(HomaXcm::bond_extra_on_sub_account(0, 500 * dollar(RELAY_CHAIN_CURRENCY)));
+		configure_homa_and_homa_xcm();
+
+		// Use Mint to bond more.
+		assert_ok!(Homa::mint(Origin::signed(bob()), 500 * dollar(RELAY_CHAIN_CURRENCY)));
+		assert_ok!(Homa::process_to_bond_pool(0));
 	});
 
 	KusamaNet::execute_with(|| {
@@ -265,8 +297,8 @@ fn homa_xcm_bond_extra_on_sub_account_works() {
 			kusama_runtime::Staking::ledger(&homa_lite_sub_account),
 			Some(StakingLedger {
 				stash: homa_lite_sub_account.clone(),
-				total: 1000 * dollar(RELAY_CHAIN_CURRENCY),
-				active: 1000 * dollar(RELAY_CHAIN_CURRENCY),
+				total: 1000 * dollar(RELAY_CHAIN_CURRENCY) - XCM_FEE,
+				active: 1000 * dollar(RELAY_CHAIN_CURRENCY) - XCM_FEE,
 				unlocking: vec![],
 				claimed_rewards: vec![],
 			})
@@ -293,10 +325,11 @@ fn homa_xcm_unbond_on_sub_account_works() {
 			1_001 * dollar(RELAY_CHAIN_CURRENCY)
 		));
 
+		// Bond some tokens.
 		assert_ok!(kusama_runtime::Staking::bond(
 			kusama_runtime::Origin::signed(homa_lite_sub_account.clone()),
 			MultiAddress::Id(homa_lite_sub_account.clone()),
-			1_000 * dollar(RELAY_CHAIN_CURRENCY),
+			dollar(RELAY_CHAIN_CURRENCY),
 			pallet_staking::RewardDestination::<AccountId>::Staked,
 		));
 
@@ -304,8 +337,8 @@ fn homa_xcm_unbond_on_sub_account_works() {
 			kusama_runtime::Staking::ledger(&homa_lite_sub_account),
 			Some(StakingLedger {
 				stash: homa_lite_sub_account.clone(),
-				total: 1000 * dollar(RELAY_CHAIN_CURRENCY),
-				active: 1000 * dollar(RELAY_CHAIN_CURRENCY),
+				total: dollar(RELAY_CHAIN_CURRENCY),
+				active: dollar(RELAY_CHAIN_CURRENCY),
 				unlocking: vec![],
 				claimed_rewards: vec![],
 			})
@@ -314,23 +347,46 @@ fn homa_xcm_unbond_on_sub_account_works() {
 		assert_eq!(kusama_runtime::Balances::free_balance(&homa_lite_sub_account), 1_001 * dollar(RELAY_CHAIN_CURRENCY));
 		assert_eq!(kusama_runtime::Balances::free_balance(&parachain_account), 2 * dollar(RELAY_CHAIN_CURRENCY));
 	});
-
+	
 	Karura::execute_with(|| {
-		assert_ok!(HomaXcm::update_xcm_dest_weight_and_fee(Origin:: root(), get_xcm_weight()));
+		assert_ok!(Tokens::set_balance(
+			Origin::root(),
+			MultiAddress::Id(AccountId::from(bob())),
+			RELAY_CHAIN_CURRENCY,
+			1_001 * dollar(RELAY_CHAIN_CURRENCY),
+			0
+		));
 
-		// Call the unbond function
-		// xcm weight = 14_000_000_000
-		assert_ok!(HomaXcm::unbond_on_sub_account(0, 999 * dollar(RELAY_CHAIN_CURRENCY)));
+		configure_homa_and_homa_xcm();
+
+		// Bond more using Mint
+		// Amount bonded = $1000 - XCM_FEE = 999_990_000_000_000
+		assert_ok!(Homa::mint(
+			Origin::signed(bob()),
+			1_000 * dollar(RELAY_CHAIN_CURRENCY),
+		));
+		// Update internal storage in Homa
+		assert_ok!(Homa::bump_current_era(Origin::root(), 1));
+
+		// Put in redeem request
+		assert_ok!(Homa::request_redeem(
+			Origin::signed(bob()),
+			10_000 * dollar(LIQUID_CURRENCY),
+			false,
+		));
+		// Process the redeem request and unbond funds on the relaychain.
+		assert_ok!(Homa::process_redeem_requests(1));
 	});
 
 	KusamaNet::execute_with(|| {
-		let ledger=  kusama_runtime::Staking::ledger(&homa_lite_sub_account).expect("record should exist");
-		assert_eq!(ledger.total, 1000 * dollar(RELAY_CHAIN_CURRENCY));
+		// Ensure the correct amount of fund is unbonded
+		let ledger = kusama_runtime::Staking::ledger(&homa_lite_sub_account).expect("record should exist");
+		assert_eq!(ledger.total, 1001 * dollar(RELAY_CHAIN_CURRENCY) - XCM_FEE);
 		assert_eq!(ledger.active, dollar(RELAY_CHAIN_CURRENCY));
 
 		assert_eq!(kusama_runtime::Balances::free_balance(&homa_lite_sub_account), 1_001 * dollar(RELAY_CHAIN_CURRENCY));
 
-		// XCM fee is paid by the sovereign account.
-		assert_eq!(kusama_runtime::Balances::free_balance(&parachain_account), 2 * dollar(RELAY_CHAIN_CURRENCY) - 373_333_310);
+		// 2 x XCM fee is paid: for Mint and Redeem
+		assert_eq!(kusama_runtime::Balances::free_balance(&parachain_account), 2 * dollar(RELAY_CHAIN_CURRENCY) - 373_333_310 * 2);
 	});
 }
