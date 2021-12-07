@@ -104,6 +104,8 @@ module-prices = { path = "../../modules/prices" }
 module-incentives = { path = "../../modules/incentives" }
 module-support = { path = "../../modules/support" }
 module-homa-lite = { path = "../../modules/homa-lite" }
+module-homa-xcm = {path = "../../modules/homa-xcm" }
+module-homa = {path = "../../modules/homa" }
 module-session-manager = { path = "../../modules/session-manager" }
 module-relaychain = {path = "../../modules/relaychain" }
 primitives = { package = "acala-primitives", path = "../../primitives" }
