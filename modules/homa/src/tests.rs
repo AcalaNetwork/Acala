@@ -27,289 +27,6 @@ use orml_traits::MultiCurrency;
 use sp_runtime::{traits::BadOrigin, FixedPointNumber};
 
 #[test]
-fn update_ledgers_works() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_noop!(Homa::update_ledgers(Origin::signed(ALICE), vec![]), BadOrigin);
-
-		assert_eq!(Homa::staking_ledgers(0), None);
-		assert_eq!(Homa::staking_ledgers(1), None);
-
-		assert_ok!(Homa::update_ledgers(
-			Origin::signed(HomaAdmin::get()),
-			vec![
-				(
-					0,
-					Some(1_000_000),
-					Some(vec![
-						UnlockChunk { value: 1000, era: 5 },
-						UnlockChunk { value: 20_000, era: 6 },
-					])
-				),
-				(1, None, Some(vec![UnlockChunk { value: 2000, era: 10 },])),
-			]
-		));
-		System::assert_has_event(Event::Homa(crate::Event::LedgerBondedUpdated(0, 1_000_000)));
-		System::assert_has_event(Event::Homa(crate::Event::LedgerUnlockingUpdated(
-			0,
-			vec![
-				UnlockChunk { value: 1000, era: 5 },
-				UnlockChunk { value: 20_000, era: 6 },
-			],
-		)));
-		System::assert_has_event(Event::Homa(crate::Event::LedgerUnlockingUpdated(
-			1,
-			vec![UnlockChunk { value: 2000, era: 10 }],
-		)));
-		assert_eq!(
-			Homa::staking_ledgers(0),
-			Some(StakingLedger {
-				bonded: 1_000_000,
-				unlocking: vec![
-					UnlockChunk { value: 1000, era: 5 },
-					UnlockChunk { value: 20_000, era: 6 },
-				]
-			})
-		);
-		assert_eq!(
-			Homa::staking_ledgers(1),
-			Some(StakingLedger {
-				bonded: 0,
-				unlocking: vec![UnlockChunk { value: 2000, era: 10 },]
-			})
-		);
-
-		assert_ok!(Homa::update_ledgers(
-			Origin::signed(HomaAdmin::get()),
-			vec![
-				(0, None, Some(vec![UnlockChunk { value: 20_000, era: 6 },])),
-				(1, Some(0), Some(vec![])),
-			]
-		));
-		System::assert_has_event(Event::Homa(crate::Event::LedgerUnlockingUpdated(
-			0,
-			vec![UnlockChunk { value: 20_000, era: 6 }],
-		)));
-		System::assert_has_event(Event::Homa(crate::Event::LedgerUnlockingUpdated(1, vec![])));
-		assert_eq!(
-			Homa::staking_ledgers(0),
-			Some(StakingLedger {
-				bonded: 1_000_000,
-				unlocking: vec![UnlockChunk { value: 20_000, era: 6 },]
-			})
-		);
-		assert_eq!(Homa::staking_ledgers(1), None);
-	});
-}
-
-#[test]
-fn update_homa_params_works() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_noop!(
-			Homa::update_homa_params(Origin::signed(ALICE), None, None, None, None, None, None),
-			BadOrigin
-		);
-
-		assert_eq!(Homa::soft_bonded_cap_per_sub_account(), 0);
-		assert_eq!(Homa::estimated_reward_rate_per_era(), Rate::zero());
-		assert_eq!(Homa::mint_threshold(), 0);
-		assert_eq!(Homa::redeem_threshold(), 0);
-		assert_eq!(Homa::commission_rate(), Rate::zero());
-		assert_eq!(Homa::fast_match_fee_rate(), Rate::zero());
-
-		assert_ok!(Homa::update_homa_params(
-			Origin::signed(HomaAdmin::get()),
-			Some(1_000_000_000),
-			Some(Rate::saturating_from_rational(1, 10000)),
-			Some(1_000_000),
-			Some(10_000_000),
-			Some(Rate::saturating_from_rational(5, 100)),
-			Some(Rate::saturating_from_rational(1, 100)),
-		));
-		System::assert_has_event(Event::Homa(crate::Event::SoftBondedCapPerSubAccountUpdated(
-			1_000_000_000,
-		)));
-		System::assert_has_event(Event::Homa(crate::Event::EstimatedRewardRatePerEraUpdated(
-			Rate::saturating_from_rational(1, 10000),
-		)));
-		System::assert_has_event(Event::Homa(crate::Event::MintThresholdUpdated(1_000_000)));
-		System::assert_has_event(Event::Homa(crate::Event::RedeemThresholdUpdated(10_000_000)));
-		System::assert_has_event(Event::Homa(crate::Event::CommissionRateUpdated(
-			Rate::saturating_from_rational(5, 100),
-		)));
-		System::assert_has_event(Event::Homa(crate::Event::FastMatchFeeRateUpdated(
-			Rate::saturating_from_rational(1, 100),
-		)));
-		assert_eq!(Homa::soft_bonded_cap_per_sub_account(), 1_000_000_000);
-		assert_eq!(
-			Homa::estimated_reward_rate_per_era(),
-			Rate::saturating_from_rational(1, 10000)
-		);
-		assert_eq!(Homa::mint_threshold(), 1_000_000);
-		assert_eq!(Homa::redeem_threshold(), 10_000_000);
-		assert_eq!(Homa::commission_rate(), Rate::saturating_from_rational(5, 100));
-		assert_eq!(Homa::fast_match_fee_rate(), Rate::saturating_from_rational(1, 100));
-	});
-}
-
-#[test]
-fn get_staking_currency_soft_cap_works() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_eq!(Homa::get_staking_currency_soft_cap(), 0);
-		SoftBondedCapPerSubAccount::<Runtime>::put(1_000_000);
-		assert_eq!(
-			Homa::get_staking_currency_soft_cap(),
-			1_000_000 * (ActiveSubAccountsIndexList::get().len() as Balance)
-		);
-	});
-}
-
-#[test]
-fn get_total_bonded_soft_cap_works() {
-	ExtBuilder::default().build().execute_with(|| {
-		StakingLedgers::<Runtime>::insert(
-			0,
-			StakingLedger {
-				bonded: 1_000_000,
-				..Default::default()
-			},
-		);
-		StakingLedgers::<Runtime>::insert(
-			1,
-			StakingLedger {
-				bonded: 2_000_000,
-				..Default::default()
-			},
-		);
-		StakingLedgers::<Runtime>::insert(
-			3,
-			StakingLedger {
-				bonded: 1_000_000,
-				..Default::default()
-			},
-		);
-		assert_eq!(Homa::get_total_bonded(), 4_000_000);
-	});
-}
-
-#[test]
-fn get_total_staking_currency_works() {
-	ExtBuilder::default().build().execute_with(|| {
-		StakingLedgers::<Runtime>::insert(
-			0,
-			StakingLedger {
-				bonded: 1_000_000,
-				..Default::default()
-			},
-		);
-		StakingLedgers::<Runtime>::insert(
-			1,
-			StakingLedger {
-				bonded: 2_000_000,
-				..Default::default()
-			},
-		);
-		ToBondPool::<Runtime>::put(2_000_000);
-		assert_eq!(Homa::get_total_staking_currency(), 5_000_000);
-	});
-}
-
-#[test]
-fn current_exchange_rate_works() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_eq!(Homa::current_exchange_rate(), DefaultExchangeRate::get());
-		assert_eq!(Homa::convert_liquid_to_staking(10_000_000), Ok(1_000_000));
-		assert_eq!(Homa::convert_staking_to_liquid(1_000_000), Ok(10_000_000));
-
-		StakingLedgers::<Runtime>::insert(
-			0,
-			StakingLedger {
-				bonded: 1_000_000,
-				..Default::default()
-			},
-		);
-		assert_eq!(Homa::current_exchange_rate(), DefaultExchangeRate::get());
-		assert_eq!(Homa::convert_liquid_to_staking(10_000_000), Ok(1_000_000));
-		assert_eq!(Homa::convert_staking_to_liquid(1_000_000), Ok(10_000_000));
-
-		assert_ok!(Currencies::deposit(LiquidCurrencyId::get(), &ALICE, 5_000_000));
-		assert_eq!(
-			Homa::current_exchange_rate(),
-			ExchangeRate::saturating_from_rational(1_000_000, 5_000_000)
-		);
-		assert_eq!(Homa::convert_liquid_to_staking(10_000_000), Ok(2_000_000));
-		assert_eq!(Homa::convert_staking_to_liquid(1_000_000), Ok(5_000_000));
-
-		TotalVoidLiquid::<Runtime>::put(3_000_000);
-		assert_eq!(
-			Homa::current_exchange_rate(),
-			ExchangeRate::saturating_from_rational(1_000_000, 8_000_000)
-		);
-		assert_eq!(Homa::convert_liquid_to_staking(10_000_000), Ok(1_250_000));
-		assert_eq!(Homa::convert_staking_to_liquid(1_000_000), Ok(8_000_000));
-	});
-}
-
-#[test]
-fn distribution_helpers_works() {
-	ExtBuilder::default().build().execute_with(|| {
-		let bonded_list = vec![(0, 1_000_000), (1, 2_000_000), (2, 3_000_000), (3, 100_000)];
-
-		assert_eq!(
-			distribute_increment(bonded_list.clone(), 2_000_000, None, None),
-			(vec![(3, 2_000_000)], 0)
-		);
-		assert_eq!(
-			distribute_increment(bonded_list.clone(), 2_000_000, Some(1_100_000), None),
-			(vec![(3, 1_000_000), (0, 100_000)], 900_000)
-		);
-		assert_eq!(
-			distribute_increment(bonded_list.clone(), 2_000_000, Some(100_000), None),
-			(vec![], 2_000_000)
-		);
-		assert_eq!(
-			distribute_increment(bonded_list.clone(), 2_000_000, None, Some(2_000_001)),
-			(vec![], 2_000_000)
-		);
-		assert_eq!(
-			distribute_increment(bonded_list.clone(), 2_000_000, Some(1_000_000), Some(900_001)),
-			(vec![], 2_000_000)
-		);
-		assert_eq!(
-			distribute_increment(bonded_list.clone(), 2_000_000, Some(1_200_000), Some(1_000_000)),
-			(vec![(3, 1_100_000)], 900_000)
-		);
-
-		assert_eq!(
-			distribute_decrement(bonded_list.clone(), 7_000_000, None, None),
-			(
-				vec![(2, 3_000_000), (1, 2_000_000), (0, 1_000_000), (3, 100_000)],
-				900_000
-			)
-		);
-		assert_eq!(
-			distribute_decrement(bonded_list.clone(), 2_000_000, Some(1_800_000), None),
-			(vec![(2, 1_200_000), (1, 200_000)], 600_000)
-		);
-		assert_eq!(
-			distribute_decrement(bonded_list.clone(), 2_000_000, Some(3_000_000), None),
-			(vec![], 2_000_000)
-		);
-		assert_eq!(
-			distribute_decrement(bonded_list.clone(), 6_000_000, None, Some(2_000_000)),
-			(vec![(2, 3_000_000), (1, 2_000_000)], 1_000_000)
-		);
-		assert_eq!(
-			distribute_decrement(bonded_list.clone(), 2_000_000, None, Some(3_000_001)),
-			(vec![], 2_000_000)
-		);
-		assert_eq!(
-			distribute_decrement(bonded_list.clone(), 3_000_000, Some(1_000_000), Some(1_000_001)),
-			(vec![(2, 2_000_000)], 1_000_000)
-		);
-	});
-}
-
-#[test]
 fn mint_works() {
 	ExtBuilder::default()
 		.balances(vec![
@@ -518,6 +235,323 @@ fn claim_redemption_works() {
 }
 
 #[test]
+fn update_homa_params_works() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_noop!(
+			Homa::update_homa_params(Origin::signed(ALICE), None, None, None, None, None, None),
+			BadOrigin
+		);
+
+		assert_eq!(Homa::soft_bonded_cap_per_sub_account(), 0);
+		assert_eq!(Homa::estimated_reward_rate_per_era(), Rate::zero());
+		assert_eq!(Homa::mint_threshold(), 0);
+		assert_eq!(Homa::redeem_threshold(), 0);
+		assert_eq!(Homa::commission_rate(), Rate::zero());
+		assert_eq!(Homa::fast_match_fee_rate(), Rate::zero());
+
+		assert_ok!(Homa::update_homa_params(
+			Origin::signed(HomaAdmin::get()),
+			Some(1_000_000_000),
+			Some(Rate::saturating_from_rational(1, 10000)),
+			Some(1_000_000),
+			Some(10_000_000),
+			Some(Rate::saturating_from_rational(5, 100)),
+			Some(Rate::saturating_from_rational(1, 100)),
+		));
+		System::assert_has_event(Event::Homa(crate::Event::SoftBondedCapPerSubAccountUpdated(
+			1_000_000_000,
+		)));
+		System::assert_has_event(Event::Homa(crate::Event::EstimatedRewardRatePerEraUpdated(
+			Rate::saturating_from_rational(1, 10000),
+		)));
+		System::assert_has_event(Event::Homa(crate::Event::MintThresholdUpdated(1_000_000)));
+		System::assert_has_event(Event::Homa(crate::Event::RedeemThresholdUpdated(10_000_000)));
+		System::assert_has_event(Event::Homa(crate::Event::CommissionRateUpdated(
+			Rate::saturating_from_rational(5, 100),
+		)));
+		System::assert_has_event(Event::Homa(crate::Event::FastMatchFeeRateUpdated(
+			Rate::saturating_from_rational(1, 100),
+		)));
+		assert_eq!(Homa::soft_bonded_cap_per_sub_account(), 1_000_000_000);
+		assert_eq!(
+			Homa::estimated_reward_rate_per_era(),
+			Rate::saturating_from_rational(1, 10000)
+		);
+		assert_eq!(Homa::mint_threshold(), 1_000_000);
+		assert_eq!(Homa::redeem_threshold(), 10_000_000);
+		assert_eq!(Homa::commission_rate(), Rate::saturating_from_rational(5, 100));
+		assert_eq!(Homa::fast_match_fee_rate(), Rate::saturating_from_rational(1, 100));
+	});
+}
+
+#[test]
+fn update_bump_era_params_works() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_noop!(
+			Homa::update_bump_era_params(Origin::signed(ALICE), None, None),
+			BadOrigin
+		);
+		assert_eq!(Homa::bump_era_prefix(), 0);
+		assert_eq!(Homa::bump_era_frequency(), 0);
+
+		assert_ok!(Homa::update_bump_era_params(
+			Origin::signed(HomaAdmin::get()),
+			Some(10),
+			Some(7200),
+		));
+		System::assert_has_event(Event::Homa(crate::Event::BumpEraPrefixUpdated(10)));
+		System::assert_has_event(Event::Homa(crate::Event::BumpEraFrequencyUpdated(7200)));
+		assert_eq!(Homa::bump_era_prefix(), 10);
+		assert_eq!(Homa::bump_era_frequency(), 7200);
+	});
+}
+
+#[test]
+fn reset_ledgers_works() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_noop!(Homa::reset_ledgers(Origin::signed(ALICE), vec![]), BadOrigin);
+
+		assert_eq!(Homa::staking_ledgers(0), None);
+		assert_eq!(Homa::staking_ledgers(1), None);
+
+		assert_ok!(Homa::reset_ledgers(
+			Origin::signed(HomaAdmin::get()),
+			vec![
+				(
+					0,
+					Some(1_000_000),
+					Some(vec![
+						UnlockChunk { value: 1000, era: 5 },
+						UnlockChunk { value: 20_000, era: 6 },
+					])
+				),
+				(1, None, Some(vec![UnlockChunk { value: 2000, era: 10 },])),
+			]
+		));
+		System::assert_has_event(Event::Homa(crate::Event::LedgerBondedReset(0, 1_000_000)));
+		System::assert_has_event(Event::Homa(crate::Event::LedgerUnlockingReset(
+			0,
+			vec![
+				UnlockChunk { value: 1000, era: 5 },
+				UnlockChunk { value: 20_000, era: 6 },
+			],
+		)));
+		System::assert_has_event(Event::Homa(crate::Event::LedgerUnlockingReset(
+			1,
+			vec![UnlockChunk { value: 2000, era: 10 }],
+		)));
+		assert_eq!(
+			Homa::staking_ledgers(0),
+			Some(StakingLedger {
+				bonded: 1_000_000,
+				unlocking: vec![
+					UnlockChunk { value: 1000, era: 5 },
+					UnlockChunk { value: 20_000, era: 6 },
+				]
+			})
+		);
+		assert_eq!(
+			Homa::staking_ledgers(1),
+			Some(StakingLedger {
+				bonded: 0,
+				unlocking: vec![UnlockChunk { value: 2000, era: 10 },]
+			})
+		);
+
+		assert_ok!(Homa::reset_ledgers(
+			Origin::signed(HomaAdmin::get()),
+			vec![
+				(0, None, Some(vec![UnlockChunk { value: 20_000, era: 6 },])),
+				(1, Some(0), Some(vec![])),
+			]
+		));
+		System::assert_has_event(Event::Homa(crate::Event::LedgerUnlockingReset(
+			0,
+			vec![UnlockChunk { value: 20_000, era: 6 }],
+		)));
+		System::assert_has_event(Event::Homa(crate::Event::LedgerUnlockingReset(1, vec![])));
+		assert_eq!(
+			Homa::staking_ledgers(0),
+			Some(StakingLedger {
+				bonded: 1_000_000,
+				unlocking: vec![UnlockChunk { value: 20_000, era: 6 },]
+			})
+		);
+		assert_eq!(Homa::staking_ledgers(1), None);
+	});
+}
+
+#[test]
+fn reset_current_era_works() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_noop!(Homa::reset_current_era(Origin::signed(ALICE), 1), BadOrigin);
+		assert_eq!(Homa::relay_chain_current_era(), 0);
+
+		assert_ok!(Homa::reset_current_era(Origin::signed(HomaAdmin::get()), 1));
+		System::assert_last_event(Event::Homa(crate::Event::CurrentEraReset(1)));
+		assert_eq!(Homa::relay_chain_current_era(), 1);
+	});
+}
+
+#[test]
+fn get_staking_currency_soft_cap_works() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_eq!(Homa::get_staking_currency_soft_cap(), 0);
+		SoftBondedCapPerSubAccount::<Runtime>::put(1_000_000);
+		assert_eq!(
+			Homa::get_staking_currency_soft_cap(),
+			1_000_000 * (ActiveSubAccountsIndexList::get().len() as Balance)
+		);
+	});
+}
+
+#[test]
+fn get_total_bonded_works() {
+	ExtBuilder::default().build().execute_with(|| {
+		StakingLedgers::<Runtime>::insert(
+			0,
+			StakingLedger {
+				bonded: 1_000_000,
+				..Default::default()
+			},
+		);
+		StakingLedgers::<Runtime>::insert(
+			1,
+			StakingLedger {
+				bonded: 2_000_000,
+				..Default::default()
+			},
+		);
+		StakingLedgers::<Runtime>::insert(
+			3,
+			StakingLedger {
+				bonded: 1_000_000,
+				..Default::default()
+			},
+		);
+		assert_eq!(Homa::get_total_bonded(), 4_000_000);
+	});
+}
+
+#[test]
+fn get_total_staking_currency_works() {
+	ExtBuilder::default().build().execute_with(|| {
+		StakingLedgers::<Runtime>::insert(
+			0,
+			StakingLedger {
+				bonded: 1_000_000,
+				..Default::default()
+			},
+		);
+		StakingLedgers::<Runtime>::insert(
+			1,
+			StakingLedger {
+				bonded: 2_000_000,
+				..Default::default()
+			},
+		);
+		ToBondPool::<Runtime>::put(2_000_000);
+		assert_eq!(Homa::get_total_staking_currency(), 5_000_000);
+	});
+}
+
+#[test]
+fn current_exchange_rate_works() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_eq!(Homa::current_exchange_rate(), DefaultExchangeRate::get());
+		assert_eq!(Homa::convert_liquid_to_staking(10_000_000), Ok(1_000_000));
+		assert_eq!(Homa::convert_staking_to_liquid(1_000_000), Ok(10_000_000));
+
+		StakingLedgers::<Runtime>::insert(
+			0,
+			StakingLedger {
+				bonded: 1_000_000,
+				..Default::default()
+			},
+		);
+		assert_eq!(Homa::current_exchange_rate(), DefaultExchangeRate::get());
+		assert_eq!(Homa::convert_liquid_to_staking(10_000_000), Ok(1_000_000));
+		assert_eq!(Homa::convert_staking_to_liquid(1_000_000), Ok(10_000_000));
+
+		assert_ok!(Currencies::deposit(LiquidCurrencyId::get(), &ALICE, 5_000_000));
+		assert_eq!(
+			Homa::current_exchange_rate(),
+			ExchangeRate::saturating_from_rational(1_000_000, 5_000_000)
+		);
+		assert_eq!(Homa::convert_liquid_to_staking(10_000_000), Ok(2_000_000));
+		assert_eq!(Homa::convert_staking_to_liquid(1_000_000), Ok(5_000_000));
+
+		TotalVoidLiquid::<Runtime>::put(3_000_000);
+		assert_eq!(
+			Homa::current_exchange_rate(),
+			ExchangeRate::saturating_from_rational(1_000_000, 8_000_000)
+		);
+		assert_eq!(Homa::convert_liquid_to_staking(10_000_000), Ok(1_250_000));
+		assert_eq!(Homa::convert_staking_to_liquid(1_000_000), Ok(8_000_000));
+	});
+}
+
+#[test]
+fn distribution_helpers_works() {
+	ExtBuilder::default().build().execute_with(|| {
+		let bonded_list = vec![(0, 1_000_000), (1, 2_000_000), (2, 3_000_000), (3, 100_000)];
+
+		assert_eq!(
+			distribute_increment(bonded_list.clone(), 2_000_000, None, None),
+			(vec![(3, 2_000_000)], 0)
+		);
+		assert_eq!(
+			distribute_increment(bonded_list.clone(), 2_000_000, Some(1_100_000), None),
+			(vec![(3, 1_000_000), (0, 100_000)], 900_000)
+		);
+		assert_eq!(
+			distribute_increment(bonded_list.clone(), 2_000_000, Some(100_000), None),
+			(vec![], 2_000_000)
+		);
+		assert_eq!(
+			distribute_increment(bonded_list.clone(), 2_000_000, None, Some(2_000_001)),
+			(vec![], 2_000_000)
+		);
+		assert_eq!(
+			distribute_increment(bonded_list.clone(), 2_000_000, Some(1_000_000), Some(900_001)),
+			(vec![], 2_000_000)
+		);
+		assert_eq!(
+			distribute_increment(bonded_list.clone(), 2_000_000, Some(1_200_000), Some(1_000_000)),
+			(vec![(3, 1_100_000)], 900_000)
+		);
+
+		assert_eq!(
+			distribute_decrement(bonded_list.clone(), 7_000_000, None, None),
+			(
+				vec![(2, 3_000_000), (1, 2_000_000), (0, 1_000_000), (3, 100_000)],
+				900_000
+			)
+		);
+		assert_eq!(
+			distribute_decrement(bonded_list.clone(), 2_000_000, Some(1_800_000), None),
+			(vec![(2, 1_200_000), (1, 200_000)], 600_000)
+		);
+		assert_eq!(
+			distribute_decrement(bonded_list.clone(), 2_000_000, Some(3_000_000), None),
+			(vec![], 2_000_000)
+		);
+		assert_eq!(
+			distribute_decrement(bonded_list.clone(), 6_000_000, None, Some(2_000_000)),
+			(vec![(2, 3_000_000), (1, 2_000_000)], 1_000_000)
+		);
+		assert_eq!(
+			distribute_decrement(bonded_list.clone(), 2_000_000, None, Some(3_000_001)),
+			(vec![], 2_000_000)
+		);
+		assert_eq!(
+			distribute_decrement(bonded_list.clone(), 3_000_000, Some(1_000_000), Some(1_000_001)),
+			(vec![(2, 2_000_000)], 1_000_000)
+		);
+	});
+}
+
+#[test]
 fn do_fast_match_redeem_works() {
 	ExtBuilder::default()
 		.balances(vec![
@@ -527,7 +561,7 @@ fn do_fast_match_redeem_works() {
 		])
 		.build()
 		.execute_with(|| {
-			assert_ok!(Homa::update_ledgers(
+			assert_ok!(Homa::reset_ledgers(
 				Origin::signed(HomaAdmin::get()),
 				vec![(0, Some(4_000_000), None)]
 			));
@@ -622,41 +656,15 @@ fn do_fast_match_redeem_works() {
 }
 
 #[test]
-fn draw_staking_reward_works() {
+fn process_staking_rewards_works() {
 	ExtBuilder::default()
-		.balances(vec![
-			(ALICE, LIQUID_CURRENCY_ID, 40_000_000),
-			(CHARLIE, STAKING_CURRENCY_ID, 1_000_000),
-		])
+		.balances(vec![(ALICE, LIQUID_CURRENCY_ID, 40_000_000)])
 		.build()
 		.execute_with(|| {
-			assert_ok!(Homa::update_ledgers(
+			assert_ok!(Homa::reset_ledgers(
 				Origin::signed(HomaAdmin::get()),
-				vec![(0, Some(4_000_000), None)]
+				vec![(0, Some(3_000_000), None), (1, Some(1_000_000), None),]
 			));
-			assert_ok!(Homa::update_homa_params(
-				Origin::signed(HomaAdmin::get()),
-				Some(5_000_000),
-				None,
-				None,
-				None,
-				Some(Rate::saturating_from_rational(10, 100)),
-				None,
-			));
-			assert_ok!(Homa::mint(Origin::signed(CHARLIE), 1_000_000));
-			assert_eq!(Homa::get_total_bonded(), 4_000_000);
-			assert_eq!(Homa::get_total_staking_currency(), 5_000_000);
-			assert_eq!(Homa::to_bond_pool(), 1_000_000);
-			assert_eq!(Currencies::total_issuance(LIQUID_CURRENCY_ID), 50_000_000);
-			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY_ID, &TreasuryAccount::get()), 0);
-
-			assert_ok!(Homa::draw_staking_reward(2, 1));
-			assert_eq!(Homa::get_total_bonded(), 4_000_000);
-			assert_eq!(Homa::get_total_staking_currency(), 5_000_000);
-			assert_eq!(Homa::to_bond_pool(), 1_000_000);
-			assert_eq!(Currencies::total_issuance(LIQUID_CURRENCY_ID), 50_000_000);
-			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY_ID, &TreasuryAccount::get()), 0);
-
 			assert_ok!(Homa::update_homa_params(
 				Origin::signed(HomaAdmin::get()),
 				None,
@@ -666,14 +674,75 @@ fn draw_staking_reward_works() {
 				None,
 				None,
 			));
-			assert_ok!(Homa::draw_staking_reward(3, 2));
+			assert_eq!(
+				Homa::staking_ledgers(0),
+				Some(StakingLedger {
+					bonded: 3_000_000,
+					unlocking: vec![]
+				})
+			);
+			assert_eq!(
+				Homa::staking_ledgers(1),
+				Some(StakingLedger {
+					bonded: 1_000_000,
+					unlocking: vec![]
+				})
+			);
 			assert_eq!(Homa::get_total_bonded(), 4_000_000);
-			assert_eq!(Homa::get_total_staking_currency(), 5_000_000);
-			assert_eq!(Homa::to_bond_pool(), 1_000_000);
-			assert_eq!(Currencies::total_issuance(LIQUID_CURRENCY_ID), 50_699_300);
+			assert_eq!(Currencies::total_issuance(LIQUID_CURRENCY_ID), 40_000_000);
+			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY_ID, &TreasuryAccount::get()), 0);
+
+			// accumulate staking rewards, no commission
+			assert_ok!(Homa::process_staking_rewards(1, 0));
+			assert_eq!(
+				Homa::staking_ledgers(0),
+				Some(StakingLedger {
+					bonded: 3_600_000,
+					unlocking: vec![]
+				})
+			);
+			assert_eq!(
+				Homa::staking_ledgers(1),
+				Some(StakingLedger {
+					bonded: 1_200_000,
+					unlocking: vec![]
+				})
+			);
+			assert_eq!(Homa::get_total_bonded(), 4_800_000);
+			assert_eq!(Currencies::total_issuance(LIQUID_CURRENCY_ID), 40_000_000);
+			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY_ID, &TreasuryAccount::get()), 0);
+
+			assert_ok!(Homa::update_homa_params(
+				Origin::signed(HomaAdmin::get()),
+				None,
+				None,
+				None,
+				None,
+				Some(Rate::saturating_from_rational(10, 100)),
+				None,
+			));
+
+			// accumulate staking rewards, will draw commission to TreasuryAccount
+			assert_ok!(Homa::process_staking_rewards(2, 1));
+			assert_eq!(
+				Homa::staking_ledgers(0),
+				Some(StakingLedger {
+					bonded: 4_320_000,
+					unlocking: vec![]
+				})
+			);
+			assert_eq!(
+				Homa::staking_ledgers(1),
+				Some(StakingLedger {
+					bonded: 1_440_000,
+					unlocking: vec![]
+				})
+			);
+			assert_eq!(Homa::get_total_bonded(), 5_760_000);
+			assert_eq!(Currencies::total_issuance(LIQUID_CURRENCY_ID), 40_677_966);
 			assert_eq!(
 				Currencies::free_balance(LIQUID_CURRENCY_ID, &TreasuryAccount::get()),
-				699_300
+				677_966
 			);
 		});
 }
@@ -681,7 +750,7 @@ fn draw_staking_reward_works() {
 #[test]
 fn process_scheduled_unbond_works() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(Homa::update_ledgers(
+		assert_ok!(Homa::reset_ledgers(
 			Origin::signed(HomaAdmin::get()),
 			vec![
 				(
@@ -786,7 +855,7 @@ fn process_to_bond_pool_works() {
 				None,
 				None,
 			));
-			assert_ok!(Homa::update_ledgers(
+			assert_ok!(Homa::reset_ledgers(
 				Origin::signed(HomaAdmin::get()),
 				vec![(0, Some(1_000_000), None)]
 			));
@@ -810,7 +879,7 @@ fn process_to_bond_pool_works() {
 			);
 
 			// ToBondPool is unable to afford xcm_transfer_fee
-			assert_ok!(Homa::process_to_bond_pool(1));
+			assert_ok!(Homa::process_to_bond_pool());
 			assert_eq!(
 				Homa::staking_ledgers(0),
 				Some(StakingLedger {
@@ -836,7 +905,7 @@ fn process_to_bond_pool_works() {
 				Currencies::free_balance(STAKING_CURRENCY_ID, &Homa::account_id()),
 				1_000_000
 			);
-			assert_ok!(Homa::process_to_bond_pool(2));
+			assert_ok!(Homa::process_to_bond_pool());
 			assert_eq!(
 				Homa::staking_ledgers(0),
 				Some(StakingLedger {
@@ -859,7 +928,7 @@ fn process_to_bond_pool_works() {
 				Currencies::free_balance(STAKING_CURRENCY_ID, &Homa::account_id()),
 				6_000_000
 			);
-			assert_ok!(Homa::process_to_bond_pool(3));
+			assert_ok!(Homa::process_to_bond_pool());
 			assert_eq!(
 				Homa::staking_ledgers(0),
 				Some(StakingLedger {
@@ -904,7 +973,7 @@ fn process_to_bond_pool_works() {
 				Currencies::free_balance(STAKING_CURRENCY_ID, &Homa::account_id()),
 				2_000_000
 			);
-			assert_ok!(Homa::process_to_bond_pool(4));
+			assert_ok!(Homa::process_to_bond_pool());
 			assert_eq!(Homa::to_bond_pool(), 2_000_000);
 			assert_eq!(Homa::get_total_bonded(), 5_000_000);
 			assert_eq!(Currencies::total_issuance(STAKING_CURRENCY_ID), 13_000_000);
@@ -926,7 +995,7 @@ fn process_redeem_requests_works() {
 		])
 		.build()
 		.execute_with(|| {
-			assert_ok!(Homa::update_ledgers(
+			assert_ok!(Homa::reset_ledgers(
 				Origin::signed(HomaAdmin::get()),
 				vec![(0, Some(2_000_000), None), (1, Some(3_000_000), None),]
 			));
@@ -1049,7 +1118,33 @@ fn process_redeem_requests_works() {
 }
 
 #[test]
-fn bump_new_era_works() {
+fn should_bump_local_current_era_works() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_eq!(Homa::bump_era_prefix(), 0);
+		assert_eq!(Homa::bump_era_frequency(), 0);
+		assert_eq!(Homa::should_bump_local_current_era(10), false);
+		assert_eq!(Homa::should_bump_local_current_era(12), false);
+
+		assert_ok!(Homa::update_bump_era_params(
+			Origin::signed(HomaAdmin::get()),
+			None,
+			Some(5)
+		));
+		assert_eq!(Homa::should_bump_local_current_era(10), true);
+		assert_eq!(Homa::should_bump_local_current_era(12), false);
+
+		assert_ok!(Homa::update_bump_era_params(
+			Origin::signed(HomaAdmin::get()),
+			Some(3),
+			None
+		));
+		assert_eq!(Homa::should_bump_local_current_era(10), false);
+		assert_eq!(Homa::should_bump_local_current_era(12), true);
+	});
+}
+
+#[test]
+fn bump_current_era_works() {
 	ExtBuilder::default()
 		.balances(vec![(ALICE, STAKING_CURRENCY_ID, 100_000_000)])
 		.build()
@@ -1088,19 +1183,11 @@ fn bump_new_era_works() {
 				30_000_000
 			);
 
-			// bump era failed when caller has no permission.
-			assert_noop!(Homa::bump_current_era(Origin::signed(ALICE), 1), BadOrigin);
-
-			// bump era failed when new era is outdated.
-			assert_noop!(
-				Homa::bump_current_era(Origin::signed(HomaAdmin::get()), 0),
-				Error::<Runtime>::OutdatedEraIndex
-			);
-
 			// bump era to #1,
 			// will process to_bond_pool.
-			assert_ok!(Homa::bump_current_era(Origin::signed(HomaAdmin::get()), 1));
-			System::assert_last_event(Event::Homa(crate::Event::CurrentEraBumped(1)));
+			assert_ok!(Homa::bump_current_era());
+			System::assert_has_event(Event::Homa(crate::Event::CurrentEraBumped(1)));
+			assert_eq!(Homa::relay_chain_current_era(), 1);
 			assert_eq!(
 				Homa::staking_ledgers(0),
 				Some(StakingLedger {
@@ -1125,35 +1212,15 @@ fn bump_new_era_works() {
 			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY_ID, &Homa::account_id()), 0);
 			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY_ID, &TreasuryAccount::get()), 0);
 
-			// mock update the staking reward to StakingLedgers
-			assert_ok!(Homa::update_ledgers(
-				Origin::signed(HomaAdmin::get()),
-				vec![(0, Some(20_300_000), None), (1, Some(8_080_000), None),]
-			));
-			assert_eq!(
-				Homa::staking_ledgers(0),
-				Some(StakingLedger {
-					bonded: 20_300_000,
-					unlocking: vec![]
-				})
-			);
-			assert_eq!(
-				Homa::staking_ledgers(1),
-				Some(StakingLedger {
-					bonded: 8_080_000,
-					unlocking: vec![]
-				})
-			);
-			assert_eq!(Homa::get_total_staking_currency(), 28_380_000);
-
 			// bump era to #2,
-			// commission drawn from the staking reward is not zero
-			assert_ok!(Homa::bump_current_era(Origin::signed(HomaAdmin::get()), 2));
-			System::assert_last_event(Event::Homa(crate::Event::CurrentEraBumped(2)));
+			// accumulate staking reward and draw commission
+			assert_ok!(Homa::bump_current_era());
+			System::assert_has_event(Event::Homa(crate::Event::CurrentEraBumped(2)));
+			assert_eq!(Homa::relay_chain_current_era(), 2);
 			assert_eq!(
 				Homa::staking_ledgers(0),
 				Some(StakingLedger {
-					bonded: 20_300_000,
+					bonded: 20_200_000,
 					unlocking: vec![]
 				})
 			);
@@ -1168,7 +1235,7 @@ fn bump_new_era_works() {
 			assert_eq!(Homa::to_bond_pool(), 0);
 			assert_eq!(Homa::unclaimed_redemption(), 0);
 			assert_eq!(Homa::total_void_liquid(), 0);
-			assert_eq!(Homa::get_total_staking_currency(), 28_380_000);
+			assert_eq!(Homa::get_total_staking_currency(), 28_280_000);
 			assert_eq!(Currencies::total_issuance(LIQUID_CURRENCY_ID), 297_619_046);
 			assert_eq!(Currencies::free_balance(STAKING_CURRENCY_ID, &Homa::account_id()), 0);
 			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY_ID, &Homa::account_id()), 0);
@@ -1197,20 +1264,21 @@ fn bump_new_era_works() {
 
 			// bump era to #3,
 			// will process redeem requests
-			assert_ok!(Homa::bump_current_era(Origin::signed(HomaAdmin::get()), 3));
-			System::assert_last_event(Event::Homa(crate::Event::CurrentEraBumped(3)));
+			assert_ok!(Homa::bump_current_era());
+			System::assert_has_event(Event::Homa(crate::Event::CurrentEraBumped(3)));
 			System::assert_has_event(Event::Homa(crate::Event::RedeemedByUnbond(
 				ALICE,
 				3,
 				280_000_000,
-				26_699_904,
+				26_605_824,
 			)));
+			assert_eq!(Homa::relay_chain_current_era(), 3);
 			assert_eq!(
 				Homa::staking_ledgers(0),
 				Some(StakingLedger {
 					bonded: 0,
 					unlocking: vec![UnlockChunk {
-						value: 20_300_000,
+						value: 20_200_000,
 						era: 3 + BondingDuration::get()
 					}]
 				})
@@ -1218,9 +1286,9 @@ fn bump_new_era_works() {
 			assert_eq!(
 				Homa::staking_ledgers(1),
 				Some(StakingLedger {
-					bonded: 1_680_096,
+					bonded: 1_674_176,
 					unlocking: vec![UnlockChunk {
-						value: 6_399_904,
+						value: 6_405_824,
 						era: 3 + BondingDuration::get()
 					}]
 				})
@@ -1229,7 +1297,7 @@ fn bump_new_era_works() {
 			assert_eq!(Homa::to_bond_pool(), 0);
 			assert_eq!(Homa::unclaimed_redemption(), 0);
 			assert_eq!(Homa::total_void_liquid(), 0);
-			assert_eq!(Homa::get_total_staking_currency(), 1_680_096);
+			assert_eq!(Homa::get_total_staking_currency(), 1_674_176);
 			assert_eq!(Currencies::total_issuance(LIQUID_CURRENCY_ID), 17_619_046);
 			assert_eq!(Currencies::free_balance(STAKING_CURRENCY_ID, &Homa::account_id()), 0);
 			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY_ID, &Homa::account_id()), 0);
@@ -1240,25 +1308,28 @@ fn bump_new_era_works() {
 
 			// bump era to #31,
 			// will process scheduled unbonded
-			assert_ok!(Homa::bump_current_era(Origin::signed(HomaAdmin::get()), 31));
-			System::assert_last_event(Event::Homa(crate::Event::CurrentEraBumped(31)));
+			for _ in 3..31 {
+				assert_ok!(Homa::bump_current_era());
+			}
+			System::assert_has_event(Event::Homa(crate::Event::CurrentEraBumped(31)));
+			assert_eq!(Homa::relay_chain_current_era(), 31);
 			assert_eq!(Homa::staking_ledgers(0), None);
 			assert_eq!(
 				Homa::staking_ledgers(1),
 				Some(StakingLedger {
-					bonded: 1_680_096,
+					bonded: 1_674_176,
 					unlocking: vec![]
 				})
 			);
 			assert_eq!(Homa::staking_ledgers(2), None);
 			assert_eq!(Homa::to_bond_pool(), 0);
-			assert_eq!(Homa::unclaimed_redemption(), 26_699_904);
+			assert_eq!(Homa::unclaimed_redemption(), 26_605_824);
 			assert_eq!(Homa::total_void_liquid(), 0);
-			assert_eq!(Homa::get_total_staking_currency(), 1_680_096);
+			assert_eq!(Homa::get_total_staking_currency(), 1_674_176);
 			assert_eq!(Currencies::total_issuance(LIQUID_CURRENCY_ID), 17_619_046);
 			assert_eq!(
 				Currencies::free_balance(STAKING_CURRENCY_ID, &Homa::account_id()),
-				26_699_904
+				26_605_824
 			);
 			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY_ID, &Homa::account_id()), 0);
 			assert_eq!(

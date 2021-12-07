@@ -27,8 +27,9 @@ use module_support::{ExchangeRate, ExchangeRateProvider, HomaSubAccountXcm, Rate
 use orml_traits::MultiCurrency;
 use primitives::{Balance, CurrencyId, EraIndex};
 use scale_info::TypeInfo;
+use sp_arithmetic::traits::CheckedRem;
 use sp_runtime::{
-	traits::{AccountIdConversion, Bounded, CheckedDiv, One, Saturating, UniqueSaturatedInto, Zero},
+	traits::{AccountIdConversion, Bounded, CheckedAdd, CheckedDiv, One, Saturating, UniqueSaturatedInto, Zero},
 	ArithmeticError, FixedPointNumber,
 };
 use sp_std::{cmp::Ordering, convert::From, prelude::*, vec, vec::Vec};
@@ -170,12 +171,14 @@ pub mod module {
 		WithdrawRedemption(T::AccountId, Balance),
 		/// The current era has been bumped. \[new_era_index\]
 		CurrentEraBumped(EraIndex),
-		/// The bonded amount of subaccount's ledger has been updated. \[sub_account_index,
+		/// The current era has been reset. \[new_era_index\]
+		CurrentEraReset(EraIndex),
+		/// The bonded amount of subaccount's ledger has been reset. \[sub_account_index,
 		/// new_bonded_amount\]
-		LedgerBondedUpdated(u16, Balance),
-		/// The unlocking of subaccount's ledger has been updated. \[sub_account_index,
+		LedgerBondedReset(u16, Balance),
+		/// The unlocking of subaccount's ledger has been reset. \[sub_account_index,
 		/// new_unlocking\]
-		LedgerUnlockingUpdated(u16, Vec<UnlockChunk>),
+		LedgerUnlockingReset(u16, Vec<UnlockChunk>),
 		/// The soft bonded cap of per sub account has been updated. \[cap_amount\]
 		SoftBondedCapPerSubAccountUpdated(Balance),
 		/// The estimated reward rate per era of relaychain staking has been updated.
@@ -189,6 +192,10 @@ pub mod module {
 		CommissionRateUpdated(Rate),
 		/// The fast match fee rate has been updated. \[commission_rate\]
 		FastMatchFeeRateUpdated(Rate),
+		/// The prefix to bump era has been updated. \[prefix_blocks\]
+		BumpEraPrefixUpdated(T::BlockNumber),
+		/// The frequency to bump era has been updated. \[frequency_blocks\]
+		BumpEraFrequencyUpdated(T::BlockNumber),
 	}
 
 	/// The current era of relaychain
@@ -296,11 +303,32 @@ pub mod module {
 	#[pallet::getter(fn fast_match_fee_rate)]
 	pub type FastMatchFeeRate<T: Config> = StorageValue<_, Rate, ValueQuery>;
 
+	/// The prefix of block numbers to bump local current era.
+	///
+	/// BumpEraPrefix: value: BlockNumber
+	#[pallet::storage]
+	#[pallet::getter(fn bump_era_prefix)]
+	pub type BumpEraPrefix<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
+
+	/// The internal of blocks numbers to bump local current era.
+	#[pallet::storage]
+	#[pallet::getter(fn bump_era_frequency)]
+	pub type BumpEraFrequency<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
+
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
 
 	#[pallet::hooks]
-	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {}
+	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
+		fn on_initialize(n: T::BlockNumber) -> Weight {
+			let current_weight = 0;
+			if Self::should_bump_local_current_era(n) {
+				let _ = Self::bump_current_era();
+			}
+
+			current_weight
+		}
+	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
@@ -467,66 +495,6 @@ pub mod module {
 			Ok(())
 		}
 
-		/// Bump the current era to keep consistent with relaychain.
-		/// Requires `GovernanceOrigin`
-		///
-		/// Parameters:
-		/// - `new_era`: the latest era index of relaychain.
-		#[pallet::weight(10_000)]
-		#[transactional]
-		pub fn bump_current_era(origin: OriginFor<T>, new_era: EraIndex) -> DispatchResult {
-			T::GovernanceOrigin::ensure_origin(origin)?;
-
-			RelayChainCurrentEra::<T>::try_mutate(|current_era| -> DispatchResult {
-				ensure!(new_era > *current_era, Error::<T>::OutdatedEraIndex);
-
-				// reset void liquid to zero firstly, to guarantee
-				TotalVoidLiquid::<T>::put(0);
-
-				// TODO: consider execute rebalance on on_idle, before the processing is completed,
-				// the mint and request_redeem functions should be unavailable.
-				// Rebalance:
-				Self::draw_staking_reward(new_era, *current_era)?;
-				Self::process_scheduled_unbond(new_era)?;
-				Self::process_to_bond_pool(new_era)?;
-				Self::process_redeem_requests(new_era)?;
-
-				// bump current era to latest.
-				*current_era = new_era;
-
-				Self::deposit_event(Event::<T>::CurrentEraBumped(new_era));
-				Ok(())
-			})
-		}
-
-		/// Update the bonded and unbonding to local subaccounts ledger according to the ledger on
-		/// relaychain. Requires `GovernanceOrigin`
-		///
-		/// Parameters:
-		/// - `new_era`: the latest era index of relaychain.
-		#[pallet::weight(10_000)]
-		#[transactional]
-		pub fn update_ledgers(
-			origin: OriginFor<T>,
-			updates: Vec<(u16, Option<Balance>, Option<Vec<UnlockChunk>>)>,
-		) -> DispatchResult {
-			T::GovernanceOrigin::ensure_origin(origin)?;
-
-			for (sub_account_index, bonded_change, unlocking_change) in updates {
-				Self::do_update_ledger(sub_account_index, |ledger| -> DispatchResult {
-					if let Some(bonded) = bonded_change {
-						ledger.bonded = bonded;
-					}
-					if let Some(unlocking) = unlocking_change {
-						ledger.unlocking = unlocking;
-					}
-					Ok(())
-				})?;
-			}
-
-			Ok(())
-		}
-
 		/// Sets the params of Homa.
 		/// Requires `GovernanceOrigin`
 		///
@@ -553,30 +521,114 @@ pub mod module {
 		) -> DispatchResult {
 			T::GovernanceOrigin::ensure_origin(origin)?;
 
-			if let Some(cap) = soft_bonded_cap_per_sub_account {
-				SoftBondedCapPerSubAccount::<T>::put(cap);
-				Self::deposit_event(Event::<T>::SoftBondedCapPerSubAccountUpdated(cap));
+			if let Some(change) = soft_bonded_cap_per_sub_account {
+				SoftBondedCapPerSubAccount::<T>::put(change);
+				Self::deposit_event(Event::<T>::SoftBondedCapPerSubAccountUpdated(change));
 			}
-			if let Some(rate) = estimated_reward_rate_per_era {
-				EstimatedRewardRatePerEra::<T>::put(rate);
-				Self::deposit_event(Event::<T>::EstimatedRewardRatePerEraUpdated(rate));
+			if let Some(change) = estimated_reward_rate_per_era {
+				EstimatedRewardRatePerEra::<T>::put(change);
+				Self::deposit_event(Event::<T>::EstimatedRewardRatePerEraUpdated(change));
 			}
-			if let Some(threshold) = mint_threshold {
-				MintThreshold::<T>::put(threshold);
-				Self::deposit_event(Event::<T>::MintThresholdUpdated(threshold));
+			if let Some(change) = mint_threshold {
+				MintThreshold::<T>::put(change);
+				Self::deposit_event(Event::<T>::MintThresholdUpdated(change));
 			}
-			if let Some(threshold) = redeem_threshold {
-				RedeemThreshold::<T>::put(threshold);
-				Self::deposit_event(Event::<T>::RedeemThresholdUpdated(threshold));
+			if let Some(change) = redeem_threshold {
+				RedeemThreshold::<T>::put(change);
+				Self::deposit_event(Event::<T>::RedeemThresholdUpdated(change));
 			}
-			if let Some(rate) = commission_rate {
-				CommissionRate::<T>::put(rate);
-				Self::deposit_event(Event::<T>::CommissionRateUpdated(rate));
+			if let Some(change) = commission_rate {
+				CommissionRate::<T>::put(change);
+				Self::deposit_event(Event::<T>::CommissionRateUpdated(change));
 			}
-			if let Some(rate) = fast_match_fee_rate {
-				FastMatchFeeRate::<T>::put(rate);
-				Self::deposit_event(Event::<T>::FastMatchFeeRateUpdated(rate));
+			if let Some(change) = fast_match_fee_rate {
+				FastMatchFeeRate::<T>::put(change);
+				Self::deposit_event(Event::<T>::FastMatchFeeRateUpdated(change));
 			}
+
+			Ok(())
+		}
+
+		/// Sets the params that control when to bump local current era.
+		/// Requires `GovernanceOrigin`
+		///
+		/// Parameters:
+		/// - `prefix`: the prefix of block number on parachain.
+		/// - `frequency`: the frequency of block number on parachain.
+		#[pallet::weight(10_000)]
+		#[transactional]
+		pub fn update_bump_era_params(
+			origin: OriginFor<T>,
+			prefix: Option<T::BlockNumber>,
+			frequency: Option<T::BlockNumber>,
+		) -> DispatchResult {
+			T::GovernanceOrigin::ensure_origin(origin)?;
+
+			if let Some(change) = prefix {
+				BumpEraPrefix::<T>::put(change);
+				Self::deposit_event(Event::<T>::BumpEraPrefixUpdated(change));
+			}
+			if let Some(change) = frequency {
+				BumpEraFrequency::<T>::put(change);
+				Self::deposit_event(Event::<T>::BumpEraFrequencyUpdated(change));
+			}
+
+			Ok(())
+		}
+
+		/// Reset the bonded and unbonding to local subaccounts ledger according to the ledger on
+		/// relaychain. Requires `GovernanceOrigin`
+		///
+		/// Parameters:
+		/// - `updates`: update list of subaccount.
+		#[pallet::weight(10_000)]
+		#[transactional]
+		pub fn reset_ledgers(
+			origin: OriginFor<T>,
+			updates: Vec<(u16, Option<Balance>, Option<Vec<UnlockChunk>>)>,
+		) -> DispatchResult {
+			T::GovernanceOrigin::ensure_origin(origin)?;
+
+			for (sub_account_index, bonded_change, unlocking_change) in updates {
+				Self::do_update_ledger(sub_account_index, |ledger| -> DispatchResult {
+					if let Some(change) = bonded_change {
+						if ledger.bonded != change {
+							ledger.bonded = change;
+							Self::deposit_event(Event::<T>::LedgerBondedReset(sub_account_index, change));
+						}
+					}
+					if let Some(change) = unlocking_change {
+						if ledger.unlocking != change {
+							ledger.unlocking = change.clone();
+							Self::deposit_event(Event::<T>::LedgerUnlockingReset(sub_account_index, change));
+						}
+					}
+					Ok(())
+				})?;
+			}
+
+			Ok(())
+		}
+
+		/// Reset the RelayChainCurrentEra.
+		/// If there is a deviation of more than 1 EraIndex between current era of relaychain and
+		/// current era on local, should reset era to current era of relaychain as soon as possible.
+		/// At the same time, check whether the unlocking of ledgers should be updated.
+		/// Requires `GovernanceOrigin`
+		///
+		/// Parameters:
+		/// - `era_index`: the latest era index of relaychain.
+		#[pallet::weight(10_000)]
+		#[transactional]
+		pub fn reset_current_era(origin: OriginFor<T>, era_index: EraIndex) -> DispatchResult {
+			T::GovernanceOrigin::ensure_origin(origin)?;
+
+			RelayChainCurrentEra::<T>::mutate(|current_era| {
+				if *current_era != era_index {
+					*current_era = era_index;
+					Self::deposit_event(Event::<T>::CurrentEraReset(era_index));
+				}
+			});
 
 			Ok(())
 		}
@@ -588,31 +640,18 @@ pub mod module {
 			T::PalletId::get().into_account()
 		}
 
-		fn do_update_ledger<R, E>(
+		pub fn do_update_ledger<R, E>(
 			sub_account_index: u16,
 			f: impl FnOnce(&mut StakingLedger) -> sp_std::result::Result<R, E>,
 		) -> sp_std::result::Result<R, E> {
 			StakingLedgers::<T>::try_mutate_exists(sub_account_index, |maybe_ledger| {
 				let mut ledger = maybe_ledger.take().unwrap_or_default();
-				let old_ledger = ledger.clone();
-
 				f(&mut ledger).map(move |result| {
-					if ledger.bonded != old_ledger.bonded {
-						Self::deposit_event(Event::<T>::LedgerBondedUpdated(sub_account_index, ledger.bonded));
-					}
-					if ledger.unlocking != old_ledger.unlocking {
-						Self::deposit_event(Event::<T>::LedgerUnlockingUpdated(
-							sub_account_index,
-							ledger.unlocking.clone(),
-						));
-					}
-
 					*maybe_ledger = if ledger == Default::default() {
 						None
 					} else {
 						Some(ledger)
 					};
-
 					result
 				})
 			})
@@ -735,45 +774,61 @@ pub mod module {
 			})
 		}
 
-		/// Draw commission to TreasuryAccount from estimated staking rewards. Commission will be
-		/// given to TreasuryAccount by issuing liquid currency. Note: This will cause some losses
-		/// to the minters in previous_era, because they have been already deducted some liquid
-		/// currency amount when mint in previous_era. Until there is a better way to calculate,
-		/// this part of the loss can only be regarded as an implicit mint fee!
+		/// Accumulate staking rewards according to EstimatedRewardRatePerEra and era interal.
+		/// And draw commission from estimated staking rewards by issuing liquid currency to
+		/// TreasuryAccount. Note: This will cause some losses to the minters in previous_era,
+		/// because they have been already deducted some liquid currency amount when mint in
+		/// previous_era. Until there is a better way to calculate, this part of the loss can only
+		/// be regarded as an implicit mint fee!
 		#[transactional]
-		pub fn draw_staking_reward(new_era: EraIndex, previous_era: EraIndex) -> DispatchResult {
+		pub fn process_staking_rewards(new_era: EraIndex, previous_era: EraIndex) -> DispatchResult {
 			let era_interval = new_era.saturating_sub(previous_era);
-			let liquid_currency_id = T::LiquidCurrencyId::get();
-			let bond_ratio = Ratio::checked_from_rational(Self::get_total_bonded(), Self::get_total_staking_currency())
-				.unwrap_or_else(Ratio::zero);
-			let reward_rate = bond_ratio
-				.saturating_mul(Self::estimated_reward_rate_per_era())
+			let reward_rate = Self::estimated_reward_rate_per_era()
 				.saturating_add(Rate::one())
 				.saturating_pow(era_interval.unique_saturated_into())
 				.saturating_sub(Rate::one());
-			let commission_rate = reward_rate.saturating_mul(Self::commission_rate());
-			let inflation_rate = commission_rate
-				.checked_div(&Rate::one().saturating_add(reward_rate).saturating_sub(commission_rate))
-				.expect("shouldn't be invalid!");
-			let liquid_amount_as_commision =
-				inflation_rate.saturating_mul_int(T::Currency::total_issuance(liquid_currency_id));
-			T::Currency::deposit(
-				liquid_currency_id,
-				&T::TreasuryAccount::get(),
-				liquid_amount_as_commision,
-			)
+
+			if !reward_rate.is_zero() {
+				let mut total_reward_staking: Balance = Zero::zero();
+
+				// iterate all subaccounts
+				for (sub_account_index, ledger) in StakingLedgers::<T>::iter() {
+					let reward_staking = reward_rate.saturating_mul_int(ledger.bonded);
+
+					if !reward_staking.is_zero() {
+						Self::do_update_ledger(sub_account_index, |before| -> DispatchResult {
+							before.bonded = before.bonded.saturating_add(reward_staking);
+							Ok(())
+						})?;
+
+						total_reward_staking = total_reward_staking.saturating_add(reward_staking);
+					}
+				}
+
+				let commission_rate = Self::commission_rate();
+				if !total_reward_staking.is_zero() && !commission_rate.is_zero() {
+					let liquid_currency_id = T::LiquidCurrencyId::get();
+					let commission_staking_amount = commission_rate.saturating_mul_int(total_reward_staking);
+					let commission_ratio =
+						Ratio::checked_from_rational(commission_staking_amount, Self::get_total_bonded())
+							.unwrap_or_else(Ratio::min_value);
+					let inflate_rate = commission_ratio
+						.checked_div(&Ratio::one().saturating_sub(commission_ratio))
+						.unwrap_or_else(Ratio::max_value);
+					let inflate_liquid_amount =
+						inflate_rate.saturating_mul_int(T::Currency::total_issuance(liquid_currency_id));
+
+					T::Currency::deposit(liquid_currency_id, &T::TreasuryAccount::get(), inflate_liquid_amount)?;
+				}
+			}
+
+			Ok(())
 		}
 
 		/// Get back unbonded of all subaccounts on relaychain by XCM.
 		/// The staking currency withdrew becomes available to be redeemed.
 		#[transactional]
 		pub fn process_scheduled_unbond(new_era: EraIndex) -> DispatchResult {
-			log::debug!(
-				target: "homa",
-				"process scheduled unbond on era: {:?}",
-				new_era
-			);
-
 			let mut total_withdrawn_staking: Balance = Zero::zero();
 
 			// iterate all subaccounts
@@ -806,13 +861,7 @@ pub mod module {
 		/// Distribute PoolToBond to ActiveSubAccountsIndexList, then cross-transfer the
 		/// distribution amount to the subaccounts on relaychain and bond it by XCM.
 		#[transactional]
-		pub fn process_to_bond_pool(new_era: EraIndex) -> DispatchResult {
-			log::debug!(
-				target: "homa",
-				"process to bond pool on era: {:?}",
-				new_era
-			);
-
+		pub fn process_to_bond_pool() -> DispatchResult {
 			let to_bond_pool = Self::to_bond_pool();
 
 			// if to_bond is gte than mint_threshold, try to bond_extra on relaychain
@@ -855,12 +904,6 @@ pub mod module {
 		/// Process redeem requests and subaccounts do unbond on relaychain by XCM message.
 		#[transactional]
 		pub fn process_redeem_requests(new_era: EraIndex) -> DispatchResult {
-			log::debug!(
-				target: "homa",
-				"process redeem requests on era: {:?}",
-				new_era
-			);
-
 			let era_index_to_expire = new_era + T::BondingDuration::get();
 			let total_bonded = Self::get_total_bonded();
 			let mut total_redeem_amount: Balance = Zero::zero();
@@ -874,7 +917,9 @@ pub mod module {
 					total_redeem_amount = total_redeem_amount.saturating_add(redeem_amount);
 					remain_total_bonded = remain_total_bonded.saturating_sub(redemption_amount);
 					RedeemRequests::<T>::remove(&redeemer);
-					Unbondings::<T>::insert(&redeemer, era_index_to_expire, redemption_amount);
+					Unbondings::<T>::mutate(&redeemer, era_index_to_expire, |n| {
+						*n = n.saturating_add(redemption_amount)
+					});
 					Self::deposit_event(Event::<T>::RedeemedByUnbond(
 						redeemer,
 						new_era,
@@ -913,6 +958,42 @@ pub mod module {
 
 			// burn total_redeem_amount.
 			T::Currency::withdraw(T::LiquidCurrencyId::get(), &Self::account_id(), total_redeem_amount)
+		}
+
+		pub fn should_bump_local_current_era(block_number: T::BlockNumber) -> bool {
+			block_number
+				.checked_add(&Self::bump_era_prefix())
+				.and_then(|n| n.checked_rem(&Self::bump_era_frequency()))
+				.map_or(false, |n| n.is_zero())
+		}
+
+		/// Bump current era.
+		/// The rebalance will send XCM messages to relaychain. Once the XCM message is sent,
+		/// the execution result cannot be obtained and cannot be rolled back. So the process
+		/// of rebalance is not atomic.
+		pub fn bump_current_era() -> DispatchResult {
+			let previous_era = Self::relay_chain_current_era();
+			let new_era = previous_era + 1;
+			RelayChainCurrentEra::<T>::put(new_era);
+			Self::deposit_event(Event::<T>::CurrentEraBumped(new_era));
+
+			// Rebalance:
+			let res = || -> DispatchResult {
+				TotalVoidLiquid::<T>::put(0);
+				Self::process_staking_rewards(new_era, previous_era)?;
+				Self::process_scheduled_unbond(new_era)?;
+				Self::process_to_bond_pool()?;
+				Self::process_redeem_requests(new_era)?;
+				Ok(())
+			}();
+
+			log::debug!(
+				target: "homa",
+				"bump era to {:?}, rebalance result is {:?}",
+				new_era, res
+			);
+
+			res
 		}
 	}
 
