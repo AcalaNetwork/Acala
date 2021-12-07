@@ -1,0 +1,335 @@
+// This file is part of Acala.
+
+// Copyright (C) 2020-2021 Acala Foundation.
+// SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
+
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+//! Tests the Homa-xcm module - cross-chain functionalities for the Homa module.
+
+use crate::setup::*;
+use crate::relaychain::kusama_test_net::*;
+use frame_support::{assert_ok, weights::Weight};
+use module_support::HomaSubAccountXcm;
+use sp_runtime::MultiAddress;
+use xcm_emulator::TestExt;
+use pallet_staking::StakingLedger;
+use module_homa_xcm::HomaXcmOperation;
+
+const XCM_WEIGHT: Weight = 50_000_000_000;
+const XCM_FEE: Balance = 10_000_000_000;
+
+fn get_xcm_weight() -> Vec<(HomaXcmOperation, Option<Weight>, Option<Balance>)> {
+	vec![
+		// Xcm weight = 400_000_000, fee = 639_999_960
+		(HomaXcmOperation::XtokensTransfer, Some(XCM_WEIGHT), Some(XCM_FEE)), 
+		// Xcm weight = 24_000_000_000, fee = 639_999_960
+		(HomaXcmOperation::XcmWithdrawUnbonded, Some(XCM_WEIGHT), Some(XCM_FEE)),
+		// Xcm weight = 24_000_000_000, fee = 639_999_960
+		(HomaXcmOperation::XcmBondExtra, Some(XCM_WEIGHT), Some(XCM_FEE)),
+		// Xcm weight = 24_000_000_000, fee = 639_999_960
+		(HomaXcmOperation::XcmUnbond, Some(XCM_WEIGHT), Some(XCM_FEE)),
+	]
+}
+
+struct HomaParams {
+	pub soft_bonded_cap_per_sub_account: Option<Balance>,
+	pub estimated_reward_rate_per_era: Option<Rate>,
+	pub mint_threshold: Option<Balance>,
+	pub redeem_threshold: Option<Balance>,
+	pub commission_rate: Option<Rate>,
+	pub fast_match_fee_rate: Option<Rate>,
+}
+impl Default for HomaParams {
+	fn default() -> Self {
+		HomaParams {
+			soft_bonded_cap_per_sub_account: Some(1_000_000_000 * dollar(RELAY_CHAIN_CURRENCY)),
+			estimated_reward_rate_per_era: None,
+			mint_threshold: None,
+			redeem_threshold: None,
+			commission_rate: None,
+			fast_match_fee_rate: None,
+		}
+	}
+}
+
+#[test]
+fn homa_xcm_transfer_staking_to_sub_account_works() {
+	let homa_lite_sub_account: AccountId =
+			hex_literal::hex!["d7b8926b326dd349355a9a7cca6606c1e0eb6fd2b506066b518c7155ff0d8297"].into();
+	let mut parachain_account: AccountId = AccountId::default();
+	Karura::execute_with(|| {
+		parachain_account = ParachainAccount::get();
+	});
+	KusamaNet::execute_with(|| {
+		// Transfer some KSM into the parachain.
+		assert_ok!(kusama_runtime::XcmPallet::reserve_transfer_assets(
+			kusama_runtime::Origin::signed(ALICE.into()),
+			Box::new(Parachain(2000).into().into()),
+			Box::new(
+				Junction::AccountId32 {
+					id: alice().into(),
+					network: NetworkId::Any
+				}
+				.into()
+				.into()
+			),
+			Box::new((Here, 2001 * dollar(RELAY_CHAIN_CURRENCY)).into()),
+			0
+		));
+
+		assert_eq!(kusama_runtime::Balances::free_balance(&homa_lite_sub_account), 0);
+		assert_eq!(kusama_runtime::Balances::free_balance(&parachain_account), 2003 * dollar(RELAY_CHAIN_CURRENCY));
+	});
+
+	Karura::execute_with(|| {
+		assert_ok!(Tokens::set_balance(
+			Origin::root(),
+			MultiAddress::Id(AccountId::from(bob())),
+			RELAY_CHAIN_CURRENCY,
+			1_000_000 * dollar(RELAY_CHAIN_CURRENCY),
+			0
+		));
+
+		assert_ok!(HomaXcm::update_xcm_dest_weight_and_fee(Origin:: root(), get_xcm_weight()));
+		let param = HomaParams::default();
+		assert_ok!(Homa::update_homa_params(
+			Origin::root(),
+			param.soft_bonded_cap_per_sub_account,
+			param.estimated_reward_rate_per_era,
+			param.mint_threshold,
+			param.redeem_threshold,
+			param.commission_rate,
+			param.fast_match_fee_rate,
+		));
+		assert_ok!(Homa::mint(Origin::signed(bob()), 1_000 * dollar(RELAY_CHAIN_CURRENCY)));
+		// Xcm weight = 400_000_000
+		assert_ok!(Homa::process_to_bond_pool(0)); 
+	});
+
+	KusamaNet::execute_with(|| {
+		// Check of 1000 dollars (minus gas) are transferred into the Kusama chain
+		assert_eq!(
+			kusama_runtime::Balances::free_balance(&homa_lite_sub_account),
+			999_999_893_333_340
+		);
+		// XCM fee is paid by the parachain account.
+		assert_eq!(
+			kusama_runtime::Balances::free_balance(&parachain_account), 
+			1003 * dollar(RELAY_CHAIN_CURRENCY) - 639_999_960
+		);
+	});
+}
+
+#[test]
+fn homa_xcm_withdraw_unbonded_from_sub_account_works() {
+	let homa_lite_sub_account: AccountId =
+			hex_literal::hex!["d7b8926b326dd349355a9a7cca6606c1e0eb6fd2b506066b518c7155ff0d8297"].into();
+		let mut parachain_account: AccountId = AccountId::default();
+		Karura::execute_with(|| {
+			parachain_account = ParachainAccount::get();
+		});
+		KusamaNet::execute_with(|| {
+			kusama_runtime::Staking::trigger_new_era(0, vec![]);
+
+			// Transfer some KSM into the parachain.
+			assert_ok!(kusama_runtime::Balances::transfer(
+				kusama_runtime::Origin::signed(ALICE.into()),
+				MultiAddress::Id(homa_lite_sub_account.clone()),
+				1_001 * dollar(RELAY_CHAIN_CURRENCY)
+			));
+
+			assert_eq!(
+				kusama_runtime::Balances::free_balance(&homa_lite_sub_account.clone()),
+				1_001 * dollar(RELAY_CHAIN_CURRENCY)
+			);
+
+			// bond and unbond some fund for staking
+			assert_ok!(kusama_runtime::Staking::bond(
+				kusama_runtime::Origin::signed(homa_lite_sub_account.clone()),
+				MultiAddress::Id(homa_lite_sub_account.clone()),
+				1_000 * dollar(RELAY_CHAIN_CURRENCY),
+				pallet_staking::RewardDestination::<AccountId>::Staked,
+			));
+
+			kusama_runtime::System::set_block_number(100);
+			assert_ok!(kusama_runtime::Staking::unbond(
+				kusama_runtime::Origin::signed(homa_lite_sub_account.clone()),
+				1_000 * dollar(RELAY_CHAIN_CURRENCY)
+			));
+
+			// Kusama's unbonding period is 27 days = 100_800 blocks
+			kusama_runtime::System::set_block_number(101_000);
+			for _i in 0..29 {
+				kusama_runtime::Staking::trigger_new_era(0, vec![]);
+			}
+
+			// Endowed from kusama_ext()
+			assert_eq!(
+				kusama_runtime::Balances::free_balance(&parachain_account.clone()),
+				2 * dollar(RELAY_CHAIN_CURRENCY)
+			);
+			assert_eq!(
+				kusama_runtime::Balances::free_balance(&homa_lite_sub_account.clone()),
+				1_001 * dollar(RELAY_CHAIN_CURRENCY)
+			);
+		});
+
+		Karura::execute_with(|| {
+			assert_ok!(Tokens::set_balance(
+				Origin::root(),
+				MultiAddress::Id(AccountId::from(bob())),
+				LIQUID_CURRENCY,
+				1_000_000 * dollar(LIQUID_CURRENCY),
+				0
+			));
+
+			assert_ok!(HomaXcm::update_xcm_dest_weight_and_fee(Origin:: root(), get_xcm_weight()));
+
+			// XCM weight = 24_000_000_000
+			assert_ok!(HomaXcm::withdraw_unbonded_from_sub_account(0, 1000 * dollar(RELAY_CHAIN_CURRENCY)));
+		});
+
+		KusamaNet::execute_with(|| {
+			assert_eq!(
+				kusama_runtime::Balances::free_balance(&homa_lite_sub_account),
+				dollar(RELAY_CHAIN_CURRENCY)
+			);
+			// Final parachain balance is: unbond_withdrew($1000) + initial_endowment($2) - xcm_fee
+			assert_eq!(
+				kusama_runtime::Balances::free_balance(&parachain_account.clone()),
+				1002 * dollar(RELAY_CHAIN_CURRENCY) - 639_999_960
+			);
+		});
+}
+
+#[test]
+fn homa_xcm_bond_extra_on_sub_account_works() {
+	let homa_lite_sub_account: AccountId =
+			hex_literal::hex!["d7b8926b326dd349355a9a7cca6606c1e0eb6fd2b506066b518c7155ff0d8297"].into();
+	let mut parachain_account: AccountId = AccountId::default();
+	Karura::execute_with(|| {
+		parachain_account = ParachainAccount::get();
+	});
+	KusamaNet::execute_with(|| {
+		assert_ok!(kusama_runtime::Balances::transfer(
+			kusama_runtime::Origin::signed(ALICE.into()),
+			MultiAddress::Id(homa_lite_sub_account.clone()),
+			1_001 * dollar(RELAY_CHAIN_CURRENCY)
+		));
+
+		assert_ok!(kusama_runtime::Staking::bond(
+			kusama_runtime::Origin::signed(homa_lite_sub_account.clone()),
+			MultiAddress::Id(homa_lite_sub_account.clone()),
+			500 * dollar(RELAY_CHAIN_CURRENCY),
+			pallet_staking::RewardDestination::<AccountId>::Staked,
+		));
+
+		assert_eq!(
+			kusama_runtime::Staking::ledger(&homa_lite_sub_account),
+			Some(StakingLedger {
+				stash: homa_lite_sub_account.clone(),
+				total: 500 * dollar(RELAY_CHAIN_CURRENCY),
+				active: 500 * dollar(RELAY_CHAIN_CURRENCY),
+				unlocking: vec![],
+				claimed_rewards: vec![],
+			})
+		);
+
+		assert_eq!(kusama_runtime::Balances::free_balance(&homa_lite_sub_account), 1001 * dollar(RELAY_CHAIN_CURRENCY));
+		assert_eq!(kusama_runtime::Balances::free_balance(&parachain_account), 2 * dollar(RELAY_CHAIN_CURRENCY));
+	});
+
+	Karura::execute_with(|| {
+		assert_ok!(HomaXcm::update_xcm_dest_weight_and_fee(Origin:: root(), get_xcm_weight()));
+
+		// Bond more
+		// xcm weight = 24_000_000_000
+		assert_ok!(HomaXcm::bond_extra_on_sub_account(0, 500 * dollar(RELAY_CHAIN_CURRENCY)));
+	});
+
+	KusamaNet::execute_with(|| {
+		assert_eq!(
+			kusama_runtime::Staking::ledger(&homa_lite_sub_account),
+			Some(StakingLedger {
+				stash: homa_lite_sub_account.clone(),
+				total: 1000 * dollar(RELAY_CHAIN_CURRENCY),
+				active: 1000 * dollar(RELAY_CHAIN_CURRENCY),
+				unlocking: vec![],
+				claimed_rewards: vec![],
+			})
+		);
+		assert_eq!(kusama_runtime::Balances::free_balance(&homa_lite_sub_account), 1001 * dollar(RELAY_CHAIN_CURRENCY));
+		// XCM fee is paid by the sovereign account.
+		assert_eq!(kusama_runtime::Balances::free_balance(&parachain_account), 2 * dollar(RELAY_CHAIN_CURRENCY) - 639_999_960);
+	});
+}
+
+
+#[test]
+fn homa_xcm_unbond_on_sub_account_works() {
+	let homa_lite_sub_account: AccountId =
+			hex_literal::hex!["d7b8926b326dd349355a9a7cca6606c1e0eb6fd2b506066b518c7155ff0d8297"].into();
+	let mut parachain_account: AccountId = AccountId::default();
+	Karura::execute_with(|| {
+		parachain_account = ParachainAccount::get();
+	});
+	KusamaNet::execute_with(|| {
+		assert_ok!(kusama_runtime::Balances::transfer(
+			kusama_runtime::Origin::signed(ALICE.into()),
+			MultiAddress::Id(homa_lite_sub_account.clone()),
+			1_001 * dollar(RELAY_CHAIN_CURRENCY)
+		));
+
+		assert_ok!(kusama_runtime::Staking::bond(
+			kusama_runtime::Origin::signed(homa_lite_sub_account.clone()),
+			MultiAddress::Id(homa_lite_sub_account.clone()),
+			1_000 * dollar(RELAY_CHAIN_CURRENCY),
+			pallet_staking::RewardDestination::<AccountId>::Staked,
+		));
+
+		assert_eq!(
+			kusama_runtime::Staking::ledger(&homa_lite_sub_account),
+			Some(StakingLedger {
+				stash: homa_lite_sub_account.clone(),
+				total: 1000 * dollar(RELAY_CHAIN_CURRENCY),
+				active: 1000 * dollar(RELAY_CHAIN_CURRENCY),
+				unlocking: vec![],
+				claimed_rewards: vec![],
+			})
+		);
+
+		assert_eq!(kusama_runtime::Balances::free_balance(&homa_lite_sub_account), 1_001 * dollar(RELAY_CHAIN_CURRENCY));
+		assert_eq!(kusama_runtime::Balances::free_balance(&parachain_account), 2 * dollar(RELAY_CHAIN_CURRENCY));
+	});
+
+	Karura::execute_with(|| {
+		assert_ok!(HomaXcm::update_xcm_dest_weight_and_fee(Origin:: root(), get_xcm_weight()));
+
+		// Call the unbond function
+		// xcm weight = 24_000_000_000
+		assert_ok!(HomaXcm::unbond_on_sub_account(0, 999 * dollar(RELAY_CHAIN_CURRENCY)));
+	});
+
+	KusamaNet::execute_with(|| {
+		let ledger=  kusama_runtime::Staking::ledger(&homa_lite_sub_account).expect("record should exist");
+		assert_eq!(ledger.total, 1000 * dollar(RELAY_CHAIN_CURRENCY));
+		assert_eq!(ledger.active, dollar(RELAY_CHAIN_CURRENCY));
+
+		assert_eq!(kusama_runtime::Balances::free_balance(&homa_lite_sub_account), 1_001 * dollar(RELAY_CHAIN_CURRENCY));
+
+		// XCM fee is paid by the sovereign account.
+		assert_eq!(kusama_runtime::Balances::free_balance(&parachain_account), 2 * dollar(RELAY_CHAIN_CURRENCY) - 639_999_960);
+	});
+}

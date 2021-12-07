@@ -50,6 +50,11 @@ mod evm;
 ))]
 mod homa_lite;
 
+#[cfg(
+	feature = "with-karura-runtime",
+)]
+mod homa_xcm;
+
 #[cfg(any(
 	feature = "with-mandala-runtime",
 	feature = "with-karura-runtime",
