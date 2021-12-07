@@ -18,14 +18,14 @@
 
 //! Tests the Homa and HomaXcm module - cross-chain functionalities for the Homa module.
 
-use crate::setup::*;
 use crate::relaychain::kusama_test_net::*;
+use crate::setup::*;
 use frame_support::{assert_ok, weights::Weight};
+use module_homa::UnlockChunk;
+use module_homa_xcm::HomaXcmOperation;
+use pallet_staking::StakingLedger;
 use sp_runtime::MultiAddress;
 use xcm_emulator::TestExt;
-use pallet_staking::StakingLedger;
-use module_homa_xcm::HomaXcmOperation;
-use module_homa::UnlockChunk;
 
 // Weight and fee cost is related to the XCM_WEIGHT passed in.
 const XCM_WEIGHT: Weight = 10_000_000_000;
@@ -34,7 +34,7 @@ const XCM_FEE: Balance = 10_000_000_000;
 fn get_xcm_weight() -> Vec<(HomaXcmOperation, Option<Weight>, Option<Balance>)> {
 	vec![
 		// Xcm weight = 400_000_000, fee = 373_333_310
-		(HomaXcmOperation::XtokensTransfer, Some(XCM_WEIGHT), Some(XCM_FEE)), 
+		(HomaXcmOperation::XtokensTransfer, Some(XCM_WEIGHT), Some(XCM_FEE)),
 		// Xcm weight = 14_000_000_000, fee = 373_333_310
 		(HomaXcmOperation::XcmWithdrawUnbonded, Some(XCM_WEIGHT), Some(XCM_FEE)),
 		// Xcm weight = 14_000_000_000, fee = 373_333_310
@@ -67,25 +67,27 @@ impl Default for HomaParams {
 
 // Helper function to setup config. Called within Karura Externalities.
 fn configure_homa_and_homa_xcm() {
-		// Configure Homa and HomaXcm
-		assert_ok!(HomaXcm::update_xcm_dest_weight_and_fee(Origin:: root(), get_xcm_weight()));
-		let param = HomaParams::default();
-		assert_ok!(Homa::update_homa_params(
-			Origin::root(),
-			param.soft_bonded_cap_per_sub_account,
-			param.estimated_reward_rate_per_era,
-			param.mint_threshold,
-			param.redeem_threshold,
-			param.commission_rate,
-			param.fast_match_fee_rate,
-		));
+	// Configure Homa and HomaXcm
+	assert_ok!(HomaXcm::update_xcm_dest_weight_and_fee(
+		Origin::root(),
+		get_xcm_weight()
+	));
+	let param = HomaParams::default();
+	assert_ok!(Homa::update_homa_params(
+		Origin::root(),
+		param.soft_bonded_cap_per_sub_account,
+		param.estimated_reward_rate_per_era,
+		param.mint_threshold,
+		param.redeem_threshold,
+		param.commission_rate,
+		param.fast_match_fee_rate,
+	));
 }
-
 
 #[test]
 fn homa_xcm_transfer_staking_to_sub_account_works() {
 	let homa_lite_sub_account: AccountId =
-			hex_literal::hex!["d7b8926b326dd349355a9a7cca6606c1e0eb6fd2b506066b518c7155ff0d8297"].into();
+		hex_literal::hex!["d7b8926b326dd349355a9a7cca6606c1e0eb6fd2b506066b518c7155ff0d8297"].into();
 	let mut parachain_account: AccountId = AccountId::default();
 	Karura::execute_with(|| {
 		parachain_account = ParachainAccount::get();
@@ -108,7 +110,10 @@ fn homa_xcm_transfer_staking_to_sub_account_works() {
 		));
 
 		assert_eq!(kusama_runtime::Balances::free_balance(&homa_lite_sub_account), 0);
-		assert_eq!(kusama_runtime::Balances::free_balance(&parachain_account), 2003 * dollar(RELAY_CHAIN_CURRENCY));
+		assert_eq!(
+			kusama_runtime::Balances::free_balance(&parachain_account),
+			2003 * dollar(RELAY_CHAIN_CURRENCY)
+		);
 	});
 
 	Karura::execute_with(|| {
@@ -124,7 +129,7 @@ fn homa_xcm_transfer_staking_to_sub_account_works() {
 
 		// Transfer fund via XCM by Mint
 		assert_ok!(Homa::mint(Origin::signed(bob()), 1_000 * dollar(RELAY_CHAIN_CURRENCY)));
-		assert_ok!(Homa::process_to_bond_pool(0)); 
+		assert_ok!(Homa::process_to_bond_pool());
 	});
 
 	KusamaNet::execute_with(|| {
@@ -135,7 +140,7 @@ fn homa_xcm_transfer_staking_to_sub_account_works() {
 		);
 		// XCM fee is paid by the parachain account.
 		assert_eq!(
-			kusama_runtime::Balances::free_balance(&parachain_account), 
+			kusama_runtime::Balances::free_balance(&parachain_account),
 			1003 * dollar(RELAY_CHAIN_CURRENCY) - 373_333_310
 		);
 	});
@@ -144,104 +149,103 @@ fn homa_xcm_transfer_staking_to_sub_account_works() {
 #[test]
 fn homa_xcm_withdraw_unbonded_from_sub_account_works() {
 	let homa_lite_sub_account: AccountId =
-			hex_literal::hex!["d7b8926b326dd349355a9a7cca6606c1e0eb6fd2b506066b518c7155ff0d8297"].into();
-		let mut parachain_account: AccountId = AccountId::default();
-		Karura::execute_with(|| {
-			parachain_account = ParachainAccount::get();
-		});
-		KusamaNet::execute_with(|| {
+		hex_literal::hex!["d7b8926b326dd349355a9a7cca6606c1e0eb6fd2b506066b518c7155ff0d8297"].into();
+	let mut parachain_account: AccountId = AccountId::default();
+	Karura::execute_with(|| {
+		parachain_account = ParachainAccount::get();
+	});
+	KusamaNet::execute_with(|| {
+		kusama_runtime::Staking::trigger_new_era(0, vec![]);
+
+		// Transfer some KSM into the parachain.
+		assert_ok!(kusama_runtime::Balances::transfer(
+			kusama_runtime::Origin::signed(ALICE.into()),
+			MultiAddress::Id(homa_lite_sub_account.clone()),
+			1_001 * dollar(RELAY_CHAIN_CURRENCY)
+		));
+
+		assert_eq!(
+			kusama_runtime::Balances::free_balance(&homa_lite_sub_account.clone()),
+			1_001 * dollar(RELAY_CHAIN_CURRENCY)
+		);
+
+		// bond and unbond some fund for staking
+		assert_ok!(kusama_runtime::Staking::bond(
+			kusama_runtime::Origin::signed(homa_lite_sub_account.clone()),
+			MultiAddress::Id(homa_lite_sub_account.clone()),
+			1_000 * dollar(RELAY_CHAIN_CURRENCY),
+			pallet_staking::RewardDestination::<AccountId>::Staked,
+		));
+
+		kusama_runtime::System::set_block_number(100);
+		assert_ok!(kusama_runtime::Staking::unbond(
+			kusama_runtime::Origin::signed(homa_lite_sub_account.clone()),
+			1_000 * dollar(RELAY_CHAIN_CURRENCY)
+		));
+
+		// Kusama's unbonding period is 27 days = 100_800 blocks
+		kusama_runtime::System::set_block_number(101_000);
+		for _i in 0..29 {
 			kusama_runtime::Staking::trigger_new_era(0, vec![]);
+		}
 
-			// Transfer some KSM into the parachain.
-			assert_ok!(kusama_runtime::Balances::transfer(
-				kusama_runtime::Origin::signed(ALICE.into()),
-				MultiAddress::Id(homa_lite_sub_account.clone()),
-				1_001 * dollar(RELAY_CHAIN_CURRENCY)
-			));
+		// Endowed from kusama_ext()
+		assert_eq!(
+			kusama_runtime::Balances::free_balance(&parachain_account.clone()),
+			2 * dollar(RELAY_CHAIN_CURRENCY)
+		);
+		assert_eq!(
+			kusama_runtime::Balances::free_balance(&homa_lite_sub_account.clone()),
+			1_001 * dollar(RELAY_CHAIN_CURRENCY)
+		);
+	});
 
-			assert_eq!(
-				kusama_runtime::Balances::free_balance(&homa_lite_sub_account.clone()),
-				1_001 * dollar(RELAY_CHAIN_CURRENCY)
-			);
+	Karura::execute_with(|| {
+		assert_ok!(Tokens::set_balance(
+			Origin::root(),
+			MultiAddress::Id(AccountId::from(bob())),
+			LIQUID_CURRENCY,
+			1_000_000 * dollar(LIQUID_CURRENCY),
+			0
+		));
 
-			// bond and unbond some fund for staking
-			assert_ok!(kusama_runtime::Staking::bond(
-				kusama_runtime::Origin::signed(homa_lite_sub_account.clone()),
-				MultiAddress::Id(homa_lite_sub_account.clone()),
-				1_000 * dollar(RELAY_CHAIN_CURRENCY),
-				pallet_staking::RewardDestination::<AccountId>::Staked,
-			));
+		configure_homa_and_homa_xcm();
 
-			kusama_runtime::System::set_block_number(100);
-			assert_ok!(kusama_runtime::Staking::unbond(
-				kusama_runtime::Origin::signed(homa_lite_sub_account.clone()),
-				1_000 * dollar(RELAY_CHAIN_CURRENCY)
-			));
+		// Add an unlock chunk to the ledger
+		assert_ok!(Homa::reset_ledgers(
+			Origin::root(),
+			vec![(
+				0,
+				Some(1_000 * dollar(RELAY_CHAIN_CURRENCY)),
+				Some(vec![UnlockChunk {
+					value: 1000 * dollar(RELAY_CHAIN_CURRENCY),
+					era: 0
+				},])
+			),]
+		));
 
-			// Kusama's unbonding period is 27 days = 100_800 blocks
-			kusama_runtime::System::set_block_number(101_000);
-			for _i in 0..29 {
-				kusama_runtime::Staking::trigger_new_era(0, vec![]);
-			}
+		// Process the unlocking and withdraw unbonded.
+		assert_ok!(Homa::process_scheduled_unbond(0));
+	});
 
-			// Endowed from kusama_ext()
-			assert_eq!(
-				kusama_runtime::Balances::free_balance(&parachain_account.clone()),
-				2 * dollar(RELAY_CHAIN_CURRENCY)
-			);
-			assert_eq!(
-				kusama_runtime::Balances::free_balance(&homa_lite_sub_account.clone()),
-				1_001 * dollar(RELAY_CHAIN_CURRENCY)
-			);
-		});
-
-		Karura::execute_with(|| {
-			assert_ok!(Tokens::set_balance(
-				Origin::root(),
-				MultiAddress::Id(AccountId::from(bob())),
-				LIQUID_CURRENCY,
-				1_000_000 * dollar(LIQUID_CURRENCY),
-				0
-			));
-
-			configure_homa_and_homa_xcm();
-
-			// Add an unlock chunk to the ledger
-			assert_ok!(Homa::update_ledgers(
-				Origin::root(),
-				vec![
-					(
-						0,
-						Some(1_000 * dollar(RELAY_CHAIN_CURRENCY)),
-						Some(vec![
-							UnlockChunk { value: 1000 * dollar(RELAY_CHAIN_CURRENCY), era: 0 },
-						])
-					),
-				]
-			));
-			
-			// Process the unlocking and withdraw unbonded.
-			assert_ok!(Homa::process_scheduled_unbond(0));
-		});
-
-		KusamaNet::execute_with(|| {
-			// Fund has been withdrew and transferred.
-			assert_eq!(
-				kusama_runtime::Balances::free_balance(&homa_lite_sub_account),
-				dollar(RELAY_CHAIN_CURRENCY)
-			);
-			// Final parachain balance is: unbond_withdrew($1000) + initial_endowment($2) - xcm_fee
-			assert_eq!(
-				kusama_runtime::Balances::free_balance(&parachain_account.clone()),
-				1002 * dollar(RELAY_CHAIN_CURRENCY) - 373_333_310
-			);
-		});
+	KusamaNet::execute_with(|| {
+		// Fund has been withdrew and transferred.
+		assert_eq!(
+			kusama_runtime::Balances::free_balance(&homa_lite_sub_account),
+			dollar(RELAY_CHAIN_CURRENCY)
+		);
+		// Final parachain balance is: unbond_withdrew($1000) + initial_endowment($2) - xcm_fee
+		assert_eq!(
+			kusama_runtime::Balances::free_balance(&parachain_account.clone()),
+			1002 * dollar(RELAY_CHAIN_CURRENCY) - 373_333_310
+		);
+	});
 }
 
 #[test]
 fn homa_xcm_bond_extra_on_sub_account_works() {
 	let homa_lite_sub_account: AccountId =
-			hex_literal::hex!["d7b8926b326dd349355a9a7cca6606c1e0eb6fd2b506066b518c7155ff0d8297"].into();
+		hex_literal::hex!["d7b8926b326dd349355a9a7cca6606c1e0eb6fd2b506066b518c7155ff0d8297"].into();
 	let mut parachain_account: AccountId = AccountId::default();
 	Karura::execute_with(|| {
 		parachain_account = ParachainAccount::get();
@@ -272,8 +276,14 @@ fn homa_xcm_bond_extra_on_sub_account_works() {
 			})
 		);
 
-		assert_eq!(kusama_runtime::Balances::free_balance(&homa_lite_sub_account), 1001 * dollar(RELAY_CHAIN_CURRENCY));
-		assert_eq!(kusama_runtime::Balances::free_balance(&parachain_account), 2 * dollar(RELAY_CHAIN_CURRENCY));
+		assert_eq!(
+			kusama_runtime::Balances::free_balance(&homa_lite_sub_account),
+			1001 * dollar(RELAY_CHAIN_CURRENCY)
+		);
+		assert_eq!(
+			kusama_runtime::Balances::free_balance(&parachain_account),
+			2 * dollar(RELAY_CHAIN_CURRENCY)
+		);
 	});
 
 	Karura::execute_with(|| {
@@ -289,7 +299,7 @@ fn homa_xcm_bond_extra_on_sub_account_works() {
 
 		// Use Mint to bond more.
 		assert_ok!(Homa::mint(Origin::signed(bob()), 500 * dollar(RELAY_CHAIN_CURRENCY)));
-		assert_ok!(Homa::process_to_bond_pool(0));
+		assert_ok!(Homa::process_to_bond_pool());
 	});
 
 	KusamaNet::execute_with(|| {
@@ -303,17 +313,22 @@ fn homa_xcm_bond_extra_on_sub_account_works() {
 				claimed_rewards: vec![],
 			})
 		);
-		assert_eq!(kusama_runtime::Balances::free_balance(&homa_lite_sub_account), 1001 * dollar(RELAY_CHAIN_CURRENCY));
+		assert_eq!(
+			kusama_runtime::Balances::free_balance(&homa_lite_sub_account),
+			1001 * dollar(RELAY_CHAIN_CURRENCY)
+		);
 		// XCM fee is paid by the sovereign account.
-		assert_eq!(kusama_runtime::Balances::free_balance(&parachain_account), 2 * dollar(RELAY_CHAIN_CURRENCY) - 373_333_310);
+		assert_eq!(
+			kusama_runtime::Balances::free_balance(&parachain_account),
+			2 * dollar(RELAY_CHAIN_CURRENCY) - 373_333_310
+		);
 	});
 }
-
 
 #[test]
 fn homa_xcm_unbond_on_sub_account_works() {
 	let homa_lite_sub_account: AccountId =
-			hex_literal::hex!["d7b8926b326dd349355a9a7cca6606c1e0eb6fd2b506066b518c7155ff0d8297"].into();
+		hex_literal::hex!["d7b8926b326dd349355a9a7cca6606c1e0eb6fd2b506066b518c7155ff0d8297"].into();
 	let mut parachain_account: AccountId = AccountId::default();
 	Karura::execute_with(|| {
 		parachain_account = ParachainAccount::get();
@@ -344,10 +359,16 @@ fn homa_xcm_unbond_on_sub_account_works() {
 			})
 		);
 
-		assert_eq!(kusama_runtime::Balances::free_balance(&homa_lite_sub_account), 1_001 * dollar(RELAY_CHAIN_CURRENCY));
-		assert_eq!(kusama_runtime::Balances::free_balance(&parachain_account), 2 * dollar(RELAY_CHAIN_CURRENCY));
+		assert_eq!(
+			kusama_runtime::Balances::free_balance(&homa_lite_sub_account),
+			1_001 * dollar(RELAY_CHAIN_CURRENCY)
+		);
+		assert_eq!(
+			kusama_runtime::Balances::free_balance(&parachain_account),
+			2 * dollar(RELAY_CHAIN_CURRENCY)
+		);
 	});
-	
+
 	Karura::execute_with(|| {
 		assert_ok!(Tokens::set_balance(
 			Origin::root(),
@@ -361,12 +382,9 @@ fn homa_xcm_unbond_on_sub_account_works() {
 
 		// Bond more using Mint
 		// Amount bonded = $1000 - XCM_FEE = 999_990_000_000_000
-		assert_ok!(Homa::mint(
-			Origin::signed(bob()),
-			1_000 * dollar(RELAY_CHAIN_CURRENCY),
-		));
+		assert_ok!(Homa::mint(Origin::signed(bob()), 1_000 * dollar(RELAY_CHAIN_CURRENCY),));
 		// Update internal storage in Homa
-		assert_ok!(Homa::bump_current_era(Origin::root(), 1));
+		assert_ok!(Homa::bump_current_era());
 
 		// Put in redeem request
 		assert_ok!(Homa::request_redeem(
@@ -384,9 +402,15 @@ fn homa_xcm_unbond_on_sub_account_works() {
 		assert_eq!(ledger.total, 1001 * dollar(RELAY_CHAIN_CURRENCY) - XCM_FEE);
 		assert_eq!(ledger.active, dollar(RELAY_CHAIN_CURRENCY));
 
-		assert_eq!(kusama_runtime::Balances::free_balance(&homa_lite_sub_account), 1_001 * dollar(RELAY_CHAIN_CURRENCY));
+		assert_eq!(
+			kusama_runtime::Balances::free_balance(&homa_lite_sub_account),
+			1_001 * dollar(RELAY_CHAIN_CURRENCY)
+		);
 
 		// 2 x XCM fee is paid: for Mint and Redeem
-		assert_eq!(kusama_runtime::Balances::free_balance(&parachain_account), 2 * dollar(RELAY_CHAIN_CURRENCY) - 373_333_310 * 2);
+		assert_eq!(
+			kusama_runtime::Balances::free_balance(&parachain_account),
+			2 * dollar(RELAY_CHAIN_CURRENCY) - 373_333_310 * 2
+		);
 	});
 }
