@@ -222,6 +222,10 @@ impl PriceProvider<CurrencyId> for MockPriceSource {
 	}
 }
 
+parameter_types! {
+	pub const PeriodUpdateFeeRateBlockLimit: u32 = 20;
+}
+
 impl Config for Runtime {
 	type NativeCurrencyId = GetNativeCurrencyId;
 	type DefaultFeeSwapPathList = DefaultFeeSwapPathList;
@@ -239,6 +243,7 @@ impl Config for Runtime {
 	type TradingPathLimit = TradingPathLimit;
 	type PriceSource = MockPriceSource;
 	type WeightInfo = ();
+	type PeriodUpdateFeeRateBlockLimit = PeriodUpdateFeeRateBlockLimit;
 }
 
 thread_local! {

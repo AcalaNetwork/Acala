@@ -1090,6 +1090,7 @@ impl module_transaction_pause::Config for Runtime {
 parameter_types! {
 	// Sort by fee charge order
 	pub DefaultFeeSwapPathList: Vec<Vec<CurrencyId>> = vec![vec![AUSD, DOT, ACA], vec![DOT, ACA], vec![LDOT, DOT, ACA]];
+	pub const PeriodUpdateFeeRateBlockLimit: u32 = 20;
 }
 
 type NegativeImbalance = <Balances as PalletCurrency<AccountId>>::NegativeImbalance;
@@ -1123,6 +1124,7 @@ impl module_transaction_payment::Config for Runtime {
 	type TradingPathLimit = TradingPathLimit;
 	type PriceSource = module_prices::RealTimePriceProvider<Runtime>;
 	type WeightInfo = weights::module_transaction_payment::WeightInfo<Runtime>;
+	type PeriodUpdateFeeRateBlockLimit = PeriodUpdateFeeRateBlockLimit;
 }
 
 impl module_evm_accounts::Config for Runtime {

@@ -56,7 +56,7 @@ use module_evm::{CallInfo, CreateInfo, EvmTask, Runner};
 use module_evm_accounts::EvmAddressMapping;
 use module_relaychain::RelayChainCallBuilder;
 use module_support::{DispatchableTask, ForeignAssetIdMapping};
-use module_transaction_payment::{Multiplier, TargetedFeeAdjustment};
+use module_transaction_payment::{Multiplier, PeriodUpdatedRateOfFungible, TargetedFeeAdjustment};
 
 use orml_traits::{
 	create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended, MultiCurrency,
@@ -1106,6 +1106,7 @@ parameter_types! {
 		vec![LKSM, KSM, KAR],
 		vec![BNC, KUSD, KSM, KAR],
 	];
+	pub const PeriodUpdateFeeRateBlockLimit: u32 = 20;
 }
 
 type NegativeImbalance = <Balances as PalletCurrency<AccountId>>::NegativeImbalance;
@@ -1139,6 +1140,7 @@ impl module_transaction_payment::Config for Runtime {
 	type TradingPathLimit = TradingPathLimit;
 	type PriceSource = module_prices::RealTimePriceProvider<Runtime>;
 	type WeightInfo = weights::module_transaction_payment::WeightInfo<Runtime>;
+	type PeriodUpdateFeeRateBlockLimit = PeriodUpdateFeeRateBlockLimit;
 }
 
 impl module_evm_accounts::Config for Runtime {
@@ -1415,6 +1417,7 @@ parameter_types! {
 	// One XCM operation is 200_000_000 weight, cross-chain transfer ~= 2x of transfer.
 	pub const UnitWeightCost: Weight = 200_000_000;
 	pub const MaxInstructions: u32 = 100;
+	// pub Kar_per_second: u128 = ksm_per_second();
 	pub KsmPerSecond: (AssetId, u128) = (MultiLocation::parent().into(), ksm_per_second());
 	pub KusdPerSecond: (AssetId, u128) = (
 		MultiLocation::new(
@@ -1510,9 +1513,11 @@ parameter_types! {
 		// KINT:KSM = 4:3
 		(ksm_per_second() * 4) / 3
 	);
+	pub KarPerSecondAsBased: u128 = kar_per_second();
 }
 
 pub type Trader = (
+	PeriodUpdatedRateOfFungible<Runtime, CurrencyIdConvert, KarPerSecondAsBased, ToTreasury>,
 	FixedRateOfFungible<KsmPerSecond, ToTreasury>,
 	FixedRateOfFungible<KusdPerSecond, ToTreasury>,
 	FixedRateOfFungible<KarPerSecond, ToTreasury>,

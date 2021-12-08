@@ -5911,6 +5911,7 @@ dependencies = [
  "acala-primitives",
  "frame-support",
  "frame-system",
+ "log",
  "module-currencies",
  "module-dex",
  "module-support",
@@ -5927,6 +5928,9 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
+ "xcm",
+ "xcm-builder",
+ "xcm-executor",
 ]
 
 [[package]]

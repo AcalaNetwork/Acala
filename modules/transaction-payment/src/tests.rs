@@ -31,7 +31,12 @@ use mock::{
 };
 use orml_traits::MultiCurrency;
 use sp_runtime::{testing::TestXt, traits::One};
+// use xcm::latest::Parent;
+use primitives::currency::*;
 use support::Price;
+use xcm::latest::prelude::*;
+use xcm::prelude::GeneralKey;
+use xcm_executor::Assets;
 
 const CALL: &<Runtime as frame_system::Config>::Call = &Call::Currencies(module_currencies::Call::transfer {
 	dest: BOB,
@@ -763,30 +768,106 @@ fn min_tip_has_same_priority() {
 
 #[test]
 fn max_tip_has_same_priority() {
-	let tip = 1000;
-	let len = 10;
+    let tip = 1000;
+    let len = 10;
 
+    ExtBuilder::default()
+        .one_hundred_thousand_for_alice_n_charlie()
+        .build()
+        .execute_with(|| {
+            let normal = DispatchInfo {
+                weight: 100,
+                class: DispatchClass::Normal,
+                pays_fee: Pays::Yes,
+            };
+            let priority = ChargeTransactionPayment::<Runtime>(tip)
+                .validate(&ALICE, CALL, &normal, len)
+                .unwrap()
+                .priority;
+            // max_tx_per_block = 10
+            assert_eq!(priority, 10_000);
+
+            let priority = ChargeTransactionPayment::<Runtime>(2 * tip)
+                .validate(&ALICE, CALL, &normal, len)
+                .unwrap()
+                .priority;
+            // max_tx_per_block = 10
+            assert_eq!(priority, 10_000);
+        });
+}
+
+struct CurrencyIdConvert;
+impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
+	fn convert(location: MultiLocation) -> Option<CurrencyId> {
+		use CurrencyId::Token;
+		use TokenSymbol::*;
+
+		if location == MultiLocation::parent() {
+			return Some(Token(KSM));
+		}
+
+		match location {
+			MultiLocation {
+				interior: X1(GeneralKey(key)),
+				..
+			} => {
+				if let Ok(currency_id) = CurrencyId::decode(&mut &*key) {
+					Some(currency_id)
+				} else {
+					None
+				}
+			}
+			_ => None,
+		}
+	}
+}
+
+#[test]
+fn init_fee_setup_works() {
+	use frame_support::parameter_types;
+	parameter_types! {
+		pub const KarPerSecond: u128 = 8_000_000_000_000;
+	}
 	ExtBuilder::default()
-		.one_hundred_thousand_for_alice_n_charlie()
+		.base_weight(100)
+		.byte_fee(10)
 		.build()
 		.execute_with(|| {
-			let normal = DispatchInfo {
-				weight: 100,
-				class: DispatchClass::Normal,
-				pays_fee: Pays::Yes,
-			};
-			let priority = ChargeTransactionPayment::<Runtime>(tip)
-				.validate(&ALICE, CALL, &normal, len)
-				.unwrap()
-				.priority;
-			// max_tx_per_block = 10
-			assert_eq!(priority, 10_000);
+			Pallet::<Runtime>::on_initialize(0);
+			Pallet::<Runtime>::on_runtime_upgrade();
 
-			let priority = ChargeTransactionPayment::<Runtime>(2 * tip)
-				.validate(&ALICE, CALL, &normal, len)
-				.unwrap()
-				.priority;
-			// max_tx_per_block = 10
-			assert_eq!(priority, 10_000);
+			if let Some((total, token_rate, kar_rate)) = ChargeFeePool::<Runtime>::get(KSM) {
+				assert_eq!(total, 0);
+				assert_eq!(token_rate, 1);
+				assert_eq!(kar_rate, 50);
+			}
+			let mut trader = PeriodUpdatedRateOfFungible::<Runtime, CurrencyIdConvert, KarPerSecond, ()>::new();
+
+			let mock_weight: Weight = 200_000_000;
+			let asset: MultiAsset = (Parent, 35_000_000).into();
+			let expect_asset: MultiAsset = (Parent, 3_000_000).into();
+			let assets: Assets = asset.into();
+			let unused = trader.buy_weight(mock_weight, assets);
+			assert_eq!(unused.unwrap(), expect_asset.into());
+			assert_eq!(trader.asset_location.is_some(), true);
+			assert_eq!(trader.amount, 32_000_000);
+
+			let refund_weight: Weight = 50_000_000;
+			let expect_refund: MultiAsset = (Parent, 8_000_000).into();
+
+			let refund = trader.refund_weight(refund_weight);
+			assert_eq!(refund.unwrap(), expect_refund);
+			assert_eq!(trader.amount, 24_000_000);
+
+			let block_counter = BlockCounter::<Runtime>::get();
+			assert_eq!(block_counter, 1);
+			for i in 1..20 {
+				Pallet::<Runtime>::on_initialize(i);
+			}
+			let block_counter = BlockCounter::<Runtime>::get();
+			assert_eq!(block_counter, 20);
+			Pallet::<Runtime>::on_initialize(21);
+			let block_counter = BlockCounter::<Runtime>::get();
+			assert_eq!(block_counter, 1);
 		});
 }

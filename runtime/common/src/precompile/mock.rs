@@ -247,6 +247,7 @@ parameter_types! {
 	pub OperationalFeeMultiplier: u64 = 5;
 	pub TipPerWeightStep: Balance = 1;
 	pub MaxTipsOfPriority: Balance = 1000;
+	pub const PeriodUpdateFeeRateBlockLimit: u32 = 20;
 }
 
 impl module_transaction_payment::Config for Test {
@@ -266,6 +267,7 @@ impl module_transaction_payment::Config for Test {
 	type TradingPathLimit = TradingPathLimit;
 	type PriceSource = module_prices::RealTimePriceProvider<Test>;
 	type WeightInfo = ();
+	type PeriodUpdateFeeRateBlockLimit = PeriodUpdateFeeRateBlockLimit;
 }
 pub type ChargeTransactionPayment = module_transaction_payment::ChargeTransactionPayment<Test>;
 

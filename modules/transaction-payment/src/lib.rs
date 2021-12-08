@@ -32,7 +32,10 @@ use frame_support::{
 	traits::{
 		Currency, ExistenceRequirement, Imbalance, NamedReservableCurrency, OnUnbalanced, SameOrOther, WithdrawReasons,
 	},
-	weights::{DispatchInfo, GetDispatchInfo, Pays, PostDispatchInfo, WeightToFeeCoefficient, WeightToFeePolynomial},
+	weights::{
+		constants::WEIGHT_PER_SECOND, DispatchInfo, GetDispatchInfo, Pays, PostDispatchInfo, WeightToFeeCoefficient,
+		WeightToFeePolynomial,
+	},
 	BoundedVec,
 };
 use frame_system::pallet_prelude::*;
@@ -53,6 +56,9 @@ use sp_runtime::{
 };
 use sp_std::{prelude::*, vec};
 use support::{DEXManager, PriceProvider, Ratio, SwapLimit, TransactionPayment};
+use xcm::opaque::latest::{prelude::XcmError, AssetId, Fungibility::Fungible, MultiAsset, MultiLocation};
+use xcm_builder::TakeRevenue;
+use xcm_executor::{traits::WeightTrader, Assets};
 
 mod mock;
 mod tests;
@@ -216,6 +222,7 @@ where
 #[frame_support::pallet]
 pub mod module {
 	use super::*;
+	use primitives::currency::{BNC, KAR, KSM, KUSD, LKSM, PHA, VSKSM};
 
 	pub const RESERVE_ID: ReserveIdentifier = ReserveIdentifier::TransactionPayment;
 
@@ -305,6 +312,9 @@ pub mod module {
 
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
+
+		#[pallet::constant]
+		type PeriodUpdateFeeRateBlockLimit: Get<u32>;
 	}
 
 	#[pallet::extra_constants]
@@ -341,13 +351,44 @@ pub mod module {
 	pub type AlternativeFeeSwapPath<T: Config> =
 		StorageMap<_, Twox64Concat, T::AccountId, BoundedVec<CurrencyId, T::TradingPathLimit>, OptionQuery>;
 
+	/// The charge fee pool for token
+	#[pallet::storage]
+	#[pallet::getter(fn charge_fee_pool)]
+	pub type ChargeFeePool<T: Config> = StorageMap<_, Twox64Concat, CurrencyId, (u128, u64, u64), OptionQuery>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn block_counter)]
+	pub type BlockCounter<T: Config> = StorageValue<_, u32, ValueQuery>;
+
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
 
 	#[pallet::hooks]
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
+		fn on_runtime_upgrade() -> Weight {
+			// TODO: deposit some amount of KAR from treasury to KAR pool
+			ChargeFeePool::<T>::insert(KAR, (100, 1, 1));
+			// setup rate with KAR. i.e. 1KSM=50KAR, the rate will be KSM/KAR=1/50
+			ChargeFeePool::<T>::insert(KSM, (0, 1, 50));
+			ChargeFeePool::<T>::insert(KUSD, (0, 8, 1));
+			ChargeFeePool::<T>::insert(LKSM, (0, 1, 5));
+			ChargeFeePool::<T>::insert(BNC, (0, 8, 5));
+			ChargeFeePool::<T>::insert(VSKSM, (0, 1, 50));
+			ChargeFeePool::<T>::insert(PHA, (0, 8, 1));
+			0
+		}
+
 		/// `on_initialize` to return the weight used in `on_finalize`.
 		fn on_initialize(_: T::BlockNumber) -> Weight {
+			let block_counter = Self::block_counter();
+			if block_counter >= T::PeriodUpdateFeeRateBlockLimit::get() {
+				// TODO: update charge pool if needed
+
+				BlockCounter::<T>::put(1);
+			} else {
+				BlockCounter::<T>::put(block_counter.checked_add(1).unwrap());
+			}
+
 			<T as Config>::WeightInfo::on_finalize()
 		}
 
@@ -615,6 +656,25 @@ where
 				.map_or(false, |new_free_balance| {
 					<T as Config>::Currency::ensure_can_withdraw(who, fee, reason, new_free_balance).is_ok()
 				});
+		if native_is_enough {
+			return;
+		}
+
+		// native is not enough, try swap native from charge fee pool to pay fee and gap.
+		// make sure add extra gap to keep alive after swap.
+		let amount = fee.saturating_add(native_existential_deposit.saturating_sub(total_native));
+		Self::swap_native_asset(who, amount);
+	}
+
+	fn swap_native_asset(who: &T::AccountId, amount: PalletBalanceOf<T>) {
+		let native_currency_id = T::NativeCurrencyId::get();
+		let default_fee_swap_path_list = T::DefaultFeeSwapPathList::get();
+		let fee_swap_path_list: Vec<Vec<CurrencyId>> = if let Some(trading_path) = AlternativeFeeSwapPath::<T>::get(who)
+		{
+			vec![vec![trading_path.into_inner()], default_fee_swap_path_list].concat()
+		} else {
+			default_fee_swap_path_list
+		};
 
 		// native is not enough, try swap native to pay fee and gap
 		if !native_is_enough {
@@ -662,9 +722,99 @@ where
 							break;
 						}
 					}
-					_ => {}
+				}
+				_ => {}
+			}
+		}
+	}
+
+	// fn exchange_asset_with_fixed_rate(origin_token: &CurrencyId, amount: PalletBalanceOf<T>) {
+	// 	let native_currency_id = T::NativeCurrencyId::get();
+	// 	if native_currency_id == *origin_token {
+	// 		return;
+	// 	}
+	//
+	// 	if let Some((total, rate)) = ChargeFeePool::<T>::get(origin_token) {
+	// 		let refund = amount.saturating_mul(rate);
+	// 	}
+	//
+	// }
+}
+
+pub struct PeriodUpdatedRateOfFungible<T, C, K: Get<u128>, R: TakeRevenue> {
+	weight: Weight,
+	amount: u128,
+	asset_location: Option<MultiLocation>,
+	asset_per_second: u128,
+	_marker: PhantomData<(T, C, K, R)>,
+}
+
+impl<T: Config, C, K: Get<u128>, R: TakeRevenue> WeightTrader for PeriodUpdatedRateOfFungible<T, C, K, R>
+where
+	C: Convert<MultiLocation, Option<CurrencyId>>,
+{
+	fn new() -> Self {
+		Self {
+			weight: 0,
+			amount: 0,
+			asset_location: None,
+			asset_per_second: 0,
+			_marker: Default::default(),
+		}
+	}
+
+	fn buy_weight(&mut self, weight: Weight, payment: Assets) -> Result<Assets, XcmError> {
+		// only support first fungible assets now.
+		let asset_id = payment
+			.fungible
+			.iter()
+			.next()
+			.map_or(Err(XcmError::TooExpensive), |v| Ok(v.0))?;
+
+		if let AssetId::Concrete(ref multi_location) = asset_id.clone() {
+			let token_id = C::convert(multi_location.clone());
+			if let Some(token_id) = token_id {
+				if let Some((_, token_rate, kar_rate)) = Pallet::<T>::charge_fee_pool(token_id) {
+					let token_per_second = K::get() * (token_rate as u128) / (kar_rate as u128);
+					log::debug!(
+						"{:?}:KAR={}/{}, token_per_second:{}",
+						token_id,
+						token_rate,
+						kar_rate,
+						token_per_second
+					);
+					let amount: u128 = token_per_second * (weight as u128) / (WEIGHT_PER_SECOND as u128);
+					let required = MultiAsset {
+						id: asset_id.clone(),
+						fun: Fungible(amount),
+					};
+					let unused = payment.checked_sub(required).map_err(|_| XcmError::TooExpensive)?;
+					self.weight = self.weight.saturating_add(weight);
+					self.amount = self.amount.saturating_add(amount);
+					self.asset_location = Some(multi_location.clone());
+					self.asset_per_second = token_per_second;
+					return Ok(unused);
 				}
 			}
+		}
+		Err(XcmError::TooExpensive)
+	}
+
+	fn refund_weight(&mut self, weight: Weight) -> Option<MultiAsset> {
+		let weight = weight.min(self.weight);
+		let amount: u128 = self.asset_per_second * (weight as u128) / (WEIGHT_PER_SECOND as u128);
+		self.weight = self.weight.saturating_sub(weight);
+		self.amount = self.amount.saturating_sub(amount);
+		if amount > 0 && self.asset_location.is_some() {
+			Some(
+				(
+					self.asset_location.as_ref().expect("checked is non-empty; qed").clone(),
+					amount,
+				)
+					.into(),
+			)
+		} else {
+			None
 		}
 	}
 }
