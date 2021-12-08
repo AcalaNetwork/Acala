@@ -751,7 +751,7 @@ parameter_type_with_key! {
 				TokenSymbol::BNC => 800 * millicent(*currency_id),  // 80BNC = 1KSM
 				TokenSymbol::VSKSM => 10 * millicent(*currency_id),  // 1VSKSM = 1KSM
 				TokenSymbol::PHA => 4000 * millicent(*currency_id), // 400PHA = 1KSM
-				TokenSymbol::KINT => 10 * millicent(*currency_id),
+				TokenSymbol::KINT => 13333 * microcent(*currency_id), // 1.33 KINT = 1 KSM
 				TokenSymbol::KBTC => 66 * microcent(*currency_id), // 1KBTC = 150 KSM
 
 				TokenSymbol::ACA |
@@ -1504,8 +1504,8 @@ parameter_types! {
 			1,
 			X2(Parachain(parachains::kintsugi::ID), GeneralKey(parachains::kintsugi::KBTC_KEY.to_vec())),
 		).into(),
-		// KINT:KSM = 1:1
-		ksm_per_second()
+		// KINT:KSM = 4:3
+		(ksm_per_second() * 4) / 3
 	);
 }
 
