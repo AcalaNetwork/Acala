@@ -180,6 +180,7 @@ impl Config for Runtime {
 	type ActiveSubAccountsIndexList = ActiveSubAccountsIndexList;
 	type BondingDuration = BondingDuration;
 	type HomaXcm = MockHomaSubAccountXcm;
+	type WeightInfo = ();
 }
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;

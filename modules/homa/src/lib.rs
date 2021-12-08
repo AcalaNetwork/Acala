@@ -35,9 +35,11 @@ use sp_runtime::{
 use sp_std::{cmp::Ordering, convert::From, prelude::*, vec, vec::Vec};
 
 pub use module::*;
+pub use weights::WeightInfo;
 
 mod mock;
 mod tests;
+pub mod weights;
 
 #[frame_support::pallet]
 pub mod module {
@@ -133,6 +135,9 @@ pub mod module {
 
 		/// The HomaXcm to manage the staking of sub-account on relaychain.
 		type HomaXcm: HomaSubAccountXcm<Self::AccountId, Balance>;
+
+		/// Weight information for the extrinsics in this module.
+		type WeightInfo: WeightInfo;
 	}
 
 	#[pallet::error]
@@ -321,12 +326,12 @@ pub mod module {
 	#[pallet::hooks]
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
 		fn on_initialize(n: T::BlockNumber) -> Weight {
-			let current_weight = 0;
 			if Self::should_bump_local_current_era(n) {
 				let _ = Self::bump_current_era();
+				<T as Config>::WeightInfo::on_initialize_with_bump_era()
+			} else {
+				<T as Config>::WeightInfo::on_initialize()
 			}
-
-			current_weight
 		}
 	}
 
@@ -336,7 +341,7 @@ pub mod module {
 		///
 		/// Parameters:
 		/// - `amount`: The amount of staking currency used to mint liquid currency.
-		#[pallet::weight(10_000)]
+		#[pallet::weight(< T as Config >::WeightInfo::mint())]
 		#[transactional]
 		pub fn mint(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResult {
 			let minter = ensure_signed(origin)?;
@@ -388,7 +393,7 @@ pub mod module {
 		///   currency.
 		/// - `allow_fast_match`: allow the request to be fast matched, fast match will take a fixed
 		///   rate as fee.
-		#[pallet::weight(10_000)]
+		#[pallet::weight(< T as Config >::WeightInfo::request_redeem())]
 		#[transactional]
 		pub fn request_redeem(
 			origin: OriginFor<T>,
@@ -445,7 +450,7 @@ pub mod module {
 		///
 		/// Parameters:
 		/// - `redeemer_list`: The list of redeem requests to execute fast redeem.
-		#[pallet::weight(10_000)]
+		#[pallet::weight(< T as Config >::WeightInfo::fast_match_redeems(redeemer_list.len() as u32))]
 		#[transactional]
 		pub fn fast_match_redeems(origin: OriginFor<T>, redeemer_list: Vec<T::AccountId>) -> DispatchResult {
 			let _ = ensure_signed(origin)?;
@@ -461,7 +466,7 @@ pub mod module {
 		///
 		/// Parameters:
 		/// - `redeemer`: redeemer.
-		#[pallet::weight(10_000)]
+		#[pallet::weight(< T as Config >::WeightInfo::claim_redemption())]
 		#[transactional]
 		pub fn claim_redemption(origin: OriginFor<T>, redeemer: T::AccountId) -> DispatchResult {
 			let _ = ensure_signed(origin)?;
@@ -508,7 +513,7 @@ pub mod module {
 		/// - `commission_rate`: the rate to draw from estimated staking rewards as commission to
 		///   HomaTreasury
 		/// - `fast_match_fee_rate`: the fixed fee rate when redeem request is been fast matched.
-		#[pallet::weight(10_000)]
+		#[pallet::weight(< T as Config >::WeightInfo::update_homa_params())]
 		#[transactional]
 		pub fn update_homa_params(
 			origin: OriginFor<T>,
@@ -555,7 +560,7 @@ pub mod module {
 		/// Parameters:
 		/// - `prefix`: the prefix of block number on parachain.
 		/// - `frequency`: the frequency of block number on parachain.
-		#[pallet::weight(10_000)]
+		#[pallet::weight(< T as Config >::WeightInfo::update_bump_era_params())]
 		#[transactional]
 		pub fn update_bump_era_params(
 			origin: OriginFor<T>,
@@ -581,7 +586,7 @@ pub mod module {
 		///
 		/// Parameters:
 		/// - `updates`: update list of subaccount.
-		#[pallet::weight(10_000)]
+		#[pallet::weight(< T as Config >::WeightInfo::reset_ledgers(updates.len() as u32))]
 		#[transactional]
 		pub fn reset_ledgers(
 			origin: OriginFor<T>,
@@ -618,7 +623,7 @@ pub mod module {
 		///
 		/// Parameters:
 		/// - `era_index`: the latest era index of relaychain.
-		#[pallet::weight(10_000)]
+		#[pallet::weight(< T as Config >::WeightInfo::reset_current_era())]
 		#[transactional]
 		pub fn reset_current_era(origin: OriginFor<T>, era_index: EraIndex) -> DispatchResult {
 			T::GovernanceOrigin::ensure_origin(origin)?;

@@ -4955,6 +4955,7 @@ dependencies = [
  "module-evm-utiltity",
  "module-homa",
  "module-homa-lite",
+ "module-homa-xcm",
  "module-honzon",
  "module-idle-scheduler",
  "module-incentives",

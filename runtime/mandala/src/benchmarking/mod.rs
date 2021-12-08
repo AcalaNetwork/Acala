@@ -33,6 +33,7 @@ pub mod dex;
 pub mod emergency_shutdown;
 pub mod evm;
 pub mod evm_accounts;
+pub mod homa;
 pub mod honzon;
 pub mod incentives;
 pub mod nominees_election;

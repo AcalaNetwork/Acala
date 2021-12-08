@@ -111,7 +111,7 @@ pub mod module {
 		///
 		/// Parameters:
 		/// - `updates`: tumple of (HomaXcmOperation, WeightChange, FeeChange).
-		#[pallet::weight(10_000)]
+		#[pallet::weight(10_000_000)]
 		#[transactional]
 		pub fn update_xcm_dest_weight_and_fee(
 			origin: OriginFor<T>,
