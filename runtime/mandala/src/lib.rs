@@ -1863,8 +1863,9 @@ impl orml_xcm::Config for Runtime {
 }
 
 parameter_types! {
-	pub const Precision: u128 = 1000000000000000000u128; // 18 decimals
 	pub const FeePrecision: u128 = 10000000000u128; // 10 decimals
+	pub const APrecision: u128 = 100u128; // 10 decimals
+	pub const PoolAssetLimit: u32 = 5u32;
 }
 
 pub struct EnsurePoolAssetId;
@@ -1921,8 +1922,9 @@ impl nutsfinance_stable_asset::Config for Runtime {
 	type PalletId = StableAssetPalletId;
 
 	type AtLeast64BitUnsigned = u128;
-	type Precision = Precision;
 	type FeePrecision = FeePrecision;
+	type APrecision = APrecision;
+	type PoolAssetLimit = PoolAssetLimit;
 	type WeightInfo = weights::nutsfinance_stable_asset::WeightInfo<Runtime>;
 	type ListingOrigin = EnsureRootOrHalfGeneralCouncil;
 	type EnsurePoolAssetId = EnsurePoolAssetId;
@@ -2444,6 +2446,7 @@ impl_runtime_apis! {
 
 			orml_list_benchmark!(list, extra, orml_authority, benchmarking::authority);
 			orml_list_benchmark!(list, extra, orml_oracle, benchmarking::oracle);
+			orml_list_benchmark!(list, extra, nutsfinance_stable_asset, benchmarking::nutsfinance_stable_asset);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -2588,8 +2591,8 @@ mod tests {
 	#[test]
 	fn check_call_size() {
 		assert!(
-			core::mem::size_of::<Call>() <= 230,
-			"size of Call is more than 230 bytes: some calls have too big arguments, use Box to \
+			core::mem::size_of::<Call>() <= 280,
+			"size of Call is more than 280 bytes: some calls have too big arguments, use Box to \
 			reduce the size of Call.
 			If the limit is too strong, maybe consider increasing the limit",
 		);
