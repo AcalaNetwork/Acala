@@ -68,7 +68,10 @@ pub type TimeStampedPrice = orml_oracle::TimestampedValue<Price, primitives::Mom
 
 // Priority of unsigned transactions
 parameter_types! {
-	// Operational is 3/4 of TransactionPriority::max_value().
+	// Operational = OperationalFeeMultiplier * final_fee * max_tx_per_block + (tip + 1) * max_tx_per_block
+	// final_fee_min = base_fee + len_fee + adjusted_weight_fee + tip = base_fee = ExtrinsicBaseWeight
+	// priority_min = final_fee * fee_multiplier * max_tx_per_block + (tip + 1) * max_tx_per_block
+	//              = ExtrinsicBaseWeight * OperationalFeeMultiplier
 	// Ensure Inherent -> Operational tx -> Unsigned tx -> Signed normal tx
 	pub const CdpEngineUnsignedPriority: TransactionPriority = TransactionPriority::max_value() / 2;      // 50%
 	pub const AuctionManagerUnsignedPriority: TransactionPriority = TransactionPriority::max_value() / 5; // 20%
