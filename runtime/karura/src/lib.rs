@@ -127,7 +127,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("karura"),
 	impl_name: create_runtime_str!("karura"),
 	authoring_version: 1,
-	spec_version: 2001,
+	spec_version: 2010,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -1009,7 +1009,7 @@ where
 }
 
 parameter_types! {
-	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![KSM, LKSM];
+	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![KSM, LKSM, KAR];
 	pub DefaultLiquidationRatio: Ratio = Ratio::saturating_from_rational(150, 100);
 	pub DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
 	pub DefaultLiquidationPenalty: Rate = Rate::saturating_from_rational(8, 100);
