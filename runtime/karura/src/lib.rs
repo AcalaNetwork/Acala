@@ -1502,7 +1502,7 @@ parameter_types! {
 	pub KintPerSecond: (AssetId, u128) = (
 		MultiLocation::new(
 			1,
-			X2(Parachain(parachains::kintsugi::ID), GeneralKey(parachains::kintsugi::KBTC_KEY.to_vec())),
+			X2(Parachain(parachains::kintsugi::ID), GeneralKey(parachains::kintsugi::KINT_KEY.to_vec())),
 		).into(),
 		// KINT:KSM = 4:3
 		(ksm_per_second() * 4) / 3
