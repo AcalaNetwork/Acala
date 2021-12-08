@@ -20,48 +20,32 @@
 //!
 //! THIS FILE WAS AUTO-GENERATED USING THE SUBSTRATE BENCHMARK CLI VERSION 4.0.0-dev
 //! DATE: 2021-12-08, STEPS: `50`, REPEAT: 20, LOW RANGE: `[]`, HIGH RANGE: `[]`
-//! EXECUTION: Some(Wasm), WASM-EXECUTION: Compiled, CHAIN: Some("karura-dev"), DB CACHE: 128
+//! EXECUTION: Some(Wasm), WASM-EXECUTION: Compiled, CHAIN: Some("mandala-latest"), DB CACHE: 128
 
 // Executed Command:
 // target/release/acala
 // benchmark
-// --chain=karura-dev
+// --chain=mandala-latest
 // --steps=50
 // --repeat=20
-// --pallet=module-homa
+// --pallet=*
 // --extrinsic=*
 // --execution=wasm
 // --wasm-execution=compiled
 // --heap-pages=4096
 // --template=./templates/runtime-weight-template.hbs
-// --output=./modules/homa/src/weights.rs
-
+// --output=./runtime/mandala/src/weights/
 
 #![cfg_attr(rustfmt, rustfmt_skip)]
 #![allow(unused_parens)]
 #![allow(unused_imports)]
-#![allow(clippy::unnecessary_cast)]
 
-use frame_support::{traits::Get, weights::{Weight, constants::RocksDbWeight}};
+use frame_support::{traits::Get, weights::Weight};
 use sp_std::marker::PhantomData;
 
-/// Weight functions needed for module_homa.
-pub trait WeightInfo {
-	fn on_initialize() -> Weight;
-	fn on_initialize_with_bump_era() -> Weight;
-	fn mint() -> Weight;
-	fn request_redeem() -> Weight;
-	fn fast_match_redeems(n: u32,) -> Weight;
-	fn claim_redemption() -> Weight;
-	fn update_homa_params() -> Weight;
-	fn update_bump_era_params() -> Weight;
-	fn reset_ledgers(n: u32,) -> Weight;
-	fn reset_current_era() -> Weight;
-}
-
-/// Weights for module_homa using the Acala node and recommended hardware.
-pub struct AcalaWeight<T>(PhantomData<T>);
-impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
+/// Weight functions for module_homa.
+pub struct WeightInfo<T>(PhantomData<T>);
+impl<T: frame_system::Config> module_homa::WeightInfo for WeightInfo<T> {	
 	fn on_initialize() -> Weight {
 		(6_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))	
@@ -114,62 +98,5 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 		(22_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
-	}
-}
-
-// For backwards compatibility and tests
-impl WeightInfo for () {
-	fn on_initialize() -> Weight {
-		(6_000_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(2 as Weight))	
-	}
-	fn on_initialize_with_bump_era() -> Weight {
-		(422_000_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(29 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(15 as Weight))
-	}
-	fn mint() -> Weight {
-		(137_000_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(11 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(7 as Weight))
-	}
-	fn request_redeem() -> Weight {
-		(77_000_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(5 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(4 as Weight))
-	}
-	fn fast_match_redeems(n: u32, ) -> Weight {
-		(7_163_000 as Weight)
-			// Standard Error: 260_000
-			.saturating_add((101_229_000 as Weight).saturating_mul(n as Weight))
-			.saturating_add(RocksDbWeight::get().reads(8 as Weight))
-			.saturating_add(RocksDbWeight::get().reads((3 as Weight).saturating_mul(n as Weight)))
-			.saturating_add(RocksDbWeight::get().writes(5 as Weight))
-			.saturating_add(RocksDbWeight::get().writes((3 as Weight).saturating_mul(n as Weight)))
-	}
-	fn claim_redemption() -> Weight {
-		(111_000_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(10 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(7 as Weight))	
-	}
-	fn update_homa_params() -> Weight {
-		(66_000_000 as Weight)
-			.saturating_add(RocksDbWeight::get().writes(6 as Weight))
-	}	
-	fn update_bump_era_params() -> Weight {
-		(29_000_000 as Weight)
-			.saturating_add(RocksDbWeight::get().writes(2 as Weight))
-	}
-	fn reset_ledgers(n: u32, ) -> Weight {
-		(2_268_000 as Weight)
-			// Standard Error: 245_000
-			.saturating_add((19_990_000 as Weight).saturating_mul(n as Weight))
-			.saturating_add(RocksDbWeight::get().reads((1 as Weight).saturating_mul(n as Weight)))
-			.saturating_add(RocksDbWeight::get().writes((1 as Weight).saturating_mul(n as Weight)))
-	}
-	fn reset_current_era() -> Weight {
-		(22_000_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
 }

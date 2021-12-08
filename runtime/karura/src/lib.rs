@@ -1658,7 +1658,7 @@ impl module_homa::Config for Runtime {
 	type ActiveSubAccountsIndexList = ActiveSubAccountsIndexList;
 	type BondingDuration = KusamaBondingDuration;
 	type HomaXcm = HomaXcm;
-	type WeightInfo = ();
+	type WeightInfo = weights::module_homa::WeightInfo<Runtime>;
 }
 
 pub struct SubAccountIndexMultiLocationConvertor;
