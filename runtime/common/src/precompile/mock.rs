@@ -244,7 +244,8 @@ parameter_types! {
 	pub const GetStableCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
 	pub DefaultFeeSwapPathList: Vec<Vec<CurrencyId>> = vec![vec![CurrencyId::Token(TokenSymbol::AUSD), CurrencyId::Token(TokenSymbol::ACA)]];
 	pub MaxSwapSlippageCompareToOracle: Ratio = Ratio::one();
-	pub OperationalFeeMultiplier: u8 = 5;
+	pub OperationalFeeMultiplier: u64 = 5;
+	pub MaxTipsOfPriority: Balance = 1000;
 }
 
 impl module_transaction_payment::Config for Test {
@@ -255,6 +256,7 @@ impl module_transaction_payment::Config for Test {
 	type OnTransactionPayment = ();
 	type TransactionByteFee = TransactionByteFee;
 	type OperationalFeeMultiplier = OperationalFeeMultiplier;
+	type MaxTipsOfPriority = MaxTipsOfPriority;
 	type WeightToFee = IdentityFee<Balance>;
 	type FeeMultiplierUpdate = ();
 	type DEX = ();

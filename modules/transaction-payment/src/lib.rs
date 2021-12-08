@@ -270,7 +270,12 @@ pub mod module {
 		/// on the `inclusion_fee`, but we also amplify the impact of tips applied to `Operational`
 		/// transactions.
 		#[pallet::constant]
-		type OperationalFeeMultiplier: Get<u8>;
+		type OperationalFeeMultiplier: Get<u64>;
+
+		/// The maximum value of tips that affect the priority.
+		/// Set the maximum value of tips to prevent affecting the unsigned extrinsic.
+		#[pallet::constant]
+		type MaxTipsOfPriority: Get<PalletBalanceOf<Self>>;
 
 		/// Convert a weight value into a deductible fee based on the currency
 		/// type.
@@ -779,7 +784,8 @@ where
 
 		// To distribute no-tip transactions a little bit, we increase the tip value by one.
 		// This means that given two transactions without a tip, smaller one will be preferred.
-		let tip = tip.saturating_add(One::one());
+		// Set the maximum value of tips to prevent affecting the unsigned extrinsic.
+		let tip = tip.saturating_add(One::one()).min(T::MaxTipsOfPriority::get());
 		let scaled_tip = max_reward(tip);
 
 		match info.class {

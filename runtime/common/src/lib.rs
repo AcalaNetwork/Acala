@@ -69,13 +69,18 @@ pub type TimeStampedPrice = orml_oracle::TimestampedValue<Price, primitives::Mom
 // Priority of unsigned transactions
 parameter_types! {
 	// Operational = OperationalFeeMultiplier * final_fee * max_tx_per_block + (tip + 1) * max_tx_per_block
-	// final_fee_min = base_fee + len_fee + adjusted_weight_fee + tip = base_fee = ExtrinsicBaseWeight
+	// final_fee_min = base_fee + len_fee + adjusted_weight_fee + tip
 	// priority_min = final_fee * fee_multiplier * max_tx_per_block + (tip + 1) * max_tx_per_block
-	//              = ExtrinsicBaseWeight * OperationalFeeMultiplier
+	//              = final_fee_min * OperationalFeeMultiplier
 	// Ensure Inherent -> Operational tx -> Unsigned tx -> Signed normal tx
-	pub const CdpEngineUnsignedPriority: TransactionPriority = TransactionPriority::max_value() / 2;      // 50%
-	pub const AuctionManagerUnsignedPriority: TransactionPriority = TransactionPriority::max_value() / 5; // 20%
-	pub const RenvmBridgeUnsignedPriority: TransactionPriority = TransactionPriority::max_value() / 10;   // 10%
+	pub const OperationalFeeMultiplier: u64 = 1_000_000_000u64;
+	// 1_504_592_000u64 from https://github.com/AcalaNetwork/Acala/blob/bda4d430cbecebf8720d700b976875d0d805ceca/runtime/integration-tests/src/runtime.rs#L275
+	const MinOperationalPriority: TransactionPriority = 1_500_000_000u64 * OperationalFeeMultiplier::get() as u64;
+	pub const CdpEngineUnsignedPriority: TransactionPriority = MinOperationalPriority::get() - 1000;
+	pub const AuctionManagerUnsignedPriority: TransactionPriority = MinOperationalPriority::get() - 2000;
+	pub const RenvmBridgeUnsignedPriority: TransactionPriority = MinOperationalPriority::get() - 3000;
+	const MaxNormalPriority: TransactionPriority = MinOperationalPriority::get() / 2; // 50%
+	pub MaxTipsOfPriority: Balance = (MaxNormalPriority::get() / RuntimeBlockWeights::get().max_block.min(*RuntimeBlockLength::get().max.get(DispatchClass::Normal) as u64)).into();
 }
 
 /// The call is allowed only if caller is a system contract.

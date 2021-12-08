@@ -629,3 +629,33 @@ fn no_tip_has_some_priority() {
 			assert_eq!(priority, 6010);
 		});
 }
+
+#[test]
+fn max_tip_has_some_priority() {
+	let tip = 1000;
+	let len = 10;
+
+	ExtBuilder::default()
+		.one_hundred_thousand_for_alice_n_charlie()
+		.build()
+		.execute_with(|| {
+			let normal = DispatchInfo {
+				weight: 100,
+				class: DispatchClass::Normal,
+				pays_fee: Pays::Yes,
+			};
+			let priority = ChargeTransactionPayment::<Runtime>(tip)
+				.validate(&ALICE, CALL, &normal, len)
+				.unwrap()
+				.priority;
+			// max_tx_per_block = 10
+			assert_eq!(priority, 10_000);
+
+			let priority = ChargeTransactionPayment::<Runtime>(2 * tip)
+				.validate(&ALICE, CALL, &normal, len)
+				.unwrap()
+				.priority;
+			// max_tx_per_block = 10
+			assert_eq!(priority, 10_000);
+		});
+}

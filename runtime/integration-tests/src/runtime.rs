@@ -276,3 +276,8 @@ mod mandala_only_tests {
 		});
 	}
 }
+
+#[test]
+fn check_max_tips_of_priority() {
+	assert_eq!(MaxTipsOfPriority::get(), 204_358_782_087); // 0.2 KAR/ACA
+}

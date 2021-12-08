@@ -49,11 +49,11 @@ mod mandala_imports {
 		CollatorSelection, CreateClassDeposit, CreateTokenDeposit, Currencies, CurrencyId, CurrencyIdConvert,
 		DataDepositPerByte, DealWithFees, DefaultExchangeRate, Dex, EmergencyShutdown, EnabledTradingPairs, Event,
 		EvmAccounts, ExistentialDeposits, Get, GetNativeCurrencyId, HomaLite, Honzon, IdleScheduler, Loans,
-		MinRewardDistributeAmount, MinimumDebitValue, MultiLocation, NativeTokenExistentialDeposit, NetworkId,
-		NftPalletId, OneDay, Origin, OriginCaller, PalletCurrency, ParachainInfo, ParachainSystem, Proxy, ProxyType,
-		RelayChainSovereignSubAccount, Runtime, Scheduler, Session, SessionKeys, SessionManager, SevenDays, System,
-		Timestamp, TokenSymbol, Tokens, TransactionPayment, TreasuryAccount, TreasuryPalletId, UncheckedExtrinsic,
-		Utility, Vesting, XcmConfig, XcmExecutor, XcmUnbondFee, EVM, NFT,
+		MaxTipsOfPriority, MinRewardDistributeAmount, MinimumDebitValue, MultiLocation, NativeTokenExistentialDeposit,
+		NetworkId, NftPalletId, OneDay, Origin, OriginCaller, PalletCurrency, ParachainInfo, ParachainSystem, Proxy,
+		ProxyType, RelayChainSovereignSubAccount, Runtime, Scheduler, Session, SessionKeys, SessionManager, SevenDays,
+		System, Timestamp, TokenSymbol, Tokens, TransactionPayment, TreasuryAccount, TreasuryPalletId,
+		UncheckedExtrinsic, Utility, Vesting, XcmConfig, XcmExecutor, XcmUnbondFee, EVM, NFT,
 	};
 
 	pub use runtime_common::{cent, dollar, millicent, ACA, AUSD, DOT, LDOT};
@@ -77,9 +77,9 @@ mod karura_imports {
 		AuctionManager, Authority, AuthoritysOriginId, Balance, Balances, BlockNumber, Call, CdpEngine, CdpTreasury,
 		CreateClassDeposit, CreateTokenDeposit, Currencies, CurrencyId, CurrencyIdConvert, DataDepositPerByte,
 		DefaultExchangeRate, Dex, EmergencyShutdown, Event, EvmAccounts, ExistentialDeposits, Get, GetNativeCurrencyId,
-		HomaLite, Honzon, IdleScheduler, KaruraFoundationAccounts, Loans, MinimumDebitValue, MultiLocation,
-		NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, Origin, OriginCaller, ParachainAccount,
-		ParachainInfo, ParachainSystem, PolkadotXcm, Proxy, ProxyType, RelayChainBlockNumberProvider,
+		HomaLite, Honzon, IdleScheduler, KaruraFoundationAccounts, Loans, MaxTipsOfPriority, MinimumDebitValue,
+		MultiLocation, NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, Origin, OriginCaller,
+		ParachainAccount, ParachainInfo, ParachainSystem, PolkadotXcm, Proxy, ProxyType, RelayChainBlockNumberProvider,
 		RelayChainSovereignSubAccount, Runtime, Scheduler, Session, SessionManager, SevenDays, System, Timestamp,
 		TokenSymbol, Tokens, TreasuryPalletId, Utility, Vesting, XTokens, XcmConfig, XcmExecutor, XcmUnbondFee, EVM,
 		NFT,
@@ -116,11 +116,12 @@ mod acala_imports {
 		AuctionManager, Authority, AuthoritysOriginId, Balance, Balances, BlockNumber, Call, CdpEngine, CdpTreasury,
 		CreateClassDeposit, CreateTokenDeposit, Currencies, CurrencyId, CurrencyIdConvert, DataDepositPerByte,
 		DefaultExchangeRate, Dex, EmergencyShutdown, Event, EvmAccounts, ExistentialDeposits, Get, GetNativeCurrencyId,
-		HomaLite, Honzon, IdleScheduler, Loans, MinimumDebitValue, MultiLocation, NativeTokenExistentialDeposit,
-		NetworkId, NftPalletId, OneDay, Origin, OriginCaller, ParachainAccount, ParachainInfo, ParachainSystem,
-		PolkadotXcm, Proxy, ProxyType, RelayChainBlockNumberProvider, RelayChainSovereignSubAccount, Runtime,
-		Scheduler, Session, SessionManager, SevenDays, System, Timestamp, TokenSymbol, Tokens, TreasuryPalletId,
-		Utility, Vesting, XTokens, XcmConfig, XcmExecutor, XcmUnbondFee, EVM, NFT,
+		HomaLite, Honzon, IdleScheduler, Loans, MaxTipsOfPriority, MinimumDebitValue, MultiLocation,
+		NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, Origin, OriginCaller, ParachainAccount,
+		ParachainInfo, ParachainSystem, PolkadotXcm, Proxy, ProxyType, RelayChainBlockNumberProvider,
+		RelayChainSovereignSubAccount, Runtime, Scheduler, Session, SessionManager, SevenDays, System, Timestamp,
+		TokenSymbol, Tokens, TreasuryPalletId, Utility, Vesting, XTokens, XcmConfig, XcmExecutor, XcmUnbondFee, EVM,
+		NFT,
 	};
 	pub use frame_support::parameter_types;
 	pub use primitives::TradingPair;
