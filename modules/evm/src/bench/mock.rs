@@ -168,7 +168,7 @@ impl FindAuthor<AccountId32> for AuthorGiven {
 }
 
 parameter_types! {
-	pub NetworkContractSource: H160 = alice();
+	pub NetworkContractSource: H160 = H160::from_low_u64_be(1);
 }
 
 ord_parameter_types! {
@@ -267,7 +267,3 @@ construct_runtime!(
 		IdleScheduler: module_idle_scheduler::{Pallet, Call, Storage, Event<T>},
 	}
 );
-
-pub fn alice() -> H160 {
-	H160::from_low_u64_be(3)
-}

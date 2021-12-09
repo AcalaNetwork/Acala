@@ -37,23 +37,33 @@ use serde_json::Value;
 use sp_core::H160;
 use sp_std::{convert::TryInto, prelude::*, rc::Rc, str::FromStr};
 
-fn get_bench_desc(name: &str) -> (Vec<u8>, H160, Vec<u8>, u64, Vec<u8>) {
+fn get_bench_info(name: &str) -> (Vec<u8>, H160, Vec<u8>, u64, Vec<u8>) {
 	let benches_str = include_str!("../../../../evm-bench/build/benches.json");
 	let evm_benches: Value = serde_json::from_str(benches_str).unwrap();
-	let desc = evm_benches[name].clone();
+	let info = evm_benches[name].clone();
 
-	let code_str = desc["code"].as_str().unwrap();
-	let input_str = desc["input"].as_str().unwrap_or_default();
-	let output_str = desc["output"].as_str().unwrap_or_default();
+	let code_str = info["code"].as_str().unwrap();
+	let input_str = info["input"].as_str().unwrap_or_default();
+	let output_str = info["output"].as_str().unwrap_or_default();
 
 	let code = Vec::from_hex(code_str).unwrap();
 	let input = Vec::from_hex(input_str).unwrap();
 	let output = Vec::from_hex(output_str).unwrap();
 
-	let from = H160::from_str(desc["from"].as_str().unwrap()).unwrap();
-	let used_gas = desc["used_gas"].as_u64().unwrap();
+	let from = H160::from_str(info["from"].as_str().unwrap()).unwrap();
+	let used_gas = info["used_gas"].as_u64().unwrap();
 
 	(code, from, input, used_gas, output)
+}
+
+fn faucet(address: &H160) {
+	let account_id = MockAddressMapping::get_account_id(&address);
+	assert_ok!(Balances::set_balance(
+		Origin::root(),
+		account_id,
+		1_000_000_000_000_000,
+		0
+	));
 }
 
 fn whitelist_keys(b: &mut Bencher, from: H160, code: Vec<u8>) -> H160 {
@@ -130,31 +140,21 @@ fn whitelist_keys(b: &mut Bencher, from: H160, code: Vec<u8>) -> H160 {
 macro_rules! evm_create {
 	($name: ident) => {
 		fn $name(b: &mut Bencher) {
-			let (code, from, _, used_gas, _) = get_bench_desc(stringify!($name));
-
-			let address = whitelist_keys(b, from, code.clone());
-
-			let config = <Runtime as Config>::config();
-
-			let acc = MockAddressMapping::get_account_id(&from);
-			assert_ok!(Balances::set_balance(
-				Origin::root(),
-				acc,
-				1_000_000_000_000_000,
-				0
-			));
+			let (code, from, _, used_gas, _) = get_bench_info(stringify!($name));
+			faucet(&from);
+			let contract_address = whitelist_keys(b, from, code.clone());
 
 			let result = b
 				.bench(|| {
 					// create contract
 					<Runtime as Config>::Runner::create_at_address(
 						from,
-						address,
+						contract_address,
 						code.clone(),
 						0,
 						21_000_000,
 						1_000_000,
-						config,
+						<Runtime as Config>::config(),
 					)
 				})
 				.unwrap();
@@ -171,29 +171,19 @@ macro_rules! evm_create {
 macro_rules! evm_call {
 	($name: ident) => {
 		fn $name(b: &mut Bencher) {
-			let (code, from, input, used_gas, output) = get_bench_desc(stringify!($name));
-
-			let address = whitelist_keys(b, from, code.clone());
-
-			let acc = MockAddressMapping::get_account_id(&from);
-			assert_ok!(Balances::set_balance(
-				Origin::root(),
-				acc,
-				1_000_000_000_000_000,
-				0
-			));
-
-			let config = <Runtime as Config>::config();
+			let (code, from, input, used_gas, output) = get_bench_info(stringify!($name));
+			faucet(&from);
+			let contract_address = whitelist_keys(b, from, code.clone());
 
 			// create contract
 			let result = <Runtime as Config>::Runner::create_at_address(
 				from,
-				address,
+				contract_address,
 				code.clone(),
 				0,
 				21_000_000,
 				1_000_000,
-				config,
+				<Runtime as Config>::config(),
 			)
 			.unwrap();
 
@@ -202,8 +192,7 @@ macro_rules! evm_call {
 				"CALL: Deploy contract failed with: {:?}",
 				result.exit_reason
 			);
-			let contract_address = result.value;
-
+			assert_eq!(contract_address, result.value);
 			assert_ok!(EVM::deploy_free(
 				Origin::signed(CouncilAccount::get()),
 				contract_address
@@ -219,7 +208,7 @@ macro_rules! evm_call {
 						0,
 						21_000_000,
 						1_000_000,
-						config,
+						<Runtime as Config>::config(),
 					)
 				})
 				.unwrap();
