@@ -82,7 +82,7 @@ mod karura_imports {
 		ParachainAccount, ParachainInfo, ParachainSystem, PolkadotXcm, Proxy, ProxyType, RelayChainBlockNumberProvider,
 		RelayChainSovereignSubAccount, Runtime, Scheduler, Session, SessionManager, SevenDays, System, Timestamp,
 		TokenSymbol, Tokens, TreasuryPalletId, Utility, Vesting, XTokens, XcmConfig, XcmExecutor, XcmUnbondFee, EVM,
-		NFT,
+		NFT, KusamaBondingDuration,
 	};
 	pub use primitives::TradingPair;
 	pub use runtime_common::{cent, dollar, millicent, KAR, KSM, KUSD, LKSM};
