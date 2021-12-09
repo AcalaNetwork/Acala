@@ -127,7 +127,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("karura"),
 	impl_name: create_runtime_str!("karura"),
 	authoring_version: 1,
-	spec_version: 2001,
+	spec_version: 2010,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -177,7 +177,6 @@ pub fn get_all_module_accounts() -> Vec<AccountId> {
 		IncentivesPalletId::get().into_account(),
 		TreasuryPalletId::get().into_account(),
 		TreasuryReservePalletId::get().into_account(),
-		ZeroAccountId::get(),
 		UnreleasedNativeVaultAccountId::get(),
 	]
 }
@@ -311,7 +310,7 @@ parameter_types! {
 	pub const MaxCandidates: u32 = 50;
 	pub const MaxInvulnerables: u32 = 10;
 	pub const KickPenaltySessionLength: u32 = 8;
-	pub const CollatorKickThreshold: Permill = Permill::from_percent(85);
+	pub const CollatorKickThreshold: Permill = Permill::from_percent(65);
 	pub MinRewardDistributeAmount: Balance = 0;
 }
 
@@ -710,7 +709,7 @@ impl orml_authority::Config for Runtime {
 parameter_types! {
 	pub const MinimumCount: u32 = 5;
 	pub const ExpiresIn: Moment = 1000 * 60 * 60; // 1 hours
-	pub ZeroAccountId: AccountId = AccountId::from([0u8; 32]);
+	pub RootOperatorAccountId: AccountId = AccountId::from([0xffu8; 32]);
 	pub const MaxHasDispatchedSize: u32 = 20;
 }
 
@@ -722,7 +721,7 @@ impl orml_oracle::Config<AcalaDataProvider> for Runtime {
 	type Time = Timestamp;
 	type OracleKey = CurrencyId;
 	type OracleValue = Price;
-	type RootOperatorAccountId = ZeroAccountId;
+	type RootOperatorAccountId = RootOperatorAccountId;
 	type Members = OperatorMembershipAcala;
 	type MaxHasDispatchedSize = MaxHasDispatchedSize;
 	type WeightInfo = ();
@@ -1009,7 +1008,7 @@ where
 }
 
 parameter_types! {
-	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![KSM, LKSM];
+	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![KSM, LKSM, KAR];
 	pub DefaultLiquidationRatio: Ratio = Ratio::saturating_from_rational(150, 100);
 	pub DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
 	pub DefaultLiquidationPenalty: Rate = Rate::saturating_from_rational(8, 100);
