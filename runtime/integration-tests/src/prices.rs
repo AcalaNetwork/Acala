@@ -90,9 +90,9 @@ fn test_update_liquid_currency_price() {
 
 			set_oracle_price(vec![(RELAY_CHAIN_CURRENCY, relaychain_price)]);
 
-			assert_ok!(HomaLite::set_total_staking_currency(
+			assert_ok!(Homa::reset_ledgers(
 				Origin::root(),
-				100 * dollar(RELAY_CHAIN_CURRENCY)
+				vec![(0, Some(100 * dollar(RELAY_CHAIN_CURRENCY)), None)]
 			));
 
 			assert_eq!(
@@ -100,9 +100,9 @@ fn test_update_liquid_currency_price() {
 				Some(Ratio::saturating_from_rational(100, 1000))
 			);
 
-			assert_ok!(HomaLite::set_total_staking_currency(
+			assert_ok!(Homa::reset_ledgers(
 				Origin::root(),
-				110 * dollar(RELAY_CHAIN_CURRENCY)
+				vec![(0, Some(110 * dollar(RELAY_CHAIN_CURRENCY)), None)]
 			));
 
 			assert_eq!(

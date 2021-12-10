@@ -506,8 +506,8 @@ pub mod module {
 		/// Parameters:
 		/// - `soft_bonded_cap_per_sub_account`:  soft cap of staking amount for a single nominator
 		///   on relaychain to obtain the best staking rewards.
-		/// - `estimated_reward_rate_per_era`: the estimated staking yield of each era on the current relay
-		///   chain.
+		/// - `estimated_reward_rate_per_era`: the estimated staking yield of each era on the
+		///   current relay chain.
 		/// - `mint_threshold`: the staking currency amount of threshold when mint.
 		/// - `redeem_threshold`: the liquid currency amount of threshold when request redeem.
 		/// - `commission_rate`: the rate to draw from estimated staking rewards as commission to
@@ -681,14 +681,18 @@ pub mod module {
 			Self::get_total_bonded().saturating_add(Self::to_bond_pool())
 		}
 
+		/// Calculate the total amount of liquid currency.
+		/// total_liquid_amount = total issuance of LiquidCurrencyId + TotalVoidLiquid
+		pub fn get_total_liquid_currency() -> Balance {
+			T::Currency::total_issuance(T::LiquidCurrencyId::get()).saturating_add(Self::total_void_liquid())
+		}
+
 		/// Calculate the current exchange rate between the staking currency and liquid currency.
-		/// Note: ExchangeRate(staking : liquid) = total_staking_amount / (liquid_total_issuance +
-		/// total_void_liquid) If the exchange rate cannot be calculated, T::DefaultExchangeRate is
-		/// used.
+		/// Note: ExchangeRate(staking : liquid) = total_staking_amount / total_liquid_amount.
+		/// If the exchange rate cannot be calculated, T::DefaultExchangeRate is used.
 		pub fn current_exchange_rate() -> ExchangeRate {
 			let total_staking = Self::get_total_staking_currency();
-			let total_liquid =
-				T::Currency::total_issuance(T::LiquidCurrencyId::get()).saturating_add(Self::total_void_liquid());
+			let total_liquid = Self::get_total_liquid_currency();
 			if total_staking.is_zero() {
 				T::DefaultExchangeRate::get()
 			} else {
@@ -820,8 +824,7 @@ pub mod module {
 					let inflate_rate = commission_ratio
 						.checked_div(&Ratio::one().saturating_sub(commission_ratio))
 						.unwrap_or_else(Ratio::max_value);
-					let inflate_liquid_amount =
-						inflate_rate.saturating_mul_int(T::Currency::total_issuance(liquid_currency_id));
+					let inflate_liquid_amount = inflate_rate.saturating_mul_int(Self::get_total_liquid_currency());
 
 					T::Currency::deposit(liquid_currency_id, &T::TreasuryAccount::get(), inflate_liquid_amount)?;
 				}

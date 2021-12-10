@@ -456,6 +456,20 @@ fn get_total_staking_currency_works() {
 }
 
 #[test]
+fn get_total_liquid_currency_works() {
+	ExtBuilder::default()
+		.balances(vec![(ALICE, LIQUID_CURRENCY_ID, 20_000_000)])
+		.build()
+		.execute_with(|| {
+			assert_eq!(Currencies::total_issuance(LiquidCurrencyId::get()), 20_000_000);
+			assert_eq!(Homa::get_total_liquid_currency(), 20_000_000);
+			TotalVoidLiquid::<Runtime>::put(10_000_000);
+			assert_eq!(Currencies::total_issuance(LiquidCurrencyId::get()), 20_000_000);
+			assert_eq!(Homa::get_total_liquid_currency(), 30_000_000);
+		});
+}
+
+#[test]
 fn current_exchange_rate_works() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_eq!(Homa::current_exchange_rate(), DefaultExchangeRate::get());
