@@ -786,6 +786,8 @@ parameter_type_with_key! {
 				TokenSymbol::LKSM |
 				TokenSymbol::RENBTC |
 				TokenSymbol::ACA |
+				TokenSymbol::KINT |
+				TokenSymbol::KBTC |
 				TokenSymbol::CASH => Balance::max_value() // unsupported
 			},
 			CurrencyId::DexShare(dex_share_0, _) => {

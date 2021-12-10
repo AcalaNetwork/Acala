@@ -114,7 +114,7 @@ pub use runtime_common::{
 	GeneralCouncilMembershipInstance, HomaCouncilInstance, HomaCouncilMembershipInstance,
 	OperatorMembershipInstanceAcala, Price, ProxyType, Rate, Ratio, RelayChainBlockNumberProvider,
 	RelayChainSubAccountId, RuntimeBlockLength, RuntimeBlockWeights, SystemContractsFilter, TechnicalCommitteeInstance,
-	TechnicalCommitteeMembershipInstance, TimeStampedPrice, BNC, KAR, KSM, KUSD, LKSM, PHA, RENBTC, VSKSM,
+	TechnicalCommitteeMembershipInstance, TimeStampedPrice, BNC, KAR, KBTC, KINT, KSM, KUSD, LKSM, PHA, RENBTC, VSKSM,
 };
 
 mod authority;
@@ -751,6 +751,8 @@ parameter_type_with_key! {
 				TokenSymbol::BNC => 800 * millicent(*currency_id),  // 80BNC = 1KSM
 				TokenSymbol::VSKSM => 10 * millicent(*currency_id),  // 1VSKSM = 1KSM
 				TokenSymbol::PHA => 4000 * millicent(*currency_id), // 400PHA = 1KSM
+				TokenSymbol::KINT => 13333 * microcent(*currency_id), // 1.33 KINT = 1 KSM
+				TokenSymbol::KBTC => 66 * microcent(*currency_id), // 1KBTC = 150 KSM
 
 				TokenSymbol::ACA |
 				TokenSymbol::AUSD |
@@ -1489,6 +1491,23 @@ parameter_types! {
 		// VSKSM:KSM = 1:1
 		ksm_per_second()
 	);
+	pub KbtcPerSecond: (AssetId, u128) = (
+		MultiLocation::new(
+			1,
+			X2(Parachain(parachains::kintsugi::ID), GeneralKey(parachains::kintsugi::KBTC_KEY.to_vec())),
+		).into(),
+		// KBTC:KSM = 1:150 & Satoshi:Planck = 1:10_000
+		ksm_per_second() / 1_500_000
+	);
+
+	pub KintPerSecond: (AssetId, u128) = (
+		MultiLocation::new(
+			1,
+			X2(Parachain(parachains::kintsugi::ID), GeneralKey(parachains::kintsugi::KINT_KEY.to_vec())),
+		).into(),
+		// KINT:KSM = 4:3
+		(ksm_per_second() * 4) / 3
+	);
 }
 
 pub type Trader = (
@@ -1499,6 +1518,8 @@ pub type Trader = (
 	FixedRateOfFungible<BncPerSecond, ToTreasury>,
 	FixedRateOfFungible<VsksmPerSecond, ToTreasury>,
 	FixedRateOfFungible<PHAPerSecond, ToTreasury>,
+	FixedRateOfFungible<KbtcPerSecond, ToTreasury>,
+	FixedRateOfFungible<KintPerSecond, ToTreasury>,
 	FixedRateOfForeignAsset<Runtime, ForeignAssetUnitsPerSecond, ToTreasury>,
 );
 
@@ -1679,6 +1700,22 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 			)),
 			// Phala Native token
 			Token(PHA) => Some(MultiLocation::new(1, X1(Parachain(parachains::phala::ID)))),
+			// Kintsugi Native token
+			Token(KINT) => Some(MultiLocation::new(
+				1,
+				X2(
+					Parachain(parachains::kintsugi::ID),
+					GeneralKey(parachains::kintsugi::KINT_KEY.to_vec()),
+				),
+			)),
+			// Kintsugi wrapped BTC
+			Token(KBTC) => Some(MultiLocation::new(
+				1,
+				X2(
+					Parachain(parachains::kintsugi::ID),
+					GeneralKey(parachains::kintsugi::KBTC_KEY.to_vec()),
+				),
+			)),
 			CurrencyId::ForeignAsset(foreign_asset_id) => {
 				XcmForeignAssetIdMapping::<Runtime>::get_multi_location(foreign_asset_id)
 			}
@@ -1707,6 +1744,8 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 				match (para_id, &key[..]) {
 					(parachains::bifrost::ID, parachains::bifrost::BNC_KEY) => Some(Token(BNC)),
 					(parachains::bifrost::ID, parachains::bifrost::VSKSM_KEY) => Some(Token(VSKSM)),
+					(parachains::kintsugi::ID, parachains::kintsugi::KINT_KEY) => Some(Token(KINT)),
+					(parachains::kintsugi::ID, parachains::kintsugi::KBTC_KEY) => Some(Token(KBTC)),
 
 					(id, key) if id == u32::from(ParachainInfo::get()) => {
 						// Karura
