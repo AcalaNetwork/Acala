@@ -1643,7 +1643,7 @@ impl module_homa_lite::Config for Runtime {
 parameter_types! {
 	pub HomaTreasuryAccount: AccountId = HomaTreasuryPalletId::get().into_account();
 	pub ActiveSubAccountsIndexList: Vec<u16> = vec![RelayChainSubAccountId::HomaLite as u16];
-	pub KusamaBondingDuration: EraIndex = 7;
+	pub KusamaBondingDuration: EraIndex = 28;
 }
 
 impl module_homa::Config for Runtime {

@@ -447,7 +447,7 @@ fn homa_mint_and_redeem_works() {
 			MultiAddress::Id(homa_lite_sub_account.clone()),
 			dollar(RELAY_CHAIN_CURRENCY)
 		));
-		
+
 		assert_ok!(kusama_runtime::Staking::bond(
 			kusama_runtime::Origin::signed(homa_lite_sub_account.clone()),
 			MultiAddress::Id(homa_lite_sub_account.clone()),
@@ -484,29 +484,41 @@ fn homa_mint_and_redeem_works() {
 
 		// Test mint works
 		// Amount bonded = $1000 - XCM_FEE = 999_990_000_000_000
-		assert_ok!(Homa::mint(Origin::signed(alice()), 1_000 * dollar(RELAY_CHAIN_CURRENCY)));
+		assert_ok!(Homa::mint(
+			Origin::signed(alice()),
+			1_000 * dollar(RELAY_CHAIN_CURRENCY)
+		));
 		assert_ok!(Homa::mint(Origin::signed(bob()), 1_000 * dollar(RELAY_CHAIN_CURRENCY)));
 
 		assert_eq!(Homa::get_total_bonded(), 0);
 		assert_eq!(Homa::get_total_staking_currency(), 2_000 * dollar(RELAY_CHAIN_CURRENCY));
-		
+
 		// Synchronize with Relay chain via Xcm messages. Also update internal storage.
 		assert_ok!(Homa::bump_current_era());
 
-		assert_eq!(Tokens::free_balance(LIQUID_CURRENCY, &AccountId::from(alice())), 10_000 * dollar(LIQUID_CURRENCY));
-		assert_eq!(Tokens::free_balance(LIQUID_CURRENCY, &AccountId::from(bob())), 10_000 * dollar(LIQUID_CURRENCY));
+		assert_eq!(
+			Tokens::free_balance(LIQUID_CURRENCY, &AccountId::from(alice())),
+			10_000 * dollar(LIQUID_CURRENCY)
+		);
+		assert_eq!(
+			Tokens::free_balance(LIQUID_CURRENCY, &AccountId::from(bob())),
+			10_000 * dollar(LIQUID_CURRENCY)
+		);
 		assert_eq!(Tokens::free_balance(RELAY_CHAIN_CURRENCY, &AccountId::from(alice())), 0);
 		assert_eq!(Tokens::free_balance(RELAY_CHAIN_CURRENCY, &AccountId::from(bob())), 0);
-		
+
 		assert_eq!(Homa::get_total_bonded(), 2_000 * dollar(RELAY_CHAIN_CURRENCY) - XCM_FEE);
-		assert_eq!(Homa::get_total_staking_currency(), 2_000 * dollar(RELAY_CHAIN_CURRENCY) - XCM_FEE);
+		assert_eq!(
+			Homa::get_total_staking_currency(),
+			2_000 * dollar(RELAY_CHAIN_CURRENCY) - XCM_FEE
+		);
 	});
 
 	KusamaNet::execute_with(|| {
 		// Ensure the correct amount is bonded.
 		let ledger = kusama_runtime::Staking::ledger(&homa_lite_sub_account).expect("record should exist");
 		assert_eq!(ledger.total, 2001 * dollar(RELAY_CHAIN_CURRENCY) - XCM_FEE);
-		assert_eq!(ledger.active, 2001 * dollar(RELAY_CHAIN_CURRENCY)- XCM_FEE);
+		assert_eq!(ledger.active, 2001 * dollar(RELAY_CHAIN_CURRENCY) - XCM_FEE);
 
 		// 2 x XCM fee is paid: for Mint and Redeem
 		assert_eq!(
@@ -530,7 +542,7 @@ fn homa_mint_and_redeem_works() {
 			0,
 			0
 		));
-		
+
 		// Redeem the liquid currency.
 		assert_ok!(Homa::request_redeem(
 			Origin::signed(alice()),
@@ -546,7 +558,7 @@ fn homa_mint_and_redeem_works() {
 		// Unbonds the tokens on the Relay chain.
 		assert_ok!(Homa::bump_current_era());
 		let unbonding_era = Homa::relay_chain_current_era() + KusamaBondingDuration::get();
-		assert_eq!(unbonding_era, 9);
+		assert_eq!(unbonding_era, 30);
 
 		assert_eq!(Homa::unbondings(&alice(), unbonding_era), 999_995_000_000_000);
 		assert_eq!(Homa::unbondings(&bob(), unbonding_era), 999_995_000_000_000);
@@ -592,20 +604,20 @@ fn homa_mint_and_redeem_works() {
 		}
 
 		// Claim the unlocked chunk
-		assert_ok!(Homa::claim_redemption(
-			Origin::signed(alice()),
-			alice(),
-		));
-		assert_ok!(Homa::claim_redemption(
-			Origin::signed(alice()),
-			bob(),
-		));
-		
+		assert_ok!(Homa::claim_redemption(Origin::signed(alice()), alice(),));
+		assert_ok!(Homa::claim_redemption(Origin::signed(alice()), bob(),));
+
 		// Redeem process is completed.
 		assert_eq!(Homa::get_total_bonded(), 0);
 		assert_eq!(Homa::get_total_staking_currency(), 0);
-		assert_eq!(Tokens::free_balance(RELAY_CHAIN_CURRENCY, &AccountId::from(alice())), 999_995_000_000_000);
-		assert_eq!(Tokens::free_balance(RELAY_CHAIN_CURRENCY, &AccountId::from(bob())), 999_995_000_000_000);
+		assert_eq!(
+			Tokens::free_balance(RELAY_CHAIN_CURRENCY, &AccountId::from(alice())),
+			999_995_000_000_000
+		);
+		assert_eq!(
+			Tokens::free_balance(RELAY_CHAIN_CURRENCY, &AccountId::from(bob())),
+			999_995_000_000_000
+		);
 		assert_eq!(Tokens::free_balance(LIQUID_CURRENCY, &AccountId::from(alice())), 0);
 		assert_eq!(Tokens::free_balance(LIQUID_CURRENCY, &AccountId::from(bob())), 0);
 	});
