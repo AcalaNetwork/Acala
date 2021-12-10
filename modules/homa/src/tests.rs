@@ -200,7 +200,7 @@ fn claim_redemption_works() {
 			assert_eq!(Currencies::free_balance(STAKING_CURRENCY_ID, &ALICE), 0);
 			assert_eq!(Currencies::free_balance(STAKING_CURRENCY_ID, &Homa::account_id()), 0);
 
-			// no available expired redemption, nothing happend.
+			// no available expired redemption, nothing happened.
 			assert_ok!(Homa::claim_redemption(Origin::signed(BOB), ALICE));
 			assert_eq!(Homa::unbondings(&ALICE, 1), 1_000_000);
 			assert_eq!(Homa::unbondings(&ALICE, 2), 2_000_000);
@@ -209,7 +209,7 @@ fn claim_redemption_works() {
 			assert_eq!(Homa::unclaimed_redemption(), 0);
 			assert_eq!(Currencies::free_balance(STAKING_CURRENCY_ID, &Homa::account_id()), 0);
 
-			// there is available expired redemption, but UnclaimedRedemption is not enought.
+			// there is available expired redemption, but UnclaimedRedemption is not enough.
 			RelayChainCurrentEra::<Runtime>::put(2);
 			assert_noop!(
 				Homa::claim_redemption(Origin::signed(BOB), ALICE),
@@ -630,7 +630,7 @@ fn do_fast_match_redeem_works() {
 			);
 
 			// Bob's redeem request is able to be fast matched partially,
-			// because must remain `RedeemThreshold` even if `ToBondPool` is enought.
+			// because must remain `RedeemThreshold` even if `ToBondPool` is enough.
 			assert_ok!(Homa::do_fast_match_redeem(&BOB));
 			System::assert_last_event(Event::Homa(crate::Event::RedeemedByFastMatch(
 				BOB, 5_500_000, 550_000, 500_499,
@@ -1026,7 +1026,7 @@ fn process_redeem_requests_works() {
 				})
 			);
 
-			// total_bonded is enought to process all redeem requests
+			// total_bonded is enough to process all redeem requests
 			assert_ok!(Homa::process_redeem_requests(1));
 			System::assert_has_event(Event::Homa(crate::Event::RedeemedByUnbond(
 				ALICE, 1, 20_000_000, 2_000_000,
@@ -1068,7 +1068,7 @@ fn process_redeem_requests_works() {
 				40_000_000
 			);
 
-			// total_bonded is not enought to process all redeem requests
+			// total_bonded is not enough to process all redeem requests
 			assert_ok!(Homa::process_redeem_requests(2));
 			System::assert_has_event(Event::Homa(crate::Event::RedeemedByUnbond(
 				BOB, 2, 20_000_000, 2_000_000,

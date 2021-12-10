@@ -172,7 +172,7 @@ pub mod module {
 		/// Redeem request is redeemed by unbond on relaychain. \[redeemer,
 		/// era_index_when_unbond, liquid_amount, unbonding_staking_amount\]
 		RedeemedByUnbond(T::AccountId, EraIndex, Balance, Balance),
-		/// The redeemer withdraw expired redemption. \[redeemer, redeption_amount\]
+		/// The redeemer withdraw expired redemption. \[redeemer, redemption_amount\]
 		WithdrawRedemption(T::AccountId, Balance),
 		/// The current era has been bumped. \[new_era_index\]
 		CurrentEraBumped(EraIndex),
@@ -234,8 +234,8 @@ pub mod module {
 	/// The total amount of void liquid currency. It's will not be issued,
 	/// used to avoid newly issued LDOT to obtain the incoming staking income from relaychain.
 	/// And it is guaranteed that the current exchange rate between liquid currency and staking
-	/// currency will not change. It will be reset to 0 at the beginning of the rebalance when new
-	/// era.
+	/// currency will not change. It will be reset to 0 at the beginning of the `rebalance` when new
+	/// era starts.
 	///
 	/// TotalVoidLiquid value: LiquidCurrencyAmount
 	#[pallet::storage]
@@ -258,7 +258,7 @@ pub mod module {
 
 	/// The records of unbonding by AccountId.
 	///
-	/// Unbondings: double_map AccountId, ExpireEraIndex => UnboundingStakingCurrencyAmount
+	/// Unbondings: double_map AccountId, ExpireEraIndex => UnbondingStakingCurrencyAmount
 	#[pallet::storage]
 	#[pallet::getter(fn unbondings)]
 	pub type Unbondings<T: Config> =
@@ -293,7 +293,7 @@ pub mod module {
 	#[pallet::getter(fn redeem_threshold)]
 	pub type RedeemThreshold<T: Config> = StorageValue<_, Balance, ValueQuery>;
 
-	/// The rate of Homa drawn from the staking reward as commision.
+	/// The rate of Homa drawn from the staking reward as commission.
 	/// The draw will be transfer to TreasuryAccount of Homa in liquid currency.
 	///
 	/// CommissionRate: value: Rate
@@ -506,7 +506,7 @@ pub mod module {
 		/// Parameters:
 		/// - `soft_bonded_cap_per_sub_account`:  soft cap of staking amount for a single nominator
 		///   on relaychain to obtain the best staking rewards.
-		/// - `estimated_reward_rate_per_era`: the esstaking yield of each era on the current relay
+		/// - `estimated_reward_rate_per_era`: the estimated staking yield of each era on the current relay
 		///   chain.
 		/// - `mint_threshold`: the staking currency amount of threshold when mint.
 		/// - `redeem_threshold`: the liquid currency amount of threshold when request redeem.
@@ -732,11 +732,11 @@ pub mod module {
 						.saturating_mul_int(liquid_currency_limit);
 					let module_account = Self::account_id();
 
-					// calculate the acutal liquid currency to be used to redeem
+					// calculate the actual liquid currency to be used to redeem
 					let actual_liquid_to_redeem = if liquid_limit_at_fee_rate >= request_amount {
 						request_amount
 					} else {
-						// if cannot fast match the request amount fully, at least keep RedeemThreshold as remainer.
+						// if cannot fast match the request amount fully, at least keep RedeemThreshold as remainder.
 						liquid_limit_at_fee_rate.min(request_amount.saturating_sub(Self::redeem_threshold()))
 					};
 
@@ -769,9 +769,9 @@ pub mod module {
 					}
 
 					// update request amount
-					let remainer_request_amount = request_amount.saturating_sub(actual_liquid_to_redeem);
-					if !remainer_request_amount.is_zero() {
-						*maybe_request = Some((remainer_request_amount, allow_fast_match));
+					let remainder_request_amount = request_amount.saturating_sub(actual_liquid_to_redeem);
+					if !remainder_request_amount.is_zero() {
+						*maybe_request = Some((remainder_request_amount, allow_fast_match));
 					}
 				}
 
@@ -779,7 +779,7 @@ pub mod module {
 			})
 		}
 
-		/// Accumulate staking rewards according to EstimatedRewardRatePerEra and era interal.
+		/// Accumulate staking rewards according to EstimatedRewardRatePerEra and era internally.
 		/// And draw commission from estimated staking rewards by issuing liquid currency to
 		/// TreasuryAccount. Note: This will cause some losses to the minters in previous_era,
 		/// because they have been already deducted some liquid currency amount when mint in
@@ -843,7 +843,7 @@ pub mod module {
 				if !expired_unlocking.is_zero() {
 					T::HomaXcm::withdraw_unbonded_from_sub_account(sub_account_index, expired_unlocking)?;
 
-					// udpate ledger
+					// update ledger
 					Self::do_update_ledger(sub_account_index, |before| -> DispatchResult {
 						*before = new_ledger;
 						Ok(())
@@ -876,7 +876,7 @@ pub mod module {
 					.iter()
 					.map(|index| (*index, Self::staking_ledgers(index).unwrap_or_default().bonded))
 					.collect();
-				let (distribution, remainer) = distribute_increment::<u16>(
+				let (distribution, remainder) = distribute_increment::<u16>(
 					bonded_list,
 					to_bond_pool,
 					Some(Self::soft_bonded_cap_per_sub_account().saturating_add(xcm_transfer_fee)),
@@ -891,7 +891,7 @@ pub mod module {
 						let bond_amount = amount.saturating_sub(xcm_transfer_fee);
 						T::HomaXcm::bond_extra_on_sub_account(sub_account_index, bond_amount)?;
 
-						// udpate ledger
+						// update ledger
 						Self::do_update_ledger(sub_account_index, |ledger| -> DispatchResult {
 							ledger.bonded = ledger.bonded.saturating_add(bond_amount);
 							Ok(())
@@ -900,7 +900,7 @@ pub mod module {
 				}
 
 				// update pool
-				ToBondPool::<T>::mutate(|pool| *pool = remainer);
+				ToBondPool::<T>::mutate(|pool| *pool = remainder);
 			}
 
 			Ok(())
@@ -949,7 +949,7 @@ pub mod module {
 				if !unbond_amount.is_zero() {
 					T::HomaXcm::unbond_on_sub_account(sub_account_index, unbond_amount)?;
 
-					// udpate ledger
+					// update ledger
 					Self::do_update_ledger(sub_account_index, |ledger| -> DispatchResult {
 						ledger.bonded = ledger.bonded.saturating_sub(unbond_amount);
 						ledger.unlocking.push(UnlockChunk {
@@ -1047,7 +1047,7 @@ pub fn distribute_increment<Index>(
 pub fn distribute_decrement<Index>(
 	mut amount_list: Vec<(Index, Balance)>,
 	total_decrement: Balance,
-	amount_remainer: Option<Balance>,
+	amount_remainder: Option<Balance>,
 	minimum_decrement: Option<Balance>,
 ) -> (Vec<(Index, Balance)>, Balance) {
 	let mut remain_decrement = total_decrement;
@@ -1062,7 +1062,7 @@ pub fn distribute_decrement<Index>(
 		}
 
 		let decrement_distribution = amount
-			.saturating_sub(amount_remainer.unwrap_or_else(Bounded::min_value))
+			.saturating_sub(amount_remainder.unwrap_or_else(Bounded::min_value))
 			.min(remain_decrement);
 		if decrement_distribution.is_zero()
 			|| decrement_distribution < minimum_decrement.unwrap_or_else(Bounded::min_value)
