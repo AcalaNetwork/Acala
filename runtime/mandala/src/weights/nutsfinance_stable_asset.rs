@@ -46,7 +46,7 @@ use sp_std::marker::PhantomData;
 
 /// Weight functions for nutsfinance_stable_asset.
 pub struct WeightInfo<T>(PhantomData<T>);
-impl<T: frame_system::Config> nutsfinance_stable_asset::weights::WeightInfo for WeightInfo<T> {
+impl<T: frame_system::Config> nutsfinance_stable_asset::WeightInfo for WeightInfo<T> {
 	fn create_pool() -> Weight {
 		(30_520_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(3 as Weight))
@@ -65,7 +65,7 @@ impl<T: frame_system::Config> nutsfinance_stable_asset::weights::WeightInfo for 
 			.saturating_add(T::DbWeight::get().writes(6 as Weight))
 			.saturating_add(T::DbWeight::get().writes((2 as Weight).saturating_mul(u as Weight)))
 	}
-	fn swap() -> Weight {
+	fn swap(u: u32) -> Weight {
 		(109_646_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(9 as Weight))
 			.saturating_add(T::DbWeight::get().writes(7 as Weight))
@@ -78,7 +78,7 @@ impl<T: frame_system::Config> nutsfinance_stable_asset::weights::WeightInfo for 
 			.saturating_add(T::DbWeight::get().writes(4 as Weight))
 			.saturating_add(T::DbWeight::get().writes((2 as Weight).saturating_mul(u as Weight)))
 	}
-	fn redeem_single() -> Weight {
+	fn redeem_single(u: u32) -> Weight {
 		(122_123_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(9 as Weight))
 			.saturating_add(T::DbWeight::get().writes(6 as Weight))

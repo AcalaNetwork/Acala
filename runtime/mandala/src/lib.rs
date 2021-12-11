@@ -1864,7 +1864,7 @@ impl orml_xcm::Config for Runtime {
 
 parameter_types! {
 	pub const FeePrecision: u128 = 10000000000u128; // 10 decimals
-	pub const APrecision: u128 = 100u128; // 10 decimals
+	pub const APrecision: u128 = 100u128; // 2 decimals
 	pub const PoolAssetLimit: u32 = 5u32;
 }
 

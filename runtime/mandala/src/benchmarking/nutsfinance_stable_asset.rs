@@ -87,8 +87,17 @@ runtime_benchmarks! {
 	swap {
 		let tester: AccountId = whitelisted_caller();
 		let pool_asset = CurrencyId::StableAssetPoolToken(1);
-		let assets = vec![LDOT, AUSD];
-		let precisions = vec![1u128, 1u128];
+		let u in 2 .. PoolAssetLimit::get() as u32;
+		let mut assets = vec![];
+		let mut precisions = vec![];
+		let mut mint_args = vec![];
+		for i in 0 .. u {
+			let i_idx: usize = usize::try_from(i).unwrap();
+			let multiple: u128 = (i + 1).into();
+			assets.push(CURRENCY_LIST[i_idx]);
+			precisions.push(1u128);
+			mint_args.push(10000000000u128 * multiple);
+		}
 		let mint_fee = 10000000u128;
 		let swap_fee = 20000000u128;
 		let redeem_fee = 50000000u128;
@@ -97,10 +106,11 @@ runtime_benchmarks! {
 		let yield_recipient: AccountId = account("yield", 1, SEED);
 		let _ = StableAsset::create_pool(RawOrigin::Root.into(), pool_asset, assets, precisions, mint_fee, swap_fee, redeem_fee, intial_a, fee_recipient, yield_recipient, 1000000000000000000u128);
 		let pool_id = StableAsset::pool_count() - 1;
-		set_balance_fungibles(LDOT, &tester, 200000000000u128);
-		set_balance_fungibles(AUSD, &tester, 200000000000u128);
-		let _ = StableAsset::mint(RawOrigin::Signed(tester.clone()).into(), pool_id, vec![10000000000u128, 20000000000u128], 0u128);
-	}: _(RawOrigin::Signed(tester), pool_id, 0, 1, 5000000u128, 0u128)
+		for asset in &CURRENCY_LIST {
+			set_balance_fungibles(*asset, &tester, 200000000000u128);
+		}
+		let _ = StableAsset::mint(RawOrigin::Signed(tester.clone()).into(), pool_id, mint_args, 0u128);
+	}: _(RawOrigin::Signed(tester), pool_id, 0, 1, 5000000u128, 0u128, u)
 
 	redeem_proportion {
 		let tester: AccountId = whitelisted_caller();
@@ -135,8 +145,17 @@ runtime_benchmarks! {
 	redeem_single {
 		let tester: AccountId = whitelisted_caller();
 		let pool_asset = CurrencyId::StableAssetPoolToken(1);
-		let assets = vec![LDOT, AUSD];
-		let precisions = vec![1u128, 1u128];
+		let u in 2 .. PoolAssetLimit::get() as u32;
+		let mut assets = vec![];
+		let mut precisions = vec![];
+		let mut mint_args = vec![];
+		for i in 0 .. u {
+			let i_idx: usize = usize::try_from(i).unwrap();
+			let multiple: u128 = (i + 1).into();
+			assets.push(CURRENCY_LIST[i_idx]);
+			precisions.push(1u128);
+			mint_args.push(10000000000u128 * multiple);
+		}
 		let mint_fee = 10000000u128;
 		let swap_fee = 20000000u128;
 		let redeem_fee = 50000000u128;
@@ -145,10 +164,11 @@ runtime_benchmarks! {
 		let yield_recipient: AccountId = account("yield", 1, SEED);
 		let _ = StableAsset::create_pool(RawOrigin::Root.into(), pool_asset, assets, precisions, mint_fee, swap_fee, redeem_fee, intial_a, fee_recipient, yield_recipient, 1000000000000000000u128);
 		let pool_id = StableAsset::pool_count() - 1;
-		set_balance_fungibles(LDOT, &tester, 200000000000u128);
-		set_balance_fungibles(AUSD, &tester, 200000000000u128);
-		let _ = StableAsset::mint(RawOrigin::Signed(tester.clone()).into(), pool_id, vec![10000000000u128, 20000000000u128], 0u128);
-	}: _(RawOrigin::Signed(tester), pool_id, 100000000u128, 0u32, 0u128)
+		for asset in &CURRENCY_LIST {
+			set_balance_fungibles(*asset, &tester, 200000000000u128);
+		}
+		let _ = StableAsset::mint(RawOrigin::Signed(tester.clone()).into(), pool_id, mint_args, 0u128);
+	}: _(RawOrigin::Signed(tester), pool_id, 100000000u128, 0u32, 0u128, u)
 
 	redeem_multi {
 		let tester: AccountId = whitelisted_caller();
