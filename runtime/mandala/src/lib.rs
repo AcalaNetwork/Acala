@@ -196,7 +196,6 @@ pub fn get_all_module_accounts() -> Vec<AccountId> {
 		TreasuryReservePalletId::get().into_account(),
 		CollatorPotId::get().into_account(),
 		StarportPalletId::get().into_account(),
-		ZeroAccountId::get(),
 		UnreleasedNativeVaultAccountId::get(),
 		StableAssetPalletId::get().into_account(),
 	]
@@ -731,7 +730,7 @@ impl pallet_elections_phragmen::Config for Runtime {
 parameter_types! {
 	pub const MinimumCount: u32 = 1;
 	pub const ExpiresIn: Moment = 1000 * 60 * 60; // 60 mins
-	pub ZeroAccountId: AccountId = AccountId::from([0u8; 32]);
+	pub RootOperatorAccountId: AccountId = AccountId::from([0xffu8; 32]);
 	pub const MaxHasDispatchedSize: u32 = 40;
 }
 
@@ -743,7 +742,7 @@ impl orml_oracle::Config<AcalaDataProvider> for Runtime {
 	type Time = Timestamp;
 	type OracleKey = CurrencyId;
 	type OracleValue = Price;
-	type RootOperatorAccountId = ZeroAccountId;
+	type RootOperatorAccountId = RootOperatorAccountId;
 	type Members = OperatorMembershipAcala;
 	type MaxHasDispatchedSize = MaxHasDispatchedSize;
 	type WeightInfo = weights::orml_oracle::WeightInfo<Runtime>;
@@ -787,6 +786,8 @@ parameter_type_with_key! {
 				TokenSymbol::LKSM |
 				TokenSymbol::RENBTC |
 				TokenSymbol::ACA |
+				TokenSymbol::KINT |
+				TokenSymbol::KBTC |
 				TokenSymbol::CASH => Balance::max_value() // unsupported
 			},
 			CurrencyId::DexShare(dex_share_0, _) => {

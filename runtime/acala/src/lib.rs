@@ -176,7 +176,6 @@ pub fn get_all_module_accounts() -> Vec<AccountId> {
 		IncentivesPalletId::get().into_account(),
 		TreasuryPalletId::get().into_account(),
 		TreasuryReservePalletId::get().into_account(),
-		ZeroAccountId::get(),
 		UnreleasedNativeVaultAccountId::get(),
 	]
 }
@@ -700,7 +699,7 @@ impl orml_authority::Config for Runtime {
 parameter_types! {
 	pub const MinimumCount: u32 = 5;
 	pub const ExpiresIn: Moment = 1000 * 60 * 60; // 1 hours
-	pub ZeroAccountId: AccountId = AccountId::from([0u8; 32]);
+	pub RootOperatorAccountId: AccountId = AccountId::from([0xffu8; 32]);
 	pub const MaxHasDispatchedSize: u32 = 20;
 }
 
@@ -712,7 +711,7 @@ impl orml_oracle::Config<AcalaDataProvider> for Runtime {
 	type Time = Timestamp;
 	type OracleKey = CurrencyId;
 	type OracleValue = Price;
-	type RootOperatorAccountId = ZeroAccountId;
+	type RootOperatorAccountId = RootOperatorAccountId;
 	type Members = OperatorMembershipAcala;
 	type MaxHasDispatchedSize = MaxHasDispatchedSize;
 	type WeightInfo = ();
@@ -749,6 +748,8 @@ parameter_type_with_key! {
 				TokenSymbol::PHA |
 				TokenSymbol::VSKSM |
 				TokenSymbol::ACA |
+				TokenSymbol::KBTC |
+				TokenSymbol::KINT |
 				TokenSymbol::CASH => Balance::max_value() // unsupported
 			},
 			CurrencyId::DexShare(dex_share_0, _) => {
