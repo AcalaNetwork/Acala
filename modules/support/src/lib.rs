@@ -327,13 +327,7 @@ pub trait PrecompileCallerFilter {
 
 /// An abstraction of EVM for EVMBridge
 pub trait EVM<AccountId> {
-	type Balance: AtLeast32BitUnsigned
-		+ TryFrom<u32>
-		+ TryFrom<u64>
-		+ TryFrom<u128>
-		+ Copy
-		+ MaybeSerializeDeserialize
-		+ Default;
+	type Balance: AtLeast32BitUnsigned + Copy + MaybeSerializeDeserialize + Default;
 
 	fn execute(
 		context: InvokeContext,
