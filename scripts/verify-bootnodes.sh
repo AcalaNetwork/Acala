@@ -9,7 +9,7 @@ if [ $1 = "karura" ]; then
 elif [ $1 = "acala" ]; then
 	IMAGE=acala/acala-node:latest
 	CHAIN_NAME=acala
-	GENESIS=
+	GENESIS=./resources/acala-dist.json
 else
 	echo "not support $1"
 	exit 1
@@ -58,7 +58,7 @@ do
 		if [ "$peer_num" == "1" ] && [ $peer_id == ${node##*/} ]; then
 			echo "Connect to $node succeed."
 			break
-		fi 
+		fi
 		sleep 3s
 
 		if [ $i == $TRY_TIMES ]; then
