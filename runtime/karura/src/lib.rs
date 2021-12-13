@@ -105,17 +105,16 @@ pub use primitives::{
 	DataProviderId, EraIndex, Hash, Moment, Nonce, ReserveIdentifier, Share, Signature, TokenSymbol, TradingPair,
 };
 pub use runtime_common::{
-	cent, dollar, microcent, millicent, AcalaDropAssets, EnsureRootOrAllGeneralCouncil,
+	calculate_asset_ratio, cent, dollar, microcent, millicent, EnsureRootOrAllGeneralCouncil,
 	EnsureRootOrAllTechnicalCommittee, EnsureRootOrHalfFinancialCouncil, EnsureRootOrHalfGeneralCouncil,
 	EnsureRootOrHalfHomaCouncil, EnsureRootOrOneGeneralCouncil, EnsureRootOrOneThirdsTechnicalCommittee,
 	EnsureRootOrThreeFourthsGeneralCouncil, EnsureRootOrTwoThirdsGeneralCouncil,
 	EnsureRootOrTwoThirdsTechnicalCommittee, ExchangeRate, FinancialCouncilInstance,
 	FinancialCouncilMembershipInstance, GasToWeight, GeneralCouncilInstance, GeneralCouncilMembershipInstance,
-	HomaCouncilInstance, HomaCouncilMembershipInstance, MaxTipsOfPriority, OperationalFeeMultiplier,
-	OperatorMembershipInstanceAcala, Price, ProxyType, Rate, Ratio, RelayChainBlockNumberProvider,
-	RelayChainSubAccountId, RuntimeBlockLength, RuntimeBlockWeights, SystemContractsFilter, TechnicalCommitteeInstance,
-	TechnicalCommitteeMembershipInstance, TimeStampedPrice, TipPerWeightStep, BNC, KAR, KBTC, KINT, KSM, KUSD, LKSM,
-	PHA, RENBTC, VSKSM,
+	HomaCouncilInstance, HomaCouncilMembershipInstance, OperatorMembershipInstanceAcala, Price, ProxyType, Rate, Ratio,
+	RelayChainBlockNumberProvider, RelayChainSubAccountId, RuntimeBlockLength, RuntimeBlockWeights,
+	SystemContractsFilter, TechnicalCommitteeInstance, TechnicalCommitteeMembershipInstance, TimeStampedPrice, BNC,
+	KAR, KSM, KUSD, LKSM, PHA, RENBTC, VSKSM, KBTC, KINT,
 };
 
 mod authority;
@@ -1107,7 +1106,7 @@ parameter_types! {
 		vec![LKSM, KSM, KAR],
 		vec![BNC, KUSD, KSM, KAR],
 	];
-	pub const InitialBootstrapBalanceForFeePool: Balance = 1_000_000_000_000;
+	pub const InitialBootstrapBalanceForFeePool: Balance = 10_000_000_000;
 }
 
 type NegativeImbalance = <Balances as PalletCurrency<AccountId>>::NegativeImbalance;
@@ -1122,22 +1121,6 @@ impl OnUnbalanced<NegativeImbalance> for DealWithFees {
 			Treasury::on_unbalanced(fees);
 		}
 	}
-}
-
-// TODO: use compose struct
-// pub struct FeeSetting<L, F, T, O>(PhantomData<(L, F, T, O)>)
-// where
-// 	L: Get<u32>,
-// 	F: Get<AccountId>,
-// 	T: Get<AccountId>,
-// 	O: EnsureOrigin<Origin>;
-parameter_types! {
-	pub FeeTreasuryAccount: AccountId = UpdatedFeePoolPalletId::get().into_account();
-	// pub FeeSettingForPayment: FeeSetting = FeeSetting<
-	// 	InitialBootstrapBalanceForFeePool,
-	// 	FeeTreasuryAccount,
-	// 	KaruraTreasuryAccount
-	// >();
 }
 
 impl module_transaction_payment::Config for Runtime {
@@ -1159,7 +1142,6 @@ impl module_transaction_payment::Config for Runtime {
 	type WeightInfo = weights::module_transaction_payment::WeightInfo<Runtime>;
 	/// period update fee setting
 	type InitialBootstrapBalanceForFeePool = InitialBootstrapBalanceForFeePool;
-	type FeeTreasuryAccount = FeeTreasuryAccount;
 	type TreasuryAccount = KaruraTreasuryAccount;
 	type AdminOrigin = EnsureKaruraFoundation;
 	type AssetRates = AssetRates;
@@ -1526,7 +1508,6 @@ parameter_types! {
 		// KBTC:KSM = 1:150 & Satoshi:Planck = 1:10_000
 		ksm_per_second() / 1_500_000
 	);
-
 	pub KintPerSecond: (AssetId, u128) = (
 		MultiLocation::new(
 			1,
@@ -1536,13 +1517,14 @@ parameter_types! {
 		(ksm_per_second() * 4) / 3
 	);
 	pub KarPerSecondAsBased: u128 = kar_per_second();
-	pub AssetRates: Vec<AssetRate> = vec![
-		AssetRate(KSM, Ratio::saturating_from_rational(2, 100)),
-		AssetRate(KUSD, Ratio::saturating_from_rational(8, 1)),
-		AssetRate(LKSM, Ratio::saturating_from_rational(20, 100)),
-		AssetRate(BNC, Ratio::saturating_from_rational(16, 100)),
-		AssetRate(VSKSM, Ratio::saturating_from_rational(2, 100)),
-		AssetRate(PHA, Ratio::saturating_from_rational(8, 1)),
+	pub UpdatedFeePoolPalletId: PalletId = UpdatedFeePoolPalletId::get();
+	pub AssetRates: Vec<AssetRate<AccountId>> = vec![
+		AssetRate::<AccountId>(KSM, calculate_asset_ratio(KsmPerSecond::get(), KarPerSecond::get()), UpdatedFeePoolPalletId.into_sub_account("KSM")),
+		AssetRate::<AccountId>(KUSD, calculate_asset_ratio(KusdPerSecond::get(), KarPerSecond::get()), UpdatedFeePoolPalletId.into_sub_account("KUSD")),
+		AssetRate::<AccountId>(LKSM, calculate_asset_ratio(LksmPerSecond::get(), KarPerSecond::get()), UpdatedFeePoolPalletId.into_sub_account("LKSM")),
+		AssetRate::<AccountId>(BNC, calculate_asset_ratio(BncPerSecond::get(), KarPerSecond::get()), UpdatedFeePoolPalletId.into_sub_account("BNC")),
+		AssetRate::<AccountId>(VSKSM, calculate_asset_ratio(VsksmPerSecond::get(), KarPerSecond::get()), UpdatedFeePoolPalletId.into_sub_account("VSKSM")),
+		AssetRate::<AccountId>(PHA, calculate_asset_ratio(PHAPerSecond::get(), KarPerSecond::get()), UpdatedFeePoolPalletId.into_sub_account("PHA")),
 	];
 }
 

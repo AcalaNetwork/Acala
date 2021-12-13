@@ -250,7 +250,6 @@ parameter_types! {
 	pub const PeriodUpdateFeeRateBlockLimit: u32 = 20;
 	pub const UpdatedFeePoolPalletId: PalletId = PalletId(*b"aca/fees");
 	pub const TreasuryPalletId: PalletId = PalletId(*b"aca/trsy");
-	pub FeeTreasuryAccount: AccountId = UpdatedFeePoolPalletId::get().into_account();
 	pub KaruraTreasuryAccount: AccountId = TreasuryPalletId::get().into_account();
 }
 
@@ -272,7 +271,6 @@ impl module_transaction_payment::Config for Test {
 	type PriceSource = module_prices::RealTimePriceProvider<Test>;
 	type WeightInfo = ();
 	type InitialBootstrapBalanceForFeePool = InitialBootstrapBalanceForFeePool;
-	type FeeTreasuryAccount = FeeTreasuryAccount;
 	type TreasuryAccount = KaruraTreasuryAccount;
 	type AdminOrigin = EnsureKaruraFoundation;
 }

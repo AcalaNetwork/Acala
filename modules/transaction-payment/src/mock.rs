@@ -231,15 +231,14 @@ parameter_types! {
 	pub const InitialBootstrapBalanceForFeePool: Balance = 1_000;
 	pub const UpdatedFeePoolPalletId: PalletId = PalletId(*b"aca/fees");
 	pub const TreasuryPalletId: PalletId = PalletId(*b"aca/trsy");
-	pub AssetRates: Vec<AssetRate> = vec![
-		AssetRate(KSM, Ratio::saturating_from_rational(2, 100)),
+	pub AssetRates: Vec<AssetRate<AccountId>> = vec![
+		AssetRate::<AccountId>(KSM, Ratio::saturating_from_rational(2, 100), UpdatedFeePoolPalletId::get().into_sub_account("KSM")),
 		// 1 DOT = 10 ACA, 1 ACA = 10 AUSD
-		AssetRate(AUSD, Ratio::saturating_from_rational(10, 1)),
-		AssetRate(DOT, Ratio::saturating_from_rational(1, 10)),
+		AssetRate::<AccountId>(AUSD, Ratio::saturating_from_rational(10, 1), UpdatedFeePoolPalletId::get().into_sub_account("AUSD")),
+		AssetRate::<AccountId>(DOT, Ratio::saturating_from_rational(1, 10), UpdatedFeePoolPalletId::get().into_sub_account("DOT")),
 	];
 }
 parameter_types! {
-	pub FeeTreasuryAccount: AccountId = UpdatedFeePoolPalletId::get().into_account();
 	pub KaruraTreasuryAccount: AccountId = TreasuryPalletId::get().into_account();
 }
 pub struct EnsureTreasuryAccount;
@@ -278,7 +277,6 @@ impl Config for Runtime {
 	type PriceSource = MockPriceSource;
 	type WeightInfo = ();
 	type InitialBootstrapBalanceForFeePool = InitialBootstrapBalanceForFeePool;
-	type FeeTreasuryAccount = FeeTreasuryAccount;
 	type TreasuryAccount = KaruraTreasuryAccount;
 	type AdminOrigin = EnsureTreasuryAccount;
 	type AssetRates = AssetRates;

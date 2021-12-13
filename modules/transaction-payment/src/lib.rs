@@ -29,10 +29,10 @@
 use frame_support::{
 	dispatch::{DispatchResult, Dispatchable},
 	pallet_prelude::*,
-	require_transactional,
 	traits::{
 		Currency, ExistenceRequirement, Imbalance, NamedReservableCurrency, OnUnbalanced, SameOrOther, WithdrawReasons,
 	},
+	transactional,
 	weights::{
 		constants::WEIGHT_PER_SECOND, DispatchInfo, GetDispatchInfo, Pays, PostDispatchInfo, WeightToFeeCoefficient,
 		WeightToFeePolynomial,
@@ -318,22 +318,15 @@ pub mod module {
 		#[pallet::constant]
 		type TreasuryAccount: Get<Self::AccountId>;
 
-		/// Fee pool account used to swap with dex.
-		#[pallet::constant]
-		type FeeTreasuryAccount: Get<Self::AccountId>;
-
 		/// Initial native asset balance transfer from treasury to pool.
 		#[pallet::constant]
 		type InitialBootstrapBalanceForFeePool: Get<PalletBalanceOf<Self>>;
 
-		// #[pallet::constant]
-		// type NativeAssetPerSecond: Get<Balance>;
-
 		/// The rate of foreign_asset_per_second to native_asset_per_second.
 		#[pallet::constant]
-		type AssetRates: Get<Vec<AssetRate>>;
+		type AssetRates: Get<Vec<AssetRate<Self::AccountId>>>;
 
-		/// The root operator of admin operation(i.e. change initial balance).
+		/// The root operator of admin operation(i.e. change trigger threshold).
 		type AdminOrigin: EnsureOrigin<Self::Origin, Success = Self::AccountId>;
 	}
 
@@ -377,18 +370,20 @@ pub mod module {
 	#[pallet::getter(fn charge_fee_pool)]
 	pub type FeeRateOfToken<T: Config> = StorageMap<_, Twox64Concat, CurrencyId, Ratio, OptionQuery>;
 
-	/// TODO: swap triggered by block count or by the value of native asset?
-	// #[pallet::storage]
-	// #[pallet::getter(fn block_trigger_number)]
-	// pub type NextTriggerBlock<T: Config> = StorageValue<_, BlockNumber, ValueQuery>;
-
+	/// The treasury fee pool sub account of foregign asset.
 	#[pallet::storage]
-	#[pallet::getter(fn swap_switch)]
-	pub type SwapSwitchToTreasury<T: Config> = StorageValue<_, bool, ValueQuery>;
+	#[pallet::getter(fn treasury_accounts)]
+	pub type TreasuryAccounts<T: Config> = StorageMap<_, Twox64Concat, CurrencyId, T::AccountId, ValueQuery>;
 
+	/// Each asset has threshold to trigger swap, default to `InitialBootstrapBalanceForFeePool`/5.
 	#[pallet::storage]
 	#[pallet::getter(fn swap_threshold)]
-	pub type SwapBalanceThreshold<T: Config> = StorageValue<_, u128, ValueQuery>;
+	pub type SwapBalanceThreshold<T: Config> = StorageMap<_, Twox64Concat, CurrencyId, u128, ValueQuery>;
+
+	/// Each asset has a switch to using treasury pool as fee buffer.
+	#[pallet::storage]
+	#[pallet::getter(fn swap_switch)]
+	pub type SwapSwitchToTreasury<T: Config> = StorageMap<_, Twox64Concat, CurrencyId, bool, ValueQuery>;
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
@@ -397,24 +392,22 @@ pub mod module {
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
 		fn on_runtime_upgrade() -> Weight {
 			let from = T::TreasuryAccount::get();
-			let to = T::FeeTreasuryAccount::get();
 			let balance = T::InitialBootstrapBalanceForFeePool::get();
 			// deposit 1 unit of native asset from treasury to fee account.
-			let _ = T::Currency::transfer(&from, &to, balance, ExistenceRequirement::KeepAlive);
-			SwapBalanceThreshold::<T>::set(balance.saturated_into::<u128>() / 5);
-
+			// each token has own sub account which represents native asset amount.
 			let asset_rates = T::AssetRates::get();
 			for asset_rate in asset_rates {
+				let _ = T::Currency::transfer(&from, &asset_rate.2, balance, ExistenceRequirement::KeepAlive);
+				SwapBalanceThreshold::<T>::insert(asset_rate.0, balance.saturated_into::<u128>() / 5);
 				FeeRateOfToken::<T>::insert(asset_rate.0, asset_rate.1);
+				TreasuryAccounts::<T>::insert(asset_rate.0, asset_rate.2);
+				SwapSwitchToTreasury::<T>::insert(asset_rate.0, true);
 			}
 			0
 		}
 
 		/// `on_initialize` to return the weight used in `on_finalize`.
 		fn on_initialize(_block_number: T::BlockNumber) -> Weight {
-			// if block_number == Self::block_trigger_number() {
-			// 	NextTriggerBlock::<T>::put(block_number + T::InitialBootstrapBalanceForFeePool::get());
-			// }
 			<T as Config>::WeightInfo::on_finalize()
 		}
 
@@ -493,20 +486,24 @@ pub mod module {
 		}
 
 		#[pallet::weight(<T as Config>::WeightInfo::set_alternative_fee_swap_path())]
-		pub fn initial_kar_pool(origin: OriginFor<T>, threshold: Option<PalletBalanceOf<T>>) -> DispatchResult {
+		pub fn initial_kar_pool(
+			origin: OriginFor<T>,
+			currency_id: CurrencyId,
+			threshold: Option<PalletBalanceOf<T>>,
+			switch: Option<bool>,
+		) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
-			// let to = T::FeeTreasuryAccount::get();
-			// deposit some amount of KAR(native asset) from treasury to fee pool
-			// if amount.saturated_into::<u128>() > 0 {
-			// 	T::Currency::transfer(&from, &to, amount, ExistenceRequirement::KeepAlive)?;
-			// }
 			let amount = T::InitialBootstrapBalanceForFeePool::get();
 			if let Some(threshold) = threshold {
-				SwapBalanceThreshold::<T>::set(threshold.saturated_into::<u128>());
+				SwapBalanceThreshold::<T>::insert(currency_id, threshold.saturated_into::<u128>());
 			} else {
-				SwapBalanceThreshold::<T>::set(amount.saturated_into::<u128>() / 5);
+				SwapBalanceThreshold::<T>::insert(currency_id, amount.saturated_into::<u128>() / 5);
 			}
-			SwapSwitchToTreasury::<T>::set(true);
+			if let Some(switch) = switch {
+				SwapSwitchToTreasury::<T>::insert(currency_id, switch);
+			} else {
+				SwapSwitchToTreasury::<T>::insert(currency_id, false);
+			}
 			Ok(())
 		}
 	}
@@ -796,19 +793,19 @@ where
 	}
 
 	/// swap from treasury
-	#[require_transactional]
+	#[transactional]
 	fn swap_from_treasury(
 		who: &T::AccountId,
 		amount: PalletBalanceOf<T>,
 		supply_currency_id: CurrencyId,
 	) -> DispatchResult {
-		let treasury_account = T::FeeTreasuryAccount::get();
+		let treasury_account = TreasuryAccounts::<T>::get(supply_currency_id);
 		let treasury_supply_balance = T::MultiCurrency::free_balance(supply_currency_id, &treasury_account);
 		let mut rate = Pallet::<T>::charge_fee_pool(supply_currency_id)
 			.ok_or(DispatchError::Token(TokenError::UnknownAsset))
 			.unwrap();
 		let initial_bootstrap_balance: u128 = T::InitialBootstrapBalanceForFeePool::get().saturated_into::<u128>();
-		let swap_balance_threshold = SwapBalanceThreshold::<T>::get();
+		let swap_balance_threshold = SwapBalanceThreshold::<T>::get(supply_currency_id);
 
 		// user's supply asset should have enough balance based on old fix rate.
 		if T::MultiCurrency::free_balance(supply_currency_id, &who)
@@ -820,19 +817,14 @@ where
 		// if treasury account has not enough native asset, trigger swap
 		let treasury_balance = T::Currency::free_balance(&treasury_account).saturated_into::<u128>();
 		if treasury_balance < swap_balance_threshold {
-			// calculate how much balance of native asset equal to the supply asset which wasn't transfer.
-			// we don't use the balance of treasury_account because multi supply asset all consume the same
-			// account.
-			let lefted_native_balance = initial_bootstrap_balance
-				.saturating_sub(rate.reciprocal().unwrap().saturating_mul_int(treasury_supply_balance));
-
 			let trading_path = Self::get_trading_path_by_currency(&treasury_account, supply_currency_id);
 			if let Some(trading_path) = trading_path {
 				if let Ok(swap_native_balance) =
 					T::DEX::swap_with_exact_supply(&treasury_account, &trading_path, treasury_supply_balance, 0)
 				{
 					// calculate and update new rate of supply asset to native asset
-					let new_native_balance = rate.saturating_mul_int(swap_native_balance + lefted_native_balance);
+					// let new_native_balance = rate.saturating_mul_int(swap_native_balance + lefted_native_balance);
+					let new_native_balance = rate.saturating_mul_int(swap_native_balance + treasury_balance);
 					rate = Ratio::saturating_from_rational(
 						new_native_balance.saturated_into::<u128>(),
 						initial_bootstrap_balance,

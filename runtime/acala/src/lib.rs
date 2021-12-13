@@ -1091,7 +1091,7 @@ impl module_transaction_pause::Config for Runtime {
 parameter_types! {
 	// Sort by fee charge order
 	pub DefaultFeeSwapPathList: Vec<Vec<CurrencyId>> = vec![vec![AUSD, DOT, ACA], vec![DOT, ACA], vec![LDOT, DOT, ACA]];
-	pub const InitialBootstrapBalanceForFeePool: Balance = 1_000_000_000_000;
+	pub const InitialBootstrapBalanceForFeePool: Balance = 10_000_000_000;
 }
 
 type NegativeImbalance = <Balances as PalletCurrency<AccountId>>::NegativeImbalance;
@@ -1109,8 +1109,7 @@ impl OnUnbalanced<NegativeImbalance> for DealWithFees {
 }
 
 parameter_types! {
-	pub FeeTreasuryAccount: AccountId = UpdatedFeePoolPalletId::get().into_account();
-	pub AssetRates: Vec<AssetRate> = vec![];
+	pub AssetRates: Vec<AssetRate<AccountId>> = vec![];
 }
 
 impl module_transaction_payment::Config for Runtime {
@@ -1131,7 +1130,6 @@ impl module_transaction_payment::Config for Runtime {
 	type PriceSource = module_prices::RealTimePriceProvider<Runtime>;
 	type WeightInfo = weights::module_transaction_payment::WeightInfo<Runtime>;
 	type InitialBootstrapBalanceForFeePool = InitialBootstrapBalanceForFeePool;
-	type FeeTreasuryAccount = FeeTreasuryAccount;
 	type TreasuryAccount = AcalaTreasuryAccount;
 	type AdminOrigin = EnsureAcalaFoundation;
 	type AssetRates = AssetRates;
