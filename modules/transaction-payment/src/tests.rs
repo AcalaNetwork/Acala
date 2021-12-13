@@ -30,9 +30,8 @@ use mock::{
 	TransactionPayment, ACA, ALICE, AUSD, BOB, CHARLIE, DOT, FEE_UNBALANCED_AMOUNT, TIP_UNBALANCED_AMOUNT,
 };
 use orml_traits::MultiCurrency;
-use sp_runtime::{testing::TestXt, traits::One};
-// use xcm::latest::Parent;
 use primitives::currency::*;
+use sp_runtime::{testing::TestXt, traits::One};
 use support::Price;
 use xcm::latest::prelude::*;
 use xcm::prelude::GeneralKey;
@@ -345,6 +344,8 @@ fn charges_fee_failed_by_slippage_limit() {
 				Some((1000, 5000))
 			);
 
+			// pool is enough, but slippage limit the swap
+			MockPriceSource::set_relative_price(Some(Price::saturating_from_rational(252, 4020)));
 			assert_noop!(
 				ChargeTransactionPayment::<Runtime>::from(0).validate(&BOB, CALL2, &INFO, 500),
 				TransactionValidityError::Invalid(InvalidTransaction::Payment)
@@ -471,8 +472,8 @@ fn query_info_works() {
 				RuntimeDispatchInfo {
 					weight: info.weight,
 					class: info.class,
-					partial_fee: 5 * 2 /* base * weight_fee */
-						+ len as u128  /* len * 1 */
+					partial_fee: 5 * 2 /* base_weight * weight_fee */
+						+ len as u128  /* len * byte_fee */
 						+ info.weight.min(BlockWeights::get().max_block) as u128 * 2 * 3 / 2 /* weight */
 				},
 			);
@@ -823,7 +824,7 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 }
 
 #[test]
-fn init_fee_setup_works() {
+fn period_rate_buy_refund_weight_works() {
 	use frame_support::parameter_types;
 	parameter_types! {
 		pub const KarPerSecond: u128 = 8_000_000_000_000;
@@ -836,10 +837,11 @@ fn init_fee_setup_works() {
 			Pallet::<Runtime>::on_initialize(0);
 			Pallet::<Runtime>::on_runtime_upgrade();
 
-			if let Some((total, token_rate, kar_rate)) = ChargeFeePool::<Runtime>::get(KSM) {
-				assert_eq!(total, 0);
-				assert_eq!(token_rate, 1);
-				assert_eq!(kar_rate, 50);
+			let switch = SwapSwitchToTreasury::<Runtime>::get();
+			assert_eq!(switch, false);
+
+			if let Some(rate) = FeeRateOfToken::<Runtime>::get(KSM) {
+				assert_eq!(rate, Ratio::saturating_from_rational(2, 100));
 			}
 			let mut trader = PeriodUpdatedRateOfFungible::<Runtime, CurrencyIdConvert, KarPerSecond, ()>::new();
 
@@ -858,16 +860,5 @@ fn init_fee_setup_works() {
 			let refund = trader.refund_weight(refund_weight);
 			assert_eq!(refund.unwrap(), expect_refund);
 			assert_eq!(trader.amount, 24_000_000);
-
-			let block_counter = BlockCounter::<Runtime>::get();
-			assert_eq!(block_counter, 1);
-			for i in 1..20 {
-				Pallet::<Runtime>::on_initialize(i);
-			}
-			let block_counter = BlockCounter::<Runtime>::get();
-			assert_eq!(block_counter, 20);
-			Pallet::<Runtime>::on_initialize(21);
-			let block_counter = BlockCounter::<Runtime>::get();
-			assert_eq!(block_counter, 1);
 		});
 }

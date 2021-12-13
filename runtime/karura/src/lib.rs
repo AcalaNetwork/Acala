@@ -44,7 +44,7 @@ use sp_runtime::{
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, DispatchResult, FixedPointNumber, Perbill, Percent, Permill, Perquintill,
 };
-use sp_std::prelude::*;
+use sp_std::{marker::PhantomData, prelude::*};
 #[cfg(feature = "std")]
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
@@ -101,8 +101,8 @@ pub use authority::AuthorityConfigImpl;
 pub use constants::{fee::*, parachains, time::*};
 pub use primitives::{
 	convert_decimals_to_evm, define_combined_task, evm::EstimateResourcesRequest, task::TaskResult, AccountId,
-	AccountIndex, Address, Amount, AuctionId, AuthoritysOriginId, Balance, BlockNumber, CurrencyId, DataProviderId,
-	EraIndex, Hash, Moment, Nonce, ReserveIdentifier, Share, Signature, TokenSymbol, TradingPair,
+	AccountIndex, Address, Amount, AssetRate, AuctionId, AuthoritysOriginId, Balance, BlockNumber, CurrencyId,
+	DataProviderId, EraIndex, Hash, Moment, Nonce, ReserveIdentifier, Share, Signature, TokenSymbol, TradingPair,
 };
 pub use runtime_common::{
 	cent, dollar, microcent, millicent, AcalaDropAssets, EnsureRootOrAllGeneralCouncil,
@@ -165,6 +165,7 @@ parameter_types! {
 	pub const NftPalletId: PalletId = PalletId(*b"aca/aNFT");
 	// Vault all unrleased native token.
 	pub UnreleasedNativeVaultAccountId: AccountId = PalletId(*b"aca/urls").into_account();
+	pub const UpdatedFeePoolPalletId: PalletId = PalletId(*b"aca/fees");
 }
 
 pub fn get_all_module_accounts() -> Vec<AccountId> {
@@ -1123,6 +1124,22 @@ impl OnUnbalanced<NegativeImbalance> for DealWithFees {
 	}
 }
 
+// TODO: use compose struct
+pub struct FeeSetting<L, F, T, O>(PhantomData<(L, F, T, O)>)
+where
+	L: Get<u32>,
+	F: Get<AccountId>,
+	T: Get<AccountId>,
+	O: EnsureOrigin<Origin>;
+parameter_types! {
+	pub FeeTreasuryAccount: AccountId = UpdatedFeePoolPalletId::get().into_account();
+	pub FeeSettingForPayment: FeeSetting = FeeSetting<
+		PeriodUpdateFeeRateBlockLimit,
+		FeeTreasuryAccount,
+		KaruraTreasuryAccount
+	>();
+}
+
 impl module_transaction_payment::Config for Runtime {
 	type NativeCurrencyId = GetNativeCurrencyId;
 	type DefaultFeeSwapPathList = DefaultFeeSwapPathList;
@@ -1140,7 +1157,12 @@ impl module_transaction_payment::Config for Runtime {
 	type TradingPathLimit = TradingPathLimit;
 	type PriceSource = module_prices::RealTimePriceProvider<Runtime>;
 	type WeightInfo = weights::module_transaction_payment::WeightInfo<Runtime>;
+	/// period update fee setting
 	type PeriodUpdateFeeRateBlockLimit = PeriodUpdateFeeRateBlockLimit;
+	type FeeTreasuryAccount = FeeTreasuryAccount;
+	type TreasuryAccount = KaruraTreasuryAccount;
+	type AdminOrigin = EnsureKaruraFoundation;
+	type AssetRates = AssetRates;
 }
 
 impl module_evm_accounts::Config for Runtime {
@@ -1514,6 +1536,14 @@ parameter_types! {
 		(ksm_per_second() * 4) / 3
 	);
 	pub KarPerSecondAsBased: u128 = kar_per_second();
+	pub AssetRates: Vec<AssetRate> = vec![
+		AssetRate(KSM, Ratio::saturating_from_rational(2, 100)),
+		AssetRate(KUSD, Ratio::saturating_from_rational(8, 1)),
+		AssetRate(LKSM, Ratio::saturating_from_rational(20, 100)),
+		AssetRate(BNC, Ratio::saturating_from_rational(16, 100)),
+		AssetRate(VSKSM, Ratio::saturating_from_rational(2, 100)),
+		AssetRate(PHA, Ratio::saturating_from_rational(8, 1)),
+	]
 }
 
 pub type Trader = (

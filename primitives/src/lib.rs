@@ -31,7 +31,7 @@ use scale_info::TypeInfo;
 use sp_runtime::{
 	generic,
 	traits::{BlakeTwo256, CheckedDiv, IdentifyAccount, Saturating, Verify, Zero},
-	RuntimeDebug,
+	FixedU128, RuntimeDebug,
 };
 use sp_std::prelude::*;
 
@@ -98,6 +98,11 @@ pub type Block = generic::Block<Header, UncheckedExtrinsic>;
 
 /// Block ID.
 pub type BlockId = generic::BlockId<Block>;
+
+#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord, TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
+pub struct AssetRate(pub CurrencyId, pub FixedU128);
 
 /// Opaque, encoded, unchecked extrinsic.
 pub use sp_runtime::OpaqueExtrinsic as UncheckedExtrinsic;

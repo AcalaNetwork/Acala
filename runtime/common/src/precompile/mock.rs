@@ -248,6 +248,10 @@ parameter_types! {
 	pub TipPerWeightStep: Balance = 1;
 	pub MaxTipsOfPriority: Balance = 1000;
 	pub const PeriodUpdateFeeRateBlockLimit: u32 = 20;
+	pub const UpdatedFeePoolPalletId: PalletId = PalletId(*b"aca/fees");
+	pub const TreasuryPalletId: PalletId = PalletId(*b"aca/trsy");
+	pub FeeTreasuryAccount: AccountId = UpdatedFeePoolPalletId::get().into_account();
+	pub KaruraTreasuryAccount: AccountId = TreasuryPalletId::get().into_account();
 }
 
 impl module_transaction_payment::Config for Test {
@@ -268,6 +272,9 @@ impl module_transaction_payment::Config for Test {
 	type PriceSource = module_prices::RealTimePriceProvider<Test>;
 	type WeightInfo = ();
 	type PeriodUpdateFeeRateBlockLimit = PeriodUpdateFeeRateBlockLimit;
+	type FeeTreasuryAccount = FeeTreasuryAccount;
+	type TreasuryAccount = KaruraTreasuryAccount;
+	type AdminOrigin = EnsureKaruraFoundation;
 }
 pub type ChargeTransactionPayment = module_transaction_payment::ChargeTransactionPayment<Test>;
 

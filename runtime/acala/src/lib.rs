@@ -100,8 +100,8 @@ pub use authority::AuthorityConfigImpl;
 pub use constants::{fee::*, time::*};
 pub use primitives::{
 	convert_decimals_to_evm, define_combined_task, evm::EstimateResourcesRequest, task::TaskResult, AccountId,
-	AccountIndex, Address, Amount, AuctionId, AuthoritysOriginId, Balance, BlockNumber, CurrencyId, DataProviderId,
-	EraIndex, Hash, Moment, Nonce, ReserveIdentifier, Share, Signature, TokenSymbol, TradingPair,
+	AccountIndex, Address, Amount, AssetRate, AuctionId, AuthoritysOriginId, Balance, BlockNumber, CurrencyId,
+	DataProviderId, EraIndex, Hash, Moment, Nonce, ReserveIdentifier, Share, Signature, TokenSymbol, TradingPair,
 };
 pub use runtime_common::{
 	cent, dollar, microcent, millicent, AcalaDropAssets, EnsureRootOrAllGeneralCouncil,
@@ -164,6 +164,7 @@ parameter_types! {
 	pub const NftPalletId: PalletId = PalletId(*b"aca/aNFT");
 	// Vault all unrleased native token.
 	pub UnreleasedNativeVaultAccountId: AccountId = PalletId(*b"aca/urls").into_account();
+	pub const UpdatedFeePoolPalletId: PalletId = PalletId(*b"aca/fees");
 }
 
 pub fn get_all_module_accounts() -> Vec<AccountId> {
@@ -1107,6 +1108,11 @@ impl OnUnbalanced<NegativeImbalance> for DealWithFees {
 	}
 }
 
+parameter_types! {
+	pub FeeTreasuryAccount: AccountId = UpdatedFeePoolPalletId::get().into_account();
+	pub AssetRates: Vec<AssetRate> = vec![];
+}
+
 impl module_transaction_payment::Config for Runtime {
 	type NativeCurrencyId = GetNativeCurrencyId;
 	type DefaultFeeSwapPathList = DefaultFeeSwapPathList;
@@ -1125,6 +1131,10 @@ impl module_transaction_payment::Config for Runtime {
 	type PriceSource = module_prices::RealTimePriceProvider<Runtime>;
 	type WeightInfo = weights::module_transaction_payment::WeightInfo<Runtime>;
 	type PeriodUpdateFeeRateBlockLimit = PeriodUpdateFeeRateBlockLimit;
+	type FeeTreasuryAccount = FeeTreasuryAccount;
+	type TreasuryAccount = AcalaTreasuryAccount;
+	type AdminOrigin = EnsureKaruraFoundation;
+	type AssetRates = AssetRates;
 }
 
 impl module_evm_accounts::Config for Runtime {

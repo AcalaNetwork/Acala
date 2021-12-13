@@ -28,12 +28,16 @@ use frame_support::{
 	weights::WeightToFeeCoefficients,
 	PalletId,
 };
-use frame_system::EnsureSignedBy;
+use frame_system::{EnsureSignedBy, RawOrigin};
 use orml_traits::parameter_type_with_key;
-use primitives::{Amount, ReserveIdentifier, TokenSymbol, TradingPair};
+use primitives::{Amount, AssetRate, ReserveIdentifier, TokenSymbol, TradingPair};
 use smallvec::smallvec;
 use sp_core::{crypto::AccountId32, H256};
-use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
+use sp_runtime::{
+	testing::Header,
+	traits::{AccountIdConversion, IdentityLookup},
+	Perbill,
+};
 use sp_std::cell::RefCell;
 use support::{mocks::MockAddressMapping, Price};
 
@@ -46,6 +50,7 @@ pub const CHARLIE: AccountId = AccountId::new([3u8; 32]);
 pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
 pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
+pub const KSM: CurrencyId = CurrencyId::Token(TokenSymbol::KSM);
 
 parameter_types! {
 	pub const BlockHashCount: u64 = 250;
@@ -224,6 +229,31 @@ impl PriceProvider<CurrencyId> for MockPriceSource {
 
 parameter_types! {
 	pub const PeriodUpdateFeeRateBlockLimit: u32 = 20;
+	pub const UpdatedFeePoolPalletId: PalletId = PalletId(*b"aca/fees");
+	pub const TreasuryPalletId: PalletId = PalletId(*b"aca/trsy");
+	pub AssetRates: Vec<AssetRate> = vec![
+		AssetRate(KSM, Ratio::saturating_from_rational(2, 100)),
+	];
+}
+parameter_types! {
+	pub FeeTreasuryAccount: AccountId = UpdatedFeePoolPalletId::get().into_account();
+	pub KaruraTreasuryAccount: AccountId = TreasuryPalletId::get().into_account();
+}
+pub struct EnsureTreasuryAccount;
+impl EnsureOrigin<Origin> for EnsureTreasuryAccount {
+	type Success = AccountId;
+
+	fn try_origin(o: Origin) -> Result<Self::Success, Origin> {
+		Into::<Result<RawOrigin<AccountId>, Origin>>::into(o).and_then(|o| match o {
+			RawOrigin::Signed(ALICE) => Ok(ALICE),
+			r => Err(Origin::from(r)),
+		})
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	fn successful_origin() -> Origin {
+		Origin::from(RawOrigin::Signed(Default::default()))
+	}
 }
 
 impl Config for Runtime {
@@ -244,6 +274,10 @@ impl Config for Runtime {
 	type PriceSource = MockPriceSource;
 	type WeightInfo = ();
 	type PeriodUpdateFeeRateBlockLimit = PeriodUpdateFeeRateBlockLimit;
+	type FeeTreasuryAccount = FeeTreasuryAccount;
+	type TreasuryAccount = KaruraTreasuryAccount;
+	type AdminOrigin = EnsureTreasuryAccount;
+	type AssetRates = AssetRates;
 }
 
 thread_local! {

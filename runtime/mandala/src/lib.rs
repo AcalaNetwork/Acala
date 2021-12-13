@@ -63,7 +63,7 @@ use orml_traits::{
 use pallet_transaction_payment::{FeeDetails, RuntimeDispatchInfo};
 use primitives::{
 	convert_decimals_to_evm, define_combined_task, evm::EthereumTransactionMessage, task::TaskResult,
-	unchecked_extrinsic::AcalaUncheckedExtrinsic,
+	unchecked_extrinsic::AcalaUncheckedExtrinsic, AssetRate,
 };
 use sp_api::impl_runtime_apis;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
@@ -179,6 +179,7 @@ parameter_types! {
 	pub const NftPalletId: PalletId = PalletId(*b"aca/aNFT");
 	pub const NomineesElectionId: LockIdentifier = *b"aca/nome";
 	pub UnreleasedNativeVaultAccountId: AccountId = PalletId(*b"aca/urls").into_account();
+	pub const UpdatedFeePoolPalletId: PalletId = PalletId(*b"aca/fees");
 	// Ecosystem modules
 	pub const StarportPalletId: PalletId = PalletId(*b"aca/stpt");
 	pub const StableAssetPalletId: PalletId = PalletId(*b"nuts/sta");
@@ -1145,6 +1146,11 @@ impl OnUnbalanced<NegativeImbalance> for DealWithFees {
 	}
 }
 
+parameter_types! {
+	pub FeeTreasuryAccount: AccountId = UpdatedFeePoolPalletId::get().into_account();
+	pub AssetRates: Vec<AssetRate> = vec![];
+}
+
 impl module_transaction_payment::Config for Runtime {
 	type NativeCurrencyId = GetNativeCurrencyId;
 	type DefaultFeeSwapPathList = DefaultFeeSwapPathList;
@@ -1163,6 +1169,10 @@ impl module_transaction_payment::Config for Runtime {
 	type PriceSource = module_prices::RealTimePriceProvider<Runtime>;
 	type WeightInfo = weights::module_transaction_payment::WeightInfo<Runtime>;
 	type PeriodUpdateFeeRateBlockLimit = PeriodUpdateFeeRateBlockLimit;
+	type FeeTreasuryAccount = FeeTreasuryAccount;
+	type TreasuryAccount = TreasuryAccount;
+	type AdminOrigin = EnsureKaruraFoundation;
+	type AssetRates = AssetRates;
 }
 
 impl module_evm_accounts::Config for Runtime {
