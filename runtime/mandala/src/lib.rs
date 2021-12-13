@@ -1171,7 +1171,7 @@ impl module_transaction_payment::Config for Runtime {
 	type InitialBootstrapBalanceForFeePool = InitialBootstrapBalanceForFeePool;
 	type FeeTreasuryAccount = FeeTreasuryAccount;
 	type TreasuryAccount = TreasuryAccount;
-	type AdminOrigin = EnsureKaruraFoundation;
+	type AdminOrigin = EnsureRootOrTreasury;
 	type AssetRates = AssetRates;
 }
 

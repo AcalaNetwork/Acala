@@ -869,7 +869,7 @@ fn treasury_basic_setup_works() {
 		assert_eq!(SwapSwitchToTreasury::<Runtime>::get(), false);
 
 		// treasury account has huge amount balance
-		let amount = 100_000_000_000_000;
+		let amount = 10000;
 		assert_ok!(Currencies::update_balance(
 			Origin::root(),
 			treasury_account.clone(),
@@ -891,8 +891,8 @@ fn treasury_basic_setup_works() {
 		assert_eq!(SwapSwitchToTreasury::<Runtime>::get(), true);
 		assert_eq!(SwapBalanceThreshold::<Runtime>::get(), expect_initial_balance / 5);
 
-		let _ = Pallet::<Runtime>::initial_kar_pool(Origin::signed(ALICE), Some(500_000_000_000));
-		assert_eq!(SwapBalanceThreshold::<Runtime>::get(), 500_000_000_000);
+		let _ = Pallet::<Runtime>::initial_kar_pool(Origin::signed(ALICE), Some(500));
+		assert_eq!(SwapBalanceThreshold::<Runtime>::get(), 500);
 	});
 }
 
@@ -905,10 +905,9 @@ fn swap_from_treasury_not_enough_currency() {
 		.execute_with(|| {
 			let treasury_account = <Runtime as Config>::TreasuryAccount::get();
 			let fee_account = <Runtime as Config>::FeeTreasuryAccount::get();
-			// 1 ACA = 1_000_000_000_000
 			let expect_initial_balance = <Runtime as Config>::InitialBootstrapBalanceForFeePool::get();
 
-			let amount = 100_000_000_000_000 as u128;
+			let amount = 10000 as u128;
 			assert_ok!(Currencies::update_balance(
 				Origin::root(),
 				treasury_account.clone(),
@@ -918,9 +917,7 @@ fn swap_from_treasury_not_enough_currency() {
 			Pallet::<Runtime>::on_runtime_upgrade();
 			assert_eq!(Currencies::free_balance(ACA, &fee_account), expect_initial_balance);
 
-			let balance = 1_000_000_000 as u128;
-			let dot_fee = 11_000_000_000 as u128;
-			let ausd_fee = 110_000_000 as u128;
+			let balance = 100 as u128;
 			assert_ok!(Currencies::update_balance(
 				Origin::root(),
 				BOB,
@@ -933,14 +930,19 @@ fn swap_from_treasury_not_enough_currency() {
 				AUSD,
 				balance.unique_saturated_into(),
 			));
+			assert_eq!(Currencies::free_balance(DOT, &BOB), 100);
+			assert_eq!(Currencies::free_balance(AUSD, &BOB), 100);
+
+			// 1100 ACA equals to 110 DOT, but Bob only has 100 DOT
 			with_transaction_result(|| -> DispatchResult {
-				let result = Pallet::<Runtime>::swap_from_treasury(&BOB, dot_fee, DOT);
+				let result = Pallet::<Runtime>::swap_from_treasury(&BOB, 1100, DOT);
 				assert_eq!(result.err().unwrap(), DispatchError::Token(TokenError::BelowMinimum));
 				Ok(())
 			})
 			.unwrap();
+			// 11 ACA equals to 110 AUSD, but Bob only has 100 AUSD
 			with_transaction_result(|| -> DispatchResult {
-				let result = Pallet::<Runtime>::swap_from_treasury(&BOB, ausd_fee, AUSD);
+				let result = Pallet::<Runtime>::swap_from_treasury(&BOB, 11, AUSD);
 				assert_eq!(result.err().unwrap(), DispatchError::Token(TokenError::BelowMinimum));
 				Ok(())
 			})
@@ -967,23 +969,22 @@ fn swap_from_treasury_with_enough_balance() {
 			));
 			Pallet::<Runtime>::on_runtime_upgrade();
 
-			// 1 DOT = 1 ACA, so using 100_000_000 ACA as fee, only need 100_000_000/10 DOT
-			// exchange 10_000_000 DOT to 100_000_000 ACA
-			let balance = 100_000_000 as u128;
+			// 1 DOT = 1 ACA, swap 500 ACA with 50 DOT
+			let balance = 500 as u128;
 			assert_ok!(Currencies::update_balance(
 				Origin::root(),
 				BOB,
 				DOT,
 				balance.unique_saturated_into(),
 			));
-			let fee = balance;
-			let expect_treasury_dot = (balance / 10) as u128;
-			let expect_user_dot = balance - expect_treasury_dot;
-			let expect_user_aca = fee;
-			let expect_treasury_aca = (expect_initial_balance - fee) as u128;
+			let fee = balance; // 500 ACA
+			let expect_treasury_dot = (balance / 10) as u128; // 50 DOT
+			let expect_user_dot = balance - expect_treasury_dot; // 450 DOT
+			let expect_user_aca = fee; // 500 ACA
+			let expect_treasury_aca = (expect_initial_balance - fee) as u128; // 500 ACA
 
 			with_transaction_result(|| -> DispatchResult {
-				let _ = Pallet::<Runtime>::swap_from_treasury(&BOB, balance, DOT);
+				let _ = Pallet::<Runtime>::swap_from_treasury(&BOB, fee, DOT);
 				assert_eq!(expect_user_dot, Currencies::free_balance(DOT, &BOB));
 				assert_eq!(expect_treasury_dot, Currencies::free_balance(DOT, &fee_account));
 				assert_eq!(expect_user_aca, Currencies::free_balance(ACA, &BOB));
@@ -992,10 +993,9 @@ fn swap_from_treasury_with_enough_balance() {
 			})
 			.unwrap();
 
-			// 1 ACA = 10 AUSD, so using 100_000_000 ACA as fee, need 1_000_000_000 AUSD
-			// exchange 1_000_000_000 AUSD to 100_000_000 ACA
-			let balance = 100_000_000 as u128;
-			let ausd_balance = (balance * 11) as u128;
+			// 1 ACA = 10 AUSD, swap 200 ACA with 2000 AUSD
+			let balance = 200 as u128;
+			let ausd_balance = (balance * 11) as u128; // 2200 AUSD
 			assert_ok!(Currencies::update_balance(
 				Origin::root(),
 				BOB,
@@ -1003,14 +1003,14 @@ fn swap_from_treasury_with_enough_balance() {
 				ausd_balance.unique_saturated_into(),
 			));
 			assert_eq!(0, Currencies::free_balance(AUSD, &fee_account));
-			let fee = balance;
-			let expect_treasury_ausd = (balance * 10) as u128;
-			let expect_user_ausd = balance; // (balance * 11) - (balance * 10) = balance
-			let expect_treasury_aca = expect_treasury_aca - fee;
-			let expect_user_aca = expect_user_aca + fee;
+			let fee = balance; // 200 ACA
+			let expect_treasury_ausd = (balance * 10) as u128; // 2000 AUSD
+			let expect_user_ausd = balance; // (balance * 11) - (balance * 10) = balance = 200 AUSD
+			let expect_treasury_aca = expect_treasury_aca - fee; // 500 ACA - 200 ACA
+			let expect_user_aca = expect_user_aca + fee; // 500 ACA + 200 ACA
 
 			with_transaction_result(|| -> DispatchResult {
-				let _ = Pallet::<Runtime>::swap_from_treasury(&BOB, balance, AUSD);
+				let _ = Pallet::<Runtime>::swap_from_treasury(&BOB, fee, AUSD);
 				assert_eq!(expect_user_ausd, Currencies::free_balance(AUSD, &BOB));
 				assert_eq!(expect_treasury_ausd, Currencies::free_balance(AUSD, &fee_account));
 				assert_eq!(expect_user_aca, Currencies::free_balance(ACA, &BOB));
@@ -1039,10 +1039,10 @@ fn swap_from_treasury_and_dex_with_enough_balance() {
 			));
 			Pallet::<Runtime>::on_runtime_upgrade();
 
-			let swap_balance_threshold = 500_000_000_000 as u128;
+			let swap_balance_threshold = 500 as u128;
 			Pallet::<Runtime>::initial_kar_pool(Origin::signed(ALICE), Some(swap_balance_threshold)).unwrap();
 
-			let balance = 800_000_000_000 as u128;
+			let balance = 800 as u128;
 			assert_ok!(Currencies::update_balance(
 				Origin::root(),
 				BOB,
@@ -1054,12 +1054,12 @@ fn swap_from_treasury_and_dex_with_enough_balance() {
 				Ok(())
 			})
 			.unwrap();
-			assert_eq!(720_000_000_000, Currencies::free_balance(DOT, &BOB));
-			assert_eq!(80_000_000_000, Currencies::free_balance(DOT, &fee_account));
-			assert_eq!(800_000_000_000, Currencies::free_balance(ACA, &BOB));
-			// treasury account ACA balance is less then swap_balance_threshold, swap
-			assert_eq!(200_000_000_000, Currencies::free_balance(ACA, &fee_account));
+			assert_eq!(720, Currencies::free_balance(DOT, &BOB));
+			assert_eq!(800, Currencies::free_balance(ACA, &BOB));
+			assert_eq!(80, Currencies::free_balance(DOT, &fee_account));
+			assert_eq!(200, Currencies::free_balance(ACA, &fee_account));
 
+			// treasury account balance(200) lt swap_balance_threshold(500), swap from dex
 			assert_ok!(DEXModule::add_liquidity(
 				Origin::signed(ALICE),
 				ACA,
@@ -1079,16 +1079,26 @@ fn swap_from_treasury_and_dex_with_enough_balance() {
 				false
 			));
 
-			// as there're only one swap history, and left 200_000_000_000 ACA, 80_000_000_000 DOT
-			// so use this 80_000_000_000 DOT to swap out ACA
-			let balance = 300_000_000_000 as u128;
+			let trading_path = Pallet::<Runtime>::get_trading_path_by_currency(&ALICE, DOT).unwrap();
+			let swap_native = module_dex::Pallet::<Runtime>::get_swap_target_amount(&trading_path, 80).unwrap();
+			let native = (swap_native + Currencies::free_balance(ACA, &fee_account)).saturated_into::<u128>() / 10;
+			let rate = Ratio::saturating_from_rational(native, expect_initial_balance);
+
+			// as there are only one swap_from_treasury, treasury has 200 ACA, 80 DOT
+			// so use this 80 DOT to swap out some ACA
+			let balance = 300 as u128;
 			with_transaction_result(|| -> DispatchResult {
 				let _ = Pallet::<Runtime>::swap_from_treasury(&BOB, balance, DOT);
 				Ok(())
 			})
 			.unwrap();
+			assert_eq!(FeeRateOfToken::<Runtime>::get(DOT).unwrap(), rate);
+
+			// Bob swap 98 DOT to get 300 ACA
+			let exchange = rate.saturating_mul_int(balance);
+			assert_eq!(720 - exchange, Currencies::free_balance(DOT, &BOB));
+			assert_eq!(800 + balance, Currencies::free_balance(ACA, &BOB));
+			assert_eq!(exchange, Currencies::free_balance(DOT, &fee_account));
+			assert_eq!(swap_native + 200 - 300, Currencies::free_balance(ACA, &fee_account));
 		});
 }
-
-#[test]
-fn test_dex() {}

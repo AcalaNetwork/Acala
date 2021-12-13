@@ -1125,19 +1125,19 @@ impl OnUnbalanced<NegativeImbalance> for DealWithFees {
 }
 
 // TODO: use compose struct
-pub struct FeeSetting<L, F, T, O>(PhantomData<(L, F, T, O)>)
-where
-	L: Get<u32>,
-	F: Get<AccountId>,
-	T: Get<AccountId>,
-	O: EnsureOrigin<Origin>;
+// pub struct FeeSetting<L, F, T, O>(PhantomData<(L, F, T, O)>)
+// where
+// 	L: Get<u32>,
+// 	F: Get<AccountId>,
+// 	T: Get<AccountId>,
+// 	O: EnsureOrigin<Origin>;
 parameter_types! {
 	pub FeeTreasuryAccount: AccountId = UpdatedFeePoolPalletId::get().into_account();
-	pub FeeSettingForPayment: FeeSetting = FeeSetting<
-		InitialBootstrapBalanceForFeePool,
-		FeeTreasuryAccount,
-		KaruraTreasuryAccount
-	>();
+	// pub FeeSettingForPayment: FeeSetting = FeeSetting<
+	// 	InitialBootstrapBalanceForFeePool,
+	// 	FeeTreasuryAccount,
+	// 	KaruraTreasuryAccount
+	// >();
 }
 
 impl module_transaction_payment::Config for Runtime {
@@ -1543,7 +1543,7 @@ parameter_types! {
 		AssetRate(BNC, Ratio::saturating_from_rational(16, 100)),
 		AssetRate(VSKSM, Ratio::saturating_from_rational(2, 100)),
 		AssetRate(PHA, Ratio::saturating_from_rational(8, 1)),
-	]
+	];
 }
 
 pub type Trader = (

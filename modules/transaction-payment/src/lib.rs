@@ -828,8 +828,8 @@ where
 
 			let trading_path = Self::get_trading_path_by_currency(&treasury_account, supply_currency_id);
 			if let Some(trading_path) = trading_path {
-				if let Some(swap_native_balance) =
-					T::DEX::get_swap_target_amount(&trading_path, treasury_supply_balance)
+				if let Ok(swap_native_balance) =
+					T::DEX::swap_with_exact_supply(&treasury_account, &trading_path, treasury_supply_balance, 0)
 				{
 					// calculate and update new rate of supply asset to native asset
 					let new_native_balance = rate.saturating_mul_int(swap_native_balance + lefted_native_balance);
@@ -912,7 +912,6 @@ where
 						.checked_mul_int(K::get())
 						.ok_or(DispatchError::Arithmetic(ArithmeticError::Overflow))
 					{
-						log::debug!("{:?}, rate:{}, token_per_second:{}", token_id, rate, token_per_second);
 						// calculate the amount of foreign asset.
 						let amount: u128 = token_per_second * (weight as u128) / (WEIGHT_PER_SECOND as u128);
 						let required = MultiAsset {

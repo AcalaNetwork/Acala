@@ -5911,7 +5911,6 @@ dependencies = [
  "acala-primitives",
  "frame-support",
  "frame-system",
- "log",
  "module-currencies",
  "module-dex",
  "module-support",
