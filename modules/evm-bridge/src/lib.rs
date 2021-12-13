@@ -28,7 +28,7 @@ use module_evm::{ExitReason, ExitSucceed};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use primitive_types::H256;
 use sp_core::{H160, U256};
-use sp_runtime::SaturatedConversion;
+use sp_runtime::{ArithmeticError, SaturatedConversion};
 use sp_std::vec::Vec;
 use support::{EVMBridge as EVMBridgeTrait, ExecutionMode, InvokeContext, EVM};
 
@@ -74,8 +74,6 @@ pub mod module {
 		ExecutionError,
 		/// Invalid return value
 		InvalidReturnValue,
-		/// Number overflow
-		NumberOverflow,
 	}
 
 	#[pallet::pallet]
@@ -128,7 +126,7 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for EVMBridge<T> {
 		ensure!(info.value.len() == 32, Error::<T>::InvalidReturnValue);
 		let value: u8 = U256::from(info.value.as_slice())
 			.try_into()
-			.map_err(|_| Error::<T>::NumberOverflow)?;
+			.map_err(|_| ArithmeticError::Overflow)?;
 		Ok(value)
 	}
 
@@ -145,8 +143,8 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for EVMBridge<T> {
 		ensure!(info.value.len() == 32, Error::<T>::InvalidReturnValue);
 		let value: u128 = U256::from(info.value.as_slice())
 			.try_into()
-			.map_err(|_| Error::<T>::NumberOverflow)?;
-		let supply = value.try_into().map_err(|_| Error::<T>::NumberOverflow)?;
+			.map_err(|_| ArithmeticError::Overflow)?;
+		let supply = value.try_into().map_err(|_| ArithmeticError::Overflow)?;
 		Ok(supply)
 	}
 
@@ -164,8 +162,8 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for EVMBridge<T> {
 
 		let value: u128 = U256::from(info.value.as_slice())
 			.try_into()
-			.map_err(|_| Error::<T>::NumberOverflow)?;
-		let balance = value.try_into().map_err(|_| Error::<T>::NumberOverflow)?;
+			.map_err(|_| ArithmeticError::Overflow)?;
+		let balance = value.try_into().map_err(|_| ArithmeticError::Overflow)?;
 		Ok(balance)
 	}
 
