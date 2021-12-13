@@ -34,13 +34,13 @@ const ACTUAL_XCM_FEE: Balance = 639_999_960;
 
 fn get_xcm_weight() -> Vec<(HomaXcmOperation, Option<Weight>, Option<Balance>)> {
 	vec![
-		// Xcm weight = 400_000_000, fee = 373_333_310
+		// Xcm weight = 400_000_000, fee = ACTUAL_XCM_FEE
 		(HomaXcmOperation::XtokensTransfer, Some(XCM_WEIGHT), Some(XCM_FEE)),
-		// Xcm weight = 14_000_000_000, fee = 373_333_310
+		// Xcm weight = 14_000_000_000, fee = ACTUAL_XCM_FEE
 		(HomaXcmOperation::XcmWithdrawUnbonded, Some(XCM_WEIGHT), Some(XCM_FEE)),
-		// Xcm weight = 14_000_000_000, fee = 373_333_310
+		// Xcm weight = 14_000_000_000, fee = ACTUAL_XCM_FEE
 		(HomaXcmOperation::XcmBondExtra, Some(XCM_WEIGHT), Some(XCM_FEE)),
-		// Xcm weight = 14_000_000_000, fee = 373_333_310
+		// Xcm weight = 14_000_000_000, fee = ACTUAL_XCM_FEE
 		(HomaXcmOperation::XcmUnbond, Some(XCM_WEIGHT), Some(XCM_FEE)),
 	]
 }
