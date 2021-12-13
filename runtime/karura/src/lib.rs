@@ -1107,7 +1107,7 @@ parameter_types! {
 		vec![LKSM, KSM, KAR],
 		vec![BNC, KUSD, KSM, KAR],
 	];
-	pub const PeriodUpdateFeeRateBlockLimit: u32 = 20;
+	pub const InitialBootstrapBalanceForFeePool: Balance = 1_000_000_000_000;
 }
 
 type NegativeImbalance = <Balances as PalletCurrency<AccountId>>::NegativeImbalance;
@@ -1134,7 +1134,7 @@ where
 parameter_types! {
 	pub FeeTreasuryAccount: AccountId = UpdatedFeePoolPalletId::get().into_account();
 	pub FeeSettingForPayment: FeeSetting = FeeSetting<
-		PeriodUpdateFeeRateBlockLimit,
+		InitialBootstrapBalanceForFeePool,
 		FeeTreasuryAccount,
 		KaruraTreasuryAccount
 	>();
@@ -1158,7 +1158,7 @@ impl module_transaction_payment::Config for Runtime {
 	type PriceSource = module_prices::RealTimePriceProvider<Runtime>;
 	type WeightInfo = weights::module_transaction_payment::WeightInfo<Runtime>;
 	/// period update fee setting
-	type PeriodUpdateFeeRateBlockLimit = PeriodUpdateFeeRateBlockLimit;
+	type InitialBootstrapBalanceForFeePool = InitialBootstrapBalanceForFeePool;
 	type FeeTreasuryAccount = FeeTreasuryAccount;
 	type TreasuryAccount = KaruraTreasuryAccount;
 	type AdminOrigin = EnsureKaruraFoundation;

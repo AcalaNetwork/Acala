@@ -228,11 +228,14 @@ impl PriceProvider<CurrencyId> for MockPriceSource {
 }
 
 parameter_types! {
-	pub const PeriodUpdateFeeRateBlockLimit: u32 = 20;
+	pub const InitialBootstrapBalanceForFeePool: Balance = 1_000_000_000_000;
 	pub const UpdatedFeePoolPalletId: PalletId = PalletId(*b"aca/fees");
 	pub const TreasuryPalletId: PalletId = PalletId(*b"aca/trsy");
 	pub AssetRates: Vec<AssetRate> = vec![
 		AssetRate(KSM, Ratio::saturating_from_rational(2, 100)),
+		// 1 DOT = 10 ACA, 1 ACA = 10 AUSD
+		AssetRate(AUSD, Ratio::saturating_from_rational(10, 1)),
+		AssetRate(DOT, Ratio::saturating_from_rational(1, 10)),
 	];
 }
 parameter_types! {
@@ -246,6 +249,7 @@ impl EnsureOrigin<Origin> for EnsureTreasuryAccount {
 	fn try_origin(o: Origin) -> Result<Self::Success, Origin> {
 		Into::<Result<RawOrigin<AccountId>, Origin>>::into(o).and_then(|o| match o {
 			RawOrigin::Signed(ALICE) => Ok(ALICE),
+			// Origin::root() => Ok(ALICE),
 			r => Err(Origin::from(r)),
 		})
 	}
@@ -273,7 +277,7 @@ impl Config for Runtime {
 	type TradingPathLimit = TradingPathLimit;
 	type PriceSource = MockPriceSource;
 	type WeightInfo = ();
-	type PeriodUpdateFeeRateBlockLimit = PeriodUpdateFeeRateBlockLimit;
+	type InitialBootstrapBalanceForFeePool = InitialBootstrapBalanceForFeePool;
 	type FeeTreasuryAccount = FeeTreasuryAccount;
 	type TreasuryAccount = KaruraTreasuryAccount;
 	type AdminOrigin = EnsureTreasuryAccount;

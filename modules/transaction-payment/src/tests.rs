@@ -30,6 +30,7 @@ use mock::{
 	TransactionPayment, ACA, ALICE, AUSD, BOB, CHARLIE, DOT, FEE_UNBALANCED_AMOUNT, TIP_UNBALANCED_AMOUNT,
 };
 use orml_traits::MultiCurrency;
+use orml_utilities::with_transaction_result;
 use primitives::currency::*;
 use sp_runtime::{testing::TestXt, traits::One};
 use support::Price;
@@ -834,15 +835,8 @@ fn period_rate_buy_refund_weight_works() {
 		.byte_fee(10)
 		.build()
 		.execute_with(|| {
-			Pallet::<Runtime>::on_initialize(0);
 			Pallet::<Runtime>::on_runtime_upgrade();
 
-			let switch = SwapSwitchToTreasury::<Runtime>::get();
-			assert_eq!(switch, false);
-
-			if let Some(rate) = FeeRateOfToken::<Runtime>::get(KSM) {
-				assert_eq!(rate, Ratio::saturating_from_rational(2, 100));
-			}
 			let mut trader = PeriodUpdatedRateOfFungible::<Runtime, CurrencyIdConvert, KarPerSecond, ()>::new();
 
 			let mock_weight: Weight = 200_000_000;
@@ -862,3 +856,239 @@ fn period_rate_buy_refund_weight_works() {
 			assert_eq!(trader.amount, 24_000_000);
 		});
 }
+
+#[test]
+fn treasury_basic_setup_works() {
+	ExtBuilder::default().build().execute_with(|| {
+		let treasury_account = <Runtime as Config>::TreasuryAccount::get();
+		let fee_account = <Runtime as Config>::FeeTreasuryAccount::get();
+		let expect_initial_balance = <Runtime as Config>::InitialBootstrapBalanceForFeePool::get();
+
+		assert_eq!(Currencies::free_balance(ACA, &fee_account), 0);
+		assert_eq!(FeeRateOfToken::<Runtime>::get(KSM), None);
+		assert_eq!(SwapSwitchToTreasury::<Runtime>::get(), false);
+
+		// treasury account has huge amount balance
+		let amount = 100_000_000_000_000;
+		assert_ok!(Currencies::update_balance(
+			Origin::root(),
+			treasury_account.clone(),
+			ACA,
+			amount.unique_saturated_into(),
+		));
+		assert_eq!(Currencies::free_balance(ACA, &treasury_account), amount);
+
+		// to the runtime upgrade, the treasury account transfer balance to fee pool balance
+		Pallet::<Runtime>::on_runtime_upgrade();
+
+		assert_eq!(Currencies::free_balance(ACA, &fee_account), expect_initial_balance);
+		assert_eq!(
+			FeeRateOfToken::<Runtime>::get(KSM).unwrap(),
+			Ratio::saturating_from_rational(2, 100)
+		);
+
+		let _ = Pallet::<Runtime>::initial_kar_pool(Origin::signed(ALICE), None);
+		assert_eq!(SwapSwitchToTreasury::<Runtime>::get(), true);
+		assert_eq!(SwapBalanceThreshold::<Runtime>::get(), expect_initial_balance / 5);
+
+		let _ = Pallet::<Runtime>::initial_kar_pool(Origin::signed(ALICE), Some(500_000_000_000));
+		assert_eq!(SwapBalanceThreshold::<Runtime>::get(), 500_000_000_000);
+	});
+}
+
+#[test]
+fn swap_from_treasury_not_enough_currency() {
+	ExtBuilder::default()
+		.base_weight(100)
+		.byte_fee(10)
+		.build()
+		.execute_with(|| {
+			let treasury_account = <Runtime as Config>::TreasuryAccount::get();
+			let fee_account = <Runtime as Config>::FeeTreasuryAccount::get();
+			// 1 ACA = 1_000_000_000_000
+			let expect_initial_balance = <Runtime as Config>::InitialBootstrapBalanceForFeePool::get();
+
+			let amount = 100_000_000_000_000 as u128;
+			assert_ok!(Currencies::update_balance(
+				Origin::root(),
+				treasury_account.clone(),
+				ACA,
+				amount.unique_saturated_into(),
+			));
+			Pallet::<Runtime>::on_runtime_upgrade();
+			assert_eq!(Currencies::free_balance(ACA, &fee_account), expect_initial_balance);
+
+			let balance = 1_000_000_000 as u128;
+			let dot_fee = 11_000_000_000 as u128;
+			let ausd_fee = 110_000_000 as u128;
+			assert_ok!(Currencies::update_balance(
+				Origin::root(),
+				BOB,
+				DOT,
+				balance.unique_saturated_into(),
+			));
+			assert_ok!(Currencies::update_balance(
+				Origin::root(),
+				BOB,
+				AUSD,
+				balance.unique_saturated_into(),
+			));
+			with_transaction_result(|| -> DispatchResult {
+				let result = Pallet::<Runtime>::swap_from_treasury(&BOB, dot_fee, DOT);
+				assert_eq!(result.err().unwrap(), DispatchError::Token(TokenError::BelowMinimum));
+				Ok(())
+			})
+			.unwrap();
+			with_transaction_result(|| -> DispatchResult {
+				let result = Pallet::<Runtime>::swap_from_treasury(&BOB, ausd_fee, AUSD);
+				assert_eq!(result.err().unwrap(), DispatchError::Token(TokenError::BelowMinimum));
+				Ok(())
+			})
+			.unwrap();
+		});
+}
+
+#[test]
+fn swap_from_treasury_with_enough_balance() {
+	ExtBuilder::default()
+		.base_weight(100)
+		.byte_fee(10)
+		.build()
+		.execute_with(|| {
+			let treasury_account = <Runtime as Config>::TreasuryAccount::get();
+			let fee_account = <Runtime as Config>::FeeTreasuryAccount::get();
+			let expect_initial_balance = <Runtime as Config>::InitialBootstrapBalanceForFeePool::get();
+			let amount = (expect_initial_balance * 100) as u128;
+			assert_ok!(Currencies::update_balance(
+				Origin::root(),
+				treasury_account.clone(),
+				ACA,
+				amount.unique_saturated_into(),
+			));
+			Pallet::<Runtime>::on_runtime_upgrade();
+
+			// 1 DOT = 1 ACA, so using 100_000_000 ACA as fee, only need 100_000_000/10 DOT
+			// exchange 10_000_000 DOT to 100_000_000 ACA
+			let balance = 100_000_000 as u128;
+			assert_ok!(Currencies::update_balance(
+				Origin::root(),
+				BOB,
+				DOT,
+				balance.unique_saturated_into(),
+			));
+			let fee = balance;
+			let expect_treasury_dot = (balance / 10) as u128;
+			let expect_user_dot = balance - expect_treasury_dot;
+			let expect_user_aca = fee;
+			let expect_treasury_aca = (expect_initial_balance - fee) as u128;
+
+			with_transaction_result(|| -> DispatchResult {
+				let _ = Pallet::<Runtime>::swap_from_treasury(&BOB, balance, DOT);
+				assert_eq!(expect_user_dot, Currencies::free_balance(DOT, &BOB));
+				assert_eq!(expect_treasury_dot, Currencies::free_balance(DOT, &fee_account));
+				assert_eq!(expect_user_aca, Currencies::free_balance(ACA, &BOB));
+				assert_eq!(expect_treasury_aca, Currencies::free_balance(ACA, &fee_account));
+				Ok(())
+			})
+			.unwrap();
+
+			// 1 ACA = 10 AUSD, so using 100_000_000 ACA as fee, need 1_000_000_000 AUSD
+			// exchange 1_000_000_000 AUSD to 100_000_000 ACA
+			let balance = 100_000_000 as u128;
+			let ausd_balance = (balance * 11) as u128;
+			assert_ok!(Currencies::update_balance(
+				Origin::root(),
+				BOB,
+				AUSD,
+				ausd_balance.unique_saturated_into(),
+			));
+			assert_eq!(0, Currencies::free_balance(AUSD, &fee_account));
+			let fee = balance;
+			let expect_treasury_ausd = (balance * 10) as u128;
+			let expect_user_ausd = balance; // (balance * 11) - (balance * 10) = balance
+			let expect_treasury_aca = expect_treasury_aca - fee;
+			let expect_user_aca = expect_user_aca + fee;
+
+			with_transaction_result(|| -> DispatchResult {
+				let _ = Pallet::<Runtime>::swap_from_treasury(&BOB, balance, AUSD);
+				assert_eq!(expect_user_ausd, Currencies::free_balance(AUSD, &BOB));
+				assert_eq!(expect_treasury_ausd, Currencies::free_balance(AUSD, &fee_account));
+				assert_eq!(expect_user_aca, Currencies::free_balance(ACA, &BOB));
+				assert_eq!(expect_treasury_aca, Currencies::free_balance(ACA, &fee_account));
+				Ok(())
+			})
+			.unwrap();
+		});
+}
+
+#[test]
+fn swap_from_treasury_and_dex_with_enough_balance() {
+	ExtBuilder::default()
+		.one_hundred_thousand_for_alice_n_charlie()
+		.build()
+		.execute_with(|| {
+			let treasury_account = <Runtime as Config>::TreasuryAccount::get();
+			let fee_account = <Runtime as Config>::FeeTreasuryAccount::get();
+			let expect_initial_balance = <Runtime as Config>::InitialBootstrapBalanceForFeePool::get();
+			let amount = (expect_initial_balance * 100) as u128;
+			assert_ok!(Currencies::update_balance(
+				Origin::root(),
+				treasury_account.clone(),
+				ACA,
+				amount.unique_saturated_into(),
+			));
+			Pallet::<Runtime>::on_runtime_upgrade();
+
+			let swap_balance_threshold = 500_000_000_000 as u128;
+			Pallet::<Runtime>::initial_kar_pool(Origin::signed(ALICE), Some(swap_balance_threshold)).unwrap();
+
+			let balance = 800_000_000_000 as u128;
+			assert_ok!(Currencies::update_balance(
+				Origin::root(),
+				BOB,
+				DOT,
+				balance.unique_saturated_into(),
+			));
+			with_transaction_result(|| -> DispatchResult {
+				Pallet::<Runtime>::swap_from_treasury(&BOB, balance, DOT).unwrap();
+				Ok(())
+			})
+			.unwrap();
+			assert_eq!(720_000_000_000, Currencies::free_balance(DOT, &BOB));
+			assert_eq!(80_000_000_000, Currencies::free_balance(DOT, &fee_account));
+			assert_eq!(800_000_000_000, Currencies::free_balance(ACA, &BOB));
+			// treasury account ACA balance is less then swap_balance_threshold, swap
+			assert_eq!(200_000_000_000, Currencies::free_balance(ACA, &fee_account));
+
+			assert_ok!(DEXModule::add_liquidity(
+				Origin::signed(ALICE),
+				ACA,
+				AUSD,
+				10000,
+				1000,
+				0,
+				false
+			));
+			assert_ok!(DEXModule::add_liquidity(
+				Origin::signed(ALICE),
+				DOT,
+				AUSD,
+				100,
+				1000,
+				0,
+				false
+			));
+
+			// as there're only one swap history, and left 200_000_000_000 ACA, 80_000_000_000 DOT
+			// so use this 80_000_000_000 DOT to swap out ACA
+			let balance = 300_000_000_000 as u128;
+			with_transaction_result(|| -> DispatchResult {
+				let _ = Pallet::<Runtime>::swap_from_treasury(&BOB, balance, DOT);
+				Ok(())
+			})
+			.unwrap();
+		});
+}
+
+#[test]
+fn test_dex() {}

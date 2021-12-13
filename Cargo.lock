@@ -5917,6 +5917,7 @@ dependencies = [
  "module-support",
  "orml-tokens",
  "orml-traits",
+ "orml-utilities",
  "pallet-balances",
  "pallet-transaction-payment",
  "pallet-transaction-payment-rpc-runtime-api",
