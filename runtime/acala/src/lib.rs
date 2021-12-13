@@ -748,6 +748,8 @@ parameter_type_with_key! {
 				TokenSymbol::PHA |
 				TokenSymbol::VSKSM |
 				TokenSymbol::ACA |
+				TokenSymbol::KBTC |
+				TokenSymbol::KINT |
 				TokenSymbol::CASH => Balance::max_value() // unsupported
 			},
 			CurrencyId::DexShare(dex_share_0, _) => {
