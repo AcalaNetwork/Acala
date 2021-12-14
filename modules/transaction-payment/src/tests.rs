@@ -52,6 +52,12 @@ const INFO: DispatchInfo = DispatchInfo {
 	pays_fee: Pays::Yes,
 };
 
+const INFO2: DispatchInfo = DispatchInfo {
+	weight: 100,
+	class: DispatchClass::Normal,
+	pays_fee: Pays::Yes,
+};
+
 const POST_INFO: PostDispatchInfo = PostDispatchInfo {
 	actual_weight: Some(800),
 	pays_fee: Pays::Yes,
@@ -60,6 +66,17 @@ const POST_INFO: PostDispatchInfo = PostDispatchInfo {
 #[test]
 fn charges_fee_when_native_is_enough_but_cannot_keep_alive() {
 	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(Currencies::update_balance(
+			Origin::root(),
+			<Runtime as Config>::TreasuryAccount::get(),
+			ACA,
+			(<Runtime as Config>::InitialBootstrapBalanceForFeePool::get() * 100).unique_saturated_into(),
+		));
+		Pallet::<Runtime>::on_runtime_upgrade();
+		// disable switch
+		SwapSwitchToTreasury::<Runtime>::insert(AUSD, false);
+		SwapSwitchToTreasury::<Runtime>::insert(DOT, false);
+
 		let fee = 23 * 2 + 1000; // len * byte + weight
 		assert_ok!(Currencies::update_balance(
 			Origin::root(),
@@ -99,6 +116,14 @@ fn charges_fee() {
 		.one_hundred_thousand_for_alice_n_charlie()
 		.build()
 		.execute_with(|| {
+			assert_ok!(Currencies::update_balance(
+				Origin::root(),
+				<Runtime as Config>::TreasuryAccount::get(),
+				ACA,
+				(<Runtime as Config>::InitialBootstrapBalanceForFeePool::get() * 100).unique_saturated_into(),
+			));
+			Pallet::<Runtime>::on_runtime_upgrade();
+
 			let fee = 23 * 2 + 1000; // len * byte + weight
 			assert_eq!(
 				ChargeTransactionPayment::<Runtime>::from(0)
@@ -127,6 +152,14 @@ fn signed_extension_transaction_payment_work() {
 		.one_hundred_thousand_for_alice_n_charlie()
 		.build()
 		.execute_with(|| {
+			assert_ok!(Currencies::update_balance(
+				Origin::root(),
+				<Runtime as Config>::TreasuryAccount::get(),
+				ACA,
+				(<Runtime as Config>::InitialBootstrapBalanceForFeePool::get() * 100).unique_saturated_into(),
+			));
+			Pallet::<Runtime>::on_runtime_upgrade();
+
 			let fee = 23 * 2 + 1000; // len * byte + weight
 			let pre = ChargeTransactionPayment::<Runtime>::from(0)
 				.pre_dispatch(&ALICE, CALL, &INFO, 23)
@@ -170,6 +203,14 @@ fn charges_fee_when_pre_dispatch_and_native_currency_is_enough() {
 		.one_hundred_thousand_for_alice_n_charlie()
 		.build()
 		.execute_with(|| {
+			assert_ok!(Currencies::update_balance(
+				Origin::root(),
+				<Runtime as Config>::TreasuryAccount::get(),
+				ACA,
+				(<Runtime as Config>::InitialBootstrapBalanceForFeePool::get() * 100).unique_saturated_into(),
+			));
+			Pallet::<Runtime>::on_runtime_upgrade();
+
 			let fee = 23 * 2 + 1000; // len * byte + weight
 			assert!(ChargeTransactionPayment::<Runtime>::from(0)
 				.pre_dispatch(&ALICE, CALL, &INFO, 23)
@@ -184,6 +225,14 @@ fn refund_fee_according_to_actual_when_post_dispatch_and_native_currency_is_enou
 		.one_hundred_thousand_for_alice_n_charlie()
 		.build()
 		.execute_with(|| {
+			assert_ok!(Currencies::update_balance(
+				Origin::root(),
+				<Runtime as Config>::TreasuryAccount::get(),
+				ACA,
+				(<Runtime as Config>::InitialBootstrapBalanceForFeePool::get() * 100).unique_saturated_into(),
+			));
+			Pallet::<Runtime>::on_runtime_upgrade();
+
 			let fee = 23 * 2 + 1000; // len * byte + weight
 			let pre = ChargeTransactionPayment::<Runtime>::from(0)
 				.pre_dispatch(&ALICE, CALL, &INFO, 23)
@@ -261,6 +310,16 @@ fn charges_fee_when_validate_and_native_is_not_enough() {
 		.one_hundred_thousand_for_alice_n_charlie()
 		.build()
 		.execute_with(|| {
+			let init_balance = <Runtime as Config>::InitialBootstrapBalanceForFeePool::get();
+			assert_ok!(Currencies::update_balance(
+				Origin::root(),
+				<Runtime as Config>::TreasuryAccount::get(),
+				ACA,
+				(init_balance * 100).unique_saturated_into(),
+			));
+			Pallet::<Runtime>::on_runtime_upgrade();
+			let dot_fee_account = TreasuryAccounts::<Runtime>::get(AUSD);
+
 			// add liquidity to DEX
 			assert_ok!(DEXModule::add_liquidity(
 				Origin::signed(ALICE),
@@ -271,42 +330,54 @@ fn charges_fee_when_validate_and_native_is_not_enough() {
 				0,
 				false
 			));
-			assert_ok!(<Currencies as MultiCurrency<_>>::transfer(AUSD, &ALICE, &BOB, 1000));
+			assert_ok!(<Currencies as MultiCurrency<_>>::transfer(AUSD, &ALICE, &BOB, 4000));
 
 			assert_eq!(DEXModule::get_liquidity_pool(ACA, AUSD), (10000, 1000));
 			assert_eq!(Currencies::total_balance(ACA, &BOB), 0);
 			assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(ACA, &BOB), 0);
-			assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(AUSD, &BOB), 1000);
+			assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(AUSD, &BOB), 4000);
 
 			// total balance is lt ED, will swap fee and ED
+			let fee = 50 * 2 + 100; // len * byte + weight
+			let expect_priority = ChargeTransactionPayment::<Runtime>::get_priority(50, &INFO2, fee);
 			assert_eq!(
 				ChargeTransactionPayment::<Runtime>::from(0)
-					.validate(&BOB, CALL2, &INFO, 500)
+					.validate(&BOB, CALL2, &INFO2, 50)
 					.unwrap()
 					.priority,
-				1
+				expect_priority
 			);
+
 			assert_eq!(Currencies::total_balance(ACA, &BOB), 10);
 			assert_eq!(Currencies::free_balance(ACA, &BOB), 10);
-			assert_eq!(Currencies::free_balance(AUSD, &BOB), 748);
-			assert_eq!(
-				DEXModule::get_liquidity_pool(ACA, AUSD),
-				(10000 - 2000 - 10, 1000 + 252)
-			);
+			assert_eq!(Currencies::free_balance(AUSD, &BOB), 1900);
+			assert_eq!(DEXModule::get_liquidity_pool(ACA, AUSD), (10000, 1000));
+			assert_eq!(Currencies::free_balance(ACA, &dot_fee_account), init_balance - fee - 10);
+			assert_eq!(Currencies::free_balance(AUSD, &dot_fee_account), (fee + 10) * 10);
 
 			// total balance is gte ED, but cannot keep alive after charge,
 			// will swap extra gap to keep alive
+			let fee_2 = 10 * 2 + 100; // len * byte + weight
+			let expect_priority = ChargeTransactionPayment::<Runtime>::get_priority(10, &INFO2, fee_2);
 			assert_eq!(
 				ChargeTransactionPayment::<Runtime>::from(0)
-					.validate(&BOB, CALL2, &INFO, 100)
+					.validate(&BOB, CALL2, &INFO2, 10)
 					.unwrap()
 					.priority,
-				1
+				expect_priority
 			);
 			assert_eq!(Currencies::total_balance(ACA, &BOB), 10);
 			assert_eq!(Currencies::free_balance(ACA, &BOB), 10);
-			assert_eq!(Currencies::free_balance(AUSD, &BOB), 526);
-			assert_eq!(DEXModule::get_liquidity_pool(ACA, AUSD), (7990 - 1200, 1252 + 222));
+			assert_eq!(Currencies::free_balance(AUSD, &BOB), 700);
+			assert_eq!(DEXModule::get_liquidity_pool(ACA, AUSD), (10000, 1000));
+			assert_eq!(
+				Currencies::free_balance(ACA, &dot_fee_account),
+				init_balance - fee - 10 - fee_2
+			);
+			assert_eq!(
+				Currencies::free_balance(AUSD, &dot_fee_account),
+				(fee + 10 + fee_2) * 10
+			);
 		});
 }
 
@@ -316,6 +387,14 @@ fn charges_fee_failed_by_slippage_limit() {
 		.one_hundred_thousand_for_alice_n_charlie()
 		.build()
 		.execute_with(|| {
+			assert_ok!(Currencies::update_balance(
+				Origin::root(),
+				<Runtime as Config>::TreasuryAccount::get(),
+				ACA,
+				(<Runtime as Config>::InitialBootstrapBalanceForFeePool::get() * 100).unique_saturated_into(),
+			));
+			Pallet::<Runtime>::on_runtime_upgrade();
+
 			// add liquidity to DEX
 			assert_ok!(DEXModule::add_liquidity(
 				Origin::signed(ALICE),
@@ -395,16 +474,13 @@ fn charge_fee_by_default_swap_path() {
 		.one_hundred_thousand_for_alice_n_charlie()
 		.build()
 		.execute_with(|| {
-			// let treasury_account = <Runtime as Config>::TreasuryAccount::get();
-			// let expect_initial_balance = <Runtime as Config>::InitialBootstrapBalanceForFeePool::get();
-			// let amount = (expect_initial_balance * 100) as u128;
-			// assert_ok!(Currencies::update_balance(
-			// 	Origin::root(),
-			// 	treasury_account.clone(),
-			// 	ACA,
-			// 	amount.unique_saturated_into(),
-			// ));
-			// Pallet::<Runtime>::on_runtime_upgrade();
+			assert_ok!(Currencies::update_balance(
+				Origin::root(),
+				<Runtime as Config>::TreasuryAccount::get(),
+				ACA,
+				(<Runtime as Config>::InitialBootstrapBalanceForFeePool::get() * 100).unique_saturated_into(),
+			));
+			Pallet::<Runtime>::on_runtime_upgrade();
 
 			// add liquidity to DEX
 			assert_ok!(DEXModule::add_liquidity(
@@ -435,10 +511,10 @@ fn charge_fee_by_default_swap_path() {
 				TransactionPayment::alternative_fee_swap_path(&BOB).unwrap(),
 				vec![DOT, ACA]
 			);
-			assert_ok!(<Currencies as MultiCurrency<_>>::transfer(DOT, &ALICE, &BOB, 100));
+			assert_ok!(<Currencies as MultiCurrency<_>>::transfer(DOT, &ALICE, &BOB, 300));
 			assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(ACA, &BOB), 0);
 			assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(AUSD, &BOB), 0);
-			assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(DOT, &BOB), 100);
+			assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(DOT, &BOB), 300);
 
 			assert_eq!(
 				ChargeTransactionPayment::<Runtime>::from(0)
@@ -450,9 +526,9 @@ fn charge_fee_by_default_swap_path() {
 
 			assert_eq!(Currencies::free_balance(ACA, &BOB), Currencies::minimum_balance(ACA));
 			assert_eq!(Currencies::free_balance(AUSD, &BOB), 0);
-			assert_eq!(Currencies::free_balance(DOT, &BOB), 100 - 34);
-			assert_eq!(DEXModule::get_liquidity_pool(ACA, AUSD), (10000 - 2000 - 10, 1252));
-			assert_eq!(DEXModule::get_liquidity_pool(DOT, AUSD), (100 + 34, 1000 - 252));
+			assert_eq!(Currencies::free_balance(DOT, &BOB), 300 - 201);
+			assert_eq!(DEXModule::get_liquidity_pool(ACA, AUSD), (10000, 1000));
+			assert_eq!(DEXModule::get_liquidity_pool(DOT, AUSD), (100, 1000));
 		});
 }
 
@@ -893,13 +969,12 @@ fn treasury_basic_setup_works() {
 		let treasury_account = <Runtime as Config>::TreasuryAccount::get();
 		let fee_account = TreasuryAccounts::<Runtime>::get(KSM);
 		let expect_initial_balance = <Runtime as Config>::InitialBootstrapBalanceForFeePool::get();
+		let amount = (expect_initial_balance * 100) as u128;
 
 		assert_eq!(Currencies::free_balance(ACA, &fee_account), 0);
 		assert_eq!(FeeRateOfToken::<Runtime>::get(KSM), None);
 		assert_eq!(SwapSwitchToTreasury::<Runtime>::get(KSM), false);
 
-		// treasury account has huge amount balance
-		let amount = 10000;
 		assert_ok!(Currencies::update_balance(
 			Origin::root(),
 			treasury_account.clone(),
@@ -1064,26 +1139,36 @@ fn swap_from_treasury_and_dex_update_rate() {
 			Pallet::<Runtime>::on_runtime_upgrade();
 			let dot_fee_account = TreasuryAccounts::<Runtime>::get(DOT);
 
-			let swap_balance_threshold = 500 as u128;
-			Pallet::<Runtime>::initial_kar_pool(Origin::signed(ALICE), DOT, Some(swap_balance_threshold), Some(true))
-				.unwrap();
-			Pallet::<Runtime>::initial_kar_pool(Origin::signed(ALICE), AUSD, Some(swap_balance_threshold), Some(true))
-				.unwrap();
-
+			// Bob has 800 DOT, the fee is 800 ACA, equal to 80 DOT
 			let balance = 800 as u128;
+			let fee_dot = 80 as u128;
 			assert_ok!(Currencies::update_balance(
 				Origin::root(),
 				BOB,
 				DOT,
 				balance.unique_saturated_into(),
 			));
-			Pallet::<Runtime>::swap_from_treasury(&BOB, balance, DOT).unwrap();
-			assert_eq!(720, Currencies::free_balance(DOT, &BOB));
-			assert_eq!(800, Currencies::free_balance(ACA, &BOB));
-			assert_eq!(80, Currencies::free_balance(DOT, &dot_fee_account));
-			assert_eq!(200, Currencies::free_balance(ACA, &dot_fee_account));
 
-			// treasury account balance(200) lt swap_balance_threshold(500), swap from dex
+			// First transaction success get 800 ACA as fee from pool
+			Pallet::<Runtime>::swap_from_treasury(&BOB, balance, DOT).unwrap();
+			// Bob withdraw 80 DOT(remain 720), and deposit 800 ACA
+			assert_eq!(balance - fee_dot, Currencies::free_balance(DOT, &BOB));
+			assert_eq!(balance, Currencies::free_balance(ACA, &BOB));
+			// Treasury deposit 80 DOT, and withdraw 800 ACA(remain 9200)
+			assert_eq!(fee_dot, Currencies::free_balance(DOT, &dot_fee_account));
+			assert_eq!(
+				expect_initial_balance - balance,
+				Currencies::free_balance(ACA, &dot_fee_account)
+			);
+
+			// Set threshold(init-500) gt treasury balance(init-800), trigger swap from dex.
+			let swap_balance_threshold = (expect_initial_balance - 500) as u128;
+			Pallet::<Runtime>::initial_kar_pool(Origin::signed(ALICE), DOT, Some(swap_balance_threshold), Some(true))
+				.unwrap();
+			Pallet::<Runtime>::initial_kar_pool(Origin::signed(ALICE), AUSD, Some(swap_balance_threshold), Some(true))
+				.unwrap();
+
+			// before swap from dex, need add liquidity pool
 			assert_ok!(DEXModule::add_liquidity(
 				Origin::signed(ALICE),
 				ACA,
@@ -1103,34 +1188,50 @@ fn swap_from_treasury_and_dex_update_rate() {
 				false
 			));
 
-			// swap will update the rate
+			// swap 80 DOT out 3074 ACA
 			let trading_path = Pallet::<Runtime>::get_trading_path_by_currency(&ALICE, DOT).unwrap();
 			let swap_native = module_dex::Pallet::<Runtime>::get_swap_target_amount(
 				&trading_path,
 				Currencies::free_balance(DOT, &dot_fee_account),
 			)
 			.unwrap();
-			let native = (swap_native + Currencies::free_balance(ACA, &dot_fee_account)).saturated_into::<u128>() / 10;
-			let rate = Ratio::saturating_from_rational(native, expect_initial_balance);
+			assert_eq!(3074, swap_native);
+			// calculate the new balance of ACA = 3074+(init-800)=3074+9200=12270
+			let current_native_balance =
+				(swap_native + Currencies::free_balance(ACA, &dot_fee_account)).saturated_into::<u128>();
+			let base_native: u128 = current_native_balance / 10;
+			assert_eq!(1227, base_native);
+			// compare to the old balance:10000 and rate:1/10, the new rate is (12270/10000)*(1/10)=0.1227
+			let rate = Ratio::saturating_from_rational(base_native, expect_initial_balance);
+			assert_eq!(Ratio::saturating_from_rational(1227, 10000), rate);
 
-			// the treasury has 200 ACA, 80 DOT, use 80 DOT to swap out some ACA
-			let balance = 300 as u128;
-			let _ = Pallet::<Runtime>::swap_from_treasury(&BOB, balance, DOT);
+			// the treasury has 9200 ACA, 80 DOT, use 80 DOT to swap out some ACA
+			let balance2 = 300 as u128;
+			let _ = Pallet::<Runtime>::swap_from_treasury(&BOB, balance2, DOT);
 			assert_eq!(FeeRateOfToken::<Runtime>::get(DOT).unwrap(), rate);
 
 			// Bob swap 98 DOT(use the new updated rate) to get 300 ACA
-			let exchange = rate.saturating_mul_int(balance);
-			assert_eq!(720 - exchange, Currencies::free_balance(DOT, &BOB));
-			assert_eq!(800 + balance, Currencies::free_balance(ACA, &BOB));
+			let exchange = rate.saturating_mul_int(balance2);
+			assert_eq!(balance - fee_dot - exchange, Currencies::free_balance(DOT, &BOB));
+			assert_eq!(balance + balance2, Currencies::free_balance(ACA, &BOB));
+			// When swap from dex finished, the treasury DOT got 0(no ED), as treasury use DOT to swap ACA.
+			// Only the newly exchange DOT from user to treasury.
 			assert_eq!(exchange, Currencies::free_balance(DOT, &dot_fee_account));
-			assert_eq!(swap_native + 200 - 300, Currencies::free_balance(ACA, &dot_fee_account));
+			assert_eq!(
+				current_native_balance - balance2,
+				Currencies::free_balance(ACA, &dot_fee_account)
+			);
 
-			// rate=0.327, amount=8*rate*weight=8*0.327*200_000_000
+			// rate=0.1227, amount=8*rate*weight=8*0.1227*200_000_000
 			let mut trader = PeriodUpdatedRateOfFungible::<Runtime, CurrencyIdConvert, KarPerSecond, ()>::new();
 			let mock_weight: Weight = 200_000_000;
-			let expect_amount: u128 = 8 * 327 * 200_000;
-			let asset: MultiAsset = ((0, X1(GeneralKey(DOT.encode()))), 600_000_000).into();
-			let expect_asset: MultiAsset = ((0, X1(GeneralKey(DOT.encode()))), 76_800_000).into();
+			let asset: u128 = 500_000_000;
+
+			let expect_amount: u128 = 8 * base_native * 20_000;
+			let expect_unused: u128 = asset - expect_amount;
+
+			let asset: MultiAsset = ((0, X1(GeneralKey(DOT.encode()))), asset).into();
+			let expect_asset: MultiAsset = ((0, X1(GeneralKey(DOT.encode()))), expect_unused).into();
 			let assets: Assets = asset.into();
 			let unused = trader.buy_weight(mock_weight, assets);
 			assert_eq!(unused.unwrap(), expect_asset.into());

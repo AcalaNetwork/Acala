@@ -228,7 +228,8 @@ impl PriceProvider<CurrencyId> for MockPriceSource {
 }
 
 parameter_types! {
-	pub const InitialBootstrapBalanceForFeePool: Balance = 1_000;
+	// DO NOT CHANGE THIS VALUE, AS IT EFFECT THE TESTCASES.
+	pub const InitialBootstrapBalanceForFeePool: Balance = 10_000;
 	pub const UpdatedFeePoolPalletId: PalletId = PalletId(*b"aca/fees");
 	pub const TreasuryPalletId: PalletId = PalletId(*b"aca/trsy");
 	pub AssetRates: Vec<AssetRate<AccountId>> = vec![

@@ -806,11 +806,11 @@ where
 			.unwrap();
 		let initial_bootstrap_balance: u128 = T::InitialBootstrapBalanceForFeePool::get().saturated_into::<u128>();
 		let swap_balance_threshold = SwapBalanceThreshold::<T>::get(supply_currency_id);
+		let user_supply_balance = T::MultiCurrency::free_balance(supply_currency_id, &who);
+		let expect_rate_balance = rate.saturating_mul_int(amount.saturated_into::<u128>());
 
 		// user's supply asset should have enough balance based on old fix rate.
-		if T::MultiCurrency::free_balance(supply_currency_id, &who)
-			< rate.saturating_mul_int(amount.saturated_into::<u128>())
-		{
+		if user_supply_balance < expect_rate_balance {
 			return Err(DispatchError::Token(TokenError::BelowMinimum));
 		}
 
