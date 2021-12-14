@@ -226,3 +226,11 @@ docker volume rm [volume_name]
 docker volume prune
 ```
 
+# 9. Build For Release
+
+For release artifacts, a more optimized build config is used.
+This config takes around 2x to 3x longer to build, but produces an more optimized binary to run.
+
+```bash
+make build-release
+```
