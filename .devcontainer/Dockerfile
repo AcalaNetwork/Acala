@@ -37,8 +37,8 @@ RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
 
 USER vscode
 
-RUN rustup default nightly-2021-06-17 && \
-	rustup target add wasm32-unknown-unknown --toolchain nightly-2021-06-17
+RUN rustup default nightly-2021-11-07 && \
+	rustup target add wasm32-unknown-unknown --toolchain nightly-2021-11-07
 
 RUN rustup component add rustfmt
 
