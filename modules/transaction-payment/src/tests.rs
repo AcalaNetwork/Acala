@@ -31,7 +31,10 @@ use mock::{
 };
 use orml_traits::MultiCurrency;
 use primitives::currency::*;
-use sp_runtime::{testing::TestXt, traits::One};
+use sp_runtime::{
+	testing::TestXt,
+	traits::{One, UniqueSaturatedInto},
+};
 use support::Price;
 use xcm::latest::prelude::*;
 use xcm::prelude::GeneralKey;
@@ -70,14 +73,14 @@ fn charges_fee_when_native_is_enough_but_cannot_keep_alive() {
 			Origin::root(),
 			<Runtime as Config>::TreasuryAccount::get(),
 			ACA,
+			// (<Runtime as Config>::InitialBootstrapBalanceForFeePool::get() * 100).unique_saturated_into(),
 			(<Runtime as Config>::InitialBootstrapBalanceForFeePool::get() * 100).unique_saturated_into(),
 		));
 		Pallet::<Runtime>::on_runtime_upgrade();
-		// disable switch
-		SwapSwitchToTreasury::<Runtime>::insert(AUSD, false);
-		SwapSwitchToTreasury::<Runtime>::insert(DOT, false);
 
-		let fee = 23 * 2 + 1000; // len * byte + weight
+		// the fee calculation include ED, so even user has enough asset, it'll failed.
+		// make sure the balance is gt bootstrap_balance, so that treasury pool failed transfer.
+		let fee = 5000 * 2 + 1000; // len * byte + weight
 		assert_ok!(Currencies::update_balance(
 			Origin::root(),
 			ALICE,
@@ -86,10 +89,12 @@ fn charges_fee_when_native_is_enough_but_cannot_keep_alive() {
 		));
 		assert_eq!(Currencies::free_balance(ACA, &ALICE), fee);
 		assert_noop!(
-			ChargeTransactionPayment::<Runtime>::from(0).validate(&ALICE, CALL, &INFO, 23),
+			ChargeTransactionPayment::<Runtime>::from(0).validate(&ALICE, CALL, &INFO, 5000),
 			TransactionValidityError::Invalid(InvalidTransaction::Payment)
 		);
 
+		// fee2 = fee - ED, so native is enough
+		let fee2 = 5000 * 2 + 990;
 		assert_eq!(
 			ChargeTransactionPayment::<Runtime>::from(0)
 				.validate(
@@ -100,7 +105,7 @@ fn charges_fee_when_native_is_enough_but_cannot_keep_alive() {
 						class: DispatchClass::Normal,
 						pays_fee: Pays::Yes,
 					},
-					23
+					5000
 				)
 				.unwrap()
 				.priority,
@@ -973,7 +978,6 @@ fn treasury_basic_setup_works() {
 
 		assert_eq!(Currencies::free_balance(ACA, &fee_account), 0);
 		assert_eq!(FeeRateOfToken::<Runtime>::get(KSM), None);
-		assert_eq!(SwapSwitchToTreasury::<Runtime>::get(KSM), false);
 
 		assert_ok!(Currencies::update_balance(
 			Origin::root(),
@@ -993,11 +997,7 @@ fn treasury_basic_setup_works() {
 			Ratio::saturating_from_rational(2, 100)
 		);
 
-		let _ = Pallet::<Runtime>::initial_kar_pool(Origin::signed(ALICE), KSM, None, Some(true));
-		assert_eq!(SwapSwitchToTreasury::<Runtime>::get(KSM), true);
-		assert_eq!(SwapBalanceThreshold::<Runtime>::get(KSM), expect_initial_balance / 5);
-
-		let _ = Pallet::<Runtime>::initial_kar_pool(Origin::signed(ALICE), KSM, Some(500), Some(true));
+		let _ = Pallet::<Runtime>::set_trigger_threshold(Origin::signed(ALICE), KSM, 500);
 		assert_eq!(SwapBalanceThreshold::<Runtime>::get(KSM), 500);
 	});
 }
@@ -1163,10 +1163,8 @@ fn swap_from_treasury_and_dex_update_rate() {
 
 			// Set threshold(init-500) gt treasury balance(init-800), trigger swap from dex.
 			let swap_balance_threshold = (expect_initial_balance - 500) as u128;
-			Pallet::<Runtime>::initial_kar_pool(Origin::signed(ALICE), DOT, Some(swap_balance_threshold), Some(true))
-				.unwrap();
-			Pallet::<Runtime>::initial_kar_pool(Origin::signed(ALICE), AUSD, Some(swap_balance_threshold), Some(true))
-				.unwrap();
+			Pallet::<Runtime>::set_trigger_threshold(Origin::signed(ALICE), DOT, swap_balance_threshold).unwrap();
+			Pallet::<Runtime>::set_trigger_threshold(Origin::signed(ALICE), AUSD, swap_balance_threshold).unwrap();
 
 			// before swap from dex, need add liquidity pool
 			assert_ok!(DEXModule::add_liquidity(

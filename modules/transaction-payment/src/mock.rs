@@ -35,7 +35,7 @@ use smallvec::smallvec;
 use sp_core::{crypto::AccountId32, H256};
 use sp_runtime::{
 	testing::Header,
-	traits::{AccountIdConversion, IdentityLookup},
+	traits::{AccountIdConversion, IdentityLookup, One},
 	Perbill,
 };
 use sp_std::cell::RefCell;

@@ -380,11 +380,6 @@ pub mod module {
 	#[pallet::getter(fn swap_threshold)]
 	pub type SwapBalanceThreshold<T: Config> = StorageMap<_, Twox64Concat, CurrencyId, u128, ValueQuery>;
 
-	/// Each asset has a switch to using treasury pool as fee buffer.
-	#[pallet::storage]
-	#[pallet::getter(fn swap_switch)]
-	pub type SwapSwitchToTreasury<T: Config> = StorageMap<_, Twox64Concat, CurrencyId, bool, ValueQuery>;
-
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
 
@@ -401,7 +396,6 @@ pub mod module {
 				SwapBalanceThreshold::<T>::insert(asset_rate.0, balance.saturated_into::<u128>() / 5);
 				FeeRateOfToken::<T>::insert(asset_rate.0, asset_rate.1);
 				TreasuryAccounts::<T>::insert(asset_rate.0, asset_rate.2);
-				SwapSwitchToTreasury::<T>::insert(asset_rate.0, true);
 			}
 			0
 		}
@@ -486,24 +480,13 @@ pub mod module {
 		}
 
 		#[pallet::weight(<T as Config>::WeightInfo::set_alternative_fee_swap_path())]
-		pub fn initial_kar_pool(
+		pub fn set_trigger_threshold(
 			origin: OriginFor<T>,
 			currency_id: CurrencyId,
-			threshold: Option<PalletBalanceOf<T>>,
-			switch: Option<bool>,
+			threshold: PalletBalanceOf<T>,
 		) -> DispatchResult {
 			T::AdminOrigin::ensure_origin(origin)?;
-			let amount = T::InitialBootstrapBalanceForFeePool::get();
-			if let Some(threshold) = threshold {
-				SwapBalanceThreshold::<T>::insert(currency_id, threshold.saturated_into::<u128>());
-			} else {
-				SwapBalanceThreshold::<T>::insert(currency_id, amount.saturated_into::<u128>() / 5);
-			}
-			if let Some(switch) = switch {
-				SwapSwitchToTreasury::<T>::insert(currency_id, switch);
-			} else {
-				SwapSwitchToTreasury::<T>::insert(currency_id, false);
-			}
+			SwapBalanceThreshold::<T>::insert(currency_id, threshold.saturated_into::<u128>());
 			Ok(())
 		}
 	}
@@ -762,34 +745,6 @@ where
 				_ => {}
 			}
 		}
-	}
-
-	/// Given foreign asset and the trading path of it, swap out native asset.
-	fn swap_from_dex(
-		who: &T::AccountId,
-		amount: PalletBalanceOf<T>,
-		supply_currency_id: CurrencyId,
-		trading_path: Vec<CurrencyId>,
-	) -> bool {
-		// calculate the supply limit according to oracle price and the slippage limit,
-		// if oracle price is not available, do not limit
-		let max_supply_limit = if let Some(target_price) =
-			T::PriceSource::get_relative_price(T::NativeCurrencyId::get(), supply_currency_id)
-		{
-			Ratio::one()
-				.saturating_sub(T::MaxSwapSlippageCompareToOracle::get())
-				.reciprocal()
-				.unwrap_or_else(Ratio::max_value)
-				.saturating_mul_int(target_price.saturating_mul_int(amount))
-		} else {
-			PalletBalanceOf::<T>::max_value()
-		};
-
-		let account_supply_token_amount = <T as Config>::MultiCurrency::free_balance(supply_currency_id, who);
-		let max_supply_amount = account_supply_token_amount.min(max_supply_limit.unique_saturated_into());
-
-		// use target method, because we need to swap out exactly amount of native asset to charge fee
-		T::DEX::swap_with_exact_target(who, &trading_path, amount.unique_saturated_into(), max_supply_amount).is_ok()
 	}
 
 	/// swap from treasury
