@@ -114,7 +114,7 @@ pub use runtime_common::{
 	HomaCouncilInstance, HomaCouncilMembershipInstance, OperatorMembershipInstanceAcala, Price, ProxyType, Rate, Ratio,
 	RelayChainBlockNumberProvider, RelayChainSubAccountId, RuntimeBlockLength, RuntimeBlockWeights,
 	SystemContractsFilter, TechnicalCommitteeInstance, TechnicalCommitteeMembershipInstance, TimeStampedPrice, BNC,
-	KAR, KSM, KUSD, LKSM, PHA, RENBTC, VSKSM, KBTC, KINT,
+	KAR, KBTC, KINT, KSM, KUSD, LKSM, PHA, RENBTC, VSKSM,
 };
 
 mod authority;
