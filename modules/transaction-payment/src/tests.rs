@@ -1044,10 +1044,10 @@ fn swap_from_treasury_not_enough_currency() {
 
 			// 1100 ACA equals to 110 DOT, but Bob only has 100 DOT
 			let result = Pallet::<Runtime>::swap_from_treasury(&BOB, 1100, DOT);
-			assert_eq!(result.err().unwrap(), DispatchError::Token(TokenError::BelowMinimum));
+			assert_eq!(result.is_err(), true);
 			// 11 ACA equals to 110 AUSD, but Bob only has 100 AUSD
 			let result = Pallet::<Runtime>::swap_from_treasury(&BOB, 11, AUSD);
-			assert_eq!(result.err().unwrap(), DispatchError::Token(TokenError::BelowMinimum));
+			assert_eq!(result.is_err(), true);
 		});
 }
 

@@ -53,7 +53,7 @@ use sp_runtime::{
 	transaction_validity::{
 		InvalidTransaction, TransactionPriority, TransactionValidity, TransactionValidityError, ValidTransaction,
 	},
-	ArithmeticError, FixedPointNumber, FixedPointOperand, FixedU128, Perquintill, TokenError,
+	ArithmeticError, FixedPointNumber, FixedPointOperand, FixedU128, Perquintill,
 };
 use sp_std::{prelude::*, vec};
 use support::{DEXManager, PriceProvider, Ratio, SwapLimit, TransactionPayment};
@@ -349,6 +349,10 @@ pub mod module {
 	pub enum Error<T> {
 		/// The swap path is invalid
 		InvalidSwapPath,
+		/// Supply currency balance too low
+		SupplyBalanceTooLow,
+		/// Asset no in the charge fee pool
+		AssetNotInFeePool,
 	}
 
 	/// The next fee multiplier.
@@ -753,21 +757,22 @@ where
 		who: &T::AccountId,
 		amount: PalletBalanceOf<T>,
 		supply_currency_id: CurrencyId,
-	) -> DispatchResult {
+	) -> sp_std::result::Result<(), DispatchError> {
 		let treasury_account = TreasuryAccounts::<T>::get(supply_currency_id);
 		let treasury_supply_balance = T::MultiCurrency::free_balance(supply_currency_id, &treasury_account);
 		let mut rate = Pallet::<T>::charge_fee_pool(supply_currency_id)
-			.ok_or(DispatchError::Token(TokenError::UnknownAsset))
+			.ok_or(Error::<T>::AssetNotInFeePool)
 			.unwrap();
 		let initial_bootstrap_balance: u128 = T::InitialBootstrapBalanceForFeePool::get().saturated_into::<u128>();
 		let swap_balance_threshold = SwapBalanceThreshold::<T>::get(supply_currency_id);
-		let user_supply_balance = T::MultiCurrency::free_balance(supply_currency_id, &who);
-		let expect_rate_balance = rate.saturating_mul_int(amount.saturated_into::<u128>());
 
 		// user's supply asset should have enough balance based on old fix rate.
-		if user_supply_balance < expect_rate_balance {
-			return Err(DispatchError::Token(TokenError::BelowMinimum));
-		}
+		let user_supply_balance = T::MultiCurrency::free_balance(supply_currency_id, who);
+		let expect_rate_balance = rate.saturating_mul_int(amount.saturated_into::<u128>());
+		ensure!(
+			user_supply_balance >= expect_rate_balance,
+			Error::<T>::SupplyBalanceTooLow
+		);
 
 		// if treasury account has not enough native asset, trigger swap
 		let treasury_balance = T::Currency::free_balance(&treasury_account).saturated_into::<u128>();
@@ -792,8 +797,8 @@ where
 		// use fix rate to calculate the amount of supply asset that equal to native asset.
 		// exchange user's supply asset and treasury's native asset.
 		let token_amount: u128 = rate.saturating_mul_int(amount.saturated_into::<u128>());
-		T::MultiCurrency::transfer(supply_currency_id, &who, &treasury_account, token_amount)?;
-		T::Currency::transfer(&treasury_account, &who, amount, ExistenceRequirement::KeepAlive)?;
+		T::MultiCurrency::transfer(supply_currency_id, who, &treasury_account, token_amount)?;
+		T::Currency::transfer(&treasury_account, who, amount, ExistenceRequirement::KeepAlive)?;
 		Ok(())
 	}
 
