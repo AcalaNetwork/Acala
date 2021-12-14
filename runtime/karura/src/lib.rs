@@ -44,7 +44,7 @@ use sp_runtime::{
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, DispatchResult, FixedPointNumber, Perbill, Percent, Permill, Perquintill,
 };
-use sp_std::{marker::PhantomData, prelude::*};
+use sp_std::prelude::*;
 #[cfg(feature = "std")]
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
@@ -1516,15 +1516,15 @@ parameter_types! {
 		// KINT:KSM = 4:3
 		(ksm_per_second() * 4) / 3
 	);
+
 	pub KarPerSecondAsBased: u128 = kar_per_second();
-	pub UpdatedFeePoolPalletId: PalletId = UpdatedFeePoolPalletId::get();
 	pub AssetRates: Vec<AssetRate<AccountId>> = vec![
-		AssetRate::<AccountId>(KSM, calculate_asset_ratio(KsmPerSecond::get(), KarPerSecond::get()), UpdatedFeePoolPalletId.into_sub_account("KSM")),
-		AssetRate::<AccountId>(KUSD, calculate_asset_ratio(KusdPerSecond::get(), KarPerSecond::get()), UpdatedFeePoolPalletId.into_sub_account("KUSD")),
-		AssetRate::<AccountId>(LKSM, calculate_asset_ratio(LksmPerSecond::get(), KarPerSecond::get()), UpdatedFeePoolPalletId.into_sub_account("LKSM")),
-		AssetRate::<AccountId>(BNC, calculate_asset_ratio(BncPerSecond::get(), KarPerSecond::get()), UpdatedFeePoolPalletId.into_sub_account("BNC")),
-		AssetRate::<AccountId>(VSKSM, calculate_asset_ratio(VsksmPerSecond::get(), KarPerSecond::get()), UpdatedFeePoolPalletId.into_sub_account("VSKSM")),
-		AssetRate::<AccountId>(PHA, calculate_asset_ratio(PHAPerSecond::get(), KarPerSecond::get()), UpdatedFeePoolPalletId.into_sub_account("PHA")),
+		AssetRate::<AccountId>(KSM, calculate_asset_ratio(KsmPerSecond::get(), KarPerSecond::get()),  UpdatedFeePoolPalletId::get().into_sub_account("KSM")),
+		AssetRate::<AccountId>(KUSD, calculate_asset_ratio(KusdPerSecond::get(), KarPerSecond::get()),  UpdatedFeePoolPalletId::get().into_sub_account("KUSD")),
+		AssetRate::<AccountId>(LKSM, calculate_asset_ratio(LksmPerSecond::get(), KarPerSecond::get()),  UpdatedFeePoolPalletId::get().into_sub_account("LKSM")),
+		AssetRate::<AccountId>(BNC, calculate_asset_ratio(BncPerSecond::get(), KarPerSecond::get()),  UpdatedFeePoolPalletId::get().into_sub_account("BNC")),
+		AssetRate::<AccountId>(VSKSM, calculate_asset_ratio(VsksmPerSecond::get(), KarPerSecond::get()),  UpdatedFeePoolPalletId::get().into_sub_account("VSKSM")),
+		AssetRate::<AccountId>(PHA, calculate_asset_ratio(PHAPerSecond::get(), KarPerSecond::get()),  UpdatedFeePoolPalletId::get().into_sub_account("PHA")),
 	];
 }
 

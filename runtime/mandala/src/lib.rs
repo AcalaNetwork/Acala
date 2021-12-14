@@ -1148,7 +1148,7 @@ impl OnUnbalanced<NegativeImbalance> for DealWithFees {
 
 parameter_types! {
 	pub AssetRates: Vec<AssetRate<AccountId>> = vec![
-		AssetRate::<AccountId>(DOT, Ratio::saturating_from_rational(1, 100), UpdatedFeePoolPalletId.into_sub_account("DOT")),
+		AssetRate::<AccountId>(DOT, Ratio::saturating_from_rational(1, 100), UpdatedFeePoolPalletId::get().into_sub_account("DOT")),
 	];
 }
 

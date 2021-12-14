@@ -178,7 +178,7 @@ pub fn microcent(currency_id: CurrencyId) -> Balance {
 	millicent(currency_id) / 1000
 }
 
-pub fn calculate_asset_ratio(foreign_asset: (_, u128), native_asset: (_, u128)) -> Ratio {
+pub fn calculate_asset_ratio(foreign_asset: (AssetId, u128), native_asset: (AssetId, u128)) -> Ratio {
 	Ratio::saturating_from_rational(foreign_asset.1, native_asset.1)
 }
 
