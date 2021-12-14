@@ -63,7 +63,7 @@ use orml_traits::{
 use pallet_transaction_payment::{FeeDetails, RuntimeDispatchInfo};
 use primitives::{
 	convert_decimals_to_evm, define_combined_task, evm::EthereumTransactionMessage, task::TaskResult,
-	unchecked_extrinsic::AcalaUncheckedExtrinsic, AssetRate,
+	unchecked_extrinsic::AcalaUncheckedExtrinsic, AssetFixRateAccountId,
 };
 use sp_api::impl_runtime_apis;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
@@ -1147,8 +1147,8 @@ impl OnUnbalanced<NegativeImbalance> for DealWithFees {
 }
 
 parameter_types! {
-	pub AssetRates: Vec<AssetRate<AccountId>> = vec![
-		AssetRate::<AccountId>(DOT, Ratio::saturating_from_rational(1, 100), UpdatedFeePoolPalletId::get().into_sub_account("DOT")),
+	pub AssetFixRateAccountIds: Vec<AssetFixRateAccountId<AccountId>> = vec![
+		AssetFixRateAccountId::<AccountId>(DOT, Ratio::saturating_from_rational(1, 100), UpdatedFeePoolPalletId::get().into_sub_account("DOT")),
 	];
 }
 
@@ -1171,8 +1171,8 @@ impl module_transaction_payment::Config for Runtime {
 	type WeightInfo = weights::module_transaction_payment::WeightInfo<Runtime>;
 	type InitialBootstrapBalanceForFeePool = InitialBootstrapBalanceForFeePool;
 	type TreasuryAccount = TreasuryAccount;
-	type AdminOrigin = EnsureRootOrTreasury;
-	type AssetRates = AssetRates;
+	type TreasuryOrigin = EnsureRootOrTreasury;
+	type AssetFixRateAccountIds = AssetFixRateAccountIds;
 }
 
 impl module_evm_accounts::Config for Runtime {

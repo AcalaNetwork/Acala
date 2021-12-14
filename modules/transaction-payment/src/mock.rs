@@ -28,9 +28,9 @@ use frame_support::{
 	weights::WeightToFeeCoefficients,
 	PalletId,
 };
-use frame_system::{EnsureSignedBy, RawOrigin};
+use frame_system::EnsureSignedBy;
 use orml_traits::parameter_type_with_key;
-use primitives::{Amount, AssetRate, ReserveIdentifier, TokenSymbol, TradingPair};
+use primitives::{Amount, AssetFixRateAccountId, ReserveIdentifier, TokenSymbol, TradingPair};
 use smallvec::smallvec;
 use sp_core::{crypto::AccountId32, H256};
 use sp_runtime::{
@@ -232,32 +232,18 @@ parameter_types! {
 	pub const InitialBootstrapBalanceForFeePool: Balance = 10_000;
 	pub const UpdatedFeePoolPalletId: PalletId = PalletId(*b"aca/fees");
 	pub const TreasuryPalletId: PalletId = PalletId(*b"aca/trsy");
-	pub AssetRates: Vec<AssetRate<AccountId>> = vec![
-		AssetRate::<AccountId>(KSM, Ratio::saturating_from_rational(2, 100), UpdatedFeePoolPalletId::get().into_sub_account("KSM")),
+	pub AssetFixRateAccountIds: Vec<AssetFixRateAccountId<AccountId>> = vec![
+		AssetFixRateAccountId::<AccountId>(KSM, Ratio::saturating_from_rational(2, 100), UpdatedFeePoolPalletId::get().into_sub_account("KSM")),
 		// 1 DOT = 10 ACA, 1 ACA = 10 AUSD
-		AssetRate::<AccountId>(AUSD, Ratio::saturating_from_rational(10, 1), UpdatedFeePoolPalletId::get().into_sub_account("AUSD")),
-		AssetRate::<AccountId>(DOT, Ratio::saturating_from_rational(1, 10), UpdatedFeePoolPalletId::get().into_sub_account("DOT")),
+		AssetFixRateAccountId::<AccountId>(AUSD, Ratio::saturating_from_rational(10, 1), UpdatedFeePoolPalletId::get().into_sub_account("AUSD")),
+		AssetFixRateAccountId::<AccountId>(DOT, Ratio::saturating_from_rational(1, 10), UpdatedFeePoolPalletId::get().into_sub_account("DOT")),
 	];
 }
 parameter_types! {
 	pub KaruraTreasuryAccount: AccountId = TreasuryPalletId::get().into_account();
 }
-pub struct EnsureTreasuryAccount;
-impl EnsureOrigin<Origin> for EnsureTreasuryAccount {
-	type Success = AccountId;
-
-	fn try_origin(o: Origin) -> Result<Self::Success, Origin> {
-		Into::<Result<RawOrigin<AccountId>, Origin>>::into(o).and_then(|o| match o {
-			RawOrigin::Signed(ALICE) => Ok(ALICE),
-			// Origin::root() => Ok(ALICE),
-			r => Err(Origin::from(r)),
-		})
-	}
-
-	#[cfg(feature = "runtime-benchmarks")]
-	fn successful_origin() -> Origin {
-		Origin::from(RawOrigin::Signed(Default::default()))
-	}
+ord_parameter_types! {
+	pub const ListingOrigin: AccountId = ALICE;
 }
 
 impl Config for Runtime {
@@ -279,8 +265,8 @@ impl Config for Runtime {
 	type WeightInfo = ();
 	type InitialBootstrapBalanceForFeePool = InitialBootstrapBalanceForFeePool;
 	type TreasuryAccount = KaruraTreasuryAccount;
-	type AdminOrigin = EnsureTreasuryAccount;
-	type AssetRates = AssetRates;
+	type TreasuryOrigin = EnsureSignedBy<ListingOrigin, AccountId>;
+	type AssetFixRateAccountIds = AssetFixRateAccountIds;
 }
 
 thread_local! {

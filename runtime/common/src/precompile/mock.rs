@@ -37,13 +37,13 @@ use module_support::{
 };
 use orml_traits::{parameter_type_with_key, MultiReservableCurrency};
 pub use primitives::{
-	convert_decimals_to_evm, define_combined_task, evm::EvmAddress, task::TaskResult, Amount, BlockNumber, CurrencyId,
-	DexShare, Header, Nonce, ReserveIdentifier, TokenSymbol, TradingPair,
+	convert_decimals_to_evm, define_combined_task, evm::EvmAddress, task::TaskResult, Amount, AssetFixRateAccountId,
+	BlockNumber, CurrencyId, DexShare, Header, Nonce, ReserveIdentifier, TokenSymbol, TradingPair,
 };
 use scale_info::TypeInfo;
 use sp_core::{crypto::AccountId32, H160, H256};
 use sp_runtime::{
-	traits::{BlakeTwo256, Convert, IdentityLookup, One as OneT},
+	traits::{AccountIdConversion, BlakeTwo256, Convert, IdentityLookup, One as OneT},
 	DispatchResult, FixedPointNumber, FixedU128, Perbill,
 };
 use sp_std::{collections::btree_map::BTreeMap, str::FromStr};
@@ -251,6 +251,7 @@ parameter_types! {
 	pub const UpdatedFeePoolPalletId: PalletId = PalletId(*b"aca/fees");
 	pub const TreasuryPalletId: PalletId = PalletId(*b"aca/trsy");
 	pub KaruraTreasuryAccount: AccountId = TreasuryPalletId::get().into_account();
+	pub AssetFixRateAccountIds: Vec<AssetFixRateAccountId<AccountId>> = vec![];
 }
 
 impl module_transaction_payment::Config for Test {
@@ -272,7 +273,8 @@ impl module_transaction_payment::Config for Test {
 	type WeightInfo = ();
 	type InitialBootstrapBalanceForFeePool = InitialBootstrapBalanceForFeePool;
 	type TreasuryAccount = KaruraTreasuryAccount;
-	type AdminOrigin = EnsureKaruraFoundation;
+	type TreasuryOrigin = EnsureSignedBy<ListingOrigin, AccountId>;
+	type AssetFixRateAccountIds = AssetFixRateAccountIds;
 }
 pub type ChargeTransactionPayment = module_transaction_payment::ChargeTransactionPayment<Test>;
 

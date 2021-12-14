@@ -101,8 +101,9 @@ pub use authority::AuthorityConfigImpl;
 pub use constants::{fee::*, parachains, time::*};
 pub use primitives::{
 	convert_decimals_to_evm, define_combined_task, evm::EstimateResourcesRequest, task::TaskResult, AccountId,
-	AccountIndex, Address, Amount, AssetRate, AuctionId, AuthoritysOriginId, Balance, BlockNumber, CurrencyId,
-	DataProviderId, EraIndex, Hash, Moment, Nonce, ReserveIdentifier, Share, Signature, TokenSymbol, TradingPair,
+	AccountIndex, Address, Amount, AssetFixRateAccountId, AuctionId, AuthoritysOriginId, Balance, BlockNumber,
+	CurrencyId, DataProviderId, EraIndex, Hash, Moment, Nonce, ReserveIdentifier, Share, Signature, TokenSymbol,
+	TradingPair,
 };
 pub use runtime_common::{
 	calculate_asset_ratio, cent, dollar, microcent, millicent, EnsureRootOrAllGeneralCouncil,
@@ -1140,11 +1141,10 @@ impl module_transaction_payment::Config for Runtime {
 	type TradingPathLimit = TradingPathLimit;
 	type PriceSource = module_prices::RealTimePriceProvider<Runtime>;
 	type WeightInfo = weights::module_transaction_payment::WeightInfo<Runtime>;
-	/// period update fee setting
 	type InitialBootstrapBalanceForFeePool = InitialBootstrapBalanceForFeePool;
 	type TreasuryAccount = KaruraTreasuryAccount;
-	type AdminOrigin = EnsureKaruraFoundation;
-	type AssetRates = AssetRates;
+	type TreasuryOrigin = EnsureKaruraFoundation;
+	type AssetFixRateAccountIds = AssetFixRateAccountIds;
 }
 
 impl module_evm_accounts::Config for Runtime {
@@ -1518,13 +1518,13 @@ parameter_types! {
 	);
 
 	pub KarPerSecondAsBased: u128 = kar_per_second();
-	pub AssetRates: Vec<AssetRate<AccountId>> = vec![
-		AssetRate::<AccountId>(KSM, calculate_asset_ratio(KsmPerSecond::get(), KarPerSecond::get()),  UpdatedFeePoolPalletId::get().into_sub_account("KSM")),
-		AssetRate::<AccountId>(KUSD, calculate_asset_ratio(KusdPerSecond::get(), KarPerSecond::get()),  UpdatedFeePoolPalletId::get().into_sub_account("KUSD")),
-		AssetRate::<AccountId>(LKSM, calculate_asset_ratio(LksmPerSecond::get(), KarPerSecond::get()),  UpdatedFeePoolPalletId::get().into_sub_account("LKSM")),
-		AssetRate::<AccountId>(BNC, calculate_asset_ratio(BncPerSecond::get(), KarPerSecond::get()),  UpdatedFeePoolPalletId::get().into_sub_account("BNC")),
-		AssetRate::<AccountId>(VSKSM, calculate_asset_ratio(VsksmPerSecond::get(), KarPerSecond::get()),  UpdatedFeePoolPalletId::get().into_sub_account("VSKSM")),
-		AssetRate::<AccountId>(PHA, calculate_asset_ratio(PHAPerSecond::get(), KarPerSecond::get()),  UpdatedFeePoolPalletId::get().into_sub_account("PHA")),
+	pub AssetFixRateAccountIds: Vec<AssetFixRateAccountId<AccountId>> = vec![
+		AssetFixRateAccountId::<AccountId>(KSM, calculate_asset_ratio(KsmPerSecond::get(), KarPerSecond::get()),  UpdatedFeePoolPalletId::get().into_sub_account("KSM")),
+		AssetFixRateAccountId::<AccountId>(KUSD, calculate_asset_ratio(KusdPerSecond::get(), KarPerSecond::get()),  UpdatedFeePoolPalletId::get().into_sub_account("KUSD")),
+		AssetFixRateAccountId::<AccountId>(LKSM, calculate_asset_ratio(LksmPerSecond::get(), KarPerSecond::get()),  UpdatedFeePoolPalletId::get().into_sub_account("LKSM")),
+		AssetFixRateAccountId::<AccountId>(BNC, calculate_asset_ratio(BncPerSecond::get(), KarPerSecond::get()),  UpdatedFeePoolPalletId::get().into_sub_account("BNC")),
+		AssetFixRateAccountId::<AccountId>(VSKSM, calculate_asset_ratio(VsksmPerSecond::get(), KarPerSecond::get()),  UpdatedFeePoolPalletId::get().into_sub_account("VSKSM")),
+		AssetFixRateAccountId::<AccountId>(PHA, calculate_asset_ratio(PHAPerSecond::get(), KarPerSecond::get()),  UpdatedFeePoolPalletId::get().into_sub_account("PHA")),
 	];
 }
 

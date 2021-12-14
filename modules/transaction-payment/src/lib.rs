@@ -223,7 +223,7 @@ where
 #[frame_support::pallet]
 pub mod module {
 	use super::*;
-	use primitives::AssetRate;
+	use primitives::AssetFixRateAccountId;
 
 	pub const RESERVE_ID: ReserveIdentifier = ReserveIdentifier::TransactionPayment;
 
@@ -324,10 +324,10 @@ pub mod module {
 
 		/// The rate of foreign_asset_per_second to native_asset_per_second.
 		#[pallet::constant]
-		type AssetRates: Get<Vec<AssetRate<Self::AccountId>>>;
+		type AssetFixRateAccountIds: Get<Vec<AssetFixRateAccountId<Self::AccountId>>>;
 
 		/// The root operator of admin operation(i.e. change trigger threshold).
-		type AdminOrigin: EnsureOrigin<Self::Origin, Success = Self::AccountId>;
+		type TreasuryOrigin: EnsureOrigin<Self::Origin, Success = Self::AccountId>;
 	}
 
 	#[pallet::extra_constants]
@@ -392,9 +392,8 @@ pub mod module {
 		fn on_runtime_upgrade() -> Weight {
 			let from = T::TreasuryAccount::get();
 			let balance = T::InitialBootstrapBalanceForFeePool::get();
-			// deposit 1 unit of native asset from treasury to fee account.
-			// each token has own sub account which represents native asset amount.
-			let asset_rates = T::AssetRates::get();
+			// deposit initial bootstrap balance from treasury to every treasury fee sub account.
+			let asset_rates = T::AssetFixRateAccountIds::get();
 			for asset_rate in asset_rates {
 				let _ = T::Currency::transfer(&from, &asset_rate.2, balance, ExistenceRequirement::KeepAlive);
 				SwapBalanceThreshold::<T>::insert(asset_rate.0, balance.saturated_into::<u128>() / 5);
@@ -483,14 +482,17 @@ pub mod module {
 			Ok(())
 		}
 
-		#[pallet::weight(<T as Config>::WeightInfo::set_alternative_fee_swap_path())]
+		/// set trigger balance of native asset
+		#[pallet::weight(<T as Config>::WeightInfo::set_trigger_threshold())]
 		pub fn set_trigger_threshold(
 			origin: OriginFor<T>,
 			currency_id: CurrencyId,
 			threshold: PalletBalanceOf<T>,
 		) -> DispatchResult {
-			T::AdminOrigin::ensure_origin(origin)?;
-			SwapBalanceThreshold::<T>::insert(currency_id, threshold.saturated_into::<u128>());
+			T::TreasuryOrigin::ensure_origin(origin)?;
+			if threshold < T::InitialBootstrapBalanceForFeePool::get() {
+				SwapBalanceThreshold::<T>::insert(currency_id, threshold.saturated_into::<u128>());
+			}
 			Ok(())
 		}
 	}

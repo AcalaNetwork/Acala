@@ -100,8 +100,9 @@ pub use authority::AuthorityConfigImpl;
 pub use constants::{fee::*, time::*};
 pub use primitives::{
 	convert_decimals_to_evm, define_combined_task, evm::EstimateResourcesRequest, task::TaskResult, AccountId,
-	AccountIndex, Address, Amount, AssetRate, AuctionId, AuthoritysOriginId, Balance, BlockNumber, CurrencyId,
-	DataProviderId, EraIndex, Hash, Moment, Nonce, ReserveIdentifier, Share, Signature, TokenSymbol, TradingPair,
+	AccountIndex, Address, Amount, AssetFixRateAccountId, AuctionId, AuthoritysOriginId, Balance, BlockNumber,
+	CurrencyId, DataProviderId, EraIndex, Hash, Moment, Nonce, ReserveIdentifier, Share, Signature, TokenSymbol,
+	TradingPair,
 };
 pub use runtime_common::{
 	cent, dollar, microcent, millicent, AcalaDropAssets, EnsureRootOrAllGeneralCouncil,
@@ -1109,7 +1110,7 @@ impl OnUnbalanced<NegativeImbalance> for DealWithFees {
 }
 
 parameter_types! {
-	pub AssetRates: Vec<AssetRate<AccountId>> = vec![];
+	pub AssetFixRateAccountIds: Vec<AssetFixRateAccountId<AccountId>> = vec![];
 }
 
 impl module_transaction_payment::Config for Runtime {
@@ -1131,8 +1132,8 @@ impl module_transaction_payment::Config for Runtime {
 	type WeightInfo = weights::module_transaction_payment::WeightInfo<Runtime>;
 	type InitialBootstrapBalanceForFeePool = InitialBootstrapBalanceForFeePool;
 	type TreasuryAccount = AcalaTreasuryAccount;
-	type AdminOrigin = EnsureAcalaFoundation;
-	type AssetRates = AssetRates;
+	type TreasuryOrigin = EnsureAcalaFoundation;
+	type AssetFixRateAccountIds = AssetFixRateAccountIds;
 }
 
 impl module_evm_accounts::Config for Runtime {
