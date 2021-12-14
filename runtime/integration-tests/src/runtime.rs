@@ -249,8 +249,17 @@ fn parachain_subaccounts_are_unique() {
 #[cfg(feature = "with-mandala-runtime")]
 mod mandala_only_tests {
 	use super::*;
+	use ecosystem_renvm_bridge::EcdsaSignature;
+	use frame_support::dispatch::GetDispatchInfo;
+	use hex_literal::hex;
+	use mandala_runtime::RenVmBridge;
+	use module_transaction_payment::ChargeTransactionPayment;
 	use pallet_transaction_payment::InclusionFee;
-	use sp_runtime::traits::Extrinsic;
+	use sp_runtime::{
+		traits::{Extrinsic, SignedExtension, ValidateUnsigned},
+		transaction_validity::{TransactionSource, ValidTransaction},
+	};
+
 	#[test]
 	fn check_transaction_fee_for_empty_remark() {
 		ExtBuilder::default().build().execute_with(|| {
@@ -275,9 +284,133 @@ mod mandala_only_tests {
 			assert_eq!(total_fee, 1_504_592_000);
 		});
 	}
-}
 
-#[test]
-fn check_max_tips_of_priority() {
-	assert_eq!(MaxTipsOfPriority::get(), 204_358_782_087); // 0.2 KAR/ACA
+	#[test]
+	fn check_tx_priority() {
+		ExtBuilder::default()
+		.balances(vec![
+			(alice(), NATIVE_CURRENCY, 20_000 * dollar(NATIVE_CURRENCY)),
+		])
+		.build().execute_with(|| {
+			// Ensure tx priority order:
+			// Inherent -> Operational tx -> Unsigned tx -> Signed normal tx
+			let call = Call::System(frame_system::Call::remark { remark: vec![] });
+			let bytes = UncheckedExtrinsic::new(call.clone().into(), None).expect("This should not fail").encode();
+
+			// tips = 0
+			assert_eq!(
+				ChargeTransactionPayment::<Runtime>::from(0).validate(
+					&alice(),
+					&call.clone(),
+					&call.get_dispatch_info(),
+					bytes.len()
+				),
+				Ok(ValidTransaction {
+					priority: 0,
+					requires: vec![],
+					provides: vec![],
+					longevity: 18_446_744_073_709_551_615,
+					propagate: true,
+				})
+			);
+
+			// tips = TipPerWeightStep
+			assert_eq!(
+				ChargeTransactionPayment::<Runtime>::from(TipPerWeightStep::get()).validate(
+					&alice(),
+					&call.clone(),
+					&call.get_dispatch_info(),
+					bytes.len()
+				),
+				Ok(ValidTransaction {
+					priority: 734_003,
+					requires: vec![],
+					provides: vec![],
+					longevity: 18_446_744_073_709_551_615,
+					propagate: true,
+				})
+			);
+
+			// tips = TipPerWeightStep + 1
+			assert_eq!(
+				ChargeTransactionPayment::<Runtime>::from(TipPerWeightStep::get() + 1).validate(
+					&alice(),
+					&call.clone(),
+					&call.get_dispatch_info(),
+					bytes.len()
+				),
+				Ok(ValidTransaction {
+					priority: 734_003,
+					requires: vec![],
+					provides: vec![],
+					longevity: 18_446_744_073_709_551_615,
+					propagate: true,
+				})
+			);
+
+			// tips = MaxTipsOfPriority + 1
+			assert_eq!(
+				ChargeTransactionPayment::<Runtime>::from(MaxTipsOfPriority::get() + 1).validate(
+					&alice(),
+					&call.clone(),
+					&call.get_dispatch_info(),
+					bytes.len()
+				),
+				Ok(ValidTransaction {
+					priority: 734_003_000_000,
+					requires: vec![],
+					provides: vec![],
+					longevity: 18_446_744_073_709_551_615,
+					propagate: true,
+				})
+			);
+
+			// tips = 0
+			// unsigned extrinsic
+			let sig = EcdsaSignature::from_slice(&hex!["defda6eef01da2e2a90ce30ba73e90d32204ae84cae782b485f01d16b69061e0381a69cafed3deb6112af044c42ed0f7c73ee0eec7b533334d31a06db50fc40e1b"]);
+			let call = ecosystem_renvm_bridge::Call::mint {
+				who: hex!["d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d"].into(),
+				p_hash: hex!["67028f26328144de6ef80b8cd3b05e0cefb488762c340d1574c0542f752996cb"],
+				amount: 93963,
+				n_hash: hex!["f6a75cc370a2dda6dfc8d016529766bb6099d7fa0d787d9fe5d3a7e60c9ac2a0"],
+				sig: sig.clone(),
+			};
+
+			assert_eq!(
+				RenVmBridge::validate_unsigned(
+					TransactionSource::Local,
+					&call,
+				),
+				Ok(ValidTransaction {
+					priority: 14_999_999_997_000,
+					requires: vec![],
+					provides: vec![("renvm-bridge", sig).encode()],
+					longevity: 64,
+					propagate: true,
+				})
+			);
+
+			// tips = 0
+			// operational extrinsic
+			let call = Call::Sudo(pallet_sudo::Call::sudo { call: Box::new(module_emergency_shutdown::Call::emergency_shutdown { }.into()) });
+			let bytes = UncheckedExtrinsic::new(call.clone().into(), None).expect("This should not fail").encode();
+
+			assert_eq!(
+				ChargeTransactionPayment::<Runtime>::from(0).validate(
+					&alice(),
+					&call.clone(),
+					&call.get_dispatch_info(),
+					bytes.len()
+				),
+				Ok(ValidTransaction {
+					priority: 43_824_742_400_000_000,
+					requires: vec![],
+					provides: vec![],
+					longevity: 18_446_744_073_709_551_615,
+					propagate: true,
+				})
+			);
+
+		});
+	}
 }

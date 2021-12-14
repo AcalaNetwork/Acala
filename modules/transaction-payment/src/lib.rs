@@ -43,8 +43,8 @@ use primitives::{Balance, CurrencyId, ReserveIdentifier};
 use scale_info::TypeInfo;
 use sp_runtime::{
 	traits::{
-		Bounded, CheckedSub, Convert, DispatchInfoOf, One, PostDispatchInfoOf, SaturatedConversion, Saturating,
-		SignedExtension, UniqueSaturatedInto, Zero,
+		Bounded, CheckedDiv, CheckedSub, Convert, DispatchInfoOf, One, PostDispatchInfoOf, SaturatedConversion,
+		Saturating, SignedExtension, UniqueSaturatedInto, Zero,
 	},
 	transaction_validity::{
 		InvalidTransaction, TransactionPriority, TransactionValidity, TransactionValidityError, ValidTransaction,
@@ -271,6 +271,10 @@ pub mod module {
 		/// transactions.
 		#[pallet::constant]
 		type OperationalFeeMultiplier: Get<u64>;
+
+		/// The minimum value of tips per weight.
+		#[pallet::constant]
+		type TipPerWeightStep: Get<PalletBalanceOf<Self>>;
 
 		/// The maximum value of tips that affect the priority.
 		/// Set the maximum value of tips to prevent affecting the unsigned extrinsic.
@@ -780,7 +784,16 @@ where
 		let max_tx_per_block = max_tx_per_block_length
 			.min(max_tx_per_block_weight)
 			.saturated_into::<PalletBalanceOf<T>>();
-		let max_reward = |val: PalletBalanceOf<T>| val.saturating_mul(max_tx_per_block);
+		// tipPerWeight = tipPerWight / TipPerWeightStep * TipPerWeightStep
+		//              = tip / bounded_{weight|length} / TipPerWeightStep * TipPerWeightStep
+		// priority = tipPerWeight * max_block_{weight|length}
+		// MaxTipsOfPriority = 10_000 KAR/ACA = 10^16.
+		// `MaxTipsOfPriority * max_block_{weight|length}` will overflow, so div `TipPerWeightStep` here.
+		let max_reward = |val: PalletBalanceOf<T>| {
+			val.checked_div(&T::TipPerWeightStep::get())
+				.expect("TipPerWeightStep is non-zero; qed")
+				.saturating_mul(max_tx_per_block)
+		};
 
 		// To distribute no-tip transactions a little bit, we increase the tip value by one.
 		// This means that given two transactions without a tip, smaller one will be preferred.

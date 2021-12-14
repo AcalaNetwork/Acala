@@ -68,19 +68,23 @@ pub type TimeStampedPrice = orml_oracle::TimestampedValue<Price, primitives::Mom
 
 // Priority of unsigned transactions
 parameter_types! {
-	// Operational = OperationalFeeMultiplier * final_fee * max_tx_per_block + (tip + 1) * max_tx_per_block
+	// Operational = final_fee * OperationalFeeMultiplier / TipPerWeightStep * max_tx_per_block + (tip + 1) / TipPerWeightStep * max_tx_per_block
 	// final_fee_min = base_fee + len_fee + adjusted_weight_fee + tip
-	// priority_min = final_fee * fee_multiplier * max_tx_per_block + (tip + 1) * max_tx_per_block
-	//              = final_fee_min * OperationalFeeMultiplier
+	// priority_min = final_fee * OperationalFeeMultiplier / TipPerWeightStep * max_tx_per_block + (tip + 1) / TipPerWeightStep * max_tx_per_block
+	//              = final_fee_min * OperationalFeeMultiplier / TipPerWeightStep
 	// Ensure Inherent -> Operational tx -> Unsigned tx -> Signed normal tx
-	pub const OperationalFeeMultiplier: u64 = 1_000_000_000u64;
-	// 1_504_592_000u64 from https://github.com/AcalaNetwork/Acala/blob/bda4d430cbecebf8720d700b976875d0d805ceca/runtime/integration-tests/src/runtime.rs#L275
-	const MinOperationalPriority: TransactionPriority = 1_500_000_000u64 * OperationalFeeMultiplier::get() as u64;
-	pub const CdpEngineUnsignedPriority: TransactionPriority = MinOperationalPriority::get() - 1000;
-	pub const AuctionManagerUnsignedPriority: TransactionPriority = MinOperationalPriority::get() - 2000;
-	pub const RenvmBridgeUnsignedPriority: TransactionPriority = MinOperationalPriority::get() - 3000;
-	const MaxNormalPriority: TransactionPriority = MinOperationalPriority::get() / 2; // 50%
-	pub MaxTipsOfPriority: Balance = (MaxNormalPriority::get() / RuntimeBlockWeights::get().max_block.min(*RuntimeBlockLength::get().max.get(DispatchClass::Normal) as u64)).into();
+	// Ensure `max_normal_priority < MinOperationalPriority / 2`
+	pub TipPerWeightStep: Balance = cent(KAR); // 0.01 KAR/ACA
+	pub MaxTipsOfPriority: Balance = 10_000 * dollar(KAR); // 10_000 KAR/ACA
+	pub const OperationalFeeMultiplier: u64 = 100_000_000_000_000u64;
+	// MinOperationalPriority = final_fee_min * OperationalFeeMultiplier / TipPerWeightStep
+	// 1_500_000_000u128 from https://github.com/AcalaNetwork/Acala/blob/bda4d430cbecebf8720d700b976875d0d805ceca/runtime/integration-tests/src/runtime.rs#L275
+	MinOperationalPriority: TransactionPriority = (1_500_000_000u128 * OperationalFeeMultiplier::get() as u128 / TipPerWeightStep::get())
+		.try_into()
+		.expect("Check that there is no overflow here");
+	pub CdpEngineUnsignedPriority: TransactionPriority = MinOperationalPriority::get() - 1000;
+	pub AuctionManagerUnsignedPriority: TransactionPriority = MinOperationalPriority::get() - 2000;
+	pub RenvmBridgeUnsignedPriority: TransactionPriority = MinOperationalPriority::get() - 3000;
 }
 
 /// The call is allowed only if caller is a system contract.
@@ -428,5 +432,16 @@ mod tests {
 		let mut min_blocked_addr = [0u8; 20];
 		min_blocked_addr[SYSTEM_CONTRACT_ADDRESS_PREFIX.len() - 1] = 1u8;
 		assert!(!SystemContractsFilter::is_allowed(min_blocked_addr.into()));
+	}
+
+	#[test]
+	fn check_max_normal_priority() {
+		let max_normal_priority: TransactionPriority = (MaxTipsOfPriority::get() / TipPerWeightStep::get()
+			* RuntimeBlockWeights::get()
+				.max_block
+				.min(*RuntimeBlockLength::get().max.get(DispatchClass::Normal) as u64) as u128)
+			.try_into()
+			.expect("Check that there is no overflow here");
+		assert!(max_normal_priority < MinOperationalPriority::get() / 2); // 50%
 	}
 }
