@@ -44,20 +44,20 @@ fn no_fee_runtime_has_no_fees() {
 			HomaLite::get_exchange_rate(),
 			ExchangeRate::saturating_from_rational(1, 10)
 		);
-		System::assert_last_event(Event::HomaLite(crate::Event::Minted(
-			ALICE,
-			dollar(1_000),
-			dollar(10_000),
-		)));
+		System::assert_last_event(Event::HomaLite(crate::Event::Minted {
+			who: ALICE,
+			amount_staked: dollar(1_000),
+			amount_minted: dollar(10_000),
+		}));
 		assert_eq!(Currencies::free_balance(KSM, &ALICE), dollar(999_000));
 		assert_eq!(Currencies::free_balance(LKSM, &ALICE), dollar(10_000));
 
 		assert_ok!(HomaLite::mint(Origin::signed(BOB), dollar(5_000)));
-		System::assert_last_event(Event::HomaLite(crate::Event::Minted(
-			BOB,
-			dollar(5_000),
-			dollar(50_000),
-		)));
+		System::assert_last_event(Event::HomaLite(crate::Event::Minted {
+			who: BOB,
+			amount_staked: dollar(5_000),
+			amount_minted: dollar(50_000),
+		}));
 		assert_eq!(Currencies::free_balance(KSM, &BOB), dollar(995_000));
 		assert_eq!(Currencies::free_balance(LKSM, &BOB), dollar(50_000));
 
@@ -67,12 +67,12 @@ fn no_fee_runtime_has_no_fees() {
 			dollar(50_000),
 			Permill::zero()
 		));
-		System::assert_last_event(Event::HomaLite(crate::Event::RedeemRequested(
-			BOB,
-			dollar(50_000),
-			Permill::zero(),
-			0,
-		)));
+		System::assert_last_event(Event::HomaLite(crate::Event::RedeemRequested {
+			who: BOB,
+			liquid_amount: dollar(50_000),
+			extra_fee: Permill::zero(),
+			withdraw_fee_paid: 0,
+		}));
 		assert_ok!(HomaLite::mint(Origin::signed(ALICE), dollar(5_000)));
 
 		assert_eq!(Currencies::free_balance(KSM, &ALICE), dollar(994_000));
@@ -106,18 +106,59 @@ fn no_fee_runtime_has_no_fees() {
 		assert_eq!(
 			events,
 			vec![
-				crate::Event::TotalStakingCurrencySet(dollar(101_000)),
-				crate::Event::Minted(ALICE, dollar(1_000), dollar(10_000)),
-				crate::Event::TotalStakingCurrencySet(dollar(106_000)),
-				crate::Event::Minted(BOB, dollar(5_000), dollar(50_000)),
-				crate::Event::RedeemRequested(BOB, dollar(50_000), Permill::zero(), 0),
-				crate::Event::Redeemed(BOB, dollar(5000), dollar(50000)),
-				crate::Event::Minted(ALICE, dollar(5000), dollar(50000)),
-				crate::Event::ScheduledUnbondAdded(dollar(50_000), 0),
-				crate::Event::ScheduledUnbondWithdrew(dollar(50_000)),
-				crate::Event::RedeemRequested(DAVE, dollar(100_000), Permill::zero(), 0),
-				crate::Event::TotalStakingCurrencySet(dollar(96_000)),
-				crate::Event::Redeemed(DAVE, dollar(10_000), dollar(100_000)),
+				crate::Event::TotalStakingCurrencySet {
+					total_staking_currency: dollar(101_000)
+				},
+				crate::Event::Minted {
+					who: ALICE,
+					amount_staked: dollar(1_000),
+					amount_minted: dollar(10_000)
+				},
+				crate::Event::TotalStakingCurrencySet {
+					total_staking_currency: dollar(106_000)
+				},
+				crate::Event::Minted {
+					who: BOB,
+					amount_staked: dollar(5_000),
+					amount_minted: dollar(50_000)
+				},
+				crate::Event::RedeemRequested {
+					who: BOB,
+					liquid_amount: dollar(50_000),
+					extra_fee: Permill::zero(),
+					withdraw_fee_paid: 0
+				},
+				crate::Event::Redeemed {
+					who: BOB,
+					staking_amount_redeemed: dollar(5000),
+					liquid_amount_deducted: dollar(50000)
+				},
+				crate::Event::Minted {
+					who: ALICE,
+					amount_staked: dollar(5000),
+					amount_minted: dollar(50000)
+				},
+				crate::Event::ScheduledUnbondAdded {
+					staking_amount: dollar(50_000),
+					relaychain_blocknumber: 0
+				},
+				crate::Event::ScheduledUnbondWithdrew {
+					staking_amount_added: dollar(50_000)
+				},
+				crate::Event::RedeemRequested {
+					who: DAVE,
+					liquid_amount: dollar(100_000),
+					extra_fee: Permill::zero(),
+					withdraw_fee_paid: 0
+				},
+				crate::Event::TotalStakingCurrencySet {
+					total_staking_currency: dollar(96_000)
+				},
+				crate::Event::Redeemed {
+					who: DAVE,
+					staking_amount_redeemed: dollar(10_000),
+					liquid_amount_deducted: dollar(100_000)
+				},
 			]
 		);
 	});

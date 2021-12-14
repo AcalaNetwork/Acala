@@ -177,48 +177,68 @@ pub mod module {
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// The user has Staked some currencies to mint Liquid Currency.
-		/// \[user, amount_staked, amount_minted\]
-		Minted(T::AccountId, Balance, Balance),
+		/// \[who, amount_staked, amount_minted\]
+		Minted {
+			who: T::AccountId,
+			amount_staked: Balance,
+			amount_minted: Balance,
+		},
 
 		/// The total amount of the staking currency on the relaychain has been
 		/// set.\[total_staking_currency\]
-		TotalStakingCurrencySet(Balance),
+		TotalStakingCurrencySet { total_staking_currency: Balance },
 
 		/// The mint cap for Staking currency is updated.\[new_cap\]
-		StakingCurrencyMintCapUpdated(Balance),
+		StakingCurrencyMintCapUpdated { new_cap: Balance },
 
 		/// A new weight for XCM transfers has been set.\[new_weight\]
-		XcmDestWeightSet(Weight),
+		XcmDestWeightSet { new_weight: Weight },
 
 		/// The redeem request has been cancelled, and funds un-reserved.
 		/// \[who, liquid_amount_unreserved\]
-		RedeemRequestCancelled(T::AccountId, Balance),
+		RedeemRequestCancelled {
+			who: T::AccountId,
+			liquid_amount_unreserved: Balance,
+		},
 
 		/// A new Redeem request has been registered.
 		/// \[who, liquid_amount, extra_fee, withdraw_fee_paid\]
-		RedeemRequested(T::AccountId, Balance, Permill, Balance),
+		RedeemRequested {
+			who: T::AccountId,
+			liquid_amount: Balance,
+			extra_fee: Permill,
+			withdraw_fee_paid: Balance,
+		},
 
 		/// The user has redeemed some Liquid currency back to Staking currency.
-		/// \[user, staking_amount_redeemed, liquid_amount_deducted\]
-		Redeemed(T::AccountId, Balance, Balance),
+		/// \[who, staking_amount_redeemed, liquid_amount_deducted\]
+		Redeemed {
+			who: T::AccountId,
+			staking_amount_redeemed: Balance,
+			liquid_amount_deducted: Balance,
+		},
 
 		/// A new Unbond request added to the schedule.
 		/// \[staking_amount, relaychain_blocknumber\]
-		ScheduledUnbondAdded(Balance, RelayChainBlockNumberOf<T>),
+		ScheduledUnbondAdded {
+			staking_amount: Balance,
+			relaychain_blocknumber: RelayChainBlockNumberOf<T>,
+		},
 
 		/// The ScheduledUnbond has been replaced.
 		ScheduledUnbondReplaced,
 
 		/// The scheduled Unbond has been withdrew from the RelayChain.
 		///\[staking_amount_added\]
-		ScheduledUnbondWithdrew(Balance),
+		ScheduledUnbondWithdrew { staking_amount_added: Balance },
 
 		/// Interest rate for TotalStakingCurrency is set
-		StakingInterestRatePerUpdateSet(Permill),
+		/// \[interest_rate\]
+		StakingInterestRatePerUpdateSet { interest_rate: Permill },
 
 		/// The amount of the staking currency available to be redeemed is set.
 		/// \[total_available_staking_balance\]
-		AvailableStakingBalanceSet(Balance),
+		AvailableStakingBalanceSet { total_available_staking_balance: Balance },
 	}
 
 	/// The total amount of the staking currency on the relaychain.
@@ -430,7 +450,7 @@ pub mod module {
 			T::GovernanceOrigin::ensure_origin(origin)?;
 
 			StakingCurrencyMintCap::<T>::put(new_cap);
-			Self::deposit_event(Event::<T>::StakingCurrencyMintCapUpdated(new_cap));
+			Self::deposit_event(Event::<T>::StakingCurrencyMintCapUpdated { new_cap: new_cap });
 			Ok(())
 		}
 
@@ -445,7 +465,9 @@ pub mod module {
 			T::GovernanceOrigin::ensure_origin(origin)?;
 
 			XcmDestWeight::<T>::put(xcm_dest_weight);
-			Self::deposit_event(Event::<T>::XcmDestWeightSet(xcm_dest_weight));
+			Self::deposit_event(Event::<T>::XcmDestWeightSet {
+				new_weight: xcm_dest_weight,
+			});
 			Ok(())
 		}
 
@@ -490,7 +512,10 @@ pub mod module {
 					let unreserved = T::Currency::unreserve(T::LiquidCurrencyId::get(), &who, request_amount);
 					ensure!(unreserved.is_zero(), Error::<T>::InsufficientReservedBalances);
 
-					Self::deposit_event(Event::<T>::RedeemRequestCancelled(who, request_amount));
+					Self::deposit_event(Event::<T>::RedeemRequestCancelled {
+						who,
+						liquid_amount_unreserved: request_amount,
+					});
 				}
 				return Ok(());
 			}
@@ -541,12 +566,12 @@ pub mod module {
 				// Set the new amount into storage.
 				*request = Some((liquid_amount, additional_fee));
 
-				Self::deposit_event(Event::<T>::RedeemRequested(
-					who.clone(),
-					liquid_amount,
-					additional_fee,
-					base_withdraw_fee,
-				));
+				Self::deposit_event(Event::<T>::RedeemRequested {
+					who: who.clone(),
+					liquid_amount: liquid_amount,
+					extra_fee: additional_fee,
+					withdraw_fee_paid: base_withdraw_fee,
+				});
 
 				Ok(())
 			})?;
@@ -579,7 +604,10 @@ pub mod module {
 			);
 			ScheduledUnbond::<T>::put(bounded_vec);
 
-			Self::deposit_event(Event::<T>::ScheduledUnbondAdded(staking_amount, unbond_block));
+			Self::deposit_event(Event::<T>::ScheduledUnbondAdded {
+				staking_amount,
+				relaychain_blocknumber: unbond_block,
+			});
 			Ok(())
 		}
 
@@ -650,7 +678,9 @@ pub mod module {
 				} else {
 					*current = current.saturating_sub(by_balance);
 				}
-				Self::deposit_event(Event::<T>::AvailableStakingBalanceSet(*current));
+				Self::deposit_event(Event::<T>::AvailableStakingBalanceSet {
+					total_available_staking_balance: *current,
+				});
 			});
 
 			// With new staking balance available, process pending redeem requests.
@@ -672,7 +702,9 @@ pub mod module {
 
 			StakingInterestRatePerUpdate::<T>::put(interest_rate);
 
-			Self::deposit_event(Event::<T>::StakingInterestRatePerUpdateSet(interest_rate));
+			Self::deposit_event(Event::<T>::StakingInterestRatePerUpdateSet {
+				interest_rate: interest_rate,
+			});
 
 			Ok(())
 		}
@@ -753,11 +785,11 @@ pub mod module {
 				// Transfer the reduced staking currency from Minter to Redeemer
 				T::Currency::transfer(T::StakingCurrencyId::get(), minter, redeemer, staking_amount)?;
 
-				Self::deposit_event(Event::<T>::Redeemed(
-					redeemer.clone(),
-					staking_amount,
-					actual_liquid_amount,
-				));
+				Self::deposit_event(Event::<T>::Redeemed {
+					who: redeemer.clone(),
+					staking_amount_redeemed: staking_amount,
+					liquid_amount_deducted: actual_liquid_amount,
+				});
 
 				// Update storage
 				let new_amount = request_amount.saturating_sub(actual_liquid_amount);
@@ -869,7 +901,11 @@ pub mod module {
 			let actual_staked = amount.saturating_sub(staking_remaining);
 			let actual_liquid = total_liquid_to_mint.saturating_sub(liquid_remaining);
 
-			Self::deposit_event(Event::<T>::Minted(minter.clone(), actual_staked, actual_liquid));
+			Self::deposit_event(Event::<T>::Minted {
+				who: minter.clone(),
+				amount_staked: actual_staked,
+				amount_minted: actual_liquid,
+			});
 
 			Ok(())
 		}
@@ -892,7 +928,9 @@ pub mod module {
 				*current = current.saturating_add(staking_amount_unbonded);
 			});
 
-			Self::deposit_event(Event::<T>::ScheduledUnbondWithdrew(staking_amount_unbonded));
+			Self::deposit_event(Event::<T>::ScheduledUnbondWithdrew {
+				staking_amount_added: staking_amount_unbonded,
+			});
 			Ok(())
 		}
 
@@ -947,11 +985,11 @@ pub mod module {
 					*current = current.saturating_sub(actual_staking_amount)
 				});
 
-				Self::deposit_event(Event::<T>::Redeemed(
-					redeemer.clone(),
-					actual_staking_amount_deposited,
-					actual_liquid_amount,
-				));
+				Self::deposit_event(Event::<T>::Redeemed {
+					who: redeemer.clone(),
+					staking_amount_redeemed: actual_staking_amount_deposited,
+					liquid_amount_deducted: actual_liquid_amount,
+				});
 
 				// Update storage
 				let new_amount = request_amount.saturating_sub(actual_liquid_amount);
@@ -1008,7 +1046,9 @@ pub mod module {
 			TotalStakingCurrency::<T>::try_mutate(|current| {
 				*current = f(*current)?;
 				ensure!(!current.is_zero(), Error::<T>::InvalidTotalStakingCurrency);
-				Self::deposit_event(Event::<T>::TotalStakingCurrencySet(*current));
+				Self::deposit_event(Event::<T>::TotalStakingCurrencySet {
+					total_staking_currency: *current,
+				});
 				Ok(())
 			})
 		}
