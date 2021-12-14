@@ -140,7 +140,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("mandala"),
 	impl_name: create_runtime_str!("mandala"),
 	authoring_version: 1,
-	spec_version: 2005,
+	spec_version: 2010,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -197,7 +197,6 @@ pub fn get_all_module_accounts() -> Vec<AccountId> {
 		TreasuryReservePalletId::get().into_account(),
 		CollatorPotId::get().into_account(),
 		StarportPalletId::get().into_account(),
-		ZeroAccountId::get(),
 		UnreleasedNativeVaultAccountId::get(),
 		StableAssetPalletId::get().into_account(),
 	]
@@ -732,7 +731,7 @@ impl pallet_elections_phragmen::Config for Runtime {
 parameter_types! {
 	pub const MinimumCount: u32 = 1;
 	pub const ExpiresIn: Moment = 1000 * 60 * 60; // 60 mins
-	pub ZeroAccountId: AccountId = AccountId::from([0u8; 32]);
+	pub RootOperatorAccountId: AccountId = AccountId::from([0xffu8; 32]);
 	pub const MaxHasDispatchedSize: u32 = 40;
 }
 
@@ -744,7 +743,7 @@ impl orml_oracle::Config<AcalaDataProvider> for Runtime {
 	type Time = Timestamp;
 	type OracleKey = CurrencyId;
 	type OracleValue = Price;
-	type RootOperatorAccountId = ZeroAccountId;
+	type RootOperatorAccountId = RootOperatorAccountId;
 	type Members = OperatorMembershipAcala;
 	type MaxHasDispatchedSize = MaxHasDispatchedSize;
 	type WeightInfo = weights::orml_oracle::WeightInfo<Runtime>;
@@ -788,6 +787,8 @@ parameter_type_with_key! {
 				TokenSymbol::LKSM |
 				TokenSymbol::RENBTC |
 				TokenSymbol::ACA |
+				TokenSymbol::KINT |
+				TokenSymbol::KBTC |
 				TokenSymbol::CASH => Balance::max_value() // unsupported
 			},
 			CurrencyId::DexShare(dex_share_0, _) => {
@@ -1867,8 +1868,9 @@ impl orml_xcm::Config for Runtime {
 }
 
 parameter_types! {
-	pub const Precision: u128 = 1000000000000000000u128; // 18 decimals
 	pub const FeePrecision: u128 = 10000000000u128; // 10 decimals
+	pub const APrecision: u128 = 100u128; // 2 decimals
+	pub const PoolAssetLimit: u32 = 5u32;
 }
 
 pub struct EnsurePoolAssetId;
@@ -1925,8 +1927,9 @@ impl nutsfinance_stable_asset::Config for Runtime {
 	type PalletId = StableAssetPalletId;
 
 	type AtLeast64BitUnsigned = u128;
-	type Precision = Precision;
 	type FeePrecision = FeePrecision;
+	type APrecision = APrecision;
+	type PoolAssetLimit = PoolAssetLimit;
 	type WeightInfo = weights::nutsfinance_stable_asset::WeightInfo<Runtime>;
 	type ListingOrigin = EnsureRootOrHalfGeneralCouncil;
 	type EnsurePoolAssetId = EnsurePoolAssetId;
@@ -2448,6 +2451,7 @@ impl_runtime_apis! {
 
 			orml_list_benchmark!(list, extra, orml_authority, benchmarking::authority);
 			orml_list_benchmark!(list, extra, orml_oracle, benchmarking::oracle);
+			orml_list_benchmark!(list, extra, nutsfinance_stable_asset, benchmarking::nutsfinance_stable_asset);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -2592,8 +2596,8 @@ mod tests {
 	#[test]
 	fn check_call_size() {
 		assert!(
-			core::mem::size_of::<Call>() <= 230,
-			"size of Call is more than 230 bytes: some calls have too big arguments, use Box to \
+			core::mem::size_of::<Call>() <= 280,
+			"size of Call is more than 280 bytes: some calls have too big arguments, use Box to \
 			reduce the size of Call.
 			If the limit is too strong, maybe consider increasing the limit",
 		);

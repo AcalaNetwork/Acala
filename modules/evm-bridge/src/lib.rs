@@ -28,7 +28,7 @@ use module_evm::{ExitReason, ExitSucceed};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use primitive_types::H256;
 use sp_core::{H160, U256};
-use sp_runtime::SaturatedConversion;
+use sp_runtime::{ArithmeticError, SaturatedConversion};
 use sp_std::vec::Vec;
 use support::{EVMBridge as EVMBridgeTrait, ExecutionMode, InvokeContext, EVM};
 
@@ -124,7 +124,9 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for EVMBridge<T> {
 		Pallet::<T>::handle_exit_reason(info.exit_reason)?;
 
 		ensure!(info.value.len() == 32, Error::<T>::InvalidReturnValue);
-		let value = U256::from(info.value.as_slice()).saturated_into::<u8>();
+		let value: u8 = U256::from(info.value.as_slice())
+			.try_into()
+			.map_err(|_| ArithmeticError::Overflow)?;
 		Ok(value)
 	}
 
@@ -139,8 +141,11 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for EVMBridge<T> {
 		Pallet::<T>::handle_exit_reason(info.exit_reason)?;
 
 		ensure!(info.value.len() == 32, Error::<T>::InvalidReturnValue);
-		let value = U256::from(info.value.as_slice()).saturated_into::<u128>();
-		Ok(value.saturated_into::<BalanceOf<T>>())
+		let value: u128 = U256::from(info.value.as_slice())
+			.try_into()
+			.map_err(|_| ArithmeticError::Overflow)?;
+		let supply = value.try_into().map_err(|_| ArithmeticError::Overflow)?;
+		Ok(supply)
 	}
 
 	// Calls the balanceOf method on an ERC20 contract using the given context
@@ -155,9 +160,11 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for EVMBridge<T> {
 
 		Pallet::<T>::handle_exit_reason(info.exit_reason)?;
 
-		Ok(U256::from(info.value.as_slice())
-			.saturated_into::<u128>()
-			.saturated_into::<BalanceOf<T>>())
+		let value: u128 = U256::from(info.value.as_slice())
+			.try_into()
+			.map_err(|_| ArithmeticError::Overflow)?;
+		let balance = value.try_into().map_err(|_| ArithmeticError::Overflow)?;
+		Ok(balance)
 	}
 
 	// Calls the transfer method on an ERC20 contract using the given context.

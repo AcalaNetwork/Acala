@@ -104,4 +104,10 @@ pub mod parachains {
 	pub mod phala {
 		pub const ID: u32 = 2004;
 	}
+
+	pub mod kintsugi {
+		pub const ID: u32 = 2092;
+		pub const KBTC_KEY: &[u8] = &[4];
+		pub const KINT_KEY: &[u8] = &[5];
+	}
 }
