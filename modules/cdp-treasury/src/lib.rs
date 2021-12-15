@@ -86,9 +86,8 @@ pub mod module {
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
 
-		/// The default parital path list for DEX to directly take auction,
-		/// Note: the path is parital, the whole swap path is collateral currency id concat
-		/// the partial path. And the list is sorted, DEX try to take auction by order.
+		/// The alternative swap path joint list, which can be concated to
+		/// alternative swap path when cdp treasury swap collateral to stable.
 		#[pallet::constant]
 		type AlternativeSwapPathJointList: Get<Vec<Vec<CurrencyId>>>;
 
