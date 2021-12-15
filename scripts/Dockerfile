@@ -14,7 +14,7 @@ ARG BUILD_ARGS
 
 COPY . .
 
-RUN cargo build --release $BUILD_ARGS
+RUN CARGO_PROFILE_RELEASE_LTO=true RUSTFLAGS="-C codegen-units=1" cargo build --release $BUILD_ARGS
 
 # =============
 

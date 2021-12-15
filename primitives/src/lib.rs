@@ -125,8 +125,8 @@ pub struct TradingPair(CurrencyId, CurrencyId);
 
 impl TradingPair {
 	pub fn from_currency_ids(currency_id_a: CurrencyId, currency_id_b: CurrencyId) -> Option<Self> {
-		if (currency_id_a.is_token_currency_id() || currency_id_a.is_erc20_currency_id())
-			&& (currency_id_b.is_token_currency_id() || currency_id_b.is_erc20_currency_id())
+		if currency_id_a.is_trading_pair_currency_id()
+			&& currency_id_b.is_trading_pair_currency_id()
 			&& currency_id_a != currency_id_b
 		{
 			if currency_id_a > currency_id_b {

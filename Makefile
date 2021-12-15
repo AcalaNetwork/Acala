@@ -30,6 +30,10 @@ build-full: githooks
 build-all:
 	cargo build --locked --features with-all-runtime
 
+.PHONY: build-release
+build-release:
+	CARGO_PROFILE_RELEASE_LTO=true RUSTFLAGS="-C codegen-units=1" cargo build --locked --features with-all-runtime --release
+
 .PHONY: check
 check: githooks
 	SKIP_WASM_BUILD= cargo check --features with-mandala-runtime

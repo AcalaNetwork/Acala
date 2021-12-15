@@ -179,6 +179,9 @@ impl module_dex::Config for Runtime {
 parameter_types! {
 	pub MaxSwapSlippageCompareToOracle: Ratio = Ratio::saturating_from_rational(1, 2);
 	pub static TransactionByteFee: u128 = 1;
+	pub OperationalFeeMultiplier: u64 = 5;
+	pub static TipPerWeightStep: u128 = 1;
+	pub MaxTipsOfPriority: u128 = 1000;
 	pub DefaultFeeSwapPathList: Vec<Vec<CurrencyId>> = vec![vec![AUSD, ACA], vec![DOT, AUSD, ACA]];
 }
 
@@ -226,6 +229,9 @@ impl Config for Runtime {
 	type MultiCurrency = Currencies;
 	type OnTransactionPayment = DealWithFees;
 	type TransactionByteFee = TransactionByteFee;
+	type OperationalFeeMultiplier = OperationalFeeMultiplier;
+	type TipPerWeightStep = TipPerWeightStep;
+	type MaxTipsOfPriority = MaxTipsOfPriority;
 	type WeightToFee = WeightToFee;
 	type FeeMultiplierUpdate = ();
 	type DEX = DEXModule;
@@ -276,6 +282,7 @@ pub struct ExtBuilder {
 	base_weight: u64,
 	byte_fee: u128,
 	weight_to_fee: u128,
+	tip_per_weight_step: u128,
 	native_balances: Vec<(AccountId, Balance)>,
 }
 
@@ -286,6 +293,7 @@ impl Default for ExtBuilder {
 			base_weight: 0,
 			byte_fee: 2,
 			weight_to_fee: 1,
+			tip_per_weight_step: 1,
 			native_balances: vec![],
 		}
 	}
@@ -304,6 +312,10 @@ impl ExtBuilder {
 		self.weight_to_fee = weight_to_fee;
 		self
 	}
+	pub fn tip_per_weight_step(mut self, tip_per_weight_step: u128) -> Self {
+		self.tip_per_weight_step = tip_per_weight_step;
+		self
+	}
 	pub fn one_hundred_thousand_for_alice_n_charlie(mut self) -> Self {
 		self.native_balances = vec![(ALICE, 100000), (CHARLIE, 100000)];
 		self
@@ -312,6 +324,7 @@ impl ExtBuilder {
 		EXTRINSIC_BASE_WEIGHT.with(|v| *v.borrow_mut() = self.base_weight);
 		TRANSACTION_BYTE_FEE.with(|v| *v.borrow_mut() = self.byte_fee);
 		WEIGHT_TO_FEE.with(|v| *v.borrow_mut() = self.weight_to_fee);
+		TIP_PER_WEIGHT_STEP.with(|v| *v.borrow_mut() = self.tip_per_weight_step);
 	}
 	pub fn build(self) -> sp_io::TestExternalities {
 		self.set_constants();

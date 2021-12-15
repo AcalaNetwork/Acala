@@ -126,6 +126,7 @@ pub const SYSTEM_CONTRACT_ADDRESS_PREFIX: [u8; 9] = [0u8; 9];
 ///                                                             4-LiquidCroadloan
 ///                                                             5-ForeignAsset(ignore Erc20, without the prefix of system contracts)
 ///                                         ^^ CurrencyId Type is 1-Token, Token
+///                                   ^^^^^^^^ CurrencyId Type is 1-Token, NFT
 ///                       ^^                   CurrencyId Type is 2-DexShare, DexShare Left Type:
 ///                                                             0-Token 1-Erc20 2-LiquidCroadloan 3-ForeignAsset
 ///                         ^^^^^^^^           CurrencyId Type is 2-DexShare, DexShare left field
@@ -153,7 +154,7 @@ pub fn is_mirrored_tokens_address_prefix(address: EvmAddress) -> bool {
 
 pub const H160_POSITION_CURRENCY_ID_TYPE: usize = 9;
 pub const H160_POSITION_TOKEN: usize = 19;
-pub const H160_POSITION_TOKEN_TYPE: usize = 10;
+pub const H160_POSITION_TOKEN_NFT: Range<usize> = 16..20;
 pub const H160_POSITION_DEXSHARE_LEFT_TYPE: usize = 10;
 pub const H160_POSITION_DEXSHARE_LEFT_FIELD: Range<usize> = 11..15;
 pub const H160_POSITION_DEXSHARE_RIGHT_TYPE: usize = 15;

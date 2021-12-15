@@ -719,7 +719,7 @@ pub mod module {
 			})
 		}
 
-		/// Issue an EVM create operation. The next available system contract
+		/// Create mirrored NFT contract. The next available system contract
 		/// address will be used as created contract address.
 		///
 		/// - `init`: the data supplied for the contract's constructor
@@ -728,7 +728,7 @@ pub mod module {
 		/// - `storage_limit`: the total bytes the contract's storage can increase by
 		#[pallet::weight(create_network_contract::<T>(*gas_limit))]
 		#[transactional]
-		pub fn create_network_contract(
+		pub fn create_nft_contract(
 			origin: OriginFor<T>,
 			init: Vec<u8>,
 			#[pallet::compact] value: BalanceOf<T>,
