@@ -27,6 +27,7 @@
 - [3. Building](#3-building)
 - [4. Run](#4-run)
 - [5. Development](#5-development)
+- [6. Bug Bounty :bug:](bug-bounty)
 
 <!-- /TOC -->
 
