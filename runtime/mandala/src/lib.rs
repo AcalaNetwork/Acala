@@ -199,6 +199,7 @@ pub fn get_all_module_accounts() -> Vec<AccountId> {
 		StarportPalletId::get().into_account(),
 		UnreleasedNativeVaultAccountId::get(),
 		StableAssetPalletId::get().into_account(),
+		TreasuryFeePoolPalletId::get().into_account(),
 	]
 }
 

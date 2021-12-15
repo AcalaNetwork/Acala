@@ -53,7 +53,7 @@ use sp_runtime::{
 	transaction_validity::{
 		InvalidTransaction, TransactionPriority, TransactionValidity, TransactionValidityError, ValidTransaction,
 	},
-	ArithmeticError, FixedPointNumber, FixedPointOperand, FixedU128, Perquintill,
+	FixedPointNumber, FixedPointOperand, FixedU128, Perquintill,
 };
 use sp_std::{prelude::*, vec};
 use support::{DEXManager, PriceProvider, Ratio, SwapLimit, TransactionPayment};
@@ -687,8 +687,9 @@ where
 		Self::swap_native_asset(who, amount);
 	}
 
-	/// Iterate order list, if can swap out enough native asset amount with foreign asset, then
-	/// stop.
+	/// Iterate order list, break if can swap out enough native asset amount with user's foreign
+	/// asset. make sure trading path is exist in dex, if the trading pair is not exist in dex, even
+	/// though we have setup it in charge fee pool, we can't charge fee with this foreign asset.
 	fn swap_native_asset(who: &T::AccountId, amount: Balance) {
 		let native_currency_id = T::NativeCurrencyId::get();
 		let fee_swap_path_list: Vec<Vec<CurrencyId>> = Self::get_trading_path(who);
@@ -744,46 +745,56 @@ where
 		}
 	}
 
-	/// swap from treasury fee pool.
+	/// swap treasury account's native asset with user's foreign asset from treasury fee pool when
+	/// treasury account's native asset balance is gt threshold. or-else, swap treasury account's
+	/// native asset with treasury account's foreign asset from dex swap liquid pool.
 	#[transactional]
-	fn swap_from_treasury(
+	fn swap_from_treasury_or_dex(
 		who: &T::AccountId,
 		amount: Balance,
 		supply_currency_id: CurrencyId,
 	) -> sp_std::result::Result<(), DispatchError> {
-		let treasury_account = Self::treasury_sub_account_id(supply_currency_id);
-		let treasury_supply_balance = T::MultiCurrency::free_balance(supply_currency_id, &treasury_account);
-		let mut rate = TokenFixedRate::<T>::get(supply_currency_id).expect("supply asset not in pool.");
+		match TokenFixedRate::<T>::get(supply_currency_id) {
+			None => {
+				// if the token rate is none(i.e. disable by council or on purpose), return err.
+				Err(DispatchError::CannotLookup)
+			}
+			Some(mut rate) => {
+				// user's supply asset should have enough balance based on old fix rate.
+				ensure!(
+					T::MultiCurrency::free_balance(supply_currency_id, who) >= rate.saturating_mul_int(amount),
+					Error::<T>::SupplyBalanceTooLow
+				);
+				let treasury_account = Self::treasury_sub_account_id(supply_currency_id);
 
-		// user's supply asset should have enough balance based on old fix rate.
-		ensure!(
-			T::MultiCurrency::free_balance(supply_currency_id, who) >= rate.saturating_mul_int(amount),
-			Error::<T>::SupplyBalanceTooLow
-		);
-
-		// if treasury account has not enough native asset, trigger swap
-		let treasury_balance = T::Currency::free_balance(&treasury_account);
-		if treasury_balance < SwapBalanceThreshold::<T>::get(supply_currency_id) {
-			let trading_path = Self::get_trading_path_by_currency(&treasury_account, supply_currency_id);
-			if let Some(trading_path) = trading_path {
-				// using all supply asset to swap out native asset, no need to consider ED limitation here.
-				if let Ok(swap_native_balance) =
-					T::DEX::swap_with_exact_supply(&treasury_account, &trading_path, treasury_supply_balance, 0)
-				{
-					// calculate and update new rate of supply asset relative to native asset
-					let new_native_balance = rate.saturating_mul_int(swap_native_balance + treasury_balance);
-					rate = Ratio::saturating_from_rational(new_native_balance, PoolSize::<T>::get());
-					TokenFixedRate::<T>::insert(supply_currency_id, rate);
+				// if treasury account has not enough native asset, trigger swap from dex
+				let treasury_balance = T::Currency::free_balance(&treasury_account);
+				if treasury_balance < SwapBalanceThreshold::<T>::get(supply_currency_id) {
+					let trading_path = Self::get_trading_path_by_currency(&treasury_account, supply_currency_id);
+					if let Some(trading_path) = trading_path {
+						// using all supply asset to swap out native asset, no need to consider ED limitation here.
+						let treasury_supply_balance =
+							T::MultiCurrency::free_balance(supply_currency_id, &treasury_account);
+						if let Ok(swap_native_balance) =
+							T::DEX::swap_with_exact_supply(&treasury_account, &trading_path, treasury_supply_balance, 0)
+						{
+							// calculate and update new rate of supply asset relative to native asset
+							let new_native_balance =
+								rate.saturating_mul_int(swap_native_balance.saturating_add(treasury_balance));
+							rate = Ratio::saturating_from_rational(new_native_balance, PoolSize::<T>::get());
+							TokenFixedRate::<T>::insert(supply_currency_id, rate);
+						}
+					}
 				}
+
+				// use fix rate to calculate the amount of supply asset that equal to native asset.
+				// exchange user's supply asset and treasury's native asset.
+				let token_amount: u128 = rate.saturating_mul_int(amount);
+				T::MultiCurrency::transfer(supply_currency_id, who, &treasury_account, token_amount)?;
+				T::Currency::transfer(&treasury_account, who, amount, ExistenceRequirement::KeepAlive)?;
+				Ok(())
 			}
 		}
-
-		// use fix rate to calculate the amount of supply asset that equal to native asset.
-		// exchange user's supply asset and treasury's native asset.
-		let token_amount: u128 = rate.saturating_mul_int(amount);
-		T::MultiCurrency::transfer(supply_currency_id, who, &treasury_account, token_amount)?;
-		T::Currency::transfer(&treasury_account, who, amount, ExistenceRequirement::KeepAlive)?;
-		Ok(())
 	}
 
 	/// Get trading path by user.
@@ -810,7 +821,7 @@ where
 	}
 
 	/// The sub account derivated by `TreasuryPalletId`.
-	pub fn treasury_sub_account_id(id: CurrencyId) -> T::AccountId {
+	fn treasury_sub_account_id(id: CurrencyId) -> T::AccountId {
 		T::TreasuryPalletId::get().into_sub_account(id)
 	}
 
@@ -862,27 +873,23 @@ where
 			.map_or(Err(XcmError::TooExpensive), |v| Ok(v.0))?;
 
 		if let AssetId::Concrete(ref multi_location) = asset_id.clone() {
-			let token_id = C::convert(multi_location.clone());
-			if let Some(token_id) = token_id {
+			if let Some(token_id) = C::convert(multi_location.clone()) {
 				if let Some(rate) = TokenFixedRate::<T>::get(token_id) {
-					// rate=token_per_second/kar_per_second. so token_per_second=rate*kar_per_second.
-					if let Ok(token_per_second) = rate
-						.checked_mul_int(K::get())
-						.ok_or(DispatchError::Arithmetic(ArithmeticError::Overflow))
-					{
-						// calculate the amount of foreign asset.
-						let amount: u128 = token_per_second * (weight as u128) / (WEIGHT_PER_SECOND as u128);
-						let required = MultiAsset {
-							id: asset_id.clone(),
-							fun: Fungible(amount),
-						};
-						let unused = payment.checked_sub(required).map_err(|_| XcmError::TooExpensive)?;
-						self.weight = self.weight.saturating_add(weight);
-						self.amount = self.amount.saturating_add(amount);
-						self.asset_location = Some(multi_location.clone());
-						self.asset_per_second = token_per_second;
-						return Ok(unused);
-					}
+					// rate=asset_per_second/kar_per_second. so asset_per_second=rate*kar_per_second.
+					// calculate the amount of foreign asset.
+					let weight_ratio = Ratio::saturating_from_rational(weight as u128, WEIGHT_PER_SECOND as u128);
+					let asset_per_second = rate.saturating_mul_int(K::get());
+					let amount = weight_ratio.saturating_mul_int(asset_per_second);
+					let required = MultiAsset {
+						id: asset_id.clone(),
+						fun: Fungible(amount),
+					};
+					let unused = payment.checked_sub(required).map_err(|_| XcmError::TooExpensive)?;
+					self.weight = self.weight.saturating_add(weight);
+					self.amount = self.amount.saturating_add(amount);
+					self.asset_location = Some(multi_location.clone());
+					self.asset_per_second = asset_per_second;
+					return Ok(unused);
 				}
 			}
 		}
@@ -891,7 +898,8 @@ where
 
 	fn refund_weight(&mut self, weight: Weight) -> Option<MultiAsset> {
 		let weight = weight.min(self.weight);
-		let amount: u128 = self.asset_per_second * (weight as u128) / (WEIGHT_PER_SECOND as u128);
+		let weight_ratio = Ratio::saturating_from_rational(weight as u128, WEIGHT_PER_SECOND as u128);
+		let amount = weight_ratio.saturating_mul_int(self.asset_per_second);
 		self.weight = self.weight.saturating_sub(weight);
 		self.amount = self.amount.saturating_sub(amount);
 		if amount > 0 && self.asset_location.is_some() {

@@ -247,11 +247,9 @@ parameter_types! {
 	pub OperationalFeeMultiplier: u64 = 5;
 	pub TipPerWeightStep: Balance = 1;
 	pub MaxTipsOfPriority: Balance = 1000;
-	pub const PeriodUpdateFeeRateBlockLimit: u32 = 20;
-	pub const TreasuryFeePoolPalletId: PalletId = PalletId(*b"aca/fees");
 	pub const TreasuryPalletId: PalletId = PalletId(*b"aca/trsy");
+	pub const TreasuryFeePoolPalletId: PalletId = PalletId(*b"aca/fees");
 	pub KaruraTreasuryAccount: AccountId = TreasuryPalletId::get().into_account();
-	pub TokenFixedRates: Vec<TokenFixedRate> = vec![];
 }
 
 impl module_transaction_payment::Config for Test {

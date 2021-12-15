@@ -1045,10 +1045,10 @@ fn swap_from_treasury_not_enough_currency() {
 			assert_eq!(Currencies::free_balance(AUSD, &BOB), 100);
 
 			// 1100 ACA equals to 110 DOT, but Bob only has 100 DOT
-			let result = Pallet::<Runtime>::swap_from_treasury(&BOB, 1100, DOT);
+			let result = Pallet::<Runtime>::swap_from_treasury_or_dex(&BOB, 1100, DOT);
 			assert_eq!(result.is_err(), true);
 			// 11 ACA equals to 110 AUSD, but Bob only has 100 AUSD
-			let result = Pallet::<Runtime>::swap_from_treasury(&BOB, 11, AUSD);
+			let result = Pallet::<Runtime>::swap_from_treasury_or_dex(&BOB, 11, AUSD);
 			assert_eq!(result.is_err(), true);
 		});
 }
@@ -1088,7 +1088,7 @@ fn swap_from_treasury_with_enough_balance() {
 			let expect_treasury_aca = (expect_initial_balance - fee) as u128; // 500 ACA
 			let expect_user_aca = fee; // 500 ACA
 
-			let _ = Pallet::<Runtime>::swap_from_treasury(&BOB, fee, DOT);
+			let _ = Pallet::<Runtime>::swap_from_treasury_or_dex(&BOB, fee, DOT);
 			assert_eq!(expect_user_dot, Currencies::free_balance(DOT, &BOB));
 			assert_eq!(expect_treasury_dot, Currencies::free_balance(DOT, &dot_fee_account));
 			assert_eq!(expect_user_aca, Currencies::free_balance(ACA, &BOB));
@@ -1110,7 +1110,7 @@ fn swap_from_treasury_with_enough_balance() {
 			let expect_treasury_aca = expect_initial_balance - fee; // 1000 ACA - 500 ACA
 			let expect_user_aca = expect_user_aca + fee; // 500 ACA
 
-			let _ = Pallet::<Runtime>::swap_from_treasury(&BOB, fee, AUSD);
+			let _ = Pallet::<Runtime>::swap_from_treasury_or_dex(&BOB, fee, AUSD);
 			assert_eq!(expect_user_ausd, Currencies::free_balance(AUSD, &BOB));
 			assert_eq!(expect_treasury_ausd, Currencies::free_balance(AUSD, &usd_fee_account));
 			assert_eq!(expect_user_aca, Currencies::free_balance(ACA, &BOB));
@@ -1152,7 +1152,7 @@ fn swap_from_treasury_and_dex_update_rate() {
 			));
 
 			// First transaction success get 800 ACA as fee from pool
-			Pallet::<Runtime>::swap_from_treasury(&BOB, balance, DOT).unwrap();
+			Pallet::<Runtime>::swap_from_treasury_or_dex(&BOB, balance, DOT).unwrap();
 			// Bob withdraw 80 DOT(remain 720), and deposit 800 ACA
 			assert_eq!(balance - fee_dot, Currencies::free_balance(DOT, &BOB));
 			assert_eq!(balance, Currencies::free_balance(ACA, &BOB));
@@ -1207,7 +1207,7 @@ fn swap_from_treasury_and_dex_update_rate() {
 
 			// the treasury has 9200 ACA, 80 DOT, use 80 DOT to swap out some ACA
 			let balance2 = 300 as u128;
-			let _ = Pallet::<Runtime>::swap_from_treasury(&BOB, balance2, DOT);
+			let _ = Pallet::<Runtime>::swap_from_treasury_or_dex(&BOB, balance2, DOT);
 			assert_eq!(TokenFixedRate::<Runtime>::get(DOT).unwrap(), rate);
 
 			// Bob swap 98 DOT(use the new updated rate) to get 300 ACA
