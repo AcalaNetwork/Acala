@@ -272,7 +272,7 @@ pub mod module {
 		#[pallet::constant]
 		type OperationalFeeMultiplier: Get<u64>;
 
-		/// The minimum value of tips per weight.
+		/// The step amount of tips required to effect transaction priority.
 		#[pallet::constant]
 		type TipPerWeightStep: Get<PalletBalanceOf<Self>>;
 
