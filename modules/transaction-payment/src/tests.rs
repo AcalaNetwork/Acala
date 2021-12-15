@@ -28,9 +28,8 @@ use frame_support::{
 	weights::{DispatchClass, DispatchInfo, Pays},
 };
 use mock::{
-	AccountId, BlockWeights, Call, Currencies, DEXModule, ExtBuilder, InitialBootstrapBalanceForFeePool,
-	MockPriceSource, Origin, Runtime, TransactionPayment, ACA, ALICE, AUSD, BOB, CHARLIE, DOT, FEE_UNBALANCED_AMOUNT,
-	TIP_UNBALANCED_AMOUNT,
+	AccountId, BlockWeights, Call, Currencies, DEXModule, ExtBuilder, FeePoolBootBalance, MockPriceSource, Origin,
+	Runtime, TransactionPayment, ACA, ALICE, AUSD, BOB, CHARLIE, DOT, FEE_UNBALANCED_AMOUNT, TIP_UNBALANCED_AMOUNT,
 };
 use orml_traits::MultiCurrency;
 use primitives::currency::*;
@@ -76,7 +75,7 @@ fn charges_fee_when_native_is_enough_but_cannot_keep_alive() {
 			Origin::root(),
 			<Runtime as Config>::TreasuryAccount::get(),
 			ACA,
-			(InitialBootstrapBalanceForFeePool::get() * 100).unique_saturated_into(),
+			(FeePoolBootBalance::get() * 100).unique_saturated_into(),
 		));
 		MockTransactionPaymentUpgrade::on_runtime_upgrade();
 
@@ -97,18 +96,16 @@ fn charges_fee_when_native_is_enough_but_cannot_keep_alive() {
 
 		// fee2 = fee - ED, so native is enough
 		let fee2 = 5000 * 2 + 990;
+		let info = DispatchInfo {
+			weight: 990,
+			class: DispatchClass::Normal,
+			pays_fee: Pays::Yes,
+		};
+		let expect_priority = ChargeTransactionPayment::<Runtime>::get_priority(&info, 5000, fee2, fee2);
+		assert_eq!(1000, expect_priority);
 		assert_eq!(
 			ChargeTransactionPayment::<Runtime>::from(0)
-				.validate(
-					&ALICE,
-					CALL,
-					&DispatchInfo {
-						weight: 990,
-						class: DispatchClass::Normal,
-						pays_fee: Pays::Yes,
-					},
-					5000
-				)
+				.validate(&ALICE, CALL, &info, 5000)
 				.unwrap()
 				.priority,
 			1
@@ -127,7 +124,7 @@ fn charges_fee() {
 				Origin::root(),
 				<Runtime as Config>::TreasuryAccount::get(),
 				ACA,
-				(InitialBootstrapBalanceForFeePool::get() * 100).unique_saturated_into(),
+				(FeePoolBootBalance::get() * 100).unique_saturated_into(),
 			));
 			// MockTransactionPaymentUpgrade::on_runtime_upgrade();
 			MockTransactionPaymentUpgrade::on_runtime_upgrade();
@@ -164,7 +161,7 @@ fn signed_extension_transaction_payment_work() {
 				Origin::root(),
 				<Runtime as Config>::TreasuryAccount::get(),
 				ACA,
-				(InitialBootstrapBalanceForFeePool::get() * 100).unique_saturated_into(),
+				(FeePoolBootBalance::get() * 100).unique_saturated_into(),
 			));
 			MockTransactionPaymentUpgrade::on_runtime_upgrade();
 
@@ -215,7 +212,7 @@ fn charges_fee_when_pre_dispatch_and_native_currency_is_enough() {
 				Origin::root(),
 				<Runtime as Config>::TreasuryAccount::get(),
 				ACA,
-				(InitialBootstrapBalanceForFeePool::get() * 100).unique_saturated_into(),
+				(FeePoolBootBalance::get() * 100).unique_saturated_into(),
 			));
 			MockTransactionPaymentUpgrade::on_runtime_upgrade();
 
@@ -237,7 +234,7 @@ fn refund_fee_according_to_actual_when_post_dispatch_and_native_currency_is_enou
 				Origin::root(),
 				<Runtime as Config>::TreasuryAccount::get(),
 				ACA,
-				(InitialBootstrapBalanceForFeePool::get() * 100).unique_saturated_into(),
+				(FeePoolBootBalance::get() * 100).unique_saturated_into(),
 			));
 			MockTransactionPaymentUpgrade::on_runtime_upgrade();
 
@@ -318,7 +315,7 @@ fn charges_fee_when_validate_and_native_is_not_enough() {
 		.one_hundred_thousand_for_alice_n_charlie()
 		.build()
 		.execute_with(|| {
-			let init_balance = InitialBootstrapBalanceForFeePool::get();
+			let init_balance = FeePoolBootBalance::get();
 			assert_ok!(Currencies::update_balance(
 				Origin::root(),
 				<Runtime as Config>::TreasuryAccount::get(),
@@ -347,13 +344,14 @@ fn charges_fee_when_validate_and_native_is_not_enough() {
 
 			// total balance is lt ED, will swap fee and ED
 			let fee = 50 * 2 + 100; // len * byte + weight
-			let expect_priority = ChargeTransactionPayment::<Runtime>::get_priority(50, &INFO2, fee);
+			let expect_priority = ChargeTransactionPayment::<Runtime>::get_priority(&INFO2, 50, fee, fee);
+			assert_eq!(expect_priority, 2010);
 			assert_eq!(
 				ChargeTransactionPayment::<Runtime>::from(0)
 					.validate(&BOB, CALL2, &INFO2, 50)
 					.unwrap()
 					.priority,
-				expect_priority
+				10
 			);
 
 			assert_eq!(Currencies::total_balance(ACA, &BOB), 10);
@@ -366,13 +364,14 @@ fn charges_fee_when_validate_and_native_is_not_enough() {
 			// total balance is gte ED, but cannot keep alive after charge,
 			// will swap extra gap to keep alive
 			let fee_2 = 10 * 2 + 100; // len * byte + weight
-			let expect_priority = ChargeTransactionPayment::<Runtime>::get_priority(10, &INFO2, fee_2);
+			let expect_priority = ChargeTransactionPayment::<Runtime>::get_priority(&INFO2, 10, fee_2, fee_2);
+			assert_eq!(expect_priority, 1210);
 			assert_eq!(
 				ChargeTransactionPayment::<Runtime>::from(0)
 					.validate(&BOB, CALL2, &INFO2, 10)
 					.unwrap()
 					.priority,
-				expect_priority
+				10
 			);
 			assert_eq!(Currencies::total_balance(ACA, &BOB), 10);
 			assert_eq!(Currencies::free_balance(ACA, &BOB), 10);
@@ -399,7 +398,7 @@ fn charges_fee_failed_by_slippage_limit() {
 				Origin::root(),
 				<Runtime as Config>::TreasuryAccount::get(),
 				ACA,
-				(InitialBootstrapBalanceForFeePool::get() * 100).unique_saturated_into(),
+				(FeePoolBootBalance::get() * 100).unique_saturated_into(),
 			));
 			MockTransactionPaymentUpgrade::on_runtime_upgrade();
 
@@ -486,7 +485,7 @@ fn charge_fee_by_default_swap_path() {
 				Origin::root(),
 				<Runtime as Config>::TreasuryAccount::get(),
 				ACA,
-				(InitialBootstrapBalanceForFeePool::get() * 100).unique_saturated_into(),
+				(FeePoolBootBalance::get() * 100).unique_saturated_into(),
 			));
 			MockTransactionPaymentUpgrade::on_runtime_upgrade();
 
@@ -864,32 +863,32 @@ fn min_tip_has_same_priority() {
 
 #[test]
 fn max_tip_has_same_priority() {
-    let tip = 1000;
-    let len = 10;
+	let tip = 1000;
+	let len = 10;
 
-    ExtBuilder::default()
-        .one_hundred_thousand_for_alice_n_charlie()
-        .build()
-        .execute_with(|| {
-            let normal = DispatchInfo {
-                weight: 100,
-                class: DispatchClass::Normal,
-                pays_fee: Pays::Yes,
-            };
-            let priority = ChargeTransactionPayment::<Runtime>(tip)
-                .validate(&ALICE, CALL, &normal, len)
-                .unwrap()
-                .priority;
-            // max_tx_per_block = 10
-            assert_eq!(priority, 10_000);
+	ExtBuilder::default()
+		.one_hundred_thousand_for_alice_n_charlie()
+		.build()
+		.execute_with(|| {
+			let normal = DispatchInfo {
+				weight: 100,
+				class: DispatchClass::Normal,
+				pays_fee: Pays::Yes,
+			};
+			let priority = ChargeTransactionPayment::<Runtime>(tip)
+				.validate(&ALICE, CALL, &normal, len)
+				.unwrap()
+				.priority;
+			// max_tx_per_block = 10
+			assert_eq!(priority, 10_000);
 
-            let priority = ChargeTransactionPayment::<Runtime>(2 * tip)
-                .validate(&ALICE, CALL, &normal, len)
-                .unwrap()
-                .priority;
-            // max_tx_per_block = 10
-            assert_eq!(priority, 10_000);
-        });
+			let priority = ChargeTransactionPayment::<Runtime>(2 * tip)
+				.validate(&ALICE, CALL, &normal, len)
+				.unwrap()
+				.priority;
+			// max_tx_per_block = 10
+			assert_eq!(priority, 10_000);
+		});
 }
 
 struct CurrencyIdConvert;
@@ -976,11 +975,11 @@ fn treasury_basic_setup_works() {
 	ExtBuilder::default().build().execute_with(|| {
 		let treasury_account = <Runtime as Config>::TreasuryAccount::get();
 		let fee_account = Pallet::<Runtime>::treasury_sub_account_id(KSM);
-		let expect_initial_balance = InitialBootstrapBalanceForFeePool::get();
+		let expect_initial_balance = FeePoolBootBalance::get();
 		let amount = (expect_initial_balance * 100) as u128;
 
 		assert_eq!(Currencies::free_balance(ACA, &fee_account), 0);
-		assert_eq!(FeeRateOfToken::<Runtime>::get(KSM), None);
+		assert_eq!(TokenFixedRate::<Runtime>::get(KSM), None);
 
 		assert_ok!(Currencies::update_balance(
 			Origin::root(),
@@ -996,7 +995,7 @@ fn treasury_basic_setup_works() {
 		let fee_account = Pallet::<Runtime>::treasury_sub_account_id(KSM);
 		assert_eq!(Currencies::free_balance(ACA, &fee_account), expect_initial_balance);
 		assert_eq!(
-			FeeRateOfToken::<Runtime>::get(KSM).unwrap(),
+			TokenFixedRate::<Runtime>::get(KSM).unwrap(),
 			Ratio::saturating_from_rational(2, 100)
 		);
 
@@ -1013,7 +1012,7 @@ fn swap_from_treasury_not_enough_currency() {
 		.build()
 		.execute_with(|| {
 			let treasury_account = <Runtime as Config>::TreasuryAccount::get();
-			let expect_initial_balance = InitialBootstrapBalanceForFeePool::get();
+			let expect_initial_balance = FeePoolBootBalance::get();
 			let amount = (expect_initial_balance * 100) as u128;
 			assert_ok!(Currencies::update_balance(
 				Origin::root(),
@@ -1062,7 +1061,7 @@ fn swap_from_treasury_with_enough_balance() {
 		.build()
 		.execute_with(|| {
 			let treasury_account = <Runtime as Config>::TreasuryAccount::get();
-			let expect_initial_balance = InitialBootstrapBalanceForFeePool::get();
+			let expect_initial_balance = FeePoolBootBalance::get();
 			let amount = (expect_initial_balance * 100) as u128;
 			assert_ok!(Currencies::update_balance(
 				Origin::root(),
@@ -1131,7 +1130,7 @@ fn swap_from_treasury_and_dex_update_rate() {
 		.build()
 		.execute_with(|| {
 			let treasury_account = <Runtime as Config>::TreasuryAccount::get();
-			let expect_initial_balance = InitialBootstrapBalanceForFeePool::get();
+			let expect_initial_balance = FeePoolBootBalance::get();
 			let amount = (expect_initial_balance * 100) as u128;
 			assert_ok!(Currencies::update_balance(
 				Origin::root(),
@@ -1209,7 +1208,7 @@ fn swap_from_treasury_and_dex_update_rate() {
 			// the treasury has 9200 ACA, 80 DOT, use 80 DOT to swap out some ACA
 			let balance2 = 300 as u128;
 			let _ = Pallet::<Runtime>::swap_from_treasury(&BOB, balance2, DOT);
-			assert_eq!(FeeRateOfToken::<Runtime>::get(DOT).unwrap(), rate);
+			assert_eq!(TokenFixedRate::<Runtime>::get(DOT).unwrap(), rate);
 
 			// Bob swap 98 DOT(use the new updated rate) to get 300 ACA
 			let exchange = rate.saturating_mul_int(balance2);

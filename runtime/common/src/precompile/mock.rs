@@ -248,7 +248,7 @@ parameter_types! {
 	pub TipPerWeightStep: Balance = 1;
 	pub MaxTipsOfPriority: Balance = 1000;
 	pub const PeriodUpdateFeeRateBlockLimit: u32 = 20;
-	pub const UpdatedFeePoolPalletId: PalletId = PalletId(*b"aca/fees");
+	pub const TreasuryFeePoolPalletId: PalletId = PalletId(*b"aca/fees");
 	pub const TreasuryPalletId: PalletId = PalletId(*b"aca/trsy");
 	pub KaruraTreasuryAccount: AccountId = TreasuryPalletId::get().into_account();
 	pub AssetFixRateAccountIds: Vec<AssetFixRateAccountId> = vec![];
@@ -272,7 +272,7 @@ impl module_transaction_payment::Config for Test {
 	type TradingPathLimit = TradingPathLimit;
 	type PriceSource = module_prices::RealTimePriceProvider<Test>;
 	type WeightInfo = ();
-	type TreasuryPalletId = UpdatedFeePoolPalletId;
+	type TreasuryPalletId = TreasuryFeePoolPalletId;
 	type TreasuryAccount = KaruraTreasuryAccount;
 	type UpdateOrigin = EnsureSignedBy<ListingOrigin, AccountId>;
 }

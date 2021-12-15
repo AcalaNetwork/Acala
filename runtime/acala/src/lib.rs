@@ -111,10 +111,11 @@ pub use runtime_common::{
 	EnsureRootOrThreeFourthsGeneralCouncil, EnsureRootOrTwoThirdsGeneralCouncil,
 	EnsureRootOrTwoThirdsTechnicalCommittee, ExchangeRate, FinancialCouncilInstance,
 	FinancialCouncilMembershipInstance, GasToWeight, GeneralCouncilInstance, GeneralCouncilMembershipInstance,
-	HomaCouncilInstance, HomaCouncilMembershipInstance, MaxTipsOfPriority, OffchainSolutionWeightLimit, OperatorMembershipInstanceAcala,
-	Price, ProxyType, Rate, Ratio, RelayChainBlockNumberProvider, RelayChainSubAccountId, RuntimeBlockLength,
-	RuntimeBlockWeights, SystemContractsFilter, TechnicalCommitteeInstance, TechnicalCommitteeMembershipInstance,
-	TimeStampedPrice, ACA, AUSD, DOT, LDOT, RENBTC,
+	HomaCouncilInstance, HomaCouncilMembershipInstance, MaxTipsOfPriority, OffchainSolutionWeightLimit,
+	OperationalFeeMultiplier, OperatorMembershipInstanceAcala, Price, ProxyType, Rate, Ratio,
+	RelayChainBlockNumberProvider, RelayChainSubAccountId, RuntimeBlockLength, RuntimeBlockWeights,
+	SystemContractsFilter, TechnicalCommitteeInstance, TechnicalCommitteeMembershipInstance, TimeStampedPrice,
+	TipPerWeightStep, ACA, AUSD, DOT, LDOT, RENBTC,
 };
 
 mod authority;
@@ -164,7 +165,7 @@ parameter_types! {
 	pub const NftPalletId: PalletId = PalletId(*b"aca/aNFT");
 	// Vault all unrleased native token.
 	pub UnreleasedNativeVaultAccountId: AccountId = PalletId(*b"aca/urls").into_account();
-	pub const UpdatedFeePoolPalletId: PalletId = PalletId(*b"aca/fees");
+	pub const TreasuryFeePoolPalletId: PalletId = PalletId(*b"aca/fees");
 }
 
 pub fn get_all_module_accounts() -> Vec<AccountId> {
@@ -1091,7 +1092,7 @@ impl module_transaction_pause::Config for Runtime {
 parameter_types! {
 	// Sort by fee charge order
 	pub DefaultFeeSwapPathList: Vec<Vec<CurrencyId>> = vec![vec![AUSD, DOT, ACA], vec![DOT, ACA], vec![LDOT, DOT, ACA]];
-	pub const InitialBootstrapBalanceForFeePool: Balance = 10_000_000_000;
+	pub const FeePoolBootBalance: Balance = 10_000_000_000;
 }
 
 type NegativeImbalance = <Balances as PalletCurrency<AccountId>>::NegativeImbalance;
@@ -1133,7 +1134,7 @@ impl module_transaction_payment::Config for Runtime {
 	type TradingPathLimit = TradingPathLimit;
 	type PriceSource = module_prices::RealTimePriceProvider<Runtime>;
 	type WeightInfo = weights::module_transaction_payment::WeightInfo<Runtime>;
-	type TreasuryPalletId = UpdatedFeePoolPalletId;
+	type TreasuryPalletId = TreasuryFeePoolPalletId;
 	type TreasuryAccount = AcalaTreasuryAccount;
 	type UpdateOrigin = EnsureAcalaFoundation;
 }
@@ -1889,8 +1890,8 @@ pub struct TransactionPaymentUpgrade;
 impl frame_support::traits::OnRuntimeUpgrade for TransactionPaymentUpgrade {
 	fn on_runtime_upgrade() -> Weight {
 		for asset in AssetFixRateAccountIds::get() {
-			<module_transaction_payment::Pallet<Runtime>>::update_storage(
-				InitialBootstrapBalanceForFeePool::get(),
+			<module_transaction_payment::Pallet<Runtime>>::on_runtime_upgrade(
+				FeePoolBootBalance::get(),
 				asset.0,
 				asset.1,
 			);

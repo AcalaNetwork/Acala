@@ -229,8 +229,8 @@ impl PriceProvider<CurrencyId> for MockPriceSource {
 
 parameter_types! {
 	// DO NOT CHANGE THIS VALUE, AS IT EFFECT THE TESTCASES.
-	pub const InitialBootstrapBalanceForFeePool: Balance = 10_000;
-	pub const UpdatedFeePoolPalletId: PalletId = PalletId(*b"aca/fees");
+	pub const FeePoolBootBalance: Balance = 10_000;
+	pub const TreasuryFeePoolPalletId: PalletId = PalletId(*b"aca/fees");
 	pub const TreasuryPalletId: PalletId = PalletId(*b"aca/trsy");
 	pub AssetFixRateAccountIds: Vec<AssetFixRateAccountId> = vec![
 		AssetFixRateAccountId(KSM, Ratio::saturating_from_rational(2, 100)),
@@ -264,7 +264,7 @@ impl Config for Runtime {
 	type TradingPathLimit = TradingPathLimit;
 	type PriceSource = MockPriceSource;
 	type WeightInfo = ();
-	type TreasuryPalletId = UpdatedFeePoolPalletId;
+	type TreasuryPalletId = TreasuryFeePoolPalletId;
 	type TreasuryAccount = KaruraTreasuryAccount;
 	type UpdateOrigin = EnsureSignedBy<ListingOrigin, AccountId>;
 }
@@ -310,11 +310,7 @@ pub struct MockTransactionPaymentUpgrade;
 impl frame_support::traits::OnRuntimeUpgrade for MockTransactionPaymentUpgrade {
 	fn on_runtime_upgrade() -> Weight {
 		for asset in AssetFixRateAccountIds::get() {
-			<transaction_payment::Pallet<Runtime>>::update_storage(
-				InitialBootstrapBalanceForFeePool::get(),
-				asset.0,
-				asset.1,
-			);
+			<transaction_payment::Pallet<Runtime>>::on_runtime_upgrade(FeePoolBootBalance::get(), asset.0, asset.1);
 		}
 		0
 	}
