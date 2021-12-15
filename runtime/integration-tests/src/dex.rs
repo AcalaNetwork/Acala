@@ -219,8 +219,8 @@ fn test_trading_pair() {
 			// CurrencyId::DexShare(Token, ForeignAsset)
 			assert_ok!(Dex::list_provisioning(
 				Origin::root(),
-				CurrencyId::ForeignAsset(1),
 				USD_CURRENCY,
+				CurrencyId::ForeignAsset(1),
 				10,
 				100,
 				100,
