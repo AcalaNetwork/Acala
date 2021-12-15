@@ -826,17 +826,18 @@ where
 	}
 
 	/// Setting some initial value when on_runtime_upgrade.
-	pub fn on_runtime_upgrade(balance: Balance, currency_id: CurrencyId, rate: Ratio) {
+	pub fn on_runtime_upgrade(balance: Balance, currency_id: CurrencyId, rate: Ratio) -> DispatchResult {
 		let account = Self::treasury_sub_account_id(currency_id);
-		let _ = T::Currency::transfer(
+		T::Currency::transfer(
 			&T::TreasuryAccount::get(),
 			&account,
 			balance,
 			ExistenceRequirement::KeepAlive,
-		);
+		)?;
 		SwapBalanceThreshold::<T>::insert(currency_id, balance / 5);
 		TokenFixedRate::<T>::insert(currency_id, rate);
 		PoolSize::<T>::set(balance);
+		Ok(())
 	}
 }
 

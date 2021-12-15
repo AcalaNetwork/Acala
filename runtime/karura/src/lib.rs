@@ -2004,7 +2004,7 @@ pub struct TransactionPaymentUpgrade;
 impl frame_support::traits::OnRuntimeUpgrade for TransactionPaymentUpgrade {
 	fn on_runtime_upgrade() -> Weight {
 		for asset in TokenFixedRates::get() {
-			<module_transaction_payment::Pallet<Runtime>>::on_runtime_upgrade(
+			let _ = <module_transaction_payment::Pallet<Runtime>>::on_runtime_upgrade(
 				FeePoolBootBalance::get(),
 				asset.0,
 				asset.1,

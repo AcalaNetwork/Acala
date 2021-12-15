@@ -930,7 +930,14 @@ fn period_rate_buy_refund_weight_works() {
 		.byte_fee(10)
 		.build()
 		.execute_with(|| {
+			assert_ok!(Currencies::update_balance(
+				Origin::root(),
+				<Runtime as Config>::TreasuryAccount::get(),
+				ACA,
+				(FeePoolBootBalance::get() * 100).unique_saturated_into(),
+			));
 			MockTransactionPaymentUpgrade::on_runtime_upgrade();
+
 			let mut trader = PeriodUpdatedRateOfFungible::<Runtime, CurrencyIdConvert, KarPerSecond, ()>::new();
 			let mock_weight: Weight = 200_000_000;
 
@@ -971,16 +978,24 @@ fn period_rate_buy_refund_weight_works() {
 }
 
 #[test]
-fn treasury_basic_setup_works() {
+fn swap_from_treasury_basic_setup_works() {
 	ExtBuilder::default().build().execute_with(|| {
 		let treasury_account = <Runtime as Config>::TreasuryAccount::get();
 		let fee_account = Pallet::<Runtime>::treasury_sub_account_id(KSM);
 		let expect_initial_balance = FeePoolBootBalance::get();
 		let amount = (expect_initial_balance * 100) as u128;
 
+		assert_eq!(Currencies::free_balance(ACA, &treasury_account), 0);
 		assert_eq!(Currencies::free_balance(ACA, &fee_account), 0);
 		assert_eq!(TokenFixedRate::<Runtime>::get(KSM), None);
 
+		// the treasury account balance is 0, runtime upgrade has no side effect
+		MockTransactionPaymentUpgrade::on_runtime_upgrade();
+		assert_eq!(Currencies::free_balance(ACA, &treasury_account), 0);
+		assert_eq!(Currencies::free_balance(ACA, &fee_account), 0);
+		assert_eq!(TokenFixedRate::<Runtime>::get(KSM), None);
+
+		// the treasury account should have enough balance
 		assert_ok!(Currencies::update_balance(
 			Origin::root(),
 			treasury_account.clone(),
@@ -989,14 +1004,14 @@ fn treasury_basic_setup_works() {
 		));
 		assert_eq!(Currencies::free_balance(ACA, &treasury_account), amount);
 
-		// to the runtime upgrade, the treasury account transfer balance to fee pool balance
+		// the treasury account transfer balance to fee pool balance when runtime upgrade
 		MockTransactionPaymentUpgrade::on_runtime_upgrade();
 
 		let fee_account = Pallet::<Runtime>::treasury_sub_account_id(KSM);
 		assert_eq!(Currencies::free_balance(ACA, &fee_account), expect_initial_balance);
 		assert_eq!(
-			TokenFixedRate::<Runtime>::get(KSM).unwrap(),
-			Ratio::saturating_from_rational(2, 100)
+			TokenFixedRate::<Runtime>::get(KSM),
+			Some(Ratio::saturating_from_rational(2, 100))
 		);
 
 		let _ = Pallet::<Runtime>::set_trigger_threshold(Origin::signed(ALICE), KSM, 500);

@@ -308,7 +308,8 @@ pub struct MockTransactionPaymentUpgrade;
 impl frame_support::traits::OnRuntimeUpgrade for MockTransactionPaymentUpgrade {
 	fn on_runtime_upgrade() -> Weight {
 		for asset in TokenFixedRates::get() {
-			<transaction_payment::Pallet<Runtime>>::on_runtime_upgrade(FeePoolBootBalance::get(), asset.0, asset.1);
+			let _ =
+				<transaction_payment::Pallet<Runtime>>::on_runtime_upgrade(FeePoolBootBalance::get(), asset.0, asset.1);
 		}
 		0
 	}
