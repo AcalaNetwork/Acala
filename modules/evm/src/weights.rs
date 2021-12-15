@@ -73,7 +73,7 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	// Storage: EVM CodeInfos (r:1 w:1)
 	// Storage: EVM ContractStorageSizes (r:1 w:1)
 	fn create() -> Weight {
-		(127_000_000 as Weight)
+		(275_119_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(12 as Weight))
 			.saturating_add(T::DbWeight::get().writes(9 as Weight))
 	}
@@ -86,7 +86,7 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	// Storage: EVM CodeInfos (r:1 w:1)
 	// Storage: EVM ContractStorageSizes (r:1 w:1)
 	fn create2() -> Weight {
-		(122_000_000 as Weight)
+		(265_143_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(12 as Weight))
 			.saturating_add(T::DbWeight::get().writes(9 as Weight))
 	}
@@ -99,7 +99,7 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	// Storage: EVM CodeInfos (r:1 w:1)
 	// Storage: EVM ContractStorageSizes (r:1 w:1)
 	fn create_nft_contract() -> Weight {
-		(123_000_000 as Weight)
+		(263_650_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(13 as Weight))
 			.saturating_add(T::DbWeight::get().writes(10 as Weight))
 	}
@@ -111,7 +111,7 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	// Storage: EVM CodeInfos (r:1 w:1)
 	// Storage: EVM ContractStorageSizes (r:1 w:1)
 	fn create_predeploy_contract() -> Weight {
-		(122_000_000 as Weight)
+		(262_808_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(12 as Weight))
 			.saturating_add(T::DbWeight::get().writes(9 as Weight))
 	}
@@ -119,7 +119,7 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	// Storage: System Account (r:2 w:2)
 	// Storage: EVM Accounts (r:1 w:0)
 	fn deposit_ed() -> Weight {
-		(38_000_000 as Weight)
+		(80_138_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(4 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
@@ -131,14 +131,14 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	// Storage: EVM Codes (r:1 w:0)
 	// Storage: EVM ContractStorageSizes (r:1 w:1)
 	fn call() -> Weight {
-		(102_000_000 as Weight)
+		(220_107_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(11 as Weight))
 			.saturating_add(T::DbWeight::get().writes(6 as Weight))
 	}
 	// Storage: EVM Accounts (r:1 w:1)
 	// Storage: EvmAccounts EvmAddresses (r:1 w:0)
 	fn transfer_maintainer() -> Weight {
-		(71_000_000 as Weight)
+		(137_152_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
@@ -146,25 +146,25 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	// Storage: System Account (r:1 w:1)
 	// Storage: EVM Accounts (r:1 w:1)
 	fn deploy() -> Weight {
-		(85_000_000 as Weight)
+		(172_390_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
 	// Storage: EVM Accounts (r:1 w:1)
 	fn deploy_free() -> Weight {
-		(16_000_000 as Weight)
+		(32_341_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	// Storage: Balances Reserves (r:1 w:1)
 	fn enable_contract_development() -> Weight {
-		(74_000_000 as Weight)
+		(149_077_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	// Storage: Balances Reserves (r:1 w:1)
 	fn disable_contract_development() -> Weight {
-		(75_000_000 as Weight)
+		(149_788_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
@@ -177,9 +177,9 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	// Storage: EVM ContractStorageSizes (r:1 w:1)
 	// Storage: EVM Codes (r:0 w:2)
 	fn set_code(c: u32, ) -> Weight {
-		(132_089_000 as Weight)
+		(269_417_000 as Weight)
 			// Standard Error: 0
-			.saturating_add((3_000 as Weight).saturating_mul(c as Weight))
+			.saturating_add((9_000 as Weight).saturating_mul(c as Weight))
 			.saturating_add(T::DbWeight::get().reads(10 as Weight))
 			.saturating_add(T::DbWeight::get().writes(9 as Weight))
 	}
@@ -193,7 +193,7 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	// Storage: IdleScheduler Tasks (r:0 w:1)
 	// Storage: EVM Codes (r:0 w:1)
 	fn selfdestruct() -> Weight {
-		(88_000_000 as Weight)
+		(171_462_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(7 as Weight))
 			.saturating_add(T::DbWeight::get().writes(7 as Weight))
 	}
@@ -202,69 +202,69 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 // For backwards compatibility and tests
 impl WeightInfo for () {
 	fn create() -> Weight {
-		(127_000_000 as Weight)
+		(275_119_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(12 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(9 as Weight))
 	}
 	fn create2() -> Weight {
-		(122_000_000 as Weight)
+		(265_143_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(12 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(9 as Weight))
 	}
 	fn create_nft_contract() -> Weight {
-		(123_000_000 as Weight)
+		(263_650_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(13 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(10 as Weight))
 	}
 	fn create_predeploy_contract() -> Weight {
-		(122_000_000 as Weight)
+		(262_808_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(12 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(9 as Weight))
 	}
 	fn deposit_ed() -> Weight {
-		(38_000_000 as Weight)
+		(80_138_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(4 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(2 as Weight))
 	}
 	fn call() -> Weight {
-		(102_000_000 as Weight)
+		(220_107_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(11 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(6 as Weight))
 	}
 	fn transfer_maintainer() -> Weight {
-		(71_000_000 as Weight)
+		(137_152_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(2 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
 	fn deploy() -> Weight {
-		(85_000_000 as Weight)
+		(172_390_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(3 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(2 as Weight))
 	}
 	fn deploy_free() -> Weight {
-		(16_000_000 as Weight)
+		(32_341_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
 	fn enable_contract_development() -> Weight {
-		(74_000_000 as Weight)
+		(149_077_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
 	fn disable_contract_development() -> Weight {
-		(75_000_000 as Weight)
+		(149_788_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
 	fn set_code(c: u32, ) -> Weight {
-		(132_089_000 as Weight)
+		(269_417_000 as Weight)
 			// Standard Error: 0
-			.saturating_add((3_000 as Weight).saturating_mul(c as Weight))
+			.saturating_add((9_000 as Weight).saturating_mul(c as Weight))
 			.saturating_add(RocksDbWeight::get().reads(10 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(9 as Weight))
 	}
 	fn selfdestruct() -> Weight {
-		(88_000_000 as Weight)
+		(171_462_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(7 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(7 as Weight))
 	}
