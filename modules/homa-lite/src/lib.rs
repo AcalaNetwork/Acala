@@ -184,25 +184,22 @@ pub mod module {
 			amount_minted: Balance,
 		},
 
-		/// The total amount of the staking currency on the relaychain has been
-		/// set.\[total_staking_currency\]
+		/// The total amount of the staking currency on the relaychain has been set.
 		TotalStakingCurrencySet { total_staking_currency: Balance },
 
-		/// The mint cap for Staking currency is updated.\[new_cap\]
+		/// The mint cap for Staking currency is updated.
 		StakingCurrencyMintCapUpdated { new_cap: Balance },
 
-		/// A new weight for XCM transfers has been set.\[new_weight\]
+		/// A new weight for XCM transfers has been set.
 		XcmDestWeightSet { new_weight: Weight },
 
 		/// The redeem request has been cancelled, and funds un-reserved.
-		/// \[who, liquid_amount_unreserved\]
 		RedeemRequestCancelled {
 			who: T::AccountId,
 			liquid_amount_unreserved: Balance,
 		},
 
 		/// A new Redeem request has been registered.
-		/// \[who, liquid_amount, extra_fee, withdraw_fee_paid\]
 		RedeemRequested {
 			who: T::AccountId,
 			liquid_amount: Balance,
@@ -211,7 +208,6 @@ pub mod module {
 		},
 
 		/// The user has redeemed some Liquid currency back to Staking currency.
-		/// \[who, staking_amount_redeemed, liquid_amount_deducted\]
 		Redeemed {
 			who: T::AccountId,
 			staking_amount_redeemed: Balance,
@@ -219,7 +215,6 @@ pub mod module {
 		},
 
 		/// A new Unbond request added to the schedule.
-		/// \[staking_amount, relaychain_blocknumber\]
 		ScheduledUnbondAdded {
 			staking_amount: Balance,
 			relaychain_blocknumber: RelayChainBlockNumberOf<T>,
@@ -229,15 +224,12 @@ pub mod module {
 		ScheduledUnbondReplaced,
 
 		/// The scheduled Unbond has been withdrew from the RelayChain.
-		///\[staking_amount_added\]
 		ScheduledUnbondWithdrew { staking_amount_added: Balance },
 
 		/// Interest rate for TotalStakingCurrency is set
-		/// \[interest_rate\]
 		StakingInterestRatePerUpdateSet { interest_rate: Permill },
 
 		/// The amount of the staking currency available to be redeemed is set.
-		/// \[total_available_staking_balance\]
 		AvailableStakingBalanceSet { total_available_staking_balance: Balance },
 	}
 

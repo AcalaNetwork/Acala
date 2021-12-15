@@ -111,10 +111,17 @@ pub mod module {
 	#[pallet::event]
 	#[pallet::generate_deposit(fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// The foreign asset registered. \[ForeignAssetId, AssetMetadata\]
-		ForeignAssetRegistered(ForeignAssetId, MultiLocation, AssetMetadata<BalanceOf<T>>),
-		/// The foreign asset updated. \[AssetMetadata\]
-		ForeignAssetUpdated(MultiLocation, AssetMetadata<BalanceOf<T>>),
+		/// The foreign asset registered.
+		ForeignAssetRegistered {
+			asset_id: ForeignAssetId,
+			asset_address: MultiLocation,
+			metadata: AssetMetadata<BalanceOf<T>>,
+		},
+		/// The foreign asset updated.
+		ForeignAssetUpdated {
+			asset_address: MultiLocation,
+			metadata: AssetMetadata<BalanceOf<T>>,
+		},
 	}
 
 	/// Next available Foreign AssetId ID.
@@ -172,11 +179,11 @@ pub mod module {
 			let location: MultiLocation = (*location).try_into().map_err(|()| Error::<T>::BadLocation)?;
 			let foreign_asset_id = Self::do_register_foreign_asset(&location, &metadata)?;
 
-			Self::deposit_event(Event::<T>::ForeignAssetRegistered(
-				foreign_asset_id,
-				location,
-				*metadata,
-			));
+			Self::deposit_event(Event::<T>::ForeignAssetRegistered {
+				asset_id: foreign_asset_id,
+				asset_address: location,
+				metadata: *metadata,
+			});
 			Ok(())
 		}
 
@@ -193,7 +200,10 @@ pub mod module {
 			let location: MultiLocation = (*location).try_into().map_err(|()| Error::<T>::BadLocation)?;
 			Self::do_update_foreign_asset(foreign_asset_id, &location, &metadata)?;
 
-			Self::deposit_event(Event::<T>::ForeignAssetUpdated(location, *metadata));
+			Self::deposit_event(Event::<T>::ForeignAssetUpdated {
+				asset_address: location,
+				metadata: *metadata,
+			});
 			Ok(())
 		}
 	}
