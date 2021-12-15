@@ -152,13 +152,8 @@ __Note:__ All build command from Makefile are designed for local development pur
 
 # 6. Bug Bounty :bug:
 
-The Bug Bounty Program touches only runtime modules of Karura and Acala and includes next repositories:
-| Target | Type |
-| -------- | -------- |
-| https://github.com/AcalaNetwork/Acala      |   Blockchain - Main Network   |
-| https://github.com/open-web3-stack/open-runtime-module-library  | Blockchain - Open Runtime Module Library |
-
-You can check Bug Bounty details and Submit a Bug [here](https://immunefi.com/bounty/acala/)
+The Bug Bounty Program includes only on-chain vulnerabilities that can lead to significant economic loss or instability of the network. You check details of the Bug Bounty or Submit a vulnerability here: 
+https://immunefi.com/bounty/acala/
 
 # 7. Bench Bot
 Bench bot can take care of syncing branch with `master` and generating WeightInfos for module or runtime.
