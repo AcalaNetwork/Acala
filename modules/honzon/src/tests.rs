@@ -148,7 +148,7 @@ fn on_emergency_shutdown_should_work() {
 			Error::<Runtime>::AlreadyShutdown,
 		);
 		assert_noop!(
-			HonzonModule::close_loan_has_debit_by_dex(Origin::signed(ALICE), BTC, 100, None),
+			HonzonModule::close_loan_has_debit_by_dex(Origin::signed(ALICE), BTC, 100),
 			Error::<Runtime>::AlreadyShutdown,
 		);
 	});
@@ -174,7 +174,6 @@ fn close_loan_has_debit_by_dex_work() {
 			Origin::signed(ALICE),
 			BTC,
 			100,
-			None
 		));
 		assert_eq!(LoansModule::positions(BTC, ALICE).collateral, 0);
 		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 0);

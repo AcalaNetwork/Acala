@@ -26,6 +26,7 @@ use mock::{Call as MockCall, Event, *};
 use sp_core::offchain::{testing, DbExternalities, OffchainDbExt, OffchainWorkerExt, StorageKind, TransactionPoolExt};
 use sp_io::offchain;
 use sp_runtime::traits::One;
+use support::DEXManager;
 
 fn run_to_block_offchain(n: u64) {
 	while System::block_number() < n {
@@ -187,7 +188,10 @@ fn collateral_auction_end_handler_without_bid() {
 			false
 		));
 		assert_eq!(DEXModule::get_liquidity_pool(BTC, AUSD), (100, 1000));
-		assert_eq!(DEXModule::get_swap_target_amount(&[BTC, AUSD], 100).unwrap(), 500);
+		assert_eq!(
+			DEXModule::get_swap_amount(&vec![BTC, AUSD], SwapLimit::ExactSupply(100, 0)),
+			Some((100, 500))
+		);
 
 		assert_ok!(AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 100, 200));
 		assert_eq!(CDPTreasuryModule::total_collaterals(BTC), 100);
@@ -244,8 +248,14 @@ fn collateral_auction_end_handler_without_bid_and_swap_by_alternative_path() {
 		));
 		assert_eq!(DEXModule::get_liquidity_pool(BTC, DOT), (100, 1000));
 		assert_eq!(DEXModule::get_liquidity_pool(DOT, AUSD), (1000, 1000));
-		assert_eq!(DEXModule::get_swap_target_amount(&[BTC, AUSD], 100), None);
-		assert_eq!(DEXModule::get_swap_target_amount(&[BTC, DOT, AUSD], 100), Some(333));
+		assert_eq!(
+			DEXModule::get_swap_amount(&vec![BTC, AUSD], SwapLimit::ExactSupply(100, 0)),
+			None
+		);
+		assert_eq!(
+			DEXModule::get_swap_amount(&vec![BTC, DOT, AUSD], SwapLimit::ExactSupply(100, 0)),
+			Some((100, 333))
+		);
 
 		assert_ok!(AuctionManagerModule::new_collateral_auction(&ALICE, BTC, 100, 200));
 		assert_eq!(Tokens::free_balance(BTC, &ALICE), 1000);
@@ -354,7 +364,10 @@ fn collateral_auction_end_handler_by_dex_which_target_not_zero() {
 			0,
 			false
 		));
-		assert_eq!(DEXModule::get_swap_target_amount(&[BTC, AUSD], 100).unwrap(), 500);
+		assert_eq!(
+			DEXModule::get_swap_amount(&vec![BTC, AUSD], SwapLimit::ExactSupply(100, 0)),
+			Some((100, 500))
+		);
 
 		assert_eq!(CDPTreasuryModule::total_collaterals(BTC), 100);
 		assert_eq!(AuctionManagerModule::total_target_in_auction(), 200);

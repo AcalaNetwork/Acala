@@ -36,7 +36,6 @@ use sp_runtime::{
 	traits::{StaticLookup, Zero},
 	DispatchResult,
 };
-use sp_std::vec::Vec;
 use support::EmergencyShutdown;
 
 mod mock;
@@ -153,28 +152,16 @@ pub mod module {
 		/// - `currency_id`: collateral currency id.
 		/// - `max_collateral_amount`: the max collateral amount which is used to swap enough
 		/// 	stable token to clear debit.
-		/// - `maybe_path`: the custom swap path.
-		#[pallet::weight(
-			match maybe_path {
-				Some(path) => <T as Config>::WeightInfo::close_loan_has_debit_by_dex(path.len() as u32),
-				None => <T as Config>::WeightInfo::close_loan_has_debit_by_dex_no_path(),
-			}
-		)]
+		#[pallet::weight(<T as Config>::WeightInfo::close_loan_has_debit_by_dex())]
 		#[transactional]
 		pub fn close_loan_has_debit_by_dex(
 			origin: OriginFor<T>,
 			currency_id: CurrencyId,
 			#[pallet::compact] max_collateral_amount: Balance,
-			maybe_path: Option<Vec<CurrencyId>>,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			ensure!(!T::EmergencyShutdown::is_shutdown(), Error::<T>::AlreadyShutdown);
-			<cdp_engine::Pallet<T>>::close_cdp_has_debit_by_dex(
-				who,
-				currency_id,
-				max_collateral_amount,
-				maybe_path.as_deref(),
-			)?;
+			<cdp_engine::Pallet<T>>::close_cdp_has_debit_by_dex(who, currency_id, max_collateral_amount)?;
 			Ok(())
 		}
 

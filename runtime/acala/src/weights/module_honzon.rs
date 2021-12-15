@@ -74,16 +74,7 @@ impl<T: frame_system::Config> module_honzon::WeightInfo for WeightInfo<T> {
 			.saturating_add(T::DbWeight::get().reads(15 as Weight))
 			.saturating_add(T::DbWeight::get().writes(7 as Weight))
 	}
-	fn close_loan_has_debit_by_dex(u: u32, ) -> Weight {
-		(333_176_000 as Weight)
-			// Standard Error: 1_020_000
-			.saturating_add((15_067_000 as Weight).saturating_mul(u as Weight))
-			.saturating_add(T::DbWeight::get().reads(20 as Weight))
-			.saturating_add(T::DbWeight::get().reads((2 as Weight).saturating_mul(u as Weight)))
-			.saturating_add(T::DbWeight::get().writes(12 as Weight))
-			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(u as Weight)))
-	}
-	fn close_loan_has_debit_by_dex_no_path() -> Weight {
+	fn close_loan_has_debit_by_dex() -> Weight {
 		(396_996_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(29 as Weight))
 			.saturating_add(T::DbWeight::get().writes(15 as Weight))

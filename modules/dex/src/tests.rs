@@ -23,8 +23,8 @@
 use super::*;
 use frame_support::{assert_noop, assert_ok};
 use mock::{
-	AUSDBTCPair, AUSDDOTPair, DexModule, Event, ExtBuilder, ListingOrigin, Origin, Runtime, System, Tokens, ACA, ALICE,
-	AUSD, BOB, BTC, DOT,
+	AUSDBTCPair, AUSDDOTPair, DOTBTCPair, DexModule, Event, ExtBuilder, ListingOrigin, Origin, Runtime, System, Tokens,
+	ACA, ALICE, AUSD, BOB, BTC, DOT,
 };
 use orml_traits::MultiReservableCurrency;
 use sp_runtime::traits::BadOrigin;
@@ -1336,5 +1336,168 @@ fn initialize_added_liquidity_pools_genesis_work() {
 				Tokens::free_balance(AUSDDOTPair::get().dex_share_currency_id(), &ALICE),
 				2000000
 			);
+		});
+}
+
+#[test]
+fn get_swap_amount_work() {
+	ExtBuilder::default()
+		.initialize_enabled_trading_pairs()
+		.build()
+		.execute_with(|| {
+			LiquidityPool::<Runtime>::insert(AUSDDOTPair::get(), (50000, 10000));
+			assert_eq!(
+				DexModule::get_swap_amount(&vec![DOT, AUSD], SwapLimit::ExactSupply(10000, 0)),
+				Some((10000, 24874))
+			);
+			assert_eq!(
+				DexModule::get_swap_amount(&vec![DOT, AUSD], SwapLimit::ExactSupply(10000, 24875)),
+				None
+			);
+			assert_eq!(
+				DexModule::get_swap_amount(&vec![DOT, AUSD], SwapLimit::ExactTarget(Balance::max_value(), 24874)),
+				Some((10000, 24874))
+			);
+			assert_eq!(
+				DexModule::get_swap_amount(&vec![DOT, AUSD], SwapLimit::ExactTarget(9999, 24874)),
+				None
+			);
+		});
+}
+
+#[test]
+fn get_best_price_swap_path_work() {
+	ExtBuilder::default()
+		.initialize_enabled_trading_pairs()
+		.build()
+		.execute_with(|| {
+			LiquidityPool::<Runtime>::insert(AUSDDOTPair::get(), (300000, 100000));
+			LiquidityPool::<Runtime>::insert(AUSDBTCPair::get(), (50000, 10000));
+			LiquidityPool::<Runtime>::insert(DOTBTCPair::get(), (10000, 10000));
+
+			assert_eq!(
+				DexModule::get_best_price_swap_path(DOT, AUSD, SwapLimit::ExactSupply(10, 0), vec![]),
+				Some(vec![DOT, AUSD])
+			);
+			assert_eq!(
+				DexModule::get_best_price_swap_path(DOT, AUSD, SwapLimit::ExactSupply(10, 30), vec![]),
+				None
+			);
+			assert_eq!(
+				DexModule::get_best_price_swap_path(DOT, AUSD, SwapLimit::ExactSupply(0, 0), vec![]),
+				None
+			);
+			assert_eq!(
+				DexModule::get_best_price_swap_path(DOT, AUSD, SwapLimit::ExactSupply(10, 0), vec![vec![ACA]]),
+				Some(vec![DOT, AUSD])
+			);
+			assert_eq!(
+				DexModule::get_best_price_swap_path(DOT, AUSD, SwapLimit::ExactSupply(10, 0), vec![vec![DOT]]),
+				Some(vec![DOT, AUSD])
+			);
+			assert_eq!(
+				DexModule::get_best_price_swap_path(DOT, AUSD, SwapLimit::ExactSupply(10, 0), vec![vec![AUSD]]),
+				Some(vec![DOT, AUSD])
+			);
+			assert_eq!(
+				DexModule::get_best_price_swap_path(DOT, AUSD, SwapLimit::ExactSupply(10, 0), vec![vec![BTC]]),
+				Some(vec![DOT, BTC, AUSD])
+			);
+			assert_eq!(
+				DexModule::get_best_price_swap_path(DOT, AUSD, SwapLimit::ExactSupply(10000, 0), vec![vec![BTC]]),
+				Some(vec![DOT, AUSD])
+			);
+
+			assert_eq!(
+				DexModule::get_best_price_swap_path(DOT, AUSD, SwapLimit::ExactTarget(20, 30), vec![]),
+				Some(vec![DOT, AUSD])
+			);
+			assert_eq!(
+				DexModule::get_best_price_swap_path(DOT, AUSD, SwapLimit::ExactTarget(10, 30), vec![]),
+				None
+			);
+			assert_eq!(
+				DexModule::get_best_price_swap_path(DOT, AUSD, SwapLimit::ExactTarget(0, 0), vec![]),
+				None
+			);
+			assert_eq!(
+				DexModule::get_best_price_swap_path(DOT, AUSD, SwapLimit::ExactTarget(20, 30), vec![vec![ACA]]),
+				Some(vec![DOT, AUSD])
+			);
+			assert_eq!(
+				DexModule::get_best_price_swap_path(DOT, AUSD, SwapLimit::ExactTarget(20, 30), vec![vec![DOT]]),
+				Some(vec![DOT, AUSD])
+			);
+			assert_eq!(
+				DexModule::get_best_price_swap_path(DOT, AUSD, SwapLimit::ExactTarget(20, 30), vec![vec![AUSD]]),
+				Some(vec![DOT, AUSD])
+			);
+			assert_eq!(
+				DexModule::get_best_price_swap_path(DOT, AUSD, SwapLimit::ExactTarget(20, 30), vec![vec![BTC]]),
+				Some(vec![DOT, BTC, AUSD])
+			);
+			assert_eq!(
+				DexModule::get_best_price_swap_path(DOT, AUSD, SwapLimit::ExactTarget(100000, 20000), vec![vec![BTC]]),
+				Some(vec![DOT, AUSD])
+			);
+		});
+}
+
+#[test]
+fn swap_with_specific_path_work() {
+	ExtBuilder::default()
+		.initialize_enabled_trading_pairs()
+		.build()
+		.execute_with(|| {
+			System::set_block_number(1);
+			assert_ok!(DexModule::add_liquidity(
+				Origin::signed(ALICE),
+				AUSD,
+				DOT,
+				500_000_000_000_000,
+				100_000_000_000_000,
+				0,
+				false,
+			));
+
+			assert_noop!(
+				DexModule::swap_with_specific_path(
+					&BOB,
+					&vec![DOT, AUSD],
+					SwapLimit::ExactSupply(100_000_000_000_000, 248_743_718_592_965)
+				),
+				Error::<Runtime>::InsufficientTargetAmount
+			);
+
+			assert_ok!(DexModule::swap_with_specific_path(
+				&BOB,
+				&vec![DOT, AUSD],
+				SwapLimit::ExactSupply(100_000_000_000_000, 200_000_000_000_000)
+			));
+			System::assert_last_event(Event::DexModule(crate::Event::Swap(
+				BOB,
+				vec![DOT, AUSD],
+				vec![100_000_000_000_000, 248_743_718_592_964],
+			)));
+
+			assert_noop!(
+				DexModule::swap_with_specific_path(
+					&BOB,
+					&vec![AUSD, DOT],
+					SwapLimit::ExactTarget(253_794_223_643_470, 100_000_000_000_000)
+				),
+				Error::<Runtime>::ExcessiveSupplyAmount
+			);
+
+			assert_ok!(DexModule::swap_with_specific_path(
+				&BOB,
+				&vec![AUSD, DOT],
+				SwapLimit::ExactTarget(300_000_000_000_000, 100_000_000_000_000)
+			));
+			System::assert_last_event(Event::DexModule(crate::Event::Swap(
+				BOB,
+				vec![AUSD, DOT],
+				vec![253_794_223_643_471, 100_000_000_000_000],
+			)));
 		});
 }

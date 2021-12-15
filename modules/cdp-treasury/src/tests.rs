@@ -187,99 +187,13 @@ fn get_debit_proportion_work() {
 }
 
 #[test]
-fn swap_collateral_to_exact_stable_work() {
+fn swap_collateral_to_stable_work() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(DEXModule::add_liquidity(
-			Origin::signed(ALICE),
-			BTC,
-			AUSD,
-			100,
-			1000,
-			0,
-			false
-		));
-		assert_ok!(DEXModule::add_liquidity(
-			Origin::signed(ALICE),
-			BTC,
-			DOT,
-			900,
-			1000,
-			0,
-			false
-		));
-		assert_ok!(DEXModule::add_liquidity(
-			Origin::signed(BOB),
-			DOT,
-			AUSD,
-			1000,
-			1000,
-			0,
-			false
-		));
 		assert_ok!(CDPTreasuryModule::deposit_collateral(&BOB, BTC, 200));
-		assert_eq!(CDPTreasuryModule::surplus_pool(), 0);
+		assert_ok!(CDPTreasuryModule::deposit_collateral(&CHARLIE, DOT, 1000));
 		assert_eq!(CDPTreasuryModule::total_collaterals_not_in_auction(BTC), 200);
-
-		assert_noop!(
-			CDPTreasuryModule::swap_collateral_to_exact_stable(BTC, 201, 499, &[BTC, AUSD], false),
-			Error::<Runtime>::CollateralNotEnough,
-		);
-
-		assert_ok!(CDPTreasuryModule::swap_collateral_to_exact_stable(
-			BTC,
-			100,
-			499,
-			&[BTC, AUSD],
-			false
-		));
-		assert_eq!(CDPTreasuryModule::surplus_pool(), 499);
-		assert_eq!(CDPTreasuryModule::total_collaterals_not_in_auction(BTC), 100);
-
-		assert_noop!(
-			CDPTreasuryModule::swap_collateral_to_exact_stable(BTC, 100, 199, &[BTC], false),
-			Error::<Runtime>::InvalidSwapPath
-		);
-		assert_noop!(
-			CDPTreasuryModule::swap_collateral_to_exact_stable(BTC, 100, 199, &[BTC, DOT], false),
-			Error::<Runtime>::InvalidSwapPath
-		);
-		assert_noop!(
-			CDPTreasuryModule::swap_collateral_to_exact_stable(BTC, 100, 199, &[DOT, AUSD], false),
-			Error::<Runtime>::InvalidSwapPath
-		);
-		assert_ok!(CDPTreasuryModule::swap_collateral_to_exact_stable(
-			BTC,
-			100,
-			10,
-			&[BTC, DOT, AUSD],
-			false
-		));
-		assert_eq!(CDPTreasuryModule::surplus_pool(), 509);
-		assert_eq!(CDPTreasuryModule::total_collaterals_not_in_auction(BTC), 89);
-	});
-}
-
-#[test]
-fn swap_exact_collateral_to_stable_work() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_ok!(DEXModule::add_liquidity(
-			Origin::signed(ALICE),
-			BTC,
-			AUSD,
-			100,
-			1000,
-			0,
-			false
-		));
-		assert_ok!(DEXModule::add_liquidity(
-			Origin::signed(ALICE),
-			BTC,
-			DOT,
-			900,
-			1000,
-			0,
-			false
-		));
+		assert_eq!(CDPTreasuryModule::total_collaterals_not_in_auction(DOT), 1000);
+		assert_eq!(CDPTreasuryModule::surplus_pool(), 0);
 		assert_ok!(DEXModule::add_liquidity(
 			Origin::signed(BOB),
 			DOT,
@@ -289,55 +203,48 @@ fn swap_exact_collateral_to_stable_work() {
 			0,
 			false
 		));
-		assert_ok!(CDPTreasuryModule::deposit_collateral(&BOB, BTC, 200));
-		assert_eq!(CDPTreasuryModule::surplus_pool(), 0);
-		assert_eq!(CDPTreasuryModule::total_collaterals(BTC), 200);
 
 		assert_noop!(
-			CDPTreasuryModule::swap_exact_collateral_to_stable(BTC, 200, 100, &[BTC, AUSD], true),
+			CDPTreasuryModule::swap_collateral_to_stable(BTC, SwapLimit::ExactTarget(201, 200), false),
+			Error::<Runtime>::CollateralNotEnough,
+		);
+		assert_noop!(
+			CDPTreasuryModule::swap_collateral_to_stable(DOT, SwapLimit::ExactSupply(1001, 0), false),
 			Error::<Runtime>::CollateralNotEnough,
 		);
 
-		assert_ok!(CDPTreasuryModule::create_collateral_auctions(
-			BTC, 200, 1000, ALICE, true
-		));
-		assert_eq!(TOTAL_COLLATERAL_IN_AUCTION.with(|v| *v.borrow_mut()), 200);
-
-		assert_eq!(CDPTreasuryModule::total_collaterals(BTC), 200);
-		assert_eq!(MockAuctionManager::get_total_collateral_in_auction(BTC), 200);
-
-		assert_ok!(CDPTreasuryModule::swap_exact_collateral_to_stable(
+		assert_noop!(
+			CDPTreasuryModule::swap_collateral_to_stable(BTC, SwapLimit::ExactTarget(200, 399), false),
+			Error::<Runtime>::NoSwapPath
+		);
+		assert_ok!(DEXModule::add_liquidity(
+			Origin::signed(ALICE),
 			BTC,
+			DOT,
 			100,
-			400,
-			&[BTC, AUSD],
-			true
+			1000,
+			0,
+			false
 		));
-		assert_eq!(CDPTreasuryModule::surplus_pool(), 500);
-		assert_eq!(CDPTreasuryModule::total_collaterals(BTC), 100);
+
+		assert_eq!(
+			CDPTreasuryModule::swap_collateral_to_stable(BTC, SwapLimit::ExactTarget(200, 399), false).unwrap(),
+			(198, 399)
+		);
+		assert_eq!(CDPTreasuryModule::surplus_pool(), 399);
+		assert_eq!(CDPTreasuryModule::total_collaterals_not_in_auction(BTC), 2);
 
 		assert_noop!(
-			CDPTreasuryModule::swap_exact_collateral_to_stable(BTC, 100, 199, &[BTC], true),
-			Error::<Runtime>::InvalidSwapPath
-		);
-		assert_noop!(
-			CDPTreasuryModule::swap_exact_collateral_to_stable(BTC, 100, 199, &[BTC, DOT], true),
-			Error::<Runtime>::InvalidSwapPath
-		);
-		assert_noop!(
-			CDPTreasuryModule::swap_exact_collateral_to_stable(BTC, 100, 199, &[DOT, AUSD], true),
-			Error::<Runtime>::InvalidSwapPath
+			CDPTreasuryModule::swap_collateral_to_stable(DOT, SwapLimit::ExactSupply(1000, 1000), false),
+			Error::<Runtime>::NoSwapPath,
 		);
 
-		assert_ok!(CDPTreasuryModule::swap_exact_collateral_to_stable(
-			BTC,
-			100,
-			10,
-			&[BTC, DOT, AUSD],
-			true
-		));
-		assert_eq!(CDPTreasuryModule::surplus_pool(), 590);
-		assert_eq!(CDPTreasuryModule::total_collaterals(BTC), 0);
+		assert_eq!(
+			CDPTreasuryModule::swap_collateral_to_stable(DOT, SwapLimit::ExactSupply(1000, 0), false).unwrap(),
+			(1000, 225)
+		);
+		assert_eq!(CDPTreasuryModule::surplus_pool(), 624);
+		assert_eq!(CDPTreasuryModule::total_collaterals_not_in_auction(DOT), 0);
 	});
 }
 
