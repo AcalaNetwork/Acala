@@ -107,6 +107,7 @@ module-homa-lite = { path = "../../modules/homa-lite", default-features = false 
 module-session-manager = { path = "../../modules/session-manager", default-features = false }
 module-relaychain = { path = "../../modules/relaychain", default-features = false, features = ["kusama"] }
 module-idle-scheduler = { path = "../../modules/idle-scheduler", default-features = false }
+nutsfinance-stable-asset = { version = "0.1.0", default-features = false, path = "../../ecosystem-modules/stable-asset/lib/stable-asset", package = "nutsfinance-stable-asset" }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 runtime-common = { path = "../common", default-features = false }
 

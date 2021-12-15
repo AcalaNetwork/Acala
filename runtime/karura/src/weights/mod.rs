@@ -38,6 +38,7 @@ pub mod module_session_manager;
 pub mod module_transaction_pause;
 pub mod module_transaction_payment;
 
+pub mod nutsfinance_stable_asset;
 pub mod orml_auction;
 pub mod orml_authority;
 pub mod orml_oracle;

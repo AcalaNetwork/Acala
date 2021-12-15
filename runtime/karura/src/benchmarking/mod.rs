@@ -86,7 +86,9 @@ pub mod tokens {
 pub mod vesting {
 	include!("../../../mandala/src/benchmarking/vesting.rs");
 }
-
+pub mod nutsfinance_stable_asset {
+	include!("../../../mandala/src/benchmarking/nutsfinance_stable_asset.rs");
+}
 pub fn get_vesting_account() -> super::AccountId {
 	super::KaruraFoundationAccounts::get()[0].clone()
 }

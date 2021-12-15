@@ -22,18 +22,24 @@ use super::utils::set_balance_fungibles;
 use frame_benchmarking::{account, whitelisted_caller};
 use frame_system::RawOrigin;
 use orml_benchmarking::runtime_benchmarks;
-use primitives::currency::{CurrencyId, AUSD, BNC, DOT, LDOT, VSKSM};
+use primitives::currency::{CurrencyId, BNC, PHA, VSKSM};
 use sp_std::prelude::*;
 
 const SEED: u32 = 0;
-const CURRENCY_LIST: [CurrencyId; 5] = [LDOT, AUSD, DOT, BNC, VSKSM];
+const CURRENCY_LIST: [CurrencyId; 5] = [
+	CurrencyId::StableAssetPoolToken(100),
+	CurrencyId::StableAssetPoolToken(101),
+	PHA,
+	BNC,
+	VSKSM,
+];
 
 runtime_benchmarks! {
 	{ Runtime, nutsfinance_stable_asset }
 
 	create_pool {
 		let pool_asset = CurrencyId::StableAssetPoolToken(1);
-		let assets = vec![LDOT, AUSD];
+		let assets = vec![BNC, VSKSM];
 		let precisions = vec![1u128, 1u128];
 		let mint_fee = 10000000u128;
 		let swap_fee = 20000000u128;
@@ -45,7 +51,7 @@ runtime_benchmarks! {
 
 	modify_a {
 		let pool_asset = CurrencyId::StableAssetPoolToken(1);
-		let assets = vec![LDOT, AUSD];
+		let assets = vec![BNC, VSKSM];
 		let precisions = vec![1u128, 1u128];
 		let mint_fee = 10000000u128;
 		let swap_fee = 20000000u128;
