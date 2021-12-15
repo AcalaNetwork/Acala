@@ -185,10 +185,10 @@ fn create_predeploy_contract<T: Config>(gas: u64) -> Weight {
 		.saturating_add(T::GasToWeight::convert(gas.saturating_sub(BASE_CREATE_GAS)))
 }
 
-/// Helper method to calculate `create_network_contract` weight.
-fn create_network_contract<T: Config>(gas: u64) -> Weight {
-	<T as Config>::WeightInfo::create_network_contract()
-		// during `create_network_contract` benchmark an additional of `BASE_CREATE_GAS`
+/// Helper method to calculate `create_nft_contract` weight.
+fn create_nft_contract<T: Config>(gas: u64) -> Weight {
+	<T as Config>::WeightInfo::create_nft_contract()
+		// during `create_nft_contract` benchmark an additional of `BASE_CREATE_GAS`
 		// was used so user will be extra charged only for extra gas usage
 		.saturating_add(T::GasToWeight::convert(gas.saturating_sub(BASE_CREATE_GAS)))
 }
@@ -726,7 +726,7 @@ pub mod module {
 		/// - `value`: the amount sent for payable calls
 		/// - `gas_limit`: the maximum gas the call can use
 		/// - `storage_limit`: the total bytes the contract's storage can increase by
-		#[pallet::weight(create_network_contract::<T>(*gas_limit))]
+		#[pallet::weight(create_nft_contract::<T>(*gas_limit))]
 		#[transactional]
 		pub fn create_nft_contract(
 			origin: OriginFor<T>,
@@ -747,7 +747,7 @@ pub mod module {
 			let used_gas: u64 = info.used_gas.unique_saturated_into();
 
 			Ok(PostDispatchInfo {
-				actual_weight: Some(create_network_contract::<T>(used_gas)),
+				actual_weight: Some(create_nft_contract::<T>(used_gas)),
 				pays_fee: Pays::Yes,
 			})
 		}

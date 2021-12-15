@@ -138,7 +138,7 @@ runtime_benchmarks! {
 		assert!(module_evm::Codes::<Runtime>::contains_key(code_hash));
 	}
 
-	create_network_contract {
+	create_nft_contract {
 		let account_id = evm_to_account_id(NetworkContractSource::get());
 		set_balance(NATIVE, &account_id, 1_000_000 * dollar(NATIVE));
 	}: _(RawOrigin::Root, EMPTY_CONTRACT.to_vec(), 0, 21_000_000, 100_000)

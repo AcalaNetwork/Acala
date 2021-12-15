@@ -57,7 +57,7 @@ impl<T: frame_system::Config> module_evm::WeightInfo for WeightInfo<T> {
 			.saturating_add(T::DbWeight::get().reads(12 as Weight))
 			.saturating_add(T::DbWeight::get().writes(9 as Weight))
 	}
-	fn create_network_contract() -> Weight {
+	fn create_nft_contract() -> Weight {
 		(128_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(13 as Weight))
 			.saturating_add(T::DbWeight::get().writes(10 as Weight))
