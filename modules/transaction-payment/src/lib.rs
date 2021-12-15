@@ -37,7 +37,7 @@ use frame_support::{
 		constants::WEIGHT_PER_SECOND, DispatchInfo, GetDispatchInfo, Pays, PostDispatchInfo, WeightToFeeCoefficient,
 		WeightToFeePolynomial,
 	},
-	BoundedVec,
+	BoundedVec, PalletId,
 };
 use frame_system::pallet_prelude::*;
 use orml_traits::MultiCurrency;
@@ -47,8 +47,8 @@ use primitives::{Balance, CurrencyId, ReserveIdentifier};
 use scale_info::TypeInfo;
 use sp_runtime::{
 	traits::{
-		Bounded, CheckedDiv, CheckedSub, Convert, DispatchInfoOf, One, PostDispatchInfoOf, SaturatedConversion,
-		Saturating, SignedExtension, UniqueSaturatedInto, Zero,
+		AccountIdConversion, Convert, DispatchInfoOf, PostDispatchInfoOf, SaturatedConversion, Saturating,
+		SignedExtension, Zero,
 	},
 	transaction_validity::{
 		InvalidTransaction, TransactionPriority, TransactionValidity, TransactionValidityError, ValidTransaction,
@@ -223,12 +223,13 @@ where
 #[frame_support::pallet]
 pub mod module {
 	use super::*;
-	use primitives::AssetFixRateAccountId;
 
 	pub const RESERVE_ID: ReserveIdentifier = ReserveIdentifier::TransactionPayment;
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
+		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+
 		/// Native currency id, the actual received currency type as fee for
 		/// treasury. Should be ACA
 		#[pallet::constant]
@@ -239,7 +240,7 @@ pub mod module {
 		type DefaultFeeSwapPathList: Get<Vec<Vec<CurrencyId>>>;
 
 		/// The currency type in which fees will be paid.
-		type Currency: Currency<Self::AccountId>
+		type Currency: Currency<Self::AccountId, Balance = Balance>
 			+ NamedReservableCurrency<Self::AccountId, ReserveIdentifier = ReserveIdentifier>
 			+ Send
 			+ Sync;
@@ -314,20 +315,15 @@ pub mod module {
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
 
+		/// Treasury PalletId used to generate sub account.
+		type TreasuryPalletId: Get<PalletId>;
+
 		/// Treasury account used to initial balance bootstrap.
 		#[pallet::constant]
 		type TreasuryAccount: Get<Self::AccountId>;
 
-		/// Initial native asset balance transfer from treasury to pool.
-		#[pallet::constant]
-		type InitialBootstrapBalanceForFeePool: Get<PalletBalanceOf<Self>>;
-
-		/// The rate of foreign_asset_per_second to native_asset_per_second.
-		#[pallet::constant]
-		type AssetFixRateAccountIds: Get<Vec<AssetFixRateAccountId<Self::AccountId>>>;
-
 		/// The root operator of admin operation(i.e. change trigger threshold).
-		type TreasuryOrigin: EnsureOrigin<Self::Origin, Success = Self::AccountId>;
+		type UpdateOrigin: EnsureOrigin<Self::Origin, Success = Self::AccountId>;
 	}
 
 	#[pallet::extra_constants]
@@ -355,12 +351,25 @@ pub mod module {
 		AssetNotInFeePool,
 	}
 
+	#[pallet::event]
+	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
+	pub enum Event<T: Config> {
+		TriggerThresholdUpdated(Balance),
+		TriggerSwap(Balance, Balance, CurrencyId),
+		SwapFromDex(Balance, Balance, Ratio),
+		ChargeFee(Balance, Balance, Ratio),
+	}
+
 	/// The next fee multiplier.
 	///
 	/// NextFeeMultiplier: Multiplier
 	#[pallet::storage]
 	#[pallet::getter(fn next_fee_multiplier)]
 	pub type NextFeeMultiplier<T: Config> = StorageValue<_, Multiplier, ValueQuery, DefaultFeeMultiplier>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn initial_balance)]
+	pub type PoolSize<T: Config> = StorageValue<_, Balance, ValueQuery>;
 
 	/// The alternative fee swap path of accounts.
 	#[pallet::storage]
@@ -371,18 +380,13 @@ pub mod module {
 	/// The ratio of foreign_asset_per_second to native_asset_per_second.
 	/// the reverse ratio means the value of foreign asset to native asset.
 	#[pallet::storage]
-	#[pallet::getter(fn charge_fee_pool)]
+	#[pallet::getter(fn fee_rate)]
 	pub type FeeRateOfToken<T: Config> = StorageMap<_, Twox64Concat, CurrencyId, Ratio, OptionQuery>;
 
-	/// The treasury fee pool sub account of foregign asset.
+	/// Each asset has threshold to trigger swap, default to `PoolSize`/5.
 	#[pallet::storage]
-	#[pallet::getter(fn treasury_accounts)]
-	pub type TreasuryAccounts<T: Config> = StorageMap<_, Twox64Concat, CurrencyId, T::AccountId, ValueQuery>;
-
-	/// Each asset has threshold to trigger swap, default to `InitialBootstrapBalanceForFeePool`/5.
-	#[pallet::storage]
-	#[pallet::getter(fn swap_threshold)]
-	pub type SwapBalanceThreshold<T: Config> = StorageMap<_, Twox64Concat, CurrencyId, u128, ValueQuery>;
+	#[pallet::getter(fn trigger_threshold)]
+	pub type SwapBalanceThreshold<T: Config> = StorageMap<_, Twox64Concat, CurrencyId, Balance, ValueQuery>;
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
@@ -390,16 +394,6 @@ pub mod module {
 	#[pallet::hooks]
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
 		fn on_runtime_upgrade() -> Weight {
-			let from = T::TreasuryAccount::get();
-			let balance = T::InitialBootstrapBalanceForFeePool::get();
-			// deposit initial bootstrap balance from treasury to every treasury fee sub account.
-			let asset_rates = T::AssetFixRateAccountIds::get();
-			for asset_rate in asset_rates {
-				let _ = T::Currency::transfer(&from, &asset_rate.2, balance, ExistenceRequirement::KeepAlive);
-				SwapBalanceThreshold::<T>::insert(asset_rate.0, balance.saturated_into::<u128>() / 5);
-				FeeRateOfToken::<T>::insert(asset_rate.0, asset_rate.1);
-				TreasuryAccounts::<T>::insert(asset_rate.0, asset_rate.2);
-			}
 			0
 		}
 
@@ -487,12 +481,11 @@ pub mod module {
 		pub fn set_trigger_threshold(
 			origin: OriginFor<T>,
 			currency_id: CurrencyId,
-			threshold: PalletBalanceOf<T>,
+			threshold: Balance,
 		) -> DispatchResult {
-			T::TreasuryOrigin::ensure_origin(origin)?;
-			if threshold < T::InitialBootstrapBalanceForFeePool::get() {
-				SwapBalanceThreshold::<T>::insert(currency_id, threshold.saturated_into::<u128>());
-			}
+			T::UpdateOrigin::ensure_origin(origin)?;
+			SwapBalanceThreshold::<T>::insert(currency_id, threshold);
+			Self::deposit_event(Event::TriggerThresholdUpdated(threshold));
 			Ok(())
 		}
 	}
@@ -682,7 +675,7 @@ where
 		// check native balance if is enough
 		let native_is_enough = fee.saturating_add(native_existential_deposit) <= total_native
 			&& <T as Config>::Currency::free_balance(who)
-				.checked_sub(&fee)
+				.checked_sub(fee)
 				.map_or(false, |new_free_balance| {
 					<T as Config>::Currency::ensure_can_withdraw(who, fee, reason, new_free_balance).is_ok()
 				});
@@ -697,7 +690,7 @@ where
 	}
 
 	/// Iterate order list, if can swap out enough native asset amount with foreign asset, then stop
-	fn swap_native_asset(who: &T::AccountId, amount: PalletBalanceOf<T>) {
+	fn swap_native_asset(who: &T::AccountId, amount: Balance) {
 		let native_currency_id = T::NativeCurrencyId::get();
 		let fee_swap_path_list: Vec<Vec<CurrencyId>> = Self::get_trading_path(who);
 
@@ -757,50 +750,52 @@ where
 	#[transactional]
 	fn swap_from_treasury(
 		who: &T::AccountId,
-		amount: PalletBalanceOf<T>,
+		amount: Balance,
 		supply_currency_id: CurrencyId,
 	) -> sp_std::result::Result<(), DispatchError> {
-		let treasury_account = TreasuryAccounts::<T>::get(supply_currency_id);
+		let treasury_account = Self::treasury_sub_account_id(supply_currency_id);
 		let treasury_supply_balance = T::MultiCurrency::free_balance(supply_currency_id, &treasury_account);
-		let mut rate = Pallet::<T>::charge_fee_pool(supply_currency_id)
+		let mut rate = FeeRateOfToken::<T>::get(supply_currency_id)
 			.ok_or(Error::<T>::AssetNotInFeePool)
 			.unwrap();
-		let initial_bootstrap_balance: u128 = T::InitialBootstrapBalanceForFeePool::get().saturated_into::<u128>();
 		let swap_balance_threshold = SwapBalanceThreshold::<T>::get(supply_currency_id);
 
 		// user's supply asset should have enough balance based on old fix rate.
 		let user_supply_balance = T::MultiCurrency::free_balance(supply_currency_id, who);
-		let expect_rate_balance = rate.saturating_mul_int(amount.saturated_into::<u128>());
+		let expect_rate_balance = rate.saturating_mul_int(amount);
 		ensure!(
 			user_supply_balance >= expect_rate_balance,
 			Error::<T>::SupplyBalanceTooLow
 		);
 
 		// if treasury account has not enough native asset, trigger swap
-		let treasury_balance = T::Currency::free_balance(&treasury_account).saturated_into::<u128>();
+		let treasury_balance = T::Currency::free_balance(&treasury_account);
 		if treasury_balance < swap_balance_threshold {
 			let trading_path = Self::get_trading_path_by_currency(&treasury_account, supply_currency_id);
 			if let Some(trading_path) = trading_path {
+				Self::deposit_event(Event::TriggerSwap(
+					treasury_balance,
+					swap_balance_threshold,
+					supply_currency_id,
+				));
 				if let Ok(swap_native_balance) =
 					T::DEX::swap_with_exact_supply(&treasury_account, &trading_path, treasury_supply_balance, 0)
 				{
 					// calculate and update new rate of supply asset to native asset
-					// let new_native_balance = rate.saturating_mul_int(swap_native_balance + lefted_native_balance);
 					let new_native_balance = rate.saturating_mul_int(swap_native_balance + treasury_balance);
-					rate = Ratio::saturating_from_rational(
-						new_native_balance.saturated_into::<u128>(),
-						initial_bootstrap_balance,
-					);
+					rate = Ratio::saturating_from_rational(new_native_balance, PoolSize::<T>::get());
 					FeeRateOfToken::<T>::insert(supply_currency_id, rate);
+					Self::deposit_event(Event::SwapFromDex(swap_native_balance, new_native_balance, rate));
 				}
 			}
 		}
 
 		// use fix rate to calculate the amount of supply asset that equal to native asset.
 		// exchange user's supply asset and treasury's native asset.
-		let token_amount: u128 = rate.saturating_mul_int(amount.saturated_into::<u128>());
+		let token_amount: u128 = rate.saturating_mul_int(amount);
 		T::MultiCurrency::transfer(supply_currency_id, who, &treasury_account, token_amount)?;
 		T::Currency::transfer(&treasury_account, who, amount, ExistenceRequirement::KeepAlive)?;
+		Self::deposit_event(Event::ChargeFee(token_amount, amount, rate));
 		Ok(())
 	}
 
@@ -824,6 +819,19 @@ where
 			}
 		}
 		None
+	}
+
+	pub fn treasury_sub_account_id(id: CurrencyId) -> T::AccountId {
+		T::TreasuryPalletId::get().into_sub_account(id)
+	}
+
+	pub fn update_storage(balance: Balance, currency_id: CurrencyId, rate: Ratio) {
+		let from = T::TreasuryAccount::get();
+		let account = Self::treasury_sub_account_id(currency_id);
+		let _ = T::Currency::transfer(&from, &account, balance, ExistenceRequirement::KeepAlive);
+		SwapBalanceThreshold::<T>::insert(currency_id, balance / 5);
+		FeeRateOfToken::<T>::insert(currency_id, rate);
+		PoolSize::<T>::set(balance);
 	}
 }
 
@@ -860,7 +868,7 @@ where
 		if let AssetId::Concrete(ref multi_location) = asset_id.clone() {
 			let token_id = C::convert(multi_location.clone());
 			if let Some(token_id) = token_id {
-				if let Some(rate) = Pallet::<T>::charge_fee_pool(token_id) {
+				if let Some(rate) = FeeRateOfToken::<T>::get(token_id) {
 					// rate=token_per_second/kar_per_second. so token_per_second=rate*kar_per_second.
 					if let Ok(token_per_second) = rate
 						.checked_mul_int(K::get())

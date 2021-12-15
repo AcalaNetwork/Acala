@@ -1147,12 +1147,13 @@ impl OnUnbalanced<NegativeImbalance> for DealWithFees {
 }
 
 parameter_types! {
-	pub AssetFixRateAccountIds: Vec<AssetFixRateAccountId<AccountId>> = vec![
-		AssetFixRateAccountId::<AccountId>(DOT, Ratio::saturating_from_rational(1, 100), UpdatedFeePoolPalletId::get().into_sub_account("DOT")),
+	pub AssetFixRateAccountIds: Vec<AssetFixRateAccountId> = vec![
+		AssetFixRateAccountId(DOT, Ratio::saturating_from_rational(1, 100)),
 	];
 }
 
 impl module_transaction_payment::Config for Runtime {
+	type Event = Event;
 	type NativeCurrencyId = GetNativeCurrencyId;
 	type DefaultFeeSwapPathList = DefaultFeeSwapPathList;
 	type Currency = Balances;
@@ -1169,10 +1170,9 @@ impl module_transaction_payment::Config for Runtime {
 	type TradingPathLimit = TradingPathLimit;
 	type PriceSource = module_prices::RealTimePriceProvider<Runtime>;
 	type WeightInfo = weights::module_transaction_payment::WeightInfo<Runtime>;
-	type InitialBootstrapBalanceForFeePool = InitialBootstrapBalanceForFeePool;
+	type TreasuryPalletId = UpdatedFeePoolPalletId;
 	type TreasuryAccount = TreasuryAccount;
-	type TreasuryOrigin = EnsureRootOrTreasury;
-	type AssetFixRateAccountIds = AssetFixRateAccountIds;
+	type UpdateOrigin = EnsureRootOrTreasury;
 }
 
 impl module_evm_accounts::Config for Runtime {
@@ -2059,7 +2059,7 @@ construct_runtime! {
 		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>} = 11,
 		Currencies: module_currencies::{Pallet, Call, Event<T>} = 12,
 		Vesting: orml_vesting::{Pallet, Storage, Call, Event<T>, Config<T>} = 13,
-		TransactionPayment: module_transaction_payment::{Pallet, Call, Storage} = 14,
+		TransactionPayment: module_transaction_payment::{Pallet, Call, Storage, Event<T>} = 14,
 
 		// Treasury
 		Treasury: pallet_treasury::{Pallet, Call, Storage, Config, Event<T>} = 20,

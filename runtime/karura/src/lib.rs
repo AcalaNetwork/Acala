@@ -1125,6 +1125,7 @@ impl OnUnbalanced<NegativeImbalance> for DealWithFees {
 }
 
 impl module_transaction_payment::Config for Runtime {
+	type Event = Event;
 	type NativeCurrencyId = GetNativeCurrencyId;
 	type DefaultFeeSwapPathList = DefaultFeeSwapPathList;
 	type Currency = Balances;
@@ -1141,10 +1142,9 @@ impl module_transaction_payment::Config for Runtime {
 	type TradingPathLimit = TradingPathLimit;
 	type PriceSource = module_prices::RealTimePriceProvider<Runtime>;
 	type WeightInfo = weights::module_transaction_payment::WeightInfo<Runtime>;
-	type InitialBootstrapBalanceForFeePool = InitialBootstrapBalanceForFeePool;
+	type TreasuryPalletId = UpdatedFeePoolPalletId;
 	type TreasuryAccount = KaruraTreasuryAccount;
-	type TreasuryOrigin = EnsureKaruraFoundation;
-	type AssetFixRateAccountIds = AssetFixRateAccountIds;
+	type UpdateOrigin = EnsureKaruraFoundation;
 }
 
 impl module_evm_accounts::Config for Runtime {
@@ -1518,13 +1518,13 @@ parameter_types! {
 	);
 
 	pub KarPerSecondAsBased: u128 = kar_per_second();
-	pub AssetFixRateAccountIds: Vec<AssetFixRateAccountId<AccountId>> = vec![
-		AssetFixRateAccountId::<AccountId>(KSM, calculate_asset_ratio(KsmPerSecond::get(), KarPerSecond::get()),  UpdatedFeePoolPalletId::get().into_sub_account("KSM")),
-		AssetFixRateAccountId::<AccountId>(KUSD, calculate_asset_ratio(KusdPerSecond::get(), KarPerSecond::get()),  UpdatedFeePoolPalletId::get().into_sub_account("KUSD")),
-		AssetFixRateAccountId::<AccountId>(LKSM, calculate_asset_ratio(LksmPerSecond::get(), KarPerSecond::get()),  UpdatedFeePoolPalletId::get().into_sub_account("LKSM")),
-		AssetFixRateAccountId::<AccountId>(BNC, calculate_asset_ratio(BncPerSecond::get(), KarPerSecond::get()),  UpdatedFeePoolPalletId::get().into_sub_account("BNC")),
-		AssetFixRateAccountId::<AccountId>(VSKSM, calculate_asset_ratio(VsksmPerSecond::get(), KarPerSecond::get()),  UpdatedFeePoolPalletId::get().into_sub_account("VSKSM")),
-		AssetFixRateAccountId::<AccountId>(PHA, calculate_asset_ratio(PHAPerSecond::get(), KarPerSecond::get()),  UpdatedFeePoolPalletId::get().into_sub_account("PHA")),
+	pub AssetFixRateAccountIds: Vec<AssetFixRateAccountId> = vec![
+		AssetFixRateAccountId(KSM, calculate_asset_ratio(KsmPerSecond::get(), KarPerSecond::get())),
+		AssetFixRateAccountId(KUSD, calculate_asset_ratio(KusdPerSecond::get(), KarPerSecond::get())),
+		AssetFixRateAccountId(LKSM, calculate_asset_ratio(LksmPerSecond::get(), KarPerSecond::get())),
+		AssetFixRateAccountId(BNC, calculate_asset_ratio(BncPerSecond::get(), KarPerSecond::get())),
+		AssetFixRateAccountId(VSKSM, calculate_asset_ratio(VsksmPerSecond::get(), KarPerSecond::get())),
+		AssetFixRateAccountId(PHA, calculate_asset_ratio(PHAPerSecond::get(), KarPerSecond::get())),
 	];
 }
 
@@ -1884,7 +1884,7 @@ construct_runtime!(
 		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>} = 11,
 		Currencies: module_currencies::{Pallet, Call, Event<T>} = 12,
 		Vesting: orml_vesting::{Pallet, Storage, Call, Event<T>, Config<T>} = 13,
-		TransactionPayment: module_transaction_payment::{Pallet, Call, Storage} = 14,
+		TransactionPayment: module_transaction_payment::{Pallet, Call, Storage, Event<T>} = 14,
 
 		// Treasury
 		Treasury: pallet_treasury::{Pallet, Call, Storage, Config, Event<T>} = 20,
@@ -1991,8 +1991,29 @@ pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExtra>;
 /// Executive: handles dispatch to the various modules.
-pub type Executive =
-	frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllPallets, ()>;
+pub type Executive = frame_executive::Executive<
+	Runtime,
+	Block,
+	frame_system::ChainContext<Runtime>,
+	Runtime,
+	AllPallets,
+	TransactionPaymentUpgrade,
+>;
+
+pub struct TransactionPaymentUpgrade;
+
+impl frame_support::traits::OnRuntimeUpgrade for TransactionPaymentUpgrade {
+	fn on_runtime_upgrade() -> Weight {
+		for asset in AssetFixRateAccountIds::get() {
+			<module_transaction_payment::Pallet<Runtime>>::update_storage(
+				InitialBootstrapBalanceForFeePool::get(),
+				asset.0,
+				asset.1,
+			);
+		}
+		0
+	}
+}
 
 #[cfg(not(feature = "disable-runtime-api"))]
 impl_runtime_apis! {

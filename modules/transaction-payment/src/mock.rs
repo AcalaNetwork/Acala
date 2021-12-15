@@ -232,11 +232,11 @@ parameter_types! {
 	pub const InitialBootstrapBalanceForFeePool: Balance = 10_000;
 	pub const UpdatedFeePoolPalletId: PalletId = PalletId(*b"aca/fees");
 	pub const TreasuryPalletId: PalletId = PalletId(*b"aca/trsy");
-	pub AssetFixRateAccountIds: Vec<AssetFixRateAccountId<AccountId>> = vec![
-		AssetFixRateAccountId::<AccountId>(KSM, Ratio::saturating_from_rational(2, 100), UpdatedFeePoolPalletId::get().into_sub_account("KSM")),
+	pub AssetFixRateAccountIds: Vec<AssetFixRateAccountId> = vec![
+		AssetFixRateAccountId(KSM, Ratio::saturating_from_rational(2, 100)),
 		// 1 DOT = 10 ACA, 1 ACA = 10 AUSD
-		AssetFixRateAccountId::<AccountId>(AUSD, Ratio::saturating_from_rational(10, 1), UpdatedFeePoolPalletId::get().into_sub_account("AUSD")),
-		AssetFixRateAccountId::<AccountId>(DOT, Ratio::saturating_from_rational(1, 10), UpdatedFeePoolPalletId::get().into_sub_account("DOT")),
+		AssetFixRateAccountId(AUSD, Ratio::saturating_from_rational(10, 1)),
+		AssetFixRateAccountId(DOT, Ratio::saturating_from_rational(1, 10)),
 	];
 }
 parameter_types! {
@@ -247,6 +247,7 @@ ord_parameter_types! {
 }
 
 impl Config for Runtime {
+	type Event = Event;
 	type NativeCurrencyId = GetNativeCurrencyId;
 	type DefaultFeeSwapPathList = DefaultFeeSwapPathList;
 	type Currency = PalletBalances;
@@ -263,10 +264,9 @@ impl Config for Runtime {
 	type TradingPathLimit = TradingPathLimit;
 	type PriceSource = MockPriceSource;
 	type WeightInfo = ();
-	type InitialBootstrapBalanceForFeePool = InitialBootstrapBalanceForFeePool;
+	type TreasuryPalletId = UpdatedFeePoolPalletId;
 	type TreasuryAccount = KaruraTreasuryAccount;
-	type TreasuryOrigin = EnsureSignedBy<ListingOrigin, AccountId>;
-	type AssetFixRateAccountIds = AssetFixRateAccountIds;
+	type UpdateOrigin = EnsureSignedBy<ListingOrigin, AccountId>;
 }
 
 thread_local! {
@@ -297,13 +297,28 @@ construct_runtime!(
 		UncheckedExtrinsic = UncheckedExtrinsic
 	{
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-		TransactionPayment: transaction_payment::{Pallet, Call, Storage},
+		TransactionPayment: transaction_payment::{Pallet, Call, Storage, Event<T>},
 		PalletBalances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
 		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
 		Currencies: module_currencies::{Pallet, Call, Event<T>},
 		DEXModule: module_dex::{Pallet, Storage, Call, Event<T>, Config<T>},
 	}
 );
+
+pub struct MockTransactionPaymentUpgrade;
+
+impl frame_support::traits::OnRuntimeUpgrade for MockTransactionPaymentUpgrade {
+	fn on_runtime_upgrade() -> Weight {
+		for asset in AssetFixRateAccountIds::get() {
+			<transaction_payment::Pallet<Runtime>>::update_storage(
+				InitialBootstrapBalanceForFeePool::get(),
+				asset.0,
+				asset.1,
+			);
+		}
+		0
+	}
+}
 
 pub struct ExtBuilder {
 	balances: Vec<(AccountId, CurrencyId, Balance)>,

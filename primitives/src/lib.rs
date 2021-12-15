@@ -99,10 +99,10 @@ pub type Block = generic::Block<Header, UncheckedExtrinsic>;
 /// Block ID.
 pub type BlockId = generic::BlockId<Block>;
 
-#[derive(Encode, Decode, Eq, PartialEq, Clone, RuntimeDebug, PartialOrd, Ord, TypeInfo)]
+#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
-pub struct AssetFixRateAccountId<AccountId>(pub CurrencyId, pub FixedU128, pub AccountId);
+pub struct AssetFixRateAccountId(pub CurrencyId, pub FixedU128);
 
 /// Opaque, encoded, unchecked extrinsic.
 pub use sp_runtime::OpaqueExtrinsic as UncheckedExtrinsic;

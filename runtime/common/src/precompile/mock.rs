@@ -251,10 +251,11 @@ parameter_types! {
 	pub const UpdatedFeePoolPalletId: PalletId = PalletId(*b"aca/fees");
 	pub const TreasuryPalletId: PalletId = PalletId(*b"aca/trsy");
 	pub KaruraTreasuryAccount: AccountId = TreasuryPalletId::get().into_account();
-	pub AssetFixRateAccountIds: Vec<AssetFixRateAccountId<AccountId>> = vec![];
+	pub AssetFixRateAccountIds: Vec<AssetFixRateAccountId> = vec![];
 }
 
 impl module_transaction_payment::Config for Test {
+	type Event = Event;
 	type NativeCurrencyId = GetNativeCurrencyId;
 	type DefaultFeeSwapPathList = DefaultFeeSwapPathList;
 	type Currency = Balances;
@@ -271,10 +272,9 @@ impl module_transaction_payment::Config for Test {
 	type TradingPathLimit = TradingPathLimit;
 	type PriceSource = module_prices::RealTimePriceProvider<Test>;
 	type WeightInfo = ();
-	type InitialBootstrapBalanceForFeePool = InitialBootstrapBalanceForFeePool;
+	type TreasuryPalletId = UpdatedFeePoolPalletId;
 	type TreasuryAccount = KaruraTreasuryAccount;
-	type TreasuryOrigin = EnsureSignedBy<ListingOrigin, AccountId>;
-	type AssetFixRateAccountIds = AssetFixRateAccountIds;
+	type UpdateOrigin = EnsureSignedBy<ListingOrigin, AccountId>;
 }
 pub type ChargeTransactionPayment = module_transaction_payment::ChargeTransactionPayment<Test>;
 
@@ -528,7 +528,7 @@ frame_support::construct_runtime!(
 		EVMBridge: module_evm_bridge::{Pallet},
 		AssetRegistry: module_asset_registry::{Pallet, Call, Storage, Event<T>},
 		NFTModule: module_nft::{Pallet, Call, Event<T>},
-		TransactionPayment: module_transaction_payment::{Pallet, Call, Storage},
+		TransactionPayment: module_transaction_payment::{Pallet, Call, Storage, Event<T>},
 		Prices: module_prices::{Pallet, Storage, Call, Event<T>},
 		Proxy: pallet_proxy::{Pallet, Call, Storage, Event<T>},
 		Utility: pallet_utility::{Pallet, Call, Event},
