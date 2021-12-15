@@ -2001,7 +2001,6 @@ pub type Executive = frame_executive::Executive<
 >;
 
 pub struct TransactionPaymentUpgrade;
-
 impl frame_support::traits::OnRuntimeUpgrade for TransactionPaymentUpgrade {
 	fn on_runtime_upgrade() -> Weight {
 		for asset in AssetFixRateAccountIds::get() {

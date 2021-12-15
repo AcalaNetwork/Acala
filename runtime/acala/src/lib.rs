@@ -105,17 +105,16 @@ pub use primitives::{
 	TradingPair,
 };
 pub use runtime_common::{
-	cent, dollar, microcent, millicent, AcalaDropAssets, EnsureRootOrAllGeneralCouncil,
+	calculate_asset_ratio, cent, dollar, microcent, millicent, AcalaDropAssets, EnsureRootOrAllGeneralCouncil,
 	EnsureRootOrAllTechnicalCommittee, EnsureRootOrHalfFinancialCouncil, EnsureRootOrHalfGeneralCouncil,
 	EnsureRootOrHalfHomaCouncil, EnsureRootOrOneGeneralCouncil, EnsureRootOrOneThirdsTechnicalCommittee,
 	EnsureRootOrThreeFourthsGeneralCouncil, EnsureRootOrTwoThirdsGeneralCouncil,
 	EnsureRootOrTwoThirdsTechnicalCommittee, ExchangeRate, FinancialCouncilInstance,
 	FinancialCouncilMembershipInstance, GasToWeight, GeneralCouncilInstance, GeneralCouncilMembershipInstance,
-	HomaCouncilInstance, HomaCouncilMembershipInstance, MaxTipsOfPriority, OffchainSolutionWeightLimit,
-	OperationalFeeMultiplier, OperatorMembershipInstanceAcala, Price, ProxyType, Rate, Ratio,
-	RelayChainBlockNumberProvider, RelayChainSubAccountId, RuntimeBlockLength, RuntimeBlockWeights,
-	SystemContractsFilter, TechnicalCommitteeInstance, TechnicalCommitteeMembershipInstance, TimeStampedPrice,
-	TipPerWeightStep, ACA, AUSD, DOT, LDOT, RENBTC,
+	HomaCouncilInstance, HomaCouncilMembershipInstance, MaxTipsOfPriority, OffchainSolutionWeightLimit, OperatorMembershipInstanceAcala,
+	Price, ProxyType, Rate, Ratio, RelayChainBlockNumberProvider, RelayChainSubAccountId, RuntimeBlockLength,
+	RuntimeBlockWeights, SystemContractsFilter, TechnicalCommitteeInstance, TechnicalCommitteeMembershipInstance,
+	TimeStampedPrice, ACA, AUSD, DOT, LDOT, RENBTC,
 };
 
 mod authority;
@@ -1110,7 +1109,10 @@ impl OnUnbalanced<NegativeImbalance> for DealWithFees {
 }
 
 parameter_types! {
-	pub AssetFixRateAccountIds: Vec<AssetFixRateAccountId> = vec![];
+	pub AssetFixRateAccountIds: Vec<AssetFixRateAccountId> = vec![
+		AssetFixRateAccountId(DOT, calculate_asset_ratio(DotPerSecond::get(), AcaPerSecond::get())),
+		AssetFixRateAccountId(AUSD, calculate_asset_ratio(AusdPerSecond::get(), AcaPerSecond::get())),
+	];
 }
 
 impl module_transaction_payment::Config for Runtime {
@@ -1418,6 +1420,13 @@ parameter_types! {
 		).into(),
 		// aUSD:DOT = 40:1
 		dot_per_second() * 40
+	);
+	pub AcaPerSecond: (AssetId, u128) = (
+		MultiLocation::new(
+			1,
+			X2(Parachain(u32::from(ParachainInfo::get())), GeneralKey(ACA.encode())),
+		).into(),
+		aca_per_second()
 	);
 	pub ForeignAssetUnitsPerSecond: u128 = aca_per_second();
 }
@@ -1873,8 +1882,22 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPallets,
-	OnRuntimeUpgrade,
+	(OnRuntimeUpgrade, TransactionPaymentUpgrade),
 >;
+
+pub struct TransactionPaymentUpgrade;
+impl frame_support::traits::OnRuntimeUpgrade for TransactionPaymentUpgrade {
+	fn on_runtime_upgrade() -> Weight {
+		for asset in AssetFixRateAccountIds::get() {
+			<module_transaction_payment::Pallet<Runtime>>::update_storage(
+				InitialBootstrapBalanceForFeePool::get(),
+				asset.0,
+				asset.1,
+			);
+		}
+		0
+	}
+}
 
 #[cfg(not(feature = "disable-runtime-api"))]
 impl_runtime_apis! {

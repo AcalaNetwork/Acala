@@ -113,7 +113,7 @@ pub use primitives::{
 	TokenSymbol, TradingPair,
 };
 pub use runtime_common::{
-	cent, dollar, microcent, millicent, CurveFeeModel, EnsureRootOrAllGeneralCouncil,
+	calculate_asset_ratio, cent, dollar, microcent, millicent, CurveFeeModel, EnsureRootOrAllGeneralCouncil,
 	EnsureRootOrAllTechnicalCommittee, EnsureRootOrHalfFinancialCouncil, EnsureRootOrHalfGeneralCouncil,
 	EnsureRootOrHalfHomaCouncil, EnsureRootOrOneGeneralCouncil, EnsureRootOrOneThirdsTechnicalCommittee,
 	EnsureRootOrThreeFourthsGeneralCouncil, EnsureRootOrTwoThirdsGeneralCouncil,
@@ -1148,7 +1148,7 @@ impl OnUnbalanced<NegativeImbalance> for DealWithFees {
 
 parameter_types! {
 	pub AssetFixRateAccountIds: Vec<AssetFixRateAccountId> = vec![
-		AssetFixRateAccountId(DOT, Ratio::saturating_from_rational(1, 100)),
+		AssetFixRateAccountId(DOT, calculate_asset_ratio(DotPerSecond::get(), AcaPerSecond::get())),
 	];
 }
 
@@ -1645,6 +1645,13 @@ parameter_types! {
 	pub UnitWeightCost: Weight = 1_000_000;
 	pub const MaxInstructions: u32 = 100;
 	pub DotPerSecond: (AssetId, u128) = (MultiLocation::parent().into(), dot_per_second());
+	pub AcaPerSecond: (AssetId, u128) = (
+		MultiLocation::new(
+			1,
+			X2(Parachain(u32::from(ParachainInfo::get())), GeneralKey(ACA.encode())),
+		).into(),
+		aca_per_second()
+	);
 	pub ForeignAssetUnitsPerSecond: u128 = aca_per_second();
 }
 
@@ -2039,8 +2046,28 @@ pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExtra>;
 /// Executive: handles dispatch to the various modules.
-pub type Executive =
-	frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllPallets, ()>;
+pub type Executive = frame_executive::Executive<
+	Runtime,
+	Block,
+	frame_system::ChainContext<Runtime>,
+	Runtime,
+	AllPallets,
+	TransactionPaymentUpgrade,
+>;
+
+pub struct TransactionPaymentUpgrade;
+impl frame_support::traits::OnRuntimeUpgrade for TransactionPaymentUpgrade {
+	fn on_runtime_upgrade() -> Weight {
+		for asset in AssetFixRateAccountIds::get() {
+			<module_transaction_payment::Pallet<Runtime>>::update_storage(
+				InitialBootstrapBalanceForFeePool::get(),
+				asset.0,
+				asset.1,
+			);
+		}
+		0
+	}
+}
 
 construct_runtime! {
 	pub enum Runtime where
