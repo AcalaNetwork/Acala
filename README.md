@@ -27,7 +27,7 @@
 - [3. Building](#3-building)
 - [4. Run](#4-run)
 - [5. Development](#5-development)
-- [6. Bug Bounty :bug:](bug-bounty)
+- [6. Bug Bounty :bug:](#6-bugbounty)
 
 <!-- /TOC -->
 
@@ -150,7 +150,17 @@ make update
 
 __Note:__ All build command from Makefile are designed for local development purposes and hence have `SKIP_WASM_BUILD` enabled to speed up build time and use `--execution native` to only run use native execution mode.
 
-# 6. Bench Bot
+# 6. Bug Bounty :bug:
+
+The Bug Bounty Program touches only runtime modules of Karura and Acala and includes next repositories:
+| Target | Type |
+| -------- | -------- |
+| https://github.com/AcalaNetwork/Acala      |   Blockchain - Main Network   |
+| https://github.com/open-web3-stack/open-runtime-module-library  | Blockchain - Open Runtime Module Library |
+
+You can check Bug Bounty details and Submit a Bug [here](https://immunefi.com/bounty/acala/)
+
+# 7. Bench Bot
 Bench bot can take care of syncing branch with `master` and generating WeightInfos for module or runtime.
 
 ## Generate module weights
@@ -167,7 +177,7 @@ To generate weights for all modules just pass `*` as `module_name` i.e: `/bench 
 
 Bench bot will do the benchmarking, generate weights file push changes into your branch.
 
-# 7. Migration testing runtime
+# 8. Migration testing runtime
 If modify the storage, should test the data migration before upgrade the runtime.
 
 ## Try testing runtime
@@ -188,7 +198,7 @@ cargo run --features with-mandala-runtime --features try-runtime -- try-runtime 
 cargo run --features with-mandala-runtime --features try-runtime -- try-runtime --wasm-execution=compiled --block-at=0x9def608d5674f6d16574f53849218fe13d80ec1042ef7c2d4de7d4c50abab806 --url="wss://karura.api.onfinality.io/public-ws" offchain-worker snap -s snapshot.bin
 ```
 
-# 8. Run local testnet with `RelayChain` and `Parachain`
+# 9. Run local testnet with `RelayChain` and `Parachain`
 Build RelayChain and Parachain local testnet to develop.
 
 ```bash
@@ -227,7 +237,7 @@ docker volume rm [volume_name]
 docker volume prune
 ```
 
-# 9. Build For Release
+# 10. Build For Release
 
 For release artifacts, a more optimized build config is used.
 This config takes around 2x to 3x longer to build, but produces an more optimized binary to run.
