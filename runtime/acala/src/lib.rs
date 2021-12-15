@@ -56,7 +56,7 @@ use module_evm::{CallInfo, CreateInfo, EvmTask, Runner};
 use module_evm_accounts::EvmAddressMapping;
 use module_relaychain::RelayChainCallBuilder;
 use module_support::{DispatchableTask, ForeignAssetIdMapping};
-use module_transaction_payment::{Multiplier, TargetedFeeAdjustment};
+use module_transaction_payment::{Multiplier, PeriodUpdatedRateOfFungible, TargetedFeeAdjustment};
 use orml_traits::{
 	create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended, MultiCurrency,
 };
@@ -100,9 +100,8 @@ pub use authority::AuthorityConfigImpl;
 pub use constants::{fee::*, time::*};
 pub use primitives::{
 	convert_decimals_to_evm, define_combined_task, evm::EstimateResourcesRequest, task::TaskResult, AccountId,
-	AccountIndex, Address, Amount, AssetFixRateAccountId, AuctionId, AuthoritysOriginId, Balance, BlockNumber,
-	CurrencyId, DataProviderId, EraIndex, Hash, Moment, Nonce, ReserveIdentifier, Share, Signature, TokenSymbol,
-	TradingPair,
+	AccountIndex, Address, Amount, AuctionId, AuthoritysOriginId, Balance, BlockNumber, CurrencyId, DataProviderId,
+	EraIndex, Hash, Moment, Nonce, ReserveIdentifier, Share, Signature, TokenFixedRate, TokenSymbol, TradingPair,
 };
 pub use runtime_common::{
 	calculate_asset_ratio, cent, dollar, microcent, millicent, AcalaDropAssets, EnsureRootOrAllGeneralCouncil,
@@ -1109,13 +1108,6 @@ impl OnUnbalanced<NegativeImbalance> for DealWithFees {
 	}
 }
 
-parameter_types! {
-	pub AssetFixRateAccountIds: Vec<AssetFixRateAccountId> = vec![
-		AssetFixRateAccountId(DOT, calculate_asset_ratio(DotPerSecond::get(), AcaPerSecond::get())),
-		AssetFixRateAccountId(AUSD, calculate_asset_ratio(AusdPerSecond::get(), AcaPerSecond::get())),
-	];
-}
-
 impl module_transaction_payment::Config for Runtime {
 	type Event = Event;
 	type NativeCurrencyId = GetNativeCurrencyId;
@@ -1409,29 +1401,6 @@ pub type XcmOriginToCallOrigin = (
 	XcmPassthrough<Origin>,
 );
 
-parameter_types! {
-	// One XCM operation is 200_000_000 weight, cross-chain transfer ~= 2x of transfer.
-	pub const UnitWeightCost: Weight = 200_000_000;
-	pub const MaxInstructions: u32 = 100;
-	pub DotPerSecond: (AssetId, u128) = (MultiLocation::parent().into(), dot_per_second());
-	pub AusdPerSecond: (AssetId, u128) = (
-		MultiLocation::new(
-			1,
-			X2(Parachain(u32::from(ParachainInfo::get())), GeneralKey(AUSD.encode())),
-		).into(),
-		// aUSD:DOT = 40:1
-		dot_per_second() * 40
-	);
-	pub AcaPerSecond: (AssetId, u128) = (
-		MultiLocation::new(
-			1,
-			X2(Parachain(u32::from(ParachainInfo::get())), GeneralKey(ACA.encode())),
-		).into(),
-		aca_per_second()
-	);
-	pub ForeignAssetUnitsPerSecond: u128 = aca_per_second();
-}
-
 pub type Barrier = (
 	TakeWeightCredit,
 	AllowTopLevelPaidExecutionFrom<Everything>,
@@ -1458,7 +1427,32 @@ impl TakeRevenue for ToTreasury {
 	}
 }
 
+parameter_types! {
+	// One XCM operation is 200_000_000 weight, cross-chain transfer ~= 2x of transfer.
+	pub const UnitWeightCost: Weight = 200_000_000;
+	pub const MaxInstructions: u32 = 100;
+	pub DotPerSecond: (AssetId, u128) = (MultiLocation::parent().into(), dot_per_second());
+	pub AusdPerSecond: (AssetId, u128) = (
+		MultiLocation::new(
+			1,
+			X2(Parachain(u32::from(ParachainInfo::get())), GeneralKey(AUSD.encode())),
+		).into(),
+		// aUSD:DOT = 40:1
+		dot_per_second() * 40
+	);
+	pub AcaPerSecond: (AssetId, u128) = (
+		MultiLocation::new(
+			1,
+			X2(Parachain(u32::from(ParachainInfo::get())), GeneralKey(ACA.encode())),
+		).into(),
+		aca_per_second()
+	);
+	pub ForeignAssetUnitsPerSecond: u128 = aca_per_second();
+	pub AcaPerSecondAsBased: u128 = aca_per_second();
+}
+
 pub type Trader = (
+	PeriodUpdatedRateOfFungible<Runtime, CurrencyIdConvert, AcaPerSecondAsBased, ToTreasury>,
 	FixedRateOfFungible<DotPerSecond, ToTreasury>,
 	FixedRateOfFungible<AusdPerSecond, ToTreasury>,
 	FixedRateOfForeignAsset<Runtime, ForeignAssetUnitsPerSecond, ToTreasury>,
@@ -1886,10 +1880,17 @@ pub type Executive = frame_executive::Executive<
 	(OnRuntimeUpgrade, TransactionPaymentUpgrade),
 >;
 
+parameter_types! {
+	pub TokenFixedRates: Vec<TokenFixedRate> = vec![
+		TokenFixedRate(DOT, calculate_asset_ratio(DotPerSecond::get(), AcaPerSecond::get())),
+		TokenFixedRate(AUSD, calculate_asset_ratio(AusdPerSecond::get(), AcaPerSecond::get())),
+	];
+}
+
 pub struct TransactionPaymentUpgrade;
 impl frame_support::traits::OnRuntimeUpgrade for TransactionPaymentUpgrade {
 	fn on_runtime_upgrade() -> Weight {
-		for asset in AssetFixRateAccountIds::get() {
+		for asset in TokenFixedRates::get() {
 			<module_transaction_payment::Pallet<Runtime>>::on_runtime_upgrade(
 				FeePoolBootBalance::get(),
 				asset.0,

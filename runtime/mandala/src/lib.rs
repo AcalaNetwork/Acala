@@ -53,7 +53,7 @@ use module_evm::{CallInfo, CreateInfo, EvmTask, Runner};
 use module_evm_accounts::EvmAddressMapping;
 use module_relaychain::RelayChainCallBuilder;
 use module_support::{DispatchableTask, ExchangeRateProvider, ForeignAssetIdMapping};
-use module_transaction_payment::{Multiplier, TargetedFeeAdjustment};
+use module_transaction_payment::{Multiplier, PeriodUpdatedRateOfFungible, TargetedFeeAdjustment};
 use scale_info::TypeInfo;
 
 use orml_tokens::CurrencyAdapter;
@@ -63,7 +63,7 @@ use orml_traits::{
 use pallet_transaction_payment::{FeeDetails, RuntimeDispatchInfo};
 use primitives::{
 	convert_decimals_to_evm, define_combined_task, evm::EthereumTransactionMessage, task::TaskResult,
-	unchecked_extrinsic::AcalaUncheckedExtrinsic, AssetFixRateAccountId,
+	unchecked_extrinsic::AcalaUncheckedExtrinsic, TokenFixedRate,
 };
 use sp_api::impl_runtime_apis;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
@@ -1145,12 +1145,6 @@ impl OnUnbalanced<NegativeImbalance> for DealWithFees {
 	}
 }
 
-parameter_types! {
-	pub AssetFixRateAccountIds: Vec<AssetFixRateAccountId> = vec![
-		AssetFixRateAccountId(DOT, calculate_asset_ratio(DotPerSecond::get(), AcaPerSecond::get())),
-	];
-}
-
 impl module_transaction_payment::Config for Runtime {
 	type Event = Event;
 	type NativeCurrencyId = GetNativeCurrencyId;
@@ -1639,21 +1633,6 @@ pub type XcmOriginToCallOrigin = (
 	XcmPassthrough<Origin>,
 );
 
-parameter_types! {
-	// One XCM operation is 1_000_000 weight - almost certainly a conservative estimate.
-	pub UnitWeightCost: Weight = 1_000_000;
-	pub const MaxInstructions: u32 = 100;
-	pub DotPerSecond: (AssetId, u128) = (MultiLocation::parent().into(), dot_per_second());
-	pub AcaPerSecond: (AssetId, u128) = (
-		MultiLocation::new(
-			1,
-			X2(Parachain(u32::from(ParachainInfo::get())), GeneralKey(ACA.encode())),
-		).into(),
-		aca_per_second()
-	);
-	pub ForeignAssetUnitsPerSecond: u128 = aca_per_second();
-}
-
 pub type Barrier = (
 	TakeWeightCredit,
 	AllowTopLevelPaidExecutionFrom<Everything>,
@@ -1680,7 +1659,24 @@ impl TakeRevenue for ToTreasury {
 	}
 }
 
+parameter_types! {
+	// One XCM operation is 1_000_000 weight - almost certainly a conservative estimate.
+	pub UnitWeightCost: Weight = 1_000_000;
+	pub const MaxInstructions: u32 = 100;
+	pub DotPerSecond: (AssetId, u128) = (MultiLocation::parent().into(), dot_per_second());
+	pub AcaPerSecond: (AssetId, u128) = (
+		MultiLocation::new(
+			1,
+			X2(Parachain(u32::from(ParachainInfo::get())), GeneralKey(ACA.encode())),
+		).into(),
+		aca_per_second()
+	);
+	pub ForeignAssetUnitsPerSecond: u128 = aca_per_second();
+	pub AcaPerSecondAsBased: u128 = aca_per_second();
+}
+
 pub type Trader = (
+	PeriodUpdatedRateOfFungible<Runtime, CurrencyIdConvert, AcaPerSecondAsBased, ToTreasury>,
 	FixedRateOfFungible<DotPerSecond, ToTreasury>,
 	FixedRateOfForeignAsset<Runtime, ForeignAssetUnitsPerSecond, ToTreasury>,
 );
@@ -2054,10 +2050,16 @@ pub type Executive = frame_executive::Executive<
 	TransactionPaymentUpgrade,
 >;
 
+parameter_types! {
+	pub TokenFixedRates: Vec<TokenFixedRate> = vec![
+		TokenFixedRate(DOT, calculate_asset_ratio(DotPerSecond::get(), AcaPerSecond::get())),
+	];
+}
+
 pub struct TransactionPaymentUpgrade;
 impl frame_support::traits::OnRuntimeUpgrade for TransactionPaymentUpgrade {
 	fn on_runtime_upgrade() -> Weight {
-		for asset in AssetFixRateAccountIds::get() {
+		for asset in TokenFixedRates::get() {
 			<module_transaction_payment::Pallet<Runtime>>::on_runtime_upgrade(
 				FeePoolBootBalance::get(),
 				asset.0,

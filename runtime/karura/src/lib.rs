@@ -101,9 +101,8 @@ pub use authority::AuthorityConfigImpl;
 pub use constants::{fee::*, parachains, time::*};
 pub use primitives::{
 	convert_decimals_to_evm, define_combined_task, evm::EstimateResourcesRequest, task::TaskResult, AccountId,
-	AccountIndex, Address, Amount, AssetFixRateAccountId, AuctionId, AuthoritysOriginId, Balance, BlockNumber,
-	CurrencyId, DataProviderId, EraIndex, Hash, Moment, Nonce, ReserveIdentifier, Share, Signature, TokenSymbol,
-	TradingPair,
+	AccountIndex, Address, Amount, AuctionId, AuthoritysOriginId, Balance, BlockNumber, CurrencyId, DataProviderId,
+	EraIndex, Hash, Moment, Nonce, ReserveIdentifier, Share, Signature, TokenFixedRate, TokenSymbol, TradingPair,
 };
 pub use runtime_common::{
 	calculate_asset_ratio, cent, dollar, microcent, millicent, AcalaDropAssets, EnsureRootOrAllGeneralCouncil,
@@ -1418,11 +1417,36 @@ pub type XcmOriginToCallOrigin = (
 	XcmPassthrough<Origin>,
 );
 
+pub type Barrier = (
+	TakeWeightCredit,
+	AllowTopLevelPaidExecutionFrom<Everything>,
+	// Expected responses are OK.
+	AllowKnownQueryResponses<PolkadotXcm>,
+	// Subscriptions for version tracking are OK.
+	AllowSubscriptionsFrom<Everything>,
+);
+
+pub struct ToTreasury;
+impl TakeRevenue for ToTreasury {
+	fn take_revenue(revenue: MultiAsset) {
+		if let MultiAsset {
+			id: Concrete(location),
+			fun: Fungible(amount),
+		} = revenue
+		{
+			if let Some(currency_id) = CurrencyIdConvert::convert(location) {
+				// ensure KaruraTreasuryAccount have ed for all of the cross-chain asset.
+				// Ignore the result.
+				let _ = Currencies::deposit(currency_id, &KaruraTreasuryAccount::get(), amount);
+			}
+		}
+	}
+}
+
 parameter_types! {
 	// One XCM operation is 200_000_000 weight, cross-chain transfer ~= 2x of transfer.
 	pub const UnitWeightCost: Weight = 200_000_000;
 	pub const MaxInstructions: u32 = 100;
-	// pub Kar_per_second: u128 = ksm_per_second();
 	pub KsmPerSecond: (AssetId, u128) = (MultiLocation::parent().into(), ksm_per_second());
 	pub KusdPerSecond: (AssetId, u128) = (
 		MultiLocation::new(
@@ -1455,36 +1479,6 @@ parameter_types! {
 		// PHA:KSM = 400:1
 		ksm_per_second() * 400
 	);
-	pub ForeignAssetUnitsPerSecond: u128 = kar_per_second();
-}
-
-pub type Barrier = (
-	TakeWeightCredit,
-	AllowTopLevelPaidExecutionFrom<Everything>,
-	// Expected responses are OK.
-	AllowKnownQueryResponses<PolkadotXcm>,
-	// Subscriptions for version tracking are OK.
-	AllowSubscriptionsFrom<Everything>,
-);
-
-pub struct ToTreasury;
-impl TakeRevenue for ToTreasury {
-	fn take_revenue(revenue: MultiAsset) {
-		if let MultiAsset {
-			id: Concrete(location),
-			fun: Fungible(amount),
-		} = revenue
-		{
-			if let Some(currency_id) = CurrencyIdConvert::convert(location) {
-				// ensure KaruraTreasuryAccount have ed for all of the cross-chain asset.
-				// Ignore the result.
-				let _ = Currencies::deposit(currency_id, &KaruraTreasuryAccount::get(), amount);
-			}
-		}
-	}
-}
-
-parameter_types! {
 	pub BncPerSecond: (AssetId, u128) = (
 		MultiLocation::new(
 			1,
@@ -1518,15 +1512,8 @@ parameter_types! {
 		(ksm_per_second() * 4) / 3
 	);
 
+	pub ForeignAssetUnitsPerSecond: u128 = kar_per_second();
 	pub KarPerSecondAsBased: u128 = kar_per_second();
-	pub AssetFixRateAccountIds: Vec<AssetFixRateAccountId> = vec![
-		AssetFixRateAccountId(KSM, calculate_asset_ratio(KsmPerSecond::get(), KarPerSecond::get())),
-		AssetFixRateAccountId(KUSD, calculate_asset_ratio(KusdPerSecond::get(), KarPerSecond::get())),
-		AssetFixRateAccountId(LKSM, calculate_asset_ratio(LksmPerSecond::get(), KarPerSecond::get())),
-		AssetFixRateAccountId(BNC, calculate_asset_ratio(BncPerSecond::get(), KarPerSecond::get())),
-		AssetFixRateAccountId(VSKSM, calculate_asset_ratio(VsksmPerSecond::get(), KarPerSecond::get())),
-		AssetFixRateAccountId(PHA, calculate_asset_ratio(PHAPerSecond::get(), KarPerSecond::get())),
-	];
 }
 
 pub type Trader = (
@@ -2001,10 +1988,21 @@ pub type Executive = frame_executive::Executive<
 	TransactionPaymentUpgrade,
 >;
 
+parameter_types! {
+	pub TokenFixedRates: Vec<TokenFixedRate> = vec![
+		TokenFixedRate(KSM, calculate_asset_ratio(KsmPerSecond::get(), KarPerSecond::get())),
+		TokenFixedRate(KUSD, calculate_asset_ratio(KusdPerSecond::get(), KarPerSecond::get())),
+		TokenFixedRate(LKSM, calculate_asset_ratio(LksmPerSecond::get(), KarPerSecond::get())),
+		TokenFixedRate(BNC, calculate_asset_ratio(BncPerSecond::get(), KarPerSecond::get())),
+		TokenFixedRate(VSKSM, calculate_asset_ratio(VsksmPerSecond::get(), KarPerSecond::get())),
+		TokenFixedRate(PHA, calculate_asset_ratio(PHAPerSecond::get(), KarPerSecond::get())),
+	];
+}
+
 pub struct TransactionPaymentUpgrade;
 impl frame_support::traits::OnRuntimeUpgrade for TransactionPaymentUpgrade {
 	fn on_runtime_upgrade() -> Weight {
-		for asset in AssetFixRateAccountIds::get() {
+		for asset in TokenFixedRates::get() {
 			<module_transaction_payment::Pallet<Runtime>>::on_runtime_upgrade(
 				FeePoolBootBalance::get(),
 				asset.0,

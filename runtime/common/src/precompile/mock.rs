@@ -37,8 +37,8 @@ use module_support::{
 };
 use orml_traits::{parameter_type_with_key, MultiReservableCurrency};
 pub use primitives::{
-	convert_decimals_to_evm, define_combined_task, evm::EvmAddress, task::TaskResult, Amount, AssetFixRateAccountId,
-	BlockNumber, CurrencyId, DexShare, Header, Nonce, ReserveIdentifier, TokenSymbol, TradingPair,
+	convert_decimals_to_evm, define_combined_task, evm::EvmAddress, task::TaskResult, Amount, BlockNumber, CurrencyId,
+	DexShare, Header, Nonce, ReserveIdentifier, TokenFixedRate, TokenSymbol, TradingPair,
 };
 use scale_info::TypeInfo;
 use sp_core::{crypto::AccountId32, H160, H256};
@@ -251,7 +251,7 @@ parameter_types! {
 	pub const TreasuryFeePoolPalletId: PalletId = PalletId(*b"aca/fees");
 	pub const TreasuryPalletId: PalletId = PalletId(*b"aca/trsy");
 	pub KaruraTreasuryAccount: AccountId = TreasuryPalletId::get().into_account();
-	pub AssetFixRateAccountIds: Vec<AssetFixRateAccountId> = vec![];
+	pub TokenFixedRates: Vec<TokenFixedRate> = vec![];
 }
 
 impl module_transaction_payment::Config for Test {
