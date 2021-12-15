@@ -121,7 +121,7 @@ impl<T: Config> Pallet<T> {
 			return Zero::zero();
 		}
 
-		let mut completed_tasks: Vec<(Nonce, TaskResult)> = Vec::new();
+		let mut completed_tasks: Vec<(Nonce, TaskResult)> = vec![];
 
 		for (id, task) in Tasks::<T>::iter() {
 			let result = task.dispatch(weight_remaining);
