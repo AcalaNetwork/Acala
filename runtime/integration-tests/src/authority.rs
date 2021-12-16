@@ -43,6 +43,9 @@ fn test_authority_module() {
 		])
 		.build()
 		.execute_with(|| {
+			let ensure_signed_call = Call::System(frame_system::Call::remark {
+				remark: [0, 0, 0].encode(),
+			});
 			let ensure_root_call = Call::System(frame_system::Call::fill_block { ratio: Perbill::one() });
 			let call = Call::Authority(orml_authority::Call::dispatch_as {
 				as_origin: AuthoritysOriginId::Root,
@@ -280,5 +283,20 @@ fn test_authority_module() {
 				OriginCaller::system(RawOrigin::Root),
 				6,
 			)));
+
+			assert_ok!(GeneralCouncil::set_members(
+				Origin::root(),
+				vec![alice(), bob()],
+				None,
+				5,
+			));
+
+			let proposal = Call::Authority(orml_authority::Call::schedule_dispatch {
+				when: DispatchTime::At(seven_days_later + 3),
+				priority: 0,
+				with_delayed_origin: false,
+				call: Box::new(ensure_signed_call),
+			});
+			//assert_ok!(GeneralCouncil::proposal())
 		});
 }
