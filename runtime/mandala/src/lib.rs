@@ -40,7 +40,7 @@ pub use frame_support::{
 		Randomness, SortedMembers, U128CurrencyToVote, WithdrawReasons,
 	},
 	weights::{
-		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight, WEIGHT_PER_SECOND},
+		constants::{BlockExecutionWeight, RocksDbWeight, WEIGHT_PER_SECOND},
 		DispatchClass, IdentityFee, Weight,
 	},
 	PalletId, RuntimeDebug, StorageValue,

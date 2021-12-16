@@ -49,10 +49,7 @@ pub mod fee {
 	use smallvec::smallvec;
 	use sp_runtime::Perbill;
 
-	/// The block saturation level. Fees will be updates based on this value.
-	pub const TARGET_BLOCK_FULLNESS: Perbill = Perbill::from_percent(25);
-
-	fn base_tx_in_aca() -> Balance {
+	pub fn base_tx_in_aca() -> Balance {
 		cent(ACA) / 10
 	}
 
@@ -71,15 +68,14 @@ pub mod fee {
 	impl WeightToFeePolynomial for WeightToFee {
 		type Balance = Balance;
 		fn polynomial() -> WeightToFeeCoefficients<Self::Balance> {
-			// in Acala, extrinsic base weight (smallest non-zero weight) is mapped to 1/10
-			// CENT:
-			let p = base_tx_in_aca(); // 10_000_000_000;
+			// in Acala, extrinsic base weight (smallest non-zero weight) is mapped to 1/10 CENT:
+			let p = base_tx_in_aca(); // 1_000_000_000;
 			let q = Balance::from(ExtrinsicBaseWeight::get()); // 125_000_000
 			smallvec![WeightToFeeCoefficient {
 				degree: 1,
 				negative: false,
 				coeff_frac: Perbill::from_rational(p % q, q), // zero
-				coeff_integer: p / q,                         // 80
+				coeff_integer: p / q,                         // 8
 			}]
 		}
 	}
@@ -92,5 +88,21 @@ pub mod fee {
 
 	pub fn dot_per_second() -> u128 {
 		aca_per_second() / 100
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use crate::{constants::fee::base_tx_in_aca, Balance};
+	use frame_support::weights::constants::ExtrinsicBaseWeight;
+
+	#[test]
+	fn check_weight() {
+		let p = base_tx_in_aca();
+		let q = Balance::from(ExtrinsicBaseWeight::get());
+
+		assert_eq!(p, 1_000_000_000);
+		assert_eq!(q, 125_000_000);
+		assert_eq!(p / q, 8);
 	}
 }
