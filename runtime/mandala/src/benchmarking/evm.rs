@@ -61,11 +61,11 @@ fn deploy_contract(caller: AccountId) -> Result<H160, DispatchError> {
 	EVM::create(Origin::signed(caller.clone()), contract, 0, 1000000000, 1000000000)
 		.map_or_else(|e| Err(e.error), |_| Ok(()))?;
 
-	System::assert_last_event(Event::EVM(module_evm::Event::Created(
-		module_evm_accounts::EvmAddressMapping::<Runtime>::get_evm_address(&caller).unwrap(),
-		contract_addr(),
-		vec![],
-	)));
+	System::assert_last_event(Event::EVM(module_evm::Event::Created {
+		from: module_evm_accounts::EvmAddressMapping::<Runtime>::get_evm_address(&caller).unwrap(),
+		contract: contract_addr(),
+		logs: vec![],
+	}));
 	Ok(contract_addr())
 }
 

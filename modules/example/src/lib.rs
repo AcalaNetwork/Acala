@@ -54,7 +54,7 @@ pub mod module {
 	#[pallet::generate_deposit(fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// Dummy event, just here so there's a generic type that's used.
-		Dummy(T::Balance),
+		Dummy { name: T::Balance },
 	}
 
 	#[pallet::type_value]
@@ -129,7 +129,7 @@ pub mod module {
 			ensure_root(origin)?;
 
 			Dummy::<T>::put(&new_value);
-			Self::deposit_event(Event::Dummy(new_value));
+			Self::deposit_event(Event::Dummy { name: new_value });
 
 			Ok(())
 		}

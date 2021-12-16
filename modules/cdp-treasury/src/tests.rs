@@ -406,7 +406,10 @@ fn set_expected_collateral_auction_size_work() {
 			200
 		));
 		System::assert_last_event(Event::CDPTreasuryModule(
-			crate::Event::ExpectedCollateralAuctionSizeUpdated(BTC, 200),
+			crate::Event::ExpectedCollateralAuctionSizeUpdated {
+				collateral_type: BTC,
+				new_size: 200,
+			},
 		));
 	});
 }

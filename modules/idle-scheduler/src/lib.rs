@@ -65,7 +65,7 @@ pub mod module {
 	pub enum Event<T: Config> {
 		/// A task has been dispatched on_idle.
 		/// \[TaskId, DispatchResult\]
-		TaskDispatched(Nonce, DispatchResult),
+		TaskDispatched { task_id: Nonce, result: DispatchResult },
 	}
 
 	/// Some documentation
@@ -138,7 +138,10 @@ impl<T: Config> Pallet<T> {
 
 		// Deposit event and remove completed tasks.
 		for (id, result) in completed_tasks {
-			Self::deposit_event(Event::<T>::TaskDispatched(id, result.result));
+			Self::deposit_event(Event::<T>::TaskDispatched {
+				dispatch_id: id,
+				result: result.result,
+			});
 			Tasks::<T>::remove(id);
 		}
 

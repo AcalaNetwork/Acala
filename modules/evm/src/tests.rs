@@ -740,11 +740,11 @@ fn create_network_contract_works() {
 			Pallet::<Runtime>::account_basic(&NetworkContractSource::get()).nonce,
 			2.into()
 		);
-		System::assert_last_event(Event::EVM(crate::Event::Created(
-			NetworkContractSource::get(),
-			MIRRORED_TOKENS_ADDRESS_START | H160::from_low_u64_be(MIRRORED_NFT_ADDRESS_START),
-			vec![],
-		)));
+		System::assert_last_event(Event::EVM(crate::Event::Created {
+			from: NetworkContractSource::get(),
+			contract: MIRRORED_TOKENS_ADDRESS_START | H160::from_low_u64_be(MIRRORED_NFT_ADDRESS_START),
+			logs: vec![],
+		}));
 		assert_eq!(EVM::network_contract_index(), MIRRORED_NFT_ADDRESS_START + 1);
 	});
 }
@@ -806,11 +806,11 @@ fn create_predeploy_contract_works() {
 
 		assert_eq!(Pallet::<Runtime>::is_account_empty(&addr), false);
 
-		System::assert_last_event(Event::EVM(crate::Event::Created(
-			NetworkContractSource::get(),
-			addr,
-			vec![],
-		)));
+		System::assert_last_event(Event::EVM(crate::Event::Created {
+			from: NetworkContractSource::get(),
+			contract: addr,
+			logs: vec![],
+		}));
 
 		assert_noop!(
 			EVM::create_predeploy_contract(
@@ -889,7 +889,10 @@ fn should_transfer_maintainer() {
 			contract_address,
 			bob()
 		));
-		System::assert_last_event(Event::EVM(crate::Event::TransferredMaintainer(contract_address, bob())));
+		System::assert_last_event(Event::EVM(crate::Event::TransferredMaintainer {
+			contract: contract_address,
+			new_maintainer: bob(),
+		}));
 		assert_eq!(balance(bob()), INITIAL_BALANCE);
 
 		assert_noop!(
