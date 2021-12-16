@@ -228,6 +228,30 @@ fn refund_tip_according_to_actual_when_post_dispatch_and_native_currency_is_enou
 }
 
 #[test]
+fn refund_should_not_works() {
+	ExtBuilder::default()
+		.one_hundred_thousand_for_alice_n_charlie()
+		.build()
+		.execute_with(|| {
+			let tip = 1000;
+			let fee = 23 * 2 + 1000; // len * byte + weight
+			let pre = ChargeTransactionPayment::<Runtime>::from(tip)
+				.pre_dispatch(&ALICE, CALL, &INFO, 23)
+				.unwrap();
+			assert_eq!(Currencies::free_balance(ACA, &ALICE), 100000 - fee - tip);
+
+			// actual_weight > weight
+			const POST_INFO: PostDispatchInfo = PostDispatchInfo {
+				actual_weight: Some(INFO.weight + 1),
+				pays_fee: Pays::Yes,
+			};
+
+			assert!(ChargeTransactionPayment::<Runtime>::post_dispatch(pre, &INFO, &POST_INFO, 23, &Ok(())).is_ok());
+			assert_eq!(Currencies::free_balance(ACA, &ALICE), 100000 - fee - tip);
+		});
+}
+
+#[test]
 fn charges_fee_when_validate_and_native_is_not_enough() {
 	ExtBuilder::default()
 		.one_hundred_thousand_for_alice_n_charlie()
