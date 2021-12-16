@@ -177,7 +177,6 @@ pub mod module {
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// The user has Staked some currencies to mint Liquid Currency.
-		/// \[who, amount_staked, amount_minted\]
 		Minted {
 			who: T::AccountId,
 			amount_staked: Balance,

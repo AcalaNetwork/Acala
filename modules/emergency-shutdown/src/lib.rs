@@ -93,11 +93,11 @@ pub mod module {
 	#[pallet::event]
 	#[pallet::generate_deposit(fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// Emergency shutdown occurs. \[block_number\]
+		/// Emergency shutdown occurs.
 		Shutdown { block_number: T::BlockNumber },
-		/// The final redemption opened. \[block_number\]
+		/// The final redemption opened.
 		OpenRefund { block_number: T::BlockNumber },
-		/// Refund info. \[who, stable_coin_amount, refund_list\]
+		/// Refund info.
 		Refund {
 			who: T::AccountId,
 			stable_coin_amount: Balance,

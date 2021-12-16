@@ -158,9 +158,9 @@ pub mod module {
 			reward_currency_id: CurrencyId,
 			reward_amount_per_period: Balance,
 		},
-		/// Saving reward rate updated. \[pool_id, reward_rate_per_period\]
+		/// Saving reward rate updated.
 		SavingRewardRateUpdated { pool: PoolId, reward_rate_per_period: Rate },
-		/// Payout deduction rate updated. \[pool_id, deduction_rate\]
+		/// Payout deduction rate updated.
 		ClaimRewardDeductionRateUpdated { pool: PoolId, deduction_rate: Rate },
 	}
 

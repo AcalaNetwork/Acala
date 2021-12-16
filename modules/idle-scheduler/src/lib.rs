@@ -64,7 +64,6 @@ pub mod module {
 	#[pallet::generate_deposit(pub fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// A task has been dispatched on_idle.
-		/// \[TaskId, DispatchResult\]
 		TaskDispatched { task_id: Nonce, result: DispatchResult },
 	}
 
