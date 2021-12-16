@@ -56,7 +56,7 @@ impl<T: frame_system::Config> module_transaction_payment::WeightInfo for WeightI
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
-	fn set_trigger_threshold() -> Weight {
+	fn set_swap_balance_threshold() -> Weight {
 		(4_707_000 as Weight)
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}

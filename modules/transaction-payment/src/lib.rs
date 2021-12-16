@@ -349,6 +349,8 @@ pub mod module {
 		InvalidSwapPath,
 		/// The balance of user's supply token is not enough
 		SupplyBalanceTooLow,
+		/// Can't find rate by the supply token
+		InvalidRate,
 	}
 
 	#[pallet::event]
@@ -374,7 +376,7 @@ pub mod module {
 	/// The bootstrap balance transfer from `TreasuryAccount` to sub account of `TreasuryPalletId`.
 	#[pallet::storage]
 	#[pallet::getter(fn pool_size)]
-	pub type PoolSize<T: Config> = StorageValue<_, Balance, ValueQuery>;
+	pub type PoolSize<T: Config> = StorageMap<_, Twox64Concat, CurrencyId, Balance, ValueQuery>;
 
 	/// The ratio of `foreign_asset_per_second` relative to `native_asset_per_second`.
 	/// the reverse ratio means the value of foreign asset to native asset.
@@ -383,7 +385,7 @@ pub mod module {
 	#[pallet::getter(fn token_fixed_rate)]
 	pub type TokenFixedRate<T: Config> = StorageMap<_, Twox64Concat, CurrencyId, Ratio, OptionQuery>;
 
-	/// Each asset has a balance threshold that will trigger swap from dex, default to `PoolSize`/5.
+	/// The balance threshold to trigger swap from dex, normally the value is gt ED of native asset.
 	#[pallet::storage]
 	#[pallet::getter(fn swap_balance_threshold)]
 	pub type SwapBalanceThreshold<T: Config> = StorageMap<_, Twox64Concat, CurrencyId, Balance, ValueQuery>;
@@ -472,9 +474,9 @@ pub mod module {
 			Ok(())
 		}
 
-		/// set trigger balance of native asset
-		#[pallet::weight(<T as Config>::WeightInfo::set_trigger_threshold())]
-		pub fn set_trigger_threshold(
+		/// set swap balance threshold of native asset
+		#[pallet::weight(<T as Config>::WeightInfo::set_swap_balance_threshold())]
+		pub fn set_swap_balance_threshold(
 			origin: OriginFor<T>,
 			currency_id: CurrencyId,
 			threshold: Balance,
@@ -753,48 +755,39 @@ where
 		who: &T::AccountId,
 		amount: Balance,
 		supply_currency_id: CurrencyId,
-	) -> sp_std::result::Result<(), DispatchError> {
-		match TokenFixedRate::<T>::get(supply_currency_id) {
-			None => {
-				// if the token rate is none(i.e. disable by council or on purpose), return err.
-				Err(DispatchError::CannotLookup)
-			}
-			Some(mut rate) => {
-				// user's supply asset should have enough balance based on old fix rate.
-				ensure!(
-					T::MultiCurrency::free_balance(supply_currency_id, who) >= rate.saturating_mul_int(amount),
-					Error::<T>::SupplyBalanceTooLow
-				);
-				let treasury_account = Self::treasury_sub_account_id(supply_currency_id);
+	) -> DispatchResult {
+		let rate = TokenFixedRate::<T>::get(supply_currency_id).ok_or(Error::<T>::InvalidRate)?;
+		let treasury_account = Self::treasury_sub_account_id(supply_currency_id);
 
-				// if treasury account has not enough native asset, trigger swap from dex
-				let treasury_balance = T::Currency::free_balance(&treasury_account);
-				if treasury_balance < SwapBalanceThreshold::<T>::get(supply_currency_id) {
-					let trading_path = Self::get_trading_path_by_currency(&treasury_account, supply_currency_id);
-					if let Some(trading_path) = trading_path {
-						// using all supply asset to swap out native asset, no need to consider ED limitation here.
-						let treasury_supply_balance =
-							T::MultiCurrency::free_balance(supply_currency_id, &treasury_account);
-						if let Ok(swap_native_balance) =
-							T::DEX::swap_with_exact_supply(&treasury_account, &trading_path, treasury_supply_balance, 0)
-						{
-							// calculate and update new rate of supply asset relative to native asset
-							let new_native_balance =
-								rate.saturating_mul_int(swap_native_balance.saturating_add(treasury_balance));
-							rate = Ratio::saturating_from_rational(new_native_balance, PoolSize::<T>::get());
-							TokenFixedRate::<T>::insert(supply_currency_id, rate);
-						}
-					}
+		// if treasury account has not enough native asset, trigger swap from dex. if treasury_balance
+		// is lt ED, it become 0, this means the charge fee pool is exhausted. for prevent this case,
+		// we normally set the SwapBalanceThreshold gt ED. As we still use the old rate to calculate
+		// fee in this transaction. so for fee charge as successful as possible, we reserve one block
+		// fee, that's SwapBalanceThreshold can set to ED + one block fee.
+		let treasury_balance = T::Currency::free_balance(&treasury_account);
+		if treasury_balance < SwapBalanceThreshold::<T>::get(supply_currency_id) {
+			let trading_path = Self::get_trading_path_by_currency(&treasury_account, supply_currency_id);
+			if let Some(trading_path) = trading_path {
+				// using all supply asset to swap out native asset, no need to consider ED limitation here.
+				let treasury_supply_balance = T::MultiCurrency::free_balance(supply_currency_id, &treasury_account);
+				if let Ok(swap_native_balance) =
+					T::DEX::swap_with_exact_supply(&treasury_account, &trading_path, treasury_supply_balance, 0)
+				{
+					// calculate and update new rate of supply asset relative to native asset
+					let new_native_balance =
+						rate.saturating_mul_int(swap_native_balance.saturating_add(treasury_balance));
+					let updated_rate =
+						Ratio::saturating_from_rational(new_native_balance, PoolSize::<T>::get(supply_currency_id));
+					TokenFixedRate::<T>::insert(supply_currency_id, updated_rate);
 				}
-
-				// use fix rate to calculate the amount of supply asset that equal to native asset.
-				// exchange user's supply asset and treasury's native asset.
-				let token_amount: u128 = rate.saturating_mul_int(amount);
-				T::MultiCurrency::transfer(supply_currency_id, who, &treasury_account, token_amount)?;
-				T::Currency::transfer(&treasury_account, who, amount, ExistenceRequirement::KeepAlive)?;
-				Ok(())
 			}
 		}
+
+		// use fix rate to calculate the amount of supply asset that equal to native asset.
+		let supply_account = rate.saturating_mul_int(amount);
+		T::MultiCurrency::transfer(supply_currency_id, who, &treasury_account, supply_account)?;
+		T::Currency::transfer(&treasury_account, who, amount, ExistenceRequirement::KeepAlive)?;
+		Ok(())
 	}
 
 	/// Get trading path by user.
@@ -825,18 +818,23 @@ where
 		T::TreasuryPalletId::get().into_sub_account(id)
 	}
 
-	/// Setting some initial value when on_runtime_upgrade.
-	pub fn on_runtime_upgrade(balance: Balance, currency_id: CurrencyId, rate: Ratio) -> DispatchResult {
+	/// Initiate a treasury swap pool. Usually used in on_runtime_upgrade.
+	pub fn initialize_pool(currency_id: CurrencyId, rate: Ratio, balance: Balance) -> DispatchResult {
 		let account = Self::treasury_sub_account_id(currency_id);
+		let native_existential_deposit = <T as Config>::Currency::minimum_balance();
 		T::Currency::transfer(
 			&T::TreasuryAccount::get(),
 			&account,
 			balance,
 			ExistenceRequirement::KeepAlive,
 		)?;
-		SwapBalanceThreshold::<T>::insert(currency_id, balance / 5);
+		// one extrinsic fee=0.0025KAR, one block=100 extrinsics, reserve one block+ED=0.35KAR
+		SwapBalanceThreshold::<T>::insert(
+			currency_id,
+			Ratio::saturating_from_rational(350, 100).saturating_mul_int(native_existential_deposit),
+		);
 		TokenFixedRate::<T>::insert(currency_id, rate);
-		PoolSize::<T>::set(balance);
+		PoolSize::<T>::insert(currency_id, balance);
 		Ok(())
 	}
 }

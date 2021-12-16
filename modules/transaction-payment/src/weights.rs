@@ -50,7 +50,7 @@ use sp_std::marker::PhantomData;
 pub trait WeightInfo {
 	fn set_alternative_fee_swap_path() -> Weight;
 	fn on_finalize() -> Weight;
-	fn set_trigger_threshold() -> Weight;
+	fn set_swap_balance_threshold() -> Weight;
 }
 
 /// Weights for module_transaction_payment using the Acala node and recommended hardware.
@@ -65,7 +65,7 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
-	fn set_trigger_threshold() -> Weight {
+	fn set_swap_balance_threshold() -> Weight {
 		(3_000_000 as Weight)
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
@@ -82,7 +82,7 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().reads(2 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
-	fn set_trigger_threshold() -> Weight {
+	fn set_swap_balance_threshold() -> Weight {
 		(3_000_000 as Weight)
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}

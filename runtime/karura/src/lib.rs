@@ -102,7 +102,7 @@ pub use constants::{fee::*, parachains, time::*};
 pub use primitives::{
 	convert_decimals_to_evm, define_combined_task, evm::EstimateResourcesRequest, task::TaskResult, AccountId,
 	AccountIndex, Address, Amount, AuctionId, AuthoritysOriginId, Balance, BlockNumber, CurrencyId, DataProviderId,
-	EraIndex, Hash, Moment, Nonce, ReserveIdentifier, Share, Signature, TokenFixedRate, TokenSymbol, TradingPair,
+	EraIndex, Hash, Moment, Nonce, ReserveIdentifier, Share, Signature, TokenSymbol, TradingPair,
 };
 pub use runtime_common::{
 	calculate_asset_ratio, cent, dollar, microcent, millicent, AcalaDropAssets, EnsureRootOrAllGeneralCouncil,
@@ -169,7 +169,7 @@ parameter_types! {
 }
 
 pub fn get_all_module_accounts() -> Vec<AccountId> {
-	vec![
+	let mut whitelist = vec![
 		LoansPalletId::get().into_account(),
 		CDPTreasuryPalletId::get().into_account(),
 		CollatorPotId::get().into_account(),
@@ -181,7 +181,9 @@ pub fn get_all_module_accounts() -> Vec<AccountId> {
 		TreasuryReservePalletId::get().into_account(),
 		UnreleasedNativeVaultAccountId::get(),
 		TreasuryFeePoolPalletId::get().into_account(),
-	]
+	];
+	whitelist.append(&mut get_all_sub_account_of_fee_pool());
+	whitelist
 }
 
 parameter_types! {
@@ -1108,7 +1110,9 @@ parameter_types! {
 		vec![LKSM, KSM, KAR],
 		vec![BNC, KUSD, KSM, KAR],
 	];
-	pub const FeePoolBootBalance: Balance = 10_000_000_000;
+	// Initial fee pool size. one extrinsic=0.0025 KAR, one block=100 extrinsics
+	// 20 blocks trigger an swap, so total balance=0.0025*100*20=5 KAR
+	pub FeePoolBootBalance: Balance = 5 * dollar(KAR);
 }
 
 type NegativeImbalance = <Balances as PalletCurrency<AccountId>>::NegativeImbalance;
@@ -1989,14 +1993,22 @@ pub type Executive = frame_executive::Executive<
 	TransactionPaymentUpgrade,
 >;
 
+/// The whitelist sub account
+fn get_all_sub_account_of_fee_pool() -> Vec<AccountId> {
+	vec![KSM, KUSD, LKSM, BNC, VSKSM, PHA]
+		.iter()
+		.map(|t| TreasuryFeePoolPalletId::get().into_sub_account(t))
+		.collect::<Vec<AccountId>>()
+}
+
 parameter_types! {
-	pub TokenFixedRates: Vec<TokenFixedRate> = vec![
-		TokenFixedRate(KSM, calculate_asset_ratio(KsmPerSecond::get(), KarPerSecond::get())),
-		TokenFixedRate(KUSD, calculate_asset_ratio(KusdPerSecond::get(), KarPerSecond::get())),
-		TokenFixedRate(LKSM, calculate_asset_ratio(LksmPerSecond::get(), KarPerSecond::get())),
-		TokenFixedRate(BNC, calculate_asset_ratio(BncPerSecond::get(), KarPerSecond::get())),
-		TokenFixedRate(VSKSM, calculate_asset_ratio(VsksmPerSecond::get(), KarPerSecond::get())),
-		TokenFixedRate(PHA, calculate_asset_ratio(PHAPerSecond::get(), KarPerSecond::get())),
+	pub TokenFixedRates: Vec<(CurrencyId, Ratio, Balance)> = vec![
+		(KSM, calculate_asset_ratio(KsmPerSecond::get(), KarPerSecond::get()), FeePoolBootBalance::get()),
+		(KUSD, calculate_asset_ratio(KusdPerSecond::get(), KarPerSecond::get()), FeePoolBootBalance::get()),
+		(LKSM, calculate_asset_ratio(LksmPerSecond::get(), KarPerSecond::get()), FeePoolBootBalance::get()),
+		(BNC, calculate_asset_ratio(BncPerSecond::get(), KarPerSecond::get()), FeePoolBootBalance::get()),
+		(VSKSM, calculate_asset_ratio(VsksmPerSecond::get(), KarPerSecond::get()), FeePoolBootBalance::get()),
+		(PHA, calculate_asset_ratio(PHAPerSecond::get(), KarPerSecond::get()), FeePoolBootBalance::get()),
 	];
 }
 
@@ -2004,11 +2016,7 @@ pub struct TransactionPaymentUpgrade;
 impl frame_support::traits::OnRuntimeUpgrade for TransactionPaymentUpgrade {
 	fn on_runtime_upgrade() -> Weight {
 		for asset in TokenFixedRates::get() {
-			let _ = <module_transaction_payment::Pallet<Runtime>>::on_runtime_upgrade(
-				FeePoolBootBalance::get(),
-				asset.0,
-				asset.1,
-			);
+			let _ = <module_transaction_payment::Pallet<Runtime>>::initialize_pool(asset.0, asset.1, asset.2);
 		}
 		0
 	}

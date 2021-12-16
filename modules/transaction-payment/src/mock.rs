@@ -30,7 +30,7 @@ use frame_support::{
 };
 use frame_system::EnsureSignedBy;
 use orml_traits::parameter_type_with_key;
-use primitives::{Amount, ReserveIdentifier, TokenFixedRate, TokenSymbol, TradingPair};
+use primitives::{Amount, ReserveIdentifier, TokenSymbol, TradingPair};
 use smallvec::smallvec;
 use sp_core::{crypto::AccountId32, H256};
 use sp_runtime::{
@@ -233,11 +233,11 @@ parameter_types! {
 	pub const TreasuryFeePoolPalletId: PalletId = PalletId(*b"aca/fees");
 	pub const TreasuryPalletId: PalletId = PalletId(*b"aca/trsy");
 	pub KaruraTreasuryAccount: AccountId = TreasuryPalletId::get().into_account();
-	pub TokenFixedRates: Vec<TokenFixedRate> = vec![
-		TokenFixedRate(KSM, Ratio::saturating_from_rational(2, 100)),
+	pub TokenFixedRates: Vec<(CurrencyId, Ratio, Balance)> = vec![
+		(KSM, Ratio::saturating_from_rational(2, 100), FeePoolBootBalance::get()),
 		// 1 DOT = 10 ACA, 1 ACA = 10 AUSD
-		TokenFixedRate(AUSD, Ratio::saturating_from_rational(10, 1)),
-		TokenFixedRate(DOT, Ratio::saturating_from_rational(1, 10)),
+		(AUSD, Ratio::saturating_from_rational(10, 1), FeePoolBootBalance::get()),
+		(DOT, Ratio::saturating_from_rational(1, 10), FeePoolBootBalance::get()),
 	];
 }
 ord_parameter_types! {
@@ -308,8 +308,7 @@ pub struct MockTransactionPaymentUpgrade;
 impl frame_support::traits::OnRuntimeUpgrade for MockTransactionPaymentUpgrade {
 	fn on_runtime_upgrade() -> Weight {
 		for asset in TokenFixedRates::get() {
-			let _ =
-				<transaction_payment::Pallet<Runtime>>::on_runtime_upgrade(FeePoolBootBalance::get(), asset.0, asset.1);
+			let _ = <transaction_payment::Pallet<Runtime>>::initialize_pool(asset.0, asset.1, asset.2);
 		}
 		0
 	}

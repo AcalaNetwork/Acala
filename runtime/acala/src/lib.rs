@@ -101,7 +101,7 @@ pub use constants::{fee::*, time::*};
 pub use primitives::{
 	convert_decimals_to_evm, define_combined_task, evm::EstimateResourcesRequest, task::TaskResult, AccountId,
 	AccountIndex, Address, Amount, AuctionId, AuthoritysOriginId, Balance, BlockNumber, CurrencyId, DataProviderId,
-	EraIndex, Hash, Moment, Nonce, ReserveIdentifier, Share, Signature, TokenFixedRate, TokenSymbol, TradingPair,
+	EraIndex, Hash, Moment, Nonce, ReserveIdentifier, Share, Signature, TokenSymbol, TradingPair,
 };
 pub use runtime_common::{
 	calculate_asset_ratio, cent, dollar, microcent, millicent, AcalaDropAssets, EnsureRootOrAllGeneralCouncil,
@@ -168,7 +168,7 @@ parameter_types! {
 }
 
 pub fn get_all_module_accounts() -> Vec<AccountId> {
-	vec![
+	let mut whitelist = vec![
 		LoansPalletId::get().into_account(),
 		CDPTreasuryPalletId::get().into_account(),
 		CollatorPotId::get().into_account(),
@@ -180,7 +180,9 @@ pub fn get_all_module_accounts() -> Vec<AccountId> {
 		TreasuryReservePalletId::get().into_account(),
 		UnreleasedNativeVaultAccountId::get(),
 		TreasuryFeePoolPalletId::get().into_account(),
-	]
+	];
+	whitelist.append(&mut get_all_sub_account_of_fee_pool());
+	whitelist
 }
 
 parameter_types! {
@@ -1092,7 +1094,7 @@ impl module_transaction_pause::Config for Runtime {
 parameter_types! {
 	// Sort by fee charge order
 	pub DefaultFeeSwapPathList: Vec<Vec<CurrencyId>> = vec![vec![AUSD, DOT, ACA], vec![DOT, ACA], vec![LDOT, DOT, ACA]];
-	pub const FeePoolBootBalance: Balance = 10_000_000_000;
+	pub FeePoolBootBalance: Balance = 5 * dollar(ACA);
 }
 
 type NegativeImbalance = <Balances as PalletCurrency<AccountId>>::NegativeImbalance;
@@ -1881,10 +1883,18 @@ pub type Executive = frame_executive::Executive<
 	(OnRuntimeUpgrade, TransactionPaymentUpgrade),
 >;
 
+/// The whitelist sub account
+fn get_all_sub_account_of_fee_pool() -> Vec<AccountId> {
+	vec![DOT, AUSD]
+		.iter()
+		.map(|t| TreasuryFeePoolPalletId::get().into_sub_account(t))
+		.collect::<Vec<AccountId>>()
+}
+
 parameter_types! {
-	pub TokenFixedRates: Vec<TokenFixedRate> = vec![
-		TokenFixedRate(DOT, calculate_asset_ratio(DotPerSecond::get(), AcaPerSecond::get())),
-		TokenFixedRate(AUSD, calculate_asset_ratio(AusdPerSecond::get(), AcaPerSecond::get())),
+	pub TokenFixedRates: Vec<(CurrencyId, Ratio, Balance)> = vec![
+		(DOT, calculate_asset_ratio(DotPerSecond::get(), AcaPerSecond::get()), FeePoolBootBalance::get()),
+		(AUSD, calculate_asset_ratio(AusdPerSecond::get(), AcaPerSecond::get()), FeePoolBootBalance::get()),
 	];
 }
 
@@ -1892,11 +1902,7 @@ pub struct TransactionPaymentUpgrade;
 impl frame_support::traits::OnRuntimeUpgrade for TransactionPaymentUpgrade {
 	fn on_runtime_upgrade() -> Weight {
 		for asset in TokenFixedRates::get() {
-			let _ = <module_transaction_payment::Pallet<Runtime>>::on_runtime_upgrade(
-				FeePoolBootBalance::get(),
-				asset.0,
-				asset.1,
-			);
+			let _ = <module_transaction_payment::Pallet<Runtime>>::initialize_pool(asset.0, asset.1, asset.2);
 		}
 		0
 	}

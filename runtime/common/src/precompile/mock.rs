@@ -38,7 +38,7 @@ use module_support::{
 use orml_traits::{parameter_type_with_key, MultiReservableCurrency};
 pub use primitives::{
 	convert_decimals_to_evm, define_combined_task, evm::EvmAddress, task::TaskResult, Amount, BlockNumber, CurrencyId,
-	DexShare, Header, Nonce, ReserveIdentifier, TokenFixedRate, TokenSymbol, TradingPair,
+	DexShare, Header, Nonce, ReserveIdentifier, TokenSymbol, TradingPair,
 };
 use scale_info::TypeInfo;
 use sp_core::{crypto::AccountId32, H160, H256};

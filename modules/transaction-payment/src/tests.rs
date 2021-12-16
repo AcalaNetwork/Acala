@@ -944,7 +944,7 @@ fn swap_from_treasury_basic_setup_works() {
 			Some(Ratio::saturating_from_rational(2, 100))
 		);
 
-		let _ = Pallet::<Runtime>::set_trigger_threshold(Origin::signed(ALICE), KSM, 500);
+		let _ = Pallet::<Runtime>::set_swap_balance_threshold(Origin::signed(ALICE), KSM, 500);
 		assert_eq!(SwapBalanceThreshold::<Runtime>::get(KSM), 500);
 	});
 }
@@ -992,7 +992,7 @@ fn swap_from_treasury_with_enough_balance() {
 		let dot_fee_account = Pallet::<Runtime>::treasury_sub_account_id(DOT);
 		let usd_fee_account = Pallet::<Runtime>::treasury_sub_account_id(AUSD);
 
-		// 1 DOT = 1 ACA, swap 500 ACA with 50 DOT
+		// 1 DOT = 10 ACA, swap 500 ACA with 50 DOT
 		let balance = 500 as u128;
 		assert_ok!(Currencies::update_balance(
 			Origin::root(),
@@ -1069,8 +1069,8 @@ fn swap_from_treasury_and_dex_update_rate() {
 
 		// Set threshold(init-500) gt treasury balance(init-800), trigger swap from dex.
 		let swap_balance_threshold = (expect_initial_balance - 500) as u128;
-		Pallet::<Runtime>::set_trigger_threshold(Origin::signed(ALICE), DOT, swap_balance_threshold).unwrap();
-		Pallet::<Runtime>::set_trigger_threshold(Origin::signed(ALICE), AUSD, swap_balance_threshold).unwrap();
+		Pallet::<Runtime>::set_swap_balance_threshold(Origin::signed(ALICE), DOT, swap_balance_threshold).unwrap();
+		Pallet::<Runtime>::set_swap_balance_threshold(Origin::signed(ALICE), AUSD, swap_balance_threshold).unwrap();
 
 		// before swap from dex, need add liquidity pool
 		assert_ok!(DEXModule::add_liquidity(
@@ -1113,32 +1113,5 @@ fn swap_from_treasury_and_dex_update_rate() {
 		let balance2 = 300 as u128;
 		let _ = Pallet::<Runtime>::swap_from_treasury_or_dex(&BOB, balance2, DOT);
 		assert_eq!(TokenFixedRate::<Runtime>::get(DOT).unwrap(), rate);
-
-		// Bob swap 98 DOT(use the new updated rate) to get 300 ACA
-		let exchange = rate.saturating_mul_int(balance2);
-		assert_eq!(balance - fee_dot - exchange, Currencies::free_balance(DOT, &BOB));
-		assert_eq!(balance + balance2, Currencies::free_balance(ACA, &BOB));
-		// When swap from dex finished, the treasury DOT got 0(no ED), as treasury use DOT to swap ACA.
-		// Only the newly exchange DOT from user to treasury.
-		assert_eq!(exchange, Currencies::free_balance(DOT, &dot_fee_account));
-		assert_eq!(
-			current_native_balance - balance2,
-			Currencies::free_balance(ACA, &dot_fee_account)
-		);
-
-		// rate=0.1227, amount=8*rate*weight=8*0.1227*200_000_000
-		let mut trader = PeriodUpdatedRateOfFungible::<Runtime, CurrencyIdConvert, KarPerSecond, ()>::new();
-		let mock_weight: Weight = 200_000_000;
-		let asset: u128 = 500_000_000;
-
-		let expect_amount: u128 = 8 * base_native * 20_000;
-		let expect_unused: u128 = asset - expect_amount;
-
-		let asset: MultiAsset = ((0, X1(GeneralKey(DOT.encode()))), asset).into();
-		let expect_asset: MultiAsset = ((0, X1(GeneralKey(DOT.encode()))), expect_unused).into();
-		let assets: Assets = asset.into();
-		let unused = trader.buy_weight(mock_weight, assets);
-		assert_eq!(unused.unwrap(), expect_asset.into());
-		assert_eq!(expect_amount, trader.amount);
 	});
 }
