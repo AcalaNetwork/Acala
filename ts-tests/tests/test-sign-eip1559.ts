@@ -54,6 +54,8 @@ describeWithAcala("Acala RPC (Sign eip1559)", (context) => {
 		const validUntil = (await context.provider.api.rpc.chain.getHeader()).number.toNumber() + 100
 		const storageLimit = 20000;
 		const gasLimit = 2100000;
+		const priorityFee = BigNumber.from(2);
+		const tip = priorityFee * gasLimit;
 
 		const block_period = bigNumDiv(BigNumber.from(validUntil), BigNumber.from(30));
 		const storage_entry_limit = bigNumDiv(BigNumber.from(storageLimit), BigNumber.from(64));
@@ -75,7 +77,7 @@ describeWithAcala("Acala RPC (Sign eip1559)", (context) => {
 			data: deploy.data,
 			value: 0,
 			chainId: chain_id,
-			maxPriorityFeePerGas: 0,
+			maxPriorityFeePerGas: priorityFee.toHexString(),
 			maxFeePerGas: tx_gas_price.toHexString(),
 		}
 
@@ -86,7 +88,7 @@ describeWithAcala("Acala RPC (Sign eip1559)", (context) => {
 			type: 2,
 			chainId: 595,
 			nonce: 0,
-			maxPriorityFeePerGas: BigNumber.from(0),
+			maxPriorityFeePerGas: BigNumber.from(2),
 			maxFeePerGas: BigNumber.from(200000209209),
 			gasPrice: null,
 			gasLimit: BigNumber.from(12116000),
@@ -126,7 +128,7 @@ describeWithAcala("Acala RPC (Sign eip1559)", (context) => {
 			method: "Bytes", // don't know that is this
 			nonce: nonce,
 			specVersion: 0, // ignored
-			tip: 0,
+			tip: tip,
 			transactionVersion: 0, // ignored
 		});
 
@@ -143,7 +145,7 @@ describeWithAcala("Acala RPC (Sign eip1559)", (context) => {
 					"immortalEra": "0x00"
 				  },
 				  "nonce": 0,
-				  "tip": 0
+				  "tip": ${tip}
 				},
 				"method": {
 				  "callIndex": "0xb400",
@@ -190,6 +192,8 @@ describeWithAcala("Acala RPC (Sign eip1559)", (context) => {
 		const validUntil = (await context.provider.api.rpc.chain.getHeader()).number.toNumber() + 100;
 		const storageLimit = 1000;
 		const gasLimit = 210000;
+		const priorityFee = BigNumber.from(2);
+		const tip = priorityFee * gasLimit;
 
 		const block_period = bigNumDiv(BigNumber.from(validUntil), BigNumber.from(30));
 		const storage_entry_limit = bigNumDiv(BigNumber.from(storageLimit), BigNumber.from(64));
@@ -212,7 +216,7 @@ describeWithAcala("Acala RPC (Sign eip1559)", (context) => {
 			data: input.data,
 			value: 0,
 			chainId: chain_id,
-			maxPriorityFeePerGas: 0,
+			maxPriorityFeePerGas: priorityFee.toHexString(),
 			maxFeePerGas: tx_gas_price.toHexString(),
 		}
 
@@ -223,7 +227,7 @@ describeWithAcala("Acala RPC (Sign eip1559)", (context) => {
 			type: 2,
 			chainId: 595,
 			nonce: 1,
-			maxPriorityFeePerGas: BigNumber.from(0),
+			maxPriorityFeePerGas: BigNumber.from(2),
 			maxFeePerGas: BigNumber.from(200000208912),
 			gasPrice: null,
 			gasLimit: BigNumber.from(722000),
@@ -263,7 +267,7 @@ describeWithAcala("Acala RPC (Sign eip1559)", (context) => {
 			method: "Bytes", // don't know that is this
 			nonce: nonce,
 			specVersion: 0, // ignored
-			tip: 0,
+			tip: tip,
 			transactionVersion: 0, // ignored
 		});
 
@@ -280,7 +284,7 @@ describeWithAcala("Acala RPC (Sign eip1559)", (context) => {
 					"immortalEra": "0x00"
 				  },
 				  "nonce": 1,
-				  "tip": 0
+				  "tip": ${tip}
 				},
 				"method": {
 				  "callIndex": "0xb400",
