@@ -251,13 +251,13 @@ fn test_authority_module() {
 
 			let pallets_origin = Box::new(schedule_origin.caller().clone());
 			assert_ok!(Authority::cancel_scheduled_dispatch(Origin::root(), pallets_origin, 5));
-			System::assert_last_event(Event::Authority(orml_authority::Event::Cancelled(
-				OriginCaller::Authority(DelayedOrigin {
+			System::assert_last_event(Event::Authority(orml_authority::Event::Cancelled {
+				origin: OriginCaller::Authority(DelayedOrigin {
 					delay: 1,
 					origin: Box::new(OriginCaller::system(RawOrigin::Root)),
 				}),
-				5,
-			)));
+				index: 5,
+			}));
 
 			assert_ok!(Authority::schedule_dispatch(
 				Origin::root(),
@@ -276,9 +276,9 @@ fn test_authority_module() {
 				Box::new(frame_system::RawOrigin::Root.into()),
 				6
 			));
-			System::assert_last_event(Event::Authority(orml_authority::Event::Cancelled(
-				OriginCaller::system(RawOrigin::Root),
-				6,
-			)));
+			System::assert_last_event(Event::Authority(orml_authority::Event::Cancelled {
+				origin: OriginCaller::system(RawOrigin::Root),
+				index: 6,
+			}));
 		});
 }

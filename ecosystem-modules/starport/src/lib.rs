@@ -112,21 +112,32 @@ pub mod module {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// User has locked some asset and uploaded them into Compound. [currency_id, amount, user]
-		AssetLockedTo(CurrencyId, Balance, T::AccountId),
+		/// User has locked some asset and uploaded them into Compound.
+		AssetLockedTo {
+			currency_id: CurrencyId,
+			amount: Balance,
+			user: T::AccountId,
+		},
 
-		/// The user has unlocked some asset and downloaded them back into Acala. [currency_id,
-		/// amount, user]
-		AssetUnlocked(CurrencyId, Balance, T::AccountId),
+		/// The user has unlocked some asset and downloaded them back into Acala.
+		AssetUnlocked {
+			currency_id: CurrencyId,
+			amount: Balance,
+			user: T::AccountId,
+		},
 
 		/// The list of authorities has been updated.
 		GatewayAuthoritiesChanged,
 
-		/// The supply cap for an asset has been updated. [currency_id, new_cap]
-		SupplyCapSet(CurrencyId, Balance),
+		/// The supply cap for an asset has been updated.
+		SupplyCapSet { currency_id: CurrencyId, new_cap: Balance },
 
-		/// The future yield for CASH is set. [yield, yield_index, timestamp]
-		FutureYieldSet(Balance, CashYieldIndex, Moment),
+		/// The future yield for CASH is set.
+		FutureYieldSet {
+			yield_amount: Balance,
+			index: CashYieldIndex,
+			timestamp: Moment,
+		},
 	}
 
 	#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, TypeInfo)]
@@ -308,7 +319,10 @@ pub mod module {
 			match notice.payload {
 				GatewayNoticePayload::SetSupplyCap(currency_id, amount) => {
 					SupplyCaps::<T>::insert(&currency_id, amount);
-					Self::deposit_event(Event::<T>::SupplyCapSet(currency_id, amount));
+					Self::deposit_event(Event::<T>::SupplyCapSet {
+						currency_id,
+						new_cap: amount,
+					});
 					Ok(())
 				}
 				GatewayNoticePayload::ChangeAuthorities(new_authorities) => {
@@ -334,11 +348,11 @@ pub mod module {
 					next_cash_yield_start,
 				} => {
 					T::Cash::set_future_yield(next_cash_yield, next_cash_yield_index, next_cash_yield_start)?;
-					Self::deposit_event(Event::<T>::FutureYieldSet(
-						next_cash_yield,
-						next_cash_yield_index,
-						next_cash_yield_start,
-					));
+					Self::deposit_event(Event::<T>::FutureYieldSet {
+						yield_amount: next_cash_yield,
+						index: next_cash_yield_index,
+						timestamp: next_cash_yield_start,
+					});
 					Ok(())
 				}
 			}?;
@@ -383,7 +397,11 @@ impl<T: Config> Pallet<T> {
 		SupplyCaps::<T>::insert(&currency_id, current_supply_cap - locked_amount);
 
 		// emit an event
-		Self::deposit_event(Event::<T>::AssetLockedTo(currency_id, locked_amount, to));
+		Self::deposit_event(Event::<T>::AssetLockedTo {
+			currency_id: currency_id,
+			amount: locked_amount,
+			user: to,
+		});
 
 		Ok(())
 	}
@@ -406,7 +424,11 @@ impl<T: Config> Pallet<T> {
 		}?;
 
 		// emit an event
-		Self::deposit_event(Event::<T>::AssetUnlocked(currency_id, unlock_amount, to));
+		Self::deposit_event(Event::<T>::AssetUnlocked {
+			currency_id,
+			amount: unlock_amount,
+			user: to,
+		});
 
 		Ok(())
 	}
