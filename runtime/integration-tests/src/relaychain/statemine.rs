@@ -16,7 +16,34 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-mod kusama_cross_chain_transfer;
-pub mod kusama_test_net;
-mod relay_chain;
-mod statemine;
+//! Cross-chain transfer tests within Kusama network.
+
+use crate::relaychain::kusama_test_net::*;
+use crate::setup::*;
+
+use frame_support::assert_ok;
+
+use xcm_emulator::TestExt;
+
+#[test]
+fn statemine() {
+	env_logger::init();
+	Statemine::execute_with(|| {
+		use westmint_runtime::*;
+		assert_ok!(PolkadotXcm::reserve_transfer_assets(
+			Origin::signed(ALICE.into()),
+			Box::new(Parachain(1000).into().into()),
+			Box::new(
+				Junction::AccountId32 {
+					id: BOB,
+					network: NetworkId::Any
+				}
+				.into()
+				.into()
+			),
+			Box::new((Parent, dollar(KSM)).into()),
+			0
+		));
+		println!("{:?}", System::events());
+	});
+}
