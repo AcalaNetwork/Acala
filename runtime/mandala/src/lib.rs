@@ -1968,6 +1968,7 @@ impl Convert<(Call, SignedExtra), Result<EthereumTransactionMessage, InvalidTran
 				value,
 				gas_limit,
 				storage_limit,
+				priority_fee,
 				valid_until,
 			}) => {
 				if System::block_number() > valid_until {
@@ -1985,17 +1986,21 @@ impl Convert<(Call, SignedExtra), Result<EthereumTransactionMessage, InvalidTran
 
 				let tip: module_transaction_payment::ChargeTransactionPayment<Runtime> = extra.6;
 				let tip = tip.0;
+				if tip != priority_fee.saturating_mul(gas_limit.into()) {
+					return Err(InvalidTransaction::BadProof);
+				}
 
 				Ok(EthereumTransactionMessage {
+					chain_id: ChainId::get(),
+					genesis: System::block_hash(0),
 					nonce,
 					tip,
+					priority_fee,
 					gas_limit,
 					storage_limit,
 					action,
 					value,
 					input,
-					chain_id: ChainId::get(),
-					genesis: System::block_hash(0),
 					valid_until,
 				})
 			}

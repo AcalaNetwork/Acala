@@ -88,15 +88,16 @@ pub struct EstimateResourcesRequest {
 #[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct EthereumTransactionMessage {
+	pub chain_id: u64,
+	pub genesis: H256,
 	pub nonce: Nonce,
 	pub tip: Balance,
+	pub priority_fee: Balance,
 	pub gas_limit: u64,
 	pub storage_limit: u32,
 	pub action: TransactionAction,
 	pub value: Balance,
 	pub input: Vec<u8>,
-	pub chain_id: u64,
-	pub genesis: H256,
 	pub valid_until: BlockNumber,
 }
 

@@ -23,7 +23,7 @@ use frame_support::{
 	traits::{ExtrinsicCall, Get},
 	weights::{DispatchInfo, GetDispatchInfo},
 };
-use module_evm_utiltity::ethereum::{LegacyTransactionMessage, TransactionAction};
+use module_evm_utiltity::ethereum::{EIP1559TransactionMessage, TransactionAction};
 use module_evm_utiltity_macro::keccak256;
 use scale_info::TypeInfo;
 use sp_core::{H160, H256, U256};
@@ -115,11 +115,6 @@ where
 				let function = self.0.function;
 				let eth_msg = ConvertTx::convert((function.clone(), extra.clone()))?;
 
-				if eth_msg.tip != 0 {
-					// Not yet supported, require zero tip
-					return Err(InvalidTransaction::BadProof.into());
-				}
-
 				// tx_gas_price = tx_fee_per_gas + block_period << 16 + storage_entry_limit
 				// tx_gas_limit = gas_limit + storage_entry_deposit / tx_fee_per_gas * storage_entry_limit
 				let block_period = eth_msg.valid_until.checked_div(30).expect("divisor is non-zero; qed");
@@ -147,14 +142,16 @@ where
 					eth_msg.storage_limit, eth_msg.gas_limit, tx_gas_limit, tx_gas_price
 				);
 
-				let msg = LegacyTransactionMessage {
+				let msg = EIP1559TransactionMessage {
+					chain_id: eth_msg.chain_id,
 					nonce: eth_msg.nonce.into(),
-					gas_price: tx_gas_price.into(),
+					max_priority_fee_per_gas: eth_msg.priority_fee.into(),
+					max_fee_per_gas: tx_gas_price.into(),
 					gas_limit: tx_gas_limit.into(),
 					action: eth_msg.action,
 					value: eth_msg.value.into(),
 					input: eth_msg.input,
-					chain_id: Some(eth_msg.chain_id),
+					access_list: vec![],
 				};
 
 				let msg_hash = msg.hash(); // TODO: consider rewirte this to use `keccak_256` for hashing because it could be faster
@@ -285,6 +282,8 @@ mod tests {
 	#[test]
 	fn verify_eip712_should_works() {
 		let msg = EthereumTransactionMessage {
+			chain_id: 595,
+			genesis: H256::from_str("0xc3751fc073ec83e6aa13e2be395d21b05dce0692618a129324261c80ede07d4c").unwrap(),
 			nonce: 1,
 			tip: 2,
 			gas_limit: 222,
@@ -292,8 +291,6 @@ mod tests {
 			action: TransactionAction::Call(H160::from_str("0x1111111111222222222233333333334444444444").unwrap()),
 			value: 111,
 			input: vec![],
-			chain_id: 595,
-			genesis: H256::from_str("0xc3751fc073ec83e6aa13e2be395d21b05dce0692618a129324261c80ede07d4c").unwrap(),
 			valid_until: 444,
 		};
 		let sign = hex_literal::hex!("acb56f12b407bd0bc8f7abefe2e2585affe28009abcb6980aa33aecb815c56b324ab60a41eff339a88631c4b0e5183427be1fcfde3c05fb9b6c71a691e977c4a1b");
@@ -344,14 +341,16 @@ mod tests {
 
 	#[test]
 	fn verify_eth_should_works() {
-		let msg = LegacyTransactionMessage {
+		let msg = EIP1559TransactionMessage {
+			chain_id: 595,
 			nonce: U256::from(1),
-			gas_price: U256::from("0x640000006a"),
+			max_priority_fee_per_gas: 0,
+			max_fee_per_gas: U256::from("0x640000006a"),
 			gas_limit: U256::from(21000),
 			action: TransactionAction::Call(H160::from_str("0x1111111111222222222233333333334444444444").unwrap()),
 			value: U256::from(123123),
 			input: vec![],
-			chain_id: Some(595),
+			access_list: vec![],
 		};
 
 		let sign = hex_literal::hex!("f84345a6459785986a1b2df711fe02597d70c1393757a243f8f924ea541d2ecb51476de1aa437cd820d59e1d9836e37e643fec711fe419464e637cab592918751c");
