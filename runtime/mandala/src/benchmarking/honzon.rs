@@ -19,7 +19,7 @@
 use crate::{
 	dollar, AccountId, Amount, Balance, CdpEngine, CollateralCurrencyIds, Currencies, CurrencyId,
 	DepositPerAuthorization, Dex, ExistentialDeposits, GetLiquidCurrencyId, GetNativeCurrencyId, GetStableCurrencyId,
-	GetStakingCurrencyId, Honzon, Price, Rate, Ratio, Runtime, TradingPathLimit,
+	GetStakingCurrencyId, Honzon, Price, Rate, Ratio, Runtime,
 };
 
 use super::utils::{feed_price, set_balance};
@@ -27,7 +27,6 @@ use frame_benchmarking::{account, whitelisted_caller};
 use frame_system::RawOrigin;
 use orml_benchmarking::runtime_benchmarks;
 use orml_traits::{Change, GetByKey, MultiCurrencyExtended};
-use runtime_common::{BNC, RENBTC, VSKSM};
 use sp_runtime::{
 	traits::{AccountIdLookup, One, StaticLookup, UniqueSaturatedInto},
 	FixedPointNumber,
@@ -40,8 +39,6 @@ const NATIVE: CurrencyId = GetNativeCurrencyId::get();
 const STABLECOIN: CurrencyId = GetStableCurrencyId::get();
 const STAKING: CurrencyId = GetStakingCurrencyId::get();
 const LIQUID: CurrencyId = GetLiquidCurrencyId::get();
-
-const CURRENCY_LIST: [CurrencyId; 5] = [NATIVE, LIQUID, BNC, VSKSM, RENBTC];
 
 fn inject_liquidity(
 	maker: AccountId,
@@ -207,22 +204,23 @@ runtime_benchmarks! {
 		let sender: AccountId = whitelisted_caller();
 		let maker: AccountId = account("maker", 0, SEED);
 		let debit_value = 100 * dollar(STABLECOIN);
-		let debit_exchange_rate = CdpEngine::get_debit_exchange_rate(currency_id);
+		let debit_exchange_rate = CdpEngine::get_debit_exchange_rate(LIQUID);
 		let debit_amount = debit_exchange_rate.reciprocal().unwrap().saturating_mul_int(debit_value);
 		let debit_amount: Amount = debit_amount.unique_saturated_into();
 		let collateral_value = 10 * debit_value;
-		let collateral_amount = Price::saturating_from_rational(dollar(currency_id), dollar(STABLECOIN)).saturating_mul_int(collateral_value);
+		let collateral_amount = Price::saturating_from_rational(dollar(LIQUID), dollar(STABLECOIN)).saturating_mul_int(collateral_value);
 
 		// set balance and inject liquidity
-		set_balance(currency_id, &sender, (10 * collateral_amount) + ExistentialDeposits::get(&currency_id));
-		inject_liquidity(maker.clone(), currency_id, STABLECOIN, 10_000 * dollar(currency_id), 10_000 * dollar(STABLECOIN), false)?;
+		set_balance(LIQUID, &sender, (10 * collateral_amount) + ExistentialDeposits::get(&LIQUID));
+		inject_liquidity(maker.clone(), LIQUID, STAKING, 10_000 * dollar(LIQUID), 10_000 * dollar(STAKING), false)?;
+		inject_liquidity(maker, STAKING, STABLECOIN, 10_000 * dollar(STAKING), 10_000 * dollar(STABLECOIN), false)?;
 
 		feed_price(vec![(STAKING, Price::one())])?;
 
 		// set risk params
 		CdpEngine::set_collateral_params(
 			RawOrigin::Root.into(),
-			currency_id,
+			LIQUID,
 			Change::NoChange,
 			Change::NewValue(Some(Ratio::saturating_from_rational(150, 100))),
 			Change::NewValue(Some(Rate::saturating_from_rational(10, 100))),
@@ -233,12 +231,12 @@ runtime_benchmarks! {
 		// initialize sender's loan
 		Honzon::adjust_loan(
 			RawOrigin::Signed(sender.clone()).into(),
-			currency_id,
+			LIQUID,
 			(10 * collateral_amount).try_into().unwrap(),
 			debit_amount,
 		)?;
 
-	}: _(RawOrigin::Signed(sender), currency_id, collateral_amount)
+	}: _(RawOrigin::Signed(sender), LIQUID, collateral_amount)
 }
 
 #[cfg(test)]

@@ -196,7 +196,8 @@ runtime_benchmarks! {
 		let collateral_price = Price::one();		// 1 USD
 
 		set_balance(LIQUID, &owner, (10 * collateral_amount) + ExistentialDeposits::get(&LIQUID));
-		inject_liquidity(funder, LIQUID, STABLECOIN, 10_000 * dollar(LIQUID), 10_000 * dollar(STABLECOIN))?;
+		inject_liquidity(funder.clone(), LIQUID, STAKING, 10_000 * dollar(LIQUID), 10_000 * dollar(STAKING))?;
+		inject_liquidity(funder, STAKING, STABLECOIN, 10_000 * dollar(STAKING), 10_000 * dollar(STABLECOIN))?;
 
 		// feed price
 		feed_price(vec![(STAKING, collateral_price)])?;

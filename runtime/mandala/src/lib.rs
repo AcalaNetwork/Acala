@@ -1094,7 +1094,7 @@ impl module_dex::Config for Runtime {
 parameter_types! {
 	pub const MaxAuctionsCount: u32 = 50;
 	pub HonzonTreasuryAccount: AccountId = HonzonTreasuryPalletId::get().into_account();
-	pub AlternativeSwapPathJointList: Vec<Vec<CurrencyId>> = vec![];
+	pub AlternativeSwapPathJointList: Vec<Vec<CurrencyId>> = vec![vec![GetStakingCurrencyId::get()]];
 }
 
 impl module_cdp_treasury::Config for Runtime {

@@ -215,7 +215,7 @@ fn swap_collateral_to_stable_work() {
 
 		assert_noop!(
 			CDPTreasuryModule::swap_collateral_to_stable(BTC, SwapLimit::ExactTarget(200, 399), false),
-			Error::<Runtime>::NoSwapPath
+			Error::<Runtime>::CannotSwap
 		);
 		assert_ok!(DEXModule::add_liquidity(
 			Origin::signed(ALICE),
@@ -236,7 +236,7 @@ fn swap_collateral_to_stable_work() {
 
 		assert_noop!(
 			CDPTreasuryModule::swap_collateral_to_stable(DOT, SwapLimit::ExactSupply(1000, 1000), false),
-			Error::<Runtime>::NoSwapPath,
+			Error::<Runtime>::CannotSwap,
 		);
 
 		assert_eq!(

@@ -103,8 +103,8 @@ pub mod module {
 		SurplusPoolNotEnough,
 		/// The debit pool of CDP treasury is not enough
 		DebitPoolNotEnough,
-		/// There's no swap path for collateral to swap stable
-		NoSwapPath,
+		/// Cannot use collateral to swap stable
+		CannotSwap,
 	}
 
 	#[pallet::event]
@@ -353,7 +353,7 @@ impl<T: Config> CDPTreasuryExtended<T::AccountId> for Pallet<T> {
 			limit,
 			T::AlternativeSwapPathJointList::get(),
 		)
-		.ok_or(Error::<T>::NoSwapPath)?;
+		.ok_or(Error::<T>::CannotSwap)?;
 		T::DEX::swap_with_specific_path(&Self::account_id(), &swap_path, limit)
 	}
 

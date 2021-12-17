@@ -219,8 +219,6 @@ pub mod module {
 		AlreadyShutdown,
 		/// Must after system shutdown
 		MustAfterShutdown,
-		/// Failed to swap debit by default path list
-		SwapDebitFailed,
 	}
 
 	#[pallet::event]
@@ -831,13 +829,11 @@ impl<T: Config> Pallet<T> {
 		let debit_value = Self::get_debit_value(currency_id, debit);
 		let collateral_supply = collateral.min(max_collateral_amount);
 
-		// if specify swap path
 		let (actual_supply_collateral, _) = <T as Config>::CDPTreasury::swap_collateral_to_stable(
 			currency_id,
 			SwapLimit::ExactTarget(collateral_supply, debit_value),
 			false,
-		)
-		.map_err(|_| Error::<T>::SwapDebitFailed)?;
+		)?;
 
 		// refund remain collateral to CDP owner
 		let refund_collateral_amount = collateral
