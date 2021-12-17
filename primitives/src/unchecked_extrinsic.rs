@@ -342,6 +342,8 @@ fn verify_eip712_signature(eth_msg: EthereumTransactionMessage, sig: [u8; 65]) -
 #[cfg(test)]
 mod tests {
 	use super::*;
+	use hex_literal::hex;
+	use module_evm_utiltity::ethereum::AccessListItem;
 	use std::{ops::Add, str::FromStr};
 
 	#[test]
@@ -358,7 +360,7 @@ mod tests {
 			input: vec![],
 			valid_until: 444,
 		};
-		let sign = hex_literal::hex!("acb56f12b407bd0bc8f7abefe2e2585affe28009abcb6980aa33aecb815c56b324ab60a41eff339a88631c4b0e5183427be1fcfde3c05fb9b6c71a691e977c4a1b");
+		let sign = hex!("acb56f12b407bd0bc8f7abefe2e2585affe28009abcb6980aa33aecb815c56b324ab60a41eff339a88631c4b0e5183427be1fcfde3c05fb9b6c71a691e977c4a1b");
 		let sender = Some(H160::from_str("0x14791697260E4c9A71f18484C9f997B308e59325").unwrap());
 
 		assert_eq!(verify_eip712_signature(msg.clone(), sign), sender);
@@ -416,7 +418,7 @@ mod tests {
 			chain_id: Some(595),
 		};
 
-		let sign = hex_literal::hex!("f84345a6459785986a1b2df711fe02597d70c1393757a243f8f924ea541d2ecb51476de1aa437cd820d59e1d9836e37e643fec711fe419464e637cab592918751c");
+		let sign = hex!("f84345a6459785986a1b2df711fe02597d70c1393757a243f8f924ea541d2ecb51476de1aa437cd820d59e1d9836e37e643fec711fe419464e637cab592918751c");
 		let sender = Some(H160::from_str("0x14791697260E4c9A71f18484C9f997B308e59325").unwrap());
 
 		assert_eq!(recover_signer(&sign, msg.hash().as_fixed_bytes()), sender);
@@ -464,10 +466,14 @@ mod tests {
 			access_list: vec![],
 		};
 
-		let sign = hex_literal::hex!("f84345a6459785986a1b2df711fe02597d70c1393757a243f8f924ea541d2ecb51476de1aa437cd820d59e1d9836e37e643fec711fe419464e637cab592918751c");
+		let sign = hex!("e88df53d4d66cb7a4f54ea44a44942b9b7f4fb4951525d416d3f7d24755a1f817734270872b103ac04c59d74f4dacdb8a6eff09a6638bd95dad1fa3eda921d891b");
 		let sender = Some(H160::from_str("0x14791697260E4c9A71f18484C9f997B308e59325").unwrap());
 
 		assert_eq!(recover_signer(&sign, msg.hash().as_fixed_bytes()), sender);
+
+		let mut new_msg = msg.clone();
+		new_msg.chain_id = new_msg.chain_id.add(1u64);
+		assert_ne!(recover_signer(&sign, new_msg.hash().as_fixed_bytes()), sender);
 
 		let mut new_msg = msg.clone();
 		new_msg.nonce = new_msg.nonce.add(U256::one());
@@ -497,8 +503,11 @@ mod tests {
 		new_msg.input = vec![0x00];
 		assert_ne!(recover_signer(&sign, new_msg.hash().as_fixed_bytes()), sender);
 
-		let mut new_msg = msg;
-		new_msg.chain_id = new_msg.chain_id.add(1u64);
+		let mut new_msg = msg.clone();
+		new_msg.access_list = vec![AccessListItem {
+			address: hex!("bb9bc244d798123fde783fcc1c72d3bb8c189413").into(),
+			slots: vec![],
+		}];
 		assert_ne!(recover_signer(&sign, new_msg.hash().as_fixed_bytes()), sender);
 	}
 }
