@@ -286,7 +286,7 @@ fn test_authority_module() {
 
 			assert_ok!(GeneralCouncil::set_members(
 				Origin::root(),
-				vec![alice(), bob()],
+				vec![AccountId::from(ALICE), AccountId::from(BOB)],
 				None,
 				5,
 			));
@@ -297,6 +297,11 @@ fn test_authority_module() {
 				with_delayed_origin: false,
 				call: Box::new(ensure_signed_call),
 			});
-			//assert_ok!(GeneralCouncil::proposal())
+			assert_ok!(GeneralCouncil::propose(
+				Origin::signed(AccountId::from(BOB)),
+				2,
+				Box::new(proposal.clone()),
+				proposal.using_encoded(|x| x.len()) as u32
+			));
 		});
 }
