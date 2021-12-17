@@ -92,7 +92,6 @@ pub struct EthereumTransactionMessage {
 	pub genesis: H256,
 	pub nonce: Nonce,
 	pub tip: Balance,
-	pub priority_fee: Balance,
 	pub gas_limit: u64,
 	pub storage_limit: u32,
 	pub action: TransactionAction,
