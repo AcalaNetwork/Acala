@@ -104,8 +104,8 @@ pub mod parachains {
 
 	pub mod kintsugi {
 		pub const ID: u32 = 2092;
-		pub const KBTC_KEY: &[u8] = &[4];
-		pub const KINT_KEY: &[u8] = &[5];
+		pub const KBTC_KEY: &[u8] = &[0, 11];
+		pub const KINT_KEY: &[u8] = &[0, 12];
 	}
 }
 
