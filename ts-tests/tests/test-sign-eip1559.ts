@@ -8,7 +8,7 @@ import { hexToU8a, u8aConcat, stringToU8a } from "@polkadot/util";
 import { ethers, BigNumber, ContractFactory } from "ethers";
 import Erc20DemoContract from "../build/Erc20DemoContract.json"
 
-describeWithAcala("Acala RPC (Sign eth)", (context) => {
+describeWithAcala("Acala RPC (Sign eip1559)", (context) => {
 	let alice: Signer;
 	let signer: Wallet;
 	let subAddr: string;
@@ -49,7 +49,7 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 	it("create should sign and verify", async function () {
 		this.timeout(150000);
 
-		const chainId = +context.provider.api.consts.evm.chainId.toString()
+		const chain_id = +context.provider.api.consts.evm.chainId.toString()
 		const nonce = (await context.provider.api.query.system.account(subAddr)).nonce.toNumber()
 		const validUntil = (await context.provider.api.rpc.chain.getHeader()).number.toNumber() + 100
 		const storageLimit = 20000;
@@ -68,32 +68,37 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 		const deploy = factory.getDeployTransaction(100000);
 
 		const value = {
+			type: 2, // EIP-1559
 			// to: "0x0000000000000000000000000000000000000000",
 			nonce,
 			gasLimit: tx_gas_limit.toNumber(),
-			gasPrice: tx_gas_price.toHexString(),
 			data: deploy.data,
 			value: 0,
-			chainId: chainId,
+			chainId: chain_id,
+			maxPriorityFeePerGas: 0,
+			maxFeePerGas: tx_gas_price.toHexString(),
 		}
 
 		const signedTx = await signer.signTransaction(value)
 		const rawtx = ethers.utils.parseTransaction(signedTx)
 
 		expect(rawtx).to.deep.include({
+			type: 2,
+			chainId: 595,
 			nonce: 0,
-			gasPrice: BigNumber.from(200000209209),
+			maxPriorityFeePerGas: BigNumber.from(0),
+			maxFeePerGas: BigNumber.from(200000209209),
+			gasPrice: null,
 			gasLimit: BigNumber.from(12116000),
-			// to: '0x0000000000000000000000000000000000000000',
+			to: null,
 			value: BigNumber.from(0),
 			data: deploy.data,
-			chainId: 595,
+			accessList: [],
 			// v: 1226,
 			// r: '0xff8ff25480f5e1d1b38603b8fa1f10d64faf81707768dd9016fc4dd86d5474d2',
 			// s: '0x6c2cfd5acd5b0b820e1c107efd5e7ce2c452b81742091f43f5c793a835c8644f',
 			from: '0x14791697260E4c9A71f18484C9f997B308e59325',
 			// hash: '0x456d37c868520b362bbf5baf1b19752818eba49cc92c1a512e2e80d1ccfbc18b',
-			type: null
 		});
 
 		// tx data to user input
@@ -114,7 +119,7 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 
 		const sig = ethers.utils.joinSignature({ r: rawtx.r!, s: rawtx.s, v: rawtx.v })
 
-		tx.addSignature(subAddr, { Ethereum: sig } as any, {
+		tx.addSignature(subAddr, { Eip1559: sig } as any, {
 			blockHash: '0x', // ignored
 			era: "0x00", // mortal
 			genesisHash: '0x', // ignored
@@ -132,7 +137,7 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 					"id": "5EMjsczQH4R2WZaB5Svau8HWZp1aAfMqjxfv3GeLWotYSkLc"
 				  },
 				  "signature": {
-					"ethereum": "${sig}"
+					"eip1559": "${sig}"
 				  },
 				  "era": {
 					"immortalEra": "0x00"
@@ -180,7 +185,7 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 	it("call should sign and verify", async function () {
 		this.timeout(150000);
 
-		const chainId = +context.provider.api.consts.evm.chainId.toString();
+		const chain_id = +context.provider.api.consts.evm.chainId.toString();
 		const nonce = (await context.provider.api.query.system.account(subAddr)).nonce.toNumber();
 		const validUntil = (await context.provider.api.rpc.chain.getHeader()).number.toNumber() + 100;
 		const storageLimit = 1000;
@@ -200,32 +205,37 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 		const input = await factory.attach(contract).populateTransaction.transfer(receiver, 100);
 
 		const value = {
+			type: 2, // EIP-1559
 			to: contract,
 			nonce,
 			gasLimit: tx_gas_limit.toNumber(),
-			gasPrice: tx_gas_price.toHexString(),
 			data: input.data,
 			value: 0,
-			chainId: chainId,
+			chainId: chain_id,
+			maxPriorityFeePerGas: 0,
+			maxFeePerGas: tx_gas_price.toHexString(),
 		}
 
 		const signedTx = await signer.signTransaction(value)
 		const rawtx = ethers.utils.parseTransaction(signedTx)
 
 		expect(rawtx).to.deep.include({
+			type: 2,
+			chainId: 595,
 			nonce: 1,
-			gasPrice: BigNumber.from(200000208912),
+			maxPriorityFeePerGas: BigNumber.from(0),
+			maxFeePerGas: BigNumber.from(200000208912),
+			gasPrice: null,
 			gasLimit: BigNumber.from(722000),
 			to: ethers.utils.getAddress(contract),
 			value: BigNumber.from(0),
 			data: input.data,
-			chainId: 595,
-			// v: 1225,
-			// r: '0xf84345a6459785986a1b2df711fe02597d70c1393757a243f8f924ea541d2ecb',
-			// s: '0x51476de1aa437cd820d59e1d9836e37e643fec711fe419464e637cab59291875',
+			accessList: [],
+			// v: 1226,
+			// r: '0xff8ff25480f5e1d1b38603b8fa1f10d64faf81707768dd9016fc4dd86d5474d2',
+			// s: '0x6c2cfd5acd5b0b820e1c107efd5e7ce2c452b81742091f43f5c793a835c8644f',
 			from: '0x14791697260E4c9A71f18484C9f997B308e59325',
-			// hash: '0x67274cd0347795d0e2986021a19b1347948a0a93e1fb31a315048320fbfcae8a',
-			type: null
+			// hash: '0x456d37c868520b362bbf5baf1b19752818eba49cc92c1a512e2e80d1ccfbc18b',
 		});
 
 		// tx data to user input
@@ -246,7 +256,7 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 
 		const sig = ethers.utils.joinSignature({ r: rawtx.r!, s: rawtx.s, v: rawtx.v })
 
-		tx.addSignature(subAddr, { Ethereum: sig } as any, {
+		tx.addSignature(subAddr, { Eip1559: sig } as any, {
 			blockHash: '0x', // ignored
 			era: "0x00", // mortal
 			genesisHash: '0x', // ignored
@@ -264,7 +274,7 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 					"id": "5EMjsczQH4R2WZaB5Svau8HWZp1aAfMqjxfv3GeLWotYSkLc"
 				  },
 				  "signature": {
-					"ethereum": "${sig}"
+					"eip1559": "${sig}"
 				  },
 				  "era": {
 					"immortalEra": "0x00"

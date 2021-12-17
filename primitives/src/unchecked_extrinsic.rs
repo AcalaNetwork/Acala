@@ -115,6 +115,11 @@ where
 				let function = self.0.function;
 				let eth_msg = ConvertTx::convert((function.clone(), extra.clone()))?;
 
+				if eth_msg.tip != 0 {
+					// Not yet supported, require zero tip
+					return Err(InvalidTransaction::BadProof.into());
+				}
+
 				// tx_gas_price = tx_fee_per_gas + block_period << 16 + storage_entry_limit
 				// tx_gas_limit = gas_limit + storage_entry_deposit / tx_fee_per_gas * storage_entry_limit
 				let block_period = eth_msg.valid_until.checked_div(30).expect("divisor is non-zero; qed");
@@ -142,7 +147,7 @@ where
 					eth_msg.tip, eth_msg.storage_limit, eth_msg.gas_limit, tx_gas_limit, tx_gas_price
 				);
 
-				let msg = LegacyTransaction {
+				let msg = LegacyTransactionMessage {
 					nonce: eth_msg.nonce.into(),
 					gas_price: tx_gas_price.into(),
 					gas_limit: tx_gas_limit.into(),
@@ -195,7 +200,7 @@ where
 					.saturating_add(eth_msg.gas_limit.into());
 
 				// tip = priority_fee * gas_limit
-				let priority_fee = tip.checked_div(gas_limit).unwrap_or_default();
+				let priority_fee = eth_msg.tip.checked_div(eth_msg.gas_limit.into()).unwrap_or_default();
 
 				log::trace!(
 					target: "evm", "eth_msg.tip: {:?}, eth_msg.gas_limit: {:?}, eth_msg.storage_limit: {:?}, tx_gas_limit: {:?}, tx_gas_price: {:?}",
@@ -450,7 +455,7 @@ mod tests {
 		let msg = EIP1559TransactionMessage {
 			chain_id: 595,
 			nonce: U256::from(1),
-			max_priority_fee_per_gas: 0,
+			max_priority_fee_per_gas: U256::from(1),
 			max_fee_per_gas: U256::from("0x640000006a"),
 			gas_limit: U256::from(21000),
 			action: TransactionAction::Call(H160::from_str("0x1111111111222222222233333333334444444444").unwrap()),
@@ -469,7 +474,11 @@ mod tests {
 		assert_ne!(recover_signer(&sign, new_msg.hash().as_fixed_bytes()), sender);
 
 		let mut new_msg = msg.clone();
-		new_msg.gas_price = new_msg.gas_price.add(U256::one());
+		new_msg.max_priority_fee_per_gas = new_msg.max_priority_fee_per_gas.add(U256::one());
+		assert_ne!(recover_signer(&sign, new_msg.hash().as_fixed_bytes()), sender);
+
+		let mut new_msg = msg.clone();
+		new_msg.max_fee_per_gas = new_msg.max_fee_per_gas.add(U256::one());
 		assert_ne!(recover_signer(&sign, new_msg.hash().as_fixed_bytes()), sender);
 
 		let mut new_msg = msg.clone();
@@ -489,7 +498,7 @@ mod tests {
 		assert_ne!(recover_signer(&sign, new_msg.hash().as_fixed_bytes()), sender);
 
 		let mut new_msg = msg;
-		new_msg.chain_id = None;
+		new_msg.chain_id = new_msg.chain_id.add(1u64);
 		assert_ne!(recover_signer(&sign, new_msg.hash().as_fixed_bytes()), sender);
 	}
 }
