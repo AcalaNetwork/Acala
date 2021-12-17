@@ -138,7 +138,7 @@ impl<T: Config> Pallet<T> {
 		// Deposit event and remove completed tasks.
 		for (id, result) in completed_tasks {
 			Self::deposit_event(Event::<T>::TaskDispatched {
-				dispatch_id: id,
+				task_id: id,
 				result: result.result,
 			});
 			Tasks::<T>::remove(id);
