@@ -1269,13 +1269,13 @@ impl<T: Config> DEXManager<T::AccountId, CurrencyId, Balance> for Pallet<T> {
 				let mut swap_path = vec![];
 
 				if supply_currency_id != path_joint[0] {
-					swap_path.extend(vec![supply_currency_id]);
+					swap_path.push(supply_currency_id);
 				}
 
 				swap_path.extend(path_joint.clone());
 
 				if target_currency_id != path_joint[path_joint.len() - 1] {
-					swap_path.extend(vec![target_currency_id]);
+					swap_path.push(target_currency_id);
 				}
 
 				if let Some((supply_amount, target_amount)) = Self::get_swap_amount(&swap_path, limit) {
