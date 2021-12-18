@@ -1987,6 +1987,8 @@ impl Convert<(Call, SignedExtra), Result<EthereumTransactionMessage, InvalidTran
 				let tip = tip.0;
 
 				Ok(EthereumTransactionMessage {
+					chain_id: ChainId::get(),
+					genesis: System::block_hash(0),
 					nonce,
 					tip,
 					gas_limit,
@@ -1994,8 +1996,6 @@ impl Convert<(Call, SignedExtra), Result<EthereumTransactionMessage, InvalidTran
 					action,
 					value,
 					input,
-					chain_id: ChainId::get(),
-					genesis: System::block_hash(0),
 					valid_until,
 				})
 			}
