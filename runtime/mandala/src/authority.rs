@@ -45,11 +45,15 @@ impl orml_authority::AuthorityConfig<Origin, OriginCaller, BlockNumber> for Auth
 		_initial_origin: &OriginCaller,
 		new_delay: BlockNumber,
 	) -> DispatchResult {
-		if new_delay / HOURS < 12 {
-			EnsureRootOrTwoThirdsTechnicalCommittee::ensure_origin(origin).map_or_else(|e| Err(e.into()), |_| Ok(()))
-		} else {
-			EnsureRootOrOneThirdsTechnicalCommittee::ensure_origin(origin).map_or_else(|e| Err(e.into()), |_| Ok(()))
-		}
+		ensure_root(origin.clone()).or_else(|_| {
+			if new_delay / HOURS < 12 {
+				EnsureRootOrTwoThirdsTechnicalCommittee::ensure_origin(origin)
+					.map_or_else(|e| Err(e.into()), |_| Ok(()))
+			} else {
+				EnsureRootOrOneThirdsTechnicalCommittee::ensure_origin(origin)
+					.map_or_else(|e| Err(e.into()), |_| Ok(()))
+			}
+		})
 	}
 
 	fn check_delay_schedule(origin: Origin, _initial_origin: &OriginCaller) -> DispatchResult {
@@ -60,7 +64,7 @@ impl orml_authority::AuthorityConfig<Origin, OriginCaller, BlockNumber> for Auth
 
 	fn check_cancel_schedule(origin: Origin, initial_origin: &OriginCaller) -> DispatchResult {
 		if matches!(
-			cmp_privilege(&origin.caller(), &initial_origin),
+			cmp_privilege(origin.caller(), initial_origin),
 			Some(Ordering::Greater) | Some(Ordering::Equal)
 		) || EnsureRootOrThreeFourthsGeneralCouncil::ensure_origin(origin).is_ok()
 		{
