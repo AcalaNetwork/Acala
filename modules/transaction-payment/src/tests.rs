@@ -331,8 +331,14 @@ fn charges_fee_failed_by_slippage_limit() {
 
 			// pool is enough, but slippage limit the swap
 			MockPriceSource::set_relative_price(Some(Price::saturating_from_rational(252, 4020)));
-			assert_eq!(DEXModule::get_swap_supply_amount(&[AUSD, ACA], 2010), Some(252));
-			assert_eq!(DEXModule::get_swap_target_amount(&[AUSD, ACA], 1000), Some(5000));
+			assert_eq!(
+				DEXModule::get_swap_amount(&vec![AUSD, ACA], SwapLimit::ExactTarget(Balance::MAX, 2010)),
+				Some((252, 2010))
+			);
+			assert_eq!(
+				DEXModule::get_swap_amount(&vec![AUSD, ACA], SwapLimit::ExactSupply(1000, 0)),
+				Some((1000, 5000))
+			);
 
 			assert_noop!(
 				ChargeTransactionPayment::<Runtime>::from(0).validate(&BOB, CALL2, &INFO, 500),

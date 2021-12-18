@@ -103,28 +103,33 @@ pub trait AuctionManager<AccountId> {
 	fn get_total_target_in_auction() -> Self::Balance;
 }
 
+#[derive(RuntimeDebug, Clone, Copy, PartialEq)]
+pub enum SwapLimit<Balance> {
+	/// use exact amount supply amount to swap. (exact_supply_amount, minimum_target_amount)
+	ExactSupply(Balance, Balance),
+	/// swap to get exact amount target. (maximum_supply_amount, exact_target_amount)
+	ExactTarget(Balance, Balance),
+}
+
 pub trait DEXManager<AccountId, CurrencyId, Balance> {
 	fn get_liquidity_pool(currency_id_a: CurrencyId, currency_id_b: CurrencyId) -> (Balance, Balance);
 
 	fn get_liquidity_token_address(currency_id_a: CurrencyId, currency_id_b: CurrencyId) -> Option<H160>;
 
-	fn get_swap_target_amount(path: &[CurrencyId], supply_amount: Balance) -> Option<Balance>;
+	fn get_swap_amount(path: &[CurrencyId], limit: SwapLimit<Balance>) -> Option<(Balance, Balance)>;
 
-	fn get_swap_supply_amount(path: &[CurrencyId], target_amount: Balance) -> Option<Balance>;
+	fn get_best_price_swap_path(
+		supply_currency_id: CurrencyId,
+		target_currency_id: CurrencyId,
+		limit: SwapLimit<Balance>,
+		alternative_path_joint_list: Vec<Vec<CurrencyId>>,
+	) -> Option<Vec<CurrencyId>>;
 
-	fn swap_with_exact_supply(
+	fn swap_with_specific_path(
 		who: &AccountId,
 		path: &[CurrencyId],
-		supply_amount: Balance,
-		min_target_amount: Balance,
-	) -> sp_std::result::Result<Balance, DispatchError>;
-
-	fn swap_with_exact_target(
-		who: &AccountId,
-		path: &[CurrencyId],
-		target_amount: Balance,
-		max_supply_amount: Balance,
-	) -> sp_std::result::Result<Balance, DispatchError>;
+		limit: SwapLimit<Balance>,
+	) -> sp_std::result::Result<(Balance, Balance), DispatchError>;
 
 	fn add_liquidity(
 		who: &AccountId,
@@ -160,29 +165,24 @@ where
 		Some(Default::default())
 	}
 
-	fn get_swap_target_amount(_path: &[CurrencyId], _supply_amount: Balance) -> Option<Balance> {
+	fn get_swap_amount(_path: &[CurrencyId], _limit: SwapLimit<Balance>) -> Option<(Balance, Balance)> {
 		Some(Default::default())
 	}
 
-	fn get_swap_supply_amount(_path: &[CurrencyId], _target_amount: Balance) -> Option<Balance> {
+	fn get_best_price_swap_path(
+		_supply_currency_id: CurrencyId,
+		_target_currency_id: CurrencyId,
+		_limit: SwapLimit<Balance>,
+		_alternative_path_joint_list: Vec<Vec<CurrencyId>>,
+	) -> Option<Vec<CurrencyId>> {
 		Some(Default::default())
 	}
 
-	fn swap_with_exact_supply(
+	fn swap_with_specific_path(
 		_who: &AccountId,
 		_path: &[CurrencyId],
-		_supply_amount: Balance,
-		_min_target_amount: Balance,
-	) -> sp_std::result::Result<Balance, DispatchError> {
-		Ok(Default::default())
-	}
-
-	fn swap_with_exact_target(
-		_who: &AccountId,
-		_path: &[CurrencyId],
-		_target_amount: Balance,
-		_max_supply_amount: Balance,
-	) -> sp_std::result::Result<Balance, DispatchError> {
+		_limit: SwapLimit<Balance>,
+	) -> sp_std::result::Result<(Balance, Balance), DispatchError> {
 		Ok(Default::default())
 	}
 
@@ -253,21 +253,11 @@ pub trait CDPTreasury<AccountId> {
 }
 
 pub trait CDPTreasuryExtended<AccountId>: CDPTreasury<AccountId> {
-	fn swap_exact_collateral_to_stable(
+	fn swap_collateral_to_stable(
 		currency_id: Self::CurrencyId,
-		supply_amount: Self::Balance,
-		min_target_amount: Self::Balance,
-		swap_path: &[Self::CurrencyId],
+		limit: SwapLimit<Self::Balance>,
 		collateral_in_auction: bool,
-	) -> sp_std::result::Result<Self::Balance, DispatchError>;
-
-	fn swap_collateral_to_exact_stable(
-		currency_id: Self::CurrencyId,
-		max_supply_amount: Self::Balance,
-		target_amount: Self::Balance,
-		swap_path: &[Self::CurrencyId],
-		collateral_in_auction: bool,
-	) -> sp_std::result::Result<Self::Balance, DispatchError>;
+	) -> sp_std::result::Result<(Self::Balance, Self::Balance), DispatchError>;
 
 	fn create_collateral_auctions(
 		currency_id: Self::CurrencyId,

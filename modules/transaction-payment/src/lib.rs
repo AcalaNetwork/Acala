@@ -52,7 +52,7 @@ use sp_runtime::{
 	FixedPointNumber, FixedPointOperand, FixedU128, Perquintill,
 };
 use sp_std::{prelude::*, vec};
-use support::{DEXManager, PriceProvider, Ratio, TransactionPayment};
+use support::{DEXManager, PriceProvider, Ratio, SwapLimit, TransactionPayment};
 
 mod mock;
 mod tests;
@@ -647,12 +647,14 @@ where
 							PalletBalanceOf::<T>::max_value()
 						};
 
-						if T::DEX::swap_with_exact_target(
+						if T::DEX::swap_with_specific_path(
 							who,
 							&trading_path,
-							amount.unique_saturated_into(),
-							<T as Config>::MultiCurrency::free_balance(supply_currency_id, who)
-								.min(max_supply_limit.unique_saturated_into()),
+							SwapLimit::ExactTarget(
+								<T as Config>::MultiCurrency::free_balance(supply_currency_id, who)
+									.min(max_supply_limit.unique_saturated_into()),
+								amount.unique_saturated_into(),
+							),
 						)
 						.is_ok()
 						{
