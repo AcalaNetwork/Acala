@@ -251,6 +251,21 @@ impl CurrencyId {
 		matches!(self, CurrencyId::Erc20(_))
 	}
 
+	pub fn is_liquid_croadloan_currency_id(&self) -> bool {
+		matches!(self, CurrencyId::LiquidCroadloan(_))
+	}
+
+	pub fn is_foreign_asset_currency_id(&self) -> bool {
+		matches!(self, CurrencyId::ForeignAsset(_))
+	}
+
+	pub fn is_trading_pair_currency_id(&self) -> bool {
+		matches!(
+			self,
+			CurrencyId::Token(_) | CurrencyId::Erc20(_) | CurrencyId::LiquidCroadloan(_) | CurrencyId::ForeignAsset(_)
+		)
+	}
+
 	pub fn split_dex_share_currency_id(&self) -> Option<(Self, Self)> {
 		match self {
 			CurrencyId::DexShare(dex_share_0, dex_share_1) => {
