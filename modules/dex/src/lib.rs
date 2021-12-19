@@ -45,7 +45,7 @@ use sp_runtime::{
 	ArithmeticError, DispatchError, DispatchResult, FixedPointNumber, RuntimeDebug, SaturatedConversion,
 };
 use sp_std::{prelude::*, vec};
-use support::{DEXIncentives, DEXManager, Erc20InfoMapping, ExchangeRate, Ratio};
+use support::{DEXIncentives, DEXManager, Erc20InfoMapping, ExchangeRate, Ratio, SwapLimit};
 
 mod mock;
 mod tests;
@@ -1262,34 +1262,87 @@ impl<T: Config> DEXManager<T::AccountId, CurrencyId, Balance> for Pallet<T> {
 		T::Erc20InfoMapping::encode_evm_address(trading_pair.dex_share_currency_id())
 	}
 
-	fn get_swap_target_amount(path: &[CurrencyId], supply_amount: Balance) -> Option<Balance> {
-		Self::get_target_amounts(path, supply_amount)
-			.ok()
-			.map(|amounts| amounts[amounts.len() - 1])
+	fn get_swap_amount(path: &[CurrencyId], limit: SwapLimit<Balance>) -> Option<(Balance, Balance)> {
+		match limit {
+			SwapLimit::ExactSupply(exact_supply_amount, minimum_target_amount) => {
+				Self::get_target_amounts(path, exact_supply_amount)
+					.ok()
+					.and_then(|amounts| {
+						if amounts[amounts.len() - 1] >= minimum_target_amount {
+							Some((exact_supply_amount, amounts[amounts.len() - 1]))
+						} else {
+							None
+						}
+					})
+			}
+			SwapLimit::ExactTarget(maximum_supply_amount, exact_target_amount) => {
+				Self::get_supply_amounts(path, exact_target_amount)
+					.ok()
+					.and_then(|amounts| {
+						if amounts[0] <= maximum_supply_amount {
+							Some((amounts[0], exact_target_amount))
+						} else {
+							None
+						}
+					})
+			}
+		}
 	}
 
-	fn get_swap_supply_amount(path: &[CurrencyId], target_amount: Balance) -> Option<Balance> {
-		Self::get_supply_amounts(path, target_amount)
-			.ok()
-			.map(|amounts| amounts[0])
+	fn get_best_price_swap_path(
+		supply_currency_id: CurrencyId,
+		target_currency_id: CurrencyId,
+		limit: SwapLimit<Balance>,
+		alternative_path_joint_list: Vec<Vec<CurrencyId>>,
+	) -> Option<Vec<CurrencyId>> {
+		let default_swap_path = vec![supply_currency_id, target_currency_id];
+		let mut maybe_best = Self::get_swap_amount(&default_swap_path, limit)
+			.map(|(supply_amout, target_amount)| (default_swap_path, supply_amout, target_amount));
+
+		for path_joint in alternative_path_joint_list {
+			if !path_joint.is_empty() {
+				let mut swap_path = vec![];
+
+				if supply_currency_id != path_joint[0] {
+					swap_path.push(supply_currency_id);
+				}
+
+				swap_path.extend(path_joint.clone());
+
+				if target_currency_id != path_joint[path_joint.len() - 1] {
+					swap_path.push(target_currency_id);
+				}
+
+				if let Some((supply_amount, target_amount)) = Self::get_swap_amount(&swap_path, limit) {
+					if let Some((_, previous_supply, previous_target)) = maybe_best {
+						if supply_amount > previous_supply || target_amount < previous_target {
+							continue;
+						}
+					}
+
+					maybe_best = Some((swap_path, supply_amount, target_amount));
+				}
+			}
+		}
+
+		maybe_best.map(|(path, _, _)| path)
 	}
 
-	fn swap_with_exact_supply(
+	fn swap_with_specific_path(
 		who: &T::AccountId,
 		path: &[CurrencyId],
-		supply_amount: Balance,
-		min_target_amount: Balance,
-	) -> sp_std::result::Result<Balance, DispatchError> {
-		Self::do_swap_with_exact_supply(who, path, supply_amount, min_target_amount)
-	}
-
-	fn swap_with_exact_target(
-		who: &T::AccountId,
-		path: &[CurrencyId],
-		target_amount: Balance,
-		max_supply_amount: Balance,
-	) -> sp_std::result::Result<Balance, DispatchError> {
-		Self::do_swap_with_exact_target(who, path, target_amount, max_supply_amount)
+		limit: SwapLimit<Balance>,
+	) -> sp_std::result::Result<(Balance, Balance), DispatchError> {
+		match limit {
+			SwapLimit::ExactSupply(exact_supply_amount, minimum_target_amount) => {
+				Self::do_swap_with_exact_supply(who, path, exact_supply_amount, minimum_target_amount)
+					.map(|actual_target_amount| (exact_supply_amount, actual_target_amount))
+			}
+			SwapLimit::ExactTarget(maximum_supply_amount, exact_target_amount) => {
+				Self::do_swap_with_exact_target(who, path, exact_target_amount, maximum_supply_amount)
+					.map(|actual_supply_amount| (actual_supply_amount, exact_target_amount))
+			}
+		}
 	}
 
 	// `do_add_liquidity` is used in genesis_build,

@@ -37,6 +37,8 @@ pub enum AcalaMultiSignature {
 	Ecdsa(ecdsa::Signature),
 	// An Ethereum compatible SECP256k1 signature.
 	Ethereum([u8; 65]),
+	// An Ethereum SECP256k1 signature using Eip1559 for message encoding.
+	Eip1559([u8; 65]),
 	// An Ethereum SECP256k1 signature using Eip712 for message encoding.
 	AcalaEip712([u8; 65]),
 }

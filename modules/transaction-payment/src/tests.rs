@@ -69,7 +69,6 @@ fn charges_fee_when_native_is_enough_but_cannot_keep_alive() {
 			TransactionValidityError::Invalid(InvalidTransaction::Payment)
 		);
 
-		let fee2 = 23 * 2 + 990;
 		assert_eq!(
 			ChargeTransactionPayment::<Runtime>::from(0)
 				.validate(
@@ -84,7 +83,7 @@ fn charges_fee_when_native_is_enough_but_cannot_keep_alive() {
 				)
 				.unwrap()
 				.priority,
-			fee2.saturated_into::<u64>()
+			1
 		);
 		assert_eq!(Currencies::free_balance(ACA, &ALICE), Currencies::minimum_balance(ACA));
 	});
@@ -102,9 +101,9 @@ fn charges_fee() {
 					.validate(&ALICE, CALL, &INFO, 23)
 					.unwrap()
 					.priority,
-				fee
+				1
 			);
-			assert_eq!(Currencies::free_balance(ACA, &ALICE), (100000 - fee).into());
+			assert_eq!(Currencies::free_balance(ACA, &ALICE), 100000 - fee);
 
 			let fee2 = 18 * 2 + 1000; // len * byte + weight
 			assert_eq!(
@@ -112,12 +111,9 @@ fn charges_fee() {
 					.validate(&ALICE, CALL2, &INFO, 18)
 					.unwrap()
 					.priority,
-				fee2
+				1
 			);
-			assert_eq!(
-				Currencies::free_balance(ACA, &ALICE),
-				(100000 - fee - fee2).unique_saturated_into()
-			);
+			assert_eq!(Currencies::free_balance(ACA, &ALICE), 100000 - fee - fee2);
 		});
 }
 
@@ -197,6 +193,65 @@ fn refund_fee_according_to_actual_when_post_dispatch_and_native_currency_is_enou
 }
 
 #[test]
+fn refund_tip_according_to_actual_when_post_dispatch_and_native_currency_is_enough() {
+	ExtBuilder::default()
+		.one_hundred_thousand_for_alice_n_charlie()
+		.build()
+		.execute_with(|| {
+			// tip = 0
+			let fee = 23 * 2 + 1000; // len * byte + weight
+			let pre = ChargeTransactionPayment::<Runtime>::from(0)
+				.pre_dispatch(&ALICE, CALL, &INFO, 23)
+				.unwrap();
+			assert_eq!(Currencies::free_balance(ACA, &ALICE), 100000 - fee);
+
+			let refund = 200; // 1000 - 800
+			assert!(ChargeTransactionPayment::<Runtime>::post_dispatch(pre, &INFO, &POST_INFO, 23, &Ok(())).is_ok());
+			assert_eq!(Currencies::free_balance(ACA, &ALICE), 100000 - fee + refund);
+
+			// tip = 1000
+			let fee = 23 * 2 + 1000; // len * byte + weight
+			let tip = 1000;
+			let pre = ChargeTransactionPayment::<Runtime>::from(tip)
+				.pre_dispatch(&CHARLIE, CALL, &INFO, 23)
+				.unwrap();
+			assert_eq!(Currencies::free_balance(ACA, &CHARLIE), 100000 - fee - tip);
+
+			let refund_fee = 200; // 1000 - 800
+			let refund_tip = 200; // 1000 - 800
+			assert!(ChargeTransactionPayment::<Runtime>::post_dispatch(pre, &INFO, &POST_INFO, 23, &Ok(())).is_ok());
+			assert_eq!(
+				Currencies::free_balance(ACA, &CHARLIE),
+				100000 - fee - tip + refund_fee + refund_tip
+			);
+		});
+}
+
+#[test]
+fn refund_should_not_works() {
+	ExtBuilder::default()
+		.one_hundred_thousand_for_alice_n_charlie()
+		.build()
+		.execute_with(|| {
+			let tip = 1000;
+			let fee = 23 * 2 + 1000; // len * byte + weight
+			let pre = ChargeTransactionPayment::<Runtime>::from(tip)
+				.pre_dispatch(&ALICE, CALL, &INFO, 23)
+				.unwrap();
+			assert_eq!(Currencies::free_balance(ACA, &ALICE), 100000 - fee - tip);
+
+			// actual_weight > weight
+			const POST_INFO: PostDispatchInfo = PostDispatchInfo {
+				actual_weight: Some(INFO.weight + 1),
+				pays_fee: Pays::Yes,
+			};
+
+			assert!(ChargeTransactionPayment::<Runtime>::post_dispatch(pre, &INFO, &POST_INFO, 23, &Ok(())).is_ok());
+			assert_eq!(Currencies::free_balance(ACA, &ALICE), 100000 - fee - tip);
+		});
+}
+
+#[test]
 fn charges_fee_when_validate_and_native_is_not_enough() {
 	ExtBuilder::default()
 		.one_hundred_thousand_for_alice_n_charlie()
@@ -220,13 +275,12 @@ fn charges_fee_when_validate_and_native_is_not_enough() {
 			assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(AUSD, &BOB), 1000);
 
 			// total balance is lt ED, will swap fee and ED
-			let fee = 500 * 2 + 1000; // len * byte + weight
 			assert_eq!(
 				ChargeTransactionPayment::<Runtime>::from(0)
 					.validate(&BOB, CALL2, &INFO, 500)
 					.unwrap()
 					.priority,
-				fee
+				1
 			);
 			assert_eq!(Currencies::total_balance(ACA, &BOB), 10);
 			assert_eq!(Currencies::free_balance(ACA, &BOB), 10);
@@ -238,13 +292,12 @@ fn charges_fee_when_validate_and_native_is_not_enough() {
 
 			// total balance is gte ED, but cannot keep alive after charge,
 			// will swap extra gap to keep alive
-			let fee_2 = 100 * 2 + 1000; // len * byte + weight
 			assert_eq!(
 				ChargeTransactionPayment::<Runtime>::from(0)
 					.validate(&BOB, CALL2, &INFO, 100)
 					.unwrap()
 					.priority,
-				fee_2
+				1
 			);
 			assert_eq!(Currencies::total_balance(ACA, &BOB), 10);
 			assert_eq!(Currencies::free_balance(ACA, &BOB), 10);
@@ -278,8 +331,14 @@ fn charges_fee_failed_by_slippage_limit() {
 
 			// pool is enough, but slippage limit the swap
 			MockPriceSource::set_relative_price(Some(Price::saturating_from_rational(252, 4020)));
-			assert_eq!(DEXModule::get_swap_supply_amount(&[AUSD, ACA], 2010), Some(252));
-			assert_eq!(DEXModule::get_swap_target_amount(&[AUSD, ACA], 1000), Some(5000));
+			assert_eq!(
+				DEXModule::get_swap_amount(&vec![AUSD, ACA], SwapLimit::ExactTarget(Balance::MAX, 2010)),
+				Some((252, 2010))
+			);
+			assert_eq!(
+				DEXModule::get_swap_amount(&vec![AUSD, ACA], SwapLimit::ExactSupply(1000, 0)),
+				Some((1000, 5000))
+			);
 
 			assert_noop!(
 				ChargeTransactionPayment::<Runtime>::from(0).validate(&BOB, CALL2, &INFO, 500),
@@ -364,13 +423,12 @@ fn charge_fee_by_default_swap_path() {
 			assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(AUSD, &BOB), 0);
 			assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(DOT, &BOB), 100);
 
-			let fee = 500 * 2 + 1000; // len * byte + weight
 			assert_eq!(
 				ChargeTransactionPayment::<Runtime>::from(0)
 					.validate(&BOB, CALL2, &INFO, 500)
 					.unwrap()
 					.priority,
-				fee
+				1
 			);
 
 			assert_eq!(Currencies::free_balance(ACA, &BOB), Currencies::minimum_balance(ACA));
@@ -534,5 +592,201 @@ fn compute_fee_does_not_overflow() {
 				Pallet::<Runtime>::compute_fee(<u32>::max_value(), &dispatch_info, <u128>::max_value()),
 				<u128>::max_value()
 			);
+		});
+}
+
+#[test]
+fn should_alter_operational_priority() {
+	let tip = 5;
+	let len = 10;
+
+	ExtBuilder::default()
+		.one_hundred_thousand_for_alice_n_charlie()
+		.build()
+		.execute_with(|| {
+			let normal = DispatchInfo {
+				weight: 100,
+				class: DispatchClass::Normal,
+				pays_fee: Pays::Yes,
+			};
+			let priority = ChargeTransactionPayment::<Runtime>(tip)
+				.validate(&ALICE, CALL, &normal, len)
+				.unwrap()
+				.priority;
+
+			assert_eq!(priority, 60);
+
+			let priority = ChargeTransactionPayment::<Runtime>(2 * tip)
+				.validate(&ALICE, CALL, &normal, len)
+				.unwrap()
+				.priority;
+
+			assert_eq!(priority, 110);
+		});
+
+	ExtBuilder::default()
+		.one_hundred_thousand_for_alice_n_charlie()
+		.build()
+		.execute_with(|| {
+			let op = DispatchInfo {
+				weight: 100,
+				class: DispatchClass::Operational,
+				pays_fee: Pays::Yes,
+			};
+			let priority = ChargeTransactionPayment::<Runtime>(tip)
+				.validate(&ALICE, CALL, &op, len)
+				.unwrap()
+				.priority;
+			// final_fee = base_fee + len_fee + adjusted_weight_fee + tip = 0 + 20 + 100 + 5 = 125
+			// priority = final_fee * fee_multiplier * max_tx_per_block + (tip + 1) * max_tx_per_block
+			//          = 125 * 5 * 10 + 60 = 6310
+			assert_eq!(priority, 6310);
+
+			let priority = ChargeTransactionPayment::<Runtime>(2 * tip)
+				.validate(&ALICE, CALL, &op, len)
+				.unwrap()
+				.priority;
+			// final_fee = base_fee + len_fee + adjusted_weight_fee + tip = 0 + 20 + 100 + 10 = 130
+			// priority = final_fee * fee_multiplier * max_tx_per_block + (tip + 1) * max_tx_per_block
+			//          = 130 * 5 * 10 + 110 = 6610
+			assert_eq!(priority, 6610);
+		});
+}
+
+#[test]
+fn no_tip_has_some_priority() {
+	let tip = 0;
+	let len = 10;
+
+	ExtBuilder::default()
+		.one_hundred_thousand_for_alice_n_charlie()
+		.build()
+		.execute_with(|| {
+			let normal = DispatchInfo {
+				weight: 100,
+				class: DispatchClass::Normal,
+				pays_fee: Pays::Yes,
+			};
+			let priority = ChargeTransactionPayment::<Runtime>(tip)
+				.validate(&ALICE, CALL, &normal, len)
+				.unwrap()
+				.priority;
+			// max_tx_per_block = 10
+			assert_eq!(priority, 10);
+		});
+
+	ExtBuilder::default()
+		.one_hundred_thousand_for_alice_n_charlie()
+		.build()
+		.execute_with(|| {
+			let op = DispatchInfo {
+				weight: 100,
+				class: DispatchClass::Operational,
+				pays_fee: Pays::Yes,
+			};
+			let priority = ChargeTransactionPayment::<Runtime>(tip)
+				.validate(&ALICE, CALL, &op, len)
+				.unwrap()
+				.priority;
+			// final_fee = base_fee + len_fee + adjusted_weight_fee + tip = 0 + 20 + 100 + 0 = 120
+			// priority = final_fee * fee_multiplier * max_tx_per_block + (tip + 1) * max_tx_per_block
+			//          = 120 * 5 * 10 + 10 = 6010
+			assert_eq!(priority, 6010);
+		});
+}
+
+#[test]
+fn min_tip_has_same_priority() {
+	let tip = 100;
+	let len = 10;
+
+	ExtBuilder::default()
+		.tip_per_weight_step(tip)
+		.one_hundred_thousand_for_alice_n_charlie()
+		.build()
+		.execute_with(|| {
+			let normal = DispatchInfo {
+				weight: 100,
+				class: DispatchClass::Normal,
+				pays_fee: Pays::Yes,
+			};
+			let priority = ChargeTransactionPayment::<Runtime>(0)
+				.validate(&ALICE, CALL, &normal, len)
+				.unwrap()
+				.priority;
+			// max_tx_per_block = 10
+			assert_eq!(priority, 0);
+
+			let priority = ChargeTransactionPayment::<Runtime>(tip - 2)
+				.validate(&ALICE, CALL, &normal, len)
+				.unwrap()
+				.priority;
+			// max_tx_per_block = 10
+			assert_eq!(priority, 0);
+
+			let priority = ChargeTransactionPayment::<Runtime>(tip - 1)
+				.validate(&ALICE, CALL, &normal, len)
+				.unwrap()
+				.priority;
+			// max_tx_per_block = 10
+			assert_eq!(priority, 10);
+
+			let priority = ChargeTransactionPayment::<Runtime>(tip)
+				.validate(&ALICE, CALL, &normal, len)
+				.unwrap()
+				.priority;
+			// max_tx_per_block = 10
+			assert_eq!(priority, 10);
+
+			let priority = ChargeTransactionPayment::<Runtime>(2 * tip - 2)
+				.validate(&ALICE, CALL, &normal, len)
+				.unwrap()
+				.priority;
+			// max_tx_per_block = 10
+			assert_eq!(priority, 10);
+
+			let priority = ChargeTransactionPayment::<Runtime>(2 * tip - 1)
+				.validate(&ALICE, CALL, &normal, len)
+				.unwrap()
+				.priority;
+			// max_tx_per_block = 10
+			assert_eq!(priority, 20);
+
+			let priority = ChargeTransactionPayment::<Runtime>(2 * tip)
+				.validate(&ALICE, CALL, &normal, len)
+				.unwrap()
+				.priority;
+			// max_tx_per_block = 10
+			assert_eq!(priority, 20);
+		});
+}
+
+#[test]
+fn max_tip_has_same_priority() {
+	let tip = 1000;
+	let len = 10;
+
+	ExtBuilder::default()
+		.one_hundred_thousand_for_alice_n_charlie()
+		.build()
+		.execute_with(|| {
+			let normal = DispatchInfo {
+				weight: 100,
+				class: DispatchClass::Normal,
+				pays_fee: Pays::Yes,
+			};
+			let priority = ChargeTransactionPayment::<Runtime>(tip)
+				.validate(&ALICE, CALL, &normal, len)
+				.unwrap()
+				.priority;
+			// max_tx_per_block = 10
+			assert_eq!(priority, 10_000);
+
+			let priority = ChargeTransactionPayment::<Runtime>(2 * tip)
+				.validate(&ALICE, CALL, &normal, len)
+				.unwrap()
+				.priority;
+			// max_tx_per_block = 10
+			assert_eq!(priority, 10_000);
 		});
 }

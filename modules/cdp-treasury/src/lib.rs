@@ -36,7 +36,8 @@ use sp_runtime::{
 	traits::{AccountIdConversion, One, Zero},
 	ArithmeticError, DispatchError, DispatchResult, FixedPointNumber,
 };
-use support::{AuctionManager, CDPTreasury, CDPTreasuryExtended, DEXManager, Ratio};
+use sp_std::prelude::*;
+use support::{AuctionManager, CDPTreasury, CDPTreasuryExtended, DEXManager, Ratio, SwapLimit};
 
 mod mock;
 mod tests;
@@ -85,6 +86,11 @@ pub mod module {
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
 
+		/// The alternative swap path joint list, which can be concated to
+		/// alternative swap path when cdp treasury swap collateral to stable.
+		#[pallet::constant]
+		type AlternativeSwapPathJointList: Get<Vec<Vec<CurrencyId>>>;
+
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
 	}
@@ -97,8 +103,8 @@ pub mod module {
 		SurplusPoolNotEnough,
 		/// The debit pool of CDP treasury is not enough
 		DebitPoolNotEnough,
-		/// The swap path is invalid
-		InvalidSwapPath,
+		/// Cannot use collateral to swap stable
+		CannotSwap,
 	}
 
 	#[pallet::event]
@@ -325,70 +331,36 @@ impl<T: Config> CDPTreasury<T::AccountId> for Pallet<T> {
 }
 
 impl<T: Config> CDPTreasuryExtended<T::AccountId> for Pallet<T> {
-	/// Swap exact amount of collateral stable,
-	/// return actual target stable amount
-	fn swap_exact_collateral_to_stable(
+	fn swap_collateral_to_stable(
 		currency_id: CurrencyId,
-		supply_amount: Balance,
-		min_target_amount: Balance,
-		swap_path: &[CurrencyId],
+		limit: SwapLimit<Balance>,
 		collateral_in_auction: bool,
-	) -> sp_std::result::Result<Balance, DispatchError> {
+	) -> sp_std::result::Result<(Balance, Balance), DispatchError> {
+		let supply_limit = match limit {
+			SwapLimit::ExactSupply(supply_amount, _) => supply_amount,
+			SwapLimit::ExactTarget(max_supply_amount, _) => max_supply_amount,
+		};
 		if collateral_in_auction {
 			ensure!(
-				Self::total_collaterals(currency_id) >= supply_amount
-					&& T::AuctionManagerHandler::get_total_collateral_in_auction(currency_id) >= supply_amount,
+				Self::total_collaterals(currency_id) >= supply_limit
+					&& T::AuctionManagerHandler::get_total_collateral_in_auction(currency_id) >= supply_limit,
 				Error::<T>::CollateralNotEnough,
 			);
 		} else {
 			ensure!(
-				Self::total_collaterals_not_in_auction(currency_id) >= supply_amount,
+				Self::total_collaterals_not_in_auction(currency_id) >= supply_limit,
 				Error::<T>::CollateralNotEnough,
 			);
 		}
 
-		let swap_path_length = swap_path.len();
-		ensure!(
-			swap_path_length >= 2
-				&& swap_path[0] == currency_id
-				&& swap_path[swap_path_length - 1] == T::GetStableCurrencyId::get(),
-			Error::<T>::InvalidSwapPath
-		);
-
-		T::DEX::swap_with_exact_supply(&Self::account_id(), swap_path, supply_amount, min_target_amount)
-	}
-
-	/// swap collateral which not in auction to get exact stable,
-	/// return actual supply collateral amount
-	fn swap_collateral_to_exact_stable(
-		currency_id: CurrencyId,
-		max_supply_amount: Balance,
-		target_amount: Balance,
-		swap_path: &[CurrencyId],
-		collateral_in_auction: bool,
-	) -> sp_std::result::Result<Balance, DispatchError> {
-		if collateral_in_auction {
-			ensure!(
-				Self::total_collaterals(currency_id) >= max_supply_amount
-					&& T::AuctionManagerHandler::get_total_collateral_in_auction(currency_id) >= max_supply_amount,
-				Error::<T>::CollateralNotEnough,
-			);
-		} else {
-			ensure!(
-				Self::total_collaterals_not_in_auction(currency_id) >= max_supply_amount,
-				Error::<T>::CollateralNotEnough,
-			);
-		}
-
-		let swap_path_length = swap_path.len();
-		ensure!(
-			swap_path_length >= 2
-				&& swap_path[0] == currency_id
-				&& swap_path[swap_path_length - 1] == T::GetStableCurrencyId::get(),
-			Error::<T>::InvalidSwapPath
-		);
-
-		T::DEX::swap_with_exact_target(&Self::account_id(), swap_path, target_amount, max_supply_amount)
+		let swap_path = T::DEX::get_best_price_swap_path(
+			currency_id,
+			T::GetStableCurrencyId::get(),
+			limit,
+			T::AlternativeSwapPathJointList::get(),
+		)
+		.ok_or(Error::<T>::CannotSwap)?;
+		T::DEX::swap_with_specific_path(&Self::account_id(), &swap_path, limit)
 	}
 
 	fn create_collateral_auctions(

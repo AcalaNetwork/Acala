@@ -522,8 +522,14 @@ fn liquidate_unsafe_cdp_by_collateral_auction_when_limited_by_slippage() {
 
 		// pool is enough, but slippage limit the swap
 		MockPriceSource::set_relative_price(Some(Price::saturating_from_rational(1, 2)));
-		assert_eq!(DEXModule::get_swap_supply_amount(&[BTC, AUSD], 60), Some(99));
-		assert_eq!(DEXModule::get_swap_target_amount(&[BTC, AUSD], 100), Some(60));
+		assert_eq!(
+			DEXModule::get_swap_amount(&vec![BTC, AUSD], SwapLimit::ExactTarget(Balance::MAX, 60)),
+			Some((99, 60))
+		);
+		assert_eq!(
+			DEXModule::get_swap_amount(&vec![BTC, AUSD], SwapLimit::ExactSupply(100, 0)),
+			Some((100, 60))
+		);
 		assert_ok!(CDPEngineModule::liquidate_unsafe_cdp(ALICE, BTC));
 		System::assert_last_event(Event::CDPEngineModule(crate::Event::LiquidateUnsafeCDP {
 			collateral_type: BTC,
@@ -818,7 +824,7 @@ fn close_cdp_has_debit_by_dex_work() {
 		assert_eq!(LoansModule::positions(BTC, ALICE).collateral, 100);
 
 		assert_noop!(
-			CDPEngineModule::close_cdp_has_debit_by_dex(ALICE, BTC, 100, None),
+			CDPEngineModule::close_cdp_has_debit_by_dex(ALICE, BTC, 100),
 			Error::<Runtime>::NoDebitValue
 		);
 
@@ -840,7 +846,7 @@ fn close_cdp_has_debit_by_dex_work() {
 			Change::NoChange,
 		));
 		assert_noop!(
-			CDPEngineModule::close_cdp_has_debit_by_dex(ALICE, BTC, 100, None),
+			CDPEngineModule::close_cdp_has_debit_by_dex(ALICE, BTC, 100),
 			Error::<Runtime>::MustBeSafe
 		);
 
@@ -854,19 +860,14 @@ fn close_cdp_has_debit_by_dex_work() {
 			Change::NoChange,
 		));
 
-		assert_noop!(
-			CDPEngineModule::close_cdp_has_debit_by_dex(ALICE, BTC, 5, None),
-			Error::<Runtime>::SwapDebitFailed
-		);
-
 		// max collateral amount limit swap
 		assert_noop!(
-			CDPEngineModule::close_cdp_has_debit_by_dex(ALICE, BTC, 5, Some(&[BTC, AUSD])),
-			dex::Error::<Runtime>::ExcessiveSupplyAmount
+			CDPEngineModule::close_cdp_has_debit_by_dex(ALICE, BTC, 5),
+			cdp_treasury::Error::<Runtime>::CannotSwap,
 		);
 
 		assert_eq!(DEXModule::get_liquidity_pool(BTC, AUSD), (100, 1000));
-		assert_ok!(CDPEngineModule::close_cdp_has_debit_by_dex(ALICE, BTC, 6, None));
+		assert_ok!(CDPEngineModule::close_cdp_has_debit_by_dex(ALICE, BTC, 6));
 		System::assert_last_event(Event::CDPEngineModule(crate::Event::CloseCDPInDebitByDEX {
 			collateral_type: BTC,
 			owner: ALICE,
@@ -936,7 +937,7 @@ fn close_cdp_has_debit_by_swap_on_alternative_path() {
 			Change::NoChange,
 			Change::NoChange,
 		));
-		assert_ok!(CDPEngineModule::close_cdp_has_debit_by_dex(ALICE, BTC, 100, None));
+		assert_ok!(CDPEngineModule::close_cdp_has_debit_by_dex(ALICE, BTC, 100));
 		System::assert_last_event(Event::CDPEngineModule(crate::Event::CloseCDPInDebitByDEX {
 			collateral_type: BTC,
 			owner: ALICE,

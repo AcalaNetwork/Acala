@@ -549,7 +549,6 @@ fn cdp_treasury_handles_honzon_surplus_correctly() {
 				Origin::signed(AccountId::from(ALICE)),
 				RELAY_CHAIN_CURRENCY,
 				5 * dollar(RELAY_CHAIN_CURRENCY),
-				None
 			));
 			// Just over 50 dollar(USD_CURRENCY), due to interest on loan
 			assert_eq!(CdpTreasury::get_debit_pool(), 50165264273004);

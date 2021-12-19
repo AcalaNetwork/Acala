@@ -714,7 +714,7 @@ fn deploy_factory() {
 }
 
 #[test]
-fn create_network_contract_works() {
+fn create_nft_contract_works() {
 	// pragma solidity ^0.5.0;
 	//
 	// contract Test {
@@ -728,7 +728,7 @@ fn create_network_contract_works() {
 
 	new_test_ext().execute_with(|| {
 		// deploy contract
-		assert_ok!(EVM::create_network_contract(
+		assert_ok!(EVM::create_nft_contract(
 			Origin::signed(NetworkContractAccount::get()),
 			contract,
 			0,
@@ -750,7 +750,7 @@ fn create_network_contract_works() {
 }
 
 #[test]
-fn create_network_contract_fails_if_non_network_contract_origin() {
+fn create_nft_contract_fails_if_non_network_contract_origin() {
 	// pragma solidity ^0.5.0;
 	//
 	// contract Test {
@@ -764,7 +764,7 @@ fn create_network_contract_fails_if_non_network_contract_origin() {
 
 	new_test_ext().execute_with(|| {
 		assert_noop!(
-			EVM::create_network_contract(
+			EVM::create_nft_contract(
 				Origin::signed(AccountId32::from([1u8; 32])),
 				contract,
 				0,

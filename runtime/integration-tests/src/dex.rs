@@ -164,3 +164,80 @@ fn test_dex_module() {
 			assert_eq!(Currencies::total_issuance(LPTOKEN), 20_005_999_999_999_999_995);
 		});
 }
+
+#[test]
+fn test_trading_pair() {
+	ExtBuilder::default()
+		.balances(vec![
+			(
+				AccountId::from(ALICE),
+				USD_CURRENCY,
+				1_000_000_000 * dollar(NATIVE_CURRENCY),
+			),
+			(
+				AccountId::from(ALICE),
+				RELAY_CHAIN_CURRENCY,
+				1_000_000_000 * dollar(NATIVE_CURRENCY),
+			),
+			(AccountId::from(BOB), USD_CURRENCY, 1_000_000 * dollar(NATIVE_CURRENCY)),
+			(
+				AccountId::from(BOB),
+				RELAY_CHAIN_CURRENCY,
+				1_000_000_000 * dollar(NATIVE_CURRENCY),
+			),
+		])
+		.build()
+		.execute_with(|| {
+			assert_eq!(Dex::get_liquidity_pool(RELAY_CHAIN_CURRENCY, USD_CURRENCY), (0, 0));
+			assert_eq!(Currencies::total_issuance(LPTOKEN), 0);
+			assert_eq!(Currencies::free_balance(LPTOKEN, &AccountId::from(ALICE)), 0);
+
+			// CurrencyId::DexShare(Token, LiquidCroadloan)
+			assert_ok!(Dex::list_provisioning(
+				Origin::root(),
+				USD_CURRENCY,
+				CurrencyId::LiquidCroadloan(1),
+				10,
+				100,
+				100,
+				1000,
+				0,
+			));
+
+			// CurrencyId::DexShare(LiquidCroadloan, Token)
+			assert_ok!(Dex::list_provisioning(
+				Origin::root(),
+				CurrencyId::LiquidCroadloan(2),
+				USD_CURRENCY,
+				10,
+				100,
+				100,
+				1000,
+				0,
+			));
+
+			// CurrencyId::DexShare(Token, ForeignAsset)
+			assert_ok!(Dex::list_provisioning(
+				Origin::root(),
+				USD_CURRENCY,
+				CurrencyId::ForeignAsset(1),
+				10,
+				100,
+				100,
+				1000,
+				0,
+			));
+
+			// CurrencyId::DexShare(ForeignAsset, Token)
+			assert_ok!(Dex::list_provisioning(
+				Origin::root(),
+				CurrencyId::ForeignAsset(2),
+				USD_CURRENCY,
+				10,
+				100,
+				100,
+				1000,
+				0,
+			));
+		});
+}

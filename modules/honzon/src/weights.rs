@@ -52,8 +52,7 @@ pub trait WeightInfo {
 	fn unauthorize_all(c: u32, ) -> Weight;
 	fn adjust_loan() -> Weight;
 	fn transfer_loan_from() -> Weight;
-	fn close_loan_has_debit_by_dex(u: u32, ) -> Weight;
-	fn close_loan_has_debit_by_dex_no_path() -> Weight;
+	fn close_loan_has_debit_by_dex() -> Weight;
 }
 
 /// Weights for module_honzon using the Acala node and recommended hardware.
@@ -86,16 +85,7 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(21 as Weight))
 			.saturating_add(T::DbWeight::get().writes(7 as Weight))
 	}
-	fn close_loan_has_debit_by_dex(u: u32, ) -> Weight {
-		(335_528_000 as Weight)
-			// Standard Error: 778_000
-			.saturating_add((15_559_000 as Weight).saturating_mul(u as Weight))
-			.saturating_add(T::DbWeight::get().reads(26 as Weight))
-			.saturating_add(T::DbWeight::get().reads((2 as Weight).saturating_mul(u as Weight)))
-			.saturating_add(T::DbWeight::get().writes(12 as Weight))
-			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(u as Weight)))
-	}
-	fn close_loan_has_debit_by_dex_no_path() -> Weight {
+	fn close_loan_has_debit_by_dex() -> Weight {
 		(369_989_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(32 as Weight))
 			.saturating_add(T::DbWeight::get().writes(14 as Weight))
@@ -131,16 +121,7 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().reads(21 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(7 as Weight))
 	}
-	fn close_loan_has_debit_by_dex(u: u32, ) -> Weight {
-		(335_528_000 as Weight)
-			// Standard Error: 778_000
-			.saturating_add((15_559_000 as Weight).saturating_mul(u as Weight))
-			.saturating_add(RocksDbWeight::get().reads(26 as Weight))
-			.saturating_add(RocksDbWeight::get().reads((2 as Weight).saturating_mul(u as Weight)))
-			.saturating_add(RocksDbWeight::get().writes(12 as Weight))
-			.saturating_add(RocksDbWeight::get().writes((1 as Weight).saturating_mul(u as Weight)))
-	}
-	fn close_loan_has_debit_by_dex_no_path() -> Weight {
+	fn close_loan_has_debit_by_dex() -> Weight {
 		(369_989_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(32 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(14 as Weight))

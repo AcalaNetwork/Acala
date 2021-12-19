@@ -49,10 +49,7 @@ pub mod fee {
 	use smallvec::smallvec;
 	use sp_runtime::Perbill;
 
-	/// The block saturation level. Fees will be updates based on this value.
-	pub const TARGET_BLOCK_FULLNESS: Perbill = Perbill::from_percent(25);
-
-	fn base_tx_in_kar() -> Balance {
+	pub fn base_tx_in_kar() -> Balance {
 		cent(KAR) / 10
 	}
 
@@ -107,7 +104,23 @@ pub mod parachains {
 
 	pub mod kintsugi {
 		pub const ID: u32 = 2092;
-		pub const KBTC_KEY: &[u8] = &[4];
-		pub const KINT_KEY: &[u8] = &[5];
+		pub const KBTC_KEY: &[u8] = &[0, 11];
+		pub const KINT_KEY: &[u8] = &[0, 12];
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use crate::{constants::fee::base_tx_in_kar, Balance};
+	use frame_support::weights::constants::ExtrinsicBaseWeight;
+
+	#[test]
+	fn check_weight() {
+		let p = base_tx_in_kar();
+		let q = Balance::from(ExtrinsicBaseWeight::get());
+
+		assert_eq!(p, 1_000_000_000);
+		assert_eq!(q, 125_000_000);
+		assert_eq!(p / q, 8);
 	}
 }
