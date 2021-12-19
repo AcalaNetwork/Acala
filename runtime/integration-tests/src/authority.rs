@@ -104,13 +104,13 @@ fn test_authority_module() {
 				true,
 				Box::new(call.clone())
 			));
-			System::assert_last_event(Event::Authority(orml_authority::Event::Scheduled(
-				OriginCaller::Authority(DelayedOrigin {
+			System::assert_last_event(Event::Authority(orml_authority::Event::Scheduled {
+				origin: OriginCaller::Authority(DelayedOrigin {
 					delay: one_day_later - 1,
 					origin: Box::new(OriginCaller::system(RawOrigin::Root)),
 				}),
-				1,
-			)));
+				index: 1,
+			}));
 
 			run_to_block(one_day_later);
 
@@ -185,10 +185,10 @@ fn test_authority_module() {
 				false,
 				Box::new(call.clone())
 			));
-			System::assert_last_event(Event::Authority(orml_authority::Event::Scheduled(
-				OriginCaller::system(RawOrigin::Root),
-				3,
-			)));
+			System::assert_last_event(Event::Authority(orml_authority::Event::Scheduled {
+				origin: OriginCaller::system(RawOrigin::Root),
+				index: 3,
+			}));
 
 			run_to_block(seven_days_later + 1);
 			System::assert_last_event(Event::Scheduler(pallet_scheduler::Event::<Runtime>::Dispatched(
@@ -229,13 +229,13 @@ fn test_authority_module() {
 				true,
 				Box::new(call.clone())
 			));
-			System::assert_last_event(Event::Authority(orml_authority::Event::Scheduled(
-				OriginCaller::Authority(DelayedOrigin {
+			System::assert_last_event(Event::Authority(orml_authority::Event::Scheduled {
+				origin: OriginCaller::Authority(DelayedOrigin {
 					delay: 1,
 					origin: Box::new(OriginCaller::system(RawOrigin::Root)),
 				}),
-				5,
-			)));
+				index: 5,
+			}));
 
 			let schedule_origin = {
 				let origin: <Runtime as orml_authority::Config>::Origin = From::from(Origin::root());
@@ -266,10 +266,10 @@ fn test_authority_module() {
 				false,
 				Box::new(call.clone())
 			));
-			System::assert_last_event(Event::Authority(orml_authority::Event::Scheduled(
-				OriginCaller::system(RawOrigin::Root),
-				6,
-			)));
+			System::assert_last_event(Event::Authority(orml_authority::Event::Scheduled {
+				origin: OriginCaller::system(RawOrigin::Root),
+				index: 6,
+			}));
 
 			assert_ok!(Authority::cancel_scheduled_dispatch(
 				Origin::root(),
