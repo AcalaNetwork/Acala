@@ -695,53 +695,12 @@ where
 	/// though we have setup it in charge fee pool, we can't charge fee with this foreign asset.
 	fn swap_native_asset(who: &T::AccountId, amount: Balance) {
 		let native_currency_id = T::NativeCurrencyId::get();
-		let fee_swap_path_list: Vec<Vec<CurrencyId>> = Self::get_trading_path(who);
-
-		// native is not enough, try swap native to pay fee and gap
-		if !native_is_enough {
-			// add extra gap to keep alive after swap
-			let amount = fee.saturating_add(native_existential_deposit.saturating_sub(total_native));
-			let native_currency_id = T::NativeCurrencyId::get();
-			let default_fee_swap_path_list = T::DefaultFeeSwapPathList::get();
-			let fee_swap_path_list: Vec<Vec<CurrencyId>> =
-				if let Some(trading_path) = AlternativeFeeSwapPath::<T>::get(who) {
-					vec![vec![trading_path.into_inner()], default_fee_swap_path_list].concat()
-				} else {
-					default_fee_swap_path_list
-				};
-
-			for trading_path in fee_swap_path_list {
-				match trading_path.last() {
-					Some(target_currency_id) if *target_currency_id == native_currency_id => {
-						let supply_currency_id = *trading_path.first().expect("these's first guaranteed by match");
-						// calculate the supply limit according to oracle price and the slippage limit,
-						// if oracle price is not avalible, do not limit
-						let max_supply_limit = if let Some(target_price) =
-							T::PriceSource::get_relative_price(*target_currency_id, supply_currency_id)
-						{
-							Ratio::one()
-								.saturating_sub(T::MaxSwapSlippageCompareToOracle::get())
-								.reciprocal()
-								.unwrap_or_else(Ratio::max_value)
-								.saturating_mul_int(target_price.saturating_mul_int(amount))
-						} else {
-							PalletBalanceOf::<T>::max_value()
-						};
-
-						if T::DEX::swap_with_specific_path(
-							who,
-							&trading_path,
-							SwapLimit::ExactTarget(
-								<T as Config>::MultiCurrency::free_balance(supply_currency_id, who)
-									.min(max_supply_limit.unique_saturated_into()),
-								amount.unique_saturated_into(),
-							),
-						)
-						.is_ok()
-						{
-							// successfully swap, break iteration
-							break;
-						}
+		for trading_path in Self::get_trading_path(who) {
+			if let Some(target_currency_id) = trading_path.last() {
+				if *target_currency_id == native_currency_id {
+					let supply_currency_id = *trading_path.first().expect("should match a non native asset");
+					if Self::swap_from_treasury_or_dex(who, amount, supply_currency_id).is_ok() {
+						break;
 					}
 				}
 			}
@@ -772,9 +731,11 @@ where
 				let treasury_supply_balance = T::MultiCurrency::free_balance(supply_currency_id, &treasury_account);
 				let supply_amount =
 					treasury_supply_balance.saturating_sub(T::MultiCurrency::minimum_balance(supply_currency_id));
-				if let Ok(swap_native_balance) =
-					T::DEX::swap_with_exact_supply(&treasury_account, &trading_path, supply_amount, 0)
-				{
+				if let Ok((_, swap_native_balance)) = T::DEX::swap_with_specific_path(
+					&treasury_account,
+					&trading_path,
+					SwapLimit::ExactSupply(supply_amount, 0),
+				) {
 					// calculate and update new rate of supply asset relative to native asset
 					let new_native_balance =
 						rate.saturating_mul_int(swap_native_balance.saturating_add(treasury_balance));
@@ -1149,7 +1110,7 @@ where
 			if !tip.is_zero() && !info.weight.is_zero() {
 				// tip_pre_weight * unspent_weight
 				let refund_tip = tip
-					.checked_div(&info.weight.saturated_into::<PalletBalanceOf<T>>())
+					.checked_div(info.weight.saturated_into::<PalletBalanceOf<T>>())
 					.expect("checked is non-zero; qed")
 					.saturating_mul(post_info.calc_unspent(info).saturated_into::<PalletBalanceOf<T>>());
 				refund = refund_fee.saturating_add(refund_tip);

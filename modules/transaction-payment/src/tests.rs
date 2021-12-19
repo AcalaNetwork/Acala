@@ -397,13 +397,25 @@ fn charges_fee_failed_by_slippage_limit() {
 		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(ACA, &BOB), 0);
 		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(AUSD, &BOB), 1000);
 
-		// 10000*100 = (10000-2010)*(1000+x) = 7990*1252, x=1252-1000=252
-		assert_eq!(DEXModule::get_swap_supply_amount(&[AUSD, ACA], 2010), Some(252));
-		// 10000*100 = (1000+1000)*(10000-x) = 2000*5000, x=10000-5000=5000
-		assert_eq!(DEXModule::get_swap_target_amount(&[AUSD, ACA], 1000), Some(5000));
+		assert_eq!(
+			DEXModule::get_swap_amount(&vec![AUSD, ACA], SwapLimit::ExactTarget(Balance::MAX, 2010)),
+			Some((252, 2010))
+		);
+		assert_eq!(
+			DEXModule::get_swap_amount(&vec![AUSD, ACA], SwapLimit::ExactSupply(1000, 0)),
+			Some((1000, 5000))
+		);
 
 		// pool is enough, but slippage limit the swap
 		MockPriceSource::set_relative_price(Some(Price::saturating_from_rational(252, 4020)));
+		assert_eq!(
+			DEXModule::get_swap_amount(&vec![AUSD, ACA], SwapLimit::ExactTarget(Balance::MAX, 2010)),
+			Some((252, 2010))
+		);
+		assert_eq!(
+			DEXModule::get_swap_amount(&vec![AUSD, ACA], SwapLimit::ExactSupply(1000, 0)),
+			Some((1000, 5000))
+		);
 		assert_noop!(
 			ChargeTransactionPayment::<Runtime>::from(0).validate(&BOB, CALL2, &INFO, 500),
 			TransactionValidityError::Invalid(InvalidTransaction::Payment)
@@ -1071,7 +1083,9 @@ fn swap_from_treasury_and_dex_update_rate() {
 		// swap 80 DOT out 3074 ACA
 		let trading_path = Pallet::<Runtime>::get_trading_path_by_currency(&ALICE, DOT).unwrap();
 		let supply_amount = Currencies::free_balance(DOT, &dot_fee_account) - dot_ed;
-		let swap_native = module_dex::Pallet::<Runtime>::get_swap_target_amount(&trading_path, supply_amount).unwrap();
+		let (_, swap_native) =
+			module_dex::Pallet::<Runtime>::get_swap_amount(&trading_path, SwapLimit::ExactSupply(supply_amount, 0))
+				.unwrap();
 		assert_eq!(3074, swap_native);
 		// calculate the new balance of ACA = 3074+(init-800)=3074+9200=12270
 		let current_native_balance =
