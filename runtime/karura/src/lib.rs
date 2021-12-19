@@ -165,11 +165,12 @@ parameter_types! {
 	pub const NftPalletId: PalletId = PalletId(*b"aca/aNFT");
 	// Vault all unrleased native token.
 	pub UnreleasedNativeVaultAccountId: AccountId = PalletId(*b"aca/urls").into_account();
+	// This Pallet is only used to payment fee pool, it's not added to whitelist by design.
 	pub const TreasuryFeePoolPalletId: PalletId = PalletId(*b"aca/fees");
 }
 
 pub fn get_all_module_accounts() -> Vec<AccountId> {
-	let mut whitelist = vec![
+	vec![
 		LoansPalletId::get().into_account(),
 		CDPTreasuryPalletId::get().into_account(),
 		CollatorPotId::get().into_account(),
@@ -180,10 +181,7 @@ pub fn get_all_module_accounts() -> Vec<AccountId> {
 		TreasuryPalletId::get().into_account(),
 		TreasuryReservePalletId::get().into_account(),
 		UnreleasedNativeVaultAccountId::get(),
-		TreasuryFeePoolPalletId::get().into_account(),
-	];
-	whitelist.append(&mut get_all_sub_account_of_fee_pool());
-	whitelist
+	]
 }
 
 parameter_types! {
@@ -1992,14 +1990,6 @@ pub type Executive = frame_executive::Executive<
 	AllPallets,
 	TransactionPaymentUpgrade,
 >;
-
-/// The whitelist sub account
-fn get_all_sub_account_of_fee_pool() -> Vec<AccountId> {
-	vec![KSM, KUSD, LKSM, BNC, VSKSM, PHA]
-		.iter()
-		.map(|t| TreasuryFeePoolPalletId::get().into_sub_account(t))
-		.collect::<Vec<AccountId>>()
-}
 
 parameter_types! {
 	pub TokenFixedRates: Vec<(CurrencyId, Ratio, Balance)> = vec![

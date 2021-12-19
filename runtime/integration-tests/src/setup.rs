@@ -95,6 +95,7 @@ mod karura_imports {
 			TradingPair::from_currency_ids(USD_CURRENCY, NATIVE_CURRENCY).unwrap(),
 			TradingPair::from_currency_ids(USD_CURRENCY, RELAY_CHAIN_CURRENCY).unwrap(),
 			TradingPair::from_currency_ids(USD_CURRENCY, LIQUID_CURRENCY).unwrap(),
+			TradingPair::from_currency_ids(RELAY_CHAIN_CURRENCY, NATIVE_CURRENCY).unwrap(),
 		];
 		pub TreasuryAccount: AccountId = TreasuryPalletId::get().into_account();
 	}
@@ -112,6 +113,7 @@ mod karura_imports {
 		pub TokenFixedRates: Vec<(CurrencyId, Ratio, Balance)> = vec![
 			(KSM, calculate_asset_ratio(KsmPerSecond::get(), KarPerSecond::get()), FeePoolBootBalance::get()),
 			(KUSD, calculate_asset_ratio(KusdPerSecond::get(), KarPerSecond::get()), FeePoolBootBalance::get()),
+			(LKSM, calculate_asset_ratio(KusdPerSecond::get(), KarPerSecond::get()), NativeTokenExistentialDeposit::get() - 1),
 		];
 	}
 

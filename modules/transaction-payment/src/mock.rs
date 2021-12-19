@@ -50,7 +50,6 @@ pub const CHARLIE: AccountId = AccountId::new([3u8; 32]);
 pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
 pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
-pub const KSM: CurrencyId = CurrencyId::Token(TokenSymbol::KSM);
 
 parameter_types! {
 	pub const BlockHashCount: u64 = 250;
@@ -99,8 +98,12 @@ impl frame_system::Config for Runtime {
 }
 
 parameter_type_with_key! {
-	pub ExistentialDeposits: |_currency_id: CurrencyId| -> Balance {
-		Default::default()
+	pub ExistentialDeposits: |currency_id: CurrencyId| -> Balance {
+		match *currency_id {
+			AUSD => 100,
+			DOT => 1,
+			_ => Default::default(),
+		}
 	};
 }
 
@@ -234,7 +237,6 @@ parameter_types! {
 	pub const TreasuryPalletId: PalletId = PalletId(*b"aca/trsy");
 	pub KaruraTreasuryAccount: AccountId = TreasuryPalletId::get().into_account();
 	pub TokenFixedRates: Vec<(CurrencyId, Ratio, Balance)> = vec![
-		(KSM, Ratio::saturating_from_rational(2, 100), FeePoolBootBalance::get()),
 		// 1 DOT = 10 ACA, 1 ACA = 10 AUSD
 		(AUSD, Ratio::saturating_from_rational(10, 1), FeePoolBootBalance::get()),
 		(DOT, Ratio::saturating_from_rational(1, 10), FeePoolBootBalance::get()),

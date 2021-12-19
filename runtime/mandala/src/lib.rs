@@ -178,6 +178,7 @@ parameter_types! {
 	pub const NftPalletId: PalletId = PalletId(*b"aca/aNFT");
 	pub const NomineesElectionId: LockIdentifier = *b"aca/nome";
 	pub UnreleasedNativeVaultAccountId: AccountId = PalletId(*b"aca/urls").into_account();
+	// This Pallet is only used to payment fee pool, it's not added to whitelist by design.
 	pub const TreasuryFeePoolPalletId: PalletId = PalletId(*b"aca/fees");
 	// Ecosystem modules
 	pub const StarportPalletId: PalletId = PalletId(*b"aca/stpt");
@@ -185,7 +186,7 @@ parameter_types! {
 }
 
 pub fn get_all_module_accounts() -> Vec<AccountId> {
-	let mut whitelist = vec![
+	vec![
 		TreasuryPalletId::get().into_account(),
 		LoansPalletId::get().into_account(),
 		DEXPalletId::get().into_account(),
@@ -199,10 +200,7 @@ pub fn get_all_module_accounts() -> Vec<AccountId> {
 		StarportPalletId::get().into_account(),
 		UnreleasedNativeVaultAccountId::get(),
 		StableAssetPalletId::get().into_account(),
-		TreasuryFeePoolPalletId::get().into_account(),
-	];
-	whitelist.append(&mut get_all_sub_account_of_fee_pool());
-	whitelist
+	]
 }
 
 parameter_types! {
@@ -2052,14 +2050,6 @@ pub type Executive = frame_executive::Executive<
 	AllPallets,
 	TransactionPaymentUpgrade,
 >;
-
-/// The whitelist sub account
-fn get_all_sub_account_of_fee_pool() -> Vec<AccountId> {
-	vec![DOT]
-		.iter()
-		.map(|t| TreasuryFeePoolPalletId::get().into_sub_account(t))
-		.collect::<Vec<AccountId>>()
-}
 
 parameter_types! {
 	pub TokenFixedRates: Vec<(CurrencyId, Ratio, Balance)> = vec![

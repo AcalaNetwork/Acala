@@ -115,7 +115,7 @@ mod weights;
 	feature = "with-karura-runtime",
 	feature = "with-acala-runtime"
 ))]
-mod xcm;
+mod payment;
 
 // TODO: polkadot_runtime not support XCM
 #[cfg(feature = "with-karura-runtime")]

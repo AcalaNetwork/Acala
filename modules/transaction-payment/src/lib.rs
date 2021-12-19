@@ -347,8 +347,8 @@ pub mod module {
 	pub enum Error<T> {
 		/// The swap path is invalid
 		InvalidSwapPath,
-		/// The balance of user's supply token is not enough
-		SupplyBalanceTooLow,
+		/// The balance is invalid
+		InvalidBalance,
 		/// Can't find rate by the supply token
 		InvalidRate,
 	}
@@ -482,6 +482,7 @@ pub mod module {
 			threshold: Balance,
 		) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
+			ensure!(threshold < PoolSize::<T>::get(currency_id), Error::<T>::InvalidBalance);
 			SwapBalanceThreshold::<T>::insert(currency_id, threshold);
 			Self::deposit_event(Event::SwapBalanceThresholdUpdated {
 				new_threshold_value: threshold,
@@ -768,17 +769,20 @@ where
 		if treasury_balance < SwapBalanceThreshold::<T>::get(supply_currency_id) {
 			let trading_path = Self::get_trading_path_by_currency(&treasury_account, supply_currency_id);
 			if let Some(trading_path) = trading_path {
-				// using all supply asset to swap out native asset, no need to consider ED limitation here.
 				let treasury_supply_balance = T::MultiCurrency::free_balance(supply_currency_id, &treasury_account);
+				let supply_amount =
+					treasury_supply_balance.saturating_sub(T::MultiCurrency::minimum_balance(supply_currency_id));
 				if let Ok(swap_native_balance) =
-					T::DEX::swap_with_exact_supply(&treasury_account, &trading_path, treasury_supply_balance, 0)
+					T::DEX::swap_with_exact_supply(&treasury_account, &trading_path, supply_amount, 0)
 				{
 					// calculate and update new rate of supply asset relative to native asset
 					let new_native_balance =
 						rate.saturating_mul_int(swap_native_balance.saturating_add(treasury_balance));
-					let updated_rate =
+					let next_updated_rate =
 						Ratio::saturating_from_rational(new_native_balance, PoolSize::<T>::get(supply_currency_id));
-					TokenFixedRate::<T>::insert(supply_currency_id, updated_rate);
+					TokenFixedRate::<T>::insert(supply_currency_id, next_updated_rate);
+				} else {
+					debug_assert!(false, "Swap tx fee pool should not fail!");
 				}
 			}
 		}
@@ -801,7 +805,7 @@ where
 	}
 
 	/// Get trading path by user and supply asset.
-	fn get_trading_path_by_currency(who: &T::AccountId, supply_currency_id: CurrencyId) -> Option<Vec<CurrencyId>> {
+	pub fn get_trading_path_by_currency(who: &T::AccountId, supply_currency_id: CurrencyId) -> Option<Vec<CurrencyId>> {
 		let fee_swap_path_list: Vec<Vec<CurrencyId>> = Self::get_trading_path(who);
 		for trading_path in fee_swap_path_list {
 			if let Some(currency) = trading_path.first() {
@@ -819,15 +823,21 @@ where
 	}
 
 	/// Initiate a treasury swap pool. Usually used in on_runtime_upgrade.
+	#[transactional]
 	pub fn initialize_pool(currency_id: CurrencyId, rate: Ratio, balance: Balance) -> DispatchResult {
+		let treasury_account = T::TreasuryAccount::get();
 		let account = Self::treasury_sub_account_id(currency_id);
 		let native_existential_deposit = <T as Config>::Currency::minimum_balance();
-		T::Currency::transfer(
-			&T::TreasuryAccount::get(),
+		ensure!(balance > native_existential_deposit, Error::<T>::InvalidBalance);
+
+		T::MultiCurrency::transfer(
+			currency_id,
+			&treasury_account,
 			&account,
-			balance,
-			ExistenceRequirement::KeepAlive,
+			T::MultiCurrency::minimum_balance(currency_id),
 		)?;
+		T::Currency::transfer(&treasury_account, &account, balance, ExistenceRequirement::KeepAlive)?;
+
 		// one extrinsic fee=0.0025KAR, one block=100 extrinsics, reserve one block+ED=0.35KAR
 		SwapBalanceThreshold::<T>::insert(
 			currency_id,
