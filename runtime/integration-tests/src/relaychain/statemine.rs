@@ -22,17 +22,37 @@ use crate::relaychain::kusama_test_net::*;
 use crate::setup::*;
 
 use frame_support::assert_ok;
-
+use polkadot_parachain::primitives::Sibling;
+use xcm::VersionedMultiLocation;
+use xcm_builder::AccountId32Aliases;
 use xcm_emulator::TestExt;
+use xcm_executor::traits::Convert;
 
 #[test]
 fn statemine() {
 	env_logger::init();
 	Statemine::execute_with(|| {
 		use westmint_runtime::*;
+
+		let origin = Origin::signed(ALICE.into());
+
+		Balances::make_free_balance_be(&ALICE.into(), 10 * dollar(KSM));
+
+		// need to have some KSM to be able to receive user assets
+		Balances::make_free_balance_be(&Sibling::from(2000).into_account(), 10 * dollar(KSM));
+
+		assert_ok!(Assets::create(origin.clone(), 0, MultiAddress::Id(ALICE.into()), 10,));
+
+		assert_ok!(Assets::mint(origin.clone(), 0, MultiAddress::Id(ALICE.into()), 1000));
+
+		System::reset_events();
+
+		let para_acc: AccountId = Sibling::from(2000).into_account();
+		println!("{:?}", para_acc);
+
 		assert_ok!(PolkadotXcm::reserve_transfer_assets(
-			Origin::signed(ALICE.into()),
-			Box::new(Parachain(1000).into().into()),
+			origin.clone(),
+			Box::new(MultiLocation::new(1, X1(Parachain(2000),)).into()),
 			Box::new(
 				Junction::AccountId32 {
 					id: BOB,
@@ -41,7 +61,7 @@ fn statemine() {
 				.into()
 				.into()
 			),
-			Box::new((Parent, dollar(KSM)).into()),
+			Box::new((GeneralIndex(0), 100).into()),
 			0
 		));
 		println!("{:?}", System::events());
