@@ -790,7 +790,7 @@ parameter_type_with_key! {
 				TokenSymbol::KINT |
 				TokenSymbol::KBTC |
 				TokenSymbol::TAI |
-				TokenSymbol::CASH => 10 * millicent(*currency_id) // unsupported
+				TokenSymbol::CASH => 10 * millicent(*currency_id)
 			},
 			CurrencyId::DexShare(dex_share_0, _) => {
 				let currency_id_0: CurrencyId = (*dex_share_0).into();
