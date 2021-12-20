@@ -780,15 +780,15 @@ parameter_type_with_key! {
 				TokenSymbol::BNC => 800 * millicent(*currency_id),  // 80BNC = 1KSM
 				TokenSymbol::VSKSM => 10 * millicent(*currency_id),  // 1VSKSM = 1KSM
 				TokenSymbol::PHA => 4000 * millicent(*currency_id), // 400PHA = 1KSM
-
-				TokenSymbol::KAR |
 				TokenSymbol::KUSD |
 				TokenSymbol::KSM |
 				TokenSymbol::LKSM |
 				TokenSymbol::RENBTC |
-				TokenSymbol::ACA |
 				TokenSymbol::KINT |
 				TokenSymbol::KBTC |
+				TokenSymbol::TAI => 10 * millicent(*currency_id),
+				TokenSymbol::ACA |
+				TokenSymbol::KAR |
 				TokenSymbol::CASH => Balance::max_value() // unsupported
 			},
 			CurrencyId::DexShare(dex_share_0, _) => {
@@ -1022,7 +1022,7 @@ where
 }
 
 parameter_types! {
-	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![DOT, LDOT, RENBTC];
+	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![DOT, LDOT, RENBTC, CurrencyId::StableAssetPoolToken(0)];
 	pub DefaultLiquidationRatio: Ratio = Ratio::saturating_from_rational(110, 100);
 	pub DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
 	pub DefaultLiquidationPenalty: Rate = Rate::saturating_from_rational(5, 100);
