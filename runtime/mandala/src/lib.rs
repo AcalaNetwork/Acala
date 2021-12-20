@@ -780,17 +780,16 @@ parameter_type_with_key! {
 				TokenSymbol::BNC => 800 * millicent(*currency_id),  // 80BNC = 1KSM
 				TokenSymbol::VSKSM => 10 * millicent(*currency_id),  // 1VSKSM = 1KSM
 				TokenSymbol::PHA => 4000 * millicent(*currency_id), // 400PHA = 1KSM
-
-				TokenSymbol::KAR |
 				TokenSymbol::KUSD |
 				TokenSymbol::KSM |
 				TokenSymbol::LKSM |
 				TokenSymbol::RENBTC |
-				TokenSymbol::ACA |
 				TokenSymbol::KINT |
 				TokenSymbol::KBTC |
-				TokenSymbol::TAI |
-				TokenSymbol::CASH => 10 * millicent(*currency_id)
+				TokenSymbol::TAI => 10 * millicent(*currency_id),
+				TokenSymbol::ACA |
+				TokenSymbol::KAR |
+				TokenSymbol::CASH => Balance::max_value() // unsupported
 			},
 			CurrencyId::DexShare(dex_share_0, _) => {
 				let currency_id_0: CurrencyId = (*dex_share_0).into();
