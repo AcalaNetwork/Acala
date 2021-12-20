@@ -441,7 +441,7 @@ pub mod module {
 			T::GovernanceOrigin::ensure_origin(origin)?;
 
 			StakingCurrencyMintCap::<T>::put(new_cap);
-			Self::deposit_event(Event::<T>::StakingCurrencyMintCapUpdated { new_cap: new_cap });
+			Self::deposit_event(Event::<T>::StakingCurrencyMintCapUpdated { new_cap });
 			Ok(())
 		}
 
@@ -559,7 +559,7 @@ pub mod module {
 
 				Self::deposit_event(Event::<T>::RedeemRequested {
 					who: who.clone(),
-					liquid_amount: liquid_amount,
+					liquid_amount,
 					extra_fee: additional_fee,
 					withdraw_fee_paid: base_withdraw_fee,
 				});
@@ -693,9 +693,7 @@ pub mod module {
 
 			StakingInterestRatePerUpdate::<T>::put(interest_rate);
 
-			Self::deposit_event(Event::<T>::StakingInterestRatePerUpdateSet {
-				interest_rate: interest_rate,
-			});
+			Self::deposit_event(Event::<T>::StakingInterestRatePerUpdateSet { interest_rate });
 
 			Ok(())
 		}

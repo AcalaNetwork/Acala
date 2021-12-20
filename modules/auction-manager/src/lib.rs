@@ -674,7 +674,7 @@ impl<T: Config> Pallet<T> {
 				collateral_type: collateral_auction.currency_id,
 				collateral_amount: collateral_auction.amount,
 				winner: bidder,
-				payment_amount: payment_amount,
+				payment_amount,
 			});
 		}
 

@@ -317,8 +317,8 @@ pub mod module {
 					who: who.clone(),
 					pool: pool_id,
 					reward_currency_id: currency_id,
-					actual_amount: actual_amount,
-					deduction_amount: deduction_amount,
+					actual_amount,
+					deduction_amount,
 				});
 			}
 
@@ -426,7 +426,7 @@ pub mod module {
 						v = deduction_rate;
 						Self::deposit_event(Event::ClaimRewardDeductionRateUpdated {
 							pool: pool_id,
-							deduction_rate: deduction_rate,
+							deduction_rate,
 						});
 					}
 

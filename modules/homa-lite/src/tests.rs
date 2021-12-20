@@ -773,12 +773,24 @@ fn update_redeem_request_works() {
 			.into_iter()
 			.filter_map(|e| match e.event {
 				Event::HomaLite(x) => Some(Event::HomaLite(x)),
-				Event::Tokens(orml_tokens::Event::Unreserved(currency, who, amount)) => {
-					Some(Event::Tokens(orml_tokens::Event::Unreserved(currency, who, amount)))
-				}
-				Event::Tokens(orml_tokens::Event::Reserved(currency, who, amount)) => {
-					Some(Event::Tokens(orml_tokens::Event::Reserved(currency, who, amount)))
-				}
+				Event::Tokens(orml_tokens::Event::Unreserved {
+					currency_id: currency,
+					who,
+					amount,
+				}) => Some(Event::Tokens(orml_tokens::Event::Unreserved {
+					currency_id: currency,
+					who,
+					amount,
+				})),
+				Event::Tokens(orml_tokens::Event::Reserved {
+					currency_id: currency,
+					who,
+					amount,
+				}) => Some(Event::Tokens(orml_tokens::Event::Reserved {
+					currency_id: currency,
+					who,
+					amount,
+				})),
 				_ => None,
 			})
 			.collect::<Vec<_>>();
@@ -787,7 +799,11 @@ fn update_redeem_request_works() {
 			events,
 			vec![
 				// Reserve the newly added amount
-				Event::Tokens(orml_tokens::Event::Reserved(LKSM, DAVE, amount_reserved)),
+				Event::Tokens(orml_tokens::Event::Reserved {
+					currency_id: LKSM,
+					who: DAVE,
+					amount: amount_reserved
+				}),
 				Event::HomaLite(crate::Event::RedeemRequested {
 					who: DAVE,
 					liquid_amount: new_redeem_amount,
@@ -795,7 +811,11 @@ fn update_redeem_request_works() {
 					withdraw_fee_paid: withdraw_fee
 				}),
 				// Unreserve the reduced amount
-				Event::Tokens(orml_tokens::Event::Unreserved(LKSM, DAVE, 998_999_000_000_000)),
+				Event::Tokens(orml_tokens::Event::Unreserved {
+					currency_id: LKSM,
+					who: DAVE,
+					amount: 998_999_000_000_000
+				}),
 				Event::HomaLite(crate::Event::RedeemRequested {
 					who: DAVE,
 					liquid_amount: dollar(1000),

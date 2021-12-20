@@ -398,7 +398,7 @@ impl<T: Config> Pallet<T> {
 
 		// emit an event
 		Self::deposit_event(Event::<T>::AssetLockedTo {
-			currency_id: currency_id,
+			currency_id,
 			amount: locked_amount,
 			user: to,
 		});

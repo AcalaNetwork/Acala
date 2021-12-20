@@ -537,9 +537,7 @@ pub mod module {
 					not_before,
 				}),
 			);
-			Self::deposit_event(Event::ListProvisioning {
-				trading_pair: trading_pair,
-			});
+			Self::deposit_event(Event::ListProvisioning { trading_pair });
 			Ok(())
 		}
 
@@ -693,9 +691,7 @@ pub mod module {
 			}
 
 			TradingPairStatuses::<T>::insert(trading_pair, TradingPairStatus::Enabled);
-			Self::deposit_event(Event::EnableTradingPair {
-				trading_pair: trading_pair,
-			});
+			Self::deposit_event(Event::EnableTradingPair { trading_pair });
 			Ok(())
 		}
 
@@ -843,9 +839,9 @@ impl<T: Config> Pallet<T> {
 			Self::deposit_event(Event::AddProvision {
 				who: who.clone(),
 				currency_0: trading_pair.first(),
-				contribution_0: contribution_0,
+				contribution_0,
 				currency_1: trading_pair.second(),
-				contribution_1: contribution_1,
+				contribution_1,
 			});
 			Ok(())
 		})
@@ -959,7 +955,7 @@ impl<T: Config> Pallet<T> {
 				pool_0: pool_0_increment,
 				currency_1: trading_pair.second(),
 				pool_1: pool_1_increment,
-				share_increment: share_increment,
+				share_increment,
 			});
 			Ok(())
 		})

@@ -793,7 +793,7 @@ pub mod module {
 
 			Pallet::<T>::deposit_event(Event::<T>::TransferredMaintainer {
 				contract,
-				new_maintainer: new_maintainer,
+				new_maintainer,
 			});
 
 			Ok(().into())

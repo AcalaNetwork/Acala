@@ -886,7 +886,7 @@ impl<T: Config> Pallet<T> {
 			collateral_type: currency_id,
 			owner: who,
 			sold_collateral_amount: actual_supply_collateral,
-			refund_collateral_amount: refund_collateral_amount,
+			refund_collateral_amount,
 			debit_value,
 		});
 		Ok(())
@@ -959,7 +959,7 @@ impl<T: Config> Pallet<T> {
 			collateral_type: currency_id,
 			owner: who,
 			collateral_amount: collateral,
-			bad_debt_value: bad_debt_value,
+			bad_debt_value,
 			liquidation_strategy: liquidation_strategy.clone(),
 		});
 		match liquidation_strategy {
