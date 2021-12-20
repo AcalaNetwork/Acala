@@ -199,6 +199,30 @@ impl Contains<Call> for BaseCallFilter {
 			return true;
 		}
 
+		// In the first runtime upgrade of the migration, reveal following.
+		// Then, In the first runtime upgrade of the migration, delete following.
+		// if let Call::HomaLite(homa_lite_call) = call {
+		// 	match homa_lite_call {
+		// 		module_homa_lite::Call::mint { .. }
+		// 		| module_homa_lite::Call::mint_for_requests { .. }
+		// 		| module_homa_lite::Call::request_redeem { .. } => {
+		// 			return false;
+		// 		},
+		// 		_ => {}
+		// 	}
+		// }
+		// if let Call::Homa(homa_call) = call {
+		// 	match homa_call {
+		// 		module_homa::Call::mint { .. }
+		// 		| module_homa::Call::request_redeem { .. }
+		// 		| module_homa::Call::fast_match_redeems { .. }
+		// 		| module_homa::Call::claim_redemption { .. } => {
+		// 			return false;
+		// 		},
+		// 		_ => {}
+		// 	}
+		// }
+
 		let is_paused = module_transaction_pause::PausedTransactionFilter::<Runtime>::contains(call);
 		if is_paused {
 			// no paused call
@@ -823,7 +847,10 @@ impl module_prices::Config for Runtime {
 	type GetStakingCurrencyId = GetStakingCurrencyId;
 	type GetLiquidCurrencyId = GetLiquidCurrencyId;
 	type LockOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
-	type LiquidStakingExchangeRateProvider = Homa;
+	// In the second runtime upgrade of the migration, delete this line
+	type LiquidStakingExchangeRateProvider = HomaLite;
+	// In the second runtime upgrade of the migration, use this line
+	//type LiquidStakingExchangeRateProvider = Homa;
 	type DEX = Dex;
 	type Currency = Currencies;
 	type Erc20InfoMapping = EvmErc20InfoMapping<Runtime>;
