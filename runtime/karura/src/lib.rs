@@ -760,7 +760,7 @@ parameter_type_with_key! {
 				TokenSymbol::DOT |
 				TokenSymbol::LDOT |
 				TokenSymbol::RENBTC |
-				TokenSymbol::KAI |
+				TokenSymbol::TAI |
 				TokenSymbol::KAR |
 				TokenSymbol::CASH => Balance::max_value() // unsupported
 			},
