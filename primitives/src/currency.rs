@@ -184,7 +184,6 @@ create_currency_id! {
 		AUSD("Acala Dollar", 12) = 1,
 		DOT("Polkadot", 10) = 2,
 		LDOT("Liquid DOT", 10) = 3,
-		TAI("Taiga", 12) = 4,
 		// 20 - 39: External tokens (e.g. bridged)
 		RENBTC("Ren Protocol BTC", 8) = 20,
 		CASH("Compound CASH", 8) = 21,
@@ -195,6 +194,7 @@ create_currency_id! {
 		KUSD("Karura Dollar", 12) = 129,
 		KSM("Kusama", 12) = 130,
 		LKSM("Liquid KSM", 12) = 131,
+		TAI("Taiga", 12) = 132,
 		// 148 - 167: External tokens (e.g. bridged)
 		// 149: Reserved for renBTC
 		// 150: Reserved for CASH
