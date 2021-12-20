@@ -43,8 +43,8 @@ use primitives::{Balance, CurrencyId, ReserveIdentifier};
 use scale_info::TypeInfo;
 use sp_runtime::{
 	traits::{
-		Bounded, CheckedSub, Convert, DispatchInfoOf, One, PostDispatchInfoOf, SaturatedConversion, Saturating,
-		SignedExtension, UniqueSaturatedInto, Zero,
+		Bounded, CheckedDiv, CheckedSub, Convert, DispatchInfoOf, One, PostDispatchInfoOf, SaturatedConversion,
+		Saturating, SignedExtension, UniqueSaturatedInto, Zero,
 	},
 	transaction_validity::{
 		InvalidTransaction, TransactionPriority, TransactionValidity, TransactionValidityError, ValidTransaction,
@@ -52,7 +52,7 @@ use sp_runtime::{
 	FixedPointNumber, FixedPointOperand, FixedU128, Perquintill,
 };
 use sp_std::{prelude::*, vec};
-use support::{DEXManager, PriceProvider, Ratio, TransactionPayment};
+use support::{DEXManager, PriceProvider, Ratio, SwapLimit, TransactionPayment};
 
 mod mock;
 mod tests;
@@ -247,6 +247,39 @@ pub mod module {
 		/// The fee to be paid for making a transaction; the per-byte portion.
 		#[pallet::constant]
 		type TransactionByteFee: Get<PalletBalanceOf<Self>>;
+
+		/// A fee mulitplier for `Operational` extrinsics to compute "virtual tip" to boost their
+		/// `priority`
+		///
+		/// This value is multipled by the `final_fee` to obtain a "virtual tip" that is later
+		/// added to a tip component in regular `priority` calculations.
+		/// It means that a `Normal` transaction can front-run a similarly-sized `Operational`
+		/// extrinsic (with no tip), by including a tip value greater than the virtual tip.
+		///
+		/// ```rust,ignore
+		/// // For `Normal`
+		/// let priority = priority_calc(tip);
+		///
+		/// // For `Operational`
+		/// let virtual_tip = (inclusion_fee + tip) * OperationalFeeMultiplier;
+		/// let priority = priority_calc(tip + virtual_tip);
+		/// ```
+		///
+		/// Note that since we use `final_fee` the multiplier applies also to the regular `tip`
+		/// sent with the transaction. So, not only does the transaction get a priority bump based
+		/// on the `inclusion_fee`, but we also amplify the impact of tips applied to `Operational`
+		/// transactions.
+		#[pallet::constant]
+		type OperationalFeeMultiplier: Get<u64>;
+
+		/// The step amount of tips required to effect transaction priority.
+		#[pallet::constant]
+		type TipPerWeightStep: Get<PalletBalanceOf<Self>>;
+
+		/// The maximum value of tips that affect the priority.
+		/// Set the maximum value of tips to prevent affecting the unsigned extrinsic.
+		#[pallet::constant]
+		type MaxTipsOfPriority: Get<PalletBalanceOf<Self>>;
 
 		/// Convert a weight value into a deductible fee based on the currency
 		/// type.
@@ -614,12 +647,14 @@ where
 							PalletBalanceOf::<T>::max_value()
 						};
 
-						if T::DEX::swap_with_exact_target(
+						if T::DEX::swap_with_specific_path(
 							who,
 							&trading_path,
-							amount.unique_saturated_into(),
-							<T as Config>::MultiCurrency::free_balance(supply_currency_id, who)
-								.min(max_supply_limit.unique_saturated_into()),
+							SwapLimit::ExactTarget(
+								<T as Config>::MultiCurrency::free_balance(supply_currency_id, who)
+									.min(max_supply_limit.unique_saturated_into()),
+								amount.unique_saturated_into(),
+							),
 						)
 						.is_ok()
 						{
@@ -652,6 +687,14 @@ where
 
 /// Require the transactor pay for themselves and maybe include a tip to
 /// gain additional priority in the queue.
+///
+/// # Transaction Validity
+///
+/// This extension sets the `priority` field of `TransactionValidity` depending on the amount
+/// of tip being paid per weight unit.
+///
+/// Operational transactions will receive an additional priority bump, so that they are normally
+/// considered before regular transactions.
 #[derive(Encode, Decode, Clone, Eq, PartialEq, TypeInfo)]
 #[scale_info(skip_type_params(T))]
 pub struct ChargeTransactionPayment<T: Config + Send + Sync>(#[codec(compact)] pub PalletBalanceOf<T>);
@@ -707,32 +750,83 @@ where
 		}
 	}
 
-	/// Get an appropriate priority for a transaction with the given length
-	/// and info.
+	/// Get an appropriate priority for a transaction with the given `DispatchInfo`, encoded length
+	/// and user-included tip.
 	///
-	/// This will try and optimise the `fee/weight` `fee/length`, whichever
-	/// is consuming more of the maximum corresponding limit.
+	/// The priority is based on the amount of `tip` the user is willing to pay per unit of either
+	/// `weight` or `length`, depending which one is more limitting. For `Operational` extrinsics
+	/// we add a "virtual tip" to the calculations.
 	///
-	/// For example, if a transaction consumed 1/4th of the block length and
-	/// half of the weight, its final priority is `fee * min(2, 4) = fee *
-	/// 2`. If it consumed `1/4th` of the block length and the entire block
-	/// weight `(1/1)`, its priority is `fee * min(1, 4) = fee * 1`. This
-	/// means  that the transaction which consumes more resources (either
-	/// length or weight) with the same `fee` ends up having lower priority.
+	/// The formula should simply be `tip / bounded_{weight|length}`, but since we are using
+	/// integer division, we have no guarantees it's going to give results in any reasonable
+	/// range (might simply end up being zero). Hence we use a scaling factor:
+	/// `tip * (max_block_{weight|length} / bounded_{weight|length})`, since given current
+	/// state of-the-art blockchains, number of per-block transactions is expected to be in a
+	/// range reasonable enough to not saturate the `Balance` type while multiplying by the tip.
 	fn get_priority(
-		len: usize,
 		info: &DispatchInfoOf<<T as frame_system::Config>::Call>,
+		len: usize,
+		tip: PalletBalanceOf<T>,
 		final_fee: PalletBalanceOf<T>,
 	) -> TransactionPriority {
-		let weight_saturation = T::BlockWeights::get().max_block / info.weight.max(1);
-		let max_block_length = *T::BlockLength::get().max.get(DispatchClass::Normal);
-		let len_saturation = max_block_length as u64 / (len as u64).max(1);
-		let coefficient: PalletBalanceOf<T> = weight_saturation
-			.min(len_saturation)
+		// Calculate how many such extrinsics we could fit into an empty block and take
+		// the limitting factor.
+		let max_block_weight = T::BlockWeights::get().max_block;
+		let max_block_length = *T::BlockLength::get().max.get(info.class) as u64;
+
+		let bounded_weight = info.weight.max(1).min(max_block_weight);
+		let bounded_length = (len as u64).max(1).min(max_block_length);
+
+		let max_tx_per_block_weight = max_block_weight / bounded_weight;
+		let max_tx_per_block_length = max_block_length / bounded_length;
+		// Given our current knowledge this value is going to be in a reasonable range - i.e.
+		// less than 10^9 (2^30), so multiplying by the `tip` value is unlikely to overflow the
+		// balance type. We still use saturating ops obviously, but the point is to end up with some
+		// `priority` distribution instead of having all transactions saturate the priority.
+		let max_tx_per_block = max_tx_per_block_length
+			.min(max_tx_per_block_weight)
 			.saturated_into::<PalletBalanceOf<T>>();
-		final_fee
-			.saturating_mul(coefficient)
-			.saturated_into::<TransactionPriority>()
+		// tipPerWeight = tipPerWight / TipPerWeightStep * TipPerWeightStep
+		//              = tip / bounded_{weight|length} / TipPerWeightStep * TipPerWeightStep
+		// priority = tipPerWeight * max_block_{weight|length}
+		// MaxTipsOfPriority = 10_000 KAR/ACA = 10^16.
+		// `MaxTipsOfPriority * max_block_{weight|length}` will overflow, so div `TipPerWeightStep` here.
+		let max_reward = |val: PalletBalanceOf<T>| {
+			val.checked_div(&T::TipPerWeightStep::get())
+				.expect("TipPerWeightStep is non-zero; qed")
+				.saturating_mul(max_tx_per_block)
+		};
+
+		// To distribute no-tip transactions a little bit, we increase the tip value by one.
+		// This means that given two transactions without a tip, smaller one will be preferred.
+		// Set the maximum value of tips to prevent affecting the unsigned extrinsic.
+		let tip = tip.saturating_add(One::one()).min(T::MaxTipsOfPriority::get());
+		let scaled_tip = max_reward(tip);
+
+		match info.class {
+			DispatchClass::Normal => {
+				// For normal class we simply take the `tip_per_weight`.
+				scaled_tip
+			}
+			DispatchClass::Mandatory => {
+				// Mandatory extrinsics should be prohibited (e.g. by the [`CheckWeight`]
+				// extensions), but just to be safe let's return the same priority as `Normal` here.
+				scaled_tip
+			}
+			DispatchClass::Operational => {
+				// A "virtual tip" value added to an `Operational` extrinsic.
+				// This value should be kept high enough to allow `Operational` extrinsics
+				// to get in even during congestion period, but at the same time low
+				// enough to prevent a possible spam attack by sending invalid operational
+				// extrinsics which push away regular transactions from the pool.
+				let fee_multiplier = T::OperationalFeeMultiplier::get().saturated_into();
+				let virtual_tip = final_fee.saturating_mul(fee_multiplier);
+				let scaled_virtual_tip = max_reward(virtual_tip);
+
+				scaled_tip.saturating_add(scaled_virtual_tip)
+			}
+		}
+		.saturated_into::<TransactionPriority>()
 	}
 }
 
@@ -763,9 +857,10 @@ where
 		info: &DispatchInfoOf<Self::Call>,
 		len: usize,
 	) -> TransactionValidity {
-		let (fee, _) = self.withdraw_fee(who, call, info, len)?;
+		let (final_fee, _) = self.withdraw_fee(who, call, info, len)?;
+		let tip = self.0;
 		Ok(ValidTransaction {
-			priority: Self::get_priority(len, info, fee),
+			priority: Self::get_priority(info, len, tip, final_fee),
 			..Default::default()
 		})
 	}
@@ -791,7 +886,19 @@ where
 		let (tip, who, imbalance, fee) = pre;
 		if let Some(payed) = imbalance {
 			let actual_fee = Pallet::<T>::compute_actual_fee(len as u32, info, post_info, tip);
-			let refund = fee.saturating_sub(actual_fee);
+			let refund_fee = fee.saturating_sub(actual_fee);
+			let mut refund = refund_fee;
+			let mut actual_tip = tip;
+
+			if !tip.is_zero() && !info.weight.is_zero() {
+				// tip_pre_weight * unspent_weight
+				let refund_tip = tip
+					.checked_div(&info.weight.saturated_into::<PalletBalanceOf<T>>())
+					.expect("checked is non-zero; qed")
+					.saturating_mul(post_info.calc_unspent(info).saturated_into::<PalletBalanceOf<T>>());
+				refund = refund_fee.saturating_add(refund_tip);
+				actual_tip = tip.saturating_sub(refund_tip);
+			}
 			let actual_payment = match <T as Config>::Currency::deposit_into_existing(&who, refund) {
 				Ok(refund_imbalance) => {
 					// The refund cannot be larger than the up front payed max weight.
@@ -806,7 +913,7 @@ where
 				// is gone in that case.
 				Err(_) => payed,
 			};
-			let (tip, fee) = actual_payment.split(tip);
+			let (tip, fee) = actual_payment.split(actual_tip);
 
 			// distribute fee
 			<T as Config>::OnTransactionPayment::on_unbalanceds(Some(fee).into_iter().chain(Some(tip)));

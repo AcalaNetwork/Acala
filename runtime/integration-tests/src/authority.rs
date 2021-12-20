@@ -282,3 +282,62 @@ fn test_authority_module() {
 			)));
 		});
 }
+
+#[test]
+fn cancel_schedule_test() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(FinancialCouncil::set_members(
+			Origin::root(),
+			vec![AccountId::from(ALICE), AccountId::from(BOB), AccountId::from(CHARLIE)],
+			None,
+			5,
+		));
+		let council_call = Call::CdpEngine(module_cdp_engine::Call::set_global_params {
+			global_interest_rate_per_sec: Rate::from(10),
+		});
+
+		assert_ok!(Authority::schedule_dispatch(
+			OriginCaller::FinancialCouncil(pallet_collective::RawOrigin::Members(2, 3)).into(),
+			DispatchTime::At(2),
+			0,
+			false,
+			Box::new(council_call.clone()),
+		));
+
+		// canceling will not work if yes vote is less than the scheduled call
+		assert_noop!(
+			Authority::cancel_scheduled_dispatch(
+				OriginCaller::FinancialCouncil(pallet_collective::RawOrigin::Members(1, 3)).into(),
+				Box::new(OriginCaller::FinancialCouncil(pallet_collective::RawOrigin::Members(
+					2, 3
+				))),
+				0,
+			),
+			BadOrigin
+		);
+		// canceling works when yes vote is greater than the scheduled call
+		assert_ok!(Authority::cancel_scheduled_dispatch(
+			OriginCaller::FinancialCouncil(pallet_collective::RawOrigin::Members(3, 3)).into(),
+			Box::new(OriginCaller::FinancialCouncil(pallet_collective::RawOrigin::Members(
+				2, 3
+			))),
+			0,
+		));
+
+		assert_ok!(Authority::schedule_dispatch(
+			OriginCaller::FinancialCouncil(pallet_collective::RawOrigin::Members(2, 3)).into(),
+			DispatchTime::At(2),
+			0,
+			false,
+			Box::new(council_call.clone()),
+		));
+		// canceling works when yes vote is equal to the scheduled call
+		assert_ok!(Authority::cancel_scheduled_dispatch(
+			OriginCaller::FinancialCouncil(pallet_collective::RawOrigin::Members(2, 3)).into(),
+			Box::new(OriginCaller::FinancialCouncil(pallet_collective::RawOrigin::Members(
+				2, 3
+			))),
+			1,
+		));
+	});
+}

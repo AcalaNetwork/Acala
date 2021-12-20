@@ -194,6 +194,7 @@ create_currency_id! {
 		KUSD("Karura Dollar", 12) = 129,
 		KSM("Kusama", 12) = 130,
 		LKSM("Liquid KSM", 12) = 131,
+		TAI("Taiga", 12) = 132,
 		// 148 - 167: External tokens (e.g. bridged)
 		// 149: Reserved for renBTC
 		// 150: Reserved for CASH
@@ -201,6 +202,8 @@ create_currency_id! {
 		BNC("Bifrost Native Token", 12) = 168,
 		VSKSM("Bifrost Voucher Slot KSM", 12) = 169,
 		PHA("Phala Native Token", 12) = 170,
+		KINT("Kintsugi Native Token", 12) = 171,
+		KBTC("Kintsugi Wrapped BTC", 8) = 172,
 	}
 }
 
@@ -247,6 +250,21 @@ impl CurrencyId {
 
 	pub fn is_erc20_currency_id(&self) -> bool {
 		matches!(self, CurrencyId::Erc20(_))
+	}
+
+	pub fn is_liquid_croadloan_currency_id(&self) -> bool {
+		matches!(self, CurrencyId::LiquidCroadloan(_))
+	}
+
+	pub fn is_foreign_asset_currency_id(&self) -> bool {
+		matches!(self, CurrencyId::ForeignAsset(_))
+	}
+
+	pub fn is_trading_pair_currency_id(&self) -> bool {
+		matches!(
+			self,
+			CurrencyId::Token(_) | CurrencyId::Erc20(_) | CurrencyId::LiquidCroadloan(_) | CurrencyId::ForeignAsset(_)
+		)
 	}
 
 	pub fn split_dex_share_currency_id(&self) -> Option<(Self, Self)> {

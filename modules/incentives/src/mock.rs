@@ -34,7 +34,7 @@ use primitives::{DexShare, TokenSymbol};
 use sp_core::{H160, H256};
 use sp_runtime::{testing::Header, traits::IdentityLookup, AccountId32};
 use sp_std::cell::RefCell;
-pub use support::{CDPTreasury, DEXManager, Price, Ratio};
+pub use support::{CDPTreasury, DEXManager, Price, Ratio, SwapLimit};
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
@@ -175,29 +175,24 @@ impl DEXManager<AccountId, CurrencyId, Balance> for MockDEX {
 		unimplemented!()
 	}
 
-	fn get_swap_target_amount(_: &[CurrencyId], _: Balance) -> Option<Balance> {
+	fn get_swap_amount(_: &[CurrencyId], _: SwapLimit<Balance>) -> Option<(Balance, Balance)> {
 		unimplemented!()
 	}
 
-	fn get_swap_supply_amount(_: &[CurrencyId], _: Balance) -> Option<Balance> {
+	fn get_best_price_swap_path(
+		_: CurrencyId,
+		_: CurrencyId,
+		_: SwapLimit<Balance>,
+		_: Vec<Vec<CurrencyId>>,
+	) -> Option<Vec<CurrencyId>> {
 		unimplemented!()
 	}
 
-	fn swap_with_exact_supply(
+	fn swap_with_specific_path(
 		_: &AccountId,
 		_: &[CurrencyId],
-		_: Balance,
-		_: Balance,
-	) -> sp_std::result::Result<Balance, DispatchError> {
-		unimplemented!()
-	}
-
-	fn swap_with_exact_target(
-		_: &AccountId,
-		_: &[CurrencyId],
-		_: Balance,
-		_: Balance,
-	) -> sp_std::result::Result<Balance, DispatchError> {
+		_: SwapLimit<Balance>,
+	) -> sp_std::result::Result<(Balance, Balance), DispatchError> {
 		unimplemented!()
 	}
 
