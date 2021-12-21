@@ -291,8 +291,8 @@ parameter_types! {
 	pub const MaxInvulnerables: u32 = 50;
 	pub const KickPenaltySessionLength: u32 = 8;
 	pub const CollatorKickThreshold: Permill = Permill::from_percent(50);
-	// 10% of transaction fee of empty remark call: 150_459_200
-	pub MinRewardDistributeAmount: Balance = 15 * millicent(ACA);
+	// Ensure that can create the author(`ExistentialDeposit`) with dev mode.
+	pub MinRewardDistributeAmount: Balance = NativeTokenExistentialDeposit::get();
 }
 
 impl module_collator_selection::Config for Runtime {
