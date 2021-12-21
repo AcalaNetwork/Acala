@@ -25,6 +25,7 @@
 #![allow(unused_must_use)]
 use acala_primitives::{task::TaskResult, Nonce};
 use codec::FullCodec;
+use frame_support::log;
 use frame_support::pallet_prelude::*;
 use frame_system::pallet_prelude::*;
 pub use module_support::{DispatchableTask, IdleScheduler};
@@ -46,7 +47,7 @@ pub mod module {
 	use super::*;
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config {
+	pub trait Config: frame_system::Config + pallet_aura::Config {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
 		/// Weight information for the extrinsics in this module.
@@ -83,6 +84,12 @@ pub mod module {
 	#[pallet::hooks]
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
 		fn on_idle(_n: T::BlockNumber, remaining_weight: Weight) -> Weight {
+			log::warn!(
+				target: "idle-scheduler",
+				"slot is: {:?}",
+				<pallet_aura::Pallet<T>>::current_slot()
+			);
+
 			Self::do_dispatch_tasks(remaining_weight)
 		}
 	}
