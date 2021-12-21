@@ -392,7 +392,7 @@ mod mandala_only_tests {
 
 			// tips = 0
 			// operational extrinsic
-			let call = Call::Sudo(pallet_sudo::Call::sudo { call: Box::new(module_emergency_shutdown::Call::emergency_shutdown { }.into()) });
+			let call = Call::Sudo(pallet_sudo::Call::sudo { call: Box::new(module_emergency_shutdown::Call::open_collateral_refund { }.into()) });
 			let bytes = UncheckedExtrinsic::new(call.clone().into(), None).expect("This should not fail").encode();
 
 			assert_eq!(
@@ -403,7 +403,7 @@ mod mandala_only_tests {
 					bytes.len()
 				),
 				Ok(ValidTransaction {
-					priority: 43_824_742_400_000_000,
+					priority: 64_296_718_080_000_000,
 					requires: vec![],
 					provides: vec![],
 					longevity: 18_446_744_073_709_551_615,
