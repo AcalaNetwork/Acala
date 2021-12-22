@@ -369,7 +369,7 @@ pub mod module {
 				<Accounts<T>>::insert(address, account_info);
 
 				let amount = if account.balance.is_zero() {
-					T::Currency::minimum_balance()
+					T::Currency::minimum_balance().max(T::DeveloperDeposit::get())
 				} else {
 					account.balance
 				};
