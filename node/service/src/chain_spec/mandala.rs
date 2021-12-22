@@ -74,19 +74,21 @@ fn dev_testnet_config_from_chain_id(chain_id: &str) -> Result<ChainSpec, String>
 					get_account_id_from_seed::<sr25519::Public>("Bob"),
 					get_account_id_from_seed::<sr25519::Public>("Alice//stash"),
 					get_account_id_from_seed::<sr25519::Public>("Bob//stash"),
-					// EVM dev accounts
+				],
+				// EVM dev accounts
+				// mnemonic: 'fox sight canyon orphan hotel grow hedgehog build bless august weather swarm',
+				vec![
 					// 5EMjsczjoEZaNbWzoXDcZtZDSHN1SLmu4ArJcEJVorNDfUH3
-					// mnemonic: 'fox sight canyon orphan hotel grow hedgehog build bless august weather swarm',
-					hex!["65766d3a75e480db528101a381ce68544611c169ad7eb3420000000000000000"].into(),
-					hex!["65766d3a0085560b24769dac4ed057f1b2ae40746aa9aab60000000000000000"].into(),
-					hex!["65766d3a0294350d7cf2c145446358b6461c1610927b3a870000000000000000"].into(),
-					hex!["65766d3aa76f290c490c70f2d816d286efe47fd64a35800b0000000000000000"].into(),
-					hex!["65766d3a4f9c798553d207536b79e886b54f169264a7a1550000000000000000"].into(),
-					hex!["65766d3aa1b04c9cbb449d13c4fc29c7e6be1f810e6f35e90000000000000000"].into(),
-					hex!["65766d3aad9fbd38281f615e7df3def2aad18935a9e0ffee0000000000000000"].into(),
-					hex!["65766d3a0783094aadfb8ae9915fd712d28664c8d7d26afa0000000000000000"].into(),
-					hex!["65766d3ae860947813c207abf9bf6722c49cda515d24971a0000000000000000"].into(),
-					hex!["65766d3a8bffc896d42f07776561a5814d6e4240950d6d3a0000000000000000"].into(),
+					hex!["75e480db528101a381ce68544611c169ad7eb342"].into(),
+					hex!["0085560b24769dac4ed057f1b2ae40746aa9aab6"].into(),
+					hex!["0294350d7cf2c145446358b6461c1610927b3a87"].into(),
+					hex!["a76f290c490c70f2d816d286efe47fd64a35800b"].into(),
+					hex!["4f9c798553d207536b79e886b54f169264a7a155"].into(),
+					hex!["a1b04c9cbb449d13c4fc29c7e6be1f810e6f35e9"].into(),
+					hex!["ad9fbd38281f615e7df3def2aad18935a9e0ffee"].into(),
+					hex!["0783094aadfb8ae9915fd712d28664c8d7d26afa"].into(),
+					hex!["e860947813c207abf9bf6722c49cda515d24971a"].into(),
+					hex!["8bffc896d42f07776561a5814d6e4240950d6d3a"].into(),
 				],
 			)
 		},
@@ -142,6 +144,7 @@ pub fn local_testnet_config() -> Result<ChainSpec, String> {
 					get_account_id_from_seed::<sr25519::Public>("Eve//stash"),
 					get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
 				],
+				vec![],
 			)
 		},
 		vec![],
@@ -246,6 +249,7 @@ fn testnet_genesis(
 	initial_authorities: Vec<(AccountId, AccountId, GrandpaId, AuraId)>,
 	root_key: AccountId,
 	endowed_accounts: Vec<AccountId>,
+	evm_accounts: Vec<H160>,
 ) -> mandala_runtime::GenesisConfig {
 	use mandala_runtime::{
 		dollar, get_all_module_accounts, BalancesConfig, CdpEngineConfig, CdpTreasuryConfig, CollatorSelectionConfig,
@@ -261,7 +265,7 @@ fn testnet_genesis(
 	let initial_balance: u128 = 10_000_000 * dollar(ACA);
 	let initial_staking: u128 = 100_000 * dollar(ACA);
 
-	let evm_genesis_accounts = evm_genesis();
+	let evm_genesis_accounts = evm_genesis(evm_accounts);
 	let balances = initial_authorities
 		.iter()
 		.map(|x| (x.0.clone(), initial_staking + dollar(ACA))) // bit more for fee
@@ -371,7 +375,6 @@ fn testnet_genesis(
 		},
 		evm: EVMConfig {
 			accounts: evm_genesis_accounts,
-			treasury: root_key,
 		},
 		staking_pool: StakingPoolConfig {
 			staking_pool_params: module_staking_pool::Params {
@@ -462,7 +465,7 @@ fn mandala_genesis(
 	let initial_balance: u128 = 1_000_000 * dollar(ACA);
 	let initial_staking: u128 = 100_000 * dollar(ACA);
 
-	let evm_genesis_accounts = evm_genesis();
+	let evm_genesis_accounts = evm_genesis(vec![]);
 	let balances = initial_authorities
 		.iter()
 		.map(|x| (x.0.clone(), initial_staking + dollar(ACA))) // bit more for fee
@@ -569,7 +572,6 @@ fn mandala_genesis(
 		},
 		evm: EVMConfig {
 			accounts: evm_genesis_accounts,
-			treasury: root_key,
 		},
 		staking_pool: StakingPoolConfig {
 			staking_pool_params: module_staking_pool::Params {
@@ -625,7 +627,7 @@ fn mandala_genesis(
 }
 
 /// Returns `evm_genesis_accounts`
-pub fn evm_genesis() -> BTreeMap<H160, GenesisAccount<Balance, Nonce>> {
+pub fn evm_genesis(evm_accounts: Vec<H160>) -> BTreeMap<H160, GenesisAccount<Balance, Nonce>> {
 	let contracts_json = &include_bytes!("../../../../predeploy-contracts/resources/bytecodes.json")[..];
 	let contracts: Vec<(String, String, String)> = serde_json::from_slice(contracts_json).unwrap();
 	let mut accounts = BTreeMap::new();
@@ -648,5 +650,16 @@ pub fn evm_genesis() -> BTreeMap<H160, GenesisAccount<Balance, Nonce>> {
 		);
 		accounts.insert(addr, account);
 	}
+
+	for dev_acc in evm_accounts {
+		let account = GenesisAccount {
+			nonce: 0u32,
+			balance: 1000 * mandala_runtime::dollar(mandala_runtime::ACA),
+			storage: BTreeMap::new(),
+			code: vec![],
+		};
+		accounts.insert(dev_acc, account);
+	}
+
 	accounts
 }
