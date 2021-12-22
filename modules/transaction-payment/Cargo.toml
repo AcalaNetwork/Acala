@@ -52,4 +52,3 @@ std = [
 	"xcm-executor/std",
 ]
 try-runtime = ["frame-support/try-runtime"]
-runtime-benchmarks = []

@@ -84,8 +84,8 @@ mod karura_imports {
 		MultiLocation, NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, Origin, OriginCaller,
 		ParachainAccount, ParachainInfo, ParachainSystem, PolkadotXcm, Proxy, ProxyType, Ratio,
 		RelayChainBlockNumberProvider, RelayChainSovereignSubAccount, Runtime, Scheduler, Session, SessionManager,
-		SevenDays, System, Timestamp, TipPerWeightStep, TokenSymbol, Tokens, TreasuryPalletId, Utility, Vesting,
-		XTokens, XcmConfig, XcmExecutor, XcmUnbondFee, EVM, NFT,
+		SevenDays, SwapThresholdBalance, System, Timestamp, TipPerWeightStep, TokenSymbol, Tokens, TreasuryPalletId,
+		Utility, Vesting, XTokens, XcmConfig, XcmExecutor, XcmUnbondFee, EVM, NFT,
 	};
 	pub use primitives::TradingPair;
 	pub use runtime_common::{calculate_asset_ratio, cent, dollar, millicent, KAR, KSM, KUSD, LKSM};
@@ -122,7 +122,12 @@ mod karura_imports {
 	impl frame_support::traits::OnRuntimeUpgrade for MockRuntimeUpgrade {
 		fn on_runtime_upgrade() -> Weight {
 			for asset in TokenFixedRates::get() {
-				let _ = <module_transaction_payment::Pallet<Runtime>>::initialize_pool(asset.0, asset.1, asset.2);
+				let _ = <module_transaction_payment::Pallet<Runtime>>::initialize_pool(
+					asset.0,
+					asset.1,
+					asset.2,
+					SwapThresholdBalance::get(),
+				);
 			}
 			0
 		}

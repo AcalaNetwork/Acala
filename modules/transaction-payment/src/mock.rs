@@ -233,13 +233,14 @@ impl PriceProvider<CurrencyId> for MockPriceSource {
 parameter_types! {
 	// DO NOT CHANGE THIS VALUE, AS IT EFFECT THE TESTCASES.
 	pub const FeePoolBootBalance: Balance = 10_000;
+	pub const SwapThresholdBalance: Balance = 20;
 	pub const TreasuryFeePoolPalletId: PalletId = PalletId(*b"aca/fees");
 	pub const TreasuryPalletId: PalletId = PalletId(*b"aca/trsy");
 	pub KaruraTreasuryAccount: AccountId = TreasuryPalletId::get().into_account();
-	pub TokenFixedRates: Vec<(CurrencyId, Ratio, Balance)> = vec![
+	pub TokenFixedRates: Vec<(CurrencyId, Ratio)> = vec![
 		// 1 DOT = 10 ACA, 1 ACA = 10 AUSD
-		(AUSD, Ratio::saturating_from_rational(10, 1), FeePoolBootBalance::get()),
-		(DOT, Ratio::saturating_from_rational(1, 10), FeePoolBootBalance::get()),
+		(AUSD, Ratio::saturating_from_rational(10, 1)),
+		(DOT, Ratio::saturating_from_rational(1, 10)),
 	];
 }
 ord_parameter_types! {
@@ -310,7 +311,12 @@ pub struct MockTransactionPaymentUpgrade;
 impl frame_support::traits::OnRuntimeUpgrade for MockTransactionPaymentUpgrade {
 	fn on_runtime_upgrade() -> Weight {
 		for asset in TokenFixedRates::get() {
-			let _ = <transaction_payment::Pallet<Runtime>>::initialize_pool(asset.0, asset.1, asset.2);
+			let _ = <transaction_payment::Pallet<Runtime>>::initialize_pool(
+				asset.0,
+				asset.1,
+				FeePoolBootBalance::get(),
+				SwapThresholdBalance::get(),
+			);
 		}
 		0
 	}

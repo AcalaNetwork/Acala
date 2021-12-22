@@ -351,6 +351,10 @@ pub mod module {
 		InvalidBalance,
 		/// Can't find rate by the supply token
 		InvalidRate,
+		/// Dex swap pool is not available now
+		DexNotAvailable,
+		/// Charge fee pool is already exist
+		ChargeFeePoolAlreadyExisted,
 	}
 
 	#[pallet::event]
@@ -358,6 +362,13 @@ pub mod module {
 	pub enum Event<T: Config> {
 		/// The threshold balance that trigger swap from dex was updated. \[Balance\]
 		SwapBalanceThresholdUpdated { new_threshold_value: Balance },
+		/// The charge fee pool is enabled
+		ChargeFeePoolEnabled {
+			currency_id: CurrencyId,
+			rate: Ratio,
+			balance: Balance,
+			threshold: Balance,
+		},
 	}
 
 	/// The next fee multiplier.
@@ -488,6 +499,21 @@ pub mod module {
 				new_threshold_value: threshold,
 			});
 			Ok(())
+		}
+
+		/// enable and initialize charge fee pool.
+		#[pallet::weight(<T as Config>::WeightInfo::enable_initial_pool())]
+		pub fn enable_initial_pool(
+			origin: OriginFor<T>,
+			currency_id: CurrencyId,
+			balance: Balance,
+			token_per_second: Balance,
+			native_per_second: Balance,
+			threshold: Balance,
+		) -> DispatchResult {
+			T::UpdateOrigin::ensure_origin(origin)?;
+			let rate = Ratio::saturating_from_rational(token_per_second, native_per_second);
+			Self::initialize_pool(currency_id, rate, balance, threshold)
 		}
 	}
 }
@@ -736,12 +762,13 @@ where
 					&trading_path,
 					SwapLimit::ExactSupply(supply_amount, 0),
 				) {
-					// calculate and update new rate of supply asset relative to native asset
-					let new_native_balance =
-						rate.saturating_mul_int(swap_native_balance.saturating_add(treasury_balance));
+					// calculate and update new rate, also update the pool size
+					let new_pool_size = swap_native_balance.saturating_add(treasury_balance);
+					let new_native_balance = rate.saturating_mul_int(new_pool_size);
 					let next_updated_rate =
 						Ratio::saturating_from_rational(new_native_balance, PoolSize::<T>::get(supply_currency_id));
 					TokenFixedRate::<T>::insert(supply_currency_id, next_updated_rate);
+					PoolSize::<T>::insert(supply_currency_id, new_pool_size);
 				} else {
 					debug_assert!(false, "Swap tx fee pool should not fail!");
 				}
@@ -783,29 +810,54 @@ where
 		T::TreasuryPalletId::get().into_sub_account(id)
 	}
 
-	/// Initiate a treasury swap pool. Usually used in on_runtime_upgrade.
+	/// Initiate a treasury swap pool. Usually used in on_runtime_upgrade. This is a one-shot
+	/// action, if charge fee pool already existed, this will throw `ChargeFeePoolAlreadyExisted`
+	/// error. current we don't support change pool size as it's used as a factor of rate
+	/// calculation. normally the charge fee pool wouldn't exhausted. although user charge fee will
+	/// decrease the balance of charge fee pool, but when charge fee pool lt threshold, swap from
+	/// dex action will increase the balance of charge fee pool.
 	#[transactional]
-	pub fn initialize_pool(currency_id: CurrencyId, rate: Ratio, balance: Balance) -> DispatchResult {
+	pub fn initialize_pool(
+		currency_id: CurrencyId,
+		rate: Ratio,
+		balance: Balance,
+		threshold: Balance,
+	) -> DispatchResult {
 		let treasury_account = T::TreasuryAccount::get();
 		let account = Self::treasury_sub_account_id(currency_id);
 		let native_existential_deposit = <T as Config>::Currency::minimum_balance();
 		ensure!(balance > native_existential_deposit, Error::<T>::InvalidBalance);
-
-		T::MultiCurrency::transfer(
-			currency_id,
-			&treasury_account,
-			&account,
-			T::MultiCurrency::minimum_balance(currency_id),
-		)?;
-		T::Currency::transfer(&treasury_account, &account, balance, ExistenceRequirement::KeepAlive)?;
-
-		// one extrinsic fee=0.0025KAR, one block=100 extrinsics, reserve one block+ED=0.35KAR
-		SwapBalanceThreshold::<T>::insert(
-			currency_id,
-			Ratio::saturating_from_rational(350, 100).saturating_mul_int(native_existential_deposit),
+		ensure!(
+			PoolSize::<T>::get(currency_id).is_zero(),
+			Error::<T>::ChargeFeePoolAlreadyExisted
 		);
-		TokenFixedRate::<T>::insert(currency_id, rate);
-		PoolSize::<T>::insert(currency_id, balance);
+
+		let trading_path = Self::get_trading_path_by_currency(&account, currency_id);
+		if let Some(trading_path) = trading_path {
+			let dex_available = T::DEX::get_swap_amount(
+				&trading_path,
+				SwapLimit::ExactTarget(Balance::MAX, native_existential_deposit),
+			);
+			ensure!(dex_available.is_some(), Error::<T>::DexNotAvailable);
+
+			T::MultiCurrency::transfer(
+				currency_id,
+				&treasury_account,
+				&account,
+				T::MultiCurrency::minimum_balance(currency_id),
+			)?;
+			T::Currency::transfer(&treasury_account, &account, balance, ExistenceRequirement::KeepAlive)?;
+
+			SwapBalanceThreshold::<T>::insert(currency_id, threshold);
+			TokenFixedRate::<T>::insert(currency_id, rate);
+			PoolSize::<T>::insert(currency_id, balance);
+			Self::deposit_event(Event::ChargeFeePoolEnabled {
+				currency_id,
+				rate,
+				balance,
+				threshold,
+			});
+		}
 		Ok(())
 	}
 }

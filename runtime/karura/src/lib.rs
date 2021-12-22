@@ -1111,6 +1111,8 @@ parameter_types! {
 	// Initial fee pool size. one extrinsic=0.0025 KAR, one block=100 extrinsics
 	// 20 blocks trigger an swap, so total balance=0.0025*100*20=5 KAR
 	pub FeePoolBootBalance: Balance = 5 * dollar(KAR);
+	// one extrinsic fee=0.0025KAR, one block=100 extrinsics, threshold=0.25+0.1=0.35KAR
+	pub SwapThresholdBalance: Balance = Ratio::saturating_from_rational(35, 100).saturating_mul_int(dollar(KAR));
 }
 
 type NegativeImbalance = <Balances as PalletCurrency<AccountId>>::NegativeImbalance;
@@ -1992,23 +1994,33 @@ pub type Executive = frame_executive::Executive<
 >;
 
 parameter_types! {
-	pub TokenFixedRates: Vec<(CurrencyId, Ratio, Balance)> = vec![
-		(KSM, calculate_asset_ratio(KsmPerSecond::get(), KarPerSecond::get()), FeePoolBootBalance::get()),
-		(KUSD, calculate_asset_ratio(KusdPerSecond::get(), KarPerSecond::get()), FeePoolBootBalance::get()),
-		(LKSM, calculate_asset_ratio(LksmPerSecond::get(), KarPerSecond::get()), FeePoolBootBalance::get()),
-		(BNC, calculate_asset_ratio(BncPerSecond::get(), KarPerSecond::get()), FeePoolBootBalance::get()),
-		(VSKSM, calculate_asset_ratio(VsksmPerSecond::get(), KarPerSecond::get()), FeePoolBootBalance::get()),
-		(PHA, calculate_asset_ratio(PHAPerSecond::get(), KarPerSecond::get()), FeePoolBootBalance::get()),
+	pub TokenFixedRates: Vec<(CurrencyId, Ratio)> = vec![
+		(KSM, calculate_asset_ratio(KsmPerSecond::get(), KarPerSecond::get())),
+		(KUSD, calculate_asset_ratio(KusdPerSecond::get(), KarPerSecond::get())),
+		(LKSM, calculate_asset_ratio(LksmPerSecond::get(), KarPerSecond::get())),
+		(BNC, calculate_asset_ratio(BncPerSecond::get(), KarPerSecond::get())),
+		(VSKSM, calculate_asset_ratio(VsksmPerSecond::get(), KarPerSecond::get())),
+		(PHA, calculate_asset_ratio(PHAPerSecond::get(), KarPerSecond::get())),
 	];
 }
 
 pub struct TransactionPaymentUpgrade;
 impl frame_support::traits::OnRuntimeUpgrade for TransactionPaymentUpgrade {
 	fn on_runtime_upgrade() -> Weight {
-		for asset in TokenFixedRates::get() {
-			let _ = <module_transaction_payment::Pallet<Runtime>>::initialize_pool(asset.0, asset.1, asset.2);
+		let initial_rates = TokenFixedRates::get();
+		if initial_rates.is_empty() {
+			0
+		} else {
+			for asset in initial_rates {
+				let _ = <module_transaction_payment::Pallet<Runtime>>::initialize_pool(
+					asset.0,
+					asset.1,
+					FeePoolBootBalance::get(),
+					SwapThresholdBalance::get(),
+				);
+			}
+			<Runtime as frame_system::Config>::BlockWeights::get().max_block
 		}
-		0
 	}
 }
 

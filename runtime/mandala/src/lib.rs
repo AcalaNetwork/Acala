@@ -1123,6 +1123,7 @@ parameter_types! {
 	// Sort by fee charge order
 	pub DefaultFeeSwapPathList: Vec<Vec<CurrencyId>> = vec![vec![AUSD, ACA], vec![AUSD, LDOT], vec![AUSD, DOT], vec![AUSD, RENBTC]];
 	pub FeePoolBootBalance: Balance = 5 * dollar(ACA);
+	pub SwapThresholdBalance: Balance = Ratio::saturating_from_rational(35, 100).saturating_mul_int(dollar(ACA));
 }
 
 type NegativeImbalance = <Balances as PalletCurrency<AccountId>>::NegativeImbalance;
@@ -2052,18 +2053,28 @@ pub type Executive = frame_executive::Executive<
 >;
 
 parameter_types! {
-	pub TokenFixedRates: Vec<(CurrencyId, Ratio, Balance)> = vec![
-		(DOT, calculate_asset_ratio(DotPerSecond::get(), AcaPerSecond::get()), FeePoolBootBalance::get()),
+	pub TokenFixedRates: Vec<(CurrencyId, Ratio)> = vec![
+		(DOT, calculate_asset_ratio(DotPerSecond::get(), AcaPerSecond::get())),
 	];
 }
 
 pub struct TransactionPaymentUpgrade;
 impl frame_support::traits::OnRuntimeUpgrade for TransactionPaymentUpgrade {
 	fn on_runtime_upgrade() -> Weight {
-		for asset in TokenFixedRates::get() {
-			let _ = <module_transaction_payment::Pallet<Runtime>>::initialize_pool(asset.0, asset.1, asset.2);
+		let initial_rates = TokenFixedRates::get();
+		if initial_rates.is_empty() {
+			0
+		} else {
+			for asset in initial_rates {
+				let _ = <module_transaction_payment::Pallet<Runtime>>::initialize_pool(
+					asset.0,
+					asset.1,
+					FeePoolBootBalance::get(),
+					SwapThresholdBalance::get(),
+				);
+			}
+			<Runtime as frame_system::Config>::BlockWeights::get().max_block
 		}
-		0
 	}
 }
 

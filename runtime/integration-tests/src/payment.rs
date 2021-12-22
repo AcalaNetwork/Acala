@@ -35,71 +35,98 @@ use xcm_executor::{traits::*, Assets, Config};
 #[cfg(feature = "with-karura-runtime")]
 #[test]
 fn runtime_upgrade_initial_pool_works() {
-	ExtBuilder::default().build().execute_with(|| {
-		let treasury_account = KaruraTreasuryAccount::get();
-		let fee_account1: AccountId = TreasuryFeePoolPalletId::get().into_sub_account(KSM);
-		// FeePoolBootBalance set to 5 KAR = 50*ED, the treasury already got ED balance when startup.
-		let ed = NativeTokenExistentialDeposit::get();
-		let fee_balance = FeePoolBootBalance::get();
+	ExtBuilder::default()
+		.balances(vec![
+			(AccountId::from(ALICE), KAR, 100000 * dollar(KAR)),
+			(AccountId::from(ALICE), KSM, 200 * dollar(KSM)),
+			(AccountId::from(ALICE), KUSD, 2000 * dollar(KSM)),
+		])
+		.build()
+		.execute_with(|| {
+			let treasury_account = KaruraTreasuryAccount::get();
+			let fee_account1: AccountId = TreasuryFeePoolPalletId::get().into_sub_account(KSM);
+			// FeePoolBootBalance set to 5 KAR = 50*ED, the treasury already got ED balance when startup.
+			let ed = NativeTokenExistentialDeposit::get();
+			let fee_balance = FeePoolBootBalance::get();
 
-		// upgrade takes no effect
-		MockRuntimeUpgrade::on_runtime_upgrade();
-		assert_eq!(Currencies::free_balance(KAR, &treasury_account), ed);
-		assert_eq!(Currencies::free_balance(KAR, &fee_account1), 0);
+			// upgrade takes no effect
+			MockRuntimeUpgrade::on_runtime_upgrade();
+			assert_eq!(Currencies::free_balance(KAR, &treasury_account), ed);
+			assert_eq!(Currencies::free_balance(KAR, &fee_account1), 0);
 
-		// treasury account: KAR=151*KAR_ED, and foreign asset=the ED of foreign asset
-		assert_ok!(Currencies::update_balance(
-			Origin::root(),
-			MultiAddress::Id(treasury_account.clone()),
-			KAR,
-			fee_balance.saturating_mul(3).unique_saturated_into(),
-		));
-		assert_eq!(Currencies::free_balance(KAR, &treasury_account), ed + fee_balance * 3);
-		vec![KSM, KUSD, LKSM].iter().for_each(|token| {
-			let ed = (<Currencies as MultiCurrency<AccountId>>::minimum_balance(token.clone())).unique_saturated_into();
+			// treasury account: KAR=151*KAR_ED, and foreign asset=the ED of foreign asset
 			assert_ok!(Currencies::update_balance(
 				Origin::root(),
 				MultiAddress::Id(treasury_account.clone()),
-				token.clone(),
-				ed,
+				KAR,
+				fee_balance.saturating_mul(3).unique_saturated_into(),
 			));
-		});
-
-		// the last one failed because balance lt ED
-		MockRuntimeUpgrade::on_runtime_upgrade();
-		assert_eq!(Currencies::free_balance(KAR, &treasury_account), ed + fee_balance);
-		vec![KSM, KUSD].iter().for_each(|token| {
-			let ed = (<Currencies as MultiCurrency<AccountId>>::minimum_balance(token.clone())).unique_saturated_into();
-			assert_eq!(
-				Currencies::free_balance(KAR, &TreasuryFeePoolPalletId::get().into_sub_account(token.clone())),
-				fee_balance
-			);
-			assert_eq!(
-				Currencies::free_balance(
+			assert_eq!(Currencies::free_balance(KAR, &treasury_account), ed + fee_balance * 3);
+			vec![KSM, KUSD, LKSM].iter().for_each(|token| {
+				let ed =
+					(<Currencies as MultiCurrency<AccountId>>::minimum_balance(token.clone())).unique_saturated_into();
+				assert_ok!(Currencies::update_balance(
+					Origin::root(),
+					MultiAddress::Id(treasury_account.clone()),
 					token.clone(),
-					&TreasuryFeePoolPalletId::get().into_sub_account(token.clone())
-				),
-				ed
-			);
-		});
-		assert_eq!(
-			Currencies::free_balance(KAR, &TreasuryFeePoolPalletId::get().into_sub_account(LKSM)),
-			0
-		);
-		assert_eq!(
-			Currencies::free_balance(LKSM, &TreasuryFeePoolPalletId::get().into_sub_account(LKSM)),
-			0
-		);
+					ed,
+				));
+			});
 
-		// set_swap_balance_threshold should gt pool_size
-		let pool_size: Balance = module_transaction_payment::Pallet::<Runtime>::pool_size(KSM);
-		let swap_threshold = module_transaction_payment::Pallet::<Runtime>::set_swap_balance_threshold(
-			Origin::signed(treasury_account),
-			KSM,
-			pool_size.saturating_add(1),
-		);
-		assert_eq!(swap_threshold.is_err(), true);
-	});
+			// the last one failed because balance lt ED
+			assert_ok!(Dex::add_liquidity(
+				Origin::signed(AccountId::from(ALICE)),
+				KSM,
+				KAR,
+				100 * dollar(KSM),
+				10000 * dollar(KAR),
+				0,
+				false
+			));
+			assert_ok!(Dex::add_liquidity(
+				Origin::signed(AccountId::from(ALICE)),
+				KSM,
+				KUSD,
+				100 * dollar(KSM),
+				1000 * dollar(KAR),
+				0,
+				false
+			));
+			MockRuntimeUpgrade::on_runtime_upgrade();
+			assert_eq!(Currencies::free_balance(KAR, &treasury_account), ed + fee_balance);
+			vec![KSM, KUSD].iter().for_each(|token| {
+				let ed =
+					(<Currencies as MultiCurrency<AccountId>>::minimum_balance(token.clone())).unique_saturated_into();
+				assert_eq!(
+					Currencies::free_balance(KAR, &TreasuryFeePoolPalletId::get().into_sub_account(token.clone())),
+					fee_balance
+				);
+				assert_eq!(
+					Currencies::free_balance(
+						token.clone(),
+						&TreasuryFeePoolPalletId::get().into_sub_account(token.clone())
+					),
+					ed
+				);
+			});
+			assert_eq!(
+				Currencies::free_balance(KAR, &TreasuryFeePoolPalletId::get().into_sub_account(LKSM)),
+				0
+			);
+			assert_eq!(
+				Currencies::free_balance(LKSM, &TreasuryFeePoolPalletId::get().into_sub_account(LKSM)),
+				0
+			);
+
+			// set_swap_balance_threshold should gt pool_size
+			let pool_size: Balance = module_transaction_payment::Pallet::<Runtime>::pool_size(KSM);
+			let swap_threshold = module_transaction_payment::Pallet::<Runtime>::set_swap_balance_threshold(
+				Origin::signed(treasury_account),
+				KSM,
+				pool_size.saturating_add(1),
+			);
+			assert!(swap_threshold.is_err());
+		});
 }
 
 #[cfg(feature = "with-karura-runtime")]
@@ -138,46 +165,61 @@ fn trader_works() {
 		let mut period_trader =
 			PeriodUpdatedRateOfFungible::<Runtime, CurrencyIdConvert, KarPerSecondAsBased, ()>::new();
 		let result_assets = period_trader.buy_weight(xcm_weight, assets.clone());
-		assert_eq!(result_assets.is_err(), true);
+		assert!(result_assets.is_err());
 	});
 
 	// do runtime upgrade
-	ExtBuilder::default().build().execute_with(|| {
-		let treasury_account = KaruraTreasuryAccount::get();
-		let fee_account1: AccountId = TreasuryFeePoolPalletId::get().into_sub_account(KSM);
-		// FeePoolBootBalance set to 5 KAR = 50*ED, the treasury already got ED balance when startup.
-		let ed = NativeTokenExistentialDeposit::get();
-		let ksm_ed = <Currencies as MultiCurrency<AccountId>>::minimum_balance(KSM);
-		let fee_balance = FeePoolBootBalance::get();
+	ExtBuilder::default()
+		.balances(vec![
+			(AccountId::from(ALICE), KAR, 100000 * dollar(KAR)),
+			(AccountId::from(ALICE), KSM, 200 * dollar(KSM)),
+		])
+		.build()
+		.execute_with(|| {
+			let treasury_account = KaruraTreasuryAccount::get();
+			let fee_account1: AccountId = TreasuryFeePoolPalletId::get().into_sub_account(KSM);
+			// FeePoolBootBalance set to 5 KAR = 50*ED, the treasury already got ED balance when startup.
+			let ed = NativeTokenExistentialDeposit::get();
+			let ksm_ed = <Currencies as MultiCurrency<AccountId>>::minimum_balance(KSM);
+			let fee_balance = FeePoolBootBalance::get();
 
-		// treasury account: KAR=50*KAR_ED, KSM=KSM_ED, KUSD=KUSD_ED
-		assert_ok!(Currencies::update_balance(
-			Origin::root(),
-			MultiAddress::Id(treasury_account.clone()),
-			KAR,
-			fee_balance.unique_saturated_into(),
-		));
-		assert_eq!(Currencies::free_balance(KAR, &treasury_account), ed + fee_balance);
-		assert_ok!(Currencies::update_balance(
-			Origin::root(),
-			MultiAddress::Id(treasury_account.clone()),
-			KSM,
-			ksm_ed.unique_saturated_into(),
-		));
+			// treasury account: KAR=50*KAR_ED, KSM=KSM_ED, KUSD=KUSD_ED
+			assert_ok!(Currencies::update_balance(
+				Origin::root(),
+				MultiAddress::Id(treasury_account.clone()),
+				KAR,
+				fee_balance.unique_saturated_into(),
+			));
+			assert_eq!(Currencies::free_balance(KAR, &treasury_account), ed + fee_balance);
+			assert_ok!(Currencies::update_balance(
+				Origin::root(),
+				MultiAddress::Id(treasury_account.clone()),
+				KSM,
+				ksm_ed.unique_saturated_into(),
+			));
 
-		// runtime upgrade
-		MockRuntimeUpgrade::on_runtime_upgrade();
-		assert_eq!(Currencies::free_balance(KAR, &treasury_account), ed);
-		assert_eq!(Currencies::free_balance(KAR, &fee_account1), fee_balance);
-		assert_eq!(Currencies::free_balance(KSM, &fee_account1), ksm_ed);
+			// runtime upgrade
+			assert_ok!(Dex::add_liquidity(
+				Origin::signed(AccountId::from(ALICE)),
+				KSM,
+				KAR,
+				100 * dollar(KSM),
+				10000 * dollar(KAR),
+				0,
+				false
+			));
+			MockRuntimeUpgrade::on_runtime_upgrade();
+			assert_eq!(Currencies::free_balance(KAR, &treasury_account), ed);
+			assert_eq!(Currencies::free_balance(KAR, &fee_account1), fee_balance);
+			assert_eq!(Currencies::free_balance(KSM, &fee_account1), ksm_ed);
 
-		// the newly PeriodUpdatedRateOfFungible works fine as first priority
-		let mut period_trader =
-			PeriodUpdatedRateOfFungible::<Runtime, CurrencyIdConvert, KarPerSecondAsBased, ()>::new();
-		let result_assets = period_trader.buy_weight(xcm_weight, assets);
-		let result_asset: Vec<MultiAsset> = result_assets.unwrap().into();
-		assert_eq!(vec![expect_result.clone()], result_asset);
-	});
+			// the newly PeriodUpdatedRateOfFungible works fine as first priority
+			let mut period_trader =
+				PeriodUpdatedRateOfFungible::<Runtime, CurrencyIdConvert, KarPerSecondAsBased, ()>::new();
+			let result_assets = period_trader.buy_weight(xcm_weight, assets);
+			let result_asset: Vec<MultiAsset> = result_assets.unwrap().into();
+			assert_eq!(vec![expect_result.clone()], result_asset);
+		});
 }
 
 #[cfg(feature = "with-karura-runtime")]
@@ -215,6 +257,15 @@ fn charge_transaction_payment_and_threshold_works() {
 				ksm_ed.unique_saturated_into(),
 			));
 
+			assert_ok!(Dex::add_liquidity(
+				Origin::signed(AccountId::from(ALICE)),
+				KSM,
+				KAR,
+				100 * dollar(KSM),
+				10000 * dollar(KAR),
+				0,
+				false
+			));
 			MockRuntimeUpgrade::on_runtime_upgrade();
 			assert_eq!(Currencies::free_balance(KAR, &treasury_account), native_ed);
 			assert_eq!(Currencies::free_balance(KAR, &sub_account1), pool_size);
@@ -328,4 +379,42 @@ fn charge_transaction_payment_and_threshold_works() {
 			assert_eq!(fee, kar1 - kar2);
 			assert_eq!(new_rate.saturating_mul_int(fee), ksm2 - ksm1);
 		});
+}
+
+#[cfg(feature = "with-acala-runtime")]
+#[test]
+fn acala_dex_disable_works() {
+	use acala_runtime::{
+		AcalaTreasuryAccount, FeePoolBootBalance, NativeTokenExistentialDeposit, TransactionPaymentUpgrade,
+		TreasuryFeePoolPalletId,
+	};
+
+	ExtBuilder::default().build().execute_with(|| {
+		let treasury_account = AcalaTreasuryAccount::get();
+		let fee_account1: AccountId = TreasuryFeePoolPalletId::get().into_sub_account(DOT);
+		let fee_account2: AccountId = TreasuryFeePoolPalletId::get().into_sub_account(AUSD);
+		let ed = NativeTokenExistentialDeposit::get();
+		let fee_balance = FeePoolBootBalance::get();
+
+		assert_ok!(Currencies::update_balance(
+			Origin::root(),
+			MultiAddress::Id(treasury_account.clone()),
+			ACA,
+			fee_balance.saturating_mul(3).unique_saturated_into(),
+		));
+		assert_eq!(Currencies::free_balance(ACA, &treasury_account), ed + fee_balance * 3);
+		vec![DOT, AUSD].iter().for_each(|token| {
+			let ed = (<Currencies as MultiCurrency<AccountId>>::minimum_balance(token.clone())).unique_saturated_into();
+			assert_ok!(Currencies::update_balance(
+				Origin::root(),
+				MultiAddress::Id(treasury_account.clone()),
+				token.clone(),
+				ed,
+			));
+		});
+
+		TransactionPaymentUpgrade::on_runtime_upgrade();
+		assert_eq!(Currencies::free_balance(ACA, &fee_account1), 0);
+		assert_eq!(Currencies::free_balance(ACA, &fee_account2), 0);
+	});
 }
