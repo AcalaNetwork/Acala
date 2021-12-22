@@ -91,7 +91,7 @@ pub mod module {
 	#[pallet::hooks]
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
 		fn on_idle(n: T::BlockNumber, remaining_weight: Weight) -> Weight {
-			// shouldn't fail, even if it does  will always equal 0 making
+			// shouldn't fail, even if it does, it will equal 0 making scheduler not dispatch tasks
 			let relay_block_number: BlockNumber = T::RelayChainBlockNumberProvider::current_block_number()
 				.try_into()
 				.unwrap_or_default();
@@ -99,11 +99,11 @@ pub mod module {
 			// difference. (Relay/2 - Para)
 			let diff = (relay_block_number >> 1).saturating_sub(n.try_into().unwrap_or_default());
 			// if 6 relaychain blocks are produced with no parachain block finialized we will not execute
-			// dispatch tasks. Note it will occasionally
+			// dispatch tasks. Note this will occasionally happen as it doesn't have to be consecutive
 			if diff.saturating_sub(3) >= Self::block_difference() {
 				log::debug!(
 					target: "idle-scheduler",
-					"Relaychain produced blocks without the parachain blocks. The idle-scheduler will not execute \nrelay block number: {:?}\nparachain block number: {:?}",
+					"Relaychain produced blocks without finalizing our parachain blocks. The idle-scheduler will not execute. relay block number: {:?} parachain block number: {:?}",
 					relay_block_number,
 					n
 				);
