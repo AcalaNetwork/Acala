@@ -127,7 +127,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("acala"),
 	impl_name: create_runtime_str!("acala"),
 	authoring_version: 1,
-	spec_version: 2011,
+	spec_version: 2012,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -217,7 +217,8 @@ impl Contains<Call> for BaseCallFilter {
 			Call::HomaCouncil(_) | Call::HomaCouncilMembership(_) |
 			Call::TechnicalCommittee(_) | Call::TechnicalCommitteeMembership(_) | // governance
 			// Call::Democracy(_) | // democracy
-			Call::AcalaOracle(_) | Call::OperatorMembershipAcala(_) // oracle
+			Call::AcalaOracle(_) | Call::OperatorMembershipAcala(_) | // oracle
+			Call::Vesting(_) // vesting
 		);
 		if is_whitelisted {
 			// allow whitelisted calls
