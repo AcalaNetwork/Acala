@@ -265,6 +265,7 @@ dependencies = [
  "sc-executor",
  "sc-finality-grandpa",
  "sc-network",
+ "sc-offchain",
  "sc-rpc",
  "sc-service",
  "sc-telemetry",
