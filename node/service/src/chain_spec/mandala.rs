@@ -78,6 +78,15 @@ fn dev_testnet_config_from_chain_id(chain_id: &str) -> Result<ChainSpec, String>
 					// 5EMjsczjoEZaNbWzoXDcZtZDSHN1SLmu4ArJcEJVorNDfUH3
 					// mnemonic: 'fox sight canyon orphan hotel grow hedgehog build bless august weather swarm',
 					hex!["65766d3a75e480db528101a381ce68544611c169ad7eb3420000000000000000"].into(),
+					hex!["65766d3a0085560b24769dac4ed057f1b2ae40746aa9aab60000000000000000"].into(),
+					hex!["65766d3a0294350d7cf2c145446358b6461c1610927b3a870000000000000000"].into(),
+					hex!["65766d3aa76f290c490c70f2d816d286efe47fd64a35800b0000000000000000"].into(),
+					hex!["65766d3a4f9c798553d207536b79e886b54f169264a7a1550000000000000000"].into(),
+					hex!["65766d3aa1b04c9cbb449d13c4fc29c7e6be1f810e6f35e90000000000000000"].into(),
+					hex!["65766d3aad9fbd38281f615e7df3def2aad18935a9e0ffee0000000000000000"].into(),
+					hex!["65766d3a0783094aadfb8ae9915fd712d28664c8d7d26afa0000000000000000"].into(),
+					hex!["65766d3ae860947813c207abf9bf6722c49cda515d24971a0000000000000000"].into(),
+					hex!["65766d3a8bffc896d42f07776561a5814d6e4240950d6d3a0000000000000000"].into(),
 				],
 			)
 		},
