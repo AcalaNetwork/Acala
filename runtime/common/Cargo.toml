@@ -47,6 +47,7 @@ serde_json = "1.0.68"
 hex-literal = "0.3.1"
 
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.13" }
+sp-version = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.13" }
 pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.13" }
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.13" }
 pallet-proxy = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.13" }
@@ -55,9 +56,11 @@ pallet-utility = { git = "https://github.com/paritytech/substrate", branch = "po
 acala-service = { path = "../../node/service", features = ["with-mandala-runtime"] }
 orml-tokens = { path = "../../orml/tokens" }
 orml-nft = { path = "../../orml/nft" }
+orml-currencies = { path = "../../orml/currencies" }
 module-asset-registry = { path = "../../modules/asset-registry" }
 module-currencies = { path = "../../modules/currencies" }
 module-evm-bridge = { path = "../../modules/evm-bridge" }
+module-evm-accounts = { path = "../../modules/evm-accounts" }
 
 [features]
 default = ["std"]

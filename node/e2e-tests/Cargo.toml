@@ -48,3 +48,4 @@ node-runtime = { package = "mandala-runtime", path = "../../runtime/mandala" }
 node-primitives = { package = "acala-primitives", path = "../../primitives" }
 node-cli = { package = "acala-cli", path = "../cli", features = ["with-mandala-runtime"] }
 node-service = { package = "acala-service", path = "../service", features = ["with-mandala-runtime"] }
+runtime-common = { path = "../../runtime/common" }

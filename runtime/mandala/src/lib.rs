@@ -52,7 +52,7 @@ use module_currencies::{BasicCurrencyAdapter, Currency};
 use module_evm::{CallInfo, CreateInfo, EvmTask, Runner};
 use module_evm_accounts::EvmAddressMapping;
 use module_relaychain::RelayChainCallBuilder;
-use module_support::{AddressMapping, DispatchableTask, ExchangeRateProvider, ForeignAssetIdMapping};
+use module_support::{DispatchableTask, ExchangeRateProvider, ForeignAssetIdMapping};
 use module_transaction_payment::{Multiplier, TargetedFeeAdjustment};
 use scale_info::TypeInfo;
 
@@ -996,7 +996,7 @@ where
 			frame_system::CheckTxVersion::<Runtime>::new(),
 			frame_system::CheckGenesis::<Runtime>::new(),
 			frame_system::CheckEra::<Runtime>::from(generic::Era::mortal(period, current_block)),
-			frame_system::CheckNonce::<Runtime>::from(nonce),
+			runtime_common::CheckNonce::<Runtime>::from(nonce),
 			frame_system::CheckWeight::<Runtime>::new(),
 			module_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip),
 			module_evm::SetEvmOrigin::<Runtime>::new(),
@@ -1959,12 +1959,12 @@ impl cumulus_pallet_aura_ext::Config for Runtime {}
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
 pub struct ConvertEthereumTx;
 
-impl Convert<(AccountId, Call, SignedExtra), Result<EthereumTransactionMessage, InvalidTransaction>>
+impl Convert<(Call, SignedExtra), Result<(EthereumTransactionMessage, SignedExtra), InvalidTransaction>>
 	for ConvertEthereumTx
 {
 	fn convert(
-		(who, call, extra): (AccountId, Call, SignedExtra),
-	) -> Result<EthereumTransactionMessage, InvalidTransaction> {
+		(call, mut extra): (Call, SignedExtra),
+	) -> Result<(EthereumTransactionMessage, SignedExtra), InvalidTransaction> {
 		match call {
 			Call::EVM(module_evm::Call::eth_call {
 				action,
@@ -1972,48 +1972,42 @@ impl Convert<(AccountId, Call, SignedExtra), Result<EthereumTransactionMessage, 
 				value,
 				gas_limit,
 				storage_limit,
-				nonce,
 				valid_until,
 			}) => {
 				if System::block_number() > valid_until {
 					return Err(InvalidTransaction::Stale);
 				}
 
-				let address = EvmAddressMapping::<Runtime>::get_default_evm_address(&who);
-				let evm_nonce = EVM::accounts(&address).map(|x| x.nonce).unwrap_or_default();
-
-				if nonce != evm_nonce {
-					return if evm_nonce > nonce {
-						Err(InvalidTransaction::Stale)
-					} else {
-						Err(InvalidTransaction::Future)
-					};
-				}
-
-				let era: frame_system::CheckEra<Runtime> = extra.3;
+				let era: frame_system::CheckEra<Runtime> = extra.clone().3;
 				if era != frame_system::CheckEra::from(sp_runtime::generic::Era::Immortal) {
 					// require immortal
 					return Err(InvalidTransaction::BadProof);
 				}
 
-				let nonce: frame_system::CheckNonce<Runtime> = extra.4;
-				let nonce = nonce.0;
+				// nonce checker should check evm nonce
+				let mut check_nonce: runtime_common::CheckNonce<Runtime> = extra.clone().4;
+				let nonce = check_nonce.0;
+				check_nonce.1 = true;
+				extra.4 = check_nonce;
 
-				let tip: module_transaction_payment::ChargeTransactionPayment<Runtime> = extra.6;
+				let tip: module_transaction_payment::ChargeTransactionPayment<Runtime> = extra.clone().6;
 				let tip = tip.0;
 
-				Ok(EthereumTransactionMessage {
-					nonce,
-					tip,
-					gas_limit,
-					storage_limit,
-					action,
-					value,
-					input,
-					chain_id: ChainId::get(),
-					genesis: System::block_hash(0),
-					valid_until,
-				})
+				Ok((
+					EthereumTransactionMessage {
+						nonce,
+						tip,
+						gas_limit,
+						storage_limit,
+						action,
+						value,
+						input,
+						chain_id: ChainId::get(),
+						genesis: System::block_hash(0),
+						valid_until,
+					},
+					extra,
+				))
 			}
 			_ => Err(InvalidTransaction::BadProof),
 		}
@@ -2034,7 +2028,7 @@ pub type SignedExtra = (
 	frame_system::CheckTxVersion<Runtime>,
 	frame_system::CheckGenesis<Runtime>,
 	frame_system::CheckEra<Runtime>,
-	frame_system::CheckNonce<Runtime>,
+	runtime_common::CheckNonce<Runtime>,
 	frame_system::CheckWeight<Runtime>,
 	module_transaction_payment::ChargeTransactionPayment<Runtime>,
 	module_evm::SetEvmOrigin<Runtime>,
@@ -2572,8 +2566,10 @@ cumulus_pallet_parachain_system::register_validate_block!(
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use frame_support::assert_noop;
+	use frame_support::dispatch::DispatchInfo;
 	use frame_system::offchain::CreateSignedTransaction;
+	use module_support::AddressMapping;
+	use sp_runtime::traits::SignedExtension;
 
 	#[test]
 	fn validate_transaction_submitter_bounds() {
@@ -2623,45 +2619,27 @@ mod tests {
 	#[test]
 	fn convert_tx_check_evm_nonce() {
 		sp_io::TestExternalities::new_empty().execute_with(|| {
-			let alice: AccountId = sp_runtime::AccountId32::from([1; 32]);
-			let address = EvmAddressMapping::<Runtime>::get_default_evm_address(&alice);
+			let alice: AccountId = sp_runtime::AccountId32::from([8; 32]);
+			System::inc_account_nonce(&alice); // system::account.nonce = 1
 
-			// set evm nonce to 1
+			let address = EvmAddressMapping::<Runtime>::get_evm_address(&alice)
+				.unwrap_or_else(|| EvmAddressMapping::<Runtime>::get_default_evm_address(&alice));
+
+			// set evm nonce to 3
 			module_evm::Accounts::<Runtime>::insert(
 				&address,
 				module_evm::AccountInfo {
-					nonce: 1,
+					nonce: 3,
 					contract_info: None,
 				},
 			);
 
-			let stale_call = Call::EVM(module_evm::Call::eth_call {
+			let call = Call::EVM(module_evm::Call::eth_call {
 				action: module_evm::TransactionAction::Create,
 				input: vec![0x01],
 				value: 0,
 				gas_limit: 21_000,
 				storage_limit: 1_000,
-				nonce: 0, // evm::accounts.nonce - 1
-				valid_until: 30,
-			});
-
-			let valid_call = Call::EVM(module_evm::Call::eth_call {
-				action: module_evm::TransactionAction::Create,
-				input: vec![0x01],
-				value: 0,
-				gas_limit: 21_000,
-				storage_limit: 1_000,
-				nonce: 1, // evm::accounts.nonce
-				valid_until: 30,
-			});
-
-			let future_call = Call::EVM(module_evm::Call::eth_call {
-				action: module_evm::TransactionAction::Create,
-				input: vec![0x01],
-				value: 0,
-				gas_limit: 21_000,
-				storage_limit: 1_000,
-				nonce: 2, // evm::accounts.nonce + 1
 				valid_until: 30,
 			});
 
@@ -2670,35 +2648,70 @@ mod tests {
 				frame_system::CheckTxVersion::<Runtime>::new(),
 				frame_system::CheckGenesis::<Runtime>::new(),
 				frame_system::CheckEra::<Runtime>::from(generic::Era::Immortal),
-				frame_system::CheckNonce::<Runtime>::from(3), // system::account.nonce
+				runtime_common::CheckNonce::<Runtime>::from(3),
 				frame_system::CheckWeight::<Runtime>::new(),
 				module_transaction_payment::ChargeTransactionPayment::<Runtime>::from(0),
 				module_evm::SetEvmOrigin::<Runtime>::new(),
 			);
 
+			let mut expected_extra = extra.clone();
+			expected_extra.4 .1 = true;
+
 			assert_eq!(
-				ConvertEthereumTx::convert((alice.clone(), valid_call, extra.clone())).unwrap(),
-				EthereumTransactionMessage {
-					nonce: 3, // system::account.nonce
-					tip: 0,
-					gas_limit: 21_000,
-					storage_limit: 1_000,
-					action: module_evm::TransactionAction::Create,
-					value: 0,
-					input: vec![0x01],
-					chain_id: 595,
-					genesis: sp_core::H256::default(),
-					valid_until: 30
-				}
+				ConvertEthereumTx::convert((call.clone(), extra.clone())).unwrap(),
+				(
+					EthereumTransactionMessage {
+						nonce: 3, // evm::account.nonce
+						tip: 0,
+						gas_limit: 21_000,
+						storage_limit: 1_000,
+						action: module_evm::TransactionAction::Create,
+						value: 0,
+						input: vec![0x01],
+						chain_id: 595,
+						genesis: sp_core::H256::default(),
+						valid_until: 30
+					},
+					expected_extra.clone()
+				)
 			);
 
-			assert_noop!(
-				ConvertEthereumTx::convert((alice.clone(), stale_call, extra.clone())),
-				InvalidTransaction::Stale
+			let info = DispatchInfo::default();
+
+			// valid tx in future
+			assert_eq!(
+				extra.4.validate(&alice, &call, &info, 0),
+				Ok(sp_runtime::transaction_validity::ValidTransaction {
+					priority: 0,
+					requires: vec![Encode::encode(&(alice.clone(), 2))],
+					provides: vec![Encode::encode(&(alice.clone(), 3))],
+					longevity: sp_runtime::transaction_validity::TransactionLongevity::MAX,
+					propagate: true,
+				})
 			);
-			assert_noop!(
-				ConvertEthereumTx::convert((alice.clone(), future_call, extra.clone())),
-				InvalidTransaction::Future
+			// valid evm tx
+			assert_eq!(
+				expected_extra.4.validate(&alice, &call, &info, 0),
+				Ok(sp_runtime::transaction_validity::ValidTransaction {
+					priority: 0,
+					requires: vec![],
+					provides: vec![Encode::encode(&(alice.clone(), 3, true))],
+					longevity: sp_runtime::transaction_validity::TransactionLongevity::MAX,
+					propagate: true,
+				})
+			);
+
+			// valid evm tx in future
+			expected_extra.4 .0 = 4;
+			assert_eq!(
+				expected_extra.4.validate(&alice, &call, &info, 0),
+				Ok(sp_runtime::transaction_validity::ValidTransaction {
+					priority: 0,
+					requires: vec![Encode::encode(&(alice.clone(), 3, true))],
+					provides: vec![Encode::encode(&(alice.clone(), 4, true))],
+					longevity: sp_runtime::transaction_validity::TransactionLongevity::MAX,
+					propagate: true,
+				})
 			);
 		});
 	}

@@ -102,7 +102,7 @@ impl<Call, Extra, ConvertTx, StorageDepositPerByte, TxFeePerGas, Lookup> Checkab
 where
 	Call: Encode + Member,
 	Extra: SignedExtension<AccountId = AccountId32>,
-	ConvertTx: Convert<(AccountId32, Call, Extra), Result<EthereumTransactionMessage, InvalidTransaction>>,
+	ConvertTx: Convert<(Call, Extra), Result<(EthereumTransactionMessage, Extra), InvalidTransaction>>,
 	StorageDepositPerByte: Get<Balance>,
 	TxFeePerGas: Get<Balance>,
 	Lookup: traits::Lookup<Source = Address, Target = AccountId32>,
@@ -113,8 +113,8 @@ where
 		match self.0.signature {
 			Some((addr, AcalaMultiSignature::Ethereum(sig), extra)) => {
 				let function = self.0.function;
-				let expected_account_id = lookup.lookup(addr)?;
-				let eth_msg = ConvertTx::convert((expected_account_id.clone(), function.clone(), extra.clone()))?;
+
+				let (eth_msg, extra) = ConvertTx::convert((function.clone(), extra))?;
 
 				if eth_msg.tip != 0 {
 					// Not yet supported, require zero tip
@@ -163,6 +163,7 @@ where
 				let signer = recover_signer(&sig, msg_hash.as_fixed_bytes()).ok_or(InvalidTransaction::BadProof)?;
 
 				let account_id = lookup.lookup(Address::Address20(signer.into()))?;
+				let expected_account_id = lookup.lookup(addr)?;
 
 				if account_id != expected_account_id {
 					return Err(InvalidTransaction::BadProof.into());
@@ -175,12 +176,13 @@ where
 			}
 			Some((addr, AcalaMultiSignature::AcalaEip712(sig), extra)) => {
 				let function = self.0.function;
-				let expected_account_id = lookup.lookup(addr)?;
-				let eth_msg = ConvertTx::convert((expected_account_id.clone(), function.clone(), extra.clone()))?;
+
+				let (eth_msg, extra) = ConvertTx::convert((function.clone(), extra))?;
 
 				let signer = verify_eip712_signature(eth_msg, sig).ok_or(InvalidTransaction::BadProof)?;
 
 				let account_id = lookup.lookup(Address::Address20(signer.into()))?;
+				let expected_account_id = lookup.lookup(addr)?;
 
 				if account_id != expected_account_id {
 					return Err(InvalidTransaction::BadProof.into());
