@@ -56,6 +56,9 @@ fn can_schedule_tasks() {
 #[test]
 fn can_process_tasks_up_to_weight_limit() {
 	ExtBuilder::default().build().execute_with(|| {
+		// put a value so idle_scheduler executes rather than skips execution.
+		BlockNumberDifference::<Runtime>::put(10);
+
 		assert_ok!(IdleScheduler::schedule_task(
 			Origin::root(),
 			ScheduledTasks::BalancesTask(BalancesTask::OnIdle)

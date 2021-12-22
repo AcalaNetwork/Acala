@@ -25,8 +25,8 @@ use acala_primitives::{define_combined_task, task::TaskResult};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types, traits::Everything};
 use module_support::DispatchableTask;
-use sp_consensus_aura::ed25519::AuthorityId;
 
+use super::*;
 use codec::{Decode, Encode};
 use scale_info::TypeInfo;
 
@@ -67,33 +67,22 @@ parameter_types!(
 	pub const MinimumWeightRemainInBlock: Weight = 100_000_000_000;
 );
 
+pub struct MockBlockNumberProvider;
+
+impl BlockNumberProvider for MockBlockNumberProvider {
+	type BlockNumber = u32;
+
+	fn current_block_number() -> Self::BlockNumber {
+		Zero::zero()
+	}
+}
+
 impl module_idle_scheduler::Config for Runtime {
 	type Event = Event;
 	type WeightInfo = ();
 	type Task = ScheduledTasks;
 	type MinimumWeightRemainInBlock = MinimumWeightRemainInBlock;
-}
-
-parameter_types! {
-	pub const MaxAuthorities: u32 = 32;
-}
-
-impl pallet_aura::Config for Runtime {
-	type AuthorityId = AuthorityId;
-	type DisabledValidators = ();
-	type MaxAuthorities = MaxAuthorities;
-}
-
-parameter_types! {
-	pub const MinimumPeriod: u64 = 32;
-}
-
-impl pallet_timestamp::Config for Runtime {
-	/// A timestamp: milliseconds since the unix epoch.
-	type Moment = u64;
-	type OnTimestampSet = ();
-	type MinimumPeriod = MinimumPeriod;
-	type WeightInfo = ();
+	type RelayChainBlockNumberProvider = MockBlockNumberProvider;
 }
 
 // Mock dispatachable tasks
@@ -145,8 +134,6 @@ construct_runtime!(
 		UncheckedExtrinsic = UncheckedExtrinsic
 	{
 		System: frame_system::{Pallet, Call, Event<T>},
-		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
-		Aura: pallet_aura::{Pallet, Storage, Config<T>},
 		IdleScheduler: module_idle_scheduler::{Pallet, Call, Event<T>, Storage},
 	}
 );

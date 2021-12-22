@@ -23,7 +23,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
 #![allow(unused_must_use)]
-use acala_primitives::{task::TaskResult, Nonce};
+use acala_primitives::{task::TaskResult, BlockNumber, Nonce};
 use codec::FullCodec;
 use frame_support::log;
 use frame_support::pallet_prelude::*;
@@ -31,7 +31,7 @@ use frame_system::pallet_prelude::*;
 pub use module_support::{DispatchableTask, IdleScheduler};
 use scale_info::TypeInfo;
 use sp_runtime::{
-	traits::{One, Zero},
+	traits::{BlockNumberProvider, One, Zero},
 	ArithmeticError,
 };
 use sp_std::{cmp::PartialEq, fmt::Debug, prelude::*};
@@ -47,7 +47,7 @@ pub mod module {
 	use super::*;
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config + pallet_aura::Config {
+	pub trait Config: frame_system::Config {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
 		/// Weight information for the extrinsics in this module.
@@ -59,6 +59,9 @@ pub mod module {
 		/// The minimum weight that should remain before idle tasks are dispatched.
 		#[pallet::constant]
 		type MinimumWeightRemainInBlock: Get<Weight>;
+
+		/// Gets RelayChain Block Number
+		type RelayChainBlockNumberProvider: BlockNumberProvider;
 	}
 
 	#[pallet::event]
@@ -78,19 +81,38 @@ pub mod module {
 	#[pallet::getter(fn next_task_id)]
 	pub type NextTaskId<T: Config> = StorageValue<_, Nonce, ValueQuery>;
 
+	#[pallet::storage]
+	#[pallet::getter(fn block_difference)]
+	pub type BlockNumberDifference<T: Config> = StorageValue<_, BlockNumber, ValueQuery>;
+
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
 
 	#[pallet::hooks]
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
-		fn on_idle(_n: T::BlockNumber, remaining_weight: Weight) -> Weight {
-			log::warn!(
-				target: "idle-scheduler",
-				"slot is: {:?}",
-				<pallet_aura::Pallet<T>>::current_slot()
-			);
-
-			Self::do_dispatch_tasks(remaining_weight)
+		fn on_idle(n: T::BlockNumber, remaining_weight: Weight) -> Weight {
+			// shouldn't fail, even if it does  will always equal 0 making
+			let relay_block_number: BlockNumber = T::RelayChainBlockNumberProvider::current_block_number()
+				.try_into()
+				.unwrap_or_default();
+			// divide relay block by two (right shift) and then subtract by parachain block number to get
+			// difference. (Relay/2 - Para)
+			let diff = (relay_block_number >> 1).saturating_sub(n.try_into().unwrap_or_default());
+			// if 6 relaychain blocks are produced with no parachain block finialized we will not execute
+			// dispatch tasks. Note it will occasionally
+			if diff.saturating_sub(3) >= Self::block_difference() {
+				log::debug!(
+					target: "idle-scheduler",
+					"Relaychain produced blocks without the parachain blocks. The idle-scheduler will not execute \nrelay block number: {:?}\nparachain block number: {:?}",
+					relay_block_number,
+					n
+				);
+				// store new differrence
+				BlockNumberDifference::<T>::put(diff);
+				T::DbWeight::get().reads_writes(1, 1)
+			} else {
+				Self::do_dispatch_tasks(remaining_weight)
+			}
 		}
 	}
 
