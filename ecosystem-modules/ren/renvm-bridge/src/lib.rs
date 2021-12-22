@@ -90,12 +90,16 @@ pub mod module {
 	#[pallet::event]
 	#[pallet::generate_deposit(fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// Asset minted. \[owner, amount\]
-		Minted(T::AccountId, Balance),
-		/// Asset burnt in this chain \[owner, dest, amount\]
-		Burnt(T::AccountId, DestAddress, Balance),
-		/// Rotated key \[new_key\]
-		RotatedKey(PublicKey),
+		/// Asset minted.
+		Minted { owner: T::AccountId, amount: Balance },
+		/// Asset burnt in this chain.
+		Burnt {
+			owner: T::AccountId,
+			dest: DestAddress,
+			amount: Balance,
+		},
+		/// Rotated key
+		RotatedKey { key: PublicKey },
 	}
 
 	/// The RenVM split public key
@@ -185,7 +189,7 @@ pub mod module {
 				Pays::Yes,
 				DispatchClass::Normal,
 			);
-			Self::deposit_event(Event::Minted(who, amount));
+			Self::deposit_event(Event::Minted { owner: who, amount });
 
 			Ok(())
 		}
@@ -201,7 +205,11 @@ pub mod module {
 
 				T::BridgedTokenCurrency::withdraw(&sender, amount)?;
 				BurnEvents::<T>::insert(this_id, (frame_system::Pallet::<T>::block_number(), &to, amount));
-				Self::deposit_event(Event::Burnt(sender, to, amount));
+				Self::deposit_event(Event::Burnt {
+					owner: sender,
+					dest: to,
+					amount,
+				});
 
 				Ok(())
 			})?;
@@ -218,7 +226,7 @@ pub mod module {
 		pub fn rotate_key(origin: OriginFor<T>, new_key: PublicKey, sig: EcdsaSignature) -> DispatchResult {
 			ensure_none(origin)?;
 			Self::do_rotate_key(new_key, sig);
-			Self::deposit_event(Event::RotatedKey(new_key));
+			Self::deposit_event(Event::RotatedKey { key: new_key });
 
 			Ok(())
 		}

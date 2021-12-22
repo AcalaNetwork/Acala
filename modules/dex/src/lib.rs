@@ -173,28 +173,51 @@ pub mod module {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// add provision success \[who, currency_id_0, contribution_0,
-		/// currency_id_1, contribution_1\]
-		AddProvision(T::AccountId, CurrencyId, Balance, CurrencyId, Balance),
-		/// Add liquidity success. \[who, currency_id_0, pool_0_increment,
-		/// currency_id_1, pool_1_increment, share_increment\]
-		AddLiquidity(T::AccountId, CurrencyId, Balance, CurrencyId, Balance, Balance),
-		/// Remove liquidity from the trading pool success. \[who,
-		/// currency_id_0, pool_0_decrement, currency_id_1, pool_1_decrement,
-		/// share_decrement\]
-		RemoveLiquidity(T::AccountId, CurrencyId, Balance, CurrencyId, Balance, Balance),
-		/// Use supply currency to swap target currency. \[trader, trading_path,
-		/// liquidity_change_list\]
-		Swap(T::AccountId, Vec<CurrencyId>, Vec<Balance>),
-		/// Enable trading pair. \[trading_pair\]
-		EnableTradingPair(TradingPair),
-		/// List provisioning trading pair. \[trading_pair\]
-		ListProvisioning(TradingPair),
-		/// Disable trading pair. \[trading_pair\]
-		DisableTradingPair(TradingPair),
-		/// Provisioning trading pair convert to Enabled. \[trading_pair,
-		/// pool_0_amount, pool_1_amount, total_share_amount\]
-		ProvisioningToEnabled(TradingPair, Balance, Balance, Balance),
+		/// add provision success
+		AddProvision {
+			who: T::AccountId,
+			currency_0: CurrencyId,
+			contribution_0: Balance,
+			currency_1: CurrencyId,
+			contribution_1: Balance,
+		},
+		/// Add liquidity success.
+		AddLiquidity {
+			who: T::AccountId,
+			currency_0: CurrencyId,
+			pool_0: Balance,
+			currency_1: CurrencyId,
+			pool_1: Balance,
+			share_increment: Balance,
+		},
+		/// Remove liquidity from the trading pool success.
+		RemoveLiquidity {
+			who: T::AccountId,
+			currency_0: CurrencyId,
+			pool_0: Balance,
+			currency_1: CurrencyId,
+			pool_1: Balance,
+			share_decrement: Balance,
+		},
+		/// Use supply currency to swap target currency.
+		Swap {
+			trader: T::AccountId,
+			path: Vec<CurrencyId>,
+			liquidity_changes: Vec<Balance>,
+		},
+		/// Enable trading pair.
+		EnableTradingPair { trading_pair: TradingPair },
+		/// List provisioning trading pair.
+		ListProvisioning { trading_pair: TradingPair },
+		/// Disable trading pair.
+		DisableTradingPair { trading_pair: TradingPair },
+		/// Provisioning trading pair convert to Enabled.
+		ProvisioningToEnabled {
+			trading_pair: TradingPair,
+			pool_0: Balance,
+			pool_1: Balance,
+			share_amount: Balance,
+		},
 	}
 
 	/// Liquidity pool for TradingPair.
@@ -514,7 +537,7 @@ pub mod module {
 					not_before,
 				}),
 			);
-			Self::deposit_event(Event::ListProvisioning(trading_pair));
+			Self::deposit_event(Event::ListProvisioning { trading_pair });
 			Ok(())
 		}
 
@@ -629,12 +652,12 @@ pub mod module {
 						(share_exchange_rate_0, share_exchange_rate_1),
 					);
 
-					Self::deposit_event(Event::ProvisioningToEnabled(
+					Self::deposit_event(Event::ProvisioningToEnabled {
 						trading_pair,
-						total_provision_0,
-						total_provision_1,
-						total_shares_to_issue,
-					));
+						pool_0: total_provision_0,
+						pool_1: total_provision_1,
+						share_amount: total_shares_to_issue,
+					});
 				}
 				_ => return Err(Error::<T>::MustBeProvisioning.into()),
 			}
@@ -668,7 +691,7 @@ pub mod module {
 			}
 
 			TradingPairStatuses::<T>::insert(trading_pair, TradingPairStatus::Enabled);
-			Self::deposit_event(Event::EnableTradingPair(trading_pair));
+			Self::deposit_event(Event::EnableTradingPair { trading_pair });
 			Ok(())
 		}
 
@@ -692,7 +715,7 @@ pub mod module {
 			);
 
 			TradingPairStatuses::<T>::insert(trading_pair, TradingPairStatus::Disabled);
-			Self::deposit_event(Event::DisableTradingPair(trading_pair));
+			Self::deposit_event(Event::DisableTradingPair { trading_pair });
 			Ok(())
 		}
 	}
@@ -813,13 +836,13 @@ impl<T: Config> Pallet<T> {
 				TradingPairStatus::<_, _>::Provisioning(provision_parameters),
 			);
 
-			Self::deposit_event(Event::AddProvision(
-				who.clone(),
-				trading_pair.first(),
+			Self::deposit_event(Event::AddProvision {
+				who: who.clone(),
+				currency_0: trading_pair.first(),
 				contribution_0,
-				trading_pair.second(),
+				currency_1: trading_pair.second(),
 				contribution_1,
-			));
+			});
 			Ok(())
 		})
 	}
@@ -926,14 +949,14 @@ impl<T: Config> Pallet<T> {
 				T::DEXIncentives::do_deposit_dex_share(who, dex_share_currency_id, share_increment)?;
 			}
 
-			Self::deposit_event(Event::AddLiquidity(
-				who.clone(),
-				trading_pair.first(),
-				pool_0_increment,
-				trading_pair.second(),
-				pool_1_increment,
+			Self::deposit_event(Event::AddLiquidity {
+				who: who.clone(),
+				currency_0: trading_pair.first(),
+				pool_0: pool_0_increment,
+				currency_1: trading_pair.second(),
+				pool_1: pool_1_increment,
 				share_increment,
-			));
+			});
 			Ok(())
 		})
 	}
@@ -983,14 +1006,14 @@ impl<T: Config> Pallet<T> {
 			*pool_0 = pool_0.checked_sub(pool_0_decrement).ok_or(ArithmeticError::Underflow)?;
 			*pool_1 = pool_1.checked_sub(pool_1_decrement).ok_or(ArithmeticError::Underflow)?;
 
-			Self::deposit_event(Event::RemoveLiquidity(
-				who.clone(),
-				trading_pair.first(),
-				pool_0_decrement,
-				trading_pair.second(),
-				pool_1_decrement,
-				remove_share,
-			));
+			Self::deposit_event(Event::RemoveLiquidity {
+				who: who.clone(),
+				currency_0: trading_pair.first(),
+				pool_0: pool_0_decrement,
+				currency_1: trading_pair.second(),
+				pool_1: pool_1_decrement,
+				share_decrement: remove_share,
+			});
 			Ok(())
 		})
 	}
@@ -1191,7 +1214,11 @@ impl<T: Config> Pallet<T> {
 		Self::_swap_by_path(path, &amounts)?;
 		T::Currency::transfer(path[path.len() - 1], &module_account_id, who, actual_target_amount)?;
 
-		Self::deposit_event(Event::Swap(who.clone(), path.to_vec(), amounts));
+		Self::deposit_event(Event::Swap {
+			trader: who.clone(),
+			path: path.to_vec(),
+			liquidity_changes: amounts,
+		});
 		Ok(actual_target_amount)
 	}
 
@@ -1212,7 +1239,11 @@ impl<T: Config> Pallet<T> {
 		Self::_swap_by_path(path, &amounts)?;
 		T::Currency::transfer(path[path.len() - 1], &module_account_id, who, target_amount)?;
 
-		Self::deposit_event(Event::Swap(who.clone(), path.to_vec(), amounts));
+		Self::deposit_event(Event::Swap {
+			trader: who.clone(),
+			path: path.to_vec(),
+			liquidity_changes: amounts,
+		});
 		Ok(actual_supply_amount)
 	}
 }

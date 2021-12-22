@@ -74,14 +74,14 @@ fn test_dex_module() {
 				false,
 			));
 
-			let add_liquidity_event = Event::Dex(module_dex::Event::AddLiquidity(
-				AccountId::from(ALICE),
-				USD_CURRENCY,
-				10_000_000 * dollar(USD_CURRENCY),
-				RELAY_CHAIN_CURRENCY,
-				10_000 * dollar(RELAY_CHAIN_CURRENCY),
-				20_000_000 * dollar(USD_CURRENCY),
-			));
+			let add_liquidity_event = Event::Dex(module_dex::Event::AddLiquidity {
+				who: AccountId::from(ALICE),
+				currency_0: USD_CURRENCY,
+				pool_0: 10_000_000 * dollar(USD_CURRENCY),
+				currency_1: RELAY_CHAIN_CURRENCY,
+				pool_1: 10_000 * dollar(RELAY_CHAIN_CURRENCY),
+				share_increment: 20_000_000 * dollar(USD_CURRENCY),
+			});
 			assert!(System::events()
 				.iter()
 				.any(|record| record.event == add_liquidity_event));

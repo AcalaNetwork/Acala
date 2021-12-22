@@ -83,16 +83,16 @@ fn register_foreign_asset_work() {
 		));
 
 		let location: MultiLocation = v0_location.try_into().unwrap();
-		System::assert_last_event(Event::AssetRegistry(crate::Event::ForeignAssetRegistered(
-			0,
-			location.clone(),
-			AssetMetadata {
+		System::assert_last_event(Event::AssetRegistry(crate::Event::ForeignAssetRegistered {
+			asset_id: 0,
+			asset_address: location.clone(),
+			metadata: AssetMetadata {
 				name: b"Token Name".to_vec(),
 				symbol: b"TN".to_vec(),
 				decimals: 12,
 				minimal_balance: 1,
 			},
-		)));
+		}));
 
 		assert_eq!(ForeignAssetLocations::<Runtime>::get(0), Some(location.clone()));
 		assert_eq!(
@@ -188,15 +188,15 @@ fn update_foreign_asset_work() {
 		));
 
 		let location: MultiLocation = v0_location.try_into().unwrap();
-		System::assert_last_event(Event::AssetRegistry(crate::Event::ForeignAssetUpdated(
-			location.clone(),
-			AssetMetadata {
+		System::assert_last_event(Event::AssetRegistry(crate::Event::ForeignAssetUpdated {
+			asset_address: location.clone(),
+			metadata: AssetMetadata {
 				name: b"New Token Name".to_vec(),
 				symbol: b"NTN".to_vec(),
 				decimals: 13,
 				minimal_balance: 2,
 			},
-		)));
+		}));
 
 		assert_eq!(
 			AssetMetadatas::<Runtime>::get(0),
