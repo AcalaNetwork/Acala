@@ -652,7 +652,25 @@ fn inner_mandala_dev(config: Configuration, instant_sealing: bool) -> Result<Tas
 	})?;
 
 	if config.offchain_worker.enabled {
-		sc_service::build_offchain_workers(&config, task_manager.spawn_handle(), client.clone(), network.clone());
+		let offchain_workers = Arc::new(sc_offchain::OffchainWorkers::new_with_options(
+			client.clone(),
+			sc_offchain::OffchainWorkerOptions {
+				enable_http_requests: false,
+			},
+		));
+
+		// Start the offchain workers to have
+		task_manager.spawn_handle().spawn(
+			"offchain-notifications",
+			None,
+			sc_offchain::notification_future(
+				config.role.is_authority(),
+				client.clone(),
+				offchain_workers,
+				task_manager.spawn_handle(),
+				network.clone(),
+			),
+		);
 	}
 
 	let prometheus_registry = config.prometheus_registry().cloned();

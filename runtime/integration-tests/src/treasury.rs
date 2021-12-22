@@ -274,18 +274,15 @@ mod mandala_only_tests {
 				// The amount above existential is below the `MinRewardDistributeAmount`.
 				assert_eq!(
 					Currencies::free_balance(NATIVE_CURRENCY, &pot_account_id),
-					100_299_999_998
+					299_999_999_998
 				);
 
-				CollatorSelection::note_author(AccountId::from(ALICE));
+				CollatorSelection::note_author(AccountId::from(BOB));
 				assert_eq!(
 					Currencies::free_balance(NATIVE_CURRENCY, &pot_account_id),
-					100_299_999_998
+					299_999_999_998
 				);
-				assert_eq!(
-					Currencies::free_balance(NATIVE_CURRENCY, &AccountId::from(ALICE)),
-					dollar(NATIVE_CURRENCY)
-				);
+				assert_eq!(Currencies::free_balance(NATIVE_CURRENCY, &AccountId::from(BOB)), 0);
 
 				// Put a little more money into the pot
 				let tip = NegativeImbalance::new(10);
@@ -296,19 +293,19 @@ mod mandala_only_tests {
 				// Now the above existential is above the `MinRewardDistributeAmount`.
 				assert_eq!(
 					Currencies::free_balance(NATIVE_CURRENCY, &pot_account_id),
-					100_300_000_000
+					300_000_000_000
 				);
 
-				// Splits half of 300_000_000 to ALICE
-				CollatorSelection::note_author(AccountId::from(ALICE));
+				// Splits half of 300_000_000_000 to BOB
+				CollatorSelection::note_author(AccountId::from(BOB));
 
 				assert_eq!(
 					Currencies::free_balance(NATIVE_CURRENCY, &pot_account_id),
-					100_150_000_000
+					200_000_000_000
 				);
 				assert_eq!(
-					Currencies::free_balance(NATIVE_CURRENCY, &AccountId::from(ALICE)),
-					dollar(NATIVE_CURRENCY) + 150_000_000
+					Currencies::free_balance(NATIVE_CURRENCY, &AccountId::from(BOB)),
+					100_000_000_000
 				);
 			});
 	}
