@@ -272,7 +272,7 @@ pub mod module {
 		pub ref_count: u32,
 	}
 
-	#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]
+	#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Default)]
 	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 	/// Account definition used for genesis block construction.
 	pub struct GenesisAccount<Balance, Index> {
@@ -284,6 +284,8 @@ pub mod module {
 		pub storage: BTreeMap<H256, H256>,
 		/// Account code.
 		pub code: Vec<u8>,
+		/// If the account should enable contract development mode
+		pub enable_contract_development: bool,
 	}
 
 	/// The EVM accounts info.
@@ -342,7 +344,6 @@ pub mod module {
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
 		pub accounts: BTreeMap<EvmAddress, GenesisAccount<BalanceOf<T>, T::Index>>,
-		pub treasury: T::AccountId,
 	}
 
 	#[cfg(feature = "std")]
@@ -350,7 +351,6 @@ pub mod module {
 		fn default() -> Self {
 			GenesisConfig {
 				accounts: Default::default(),
-				treasury: Default::default(),
 			}
 		}
 	}
@@ -377,7 +377,18 @@ pub mod module {
 				};
 				T::Currency::deposit_creating(&account_id, amount);
 
+				if account.enable_contract_development {
+					T::Currency::ensure_reserved_named(
+						&RESERVE_ID_DEVELOPER_DEPOSIT,
+						&account_id,
+						T::DeveloperDeposit::get(),
+					)
+					.expect("Failed to reserve developer deposit. Please make sure the account have enough balance.");
+				}
+
 				if !account.code.is_empty() {
+					// init contract
+
 					// Transactions are not supported by BasicExternalities
 					// Use the EVM Runtime
 					let vicinity = Vicinity {
