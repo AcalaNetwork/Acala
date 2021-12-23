@@ -362,7 +362,7 @@ pub mod module {
 	pub enum Event<T: Config> {
 		/// The threshold balance that trigger swap from dex was updated. \[Balance\]
 		SwapBalanceThresholdUpdated { new_threshold_value: Balance },
-		/// The charge fee pool is enabled
+		/// The charge fee pool is enabled \[CurrencyId, Ratio, Balance, Balance\]
 		ChargeFeePoolEnabled {
 			currency_id: CurrencyId,
 			rate: Ratio,

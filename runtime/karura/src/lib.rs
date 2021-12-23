@@ -166,6 +166,7 @@ parameter_types! {
 	// Vault all unrleased native token.
 	pub UnreleasedNativeVaultAccountId: AccountId = PalletId(*b"aca/urls").into_account();
 	// This Pallet is only used to payment fee pool, it's not added to whitelist by design.
+	// because transaction payment pallet will ensure the accounts always have enough ED.
 	pub const TreasuryFeePoolPalletId: PalletId = PalletId(*b"aca/fees");
 }
 
