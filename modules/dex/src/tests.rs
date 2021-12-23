@@ -106,7 +106,7 @@ fn list_provisioning_work() {
 		assert_noop!(
 			DexModule::list_provisioning(
 				Origin::signed(ListingOrigin::get()),
-				CurrencyId::LiquidCroadloan(0),
+				CurrencyId::ForeignAsset(0),
 				AUSD,
 				1_000_000_000_000u128,
 				1_000_000_000_000u128,
@@ -120,7 +120,7 @@ fn list_provisioning_work() {
 			DexModule::list_provisioning(
 				Origin::signed(ListingOrigin::get()),
 				AUSD,
-				CurrencyId::LiquidCroadloan(0),
+				CurrencyId::ForeignAsset(0),
 				1_000_000_000_000u128,
 				1_000_000_000_000u128,
 				5_000_000_000_000u128,

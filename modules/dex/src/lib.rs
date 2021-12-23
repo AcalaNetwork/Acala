@@ -520,14 +520,13 @@ pub mod module {
 			}
 
 			let check_asset_registry = |currency_id: CurrencyId| match currency_id {
-				CurrencyId::Erc20(_)
-				| CurrencyId::StableAssetPoolToken(_)
-				| CurrencyId::LiquidCroadloan(_)
-				| CurrencyId::ForeignAsset(_) => T::Erc20InfoMapping::name(currency_id)
+				CurrencyId::Erc20(_) | CurrencyId::ForeignAsset(_) => T::Erc20InfoMapping::name(currency_id)
 					.map(|_| ())
 					.ok_or(Error::<T>::AssetUnregistered),
-				CurrencyId::Token(_) | CurrencyId::DexShare(_, _) => Ok(()), /* TradingPair::from_currency_ids
-				                                                              * checked. Shouldn't happen. */
+				CurrencyId::Token(_)
+				| CurrencyId::DexShare(_, _)
+				| CurrencyId::StableAssetPoolToken(_)
+				| CurrencyId::LiquidCroadloan(_) => Ok(()), /* No registration required */
 			};
 			check_asset_registry(currency_id_a)?;
 			check_asset_registry(currency_id_b)?;
