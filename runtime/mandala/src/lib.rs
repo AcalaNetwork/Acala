@@ -1883,20 +1883,24 @@ impl orml_tokens::ConvertBalance<Balance, Balance> for ConvertBalanceHomaLite {
 
 	fn convert_balance(balance: Balance, asset_id: CurrencyId) -> Balance {
 		match asset_id {
-			CurrencyId::Token(TokenSymbol::LDOT) => HomaLite::get_exchange_rate()
-				.checked_mul_int(balance)
-				.unwrap_or_default(),
+			CurrencyId::Token(TokenSymbol::LDOT) | CurrencyId::Token(TokenSymbol::LKSM) => {
+				HomaLite::get_exchange_rate()
+					.checked_mul_int(balance)
+					.unwrap_or_default()
+			}
 			_ => balance,
 		}
 	}
 
 	fn convert_balance_back(balance: Balance, asset_id: CurrencyId) -> Balance {
 		match asset_id {
-			CurrencyId::Token(TokenSymbol::LDOT) => HomaLite::get_exchange_rate()
-				.reciprocal()
-				.unwrap_or_default()
-				.checked_mul_int(balance)
-				.unwrap_or_default(),
+			CurrencyId::Token(TokenSymbol::LDOT) | CurrencyId::Token(TokenSymbol::LKSM) => {
+				HomaLite::get_exchange_rate()
+					.reciprocal()
+					.unwrap_or_default()
+					.checked_mul_int(balance)
+					.unwrap_or_default()
+			}
 			_ => balance,
 		}
 	}
@@ -1905,7 +1909,10 @@ impl orml_tokens::ConvertBalance<Balance, Balance> for ConvertBalanceHomaLite {
 pub struct IsLiquidToken;
 impl Contains<CurrencyId> for IsLiquidToken {
 	fn contains(currency_id: &CurrencyId) -> bool {
-		matches!(currency_id, CurrencyId::Token(TokenSymbol::LDOT))
+		match currency_id {
+			CurrencyId::Token(TokenSymbol::LDOT) | CurrencyId::Token(TokenSymbol::LKSM) => true,
+			_ => false,
+		}
 	}
 }
 
