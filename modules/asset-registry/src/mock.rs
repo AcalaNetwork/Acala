@@ -27,7 +27,9 @@ use frame_support::{
 };
 use frame_system::EnsureSignedBy;
 use module_support::{mocks::MockAddressMapping, AddressMapping};
-use primitives::{convert_decimals_to_evm, evm::EvmAddress, AccountId, Balance, ReserveIdentifier};
+use primitives::{
+	convert_decimals_to_evm, evm::EvmAddress, AccountId, Balance, CurrencyId, ReserveIdentifier, TokenSymbol,
+};
 use sp_core::{bytes::from_hex, H160, H256};
 use std::str::FromStr;
 
@@ -134,9 +136,13 @@ impl module_evm_bridge::Config for Runtime {
 	type EVM = EVM;
 }
 
+parameter_types! {
+	pub const KSMCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::KSM);
+}
 impl asset_registry::Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
+	type LiquidCroadloanCurrencyId = KSMCurrencyId;
 	type EVMBridge = module_evm_bridge::EVMBridge<Runtime>;
 	type RegisterOrigin = EnsureSignedBy<CouncilAccount, AccountId>;
 	type WeightInfo = ();
