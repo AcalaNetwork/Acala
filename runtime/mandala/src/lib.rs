@@ -40,7 +40,7 @@ pub use frame_support::{
 		Randomness, SortedMembers, U128CurrencyToVote, WithdrawReasons,
 	},
 	weights::{
-		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight, WEIGHT_PER_SECOND},
+		constants::{BlockExecutionWeight, RocksDbWeight, WEIGHT_PER_SECOND},
 		DispatchClass, IdentityFee, Weight,
 	},
 	PalletId, RuntimeDebug, StorageValue,
@@ -140,7 +140,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("mandala"),
 	impl_name: create_runtime_str!("mandala"),
 	authoring_version: 1,
-	spec_version: 2010,
+	spec_version: 2011,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -291,8 +291,8 @@ parameter_types! {
 	pub const MaxInvulnerables: u32 = 50;
 	pub const KickPenaltySessionLength: u32 = 8;
 	pub const CollatorKickThreshold: Permill = Permill::from_percent(50);
-	// 10% of transaction fee of empty remark call: 150_459_200
-	pub MinRewardDistributeAmount: Balance = 15 * millicent(ACA);
+	// Ensure that can create the author(`ExistentialDeposit`) with dev mode.
+	pub MinRewardDistributeAmount: Balance = NativeTokenExistentialDeposit::get();
 }
 
 impl module_collator_selection::Config for Runtime {
@@ -780,15 +780,15 @@ parameter_type_with_key! {
 				TokenSymbol::BNC => 800 * millicent(*currency_id),  // 80BNC = 1KSM
 				TokenSymbol::VSKSM => 10 * millicent(*currency_id),  // 1VSKSM = 1KSM
 				TokenSymbol::PHA => 4000 * millicent(*currency_id), // 400PHA = 1KSM
-
-				TokenSymbol::KAR |
 				TokenSymbol::KUSD |
 				TokenSymbol::KSM |
 				TokenSymbol::LKSM |
 				TokenSymbol::RENBTC |
-				TokenSymbol::ACA |
 				TokenSymbol::KINT |
 				TokenSymbol::KBTC |
+				TokenSymbol::TAI => 10 * millicent(*currency_id),
+				TokenSymbol::ACA |
+				TokenSymbol::KAR |
 				TokenSymbol::CASH => Balance::max_value() // unsupported
 			},
 			CurrencyId::DexShare(dex_share_0, _) => {
@@ -935,9 +935,6 @@ parameter_types! {
 	pub MinimumIncrementSize: Rate = Rate::saturating_from_rational(2, 100);
 	pub const AuctionTimeToClose: BlockNumber = 15 * MINUTES;
 	pub const AuctionDurationSoftCap: BlockNumber = 2 * HOURS;
-	pub DefaultSwapParitalPathList: Vec<Vec<CurrencyId>> = vec![
-		vec![GetStableCurrencyId::get()],
-	];
 }
 
 impl module_auction_manager::Config for Runtime {
@@ -949,11 +946,9 @@ impl module_auction_manager::Config for Runtime {
 	type AuctionDurationSoftCap = AuctionDurationSoftCap;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type CDPTreasury = CdpTreasury;
-	type DEX = Dex;
 	type PriceSource = module_prices::PriorityLockedPriceProvider<Runtime>;
 	type UnsignedPriority = runtime_common::AuctionManagerUnsignedPriority;
 	type EmergencyShutdown = EmergencyShutdown;
-	type DefaultSwapParitalPathList = DefaultSwapParitalPathList;
 	type WeightInfo = weights::module_auction_manager::WeightInfo<Runtime>;
 }
 
@@ -1027,7 +1022,7 @@ where
 }
 
 parameter_types! {
-	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![DOT, LDOT, RENBTC];
+	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![DOT, LDOT, RENBTC, CurrencyId::StableAssetPoolToken(0)];
 	pub DefaultLiquidationRatio: Ratio = Ratio::saturating_from_rational(110, 100);
 	pub DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
 	pub DefaultLiquidationPenalty: Rate = Rate::saturating_from_rational(5, 100);
@@ -1050,7 +1045,6 @@ impl module_cdp_engine::Config for Runtime {
 	type UnsignedPriority = runtime_common::CdpEngineUnsignedPriority;
 	type EmergencyShutdown = EmergencyShutdown;
 	type UnixTime = Timestamp;
-	type DefaultSwapParitalPathList = DefaultSwapParitalPathList;
 	type WeightInfo = weights::module_cdp_engine::WeightInfo<Runtime>;
 }
 
@@ -1101,6 +1095,7 @@ impl module_dex::Config for Runtime {
 parameter_types! {
 	pub const MaxAuctionsCount: u32 = 50;
 	pub HonzonTreasuryAccount: AccountId = HonzonTreasuryPalletId::get().into_account();
+	pub AlternativeSwapPathJointList: Vec<Vec<CurrencyId>> = vec![vec![GetStakingCurrencyId::get()]];
 }
 
 impl module_cdp_treasury::Config for Runtime {
@@ -1113,6 +1108,7 @@ impl module_cdp_treasury::Config for Runtime {
 	type MaxAuctionsCount = MaxAuctionsCount;
 	type PalletId = CDPTreasuryPalletId;
 	type TreasuryAccount = HonzonTreasuryAccount;
+	type AlternativeSwapPathJointList = AlternativeSwapPathJointList;
 	type WeightInfo = weights::module_cdp_treasury::WeightInfo<Runtime>;
 }
 
@@ -1178,6 +1174,7 @@ impl module_evm_accounts::Config for Runtime {
 impl module_asset_registry::Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
+	type LiquidCroadloanCurrencyId = GetStakingCurrencyId;
 	type EVMBridge = module_evm_bridge::EVMBridge<Runtime>;
 	type RegisterOrigin = EnsureRootOrHalfGeneralCouncil;
 	type WeightInfo = weights::module_asset_registry::WeightInfo<Runtime>;
@@ -1992,6 +1989,8 @@ impl Convert<(Call, SignedExtra), Result<(EthereumTransactionMessage, SignedExtr
 
 				Ok((
 					EthereumTransactionMessage {
+						chain_id: ChainId::get(),
+						genesis: System::block_hash(0),
 						nonce,
 						tip,
 						gas_limit,
@@ -1999,8 +1998,6 @@ impl Convert<(Call, SignedExtra), Result<(EthereumTransactionMessage, SignedExtr
 						action,
 						value,
 						input,
-						chain_id: ChainId::get(),
-						genesis: System::block_hash(0),
 						valid_until,
 					},
 					extra,

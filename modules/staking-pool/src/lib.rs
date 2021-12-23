@@ -204,22 +204,36 @@ pub mod module {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// Deposit staking currency(DOT) to staking pool and issue liquid
-		/// currency(LDOT). \[who, staking_amount_deposited,
-		/// liquid_amount_issued\]
-		MintLiquid(T::AccountId, Balance, Balance),
+		/// Deposit staking currency(DOT) to staking pool and issue liquid currency(LDOT).
+		MintLiquid {
+			who: T::AccountId,
+			staking_amount_deposited: Balance,
+			liquid_amount_issued: Balance,
+		},
 		/// Burn liquid currency(LDOT) and redeem staking currency(DOT) by
-		/// waiting for complete unbond eras. \[who, liquid_amount_burned,
-		/// staking_amount_redeemed\]
-		RedeemByUnbond(T::AccountId, Balance, Balance),
+		/// waiting for complete unbond eras.
+		RedeemByUnbond {
+			who: T::AccountId,
+			liquid_amount_burned: Balance,
+			staking_amount_redeemed: Balance,
+		},
 		/// Burn liquid currency(LDOT) and redeem staking currency(DOT) by free
-		/// pool immediately. \[who, fee_in_staking, liquid_amount_burned,
-		/// staking_amount_redeemed\]
-		RedeemByFreeUnbonded(T::AccountId, Balance, Balance, Balance),
+		/// pool immediately.
+		RedeemByFreeUnbonded {
+			who: T::AccountId,
+			fee_in_staking: Balance,
+			liquid_amount_burned: Balance,
+			staking_amount_redeemed: Balance,
+		},
 		/// Burn liquid currency(LDOT) and redeem staking currency(DOT) by claim
-		/// the unbonding_to_free of specific era. \[who, target_era,
-		/// fee_in_staking, liquid_amount_burned, staking_amount_redeemed\]
-		RedeemByClaimUnbonding(T::AccountId, EraIndex, Balance, Balance, Balance),
+		/// the unbonding_to_free of specific era.
+		RedeemByClaimUnbonding {
+			who: T::AccountId,
+			target_era: EraIndex,
+			fee_in_staking: Balance,
+			liquid_amount_burned: Balance,
+			staking_amount_redeemed: Balance,
+		},
 	}
 
 	/// Current era index on Relaychain.
@@ -742,7 +756,11 @@ impl<T: Config> HomaProtocol<T::AccountId, Balance, EraIndex> for Pallet<T> {
 
 			ledger.free_pool = ledger.free_pool.saturating_add(amount);
 
-			Self::deposit_event(Event::MintLiquid(who.clone(), amount, liquid_amount_to_issue));
+			Self::deposit_event(Event::MintLiquid {
+				who: who.clone(),
+				staking_amount_deposited: amount,
+				liquid_amount_issued: liquid_amount_to_issue,
+			});
 			Ok(liquid_amount_to_issue)
 		})
 	}
@@ -789,11 +807,11 @@ impl<T: Config> HomaProtocol<T::AccountId, Balance, EraIndex> for Pallet<T> {
 					claimed_unbond.saturating_add(staking_amount_to_unbond),
 				);
 
-				Self::deposit_event(Event::RedeemByUnbond(
-					who.clone(),
-					liquid_amount_to_burn,
-					staking_amount_to_unbond,
-				));
+				Self::deposit_event(Event::RedeemByUnbond {
+					who: who.clone(),
+					liquid_amount_burned: liquid_amount_to_burn,
+					staking_amount_redeemed: staking_amount_to_unbond,
+				});
 			}
 
 			Ok(())
@@ -864,12 +882,12 @@ impl<T: Config> HomaProtocol<T::AccountId, Balance, EraIndex> for Pallet<T> {
 
 				ledger.free_pool = ledger.free_pool.saturating_sub(staking_amount_to_retrieve);
 
-				Self::deposit_event(Event::RedeemByFreeUnbonded(
-					who.clone(),
-					liquid_amount_to_burn,
-					staking_amount_to_retrieve,
-					fee_in_staking,
-				));
+				Self::deposit_event(Event::RedeemByFreeUnbonded {
+					who: who.clone(),
+					fee_in_staking: liquid_amount_to_burn,
+					liquid_amount_burned: staking_amount_to_retrieve,
+					staking_amount_redeemed: fee_in_staking,
+				});
 			}
 
 			Ok(())
@@ -948,13 +966,13 @@ impl<T: Config> HomaProtocol<T::AccountId, Balance, EraIndex> for Pallet<T> {
 				});
 				ledger.unbonding_to_free = ledger.unbonding_to_free.saturating_sub(staking_amount_to_claim);
 
-				Self::deposit_event(Event::RedeemByClaimUnbonding(
-					who.clone(),
+				Self::deposit_event(Event::RedeemByClaimUnbonding {
+					who: who.clone(),
 					target_era,
-					liquid_amount_to_burn,
-					staking_amount_to_claim,
-					fee_in_staking,
-				));
+					fee_in_staking: liquid_amount_to_burn,
+					liquid_amount_burned: staking_amount_to_claim,
+					staking_amount_redeemed: fee_in_staking,
+				});
 			}
 
 			Ok(())

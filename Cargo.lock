@@ -14,7 +14,7 @@ dependencies = [
 
 [[package]]
 name = "acala"
-version = "2.1.0"
+version = "2.1.1"
 dependencies = [
  "acala-cli",
  "acala-service",
@@ -24,7 +24,7 @@ dependencies = [
 
 [[package]]
 name = "acala-cli"
-version = "2.1.0"
+version = "2.1.1"
 dependencies = [
  "acala-inspect",
  "acala-service",
@@ -51,7 +51,7 @@ dependencies = [
 
 [[package]]
 name = "acala-inspect"
-version = "2.1.0"
+version = "2.1.1"
 dependencies = [
  "derive_more",
  "log",
@@ -67,7 +67,7 @@ dependencies = [
 
 [[package]]
 name = "acala-primitives"
-version = "2.1.0"
+version = "2.1.1"
 dependencies = [
  "bstringify",
  "frame-support",
@@ -90,7 +90,7 @@ dependencies = [
 
 [[package]]
 name = "acala-rpc"
-version = "2.1.0"
+version = "2.1.1"
 dependencies = [
  "acala-primitives",
  "evm-rpc",
@@ -112,7 +112,7 @@ dependencies = [
 
 [[package]]
 name = "acala-runtime"
-version = "2.1.0"
+version = "2.1.1"
 dependencies = [
  "acala-primitives",
  "cumulus-pallet-aura-ext",
@@ -219,7 +219,7 @@ dependencies = [
 
 [[package]]
 name = "acala-service"
-version = "2.1.0"
+version = "2.1.1"
 dependencies = [
  "acala-primitives",
  "acala-rpc",
@@ -265,6 +265,7 @@ dependencies = [
  "sc-executor",
  "sc-finality-grandpa",
  "sc-network",
+ "sc-offchain",
  "sc-rpc",
  "sc-service",
  "sc-telemetry",
@@ -779,6 +780,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "bencher-procedural"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "bimap"
 version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1209,20 +1219,6 @@ dependencies = [
 
 [[package]]
 name = "cargo_metadata"
-version = "0.13.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "081e3f0755c1f380c2d010481b6fa2e02973586d5f2b24eebb7a2a1d98b143d8"
-dependencies = [
- "camino",
- "cargo-platform",
- "semver 0.11.0",
- "semver-parser 0.10.2",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "cargo_metadata"
 version = "0.14.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ba2ae6de944143141f6155a473a6b02f66c7c3f9f47316f802f80204ebfe6e12"
@@ -1357,40 +1353,10 @@ dependencies = [
  "ansi_term",
  "atty",
  "bitflags",
- "strsim 0.8.0",
- "textwrap 0.11.0",
+ "strsim",
+ "textwrap",
  "unicode-width",
  "vec_map",
-]
-
-[[package]]
-name = "clap"
-version = "3.0.0-rc.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "098d281b47bf725a0bddd829e0070ee76560faab8af123050a86c440d7f0a1fd"
-dependencies = [
- "atty",
- "bitflags",
- "clap_derive",
- "indexmap",
- "lazy_static",
- "os_str_bytes",
- "strsim 0.10.0",
- "termcolor",
- "textwrap 0.14.2",
-]
-
-[[package]]
-name = "clap_derive"
-version = "3.0.0-rc.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "26de8102ffb96701066cea36f9a104285b67fbcc302a520640289d476c15ed8a"
-dependencies = [
- "heck",
- "proc-macro-error",
- "proc-macro2",
- "quote",
- "syn",
 ]
 
 [[package]]
@@ -2233,7 +2199,7 @@ checksum = "ee2626afccd7561a06cf1367e2950c4718ea04565e20fb5029b6c7d8ad09abcf"
 
 [[package]]
 name = "e2e-tests"
-version = "2.1.0"
+version = "2.1.1"
 dependencies = [
  "acala-cli",
  "acala-primitives",
@@ -2279,7 +2245,7 @@ dependencies = [
 
 [[package]]
 name = "ecosystem-compound-cash"
-version = "2.1.0"
+version = "2.1.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -2296,7 +2262,7 @@ dependencies = [
 
 [[package]]
 name = "ecosystem-renvm-bridge"
-version = "2.1.0"
+version = "2.1.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -2318,7 +2284,7 @@ dependencies = [
 
 [[package]]
 name = "ecosystem-starport"
-version = "2.1.0"
+version = "2.1.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -2576,7 +2542,7 @@ dependencies = [
 
 [[package]]
 name = "evm-rpc"
-version = "2.1.0"
+version = "2.1.1"
 dependencies = [
  "ethereum-types",
  "frame-support",
@@ -2758,7 +2724,7 @@ dependencies = [
  "chrono",
  "frame-benchmarking",
  "frame-support",
- "handlebars 4.1.5",
+ "handlebars",
  "linked-hash-map",
  "log",
  "parity-scale-codec",
@@ -3242,20 +3208,6 @@ dependencies = [
  "tokio",
  "tokio-util",
  "tracing",
-]
-
-[[package]]
-name = "handlebars"
-version = "3.5.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4498fc115fa7d34de968184e473529abb40eeb6be8bc5f7faba3d08c316cb3e3"
-dependencies = [
- "log",
- "pest",
- "pest_derive",
- "quick-error 2.0.1",
- "serde",
- "serde_json",
 ]
 
 [[package]]
@@ -3906,7 +3858,7 @@ dependencies = [
 
 [[package]]
 name = "karura-runtime"
-version = "2.1.0"
+version = "2.1.1"
 dependencies = [
  "acala-primitives",
  "cumulus-pallet-aura-ext",
@@ -4913,7 +4865,7 @@ dependencies = [
 
 [[package]]
 name = "mandala-runtime"
-version = "2.1.0"
+version = "2.1.1"
 dependencies = [
  "acala-primitives",
  "acala-service",
@@ -5250,7 +5202,7 @@ dependencies = [
 
 [[package]]
 name = "module-asset-registry"
-version = "2.1.0"
+version = "2.1.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -5276,7 +5228,7 @@ dependencies = [
 
 [[package]]
 name = "module-auction-manager"
-version = "2.1.0"
+version = "2.1.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -5300,7 +5252,7 @@ dependencies = [
 
 [[package]]
 name = "module-cdp-engine"
-version = "2.1.0"
+version = "2.1.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -5328,7 +5280,7 @@ dependencies = [
 
 [[package]]
 name = "module-cdp-treasury"
-version = "2.1.0"
+version = "2.1.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -5351,7 +5303,7 @@ dependencies = [
 
 [[package]]
 name = "module-collator-selection"
-version = "2.1.0"
+version = "2.1.1"
 dependencies = [
  "acala-primitives",
  "frame-benchmarking",
@@ -5377,7 +5329,7 @@ dependencies = [
 
 [[package]]
 name = "module-currencies"
-version = "2.1.0"
+version = "2.1.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -5401,7 +5353,7 @@ dependencies = [
 
 [[package]]
 name = "module-dex"
-version = "2.1.0"
+version = "2.1.1"
 dependencies = [
  "acala-primitives",
  "frame-benchmarking",
@@ -5422,7 +5374,7 @@ dependencies = [
 
 [[package]]
 name = "module-emergency-shutdown"
-version = "2.1.0"
+version = "2.1.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -5445,7 +5397,7 @@ dependencies = [
 
 [[package]]
 name = "module-evm"
-version = "2.1.0"
+version = "2.1.1"
 dependencies = [
  "acala-primitives",
  "env_logger 0.9.0",
@@ -5477,7 +5429,7 @@ dependencies = [
 
 [[package]]
 name = "module-evm-accounts"
-version = "2.1.0"
+version = "2.1.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -5499,7 +5451,7 @@ dependencies = [
 
 [[package]]
 name = "module-evm-bridge"
-version = "2.1.0"
+version = "2.1.1"
 dependencies = [
  "acala-primitives",
  "ethereum-types",
@@ -5524,7 +5476,7 @@ dependencies = [
 
 [[package]]
 name = "module-evm-rpc-runtime-api"
-version = "2.1.0"
+version = "2.1.1"
 dependencies = [
  "acala-primitives",
  "ethereum-types",
@@ -5536,7 +5488,7 @@ dependencies = [
 
 [[package]]
 name = "module-evm-utiltity"
-version = "2.1.0"
+version = "2.1.1"
 dependencies = [
  "ethereum",
  "evm",
@@ -5548,7 +5500,7 @@ dependencies = [
 
 [[package]]
 name = "module-evm-utiltity-macro"
-version = "2.1.0"
+version = "2.1.1"
 dependencies = [
  "module-evm-utiltity",
  "proc-macro2",
@@ -5558,7 +5510,7 @@ dependencies = [
 
 [[package]]
 name = "module-example"
-version = "2.1.0"
+version = "2.1.1"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -5572,7 +5524,7 @@ dependencies = [
 
 [[package]]
 name = "module-homa"
-version = "2.1.0"
+version = "2.1.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -5587,7 +5539,7 @@ dependencies = [
 
 [[package]]
 name = "module-homa-lite"
-version = "2.1.0"
+version = "2.1.1"
 dependencies = [
  "acala-primitives",
  "cumulus-primitives-core",
@@ -5614,7 +5566,7 @@ dependencies = [
 
 [[package]]
 name = "module-homa-validator-list"
-version = "2.1.0"
+version = "2.1.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -5636,7 +5588,7 @@ dependencies = [
 
 [[package]]
 name = "module-honzon"
-version = "2.1.0"
+version = "2.1.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -5661,7 +5613,7 @@ dependencies = [
 
 [[package]]
 name = "module-idle-scheduler"
-version = "2.1.0"
+version = "2.1.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -5678,7 +5630,7 @@ dependencies = [
 
 [[package]]
 name = "module-incentives"
-version = "2.1.0"
+version = "2.1.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -5699,7 +5651,7 @@ dependencies = [
 
 [[package]]
 name = "module-loans"
-version = "2.1.0"
+version = "2.1.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -5721,7 +5673,7 @@ dependencies = [
 
 [[package]]
 name = "module-nft"
-version = "2.1.0"
+version = "2.1.1"
 dependencies = [
  "acala-primitives",
  "enumflags2",
@@ -5747,7 +5699,7 @@ dependencies = [
 
 [[package]]
 name = "module-nominees-election"
-version = "2.1.0"
+version = "2.1.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -5768,7 +5720,7 @@ dependencies = [
 
 [[package]]
 name = "module-polkadot-bridge"
-version = "2.1.0"
+version = "2.1.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -5786,7 +5738,7 @@ dependencies = [
 
 [[package]]
 name = "module-prices"
-version = "2.1.0"
+version = "2.1.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -5805,7 +5757,7 @@ dependencies = [
 
 [[package]]
 name = "module-relaychain"
-version = "2.1.0"
+version = "2.1.1"
 dependencies = [
  "acala-primitives",
  "cumulus-primitives-core",
@@ -5823,7 +5775,7 @@ dependencies = [
 
 [[package]]
 name = "module-session-manager"
-version = "2.1.0"
+version = "2.1.1"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -5840,7 +5792,7 @@ dependencies = [
 
 [[package]]
 name = "module-staking-pool"
-version = "2.1.0"
+version = "2.1.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -5861,7 +5813,7 @@ dependencies = [
 
 [[package]]
 name = "module-staking-pool-rpc-runtime-api"
-version = "2.1.0"
+version = "2.1.1"
 dependencies = [
  "module-support",
  "parity-scale-codec",
@@ -5873,7 +5825,7 @@ dependencies = [
 
 [[package]]
 name = "module-support"
-version = "2.1.0"
+version = "2.1.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -5888,7 +5840,7 @@ dependencies = [
 
 [[package]]
 name = "module-transaction-pause"
-version = "2.1.0"
+version = "2.1.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -5907,7 +5859,7 @@ dependencies = [
 
 [[package]]
 name = "module-transaction-payment"
-version = "2.1.0"
+version = "2.1.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -6435,11 +6387,14 @@ name = "orml-bencher"
 version = "0.4.1-dev"
 dependencies = [
  "ansi_term",
+ "bencher-procedural",
  "build-helper",
- "cargo_metadata 0.13.1",
+ "cargo_metadata",
  "frame-benchmarking",
+ "hash-db",
  "linregress",
  "parity-scale-codec",
+ "parking_lot 0.11.2",
  "paste",
  "rand 0.8.4",
  "sc-client-db",
@@ -6448,11 +6403,13 @@ dependencies = [
  "serde",
  "serde_json",
  "sp-core",
+ "sp-externalities",
  "sp-io",
  "sp-maybe-compressed-blob",
  "sp-runtime-interface",
  "sp-state-machine",
  "sp-std",
+ "sp-storage",
  "tempfile",
  "toml",
  "walkdir",
@@ -6682,7 +6639,6 @@ version = "0.4.1-dev"
 dependencies = [
  "frame-support",
  "frame-system",
- "orml-bencher",
  "pallet-balances",
  "parity-scale-codec",
  "scale-info",
@@ -6690,7 +6646,6 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
- "spin 0.7.1",
  "weight-meter-procedural",
 ]
 
@@ -6751,15 +6706,6 @@ dependencies = [
  "xcm-builder",
  "xcm-executor",
  "xcm-simulator",
-]
-
-[[package]]
-name = "os_str_bytes"
-version = "6.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8e22443d1643a904602595ba1cd8f7d896afe56d26712531c5ff73a15b2fbf64"
-dependencies = [
- "memchr",
 ]
 
 [[package]]
@@ -9704,7 +9650,7 @@ dependencies = [
  "cc",
  "libc",
  "once_cell",
- "spin 0.5.2",
+ "spin",
  "untrusted",
  "web-sys",
  "winapi 0.3.9",
@@ -9855,7 +9801,7 @@ dependencies = [
 
 [[package]]
 name = "runtime-common"
-version = "2.1.0"
+version = "2.1.1"
 dependencies = [
  "acala-primitives",
  "acala-service",
@@ -9907,7 +9853,7 @@ dependencies = [
 
 [[package]]
 name = "runtime-integration-tests"
-version = "2.1.0"
+version = "2.1.1"
 dependencies = [
  "acala-primitives",
  "acala-runtime",
@@ -11273,7 +11219,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f301af10236f6df4160f7c3f04eec6dbc70ace82d23326abad5edee88801c6b6"
 dependencies = [
  "semver-parser 0.10.2",
- "serde",
 ]
 
 [[package]]
@@ -12276,12 +12221,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6e63cff320ae2c57904679ba7cb63280a3dc4613885beafb148ee7bf9aa9042d"
 
 [[package]]
-name = "spin"
-version = "0.7.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "13287b4da9d1207a4f4929ac390916d64eacfe236a487e9a9f5b3be392be5162"
-
-[[package]]
 name = "ss58-registry"
 version = "1.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -12352,18 +12291,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8ea5119cdb4c55b55d432abb513a0429384878c15dde60cc77b1c99de1a95a6a"
 
 [[package]]
-name = "strsim"
-version = "0.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "73473c0e59e6d5812c5dfe2a064a6444949f089e20eec9a2e5506596494e4623"
-
-[[package]]
 name = "structopt"
 version = "0.3.25"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "40b9788f4202aa75c240ecc9c15c65185e6a39ccdeb0fd5d008b98825464c87c"
 dependencies = [
- "clap 2.34.0",
+ "clap",
  "lazy_static",
  "structopt-derive",
 ]
@@ -12553,7 +12486,7 @@ source = "git+https://github.com/paritytech//substrate?rev=fcc54a72973d03afe7bf9
 dependencies = [
  "ansi_term",
  "build-helper",
- "cargo_metadata 0.14.1",
+ "cargo_metadata",
  "sp-maybe-compressed-blob",
  "tempfile",
  "toml",
@@ -12627,7 +12560,7 @@ dependencies = [
 
 [[package]]
 name = "test-runner"
-version = "2.1.0"
+version = "2.1.1"
 dependencies = [
  "acala-cli",
  "acala-primitives",
@@ -12683,12 +12616,6 @@ checksum = "d326610f408c7a4eb6f51c37c330e496b08506c9457c9d34287ecc38809fb060"
 dependencies = [
  "unicode-width",
 ]
-
-[[package]]
-name = "textwrap"
-version = "0.14.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0066c8d12af8b5acd21e00547c3797fde4e8677254a7ee429176ccebbe93dd80"
 
 [[package]]
 name = "thiserror"
@@ -13638,8 +13565,8 @@ dependencies = [
 name = "weight-gen"
 version = "0.4.1-dev"
 dependencies = [
- "clap 3.0.0-rc.3",
- "handlebars 3.5.5",
+ "clap",
+ "handlebars",
  "serde",
  "serde_json",
 ]

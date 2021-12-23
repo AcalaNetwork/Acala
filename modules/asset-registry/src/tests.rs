@@ -29,7 +29,7 @@ use mock::{
 use orml_utilities::with_transaction_result;
 use primitives::TokenSymbol;
 use sp_core::H160;
-use std::str::FromStr;
+use std::str::{from_utf8, FromStr};
 
 #[test]
 fn versioned_multi_location_convert_work() {
@@ -83,16 +83,16 @@ fn register_foreign_asset_work() {
 		));
 
 		let location: MultiLocation = v0_location.try_into().unwrap();
-		System::assert_last_event(Event::AssetRegistry(crate::Event::ForeignAssetRegistered(
-			0,
-			location.clone(),
-			AssetMetadata {
+		System::assert_last_event(Event::AssetRegistry(crate::Event::ForeignAssetRegistered {
+			asset_id: 0,
+			asset_address: location.clone(),
+			metadata: AssetMetadata {
 				name: b"Token Name".to_vec(),
 				symbol: b"TN".to_vec(),
 				decimals: 12,
 				minimal_balance: 1,
 			},
-		)));
+		}));
 
 		assert_eq!(ForeignAssetLocations::<Runtime>::get(0), Some(location.clone()));
 		assert_eq!(
@@ -188,15 +188,15 @@ fn update_foreign_asset_work() {
 		));
 
 		let location: MultiLocation = v0_location.try_into().unwrap();
-		System::assert_last_event(Event::AssetRegistry(crate::Event::ForeignAssetUpdated(
-			location.clone(),
-			AssetMetadata {
+		System::assert_last_event(Event::AssetRegistry(crate::Event::ForeignAssetUpdated {
+			asset_address: location.clone(),
+			metadata: AssetMetadata {
 				name: b"New Token Name".to_vec(),
 				symbol: b"NTN".to_vec(),
 				decimals: 13,
 				minimal_balance: 2,
 			},
-		)));
+		}));
 
 		assert_eq!(
 			AssetMetadatas::<Runtime>::get(0),
@@ -418,6 +418,11 @@ fn name_works() {
 				EvmErc20InfoMapping::<Runtime>::name(CurrencyId::DexShare(DexShare::Erc20(erc20_address()), DexShare::Erc20(erc20_address_not_exists()))),
 				None
 			);
+
+			assert_eq!(
+				from_utf8(&EvmErc20InfoMapping::<Runtime>::name(CurrencyId::LiquidCroadloan(0)).unwrap()),
+				Ok("LiquidCroadloan-Kusama-0")
+			);
 		});
 }
 
@@ -484,6 +489,11 @@ fn symbol_works() {
 				)),
 				None
 			);
+
+			assert_eq!(
+				from_utf8(&EvmErc20InfoMapping::<Runtime>::symbol(CurrencyId::LiquidCroadloan(0)).unwrap()),
+				Ok("LCKSM-0")
+			);
 		});
 }
 
@@ -541,6 +551,11 @@ fn decimals_works() {
 					DexShare::Erc20(erc20_address_not_exists())
 				)),
 				Some(17)
+			);
+
+			assert_eq!(
+				EvmErc20InfoMapping::<Runtime>::decimals(CurrencyId::LiquidCroadloan(0)),
+				Some(12)
 			);
 		});
 }

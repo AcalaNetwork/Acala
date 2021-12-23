@@ -118,6 +118,9 @@ parameter_types! {
 	pub const MaxAuctionsCount: u32 = 10_000;
 	pub const CDPTreasuryPalletId: PalletId = PalletId(*b"aca/cdpt");
 	pub TreasuryAccount: AccountId = PalletId(*b"aca/hztr").into_account();
+	pub AlternativeSwapPathJointList: Vec<Vec<CurrencyId>> = vec![
+		vec![DOT],
+	];
 }
 
 impl cdp_treasury::Config for Runtime {
@@ -130,6 +133,7 @@ impl cdp_treasury::Config for Runtime {
 	type MaxAuctionsCount = MaxAuctionsCount;
 	type PalletId = CDPTreasuryPalletId;
 	type TreasuryAccount = TreasuryAccount;
+	type AlternativeSwapPathJointList = AlternativeSwapPathJointList;
 	type WeightInfo = ();
 }
 
@@ -196,10 +200,6 @@ parameter_types! {
 	pub const AuctionTimeToClose: u64 = 100;
 	pub const AuctionDurationSoftCap: u64 = 2000;
 	pub const UnsignedPriority: u64 = 1 << 20;
-	pub DefaultSwapParitalPathList: Vec<Vec<CurrencyId>> = vec![
-		vec![AUSD],
-		vec![DOT, AUSD],
-	];
 }
 
 impl Config for Runtime {
@@ -211,11 +211,9 @@ impl Config for Runtime {
 	type AuctionDurationSoftCap = AuctionDurationSoftCap;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type CDPTreasury = CDPTreasuryModule;
-	type DEX = DEXModule;
 	type PriceSource = MockPriceSource;
 	type UnsignedPriority = UnsignedPriority;
 	type EmergencyShutdown = MockEmergencyShutdown;
-	type DefaultSwapParitalPathList = DefaultSwapParitalPathList;
 	type WeightInfo = ();
 }
 

@@ -52,7 +52,7 @@ use sp_runtime::{
 	FixedPointNumber, FixedPointOperand, FixedU128, Perquintill,
 };
 use sp_std::{prelude::*, vec};
-use support::{DEXManager, PriceProvider, Ratio, TransactionPayment};
+use support::{DEXManager, PriceProvider, Ratio, SwapLimit, TransactionPayment};
 
 mod mock;
 mod tests;
@@ -647,12 +647,14 @@ where
 							PalletBalanceOf::<T>::max_value()
 						};
 
-						if T::DEX::swap_with_exact_target(
+						if T::DEX::swap_with_specific_path(
 							who,
 							&trading_path,
-							amount.unique_saturated_into(),
-							<T as Config>::MultiCurrency::free_balance(supply_currency_id, who)
-								.min(max_supply_limit.unique_saturated_into()),
+							SwapLimit::ExactTarget(
+								<T as Config>::MultiCurrency::free_balance(supply_currency_id, who)
+									.min(max_supply_limit.unique_saturated_into()),
+								amount.unique_saturated_into(),
+							),
 						)
 						.is_ok()
 						{
@@ -884,7 +886,19 @@ where
 		let (tip, who, imbalance, fee) = pre;
 		if let Some(payed) = imbalance {
 			let actual_fee = Pallet::<T>::compute_actual_fee(len as u32, info, post_info, tip);
-			let refund = fee.saturating_sub(actual_fee);
+			let refund_fee = fee.saturating_sub(actual_fee);
+			let mut refund = refund_fee;
+			let mut actual_tip = tip;
+
+			if !tip.is_zero() && !info.weight.is_zero() {
+				// tip_pre_weight * unspent_weight
+				let refund_tip = tip
+					.checked_div(&info.weight.saturated_into::<PalletBalanceOf<T>>())
+					.expect("checked is non-zero; qed")
+					.saturating_mul(post_info.calc_unspent(info).saturated_into::<PalletBalanceOf<T>>());
+				refund = refund_fee.saturating_add(refund_tip);
+				actual_tip = tip.saturating_sub(refund_tip);
+			}
 			let actual_payment = match <T as Config>::Currency::deposit_into_existing(&who, refund) {
 				Ok(refund_imbalance) => {
 					// The refund cannot be larger than the up front payed max weight.
@@ -899,7 +913,7 @@ where
 				// is gone in that case.
 				Err(_) => payed,
 			};
-			let (tip, fee) = actual_payment.split(tip);
+			let (tip, fee) = actual_payment.split(actual_tip);
 
 			// distribute fee
 			<T as Config>::OnTransactionPayment::on_unbalanceds(Some(fee).into_iter().chain(Some(tip)));

@@ -23,8 +23,8 @@
 use super::*;
 use frame_support::{assert_noop, assert_ok};
 use mock::{
-	AUSDBTCPair, AUSDDOTPair, DexModule, Event, ExtBuilder, ListingOrigin, Origin, Runtime, System, Tokens, ACA, ALICE,
-	AUSD, BOB, BTC, DOT,
+	AUSDBTCPair, AUSDDOTPair, DOTBTCPair, DexModule, Event, ExtBuilder, ListingOrigin, Origin, Runtime, System, Tokens,
+	ACA, ALICE, AUSD, BOB, BTC, DOT,
 };
 use orml_traits::MultiReservableCurrency;
 use sp_runtime::traits::BadOrigin;
@@ -71,7 +71,9 @@ fn list_provisioning_work() {
 				not_before: 10,
 			})
 		);
-		System::assert_last_event(Event::DexModule(crate::Event::ListProvisioning(AUSDDOTPair::get())));
+		System::assert_last_event(Event::DexModule(crate::Event::ListProvisioning {
+			trading_pair: AUSDDOTPair::get(),
+		}));
 
 		assert_noop!(
 			DexModule::list_provisioning(
@@ -201,7 +203,9 @@ fn enable_diabled_trading_pair_work() {
 			DexModule::trading_pair_statuses(AUSDDOTPair::get()),
 			TradingPairStatus::<_, _>::Enabled
 		);
-		System::assert_last_event(Event::DexModule(crate::Event::EnableTradingPair(AUSDDOTPair::get())));
+		System::assert_last_event(Event::DexModule(crate::Event::EnableTradingPair {
+			trading_pair: AUSDDOTPair::get(),
+		}));
 
 		assert_noop!(
 			DexModule::enable_trading_pair(Origin::signed(ListingOrigin::get()), DOT, AUSD),
@@ -261,7 +265,9 @@ fn enable_provisioning_without_provision_work() {
 			DexModule::trading_pair_statuses(AUSDDOTPair::get()),
 			TradingPairStatus::<_, _>::Enabled
 		);
-		System::assert_last_event(Event::DexModule(crate::Event::EnableTradingPair(AUSDDOTPair::get())));
+		System::assert_last_event(Event::DexModule(crate::Event::EnableTradingPair {
+			trading_pair: AUSDDOTPair::get(),
+		}));
 
 		assert_noop!(
 			DexModule::enable_trading_pair(Origin::signed(ListingOrigin::get()), AUSD, BTC),
@@ -344,12 +350,12 @@ fn end_provisioning_trading_work() {
 			AUSD,
 			BTC
 		));
-		System::assert_last_event(Event::DexModule(crate::Event::ProvisioningToEnabled(
-			AUSDBTCPair::get(),
-			1_000_000_000_000u128,
-			2_000_000_000_000u128,
-			2_000_000_000_000u128,
-		)));
+		System::assert_last_event(Event::DexModule(crate::Event::ProvisioningToEnabled {
+			trading_pair: AUSDBTCPair::get(),
+			pool_0: 1_000_000_000_000u128,
+			pool_1: 2_000_000_000_000u128,
+			share_amount: 2_000_000_000_000u128,
+		}));
 		assert_eq!(
 			DexModule::trading_pair_statuses(AUSDBTCPair::get()),
 			TradingPairStatus::<_, _>::Enabled
@@ -402,7 +408,9 @@ fn disable_trading_pair_work() {
 			DexModule::trading_pair_statuses(AUSDDOTPair::get()),
 			TradingPairStatus::<_, _>::Disabled
 		);
-		System::assert_last_event(Event::DexModule(crate::Event::DisableTradingPair(AUSDDOTPair::get())));
+		System::assert_last_event(Event::DexModule(crate::Event::DisableTradingPair {
+			trading_pair: AUSDDOTPair::get(),
+		}));
 
 		assert_noop!(
 			DexModule::disable_trading_pair(Origin::signed(ListingOrigin::get()), AUSD, DOT),
@@ -509,13 +517,13 @@ fn add_provision_work() {
 		assert_eq!(Tokens::free_balance(DOT, &DexModule::account_id()), 0);
 		let alice_ref_count_1 = System::consumers(&ALICE);
 		assert_eq!(alice_ref_count_1, alice_ref_count_0 + 1);
-		System::assert_last_event(Event::DexModule(crate::Event::AddProvision(
-			ALICE,
-			AUSD,
-			5_000_000_000_000u128,
-			DOT,
-			0,
-		)));
+		System::assert_last_event(Event::DexModule(crate::Event::AddProvision {
+			who: ALICE,
+			currency_0: AUSD,
+			contribution_0: 5_000_000_000_000u128,
+			currency_1: DOT,
+			contribution_1: 0,
+		}));
 	});
 }
 
@@ -829,14 +837,14 @@ fn add_liquidity_work() {
 				0,
 				false,
 			));
-			System::assert_last_event(Event::DexModule(crate::Event::AddLiquidity(
-				ALICE,
-				AUSD,
-				5_000_000_000_000,
-				DOT,
-				1_000_000_000_000,
-				10_000_000_000_000,
-			)));
+			System::assert_last_event(Event::DexModule(crate::Event::AddLiquidity {
+				who: ALICE,
+				currency_0: AUSD,
+				pool_0: 5_000_000_000_000,
+				currency_1: DOT,
+				pool_1: 1_000_000_000_000,
+				share_increment: 10_000_000_000_000,
+			}));
 			assert_eq!(
 				DexModule::get_liquidity(AUSD, DOT),
 				(5_000_000_000_000, 1_000_000_000_000)
@@ -891,14 +899,14 @@ fn add_liquidity_work() {
 				80_000_000_000_000,
 				true,
 			));
-			System::assert_last_event(Event::DexModule(crate::Event::AddLiquidity(
-				BOB,
-				AUSD,
-				40_000_000_000_000,
-				DOT,
-				8_000_000_000_000,
-				80_000_000_000_000,
-			)));
+			System::assert_last_event(Event::DexModule(crate::Event::AddLiquidity {
+				who: BOB,
+				currency_0: AUSD,
+				pool_0: 40_000_000_000_000,
+				currency_1: DOT,
+				pool_1: 8_000_000_000_000,
+				share_increment: 80_000_000_000_000,
+			}));
 			assert_eq!(
 				DexModule::get_liquidity(AUSD, DOT),
 				(45_000_000_000_000, 9_000_000_000_000)
@@ -994,14 +1002,14 @@ fn remove_liquidity_work() {
 				800_000_000_000,
 				false,
 			));
-			System::assert_last_event(Event::DexModule(crate::Event::RemoveLiquidity(
-				ALICE,
-				AUSD,
-				4_000_000_000_000,
-				DOT,
-				800_000_000_000,
-				8_000_000_000_000,
-			)));
+			System::assert_last_event(Event::DexModule(crate::Event::RemoveLiquidity {
+				who: ALICE,
+				currency_0: AUSD,
+				pool_0: 4_000_000_000_000,
+				currency_1: DOT,
+				pool_1: 800_000_000_000,
+				share_decrement: 8_000_000_000_000,
+			}));
 			assert_eq!(
 				DexModule::get_liquidity(AUSD, DOT),
 				(1_000_000_000_000, 200_000_000_000)
@@ -1024,14 +1032,14 @@ fn remove_liquidity_work() {
 				0,
 				false,
 			));
-			System::assert_last_event(Event::DexModule(crate::Event::RemoveLiquidity(
-				ALICE,
-				AUSD,
-				1_000_000_000_000,
-				DOT,
-				200_000_000_000,
-				2_000_000_000_000,
-			)));
+			System::assert_last_event(Event::DexModule(crate::Event::RemoveLiquidity {
+				who: ALICE,
+				currency_0: AUSD,
+				pool_0: 1_000_000_000_000,
+				currency_1: DOT,
+				pool_1: 200_000_000_000,
+				share_decrement: 2_000_000_000_000,
+			}));
 			assert_eq!(DexModule::get_liquidity(AUSD, DOT), (0, 0));
 			assert_eq!(Tokens::free_balance(AUSD, &DexModule::account_id()), 0);
 			assert_eq!(Tokens::free_balance(DOT, &DexModule::account_id()), 0);
@@ -1143,11 +1151,11 @@ fn do_swap_with_exact_supply_work() {
 				100_000_000_000_000,
 				200_000_000_000_000,
 			));
-			System::assert_last_event(Event::DexModule(crate::Event::Swap(
-				BOB,
-				vec![DOT, AUSD],
-				vec![100_000_000_000_000, 248_743_718_592_964],
-			)));
+			System::assert_last_event(Event::DexModule(crate::Event::Swap {
+				trader: BOB,
+				path: vec![DOT, AUSD],
+				liquidity_changes: vec![100_000_000_000_000, 248_743_718_592_964],
+			}));
 			assert_eq!(
 				DexModule::get_liquidity(AUSD, DOT),
 				(251_256_281_407_036, 200_000_000_000_000)
@@ -1172,11 +1180,11 @@ fn do_swap_with_exact_supply_work() {
 				200_000_000_000_000,
 				1,
 			));
-			System::assert_last_event(Event::DexModule(crate::Event::Swap(
-				BOB,
-				vec![DOT, AUSD, BTC],
-				vec![200_000_000_000_000, 124_996_843_514_053, 5_530_663_837],
-			)));
+			System::assert_last_event(Event::DexModule(crate::Event::Swap {
+				trader: BOB,
+				path: vec![DOT, AUSD, BTC],
+				liquidity_changes: vec![200_000_000_000_000, 124_996_843_514_053, 5_530_663_837],
+			}));
 			assert_eq!(
 				DexModule::get_liquidity(AUSD, DOT),
 				(126_259_437_892_983, 400_000_000_000_000)
@@ -1266,11 +1274,11 @@ fn do_swap_with_exact_target_work() {
 				250_000_000_000_000,
 				200_000_000_000_000,
 			));
-			System::assert_last_event(Event::DexModule(crate::Event::Swap(
-				BOB,
-				vec![DOT, AUSD],
-				vec![101_010_101_010_102, 250_000_000_000_000],
-			)));
+			System::assert_last_event(Event::DexModule(crate::Event::Swap {
+				trader: BOB,
+				path: vec![DOT, AUSD],
+				liquidity_changes: vec![101_010_101_010_102, 250_000_000_000_000],
+			}));
 			assert_eq!(
 				DexModule::get_liquidity(AUSD, DOT),
 				(250_000_000_000_000, 201_010_101_010_102)
@@ -1295,11 +1303,11 @@ fn do_swap_with_exact_target_work() {
 				5_000_000_000,
 				2_000_000_000_000_000,
 			));
-			System::assert_last_event(Event::DexModule(crate::Event::Swap(
-				BOB,
-				vec![DOT, AUSD, BTC],
-				vec![137_654_580_386_993, 101_010_101_010_102, 5_000_000_000],
-			)));
+			System::assert_last_event(Event::DexModule(crate::Event::Swap {
+				trader: BOB,
+				path: vec![DOT, AUSD, BTC],
+				liquidity_changes: vec![137_654_580_386_993, 101_010_101_010_102, 5_000_000_000],
+			}));
 			assert_eq!(
 				DexModule::get_liquidity(AUSD, DOT),
 				(148_989_898_989_898, 338_664_681_397_095)
@@ -1336,5 +1344,168 @@ fn initialize_added_liquidity_pools_genesis_work() {
 				Tokens::free_balance(AUSDDOTPair::get().dex_share_currency_id(), &ALICE),
 				2000000
 			);
+		});
+}
+
+#[test]
+fn get_swap_amount_work() {
+	ExtBuilder::default()
+		.initialize_enabled_trading_pairs()
+		.build()
+		.execute_with(|| {
+			LiquidityPool::<Runtime>::insert(AUSDDOTPair::get(), (50000, 10000));
+			assert_eq!(
+				DexModule::get_swap_amount(&vec![DOT, AUSD], SwapLimit::ExactSupply(10000, 0)),
+				Some((10000, 24874))
+			);
+			assert_eq!(
+				DexModule::get_swap_amount(&vec![DOT, AUSD], SwapLimit::ExactSupply(10000, 24875)),
+				None
+			);
+			assert_eq!(
+				DexModule::get_swap_amount(&vec![DOT, AUSD], SwapLimit::ExactTarget(Balance::max_value(), 24874)),
+				Some((10000, 24874))
+			);
+			assert_eq!(
+				DexModule::get_swap_amount(&vec![DOT, AUSD], SwapLimit::ExactTarget(9999, 24874)),
+				None
+			);
+		});
+}
+
+#[test]
+fn get_best_price_swap_path_work() {
+	ExtBuilder::default()
+		.initialize_enabled_trading_pairs()
+		.build()
+		.execute_with(|| {
+			LiquidityPool::<Runtime>::insert(AUSDDOTPair::get(), (300000, 100000));
+			LiquidityPool::<Runtime>::insert(AUSDBTCPair::get(), (50000, 10000));
+			LiquidityPool::<Runtime>::insert(DOTBTCPair::get(), (10000, 10000));
+
+			assert_eq!(
+				DexModule::get_best_price_swap_path(DOT, AUSD, SwapLimit::ExactSupply(10, 0), vec![]),
+				Some(vec![DOT, AUSD])
+			);
+			assert_eq!(
+				DexModule::get_best_price_swap_path(DOT, AUSD, SwapLimit::ExactSupply(10, 30), vec![]),
+				None
+			);
+			assert_eq!(
+				DexModule::get_best_price_swap_path(DOT, AUSD, SwapLimit::ExactSupply(0, 0), vec![]),
+				None
+			);
+			assert_eq!(
+				DexModule::get_best_price_swap_path(DOT, AUSD, SwapLimit::ExactSupply(10, 0), vec![vec![ACA]]),
+				Some(vec![DOT, AUSD])
+			);
+			assert_eq!(
+				DexModule::get_best_price_swap_path(DOT, AUSD, SwapLimit::ExactSupply(10, 0), vec![vec![DOT]]),
+				Some(vec![DOT, AUSD])
+			);
+			assert_eq!(
+				DexModule::get_best_price_swap_path(DOT, AUSD, SwapLimit::ExactSupply(10, 0), vec![vec![AUSD]]),
+				Some(vec![DOT, AUSD])
+			);
+			assert_eq!(
+				DexModule::get_best_price_swap_path(DOT, AUSD, SwapLimit::ExactSupply(10, 0), vec![vec![BTC]]),
+				Some(vec![DOT, BTC, AUSD])
+			);
+			assert_eq!(
+				DexModule::get_best_price_swap_path(DOT, AUSD, SwapLimit::ExactSupply(10000, 0), vec![vec![BTC]]),
+				Some(vec![DOT, AUSD])
+			);
+
+			assert_eq!(
+				DexModule::get_best_price_swap_path(DOT, AUSD, SwapLimit::ExactTarget(20, 30), vec![]),
+				Some(vec![DOT, AUSD])
+			);
+			assert_eq!(
+				DexModule::get_best_price_swap_path(DOT, AUSD, SwapLimit::ExactTarget(10, 30), vec![]),
+				None
+			);
+			assert_eq!(
+				DexModule::get_best_price_swap_path(DOT, AUSD, SwapLimit::ExactTarget(0, 0), vec![]),
+				None
+			);
+			assert_eq!(
+				DexModule::get_best_price_swap_path(DOT, AUSD, SwapLimit::ExactTarget(20, 30), vec![vec![ACA]]),
+				Some(vec![DOT, AUSD])
+			);
+			assert_eq!(
+				DexModule::get_best_price_swap_path(DOT, AUSD, SwapLimit::ExactTarget(20, 30), vec![vec![DOT]]),
+				Some(vec![DOT, AUSD])
+			);
+			assert_eq!(
+				DexModule::get_best_price_swap_path(DOT, AUSD, SwapLimit::ExactTarget(20, 30), vec![vec![AUSD]]),
+				Some(vec![DOT, AUSD])
+			);
+			assert_eq!(
+				DexModule::get_best_price_swap_path(DOT, AUSD, SwapLimit::ExactTarget(20, 30), vec![vec![BTC]]),
+				Some(vec![DOT, BTC, AUSD])
+			);
+			assert_eq!(
+				DexModule::get_best_price_swap_path(DOT, AUSD, SwapLimit::ExactTarget(100000, 20000), vec![vec![BTC]]),
+				Some(vec![DOT, AUSD])
+			);
+		});
+}
+
+#[test]
+fn swap_with_specific_path_work() {
+	ExtBuilder::default()
+		.initialize_enabled_trading_pairs()
+		.build()
+		.execute_with(|| {
+			System::set_block_number(1);
+			assert_ok!(DexModule::add_liquidity(
+				Origin::signed(ALICE),
+				AUSD,
+				DOT,
+				500_000_000_000_000,
+				100_000_000_000_000,
+				0,
+				false,
+			));
+
+			assert_noop!(
+				DexModule::swap_with_specific_path(
+					&BOB,
+					&vec![DOT, AUSD],
+					SwapLimit::ExactSupply(100_000_000_000_000, 248_743_718_592_965)
+				),
+				Error::<Runtime>::InsufficientTargetAmount
+			);
+
+			assert_ok!(DexModule::swap_with_specific_path(
+				&BOB,
+				&vec![DOT, AUSD],
+				SwapLimit::ExactSupply(100_000_000_000_000, 200_000_000_000_000)
+			));
+			System::assert_last_event(Event::DexModule(crate::Event::Swap {
+				trader: BOB,
+				path: vec![DOT, AUSD],
+				liquidity_changes: vec![100_000_000_000_000, 248_743_718_592_964],
+			}));
+
+			assert_noop!(
+				DexModule::swap_with_specific_path(
+					&BOB,
+					&vec![AUSD, DOT],
+					SwapLimit::ExactTarget(253_794_223_643_470, 100_000_000_000_000)
+				),
+				Error::<Runtime>::ExcessiveSupplyAmount
+			);
+
+			assert_ok!(DexModule::swap_with_specific_path(
+				&BOB,
+				&vec![AUSD, DOT],
+				SwapLimit::ExactTarget(300_000_000_000_000, 100_000_000_000_000)
+			));
+			System::assert_last_event(Event::DexModule(crate::Event::Swap {
+				trader: BOB,
+				path: vec![AUSD, DOT],
+				liquidity_changes: vec![253_794_223_643_471, 100_000_000_000_000],
+			}));
 		});
 }

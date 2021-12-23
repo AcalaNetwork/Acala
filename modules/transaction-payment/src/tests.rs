@@ -193,6 +193,65 @@ fn refund_fee_according_to_actual_when_post_dispatch_and_native_currency_is_enou
 }
 
 #[test]
+fn refund_tip_according_to_actual_when_post_dispatch_and_native_currency_is_enough() {
+	ExtBuilder::default()
+		.one_hundred_thousand_for_alice_n_charlie()
+		.build()
+		.execute_with(|| {
+			// tip = 0
+			let fee = 23 * 2 + 1000; // len * byte + weight
+			let pre = ChargeTransactionPayment::<Runtime>::from(0)
+				.pre_dispatch(&ALICE, CALL, &INFO, 23)
+				.unwrap();
+			assert_eq!(Currencies::free_balance(ACA, &ALICE), 100000 - fee);
+
+			let refund = 200; // 1000 - 800
+			assert!(ChargeTransactionPayment::<Runtime>::post_dispatch(pre, &INFO, &POST_INFO, 23, &Ok(())).is_ok());
+			assert_eq!(Currencies::free_balance(ACA, &ALICE), 100000 - fee + refund);
+
+			// tip = 1000
+			let fee = 23 * 2 + 1000; // len * byte + weight
+			let tip = 1000;
+			let pre = ChargeTransactionPayment::<Runtime>::from(tip)
+				.pre_dispatch(&CHARLIE, CALL, &INFO, 23)
+				.unwrap();
+			assert_eq!(Currencies::free_balance(ACA, &CHARLIE), 100000 - fee - tip);
+
+			let refund_fee = 200; // 1000 - 800
+			let refund_tip = 200; // 1000 - 800
+			assert!(ChargeTransactionPayment::<Runtime>::post_dispatch(pre, &INFO, &POST_INFO, 23, &Ok(())).is_ok());
+			assert_eq!(
+				Currencies::free_balance(ACA, &CHARLIE),
+				100000 - fee - tip + refund_fee + refund_tip
+			);
+		});
+}
+
+#[test]
+fn refund_should_not_works() {
+	ExtBuilder::default()
+		.one_hundred_thousand_for_alice_n_charlie()
+		.build()
+		.execute_with(|| {
+			let tip = 1000;
+			let fee = 23 * 2 + 1000; // len * byte + weight
+			let pre = ChargeTransactionPayment::<Runtime>::from(tip)
+				.pre_dispatch(&ALICE, CALL, &INFO, 23)
+				.unwrap();
+			assert_eq!(Currencies::free_balance(ACA, &ALICE), 100000 - fee - tip);
+
+			// actual_weight > weight
+			const POST_INFO: PostDispatchInfo = PostDispatchInfo {
+				actual_weight: Some(INFO.weight + 1),
+				pays_fee: Pays::Yes,
+			};
+
+			assert!(ChargeTransactionPayment::<Runtime>::post_dispatch(pre, &INFO, &POST_INFO, 23, &Ok(())).is_ok());
+			assert_eq!(Currencies::free_balance(ACA, &ALICE), 100000 - fee - tip);
+		});
+}
+
+#[test]
 fn charges_fee_when_validate_and_native_is_not_enough() {
 	ExtBuilder::default()
 		.one_hundred_thousand_for_alice_n_charlie()
@@ -272,8 +331,14 @@ fn charges_fee_failed_by_slippage_limit() {
 
 			// pool is enough, but slippage limit the swap
 			MockPriceSource::set_relative_price(Some(Price::saturating_from_rational(252, 4020)));
-			assert_eq!(DEXModule::get_swap_supply_amount(&[AUSD, ACA], 2010), Some(252));
-			assert_eq!(DEXModule::get_swap_target_amount(&[AUSD, ACA], 1000), Some(5000));
+			assert_eq!(
+				DEXModule::get_swap_amount(&vec![AUSD, ACA], SwapLimit::ExactTarget(Balance::MAX, 2010)),
+				Some((252, 2010))
+			);
+			assert_eq!(
+				DEXModule::get_swap_amount(&vec![AUSD, ACA], SwapLimit::ExactSupply(1000, 0)),
+				Some((1000, 5000))
+			);
 
 			assert_noop!(
 				ChargeTransactionPayment::<Runtime>::from(0).validate(&BOB, CALL2, &INFO, 500),

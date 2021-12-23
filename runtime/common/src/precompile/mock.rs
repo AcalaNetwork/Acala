@@ -184,6 +184,7 @@ impl module_evm_bridge::Config for Test {
 impl module_asset_registry::Config for Test {
 	type Event = Event;
 	type Currency = Balances;
+	type LiquidCroadloanCurrencyId = GetStakingCurrencyId;
 	type EVMBridge = module_evm_bridge::EVMBridge<Test>;
 	type RegisterOrigin = EnsureSignedBy<CouncilAccount, AccountId>;
 	type WeightInfo = ();
@@ -536,7 +537,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	let mut storage = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
 
 	let mut accounts = BTreeMap::new();
-	let mut evm_genesis_accounts = evm_genesis();
+	let mut evm_genesis_accounts = evm_genesis(vec![]);
 	accounts.append(&mut evm_genesis_accounts);
 
 	accounts.insert(
@@ -544,8 +545,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		module_evm::GenesisAccount {
 			nonce: 1,
 			balance: INITIAL_BALANCE,
-			storage: Default::default(),
-			code: Default::default(),
+			..Default::default()
 		},
 	);
 	accounts.insert(
@@ -553,20 +553,16 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		module_evm::GenesisAccount {
 			nonce: 1,
 			balance: INITIAL_BALANCE,
-			storage: Default::default(),
-			code: Default::default(),
+			..Default::default()
 		},
 	);
 
 	pallet_balances::GenesisConfig::<Test>::default()
 		.assimilate_storage(&mut storage)
 		.unwrap();
-	module_evm::GenesisConfig::<Test> {
-		accounts,
-		treasury: Default::default(),
-	}
-	.assimilate_storage(&mut storage)
-	.unwrap();
+	module_evm::GenesisConfig::<Test> { accounts }
+		.assimilate_storage(&mut storage)
+		.unwrap();
 
 	let mut ext = sp_io::TestExternalities::new(storage);
 	ext.execute_with(|| {

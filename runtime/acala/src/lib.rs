@@ -127,7 +127,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("acala"),
 	impl_name: create_runtime_str!("acala"),
 	authoring_version: 1,
-	spec_version: 2001,
+	spec_version: 2012,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -217,7 +217,8 @@ impl Contains<Call> for BaseCallFilter {
 			Call::HomaCouncil(_) | Call::HomaCouncilMembership(_) |
 			Call::TechnicalCommittee(_) | Call::TechnicalCommitteeMembership(_) | // governance
 			// Call::Democracy(_) | // democracy
-			Call::AcalaOracle(_) | Call::OperatorMembershipAcala(_) // oracle
+			Call::AcalaOracle(_) | Call::OperatorMembershipAcala(_) | // oracle
+			Call::Vesting(_) // vesting
 		);
 		if is_whitelisted {
 			// allow whitelisted calls
@@ -751,6 +752,7 @@ parameter_type_with_key! {
 				TokenSymbol::ACA |
 				TokenSymbol::KBTC |
 				TokenSymbol::KINT |
+				TokenSymbol::TAI |
 				TokenSymbol::CASH => Balance::max_value() // unsupported
 			},
 			CurrencyId::DexShare(dex_share_0, _) => {
@@ -908,10 +910,6 @@ parameter_types! {
 	pub MinimumIncrementSize: Rate = Rate::saturating_from_rational(2, 100);
 	pub const AuctionTimeToClose: BlockNumber = 15 * MINUTES;
 	pub const AuctionDurationSoftCap: BlockNumber = 2 * HOURS;
-	pub DefaultSwapParitalPathList: Vec<Vec<CurrencyId>> = vec![
-		vec![AUSD],
-		vec![DOT, AUSD],
-	];
 }
 
 impl module_auction_manager::Config for Runtime {
@@ -923,11 +921,9 @@ impl module_auction_manager::Config for Runtime {
 	type AuctionDurationSoftCap = AuctionDurationSoftCap;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type CDPTreasury = CdpTreasury;
-	type DEX = Dex;
 	type PriceSource = module_prices::PriorityLockedPriceProvider<Runtime>;
 	type UnsignedPriority = runtime_common::AuctionManagerUnsignedPriority;
 	type EmergencyShutdown = EmergencyShutdown;
-	type DefaultSwapParitalPathList = DefaultSwapParitalPathList;
 	type WeightInfo = weights::module_auction_manager::WeightInfo<Runtime>;
 }
 
@@ -1023,7 +1019,6 @@ impl module_cdp_engine::Config for Runtime {
 	type UnsignedPriority = runtime_common::CdpEngineUnsignedPriority;
 	type EmergencyShutdown = EmergencyShutdown;
 	type UnixTime = Timestamp;
-	type DefaultSwapParitalPathList = DefaultSwapParitalPathList;
 	type WeightInfo = weights::module_cdp_engine::WeightInfo<Runtime>;
 }
 
@@ -1068,6 +1063,10 @@ impl module_dex::Config for Runtime {
 parameter_types! {
 	pub const MaxAuctionsCount: u32 = 50;
 	pub HonzonTreasuryAccount: AccountId = HonzonTreasuryPalletId::get().into_account();
+	pub AlternativeSwapPathJointList: Vec<Vec<CurrencyId>> = vec![
+		vec![DOT],
+		vec![LDOT],
+	];
 }
 
 impl module_cdp_treasury::Config for Runtime {
@@ -1080,6 +1079,7 @@ impl module_cdp_treasury::Config for Runtime {
 	type MaxAuctionsCount = MaxAuctionsCount;
 	type PalletId = CDPTreasuryPalletId;
 	type TreasuryAccount = HonzonTreasuryAccount;
+	type AlternativeSwapPathJointList = AlternativeSwapPathJointList;
 	type WeightInfo = weights::module_cdp_treasury::WeightInfo<Runtime>;
 }
 
@@ -1138,6 +1138,7 @@ impl module_evm_accounts::Config for Runtime {
 impl module_asset_registry::Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
+	type LiquidCroadloanCurrencyId = DOTCurrencyId;
 	type EVMBridge = module_evm_bridge::EVMBridge<Runtime>;
 	type RegisterOrigin = EnsureRootOrHalfGeneralCouncil;
 	type WeightInfo = weights::module_asset_registry::WeightInfo<Runtime>;
@@ -2308,9 +2309,10 @@ mod tests {
 
 	#[test]
 	fn check_call_size() {
+		println!("{:?}", core::mem::size_of::<Call>());
 		assert!(
-			core::mem::size_of::<Call>() <= 230,
-			"size of Call is more than 230 bytes: some calls have too big arguments, use Box to \
+			core::mem::size_of::<Call>() <= 240,
+			"size of Call is more than 240 bytes: some calls have too big arguments, use Box to \
 			reduce the size of Call.
 			If the limit is too strong, maybe consider increasing the limit",
 		);
