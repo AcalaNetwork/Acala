@@ -319,6 +319,149 @@ fn update_foreign_asset_should_not_work() {
 }
 
 #[test]
+fn register_stable_asset_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(AssetRegistry::register_stable_asset(
+			Origin::signed(CouncilAccount::get()),
+			Box::new(AssetMetadata {
+				name: b"Token Name".to_vec(),
+				symbol: b"TN".to_vec(),
+				decimals: 12,
+				minimal_balance: 1,
+			})
+		));
+
+		System::assert_last_event(Event::AssetRegistry(crate::Event::AssetRegistered {
+			asset_id: AssetIds::StableAssetId(0),
+			metadata: AssetMetadata {
+				name: b"Token Name".to_vec(),
+				symbol: b"TN".to_vec(),
+				decimals: 12,
+				minimal_balance: 1,
+			},
+		}));
+
+		assert_eq!(
+			AssetMetadatas::<Runtime>::get(AssetIds::StableAssetId(0)),
+			Some(AssetMetadata {
+				name: b"Token Name".to_vec(),
+				symbol: b"TN".to_vec(),
+				decimals: 12,
+				minimal_balance: 1,
+			})
+		);
+	});
+}
+
+#[test]
+fn register_stable_asset_should_not_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(AssetRegistry::register_stable_asset(
+			Origin::signed(CouncilAccount::get()),
+			Box::new(AssetMetadata {
+				name: b"Token Name".to_vec(),
+				symbol: b"TN".to_vec(),
+				decimals: 12,
+				minimal_balance: 1,
+			})
+		));
+
+		NextStableAssetId::<Runtime>::set(0);
+		assert_noop!(
+			AssetRegistry::register_stable_asset(
+				Origin::signed(CouncilAccount::get()),
+				Box::new(AssetMetadata {
+					name: b"Token Name".to_vec(),
+					symbol: b"TN".to_vec(),
+					decimals: 12,
+					minimal_balance: 1,
+				})
+			),
+			Error::<Runtime>::AssetIdExisted
+		);
+
+		NextStableAssetId::<Runtime>::set(u32::MAX);
+		assert_noop!(
+			AssetRegistry::register_stable_asset(
+				Origin::signed(CouncilAccount::get()),
+				Box::new(AssetMetadata {
+					name: b"Token Name".to_vec(),
+					symbol: b"TN".to_vec(),
+					decimals: 12,
+					minimal_balance: 1,
+				})
+			),
+			ArithmeticError::Overflow
+		);
+	});
+}
+
+#[test]
+fn update_stable_asset_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(AssetRegistry::register_stable_asset(
+			Origin::signed(CouncilAccount::get()),
+			Box::new(AssetMetadata {
+				name: b"Token Name".to_vec(),
+				symbol: b"TN".to_vec(),
+				decimals: 12,
+				minimal_balance: 1,
+			})
+		));
+
+		assert_ok!(AssetRegistry::update_stable_asset(
+			Origin::signed(CouncilAccount::get()),
+			0,
+			Box::new(AssetMetadata {
+				name: b"New Token Name".to_vec(),
+				symbol: b"NTN".to_vec(),
+				decimals: 13,
+				minimal_balance: 2,
+			})
+		));
+
+		System::assert_last_event(Event::AssetRegistry(crate::Event::AssetUpdated {
+			asset_id: AssetIds::StableAssetId(0),
+			metadata: AssetMetadata {
+				name: b"New Token Name".to_vec(),
+				symbol: b"NTN".to_vec(),
+				decimals: 13,
+				minimal_balance: 2,
+			},
+		}));
+
+		assert_eq!(
+			AssetMetadatas::<Runtime>::get(AssetIds::StableAssetId(0)),
+			Some(AssetMetadata {
+				name: b"New Token Name".to_vec(),
+				symbol: b"NTN".to_vec(),
+				decimals: 13,
+				minimal_balance: 2,
+			})
+		);
+	});
+}
+
+#[test]
+fn update_stable_asset_should_not_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_noop!(
+			AssetRegistry::update_stable_asset(
+				Origin::signed(CouncilAccount::get()),
+				0,
+				Box::new(AssetMetadata {
+					name: b"New Token Name".to_vec(),
+					symbol: b"NTN".to_vec(),
+					decimals: 13,
+					minimal_balance: 2,
+				})
+			),
+			Error::<Runtime>::AssetIdNotExists
+		);
+	});
+}
+
+#[test]
 fn set_erc20_mapping_works() {
 	ExtBuilder::default()
 		.balances(vec![(alice(), 1_000_000_000_000)])
