@@ -544,8 +544,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		module_evm::GenesisAccount {
 			nonce: 1,
 			balance: INITIAL_BALANCE,
-			storage: Default::default(),
-			code: Default::default(),
+			..Default::default()
 		},
 	);
 	accounts.insert(
@@ -553,8 +552,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		module_evm::GenesisAccount {
 			nonce: 1,
 			balance: INITIAL_BALANCE,
-			storage: Default::default(),
-			code: Default::default(),
+			..Default::default()
 		},
 	);
 
