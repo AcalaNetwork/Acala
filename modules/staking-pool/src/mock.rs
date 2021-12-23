@@ -410,16 +410,18 @@ impl ExtBuilder {
 		.assimilate_storage(&mut t)
 		.unwrap();
 
-		staking_pool::GenesisConfig {
-			staking_pool_params: Params {
-				target_max_free_unbonded_ratio: Ratio::saturating_from_rational(10, 100),
-				target_min_free_unbonded_ratio: Ratio::saturating_from_rational(5, 100),
-				target_unbonding_to_free_ratio: Ratio::saturating_from_rational(3, 100),
-				unbonding_to_free_adjustment: Rate::saturating_from_rational(1, 100),
-				base_fee_rate: Rate::saturating_from_rational(20, 100),
+		GenesisBuild::<Runtime>::assimilate_storage(
+			&staking_pool::GenesisConfig {
+				staking_pool_params: Params {
+					target_max_free_unbonded_ratio: Ratio::saturating_from_rational(10, 100),
+					target_min_free_unbonded_ratio: Ratio::saturating_from_rational(5, 100),
+					target_unbonding_to_free_ratio: Ratio::saturating_from_rational(3, 100),
+					unbonding_to_free_adjustment: Rate::saturating_from_rational(1, 100),
+					base_fee_rate: Rate::saturating_from_rational(20, 100),
+				},
 			},
-		}
-		.assimilate_storage::<Runtime>(&mut t)
+			&mut t,
+		)
 		.unwrap();
 
 		t.into()
