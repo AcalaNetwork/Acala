@@ -323,7 +323,7 @@ fn testnet_genesis(
 			phantom: Default::default(),
 		},
 		operator_membership_acala: OperatorMembershipAcalaConfig {
-			members: vec![root_key.clone()],
+			members: vec![root_key],
 			phantom: Default::default(),
 		},
 		democracy: Default::default(),
@@ -529,7 +529,7 @@ fn mandala_genesis(
 		democracy: Default::default(),
 		treasury: Default::default(),
 		tokens: TokensConfig {
-			balances: vec![(root_key.clone(), DOT, initial_balance)],
+			balances: vec![(root_key, DOT, initial_balance)],
 		},
 		vesting: VestingConfig { vesting: vec![] },
 		cdp_treasury: CdpTreasuryConfig {
@@ -641,6 +641,7 @@ pub fn evm_genesis(evm_accounts: Vec<H160>) -> BTreeMap<H160, GenesisAccount<Bal
 			} else {
 				Bytes::from_str(&code_string).unwrap().0
 			},
+			enable_contract_development: false,
 		};
 
 		let addr = H160::from_slice(
@@ -657,6 +658,7 @@ pub fn evm_genesis(evm_accounts: Vec<H160>) -> BTreeMap<H160, GenesisAccount<Bal
 			balance: 1000 * mandala_runtime::dollar(mandala_runtime::ACA),
 			storage: BTreeMap::new(),
 			code: vec![],
+			enable_contract_development: true,
 		};
 		accounts.insert(dev_acc, account);
 	}

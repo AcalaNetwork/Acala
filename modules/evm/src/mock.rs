@@ -261,18 +261,14 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		contract_a(),
 		GenesisAccount {
 			nonce: 1,
-			balance: Default::default(),
-			storage: Default::default(),
-			code: Default::default(),
+			..Default::default()
 		},
 	);
 	accounts.insert(
 		contract_b(),
 		GenesisAccount {
 			nonce: 1,
-			balance: Default::default(),
-			storage: Default::default(),
-			code: Default::default(),
+			..Default::default()
 		},
 	);
 
@@ -281,8 +277,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		GenesisAccount {
 			nonce: 1,
 			balance: INITIAL_BALANCE,
-			storage: Default::default(),
-			code: Default::default(),
+			..Default::default()
 		},
 	);
 	accounts.insert(
@@ -290,8 +285,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		GenesisAccount {
 			nonce: 1,
 			balance: INITIAL_BALANCE,
-			storage: Default::default(),
-			code: Default::default(),
+			..Default::default()
 		},
 	);
 
