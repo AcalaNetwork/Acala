@@ -29,7 +29,7 @@ use mock::{
 use orml_utilities::with_transaction_result;
 use primitives::TokenSymbol;
 use sp_core::H160;
-use std::str::FromStr;
+use std::str::{from_utf8, FromStr};
 
 #[test]
 fn versioned_multi_location_convert_work() {
@@ -418,6 +418,11 @@ fn name_works() {
 				EvmErc20InfoMapping::<Runtime>::name(CurrencyId::DexShare(DexShare::Erc20(erc20_address()), DexShare::Erc20(erc20_address_not_exists()))),
 				None
 			);
+
+			assert_eq!(
+				from_utf8(&EvmErc20InfoMapping::<Runtime>::name(CurrencyId::LiquidCroadloan(0)).unwrap()),
+				Ok("LiquidCroadloan-Kusama-0")
+			);
 		});
 }
 
@@ -484,6 +489,11 @@ fn symbol_works() {
 				)),
 				None
 			);
+
+			assert_eq!(
+				from_utf8(&EvmErc20InfoMapping::<Runtime>::symbol(CurrencyId::LiquidCroadloan(0)).unwrap()),
+				Ok("LCKSM-0")
+			);
 		});
 }
 
@@ -541,6 +551,11 @@ fn decimals_works() {
 					DexShare::Erc20(erc20_address_not_exists())
 				)),
 				Some(17)
+			);
+
+			assert_eq!(
+				EvmErc20InfoMapping::<Runtime>::decimals(CurrencyId::LiquidCroadloan(0)),
+				Some(12)
 			);
 		});
 }
