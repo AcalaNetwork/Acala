@@ -142,9 +142,11 @@ construct_runtime!(
 pub struct ExtBuilder;
 impl ExtBuilder {
 	pub fn build(self) -> sp_io::TestExternalities {
-		let t = frame_system::GenesisConfig::default()
+		let mut t = frame_system::GenesisConfig::default()
 			.build_storage::<Runtime>()
 			.unwrap();
+
+		GenesisBuild::<Runtime>::assimilate_storage(&crate::GenesisConfig::default(), &mut t).unwrap();
 
 		let mut ext = sp_io::TestExternalities::new(t);
 		ext.execute_with(|| System::set_block_number(1));

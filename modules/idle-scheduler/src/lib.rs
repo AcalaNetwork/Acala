@@ -116,6 +116,27 @@ pub mod module {
 		}
 	}
 
+	#[pallet::genesis_config]
+	pub struct GenesisConfig {
+		pub initial_block_difference: BlockNumber,
+	}
+
+	#[cfg(feature = "std")]
+	impl Default for GenesisConfig {
+		fn default() -> Self {
+			GenesisConfig {
+				initial_block_difference: 1,
+			}
+		}
+	}
+
+	#[pallet::genesis_build]
+	impl<T: Config> GenesisBuild<T> for GenesisConfig {
+		fn build(&self) {
+			BlockNumberDifference::<T>::put(self.initial_block_difference);
+		}
+	}
+
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight(< T as Config >::WeightInfo::schedule_task())]

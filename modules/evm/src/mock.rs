@@ -32,7 +32,7 @@ use primitives::{define_combined_task, Amount, BlockNumber, CurrencyId, ReserveI
 use sp_core::{H160, H256};
 use sp_runtime::{
 	testing::Header,
-	traits::{BlakeTwo256, IdentityLookup},
+	traits::{BlakeTwo256, BlockNumberProvider, IdentityLookup},
 	AccountId32,
 };
 use std::{collections::BTreeMap, str::FromStr};
@@ -141,11 +141,22 @@ parameter_types!(
 	pub MinimumWeightRemainInBlock: Weight = u64::MIN;
 );
 
+pub struct MockBlockNumberProvider;
+
+impl BlockNumberProvider for MockBlockNumberProvider {
+	type BlockNumber = u32;
+
+	fn current_block_number() -> Self::BlockNumber {
+		Zero::zero()
+	}
+}
+
 impl module_idle_scheduler::Config for Runtime {
 	type Event = Event;
 	type WeightInfo = ();
 	type Task = ScheduledTasks;
 	type MinimumWeightRemainInBlock = MinimumWeightRemainInBlock;
+	type RelayChainBlockNumberProvider = MockBlockNumberProvider;
 }
 
 pub struct GasToWeight;
@@ -306,6 +317,8 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	}
 	.assimilate_storage(&mut t)
 	.unwrap();
+
+	GenesisBuild::<Runtime>::assimilate_storage(&module_idle_scheduler::GenesisConfig::default(), &mut t).unwrap();
 
 	let mut ext = sp_io::TestExternalities::new(t);
 	ext.execute_with(|| System::set_block_number(1));
