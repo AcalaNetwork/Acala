@@ -1,6 +1,6 @@
 import { expect } from "chai";
 
-import { describeWithAcala, nextBlock } from "./util";
+import { describeWithAcala, getEvmNonce } from "./util";
 import { Signer } from "@acala-network/bodhi";
 import { Wallet } from "@ethersproject/wallet";
 import { encodeAddress } from "@polkadot/keyring";
@@ -49,6 +49,8 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 			salt: (await context.provider.api.rpc.chain.getBlockHash(0)).toHex(),
 		};
 
+		const nonce = await getEvmNonce(context.provider, signer.address);
+
 		const types = {
 			Transaction: [
 				{ name: "action", type: "string" },
@@ -69,7 +71,7 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 		const value = {
 			action: "Create",
 			to: "0x0000000000000000000000000000000000000000",
-			nonce: (await context.provider.api.query.system.account(subAddr)).nonce.toNumber(),
+			nonce: nonce,
 			tip: 2,
 			data: deploy.data,
 			value: '0',
@@ -113,7 +115,7 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 					"era": {
 						"immortalEra": "0x00"
 					},
-					"nonce": 0,
+					"nonce": ${value.nonce},
 					"tip": 2
 				},
 				"method": {
@@ -126,7 +128,7 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 						"value": 0,
 						"gas_limit": 2100000,
 						"storage_limit": 20000,
-						"valid_until": 105
+						"valid_until": ${value.validUntil}
 					}
 				}
 			  }`.toString().replace(/\s/g, '')
@@ -163,6 +165,8 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 			salt: (await context.provider.api.rpc.chain.getBlockHash(0)).toHex(),
 		};
 
+		const nonce = await getEvmNonce(context.provider, signer.address);
+
 		const types = {
 			Transaction: [
 				{ name: "action", type: "string" },
@@ -184,7 +188,7 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 		const value = {
 			action: "Call",
 			to: contract,
-			nonce: (await context.provider.api.query.system.account(subAddr)).nonce.toNumber(),
+			nonce: nonce,
 			tip: 2,
 			data: input.data,
 			value: '0',
@@ -228,7 +232,7 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 					"era": {
 						"immortalEra": "0x00"
 					},
-					"nonce": 1,
+					"nonce": ${value.nonce},
 					"tip": 2
 				},
 				"method": {
@@ -241,7 +245,7 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 						"value": 0,
 						"gas_limit": 210000,
 						"storage_limit": 1000,
-						"valid_until": 106
+						"valid_until": ${value.validUntil}
 					}
 				}
 			  }`.toString().replace(/\s/g, '')

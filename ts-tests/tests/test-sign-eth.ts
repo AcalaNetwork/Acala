@@ -1,6 +1,6 @@
 import { expect } from "chai";
 
-import { describeWithAcala, nextBlock } from "./util";
+import { describeWithAcala, getEvmNonce } from "./util";
 import { Signer } from "@acala-network/bodhi";
 import { Wallet } from "@ethersproject/wallet";
 import { encodeAddress } from "@polkadot/keyring";
@@ -50,7 +50,8 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 		this.timeout(150000);
 
 		const chanid = +context.provider.api.consts.evm.chainId.toString()
-		const nonce = (await context.provider.api.query.system.account(subAddr)).nonce.toNumber()
+		const nonce = await getEvmNonce(context.provider, signer.address);
+
 		const validUntil = (await context.provider.api.rpc.chain.getHeader()).number.toNumber() + 100
 		const storageLimit = 20000;
 		const gasLimit = 2100000;
@@ -81,7 +82,7 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 		const rawtx = ethers.utils.parseTransaction(signedTx)
 
 		expect(rawtx).to.deep.include({
-			nonce: 0,
+			nonce: nonce,
 			gasPrice: BigNumber.from(200000209209),
 			gasLimit: BigNumber.from(12116000),
 			// to: '0x0000000000000000000000000000000000000000',
@@ -137,7 +138,7 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 				  "era": {
 					"immortalEra": "0x00"
 				  },
-				  "nonce": 0,
+				  "nonce": ${nonce},
 				  "tip": 0
 				},
 				"method": {
@@ -181,7 +182,8 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 		this.timeout(150000);
 
 		const chanid = +context.provider.api.consts.evm.chainId.toString();
-		const nonce = (await context.provider.api.query.system.account(subAddr)).nonce.toNumber();
+		const nonce = await getEvmNonce(context.provider, signer.address);
+
 		const validUntil = (await context.provider.api.rpc.chain.getHeader()).number.toNumber() + 100;
 		const storageLimit = 1000;
 		const gasLimit = 210000;
@@ -201,7 +203,7 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 
 		const value = {
 			to: contract,
-			nonce,
+			nonce: nonce,
 			gasLimit: tx_gas_limit.toNumber(),
 			gasPrice: tx_gas_price.toHexString(),
 			data: input.data,
@@ -213,7 +215,7 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 		const rawtx = ethers.utils.parseTransaction(signedTx)
 
 		expect(rawtx).to.deep.include({
-			nonce: 1,
+			nonce: nonce,
 			gasPrice: BigNumber.from(200000208912),
 			gasLimit: BigNumber.from(722000),
 			to: ethers.utils.getAddress(contract),
@@ -269,7 +271,7 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 				  "era": {
 					"immortalEra": "0x00"
 				  },
-				  "nonce": 1,
+				  "nonce": ${nonce},
 				  "tip": 0
 				},
 				"method": {
