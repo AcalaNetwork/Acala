@@ -209,30 +209,6 @@ parameter_types! {
 pub struct BaseCallFilter;
 impl Contains<Call> for BaseCallFilter {
 	fn contains(call: &Call) -> bool {
-		// In the first runtime upgrade of the migration, reveal following.
-		// Then, In the first runtime upgrade of the migration, delete following.
-		// if let Call::HomaLite(homa_lite_call) = call {
-		// 	match homa_lite_call {
-		// 		module_homa_lite::Call::mint { .. }
-		// 		| module_homa_lite::Call::mint_for_requests { .. }
-		// 		| module_homa_lite::Call::request_redeem { .. } => {
-		// 			return false;
-		// 		},
-		// 		_ => {}
-		// 	}
-		// }
-		// if let Call::Homa(homa_call) = call {
-		// 	match homa_call {
-		// 		module_homa::Call::mint { .. }
-		// 		| module_homa::Call::request_redeem { .. }
-		// 		| module_homa::Call::fast_match_redeems { .. }
-		// 		| module_homa::Call::claim_redemption { .. } => {
-		// 			return false;
-		// 		},
-		// 		_ => {}
-		// 	}
-		// }
-
 		!module_transaction_pause::PausedTransactionFilter::<Runtime>::contains(call)
 			&& !matches!(call, Call::Democracy(pallet_democracy::Call::propose { .. }),)
 	}
@@ -313,8 +289,8 @@ parameter_types! {
 	pub const MaxInvulnerables: u32 = 50;
 	pub const KickPenaltySessionLength: u32 = 8;
 	pub const CollatorKickThreshold: Permill = Permill::from_percent(50);
-	// 10% of transaction fee of empty remark call: 150_459_200
-	pub MinRewardDistributeAmount: Balance = 15 * millicent(ACA);
+	// Ensure that can create the author(`ExistentialDeposit`) with dev mode.
+	pub MinRewardDistributeAmount: Balance = NativeTokenExistentialDeposit::get();
 }
 
 impl module_collator_selection::Config for Runtime {
@@ -1192,6 +1168,7 @@ impl module_evm_accounts::Config for Runtime {
 impl module_asset_registry::Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
+	type LiquidCroadloanCurrencyId = GetStakingCurrencyId;
 	type EVMBridge = module_evm_bridge::EVMBridge<Runtime>;
 	type RegisterOrigin = EnsureRootOrHalfGeneralCouncil;
 	type WeightInfo = weights::module_asset_registry::WeightInfo<Runtime>;

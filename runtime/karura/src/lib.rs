@@ -199,30 +199,6 @@ impl Contains<Call> for BaseCallFilter {
 			return true;
 		}
 
-		// In the first runtime upgrade of the migration, reveal following.
-		// Then, In the first runtime upgrade of the migration, delete following.
-		// if let Call::HomaLite(homa_lite_call) = call {
-		// 	match homa_lite_call {
-		// 		module_homa_lite::Call::mint { .. }
-		// 		| module_homa_lite::Call::mint_for_requests { .. }
-		// 		| module_homa_lite::Call::request_redeem { .. } => {
-		// 			return false;
-		// 		},
-		// 		_ => {}
-		// 	}
-		// }
-		// if let Call::Homa(homa_call) = call {
-		// 	match homa_call {
-		// 		module_homa::Call::mint { .. }
-		// 		| module_homa::Call::request_redeem { .. }
-		// 		| module_homa::Call::fast_match_redeems { .. }
-		// 		| module_homa::Call::claim_redemption { .. } => {
-		// 			return false;
-		// 		},
-		// 		_ => {}
-		// 	}
-		// }
-
 		let is_paused = module_transaction_pause::PausedTransactionFilter::<Runtime>::contains(call);
 		if is_paused {
 			// no paused call
@@ -1182,6 +1158,7 @@ impl module_evm_accounts::Config for Runtime {
 impl module_asset_registry::Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
+	type LiquidCroadloanCurrencyId = GetStakingCurrencyId;
 	type EVMBridge = module_evm_bridge::EVMBridge<Runtime>;
 	type RegisterOrigin = EnsureRootOrHalfGeneralCouncil;
 	type WeightInfo = weights::module_asset_registry::WeightInfo<Runtime>;
@@ -2490,8 +2467,8 @@ mod tests {
 	#[test]
 	fn check_call_size() {
 		assert!(
-			core::mem::size_of::<Call>() <= 230,
-			"size of Call is more than 230 bytes: some calls have too big arguments, use Box to \
+			core::mem::size_of::<Call>() <= 240,
+			"size of Call is more than 240 bytes: some calls have too big arguments, use Box to \
 			reduce the size of Call.
 			If the limit is too strong, maybe consider increasing the limit",
 		);

@@ -132,19 +132,36 @@ pub mod module {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// Deposit DEX share. \[who, dex_share_type, deposit_amount\]
-		DepositDexShare(T::AccountId, CurrencyId, Balance),
-		/// Withdraw DEX share. \[who, dex_share_type, withdraw_amount\]
-		WithdrawDexShare(T::AccountId, CurrencyId, Balance),
-		/// Claim rewards. \[who, pool_id, reward_currency_id, actual_amount, deduction_amount\]
-		ClaimRewards(T::AccountId, PoolId, CurrencyId, Balance, Balance),
-		/// Incentive reward amount updated. \[pool_id, reward_currency_id,
-		/// reward_amount_per_period\]
-		IncentiveRewardAmountUpdated(PoolId, CurrencyId, Balance),
-		/// Saving reward rate updated. \[pool_id, reward_rate_per_period\]
-		SavingRewardRateUpdated(PoolId, Rate),
-		/// Payout deduction rate updated. \[pool_id, deduction_rate\]
-		ClaimRewardDeductionRateUpdated(PoolId, Rate),
+		/// Deposit DEX share.
+		DepositDexShare {
+			who: T::AccountId,
+			dex_share_type: CurrencyId,
+			deposit: Balance,
+		},
+		/// Withdraw DEX share.
+		WithdrawDexShare {
+			who: T::AccountId,
+			dex_share_type: CurrencyId,
+			withdraw: Balance,
+		},
+		/// Claim rewards.
+		ClaimRewards {
+			who: T::AccountId,
+			pool: PoolId,
+			reward_currency_id: CurrencyId,
+			actual_amount: Balance,
+			deduction_amount: Balance,
+		},
+		/// Incentive reward amount updated.
+		IncentiveRewardAmountUpdated {
+			pool: PoolId,
+			reward_currency_id: CurrencyId,
+			reward_amount_per_period: Balance,
+		},
+		/// Saving reward rate updated.
+		SavingRewardRateUpdated { pool: PoolId, reward_rate_per_period: Rate },
+		/// Payout deduction rate updated.
+		ClaimRewardDeductionRateUpdated { pool: PoolId, deduction_rate: Rate },
 	}
 
 	/// Mapping from pool to its fixed incentive amounts of multi currencies per period.
@@ -296,13 +313,13 @@ pub mod module {
 				// be rewarded, there will not increase user balance.
 				T::Currency::transfer(currency_id, &Self::account_id(), &who, actual_amount)?;
 
-				Self::deposit_event(Event::ClaimRewards(
-					who.clone(),
-					pool_id,
-					currency_id,
+				Self::deposit_event(Event::ClaimRewards {
+					who: who.clone(),
+					pool: pool_id,
+					reward_currency_id: currency_id,
 					actual_amount,
 					deduction_amount,
-				));
+				});
 			}
 
 			Ok(())
@@ -332,7 +349,11 @@ pub mod module {
 						let mut v = maybe_amount.unwrap_or_default();
 						if amount != v {
 							v = amount;
-							Self::deposit_event(Event::IncentiveRewardAmountUpdated(pool_id, currency_id, amount));
+							Self::deposit_event(Event::IncentiveRewardAmountUpdated {
+								pool: pool_id,
+								reward_currency_id: currency_id,
+								reward_amount_per_period: amount,
+							});
 						}
 
 						if v.is_zero() {
@@ -366,7 +387,10 @@ pub mod module {
 					let mut v = maybe_rate.unwrap_or_default();
 					if rate != v {
 						v = rate;
-						Self::deposit_event(Event::SavingRewardRateUpdated(pool_id, rate));
+						Self::deposit_event(Event::SavingRewardRateUpdated {
+							pool: pool_id,
+							reward_rate_per_period: rate,
+						});
 					}
 
 					if v.is_zero() {
@@ -400,7 +424,10 @@ pub mod module {
 					let mut v = maybe_rate.unwrap_or_default();
 					if deduction_rate != v {
 						v = deduction_rate;
-						Self::deposit_event(Event::ClaimRewardDeductionRateUpdated(pool_id, deduction_rate));
+						Self::deposit_event(Event::ClaimRewardDeductionRateUpdated {
+							pool: pool_id,
+							deduction_rate,
+						});
 					}
 
 					if v.is_zero() {
@@ -518,7 +545,11 @@ impl<T: Config> DEXIncentives<T::AccountId, CurrencyId, Balance> for Pallet<T> {
 		T::Currency::transfer(lp_currency_id, who, &Self::account_id(), amount)?;
 		<orml_rewards::Pallet<T>>::add_share(who, &PoolId::Dex(lp_currency_id), amount.unique_saturated_into());
 
-		Self::deposit_event(Event::DepositDexShare(who.clone(), lp_currency_id, amount));
+		Self::deposit_event(Event::DepositDexShare {
+			who: who.clone(),
+			dex_share_type: lp_currency_id,
+			deposit: amount,
+		});
 		Ok(())
 	}
 
@@ -532,7 +563,11 @@ impl<T: Config> DEXIncentives<T::AccountId, CurrencyId, Balance> for Pallet<T> {
 		T::Currency::transfer(lp_currency_id, &Self::account_id(), who, amount)?;
 		<orml_rewards::Pallet<T>>::remove_share(who, &PoolId::Dex(lp_currency_id), amount.unique_saturated_into());
 
-		Self::deposit_event(Event::WithdrawDexShare(who.clone(), lp_currency_id, amount));
+		Self::deposit_event(Event::WithdrawDexShare {
+			who: who.clone(),
+			dex_share_type: lp_currency_id,
+			withdraw: amount,
+		});
 		Ok(())
 	}
 }

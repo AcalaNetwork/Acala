@@ -49,11 +49,11 @@ fn deposit_dex_share_works() {
 			BTC_AUSD_LP,
 			10000
 		));
-		System::assert_last_event(Event::IncentivesModule(crate::Event::DepositDexShare(
-			ALICE::get(),
-			BTC_AUSD_LP,
-			10000,
-		)));
+		System::assert_last_event(Event::IncentivesModule(crate::Event::DepositDexShare {
+			who: ALICE::get(),
+			dex_share_type: BTC_AUSD_LP,
+			deposit: 10000,
+		}));
 		assert_eq!(TokensModule::free_balance(BTC_AUSD_LP, &ALICE::get()), 0);
 		assert_eq!(
 			TokensModule::free_balance(BTC_AUSD_LP, &IncentivesModule::account_id()),
@@ -111,11 +111,11 @@ fn withdraw_dex_share_works() {
 			BTC_AUSD_LP,
 			8000
 		));
-		System::assert_last_event(Event::IncentivesModule(crate::Event::WithdrawDexShare(
-			ALICE::get(),
-			BTC_AUSD_LP,
-			8000,
-		)));
+		System::assert_last_event(Event::IncentivesModule(crate::Event::WithdrawDexShare {
+			who: ALICE::get(),
+			dex_share_type: BTC_AUSD_LP,
+			withdraw: 8000,
+		}));
 		assert_eq!(TokensModule::free_balance(BTC_AUSD_LP, &ALICE::get()), 8000);
 		assert_eq!(
 			TokensModule::free_balance(BTC_AUSD_LP, &IncentivesModule::account_id()),
@@ -165,21 +165,21 @@ fn update_incentive_rewards_works() {
 				(PoolId::Loans(DOT), vec![(ACA, 500)]),
 			],
 		));
-		System::assert_has_event(Event::IncentivesModule(crate::Event::IncentiveRewardAmountUpdated(
-			PoolId::Dex(DOT_AUSD_LP),
-			ACA,
-			1000,
-		)));
-		System::assert_has_event(Event::IncentivesModule(crate::Event::IncentiveRewardAmountUpdated(
-			PoolId::Dex(DOT_AUSD_LP),
-			DOT,
-			100,
-		)));
-		System::assert_has_event(Event::IncentivesModule(crate::Event::IncentiveRewardAmountUpdated(
-			PoolId::Loans(DOT),
-			ACA,
-			500,
-		)));
+		System::assert_has_event(Event::IncentivesModule(crate::Event::IncentiveRewardAmountUpdated {
+			pool: PoolId::Dex(DOT_AUSD_LP),
+			reward_currency_id: ACA,
+			reward_amount_per_period: 1000,
+		}));
+		System::assert_has_event(Event::IncentivesModule(crate::Event::IncentiveRewardAmountUpdated {
+			pool: PoolId::Dex(DOT_AUSD_LP),
+			reward_currency_id: DOT,
+			reward_amount_per_period: 100,
+		}));
+		System::assert_has_event(Event::IncentivesModule(crate::Event::IncentiveRewardAmountUpdated {
+			pool: PoolId::Loans(DOT),
+			reward_currency_id: ACA,
+			reward_amount_per_period: 500,
+		}));
 		assert_eq!(
 			IncentivesModule::incentive_reward_amounts(PoolId::Dex(DOT_AUSD_LP), ACA),
 			1000
@@ -201,16 +201,16 @@ fn update_incentive_rewards_works() {
 				(PoolId::Loans(DOT), vec![(ACA, 500)]),
 			],
 		));
-		System::assert_has_event(Event::IncentivesModule(crate::Event::IncentiveRewardAmountUpdated(
-			PoolId::Dex(DOT_AUSD_LP),
-			ACA,
-			200,
-		)));
-		System::assert_has_event(Event::IncentivesModule(crate::Event::IncentiveRewardAmountUpdated(
-			PoolId::Dex(DOT_AUSD_LP),
-			DOT,
-			0,
-		)));
+		System::assert_has_event(Event::IncentivesModule(crate::Event::IncentiveRewardAmountUpdated {
+			pool: PoolId::Dex(DOT_AUSD_LP),
+			reward_currency_id: ACA,
+			reward_amount_per_period: 200,
+		}));
+		System::assert_has_event(Event::IncentivesModule(crate::Event::IncentiveRewardAmountUpdated {
+			pool: PoolId::Dex(DOT_AUSD_LP),
+			reward_currency_id: DOT,
+			reward_amount_per_period: 0,
+		}));
 		assert_eq!(
 			IncentivesModule::incentive_reward_amounts(PoolId::Dex(DOT_AUSD_LP), ACA),
 			200
@@ -269,14 +269,14 @@ fn update_dex_saving_rewards_works() {
 				(PoolId::Dex(BTC_AUSD_LP), Rate::saturating_from_rational(2, 100))
 			]
 		));
-		System::assert_has_event(Event::IncentivesModule(crate::Event::SavingRewardRateUpdated(
-			PoolId::Dex(DOT_AUSD_LP),
-			Rate::saturating_from_rational(1, 100),
-		)));
-		System::assert_has_event(Event::IncentivesModule(crate::Event::SavingRewardRateUpdated(
-			PoolId::Dex(BTC_AUSD_LP),
-			Rate::saturating_from_rational(2, 100),
-		)));
+		System::assert_has_event(Event::IncentivesModule(crate::Event::SavingRewardRateUpdated {
+			pool: PoolId::Dex(DOT_AUSD_LP),
+			reward_rate_per_period: Rate::saturating_from_rational(1, 100),
+		}));
+		System::assert_has_event(Event::IncentivesModule(crate::Event::SavingRewardRateUpdated {
+			pool: PoolId::Dex(BTC_AUSD_LP),
+			reward_rate_per_period: Rate::saturating_from_rational(2, 100),
+		}));
 		assert_eq!(
 			IncentivesModule::dex_saving_reward_rates(PoolId::Dex(DOT_AUSD_LP)),
 			Rate::saturating_from_rational(1, 100)
@@ -297,14 +297,14 @@ fn update_dex_saving_rewards_works() {
 				(PoolId::Dex(BTC_AUSD_LP), Rate::zero())
 			]
 		));
-		System::assert_has_event(Event::IncentivesModule(crate::Event::SavingRewardRateUpdated(
-			PoolId::Dex(DOT_AUSD_LP),
-			Rate::saturating_from_rational(5, 100),
-		)));
-		System::assert_has_event(Event::IncentivesModule(crate::Event::SavingRewardRateUpdated(
-			PoolId::Dex(BTC_AUSD_LP),
-			Rate::zero(),
-		)));
+		System::assert_has_event(Event::IncentivesModule(crate::Event::SavingRewardRateUpdated {
+			pool: PoolId::Dex(DOT_AUSD_LP),
+			reward_rate_per_period: Rate::saturating_from_rational(5, 100),
+		}));
+		System::assert_has_event(Event::IncentivesModule(crate::Event::SavingRewardRateUpdated {
+			pool: PoolId::Dex(BTC_AUSD_LP),
+			reward_rate_per_period: Rate::zero(),
+		}));
 		assert_eq!(
 			IncentivesModule::dex_saving_reward_rates(PoolId::Dex(DOT_AUSD_LP)),
 			Rate::saturating_from_rational(5, 100)
@@ -359,14 +359,14 @@ fn update_claim_reward_deduction_rates_works() {
 				(PoolId::Dex(BTC_AUSD_LP), Rate::saturating_from_rational(2, 100))
 			]
 		));
-		System::assert_has_event(Event::IncentivesModule(crate::Event::ClaimRewardDeductionRateUpdated(
-			PoolId::Dex(DOT_AUSD_LP),
-			Rate::saturating_from_rational(1, 100),
-		)));
-		System::assert_has_event(Event::IncentivesModule(crate::Event::ClaimRewardDeductionRateUpdated(
-			PoolId::Dex(BTC_AUSD_LP),
-			Rate::saturating_from_rational(2, 100),
-		)));
+		System::assert_has_event(Event::IncentivesModule(crate::Event::ClaimRewardDeductionRateUpdated {
+			pool: PoolId::Dex(DOT_AUSD_LP),
+			deduction_rate: Rate::saturating_from_rational(1, 100),
+		}));
+		System::assert_has_event(Event::IncentivesModule(crate::Event::ClaimRewardDeductionRateUpdated {
+			pool: PoolId::Dex(BTC_AUSD_LP),
+			deduction_rate: Rate::saturating_from_rational(2, 100),
+		}));
 		assert_eq!(
 			IncentivesModule::claim_reward_deduction_rates(PoolId::Dex(DOT_AUSD_LP)),
 			Rate::saturating_from_rational(1, 100)
@@ -387,14 +387,14 @@ fn update_claim_reward_deduction_rates_works() {
 				(PoolId::Dex(BTC_AUSD_LP), Rate::zero())
 			]
 		));
-		System::assert_has_event(Event::IncentivesModule(crate::Event::ClaimRewardDeductionRateUpdated(
-			PoolId::Dex(DOT_AUSD_LP),
-			Rate::saturating_from_rational(5, 100),
-		)));
-		System::assert_has_event(Event::IncentivesModule(crate::Event::ClaimRewardDeductionRateUpdated(
-			PoolId::Dex(BTC_AUSD_LP),
-			Rate::zero(),
-		)));
+		System::assert_has_event(Event::IncentivesModule(crate::Event::ClaimRewardDeductionRateUpdated {
+			pool: PoolId::Dex(DOT_AUSD_LP),
+			deduction_rate: Rate::saturating_from_rational(5, 100),
+		}));
+		System::assert_has_event(Event::IncentivesModule(crate::Event::ClaimRewardDeductionRateUpdated {
+			pool: PoolId::Dex(BTC_AUSD_LP),
+			deduction_rate: Rate::zero(),
+		}));
 		assert_eq!(
 			IncentivesModule::claim_reward_deduction_rates(PoolId::Dex(DOT_AUSD_LP)),
 			Rate::saturating_from_rational(5, 100)
@@ -566,20 +566,22 @@ fn claim_rewards_works() {
 			Origin::signed(ALICE::get()),
 			PoolId::Loans(BTC)
 		));
-		System::assert_has_event(Event::IncentivesModule(crate::Event::ClaimRewards(
-			ALICE::get(),
-			PoolId::Loans(BTC),
-			ACA,
-			200,
-			1800,
-		)));
-		System::assert_has_event(Event::IncentivesModule(crate::Event::ClaimRewards(
-			ALICE::get(),
-			PoolId::Loans(BTC),
-			LDOT,
-			25,
-			225,
-		)));
+
+		System::assert_has_event(Event::IncentivesModule(crate::Event::ClaimRewards {
+			who: ALICE::get(),
+			pool: PoolId::Loans(BTC),
+			reward_currency_id: ACA,
+			actual_amount: 200,
+			deduction_amount: 1800,
+		}));
+		System::assert_has_event(Event::IncentivesModule(crate::Event::ClaimRewards {
+			who: ALICE::get(),
+			pool: PoolId::Loans(BTC),
+			reward_currency_id: LDOT,
+			actual_amount: 25,
+			deduction_amount: 225,
+		}));
+
 		assert_eq!(
 			RewardsModule::pool_infos(PoolId::Loans(BTC)),
 			PoolInfo {
@@ -606,20 +608,21 @@ fn claim_rewards_works() {
 			Origin::signed(BOB::get()),
 			PoolId::Loans(BTC)
 		));
-		System::assert_has_event(Event::IncentivesModule(crate::Event::ClaimRewards(
-			BOB::get(),
-			PoolId::Loans(BTC),
-			ACA,
-			90,
-			810,
-		)));
-		System::assert_has_event(Event::IncentivesModule(crate::Event::ClaimRewards(
-			BOB::get(),
-			PoolId::Loans(BTC),
-			LDOT,
-			37,
-			325,
-		)));
+
+		System::assert_has_event(Event::IncentivesModule(crate::Event::ClaimRewards {
+			who: BOB::get(),
+			pool: PoolId::Loans(BTC),
+			reward_currency_id: ACA,
+			actual_amount: 90,
+			deduction_amount: 810,
+		}));
+		System::assert_has_event(Event::IncentivesModule(crate::Event::ClaimRewards {
+			who: BOB::get(),
+			pool: PoolId::Loans(BTC),
+			reward_currency_id: LDOT,
+			actual_amount: 37,
+			deduction_amount: 325,
+		}));
 		assert_eq!(
 			RewardsModule::pool_infos(PoolId::Loans(BTC)),
 			PoolInfo {
@@ -683,20 +686,21 @@ fn claim_rewards_works() {
 			Origin::signed(ALICE::get()),
 			PoolId::Dex(BTC_AUSD_LP)
 		));
-		System::assert_has_event(Event::IncentivesModule(crate::Event::ClaimRewards(
-			ALICE::get(),
-			PoolId::Dex(BTC_AUSD_LP),
-			ACA,
-			250,
-			250,
-		)));
-		System::assert_has_event(Event::IncentivesModule(crate::Event::ClaimRewards(
-			ALICE::get(),
-			PoolId::Dex(BTC_AUSD_LP),
-			AUSD,
-			500,
-			500,
-		)));
+		System::assert_has_event(Event::IncentivesModule(crate::Event::ClaimRewards {
+			who: ALICE::get(),
+			pool: PoolId::Dex(BTC_AUSD_LP),
+			reward_currency_id: ACA,
+			actual_amount: 250,
+			deduction_amount: 250,
+		}));
+		System::assert_has_event(Event::IncentivesModule(crate::Event::ClaimRewards {
+			who: ALICE::get(),
+			pool: PoolId::Dex(BTC_AUSD_LP),
+			reward_currency_id: AUSD,
+			actual_amount: 500,
+			deduction_amount: 500,
+		}));
+
 		assert_eq!(
 			RewardsModule::pool_infos(PoolId::Dex(BTC_AUSD_LP)),
 			PoolInfo {
