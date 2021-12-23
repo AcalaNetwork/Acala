@@ -1978,20 +1978,17 @@ impl Convert<(Call, SignedExtra), Result<(EthereumTransactionMessage, SignedExtr
 					return Err(InvalidTransaction::Stale);
 				}
 
-				let era: frame_system::CheckEra<Runtime> = extra.clone().3;
-				if era != frame_system::CheckEra::from(sp_runtime::generic::Era::Immortal) {
+				let (_, _, _, mortality, check_nonce, _, charge, ..) = extra.clone();
+
+				if mortality != frame_system::CheckEra::from(sp_runtime::generic::Era::Immortal) {
 					// require immortal
 					return Err(InvalidTransaction::BadProof);
 				}
 
-				// nonce checker should check evm nonce
-				let mut check_nonce: runtime_common::CheckNonce<Runtime> = extra.clone().4;
-				let nonce = check_nonce.0;
-				check_nonce.1 = true;
-				extra.4 = check_nonce;
+				let nonce = check_nonce.nonce;
+				let tip = charge.0;
 
-				let tip: module_transaction_payment::ChargeTransactionPayment<Runtime> = extra.clone().6;
-				let tip = tip.0;
+				extra.4.mark_as_ethereum_tx(valid_until);
 
 				Ok((
 					EthereumTransactionMessage {
@@ -2655,7 +2652,7 @@ mod tests {
 			);
 
 			let mut expected_extra = extra.clone();
-			expected_extra.4 .1 = true;
+			expected_extra.4.mark_as_ethereum_tx(30);
 
 			assert_eq!(
 				ConvertEthereumTx::convert((call.clone(), extra.clone())).unwrap(),
@@ -2683,8 +2680,8 @@ mod tests {
 				extra.4.validate(&alice, &call, &info, 0),
 				Ok(sp_runtime::transaction_validity::ValidTransaction {
 					priority: 0,
-					requires: vec![Encode::encode(&(alice.clone(), 2))],
-					provides: vec![Encode::encode(&(alice.clone(), 3))],
+					requires: vec![Encode::encode(&(alice.clone(), 2u32))],
+					provides: vec![Encode::encode(&(alice.clone(), 3u32))],
 					longevity: sp_runtime::transaction_validity::TransactionLongevity::MAX,
 					propagate: true,
 				})
@@ -2695,21 +2692,21 @@ mod tests {
 				Ok(sp_runtime::transaction_validity::ValidTransaction {
 					priority: 0,
 					requires: vec![],
-					provides: vec![Encode::encode(&(alice.clone(), 3, true))],
-					longevity: sp_runtime::transaction_validity::TransactionLongevity::MAX,
+					provides: vec![Encode::encode(&(alice.clone(), 3u32, b"eth_tx"))],
+					longevity: 30,
 					propagate: true,
 				})
 			);
 
 			// valid evm tx in future
-			expected_extra.4 .0 = 4;
+			expected_extra.4.nonce = 4;
 			assert_eq!(
 				expected_extra.4.validate(&alice, &call, &info, 0),
 				Ok(sp_runtime::transaction_validity::ValidTransaction {
 					priority: 0,
-					requires: vec![Encode::encode(&(alice.clone(), 3, true))],
-					provides: vec![Encode::encode(&(alice.clone(), 4, true))],
-					longevity: sp_runtime::transaction_validity::TransactionLongevity::MAX,
+					requires: vec![Encode::encode(&(alice.clone(), 3u32, b"eth_tx"))],
+					provides: vec![Encode::encode(&(alice.clone(), 4u32, b"eth_tx"))],
+					longevity: 30,
 					propagate: true,
 				})
 			);
