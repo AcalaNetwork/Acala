@@ -225,7 +225,7 @@ impl ExtBuilder {
 	}
 
 	pub fn build(self) -> sp_io::TestExternalities {
-		let evm_genesis_accounts = evm_genesis();
+		let evm_genesis_accounts = evm_genesis(vec![]);
 
 		let mut t = frame_system::GenesisConfig::default()
 			.build_storage::<Runtime>()
@@ -292,7 +292,6 @@ impl ExtBuilder {
 
 		module_evm::GenesisConfig::<Runtime> {
 			accounts: evm_genesis_accounts,
-			treasury: Default::default(),
 		}
 		.assimilate_storage(&mut t)
 		.unwrap();
