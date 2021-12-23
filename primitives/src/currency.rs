@@ -22,6 +22,7 @@ use crate::{evm::EvmAddress, *};
 use bstringify::bstringify;
 use codec::{Decode, Encode};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
+pub use nutsfinance_stable_asset::StableAssetPoolId;
 use scale_info::TypeInfo;
 use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
@@ -215,6 +216,7 @@ pub trait TokenInfo {
 }
 
 pub type ForeignAssetId = u16;
+pub type Erc20Id = u32;
 pub type Lease = BlockNumber;
 
 #[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord, TypeInfo)]
@@ -234,7 +236,7 @@ pub enum CurrencyId {
 	Token(TokenSymbol),
 	DexShare(DexShare, DexShare),
 	Erc20(EvmAddress),
-	StableAssetPoolToken(nutsfinance_stable_asset::StableAssetPoolId),
+	StableAssetPoolToken(StableAssetPoolId),
 	LiquidCroadloan(Lease),
 	ForeignAsset(ForeignAssetId),
 }

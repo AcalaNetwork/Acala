@@ -20,12 +20,12 @@
 //!
 //! THIS FILE WAS AUTO-GENERATED USING THE SUBSTRATE BENCHMARK CLI VERSION 4.0.0-dev
 //! DATE: 2021-11-17, STEPS: `50`, REPEAT: 20, LOW RANGE: `[]`, HIGH RANGE: `[]`
-//! EXECUTION: Some(Wasm), WASM-EXECUTION: Compiled, CHAIN: Some("karura-dev"), DB CACHE: 128
+//! EXECUTION: Some(Wasm), WASM-EXECUTION: Compiled, CHAIN: Some("acala-latest"), DB CACHE: 128
 
 // Executed Command:
 // target/release/acala
 // benchmark
-// --chain=karura-dev
+// --chain=acala-latest
 // --steps=50
 // --repeat=20
 // --pallet=module_asset_registry
@@ -34,7 +34,7 @@
 // --wasm-execution=compiled
 // --heap-pages=4096
 // --template=./templates/runtime-weight-template.hbs
-// --output=./runtime/karura/src/weights/
+// --output=./runtime/acala/src/weights/
 
 
 #![cfg_attr(rustfmt, rustfmt_skip)]
@@ -48,12 +48,22 @@ use sp_std::marker::PhantomData;
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> module_asset_registry::WeightInfo for WeightInfo<T> {
 	fn register_foreign_asset() -> Weight {
-		(39_791_000 as Weight)
+		(38_172_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(4 as Weight))
 	}
 	fn update_foreign_asset() -> Weight {
-		(42_780_000 as Weight)
+		(37_797_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(2 as Weight))
+			.saturating_add(T::DbWeight::get().writes(2 as Weight))
+	}
+	fn register_stable_asset() -> Weight {
+		(38_172_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(2 as Weight))
+			.saturating_add(T::DbWeight::get().writes(4 as Weight))
+	}
+	fn update_stable_asset() -> Weight {
+		(37_797_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}

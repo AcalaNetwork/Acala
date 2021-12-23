@@ -96,7 +96,7 @@ fn register_foreign_asset_work() {
 
 		assert_eq!(ForeignAssetLocations::<Runtime>::get(0), Some(location.clone()));
 		assert_eq!(
-			AssetMetadatas::<Runtime>::get(0),
+			AssetMetadatas::<Runtime>::get(AssetIds::ForeignAssetId(0)),
 			Some(AssetMetadata {
 				name: b"Token Name".to_vec(),
 				symbol: b"TN".to_vec(),
@@ -189,6 +189,7 @@ fn update_foreign_asset_work() {
 
 		let location: MultiLocation = v0_location.try_into().unwrap();
 		System::assert_last_event(Event::AssetRegistry(crate::Event::ForeignAssetUpdated {
+			asset_id: 0,
 			asset_address: location.clone(),
 			metadata: AssetMetadata {
 				name: b"New Token Name".to_vec(),
@@ -199,7 +200,7 @@ fn update_foreign_asset_work() {
 		}));
 
 		assert_eq!(
-			AssetMetadatas::<Runtime>::get(0),
+			AssetMetadatas::<Runtime>::get(AssetIds::ForeignAssetId(0)),
 			Some(AssetMetadata {
 				name: b"New Token Name".to_vec(),
 				symbol: b"NTN".to_vec(),
@@ -227,7 +228,7 @@ fn update_foreign_asset_work() {
 			})
 		));
 		assert_eq!(
-			AssetMetadatas::<Runtime>::get(0),
+			AssetMetadatas::<Runtime>::get(AssetIds::ForeignAssetId(0)),
 			Some(AssetMetadata {
 				name: b"New Token Name".to_vec(),
 				symbol: b"NTN".to_vec(),
@@ -262,7 +263,7 @@ fn update_foreign_asset_should_not_work() {
 					minimal_balance: 2,
 				})
 			),
-			Error::<Runtime>::ForeignAssetIdNotExists
+			Error::<Runtime>::AssetIdNotExists
 		);
 
 		assert_ok!(AssetRegistry::register_foreign_asset(
@@ -655,7 +656,7 @@ fn encode_evm_address_works() {
 			// StableAssetPoolToken
 			assert_eq!(
 				EvmErc20InfoMapping::<Runtime>::encode_evm_address(CurrencyId::StableAssetPoolToken(1)),
-				None
+				H160::from_str("0x0000000000000000000300000000000000000001").ok()
 			);
 
 			// LiquidCroadloan
@@ -808,9 +809,9 @@ fn decode_evm_address_works() {
 			// StableAssetPoolToken
 			assert_eq!(
 				EvmErc20InfoMapping::<Runtime>::decode_evm_address(
-					H160::from_str("0x0000000000000000000000030000000000000000").unwrap()
+					EvmErc20InfoMapping::<Runtime>::encode_evm_address(CurrencyId::StableAssetPoolToken(1)).unwrap()
 				),
-				None
+				Some(CurrencyId::StableAssetPoolToken(1))
 			);
 			// LiquidCroadloan
 			assert_eq!(

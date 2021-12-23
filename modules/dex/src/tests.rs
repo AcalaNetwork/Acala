@@ -102,6 +102,33 @@ fn list_provisioning_work() {
 			),
 			Error::<Runtime>::MustBeDisabled
 		);
+
+		assert_noop!(
+			DexModule::list_provisioning(
+				Origin::signed(ListingOrigin::get()),
+				CurrencyId::LiquidCroadloan(0),
+				AUSD,
+				1_000_000_000_000u128,
+				1_000_000_000_000u128,
+				5_000_000_000_000u128,
+				2_000_000_000_000u128,
+				10,
+			),
+			Error::<Runtime>::AssetUnregistered
+		);
+		assert_noop!(
+			DexModule::list_provisioning(
+				Origin::signed(ListingOrigin::get()),
+				AUSD,
+				CurrencyId::LiquidCroadloan(0),
+				1_000_000_000_000u128,
+				1_000_000_000_000u128,
+				5_000_000_000_000u128,
+				2_000_000_000_000u128,
+				10,
+			),
+			Error::<Runtime>::AssetUnregistered
+		);
 	});
 }
 

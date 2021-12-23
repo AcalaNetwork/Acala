@@ -168,6 +168,8 @@ pub mod module {
 		UnqualifiedProvision,
 		/// Trading pair is still provisioning
 		StillProvisioning,
+		/// The Asset unregistered.
+		AssetUnregistered,
 	}
 
 	#[pallet::event]
@@ -509,12 +511,26 @@ pub mod module {
 				Error::<T>::NotAllowedList
 			);
 
+			// TODO: Remove this in another PR
 			if let CurrencyId::Erc20(address) = currency_id_a {
 				T::Erc20InfoMapping::set_erc20_mapping(address)?;
 			}
 			if let CurrencyId::Erc20(address) = currency_id_b {
 				T::Erc20InfoMapping::set_erc20_mapping(address)?;
 			}
+
+			let check_asset_registry = |currency_id: CurrencyId| match currency_id {
+				CurrencyId::Erc20(_)
+				| CurrencyId::StableAssetPoolToken(_)
+				| CurrencyId::LiquidCroadloan(_)
+				| CurrencyId::ForeignAsset(_) => T::Erc20InfoMapping::name(currency_id)
+					.map(|_| ())
+					.ok_or(Error::<T>::AssetUnregistered),
+				CurrencyId::Token(_) | CurrencyId::DexShare(_, _) => Ok(()), /* TradingPair::from_currency_ids
+				                                                              * checked. Shouldn't happen. */
+			};
+			check_asset_registry(currency_id_a)?;
+			check_asset_registry(currency_id_b)?;
 
 			let (min_contribution, target_provision) = if currency_id_a == trading_pair.first() {
 				(
