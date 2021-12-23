@@ -360,9 +360,9 @@ pub mod module {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// The threshold balance that trigger swap from dex was updated. \[Balance\]
+		/// The threshold balance that trigger swap from dex was updated.
 		SwapBalanceThresholdUpdated { new_threshold_value: Balance },
-		/// The charge fee pool is enabled \[CurrencyId, Ratio, Balance, Balance\]
+		/// The charge fee pool is enabled
 		ChargeFeePoolEnabled {
 			currency_id: CurrencyId,
 			rate: Ratio,
@@ -384,14 +384,13 @@ pub mod module {
 	pub type AlternativeFeeSwapPath<T: Config> =
 		StorageMap<_, Twox64Concat, T::AccountId, BoundedVec<CurrencyId, T::TradingPathLimit>, OptionQuery>;
 
-	/// The bootstrap balance transfer from `TreasuryAccount` to sub account of `TreasuryPalletId`.
+	/// The size of fee pool in native token. During bootstrap this amount of native token will be transferred from `TreasuryAccount` to sub account of `PalletId`.
 	#[pallet::storage]
 	#[pallet::getter(fn pool_size)]
 	pub type PoolSize<T: Config> = StorageMap<_, Twox64Concat, CurrencyId, Balance, ValueQuery>;
 
-	/// The ratio of `foreign_asset_per_second` relative to `native_asset_per_second`.
-	/// the reverse ratio means the value of foreign asset to native asset.
-	/// the rate is updated when executing swap from dex.
+	/// The exchange rate between the given currency and native token.
+	/// This value is updated when upon swap from dex.
 	#[pallet::storage]
 	#[pallet::getter(fn token_fixed_rate)]
 	pub type TokenFixedRate<T: Config> = StorageMap<_, Twox64Concat, CurrencyId, Ratio, OptionQuery>;
