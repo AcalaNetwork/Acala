@@ -100,6 +100,7 @@ runtime_benchmarks! {
 mod tests {
 	use super::*;
 
+	use frame_support::pallet_prelude::GenesisBuild;
 	use orml_benchmarking::impl_benchmark_test_suite;
 	use sp_runtime::{FixedPointNumber, FixedU128};
 
@@ -108,16 +109,18 @@ mod tests {
 			.build_storage::<Runtime>()
 			.unwrap();
 
-		module_staking_pool::GenesisConfig {
-			staking_pool_params: module_staking_pool::Params {
-				target_max_free_unbonded_ratio: FixedU128::saturating_from_rational(10, 100),
-				target_min_free_unbonded_ratio: FixedU128::saturating_from_rational(5, 100),
-				target_unbonding_to_free_ratio: FixedU128::saturating_from_rational(2, 100),
-				unbonding_to_free_adjustment: FixedU128::saturating_from_rational(1, 1000),
-				base_fee_rate: FixedU128::saturating_from_rational(2, 100),
+		GenesisBuild::<Runtime>::assimilate_storage(
+			&module_staking_pool::GenesisConfig {
+				staking_pool_params: module_staking_pool::Params {
+					target_max_free_unbonded_ratio: FixedU128::saturating_from_rational(10, 100),
+					target_min_free_unbonded_ratio: FixedU128::saturating_from_rational(5, 100),
+					target_unbonding_to_free_ratio: FixedU128::saturating_from_rational(2, 100),
+					unbonding_to_free_adjustment: FixedU128::saturating_from_rational(1, 1000),
+					base_fee_rate: FixedU128::saturating_from_rational(2, 100),
+				},
 			},
-		}
-		.assimilate_storage::<Runtime>(&mut t)
+			&mut t,
+		)
 		.unwrap();
 		t.into()
 	}
