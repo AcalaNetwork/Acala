@@ -56,7 +56,7 @@ use module_evm::{CallInfo, CreateInfo, EvmTask, Runner};
 use module_evm_accounts::EvmAddressMapping;
 use module_relaychain::RelayChainCallBuilder;
 use module_support::{DispatchableTask, ForeignAssetIdMapping};
-use module_transaction_payment::{Multiplier, PeriodUpdatedRateOfFungible, TargetedFeeAdjustment};
+use module_transaction_payment::{Multiplier, TargetedFeeAdjustment, TransactionFeePoolTrader};
 
 use orml_traits::{
 	create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended, MultiCurrency,
@@ -167,7 +167,7 @@ parameter_types! {
 	pub UnreleasedNativeVaultAccountId: AccountId = PalletId(*b"aca/urls").into_account();
 	// This Pallet is only used to payment fee pool, it's not added to whitelist by design.
 	// because transaction payment pallet will ensure the accounts always have enough ED.
-	pub const TreasuryFeePoolPalletId: PalletId = PalletId(*b"aca/fees");
+	pub const TransactionPaymentPalletId: PalletId = PalletId(*b"aca/fees");
 }
 
 pub fn get_all_module_accounts() -> Vec<AccountId> {
@@ -1110,11 +1110,13 @@ parameter_types! {
 		vec![LKSM, KSM, KAR],
 		vec![BNC, KUSD, KSM, KAR],
 	];
-	// Initial fee pool size. one extrinsic=0.0025 KAR, one block=100 extrinsics
+	// Initial fee pool size. one extrinsic=0.0025 KAR, one block=100 extrinsics.
 	// 20 blocks trigger an swap, so total balance=0.0025*100*20=5 KAR
-	pub FeePoolBootBalance: Balance = 5 * dollar(KAR);
+	pub FeePoolSize: Balance = 5 * dollar(KAR);
 	// one extrinsic fee=0.0025KAR, one block=100 extrinsics, threshold=0.25+0.1=0.35KAR
-	pub SwapThresholdBalance: Balance = Ratio::saturating_from_rational(35, 100).saturating_mul_int(dollar(KAR));
+	pub SwapBalanceThreshold: Balance = Ratio::saturating_from_rational(35, 100).saturating_mul_int(dollar(KAR));
+	// tokens used as fee charge. the token should have corresponding dex swap pool enabled.
+	pub FeePoolExchangeTokens: Vec<CurrencyId> = vec![KUSD, KSM, LKSM, BNC];
 }
 
 type NegativeImbalance = <Balances as PalletCurrency<AccountId>>::NegativeImbalance;
@@ -1149,7 +1151,7 @@ impl module_transaction_payment::Config for Runtime {
 	type TradingPathLimit = TradingPathLimit;
 	type PriceSource = module_prices::RealTimePriceProvider<Runtime>;
 	type WeightInfo = weights::module_transaction_payment::WeightInfo<Runtime>;
-	type TreasuryPalletId = TreasuryFeePoolPalletId;
+	type PalletId = TransactionPaymentPalletId;
 	type TreasuryAccount = KaruraTreasuryAccount;
 	type UpdateOrigin = EnsureKaruraFoundation;
 }
@@ -1524,7 +1526,7 @@ parameter_types! {
 }
 
 pub type Trader = (
-	PeriodUpdatedRateOfFungible<Runtime, CurrencyIdConvert, KarPerSecondAsBased, ToTreasury>,
+	TransactionFeePoolTrader<Runtime, CurrencyIdConvert, KarPerSecondAsBased, ToTreasury>,
 	FixedRateOfFungible<KsmPerSecond, ToTreasury>,
 	FixedRateOfFungible<KusdPerSecond, ToTreasury>,
 	FixedRateOfFungible<KarPerSecond, ToTreasury>,
@@ -1995,30 +1997,18 @@ pub type Executive = frame_executive::Executive<
 	TransactionPaymentUpgrade,
 >;
 
-parameter_types! {
-	pub TokenFixedRates: Vec<(CurrencyId, Ratio)> = vec![
-		(KSM, calculate_asset_ratio(KsmPerSecond::get(), KarPerSecond::get())),
-		(KUSD, calculate_asset_ratio(KusdPerSecond::get(), KarPerSecond::get())),
-		(LKSM, calculate_asset_ratio(LksmPerSecond::get(), KarPerSecond::get())),
-		(BNC, calculate_asset_ratio(BncPerSecond::get(), KarPerSecond::get())),
-		(VSKSM, calculate_asset_ratio(VsksmPerSecond::get(), KarPerSecond::get())),
-		(PHA, calculate_asset_ratio(PHAPerSecond::get(), KarPerSecond::get())),
-	];
-}
-
 pub struct TransactionPaymentUpgrade;
 impl frame_support::traits::OnRuntimeUpgrade for TransactionPaymentUpgrade {
 	fn on_runtime_upgrade() -> Weight {
-		let initial_rates = TokenFixedRates::get();
+		let initial_rates = FeePoolExchangeTokens::get();
 		if initial_rates.is_empty() {
 			0
 		} else {
 			for asset in initial_rates {
 				let _ = <module_transaction_payment::Pallet<Runtime>>::initialize_pool(
-					asset.0,
-					asset.1,
-					FeePoolBootBalance::get(),
-					SwapThresholdBalance::get(),
+					asset,
+					FeePoolSize::get(),
+					SwapBalanceThreshold::get(),
 				);
 			}
 			<Runtime as frame_system::Config>::BlockWeights::get().max_block

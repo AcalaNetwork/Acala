@@ -20,10 +20,10 @@ use crate::setup::*;
 use frame_support::traits::OnRuntimeUpgrade;
 use frame_support::weights::{DispatchClass, DispatchInfo, Pays, Weight};
 use karura_runtime::{
-	FeePoolBootBalance, KarPerSecondAsBased, KaruraTreasuryAccount, KsmPerSecond, NativeTokenExistentialDeposit,
-	TreasuryFeePoolPalletId,
+	FeePoolSize, KarPerSecondAsBased, KaruraTreasuryAccount, KsmPerSecond, NativeTokenExistentialDeposit,
+	TransactionPaymentPalletId,
 };
-use module_transaction_payment::PeriodUpdatedRateOfFungible;
+use module_transaction_payment::TransactionFeePoolTrader;
 use sp_runtime::traits::SignedExtension;
 use sp_runtime::{
 	traits::{AccountIdConversion, UniqueSaturatedInto},
@@ -44,10 +44,10 @@ fn runtime_upgrade_initial_pool_works() {
 		.build()
 		.execute_with(|| {
 			let treasury_account = KaruraTreasuryAccount::get();
-			let fee_account1: AccountId = TreasuryFeePoolPalletId::get().into_sub_account(KSM);
-			// FeePoolBootBalance set to 5 KAR = 50*ED, the treasury already got ED balance when startup.
+			let fee_account1: AccountId = TransactionPaymentPalletId::get().into_sub_account(KSM);
+			// FeePoolSize set to 5 KAR = 50*ED, the treasury already got ED balance when startup.
 			let ed = NativeTokenExistentialDeposit::get();
-			let fee_balance = FeePoolBootBalance::get();
+			let pool_size = FeePoolSize::get();
 
 			// upgrade takes no effect
 			MockRuntimeUpgrade::on_runtime_upgrade();
@@ -59,9 +59,9 @@ fn runtime_upgrade_initial_pool_works() {
 				Origin::root(),
 				MultiAddress::Id(treasury_account.clone()),
 				KAR,
-				fee_balance.saturating_mul(3).unique_saturated_into(),
+				pool_size.saturating_mul(3).unique_saturated_into(),
 			));
-			assert_eq!(Currencies::free_balance(KAR, &treasury_account), ed + fee_balance * 3);
+			assert_eq!(Currencies::free_balance(KAR, &treasury_account), ed + pool_size * 3);
 			vec![KSM, KUSD, LKSM].iter().for_each(|token| {
 				let ed =
 					(<Currencies as MultiCurrency<AccountId>>::minimum_balance(token.clone())).unique_saturated_into();
@@ -93,28 +93,28 @@ fn runtime_upgrade_initial_pool_works() {
 				false
 			));
 			MockRuntimeUpgrade::on_runtime_upgrade();
-			assert_eq!(Currencies::free_balance(KAR, &treasury_account), ed + fee_balance);
+			assert_eq!(Currencies::free_balance(KAR, &treasury_account), ed + pool_size);
 			vec![KSM, KUSD].iter().for_each(|token| {
 				let ed =
 					(<Currencies as MultiCurrency<AccountId>>::minimum_balance(token.clone())).unique_saturated_into();
 				assert_eq!(
-					Currencies::free_balance(KAR, &TreasuryFeePoolPalletId::get().into_sub_account(token.clone())),
-					fee_balance
+					Currencies::free_balance(KAR, &TransactionPaymentPalletId::get().into_sub_account(token.clone())),
+					pool_size
 				);
 				assert_eq!(
 					Currencies::free_balance(
 						token.clone(),
-						&TreasuryFeePoolPalletId::get().into_sub_account(token.clone())
+						&TransactionPaymentPalletId::get().into_sub_account(token.clone())
 					),
 					ed
 				);
 			});
 			assert_eq!(
-				Currencies::free_balance(KAR, &TreasuryFeePoolPalletId::get().into_sub_account(LKSM)),
+				Currencies::free_balance(KAR, &TransactionPaymentPalletId::get().into_sub_account(LKSM)),
 				0
 			);
 			assert_eq!(
-				Currencies::free_balance(LKSM, &TreasuryFeePoolPalletId::get().into_sub_account(LKSM)),
+				Currencies::free_balance(LKSM, &TransactionPaymentPalletId::get().into_sub_account(LKSM)),
 				0
 			);
 
@@ -150,20 +150,21 @@ fn trader_works() {
 	let xcm_weight: Weight = <XcmConfig as Config>::Weigher::weight(&mut message).unwrap();
 	assert_eq!(xcm_weight, expect_weight);
 
-	// 0.16 * 800_000_000 = 128_000_000
-	let asset: MultiAsset = (Parent, 130_000_000).into();
-	let expect_result: MultiAsset = (Parent, 2_000_000).into();
+	// fixed rate, ksm_per_second/kar_per_second=1/50, kar_per_second = 8*dollar(KAR),
+	// ksm_per_second = 0.16 * dollar(KAR), fee = 0.16 * weight = 0.16 * 800_000_000 = 128_000_000
+	let total_balance: Balance = 130_000_000;
+	let asset: MultiAsset = (Parent, total_balance).into();
+	let expect_unspent: MultiAsset = (Parent, 2_000_000).into();
 	let assets: Assets = asset.into();
 
-	// when no runtime upgrade, the newly PeriodUpdatedRateOfFungible will failed.
+	// when no runtime upgrade, the newly `TransactionFeePoolTrader` will failed.
 	ExtBuilder::default().build().execute_with(|| {
 		let mut trader = FixedRateOfFungible::<KsmPerSecond, ()>::new();
 		let result_assets = trader.buy_weight(xcm_weight, assets.clone()).unwrap();
-		let result_asset: Vec<MultiAsset> = result_assets.into();
-		assert_eq!(vec![expect_result.clone()], result_asset);
+		let unspent: Vec<MultiAsset> = result_assets.into();
+		assert_eq!(vec![expect_unspent.clone()], unspent);
 
-		let mut period_trader =
-			PeriodUpdatedRateOfFungible::<Runtime, CurrencyIdConvert, KarPerSecondAsBased, ()>::new();
+		let mut period_trader = TransactionFeePoolTrader::<Runtime, CurrencyIdConvert, KarPerSecondAsBased, ()>::new();
 		let result_assets = period_trader.buy_weight(xcm_weight, assets.clone());
 		assert!(result_assets.is_err());
 	});
@@ -177,20 +178,20 @@ fn trader_works() {
 		.build()
 		.execute_with(|| {
 			let treasury_account = KaruraTreasuryAccount::get();
-			let fee_account1: AccountId = TreasuryFeePoolPalletId::get().into_sub_account(KSM);
-			// FeePoolBootBalance set to 5 KAR = 50*ED, the treasury already got ED balance when startup.
+			let fee_account1: AccountId = TransactionPaymentPalletId::get().into_sub_account(KSM);
+			// FeePoolSize set to 5 KAR = 50*ED, the treasury already got ED balance when startup.
 			let ed = NativeTokenExistentialDeposit::get();
 			let ksm_ed = <Currencies as MultiCurrency<AccountId>>::minimum_balance(KSM);
-			let fee_balance = FeePoolBootBalance::get();
+			let pool_size = FeePoolSize::get();
 
 			// treasury account: KAR=50*KAR_ED, KSM=KSM_ED, KUSD=KUSD_ED
 			assert_ok!(Currencies::update_balance(
 				Origin::root(),
 				MultiAddress::Id(treasury_account.clone()),
 				KAR,
-				fee_balance.unique_saturated_into(),
+				pool_size.unique_saturated_into(),
 			));
-			assert_eq!(Currencies::free_balance(KAR, &treasury_account), ed + fee_balance);
+			assert_eq!(Currencies::free_balance(KAR, &treasury_account), ed + pool_size);
 			assert_ok!(Currencies::update_balance(
 				Origin::root(),
 				MultiAddress::Id(treasury_account.clone()),
@@ -210,15 +211,20 @@ fn trader_works() {
 			));
 			MockRuntimeUpgrade::on_runtime_upgrade();
 			assert_eq!(Currencies::free_balance(KAR, &treasury_account), ed);
-			assert_eq!(Currencies::free_balance(KAR, &fee_account1), fee_balance);
+			assert_eq!(Currencies::free_balance(KAR, &fee_account1), pool_size);
 			assert_eq!(Currencies::free_balance(KSM, &fee_account1), ksm_ed);
 
-			// the newly PeriodUpdatedRateOfFungible works fine as first priority
+			let ksm_exchange_rate: Ratio =
+				module_transaction_payment::Pallet::<Runtime>::token_exchange_rate(KSM).unwrap();
+			let spent = ksm_exchange_rate.saturating_mul_int(8 * expect_weight);
+			let expect_unspent: MultiAsset = (Parent, total_balance - spent as u128).into();
+
+			// the newly `TransactionFeePoolTrader` works fine as first priority
 			let mut period_trader =
-				PeriodUpdatedRateOfFungible::<Runtime, CurrencyIdConvert, KarPerSecondAsBased, ()>::new();
+				TransactionFeePoolTrader::<Runtime, CurrencyIdConvert, KarPerSecondAsBased, ()>::new();
 			let result_assets = period_trader.buy_weight(xcm_weight, assets);
-			let result_asset: Vec<MultiAsset> = result_assets.unwrap().into();
-			assert_eq!(vec![expect_result.clone()], result_asset);
+			let unspent: Vec<MultiAsset> = result_assets.unwrap().into();
+			assert_eq!(vec![expect_unspent.clone()], unspent);
 		});
 }
 
@@ -226,11 +232,11 @@ fn trader_works() {
 #[test]
 fn charge_transaction_payment_and_threshold_works() {
 	let native_ed = NativeTokenExistentialDeposit::get();
-	let pool_size = FeePoolBootBalance::get();
+	let pool_size = FeePoolSize::get();
 	let ksm_ed = <Currencies as MultiCurrency<AccountId>>::minimum_balance(KSM);
 
 	let treasury_account = KaruraTreasuryAccount::get();
-	let sub_account1: AccountId = TreasuryFeePoolPalletId::get().into_sub_account(KSM);
+	let sub_account1: AccountId = TransactionPaymentPalletId::get().into_sub_account(KSM);
 	let bob_ksm_balance = 100 * dollar(KSM);
 
 	ExtBuilder::default()
@@ -271,12 +277,12 @@ fn charge_transaction_payment_and_threshold_works() {
 			assert_eq!(Currencies::free_balance(KAR, &sub_account1), pool_size);
 			assert_eq!(Currencies::free_balance(KSM, &sub_account1), ksm_ed);
 
+			let ksm_exchange_rate: Ratio =
+				module_transaction_payment::Pallet::<Runtime>::token_exchange_rate(KSM).unwrap();
+
 			let threshold: Balance = module_transaction_payment::Pallet::<Runtime>::swap_balance_threshold(KSM);
 			let expect_threshold = Ratio::saturating_from_rational(350, 100).saturating_mul_int(native_ed);
 			assert_eq!(threshold, expect_threshold); // 350 000 000 000
-
-			let rate = calculate_asset_ratio(KsmPerSecond::get(), KarPerSecond::get());
-			assert_eq!(Ratio::saturating_from_rational(1, 50), rate);
 
 			assert_ok!(Dex::add_liquidity(
 				Origin::signed(AccountId::from(ALICE)),
@@ -319,7 +325,7 @@ fn charge_transaction_payment_and_threshold_works() {
 			let kar2 = Currencies::free_balance(KAR, &sub_account1);
 			let ksm2 = Currencies::free_balance(KSM, &sub_account1);
 			assert_eq!(fee, kar1 - kar2);
-			assert_eq!(2 * fee / 100, ksm2 - ksm1);
+			assert_eq!(ksm_exchange_rate.saturating_mul_int(fee), ksm2 - ksm1);
 
 			for _ in 0..38 {
 				let _ = <module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0).validate(
@@ -350,7 +356,7 @@ fn charge_transaction_payment_and_threshold_works() {
 			let kar2 = Currencies::free_balance(KAR, &sub_account1);
 			let ksm2 = Currencies::free_balance(KSM, &sub_account1);
 			assert_eq!(fee, kar1 - kar2);
-			assert_eq!(2 * fee / 100, ksm2 - ksm1);
+			assert_eq!(ksm_exchange_rate.saturating_mul_int(fee), ksm2 - ksm1);
 
 			// this tx cause swap from dex, but the fee calculation still use the old rate.
 			let _ = <module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0).validate(
@@ -361,12 +367,12 @@ fn charge_transaction_payment_and_threshold_works() {
 			);
 			let kar1 = Currencies::free_balance(KAR, &sub_account1);
 			let ksm1 = Currencies::free_balance(KSM, &sub_account1);
-			assert_eq!(ksm_ed + 2 * fee / 100, ksm1);
+			assert_eq!(ksm_ed + ksm_exchange_rate.saturating_mul_int(fee), ksm1);
 			assert_eq!(kar1 > kar2, true);
 			assert_eq!(ksm2 > ksm1, true);
 
 			// next tx use the new rate to calculate the fee to be transfer.
-			let new_rate: Ratio = module_transaction_payment::Pallet::<Runtime>::token_fixed_rate(KSM).unwrap();
+			let new_rate: Ratio = module_transaction_payment::Pallet::<Runtime>::token_exchange_rate(KSM).unwrap();
 
 			let _ = <module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0).validate(
 				&AccountId::from(BOB),
@@ -385,24 +391,24 @@ fn charge_transaction_payment_and_threshold_works() {
 #[test]
 fn acala_dex_disable_works() {
 	use acala_runtime::{
-		AcalaTreasuryAccount, FeePoolBootBalance, NativeTokenExistentialDeposit, TransactionPaymentUpgrade,
-		TreasuryFeePoolPalletId,
+		AcalaTreasuryAccount, FeePoolSize, NativeTokenExistentialDeposit, TransactionPaymentPalletId,
+		TransactionPaymentUpgrade,
 	};
 
 	ExtBuilder::default().build().execute_with(|| {
 		let treasury_account = AcalaTreasuryAccount::get();
-		let fee_account1: AccountId = TreasuryFeePoolPalletId::get().into_sub_account(DOT);
-		let fee_account2: AccountId = TreasuryFeePoolPalletId::get().into_sub_account(AUSD);
+		let fee_account1: AccountId = TransactionPaymentPalletId::get().into_sub_account(DOT);
+		let fee_account2: AccountId = TransactionPaymentPalletId::get().into_sub_account(AUSD);
 		let ed = NativeTokenExistentialDeposit::get();
-		let fee_balance = FeePoolBootBalance::get();
+		let pool_size = FeePoolSize::get();
 
 		assert_ok!(Currencies::update_balance(
 			Origin::root(),
 			MultiAddress::Id(treasury_account.clone()),
 			ACA,
-			fee_balance.saturating_mul(3).unique_saturated_into(),
+			pool_size.saturating_mul(3).unique_saturated_into(),
 		));
-		assert_eq!(Currencies::free_balance(ACA, &treasury_account), ed + fee_balance * 3);
+		assert_eq!(Currencies::free_balance(ACA, &treasury_account), ed + pool_size * 3);
 		vec![DOT, AUSD].iter().for_each(|token| {
 			let ed = (<Currencies as MultiCurrency<AccountId>>::minimum_balance(token.clone())).unique_saturated_into();
 			assert_ok!(Currencies::update_balance(

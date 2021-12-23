@@ -78,13 +78,13 @@ mod karura_imports {
 		constants::parachains, create_x2_parachain_multilocation, get_all_module_accounts, AcalaOracle, AccountId,
 		AuctionManager, Authority, AuthoritysOriginId, Balance, Balances, BlockNumber, Call, CdpEngine, CdpTreasury,
 		CreateClassDeposit, CreateTokenDeposit, Currencies, CurrencyId, CurrencyIdConvert, DataDepositPerByte,
-		DefaultExchangeRate, Dex, EmergencyShutdown, Event, EvmAccounts, ExistentialDeposits, FeePoolBootBalance,
+		DefaultExchangeRate, Dex, EmergencyShutdown, Event, EvmAccounts, ExistentialDeposits, FeePoolSize,
 		FinancialCouncil, Get, GetNativeCurrencyId, HomaLite, Honzon, IdleScheduler, KarPerSecond,
 		KaruraFoundationAccounts, KsmPerSecond, KusdPerSecond, Loans, MaxTipsOfPriority, MinimumDebitValue,
 		MultiLocation, NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, Origin, OriginCaller,
 		ParachainAccount, ParachainInfo, ParachainSystem, PolkadotXcm, Proxy, ProxyType, Ratio,
 		RelayChainBlockNumberProvider, RelayChainSovereignSubAccount, Runtime, Scheduler, Session, SessionManager,
-		SevenDays, SwapThresholdBalance, System, Timestamp, TipPerWeightStep, TokenSymbol, Tokens, TreasuryPalletId,
+		SevenDays, SwapBalanceThreshold, System, Timestamp, TipPerWeightStep, TokenSymbol, Tokens, TreasuryPalletId,
 		Utility, Vesting, XTokens, XcmConfig, XcmExecutor, XcmUnbondFee, EVM, NFT,
 	};
 	pub use primitives::TradingPair;
@@ -111,22 +111,21 @@ mod karura_imports {
 	);
 
 	parameter_types! {
-		pub TokenFixedRates: Vec<(CurrencyId, Ratio, Balance)> = vec![
-			(KSM, calculate_asset_ratio(KsmPerSecond::get(), KarPerSecond::get()), FeePoolBootBalance::get()),
-			(KUSD, calculate_asset_ratio(KusdPerSecond::get(), KarPerSecond::get()), FeePoolBootBalance::get()),
-			(LKSM, calculate_asset_ratio(KusdPerSecond::get(), KarPerSecond::get()), NativeTokenExistentialDeposit::get() - 1),
+		pub TokenExchangeRates: Vec<(CurrencyId, Balance)> = vec![
+			(KSM, FeePoolSize::get()),
+			(KUSD, FeePoolSize::get()),
+			(LKSM, NativeTokenExistentialDeposit::get() - 1),
 		];
 	}
 
 	pub struct MockRuntimeUpgrade;
 	impl frame_support::traits::OnRuntimeUpgrade for MockRuntimeUpgrade {
 		fn on_runtime_upgrade() -> Weight {
-			for asset in TokenFixedRates::get() {
+			for asset in TokenExchangeRates::get() {
 				let _ = <module_transaction_payment::Pallet<Runtime>>::initialize_pool(
 					asset.0,
 					asset.1,
-					asset.2,
-					SwapThresholdBalance::get(),
+					SwapBalanceThreshold::get(),
 				);
 			}
 			0

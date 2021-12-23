@@ -18,16 +18,16 @@
 
 use super::utils::set_balance;
 use crate::{
-	dollar, AccountId, Balance, Currencies, CurrencyId, Dex, Event, FeePoolBootBalance, GetNativeCurrencyId,
+	dollar, AccountId, Balance, Currencies, CurrencyId, Dex, Event, FeePoolSize, GetNativeCurrencyId,
 	GetStableCurrencyId, Origin, Runtime, System, TransactionPayment, TreasuryPalletId,
 };
 use frame_benchmarking::{account, whitelisted_caller};
 use frame_support::traits::OnFinalize;
 use frame_system::RawOrigin;
-use module_support::{DEXManager, Ratio, SwapLimit};
+use module_support::{DEXManager, SwapLimit};
 use orml_benchmarking::runtime_benchmarks;
 use orml_traits::MultiCurrency;
-use sp_runtime::traits::{AccountIdConversion, One, UniqueSaturatedInto};
+use sp_runtime::traits::{AccountIdConversion, UniqueSaturatedInto};
 
 use sp_std::prelude::*;
 
@@ -77,7 +77,6 @@ runtime_benchmarks! {
 	}
 
 	set_swap_balance_threshold {
-		let caller: AccountId = whitelisted_caller();
 		let treasury: AccountId = TreasuryPalletId::get().into_account();
 		module_transaction_payment::PoolSize::<Runtime>::insert(STABLECOIN, 10_000_000_000);
 	}: _(RawOrigin::Signed(treasury.clone()), STABLECOIN, 1_000_000_000)
@@ -85,16 +84,14 @@ runtime_benchmarks! {
 		assert_eq!(TransactionPayment::swap_balance_threshold(STABLECOIN), 1_000_000_000);
 	}
 
-	enable_initial_pool {
-		let caller: AccountId = whitelisted_caller();
+	enable_charge_fee_pool {
 		let funder: AccountId = account("funder", 0, SEED);
-
-		let treasury_account = <Runtime as module_transaction_payment::Config>::TreasuryAccount::get();
-		let sub_account: AccountId = <Runtime as module_transaction_payment::Config>::TreasuryPalletId::get().into_sub_account(STABLECOIN);
+		let treasury: AccountId = TreasuryPalletId::get().into_account();
+		let sub_account: AccountId = <Runtime as module_transaction_payment::Config>::PalletId::get().into_sub_account(STABLECOIN);
 		let native_ed: Balance = <Currencies as MultiCurrency<AccountId>>::minimum_balance(NATIVECOIN);
 		let stable_ed: Balance = <Currencies as MultiCurrency<AccountId>>::minimum_balance(STABLECOIN);
-		let pool_size: Balance = FeePoolBootBalance::get();
-		let threshold: Balance = native_ed * 2;
+		let pool_size: Balance = FeePoolSize::get();
+		let swap_threshold: Balance = native_ed * 2;
 
 		let path = vec![STABLECOIN, NATIVECOIN];
 		let _ = TransactionPayment::set_alternative_fee_swap_path(Origin::signed(sub_account.clone()), Some(path.clone()));
@@ -105,17 +102,19 @@ runtime_benchmarks! {
 
 		set_balance(NATIVECOIN, &treasury_account, pool_size * 10);
 		set_balance(STABLECOIN, &treasury_account, stable_ed * 10);
-	}: _(RawOrigin::Signed(treasury_account.clone()), STABLECOIN, pool_size, 1000, 1000, threshold)
+	}: _(RawOrigin::Signed(treasury_account.clone()), STABLECOIN, pool_size, swap_threshold)
 	verify {
+		let exchange_rate = TransactionPayment::token_exchange_rate(STABLECOIN).unwrap();
 		assert_eq!(TransactionPayment::pool_size(STABLECOIN), pool_size);
-		assert!(TransactionPayment::token_fixed_rate(STABLECOIN).is_some());
+		assert!(TransactionPayment::token_exchange_rate(STABLECOIN).is_some());
 		assert_eq!(<Currencies as MultiCurrency<AccountId>>::free_balance(STABLECOIN, &sub_account), stable_ed);
 		assert_eq!(<Currencies as MultiCurrency<AccountId>>::free_balance(NATIVECOIN, &sub_account), pool_size);
 		assert_last_event(module_transaction_payment::Event::ChargeFeePoolEnabled {
+			sub_account,
 			currency_id: STABLECOIN,
-			rate: Ratio::one(),
-			balance: pool_size,
-			threshold
+			exchange_rate,
+			pool_size,
+			swap_threshold
 		}.into());
 	}
 
