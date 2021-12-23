@@ -1909,10 +1909,10 @@ impl orml_tokens::ConvertBalance<Balance, Balance> for ConvertBalanceHomaLite {
 pub struct IsLiquidToken;
 impl Contains<CurrencyId> for IsLiquidToken {
 	fn contains(currency_id: &CurrencyId) -> bool {
-		match currency_id {
-			CurrencyId::Token(TokenSymbol::LDOT) | CurrencyId::Token(TokenSymbol::LKSM) => true,
-			_ => false,
-		}
+		matches!(
+			currency_id,
+			CurrencyId::Token(TokenSymbol::LDOT) | CurrencyId::Token(TokenSymbol::LKSM)
+		)
 	}
 }
 
