@@ -1659,7 +1659,7 @@ impl TakeRevenue for ToTreasury {
 		} = revenue
 		{
 			if let Some(currency_id) = CurrencyIdConvert::convert(location) {
-				// ensure KaruraTreasuryAccount have ed for all of the cross-chain asset.
+				// ensure TreasuryAccount have ed for all of the cross-chain asset.
 				// Ignore the result.
 				let _ = Currencies::deposit(currency_id, &TreasuryAccount::get(), amount);
 			}

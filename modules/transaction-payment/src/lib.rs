@@ -895,8 +895,7 @@ where
 		if let AssetId::Concrete(ref multi_location) = asset_id.clone() {
 			if let Some(token_id) = C::convert(multi_location.clone()) {
 				if let Some(rate) = TokenExchangeRate::<T>::get(token_id) {
-					// rate=asset_per_second/kar_per_second. so asset_per_second=rate*kar_per_second.
-					// calculate the amount of foreign asset.
+					// calculate the amount of fungible asset.
 					let weight_ratio = Ratio::saturating_from_rational(weight as u128, WEIGHT_PER_SECOND as u128);
 					let asset_per_second = rate.saturating_mul_int(K::get());
 					let amount = weight_ratio.saturating_mul_int(asset_per_second);
@@ -936,6 +935,19 @@ where
 	}
 }
 
+impl<T, C, K: Get<u128>, R: TakeRevenue> Drop for TransactionFeePoolTrader<T, C, K, R> {
+	fn drop(&mut self) {
+		if self.amount > 0 && self.asset_location.is_some() {
+			R::take_revenue(
+				(
+					self.asset_location.as_ref().expect("checked is non-empty; qed").clone(),
+					self.amount,
+				)
+					.into(),
+			);
+		}
+	}
+}
 impl<T> Convert<Weight, PalletBalanceOf<T>> for Pallet<T>
 where
 	T: Config,
