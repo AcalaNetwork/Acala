@@ -341,6 +341,15 @@ pub mod module {
 	#[pallet::getter(fn extrinsic_origin)]
 	pub type ExtrinsicOrigin<T: Config> = StorageValue<_, T::AccountId, OptionQuery>;
 
+	/// Skip EVM nonce incremental because it is incremented by CheckNonce.
+	/// This is set true on `pre_dispatch` only for ethereum transactions and gets killed on
+	/// `post_dispatch`.
+	///
+	/// SkipNonceIncremental: bool
+	#[pallet::storage]
+	#[pallet::getter(fn skip_nonce_incremental)]
+	pub type SkipNonceIncremental<T: Config> = StorageValue<_, bool, ValueQuery>;
+
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
 		pub accounts: BTreeMap<EvmAddress, GenesisAccount<BalanceOf<T>, T::Index>>,

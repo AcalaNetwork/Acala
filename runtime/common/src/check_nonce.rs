@@ -21,11 +21,11 @@ use frame_support::weights::DispatchInfo;
 use module_support::AddressMapping;
 use scale_info::TypeInfo;
 use sp_runtime::{
-	traits::{DispatchInfoOf, Dispatchable, One, SignedExtension, Zero},
+	traits::{DispatchInfoOf, Dispatchable, One, PostDispatchInfoOf, SignedExtension, Zero},
 	transaction_validity::{
 		InvalidTransaction, TransactionLongevity, TransactionValidity, TransactionValidityError, ValidTransaction,
 	},
-	SaturatedConversion,
+	DispatchResult, SaturatedConversion,
 };
 use sp_std::vec;
 
@@ -87,7 +87,7 @@ where
 	type AccountId = T::AccountId;
 	type Call = T::Call;
 	type AdditionalSigned = ();
-	type Pre = ();
+	type Pre = bool;
 	const IDENTIFIER: &'static str = "CheckNonce";
 
 	fn additional_signed(&self) -> sp_std::result::Result<(), TransactionValidityError> {
@@ -100,23 +100,25 @@ where
 		_call: &Self::Call,
 		_info: &DispatchInfoOf<Self::Call>,
 		_len: usize,
-	) -> Result<(), TransactionValidityError> {
+	) -> Result<Self::Pre, TransactionValidityError> {
 		let mut account = frame_system::Account::<T>::get(who);
 		if self.is_eth_tx {
 			// should check evm nonce
 			let address = <T as module_evm::Config>::AddressMapping::get_evm_address(who)
 				.unwrap_or_else(|| <T as module_evm::Config>::AddressMapping::get_default_evm_address(who));
-			let evm_nonce = module_evm::Accounts::<T>::get(&address)
-				.map(|x| x.nonce)
-				.unwrap_or_default();
-			if self.nonce != evm_nonce {
-				return Err(if self.nonce < evm_nonce {
+			let mut account_info = module_evm::Accounts::<T>::get(&address)
+				.unwrap_or_else(|| module_evm::AccountInfo::<T::Index>::new(Zero::zero(), None));
+			if self.nonce != account_info.nonce {
+				return Err(if self.nonce < account_info.nonce {
 					InvalidTransaction::Stale
 				} else {
 					InvalidTransaction::Future
 				}
 				.into());
 			}
+			module_evm::SkipNonceIncremental::<T>::put(true);
+			account_info.nonce += T::Index::one();
+			module_evm::Accounts::<T>::insert(&address, account_info);
 		} else if self.nonce != account.nonce {
 			return Err(if self.nonce < account.nonce {
 				InvalidTransaction::Stale
@@ -127,6 +129,20 @@ where
 		}
 		account.nonce += T::Index::one();
 		frame_system::Account::<T>::insert(who, account);
+		Ok(self.is_eth_tx)
+	}
+
+	fn post_dispatch(
+		pre: Self::Pre,
+		_info: &DispatchInfoOf<Self::Call>,
+		_post_info: &PostDispatchInfoOf<Self::Call>,
+		_len: usize,
+		_result: &DispatchResult,
+	) -> Result<(), TransactionValidityError> {
+		if pre {
+			// ethereum tx
+			module_evm::SkipNonceIncremental::<T>::kill();
+		}
 		Ok(())
 	}
 
@@ -193,7 +209,7 @@ where
 mod tests {
 	use super::*;
 	use crate::mock::{new_test_ext, AccountId32, Call, TestRuntime};
-	use frame_support::{assert_noop, assert_ok};
+	use frame_support::{assert_noop, assert_ok, weights::PostDispatchInfo};
 
 	/// A simple call, which one doesn't matter.
 	pub const CALL: &<TestRuntime as frame_system::Config>::Call =
@@ -299,12 +315,30 @@ mod tests {
 					propagate: true,
 				})
 			);
-			assert_ok!(CheckNonce::<TestRuntime> {
-				nonce: 1u32,
-				is_eth_tx: true,
-				eth_tx_valid_until: 10
-			}
-			.pre_dispatch(&alice, CALL, &info, 0));
+			assert_eq!(
+				CheckNonce::<TestRuntime> {
+					nonce: 1u32,
+					is_eth_tx: true,
+					eth_tx_valid_until: 10
+				}
+				.pre_dispatch(&alice, CALL, &info, 0),
+				Ok(true)
+			);
+
+			// pre_dispatch set SkipNonceIncremental to true
+			assert_eq!(module_evm::SkipNonceIncremental::<TestRuntime>::get(), true);
+
+			let post_info = PostDispatchInfo::default();
+			assert_ok!(CheckNonce::<TestRuntime>::post_dispatch(
+				true,
+				&info,
+				&post_info,
+				0,
+				&Ok(())
+			));
+
+			// post_dispatch kills SkipNonceIncremental
+			assert_eq!(module_evm::SkipNonceIncremental::<TestRuntime>::exists(), false);
 
 			assert_eq!(
 				CheckNonce::<TestRuntime> {

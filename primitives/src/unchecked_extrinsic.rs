@@ -176,7 +176,7 @@ where
 			}
 			Some((addr, AcalaMultiSignature::Eip1559(sig), extra)) => {
 				let function = self.0.function;
-				let (eth_msg, extra) = ConvertTx::convert((function.clone(), extra.clone()))?;
+				let (eth_msg, extra) = ConvertTx::convert((function.clone(), extra))?;
 
 				// tx_gas_price = tx_fee_per_gas + block_period << 16 + storage_entry_limit
 				// tx_gas_limit = gas_limit + storage_entry_deposit / tx_fee_per_gas * storage_entry_limit
@@ -505,7 +505,7 @@ mod tests {
 		new_msg.input = vec![0x00];
 		assert_ne!(recover_signer(&sign, new_msg.hash().as_fixed_bytes()), sender);
 
-		let mut new_msg = msg.clone();
+		let mut new_msg = msg;
 		new_msg.access_list = vec![AccessListItem {
 			address: hex!("bb9bc244d798123fde783fcc1c72d3bb8c189413").into(),
 			slots: vec![],
