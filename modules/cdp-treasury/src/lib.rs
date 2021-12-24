@@ -110,9 +110,12 @@ pub mod module {
 	#[pallet::event]
 	#[pallet::generate_deposit(fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// The expected amount size for per lot collateral auction of specific
-		/// collateral type updated. \[collateral_type, new_size\]
-		ExpectedCollateralAuctionSizeUpdated(CurrencyId, Balance),
+		/// The expected amount size for per lot collateral auction of specific collateral type
+		/// updated.
+		ExpectedCollateralAuctionSizeUpdated {
+			collateral_type: CurrencyId,
+			new_size: Balance,
+		},
 	}
 
 	/// The expected amount size for per lot collateral auction of specific
@@ -211,7 +214,10 @@ pub mod module {
 		) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
 			ExpectedCollateralAuctionSize::<T>::insert(currency_id, size);
-			Self::deposit_event(Event::ExpectedCollateralAuctionSizeUpdated(currency_id, size));
+			Self::deposit_event(Event::ExpectedCollateralAuctionSizeUpdated {
+				collateral_type: currency_id,
+				new_size: size,
+			});
 			Ok(())
 		}
 	}
@@ -421,22 +427,5 @@ impl<T: Config> CDPTreasuryExtended<T::AccountId> for Pallet<T> {
 
 	fn max_auction() -> u32 {
 		T::MaxAuctionsCount::get()
-	}
-}
-
-#[cfg(feature = "std")]
-impl GenesisConfig {
-	/// Direct implementation of `GenesisBuild::build_storage`.
-	///
-	/// Kept in order not to break dependency.
-	pub fn build_storage<T: Config>(&self) -> Result<sp_runtime::Storage, String> {
-		<Self as GenesisBuild<T>>::build_storage(self)
-	}
-
-	/// Direct implementation of `GenesisBuild::assimilate_storage`.
-	///
-	/// Kept in order not to break dependency.
-	pub fn assimilate_storage<T: Config>(&self, storage: &mut sp_runtime::Storage) -> Result<(), String> {
-		<Self as GenesisBuild<T>>::assimilate_storage(self, storage)
 	}
 }

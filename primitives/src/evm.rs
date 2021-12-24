@@ -187,9 +187,9 @@ impl TryFrom<CurrencyId> for EvmAddress {
 			CurrencyId::Erc20(erc20) => {
 				address[..].copy_from_slice(erc20.as_bytes());
 			}
-			CurrencyId::StableAssetPoolToken(_) => {
-				// Unsupported
-				return Err(());
+			CurrencyId::StableAssetPoolToken(stable_asset_id) => {
+				address[H160_POSITION_CURRENCY_ID_TYPE] = CurrencyIdType::StableAsset.into();
+				address[H160_POSITION_STABLE_ASSET].copy_from_slice(&stable_asset_id.to_be_bytes());
 			}
 			CurrencyId::LiquidCroadloan(lease) => {
 				address[H160_POSITION_CURRENCY_ID_TYPE] = CurrencyIdType::LiquidCroadloan.into();

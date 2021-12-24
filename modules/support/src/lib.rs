@@ -495,10 +495,12 @@ pub trait AddressMapping<AccountId> {
 	fn is_linked(account_id: &AccountId, evm: &EvmAddress) -> bool;
 }
 
-/// A mapping between ForeignAssetId and AssetMetadata.
-pub trait ForeignAssetIdMapping<ForeignAssetId, MultiLocation, AssetMetadata> {
+/// A mapping between AssetId and AssetMetadata.
+pub trait AssetIdMapping<StableAssetPoolId, ForeignAssetId, MultiLocation, AssetMetadata> {
+	/// Returns the AssetMetadata associated with a given StableAssetPoolId.
+	fn get_stable_asset_metadata(stable_asset_id: StableAssetPoolId) -> Option<AssetMetadata>;
 	/// Returns the AssetMetadata associated with a given ForeignAssetId.
-	fn get_asset_metadata(foreign_asset_id: ForeignAssetId) -> Option<AssetMetadata>;
+	fn get_foreign_asset_metadata(foreign_asset_id: ForeignAssetId) -> Option<AssetMetadata>;
 	/// Returns the MultiLocation associated with a given ForeignAssetId.
 	fn get_multi_location(foreign_asset_id: ForeignAssetId) -> Option<MultiLocation>;
 	/// Returns the CurrencyId associated with a given MultiLocation.
