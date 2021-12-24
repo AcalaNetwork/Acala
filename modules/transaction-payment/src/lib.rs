@@ -64,6 +64,7 @@ pub use weights::WeightInfo;
 /// Fee multiplier.
 pub type Multiplier = FixedU128;
 
+pub type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 type PalletBalanceOf<T> = <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 type NegativeImbalanceOf<T> =
 	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::NegativeImbalance;
@@ -281,6 +282,10 @@ pub mod module {
 		#[pallet::constant]
 		type MaxTipsOfPriority: Get<PalletBalanceOf<Self>>;
 
+		/// Deposit for setting an Alternative fee swap
+		#[pallet::constant]
+		type AlternativeFeeSwapDeposit: Get<BalanceOf<Self>>;
+
 		/// Convert a weight value into a deductible fee based on the currency
 		/// type.
 		type WeightToFee: WeightToFeePolynomial<Balance = PalletBalanceOf<Self>>;
@@ -419,8 +424,10 @@ pub mod module {
 					Error::<T>::InvalidSwapPath
 				);
 				AlternativeFeeSwapPath::<T>::insert(&who, &path);
+				T::Currency::reserve_named(&RESERVE_ID, &who, T::AlternativeFeeSwapDeposit::get())?;
 			} else {
 				AlternativeFeeSwapPath::<T>::remove(&who);
+				T::Currency::unreserve_named(&RESERVE_ID, &who, T::AlternativeFeeSwapDeposit::get());
 			}
 			Ok(())
 		}
