@@ -224,15 +224,15 @@ where
 
 				let signer = recover_signer(&sig, msg_hash.as_fixed_bytes()).ok_or(InvalidTransaction::BadProof)?;
 
-				let acc = lookup.lookup(Address::Address20(signer.into()))?;
-				let expected = lookup.lookup(addr)?;
+				let account_id = lookup.lookup(Address::Address20(signer.into()))?;
+				let expected_account_id = lookup.lookup(addr)?;
 
-				if acc != expected {
+				if account_id != expected_account_id {
 					return Err(InvalidTransaction::BadProof.into());
 				}
 
 				Ok(CheckedExtrinsic {
-					signed: Some((acc, extra)),
+					signed: Some((account_id, extra)),
 					function,
 				})
 			}
