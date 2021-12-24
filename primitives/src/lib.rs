@@ -169,7 +169,7 @@ pub enum ReserveIdentifier {
 	Honzon,
 	Nft,
 	TransactionPayment,
-
+	TransactionPaymentDeposit,
 	// always the last, indicate number of variants
 	Count,
 }

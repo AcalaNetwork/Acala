@@ -219,6 +219,7 @@ pub mod module {
 	use super::*;
 
 	pub const RESERVE_ID: ReserveIdentifier = ReserveIdentifier::TransactionPayment;
+	pub const DEPOSIT_ID: ReserveIdentifier = ReserveIdentifier::TransactionPaymentDeposit;
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
@@ -424,10 +425,10 @@ pub mod module {
 					Error::<T>::InvalidSwapPath
 				);
 				AlternativeFeeSwapPath::<T>::insert(&who, &path);
-				T::Currency::reserve_named(&RESERVE_ID, &who, T::AlternativeFeeSwapDeposit::get())?;
+				T::Currency::ensure_reserved_named(&DEPOSIT_ID, &who, T::AlternativeFeeSwapDeposit::get())?;
 			} else {
 				AlternativeFeeSwapPath::<T>::remove(&who);
-				T::Currency::unreserve_named(&RESERVE_ID, &who, T::AlternativeFeeSwapDeposit::get());
+				T::Currency::unreserve_all_named(&DEPOSIT_ID, &who);
 			}
 			Ok(())
 		}
