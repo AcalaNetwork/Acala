@@ -170,6 +170,7 @@ pub enum ReserveIdentifier {
 	Nft,
 	TransactionPayment,
 	TransactionPaymentDeposit,
+
 	// always the last, indicate number of variants
 	Count,
 }
