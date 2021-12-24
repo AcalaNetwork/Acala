@@ -76,10 +76,10 @@ mod karura_imports {
 	use frame_support::weights::Weight;
 	pub use karura_runtime::{
 		constants::parachains, create_x2_parachain_multilocation, get_all_module_accounts, AcalaOracle, AccountId,
-		AssetRegistry, AuctionManager, Authority, AuthoritysOriginId, Balance, Balances, BlockNumber, Call, CdpEngine, CdpTreasury,
-		CreateClassDeposit, CreateTokenDeposit, Currencies, CurrencyId, CurrencyIdConvert, DataDepositPerByte,
-		DefaultExchangeRate, Dex, EmergencyShutdown, Event, EvmAccounts, ExistentialDeposits, FeePoolSize,
-		FinancialCouncil, Get, GetNativeCurrencyId, HomaLite, Honzon, IdleScheduler, KarPerSecond,
+		AssetRegistry, AuctionManager, Authority, AuthoritysOriginId, Balance, Balances, BlockNumber, Call, CdpEngine,
+		CdpTreasury, CreateClassDeposit, CreateTokenDeposit, Currencies, CurrencyId, CurrencyIdConvert,
+		DataDepositPerByte, DefaultExchangeRate, Dex, EmergencyShutdown, Event, EvmAccounts, ExistentialDeposits,
+		FeePoolSize, FinancialCouncil, Get, GetNativeCurrencyId, HomaLite, Honzon, IdleScheduler, KarPerSecond,
 		KaruraFoundationAccounts, KsmPerSecond, KusdPerSecond, Loans, MaxTipsOfPriority, MinimumDebitValue,
 		MultiLocation, NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, Origin, OriginCaller,
 		ParachainAccount, ParachainInfo, ParachainSystem, PolkadotXcm, Proxy, ProxyType, Ratio,
