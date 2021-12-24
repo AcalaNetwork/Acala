@@ -231,7 +231,7 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 		let value = U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(value));
 		let info = Self::execute(source, origin, value, gas_limit, storage_limit, config, |executor| {
 			// TODO: EIP-2930
-			let skip_nonce_incremental = SkipNonceIncremental::<T>::get();
+			let skip_nonce_incremental = SkipNonceIncremental::<T>::take();
 			executor.transact_call(source, target, value, input, gas_limit, vec![], skip_nonce_incremental)
 		})?;
 
@@ -264,7 +264,7 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 	) -> Result<CreateInfo, DispatchError> {
 		let value = U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(value));
 		let info = Self::execute(source, source, value, gas_limit, storage_limit, config, |executor| {
-			let skip_nonce_incremental = SkipNonceIncremental::<T>::get();
+			let skip_nonce_incremental = SkipNonceIncremental::<T>::take();
 			let address = executor
 				.create_address(evm::CreateScheme::Legacy { caller: source })
 				.unwrap_or_default(); // transact_create will check the address
@@ -305,7 +305,7 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 		let value = U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(value));
 		let code_hash = H256::from_slice(Keccak256::digest(&init).as_slice());
 		let info = Self::execute(source, source, value, gas_limit, storage_limit, config, |executor| {
-			let skip_nonce_incremental = SkipNonceIncremental::<T>::get();
+			let skip_nonce_incremental = SkipNonceIncremental::<T>::take();
 			let address = executor
 				.create_address(evm::CreateScheme::Create2 {
 					caller: source,
@@ -348,7 +348,7 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 		config: &evm::Config,
 	) -> Result<CreateInfo, DispatchError> {
 		let value = U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(value));
-		let skip_nonce_incremental = SkipNonceIncremental::<T>::get();
+		let skip_nonce_incremental = SkipNonceIncremental::<T>::take();
 		let info = Self::execute(source, source, value, gas_limit, storage_limit, config, |executor| {
 			(
 				// TODO: EIP-2930
