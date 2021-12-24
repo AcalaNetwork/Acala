@@ -61,15 +61,6 @@ pub type CreateInfo = ExecutionInfo<H160>;
 
 #[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct Erc20Info {
-	pub address: EvmAddress,
-	pub name: Vec<u8>,
-	pub symbol: Vec<u8>,
-	pub decimals: u8,
-}
-
-#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct EstimateResourcesRequest {
 	/// From
 	pub from: Option<H160>,

@@ -771,9 +771,10 @@ parameter_type_with_key! {
 				// use the ED of currency_id_0 as the ED of lp token.
 				if currency_id_0 == GetNativeCurrencyId::get() {
 					NativeTokenExistentialDeposit::get()
-				} else if let CurrencyId::Erc20(_) = currency_id_0 {
+				} else if let CurrencyId::Erc20(address) = currency_id_0 {
 					// LP token with erc20
-					1
+					AssetIdMaps::<Runtime>::get_erc20_asset_metadata(address).
+						map_or(Balance::max_value(), |metatata| metatata.minimal_balance)
 				} else {
 					Self::get(&currency_id_0)
 				}
@@ -783,7 +784,7 @@ parameter_type_with_key! {
 				AssetIdMaps::<Runtime>::get_stable_asset_metadata(*stable_asset_id).
 					map_or(Balance::max_value(), |metatata| metatata.minimal_balance)
 			},
-			CurrencyId::LiquidCroadloan(_) => Balance::max_value(), // TODO: unsupported
+			CurrencyId::LiquidCroadloan(_) => ExistentialDeposits::get(&CurrencyId::Token(TokenSymbol::KSM)), // the same as KSM
 			CurrencyId::ForeignAsset(foreign_asset_id) => {
 				AssetIdMaps::<Runtime>::get_foreign_asset_metadata(*foreign_asset_id).
 					map_or(Balance::max_value(), |metatata| metatata.minimal_balance)
