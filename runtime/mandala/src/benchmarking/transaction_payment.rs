@@ -77,16 +77,16 @@ runtime_benchmarks! {
 	}
 
 	set_swap_balance_threshold {
-		let treasury: AccountId = TreasuryPalletId::get().into_account();
+		let treasury_account: AccountId = TreasuryPalletId::get().into_account();
 		module_transaction_payment::PoolSize::<Runtime>::insert(STABLECOIN, 10_000_000_000);
-	}: _(RawOrigin::Signed(treasury.clone()), STABLECOIN, 1_000_000_000)
+	}: _(RawOrigin::Signed(treasury_account.clone()), STABLECOIN, 1_000_000_000)
 	verify {
 		assert_eq!(TransactionPayment::swap_balance_threshold(STABLECOIN), 1_000_000_000);
 	}
 
 	enable_charge_fee_pool {
 		let funder: AccountId = account("funder", 0, SEED);
-		let treasury: AccountId = TreasuryPalletId::get().into_account();
+		let treasury_account: AccountId = TreasuryPalletId::get().into_account();
 		let sub_account: AccountId = <Runtime as module_transaction_payment::Config>::PalletId::get().into_sub_account(STABLECOIN);
 		let native_ed: Balance = <Currencies as MultiCurrency<AccountId>>::minimum_balance(NATIVECOIN);
 		let stable_ed: Balance = <Currencies as MultiCurrency<AccountId>>::minimum_balance(STABLECOIN);

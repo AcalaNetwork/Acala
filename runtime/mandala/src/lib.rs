@@ -1659,7 +1659,8 @@ impl TakeRevenue for ToTreasury {
 		} = revenue
 		{
 			if let Some(currency_id) = CurrencyIdConvert::convert(location) {
-				// ensure TreasuryAccount have ed for all of the cross-chain asset.
+				// Ensure TreasuryAccount have ed requirement for native asset, but don't need
+				// ed requirement for cross-chain asset because it's one of whitelist accounts.
 				// Ignore the result.
 				let _ = Currencies::deposit(currency_id, &TreasuryAccount::get(), amount);
 			}
