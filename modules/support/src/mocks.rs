@@ -18,7 +18,6 @@
 
 use crate::{AddressMapping, CurrencyId, Erc20InfoMapping};
 use codec::Encode;
-use frame_support::pallet_prelude::DispatchResult;
 use primitives::{
 	currency::TokenInfo,
 	evm::{is_mirrored_tokens_address_prefix, EvmAddress, H160_POSITION_TOKEN},
@@ -66,14 +65,6 @@ impl AddressMapping<AccountId32> for MockAddressMapping {
 pub struct MockErc20InfoMapping;
 
 impl Erc20InfoMapping for MockErc20InfoMapping {
-	fn set_erc20_mapping(_address: EvmAddress) -> DispatchResult {
-		Ok(())
-	}
-
-	fn get_evm_address(_currency_id: u32) -> Option<EvmAddress> {
-		Some(EvmAddress::default())
-	}
-
 	fn name(currency_id: CurrencyId) -> Option<Vec<u8>> {
 		currency_id.name().map(|v| v.as_bytes().to_vec())
 	}

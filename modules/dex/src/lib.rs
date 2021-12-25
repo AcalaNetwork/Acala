@@ -511,14 +511,6 @@ pub mod module {
 				Error::<T>::NotAllowedList
 			);
 
-			// TODO: Remove this in another PR
-			if let CurrencyId::Erc20(address) = currency_id_a {
-				T::Erc20InfoMapping::set_erc20_mapping(address)?;
-			}
-			if let CurrencyId::Erc20(address) = currency_id_b {
-				T::Erc20InfoMapping::set_erc20_mapping(address)?;
-			}
-
 			let check_asset_registry = |currency_id: CurrencyId| match currency_id {
 				CurrencyId::Erc20(_) | CurrencyId::ForeignAsset(_) => T::Erc20InfoMapping::name(currency_id)
 					.map(|_| ())

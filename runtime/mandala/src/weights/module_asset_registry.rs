@@ -66,4 +66,14 @@ impl<T: frame_system::Config> module_asset_registry::WeightInfo for WeightInfo<T
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
+	fn register_erc20_asset() -> Weight {
+		(23_499_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(2 as Weight))
+			.saturating_add(T::DbWeight::get().writes(2 as Weight))
+	}
+	fn update_erc20_asset() -> Weight {
+		(21_399_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(1 as Weight))
+			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+	}
 }
