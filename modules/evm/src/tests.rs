@@ -118,7 +118,7 @@ fn should_create_and_call_contract() {
 		#[cfg(not(feature = "with-ethereum-compatibility"))]
 		deploy_free(contract_address);
 
-		assert_eq!(contract_address, H160::from_str("5f8bd49cd9f0cb2bd5bb9d4320dfe9b61023249d").unwrap());
+		assert_eq!(contract_address, H160::from_str("0x5f8bd49cd9f0cb2bd5bb9d4320dfe9b61023249d").unwrap());
 
 		assert_eq!(Pallet::<Runtime>::account_basic(&caller).nonce, 2.into());
 
@@ -536,20 +536,23 @@ fn should_transfer_from_contract() {
 
 #[test]
 fn contract_should_deploy_contracts() {
-	// pragma solidity ^0.5.0;
-	//
-	// contract Factory {
-	//     Contract[] newContracts;
-	//
-	//     function createContract () public payable {
-	//         Contract newContract = new Contract();
-	//         newContracts.push(newContract);
-	//     }
-	// }
-	//
-	// contract Contract {}
+	/*
+		pragma solidity ^0.5.0;
+
+		contract Factory {
+			Contract[] newContracts;
+
+			function createContract () public payable returns(address) {
+				Contract newContract = new Contract();
+				newContracts.push(newContract);
+				return address(newContract);
+			}
+		}
+
+		contract Contract {}
+	*/
 	let contract = from_hex(
-		"0x608060405234801561001057600080fd5b5061016f806100206000396000f3fe608060405260043610610041576000357c0100000000000000000000000000000000000000000000000000000000900463ffffffff168063412a5a6d14610046575b600080fd5b61004e610050565b005b600061005a6100e2565b604051809103906000f080158015610076573d6000803e3d6000fd5b50905060008190806001815401808255809150509060018203906000526020600020016000909192909190916101000a81548173ffffffffffffffffffffffffffffffffffffffff021916908373ffffffffffffffffffffffffffffffffffffffff1602179055505050565b6040516052806100f28339019056fe6080604052348015600f57600080fd5b50603580601d6000396000f3fe6080604052600080fdfea165627a7a7230582092dc1966a8880ddf11e067f9dd56a632c11a78a4afd4a9f05924d427367958cc0029a165627a7a723058202b2cc7384e11c452cdbf39b68dada2d5e10a632cc0174a354b8b8c83237e28a40029"
+		"0x608060405234801561001057600080fd5b506101a4806100206000396000f3fe60806040526004361061001e5760003560e01c8063412a5a6d14610023575b600080fd5b61002b61006d565b604051808273ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16815260200191505060405180910390f35b60008060405161007c90610108565b604051809103906000f080158015610098573d6000803e3d6000fd5b50905060008190806001815401808255809150509060018203906000526020600020016000909192909190916101000a81548173ffffffffffffffffffffffffffffffffffffffff021916908373ffffffffffffffffffffffffffffffffffffffff160217905550508091505090565b605b806101158339019056fe6080604052348015600f57600080fd5b50603e80601d6000396000f3fe6080604052600080fdfea265627a7a72315820aca8ffd95639a450fd02ae8f5d19f24a73f4ef44ae59e509e1edee6d89a7b41a64736f6c63430005110032a265627a7a723158201796ce41870dce1bc76a954e535700985507b4a2ccc7ac8a9e640adf67312e3064736f6c63430005110032"
 	).unwrap();
 	new_test_ext().execute_with(|| {
 		let result = <Runtime as Config>::Runner::create(
@@ -562,9 +565,9 @@ fn contract_should_deploy_contracts() {
 		)
 		.unwrap();
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
-		assert_eq!(result.used_storage, 467);
+		assert_eq!(result.used_storage, 520);
 
-		let alice_balance = INITIAL_BALANCE - 467 * EVM::get_storage_deposit_per_byte();
+		let alice_balance = INITIAL_BALANCE - 520 * EVM::get_storage_deposit_per_byte();
 
 		assert_eq!(balance(alice()), alice_balance);
 		let factory_contract_address = result.value;
@@ -575,7 +578,7 @@ fn contract_should_deploy_contracts() {
 		assert_eq!(balance(factory_contract_address), 0);
 		assert_eq!(
 			reserved_balance(factory_contract_address),
-			467 * EVM::get_storage_deposit_per_byte()
+			520 * EVM::get_storage_deposit_per_byte()
 		);
 
 		// Factory.createContract
@@ -592,23 +595,23 @@ fn contract_should_deploy_contracts() {
 			<Runtime as Config>::config(),
 		)
 		.unwrap();
-		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Stopped));
-		assert_eq!(result.used_storage, 281);
+		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
+		assert_eq!(result.used_storage, 290);
 
 		assert_eq!(
 			balance(alice()),
-			alice_balance - amount - 281 * EVM::get_storage_deposit_per_byte()
+			alice_balance - amount - 290 * EVM::get_storage_deposit_per_byte()
 		);
 		assert_eq!(balance(factory_contract_address), amount);
 		assert_eq!(
 			reserved_balance(factory_contract_address),
-			(467 + 128) * EVM::get_storage_deposit_per_byte()
+			(520 + 128) * EVM::get_storage_deposit_per_byte()
 		);
-		let contract_address = H160::from_str("7b8f8ca099f6e33cf1817cf67d0556429cfc54e4").unwrap();
+		let contract_address = H160::from(H256::from_slice(&result.value));
 		assert_eq!(balance(contract_address), 0);
 		assert_eq!(
 			reserved_balance(contract_address),
-			153 * EVM::get_storage_deposit_per_byte()
+			162 * EVM::get_storage_deposit_per_byte()
 		);
 	});
 }
@@ -1436,7 +1439,7 @@ fn storage_limit_should_work() {
 		let create_contract =
 			from_hex("0x9db8d7d50000000000000000000000000000000000000000000000000000000000000001").unwrap();
 		let alice_account_id = <Runtime as Config>::AddressMapping::get_account_id(&alice());
-		assert_noop!(
+		assert_eq!(
 			EVM::call(
 				Origin::signed(alice_account_id.clone()),
 				factory_contract_address,
@@ -1445,13 +1448,13 @@ fn storage_limit_should_work() {
 				1000000000,
 				0,
 			),
-			DispatchErrorWithPostInfo {
+			Err(DispatchErrorWithPostInfo {
 				post_info: PostDispatchInfo {
 					actual_weight: None,
 					pays_fee: Pays::Yes,
 				},
 				error: Error::<Runtime>::OutOfStorage.into()
-			}
+			})
 		);
 
 		// Factory.createContract(1)
@@ -1476,7 +1479,7 @@ fn storage_limit_should_work() {
 		let amount = 1000000000;
 		let create_contract =
 			from_hex("0x9db8d7d50000000000000000000000000000000000000000000000000000000000000002").unwrap();
-		assert_noop!(
+		assert_eq!(
 			EVM::call(
 				Origin::signed(alice_account_id),
 				factory_contract_address,
@@ -1485,13 +1488,13 @@ fn storage_limit_should_work() {
 				1000000000,
 				127,
 			),
-			DispatchErrorWithPostInfo {
+			Err(DispatchErrorWithPostInfo {
 				post_info: PostDispatchInfo {
 					actual_weight: None,
 					pays_fee: Pays::Yes,
 				},
 				error: Error::<Runtime>::OutOfStorage.into()
-			}
+			})
 		);
 
 		// Factory.createContract(2)
@@ -1720,7 +1723,7 @@ fn should_update_storage() {
 
 		// call method `set(123)`
 		let alice_account_id = <Runtime as Config>::AddressMapping::get_account_id(&alice());
-		assert_noop!(
+		assert_eq!(
 			EVM::call(
 				Origin::signed(alice_account_id),
 				contract_address,
@@ -1729,14 +1732,28 @@ fn should_update_storage() {
 				1000000,
 				0,
 			),
-			DispatchErrorWithPostInfo {
+			Err(DispatchErrorWithPostInfo {
 				post_info: PostDispatchInfo {
 					actual_weight: None,
 					pays_fee: Pays::Yes,
 				},
 				error: Error::<Runtime>::OutOfStorage.into()
-			}
+			})
 		);
+
+		// read storage values(address)
+		let result = <Runtime as Config>::Runner::call(
+			alice(),
+			alice(),
+			contract_address,
+			from_hex("0x54fe9fd70000000000000000000000001000000000000000000000000000000000000001").unwrap(),
+			0,
+			1000000,
+			0,
+			<Runtime as Config>::config(),
+		)
+		.unwrap();
+		assert_eq!(H256::from_slice(&result.value), H256::from_low_u64_be(42));
 
 		// call method `set(123)`
 		let result = <Runtime as Config>::Runner::call(
@@ -1791,11 +1808,11 @@ fn convert_decimals_should_not_work() {
 	let alice_account_id = <Runtime as Config>::AddressMapping::get_account_id(&alice());
 
 	new_test_ext().execute_with(|| {
-		assert_noop!(
+		assert_eq!(
 			EVM::create(Origin::signed(alice_account_id.clone()), vec![], 1, 1000000, 1000000),
-			Error::<Runtime>::InvalidDecimals
+			Err(Error::<Runtime>::InvalidDecimals.into())
 		);
-		assert_noop!(
+		assert_eq!(
 			EVM::create2(
 				Origin::signed(alice_account_id.clone()),
 				vec![],
@@ -1804,9 +1821,9 @@ fn convert_decimals_should_not_work() {
 				1000000,
 				1000000
 			),
-			Error::<Runtime>::InvalidDecimals
+			Err(Error::<Runtime>::InvalidDecimals.into())
 		);
-		assert_noop!(
+		assert_eq!(
 			EVM::call(
 				Origin::signed(alice_account_id.clone()),
 				H160::default(),
@@ -1815,7 +1832,7 @@ fn convert_decimals_should_not_work() {
 				1000000,
 				1000000
 			),
-			Error::<Runtime>::InvalidDecimals
+			Err(Error::<Runtime>::InvalidDecimals.into())
 		);
 	});
 }

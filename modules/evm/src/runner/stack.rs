@@ -25,13 +25,13 @@ use crate::{
 		state::{StackExecutor, StackSubstateMetadata},
 		Runner as RunnerT, StackState as StackStateT,
 	},
-	AccountInfo, AccountStorages, Accounts, BalanceOf, CallInfo, Config, CreateInfo, Error, Event, ExecutionInfo, One,
-	Pallet, SkipNonceIncremental, STORAGE_SIZE,
+	AccountStorages, BalanceOf, CallInfo, Config, CreateInfo, Error, Event, ExecutionInfo, Pallet, STORAGE_SIZE,
 };
 use frame_support::{
 	dispatch::DispatchError,
 	ensure, log,
 	traits::{Currency, ExistenceRequirement, Get},
+	transactional,
 };
 use module_evm_utiltity::{
 	ethereum::Log,
@@ -55,6 +55,7 @@ pub struct Runner<T: Config> {
 
 impl<T: Config> Runner<T> {
 	/// Execute an EVM operation.
+	#[transactional]
 	pub fn execute<'config, F, R>(
 		source: H160,
 		origin: H160,
@@ -231,9 +232,10 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 		let value = U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(value));
 		let info = Self::execute(source, origin, value, gas_limit, storage_limit, config, |executor| {
 			// TODO: EIP-2930
-			let skip_nonce_incremental = SkipNonceIncremental::<T>::take();
-			executor.transact_call(source, target, value, input, gas_limit, vec![], skip_nonce_incremental)
+			executor.transact_call(source, target, value, input, gas_limit, vec![])
 		})?;
+
+		Pallet::<T>::inc_nonce(origin);
 
 		if info.exit_reason.is_succeed() {
 			Pallet::<T>::deposit_event(Event::<T>::Executed {
@@ -264,16 +266,17 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 	) -> Result<CreateInfo, DispatchError> {
 		let value = U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(value));
 		let info = Self::execute(source, source, value, gas_limit, storage_limit, config, |executor| {
-			let skip_nonce_incremental = SkipNonceIncremental::<T>::take();
 			let address = executor
 				.create_address(evm::CreateScheme::Legacy { caller: source })
 				.unwrap_or_default(); // transact_create will check the address
 			(
 				// TODO: EIP-2930
-				executor.transact_create(source, value, init, gas_limit, vec![], skip_nonce_incremental),
+				executor.transact_create(source, value, init, gas_limit, vec![]),
 				address,
 			)
 		})?;
+
+		Pallet::<T>::inc_nonce(source);
 
 		if info.exit_reason.is_succeed() {
 			Pallet::<T>::deposit_event(Event::<T>::Created {
@@ -305,7 +308,6 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 		let value = U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(value));
 		let code_hash = H256::from_slice(Keccak256::digest(&init).as_slice());
 		let info = Self::execute(source, source, value, gas_limit, storage_limit, config, |executor| {
-			let skip_nonce_incremental = SkipNonceIncremental::<T>::take();
 			let address = executor
 				.create_address(evm::CreateScheme::Create2 {
 					caller: source,
@@ -315,10 +317,12 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 				.unwrap_or_default(); // transact_create2 will check the address
 			(
 				// TODO: EIP-2930
-				executor.transact_create2(source, value, init, salt, gas_limit, vec![], skip_nonce_incremental),
+				executor.transact_create2(source, value, init, salt, gas_limit, vec![]),
 				address,
 			)
 		})?;
+
+		Pallet::<T>::inc_nonce(source);
 
 		if info.exit_reason.is_succeed() {
 			Pallet::<T>::deposit_event(Event::<T>::Created {
@@ -348,22 +352,15 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 		config: &evm::Config,
 	) -> Result<CreateInfo, DispatchError> {
 		let value = U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(value));
-		let skip_nonce_incremental = SkipNonceIncremental::<T>::take();
 		let info = Self::execute(source, source, value, gas_limit, storage_limit, config, |executor| {
 			(
 				// TODO: EIP-2930
-				executor.transact_create_at_address(
-					source,
-					address,
-					value,
-					init,
-					gas_limit,
-					vec![],
-					skip_nonce_incremental,
-				),
+				executor.transact_create_at_address(source, address, value, init, gas_limit, vec![]),
 				address,
 			)
 		})?;
+
+		Pallet::<T>::inc_nonce(source);
 
 		if info.exit_reason.is_succeed() {
 			Pallet::<T>::deposit_event(Event::<T>::Created {
@@ -619,15 +616,7 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 	}
 
 	fn inc_nonce(&mut self, address: H160) {
-		Accounts::<T>::mutate(&address, |maybe_account| {
-			if let Some(account) = maybe_account.as_mut() {
-				account.nonce += One::one()
-			} else {
-				let mut account_info = <AccountInfo<T::Index>>::new(Default::default(), None);
-				account_info.nonce += One::one();
-				*maybe_account = Some(account_info);
-			}
-		});
+		Pallet::<T>::inc_nonce(address);
 	}
 
 	fn set_storage(&mut self, address: H160, index: H256, value: H256) {

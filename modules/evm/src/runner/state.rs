@@ -262,7 +262,6 @@ impl<'config, S: StackState<'config>> StackExecutor<'config, S> {
 		init_code: Vec<u8>,
 		gas_limit: u64,
 		access_list: Vec<(H160, Vec<H256>)>, // See EIP-2930
-		skip_nonce_incremental: bool,
 	) -> ExitReason {
 		let transaction_cost = gasometer::create_transaction_cost(&init_code, &access_list);
 		match self
@@ -282,7 +281,6 @@ impl<'config, S: StackState<'config>> StackExecutor<'config, S> {
 			init_code,
 			Some(gas_limit),
 			false,
-			skip_nonce_incremental,
 		) {
 			Capture::Exit((s, _, _)) => s,
 			Capture::Trap(_) => unreachable!(),
@@ -298,7 +296,6 @@ impl<'config, S: StackState<'config>> StackExecutor<'config, S> {
 		salt: H256,
 		gas_limit: u64,
 		access_list: Vec<(H160, Vec<H256>)>, // See EIP-2930
-		skip_nonce_incremental: bool,
 	) -> ExitReason {
 		let transaction_cost = gasometer::create_transaction_cost(&init_code, &access_list);
 		match self
@@ -323,7 +320,6 @@ impl<'config, S: StackState<'config>> StackExecutor<'config, S> {
 			init_code,
 			Some(gas_limit),
 			false,
-			skip_nonce_incremental,
 		) {
 			Capture::Exit((s, _, _)) => s,
 			Capture::Trap(_) => unreachable!(),
@@ -339,7 +335,6 @@ impl<'config, S: StackState<'config>> StackExecutor<'config, S> {
 		init_code: Vec<u8>,
 		gas_limit: u64,
 		access_list: Vec<(H160, Vec<H256>)>, // See EIP-2930
-		skip_nonce_incremental: bool,
 	) -> ExitReason {
 		let transaction_cost = gasometer::create_transaction_cost(&init_code, &access_list);
 		match self
@@ -359,7 +354,6 @@ impl<'config, S: StackState<'config>> StackExecutor<'config, S> {
 			init_code,
 			Some(gas_limit),
 			false,
-			skip_nonce_incremental,
 		) {
 			Capture::Exit((s, _, _)) => s,
 			Capture::Trap(_) => unreachable!(),
@@ -375,7 +369,6 @@ impl<'config, S: StackState<'config>> StackExecutor<'config, S> {
 		data: Vec<u8>,
 		gas_limit: u64,
 		access_list: Vec<(H160, Vec<H256>)>, // See EIP-2930
-		skip_nonce_incremental: bool,
 	) -> (ExitReason, Vec<u8>) {
 		let transaction_cost = gasometer::call_transaction_cost(&data, &access_list);
 		match self
@@ -386,10 +379,6 @@ impl<'config, S: StackState<'config>> StackExecutor<'config, S> {
 		{
 			Ok(()) => (),
 			Err(e) => return (e.into(), Vec::new()),
-		}
-
-		if !skip_nonce_incremental {
-			self.state.inc_nonce(caller);
 		}
 
 		let context = Context {
@@ -522,7 +511,6 @@ impl<'config, S: StackState<'config>> StackExecutor<'config, S> {
 		init_code: Vec<u8>,
 		target_gas: Option<u64>,
 		take_l64: bool,
-		skip_nonce_incremental: bool,
 	) -> Capture<(ExitReason, Option<H160>, Vec<u8>), Infallible> {
 		macro_rules! try_or_fail {
 			( $e:expr ) => {
@@ -583,10 +571,6 @@ impl<'config, S: StackState<'config>> StackExecutor<'config, S> {
 
 		let gas_limit = min(after_gas, target_gas);
 		try_or_fail!(self.state.metadata_mut().gasometer_mut().record_cost(gas_limit));
-
-		if !skip_nonce_incremental {
-			self.state.inc_nonce(caller);
-		}
 
 		self.enter_substate(gas_limit, false);
 
@@ -945,7 +929,8 @@ impl<'config, S: StackState<'config>> Handler for StackExecutor<'config, S> {
 		init_code: Vec<u8>,
 		target_gas: Option<u64>,
 	) -> Capture<(ExitReason, Option<H160>, Vec<u8>), Self::CreateInterrupt> {
-		self.create_inner(caller, scheme, value, init_code, target_gas, true, false)
+		self.state.inc_nonce(caller);
+		self.create_inner(caller, scheme, value, init_code, target_gas, true)
 	}
 
 	fn call(

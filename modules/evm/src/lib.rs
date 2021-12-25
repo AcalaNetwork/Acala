@@ -341,15 +341,6 @@ pub mod module {
 	#[pallet::getter(fn extrinsic_origin)]
 	pub type ExtrinsicOrigin<T: Config> = StorageValue<_, T::AccountId, OptionQuery>;
 
-	/// Skip EVM nonce incremental because it is incremented by CheckNonce.
-	/// This is set true on `pre_dispatch` only for ethereum transactions and gets killed on
-	/// `post_dispatch`.
-	///
-	/// SkipNonceIncremental: bool
-	#[pallet::storage]
-	#[pallet::getter(fn skip_nonce_incremental)]
-	pub type SkipNonceIncremental<T: Config> = StorageValue<_, bool, ValueQuery>;
-
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
 		pub accounts: BTreeMap<EvmAddress, GenesisAccount<BalanceOf<T>, T::Index>>,
@@ -534,7 +525,6 @@ pub mod module {
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight(T::GasToWeight::convert(*gas_limit))]
-		#[transactional]
 		pub fn eth_call(
 			origin: OriginFor<T>,
 			action: TransactionAction,
@@ -559,7 +549,6 @@ pub mod module {
 		/// - `gas_limit`: the maximum gas the call can use
 		/// - `storage_limit`: the total bytes the contract's storage can increase by
 		#[pallet::weight(T::GasToWeight::convert(*gas_limit))]
-		#[transactional]
 		pub fn call(
 			origin: OriginFor<T>,
 			target: EvmAddress,
@@ -657,7 +646,6 @@ pub mod module {
 		/// - `gas_limit`: the maximum gas the call can use
 		/// - `storage_limit`: the total bytes the contract's storage can increase by
 		#[pallet::weight(T::GasToWeight::convert(*gas_limit))]
-		#[transactional]
 		pub fn create(
 			origin: OriginFor<T>,
 			init: Vec<u8>,
@@ -687,7 +675,6 @@ pub mod module {
 		/// - `gas_limit`: the maximum gas the call can use
 		/// - `storage_limit`: the total bytes the contract's storage can increase by
 		#[pallet::weight(T::GasToWeight::convert(*gas_limit))]
-		#[transactional]
 		pub fn create2(
 			origin: OriginFor<T>,
 			init: Vec<u8>,
@@ -1120,6 +1107,18 @@ impl<T: Config> Pallet<T> {
 	/// Get code at given address.
 	pub fn code_at_address(address: &EvmAddress) -> BoundedVec<u8, MaxCodeSize> {
 		Self::codes(&Self::code_hash_at_address(address))
+	}
+
+	pub fn inc_nonce(address: H160) {
+		Accounts::<T>::mutate(&address, |maybe_account| {
+			if let Some(account) = maybe_account.as_mut() {
+				account.nonce += One::one()
+			} else {
+				let mut account_info = <AccountInfo<T::Index>>::new(Default::default(), None);
+				account_info.nonce += One::one();
+				*maybe_account = Some(account_info);
+			}
+		});
 	}
 
 	pub fn update_contract_storage_size(address: &EvmAddress, change: i32) {
