@@ -64,7 +64,6 @@ pub use weights::WeightInfo;
 /// Fee multiplier.
 pub type Multiplier = FixedU128;
 
-pub type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 type PalletBalanceOf<T> = <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 type NegativeImbalanceOf<T> =
 	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::NegativeImbalance;
@@ -285,7 +284,7 @@ pub mod module {
 
 		/// Deposit for setting an Alternative fee swap
 		#[pallet::constant]
-		type AlternativeFeeSwapDeposit: Get<BalanceOf<Self>>;
+		type AlternativeFeeSwapDeposit: Get<PalletBalanceOf<Self>>;
 
 		/// Convert a weight value into a deductible fee based on the currency
 		/// type.
