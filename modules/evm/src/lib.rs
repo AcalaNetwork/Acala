@@ -704,7 +704,6 @@ pub mod module {
 		/// - `gas_limit`: the maximum gas the call can use
 		/// - `storage_limit`: the total bytes the contract's storage can increase by
 		#[pallet::weight(T::GasToWeight::convert(*gas_limit))]
-		#[transactional]
 		pub fn create_nft_contract(
 			origin: OriginFor<T>,
 			init: Vec<u8>,
@@ -738,7 +737,6 @@ pub mod module {
 		/// - `gas_limit`: the maximum gas the call can use
 		/// - `storage_limit`: the total bytes the contract's storage can increase by
 		#[pallet::weight(T::GasToWeight::convert(*gas_limit))]
-		#[transactional]
 		pub fn create_predeploy_contract(
 			origin: OriginFor<T>,
 			target: EvmAddress,
