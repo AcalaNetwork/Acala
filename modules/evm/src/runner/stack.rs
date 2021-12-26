@@ -229,13 +229,13 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 			Error::<T>::NoPermission
 		);
 
+		Pallet::<T>::inc_nonce(origin);
+
 		let value = U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(value));
 		let info = Self::execute(source, origin, value, gas_limit, storage_limit, config, |executor| {
 			// TODO: EIP-2930
 			executor.transact_call(source, target, value, input, gas_limit, vec![])
 		})?;
-
-		Pallet::<T>::inc_nonce(origin);
 
 		if info.exit_reason.is_succeed() {
 			Pallet::<T>::deposit_event(Event::<T>::Executed {
