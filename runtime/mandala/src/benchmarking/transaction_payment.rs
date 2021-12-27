@@ -16,7 +16,11 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AccountId, CurrencyId, GetNativeCurrencyId, GetStableCurrencyId, Runtime, System, TransactionPayment};
+use super::utils::set_balance;
+use crate::{
+	AccountId, CurrencyId, GetNativeCurrencyId, GetStableCurrencyId, NativeTokenExistentialDeposit, Runtime, System,
+	TransactionPayment,
+};
 use frame_benchmarking::whitelisted_caller;
 use frame_support::traits::OnFinalize;
 use frame_system::RawOrigin;
@@ -31,6 +35,7 @@ runtime_benchmarks! {
 
 	set_alternative_fee_swap_path {
 		let caller: AccountId = whitelisted_caller();
+		set_balance(NATIVECOIN, &caller, NativeTokenExistentialDeposit::get());
 	}: _(RawOrigin::Signed(caller.clone()), Some(vec![STABLECOIN, NATIVECOIN]))
 	verify {
 		assert_eq!(TransactionPayment::alternative_fee_swap_path(&caller).unwrap().into_inner(), vec![STABLECOIN, NATIVECOIN]);

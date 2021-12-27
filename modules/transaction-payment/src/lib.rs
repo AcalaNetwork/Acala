@@ -218,6 +218,7 @@ pub mod module {
 	use super::*;
 
 	pub const RESERVE_ID: ReserveIdentifier = ReserveIdentifier::TransactionPayment;
+	pub const DEPOSIT_ID: ReserveIdentifier = ReserveIdentifier::TransactionPaymentDeposit;
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
@@ -280,6 +281,10 @@ pub mod module {
 		/// Set the maximum value of tips to prevent affecting the unsigned extrinsic.
 		#[pallet::constant]
 		type MaxTipsOfPriority: Get<PalletBalanceOf<Self>>;
+
+		/// Deposit for setting an Alternative fee swap
+		#[pallet::constant]
+		type AlternativeFeeSwapDeposit: Get<PalletBalanceOf<Self>>;
 
 		/// Convert a weight value into a deductible fee based on the currency
 		/// type.
@@ -419,8 +424,10 @@ pub mod module {
 					Error::<T>::InvalidSwapPath
 				);
 				AlternativeFeeSwapPath::<T>::insert(&who, &path);
+				T::Currency::ensure_reserved_named(&DEPOSIT_ID, &who, T::AlternativeFeeSwapDeposit::get())?;
 			} else {
 				AlternativeFeeSwapPath::<T>::remove(&who);
+				T::Currency::unreserve_all_named(&DEPOSIT_ID, &who);
 			}
 			Ok(())
 		}

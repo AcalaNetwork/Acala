@@ -26,8 +26,9 @@ use frame_support::{
 	weights::{DispatchClass, DispatchInfo, Pays},
 };
 use mock::{
-	AccountId, BlockWeights, Call, Currencies, DEXModule, ExtBuilder, MockPriceSource, Origin, Runtime,
-	TransactionPayment, ACA, ALICE, AUSD, BOB, CHARLIE, DOT, FEE_UNBALANCED_AMOUNT, TIP_UNBALANCED_AMOUNT,
+	AccountId, AlternativeFeeSwapDeposit, BlockWeights, Call, Currencies, DEXModule, ExtBuilder, MockPriceSource,
+	Origin, Runtime, TransactionPayment, ACA, ALICE, AUSD, BOB, CHARLIE, DOT, FEE_UNBALANCED_AMOUNT,
+	TIP_UNBALANCED_AMOUNT,
 };
 use orml_traits::MultiCurrency;
 use sp_runtime::{testing::TestXt, traits::One};
@@ -350,37 +351,40 @@ fn charges_fee_failed_by_slippage_limit() {
 
 #[test]
 fn set_alternative_fee_swap_path_work() {
-	ExtBuilder::default().build().execute_with(|| {
-		assert_eq!(TransactionPayment::alternative_fee_swap_path(&ALICE), None);
-		assert_ok!(TransactionPayment::set_alternative_fee_swap_path(
-			Origin::signed(ALICE),
-			Some(vec![AUSD, ACA])
-		));
-		assert_eq!(
-			TransactionPayment::alternative_fee_swap_path(&ALICE).unwrap(),
-			vec![AUSD, ACA]
-		);
-		assert_ok!(TransactionPayment::set_alternative_fee_swap_path(
-			Origin::signed(ALICE),
-			None
-		));
-		assert_eq!(TransactionPayment::alternative_fee_swap_path(&ALICE), None);
+	ExtBuilder::default()
+		.one_hundred_thousand_for_alice_n_charlie()
+		.build()
+		.execute_with(|| {
+			assert_eq!(TransactionPayment::alternative_fee_swap_path(&ALICE), None);
+			assert_ok!(TransactionPayment::set_alternative_fee_swap_path(
+				Origin::signed(ALICE),
+				Some(vec![AUSD, ACA])
+			));
+			assert_eq!(
+				TransactionPayment::alternative_fee_swap_path(&ALICE).unwrap(),
+				vec![AUSD, ACA]
+			);
+			assert_ok!(TransactionPayment::set_alternative_fee_swap_path(
+				Origin::signed(ALICE),
+				None
+			));
+			assert_eq!(TransactionPayment::alternative_fee_swap_path(&ALICE), None);
 
-		assert_noop!(
-			TransactionPayment::set_alternative_fee_swap_path(Origin::signed(ALICE), Some(vec![ACA])),
-			Error::<Runtime>::InvalidSwapPath
-		);
+			assert_noop!(
+				TransactionPayment::set_alternative_fee_swap_path(Origin::signed(ALICE), Some(vec![ACA])),
+				Error::<Runtime>::InvalidSwapPath
+			);
 
-		assert_noop!(
-			TransactionPayment::set_alternative_fee_swap_path(Origin::signed(ALICE), Some(vec![AUSD, DOT])),
-			Error::<Runtime>::InvalidSwapPath
-		);
+			assert_noop!(
+				TransactionPayment::set_alternative_fee_swap_path(Origin::signed(ALICE), Some(vec![AUSD, DOT])),
+				Error::<Runtime>::InvalidSwapPath
+			);
 
-		assert_noop!(
-			TransactionPayment::set_alternative_fee_swap_path(Origin::signed(ALICE), Some(vec![ACA, ACA])),
-			Error::<Runtime>::InvalidSwapPath
-		);
-	});
+			assert_noop!(
+				TransactionPayment::set_alternative_fee_swap_path(Origin::signed(ALICE), Some(vec![ACA, ACA])),
+				Error::<Runtime>::InvalidSwapPath
+			);
+		});
 }
 
 #[test]
@@ -410,6 +414,12 @@ fn charge_fee_by_default_swap_path() {
 			));
 			assert_eq!(DEXModule::get_liquidity_pool(ACA, AUSD), (10000, 1000));
 			assert_eq!(DEXModule::get_liquidity_pool(DOT, AUSD), (100, 1000));
+			assert_ok!(Currencies::update_balance(
+				Origin::root(),
+				BOB,
+				ACA,
+				AlternativeFeeSwapDeposit::get().try_into().unwrap(),
+			));
 			assert_ok!(TransactionPayment::set_alternative_fee_swap_path(
 				Origin::signed(BOB),
 				Some(vec![DOT, ACA])
@@ -431,11 +441,11 @@ fn charge_fee_by_default_swap_path() {
 				1
 			);
 
-			assert_eq!(Currencies::free_balance(ACA, &BOB), Currencies::minimum_balance(ACA));
+			assert_eq!(Currencies::free_balance(ACA, &BOB), 0);
 			assert_eq!(Currencies::free_balance(AUSD, &BOB), 0);
 			assert_eq!(Currencies::free_balance(DOT, &BOB), 100 - 34);
-			assert_eq!(DEXModule::get_liquidity_pool(ACA, AUSD), (10000 - 2000 - 10, 1252));
-			assert_eq!(DEXModule::get_liquidity_pool(DOT, AUSD), (100 + 34, 1000 - 252));
+			assert_eq!(DEXModule::get_liquidity_pool(ACA, AUSD), (10000 - 2000, 1251));
+			assert_eq!(DEXModule::get_liquidity_pool(DOT, AUSD), (100 + 34, 1000 - 251));
 		});
 }
 
