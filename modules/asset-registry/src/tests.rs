@@ -23,10 +23,9 @@
 use super::*;
 use frame_support::{assert_noop, assert_ok};
 use mock::{
-	alice, deploy_contracts, erc20_address, erc20_address_not_exists, AssetRegistry, CouncilAccount, Event, ExtBuilder,
-	Origin, Runtime, System,
+	alice, deploy_contracts, deploy_contracts_same_prefix, erc20_address, erc20_address_not_exists,
+	erc20_address_same_prefix, AssetRegistry, CouncilAccount, Event, ExtBuilder, Origin, Runtime, System,
 };
-use orml_utilities::with_transaction_result;
 use primitives::TokenSymbol;
 use sp_core::H160;
 use std::str::{from_utf8, FromStr};
@@ -462,56 +461,141 @@ fn update_stable_asset_should_not_work() {
 }
 
 #[test]
-fn set_erc20_mapping_works() {
+fn register_erc20_asset_work() {
 	ExtBuilder::default()
 		.balances(vec![(alice(), 1_000_000_000_000)])
 		.build()
 		.execute_with(|| {
 			deploy_contracts();
-			assert_ok!(with_transaction_result(|| -> DispatchResult {
-				EvmErc20InfoMapping::<Runtime>::set_erc20_mapping(erc20_address())
+			assert_ok!(AssetRegistry::register_erc20_asset(
+				Origin::signed(CouncilAccount::get()),
+				erc20_address(),
+				1
+			));
+
+			System::assert_last_event(Event::AssetRegistry(crate::Event::AssetRegistered {
+				asset_id: AssetIds::Erc20(erc20_address()),
+				metadata: AssetMetadata {
+					name: b"long string name, long string name, long string name, long string name, long string name"
+						.to_vec(),
+					symbol: b"TestToken".to_vec(),
+					decimals: 17,
+					minimal_balance: 1,
+				},
 			}));
 
-			assert_ok!(with_transaction_result(|| -> DispatchResult {
-				EvmErc20InfoMapping::<Runtime>::set_erc20_mapping(erc20_address())
-			}));
+			assert_eq!(Erc20IdToAddress::<Runtime>::get(0x5dddfce5), Some(erc20_address()));
+
+			assert_eq!(
+				AssetMetadatas::<Runtime>::get(AssetIds::Erc20(erc20_address())),
+				Some(AssetMetadata {
+					name: b"long string name, long string name, long string name, long string name, long string name"
+						.to_vec(),
+					symbol: b"TestToken".to_vec(),
+					decimals: 17,
+					minimal_balance: 1,
+				})
+			);
+		});
+}
+
+#[test]
+fn register_erc20_asset_should_not_work() {
+	ExtBuilder::default()
+		.balances(vec![(alice(), 1_000_000_000_000)])
+		.build()
+		.execute_with(|| {
+			deploy_contracts();
+			deploy_contracts_same_prefix();
+			assert_ok!(AssetRegistry::register_erc20_asset(
+				Origin::signed(CouncilAccount::get()),
+				erc20_address(),
+				1
+			));
 
 			assert_noop!(
-				with_transaction_result(|| -> DispatchResult {
-					let mut addr = erc20_address();
-					let addr = addr.as_bytes_mut();
-					addr[19] += 1;
-					EvmErc20InfoMapping::<Runtime>::set_erc20_mapping(EvmAddress::from_slice(addr))
-				}),
-				Error::<Runtime>::CurrencyIdExisted,
+				AssetRegistry::register_erc20_asset(
+					Origin::signed(CouncilAccount::get()),
+					erc20_address_same_prefix(),
+					1
+				),
+				Error::<Runtime>::AssetIdExisted
 			);
 
 			assert_noop!(
-				with_transaction_result(|| -> DispatchResult {
-					EvmErc20InfoMapping::<Runtime>::set_erc20_mapping(erc20_address_not_exists())
-				}),
+				AssetRegistry::register_erc20_asset(
+					Origin::signed(CouncilAccount::get()),
+					erc20_address_not_exists(),
+					1
+				),
 				module_evm_bridge::Error::<Runtime>::InvalidReturnValue,
 			);
 		});
 }
 
 #[test]
-fn get_evm_address_works() {
+fn update_erc20_asset_work() {
 	ExtBuilder::default()
 		.balances(vec![(alice(), 1_000_000_000_000)])
 		.build()
 		.execute_with(|| {
 			deploy_contracts();
-			assert_ok!(with_transaction_result(|| -> DispatchResult {
-				EvmErc20InfoMapping::<Runtime>::set_erc20_mapping(erc20_address())
-			}));
-			assert_eq!(
-				EvmErc20InfoMapping::<Runtime>::get_evm_address(DexShare::Erc20(erc20_address()).into()),
-				Some(erc20_address())
-			);
+			assert_ok!(AssetRegistry::register_erc20_asset(
+				Origin::signed(CouncilAccount::get()),
+				erc20_address(),
+				1
+			));
 
-			assert_eq!(EvmErc20InfoMapping::<Runtime>::get_evm_address(u32::default()), None);
+			assert_ok!(AssetRegistry::update_erc20_asset(
+				Origin::signed(CouncilAccount::get()),
+				erc20_address(),
+				Box::new(AssetMetadata {
+					name: b"New Token Name".to_vec(),
+					symbol: b"NTN".to_vec(),
+					decimals: 13,
+					minimal_balance: 2,
+				})
+			));
+
+			System::assert_last_event(Event::AssetRegistry(crate::Event::AssetUpdated {
+				asset_id: AssetIds::Erc20(erc20_address()),
+				metadata: AssetMetadata {
+					name: b"New Token Name".to_vec(),
+					symbol: b"NTN".to_vec(),
+					decimals: 13,
+					minimal_balance: 2,
+				},
+			}));
+
+			assert_eq!(
+				AssetMetadatas::<Runtime>::get(AssetIds::Erc20(erc20_address())),
+				Some(AssetMetadata {
+					name: b"New Token Name".to_vec(),
+					symbol: b"NTN".to_vec(),
+					decimals: 13,
+					minimal_balance: 2,
+				})
+			);
 		});
+}
+
+#[test]
+fn update_erc20_asset_should_not_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_noop!(
+			AssetRegistry::update_stable_asset(
+				Origin::signed(CouncilAccount::get()),
+				0,
+				Box::new(AssetMetadata {
+					name: b"New Token Name".to_vec(),
+					symbol: b"NTN".to_vec(),
+					decimals: 13,
+					minimal_balance: 2,
+				})
+			),
+			Error::<Runtime>::AssetIdNotExists
+		);
+	});
 }
 
 #[test]
@@ -521,9 +605,11 @@ fn name_works() {
 		.build()
 		.execute_with(|| {
 			deploy_contracts();
-			assert_ok!(with_transaction_result(|| -> DispatchResult {
-				EvmErc20InfoMapping::<Runtime>::set_erc20_mapping(erc20_address())
-			}));
+			assert_ok!(AssetRegistry::register_erc20_asset(
+				Origin::signed(CouncilAccount::get()),
+				erc20_address(),
+				1
+			));
 			assert_eq!(
 				EvmErc20InfoMapping::<Runtime>::name(CurrencyId::Token(TokenSymbol::ACA)),
 				Some(b"Acala".to_vec())
@@ -577,9 +663,11 @@ fn symbol_works() {
 		.build()
 		.execute_with(|| {
 			deploy_contracts();
-			assert_ok!(with_transaction_result(|| -> DispatchResult {
-				EvmErc20InfoMapping::<Runtime>::set_erc20_mapping(erc20_address())
-			}));
+			assert_ok!(AssetRegistry::register_erc20_asset(
+				Origin::signed(CouncilAccount::get()),
+				erc20_address(),
+				1
+			));
 			assert_eq!(
 				EvmErc20InfoMapping::<Runtime>::symbol(CurrencyId::Token(TokenSymbol::ACA)),
 				Some(b"ACA".to_vec())
@@ -648,9 +736,11 @@ fn decimals_works() {
 		.build()
 		.execute_with(|| {
 			deploy_contracts();
-			assert_ok!(with_transaction_result(|| -> DispatchResult {
-				EvmErc20InfoMapping::<Runtime>::set_erc20_mapping(erc20_address())
-			}));
+			assert_ok!(AssetRegistry::register_erc20_asset(
+				Origin::signed(CouncilAccount::get()),
+				erc20_address(),
+				1
+			));
 			assert_eq!(
 				EvmErc20InfoMapping::<Runtime>::decimals(CurrencyId::Token(TokenSymbol::ACA)),
 				Some(12)
@@ -711,9 +801,11 @@ fn encode_evm_address_works() {
 		.build()
 		.execute_with(|| {
 			deploy_contracts();
-			assert_ok!(with_transaction_result(|| -> DispatchResult {
-				EvmErc20InfoMapping::<Runtime>::set_erc20_mapping(erc20_address())
-			}));
+			assert_ok!(AssetRegistry::register_erc20_asset(
+				Origin::signed(CouncilAccount::get()),
+				erc20_address(),
+				1
+			));
 
 			// Token
 			assert_eq!(
@@ -823,9 +915,11 @@ fn decode_evm_address_works() {
 		.build()
 		.execute_with(|| {
 			deploy_contracts();
-			assert_ok!(with_transaction_result(|| -> DispatchResult {
-				EvmErc20InfoMapping::<Runtime>::set_erc20_mapping(erc20_address())
-			}));
+			assert_ok!(AssetRegistry::register_erc20_asset(
+				Origin::signed(CouncilAccount::get()),
+				erc20_address(),
+				1
+			));
 
 			// Token
 			assert_eq!(

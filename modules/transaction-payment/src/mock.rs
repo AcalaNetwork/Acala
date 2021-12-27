@@ -191,6 +191,7 @@ parameter_types! {
 	pub static TipPerWeightStep: u128 = 1;
 	pub MaxTipsOfPriority: u128 = 1000;
 	pub DefaultFeeSwapPathList: Vec<Vec<CurrencyId>> = vec![vec![AUSD, ACA], vec![DOT, AUSD, ACA]];
+	pub AlternativeFeeSwapDeposit: Balance = 1000;
 }
 
 thread_local! {
@@ -247,6 +248,7 @@ impl Config for Runtime {
 	type Event = Event;
 	type NativeCurrencyId = GetNativeCurrencyId;
 	type DefaultFeeSwapPathList = DefaultFeeSwapPathList;
+	type AlternativeFeeSwapDeposit = AlternativeFeeSwapDeposit;
 	type Currency = PalletBalances;
 	type MultiCurrency = Currencies;
 	type OnTransactionPayment = DealWithFees;

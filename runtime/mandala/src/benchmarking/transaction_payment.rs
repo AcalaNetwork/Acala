@@ -19,7 +19,7 @@
 use super::utils::set_balance;
 use crate::{
 	dollar, AccountId, Balance, Currencies, CurrencyId, Dex, Event, FeePoolSize, GetNativeCurrencyId,
-	GetStableCurrencyId, Origin, Runtime, System, TransactionPayment, TreasuryPalletId,
+	GetStableCurrencyId, NativeTokenExistentialDeposit, Origin, Runtime, System, TransactionPayment, TreasuryPalletId,
 };
 use frame_benchmarking::{account, whitelisted_caller};
 use frame_support::traits::OnFinalize;
@@ -71,6 +71,7 @@ runtime_benchmarks! {
 
 	set_alternative_fee_swap_path {
 		let caller: AccountId = whitelisted_caller();
+		set_balance(NATIVECOIN, &caller, NativeTokenExistentialDeposit::get());
 	}: _(RawOrigin::Signed(caller.clone()), Some(vec![STABLECOIN, NATIVECOIN]))
 	verify {
 		assert_eq!(TransactionPayment::alternative_fee_swap_path(&caller).unwrap().into_inner(), vec![STABLECOIN, NATIVECOIN]);

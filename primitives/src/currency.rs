@@ -309,6 +309,8 @@ impl From<DexShare> for u32 {
 				bytes[3] = token.into();
 			}
 			DexShare::Erc20(address) => {
+				// Use first 4 non-zero bytes as u32 to the mapping between u32 and evm address.
+				// Take the first 4 non-zero bytes, if it is less than 4, add 0 to the left.
 				let is_zero = |&&d: &&u8| -> bool { d == 0 };
 				let leading_zeros = address.as_bytes().iter().take_while(is_zero).count();
 				let index = if leading_zeros > 16 { 16 } else { leading_zeros };
