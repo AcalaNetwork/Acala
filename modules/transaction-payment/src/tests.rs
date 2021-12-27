@@ -28,8 +28,9 @@ use frame_support::{
 	weights::{DispatchClass, DispatchInfo, Pays},
 };
 use mock::{
-	AccountId, AlternativeFeeSwapDeposit, BlockWeights, Call, Currencies, DEXModule, ExtBuilder, FeePoolSize, MockPriceSource, Origin, Runtime,
-	TransactionPayment, ACA, ALICE, AUSD, BOB, CHARLIE, DOT, FEE_UNBALANCED_AMOUNT, TIP_UNBALANCED_AMOUNT,
+	AccountId, AlternativeFeeSwapDeposit, BlockWeights, Call, Currencies, DEXModule, ExtBuilder, FeePoolSize,
+	MockPriceSource, Origin, Runtime, TransactionPayment, ACA, ALICE, AUSD, BOB, CHARLIE, DOT, FEE_UNBALANCED_AMOUNT,
+	TIP_UNBALANCED_AMOUNT,
 };
 use orml_traits::MultiCurrency;
 use primitives::currency::*;
@@ -464,6 +465,12 @@ fn charge_fee_by_default_swap_path() {
 
 		assert_eq!(DEXModule::get_liquidity_pool(ACA, AUSD), (10000, 1000));
 		assert_eq!(DEXModule::get_liquidity_pool(DOT, AUSD), (100, 1000));
+		assert_ok!(Currencies::update_balance(
+			Origin::root(),
+			BOB,
+			ACA,
+			AlternativeFeeSwapDeposit::get().try_into().unwrap(),
+		));
 		assert_ok!(TransactionPayment::set_alternative_fee_swap_path(
 			Origin::signed(BOB),
 			Some(vec![DOT, ACA])
@@ -485,13 +492,13 @@ fn charge_fee_by_default_swap_path() {
 			1
 		);
 
-		assert_eq!(Currencies::free_balance(ACA, &BOB), Currencies::minimum_balance(ACA));
+		assert_eq!(Currencies::free_balance(ACA, &BOB), 0);
 		assert_eq!(Currencies::free_balance(AUSD, &BOB), 0);
-		assert_eq!(Currencies::free_balance(DOT, &BOB), 300 - 201);
+		assert_eq!(Currencies::free_balance(DOT, &BOB), 300 - 200);
 		assert_eq!(DEXModule::get_liquidity_pool(ACA, AUSD), (10000, 1000));
 		assert_eq!(DEXModule::get_liquidity_pool(DOT, AUSD), (100, 1000));
-		assert_eq!(init_balance - 2010, Currencies::free_balance(ACA, &sub_account));
-		assert_eq!(201 + dot_ed, Currencies::free_balance(DOT, &sub_account));
+		assert_eq!(init_balance - 2000, Currencies::free_balance(ACA, &sub_account));
+		assert_eq!(200 + dot_ed, Currencies::free_balance(DOT, &sub_account));
 	});
 }
 
@@ -1155,6 +1162,12 @@ fn charge_fee_failed_when_disable_dex() {
 #[test]
 fn enable_init_pool_works() {
 	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(Currencies::update_balance(
+			Origin::root(),
+			ALICE,
+			ACA,
+			AlternativeFeeSwapDeposit::get().try_into().unwrap(),
+		));
 		assert_ok!(TransactionPayment::set_alternative_fee_swap_path(
 			Origin::signed(ALICE),
 			Some(vec![AUSD, ACA])
