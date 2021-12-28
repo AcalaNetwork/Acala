@@ -114,7 +114,7 @@ pub mod module {
 				.unwrap_or_default();
 			let previous_relay_block_number = Self::previous_relay_block();
 			if current_relay_block_number.saturating_sub(previous_relay_block_number) >= T::SkipRelayBlocks::get() {
-				log::debug!(
+				log::warn!(
 					target: "idle-scheduler",
 					"Relaychain produced blocks without finalizing parachain blocks. Idle-scheduler will not execute.\ncurrent relay block number: {:?}\nprevious relay block number: {:?}",
 					current_relay_block_number,
@@ -123,7 +123,7 @@ pub mod module {
 				PreviousRelayBlockNumber::<T>::kill();
 				0
 			} else {
-				log::debug!(
+				log::warn!(
 					target: "idle-scheduler",
 					"Idle-scheduler dispatched!\ncurrent relay block number: {:?}\nprevious relay block number: {:?}",
 					current_relay_block_number,

@@ -139,6 +139,7 @@ define_combined_task! {
 
 parameter_types!(
 	pub MinimumWeightRemainInBlock: Weight = u64::MIN;
+	pub SkipRelayBlocks: BlockNumber = u32::MAX;
 );
 
 pub struct MockBlockNumberProvider;
@@ -157,6 +158,7 @@ impl module_idle_scheduler::Config for Runtime {
 	type Task = ScheduledTasks;
 	type MinimumWeightRemainInBlock = MinimumWeightRemainInBlock;
 	type RelayChainBlockNumberProvider = MockBlockNumberProvider;
+	type SkipRelayBlocks = SkipRelayBlocks;
 }
 
 pub struct GasToWeight;
@@ -317,8 +319,6 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	}
 	.assimilate_storage(&mut t)
 	.unwrap();
-
-	GenesisBuild::<Runtime>::assimilate_storage(&module_idle_scheduler::GenesisConfig::default(), &mut t).unwrap();
 
 	let mut ext = sp_io::TestExternalities::new(t);
 	ext.execute_with(|| System::set_block_number(1));

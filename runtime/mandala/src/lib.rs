@@ -2059,10 +2059,6 @@ construct_runtime! {
 		Bounties: pallet_bounties::{Pallet, Call, Storage, Event<T>} = 21,
 		Tips: pallet_tips::{Pallet, Call, Storage, Event<T>} = 22,
 
-		// Parachain
-		ParachainSystem: cumulus_pallet_parachain_system::{Pallet, Call, Storage, Inherent, Config, Event<T>} = 160,
-		ParachainInfo: parachain_info::{Pallet, Storage, Config} = 161,
-
 		// Utility
 		Utility: pallet_utility::{Pallet, Call, Event} = 30,
 		Multisig: pallet_multisig::{Pallet, Call, Storage, Event<T>} = 31,
@@ -2121,6 +2117,10 @@ construct_runtime! {
 		Incentives: module_incentives::{Pallet, Storage, Call, Event<T>} = 140,
 		NFT: module_nft::{Pallet, Call, Event<T>} = 141,
 		AssetRegistry: module_asset_registry::{Pallet, Call, Storage, Event<T>} = 142,
+
+		// Parachain
+		ParachainSystem: cumulus_pallet_parachain_system::{Pallet, Call, Storage, Inherent, Config, Event<T>} = 160,
+		ParachainInfo: parachain_info::{Pallet, Storage, Config} = 161,
 
 		// Ecosystem modules
 		RenVmBridge: ecosystem_renvm_bridge::{Pallet, Call, Config, Storage, Event<T>, ValidateUnsigned} = 150,
