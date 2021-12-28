@@ -98,10 +98,12 @@ pub mod module {
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
 		fn on_initialize(_n: T::BlockNumber) -> Weight {
 			// Unwrap shouldn't fail if it does defaults to 0
-			let test: BlockNumber = T::RelayChainBlockNumberProvider::current_block_number()
+			// This is the previous relay block because `on_initialize` is executed before
+			// the inherent that sets the new relay chain block number
+			let previous_relay_block: BlockNumber = T::RelayChainBlockNumberProvider::current_block_number()
 				.try_into()
 				.unwrap_or_default();
-			PreviousRelayBlockNumber::<T>::put(test);
+			PreviousRelayBlockNumber::<T>::put(previous_relay_block);
 			0
 		}
 
@@ -111,7 +113,7 @@ pub mod module {
 			let current_relay_block_number: BlockNumber = T::RelayChainBlockNumberProvider::current_block_number()
 				.try_into()
 				.unwrap_or_default();
-			let previous_relay_block_number = Self::previous_relay_block();
+			let previous_relay_block_number = PreviousRelayBlockNumber::<T>::take();
 			if current_relay_block_number.saturating_sub(previous_relay_block_number) >= T::SkipRelayBlocks::get() {
 				log::warn!(
 					target: "idle-scheduler",
@@ -119,7 +121,6 @@ pub mod module {
 					current_relay_block_number,
 					previous_relay_block_number
 				);
-				PreviousRelayBlockNumber::<T>::kill();
 				0
 			} else {
 				log::warn!(
@@ -128,7 +129,6 @@ pub mod module {
 					current_relay_block_number,
 					previous_relay_block_number
 				);
-				PreviousRelayBlockNumber::<T>::kill();
 				Self::do_dispatch_tasks(remaining_weight)
 			}
 		}
