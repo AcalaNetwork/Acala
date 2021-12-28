@@ -1719,6 +1719,9 @@ define_combined_task! {
 parameter_types!(
 	// At least 2% of max block weight should remain before idle tasks are dispatched.
 	pub MinimumWeightRemainInBlock: Weight = RuntimeBlockWeights::get().max_block / 50;
+	// Number of relay chain blocks produced with no parachain blocks finalized,
+	// once this number is reached idle scheduler is disabled as block  production is slow
+	pub SkipRelayBlocks: BlockNumber = 6;
 );
 
 impl module_idle_scheduler::Config for Runtime {
@@ -1727,6 +1730,7 @@ impl module_idle_scheduler::Config for Runtime {
 	type Task = ScheduledTasks;
 	type MinimumWeightRemainInBlock = MinimumWeightRemainInBlock;
 	type RelayChainBlockNumberProvider = cumulus_pallet_parachain_system::RelaychainBlockNumberProvider<Runtime>;
+	type SkipRelayBlocks = SkipRelayBlocks;
 }
 
 construct_runtime!(

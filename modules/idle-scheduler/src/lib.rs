@@ -62,6 +62,12 @@ pub mod module {
 
 		/// Gets RelayChain Block Number
 		type RelayChainBlockNumberProvider: BlockNumberProvider;
+
+		/// Number of Relay Chain blocks skipped to disable `on_idle` dispatching scheduled tasks
+		/// this shuts down idle-scheduler when block production is slower than this number of
+		/// relaychain blocks
+		#[pallet::constant]
+		type SkipRelayBlocks: Get<BlockNumber>;
 	}
 
 	#[pallet::event]
@@ -81,59 +87,51 @@ pub mod module {
 	#[pallet::getter(fn next_task_id)]
 	pub type NextTaskId<T: Config> = StorageValue<_, Nonce, ValueQuery>;
 
+	///
 	#[pallet::storage]
-	#[pallet::getter(fn block_difference)]
-	pub type BlockNumberDifference<T: Config> = StorageValue<_, BlockNumber, ValueQuery>;
+	#[pallet::getter(fn previous_relay_block)]
+	pub type PreviousRelayBlockNumber<T: Config> = StorageValue<_, BlockNumber, ValueQuery>;
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
 
 	#[pallet::hooks]
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
-		fn on_idle(n: T::BlockNumber, remaining_weight: Weight) -> Weight {
-			// shouldn't fail, even if it does, it will equal 0 making scheduler not dispatch tasks
-			let relay_block_number: BlockNumber = T::RelayChainBlockNumberProvider::current_block_number()
+		fn on_initialize(_n: T::BlockNumber) -> Weight {
+			// Unwrap shouldn't fail if it does defaults to 0
+			let test: BlockNumber = T::RelayChainBlockNumberProvider::current_block_number()
 				.try_into()
 				.unwrap_or_default();
-			// divide relay block by two (right shift) and then subtract by parachain block number to get
-			// difference. (Relay/2 - Para)
-			let diff = (relay_block_number >> 1).saturating_sub(n.try_into().unwrap_or_default());
-			// if 6 relaychain blocks are produced with no parachain block finialized we will not execute
-			// dispatch tasks. Note this will occasionally happen as it doesn't have to be consecutive
-			if diff.saturating_sub(3) >= Self::block_difference() {
+			PreviousRelayBlockNumber::<T>::put(test);
+			0
+		}
+
+		fn on_idle(_n: T::BlockNumber, remaining_weight: Weight) -> Weight {
+			// Checks if we have skipped enough relay blocks without block production to skip dispatching
+			// scheduled tasks
+			let current_relay_block_number: BlockNumber = T::RelayChainBlockNumberProvider::current_block_number()
+				.try_into()
+				.unwrap_or_default();
+			let previous_relay_block_number = Self::previous_relay_block();
+			if current_relay_block_number.saturating_sub(previous_relay_block_number) >= T::SkipRelayBlocks::get() {
 				log::debug!(
 					target: "idle-scheduler",
-					"Relaychain produced blocks without finalizing our parachain blocks. The idle-scheduler will not execute. relay block number: {:?} parachain block number: {:?}",
-					relay_block_number,
-					n
+					"Relaychain produced blocks without finalizing parachain blocks. Idle-scheduler will not execute.\ncurrent relay block number: {:?}\nprevious relay block number: {:?}",
+					current_relay_block_number,
+					previous_relay_block_number
 				);
-				// store new differrence
-				BlockNumberDifference::<T>::put(diff);
-				T::DbWeight::get().reads_writes(1, 1)
+				PreviousRelayBlockNumber::<T>::kill();
+				0
 			} else {
+				log::debug!(
+					target: "idle-scheduler",
+					"Idle-scheduler dispatched!\ncurrent relay block number: {:?}\nprevious relay block number: {:?}",
+					current_relay_block_number,
+					previous_relay_block_number
+				);
+				PreviousRelayBlockNumber::<T>::kill();
 				Self::do_dispatch_tasks(remaining_weight)
 			}
-		}
-	}
-
-	#[pallet::genesis_config]
-	pub struct GenesisConfig {
-		pub initial_block_difference: BlockNumber,
-	}
-
-	#[cfg(feature = "std")]
-	impl Default for GenesisConfig {
-		fn default() -> Self {
-			GenesisConfig {
-				initial_block_difference: 1,
-			}
-		}
-	}
-
-	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig {
-		fn build(&self) {
-			BlockNumberDifference::<T>::put(self.initial_block_difference);
 		}
 	}
 

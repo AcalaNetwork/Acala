@@ -65,6 +65,7 @@ impl frame_system::Config for Runtime {
 
 parameter_types!(
 	pub const MinimumWeightRemainInBlock: Weight = 100_000_000_000;
+	pub const SkipRelayBlocks: BlockNumber = 6;
 );
 
 pub struct MockBlockNumberProvider;
@@ -83,6 +84,7 @@ impl module_idle_scheduler::Config for Runtime {
 	type Task = ScheduledTasks;
 	type MinimumWeightRemainInBlock = MinimumWeightRemainInBlock;
 	type RelayChainBlockNumberProvider = MockBlockNumberProvider;
+	type SkipRelayBlocks = SkipRelayBlocks;
 }
 
 // Mock dispatachable tasks
@@ -142,11 +144,9 @@ construct_runtime!(
 pub struct ExtBuilder;
 impl ExtBuilder {
 	pub fn build(self) -> sp_io::TestExternalities {
-		let mut t = frame_system::GenesisConfig::default()
+		let t = frame_system::GenesisConfig::default()
 			.build_storage::<Runtime>()
 			.unwrap();
-
-		GenesisBuild::<Runtime>::assimilate_storage(&crate::GenesisConfig::default(), &mut t).unwrap();
 
 		let mut ext = sp_io::TestExternalities::new(t);
 		ext.execute_with(|| System::set_block_number(1));
