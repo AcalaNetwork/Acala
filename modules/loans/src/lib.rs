@@ -96,15 +96,26 @@ pub mod module {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// Position updated. \[owner, collateral_type, collateral_adjustment,
-		/// debit_adjustment\]
-		PositionUpdated(T::AccountId, CurrencyId, Amount, Amount),
-		/// Confiscate CDP's collateral assets and eliminate its debit. \[owner,
-		/// collateral_type, confiscated_collateral_amount,
-		/// deduct_debit_amount\]
-		ConfiscateCollateralAndDebit(T::AccountId, CurrencyId, Balance, Balance),
-		/// Transfer loan. \[from, to, currency_id\]
-		TransferLoan(T::AccountId, T::AccountId, CurrencyId),
+		/// Position updated.
+		PositionUpdated {
+			owner: T::AccountId,
+			collateral_type: CurrencyId,
+			collateral_adjustment: Amount,
+			debit_adjustment: Amount,
+		},
+		/// Confiscate CDP's collateral assets and eliminate its debit.
+		ConfiscateCollateralAndDebit {
+			owner: T::AccountId,
+			collateral_type: CurrencyId,
+			confiscated_collateral_amount: Balance,
+			deduct_debit_amount: Balance,
+		},
+		/// Transfer loan.
+		TransferLoan {
+			from: T::AccountId,
+			to: T::AccountId,
+			currency_id: CurrencyId,
+		},
 	}
 
 	/// The collateralized debit positions, map from
@@ -168,12 +179,12 @@ impl<T: Config> Pallet<T> {
 			debit_adjustment.saturating_neg(),
 		)?;
 
-		Self::deposit_event(Event::ConfiscateCollateralAndDebit(
-			who.clone(),
-			currency_id,
-			collateral_confiscate,
-			debit_decrease,
-		));
+		Self::deposit_event(Event::ConfiscateCollateralAndDebit {
+			owner: who.clone(),
+			collateral_type: currency_id,
+			confiscated_collateral_amount: collateral_confiscate,
+			deduct_debit_amount: debit_decrease,
+		});
 		Ok(())
 	}
 
@@ -222,12 +233,12 @@ impl<T: Config> Pallet<T> {
 			collateral_adjustment.is_negative() || debit_adjustment.is_positive(),
 		)?;
 
-		Self::deposit_event(Event::PositionUpdated(
-			who.clone(),
-			currency_id,
+		Self::deposit_event(Event::PositionUpdated {
+			owner: who.clone(),
+			collateral_type: currency_id,
 			collateral_adjustment,
 			debit_adjustment,
-		));
+		});
 		Ok(())
 	}
 
@@ -262,7 +273,11 @@ impl<T: Config> Pallet<T> {
 		)?;
 		Self::update_loan(to, currency_id, collateral_adjustment, debit_adjustment)?;
 
-		Self::deposit_event(Event::TransferLoan(from.clone(), to.clone(), currency_id));
+		Self::deposit_event(Event::TransferLoan {
+			from: from.clone(),
+			to: to.clone(),
+			currency_id,
+		});
 		Ok(())
 	}
 

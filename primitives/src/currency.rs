@@ -22,6 +22,7 @@ use crate::{evm::EvmAddress, *};
 use bstringify::bstringify;
 use codec::{Decode, Encode};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
+pub use nutsfinance_stable_asset::StableAssetPoolId;
 use scale_info::TypeInfo;
 use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
@@ -194,6 +195,7 @@ create_currency_id! {
 		KUSD("Karura Dollar", 12) = 129,
 		KSM("Kusama", 12) = 130,
 		LKSM("Liquid KSM", 12) = 131,
+		TAI("Taiga", 12) = 132,
 		// 148 - 167: External tokens (e.g. bridged)
 		// 149: Reserved for renBTC
 		// 150: Reserved for CASH
@@ -214,6 +216,7 @@ pub trait TokenInfo {
 }
 
 pub type ForeignAssetId = u16;
+pub type Erc20Id = u32;
 pub type Lease = BlockNumber;
 
 #[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord, TypeInfo)]
@@ -233,7 +236,7 @@ pub enum CurrencyId {
 	Token(TokenSymbol),
 	DexShare(DexShare, DexShare),
 	Erc20(EvmAddress),
-	StableAssetPoolToken(nutsfinance_stable_asset::StableAssetPoolId),
+	StableAssetPoolToken(StableAssetPoolId),
 	LiquidCroadloan(Lease),
 	ForeignAsset(ForeignAssetId),
 }
@@ -306,6 +309,8 @@ impl From<DexShare> for u32 {
 				bytes[3] = token.into();
 			}
 			DexShare::Erc20(address) => {
+				// Use first 4 non-zero bytes as u32 to the mapping between u32 and evm address.
+				// Take the first 4 non-zero bytes, if it is less than 4, add 0 to the left.
 				let is_zero = |&&d: &&u8| -> bool { d == 0 };
 				let leading_zeros = address.as_bytes().iter().take_while(is_zero).count();
 				let index = if leading_zeros > 16 { 16 } else { leading_zeros };

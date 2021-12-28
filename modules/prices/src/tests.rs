@@ -245,10 +245,10 @@ fn lock_price_work() {
 		);
 		assert_eq!(PricesModule::locked_price(BTC), None);
 		assert_ok!(PricesModule::lock_price(Origin::signed(1), BTC));
-		System::assert_last_event(Event::PricesModule(crate::Event::LockPrice(
-			BTC,
-			Price::saturating_from_integer(500000000000000u128),
-		)));
+		System::assert_last_event(Event::PricesModule(crate::Event::LockPrice {
+			currency_id: BTC,
+			locked_price: Price::saturating_from_integer(500000000000000u128),
+		}));
 		assert_eq!(
 			PricesModule::locked_price(BTC),
 			Some(Price::saturating_from_integer(500000000000000u128))
@@ -272,10 +272,10 @@ fn lock_price_work() {
 		);
 		assert_eq!(PricesModule::locked_price(KSM), None);
 		assert_ok!(PricesModule::lock_price(Origin::signed(1), KSM));
-		System::assert_last_event(Event::PricesModule(crate::Event::LockPrice(
-			KSM,
-			Price::saturating_from_integer(200000000u128),
-		)));
+		System::assert_last_event(Event::PricesModule(crate::Event::LockPrice {
+			currency_id: KSM,
+			locked_price: Price::saturating_from_integer(200000000u128),
+		}));
 		assert_eq!(
 			PricesModule::locked_price(KSM),
 			Some(Price::saturating_from_integer(200000000u128))
@@ -302,7 +302,7 @@ fn unlock_price_work() {
 			Some(Price::saturating_from_integer(500000000000000u128))
 		);
 		assert_ok!(PricesModule::unlock_price(Origin::signed(1), BTC));
-		System::assert_last_event(Event::PricesModule(crate::Event::UnlockPrice(BTC)));
+		System::assert_last_event(Event::PricesModule(crate::Event::UnlockPrice { currency_id: BTC }));
 		assert_eq!(PricesModule::locked_price(BTC), None);
 	});
 }

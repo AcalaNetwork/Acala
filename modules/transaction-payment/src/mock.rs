@@ -33,7 +33,11 @@ use orml_traits::parameter_type_with_key;
 use primitives::{Amount, ReserveIdentifier, TokenSymbol, TradingPair};
 use smallvec::smallvec;
 use sp_core::{crypto::AccountId32, H256};
-use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
+use sp_runtime::{
+	testing::Header,
+	traits::{AccountIdConversion, IdentityLookup, One},
+	Perbill,
+};
 use sp_std::cell::RefCell;
 use support::{mocks::MockAddressMapping, Price};
 
@@ -94,8 +98,12 @@ impl frame_system::Config for Runtime {
 }
 
 parameter_type_with_key! {
-	pub ExistentialDeposits: |_currency_id: CurrencyId| -> Balance {
-		Default::default()
+	pub ExistentialDeposits: |currency_id: CurrencyId| -> Balance {
+		match *currency_id {
+			AUSD => 100,
+			DOT => 1,
+			_ => Default::default(),
+		}
 	};
 }
 
@@ -183,6 +191,7 @@ parameter_types! {
 	pub static TipPerWeightStep: u128 = 1;
 	pub MaxTipsOfPriority: u128 = 1000;
 	pub DefaultFeeSwapPathList: Vec<Vec<CurrencyId>> = vec![vec![AUSD, ACA], vec![DOT, AUSD, ACA]];
+	pub AlternativeFeeSwapDeposit: Balance = 1000;
 }
 
 thread_local! {
@@ -222,9 +231,24 @@ impl PriceProvider<CurrencyId> for MockPriceSource {
 	}
 }
 
+parameter_types! {
+	// DO NOT CHANGE THIS VALUE, AS IT EFFECT THE TESTCASES.
+	pub const FeePoolSize: Balance = 10_000;
+	pub const SwapBalanceThreshold: Balance = 20;
+	pub const TransactionPaymentPalletId: PalletId = PalletId(*b"aca/fees");
+	pub const TreasuryPalletId: PalletId = PalletId(*b"aca/trsy");
+	pub KaruraTreasuryAccount: AccountId = TreasuryPalletId::get().into_account();
+	pub FeePoolExchangeTokens: Vec<CurrencyId> = vec![AUSD, DOT];
+}
+ord_parameter_types! {
+	pub const ListingOrigin: AccountId = ALICE;
+}
+
 impl Config for Runtime {
+	type Event = Event;
 	type NativeCurrencyId = GetNativeCurrencyId;
 	type DefaultFeeSwapPathList = DefaultFeeSwapPathList;
+	type AlternativeFeeSwapDeposit = AlternativeFeeSwapDeposit;
 	type Currency = PalletBalances;
 	type MultiCurrency = Currencies;
 	type OnTransactionPayment = DealWithFees;
@@ -239,6 +263,9 @@ impl Config for Runtime {
 	type TradingPathLimit = TradingPathLimit;
 	type PriceSource = MockPriceSource;
 	type WeightInfo = ();
+	type PalletId = TransactionPaymentPalletId;
+	type TreasuryAccount = KaruraTreasuryAccount;
+	type UpdateOrigin = EnsureSignedBy<ListingOrigin, AccountId>;
 }
 
 thread_local! {
@@ -269,13 +296,28 @@ construct_runtime!(
 		UncheckedExtrinsic = UncheckedExtrinsic
 	{
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-		TransactionPayment: transaction_payment::{Pallet, Call, Storage},
+		TransactionPayment: transaction_payment::{Pallet, Call, Storage, Event<T>},
 		PalletBalances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
 		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
 		Currencies: module_currencies::{Pallet, Call, Event<T>},
 		DEXModule: module_dex::{Pallet, Storage, Call, Event<T>, Config<T>},
 	}
 );
+
+pub struct MockTransactionPaymentUpgrade;
+
+impl frame_support::traits::OnRuntimeUpgrade for MockTransactionPaymentUpgrade {
+	fn on_runtime_upgrade() -> Weight {
+		for asset in FeePoolExchangeTokens::get() {
+			let _ = <transaction_payment::Pallet<Runtime>>::initialize_pool(
+				asset,
+				FeePoolSize::get(),
+				SwapBalanceThreshold::get(),
+			);
+		}
+		0
+	}
+}
 
 pub struct ExtBuilder {
 	balances: Vec<(AccountId, CurrencyId, Balance)>,

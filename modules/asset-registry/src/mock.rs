@@ -27,7 +27,9 @@ use frame_support::{
 };
 use frame_system::EnsureSignedBy;
 use module_support::{mocks::MockAddressMapping, AddressMapping};
-use primitives::{convert_decimals_to_evm, evm::EvmAddress, AccountId, Balance, ReserveIdentifier};
+use primitives::{
+	convert_decimals_to_evm, evm::EvmAddress, AccountId, Balance, CurrencyId, ReserveIdentifier, TokenSymbol,
+};
 use sp_core::{bytes::from_hex, H160, H256};
 use std::str::FromStr;
 
@@ -134,9 +136,13 @@ impl module_evm_bridge::Config for Runtime {
 	type EVM = EVM;
 }
 
+parameter_types! {
+	pub const KSMCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::KSM);
+}
 impl asset_registry::Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
+	type LiquidCroadloanCurrencyId = KSMCurrencyId;
 	type EVMBridge = module_evm_bridge::EVMBridge<Runtime>;
 	type RegisterOrigin = EnsureSignedBy<CouncilAccount, AccountId>;
 	type WeightInfo = ();
@@ -163,6 +169,10 @@ pub fn erc20_address() -> EvmAddress {
 	EvmAddress::from_str("0x5dddfce53ee040d9eb21afbc0ae1bb4dbb0ba643").unwrap()
 }
 
+pub fn erc20_address_same_prefix() -> EvmAddress {
+	EvmAddress::from_str("0x5dddfce53ee040d9eb21afbc0ae1bb4dbb0ba644").unwrap()
+}
+
 pub fn erc20_address_not_exists() -> EvmAddress {
 	EvmAddress::from_str("0000000000000000000100000000000002000001").unwrap()
 }
@@ -179,10 +189,10 @@ pub fn deploy_contracts() {
 	let code = from_hex(include!("../../evm-bridge/src/erc20_demo_contract")).unwrap();
 	assert_ok!(EVM::create(Origin::signed(alice()), code, 0, 2_100_000, 10000));
 
-	System::assert_last_event(Event::EVM(module_evm::Event::Created(
-		alice_evm_addr(),
-		erc20_address(),
-		vec![module_evm::Log {
+	System::assert_last_event(Event::EVM(module_evm::Event::Created {
+		from: alice_evm_addr(),
+		contract: erc20_address(),
+		logs: vec![module_evm::Log {
 			address: H160::from_str("0x5dddfce53ee040d9eb21afbc0ae1bb4dbb0ba643").unwrap(),
 			topics: vec![
 				H256::from_str("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef").unwrap(),
@@ -191,9 +201,41 @@ pub fn deploy_contracts() {
 			],
 			data: H256::from_low_u64_be(10000).as_bytes().to_vec(),
 		}],
-	)));
+	}));
 
 	assert_ok!(EVM::deploy_free(Origin::signed(CouncilAccount::get()), erc20_address()));
+}
+
+// Specify contract address
+pub fn deploy_contracts_same_prefix() {
+	let code = from_hex(include!("../../evm-bridge/src/erc20_demo_contract")).unwrap();
+	assert_ok!(EVM::create_predeploy_contract(
+		Origin::signed(NetworkContractAccount::get()),
+		erc20_address_same_prefix(),
+		code,
+		0,
+		2_100_000,
+		10000
+	));
+
+	System::assert_last_event(Event::EVM(module_evm::Event::Created {
+		from: alice_evm_addr(),
+		contract: erc20_address_same_prefix(),
+		logs: vec![module_evm::Log {
+			address: erc20_address_same_prefix(),
+			topics: vec![
+				H256::from_str("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef").unwrap(),
+				H256::from_str("0x0000000000000000000000000000000000000000000000000000000000000000").unwrap(),
+				H256::from_str("0x0000000000000000000000001000000000000000000000000000000000000001").unwrap(),
+			],
+			data: H256::from_low_u64_be(10000).as_bytes().to_vec(),
+		}],
+	}));
+
+	assert_ok!(EVM::deploy_free(
+		Origin::signed(CouncilAccount::get()),
+		erc20_address_same_prefix()
+	));
 }
 
 pub struct ExtBuilder {

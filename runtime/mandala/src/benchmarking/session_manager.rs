@@ -41,7 +41,7 @@ runtime_benchmarks! {
 		);
 	}
 	verify {
-		assert_last_event(module_session_manager::Event::ScheduledSessionDuration(10,1,100).into());
+		assert_last_event(module_session_manager::Event::ScheduledSessionDuration{block_number: 10, session_index: 1, session_duration: 100}.into());
 	}
 
 	on_initialize_skip {

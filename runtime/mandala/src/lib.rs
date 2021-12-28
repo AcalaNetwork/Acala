@@ -47,13 +47,13 @@ pub use frame_support::{
 };
 use frame_system::{EnsureRoot, RawOrigin};
 use hex_literal::hex;
-use module_asset_registry::{EvmErc20InfoMapping, FixedRateOfForeignAsset, XcmForeignAssetIdMapping};
+use module_asset_registry::{AssetIdMaps, EvmErc20InfoMapping, FixedRateOfForeignAsset};
 use module_currencies::{BasicCurrencyAdapter, Currency};
 use module_evm::{CallInfo, CreateInfo, EvmTask, Runner};
 use module_evm_accounts::EvmAddressMapping;
 use module_relaychain::RelayChainCallBuilder;
-use module_support::{DispatchableTask, ExchangeRateProvider, ForeignAssetIdMapping};
-use module_transaction_payment::{Multiplier, TargetedFeeAdjustment};
+use module_support::{AssetIdMapping, DispatchableTask, ExchangeRateProvider};
+use module_transaction_payment::{Multiplier, TargetedFeeAdjustment, TransactionFeePoolTrader};
 use scale_info::TypeInfo;
 
 use orml_tokens::CurrencyAdapter;
@@ -113,22 +113,21 @@ pub use primitives::{
 	TokenSymbol, TradingPair,
 };
 pub use runtime_common::{
-	cent, dollar, microcent, millicent, CurveFeeModel, EnsureRootOrAllGeneralCouncil,
-	EnsureRootOrAllTechnicalCommittee, EnsureRootOrHalfFinancialCouncil, EnsureRootOrHalfGeneralCouncil,
-	EnsureRootOrHalfHomaCouncil, EnsureRootOrOneGeneralCouncil, EnsureRootOrOneThirdsTechnicalCommittee,
-	EnsureRootOrThreeFourthsGeneralCouncil, EnsureRootOrTwoThirdsGeneralCouncil,
-	EnsureRootOrTwoThirdsTechnicalCommittee, ExchangeRate, FinancialCouncilInstance,
-	FinancialCouncilMembershipInstance, GasToWeight, GeneralCouncilInstance, GeneralCouncilMembershipInstance,
-	HomaCouncilInstance, HomaCouncilMembershipInstance, MaxTipsOfPriority, OffchainSolutionWeightLimit,
-	OperationalFeeMultiplier, OperatorMembershipInstanceAcala, Price, ProxyType, Rate, Ratio,
-	RelayChainBlockNumberProvider, RelayChainSubAccountId, RuntimeBlockLength, RuntimeBlockWeights,
+	calculate_asset_ratio, cent, dollar, microcent, millicent, AcalaDropAssets, CurveFeeModel,
+	EnsureRootOrAllGeneralCouncil, EnsureRootOrAllTechnicalCommittee, EnsureRootOrHalfFinancialCouncil,
+	EnsureRootOrHalfGeneralCouncil, EnsureRootOrHalfHomaCouncil, EnsureRootOrOneGeneralCouncil,
+	EnsureRootOrOneThirdsTechnicalCommittee, EnsureRootOrThreeFourthsGeneralCouncil,
+	EnsureRootOrTwoThirdsGeneralCouncil, EnsureRootOrTwoThirdsTechnicalCommittee, ExchangeRate,
+	FinancialCouncilInstance, FinancialCouncilMembershipInstance, GasToWeight, GeneralCouncilInstance,
+	GeneralCouncilMembershipInstance, HomaCouncilInstance, HomaCouncilMembershipInstance, MaxTipsOfPriority,
+	OffchainSolutionWeightLimit, OperationalFeeMultiplier, OperatorMembershipInstanceAcala, Price, ProxyType, Rate,
+	Ratio, RelayChainBlockNumberProvider, RelayChainSubAccountId, RuntimeBlockLength, RuntimeBlockWeights,
 	SystemContractsFilter, TechnicalCommitteeInstance, TechnicalCommitteeMembershipInstance, TimeStampedPrice,
 	TipPerWeightStep, ACA, AUSD, DOT, LDOT, RENBTC,
 };
 
 /// Import the stable_asset pallet.
 pub use nutsfinance_stable_asset;
-use runtime_common::AcalaDropAssets;
 
 mod authority;
 mod benchmarking;
@@ -140,7 +139,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("mandala"),
 	impl_name: create_runtime_str!("mandala"),
 	authoring_version: 1,
-	spec_version: 2010,
+	spec_version: 2011,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -179,6 +178,9 @@ parameter_types! {
 	pub const NftPalletId: PalletId = PalletId(*b"aca/aNFT");
 	pub const NomineesElectionId: LockIdentifier = *b"aca/nome";
 	pub UnreleasedNativeVaultAccountId: AccountId = PalletId(*b"aca/urls").into_account();
+	// This Pallet is only used to payment fee pool, it's not added to whitelist by design.
+	// because transaction payment pallet will ensure the accounts always have enough ED.
+	pub const TransactionPaymentPalletId: PalletId = PalletId(*b"aca/fees");
 	// Ecosystem modules
 	pub const StarportPalletId: PalletId = PalletId(*b"aca/stpt");
 	pub const StableAssetPalletId: PalletId = PalletId(*b"nuts/sta");
@@ -291,8 +293,8 @@ parameter_types! {
 	pub const MaxInvulnerables: u32 = 50;
 	pub const KickPenaltySessionLength: u32 = 8;
 	pub const CollatorKickThreshold: Permill = Permill::from_percent(50);
-	// 10% of transaction fee of empty remark call: 150_459_200
-	pub MinRewardDistributeAmount: Balance = 15 * millicent(ACA);
+	// Ensure that can create the author(`ExistentialDeposit`) with dev mode.
+	pub MinRewardDistributeAmount: Balance = NativeTokenExistentialDeposit::get();
 }
 
 impl module_collator_selection::Config for Runtime {
@@ -780,15 +782,15 @@ parameter_type_with_key! {
 				TokenSymbol::BNC => 800 * millicent(*currency_id),  // 80BNC = 1KSM
 				TokenSymbol::VSKSM => 10 * millicent(*currency_id),  // 1VSKSM = 1KSM
 				TokenSymbol::PHA => 4000 * millicent(*currency_id), // 400PHA = 1KSM
-
-				TokenSymbol::KAR |
 				TokenSymbol::KUSD |
 				TokenSymbol::KSM |
 				TokenSymbol::LKSM |
 				TokenSymbol::RENBTC |
-				TokenSymbol::ACA |
 				TokenSymbol::KINT |
 				TokenSymbol::KBTC |
+				TokenSymbol::TAI => 10 * millicent(*currency_id),
+				TokenSymbol::ACA |
+				TokenSymbol::KAR |
 				TokenSymbol::CASH => Balance::max_value() // unsupported
 			},
 			CurrencyId::DexShare(dex_share_0, _) => {
@@ -798,18 +800,22 @@ parameter_type_with_key! {
 				// use the ED of currency_id_0 as the ED of lp token.
 				if currency_id_0 == GetNativeCurrencyId::get() {
 					NativeTokenExistentialDeposit::get()
-				} else if let CurrencyId::Erc20(_) = currency_id_0 {
+				} else if let CurrencyId::Erc20(address) = currency_id_0 {
 					// LP token with erc20
-					1
+					AssetIdMaps::<Runtime>::get_erc20_asset_metadata(address).
+						map_or(Balance::max_value(), |metatata| metatata.minimal_balance)
 				} else {
 					Self::get(&currency_id_0)
 				}
 			},
 			CurrencyId::Erc20(_) => Balance::max_value(), // not handled by orml-tokens
-			CurrencyId::StableAssetPoolToken(_) => 1, // TODO: update this before we enable StableAsset
+			CurrencyId::StableAssetPoolToken(stable_asset_id) => {
+				AssetIdMaps::<Runtime>::get_stable_asset_metadata(*stable_asset_id).
+					map_or(Balance::max_value(), |metatata| metatata.minimal_balance)
+			},
 			CurrencyId::LiquidCroadloan(_) => ExistentialDeposits::get(&CurrencyId::Token(TokenSymbol::DOT)), // the same as DOT
 			CurrencyId::ForeignAsset(foreign_asset_id) => {
-				XcmForeignAssetIdMapping::<Runtime>::get_asset_metadata(*foreign_asset_id).
+				AssetIdMaps::<Runtime>::get_foreign_asset_metadata(*foreign_asset_id).
 					map_or(Balance::max_value(), |metatata| metatata.minimal_balance)
 			},
 		}
@@ -1022,7 +1028,7 @@ where
 }
 
 parameter_types! {
-	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![DOT, LDOT, RENBTC];
+	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![DOT, LDOT, RENBTC, CurrencyId::StableAssetPoolToken(0)];
 	pub DefaultLiquidationRatio: Ratio = Ratio::saturating_from_rational(110, 100);
 	pub DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
 	pub DefaultLiquidationPenalty: Rate = Rate::saturating_from_rational(5, 100);
@@ -1121,6 +1127,13 @@ impl module_transaction_pause::Config for Runtime {
 parameter_types! {
 	// Sort by fee charge order
 	pub DefaultFeeSwapPathList: Vec<Vec<CurrencyId>> = vec![vec![AUSD, ACA], vec![AUSD, LDOT], vec![AUSD, DOT], vec![AUSD, RENBTC]];
+	// Initial fee pool size. one extrinsic=0.0025 ACA, one block=100 extrinsics.
+	// 20 blocks trigger an swap, so total balance=0.0025*100*20=5 ACA
+	pub FeePoolSize: Balance = 5 * dollar(ACA);
+	// one extrinsic fee=0.0025ACA, one block=100 extrinsics, threshold=0.25+0.1=0.35ACA
+	pub SwapBalanceThreshold: Balance = Ratio::saturating_from_rational(35, 100).saturating_mul_int(dollar(ACA));
+	// tokens used as fee charge. the token should have corresponding dex swap pool enabled.
+	pub FeePoolExchangeTokens: Vec<CurrencyId> = vec![DOT];
 }
 
 type NegativeImbalance = <Balances as PalletCurrency<AccountId>>::NegativeImbalance;
@@ -1145,11 +1158,13 @@ impl OnUnbalanced<NegativeImbalance> for DealWithFees {
 }
 
 impl module_transaction_payment::Config for Runtime {
+	type Event = Event;
 	type NativeCurrencyId = GetNativeCurrencyId;
 	type DefaultFeeSwapPathList = DefaultFeeSwapPathList;
 	type Currency = Balances;
 	type MultiCurrency = Currencies;
 	type OnTransactionPayment = DealWithFees;
+	type AlternativeFeeSwapDeposit = NativeTokenExistentialDeposit;
 	type TransactionByteFee = TransactionByteFee;
 	type OperationalFeeMultiplier = OperationalFeeMultiplier;
 	type TipPerWeightStep = TipPerWeightStep;
@@ -1161,6 +1176,9 @@ impl module_transaction_payment::Config for Runtime {
 	type TradingPathLimit = TradingPathLimit;
 	type PriceSource = module_prices::RealTimePriceProvider<Runtime>;
 	type WeightInfo = weights::module_transaction_payment::WeightInfo<Runtime>;
+	type PalletId = TransactionPaymentPalletId;
+	type TreasuryAccount = TreasuryAccount;
+	type UpdateOrigin = EnsureRootOrTreasury;
 }
 
 impl module_evm_accounts::Config for Runtime {
@@ -1174,6 +1192,7 @@ impl module_evm_accounts::Config for Runtime {
 impl module_asset_registry::Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
+	type LiquidCroadloanCurrencyId = GetStakingCurrencyId;
 	type EVMBridge = module_evm_bridge::EVMBridge<Runtime>;
 	type RegisterOrigin = EnsureRootOrHalfGeneralCouncil;
 	type WeightInfo = weights::module_asset_registry::WeightInfo<Runtime>;
@@ -1628,14 +1647,6 @@ pub type XcmOriginToCallOrigin = (
 	XcmPassthrough<Origin>,
 );
 
-parameter_types! {
-	// One XCM operation is 1_000_000 weight - almost certainly a conservative estimate.
-	pub UnitWeightCost: Weight = 1_000_000;
-	pub const MaxInstructions: u32 = 100;
-	pub DotPerSecond: (AssetId, u128) = (MultiLocation::parent().into(), dot_per_second());
-	pub ForeignAssetUnitsPerSecond: u128 = aca_per_second();
-}
-
 pub type Barrier = (
 	TakeWeightCredit,
 	AllowTopLevelPaidExecutionFrom<Everything>,
@@ -1654,7 +1665,8 @@ impl TakeRevenue for ToTreasury {
 		} = revenue
 		{
 			if let Some(currency_id) = CurrencyIdConvert::convert(location) {
-				// ensure KaruraTreasuryAccount have ed for all of the cross-chain asset.
+				// Ensure TreasuryAccount have ed requirement for native asset, but don't need
+				// ed requirement for cross-chain asset because it's one of whitelist accounts.
 				// Ignore the result.
 				let _ = Currencies::deposit(currency_id, &TreasuryAccount::get(), amount);
 			}
@@ -1662,7 +1674,24 @@ impl TakeRevenue for ToTreasury {
 	}
 }
 
+parameter_types! {
+	// One XCM operation is 1_000_000 weight - almost certainly a conservative estimate.
+	pub UnitWeightCost: Weight = 1_000_000;
+	pub const MaxInstructions: u32 = 100;
+	pub DotPerSecond: (AssetId, u128) = (MultiLocation::parent().into(), dot_per_second());
+	pub AcaPerSecond: (AssetId, u128) = (
+		MultiLocation::new(
+			1,
+			X2(Parachain(u32::from(ParachainInfo::get())), GeneralKey(ACA.encode())),
+		).into(),
+		aca_per_second()
+	);
+	pub ForeignAssetUnitsPerSecond: u128 = aca_per_second();
+	pub AcaPerSecondAsBased: u128 = aca_per_second();
+}
+
 pub type Trader = (
+	TransactionFeePoolTrader<Runtime, CurrencyIdConvert, AcaPerSecondAsBased, ToTreasury>,
 	FixedRateOfFungible<DotPerSecond, ToTreasury>,
 	FixedRateOfForeignAsset<Runtime, ForeignAssetUnitsPerSecond, ToTreasury>,
 );
@@ -1769,9 +1798,7 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 		match id {
 			Token(DOT) => Some(MultiLocation::parent()),
 			Token(ACA) | Token(AUSD) | Token(LDOT) | Token(RENBTC) => Some(native_currency_location(id)),
-			CurrencyId::ForeignAsset(foreign_asset_id) => {
-				XcmForeignAssetIdMapping::<Runtime>::get_multi_location(foreign_asset_id)
-			}
+			CurrencyId::ForeignAsset(foreign_asset_id) => AssetIdMaps::<Runtime>::get_multi_location(foreign_asset_id),
 			_ => None,
 		}
 	}
@@ -1785,7 +1812,7 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 			return Some(Token(DOT));
 		}
 
-		if let Some(currency_id) = XcmForeignAssetIdMapping::<Runtime>::get_currency_id(location.clone()) {
+		if let Some(currency_id) = AssetIdMaps::<Runtime>::get_currency_id(location.clone()) {
 			return Some(currency_id);
 		}
 
@@ -1867,6 +1894,7 @@ parameter_types! {
 	pub const FeePrecision: u128 = 10000000000u128; // 10 decimals
 	pub const APrecision: u128 = 100u128; // 2 decimals
 	pub const PoolAssetLimit: u32 = 5u32;
+	pub const GetStableAssetStakingCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::LKSM);
 }
 
 pub struct EnsurePoolAssetId;
@@ -1882,7 +1910,7 @@ impl orml_tokens::ConvertBalance<Balance, Balance> for ConvertBalanceHomaLite {
 
 	fn convert_balance(balance: Balance, asset_id: CurrencyId) -> Balance {
 		match asset_id {
-			CurrencyId::Token(TokenSymbol::LDOT) => HomaLite::get_exchange_rate()
+			CurrencyId::Token(TokenSymbol::LKSM) => HomaLite::get_exchange_rate()
 				.checked_mul_int(balance)
 				.unwrap_or_default(),
 			_ => balance,
@@ -1891,7 +1919,7 @@ impl orml_tokens::ConvertBalance<Balance, Balance> for ConvertBalanceHomaLite {
 
 	fn convert_balance_back(balance: Balance, asset_id: CurrencyId) -> Balance {
 		match asset_id {
-			CurrencyId::Token(TokenSymbol::LDOT) => HomaLite::get_exchange_rate()
+			CurrencyId::Token(TokenSymbol::LKSM) => HomaLite::get_exchange_rate()
 				.reciprocal()
 				.unwrap_or_default()
 				.checked_mul_int(balance)
@@ -1904,14 +1932,14 @@ impl orml_tokens::ConvertBalance<Balance, Balance> for ConvertBalanceHomaLite {
 pub struct IsLiquidToken;
 impl Contains<CurrencyId> for IsLiquidToken {
 	fn contains(currency_id: &CurrencyId) -> bool {
-		matches!(currency_id, CurrencyId::Token(TokenSymbol::LDOT))
+		matches!(currency_id, CurrencyId::Token(TokenSymbol::LKSM))
 	}
 }
 
 type RebaseTokens = orml_tokens::Combiner<
 	AccountId,
 	IsLiquidToken,
-	orml_tokens::Mapper<AccountId, Tokens, ConvertBalanceHomaLite, Balance, GetLiquidCurrencyId>,
+	orml_tokens::Mapper<AccountId, Tokens, ConvertBalanceHomaLite, Balance, GetStableAssetStakingCurrencyId>,
 	Tokens,
 >;
 
@@ -2032,8 +2060,33 @@ pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExtra>;
 /// Executive: handles dispatch to the various modules.
-pub type Executive =
-	frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllPallets, ()>;
+pub type Executive = frame_executive::Executive<
+	Runtime,
+	Block,
+	frame_system::ChainContext<Runtime>,
+	Runtime,
+	AllPallets,
+	TransactionPaymentUpgrade,
+>;
+
+pub struct TransactionPaymentUpgrade;
+impl frame_support::traits::OnRuntimeUpgrade for TransactionPaymentUpgrade {
+	fn on_runtime_upgrade() -> Weight {
+		let initial_rates = FeePoolExchangeTokens::get();
+		if initial_rates.is_empty() {
+			0
+		} else {
+			for asset in initial_rates {
+				let _ = <module_transaction_payment::Pallet<Runtime>>::initialize_pool(
+					asset,
+					FeePoolSize::get(),
+					SwapBalanceThreshold::get(),
+				);
+			}
+			<Runtime as frame_system::Config>::BlockWeights::get().max_block
+		}
+	}
+}
 
 construct_runtime! {
 	pub enum Runtime where
@@ -2052,7 +2105,7 @@ construct_runtime! {
 		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>} = 11,
 		Currencies: module_currencies::{Pallet, Call, Event<T>} = 12,
 		Vesting: orml_vesting::{Pallet, Storage, Call, Event<T>, Config<T>} = 13,
-		TransactionPayment: module_transaction_payment::{Pallet, Call, Storage} = 14,
+		TransactionPayment: module_transaction_payment::{Pallet, Call, Storage, Event<T>} = 14,
 
 		// Treasury
 		Treasury: pallet_treasury::{Pallet, Call, Storage, Config, Event<T>} = 20,

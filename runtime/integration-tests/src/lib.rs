@@ -110,6 +110,13 @@ mod vesting;
 ))]
 mod weights;
 
+#[cfg(any(
+	feature = "with-mandala-runtime",
+	feature = "with-karura-runtime",
+	feature = "with-acala-runtime"
+))]
+mod payment;
+
 // TODO: polkadot_runtime not support XCM
 #[cfg(feature = "with-karura-runtime")]
 mod relaychain;

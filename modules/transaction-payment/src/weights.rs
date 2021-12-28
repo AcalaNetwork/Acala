@@ -50,6 +50,8 @@ use sp_std::marker::PhantomData;
 pub trait WeightInfo {
 	fn set_alternative_fee_swap_path() -> Weight;
 	fn on_finalize() -> Weight;
+	fn set_swap_balance_threshold() -> Weight;
+	fn enable_charge_fee_pool() -> Weight;
 }
 
 /// Weights for module_transaction_payment using the Acala node and recommended hardware.
@@ -64,6 +66,16 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
+	fn set_swap_balance_threshold() -> Weight {
+		(164_000_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(1 as Weight))
+			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+	}
+	fn enable_charge_fee_pool() -> Weight {
+		(628_000_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(7 as Weight))
+			.saturating_add(T::DbWeight::get().writes(7 as Weight))
+	}
 }
 
 // For backwards compatibility and tests
@@ -76,5 +88,15 @@ impl WeightInfo for () {
 		(8_000_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(2 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
+	}
+	fn set_swap_balance_threshold() -> Weight {
+		(164_000_000 as Weight)
+			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
+			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
+	}
+	fn enable_charge_fee_pool() -> Weight {
+		(628_000_000 as Weight)
+			.saturating_add(RocksDbWeight::get().reads(7 as Weight))
+			.saturating_add(RocksDbWeight::get().writes(7 as Weight))
 	}
 }
