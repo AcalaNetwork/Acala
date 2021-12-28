@@ -73,20 +73,22 @@ pub use karura_imports::*;
 #[cfg(feature = "with-karura-runtime")]
 mod karura_imports {
 	pub use frame_support::parameter_types;
+	use frame_support::weights::Weight;
 	pub use karura_runtime::{
 		constants::parachains, create_x2_parachain_multilocation, get_all_module_accounts, AcalaOracle, AccountId,
 		AssetRegistry, AuctionManager, Authority, AuthoritysOriginId, Balance, Balances, BlockNumber, Call, CdpEngine,
 		CdpTreasury, CreateClassDeposit, CreateTokenDeposit, Currencies, CurrencyId, CurrencyIdConvert,
 		DataDepositPerByte, DefaultExchangeRate, Dex, EmergencyShutdown, Event, EvmAccounts, ExistentialDeposits,
-		FinancialCouncil, Get, GetNativeCurrencyId, HomaLite, Honzon, IdleScheduler, KaruraFoundationAccounts, Loans,
-		MaxTipsOfPriority, MinimumDebitValue, MultiLocation, NativeTokenExistentialDeposit, NetworkId, NftPalletId,
-		OneDay, Origin, OriginCaller, ParachainAccount, ParachainInfo, ParachainSystem, PolkadotXcm, Proxy, ProxyType,
+		FeePoolSize, FinancialCouncil, Get, GetNativeCurrencyId, HomaLite, Honzon, IdleScheduler, KarPerSecond,
+		KaruraFoundationAccounts, KsmPerSecond, KusdPerSecond, Loans, MaxTipsOfPriority, MinimumDebitValue,
+		MultiLocation, NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, Origin, OriginCaller,
+		ParachainAccount, ParachainInfo, ParachainSystem, PolkadotXcm, Proxy, ProxyType, Ratio,
 		RelayChainBlockNumberProvider, RelayChainSovereignSubAccount, Runtime, Scheduler, Session, SessionManager,
-		SevenDays, System, Timestamp, TipPerWeightStep, TokenSymbol, Tokens, TreasuryPalletId, Utility, Vesting,
-		XTokens, XcmConfig, XcmExecutor, XcmUnbondFee, EVM, NFT,
+		SevenDays, SwapBalanceThreshold, System, Timestamp, TipPerWeightStep, TokenSymbol, Tokens, TreasuryPalletId,
+		Utility, Vesting, XTokens, XcmConfig, XcmExecutor, XcmUnbondFee, EVM, NFT,
 	};
 	pub use primitives::TradingPair;
-	pub use runtime_common::{cent, dollar, millicent, KAR, KSM, KUSD, LKSM};
+	pub use runtime_common::{calculate_asset_ratio, cent, dollar, millicent, KAR, KSM, KUSD, LKSM};
 	pub use sp_runtime::traits::AccountIdConversion;
 
 	parameter_types! {
@@ -94,6 +96,7 @@ mod karura_imports {
 			TradingPair::from_currency_ids(USD_CURRENCY, NATIVE_CURRENCY).unwrap(),
 			TradingPair::from_currency_ids(USD_CURRENCY, RELAY_CHAIN_CURRENCY).unwrap(),
 			TradingPair::from_currency_ids(USD_CURRENCY, LIQUID_CURRENCY).unwrap(),
+			TradingPair::from_currency_ids(RELAY_CHAIN_CURRENCY, NATIVE_CURRENCY).unwrap(),
 		];
 		pub TreasuryAccount: AccountId = TreasuryPalletId::get().into_account();
 	}
@@ -106,6 +109,28 @@ mod karura_imports {
 		primitives::DexShare::Token(TokenSymbol::KUSD),
 		primitives::DexShare::Token(TokenSymbol::KSM),
 	);
+
+	parameter_types! {
+		pub TokenExchangeRates: Vec<(CurrencyId, Balance)> = vec![
+			(KSM, FeePoolSize::get()),
+			(KUSD, FeePoolSize::get()),
+			(LKSM, NativeTokenExistentialDeposit::get() - 1),
+		];
+	}
+
+	pub struct MockRuntimeUpgrade;
+	impl frame_support::traits::OnRuntimeUpgrade for MockRuntimeUpgrade {
+		fn on_runtime_upgrade() -> Weight {
+			for asset in TokenExchangeRates::get() {
+				let _ = <module_transaction_payment::Pallet<Runtime>>::initialize_pool(
+					asset.0,
+					asset.1,
+					SwapBalanceThreshold::get(),
+				);
+			}
+			0
+		}
+	}
 }
 
 #[cfg(feature = "with-acala-runtime")]
