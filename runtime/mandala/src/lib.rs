@@ -1126,7 +1126,7 @@ impl module_transaction_pause::Config for Runtime {
 
 parameter_types! {
 	// Sort by fee charge order
-	pub DefaultFeeSwapPathList: Vec<Vec<CurrencyId>> = vec![vec![AUSD, ACA], vec![AUSD, LDOT], vec![AUSD, DOT], vec![AUSD, RENBTC]];
+	pub DefaultFeeSwapPathList: Vec<Vec<CurrencyId>> = vec![vec![AUSD, ACA], vec![AUSD, LDOT, ACA], vec![AUSD, DOT, ACA], vec![AUSD, RENBTC, ACA]];
 	// Initial fee pool size. one extrinsic=0.0025 ACA, one block=100 extrinsics.
 	// 20 blocks trigger an swap, so total balance=0.0025*100*20=5 ACA
 	pub FeePoolSize: Balance = 5 * dollar(ACA);
