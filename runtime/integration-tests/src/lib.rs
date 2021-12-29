@@ -43,11 +43,7 @@ mod dex;
 ))]
 mod evm;
 
-#[cfg(any(
-	feature = "with-mandala-runtime",
-	feature = "with-karura-runtime",
-	feature = "with-acala-runtime"
-))]
+#[cfg(any(feature = "with-karura-runtime", feature = "with-acala-runtime"))]
 mod homa_lite;
 
 #[cfg(feature = "with-karura-runtime")]
@@ -112,6 +108,13 @@ mod vesting;
 	feature = "with-acala-runtime"
 ))]
 mod weights;
+
+#[cfg(any(
+	feature = "with-mandala-runtime",
+	feature = "with-karura-runtime",
+	feature = "with-acala-runtime"
+))]
+mod payment;
 
 // TODO: polkadot_runtime not support XCM
 #[cfg(feature = "with-karura-runtime")]

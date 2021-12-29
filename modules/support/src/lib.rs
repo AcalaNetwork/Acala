@@ -490,10 +490,14 @@ pub trait AddressMapping<AccountId> {
 	fn is_linked(account_id: &AccountId, evm: &EvmAddress) -> bool;
 }
 
-/// A mapping between ForeignAssetId and AssetMetadata.
-pub trait ForeignAssetIdMapping<ForeignAssetId, MultiLocation, AssetMetadata> {
+/// A mapping between AssetId and AssetMetadata.
+pub trait AssetIdMapping<StableAssetPoolId, ForeignAssetId, MultiLocation, AssetMetadata> {
+	/// Returns the AssetMetadata associated with a given contract address.
+	fn get_erc20_asset_metadata(contract: EvmAddress) -> Option<AssetMetadata>;
+	/// Returns the AssetMetadata associated with a given StableAssetPoolId.
+	fn get_stable_asset_metadata(stable_asset_id: StableAssetPoolId) -> Option<AssetMetadata>;
 	/// Returns the AssetMetadata associated with a given ForeignAssetId.
-	fn get_asset_metadata(foreign_asset_id: ForeignAssetId) -> Option<AssetMetadata>;
+	fn get_foreign_asset_metadata(foreign_asset_id: ForeignAssetId) -> Option<AssetMetadata>;
 	/// Returns the MultiLocation associated with a given ForeignAssetId.
 	fn get_multi_location(foreign_asset_id: ForeignAssetId) -> Option<MultiLocation>;
 	/// Returns the CurrencyId associated with a given MultiLocation.
@@ -503,11 +507,6 @@ pub trait ForeignAssetIdMapping<ForeignAssetId, MultiLocation, AssetMetadata> {
 /// A mapping between u32 and Erc20 address.
 /// provide a way to encode/decode for CurrencyId;
 pub trait Erc20InfoMapping {
-	/// Use first 4 non-zero bytes as u32 to the mapping between u32 and evm
-	/// address.
-	fn set_erc20_mapping(address: EvmAddress) -> DispatchResult;
-	/// Returns the EvmAddress associated with a given u32.
-	fn get_evm_address(currency_id: u32) -> Option<EvmAddress>;
 	/// Returns the name associated with a given CurrencyId.
 	/// If CurrencyId is CurrencyId::DexShare and contain DexShare::Erc20,
 	/// the EvmAddress must have been mapped.
@@ -532,14 +531,6 @@ pub trait Erc20InfoMapping {
 
 #[cfg(feature = "std")]
 impl Erc20InfoMapping for () {
-	fn set_erc20_mapping(_address: EvmAddress) -> DispatchResult {
-		Err(DispatchError::Other("unimplemented CurrencyIdMapping"))
-	}
-
-	fn get_evm_address(_currency_id: u32) -> Option<EvmAddress> {
-		None
-	}
-
 	fn name(_currency_id: CurrencyId) -> Option<Vec<u8>> {
 		None
 	}

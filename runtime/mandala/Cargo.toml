@@ -113,7 +113,6 @@ module-incentives = { path = "../../modules/incentives", default-features = fals
 module-support = { path = "../../modules/support", default-features = false }
 module-homa = { path = "../../modules/homa", default-features = false }
 module-homa-xcm = { path = "../../modules/homa-xcm", default-features = false }
-module-homa-lite = { path = "../../modules/homa-lite", default-features = false }
 module-nominees-election = { path = "../../modules/nominees-election", default-features = false }
 module-session-manager = { path = "../../modules/session-manager", default-features = false }
 module-relaychain = { path = "../../modules/relaychain", default-features = false, features = ["polkadot"]}
@@ -246,7 +245,6 @@ std = [
 	"module-support/std",
 	"module-homa/std",
 	"module-homa-xcm/std",
-	"module-homa-lite/std",
 	"module-nominees-election/std",
 	"module-session-manager/std",
 	"module-relaychain/std",
@@ -277,7 +275,6 @@ runtime-benchmarks = [
 	"pallet-xcm/runtime-benchmarks",
 
 	"module-nft/runtime-benchmarks",
-	"module-homa-lite/runtime-benchmarks",
 	"module-evm-accounts/runtime-benchmarks",
 
 	"sp-api/disable-logging",
@@ -353,7 +350,6 @@ try-runtime = [
 	"module-incentives/try-runtime",
 	"module-homa/try-runtime",
 	"module-homa-xcm/try-runtime",
-	"module-homa-lite/try-runtime",
 	"module-nominees-election/try-runtime",
 	"module-session-manager/try-runtime",
 

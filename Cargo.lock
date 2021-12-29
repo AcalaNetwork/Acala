@@ -4905,7 +4905,6 @@ dependencies = [
  "module-evm-rpc-runtime-api",
  "module-evm-utiltity",
  "module-homa",
- "module-homa-lite",
  "module-homa-xcm",
  "module-honzon",
  "module-idle-scheduler",
@@ -5859,6 +5858,9 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
+ "xcm",
+ "xcm-builder",
+ "xcm-executor",
 ]
 
 [[package]]
