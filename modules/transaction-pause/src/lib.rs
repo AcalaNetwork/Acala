@@ -72,6 +72,8 @@ pub mod module {
 			pallet_name_bytes: Vec<u8>,
 			function_name_bytes: Vec<u8>,
 		},
+		XcmPaused,
+		XcmUnPaused,
 	}
 
 	/// The paused transaction map
@@ -80,6 +82,10 @@ pub mod module {
 	#[pallet::storage]
 	#[pallet::getter(fn paused_transactions)]
 	pub type PausedTransactions<T: Config> = StorageMap<_, Twox64Concat, (Vec<u8>, Vec<u8>), (), OptionQuery>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn xcm_paused)]
+	pub type XcmPaused<T: Config> = StorageValue<_, bool, ValueQuery>;
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
@@ -127,6 +133,22 @@ pub mod module {
 					function_name_bytes: function_name,
 				});
 			};
+			Ok(())
+		}
+
+		#[pallet::weight(T::WeightInfo::pause_transaction())]
+		pub fn pause_xcm(origin: OriginFor<T>) -> DispatchResult {
+			T::UpdateOrigin::ensure_origin(origin)?;
+			XcmPaused::<T>::set(true);
+			Self::deposit_event(Event::XcmPaused);
+			Ok(())
+		}
+
+		#[pallet::weight(T::WeightInfo::pause_transaction())]
+		pub fn unpause_xcm(origin: OriginFor<T>) -> DispatchResult {
+			T::UpdateOrigin::ensure_origin(origin)?;
+			XcmPaused::<T>::set(false);
+			Self::deposit_event(Event::XcmUnPaused);
 			Ok(())
 		}
 	}

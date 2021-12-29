@@ -21,6 +21,8 @@ sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-
 sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.13", default-features = false }
 sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.13", default-features = false }
 
+polkadot-core-primitives = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.13", default-features = false }
+cumulus-primitives-core = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.13", default-features = false }
 cumulus-pallet-parachain-system = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.13", default-features = false }
 
 orml-oracle = { path = "../../orml/oracle", default-features = false }
@@ -35,6 +37,7 @@ primitives = { package = "acala-primitives", path = "../../primitives", default-
 
 module-prices = { path = "../../modules/prices", default-features = false }
 module-transaction-payment = { path = "../../modules/transaction-payment", default-features = false }
+module-transaction-pause = { path = "../../modules/transaction-pause", default-features = false }
 module-nft = { path = "../../modules/nft", default-features = false }
 module-dex = { path = "../../modules/dex", default-features = false }
 
@@ -77,6 +80,8 @@ std = [
 	"sp-runtime/std",
 	"sp-std/std",
 
+	"polkadot-core-primitives/std",
+	"cumulus-primitives-core/std",
 	"cumulus-pallet-parachain-system/std",
 
 	"orml-oracle/std",
@@ -89,6 +94,7 @@ std = [
 	"primitives/std",
 	"module-prices/std",
 	"module-transaction-payment/std",
+	"module-transaction-pause/std",
 	"module-nft/std",
 	"module-dex/std",
 
