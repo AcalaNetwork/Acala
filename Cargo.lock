@@ -9903,6 +9903,7 @@ dependencies = [
  "module-relaychain",
  "module-session-manager",
  "module-support",
+ "module-transaction-pause",
  "module-transaction-payment",
  "orml-auction",
  "orml-authority",
@@ -13807,7 +13808,7 @@ dependencies = [
 [[package]]
 name = "xcm-emulator"
 version = "0.1.0"
-source = "git+https://github.com/shaunxw/xcm-simulator?rev=4d3bb9dd4fa2cd554a9970ffff816d9346269eaa#4d3bb9dd4fa2cd554a9970ffff816d9346269eaa"
+source = "git+https://github.com/zqhxuyuan/xcm-simulator?branch=handler#40bdf8a8168f29d3d2bd6766c6b1263eeec40f16"
 dependencies = [
  "cumulus-pallet-dmp-queue",
  "cumulus-pallet-parachain-system",

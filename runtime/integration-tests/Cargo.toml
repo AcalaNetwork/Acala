@@ -86,6 +86,7 @@ orml-unknown-tokens = { path = "../../orml/unknown-tokens" }
 orml-xcm = { path = "../../orml/xcm" }
 
 module-transaction-payment = { path = "../../modules/transaction-payment" }
+module-transaction-pause = { path = "../../modules/transaction-pause" }
 module-asset-registry = { path = "../../modules/asset-registry" }
 module-auction-manager = { path = "../../modules/auction-manager" }
 module-cdp-engine = { path = "../../modules/cdp-engine" }
@@ -131,12 +132,12 @@ polkadot-primitives = { git = "https://github.com/paritytech/polkadot", branch =
 polkadot-runtime-parachains = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.13" }
 kusama-runtime = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.13" }
 
-xcm-emulator = { git = "https://github.com/shaunxw/xcm-simulator", rev = "4d3bb9dd4fa2cd554a9970ffff816d9346269eaa" }
+xcm-emulator = { git = "https://github.com/zqhxuyuan/xcm-simulator", branch = "handler" }
 
 acala-service = { path = "../../node/service", features = ["with-all-runtime"] }
 
 [features]
-default = ["std"]
+default = ["std", "with-karura-runtime"]
 no_std = []
 with-mandala-runtime = [
 	"acala-service/with-mandala-runtime",

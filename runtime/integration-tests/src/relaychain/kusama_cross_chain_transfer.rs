@@ -768,3 +768,112 @@ fn sibling_trap_assets_works() {
 		);
 	});
 }
+
+#[test]
+fn dmp_queue_pause_resume_works() {
+	Karura::execute_with(|| {
+		assert_ok!(module_transaction_pause::Pallet::<Runtime>::pause_xcm(Origin::root()));
+		assert!(module_transaction_pause::Pallet::<Runtime>::xcm_paused());
+	});
+
+	let fee: u128 = 128_000_000;
+
+	KusamaNet::execute_with(|| {
+		assert_ok!(kusama_runtime::XcmPallet::reserve_transfer_assets(
+			kusama_runtime::Origin::signed(ALICE.into()),
+			Box::new(Parachain(2000).into().into()),
+			Box::new(
+				Junction::AccountId32 {
+					id: BOB,
+					network: NetworkId::Any
+				}
+				.into()
+				.into()
+			),
+			Box::new((Here, dollar(KSM)).into()),
+			0
+		));
+	});
+
+	Karura::execute_with(|| {
+		// the first message is not processed but remain in dmq-queue
+		assert!(module_transaction_pause::Pallet::<Runtime>::xcm_paused());
+		// Bob balance is 0 as the xcm message not executed
+		assert_eq!(Tokens::free_balance(KSM, &AccountId::from(BOB)), 0);
+
+		// resume the dmp-queue working
+		assert_ok!(module_transaction_pause::Pallet::<Runtime>::unpause_xcm(Origin::root()));
+		assert!(!module_transaction_pause::Pallet::<Runtime>::xcm_paused());
+	});
+
+	// the empty body implementation here is used to trigger send downward message to parachain,
+	// the previous message in the queue storage will be [first executed](https://github.com/paritytech/cumulus/blob/polkadot-v0.9.13/pallets/dmp-queue/src/lib.rs#L270).
+	// then the second message executed which is also get from storage by runtime.dmq_contents().
+	KusamaNet::execute_with(|| {});
+
+	Karura::execute_with(|| {
+		assert!(!module_transaction_pause::Pallet::<Runtime>::xcm_paused());
+		assert_eq!(
+			Tokens::free_balance(KSM, &AccountId::from(BOB)),
+			2 * dollar(KSM) - fee * 2
+		);
+	});
+}
+
+#[test]
+fn xcmp_queue_pause_resume_works() {
+	fn karura_reserve_account() -> AccountId {
+		use sp_runtime::traits::AccountIdConversion;
+		polkadot_parachain::primitives::Sibling::from(2000).into_account()
+	}
+	Karura::execute_with(|| {
+		assert_ok!(Tokens::deposit(BNC, &AccountId::from(ALICE), 100 * dollar(BNC)));
+	});
+
+	Sibling::execute_with(|| {
+		assert_ok!(Tokens::deposit(BNC, &karura_reserve_account(), 100 * dollar(BNC)));
+		assert_ok!(module_transaction_pause::Pallet::<Runtime>::pause_xcm(Origin::root()));
+		assert!(module_transaction_pause::Pallet::<Runtime>::xcm_paused());
+	});
+
+	Karura::execute_with(|| {
+		assert_ok!(XTokens::transfer(
+			Origin::signed(ALICE.into()),
+			BNC,
+			10 * dollar(BNC),
+			Box::new(
+				MultiLocation::new(
+					1,
+					X2(
+						Parachain(2001),
+						Junction::AccountId32 {
+							network: NetworkId::Any,
+							id: BOB.into(),
+						}
+					)
+				)
+				.into()
+			),
+			1_000_000_000,
+		));
+
+		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(ALICE)), 90 * dollar(BNC));
+	});
+
+	Sibling::execute_with(|| {
+		assert_eq!(Tokens::free_balance(BNC, &karura_reserve_account()), 100 * dollar(BNC));
+		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(BOB)), 0);
+
+		// resume the dmp-queue working
+		assert_ok!(module_transaction_pause::Pallet::<Runtime>::unpause_xcm(Origin::root()));
+		assert!(!module_transaction_pause::Pallet::<Runtime>::xcm_paused());
+
+		assert_eq!(Tokens::free_balance(BNC, &karura_reserve_account()), 100 * dollar(BNC));
+		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(BOB)), 0);
+	});
+
+	Sibling::execute_with(|| {
+		assert_eq!(Tokens::free_balance(BNC, &karura_reserve_account()), 90 * dollar(BNC));
+		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(BOB)), 9_989_760_000_000);
+	});
+}

@@ -40,6 +40,8 @@ decl_test_parachain! {
 	pub struct Karura {
 		Runtime = Runtime,
 		Origin = Origin,
+		XcmpMessageHandler = runtime_common::XcmMessageHandlerOrPaused<Runtime, XcmpQueue>,
+		DmpMessageHandler = runtime_common::XcmMessageHandlerOrPaused<Runtime, DmpQueue>,
 		new_ext = para_ext(2000),
 	}
 }
@@ -48,6 +50,8 @@ decl_test_parachain! {
 	pub struct Sibling {
 		Runtime = Runtime,
 		Origin = Origin,
+		XcmpMessageHandler = runtime_common::XcmMessageHandlerOrPaused<Runtime, XcmpQueue>,
+		DmpMessageHandler = runtime_common::XcmMessageHandlerOrPaused<Runtime, DmpQueue>,
 		new_ext = para_ext(2001),
 	}
 }
