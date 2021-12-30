@@ -83,14 +83,13 @@ fn transfer_to_relay_chain() {
 	});
 }
 
+fn karura_reserve_account() -> AccountId {
+	polkadot_parachain::primitives::Sibling::from(2000).into_account()
+}
+
 #[test]
 fn transfer_to_sibling() {
 	TestNet::reset();
-
-	fn karura_reserve_account() -> AccountId {
-		use sp_runtime::traits::AccountIdConversion;
-		polkadot_parachain::primitives::Sibling::from(2000).into_account()
-	}
 
 	Karura::execute_with(|| {
 		assert_ok!(Tokens::deposit(BNC, &AccountId::from(ALICE), 100_000_000_000_000));
@@ -324,11 +323,6 @@ fn subscribe_version_notify_works() {
 #[test]
 fn test_asset_registry_module() {
 	TestNet::reset();
-
-	fn karura_reserve_account() -> AccountId {
-		use sp_runtime::traits::AccountIdConversion;
-		polkadot_parachain::primitives::Sibling::from(2000).into_account()
-	}
 
 	Karura::execute_with(|| {
 		// register foreign asset
@@ -711,7 +705,6 @@ fn sibling_trap_assets_works() {
 	let (bnc_asset_amount, kar_asset_amount) = (cent(BNC) / 10, cent(KAR));
 
 	fn sibling_account() -> AccountId {
-		use sp_runtime::traits::AccountIdConversion;
 		polkadot_parachain::primitives::Sibling::from(2001).into_account()
 	}
 
@@ -822,10 +815,6 @@ fn dmp_queue_pause_resume_works() {
 
 #[test]
 fn xcmp_queue_pause_resume_works() {
-	fn karura_reserve_account() -> AccountId {
-		use sp_runtime::traits::AccountIdConversion;
-		polkadot_parachain::primitives::Sibling::from(2000).into_account()
-	}
 	Karura::execute_with(|| {
 		assert_ok!(Tokens::deposit(BNC, &AccountId::from(ALICE), 100 * dollar(BNC)));
 	});
@@ -864,10 +853,11 @@ fn xcmp_queue_pause_resume_works() {
 		assert_eq!(Tokens::free_balance(BNC, &karura_reserve_account()), 100 * dollar(BNC));
 		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(BOB)), 0);
 
-		// resume the dmp-queue working
+		// resume the xcmp-queue working
 		assert_ok!(module_transaction_pause::Pallet::<Runtime>::unpause_xcm(Origin::root()));
 		assert!(!module_transaction_pause::Pallet::<Runtime>::xcm_paused());
 
+		// in the same block, balance not changed
 		assert_eq!(Tokens::free_balance(BNC, &karura_reserve_account()), 100 * dollar(BNC));
 		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(BOB)), 0);
 	});
