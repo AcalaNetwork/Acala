@@ -72,7 +72,9 @@ pub mod module {
 			pallet_name_bytes: Vec<u8>,
 			function_name_bytes: Vec<u8>,
 		},
+		/// Paused Xcm message
 		XcmPaused,
+		/// Unpaused Xcm message
 		XcmUnPaused,
 	}
 
@@ -136,19 +138,23 @@ pub mod module {
 			Ok(())
 		}
 
-		#[pallet::weight(T::WeightInfo::pause_transaction())]
+		#[pallet::weight(T::WeightInfo::pause_xcm())]
 		pub fn pause_xcm(origin: OriginFor<T>) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
-			XcmPaused::<T>::set(true);
-			Self::deposit_event(Event::XcmPaused);
+			if !XcmPaused::<T>::get() {
+				XcmPaused::<T>::set(true);
+				Self::deposit_event(Event::XcmPaused);
+			}
 			Ok(())
 		}
 
-		#[pallet::weight(T::WeightInfo::pause_transaction())]
+		#[pallet::weight(T::WeightInfo::unpause_xcm())]
 		pub fn unpause_xcm(origin: OriginFor<T>) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
-			XcmPaused::<T>::set(false);
-			Self::deposit_event(Event::XcmUnPaused);
+			if XcmPaused::<T>::get() {
+				XcmPaused::<T>::set(false);
+				Self::deposit_event(Event::XcmUnPaused);
+			}
 			Ok(())
 		}
 	}
