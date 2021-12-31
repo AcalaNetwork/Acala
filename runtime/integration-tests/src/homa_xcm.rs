@@ -379,7 +379,7 @@ fn homa_xcm_unbond_on_sub_account_works() {
 		// Amount bonded = $1000 - XCM_FEE = 999_990_000_000_000
 		assert_ok!(Homa::mint(Origin::signed(bob()), 1_000 * dollar(RELAY_CHAIN_CURRENCY),));
 		// Update internal storage in Homa
-		assert_ok!(Homa::bump_current_era());
+		assert_ok!(Homa::bump_current_era(1));
 
 		// Put in redeem request
 		assert_ok!(Homa::request_redeem(
@@ -489,7 +489,7 @@ fn homa_mint_and_redeem_works() {
 		assert_eq!(Homa::get_total_staking_currency(), 2_000 * dollar(RELAY_CHAIN_CURRENCY));
 
 		// Synchronize with Relay chain via Xcm messages. Also update internal storage.
-		assert_ok!(Homa::bump_current_era());
+		assert_ok!(Homa::bump_current_era(1));
 
 		assert_eq!(
 			Tokens::free_balance(LIQUID_CURRENCY, &AccountId::from(alice())),
@@ -551,7 +551,7 @@ fn homa_mint_and_redeem_works() {
 		));
 
 		// Unbonds the tokens on the Relay chain.
-		assert_ok!(Homa::bump_current_era());
+		assert_ok!(Homa::bump_current_era(1));
 		let unbonding_era = Homa::relay_chain_current_era() + KusamaBondingDuration::get();
 		assert_eq!(unbonding_era, 30);
 
@@ -595,7 +595,7 @@ fn homa_mint_and_redeem_works() {
 
 		// Wait for the chunk to unlock
 		for _ in 0..KusamaBondingDuration::get() + 1 {
-			assert_ok!(Homa::bump_current_era());
+			assert_ok!(Homa::bump_current_era(1));
 		}
 
 		// Claim the unlocked chunk

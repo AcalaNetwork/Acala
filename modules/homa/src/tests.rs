@@ -1098,13 +1098,14 @@ fn process_redeem_requests_works() {
 }
 
 #[test]
-fn should_bump_local_current_era_works() {
+fn era_amount_should_to_bump_works() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_eq!(Homa::last_era_bumped_block(), 0);
 		assert_eq!(Homa::bump_era_frequency(), 0);
-		assert_eq!(Homa::should_bump_local_current_era(9), false);
-		assert_eq!(Homa::should_bump_local_current_era(10), false);
-		assert_eq!(Homa::should_bump_local_current_era(11), false);
+		assert_eq!(Homa::era_amount_should_to_bump(9), 0);
+		assert_eq!(Homa::era_amount_should_to_bump(10), 0);
+		assert_eq!(Homa::era_amount_should_to_bump(11), 0);
+		assert_eq!(Homa::era_amount_should_to_bump(30), 0);
 
 		assert_ok!(Homa::update_bump_era_params(
 			Origin::signed(HomaAdmin::get()),
@@ -1112,9 +1113,10 @@ fn should_bump_local_current_era_works() {
 			Some(10)
 		));
 		assert_eq!(Homa::bump_era_frequency(), 10);
-		assert_eq!(Homa::should_bump_local_current_era(9), false);
-		assert_eq!(Homa::should_bump_local_current_era(10), true);
-		assert_eq!(Homa::should_bump_local_current_era(11), true);
+		assert_eq!(Homa::era_amount_should_to_bump(9), 0);
+		assert_eq!(Homa::era_amount_should_to_bump(10), 1);
+		assert_eq!(Homa::era_amount_should_to_bump(11), 1);
+		assert_eq!(Homa::era_amount_should_to_bump(30), 3);
 
 		assert_ok!(Homa::update_bump_era_params(
 			Origin::signed(HomaAdmin::get()),
@@ -1122,9 +1124,10 @@ fn should_bump_local_current_era_works() {
 			None
 		));
 		assert_eq!(Homa::last_era_bumped_block(), 1);
-		assert_eq!(Homa::should_bump_local_current_era(9), false);
-		assert_eq!(Homa::should_bump_local_current_era(10), false);
-		assert_eq!(Homa::should_bump_local_current_era(11), true);
+		assert_eq!(Homa::era_amount_should_to_bump(9), 0);
+		assert_eq!(Homa::era_amount_should_to_bump(10), 0);
+		assert_eq!(Homa::era_amount_should_to_bump(11), 1);
+		assert_eq!(Homa::era_amount_should_to_bump(30), 2);
 	});
 }
 
@@ -1171,7 +1174,7 @@ fn bump_current_era_works() {
 			// bump era to #1,
 			// will process to_bond_pool.
 			MockRelayBlockNumberProvider::set(100);
-			assert_ok!(Homa::bump_current_era());
+			assert_ok!(Homa::bump_current_era(1));
 			System::assert_has_event(Event::Homa(crate::Event::CurrentEraBumped(1)));
 			assert_eq!(Homa::last_era_bumped_block(), 100);
 			assert_eq!(Homa::relay_chain_current_era(), 1);
@@ -1202,7 +1205,7 @@ fn bump_current_era_works() {
 			// bump era to #2,
 			// accumulate staking reward and draw commission
 			MockRelayBlockNumberProvider::set(200);
-			assert_ok!(Homa::bump_current_era());
+			assert_ok!(Homa::bump_current_era(1));
 			System::assert_has_event(Event::Homa(crate::Event::CurrentEraBumped(2)));
 			assert_eq!(Homa::last_era_bumped_block(), 200);
 			assert_eq!(Homa::relay_chain_current_era(), 2);
@@ -1252,7 +1255,7 @@ fn bump_current_era_works() {
 			// bump era to #3,
 			// will process redeem requests
 			MockRelayBlockNumberProvider::set(300);
-			assert_ok!(Homa::bump_current_era());
+			assert_ok!(Homa::bump_current_era(1));
 			System::assert_has_event(Event::Homa(crate::Event::CurrentEraBumped(3)));
 			System::assert_has_event(Event::Homa(crate::Event::RedeemedByUnbond(
 				ALICE,
@@ -1297,10 +1300,8 @@ fn bump_current_era_works() {
 
 			// bump era to #31,
 			// will process scheduled unbonded
-			for n in 4..32 {
-				MockRelayBlockNumberProvider::set(n * 100);
-				assert_ok!(Homa::bump_current_era());
-			}
+			MockRelayBlockNumberProvider::set(3100);
+			assert_ok!(Homa::bump_current_era(28));
 			System::assert_has_event(Event::Homa(crate::Event::CurrentEraBumped(31)));
 			assert_eq!(Homa::last_era_bumped_block(), 3100);
 			assert_eq!(Homa::relay_chain_current_era(), 31);

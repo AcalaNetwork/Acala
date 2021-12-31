@@ -47,8 +47,6 @@ pub mod weights;
 pub mod module {
 	use super::*;
 
-	pub type RelayChainBlockNumberOf<T> = <<T as Config>::RelayChainBlockNumber as BlockNumberProvider>::BlockNumber;
-
 	/// The subaccount's staking ledger which kept by Homa protocol
 	#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo, Default)]
 	pub struct StakingLedger {
@@ -209,9 +207,9 @@ pub mod module {
 		/// The fast match fee rate has been updated. \[commission_rate\]
 		FastMatchFeeRateUpdated(Rate),
 		/// The relaychain block number of last era bumped updated. \[last_era_bumped_block\]
-		LastEraBumpedBlockUpdated(RelayChainBlockNumberOf<T>),
+		LastEraBumpedBlockUpdated(T::BlockNumber),
 		/// The frequency to bump era has been updated. \[frequency\]
-		BumpEraFrequencyUpdated(RelayChainBlockNumberOf<T>),
+		BumpEraFrequencyUpdated(T::BlockNumber),
 	}
 
 	/// The current era of relaychain
@@ -307,17 +305,17 @@ pub mod module {
 
 	/// The relaychain block number of last era bumped.
 	///
-	/// LastEraBumpedBlock: value: RelayChainBlockNumberOf
+	/// LastEraBumpedBlock: value: T::BlockNumber
 	#[pallet::storage]
 	#[pallet::getter(fn last_era_bumped_block)]
-	pub type LastEraBumpedBlock<T: Config> = StorageValue<_, RelayChainBlockNumberOf<T>, ValueQuery>;
+	pub type LastEraBumpedBlock<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
 
 	/// The internal of relaychain block number of relaychain to bump local current era.
 	///
-	/// LastEraBumpedRelayChainBlock: value: RelayChainBlockNumberOf
+	/// LastEraBumpedRelayChainBlock: value: T::BlockNumber
 	#[pallet::storage]
 	#[pallet::getter(fn bump_era_frequency)]
-	pub type BumpEraFrequency<T: Config> = StorageValue<_, RelayChainBlockNumberOf<T>, ValueQuery>;
+	pub type BumpEraFrequency<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
@@ -325,9 +323,9 @@ pub mod module {
 	#[pallet::hooks]
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
 		fn on_initialize(_: T::BlockNumber) -> Weight {
-			let relay_chain_current_block = T::RelayChainBlockNumber::current_block_number();
-			if Self::should_bump_local_current_era(relay_chain_current_block) {
-				let _ = Self::bump_current_era();
+			let bump_era_number = Self::era_amount_should_to_bump(T::RelayChainBlockNumber::current_block_number());
+			if !bump_era_number.is_zero() {
+				let _ = Self::bump_current_era(bump_era_number);
 				<T as Config>::WeightInfo::on_initialize_with_bump_era()
 			} else {
 				<T as Config>::WeightInfo::on_initialize()
@@ -956,20 +954,21 @@ pub mod module {
 			T::Currency::withdraw(T::LiquidCurrencyId::get(), &Self::account_id(), total_redeem_amount)
 		}
 
-		pub fn should_bump_local_current_era(relaychain_block_number: RelayChainBlockNumberOf<T>) -> bool {
+		pub fn era_amount_should_to_bump(relaychain_block_number: T::BlockNumber) -> EraIndex {
 			relaychain_block_number
 				.checked_sub(&Self::last_era_bumped_block())
 				.and_then(|n| n.checked_div(&Self::bump_era_frequency()))
-				.map_or(false, |n| n >= One::one())
+				.and_then(|n| TryInto::<EraIndex>::try_into(n).ok())
+				.unwrap_or_else(Zero::zero)
 		}
 
 		/// Bump current era.
 		/// The rebalance will send XCM messages to relaychain. Once the XCM message is sent,
 		/// the execution result cannot be obtained and cannot be rolled back. So the process
 		/// of rebalance is not atomic.
-		pub fn bump_current_era() -> DispatchResult {
+		pub fn bump_current_era(amount: EraIndex) -> DispatchResult {
 			let previous_era = Self::relay_chain_current_era();
-			let new_era = previous_era + 1;
+			let new_era = previous_era + amount;
 			RelayChainCurrentEra::<T>::put(new_era);
 			LastEraBumpedBlock::<T>::put(T::RelayChainBlockNumber::current_block_number());
 			Self::deposit_event(Event::<T>::CurrentEraBumped(new_era));
