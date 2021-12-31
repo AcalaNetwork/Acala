@@ -154,6 +154,14 @@ impl module_currencies::Config for Runtime {
 	type OnDust = ();
 }
 
+impl BlockNumberProvider for MockRelayBlockNumberProvider {
+	type BlockNumber = BlockNumber;
+
+	fn current_block_number() -> Self::BlockNumber {
+		Self::get()
+	}
+}
+
 ord_parameter_types! {
 	pub const HomaAdmin: AccountId = DAVE;
 }
@@ -166,6 +174,9 @@ parameter_types! {
 	pub DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
 	pub ActiveSubAccountsIndexList: Vec<u16> = vec![0, 1, 2];
 	pub const BondingDuration: EraIndex = 28;
+	pub static MintThreshold: Balance = 0;
+	pub static RedeemThreshold: Balance = 0;
+	pub static MockRelayBlockNumberProvider: BlockNumber = 0;
 }
 
 impl Config for Runtime {
@@ -179,6 +190,9 @@ impl Config for Runtime {
 	type DefaultExchangeRate = DefaultExchangeRate;
 	type ActiveSubAccountsIndexList = ActiveSubAccountsIndexList;
 	type BondingDuration = BondingDuration;
+	type MintThreshold = MintThreshold;
+	type RedeemThreshold = RedeemThreshold;
+	type RelayChainBlockNumber = MockRelayBlockNumberProvider;
 	type HomaXcm = MockHomaSubAccountXcm;
 	type WeightInfo = ();
 }

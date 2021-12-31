@@ -1236,6 +1236,8 @@ parameter_types! {
 	pub HomaTreasuryAccount: AccountId = HomaTreasuryPalletId::get().into_account();
 	pub ActiveSubAccountsIndexList: Vec<u16> = vec![RelayChainSubAccountId::HomaLite as u16];
 	pub RelayChainBondingDuration: EraIndex = 28;
+	pub MintThreshold: Balance = dollar(DOT);
+	pub RedeemThreshold: Balance = 10 * dollar(LDOT);
 }
 
 impl module_homa::Config for Runtime {
@@ -1249,6 +1251,9 @@ impl module_homa::Config for Runtime {
 	type DefaultExchangeRate = DefaultExchangeRate;
 	type ActiveSubAccountsIndexList = ActiveSubAccountsIndexList;
 	type BondingDuration = RelayChainBondingDuration;
+	type MintThreshold = MintThreshold;
+	type RedeemThreshold = RedeemThreshold;
+	type RelayChainBlockNumber = RelayChainBlockNumberProvider<Runtime>;
 	type HomaXcm = HomaXcm;
 	type WeightInfo = weights::module_homa::WeightInfo<Runtime>;
 }

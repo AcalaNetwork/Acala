@@ -39,11 +39,10 @@ fn mint_works() {
 				Origin::signed(HomaAdmin::get()),
 				Some(1_000_000),
 				None,
-				Some(100_000),
-				None,
 				None,
 				None,
 			));
+			MintThreshold::set(100_000);
 
 			assert_noop!(
 				Homa::mint(Origin::signed(ALICE), 99_999),
@@ -88,8 +87,6 @@ fn mint_works() {
 				Some(Rate::saturating_from_rational(10, 100)),
 				None,
 				None,
-				None,
-				None,
 			));
 			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY_ID, &BOB), 0);
 			assert_eq!(Currencies::free_balance(STAKING_CURRENCY_ID, &BOB), 1_000_000);
@@ -120,15 +117,7 @@ fn request_redeem_works() {
 		])
 		.build()
 		.execute_with(|| {
-			assert_ok!(Homa::update_homa_params(
-				Origin::signed(HomaAdmin::get()),
-				None,
-				None,
-				None,
-				Some(1_000_000),
-				None,
-				None,
-			));
+			RedeemThreshold::set(1_000_000);
 
 			assert_noop!(
 				Homa::request_redeem(Origin::signed(ALICE), 999_999, false),
@@ -238,14 +227,12 @@ fn claim_redemption_works() {
 fn update_homa_params_works() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_noop!(
-			Homa::update_homa_params(Origin::signed(ALICE), None, None, None, None, None, None),
+			Homa::update_homa_params(Origin::signed(ALICE), None, None, None, None),
 			BadOrigin
 		);
 
 		assert_eq!(Homa::soft_bonded_cap_per_sub_account(), 0);
 		assert_eq!(Homa::estimated_reward_rate_per_era(), Rate::zero());
-		assert_eq!(Homa::mint_threshold(), 0);
-		assert_eq!(Homa::redeem_threshold(), 0);
 		assert_eq!(Homa::commission_rate(), Rate::zero());
 		assert_eq!(Homa::fast_match_fee_rate(), Rate::zero());
 
@@ -253,8 +240,6 @@ fn update_homa_params_works() {
 			Origin::signed(HomaAdmin::get()),
 			Some(1_000_000_000),
 			Some(Rate::saturating_from_rational(1, 10000)),
-			Some(1_000_000),
-			Some(10_000_000),
 			Some(Rate::saturating_from_rational(5, 100)),
 			Some(Rate::saturating_from_rational(1, 100)),
 		));
@@ -264,8 +249,6 @@ fn update_homa_params_works() {
 		System::assert_has_event(Event::Homa(crate::Event::EstimatedRewardRatePerEraUpdated(
 			Rate::saturating_from_rational(1, 10000),
 		)));
-		System::assert_has_event(Event::Homa(crate::Event::MintThresholdUpdated(1_000_000)));
-		System::assert_has_event(Event::Homa(crate::Event::RedeemThresholdUpdated(10_000_000)));
 		System::assert_has_event(Event::Homa(crate::Event::CommissionRateUpdated(
 			Rate::saturating_from_rational(5, 100),
 		)));
@@ -277,8 +260,6 @@ fn update_homa_params_works() {
 			Homa::estimated_reward_rate_per_era(),
 			Rate::saturating_from_rational(1, 10000)
 		);
-		assert_eq!(Homa::mint_threshold(), 1_000_000);
-		assert_eq!(Homa::redeem_threshold(), 10_000_000);
 		assert_eq!(Homa::commission_rate(), Rate::saturating_from_rational(5, 100));
 		assert_eq!(Homa::fast_match_fee_rate(), Rate::saturating_from_rational(1, 100));
 	});
@@ -291,7 +272,7 @@ fn update_bump_era_params_works() {
 			Homa::update_bump_era_params(Origin::signed(ALICE), None, None),
 			BadOrigin
 		);
-		assert_eq!(Homa::bump_era_prefix(), 0);
+		assert_eq!(Homa::last_era_bumped_block(), 0);
 		assert_eq!(Homa::bump_era_frequency(), 0);
 
 		assert_ok!(Homa::update_bump_era_params(
@@ -299,9 +280,9 @@ fn update_bump_era_params_works() {
 			Some(10),
 			Some(7200),
 		));
-		System::assert_has_event(Event::Homa(crate::Event::BumpEraPrefixUpdated(10)));
+		System::assert_has_event(Event::Homa(crate::Event::LastEraBumpedBlockUpdated(10)));
 		System::assert_has_event(Event::Homa(crate::Event::BumpEraFrequencyUpdated(7200)));
-		assert_eq!(Homa::bump_era_prefix(), 10);
+		assert_eq!(Homa::last_era_bumped_block(), 10);
 		assert_eq!(Homa::bump_era_frequency(), 7200);
 	});
 }
@@ -584,10 +565,9 @@ fn do_fast_match_redeem_works() {
 				Some(5_000_000),
 				None,
 				None,
-				Some(1_000_000),
-				None,
 				Some(Rate::saturating_from_rational(1, 10)),
 			));
+			RedeemThreshold::set(1_000_000);
 			assert_ok!(Homa::mint(Origin::signed(CHARLIE), 1_000_000));
 			assert_ok!(Homa::request_redeem(Origin::signed(ALICE), 5_000_000, true));
 			assert_ok!(Homa::request_redeem(Origin::signed(BOB), 6_500_000, true));
@@ -685,8 +665,6 @@ fn process_staking_rewards_works() {
 				Some(Rate::saturating_from_rational(20, 100)),
 				None,
 				None,
-				None,
-				None,
 			));
 			assert_eq!(
 				Homa::staking_ledgers(0),
@@ -728,8 +706,6 @@ fn process_staking_rewards_works() {
 
 			assert_ok!(Homa::update_homa_params(
 				Origin::signed(HomaAdmin::get()),
-				None,
-				None,
 				None,
 				None,
 				Some(Rate::saturating_from_rational(10, 100)),
@@ -866,8 +842,6 @@ fn process_to_bond_pool_works() {
 				None,
 				None,
 				None,
-				None,
-				None,
 			));
 			assert_ok!(Homa::reset_ledgers(
 				Origin::signed(HomaAdmin::get()),
@@ -971,15 +945,7 @@ fn process_to_bond_pool_works() {
 
 			// ToBondPool is able to afford xcm_transfer_fee, and below the mint_threshold, no bonded added.
 			assert_ok!(Homa::mint(Origin::signed(ALICE), 2_000_000));
-			assert_ok!(Homa::update_homa_params(
-				Origin::signed(HomaAdmin::get()),
-				None,
-				None,
-				Some(3_000_000),
-				None,
-				None,
-				None,
-			));
+			MintThreshold::set(3_000_000);
 			assert_eq!(Homa::to_bond_pool(), 2_000_000);
 			assert_eq!(Homa::get_total_bonded(), 5_000_000);
 			assert_eq!(Currencies::total_issuance(STAKING_CURRENCY_ID), 13_000_000);
@@ -1134,26 +1100,31 @@ fn process_redeem_requests_works() {
 #[test]
 fn should_bump_local_current_era_works() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert_eq!(Homa::bump_era_prefix(), 0);
+		assert_eq!(Homa::last_era_bumped_block(), 0);
 		assert_eq!(Homa::bump_era_frequency(), 0);
+		assert_eq!(Homa::should_bump_local_current_era(9), false);
 		assert_eq!(Homa::should_bump_local_current_era(10), false);
-		assert_eq!(Homa::should_bump_local_current_era(12), false);
+		assert_eq!(Homa::should_bump_local_current_era(11), false);
 
 		assert_ok!(Homa::update_bump_era_params(
 			Origin::signed(HomaAdmin::get()),
 			None,
-			Some(5)
+			Some(10)
 		));
+		assert_eq!(Homa::bump_era_frequency(), 10);
+		assert_eq!(Homa::should_bump_local_current_era(9), false);
 		assert_eq!(Homa::should_bump_local_current_era(10), true);
-		assert_eq!(Homa::should_bump_local_current_era(12), false);
+		assert_eq!(Homa::should_bump_local_current_era(11), true);
 
 		assert_ok!(Homa::update_bump_era_params(
 			Origin::signed(HomaAdmin::get()),
-			Some(3),
+			Some(1),
 			None
 		));
+		assert_eq!(Homa::last_era_bumped_block(), 1);
+		assert_eq!(Homa::should_bump_local_current_era(9), false);
 		assert_eq!(Homa::should_bump_local_current_era(10), false);
-		assert_eq!(Homa::should_bump_local_current_era(12), true);
+		assert_eq!(Homa::should_bump_local_current_era(11), true);
 	});
 }
 
@@ -1167,13 +1138,13 @@ fn bump_current_era_works() {
 				Origin::signed(HomaAdmin::get()),
 				Some(20_000_000),
 				Some(Rate::saturating_from_rational(1, 100)),
-				Some(2_000_000),
-				None,
 				Some(Rate::saturating_from_rational(20, 100)),
 				None,
 			));
+			MintThreshold::set(2_000_000);
 
 			// initial states at era #0
+			assert_eq!(Homa::last_era_bumped_block(), 0);
 			assert_eq!(Homa::relay_chain_current_era(), 0);
 			assert_eq!(Homa::staking_ledgers(0), None);
 			assert_eq!(Homa::staking_ledgers(1), None);
@@ -1199,8 +1170,10 @@ fn bump_current_era_works() {
 
 			// bump era to #1,
 			// will process to_bond_pool.
+			MockRelayBlockNumberProvider::set(100);
 			assert_ok!(Homa::bump_current_era());
 			System::assert_has_event(Event::Homa(crate::Event::CurrentEraBumped(1)));
+			assert_eq!(Homa::last_era_bumped_block(), 100);
 			assert_eq!(Homa::relay_chain_current_era(), 1);
 			assert_eq!(
 				Homa::staking_ledgers(0),
@@ -1228,8 +1201,10 @@ fn bump_current_era_works() {
 
 			// bump era to #2,
 			// accumulate staking reward and draw commission
+			MockRelayBlockNumberProvider::set(200);
 			assert_ok!(Homa::bump_current_era());
 			System::assert_has_event(Event::Homa(crate::Event::CurrentEraBumped(2)));
+			assert_eq!(Homa::last_era_bumped_block(), 200);
 			assert_eq!(Homa::relay_chain_current_era(), 2);
 			assert_eq!(
 				Homa::staking_ledgers(0),
@@ -1265,8 +1240,6 @@ fn bump_current_era_works() {
 				Some(Rate::zero()),
 				None,
 				None,
-				None,
-				None,
 			));
 
 			// and there's redeem request
@@ -1278,6 +1251,7 @@ fn bump_current_era_works() {
 
 			// bump era to #3,
 			// will process redeem requests
+			MockRelayBlockNumberProvider::set(300);
 			assert_ok!(Homa::bump_current_era());
 			System::assert_has_event(Event::Homa(crate::Event::CurrentEraBumped(3)));
 			System::assert_has_event(Event::Homa(crate::Event::RedeemedByUnbond(
@@ -1286,6 +1260,7 @@ fn bump_current_era_works() {
 				280_000_000,
 				26_605_824,
 			)));
+			assert_eq!(Homa::last_era_bumped_block(), 300);
 			assert_eq!(Homa::relay_chain_current_era(), 3);
 			assert_eq!(
 				Homa::staking_ledgers(0),
@@ -1322,10 +1297,12 @@ fn bump_current_era_works() {
 
 			// bump era to #31,
 			// will process scheduled unbonded
-			for _ in 3..31 {
+			for n in 4..32 {
+				MockRelayBlockNumberProvider::set(n * 100);
 				assert_ok!(Homa::bump_current_era());
 			}
 			System::assert_has_event(Event::Homa(crate::Event::CurrentEraBumped(31)));
+			assert_eq!(Homa::last_era_bumped_block(), 3100);
 			assert_eq!(Homa::relay_chain_current_era(), 31);
 			assert_eq!(Homa::staking_ledgers(0), None);
 			assert_eq!(

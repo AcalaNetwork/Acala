@@ -81,7 +81,7 @@ impl<T: frame_system::Config> module_homa::WeightInfo for WeightInfo<T> {
 	}
 	fn update_homa_params() -> Weight {
 		(63_205_000 as Weight)
-			.saturating_add(T::DbWeight::get().writes(6 as Weight))
+			.saturating_add(T::DbWeight::get().writes(4 as Weight))
 	}
 	fn update_bump_era_params() -> Weight {
 		(26_983_000 as Weight)

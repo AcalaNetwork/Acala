@@ -27,9 +27,11 @@ use module_support::{ExchangeRate, ExchangeRateProvider, HomaSubAccountXcm, Rate
 use orml_traits::MultiCurrency;
 use primitives::{Balance, CurrencyId, EraIndex};
 use scale_info::TypeInfo;
-use sp_arithmetic::traits::CheckedRem;
 use sp_runtime::{
-	traits::{AccountIdConversion, Bounded, CheckedAdd, CheckedDiv, One, Saturating, UniqueSaturatedInto, Zero},
+	traits::{
+		AccountIdConversion, BlockNumberProvider, Bounded, CheckedDiv, CheckedSub, One, Saturating,
+		UniqueSaturatedInto, Zero,
+	},
 	ArithmeticError, FixedPointNumber,
 };
 use sp_std::{cmp::Ordering, convert::From, prelude::*, vec, vec::Vec};
@@ -44,6 +46,8 @@ pub mod weights;
 #[frame_support::pallet]
 pub mod module {
 	use super::*;
+
+	pub type RelayChainBlockNumberOf<T> = <<T as Config>::RelayChainBlockNumber as BlockNumberProvider>::BlockNumber;
 
 	/// The subaccount's staking ledger which kept by Homa protocol
 	#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo, Default)]
@@ -133,6 +137,17 @@ pub mod module {
 		#[pallet::constant]
 		type BondingDuration: Get<EraIndex>;
 
+		/// The staking amount of threshold to mint.
+		#[pallet::constant]
+		type MintThreshold: Get<Balance>;
+
+		/// The liquid amount of threshold to redeem.
+		#[pallet::constant]
+		type RedeemThreshold: Get<Balance>;
+
+		/// Block number provider for the relaychain.
+		type RelayChainBlockNumber: BlockNumberProvider<BlockNumber = Self::BlockNumber>;
+
 		/// The HomaXcm to manage the staking of sub-account on relaychain.
 		type HomaXcm: HomaSubAccountXcm<Self::AccountId, Balance>;
 
@@ -189,18 +204,14 @@ pub mod module {
 		/// The estimated reward rate per era of relaychain staking has been updated.
 		/// \[reward_rate\]
 		EstimatedRewardRatePerEraUpdated(Rate),
-		/// The threshold to mint has been updated. \[mint_threshold\]
-		MintThresholdUpdated(Balance),
-		/// The threshold to redeem has been updated. \[redeem_threshold\]
-		RedeemThresholdUpdated(Balance),
 		/// The commission rate has been updated. \[commission_rate\]
 		CommissionRateUpdated(Rate),
 		/// The fast match fee rate has been updated. \[commission_rate\]
 		FastMatchFeeRateUpdated(Rate),
-		/// The prefix to bump era has been updated. \[prefix_blocks\]
-		BumpEraPrefixUpdated(T::BlockNumber),
-		/// The frequency to bump era has been updated. \[frequency_blocks\]
-		BumpEraFrequencyUpdated(T::BlockNumber),
+		/// The relaychain block number of last era bumped updated. \[last_era_bumped_block\]
+		LastEraBumpedBlockUpdated(RelayChainBlockNumberOf<T>),
+		/// The frequency to bump era has been updated. \[frequency\]
+		BumpEraFrequencyUpdated(RelayChainBlockNumberOf<T>),
 	}
 
 	/// The current era of relaychain
@@ -271,27 +282,13 @@ pub mod module {
 	#[pallet::getter(fn estimated_reward_rate_per_era)]
 	pub type EstimatedRewardRatePerEra<T: Config> = StorageValue<_, Rate, ValueQuery>;
 
-	/// Th maximum amount of bonded staking currency for a single sub on relaychain to obtain the
+	/// The maximum amount of bonded staking currency for a single sub on relaychain to obtain the
 	/// best staking rewards.
 	///
 	/// SoftBondedCapPerSubAccount: value: Balance
 	#[pallet::storage]
 	#[pallet::getter(fn soft_bonded_cap_per_sub_account)]
 	pub type SoftBondedCapPerSubAccount<T: Config> = StorageValue<_, Balance, ValueQuery>;
-
-	/// Th staking amount of threshold to mint.
-	///
-	/// MintThreshold: value: Balance
-	#[pallet::storage]
-	#[pallet::getter(fn mint_threshold)]
-	pub type MintThreshold<T: Config> = StorageValue<_, Balance, ValueQuery>;
-
-	/// Th liquid amount of threshold to redeem.
-	///
-	/// RedeemThreshold: value: Balance
-	#[pallet::storage]
-	#[pallet::getter(fn redeem_threshold)]
-	pub type RedeemThreshold<T: Config> = StorageValue<_, Balance, ValueQuery>;
 
 	/// The rate of Homa drawn from the staking reward as commission.
 	/// The draw will be transfer to TreasuryAccount of Homa in liquid currency.
@@ -308,25 +305,28 @@ pub mod module {
 	#[pallet::getter(fn fast_match_fee_rate)]
 	pub type FastMatchFeeRate<T: Config> = StorageValue<_, Rate, ValueQuery>;
 
-	/// The prefix of block numbers to bump local current era.
+	/// The relaychain block number of last era bumped.
 	///
-	/// BumpEraPrefix: value: BlockNumber
+	/// LastEraBumpedBlock: value: RelayChainBlockNumberOf
 	#[pallet::storage]
-	#[pallet::getter(fn bump_era_prefix)]
-	pub type BumpEraPrefix<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
+	#[pallet::getter(fn last_era_bumped_block)]
+	pub type LastEraBumpedBlock<T: Config> = StorageValue<_, RelayChainBlockNumberOf<T>, ValueQuery>;
 
-	/// The internal of blocks numbers to bump local current era.
+	/// The internal of relaychain block number of relaychain to bump local current era.
+	///
+	/// LastEraBumpedRelayChainBlock: value: RelayChainBlockNumberOf
 	#[pallet::storage]
 	#[pallet::getter(fn bump_era_frequency)]
-	pub type BumpEraFrequency<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
+	pub type BumpEraFrequency<T: Config> = StorageValue<_, RelayChainBlockNumberOf<T>, ValueQuery>;
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
 
 	#[pallet::hooks]
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
-		fn on_initialize(n: T::BlockNumber) -> Weight {
-			if Self::should_bump_local_current_era(n) {
+		fn on_initialize(_: T::BlockNumber) -> Weight {
+			let relay_chain_current_block = T::RelayChainBlockNumber::current_block_number();
+			if Self::should_bump_local_current_era(relay_chain_current_block) {
 				let _ = Self::bump_current_era();
 				<T as Config>::WeightInfo::on_initialize_with_bump_era()
 			} else {
@@ -346,8 +346,8 @@ pub mod module {
 		pub fn mint(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResult {
 			let minter = ensure_signed(origin)?;
 
-			// Ensure the amount is above the mint threshold.
-			ensure!(amount >= Self::mint_threshold(), Error::<T>::BelowMintThreshold);
+			// Ensure the amount is above the MintThreshold.
+			ensure!(amount >= T::MintThreshold::get(), Error::<T>::BelowMintThreshold);
 
 			// Ensure the total staking currency will not exceed soft cap.
 			ensure!(
@@ -407,7 +407,7 @@ pub mod module {
 				let liquid_currency_id = T::LiquidCurrencyId::get();
 
 				ensure!(
-					(!previous_request_amount.is_zero() && amount.is_zero()) || amount >= Self::redeem_threshold(),
+					(!previous_request_amount.is_zero() && amount.is_zero()) || amount >= T::RedeemThreshold::get(),
 					Error::<T>::BelowRedeemThreshold
 				);
 
@@ -508,8 +508,6 @@ pub mod module {
 		///   on relaychain to obtain the best staking rewards.
 		/// - `estimated_reward_rate_per_era`: the estimated staking yield of each era on the
 		///   current relay chain.
-		/// - `mint_threshold`: the staking currency amount of threshold when mint.
-		/// - `redeem_threshold`: the liquid currency amount of threshold when request redeem.
 		/// - `commission_rate`: the rate to draw from estimated staking rewards as commission to
 		///   HomaTreasury
 		/// - `fast_match_fee_rate`: the fixed fee rate when redeem request is been fast matched.
@@ -519,8 +517,6 @@ pub mod module {
 			origin: OriginFor<T>,
 			soft_bonded_cap_per_sub_account: Option<Balance>,
 			estimated_reward_rate_per_era: Option<Rate>,
-			mint_threshold: Option<Balance>,
-			redeem_threshold: Option<Balance>,
 			commission_rate: Option<Rate>,
 			fast_match_fee_rate: Option<Rate>,
 		) -> DispatchResult {
@@ -533,14 +529,6 @@ pub mod module {
 			if let Some(change) = estimated_reward_rate_per_era {
 				EstimatedRewardRatePerEra::<T>::put(change);
 				Self::deposit_event(Event::<T>::EstimatedRewardRatePerEraUpdated(change));
-			}
-			if let Some(change) = mint_threshold {
-				MintThreshold::<T>::put(change);
-				Self::deposit_event(Event::<T>::MintThresholdUpdated(change));
-			}
-			if let Some(change) = redeem_threshold {
-				RedeemThreshold::<T>::put(change);
-				Self::deposit_event(Event::<T>::RedeemThresholdUpdated(change));
 			}
 			if let Some(change) = commission_rate {
 				CommissionRate::<T>::put(change);
@@ -558,20 +546,20 @@ pub mod module {
 		/// Requires `GovernanceOrigin`
 		///
 		/// Parameters:
-		/// - `prefix`: the prefix of block number on parachain.
+		/// - `fix_last_era_bumped_block`: fix the relaychain block number of last era bumped.
 		/// - `frequency`: the frequency of block number on parachain.
 		#[pallet::weight(< T as Config >::WeightInfo::update_bump_era_params())]
 		#[transactional]
 		pub fn update_bump_era_params(
 			origin: OriginFor<T>,
-			prefix: Option<T::BlockNumber>,
+			last_era_bumped_block: Option<T::BlockNumber>,
 			frequency: Option<T::BlockNumber>,
 		) -> DispatchResult {
 			T::GovernanceOrigin::ensure_origin(origin)?;
 
-			if let Some(change) = prefix {
-				BumpEraPrefix::<T>::put(change);
-				Self::deposit_event(Event::<T>::BumpEraPrefixUpdated(change));
+			if let Some(change) = last_era_bumped_block {
+				LastEraBumpedBlock::<T>::put(change);
+				Self::deposit_event(Event::<T>::LastEraBumpedBlockUpdated(change));
 			}
 			if let Some(change) = frequency {
 				BumpEraFrequency::<T>::put(change);
@@ -741,7 +729,7 @@ pub mod module {
 						request_amount
 					} else {
 						// if cannot fast match the request amount fully, at least keep RedeemThreshold as remainder.
-						liquid_limit_at_fee_rate.min(request_amount.saturating_sub(Self::redeem_threshold()))
+						liquid_limit_at_fee_rate.min(request_amount.saturating_sub(T::RedeemThreshold::get()))
 					};
 
 					if !actual_liquid_to_redeem.is_zero() {
@@ -872,8 +860,8 @@ pub mod module {
 		pub fn process_to_bond_pool() -> DispatchResult {
 			let to_bond_pool = Self::to_bond_pool();
 
-			// if to_bond is gte than mint_threshold, try to bond_extra on relaychain
-			if to_bond_pool >= Self::mint_threshold() {
+			// if to_bond is gte than MintThreshold, try to bond_extra on relaychain
+			if to_bond_pool >= T::MintThreshold::get() {
 				let xcm_transfer_fee = T::HomaXcm::get_xcm_transfer_fee();
 				let bonded_list: Vec<(u16, Balance)> = T::ActiveSubAccountsIndexList::get()
 					.iter()
@@ -968,11 +956,11 @@ pub mod module {
 			T::Currency::withdraw(T::LiquidCurrencyId::get(), &Self::account_id(), total_redeem_amount)
 		}
 
-		pub fn should_bump_local_current_era(block_number: T::BlockNumber) -> bool {
-			block_number
-				.checked_add(&Self::bump_era_prefix())
-				.and_then(|n| n.checked_rem(&Self::bump_era_frequency()))
-				.map_or(false, |n| n.is_zero())
+		pub fn should_bump_local_current_era(relaychain_block_number: RelayChainBlockNumberOf<T>) -> bool {
+			relaychain_block_number
+				.checked_sub(&Self::last_era_bumped_block())
+				.and_then(|n| n.checked_div(&Self::bump_era_frequency()))
+				.map_or(false, |n| n >= One::one())
 		}
 
 		/// Bump current era.
@@ -983,6 +971,7 @@ pub mod module {
 			let previous_era = Self::relay_chain_current_era();
 			let new_era = previous_era + 1;
 			RelayChainCurrentEra::<T>::put(new_era);
+			LastEraBumpedBlock::<T>::put(T::RelayChainBlockNumber::current_block_number());
 			Self::deposit_event(Event::<T>::CurrentEraBumped(new_era));
 
 			// Rebalance:

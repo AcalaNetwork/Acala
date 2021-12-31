@@ -48,8 +48,6 @@ fn get_xcm_weight() -> Vec<(HomaXcmOperation, Option<Weight>, Option<Balance>)> 
 struct HomaParams {
 	pub soft_bonded_cap_per_sub_account: Option<Balance>,
 	pub estimated_reward_rate_per_era: Option<Rate>,
-	pub mint_threshold: Option<Balance>,
-	pub redeem_threshold: Option<Balance>,
 	pub commission_rate: Option<Rate>,
 	pub fast_match_fee_rate: Option<Rate>,
 }
@@ -58,8 +56,6 @@ impl Default for HomaParams {
 		HomaParams {
 			soft_bonded_cap_per_sub_account: Some(1_000_000_000 * dollar(RELAY_CHAIN_CURRENCY)),
 			estimated_reward_rate_per_era: None,
-			mint_threshold: None,
-			redeem_threshold: None,
 			commission_rate: None,
 			fast_match_fee_rate: None,
 		}
@@ -78,8 +74,6 @@ fn configure_homa_and_homa_xcm() {
 		Origin::root(),
 		param.soft_bonded_cap_per_sub_account,
 		param.estimated_reward_rate_per_era,
-		param.mint_threshold,
-		param.redeem_threshold,
 		param.commission_rate,
 		param.fast_match_fee_rate,
 	));

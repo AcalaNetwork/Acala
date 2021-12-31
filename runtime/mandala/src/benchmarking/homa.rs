@@ -57,8 +57,6 @@ runtime_benchmarks! {
 			RawOrigin::Root.into(),
 			Some(10_000_000_000_000_000),
 			Some(Rate::saturating_from_rational(1, 100)),
-			None,
-			None,
 			Some(Rate::saturating_from_rational(20, 100)),
 			None,
 		)?;
@@ -78,8 +76,6 @@ runtime_benchmarks! {
 			RawOrigin::Root.into(),
 			Some(amount * 10),
 			Some(Rate::saturating_from_rational(1, 10000)),
-			None,
-			None,
 			None,
 			None,
 		)?;
@@ -106,13 +102,11 @@ runtime_benchmarks! {
 			Some(Rate::saturating_from_rational(1, 10000)),
 			None,
 			None,
-			None,
-			None,
 		)?;
 		Homa::mint(RawOrigin::Signed(minter.clone()).into(), mint_amount)?;
 
 		let mut redeem_request_list: Vec<AccountId> = vec![];
-		let redeem_amount = 1_000_000_000_000;
+		let redeem_amount = 10_000_000_000_000;
 		for i in 0 .. n {
 			let redeemer = account("redeemer", i, SEED);
 			<Currencies as MultiCurrency<_>>::transfer(GetLiquidCurrencyId::get(), &minter, &redeemer, redeem_amount * 2)?;
@@ -136,8 +130,6 @@ runtime_benchmarks! {
 		RawOrigin::Root,
 		Some(1_000_000_000_000),
 		Some(Rate::saturating_from_rational(1, 100)),
-		Some(1_000_000_000_000),
-		Some(1_000_000_000_000),
 		Some(Rate::saturating_from_rational(1, 100)),
 		Some(Rate::saturating_from_rational(1, 100)))
 
