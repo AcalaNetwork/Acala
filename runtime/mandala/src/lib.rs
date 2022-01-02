@@ -52,7 +52,7 @@ use module_currencies::{BasicCurrencyAdapter, Currency};
 use module_evm::{CallInfo, CreateInfo, EvmTask, Runner};
 use module_evm_accounts::EvmAddressMapping;
 use module_relaychain::RelayChainCallBuilder;
-use module_support::{AssetIdMapping, DispatchableTask, ExchangeRateProvider};
+use module_support::{AssetIdMapping, DispatchableTask};
 use module_transaction_payment::{Multiplier, TargetedFeeAdjustment, TransactionFeePoolTrader};
 use scale_info::TypeInfo;
 
@@ -1846,17 +1846,21 @@ impl orml_tokens::ConvertBalance<Balance, Balance> for ConvertBalanceHoma {
 	type AssetId = CurrencyId;
 
 	fn convert_balance(balance: Balance, asset_id: CurrencyId) -> Balance {
+		let current_block = System::block_number();
+		let exchange_rate =
+			ExchangeRate::checked_from_rational(current_block, 3_000_000u128).unwrap_or_else(DefaultExchangeRate::get);
 		match asset_id {
-			CurrencyId::Token(TokenSymbol::LKSM) => {
-				Homa::get_exchange_rate().checked_mul_int(balance).unwrap_or_default()
-			}
+			CurrencyId::Token(TokenSymbol::LKSM) => exchange_rate.checked_mul_int(balance).unwrap_or_default(),
 			_ => balance,
 		}
 	}
 
 	fn convert_balance_back(balance: Balance, asset_id: CurrencyId) -> Balance {
+		let current_block = System::block_number();
+		let exchange_rate =
+			ExchangeRate::checked_from_rational(current_block, 3_000_000u128).unwrap_or_else(DefaultExchangeRate::get);
 		match asset_id {
-			CurrencyId::Token(TokenSymbol::LKSM) => Homa::get_exchange_rate()
+			CurrencyId::Token(TokenSymbol::LKSM) => exchange_rate
 				.reciprocal()
 				.unwrap_or_default()
 				.checked_mul_int(balance)
