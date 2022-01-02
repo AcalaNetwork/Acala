@@ -112,13 +112,9 @@ module-prices = { path = "../../modules/prices", default-features = false }
 module-incentives = { path = "../../modules/incentives", default-features = false }
 module-support = { path = "../../modules/support", default-features = false }
 module-homa = { path = "../../modules/homa", default-features = false }
-module-homa-lite = { path = "../../modules/homa-lite", default-features = false }
-module-homa-validator-list = { path = "../../modules/homa-validator-list", default-features = false }
+module-homa-xcm = { path = "../../modules/homa-xcm", default-features = false }
 module-nominees-election = { path = "../../modules/nominees-election", default-features = false }
 module-session-manager = { path = "../../modules/session-manager", default-features = false }
-module-staking-pool = { path = "../../modules/staking-pool", default-features = false }
-module-staking-pool-rpc-runtime-api = { path = "../../modules/staking-pool/rpc/runtime-api", default-features = false }
-module-polkadot-bridge = { path = "../../modules/polkadot-bridge", default-features = false }
 module-relaychain = { path = "../../modules/relaychain", default-features = false, features = ["polkadot"]}
 module-idle-scheduler = { path = "../../modules/idle-scheduler", default-features = false }
 nutsfinance-stable-asset = { version = "0.1.0", default-features = false, path = "../../ecosystem-modules/stable-asset/lib/stable-asset", package = "nutsfinance-stable-asset" }
@@ -248,12 +244,9 @@ std = [
 	"module-incentives/std",
 	"module-support/std",
 	"module-homa/std",
-	"module-homa-lite/std",
+	"module-homa-xcm/std",
 	"module-nominees-election/std",
 	"module-session-manager/std",
-	"module-staking-pool/std",
-	"module-staking-pool-rpc-runtime-api/std",
-	"module-polkadot-bridge/std",
 	"module-relaychain/std",
 	"module-idle-scheduler/std",
 	"primitives/std",
@@ -282,7 +275,6 @@ runtime-benchmarks = [
 	"pallet-xcm/runtime-benchmarks",
 
 	"module-nft/runtime-benchmarks",
-	"module-homa-lite/runtime-benchmarks",
 	"module-evm-accounts/runtime-benchmarks",
 
 	"sp-api/disable-logging",
@@ -357,11 +349,9 @@ try-runtime = [
 	"module-prices/try-runtime",
 	"module-incentives/try-runtime",
 	"module-homa/try-runtime",
-	"module-homa-lite/try-runtime",
+	"module-homa-xcm/try-runtime",
 	"module-nominees-election/try-runtime",
 	"module-session-manager/try-runtime",
-	"module-staking-pool/try-runtime",
-	"module-polkadot-bridge/try-runtime",
 
 	"ecosystem-renvm-bridge/try-runtime",
 	"ecosystem-starport/try-runtime",

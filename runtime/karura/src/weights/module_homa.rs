@@ -20,12 +20,12 @@
 //!
 //! THIS FILE WAS AUTO-GENERATED USING THE SUBSTRATE BENCHMARK CLI VERSION 4.0.0-dev
 //! DATE: 2021-12-20, STEPS: `50`, REPEAT: 20, LOW RANGE: `[]`, HIGH RANGE: `[]`
-//! EXECUTION: Some(Wasm), WASM-EXECUTION: Compiled, CHAIN: Some("dev"), DB CACHE: 128
+//! EXECUTION: Some(Wasm), WASM-EXECUTION: Compiled, CHAIN: Some("karura-dev"), DB CACHE: 128
 
 // Executed Command:
 // target/release/acala
 // benchmark
-// --chain=dev
+// --chain=karura-dev
 // --steps=50
 // --repeat=20
 // --pallet=module_homa
@@ -34,7 +34,7 @@
 // --wasm-execution=compiled
 // --heap-pages=4096
 // --template=./templates/runtime-weight-template.hbs
-// --output=./runtime/mandala/src/weights/
+// --output=./runtime/karura/src/weights/
 
 #![cfg_attr(rustfmt, rustfmt_skip)]
 #![allow(unused_parens)]
@@ -47,55 +47,55 @@ use sp_std::marker::PhantomData;
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> module_homa::WeightInfo for WeightInfo<T> {
 	fn on_initialize() -> Weight {
-		(5_902_000 as Weight)
+		(5_884_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 	}
 	fn on_initialize_with_bump_era() -> Weight {
-		(429_675_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(29 as Weight))
-			.saturating_add(T::DbWeight::get().writes(15 as Weight))
+		(490_360_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(32 as Weight))
+			.saturating_add(T::DbWeight::get().writes(16 as Weight))
 	}
 	fn mint() -> Weight {
-		(147_340_000 as Weight)
+		(150_048_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(11 as Weight))
 			.saturating_add(T::DbWeight::get().writes(7 as Weight))
 	}
 	fn request_redeem() -> Weight {
-		(83_226_000 as Weight)
+		(84_397_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(5 as Weight))
 			.saturating_add(T::DbWeight::get().writes(4 as Weight))
 	}
 	fn fast_match_redeems(n: u32, ) -> Weight {
-		(22_876_000 as Weight)
-			// Standard Error: 155_000
-			.saturating_add((110_226_000 as Weight).saturating_mul(n as Weight))
+		(593_000 as Weight)
+			// Standard Error: 217_000
+			.saturating_add((114_002_000 as Weight).saturating_mul(n as Weight))
 			.saturating_add(T::DbWeight::get().reads(8 as Weight))
 			.saturating_add(T::DbWeight::get().reads((3 as Weight).saturating_mul(n as Weight)))
 			.saturating_add(T::DbWeight::get().writes(5 as Weight))
 			.saturating_add(T::DbWeight::get().writes((3 as Weight).saturating_mul(n as Weight)))
 	}
 	fn claim_redemption() -> Weight {
-		(129_588_000 as Weight)
+		(132_187_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(10 as Weight))
 			.saturating_add(T::DbWeight::get().writes(7 as Weight))
 	}
 	fn update_homa_params() -> Weight {
-		(57_414_000 as Weight)
+		(63_205_000 as Weight)
 			.saturating_add(T::DbWeight::get().writes(4 as Weight))
 	}
 	fn update_bump_era_params() -> Weight {
-		(25_804_000 as Weight)
+		(26_983_000 as Weight)
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
 	fn reset_ledgers(n: u32, ) -> Weight {
-		(8_289_000 as Weight)
-			// Standard Error: 160_000
-			.saturating_add((18_479_000 as Weight).saturating_mul(n as Weight))
+		(22_598_000 as Weight)
+			// Standard Error: 604_000
+			.saturating_add((18_501_000 as Weight).saturating_mul(n as Weight))
 			.saturating_add(T::DbWeight::get().reads((1 as Weight).saturating_mul(n as Weight)))
 			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(n as Weight)))
 	}
 	fn reset_current_era() -> Weight {
-		(20_317_000 as Weight)
+		(21_189_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}

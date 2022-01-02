@@ -46,9 +46,6 @@ use sp_runtime::{
 };
 use static_assertions::const_assert;
 
-mod homa;
-pub use homa::*;
-
 pub mod precompile;
 use orml_traits::GetByKey;
 pub use precompile::{

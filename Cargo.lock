@@ -246,7 +246,6 @@ dependencies = [
  "module-evm",
  "module-evm-rpc-runtime-api",
  "module-nft",
- "module-staking-pool",
  "node-executor",
  "orml-oracle-rpc",
  "pallet-transaction-payment-rpc-runtime-api",
@@ -3888,7 +3887,9 @@ dependencies = [
  "module-evm-accounts",
  "module-evm-bridge",
  "module-evm-rpc-runtime-api",
+ "module-homa",
  "module-homa-lite",
+ "module-homa-xcm",
  "module-honzon",
  "module-idle-scheduler",
  "module-incentives",
@@ -4904,20 +4905,16 @@ dependencies = [
  "module-evm-rpc-runtime-api",
  "module-evm-utiltity",
  "module-homa",
- "module-homa-lite",
- "module-homa-validator-list",
+ "module-homa-xcm",
  "module-honzon",
  "module-idle-scheduler",
  "module-incentives",
  "module-loans",
  "module-nft",
  "module-nominees-election",
- "module-polkadot-bridge",
  "module-prices",
  "module-relaychain",
  "module-session-manager",
- "module-staking-pool",
- "module-staking-pool-rpc-runtime-api",
  "module-support",
  "module-transaction-pause",
  "module-transaction-payment",
@@ -5526,12 +5523,19 @@ name = "module-homa"
 version = "2.1.1"
 dependencies = [
  "acala-primitives",
+ "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "module-currencies",
  "module-support",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
  "parity-scale-codec",
  "scale-info",
- "serde",
+ "sp-arithmetic",
+ "sp-core",
+ "sp-io",
  "sp-runtime",
  "sp-std",
 ]
@@ -5583,6 +5587,32 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
+]
+
+[[package]]
+name = "module-homa-xcm"
+version = "2.0.3"
+dependencies = [
+ "acala-primitives",
+ "cumulus-primitives-core",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "module-currencies",
+ "module-relaychain",
+ "module-support",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "pallet-xcm",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "xcm",
+ "xcm-executor",
 ]
 
 [[package]]
@@ -5718,24 +5748,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "module-polkadot-bridge"
-version = "2.1.1"
-dependencies = [
- "acala-primitives",
- "frame-support",
- "frame-system",
- "module-support",
- "orml-traits",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
 name = "module-prices"
 version = "2.1.1"
 dependencies = [
@@ -5786,39 +5798,6 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-staking",
- "sp-std",
-]
-
-[[package]]
-name = "module-staking-pool"
-version = "2.1.1"
-dependencies = [
- "acala-primitives",
- "frame-support",
- "frame-system",
- "module-support",
- "orml-currencies",
- "orml-tokens",
- "orml-traits",
- "pallet-balances",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "module-staking-pool-rpc-runtime-api"
-version = "2.1.1"
-dependencies = [
- "module-support",
- "parity-scale-codec",
- "serde",
- "sp-api",
- "sp-runtime",
  "sp-std",
 ]
 
@@ -9821,7 +9800,6 @@ dependencies = [
  "module-idle-scheduler",
  "module-nft",
  "module-prices",
- "module-staking-pool",
  "module-support",
  "module-transaction-payment",
  "num_enum",
@@ -9891,7 +9869,9 @@ dependencies = [
  "module-evm-accounts",
  "module-evm-bridge",
  "module-evm-rpc-runtime-api",
+ "module-homa",
  "module-homa-lite",
+ "module-homa-xcm",
  "module-honzon",
  "module-incentives",
  "module-loans",

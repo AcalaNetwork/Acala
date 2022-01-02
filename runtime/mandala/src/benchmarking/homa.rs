@@ -16,114 +16,141 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use super::utils::set_balance;
 use crate::{
-	dollar, AccountId, Currencies, GetStakingCurrencyId, Homa, PolkadotBondingDuration, PolkadotBridge, Runtime,
-	StakingPool,
+	AccountId, ActiveSubAccountsIndexList, Balance, Currencies, GetLiquidCurrencyId, GetStakingCurrencyId, Homa, Rate,
+	Runtime,
 };
-use frame_benchmarking::account;
+
+use super::utils::set_balance;
+use frame_benchmarking::{account, whitelisted_caller};
+use frame_support::traits::OnInitialize;
 use frame_system::RawOrigin;
-use module_homa::RedeemStrategy;
+use module_homa::UnlockChunk;
 use orml_benchmarking::runtime_benchmarks;
 use orml_traits::MultiCurrency;
+use sp_runtime::FixedPointNumber;
 use sp_std::prelude::*;
 
 const SEED: u32 = 0;
 
-fn new_era() {
-	PolkadotBridge::new_era(Default::default());
-	StakingPool::rebalance();
-	StakingPool::rebalance();
-	StakingPool::rebalance();
-}
-
 runtime_benchmarks! {
 	{ Runtime, module_homa }
 
-	// inject DOT to staking pool and mint LDOT
+	on_initialize {
+	}: {
+		let _ = Homa::on_initialize(1);
+	}
+
+	on_initialize_with_bump_era {
+		let minter: AccountId = account("minter", 0, SEED);
+		let redeemer: AccountId = account("redeemer", 0, SEED);
+		let sub_account_index = ActiveSubAccountsIndexList::get().first().unwrap().clone();
+
+		set_balance(GetStakingCurrencyId::get(), &minter, 1_000_000_000_000_000);
+		set_balance(GetLiquidCurrencyId::get(), &redeemer, 1_000_000_000_000_000 * 10);
+		Homa::reset_ledgers(
+			RawOrigin::Root.into(),
+			vec![(sub_account_index, Some(1_000_000_000_000_000), Some(vec![UnlockChunk{value: 1_000_000_000_000, era: 10}]))]
+		)?;
+		Homa::reset_current_era(RawOrigin::Root.into(), 9)?;
+		Homa::update_homa_params(
+			RawOrigin::Root.into(),
+			Some(10_000_000_000_000_000),
+			Some(Rate::saturating_from_rational(1, 100)),
+			Some(Rate::saturating_from_rational(20, 100)),
+			None,
+		)?;
+		Homa::update_bump_era_params(RawOrigin::Root.into(), None, Some(1))?;
+
+		Homa::mint(RawOrigin::Signed(minter).into(), 100_000_000_000_000)?;
+		Homa::request_redeem(RawOrigin::Signed(redeemer).into(), 5_000_000_000_000_000, true)?;
+	}: {
+		let _ = Homa::on_initialize(1);
+	}
+
 	mint {
-		let caller: AccountId = account("caller", 0, SEED);
-		let currency_id = GetStakingCurrencyId::get();
-		set_balance(currency_id, &caller, 1_000 * dollar(currency_id));
-	}: _(RawOrigin::Signed(caller), 1_000 * dollar(currency_id))
+		let caller: AccountId = whitelisted_caller();
+		let amount = 10_000_000_000_000;
 
-	// redeem DOT from free pool
-	redeem_immediately {
-		let caller: AccountId = account("caller", 0, SEED);
-		let currency_id = GetStakingCurrencyId::get();
-		set_balance(currency_id, &caller, 1_000 * dollar(currency_id));
-		Homa::mint(RawOrigin::Signed(caller.clone()).into(), 1_000 * dollar(currency_id))?;
-		for era_index in 0..=PolkadotBondingDuration::get() {
-			new_era();
+		Homa::update_homa_params(
+			RawOrigin::Root.into(),
+			Some(amount * 10),
+			Some(Rate::saturating_from_rational(1, 10000)),
+			None,
+			None,
+		)?;
+		set_balance(GetStakingCurrencyId::get(), &caller, amount * 2);
+	}: _(RawOrigin::Signed(caller), amount)
+
+	request_redeem {
+		let caller: AccountId = whitelisted_caller();
+		let amount = 10_000_000_000_000;
+
+		set_balance(GetLiquidCurrencyId::get(), &caller, amount * 2);
+	}: _(RawOrigin::Signed(caller), amount, true)
+
+	fast_match_redeems {
+		let n in 1 .. 50;
+		let caller: AccountId = whitelisted_caller();
+		let minter: AccountId = account("minter", 0, SEED);
+		let mint_amount = 1_000_000_000_000_000;
+
+		set_balance(GetStakingCurrencyId::get(), &minter, mint_amount * 2);
+		Homa::update_homa_params(
+			RawOrigin::Root.into(),
+			Some(mint_amount * 10),
+			Some(Rate::saturating_from_rational(1, 10000)),
+			None,
+			None,
+		)?;
+		Homa::mint(RawOrigin::Signed(minter.clone()).into(), mint_amount)?;
+
+		let mut redeem_request_list: Vec<AccountId> = vec![];
+		let redeem_amount = 10_000_000_000_000;
+		for i in 0 .. n {
+			let redeemer = account("redeemer", i, SEED);
+			<Currencies as MultiCurrency<_>>::transfer(GetLiquidCurrencyId::get(), &minter, &redeemer, redeem_amount * 2)?;
+			Homa::request_redeem(RawOrigin::Signed(redeemer.clone()).into(), redeem_amount, true)?;
+			redeem_request_list.push(redeemer);
 		}
-	}: redeem(RawOrigin::Signed(caller.clone()), dollar(currency_id), RedeemStrategy::Immediately)
-	verify {
-		assert!(<Currencies as MultiCurrency<_>>::total_balance(currency_id, &caller) > 0);
-	}
+	}: _(RawOrigin::Signed(caller), redeem_request_list)
 
-	// redeem DOT by wait for complete unbonding eras
-	redeem_wait_for_unbonding {
-		let caller: AccountId = account("caller", 0, SEED);
-		let currency_id = GetStakingCurrencyId::get();
-		set_balance(currency_id, &caller, 1_000 * dollar(currency_id));
-		Homa::mint(RawOrigin::Signed(caller.clone()).into(), 1_000 * dollar(currency_id))?;
-		new_era();
-	}: redeem(RawOrigin::Signed(caller), dollar(currency_id), RedeemStrategy::WaitForUnbonding)
+	claim_redemption {
+		let caller: AccountId = whitelisted_caller();
+		let redeemer: AccountId = account("redeemer", 0, SEED);
+		let redeption_amount = 1_000_000_000_000;
 
-	// redeem DOT by claim unbonding
-	redeem_by_claim_unbonding {
-		let caller: AccountId = account("caller", 0, SEED);
-		let currency_id = GetStakingCurrencyId::get();
-		set_balance(currency_id, &caller, 1_000 * dollar(currency_id));
-		Homa::mint(RawOrigin::Signed(caller.clone()).into(), 1_000 * dollar(currency_id))?;
-		new_era();
-		new_era();
-	}: redeem(RawOrigin::Signed(caller.clone()), dollar(currency_id), RedeemStrategy::Target(PolkadotBondingDuration::get() + 2))
+		module_homa::Unbondings::<Runtime>::insert(&redeemer, 1, redeption_amount);
+		set_balance(GetStakingCurrencyId::get(), &Homa::account_id(), redeption_amount);
+		module_homa::UnclaimedRedemption::<Runtime>::put(redeption_amount);
+		Homa::reset_current_era(RawOrigin::Root.into(), 1)?;
+	}: _(RawOrigin::Signed(caller), redeemer)
 
-	withdraw_redemption {
-		let caller: AccountId = account("caller", 0, SEED);
-		let currency_id = GetStakingCurrencyId::get();
-		set_balance(currency_id, &caller, 1_000 * dollar(currency_id));
-		Homa::mint(RawOrigin::Signed(caller.clone()).into(), 1_000 * dollar(currency_id))?;
-		new_era();
-		Homa::redeem(RawOrigin::Signed(caller.clone()).into(), dollar(currency_id), RedeemStrategy::WaitForUnbonding)?;
-		for era_index in 0..=PolkadotBondingDuration::get() {
-			new_era();
+	update_homa_params {}: _(
+		RawOrigin::Root,
+		Some(1_000_000_000_000),
+		Some(Rate::saturating_from_rational(1, 100)),
+		Some(Rate::saturating_from_rational(1, 100)),
+		Some(Rate::saturating_from_rational(1, 100)))
+
+	update_bump_era_params {}: _(RawOrigin::Root, Some(3000), Some(7200))
+
+	reset_ledgers {
+		let n in 0 .. 10;
+		let mut updates: Vec<(u16, Option<Balance>, Option<Vec<UnlockChunk>>)> = vec![];
+		for i in 0..n {
+			updates.push((i.try_into().unwrap(), Some(1), Some(vec![UnlockChunk{value: 1, era: 1}])))
 		}
-	}: _(RawOrigin::Signed(caller.clone()))
-	verify {
-		assert!(<Currencies as MultiCurrency<_>>::total_balance(GetStakingCurrencyId::get(), &caller) > 0);
-	}
+	}: _(RawOrigin::Root, updates)
+
+	reset_current_era {}: _(RawOrigin::Root, 1)
 }
 
 #[cfg(test)]
 mod tests {
 	use super::*;
-
-	use frame_support::pallet_prelude::GenesisBuild;
+	use crate::benchmarking::utils::tests::new_test_ext;
 	use orml_benchmarking::impl_benchmark_test_suite;
-	use sp_runtime::{FixedPointNumber, FixedU128};
 
-	fn new_test_ext() -> sp_io::TestExternalities {
-		let mut t = frame_system::GenesisConfig::default()
-			.build_storage::<Runtime>()
-			.unwrap();
-
-		GenesisBuild::<Runtime>::assimilate_storage(
-			&module_staking_pool::GenesisConfig {
-				staking_pool_params: module_staking_pool::Params {
-					target_max_free_unbonded_ratio: FixedU128::saturating_from_rational(10, 100),
-					target_min_free_unbonded_ratio: FixedU128::saturating_from_rational(5, 100),
-					target_unbonding_to_free_ratio: FixedU128::saturating_from_rational(2, 100),
-					unbonding_to_free_adjustment: FixedU128::saturating_from_rational(1, 1000),
-					base_fee_rate: FixedU128::saturating_from_rational(2, 100),
-				},
-			},
-			&mut t,
-		)
-		.unwrap();
-		t.into()
-	}
-
-	impl_benchmark_test_suite!(super::new_test_ext(),);
+	impl_benchmark_test_suite!(new_test_ext(),);
 }
