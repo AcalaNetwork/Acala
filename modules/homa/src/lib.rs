@@ -968,7 +968,7 @@ pub mod module {
 		/// of rebalance is not atomic.
 		pub fn bump_current_era(amount: EraIndex) -> DispatchResult {
 			let previous_era = Self::relay_chain_current_era();
-			let new_era = previous_era + amount;
+			let new_era = previous_era.saturating_add(amount);
 			RelayChainCurrentEra::<T>::put(new_era);
 			LastEraBumpedBlock::<T>::put(T::RelayChainBlockNumber::current_block_number());
 			Self::deposit_event(Event::<T>::CurrentEraBumped(new_era));
