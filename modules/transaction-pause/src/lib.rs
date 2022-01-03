@@ -74,8 +74,8 @@ pub mod module {
 		},
 		/// Paused Xcm message
 		XcmPaused,
-		/// Unpaused Xcm message
-		XcmUnPaused,
+		/// Resume Xcm message
+		XcmResumed,
 	}
 
 	/// The paused transaction map
@@ -153,7 +153,7 @@ pub mod module {
 			T::UpdateOrigin::ensure_origin(origin)?;
 			if XcmPaused::<T>::get() {
 				XcmPaused::<T>::set(false);
-				Self::deposit_event(Event::XcmUnPaused);
+				Self::deposit_event(Event::XcmResumed);
 			}
 			Ok(())
 		}

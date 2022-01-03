@@ -1598,10 +1598,10 @@ impl cumulus_pallet_parachain_system::Config for Runtime {
 	type Event = Event;
 	type OnValidationData = ();
 	type SelfParaId = ParachainInfo;
-	type DmpMessageHandler = runtime_common::XcmMessageHandlerOrPaused<Runtime, DmpQueue>;
+	type DmpMessageHandler = runtime_common::XcmMessageHandler<Runtime, DmpQueue>;
 	type ReservedDmpWeight = ReservedDmpWeight;
 	type OutboundXcmpMessageSource = XcmpQueue;
-	type XcmpMessageHandler = runtime_common::XcmMessageHandlerOrPaused<Runtime, XcmpQueue>;
+	type XcmpMessageHandler = runtime_common::XcmMessageHandler<Runtime, XcmpQueue>;
 	type ReservedXcmpWeight = ReservedXcmpWeight;
 }
 

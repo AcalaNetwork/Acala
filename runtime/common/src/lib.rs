@@ -430,24 +430,24 @@ where
 ///
 /// Parameters type:
 /// - `A`: `DmpMessageHandler` or `XcmpMessageHandler`
-pub struct XcmMessageHandlerOrPaused<Runtime, A>(PhantomData<(Runtime, A)>);
+pub struct XcmMessageHandler<Runtime, A>(PhantomData<(Runtime, A)>);
 
-impl<Runtime, A> DmpMessageHandler for XcmMessageHandlerOrPaused<Runtime, A>
+impl<Runtime, A> DmpMessageHandler for XcmMessageHandler<Runtime, A>
 where
 	Runtime: module_transaction_pause::Config,
 	A: DmpMessageHandler,
 {
 	fn handle_dmp_messages(iter: impl Iterator<Item = (RelayChainBlockNumber, Vec<u8>)>, max_weight: Weight) -> Weight {
 		let xcm_paused: bool = module_transaction_pause::Pallet::<Runtime>::xcm_paused();
-		if xcm_paused {
-			A::handle_dmp_messages(iter, 0)
-		} else {
+		if !xcm_paused {
 			A::handle_dmp_messages(iter, max_weight)
+		} else {
+			A::handle_dmp_messages(iter, 0)
 		}
 	}
 }
 
-impl<Runtime, A> XcmpMessageHandler for XcmMessageHandlerOrPaused<Runtime, A>
+impl<Runtime, A> XcmpMessageHandler for XcmMessageHandler<Runtime, A>
 where
 	Runtime: module_transaction_pause::Config,
 	A: XcmpMessageHandler,
@@ -457,10 +457,10 @@ where
 		max_weight: Weight,
 	) -> Weight {
 		let xcm_paused: bool = module_transaction_pause::Pallet::<Runtime>::xcm_paused();
-		if xcm_paused {
-			A::handle_xcmp_messages(iter, 0)
-		} else {
+		if !xcm_paused {
 			A::handle_xcmp_messages(iter, max_weight)
+		} else {
+			A::handle_xcmp_messages(iter, 0)
 		}
 	}
 }

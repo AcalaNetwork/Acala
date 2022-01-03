@@ -764,6 +764,8 @@ fn sibling_trap_assets_works() {
 
 #[test]
 fn dmp_queue_pause_resume_works() {
+	use polkadot_primitives::v1::runtime_decl_for_ParachainHost::ParachainHost;
+
 	Karura::execute_with(|| {
 		assert_ok!(module_transaction_pause::Pallet::<Runtime>::pause_xcm(Origin::root()));
 		assert!(module_transaction_pause::Pallet::<Runtime>::xcm_paused());
@@ -786,6 +788,11 @@ fn dmp_queue_pause_resume_works() {
 			Box::new((Here, dollar(KSM)).into()),
 			0
 		));
+
+		let downward_messages = <kusama_runtime::Runtime>::dmq_contents(2000.into())
+			.into_iter()
+			.map(|inbound| (inbound.sent_at, inbound.msg));
+		assert_eq!(downward_messages.len(), 1);
 	});
 
 	Karura::execute_with(|| {
@@ -799,16 +806,19 @@ fn dmp_queue_pause_resume_works() {
 		assert!(!module_transaction_pause::Pallet::<Runtime>::xcm_paused());
 	});
 
-	// the empty body implementation here is used to trigger send downward message to parachain,
-	// the previous message in the queue storage will be [first executed](https://github.com/paritytech/cumulus/blob/polkadot-v0.9.13/pallets/dmp-queue/src/lib.rs#L270).
-	// then the second message executed which is also get from storage by runtime.dmq_contents().
-	KusamaNet::execute_with(|| {});
+	// the empty body implementation here is used to trigger send downward message to parachain
+	KusamaNet::execute_with(|| {
+		let downward_messages = <kusama_runtime::Runtime>::dmq_contents(2000.into())
+			.into_iter()
+			.map(|inbound| (inbound.sent_at, inbound.msg));
+		assert_eq!(downward_messages.len(), 1);
+	});
 
 	Karura::execute_with(|| {
 		assert!(!module_transaction_pause::Pallet::<Runtime>::xcm_paused());
 		assert_eq!(
 			Tokens::free_balance(KSM, &AccountId::from(BOB)),
-			2 * dollar(KSM) - fee * 2
+			2 * (dollar(KSM) - fee)
 		);
 	});
 }
