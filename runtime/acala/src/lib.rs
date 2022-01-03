@@ -1731,14 +1731,6 @@ impl orml_xcm::Config for Runtime {
 	type SovereignOrigin = EnsureRootOrThreeFourthsGeneralCouncil;
 }
 
-pub struct OnRuntimeUpgrade;
-impl frame_support::traits::OnRuntimeUpgrade for OnRuntimeUpgrade {
-	fn on_runtime_upgrade() -> u64 {
-		// no migration
-		0
-	}
-}
-
 define_combined_task! {
 	#[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo)]
 	pub enum ScheduledTasks {
@@ -1892,7 +1884,7 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPallets,
-	(OnRuntimeUpgrade, TransactionPaymentUpgrade),
+	TransactionPaymentUpgrade,
 >;
 
 pub struct TransactionPaymentUpgrade;

@@ -43,12 +43,11 @@ mod dex;
 ))]
 mod evm;
 
-#[cfg(any(
-	feature = "with-mandala-runtime",
-	feature = "with-karura-runtime",
-	feature = "with-acala-runtime"
-))]
+#[cfg(any(feature = "with-karura-runtime", feature = "with-acala-runtime"))]
 mod homa_lite;
+
+#[cfg(feature = "with-karura-runtime")]
+mod homa_xcm;
 
 #[cfg(any(
 	feature = "with-mandala-runtime",
