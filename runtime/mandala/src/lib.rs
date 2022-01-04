@@ -1860,6 +1860,8 @@ impl orml_tokens::ConvertBalance<Balance, Balance> for ConvertBalanceHoma {
 				.reciprocal()
 				.unwrap_or_default()
 				.checked_mul_int(balance)
+				.unwrap_or_default()
+				.checked_add(1)
 				.unwrap_or_default(),
 			_ => balance,
 		}
