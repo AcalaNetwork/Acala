@@ -1864,7 +1864,7 @@ impl orml_tokens::ConvertBalance<Balance, Balance> for ConvertBalanceHoma {
 			CurrencyId::Token(TokenSymbol::LKSM) => Homa::get_exchange_rate()
 				.reciprocal()
 				.and_then(|x| x.checked_mul_int(balance))
-				.and_then(|x: Balance| -> Option<Balance> { x.checked_add(1) })
+				.and_then(|x| x.checked_add(1))
 				.unwrap_or_default(),
 			_ => balance,
 		}
