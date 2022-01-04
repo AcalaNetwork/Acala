@@ -17,13 +17,12 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 //! EVM stack-based runner.
-// Synchronize with https://github.com/paritytech/frontier/blob/master/frame/evm/src/runner/stack.rs
+// Synchronize with https://github.com/paritytech/frontier/blob/bcae569524/frame/evm/src/runner/stack.rs
 
 use crate::{
-	precompiles::PrecompileSet,
 	runner::{
-		state::{StackExecutor, StackSubstateMetadata},
-		Runner as RunnerT, StackState as StackStateT,
+		state::{Accessed, StackExecutor, StackState as StackStateT, StackSubstateMetadata},
+		Runner as RunnerT,
 	},
 	AccountInfo, AccountStorages, Accounts, BalanceOf, CallInfo, Config, CreateInfo, Error, Event, ExecutionInfo, One,
 	Pallet, STORAGE_SIZE,
@@ -46,7 +45,7 @@ pub use primitives::{
 use sha3::{Digest, Keccak256};
 use sp_core::{H160, H256, U256};
 use sp_runtime::traits::UniqueSaturatedInto;
-use sp_std::{boxed::Box, collections::btree_set::BTreeSet, marker::PhantomData, mem, vec, vec::Vec};
+use sp_std::{boxed::Box, collections::btree_set::BTreeSet, marker::PhantomData, mem, vec::Vec};
 
 #[derive(Default)]
 pub struct Runner<T: Config> {
@@ -55,35 +54,30 @@ pub struct Runner<T: Config> {
 
 impl<T: Config> Runner<T> {
 	/// Execute an EVM operation.
-	pub fn execute<'config, F, R>(
+	pub fn execute<'config, 'precompiles, F, R>(
 		source: H160,
 		origin: H160,
 		value: U256,
 		gas_limit: u64,
 		storage_limit: u32,
 		config: &'config evm::Config,
+		precompiles: &'precompiles T::PrecompilesType,
 		f: F,
 	) -> Result<ExecutionInfo<R>, sp_runtime::DispatchError>
 	where
-		F: FnOnce(&mut StackExecutor<'config, SubstrateStackState<'_, 'config, T>>) -> (ExitReason, R),
+		F: FnOnce(
+			&mut StackExecutor<'config, 'precompiles, SubstrateStackState<'_, 'config, T>, T::PrecompilesType>,
+		) -> (ExitReason, R),
 	{
-		let gas_price = U256::one();
-		let vicinity = Vicinity { gas_price, origin };
+		let vicinity = Vicinity {
+			gas_price: U256::one(),
+			origin,
+		};
 
 		let metadata = StackSubstateMetadata::new(gas_limit, storage_limit, config);
 		let state = SubstrateStackState::new(&vicinity, metadata);
-		let mut executor = StackExecutor::new_with_precompile(state, config, T::Precompiles::execute);
+		let mut executor = StackExecutor::new_with_precompiles(state, config, precompiles);
 
-		// NOTE: charge from transaction-payment
-		// let total_fee = gas_price
-		// 	.checked_mul(U256::from(gas_limit))
-		// 	.ok_or(Error::<T>::FeeOverflow)?;
-		// let total_payment = value.checked_add(total_fee).ok_or(Error::<T>::PaymentOverflow)?;
-		// let source_account = Pallet::<T>::account_basic(&source);
-		// ensure!(source_account.balance >= total_payment, Error::<T>::BalanceLow);
-
-		// Deduct fee from the `source` account.
-		// let fee = T::ChargeTransactionPayment::withdraw_fee(&source, total_fee)?;
 		ensure!(
 			convert_decimals_from_evm(value.low_u128()).is_some(),
 			Error::<T>::InvalidDecimals
@@ -106,20 +100,15 @@ impl<T: Config> Runner<T> {
 		let (reason, retv) = f(&mut executor);
 
 		let used_gas = U256::from(executor.used_gas());
-		let actual_fee = executor.fee(gas_price);
 		log::debug!(
 			target: "evm",
-			"Execution {:?} [source: {:?}, value: {}, gas_limit: {}, actual_fee: {}]",
+			"Execution {:?} [source: {:?}, value: {}, gas_limit: {}, used_gas: {}]",
 			reason,
 			source,
 			value,
 			gas_limit,
-			actual_fee
+			used_gas,
 		);
-
-		// NOTE: refund from transaction-payment
-		// Refund fees to the `source` account if deducted more before,
-		// T::OnChargeTransaction::correct_and_deposit_fee(&source, actual_fee, fee)?;
 
 		let state = executor.into_state();
 
@@ -219,6 +208,7 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 		value: BalanceOf<T>,
 		gas_limit: u64,
 		storage_limit: u32,
+		access_list: Vec<(H160, Vec<H256>)>,
 		config: &evm::Config,
 	) -> Result<CallInfo, DispatchError> {
 		// if the contract not deployed, the caller must be developer or contract or maintainer.
@@ -228,11 +218,18 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 			Error::<T>::NoPermission
 		);
 
+		let precompiles = T::PrecompilesValue::get();
 		let value = U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(value));
-		let info = Self::execute(source, origin, value, gas_limit, storage_limit, config, |executor| {
-			// TODO: EIP-2930
-			executor.transact_call(source, target, value, input, gas_limit, vec![])
-		})?;
+		let info = Self::execute(
+			source,
+			origin,
+			value,
+			gas_limit,
+			storage_limit,
+			config,
+			&precompiles,
+			|executor| executor.transact_call(source, target, value, input, gas_limit, access_list),
+		)?;
 
 		if info.exit_reason.is_succeed() {
 			Pallet::<T>::deposit_event(Event::<T>::Executed(source, target, info.logs.clone()));
@@ -255,19 +252,29 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 		value: BalanceOf<T>,
 		gas_limit: u64,
 		storage_limit: u32,
+		access_list: Vec<(H160, Vec<H256>)>,
 		config: &evm::Config,
 	) -> Result<CreateInfo, DispatchError> {
+		let precompiles = T::PrecompilesValue::get();
 		let value = U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(value));
-		let info = Self::execute(source, source, value, gas_limit, storage_limit, config, |executor| {
-			let address = executor
-				.create_address(evm::CreateScheme::Legacy { caller: source })
-				.unwrap_or_default(); // transact_create will check the address
-			(
-				// TODO: EIP-2930
-				executor.transact_create(source, value, init, gas_limit, vec![]),
-				address,
-			)
-		})?;
+		let info = Self::execute(
+			source,
+			source,
+			value,
+			gas_limit,
+			storage_limit,
+			config,
+			&precompiles,
+			|executor| {
+				let address = executor
+					.create_address(evm::CreateScheme::Legacy { caller: source })
+					.unwrap_or_default(); // transact_create will check the address
+				(
+					executor.transact_create(source, value, init, gas_limit, access_list),
+					address,
+				)
+			},
+		)?;
 
 		if info.exit_reason.is_succeed() {
 			Pallet::<T>::deposit_event(Event::<T>::Created(source, info.value, info.logs.clone()));
@@ -290,24 +297,34 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 		value: BalanceOf<T>,
 		gas_limit: u64,
 		storage_limit: u32,
+		access_list: Vec<(H160, Vec<H256>)>,
 		config: &evm::Config,
 	) -> Result<CreateInfo, DispatchError> {
+		let precompiles = T::PrecompilesValue::get();
 		let value = U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(value));
 		let code_hash = H256::from_slice(Keccak256::digest(&init).as_slice());
-		let info = Self::execute(source, source, value, gas_limit, storage_limit, config, |executor| {
-			let address = executor
-				.create_address(evm::CreateScheme::Create2 {
-					caller: source,
-					code_hash,
-					salt,
-				})
-				.unwrap_or_default(); // transact_create2 will check the address
-			(
-				// TODO: EIP-2930
-				executor.transact_create2(source, value, init, salt, gas_limit, vec![]),
-				address,
-			)
-		})?;
+		let info = Self::execute(
+			source,
+			source,
+			value,
+			gas_limit,
+			storage_limit,
+			config,
+			&precompiles,
+			|executor| {
+				let address = executor
+					.create_address(evm::CreateScheme::Create2 {
+						caller: source,
+						code_hash,
+						salt,
+					})
+					.unwrap_or_default(); // transact_create2 will check the address
+				(
+					executor.transact_create2(source, value, init, salt, gas_limit, access_list),
+					address,
+				)
+			},
+		)?;
 
 		if info.exit_reason.is_succeed() {
 			Pallet::<T>::deposit_event(Event::<T>::Created(source, info.value, info.logs.clone()));
@@ -330,16 +347,26 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 		value: BalanceOf<T>,
 		gas_limit: u64,
 		storage_limit: u32,
+		access_list: Vec<(H160, Vec<H256>)>,
 		config: &evm::Config,
 	) -> Result<CreateInfo, DispatchError> {
+		let precompiles = T::PrecompilesValue::get();
 		let value = U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(value));
-		let info = Self::execute(source, source, value, gas_limit, storage_limit, config, |executor| {
-			(
-				// TODO: EIP-2930
-				executor.transact_create_at_address(source, address, value, init, gas_limit, vec![]),
-				address,
-			)
-		})?;
+		let info = Self::execute(
+			source,
+			source,
+			value,
+			gas_limit,
+			storage_limit,
+			config,
+			&precompiles,
+			|executor| {
+				(
+					executor.transact_create_at_address(source, address, value, init, gas_limit, access_list),
+					address,
+				)
+			},
+		)?;
 
 		if info.exit_reason.is_succeed() {
 			Pallet::<T>::deposit_event(Event::<T>::Created(source, info.value, info.logs.clone()));
@@ -452,6 +479,15 @@ impl<'config> SubstrateStackSubstate<'config> {
 	pub fn log(&mut self, address: H160, topics: Vec<H256>, data: Vec<u8>) {
 		self.logs.push(Log { address, topics, data });
 	}
+
+	fn recursive_is_cold<F: Fn(&Accessed) -> bool>(&self, f: &F) -> bool {
+		let local_is_accessed = self.metadata.accessed().as_ref().map(f).unwrap_or(false);
+		if local_is_accessed {
+			false
+		} else {
+			self.parent.as_ref().map(|p| p.recursive_is_cold(f)).unwrap_or(true)
+		}
+	}
 }
 
 /// Substrate backend for EVM.
@@ -545,6 +581,10 @@ impl<'vicinity, 'config, T: Config> BackendT for SubstrateStackState<'vicinity, 
 	fn original_storage(&self, _address: H160, _index: H256) -> Option<H256> {
 		None
 	}
+
+	fn block_base_fee_per_gas(&self) -> sp_core::U256 {
+		U256::one()
+	}
 }
 
 impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState<'vicinity, 'config, T> {
@@ -578,16 +618,6 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 
 	fn deleted(&self, address: H160) -> bool {
 		self.substate.deleted(address)
-	}
-
-	fn is_cold(&self, _address: H160) -> bool {
-		// TODO: EIP-2930
-		false
-	}
-
-	fn is_storage_cold(&self, _address: H160, _key: H256) -> bool {
-		// TODO: EIP-2930
-		false
 	}
 
 	fn inc_nonce(&mut self, address: H160) {
@@ -636,7 +666,7 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 	}
 
 	fn set_deleted(&mut self, address: H160) {
-		self.substate.set_deleted(address);
+		self.substate.set_deleted(address)
 	}
 
 	fn set_code(&mut self, address: H160, code: Vec<u8>) {
@@ -726,5 +756,15 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 		// EVM pallet considers all accounts to exist, and distinguish
 		// only empty and non-empty accounts. This avoids many of the
 		// subtle issues in EIP-161.
+	}
+
+	fn is_cold(&self, address: H160) -> bool {
+		self.substate
+			.recursive_is_cold(&|a| a.accessed_addresses.contains(&address))
+	}
+
+	fn is_storage_cold(&self, address: H160, key: H256) -> bool {
+		self.substate
+			.recursive_is_cold(&|a: &Accessed| a.accessed_storage.contains(&(address, key)))
 	}
 }

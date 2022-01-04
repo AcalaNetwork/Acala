@@ -22,14 +22,11 @@
 #![allow(clippy::unused_unit)]
 #![allow(clippy::upper_case_acronyms)]
 
-pub use crate::{
-	precompiles::{Precompile, PrecompileSet},
-	runner::{
-		stack::SubstrateStackState,
-		state::{StackExecutor, StackSubstateMetadata},
-		storage_meter::StorageMeter,
-		Runner,
-	},
+pub use crate::runner::{
+	stack::SubstrateStackState,
+	state::{PrecompileSet, StackExecutor, StackSubstateMetadata},
+	storage_meter::StorageMeter,
+	Runner,
 };
 use codec::{Decode, Encode, FullCodec, MaxEncodedLen};
 use frame_support::{
@@ -109,49 +106,13 @@ pub type NegativeImbalanceOf<T> =
 pub const RESERVE_ID_STORAGE_DEPOSIT: ReserveIdentifier = ReserveIdentifier::EvmStorageDeposit;
 pub const RESERVE_ID_DEVELOPER_DEPOSIT: ReserveIdentifier = ReserveIdentifier::EvmDeveloperDeposit;
 
-// Initially based on Istanbul hard fork configuration.
+// Initially based on London hard fork configuration.
 static ACALA_CONFIG: EvmConfig = EvmConfig {
-	gas_ext_code: 700,
-	gas_ext_code_hash: 700,
-	gas_balance: 700,
-	gas_sload: 800,
-	gas_sload_cold: 0,
-	gas_sstore_set: 20000,
-	gas_sstore_reset: 5000,
-	refund_sstore_clears: 0, // no gas refund
-	gas_suicide: 5000,
-	gas_suicide_new_account: 25000,
-	gas_call: 700,
-	gas_expbyte: 50,
-	gas_transaction_create: 53000,
-	gas_transaction_call: 21000,
-	gas_transaction_zero_data: 4,
-	gas_transaction_non_zero_data: 16,
-	gas_access_list_address: 0,
-	gas_access_list_storage_key: 0,
-	gas_account_access_cold: 0,
-	gas_storage_read_warm: 0,
+	refund_sstore_clears: 0,            // no gas refund
 	sstore_gas_metering: false,         // no gas refund
 	sstore_revert_under_stipend: false, // ignored
-	increase_state_access_gas: false,
-	err_on_call_with_more_gas: false,
-	empty_considered_exists: false,
-	create_increase_nonce: true,
-	call_l64_after_gas: true,
-	stack_limit: 1024,
-	memory_limit: usize::max_value(),
-	call_stack_limit: 1024,
 	create_contract_limit: Some(MaxCodeSize::get() as usize),
-	call_stipend: 2300,
-	has_delegate_call: true,
-	has_create2: true,
-	has_revert: true,
-	has_return_data: true,
-	has_bitwise_shifting: true,
-	has_chain_id: true,
-	has_self_balance: true,
-	has_ext_code_hash: true,
-	estimate: false,
+	..module_evm_utiltity::evm::Config::london()
 };
 
 #[frame_support::pallet]
@@ -194,7 +155,8 @@ pub mod module {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
 		/// Precompiles associated with this EVM engine.
-		type Precompiles: PrecompileSet;
+		type PrecompilesType: PrecompileSet;
+		type PrecompilesValue: Get<Self::PrecompilesType>;
 
 		/// Chain ID of EVM.
 		#[pallet::constant]
@@ -391,7 +353,7 @@ pub mod module {
 					};
 					let metadata = StackSubstateMetadata::new(210_000, 1000, T::config());
 					let state = SubstrateStackState::<T>::new(&vicinity, metadata);
-					let mut executor = StackExecutor::new(state, T::config());
+					let mut executor = StackExecutor::new_with_precompiles(state, T::config(), &());
 
 					let mut runtime =
 						evm::Runtime::new(Rc::new(account.code.clone()), Rc::new(Vec::new()), context, T::config());
@@ -501,11 +463,14 @@ pub mod module {
 			#[pallet::compact] value: BalanceOf<T>,
 			#[pallet::compact] gas_limit: u64,
 			#[pallet::compact] storage_limit: u32,
+			access_list: Vec<(H160, Vec<H256>)>,
 			#[pallet::compact] _valid_until: T::BlockNumber, // checked by tx validation logic
 		) -> DispatchResultWithPostInfo {
 			match action {
-				TransactionAction::Call(target) => Self::call(origin, target, input, value, gas_limit, storage_limit),
-				TransactionAction::Create => Self::create(origin, input, value, gas_limit, storage_limit),
+				TransactionAction::Call(target) => {
+					Self::call(origin, target, input, value, gas_limit, storage_limit, access_list)
+				}
+				TransactionAction::Create => Self::create(origin, input, value, gas_limit, storage_limit, access_list),
 			}
 		}
 
@@ -526,6 +491,7 @@ pub mod module {
 			#[pallet::compact] value: BalanceOf<T>,
 			#[pallet::compact] gas_limit: u64,
 			#[pallet::compact] storage_limit: u32,
+			access_list: Vec<(H160, Vec<H256>)>,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 			let source = T::AddressMapping::get_or_create_evm_address(&who);
@@ -538,6 +504,7 @@ pub mod module {
 				value,
 				gas_limit,
 				storage_limit,
+				access_list,
 				T::config(),
 			)?;
 
@@ -568,6 +535,7 @@ pub mod module {
 			#[pallet::compact] value: BalanceOf<T>,
 			#[pallet::compact] gas_limit: u64,
 			#[pallet::compact] storage_limit: u32,
+			access_list: Vec<(H160, Vec<H256>)>,
 		) -> DispatchResultWithPostInfo {
 			ensure_root(origin)?;
 
@@ -582,7 +550,17 @@ pub mod module {
 				_payed = imbalance;
 			}
 
-			let info = T::Runner::call(from, from, target, input, value, gas_limit, storage_limit, T::config())?;
+			let info = T::Runner::call(
+				from,
+				from,
+				target,
+				input,
+				value,
+				gas_limit,
+				storage_limit,
+				access_list,
+				T::config(),
+			)?;
 
 			let used_gas: u64 = info.used_gas.unique_saturated_into();
 
@@ -623,11 +601,12 @@ pub mod module {
 			#[pallet::compact] value: BalanceOf<T>,
 			#[pallet::compact] gas_limit: u64,
 			#[pallet::compact] storage_limit: u32,
+			access_list: Vec<(H160, Vec<H256>)>,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 			let source = T::AddressMapping::get_or_create_evm_address(&who);
 
-			let info = T::Runner::create(source, init, value, gas_limit, storage_limit, T::config())?;
+			let info = T::Runner::create(source, init, value, gas_limit, storage_limit, access_list, T::config())?;
 
 			let used_gas: u64 = info.used_gas.unique_saturated_into();
 
@@ -654,11 +633,21 @@ pub mod module {
 			#[pallet::compact] value: BalanceOf<T>,
 			#[pallet::compact] gas_limit: u64,
 			#[pallet::compact] storage_limit: u32,
+			access_list: Vec<(H160, Vec<H256>)>,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 			let source = T::AddressMapping::get_or_create_evm_address(&who);
 
-			let info = T::Runner::create2(source, init, salt, value, gas_limit, storage_limit, T::config())?;
+			let info = T::Runner::create2(
+				source,
+				init,
+				salt,
+				value,
+				gas_limit,
+				storage_limit,
+				access_list,
+				T::config(),
+			)?;
 
 			let used_gas: u64 = info.used_gas.unique_saturated_into();
 
@@ -683,13 +672,22 @@ pub mod module {
 			#[pallet::compact] value: BalanceOf<T>,
 			#[pallet::compact] gas_limit: u64,
 			#[pallet::compact] storage_limit: u32,
+			access_list: Vec<(H160, Vec<H256>)>,
 		) -> DispatchResultWithPostInfo {
 			T::NetworkContractOrigin::ensure_origin(origin)?;
 
 			let source = T::NetworkContractSource::get();
 			let address = MIRRORED_TOKENS_ADDRESS_START | EvmAddress::from_low_u64_be(Self::network_contract_index());
-			let info =
-				T::Runner::create_at_address(source, address, init, value, gas_limit, storage_limit, T::config())?;
+			let info = T::Runner::create_at_address(
+				source,
+				address,
+				init,
+				value,
+				gas_limit,
+				storage_limit,
+				access_list,
+				T::config(),
+			)?;
 
 			NetworkContractIndex::<T>::mutate(|v| *v = v.saturating_add(One::one()));
 
@@ -718,6 +716,7 @@ pub mod module {
 			#[pallet::compact] value: BalanceOf<T>,
 			#[pallet::compact] gas_limit: u64,
 			#[pallet::compact] storage_limit: u32,
+			access_list: Vec<(H160, Vec<H256>)>,
 		) -> DispatchResultWithPostInfo {
 			T::NetworkContractOrigin::ensure_origin(origin)?;
 
@@ -744,7 +743,16 @@ pub mod module {
 					logs: vec![],
 				}
 			} else {
-				T::Runner::create_at_address(source, target, init, value, gas_limit, storage_limit, T::config())?
+				T::Runner::create_at_address(
+					source,
+					target,
+					init,
+					value,
+					gas_limit,
+					storage_limit,
+					access_list,
+					T::config(),
+				)?
 			};
 
 			let used_gas: u64 = info.used_gas.unique_saturated_into();
@@ -1389,6 +1397,7 @@ impl<T: Config> EVMTrait<T::AccountId> for Pallet<T> {
 				value,
 				gas_limit,
 				storage_limit,
+				vec![],
 				&config,
 			);
 
@@ -1467,6 +1476,7 @@ pub fn code_hash(code: &[u8]) -> H256 {
 	H256::from_slice(Keccak256::digest(code).as_slice())
 }
 
+#[allow(dead_code)]
 fn encode_revert_message(e: &ExitError) -> Vec<u8> {
 	// A minimum size of error function selector (4) + offset (32) + string length
 	// (32) should contain a utf-8 encoded revert reason.

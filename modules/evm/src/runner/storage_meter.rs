@@ -18,6 +18,7 @@
 
 use frame_support::log;
 
+#[derive(Default, Clone, Debug)]
 pub struct StorageMeter {
 	limit: u32,
 	used: u32,

@@ -23,8 +23,7 @@ use mock::{Event, IdleScheduler, *};
 
 use crate::runner::{
 	stack::SubstrateStackState,
-	state::{StackExecutor, StackSubstateMetadata},
-	StackState,
+	state::{StackExecutor, StackState, StackSubstateMetadata},
 };
 use frame_support::{assert_noop, assert_ok, dispatch::DispatchErrorWithPostInfo};
 use module_support::AddressMapping;
@@ -43,8 +42,16 @@ fn fail_call_return_ok() {
 		let signer: AccountId32 = AccountId32::from(data);
 
 		let origin = Origin::signed(signer);
-		assert_ok!(EVM::call(origin.clone(), contract_a(), Vec::new(), 0, 1000000, 0));
-		assert_ok!(EVM::call(origin, contract_b(), Vec::new(), 0, 1000000, 0));
+		assert_ok!(EVM::call(
+			origin.clone(),
+			contract_a(),
+			Vec::new(),
+			0,
+			1000000,
+			0,
+			vec![]
+		));
+		assert_ok!(EVM::call(origin, contract_b(), Vec::new(), 0, 1000000, 0, vec![]));
 	});
 }
 
@@ -59,7 +66,7 @@ fn should_calculate_contract_address() {
 		};
 		let metadata = StackSubstateMetadata::new(1000, 1000, &ACALA_CONFIG);
 		let state = SubstrateStackState::<Runtime>::new(&vicinity, metadata);
-		let mut executor = StackExecutor::new(state, &ACALA_CONFIG);
+		let mut executor = StackExecutor::new_with_precompiles(state, &ACALA_CONFIG, &());
 
 		assert_eq!(
 			executor.create_address(evm::CreateScheme::Legacy { caller: addr }),
@@ -109,6 +116,7 @@ fn should_create_and_call_contract() {
 			0,
 			1000000,
 			1000000,
+			vec![],
 			<Runtime as Config>::config(),
 		).unwrap();
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
@@ -136,6 +144,7 @@ fn should_create_and_call_contract() {
 			0,
 			1000000,
 			1000000,
+			vec![],
 			<Runtime as Config>::config(),
 		).unwrap();
 		assert_eq!(
@@ -185,6 +194,7 @@ fn create_reverts_with_message() {
 			0,
 			12_000_000,
 			12_000_000,
+			vec![],
 			<Runtime as Config>::config(),
 		)
 		.unwrap();
@@ -218,6 +228,7 @@ fn call_reverts_with_message() {
 			0,
 			1000000,
 			1000000,
+			vec![],
 			<Runtime as Config>::config(),
 		).unwrap();
 
@@ -242,6 +253,7 @@ fn call_reverts_with_message() {
 			0,
 			1000000,
 			1000000,
+			vec![],
 			<Runtime as Config>::config(),
 		).unwrap();
 
@@ -290,6 +302,7 @@ fn should_deploy_payable_contract() {
 			convert_decimals_to_evm(amount),
 			1000000,
 			100000,
+			vec![],
 			<Runtime as Config>::config(),
 		)
 		.unwrap();
@@ -314,6 +327,7 @@ fn should_deploy_payable_contract() {
 			convert_decimals_to_evm(amount),
 			100000,
 			100000,
+			vec![],
 			<Runtime as Config>::config(),
 		)
 		.unwrap();
@@ -380,6 +394,7 @@ fn should_transfer_from_contract() {
 			0,
 			10000000,
 			10000000,
+			vec![],
 			<Runtime as Config>::config(),
 		)
 		.expect("create shouldn't fail");
@@ -410,6 +425,7 @@ fn should_transfer_from_contract() {
 			convert_decimals_to_evm(amount),
 			1000000,
 			1000000,
+			vec![],
 			<Runtime as Config>::config(),
 		)
 		.unwrap();
@@ -438,6 +454,7 @@ fn should_transfer_from_contract() {
 			convert_decimals_to_evm(amount),
 			1000000,
 			1000000,
+			vec![],
 			<Runtime as Config>::config(),
 		)
 		.unwrap();
@@ -466,6 +483,7 @@ fn should_transfer_from_contract() {
 			convert_decimals_to_evm(amount),
 			1000000,
 			1000000,
+			vec![],
 			<Runtime as Config>::config(),
 		)
 		.unwrap();
@@ -495,6 +513,7 @@ fn should_transfer_from_contract() {
 			convert_decimals_to_evm(dollar_aca), // 1 ACA
 			1000000,
 			1000000,
+			vec![],
 			<Runtime as Config>::config(),
 		)
 		.unwrap();
@@ -523,6 +542,7 @@ fn should_transfer_from_contract() {
 			0,
 			1000000,
 			1000000,
+			vec![],
 			<Runtime as Config>::config(),
 		)
 		.unwrap();
@@ -558,6 +578,7 @@ fn contract_should_deploy_contracts() {
 			0,
 			1000000000,
 			1000000000,
+			vec![],
 			<Runtime as Config>::config(),
 		)
 		.unwrap();
@@ -589,6 +610,7 @@ fn contract_should_deploy_contracts() {
 			convert_decimals_to_evm(amount),
 			1000000000,
 			1000000000,
+			vec![],
 			<Runtime as Config>::config(),
 		)
 		.unwrap();
@@ -637,6 +659,7 @@ fn contract_should_deploy_contracts_without_payable() {
 			0,
 			1000000000,
 			1000000000,
+			vec![],
 			<Runtime as Config>::config(),
 		)
 		.unwrap();
@@ -662,6 +685,7 @@ fn contract_should_deploy_contracts_without_payable() {
 			0,
 			1000000000,
 			1000000000,
+			vec![],
 			<Runtime as Config>::config(),
 		)
 		.unwrap();
@@ -700,11 +724,18 @@ fn deploy_factory() {
 		"0x608060405234801561001057600080fd5b5060405161001d90610121565b604051809103906000f080158015610039573d6000803e3d6000fd5b506000806101000a81548173ffffffffffffffffffffffffffffffffffffffff021916908373ffffffffffffffffffffffffffffffffffffffff1602179055506000809054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff1663c29855786040518163ffffffff1660e01b815260040160206040518083038186803b1580156100e057600080fd5b505afa1580156100f4573d6000803e3d6000fd5b505050506040513d602081101561010a57600080fd5b81019080805190602001909291905050505061012d565b60a58061017983390190565b603e8061013b6000396000f3fe6080604052600080fdfea265627a7a7231582064177030ee644a03aaf8d65027df9e0331c8bc4b161de25bfb8aa3142848e0f864736f6c634300051100326080604052348015600f57600080fd5b5060878061001e6000396000f3fe6080604052348015600f57600080fd5b506004361060285760003560e01c8063c298557814602d575b600080fd5b60336049565b6040518082815260200191505060405180910390f35b6000607b90509056fea265627a7a7231582031e5a4abae00962cfe9875df1b5b0d3ce6624e220cb8c714a948794fcddb6b4f64736f6c63430005110032"
 	).unwrap();
 	new_test_ext().execute_with(|| {
-		let result =
-			<Runtime as Config>::Runner::create(alice(), contract, 0, 2_000_000, 5000, <Runtime as Config>::config())
-				.unwrap();
+		let result = <Runtime as Config>::Runner::create(
+			alice(),
+			contract,
+			0,
+			2_000_000,
+			5000,
+			vec![],
+			<Runtime as Config>::config(),
+		)
+		.unwrap();
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
-		assert_eq!(result.used_gas.as_u64(), 156_479u64);
+		assert_eq!(result.used_gas.as_u64(), 155_879u64);
 		assert_eq!(result.used_storage, 461);
 		assert_eq!(
 			balance(alice()),
@@ -734,6 +765,7 @@ fn create_nft_contract_works() {
 			0,
 			1000000,
 			1000000,
+			vec![],
 		));
 
 		assert_eq!(
@@ -769,7 +801,8 @@ fn create_nft_contract_fails_if_non_network_contract_origin() {
 				contract,
 				0,
 				1000000,
-				1000000
+				1000000,
+				vec![],
 			),
 			BadOrigin
 		);
@@ -802,6 +835,7 @@ fn create_predeploy_contract_works() {
 			0,
 			1000000,
 			1000000,
+			vec![],
 		));
 
 		assert_eq!(Pallet::<Runtime>::is_account_empty(&addr), false);
@@ -820,6 +854,7 @@ fn create_predeploy_contract_works() {
 				0,
 				1000000,
 				1000000,
+				vec![],
 			),
 			Error::<Runtime>::ContractAlreadyExisted
 		);
@@ -833,6 +868,7 @@ fn create_predeploy_contract_works() {
 			0,
 			1000000,
 			1000000,
+			vec![],
 		));
 		let account_id = <Runtime as Config>::AddressMapping::get_account_id(&addr);
 		assert_eq!(Balances::free_balance(account_id), Balances::minimum_balance());
@@ -870,6 +906,7 @@ fn should_transfer_maintainer() {
 			0,
 			12_000_000,
 			12_000_000,
+			vec![],
 			<Runtime as Config>::config(),
 		)
 		.unwrap();
@@ -934,13 +971,14 @@ fn should_deploy() {
 			0,
 			1000000,
 			1000000,
+			vec![],
 			<Runtime as Config>::config(),
 		).unwrap();
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Stopped));
 		assert_eq!(result.used_storage, 0);
 
 		// create contract
-		let result = <Runtime as Config>::Runner::create(alice(), contract, 0, 21_000_000, 21_000_000, <Runtime as Config>::config()).unwrap();
+		let result = <Runtime as Config>::Runner::create(alice(), contract, 0, 21_000_000, 21_000_000, vec![],<Runtime as Config>::config()).unwrap();
 		let contract_address = result.value;
 
 		assert_eq!(result.used_storage, 284);
@@ -962,6 +1000,7 @@ fn should_deploy() {
 			0,
 			1000000,
 			1000000,
+			vec![],
 			<Runtime as Config>::config(),
 		));
 
@@ -973,6 +1012,7 @@ fn should_deploy() {
 			0,
 			1000000,
 			1000000,
+			vec![],
 		), Error::<Runtime>::NoPermission);
 
 		// developer can call the undeployed contract
@@ -985,6 +1025,7 @@ fn should_deploy() {
 			0,
 			1000000,
 			1000000,
+			vec![],
 			<Runtime as Config>::config(),
 		));
 
@@ -1007,6 +1048,7 @@ fn should_deploy() {
 			0,
 			1000000,
 			1000000,
+			vec![],
 			<Runtime as Config>::config(),
 		));
 
@@ -1033,7 +1075,7 @@ fn should_deploy_free() {
 		assert_noop!(EVM::deploy_free(Origin::signed(CouncilAccount::get()), H160::default()), Error::<Runtime>::ContractNotFound);
 
 		// create contract
-		let result = <Runtime as Config>::Runner::create(alice(), contract, 0, 21_000_000, 21_000_000, <Runtime as Config>::config()).unwrap();
+		let result = <Runtime as Config>::Runner::create(alice(), contract, 0, 21_000_000, 21_000_000, vec![], <Runtime as Config>::config()).unwrap();
 		let contract_address = result.value;
 
 		// multiply(2, 3)
@@ -1050,6 +1092,7 @@ fn should_deploy_free() {
 			0,
 			1000000,
 			1000000,
+			vec![],
 		), Error::<Runtime>::NoPermission);
 
 		assert_ok!(EVM::deploy_free(Origin::signed(CouncilAccount::get()), contract_address));
@@ -1063,6 +1106,7 @@ fn should_deploy_free() {
 			0,
 			1000000,
 			1000000,
+			vec![],
 			<Runtime as Config>::config(),
 		));
 
@@ -1147,6 +1191,7 @@ fn should_set_code() {
 			0,
 			21_000_000,
 			21_000_000,
+			vec![],
 			<Runtime as Config>::config(),
 		)
 		.unwrap();
@@ -1291,6 +1336,7 @@ fn should_selfdestruct() {
 			convert_decimals_to_evm(amount),
 			1000000,
 			100000,
+			vec![],
 			<Runtime as Config>::config(),
 		)
 		.unwrap();
@@ -1349,6 +1395,7 @@ fn should_selfdestruct() {
 				0,
 				1000000,
 				1000000,
+				vec![],
 			),
 			DispatchErrorWithPostInfo {
 				post_info: PostDispatchInfo {
@@ -1378,6 +1425,7 @@ fn should_selfdestruct() {
 			0,
 			1000000,
 			1000000,
+			vec![],
 		));
 	});
 }
@@ -1409,6 +1457,7 @@ fn storage_limit_should_work() {
 			0,
 			200_000,
 			1000,
+			vec![],
 			<Runtime as Config>::config(),
 		)
 		.unwrap();
@@ -1441,6 +1490,7 @@ fn storage_limit_should_work() {
 				amount,
 				1000000000,
 				0,
+				vec![],
 			),
 			DispatchErrorWithPostInfo {
 				post_info: PostDispatchInfo {
@@ -1463,6 +1513,7 @@ fn storage_limit_should_work() {
 			amount,
 			1000000000,
 			1000000000,
+			vec![],
 			<Runtime as Config>::config(),
 		)
 		.unwrap();
@@ -1481,6 +1532,7 @@ fn storage_limit_should_work() {
 				amount,
 				1000000000,
 				127,
+				vec![],
 			),
 			DispatchErrorWithPostInfo {
 				post_info: PostDispatchInfo {
@@ -1503,6 +1555,7 @@ fn storage_limit_should_work() {
 			amount,
 			1000000000,
 			1000000000,
+			vec![],
 			<Runtime as Config>::config(),
 		)
 		.unwrap();
@@ -1540,6 +1593,7 @@ fn evm_execute_mode_should_work() {
 			0,
 			1000000000,
 			1000000000,
+			vec![],
 			<Runtime as Config>::config(),
 		)
 		.unwrap();
@@ -1575,7 +1629,7 @@ fn evm_execute_mode_should_work() {
 			CallInfo {
 				exit_reason: ExitReason::Succeed(ExitSucceed::Stopped),
 				value: vec![],
-				used_gas: U256::from(139845),
+				used_gas: U256::from(142_445),
 				used_storage: 290,
 				logs: vec![]
 			}
@@ -1598,7 +1652,7 @@ fn evm_execute_mode_should_work() {
 			CallInfo {
 				exit_reason: ExitReason::Succeed(ExitSucceed::Stopped),
 				value: vec![],
-				used_gas: U256::from(256402),
+				used_gas: U256::from(259_561),
 				used_storage: 580,
 				logs: vec![]
 			}
@@ -1638,7 +1692,7 @@ fn evm_execute_mode_should_work() {
 			CallInfo {
 				exit_reason: ExitReason::Succeed(ExitSucceed::Stopped),
 				value: vec![],
-				used_gas: U256::from(107869),
+				used_gas: U256::from(110_469),
 				used_storage: 290,
 				logs: vec![]
 			}
@@ -1666,7 +1720,7 @@ fn evm_execute_mode_should_work() {
 			CallInfo {
 				exit_reason: ExitReason::Succeed(ExitSucceed::Stopped),
 				value: vec![],
-				used_gas: U256::from(92869),
+				used_gas: U256::from(93_369),
 				used_storage: 290,
 				logs: vec![]
 			}
@@ -1698,9 +1752,16 @@ fn should_update_storage() {
 
 	new_test_ext().execute_with(|| {
 		// create contract
-		let result =
-			<Runtime as Config>::Runner::create(alice(), contract, 0, 500000, 100000, <Runtime as Config>::config())
-				.unwrap();
+		let result = <Runtime as Config>::Runner::create(
+			alice(),
+			contract,
+			0,
+			500000,
+			100000,
+			vec![],
+			<Runtime as Config>::config(),
+		)
+		.unwrap();
 
 		let contract_address = result.value;
 
@@ -1725,6 +1786,7 @@ fn should_update_storage() {
 				0,
 				1000000,
 				0,
+				vec![],
 			),
 			DispatchErrorWithPostInfo {
 				post_info: PostDispatchInfo {
@@ -1744,6 +1806,7 @@ fn should_update_storage() {
 			0,
 			1000000,
 			STORAGE_SIZE,
+			vec![],
 			<Runtime as Config>::config(),
 		)
 		.unwrap();
@@ -1762,6 +1825,7 @@ fn should_update_storage() {
 			0,
 			1000000,
 			STORAGE_SIZE,
+			vec![],
 			<Runtime as Config>::config(),
 		)
 		.unwrap();
@@ -1789,7 +1853,14 @@ fn convert_decimals_should_not_work() {
 
 	new_test_ext().execute_with(|| {
 		assert_noop!(
-			EVM::create(Origin::signed(alice_account_id.clone()), vec![], 1, 1000000, 1000000),
+			EVM::create(
+				Origin::signed(alice_account_id.clone()),
+				vec![],
+				1,
+				1000000,
+				1000000,
+				vec![]
+			),
 			Error::<Runtime>::InvalidDecimals
 		);
 		assert_noop!(
@@ -1799,7 +1870,8 @@ fn convert_decimals_should_not_work() {
 				H256::default(),
 				1,
 				1000000,
-				1000000
+				1000000,
+				vec![],
 			),
 			Error::<Runtime>::InvalidDecimals
 		);
@@ -1810,7 +1882,8 @@ fn convert_decimals_should_not_work() {
 				vec![],
 				1,
 				1000000,
-				1000000
+				1000000,
+				vec![],
 			),
 			Error::<Runtime>::InvalidDecimals
 		);

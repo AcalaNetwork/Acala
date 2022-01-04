@@ -18,7 +18,7 @@
 
 //! Builtin precompiles.
 
-use crate::runner::state::PrecompileOutput;
+use crate::runner::state::{PrecompileFailure, PrecompileOutput, PrecompileResult};
 use frame_support::log;
 use impl_trait_for_tuples::impl_for_tuples;
 use module_evm_utiltity::evm::{Context, ExitError, ExitSucceed};
@@ -40,7 +40,8 @@ pub trait PrecompileSet {
 		input: &[u8],
 		target_gas: Option<u64>,
 		context: &Context,
-	) -> Option<core::result::Result<PrecompileOutput, ExitError>>;
+		is_static: bool,
+	) -> Option<PrecompileResult>;
 }
 
 /// One single precompile used by EVM engine.
@@ -48,11 +49,7 @@ pub trait Precompile {
 	/// Try to execute the precompile. Calculate the amount of gas needed with
 	/// given `input` and `target_gas`. Return `Ok(status, output, gas_used)` if
 	/// the execution is successful. Otherwise return `Err(_)`.
-	fn execute(
-		input: &[u8],
-		target_gas: Option<u64>,
-		context: &Context,
-	) -> core::result::Result<PrecompileOutput, ExitError>;
+	fn execute(input: &[u8], target_gas: Option<u64>, context: &Context, is_static: bool) -> PrecompileResult;
 }
 
 #[impl_for_tuples(16)]
@@ -65,13 +62,14 @@ impl PrecompileSet for Tuple {
 		input: &[u8],
 		target_gas: Option<u64>,
 		context: &Context,
-	) -> Option<core::result::Result<PrecompileOutput, ExitError>> {
+		is_static: bool,
+	) -> Option<PrecompileResult> {
 		let mut index = 0;
 
 		for_tuples!( #(
 			index += 1;
 			if address == H160::from_low_u64_be(index) {
-				return Some(Tuple::execute(input, target_gas, context))
+				return Some(Tuple::execute(input, target_gas, context, is_static))
 			}
 		)* );
 
@@ -108,24 +106,25 @@ where
 		input: &[u8],
 		target_gas: Option<u64>,
 		context: &Context,
-	) -> Option<core::result::Result<PrecompileOutput, ExitError>> {
+		is_static: bool,
+	) -> Option<PrecompileResult> {
 		// https://github.com/ethereum/go-ethereum/blob/9357280fce5c5d57111d690a336cca5f89e34da6/core/vm/contracts.go#L83
 		let result = if address == H160::from_low_u64_be(1) {
-			Some(ECRecover::execute(input, target_gas, context))
+			Some(ECRecover::execute(input, target_gas, context, is_static))
 		} else if address == H160::from_low_u64_be(2) {
-			Some(Sha256::execute(input, target_gas, context))
+			Some(Sha256::execute(input, target_gas, context, is_static))
 		} else if address == H160::from_low_u64_be(3) {
-			Some(Ripemd160::execute(input, target_gas, context))
+			Some(Ripemd160::execute(input, target_gas, context, is_static))
 		} else if address == H160::from_low_u64_be(4) {
-			Some(Identity::execute(input, target_gas, context))
+			Some(Identity::execute(input, target_gas, context, is_static))
 		}
 		// Non-standard precompile starts with 128
 		else if address == H160::from_low_u64_be(128) {
-			Some(ECRecoverPublicKey::execute(input, target_gas, context))
+			Some(ECRecoverPublicKey::execute(input, target_gas, context, is_static))
 		} else if address == H160::from_low_u64_be(129) {
-			Some(Sha3FIPS256::execute(input, target_gas, context))
+			Some(Sha3FIPS256::execute(input, target_gas, context, is_static))
 		} else if address == H160::from_low_u64_be(130) {
-			Some(Sha3FIPS512::execute(input, target_gas, context))
+			Some(Sha3FIPS512::execute(input, target_gas, context, is_static))
 		} else {
 			None
 		};
@@ -141,15 +140,11 @@ pub trait LinearCostPrecompile {
 	const BASE: u64;
 	const WORD: u64;
 
-	fn execute(input: &[u8], cost: u64) -> core::result::Result<(ExitSucceed, Vec<u8>), ExitError>;
+	fn execute(input: &[u8], cost: u64) -> core::result::Result<(ExitSucceed, Vec<u8>), PrecompileFailure>;
 }
 
 impl<T: LinearCostPrecompile> Precompile for T {
-	fn execute(
-		input: &[u8],
-		target_gas: Option<u64>,
-		_: &Context,
-	) -> core::result::Result<PrecompileOutput, ExitError> {
+	fn execute(input: &[u8], target_gas: Option<u64>, _context: &Context, _is_static: bool) -> PrecompileResult {
 		let cost = ensure_linear_cost(target_gas, input.len() as u64, T::BASE, T::WORD)?;
 
 		let (exit_status, output) = T::execute(input, cost)?;
@@ -163,17 +158,23 @@ impl<T: LinearCostPrecompile> Precompile for T {
 }
 
 /// Linear gas cost
-fn ensure_linear_cost(target_gas: Option<u64>, len: u64, base: u64, word: u64) -> Result<u64, ExitError> {
+fn ensure_linear_cost(target_gas: Option<u64>, len: u64, base: u64, word: u64) -> Result<u64, PrecompileFailure> {
 	let cost = base
 		.checked_add(
 			word.checked_mul(len.saturating_add(31) / 32)
-				.ok_or(ExitError::OutOfGas)?,
+				.ok_or(PrecompileFailure::Error {
+					exit_status: ExitError::OutOfGas,
+				})?,
 		)
-		.ok_or(ExitError::OutOfGas)?;
+		.ok_or(PrecompileFailure::Error {
+			exit_status: ExitError::OutOfGas,
+		})?;
 
 	if let Some(target_gas) = target_gas {
 		if cost > target_gas {
-			return Err(ExitError::OutOfGas);
+			return Err(PrecompileFailure::Error {
+				exit_status: ExitError::OutOfGas,
+			});
 		}
 	}
 
@@ -187,7 +188,7 @@ impl LinearCostPrecompile for Identity {
 	const BASE: u64 = 15;
 	const WORD: u64 = 3;
 
-	fn execute(input: &[u8], _: u64) -> core::result::Result<(ExitSucceed, Vec<u8>), ExitError> {
+	fn execute(input: &[u8], _: u64) -> core::result::Result<(ExitSucceed, Vec<u8>), PrecompileFailure> {
 		Ok((ExitSucceed::Returned, input.to_vec()))
 	}
 }
@@ -199,7 +200,7 @@ impl LinearCostPrecompile for ECRecover {
 	const BASE: u64 = 3000;
 	const WORD: u64 = 0;
 
-	fn execute(i: &[u8], _: u64) -> core::result::Result<(ExitSucceed, Vec<u8>), ExitError> {
+	fn execute(i: &[u8], _: u64) -> core::result::Result<(ExitSucceed, Vec<u8>), PrecompileFailure> {
 		let mut input = [0u8; 128];
 		input[..min(i.len(), 128)].copy_from_slice(&i[..min(i.len(), 128)]);
 
@@ -231,7 +232,7 @@ impl LinearCostPrecompile for Ripemd160 {
 	const BASE: u64 = 600;
 	const WORD: u64 = 120;
 
-	fn execute(input: &[u8], _cost: u64) -> core::result::Result<(ExitSucceed, Vec<u8>), ExitError> {
+	fn execute(input: &[u8], _cost: u64) -> core::result::Result<(ExitSucceed, Vec<u8>), PrecompileFailure> {
 		let mut ret = [0u8; 32];
 		ret[12..32].copy_from_slice(&ripemd160::Ripemd160::digest(input));
 		Ok((ExitSucceed::Returned, ret.to_vec()))
@@ -245,7 +246,7 @@ impl LinearCostPrecompile for Sha256 {
 	const BASE: u64 = 60;
 	const WORD: u64 = 12;
 
-	fn execute(input: &[u8], _cost: u64) -> core::result::Result<(ExitSucceed, Vec<u8>), ExitError> {
+	fn execute(input: &[u8], _cost: u64) -> core::result::Result<(ExitSucceed, Vec<u8>), PrecompileFailure> {
 		let ret = sp_io::hashing::sha2_256(input);
 		Ok((ExitSucceed::Returned, ret.to_vec()))
 	}
@@ -258,7 +259,7 @@ impl LinearCostPrecompile for ECRecoverPublicKey {
 	const BASE: u64 = 3000;
 	const WORD: u64 = 0;
 
-	fn execute(i: &[u8], _: u64) -> core::result::Result<(ExitSucceed, Vec<u8>), ExitError> {
+	fn execute(i: &[u8], _: u64) -> core::result::Result<(ExitSucceed, Vec<u8>), PrecompileFailure> {
 		let mut input = [0u8; 128];
 		input[..min(i.len(), 128)].copy_from_slice(&i[..min(i.len(), 128)]);
 
@@ -270,8 +271,9 @@ impl LinearCostPrecompile for ECRecoverPublicKey {
 		sig[32..64].copy_from_slice(&input[96..128]);
 		sig[64] = input[63];
 
-		let pubkey = sp_io::crypto::secp256k1_ecdsa_recover(&sig, &msg)
-			.map_err(|_| ExitError::Other("Public key recover failed".into()))?;
+		let pubkey = sp_io::crypto::secp256k1_ecdsa_recover(&sig, &msg).map_err(|_| PrecompileFailure::Error {
+			exit_status: ExitError::Other("Public key recover failed".into()),
+		})?;
 
 		Ok((ExitSucceed::Returned, pubkey.to_vec()))
 	}
@@ -284,7 +286,7 @@ impl LinearCostPrecompile for Sha3FIPS256 {
 	const BASE: u64 = 60;
 	const WORD: u64 = 12;
 
-	fn execute(input: &[u8], _: u64) -> core::result::Result<(ExitSucceed, Vec<u8>), ExitError> {
+	fn execute(input: &[u8], _: u64) -> core::result::Result<(ExitSucceed, Vec<u8>), PrecompileFailure> {
 		let mut output = [0; 32];
 		let mut sha3 = tiny_keccak::Sha3::v256();
 		sha3.update(input);
@@ -300,7 +302,7 @@ impl LinearCostPrecompile for Sha3FIPS512 {
 	const BASE: u64 = 60;
 	const WORD: u64 = 12;
 
-	fn execute(input: &[u8], _: u64) -> core::result::Result<(ExitSucceed, Vec<u8>), ExitError> {
+	fn execute(input: &[u8], _: u64) -> core::result::Result<(ExitSucceed, Vec<u8>), PrecompileFailure> {
 		let mut output = [0; 64];
 		let mut sha3 = tiny_keccak::Sha3::v512();
 		sha3.update(input);
