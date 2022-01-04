@@ -1855,13 +1855,16 @@ impl orml_tokens::ConvertBalance<Balance, Balance> for ConvertBalanceHoma {
 	}
 
 	fn convert_balance_back(balance: Balance, asset_id: CurrencyId) -> Balance {
+		/*
+		 * When overflow occurs, it's better to return 0 than max because returning zero will fail the
+		 * current transaction. If returning max here, the current transaction won't fail but latter
+		 * transactions have a possibility to fail, and this is undesirable.
+		 */
 		match asset_id {
 			CurrencyId::Token(TokenSymbol::LKSM) => Homa::get_exchange_rate()
 				.reciprocal()
-				.unwrap_or_default()
-				.checked_mul_int(balance)
-				.unwrap_or_default()
-				.checked_add(1)
+				.and_then(|x: Ratio| -> Option<Balance> { x.checked_mul_int(balance) })
+				.and_then(|x: Balance| -> Option<Balance> { x.checked_add(1) })
 				.unwrap_or_default(),
 			_ => balance,
 		}
