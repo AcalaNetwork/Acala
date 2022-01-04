@@ -77,14 +77,14 @@ mod karura_imports {
 		constants::parachains, create_x2_parachain_multilocation, get_all_module_accounts, AcalaOracle, AccountId,
 		AssetRegistry, AuctionManager, Authority, AuthoritysOriginId, Balance, Balances, BlockNumber, Call, CdpEngine,
 		CdpTreasury, CreateClassDeposit, CreateTokenDeposit, Currencies, CurrencyId, CurrencyIdConvert,
-		DataDepositPerByte, DefaultExchangeRate, Dex, DmpQueue, EmergencyShutdown, Event, EvmAccounts, ExistentialDeposits,
-		FeePoolSize, FinancialCouncil, Get, GetNativeCurrencyId, Homa, HomaLite, HomaXcm, Honzon, IdleScheduler,
-		KarPerSecond, KaruraFoundationAccounts, KsmPerSecond, KusamaBondingDuration, KusdPerSecond, Loans,
-		MaxTipsOfPriority, MinimumDebitValue, MultiLocation, NativeTokenExistentialDeposit, NetworkId, NftPalletId,
-		OneDay, Origin, OriginCaller, ParachainAccount, ParachainInfo, ParachainSystem, PolkadotXcm, Proxy, ProxyType,
-		Ratio, RelayChainBlockNumberProvider, RelayChainSovereignSubAccount, Runtime, Scheduler, Session,
-		SessionManager, SevenDays, SwapBalanceThreshold, System, Timestamp, TipPerWeightStep, TokenSymbol, Tokens,
-		TreasuryPalletId, Utility, Vesting, XTokens, XcmConfig, XcmExecutor, XcmUnbondFee, XcmpQueue, EVM, NFT,
+		DataDepositPerByte, DefaultExchangeRate, Dex, DmpQueue, EmergencyShutdown, Event, EvmAccounts,
+		ExistentialDeposits, FeePoolSize, FinancialCouncil, Get, GetNativeCurrencyId, Homa, HomaLite, HomaXcm, Honzon,
+		IdleScheduler, KarPerSecond, KaruraFoundationAccounts, KsmPerSecond, KusamaBondingDuration, KusdPerSecond,
+		Loans, MaxTipsOfPriority, MinimumDebitValue, MultiLocation, NativeTokenExistentialDeposit, NetworkId,
+		NftPalletId, OneDay, Origin, OriginCaller, ParachainAccount, ParachainInfo, ParachainSystem, PolkadotXcm,
+		Proxy, ProxyType, Ratio, RelayChainBlockNumberProvider, RelayChainSovereignSubAccount, Runtime, Scheduler,
+		Session, SessionManager, SevenDays, SwapBalanceThreshold, System, Timestamp, TipPerWeightStep, TokenSymbol,
+		Tokens, TreasuryPalletId, Utility, Vesting, XTokens, XcmConfig, XcmExecutor, XcmUnbondFee, XcmpQueue, EVM, NFT,
 	};
 	pub use primitives::TradingPair;
 	pub use runtime_common::{calculate_asset_ratio, cent, dollar, millicent, KAR, KSM, KUSD, LKSM};

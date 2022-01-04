@@ -789,10 +789,7 @@ fn dmp_queue_pause_resume_works() {
 			0
 		));
 
-		let downward_messages = <kusama_runtime::Runtime>::dmq_contents(2000.into())
-			.into_iter()
-			.map(|inbound| (inbound.sent_at, inbound.msg));
-		assert_eq!(downward_messages.len(), 1);
+		assert_eq!(<kusama_runtime::Runtime>::dmq_contents(2000.into()).len(), 1);
 	});
 
 	Karura::execute_with(|| {
@@ -802,16 +799,13 @@ fn dmp_queue_pause_resume_works() {
 		assert_eq!(Tokens::free_balance(KSM, &AccountId::from(BOB)), 0);
 
 		// resume the dmp-queue working
-		assert_ok!(module_transaction_pause::Pallet::<Runtime>::unpause_xcm(Origin::root()));
+		assert_ok!(module_transaction_pause::Pallet::<Runtime>::resume_xcm(Origin::root()));
 		assert!(!module_transaction_pause::Pallet::<Runtime>::xcm_paused());
 	});
 
 	// the empty body implementation here is used to trigger send downward message to parachain
 	KusamaNet::execute_with(|| {
-		let downward_messages = <kusama_runtime::Runtime>::dmq_contents(2000.into())
-			.into_iter()
-			.map(|inbound| (inbound.sent_at, inbound.msg));
-		assert_eq!(downward_messages.len(), 1);
+		assert_eq!(<kusama_runtime::Runtime>::dmq_contents(2000.into()).len(), 1);
 	});
 
 	Karura::execute_with(|| {
@@ -864,7 +858,7 @@ fn xcmp_queue_pause_resume_works() {
 		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(BOB)), 0);
 
 		// resume the xcmp-queue working
-		assert_ok!(module_transaction_pause::Pallet::<Runtime>::unpause_xcm(Origin::root()));
+		assert_ok!(module_transaction_pause::Pallet::<Runtime>::resume_xcm(Origin::root()));
 		assert!(!module_transaction_pause::Pallet::<Runtime>::xcm_paused());
 
 		// in the same block, balance not changed

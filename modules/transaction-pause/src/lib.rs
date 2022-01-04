@@ -148,8 +148,8 @@ pub mod module {
 			Ok(())
 		}
 
-		#[pallet::weight(T::WeightInfo::unpause_xcm())]
-		pub fn unpause_xcm(origin: OriginFor<T>) -> DispatchResult {
+		#[pallet::weight(T::WeightInfo::resume_xcm())]
+		pub fn resume_xcm(origin: OriginFor<T>) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
 			if XcmPaused::<T>::get() {
 				XcmPaused::<T>::set(false);
