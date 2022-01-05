@@ -234,7 +234,7 @@ pub mod module {
 		pub ref_count: u32,
 	}
 
-	#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]
+	#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Default)]
 	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 	/// Account definition used for genesis block construction.
 	pub struct GenesisAccount<Balance, Index> {
@@ -246,6 +246,8 @@ pub mod module {
 		pub storage: BTreeMap<H256, H256>,
 		/// Account code.
 		pub code: Vec<u8>,
+		/// If the account should enable contract development mode
+		pub enable_contract_development: bool,
 	}
 
 	/// The EVM accounts info.
@@ -304,7 +306,6 @@ pub mod module {
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
 		pub accounts: BTreeMap<EvmAddress, GenesisAccount<BalanceOf<T>, T::Index>>,
-		pub treasury: T::AccountId,
 	}
 
 	#[cfg(feature = "std")]
@@ -312,7 +313,6 @@ pub mod module {
 		fn default() -> Self {
 			GenesisConfig {
 				accounts: Default::default(),
-				treasury: Default::default(),
 			}
 		}
 	}
@@ -339,7 +339,18 @@ pub mod module {
 				};
 				T::Currency::deposit_creating(&account_id, amount);
 
+				if account.enable_contract_development {
+					T::Currency::ensure_reserved_named(
+						&RESERVE_ID_DEVELOPER_DEPOSIT,
+						&account_id,
+						T::DeveloperDeposit::get(),
+					)
+					.expect("Failed to reserve developer deposit. Please make sure the account have enough balance.");
+				}
+
 				if !account.code.is_empty() {
+					// init contract
+
 					// Transactions are not supported by BasicExternalities
 					// Use the EVM Runtime
 					let vicinity = Vicinity {
@@ -384,28 +395,49 @@ pub mod module {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// A contract has been created at given \[from, address, logs\].
-		Created(EvmAddress, EvmAddress, Vec<Log>),
+		/// A contract has been created at given
+		Created {
+			from: EvmAddress,
+			contract: EvmAddress,
+			logs: Vec<Log>,
+		},
 		/// A contract was attempted to be created, but the execution failed.
-		/// \[from, contract, exit_reason, logs\]
-		CreatedFailed(EvmAddress, EvmAddress, ExitReason, Vec<Log>),
-		/// A contract has been executed successfully with states applied. \[from, contract, logs\]
-		Executed(EvmAddress, EvmAddress, Vec<Log>),
+		CreatedFailed {
+			from: EvmAddress,
+			contract: EvmAddress,
+			exit_reason: ExitReason,
+			logs: Vec<Log>,
+		},
+		/// A contract has been executed successfully with states applied.
+		Executed {
+			from: EvmAddress,
+			contract: EvmAddress,
+			logs: Vec<Log>,
+		},
 		/// A contract has been executed with errors. States are reverted with
-		/// only gas fees applied. \[from, contract, exit_reason, output, logs\]
-		ExecutedFailed(EvmAddress, EvmAddress, ExitReason, Vec<u8>, Vec<Log>),
-		/// Transferred maintainer. \[contract, address\]
-		TransferredMaintainer(EvmAddress, EvmAddress),
-		/// Enabled contract development. \[who\]
-		ContractDevelopmentEnabled(T::AccountId),
-		/// Disabled contract development. \[who\]
-		ContractDevelopmentDisabled(T::AccountId),
-		/// Deployed contract. \[contract\]
-		ContractDeployed(EvmAddress),
-		/// Set contract code. \[contract\]
-		ContractSetCode(EvmAddress),
-		/// Selfdestructed contract code. \[contract\]
-		ContractSelfdestructed(EvmAddress),
+		/// only gas fees applied.
+		ExecutedFailed {
+			from: EvmAddress,
+			contract: EvmAddress,
+			exit_reason: ExitReason,
+			output: Vec<u8>,
+			logs: Vec<Log>,
+		},
+		/// Transferred maintainer.
+		TransferredMaintainer {
+			contract: EvmAddress,
+			new_maintainer: EvmAddress,
+		},
+		/// Enabled contract development.
+		ContractDevelopmentEnabled { who: T::AccountId },
+		/// Disabled contract development.
+		ContractDevelopmentDisabled { who: T::AccountId },
+		/// Deployed contract.
+		ContractDeployed { contract: EvmAddress },
+		/// Set contract code.
+		ContractSetCode { contract: EvmAddress },
+		/// Selfdestructed contract code.
+		ContractSelfdestructed { contract: EvmAddress },
 	}
 
 	#[pallet::error]
@@ -778,7 +810,10 @@ pub mod module {
 			let who = ensure_signed(origin)?;
 			Self::do_transfer_maintainer(who, contract, new_maintainer)?;
 
-			Pallet::<T>::deposit_event(Event::<T>::TransferredMaintainer(contract, new_maintainer));
+			Pallet::<T>::deposit_event(Event::<T>::TransferredMaintainer {
+				contract,
+				new_maintainer,
+			});
 
 			Ok(().into())
 		}
@@ -799,7 +834,7 @@ pub mod module {
 				ExistenceRequirement::AllowDeath,
 			)?;
 			Self::mark_deployed(contract, Some(address))?;
-			Pallet::<T>::deposit_event(Event::<T>::ContractDeployed(contract));
+			Pallet::<T>::deposit_event(Event::<T>::ContractDeployed { contract });
 			Ok(().into())
 		}
 
@@ -812,7 +847,7 @@ pub mod module {
 		pub fn deploy_free(origin: OriginFor<T>, contract: EvmAddress) -> DispatchResultWithPostInfo {
 			T::FreeDeploymentOrigin::ensure_origin(origin)?;
 			Self::mark_deployed(contract, None)?;
-			Pallet::<T>::deposit_event(Event::<T>::ContractDeployed(contract));
+			Pallet::<T>::deposit_event(Event::<T>::ContractDeployed { contract });
 			Ok(().into())
 		}
 
@@ -827,7 +862,7 @@ pub mod module {
 				Error::<T>::ContractDevelopmentAlreadyEnabled
 			);
 			T::Currency::ensure_reserved_named(&RESERVE_ID_DEVELOPER_DEPOSIT, &who, T::DeveloperDeposit::get())?;
-			Pallet::<T>::deposit_event(Event::<T>::ContractDevelopmentEnabled(who));
+			Pallet::<T>::deposit_event(Event::<T>::ContractDevelopmentEnabled { who });
 			Ok(().into())
 		}
 
@@ -842,7 +877,7 @@ pub mod module {
 				Error::<T>::ContractDevelopmentNotEnabled
 			);
 			T::Currency::unreserve_all_named(&RESERVE_ID_DEVELOPER_DEPOSIT, &who);
-			Pallet::<T>::deposit_event(Event::<T>::ContractDevelopmentDisabled(who));
+			Pallet::<T>::deposit_event(Event::<T>::ContractDevelopmentDisabled { who });
 			Ok(().into())
 		}
 
@@ -856,7 +891,7 @@ pub mod module {
 			let root_or_signed = Self::ensure_root_or_signed(origin)?;
 			Self::do_set_code(root_or_signed, contract, code)?;
 
-			Pallet::<T>::deposit_event(Event::<T>::ContractSetCode(contract));
+			Pallet::<T>::deposit_event(Event::<T>::ContractSetCode { contract });
 
 			Ok(().into())
 		}
@@ -871,7 +906,7 @@ pub mod module {
 			let caller = T::AddressMapping::get_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
 			Self::do_selfdestruct(&caller, &contract)?;
 
-			Pallet::<T>::deposit_event(Event::<T>::ContractSelfdestructed(contract));
+			Pallet::<T>::deposit_event(Event::<T>::ContractSelfdestructed { contract });
 
 			Ok(().into())
 		}

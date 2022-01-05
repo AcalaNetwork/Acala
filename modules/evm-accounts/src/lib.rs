@@ -82,8 +82,11 @@ pub mod module {
 	#[pallet::generate_deposit(fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// Mapping between Substrate accounts and EVM accounts
-		/// claim account. \[account_id, evm_address\]
-		ClaimAccount(T::AccountId, EvmAddress),
+		/// claim account.
+		ClaimAccount {
+			account_id: T::AccountId,
+			evm_address: EvmAddress,
+		},
 	}
 
 	/// Error for evm accounts module.
@@ -159,7 +162,10 @@ pub mod module {
 			Accounts::<T>::insert(eth_address, &who);
 			EvmAddresses::<T>::insert(&who, eth_address);
 
-			Self::deposit_event(Event::ClaimAccount(who, eth_address));
+			Self::deposit_event(Event::ClaimAccount {
+				account_id: who,
+				evm_address: eth_address,
+			});
 
 			Ok(())
 		}
@@ -176,7 +182,10 @@ pub mod module {
 
 			let eth_address = T::AddressMapping::get_or_create_evm_address(&who);
 
-			Self::deposit_event(Event::ClaimAccount(who, eth_address));
+			Self::deposit_event(Event::ClaimAccount {
+				account_id: who,
+				evm_address: eth_address,
+			});
 
 			Ok(())
 		}

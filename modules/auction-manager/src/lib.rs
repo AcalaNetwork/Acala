@@ -194,17 +194,30 @@ pub mod module {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// Collateral auction created. \[auction_id, collateral_type,
-		/// collateral_amount, target_bid_price\]
-		NewCollateralAuction(AuctionId, CurrencyId, Balance, Balance),
-		/// Active auction cancelled. \[auction_id\]
-		CancelAuction(AuctionId),
-		/// Collateral auction dealt. \[auction_id, collateral_type,
-		/// collateral_amount, winner, payment_amount\]
-		CollateralAuctionDealt(AuctionId, CurrencyId, Balance, T::AccountId, Balance),
-		/// Dex take collateral auction. \[auction_id, collateral_type,
-		/// collateral_amount, turnover\]
-		DEXTakeCollateralAuction(AuctionId, CurrencyId, Balance, Balance),
+		/// Collateral auction created.
+		NewCollateralAuction {
+			auction_id: AuctionId,
+			collateral_type: CurrencyId,
+			collateral_amount: Balance,
+			target_bid_price: Balance,
+		},
+		/// Active auction cancelled.
+		CancelAuction { auction_id: AuctionId },
+		/// Collateral auction dealt.
+		CollateralAuctionDealt {
+			auction_id: AuctionId,
+			collateral_type: CurrencyId,
+			collateral_amount: Balance,
+			winner: T::AccountId,
+			payment_amount: Balance,
+		},
+		/// Dex take collateral auction.
+		DEXTakeCollateralAuction {
+			auction_id: AuctionId,
+			collateral_type: CurrencyId,
+			collateral_amount: Balance,
+			turnover: Balance,
+		},
 	}
 
 	/// Mapping from auction id to collateral auction info
@@ -267,7 +280,7 @@ pub mod module {
 			ensure_none(origin)?;
 			ensure!(T::EmergencyShutdown::is_shutdown(), Error::<T>::MustAfterShutdown);
 			<Self as AuctionManager<T::AccountId>>::cancel_auction(id)?;
-			Self::deposit_event(Event::CancelAuction(id));
+			Self::deposit_event(Event::CancelAuction { auction_id: id });
 			Ok(())
 		}
 	}
@@ -628,12 +641,12 @@ impl<T: Config> Pallet<T> {
 					}
 				}
 
-				Self::deposit_event(Event::DEXTakeCollateralAuction(
+				Self::deposit_event(Event::DEXTakeCollateralAuction {
 					auction_id,
-					collateral_auction.currency_id,
-					collateral_auction.amount,
-					stable_amount,
-				));
+					collateral_type: collateral_auction.currency_id,
+					collateral_amount: collateral_auction.amount,
+					turnover: stable_amount,
+				});
 			}
 		}
 
@@ -656,13 +669,13 @@ impl<T: Config> Pallet<T> {
 			}
 
 			let payment_amount = collateral_auction.payment_amount(bid_price);
-			Self::deposit_event(Event::CollateralAuctionDealt(
+			Self::deposit_event(Event::CollateralAuctionDealt {
 				auction_id,
-				collateral_auction.currency_id,
-				collateral_auction.amount,
-				bidder,
+				collateral_type: collateral_auction.currency_id,
+				collateral_amount: collateral_auction.amount,
+				winner: bidder,
 				payment_amount,
-			));
+			});
 		}
 
 		// decrement recipient account reference
@@ -784,7 +797,12 @@ impl<T: Config> AuctionManager<T::AccountId> for Pallet<T> {
 			);
 		}
 
-		Self::deposit_event(Event::NewCollateralAuction(auction_id, currency_id, amount, target));
+		Self::deposit_event(Event::NewCollateralAuction {
+			auction_id,
+			collateral_type: currency_id,
+			collateral_amount: amount,
+			target_bid_price: target,
+		});
 		Ok(())
 	}
 

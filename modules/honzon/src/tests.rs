@@ -34,7 +34,11 @@ fn authorize_should_work() {
 		assert_eq!(PalletBalances::reserved_balance(ALICE), 0);
 		assert_ok!(HonzonModule::authorize(Origin::signed(ALICE), BTC, BOB));
 		assert_eq!(PalletBalances::reserved_balance(ALICE), DepositPerAuthorization::get());
-		System::assert_last_event(Event::HonzonModule(crate::Event::Authorization(ALICE, BOB, BTC)));
+		System::assert_last_event(Event::HonzonModule(crate::Event::Authorization {
+			authorizer: ALICE,
+			authorizee: BOB,
+			collateral_type: BTC,
+		}));
 		assert_ok!(HonzonModule::check_authorization(&ALICE, &BOB, BTC));
 		assert_noop!(
 			HonzonModule::authorize(Origin::signed(ALICE), BTC, BOB),
@@ -53,7 +57,11 @@ fn unauthorize_should_work() {
 
 		assert_ok!(HonzonModule::unauthorize(Origin::signed(ALICE), BTC, BOB));
 		assert_eq!(PalletBalances::reserved_balance(ALICE), 0);
-		System::assert_last_event(Event::HonzonModule(crate::Event::UnAuthorization(ALICE, BOB, BTC)));
+		System::assert_last_event(Event::HonzonModule(crate::Event::UnAuthorization {
+			authorizer: ALICE,
+			authorizee: BOB,
+			collateral_type: BTC,
+		}));
 		assert_noop!(
 			HonzonModule::check_authorization(&ALICE, &BOB, BTC),
 			Error::<Runtime>::NoPermission
@@ -74,7 +82,9 @@ fn unauthorize_all_should_work() {
 		assert_eq!(PalletBalances::reserved_balance(ALICE), 200);
 		assert_ok!(HonzonModule::unauthorize_all(Origin::signed(ALICE)));
 		assert_eq!(PalletBalances::reserved_balance(ALICE), 0);
-		System::assert_last_event(Event::HonzonModule(crate::Event::UnAuthorizationAll(ALICE)));
+		System::assert_last_event(Event::HonzonModule(crate::Event::UnAuthorizationAll {
+			authorizer: ALICE,
+		}));
 
 		assert_noop!(
 			HonzonModule::check_authorization(&ALICE, &BOB, BTC),

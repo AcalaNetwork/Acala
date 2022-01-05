@@ -19,7 +19,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::upper_case_acronyms)]
 
-use codec::{Decode, Encode, FullCodec, HasCompact};
+use codec::{Decode, Encode, FullCodec};
 use frame_support::pallet_prelude::{DispatchClass, Pays, Weight};
 use primitives::{
 	evm::{CallInfo, EvmAddress},
@@ -40,12 +40,7 @@ use sp_std::{
 
 use xcm::latest::prelude::*;
 
-pub mod homa;
 pub mod mocks;
-pub use homa::{
-	HomaProtocol, NomineesProvider, OnCommission, OnNewEra, PolkadotBridge, PolkadotBridgeCall, PolkadotBridgeState,
-	PolkadotBridgeType, PolkadotStakingLedger, PolkadotUnlockChunk,
-};
 
 pub type Price = FixedU128;
 pub type ExchangeRate = FixedU128;
@@ -495,10 +490,14 @@ pub trait AddressMapping<AccountId> {
 	fn is_linked(account_id: &AccountId, evm: &EvmAddress) -> bool;
 }
 
-/// A mapping between ForeignAssetId and AssetMetadata.
-pub trait ForeignAssetIdMapping<ForeignAssetId, MultiLocation, AssetMetadata> {
+/// A mapping between AssetId and AssetMetadata.
+pub trait AssetIdMapping<StableAssetPoolId, ForeignAssetId, MultiLocation, AssetMetadata> {
+	/// Returns the AssetMetadata associated with a given contract address.
+	fn get_erc20_asset_metadata(contract: EvmAddress) -> Option<AssetMetadata>;
+	/// Returns the AssetMetadata associated with a given StableAssetPoolId.
+	fn get_stable_asset_metadata(stable_asset_id: StableAssetPoolId) -> Option<AssetMetadata>;
 	/// Returns the AssetMetadata associated with a given ForeignAssetId.
-	fn get_asset_metadata(foreign_asset_id: ForeignAssetId) -> Option<AssetMetadata>;
+	fn get_foreign_asset_metadata(foreign_asset_id: ForeignAssetId) -> Option<AssetMetadata>;
 	/// Returns the MultiLocation associated with a given ForeignAssetId.
 	fn get_multi_location(foreign_asset_id: ForeignAssetId) -> Option<MultiLocation>;
 	/// Returns the CurrencyId associated with a given MultiLocation.
@@ -508,11 +507,6 @@ pub trait ForeignAssetIdMapping<ForeignAssetId, MultiLocation, AssetMetadata> {
 /// A mapping between u32 and Erc20 address.
 /// provide a way to encode/decode for CurrencyId;
 pub trait Erc20InfoMapping {
-	/// Use first 4 non-zero bytes as u32 to the mapping between u32 and evm
-	/// address.
-	fn set_erc20_mapping(address: EvmAddress) -> DispatchResult;
-	/// Returns the EvmAddress associated with a given u32.
-	fn get_evm_address(currency_id: u32) -> Option<EvmAddress>;
 	/// Returns the name associated with a given CurrencyId.
 	/// If CurrencyId is CurrencyId::DexShare and contain DexShare::Erc20,
 	/// the EvmAddress must have been mapped.
@@ -537,14 +531,6 @@ pub trait Erc20InfoMapping {
 
 #[cfg(feature = "std")]
 impl Erc20InfoMapping for () {
-	fn set_erc20_mapping(_address: EvmAddress) -> DispatchResult {
-		Err(DispatchError::Other("unimplemented CurrencyIdMapping"))
-	}
-
-	fn get_evm_address(_currency_id: u32) -> Option<EvmAddress> {
-		None
-	}
-
 	fn name(_currency_id: CurrencyId) -> Option<Vec<u8>> {
 		None
 	}
@@ -586,6 +572,16 @@ pub trait CallBuilder {
 	/// - call: The call to be executed. Can be nested with `utility_batch_call`
 	/// - index: The index of sub-account to be used as the new origin.
 	fn utility_as_derivative_call(call: Self::RelayChainCall, index: u16) -> Self::RelayChainCall;
+
+	/// Bond extra on relay-chain.
+	///  params:
+	/// - amount: The amount of staking currency to bond.
+	fn staking_bond_extra(amount: Self::Balance) -> Self::RelayChainCall;
+
+	/// Unbond on relay-chain.
+	///  params:
+	/// - amount: The amount of staking currency to unbond.
+	fn staking_unbond(amount: Self::Balance) -> Self::RelayChainCall;
 
 	/// Withdraw unbonded staking on the relay-chain.
 	///  params:
@@ -629,4 +625,27 @@ impl<Task> IdleScheduler<Task> for () {
 	fn schedule(_task: Task) -> DispatchResult {
 		unimplemented!()
 	}
+}
+
+#[impl_trait_for_tuples::impl_for_tuples(30)]
+pub trait OnNewEra<EraIndex> {
+	fn on_new_era(era: EraIndex);
+}
+
+pub trait NomineesProvider<AccountId> {
+	fn nominees() -> Vec<AccountId>;
+}
+
+pub trait HomaSubAccountXcm<AccountId, Balance> {
+	/// Cross-chain transfer staking currency to sub account on relaychain.
+	fn transfer_staking_to_sub_account(sender: &AccountId, sub_account_index: u16, amount: Balance) -> DispatchResult;
+	/// Send XCM message to the relaychain for sub account to withdraw_unbonded staking currency and
+	/// send it back.
+	fn withdraw_unbonded_from_sub_account(sub_account_index: u16, amount: Balance) -> DispatchResult;
+	/// Send XCM message to the relaychain for sub account to bond extra.
+	fn bond_extra_on_sub_account(sub_account_index: u16, amount: Balance) -> DispatchResult;
+	/// Send XCM message to the relaychain for sub account to unbond.
+	fn unbond_on_sub_account(sub_account_index: u16, amount: Balance) -> DispatchResult;
+	/// The fee of cross-chain transfer is deducted from the recipient.
+	fn get_xcm_transfer_fee() -> Balance;
 }

@@ -17,6 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::setup::*;
+use module_asset_registry::AssetMetadata;
 
 #[test]
 fn test_dex_module() {
@@ -74,14 +75,14 @@ fn test_dex_module() {
 				false,
 			));
 
-			let add_liquidity_event = Event::Dex(module_dex::Event::AddLiquidity(
-				AccountId::from(ALICE),
-				USD_CURRENCY,
-				10_000_000 * dollar(USD_CURRENCY),
-				RELAY_CHAIN_CURRENCY,
-				10_000 * dollar(RELAY_CHAIN_CURRENCY),
-				20_000_000 * dollar(USD_CURRENCY),
-			));
+			let add_liquidity_event = Event::Dex(module_dex::Event::AddLiquidity {
+				who: AccountId::from(ALICE),
+				currency_0: USD_CURRENCY,
+				pool_0: 10_000_000 * dollar(USD_CURRENCY),
+				currency_1: RELAY_CHAIN_CURRENCY,
+				pool_1: 10_000 * dollar(RELAY_CHAIN_CURRENCY),
+				share_increment: 20_000_000 * dollar(USD_CURRENCY),
+			});
 			assert!(System::events()
 				.iter()
 				.any(|record| record.event == add_liquidity_event));
@@ -216,11 +217,22 @@ fn test_trading_pair() {
 				0,
 			));
 
+			assert_ok!(AssetRegistry::register_foreign_asset(
+				Origin::root(),
+				Box::new(MultiLocation::new(1, X2(Parachain(2001), GeneralKey(KAR.encode()))).into()),
+				Box::new(AssetMetadata {
+					name: b"Sibling Token".to_vec(),
+					symbol: b"ST".to_vec(),
+					decimals: 12,
+					minimal_balance: 1,
+				})
+			));
+
 			// CurrencyId::DexShare(Token, ForeignAsset)
 			assert_ok!(Dex::list_provisioning(
 				Origin::root(),
 				USD_CURRENCY,
-				CurrencyId::ForeignAsset(1),
+				CurrencyId::ForeignAsset(0),
 				10,
 				100,
 				100,
@@ -231,8 +243,8 @@ fn test_trading_pair() {
 			// CurrencyId::DexShare(ForeignAsset, Token)
 			assert_ok!(Dex::list_provisioning(
 				Origin::root(),
-				CurrencyId::ForeignAsset(2),
-				USD_CURRENCY,
+				CurrencyId::ForeignAsset(0),
+				RELAY_CHAIN_CURRENCY,
 				10,
 				100,
 				100,

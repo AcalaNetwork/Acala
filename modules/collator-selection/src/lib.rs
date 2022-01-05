@@ -260,16 +260,16 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// Invulnurable was updated. \[new_invulnerables\]
-		NewInvulnerables(Vec<T::AccountId>),
-		/// Desired candidates was updated. \[new_desired_candidates\]
-		NewDesiredCandidates(u32),
-		/// Candidacy bond was updated. \[new_candidacy_bond\]
-		NewCandidacyBond(BalanceOf<T>),
-		/// A candidate was added. \[who, bond\]
-		CandidateAdded(T::AccountId, BalanceOf<T>),
-		/// A candidate was removed. \[who\]
-		CandidateRemoved(T::AccountId),
+		/// Invulnurable was updated.
+		NewInvulnerables { new_invulnerables: Vec<T::AccountId> },
+		/// Desired candidates was updated.
+		NewDesiredCandidates { new_desired_candidates: u32 },
+		/// Candidacy bond was updated.
+		NewCandidacyBond { new_candidacy_bond: BalanceOf<T> },
+		/// A candidate was added.
+		CandidateAdded { who: T::AccountId, bond: BalanceOf<T> },
+		/// A candidate was removed.
+		CandidateRemoved { who: T::AccountId },
 	}
 
 	// Errors inform users that something went wrong.
@@ -301,7 +301,9 @@ pub mod pallet {
 			let bounded_new: BoundedVec<T::AccountId, T::MaxInvulnerables> =
 				new.try_into().map_err(|_| Error::<T>::MaxInvulnerablesExceeded)?;
 			<Invulnerables<T>>::put(&bounded_new);
-			Self::deposit_event(Event::NewInvulnerables(bounded_new.into_inner()));
+			Self::deposit_event(Event::NewInvulnerables {
+				new_invulnerables: bounded_new.into_inner(),
+			});
 			Ok(())
 		}
 
@@ -312,7 +314,9 @@ pub mod pallet {
 				Err(Error::<T>::MaxCandidatesExceeded)?;
 			}
 			<DesiredCandidates<T>>::put(&max);
-			Self::deposit_event(Event::NewDesiredCandidates(max));
+			Self::deposit_event(Event::NewDesiredCandidates {
+				new_desired_candidates: max,
+			});
 			Ok(())
 		}
 
@@ -320,7 +324,9 @@ pub mod pallet {
 		pub fn set_candidacy_bond(origin: OriginFor<T>, #[pallet::compact] bond: BalanceOf<T>) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
 			<CandidacyBond<T>>::put(&bond);
-			Self::deposit_event(Event::NewCandidacyBond(bond));
+			Self::deposit_event(Event::NewCandidacyBond {
+				new_candidacy_bond: bond,
+			});
 			Ok(())
 		}
 
@@ -337,7 +343,7 @@ pub mod pallet {
 
 			let deposit = Self::candidacy_bond();
 			let bounded_candidates_len = Self::do_register_candidate(&who, deposit)?;
-			Self::deposit_event(Event::CandidateAdded(who, deposit));
+			Self::deposit_event(Event::CandidateAdded { who, bond: deposit });
 
 			Ok(Some(T::WeightInfo::register_as_candidate(bounded_candidates_len as u32)).into())
 		}
@@ -348,7 +354,10 @@ pub mod pallet {
 
 			let bounded_candidates_len = Self::do_register_candidate(&new_candidate, Zero::zero())?;
 
-			Self::deposit_event(Event::CandidateAdded(new_candidate, Zero::zero()));
+			Self::deposit_event(Event::CandidateAdded {
+				who: new_candidate,
+				bond: Zero::zero(),
+			});
 			Ok(Some(T::WeightInfo::register_candidate(bounded_candidates_len as u32)).into())
 		}
 
@@ -396,7 +405,7 @@ pub mod pallet {
 				candidates.take(who).ok_or(Error::<T>::NotCandidate)?;
 				Ok(candidates.len())
 			})?;
-			Self::deposit_event(Event::CandidateRemoved(who.clone()));
+			Self::deposit_event(Event::CandidateRemoved { who: who.clone() });
 			Ok(current_count)
 		}
 

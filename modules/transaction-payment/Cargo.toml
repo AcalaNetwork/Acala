@@ -1,6 +1,6 @@
 [package]
 name = "module-transaction-payment"
-version = "2.1.0"
+version = "2.1.2"
 authors = ["Acala Developers"]
 edition = "2021"
 
@@ -17,7 +17,11 @@ pallet-transaction-payment = { git = "https://github.com/paritytech/substrate", 
 pallet-transaction-payment-rpc-runtime-api = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.13", default-features = false }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 support = { package = "module-support", path = "../support", default-features = false }
+
 orml-traits = { path = "../../orml/traits", default-features = false }
+xcm = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.13", default-features = false }
+xcm-builder = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.13", default-features = false }
+xcm-executor = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.13", default-features = false }
 
 [dev-dependencies]
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.13" }
@@ -43,5 +47,8 @@ std = [
 	"primitives/std",
 	"support/std",
 	"orml-traits/std",
+	"xcm/std",
+	"xcm-builder/std",
+	"xcm-executor/std",
 ]
 try-runtime = ["frame-support/try-runtime"]
