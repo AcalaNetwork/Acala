@@ -36,7 +36,6 @@ use sp_runtime::{
 	traits::{StaticLookup, Zero},
 	DispatchResult,
 };
-use sp_std::vec::Vec;
 use support::EmergencyShutdown;
 
 mod mock;
@@ -87,13 +86,19 @@ pub mod module {
 	#[pallet::generate_deposit(fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// Authorize someone to operate the loan of specific collateral.
-		/// \[authorizer, authorizee, collateral_type\]
-		Authorization(T::AccountId, T::AccountId, CurrencyId),
+		Authorization {
+			authorizer: T::AccountId,
+			authorizee: T::AccountId,
+			collateral_type: CurrencyId,
+		},
 		/// Cancel the authorization of specific collateral for someone.
-		/// \[authorizer, authorizee, collateral_type\]
-		UnAuthorization(T::AccountId, T::AccountId, CurrencyId),
-		/// Cancel all authorization. \[authorizer\]
-		UnAuthorizationAll(T::AccountId),
+		UnAuthorization {
+			authorizer: T::AccountId,
+			authorizee: T::AccountId,
+			collateral_type: CurrencyId,
+		},
+		/// Cancel all authorization.
+		UnAuthorizationAll { authorizer: T::AccountId },
 	}
 
 	/// The authorization relationship map from
@@ -153,28 +158,16 @@ pub mod module {
 		/// - `currency_id`: collateral currency id.
 		/// - `max_collateral_amount`: the max collateral amount which is used to swap enough
 		/// 	stable token to clear debit.
-		/// - `maybe_path`: the custom swap path.
-		#[pallet::weight(
-			match maybe_path {
-				Some(path) => <T as Config>::WeightInfo::close_loan_has_debit_by_dex(path.len() as u32),
-				None => <T as Config>::WeightInfo::close_loan_has_debit_by_dex_no_path(),
-			}
-		)]
+		#[pallet::weight(<T as Config>::WeightInfo::close_loan_has_debit_by_dex())]
 		#[transactional]
 		pub fn close_loan_has_debit_by_dex(
 			origin: OriginFor<T>,
 			currency_id: CurrencyId,
 			#[pallet::compact] max_collateral_amount: Balance,
-			maybe_path: Option<Vec<CurrencyId>>,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			ensure!(!T::EmergencyShutdown::is_shutdown(), Error::<T>::AlreadyShutdown);
-			<cdp_engine::Pallet<T>>::close_cdp_has_debit_by_dex(
-				who,
-				currency_id,
-				max_collateral_amount,
-				maybe_path.as_deref(),
-			)?;
+			<cdp_engine::Pallet<T>>::close_cdp_has_debit_by_dex(who, currency_id, max_collateral_amount)?;
 			Ok(())
 		}
 
@@ -221,7 +214,11 @@ pub mod module {
 					let reserve_amount = T::DepositPerAuthorization::get();
 					<T as Config>::Currency::reserve_named(&RESERVE_ID, &from, reserve_amount)?;
 					*maybe_reserved = Some(reserve_amount);
-					Self::deposit_event(Event::Authorization(from.clone(), to.clone(), currency_id));
+					Self::deposit_event(Event::Authorization {
+						authorizer: from.clone(),
+						authorizee: to.clone(),
+						collateral_type: currency_id,
+					});
 					Ok(())
 				} else {
 					Err(Error::<T>::AlreadyAuthorized.into())
@@ -246,7 +243,11 @@ pub mod module {
 			let reserved =
 				Authorization::<T>::take(&from, (currency_id, &to)).ok_or(Error::<T>::AuthorizationNotExists)?;
 			<T as Config>::Currency::unreserve_named(&RESERVE_ID, &from, reserved);
-			Self::deposit_event(Event::UnAuthorization(from, to, currency_id));
+			Self::deposit_event(Event::UnAuthorization {
+				authorizer: from,
+				authorizee: to,
+				collateral_type: currency_id,
+			});
 			Ok(())
 		}
 
@@ -257,7 +258,7 @@ pub mod module {
 			let from = ensure_signed(origin)?;
 			Authorization::<T>::remove_prefix(&from, None);
 			<T as Config>::Currency::unreserve_all_named(&RESERVE_ID, &from);
-			Self::deposit_event(Event::UnAuthorizationAll(from));
+			Self::deposit_event(Event::UnAuthorizationAll { authorizer: from });
 			Ok(())
 		}
 	}

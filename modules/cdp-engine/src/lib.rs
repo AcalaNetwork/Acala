@@ -57,6 +57,7 @@ use sp_runtime::{
 use sp_std::prelude::*;
 use support::{
 	CDPTreasury, CDPTreasuryExtended, EmergencyShutdown, ExchangeRate, Price, PriceProvider, Rate, Ratio, RiskManager,
+	SwapLimit,
 };
 
 mod debit_exchange_rate_convertor;
@@ -189,12 +190,6 @@ pub mod module {
 		/// Thus value at genesis is not used.
 		type UnixTime: UnixTime;
 
-		/// The default parital path list for CDP engine to swap collateral to stable,
-		/// Note: the path is parital, the whole swap path is collateral currency id concat
-		/// the partial path. And the list is sorted, CDP engine trys to swap stable by order.
-		#[pallet::constant]
-		type DefaultSwapParitalPathList: Get<Vec<Vec<CurrencyId>>>;
-
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
 	}
@@ -224,40 +219,59 @@ pub mod module {
 		AlreadyShutdown,
 		/// Must after system shutdown
 		MustAfterShutdown,
-		/// Failed to swap debit by default path list
-		SwapDebitFailed,
 	}
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// Liquidate the unsafe CDP. \[collateral_type, owner,
-		/// collateral_amount, bad_debt_value, liquidation_strategy\]
-		LiquidateUnsafeCDP(CurrencyId, T::AccountId, Balance, Balance, LiquidationStrategy),
-		/// Settle the CDP has debit. [collateral_type, owner]
-		SettleCDPInDebit(CurrencyId, T::AccountId),
+		/// Liquidate the unsafe CDP.
+		LiquidateUnsafeCDP {
+			collateral_type: CurrencyId,
+			owner: T::AccountId,
+			collateral_amount: Balance,
+			bad_debt_value: Balance,
+			liquidation_strategy: LiquidationStrategy,
+		},
+		/// Settle the CDP has debit.
+		SettleCDPInDebit {
+			collateral_type: CurrencyId,
+			owner: T::AccountId,
+		},
 		/// Directly close CDP has debit by handle debit with DEX.
-		/// \[collateral_type, owner, sold_collateral_amount,
-		/// refund_collateral_amount, debit_value\]
-		CloseCDPInDebitByDEX(CurrencyId, T::AccountId, Balance, Balance, Balance),
+		CloseCDPInDebitByDEX {
+			collateral_type: CurrencyId,
+			owner: T::AccountId,
+			sold_collateral_amount: Balance,
+			refund_collateral_amount: Balance,
+			debit_value: Balance,
+		},
 		/// The interest rate per sec for specific collateral type updated.
-		/// \[collateral_type, new_interest_rate_per_sec\]
-		InterestRatePerSecUpdated(CurrencyId, Option<Rate>),
+		InterestRatePerSecUpdated {
+			collateral_type: CurrencyId,
+			new_interest_rate_per_sec: Option<Rate>,
+		},
 		/// The liquidation fee for specific collateral type updated.
-		/// \[collateral_type, new_liquidation_ratio\]
-		LiquidationRatioUpdated(CurrencyId, Option<Ratio>),
+		LiquidationRatioUpdated {
+			collateral_type: CurrencyId,
+			new_liquidation_ratio: Option<Ratio>,
+		},
 		/// The liquidation penalty rate for specific collateral type updated.
-		/// \[collateral_type, new_liquidation_panelty\]
-		LiquidationPenaltyUpdated(CurrencyId, Option<Rate>),
-		/// The required collateral penalty rate for specific collateral type
-		/// updated. \[collateral_type, new_required_collateral_ratio\]
-		RequiredCollateralRatioUpdated(CurrencyId, Option<Ratio>),
-		/// The hard cap of total debit value for specific collateral type
-		/// updated. \[collateral_type, new_total_debit_value\]
-		MaximumTotalDebitValueUpdated(CurrencyId, Balance),
-		/// The global interest rate per sec for all types of collateral
-		/// updated. \[new_global_interest_rate_per_sec\]
-		GlobalInterestRatePerSecUpdated(Rate),
+		LiquidationPenaltyUpdated {
+			collateral_type: CurrencyId,
+			new_liquidation_penalty: Option<Rate>,
+		},
+		/// The required collateral penalty rate for specific collateral type updated.
+		RequiredCollateralRatioUpdated {
+			collateral_type: CurrencyId,
+			new_required_collateral_ratio: Option<Ratio>,
+		},
+		/// The hard cap of total debit value for specific collateral type updated.
+		MaximumTotalDebitValueUpdated {
+			collateral_type: CurrencyId,
+			new_total_debit_value: Balance,
+		},
+		/// The global interest rate per sec for all types of collateral updated.
+		GlobalInterestRatePerSecUpdated { new_global_interest_rate_per_sec: Rate },
 	}
 
 	/// Mapping from collateral type to its exchange rate of debit units and
@@ -372,12 +386,6 @@ pub mod module {
 				);
 			}
 		}
-
-		fn integrity_test() {
-			assert!(T::DefaultSwapParitalPathList::get()
-				.iter()
-				.all(|path| !path.is_empty() && path[path.len() - 1] == T::GetStableCurrencyId::get()));
-		}
 	}
 
 	#[pallet::call]
@@ -432,7 +440,9 @@ pub mod module {
 		pub fn set_global_params(origin: OriginFor<T>, global_interest_rate_per_sec: Rate) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
 			GlobalInterestRatePerSec::<T>::put(global_interest_rate_per_sec);
-			Self::deposit_event(Event::GlobalInterestRatePerSecUpdated(global_interest_rate_per_sec));
+			Self::deposit_event(Event::GlobalInterestRatePerSecUpdated {
+				new_global_interest_rate_per_sec: global_interest_rate_per_sec,
+			});
 			Ok(())
 		}
 
@@ -471,23 +481,38 @@ pub mod module {
 			let mut collateral_params = Self::collateral_params(currency_id);
 			if let Change::NewValue(update) = interest_rate_per_sec {
 				collateral_params.interest_rate_per_sec = update;
-				Self::deposit_event(Event::InterestRatePerSecUpdated(currency_id, update));
+				Self::deposit_event(Event::InterestRatePerSecUpdated {
+					collateral_type: currency_id,
+					new_interest_rate_per_sec: update,
+				});
 			}
 			if let Change::NewValue(update) = liquidation_ratio {
 				collateral_params.liquidation_ratio = update;
-				Self::deposit_event(Event::LiquidationRatioUpdated(currency_id, update));
+				Self::deposit_event(Event::LiquidationRatioUpdated {
+					collateral_type: currency_id,
+					new_liquidation_ratio: update,
+				});
 			}
 			if let Change::NewValue(update) = liquidation_penalty {
 				collateral_params.liquidation_penalty = update;
-				Self::deposit_event(Event::LiquidationPenaltyUpdated(currency_id, update));
+				Self::deposit_event(Event::LiquidationPenaltyUpdated {
+					collateral_type: currency_id,
+					new_liquidation_penalty: update,
+				});
 			}
 			if let Change::NewValue(update) = required_collateral_ratio {
 				collateral_params.required_collateral_ratio = update;
-				Self::deposit_event(Event::RequiredCollateralRatioUpdated(currency_id, update));
+				Self::deposit_event(Event::RequiredCollateralRatioUpdated {
+					collateral_type: currency_id,
+					new_required_collateral_ratio: update,
+				});
 			}
 			if let Change::NewValue(val) = maximum_total_debit_value {
 				collateral_params.maximum_total_debit_value = val;
-				Self::deposit_event(Event::MaximumTotalDebitValueUpdated(currency_id, val));
+				Self::deposit_event(Event::MaximumTotalDebitValueUpdated {
+					collateral_type: currency_id,
+					new_total_debit_value: val,
+				});
 			}
 			CollateralParams::<T>::insert(currency_id, collateral_params);
 			Ok(())
@@ -817,7 +842,10 @@ impl<T: Config> Pallet<T> {
 		// confiscate collateral and all debit
 		<LoansOf<T>>::confiscate_collateral_and_debit(&who, currency_id, confiscate_collateral_amount, debit)?;
 
-		Self::deposit_event(Event::SettleCDPInDebit(currency_id, who));
+		Self::deposit_event(Event::SettleCDPInDebit {
+			collateral_type: currency_id,
+			owner: who,
+		});
 		Ok(())
 	}
 
@@ -827,7 +855,6 @@ impl<T: Config> Pallet<T> {
 		who: T::AccountId,
 		currency_id: CurrencyId,
 		max_collateral_amount: Balance,
-		maybe_path: Option<&[CurrencyId]>,
 	) -> DispatchResult {
 		let Position { collateral, debit } = <LoansOf<T>>::positions(currency_id, &who);
 		ensure!(!debit.is_zero(), Error::<T>::NoDebitValue);
@@ -843,44 +870,11 @@ impl<T: Config> Pallet<T> {
 		let debit_value = Self::get_debit_value(currency_id, debit);
 		let collateral_supply = collateral.min(max_collateral_amount);
 
-		// if specify swap path
-		let actual_supply_collateral = (|| -> Result<Balance, DispatchError> {
-			if let Some(path) = maybe_path {
-				<T as Config>::CDPTreasury::swap_collateral_to_exact_stable(
-					currency_id,
-					collateral_supply,
-					debit_value,
-					path,
-					false,
-				)
-			} else {
-				let default_swap_parital_path_list: Vec<Vec<CurrencyId>> = T::DefaultSwapParitalPathList::get();
-
-				// iterator default_swap_parital_path_list to try swap until swap succeed.
-				for partial_path in default_swap_parital_path_list {
-					let partial_path_len = partial_path.len();
-
-					// check collateral currency_id and partial_path can form a valid swap path.
-					if partial_path_len > 0 && currency_id != partial_path[0] {
-						let mut swap_path = vec![currency_id];
-						swap_path.extend(partial_path);
-
-						if let Ok(actual_supply_collateral) =
-							<T as Config>::CDPTreasury::swap_collateral_to_exact_stable(
-								currency_id,
-								collateral_supply,
-								debit_value,
-								&swap_path,
-								false,
-							) {
-							return Ok(actual_supply_collateral);
-						}
-					}
-				}
-
-				Err(Error::<T>::SwapDebitFailed.into())
-			}
-		})()?;
+		let (actual_supply_collateral, _) = <T as Config>::CDPTreasury::swap_collateral_to_stable(
+			currency_id,
+			SwapLimit::ExactTarget(collateral_supply, debit_value),
+			false,
+		)?;
 
 		// refund remain collateral to CDP owner
 		let refund_collateral_amount = collateral
@@ -888,13 +882,13 @@ impl<T: Config> Pallet<T> {
 			.expect("swap succecced means collateral >= actual_supply_collateral; qed");
 		<T as Config>::CDPTreasury::withdraw_collateral(&who, currency_id, refund_collateral_amount)?;
 
-		Self::deposit_event(Event::CloseCDPInDebitByDEX(
-			currency_id,
-			who,
-			actual_supply_collateral,
+		Self::deposit_event(Event::CloseCDPInDebitByDEX {
+			collateral_type: currency_id,
+			owner: who,
+			sold_collateral_amount: actual_supply_collateral,
 			refund_collateral_amount,
 			debit_value,
-		));
+		});
 		Ok(())
 	}
 
@@ -917,8 +911,6 @@ impl<T: Config> Pallet<T> {
 		let bad_debt_value = Self::get_debit_value(currency_id, debit);
 		let target_stable_amount = Self::get_liquidation_penalty(currency_id).saturating_mul_acc_int(bad_debt_value);
 		let liquidation_strategy = (|| -> Result<LiquidationStrategy, DispatchError> {
-			let default_swap_parital_path_list: Vec<Vec<CurrencyId>> = T::DefaultSwapParitalPathList::get();
-
 			// calculate the supply limit by slippage limit for the price of oracle,
 			let max_supply_limit = Ratio::one()
 				.saturating_sub(T::MaxSwapSlippageCompareToOracle::get())
@@ -931,32 +923,22 @@ impl<T: Config> Pallet<T> {
 				);
 			let collateral_supply = collateral.min(max_supply_limit);
 
-			// iterator default_swap_parital_path_list to try swap until swap succeed.
-			for partial_path in default_swap_parital_path_list {
-				let partial_path_len = partial_path.len();
+			// try swap collateral to stable to settle debit swap succeed.
+			if let Ok((actual_supply_collateral, _)) = <T as Config>::CDPTreasury::swap_collateral_to_stable(
+				currency_id,
+				SwapLimit::ExactTarget(collateral_supply, target_stable_amount),
+				false,
+			) {
+				let refund_collateral_amount = collateral
+					.checked_sub(actual_supply_collateral)
+					.expect("swap succecced means collateral >= actual_supply_collateral; qed");
 
-				// check collateral currency_id and partial_path can form a valid swap path.
-				if partial_path_len > 0 && currency_id != partial_path[0] {
-					let mut swap_path = vec![currency_id];
-					swap_path.extend(partial_path);
-
-					if let Ok(actual_supply_collateral) = <T as Config>::CDPTreasury::swap_collateral_to_exact_stable(
-						currency_id,
-						collateral_supply,
-						target_stable_amount,
-						&swap_path,
-						false,
-					) {
-						// refund remain collateral to CDP owner
-						let refund_collateral_amount = collateral
-							.checked_sub(actual_supply_collateral)
-							.expect("swap succecced means collateral >= actual_supply_collateral; qed");
-
-						<T as Config>::CDPTreasury::withdraw_collateral(&who, currency_id, refund_collateral_amount)?;
-
-						return Ok(LiquidationStrategy::Exchange);
-					}
+				// refund remain collateral to CDP owner
+				if !refund_collateral_amount.is_zero() {
+					<T as Config>::CDPTreasury::withdraw_collateral(&who, currency_id, refund_collateral_amount)?;
 				}
+
+				return Ok(LiquidationStrategy::Exchange);
 			}
 
 			// if cannot liquidate by swap, create collateral auctions by cdp treasury
@@ -973,13 +955,13 @@ impl<T: Config> Pallet<T> {
 			})
 		})()?;
 
-		Self::deposit_event(Event::LiquidateUnsafeCDP(
-			currency_id,
-			who,
-			collateral,
+		Self::deposit_event(Event::LiquidateUnsafeCDP {
+			collateral_type: currency_id,
+			owner: who,
+			collateral_amount: collateral,
 			bad_debt_value,
-			liquidation_strategy.clone(),
-		));
+			liquidation_strategy: liquidation_strategy.clone(),
+		});
 		match liquidation_strategy {
 			LiquidationStrategy::Auction { auction_count } => Ok(T::WeightInfo::liquidate_by_auction(auction_count)),
 			LiquidationStrategy::Exchange => Ok(T::WeightInfo::liquidate_by_dex()),

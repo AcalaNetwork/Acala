@@ -42,12 +42,9 @@ use sp_core::{
 use sp_runtime::{
 	traits::{BlockNumberProvider, Convert},
 	transaction_validity::TransactionPriority,
-	Perbill,
+	FixedPointNumber, Perbill,
 };
 use static_assertions::const_assert;
-
-mod homa;
-pub use homa::*;
 
 pub mod precompile;
 use orml_traits::GetByKey;
@@ -173,6 +170,10 @@ pub fn millicent(currency_id: CurrencyId) -> Balance {
 
 pub fn microcent(currency_id: CurrencyId) -> Balance {
 	millicent(currency_id) / 1000
+}
+
+pub fn calculate_asset_ratio(foreign_asset: (AssetId, u128), native_asset: (AssetId, u128)) -> Ratio {
+	Ratio::saturating_from_rational(foreign_asset.1, native_asset.1)
 }
 
 pub struct RelayChainBlockNumberProvider<T>(sp_std::marker::PhantomData<T>);

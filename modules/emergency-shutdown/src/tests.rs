@@ -35,7 +35,9 @@ fn emergency_shutdown_work() {
 			BadOrigin,
 		);
 		assert_ok!(EmergencyShutdownModule::emergency_shutdown(Origin::signed(1)));
-		System::assert_last_event(Event::EmergencyShutdownModule(crate::Event::Shutdown(1)));
+		System::assert_last_event(Event::EmergencyShutdownModule(crate::Event::Shutdown {
+			block_number: 1,
+		}));
 		assert!(EmergencyShutdownModule::is_shutdown());
 		assert_noop!(
 			EmergencyShutdownModule::emergency_shutdown(Origin::signed(1)),
@@ -66,7 +68,9 @@ fn open_collateral_refund_work() {
 			BadOrigin,
 		);
 		assert_ok!(EmergencyShutdownModule::open_collateral_refund(Origin::signed(1)));
-		System::assert_last_event(Event::EmergencyShutdownModule(crate::Event::OpenRefund(1)));
+		System::assert_last_event(Event::EmergencyShutdownModule(crate::Event::OpenRefund {
+			block_number: 1,
+		}));
 		assert!(EmergencyShutdownModule::can_refund());
 	});
 }
