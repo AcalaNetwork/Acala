@@ -30,6 +30,12 @@ runtime_benchmarks! {
 	unpause_transaction {
 		TransactionPause::pause_transaction(Origin::root(), b"Balances".to_vec(), b"transfer".to_vec())?;
 	}: _(RawOrigin::Root, b"Balances".to_vec(), b"transfer".to_vec())
+
+	pause_xcm {
+	}: _(RawOrigin::Root)
+
+	resume_xcm {
+	}: _(RawOrigin::Root)
 }
 
 #[cfg(test)]
