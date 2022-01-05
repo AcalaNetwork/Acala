@@ -1829,7 +1829,7 @@ fn remove_empty_account_works() {
 }
 
 #[test]
-#[should_panic]
+#[should_panic(expected = "removed account while is still linked to contract info")]
 fn remove_account_with_provides_should_panic() {
 	new_test_ext().execute_with(|| {
 		let address = H160::from([1; 20]);

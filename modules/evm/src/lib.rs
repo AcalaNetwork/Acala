@@ -1004,7 +1004,7 @@ impl<T: Config> Pallet<T> {
 			// remove_account can only be called when account is killed. i.e. providers == 0
 			// but contract_info should maintain a provider
 			// so this should never happen
-			debug_assert!(false);
+			debug_assert!(false, "removed account while is still linked to contract info");
 		}
 
 		Ok(())
