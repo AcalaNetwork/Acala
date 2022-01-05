@@ -55,7 +55,7 @@ jobs:
           echo "-------------------------------------------" >> output.txt
 
       - name: Start local node
-        run: ./target/release/acala --chain=${{ env.CHAIN }}-dev --rpc-cors=all --ws-external --tmp &
+        run: ./target/release/acala --chain=${{ env.CHAIN }}-dev --rpc-cors=all --ws-external --tmp & pid=$!
 
       - name: Compare the metadata
         run: |
@@ -67,7 +67,7 @@ jobs:
           sed -z -i 's/\n\n/\n/g' output.txt
 
       - name: Stop our local node
-        run: pkill acala
+        run: kill $pid
 
       - name: Show result
         run: cat output.txt
