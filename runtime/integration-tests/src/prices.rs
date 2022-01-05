@@ -90,12 +90,12 @@ fn test_update_liquid_currency_price() {
 
 			set_oracle_price(vec![(RELAY_CHAIN_CURRENCY, relaychain_price)]);
 
-			#[cfg(feature = "with-mandala-runtime")]
+			#[cfg(any(feature = "with-mandala-runtime", feature = "with-karura-runtime"))]
 			assert_ok!(Homa::reset_ledgers(
 				Origin::root(),
 				vec![(0, Some(100 * dollar(RELAY_CHAIN_CURRENCY)), None)]
 			));
-			#[cfg(any(feature = "with-acala-runtime", feature = "with-karura-runtime"))]
+			#[cfg(feature = "with-acala-runtime")]
 			assert_ok!(HomaLite::set_total_staking_currency(
 				Origin::root(),
 				100 * dollar(RELAY_CHAIN_CURRENCY)
@@ -106,12 +106,12 @@ fn test_update_liquid_currency_price() {
 				Some(Ratio::saturating_from_rational(100, 1000))
 			);
 
-			#[cfg(feature = "with-mandala-runtime")]
+			#[cfg(any(feature = "with-mandala-runtime", feature = "with-karura-runtime"))]
 			assert_ok!(Homa::reset_ledgers(
 				Origin::root(),
 				vec![(0, Some(110 * dollar(RELAY_CHAIN_CURRENCY)), None)]
 			));
-			#[cfg(any(feature = "with-acala-runtime", feature = "with-karura-runtime"))]
+			#[cfg(feature = "with-acala-runtime")]
 			assert_ok!(HomaLite::set_total_staking_currency(
 				Origin::root(),
 				110 * dollar(RELAY_CHAIN_CURRENCY)
