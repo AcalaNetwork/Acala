@@ -26,8 +26,14 @@ use frame_support::{
 	transactional,
 };
 use frame_system::pallet_prelude::*;
+use primitives::BlockNumber;
 use sp_runtime::DispatchResult;
 use sp_std::{prelude::*, vec::Vec};
+
+use cumulus_primitives_core::relay_chain::v1::Id;
+use cumulus_primitives_core::{DmpMessageHandler, XcmpMessageHandler};
+/// Block number type used by the relay chain.
+pub use polkadot_core_primitives::BlockNumber as RelayChainBlockNumber;
 
 mod mock;
 mod tests;
@@ -74,7 +80,7 @@ pub mod module {
 		},
 		/// Paused Xcm message
 		XcmPaused,
-		/// Resume Xcm message
+		/// Resumed Xcm message
 		XcmResumed,
 	}
 
@@ -171,5 +177,48 @@ where
 			pallet_name,
 		} = call.get_call_metadata();
 		PausedTransactions::<T>::contains_key((pallet_name.as_bytes(), function_name.as_bytes()))
+	}
+}
+
+/// Dmp and Xcmp message handler
+pub struct XcmMessageHandler<T, H>(PhantomData<(T, H)>);
+
+/// XcmMessageHandler implements `DmpMessageHandler`. if xcm paused, the `max_weight` is set to `0`.
+///
+/// Parameters type:
+/// - `H`: `DmpMessageHandler`
+impl<T: Config, H> DmpMessageHandler for XcmMessageHandler<T, H>
+where
+	H: DmpMessageHandler,
+{
+	fn handle_dmp_messages(iter: impl Iterator<Item = (RelayChainBlockNumber, Vec<u8>)>, max_weight: Weight) -> Weight {
+		let xcm_paused: bool = Pallet::<T>::xcm_paused();
+		if !xcm_paused {
+			H::handle_dmp_messages(iter, max_weight)
+		} else {
+			H::handle_dmp_messages(iter, 0)
+		}
+	}
+}
+
+/// XcmMessageHandler implements `XcmpMessageHandler`. if xcm paused, the `max_weight` is set to
+/// `0`.
+///
+/// Parameters type:
+/// - `H`: `XcmpMessageHandler`
+impl<T: Config, H> XcmpMessageHandler for XcmMessageHandler<T, H>
+where
+	H: XcmpMessageHandler,
+{
+	fn handle_xcmp_messages<'a, I: Iterator<Item = (Id, BlockNumber, &'a [u8])>>(
+		iter: I,
+		max_weight: Weight,
+	) -> Weight {
+		let xcm_paused: bool = Pallet::<T>::xcm_paused();
+		if !xcm_paused {
+			H::handle_xcmp_messages(iter, max_weight)
+		} else {
+			H::handle_xcmp_messages(iter, 0)
+		}
 	}
 }

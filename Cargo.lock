@@ -5821,12 +5821,14 @@ name = "module-transaction-pause"
 version = "2.1.2"
 dependencies = [
  "acala-primitives",
+ "cumulus-primitives-core",
  "frame-support",
  "frame-system",
  "orml-tokens",
  "orml-traits",
  "pallet-balances",
  "parity-scale-codec",
+ "polkadot-core-primitives",
  "scale-info",
  "smallvec",
  "sp-core",
@@ -9787,7 +9789,6 @@ dependencies = [
  "acala-primitives",
  "acala-service",
  "cumulus-pallet-parachain-system",
- "cumulus-primitives-core",
  "ethabi",
  "frame-support",
  "frame-system",
@@ -9802,7 +9803,6 @@ dependencies = [
  "module-nft",
  "module-prices",
  "module-support",
- "module-transaction-pause",
  "module-transaction-payment",
  "num_enum",
  "orml-nft",
@@ -9817,7 +9817,6 @@ dependencies = [
  "pallet-timestamp",
  "pallet-utility",
  "parity-scale-codec",
- "polkadot-core-primitives",
  "scale-info",
  "serde",
  "serde_json",
@@ -13788,7 +13787,7 @@ dependencies = [
 [[package]]
 name = "xcm-emulator"
 version = "0.1.0"
-source = "git+https://github.com/zqhxuyuan/xcm-simulator?branch=handler#40bdf8a8168f29d3d2bd6766c6b1263eeec40f16"
+source = "git+https://github.com/shaunxw/xcm-simulator?rev=87af52d07fc742cc9220bab6acb9afa061d09fd3#87af52d07fc742cc9220bab6acb9afa061d09fd3"
 dependencies = [
  "cumulus-pallet-dmp-queue",
  "cumulus-pallet-parachain-system",

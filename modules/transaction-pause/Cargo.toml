@@ -12,13 +12,16 @@ frame-support = { git = "https://github.com/paritytech/substrate", branch = "pol
 frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.13", default-features = false }
 sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.13", default-features = false }
 
+primitives = { package = "acala-primitives", path = "../../primitives", default-features = false}
+polkadot-core-primitives = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.13", default-features = false }
+cumulus-primitives-core = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.13", default-features = false }
+
 [dev-dependencies]
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.13" }
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.13" }
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.13" }
 orml-tokens = { path = "../../orml/tokens" }
 orml-traits = { path = "../../orml/traits" }
-primitives = { package = "acala-primitives", path = "../../primitives" }
 smallvec = "1.4.1"
 
 [features]
@@ -29,5 +32,8 @@ std = [
 	"frame-support/std",
 	"frame-system/std",
 	"sp-std/std",
+	"primitives/std",
+	"polkadot-core-primitives/std",
+	"cumulus-primitives-core/std",
 ]
 try-runtime = ["frame-support/try-runtime"]

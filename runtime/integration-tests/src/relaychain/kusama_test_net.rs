@@ -22,6 +22,7 @@ use crate::setup::*;
 
 use cumulus_primitives_core::ParaId;
 use frame_support::traits::GenesisBuild;
+use module_transaction_pause::XcmMessageHandler;
 use polkadot_primitives::v1::{BlockNumber, MAX_CODE_SIZE, MAX_POV_SIZE};
 use polkadot_runtime_parachains::configuration::HostConfiguration;
 use sp_runtime::traits::AccountIdConversion;
@@ -40,8 +41,8 @@ decl_test_parachain! {
 	pub struct Karura {
 		Runtime = Runtime,
 		Origin = Origin,
-		XcmpMessageHandler = runtime_common::XcmMessageHandler<Runtime, XcmpQueue>,
-		DmpMessageHandler = runtime_common::XcmMessageHandler<Runtime, DmpQueue>,
+		XcmpMessageHandler = XcmMessageHandler<Runtime, XcmpQueue>,
+		DmpMessageHandler = XcmMessageHandler<Runtime, DmpQueue>,
 		new_ext = para_ext(2000),
 	}
 }
@@ -50,8 +51,8 @@ decl_test_parachain! {
 	pub struct Sibling {
 		Runtime = Runtime,
 		Origin = Origin,
-		XcmpMessageHandler = runtime_common::XcmMessageHandler<Runtime, XcmpQueue>,
-		DmpMessageHandler = runtime_common::XcmMessageHandler<Runtime, DmpQueue>,
+		XcmpMessageHandler = XcmMessageHandler<Runtime, XcmpQueue>,
+		DmpMessageHandler = XcmMessageHandler<Runtime, DmpQueue>,
 		new_ext = para_ext(2001),
 	}
 }

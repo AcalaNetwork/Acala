@@ -61,11 +61,6 @@ pub use xcm::latest::prelude::*;
 pub use xcm_builder::TakeRevenue;
 pub use xcm_executor::{traits::DropAssets, Assets};
 
-use cumulus_primitives_core::relay_chain::v1::Id;
-use cumulus_primitives_core::{DmpMessageHandler, XcmpMessageHandler};
-/// Block number type used by the relay chain.
-pub use polkadot_core_primitives::BlockNumber as RelayChainBlockNumber;
-
 pub type TimeStampedPrice = orml_oracle::TimestampedValue<Price, primitives::Moment>;
 
 // Priority of unsigned transactions
@@ -418,46 +413,6 @@ where
 			NB::get()
 		} else {
 			GK::get(currency_id)
-		}
-	}
-}
-
-/// XcmMessageHandler of `DmpMessageHandler` and `XcmpMessageHandler` implementations.
-/// if xcm is paused, the `max_weight` of each handle method is set to `0`.
-///
-/// Parameters type:
-/// - `A`: `DmpMessageHandler` or `XcmpMessageHandler`
-pub struct XcmMessageHandler<Runtime, A>(PhantomData<(Runtime, A)>);
-
-impl<Runtime, A> DmpMessageHandler for XcmMessageHandler<Runtime, A>
-where
-	Runtime: module_transaction_pause::Config,
-	A: DmpMessageHandler,
-{
-	fn handle_dmp_messages(iter: impl Iterator<Item = (RelayChainBlockNumber, Vec<u8>)>, max_weight: Weight) -> Weight {
-		let xcm_paused: bool = module_transaction_pause::Pallet::<Runtime>::xcm_paused();
-		if !xcm_paused {
-			A::handle_dmp_messages(iter, max_weight)
-		} else {
-			A::handle_dmp_messages(iter, 0)
-		}
-	}
-}
-
-impl<Runtime, A> XcmpMessageHandler for XcmMessageHandler<Runtime, A>
-where
-	Runtime: module_transaction_pause::Config,
-	A: XcmpMessageHandler,
-{
-	fn handle_xcmp_messages<'a, I: Iterator<Item = (Id, BlockNumber, &'a [u8])>>(
-		iter: I,
-		max_weight: Weight,
-	) -> Weight {
-		let xcm_paused: bool = module_transaction_pause::Pallet::<Runtime>::xcm_paused();
-		if !xcm_paused {
-			A::handle_xcmp_messages(iter, max_weight)
-		} else {
-			A::handle_xcmp_messages(iter, 0)
 		}
 	}
 }
