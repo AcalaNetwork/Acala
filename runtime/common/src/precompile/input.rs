@@ -20,7 +20,7 @@ use frame_support::ensure;
 use sp_std::{marker::PhantomData, mem, result::Result, vec, vec::Vec};
 
 use ethabi::Token;
-use module_evm::ExitError;
+use module_evm::{runner::state::PrecompileFailure, ExitError};
 use module_support::{AddressMapping as AddressMappingT, Erc20InfoMapping as Erc20InfoMappingT};
 use primitives::{Amount, Balance, CurrencyId};
 use sp_core::{H160, U256};
@@ -77,7 +77,7 @@ where
 	AddressMapping: AddressMappingT<AccountId>,
 	Erc20InfoMapping: Erc20InfoMappingT,
 {
-	type Error = ExitError;
+	type Error = PrecompileFailure;
 	type Action = Action;
 	type AccountId = AccountId;
 
@@ -93,20 +93,25 @@ where
 			(start, end)
 		};
 
-		ensure!(end <= self.content.len(), ExitError::Other("invalid input".into()));
+		ensure!(
+			end <= self.content.len(),
+			PrecompileFailure::Error {
+				exit_status: ExitError::Other("invalid input".into())
+			}
+		);
 
 		Ok(&self.content[start..end])
 	}
 
 	fn action(&self) -> Result<Self::Action, Self::Error> {
 		let param = self.nth_param(ACTION_INDEX, None)?;
-		let action = u32::from_be_bytes(
-			param
-				.try_into()
-				.map_err(|_| ExitError::Other("invalid action".into()))?,
-		);
+		let action = u32::from_be_bytes(param.try_into().map_err(|_| PrecompileFailure::Error {
+			exit_status: ExitError::Other("invalid action".into()),
+		})?);
 
-		action.try_into().map_err(|_| ExitError::Other("invalid action".into()))
+		action.try_into().map_err(|_| PrecompileFailure::Error {
+			exit_status: ExitError::Other("invalid action".into()),
+		})
 	}
 
 	fn account_id_at(&self, index: usize) -> Result<Self::AccountId, Self::Error> {
@@ -130,7 +135,9 @@ where
 	fn currency_id_at(&self, index: usize) -> Result<CurrencyId, Self::Error> {
 		let address = self.evm_address_at(index)?;
 
-		Erc20InfoMapping::decode_evm_address(address).ok_or_else(|| ExitError::Other("invalid currency id".into()))
+		Erc20InfoMapping::decode_evm_address(address).ok_or_else(|| PrecompileFailure::Error {
+			exit_status: ExitError::Other("invalid currency id".into()),
+		})
 	}
 
 	fn balance_at(&self, index: usize) -> Result<Balance, Self::Error> {
@@ -241,7 +248,12 @@ mod tests {
 	fn nth_param_works() {
 		let input = TestInput::new(&[1u8; 36][..]);
 		assert_ok!(input.nth_param(1, None), &[1u8; 32][..]);
-		assert_err!(input.nth_param(2, None), ExitError::Other("invalid input".into()));
+		assert_err!(
+			input.nth_param(2, None),
+			PrecompileFailure::Error {
+				exit_status: ExitError::Other("invalid input".into())
+			}
+		);
 	}
 
 	#[test]
@@ -262,7 +274,12 @@ mod tests {
 		let mut raw_input = [0u8; 36];
 		raw_input[3] = 3;
 		let input = TestInput::new(&raw_input[..]);
-		assert_eq!(input.action(), Err(ExitError::Other("invalid action".into())));
+		assert_eq!(
+			input.action(),
+			Err(PrecompileFailure::Error {
+				exit_status: ExitError::Other("invalid action".into())
+			})
+		);
 	}
 
 	#[test]
@@ -292,7 +309,12 @@ mod tests {
 	#[test]
 	fn currency_id_works() {
 		let input = TestInput::new(&[0u8; 100][..]);
-		assert_err!(input.currency_id_at(1), ExitError::Other("invalid currency id".into()));
+		assert_err!(
+			input.currency_id_at(1),
+			PrecompileFailure::Error {
+				exit_status: ExitError::Other("invalid currency id".into())
+			}
+		);
 
 		let mut raw_input = [0u8; 36];
 		raw_input[25] = 1;

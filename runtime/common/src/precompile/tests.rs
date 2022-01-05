@@ -23,14 +23,15 @@ use crate::precompile::{
 	mock::{
 		aca_evm_address, alice, alice_evm_addr, ausd_evm_address, bob, bob_evm_addr, erc20_address_not_exists,
 		get_task_id, lp_aca_ausd_evm_address, new_test_ext, renbtc_evm_address, run_to_block, Balances, DexModule,
-		Event as TestEvent, Oracle, Origin, Price, System, Test, ALICE, AUSD, INITIAL_BALANCE, RENBTC,
+		Event as TestEvent, Oracle, Origin, PrecompilesValue, Price, System, Test, ALICE, AUSD, INITIAL_BALANCE,
+		RENBTC,
 	},
 	schedule_call::TaskInfo,
 };
 use codec::Encode;
 use frame_support::{assert_noop, assert_ok};
 use hex_literal::hex;
-use module_evm::{Context, ExitError, ExitSucceed, Precompile};
+use module_evm::{Context, ExitError, ExitSucceed};
 use module_support::AddressMapping;
 use orml_traits::DataFeeder;
 use primitives::{
@@ -41,7 +42,6 @@ use sp_core::{H160, U256};
 use sp_runtime::FixedPointNumber;
 use std::str::FromStr;
 
-pub type WithSystemContractFilter = AllPrecompiles<Test>;
 type MultiCurrencyPrecompile = crate::MultiCurrencyPrecompile<Test>;
 type OraclePrecompile = crate::OraclePrecompile<Test>;
 type DexPrecompile = crate::DexPrecompile<Test>;
@@ -60,8 +60,10 @@ fn precompile_filter_works_on_acala_precompiles() {
 		apparent_value: 0.into(),
 	};
 	assert_eq!(
-		WithSystemContractFilter::execute(precompile, &[0u8; 1], None, &non_system_caller_context),
-		Some(Err(ExitError::Other("no permission".into()))),
+		PrecompilesValue::get().execute(precompile, &[0u8; 1], None, &non_system_caller_context, false),
+		Some(Err(PrecompileFailure::Error {
+			exit_status: ExitError::Other("no permission".into())
+		})),
 	);
 }
 
@@ -77,9 +79,9 @@ fn precompile_filter_does_not_work_on_system_contracts() {
 		caller: non_system.into(),
 		apparent_value: 0.into(),
 	};
-	assert!(
-		WithSystemContractFilter::execute(non_system.into(), &[0u8; 1], None, &non_system_caller_context).is_none()
-	);
+	assert!(PrecompilesValue::get()
+		.execute(non_system.into(), &[0u8; 1], None, &non_system_caller_context, false)
+		.is_none());
 }
 
 #[test]
@@ -94,9 +96,9 @@ fn precompile_filter_does_not_work_on_non_system_contracts() {
 		caller: another_non_system.into(),
 		apparent_value: 0.into(),
 	};
-	assert!(
-		WithSystemContractFilter::execute(non_system.into(), &[0u8; 1], None, &non_system_caller_context).is_none()
-	);
+	assert!(PrecompilesValue::get()
+		.execute(non_system.into(), &[0u8; 1], None, &non_system_caller_context, false)
+		.is_none());
 }
 
 #[test]
@@ -114,8 +116,10 @@ fn multicurrency_precompile_should_work() {
 		// action
 		input[0..4].copy_from_slice(&Into::<u32>::into(multicurrency::Action::QuerySymbol).to_be_bytes());
 		assert_noop!(
-			MultiCurrencyPrecompile::execute(&input, None, &context),
-			ExitError::Other("invalid currency id".into())
+			MultiCurrencyPrecompile::execute(&input, None, &context, false),
+			PrecompileFailure::Error {
+				exit_status: ExitError::Other("invalid currency id".into())
+			}
 		);
 
 		// 1.QueryName
@@ -125,7 +129,7 @@ fn multicurrency_precompile_should_work() {
 
 		// Token
 		context.caller = aca_evm_address();
-		let resp = MultiCurrencyPrecompile::execute(&input, None, &context).unwrap();
+		let resp = MultiCurrencyPrecompile::execute(&input, None, &context, false).unwrap();
 		assert_eq!(resp.exit_status, ExitSucceed::Returned);
 		let mut expected_output = [0u8; 96];
 		// skip offset
@@ -138,7 +142,7 @@ fn multicurrency_precompile_should_work() {
 
 		// DexShare
 		context.caller = lp_aca_ausd_evm_address();
-		let resp = MultiCurrencyPrecompile::execute(&input, None, &context).unwrap();
+		let resp = MultiCurrencyPrecompile::execute(&input, None, &context, false).unwrap();
 		assert_eq!(resp.exit_status, ExitSucceed::Returned);
 		let mut expected_output = [0u8; 96];
 		// skip offset
@@ -156,7 +160,7 @@ fn multicurrency_precompile_should_work() {
 
 		// Token
 		context.caller = aca_evm_address();
-		let resp = MultiCurrencyPrecompile::execute(&input, None, &context).unwrap();
+		let resp = MultiCurrencyPrecompile::execute(&input, None, &context, false).unwrap();
 		assert_eq!(resp.exit_status, ExitSucceed::Returned);
 		let mut expected_output = [0u8; 96];
 		// skip offset
@@ -169,7 +173,7 @@ fn multicurrency_precompile_should_work() {
 
 		// DexShare
 		context.caller = lp_aca_ausd_evm_address();
-		let resp = MultiCurrencyPrecompile::execute(&input, None, &context).unwrap();
+		let resp = MultiCurrencyPrecompile::execute(&input, None, &context, false).unwrap();
 		assert_eq!(resp.exit_status, ExitSucceed::Returned);
 		let mut expected_output = [0u8; 96];
 		// skip offset
@@ -187,7 +191,7 @@ fn multicurrency_precompile_should_work() {
 
 		// Token
 		context.caller = aca_evm_address();
-		let resp = MultiCurrencyPrecompile::execute(&input, None, &context).unwrap();
+		let resp = MultiCurrencyPrecompile::execute(&input, None, &context, false).unwrap();
 		assert_eq!(resp.exit_status, ExitSucceed::Returned);
 		let mut expected_output = [0u8; 32];
 		expected_output[31] = 12;
@@ -196,7 +200,7 @@ fn multicurrency_precompile_should_work() {
 
 		// DexShare
 		context.caller = lp_aca_ausd_evm_address();
-		let resp = MultiCurrencyPrecompile::execute(&input, None, &context).unwrap();
+		let resp = MultiCurrencyPrecompile::execute(&input, None, &context, false).unwrap();
 		assert_eq!(resp.exit_status, ExitSucceed::Returned);
 		let mut expected_output = [0u8; 32];
 		expected_output[31] = 12;
@@ -210,7 +214,7 @@ fn multicurrency_precompile_should_work() {
 
 		// Token
 		context.caller = ausd_evm_address();
-		let resp = MultiCurrencyPrecompile::execute(&input, None, &context).unwrap();
+		let resp = MultiCurrencyPrecompile::execute(&input, None, &context, false).unwrap();
 		assert_eq!(resp.exit_status, ExitSucceed::Returned);
 		let mut expected_output = [0u8; 32];
 		expected_output[28..32].copy_from_slice(&1_000_000_000u32.to_be_bytes()[..]);
@@ -219,7 +223,7 @@ fn multicurrency_precompile_should_work() {
 
 		// DexShare
 		context.caller = lp_aca_ausd_evm_address();
-		let resp = MultiCurrencyPrecompile::execute(&input, None, &context).unwrap();
+		let resp = MultiCurrencyPrecompile::execute(&input, None, &context, false).unwrap();
 		assert_eq!(resp.exit_status, ExitSucceed::Returned);
 		let expected_output = [0u8; 32];
 		assert_eq!(resp.output, expected_output);
@@ -234,7 +238,7 @@ fn multicurrency_precompile_should_work() {
 
 		// Token
 		context.caller = aca_evm_address();
-		let resp = MultiCurrencyPrecompile::execute(&input, None, &context).unwrap();
+		let resp = MultiCurrencyPrecompile::execute(&input, None, &context, false).unwrap();
 		assert_eq!(resp.exit_status, ExitSucceed::Returned);
 		let mut expected_output = [0u8; 32];
 		expected_output[16..32].copy_from_slice(&INITIAL_BALANCE.to_be_bytes()[..]);
@@ -243,7 +247,7 @@ fn multicurrency_precompile_should_work() {
 
 		// DexShare
 		context.caller = lp_aca_ausd_evm_address();
-		let resp = MultiCurrencyPrecompile::execute(&input, None, &context).unwrap();
+		let resp = MultiCurrencyPrecompile::execute(&input, None, &context, false).unwrap();
 		assert_eq!(resp.exit_status, ExitSucceed::Returned);
 		let expected_output = [0u8; 32];
 		assert_eq!(resp.output, expected_output);
@@ -264,7 +268,7 @@ fn multicurrency_precompile_should_work() {
 
 		// Token
 		context.caller = aca_evm_address();
-		let resp = MultiCurrencyPrecompile::execute(&input, None, &context).unwrap();
+		let resp = MultiCurrencyPrecompile::execute(&input, None, &context, false).unwrap();
 		assert_eq!(resp.exit_status, ExitSucceed::Returned);
 		let expected_output: Vec<u8> = vec![];
 		assert_eq!(resp.output, expected_output);
@@ -275,8 +279,10 @@ fn multicurrency_precompile_should_work() {
 		// DexShare
 		context.caller = lp_aca_ausd_evm_address();
 		assert_noop!(
-			MultiCurrencyPrecompile::execute(&input, None, &context),
-			ExitError::Other("BalanceTooLow".into())
+			MultiCurrencyPrecompile::execute(&input, None, &context, false),
+			PrecompileFailure::Error {
+				exit_status: ExitError::Other("BalanceTooLow".into())
+			}
 		);
 	});
 }
@@ -300,7 +306,7 @@ fn oracle_precompile_should_work() {
 		U256::from_big_endian(renbtc_evm_address().as_bytes()).to_big_endian(&mut input[4..4 + 32]);
 
 		// no price yet
-		let resp = OraclePrecompile::execute(&input, None, &context).unwrap();
+		let resp = OraclePrecompile::execute(&input, None, &context, false).unwrap();
 		assert_eq!(resp.exit_status, ExitSucceed::Returned);
 		assert_eq!(resp.output, [0u8; 32]);
 		assert_eq!(resp.cost, 0);
@@ -318,7 +324,7 @@ fn oracle_precompile_should_work() {
 		let mut expected_output = [0u8; 32];
 		U256::from(price.into_inner()).to_big_endian(&mut expected_output[..]);
 
-		let resp = OraclePrecompile::execute(&input, None, &context).unwrap();
+		let resp = OraclePrecompile::execute(&input, None, &context, false).unwrap();
 		assert_eq!(resp.exit_status, ExitSucceed::Returned);
 		assert_eq!(resp.output, expected_output);
 		assert_eq!(resp.cost, 0);
@@ -336,9 +342,12 @@ fn oracle_precompile_should_handle_invalid_input() {
 					address: Default::default(),
 					caller: alice_evm_addr(),
 					apparent_value: Default::default()
-				}
+				},
+				false
 			),
-			ExitError::Other("invalid input".into())
+			PrecompileFailure::Error {
+				exit_status: ExitError::Other("invalid input".into())
+			}
 		);
 
 		assert_noop!(
@@ -349,9 +358,12 @@ fn oracle_precompile_should_handle_invalid_input() {
 					address: Default::default(),
 					caller: alice_evm_addr(),
 					apparent_value: Default::default()
-				}
+				},
+				false
 			),
-			ExitError::Other("invalid input".into())
+			PrecompileFailure::Error {
+				exit_status: ExitError::Other("invalid input".into())
+			}
 		);
 
 		assert_noop!(
@@ -362,9 +374,12 @@ fn oracle_precompile_should_handle_invalid_input() {
 					address: Default::default(),
 					caller: alice_evm_addr(),
 					apparent_value: Default::default()
-				}
+				},
+				false
 			),
-			ExitError::Other("invalid action".into())
+			PrecompileFailure::Error {
+				exit_status: ExitError::Other("invalid action".into())
+			}
 		);
 	});
 }
@@ -410,7 +425,7 @@ fn schedule_call_precompile_should_work() {
 		U256::from(&transfer_to_bob[32..64]).to_big_endian(&mut input[4 + 9 * 32..4 + 10 * 32]);
 		input[4 + 10 * 32..4 + 10 * 32 + 4].copy_from_slice(&transfer_to_bob[64..68]);
 
-		let resp = ScheduleCallPrecompile::execute(&input, None, &context).unwrap();
+		let resp = ScheduleCallPrecompile::execute(&input, None, &context, false).unwrap();
 		assert_eq!(resp.exit_status, ExitSucceed::Returned);
 		assert_eq!(resp.cost, 0);
 		let event = TestEvent::Scheduler(pallet_scheduler::Event::<Test>::Scheduled(3, 0));
@@ -429,13 +444,13 @@ fn schedule_call_precompile_should_work() {
 		// task_id
 		cancel_input[4 + 3 * 32..4 + 3 * 32 + task_id.len()].copy_from_slice(&task_id[..]);
 
-		let resp = ScheduleCallPrecompile::execute(&cancel_input, None, &context).unwrap();
+		let resp = ScheduleCallPrecompile::execute(&cancel_input, None, &context, false).unwrap();
 		assert_eq!(resp.exit_status, ExitSucceed::Returned);
 		assert_eq!(resp.cost, 0);
 		let event = TestEvent::Scheduler(pallet_scheduler::Event::<Test>::Canceled(3, 0));
 		assert!(System::events().iter().any(|record| record.event == event));
 
-		let resp = ScheduleCallPrecompile::execute(&input, None, &context).unwrap();
+		let resp = ScheduleCallPrecompile::execute(&input, None, &context, false).unwrap();
 		assert_eq!(resp.exit_status, ExitSucceed::Returned);
 		assert_eq!(resp.cost, 0);
 
@@ -456,7 +471,7 @@ fn schedule_call_precompile_should_work() {
 		// task_id
 		reschedule_input[4 + 4 * 32..4 + 4 * 32 + task_id.len()].copy_from_slice(&task_id[..]);
 
-		let resp = ScheduleCallPrecompile::execute(&reschedule_input, None, &context).unwrap();
+		let resp = ScheduleCallPrecompile::execute(&reschedule_input, None, &context, false).unwrap();
 		assert_eq!(resp.exit_status, ExitSucceed::Returned);
 		assert_eq!(resp.cost, 0);
 		let event = TestEvent::Scheduler(pallet_scheduler::Event::<Test>::Scheduled(5, 0));
@@ -480,7 +495,7 @@ fn schedule_call_precompile_should_work() {
 		run_to_block(5);
 		#[cfg(not(feature = "with-ethereum-compatibility"))]
 		{
-			assert_eq!(Balances::free_balance(from_account.clone()), 999999972553);
+			assert_eq!(Balances::free_balance(from_account.clone()), 999999973153);
 			assert_eq!(Balances::reserved_balance(from_account), 0);
 			assert_eq!(Balances::free_balance(to_account), 1000000001000);
 		}
@@ -524,7 +539,7 @@ fn schedule_call_precompile_should_handle_invalid_input() {
 		// input_data = 0x12
 		input[4 + 9 * 32] = hex!("12")[0];
 
-		let resp = ScheduleCallPrecompile::execute(&input, None, &context).unwrap();
+		let resp = ScheduleCallPrecompile::execute(&input, None, &context, false).unwrap();
 		assert_eq!(resp.exit_status, ExitSucceed::Returned);
 		assert_eq!(resp.cost, 0);
 
@@ -557,8 +572,10 @@ fn schedule_call_precompile_should_handle_invalid_input() {
 		cancel_input[4 + 3 * 32..4 + 3 * 32 + task_id.len()].copy_from_slice(&task_id[..]);
 
 		assert_eq!(
-			ScheduleCallPrecompile::execute(&cancel_input, None, &context),
-			Err(ExitError::Other("NoPermission".into()))
+			ScheduleCallPrecompile::execute(&cancel_input, None, &context, false),
+			Err(PrecompileFailure::Error {
+				exit_status: ExitError::Other("NoPermission".into())
+			})
 		);
 
 		run_to_block(4);
@@ -612,7 +629,7 @@ fn dex_precompile_get_liquidity_should_work() {
 		U256::from(1_000).to_big_endian(&mut expected_output[..32]);
 		U256::from(1_000_000).to_big_endian(&mut expected_output[32..64]);
 
-		let resp = DexPrecompile::execute(&input, None, &context).unwrap();
+		let resp = DexPrecompile::execute(&input, None, &context, false).unwrap();
 		assert_eq!(resp.exit_status, ExitSucceed::Returned);
 		assert_eq!(resp.output, expected_output);
 		assert_eq!(resp.cost, 0);
@@ -654,7 +671,7 @@ fn dex_precompile_get_liquidity_token_address_should_work() {
 		let address = H160::from_str("0x0000000000000000000200000000010000000014").unwrap();
 		U256::from(address.as_bytes()).to_big_endian(&mut expected_output[..32]);
 
-		let resp = DexPrecompile::execute(&input, None, &context).unwrap();
+		let resp = DexPrecompile::execute(&input, None, &context, false).unwrap();
 		assert_eq!(resp.exit_status, ExitSucceed::Returned);
 		assert_eq!(resp.output, expected_output);
 		assert_eq!(resp.cost, 0);
@@ -665,8 +682,10 @@ fn dex_precompile_get_liquidity_token_address_should_work() {
 		id[31] = u8::MAX; // not exists
 		U256::from_big_endian(&id.to_vec()).to_big_endian(&mut input[4 + 1 * 32..4 + 2 * 32]);
 		assert_noop!(
-			DexPrecompile::execute(&input, None, &context),
-			ExitError::Other("invalid currency id".into())
+			DexPrecompile::execute(&input, None, &context, false),
+			PrecompileFailure::Error {
+				exit_status: ExitError::Other("invalid currency id".into())
+			}
 		);
 	});
 }
@@ -711,7 +730,7 @@ fn dex_precompile_get_swap_target_amount_should_work() {
 		let mut expected_output = [0u8; 32];
 		U256::from(989).to_big_endian(&mut expected_output[..32]);
 
-		let resp = DexPrecompile::execute(&input, None, &context).unwrap();
+		let resp = DexPrecompile::execute(&input, None, &context, false).unwrap();
 		assert_eq!(resp.exit_status, ExitSucceed::Returned);
 		assert_eq!(resp.output, expected_output);
 		assert_eq!(resp.cost, 0);
@@ -758,7 +777,7 @@ fn dex_precompile_get_swap_supply_amount_should_work() {
 		let mut expected_output = [0u8; 32];
 		U256::from(1).to_big_endian(&mut expected_output[..32]);
 
-		let resp = DexPrecompile::execute(&input, None, &context).unwrap();
+		let resp = DexPrecompile::execute(&input, None, &context, false).unwrap();
 		assert_eq!(resp.exit_status, ExitSucceed::Returned);
 		assert_eq!(resp.output, expected_output);
 		assert_eq!(resp.cost, 0);
@@ -809,7 +828,7 @@ fn dex_precompile_swap_with_exact_supply_should_work() {
 		let mut expected_output = [0u8; 32];
 		U256::from(989).to_big_endian(&mut expected_output[..32]);
 
-		let resp = DexPrecompile::execute(&input, None, &context).unwrap();
+		let resp = DexPrecompile::execute(&input, None, &context, false).unwrap();
 		assert_eq!(resp.exit_status, ExitSucceed::Returned);
 		assert_eq!(resp.output, expected_output);
 		assert_eq!(resp.cost, 0);
@@ -860,7 +879,7 @@ fn dex_precompile_swap_with_exact_target_should_work() {
 		let mut expected_output = [0u8; 32];
 		U256::from(1).to_big_endian(&mut expected_output[..32]);
 
-		let resp = DexPrecompile::execute(&input, None, &context).unwrap();
+		let resp = DexPrecompile::execute(&input, None, &context, false).unwrap();
 		assert_eq!(resp.exit_status, ExitSucceed::Returned);
 		assert_eq!(resp.output, expected_output);
 		assert_eq!(resp.cost, 0);

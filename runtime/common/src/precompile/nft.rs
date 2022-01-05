@@ -16,13 +16,16 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::precompile::PrecompileOutput;
 use frame_support::log;
-use module_evm::{Context, ExitError, ExitSucceed, Precompile};
+use module_evm::{
+	precompiles::Precompile,
+	runner::state::{PrecompileFailure, PrecompileOutput, PrecompileResult},
+	Context, ExitError, ExitSucceed,
+};
 use module_support::AddressMapping;
 use sp_core::H160;
 use sp_runtime::RuntimeDebug;
-use sp_std::{borrow::Cow, marker::PhantomData, prelude::*, result};
+use sp_std::{borrow::Cow, marker::PhantomData, prelude::*};
 
 use orml_traits::NFT as NFTT;
 
@@ -54,11 +57,7 @@ where
 	Runtime: module_evm::Config + module_prices::Config + module_nft::Config,
 	module_nft::Pallet<Runtime>: NFTT<Runtime::AccountId, Balance = NFTBalance, ClassId = u32, TokenId = u64>,
 {
-	fn execute(
-		input: &[u8],
-		_target_gas: Option<u64>,
-		_context: &Context,
-	) -> result::Result<PrecompileOutput, ExitError> {
+	fn execute(input: &[u8], _target_gas: Option<u64>, _context: &Context, _is_static: bool) -> PrecompileResult {
 		let input = Input::<Action, Runtime::AccountId, Runtime::AddressMapping, Runtime::Erc20InfoMapping>::new(input);
 
 		let action = input.action()?;
@@ -108,7 +107,9 @@ where
 				log::debug!(target: "evm", "nft: transfer from: {:?}, to: {:?}, class_id: {:?}, token_id: {:?}", from, to, class_id, token_id);
 
 				<module_nft::Pallet<Runtime> as NFTT<Runtime::AccountId>>::transfer(&from, &to, (class_id, token_id))
-					.map_err(|e| ExitError::Other(Cow::Borrowed(e.into())))?;
+					.map_err(|e| PrecompileFailure::Error {
+					exit_status: ExitError::Other(Cow::Borrowed(e.into())),
+				})?;
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,

@@ -18,7 +18,7 @@
 
 #![cfg(test)]
 
-use crate::{AllPrecompiles, Ratio, RuntimeBlockWeights, Weight};
+use crate::{EvmPrecompiles, Ratio, RuntimeBlockWeights, Weight};
 use acala_service::chain_spec::mandala::evm_genesis;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
@@ -390,6 +390,7 @@ pub type EvmErc20InfoMapping = module_asset_registry::EvmErc20InfoMapping<Test>;
 
 parameter_types! {
 	pub NetworkContractSource: H160 = alice_evm_addr();
+	pub PrecompilesValue: EvmPrecompiles<Test> = EvmPrecompiles::<_>::new();
 }
 
 ord_parameter_types! {
@@ -419,7 +420,8 @@ impl module_evm::Config for Test {
 	type StorageDepositPerByte = StorageDepositPerByte;
 	type TxFeePerGas = TxFeePerGas;
 	type Event = Event;
-	type Precompiles = AllPrecompiles<Self>;
+	type PrecompilesType = EvmPrecompiles<Self>;
+	type PrecompilesValue = PrecompilesValue;
 	type ChainId = ChainId;
 	type GasToWeight = GasToWeight;
 	type ChargeTransactionPayment = ChargeTransactionPayment;

@@ -49,7 +49,7 @@ use static_assertions::const_assert;
 pub mod precompile;
 use orml_traits::GetByKey;
 pub use precompile::{
-	AllPrecompiles, DexPrecompile, MultiCurrencyPrecompile, NFTPrecompile, OraclePrecompile, ScheduleCallPrecompile,
+	DexPrecompile, EvmPrecompiles, MultiCurrencyPrecompile, NFTPrecompile, OraclePrecompile, ScheduleCallPrecompile,
 	StateRentPrecompile,
 };
 pub use primitives::{

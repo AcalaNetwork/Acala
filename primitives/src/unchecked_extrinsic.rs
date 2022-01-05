@@ -216,7 +216,7 @@ where
 					action: eth_msg.action,
 					value: eth_msg.value.into(),
 					input: eth_msg.input,
-					access_list: vec![],
+					access_list: eth_msg.access_list,
 				};
 
 				let msg_hash = msg.hash(); // TODO: consider rewirte this to use `keccak_256` for hashing because it could be faster
@@ -329,6 +329,8 @@ fn verify_eip712_signature(eth_msg: EthereumTransactionMessage, sig: [u8; 65]) -
 	tx_msg.extend_from_slice(&to_bytes(eth_msg.gas_limit));
 	tx_msg.extend_from_slice(&to_bytes(eth_msg.storage_limit));
 	tx_msg.extend_from_slice(&to_bytes(eth_msg.valid_until));
+	// TODO: unimplement
+	//tx_msg.extend_from_slice(&keccak_256(&to_bytes(eth_msg.access_list.as_slice())));
 
 	let mut msg = b"\x19\x01".to_vec();
 	msg.extend_from_slice(&domain_separator);
@@ -359,6 +361,7 @@ mod tests {
 			value: 111,
 			input: vec![],
 			valid_until: 444,
+			access_list: vec![],
 		};
 		let sign = hex!("acb56f12b407bd0bc8f7abefe2e2585affe28009abcb6980aa33aecb815c56b324ab60a41eff339a88631c4b0e5183427be1fcfde3c05fb9b6c71a691e977c4a1b");
 		let sender = Some(H160::from_str("0x14791697260E4c9A71f18484C9f997B308e59325").unwrap());
@@ -401,9 +404,17 @@ mod tests {
 		new_msg.genesis = Default::default();
 		assert_ne!(verify_eip712_signature(new_msg, sign), sender);
 
-		let mut new_msg = msg;
+		let mut new_msg = msg.clone();
 		new_msg.valid_until += 1;
 		assert_ne!(verify_eip712_signature(new_msg, sign), sender);
+
+		let mut new_msg = msg;
+		new_msg.access_list = vec![AccessListItem {
+			address: hex!("bb9bc244d798123fde783fcc1c72d3bb8c189413").into(),
+			slots: vec![],
+		}];
+		// TODO: unimplement
+		// assert_ne!(verify_eip712_signature(new_msg, sign), sender);
 	}
 
 	#[test]

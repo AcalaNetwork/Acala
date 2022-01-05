@@ -118,7 +118,8 @@ impl module_evm::Config for Runtime {
 	type StorageDepositPerByte = StorageDepositPerByte;
 	type TxFeePerGas = TxFeePerGas;
 	type Event = Event;
-	type Precompiles = ();
+	type PrecompilesType = ();
+	type PrecompilesValue = ();
 	type ChainId = ();
 	type GasToWeight = ();
 	type ChargeTransactionPayment = ();
@@ -189,7 +190,7 @@ pub fn bob_evm_addr() -> EvmAddress {
 
 pub fn deploy_contracts() {
 	let code = from_hex(include!("./erc20_demo_contract")).unwrap();
-	assert_ok!(EVM::create(Origin::signed(alice()), code, 0, 2_100_000, 10000));
+	assert_ok!(EVM::create(Origin::signed(alice()), code, 0, 2_100_000, 10000, vec![]));
 
 	System::assert_last_event(Event::EVM(module_evm::Event::Created {
 		from: alice_evm_addr(),

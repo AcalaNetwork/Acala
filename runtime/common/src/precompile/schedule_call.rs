@@ -19,7 +19,6 @@
 // Disable the following lints
 #![allow(clippy::type_complexity)]
 
-use crate::precompile::PrecompileOutput;
 use frame_support::{
 	dispatch::Dispatchable,
 	ensure, log, parameter_types,
@@ -28,12 +27,16 @@ use frame_support::{
 		Currency, IsType, OriginTrait,
 	},
 };
-use module_evm::{Context, ExitError, ExitSucceed, Precompile};
+use module_evm::{
+	precompiles::Precompile,
+	runner::state::{PrecompileFailure, PrecompileOutput, PrecompileResult},
+	Context, ExitError, ExitSucceed,
+};
 use module_support::{AddressMapping, TransactionPayment};
 use primitives::{Balance, BlockNumber};
 use sp_core::H160;
 use sp_runtime::RuntimeDebug;
-use sp_std::{fmt::Debug, marker::PhantomData, prelude::*, result};
+use sp_std::{borrow::Cow, fmt::Debug, marker::PhantomData, prelude::*};
 
 use super::input::{Input, InputT, Output};
 use codec::{Decode, Encode};
@@ -101,11 +104,7 @@ where
 		Address = TaskAddress<BlockNumber>,
 	>,
 {
-	fn execute(
-		input: &[u8],
-		_target_gas: Option<u64>,
-		_context: &Context,
-	) -> result::Result<PrecompileOutput, ExitError> {
+	fn execute(input: &[u8], _target_gas: Option<u64>, _context: &Context, _is_static: bool) -> PrecompileResult {
 		let input = Input::<Action, Runtime::AccountId, Runtime::AddressMapping, Runtime::Erc20InfoMapping>::new(input);
 
 		let action = input.action()?;
@@ -149,9 +148,8 @@ where
 						&from_account,
 						weight,
 					)
-					.map_err(|e| {
-						let err_msg: &str = e.into();
-						ExitError::Other(err_msg.into())
+					.map_err(|e| PrecompileFailure::Error {
+						exit_status: ExitError::Other(Cow::Borrowed(e.into())),
 					})?;
 				}
 
@@ -162,13 +160,14 @@ where
 					value: value.into(),
 					gas_limit,
 					storage_limit,
+					access_list: vec![],
 				}
 				.into();
 
 				let current_id = EvmSchedulerNextID::get();
-				let next_id = current_id
-					.checked_add(1)
-					.ok_or_else(|| ExitError::Other("Scheduler next id overflow".into()))?;
+				let next_id = current_id.checked_add(1).ok_or_else(|| PrecompileFailure::Error {
+					exit_status: ExitError::Other("Scheduler next id overflow".into()),
+				})?;
 				EvmSchedulerNextID::set(&next_id);
 
 				let task_id = TaskInfo {
@@ -199,7 +198,9 @@ where
 						.clone(),
 					call,
 				)
-				.map_err(|_| ExitError::Other("Schedule failed".into()))?;
+				.map_err(|_| PrecompileFailure::Error {
+					exit_status: ExitError::Other("Schedule failed".into()),
+				})?;
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
@@ -221,16 +222,24 @@ where
 					task_id,
 				);
 
-				let task_info = TaskInfo::decode(&mut &task_id[..])
-					.map_err(|_| ExitError::Other("Decode task_id failed".into()))?;
-				ensure!(task_info.sender == from, ExitError::Other("NoPermission".into()));
+				let task_info = TaskInfo::decode(&mut &task_id[..]).map_err(|_| PrecompileFailure::Error {
+					exit_status: ExitError::Other("Decode task_id failed".into()),
+				})?;
+				ensure!(
+					task_info.sender == from,
+					PrecompileFailure::Error {
+						exit_status: ExitError::Other("NoPermission".into())
+					}
+				);
 
 				<pallet_scheduler::Pallet<Runtime> as ScheduleNamed<
 					BlockNumber,
 					<Runtime as pallet_scheduler::Config>::Call,
 					<Runtime as pallet_scheduler::Config>::PalletsOrigin,
 				>>::cancel_named(task_id)
-				.map_err(|_| ExitError::Other("Cancel schedule failed".into()))?;
+				.map_err(|_| PrecompileFailure::Error {
+					exit_status: ExitError::Other("Cancel schedule failed".into()),
+				})?;
 
 				#[cfg(not(feature = "with-ethereum-compatibility"))]
 				{
@@ -264,18 +273,23 @@ where
 					min_delay,
 				);
 
-				let task_info = TaskInfo::decode(&mut &task_id[..])
-					.map_err(|_| ExitError::Other("Decode task_id failed".into()))?;
-				ensure!(task_info.sender == from, ExitError::Other("NoPermission".into()));
+				let task_info = TaskInfo::decode(&mut &task_id[..]).map_err(|_| PrecompileFailure::Error {
+					exit_status: ExitError::Other("Decode task_id failed".into()),
+				})?;
+				ensure!(
+					task_info.sender == from,
+					PrecompileFailure::Error {
+						exit_status: ExitError::Other("NoPermission".into())
+					}
+				);
 
 				<pallet_scheduler::Pallet<Runtime> as ScheduleNamed<
 					BlockNumber,
 					<Runtime as pallet_scheduler::Config>::Call,
 					<Runtime as pallet_scheduler::Config>::PalletsOrigin,
 				>>::reschedule_named(task_id, DispatchTime::After(min_delay))
-				.map_err(|e| {
-					let err_msg: &str = e.into();
-					ExitError::Other(err_msg.into())
+				.map_err(|e| PrecompileFailure::Error {
+					exit_status: ExitError::Other(Cow::Borrowed(e.into())),
 				})?;
 
 				Ok(PrecompileOutput {

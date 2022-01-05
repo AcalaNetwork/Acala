@@ -19,8 +19,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::all)]
 
-use ethereum_types::H160;
 use primitives::evm::{CallInfo, CreateInfo, EstimateResourcesRequest};
+use sp_core::H160;
 use sp_runtime::{
 	codec::Codec,
 	traits::{MaybeDisplay, MaybeFromStr},

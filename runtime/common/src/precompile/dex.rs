@@ -17,14 +17,17 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use super::input::{Input, InputT, Output};
-use crate::precompile::PrecompileOutput;
 use frame_support::log;
-use module_evm::{Context, ExitError, ExitSucceed, Precompile};
+use module_evm::{
+	precompiles::Precompile,
+	runner::state::{PrecompileFailure, PrecompileOutput, PrecompileResult},
+	Context, ExitError, ExitSucceed,
+};
 use module_support::{DEXManager, SwapLimit};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use primitives::{Balance, CurrencyId};
 use sp_runtime::RuntimeDebug;
-use sp_std::{marker::PhantomData, prelude::*, result};
+use sp_std::{borrow::Cow, marker::PhantomData, prelude::*};
 
 /// The `DEX` impl precompile.
 ///
@@ -56,11 +59,7 @@ where
 	Runtime: module_evm::Config + module_prices::Config,
 	module_dex::Pallet<Runtime>: DEXManager<Runtime::AccountId, CurrencyId, Balance>,
 {
-	fn execute(
-		input: &[u8],
-		_target_gas: Option<u64>,
-		_context: &Context,
-	) -> result::Result<PrecompileOutput, ExitError> {
+	fn execute(input: &[u8], _target_gas: Option<u64>, _context: &Context, _is_static: bool) -> PrecompileResult {
 		let input = Input::<Action, Runtime::AccountId, Runtime::AddressMapping, Runtime::Erc20InfoMapping>::new(input);
 
 		let action = input.action()?;
@@ -98,7 +97,7 @@ where
 				);
 
 				let value = <module_dex::Pallet<Runtime> as DEXManager<Runtime::AccountId, CurrencyId, Balance>>::get_liquidity_token_address(currency_id_a, currency_id_b)
-					.ok_or_else(|| ExitError::Other("Dex get_liquidity_token_address failed".into()))?;
+					.ok_or_else(|| PrecompileFailure::Error { exit_status: ExitError::Other("Dex get_liquidity_token_address failed".into())})?;
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
@@ -123,7 +122,7 @@ where
 
 				let value = <module_dex::Pallet<Runtime> as DEXManager<Runtime::AccountId, CurrencyId, Balance>>::get_swap_amount(&path, SwapLimit::ExactSupply(supply_amount, Balance::MIN))
 					.map(|(_, target)| target)
-					.ok_or_else(|| ExitError::Other("Dex get_swap_target_amount failed".into()))?;
+					.ok_or_else(|| PrecompileFailure::Error { exit_status: ExitError::Other("Dex get_swap_target_amount failed".into())})?;
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
@@ -148,7 +147,7 @@ where
 
 				let value = <module_dex::Pallet<Runtime> as DEXManager<Runtime::AccountId, CurrencyId, Balance>>::get_swap_amount(&path, SwapLimit::ExactTarget(Balance::MAX, target_amount))
 					.map(|(supply, _)| supply)
-					.ok_or_else(|| ExitError::Other("Dex get_swap_supply_amount failed".into()))?;
+					.ok_or_else(|| PrecompileFailure::Error { exit_status: ExitError::Other("Dex get_swap_supply_amount failed".into())})?;
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
@@ -174,10 +173,8 @@ where
 				);
 
 				let (_, value) =
-					<module_dex::Pallet<Runtime> as DEXManager<Runtime::AccountId, CurrencyId, Balance>>::swap_with_specific_path(&who, &path, SwapLimit::ExactSupply(supply_amount, min_target_amount)).map_err(|e| {
-						let err_msg: &str = e.into();
-						ExitError::Other(err_msg.into())
-					})?;
+					<module_dex::Pallet<Runtime> as DEXManager<Runtime::AccountId, CurrencyId, Balance>>::swap_with_specific_path(&who, &path, SwapLimit::ExactSupply(supply_amount, min_target_amount))
+					.map_err(|e| PrecompileFailure::Error { exit_status:ExitError::Other(Cow::Borrowed(e.into()))})?;
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
@@ -203,10 +200,8 @@ where
 				);
 
 				let (value, _) =
-					<module_dex::Pallet<Runtime> as DEXManager<Runtime::AccountId, CurrencyId, Balance>>::swap_with_specific_path(&who, &path, SwapLimit::ExactTarget(max_supply_amount, target_amount)).map_err(|e| {
-						let err_msg: &str = e.into();
-						ExitError::Other(err_msg.into())
-					})?;
+					<module_dex::Pallet<Runtime> as DEXManager<Runtime::AccountId, CurrencyId, Balance>>::swap_with_specific_path(&who, &path, SwapLimit::ExactTarget(max_supply_amount, target_amount))
+					.map_err(|e| PrecompileFailure::Error { exit_status:ExitError::Other(Cow::Borrowed(e.into()))})?;
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
@@ -238,9 +233,8 @@ where
 					min_share_increment,
 					false,
 				)
-				.map_err(|e| {
-					let err_msg: &str = e.into();
-					ExitError::Other(err_msg.into())
+				.map_err(|e| PrecompileFailure::Error {
+					exit_status: ExitError::Other(Cow::Borrowed(e.into())),
 				})?;
 
 				Ok(PrecompileOutput {
@@ -273,9 +267,8 @@ where
 					min_withdrawn_b,
 					false,
 				)
-				.map_err(|e| {
-					let err_msg: &str = e.into();
-					ExitError::Other(err_msg.into())
+				.map_err(|e| PrecompileFailure::Error {
+					exit_status: ExitError::Other(Cow::Borrowed(e.into())),
 				})?;
 
 				Ok(PrecompileOutput {

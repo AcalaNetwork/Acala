@@ -5404,7 +5404,6 @@ dependencies = [
  "frame-support",
  "frame-system",
  "hex-literal",
- "impl-trait-for-tuples 0.1.3",
  "module-evm-utiltity",
  "module-idle-scheduler",
  "module-support",

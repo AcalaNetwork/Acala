@@ -16,12 +16,15 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::precompile::PrecompileOutput;
 use frame_support::log;
-use module_evm::{Context, ExitError, ExitSucceed, Precompile};
+use module_evm::{
+	precompiles::Precompile,
+	runner::state::{PrecompileFailure, PrecompileOutput, PrecompileResult},
+	Context, ExitError, ExitSucceed,
+};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use sp_runtime::RuntimeDebug;
-use sp_std::{borrow::Cow, marker::PhantomData, prelude::*, result};
+use sp_std::{borrow::Cow, marker::PhantomData, prelude::*};
 
 use module_support::EVMStateRentTrait;
 
@@ -58,11 +61,7 @@ where
 	Runtime: module_evm::Config + module_prices::Config,
 	module_evm::Pallet<Runtime>: EVMStateRentTrait<Runtime::AccountId, Balance>,
 {
-	fn execute(
-		input: &[u8],
-		_target_gas: Option<u64>,
-		_context: &Context,
-	) -> result::Result<PrecompileOutput, ExitError> {
+	fn execute(input: &[u8], _target_gas: Option<u64>, _context: &Context, _is_static: bool) -> PrecompileResult {
 		let input = Input::<Action, Runtime::AccountId, Runtime::AddressMapping, Runtime::Erc20InfoMapping>::new(input);
 
 		let action = input.action()?;
@@ -89,8 +88,11 @@ where
 			Action::QueryMaintainer => {
 				let contract = input.evm_address_at(1)?;
 
-				let maintainer = module_evm::Pallet::<Runtime>::query_maintainer(contract)
-					.map_err(|e| ExitError::Other(Cow::Borrowed(e.into())))?;
+				let maintainer = module_evm::Pallet::<Runtime>::query_maintainer(contract).map_err(|e| {
+					PrecompileFailure::Error {
+						exit_status: ExitError::Other(Cow::Borrowed(e.into())),
+					}
+				})?;
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
@@ -133,7 +135,9 @@ where
 					contract,
 					new_maintainer,
 				)
-				.map_err(|e| ExitError::Other(Cow::Borrowed(e.into())))?;
+				.map_err(|e| PrecompileFailure::Error {
+					exit_status: ExitError::Other(Cow::Borrowed(e.into())),
+				})?;
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,

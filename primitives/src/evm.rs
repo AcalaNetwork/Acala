@@ -23,7 +23,7 @@ use crate::{
 use codec::{Decode, Encode};
 use core::ops::Range;
 use module_evm_utiltity::{
-	ethereum::{Log, TransactionAction},
+	ethereum::{AccessListItem, Log, TransactionAction},
 	evm::ExitReason,
 };
 use scale_info::TypeInfo;
@@ -89,6 +89,7 @@ pub struct EthereumTransactionMessage {
 	pub value: Balance,
 	pub input: Vec<u8>,
 	pub valid_until: BlockNumber,
+	pub access_list: Vec<AccessListItem>,
 }
 
 /// Ethereum precompiles
@@ -133,10 +134,6 @@ pub const SYSTEM_CONTRACT_ADDRESS_PREFIX: [u8; 9] = [0u8; 9];
 /// It's system contract if the address starts with SYSTEM_CONTRACT_ADDRESS_PREFIX.
 pub fn is_system_contract(address: EvmAddress) -> bool {
 	address.as_bytes().starts_with(&SYSTEM_CONTRACT_ADDRESS_PREFIX)
-}
-
-pub fn is_acala_precompile(address: EvmAddress) -> bool {
-	address >= PRECOMPILE_ADDRESS_START && address < PREDEPLOY_ADDRESS_START
 }
 
 pub fn is_mirrored_tokens_address_prefix(address: EvmAddress) -> bool {

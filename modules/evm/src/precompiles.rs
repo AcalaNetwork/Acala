@@ -19,121 +19,17 @@
 //! Builtin precompiles.
 
 use crate::runner::state::{PrecompileFailure, PrecompileOutput, PrecompileResult};
-use frame_support::log;
-use impl_trait_for_tuples::impl_for_tuples;
 use module_evm_utiltity::evm::{Context, ExitError, ExitSucceed};
-use primitive_types::H160;
 use ripemd160::Digest;
-use sp_std::{cmp::min, marker::PhantomData, vec::Vec};
+use sp_std::{cmp::min, vec::Vec};
 use tiny_keccak::Hasher;
-
-/// Custom precompiles to be used by EVM engine.
-pub trait PrecompileSet {
-	#![allow(clippy::type_complexity)]
-	/// Try to execute the code address as precompile. If the code address is
-	/// not a precompile or the precompile is not yet available, return `None`.
-	/// Otherwise, calculate the amount of gas needed with given `input` and
-	/// `target_gas`. Return `Some(Ok(status, output, gas_used))` if the
-	/// execution is successful. Otherwise return `Some(Err(_))`.
-	fn execute(
-		address: H160,
-		input: &[u8],
-		target_gas: Option<u64>,
-		context: &Context,
-		is_static: bool,
-	) -> Option<PrecompileResult>;
-}
 
 /// One single precompile used by EVM engine.
 pub trait Precompile {
-	/// Try to execute the precompile. Calculate the amount of gas needed with
-	/// given `input` and `target_gas`. Return `Ok(status, output, gas_used)` if
-	/// the execution is successful. Otherwise return `Err(_)`.
+	/// Try to execute the precompile. Calculate the amount of gas needed with given `input` and
+	/// `target_gas`. Return `Ok(status, output, gas_used)` if the execution is
+	/// successful. Otherwise return `Err(_)`.
 	fn execute(input: &[u8], target_gas: Option<u64>, context: &Context, is_static: bool) -> PrecompileResult;
-}
-
-#[impl_for_tuples(16)]
-#[tuple_types_no_default_trait_bound]
-impl PrecompileSet for Tuple {
-	for_tuples!( where #( Tuple: Precompile )* );
-	#[allow(clippy::type_complexity)]
-	fn execute(
-		address: H160,
-		input: &[u8],
-		target_gas: Option<u64>,
-		context: &Context,
-		is_static: bool,
-	) -> Option<PrecompileResult> {
-		let mut index = 0;
-
-		for_tuples!( #(
-			index += 1;
-			if address == H160::from_low_u64_be(index) {
-				return Some(Tuple::execute(input, target_gas, context, is_static))
-			}
-		)* );
-
-		None
-	}
-}
-
-pub struct EvmPrecompiles<ECRecover, Sha256, Ripemd160, Identity, ECRecoverPublicKey, Sha3FIPS256, Sha3FIPS512>(
-	PhantomData<(
-		ECRecover,
-		Sha256,
-		Ripemd160,
-		Identity,
-		ECRecoverPublicKey,
-		Sha3FIPS256,
-		Sha3FIPS512,
-	)>,
-);
-
-impl<ECRecover, Sha256, Ripemd160, Identity, ECRecoverPublicKey, Sha3FIPS256, Sha3FIPS512> PrecompileSet
-	for EvmPrecompiles<ECRecover, Sha256, Ripemd160, Identity, ECRecoverPublicKey, Sha3FIPS256, Sha3FIPS512>
-where
-	ECRecover: Precompile,
-	Sha256: Precompile,
-	Ripemd160: Precompile,
-	Identity: Precompile,
-	ECRecoverPublicKey: Precompile,
-	Sha3FIPS256: Precompile,
-	Sha3FIPS512: Precompile,
-{
-	#[allow(clippy::type_complexity)]
-	fn execute(
-		address: H160,
-		input: &[u8],
-		target_gas: Option<u64>,
-		context: &Context,
-		is_static: bool,
-	) -> Option<PrecompileResult> {
-		// https://github.com/ethereum/go-ethereum/blob/9357280fce5c5d57111d690a336cca5f89e34da6/core/vm/contracts.go#L83
-		let result = if address == H160::from_low_u64_be(1) {
-			Some(ECRecover::execute(input, target_gas, context, is_static))
-		} else if address == H160::from_low_u64_be(2) {
-			Some(Sha256::execute(input, target_gas, context, is_static))
-		} else if address == H160::from_low_u64_be(3) {
-			Some(Ripemd160::execute(input, target_gas, context, is_static))
-		} else if address == H160::from_low_u64_be(4) {
-			Some(Identity::execute(input, target_gas, context, is_static))
-		}
-		// Non-standard precompile starts with 128
-		else if address == H160::from_low_u64_be(128) {
-			Some(ECRecoverPublicKey::execute(input, target_gas, context, is_static))
-		} else if address == H160::from_low_u64_be(129) {
-			Some(Sha3FIPS256::execute(input, target_gas, context, is_static))
-		} else if address == H160::from_low_u64_be(130) {
-			Some(Sha3FIPS512::execute(input, target_gas, context, is_static))
-		} else {
-			None
-		};
-
-		if result.is_some() {
-			log::debug!(target: "evm", "Precompile end, address: {:?}, input: {:?}, target_gas: {:?}, context: {:?}, result: {:?}", address, input, target_gas, context, result);
-		}
-		result
-	}
 }
 
 pub trait LinearCostPrecompile {
@@ -144,7 +40,7 @@ pub trait LinearCostPrecompile {
 }
 
 impl<T: LinearCostPrecompile> Precompile for T {
-	fn execute(input: &[u8], target_gas: Option<u64>, _context: &Context, _is_static: bool) -> PrecompileResult {
+	fn execute(input: &[u8], target_gas: Option<u64>, _: &Context, _: bool) -> PrecompileResult {
 		let cost = ensure_linear_cost(target_gas, input.len() as u64, T::BASE, T::WORD)?;
 
 		let (exit_status, output) = T::execute(input, cost)?;
