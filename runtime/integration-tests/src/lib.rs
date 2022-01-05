@@ -93,6 +93,13 @@ mod session_manager;
 	feature = "with-karura-runtime",
 	feature = "with-acala-runtime"
 ))]
+mod stable_asset;
+
+#[cfg(any(
+	feature = "with-mandala-runtime",
+	feature = "with-karura-runtime",
+	feature = "with-acala-runtime"
+))]
 mod treasury;
 
 #[cfg(any(
