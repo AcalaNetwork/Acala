@@ -982,12 +982,12 @@ impl<T: Config> Pallet<T> {
 		// Deref code, and remove it if ref count is zero.
 		Accounts::<T>::mutate_exists(&address, |maybe_account| {
 			if let Some(account) = maybe_account {
-				if let Some(contract_info) = account.contract_info.clone() {
-					CodeInfos::<T>::mutate_exists(&contract_info.code_hash, |maybe_code_info| {
-						if let Some(code_info) = maybe_code_info.as_mut() {
+				if let Some(ContractInfo { code_hash, .. }) = account.contract_info {
+					CodeInfos::<T>::mutate_exists(&code_hash, |maybe_code_info| {
+						if let Some(code_info) = maybe_code_info {
 							code_info.ref_count = code_info.ref_count.saturating_sub(1);
 							if code_info.ref_count == 0 {
-								Codes::<T>::remove(&contract_info.code_hash);
+								Codes::<T>::remove(&code_hash);
 								account.contract_info = None;
 								*maybe_code_info = None;
 							}
