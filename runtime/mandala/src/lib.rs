@@ -52,7 +52,7 @@ use module_currencies::{BasicCurrencyAdapter, Currency};
 use module_evm::{CallInfo, CreateInfo, EvmTask, Runner};
 use module_evm_accounts::EvmAddressMapping;
 use module_relaychain::RelayChainCallBuilder;
-use module_support::{AssetIdMapping, DispatchableTask};
+use module_support::{AssetIdMapping, DispatchableTask, ExchangeRateProvider};
 use module_transaction_pause::XcmMessageHandler;
 use module_transaction_payment::{Multiplier, TargetedFeeAdjustment, TransactionFeePoolTrader};
 use scale_info::TypeInfo;
@@ -1847,24 +1847,25 @@ impl orml_tokens::ConvertBalance<Balance, Balance> for ConvertBalanceHoma {
 	type AssetId = CurrencyId;
 
 	fn convert_balance(balance: Balance, asset_id: CurrencyId) -> Balance {
-		let current_block = System::block_number();
-		let exchange_rate =
-			ExchangeRate::checked_from_rational(current_block, 3_000_000u128).unwrap_or_else(DefaultExchangeRate::get);
 		match asset_id {
-			CurrencyId::Token(TokenSymbol::LKSM) => exchange_rate.checked_mul_int(balance).unwrap_or_default(),
+			CurrencyId::Token(TokenSymbol::LKSM) => {
+				Homa::get_exchange_rate().checked_mul_int(balance).unwrap_or_default()
+			}
 			_ => balance,
 		}
 	}
 
 	fn convert_balance_back(balance: Balance, asset_id: CurrencyId) -> Balance {
-		let current_block = System::block_number();
-		let exchange_rate =
-			ExchangeRate::checked_from_rational(current_block, 3_000_000u128).unwrap_or_else(DefaultExchangeRate::get);
+		/*
+		 * When overflow occurs, it's better to return 0 than max because returning zero will fail the
+		 * current transaction. If returning max here, the current transaction won't fail but latter
+		 * transactions have a possibility to fail, and this is undesirable.
+		 */
 		match asset_id {
-			CurrencyId::Token(TokenSymbol::LKSM) => exchange_rate
+			CurrencyId::Token(TokenSymbol::LKSM) => Homa::get_exchange_rate()
 				.reciprocal()
-				.unwrap_or_default()
-				.checked_mul_int(balance)
+				.and_then(|x| x.checked_mul_int(balance))
+				.and_then(|x| x.checked_add(1))
 				.unwrap_or_default(),
 			_ => balance,
 		}

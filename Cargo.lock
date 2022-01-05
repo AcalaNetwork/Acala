@@ -3888,7 +3888,6 @@ dependencies = [
  "module-evm-bridge",
  "module-evm-rpc-runtime-api",
  "module-homa",
- "module-homa-lite",
  "module-homa-xcm",
  "module-honzon",
  "module-idle-scheduler",
