@@ -82,7 +82,7 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 		const rawtx = ethers.utils.parseTransaction(signedTx)
 
 		expect(rawtx).to.deep.include({
-			nonce: nonce,
+			nonce: 0,
 			gasPrice: BigNumber.from(200000209209),
 			gasLimit: BigNumber.from(12116000),
 			// to: '0x0000000000000000000000000000000000000000',
@@ -138,7 +138,7 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 				  "era": {
 					"immortalEra": "0x00"
 				  },
-				  "nonce": ${nonce},
+				  "nonce": 0,
 				  "tip": 0
 				},
 				"method": {
@@ -215,7 +215,7 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 		const rawtx = ethers.utils.parseTransaction(signedTx)
 
 		expect(rawtx).to.deep.include({
-			nonce: nonce,
+			nonce: 1,
 			gasPrice: BigNumber.from(200000208912),
 			gasLimit: BigNumber.from(722000),
 			to: ethers.utils.getAddress(contract),
@@ -271,7 +271,7 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 				  "era": {
 					"immortalEra": "0x00"
 				  },
-				  "nonce": ${nonce},
+				  "nonce": 1,
 				  "tip": 0
 				},
 				"method": {

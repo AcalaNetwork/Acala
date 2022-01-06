@@ -25,13 +25,13 @@ use crate::{
 		state::{StackExecutor, StackSubstateMetadata},
 		Runner as RunnerT, StackState as StackStateT,
 	},
-	AccountStorages, BalanceOf, CallInfo, Config, CreateInfo, Error, Event, ExecutionInfo, Pallet, STORAGE_SIZE,
+	AccountInfo, AccountStorages, Accounts, BalanceOf, CallInfo, Config, CreateInfo, Error, Event, ExecutionInfo, One,
+	Pallet, STORAGE_SIZE,
 };
 use frame_support::{
 	dispatch::DispatchError,
 	ensure, log,
 	traits::{Currency, ExistenceRequirement, Get},
-	transactional,
 };
 use module_evm_utiltity::{
 	ethereum::Log,
@@ -55,7 +55,6 @@ pub struct Runner<T: Config> {
 
 impl<T: Config> Runner<T> {
 	/// Execute an EVM operation.
-	#[transactional]
 	pub fn execute<'config, F, R>(
 		source: H160,
 		origin: H160,
@@ -229,8 +228,6 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 			Error::<T>::NoPermission
 		);
 
-		Pallet::<T>::inc_nonce(origin);
-
 		let value = U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(value));
 		let info = Self::execute(source, origin, value, gas_limit, storage_limit, config, |executor| {
 			// TODO: EIP-2930
@@ -276,8 +273,6 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 			)
 		})?;
 
-		Pallet::<T>::inc_nonce(source);
-
 		if info.exit_reason.is_succeed() {
 			Pallet::<T>::deposit_event(Event::<T>::Created {
 				from: source,
@@ -322,8 +317,6 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 			)
 		})?;
 
-		Pallet::<T>::inc_nonce(source);
-
 		if info.exit_reason.is_succeed() {
 			Pallet::<T>::deposit_event(Event::<T>::Created {
 				from: source,
@@ -359,8 +352,6 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 				address,
 			)
 		})?;
-
-		Pallet::<T>::inc_nonce(source);
 
 		if info.exit_reason.is_succeed() {
 			Pallet::<T>::deposit_event(Event::<T>::Created {
@@ -616,7 +607,15 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 	}
 
 	fn inc_nonce(&mut self, address: H160) {
-		Pallet::<T>::inc_nonce(address);
+		Accounts::<T>::mutate(&address, |maybe_account| {
+			if let Some(account) = maybe_account.as_mut() {
+				account.nonce += One::one()
+			} else {
+				let mut account_info = <AccountInfo<T::Index>>::new(Default::default(), None);
+				account_info.nonce += One::one();
+				*maybe_account = Some(account_info);
+			}
+		});
 	}
 
 	fn set_storage(&mut self, address: H160, index: H256, value: H256) {

@@ -20,12 +20,13 @@ use codec::{Decode, Encode};
 use frame_support::weights::DispatchInfo;
 use module_support::AddressMapping;
 use scale_info::TypeInfo;
+use sp_core::H160;
 use sp_runtime::{
-	traits::{DispatchInfoOf, Dispatchable, One, SignedExtension, Zero},
+	traits::{DispatchInfoOf, Dispatchable, One, PostDispatchInfoOf, SignedExtension, Zero},
 	transaction_validity::{
 		InvalidTransaction, TransactionLongevity, TransactionValidity, TransactionValidityError, ValidTransaction,
 	},
-	SaturatedConversion,
+	DispatchResult, SaturatedConversion,
 };
 use sp_std::vec;
 
@@ -45,6 +46,16 @@ pub struct CheckNonce<T: frame_system::Config + module_evm::Config> {
 	pub is_eth_tx: bool,
 	#[codec(skip)]
 	pub eth_tx_valid_until: T::BlockNumber,
+}
+
+impl<T: frame_system::Config + module_evm::Config> Default for CheckNonce<T> {
+	fn default() -> Self {
+		Self {
+			nonce: 0u32.into(),
+			is_eth_tx: false,
+			eth_tx_valid_until: 0u32.into(),
+		}
+	}
 }
 
 impl<T: frame_system::Config + module_evm::Config> CheckNonce<T> {
@@ -87,7 +98,7 @@ where
 	type AccountId = T::AccountId;
 	type Call = T::Call;
 	type AdditionalSigned = ();
-	type Pre = ();
+	type Pre = (Option<H160>, Self);
 	const IDENTIFIER: &'static str = "CheckNonce";
 
 	fn additional_signed(&self) -> sp_std::result::Result<(), TransactionValidityError> {
@@ -102,7 +113,7 @@ where
 		_len: usize,
 	) -> Result<Self::Pre, TransactionValidityError> {
 		let mut account = frame_system::Account::<T>::get(who);
-		if self.is_eth_tx {
+		let addr = if self.is_eth_tx {
 			// should check evm nonce
 			let address = <T as module_evm::Config>::AddressMapping::get_evm_address(who)
 				.unwrap_or_else(|| <T as module_evm::Config>::AddressMapping::get_default_evm_address(who));
@@ -117,17 +128,21 @@ where
 				}
 				.into());
 			}
-		} else if self.nonce != account.nonce {
-			return Err(if self.nonce < account.nonce {
-				InvalidTransaction::Stale
-			} else {
-				InvalidTransaction::Future
+			Some(address)
+		} else {
+			if self.nonce != account.nonce {
+				return Err(if self.nonce < account.nonce {
+					InvalidTransaction::Stale
+				} else {
+					InvalidTransaction::Future
+				}
+				.into());
 			}
-			.into());
-		}
+			None
+		};
 		account.nonce += T::Index::one();
 		frame_system::Account::<T>::insert(who, account);
-		Ok(())
+		Ok((addr, self))
 	}
 
 	fn validate(
@@ -187,13 +202,37 @@ where
 			})
 		}
 	}
+
+	fn post_dispatch(
+		pre: Self::Pre,
+		_info: &DispatchInfoOf<Self::Call>,
+		_post_info: &PostDispatchInfoOf<Self::Call>,
+		_len: usize,
+		result: &DispatchResult,
+	) -> Result<(), TransactionValidityError> {
+		if pre.1.is_eth_tx && result.is_err() && pre.0.is_some() {
+			// ensure nonce is increased.
+			module_evm::Accounts::<T>::mutate(&pre.0.expect("checked is non-empty; qed"), |maybe_account| {
+				if let Some(account) = maybe_account.as_mut() {
+					if account.nonce == pre.1.nonce {
+						account.nonce += One::one()
+					}
+				} else {
+					let mut account_info = module_evm::AccountInfo::<T::Index>::new(Default::default(), None);
+					account_info.nonce += One::one();
+					*maybe_account = Some(account_info);
+				}
+			});
+		}
+		Ok(())
+	}
 }
 
 #[cfg(test)]
 mod tests {
 	use super::*;
 	use crate::mock::{new_test_ext, AccountId32, Call, TestRuntime};
-	use frame_support::{assert_noop, assert_ok};
+	use frame_support::{assert_noop, assert_ok, weights::PostDispatchInfo};
 
 	/// A simple call, which one doesn't matter.
 	pub const CALL: &<TestRuntime as frame_system::Config>::Call =
@@ -329,6 +368,30 @@ mod tests {
 				}
 				.pre_dispatch(&alice, CALL, &info, 0),
 				InvalidTransaction::Future
+			);
+
+			// post_dispatch
+			let len = 10;
+			let post_info = PostDispatchInfo::default();
+			let res = Err(sp_runtime::DispatchError::Other(""));
+			let pre = CheckNonce::<TestRuntime> {
+				nonce: 1u32,
+				is_eth_tx: true,
+				eth_tx_valid_until: 10,
+			}
+			.pre_dispatch(&alice, CALL, &info, 0)
+			.unwrap();
+
+			assert_eq!(
+				module_evm::Accounts::<TestRuntime>::get(&address).map(|v| v.nonce),
+				Some(1)
+			);
+			assert_ok!(CheckNonce::<TestRuntime>::post_dispatch(
+				pre, &info, &post_info, len, &res
+			));
+			assert_eq!(
+				module_evm::Accounts::<TestRuntime>::get(&address).map(|v| v.nonce),
+				Some(2)
 			);
 		})
 	}

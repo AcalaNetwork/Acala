@@ -71,7 +71,7 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 		const value = {
 			action: "Create",
 			to: "0x0000000000000000000000000000000000000000",
-			nonce: nonce,
+			nonce: 0,
 			tip: 2,
 			data: deploy.data,
 			value: '0',
@@ -128,7 +128,7 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 						"value": 0,
 						"gas_limit": 2100000,
 						"storage_limit": 20000,
-						"valid_until": ${value.validUntil}
+						"valid_until": 105
 					}
 				}
 			  }`.toString().replace(/\s/g, '')
@@ -232,7 +232,7 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 					"era": {
 						"immortalEra": "0x00"
 					},
-					"nonce": ${value.nonce},
+					"nonce": 1,
 					"tip": 2
 				},
 				"method": {
@@ -245,7 +245,7 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 						"value": 0,
 						"gas_limit": 210000,
 						"storage_limit": 1000,
-						"valid_until": ${value.validUntil}
+						"valid_until": 106
 					}
 				}
 			  }`.toString().replace(/\s/g, '')

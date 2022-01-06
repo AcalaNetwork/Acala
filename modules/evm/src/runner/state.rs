@@ -274,25 +274,14 @@ impl<'config, S: StackState<'config>> StackExecutor<'config, S> {
 			Err(e) => return e.into(),
 		}
 
-		let scheme = CreateScheme::Legacy { caller };
-
-		let address = match self.create_address(scheme) {
-			Err(e) => return ExitReason::Error(e),
-			Ok(address) => address,
-		};
-
-		let target_gas = Some(gas_limit);
-
-		event!(Create {
+		match self.create_inner(
 			caller,
-			address,
-			scheme,
+			CreateScheme::Legacy { caller },
 			value,
-			init_code: &init_code,
-			target_gas
-		});
-
-		match self.create_inner_at(address, caller, value, init_code, target_gas, false) {
+			init_code,
+			Some(gas_limit),
+			false,
+		) {
 			Capture::Exit((s, _, _)) => s,
 			Capture::Trap(_) => unreachable!(),
 		}
@@ -320,29 +309,18 @@ impl<'config, S: StackState<'config>> StackExecutor<'config, S> {
 		}
 		let code_hash = H256::from_slice(Keccak256::digest(&init_code).as_slice());
 
-		let scheme = CreateScheme::Create2 {
+		match self.create_inner(
 			caller,
-			code_hash,
-			salt,
-		};
-
-		let address = match self.create_address(scheme) {
-			Err(e) => return ExitReason::Error(e),
-			Ok(address) => address,
-		};
-
-		let target_gas = Some(gas_limit);
-
-		event!(Create {
-			caller,
-			address,
-			scheme,
+			CreateScheme::Create2 {
+				caller,
+				code_hash,
+				salt,
+			},
 			value,
-			init_code: &init_code,
-			target_gas
-		});
-
-		match self.create_inner_at(address, caller, value, init_code, target_gas, false) {
+			init_code,
+			Some(gas_limit),
+			false,
+		) {
 			Capture::Exit((s, _, _)) => s,
 			Capture::Trap(_) => unreachable!(),
 		}
@@ -369,25 +347,14 @@ impl<'config, S: StackState<'config>> StackExecutor<'config, S> {
 			Err(e) => return e.into(),
 		}
 
-		let scheme = CreateScheme::Fixed(address);
-
-		let address = match self.create_address(scheme) {
-			Err(e) => return ExitReason::Error(e),
-			Ok(address) => address,
-		};
-
-		let target_gas = Some(gas_limit);
-
-		event!(Create {
+		match self.create_inner(
 			caller,
-			address,
-			scheme,
+			CreateScheme::Fixed(address),
 			value,
-			init_code: &init_code,
-			target_gas
-		});
-
-		match self.create_inner_at(address, caller, value, init_code, target_gas, false) {
+			init_code,
+			Some(gas_limit),
+			false,
+		) {
 			Capture::Exit((s, _, _)) => s,
 			Capture::Trap(_) => unreachable!(),
 		}
@@ -413,6 +380,8 @@ impl<'config, S: StackState<'config>> StackExecutor<'config, S> {
 			Ok(()) => (),
 			Err(e) => return (e.into(), Vec::new()),
 		}
+
+		self.state.inc_nonce(caller);
 
 		let context = Context {
 			caller,
@@ -536,10 +505,10 @@ impl<'config, S: StackState<'config>> StackExecutor<'config, S> {
 		}
 	}
 
-	fn create_inner_at(
+	fn create_inner(
 		&mut self,
-		address: H160,
 		caller: H160,
+		scheme: CreateScheme,
 		value: U256,
 		init_code: Vec<u8>,
 		target_gas: Option<u64>,
@@ -558,8 +527,24 @@ impl<'config, S: StackState<'config>> StackExecutor<'config, S> {
 			gas - gas / 64
 		}
 
+		let address = match self.create_address(scheme) {
+			Err(e) => {
+				return Capture::Exit((ExitReason::Error(e), None, Vec::new()));
+			}
+			Ok(address) => address,
+		};
+
 		*self.state.metadata_mut().caller_mut() = Some(caller);
 		*self.state.metadata_mut().target_mut() = Some(address);
+
+		event!(Create {
+			caller,
+			address,
+			scheme,
+			value,
+			init_code: &init_code,
+			target_gas
+		});
 
 		if let Some(depth) = self.state.metadata().depth() {
 			if depth > self.config.call_stack_limit {
@@ -588,6 +573,8 @@ impl<'config, S: StackState<'config>> StackExecutor<'config, S> {
 
 		let gas_limit = min(after_gas, target_gas);
 		try_or_fail!(self.state.metadata_mut().gasometer_mut().record_cost(gas_limit));
+
+		self.state.inc_nonce(caller);
 
 		self.enter_substate(gas_limit, false);
 
@@ -946,23 +933,7 @@ impl<'config, S: StackState<'config>> Handler for StackExecutor<'config, S> {
 		init_code: Vec<u8>,
 		target_gas: Option<u64>,
 	) -> Capture<(ExitReason, Option<H160>, Vec<u8>), Self::CreateInterrupt> {
-		let address = match self.create_address(scheme) {
-			Err(e) => return Capture::Exit((ExitReason::Error(e), None, Vec::new())),
-			Ok(address) => address,
-		};
-
-		self.state.inc_nonce(caller);
-
-		event!(Create {
-			caller,
-			address,
-			scheme,
-			value,
-			init_code: &init_code,
-			target_gas
-		});
-
-		self.create_inner_at(address, caller, value, init_code, target_gas, true)
+		self.create_inner(caller, scheme, value, init_code, target_gas, true)
 	}
 
 	fn call(
