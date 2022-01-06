@@ -242,8 +242,8 @@ impl<T: Config> Pallet<T> {
 	}
 
 	fn verify_eip712_signature(eth_address: EvmAddress, sig: &[u8; 65]) -> Option<H160> {
-		let domain_hash = keccak256!("EIP712Domain(string name,string version,uint256 ss58Id,bytes32 salt)");
-		let tx_type_hash = keccak256!("Transaction(address claim)");
+		let domain_hash = keccak256!("EIP712Domain(string name,string version,uint256 ChainId,bytes32 salt)");
+		let tx_type_hash = keccak256!("Transaction(string address)");
 
 		let mut domain_seperator_msg = domain_hash.to_vec();
 		domain_seperator_msg.extend_from_slice(keccak256!("Acala EVM claim")); // name
