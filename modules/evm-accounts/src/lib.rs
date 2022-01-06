@@ -254,7 +254,7 @@ impl<T: Config> Pallet<T> {
 		let domain_separator = keccak_256(domain_seperator_msg.as_slice());
 
 		let mut tx_msg = tx_type_hash.to_vec();
-		tx_msg.extend_from_slice(&who.encode());
+		tx_msg.extend(who.using_encoded(to_ascii_hex));
 
 		let mut msg = b"\x19\x01".to_vec();
 		msg.extend_from_slice(&domain_separator);
