@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{evm::EthereumTransactionMessage, signature::AcalaMultiSignature, Address, Balance};
+use crate::{evm::EthereumTransactionMessage, signature::AcalaMultiSignature, to_bytes, Address, Balance};
 use codec::{Decode, Encode};
 use frame_support::{
 	log,
@@ -26,7 +26,7 @@ use frame_support::{
 use module_evm_utiltity::ethereum::{EIP1559TransactionMessage, LegacyTransactionMessage, TransactionAction};
 use module_evm_utiltity_macro::keccak256;
 use scale_info::TypeInfo;
-use sp_core::{H160, H256, U256};
+use sp_core::{H160, H256};
 use sp_io::{crypto::secp256k1_ecdsa_recover, hashing::keccak_256};
 use sp_runtime::{
 	generic::{CheckedExtrinsic, UncheckedExtrinsic},
@@ -91,10 +91,6 @@ impl<Call, Extra: SignedExtension, ConvertTx, StorageDepositPerByte, TxFeePerGas
 	fn call(&self) -> &Self::Call {
 		self.0.call()
 	}
-}
-
-fn to_bytes<T: Into<U256>>(value: T) -> [u8; 32] {
-	Into::<[u8; 32]>::into(value.into())
 }
 
 impl<Call, Extra, ConvertTx, StorageDepositPerByte, TxFeePerGas, Lookup> Checkable<Lookup>
@@ -344,6 +340,7 @@ mod tests {
 	use super::*;
 	use hex_literal::hex;
 	use module_evm_utiltity::ethereum::AccessListItem;
+	use sp_core::U256;
 	use std::{ops::Add, str::FromStr};
 
 	#[test]

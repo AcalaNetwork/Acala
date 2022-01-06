@@ -120,6 +120,7 @@ pub type AdaptedBasicCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, B
 impl Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
+	type ChainId = ();
 	type AddressMapping = EvmAddressMapping<Runtime>;
 	type TransferAll = Currencies;
 	type WeightInfo = ();
