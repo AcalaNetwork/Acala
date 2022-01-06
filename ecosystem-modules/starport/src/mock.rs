@@ -215,10 +215,12 @@ impl ExtBuilder {
 		.assimilate_storage(&mut t)
 		.unwrap();
 
-		ecosystem_starport::GenesisConfig {
-			initial_authorities: get_mock_signatures(),
-		}
-		.assimilate_storage::<Runtime>(&mut t)
+		GenesisBuild::<Runtime>::assimilate_storage(
+			&ecosystem_starport::GenesisConfig {
+				initial_authorities: get_mock_signatures(),
+			},
+			&mut t,
+		)
 		.unwrap();
 
 		let mut ext = sp_io::TestExternalities::new(t);

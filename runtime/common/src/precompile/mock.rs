@@ -43,7 +43,7 @@ pub use primitives::{
 use scale_info::TypeInfo;
 use sp_core::{crypto::AccountId32, H160, H256};
 use sp_runtime::{
-	traits::{BlakeTwo256, Convert, IdentityLookup, One as OneT},
+	traits::{AccountIdConversion, BlakeTwo256, Convert, IdentityLookup, One as OneT},
 	DispatchResult, FixedPointNumber, FixedU128, Perbill,
 };
 use sp_std::{collections::btree_map::BTreeMap, str::FromStr};
@@ -248,14 +248,19 @@ parameter_types! {
 	pub OperationalFeeMultiplier: u64 = 5;
 	pub TipPerWeightStep: Balance = 1;
 	pub MaxTipsOfPriority: Balance = 1000;
+	pub const TreasuryPalletId: PalletId = PalletId(*b"aca/trsy");
+	pub const TransactionPaymentPalletId: PalletId = PalletId(*b"aca/fees");
+	pub KaruraTreasuryAccount: AccountId = TreasuryPalletId::get().into_account();
 }
 
 impl module_transaction_payment::Config for Test {
+	type Event = Event;
 	type NativeCurrencyId = GetNativeCurrencyId;
 	type DefaultFeeSwapPathList = DefaultFeeSwapPathList;
 	type Currency = Balances;
 	type MultiCurrency = Currencies;
 	type OnTransactionPayment = ();
+	type AlternativeFeeSwapDeposit = ExistentialDeposit;
 	type TransactionByteFee = TransactionByteFee;
 	type OperationalFeeMultiplier = OperationalFeeMultiplier;
 	type TipPerWeightStep = TipPerWeightStep;
@@ -267,6 +272,9 @@ impl module_transaction_payment::Config for Test {
 	type TradingPathLimit = TradingPathLimit;
 	type PriceSource = module_prices::RealTimePriceProvider<Test>;
 	type WeightInfo = ();
+	type PalletId = TransactionPaymentPalletId;
+	type TreasuryAccount = KaruraTreasuryAccount;
+	type UpdateOrigin = EnsureSignedBy<ListingOrigin, AccountId>;
 }
 pub type ChargeTransactionPayment = module_transaction_payment::ChargeTransactionPayment<Test>;
 
@@ -520,7 +528,7 @@ frame_support::construct_runtime!(
 		EVMBridge: module_evm_bridge::{Pallet},
 		AssetRegistry: module_asset_registry::{Pallet, Call, Storage, Event<T>},
 		NFTModule: module_nft::{Pallet, Call, Event<T>},
-		TransactionPayment: module_transaction_payment::{Pallet, Call, Storage},
+		TransactionPayment: module_transaction_payment::{Pallet, Call, Storage, Event<T>},
 		Prices: module_prices::{Pallet, Storage, Call, Event<T>},
 		Proxy: pallet_proxy::{Pallet, Call, Storage, Event<T>},
 		Utility: pallet_utility::{Pallet, Call, Event},

@@ -14,7 +14,7 @@ dependencies = [
 
 [[package]]
 name = "acala"
-version = "2.1.1"
+version = "2.1.3"
 dependencies = [
  "acala-cli",
  "acala-service",
@@ -24,7 +24,7 @@ dependencies = [
 
 [[package]]
 name = "acala-cli"
-version = "2.1.1"
+version = "2.1.3"
 dependencies = [
  "acala-inspect",
  "acala-service",
@@ -51,7 +51,7 @@ dependencies = [
 
 [[package]]
 name = "acala-inspect"
-version = "2.1.1"
+version = "2.1.3"
 dependencies = [
  "derive_more",
  "log",
@@ -67,7 +67,7 @@ dependencies = [
 
 [[package]]
 name = "acala-primitives"
-version = "2.1.1"
+version = "2.1.3"
 dependencies = [
  "bstringify",
  "frame-support",
@@ -90,7 +90,7 @@ dependencies = [
 
 [[package]]
 name = "acala-rpc"
-version = "2.1.1"
+version = "2.1.3"
 dependencies = [
  "acala-primitives",
  "evm-rpc",
@@ -112,7 +112,7 @@ dependencies = [
 
 [[package]]
 name = "acala-runtime"
-version = "2.1.1"
+version = "2.1.3"
 dependencies = [
  "acala-primitives",
  "cumulus-pallet-aura-ext",
@@ -219,7 +219,7 @@ dependencies = [
 
 [[package]]
 name = "acala-service"
-version = "2.1.1"
+version = "2.1.3"
 dependencies = [
  "acala-primitives",
  "acala-rpc",
@@ -246,7 +246,6 @@ dependencies = [
  "module-evm",
  "module-evm-rpc-runtime-api",
  "module-nft",
- "module-staking-pool",
  "node-executor",
  "orml-oracle-rpc",
  "pallet-transaction-payment-rpc-runtime-api",
@@ -2199,7 +2198,7 @@ checksum = "ee2626afccd7561a06cf1367e2950c4718ea04565e20fb5029b6c7d8ad09abcf"
 
 [[package]]
 name = "e2e-tests"
-version = "2.1.1"
+version = "2.1.3"
 dependencies = [
  "acala-cli",
  "acala-primitives",
@@ -2245,7 +2244,7 @@ dependencies = [
 
 [[package]]
 name = "ecosystem-compound-cash"
-version = "2.1.1"
+version = "2.1.3"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -2262,7 +2261,7 @@ dependencies = [
 
 [[package]]
 name = "ecosystem-renvm-bridge"
-version = "2.1.1"
+version = "2.1.3"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -2284,7 +2283,7 @@ dependencies = [
 
 [[package]]
 name = "ecosystem-starport"
-version = "2.1.1"
+version = "2.1.3"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -2542,7 +2541,7 @@ dependencies = [
 
 [[package]]
 name = "evm-rpc"
-version = "2.1.1"
+version = "2.1.3"
 dependencies = [
  "ethereum-types",
  "frame-support",
@@ -3858,7 +3857,7 @@ dependencies = [
 
 [[package]]
 name = "karura-runtime"
-version = "2.1.1"
+version = "2.1.3"
 dependencies = [
  "acala-primitives",
  "cumulus-pallet-aura-ext",
@@ -3889,7 +3888,8 @@ dependencies = [
  "module-evm-accounts",
  "module-evm-bridge",
  "module-evm-rpc-runtime-api",
- "module-homa-lite",
+ "module-homa",
+ "module-homa-xcm",
  "module-honzon",
  "module-idle-scheduler",
  "module-incentives",
@@ -4865,7 +4865,7 @@ dependencies = [
 
 [[package]]
 name = "mandala-runtime"
-version = "2.1.1"
+version = "2.1.3"
 dependencies = [
  "acala-primitives",
  "acala-service",
@@ -4905,20 +4905,16 @@ dependencies = [
  "module-evm-rpc-runtime-api",
  "module-evm-utiltity",
  "module-homa",
- "module-homa-lite",
- "module-homa-validator-list",
+ "module-homa-xcm",
  "module-honzon",
  "module-idle-scheduler",
  "module-incentives",
  "module-loans",
  "module-nft",
  "module-nominees-election",
- "module-polkadot-bridge",
  "module-prices",
  "module-relaychain",
  "module-session-manager",
- "module-staking-pool",
- "module-staking-pool-rpc-runtime-api",
  "module-support",
  "module-transaction-pause",
  "module-transaction-payment",
@@ -5202,7 +5198,7 @@ dependencies = [
 
 [[package]]
 name = "module-asset-registry"
-version = "2.1.1"
+version = "2.1.3"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -5228,7 +5224,7 @@ dependencies = [
 
 [[package]]
 name = "module-auction-manager"
-version = "2.1.1"
+version = "2.1.3"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -5252,7 +5248,7 @@ dependencies = [
 
 [[package]]
 name = "module-cdp-engine"
-version = "2.1.1"
+version = "2.1.3"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -5280,7 +5276,7 @@ dependencies = [
 
 [[package]]
 name = "module-cdp-treasury"
-version = "2.1.1"
+version = "2.1.3"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -5303,7 +5299,7 @@ dependencies = [
 
 [[package]]
 name = "module-collator-selection"
-version = "2.1.1"
+version = "2.1.3"
 dependencies = [
  "acala-primitives",
  "frame-benchmarking",
@@ -5329,7 +5325,7 @@ dependencies = [
 
 [[package]]
 name = "module-currencies"
-version = "2.1.1"
+version = "2.1.3"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -5353,7 +5349,7 @@ dependencies = [
 
 [[package]]
 name = "module-dex"
-version = "2.1.1"
+version = "2.1.3"
 dependencies = [
  "acala-primitives",
  "frame-benchmarking",
@@ -5374,7 +5370,7 @@ dependencies = [
 
 [[package]]
 name = "module-emergency-shutdown"
-version = "2.1.1"
+version = "2.1.3"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -5397,7 +5393,7 @@ dependencies = [
 
 [[package]]
 name = "module-evm"
-version = "2.1.1"
+version = "2.1.3"
 dependencies = [
  "acala-primitives",
  "env_logger 0.9.0",
@@ -5429,7 +5425,7 @@ dependencies = [
 
 [[package]]
 name = "module-evm-accounts"
-version = "2.1.1"
+version = "2.1.3"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -5451,7 +5447,7 @@ dependencies = [
 
 [[package]]
 name = "module-evm-bridge"
-version = "2.1.1"
+version = "2.1.3"
 dependencies = [
  "acala-primitives",
  "ethereum-types",
@@ -5476,7 +5472,7 @@ dependencies = [
 
 [[package]]
 name = "module-evm-rpc-runtime-api"
-version = "2.1.1"
+version = "2.1.3"
 dependencies = [
  "acala-primitives",
  "ethereum-types",
@@ -5488,7 +5484,7 @@ dependencies = [
 
 [[package]]
 name = "module-evm-utiltity"
-version = "2.1.1"
+version = "2.1.3"
 dependencies = [
  "ethereum",
  "evm",
@@ -5500,7 +5496,7 @@ dependencies = [
 
 [[package]]
 name = "module-evm-utiltity-macro"
-version = "2.1.1"
+version = "2.1.3"
 dependencies = [
  "module-evm-utiltity",
  "proc-macro2",
@@ -5510,7 +5506,7 @@ dependencies = [
 
 [[package]]
 name = "module-example"
-version = "2.1.1"
+version = "2.1.3"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -5524,22 +5520,29 @@ dependencies = [
 
 [[package]]
 name = "module-homa"
-version = "2.1.1"
+version = "2.1.3"
 dependencies = [
  "acala-primitives",
+ "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "module-currencies",
  "module-support",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
  "parity-scale-codec",
  "scale-info",
- "serde",
+ "sp-arithmetic",
+ "sp-core",
+ "sp-io",
  "sp-runtime",
  "sp-std",
 ]
 
 [[package]]
 name = "module-homa-lite"
-version = "2.1.1"
+version = "2.1.3"
 dependencies = [
  "acala-primitives",
  "cumulus-primitives-core",
@@ -5566,7 +5569,7 @@ dependencies = [
 
 [[package]]
 name = "module-homa-validator-list"
-version = "2.1.1"
+version = "2.1.3"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -5587,8 +5590,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "module-homa-xcm"
+version = "2.0.3"
+dependencies = [
+ "acala-primitives",
+ "cumulus-primitives-core",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "module-currencies",
+ "module-relaychain",
+ "module-support",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "pallet-xcm",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "xcm",
+ "xcm-executor",
+]
+
+[[package]]
 name = "module-honzon"
-version = "2.1.1"
+version = "2.1.3"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -5613,7 +5642,7 @@ dependencies = [
 
 [[package]]
 name = "module-idle-scheduler"
-version = "2.1.1"
+version = "2.1.3"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -5630,7 +5659,7 @@ dependencies = [
 
 [[package]]
 name = "module-incentives"
-version = "2.1.1"
+version = "2.1.3"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -5651,7 +5680,7 @@ dependencies = [
 
 [[package]]
 name = "module-loans"
-version = "2.1.1"
+version = "2.1.3"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -5673,7 +5702,7 @@ dependencies = [
 
 [[package]]
 name = "module-nft"
-version = "2.1.1"
+version = "2.1.3"
 dependencies = [
  "acala-primitives",
  "enumflags2",
@@ -5699,7 +5728,7 @@ dependencies = [
 
 [[package]]
 name = "module-nominees-election"
-version = "2.1.1"
+version = "2.1.3"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -5719,26 +5748,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "module-polkadot-bridge"
-version = "2.1.1"
-dependencies = [
- "acala-primitives",
- "frame-support",
- "frame-system",
- "module-support",
- "orml-traits",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
 name = "module-prices"
-version = "2.1.1"
+version = "2.1.3"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -5757,7 +5768,7 @@ dependencies = [
 
 [[package]]
 name = "module-relaychain"
-version = "2.1.1"
+version = "2.1.3"
 dependencies = [
  "acala-primitives",
  "cumulus-primitives-core",
@@ -5775,7 +5786,7 @@ dependencies = [
 
 [[package]]
 name = "module-session-manager"
-version = "2.1.1"
+version = "2.1.3"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -5791,41 +5802,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "module-staking-pool"
-version = "2.1.1"
-dependencies = [
- "acala-primitives",
- "frame-support",
- "frame-system",
- "module-support",
- "orml-currencies",
- "orml-tokens",
- "orml-traits",
- "pallet-balances",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "module-staking-pool-rpc-runtime-api"
-version = "2.1.1"
-dependencies = [
- "module-support",
- "parity-scale-codec",
- "serde",
- "sp-api",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
 name = "module-support"
-version = "2.1.1"
+version = "2.1.3"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -5840,7 +5818,7 @@ dependencies = [
 
 [[package]]
 name = "module-transaction-pause"
-version = "2.1.1"
+version = "2.1.3"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -5859,7 +5837,7 @@ dependencies = [
 
 [[package]]
 name = "module-transaction-payment"
-version = "2.1.1"
+version = "2.1.3"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -5880,6 +5858,9 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
+ "xcm",
+ "xcm-builder",
+ "xcm-executor",
 ]
 
 [[package]]
@@ -9801,7 +9782,7 @@ dependencies = [
 
 [[package]]
 name = "runtime-common"
-version = "2.1.1"
+version = "2.1.3"
 dependencies = [
  "acala-primitives",
  "acala-service",
@@ -9820,7 +9801,6 @@ dependencies = [
  "module-idle-scheduler",
  "module-nft",
  "module-prices",
- "module-staking-pool",
  "module-support",
  "module-transaction-payment",
  "num_enum",
@@ -9852,7 +9832,7 @@ dependencies = [
 
 [[package]]
 name = "runtime-integration-tests"
-version = "2.1.1"
+version = "2.1.3"
 dependencies = [
  "acala-primitives",
  "acala-runtime",
@@ -9891,7 +9871,9 @@ dependencies = [
  "module-evm-accounts",
  "module-evm-bridge",
  "module-evm-rpc-runtime-api",
+ "module-homa",
  "module-homa-lite",
+ "module-homa-xcm",
  "module-honzon",
  "module-incentives",
  "module-loans",
@@ -12559,7 +12541,7 @@ dependencies = [
 
 [[package]]
 name = "test-runner"
-version = "2.1.1"
+version = "2.1.3"
 dependencies = [
  "acala-cli",
  "acala-primitives",
