@@ -155,7 +155,7 @@ pub mod module {
 			);
 
 			// recover evm address from signature
-			let address = Self::verify_eip712_signature(eth_address, &eth_signature).ok_or(Error::<T>::BadSignature)?;
+			let address = Self::verify_eip712_signature(&who, &eth_signature).ok_or(Error::<T>::BadSignature)?;
 			ensure!(eth_address == address, Error::<T>::InvalidSignature);
 
 			// check if the evm padded address already exists
@@ -241,7 +241,7 @@ impl<T: Config> Pallet<T> {
 		r
 	}
 
-	fn verify_eip712_signature(eth_address: EvmAddress, sig: &[u8; 65]) -> Option<H160> {
+	fn verify_eip712_signature(who: &T::AccountId, sig: &[u8; 65]) -> Option<H160> {
 		let domain_hash = keccak256!("EIP712Domain(string name,string version,uint256 ChainId,bytes32 salt)");
 		let tx_type_hash = keccak256!("Transaction(string address)");
 
@@ -254,7 +254,7 @@ impl<T: Config> Pallet<T> {
 		let domain_separator = keccak_256(domain_seperator_msg.as_slice());
 
 		let mut tx_msg = tx_type_hash.to_vec();
-		tx_msg.extend_from_slice(H256::from(eth_address).as_bytes());
+		tx_msg.extend_from_slice(&who.encode());
 
 		let mut msg = b"\x19\x01".to_vec();
 		msg.extend_from_slice(&domain_separator);
