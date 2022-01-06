@@ -72,7 +72,7 @@ describeWithAcala("Acala RPC (Sign eip1559)", (context) => {
 		const value = {
 			type: 2, // EIP-1559
 			// to: "0x0000000000000000000000000000000000000000",
-			nonce,
+			nonce: nonce,
 			gasLimit: tx_gas_limit.toNumber(),
 			data: deploy.data,
 			value: 0,
@@ -211,7 +211,7 @@ describeWithAcala("Acala RPC (Sign eip1559)", (context) => {
 		const value = {
 			type: 2, // EIP-1559
 			to: contract,
-			nonce,
+			nonce: nonce,
 			gasLimit: tx_gas_limit.toNumber(),
 			data: input.data,
 			value: 0,

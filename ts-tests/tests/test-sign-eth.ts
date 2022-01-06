@@ -70,7 +70,7 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 
 		const value = {
 			// to: "0x0000000000000000000000000000000000000000",
-			nonce,
+			nonce: nonce,
 			gasLimit: tx_gas_limit.toNumber(),
 			gasPrice: tx_gas_price.toHexString(),
 			data: deploy.data,

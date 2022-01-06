@@ -71,7 +71,7 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 		const value = {
 			action: "Create",
 			to: "0x0000000000000000000000000000000000000000",
-			nonce: 0,
+			nonce: nonce,
 			tip: 2,
 			data: deploy.data,
 			value: '0',
@@ -97,7 +97,7 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 			era: "0x00", // mortal
 			genesisHash: domain.salt, // ignored
 			method: "Bytes", // don't know that is this
-			nonce: value.nonce,
+			nonce: nonce,
 			specVersion: 0, // ignored
 			tip: value.tip,
 			transactionVersion: 0, // ignored
@@ -115,7 +115,7 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 					"era": {
 						"immortalEra": "0x00"
 					},
-					"nonce": ${value.nonce},
+					"nonce": 0,
 					"tip": 2
 				},
 				"method": {
@@ -214,7 +214,7 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 			era: "0x00", // mortal
 			genesisHash: domain.salt, // ignored
 			method: "Bytes", // don't know that is this
-			nonce: value.nonce,
+			nonce: nonce,
 			specVersion: 0, // ignored
 			tip: value.tip,
 			transactionVersion: 0, // ignored
