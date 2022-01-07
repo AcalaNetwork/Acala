@@ -21,8 +21,6 @@
 #![cfg(test)]
 
 use super::*;
-use crate::mock::MockTransactionPaymentUpgrade;
-use frame_support::traits::OnRuntimeUpgrade;
 use frame_support::{
 	assert_noop, assert_ok, parameter_types,
 	weights::{DispatchClass, DispatchInfo, Pays},
@@ -118,7 +116,10 @@ fn do_runtime_upgrade_and_init_balance() {
 		false
 	));
 
-	MockTransactionPaymentUpgrade::on_runtime_upgrade();
+	for asset in crate::mock::FeePoolExchangeTokens::get() {
+		let _ = Pallet::<Runtime>::initialize_pool(asset, FeePoolSize::get(), crate::mock::SwapThreshold::get());
+	}
+	// MockTransactionPaymentUpgrade::on_runtime_upgrade();
 
 	vec![AUSD, DOT].iter().for_each(|token| {
 		let ed = (<Currencies as MultiCurrency<AccountId>>::minimum_balance(token.clone())).unique_saturated_into();

@@ -17,7 +17,6 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::setup::*;
-use frame_support::traits::OnRuntimeUpgrade;
 use frame_support::weights::{DispatchClass, DispatchInfo, Pays, Weight};
 use karura_runtime::{
 	KarPerSecondAsBased, KaruraTreasuryAccount, KsmPerSecond, NativeTokenExistentialDeposit, TransactionPaymentPalletId,
@@ -32,8 +31,19 @@ use xcm_builder::FixedRateOfFungible;
 use xcm_executor::{traits::*, Assets, Config};
 
 #[cfg(feature = "with-karura-runtime")]
+fn init_charge_fee_pool() {
+	for asset in InitialTokenFeePool::get() {
+		let _ = <module_transaction_payment::Pallet<Runtime>>::initialize_pool(
+			asset.0,
+			asset.1,
+			SwapBalanceThreshold::get(),
+		);
+	}
+}
+
+#[cfg(feature = "with-karura-runtime")]
 #[test]
-fn runtime_upgrade_initial_pool_works() {
+fn initial_charge_fee_pool_works() {
 	ExtBuilder::default()
 		.balances(vec![
 			(AccountId::from(ALICE), KAR, 100000 * dollar(KAR)),
@@ -49,7 +59,7 @@ fn runtime_upgrade_initial_pool_works() {
 			let pool_size = FeePoolSize::get();
 
 			// upgrade takes no effect
-			MockRuntimeUpgrade::on_runtime_upgrade();
+			init_charge_fee_pool();
 			assert_eq!(Currencies::free_balance(KAR, &treasury_account), ed);
 			assert_eq!(Currencies::free_balance(KAR, &fee_account1), 0);
 
@@ -91,7 +101,7 @@ fn runtime_upgrade_initial_pool_works() {
 				0,
 				false
 			));
-			MockRuntimeUpgrade::on_runtime_upgrade();
+			init_charge_fee_pool();
 			assert_eq!(Currencies::free_balance(KAR, &treasury_account), ed + pool_size);
 			vec![KSM, KUSD].iter().for_each(|token| {
 				let ed =
@@ -208,7 +218,7 @@ fn trader_works() {
 				0,
 				false
 			));
-			MockRuntimeUpgrade::on_runtime_upgrade();
+			init_charge_fee_pool();
 			assert_eq!(Currencies::free_balance(KAR, &treasury_account), ed);
 			assert_eq!(Currencies::free_balance(KAR, &fee_account1), pool_size);
 			assert_eq!(Currencies::free_balance(KSM, &fee_account1), ksm_ed);
@@ -271,7 +281,7 @@ fn charge_transaction_payment_and_threshold_works() {
 				0,
 				false
 			));
-			MockRuntimeUpgrade::on_runtime_upgrade();
+			init_charge_fee_pool();
 			assert_eq!(Currencies::free_balance(KAR, &treasury_account), native_ed);
 			assert_eq!(Currencies::free_balance(KAR, &sub_account1), pool_size);
 			assert_eq!(Currencies::free_balance(KSM, &sub_account1), ksm_ed);
@@ -367,8 +377,8 @@ fn charge_transaction_payment_and_threshold_works() {
 			let kar1 = Currencies::free_balance(KAR, &sub_account1);
 			let ksm1 = Currencies::free_balance(KSM, &sub_account1);
 			assert_eq!(ksm_ed + ksm_exchange_rate.saturating_mul_int(fee), ksm1);
-			assert_eq!(kar1 > kar2, true);
-			assert_eq!(ksm2 > ksm1, true);
+			assert!(kar1 > kar2);
+			assert!(ksm2 > ksm1);
 
 			// next tx use the new rate to calculate the fee to be transfer.
 			let new_rate: Ratio = module_transaction_payment::Pallet::<Runtime>::token_exchange_rate(KSM).unwrap();

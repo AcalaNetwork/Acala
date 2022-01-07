@@ -123,20 +123,6 @@ mod karura_imports {
 			(LKSM, NativeTokenExistentialDeposit::get() - 1),
 		];
 	}
-
-	pub struct MockRuntimeUpgrade;
-	impl frame_support::traits::OnRuntimeUpgrade for MockRuntimeUpgrade {
-		fn on_runtime_upgrade() -> Weight {
-			for asset in InitialTokenFeePool::get() {
-				let _ = <module_transaction_payment::Pallet<Runtime>>::initialize_pool(
-					asset.0,
-					asset.1,
-					SwapBalanceThreshold::get(),
-				);
-			}
-			0
-		}
-	}
 }
 
 #[cfg(feature = "with-acala-runtime")]
