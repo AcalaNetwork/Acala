@@ -14,12 +14,14 @@ on:
       - '**/README.md'
 
 env:
-  TARPAULIN_VERSION: 0.18.2
-
+  TARPAULIN_VERSION: 0.18.5
+  LIBCLANG_PATH: "/usr/lib/llvm-10/lib"
+  SCCACHE_CACHE_SIZE: "100G"
+  CARGO_INCREMENTAL: 0
 jobs:
   test:
     name: Coverage Report
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest #[self-hosted, linux]
     steps:
       - name: Cancel Previous Runs
         # Only cancel non-master branch runs
@@ -27,10 +29,6 @@ jobs:
         uses: styfle/cancel-workflow-action@0.9.0
         with:
           access_token: ${{ github.token }}
-      - name: Clean
-        run: |
-          df -h
-          curl -s https://raw.githubusercontent.com/apache/flink/master/tools/azure-pipelines/free_disk_space.sh | bash
       - name: Checkout repository
         uses: actions/checkout@v2
         with:
@@ -43,14 +41,19 @@ jobs:
           components: rustfmt
           target: wasm32-unknown-unknown
           default: true
-      - name: Generate code coverage
+      - name: Install additional dependencies
         run: |
-          wget https://github.com/xd009642/tarpaulin/releases/download/${{ env.TARPAULIN_VERSION }}/cargo-tarpaulin-${{ env.TARPAULIN_VERSION }}-travis.tar.gz
-          tar -zxvf cargo-tarpaulin-${{ env.TARPAULIN_VERSION }}-travis.tar.gz -C $HOME/.cargo/bin
-          # TODO: remove `--avoid-cfg-tarpaulin` after https://github.com/xd009642/tarpaulin/issues/756
-          cargo tarpaulin --avoid-cfg-tarpaulin --debug --verbose --features with-mandala-runtime --no-fail-fast --workspace --timeout 300 --out Xml
-      - name: Upload to codecov.io
-        uses: codecov/codecov-action@v1
+            sudo apt update -y &&
+            sudo apt install -y cmake pkg-config libssl-dev git gcc build-essential git clang libclang-dev
+      - name: Run cargo-tarpaulin
+        uses: actions-rs/tarpaulin@v0.1
         with:
-          # token: ${{secrets.CODECOV_TOKEN}} # not required for public repos
-          fail_ci_if_error: true
+          version: ${{ env.TARPAULIN_VERSION }}
+          timeout: 900
+          out-type: Xml
+          args: '--avoid-cfg-tarpaulin --no-fail-fast --workspace -e acala-inspect acala acala-cli e2e-tests acala-service acala-primitives acala-rpc acala-runtime runtime-common runtime-integration-tests karura-runtime mandala-runtime'
+      - name: Upload to codecov.io
+        uses: codecov/codecov-action@v2
+        with:
+          fail_ci_if_error: true # optional (default = false)
+          verbose: true # optional (default = false)
