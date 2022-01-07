@@ -51,7 +51,7 @@ jobs:
           version: ${{ env.TARPAULIN_VERSION }}
           timeout: 900
           out-type: Xml
-          args: '--features with-mandala-runtime --avoid-cfg-tarpaulin --no-fail-fast --exclude-files "./modules/*, ./primitives/*, ./node/*, ./rpc/*, ./ts-tests/*, ./orml/*, ./runtime/*"'
+          args: '--features with-mandala-runtime--avoid-cfg-tarpaulin --no-fail-fast --workspace -e acala-inspect acala acala-cli e2e-tests acala-service acala-primitives acala-rpc acala-runtime runtime-common runtime-integration-tests karura-runtime mandala-runtime'
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v2
         with:
