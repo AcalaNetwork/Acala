@@ -21,7 +21,7 @@ env:
 jobs:
   test:
     name: Coverage Report
-    runs-on: [self-hosted, linux]
+    runs-on: ubuntu-latest #[self-hosted, linux]
     steps:
       - name: Cancel Previous Runs
         # Only cancel non-master branch runs
@@ -37,7 +37,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly-2021-06-17
+          toolchain: nightly-2021-11-07
           components: rustfmt
           target: wasm32-unknown-unknown
           default: true
@@ -51,13 +51,9 @@ jobs:
           version: ${{ env.TARPAULIN_VERSION }}
           timeout: 900
           out-type: Xml
-          args: '--features with-mandala-runtime --avoid-cfg-tarpaulin --no-fail-fast --all --exclude-files ./runtime/*'
+          args: '--features with-mandala-runtime --avoid-cfg-tarpaulin --no-fail-fast --exclude-files "./modules/*, ./primitives/*, ./node/*, ./rpc/*, ./ts-tests/*, ./orml/*, ./runtime/*"'
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v2
         with:
-          #token: ${{ secrets.CODECOV_TOKEN }} # not required for public repos
-          #files: ./coverage1.xml,./coverage2.xml # optional
-          #flags: unittests # optional
-          #name: codecov-umbrella # optional
           fail_ci_if_error: true # optional (default = false)
           verbose: true # optional (default = false)

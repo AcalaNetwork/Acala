@@ -17,19 +17,16 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-	dollar, AccountId, Amount, CdpEngine, CollateralCurrencyIds, CurrencyId, DepositPerAuthorization, Dex,
-	ExistentialDeposits, GetNativeCurrencyId, GetStableCurrencyId, GetStakingCurrencyId, Honzon, Price, Rate, Ratio,
-	Runtime, TradingPathLimit,
+	dollar, AccountId, Amount, Balance, CdpEngine, CollateralCurrencyIds, Currencies, CurrencyId,
+	DepositPerAuthorization, Dex, ExistentialDeposits, GetLiquidCurrencyId, GetNativeCurrencyId, GetStableCurrencyId,
+	GetStakingCurrencyId, Honzon, Price, Rate, Ratio, Runtime,
 };
 
 use super::utils::{feed_price, set_balance};
-use core::convert::TryInto;
 use frame_benchmarking::{account, whitelisted_caller};
 use frame_system::RawOrigin;
-use module_dex::TradingPairStatus;
 use orml_benchmarking::runtime_benchmarks;
-use orml_traits::{Change, GetByKey};
-use primitives::TradingPair;
+use orml_traits::{Change, GetByKey, MultiCurrencyExtended};
 use sp_runtime::{
 	traits::{AccountIdLookup, One, StaticLookup, UniqueSaturatedInto},
 	FixedPointNumber,
@@ -41,6 +38,42 @@ const SEED: u32 = 0;
 const NATIVE: CurrencyId = GetNativeCurrencyId::get();
 const STABLECOIN: CurrencyId = GetStableCurrencyId::get();
 const STAKING: CurrencyId = GetStakingCurrencyId::get();
+const LIQUID: CurrencyId = GetLiquidCurrencyId::get();
+
+fn inject_liquidity(
+	maker: AccountId,
+	currency_id_a: CurrencyId,
+	currency_id_b: CurrencyId,
+	max_amount_a: Balance,
+	max_amount_b: Balance,
+	deposit: bool,
+) -> Result<(), &'static str> {
+	// set balance
+	<Currencies as MultiCurrencyExtended<_>>::update_balance(
+		currency_id_a,
+		&maker,
+		max_amount_a.unique_saturated_into(),
+	)?;
+	<Currencies as MultiCurrencyExtended<_>>::update_balance(
+		currency_id_b,
+		&maker,
+		max_amount_b.unique_saturated_into(),
+	)?;
+
+	let _ = Dex::enable_trading_pair(RawOrigin::Root.into(), currency_id_a, currency_id_b);
+
+	Dex::add_liquidity(
+		RawOrigin::Signed(maker.clone()).into(),
+		currency_id_a,
+		currency_id_b,
+		max_amount_a,
+		max_amount_b,
+		Default::default(),
+		deposit,
+	)?;
+
+	Ok(())
+}
 
 runtime_benchmarks! {
 	{ Runtime, module_honzon }
@@ -167,82 +200,27 @@ runtime_benchmarks! {
 	}: _(RawOrigin::Signed(receiver), currency_id, sender_lookup)
 
 	close_loan_has_debit_by_dex {
-		let u in 2 .. TradingPathLimit::get() as u32;
-		let currency_id: CurrencyId = CollateralCurrencyIds::get()[0];
+		let currency_id: CurrencyId = LIQUID;
 		let sender: AccountId = whitelisted_caller();
 		let maker: AccountId = account("maker", 0, SEED);
 		let debit_value = 100 * dollar(STABLECOIN);
-		let debit_exchange_rate = CdpEngine::get_debit_exchange_rate(currency_id);
+		let debit_exchange_rate = CdpEngine::get_debit_exchange_rate(LIQUID);
 		let debit_amount = debit_exchange_rate.reciprocal().unwrap().saturating_mul_int(debit_value);
 		let debit_amount: Amount = debit_amount.unique_saturated_into();
 		let collateral_value = 10 * debit_value;
-		let collateral_amount = Price::saturating_from_rational(dollar(currency_id), dollar(STABLECOIN)).saturating_mul_int(collateral_value);
+		let collateral_amount = Price::saturating_from_rational(dollar(LIQUID), dollar(STABLECOIN)).saturating_mul_int(collateral_value);
 
-		// set balance
-		set_balance(currency_id, &sender, collateral_amount + ExistentialDeposits::get(&currency_id));
-		set_balance(currency_id, &maker, collateral_amount * 2);
-		set_balance(NATIVE, &maker, collateral_amount * 2);
-		set_balance(STABLECOIN, &maker, debit_value * 200);
+		// set balance and inject liquidity
+		set_balance(LIQUID, &sender, (10 * collateral_amount) + ExistentialDeposits::get(&LIQUID));
+		inject_liquidity(maker.clone(), LIQUID, STAKING, 10_000 * dollar(LIQUID), 10_000 * dollar(STAKING), false)?;
+		inject_liquidity(maker, STAKING, STABLECOIN, 10_000 * dollar(STAKING), 10_000 * dollar(STABLECOIN), false)?;
 
-		// disable first
-		if let TradingPairStatus::Enabled = Dex::trading_pair_statuses(TradingPair::from_currency_ids(currency_id, STABLECOIN).unwrap()) {
-			Dex::disable_trading_pair(RawOrigin::Root.into(), currency_id, STABLECOIN)?;
-		}
-		if let TradingPairStatus::Enabled = Dex::trading_pair_statuses(TradingPair::from_currency_ids(currency_id, NATIVE).unwrap()) {
-			Dex::disable_trading_pair(RawOrigin::Root.into(), currency_id, NATIVE)?;
-		}
-		if let TradingPairStatus::Enabled = Dex::trading_pair_statuses(TradingPair::from_currency_ids(NATIVE, STABLECOIN).unwrap()) {
-			Dex::disable_trading_pair(RawOrigin::Root.into(), NATIVE, STABLECOIN)?;
-		}
-		// inject liquidity
-		Dex::enable_trading_pair(RawOrigin::Root.into(), currency_id, STABLECOIN)?;
-		Dex::enable_trading_pair(RawOrigin::Root.into(), currency_id, NATIVE)?;
-		Dex::enable_trading_pair(RawOrigin::Root.into(), NATIVE, STABLECOIN)?;
-		Dex::add_liquidity(
-			RawOrigin::Signed(maker.clone()).into(),
-			currency_id,
-			STABLECOIN,
-			collateral_amount,
-			debit_value * 100,
-			Default::default(),
-			false,
-		)?;
-		Dex::add_liquidity(
-			RawOrigin::Signed(maker.clone()).into(),
-			currency_id,
-			NATIVE,
-			collateral_amount,
-			collateral_amount,
-			Default::default(),
-			false,
-		)?;
-		Dex::add_liquidity(
-			RawOrigin::Signed(maker.clone()).into(),
-			NATIVE,
-			STABLECOIN,
-			collateral_amount,
-			debit_value * 100,
-			Default::default(),
-			false,
-		)?;
-
-		let mut path = vec![currency_id];
-		for i in 2 .. u {
-			if i % 2 == 0 {
-				path.push(NATIVE);
-			} else {
-				path.push(currency_id);
-			}
-		}
-		path.push(STABLECOIN);
-
-		// feed price
-		feed_price(vec![(currency_id, Price::one())])?;
+		feed_price(vec![(STAKING, Price::one())])?;
 
 		// set risk params
 		CdpEngine::set_collateral_params(
 			RawOrigin::Root.into(),
-			currency_id,
+			LIQUID,
 			Change::NoChange,
 			Change::NewValue(Some(Ratio::saturating_from_rational(150, 100))),
 			Change::NewValue(Some(Rate::saturating_from_rational(10, 100))),
@@ -253,11 +231,12 @@ runtime_benchmarks! {
 		// initialize sender's loan
 		Honzon::adjust_loan(
 			RawOrigin::Signed(sender.clone()).into(),
-			currency_id,
-			collateral_amount.try_into().unwrap(),
+			LIQUID,
+			(10 * collateral_amount).try_into().unwrap(),
 			debit_amount,
 		)?;
-	}: _(RawOrigin::Signed(sender), currency_id, collateral_amount, Some(path))
+
+	}: _(RawOrigin::Signed(sender), LIQUID, collateral_amount)
 }
 
 #[cfg(test)]

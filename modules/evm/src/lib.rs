@@ -61,10 +61,13 @@ pub use module_support::{
 pub use orml_traits::currency::TransferAll;
 use primitive_types::{H160, H256, U256};
 pub use primitives::{
-	evm::{CallInfo, CreateInfo, EvmAddress, ExecutionInfo, Vicinity},
+	convert_decimals_from_evm, convert_decimals_to_evm,
+	evm::{
+		CallInfo, CreateInfo, EvmAddress, ExecutionInfo, Vicinity, MIRRORED_NFT_ADDRESS_START,
+		MIRRORED_TOKENS_ADDRESS_START,
+	},
 	task::TaskResult,
-	ReserveIdentifier, H160_PREFIX_DEXSHARE, H160_PREFIX_TOKEN, MIRRORED_NFT_ADDRESS_START, PRECOMPILE_ADDRESS_START,
-	SYSTEM_CONTRACT_ADDRESS_PREFIX,
+	ReserveIdentifier,
 };
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
@@ -81,7 +84,6 @@ use sp_runtime::{
 use sp_std::{
 	cmp,
 	collections::btree_map::BTreeMap,
-	convert::TryInto,
 	fmt::{Debug, Write},
 	marker::PhantomData,
 	prelude::*,
@@ -183,6 +185,11 @@ pub mod module {
 		#[pallet::constant]
 		type StorageDepositPerByte: Get<BalanceOf<Self>>;
 
+		/// Tx fee required for per gas.
+		/// Provide to the client
+		#[pallet::constant]
+		type TxFeePerGas: Get<BalanceOf<Self>>;
+
 		/// The overarching event type.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
@@ -265,7 +272,7 @@ pub mod module {
 		pub ref_count: u32,
 	}
 
-	#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]
+	#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Default)]
 	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 	/// Account definition used for genesis block construction.
 	pub struct GenesisAccount<Balance, Index> {
@@ -277,6 +284,8 @@ pub mod module {
 		pub storage: BTreeMap<H256, H256>,
 		/// Account code.
 		pub code: Vec<u8>,
+		/// If the account should enable contract development mode
+		pub enable_contract_development: bool,
 	}
 
 	/// The EVM accounts info.
@@ -335,7 +344,6 @@ pub mod module {
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
 		pub accounts: BTreeMap<EvmAddress, GenesisAccount<BalanceOf<T>, T::Index>>,
-		pub treasury: T::AccountId,
 	}
 
 	#[cfg(feature = "std")]
@@ -343,7 +351,6 @@ pub mod module {
 		fn default() -> Self {
 			GenesisConfig {
 				accounts: Default::default(),
-				treasury: Default::default(),
 			}
 		}
 	}
@@ -370,7 +377,18 @@ pub mod module {
 				};
 				T::Currency::deposit_creating(&account_id, amount);
 
+				if account.enable_contract_development {
+					T::Currency::ensure_reserved_named(
+						&RESERVE_ID_DEVELOPER_DEPOSIT,
+						&account_id,
+						T::DeveloperDeposit::get(),
+					)
+					.expect("Failed to reserve developer deposit. Please make sure the account have enough balance.");
+				}
+
 				if !account.code.is_empty() {
+					// init contract
+
 					// Transactions are not supported by BasicExternalities
 					// Use the EVM Runtime
 					let vicinity = Vicinity {
@@ -415,28 +433,49 @@ pub mod module {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// A contract has been created at given \[from, address, logs\].
-		Created(EvmAddress, EvmAddress, Vec<Log>),
+		/// A contract has been created at given
+		Created {
+			from: EvmAddress,
+			contract: EvmAddress,
+			logs: Vec<Log>,
+		},
 		/// A contract was attempted to be created, but the execution failed.
-		/// \[from, contract, exit_reason, logs\]
-		CreatedFailed(EvmAddress, EvmAddress, ExitReason, Vec<Log>),
-		/// A contract has been executed successfully with states applied. \[from, contract, logs]\
-		Executed(EvmAddress, EvmAddress, Vec<Log>),
+		CreatedFailed {
+			from: EvmAddress,
+			contract: EvmAddress,
+			exit_reason: ExitReason,
+			logs: Vec<Log>,
+		},
+		/// A contract has been executed successfully with states applied.
+		Executed {
+			from: EvmAddress,
+			contract: EvmAddress,
+			logs: Vec<Log>,
+		},
 		/// A contract has been executed with errors. States are reverted with
-		/// only gas fees applied. \[from, contract, exit_reason, output, logs\]
-		ExecutedFailed(EvmAddress, EvmAddress, ExitReason, Vec<u8>, Vec<Log>),
-		/// Transferred maintainer. \[contract, address\]
-		TransferredMaintainer(EvmAddress, EvmAddress),
-		/// Enabled contract development. \[who\]
-		ContractDevelopmentEnabled(T::AccountId),
-		/// Disabled contract development. \[who\]
-		ContractDevelopmentDisabled(T::AccountId),
-		/// Deployed contract. \[contract\]
-		ContractDeployed(EvmAddress),
-		/// Set contract code. \[contract\]
-		ContractSetCode(EvmAddress),
-		/// Selfdestructed contract code. \[contract\]
-		ContractSelfdestructed(EvmAddress),
+		/// only gas fees applied.
+		ExecutedFailed {
+			from: EvmAddress,
+			contract: EvmAddress,
+			exit_reason: ExitReason,
+			output: Vec<u8>,
+			logs: Vec<Log>,
+		},
+		/// Transferred maintainer.
+		TransferredMaintainer {
+			contract: EvmAddress,
+			new_maintainer: EvmAddress,
+		},
+		/// Enabled contract development.
+		ContractDevelopmentEnabled { who: T::AccountId },
+		/// Disabled contract development.
+		ContractDevelopmentDisabled { who: T::AccountId },
+		/// Deployed contract.
+		ContractDeployed { contract: EvmAddress },
+		/// Set contract code.
+		ContractSetCode { contract: EvmAddress },
+		/// Selfdestructed contract code.
+		ContractSelfdestructed { contract: EvmAddress },
 	}
 
 	#[pallet::error]
@@ -469,13 +508,19 @@ pub mod module {
 		UnreserveStorageFailed,
 		/// Charge storage failed
 		ChargeStorageFailed,
+		/// Invalid decimals
+		InvalidDecimals,
 	}
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
 
 	#[pallet::hooks]
-	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {}
+	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
+		fn integrity_test() {
+			assert!(convert_decimals_from_evm(T::StorageDepositPerByte::get()).is_some());
+		}
+	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
@@ -655,7 +700,7 @@ pub mod module {
 			})
 		}
 
-		/// Issue an EVM create operation. The next available system contract
+		/// Create mirrored NFT contract. The next available system contract
 		/// address will be used as created contract address.
 		///
 		/// - `init`: the data supplied for the contract's constructor
@@ -664,7 +709,7 @@ pub mod module {
 		/// - `storage_limit`: the total bytes the contract's storage can increase by
 		#[pallet::weight(T::GasToWeight::convert(*gas_limit))]
 		#[transactional]
-		pub fn create_network_contract(
+		pub fn create_nft_contract(
 			origin: OriginFor<T>,
 			init: Vec<u8>,
 			#[pallet::compact] value: BalanceOf<T>,
@@ -674,7 +719,7 @@ pub mod module {
 			T::NetworkContractOrigin::ensure_origin(origin)?;
 
 			let source = T::NetworkContractSource::get();
-			let address = EvmAddress::from_low_u64_be(Self::network_contract_index());
+			let address = MIRRORED_TOKENS_ADDRESS_START | EvmAddress::from_low_u64_be(Self::network_contract_index());
 			let info =
 				T::Runner::create_at_address(source, address, init, value, gas_limit, storage_limit, T::config())?;
 
@@ -757,7 +802,10 @@ pub mod module {
 			let who = ensure_signed(origin)?;
 			Self::do_transfer_maintainer(who, contract, new_maintainer)?;
 
-			Pallet::<T>::deposit_event(Event::<T>::TransferredMaintainer(contract, new_maintainer));
+			Pallet::<T>::deposit_event(Event::<T>::TransferredMaintainer {
+				contract,
+				new_maintainer,
+			});
 
 			Ok(().into())
 		}
@@ -778,7 +826,7 @@ pub mod module {
 				ExistenceRequirement::AllowDeath,
 			)?;
 			Self::mark_deployed(contract, Some(address))?;
-			Pallet::<T>::deposit_event(Event::<T>::ContractDeployed(contract));
+			Pallet::<T>::deposit_event(Event::<T>::ContractDeployed { contract });
 			Ok(().into())
 		}
 
@@ -791,7 +839,7 @@ pub mod module {
 		pub fn deploy_free(origin: OriginFor<T>, contract: EvmAddress) -> DispatchResultWithPostInfo {
 			T::FreeDeploymentOrigin::ensure_origin(origin)?;
 			Self::mark_deployed(contract, None)?;
-			Pallet::<T>::deposit_event(Event::<T>::ContractDeployed(contract));
+			Pallet::<T>::deposit_event(Event::<T>::ContractDeployed { contract });
 			Ok(().into())
 		}
 
@@ -806,7 +854,7 @@ pub mod module {
 				Error::<T>::ContractDevelopmentAlreadyEnabled
 			);
 			T::Currency::ensure_reserved_named(&RESERVE_ID_DEVELOPER_DEPOSIT, &who, T::DeveloperDeposit::get())?;
-			Pallet::<T>::deposit_event(Event::<T>::ContractDevelopmentEnabled(who));
+			Pallet::<T>::deposit_event(Event::<T>::ContractDevelopmentEnabled { who });
 			Ok(().into())
 		}
 
@@ -821,7 +869,7 @@ pub mod module {
 				Error::<T>::ContractDevelopmentNotEnabled
 			);
 			T::Currency::unreserve_all_named(&RESERVE_ID_DEVELOPER_DEPOSIT, &who);
-			Pallet::<T>::deposit_event(Event::<T>::ContractDevelopmentDisabled(who));
+			Pallet::<T>::deposit_event(Event::<T>::ContractDevelopmentDisabled { who });
 			Ok(().into())
 		}
 
@@ -829,13 +877,13 @@ pub mod module {
 		///
 		/// - `contract`: The contract whose code is being set, must not be marked as deployed
 		/// - `code`: The new ABI bundle for the contract
-		#[pallet::weight(<T as Config>::WeightInfo::set_code())]
+		#[pallet::weight(<T as Config>::WeightInfo::set_code(code.len() as u32))]
 		#[transactional]
 		pub fn set_code(origin: OriginFor<T>, contract: EvmAddress, code: Vec<u8>) -> DispatchResultWithPostInfo {
 			let root_or_signed = Self::ensure_root_or_signed(origin)?;
 			Self::do_set_code(root_or_signed, contract, code)?;
 
-			Pallet::<T>::deposit_event(Event::<T>::ContractSetCode(contract));
+			Pallet::<T>::deposit_event(Event::<T>::ContractSetCode { contract });
 
 			Ok(().into())
 		}
@@ -850,7 +898,7 @@ pub mod module {
 			let caller = T::AddressMapping::get_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
 			Self::do_selfdestruct(&caller, &contract)?;
 
-			Pallet::<T>::deposit_event(Event::<T>::ContractSelfdestructed(contract));
+			Pallet::<T>::deposit_event(Event::<T>::ContractSelfdestructed { contract });
 
 			Ok(().into())
 		}
@@ -858,6 +906,12 @@ pub mod module {
 }
 
 impl<T: Config> Pallet<T> {
+	/// Get StorageDepositPerByte of actual decimals
+	pub fn get_storage_deposit_per_byte() -> BalanceOf<T> {
+		// StorageDepositPerByte decimals is 18, KAR/ACA decimals is 12, convert to 12 here.
+		convert_decimals_from_evm(T::StorageDepositPerByte::get()).expect("checked in integrity_test; qed")
+	}
+
 	/// Check whether an account is empty.
 	pub fn is_account_empty(address: &H160) -> bool {
 		let account_id = T::AddressMapping::get_account_id(address);
@@ -1023,7 +1077,9 @@ impl<T: Config> Pallet<T> {
 
 		Account {
 			nonce: U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(nonce)),
-			balance: U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(balance)),
+			balance: U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(
+				convert_decimals_to_evm(balance),
+			)),
 		}
 	}
 
@@ -1242,7 +1298,7 @@ impl<T: Config> Pallet<T> {
 		}
 
 		let user = T::AddressMapping::get_account_id(caller);
-		let amount = T::StorageDepositPerByte::get().saturating_mul(limit.into());
+		let amount = Self::get_storage_deposit_per_byte().saturating_mul(limit.into());
 
 		log::debug!(
 			target: "evm",
@@ -1261,7 +1317,7 @@ impl<T: Config> Pallet<T> {
 		}
 
 		let user = T::AddressMapping::get_account_id(caller);
-		let amount = T::StorageDepositPerByte::get().saturating_mul(unused.into());
+		let amount = Self::get_storage_deposit_per_byte().saturating_mul(unused.into());
 
 		log::debug!(
 			target: "evm",
@@ -1283,7 +1339,7 @@ impl<T: Config> Pallet<T> {
 
 		let user = T::AddressMapping::get_account_id(caller);
 		let contract_acc = T::AddressMapping::get_account_id(contract);
-		let amount = T::StorageDepositPerByte::get().saturating_mul((storage.abs() as u32).into());
+		let amount = Self::get_storage_deposit_per_byte().saturating_mul((storage.abs() as u32).into());
 
 		log::debug!(
 			target: "evm",
@@ -1404,6 +1460,7 @@ impl<T: Config> EVMStateRentTrait<T::AccountId, BalanceOf<T>> for Pallet<T> {
 	}
 
 	fn query_storage_deposit_per_byte() -> BalanceOf<T> {
+		// the decimals is already 18
 		T::StorageDepositPerByte::get()
 	}
 
@@ -1416,11 +1473,11 @@ impl<T: Config> EVMStateRentTrait<T::AccountId, BalanceOf<T>> for Pallet<T> {
 	}
 
 	fn query_developer_deposit() -> BalanceOf<T> {
-		T::DeveloperDeposit::get()
+		convert_decimals_to_evm(T::DeveloperDeposit::get())
 	}
 
 	fn query_deployment_fee() -> BalanceOf<T> {
-		T::DeploymentFee::get()
+		convert_decimals_to_evm(T::DeploymentFee::get())
 	}
 
 	fn transfer_maintainer(from: T::AccountId, contract: EvmAddress, new_maintainer: EvmAddress) -> DispatchResult {

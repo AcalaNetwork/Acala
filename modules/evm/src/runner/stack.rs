@@ -39,8 +39,9 @@ use module_evm_utiltity::{
 };
 use module_support::AddressMapping;
 pub use primitives::{
-	evm::{EvmAddress, Vicinity},
-	ReserveIdentifier, MIRRORED_NFT_ADDRESS_START,
+	convert_decimals_from_evm,
+	evm::{EvmAddress, Vicinity, MIRRORED_NFT_ADDRESS_START},
+	ReserveIdentifier,
 };
 use sha3::{Digest, Keccak256};
 use sp_core::{H160, H256, U256};
@@ -83,6 +84,10 @@ impl<T: Config> Runner<T> {
 
 		// Deduct fee from the `source` account.
 		// let fee = T::ChargeTransactionPayment::withdraw_fee(&source, total_fee)?;
+		ensure!(
+			convert_decimals_from_evm(value.low_u128()).is_some(),
+			Error::<T>::InvalidDecimals
+		);
 
 		if !config.estimate {
 			Pallet::<T>::reserve_storage(&origin, storage_limit).map_err(|e| {
@@ -230,15 +235,19 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 		})?;
 
 		if info.exit_reason.is_succeed() {
-			Pallet::<T>::deposit_event(Event::<T>::Executed(source, target, info.logs.clone()));
+			Pallet::<T>::deposit_event(Event::<T>::Executed {
+				from: source,
+				contract: target,
+				logs: info.logs.clone(),
+			});
 		} else {
-			Pallet::<T>::deposit_event(Event::<T>::ExecutedFailed(
-				source,
-				target,
-				info.exit_reason.clone(),
-				info.value.clone(),
-				info.logs.clone(),
-			));
+			Pallet::<T>::deposit_event(Event::<T>::ExecutedFailed {
+				from: source,
+				contract: target,
+				exit_reason: info.exit_reason.clone(),
+				output: info.value.clone(),
+				logs: info.logs.clone(),
+			});
 		}
 
 		Ok(info)
@@ -265,14 +274,18 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 		})?;
 
 		if info.exit_reason.is_succeed() {
-			Pallet::<T>::deposit_event(Event::<T>::Created(source, info.value, info.logs.clone()));
+			Pallet::<T>::deposit_event(Event::<T>::Created {
+				from: source,
+				contract: info.value,
+				logs: info.logs.clone(),
+			});
 		} else {
-			Pallet::<T>::deposit_event(Event::<T>::CreatedFailed(
-				source,
-				info.value,
-				info.exit_reason.clone(),
-				info.logs.clone(),
-			));
+			Pallet::<T>::deposit_event(Event::<T>::CreatedFailed {
+				from: source,
+				contract: info.value,
+				exit_reason: info.exit_reason.clone(),
+				logs: info.logs.clone(),
+			});
 		}
 
 		Ok(info)
@@ -305,14 +318,18 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 		})?;
 
 		if info.exit_reason.is_succeed() {
-			Pallet::<T>::deposit_event(Event::<T>::Created(source, info.value, info.logs.clone()));
+			Pallet::<T>::deposit_event(Event::<T>::Created {
+				from: source,
+				contract: info.value,
+				logs: info.logs.clone(),
+			});
 		} else {
-			Pallet::<T>::deposit_event(Event::<T>::CreatedFailed(
-				source,
-				info.value,
-				info.exit_reason.clone(),
-				info.logs.clone(),
-			));
+			Pallet::<T>::deposit_event(Event::<T>::CreatedFailed {
+				from: source,
+				contract: info.value,
+				exit_reason: info.exit_reason.clone(),
+				logs: info.logs.clone(),
+			});
 		}
 
 		Ok(info)
@@ -337,14 +354,18 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 		})?;
 
 		if info.exit_reason.is_succeed() {
-			Pallet::<T>::deposit_event(Event::<T>::Created(source, info.value, info.logs.clone()));
+			Pallet::<T>::deposit_event(Event::<T>::Created {
+				from: source,
+				contract: info.value,
+				logs: info.logs.clone(),
+			});
 		} else {
-			Pallet::<T>::deposit_event(Event::<T>::CreatedFailed(
-				source,
-				info.value,
-				info.exit_reason.clone(),
-				info.logs.clone(),
-			));
+			Pallet::<T>::deposit_event(Event::<T>::CreatedFailed {
+				from: source,
+				contract: info.value,
+				exit_reason: info.exit_reason.clone(),
+				logs: info.logs.clone(),
+			});
 		}
 
 		Ok(info)
@@ -691,14 +712,20 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 		}
 		let source = T::AddressMapping::get_account_id(&transfer.source);
 		let target = T::AddressMapping::get_account_id(&transfer.target);
+		let amount = convert_decimals_from_evm(transfer.value.low_u128())
+			.ok_or(ExitError::Other(Into::<&str>::into(Error::<T>::InvalidDecimals).into()))?
+			.unique_saturated_into();
 
-		T::Currency::transfer(
-			&source,
-			&target,
-			transfer.value.low_u128().unique_saturated_into(),
-			ExistenceRequirement::AllowDeath,
-		)
-		.map_err(|e| ExitError::Other(Into::<&str>::into(e).into()))
+		log::debug!(
+			target: "evm",
+			"transfer [source: {:?}, target: {:?}, amount: {:?}]",
+			source,
+			target,
+			amount
+		);
+
+		T::Currency::transfer(&source, &target, amount, ExistenceRequirement::AllowDeath)
+			.map_err(|e| ExitError::Other(Into::<&str>::into(e).into()))
 	}
 
 	fn reset_balance(&mut self, _address: H160) {

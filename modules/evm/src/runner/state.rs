@@ -32,9 +32,12 @@ use module_evm_utiltity::{
 };
 use primitive_types::{H160, H256, U256};
 pub use primitives::{
-	evm::{EvmAddress, Vicinity},
-	ReserveIdentifier, H160_PREFIX_DEXSHARE, H160_PREFIX_TOKEN, MIRRORED_NFT_ADDRESS_START, PREDEPLOY_ADDRESS_START,
-	SYSTEM_CONTRACT_ADDRESS_PREFIX,
+	currency::CurrencyIdType,
+	evm::{
+		is_mirrored_tokens_address_prefix, EvmAddress, Vicinity, H160_POSITION_CURRENCY_ID_TYPE,
+		H160_POSITION_TOKEN_NFT, MIRRORED_NFT_ADDRESS_START, PREDEPLOY_ADDRESS_START, SYSTEM_CONTRACT_ADDRESS_PREFIX,
+	},
+	ReserveIdentifier,
 };
 use sha3::{Digest, Keccak256};
 use sp_std::{rc::Rc, vec::Vec};
@@ -432,14 +435,27 @@ impl<'config, S: StackState<'config>> StackExecutor<'config, S> {
 			address,
 		);
 
-		let addr = address.as_bytes();
-		if !addr.starts_with(&SYSTEM_CONTRACT_ADDRESS_PREFIX) {
-			return address;
-		}
+		if is_mirrored_tokens_address_prefix(address) {
+			let token_address = match CurrencyIdType::try_from(address[H160_POSITION_CURRENCY_ID_TYPE])
+				.expect("is_mirrored_tokens_address_prefix checked; qed")
+			{
+				CurrencyIdType::Token => {
+					let mut suffix = [0u8; 4];
+					suffix.copy_from_slice(&address[H160_POSITION_TOKEN_NFT]);
 
-		if addr.starts_with(&H160_PREFIX_TOKEN) || addr.starts_with(&H160_PREFIX_DEXSHARE) {
-			// `Token` predeploy contract.
-			let token_address = H160::from_low_u64_be(PREDEPLOY_ADDRESS_START);
+					if (u32::from_be_bytes(suffix) as u64) < MIRRORED_NFT_ADDRESS_START {
+						// `Token` predeploy contract.
+						PREDEPLOY_ADDRESS_START
+					} else {
+						// `NFT` predeploy contract.
+						// TODO: implement EIP721. Return dummy address.
+						PREDEPLOY_ADDRESS_START | H160::from_low_u64_be(100)
+					}
+				}
+				// `Token` predeploy contract.
+				_ => PREDEPLOY_ADDRESS_START,
+			};
+
 			log::debug!(
 				target: "evm",
 				"handle_mirrored_token: origin address: {:?}, token address: {:?}",

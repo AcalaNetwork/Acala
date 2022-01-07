@@ -198,6 +198,7 @@ parameter_types! {
 	pub const MaxInvulnerables: u32 = 4;
 	pub const KickPenaltySessionLength: u32 = 8;
 	pub const CollatorKickThreshold: Permill = Permill::from_percent(100);
+	pub const MinRewardDistributeAmount: u64 = 10;
 }
 
 impl Config for Test {
@@ -211,6 +212,7 @@ impl Config for Test {
 	type MaxInvulnerables = MaxInvulnerables;
 	type KickPenaltySessionLength = KickPenaltySessionLength;
 	type CollatorKickThreshold = CollatorKickThreshold;
+	type MinRewardDistributeAmount = MinRewardDistributeAmount;
 	type WeightInfo = ();
 }
 

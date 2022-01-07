@@ -33,7 +33,11 @@ use orml_traits::parameter_type_with_key;
 use primitives::{Amount, ReserveIdentifier, TokenSymbol, TradingPair};
 use smallvec::smallvec;
 use sp_core::{crypto::AccountId32, H256};
-use sp_runtime::{testing::Header, traits::IdentityLookup, Perbill};
+use sp_runtime::{
+	testing::Header,
+	traits::{AccountIdConversion, IdentityLookup, One},
+	Perbill,
+};
 use sp_std::cell::RefCell;
 use support::{mocks::MockAddressMapping, Price};
 
@@ -94,8 +98,12 @@ impl frame_system::Config for Runtime {
 }
 
 parameter_type_with_key! {
-	pub ExistentialDeposits: |_currency_id: CurrencyId| -> Balance {
-		Default::default()
+	pub ExistentialDeposits: |currency_id: CurrencyId| -> Balance {
+		match *currency_id {
+			AUSD => 100,
+			DOT => 1,
+			_ => Default::default(),
+		}
 	};
 }
 
@@ -170,7 +178,7 @@ impl module_dex::Config for Runtime {
 	type GetExchangeFee = GetExchangeFee;
 	type TradingPathLimit = TradingPathLimit;
 	type PalletId = DEXPalletId;
-	type CurrencyIdMapping = ();
+	type Erc20InfoMapping = ();
 	type DEXIncentives = ();
 	type WeightInfo = ();
 	type ListingOrigin = frame_system::EnsureSignedBy<Zero, AccountId>;
@@ -179,7 +187,11 @@ impl module_dex::Config for Runtime {
 parameter_types! {
 	pub MaxSwapSlippageCompareToOracle: Ratio = Ratio::saturating_from_rational(1, 2);
 	pub static TransactionByteFee: u128 = 1;
+	pub OperationalFeeMultiplier: u64 = 5;
+	pub static TipPerWeightStep: u128 = 1;
+	pub MaxTipsOfPriority: u128 = 1000;
 	pub DefaultFeeSwapPathList: Vec<Vec<CurrencyId>> = vec![vec![AUSD, ACA], vec![DOT, AUSD, ACA]];
+	pub AlternativeFeeSwapDeposit: Balance = 1000;
 }
 
 thread_local! {
@@ -219,13 +231,31 @@ impl PriceProvider<CurrencyId> for MockPriceSource {
 	}
 }
 
+parameter_types! {
+	// DO NOT CHANGE THIS VALUE, AS IT EFFECT THE TESTCASES.
+	pub const FeePoolSize: Balance = 10_000;
+	pub const SwapBalanceThreshold: Balance = 20;
+	pub const TransactionPaymentPalletId: PalletId = PalletId(*b"aca/fees");
+	pub const TreasuryPalletId: PalletId = PalletId(*b"aca/trsy");
+	pub KaruraTreasuryAccount: AccountId = TreasuryPalletId::get().into_account();
+	pub FeePoolExchangeTokens: Vec<CurrencyId> = vec![AUSD, DOT];
+}
+ord_parameter_types! {
+	pub const ListingOrigin: AccountId = ALICE;
+}
+
 impl Config for Runtime {
+	type Event = Event;
 	type NativeCurrencyId = GetNativeCurrencyId;
 	type DefaultFeeSwapPathList = DefaultFeeSwapPathList;
+	type AlternativeFeeSwapDeposit = AlternativeFeeSwapDeposit;
 	type Currency = PalletBalances;
 	type MultiCurrency = Currencies;
 	type OnTransactionPayment = DealWithFees;
 	type TransactionByteFee = TransactionByteFee;
+	type OperationalFeeMultiplier = OperationalFeeMultiplier;
+	type TipPerWeightStep = TipPerWeightStep;
+	type MaxTipsOfPriority = MaxTipsOfPriority;
 	type WeightToFee = WeightToFee;
 	type FeeMultiplierUpdate = ();
 	type DEX = DEXModule;
@@ -233,6 +263,9 @@ impl Config for Runtime {
 	type TradingPathLimit = TradingPathLimit;
 	type PriceSource = MockPriceSource;
 	type WeightInfo = ();
+	type PalletId = TransactionPaymentPalletId;
+	type TreasuryAccount = KaruraTreasuryAccount;
+	type UpdateOrigin = EnsureSignedBy<ListingOrigin, AccountId>;
 }
 
 thread_local! {
@@ -263,7 +296,7 @@ construct_runtime!(
 		UncheckedExtrinsic = UncheckedExtrinsic
 	{
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-		TransactionPayment: transaction_payment::{Pallet, Call, Storage},
+		TransactionPayment: transaction_payment::{Pallet, Call, Storage, Event<T>},
 		PalletBalances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
 		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
 		Currencies: module_currencies::{Pallet, Call, Event<T>},
@@ -271,11 +304,27 @@ construct_runtime!(
 	}
 );
 
+pub struct MockTransactionPaymentUpgrade;
+
+impl frame_support::traits::OnRuntimeUpgrade for MockTransactionPaymentUpgrade {
+	fn on_runtime_upgrade() -> Weight {
+		for asset in FeePoolExchangeTokens::get() {
+			let _ = <transaction_payment::Pallet<Runtime>>::initialize_pool(
+				asset,
+				FeePoolSize::get(),
+				SwapBalanceThreshold::get(),
+			);
+		}
+		0
+	}
+}
+
 pub struct ExtBuilder {
 	balances: Vec<(AccountId, CurrencyId, Balance)>,
 	base_weight: u64,
 	byte_fee: u128,
 	weight_to_fee: u128,
+	tip_per_weight_step: u128,
 	native_balances: Vec<(AccountId, Balance)>,
 }
 
@@ -286,6 +335,7 @@ impl Default for ExtBuilder {
 			base_weight: 0,
 			byte_fee: 2,
 			weight_to_fee: 1,
+			tip_per_weight_step: 1,
 			native_balances: vec![],
 		}
 	}
@@ -304,6 +354,10 @@ impl ExtBuilder {
 		self.weight_to_fee = weight_to_fee;
 		self
 	}
+	pub fn tip_per_weight_step(mut self, tip_per_weight_step: u128) -> Self {
+		self.tip_per_weight_step = tip_per_weight_step;
+		self
+	}
 	pub fn one_hundred_thousand_for_alice_n_charlie(mut self) -> Self {
 		self.native_balances = vec![(ALICE, 100000), (CHARLIE, 100000)];
 		self
@@ -312,6 +366,7 @@ impl ExtBuilder {
 		EXTRINSIC_BASE_WEIGHT.with(|v| *v.borrow_mut() = self.base_weight);
 		TRANSACTION_BYTE_FEE.with(|v| *v.borrow_mut() = self.byte_fee);
 		WEIGHT_TO_FEE.with(|v| *v.borrow_mut() = self.weight_to_fee);
+		TIP_PER_WEIGHT_STEP.with(|v| *v.borrow_mut() = self.tip_per_weight_step);
 	}
 	pub fn build(self) -> sp_io::TestExternalities {
 		self.set_constants();

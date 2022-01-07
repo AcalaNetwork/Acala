@@ -9,10 +9,10 @@
   dependencies:
     regenerator-runtime "^0.13.4"
 
-"@open-web3/parachain-launch@^1.0.4":
-  version "1.0.4"
-  resolved "https://registry.yarnpkg.com/@open-web3/parachain-launch/-/parachain-launch-1.0.4.tgz#de468ce96fb92d7aaf556604e51b9e0bb703acd6"
-  integrity sha512-Ck1AcjfxO7SkxjJfoseb/8oiTFcysUtHuEG5McZznKlWd/raaSStEd4U0XQCKhg1MzChF1U5kh4Gn4AP5HfkBg==
+"@open-web3/parachain-launch@^1.0.6":
+  version "1.0.6"
+  resolved "https://registry.yarnpkg.com/@open-web3/parachain-launch/-/parachain-launch-1.0.6.tgz#e8660fb408570165bd6ff578b0744c7f2961c039"
+  integrity sha512-sZ+HB+v7cPpWpyKj3d83r9yT2yPr5Luz1J8ftVXp6t8kuPbldYWgOHYlMeOqK0vgYI7sPZkOPNrCb9j4rrgC5A==
   dependencies:
     "@polkadot/api" "^5.6.1"
     "@polkadot/keyring" "^7.2.1"

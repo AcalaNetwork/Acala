@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-//! Mocks for the Starport module.
+//! Mocks for the HomaLite module.
 
 #![cfg(test)]
 
@@ -45,7 +45,7 @@ mod homa_lite {
 	pub use super::super::*;
 }
 
-pub const ROOT: AccountId = AccountId32::new([255u8; 32]);
+pub const DAVE: AccountId = AccountId32::new([255u8; 32]);
 pub const ALICE: AccountId = AccountId32::new([1u8; 32]);
 pub const BOB: AccountId = AccountId32::new([2u8; 32]);
 pub const CHARLIE: AccountId = AccountId32::new([3u8; 32]);
@@ -59,7 +59,7 @@ pub const MOCK_XCM_DESTINATION: MultiLocation = X1(Junction::AccountId32 {
 	id: [1u8; 32],
 })
 .into();
-pub const MOCK_XCM_ACCOUNTID: AccountId = AccountId32::new([255u8; 32]);
+pub const MOCK_XCM_ACCOUNT_ID: AccountId = AccountId32::new([255u8; 32]);
 pub const PARACHAIN_ID: u32 = 2000;
 
 /// For testing only. Does not check for overflow.
@@ -122,6 +122,7 @@ impl SendXcm for MockXcm {
 		}
 	}
 }
+
 impl ExecuteXcm<Call> for MockXcm {
 	fn execute_xcm_in_credit(
 		_origin: impl Into<MultiLocation>,
@@ -254,16 +255,16 @@ impl module_currencies::Config for Runtime {
 parameter_types! {
 	pub const StakingCurrencyId: CurrencyId = KSM;
 	pub const LiquidCurrencyId: CurrencyId = LKSM;
-	pub MinimumMintThreshold: Balance = millicent(1000);
-	pub MinimumRedeemThreshold: Balance = millicent(1000);
+	pub MinimumMintThreshold: Balance = millicent(50000);
+	pub MinimumRedeemThreshold: Balance = dollar(5);
 	pub const MockXcmDestination: MultiLocation = MOCK_XCM_DESTINATION;
-	pub const MockXcmAccountId: AccountId = MOCK_XCM_ACCOUNTID;
+	pub const MockXcmAccountId: AccountId = MOCK_XCM_ACCOUNT_ID;
 	pub DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
 	pub const MaxRewardPerEra: Permill = Permill::from_percent(1);
 	pub MintFee: Balance = millicent(1000);
 	pub BaseWithdrawFee: Permill = Permill::from_rational(1u32, 1_000u32); // 0.1%
 	pub XcmUnbondFee: Balance = dollar(1);
-	pub const ParachainAccount: AccountId = ROOT;
+	pub const ParachainAccount: AccountId = DAVE;
 	pub const MaximumRedeemRequestMatchesForMint: u32 = 2;
 	pub static MockRelayBlockNumberProvider: u64 = 0;
 	pub const RelayChainUnbondingSlashingSpans: u32 = 5;
@@ -273,7 +274,7 @@ parameter_types! {
 	pub const StakingUpdateFrequency: BlockNumber = 100;
 }
 ord_parameter_types! {
-	pub const Root: AccountId = ROOT;
+	pub const Root: AccountId = DAVE;
 }
 
 impl BlockNumberProvider for MockRelayBlockNumberProvider {
@@ -349,13 +350,13 @@ impl Default for ExtBuilder {
 			tokens_balances: vec![
 				(ALICE, KSM, initial),
 				(BOB, KSM, initial),
-				(ROOT, LKSM, initial),
+				(DAVE, LKSM, initial),
 				(INVALID_CALLER, KSM, initial),
 			],
 			native_balances: vec![
 				(ALICE, initial),
 				(BOB, initial),
-				(ROOT, initial),
+				(DAVE, initial),
 				(INVALID_CALLER, initial),
 			],
 		}

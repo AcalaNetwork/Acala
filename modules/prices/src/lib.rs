@@ -35,8 +35,8 @@ use orml_traits::{DataFeeder, DataProvider, MultiCurrency};
 use primitives::{Balance, CurrencyId};
 use sp_core::U256;
 use sp_runtime::{traits::CheckedMul, FixedPointNumber};
-use sp_std::{convert::TryInto, marker::PhantomData};
-use support::{CurrencyIdMapping, DEXManager, ExchangeRateProvider, LockablePrice, Price, PriceProvider};
+use sp_std::marker::PhantomData;
+use support::{DEXManager, Erc20InfoMapping, ExchangeRateProvider, LockablePrice, Price, PriceProvider};
 
 mod mock;
 mod tests;
@@ -86,7 +86,7 @@ pub mod module {
 		type Currency: MultiCurrency<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
 
 		/// Mapping between CurrencyId and ERC20 address so user can use Erc20.
-		type CurrencyIdMapping: CurrencyIdMapping;
+		type Erc20InfoMapping: Erc20InfoMapping;
 
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
@@ -103,10 +103,13 @@ pub mod module {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// Lock price. \[currency_id, locked_price\]
-		LockPrice(CurrencyId, Price),
-		/// Unlock price. \[currency_id\]
-		UnlockPrice(CurrencyId),
+		/// Lock price.
+		LockPrice {
+			currency_id: CurrencyId,
+			locked_price: Price,
+		},
+		/// Unlock price.
+		UnlockPrice { currency_id: CurrencyId },
 	}
 
 	/// Mapping from currency id to it's locked price
@@ -184,7 +187,7 @@ impl<T: Config> Pallet<T> {
 			T::Source::get(&currency_id)
 		};
 
-		let maybe_adjustment_multiplier = 10u128.checked_pow(T::CurrencyIdMapping::decimals(currency_id)?.into());
+		let maybe_adjustment_multiplier = 10u128.checked_pow(T::Erc20InfoMapping::decimals(currency_id)?.into());
 
 		if let (Some(price), Some(adjustment_multiplier)) = (maybe_price, maybe_adjustment_multiplier) {
 			// return the price for 1 basic unit
@@ -200,14 +203,17 @@ impl<T: Config> LockablePrice<CurrencyId> for Pallet<T> {
 	fn lock_price(currency_id: CurrencyId) -> DispatchResult {
 		let price = Self::access_price(currency_id).ok_or(Error::<T>::AccessPriceFailed)?;
 		LockedPrice::<T>::insert(currency_id, price);
-		Pallet::<T>::deposit_event(Event::LockPrice(currency_id, price));
+		Pallet::<T>::deposit_event(Event::LockPrice {
+			currency_id,
+			locked_price: price,
+		});
 		Ok(())
 	}
 
 	/// Unlock the locked price
 	fn unlock_price(currency_id: CurrencyId) -> DispatchResult {
 		let _ = LockedPrice::<T>::take(currency_id).ok_or(Error::<T>::NoLockedPrice)?;
-		Pallet::<T>::deposit_event(Event::UnlockPrice(currency_id));
+		Pallet::<T>::deposit_event(Event::UnlockPrice { currency_id });
 		Ok(())
 	}
 }

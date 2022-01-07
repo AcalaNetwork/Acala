@@ -43,12 +43,11 @@ mod dex;
 ))]
 mod evm;
 
-#[cfg(any(
-	feature = "with-mandala-runtime",
-	feature = "with-karura-runtime",
-	feature = "with-acala-runtime"
-))]
+#[cfg(feature = "with-acala-runtime")]
 mod homa_lite;
+
+#[cfg(feature = "with-karura-runtime")]
+mod homa_xcm;
 
 #[cfg(any(
 	feature = "with-mandala-runtime",
@@ -94,6 +93,13 @@ mod session_manager;
 	feature = "with-karura-runtime",
 	feature = "with-acala-runtime"
 ))]
+mod stable_asset;
+
+#[cfg(any(
+	feature = "with-mandala-runtime",
+	feature = "with-karura-runtime",
+	feature = "with-acala-runtime"
+))]
 mod treasury;
 
 #[cfg(any(
@@ -109,6 +115,13 @@ mod vesting;
 	feature = "with-acala-runtime"
 ))]
 mod weights;
+
+#[cfg(any(
+	feature = "with-mandala-runtime",
+	feature = "with-karura-runtime",
+	feature = "with-acala-runtime"
+))]
+mod payment;
 
 // TODO: polkadot_runtime not support XCM
 #[cfg(feature = "with-karura-runtime")]

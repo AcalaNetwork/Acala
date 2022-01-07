@@ -39,7 +39,10 @@ use frame_system::Config;
 #[derive(Encode, Decode, RuntimeDebug)]
 pub enum BalancesCall<T: Config> {
 	#[codec(index = 3)]
-	TransferKeepAlive(<T::Lookup as StaticLookup>::Source, #[codec(compact)] Balance),
+	TransferKeepAlive(<T::Lookup as StaticLookup>::Source, #[codec(compact)] Balance), /* TODO: because param type
+	                                                                                    * in relaychain is u64,
+	                                                                                    * need to confirm
+	                                                                                    * Balance(u128) is work. */
 }
 
 #[derive(Encode, Decode, RuntimeDebug)]
@@ -52,6 +55,12 @@ pub enum UtilityCall<RelayChainCall> {
 
 #[derive(Encode, Decode, RuntimeDebug)]
 pub enum StakingCall {
+	#[codec(index = 1)]
+	BondExtra(#[codec(compact)] Balance), /* TODO: because param type in relaychain is u64, need to confirm
+	                                       * Balance(u128) is work. */
+	#[codec(index = 2)]
+	Unbond(#[codec(compact)] Balance), /* TODO: because param type in relaychain is u64, need to confirm
+	                                    * Balance(u128) is work. */
 	#[codec(index = 3)]
 	WithdrawUnbonded(u32),
 }
@@ -115,6 +124,14 @@ where
 		RelayChainCall::Utility(Box::new(UtilityCall::AsDerivative(index, call)))
 	}
 
+	fn staking_bond_extra(amount: Self::Balance) -> Self::RelayChainCall {
+		RelayChainCall::Staking(StakingCall::BondExtra(amount))
+	}
+
+	fn staking_unbond(amount: Self::Balance) -> Self::RelayChainCall {
+		RelayChainCall::Staking(StakingCall::Unbond(amount))
+	}
+
 	fn staking_withdraw_unbonded(num_slashing_spans: u32) -> Self::RelayChainCall {
 		RelayChainCall::Staking(StakingCall::WithdrawUnbonded(num_slashing_spans))
 	}
@@ -143,7 +160,7 @@ where
 				assets: All.into(),
 				max_assets: u32::max_value(),
 				beneficiary: MultiLocation {
-					parents: 1,
+					parents: 0,
 					interior: X1(Parachain(ParachainId::get().into())),
 				},
 			},

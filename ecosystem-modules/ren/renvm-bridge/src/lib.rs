@@ -90,12 +90,16 @@ pub mod module {
 	#[pallet::event]
 	#[pallet::generate_deposit(fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// Asset minted. \[owner, amount\]
-		Minted(T::AccountId, Balance),
-		/// Asset burnt in this chain \[owner, dest, amount\]
-		Burnt(T::AccountId, DestAddress, Balance),
-		/// Rotated key \[new_key\]
-		RotatedKey(PublicKey),
+		/// Asset minted.
+		Minted { owner: T::AccountId, amount: Balance },
+		/// Asset burnt in this chain.
+		Burnt {
+			owner: T::AccountId,
+			dest: DestAddress,
+			amount: Balance,
+		},
+		/// Rotated key
+		RotatedKey { key: PublicKey },
 	}
 
 	/// The RenVM split public key
@@ -119,40 +123,15 @@ pub mod module {
 	type NextBurnEventId<T: Config> = StorageValue<_, u32, ValueQuery>;
 
 	#[pallet::genesis_config]
+	#[cfg_attr(feature = "std", derive(Default))]
 	pub struct GenesisConfig {
 		pub ren_vm_public_key: PublicKey,
-	}
-
-	#[cfg(feature = "std")]
-	impl Default for GenesisConfig {
-		fn default() -> Self {
-			GenesisConfig {
-				ren_vm_public_key: Default::default(),
-			}
-		}
 	}
 
 	#[pallet::genesis_build]
 	impl<T: Config> GenesisBuild<T> for GenesisConfig {
 		fn build(&self) {
 			RenVmPublicKey::<T>::set(Some(self.ren_vm_public_key));
-		}
-	}
-
-	#[cfg(feature = "std")]
-	impl GenesisConfig {
-		/// Direct implementation of `GenesisBuild::build_storage`.
-		///
-		/// Kept in order not to break dependency.
-		pub fn build_storage<T: Config>(&self) -> Result<sp_runtime::Storage, String> {
-			<Self as frame_support::traits::GenesisBuild<T>>::build_storage(self)
-		}
-
-		/// Direct implementation of `GenesisBuild::assimilate_storage`.
-		///
-		/// Kept in order not to break dependency.
-		pub fn assimilate_storage<T: Config>(&self, storage: &mut sp_runtime::Storage) -> Result<(), String> {
-			<Self as frame_support::traits::GenesisBuild<T>>::assimilate_storage(self, storage)
 		}
 	}
 
@@ -193,7 +172,7 @@ pub mod module {
 				Pays::Yes,
 				DispatchClass::Normal,
 			);
-			Self::deposit_event(Event::Minted(who, amount));
+			Self::deposit_event(Event::Minted { owner: who, amount });
 
 			Ok(())
 		}
@@ -209,7 +188,11 @@ pub mod module {
 
 				T::BridgedTokenCurrency::withdraw(&sender, amount)?;
 				BurnEvents::<T>::insert(this_id, (frame_system::Pallet::<T>::block_number(), &to, amount));
-				Self::deposit_event(Event::Burnt(sender, to, amount));
+				Self::deposit_event(Event::Burnt {
+					owner: sender,
+					dest: to,
+					amount,
+				});
 
 				Ok(())
 			})?;
@@ -226,7 +209,7 @@ pub mod module {
 		pub fn rotate_key(origin: OriginFor<T>, new_key: PublicKey, sig: EcdsaSignature) -> DispatchResult {
 			ensure_none(origin)?;
 			Self::do_rotate_key(new_key, sig);
-			Self::deposit_event(Event::RotatedKey(new_key));
+			Self::deposit_event(Event::RotatedKey { key: new_key });
 
 			Ok(())
 		}

@@ -26,7 +26,7 @@ use frame_support::{
 	PalletId,
 };
 use orml_traits::parameter_type_with_key;
-use primitives::{CurrencyId, ReserveIdentifier, TokenSymbol};
+use primitives::{convert_decimals_to_evm, CurrencyId, ReserveIdentifier, TokenSymbol};
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
@@ -148,7 +148,8 @@ ord_parameter_types! {
 	pub const CouncilAccount: AccountId32 = AccountId32::from([1u8; 32]);
 	pub const TreasuryAccount: AccountId32 = AccountId32::from([2u8; 32]);
 	pub const NetworkContractAccount: AccountId32 = AccountId32::from([0u8; 32]);
-	pub const StorageDepositPerByte: u128 = 10;
+	pub const StorageDepositPerByte: u128 = convert_decimals_to_evm(10);
+	pub const TxFeePerGas: u128 = 10;
 	pub const DeveloperDeposit: u64 = 1000;
 	pub const DeploymentFee: u64 = 200;
 }
@@ -159,6 +160,7 @@ impl module_evm::Config for Runtime {
 	type TransferAll = ();
 	type NewContractExtraBytes = NewContractExtraBytes;
 	type StorageDepositPerByte = StorageDepositPerByte;
+	type TxFeePerGas = TxFeePerGas;
 	type Event = Event;
 	type Precompiles = ();
 	type ChainId = ();
@@ -190,7 +192,7 @@ impl Config for Runtime {
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type WeightInfo = ();
 	type AddressMapping = MockAddressMapping;
-	type EVMBridge = EVMBridge;
+	type EVMBridge = module_evm_bridge::EVMBridge<Runtime>;
 	type SweepOrigin = EnsureSignedBy<CouncilAccount, AccountId>;
 	type OnDust = crate::TransferDust<Runtime, DustAccount>;
 }
@@ -245,24 +247,18 @@ pub fn eva_evm_addr() -> EvmAddress {
 pub const ID_1: LockIdentifier = *b"1       ";
 
 pub fn erc20_address() -> EvmAddress {
-	EvmAddress::from_str("0000000000000000000000000000000002000000").unwrap()
+	EvmAddress::from_str("0x5dddfce53ee040d9eb21afbc0ae1bb4dbb0ba643").unwrap()
 }
 
 pub fn deploy_contracts() {
 	let code = from_hex(include!("../../evm-bridge/src/erc20_demo_contract")).unwrap();
-	assert_ok!(EVM::create_network_contract(
-		Origin::signed(NetworkContractAccount::get()),
-		code,
-		0,
-		2_100_000,
-		10000
-	));
+	assert_ok!(EVM::create(Origin::signed(alice()), code, 0, 2_100_000, 10000));
 
-	System::assert_last_event(Event::EVM(module_evm::Event::Created(
-		alice_evm_addr(),
-		erc20_address(),
-		vec![module_evm::Log {
-			address: H160::from_str("0x0000000000000000000000000000000002000000").unwrap(),
+	System::assert_last_event(Event::EVM(module_evm::Event::Created {
+		from: alice_evm_addr(),
+		contract: erc20_address(),
+		logs: vec![module_evm::Log {
+			address: H160::from_str("0x5dddfce53ee040d9eb21afbc0ae1bb4dbb0ba643").unwrap(),
 			topics: vec![
 				H256::from_str("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef").unwrap(),
 				H256::from_str("0x0000000000000000000000000000000000000000000000000000000000000000").unwrap(),
@@ -270,7 +266,7 @@ pub fn deploy_contracts() {
 			],
 			data: H256::from_low_u64_be(10000).as_bytes().to_vec(),
 		}],
-	)));
+	}));
 
 	assert_ok!(EVM::deploy_free(Origin::signed(CouncilAccount::get()), erc20_address()));
 }

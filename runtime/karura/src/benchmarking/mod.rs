@@ -21,6 +21,9 @@
 pub mod utils;
 
 // module benchmarking
+pub mod asset_registry {
+	include!("../../../mandala/src/benchmarking/asset_registry.rs");
+}
 pub mod auction_manager {
 	include!("../../../mandala/src/benchmarking/auction_manager.rs");
 }
@@ -47,6 +50,9 @@ pub mod evm {
 }
 pub mod evm_accounts {
 	include!("../../../mandala/src/benchmarking/evm_accounts.rs");
+}
+pub mod homa {
+	include!("../../../mandala/src/benchmarking/homa.rs");
 }
 pub mod honzon {
 	include!("../../../mandala/src/benchmarking/honzon.rs");

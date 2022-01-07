@@ -44,12 +44,7 @@ use sp_runtime::{
 	traits::{CheckedSub, MaybeSerializeDeserialize, Saturating, StaticLookup, Zero},
 	DispatchError, DispatchResult,
 };
-use sp_std::{
-	convert::{TryFrom, TryInto},
-	fmt::Debug,
-	marker, result,
-	vec::Vec,
-};
+use sp_std::{fmt::Debug, marker, result, vec::Vec};
 use support::{AddressMapping, EVMBridge, InvokeContext};
 
 mod mock;
@@ -118,16 +113,37 @@ pub mod module {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// Currency transfer success. \[currency_id, from, to, amount\]
-		Transferred(CurrencyIdOf<T>, T::AccountId, T::AccountId, BalanceOf<T>),
-		/// Update balance success. \[currency_id, who, amount\]
-		BalanceUpdated(CurrencyIdOf<T>, T::AccountId, AmountOf<T>),
-		/// Deposit success. \[currency_id, who, amount\]
-		Deposited(CurrencyIdOf<T>, T::AccountId, BalanceOf<T>),
-		/// Withdraw success. \[currency_id, who, amount\]
-		Withdrawn(CurrencyIdOf<T>, T::AccountId, BalanceOf<T>),
-		/// Dust swept. \[currency_id, who, amount\]
-		DustSwept(CurrencyIdOf<T>, T::AccountId, BalanceOf<T>),
+		/// Currency transfer success.
+		Transferred {
+			currency_id: CurrencyIdOf<T>,
+			from: T::AccountId,
+			to: T::AccountId,
+			amount: BalanceOf<T>,
+		},
+		/// Update balance success.
+		BalanceUpdated {
+			currency_id: CurrencyIdOf<T>,
+			who: T::AccountId,
+			amount: AmountOf<T>,
+		},
+		/// Deposit success.
+		Deposited {
+			currency_id: CurrencyIdOf<T>,
+			who: T::AccountId,
+			amount: BalanceOf<T>,
+		},
+		/// Withdraw success.
+		Withdrawn {
+			currency_id: CurrencyIdOf<T>,
+			who: T::AccountId,
+			amount: BalanceOf<T>,
+		},
+		/// Dust swept.
+		DustSwept {
+			currency_id: CurrencyIdOf<T>,
+			who: T::AccountId,
+			amount: BalanceOf<T>,
+		},
 	}
 
 	#[pallet::pallet]
@@ -169,7 +185,12 @@ pub mod module {
 			let to = T::Lookup::lookup(dest)?;
 			T::NativeCurrency::transfer(&from, &to, amount)?;
 
-			Self::deposit_event(Event::Transferred(T::GetNativeCurrencyId::get(), from, to, amount));
+			Self::deposit_event(Event::Transferred {
+				currency_id: T::GetNativeCurrencyId::get(),
+				from,
+				to,
+				amount,
+			});
 			Ok(())
 		}
 
@@ -210,7 +231,11 @@ pub mod module {
 				}
 				if free_balance < Self::minimum_balance(currency_id) {
 					T::OnDust::on_dust(&account, currency_id, free_balance);
-					Self::deposit_event(Event::DustSwept(currency_id, account, free_balance));
+					Self::deposit_event(Event::DustSwept {
+						currency_id,
+						who: account,
+						amount: free_balance,
+					});
 				}
 			}
 			Ok(())
@@ -330,7 +355,12 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 			_ => T::MultiCurrency::transfer(currency_id, from, to, amount)?,
 		}
 
-		Self::deposit_event(Event::Transferred(currency_id, from.clone(), to.clone(), amount));
+		Self::deposit_event(Event::Transferred {
+			currency_id,
+			from: from.clone(),
+			to: to.clone(),
+			amount,
+		});
 		Ok(())
 	}
 
@@ -343,7 +373,11 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 			id if id == T::GetNativeCurrencyId::get() => T::NativeCurrency::deposit(who, amount)?,
 			_ => T::MultiCurrency::deposit(currency_id, who, amount)?,
 		}
-		Self::deposit_event(Event::Deposited(currency_id, who.clone(), amount));
+		Self::deposit_event(Event::Deposited {
+			currency_id,
+			who: who.clone(),
+			amount,
+		});
 		Ok(())
 	}
 
@@ -356,7 +390,11 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 			id if id == T::GetNativeCurrencyId::get() => T::NativeCurrency::withdraw(who, amount)?,
 			_ => T::MultiCurrency::withdraw(currency_id, who, amount)?,
 		}
-		Self::deposit_event(Event::Withdrawn(currency_id, who.clone(), amount));
+		Self::deposit_event(Event::Withdrawn {
+			currency_id,
+			who: who.clone(),
+			amount,
+		});
 		Ok(())
 	}
 
@@ -386,7 +424,11 @@ impl<T: Config> MultiCurrencyExtended<T::AccountId> for Pallet<T> {
 			id if id == T::GetNativeCurrencyId::get() => T::NativeCurrency::update_balance(who, by_amount)?,
 			_ => T::MultiCurrency::update_balance(currency_id, who, by_amount)?,
 		}
-		Self::deposit_event(Event::BalanceUpdated(currency_id, who.clone(), by_amount));
+		Self::deposit_event(Event::BalanceUpdated {
+			currency_id,
+			who: who.clone(),
+			amount: by_amount,
+		});
 		Ok(())
 	}
 }

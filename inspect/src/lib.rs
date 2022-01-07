@@ -64,7 +64,6 @@ impl<TBlock: Block> PrettyPrinter<TBlock> for DebugPrinter {
 }
 
 /// Aggregated error for `Inspector` operations.
-#[allow(clippy::large_enum_variant)]
 #[derive(Debug, derive_more::From, derive_more::Display)]
 pub enum Error {
 	/// Could not decode Block or Extrinsic.

@@ -19,7 +19,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::upper_case_acronyms)]
 
-use codec::{Decode, Encode, FullCodec, HasCompact};
+use codec::{Decode, Encode, FullCodec};
 use frame_support::pallet_prelude::{DispatchClass, Pays, Weight};
 use primitives::{
 	evm::{CallInfo, EvmAddress},
@@ -40,12 +40,7 @@ use sp_std::{
 
 use xcm::latest::prelude::*;
 
-pub mod homa;
 pub mod mocks;
-pub use homa::{
-	HomaProtocol, NomineesProvider, OnCommission, OnNewEra, PolkadotBridge, PolkadotBridgeCall, PolkadotBridgeState,
-	PolkadotBridgeType, PolkadotStakingLedger, PolkadotUnlockChunk,
-};
 
 pub type Price = FixedU128;
 pub type ExchangeRate = FixedU128;
@@ -103,28 +98,33 @@ pub trait AuctionManager<AccountId> {
 	fn get_total_target_in_auction() -> Self::Balance;
 }
 
+#[derive(RuntimeDebug, Clone, Copy, PartialEq)]
+pub enum SwapLimit<Balance> {
+	/// use exact amount supply amount to swap. (exact_supply_amount, minimum_target_amount)
+	ExactSupply(Balance, Balance),
+	/// swap to get exact amount target. (maximum_supply_amount, exact_target_amount)
+	ExactTarget(Balance, Balance),
+}
+
 pub trait DEXManager<AccountId, CurrencyId, Balance> {
 	fn get_liquidity_pool(currency_id_a: CurrencyId, currency_id_b: CurrencyId) -> (Balance, Balance);
 
 	fn get_liquidity_token_address(currency_id_a: CurrencyId, currency_id_b: CurrencyId) -> Option<H160>;
 
-	fn get_swap_target_amount(path: &[CurrencyId], supply_amount: Balance) -> Option<Balance>;
+	fn get_swap_amount(path: &[CurrencyId], limit: SwapLimit<Balance>) -> Option<(Balance, Balance)>;
 
-	fn get_swap_supply_amount(path: &[CurrencyId], target_amount: Balance) -> Option<Balance>;
+	fn get_best_price_swap_path(
+		supply_currency_id: CurrencyId,
+		target_currency_id: CurrencyId,
+		limit: SwapLimit<Balance>,
+		alternative_path_joint_list: Vec<Vec<CurrencyId>>,
+	) -> Option<Vec<CurrencyId>>;
 
-	fn swap_with_exact_supply(
+	fn swap_with_specific_path(
 		who: &AccountId,
 		path: &[CurrencyId],
-		supply_amount: Balance,
-		min_target_amount: Balance,
-	) -> sp_std::result::Result<Balance, DispatchError>;
-
-	fn swap_with_exact_target(
-		who: &AccountId,
-		path: &[CurrencyId],
-		target_amount: Balance,
-		max_supply_amount: Balance,
-	) -> sp_std::result::Result<Balance, DispatchError>;
+		limit: SwapLimit<Balance>,
+	) -> sp_std::result::Result<(Balance, Balance), DispatchError>;
 
 	fn add_liquidity(
 		who: &AccountId,
@@ -160,29 +160,24 @@ where
 		Some(Default::default())
 	}
 
-	fn get_swap_target_amount(_path: &[CurrencyId], _supply_amount: Balance) -> Option<Balance> {
+	fn get_swap_amount(_path: &[CurrencyId], _limit: SwapLimit<Balance>) -> Option<(Balance, Balance)> {
 		Some(Default::default())
 	}
 
-	fn get_swap_supply_amount(_path: &[CurrencyId], _target_amount: Balance) -> Option<Balance> {
+	fn get_best_price_swap_path(
+		_supply_currency_id: CurrencyId,
+		_target_currency_id: CurrencyId,
+		_limit: SwapLimit<Balance>,
+		_alternative_path_joint_list: Vec<Vec<CurrencyId>>,
+	) -> Option<Vec<CurrencyId>> {
 		Some(Default::default())
 	}
 
-	fn swap_with_exact_supply(
+	fn swap_with_specific_path(
 		_who: &AccountId,
 		_path: &[CurrencyId],
-		_supply_amount: Balance,
-		_min_target_amount: Balance,
-	) -> sp_std::result::Result<Balance, DispatchError> {
-		Ok(Default::default())
-	}
-
-	fn swap_with_exact_target(
-		_who: &AccountId,
-		_path: &[CurrencyId],
-		_target_amount: Balance,
-		_max_supply_amount: Balance,
-	) -> sp_std::result::Result<Balance, DispatchError> {
+		_limit: SwapLimit<Balance>,
+	) -> sp_std::result::Result<(Balance, Balance), DispatchError> {
 		Ok(Default::default())
 	}
 
@@ -253,21 +248,11 @@ pub trait CDPTreasury<AccountId> {
 }
 
 pub trait CDPTreasuryExtended<AccountId>: CDPTreasury<AccountId> {
-	fn swap_exact_collateral_to_stable(
+	fn swap_collateral_to_stable(
 		currency_id: Self::CurrencyId,
-		supply_amount: Self::Balance,
-		min_target_amount: Self::Balance,
-		swap_path: &[Self::CurrencyId],
+		limit: SwapLimit<Self::Balance>,
 		collateral_in_auction: bool,
-	) -> sp_std::result::Result<Self::Balance, DispatchError>;
-
-	fn swap_collateral_to_exact_stable(
-		currency_id: Self::CurrencyId,
-		max_supply_amount: Self::Balance,
-		target_amount: Self::Balance,
-		swap_path: &[Self::CurrencyId],
-		collateral_in_auction: bool,
-	) -> sp_std::result::Result<Self::Balance, DispatchError>;
+	) -> sp_std::result::Result<(Self::Balance, Self::Balance), DispatchError>;
 
 	fn create_collateral_auctions(
 		currency_id: Self::CurrencyId,
@@ -275,7 +260,9 @@ pub trait CDPTreasuryExtended<AccountId>: CDPTreasury<AccountId> {
 		target: Self::Balance,
 		refund_receiver: AccountId,
 		splited: bool,
-	) -> DispatchResult;
+	) -> sp_std::result::Result<u32, DispatchError>;
+
+	fn max_auction() -> u32;
 }
 
 pub trait PriceProvider<CurrencyId> {
@@ -503,14 +490,23 @@ pub trait AddressMapping<AccountId> {
 	fn is_linked(account_id: &AccountId, evm: &EvmAddress) -> bool;
 }
 
+/// A mapping between AssetId and AssetMetadata.
+pub trait AssetIdMapping<StableAssetPoolId, ForeignAssetId, MultiLocation, AssetMetadata> {
+	/// Returns the AssetMetadata associated with a given contract address.
+	fn get_erc20_asset_metadata(contract: EvmAddress) -> Option<AssetMetadata>;
+	/// Returns the AssetMetadata associated with a given StableAssetPoolId.
+	fn get_stable_asset_metadata(stable_asset_id: StableAssetPoolId) -> Option<AssetMetadata>;
+	/// Returns the AssetMetadata associated with a given ForeignAssetId.
+	fn get_foreign_asset_metadata(foreign_asset_id: ForeignAssetId) -> Option<AssetMetadata>;
+	/// Returns the MultiLocation associated with a given ForeignAssetId.
+	fn get_multi_location(foreign_asset_id: ForeignAssetId) -> Option<MultiLocation>;
+	/// Returns the CurrencyId associated with a given MultiLocation.
+	fn get_currency_id(multi_location: MultiLocation) -> Option<CurrencyId>;
+}
+
 /// A mapping between u32 and Erc20 address.
 /// provide a way to encode/decode for CurrencyId;
-pub trait CurrencyIdMapping {
-	/// Use first 4 non-zero bytes as u32 to the mapping between u32 and evm
-	/// address.
-	fn set_erc20_mapping(address: EvmAddress) -> DispatchResult;
-	/// Returns the EvmAddress associated with a given u32.
-	fn get_evm_address(currency_id: u32) -> Option<EvmAddress>;
+pub trait Erc20InfoMapping {
 	/// Returns the name associated with a given CurrencyId.
 	/// If CurrencyId is CurrencyId::DexShare and contain DexShare::Erc20,
 	/// the EvmAddress must have been mapped.
@@ -534,15 +530,7 @@ pub trait CurrencyIdMapping {
 }
 
 #[cfg(feature = "std")]
-impl CurrencyIdMapping for () {
-	fn set_erc20_mapping(_address: EvmAddress) -> DispatchResult {
-		Err(DispatchError::Other("unimplemented CurrencyIdMapping"))
-	}
-
-	fn get_evm_address(_currency_id: u32) -> Option<EvmAddress> {
-		None
-	}
-
+impl Erc20InfoMapping for () {
 	fn name(_currency_id: CurrencyId) -> Option<Vec<u8>> {
 		None
 	}
@@ -584,6 +572,16 @@ pub trait CallBuilder {
 	/// - call: The call to be executed. Can be nested with `utility_batch_call`
 	/// - index: The index of sub-account to be used as the new origin.
 	fn utility_as_derivative_call(call: Self::RelayChainCall, index: u16) -> Self::RelayChainCall;
+
+	/// Bond extra on relay-chain.
+	///  params:
+	/// - amount: The amount of staking currency to bond.
+	fn staking_bond_extra(amount: Self::Balance) -> Self::RelayChainCall;
+
+	/// Unbond on relay-chain.
+	///  params:
+	/// - amount: The amount of staking currency to unbond.
+	fn staking_unbond(amount: Self::Balance) -> Self::RelayChainCall;
 
 	/// Withdraw unbonded staking on the relay-chain.
 	///  params:
@@ -627,4 +625,27 @@ impl<Task> IdleScheduler<Task> for () {
 	fn schedule(_task: Task) -> DispatchResult {
 		unimplemented!()
 	}
+}
+
+#[impl_trait_for_tuples::impl_for_tuples(30)]
+pub trait OnNewEra<EraIndex> {
+	fn on_new_era(era: EraIndex);
+}
+
+pub trait NomineesProvider<AccountId> {
+	fn nominees() -> Vec<AccountId>;
+}
+
+pub trait HomaSubAccountXcm<AccountId, Balance> {
+	/// Cross-chain transfer staking currency to sub account on relaychain.
+	fn transfer_staking_to_sub_account(sender: &AccountId, sub_account_index: u16, amount: Balance) -> DispatchResult;
+	/// Send XCM message to the relaychain for sub account to withdraw_unbonded staking currency and
+	/// send it back.
+	fn withdraw_unbonded_from_sub_account(sub_account_index: u16, amount: Balance) -> DispatchResult;
+	/// Send XCM message to the relaychain for sub account to bond extra.
+	fn bond_extra_on_sub_account(sub_account_index: u16, amount: Balance) -> DispatchResult;
+	/// Send XCM message to the relaychain for sub account to unbond.
+	fn unbond_on_sub_account(sub_account_index: u16, amount: Balance) -> DispatchResult;
+	/// The fee of cross-chain transfer is deducted from the recipient.
+	fn get_xcm_transfer_fee() -> Balance;
 }

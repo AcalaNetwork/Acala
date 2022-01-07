@@ -183,13 +183,13 @@ fn liquidate_cdp() {
 				RELAY_CHAIN_CURRENCY
 			));
 
-			let liquidate_alice_xbtc_cdp_event = Event::CdpEngine(module_cdp_engine::Event::LiquidateUnsafeCDP(
-				RELAY_CHAIN_CURRENCY,
-				AccountId::from(ALICE),
-				50 * dollar(RELAY_CHAIN_CURRENCY),
-				250_000 * dollar(USD_CURRENCY),
-				LiquidationStrategy::Auction,
-			));
+			let liquidate_alice_xbtc_cdp_event = Event::CdpEngine(module_cdp_engine::Event::LiquidateUnsafeCDP {
+				collateral_type: RELAY_CHAIN_CURRENCY,
+				owner: AccountId::from(ALICE),
+				collateral_amount: 50 * dollar(RELAY_CHAIN_CURRENCY),
+				bad_debt_value: 250_000 * dollar(USD_CURRENCY),
+				liquidation_strategy: LiquidationStrategy::Auction { auction_count: 1 },
+			});
 
 			assert!(System::events()
 				.iter()
@@ -208,13 +208,14 @@ fn liquidate_cdp() {
 				RELAY_CHAIN_CURRENCY
 			));
 
-			let liquidate_bob_xbtc_cdp_event = Event::CdpEngine(module_cdp_engine::Event::LiquidateUnsafeCDP(
-				RELAY_CHAIN_CURRENCY,
-				AccountId::from(BOB),
-				dollar(RELAY_CHAIN_CURRENCY),
-				5_000 * dollar(USD_CURRENCY),
-				LiquidationStrategy::Exchange,
-			));
+			let liquidate_bob_xbtc_cdp_event = Event::CdpEngine(module_cdp_engine::Event::LiquidateUnsafeCDP {
+				collateral_type: RELAY_CHAIN_CURRENCY,
+				owner: AccountId::from(BOB),
+				collateral_amount: dollar(RELAY_CHAIN_CURRENCY),
+				bad_debt_value: 5_000 * dollar(USD_CURRENCY),
+				liquidation_strategy: LiquidationStrategy::Exchange,
+			});
+
 			assert!(System::events()
 				.iter()
 				.any(|record| record.event == liquidate_bob_xbtc_cdp_event));
@@ -420,10 +421,10 @@ fn test_cdp_engine_module() {
 				RELAY_CHAIN_CURRENCY
 			));
 
-			let settle_cdp_in_debit_event = Event::CdpEngine(module_cdp_engine::Event::SettleCDPInDebit(
-				RELAY_CHAIN_CURRENCY,
-				AccountId::from(ALICE),
-			));
+			let settle_cdp_in_debit_event = Event::CdpEngine(module_cdp_engine::Event::SettleCDPInDebit {
+				collateral_type: RELAY_CHAIN_CURRENCY,
+				owner: AccountId::from(ALICE),
+			});
 			assert!(System::events()
 				.iter()
 				.any(|record| record.event == settle_cdp_in_debit_event));
@@ -548,7 +549,6 @@ fn cdp_treasury_handles_honzon_surplus_correctly() {
 				Origin::signed(AccountId::from(ALICE)),
 				RELAY_CHAIN_CURRENCY,
 				5 * dollar(RELAY_CHAIN_CURRENCY),
-				None
 			));
 			// Just over 50 dollar(USD_CURRENCY), due to interest on loan
 			assert_eq!(CdpTreasury::get_debit_pool(), 50165264273004);

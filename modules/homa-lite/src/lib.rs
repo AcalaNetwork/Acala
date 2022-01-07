@@ -22,6 +22,9 @@
 pub mod benchmarking;
 mod mock;
 mod tests;
+
+mod mock_no_fees;
+mod tests_no_fees;
 pub mod weights;
 
 use frame_support::{log, pallet_prelude::*, transactional, weights::Weight, BoundedVec};
@@ -39,7 +42,6 @@ use sp_runtime::{
 };
 use sp_std::{
 	cmp::{min, Ordering},
-	convert::{From, TryFrom, TryInto},
 	ops::Mul,
 	prelude::*,
 };
@@ -55,6 +57,12 @@ pub mod module {
 	pub type RelayChainBlockNumberOf<T> = <<T as Config>::RelayChainBlockNumber as BlockNumberProvider>::BlockNumber;
 	pub(crate) type AmountOf<T> =
 		<<T as Config>::Currency as MultiCurrencyExtended<<T as frame_system::Config>::AccountId>>::Amount;
+
+	#[derive(RuntimeDebug, Clone, Copy, PartialEq)]
+	pub enum RedeemType<AccountId> {
+		WithAvailableStakingBalance,
+		WithMint(AccountId, Balance),
+	}
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config + pallet_xcm::Config {
@@ -169,48 +177,59 @@ pub mod module {
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// The user has Staked some currencies to mint Liquid Currency.
-		/// \[user, amount_staked, amount_minted\]
-		Minted(T::AccountId, Balance, Balance),
+		Minted {
+			who: T::AccountId,
+			amount_staked: Balance,
+			amount_minted: Balance,
+		},
 
-		/// The total amount of the staking currency on the relaychain has been
-		/// set.\[total_staking_currency\]
-		TotalStakingCurrencySet(Balance),
+		/// The total amount of the staking currency on the relaychain has been set.
+		TotalStakingCurrencySet { total_staking_currency: Balance },
 
-		/// The mint cap for Staking currency is updated.\[new_cap\]
-		StakingCurrencyMintCapUpdated(Balance),
+		/// The mint cap for Staking currency is updated.
+		StakingCurrencyMintCapUpdated { new_cap: Balance },
 
-		/// A new weight for XCM transfers has been set.\[new_weight\]
-		XcmDestWeightSet(Weight),
+		/// A new weight for XCM transfers has been set.
+		XcmDestWeightSet { new_weight: Weight },
 
 		/// The redeem request has been cancelled, and funds un-reserved.
-		/// \[who, liquid_amount_unreserved\]
-		RedeemRequestCancelled(T::AccountId, Balance),
+		RedeemRequestCancelled {
+			who: T::AccountId,
+			liquid_amount_unreserved: Balance,
+		},
 
 		/// A new Redeem request has been registered.
-		/// \[who, liquid_amount, extra_fee\]
-		RedeemRequested(T::AccountId, Balance, Permill),
+		RedeemRequested {
+			who: T::AccountId,
+			liquid_amount: Balance,
+			extra_fee: Permill,
+			withdraw_fee_paid: Balance,
+		},
 
 		/// The user has redeemed some Liquid currency back to Staking currency.
-		/// \[user, staking_amount_redeemed, liquid_amount_deducted\]
-		Redeemed(T::AccountId, Balance, Balance),
+		Redeemed {
+			who: T::AccountId,
+			staking_amount_redeemed: Balance,
+			liquid_amount_deducted: Balance,
+		},
 
 		/// A new Unbond request added to the schedule.
-		/// \[staking_amount, relaychain_blocknumber\]
-		ScheduledUnbondAdded(Balance, RelayChainBlockNumberOf<T>),
+		ScheduledUnbondAdded {
+			staking_amount: Balance,
+			relaychain_blocknumber: RelayChainBlockNumberOf<T>,
+		},
 
 		/// The ScheduledUnbond has been replaced.
 		ScheduledUnbondReplaced,
 
 		/// The scheduled Unbond has been withdrew from the RelayChain.
-		///\[staking_amount_added\]
-		ScheduledUnbondWithdrew(Balance),
+		ScheduledUnbondWithdrew { staking_amount_added: Balance },
 
 		/// Interest rate for TotalStakingCurrency is set
-		StakingInterestRatePerUpdateSet(Permill),
+		StakingInterestRatePerUpdateSet { interest_rate: Permill },
 
 		/// The amount of the staking currency available to be redeemed is set.
-		/// \[total_available_staking_balance\]
-		AvailableStakingBalanceSet(Balance),
+		AvailableStakingBalanceSet { total_available_staking_balance: Balance },
 	}
 
 	/// The total amount of the staking currency on the relaychain.
@@ -233,7 +252,7 @@ pub mod module {
 	pub type XcmDestWeight<T: Config> = StorageValue<_, Weight, ValueQuery>;
 
 	/// Requests to redeem staked currencies.
-	/// RedeemRequests: Map: AccountId => Option<(liquid_amount: Balance, addtional_fee: Permill)>
+	/// RedeemRequests: Map: AccountId => Option<(liquid_amount: Balance, additional_fee: Permill)>
 	#[pallet::storage]
 	#[pallet::getter(fn redeem_requests)]
 	pub type RedeemRequests<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, (Balance, Permill), OptionQuery>;
@@ -256,6 +275,12 @@ pub mod module {
 	#[pallet::storage]
 	#[pallet::getter(fn staking_interest_rate_per_update)]
 	pub type StakingInterestRatePerUpdate<T: Config> = StorageValue<_, Permill, ValueQuery>;
+
+	/// Next redeem request to iterate from when matching redeem requests.
+	/// LastRedeemRequestKeyIterated: Value: Vec<u8>
+	#[pallet::storage]
+	#[pallet::getter(fn last_redeem_request_key_iterated)]
+	pub type LastRedeemRequestKeyIterated<T: Config> = StorageValue<_, Vec<u8>, ValueQuery>;
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
@@ -291,9 +316,12 @@ pub mod module {
 				.unwrap_or_default();
 
 			// Iterate through existing redeem_requests, and try to match them with `available_staking_balance`
-			let res = Self::process_redeem_requests_with_available_staking_balance(num_redeem_matches as u32);
+			let res = Self::redeem_from_previous_redeem_request(
+				RedeemType::WithAvailableStakingBalance,
+				num_redeem_matches as u32,
+			);
 			debug_assert!(res.is_ok());
-			if let Ok(count) = res {
+			if let Ok((_, count)) = res {
 				current_weight = current_weight.saturating_add(
 					<T as Config>::WeightInfo::redeem_with_available_staking_balance().saturating_mul(count as Weight),
 				);
@@ -303,7 +331,7 @@ pub mod module {
 		}
 
 		fn on_initialize(n: T::BlockNumber) -> Weight {
-			// Update the total amount of Staking balance by acrueing the interest periodically.
+			// Update the total amount of Staking balance by accruing the interest periodically.
 			let interest_rate = Self::staking_interest_rate_per_update();
 			if !interest_rate.is_zero()
 				&& n.checked_rem(&T::StakingUpdateFrequency::get())
@@ -319,6 +347,17 @@ pub mod module {
 				<T as Config>::WeightInfo::on_initialize_without_work()
 			}
 		}
+
+		// ensure that minimum_mint_redeem_amount * (1 - withdraw fee) > xcm unbond fee
+		fn integrity_test() {
+			sp_std::if_std! {
+				sp_io::TestExternalities::new_empty().execute_with(||
+					assert!(
+						Permill::one().saturating_sub(T::BaseWithdrawFee::get()).mul(
+						T::MinimumRedeemThreshold::get()) > T::XcmUnbondFee::get()
+					));
+			}
+		}
 	}
 
 	#[pallet::call]
@@ -330,7 +369,7 @@ pub mod module {
 		/// liquid currency.
 		///
 		/// If any amount is minted through XCM, a portion of that amount (T::MintFee and
-		/// T::MaxRewardPerEra) is reducted as fee.
+		/// T::MaxRewardPerEra) is deducted as fee.
 		///
 		/// Parameters:
 		/// - `amount`: The amount of Staking currency to be exchanged.
@@ -402,7 +441,7 @@ pub mod module {
 			T::GovernanceOrigin::ensure_origin(origin)?;
 
 			StakingCurrencyMintCap::<T>::put(new_cap);
-			Self::deposit_event(Event::<T>::StakingCurrencyMintCapUpdated(new_cap));
+			Self::deposit_event(Event::<T>::StakingCurrencyMintCapUpdated { new_cap });
 			Ok(())
 		}
 
@@ -417,7 +456,9 @@ pub mod module {
 			T::GovernanceOrigin::ensure_origin(origin)?;
 
 			XcmDestWeight::<T>::put(xcm_dest_weight);
-			Self::deposit_event(Event::<T>::XcmDestWeightSet(xcm_dest_weight));
+			Self::deposit_event(Event::<T>::XcmDestWeightSet {
+				new_weight: xcm_dest_weight,
+			});
 			Ok(())
 		}
 
@@ -462,7 +503,10 @@ pub mod module {
 					let unreserved = T::Currency::unreserve(T::LiquidCurrencyId::get(), &who, request_amount);
 					ensure!(unreserved.is_zero(), Error::<T>::InsufficientReservedBalances);
 
-					Self::deposit_event(Event::<T>::RedeemRequestCancelled(who, request_amount));
+					Self::deposit_event(Event::<T>::RedeemRequestCancelled {
+						who,
+						liquid_amount_unreserved: request_amount,
+					});
 				}
 				return Ok(());
 			}
@@ -473,6 +517,7 @@ pub mod module {
 				Error::<T>::AmountBelowMinimumThreshold
 			);
 
+			// Deduct base withdraw fee and add the redeem request to the queue.
 			RedeemRequests::<T>::try_mutate(&who, |request| -> DispatchResult {
 				let old_amount = request.take().map(|(amount, _)| amount).unwrap_or_default();
 
@@ -488,74 +533,43 @@ pub mod module {
 				// Deduct BaseWithdrawFee from the liquid amount.
 				let liquid_amount = liquid_amount.saturating_sub(base_withdraw_fee);
 
-				// If there are available_staking_balances, redeem immediately with no additional fee.
-				let available_staking_balance = Self::available_staking_balance();
-				let actual_liquid_amount = min(
-					liquid_amount,
-					Self::convert_staking_to_liquid(available_staking_balance)?,
-				);
-
-				let mut liquid_remaining = liquid_amount;
-				if Self::convert_liquid_to_staking(actual_liquid_amount)? > T::XcmUnbondFee::get() {
-					// Immediately redeem from the available_staking_balances
-					let actual_staking_amount = Self::convert_liquid_to_staking(actual_liquid_amount)?;
-
-					// Redeem from the available_staking_balances costs additional fee for Xcm unbond.
-					T::Currency::deposit(
-						T::StakingCurrencyId::get(),
+				// Reserve/unreserve the difference amount.
+				match liquid_amount.cmp(&old_amount) {
+					// Lock more liquid currency.
+					Ordering::Greater => T::Currency::reserve(
+						T::LiquidCurrencyId::get(),
 						&who,
-						actual_staking_amount.saturating_sub(T::XcmUnbondFee::get()),
-					)?;
-					let slash_amount = T::Currency::slash(T::LiquidCurrencyId::get(), &who, actual_liquid_amount);
-					ensure!(slash_amount.is_zero(), Error::<T>::InsufficientLiquidBalance);
-
-					// Update the available_staking_balance
-					let available_staking_balance = available_staking_balance.saturating_sub(actual_staking_amount);
-					AvailableStakingBalance::<T>::put(available_staking_balance);
-
-					Self::deposit_event(Event::<T>::Redeemed(
-						who.clone(),
-						actual_staking_amount,
-						actual_liquid_amount,
-					));
-					liquid_remaining = liquid_remaining.saturating_sub(actual_liquid_amount);
-				}
-
-				// Unredeemed requests are added to a queue.
-				if Self::liquid_amount_is_above_minimum_threshold(liquid_remaining) {
-					// Check if there's already a queued redeem request.
-					let (request_amount, _) = Self::redeem_requests(&who).unwrap_or((0, Permill::default()));
-
-					match liquid_remaining.cmp(&request_amount) {
-						// Lock more liquid currency.
-						Ordering::Greater => T::Currency::reserve(
+						liquid_amount.saturating_sub(old_amount),
+					),
+					Ordering::Less => {
+						// If the new amount is less, unlock the difference.
+						let unserved_leftover = T::Currency::unreserve(
 							T::LiquidCurrencyId::get(),
 							&who,
-							liquid_remaining.saturating_sub(request_amount),
-						),
-						Ordering::Less => {
-							T::Currency::unreserve(
-								T::LiquidCurrencyId::get(),
-								&who,
-								request_amount.saturating_sub(liquid_remaining),
-							);
-							Ok(())
-						}
-						_ => Ok(()),
-					}?;
+							old_amount.saturating_sub(liquid_amount),
+						);
+						ensure!(unserved_leftover.is_zero(), Error::<T>::InsufficientLiquidBalance);
+						Ok(())
+					}
+					_ => Ok(()),
+				}?;
 
-					// Insert/replace the new redeem request into storage.
-					*request = Some((liquid_remaining, additional_fee));
+				// Set the new amount into storage.
+				*request = Some((liquid_amount, additional_fee));
 
-					Self::deposit_event(Event::<T>::RedeemRequested(
-						who.clone(),
-						liquid_remaining,
-						additional_fee,
-					));
-				}
+				Self::deposit_event(Event::<T>::RedeemRequested {
+					who: who.clone(),
+					liquid_amount,
+					extra_fee: additional_fee,
+					withdraw_fee_paid: base_withdraw_fee,
+				});
 
 				Ok(())
-			})
+			})?;
+
+			// With redeem request added to the queue, try to redeem it with available staking balance.
+			Self::process_redeem_requests_with_available_staking_balance(&who)?;
+			Ok(())
 		}
 
 		/// Request staking currencies to be unbonded from the RelayChain.
@@ -581,7 +595,10 @@ pub mod module {
 			);
 			ScheduledUnbond::<T>::put(bounded_vec);
 
-			Self::deposit_event(Event::<T>::ScheduledUnbondAdded(staking_amount, unbond_block));
+			Self::deposit_event(Event::<T>::ScheduledUnbondAdded {
+				staking_amount,
+				relaychain_blocknumber: unbond_block,
+			});
 			Ok(())
 		}
 
@@ -592,7 +609,7 @@ pub mod module {
 		/// Requires `T::GovernanceOrigin`
 		///
 		/// Parameters:
-		/// - `new_unbonds`: The new ScheduledUnbond storage to replace the currrent storage.
+		/// - `new_unbonds`: The new ScheduledUnbond storage to replace the current storage.
 		#[pallet::weight(< T as Config >::WeightInfo::replace_schedule_unbond())]
 		#[transactional]
 		pub fn replace_schedule_unbond(
@@ -652,16 +669,18 @@ pub mod module {
 				} else {
 					*current = current.saturating_sub(by_balance);
 				}
-				Self::deposit_event(Event::<T>::AvailableStakingBalanceSet(*current));
+				Self::deposit_event(Event::<T>::AvailableStakingBalanceSet {
+					total_available_staking_balance: *current,
+				});
 			});
 
 			// With new staking balance available, process pending redeem requests.
-			let _ = Self::process_redeem_requests_with_available_staking_balance(max_num_matches)?;
+			Self::redeem_from_previous_redeem_request(RedeemType::WithAvailableStakingBalance, max_num_matches)?;
 			Ok(())
 		}
 
 		/// Set the interest rate for TotalStakingCurrency.
-		/// TotakStakingCurrency is incremented every `T::StakingUpdateFrequency` blocks
+		/// TotalStakingCurrency is incremented every `T::StakingUpdateFrequency` blocks
 		///
 		/// Requires `T::GovernanceOrigin`
 		///
@@ -674,7 +693,7 @@ pub mod module {
 
 			StakingInterestRatePerUpdate::<T>::put(interest_rate);
 
-			Self::deposit_event(Event::<T>::StakingInterestRatePerUpdateSet(interest_rate));
+			Self::deposit_event(Event::<T>::StakingInterestRatePerUpdateSet { interest_rate });
 
 			Ok(())
 		}
@@ -702,64 +721,78 @@ pub mod module {
 		}
 
 		/// Match a redeem request with a mint request. Attempt to redeem as much as possible.
+		///
+		/// If the redeemer doesn't have enough liquid currency, do nothing. Otherwise:
+		///
 		/// Transfer a reduced amount of Staking currency from the Minter to the Redeemer.
 		/// Transfer the full amount of Liquid currency from Redeemer to Minter.
-		/// Modify `liquid_amount_remaining` and store new RedeemRequest balances in `new_balances`.
-		/// Deposit the "Redeemed" event.
-		///
-		/// NOTE: the `RedeemRequest` storage is NOT updated. New balance is pushed into
-		/// `new_balances`, and should be processed after this.
+		/// Modify `RedeemRequests` with updated redeem amount and deposit "Redeemed" event.
 		///
 		/// Param:
 		/// - `minter`: The AccountId requested the Mint
 		/// - `redeemer`: The AccountId requested the Redeem
-		/// - `request_amount`: The RedeemRequest's amount
-		/// - `request_extra_fee`: The RedeemRequest's extra fee
-		/// - `liquid_amount_remaining`: The amount of liquid currency still remain to be minted.
+		/// - `liquid_amount_to_redeem`: The amount of liquid currency still remain to be minted.
 		///   Only redeem up to this amount.
-		/// - `new_balances`: Stores the new `RedeemRequest` balances. This should be iterated after
-		///   to update the actual storage in bulk. Actual `RedeemRequest` storage is NOT modified
-		///   here.
+		///
+		/// Return:
+		/// - `Balance`: Actual amount of liquid currency minted.
 		fn match_mint_with_redeem_request(
 			minter: &T::AccountId,
 			redeemer: &T::AccountId,
-			request_amount: Balance,
-			request_extra_fee: Permill,
-			liquid_amount_remaining: &mut Balance,
-			new_balances: &mut Vec<(T::AccountId, Balance, Permill)>,
-		) -> DispatchResult {
-			let liquid_amount_can_be_redeemed = min(request_amount, *liquid_amount_remaining);
+			liquid_amount_to_redeem: Balance,
+		) -> Result<Balance, DispatchError> {
+			RedeemRequests::<T>::mutate_exists(&redeemer, |request| {
+				let (request_amount, extra_fee) = request.unwrap_or_default();
+				// If the redeem request doesn't exist, return.
+				if request_amount.is_zero() {
+					return Ok(0);
+				}
 
-			let new_amount = request_amount.saturating_sub(liquid_amount_can_be_redeemed);
-			*liquid_amount_remaining = liquid_amount_remaining.saturating_sub(liquid_amount_can_be_redeemed);
+				let actual_liquid_amount = min(request_amount, liquid_amount_to_redeem);
 
-			// Full amount of Liquid is transferred to the minter.
-			let amount_repatriated = T::Currency::repatriate_reserved(
-				T::LiquidCurrencyId::get(),
-				redeemer,
-				minter,
-				liquid_amount_can_be_redeemed,
-				BalanceStatus::Free,
-			)?;
-			ensure!(amount_repatriated.is_zero(), Error::<T>::InsufficientReservedBalances);
+				// Ensure the redeemer have enough liquid currency in their account.
+				if T::Currency::reserved_balance(T::LiquidCurrencyId::get(), redeemer) < actual_liquid_amount {
+					return Ok(0);
+				}
 
-			// The extra_fee is rewarded to the minter. Minter gets to keep it instead of transferring it to the
-			// redeemer. staking_amount = original_staking_amount * ( 1 - additional_fee )
-			let mut staking_amount = Self::convert_liquid_to_staking(liquid_amount_can_be_redeemed)?;
-			let fee_deducted_percentage = Permill::one().saturating_sub(request_extra_fee);
-			staking_amount = fee_deducted_percentage.mul(staking_amount);
+				// The extra_fee is rewarded to the minter. Minter gets to keep it instead of transferring it to the
+				// redeemer. staking_amount = original_staking_amount * ( 1 - additional_fee )
+				let mut staking_amount = Self::convert_liquid_to_staking(actual_liquid_amount)?;
+				let fee_deducted_percentage = Permill::one().saturating_sub(extra_fee);
+				staking_amount = fee_deducted_percentage.mul(staking_amount);
 
-			// Transfer the reduced staking currency from Minter to Redeemer
-			T::Currency::transfer(T::StakingCurrencyId::get(), minter, redeemer, staking_amount)?;
+				// Full amount of Liquid is transferred to the minter.
+				// The redeemer is guaranteed to have enough reserved balance for the repatriate.
+				T::Currency::repatriate_reserved(
+					T::LiquidCurrencyId::get(),
+					redeemer,
+					minter,
+					actual_liquid_amount,
+					BalanceStatus::Free,
+				)?;
 
-			new_balances.push((redeemer.clone(), new_amount, request_extra_fee));
-			Self::deposit_event(Event::<T>::Redeemed(
-				redeemer.clone(),
-				staking_amount,
-				liquid_amount_can_be_redeemed,
-			));
+				// Transfer the reduced staking currency from Minter to Redeemer
+				T::Currency::transfer(T::StakingCurrencyId::get(), minter, redeemer, staking_amount)?;
 
-			Ok(())
+				Self::deposit_event(Event::<T>::Redeemed {
+					who: redeemer.clone(),
+					staking_amount_redeemed: staking_amount,
+					liquid_amount_deducted: actual_liquid_amount,
+				});
+
+				// Update storage
+				let new_amount = request_amount.saturating_sub(actual_liquid_amount);
+				if Self::liquid_amount_is_above_minimum_threshold(new_amount) {
+					*request = Some((new_amount, extra_fee));
+				} else {
+					// Unlock the dust and remove the request.
+					if !new_amount.is_zero() {
+						T::Currency::unreserve(T::LiquidCurrencyId::get(), redeemer, new_amount);
+					}
+					*request = None;
+				}
+				Ok(actual_liquid_amount)
+			})
 		}
 
 		/// Mint some Liquid currency, by locking up the given amount of Staking currency.
@@ -789,11 +822,8 @@ pub mod module {
 			// Attempt to match redeem requests if there are any.
 			let total_liquid_to_mint = Self::convert_staking_to_liquid(amount)?;
 
-			// The amount of liquid currency to be redeemed for the mint reuqest.
+			// The amount of liquid currency to be redeemed for the mint request.
 			let mut liquid_remaining = total_liquid_to_mint;
-
-			// New balances after redeem requests are fullfilled.
-			let mut new_balances: Vec<(T::AccountId, Balance, Permill)> = vec![];
 
 			// Iterate through the prioritized requests first
 			for redeemer in requests {
@@ -803,44 +833,22 @@ pub mod module {
 				}
 
 				// Check if the redeem request exists
-				if let Some((request_amount, extra_fee)) = Self::redeem_requests(&redeemer) {
-					Self::match_mint_with_redeem_request(
-						minter,
-						&redeemer,
-						request_amount,
-						extra_fee,
-						&mut liquid_remaining,
-						&mut new_balances,
-					)?;
+				if Self::redeem_requests(&redeemer).is_some() {
+					let actual_liquid_redeemed =
+						Self::match_mint_with_redeem_request(minter, &redeemer, liquid_remaining)?;
+					liquid_remaining = liquid_remaining.saturating_sub(actual_liquid_redeemed);
 				}
 			}
 
-			// Update storage to the new balances. Remove Redeem requests that have been filled.
-			Self::update_redeem_requests(&new_balances);
-
-			// Redeem request storage has now been updated.
-			new_balances.clear();
-
-			let mut redeem_requests_limit_remaining = T::MaximumRedeemRequestMatchesForMint::get();
-			// Iterate all remaining redeem requests now.
-			for (redeemer, (request_amount, extra_fee)) in RedeemRequests::<T>::iter() {
-				// If all the currencies are minted, return.
-				if liquid_remaining.is_zero() || redeem_requests_limit_remaining.is_zero() {
-					break;
-				}
-				Self::match_mint_with_redeem_request(
-					minter,
-					&redeemer,
-					request_amount,
-					extra_fee,
-					&mut liquid_remaining,
-					&mut new_balances,
+			// Iterate through the rest of the RedeemRequests to mint
+			let redeem_requests_limit_remaining = T::MaximumRedeemRequestMatchesForMint::get();
+			if !liquid_remaining.is_zero() && !redeem_requests_limit_remaining.is_zero() {
+				let (liquid_amount_redeemed, _) = Self::redeem_from_previous_redeem_request(
+					RedeemType::WithMint(minter.clone(), liquid_remaining),
+					redeem_requests_limit_remaining,
 				)?;
-				redeem_requests_limit_remaining -= 1;
+				liquid_remaining = liquid_remaining.saturating_sub(liquid_amount_redeemed);
 			}
-
-			// Update storage to the new balances. Remove Redeem requests that have been filled.
-			Self::update_redeem_requests(&new_balances);
 
 			// If significant balance is left over, the remaining liquid currencies are minted through XCM.
 			let mut staking_remaining = Self::convert_liquid_to_staking(liquid_remaining)?;
@@ -882,7 +890,11 @@ pub mod module {
 			let actual_staked = amount.saturating_sub(staking_remaining);
 			let actual_liquid = total_liquid_to_mint.saturating_sub(liquid_remaining);
 
-			Self::deposit_event(Event::<T>::Minted(minter.clone(), actual_staked, actual_liquid));
+			Self::deposit_event(Event::<T>::Minted {
+				who: minter.clone(),
+				amount_staked: actual_staked,
+				amount_minted: actual_liquid,
+			});
 
 			Ok(())
 		}
@@ -905,99 +917,101 @@ pub mod module {
 				*current = current.saturating_add(staking_amount_unbonded);
 			});
 
-			Self::deposit_event(Event::<T>::ScheduledUnbondWithdrew(staking_amount_unbonded));
+			Self::deposit_event(Event::<T>::ScheduledUnbondWithdrew {
+				staking_amount_added: staking_amount_unbonded,
+			});
 			Ok(())
 		}
 
-		/// Iterate through all redeem requests, then match them with available_staking_balance.
-		/// This should be called when new available_staking_balance becomes available.
+		/// Redeem the given requests with available_staking_balance.
 		///
 		/// params:
-		/// 	- `max_num_matches`: Maximum number of redeem requests to be matched.
+		///  - `redeemer`: The account Id of the redeem requester
 		///
 		/// return:
-		/// 	Result<u32, DispatchError>: The number of redeem reqeusts actually matched.
+		///  -`Result<actual_amount_redeemed, DispatchError>`: The liquid amount actually redeemed.
 		#[transactional]
 		pub fn process_redeem_requests_with_available_staking_balance(
-			max_num_matches: u32,
-		) -> Result<u32, sp_runtime::DispatchError> {
-			if max_num_matches.is_zero() {
-				return Ok(0);
-			}
-			let mut available_staking_balance = Self::available_staking_balance();
-			if available_staking_balance < T::MinimumMintThreshold::get() {
+			redeemer: &T::AccountId,
+		) -> Result<Balance, DispatchError> {
+			let available_staking_balance = Self::available_staking_balance();
+			if available_staking_balance <= T::MinimumMintThreshold::get() {
 				return Ok(0);
 			}
 
-			let mut new_balances: Vec<(T::AccountId, Balance, Permill)> = vec![];
-			let mut num_matched = 0u32;
-			for (redeemer, (request_amount, extra_fee)) in RedeemRequests::<T>::iter() {
+			RedeemRequests::<T>::mutate_exists(&redeemer, |request| {
+				let (request_amount, extra_fee) = request.unwrap_or_default();
+				// If the redeem request doesn't exist, return.
+				if request_amount.is_zero() {
+					// this should not happen, but if it does, do some cleanup
+					*request = None;
+					return Ok(0);
+				}
+
 				let actual_liquid_amount = min(
 					request_amount,
 					Self::convert_staking_to_liquid(available_staking_balance)?,
 				);
+
+				// Ensure the redeemer have enough liquid currency in their account.
+				if T::Currency::reserved_balance(T::LiquidCurrencyId::get(), redeemer) < actual_liquid_amount {
+					return Ok(0);
+				}
 				let actual_staking_amount = Self::convert_liquid_to_staking(actual_liquid_amount)?;
 
 				Self::update_total_staking_currency_storage(|total| Ok(total.saturating_sub(actual_staking_amount)))?;
 
-				// Redeem from the available_staking_balances costs only the xcm unbond fee.
-				T::Currency::deposit(
-					T::StakingCurrencyId::get(),
-					&redeemer,
-					actual_staking_amount.saturating_sub(T::XcmUnbondFee::get()),
-				)?;
-				T::Currency::unreserve(T::LiquidCurrencyId::get(), &redeemer, actual_liquid_amount);
-				let slashed_amount = T::Currency::slash(T::LiquidCurrencyId::get(), &redeemer, actual_liquid_amount);
-				ensure!(slashed_amount.is_zero(), Error::<T>::InsufficientLiquidBalance);
+				//Actual deposit amount has `T::XcmUnbondFee` deducted.
+				let actual_staking_amount_deposited = actual_staking_amount.saturating_sub(T::XcmUnbondFee::get());
+				T::Currency::deposit(T::StakingCurrencyId::get(), redeemer, actual_staking_amount_deposited)?;
 
-				available_staking_balance = available_staking_balance.saturating_sub(actual_staking_amount);
-				let request_amount_remaining = request_amount.saturating_sub(actual_liquid_amount);
-				new_balances.push((redeemer.clone(), request_amount_remaining, extra_fee));
+				// Burn the corresponding amount of Liquid currency from the user.
+				// The redeemer is guaranteed to have enough fund
+				let unslashed = T::Currency::slash_reserved(T::LiquidCurrencyId::get(), redeemer, actual_liquid_amount);
+				debug_assert!(unslashed.is_zero());
 
-				Self::deposit_event(Event::<T>::Redeemed(
-					redeemer,
-					actual_staking_amount,
-					actual_liquid_amount,
-				));
-				num_matched += 1u32;
+				AvailableStakingBalance::<T>::mutate(|current| {
+					*current = current.saturating_sub(actual_staking_amount)
+				});
 
-				// If all the currencies are minted, return.
-				if available_staking_balance < T::MinimumMintThreshold::get() || num_matched >= max_num_matches {
-					break;
-				}
-			}
+				Self::deposit_event(Event::<T>::Redeemed {
+					who: redeemer.clone(),
+					staking_amount_redeemed: actual_staking_amount_deposited,
+					liquid_amount_deducted: actual_liquid_amount,
+				});
 
-			// Update storage to the new balances. Remove Redeem requests that have been filled.
-			Self::update_redeem_requests(&new_balances);
-
-			AvailableStakingBalance::<T>::put(available_staking_balance);
-
-			Ok(num_matched)
-		}
-
-		/// Update the RedeemRequests storage with the new balances.
-		/// Remove Redeem requests that are dust, or have been filled.
-		#[allow(clippy::ptr_arg)]
-		fn update_redeem_requests(new_balances: &Vec<(T::AccountId, Balance, Permill)>) {
-			for (redeemer, new_balance, extra_fee) in new_balances {
-				if Self::liquid_amount_is_above_minimum_threshold(*new_balance) {
-					RedeemRequests::<T>::insert(&redeemer, (*new_balance, *extra_fee));
+				// Update storage
+				let new_amount = request_amount.saturating_sub(actual_liquid_amount);
+				if Self::liquid_amount_is_above_minimum_threshold(new_amount) {
+					*request = Some((new_amount, extra_fee));
 				} else {
-					if !new_balance.is_zero() {
-						// Unlock the dust and remove the request.
-						T::Currency::unreserve(T::LiquidCurrencyId::get(), redeemer, *new_balance);
+					// Unlock the dust and remove the request.
+					if !new_amount.is_zero() {
+						let unreserved = T::Currency::unreserve(T::LiquidCurrencyId::get(), redeemer, new_amount);
+						debug_assert!(unreserved.is_zero());
 					}
-					RedeemRequests::<T>::remove(&redeemer);
+					*request = None;
 				}
-			}
+
+				Ok(actual_liquid_amount)
+			})
 		}
 
+		// Helper function that checks if the `liquid_amount` is above the minimum redeem threshold, and
+		// is enough to pay for the XCM unbond fee.
 		fn liquid_amount_is_above_minimum_threshold(liquid_amount: Balance) -> bool {
 			liquid_amount > T::MinimumRedeemThreshold::get()
-				&& Self::convert_liquid_to_staking(liquid_amount).unwrap_or_default() > T::XcmUnbondFee::get()
 		}
 
-		/// Construct a XCM message
+		/// Helper function that construct an XCM message that:
+		/// 1. `withdraw_unbonded` from HomaLite sub-account.
+		/// 2. Transfer the withdrew fund into Sovereign account.
+		///
+		/// Param:
+		/// 	- `parachain_account` : sovereign account's AccountId
+		/// 	- `amount` : amount to withdraw from unbonded.
+		/// Return:
+		/// 	Xcm<()>: the Xcm message constructed.
 		pub fn construct_xcm_unreserve_message(parachain_account: T::AccountId, amount: Balance) -> Xcm<()> {
 			let xcm_message = T::RelayChainCallBuilder::utility_as_derivative_call(
 				T::RelayChainCallBuilder::utility_batch_call(vec![
@@ -1013,16 +1027,100 @@ pub mod module {
 			)
 		}
 
-		/// Helper function that update the storage of total_staking_currency and emit event.
+		/// Helper function that update the storage of total_staking_currency.
+		/// Ensures that the total staking amount would not become zero, and emit an event.
 		fn update_total_staking_currency_storage(
 			f: impl FnOnce(Balance) -> Result<Balance, DispatchError>,
 		) -> DispatchResult {
 			TotalStakingCurrency::<T>::try_mutate(|current| {
 				*current = f(*current)?;
 				ensure!(!current.is_zero(), Error::<T>::InvalidTotalStakingCurrency);
-				Self::deposit_event(Event::<T>::TotalStakingCurrencySet(*current));
+				Self::deposit_event(Event::<T>::TotalStakingCurrencySet {
+					total_staking_currency: *current,
+				});
 				Ok(())
 			})
+		}
+
+		/// Function that iterates `RedeemRequests` storage from `LastRedeemRequestKeyIterated`, and
+		/// redeem them 	depending on the redeem type. Either redeem from AvailableStakingBalance, or
+		/// from a specific minter.
+		/// If the item after `LastRedeemRequestKeyIterated` is the end of the iterator, then start
+		/// from the beginning.
+		///
+		/// Param:
+		/// - `redeem_type`: How redeem should happen.
+		/// - `max_num_matches`: Maximum number of requests to be redeemed.
+		///
+		/// Return:
+		/// - `total_amount_redeemed`: the total amount of liquid actually redeemed
+		/// - `num_matched`: number of requests actually redeemed.
+		pub fn redeem_from_previous_redeem_request(
+			redeem_type: RedeemType<T::AccountId>,
+			max_num_matches: u32,
+		) -> Result<(Balance, u32), DispatchError> {
+			let starting_key = Self::last_redeem_request_key_iterated();
+			let mut iterator = RedeemRequests::<T>::iter_keys_from(starting_key);
+
+			let mut redeem_amount_remaining = if let RedeemType::WithMint(_, amount) = redeem_type {
+				amount
+			} else {
+				0
+			};
+
+			let mut total_amount_redeemed: Balance = 0;
+			let mut num_matched = 0u32;
+			let mut finished_iteration = false;
+
+			let mut body = |redeemer: T::AccountId| -> sp_std::result::Result<bool, DispatchError> {
+				if num_matched >= max_num_matches {
+					return Ok(true);
+				}
+				num_matched += 1;
+
+				match &redeem_type {
+					RedeemType::WithAvailableStakingBalance => {
+						let amount_redeemed = Self::process_redeem_requests_with_available_staking_balance(&redeemer)?;
+						total_amount_redeemed = total_amount_redeemed.saturating_add(amount_redeemed);
+						if Self::available_staking_balance() <= T::MinimumMintThreshold::get() {
+							return Ok(true);
+						}
+					}
+					RedeemType::WithMint(minter, _) => {
+						let amount_redeemed =
+							Self::match_mint_with_redeem_request(minter, &redeemer, redeem_amount_remaining)?;
+						total_amount_redeemed = total_amount_redeemed.saturating_add(amount_redeemed);
+						redeem_amount_remaining = redeem_amount_remaining.saturating_sub(amount_redeemed);
+						if !Self::liquid_amount_is_above_minimum_threshold(redeem_amount_remaining) {
+							return Ok(true);
+						}
+					}
+				}
+				Ok(false)
+			};
+
+			#[allow(clippy::while_let_on_iterator)]
+			while let Some(redeemer) = iterator.next() {
+				if body(redeemer)? {
+					finished_iteration = true;
+					break;
+				}
+			}
+
+			if !finished_iteration {
+				iterator = RedeemRequests::<T>::iter_keys();
+
+				#[allow(clippy::while_let_on_iterator)]
+				while let Some(redeemer) = iterator.next() {
+					if body(redeemer)? {
+						break;
+					}
+				}
+			}
+
+			// Store the progress of the iterator
+			LastRedeemRequestKeyIterated::<T>::put(iterator.last_raw_key());
+			Ok((total_amount_redeemed, num_matched))
 		}
 	}
 
