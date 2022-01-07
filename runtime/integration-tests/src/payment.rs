@@ -20,8 +20,7 @@ use crate::setup::*;
 use frame_support::traits::OnRuntimeUpgrade;
 use frame_support::weights::{DispatchClass, DispatchInfo, Pays, Weight};
 use karura_runtime::{
-	FeePoolSize, KarPerSecondAsBased, KaruraTreasuryAccount, KsmPerSecond, NativeTokenExistentialDeposit,
-	TransactionPaymentPalletId,
+	KarPerSecondAsBased, KaruraTreasuryAccount, KsmPerSecond, NativeTokenExistentialDeposit, TransactionPaymentPalletId,
 };
 use module_transaction_payment::TransactionFeePoolTrader;
 use sp_runtime::traits::SignedExtension;
@@ -385,42 +384,4 @@ fn charge_transaction_payment_and_threshold_works() {
 			assert_eq!(fee, kar1 - kar2);
 			assert_eq!(new_rate.saturating_mul_int(fee), ksm2 - ksm1);
 		});
-}
-
-#[cfg(feature = "with-acala-runtime")]
-#[test]
-fn acala_dex_disable_works() {
-	use acala_runtime::{
-		AcalaTreasuryAccount, FeePoolSize, NativeTokenExistentialDeposit, TransactionPaymentPalletId,
-		TransactionPaymentUpgrade,
-	};
-
-	ExtBuilder::default().build().execute_with(|| {
-		let treasury_account = AcalaTreasuryAccount::get();
-		let fee_account1: AccountId = TransactionPaymentPalletId::get().into_sub_account(DOT);
-		let fee_account2: AccountId = TransactionPaymentPalletId::get().into_sub_account(AUSD);
-		let ed = NativeTokenExistentialDeposit::get();
-		let pool_size = FeePoolSize::get();
-
-		assert_ok!(Currencies::update_balance(
-			Origin::root(),
-			MultiAddress::Id(treasury_account.clone()),
-			ACA,
-			pool_size.saturating_mul(3).unique_saturated_into(),
-		));
-		assert_eq!(Currencies::free_balance(ACA, &treasury_account), ed + pool_size * 3);
-		vec![DOT, AUSD].iter().for_each(|token| {
-			let ed = (<Currencies as MultiCurrency<AccountId>>::minimum_balance(token.clone())).unique_saturated_into();
-			assert_ok!(Currencies::update_balance(
-				Origin::root(),
-				MultiAddress::Id(treasury_account.clone()),
-				token.clone(),
-				ed,
-			));
-		});
-
-		TransactionPaymentUpgrade::on_runtime_upgrade();
-		assert_eq!(Currencies::free_balance(ACA, &fee_account1), 0);
-		assert_eq!(Currencies::free_balance(ACA, &fee_account2), 0);
-	});
 }
