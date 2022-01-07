@@ -665,7 +665,7 @@ fn trap_assets_larger_than_ed_works() {
 			.any(|r| matches!(r.event, Event::PolkadotXcm(pallet_xcm::Event::AssetsTrapped(_, _, _)))));
 
 		assert_eq!(
-			trader_weight_to_treasury,
+			trader_weight_to_treasury + dollar(KSM),
 			Currencies::free_balance(KSM, &KaruraTreasuryAccount::get())
 		);
 		assert_eq!(
@@ -721,7 +721,7 @@ fn trap_assets_lower_than_ed_works() {
 		);
 
 		assert_eq!(
-			ksm_asset_amount,
+			ksm_asset_amount + dollar(KSM),
 			Currencies::free_balance(KSM, &KaruraTreasuryAccount::get())
 		);
 		assert_eq!(
