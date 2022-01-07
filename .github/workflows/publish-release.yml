@@ -1,5 +1,14 @@
 name: Publish Release
 
+# This script is used to build and publish the release WASM build of Acala runtime:
+# - Checkout the selected branch
+# - Build WASM using Substrate Runtime Tool
+# - Use subwasm to obtain build data
+# - Generate release note
+# - Create release issue
+# - Archive the build artifacts to Github 
+# - Publish the WASM to Pinata via ipfs
+
 env:
   SUBWASM_VERSION: 0.15.0
 
@@ -16,11 +25,6 @@ on:
           - mandala
           - karura
           - acala
-      # Get the branch/tag/commit SHA
-      ref:
-        description: The ref to be used for the repo (default = master)
-        default: master
-        required: false
       # Get the scope of release note
       scope:
         description: Release scope (default = full)
@@ -37,18 +41,14 @@ on:
         required: false
 
 jobs:
-  Build ${{ github.event.inputs.chain }} ${{ github.event.inputs.ref }}:
+  build-release:
+    name: Build and publish ${{ github.event.inputs.chain }}
     runs-on: ubuntu-latest
     steps:
-      # Get the current timestamp
-      - name: Get Current Timestamp
-        run: echo "TMSP=$(date '+%Y%m%d_%H%M%S')" >> $GITHUB_ENV
-      
       # Checkout the Acala codebase
       - name: Checkout Codebase
         uses: actions/checkout@v2
         with:
-          ref: ${{ github.event.inputs.ref }}
           submodules: true
 
       # Build WASM with Substrate Runtime Tool
@@ -62,7 +62,7 @@ jobs:
       # Output the build summary
       - name: Build Summary
         run: |
-          echo '${{ steps.srtool_build.outputs.json }}' | jq > ${{ github.event.inputs.chain }}-srtool-digest.json
+          echo '${{ steps.srtool_build.outputs.json }}' | jq . > ${{ github.event.inputs.chain }}-srtool-digest.json
           cat ${{ github.event.inputs.chain }}-srtool-digest.json
           echo "Runtime location: ${{ steps.srtool_build.outputs.wasm }}"
 
@@ -97,7 +97,7 @@ jobs:
           scope: ${{ github.event.inputs.scope }}
           chain: ${{ github.event.inputs.chain }}
           subwasm_info: ${{ github.event.inputs.chain }}-subwam-info.txt
-          srtool_details: ${{ github.event.inputs.chain }}-srtool-details.txt
+          srtool_details: ${{ github.event.inputs.chain }}-srtool-digest.json
       
       # Create release checklist issue
       - name: Crate Release Checklist issue
@@ -114,7 +114,7 @@ jobs:
           path: |
             ${{ steps.srtool_build.outputs.wasm }}
             ${{ steps.srtool_build.outputs.wasm_compressed }}
-            ${{ github.event.inputs.chain }}-srtool-details.txt
+            ${{ github.event.inputs.chain }}-srtool-digest.json
             ${{ github.event.inputs.chain }}-metadata.json
             ${{ github.event.inputs.chain }}-metadata.txt
             ${{ github.event.inputs.chain }}-subwam-info.json
@@ -128,3 +128,4 @@ jobs:
           service: pinata
           pinataKey: ${{ secrets.PINATA_KEY }}
           pinataSecret: ${{ secrets.PINATA_SECRET }}
+          
