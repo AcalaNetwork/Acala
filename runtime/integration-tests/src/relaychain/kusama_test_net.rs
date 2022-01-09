@@ -136,7 +136,10 @@ pub fn kusama_ext() -> sp_io::TestExternalities {
 
 pub fn para_ext(parachain_id: u32) -> sp_io::TestExternalities {
 	ExtBuilder::default()
-		.balances(vec![(AccountId::from(ALICE), KSM, 10 * dollar(KSM))])
+		.balances(vec![
+			(AccountId::from(ALICE), KSM, 10 * dollar(KSM)),
+			(karura_runtime::KaruraTreasuryAccount::get(), KSM, dollar(KSM)),
+		])
 		.parachain_id(parachain_id)
 		.build()
 }
