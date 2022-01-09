@@ -57,7 +57,7 @@ jobs:
             acala-primitives 
             acala-rpc 
             acala-runtime runtime-common runtime-integration-tests karura-runtime mandala-runtime
-            */mock.rs */weights.rs'
+            --exclude-files */mock.rs */weights.rs'
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v2
         with:
