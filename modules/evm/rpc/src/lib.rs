@@ -34,7 +34,6 @@ use sp_runtime::{
 	traits::{self, Block as BlockT, MaybeDisplay, MaybeFromStr},
 	SaturatedConversion,
 };
-use std::convert::{TryFrom, TryInto};
 use std::{marker::PhantomData, sync::Arc};
 
 use call_request::{CallRequest, EstimateResourcesResponse};
@@ -108,15 +107,15 @@ fn decode_revert_message(data: &[u8]) -> Option<String> {
 
 pub struct EVMApi<B, C, Balance> {
 	client: Arc<C>,
-	deny_unsafe: DenyUnsafe,
+	_deny_unsafe: DenyUnsafe,
 	_marker: PhantomData<(B, Balance)>,
 }
 
 impl<B, C, Balance> EVMApi<B, C, Balance> {
-	pub fn new(client: Arc<C>, deny_unsafe: DenyUnsafe) -> Self {
+	pub fn new(client: Arc<C>, _deny_unsafe: DenyUnsafe) -> Self {
 		Self {
 			client,
-			deny_unsafe,
+			_deny_unsafe,
 			_marker: Default::default(),
 		}
 	}
@@ -125,6 +124,11 @@ impl<B, C, Balance> EVMApi<B, C, Balance> {
 fn to_u128(val: NumberOrHex) -> std::result::Result<u128, ()> {
 	val.into_u256().try_into().map_err(|_| ())
 }
+
+// 20M. TODO: use value from runtime
+const MAX_GAS_LIMIT: u64 = 20_000_000;
+// 4M. TODO: use value from runtime
+const MAX_STROAGE_LIMIT: u32 = 4 * 1024 * 1024;
 
 impl<B, C, Balance> EVMApiT<<B as BlockT>::Hash> for EVMApi<B, C, Balance>
 where
@@ -135,8 +139,6 @@ where
 	Balance: Codec + MaybeDisplay + MaybeFromStr + Default + Send + Sync + 'static + TryFrom<u128> + Into<U256>,
 {
 	fn call(&self, request: CallRequest, at: Option<<B as BlockT>::Hash>) -> Result<Bytes> {
-		self.deny_unsafe.check_if_safe()?;
-
 		let hash = at.unwrap_or_else(|| self.client.info().best_hash);
 
 		let CallRequest {
@@ -148,8 +150,8 @@ where
 			data,
 		} = request;
 
-		let gas_limit = gas_limit.unwrap_or_else(u64::max_value); // TODO: set a limit
-		let storage_limit = storage_limit.unwrap_or_else(u32::max_value); // TODO: set a limit
+		let gas_limit = gas_limit.unwrap_or(MAX_GAS_LIMIT);
+		let storage_limit = storage_limit.unwrap_or(MAX_STROAGE_LIMIT);
 		let data = data.map(|d| d.0).unwrap_or_default();
 
 		let api = self.client.runtime_api();
@@ -177,33 +179,25 @@ where
 						balance_value,
 						gas_limit,
 						storage_limit,
-						false,
+						true,
 					)
 					.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
 					.map_err(|err| internal_err(format!("execution fatal: {:?}", err)))?;
 
-				error_on_execution_failure(&info.exit_reason, &info.output)?;
+				log::debug!(
+					target: "evm",
+					"rpc call, info.exit_reason: {:?}, info.value: {:?}",
+					info.exit_reason, info.value,
+				);
+				error_on_execution_failure(&info.exit_reason, &info.value)?;
 
-				Ok(Bytes(info.output))
+				Ok(Bytes(info.value))
 			}
-			None => {
-				let info = api
-					.create(
-						&BlockId::Hash(hash),
-						from.unwrap_or_default(),
-						data,
-						balance_value,
-						gas_limit,
-						storage_limit,
-						false,
-					)
-					.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
-					.map_err(|err| internal_err(format!("execution fatal: {:?}", err)))?;
-
-				error_on_execution_failure(&info.exit_reason, &info.output)?;
-
-				Ok(Bytes(info.output[..].to_vec()))
-			}
+			None => Err(Error {
+				code: ErrorCode::InternalError,
+				message: "Not supported".into(),
+				data: None,
+			}),
 		}
 	}
 
@@ -213,8 +207,6 @@ where
 		unsigned_extrinsic: Bytes,
 		at: Option<<B as BlockT>::Hash>,
 	) -> Result<EstimateResourcesResponse> {
-		self.deny_unsafe.check_if_safe()?;
-
 		let hash = at.unwrap_or_else(|| self.client.info().best_hash);
 		let request = self
 			.client
@@ -222,6 +214,10 @@ where
 			.get_estimate_resources_request(&BlockId::Hash(hash), unsigned_extrinsic.to_vec())
 			.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
 			.map_err(|err| internal_err(format!("execution fatal: {:?}", err)))?;
+
+		// Determine the highest possible gas limits
+		let max_gas_limit = MAX_GAS_LIMIT;
+		let mut highest = U256::from(request.gas_limit.unwrap_or(max_gas_limit));
 
 		let request = CallRequest {
 			from: Some(from),
@@ -232,9 +228,21 @@ where
 			data: request.data.map(Bytes),
 		};
 
-		let calculate_gas_used = |request| -> Result<(U256, i32)> {
-			let hash = self.client.info().best_hash;
+		log::debug!(
+			target: "evm",
+			"estimate_resources, from: {:?}, to: {:?}, gas_limit: {:?}, storage_limit: {:?}, value: {:?}, at_hash: {:?}",
+			request.from, request.to, request.gas_limit, request.storage_limit, request.value, hash
+		);
 
+		struct ExecutableResult {
+			data: Vec<u8>,
+			exit_reason: ExitReason,
+			used_gas: U256,
+			used_storage: i32,
+		}
+
+		// Create a helper to check if a gas allowance results in an executable transaction
+		let executable = move |request: CallRequest, gas| -> Result<ExecutableResult> {
 			let CallRequest {
 				from,
 				to,
@@ -244,7 +252,8 @@ where
 				data,
 			} = request;
 
-			let gas_limit = gas_limit.unwrap_or_else(u64::max_value); // TODO: set a limit
+			// Use request gas limit only if it less than gas_limit parameter
+			let gas_limit = core::cmp::min(gas_limit.unwrap_or(gas), gas);
 			let storage_limit = storage_limit.unwrap_or_else(u32::max_value); // TODO: set a limit
 			let data = data.map(|d| d.0).unwrap_or_default();
 
@@ -260,7 +269,7 @@ where
 				data: None,
 			})?;
 
-			let (used_gas, used_storage) = match to {
+			let (exit_reason, data, used_gas, used_storage) = match to {
 				Some(to) => {
 					let info = self
 						.client
@@ -278,9 +287,7 @@ where
 						.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
 						.map_err(|err| internal_err(format!("execution fatal: {:?}", err)))?;
 
-					error_on_execution_failure(&info.exit_reason, &info.output)?;
-
-					(info.used_gas, info.used_storage)
+					(info.exit_reason, info.value, info.used_gas, info.used_storage)
 				}
 				None => {
 					let info = self
@@ -298,131 +305,113 @@ where
 						.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
 						.map_err(|err| internal_err(format!("execution fatal: {:?}", err)))?;
 
-					error_on_execution_failure(&info.exit_reason, &[])?;
-
-					(info.used_gas, info.used_storage)
+					(info.exit_reason, Vec::new(), info.used_gas, info.used_storage)
 				}
 			};
 
-			Ok((used_gas, used_storage))
+			Ok(ExecutableResult {
+				exit_reason,
+				data,
+				used_gas,
+				used_storage,
+			})
 		};
 
-		if cfg!(feature = "rpc_binary_search_estimate") {
-			let mut lower = U256::from(21_000);
-			// TODO: get a good upper limit, but below U64::max to operation overflow
-			let mut upper = U256::from(1_000_000_000);
-			let mut mid = upper;
-			let mut best = mid;
-			let mut old_best: U256;
-			let mut storage: i32 = Default::default();
-
-			// if the gas estimation depends on the gas limit, then we want to binary
-			// search until the change is under some threshold. but if not dependent,
-			// we want to stop immediately.
-			let mut change_pct = U256::from(100);
-			let threshold_pct = U256::from(10);
-
-			// invariant: lower <= mid <= upper
-			while change_pct > threshold_pct {
-				let mut test_request = request.clone();
-				test_request.gas_limit = Some(mid.as_u64());
-				match calculate_gas_used(test_request) {
-					// if Ok -- try to reduce the gas used
-					Ok((used_gas, used_storage)) => {
-						log::debug!(
-							target: "evm",
-							"calculate_gas_used ok, used_gas: {:?}, used_storage: {:?}",
-							used_gas, used_storage,
-						);
-
-						old_best = best;
-						best = used_gas;
-						change_pct = (U256::from(100) * (old_best - best))
-							.checked_div(old_best)
-							.unwrap_or_default();
-						upper = mid;
-						mid = (lower + upper + 1) / 2;
-						storage = used_storage;
-					}
-
-					Err(err) => {
-						log::debug!(
-							target: "evm",
-							"calculate_gas_used err: {:?}, lower: {:?}, upper: {:?}, mid: {:?}",
-							err, lower, upper, mid
-						);
-
-						// if Err == OutofGas, we need more gas
-						if err.code == ErrorCode::ServerError(0) {
-							lower = mid;
-							mid = (lower + upper + 1) / 2;
-							if mid == lower {
-								break;
-							}
-						} else {
-							// Other errors, return directly
-							return Err(err);
+		// Verify that the transaction succeed with highest capacity
+		let cap = highest;
+		let ExecutableResult {
+			data,
+			exit_reason,
+			used_gas,
+			used_storage,
+		} = executable(request.clone(), highest.as_u64())?;
+		match exit_reason {
+			ExitReason::Succeed(_) => (),
+			ExitReason::Error(ExitError::OutOfGas) => {
+				return Err(internal_err(format!("gas required exceeds allowance {}", cap)))
+			}
+			// If the transaction reverts, there are two possible cases,
+			// it can revert because the called contract feels that it does not have enough
+			// gas left to continue, or it can revert for another reason unrelated to gas.
+			ExitReason::Revert(revert) => {
+				if request.gas_limit.is_some() {
+					// If the user has provided a gas limit, then we have executed
+					// with less block gas limit, so we must reexecute with block gas limit to
+					// know if the revert is due to a lack of gas or not.
+					let ExecutableResult { data, exit_reason, .. } = executable(request.clone(), max_gas_limit)?;
+					match exit_reason {
+						ExitReason::Succeed(_) => {
+							return Err(internal_err(format!("gas required exceeds allowance {}", cap)))
 						}
+						// The execution has been done with block gas limit, so it is not a lack of gas from the user.
+						other => error_on_execution_failure(&other, &data)?,
 					}
+				} else {
+					// The execution has already been done with block gas limit, so it is not a lack of gas from the
+					// user.
+					error_on_execution_failure(&ExitReason::Revert(revert), &data)?
 				}
 			}
+			other => error_on_execution_failure(&other, &data)?,
+		};
 
-			let uxt: <B as traits::Block>::Extrinsic =
-				Decode::decode(&mut &*unsigned_extrinsic).map_err(|e| Error {
-					code: ErrorCode::InternalError,
-					message: "Unable to dry run extrinsic.".into(),
-					data: Some(format!("{:?}", e).into()),
-				})?;
+		// rpc_binary_search_estimate block
+		{
+			// Define the lower bound of the binary search
+			const MIN_GAS_PER_TX: U256 = U256([21_000, 0, 0, 0]);
+			let mut lowest = MIN_GAS_PER_TX;
 
-			let fee = self
-				.client
-				.runtime_api()
-				.query_fee_details(&BlockId::Hash(hash), uxt, unsigned_extrinsic.len() as u32)
-				.map_err(|e| Error {
-					code: ErrorCode::InternalError,
-					message: "Unable to query fee details.".into(),
-					data: Some(format!("{:?}", e).into()),
-				})?;
+			// Start close to the used gas for faster binary search
+			let mut mid = std::cmp::min(used_gas * 3, (highest + lowest) / 2);
 
-			let adjusted_weight_fee = fee
-				.inclusion_fee
-				.map_or_else(Default::default, |inclusion| inclusion.adjusted_weight_fee);
-
-			Ok(EstimateResourcesResponse {
-				gas: best,
-				storage,
-				weight_fee: adjusted_weight_fee.into(),
-			})
-		} else {
-			let (used_gas, used_storage) = calculate_gas_used(request)?;
-
-			let uxt: <B as traits::Block>::Extrinsic =
-				Decode::decode(&mut &*unsigned_extrinsic).map_err(|e| Error {
-					code: ErrorCode::InternalError,
-					message: "Unable to dry run extrinsic.".into(),
-					data: Some(format!("{:?}", e).into()),
-				})?;
-
-			let fee = self
-				.client
-				.runtime_api()
-				.query_fee_details(&BlockId::Hash(hash), uxt, unsigned_extrinsic.len() as u32)
-				.map_err(|e| Error {
-					code: ErrorCode::InternalError,
-					message: "Unable to query fee details.".into(),
-					data: Some(format!("{:?}", e).into()),
-				})?;
-
-			let adjusted_weight_fee = fee
-				.inclusion_fee
-				.map_or_else(Default::default, |inclusion| inclusion.adjusted_weight_fee);
-
-			Ok(EstimateResourcesResponse {
-				gas: used_gas,
-				storage: used_storage,
-				weight_fee: adjusted_weight_fee.into(),
-			})
+			// Execute the binary search and hone in on an executable gas limit.
+			let mut previous_highest = highest;
+			while (highest - lowest) > U256::one() {
+				let ExecutableResult { data, exit_reason, .. } = executable(request.clone(), mid.as_u64())?;
+				match exit_reason {
+					ExitReason::Succeed(_) => {
+						highest = mid;
+						// If the variation in the estimate is less than 10%,
+						// then the estimate is considered sufficiently accurate.
+						if (previous_highest - highest) * 10 / previous_highest < U256::one() {
+							break;
+						}
+						previous_highest = highest;
+					}
+					ExitReason::Revert(_) | ExitReason::Error(ExitError::OutOfGas) => {
+						lowest = mid;
+					}
+					other => error_on_execution_failure(&other, &data)?,
+				}
+				mid = (highest + lowest) / 2;
+			}
 		}
+
+		let uxt: <B as traits::Block>::Extrinsic = Decode::decode(&mut &*unsigned_extrinsic).map_err(|e| Error {
+			code: ErrorCode::InternalError,
+			message: "Unable to dry run extrinsic.".into(),
+			data: Some(format!("{:?}", e).into()),
+		})?;
+
+		let fee = self
+			.client
+			.runtime_api()
+			.query_fee_details(&BlockId::Hash(hash), uxt, unsigned_extrinsic.len() as u32)
+			.map_err(|e| Error {
+				code: ErrorCode::InternalError,
+				message: "Unable to query fee details.".into(),
+				data: Some(format!("{:?}", e).into()),
+			})?;
+
+		let adjusted_weight_fee = fee
+			.inclusion_fee
+			.map_or_else(Default::default, |inclusion| inclusion.adjusted_weight_fee);
+
+		Ok(EstimateResourcesResponse {
+			gas: highest,
+			storage: used_storage,
+			weight_fee: adjusted_weight_fee.into(),
+		})
 	}
 }
 

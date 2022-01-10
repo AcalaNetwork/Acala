@@ -1,0 +1,80 @@
+# This workflow performs the Extrinsic Ordering Check on demand using a binary
+
+name: Extrinsic Ordering Check from Binary
+on:
+  workflow_dispatch:
+    inputs:
+      reference_url:
+        description: The WebSocket url of the reference node
+        default: wss://karura-rpc-0.aca-api.network
+        required: true
+      chain:
+        description: The name of the chain under test.
+        default: karura
+        required: true
+
+jobs:
+  check:
+    name: Run check
+    runs-on: [self-hosted, linux]
+    env:
+      CHAIN: ${{ github.event.inputs.chain }}
+      REF_URL: ${{ github.event.inputs.reference_url }}
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+      - uses: actions/setup-node@v2
+        with:
+          node-version: '14.x'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install Yarn
+        run: npm install -g yarn
+
+      - name: Install toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly-2021-11-07
+          components: rustfmt
+          target: wasm32-unknown-unknown
+          default: true
+
+      - name: Build
+        run: cargo build --release --features=with-${{ env.CHAIN }}-runtime --features=rococo-native
+
+      - name: Prepare output
+        run: |
+          VERSION=$(./target/release/acala --version)
+          echo "Metadata comparison:" >> output.txt
+          echo "Date: $(date)" >> output.txt
+          echo "Reference: $REF_URL" >> output.txt
+          echo "Target version: $VERSION" >> output.txt
+          echo "-------------------------------------------" >> output.txt
+
+      - name: Start local node
+        run: ./target/release/acala --chain=${{ env.CHAIN }}-dev --rpc-cors=all --ws-external --tmp & pid=$!
+
+      - name: Compare the metadata
+        run: |
+          git clone https://github.com/ermalkaleci/tools.git
+          cd tools
+          yarn install --immutable
+          yarn run:metadata $REF_URL ws://localhost:9944 >> ../output.txt
+          cd ..
+          sed -z -i 's/\n\n/\n/g' output.txt
+
+      - name: Stop our local node
+        run: kill $pid
+
+      - name: Show result
+        run: cat output.txt
+
+      - name: Save output as artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: ${{ env.CHAIN }}
+          path: |
+            output.txt

@@ -29,11 +29,12 @@ use frame_support::{
 use frame_system::pallet_prelude::*;
 use orml_traits::{BasicCurrency, BasicLockableCurrency};
 use primitives::{Balance, EraIndex};
+use scale_info::TypeInfo;
 use sp_runtime::{
 	traits::{MaybeDisplay, MaybeSerializeDeserialize, Member, Zero},
 	RuntimeDebug, SaturatedConversion,
 };
-use sp_std::{convert::TryInto, fmt::Debug, prelude::*};
+use sp_std::{fmt::Debug, prelude::*};
 use support::{NomineesProvider, OnNewEra};
 
 mod mock;
@@ -45,7 +46,7 @@ pub use weights::WeightInfo;
 
 /// Just a Balance/BlockNumber tuple to encode when a chunk of funds will be
 /// unlocked.
-#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, MaxEncodedLen)]
+#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, MaxEncodedLen, TypeInfo)]
 pub struct UnlockChunk {
 	/// Amount of funds to be unlocked.
 	value: Balance,
@@ -54,7 +55,8 @@ pub struct UnlockChunk {
 }
 
 /// The ledger of a (bonded) account.
-#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, MaxEncodedLen)]
+#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, MaxEncodedLen, TypeInfo)]
+#[scale_info(skip_type_params(T))]
 pub struct BondingLedger<T>
 where
 	T: Get<u32>,
@@ -168,10 +170,8 @@ pub mod module {
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
-	#[pallet::metadata(T::AccountId = "AccountId")]
 	pub enum Event<T: Config<I>, I: 'static = ()> {
-		/// rebond. \[who, amount\]
-		Rebond(T::AccountId, Balance),
+		Rebond { who: T::AccountId, amount: Balance },
 	}
 
 	/// The nominations for nominators.
@@ -295,7 +295,7 @@ pub mod module {
 
 			Self::update_votes(old_active, &old_nominations, ledger.active, &old_nominations);
 			Self::update_ledger(&who, &ledger);
-			Self::deposit_event(Event::Rebond(who, amount));
+			Self::deposit_event(Event::Rebond { who, amount });
 			let removed_len = old_ledger_unlocking - ledger.unlocking.len();
 			Ok(Some(T::WeightInfo::rebond(removed_len as u32)).into())
 		}

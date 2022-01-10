@@ -21,6 +21,9 @@
 pub mod utils;
 
 // module benchmarking
+pub mod asset_registry {
+	include!("../../../mandala/src/benchmarking/asset_registry.rs");
+}
 pub mod auction_manager {
 	include!("../../../mandala/src/benchmarking/auction_manager.rs");
 }
@@ -47,6 +50,9 @@ pub mod evm {
 }
 pub mod evm_accounts {
 	include!("../../../mandala/src/benchmarking/evm_accounts.rs");
+}
+pub mod homa {
+	include!("../../../mandala/src/benchmarking/homa.rs");
 }
 pub mod honzon {
 	include!("../../../mandala/src/benchmarking/honzon.rs");
@@ -84,6 +90,6 @@ pub mod vesting {
 	include!("../../../mandala/src/benchmarking/vesting.rs");
 }
 
-pub fn get_treasury_account() -> super::AccountId {
+pub fn get_vesting_account() -> super::AccountId {
 	super::KaruraFoundationAccounts::get()[0].clone()
 }

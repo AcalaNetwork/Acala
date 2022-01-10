@@ -16,24 +16,23 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use acala_primitives::{AccountId, TokenSymbol};
+use acala_primitives::{AccountId, Balance, Nonce, TokenSymbol};
 use hex_literal::hex;
+use module_evm::GenesisAccount;
 use sc_chain_spec::ChainType;
 use sc_telemetry::TelemetryEndpoints;
 use serde_json::map::Map;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
-use sp_core::{crypto::UncheckedInto, sr25519};
+use sp_core::{bytes::from_hex, crypto::UncheckedInto, sr25519, Bytes, H160};
 use sp_finality_grandpa::AuthorityId as GrandpaId;
 use sp_runtime::{traits::Zero, FixedPointNumber, FixedU128};
-use sp_std::collections::btree_map::BTreeMap;
+use sp_std::{collections::btree_map::BTreeMap, str::FromStr};
 
-use crate::chain_spec::{
-	evm_genesis, get_account_id_from_seed, get_authority_keys_from_seed, Extensions, TELEMETRY_URL,
-};
+use crate::chain_spec::{get_account_id_from_seed, get_authority_keys_from_seed, Extensions, TELEMETRY_URL};
 
 pub type ChainSpec = sc_service::GenericChainSpec<mandala_runtime::GenesisConfig, Extensions>;
 
-pub const PARA_ID: u32 = 1000;
+pub const PARA_ID: u32 = 2000;
 
 /// Development testnet config (single validator Alice), non-parachain
 pub fn dev_testnet_config() -> Result<ChainSpec, String> {
@@ -76,6 +75,21 @@ fn dev_testnet_config_from_chain_id(chain_id: &str) -> Result<ChainSpec, String>
 					get_account_id_from_seed::<sr25519::Public>("Alice//stash"),
 					get_account_id_from_seed::<sr25519::Public>("Bob//stash"),
 				],
+				// EVM dev accounts
+				// mnemonic: 'fox sight canyon orphan hotel grow hedgehog build bless august weather swarm',
+				vec![
+					// 5EMjsczjoEZaNbWzoXDcZtZDSHN1SLmu4ArJcEJVorNDfUH3
+					hex!["75e480db528101a381ce68544611c169ad7eb342"].into(),
+					hex!["0085560b24769dac4ed057f1b2ae40746aa9aab6"].into(),
+					hex!["0294350d7cf2c145446358b6461c1610927b3a87"].into(),
+					hex!["a76f290c490c70f2d816d286efe47fd64a35800b"].into(),
+					hex!["4f9c798553d207536b79e886b54f169264a7a155"].into(),
+					hex!["a1b04c9cbb449d13c4fc29c7e6be1f810e6f35e9"].into(),
+					hex!["ad9fbd38281f615e7df3def2aad18935a9e0ffee"].into(),
+					hex!["0783094aadfb8ae9915fd712d28664c8d7d26afa"].into(),
+					hex!["e860947813c207abf9bf6722c49cda515d24971a"].into(),
+					hex!["8bffc896d42f07776561a5814d6e4240950d6d3a"].into(),
+				],
 			)
 		},
 		vec![],
@@ -85,6 +99,7 @@ fn dev_testnet_config_from_chain_id(chain_id: &str) -> Result<ChainSpec, String>
 		Extensions {
 			relay_chain: "rococo-local".into(),
 			para_id: PARA_ID,
+			bad_blocks: None,
 		},
 	))
 }
@@ -129,6 +144,7 @@ pub fn local_testnet_config() -> Result<ChainSpec, String> {
 					get_account_id_from_seed::<sr25519::Public>("Eve//stash"),
 					get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
 				],
+				vec![],
 			)
 		},
 		vec![],
@@ -138,6 +154,7 @@ pub fn local_testnet_config() -> Result<ChainSpec, String> {
 		Extensions {
 			relay_chain: "rococo-local".into(),
 			para_id: PARA_ID,
+			bad_blocks: None,
 		},
 	))
 }
@@ -218,6 +235,7 @@ pub fn latest_mandala_testnet_config() -> Result<ChainSpec, String> {
 		Extensions {
 			relay_chain: "dev".into(),
 			para_id: PARA_ID,
+			bad_blocks: None,
 		},
 	))
 }
@@ -231,15 +249,15 @@ fn testnet_genesis(
 	initial_authorities: Vec<(AccountId, AccountId, GrandpaId, AuraId)>,
 	root_key: AccountId,
 	endowed_accounts: Vec<AccountId>,
+	evm_accounts: Vec<H160>,
 ) -> mandala_runtime::GenesisConfig {
 	use mandala_runtime::{
-		dollar, get_all_module_accounts, AirDropConfig, Balance, BalancesConfig, CdpEngineConfig, CdpTreasuryConfig,
-		CollatorSelectionConfig, DexConfig, EVMConfig, EnabledTradingPairs, FinancialCouncilMembershipConfig,
-		GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig, IndicesConfig, NativeTokenExistentialDeposit,
-		OperatorMembershipAcalaConfig, OperatorMembershipBandConfig, OrmlNFTConfig, ParachainInfoConfig, Period,
-		PintCommitteeConfig, RenVmBridgeConfig, SessionConfig, SessionKeys, SessionManagerConfig, StakingPoolConfig,
-		StarportConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig, ACA,
-		AUSD, DOT, LDOT, RENBTC,
+		dollar, get_all_module_accounts, BalancesConfig, CdpEngineConfig, CdpTreasuryConfig, CollatorSelectionConfig,
+		DexConfig, EVMConfig, EnabledTradingPairs, FinancialCouncilMembershipConfig, GeneralCouncilMembershipConfig,
+		HomaCouncilMembershipConfig, IndicesConfig, NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig,
+		OrmlNFTConfig, ParachainInfoConfig, PintCommitteeConfig, PolkadotXcmConfig, RenVmBridgeConfig, SessionConfig,
+		SessionDuration, SessionKeys, SessionManagerConfig, StarportConfig, SudoConfig, SystemConfig,
+		TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig, ACA, AUSD, DOT, LDOT, RENBTC,
 	};
 
 	let existential_deposit = NativeTokenExistentialDeposit::get();
@@ -247,8 +265,7 @@ fn testnet_genesis(
 	let initial_balance: u128 = 10_000_000 * dollar(ACA);
 	let initial_staking: u128 = 100_000 * dollar(ACA);
 
-	let evm_genesis_accounts = evm_genesis();
-
+	let evm_genesis_accounts = evm_genesis(evm_accounts);
 	let balances = initial_authorities
 		.iter()
 		.map(|x| (x.0.clone(), initial_staking + dollar(ACA))) // bit more for fee
@@ -278,7 +295,6 @@ fn testnet_genesis(
 		system: SystemConfig {
 			// Add Wasm runtime to storage.
 			code: wasm_binary.to_vec(),
-			changes_trie_config: Default::default(),
 		},
 		starport: StarportConfig {
 			initial_authorities: vec![get_account_id_from_seed::<sr25519::Public>("Alice")],
@@ -307,10 +323,6 @@ fn testnet_genesis(
 			phantom: Default::default(),
 		},
 		operator_membership_acala: OperatorMembershipAcalaConfig {
-			members: vec![root_key.clone()],
-			phantom: Default::default(),
-		},
-		operator_membership_band: OperatorMembershipBandConfig {
 			members: vec![root_key.clone()],
 			phantom: Default::default(),
 		},
@@ -361,21 +373,8 @@ fn testnet_genesis(
 				1_000_000_000_000_000_000u128,
 			), /* 5% APR */
 		},
-		air_drop: AirDropConfig {
-			airdrop_accounts: vec![],
-		},
 		evm: EVMConfig {
 			accounts: evm_genesis_accounts,
-			treasury: root_key.clone(),
-		},
-		staking_pool: StakingPoolConfig {
-			staking_pool_params: module_staking_pool::Params {
-				target_max_free_unbonded_ratio: FixedU128::saturating_from_rational(10, 100),
-				target_min_free_unbonded_ratio: FixedU128::saturating_from_rational(5, 100),
-				target_unbonding_to_free_ratio: FixedU128::saturating_from_rational(2, 100),
-				unbonding_to_free_adjustment: FixedU128::saturating_from_rational(1, 1000),
-				base_fee_rate: FixedU128::saturating_from_rational(2, 100),
-			},
 		},
 		dex: DexConfig {
 			initial_listing_trading_pairs: vec![],
@@ -423,18 +422,20 @@ fn testnet_genesis(
 				.collect(),
 		},
 		session_manager: SessionManagerConfig {
-			session_duration: Period::get(),
+			session_duration: SessionDuration::get(),
 		},
 		// no need to pass anything to aura, in fact it will panic if we do. Session will take care
 		// of this.
 		aura: Default::default(),
 		aura_ext: Default::default(),
 		parachain_system: Default::default(),
-
 		// pint configs
 		pint_committee: PintCommitteeConfig {
 			council_members: vec![root_key],
 			..Default::default()
+		},
+		polkadot_xcm: PolkadotXcmConfig {
+			safe_xcm_version: Some(2),
 		},
 	}
 }
@@ -446,13 +447,13 @@ fn mandala_genesis(
 	endowed_accounts: Vec<AccountId>,
 ) -> mandala_runtime::GenesisConfig {
 	use mandala_runtime::{
-		cent, dollar, get_all_module_accounts, AirDropConfig, AirDropCurrencyId, Balance, BalancesConfig,
-		CdpEngineConfig, CdpTreasuryConfig, CollatorSelectionConfig, DexConfig, EVMConfig, EnabledTradingPairs,
-		FinancialCouncilMembershipConfig, GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig, IndicesConfig,
-		NativeTokenExistentialDeposit, OperatorMembershipAcalaConfig, OperatorMembershipBandConfig, OrmlNFTConfig,
-		ParachainInfoConfig, Period, PintCommitteeConfig, RenVmBridgeConfig, SessionConfig, SessionKeys,
-		SessionManagerConfig, StakingPoolConfig, StarportConfig, SudoConfig, SystemConfig,
-		TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig, ACA, AUSD, DOT, LDOT, RENBTC,
+		cent, dollar, get_all_module_accounts, BalancesConfig, CdpEngineConfig, CdpTreasuryConfig,
+		CollatorSelectionConfig, DexConfig, EVMConfig, EnabledTradingPairs, FinancialCouncilMembershipConfig,
+		GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig, IndicesConfig, NativeTokenExistentialDeposit,
+		OperatorMembershipAcalaConfig, OrmlNFTConfig, ParachainInfoConfig, PintCommitteeConfig, PolkadotXcmConfig,
+		RenVmBridgeConfig, SessionConfig, SessionDuration, SessionKeys, SessionManagerConfig, StarportConfig,
+		SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig, ACA, AUSD, DOT,
+		LDOT, RENBTC,
 	};
 
 	let existential_deposit = NativeTokenExistentialDeposit::get();
@@ -460,7 +461,7 @@ fn mandala_genesis(
 	let initial_balance: u128 = 1_000_000 * dollar(ACA);
 	let initial_staking: u128 = 100_000 * dollar(ACA);
 
-	let evm_genesis_accounts = evm_genesis();
+	let evm_genesis_accounts = evm_genesis(vec![]);
 	let balances = initial_authorities
 		.iter()
 		.map(|x| (x.0.clone(), initial_staking + dollar(ACA))) // bit more for fee
@@ -490,7 +491,6 @@ fn mandala_genesis(
 		system: SystemConfig {
 			// Add Wasm runtime to storage.
 			code: wasm_binary.to_vec(),
-			changes_trie_config: Default::default(),
 		},
 		starport: StarportConfig {
 			initial_authorities: vec![get_account_id_from_seed::<sr25519::Public>("Alice")],
@@ -519,10 +519,6 @@ fn mandala_genesis(
 			phantom: Default::default(),
 		},
 		operator_membership_acala: OperatorMembershipAcalaConfig {
-			members: endowed_accounts.clone(),
-			phantom: Default::default(),
-		},
-		operator_membership_band: OperatorMembershipBandConfig {
 			members: endowed_accounts,
 			phantom: Default::default(),
 		},
@@ -570,30 +566,8 @@ fn mandala_genesis(
 				1_000_000_000_000_000_000u128,
 			), /* 5% APR */
 		},
-		air_drop: AirDropConfig {
-			airdrop_accounts: {
-				let aca_airdrop_accounts_json = &include_bytes!("../../../../resources/mandala-airdrop-ACA.json")[..];
-				let aca_airdrop_accounts: Vec<(AccountId, Balance)> =
-					serde_json::from_slice(aca_airdrop_accounts_json).unwrap();
-
-				aca_airdrop_accounts
-					.iter()
-					.map(|(account_id, aca_amount)| (account_id.clone(), AirDropCurrencyId::ACA, *aca_amount))
-					.collect::<Vec<_>>()
-			},
-		},
 		evm: EVMConfig {
 			accounts: evm_genesis_accounts,
-			treasury: root_key.clone(),
-		},
-		staking_pool: StakingPoolConfig {
-			staking_pool_params: module_staking_pool::Params {
-				target_max_free_unbonded_ratio: FixedU128::saturating_from_rational(10, 100),
-				target_min_free_unbonded_ratio: FixedU128::saturating_from_rational(5, 100),
-				target_unbonding_to_free_ratio: FixedU128::saturating_from_rational(2, 100),
-				unbonding_to_free_adjustment: FixedU128::saturating_from_rational(1, 1000),
-				base_fee_rate: FixedU128::saturating_from_rational(2, 100),
-			},
 		},
 		dex: DexConfig {
 			initial_listing_trading_pairs: vec![],
@@ -606,39 +580,7 @@ fn mandala_genesis(
 		ren_vm_bridge: RenVmBridgeConfig {
 			ren_vm_public_key: hex!["4b939fc8ade87cb50b78987b1dda927460dc456a"],
 		},
-		orml_nft: OrmlNFTConfig {
-			#[cfg(feature = "runtime-benchmarks")]
-			tokens: vec![],
-			#[cfg(not(feature = "runtime-benchmarks"))]
-			tokens: {
-				let nft_airdrop_json = &include_bytes!("../../../../resources/mandala-airdrop-NFT.json")[..];
-				let nft_airdrop: Vec<(
-					AccountId,
-					Vec<u8>,
-					module_nft::ClassData<Balance>,
-					Vec<(Vec<u8>, module_nft::TokenData<Balance>, Vec<AccountId>)>,
-				)> = serde_json::from_slice(nft_airdrop_json).unwrap();
-
-				let mut tokens = vec![];
-				for (class_owner, class_meta, class_data, nfts) in nft_airdrop {
-					let mut tokens_of_class = vec![];
-					for (token_meta, token_data, token_owners) in nfts {
-						token_owners.iter().for_each(|account_id| {
-							tokens_of_class.push((account_id.clone(), token_meta.clone(), token_data.clone()));
-						});
-					}
-
-					tokens.push((
-						class_owner.clone(),
-						class_meta.clone(),
-						class_data.clone(),
-						tokens_of_class,
-					));
-				}
-
-				tokens
-			},
-		},
+		orml_nft: OrmlNFTConfig { tokens: vec![] },
 		collator_selection: CollatorSelectionConfig {
 			invulnerables: initial_authorities.iter().cloned().map(|(acc, _, _, _)| acc).collect(),
 			candidacy_bond: initial_staking,
@@ -658,7 +600,7 @@ fn mandala_genesis(
 				.collect(),
 		},
 		session_manager: SessionManagerConfig {
-			session_duration: Period::get(),
+			session_duration: SessionDuration::get(),
 		},
 		// no need to pass anything to aura, in fact it will panic if we do. Session will take care
 		// of this.
@@ -671,5 +613,48 @@ fn mandala_genesis(
 			council_members: vec![root_key],
 			..Default::default()
 		},
+		polkadot_xcm: PolkadotXcmConfig {
+			safe_xcm_version: Some(2),
+		},
 	}
+}
+
+/// Returns `evm_genesis_accounts`
+pub fn evm_genesis(evm_accounts: Vec<H160>) -> BTreeMap<H160, GenesisAccount<Balance, Nonce>> {
+	let contracts_json = &include_bytes!("../../../../predeploy-contracts/resources/bytecodes.json")[..];
+	let contracts: Vec<(String, String, String)> = serde_json::from_slice(contracts_json).unwrap();
+	let mut accounts = BTreeMap::new();
+	for (_, address, code_string) in contracts {
+		let account = GenesisAccount {
+			nonce: 0u32,
+			balance: 0u128,
+			storage: BTreeMap::new(),
+			code: if code_string.len().is_zero() {
+				vec![]
+			} else {
+				Bytes::from_str(&code_string).unwrap().0
+			},
+			enable_contract_development: false,
+		};
+
+		let addr = H160::from_slice(
+			from_hex(address.as_str())
+				.expect("predeploy-contracts must specify address")
+				.as_slice(),
+		);
+		accounts.insert(addr, account);
+	}
+
+	for dev_acc in evm_accounts {
+		let account = GenesisAccount {
+			nonce: 0u32,
+			balance: 1000 * mandala_runtime::dollar(mandala_runtime::ACA),
+			storage: BTreeMap::new(),
+			code: vec![],
+			enable_contract_development: true,
+		};
+		accounts.insert(dev_acc, account);
+	}
+
+	accounts
 }

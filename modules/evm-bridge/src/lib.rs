@@ -28,14 +28,14 @@ use module_evm::{ExitReason, ExitSucceed};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use primitive_types::H256;
 use sp_core::{H160, U256};
-use sp_runtime::SaturatedConversion;
+use sp_runtime::{ArithmeticError, SaturatedConversion};
 use sp_std::vec::Vec;
 use support::{EVMBridge as EVMBridgeTrait, ExecutionMode, InvokeContext, EVM};
 
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 type BalanceOf<T> = <<T as Config>::EVM as EVM<AccountIdOf<T>>>::Balance;
 
-#[primitives_proc_macro::generate_function_selector]
+#[module_evm_utiltity_macro::generate_function_selector]
 #[derive(RuntimeDebug, Eq, PartialEq, TryFromPrimitive, IntoPrimitive)]
 #[repr(u32)]
 pub enum Action {
@@ -86,7 +86,9 @@ pub mod module {
 	impl<T: Config> Pallet<T> {}
 }
 
-impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for Pallet<T> {
+pub struct EVMBridge<T>(sp_std::marker::PhantomData<T>);
+
+impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for EVMBridge<T> {
 	// Calls the name method on an ERC20 contract using the given context
 	// and returns the token name.
 	fn name(context: InvokeContext) -> Result<Vec<u8>, DispatchError> {
@@ -95,8 +97,8 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for Pallet<T> {
 
 		let info = T::EVM::execute(context, input, Default::default(), 2_100_000, 0, ExecutionMode::View)?;
 
-		Self::handle_exit_reason(info.exit_reason)?;
-		Self::decode_string(info.output.as_slice().to_vec())
+		Pallet::<T>::handle_exit_reason(info.exit_reason)?;
+		Pallet::<T>::decode_string(info.value.as_slice().to_vec())
 	}
 
 	// Calls the symbol method on an ERC20 contract using the given context
@@ -107,8 +109,8 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for Pallet<T> {
 
 		let info = T::EVM::execute(context, input, Default::default(), 2_100_000, 0, ExecutionMode::View)?;
 
-		Self::handle_exit_reason(info.exit_reason)?;
-		Self::decode_string(info.output.as_slice().to_vec())
+		Pallet::<T>::handle_exit_reason(info.exit_reason)?;
+		Pallet::<T>::decode_string(info.value.as_slice().to_vec())
 	}
 
 	// Calls the decimals method on an ERC20 contract using the given context
@@ -119,10 +121,12 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for Pallet<T> {
 
 		let info = T::EVM::execute(context, input, Default::default(), 2_100_000, 0, ExecutionMode::View)?;
 
-		Self::handle_exit_reason(info.exit_reason)?;
+		Pallet::<T>::handle_exit_reason(info.exit_reason)?;
 
-		ensure!(info.output.len() == 32, Error::<T>::InvalidReturnValue);
-		let value = U256::from(info.output.as_slice()).saturated_into::<u8>();
+		ensure!(info.value.len() == 32, Error::<T>::InvalidReturnValue);
+		let value: u8 = U256::from(info.value.as_slice())
+			.try_into()
+			.map_err(|_| ArithmeticError::Overflow)?;
 		Ok(value)
 	}
 
@@ -134,11 +138,14 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for Pallet<T> {
 
 		let info = T::EVM::execute(context, input, Default::default(), 2_100_000, 0, ExecutionMode::View)?;
 
-		Self::handle_exit_reason(info.exit_reason)?;
+		Pallet::<T>::handle_exit_reason(info.exit_reason)?;
 
-		ensure!(info.output.len() == 32, Error::<T>::InvalidReturnValue);
-		let value = U256::from(info.output.as_slice()).saturated_into::<u128>();
-		Ok(value.saturated_into::<BalanceOf<T>>())
+		ensure!(info.value.len() == 32, Error::<T>::InvalidReturnValue);
+		let value: u128 = U256::from(info.value.as_slice())
+			.try_into()
+			.map_err(|_| ArithmeticError::Overflow)?;
+		let supply = value.try_into().map_err(|_| ArithmeticError::Overflow)?;
+		Ok(supply)
 	}
 
 	// Calls the balanceOf method on an ERC20 contract using the given context
@@ -151,11 +158,13 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for Pallet<T> {
 
 		let info = T::EVM::execute(context, input, Default::default(), 2_100_000, 0, ExecutionMode::View)?;
 
-		Self::handle_exit_reason(info.exit_reason)?;
+		Pallet::<T>::handle_exit_reason(info.exit_reason)?;
 
-		Ok(U256::from(info.output.as_slice())
-			.saturated_into::<u128>()
-			.saturated_into::<BalanceOf<T>>())
+		let value: u128 = U256::from(info.value.as_slice())
+			.try_into()
+			.map_err(|_| ArithmeticError::Overflow)?;
+		let balance = value.try_into().map_err(|_| ArithmeticError::Overflow)?;
+		Ok(balance)
 	}
 
 	// Calls the transfer method on an ERC20 contract using the given context.
@@ -178,7 +187,7 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for Pallet<T> {
 			ExecutionMode::Execute,
 		)?;
 
-		Self::handle_exit_reason(info.exit_reason)?;
+		Pallet::<T>::handle_exit_reason(info.exit_reason)?;
 
 		// return value is true.
 		let mut bytes = [0u8; 32];
@@ -186,7 +195,7 @@ impl<T: Config> EVMBridgeTrait<AccountIdOf<T>, BalanceOf<T>> for Pallet<T> {
 
 		// Check return value to make sure not calling on empty contracts.
 		ensure!(
-			!info.output.is_empty() && info.output == bytes,
+			!info.value.is_empty() && info.value == bytes,
 			Error::<T>::InvalidReturnValue
 		);
 		Ok(())

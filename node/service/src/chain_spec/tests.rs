@@ -35,6 +35,7 @@ fn karura_foundation_accounts_config_is_correct() {
 }
 
 #[test]
+#[cfg(feature = "with-acala-runtime")]
 fn check_acala_vesting() {
 	let vesting_json = &include_bytes!("../../../../resources/acala-vesting-ACA.json")[..];
 	let vesting: Vec<(AccountId, BlockNumber, BlockNumber, u32, Balance)> =
@@ -50,24 +51,23 @@ fn check_acala_vesting() {
 }
 
 #[test]
+#[cfg(feature = "with-acala-runtime")]
 fn check_acala_allocation() {
 	let allocation_json = &include_bytes!("../../../../resources/acala-allocation-ACA.json")[..];
-	let _: Vec<(AccountId, Balance)> = serde_json::from_slice(allocation_json).unwrap();
-}
+	let allocation: Vec<(AccountId, Balance)> = serde_json::from_slice(allocation_json).unwrap();
+	let mut total: Balance = Default::default();
 
-#[test]
-fn check_acala_airdrop() {
-	let airdrop_json = &include_bytes!("../../../../resources/mandala-airdrop-ACA.json")[..];
-	let _: Vec<(AccountId, Balance)> = serde_json::from_slice(airdrop_json).unwrap();
-}
+	// ensure no duplicates exist.
+	let unique_allocation_accounts = allocation
+		.iter()
+		.map(|(account_id, amount)| {
+			total = total.saturating_add(*amount);
+			account_id
+		})
+		.cloned()
+		.collect::<std::collections::BTreeSet<_>>();
+	assert_eq!(unique_allocation_accounts.len(), allocation.len());
 
-#[test]
-fn check_nfts() {
-	let nfts_json = &include_bytes!("../../../../resources/mandala-airdrop-NFT.json")[..];
-	let _: Vec<(
-		AccountId,
-		Vec<u8>,
-		module_nft::ClassData<Balance>,
-		Vec<(Vec<u8>, module_nft::TokenData<Balance>, Vec<AccountId>)>,
-	)> = serde_json::from_slice(nfts_json).unwrap();
+	// ensure total allocation.
+	assert_eq!(total, 1_000_000_000_000_000_000_000);
 }

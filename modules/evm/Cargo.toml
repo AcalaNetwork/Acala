@@ -1,50 +1,48 @@
 [package]
 name = "module-evm"
-version = "1.4.1"
+version = "2.1.3"
 authors = ["Acala Developers"]
-edition = "2018"
-
-[package.metadata.docs.rs]
-targets = ["x86_64-unknown-linux-gnu"]
+edition = "2021"
 
 [dependencies]
-codec = { package = "parity-scale-codec", version = "2.2.0", default-features = false }
+codec = { package = "parity-scale-codec", version = "2.3.1", default-features = false }
+hex-literal = { version = "0.3.1" }
 impl-trait-for-tuples = "0.1"
-primitive-types = { version = "0.10.0", default-features = false, features = ["rlp", "byteorder"] }
+primitive-types = { version = "0.10.1", default-features = false, features = ["rlp", "byteorder"] }
 ripemd160 = { version = "0.9", default-features = false }
 rlp = { version = "0.5", default-features = false }
 serde = { version = "1.0.124", optional = true, features = ["derive"] }
 sha3 = { version = "0.9.1", default-features = false }
 tiny-keccak = { version = "2.0", features = ["fips202"] }
+scale-info = { version = "1.0", default-features = false, features = ["derive"] }
 
-evm = { version = "0.30.0", default-features = false, features = ["with-codec"] }
-evm-gasometer = { version = "0.30.0", default-features = false }
-evm-runtime = { version = "0.30.0", default-features = false }
+frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.13", default-features = false }
+frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.13", default-features = false }
+pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.13", default-features = false }
 
-frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.9", default-features = false }
-frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.9", default-features = false }
-pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.9", default-features = false }
-
-sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.9", default-features = false }
-sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.9", default-features = false }
-sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.9", default-features = false }
-sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.9", default-features = false }
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.13", default-features = false }
+sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.13", default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.13", default-features = false }
+sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.13", default-features = false }
 orml-traits = { path = "../../orml/traits", default-features = false }
 
-support = { package = "module-support", path = "../support", default-features = false }
+module-support = { path = "../support", default-features = false }
+module-evm-utiltity = { path = "../evm-utiltity", default-features = false }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 
 [dev-dependencies]
-env_logger = "0.7"
-pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.9" }
+env_logger = "0.9.0"
+pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.13" }
 orml-currencies = { path = "../../orml/currencies" }
 orml-tokens = { path = "../../orml/tokens" }
+module-idle-scheduler = { path = "../idle-scheduler" }
 
 [features]
 default = ["std"]
 std = [
 	"serde",
 	"codec/std",
+	"scale-info/std",
 	"sp-core/std",
 	"sp-runtime/std",
 	"frame-support/std",
@@ -53,16 +51,14 @@ std = [
 	"sp-std/std",
 	"sha3/std",
 	"rlp/std",
+	"module-evm-utiltity/std",
 	"primitive-types/std",
-	"evm/std",
-	"evm/with-serde",
-	"evm-runtime/std",
-	"evm-gasometer/std",
 	"pallet-timestamp/std",
 	"ripemd160/std",
 	"primitives/std",
 	"orml-traits/std",
-	"support/std",
+	"module-support/std",
 ]
 with-ethereum-compatibility = []
 try-runtime = ["frame-support/try-runtime"]
+tracing = ["module-evm-utiltity/tracing"]

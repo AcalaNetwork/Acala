@@ -25,6 +25,7 @@ use frame_support::{
 	construct_runtime,
 	dispatch::{DispatchError, DispatchResult},
 	ord_parameter_types, parameter_types,
+	traits::{Everything, Nothing},
 	weights::constants::RocksDbWeight,
 };
 use frame_system::EnsureSignedBy;
@@ -33,7 +34,7 @@ use primitives::{DexShare, TokenSymbol};
 use sp_core::{H160, H256};
 use sp_runtime::{testing::Header, traits::IdentityLookup, AccountId32};
 use sp_std::cell::RefCell;
-pub use support::{CDPTreasury, DEXManager, Price, Ratio};
+pub use support::{CDPTreasury, DEXManager, Price, Ratio, SwapLimit};
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
@@ -84,7 +85,7 @@ impl frame_system::Config for Runtime {
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
 	type DbWeight = RocksDbWeight;
-	type BaseCallFilter = ();
+	type BaseCallFilter = Everything;
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
 	type OnSetCode = ();
@@ -105,7 +106,7 @@ impl orml_tokens::Config for Runtime {
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = ();
 	type MaxLocks = ();
-	type DustRemovalWhitelist = ();
+	type DustRemovalWhitelist = Nothing;
 }
 
 pub struct MockCDPTreasury;
@@ -174,29 +175,24 @@ impl DEXManager<AccountId, CurrencyId, Balance> for MockDEX {
 		unimplemented!()
 	}
 
-	fn get_swap_target_amount(_: &[CurrencyId], _: Balance) -> Option<Balance> {
+	fn get_swap_amount(_: &[CurrencyId], _: SwapLimit<Balance>) -> Option<(Balance, Balance)> {
 		unimplemented!()
 	}
 
-	fn get_swap_supply_amount(_: &[CurrencyId], _: Balance) -> Option<Balance> {
+	fn get_best_price_swap_path(
+		_: CurrencyId,
+		_: CurrencyId,
+		_: SwapLimit<Balance>,
+		_: Vec<Vec<CurrencyId>>,
+	) -> Option<Vec<CurrencyId>> {
 		unimplemented!()
 	}
 
-	fn swap_with_exact_supply(
+	fn swap_with_specific_path(
 		_: &AccountId,
 		_: &[CurrencyId],
-		_: Balance,
-		_: Balance,
-	) -> sp_std::result::Result<Balance, DispatchError> {
-		unimplemented!()
-	}
-
-	fn swap_with_exact_target(
-		_: &AccountId,
-		_: &[CurrencyId],
-		_: Balance,
-		_: Balance,
-	) -> sp_std::result::Result<Balance, DispatchError> {
+		_: SwapLimit<Balance>,
+	) -> sp_std::result::Result<(Balance, Balance), DispatchError> {
 		unimplemented!()
 	}
 
@@ -243,8 +239,6 @@ impl EmergencyShutdown for MockEmergencyShutdown {
 impl orml_rewards::Config for Runtime {
 	type Share = Balance;
 	type Balance = Balance;
-	type PoolIdV0 = PoolIdV0<AccountId>;
-	type PoolIdConvertor = PoolIdConvertor<Runtime>;
 	type PoolId = PoolId;
 	type CurrencyId = CurrencyId;
 	type Handler = IncentivesModule;
@@ -252,9 +246,7 @@ impl orml_rewards::Config for Runtime {
 
 parameter_types! {
 	pub const AccumulatePeriod: BlockNumber = 10;
-	pub const NativeCurrencyId: CurrencyId = ACA;
 	pub const StableCurrencyId: CurrencyId = AUSD;
-	pub const LiquidCurrencyId: CurrencyId = LDOT;
 	pub const IncentivesPalletId: PalletId = PalletId(*b"aca/inct");
 }
 
@@ -264,12 +256,9 @@ ord_parameter_types! {
 
 impl Config for Runtime {
 	type Event = Event;
-	type RelaychainAccountId = AccountId;
 	type RewardsSource = RewardsSource;
 	type AccumulatePeriod = AccumulatePeriod;
-	type NativeCurrencyId = NativeCurrencyId;
 	type StableCurrencyId = StableCurrencyId;
-	type LiquidCurrencyId = LiquidCurrencyId;
 	type UpdateOrigin = EnsureSignedBy<ROOT, AccountId>;
 	type CDPTreasury = MockCDPTreasury;
 	type Currency = TokensModule;

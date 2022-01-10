@@ -17,7 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use super::{
-	get_treasury_account,
+	get_vesting_account,
 	utils::{lookup_of_account, set_balance},
 };
 use crate::{
@@ -52,7 +52,7 @@ runtime_benchmarks! {
 		};
 
 		// extra 1 dollar to pay fees
-		let from: AccountId = get_treasury_account();
+		let from: AccountId = get_vesting_account();
 		set_balance(NATIVE, &from, schedule.total_amount().unwrap() + dollar(NATIVE));
 
 		let to: AccountId = account("to", 0, SEED);
@@ -75,7 +75,7 @@ runtime_benchmarks! {
 			per_period: MinVestedTransfer::get(),
 		};
 
-		let from: AccountId = get_treasury_account();
+		let from: AccountId = get_vesting_account();
 		// extra 1 dollar to pay fees
 		set_balance(NATIVE, &from, schedule.total_amount().unwrap() * i as u128 + dollar(NATIVE));
 

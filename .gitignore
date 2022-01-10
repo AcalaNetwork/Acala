@@ -10,3 +10,6 @@
 *.state
 
 .vscode/launch.json
+
+ts-tests/cache/
+ts-tests/node_modules/

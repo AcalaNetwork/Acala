@@ -23,14 +23,14 @@ use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_core::sr25519;
 use sp_runtime::traits::Zero;
 
-use crate::chain_spec::{get_account_id_from_seed, get_karura_authority_keys_from_seed, Extensions};
+use crate::chain_spec::{get_account_id_from_seed, get_parachain_authority_keys_from_seed, Extensions};
 
 use karura_runtime::{
 	dollar, Balance, BalancesConfig, BlockNumber, CdpEngineConfig, CdpTreasuryConfig, CollatorSelectionConfig,
 	DexConfig, FinancialCouncilMembershipConfig, GeneralCouncilMembershipConfig, HomaCouncilMembershipConfig,
-	OperatorMembershipAcalaConfig, OrmlNFTConfig, ParachainInfoConfig, Period, SS58Prefix, SessionConfig, SessionKeys,
-	SessionManagerConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig, TokensConfig, VestingConfig,
-	BNC, KAR, KSM, KUSD, LKSM,
+	OperatorMembershipAcalaConfig, OrmlNFTConfig, ParachainInfoConfig, PolkadotXcmConfig, SS58Prefix, SessionConfig,
+	SessionDuration, SessionKeys, SessionManagerConfig, SudoConfig, SystemConfig, TechnicalCommitteeMembershipConfig,
+	TokensConfig, VestingConfig, BNC, KAR, KSM, KUSD, LKSM, PHA, VSKSM,
 };
 use runtime_common::TokenInfo;
 
@@ -46,7 +46,7 @@ fn karura_properties() -> Properties {
 	let mut properties = Map::new();
 	let mut token_symbol: Vec<String> = vec![];
 	let mut token_decimals: Vec<u32> = vec![];
-	[KAR, KUSD, KSM, LKSM, BNC].iter().for_each(|token| {
+	[KAR, KUSD, KSM, LKSM, BNC, VSKSM, PHA].iter().for_each(|token| {
 		token_symbol.push(token.symbol().unwrap().to_string());
 		token_decimals.push(token.decimals().unwrap() as u32);
 	});
@@ -68,7 +68,7 @@ pub fn karura_dev_config() -> Result<ChainSpec, String> {
 			karura_genesis(
 				wasm_binary,
 				// Initial PoA authorities
-				vec![get_karura_authority_keys_from_seed("Alice")],
+				vec![get_parachain_authority_keys_from_seed("Alice")],
 				// Sudo account
 				get_account_id_from_seed::<sr25519::Public>("Alice"),
 				vec![
@@ -90,6 +90,7 @@ pub fn karura_dev_config() -> Result<ChainSpec, String> {
 		Extensions {
 			relay_chain: "rococo-local".into(),
 			para_id: PARA_ID,
+			bad_blocks: None,
 		},
 	))
 }
@@ -106,7 +107,6 @@ fn karura_genesis(
 		system: SystemConfig {
 			// Add Wasm runtime to storage.
 			code: wasm_binary.to_vec(),
-			changes_trie_config: Default::default(),
 		},
 		balances: BalancesConfig {
 			balances: initial_allocation,
@@ -176,12 +176,15 @@ fn karura_genesis(
 				.collect(),
 		},
 		session_manager: SessionManagerConfig {
-			session_duration: Period::get(),
+			session_duration: SessionDuration::get(),
 		},
 		// no need to pass anything to aura, in fact it will panic if we do. Session will take care
 		// of this.
 		aura: Default::default(),
 		aura_ext: Default::default(),
 		parachain_system: Default::default(),
+		polkadot_xcm: PolkadotXcmConfig {
+			safe_xcm_version: Some(2),
+		},
 	}
 }

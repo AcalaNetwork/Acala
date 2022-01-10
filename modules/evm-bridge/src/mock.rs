@@ -21,9 +21,9 @@
 #![cfg(test)]
 
 use super::*;
-use frame_support::{assert_ok, construct_runtime, ord_parameter_types, parameter_types};
+use frame_support::{assert_ok, construct_runtime, ord_parameter_types, parameter_types, traits::Everything};
 use frame_system::EnsureSignedBy;
-use primitives::{evm::EvmAddress, ReserveIdentifier};
+use primitives::{convert_decimals_to_evm, evm::EvmAddress, ReserveIdentifier};
 use sp_core::{bytes::from_hex, crypto::AccountId32, H256};
 use sp_runtime::{testing::Header, traits::IdentityLookup};
 use sp_std::str::FromStr;
@@ -42,7 +42,7 @@ parameter_types! {
 }
 
 impl frame_system::Config for Runtime {
-	type BaseCallFilter = ();
+	type BaseCallFilter = Everything;
 	type Origin = Origin;
 	type Call = Call;
 	type Index = u64;
@@ -104,8 +104,8 @@ ord_parameter_types! {
 	pub const CouncilAccount: AccountId32 = AccountId32::from([1u8; 32]);
 	pub const TreasuryAccount: AccountId32 = AccountId32::from([2u8; 32]);
 	pub const NetworkContractAccount: AccountId32 = AccountId32::from([0u8; 32]);
-	pub const StorageDepositPerByte: u128 = 10;
-	pub const MaxCodeSize: u32 = 60 * 1024;
+	pub const StorageDepositPerByte: u128 = convert_decimals_to_evm(10);
+	pub const TxFeePerGas: u128 = 10;
 	pub const DeveloperDeposit: u64 = 1000;
 	pub const DeploymentFee: u64 = 200;
 }
@@ -116,8 +116,7 @@ impl module_evm::Config for Runtime {
 	type TransferAll = ();
 	type NewContractExtraBytes = NewContractExtraBytes;
 	type StorageDepositPerByte = StorageDepositPerByte;
-	type MaxCodeSize = MaxCodeSize;
-
+	type TxFeePerGas = TxFeePerGas;
 	type Event = Event;
 	type Precompiles = ();
 	type ChainId = ();
@@ -131,13 +130,16 @@ impl module_evm::Config for Runtime {
 	type TreasuryAccount = TreasuryAccount;
 	type FreeDeploymentOrigin = EnsureSignedBy<CouncilAccount, AccountId32>;
 
+	type Runner = module_evm::runner::stack::Runner<Self>;
+	type FindAuthor = ();
+	type Task = ();
+	type IdleScheduler = ();
 	type WeightInfo = ();
 }
 
 impl Config for Runtime {
 	type EVM = EVM;
 }
-pub type EvmBridgeModule = Pallet<Runtime>;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
@@ -166,7 +168,7 @@ impl Default for ExtBuilder {
 }
 
 pub fn erc20_address() -> EvmAddress {
-	EvmAddress::from_str("0000000000000000000000000000000002000000").unwrap()
+	EvmAddress::from_str("5dddfce53ee040d9eb21afbc0ae1bb4dbb0ba643").unwrap()
 }
 
 pub fn alice() -> AccountId {
@@ -187,16 +189,21 @@ pub fn bob_evm_addr() -> EvmAddress {
 
 pub fn deploy_contracts() {
 	let code = from_hex(include!("./erc20_demo_contract")).unwrap();
-	assert_ok!(EVM::create_network_contract(
-		Origin::signed(NetworkContractAccount::get()),
-		code,
-		0,
-		2_100_000,
-		10000
-	));
+	assert_ok!(EVM::create(Origin::signed(alice()), code, 0, 2_100_000, 10000));
 
-	let event = Event::EVM(module_evm::Event::Created(erc20_address()));
-	assert_eq!(System::events().iter().last().unwrap().event, event);
+	System::assert_last_event(Event::EVM(module_evm::Event::Created {
+		from: alice_evm_addr(),
+		contract: erc20_address(),
+		logs: vec![module_evm::Log {
+			address: erc20_address(),
+			topics: vec![
+				H256::from_str("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef").unwrap(),
+				H256::from_str("0x0000000000000000000000000000000000000000000000000000000000000000").unwrap(),
+				H256::from_str("0x0000000000000000000000001000000000000000000000000000000000000001").unwrap(),
+			],
+			data: H256::from_low_u64_be(10000).as_bytes().to_vec(),
+		}],
+	}));
 
 	assert_ok!(EVM::deploy_free(Origin::signed(CouncilAccount::get()), erc20_address()));
 }

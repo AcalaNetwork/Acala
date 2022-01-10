@@ -92,14 +92,17 @@ pub mod module {
 
 	#[pallet::event]
 	#[pallet::generate_deposit(fn deposit_event)]
-	#[pallet::metadata(T::AccountId = "AccountId", T::BlockNumber = "BlockNumber")]
 	pub enum Event<T: Config> {
-		/// Emergency shutdown occurs. \[block_number\]
-		Shutdown(T::BlockNumber),
-		/// The final redemption opened. \[block_number\]
-		OpenRefund(T::BlockNumber),
-		/// Refund info. \[caller, stable_coin_amount, refund_list\]
-		Refund(T::AccountId, Balance, Vec<(CurrencyId, Balance)>),
+		/// Emergency shutdown occurs.
+		Shutdown { block_number: T::BlockNumber },
+		/// The final redemption opened.
+		OpenRefund { block_number: T::BlockNumber },
+		/// Refund info.
+		Refund {
+			who: T::AccountId,
+			stable_coin_amount: Balance,
+			refund_list: Vec<(CurrencyId, Balance)>,
+		},
 	}
 
 	/// Emergency shutdown flag
@@ -143,7 +146,9 @@ pub mod module {
 			}
 
 			IsShutdown::<T>::put(true);
-			Self::deposit_event(Event::Shutdown(<frame_system::Pallet<T>>::block_number()));
+			Self::deposit_event(Event::Shutdown {
+				block_number: <frame_system::Pallet<T>>::block_number(),
+			});
 			Ok(())
 		}
 
@@ -176,7 +181,9 @@ pub mod module {
 
 			// Open refund stage
 			CanRefund::<T>::put(true);
-			Self::deposit_event(Event::OpenRefund(<frame_system::Pallet<T>>::block_number()));
+			Self::deposit_event(Event::OpenRefund {
+				block_number: <frame_system::Pallet<T>>::block_number(),
+			});
 			Ok(())
 		}
 
@@ -202,12 +209,18 @@ pub mod module {
 					refund_ratio.saturating_mul_int(<T as Config>::CDPTreasury::get_total_collaterals(currency_id));
 
 				if !refund_amount.is_zero() {
-					<T as Config>::CDPTreasury::withdraw_collateral(&who, currency_id, refund_amount)?;
-					refund_assets.push((currency_id, refund_amount));
+					let res = <T as Config>::CDPTreasury::withdraw_collateral(&who, currency_id, refund_amount);
+					if res.is_ok() {
+						refund_assets.push((currency_id, refund_amount));
+					}
 				}
 			}
 
-			Self::deposit_event(Event::Refund(who, amount, refund_assets));
+			Self::deposit_event(Event::Refund {
+				who,
+				stable_coin_amount: amount,
+				refund_list: refund_assets,
+			});
 			Ok(())
 		}
 	}

@@ -16,15 +16,15 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use super::input::{Input, InputT};
+use super::input::{Input, InputT, Output};
+use crate::precompile::PrecompileOutput;
 use frame_support::log;
 use module_evm::{Context, ExitError, ExitSucceed, Precompile};
-use module_support::{AddressMapping as AddressMappingT, CurrencyIdMapping as CurrencyIdMappingT, DEXManager};
+use module_support::{DEXManager, SwapLimit};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use primitives::{Balance, CurrencyId};
-use sp_core::U256;
 use sp_runtime::RuntimeDebug;
-use sp_std::{fmt::Debug, marker::PhantomData, prelude::*, result};
+use sp_std::{marker::PhantomData, prelude::*, result};
 
 /// The `DEX` impl precompile.
 ///
@@ -35,11 +35,9 @@ use sp_std::{fmt::Debug, marker::PhantomData, prelude::*, result};
 /// - Get liquidity. Rest `input` bytes: `currency_id_a`, `currency_id_b`.
 /// - Swap with exact supply. Rest `input` bytes: `who`, `currency_id_a`, `currency_id_b`,
 ///   `supply_amount`, `min_target_amount`.
-pub struct DexPrecompile<AccountId, AddressMapping, CurrencyIdMapping, Dex>(
-	PhantomData<(AccountId, AddressMapping, CurrencyIdMapping, Dex)>,
-);
+pub struct DexPrecompile<R>(PhantomData<R>);
 
-#[primitives_proc_macro::generate_function_selector]
+#[module_evm_utiltity_macro::generate_function_selector]
 #[derive(RuntimeDebug, Eq, PartialEq, TryFromPrimitive, IntoPrimitive)]
 #[repr(u32)]
 pub enum Action {
@@ -53,24 +51,17 @@ pub enum Action {
 	RemoveLiquidity = "removeLiquidity(address,address,address,uint256,uint256,uint256)",
 }
 
-impl<AccountId, AddressMapping, CurrencyIdMapping, Dex> Precompile
-	for DexPrecompile<AccountId, AddressMapping, CurrencyIdMapping, Dex>
+impl<Runtime> Precompile for DexPrecompile<Runtime>
 where
-	AccountId: Debug + Clone,
-	AddressMapping: AddressMappingT<AccountId>,
-	CurrencyIdMapping: CurrencyIdMappingT,
-	Dex: DEXManager<AccountId, CurrencyId, Balance>,
+	Runtime: module_evm::Config + module_prices::Config,
+	module_dex::Pallet<Runtime>: DEXManager<Runtime::AccountId, CurrencyId, Balance>,
 {
 	fn execute(
 		input: &[u8],
 		_target_gas: Option<u64>,
 		_context: &Context,
-	) -> result::Result<(ExitSucceed, Vec<u8>, u64), ExitError> {
-		//TODO: evaluate cost
-
-		log::debug!(target: "evm", "dex: input: {:?}", input);
-
-		let input = Input::<Action, AccountId, AddressMapping, CurrencyIdMapping>::new(input);
+	) -> result::Result<PrecompileOutput, ExitError> {
+		let input = Input::<Action, Runtime::AccountId, Runtime::AddressMapping, Runtime::Erc20InfoMapping>::new(input);
 
 		let action = input.action()?;
 
@@ -84,14 +75,18 @@ where
 					currency_id_a, currency_id_b
 				);
 
-				let (balance_a, balance_b) = Dex::get_liquidity_pool(currency_id_a, currency_id_b);
+				let (balance_a, balance_b) = <module_dex::Pallet<Runtime> as DEXManager<
+					Runtime::AccountId,
+					CurrencyId,
+					Balance,
+				>>::get_liquidity_pool(currency_id_a, currency_id_b);
 
-				// output
-				let mut be_bytes = [0u8; 64];
-				U256::from(balance_a).to_big_endian(&mut be_bytes[..32]);
-				U256::from(balance_b).to_big_endian(&mut be_bytes[32..64]);
-
-				Ok((ExitSucceed::Returned, be_bytes.to_vec(), 0))
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: 0,
+					output: Output::default().encode_u128_tuple(balance_a, balance_b),
+					logs: Default::default(),
+				})
 			}
 			Action::GetLiquidityTokenAddress => {
 				let currency_id_a = input.currency_id_at(1)?;
@@ -102,14 +97,15 @@ where
 					currency_id_a, currency_id_b
 				);
 
-				let value = Dex::get_liquidity_token_address(currency_id_a, currency_id_b)
+				let value = <module_dex::Pallet<Runtime> as DEXManager<Runtime::AccountId, CurrencyId, Balance>>::get_liquidity_token_address(currency_id_a, currency_id_b)
 					.ok_or_else(|| ExitError::Other("Dex get_liquidity_token_address failed".into()))?;
 
-				// output
-				let mut be_bytes = [0u8; 32];
-				U256::from(value.as_bytes()).to_big_endian(&mut be_bytes[..32]);
-
-				Ok((ExitSucceed::Returned, be_bytes.to_vec(), 0))
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: 0,
+					output: Output::default().encode_address(&value),
+					logs: Default::default(),
+				})
 			}
 			Action::GetSwapTargetAmount => {
 				// solidity abi enocde array will add an offset at input[1]
@@ -125,14 +121,16 @@ where
 					path, supply_amount
 				);
 
-				let value = Dex::get_swap_target_amount(&path, supply_amount)
+				let value = <module_dex::Pallet<Runtime> as DEXManager<Runtime::AccountId, CurrencyId, Balance>>::get_swap_amount(&path, SwapLimit::ExactSupply(supply_amount, Balance::MIN))
+					.map(|(_, target)| target)
 					.ok_or_else(|| ExitError::Other("Dex get_swap_target_amount failed".into()))?;
 
-				// output
-				let mut be_bytes = [0u8; 32];
-				U256::from(value).to_big_endian(&mut be_bytes[..32]);
-
-				Ok((ExitSucceed::Returned, be_bytes.to_vec(), 0))
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: 0,
+					output: Output::default().encode_u128(value),
+					logs: Default::default(),
+				})
 			}
 			Action::GetSwapSupplyAmount => {
 				// solidity abi enocde array will add an offset at input[1]
@@ -148,14 +146,16 @@ where
 					path, target_amount
 				);
 
-				let value = Dex::get_swap_supply_amount(&path, target_amount)
+				let value = <module_dex::Pallet<Runtime> as DEXManager<Runtime::AccountId, CurrencyId, Balance>>::get_swap_amount(&path, SwapLimit::ExactTarget(Balance::MAX, target_amount))
+					.map(|(supply, _)| supply)
 					.ok_or_else(|| ExitError::Other("Dex get_swap_supply_amount failed".into()))?;
 
-				// output
-				let mut be_bytes = [0u8; 32];
-				U256::from(value).to_big_endian(&mut be_bytes[..32]);
-
-				Ok((ExitSucceed::Returned, be_bytes.to_vec(), 0))
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: 0,
+					output: Output::default().encode_u128(value),
+					logs: Default::default(),
+				})
 			}
 			Action::SwapWithExactSupply => {
 				let who = input.account_id_at(1)?;
@@ -173,17 +173,18 @@ where
 					who, path, supply_amount, min_target_amount
 				);
 
-				let value =
-					Dex::swap_with_exact_supply(&who, &path, supply_amount, min_target_amount).map_err(|e| {
+				let (_, value) =
+					<module_dex::Pallet<Runtime> as DEXManager<Runtime::AccountId, CurrencyId, Balance>>::swap_with_specific_path(&who, &path, SwapLimit::ExactSupply(supply_amount, min_target_amount)).map_err(|e| {
 						let err_msg: &str = e.into();
 						ExitError::Other(err_msg.into())
 					})?;
 
-				// output
-				let mut be_bytes = [0u8; 32];
-				U256::from(value).to_big_endian(&mut be_bytes[..32]);
-
-				Ok((ExitSucceed::Returned, be_bytes.to_vec(), 0))
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: 0,
+					output: Output::default().encode_u128(value),
+					logs: Default::default(),
+				})
 			}
 			Action::SwapWithExactTarget => {
 				let who = input.account_id_at(1)?;
@@ -201,17 +202,18 @@ where
 					who, path, target_amount, max_supply_amount
 				);
 
-				let value =
-					Dex::swap_with_exact_target(&who, &path, target_amount, max_supply_amount).map_err(|e| {
+				let (value, _) =
+					<module_dex::Pallet<Runtime> as DEXManager<Runtime::AccountId, CurrencyId, Balance>>::swap_with_specific_path(&who, &path, SwapLimit::ExactTarget(max_supply_amount, target_amount)).map_err(|e| {
 						let err_msg: &str = e.into();
 						ExitError::Other(err_msg.into())
 					})?;
 
-				// output
-				let mut be_bytes = [0u8; 32];
-				U256::from(value).to_big_endian(&mut be_bytes[..32]);
-
-				Ok((ExitSucceed::Returned, be_bytes.to_vec(), 0))
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: 0,
+					output: Output::default().encode_u128(value),
+					logs: Default::default(),
+				})
 			}
 			Action::AddLiquidity => {
 				let who = input.account_id_at(1)?;
@@ -227,7 +229,7 @@ where
 					who, currency_id_a, currency_id_b, max_amount_a, max_amount_b, min_share_increment,
 				);
 
-				Dex::add_liquidity(
+				<module_dex::Pallet<Runtime> as DEXManager<Runtime::AccountId, CurrencyId, Balance>>::add_liquidity(
 					&who,
 					currency_id_a,
 					currency_id_b,
@@ -241,7 +243,12 @@ where
 					ExitError::Other(err_msg.into())
 				})?;
 
-				Ok((ExitSucceed::Returned, vec![], 0))
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: 0,
+					output: vec![],
+					logs: Default::default(),
+				})
 			}
 			Action::RemoveLiquidity => {
 				let who = input.account_id_at(1)?;
@@ -257,7 +264,7 @@ where
 					who, currency_id_a, currency_id_b, remove_share, min_withdrawn_a, min_withdrawn_b,
 				);
 
-				Dex::remove_liquidity(
+				<module_dex::Pallet<Runtime> as DEXManager<Runtime::AccountId, CurrencyId, Balance>>::remove_liquidity(
 					&who,
 					currency_id_a,
 					currency_id_b,
@@ -271,7 +278,12 @@ where
 					ExitError::Other(err_msg.into())
 				})?;
 
-				Ok((ExitSucceed::Returned, vec![], 0))
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: 0,
+					output: vec![],
+					logs: Default::default(),
+				})
 			}
 		}
 	}

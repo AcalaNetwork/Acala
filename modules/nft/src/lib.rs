@@ -35,6 +35,7 @@ use frame_support::{
 use frame_system::pallet_prelude::*;
 use orml_traits::NFT;
 use primitives::{NFTBalance, ReserveIdentifier};
+use scale_info::{build::Fields, meta_type, Path, Type, TypeInfo, TypeParameter};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_runtime::{
@@ -55,7 +56,7 @@ pub type CID = Vec<u8>;
 pub type Attributes = BTreeMap<Vec<u8>, Vec<u8>>;
 
 #[repr(u8)]
-#[derive(Encode, Decode, Clone, Copy, BitFlags, RuntimeDebug, PartialEq, Eq)]
+#[derive(Encode, Decode, Clone, Copy, BitFlags, RuntimeDebug, PartialEq, Eq, TypeInfo)]
 pub enum ClassProperty {
 	/// Is token transferable
 	Transferable = 0b00000001,
@@ -86,7 +87,18 @@ impl Decode for Properties {
 	}
 }
 
-#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq)]
+impl TypeInfo for Properties {
+	type Identity = Self;
+
+	fn type_info() -> Type {
+		Type::builder()
+			.path(Path::new("BitFlags", module_path!()))
+			.type_params(vec![TypeParameter::new("T", Some(meta_type::<ClassProperty>()))])
+			.composite(Fields::unnamed().field(|f| f.ty::<u8>().type_name("ClassProperty")))
+	}
+}
+
+#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct ClassData<Balance> {
 	/// Deposit reserved to create token class
@@ -97,7 +109,7 @@ pub struct ClassData<Balance> {
 	pub attributes: Attributes,
 }
 
-#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq)]
+#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct TokenData<Balance> {
 	/// Deposit reserved to create token
@@ -183,20 +195,44 @@ pub mod module {
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
-	#[pallet::metadata(T::AccountId = "AccountId", ClassIdOf<T> = "ClassId", TokenIdOf<T> = "TokenId", T::Hash = "Hash")]
 	pub enum Event<T: Config> {
-		/// Created NFT class. \[owner, class_id\]
-		CreatedClass(T::AccountId, ClassIdOf<T>),
-		/// Minted NFT token. \[from, to, class_id, quantity\]
-		MintedToken(T::AccountId, T::AccountId, ClassIdOf<T>, u32),
-		/// Transferred NFT token. \[from, to, class_id, token_id\]
-		TransferredToken(T::AccountId, T::AccountId, ClassIdOf<T>, TokenIdOf<T>),
-		/// Burned NFT token. \[owner, class_id, token_id\]
-		BurnedToken(T::AccountId, ClassIdOf<T>, TokenIdOf<T>),
-		/// Burned NFT token with remark. \[owner, class_id, token_id, remark_hash\]
-		BurnedTokenWithRemark(T::AccountId, ClassIdOf<T>, TokenIdOf<T>, T::Hash),
-		/// Destroyed NFT class. \[owner, class_id\]
-		DestroyedClass(T::AccountId, ClassIdOf<T>),
+		/// Created NFT class.
+		CreatedClass {
+			owner: T::AccountId,
+			class_id: ClassIdOf<T>,
+		},
+		/// Minted NFT token.
+		MintedToken {
+			from: T::AccountId,
+			to: T::AccountId,
+			class_id: ClassIdOf<T>,
+			quantity: u32,
+		},
+		/// Transferred NFT token.
+		TransferredToken {
+			from: T::AccountId,
+			to: T::AccountId,
+			class_id: ClassIdOf<T>,
+			token_id: TokenIdOf<T>,
+		},
+		/// Burned NFT token.
+		BurnedToken {
+			owner: T::AccountId,
+			class_id: ClassIdOf<T>,
+			token_id: TokenIdOf<T>,
+		},
+		/// Burned NFT token with remark.
+		BurnedTokenWithRemark {
+			owner: T::AccountId,
+			class_id: ClassIdOf<T>,
+			token_id: TokenIdOf<T>,
+			remark_hash: T::Hash,
+		},
+		/// Destroyed NFT class.
+		DestroyedClass {
+			owner: T::AccountId,
+			class_id: ClassIdOf<T>,
+		},
 	}
 
 	#[pallet::pallet]
@@ -244,7 +280,10 @@ pub mod module {
 			};
 			orml_nft::Pallet::<T>::create_class(&owner, metadata, data)?;
 
-			Self::deposit_event(Event::CreatedClass(owner, next_id));
+			Self::deposit_event(Event::CreatedClass {
+				owner,
+				class_id: next_id,
+			});
 			Ok(().into())
 		}
 
@@ -262,7 +301,7 @@ pub mod module {
 			class_id: ClassIdOf<T>,
 			metadata: CID,
 			attributes: Attributes,
-			quantity: u32,
+			#[pallet::compact] quantity: u32,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			let to = T::Lookup::lookup(to)?;
@@ -347,7 +386,7 @@ pub mod module {
 				AllowDeath,
 			)?;
 
-			Self::deposit_event(Event::DestroyedClass(who, class_id));
+			Self::deposit_event(Event::DestroyedClass { owner: who, class_id });
 			Ok(().into())
 		}
 
@@ -400,7 +439,12 @@ impl<T: Config> Pallet<T> {
 		<T as module::Config>::Currency::transfer(from, to, token_info.data.deposit, AllowDeath)?;
 		<T as module::Config>::Currency::reserve_named(&RESERVE_ID, to, token_info.data.deposit)?;
 
-		Self::deposit_event(Event::TransferredToken(from.clone(), to.clone(), token.0, token.1));
+		Self::deposit_event(Event::TransferredToken {
+			from: from.clone(),
+			to: to.clone(),
+			class_id: token.0,
+			token_id: token.1,
+		});
 		Ok(())
 	}
 
@@ -436,7 +480,12 @@ impl<T: Config> Pallet<T> {
 			orml_nft::Pallet::<T>::mint(&to, class_id, metadata.clone(), data.clone())?;
 		}
 
-		Self::deposit_event(Event::MintedToken(who, to, class_id, quantity));
+		Self::deposit_event(Event::MintedToken {
+			from: who,
+			to,
+			class_id,
+			quantity,
+		});
 		Ok(())
 	}
 
@@ -457,9 +506,18 @@ impl<T: Config> Pallet<T> {
 
 		if let Some(remark) = remark {
 			let hash = T::Hashing::hash(&remark[..]);
-			Self::deposit_event(Event::BurnedTokenWithRemark(who, token.0, token.1, hash));
+			Self::deposit_event(Event::BurnedTokenWithRemark {
+				owner: who,
+				class_id: token.0,
+				token_id: token.1,
+				remark_hash: hash,
+			});
 		} else {
-			Self::deposit_event(Event::BurnedToken(who, token.0, token.1));
+			Self::deposit_event(Event::BurnedToken {
+				owner: who,
+				class_id: token.0,
+				token_id: token.1,
+			});
 		}
 
 		Ok(())

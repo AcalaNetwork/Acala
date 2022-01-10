@@ -9,10 +9,10 @@
   dependencies:
     regenerator-runtime "^0.13.4"
 
-"@open-web3/parachain-launch@^1.0.4":
-  version "1.0.4"
-  resolved "https://registry.yarnpkg.com/@open-web3/parachain-launch/-/parachain-launch-1.0.4.tgz#de468ce96fb92d7aaf556604e51b9e0bb703acd6"
-  integrity sha512-Ck1AcjfxO7SkxjJfoseb/8oiTFcysUtHuEG5McZznKlWd/raaSStEd4U0XQCKhg1MzChF1U5kh4Gn4AP5HfkBg==
+"@open-web3/parachain-launch@^1.0.6":
+  version "1.0.6"
+  resolved "https://registry.yarnpkg.com/@open-web3/parachain-launch/-/parachain-launch-1.0.6.tgz#e8660fb408570165bd6ff578b0744c7f2961c039"
+  integrity sha512-sZ+HB+v7cPpWpyKj3d83r9yT2yPr5Luz1J8ftVXp6t8kuPbldYWgOHYlMeOqK0vgYI7sPZkOPNrCb9j4rrgC5A==
   dependencies:
     "@polkadot/api" "^5.6.1"
     "@polkadot/keyring" "^7.2.1"
@@ -253,9 +253,9 @@
     "@types/node" "*"
 
 ansi-regex@^5.0.0:
-  version "5.0.0"
-  resolved "https://registry.yarnpkg.com/ansi-regex/-/ansi-regex-5.0.0.tgz#388539f55179bf39339c81af30a654d69f87cb75"
-  integrity sha512-bY6fj56OUQ0hU1KjFNDQuJFezqKdrAyFdIevADiqrWHwSlbmBNMHp5ak2f40Pm8JTFyM2mqxkG6ngkHO11f/lg==
+  version "5.0.1"
+  resolved "https://registry.yarnpkg.com/ansi-regex/-/ansi-regex-5.0.1.tgz#082cb2c89c9fe8659a311a53bd6a4dc5301db304"
+  integrity sha512-quJQXlTSUGL2LH9SUXo8VwsY4soanhgo6LNSm84E1LBcE8s3O0wpdiRzyR9z/ZZJMlMWv37qOOb9pdJlMUEKFQ==
 
 ansi-styles@^4.0.0:
   version "4.3.0"

@@ -20,7 +20,7 @@ use super::*;
 use crate as collator_selection;
 use frame_support::{
 	ord_parameter_types, parameter_types,
-	traits::{FindAuthor, GenesisBuild},
+	traits::{Everything, FindAuthor, GenesisBuild},
 	PalletId,
 };
 use frame_system as system;
@@ -59,7 +59,7 @@ parameter_types! {
 }
 
 impl system::Config for Test {
-	type BaseCallFilter = ();
+	type BaseCallFilter = Everything;
 	type BlockWeights = ();
 	type BlockLength = ();
 	type DbWeight = ();
@@ -120,6 +120,7 @@ impl pallet_authorship::Config for Test {
 
 parameter_types! {
 	pub const MinimumPeriod: u64 = 1;
+	pub const MaxAuthorities: u32 = 32;
 }
 
 impl pallet_timestamp::Config for Test {
@@ -132,6 +133,7 @@ impl pallet_timestamp::Config for Test {
 impl pallet_aura::Config for Test {
 	type AuthorityId = sp_consensus_aura::sr25519::AuthorityId;
 	type DisabledValidators = ();
+	type MaxAuthorities = MaxAuthorities;
 }
 
 sp_runtime::impl_opaque_keys! {
@@ -164,7 +166,7 @@ impl pallet_session::SessionHandler<u64> for TestSessionHandler {
 		SessionHandlerCollators::set(keys.into_iter().map(|(a, _)| *a).collect::<Vec<_>>())
 	}
 	fn on_before_session_ending() {}
-	fn on_disabled(_: usize) {}
+	fn on_disabled(_: u32) {}
 }
 
 parameter_types! {
@@ -182,7 +184,6 @@ impl pallet_session::Config for Test {
 	type SessionManager = CollatorSelection;
 	type SessionHandler = TestSessionHandler;
 	type Keys = MockSessionKeys;
-	type DisabledValidatorsThreshold = ();
 	type WeightInfo = ();
 }
 
@@ -197,6 +198,7 @@ parameter_types! {
 	pub const MaxInvulnerables: u32 = 4;
 	pub const KickPenaltySessionLength: u32 = 8;
 	pub const CollatorKickThreshold: Permill = Permill::from_percent(100);
+	pub const MinRewardDistributeAmount: u64 = 10;
 }
 
 impl Config for Test {
@@ -210,6 +212,7 @@ impl Config for Test {
 	type MaxInvulnerables = MaxInvulnerables;
 	type KickPenaltySessionLength = KickPenaltySessionLength;
 	type CollatorKickThreshold = CollatorKickThreshold;
+	type MinRewardDistributeAmount = MinRewardDistributeAmount;
 	type WeightInfo = ();
 }
 

@@ -38,11 +38,6 @@
 //! the accumulation amount is the multiplier of DexSavingRewardRates and the stable amount of
 //! corresponding liquidity pool. CDPTreasury will issue the stable currency to RewardsSource.
 
-//! TODO list:
-//! 1. Refactor PoolId, decoupling PoolId with reward currency type and reward accumulation
-//! mechanism 2. Remove unused
-//! 3. Migration
-
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
 #![allow(clippy::upper_case_acronyms)]
@@ -51,24 +46,23 @@ use frame_support::{log, pallet_prelude::*, transactional, PalletId};
 use frame_system::pallet_prelude::*;
 use orml_traits::{Happened, MultiCurrency, RewardHandler};
 use primitives::{Amount, Balance, CurrencyId};
+use scale_info::TypeInfo;
 use sp_runtime::{
-	traits::{AccountIdConversion, MaybeDisplay, One, UniqueSaturatedInto, Zero},
+	traits::{AccountIdConversion, One, UniqueSaturatedInto, Zero},
 	DispatchResult, FixedPointNumber, RuntimeDebug,
 };
-use sp_std::{collections::btree_map::BTreeMap, fmt::Debug, prelude::*};
+use sp_std::{collections::btree_map::BTreeMap, prelude::*};
 use support::{CDPTreasury, DEXIncentives, DEXManager, EmergencyShutdown, Rate};
 
-pub mod migrations;
 mod mock;
 mod tests;
 pub mod weights;
 
-pub use migrations::{get_reward_currency_id, PoolIdConvertor, PoolIdV0};
 pub use module::*;
 pub use weights::WeightInfo;
 
 /// PoolId for various rewards pools
-#[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, RuntimeDebug)]
+#[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, RuntimeDebug, TypeInfo)]
 pub enum PoolId {
 	/// Rewards and shares pool for users who open CDP(CollateralCurrencyId)
 	Loans(CurrencyId),
@@ -84,37 +78,17 @@ pub mod module {
 	#[pallet::config]
 	pub trait Config:
 		frame_system::Config
-		+ orml_rewards::Config<
-			Share = Balance,
-			Balance = Balance,
-			PoolIdV0 = PoolIdV0<Self::RelaychainAccountId>,
-			PoolId = PoolId,
-			CurrencyId = CurrencyId,
-		>
+		+ orml_rewards::Config<Share = Balance, Balance = Balance, PoolId = PoolId, CurrencyId = CurrencyId>
 	{
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
-
-		/// The type of validator account id on relaychain.
-		/// NOTE: remove it after migration
-		type RelaychainAccountId: Parameter + Member + MaybeSerializeDeserialize + Debug + MaybeDisplay + Ord + Default;
 
 		/// The period to accumulate rewards
 		#[pallet::constant]
 		type AccumulatePeriod: Get<Self::BlockNumber>;
 
-		/// The reward type for incentive.
-		/// NOTE: remove it after migration
-		#[pallet::constant]
-		type NativeCurrencyId: Get<CurrencyId>;
-
 		/// The reward type for dex saving.
 		#[pallet::constant]
 		type StableCurrencyId: Get<CurrencyId>;
-
-		/// The reward type for homa validator insurance
-		/// NOTE: remove it after migration
-		#[pallet::constant]
-		type LiquidCurrencyId: Get<CurrencyId>;
 
 		/// The source account for native token rewards.
 		#[pallet::constant]
@@ -157,72 +131,42 @@ pub mod module {
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
-	#[pallet::metadata(T::AccountId = "AccountId", PoolId = "PoolId")]
 	pub enum Event<T: Config> {
-		/// Deposit DEX share. \[who, dex_share_type, deposit_amount\]
-		DepositDexShare(T::AccountId, CurrencyId, Balance),
-		/// Withdraw DEX share. \[who, dex_share_type, withdraw_amount\]
-		WithdrawDexShare(T::AccountId, CurrencyId, Balance),
-		/// Claim rewards. \[who, pool_id, reward_currency_id, actual_amount, deduction_amount\]
-		ClaimRewards(T::AccountId, PoolId, CurrencyId, Balance, Balance),
-		/// Incentive reward amount updated. \[pool_id, reward_currency_id,
-		/// reward_amount_per_period\]
-		IncentiveRewardAmountUpdated(PoolId, CurrencyId, Balance),
-		/// Saving reward rate updated. \[pool_id, reward_rate_per_period\]
-		SavingRewardRateUpdated(PoolId, Rate),
-		/// Payout deduction rate updated. \[pool_id, deduction_rate\]
-		ClaimRewardDeductionRateUpdated(PoolId, Rate),
+		/// Deposit DEX share.
+		DepositDexShare {
+			who: T::AccountId,
+			dex_share_type: CurrencyId,
+			deposit: Balance,
+		},
+		/// Withdraw DEX share.
+		WithdrawDexShare {
+			who: T::AccountId,
+			dex_share_type: CurrencyId,
+			withdraw: Balance,
+		},
+		/// Claim rewards.
+		ClaimRewards {
+			who: T::AccountId,
+			pool: PoolId,
+			reward_currency_id: CurrencyId,
+			actual_amount: Balance,
+			deduction_amount: Balance,
+		},
+		/// Incentive reward amount updated.
+		IncentiveRewardAmountUpdated {
+			pool: PoolId,
+			reward_currency_id: CurrencyId,
+			reward_amount_per_period: Balance,
+		},
+		/// Saving reward rate updated.
+		SavingRewardRateUpdated { pool: PoolId, reward_rate_per_period: Rate },
+		/// Payout deduction rate updated.
+		ClaimRewardDeductionRateUpdated { pool: PoolId, deduction_rate: Rate },
 	}
-
-	/// Mapping from pool to its fixed reward amount per period.
-	///
-	/// IncentiveRewardAmount: map PoolIdV0 => Balance
-	/// NOTE: will be renamed to `IncentiveRewardAmounts` in new release, remove it after migration
-	#[pallet::storage]
-	#[pallet::getter(fn incentive_reward_amount)]
-	pub type IncentiveRewardAmount<T: Config> =
-		StorageMap<_, Twox64Concat, PoolIdV0<T::RelaychainAccountId>, Balance, ValueQuery>;
-
-	/// Mapping from pool to its fixed reward rate per period.
-	///
-	/// DexSavingRewardRate: map PoolIdV0 => Rate
-	/// NOTE: will be renamed to `DexSavingRewardRates` in new release, remove it after migration
-	#[pallet::storage]
-	#[pallet::getter(fn dex_saving_reward_rate)]
-	pub type DexSavingRewardRate<T: Config> =
-		StorageMap<_, Twox64Concat, PoolIdV0<T::RelaychainAccountId>, Rate, ValueQuery>;
-
-	/// Mapping from pool to its payout deduction rate.
-	///
-	/// PayoutDeductionRates: map PoolIdV0 => Rate
-	/// NOTE: will be renamed to `ClaimRewardDeductionRates` in new release, remove it after
-	/// migration
-	#[pallet::storage]
-	#[pallet::getter(fn payout_deduction_rates)]
-	pub type PayoutDeductionRates<T: Config> =
-		StorageMap<_, Twox64Concat, PoolIdV0<T::RelaychainAccountId>, Rate, ValueQuery>;
-
-	/// The pending rewards amount, actual available rewards amount may be deducted
-	///
-	/// PendingRewards: double_map PoolIdV0, AccountId => Balance
-	/// NOTE: will be migrate to `PendingMultiRewards` in new release, remove it after migration
-	/// done
-	#[pallet::storage]
-	#[pallet::getter(fn pending_rewards)]
-	pub type PendingRewards<T: Config> = StorageDoubleMap<
-		_,
-		Twox64Concat,
-		PoolIdV0<T::RelaychainAccountId>,
-		Twox64Concat,
-		T::AccountId,
-		Balance,
-		ValueQuery,
-	>;
 
 	/// Mapping from pool to its fixed incentive amounts of multi currencies per period.
 	///
 	/// IncentiveRewardAmounts: double_map Pool, RewardCurrencyId => RewardAmountPerPeriod
-	/// NOTE: need migrate from old `IncentiveRewardAmount`
 	#[pallet::storage]
 	#[pallet::getter(fn incentive_reward_amounts)]
 	pub type IncentiveRewardAmounts<T: Config> =
@@ -231,7 +175,6 @@ pub mod module {
 	/// Mapping from pool to its fixed reward rate per period.
 	///
 	/// DexSavingRewardRates: map Pool => SavingRatePerPeriod
-	/// NOTE: need migrate from old `DexSavingRewardRate`
 	#[pallet::storage]
 	#[pallet::getter(fn dex_saving_reward_rates)]
 	pub type DexSavingRewardRates<T: Config> = StorageMap<_, Twox64Concat, PoolId, Rate, ValueQuery>;
@@ -295,29 +238,6 @@ pub mod module {
 				0
 			}
 		}
-
-		fn on_runtime_upgrade() -> Weight {
-			let mut accumulated_weight: Weight = 0;
-
-			// migrate orml-rewards `Pools` to `PoolInfos`
-			let get_reward_currency =
-				|old_pool_id: &PoolIdV0<T::RelaychainAccountId>| get_reward_currency_id::<T>(old_pool_id.clone());
-			accumulated_weight = accumulated_weight.saturating_add(
-				orml_rewards::migrations::migrate_to_pool_infos::<T>(None, Box::new(get_reward_currency)),
-			);
-
-			// migrate `PayoutDeductionRates` to `ClaimRewardDeductionRates`
-			// migrate `DexSavingRewardRate` to `DexSavingRewardRates`
-			// migrate `IncentiveRewardAmount` to `IncentiveRewardAmounts`
-			accumulated_weight = accumulated_weight
-				.saturating_add(crate::migrations::migrate_to_claim_reward_deduction_rates::<T>(None));
-			accumulated_weight =
-				accumulated_weight.saturating_add(crate::migrations::migrate_to_dex_saving_reward_rates::<T>(None));
-			accumulated_weight =
-				accumulated_weight.saturating_add(crate::migrations::migrate_to_incentive_reward_amounts::<T>(None));
-
-			accumulated_weight
-		}
 	}
 
 	#[pallet::call]
@@ -330,7 +250,11 @@ pub mod module {
 		/// - `amount`: amount to stake
 		#[pallet::weight(<T as Config>::WeightInfo::deposit_dex_share())]
 		#[transactional]
-		pub fn deposit_dex_share(origin: OriginFor<T>, lp_currency_id: CurrencyId, amount: Balance) -> DispatchResult {
+		pub fn deposit_dex_share(
+			origin: OriginFor<T>,
+			lp_currency_id: CurrencyId,
+			#[pallet::compact] amount: Balance,
+		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			Self::do_deposit_dex_share(&who, lp_currency_id, amount)?;
 			Ok(())
@@ -344,7 +268,11 @@ pub mod module {
 		/// - `amount`: amount to unstake
 		#[pallet::weight(<T as Config>::WeightInfo::withdraw_dex_share())]
 		#[transactional]
-		pub fn withdraw_dex_share(origin: OriginFor<T>, lp_currency_id: CurrencyId, amount: Balance) -> DispatchResult {
+		pub fn withdraw_dex_share(
+			origin: OriginFor<T>,
+			lp_currency_id: CurrencyId,
+			#[pallet::compact] amount: Balance,
+		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			Self::do_withdraw_dex_share(&who, lp_currency_id, amount)?;
 			Ok(())
@@ -385,13 +313,13 @@ pub mod module {
 				// be rewarded, there will not increase user balance.
 				T::Currency::transfer(currency_id, &Self::account_id(), &who, actual_amount)?;
 
-				Self::deposit_event(Event::ClaimRewards(
-					who.clone(),
-					pool_id,
-					currency_id,
+				Self::deposit_event(Event::ClaimRewards {
+					who: who.clone(),
+					pool: pool_id,
+					reward_currency_id: currency_id,
 					actual_amount,
 					deduction_amount,
-				));
+				});
 			}
 
 			Ok(())
@@ -421,7 +349,11 @@ pub mod module {
 						let mut v = maybe_amount.unwrap_or_default();
 						if amount != v {
 							v = amount;
-							Self::deposit_event(Event::IncentiveRewardAmountUpdated(pool_id, currency_id, amount));
+							Self::deposit_event(Event::IncentiveRewardAmountUpdated {
+								pool: pool_id,
+								reward_currency_id: currency_id,
+								reward_amount_per_period: amount,
+							});
 						}
 
 						if v.is_zero() {
@@ -455,7 +387,10 @@ pub mod module {
 					let mut v = maybe_rate.unwrap_or_default();
 					if rate != v {
 						v = rate;
-						Self::deposit_event(Event::SavingRewardRateUpdated(pool_id, rate));
+						Self::deposit_event(Event::SavingRewardRateUpdated {
+							pool: pool_id,
+							reward_rate_per_period: rate,
+						});
 					}
 
 					if v.is_zero() {
@@ -489,7 +424,10 @@ pub mod module {
 					let mut v = maybe_rate.unwrap_or_default();
 					if deduction_rate != v {
 						v = deduction_rate;
-						Self::deposit_event(Event::ClaimRewardDeductionRateUpdated(pool_id, deduction_rate));
+						Self::deposit_event(Event::ClaimRewardDeductionRateUpdated {
+							pool: pool_id,
+							deduction_rate,
+						});
 					}
 
 					if v.is_zero() {
@@ -499,33 +437,6 @@ pub mod module {
 					}
 				});
 			}
-			Ok(())
-		}
-
-		#[pallet::weight({
-			let reads_and_writes: u64 = (count*2).into();
-			<T as frame_system::Config>::DbWeight::get().reads_writes(reads_and_writes, reads_and_writes)
-		})]
-		#[transactional]
-		pub fn migrate_share_and_withdrawn_reward(origin: OriginFor<T>, count: u32) -> DispatchResult {
-			let _ = ensure_signed(origin)?;
-			let get_reward_currency =
-				|old_pool_id: &PoolIdV0<T::RelaychainAccountId>| get_reward_currency_id::<T>(old_pool_id.clone());
-			orml_rewards::migrations::migrate_to_shares_and_withdrawn_rewards::<T>(
-				Some(count as usize),
-				Box::new(get_reward_currency),
-			);
-			Ok(())
-		}
-
-		#[pallet::weight({
-			let reads_and_writes: u64 = (count*2).into();
-			<T as frame_system::Config>::DbWeight::get().reads_writes(reads_and_writes, reads_and_writes)
-		})]
-		#[transactional]
-		pub fn migrate_pending_rewards(origin: OriginFor<T>, count: u32) -> DispatchResult {
-			let _ = ensure_signed(origin)?;
-			crate::migrations::migrate_to_pending_multi_rewards::<T>(Some(count as usize));
 			Ok(())
 		}
 	}
@@ -634,7 +545,11 @@ impl<T: Config> DEXIncentives<T::AccountId, CurrencyId, Balance> for Pallet<T> {
 		T::Currency::transfer(lp_currency_id, who, &Self::account_id(), amount)?;
 		<orml_rewards::Pallet<T>>::add_share(who, &PoolId::Dex(lp_currency_id), amount.unique_saturated_into());
 
-		Self::deposit_event(Event::DepositDexShare(who.clone(), lp_currency_id, amount));
+		Self::deposit_event(Event::DepositDexShare {
+			who: who.clone(),
+			dex_share_type: lp_currency_id,
+			deposit: amount,
+		});
 		Ok(())
 	}
 
@@ -648,7 +563,11 @@ impl<T: Config> DEXIncentives<T::AccountId, CurrencyId, Balance> for Pallet<T> {
 		T::Currency::transfer(lp_currency_id, &Self::account_id(), who, amount)?;
 		<orml_rewards::Pallet<T>>::remove_share(who, &PoolId::Dex(lp_currency_id), amount.unique_saturated_into());
 
-		Self::deposit_event(Event::WithdrawDexShare(who.clone(), lp_currency_id, amount));
+		Self::deposit_event(Event::WithdrawDexShare {
+			who: who.clone(),
+			dex_share_type: lp_currency_id,
+			withdraw: amount,
+		});
 		Ok(())
 	}
 }
@@ -657,8 +576,7 @@ pub struct OnUpdateLoan<T>(sp_std::marker::PhantomData<T>);
 impl<T: Config> Happened<(T::AccountId, CurrencyId, Amount, Balance)> for OnUpdateLoan<T> {
 	fn happened(info: &(T::AccountId, CurrencyId, Amount, Balance)) {
 		let (who, currency_id, adjustment, previous_amount) = info;
-		let adjustment_abs =
-			sp_std::convert::TryInto::<Balance>::try_into(adjustment.saturating_abs()).unwrap_or_default();
+		let adjustment_abs = TryInto::<Balance>::try_into(adjustment.saturating_abs()).unwrap_or_default();
 
 		let new_share_amount = if adjustment.is_positive() {
 			previous_amount.saturating_add(adjustment_abs)

@@ -1,0 +1,94 @@
+# generate by yq eval 'explode(.)' test.yml.src > test.yml
+# https://github.com/mikefarah/yq
+
+name: Test
+on:
+  pull_request:
+    branches:
+      - master
+      - release-**
+    paths-ignore:
+      - '**/README.md'
+  push:
+    branches:
+      - master
+      - release-**
+    paths-ignore:
+      - '**/README.md'
+jobs:
+  clean-up-actions:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cancel Previous Runs
+        # Only cancel non-master branch runs
+        if: ${{ github.ref != 'refs/heads/master' }}
+        uses: styfle/cancel-workflow-action@0.9.0
+        with:
+          access_token: ${{ github.token }}
+  build: &setup
+    runs-on:
+      [self-hosted, linux]
+    env:
+      SCCACHE_CACHE_SIZE: "50G"
+      CARGO_INCREMENTAL: 0
+    needs: clean-up-actions
+    steps:
+      - &checkout
+        uses: actions/checkout@v2
+        with:
+          submodules: recursive
+      - &toolchain
+        name: Install toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly-2021-11-07
+          components: rustfmt
+          target: wasm32-unknown-unknown
+          default: true
+      - name: Check format
+        run: cargo fmt --all -- --check
+      - name: Build
+        run: make build-all
+      - name: Install clippy
+        run: rustup component add clippy
+      - name: Run mandala-runtime clippy
+        run: cargo clippy --features with-mandala-runtime -- -D warnings
+      - name: Run karura-runtime clippy
+        run: cargo clippy --features with-karura-runtime -- -D warnings
+      - name: Run acala-runtime clippy
+        run: cargo clippy --features with-acala-runtime -- -D warnings
+  benchmarking:
+    <<: *setup
+    steps:
+      - *checkout
+      - *toolchain
+      - name: Run benchmarking tests
+        run: make test-benchmarking
+  checks-and-tests:
+    <<: *setup
+    steps:
+      - *checkout
+      - *toolchain
+      - name: Run runtime tests
+        run: make test-runtimes
+      - name: Run eth tests
+        run: make test-eth
+
+      - name: Check benchmarks
+        run: make check-benchmarks
+      - name: Check try-runtime
+        run: make check-try-runtime
+  e2e-tests:
+    <<: *setup
+    steps:
+      - *checkout
+      - *toolchain
+      - name: Use Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: 16.x
+      - name: Run ts tests
+        run: |
+          npm install -g yarn
+          make test-ts

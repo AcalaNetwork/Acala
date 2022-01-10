@@ -21,7 +21,10 @@
 #![cfg(test)]
 
 use super::*;
-use frame_support::parameter_types;
+use frame_support::{
+	ord_parameter_types, parameter_types,
+	traits::{Everything, Nothing},
+};
 use orml_currencies::BasicCurrencyAdapter;
 use orml_traits::parameter_type_with_key;
 use primitives::{Amount, CurrencyId, TokenSymbol};
@@ -62,7 +65,7 @@ impl frame_system::Config for Runtime {
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
 	type DbWeight = ();
-	type BaseCallFilter = ();
+	type BaseCallFilter = Everything;
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
 	type OnSetCode = ();
@@ -97,6 +100,10 @@ parameter_type_with_key! {
 	};
 }
 
+ord_parameter_types! {
+	pub const One: AccountId = H256([1u8; 32]);
+}
+
 impl orml_tokens::Config for Runtime {
 	type Event = Event;
 	type Balance = Balance;
@@ -106,7 +113,7 @@ impl orml_tokens::Config for Runtime {
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = ();
 	type MaxLocks = ();
-	type DustRemovalWhitelist = ();
+	type DustRemovalWhitelist = Nothing;
 }
 
 parameter_types! {
@@ -161,10 +168,12 @@ impl ExtBuilder {
 			.build_storage::<Runtime>()
 			.unwrap();
 
-		renvm::GenesisConfig {
-			ren_vm_public_key: hex_literal::hex!["4b939fc8ade87cb50b78987b1dda927460dc456a"],
-		}
-		.assimilate_storage::<Runtime>(&mut t)
+		GenesisBuild::<Runtime>::assimilate_storage(
+			&renvm::GenesisConfig {
+				ren_vm_public_key: hex_literal::hex!["4b939fc8ade87cb50b78987b1dda927460dc456a"],
+			},
+			&mut t,
+		)
 		.unwrap();
 
 		t.into()

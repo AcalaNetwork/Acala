@@ -21,20 +21,20 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode, MaxEncodedLen};
+use frame_support::traits::Get;
 use frame_support::{
 	parameter_types,
 	traits::Contains,
 	weights::{
-		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, WEIGHT_PER_MILLIS},
+		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, WEIGHT_PER_MILLIS, WEIGHT_PER_NANOS},
 		DispatchClass, Weight,
 	},
 	RuntimeDebug,
 };
 use frame_system::{limits, EnsureOneOf, EnsureRoot};
 pub use module_support::{ExchangeRate, PrecompileCallerFilter, Price, Rate, Ratio};
-use primitives::{
-	Balance, BlockNumber, CurrencyId, PRECOMPILE_ADDRESS_START, PREDEPLOY_ADDRESS_START, SYSTEM_CONTRACT_ADDRESS_PREFIX,
-};
+use primitives::{evm::is_system_contract, Balance, BlockNumber, CurrencyId};
+use scale_info::TypeInfo;
 use sp_core::{
 	u32_trait::{_1, _2, _3, _4},
 	H160,
@@ -42,44 +42,46 @@ use sp_core::{
 use sp_runtime::{
 	traits::{BlockNumberProvider, Convert},
 	transaction_validity::TransactionPriority,
-	Perbill,
+	FixedPointNumber, Perbill,
 };
 use static_assertions::const_assert;
 
-mod homa;
-pub use homa::*;
-
 pub mod precompile;
+use orml_traits::GetByKey;
 pub use precompile::{
 	AllPrecompiles, DexPrecompile, MultiCurrencyPrecompile, NFTPrecompile, OraclePrecompile, ScheduleCallPrecompile,
 	StateRentPrecompile,
 };
 pub use primitives::{
-	currency::{TokenInfo, ACA, AUSD, BNC, DOT, KAR, KSM, KUSD, LDOT, LKSM, RENBTC},
+	currency::{TokenInfo, ACA, AUSD, BNC, DOT, KAR, KBTC, KINT, KSM, KUSD, LDOT, LKSM, PHA, RENBTC, VSKSM},
 	AccountId,
 };
+use sp_std::{marker::PhantomData, prelude::*};
+pub use xcm::latest::prelude::*;
+pub use xcm_builder::TakeRevenue;
+pub use xcm_executor::{traits::DropAssets, Assets};
 
 pub type TimeStampedPrice = orml_oracle::TimestampedValue<Price, primitives::Moment>;
 
 // Priority of unsigned transactions
 parameter_types! {
-	// Operational is 3/4 of TransactionPriority::max_value().
+	// Operational = final_fee * OperationalFeeMultiplier / TipPerWeightStep * max_tx_per_block + (tip + 1) / TipPerWeightStep * max_tx_per_block
+	// final_fee_min = base_fee + len_fee + adjusted_weight_fee + tip
+	// priority_min = final_fee * OperationalFeeMultiplier / TipPerWeightStep * max_tx_per_block + (tip + 1) / TipPerWeightStep * max_tx_per_block
+	//              = final_fee_min * OperationalFeeMultiplier / TipPerWeightStep
 	// Ensure Inherent -> Operational tx -> Unsigned tx -> Signed normal tx
-	pub const CdpEngineUnsignedPriority: TransactionPriority = TransactionPriority::max_value() / 2;      // 50%
-	pub const AuctionManagerUnsignedPriority: TransactionPriority = TransactionPriority::max_value() / 5; // 20%
-	pub const RenvmBridgeUnsignedPriority: TransactionPriority = TransactionPriority::max_value() / 10;   // 10%
-}
-
-/// Check if the given `address` is a system contract.
-///
-/// It's system contract if the address starts with SYSTEM_CONTRACT_ADDRESS_PREFIX.
-pub fn is_system_contract(address: H160) -> bool {
-	address.as_bytes().starts_with(&SYSTEM_CONTRACT_ADDRESS_PREFIX)
-}
-
-pub fn is_acala_precompile(address: H160) -> bool {
-	address >= H160::from_low_u64_be(PRECOMPILE_ADDRESS_START)
-		&& address < H160::from_low_u64_be(PREDEPLOY_ADDRESS_START)
+	// Ensure `max_normal_priority < MinOperationalPriority / 2`
+	pub TipPerWeightStep: Balance = cent(KAR); // 0.01 KAR/ACA
+	pub MaxTipsOfPriority: Balance = 10_000 * dollar(KAR); // 10_000 KAR/ACA
+	pub const OperationalFeeMultiplier: u64 = 100_000_000_000_000u64;
+	// MinOperationalPriority = final_fee_min * OperationalFeeMultiplier / TipPerWeightStep
+	// 1_500_000_000u128 from https://github.com/AcalaNetwork/Acala/blob/bda4d430cbecebf8720d700b976875d0d805ceca/runtime/integration-tests/src/runtime.rs#L275
+	MinOperationalPriority: TransactionPriority = (1_500_000_000u128 * OperationalFeeMultiplier::get() as u128 / TipPerWeightStep::get())
+		.try_into()
+		.expect("Check that there is no overflow here");
+	pub CdpEngineUnsignedPriority: TransactionPriority = MinOperationalPriority::get() - 1000;
+	pub AuctionManagerUnsignedPriority: TransactionPriority = MinOperationalPriority::get() - 2000;
+	pub RenvmBridgeUnsignedPriority: TransactionPriority = MinOperationalPriority::get() - 3000;
 }
 
 /// The call is allowed only if caller is a system contract.
@@ -90,12 +92,16 @@ impl PrecompileCallerFilter for SystemContractsFilter {
 	}
 }
 
+// TODO: estimate this from benchmarks
+// total block weight is 500ms, normal tx have 70% of weight = 350ms
+// 350ms / 25ns = 14M gas per block
+pub const WEIGHT_PER_GAS: u64 = 25 * WEIGHT_PER_NANOS; // 25_000
+
 /// Convert gas to weight
 pub struct GasToWeight;
 impl Convert<u64, Weight> for GasToWeight {
-	fn convert(a: u64) -> u64 {
-		// TODO: estimate this
-		a as Weight
+	fn convert(gas: u64) -> Weight {
+		gas.saturating_mul(WEIGHT_PER_GAS)
 	}
 }
 
@@ -154,7 +160,7 @@ impl<AccountId> Contains<AccountId> for DummyNomineeFilter {
 
 // TODO: make those const fn
 pub fn dollar(currency_id: CurrencyId) -> Balance {
-	10u128.saturating_pow(currency_id.decimals().expect("Not support Erc20 decimals").into())
+	10u128.saturating_pow(currency_id.decimals().expect("Not support Non-Token decimals").into())
 }
 
 pub fn cent(currency_id: CurrencyId) -> Balance {
@@ -169,9 +175,13 @@ pub fn microcent(currency_id: CurrencyId) -> Balance {
 	millicent(currency_id) / 1000
 }
 
-pub struct RelaychainBlockNumberProvider<T>(sp_std::marker::PhantomData<T>);
+pub fn calculate_asset_ratio(foreign_asset: (AssetId, u128), native_asset: (AssetId, u128)) -> Ratio {
+	Ratio::saturating_from_rational(foreign_asset.1, native_asset.1)
+}
 
-impl<T: cumulus_pallet_parachain_system::Config> BlockNumberProvider for RelaychainBlockNumberProvider<T> {
+pub struct RelayChainBlockNumberProvider<T>(sp_std::marker::PhantomData<T>);
+
+impl<T: cumulus_pallet_parachain_system::Config> BlockNumberProvider for RelayChainBlockNumberProvider<T> {
 	type BlockNumber = BlockNumber;
 
 	fn current_block_number() -> Self::BlockNumber {
@@ -191,7 +201,6 @@ pub type FinancialCouncilMembershipInstance = pallet_membership::Instance2;
 pub type HomaCouncilMembershipInstance = pallet_membership::Instance3;
 pub type TechnicalCommitteeMembershipInstance = pallet_membership::Instance4;
 pub type OperatorMembershipInstanceAcala = pallet_membership::Instance5;
-pub type OperatorMembershipInstanceBand = pallet_membership::Instance6;
 
 // General Council
 pub type EnsureRootOrAllGeneralCouncil = EnsureOneOf<
@@ -223,6 +232,9 @@ pub type EnsureRootOrThreeFourthsGeneralCouncil = EnsureOneOf<
 	EnsureRoot<AccountId>,
 	pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, GeneralCouncilInstance>,
 >;
+
+pub type EnsureRootOrOneGeneralCouncil =
+	EnsureOneOf<AccountId, EnsureRoot<AccountId>, pallet_collective::EnsureMember<AccountId, GeneralCouncilInstance>>;
 
 // Financial Council
 pub type EnsureRootOrAllFinancialCouncil = EnsureOneOf<
@@ -318,7 +330,7 @@ pub type EnsureRootOrThreeFourthsTechnicalCommittee = EnsureOneOf<
 >;
 
 /// The type used to represent the kinds of proxying allowed.
-#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Encode, Decode, RuntimeDebug, MaxEncodedLen)]
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Encode, Decode, RuntimeDebug, MaxEncodedLen, TypeInfo)]
 pub enum ProxyType {
 	Any,
 	CancelProxy,
@@ -334,13 +346,81 @@ impl Default for ProxyType {
 }
 
 #[repr(u16)]
-pub enum RelaychainSubAccountId {
+pub enum RelayChainSubAccountId {
 	HomaLite = 0,
+}
+
+/// `DropAssets` implementation support asset amount lower thant ED handled by `TakeRevenue`.
+///
+/// parameters type:
+/// - `NC`: native currency_id type.
+/// - `NB`: the ExistentialDeposit amount of native currency_id.
+/// - `GK`: the ExistentialDeposit amount of tokens.
+pub struct AcalaDropAssets<X, T, C, NC, NB, GK>(PhantomData<(X, T, C, NC, NB, GK)>);
+impl<X, T, C, NC, NB, GK> DropAssets for AcalaDropAssets<X, T, C, NC, NB, GK>
+where
+	X: DropAssets,
+	T: TakeRevenue,
+	C: Convert<MultiLocation, Option<CurrencyId>>,
+	NC: Get<CurrencyId>,
+	NB: Get<Balance>,
+	GK: GetByKey<CurrencyId, Balance>,
+{
+	fn drop_assets(origin: &MultiLocation, assets: Assets) -> Weight {
+		let multi_assets: Vec<MultiAsset> = assets.into();
+		let mut asset_traps: Vec<MultiAsset> = vec![];
+		for asset in multi_assets {
+			if let MultiAsset {
+				id: Concrete(location),
+				fun: Fungible(amount),
+			} = asset.clone()
+			{
+				let currency_id = C::convert(location);
+				// burn asset(do nothing here) if convert result is None
+				if let Some(currency_id) = currency_id {
+					let ed = ExistentialDepositsForDropAssets::<NC, NB, GK>::get(&currency_id);
+					if amount < ed {
+						T::take_revenue(asset);
+					} else {
+						asset_traps.push(asset);
+					}
+				}
+			}
+		}
+		if !asset_traps.is_empty() {
+			X::drop_assets(origin, asset_traps.into());
+		}
+		0
+	}
+}
+
+/// `ExistentialDeposit` for tokens, give priority to match native token, then handled by
+/// `ExistentialDeposits`.
+///
+/// parameters type:
+/// - `NC`: native currency_id type.
+/// - `NB`: the ExistentialDeposit amount of native currency_id.
+/// - `GK`: the ExistentialDeposit amount of tokens.
+pub struct ExistentialDepositsForDropAssets<NC, NB, GK>(PhantomData<(NC, NB, GK)>);
+impl<NC, NB, GK> ExistentialDepositsForDropAssets<NC, NB, GK>
+where
+	NC: Get<CurrencyId>,
+	NB: Get<Balance>,
+	GK: GetByKey<CurrencyId, Balance>,
+{
+	fn get(currency_id: &CurrencyId) -> Balance {
+		if currency_id == &NC::get() {
+			NB::get()
+		} else {
+			GK::get(currency_id)
+		}
+	}
 }
 
 #[cfg(test)]
 mod tests {
 	use super::*;
+	use primitives::evm::SYSTEM_CONTRACT_ADDRESS_PREFIX;
 
 	#[test]
 	fn system_contracts_filter_works() {
@@ -356,30 +436,13 @@ mod tests {
 	}
 
 	#[test]
-	fn is_system_contract_works() {
-		assert!(is_system_contract(H160::from_low_u64_be(0)));
-		assert!(is_system_contract(H160::from_low_u64_be(u64::max_value())));
-
-		let mut bytes = [0u8; 20];
-		bytes[SYSTEM_CONTRACT_ADDRESS_PREFIX.len() - 1] = 1u8;
-
-		assert!(!is_system_contract(bytes.into()));
-
-		bytes = [0u8; 20];
-		bytes[0] = 1u8;
-
-		assert!(!is_system_contract(bytes.into()));
-	}
-
-	#[test]
-	fn is_acala_precompile_works() {
-		assert!(!is_acala_precompile(H160::from_low_u64_be(0)));
-		assert!(!is_acala_precompile(H160::from_low_u64_be(
-			PRECOMPILE_ADDRESS_START - 1
-		)));
-		assert!(is_acala_precompile(H160::from_low_u64_be(PRECOMPILE_ADDRESS_START)));
-		assert!(is_acala_precompile(H160::from_low_u64_be(PREDEPLOY_ADDRESS_START - 1)));
-		assert!(!is_acala_precompile(H160::from_low_u64_be(PREDEPLOY_ADDRESS_START)));
-		assert!(!is_acala_precompile([1u8; 20].into()));
+	fn check_max_normal_priority() {
+		let max_normal_priority: TransactionPriority = (MaxTipsOfPriority::get() / TipPerWeightStep::get()
+			* RuntimeBlockWeights::get()
+				.max_block
+				.min(*RuntimeBlockLength::get().max.get(DispatchClass::Normal) as u64) as u128)
+			.try_into()
+			.expect("Check that there is no overflow here");
+		assert!(max_normal_priority < MinOperationalPriority::get() / 2); // 50%
 	}
 }

@@ -23,11 +23,12 @@ use crate::{
 	EnsureRootOrHalfFinancialCouncil, EnsureRootOrHalfGeneralCouncil, EnsureRootOrHalfHomaCouncil,
 	EnsureRootOrOneThirdsTechnicalCommittee, EnsureRootOrThreeFourthsGeneralCouncil,
 	EnsureRootOrTwoThirdsTechnicalCommittee, HomaTreasuryPalletId, HonzonTreasuryPalletId, OneDay, Origin,
-	OriginCaller, SevenDays, TreasuryPalletId, TreasuryReservePalletId, ZeroDay, HOURS,
+	OriginCaller, SevenDays, TreasuryPalletId, TreasuryReservePalletId, HOURS,
 };
 pub use frame_support::traits::{schedule::Priority, EnsureOrigin, OriginTrait};
 use frame_system::ensure_root;
 use orml_authority::EnsureDelayed;
+use sp_std::cmp::Ordering;
 
 pub struct AuthorityConfigImpl;
 impl orml_authority::AuthorityConfig<Origin, OriginCaller, BlockNumber> for AuthorityConfigImpl {
@@ -62,15 +63,15 @@ impl orml_authority::AuthorityConfig<Origin, OriginCaller, BlockNumber> for Auth
 	}
 
 	fn check_cancel_schedule(origin: Origin, initial_origin: &OriginCaller) -> DispatchResult {
-		ensure_root(origin.clone()).or_else(|_| {
-			if origin.caller() == initial_origin
-				|| EnsureRootOrThreeFourthsGeneralCouncil::ensure_origin(origin).is_ok()
-			{
-				Ok(())
-			} else {
-				Err(BadOrigin.into())
-			}
-		})
+		if matches!(
+			cmp_privilege(origin.caller(), initial_origin),
+			Some(Ordering::Greater) | Some(Ordering::Equal)
+		) || EnsureRootOrThreeFourthsGeneralCouncil::ensure_origin(origin).is_ok()
+		{
+			Ok(())
+		} else {
+			Err(BadOrigin.into())
+		}
 	}
 }
 
@@ -92,39 +93,65 @@ impl orml_authority::AsOriginId<Origin, OriginCaller> for AuthoritysOriginId {
 	}
 
 	fn check_dispatch_from(&self, origin: Origin) -> DispatchResult {
-		ensure_root(origin.clone()).or_else(|_| match self {
-			AuthoritysOriginId::Root => <EnsureDelayed<
-				SevenDays,
-				EnsureRootOrThreeFourthsGeneralCouncil,
-				BlockNumber,
-				OriginCaller,
-			> as EnsureOrigin<Origin>>::ensure_origin(origin)
-			.map_or_else(|_| Err(BadOrigin.into()), |_| Ok(())),
-			AuthoritysOriginId::Treasury => {
-				<EnsureDelayed<OneDay, EnsureRootOrHalfGeneralCouncil, BlockNumber, OriginCaller> as EnsureOrigin<
-					Origin,
-				>>::ensure_origin(origin)
-				.map_or_else(|_| Err(BadOrigin.into()), |_| Ok(()))
+		ensure_root(origin.clone()).or_else(|_| {
+			match self {
+				AuthoritysOriginId::Root => <EnsureDelayed<
+					SevenDays,
+					EnsureRootOrThreeFourthsGeneralCouncil,
+					BlockNumber,
+					OriginCaller,
+				> as EnsureOrigin<Origin>>::ensure_origin(origin)
+				.map_or_else(|_| Err(BadOrigin.into()), |_| Ok(())),
+				AuthoritysOriginId::Treasury => {
+					<EnsureDelayed<OneDay, EnsureRootOrHalfGeneralCouncil, BlockNumber, OriginCaller> as EnsureOrigin<
+						Origin,
+					>>::ensure_origin(origin)
+					.map_or_else(|_| Err(BadOrigin.into()), |_| Ok(()))
+				}
+				AuthoritysOriginId::HonzonTreasury => <EnsureDelayed<
+					OneDay,
+					EnsureRootOrHalfFinancialCouncil,
+					BlockNumber,
+					OriginCaller,
+				> as EnsureOrigin<Origin>>::ensure_origin(origin)
+				.map_or_else(|_| Err(BadOrigin.into()), |_| Ok(())),
+				AuthoritysOriginId::HomaTreasury => {
+					<EnsureDelayed<OneDay, EnsureRootOrHalfHomaCouncil, BlockNumber, OriginCaller> as EnsureOrigin<
+						Origin,
+					>>::ensure_origin(origin)
+					.map_or_else(|_| Err(BadOrigin.into()), |_| Ok(()))
+				}
+				AuthoritysOriginId::TreasuryReserve => Err(BadOrigin.into()), // only allow root
 			}
-			AuthoritysOriginId::HonzonTreasury => {
-				<EnsureDelayed<OneDay, EnsureRootOrHalfFinancialCouncil, BlockNumber, OriginCaller> as EnsureOrigin<
-					Origin,
-				>>::ensure_origin(origin)
-				.map_or_else(|_| Err(BadOrigin.into()), |_| Ok(()))
-			}
-			AuthoritysOriginId::HomaTreasury => {
-				<EnsureDelayed<OneDay, EnsureRootOrHalfHomaCouncil, BlockNumber, OriginCaller> as EnsureOrigin<
-					Origin,
-				>>::ensure_origin(origin)
-				.map_or_else(|_| Err(BadOrigin.into()), |_| Ok(()))
-			}
-			AuthoritysOriginId::TreasuryReserve => <EnsureDelayed<
-				ZeroDay,
-				EnsureRoot<AccountId>,
-				BlockNumber,
-				OriginCaller,
-			> as EnsureOrigin<Origin>>::ensure_origin(origin)
-			.map_or_else(|_| Err(BadOrigin.into()), |_| Ok(())),
 		})
+	}
+}
+
+/// Compares privilages
+fn cmp_privilege(left: &OriginCaller, right: &OriginCaller) -> Option<Ordering> {
+	if left == right {
+		return Some(Ordering::Equal);
+	}
+
+	match (left, right) {
+		// Root always has privilage
+		(OriginCaller::system(frame_system::RawOrigin::Root), _) => Some(Ordering::Greater),
+
+		// Checks which one has more yes votes.
+		(
+			OriginCaller::GeneralCouncil(pallet_collective::RawOrigin::Members(l_yes_votes, l_count)),
+			OriginCaller::GeneralCouncil(pallet_collective::RawOrigin::Members(r_yes_votes, r_count)),
+		) => Some((l_yes_votes * r_count).cmp(&(r_yes_votes * l_count))),
+		(
+			OriginCaller::FinancialCouncil(pallet_collective::RawOrigin::Members(l_yes_votes, l_count)),
+			OriginCaller::FinancialCouncil(pallet_collective::RawOrigin::Members(r_yes_votes, r_count)),
+		) => Some((l_yes_votes * r_count).cmp(&(r_yes_votes * l_count))),
+		(
+			OriginCaller::HomaCouncil(pallet_collective::RawOrigin::Members(l_yes_votes, l_count)),
+			OriginCaller::HomaCouncil(pallet_collective::RawOrigin::Members(r_yes_votes, r_count)),
+		) => Some((l_yes_votes * r_count).cmp(&(r_yes_votes * l_count))),
+
+		// For every other origin we don't care, as they are not used in schedule_dispatch
+		_ => None,
 	}
 }

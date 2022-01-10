@@ -10,6 +10,10 @@ run-eth:
 run-karura:
 	cargo run --features with-karura-runtime -- --chain=karura
 
+.PHONY: run-acala
+run-acala:
+	cargo run --features with-acala-runtime -- --chain=acala
+
 .PHONY: toolchain
 toolchain:
 	./scripts/init.sh
@@ -26,6 +30,10 @@ build-full: githooks
 build-all:
 	cargo build --locked --features with-all-runtime
 
+.PHONY: build-release
+build-release:
+	CARGO_PROFILE_RELEASE_LTO=true RUSTFLAGS="-C codegen-units=1" cargo build --locked --features with-all-runtime --release
+
 .PHONY: check
 check: githooks
 	SKIP_WASM_BUILD= cargo check --features with-mandala-runtime
@@ -33,6 +41,10 @@ check: githooks
 .PHONY: check
 check-karura: githooks
 	SKIP_WASM_BUILD= cargo check --features with-karura-runtime
+
+.PHONY: check
+check-acala: githooks
+	SKIP_WASM_BUILD= cargo check --features with-acala-runtime
 
 .PHONY: check-tests
 check-tests: githooks
@@ -49,6 +61,7 @@ check-runtimes:
 check-benchmarks:
 	SKIP_WASM_BUILD= cargo check --features runtime-benchmarks --no-default-features --target=wasm32-unknown-unknown -p mandala-runtime
 	SKIP_WASM_BUILD= cargo check --features runtime-benchmarks --no-default-features --target=wasm32-unknown-unknown -p karura-runtime
+	SKIP_WASM_BUILD= cargo check --features runtime-benchmarks --no-default-features --target=wasm32-unknown-unknown -p acala-runtime
 
 .PHONY: check-debug
 check-debug:
@@ -65,7 +78,6 @@ test: githooks
 .PHONY: test-eth
 test-eth: githooks
 	SKIP_WASM_BUILD= cargo test -p runtime-common --features with-ethereum-compatibility schedule_call_precompile_should_work
-	SKIP_WASM_BUILD= cargo test -p runtime-integration-tests --features with-mandala-runtime --features with-ethereum-compatibility test_evm_module
 	SKIP_WASM_BUILD= cargo test -p runtime-integration-tests --features with-mandala-runtime --features with-ethereum-compatibility should_not_kill_contract_on_transfer_all
 	SKIP_WASM_BUILD= cargo test -p runtime-integration-tests --features with-mandala-runtime --features with-ethereum-compatibility schedule_call_precompile_should_handle_invalid_input
 
@@ -74,6 +86,12 @@ test-runtimes:
 	SKIP_WASM_BUILD= cargo test --all --features with-all-runtime
 	SKIP_WASM_BUILD= cargo test -p runtime-integration-tests --features=with-mandala-runtime
 	SKIP_WASM_BUILD= cargo test -p runtime-integration-tests --features=with-karura-runtime
+	SKIP_WASM_BUILD= cargo test -p runtime-integration-tests --features=with-acala-runtime
+
+.PHONY: test-ts
+test-ts:
+	cargo build --release --features with-mandala-runtime
+	cd ts-tests && yarn && yarn run build && ACALA_BUILD=release yarn run test
 
 .PHONY: test-benchmarking
 test-benchmarking:
@@ -125,19 +143,27 @@ cargo-update:
 
 .PHONY: build-wasm-mandala
 build-wasm-mandala:
-	./scripts/build-only-wasm.sh -p mandala-runtime --features=with-ethereum-compatibility
+	./scripts/build-only-wasm.sh -p mandala-runtime --features=on-chain-release-build
 
 .PHONY: build-wasm-karura
 build-wasm-karura:
 	./scripts/build-only-wasm.sh -p karura-runtime --features=on-chain-release-build
 
+.PHONY: build-wasm-acala
+build-wasm-acala:
+	./scripts/build-only-wasm.sh -p acala-runtime --features=on-chain-release-build
+
 .PHONY: srtool-build-wasm-mandala
 srtool-build-wasm-mandala:
-	PACKAGE=mandala-runtime BUILD_OPTS="--features with-ethereum-compatibility" ./scripts/srtool-build.sh
+	PACKAGE=mandala-runtime BUILD_OPTS="--features on-chain-release-build" ./scripts/srtool-build.sh
 
 .PHONY: srtool-build-wasm-karura
 srtool-build-wasm-karura:
 	PACKAGE=karura-runtime BUILD_OPTS="--features on-chain-release-build" ./scripts/srtool-build.sh
+
+.PHONY: srtool-build-wasm-acala
+srtool-build-wasm-acala:
+	PACKAGE=acala-runtime BUILD_OPTS="--features on-chain-release-build" ./scripts/srtool-build.sh
 
 .PHONY: generate-tokens
 generate-tokens:
@@ -149,12 +175,12 @@ benchmark-mandala:
 
 .PHONY: benchmark-karura
 benchmark-karura:
-	 cargo run --release --features=runtime-benchmarks --features=with-karura-runtime -- benchmark --chain=karura-latest --steps=50 --repeat=20 '--pallet=*' '--extrinsic=*' --execution=wasm --wasm-execution=compiled --heap-pages=4096 --template=./templates/runtime-weight-template.hbs --output=./runtime/karura/src/weights/
+	 cargo run --release --features=runtime-benchmarks --features=with-karura-runtime -- benchmark --chain=karura-dev --steps=50 --repeat=20 '--pallet=*' '--extrinsic=*' --execution=wasm --wasm-execution=compiled --heap-pages=4096 --template=./templates/runtime-weight-template.hbs --output=./runtime/karura/src/weights/
+
+.PHONY: benchmark-acala
+benchmark-acala:
+	 cargo run --release --features=runtime-benchmarks --features=with-acala-runtime -- benchmark --chain=acala-dev --steps=50 --repeat=20 '--pallet=*' '--extrinsic=*' --execution=wasm --wasm-execution=compiled --heap-pages=4096 --template=./templates/runtime-weight-template.hbs --output=./runtime/acala/src/weights/
 
 .PHONY: clippy-fix
 clippy-fix:
 	CARGO_INCREMENTAL=0 ./orml/scripts/run-clippy.sh --fix -Z unstable-options --broken-code --allow-dirty
-
-.PHONY: clean-runtimes
-clean-runtimes:
-	./scripts/clean-runtimes.sh

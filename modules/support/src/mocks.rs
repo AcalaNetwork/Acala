@@ -16,16 +16,15 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AddressMapping, CurrencyId, CurrencyIdMapping};
+use crate::{AddressMapping, CurrencyId, Erc20InfoMapping};
 use codec::Encode;
-use frame_support::pallet_prelude::DispatchResult;
-use primitives::{currency::TokenInfo, evm::EvmAddress, H160_POSITION_TOKEN, H160_PREFIX_TOKEN};
+use primitives::{
+	currency::TokenInfo,
+	evm::{is_mirrored_tokens_address_prefix, EvmAddress, H160_POSITION_TOKEN},
+};
 use sp_core::{crypto::AccountId32, H160};
 use sp_io::hashing::blake2_256;
-use sp_std::{
-	convert::{TryFrom, TryInto},
-	vec::Vec,
-};
+use sp_std::vec::Vec;
 
 pub struct MockAddressMapping;
 
@@ -63,17 +62,9 @@ impl AddressMapping<AccountId32> for MockAddressMapping {
 	}
 }
 
-pub struct MockCurrencyIdMapping;
+pub struct MockErc20InfoMapping;
 
-impl CurrencyIdMapping for MockCurrencyIdMapping {
-	fn set_erc20_mapping(_address: EvmAddress) -> DispatchResult {
-		Ok(())
-	}
-
-	fn get_evm_address(_currency_id: u32) -> Option<EvmAddress> {
-		Some(EvmAddress::default())
-	}
-
+impl Erc20InfoMapping for MockErc20InfoMapping {
 	fn name(currency_id: CurrencyId) -> Option<Vec<u8>> {
 		currency_id.name().map(|v| v.as_bytes().to_vec())
 	}
@@ -91,9 +82,8 @@ impl CurrencyIdMapping for MockCurrencyIdMapping {
 	}
 
 	fn decode_evm_address(v: EvmAddress) -> Option<CurrencyId> {
-		let address = v.as_bytes();
-		if address.starts_with(&H160_PREFIX_TOKEN) {
-			address[H160_POSITION_TOKEN].try_into().map(CurrencyId::Token).ok()
+		if is_mirrored_tokens_address_prefix(v) {
+			v.as_bytes()[H160_POSITION_TOKEN].try_into().map(CurrencyId::Token).ok()
 		} else {
 			None
 		}

@@ -1,29 +1,48 @@
 [package]
 name = "module-homa"
-version = "1.4.1"
+version = "2.1.3"
 authors = ["Acala Developers"]
-edition = "2018"
+edition = "2021"
 
 [dependencies]
-serde = { version = "1.0.124", optional = true }
-codec = { package = "parity-scale-codec", version = "2.2.0", default-features = false, features = ["max-encoded-len"] }
-sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.9", default-features = false }
-sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.9", default-features = false }
-frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.9", default-features = false }
-frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.9", default-features = false }
-support = { package = "module-support", path = "../support", default-features = false }
+codec = { package = "parity-scale-codec", version = "2.3.1", default-features = false, features = ["derive"] }
+scale-info = { version = "1.0", default-features = false, features = ["derive"] }
+frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.13", default-features = false, optional = true}
+frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.13", default-features = false }
+frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.13", default-features = false }
+sp-arithmetic = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.13", default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.13", default-features = false }
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.13", default-features = false  }
+sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.13", default-features = false  }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
+orml-traits = { path = "../../orml/traits", default-features = false }
+module-support = { path = "../../modules/support", default-features = false }
+
+[dev-dependencies]
+sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.13" }
+pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.13" }
+module-currencies = { path = "../../modules/currencies" }
+orml-tokens = { path = "../../orml/tokens" }
 
 [features]
 default = ["std"]
 std = [
-	"serde",
 	"codec/std",
-	"sp-runtime/std",
-	"sp-std/std",
+	"frame-benchmarking/std",
 	"frame-support/std",
 	"frame-system/std",
-	"support/std",
+	"scale-info/std",
+	"sp-arithmetic/std",
+	"sp-runtime/std",
+	"sp-core/std",
+	"sp-std/std",
 	"primitives/std",
+	"orml-traits/std",
+	"module-support/std",
+]
+runtime-benchmarks = [
+	"frame-benchmarking",
+	"frame-support/runtime-benchmarks",
+	"frame-system/runtime-benchmarks",
 ]
 try-runtime = ["frame-support/try-runtime"]

@@ -87,18 +87,18 @@ impl SubstrateCli for Cli {
 			#[cfg(feature = "with-acala-runtime")]
 			"acala" => Box::new(chain_spec::acala::acala_config()?),
 			#[cfg(feature = "with-acala-runtime")]
+			"wendala" => Box::new(chain_spec::acala::wendala_config()?),
+			#[cfg(feature = "with-acala-runtime")]
+			"acala-dev" => Box::new(chain_spec::acala::acala_dev_config()?),
+			#[cfg(feature = "with-acala-runtime")]
 			"acala-latest" => Box::new(chain_spec::acala::latest_acala_config()?),
 			path => {
 				let path = std::path::PathBuf::from(path);
 
-				let starts_with = |prefix: &str| {
-					path.file_name()
-						.map(|f| f.to_str().map(|s| s.starts_with(&prefix)))
-						.flatten()
-						.unwrap_or(false)
-				};
+				let chain_spec = Box::new(service::chain_spec::DummyChainSpec::from_json_file(path.clone())?)
+					as Box<dyn service::ChainSpec>;
 
-				if starts_with("karura") {
+				if chain_spec.is_karura() {
 					#[cfg(feature = "with-karura-runtime")]
 					{
 						Box::new(chain_spec::karura::ChainSpec::from_json_file(path)?)
@@ -106,7 +106,7 @@ impl SubstrateCli for Cli {
 
 					#[cfg(not(feature = "with-karura-runtime"))]
 					return Err(service::KARURA_RUNTIME_NOT_AVAILABLE.into());
-				} else if starts_with("acala") {
+				} else if chain_spec.is_acala() {
 					#[cfg(feature = "with-acala-runtime")]
 					{
 						Box::new(chain_spec::acala::ChainSpec::from_json_file(path)?)
@@ -177,7 +177,14 @@ impl SubstrateCli for RelayChainCli {
 	}
 
 	fn load_spec(&self, id: &str) -> std::result::Result<Box<dyn sc_service::ChainSpec>, String> {
-		polkadot_cli::Cli::from_iter([RelayChainCli::executable_name()].iter()).load_spec(id)
+		if id == "rococo-mandala" {
+			let spec = sc_service::GenericChainSpec::<(), polkadot_service::chain_spec::Extensions>::from_json_bytes(
+				&include_bytes!("../../../resources/rococo-mandala.json")[..],
+			)?;
+			Ok(Box::new(spec))
+		} else {
+			polkadot_cli::Cli::from_iter([RelayChainCli::executable_name()].iter()).load_spec(id)
+		}
 	}
 
 	fn native_runtime_version(chain_spec: &Box<dyn ChainSpec>) -> &'static RuntimeVersion {
@@ -186,17 +193,17 @@ impl SubstrateCli for RelayChainCli {
 }
 
 fn set_default_ss58_version(spec: &Box<dyn service::ChainSpec>) {
-	use sp_core::crypto::Ss58AddressFormat;
+	use sp_core::crypto::Ss58AddressFormatRegistry;
 
 	let ss58_version = if spec.is_karura() {
-		Ss58AddressFormat::KaruraAccount
+		Ss58AddressFormatRegistry::KaruraAccount
 	} else if spec.is_acala() {
-		Ss58AddressFormat::AcalaAccount
+		Ss58AddressFormatRegistry::AcalaAccount
 	} else {
-		Ss58AddressFormat::SubstrateAccount
+		Ss58AddressFormatRegistry::SubstrateAccount
 	};
 
-	sp_core::crypto::set_default_ss58_version(ss58_version);
+	sp_core::crypto::set_default_ss58_version(ss58_version.into());
 }
 
 fn extract_genesis_wasm(chain_spec: &Box<dyn service::ChainSpec>) -> Result<Vec<u8>> {
@@ -213,7 +220,7 @@ macro_rules! with_runtime_or_err {
 		if $chain_spec.is_acala() {
 			#[cfg(feature = "with-acala-runtime")]
 			#[allow(unused_imports)]
-			use service::{acala_runtime::{Block, RuntimeApi}, AcalaExecutor as Executor};
+			use service::{acala_runtime::{Block, RuntimeApi}, AcalaExecutorDispatch as Executor};
 			#[cfg(feature = "with-acala-runtime")]
 			$( $code )*
 
@@ -222,7 +229,7 @@ macro_rules! with_runtime_or_err {
 		} else if $chain_spec.is_karura() {
 			#[cfg(feature = "with-karura-runtime")]
 			#[allow(unused_imports)]
-			use service::{karura_runtime::{Block, RuntimeApi}, KaruraExecutor as Executor};
+			use service::{karura_runtime::{Block, RuntimeApi}, KaruraExecutorDispatch as Executor};
 			#[cfg(feature = "with-karura-runtime")]
 			$( $code )*
 
@@ -231,7 +238,7 @@ macro_rules! with_runtime_or_err {
 		} else {
 			#[cfg(feature = "with-mandala-runtime")]
 			#[allow(unused_imports)]
-			use service::{mandala_runtime::{Block, RuntimeApi}, MandalaExecutor as Executor};
+			use service::{mandala_runtime::{Block, RuntimeApi}, MandalaExecutorDispatch as Executor};
 			#[cfg(feature = "with-mandala-runtime")]
 			$( $code )*
 
@@ -346,7 +353,7 @@ pub fn run() -> sc_cli::Result<()> {
 				);
 
 				let polkadot_config =
-					SubstrateCli::create_configuration(&polkadot_cli, &polkadot_cli, config.task_executor.clone())
+					SubstrateCli::create_configuration(&polkadot_cli, &polkadot_cli, config.tokio_handle.clone())
 						.map_err(|err| format!("Relay chain argument error: {}", err))?;
 
 				cmd.run(config, polkadot_config)
@@ -375,12 +382,12 @@ pub fn run() -> sc_cli::Result<()> {
 				{
 					let block: Block = generate_genesis_block(&chain_spec).map_err(|e| format!("{:?}", e))?;
 					let raw_header = block.header().encode();
-					let output_buf = if params.raw {
+					let buf = if params.raw {
 						raw_header
 					} else {
 						format!("0x{:?}", HexDisplay::from(&block.header().encode())).into_bytes()
 					};
-					output_buf
+					buf
 				}
 			});
 
@@ -424,7 +431,7 @@ pub fn run() -> sc_cli::Result<()> {
 			with_runtime_or_err!(chain_spec, {
 				return runner.async_run(|config| {
 					let registry = config.prometheus_config.as_ref().map(|cfg| &cfg.registry);
-					let task_manager = sc_service::TaskManager::new(config.task_executor.clone(), registry)
+					let task_manager = sc_service::TaskManager::new(config.tokio_handle.clone(), registry)
 						.map_err(|e| sc_cli::Error::Service(sc_service::Error::Prometheus(e)))?;
 					Ok((cmd.run::<Block, Executor>(config), task_manager))
 				});
@@ -439,7 +446,9 @@ pub fn run() -> sc_cli::Result<()> {
 			set_default_ss58_version(chain_spec);
 
 			runner.run_node_until_exit(|config| async move {
-				let para_id = chain_spec::Extensions::try_get(&*config.chain_spec).map(|e| e.para_id);
+				let para_id = chain_spec::Extensions::try_get(&*config.chain_spec)
+					.map(|e| e.para_id)
+					.ok_or("Could not find parachain extension for chain-spec.")?;
 
 				if is_mandala_dev {
 					#[cfg(feature = "with-mandala-runtime")]
@@ -457,10 +466,10 @@ pub fn run() -> sc_cli::Result<()> {
 						.chain(cli.relaychain_args.iter()),
 				);
 
-				let id = ParaId::from(cli.run.parachain_id.or(para_id).unwrap_or(2000));
+				let id = ParaId::from(para_id);
 
 				let polkadot_config =
-					SubstrateCli::create_configuration(&polkadot_cli, &polkadot_cli, config.task_executor.clone())
+					SubstrateCli::create_configuration(&polkadot_cli, &polkadot_cli, config.tokio_handle.clone())
 						.map_err(|err| format!("Relay chain argument error: {}", err))?;
 
 				info!("Parachain id: {:?}", id);
@@ -576,10 +585,6 @@ impl CliConfiguration<Self> for RelayChainCli {
 
 	fn rpc_cors(&self, is_dev: bool) -> Result<Option<Vec<String>>> {
 		self.base.base.rpc_cors(is_dev)
-	}
-
-	fn telemetry_external_transport(&self) -> Result<Option<sc_service::config::ExtTransport>> {
-		self.base.base.telemetry_external_transport()
 	}
 
 	fn default_heap_pages(&self) -> Result<Option<u64>> {

@@ -69,10 +69,13 @@ pub mod module {
 
 	#[pallet::event]
 	#[pallet::generate_deposit(fn deposit_event)]
-	#[pallet::metadata(T::BlockNumber = "BlockNumber")]
 	pub enum Event<T: Config> {
-		/// Scheduled session duration. \[block_number, session_index, session_duration\]
-		ScheduledSessionDuration(T::BlockNumber, SessionIndex, T::BlockNumber),
+		/// Scheduled session duration.
+		ScheduledSessionDuration {
+			block_number: T::BlockNumber,
+			session_index: SessionIndex,
+			session_duration: T::BlockNumber,
+		},
 	}
 
 	/// The current session duration.
@@ -151,18 +154,18 @@ pub mod module {
 		#[pallet::weight(T::WeightInfo::schedule_session_duration())]
 		pub fn schedule_session_duration(
 			origin: OriginFor<T>,
-			start_session: SessionIndex,
-			duration: T::BlockNumber,
+			#[pallet::compact] start_session: SessionIndex,
+			#[pallet::compact] duration: T::BlockNumber,
 		) -> DispatchResult {
 			ensure_root(origin)?;
 
 			let target_block_number = Self::do_schedule_session_duration(start_session, duration)?;
 
-			Self::deposit_event(Event::ScheduledSessionDuration(
-				target_block_number,
-				start_session,
-				duration,
-			));
+			Self::deposit_event(Event::ScheduledSessionDuration {
+				block_number: target_block_number,
+				session_index: start_session,
+				session_duration: duration,
+			});
 			Ok(())
 		}
 	}

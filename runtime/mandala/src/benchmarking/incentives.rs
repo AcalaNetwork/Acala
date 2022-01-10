@@ -22,7 +22,7 @@ use crate::{
 };
 
 use super::utils::set_balance;
-use frame_benchmarking::{account, whitelisted_caller};
+use frame_benchmarking::{account, whitelisted_caller, BenchmarkError};
 use frame_support::traits::OnInitialize;
 use frame_system::RawOrigin;
 use module_incentives::PoolId;
@@ -112,7 +112,7 @@ runtime_benchmarks! {
 				(CurrencyId::Token(other_currency_symbol), CurrencyId::Token(base_currency_symbol)) => {
 					CurrencyId::DexShare(DexShare::Token(other_currency_symbol), DexShare::Token(base_currency_symbol))
 				}
-				_ => return Err("invalid currency id"),
+				_ => return Err(BenchmarkError::Stop("invalid currency id")),
 			};
 			updates.push((PoolId::Dex(lp_share_currency_id), Rate::default()));
 		}

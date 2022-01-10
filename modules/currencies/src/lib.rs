@@ -26,7 +26,7 @@ use codec::Codec;
 use frame_support::{
 	pallet_prelude::*,
 	traits::{
-		Currency as PalletCurrency, ExistenceRequirement, Get, LockableCurrency as PalletLockableCurrency,
+		Currency as PalletCurrency, ExistenceRequirement, Get, Imbalance, LockableCurrency as PalletLockableCurrency,
 		ReservableCurrency as PalletReservableCurrency, WithdrawReasons,
 	},
 	transactional,
@@ -36,7 +36,7 @@ use orml_traits::{
 	arithmetic::{Signed, SimpleArithmetic},
 	currency::TransferAll,
 	BalanceStatus, BasicCurrency, BasicCurrencyExtended, BasicLockableCurrency, BasicReservableCurrency,
-	LockIdentifier, MultiCurrency, MultiCurrencyExtended, MultiLockableCurrency, MultiReservableCurrency,
+	LockIdentifier, MultiCurrency, MultiCurrencyExtended, MultiLockableCurrency, MultiReservableCurrency, OnDust,
 };
 use primitives::{evm::EvmAddress, CurrencyId};
 use sp_io::hashing::blake2_256;
@@ -44,11 +44,7 @@ use sp_runtime::{
 	traits::{CheckedSub, MaybeSerializeDeserialize, Saturating, StaticLookup, Zero},
 	DispatchError, DispatchResult,
 };
-use sp_std::{
-	convert::{TryFrom, TryInto},
-	fmt::Debug,
-	marker, result,
-};
+use sp_std::{fmt::Debug, marker, result, vec::Vec};
 use support::{AddressMapping, EVMBridge, InvokeContext};
 
 mod mock;
@@ -90,6 +86,12 @@ pub mod module {
 		/// Mapping from address to account id.
 		type AddressMapping: AddressMapping<Self::AccountId>;
 		type EVMBridge: EVMBridge<Self::AccountId, BalanceOf<Self>>;
+
+		/// The AccountId that can perform a sweep dust.
+		type SweepOrigin: EnsureOrigin<Self::Origin>;
+
+		/// Handler to burn or transfer account's dust
+		type OnDust: OnDust<Self::AccountId, CurrencyId, BalanceOf<Self>>;
 	}
 
 	#[pallet::error]
@@ -104,20 +106,44 @@ pub mod module {
 		EvmAccountNotFound,
 		/// Real origin not found
 		RealOriginNotFound,
+		/// Deposit result is not expected
+		DepositFailed,
 	}
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
-	#[pallet::metadata(T::AccountId = "AccountId", BalanceOf<T> = "Balance", CurrencyIdOf<T> = "CurrencyId")]
 	pub enum Event<T: Config> {
-		/// Currency transfer success. \[currency_id, from, to, amount\]
-		Transferred(CurrencyIdOf<T>, T::AccountId, T::AccountId, BalanceOf<T>),
-		/// Update balance success. \[currency_id, who, amount\]
-		BalanceUpdated(CurrencyIdOf<T>, T::AccountId, AmountOf<T>),
-		/// Deposit success. \[currency_id, who, amount\]
-		Deposited(CurrencyIdOf<T>, T::AccountId, BalanceOf<T>),
-		/// Withdraw success. \[currency_id, who, amount\]
-		Withdrawn(CurrencyIdOf<T>, T::AccountId, BalanceOf<T>),
+		/// Currency transfer success.
+		Transferred {
+			currency_id: CurrencyIdOf<T>,
+			from: T::AccountId,
+			to: T::AccountId,
+			amount: BalanceOf<T>,
+		},
+		/// Update balance success.
+		BalanceUpdated {
+			currency_id: CurrencyIdOf<T>,
+			who: T::AccountId,
+			amount: AmountOf<T>,
+		},
+		/// Deposit success.
+		Deposited {
+			currency_id: CurrencyIdOf<T>,
+			who: T::AccountId,
+			amount: BalanceOf<T>,
+		},
+		/// Withdraw success.
+		Withdrawn {
+			currency_id: CurrencyIdOf<T>,
+			who: T::AccountId,
+			amount: BalanceOf<T>,
+		},
+		/// Dust swept.
+		DustSwept {
+			currency_id: CurrencyIdOf<T>,
+			who: T::AccountId,
+			amount: BalanceOf<T>,
+		},
 	}
 
 	#[pallet::pallet]
@@ -159,7 +185,12 @@ pub mod module {
 			let to = T::Lookup::lookup(dest)?;
 			T::NativeCurrency::transfer(&from, &to, amount)?;
 
-			Self::deposit_event(Event::Transferred(T::GetNativeCurrencyId::get(), from, to, amount));
+			Self::deposit_event(Event::Transferred {
+				currency_id: T::GetNativeCurrencyId::get(),
+				from,
+				to,
+				amount,
+			});
 			Ok(())
 		}
 
@@ -176,6 +207,37 @@ pub mod module {
 			ensure_root(origin)?;
 			let dest = T::Lookup::lookup(who)?;
 			<Self as MultiCurrencyExtended<T::AccountId>>::update_balance(currency_id, &dest, amount)?;
+			Ok(())
+		}
+
+		#[pallet::weight(T::WeightInfo::sweep_dust(accounts.len() as u32))]
+		pub fn sweep_dust(
+			origin: OriginFor<T>,
+			currency_id: CurrencyIdOf<T>,
+			accounts: Vec<T::AccountId>,
+		) -> DispatchResult {
+			T::SweepOrigin::ensure_origin(origin)?;
+			if let CurrencyId::Erc20(_) = currency_id {
+				return Err(Error::<T>::Erc20InvalidOperation.into());
+			}
+			for account in accounts {
+				let free_balance = Self::free_balance(currency_id, &account);
+				if free_balance.is_zero() {
+					continue;
+				}
+				let total_balance = Self::total_balance(currency_id, &account);
+				if free_balance != total_balance {
+					continue;
+				}
+				if free_balance < Self::minimum_balance(currency_id) {
+					T::OnDust::on_dust(&account, currency_id, free_balance);
+					Self::deposit_event(Event::DustSwept {
+						currency_id,
+						who: account,
+						amount: free_balance,
+					});
+				}
+			}
 			Ok(())
 		}
 	}
@@ -293,7 +355,12 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 			_ => T::MultiCurrency::transfer(currency_id, from, to, amount)?,
 		}
 
-		Self::deposit_event(Event::Transferred(currency_id, from.clone(), to.clone(), amount));
+		Self::deposit_event(Event::Transferred {
+			currency_id,
+			from: from.clone(),
+			to: to.clone(),
+			amount,
+		});
 		Ok(())
 	}
 
@@ -306,7 +373,11 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 			id if id == T::GetNativeCurrencyId::get() => T::NativeCurrency::deposit(who, amount)?,
 			_ => T::MultiCurrency::deposit(currency_id, who, amount)?,
 		}
-		Self::deposit_event(Event::Deposited(currency_id, who.clone(), amount));
+		Self::deposit_event(Event::Deposited {
+			currency_id,
+			who: who.clone(),
+			amount,
+		});
 		Ok(())
 	}
 
@@ -319,7 +390,11 @@ impl<T: Config> MultiCurrency<T::AccountId> for Pallet<T> {
 			id if id == T::GetNativeCurrencyId::get() => T::NativeCurrency::withdraw(who, amount)?,
 			_ => T::MultiCurrency::withdraw(currency_id, who, amount)?,
 		}
-		Self::deposit_event(Event::Withdrawn(currency_id, who.clone(), amount));
+		Self::deposit_event(Event::Withdrawn {
+			currency_id,
+			who: who.clone(),
+			amount,
+		});
 		Ok(())
 	}
 
@@ -349,7 +424,11 @@ impl<T: Config> MultiCurrencyExtended<T::AccountId> for Pallet<T> {
 			id if id == T::GetNativeCurrencyId::get() => T::NativeCurrency::update_balance(who, by_amount)?,
 			_ => T::MultiCurrency::update_balance(currency_id, who, by_amount)?,
 		}
-		Self::deposit_event(Event::BalanceUpdated(currency_id, who.clone(), by_amount));
+		Self::deposit_event(Event::BalanceUpdated {
+			currency_id,
+			who: who.clone(),
+			amount: by_amount,
+		});
 		Ok(())
 	}
 }
@@ -724,7 +803,12 @@ where
 	}
 
 	fn deposit(who: &AccountId, amount: Self::Balance) -> DispatchResult {
-		let _ = Currency::deposit_creating(who, amount);
+		if !amount.is_zero() {
+			let deposit_result = Currency::deposit_creating(who, amount);
+			let actual_deposit = deposit_result.peek();
+			ensure!(actual_deposit == amount, Error::<T>::DepositFailed);
+		}
+
 		Ok(())
 	}
 
@@ -850,4 +934,21 @@ impl<T: Config> TransferAll<T::AccountId> for Pallet<T> {
 fn reserve_address(address: EvmAddress) -> EvmAddress {
 	let payload = (b"erc20:", address);
 	EvmAddress::from_slice(&payload.using_encoded(blake2_256)[0..20])
+}
+
+pub struct TransferDust<T, GetAccountId>(marker::PhantomData<(T, GetAccountId)>);
+impl<T: Config, GetAccountId> OnDust<T::AccountId, CurrencyIdOf<T>, BalanceOf<T>> for TransferDust<T, GetAccountId>
+where
+	T: Config,
+	GetAccountId: Get<T::AccountId>,
+{
+	fn on_dust(who: &T::AccountId, currency_id: CurrencyIdOf<T>, amount: BalanceOf<T>) {
+		// transfer the dust to treasury account, ignore the result,
+		// if failed will leave some dust which still could be recycled.
+		let _ = match currency_id {
+			CurrencyId::Erc20(_) => Ok(()),
+			id if id == T::GetNativeCurrencyId::get() => T::NativeCurrency::transfer(who, &GetAccountId::get(), amount),
+			_ => T::MultiCurrency::transfer(currency_id, who, &GetAccountId::get(), amount),
+		};
+	}
 }

@@ -21,7 +21,11 @@
 #![cfg(test)]
 
 use super::*;
-use frame_support::parameter_types;
+use frame_support::{
+	ord_parameter_types, parameter_types,
+	traits::{Everything, Nothing},
+};
+use frame_system::EnsureSignedBy;
 use module_support::mocks::MockAddressMapping;
 use orml_traits::parameter_type_with_key;
 use primitives::{Amount, TokenSymbol};
@@ -49,7 +53,7 @@ parameter_types! {
 }
 
 impl frame_system::Config for Runtime {
-	type BaseCallFilter = ();
+	type BaseCallFilter = Everything;
 	type BlockWeights = ();
 	type BlockLength = ();
 	type Origin = Origin;
@@ -80,6 +84,10 @@ parameter_type_with_key! {
 	};
 }
 
+ord_parameter_types! {
+	pub const One: AccountId = ALICE;
+}
+
 impl orml_tokens::Config for Runtime {
 	type Event = Event;
 	type Balance = Balance;
@@ -89,7 +97,7 @@ impl orml_tokens::Config for Runtime {
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = ();
 	type MaxLocks = ();
-	type DustRemovalWhitelist = ();
+	type DustRemovalWhitelist = Nothing;
 }
 
 parameter_types! {
@@ -122,6 +130,8 @@ impl module_currencies::Config for Runtime {
 	type WeightInfo = ();
 	type AddressMapping = MockAddressMapping;
 	type EVMBridge = ();
+	type SweepOrigin = EnsureSignedBy<One, AccountId>;
+	type OnDust = ();
 }
 
 pub struct MockCashModule;
@@ -205,10 +215,12 @@ impl ExtBuilder {
 		.assimilate_storage(&mut t)
 		.unwrap();
 
-		ecosystem_starport::GenesisConfig {
-			initial_authorities: get_mock_signatures(),
-		}
-		.assimilate_storage::<Runtime>(&mut t)
+		GenesisBuild::<Runtime>::assimilate_storage(
+			&ecosystem_starport::GenesisConfig {
+				initial_authorities: get_mock_signatures(),
+			},
+			&mut t,
+		)
 		.unwrap();
 
 		let mut ext = sp_io::TestExternalities::new(t);

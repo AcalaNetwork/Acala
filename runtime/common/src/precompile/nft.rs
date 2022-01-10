@@ -16,16 +16,17 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::precompile::PrecompileOutput;
 use frame_support::log;
 use module_evm::{Context, ExitError, ExitSucceed, Precompile};
-use module_support::{AddressMapping as AddressMappingT, CurrencyIdMapping as CurrencyIdMappingT};
-use sp_core::{H160, U256};
+use module_support::AddressMapping;
+use sp_core::H160;
 use sp_runtime::RuntimeDebug;
-use sp_std::{borrow::Cow, fmt::Debug, marker::PhantomData, prelude::*, result};
+use sp_std::{borrow::Cow, marker::PhantomData, prelude::*, result};
 
 use orml_traits::NFT as NFTT;
 
-use super::input::{Input, InputT};
+use super::input::{Input, InputT, Output};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use primitives::NFTBalance;
 
@@ -37,11 +38,9 @@ use primitives::NFTBalance;
 /// - Query balance. Rest `input` bytes: `account_id`.
 /// - Query owner. Rest `input` bytes: `class_id`, `token_id`.
 /// - Transfer. Rest `input`bytes: `from`, `to`, `class_id`, `token_id`.
-pub struct NFTPrecompile<AccountId, AddressMapping, CurrencyIdMapping, NFT>(
-	PhantomData<(AccountId, AddressMapping, CurrencyIdMapping, NFT)>,
-);
+pub struct NFTPrecompile<R>(PhantomData<R>);
 
-#[primitives_proc_macro::generate_function_selector]
+#[module_evm_utiltity_macro::generate_function_selector]
 #[derive(RuntimeDebug, Eq, PartialEq, TryFromPrimitive, IntoPrimitive)]
 #[repr(u32)]
 pub enum Action {
@@ -50,22 +49,17 @@ pub enum Action {
 	Transfer = "transfer(address,address,uint256,uint256)",
 }
 
-impl<AccountId, AddressMapping, CurrencyIdMapping, NFT> Precompile
-	for NFTPrecompile<AccountId, AddressMapping, CurrencyIdMapping, NFT>
+impl<Runtime> Precompile for NFTPrecompile<Runtime>
 where
-	AccountId: Clone + Debug,
-	AddressMapping: AddressMappingT<AccountId>,
-	CurrencyIdMapping: CurrencyIdMappingT,
-	NFT: NFTT<AccountId, Balance = NFTBalance, ClassId = u32, TokenId = u64>,
+	Runtime: module_evm::Config + module_prices::Config + module_nft::Config,
+	module_nft::Pallet<Runtime>: NFTT<Runtime::AccountId, Balance = NFTBalance, ClassId = u32, TokenId = u64>,
 {
 	fn execute(
 		input: &[u8],
 		_target_gas: Option<u64>,
 		_context: &Context,
-	) -> result::Result<(ExitSucceed, Vec<u8>, u64), ExitError> {
-		log::debug!(target: "evm", "nft: input: {:?}", input);
-
-		let input = Input::<Action, AccountId, AddressMapping, CurrencyIdMapping>::new(input);
+	) -> result::Result<PrecompileOutput, ExitError> {
+		let input = Input::<Action, Runtime::AccountId, Runtime::AddressMapping, Runtime::Erc20InfoMapping>::new(input);
 
 		let action = input.action()?;
 
@@ -75,9 +69,14 @@ where
 
 				log::debug!(target: "evm", "nft: query_balance who: {:?}", who);
 
-				let balance = vec_u8_from_balance(NFT::balance(&who));
+				let balance = module_nft::Pallet::<Runtime>::balance(&who);
 
-				Ok((ExitSucceed::Returned, balance, 0))
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: 0,
+					output: Output::default().encode_u128(balance),
+					logs: Default::default(),
+				})
 			}
 			Action::QueryOwner => {
 				let class_id = input.u32_at(1)?;
@@ -85,16 +84,19 @@ where
 
 				log::debug!(target: "evm", "nft: query_owner class_id: {:?}, token_id: {:?}", class_id, token_id);
 
-				let owner: H160 = if let Some(o) = NFT::owner((class_id, token_id)) {
-					AddressMapping::get_evm_address(&o).unwrap_or_else(|| AddressMapping::get_default_evm_address(&o))
+				let owner: H160 = if let Some(o) = module_nft::Pallet::<Runtime>::owner((class_id, token_id)) {
+					Runtime::AddressMapping::get_evm_address(&o)
+						.unwrap_or_else(|| Runtime::AddressMapping::get_default_evm_address(&o))
 				} else {
 					Default::default()
 				};
 
-				let mut address = [0u8; 32];
-				address[12..].copy_from_slice(&owner.as_bytes().to_vec());
-
-				Ok((ExitSucceed::Returned, address.to_vec(), 0))
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: 0,
+					output: Output::default().encode_address(&owner),
+					logs: Default::default(),
+				})
 			}
 			Action::Transfer => {
 				let from = input.account_id_at(1)?;
@@ -105,17 +107,16 @@ where
 
 				log::debug!(target: "evm", "nft: transfer from: {:?}, to: {:?}, class_id: {:?}, token_id: {:?}", from, to, class_id, token_id);
 
-				NFT::transfer(&from, &to, (class_id, token_id))
+				<module_nft::Pallet<Runtime> as NFTT<Runtime::AccountId>>::transfer(&from, &to, (class_id, token_id))
 					.map_err(|e| ExitError::Other(Cow::Borrowed(e.into())))?;
 
-				Ok((ExitSucceed::Returned, vec![], 0))
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: 0,
+					output: vec![],
+					logs: Default::default(),
+				})
 			}
 		}
 	}
-}
-
-fn vec_u8_from_balance(b: NFTBalance) -> Vec<u8> {
-	let mut be_bytes = [0u8; 32];
-	U256::from(b).to_big_endian(&mut be_bytes[..]);
-	be_bytes.to_vec()
 }

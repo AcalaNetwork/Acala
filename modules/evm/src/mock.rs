@@ -20,10 +20,15 @@
 
 use super::*;
 
-use frame_support::{construct_runtime, ord_parameter_types, parameter_types};
+use frame_support::{
+	construct_runtime, ord_parameter_types, parameter_types,
+	traits::{Everything, FindAuthor, Nothing},
+	ConsensusEngineId,
+};
 use frame_system::EnsureSignedBy;
+use module_support::mocks::MockAddressMapping;
 use orml_traits::parameter_type_with_key;
-use primitives::{Amount, BlockNumber, CurrencyId, ReserveIdentifier, TokenSymbol};
+use primitives::{define_combined_task, Amount, BlockNumber, CurrencyId, ReserveIdentifier, TokenSymbol};
 use sp_core::{H160, H256};
 use sp_runtime::{
 	testing::Header,
@@ -31,7 +36,8 @@ use sp_runtime::{
 	AccountId32,
 };
 use std::{collections::BTreeMap, str::FromStr};
-use support::mocks::MockAddressMapping;
+
+type Balance = u128;
 
 mod evm_mod {
 	pub use super::super::*;
@@ -41,8 +47,8 @@ parameter_types! {
 	pub const BlockHashCount: u64 = 250;
 }
 
-impl frame_system::Config for Test {
-	type BaseCallFilter = ();
+impl frame_system::Config for Runtime {
+	type BaseCallFilter = Everything;
 	type BlockWeights = ();
 	type BlockLength = ();
 	type Origin = Origin;
@@ -59,20 +65,20 @@ impl frame_system::Config for Test {
 	type DbWeight = ();
 	type Version = ();
 	type PalletInfo = PalletInfo;
-	type AccountData = pallet_balances::AccountData<u64>;
+	type AccountData = pallet_balances::AccountData<Balance>;
 	type OnNewAccount = ();
-	type OnKilledAccount = crate::CallKillAccount<Test>;
+	type OnKilledAccount = crate::CallKillAccount<Runtime>;
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
 	type OnSetCode = ();
 }
 
 parameter_types! {
-	pub const ExistentialDeposit: u64 = 1;
+	pub const ExistentialDeposit: Balance = 1;
 	pub const MaxReserves: u32 = 50;
 }
-impl pallet_balances::Config for Test {
-	type Balance = u64;
+impl pallet_balances::Config for Runtime {
+	type Balance = Balance;
 	type DustRemoval = ();
 	type Event = Event;
 	type ExistentialDeposit = ExistentialDeposit;
@@ -86,7 +92,7 @@ impl pallet_balances::Config for Test {
 parameter_types! {
 	pub const MinimumPeriod: u64 = 1000;
 }
-impl pallet_timestamp::Config for Test {
+impl pallet_timestamp::Config for Runtime {
 	type Moment = u64;
 	type OnTimestampSet = ();
 	type MinimumPeriod = MinimumPeriod;
@@ -94,41 +100,69 @@ impl pallet_timestamp::Config for Test {
 }
 
 parameter_type_with_key! {
-	pub ExistentialDeposits: |_currency_id: CurrencyId| -> u64 {
+	pub ExistentialDeposits: |_currency_id: CurrencyId| -> Balance {
 		Default::default()
 	};
 }
 
-impl orml_tokens::Config for Test {
+impl orml_tokens::Config for Runtime {
 	type Event = Event;
-	type Balance = u64;
+	type Balance = Balance;
 	type Amount = Amount;
 	type CurrencyId = CurrencyId;
 	type WeightInfo = ();
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = ();
 	type MaxLocks = ();
-	type DustRemovalWhitelist = ();
+	type DustRemovalWhitelist = Nothing;
 }
 
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 }
 
-impl orml_currencies::Config for Test {
+impl orml_currencies::Config for Runtime {
 	type Event = Event;
 	type MultiCurrency = Tokens;
 	type NativeCurrency = AdaptedBasicCurrency;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type WeightInfo = ();
 }
-pub type AdaptedBasicCurrency = orml_currencies::BasicCurrencyAdapter<Test, Balances, Amount, BlockNumber>;
+pub type AdaptedBasicCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
+
+define_combined_task! {
+	#[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo)]
+	pub enum ScheduledTasks {
+		EvmTask(EvmTask<Runtime>),
+	}
+}
+
+parameter_types!(
+	pub MinimumWeightRemainInBlock: Weight = u64::MIN;
+);
+
+impl module_idle_scheduler::Config for Runtime {
+	type Event = Event;
+	type WeightInfo = ();
+	type Task = ScheduledTasks;
+	type MinimumWeightRemainInBlock = MinimumWeightRemainInBlock;
+}
 
 pub struct GasToWeight;
 
 impl Convert<u64, u64> for GasToWeight {
 	fn convert(a: u64) -> u64 {
 		a
+	}
+}
+
+pub struct AuthorGiven;
+impl FindAuthor<AccountId32> for AuthorGiven {
+	fn find_author<'a, I>(_digests: I) -> Option<AccountId32>
+	where
+		I: 'a + IntoIterator<Item = (ConsensusEngineId, &'a [u8])>,
+	{
+		Some(AccountId32::from_str("1234500000000000000000000000000000000000").unwrap())
 	}
 }
 
@@ -141,20 +175,20 @@ ord_parameter_types! {
 	pub const TreasuryAccount: AccountId32 = AccountId32::from([2u8; 32]);
 	pub const NetworkContractAccount: AccountId32 = AccountId32::from([0u8; 32]);
 	pub const NewContractExtraBytes: u32 = 100;
-	pub const StorageDepositPerByte: u64 = 10;
-	pub const DeveloperDeposit: u64 = 1000;
-	pub const DeploymentFee: u64 = 200;
-	pub const MaxCodeSize: u32 = 1000;
+	pub const StorageDepositPerByte: Balance = convert_decimals_to_evm(10);
+	pub const TxFeePerGas: Balance = 20_000_000;
+	pub const DeveloperDeposit: Balance = 1000;
+	pub const DeploymentFee: Balance = 200;
 	pub const ChainId: u64 = 1;
 }
 
-impl Config for Test {
+impl Config for Runtime {
 	type AddressMapping = MockAddressMapping;
 	type Currency = Balances;
 	type TransferAll = Currencies;
 	type NewContractExtraBytes = NewContractExtraBytes;
 	type StorageDepositPerByte = StorageDepositPerByte;
-	type MaxCodeSize = MaxCodeSize;
+	type TxFeePerGas = TxFeePerGas;
 
 	type Event = Event;
 	type Precompiles = ();
@@ -169,14 +203,18 @@ impl Config for Test {
 	type TreasuryAccount = TreasuryAccount;
 	type FreeDeploymentOrigin = EnsureSignedBy<CouncilAccount, AccountId32>;
 
+	type Runner = crate::runner::stack::Runner<Self>;
+	type FindAuthor = AuthorGiven;
+	type Task = ScheduledTasks;
+	type IdleScheduler = IdleScheduler;
 	type WeightInfo = ();
 }
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
-type Block = frame_system::mocking::MockBlock<Test>;
+type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
+type Block = frame_system::mocking::MockBlock<Runtime>;
 
 construct_runtime!(
-	pub enum Test where
+	pub enum Runtime where
 		Block = Block,
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic,
@@ -186,10 +224,11 @@ construct_runtime!(
 		Tokens: orml_tokens::{Pallet, Storage, Event<T>},
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
 		Currencies: orml_currencies::{Pallet, Call, Event<T>},
+		IdleScheduler: module_idle_scheduler::{Pallet, Call, Storage, Event<T>},
 	}
 );
 
-pub const INITIAL_BALANCE: u64 = 1_000_000_000_000;
+pub const INITIAL_BALANCE: Balance = 1_000_000_000_000_000;
 
 pub fn contract_a() -> H160 {
 	H160::from_str("2000000000000000000000000000000000000001").unwrap()
@@ -212,7 +251,9 @@ pub fn charlie() -> H160 {
 }
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
-	let mut t = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
+	let mut t = frame_system::GenesisConfig::default()
+		.build_storage::<Runtime>()
+		.unwrap();
 
 	let mut accounts = BTreeMap::new();
 
@@ -220,18 +261,14 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		contract_a(),
 		GenesisAccount {
 			nonce: 1,
-			balance: Default::default(),
-			storage: Default::default(),
-			code: Default::default(),
+			..Default::default()
 		},
 	);
 	accounts.insert(
 		contract_b(),
 		GenesisAccount {
 			nonce: 1,
-			balance: Default::default(),
-			storage: Default::default(),
-			code: Default::default(),
+			..Default::default()
 		},
 	);
 
@@ -240,8 +277,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		GenesisAccount {
 			nonce: 1,
 			balance: INITIAL_BALANCE,
-			storage: Default::default(),
-			code: Default::default(),
+			..Default::default()
 		},
 	);
 	accounts.insert(
@@ -249,33 +285,35 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		GenesisAccount {
 			nonce: 1,
 			balance: INITIAL_BALANCE,
-			storage: Default::default(),
-			code: Default::default(),
+			..Default::default()
 		},
 	);
 
-	pallet_balances::GenesisConfig::<Test>::default()
-		.assimilate_storage(&mut t)
-		.unwrap();
-	evm_mod::GenesisConfig::<Test> {
-		accounts,
-		treasury: Default::default(),
+	pallet_balances::GenesisConfig::<Runtime> {
+		balances: vec![(TreasuryAccount::get(), INITIAL_BALANCE)],
 	}
 	.assimilate_storage(&mut t)
 	.unwrap();
+	evm_mod::GenesisConfig::<Runtime> { accounts }
+		.assimilate_storage(&mut t)
+		.unwrap();
 
 	let mut ext = sp_io::TestExternalities::new(t);
 	ext.execute_with(|| System::set_block_number(1));
 	ext
 }
 
-pub fn balance(address: H160) -> u64 {
-	let account_id = <Test as Config>::AddressMapping::get_account_id(&address);
+pub fn balance(address: H160) -> Balance {
+	let account_id = <Runtime as Config>::AddressMapping::get_account_id(&address);
 	Balances::free_balance(account_id)
 }
 
-pub fn reserved_balance(address: H160) -> u64 {
-	let account_id = <Test as Config>::AddressMapping::get_account_id(&address);
+pub fn eth_balance(address: H160) -> U256 {
+	EVM::account_basic(&address).balance
+}
+
+pub fn reserved_balance(address: H160) -> Balance {
+	let account_id = <Runtime as Config>::AddressMapping::get_account_id(&address);
 	Balances::reserved_balance(account_id)
 }
 

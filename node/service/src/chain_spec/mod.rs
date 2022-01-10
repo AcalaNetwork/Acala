@@ -18,15 +18,13 @@
 
 //! Acala chain configurations.
 
-use acala_primitives::{AccountId, AccountPublic, Balance, Nonce};
-use module_evm::GenesisAccount;
+use acala_primitives::{AccountId, AccountPublic};
 use sc_chain_spec::ChainSpecExtension;
 use serde::{Deserialize, Serialize};
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
-use sp_core::{bytes::from_hex, sr25519, Bytes, Pair, Public, H160};
+use sp_core::{sr25519, Pair, Public};
 use sp_finality_grandpa::AuthorityId as GrandpaId;
 use sp_runtime::traits::IdentifyAccount;
-use sp_std::{collections::btree_map::BTreeMap, str::FromStr};
 
 #[cfg(feature = "with-acala-runtime")]
 pub mod acala;
@@ -40,6 +38,8 @@ mod tests;
 // The URL for the telemetry server.
 pub const TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/";
 
+pub type DummyChainSpec = sc_service::GenericChainSpec<(), Extensions>;
+
 /// Node `ChainSpec` extensions.
 ///
 /// Additional parameters for some Substrate core modules,
@@ -51,6 +51,9 @@ pub struct Extensions {
 	pub relay_chain: String,
 	/// The id of the Parachain.
 	pub para_id: u32,
+	/// Known bad block hashes.
+	#[serde(default)]
+	pub bad_blocks: sc_client_api::BadBlocks<polkadot_primitives::v1::Block>,
 }
 
 impl Extensions {
@@ -86,32 +89,9 @@ pub fn get_authority_keys_from_seed(seed: &str) -> (AccountId, AccountId, Grandp
 }
 
 /// Generate an Aura authority key for Karura.
-pub fn get_karura_authority_keys_from_seed(seed: &str) -> (AccountId, AuraId) {
+pub fn get_parachain_authority_keys_from_seed(seed: &str) -> (AccountId, AuraId) {
 	(
 		get_account_id_from_seed::<sr25519::Public>(seed),
 		get_from_seed::<AuraId>(seed),
 	)
-}
-
-/// Returns `evm_genesis_accounts`
-pub fn evm_genesis() -> BTreeMap<H160, GenesisAccount<Balance, Nonce>> {
-	let contracts_json = &include_bytes!("../../../../predeploy-contracts/resources/bytecodes.json")[..];
-	let contracts: Vec<(String, String, String)> = serde_json::from_slice(contracts_json).unwrap();
-	let mut accounts = BTreeMap::new();
-	for (_, address, code_string) in contracts {
-		let account = GenesisAccount {
-			nonce: 0u32,
-			balance: 0u128,
-			storage: BTreeMap::new(),
-			code: Bytes::from_str(&code_string).unwrap().0,
-		};
-
-		let addr = H160::from_slice(
-			from_hex(address.as_str())
-				.expect("predeploy-contracts must specify address")
-				.as_slice(),
-		);
-		accounts.insert(addr, account);
-	}
-	accounts
 }

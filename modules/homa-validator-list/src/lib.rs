@@ -33,6 +33,7 @@ use frame_support::{pallet_prelude::*, traits::Contains, transactional};
 use frame_system::pallet_prelude::*;
 use orml_traits::{BasicCurrency, BasicLockableCurrency, Happened, LockIdentifier};
 use primitives::Balance;
+use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_runtime::{
@@ -85,7 +86,7 @@ impl WeightInfo for () {
 }
 
 /// Insurance for a validator from a single address
-#[derive(Encode, Decode, Clone, Copy, RuntimeDebug, Default, PartialEq, MaxEncodedLen)]
+#[derive(Encode, Decode, Clone, Copy, RuntimeDebug, Default, PartialEq, MaxEncodedLen, TypeInfo)]
 pub struct Guarantee<BlockNumber> {
 	/// The total tokens the validator has in insurance
 	total: Balance,
@@ -142,7 +143,7 @@ impl<BlockNumber: PartialOrd> Guarantee<BlockNumber> {
 }
 
 /// Information on a relay chain validator's slash
-#[derive(Encode, Decode, Clone, RuntimeDebug, Eq, PartialEq, MaxEncodedLen)]
+#[derive(Encode, Decode, Clone, RuntimeDebug, Eq, PartialEq, MaxEncodedLen, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct SlashInfo<Balance, RelaychainAccountId> {
 	/// Address of a validator on the relay chain
@@ -152,7 +153,7 @@ pub struct SlashInfo<Balance, RelaychainAccountId> {
 }
 
 /// Validator insurance and frozen status
-#[derive(Encode, Decode, Clone, Copy, RuntimeDebug, Default, MaxEncodedLen)]
+#[derive(Encode, Decode, Clone, Copy, RuntimeDebug, Default, MaxEncodedLen, TypeInfo)]
 pub struct ValidatorBacking {
 	/// Total insurance from all guarantors
 	total_insurance: Balance,
@@ -207,14 +208,33 @@ pub mod module {
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
-	#[pallet::metadata(T::AccountId = "AccountId", T::RelaychainAccountId = "RelaychainAccountId")]
 	pub enum Event<T: Config> {
-		FreezeValidator(T::RelaychainAccountId),
-		ThawValidator(T::RelaychainAccountId),
-		BondGuarantee(T::AccountId, T::RelaychainAccountId, Balance),
-		UnbondGuarantee(T::AccountId, T::RelaychainAccountId, Balance),
-		WithdrawnGuarantee(T::AccountId, T::RelaychainAccountId, Balance),
-		SlashGuarantee(T::AccountId, T::RelaychainAccountId, Balance),
+		FreezeValidator {
+			validator: T::RelaychainAccountId,
+		},
+		ThawValidator {
+			validator: T::RelaychainAccountId,
+		},
+		BondGuarantee {
+			who: T::AccountId,
+			validator: T::RelaychainAccountId,
+			bond: Balance,
+		},
+		UnbondGuarantee {
+			who: T::AccountId,
+			validator: T::RelaychainAccountId,
+			bond: Balance,
+		},
+		WithdrawnGuarantee {
+			who: T::AccountId,
+			validator: T::RelaychainAccountId,
+			bond: Balance,
+		},
+		SlashGuarantee {
+			who: T::AccountId,
+			validator: T::RelaychainAccountId,
+			bond: Balance,
+		},
 	}
 
 	/// The slash guarantee deposits for relaychain validators.
@@ -282,7 +302,11 @@ pub mod module {
 							guarantee.bonded >= T::MinBondAmount::get(),
 							Error::<T>::BelowMinBondAmount
 						);
-						Self::deposit_event(Event::BondGuarantee(guarantor.clone(), validator.clone(), amount));
+						Self::deposit_event(Event::BondGuarantee {
+							who: guarantor.clone(),
+							validator: validator.clone(),
+							bond: amount,
+						});
 						Ok(())
 					})?;
 				}
@@ -316,7 +340,11 @@ pub mod module {
 					let expired_block = T::BlockNumberProvider::current_block_number() + T::BondingDuration::get();
 					guarantee.unbonding = Some((amount, expired_block));
 
-					Self::deposit_event(Event::UnbondGuarantee(guarantor.clone(), validator.clone(), amount));
+					Self::deposit_event(Event::UnbondGuarantee {
+						who: guarantor.clone(),
+						validator: validator.clone(),
+						bond: amount,
+					});
 					Ok(())
 				})?;
 			}
@@ -365,11 +393,11 @@ pub mod module {
 					.saturating_add(guarantee.unbonding.unwrap_or_default().0);
 				if old_total != new_total {
 					guarantee.total = new_total;
-					Self::deposit_event(Event::WithdrawnGuarantee(
-						guarantor.clone(),
-						validator.clone(),
-						old_total.saturating_sub(new_total),
-					));
+					Self::deposit_event(Event::WithdrawnGuarantee {
+						who: guarantor.clone(),
+						validator: validator.clone(),
+						bond: old_total.saturating_sub(new_total),
+					});
 				}
 				Ok(())
 			})?;
@@ -389,7 +417,9 @@ pub mod module {
 					let mut v = maybe_validator.take().unwrap_or_default();
 					if !v.is_frozen {
 						v.is_frozen = true;
-						Self::deposit_event(Event::FreezeValidator(validator.clone()));
+						Self::deposit_event(Event::FreezeValidator {
+							validator: validator.clone(),
+						});
 					}
 					*maybe_validator = Some(v);
 				});
@@ -412,7 +442,9 @@ pub mod module {
 					let mut v = maybe_validator.take().unwrap_or_default();
 					if v.is_frozen {
 						v.is_frozen = false;
-						Self::deposit_event(Event::ThawValidator(validator.clone()));
+						Self::deposit_event(Event::ThawValidator {
+							validator: validator.clone(),
+						});
 					}
 					*maybe_validator = Some(v);
 				});
@@ -451,11 +483,11 @@ pub mod module {
 						let gap = T::LiquidTokenCurrency::slash(&guarantor, should_slashing);
 						let actual_slashing = should_slashing.saturating_sub(gap);
 						*guarantee = guarantee.slash(actual_slashing);
-						Self::deposit_event(Event::SlashGuarantee(
-							guarantor.clone(),
-							validator.clone(),
-							actual_slashing,
-						));
+						Self::deposit_event(Event::SlashGuarantee {
+							who: guarantor.clone(),
+							validator: validator.clone(),
+							bond: actual_slashing,
+						});
 						actual_total_slashing = actual_total_slashing.saturating_add(actual_slashing);
 						Ok(())
 					});

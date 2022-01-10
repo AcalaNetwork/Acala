@@ -22,15 +22,18 @@
 
 pub mod currency;
 pub mod evm;
+pub mod signature;
+pub mod task;
+pub mod unchecked_extrinsic;
 
 use codec::{Decode, Encode, MaxEncodedLen};
-use core::ops::Range;
+use scale_info::TypeInfo;
 use sp_runtime::{
 	generic,
-	traits::{BlakeTwo256, IdentifyAccount, Verify},
-	MultiSignature, RuntimeDebug,
+	traits::{BlakeTwo256, CheckedDiv, IdentifyAccount, Saturating, Verify, Zero},
+	RuntimeDebug,
 };
-use sp_std::{convert::Into, prelude::*};
+use sp_std::prelude::*;
 
 pub use currency::{CurrencyId, DexShare, TokenSymbol};
 
@@ -45,7 +48,7 @@ pub type BlockNumber = u32;
 
 /// Alias to 512-bit hash when used in the context of a transaction signature on
 /// the chain.
-pub type Signature = MultiSignature;
+pub type Signature = signature::AcalaMultiSignature;
 
 /// Alias to the public key used for this chain, actually a `MultiSigner`. Like
 /// the signature, this also isn't a fixed size when encoded, as different
@@ -59,6 +62,9 @@ pub type AccountId = <AccountPublic as IdentifyAccount>::AccountId;
 /// The type for looking up accounts. We don't expect more than 4 billion of
 /// them.
 pub type AccountIndex = u32;
+
+/// The address format for describing accounts.
+pub type Address = sp_runtime::MultiAddress<AccountId, AccountIndex>;
 
 /// Index of a transaction in the chain. 32-bit should be plenty.
 pub type Nonce = u32;
@@ -96,14 +102,7 @@ pub type BlockId = generic::BlockId<Block>;
 /// Opaque, encoded, unchecked extrinsic.
 pub use sp_runtime::OpaqueExtrinsic as UncheckedExtrinsic;
 
-#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub enum AirDropCurrencyId {
-	KAR = 0,
-	ACA,
-}
-
-#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord)]
+#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum AuthoritysOriginId {
 	Root,
@@ -113,21 +112,21 @@ pub enum AuthoritysOriginId {
 	TreasuryReserve,
 }
 
-#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord)]
+#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum DataProviderId {
 	Aggregated = 0,
 	Acala = 1,
 }
 
-#[derive(Encode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord)]
+#[derive(Encode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct TradingPair(CurrencyId, CurrencyId);
 
 impl TradingPair {
 	pub fn from_currency_ids(currency_id_a: CurrencyId, currency_id_b: CurrencyId) -> Option<Self> {
-		if (currency_id_a.is_token_currency_id() || currency_id_a.is_erc20_currency_id())
-			&& (currency_id_b.is_token_currency_id() || currency_id_b.is_erc20_currency_id())
+		if currency_id_a.is_trading_pair_currency_id()
+			&& currency_id_b.is_trading_pair_currency_id()
 			&& currency_id_a != currency_id_b
 		{
 			if currency_id_a > currency_id_b {
@@ -161,7 +160,7 @@ impl Decode for TradingPair {
 	}
 }
 
-#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord, MaxEncodedLen)]
+#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord, MaxEncodedLen, TypeInfo)]
 #[repr(u8)]
 pub enum ReserveIdentifier {
 	CollatorSelection,
@@ -170,53 +169,39 @@ pub enum ReserveIdentifier {
 	Honzon,
 	Nft,
 	TransactionPayment,
+	TransactionPaymentDeposit,
 
 	// always the last, indicate number of variants
 	Count,
 }
 
-/// Ethereum precompiles
-/// 0 - 0x400
-/// Acala precompiles
-/// 0x400 - 0x800
-pub const PRECOMPILE_ADDRESS_START: u64 = 0x400;
-/// Predeployed system contracts (except Mirrored ERC20)
-/// 0x800 - 0x1000
-pub const PREDEPLOY_ADDRESS_START: u64 = 0x800;
-/// Mirrored Tokens (ensure length <= 4 bytes, encode to u32 will take the first 4 non-zero bytes)
-/// 0x1000000
-pub const MIRRORED_TOKENS_ADDRESS_START: u64 = 0x1000000;
-/// Mirrored NFT (ensure length <= 4 bytes, encode to u32 will take the first 4 non-zero bytes)
-/// 0x2000000
-pub const MIRRORED_NFT_ADDRESS_START: u64 = 0x2000000;
-/// Mirrored LP Tokens
-/// 0x10000000000000000
-pub const MIRRORED_LP_TOKENS_ADDRESS_START: u128 = 0x10000000000000000;
-/// System contract address prefix
-pub const SYSTEM_CONTRACT_ADDRESS_PREFIX: [u8; 11] = [0u8; 11];
-
-/// CurrencyId to H160([u8; 20]) bit encoding rule.
-///
-/// Token
-/// v[16] = 1 // MIRRORED_TOKENS_ADDRESS_START
-/// - v[19] = token(1 byte)
-///
-/// DexShare
-/// v[11] = 1 // MIRRORED_LP_TOKENS_ADDRESS_START
-/// - v[12..16] = dex left(4 bytes)
-/// - v[16..20] = dex right(4 bytes)
-///
-/// Erc20
-/// - v[0..20] = evm address(20 bytes)
-pub const H160_TYPE_TOKEN: u8 = 1;
-pub const H160_TYPE_DEXSHARE: u8 = 1;
-pub const H160_POSITION_TOKEN: usize = 19;
-pub const H160_POSITION_DEXSHARE_LEFT: Range<usize> = 12..16;
-pub const H160_POSITION_DEXSHARE_RIGHT: Range<usize> = 16..20;
-pub const H160_POSITION_ERC20: Range<usize> = 0..20;
-pub const H160_PREFIX_TOKEN: [u8; 19] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0];
-pub const H160_PREFIX_DEXSHARE: [u8; 12] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1];
-
 pub type NFTBalance = u128;
 
 pub type CashYieldIndex = u128;
+
+/// Convert decimal between native(12) and EVM(18) and therefore the 1_000_000 conversion.
+const DECIMALS_VALUE: u32 = 1_000_000u32;
+
+/// Convert decimal from native(KAR/ACA 12) to EVM(18).
+pub fn convert_decimals_to_evm<B: Zero + Saturating + From<u32>>(b: B) -> B {
+	if b.is_zero() {
+		return b;
+	}
+	b.saturating_mul(DECIMALS_VALUE.into())
+}
+
+/// Convert decimal from EVM(18) to native(KAR/ACA 12).
+pub fn convert_decimals_from_evm<B: Zero + Saturating + CheckedDiv + PartialEq + Copy + From<u32>>(b: B) -> Option<B> {
+	if b.is_zero() {
+		return Some(b);
+	}
+	let res = b
+		.checked_div(&Into::<B>::into(DECIMALS_VALUE))
+		.expect("divisor is non-zero; qed");
+
+	if res.saturating_mul(DECIMALS_VALUE.into()) == b {
+		Some(res)
+	} else {
+		None
+	}
+}

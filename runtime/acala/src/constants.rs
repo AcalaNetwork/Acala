@@ -23,7 +23,7 @@ pub mod time {
 	use primitives::{Balance, BlockNumber, Moment};
 	use runtime_common::{dollar, millicent, ACA};
 
-	pub const SECS_PER_BLOCK: Moment = 6;
+	pub const SECS_PER_BLOCK: Moment = 12;
 	pub const MILLISECS_PER_BLOCK: Moment = SECS_PER_BLOCK * 1000;
 
 	// These time units are defined in number of blocks.
@@ -34,22 +34,24 @@ pub mod time {
 	pub const SLOT_DURATION: Moment = MILLISECS_PER_BLOCK;
 
 	pub fn deposit(items: u32, bytes: u32) -> Balance {
-		items as Balance * 2 * dollar(ACA) + (bytes as Balance) * 10 * millicent(ACA)
+		items as Balance * 4 * dollar(ACA) + (bytes as Balance) * 60 * millicent(ACA)
 	}
 }
 
 /// Fee-related
 pub mod fee {
 	use frame_support::weights::{
-		constants::ExtrinsicBaseWeight, WeightToFeeCoefficient, WeightToFeeCoefficients, WeightToFeePolynomial,
+		constants::{ExtrinsicBaseWeight, WEIGHT_PER_SECOND},
+		WeightToFeeCoefficient, WeightToFeeCoefficients, WeightToFeePolynomial,
 	};
 	use primitives::Balance;
-	use runtime_common::{cent, ACA};
+	use runtime_common::{cent, dollar, ACA, DOT};
 	use smallvec::smallvec;
 	use sp_runtime::Perbill;
 
-	/// The block saturation level. Fees will be updates based on this value.
-	pub const TARGET_BLOCK_FULLNESS: Perbill = Perbill::from_percent(25);
+	pub fn base_tx_in_aca() -> Balance {
+		cent(ACA) / 10
+	}
 
 	/// Handles converting a weight scalar to a fee value, based on the scale
 	/// and granularity of the node's balance type.
@@ -66,16 +68,42 @@ pub mod fee {
 	impl WeightToFeePolynomial for WeightToFee {
 		type Balance = Balance;
 		fn polynomial() -> WeightToFeeCoefficients<Self::Balance> {
-			// in Acala, extrinsic base weight (smallest non-zero weight) is mapped to 1/10
-			// CENT:
-			let p = cent(ACA) / 10; // 10_000_000_000
-			let q = Balance::from(ExtrinsicBaseWeight::get()); // 125_000_000
+			// in Acala, extrinsic base weight (smallest non-zero weight) is mapped to 1/10 CENT:
+			let p = base_tx_in_aca();
+			let q = Balance::from(ExtrinsicBaseWeight::get());
 			smallvec![WeightToFeeCoefficient {
 				degree: 1,
 				negative: false,
-				coeff_frac: Perbill::from_rational(p % q, q), // zero
-				coeff_integer: p / q,                         // 80
+				coeff_frac: Perbill::from_rational(p % q, q),
+				coeff_integer: p / q,
 			}]
 		}
+	}
+
+	pub fn aca_per_second() -> u128 {
+		let base_weight = Balance::from(ExtrinsicBaseWeight::get());
+		let base_tx_per_second = (WEIGHT_PER_SECOND as u128) / base_weight;
+		base_tx_per_second * base_tx_in_aca()
+	}
+
+	pub fn dot_per_second() -> u128 {
+		// TODO: recheck this https://github.com/AcalaNetwork/Acala/issues/1562
+		aca_per_second() / 50 * dollar(DOT) / dollar(ACA)
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use crate::{constants::fee::base_tx_in_aca, Balance};
+	use frame_support::weights::constants::ExtrinsicBaseWeight;
+
+	#[test]
+	fn check_weight() {
+		let p = base_tx_in_aca();
+		let q = Balance::from(ExtrinsicBaseWeight::get());
+
+		assert_eq!(p, 1_000_000_000);
+		assert_eq!(q, 125_000_000);
+		assert_eq!(p / q, 8);
 	}
 }

@@ -32,26 +32,34 @@ use frame_support::{
 	traits::{
 		Currency, ExistenceRequirement, Imbalance, NamedReservableCurrency, OnUnbalanced, SameOrOther, WithdrawReasons,
 	},
-	weights::{DispatchInfo, GetDispatchInfo, Pays, PostDispatchInfo, WeightToFeeCoefficient, WeightToFeePolynomial},
-	BoundedVec,
+	transactional,
+	weights::{
+		constants::WEIGHT_PER_SECOND, DispatchInfo, GetDispatchInfo, Pays, PostDispatchInfo, WeightToFeeCoefficient,
+		WeightToFeePolynomial,
+	},
+	BoundedVec, PalletId,
 };
 use frame_system::pallet_prelude::*;
 use orml_traits::MultiCurrency;
 use pallet_transaction_payment_rpc_runtime_api::RuntimeDispatchInfo;
 use pallet_transaction_payment_rpc_runtime_api::{FeeDetails, InclusionFee};
 use primitives::{Balance, CurrencyId, ReserveIdentifier};
+use scale_info::TypeInfo;
 use sp_runtime::{
 	traits::{
-		Bounded, CheckedSub, Convert, DispatchInfoOf, One, PostDispatchInfoOf, SaturatedConversion, Saturating,
-		SignedExtension, UniqueSaturatedInto, Zero,
+		AccountIdConversion, Convert, DispatchInfoOf, One, PostDispatchInfoOf, SaturatedConversion, Saturating,
+		SignedExtension, Zero,
 	},
 	transaction_validity::{
 		InvalidTransaction, TransactionPriority, TransactionValidity, TransactionValidityError, ValidTransaction,
 	},
 	FixedPointNumber, FixedPointOperand, FixedU128, Perquintill,
 };
-use sp_std::{convert::TryInto, prelude::*, vec};
-use support::{DEXManager, PriceProvider, Ratio, TransactionPayment};
+use sp_std::prelude::*;
+use support::{DEXManager, PriceProvider, Ratio, SwapLimit, TransactionPayment};
+use xcm::opaque::latest::{prelude::XcmError, AssetId, Fungibility::Fungible, MultiAsset, MultiLocation};
+use xcm_builder::TakeRevenue;
+use xcm_executor::{traits::WeightTrader, Assets};
 
 mod mock;
 mod tests;
@@ -217,9 +225,12 @@ pub mod module {
 	use super::*;
 
 	pub const RESERVE_ID: ReserveIdentifier = ReserveIdentifier::TransactionPayment;
+	pub const DEPOSIT_ID: ReserveIdentifier = ReserveIdentifier::TransactionPaymentDeposit;
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
+		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+
 		/// Native currency id, the actual received currency type as fee for
 		/// treasury. Should be ACA
 		#[pallet::constant]
@@ -230,7 +241,7 @@ pub mod module {
 		type DefaultFeeSwapPathList: Get<Vec<Vec<CurrencyId>>>;
 
 		/// The currency type in which fees will be paid.
-		type Currency: Currency<Self::AccountId>
+		type Currency: Currency<Self::AccountId, Balance = Balance>
 			+ NamedReservableCurrency<Self::AccountId, ReserveIdentifier = ReserveIdentifier>
 			+ Send
 			+ Sync;
@@ -246,6 +257,43 @@ pub mod module {
 		/// The fee to be paid for making a transaction; the per-byte portion.
 		#[pallet::constant]
 		type TransactionByteFee: Get<PalletBalanceOf<Self>>;
+
+		/// A fee mulitplier for `Operational` extrinsics to compute "virtual tip" to boost their
+		/// `priority`
+		///
+		/// This value is multipled by the `final_fee` to obtain a "virtual tip" that is later
+		/// added to a tip component in regular `priority` calculations.
+		/// It means that a `Normal` transaction can front-run a similarly-sized `Operational`
+		/// extrinsic (with no tip), by including a tip value greater than the virtual tip.
+		///
+		/// ```rust,ignore
+		/// // For `Normal`
+		/// let priority = priority_calc(tip);
+		///
+		/// // For `Operational`
+		/// let virtual_tip = (inclusion_fee + tip) * OperationalFeeMultiplier;
+		/// let priority = priority_calc(tip + virtual_tip);
+		/// ```
+		///
+		/// Note that since we use `final_fee` the multiplier applies also to the regular `tip`
+		/// sent with the transaction. So, not only does the transaction get a priority bump based
+		/// on the `inclusion_fee`, but we also amplify the impact of tips applied to `Operational`
+		/// transactions.
+		#[pallet::constant]
+		type OperationalFeeMultiplier: Get<u64>;
+
+		/// The step amount of tips required to effect transaction priority.
+		#[pallet::constant]
+		type TipPerWeightStep: Get<PalletBalanceOf<Self>>;
+
+		/// The maximum value of tips that affect the priority.
+		/// Set the maximum value of tips to prevent affecting the unsigned extrinsic.
+		#[pallet::constant]
+		type MaxTipsOfPriority: Get<PalletBalanceOf<Self>>;
+
+		/// Deposit for setting an Alternative fee swap
+		#[pallet::constant]
+		type AlternativeFeeSwapDeposit: Get<PalletBalanceOf<Self>>;
 
 		/// Convert a weight value into a deductible fee based on the currency
 		/// type.
@@ -271,6 +319,17 @@ pub mod module {
 
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
+
+		/// PalletId used to derivate sub account.
+		#[pallet::constant]
+		type PalletId: Get<PalletId>;
+
+		/// Treasury account used to transfer balance to sub account of `PalletId`.
+		#[pallet::constant]
+		type TreasuryAccount: Get<Self::AccountId>;
+
+		/// The origin which change swap balance threshold or enable charge fee pool.
+		type UpdateOrigin: EnsureOrigin<Self::Origin, Success = Self::AccountId>;
 	}
 
 	#[pallet::extra_constants]
@@ -292,6 +351,32 @@ pub mod module {
 	pub enum Error<T> {
 		/// The swap path is invalid
 		InvalidSwapPath,
+		/// The balance is invalid
+		InvalidBalance,
+		/// Can't find rate by the supply token
+		InvalidRate,
+		/// Dex swap pool is not available now
+		DexNotAvailable,
+		/// Charge fee pool is already exist
+		ChargeFeePoolAlreadyExisted,
+	}
+
+	#[pallet::event]
+	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
+	pub enum Event<T: Config> {
+		/// The threshold balance that trigger swap from dex was updated.
+		SwapBalanceThresholdUpdated {
+			currency_id: CurrencyId,
+			swap_threshold: Balance,
+		},
+		/// The charge fee pool is enabled
+		ChargeFeePoolEnabled {
+			sub_account: T::AccountId,
+			currency_id: CurrencyId,
+			exchange_rate: Ratio,
+			pool_size: Balance,
+			swap_threshold: Balance,
+		},
 	}
 
 	/// The next fee multiplier.
@@ -306,6 +391,23 @@ pub mod module {
 	#[pallet::getter(fn alternative_fee_swap_path)]
 	pub type AlternativeFeeSwapPath<T: Config> =
 		StorageMap<_, Twox64Concat, T::AccountId, BoundedVec<CurrencyId, T::TradingPathLimit>, OptionQuery>;
+
+	/// The size of fee pool in native token. During `initialize_pool` this amount of native token
+	/// will be transferred from `TreasuryAccount` to sub account of `PalletId`.
+	#[pallet::storage]
+	#[pallet::getter(fn pool_size)]
+	pub type PoolSize<T: Config> = StorageMap<_, Twox64Concat, CurrencyId, Balance, ValueQuery>;
+
+	/// The exchange rate between the given currency and native token.
+	/// This value is updated when upon swap from dex.
+	#[pallet::storage]
+	#[pallet::getter(fn token_exchange_rate)]
+	pub type TokenExchangeRate<T: Config> = StorageMap<_, Twox64Concat, CurrencyId, Ratio, OptionQuery>;
+
+	/// The balance threshold to trigger swap from dex, normally the value is gt ED of native asset.
+	#[pallet::storage]
+	#[pallet::getter(fn swap_balance_threshold)]
+	pub type SwapBalanceThreshold<T: Config> = StorageMap<_, Twox64Concat, CurrencyId, Balance, ValueQuery>;
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
@@ -328,7 +430,6 @@ pub mod module {
 			// given weight == u64, we build multipliers from `diff` of two weight values,
 			// which can at most be MaximumBlockWeight. Make sure that this can fit in a
 			// multiplier without loss.
-			use sp_std::convert::TryInto;
 			assert!(
 				<Multiplier as sp_runtime::traits::Bounded>::max_value()
 					>= Multiplier::checked_from_integer(T::BlockWeights::get().max_block.try_into().unwrap()).unwrap(),
@@ -386,10 +487,44 @@ pub mod module {
 					Error::<T>::InvalidSwapPath
 				);
 				AlternativeFeeSwapPath::<T>::insert(&who, &path);
+				T::Currency::ensure_reserved_named(&DEPOSIT_ID, &who, T::AlternativeFeeSwapDeposit::get())?;
 			} else {
 				AlternativeFeeSwapPath::<T>::remove(&who);
+				T::Currency::unreserve_all_named(&DEPOSIT_ID, &who);
 			}
 			Ok(())
+		}
+
+		/// Set swap balance threshold of native asset
+		#[pallet::weight(<T as Config>::WeightInfo::set_swap_balance_threshold())]
+		pub fn set_swap_balance_threshold(
+			origin: OriginFor<T>,
+			currency_id: CurrencyId,
+			swap_threshold: Balance,
+		) -> DispatchResult {
+			T::UpdateOrigin::ensure_origin(origin)?;
+			ensure!(
+				swap_threshold < PoolSize::<T>::get(currency_id),
+				Error::<T>::InvalidBalance
+			);
+			SwapBalanceThreshold::<T>::insert(currency_id, swap_threshold);
+			Self::deposit_event(Event::SwapBalanceThresholdUpdated {
+				currency_id,
+				swap_threshold,
+			});
+			Ok(())
+		}
+
+		/// Enable and initialize charge fee pool.
+		#[pallet::weight(<T as Config>::WeightInfo::enable_charge_fee_pool())]
+		pub fn enable_charge_fee_pool(
+			origin: OriginFor<T>,
+			currency_id: CurrencyId,
+			pool_size: Balance,
+			swap_threshold: Balance,
+		) -> DispatchResult {
+			T::UpdateOrigin::ensure_origin(origin)?;
+			Self::initialize_pool(currency_id, pool_size, swap_threshold)
 		}
 	}
 }
@@ -578,62 +713,248 @@ where
 		// check native balance if is enough
 		let native_is_enough = fee.saturating_add(native_existential_deposit) <= total_native
 			&& <T as Config>::Currency::free_balance(who)
-				.checked_sub(&fee)
+				.checked_sub(fee)
 				.map_or(false, |new_free_balance| {
 					<T as Config>::Currency::ensure_can_withdraw(who, fee, reason, new_free_balance).is_ok()
 				});
+		if native_is_enough {
+			return;
+		}
 
-		// native is not enough, try swap native to pay fee and gap
-		if !native_is_enough {
-			// add extra gap to keep alive after swap
-			let amount = fee.saturating_add(native_existential_deposit.saturating_sub(total_native));
-			let native_currency_id = T::NativeCurrencyId::get();
-			let default_fee_swap_path_list = T::DefaultFeeSwapPathList::get();
-			let fee_swap_path_list: Vec<Vec<CurrencyId>> =
-				if let Some(trading_path) = AlternativeFeeSwapPath::<T>::get(who) {
-					vec![vec![trading_path.into_inner()], default_fee_swap_path_list].concat()
-				} else {
-					default_fee_swap_path_list
-				};
+		// make sure add extra gap to keep alive after swap.
+		let amount = fee.saturating_add(native_existential_deposit.saturating_sub(total_native));
+		// native is not enough, try swap native from fee pool to pay fee and gap.
+		Self::swap_native_asset(who, amount);
+	}
 
-			for trading_path in fee_swap_path_list {
-				match trading_path.last() {
-					Some(target_currency_id) if *target_currency_id == native_currency_id => {
-						let supply_currency_id = *trading_path.first().expect("these's first guaranteed by match");
-						// calculate the supply limit according to oracle price and the slippage limit,
-						// if oracle price is not avalible, do not limit
-						let max_supply_limit = if let Some(target_price) =
-							T::PriceSource::get_relative_price(*target_currency_id, supply_currency_id)
-						{
-							Ratio::one()
-								.saturating_sub(T::MaxSwapSlippageCompareToOracle::get())
-								.reciprocal()
-								.unwrap_or_else(Ratio::max_value)
-								.saturating_mul_int(target_price.saturating_mul_int(amount))
-						} else {
-							PalletBalanceOf::<T>::max_value()
-						};
-
-						if T::DEX::swap_with_exact_target(
-							who,
-							&trading_path,
-							amount.unique_saturated_into(),
-							<T as Config>::MultiCurrency::free_balance(supply_currency_id, who)
-								.min(max_supply_limit.unique_saturated_into()),
-						)
-						.is_ok()
-						{
-							// successfully swap, break iteration
-							break;
-						}
+	/// Iterate order list, break if can swap out enough native asset amount with user's foreign
+	/// asset. make sure trading path is exist in dex, if the trading pair is not exist in dex, even
+	/// though we have setup it in charge fee pool, we can't charge fee with this foreign asset.
+	fn swap_native_asset(who: &T::AccountId, amount: Balance) {
+		let native_currency_id = T::NativeCurrencyId::get();
+		for trading_path in Self::get_trading_path(who) {
+			if let Some(target_currency_id) = trading_path.last() {
+				if *target_currency_id == native_currency_id {
+					let supply_currency_id = *trading_path.first().expect("should match a non native asset");
+					if Self::swap_from_pool_or_dex(who, amount, supply_currency_id).is_ok() {
+						break;
 					}
-					_ => {}
 				}
 			}
 		}
 	}
+
+	/// swap user's given asset with native asset. prior exchange from charge fee pool, if native
+	/// asset balance of charge fee pool is not enough, swap from dex.
+	#[transactional]
+	fn swap_from_pool_or_dex(who: &T::AccountId, amount: Balance, supply_currency_id: CurrencyId) -> DispatchResult {
+		let rate = TokenExchangeRate::<T>::get(supply_currency_id).ok_or(Error::<T>::InvalidRate)?;
+		let sub_account = Self::sub_account_id(supply_currency_id);
+
+		// if sub account has not enough native asset, trigger swap from dex. if `native_balance`
+		// is lt ED, it become 0 because we don't add sub account to whitelist on purpose,
+		// this means the charge fee pool is exhausted for this given token pair.
+		// we normally set the `SwapBalanceThreshold` gt ED to prevent this case.
+		let native_balance = T::Currency::free_balance(&sub_account);
+		if native_balance < SwapBalanceThreshold::<T>::get(supply_currency_id) {
+			let trading_path = Self::get_trading_path_by_currency(&sub_account, supply_currency_id);
+			if let Some(trading_path) = trading_path {
+				let supply_balance = T::MultiCurrency::free_balance(supply_currency_id, &sub_account);
+				let supply_amount =
+					supply_balance.saturating_sub(T::MultiCurrency::minimum_balance(supply_currency_id));
+				if let Ok((_, swap_native_balance)) = T::DEX::swap_with_specific_path(
+					&sub_account,
+					&trading_path,
+					SwapLimit::ExactSupply(supply_amount, 0),
+				) {
+					// calculate and update new rate, also update the pool size
+					let new_pool_size = swap_native_balance.saturating_add(native_balance);
+					let new_native_balance = rate.saturating_mul_int(new_pool_size);
+					let next_updated_rate =
+						Ratio::saturating_from_rational(new_native_balance, PoolSize::<T>::get(supply_currency_id));
+					TokenExchangeRate::<T>::insert(supply_currency_id, next_updated_rate);
+					PoolSize::<T>::insert(supply_currency_id, new_pool_size);
+				} else {
+					debug_assert!(false, "Swap tx fee pool should not fail!");
+				}
+			}
+		}
+
+		// use fix rate to calculate the amount of supply asset that equal to native asset.
+		let supply_account = rate.saturating_mul_int(amount);
+		T::MultiCurrency::transfer(supply_currency_id, who, &sub_account, supply_account)?;
+		T::Currency::transfer(&sub_account, who, amount, ExistenceRequirement::KeepAlive)?;
+		Ok(())
+	}
+
+	/// Get trading path by user.
+	fn get_trading_path(who: &T::AccountId) -> Vec<Vec<CurrencyId>> {
+		let mut default_fee_swap_path_list = T::DefaultFeeSwapPathList::get();
+		if let Some(trading_path) = AlternativeFeeSwapPath::<T>::get(who) {
+			default_fee_swap_path_list.insert(0, trading_path.into_inner())
+		}
+		default_fee_swap_path_list
+	}
+
+	/// Get trading path by user and supply asset.
+	pub fn get_trading_path_by_currency(who: &T::AccountId, supply_currency_id: CurrencyId) -> Option<Vec<CurrencyId>> {
+		let fee_swap_path_list: Vec<Vec<CurrencyId>> = Self::get_trading_path(who);
+		for trading_path in fee_swap_path_list {
+			if let Some(currency) = trading_path.first() {
+				if *currency == supply_currency_id {
+					return Some(trading_path);
+				}
+			}
+		}
+		None
+	}
+
+	/// The sub account derivated by `PalletId`.
+	fn sub_account_id(id: CurrencyId) -> T::AccountId {
+		T::PalletId::get().into_sub_account(id)
+	}
+
+	/// Initiate a charge fee swap pool. Usually used in `on_runtime_upgrade` or manual
+	/// `enable_charge_fee_pool` dispatch call.
+	#[transactional]
+	pub fn initialize_pool(currency_id: CurrencyId, pool_size: Balance, swap_threshold: Balance) -> DispatchResult {
+		let treasury_account = T::TreasuryAccount::get();
+		let sub_account = Self::sub_account_id(currency_id);
+		let native_existential_deposit = <T as Config>::Currency::minimum_balance();
+		ensure!(
+			pool_size > native_existential_deposit && pool_size > swap_threshold,
+			Error::<T>::InvalidBalance
+		);
+		ensure!(
+			PoolSize::<T>::get(currency_id).is_zero(),
+			Error::<T>::ChargeFeePoolAlreadyExisted
+		);
+
+		let trading_path = Self::get_trading_path_by_currency(&sub_account, currency_id);
+		if let Some(trading_path) = trading_path {
+			let (supply_amount, _) = T::DEX::get_swap_amount(
+				&trading_path,
+				SwapLimit::ExactTarget(Balance::MAX, native_existential_deposit),
+			)
+			.ok_or(Error::<T>::DexNotAvailable)?;
+			let exchange_rate = Ratio::saturating_from_rational(supply_amount, native_existential_deposit);
+
+			T::MultiCurrency::transfer(
+				currency_id,
+				&treasury_account,
+				&sub_account,
+				T::MultiCurrency::minimum_balance(currency_id),
+			)?;
+			T::Currency::transfer(
+				&treasury_account,
+				&sub_account,
+				pool_size,
+				ExistenceRequirement::KeepAlive,
+			)?;
+
+			SwapBalanceThreshold::<T>::insert(currency_id, swap_threshold);
+			TokenExchangeRate::<T>::insert(currency_id, exchange_rate);
+			PoolSize::<T>::insert(currency_id, pool_size);
+			Self::deposit_event(Event::ChargeFeePoolEnabled {
+				sub_account,
+				currency_id,
+				exchange_rate,
+				pool_size,
+				swap_threshold,
+			});
+		}
+		Ok(())
+	}
 }
 
+/// `WeightTrader` implementation used for `Trader`, the `rate` is read from storage,
+/// and `token_per_second` is calculated by `rate` * `native_asset_per_second`.
+pub struct TransactionFeePoolTrader<T, C, K: Get<u128>, R: TakeRevenue> {
+	weight: Weight,
+	amount: u128,
+	asset_location: Option<MultiLocation>,
+	asset_per_second: u128,
+	_marker: PhantomData<(T, C, K, R)>,
+}
+
+impl<T: Config, C, K: Get<u128>, R: TakeRevenue> WeightTrader for TransactionFeePoolTrader<T, C, K, R>
+where
+	C: Convert<MultiLocation, Option<CurrencyId>>,
+{
+	fn new() -> Self {
+		Self {
+			weight: 0,
+			amount: 0,
+			asset_location: None,
+			asset_per_second: 0,
+			_marker: Default::default(),
+		}
+	}
+
+	fn buy_weight(&mut self, weight: Weight, payment: Assets) -> Result<Assets, XcmError> {
+		// only support first fungible assets now.
+		let asset_id = payment
+			.fungible
+			.iter()
+			.next()
+			.map_or(Err(XcmError::TooExpensive), |v| Ok(v.0))?;
+
+		if let AssetId::Concrete(ref multi_location) = asset_id.clone() {
+			if let Some(token_id) = C::convert(multi_location.clone()) {
+				if let Some(rate) = TokenExchangeRate::<T>::get(token_id) {
+					// calculate the amount of fungible asset.
+					let weight_ratio = Ratio::saturating_from_rational(weight as u128, WEIGHT_PER_SECOND as u128);
+					let asset_per_second = rate.saturating_mul_int(K::get());
+					let amount = weight_ratio.saturating_mul_int(asset_per_second);
+					let required = MultiAsset {
+						id: asset_id.clone(),
+						fun: Fungible(amount),
+					};
+					let unused = payment.checked_sub(required).map_err(|_| XcmError::TooExpensive)?;
+					self.weight = self.weight.saturating_add(weight);
+					self.amount = self.amount.saturating_add(amount);
+					self.asset_location = Some(multi_location.clone());
+					self.asset_per_second = asset_per_second;
+					return Ok(unused);
+				}
+			}
+		}
+		Err(XcmError::TooExpensive)
+	}
+
+	fn refund_weight(&mut self, weight: Weight) -> Option<MultiAsset> {
+		let weight = weight.min(self.weight);
+		let weight_ratio = Ratio::saturating_from_rational(weight as u128, WEIGHT_PER_SECOND as u128);
+		let amount = weight_ratio.saturating_mul_int(self.asset_per_second);
+		self.weight = self.weight.saturating_sub(weight);
+		self.amount = self.amount.saturating_sub(amount);
+		if amount > 0 && self.asset_location.is_some() {
+			Some(
+				(
+					self.asset_location.as_ref().expect("checked is non-empty; qed").clone(),
+					amount,
+				)
+					.into(),
+			)
+		} else {
+			None
+		}
+	}
+}
+
+impl<T, C, K: Get<u128>, R: TakeRevenue> Drop for TransactionFeePoolTrader<T, C, K, R> {
+	fn drop(&mut self) {
+		if self.amount > 0 && self.asset_location.is_some() {
+			R::take_revenue(
+				(
+					self.asset_location.as_ref().expect("checked is non-empty; qed").clone(),
+					self.amount,
+				)
+					.into(),
+			);
+		}
+	}
+}
 impl<T> Convert<Weight, PalletBalanceOf<T>> for Pallet<T>
 where
 	T: Config,
@@ -652,8 +973,17 @@ where
 
 /// Require the transactor pay for themselves and maybe include a tip to
 /// gain additional priority in the queue.
-#[derive(Encode, Decode, Clone, Eq, PartialEq)]
-pub struct ChargeTransactionPayment<T: Config + Send + Sync>(#[codec(compact)] PalletBalanceOf<T>);
+///
+/// # Transaction Validity
+///
+/// This extension sets the `priority` field of `TransactionValidity` depending on the amount
+/// of tip being paid per weight unit.
+///
+/// Operational transactions will receive an additional priority bump, so that they are normally
+/// considered before regular transactions.
+#[derive(Encode, Decode, Clone, Eq, PartialEq, TypeInfo)]
+#[scale_info(skip_type_params(T))]
+pub struct ChargeTransactionPayment<T: Config + Send + Sync>(#[codec(compact)] pub PalletBalanceOf<T>);
 
 impl<T: Config + Send + Sync> sp_std::fmt::Debug for ChargeTransactionPayment<T> {
 	#[cfg(feature = "std")]
@@ -706,32 +1036,83 @@ where
 		}
 	}
 
-	/// Get an appropriate priority for a transaction with the given length
-	/// and info.
+	/// Get an appropriate priority for a transaction with the given `DispatchInfo`, encoded length
+	/// and user-included tip.
 	///
-	/// This will try and optimise the `fee/weight` `fee/length`, whichever
-	/// is consuming more of the maximum corresponding limit.
+	/// The priority is based on the amount of `tip` the user is willing to pay per unit of either
+	/// `weight` or `length`, depending which one is more limitting. For `Operational` extrinsics
+	/// we add a "virtual tip" to the calculations.
 	///
-	/// For example, if a transaction consumed 1/4th of the block length and
-	/// half of the weight, its final priority is `fee * min(2, 4) = fee *
-	/// 2`. If it consumed `1/4th` of the block length and the entire block
-	/// weight `(1/1)`, its priority is `fee * min(1, 4) = fee * 1`. This
-	/// means  that the transaction which consumes more resources (either
-	/// length or weight) with the same `fee` ends up having lower priority.
+	/// The formula should simply be `tip / bounded_{weight|length}`, but since we are using
+	/// integer division, we have no guarantees it's going to give results in any reasonable
+	/// range (might simply end up being zero). Hence we use a scaling factor:
+	/// `tip * (max_block_{weight|length} / bounded_{weight|length})`, since given current
+	/// state of-the-art blockchains, number of per-block transactions is expected to be in a
+	/// range reasonable enough to not saturate the `Balance` type while multiplying by the tip.
 	fn get_priority(
-		len: usize,
 		info: &DispatchInfoOf<<T as frame_system::Config>::Call>,
+		len: usize,
+		tip: PalletBalanceOf<T>,
 		final_fee: PalletBalanceOf<T>,
 	) -> TransactionPriority {
-		let weight_saturation = T::BlockWeights::get().max_block / info.weight.max(1);
-		let max_block_length = *T::BlockLength::get().max.get(DispatchClass::Normal);
-		let len_saturation = max_block_length as u64 / (len as u64).max(1);
-		let coefficient: PalletBalanceOf<T> = weight_saturation
-			.min(len_saturation)
+		// Calculate how many such extrinsics we could fit into an empty block and take
+		// the limitting factor.
+		let max_block_weight = T::BlockWeights::get().max_block;
+		let max_block_length = *T::BlockLength::get().max.get(info.class) as u64;
+
+		let bounded_weight = info.weight.max(1).min(max_block_weight);
+		let bounded_length = (len as u64).max(1).min(max_block_length);
+
+		let max_tx_per_block_weight = max_block_weight / bounded_weight;
+		let max_tx_per_block_length = max_block_length / bounded_length;
+		// Given our current knowledge this value is going to be in a reasonable range - i.e.
+		// less than 10^9 (2^30), so multiplying by the `tip` value is unlikely to overflow the
+		// balance type. We still use saturating ops obviously, but the point is to end up with some
+		// `priority` distribution instead of having all transactions saturate the priority.
+		let max_tx_per_block = max_tx_per_block_length
+			.min(max_tx_per_block_weight)
 			.saturated_into::<PalletBalanceOf<T>>();
-		final_fee
-			.saturating_mul(coefficient)
-			.saturated_into::<TransactionPriority>()
+		// tipPerWeight = tipPerWight / TipPerWeightStep * TipPerWeightStep
+		//              = tip / bounded_{weight|length} / TipPerWeightStep * TipPerWeightStep
+		// priority = tipPerWeight * max_block_{weight|length}
+		// MaxTipsOfPriority = 10_000 KAR/ACA = 10^16.
+		// `MaxTipsOfPriority * max_block_{weight|length}` will overflow, so div `TipPerWeightStep` here.
+		let max_reward = |val: PalletBalanceOf<T>| {
+			val.checked_div(T::TipPerWeightStep::get())
+				.expect("TipPerWeightStep is non-zero; qed")
+				.saturating_mul(max_tx_per_block)
+		};
+
+		// To distribute no-tip transactions a little bit, we increase the tip value by one.
+		// This means that given two transactions without a tip, smaller one will be preferred.
+		// Set the maximum value of tips to prevent affecting the unsigned extrinsic.
+		let tip = tip.saturating_add(One::one()).min(T::MaxTipsOfPriority::get());
+		let scaled_tip = max_reward(tip);
+
+		match info.class {
+			DispatchClass::Normal => {
+				// For normal class we simply take the `tip_per_weight`.
+				scaled_tip
+			}
+			DispatchClass::Mandatory => {
+				// Mandatory extrinsics should be prohibited (e.g. by the [`CheckWeight`]
+				// extensions), but just to be safe let's return the same priority as `Normal` here.
+				scaled_tip
+			}
+			DispatchClass::Operational => {
+				// A "virtual tip" value added to an `Operational` extrinsic.
+				// This value should be kept high enough to allow `Operational` extrinsics
+				// to get in even during congestion period, but at the same time low
+				// enough to prevent a possible spam attack by sending invalid operational
+				// extrinsics which push away regular transactions from the pool.
+				let fee_multiplier = T::OperationalFeeMultiplier::get().saturated_into();
+				let virtual_tip = final_fee.saturating_mul(fee_multiplier);
+				let scaled_virtual_tip = max_reward(virtual_tip);
+
+				scaled_tip.saturating_add(scaled_virtual_tip)
+			}
+		}
+		.saturated_into::<TransactionPriority>()
 	}
 }
 
@@ -762,9 +1143,10 @@ where
 		info: &DispatchInfoOf<Self::Call>,
 		len: usize,
 	) -> TransactionValidity {
-		let (fee, _) = self.withdraw_fee(who, call, info, len)?;
+		let (final_fee, _) = self.withdraw_fee(who, call, info, len)?;
+		let tip = self.0;
 		Ok(ValidTransaction {
-			priority: Self::get_priority(len, info, fee),
+			priority: Self::get_priority(info, len, tip, final_fee),
 			..Default::default()
 		})
 	}
@@ -790,7 +1172,19 @@ where
 		let (tip, who, imbalance, fee) = pre;
 		if let Some(payed) = imbalance {
 			let actual_fee = Pallet::<T>::compute_actual_fee(len as u32, info, post_info, tip);
-			let refund = fee.saturating_sub(actual_fee);
+			let refund_fee = fee.saturating_sub(actual_fee);
+			let mut refund = refund_fee;
+			let mut actual_tip = tip;
+
+			if !tip.is_zero() && !info.weight.is_zero() {
+				// tip_pre_weight * unspent_weight
+				let refund_tip = tip
+					.checked_div(info.weight.saturated_into::<PalletBalanceOf<T>>())
+					.expect("checked is non-zero; qed")
+					.saturating_mul(post_info.calc_unspent(info).saturated_into::<PalletBalanceOf<T>>());
+				refund = refund_fee.saturating_add(refund_tip);
+				actual_tip = tip.saturating_sub(refund_tip);
+			}
 			let actual_payment = match <T as Config>::Currency::deposit_into_existing(&who, refund) {
 				Ok(refund_imbalance) => {
 					// The refund cannot be larger than the up front payed max weight.
@@ -805,7 +1199,7 @@ where
 				// is gone in that case.
 				Err(_) => payed,
 			};
-			let (tip, fee) = actual_payment.split(tip);
+			let (tip, fee) = actual_payment.split(actual_tip);
 
 			// distribute fee
 			<T as Config>::OnTransactionPayment::on_unbalanceds(Some(fee).into_iter().chain(Some(tip)));

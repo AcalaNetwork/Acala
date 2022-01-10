@@ -19,6 +19,7 @@
 // Disable the following lints
 #![allow(clippy::type_complexity)]
 
+use crate::precompile::PrecompileOutput;
 use frame_support::{
 	dispatch::Dispatchable,
 	ensure, log, parameter_types,
@@ -28,13 +29,13 @@ use frame_support::{
 	},
 };
 use module_evm::{Context, ExitError, ExitSucceed, Precompile};
-use module_support::{AddressMapping as AddressMappingT, CurrencyIdMapping as CurrencyIdMappingT, TransactionPayment};
+use module_support::{AddressMapping, TransactionPayment};
 use primitives::{Balance, BlockNumber};
-use sp_core::{H160, U256};
+use sp_core::H160;
 use sp_runtime::RuntimeDebug;
 use sp_std::{fmt::Debug, marker::PhantomData, prelude::*, result};
 
-use super::input::{Input, InputT};
+use super::input::{Input, InputT, Output};
 use codec::{Decode, Encode};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use pallet_scheduler::TaskAddress;
@@ -60,31 +61,9 @@ pub struct TaskInfo {
 /// Actions:
 /// - ScheduleCall. Rest `input` bytes: `from`, `target`, `value`, `gas_limit`, `storage_limit`,
 ///   `min_delay`, `input_len`, `input_data`.
-pub struct ScheduleCallPrecompile<
-	AccountId,
-	AddressMapping,
-	CurrencyIdMapping,
-	Scheduler,
-	ChargeTransactionPayment,
-	Call,
-	Origin,
-	PalletsOrigin,
-	Runtime,
->(
-	PhantomData<(
-		AccountId,
-		AddressMapping,
-		CurrencyIdMapping,
-		Scheduler,
-		ChargeTransactionPayment,
-		Call,
-		Origin,
-		PalletsOrigin,
-		Runtime,
-	)>,
-);
+pub struct ScheduleCallPrecompile<Runtime>(PhantomData<Runtime>);
 
-#[primitives_proc_macro::generate_function_selector]
+#[module_evm_utiltity_macro::generate_function_selector]
 #[derive(RuntimeDebug, Eq, PartialEq, TryFromPrimitive, IntoPrimitive)]
 #[repr(u32)]
 pub enum Action {
@@ -98,48 +77,36 @@ type PalletBalanceOf<T> =
 type NegativeImbalanceOf<T> =
 	<<T as module_evm::Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::NegativeImbalance;
 
-impl<
-		AccountId,
-		AddressMapping,
-		CurrencyIdMapping,
-		Scheduler,
-		ChargeTransactionPayment,
-		Call,
-		Origin,
-		PalletsOrigin,
-		Runtime,
-	> Precompile
-	for ScheduleCallPrecompile<
-		AccountId,
-		AddressMapping,
-		CurrencyIdMapping,
-		Scheduler,
-		ChargeTransactionPayment,
-		Call,
-		Origin,
-		PalletsOrigin,
-		Runtime,
-	> where
-	AccountId: Debug + Clone,
-	AddressMapping: AddressMappingT<AccountId>,
-	CurrencyIdMapping: CurrencyIdMappingT,
-	Scheduler: ScheduleNamed<BlockNumber, Call, PalletsOrigin, Address = TaskAddress<BlockNumber>>,
-	ChargeTransactionPayment: TransactionPayment<AccountId, PalletBalanceOf<Runtime>, NegativeImbalanceOf<Runtime>>,
-	Call: Dispatchable<Origin = Origin> + Debug + From<module_evm::Call<Runtime>>,
-	Origin: IsType<<Runtime as frame_system::Config>::Origin>
-		+ OriginTrait<AccountId = AccountId, PalletsOrigin = PalletsOrigin>,
-	PalletsOrigin: Into<<Runtime as frame_system::Config>::Origin> + From<frame_system::RawOrigin<AccountId>> + Clone,
-	Runtime: module_evm::Config + frame_system::Config<AccountId = AccountId>,
+impl<Runtime> Precompile for ScheduleCallPrecompile<Runtime>
+where
 	PalletBalanceOf<Runtime>: IsType<Balance>,
+	module_transaction_payment::ChargeTransactionPayment<Runtime>:
+		TransactionPayment<Runtime::AccountId, PalletBalanceOf<Runtime>, NegativeImbalanceOf<Runtime>>,
+	Runtime: module_evm::Config
+		+ module_prices::Config
+		+ module_transaction_payment::Config
+		+ pallet_scheduler::Config
+		+ Send
+		+ Sync,
+	<Runtime as pallet_scheduler::Config>::Call: Dispatchable + Debug + From<module_evm::Call<Runtime>>,
+	<<Runtime as pallet_scheduler::Config>::Call as Dispatchable>::Origin: IsType<<Runtime as frame_system::Config>::Origin>
+		+ OriginTrait<
+			AccountId = Runtime::AccountId,
+			PalletsOrigin = <Runtime as pallet_scheduler::Config>::PalletsOrigin,
+		>,
+	pallet_scheduler::Pallet<Runtime>: ScheduleNamed<
+		BlockNumber,
+		<Runtime as pallet_scheduler::Config>::Call,
+		<Runtime as pallet_scheduler::Config>::PalletsOrigin,
+		Address = TaskAddress<BlockNumber>,
+	>,
 {
 	fn execute(
 		input: &[u8],
 		_target_gas: Option<u64>,
 		_context: &Context,
-	) -> result::Result<(ExitSucceed, Vec<u8>, u64), ExitError> {
-		log::debug!(target: "evm", "schedule call: input: {:?}", input);
-
-		let input = Input::<Action, AccountId, AddressMapping, CurrencyIdMapping>::new(input);
+	) -> result::Result<PrecompileOutput, ExitError> {
+		let input = Input::<Action, Runtime::AccountId, Runtime::AddressMapping, Runtime::Erc20InfoMapping>::new(input);
 
 		let action = input.action()?;
 
@@ -172,24 +139,30 @@ impl<
 				let mut _fee: PalletBalanceOf<Runtime> = Default::default();
 				#[cfg(not(feature = "with-ethereum-compatibility"))]
 				{
-					// reserve the transaction fee for gas_limit
+					// reserve the transaction fee for gas_limit and storage_limit
+					// TODO: reserve storage_limit here
+					// Manually charge weight fee in scheduled_call
 					use sp_runtime::traits::Convert;
-					let from_account = AddressMapping::get_account_id(&from);
+					let from_account = Runtime::AddressMapping::get_account_id(&from);
 					let weight = <Runtime as module_evm::Config>::GasToWeight::convert(gas_limit);
-					_fee = ChargeTransactionPayment::reserve_fee(&from_account, weight).map_err(|e| {
+					_fee = <module_transaction_payment::ChargeTransactionPayment<Runtime>>::reserve_fee(
+						&from_account,
+						weight,
+					)
+					.map_err(|e| {
 						let err_msg: &str = e.into();
 						ExitError::Other(err_msg.into())
 					})?;
 				}
 
-				let call = module_evm::Call::<Runtime>::scheduled_call(
+				let call = module_evm::Call::<Runtime>::scheduled_call {
 					from,
 					target,
-					input_data,
-					value.into(),
+					input: input_data,
+					value: value.into(),
 					gas_limit,
 					storage_limit,
-				)
+				}
 				.into();
 
 				let current_id = EvmSchedulerNextID::get();
@@ -212,22 +185,28 @@ impl<
 					task_id,
 				);
 
-				Scheduler::schedule_named(
+				<pallet_scheduler::Pallet<Runtime> as ScheduleNamed<
+					BlockNumber,
+					<Runtime as pallet_scheduler::Config>::Call,
+					<Runtime as pallet_scheduler::Config>::PalletsOrigin,
+				>>::schedule_named(
 					task_id.clone(),
 					DispatchTime::After(min_delay),
 					None,
 					0,
-					Origin::root().caller().clone(),
+					<<<Runtime as pallet_scheduler::Config>::Call as Dispatchable>::Origin>::root()
+						.caller()
+						.clone(),
 					call,
 				)
 				.map_err(|_| ExitError::Other("Schedule failed".into()))?;
 
-				// add task_id len prefix
-				let mut task_id_with_len = [0u8; 96];
-				U256::from(task_id.len()).to_big_endian(&mut task_id_with_len[0..32]);
-				task_id_with_len[32..32 + task_id.len()].copy_from_slice(&task_id[..]);
-
-				Ok((ExitSucceed::Returned, task_id_with_len.to_vec(), 0))
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: 0,
+					output: Output::default().encode_bytes(&task_id),
+					logs: Default::default(),
+				})
 			}
 			Action::Cancel => {
 				let from = input.evm_address_at(1)?;
@@ -246,16 +225,29 @@ impl<
 					.map_err(|_| ExitError::Other("Decode task_id failed".into()))?;
 				ensure!(task_info.sender == from, ExitError::Other("NoPermission".into()));
 
-				Scheduler::cancel_named(task_id).map_err(|_| ExitError::Other("Cancel schedule failed".into()))?;
+				<pallet_scheduler::Pallet<Runtime> as ScheduleNamed<
+					BlockNumber,
+					<Runtime as pallet_scheduler::Config>::Call,
+					<Runtime as pallet_scheduler::Config>::PalletsOrigin,
+				>>::cancel_named(task_id)
+				.map_err(|_| ExitError::Other("Cancel schedule failed".into()))?;
 
 				#[cfg(not(feature = "with-ethereum-compatibility"))]
 				{
 					// unreserve the transaction fee for gas_limit
-					let from_account = AddressMapping::get_account_id(&from);
-					ChargeTransactionPayment::unreserve_fee(&from_account, task_info.fee.into());
+					let from_account = Runtime::AddressMapping::get_account_id(&from);
+					<module_transaction_payment::ChargeTransactionPayment<Runtime>>::unreserve_fee(
+						&from_account,
+						task_info.fee.into(),
+					);
 				}
 
-				Ok((ExitSucceed::Returned, vec![], 0))
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: 0,
+					output: vec![],
+					logs: Default::default(),
+				})
 			}
 			Action::Reschedule => {
 				let from = input.evm_address_at(1)?;
@@ -276,12 +268,22 @@ impl<
 					.map_err(|_| ExitError::Other("Decode task_id failed".into()))?;
 				ensure!(task_info.sender == from, ExitError::Other("NoPermission".into()));
 
-				Scheduler::reschedule_named(task_id, DispatchTime::After(min_delay)).map_err(|e| {
+				<pallet_scheduler::Pallet<Runtime> as ScheduleNamed<
+					BlockNumber,
+					<Runtime as pallet_scheduler::Config>::Call,
+					<Runtime as pallet_scheduler::Config>::PalletsOrigin,
+				>>::reschedule_named(task_id, DispatchTime::After(min_delay))
+				.map_err(|e| {
 					let err_msg: &str = e.into();
 					ExitError::Other(err_msg.into())
 				})?;
 
-				Ok((ExitSucceed::Returned, vec![], 0))
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: 0,
+					output: vec![],
+					logs: Default::default(),
+				})
 			}
 		}
 	}

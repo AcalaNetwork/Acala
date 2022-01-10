@@ -29,7 +29,7 @@ use sp_runtime::{
 	traits::{BlakeTwo256, Block as BlockT},
 	Justifications,
 };
-use sp_storage::{ChildInfo, PrefixedStorageKey, StorageData, StorageKey};
+use sp_storage::{ChildInfo, StorageData, StorageKey};
 use std::sync::Arc;
 
 /// A set of APIs that polkadot-like runtimes must implement.
@@ -40,7 +40,6 @@ pub trait RuntimeApiCollection:
 	+ frame_system_rpc_runtime_api::AccountNonceApi<Block, AccountId, Nonce>
 	+ pallet_transaction_payment_rpc_runtime_api::TransactionPaymentApi<Block, Balance>
 	+ orml_oracle_rpc::OracleRuntimeApi<Block, DataProviderId, CurrencyId, TimeStampedPrice>
-	+ module_staking_pool_rpc::StakingPoolRuntimeApi<Block, AccountId, Balance>
 	+ module_evm_rpc_runtime_api::EVMRuntimeRPCApi<Block, Balance>
 	+ sp_api::Metadata<Block>
 	+ sp_offchain::OffchainWorkerApi<Block>
@@ -59,7 +58,6 @@ where
 		+ frame_system_rpc_runtime_api::AccountNonceApi<Block, AccountId, Nonce>
 		+ pallet_transaction_payment_rpc_runtime_api::TransactionPaymentApi<Block, Balance>
 		+ orml_oracle_rpc::OracleRuntimeApi<Block, DataProviderId, CurrencyId, TimeStampedPrice>
-		+ module_staking_pool_rpc::StakingPoolRuntimeApi<Block, AccountId, Balance>
 		+ module_evm_rpc_runtime_api::EVMRuntimeRPCApi<Block, Balance>
 		+ sp_api::Metadata<Block>
 		+ sp_offchain::OffchainWorkerApi<Block>
@@ -147,11 +145,11 @@ pub trait ClientHandle {
 #[derive(Clone)]
 pub enum Client {
 	#[cfg(feature = "with-mandala-runtime")]
-	Mandala(Arc<crate::FullClient<mandala_runtime::RuntimeApi, crate::MandalaExecutor>>),
+	Mandala(Arc<crate::FullClient<mandala_runtime::RuntimeApi, crate::MandalaExecutorDispatch>>),
 	#[cfg(feature = "with-karura-runtime")]
-	Karura(Arc<crate::FullClient<karura_runtime::RuntimeApi, crate::KaruraExecutor>>),
+	Karura(Arc<crate::FullClient<karura_runtime::RuntimeApi, crate::KaruraExecutorDispatch>>),
 	#[cfg(feature = "with-acala-runtime")]
-	Acala(Arc<crate::FullClient<acala_runtime::RuntimeApi, crate::AcalaExecutor>>),
+	Acala(Arc<crate::FullClient<acala_runtime::RuntimeApi, crate::AcalaExecutorDispatch>>),
 }
 
 impl ClientHandle for Client {
@@ -401,38 +399,6 @@ impl sc_client_api::StorageProvider<Block, crate::FullBackend> for Client {
 			Self::Karura(client) => client.child_storage_hash(id, child_info, key),
 			#[cfg(feature = "with-acala-runtime")]
 			Self::Acala(client) => client.child_storage_hash(id, child_info, key),
-		}
-	}
-
-	fn max_key_changes_range(
-		&self,
-		first: NumberFor<Block>,
-		last: BlockId<Block>,
-	) -> sp_blockchain::Result<Option<(NumberFor<Block>, BlockId<Block>)>> {
-		match self {
-			#[cfg(feature = "with-mandala-runtime")]
-			Self::Mandala(client) => client.max_key_changes_range(first, last),
-			#[cfg(feature = "with-karura-runtime")]
-			Self::Karura(client) => client.max_key_changes_range(first, last),
-			#[cfg(feature = "with-acala-runtime")]
-			Self::Acala(client) => client.max_key_changes_range(first, last),
-		}
-	}
-
-	fn key_changes(
-		&self,
-		first: NumberFor<Block>,
-		last: BlockId<Block>,
-		storage_key: Option<&PrefixedStorageKey>,
-		key: &StorageKey,
-	) -> sp_blockchain::Result<Vec<(NumberFor<Block>, u32)>> {
-		match self {
-			#[cfg(feature = "with-mandala-runtime")]
-			Self::Mandala(client) => client.key_changes(first, last, storage_key, key),
-			#[cfg(feature = "with-karura-runtime")]
-			Self::Karura(client) => client.key_changes(first, last, storage_key, key),
-			#[cfg(feature = "with-acala-runtime")]
-			Self::Acala(client) => client.key_changes(first, last, storage_key, key),
 		}
 	}
 }

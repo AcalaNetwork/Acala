@@ -17,16 +17,17 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-	dollar, AccountId, Balance, Currencies, CurrencyId, Dex, GetNativeCurrencyId, GetStableCurrencyId, Runtime,
-	TradingPathLimit,
+	dollar, AccountId, Balance, Currencies, CurrencyId, Dex, Event, GetLiquidCurrencyId, GetNativeCurrencyId,
+	GetStableCurrencyId, GetStakingCurrencyId, Runtime, System, TradingPathLimit,
 };
 
 use frame_benchmarking::{account, whitelisted_caller};
 use frame_system::RawOrigin;
 use module_dex::TradingPairStatus;
 use orml_benchmarking::runtime_benchmarks;
-use orml_traits::MultiCurrencyExtended;
+use orml_traits::{MultiCurrency, MultiCurrencyExtended};
 use primitives::TradingPair;
+use runtime_common::{BNC, RENBTC, VSKSM};
 use sp_runtime::traits::UniqueSaturatedInto;
 use sp_std::prelude::*;
 
@@ -34,6 +35,14 @@ const SEED: u32 = 0;
 
 const NATIVE: CurrencyId = GetNativeCurrencyId::get();
 const STABLECOIN: CurrencyId = GetStableCurrencyId::get();
+const LIQUID: CurrencyId = GetLiquidCurrencyId::get();
+const STAKING: CurrencyId = GetStakingCurrencyId::get();
+
+const CURRENCY_LIST: [CurrencyId; 7] = [NATIVE, STABLECOIN, LIQUID, STAKING, BNC, VSKSM, RENBTC];
+
+fn assert_last_event(generic_event: Event) {
+	System::assert_last_event(generic_event.into());
+}
 
 fn inject_liquidity(
 	maker: AccountId,
@@ -80,6 +89,9 @@ runtime_benchmarks! {
 			Dex::disable_trading_pair(RawOrigin::Root.into(), trading_pair.first(), trading_pair.second())?;
 		}
 	}: _(RawOrigin::Root, trading_pair.first(), trading_pair.second())
+	verify {
+		assert_last_event(module_dex::Event::EnableTradingPair{trading_pair: trading_pair}.into());
+	}
 
 	// disable a Enabled trading pair
 	disable_trading_pair {
@@ -88,6 +100,9 @@ runtime_benchmarks! {
 			Dex::enable_trading_pair(RawOrigin::Root.into(), trading_pair.first(), trading_pair.second())?;
 		}
 	}: _(RawOrigin::Root, trading_pair.first(), trading_pair.second())
+	verify {
+		assert_last_event(module_dex::Event::DisableTradingPair{trading_pair}.into());
+	}
 
 	// list a Provisioning trading pair
 	list_provisioning {
@@ -96,6 +111,9 @@ runtime_benchmarks! {
 			Dex::disable_trading_pair(RawOrigin::Root.into(), trading_pair.first(), trading_pair.second())?;
 		}
 	}: _(RawOrigin::Root, trading_pair.first(), trading_pair.second(), dollar(trading_pair.first()), dollar(trading_pair.second()), dollar(trading_pair.first()), dollar(trading_pair.second()), 10)
+	verify {
+		assert_last_event(module_dex::Event::ListProvisioning{trading_pair: trading_pair}.into());
+	}
 
 	// update parameters of a Provisioning trading pair
 	update_provisioning_parameters {
@@ -146,6 +164,9 @@ runtime_benchmarks! {
 			100 * dollar(trading_pair.second()),
 		)?;
 	}: _(RawOrigin::Signed(founder), trading_pair.first(), trading_pair.second())
+	verify {
+		assert_last_event(module_dex::Event::ProvisioningToEnabled{trading_pair, pool_0: 100 * dollar(trading_pair.first()), pool_1: 100 * dollar(trading_pair.second()), share_amount: 200 * dollar(trading_pair.first())}.into())
+	}
 
 	add_provision {
 		let founder: AccountId = whitelisted_caller();
@@ -167,7 +188,10 @@ runtime_benchmarks! {
 		// set balance
 		<Currencies as MultiCurrencyExtended<_>>::update_balance(trading_pair.first(), &founder, (10 * dollar(trading_pair.first())).unique_saturated_into())?;
 		<Currencies as MultiCurrencyExtended<_>>::update_balance(trading_pair.second(), &founder, (10 * dollar(trading_pair.second())).unique_saturated_into())?;
-	}: _(RawOrigin::Signed(founder), trading_pair.first(), trading_pair.second(), dollar(trading_pair.first()), dollar(trading_pair.second()))
+	}: _(RawOrigin::Signed(founder.clone()), trading_pair.first(), trading_pair.second(), dollar(trading_pair.first()), dollar(trading_pair.second()))
+	verify{
+		assert_last_event(module_dex::Event::AddProvision{who: founder, currency_0: trading_pair.first(), contribution_0: dollar(trading_pair.first()), currency_1: trading_pair.second(), contribution_1: dollar(trading_pair.second())}.into());
+	}
 
 	claim_dex_share {
 		let founder: AccountId = whitelisted_caller();
@@ -202,7 +226,10 @@ runtime_benchmarks! {
 			trading_pair.first(),
 			trading_pair.second(),
 		)?;
-	}: _(RawOrigin::Signed(whitelisted_caller()), founder, trading_pair.first(), trading_pair.second())
+	}: _(RawOrigin::Signed(whitelisted_caller()), founder.clone(), trading_pair.first(), trading_pair.second())
+	verify {
+		assert_eq!(Currencies::free_balance(trading_pair.dex_share_currency_id(), &founder), 2_000_000_000_000);
+	}
 
 	// add liquidity but don't staking lp
 	add_liquidity {
@@ -253,52 +280,56 @@ runtime_benchmarks! {
 	swap_with_exact_supply {
 		let u in 2 .. TradingPathLimit::get() as u32;
 
-		let trading_pair = TradingPair::from_currency_ids(STABLECOIN, NATIVE).unwrap();
+		let maker: AccountId = account("maker", 0, SEED);
+		let taker: AccountId = whitelisted_caller();
+
 		let mut path: Vec<CurrencyId> = vec![];
 		for i in 1 .. u {
 			if i == 1 {
-				path.push(trading_pair.first());
-				path.push(trading_pair.second());
+				let cur0 = CURRENCY_LIST[0];
+				let cur1 = CURRENCY_LIST[1];
+				path.push(cur0);
+				path.push(cur1);
+				inject_liquidity(maker.clone(), cur0, cur1, 10_000 * dollar(cur0), 10_000 * dollar(cur1), false)?;
 			} else {
-				if i % 2 == 0 {
-					path.push(trading_pair.first());
-				} else {
-					path.push(trading_pair.second());
-				}
+				path.push(CURRENCY_LIST[i as usize]);
+				inject_liquidity(maker.clone(), CURRENCY_LIST[i as usize - 1], CURRENCY_LIST[i as usize], 10_000 * dollar(CURRENCY_LIST[i as usize - 1]), 10_000 * dollar(CURRENCY_LIST[i as usize]), false)?;
 			}
 		}
 
-		let maker: AccountId = account("maker", 0, SEED);
-		let taker: AccountId = whitelisted_caller();
-		inject_liquidity(maker, trading_pair.first(), trading_pair.second(), 10_000 * dollar(trading_pair.first()), 10_000 * dollar(trading_pair.second()), false)?;
-
 		<Currencies as MultiCurrencyExtended<_>>::update_balance(path[0], &taker, (10_000 * dollar(path[0])).unique_saturated_into())?;
-	}: swap_with_exact_supply(RawOrigin::Signed(taker), path.clone(), 100 * dollar(path[0]), 0)
+	}: swap_with_exact_supply(RawOrigin::Signed(taker.clone()), path.clone(), 100 * dollar(path[0]), 0)
+	verify {
+		// would panic the benchmark anyways, must add new currencies to CURRENCY_LIST for benchmarking to work
+		assert!(TradingPathLimit::get() < CURRENCY_LIST.len() as u32);
+	}
 
 	swap_with_exact_target {
 		let u in 2 .. TradingPathLimit::get() as u32;
 
-		let trading_pair = TradingPair::from_currency_ids(STABLECOIN, NATIVE).unwrap();
+		let maker: AccountId = account("maker", 0, SEED);
+		let taker: AccountId = whitelisted_caller();
+
 		let mut path: Vec<CurrencyId> = vec![];
 		for i in 1 .. u {
 			if i == 1 {
-				path.push(trading_pair.first());
-				path.push(trading_pair.second());
+				let cur0 = CURRENCY_LIST[0];
+				let cur1 = CURRENCY_LIST[1];
+				path.push(cur0);
+				path.push(cur1);
+				inject_liquidity(maker.clone(), cur0, cur1, 10_000 * dollar(cur0), 10_000 * dollar(cur1), false)?;
 			} else {
-				if i % 2 == 0 {
-					path.push(trading_pair.first());
-				} else {
-					path.push(trading_pair.second());
-				}
+				path.push(CURRENCY_LIST[i as usize]);
+				inject_liquidity(maker.clone(), CURRENCY_LIST[i as usize - 1], CURRENCY_LIST[i as usize], 10_000 * dollar(CURRENCY_LIST[i as usize - 1]), 10_000 * dollar(CURRENCY_LIST[i as usize]), false)?;
 			}
 		}
 
-		let maker: AccountId = account("maker", 0, SEED);
-		let taker: AccountId = whitelisted_caller();
-		inject_liquidity(maker, trading_pair.first(), trading_pair.second(), 10_000 * dollar(trading_pair.first()), 10_000 * dollar(trading_pair.second()), false)?;
-
 		<Currencies as MultiCurrencyExtended<_>>::update_balance(path[0], &taker, (10_000 * dollar(path[0])).unique_saturated_into())?;
-	}: swap_with_exact_target(RawOrigin::Signed(taker), path.clone(), 10 * dollar(path[path.len() - 1]), 100 * dollar(path[0]))
+	}: swap_with_exact_target(RawOrigin::Signed(taker.clone()), path.clone(), 10 * dollar(path[path.len() - 1]), 100 * dollar(path[0]))
+	verify {
+		// would panic the benchmark anyways, must add new currencies to CURRENCY_LIST for benchmarking to work
+		assert!(TradingPathLimit::get() < CURRENCY_LIST.len() as u32);
+	}
 }
 
 #[cfg(test)]

@@ -27,7 +27,6 @@ use mock::{Event, *};
 use orml_nft::TokenInfo;
 use primitives::Balance;
 use sp_runtime::{traits::BlakeTwo256, ArithmeticError};
-use sp_std::convert::TryInto;
 
 fn free_balance(who: &AccountId) -> Balance {
 	<Runtime as pallet_proxy::Config>::Currency::free_balance(who)
@@ -61,10 +60,10 @@ fn create_class_should_work() {
 			Default::default(),
 			test_attr(1),
 		));
-		System::assert_last_event(Event::NFTModule(crate::Event::CreatedClass(
-			class_id_account(),
-			CLASS_ID,
-		)));
+		System::assert_last_event(Event::NFTModule(crate::Event::CreatedClass {
+			owner: class_id_account(),
+			class_id: CLASS_ID,
+		}));
 
 		let cls_deposit =
 			CreateClassDeposit::get() + DataDepositPerByte::get() * ((metadata.len() as u128) + TEST_ATTR_LEN);
@@ -125,10 +124,10 @@ fn mint_should_work() {
 			Properties(ClassProperty::Transferable | ClassProperty::Burnable | ClassProperty::Mintable),
 			test_attr(1),
 		));
-		System::assert_last_event(Event::NFTModule(crate::Event::CreatedClass(
-			class_id_account(),
-			CLASS_ID,
-		)));
+		System::assert_last_event(Event::NFTModule(crate::Event::CreatedClass {
+			owner: class_id_account(),
+			class_id: CLASS_ID,
+		}));
 		assert_ok!(Balances::deposit_into_existing(
 			&class_id_account(),
 			2 * (CreateTokenDeposit::get() + ((metadata_2.len() as u128 + TEST_ATTR_LEN) * DataDepositPerByte::get()))
@@ -141,12 +140,12 @@ fn mint_should_work() {
 			test_attr(2),
 			2
 		));
-		System::assert_last_event(Event::NFTModule(crate::Event::MintedToken(
-			class_id_account(),
-			BOB,
-			CLASS_ID,
-			2,
-		)));
+		System::assert_last_event(Event::NFTModule(crate::Event::MintedToken {
+			from: class_id_account(),
+			to: BOB,
+			class_id: CLASS_ID,
+			quantity: 2,
+		}));
 		assert_eq!(
 			reserved_balance(&class_id_account()),
 			CreateClassDeposit::get()
@@ -309,9 +308,12 @@ fn transfer_should_work() {
 		);
 
 		assert_ok!(NFTModule::transfer(Origin::signed(BOB), ALICE, (CLASS_ID, TOKEN_ID)));
-		System::assert_last_event(Event::NFTModule(crate::Event::TransferredToken(
-			BOB, ALICE, CLASS_ID, TOKEN_ID,
-		)));
+		System::assert_last_event(Event::NFTModule(crate::Event::TransferredToken {
+			from: BOB,
+			to: ALICE,
+			class_id: CLASS_ID,
+			token_id: TOKEN_ID,
+		}));
 		assert_eq!(
 			reserved_balance(&BOB),
 			1 * (CreateTokenDeposit::get() + DataDepositPerByte::get())
@@ -322,9 +324,12 @@ fn transfer_should_work() {
 		);
 
 		assert_ok!(NFTModule::transfer(Origin::signed(ALICE), BOB, (CLASS_ID, TOKEN_ID)));
-		System::assert_last_event(Event::NFTModule(crate::Event::TransferredToken(
-			ALICE, BOB, CLASS_ID, TOKEN_ID,
-		)));
+		System::assert_last_event(Event::NFTModule(crate::Event::TransferredToken {
+			from: ALICE,
+			to: BOB,
+			class_id: CLASS_ID,
+			token_id: TOKEN_ID,
+		}));
 		assert_eq!(
 			reserved_balance(&BOB),
 			2 * (CreateTokenDeposit::get() + DataDepositPerByte::get())
@@ -419,7 +424,11 @@ fn burn_should_work() {
 			1
 		));
 		assert_ok!(NFTModule::burn(Origin::signed(BOB), (CLASS_ID, TOKEN_ID)));
-		System::assert_last_event(Event::NFTModule(crate::Event::BurnedToken(BOB, CLASS_ID, TOKEN_ID)));
+		System::assert_last_event(Event::NFTModule(crate::Event::BurnedToken {
+			owner: BOB,
+			class_id: CLASS_ID,
+			token_id: TOKEN_ID,
+		}));
 		assert_eq!(
 			reserved_balance(&class_id_account()),
 			CreateClassDeposit::get() + Proxy::deposit(1u32) + DataDepositPerByte::get() * (metadata.len() as u128)
@@ -525,12 +534,12 @@ fn burn_with_remark_should_work() {
 			(CLASS_ID, TOKEN_ID),
 			remark
 		));
-		System::assert_last_event(Event::NFTModule(crate::Event::BurnedTokenWithRemark(
-			BOB,
-			CLASS_ID,
-			TOKEN_ID,
+		System::assert_last_event(Event::NFTModule(crate::Event::BurnedTokenWithRemark {
+			owner: BOB,
+			class_id: CLASS_ID,
+			token_id: TOKEN_ID,
 			remark_hash,
-		)));
+		}));
 
 		assert_eq!(
 			reserved_balance(&class_id_account()),
@@ -576,10 +585,10 @@ fn destroy_class_should_work() {
 			CLASS_ID,
 			ALICE
 		));
-		System::assert_last_event(Event::NFTModule(crate::Event::DestroyedClass(
-			class_id_account(),
-			CLASS_ID,
-		)));
+		System::assert_last_event(Event::NFTModule(crate::Event::DestroyedClass {
+			owner: class_id_account(),
+			class_id: CLASS_ID,
+		}));
 		assert_eq!(free_balance(&class_id_account()), 0);
 		assert_eq!(reserved_balance(&class_id_account()), 0);
 		assert_eq!(free_balance(&ALICE), 100000);

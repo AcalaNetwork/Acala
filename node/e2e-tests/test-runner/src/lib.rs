@@ -18,21 +18,20 @@
 
 #![allow(clippy::all)]
 
-use manual_seal::consensus::ConsensusDataProvider;
 use sc_consensus::BlockImport;
-use sc_executor::NativeExecutionDispatch;
-use sc_service::{Configuration, TFullBackend, TFullClient, TaskExecutor, TaskManager};
+use sc_executor::{NativeElseWasmExecutor, NativeExecutionDispatch};
+use sc_service::TFullClient;
 use sp_api::{ConstructRuntimeApi, TransactionFor};
 use sp_consensus::SelectChain;
-use sp_inherents::{CreateInherentDataProviders, InherentDataProvider};
-use sp_keystore::SyncCryptoStorePtr;
+use sp_inherents::InherentDataProvider;
 use sp_runtime::traits::{Block as BlockT, SignedExtension};
-use std::sync::Arc;
 
+mod client;
 mod host_functions;
 mod node;
 mod utils;
 
+pub use client::*;
 pub use host_functions::*;
 pub use node::*;
 pub use utils::*;
@@ -42,8 +41,8 @@ pub trait ChainInfo: Sized {
 	/// Opaque block type
 	type Block: BlockT;
 
-	/// Executor type
-	type Executor: NativeExecutionDispatch + 'static;
+	/// ExecutorDispatch dispatch type
+	type ExecutorDispatch: NativeExecutionDispatch + 'static;
 
 	/// Runtime
 	type Runtime: frame_system::Config;
@@ -52,7 +51,10 @@ pub trait ChainInfo: Sized {
 	type RuntimeApi: Send
 		+ Sync
 		+ 'static
-		+ ConstructRuntimeApi<Self::Block, TFullClient<Self::Block, Self::RuntimeApi, Self::Executor>>;
+		+ ConstructRuntimeApi<
+			Self::Block,
+			TFullClient<Self::Block, Self::RuntimeApi, NativeElseWasmExecutor<Self::ExecutorDispatch>>,
+		>;
 
 	/// select chain type.
 	type SelectChain: SelectChain<Self::Block> + 'static;
@@ -64,7 +66,10 @@ pub trait ChainInfo: Sized {
 		+ BlockImport<
 			Self::Block,
 			Error = sp_consensus::Error,
-			Transaction = TransactionFor<TFullClient<Self::Block, Self::RuntimeApi, Self::Executor>, Self::Block>,
+			Transaction = TransactionFor<
+				TFullClient<Self::Block, Self::RuntimeApi, NativeElseWasmExecutor<Self::ExecutorDispatch>>,
+				Self::Block,
+			>,
 		> + 'static;
 
 	/// The signed extras required by the runtime
@@ -75,38 +80,4 @@ pub trait ChainInfo: Sized {
 
 	/// Signed extras, this function is caled in an externalities provided environment.
 	fn signed_extras(from: <Self::Runtime as frame_system::Config>::AccountId) -> Self::SignedExtras;
-
-	/// config factory
-	fn config(task_executor: TaskExecutor) -> Configuration;
-
-	/// Attempt to create client parts, including block import,
-	/// select chain strategy and consensus data provider.
-	fn create_client_parts(
-		config: &Configuration,
-	) -> Result<
-		(
-			Arc<TFullClient<Self::Block, Self::RuntimeApi, Self::Executor>>,
-			Arc<TFullBackend<Self::Block>>,
-			SyncCryptoStorePtr,
-			TaskManager,
-			Box<dyn CreateInherentDataProviders<Self::Block, (), InherentDataProviders = Self::InherentDataProviders>>,
-			Option<
-				Box<
-					dyn ConsensusDataProvider<
-						Self::Block,
-						Transaction = TransactionFor<
-							TFullClient<Self::Block, Self::RuntimeApi, Self::Executor>,
-							Self::Block,
-						>,
-					>,
-				>,
-			>,
-			Self::SelectChain,
-			Self::BlockImport,
-		),
-		sc_service::Error,
-	>;
-
-	/// Given a call and a handle to the node, execute the call with root privileges.
-	fn dispatch_with_root(call: <Self::Runtime as frame_system::Config>::Call, node: &mut Node<Self>);
 }

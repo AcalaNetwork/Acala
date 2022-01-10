@@ -21,7 +21,7 @@
 #![cfg(test)]
 
 use crate as CompoundCash;
-use frame_support::{construct_runtime, parameter_types};
+use frame_support::{construct_runtime, parameter_types, traits::Everything};
 use primitives::Moment;
 
 parameter_types!(
@@ -30,7 +30,7 @@ parameter_types!(
 );
 
 impl frame_system::Config for Runtime {
-	type BaseCallFilter = ();
+	type BaseCallFilter = Everything;
 	type Origin = Origin;
 	type Index = u64;
 	type BlockNumber = u64;

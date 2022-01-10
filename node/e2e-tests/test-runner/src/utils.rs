@@ -18,8 +18,7 @@
 
 #![allow(clippy::all)]
 
-use futures::{Sink, SinkExt};
-use log::LevelFilter;
+pub use sc_cli::build_runtime;
 use sc_client_api::execution_extensions::ExecutionStrategies;
 use sc_executor::WasmExecutionMethod;
 use sc_informant::OutputFormat;
@@ -27,13 +26,11 @@ use sc_network::{
 	config::{NetworkConfiguration, Role, TransportConfig},
 	multiaddr,
 };
-use sc_service::config::KeystoreConfig;
 use sc_service::{
-	BasePath, ChainSpec, Configuration, DatabaseConfig, KeepBlocks, TaskExecutor, TransactionStorageMode,
+	config::KeystoreConfig, BasePath, ChainSpec, Configuration, DatabaseSource, KeepBlocks, TransactionStorageMode,
 };
 use sp_keyring::sr25519::Keyring::Alice;
-use std::fmt;
-use std::io::Write;
+use tokio::runtime::Handle;
 
 /// Base db path gotten from env
 pub fn base_path() -> BasePath {
@@ -44,33 +41,8 @@ pub fn base_path() -> BasePath {
 	}
 }
 
-/// Builds the global logger.
-pub fn logger<S>(log_targets: Vec<(&'static str, LevelFilter)>, executor: tokio::runtime::Handle, log_sink: S)
-where
-	S: Sink<String> + Clone + Unpin + Send + Sync + 'static,
-	S::Error: Send + Sync + fmt::Debug,
-{
-	let mut builder = env_logger::builder();
-	builder.format(move |buf: &mut env_logger::fmt::Formatter, record: &log::Record| {
-		let entry = format!("{} {} {}", record.level(), record.target(), record.args());
-		let res = writeln!(buf, "{}", entry);
-
-		let mut log_sink_clone = log_sink.clone();
-		let _ = executor.spawn(async move {
-			log_sink_clone.send(entry).await.expect("log_stream is dropped");
-		});
-		res
-	});
-	builder.write_style(env_logger::WriteStyle::Always);
-
-	for (module, level) in log_targets {
-		builder.filter_module(module, level);
-	}
-	let _ = builder.is_test(true).try_init();
-}
-
 /// Produces a default configuration object, suitable for use with most set ups.
-pub fn default_config(task_executor: TaskExecutor, mut chain_spec: Box<dyn ChainSpec>) -> Configuration {
+pub fn default_config(tokio_handle: Handle, mut chain_spec: Box<dyn ChainSpec>) -> Configuration {
 	let base_path = base_path();
 	let root_path = base_path.path().to_path_buf().join("chains").join(chain_spec.id());
 
@@ -101,14 +73,14 @@ pub fn default_config(task_executor: TaskExecutor, mut chain_spec: Box<dyn Chain
 		impl_name: "test-node".to_string(),
 		impl_version: "0.1".to_string(),
 		role: Role::Authority,
-		task_executor: task_executor.into(),
+		tokio_handle,
 		transaction_pool: Default::default(),
 		network: network_config,
 		keystore: KeystoreConfig::Path {
 			path: root_path.join("key"),
 			password: None,
 		},
-		database: DatabaseConfig::RocksDb {
+		database: DatabaseSource::RocksDb {
 			path: root_path.join("db"),
 			cache_size: 128,
 		},
@@ -127,13 +99,11 @@ pub fn default_config(task_executor: TaskExecutor, mut chain_spec: Box<dyn Chain
 		rpc_ws: None,
 		rpc_ipc: None,
 		rpc_ws_max_connections: None,
-		rpc_http_threads: None,
 		rpc_cors: None,
 		rpc_methods: Default::default(),
 		rpc_max_payload: None,
 		prometheus_config: None,
 		telemetry_endpoints: None,
-		telemetry_external_transport: None,
 		default_heap_pages: None,
 		offchain_worker: Default::default(),
 		force_authoring: false,
@@ -146,7 +116,7 @@ pub fn default_config(task_executor: TaskExecutor, mut chain_spec: Box<dyn Chain
 		base_path: Some(base_path),
 		wasm_runtime_overrides: None,
 		informant_output_format,
-		disable_log_reloading: false,
+		ws_max_out_buffer_capacity: None,
 		keystore_remote: None,
 		keep_blocks: KeepBlocks::All,
 		state_pruning: Default::default(),

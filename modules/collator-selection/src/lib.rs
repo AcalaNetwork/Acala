@@ -97,7 +97,7 @@ pub mod pallet {
 	use pallet_session::SessionManager;
 	use primitives::ReserveIdentifier;
 	use sp_staking::SessionIndex;
-	use sp_std::{convert::TryInto, ops::Div, vec};
+	use sp_std::{ops::Div, vec};
 
 	pub const RESERVE_ID: ReserveIdentifier = ReserveIdentifier::CollatorSelection;
 	pub const POINT_PER_BLOCK: u32 = 10;
@@ -157,6 +157,10 @@ pub mod pallet {
 		/// Will be kicked if block is not produced in threshold.
 		#[pallet::constant]
 		type CollatorKickThreshold: Get<Permill>;
+
+		/// Minimum reward to be distributed to the collators.
+		#[pallet::constant]
+		type MinRewardDistributeAmount: Get<BalanceOf<Self>>;
 
 		/// The weight information of this pallet.
 		type WeightInfo: WeightInfo;
@@ -255,18 +259,17 @@ pub mod pallet {
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
-	#[pallet::metadata(T::AccountId = "AccountId", Vec<T::AccountId> = "Vec<AccountId>", BalanceOf<T> = "Balance")]
 	pub enum Event<T: Config> {
-		/// Invulnurable was updated. \[new_invulnerables\]
-		NewInvulnerables(Vec<T::AccountId>),
-		/// Desired candidates was updated. \[new_desired_candidates\]
-		NewDesiredCandidates(u32),
-		/// Candidacy bond was updated. \[new_candidacy_bond\]
-		NewCandidacyBond(BalanceOf<T>),
-		/// A candidate was added. \[who, bond\]
-		CandidateAdded(T::AccountId, BalanceOf<T>),
-		/// A candidate was removed. \[who\]
-		CandidateRemoved(T::AccountId),
+		/// Invulnurable was updated.
+		NewInvulnerables { new_invulnerables: Vec<T::AccountId> },
+		/// Desired candidates was updated.
+		NewDesiredCandidates { new_desired_candidates: u32 },
+		/// Candidacy bond was updated.
+		NewCandidacyBond { new_candidacy_bond: BalanceOf<T> },
+		/// A candidate was added.
+		CandidateAdded { who: T::AccountId, bond: BalanceOf<T> },
+		/// A candidate was removed.
+		CandidateRemoved { who: T::AccountId },
 	}
 
 	// Errors inform users that something went wrong.
@@ -298,26 +301,32 @@ pub mod pallet {
 			let bounded_new: BoundedVec<T::AccountId, T::MaxInvulnerables> =
 				new.try_into().map_err(|_| Error::<T>::MaxInvulnerablesExceeded)?;
 			<Invulnerables<T>>::put(&bounded_new);
-			Self::deposit_event(Event::NewInvulnerables(bounded_new.into_inner()));
+			Self::deposit_event(Event::NewInvulnerables {
+				new_invulnerables: bounded_new.into_inner(),
+			});
 			Ok(())
 		}
 
 		#[pallet::weight(T::WeightInfo::set_desired_candidates())]
-		pub fn set_desired_candidates(origin: OriginFor<T>, max: u32) -> DispatchResult {
+		pub fn set_desired_candidates(origin: OriginFor<T>, #[pallet::compact] max: u32) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
 			if max > T::MaxCandidates::get() {
 				Err(Error::<T>::MaxCandidatesExceeded)?;
 			}
 			<DesiredCandidates<T>>::put(&max);
-			Self::deposit_event(Event::NewDesiredCandidates(max));
+			Self::deposit_event(Event::NewDesiredCandidates {
+				new_desired_candidates: max,
+			});
 			Ok(())
 		}
 
 		#[pallet::weight(T::WeightInfo::set_candidacy_bond())]
-		pub fn set_candidacy_bond(origin: OriginFor<T>, bond: BalanceOf<T>) -> DispatchResult {
+		pub fn set_candidacy_bond(origin: OriginFor<T>, #[pallet::compact] bond: BalanceOf<T>) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
 			<CandidacyBond<T>>::put(&bond);
-			Self::deposit_event(Event::NewCandidacyBond(bond));
+			Self::deposit_event(Event::NewCandidacyBond {
+				new_candidacy_bond: bond,
+			});
 			Ok(())
 		}
 
@@ -334,7 +343,7 @@ pub mod pallet {
 
 			let deposit = Self::candidacy_bond();
 			let bounded_candidates_len = Self::do_register_candidate(&who, deposit)?;
-			Self::deposit_event(Event::CandidateAdded(who, deposit));
+			Self::deposit_event(Event::CandidateAdded { who, bond: deposit });
 
 			Ok(Some(T::WeightInfo::register_as_candidate(bounded_candidates_len as u32)).into())
 		}
@@ -345,7 +354,10 @@ pub mod pallet {
 
 			let bounded_candidates_len = Self::do_register_candidate(&new_candidate, Zero::zero())?;
 
-			Self::deposit_event(Event::CandidateAdded(new_candidate, Zero::zero()));
+			Self::deposit_event(Event::CandidateAdded {
+				who: new_candidate,
+				bond: Zero::zero(),
+			});
 			Ok(Some(T::WeightInfo::register_candidate(bounded_candidates_len as u32)).into())
 		}
 
@@ -393,7 +405,7 @@ pub mod pallet {
 				candidates.take(who).ok_or(Error::<T>::NotCandidate)?;
 				Ok(candidates.len())
 			})?;
-			Self::deposit_event(Event::CandidateRemoved(who.clone()));
+			Self::deposit_event(Event::CandidateRemoved { who: who.clone() });
 			Ok(current_count)
 		}
 
@@ -446,9 +458,12 @@ pub mod pallet {
 				.checked_sub(&T::Currency::minimum_balance())
 				.unwrap_or_default()
 				.div(2u32.into());
-			// `reward` is half of pot account minus ED, this should never fail.
-			let _success = T::Currency::transfer(&pot, &author, reward, KeepAlive);
-			debug_assert!(_success.is_ok());
+
+			if reward >= T::MinRewardDistributeAmount::get() {
+				// `reward` is half of pot account minus ED, this should never fail.
+				let _success = T::Currency::transfer(&pot, &author, reward, KeepAlive);
+				debug_assert!(_success.is_ok());
+			}
 
 			if <SessionPoints<T>>::contains_key(&author) {
 				<SessionPoints<T>>::mutate(author, |point| *point += POINT_PER_BLOCK);

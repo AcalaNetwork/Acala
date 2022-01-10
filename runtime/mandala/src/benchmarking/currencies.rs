@@ -19,14 +19,14 @@
 use super::utils::{lookup_of_account, set_balance};
 use crate::{
 	dollar, AccountId, Amount, Balance, Currencies, CurrencyId, GetNativeCurrencyId, GetStakingCurrencyId,
-	NativeTokenExistentialDeposit, Runtime,
+	NativeTokenExistentialDeposit, Runtime, Tokens, TreasuryPalletId,
 };
 
 use sp_std::prelude::*;
 
 use frame_benchmarking::{account, whitelisted_caller};
 use frame_system::RawOrigin;
-use sp_runtime::traits::UniqueSaturatedInto;
+use sp_runtime::traits::{AccountIdConversion, UniqueSaturatedInto};
 
 use orml_benchmarking::runtime_benchmarks;
 use orml_traits::MultiCurrency;
@@ -119,6 +119,26 @@ runtime_benchmarks! {
 	}: update_balance(RawOrigin::Root, who_lookup, NATIVE, -amount)
 	verify {
 		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(NATIVE, &who), 0);
+	}
+
+	sweep_dust {
+		let c in 1..3u32;
+		let treasury: AccountId = TreasuryPalletId::get().into_account();
+		let accounts: Vec<AccountId> = vec!["alice", "bob", "charlie"].into_iter().map(|x| account(x, 0, SEED)).collect();
+		accounts.iter().for_each(|account| {
+			orml_tokens::Accounts::<Runtime>::insert(account, STAKING, orml_tokens::AccountData {
+				free: 100,
+				frozen: 0,
+				reserved: 0
+			});
+		});
+		set_balance(STAKING, &treasury, dollar(STAKING));
+	}: _(RawOrigin::Root, STAKING, (&accounts[..c as usize]).to_vec())
+	verify {
+		(&accounts[..c as usize]).iter().for_each(|account| {
+			assert_eq!(orml_tokens::Accounts::<Runtime>::contains_key(account, STAKING), false);
+		});
+		assert_eq!(Tokens::free_balance(STAKING, &treasury), dollar(STAKING) + (100 * c) as Balance);
 	}
 }
 

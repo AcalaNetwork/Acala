@@ -17,20 +17,14 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use frame_support::ensure;
-use sp_std::{
-	convert::{TryFrom, TryInto},
-	marker::PhantomData,
-	mem,
-	result::Result,
-	vec::Vec,
-};
+use sp_std::{marker::PhantomData, mem, result::Result, vec, vec::Vec};
 
+use ethabi::Token;
 use module_evm::ExitError;
-use module_support::{AddressMapping as AddressMappingT, CurrencyIdMapping as CurrencyIdMappingT};
+use module_support::{AddressMapping as AddressMappingT, Erc20InfoMapping as Erc20InfoMappingT};
 use primitives::{Amount, Balance, CurrencyId};
-use sp_core::H160;
+use sp_core::{H160, U256};
 
-pub const INPUT_BYTES_LENGTH: usize = 32;
 pub const FUNCTION_SELECTOR_LENGTH: usize = 4;
 pub const PER_PARAM_BYTES: usize = 32;
 pub const ACTION_INDEX: usize = 0;
@@ -61,12 +55,12 @@ pub trait InputT {
 	fn bytes_at(&self, start: usize, len: usize) -> Result<Vec<u8>, Self::Error>;
 }
 
-pub struct Input<'a, Action, AccountId, AddressMapping, CurrencyIdMapping> {
+pub struct Input<'a, Action, AccountId, AddressMapping, Erc20InfoMapping> {
 	content: &'a [u8],
-	_marker: PhantomData<(Action, AccountId, AddressMapping, CurrencyIdMapping)>,
+	_marker: PhantomData<(Action, AccountId, AddressMapping, Erc20InfoMapping)>,
 }
-impl<'a, Action, AccountId, AddressMapping, CurrencyIdMapping>
-	Input<'a, Action, AccountId, AddressMapping, CurrencyIdMapping>
+impl<'a, Action, AccountId, AddressMapping, Erc20InfoMapping>
+	Input<'a, Action, AccountId, AddressMapping, Erc20InfoMapping>
 {
 	pub fn new(content: &'a [u8]) -> Self {
 		Self {
@@ -76,27 +70,25 @@ impl<'a, Action, AccountId, AddressMapping, CurrencyIdMapping>
 	}
 }
 
-impl<Action, AccountId, AddressMapping, CurrencyIdMapping> InputT
-	for Input<'_, Action, AccountId, AddressMapping, CurrencyIdMapping>
+impl<Action, AccountId, AddressMapping, Erc20InfoMapping> InputT
+	for Input<'_, Action, AccountId, AddressMapping, Erc20InfoMapping>
 where
 	Action: TryFrom<u32>,
 	AddressMapping: AddressMappingT<AccountId>,
-	CurrencyIdMapping: CurrencyIdMappingT,
+	Erc20InfoMapping: Erc20InfoMappingT,
 {
 	type Error = ExitError;
 	type Action = Action;
 	type AccountId = AccountId;
 
 	fn nth_param(&self, n: usize, len: Option<usize>) -> Result<&[u8], Self::Error> {
-		// Solidity dynamic bytes will add the size to the front of the input,
-		// pre-compile needs to deal with the INPUT_BYTES_LENGTH `size`.
 		let (start, end) = if n == 0 {
 			// ACTION_INDEX
-			let start = INPUT_BYTES_LENGTH;
+			let start = 0;
 			let end = start + FUNCTION_SELECTOR_LENGTH;
 			(start, end)
 		} else {
-			let start = INPUT_BYTES_LENGTH + FUNCTION_SELECTOR_LENGTH + PER_PARAM_BYTES * (n - 1);
+			let start = FUNCTION_SELECTOR_LENGTH + PER_PARAM_BYTES * (n - 1);
 			let end = start + len.unwrap_or(PER_PARAM_BYTES);
 			(start, end)
 		};
@@ -138,7 +130,7 @@ where
 	fn currency_id_at(&self, index: usize) -> Result<CurrencyId, Self::Error> {
 		let address = self.evm_address_at(index)?;
 
-		CurrencyIdMapping::decode_evm_address(address).ok_or_else(|| ExitError::Other("invalid currency id".into()))
+		Erc20InfoMapping::decode_evm_address(address).ok_or_else(|| ExitError::Other("invalid currency id".into()))
 	}
 
 	fn balance_at(&self, index: usize) -> Result<Balance, Self::Error> {
@@ -188,6 +180,41 @@ where
 	}
 }
 
+#[derive(Default, Clone, PartialEq, Debug)]
+pub struct Output;
+
+impl Output {
+	pub fn encode_u8(&self, b: u8) -> Vec<u8> {
+		let out = Token::Uint(U256::from(b));
+		ethabi::encode(&[out])
+	}
+
+	pub fn encode_u32(&self, b: u32) -> Vec<u8> {
+		let out = Token::Uint(U256::from(b));
+		ethabi::encode(&[out])
+	}
+
+	pub fn encode_u128(&self, b: u128) -> Vec<u8> {
+		let out = Token::Uint(U256::from(b));
+		ethabi::encode(&[out])
+	}
+
+	pub fn encode_u128_tuple(&self, b: u128, c: u128) -> Vec<u8> {
+		let out = Token::Tuple(vec![Token::Uint(U256::from(b)), Token::Uint(U256::from(c))]);
+		ethabi::encode(&[out])
+	}
+
+	pub fn encode_bytes(&self, b: &[u8]) -> Vec<u8> {
+		let out = Token::Bytes(b.to_vec());
+		ethabi::encode(&[out])
+	}
+
+	pub fn encode_address(&self, b: &H160) -> Vec<u8> {
+		let out = Token::Address(H160::from_slice(b.as_bytes()));
+		ethabi::encode(&[out])
+	}
+}
+
 #[cfg(test)]
 mod tests {
 	use super::*;
@@ -197,7 +224,7 @@ mod tests {
 	use sp_core::H160;
 	use sp_runtime::RuntimeDebug;
 
-	use module_support::mocks::{MockAddressMapping, MockCurrencyIdMapping};
+	use module_support::mocks::{MockAddressMapping, MockErc20InfoMapping};
 	use primitives::{AccountId, CurrencyId, TokenSymbol};
 
 	#[derive(RuntimeDebug, PartialEq, Eq, TryFromPrimitive)]
@@ -208,32 +235,32 @@ mod tests {
 		Unknown = 2,
 	}
 
-	pub type TestInput<'a> = Input<'a, Action, AccountId, MockAddressMapping, MockCurrencyIdMapping>;
+	pub type TestInput<'a> = Input<'a, Action, AccountId, MockAddressMapping, MockErc20InfoMapping>;
 
 	#[test]
 	fn nth_param_works() {
-		let input = TestInput::new(&[1u8; 68][..]);
+		let input = TestInput::new(&[1u8; 36][..]);
 		assert_ok!(input.nth_param(1, None), &[1u8; 32][..]);
 		assert_err!(input.nth_param(2, None), ExitError::Other("invalid input".into()));
 	}
 
 	#[test]
 	fn action_works() {
-		let input = TestInput::new(&[0u8; 68][..]);
+		let input = TestInput::new(&[0u8; 36][..]);
 		assert_ok!(input.action(), Action::QueryBalance);
 
-		let mut raw_input = [0u8; 68];
-		raw_input[35] = 1;
+		let mut raw_input = [0u8; 36];
+		raw_input[3] = 1;
 		let input = TestInput::new(&raw_input[..]);
 		assert_ok!(input.action(), Action::Transfer);
 
-		let mut raw_input = [0u8; 68];
-		raw_input[35] = 2;
+		let mut raw_input = [0u8; 36];
+		raw_input[3] = 2;
 		let input = TestInput::new(&raw_input[..]);
 		assert_ok!(input.action(), Action::Unknown);
 
-		let mut raw_input = [0u8; 68];
-		raw_input[35] = 3;
+		let mut raw_input = [0u8; 36];
+		raw_input[3] = 3;
 		let input = TestInput::new(&raw_input[..]);
 		assert_eq!(input.action(), Err(ExitError::Other("invalid action".into())));
 	}
@@ -244,8 +271,8 @@ mod tests {
 		address[19] = 1;
 		let account_id = MockAddressMapping::get_account_id(&address.into());
 
-		let mut raw_input = [0u8; 68];
-		raw_input[67] = 1;
+		let mut raw_input = [0u8; 36];
+		raw_input[35] = 1;
 		let input = TestInput::new(&raw_input[..]);
 		assert_ok!(input.account_id_at(1), account_id);
 	}
@@ -256,8 +283,8 @@ mod tests {
 		address[19] = 1;
 		let evm_address = H160::from_slice(&address);
 
-		let mut raw_input = [0u8; 68];
-		raw_input[67] = 1;
+		let mut raw_input = [0u8; 36];
+		raw_input[35] = 1;
 		let input = TestInput::new(&raw_input[..]);
 		assert_ok!(input.evm_address_at(1), evm_address);
 	}
@@ -267,12 +294,12 @@ mod tests {
 		let input = TestInput::new(&[0u8; 100][..]);
 		assert_err!(input.currency_id_at(1), ExitError::Other("invalid currency id".into()));
 
-		let mut raw_input = [0u8; 68];
-		raw_input[64] = 1;
+		let mut raw_input = [0u8; 36];
+		raw_input[25] = 1;
 		let input = TestInput::new(&raw_input[..]);
 		assert_ok!(input.currency_id_at(1), CurrencyId::Token(TokenSymbol::ACA));
 
-		raw_input[67] = 1;
+		raw_input[35] = 1;
 		let input = TestInput::new(&raw_input[..]);
 		assert_ok!(input.currency_id_at(1), CurrencyId::Token(TokenSymbol::AUSD));
 	}
@@ -282,8 +309,8 @@ mod tests {
 		let balance = 127u128;
 		let balance_bytes = balance.to_be_bytes();
 
-		let mut raw_input = [0u8; 68];
-		raw_input[52..].copy_from_slice(&balance_bytes);
+		let mut raw_input = [0u8; 36];
+		raw_input[20..].copy_from_slice(&balance_bytes);
 		let input = TestInput::new(&raw_input[..]);
 		assert_ok!(input.balance_at(1), balance);
 	}
@@ -293,8 +320,8 @@ mod tests {
 		let amount = 127i128;
 		let amount_bytes = amount.to_be_bytes();
 
-		let mut raw_input = [0u8; 68];
-		raw_input[52..].copy_from_slice(&amount_bytes);
+		let mut raw_input = [0u8; 36];
+		raw_input[20..].copy_from_slice(&amount_bytes);
 		let input = TestInput::new(&raw_input[..]);
 		assert_ok!(input.amount_at(1), amount);
 	}
@@ -304,8 +331,8 @@ mod tests {
 		let u64_num = 127u64;
 		let u64_bytes = u64_num.to_be_bytes();
 
-		let mut raw_input = [0u8; 68];
-		raw_input[60..].copy_from_slice(&u64_bytes);
+		let mut raw_input = [0u8; 36];
+		raw_input[28..].copy_from_slice(&u64_bytes);
 		let input = TestInput::new(&raw_input[..]);
 		assert_ok!(input.u64_at(1), u64_num);
 	}

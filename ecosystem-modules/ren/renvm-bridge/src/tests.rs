@@ -36,7 +36,13 @@ fn mint_ren_btc(
 ) -> Result<DispatchResult, TransactionValidityError> {
 	<RenVmBridge as ValidateUnsigned>::validate_unsigned(
 		TransactionSource::External,
-		&Call::mint(who, p_hash, amount, n_hash, sig.clone()),
+		&Call::mint {
+			who,
+			p_hash,
+			amount,
+			n_hash,
+			sig: sig.clone(),
+		},
 	)?;
 
 	Ok(RenVmBridge::mint(Origin::none(), who, p_hash, amount, n_hash, sig))
@@ -45,7 +51,10 @@ fn mint_ren_btc(
 fn rotate_key(new_key: PublicKey, sig: EcdsaSignature) -> Result<DispatchResult, TransactionValidityError> {
 	<RenVmBridge as ValidateUnsigned>::validate_unsigned(
 		TransactionSource::External,
-		&Call::rotate_key(new_key, sig.clone()),
+		&Call::rotate_key {
+			new_key,
+			sig: sig.clone(),
+		},
 	)?;
 
 	Ok(RenVmBridge::rotate_key(Origin::none(), new_key, sig))
@@ -209,13 +218,13 @@ fn rotate_key_works() {
 fn transaction_length_of_mint() {
 	ExtBuilder::default().build().execute_with(|| {
 		let to: H256 = hex!["d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d"].into();
-		let call = Call::<Runtime>::mint(
-			to,
-			hex!["425673f98610064b76dbd334783f45ea192f0e954db75ba2ae6b6058a8143d67"],
-			10000 * 10u128.saturating_pow(8),  // 10000 BTC
-			hex!["fe125f912d2de05e3e34b96a0ce8a8e35d9ed883e830b978871f3e1f5d393726"],
-			EcdsaSignature::from_slice(&hex!["000463fa396c54995e444234e96d793d3977e75f445da219c10bc4947c22622f325f24dfc31e8e56ec21f04fc7669e91db861778a8367444bde6dfb5f95e15ed1b"])
-		);
+		let call = Call::<Runtime>::mint{
+			who: to,
+			p_hash: hex!["425673f98610064b76dbd334783f45ea192f0e954db75ba2ae6b6058a8143d67"],
+			amount: 10000 * 10u128.saturating_pow(8),  // 10000 BTC
+			n_hash: hex!["fe125f912d2de05e3e34b96a0ce8a8e35d9ed883e830b978871f3e1f5d393726"],
+			sig: EcdsaSignature::from_slice(&hex!["000463fa396c54995e444234e96d793d3977e75f445da219c10bc4947c22622f325f24dfc31e8e56ec21f04fc7669e91db861778a8367444bde6dfb5f95e15ed1b"])
+		};
 
 		let call_len = call.using_encoded(|c| c.len());
 		assert_eq!(call_len as u32, MINT_TX_LENGTH);
