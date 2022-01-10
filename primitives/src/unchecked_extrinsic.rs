@@ -114,7 +114,7 @@ where
 			Some((addr, AcalaMultiSignature::Ethereum(sig), extra)) => {
 				let function = self.0.function;
 
-				let (eth_msg, extra) = ConvertTx::convert((function.clone(), extra))?;
+				let (eth_msg, eth_extra) = ConvertTx::convert((function.clone(), extra))?;
 
 				if eth_msg.tip != 0 {
 					// Not yet supported, require zero tip
@@ -170,13 +170,13 @@ where
 				}
 
 				Ok(CheckedExtrinsic {
-					signed: Some((account_id, extra)),
+					signed: Some((account_id, eth_extra)),
 					function,
 				})
 			}
 			Some((addr, AcalaMultiSignature::Eip1559(sig), extra)) => {
 				let function = self.0.function;
-				let (eth_msg, extra) = ConvertTx::convert((function.clone(), extra))?;
+				let (eth_msg, eth_extra) = ConvertTx::convert((function.clone(), extra))?;
 
 				// tx_gas_price = tx_fee_per_gas + block_period << 16 + storage_entry_limit
 				// tx_gas_limit = gas_limit + storage_entry_deposit / tx_fee_per_gas * storage_entry_limit
@@ -232,14 +232,14 @@ where
 				}
 
 				Ok(CheckedExtrinsic {
-					signed: Some((account_id, extra)),
+					signed: Some((account_id, eth_extra)),
 					function,
 				})
 			}
 			Some((addr, AcalaMultiSignature::AcalaEip712(sig), extra)) => {
 				let function = self.0.function;
 
-				let (eth_msg, extra) = ConvertTx::convert((function.clone(), extra))?;
+				let (eth_msg, eth_extra) = ConvertTx::convert((function.clone(), extra))?;
 
 				let signer = verify_eip712_signature(eth_msg, sig).ok_or(InvalidTransaction::BadProof)?;
 
@@ -251,7 +251,7 @@ where
 				}
 
 				Ok(CheckedExtrinsic {
-					signed: Some((account_id, extra)),
+					signed: Some((account_id, eth_extra)),
 					function,
 				})
 			}
