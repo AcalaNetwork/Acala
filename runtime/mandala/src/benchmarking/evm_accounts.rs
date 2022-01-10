@@ -19,7 +19,6 @@
 use crate::{dollar, AccountId, CurrencyId, EvmAccounts, GetNativeCurrencyId, Runtime};
 
 use super::utils::set_balance;
-use codec::Encode;
 use frame_benchmarking::{account, whitelisted_caller};
 use frame_system::RawOrigin;
 use orml_benchmarking::runtime_benchmarks;
