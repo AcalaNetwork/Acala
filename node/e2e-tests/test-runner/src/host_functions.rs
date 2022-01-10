@@ -18,6 +18,7 @@
 
 #![allow(clippy::all)]
 
+use sc_executor::sp_wasm_interface::HostFunctionRegistry;
 #[macro_export]
 macro_rules! override_host_functions {
     ($($fn_name:expr, $name:ident,)*) => {{
@@ -72,5 +73,12 @@ impl sp_wasm_interface::HostFunctions for SignatureVerificationOverride {
 			"ext_crypto_sr25519_verify_version_2",
 			Sr25519VerifyV2,
 		)
+	}
+
+	fn register_static<T>(registry: &mut T) -> Result<(), T::Error>
+	where
+		T: HostFunctionRegistry,
+	{
+		todo!()
 	}
 }

@@ -1163,46 +1163,47 @@ where
 	}
 
 	fn post_dispatch(
-		pre: Self::Pre,
+		pre: Option<Self::Pre>,
 		info: &DispatchInfoOf<Self::Call>,
 		post_info: &PostDispatchInfoOf<Self::Call>,
 		len: usize,
 		_result: &DispatchResult,
 	) -> Result<(), TransactionValidityError> {
-		let (tip, who, imbalance, fee) = pre;
-		if let Some(payed) = imbalance {
-			let actual_fee = Pallet::<T>::compute_actual_fee(len as u32, info, post_info, tip);
-			let refund_fee = fee.saturating_sub(actual_fee);
-			let mut refund = refund_fee;
-			let mut actual_tip = tip;
+		if let Some((tip, who, imbalance, fee)) = pre {
+			if let Some(payed) = imbalance {
+				let actual_fee = Pallet::<T>::compute_actual_fee(len as u32, info, post_info, tip);
+				let refund_fee = fee.saturating_sub(actual_fee);
+				let mut refund = refund_fee;
+				let mut actual_tip = tip;
 
-			if !tip.is_zero() && !info.weight.is_zero() {
-				// tip_pre_weight * unspent_weight
-				let refund_tip = tip
-					.checked_div(info.weight.saturated_into::<PalletBalanceOf<T>>())
-					.expect("checked is non-zero; qed")
-					.saturating_mul(post_info.calc_unspent(info).saturated_into::<PalletBalanceOf<T>>());
-				refund = refund_fee.saturating_add(refund_tip);
-				actual_tip = tip.saturating_sub(refund_tip);
-			}
-			let actual_payment = match <T as Config>::Currency::deposit_into_existing(&who, refund) {
-				Ok(refund_imbalance) => {
-					// The refund cannot be larger than the up front payed max weight.
-					// `PostDispatchInfo::calc_unspent` guards against such a case.
-					match payed.offset(refund_imbalance) {
-						SameOrOther::Same(actual_payment) => actual_payment,
-						SameOrOther::None => Default::default(),
-						_ => return Err(InvalidTransaction::Payment.into()),
-					}
+				if !tip.is_zero() && !info.weight.is_zero() {
+					// tip_pre_weight * unspent_weight
+					let refund_tip = tip
+						.checked_div(info.weight.saturated_into::<PalletBalanceOf<T>>())
+						.expect("checked is non-zero; qed")
+						.saturating_mul(post_info.calc_unspent(info).saturated_into::<PalletBalanceOf<T>>());
+					refund = refund_fee.saturating_add(refund_tip);
+					actual_tip = tip.saturating_sub(refund_tip);
 				}
-				// We do not recreate the account using the refund. The up front payment
-				// is gone in that case.
-				Err(_) => payed,
-			};
-			let (tip, fee) = actual_payment.split(actual_tip);
+				let actual_payment = match <T as Config>::Currency::deposit_into_existing(&who, refund) {
+					Ok(refund_imbalance) => {
+						// The refund cannot be larger than the up front payed max weight.
+						// `PostDispatchInfo::calc_unspent` guards against such a case.
+						match payed.offset(refund_imbalance) {
+							SameOrOther::Same(actual_payment) => actual_payment,
+							SameOrOther::None => Default::default(),
+							_ => return Err(InvalidTransaction::Payment.into()),
+						}
+					}
+					// We do not recreate the account using the refund. The up front payment
+					// is gone in that case.
+					Err(_) => payed,
+				};
+				let (tip, fee) = actual_payment.split(actual_tip);
 
-			// distribute fee
-			<T as Config>::OnTransactionPayment::on_unbalanceds(Some(fee).into_iter().chain(Some(tip)));
+				// distribute fee
+				<T as Config>::OnTransactionPayment::on_unbalanceds(Some(fee).into_iter().chain(Some(tip)));
+			}
 		}
 		Ok(())
 	}

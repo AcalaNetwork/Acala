@@ -95,6 +95,7 @@ fn dev_testnet_config_from_chain_id(chain_id: &str) -> Result<ChainSpec, String>
 		vec![],
 		None,
 		None,
+		None,
 		Some(properties),
 		Extensions {
 			relay_chain: "rococo-local".into(),
@@ -148,6 +149,7 @@ pub fn local_testnet_config() -> Result<ChainSpec, String> {
 			)
 		},
 		vec![],
+		None,
 		None,
 		None,
 		Some(properties),
@@ -231,6 +233,7 @@ pub fn latest_mandala_testnet_config() -> Result<ChainSpec, String> {
 		],
 		TelemetryEndpoints::new(vec![(TELEMETRY_URL.into(), 0)]).ok(),
 		Some("mandala-dev-tc7"),
+		None,
 		Some(properties),
 		Extensions {
 			relay_chain: "dev".into(),
@@ -301,7 +304,9 @@ fn testnet_genesis(
 		},
 		indices: IndicesConfig { indices: vec![] },
 		balances: BalancesConfig { balances },
-		sudo: SudoConfig { key: root_key.clone() },
+		sudo: SudoConfig {
+			key: Some(root_key.clone()),
+		},
 		general_council: Default::default(),
 		general_council_membership: GeneralCouncilMembershipConfig {
 			members: vec![root_key.clone()],
@@ -491,7 +496,9 @@ fn mandala_genesis(
 		},
 		indices: IndicesConfig { indices: vec![] },
 		balances: BalancesConfig { balances },
-		sudo: SudoConfig { key: root_key.clone() },
+		sudo: SudoConfig {
+			key: Some(root_key.clone()),
+		},
 		general_council: Default::default(),
 		general_council_membership: GeneralCouncilMembershipConfig {
 			members: vec![root_key.clone()],

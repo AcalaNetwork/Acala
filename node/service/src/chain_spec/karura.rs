@@ -111,7 +111,7 @@ fn karura_genesis(
 		balances: BalancesConfig {
 			balances: initial_allocation,
 		},
-		sudo: SudoConfig { key: root_key },
+		sudo: SudoConfig { key: Some(root_key) },
 		general_council: Default::default(),
 		general_council_membership: GeneralCouncilMembershipConfig {
 			members: general_councils,
