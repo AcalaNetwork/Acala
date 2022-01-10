@@ -2658,7 +2658,7 @@ mod tests {
 				Ok(sp_runtime::transaction_validity::ValidTransaction {
 					priority: 0,
 					requires: vec![],
-					provides: vec![Encode::encode(&(alice.clone(), 3u32, b"eth_tx"))],
+					provides: vec![Encode::encode(&(address, 3u32))],
 					longevity: 30,
 					propagate: true,
 				})
@@ -2670,8 +2670,8 @@ mod tests {
 				expected_extra.4.validate(&alice, &call, &info, 0),
 				Ok(sp_runtime::transaction_validity::ValidTransaction {
 					priority: 0,
-					requires: vec![Encode::encode(&(alice.clone(), 3u32, b"eth_tx"))],
-					provides: vec![Encode::encode(&(alice.clone(), 4u32, b"eth_tx"))],
+					requires: vec![Encode::encode(&(address, 3u32))],
+					provides: vec![Encode::encode(&(address, 4u32))],
 					longevity: 30,
 					propagate: true,
 				})
