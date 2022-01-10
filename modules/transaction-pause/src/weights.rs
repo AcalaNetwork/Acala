@@ -49,6 +49,8 @@ use sp_std::marker::PhantomData;
 pub trait WeightInfo {
 	fn pause_transaction() -> Weight;
 	fn unpause_transaction() -> Weight;
+	fn pause_xcm() -> Weight;
+	fn resume_xcm() -> Weight;
 }
 
 /// Weights for module_transaction_pause using the Acala node and recommended hardware.
@@ -64,6 +66,16 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
+	fn pause_xcm() -> Weight {
+		(25_798_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(1 as Weight))
+			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+	}
+	fn resume_xcm() -> Weight {
+		(25_355_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(1 as Weight))
+			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+	}
 }
 
 // For backwards compatibility and tests
@@ -74,6 +86,16 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
 	fn unpause_transaction() -> Weight {
+		(25_355_000 as Weight)
+			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
+			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
+	}
+	fn pause_xcm() -> Weight {
+		(25_798_000 as Weight)
+			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
+			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
+	}
+	fn resume_xcm() -> Weight {
 		(25_355_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
