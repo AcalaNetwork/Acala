@@ -163,7 +163,7 @@ fn dex_module_works_with_evm_contract() {
 			assert_ok!(EvmAccounts::claim_account(
 				Origin::signed(AccountId::from(ALICE)),
 				EvmAccounts::eth_address(&alice_key()),
-				EvmAccounts::eth_sign(&alice_key(), &AccountId::from(ALICE).encode(), &[][..])
+				EvmAccounts::eth_sign(&alice_key(), &AccountId::from(ALICE))
 			));
 
 			// CurrencyId::DexShare(Erc20, Erc20)
@@ -378,7 +378,7 @@ fn test_multicurrency_precompile_module() {
 			assert_ok!(EvmAccounts::claim_account(
 				Origin::signed(AccountId::from(ALICE)),
 				EvmAccounts::eth_address(&alice_key()),
-				EvmAccounts::eth_sign(&alice_key(), &AccountId::from(ALICE).encode(), &[][..])
+				EvmAccounts::eth_sign(&alice_key(), &AccountId::from(ALICE))
 			));
 			assert_ok!(Dex::list_provisioning(
 				Origin::root(),
@@ -636,7 +636,7 @@ fn test_evm_accounts_module() {
 			assert_ok!(EvmAccounts::claim_account(
 				Origin::signed(AccountId::from(ALICE)),
 				EvmAccounts::eth_address(&alice_key()),
-				EvmAccounts::eth_sign(&alice_key(), &AccountId::from(ALICE).encode(), &[][..])
+				EvmAccounts::eth_sign(&alice_key(), &AccountId::from(ALICE))
 			));
 			System::assert_last_event(Event::EvmAccounts(module_evm_accounts::Event::ClaimAccount {
 				account_id: AccountId::from(ALICE),
@@ -648,7 +648,7 @@ fn test_evm_accounts_module() {
 				EvmAccounts::claim_account(
 					Origin::signed(AccountId::from(ALICE)),
 					EvmAccounts::eth_address(&alice_key()),
-					EvmAccounts::eth_sign(&alice_key(), &AccountId::from(ALICE).encode(), &[][..])
+					EvmAccounts::eth_sign(&alice_key(), &AccountId::from(ALICE))
 				),
 				module_evm_accounts::Error::<Runtime>::AccountIdHasMapped
 			);
@@ -656,7 +656,7 @@ fn test_evm_accounts_module() {
 				EvmAccounts::claim_account(
 					Origin::signed(AccountId::from(BOB)),
 					EvmAccounts::eth_address(&alice_key()),
-					EvmAccounts::eth_sign(&alice_key(), &AccountId::from(BOB).encode(), &[][..])
+					EvmAccounts::eth_sign(&alice_key(), &AccountId::from(BOB))
 				),
 				module_evm_accounts::Error::<Runtime>::EthAddressHasMapped
 			);
@@ -669,7 +669,7 @@ fn test_evm_accounts_module() {
 			assert_ok!(EvmAccounts::claim_account(
 				Origin::signed(AccountId::from(BOB)),
 				EvmAccounts::eth_address(&bob_key()),
-				EvmAccounts::eth_sign(&bob_key(), &AccountId::from(BOB).encode(), &[][..])
+				EvmAccounts::eth_sign(&bob_key(), &AccountId::from(BOB))
 			));
 			assert_eq!(System::providers(&bob()), 0);
 			assert_eq!(System::providers(&AccountId::from(BOB)), 1);

@@ -45,7 +45,7 @@ use sp_io::{
 	hashing::{blake2_256, keccak_256},
 };
 use sp_runtime::{
-	traits::{LookupError, StaticLookup},
+	traits::{LookupError, StaticLookup, Zero},
 	MultiAddress,
 };
 use sp_std::{marker::PhantomData, vec::Vec};
@@ -254,8 +254,7 @@ impl<T: Config> Pallet<T> {
 		domain_seperator_msg.extend_from_slice(keccak256!("Acala EVM claim")); // name
 		domain_seperator_msg.extend_from_slice(keccak256!("1")); // version
 		domain_seperator_msg.extend_from_slice(&to_bytes(T::ChainId::get())); // chain id
-		domain_seperator_msg
-			.extend_from_slice(frame_system::Pallet::<T>::block_hash(T::BlockNumber::default()).as_ref()); // genesis block hash
+		domain_seperator_msg.extend_from_slice(frame_system::Pallet::<T>::block_hash(T::BlockNumber::zero()).as_ref()); // genesis block hash
 		keccak_256(domain_seperator_msg.as_slice())
 	}
 }
