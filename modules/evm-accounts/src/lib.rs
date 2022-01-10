@@ -199,24 +199,6 @@ pub mod module {
 }
 
 impl<T: Config> Pallet<T> {
-	// Constructs the message that Ethereum RPC's `personal_sign` and `eth_sign`
-	// would sign.
-	pub fn ethereum_signable_message(what: &[u8], extra: &[u8]) -> Vec<u8> {
-		let prefix = b"acala evm:";
-		let mut l = prefix.len() + what.len() + extra.len();
-		let mut rev = Vec::new();
-		while l > 0 {
-			rev.push(b'0' + (l % 10) as u8);
-			l /= 10;
-		}
-		let mut v = b"\x19Ethereum Signed Message:\n".to_vec();
-		v.extend(rev.into_iter().rev());
-		v.extend_from_slice(&prefix[..]);
-		v.extend_from_slice(what);
-		v.extend_from_slice(extra);
-		v
-	}
-
 	#[cfg(any(feature = "runtime-benchmarks", feature = "std"))]
 	// Returns an Etherum public key derived from an Ethereum secret key.
 	pub fn eth_public(secret: &libsecp256k1::SecretKey) -> libsecp256k1::PublicKey {
@@ -232,8 +214,8 @@ impl<T: Config> Pallet<T> {
 
 	#[cfg(any(feature = "runtime-benchmarks", feature = "std"))]
 	// Constructs a message and signs it.
-	pub fn eth_sign(secret: &libsecp256k1::SecretKey, what: &[u8], extra: &[u8]) -> Eip712Signature {
-		let msg = keccak_256(&Self::ethereum_signable_message(&to_ascii_hex(what)[..], extra));
+	pub fn eth_sign(secret: &libsecp256k1::SecretKey, who: &T::AccountId) -> Eip712Signature {
+		let msg = keccak_256(&Self::eip712_signable_message(who));
 		let (sig, recovery_id) = libsecp256k1::sign(&libsecp256k1::Message::parse(&msg), secret);
 		let mut r = [0u8; 65];
 		r[0..64].copy_from_slice(&sig.serialize()[..]);
@@ -242,26 +224,39 @@ impl<T: Config> Pallet<T> {
 	}
 
 	fn verify_eip712_signature(who: &T::AccountId, sig: &[u8; 65]) -> Option<H160> {
-		let domain_hash = keccak256!("EIP712Domain(string name,string version,uint256 ChainId,bytes32 salt)");
-		let tx_type_hash = keccak256!("Transaction(string address)");
+		let msg = Self::eip712_signable_message(who);
+		let msg_hash = keccak_256(msg.as_slice());
 
+		recover_signer(&sig, &msg_hash)
+	}
+
+	// Eip-712 message to be signed
+	fn eip712_signable_message(who: &T::AccountId) -> Vec<u8> {
+		let domain_separator = Self::evm_account_domain_separator();
+		let payload_hash = Self::evm_account_payload_hash(who);
+
+		let mut msg = b"\x19\x01".to_vec();
+		msg.extend_from_slice(&domain_separator);
+		msg.extend_from_slice(&payload_hash);
+		msg
+	}
+
+	fn evm_account_payload_hash(who: &T::AccountId) -> [u8; 32] {
+		let tx_type_hash = keccak256!("Transaction(string address)");
+		let mut tx_msg = tx_type_hash.to_vec();
+		tx_msg.extend(who.using_encoded(to_ascii_hex));
+		keccak_256(&tx_msg.as_slice())
+	}
+
+	fn evm_account_domain_separator() -> [u8; 32] {
+		let domain_hash = keccak256!("EIP712Domain(string name,string version,uint256 ChainId,bytes32 salt)");
 		let mut domain_seperator_msg = domain_hash.to_vec();
 		domain_seperator_msg.extend_from_slice(keccak256!("Acala EVM claim")); // name
 		domain_seperator_msg.extend_from_slice(keccak256!("1")); // version
 		domain_seperator_msg.extend_from_slice(&to_bytes(T::ChainId::get())); // chain id
 		domain_seperator_msg
 			.extend_from_slice(frame_system::Pallet::<T>::block_hash(T::BlockNumber::default()).as_ref()); // genesis block hash
-		let domain_separator = keccak_256(domain_seperator_msg.as_slice());
-
-		let mut tx_msg = tx_type_hash.to_vec();
-		tx_msg.extend(who.using_encoded(to_ascii_hex));
-
-		let mut msg = b"\x19\x01".to_vec();
-		msg.extend_from_slice(&domain_separator);
-		msg.extend_from_slice(&keccak_256(tx_msg.as_slice()));
-		let msg_hash = keccak_256(msg.as_slice());
-
-		recover_signer(&sig, &msg_hash)
+		keccak_256(domain_seperator_msg.as_slice())
 	}
 }
 
