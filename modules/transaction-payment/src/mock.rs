@@ -234,7 +234,7 @@ impl PriceProvider<CurrencyId> for MockPriceSource {
 parameter_types! {
 	// DO NOT CHANGE THIS VALUE, AS IT EFFECT THE TESTCASES.
 	pub const FeePoolSize: Balance = 10_000;
-	pub const SwapBalanceThreshold: Balance = 20;
+	pub const SwapThreshold: Balance = 20;
 	pub const TransactionPaymentPalletId: PalletId = PalletId(*b"aca/fees");
 	pub const TreasuryPalletId: PalletId = PalletId(*b"aca/trsy");
 	pub KaruraTreasuryAccount: AccountId = TreasuryPalletId::get().into_account();
@@ -303,21 +303,6 @@ construct_runtime!(
 		DEXModule: module_dex::{Pallet, Storage, Call, Event<T>, Config<T>},
 	}
 );
-
-pub struct MockTransactionPaymentUpgrade;
-
-impl frame_support::traits::OnRuntimeUpgrade for MockTransactionPaymentUpgrade {
-	fn on_runtime_upgrade() -> Weight {
-		for asset in FeePoolExchangeTokens::get() {
-			let _ = <transaction_payment::Pallet<Runtime>>::initialize_pool(
-				asset,
-				FeePoolSize::get(),
-				SwapBalanceThreshold::get(),
-			);
-		}
-		0
-	}
-}
 
 pub struct ExtBuilder {
 	balances: Vec<(AccountId, CurrencyId, Balance)>,

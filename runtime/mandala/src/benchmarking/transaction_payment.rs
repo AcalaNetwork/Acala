@@ -18,8 +18,8 @@
 
 use super::utils::set_balance;
 use crate::{
-	dollar, AccountId, Balance, Currencies, CurrencyId, Dex, Event, FeePoolSize, GetNativeCurrencyId,
-	GetStableCurrencyId, NativeTokenExistentialDeposit, Origin, Runtime, System, TransactionPayment, TreasuryPalletId,
+	dollar, AccountId, Balance, Currencies, CurrencyId, Dex, Event, GetNativeCurrencyId, GetStableCurrencyId,
+	NativeTokenExistentialDeposit, Origin, Runtime, System, TransactionPayment, TreasuryPalletId,
 };
 use frame_benchmarking::{account, whitelisted_caller};
 use frame_support::traits::OnFinalize;
@@ -91,7 +91,7 @@ runtime_benchmarks! {
 		let sub_account: AccountId = <Runtime as module_transaction_payment::Config>::PalletId::get().into_sub_account(STABLECOIN);
 		let native_ed: Balance = <Currencies as MultiCurrency<AccountId>>::minimum_balance(NATIVECOIN);
 		let stable_ed: Balance = <Currencies as MultiCurrency<AccountId>>::minimum_balance(STABLECOIN);
-		let pool_size: Balance = FeePoolSize::get();
+		let pool_size: Balance = native_ed * 50;
 		let swap_threshold: Balance = native_ed * 2;
 
 		let path = vec![STABLECOIN, NATIVECOIN];

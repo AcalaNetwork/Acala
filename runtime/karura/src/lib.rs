@@ -1116,13 +1116,6 @@ parameter_types! {
 		vec![LKSM, KSM, KAR],
 		vec![BNC, KUSD, KSM, KAR],
 	];
-	// Initial fee pool size. one extrinsic=0.0025 KAR, one block=100 extrinsics.
-	// 20 blocks trigger an swap, so total balance=0.0025*100*20=5 KAR
-	pub FeePoolSize: Balance = 5 * dollar(KAR);
-	// one extrinsic fee=0.0025KAR, one block=100 extrinsics, threshold=0.25+0.1=0.35KAR
-	pub SwapBalanceThreshold: Balance = Ratio::saturating_from_rational(35, 100).saturating_mul_int(dollar(KAR));
-	// tokens used as fee charge. the token should have corresponding dex swap pool enabled.
-	pub FeePoolExchangeTokens: Vec<CurrencyId> = vec![KUSD, KSM, LKSM, BNC];
 }
 
 type NegativeImbalance = <Balances as PalletCurrency<AccountId>>::NegativeImbalance;
@@ -1998,33 +1991,8 @@ pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExtra>;
 /// Executive: handles dispatch to the various modules.
-pub type Executive = frame_executive::Executive<
-	Runtime,
-	Block,
-	frame_system::ChainContext<Runtime>,
-	Runtime,
-	AllPallets,
-	TransactionPaymentUpgrade,
->;
-
-pub struct TransactionPaymentUpgrade;
-impl frame_support::traits::OnRuntimeUpgrade for TransactionPaymentUpgrade {
-	fn on_runtime_upgrade() -> Weight {
-		let initial_rates = FeePoolExchangeTokens::get();
-		if initial_rates.is_empty() {
-			0
-		} else {
-			for asset in initial_rates {
-				let _ = <module_transaction_payment::Pallet<Runtime>>::initialize_pool(
-					asset,
-					FeePoolSize::get(),
-					SwapBalanceThreshold::get(),
-				);
-			}
-			<Runtime as frame_system::Config>::BlockWeights::get().max_block
-		}
-	}
-}
+pub type Executive =
+	frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllPallets, ()>;
 
 #[cfg(not(feature = "disable-runtime-api"))]
 impl_runtime_apis! {

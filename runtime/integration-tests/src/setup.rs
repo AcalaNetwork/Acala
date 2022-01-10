@@ -72,24 +72,23 @@ mod mandala_imports {
 pub use karura_imports::*;
 #[cfg(feature = "with-karura-runtime")]
 mod karura_imports {
-	pub use frame_support::parameter_types;
-	use frame_support::weights::Weight;
+	pub use frame_support::{parameter_types, weights::Weight};
 	pub use karura_runtime::{
 		constants::parachains, create_x2_parachain_multilocation, get_all_module_accounts, AcalaOracle, AccountId,
 		AssetRegistry, AuctionManager, Authority, AuthoritysOriginId, Balance, Balances, BlockNumber, Call, CdpEngine,
 		CdpTreasury, CreateClassDeposit, CreateTokenDeposit, Currencies, CurrencyId, CurrencyIdConvert,
 		DataDepositPerByte, DefaultExchangeRate, Dex, EmergencyShutdown, Event, EvmAccounts, ExistentialDeposits,
-		FeePoolSize, FinancialCouncil, Get, GetNativeCurrencyId, Homa, HomaXcm, Honzon, IdleScheduler, KarPerSecond,
+		FinancialCouncil, Get, GetNativeCurrencyId, Homa, HomaXcm, Honzon, IdleScheduler, KarPerSecond,
 		KaruraFoundationAccounts, KsmPerSecond, KusamaBondingDuration, KusdPerSecond, Loans, MaxTipsOfPriority,
 		MinimumDebitValue, MultiLocation, NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, Origin,
 		OriginCaller, ParachainAccount, ParachainInfo, ParachainSystem, PolkadotXcm, Proxy, ProxyType, Ratio,
-		RelayChainBlockNumberProvider, Runtime, Scheduler, Session, SessionManager, SevenDays, SwapBalanceThreshold,
-		System, Timestamp, TipPerWeightStep, TokenSymbol, Tokens, TreasuryPalletId, Utility, Vesting, XTokens,
-		XcmConfig, XcmExecutor, EVM, NFT,
+		RelayChainBlockNumberProvider, Runtime, Scheduler, Session, SessionManager, SevenDays, System, Timestamp,
+		TipPerWeightStep, TokenSymbol, Tokens, TreasuryPalletId, Utility, Vesting, XTokens, XcmConfig, XcmExecutor,
+		EVM, NFT,
 	};
 	pub use primitives::TradingPair;
 	pub use runtime_common::{calculate_asset_ratio, cent, dollar, millicent, KAR, KSM, KUSD, LKSM};
-	pub use sp_runtime::traits::AccountIdConversion;
+	pub use sp_runtime::{traits::AccountIdConversion, FixedPointNumber};
 
 	parameter_types! {
 		pub EnabledTradingPairs: Vec<TradingPair> = vec![
@@ -111,25 +110,18 @@ mod karura_imports {
 	);
 
 	parameter_types! {
-		pub TokenExchangeRates: Vec<(CurrencyId, Balance)> = vec![
+		// Initial fee pool size. one extrinsic=0.0025 KAR, one block=100 extrinsics.
+		// 20 blocks trigger an swap, so total balance=0.0025*100*20=5 KAR
+		pub FeePoolSize: Balance = 5 * dollar(KAR);
+		// one extrinsic fee=0.0025KAR, one block=100 extrinsics, threshold=0.25+0.1=0.35KAR
+		pub SwapBalanceThreshold: Balance = Ratio::saturating_from_rational(35, 100).saturating_mul_int(dollar(KAR));
+		// tokens used as fee charge. the token should have corresponding dex swap pool enabled.
+		pub InitialTokenFeePool: Vec<(CurrencyId, Balance)> = vec![
 			(KSM, FeePoolSize::get()),
 			(KUSD, FeePoolSize::get()),
+			// this one is to simulate not enough native asset so wouldn't take effect
 			(LKSM, NativeTokenExistentialDeposit::get() - 1),
 		];
-	}
-
-	pub struct MockRuntimeUpgrade;
-	impl frame_support::traits::OnRuntimeUpgrade for MockRuntimeUpgrade {
-		fn on_runtime_upgrade() -> Weight {
-			for asset in TokenExchangeRates::get() {
-				let _ = <module_transaction_payment::Pallet<Runtime>>::initialize_pool(
-					asset.0,
-					asset.1,
-					SwapBalanceThreshold::get(),
-				);
-			}
-			0
-		}
 	}
 }
 
