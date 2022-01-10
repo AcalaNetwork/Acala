@@ -127,15 +127,13 @@ where
 				}
 				.into());
 			}
-		} else {
-			if self.nonce != account.nonce {
-				return Err(if self.nonce < account.nonce {
-					InvalidTransaction::Stale
-				} else {
-					InvalidTransaction::Future
-				}
-				.into());
+		} else if self.nonce != account.nonce {
+			return Err(if self.nonce < account.nonce {
+				InvalidTransaction::Stale
+			} else {
+				InvalidTransaction::Future
 			}
+			.into());
 		}
 		account.nonce += T::Index::one();
 		frame_system::Account::<T>::insert(who, account);
@@ -160,9 +158,9 @@ where
 				return InvalidTransaction::Stale.into();
 			}
 
-			let provides = vec![Encode::encode(&(who, self.nonce, b"eth_tx"))];
+			let provides = vec![Encode::encode(&(address, self.nonce))];
 			let requires = if evm_nonce < self.nonce {
-				vec![Encode::encode(&(who, self.nonce - One::one(), b"eth_tx"))]
+				vec![Encode::encode(&(address, self.nonce - One::one()))]
 			} else {
 				vec![]
 			};
@@ -306,7 +304,7 @@ mod tests {
 				Ok(ValidTransaction {
 					priority: 0,
 					requires: vec![],
-					provides: vec![Encode::encode(&(alice.clone(), 1u32, b"eth_tx"))],
+					provides: vec![Encode::encode(&(address, 1u32))],
 					longevity: 10,
 					propagate: true,
 				})
@@ -327,8 +325,8 @@ mod tests {
 				.validate(&alice, CALL, &info, 0),
 				Ok(ValidTransaction {
 					priority: 0,
-					requires: vec![Encode::encode(&(alice.clone(), 2u32, b"eth_tx"))],
-					provides: vec![Encode::encode(&(alice.clone(), 3u32, b"eth_tx"))],
+					requires: vec![Encode::encode(&(address, 2u32))],
+					provides: vec![Encode::encode(&(address, 3u32))],
 					longevity: 10,
 					propagate: true,
 				})
