@@ -21,7 +21,7 @@ env:
 jobs:
   test:
     name: Coverage Report
-    runs-on: ubuntu-latest #[self-hosted, linux]
+    runs-on: [self-hosted, linux]
     steps:
       - name: Cancel Previous Runs
         # Only cancel non-master branch runs
