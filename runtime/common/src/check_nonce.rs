@@ -78,7 +78,7 @@ impl<T: frame_system::Config + module_evm::Config> sp_std::fmt::Debug for CheckN
 	fn fmt(&self, f: &mut sp_std::fmt::Formatter) -> sp_std::fmt::Result {
 		write!(
 			f,
-			"CheckNonce(nonce: {}, is_eth_tx: {} eth_tx_valid_until: {})",
+			"CheckNonce(nonce: {}, is_eth_tx: {}, eth_tx_valid_until: {})",
 			self.nonce, self.is_eth_tx, self.eth_tx_valid_until
 		)
 	}
