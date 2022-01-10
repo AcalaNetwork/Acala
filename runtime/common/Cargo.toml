@@ -1,6 +1,6 @@
 [package]
 name = "runtime-common"
-version = "2.1.1"
+version = "2.1.3"
 authors = ["Acala Developers"]
 edition = "2021"
 
@@ -28,7 +28,6 @@ orml-traits = { path = "../../orml/traits", default-features = false }
 
 module-evm = { path = "../../modules/evm", default-features = false }
 module-evm-utiltity-macro = { path = "../../modules/evm-utiltity/macro" }
-module-staking-pool = { path = "../../modules/staking-pool", default-features = false }
 module-support = { path = "../../modules/support", default-features = false }
 module-idle-scheduler = { path = "../../modules/idle-scheduler", default-features = false }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
@@ -84,7 +83,6 @@ std = [
 
 	"module-evm/std",
 	"module-idle-scheduler/std",
-	"module-staking-pool/std",
 	"module-support/std",
 	"primitives/std",
 	"module-prices/std",

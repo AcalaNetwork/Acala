@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2021 Acala Foundation.
+// Copyright (C) 2020-2022 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -18,7 +18,7 @@
 
 use crate::{
 	AccountId, CurrencyId, GetLiquidCurrencyId, MaxUnlockingChunks, MinCouncilBondThreshold, NominateesCount,
-	NomineesElection, PolkadotBondingDuration, Runtime,
+	NomineesElection, Runtime,
 };
 
 use super::utils::set_balance;
@@ -66,7 +66,7 @@ runtime_benchmarks! {
 		for _ in 0..c {
 			NomineesElection::unbond(RawOrigin::Signed(caller.clone()).into(), MinCouncilBondThreshold::get()/c as u128)?;
 		}
-		NomineesElection::on_new_era(PolkadotBondingDuration::get());
+		NomineesElection::on_new_era(1);
 	}: _(RawOrigin::Signed(caller))
 
 	nominate {

@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2021 Acala Foundation.
+// Copyright (C) 2020-2022 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -17,11 +17,9 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::setup::*;
-use frame_support::traits::OnRuntimeUpgrade;
 use frame_support::weights::{DispatchClass, DispatchInfo, Pays, Weight};
 use karura_runtime::{
-	FeePoolSize, KarPerSecondAsBased, KaruraTreasuryAccount, KsmPerSecond, NativeTokenExistentialDeposit,
-	TransactionPaymentPalletId,
+	KarPerSecondAsBased, KaruraTreasuryAccount, KsmPerSecond, NativeTokenExistentialDeposit, TransactionPaymentPalletId,
 };
 use module_transaction_payment::TransactionFeePoolTrader;
 use sp_runtime::traits::SignedExtension;
@@ -33,8 +31,19 @@ use xcm_builder::FixedRateOfFungible;
 use xcm_executor::{traits::*, Assets, Config};
 
 #[cfg(feature = "with-karura-runtime")]
+fn init_charge_fee_pool() {
+	for asset in InitialTokenFeePool::get() {
+		let _ = <module_transaction_payment::Pallet<Runtime>>::initialize_pool(
+			asset.0,
+			asset.1,
+			SwapBalanceThreshold::get(),
+		);
+	}
+}
+
+#[cfg(feature = "with-karura-runtime")]
 #[test]
-fn runtime_upgrade_initial_pool_works() {
+fn initial_charge_fee_pool_works() {
 	ExtBuilder::default()
 		.balances(vec![
 			(AccountId::from(ALICE), KAR, 100000 * dollar(KAR)),
@@ -50,7 +59,7 @@ fn runtime_upgrade_initial_pool_works() {
 			let pool_size = FeePoolSize::get();
 
 			// upgrade takes no effect
-			MockRuntimeUpgrade::on_runtime_upgrade();
+			init_charge_fee_pool();
 			assert_eq!(Currencies::free_balance(KAR, &treasury_account), ed);
 			assert_eq!(Currencies::free_balance(KAR, &fee_account1), 0);
 
@@ -92,7 +101,7 @@ fn runtime_upgrade_initial_pool_works() {
 				0,
 				false
 			));
-			MockRuntimeUpgrade::on_runtime_upgrade();
+			init_charge_fee_pool();
 			assert_eq!(Currencies::free_balance(KAR, &treasury_account), ed + pool_size);
 			vec![KSM, KUSD].iter().for_each(|token| {
 				let ed =
@@ -209,7 +218,7 @@ fn trader_works() {
 				0,
 				false
 			));
-			MockRuntimeUpgrade::on_runtime_upgrade();
+			init_charge_fee_pool();
 			assert_eq!(Currencies::free_balance(KAR, &treasury_account), ed);
 			assert_eq!(Currencies::free_balance(KAR, &fee_account1), pool_size);
 			assert_eq!(Currencies::free_balance(KSM, &fee_account1), ksm_ed);
@@ -272,7 +281,7 @@ fn charge_transaction_payment_and_threshold_works() {
 				0,
 				false
 			));
-			MockRuntimeUpgrade::on_runtime_upgrade();
+			init_charge_fee_pool();
 			assert_eq!(Currencies::free_balance(KAR, &treasury_account), native_ed);
 			assert_eq!(Currencies::free_balance(KAR, &sub_account1), pool_size);
 			assert_eq!(Currencies::free_balance(KSM, &sub_account1), ksm_ed);
@@ -368,8 +377,8 @@ fn charge_transaction_payment_and_threshold_works() {
 			let kar1 = Currencies::free_balance(KAR, &sub_account1);
 			let ksm1 = Currencies::free_balance(KSM, &sub_account1);
 			assert_eq!(ksm_ed + ksm_exchange_rate.saturating_mul_int(fee), ksm1);
-			assert_eq!(kar1 > kar2, true);
-			assert_eq!(ksm2 > ksm1, true);
+			assert!(kar1 > kar2);
+			assert!(ksm2 > ksm1);
 
 			// next tx use the new rate to calculate the fee to be transfer.
 			let new_rate: Ratio = module_transaction_payment::Pallet::<Runtime>::token_exchange_rate(KSM).unwrap();
@@ -385,42 +394,4 @@ fn charge_transaction_payment_and_threshold_works() {
 			assert_eq!(fee, kar1 - kar2);
 			assert_eq!(new_rate.saturating_mul_int(fee), ksm2 - ksm1);
 		});
-}
-
-#[cfg(feature = "with-acala-runtime")]
-#[test]
-fn acala_dex_disable_works() {
-	use acala_runtime::{
-		AcalaTreasuryAccount, FeePoolSize, NativeTokenExistentialDeposit, TransactionPaymentPalletId,
-		TransactionPaymentUpgrade,
-	};
-
-	ExtBuilder::default().build().execute_with(|| {
-		let treasury_account = AcalaTreasuryAccount::get();
-		let fee_account1: AccountId = TransactionPaymentPalletId::get().into_sub_account(DOT);
-		let fee_account2: AccountId = TransactionPaymentPalletId::get().into_sub_account(AUSD);
-		let ed = NativeTokenExistentialDeposit::get();
-		let pool_size = FeePoolSize::get();
-
-		assert_ok!(Currencies::update_balance(
-			Origin::root(),
-			MultiAddress::Id(treasury_account.clone()),
-			ACA,
-			pool_size.saturating_mul(3).unique_saturated_into(),
-		));
-		assert_eq!(Currencies::free_balance(ACA, &treasury_account), ed + pool_size * 3);
-		vec![DOT, AUSD].iter().for_each(|token| {
-			let ed = (<Currencies as MultiCurrency<AccountId>>::minimum_balance(token.clone())).unique_saturated_into();
-			assert_ok!(Currencies::update_balance(
-				Origin::root(),
-				MultiAddress::Id(treasury_account.clone()),
-				token.clone(),
-				ed,
-			));
-		});
-
-		TransactionPaymentUpgrade::on_runtime_upgrade();
-		assert_eq!(Currencies::free_balance(ACA, &fee_account1), 0);
-		assert_eq!(Currencies::free_balance(ACA, &fee_account2), 0);
-	});
 }

@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2021 Acala Foundation.
+// Copyright (C) 2020-2022 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -63,7 +63,7 @@ use orml_traits::{
 use pallet_transaction_payment::RuntimeDispatchInfo;
 
 pub use cumulus_primitives_core::ParaId;
-pub use orml_xcm_support::{IsNativeConcrete, MultiCurrencyAdapter, MultiNativeAsset};
+pub use orml_xcm_support::{DepositToAlternative, IsNativeConcrete, MultiCurrencyAdapter, MultiNativeAsset};
 use pallet_xcm::XcmPassthrough;
 pub use polkadot_parachain::primitives::Sibling;
 pub use xcm::latest::prelude::*;
@@ -1099,13 +1099,6 @@ impl module_transaction_pause::Config for Runtime {
 parameter_types! {
 	// Sort by fee charge order
 	pub DefaultFeeSwapPathList: Vec<Vec<CurrencyId>> = vec![vec![AUSD, DOT, ACA], vec![DOT, ACA], vec![LDOT, DOT, ACA]];
-	// Initial fee pool size. one extrinsic=0.0025 ACA, one block=100 extrinsics.
-	// 20 blocks trigger an swap, so total balance=0.0025*100*20=5 ACA
-	pub FeePoolSize: Balance = 5 * dollar(ACA);
-	// one extrinsic fee=0.0025ACA, one block=100 extrinsics, threshold=0.25+0.1=0.35ACA
-	pub SwapBalanceThreshold: Balance = Ratio::saturating_from_rational(35, 100).saturating_mul_int(dollar(ACA));
-	// tokens used as fee charge. the token should have corresponding dex swap pool enabled.
-	pub FeePoolExchangeTokens: Vec<CurrencyId> = vec![AUSD, DOT];
 }
 
 type NegativeImbalance = <Balances as PalletCurrency<AccountId>>::NegativeImbalance;
@@ -1619,6 +1612,7 @@ pub type LocalAssetTransactor = MultiCurrencyAdapter<
 	LocationToAccountId,
 	CurrencyId,
 	CurrencyIdConvert,
+	DepositToAlternative<AcalaTreasuryAccount, Currencies, CurrencyId, AccountId, Balance>,
 >;
 
 //TODO: use token registry currency type encoding
@@ -1879,33 +1873,8 @@ pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExtra>;
 /// Executive: handles dispatch to the various modules.
-pub type Executive = frame_executive::Executive<
-	Runtime,
-	Block,
-	frame_system::ChainContext<Runtime>,
-	Runtime,
-	AllPallets,
-	TransactionPaymentUpgrade,
->;
-
-pub struct TransactionPaymentUpgrade;
-impl frame_support::traits::OnRuntimeUpgrade for TransactionPaymentUpgrade {
-	fn on_runtime_upgrade() -> Weight {
-		let initial_rates = FeePoolExchangeTokens::get();
-		if initial_rates.is_empty() {
-			0
-		} else {
-			for asset in initial_rates {
-				let _ = <module_transaction_payment::Pallet<Runtime>>::initialize_pool(
-					asset,
-					FeePoolSize::get(),
-					SwapBalanceThreshold::get(),
-				);
-			}
-			<Runtime as frame_system::Config>::BlockWeights::get().max_block
-		}
-	}
-}
+pub type Executive =
+	frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllPallets, ()>;
 
 #[cfg(not(feature = "disable-runtime-api"))]
 impl_runtime_apis! {

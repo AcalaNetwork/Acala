@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2021 Acala Foundation.
+// Copyright (C) 2020-2022 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -45,9 +45,6 @@ use sp_runtime::{
 	FixedPointNumber, Perbill,
 };
 use static_assertions::const_assert;
-
-mod homa;
-pub use homa::*;
 
 pub mod precompile;
 use orml_traits::GetByKey;
