@@ -227,7 +227,7 @@ impl<T: Config> Pallet<T> {
 		let msg = Self::eip712_signable_message(who);
 		let msg_hash = keccak_256(msg.as_slice());
 
-		recover_signer(&sig, &msg_hash)
+		recover_signer(sig, &msg_hash)
 	}
 
 	// Eip-712 message to be signed
@@ -245,7 +245,7 @@ impl<T: Config> Pallet<T> {
 		let tx_type_hash = keccak256!("Transaction(string address)");
 		let mut tx_msg = tx_type_hash.to_vec();
 		tx_msg.extend(who.using_encoded(to_ascii_hex));
-		keccak_256(&tx_msg.as_slice())
+		keccak_256(tx_msg.as_slice())
 	}
 
 	fn evm_account_domain_separator() -> [u8; 32] {
