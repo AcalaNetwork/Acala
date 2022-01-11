@@ -328,9 +328,8 @@ fn verify_eip712_signature(eth_msg: EthereumTransactionMessage, sig: [u8; 65]) -
 	tx_msg.extend_from_slice(&to_bytes(eth_msg.value));
 	tx_msg.extend_from_slice(&to_bytes(eth_msg.gas_limit));
 	tx_msg.extend_from_slice(&to_bytes(eth_msg.storage_limit));
+	tx_msg.extend_from_slice(&keccak_256(&to_bytes(eth_msg.access_list.as_slice())));
 	tx_msg.extend_from_slice(&to_bytes(eth_msg.valid_until));
-	// TODO: unimplement
-	//tx_msg.extend_from_slice(&keccak_256(&to_bytes(eth_msg.access_list.as_slice())));
 
 	let mut msg = b"\x19\x01".to_vec();
 	msg.extend_from_slice(&domain_separator);

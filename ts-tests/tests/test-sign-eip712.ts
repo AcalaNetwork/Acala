@@ -50,6 +50,10 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 		};
 
 		const types = {
+			AccessList: [
+				{ name: "addressKey", type: "address" },
+				{ name: "storageKeys", type: "uint256[]" },
+		    ],
 			Transaction: [
 				{ name: "action", type: "string" },
 				{ name: "to", type: "address" },
@@ -59,6 +63,7 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 				{ name: "value", type: "uint256" },
 				{ name: "gasLimit", type: "uint256" },
 				{ name: "storageLimit", type: "uint256" },
+				{ name: "accessList", type: "AccessList[]" },
 				{ name: "validUntil", type: "uint256" },
 			],
 		};
@@ -75,6 +80,7 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 			value: '0',
 			gasLimit: 2100000,
 			storageLimit: 20000,
+			accessList: [],
 			validUntil: (await context.provider.api.rpc.chain.getHeader()).number.toNumber() + 100,
 		};
 
@@ -84,7 +90,8 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 			value.value,
 			value.gasLimit,
 			value.storageLimit,
-			value.validUntil
+			value.accessList,
+			value.validUntil,
 		);
 
 		const signature = await signer._signTypedData(domain, types, value);
@@ -126,6 +133,7 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 						"value": 0,
 						"gas_limit": 2100000,
 						"storage_limit": 20000,
+						"access_list": [],
 						"valid_until": 105
 					}
 				}
@@ -164,6 +172,10 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 		};
 
 		const types = {
+			AccessList: [
+				{ name: "addressKey", type: "address" },
+				{ name: "storageKeys", type: "uint256[]" },
+		    ],
 			Transaction: [
 				{ name: "action", type: "string" },
 				{ name: "to", type: "address" },
@@ -173,6 +185,7 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 				{ name: "value", type: "uint256" },
 				{ name: "gasLimit", type: "uint256" },
 				{ name: "storageLimit", type: "uint256" },
+				{ name: "accessList", type: "AccessList[]" },
 				{ name: "validUntil", type: "uint256" },
 			],
 		};
@@ -190,6 +203,7 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 			value: '0',
 			gasLimit: 210000,
 			storageLimit: 1000,
+			accessList: [],
 			validUntil: (await context.provider.api.rpc.chain.getHeader()).number.toNumber() + 100,
 		};
 
@@ -199,6 +213,7 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 			value.value,
 			value.gasLimit,
 			value.storageLimit,
+			value.accessList,
 			value.validUntil
 		);
 
@@ -241,6 +256,7 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 						"value": 0,
 						"gas_limit": 210000,
 						"storage_limit": 1000,
+						"access_list": [],
 						"valid_until": 106
 					}
 				}
