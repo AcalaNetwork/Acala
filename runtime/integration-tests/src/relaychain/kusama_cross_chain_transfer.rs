@@ -84,7 +84,97 @@ fn transfer_to_relay_chain() {
 }
 
 #[test]
+fn transfer_from_self() {
+	env_logger::init();
+	TestNet::reset();
+
+	fn karura_reserve_account() -> AccountId {
+		use sp_runtime::traits::AccountIdConversion;
+		polkadot_parachain::primitives::Sibling::from(2001).into_account()
+	}
+
+	Karura::execute_with(|| {
+		let _ = Balances::deposit_creating(&AccountId::from(ALICE), 100_000_000_000_000);
+
+		assert_ok!(XTokens::transfer(
+			Origin::signed(ALICE.into()),
+			KAR,
+			10_000_000_000_000,
+			Box::new(
+				MultiLocation::new(
+					1,
+					X2(
+						Parachain(2001),
+						Junction::AccountId32 {
+							network: NetworkId::Any,
+							id: BOB.into(),
+						}
+					)
+				)
+				.into()
+			),
+			1_000_000_000_000,
+		));
+
+		assert_eq!(90_000_000_000_000, Balances::free_balance(&AccountId::from(ALICE)));
+		assert_eq!(10_000_000_000_000, Balances::free_balance(&karura_reserve_account()));
+	});
+
+	Sibling::execute_with(|| {
+		assert_eq!(0, Tokens::free_balance(KAR, &AccountId::from(BOB)));
+		assert_eq!(9_993_600_000_000, Balances::free_balance(&AccountId::from(BOB)));
+	});
+}
+
+#[test]
+fn transfer_from_sibling() {
+	env_logger::init();
+	TestNet::reset();
+
+	fn karura_reserve_account() -> AccountId {
+		use sp_runtime::traits::AccountIdConversion;
+		polkadot_parachain::primitives::Sibling::from(2001).into_account()
+	}
+
+	Karura::execute_with(|| {
+		let _ = Balances::deposit_creating(&karura_reserve_account(), 100_000_000_000_000);
+	});
+	Sibling::execute_with(|| {
+		let _ = Balances::deposit_creating(&AccountId::from(BOB), 100_000_000_000_000);
+
+		assert_ok!(XTokens::transfer(
+			Origin::signed(BOB.into()),
+			KAR,
+			10_000_000_000_000,
+			Box::new(
+				MultiLocation::new(
+					1,
+					X2(
+						Parachain(2000),
+						Junction::AccountId32 {
+							network: NetworkId::Any,
+							id: ALICE.into(),
+						}
+					)
+				)
+				.into()
+			),
+			1_000_000_000,
+		));
+
+		assert_eq!(90_000_000_000_000, Balances::free_balance(&AccountId::from(BOB)));
+	});
+
+	Karura::execute_with(|| {
+		// assert_eq!(Tokens::free_balance(BNC, &AccountId::from(ALICE)), 94_989_760_000_000);
+		assert_eq!(9_993_600_000_000, Balances::free_balance(&AccountId::from(ALICE)));
+		assert_eq!(90_000_000_000_000, Balances::free_balance(&karura_reserve_account()));
+	});
+}
+
+#[test]
 fn transfer_to_sibling() {
+	env_logger::init();
 	TestNet::reset();
 
 	fn karura_reserve_account() -> AccountId {

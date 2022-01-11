@@ -75,7 +75,7 @@ impl sp_wasm_interface::HostFunctions for SignatureVerificationOverride {
 		)
 	}
 
-	fn register_static<T>(registry: &mut T) -> Result<(), T::Error>
+	fn register_static<T>(_registry: &mut T) -> Result<(), T::Error>
 	where
 		T: HostFunctionRegistry,
 	{

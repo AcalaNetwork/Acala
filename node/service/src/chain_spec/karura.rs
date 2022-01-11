@@ -86,6 +86,7 @@ pub fn karura_dev_config() -> Result<ChainSpec, String> {
 		vec![],
 		None,
 		None,
+		None,
 		Some(karura_properties()),
 		Extensions {
 			relay_chain: "rococo-local".into(),

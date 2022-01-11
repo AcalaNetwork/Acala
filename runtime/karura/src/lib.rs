@@ -1482,9 +1482,15 @@ parameter_types! {
 		ksm_per_second() * 400
 	);
 	pub KarPerSecond: (AssetId, u128) = (
+		// MultiLocation::new(
+		// 	1,
+		// 	// X2(Parachain(u32::from(ParachainInfo::get())), GeneralKey(KAR.encode())),
+		// 	X2(Parachain(2000), GeneralKey(KAR.encode())),
+		// ).into(),
 		MultiLocation::new(
-			1,
-			X2(Parachain(u32::from(ParachainInfo::get())), GeneralKey(KAR.encode())),
+			0,
+			// X2(Parachain(u32::from(ParachainInfo::get())), GeneralKey(KAR.encode())),
+			X1(GeneralKey(KAR.encode())),
 		).into(),
 		kar_per_second()
 	);
@@ -1542,17 +1548,17 @@ parameter_types! {
 }
 
 pub type Trader = (
-	TransactionFeePoolTrader<Runtime, CurrencyIdConvert, KarPerSecondAsBased, ToTreasury>,
-	FixedRateOfFungible<KsmPerSecond, ToTreasury>,
-	FixedRateOfFungible<KusdPerSecond, ToTreasury>,
+	// TransactionFeePoolTrader<Runtime, CurrencyIdConvert, KarPerSecondAsBased, ToTreasury>,
+	// FixedRateOfFungible<KsmPerSecond, ToTreasury>,
+	// FixedRateOfFungible<KusdPerSecond, ToTreasury>,
 	FixedRateOfFungible<KarPerSecond, ToTreasury>,
-	FixedRateOfFungible<LksmPerSecond, ToTreasury>,
-	FixedRateOfFungible<BncPerSecond, ToTreasury>,
-	FixedRateOfFungible<VsksmPerSecond, ToTreasury>,
-	FixedRateOfFungible<PHAPerSecond, ToTreasury>,
-	FixedRateOfFungible<KbtcPerSecond, ToTreasury>,
-	FixedRateOfFungible<KintPerSecond, ToTreasury>,
-	FixedRateOfForeignAsset<Runtime, ForeignAssetUnitsPerSecond, ToTreasury>,
+	/* FixedRateOfFungible<LksmPerSecond, ToTreasury>,
+	 * FixedRateOfFungible<BncPerSecond, ToTreasury>,
+	 * FixedRateOfFungible<VsksmPerSecond, ToTreasury>,
+	 * FixedRateOfFungible<PHAPerSecond, ToTreasury>,
+	 * FixedRateOfFungible<KbtcPerSecond, ToTreasury>,
+	 * FixedRateOfFungible<KintPerSecond, ToTreasury>,
+	 * FixedRateOfForeignAsset<Runtime, ForeignAssetUnitsPerSecond, ToTreasury>, */
 );
 
 pub struct XcmConfig;
@@ -1706,7 +1712,8 @@ pub type LocalAssetTransactor = MultiCurrencyAdapter<
 
 //TODO: use token registry currency type encoding
 fn native_currency_location(id: CurrencyId) -> MultiLocation {
-	MultiLocation::new(1, X2(Parachain(ParachainInfo::get().into()), GeneralKey(id.encode())))
+	// MultiLocation::new(1, X2(Parachain(ParachainInfo::get().into()), GeneralKey(id.encode())))
+	MultiLocation::new(1, X2(Parachain(2000), GeneralKey(id.encode())))
 }
 
 pub struct CurrencyIdConvert;
@@ -1780,7 +1787,8 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 					(parachains::kintsugi::ID, parachains::kintsugi::KINT_KEY) => Some(Token(KINT)),
 					(parachains::kintsugi::ID, parachains::kintsugi::KBTC_KEY) => Some(Token(KBTC)),
 
-					(id, key) if id == u32::from(ParachainInfo::get()) => {
+					// (id, key) if id == u32::from(ParachainInfo::get()) => {
+					(id, key) if id == 2000 => {
 						// Karura
 						if let Ok(currency_id) = CurrencyId::decode(&mut &*key) {
 							// check `currency_id` is cross-chain asset
@@ -1800,6 +1808,26 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 				parents: 1,
 				interior: X1(Parachain(parachains::phala::ID)),
 			} => Some(Token(PHA)),
+			MultiLocation {
+				parents: 0,
+				interior: X1(GeneralKey(key)),
+			} => {
+				match &key[..] {
+					key => {
+						if let Ok(currency_id) = CurrencyId::decode(&mut &*key) {
+							// check `currency_id` is cross-chain asset
+							match currency_id {
+								Token(KAR) | Token(KUSD) | Token(LKSM) => Some(currency_id),
+								_ => None,
+							}
+						} else {
+							// invalid general key
+							None
+						}
+					}
+					_ => None,
+				}
+			}
 			_ => None,
 		}
 	}

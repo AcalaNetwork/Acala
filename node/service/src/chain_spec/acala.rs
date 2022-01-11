@@ -170,6 +170,7 @@ pub fn latest_acala_config() -> Result<ChainSpec, String> {
 		],
 		TelemetryEndpoints::new(vec![(TELEMETRY_URL.into(), 0)]).ok(),
 		Some("acala"),
+		None,
 		Some(acala_properties()),
 		Extensions {
 			relay_chain: "polkadot".into(),
@@ -206,6 +207,7 @@ pub fn acala_dev_config() -> Result<ChainSpec, String> {
 			)
 		},
 		vec![],
+		None,
 		None,
 		None,
 		Some(acala_properties()),
