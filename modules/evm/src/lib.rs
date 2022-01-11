@@ -571,7 +571,32 @@ pub mod module {
 				gas_limit,
 				storage_limit,
 				T::config(),
-			)?;
+			)
+			.map_err(|e| {
+				Pallet::<T>::deposit_event(Event::<T>::ExecutedFailed {
+					from: source,
+					contract: target,
+					exit_reason: ExitReason::Error(ExitError::Other(Into::<&str>::into(e).into())),
+					output: vec![],
+					logs: vec![],
+				});
+				e
+			})?;
+			if info.exit_reason.is_succeed() {
+				Pallet::<T>::deposit_event(Event::<T>::Executed {
+					from: source,
+					contract: target,
+					logs: info.logs.clone(),
+				});
+			} else {
+				Pallet::<T>::deposit_event(Event::<T>::ExecutedFailed {
+					from: source,
+					contract: target,
+					exit_reason: info.exit_reason.clone(),
+					output: info.value.clone(),
+					logs: info.logs.clone(),
+				});
+			}
 
 			let used_gas: u64 = info.used_gas.unique_saturated_into();
 
@@ -614,7 +639,32 @@ pub mod module {
 				_payed = imbalance;
 			}
 
-			let info = T::Runner::call(from, from, target, input, value, gas_limit, storage_limit, T::config())?;
+			let info = T::Runner::call(from, from, target, input, value, gas_limit, storage_limit, T::config())
+				.map_err(|e| {
+					Pallet::<T>::deposit_event(Event::<T>::ExecutedFailed {
+						from,
+						contract: target,
+						exit_reason: ExitReason::Error(ExitError::Other(Into::<&str>::into(e).into())),
+						output: vec![],
+						logs: vec![],
+					});
+					e
+				})?;
+			if info.exit_reason.is_succeed() {
+				Pallet::<T>::deposit_event(Event::<T>::Executed {
+					from,
+					contract: target,
+					logs: info.logs.clone(),
+				});
+			} else {
+				Pallet::<T>::deposit_event(Event::<T>::ExecutedFailed {
+					from,
+					contract: target,
+					exit_reason: info.exit_reason.clone(),
+					output: info.value.clone(),
+					logs: info.logs.clone(),
+				});
+			}
 
 			let used_gas: u64 = info.used_gas.unique_saturated_into();
 
@@ -659,7 +709,29 @@ pub mod module {
 			let who = ensure_signed(origin)?;
 			let source = T::AddressMapping::get_or_create_evm_address(&who);
 
-			let info = T::Runner::create(source, init, value, gas_limit, storage_limit, T::config())?;
+			let info = T::Runner::create(source, init, value, gas_limit, storage_limit, T::config()).map_err(|e| {
+				Pallet::<T>::deposit_event(Event::<T>::CreatedFailed {
+					from: source,
+					contract: H160::default(),
+					exit_reason: ExitReason::Error(ExitError::Other(Into::<&str>::into(e).into())),
+					logs: vec![],
+				});
+				e
+			})?;
+			if info.exit_reason.is_succeed() {
+				Pallet::<T>::deposit_event(Event::<T>::Created {
+					from: source,
+					contract: info.value,
+					logs: info.logs.clone(),
+				});
+			} else {
+				Pallet::<T>::deposit_event(Event::<T>::CreatedFailed {
+					from: source,
+					contract: info.value,
+					exit_reason: info.exit_reason.clone(),
+					logs: info.logs.clone(),
+				});
+			}
 
 			let used_gas: u64 = info.used_gas.unique_saturated_into();
 
@@ -690,7 +762,30 @@ pub mod module {
 			let who = ensure_signed(origin)?;
 			let source = T::AddressMapping::get_or_create_evm_address(&who);
 
-			let info = T::Runner::create2(source, init, salt, value, gas_limit, storage_limit, T::config())?;
+			let info =
+				T::Runner::create2(source, init, salt, value, gas_limit, storage_limit, T::config()).map_err(|e| {
+					Pallet::<T>::deposit_event(Event::<T>::CreatedFailed {
+						from: source,
+						contract: H160::default(),
+						exit_reason: ExitReason::Error(ExitError::Other(Into::<&str>::into(e).into())),
+						logs: vec![],
+					});
+					e
+				})?;
+			if info.exit_reason.is_succeed() {
+				Pallet::<T>::deposit_event(Event::<T>::Created {
+					from: source,
+					contract: info.value,
+					logs: info.logs.clone(),
+				});
+			} else {
+				Pallet::<T>::deposit_event(Event::<T>::CreatedFailed {
+					from: source,
+					contract: info.value,
+					exit_reason: info.exit_reason.clone(),
+					logs: info.logs.clone(),
+				});
+			}
 
 			let used_gas: u64 = info.used_gas.unique_saturated_into();
 
@@ -721,9 +816,32 @@ pub mod module {
 			let source = T::NetworkContractSource::get();
 			let address = MIRRORED_TOKENS_ADDRESS_START | EvmAddress::from_low_u64_be(Self::network_contract_index());
 			let info =
-				T::Runner::create_at_address(source, address, init, value, gas_limit, storage_limit, T::config())?;
+				T::Runner::create_at_address(source, address, init, value, gas_limit, storage_limit, T::config())
+					.map_err(|e| {
+						Pallet::<T>::deposit_event(Event::<T>::CreatedFailed {
+							from: source,
+							contract: H160::default(),
+							exit_reason: ExitReason::Error(ExitError::Other(Into::<&str>::into(e).into())),
+							logs: vec![],
+						});
+						e
+					})?;
+			if info.exit_reason.is_succeed() {
+				NetworkContractIndex::<T>::mutate(|v| *v = v.saturating_add(One::one()));
 
-			NetworkContractIndex::<T>::mutate(|v| *v = v.saturating_add(One::one()));
+				Pallet::<T>::deposit_event(Event::<T>::Created {
+					from: source,
+					contract: info.value,
+					logs: info.logs.clone(),
+				});
+			} else {
+				Pallet::<T>::deposit_event(Event::<T>::CreatedFailed {
+					from: source,
+					contract: info.value,
+					exit_reason: info.exit_reason.clone(),
+					logs: info.logs.clone(),
+				});
+			}
 
 			let used_gas: u64 = info.used_gas.unique_saturated_into();
 
@@ -769,15 +887,38 @@ pub mod module {
 					ExistenceRequirement::AllowDeath,
 				)?;
 				CreateInfo {
-					value: target,
 					exit_reason: ExitReason::Succeed(ExitSucceed::Stopped),
+					value: target,
 					used_gas: 0.into(),
 					used_storage: 0,
 					logs: vec![],
 				}
 			} else {
-				T::Runner::create_at_address(source, target, init, value, gas_limit, storage_limit, T::config())?
+				T::Runner::create_at_address(source, target, init, value, gas_limit, storage_limit, T::config())
+					.map_err(|e| {
+						Pallet::<T>::deposit_event(Event::<T>::CreatedFailed {
+							from: source,
+							contract: H160::default(),
+							exit_reason: ExitReason::Error(ExitError::Other(Into::<&str>::into(e).into())),
+							logs: vec![],
+						});
+						e
+					})?
 			};
+			if info.exit_reason.is_succeed() {
+				Pallet::<T>::deposit_event(Event::<T>::Created {
+					from: source,
+					contract: info.value,
+					logs: info.logs.clone(),
+				});
+			} else {
+				Pallet::<T>::deposit_event(Event::<T>::CreatedFailed {
+					from: source,
+					contract: info.value,
+					exit_reason: info.exit_reason.clone(),
+					logs: info.logs.clone(),
+				});
+			}
 
 			let used_gas: u64 = info.used_gas.unique_saturated_into();
 
@@ -1431,8 +1572,20 @@ impl<T: Config> EVMTrait<T::AccountId> for Pallet<T> {
 				Ok(info) => match mode {
 					ExecutionMode::Execute => {
 						if info.exit_reason.is_succeed() {
+							Pallet::<T>::deposit_event(Event::<T>::Executed {
+								from: context.sender,
+								contract: context.contract,
+								logs: info.logs.clone(),
+							});
 							TransactionOutcome::Commit(Ok(info))
 						} else {
+							Pallet::<T>::deposit_event(Event::<T>::ExecutedFailed {
+								from: context.sender,
+								contract: context.contract,
+								exit_reason: info.exit_reason.clone(),
+								output: info.value.clone(),
+								logs: info.logs.clone(),
+							});
 							TransactionOutcome::Rollback(Ok(info))
 						}
 					}

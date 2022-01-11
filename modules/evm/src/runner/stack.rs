@@ -25,8 +25,8 @@ use crate::{
 		state::{StackExecutor, StackSubstateMetadata},
 		Runner as RunnerT, StackState as StackStateT,
 	},
-	AccountInfo, AccountStorages, Accounts, BalanceOf, CallInfo, Config, CreateInfo, Error, Event, ExecutionInfo, One,
-	Pallet, STORAGE_SIZE,
+	AccountInfo, AccountStorages, Accounts, BalanceOf, CallInfo, Config, CreateInfo, Error, ExecutionInfo, One, Pallet,
+	STORAGE_SIZE,
 };
 use frame_support::{
 	dispatch::DispatchError,
@@ -229,28 +229,10 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 		);
 
 		let value = U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(value));
-		let info = Self::execute(source, origin, value, gas_limit, storage_limit, config, |executor| {
+		Self::execute(source, origin, value, gas_limit, storage_limit, config, |executor| {
 			// TODO: EIP-2930
 			executor.transact_call(source, target, value, input, gas_limit, vec![])
-		})?;
-
-		if info.exit_reason.is_succeed() {
-			Pallet::<T>::deposit_event(Event::<T>::Executed {
-				from: source,
-				contract: target,
-				logs: info.logs.clone(),
-			});
-		} else {
-			Pallet::<T>::deposit_event(Event::<T>::ExecutedFailed {
-				from: source,
-				contract: target,
-				exit_reason: info.exit_reason.clone(),
-				output: info.value.clone(),
-				logs: info.logs.clone(),
-			});
-		}
-
-		Ok(info)
+		})
 	}
 
 	fn create(
@@ -262,7 +244,7 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 		config: &evm::Config,
 	) -> Result<CreateInfo, DispatchError> {
 		let value = U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(value));
-		let info = Self::execute(source, source, value, gas_limit, storage_limit, config, |executor| {
+		Self::execute(source, source, value, gas_limit, storage_limit, config, |executor| {
 			let address = executor
 				.create_address(evm::CreateScheme::Legacy { caller: source })
 				.unwrap_or_default(); // transact_create will check the address
@@ -271,24 +253,7 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 				executor.transact_create(source, value, init, gas_limit, vec![]),
 				address,
 			)
-		})?;
-
-		if info.exit_reason.is_succeed() {
-			Pallet::<T>::deposit_event(Event::<T>::Created {
-				from: source,
-				contract: info.value,
-				logs: info.logs.clone(),
-			});
-		} else {
-			Pallet::<T>::deposit_event(Event::<T>::CreatedFailed {
-				from: source,
-				contract: info.value,
-				exit_reason: info.exit_reason.clone(),
-				logs: info.logs.clone(),
-			});
-		}
-
-		Ok(info)
+		})
 	}
 
 	fn create2(
@@ -302,7 +267,7 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 	) -> Result<CreateInfo, DispatchError> {
 		let value = U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(value));
 		let code_hash = H256::from_slice(Keccak256::digest(&init).as_slice());
-		let info = Self::execute(source, source, value, gas_limit, storage_limit, config, |executor| {
+		Self::execute(source, source, value, gas_limit, storage_limit, config, |executor| {
 			let address = executor
 				.create_address(evm::CreateScheme::Create2 {
 					caller: source,
@@ -315,24 +280,7 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 				executor.transact_create2(source, value, init, salt, gas_limit, vec![]),
 				address,
 			)
-		})?;
-
-		if info.exit_reason.is_succeed() {
-			Pallet::<T>::deposit_event(Event::<T>::Created {
-				from: source,
-				contract: info.value,
-				logs: info.logs.clone(),
-			});
-		} else {
-			Pallet::<T>::deposit_event(Event::<T>::CreatedFailed {
-				from: source,
-				contract: info.value,
-				exit_reason: info.exit_reason.clone(),
-				logs: info.logs.clone(),
-			});
-		}
-
-		Ok(info)
+		})
 	}
 
 	fn create_at_address(
@@ -345,30 +293,13 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 		config: &evm::Config,
 	) -> Result<CreateInfo, DispatchError> {
 		let value = U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(value));
-		let info = Self::execute(source, source, value, gas_limit, storage_limit, config, |executor| {
+		Self::execute(source, source, value, gas_limit, storage_limit, config, |executor| {
 			(
 				// TODO: EIP-2930
 				executor.transact_create_at_address(source, address, value, init, gas_limit, vec![]),
 				address,
 			)
-		})?;
-
-		if info.exit_reason.is_succeed() {
-			Pallet::<T>::deposit_event(Event::<T>::Created {
-				from: source,
-				contract: info.value,
-				logs: info.logs.clone(),
-			});
-		} else {
-			Pallet::<T>::deposit_event(Event::<T>::CreatedFailed {
-				from: source,
-				contract: info.value,
-				exit_reason: info.exit_reason.clone(),
-				logs: info.logs.clone(),
-			});
-		}
-
-		Ok(info)
+		})
 	}
 }
 
