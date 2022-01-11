@@ -98,7 +98,7 @@ impl<Call, Extra, ConvertTx, StorageDepositPerByte, TxFeePerGas, Lookup> Checkab
 where
 	Call: Encode + Member,
 	Extra: SignedExtension<AccountId = AccountId32>,
-	ConvertTx: Convert<(Call, Extra), Result<EthereumTransactionMessage, InvalidTransaction>>,
+	ConvertTx: Convert<(Call, Extra), Result<(EthereumTransactionMessage, Extra), InvalidTransaction>>,
 	StorageDepositPerByte: Get<Balance>,
 	TxFeePerGas: Get<Balance>,
 	Lookup: traits::Lookup<Source = Address, Target = AccountId32>,
@@ -109,7 +109,8 @@ where
 		match self.0.signature {
 			Some((addr, AcalaMultiSignature::Ethereum(sig), extra)) => {
 				let function = self.0.function;
-				let eth_msg = ConvertTx::convert((function.clone(), extra.clone()))?;
+
+				let (eth_msg, eth_extra) = ConvertTx::convert((function.clone(), extra))?;
 
 				if eth_msg.tip != 0 {
 					// Not yet supported, require zero tip
@@ -157,21 +158,21 @@ where
 
 				let signer = recover_signer(&sig, msg_hash.as_fixed_bytes()).ok_or(InvalidTransaction::BadProof)?;
 
-				let acc = lookup.lookup(Address::Address20(signer.into()))?;
-				let expected = lookup.lookup(addr)?;
+				let account_id = lookup.lookup(Address::Address20(signer.into()))?;
+				let expected_account_id = lookup.lookup(addr)?;
 
-				if acc != expected {
+				if account_id != expected_account_id {
 					return Err(InvalidTransaction::BadProof.into());
 				}
 
 				Ok(CheckedExtrinsic {
-					signed: Some((acc, extra)),
+					signed: Some((account_id, eth_extra)),
 					function,
 				})
 			}
 			Some((addr, AcalaMultiSignature::Eip1559(sig), extra)) => {
 				let function = self.0.function;
-				let eth_msg = ConvertTx::convert((function.clone(), extra.clone()))?;
+				let (eth_msg, eth_extra) = ConvertTx::convert((function.clone(), extra))?;
 
 				// tx_gas_price = tx_fee_per_gas + block_period << 16 + storage_entry_limit
 				// tx_gas_limit = gas_limit + storage_entry_deposit / tx_fee_per_gas * storage_entry_limit
@@ -219,33 +220,34 @@ where
 
 				let signer = recover_signer(&sig, msg_hash.as_fixed_bytes()).ok_or(InvalidTransaction::BadProof)?;
 
-				let acc = lookup.lookup(Address::Address20(signer.into()))?;
-				let expected = lookup.lookup(addr)?;
+				let account_id = lookup.lookup(Address::Address20(signer.into()))?;
+				let expected_account_id = lookup.lookup(addr)?;
 
-				if acc != expected {
+				if account_id != expected_account_id {
 					return Err(InvalidTransaction::BadProof.into());
 				}
 
 				Ok(CheckedExtrinsic {
-					signed: Some((acc, extra)),
+					signed: Some((account_id, eth_extra)),
 					function,
 				})
 			}
 			Some((addr, AcalaMultiSignature::AcalaEip712(sig), extra)) => {
 				let function = self.0.function;
-				let eth_msg = ConvertTx::convert((function.clone(), extra.clone()))?;
+
+				let (eth_msg, eth_extra) = ConvertTx::convert((function.clone(), extra))?;
 
 				let signer = verify_eip712_signature(eth_msg, sig).ok_or(InvalidTransaction::BadProof)?;
 
-				let acc = lookup.lookup(Address::Address20(signer.into()))?;
-				let expected = lookup.lookup(addr)?;
+				let account_id = lookup.lookup(Address::Address20(signer.into()))?;
+				let expected_account_id = lookup.lookup(addr)?;
 
-				if acc != expected {
+				if account_id != expected_account_id {
 					return Err(InvalidTransaction::BadProof.into());
 				}
 
 				Ok(CheckedExtrinsic {
-					signed: Some((acc, extra)),
+					signed: Some((account_id, eth_extra)),
 					function,
 				})
 			}
@@ -500,7 +502,7 @@ mod tests {
 		new_msg.input = vec![0x00];
 		assert_ne!(recover_signer(&sign, new_msg.hash().as_fixed_bytes()), sender);
 
-		let mut new_msg = msg.clone();
+		let mut new_msg = msg;
 		new_msg.access_list = vec![AccessListItem {
 			address: hex!("bb9bc244d798123fde783fcc1c72d3bb8c189413").into(),
 			slots: vec![],
