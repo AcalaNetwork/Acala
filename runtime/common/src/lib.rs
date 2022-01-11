@@ -46,7 +46,13 @@ use sp_runtime::{
 };
 use static_assertions::const_assert;
 
+pub mod check_nonce;
 pub mod precompile;
+
+#[cfg(test)]
+mod mock;
+
+pub use check_nonce::CheckNonce;
 use orml_traits::GetByKey;
 pub use precompile::{
 	AllPrecompiles, DexPrecompile, MultiCurrencyPrecompile, NFTPrecompile, OraclePrecompile, ScheduleCallPrecompile,
