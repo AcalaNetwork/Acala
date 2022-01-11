@@ -1,6 +1,6 @@
 import { expect } from "chai";
 
-import { describeWithAcala, nextBlock } from "./util";
+import { describeWithAcala, getEvmNonce } from "./util";
 import { Signer } from "@acala-network/bodhi";
 import { Wallet } from "@ethersproject/wallet";
 import { encodeAddress } from "@polkadot/keyring";
@@ -49,6 +49,8 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 			salt: (await context.provider.api.rpc.chain.getBlockHash(0)).toHex(),
 		};
 
+		const nonce = await getEvmNonce(context.provider, signer.address);
+
 		const types = {
 			AccessList: [
 				{ name: "addressKey", type: "address" },
@@ -74,7 +76,7 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 		const value = {
 			action: "Create",
 			to: "0x0000000000000000000000000000000000000000",
-			nonce: (await context.provider.api.query.system.account(subAddr)).nonce.toNumber(),
+			nonce: nonce,
 			tip: 2,
 			data: deploy.data,
 			value: '0',
@@ -102,7 +104,7 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 			era: "0x00", // mortal
 			genesisHash: domain.salt, // ignored
 			method: "Bytes", // don't know that is this
-			nonce: value.nonce,
+			nonce: nonce,
 			specVersion: 0, // ignored
 			tip: value.tip,
 			transactionVersion: 0, // ignored
@@ -171,6 +173,8 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 			salt: (await context.provider.api.rpc.chain.getBlockHash(0)).toHex(),
 		};
 
+		const nonce = await getEvmNonce(context.provider, signer.address);
+
 		const types = {
 			AccessList: [
 				{ name: "addressKey", type: "address" },
@@ -197,7 +201,7 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 		const value = {
 			action: "Call",
 			to: contract,
-			nonce: (await context.provider.api.query.system.account(subAddr)).nonce.toNumber(),
+			nonce: nonce,
 			tip: 2,
 			data: input.data,
 			value: '0',
@@ -225,7 +229,7 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 			era: "0x00", // mortal
 			genesisHash: domain.salt, // ignored
 			method: "Bytes", // don't know that is this
-			nonce: value.nonce,
+			nonce: nonce,
 			specVersion: 0, // ignored
 			tip: value.tip,
 			transactionVersion: 0, // ignored
