@@ -1275,7 +1275,9 @@ impl<T: Config> Pallet<T> {
 			..
 		}) = Accounts::<T>::get(address)
 		{
-			deployed || maintainer == *caller || Self::is_developer_or_contract(caller)
+			// https://github.com/AcalaNetwork/Acala/blob/af1c277/modules/evm/rpc/src/lib.rs#L176
+			// when rpc is called, from is empty, allowing the call
+			deployed || maintainer == *caller || Self::is_developer_or_contract(caller) || *caller == H160::default()
 		} else {
 			// contract non exist, we don't override defualt evm behaviour
 			true
