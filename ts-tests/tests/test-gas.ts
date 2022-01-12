@@ -47,7 +47,7 @@ describeWithAcala("Acala RPC (Gas)", (context) => {
 		)).to.deep.include({
 			gas: BigNumber.from("22409"),
 			storage: BigNumber.from("0"),
-			weightFee: BigNumber.from("3999941640054")
+			weightFee: BigNumber.from("3999940939026")
 		});
 	});
 });
