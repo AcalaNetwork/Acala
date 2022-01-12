@@ -85,7 +85,6 @@ fn transfer_to_relay_chain() {
 
 #[test]
 fn transfer_to_sibling() {
-	env_logger::init();
 	TestNet::reset();
 
 	fn karura_reserve_account() -> AccountId {
@@ -324,7 +323,6 @@ fn subscribe_version_notify_works() {
 
 #[test]
 fn test_asset_registry_module() {
-	env_logger::init();
 	TestNet::reset();
 
 	fn karura_reserve_account() -> AccountId {

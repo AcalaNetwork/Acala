@@ -1488,6 +1488,13 @@ parameter_types! {
 		).into(),
 		kar_per_second()
 	);
+	pub KarPerSecond2: (AssetId, u128) = (
+		MultiLocation::new(
+			0,
+			X1(GeneralKey(KAR.encode())),
+		).into(),
+		kar_per_second()
+	);
 	pub LksmPerSecond: (AssetId, u128) = (
 		MultiLocation::new(
 			1,
@@ -1554,8 +1561,11 @@ pub type Trader = (
 	FixedRateOfFungible<KsmPerSecond, ToTreasury>,
 	FixedRateOfFungible<KusdPerSecond, ToTreasury>,
 	FixedRateOfFungible<KarPerSecond, ToTreasury>,
+	// TODO just for test_asset_registry_module
+	FixedRateOfFungible<KarPerSecond2, ToTreasury>,
 	FixedRateOfFungible<LksmPerSecond, ToTreasury>,
 	FixedRateOfFungible<BncPerSecond, ToTreasury>,
+	// TODO just for transfer_to_sibling
 	FixedRateOfFungible<BncPerSecond2, ToTreasury>,
 	FixedRateOfFungible<VsksmPerSecond, ToTreasury>,
 	FixedRateOfFungible<PHAPerSecond, ToTreasury>,
