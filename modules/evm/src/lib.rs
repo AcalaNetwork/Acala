@@ -92,6 +92,8 @@ use sp_std::{
 pub mod precompiles;
 pub mod runner;
 
+pub mod bench;
+
 mod mock;
 mod tests;
 pub mod weights;
@@ -153,6 +155,51 @@ static ACALA_CONFIG: EvmConfig = EvmConfig {
 	has_ext_code_hash: true,
 	estimate: false,
 };
+
+/// Create an empty contract `contract Empty { }`.
+pub const BASE_CREATE_GAS: u64 = 67_066;
+/// Call function that just set a storage `function store(uint256 num) public { number = num; }`.
+pub const BASE_CALL_GAS: u64 = 41_602;
+
+/// Helper method to calculate `create` weight.
+fn create_weight<T: Config>(gas: u64) -> Weight {
+	<T as Config>::WeightInfo::create()
+		// during `create` benchmark an additional of `BASE_CREATE_GAS` was used
+		// so user will be extra charged only for extra gas usage
+		.saturating_add(T::GasToWeight::convert(gas.saturating_sub(BASE_CREATE_GAS)))
+}
+
+/// Helper method to calculate `create2` weight.
+fn create2_weight<T: Config>(gas: u64) -> Weight {
+	<T as Config>::WeightInfo::create2()
+		// during `create2` benchmark an additional of `BASE_CREATE_GAS` was used
+		// so user will be extra charged only for extra gas usage
+		.saturating_add(T::GasToWeight::convert(gas.saturating_sub(BASE_CREATE_GAS)))
+}
+
+/// Helper method to calculate `create_predeploy_contract` weight.
+fn create_predeploy_contract<T: Config>(gas: u64) -> Weight {
+	<T as Config>::WeightInfo::create_predeploy_contract()
+		// during `create_predeploy_contract` benchmark an additional of `BASE_CREATE_GAS`
+		// was used so user will be extra charged only for extra gas usage
+		.saturating_add(T::GasToWeight::convert(gas.saturating_sub(BASE_CREATE_GAS)))
+}
+
+/// Helper method to calculate `create_nft_contract` weight.
+fn create_nft_contract<T: Config>(gas: u64) -> Weight {
+	<T as Config>::WeightInfo::create_nft_contract()
+		// during `create_nft_contract` benchmark an additional of `BASE_CREATE_GAS`
+		// was used so user will be extra charged only for extra gas usage
+		.saturating_add(T::GasToWeight::convert(gas.saturating_sub(BASE_CREATE_GAS)))
+}
+
+/// Helper method to calculate `call` weight.
+fn call_weight<T: Config>(gas: u64) -> Weight {
+	<T as Config>::WeightInfo::call()
+		// during `call` benchmark an additional of `BASE_CALL_GAS` was used
+		// so user will be extra charged only for extra gas usage
+		.saturating_add(T::GasToWeight::convert(gas.saturating_sub(BASE_CALL_GAS)))
+}
 
 #[frame_support::pallet]
 pub mod module {
@@ -524,7 +571,10 @@ pub mod module {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		#[pallet::weight(T::GasToWeight::convert(*gas_limit))]
+		#[pallet::weight(match *action {
+			TransactionAction::Call(_) => call_weight::<T>(*gas_limit),
+			TransactionAction::Create => create_weight::<T>(*gas_limit)
+		})]
 		#[transactional]
 		pub fn eth_call(
 			origin: OriginFor<T>,
@@ -549,7 +599,7 @@ pub mod module {
 		/// - `value`: the amount sent for payable calls
 		/// - `gas_limit`: the maximum gas the call can use
 		/// - `storage_limit`: the total bytes the contract's storage can increase by
-		#[pallet::weight(T::GasToWeight::convert(*gas_limit))]
+		#[pallet::weight(call_weight::<T>(*gas_limit))]
 		#[transactional]
 		pub fn call(
 			origin: OriginFor<T>,
@@ -576,7 +626,7 @@ pub mod module {
 			let used_gas: u64 = info.used_gas.unique_saturated_into();
 
 			Ok(PostDispatchInfo {
-				actual_weight: Some(T::GasToWeight::convert(used_gas)),
+				actual_weight: Some(call_weight::<T>(used_gas)),
 				pays_fee: Pays::Yes,
 			})
 		}
@@ -592,6 +642,7 @@ pub mod module {
 		/// - `storage_limit`: the total bytes the contract's storage can increase by
 		#[pallet::weight(T::GasToWeight::convert(*gas_limit))]
 		#[transactional]
+		// TODO: create benchmark
 		pub fn scheduled_call(
 			origin: OriginFor<T>,
 			from: EvmAddress,
@@ -647,7 +698,7 @@ pub mod module {
 		/// - `value`: the amount sent to the contract upon creation
 		/// - `gas_limit`: the maximum gas the call can use
 		/// - `storage_limit`: the total bytes the contract's storage can increase by
-		#[pallet::weight(T::GasToWeight::convert(*gas_limit))]
+		#[pallet::weight(create_weight::<T>(*gas_limit))]
 		#[transactional]
 		pub fn create(
 			origin: OriginFor<T>,
@@ -664,7 +715,7 @@ pub mod module {
 			let used_gas: u64 = info.used_gas.unique_saturated_into();
 
 			Ok(PostDispatchInfo {
-				actual_weight: Some(T::GasToWeight::convert(used_gas)),
+				actual_weight: Some(create_weight::<T>(used_gas)),
 				pays_fee: Pays::Yes,
 			})
 		}
@@ -677,7 +728,7 @@ pub mod module {
 		/// - `value`: the amount sent for payable calls
 		/// - `gas_limit`: the maximum gas the call can use
 		/// - `storage_limit`: the total bytes the contract's storage can increase by
-		#[pallet::weight(T::GasToWeight::convert(*gas_limit))]
+		#[pallet::weight(create2_weight::<T>(*gas_limit))]
 		#[transactional]
 		pub fn create2(
 			origin: OriginFor<T>,
@@ -695,7 +746,7 @@ pub mod module {
 			let used_gas: u64 = info.used_gas.unique_saturated_into();
 
 			Ok(PostDispatchInfo {
-				actual_weight: Some(T::GasToWeight::convert(used_gas)),
+				actual_weight: Some(create2_weight::<T>(used_gas)),
 				pays_fee: Pays::Yes,
 			})
 		}
@@ -707,7 +758,7 @@ pub mod module {
 		/// - `value`: the amount sent for payable calls
 		/// - `gas_limit`: the maximum gas the call can use
 		/// - `storage_limit`: the total bytes the contract's storage can increase by
-		#[pallet::weight(T::GasToWeight::convert(*gas_limit))]
+		#[pallet::weight(create_nft_contract::<T>(*gas_limit))]
 		#[transactional]
 		pub fn create_nft_contract(
 			origin: OriginFor<T>,
@@ -728,7 +779,7 @@ pub mod module {
 			let used_gas: u64 = info.used_gas.unique_saturated_into();
 
 			Ok(PostDispatchInfo {
-				actual_weight: Some(T::GasToWeight::convert(used_gas)),
+				actual_weight: Some(create_nft_contract::<T>(used_gas)),
 				pays_fee: Pays::Yes,
 			})
 		}
@@ -741,7 +792,11 @@ pub mod module {
 		/// - `value`: the amount sent for payable calls
 		/// - `gas_limit`: the maximum gas the call can use
 		/// - `storage_limit`: the total bytes the contract's storage can increase by
-		#[pallet::weight(T::GasToWeight::convert(*gas_limit))]
+		#[pallet::weight(if init.is_empty() {
+			<T as Config>::WeightInfo::deposit_ed()
+		} else {
+			create_predeploy_contract::<T>(*gas_limit)
+		})]
 		#[transactional]
 		pub fn create_predeploy_contract(
 			origin: OriginFor<T>,
@@ -760,7 +815,7 @@ pub mod module {
 
 			let source = T::NetworkContractSource::get();
 
-			let info = if init.is_empty() {
+			if init.is_empty() {
 				// deposit ED for mirrored token
 				T::Currency::transfer(
 					&T::TreasuryAccount::get(),
@@ -768,23 +823,19 @@ pub mod module {
 					T::Currency::minimum_balance(),
 					ExistenceRequirement::AllowDeath,
 				)?;
-				CreateInfo {
-					value: target,
-					exit_reason: ExitReason::Succeed(ExitSucceed::Stopped),
-					used_gas: 0.into(),
-					used_storage: 0,
-					logs: vec![],
-				}
+				Ok(PostDispatchInfo {
+					actual_weight: Some(<T as Config>::WeightInfo::deposit_ed()),
+					pays_fee: Pays::Yes,
+				})
 			} else {
-				T::Runner::create_at_address(source, target, init, value, gas_limit, storage_limit, T::config())?
-			};
-
-			let used_gas: u64 = info.used_gas.unique_saturated_into();
-
-			Ok(PostDispatchInfo {
-				actual_weight: Some(T::GasToWeight::convert(used_gas)),
-				pays_fee: Pays::Yes,
-			})
+				let info =
+					T::Runner::create_at_address(source, target, init, value, gas_limit, storage_limit, T::config())?;
+				let used_gas: u64 = info.used_gas.unique_saturated_into();
+				Ok(PostDispatchInfo {
+					actual_weight: Some(create_predeploy_contract::<T>(used_gas)),
+					pays_fee: Pays::Yes,
+				})
+			}
 		}
 
 		/// Transfers Contract maintainership to a new EVM Address.
