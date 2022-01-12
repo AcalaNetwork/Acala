@@ -195,6 +195,7 @@ impl module_evm_accounts::Config for TestRuntime {
 	type Currency = Balances;
 	type AddressMapping = EvmAddressMapping<TestRuntime>;
 	type TransferAll = Currencies;
+	type ChainId = ChainId;
 	type WeightInfo = ();
 }
 

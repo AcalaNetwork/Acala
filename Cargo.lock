@@ -5434,6 +5434,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "libsecp256k1 0.6.0",
+ "module-evm-utiltity-macro",
  "module-support",
  "orml-currencies",
  "orml-tokens",
