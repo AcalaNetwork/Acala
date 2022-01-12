@@ -242,9 +242,9 @@ impl<T: Config> Pallet<T> {
 	}
 
 	fn evm_account_payload_hash(who: &T::AccountId) -> [u8; 32] {
-		let tx_type_hash = keccak256!("Transaction(string address)");
+		let tx_type_hash = keccak256!("Transaction(bytes substrateAddress)");
 		let mut tx_msg = tx_type_hash.to_vec();
-		tx_msg.extend(who.using_encoded(to_ascii_hex));
+		tx_msg.extend_from_slice(&keccak_256(&who.encode()));
 		keccak_256(tx_msg.as_slice())
 	}
 
@@ -363,16 +363,4 @@ impl<T: Config> StaticLookup for Pallet<T> {
 	fn unlookup(a: Self::Target) -> Self::Source {
 		MultiAddress::Id(a)
 	}
-}
-
-/// Converts the given binary data into ASCII-encoded hex. It will be twice
-/// the length.
-pub fn to_ascii_hex(data: &[u8]) -> Vec<u8> {
-	let mut r = Vec::with_capacity(data.len() * 2);
-	let mut push_nibble = |n| r.push(if n < 10 { b'0' + n } else { b'a' - 10 + n });
-	for &b in data.iter() {
-		push_nibble(b / 16);
-		push_nibble(b % 16);
-	}
-	r
 }

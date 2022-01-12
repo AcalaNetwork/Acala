@@ -1,12 +1,12 @@
 import { expect } from "chai";
 
-import { describeWithAcala, nextBlock } from "./util";
-import { Signer, TestAccountSigningKey, TestProvider } from "@acala-network/bodhi";
+import { describeWithAcala } from "./util";
+import { Signer, TestAccountSigningKey } from "@acala-network/bodhi";
 import { Wallet } from "@ethersproject/wallet";
+import { Keyring } from "@polkadot/keyring";
 import { createTestKeyring } from "@polkadot/keyring/testing";
-import { stringToHex } from "@polkadot/util";
 
-describeWithAcala("Acala RPC (Sign Claim Account eip712)", (context) => {
+describeWithAcala("Acala RPC (Claim Account Eip712)", (context) => {
 	let alice: Signer;
 	let signer: Wallet;
 
@@ -41,26 +41,26 @@ describeWithAcala("Acala RPC (Sign Claim Account eip712)", (context) => {
 
 		const types = {
 			Transaction: [
-				{ name: "address", type: "string" },
+				{ name: "substrateAddress", type: "bytes" },
 			],
 		};
 
+		const keyring = new Keyring({type: 'sr25519', ss58Format: +context.provider.api.consts.system.ss58Prefix});
+	    const alice_addr = await alice.getSubstrateAddress();
+		const string_addr = keyring.decodeAddress(alice_addr);
+
 		// The data to sign
 		const value = {
-			address: await alice.getSubstrateAddress(),
+			substrateAddress: string_addr,
 		};
 
 		const signature = await signer._signTypedData(domain, types, value);
-
-		console.log("")
-
 
         const tx = context.provider.api.tx.evmAccounts.claimAccount(await signer.getAddress(), signature);
 
         await new Promise(async (resolve) => {
 			tx.signAndSend(await alice.getSubstrateAddress(), (result) => {
 				if (result.status.isFinalized || result.status.isInBlock) {
-					console.log(result.dispatchError?.toString());
 					resolve(undefined);
 				}
 			});
@@ -69,7 +69,6 @@ describeWithAcala("Acala RPC (Sign Claim Account eip712)", (context) => {
 		let current_block_number = (await context.provider.api.query.system.number()).toNumber();
 		let block_hash = await context.provider.api.rpc.chain.getBlockHash(current_block_number);
 		const result = await context.provider.api.derive.tx.events(block_hash);
-		// console.log("current_block_number: ", current_block_number, " event: ", result.events.toString());
 
 		let event = result.events.filter(item => context.provider.api.events.evmAccounts.ClaimAccount.is(item.event));
 		expect(event.length).to.equal(1);
