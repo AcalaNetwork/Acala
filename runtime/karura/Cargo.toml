@@ -320,3 +320,5 @@ try-runtime = [
 	"module-homa-xcm/try-runtime",
 	"module-session-manager/try-runtime",
 ]
+
+only-integration-test = []

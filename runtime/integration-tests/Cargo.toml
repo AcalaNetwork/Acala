@@ -112,7 +112,7 @@ primitives = { package = "acala-primitives", path = "../../primitives" }
 runtime-common = { path = "../common" }
 
 mandala-runtime = { path = "../mandala" }
-karura-runtime = { path = "../karura" }
+karura-runtime = { path = "../karura", features = ["only-integration-test"] }
 acala-runtime = { path = "../acala" }
 
 module-evm-rpc-runtime-api = { path = "../../modules/evm/rpc/runtime_api",  default-features = false }
@@ -138,7 +138,7 @@ xcm-emulator = { git = "https://github.com/zqhxuyuan/xcm-simulator", branch = "v
 acala-service = { path = "../../node/service", features = ["with-all-runtime"] }
 
 [features]
-default = ["std", "with-karura-runtime"]
+default = ["std"]
 no_std = []
 with-mandala-runtime = [
 	"acala-service/with-mandala-runtime",

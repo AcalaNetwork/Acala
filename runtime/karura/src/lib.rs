@@ -1556,17 +1556,25 @@ parameter_types! {
 	pub KarPerSecondAsBased: u128 = kar_per_second();
 }
 
+#[cfg(feature = "only-integration-test")]
+pub type Trader = (
+	TransactionFeePoolTrader<Runtime, CurrencyIdConvert, KarPerSecondAsBased, ToTreasury>,
+	FixedRateOfFungible<KsmPerSecond, ToTreasury>,
+	FixedRateOfFungible<KarPerSecond, ToTreasury>,
+	FixedRateOfFungible<KarPerSecond2, ToTreasury>,
+	FixedRateOfFungible<BncPerSecond, ToTreasury>,
+	FixedRateOfFungible<BncPerSecond2, ToTreasury>,
+	FixedRateOfForeignAsset<Runtime, ForeignAssetUnitsPerSecond, ToTreasury>,
+);
+
+#[cfg(not(feature = "only-integration-test"))]
 pub type Trader = (
 	TransactionFeePoolTrader<Runtime, CurrencyIdConvert, KarPerSecondAsBased, ToTreasury>,
 	FixedRateOfFungible<KsmPerSecond, ToTreasury>,
 	FixedRateOfFungible<KusdPerSecond, ToTreasury>,
 	FixedRateOfFungible<KarPerSecond, ToTreasury>,
-	// TODO just for test_asset_registry_module
-	FixedRateOfFungible<KarPerSecond2, ToTreasury>,
 	FixedRateOfFungible<LksmPerSecond, ToTreasury>,
 	FixedRateOfFungible<BncPerSecond, ToTreasury>,
-	// TODO just for transfer_to_sibling
-	FixedRateOfFungible<BncPerSecond2, ToTreasury>,
 	FixedRateOfFungible<VsksmPerSecond, ToTreasury>,
 	FixedRateOfFungible<PHAPerSecond, ToTreasury>,
 	FixedRateOfFungible<KbtcPerSecond, ToTreasury>,
@@ -1823,6 +1831,7 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 				parents: 0,
 				interior: X1(GeneralKey(key)),
 			} => match &key[..] {
+				#[cfg(feature = "only-integration-test")]
 				parachains::bifrost::BNC_KEY => Some(Token(BNC)),
 				key => {
 					if let Ok(currency_id) = CurrencyId::decode(&mut &*key) {
