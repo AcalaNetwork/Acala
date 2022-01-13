@@ -1008,7 +1008,7 @@ fn should_deploy() {
 		));
 
 		// call method `multiply` will fail, not deployed yet
-		assert_noop!(EVM::call(
+		assert_eq!(EVM::call(
 			Origin::signed(bob_account_id.clone()),
 			contract_address,
 			multiply.clone(),
@@ -1016,7 +1016,14 @@ fn should_deploy() {
 			1000000,
 			1000000,
 			vec![],
-		), Error::<Runtime>::NoPermission);
+		), Ok(PostDispatchInfo { actual_weight: None, pays_fee: Pays::Yes }));
+		System::assert_last_event(Event::EVM(crate::Event::ExecutedFailed {
+			from: bob(),
+			contract: contract_address,
+			exit_reason: ExitReason::Error(ExitError::Other(Into::<&str>::into(Error::<Runtime>::NoPermission).into())),
+			output: vec![],
+			logs: vec![],
+		}));
 
 		// developer can call the undeployed contract
 		assert_ok!(EVM::enable_contract_development(Origin::signed(bob_account_id.clone())));
@@ -1088,7 +1095,7 @@ fn should_deploy_free() {
 
 		// call method `multiply` will fail, not deployed yet
 		let bob_account_id = <Runtime as Config>::AddressMapping::get_account_id(&bob());
-		assert_noop!(EVM::call(
+		assert_eq!(EVM::call(
 			Origin::signed(bob_account_id),
 			contract_address,
 			multiply.clone(),
@@ -1096,7 +1103,14 @@ fn should_deploy_free() {
 			1000000,
 			1000000,
 			vec![],
-		), Error::<Runtime>::NoPermission);
+		), Ok(PostDispatchInfo { actual_weight: None, pays_fee: Pays::Yes }));
+		System::assert_last_event(Event::EVM(crate::Event::ExecutedFailed {
+			from: bob(),
+			contract: contract_address,
+			exit_reason: ExitReason::Error(ExitError::Other(Into::<&str>::into(Error::<Runtime>::NoPermission).into())),
+			output: vec![],
+			logs: vec![],
+		}));
 
 		assert_ok!(EVM::deploy_free(Origin::signed(CouncilAccount::get()), contract_address));
 
@@ -1485,7 +1499,7 @@ fn storage_limit_should_work() {
 		let create_contract =
 			from_hex("0x9db8d7d50000000000000000000000000000000000000000000000000000000000000001").unwrap();
 		let alice_account_id = <Runtime as Config>::AddressMapping::get_account_id(&alice());
-		assert_noop!(
+		assert_eq!(
 			EVM::call(
 				Origin::signed(alice_account_id.clone()),
 				factory_contract_address,
@@ -1495,14 +1509,20 @@ fn storage_limit_should_work() {
 				0,
 				vec![],
 			),
-			DispatchErrorWithPostInfo {
-				post_info: PostDispatchInfo {
-					actual_weight: None,
-					pays_fee: Pays::Yes,
-				},
-				error: Error::<Runtime>::OutOfStorage.into()
-			}
+			Ok(PostDispatchInfo {
+				actual_weight: None,
+				pays_fee: Pays::Yes
+			})
 		);
+		System::assert_last_event(Event::EVM(crate::Event::ExecutedFailed {
+			from: alice(),
+			contract: factory_contract_address,
+			exit_reason: ExitReason::Error(ExitError::Other(
+				Into::<&str>::into(Error::<Runtime>::OutOfStorage).into(),
+			)),
+			output: vec![],
+			logs: vec![],
+		}));
 
 		// Factory.createContract(1)
 		let amount = 1000000000;
@@ -1527,7 +1547,7 @@ fn storage_limit_should_work() {
 		let amount = 1000000000;
 		let create_contract =
 			from_hex("0x9db8d7d50000000000000000000000000000000000000000000000000000000000000002").unwrap();
-		assert_noop!(
+		assert_eq!(
 			EVM::call(
 				Origin::signed(alice_account_id),
 				factory_contract_address,
@@ -1537,14 +1557,20 @@ fn storage_limit_should_work() {
 				127,
 				vec![],
 			),
-			DispatchErrorWithPostInfo {
-				post_info: PostDispatchInfo {
-					actual_weight: None,
-					pays_fee: Pays::Yes,
-				},
-				error: Error::<Runtime>::OutOfStorage.into()
-			}
+			Ok(PostDispatchInfo {
+				actual_weight: None,
+				pays_fee: Pays::Yes
+			})
 		);
+		System::assert_last_event(Event::EVM(crate::Event::ExecutedFailed {
+			from: alice(),
+			contract: factory_contract_address,
+			exit_reason: ExitReason::Error(ExitError::Other(
+				Into::<&str>::into(Error::<Runtime>::OutOfStorage).into(),
+			)),
+			output: vec![],
+			logs: vec![],
+		}));
 
 		// Factory.createContract(2)
 		let amount = 1000000000;
@@ -1781,7 +1807,7 @@ fn should_update_storage() {
 
 		// call method `set(123)`
 		let alice_account_id = <Runtime as Config>::AddressMapping::get_account_id(&alice());
-		assert_noop!(
+		assert_eq!(
 			EVM::call(
 				Origin::signed(alice_account_id),
 				contract_address,
@@ -1791,14 +1817,20 @@ fn should_update_storage() {
 				0,
 				vec![],
 			),
-			DispatchErrorWithPostInfo {
-				post_info: PostDispatchInfo {
-					actual_weight: None,
-					pays_fee: Pays::Yes,
-				},
-				error: Error::<Runtime>::OutOfStorage.into()
-			}
+			Ok(PostDispatchInfo {
+				actual_weight: None,
+				pays_fee: Pays::Yes
+			})
 		);
+		System::assert_last_event(Event::EVM(crate::Event::ExecutedFailed {
+			from: alice(),
+			contract: contract_address,
+			exit_reason: ExitReason::Error(ExitError::Other(
+				Into::<&str>::into(Error::<Runtime>::OutOfStorage).into(),
+			)),
+			output: vec![],
+			logs: vec![],
+		}));
 
 		// call method `set(123)`
 		let result = <Runtime as Config>::Runner::call(
@@ -1855,7 +1887,7 @@ fn convert_decimals_should_not_work() {
 	let alice_account_id = <Runtime as Config>::AddressMapping::get_account_id(&alice());
 
 	new_test_ext().execute_with(|| {
-		assert_noop!(
+		assert_eq!(
 			EVM::create(
 				Origin::signed(alice_account_id.clone()),
 				vec![],
@@ -1864,9 +1896,20 @@ fn convert_decimals_should_not_work() {
 				1000000,
 				vec![]
 			),
-			Error::<Runtime>::InvalidDecimals
+			Ok(PostDispatchInfo {
+				actual_weight: None,
+				pays_fee: Pays::Yes
+			})
 		);
-		assert_noop!(
+		System::assert_last_event(Event::EVM(crate::Event::CreatedFailed {
+			from: alice(),
+			contract: H160::default(),
+			exit_reason: ExitReason::Error(ExitError::Other(
+				Into::<&str>::into(Error::<Runtime>::InvalidDecimals).into(),
+			)),
+			logs: vec![],
+		}));
+		assert_eq!(
 			EVM::create2(
 				Origin::signed(alice_account_id.clone()),
 				vec![],
@@ -1876,9 +1919,20 @@ fn convert_decimals_should_not_work() {
 				1000000,
 				vec![],
 			),
-			Error::<Runtime>::InvalidDecimals
+			Ok(PostDispatchInfo {
+				actual_weight: None,
+				pays_fee: Pays::Yes
+			})
 		);
-		assert_noop!(
+		System::assert_last_event(Event::EVM(crate::Event::CreatedFailed {
+			from: alice(),
+			contract: H160::default(),
+			exit_reason: ExitReason::Error(ExitError::Other(
+				Into::<&str>::into(Error::<Runtime>::InvalidDecimals).into(),
+			)),
+			logs: vec![],
+		}));
+		assert_eq!(
 			EVM::call(
 				Origin::signed(alice_account_id.clone()),
 				H160::default(),
@@ -1888,7 +1942,19 @@ fn convert_decimals_should_not_work() {
 				1000000,
 				vec![],
 			),
-			Error::<Runtime>::InvalidDecimals
+			Ok(PostDispatchInfo {
+				actual_weight: None,
+				pays_fee: Pays::Yes
+			})
 		);
+		System::assert_last_event(Event::EVM(crate::Event::ExecutedFailed {
+			from: alice(),
+			contract: H160::default(),
+			exit_reason: ExitReason::Error(ExitError::Other(
+				Into::<&str>::into(Error::<Runtime>::InvalidDecimals).into(),
+			)),
+			output: vec![],
+			logs: vec![],
+		}));
 	});
 }

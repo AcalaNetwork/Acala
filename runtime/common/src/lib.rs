@@ -26,7 +26,7 @@ use frame_support::{
 	parameter_types,
 	traits::Contains,
 	weights::{
-		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, WEIGHT_PER_MILLIS, WEIGHT_PER_NANOS},
+		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, WEIGHT_PER_MILLIS},
 		DispatchClass, Weight,
 	},
 	RuntimeDebug,
@@ -67,6 +67,8 @@ pub use xcm::latest::prelude::*;
 pub use xcm_builder::TakeRevenue;
 pub use xcm_executor::{traits::DropAssets, Assets};
 
+mod gas_to_weight_ratio;
+
 pub type TimeStampedPrice = orml_oracle::TimestampedValue<Price, primitives::Moment>;
 
 // Priority of unsigned transactions
@@ -98,16 +100,11 @@ impl PrecompileCallerFilter for SystemContractsFilter {
 	}
 }
 
-// TODO: estimate this from benchmarks
-// total block weight is 500ms, normal tx have 70% of weight = 350ms
-// 350ms / 25ns = 14M gas per block
-pub const WEIGHT_PER_GAS: u64 = 25 * WEIGHT_PER_NANOS; // 25_000
-
 /// Convert gas to weight
 pub struct GasToWeight;
 impl Convert<u64, Weight> for GasToWeight {
 	fn convert(gas: u64) -> Weight {
-		gas.saturating_mul(WEIGHT_PER_GAS)
+		gas.saturating_mul(gas_to_weight_ratio::RATIO)
 	}
 }
 

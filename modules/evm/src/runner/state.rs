@@ -18,7 +18,7 @@
 
 // Synchronize with https://github.com/rust-blockchain/evm/blob/9ac4d47b5e/src/executor/stack/executor.rs
 
-use crate::StorageMeter;
+use crate::{encode_revert_message, StorageMeter};
 use core::{cmp::min, convert::Infallible};
 use frame_support::log;
 use module_evm_utiltity::{
@@ -439,7 +439,10 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 	/// Execute the runtime until it returns.
 	pub fn execute(&mut self, runtime: &mut Runtime) -> ExitReason {
 		match runtime.run(self) {
-			Capture::Exit(s) => s,
+			Capture::Exit(s) => {
+				log::debug!(target: "evm", "runtime.run exit: {:?}", s);
+				s
+			}
 			Capture::Trap(_) => unreachable!("Trap is Infallible"),
 		}
 	}
@@ -729,7 +732,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 		match scheme {
 			CreateScheme::Create2 { .. } | CreateScheme::Legacy { .. } => {
 				if address.as_bytes().starts_with(&SYSTEM_CONTRACT_ADDRESS_PREFIX) {
-					Err(ExitError::Other("ConflictContractAddress".into()))
+					Err(ExitError::CreateCollision)
 				} else {
 					Ok(address)
 				}
@@ -781,7 +784,11 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 
 		let address = match self.create_address(scheme) {
 			Err(e) => {
-				return Capture::Exit((ExitReason::Error(e), None, Vec::new()));
+				return Capture::Exit((
+					ExitReason::Revert(ExitRevert::Reverted),
+					None,
+					encode_revert_message(&e),
+				));
 			}
 			Ok(address) => address,
 		};
@@ -803,12 +810,20 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 
 		if let Some(depth) = self.state.metadata().depth {
 			if depth > self.config.call_stack_limit {
-				return Capture::Exit((ExitError::CallTooDeep.into(), None, Vec::new()));
+				return Capture::Exit((
+					ExitReason::Revert(ExitRevert::Reverted),
+					None,
+					encode_revert_message(&ExitError::CallTooDeep),
+				));
 			}
 		}
 
 		if self.balance(caller) < value {
-			return Capture::Exit((ExitError::OutOfFund.into(), None, Vec::new()));
+			return Capture::Exit((
+				ExitReason::Revert(ExitRevert::Reverted),
+				None,
+				encode_revert_message(&ExitError::OutOfFund),
+			));
 		}
 
 		let after_gas = if take_l64 && self.config.call_l64_after_gas {
@@ -836,13 +851,21 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 		{
 			if self.code_size(address) != U256::zero() {
 				let _ = self.exit_substate(StackExitKind::Failed);
-				return Capture::Exit((ExitError::CreateCollision.into(), None, Vec::new()));
+				return Capture::Exit((
+					ExitReason::Revert(ExitRevert::Reverted),
+					None,
+					encode_revert_message(&ExitError::CreateCollision),
+				));
 			}
 
 			// We will keep the nonce until the storages are cleared.
 			if self.nonce(address) > U256::zero() {
 				let _ = self.exit_substate(StackExitKind::Failed);
-				return Capture::Exit((ExitError::CreateCollision.into(), None, Vec::new()));
+				return Capture::Exit((
+					ExitReason::Revert(ExitRevert::Reverted),
+					None,
+					encode_revert_message(&ExitError::CreateCollision),
+				));
 			}
 
 			// Still do this, although it is superfluous.
@@ -863,7 +886,11 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 			Ok(()) => (),
 			Err(e) => {
 				let _ = self.exit_substate(StackExitKind::Reverted);
-				return Capture::Exit((ExitReason::Error(e), None, Vec::new()));
+				return Capture::Exit((
+					ExitReason::Revert(ExitRevert::Reverted),
+					None,
+					encode_revert_message(&e),
+				));
 			}
 		}
 
@@ -891,7 +918,11 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 					if out.len() > limit {
 						self.state.metadata_mut().gasometer.fail();
 						let _ = self.exit_substate(StackExitKind::Failed);
-						return Capture::Exit((ExitError::CreateContractLimit.into(), None, Vec::new()));
+						return Capture::Exit((
+							ExitReason::Revert(ExitRevert::Reverted),
+							None,
+							encode_revert_message(&ExitError::CreateContractLimit),
+						));
 					}
 				}
 
@@ -904,14 +935,22 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 					}
 					Err(e) => {
 						let _ = self.exit_substate(StackExitKind::Failed);
-						Capture::Exit((ExitReason::Error(e), None, Vec::new()))
+						Capture::Exit((
+							ExitReason::Revert(ExitRevert::Reverted),
+							None,
+							encode_revert_message(&e),
+						))
 					}
 				}
 			}
 			ExitReason::Error(e) => {
 				self.state.metadata_mut().gasometer.fail();
 				let _ = self.exit_substate(StackExitKind::Failed);
-				Capture::Exit((ExitReason::Error(e), None, Vec::new()))
+				Capture::Exit((
+					ExitReason::Revert(ExitRevert::Reverted),
+					None,
+					encode_revert_message(&e),
+				))
 			}
 			ExitReason::Revert(e) => {
 				let _ = self.exit_substate(StackExitKind::Reverted);
@@ -994,7 +1033,10 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 		if let Some(depth) = self.state.metadata().depth {
 			if depth > self.config.call_stack_limit {
 				let _ = self.exit_substate(StackExitKind::Reverted);
-				return Capture::Exit((ExitError::CallTooDeep.into(), Vec::new()));
+				return Capture::Exit((
+					ExitReason::Revert(ExitRevert::Reverted),
+					encode_revert_message(&ExitError::CallTooDeep),
+				));
 			}
 		}
 
@@ -1003,7 +1045,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 				Ok(()) => (),
 				Err(e) => {
 					let _ = self.exit_substate(StackExitKind::Reverted);
-					return Capture::Exit((ExitReason::Error(e), Vec::new()));
+					return Capture::Exit((ExitReason::Revert(ExitRevert::Reverted), encode_revert_message(&e)));
 				}
 			}
 		}
@@ -1022,8 +1064,12 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 					for Log { address, topics, data } in logs {
 						match self.log(address, topics, data) {
 							Ok(_) => continue,
-							Err(error) => {
-								return Capture::Exit((ExitReason::Error(error), output));
+							Err(e) => {
+								// this should not happen
+								return Capture::Exit((
+									ExitReason::Revert(ExitRevert::Reverted),
+									encode_revert_message(&e),
+								));
 							}
 						}
 					}
@@ -1044,6 +1090,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 				}) => {
 					let _ = self.state.metadata_mut().gasometer.record_cost(cost);
 					let _ = self.exit_substate(StackExitKind::Reverted);
+					// TODO: test the output
 					Capture::Exit((ExitReason::Revert(exit_status), output))
 				}
 				Err(PrecompileFailure::Fatal { exit_status }) => {
@@ -1071,7 +1118,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 			}
 			ExitReason::Error(e) => {
 				let _ = self.exit_substate(StackExitKind::Failed);
-				Capture::Exit((ExitReason::Error(e), Vec::new()))
+				Capture::Exit((ExitReason::Revert(ExitRevert::Reverted), encode_revert_message(&e)))
 			}
 			ExitReason::Revert(e) => {
 				let _ = self.exit_substate(StackExitKind::Reverted);

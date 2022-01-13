@@ -1172,6 +1172,7 @@ impl module_evm_accounts::Config for Runtime {
 	type Currency = Balances;
 	type AddressMapping = EvmAddressMapping<Runtime>;
 	type TransferAll = Currencies;
+	type ChainId = ChainId;
 	type WeightInfo = weights::module_evm_accounts::WeightInfo<Runtime>;
 }
 
@@ -2585,6 +2586,7 @@ mod tests {
 				gas_limit: 21_000,
 				storage_limit: 1_000,
 				valid_until: 30,
+				access_list: vec![],
 			});
 
 			let extra: SignedExtra = (
@@ -2614,7 +2616,8 @@ mod tests {
 						input: vec![0x01],
 						chain_id: 595,
 						genesis: sp_core::H256::default(),
-						valid_until: 30
+						valid_until: 30,
+						access_list: vec![],
 					},
 					expected_extra.clone()
 				)

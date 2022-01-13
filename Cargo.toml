@@ -4,7 +4,6 @@ cargo-features = ["resolver"]
 members = [
 	"node",
 	"node/cli",
-	"node/e2e-tests",
 	"node/service",
 
 	"modules/*",
@@ -194,7 +193,6 @@ sc-informant = { git = "https://github.com/paritytech//substrate", rev = "fcc54a
 sc-keystore = { git = "https://github.com/paritytech//substrate", rev = "fcc54a72973d03afe7bf9e3ef2736050b3f33465" }
 sc-network = { git = "https://github.com/paritytech//substrate", rev = "fcc54a72973d03afe7bf9e3ef2736050b3f33465" }
 sc-network-gossip = { git = "https://github.com/paritytech//substrate", rev = "fcc54a72973d03afe7bf9e3ef2736050b3f33465" }
-sc-network-test = { git = "https://github.com/paritytech//substrate", rev = "fcc54a72973d03afe7bf9e3ef2736050b3f33465" }
 sc-offchain = { git = "https://github.com/paritytech//substrate", rev = "fcc54a72973d03afe7bf9e3ef2736050b3f33465" }
 sc-rpc = { git = "https://github.com/paritytech//substrate", rev = "fcc54a72973d03afe7bf9e3ef2736050b3f33465" }
 sc-rpc-api = { git = "https://github.com/paritytech//substrate", rev = "fcc54a72973d03afe7bf9e3ef2736050b3f33465" }
@@ -248,8 +246,6 @@ sp-wasm-interface = { git = "https://github.com/paritytech//substrate", rev = "f
 substrate-build-script-utils = { git = "https://github.com/paritytech//substrate", rev = "fcc54a72973d03afe7bf9e3ef2736050b3f33465" }
 substrate-frame-rpc-system = { git = "https://github.com/paritytech//substrate", rev = "fcc54a72973d03afe7bf9e3ef2736050b3f33465" }
 substrate-prometheus-endpoint = { git = "https://github.com/paritytech//substrate", rev = "fcc54a72973d03afe7bf9e3ef2736050b3f33465" }
-substrate-test-runtime = { git = "https://github.com/paritytech//substrate", rev = "fcc54a72973d03afe7bf9e3ef2736050b3f33465" }
-substrate-test-runtime-client = { git = "https://github.com/paritytech//substrate", rev = "fcc54a72973d03afe7bf9e3ef2736050b3f33465" }
 substrate-wasm-builder = { git = "https://github.com/paritytech//substrate", rev = "fcc54a72973d03afe7bf9e3ef2736050b3f33465" }
 try-runtime-cli = { git = "https://github.com/paritytech//substrate", rev = "fcc54a72973d03afe7bf9e3ef2736050b3f33465" }
 

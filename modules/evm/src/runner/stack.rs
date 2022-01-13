@@ -24,13 +24,14 @@ use crate::{
 		state::{Accessed, StackExecutor, StackState as StackStateT, StackSubstateMetadata},
 		Runner as RunnerT,
 	},
-	AccountInfo, AccountStorages, Accounts, BalanceOf, CallInfo, Config, CreateInfo, Error, Event, ExecutionInfo, One,
-	Pallet, STORAGE_SIZE,
+	AccountInfo, AccountStorages, Accounts, BalanceOf, CallInfo, Config, CreateInfo, Error, ExecutionInfo, One, Pallet,
+	STORAGE_SIZE,
 };
 use frame_support::{
 	dispatch::DispatchError,
 	ensure, log,
 	traits::{Currency, ExistenceRequirement, Get},
+	transactional,
 };
 use module_evm_utiltity::{
 	ethereum::Log,
@@ -44,7 +45,7 @@ pub use primitives::{
 };
 use sha3::{Digest, Keccak256};
 use sp_core::{H160, H256, U256};
-use sp_runtime::traits::UniqueSaturatedInto;
+use sp_runtime::traits::{UniqueSaturatedInto, Zero};
 use sp_std::{boxed::Box, collections::btree_set::BTreeSet, marker::PhantomData, mem, vec::Vec};
 
 #[derive(Default)]
@@ -200,6 +201,8 @@ impl<T: Config> Runner<T> {
 }
 
 impl<T: Config> RunnerT<T> for Runner<T> {
+	/// Require transactional here. Always need to send events.
+	#[transactional]
 	fn call(
 		source: H160,
 		origin: H160,
@@ -220,7 +223,7 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 
 		let precompiles = T::PrecompilesValue::get();
 		let value = U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(value));
-		let info = Self::execute(
+		Self::execute(
 			source,
 			origin,
 			value,
@@ -229,27 +232,11 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 			config,
 			&precompiles,
 			|executor| executor.transact_call(source, target, value, input, gas_limit, access_list),
-		)?;
-
-		if info.exit_reason.is_succeed() {
-			Pallet::<T>::deposit_event(Event::<T>::Executed {
-				from: source,
-				contract: target,
-				logs: info.logs.clone(),
-			});
-		} else {
-			Pallet::<T>::deposit_event(Event::<T>::ExecutedFailed {
-				from: source,
-				contract: target,
-				exit_reason: info.exit_reason.clone(),
-				output: info.value.clone(),
-				logs: info.logs.clone(),
-			});
-		}
-
-		Ok(info)
+		)
 	}
 
+	/// Require transactional here. Always need to send events.
+	#[transactional]
 	fn create(
 		source: H160,
 		init: Vec<u8>,
@@ -261,7 +248,7 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 	) -> Result<CreateInfo, DispatchError> {
 		let precompiles = T::PrecompilesValue::get();
 		let value = U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(value));
-		let info = Self::execute(
+		Self::execute(
 			source,
 			source,
 			value,
@@ -278,26 +265,11 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 					address,
 				)
 			},
-		)?;
-
-		if info.exit_reason.is_succeed() {
-			Pallet::<T>::deposit_event(Event::<T>::Created {
-				from: source,
-				contract: info.value,
-				logs: info.logs.clone(),
-			});
-		} else {
-			Pallet::<T>::deposit_event(Event::<T>::CreatedFailed {
-				from: source,
-				contract: info.value,
-				exit_reason: info.exit_reason.clone(),
-				logs: info.logs.clone(),
-			});
-		}
-
-		Ok(info)
+		)
 	}
 
+	/// Require transactional here. Always need to send events.
+	#[transactional]
 	fn create2(
 		source: H160,
 		init: Vec<u8>,
@@ -311,7 +283,7 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 		let precompiles = T::PrecompilesValue::get();
 		let value = U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(value));
 		let code_hash = H256::from_slice(Keccak256::digest(&init).as_slice());
-		let info = Self::execute(
+		Self::execute(
 			source,
 			source,
 			value,
@@ -332,26 +304,11 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 					address,
 				)
 			},
-		)?;
-
-		if info.exit_reason.is_succeed() {
-			Pallet::<T>::deposit_event(Event::<T>::Created {
-				from: source,
-				contract: info.value,
-				logs: info.logs.clone(),
-			});
-		} else {
-			Pallet::<T>::deposit_event(Event::<T>::CreatedFailed {
-				from: source,
-				contract: info.value,
-				exit_reason: info.exit_reason.clone(),
-				logs: info.logs.clone(),
-			});
-		}
-
-		Ok(info)
+		)
 	}
 
+	/// Require transactional here. Always need to send events.
+	#[transactional]
 	fn create_at_address(
 		source: H160,
 		address: H160,
@@ -364,7 +321,7 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 	) -> Result<CreateInfo, DispatchError> {
 		let precompiles = T::PrecompilesValue::get();
 		let value = U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(value));
-		let info = Self::execute(
+		Self::execute(
 			source,
 			source,
 			value,
@@ -378,24 +335,7 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 					address,
 				)
 			},
-		)?;
-
-		if info.exit_reason.is_succeed() {
-			Pallet::<T>::deposit_event(Event::<T>::Created {
-				from: source,
-				contract: info.value,
-				logs: info.logs.clone(),
-			});
-		} else {
-			Pallet::<T>::deposit_event(Event::<T>::CreatedFailed {
-				from: source,
-				contract: info.value,
-				exit_reason: info.exit_reason.clone(),
-				logs: info.logs.clone(),
-			});
-		}
-
-		Ok(info)
+		)
 	}
 }
 
@@ -587,7 +527,15 @@ impl<'vicinity, 'config, T: Config> BackendT for SubstrateStackState<'vicinity, 
 	}
 
 	fn code(&self, address: H160) -> Vec<u8> {
-		Pallet::<T>::code_at_address(&address).into_inner()
+		let code = Pallet::<T>::code_at_address(&address).into_inner();
+		if code.len().is_zero() {
+			log::debug!(
+				target: "evm",
+				"contract does not exist, address: {:?}",
+				address
+			);
+		}
+		code
 	}
 
 	fn storage(&self, address: H160, index: H256) -> H256 {
