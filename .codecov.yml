@@ -1,6 +1,6 @@
 coverage:
   precision: 2
-  round: down 
+  round: down
   range: "70...100"
   status:                        # this controls whether a pull request will be blocked by a decrease in coverage
     # Learn more at https://docs.codecov.com/docs/commit-status
@@ -8,12 +8,19 @@ coverage:
       default:
         threshold: 5%            # allows coverage to drop by up to the percent noted and still post a success status
         #informational: true     # If true is specified the resulting status will pass no matter what the coverage is or what other settings are specified
-    patch: 
-      default:
-        threshold: 5%            # allows coverage to drop by up to the percent noted and still post a success status
-        #informational: true     # If true is specified the resulting status will pass no matter what the coverage is or what other settings are specified
-    changes: 
-      default:
-        threshold: 5%            # allows coverage to drop by up to the percent noted and still post a success status
-        #informational: true     # If true is specified the resulting status will pass no matter what the coverage is or what other settings are specified
+    #patch:
+    #  default:
+    #    threshold: 5%            # allows coverage to drop by up to the percent noted and still post a success status
+    #    #informational: true     # If true is specified the resulting status will pass no matter what the coverage is or what other settings are specified
+    #changes:
+    #  default:
+    #    threshold: 5%            # allows coverage to drop by up to the percent noted and still post a success status
+    #    #informational: true     # If true is specified the resulting status will pass no matter what the coverage is or what other settings are specified
 
+ignore:
+  - "node"  # ignore folders and all its contents
+  - "runtime"  # ignore folders and all its contents
+  - "inspect"  # ignore folders and all its contents
+
+github_checks:
+    annotations: false
