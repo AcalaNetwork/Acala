@@ -7,3 +7,6 @@
 [submodule "stable-asset"]
 	path = ecosystem-modules/stable-asset
 	url = https://github.com/nutsfinance/stable-asset.git
+[submodule "evm-bench"]
+	path = evm-bench
+	url = https://github.com/AcalaNetwork/evm-bench.git

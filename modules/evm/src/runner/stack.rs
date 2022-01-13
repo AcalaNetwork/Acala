@@ -46,7 +46,7 @@ pub use primitives::{
 };
 use sha3::{Digest, Keccak256};
 use sp_core::{H160, H256, U256};
-use sp_runtime::traits::UniqueSaturatedInto;
+use sp_runtime::traits::{UniqueSaturatedInto, Zero};
 use sp_std::{boxed::Box, collections::btree_set::BTreeSet, marker::PhantomData, mem, vec, vec::Vec};
 
 #[derive(Default)]
@@ -491,7 +491,15 @@ impl<'vicinity, 'config, T: Config> BackendT for SubstrateStackState<'vicinity, 
 	}
 
 	fn code(&self, address: H160) -> Vec<u8> {
-		Pallet::<T>::code_at_address(&address).into_inner()
+		let code = Pallet::<T>::code_at_address(&address).into_inner();
+		if code.len().is_zero() {
+			log::debug!(
+				target: "evm",
+				"contract does not exist, address: {:?}",
+				address
+			);
+		}
+		code
 	}
 
 	fn storage(&self, address: H160, index: H256) -> H256 {

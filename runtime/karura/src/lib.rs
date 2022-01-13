@@ -1161,6 +1161,7 @@ impl module_evm_accounts::Config for Runtime {
 	type Currency = Balances;
 	type AddressMapping = EvmAddressMapping<Runtime>;
 	type TransferAll = Currencies;
+	type ChainId = ChainId;
 	type WeightInfo = weights::module_evm_accounts::WeightInfo<Runtime>;
 }
 

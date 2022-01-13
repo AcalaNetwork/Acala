@@ -47,6 +47,36 @@ use sp_std::marker::PhantomData;
 /// Weight functions for module_evm.
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> module_evm::WeightInfo for WeightInfo<T> {
+	fn create() -> Weight {
+		(148_000_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(12 as Weight))
+			.saturating_add(T::DbWeight::get().writes(9 as Weight))
+	}
+	fn create2() -> Weight {
+		(136_000_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(12 as Weight))
+			.saturating_add(T::DbWeight::get().writes(9 as Weight))
+	}
+	fn create_nft_contract() -> Weight {
+		(128_000_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(13 as Weight))
+			.saturating_add(T::DbWeight::get().writes(10 as Weight))
+	}
+	fn create_predeploy_contract() -> Weight {
+		(128_000_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(12 as Weight))
+			.saturating_add(T::DbWeight::get().writes(9 as Weight))
+	}
+	fn deposit_ed() -> Weight {
+		(41_000_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(4 as Weight))
+			.saturating_add(T::DbWeight::get().writes(2 as Weight))
+	}
+	fn call() -> Weight {
+		(113_000_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(11 as Weight))
+			.saturating_add(T::DbWeight::get().writes(6 as Weight))
+	}
 	fn transfer_maintainer() -> Weight {
 		(136_456_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
