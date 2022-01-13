@@ -2197,52 +2197,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ee2626afccd7561a06cf1367e2950c4718ea04565e20fb5029b6c7d8ad09abcf"
 
 [[package]]
-name = "e2e-tests"
-version = "2.1.3"
-dependencies = [
- "acala-cli",
- "acala-primitives",
- "acala-service",
- "cumulus-primitives-parachain-inherent",
- "ecosystem-renvm-bridge",
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "hex-literal",
- "log",
- "mandala-runtime",
- "module-cdp-engine",
- "module-emergency-shutdown",
- "module-evm",
- "module-transaction-payment",
- "pallet-balances",
- "pallet-sudo",
- "runtime-common",
- "sc-client-api",
- "sc-consensus",
- "sc-consensus-aura",
- "sc-consensus-babe",
- "sc-consensus-manual-seal",
- "sc-executor",
- "sc-finality-grandpa",
- "sc-informant",
- "sc-network",
- "sc-network-test",
- "sc-service",
- "sp-api",
- "sp-consensus",
- "sp-consensus-aura",
- "sp-consensus-babe",
- "sp-core",
- "sp-inherents",
- "sp-keyring",
- "sp-keystore",
- "sp-runtime",
- "sp-timestamp",
- "test-runner",
-]
-
-[[package]]
 name = "ecosystem-compound-cash"
 version = "2.1.3"
 dependencies = [
@@ -10709,34 +10663,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "sc-network-test"
-version = "0.8.0"
-source = "git+https://github.com/paritytech//substrate?rev=fcc54a72973d03afe7bf9e3ef2736050b3f33465#fcc54a72973d03afe7bf9e3ef2736050b3f33465"
-dependencies = [
- "async-std",
- "async-trait",
- "futures 0.3.18",
- "futures-timer 3.0.2",
- "libp2p",
- "log",
- "parking_lot 0.11.2",
- "rand 0.7.3",
- "sc-block-builder",
- "sc-client-api",
- "sc-consensus",
- "sc-network",
- "sc-service",
- "sp-blockchain",
- "sp-consensus",
- "sp-consensus-babe",
- "sp-core",
- "sp-runtime",
- "sp-tracing",
- "substrate-test-runtime",
- "substrate-test-runtime-client",
-]
-
-[[package]]
 name = "sc-offchain"
 version = "4.0.0-dev"
 source = "git+https://github.com/paritytech//substrate?rev=fcc54a72973d03afe7bf9e3ef2736050b3f33465#fcc54a72973d03afe7bf9e3ef2736050b3f33465"
@@ -12378,93 +12304,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "substrate-test-client"
-version = "2.0.1"
-source = "git+https://github.com/paritytech//substrate?rev=fcc54a72973d03afe7bf9e3ef2736050b3f33465#fcc54a72973d03afe7bf9e3ef2736050b3f33465"
-dependencies = [
- "async-trait",
- "futures 0.3.18",
- "hex",
- "parity-scale-codec",
- "sc-client-api",
- "sc-client-db",
- "sc-consensus",
- "sc-executor",
- "sc-offchain",
- "sc-service",
- "serde",
- "serde_json",
- "sp-blockchain",
- "sp-consensus",
- "sp-core",
- "sp-keyring",
- "sp-keystore",
- "sp-runtime",
- "sp-state-machine",
-]
-
-[[package]]
-name = "substrate-test-runtime"
-version = "2.0.0"
-source = "git+https://github.com/paritytech//substrate?rev=fcc54a72973d03afe7bf9e3ef2736050b3f33465#fcc54a72973d03afe7bf9e3ef2736050b3f33465"
-dependencies = [
- "cfg-if 1.0.0",
- "frame-support",
- "frame-system",
- "frame-system-rpc-runtime-api",
- "log",
- "memory-db",
- "pallet-babe",
- "pallet-timestamp",
- "parity-scale-codec",
- "parity-util-mem",
- "sc-service",
- "scale-info",
- "serde",
- "sp-api",
- "sp-application-crypto",
- "sp-block-builder",
- "sp-consensus-aura",
- "sp-consensus-babe",
- "sp-core",
- "sp-externalities",
- "sp-finality-grandpa",
- "sp-inherents",
- "sp-io",
- "sp-keyring",
- "sp-offchain",
- "sp-runtime",
- "sp-runtime-interface",
- "sp-session",
- "sp-state-machine",
- "sp-std",
- "sp-transaction-pool",
- "sp-trie",
- "sp-version",
- "substrate-wasm-builder",
- "trie-db",
-]
-
-[[package]]
-name = "substrate-test-runtime-client"
-version = "2.0.0"
-source = "git+https://github.com/paritytech//substrate?rev=fcc54a72973d03afe7bf9e3ef2736050b3f33465#fcc54a72973d03afe7bf9e3ef2736050b3f33465"
-dependencies = [
- "futures 0.3.18",
- "parity-scale-codec",
- "sc-block-builder",
- "sc-client-api",
- "sc-consensus",
- "sp-api",
- "sp-blockchain",
- "sp-consensus",
- "sp-core",
- "sp-runtime",
- "substrate-test-client",
- "substrate-test-runtime",
-]
-
-[[package]]
 name = "substrate-wasm-builder"
 version = "5.0.0-dev"
 source = "git+https://github.com/paritytech//substrate?rev=fcc54a72973d03afe7bf9e3ef2736050b3f33465#fcc54a72973d03afe7bf9e3ef2736050b3f33465"
@@ -12541,56 +12380,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2dfed899f0eb03f32ee8c6a0aabdb8a7949659e3466561fc0adf54e26d88c5f4"
 dependencies = [
  "winapi-util",
-]
-
-[[package]]
-name = "test-runner"
-version = "2.1.3"
-dependencies = [
- "acala-cli",
- "acala-primitives",
- "acala-service",
- "env_logger 0.7.1",
- "frame-system",
- "futures 0.3.18",
- "jsonrpc-core",
- "log",
- "mandala-runtime",
- "num-traits",
- "sc-basic-authorship",
- "sc-cli",
- "sc-client-api",
- "sc-consensus",
- "sc-consensus-aura",
- "sc-consensus-manual-seal",
- "sc-executor",
- "sc-informant",
- "sc-network",
- "sc-rpc",
- "sc-rpc-server",
- "sc-service",
- "sc-transaction-pool",
- "sc-transaction-pool-api",
- "sp-api",
- "sp-block-builder",
- "sp-blockchain",
- "sp-consensus",
- "sp-consensus-aura",
- "sp-core",
- "sp-externalities",
- "sp-inherents",
- "sp-io",
- "sp-keyring",
- "sp-keystore",
- "sp-offchain",
- "sp-runtime",
- "sp-runtime-interface",
- "sp-session",
- "sp-state-machine",
- "sp-timestamp",
- "sp-transaction-pool",
- "sp-wasm-interface",
- "tokio",
 ]
 
 [[package]]
