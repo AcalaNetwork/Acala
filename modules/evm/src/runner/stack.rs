@@ -32,6 +32,7 @@ use frame_support::{
 	dispatch::DispatchError,
 	ensure, log,
 	traits::{Currency, ExistenceRequirement, Get},
+	transactional,
 };
 use module_evm_utiltity::{
 	ethereum::Log,
@@ -211,6 +212,8 @@ impl<T: Config> Runner<T> {
 }
 
 impl<T: Config> RunnerT<T> for Runner<T> {
+	/// Require transactional here. Always need to send events.
+	#[transactional]
 	fn call(
 		source: H160,
 		origin: H160,
@@ -235,6 +238,8 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 		})
 	}
 
+	/// Require transactional here. Always need to send events.
+	#[transactional]
 	fn create(
 		source: H160,
 		init: Vec<u8>,
@@ -256,6 +261,8 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 		})
 	}
 
+	/// Require transactional here. Always need to send events.
+	#[transactional]
 	fn create2(
 		source: H160,
 		init: Vec<u8>,
@@ -283,6 +290,8 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 		})
 	}
 
+	/// Require transactional here. Always need to send events.
+	#[transactional]
 	fn create_at_address(
 		source: H160,
 		address: H160,

@@ -562,7 +562,7 @@ pub mod module {
 			let who = ensure_signed(origin)?;
 			let source = T::AddressMapping::get_or_create_evm_address(&who);
 
-			let info = T::Runner::call(
+			match T::Runner::call(
 				source,
 				source,
 				target,
@@ -571,39 +571,43 @@ pub mod module {
 				gas_limit,
 				storage_limit,
 				T::config(),
-			)
-			.map_err(|e| {
-				Pallet::<T>::deposit_event(Event::<T>::ExecutedFailed {
-					from: source,
-					contract: target,
-					exit_reason: ExitReason::Error(ExitError::Other(Into::<&str>::into(e).into())),
-					output: vec![],
-					logs: vec![],
-				});
-				e
-			})?;
-			if info.exit_reason.is_succeed() {
-				Pallet::<T>::deposit_event(Event::<T>::Executed {
-					from: source,
-					contract: target,
-					logs: info.logs.clone(),
-				});
-			} else {
-				Pallet::<T>::deposit_event(Event::<T>::ExecutedFailed {
-					from: source,
-					contract: target,
-					exit_reason: info.exit_reason.clone(),
-					output: info.value.clone(),
-					logs: info.logs.clone(),
-				});
+			) {
+				Err(e) => {
+					Pallet::<T>::deposit_event(Event::<T>::ExecutedFailed {
+						from: source,
+						contract: target,
+						exit_reason: ExitReason::Error(ExitError::Other(Into::<&str>::into(e).into())),
+						output: vec![],
+						logs: vec![],
+					});
+
+					Ok(().into())
+				}
+				Ok(info) => {
+					if info.exit_reason.is_succeed() {
+						Pallet::<T>::deposit_event(Event::<T>::Executed {
+							from: source,
+							contract: target,
+							logs: info.logs.clone(),
+						});
+					} else {
+						Pallet::<T>::deposit_event(Event::<T>::ExecutedFailed {
+							from: source,
+							contract: target,
+							exit_reason: info.exit_reason.clone(),
+							output: info.value.clone(),
+							logs: info.logs.clone(),
+						});
+					}
+
+					let used_gas: u64 = info.used_gas.unique_saturated_into();
+
+					Ok(PostDispatchInfo {
+						actual_weight: Some(T::GasToWeight::convert(used_gas)),
+						pays_fee: Pays::Yes,
+					})
+				}
 			}
-
-			let used_gas: u64 = info.used_gas.unique_saturated_into();
-
-			Ok(PostDispatchInfo {
-				actual_weight: Some(T::GasToWeight::convert(used_gas)),
-				pays_fee: Pays::Yes,
-			})
 		}
 
 		/// Issue an EVM call operation on a scheduled contract call, and
@@ -639,8 +643,8 @@ pub mod module {
 				_payed = imbalance;
 			}
 
-			let info = T::Runner::call(from, from, target, input, value, gas_limit, storage_limit, T::config())
-				.map_err(|e| {
+			match T::Runner::call(from, from, target, input, value, gas_limit, storage_limit, T::config()) {
+				Err(e) => {
 					Pallet::<T>::deposit_event(Event::<T>::ExecutedFailed {
 						from,
 						contract: target,
@@ -648,46 +652,50 @@ pub mod module {
 						output: vec![],
 						logs: vec![],
 					});
-					e
-				})?;
-			if info.exit_reason.is_succeed() {
-				Pallet::<T>::deposit_event(Event::<T>::Executed {
-					from,
-					contract: target,
-					logs: info.logs.clone(),
-				});
-			} else {
-				Pallet::<T>::deposit_event(Event::<T>::ExecutedFailed {
-					from,
-					contract: target,
-					exit_reason: info.exit_reason.clone(),
-					output: info.value.clone(),
-					logs: info.logs.clone(),
-				});
-			}
 
-			let used_gas: u64 = info.used_gas.unique_saturated_into();
+					Ok(().into())
+				}
+				Ok(info) => {
+					if info.exit_reason.is_succeed() {
+						Pallet::<T>::deposit_event(Event::<T>::Executed {
+							from,
+							contract: target,
+							logs: info.logs.clone(),
+						});
+					} else {
+						Pallet::<T>::deposit_event(Event::<T>::ExecutedFailed {
+							from,
+							contract: target,
+							exit_reason: info.exit_reason.clone(),
+							output: info.value.clone(),
+							logs: info.logs.clone(),
+						});
+					}
 
-			#[cfg(not(feature = "with-ethereum-compatibility"))]
-			{
-				use sp_runtime::traits::Zero;
-				let refund_gas = gas_limit.saturating_sub(used_gas);
-				if !refund_gas.is_zero() {
-					// ignore the result to continue. if it fails, just the user will not
-					// be refunded, there will not increase user balance.
-					let res = T::ChargeTransactionPayment::refund_fee(
-						&_from_account,
-						T::GasToWeight::convert(refund_gas),
-						_payed,
-					);
-					debug_assert!(res.is_ok());
+					let used_gas: u64 = info.used_gas.unique_saturated_into();
+
+					#[cfg(not(feature = "with-ethereum-compatibility"))]
+					{
+						use sp_runtime::traits::Zero;
+						let refund_gas = gas_limit.saturating_sub(used_gas);
+						if !refund_gas.is_zero() {
+							// ignore the result to continue. if it fails, just the user will not
+							// be refunded, there will not increase user balance.
+							let res = T::ChargeTransactionPayment::refund_fee(
+								&_from_account,
+								T::GasToWeight::convert(refund_gas),
+								_payed,
+							);
+							debug_assert!(res.is_ok());
+						}
+					}
+
+					Ok(PostDispatchInfo {
+						actual_weight: Some(T::GasToWeight::convert(used_gas)),
+						pays_fee: Pays::Yes,
+					})
 				}
 			}
-
-			Ok(PostDispatchInfo {
-				actual_weight: Some(T::GasToWeight::convert(used_gas)),
-				pays_fee: Pays::Yes,
-			})
 		}
 
 		/// Issue an EVM create operation. This is similar to a contract
@@ -709,36 +717,41 @@ pub mod module {
 			let who = ensure_signed(origin)?;
 			let source = T::AddressMapping::get_or_create_evm_address(&who);
 
-			let info = T::Runner::create(source, init, value, gas_limit, storage_limit, T::config()).map_err(|e| {
-				Pallet::<T>::deposit_event(Event::<T>::CreatedFailed {
-					from: source,
-					contract: H160::default(),
-					exit_reason: ExitReason::Error(ExitError::Other(Into::<&str>::into(e).into())),
-					logs: vec![],
-				});
-				e
-			})?;
-			if info.exit_reason.is_succeed() {
-				Pallet::<T>::deposit_event(Event::<T>::Created {
-					from: source,
-					contract: info.value,
-					logs: info.logs.clone(),
-				});
-			} else {
-				Pallet::<T>::deposit_event(Event::<T>::CreatedFailed {
-					from: source,
-					contract: info.value,
-					exit_reason: info.exit_reason.clone(),
-					logs: info.logs.clone(),
-				});
+			match T::Runner::create(source, init, value, gas_limit, storage_limit, T::config()) {
+				Err(e) => {
+					Pallet::<T>::deposit_event(Event::<T>::CreatedFailed {
+						from: source,
+						contract: H160::default(),
+						exit_reason: ExitReason::Error(ExitError::Other(Into::<&str>::into(e).into())),
+						logs: vec![],
+					});
+
+					Ok(().into())
+				}
+				Ok(info) => {
+					if info.exit_reason.is_succeed() {
+						Pallet::<T>::deposit_event(Event::<T>::Created {
+							from: source,
+							contract: info.value,
+							logs: info.logs.clone(),
+						});
+					} else {
+						Pallet::<T>::deposit_event(Event::<T>::CreatedFailed {
+							from: source,
+							contract: info.value,
+							exit_reason: info.exit_reason.clone(),
+							logs: info.logs.clone(),
+						});
+					}
+
+					let used_gas: u64 = info.used_gas.unique_saturated_into();
+
+					Ok(PostDispatchInfo {
+						actual_weight: Some(T::GasToWeight::convert(used_gas)),
+						pays_fee: Pays::Yes,
+					})
+				}
 			}
-
-			let used_gas: u64 = info.used_gas.unique_saturated_into();
-
-			Ok(PostDispatchInfo {
-				actual_weight: Some(T::GasToWeight::convert(used_gas)),
-				pays_fee: Pays::Yes,
-			})
 		}
 
 		/// Issue an EVM create2 operation.
@@ -762,37 +775,41 @@ pub mod module {
 			let who = ensure_signed(origin)?;
 			let source = T::AddressMapping::get_or_create_evm_address(&who);
 
-			let info =
-				T::Runner::create2(source, init, salt, value, gas_limit, storage_limit, T::config()).map_err(|e| {
+			match T::Runner::create2(source, init, salt, value, gas_limit, storage_limit, T::config()) {
+				Err(e) => {
 					Pallet::<T>::deposit_event(Event::<T>::CreatedFailed {
 						from: source,
 						contract: H160::default(),
 						exit_reason: ExitReason::Error(ExitError::Other(Into::<&str>::into(e).into())),
 						logs: vec![],
 					});
-					e
-				})?;
-			if info.exit_reason.is_succeed() {
-				Pallet::<T>::deposit_event(Event::<T>::Created {
-					from: source,
-					contract: info.value,
-					logs: info.logs.clone(),
-				});
-			} else {
-				Pallet::<T>::deposit_event(Event::<T>::CreatedFailed {
-					from: source,
-					contract: info.value,
-					exit_reason: info.exit_reason.clone(),
-					logs: info.logs.clone(),
-				});
+
+					Ok(().into())
+				}
+				Ok(info) => {
+					if info.exit_reason.is_succeed() {
+						Pallet::<T>::deposit_event(Event::<T>::Created {
+							from: source,
+							contract: info.value,
+							logs: info.logs.clone(),
+						});
+					} else {
+						Pallet::<T>::deposit_event(Event::<T>::CreatedFailed {
+							from: source,
+							contract: info.value,
+							exit_reason: info.exit_reason.clone(),
+							logs: info.logs.clone(),
+						});
+					}
+
+					let used_gas: u64 = info.used_gas.unique_saturated_into();
+
+					Ok(PostDispatchInfo {
+						actual_weight: Some(T::GasToWeight::convert(used_gas)),
+						pays_fee: Pays::Yes,
+					})
+				}
 			}
-
-			let used_gas: u64 = info.used_gas.unique_saturated_into();
-
-			Ok(PostDispatchInfo {
-				actual_weight: Some(T::GasToWeight::convert(used_gas)),
-				pays_fee: Pays::Yes,
-			})
 		}
 
 		/// Create mirrored NFT contract. The next available system contract
@@ -815,40 +832,43 @@ pub mod module {
 
 			let source = T::NetworkContractSource::get();
 			let address = MIRRORED_TOKENS_ADDRESS_START | EvmAddress::from_low_u64_be(Self::network_contract_index());
-			let info =
-				T::Runner::create_at_address(source, address, init, value, gas_limit, storage_limit, T::config())
-					.map_err(|e| {
+			match T::Runner::create_at_address(source, address, init, value, gas_limit, storage_limit, T::config()) {
+				Err(e) => {
+					Pallet::<T>::deposit_event(Event::<T>::CreatedFailed {
+						from: source,
+						contract: H160::default(),
+						exit_reason: ExitReason::Error(ExitError::Other(Into::<&str>::into(e).into())),
+						logs: vec![],
+					});
+
+					Ok(().into())
+				}
+				Ok(info) => {
+					if info.exit_reason.is_succeed() {
+						NetworkContractIndex::<T>::mutate(|v| *v = v.saturating_add(One::one()));
+
+						Pallet::<T>::deposit_event(Event::<T>::Created {
+							from: source,
+							contract: info.value,
+							logs: info.logs.clone(),
+						});
+					} else {
 						Pallet::<T>::deposit_event(Event::<T>::CreatedFailed {
 							from: source,
-							contract: H160::default(),
-							exit_reason: ExitReason::Error(ExitError::Other(Into::<&str>::into(e).into())),
-							logs: vec![],
+							contract: info.value,
+							exit_reason: info.exit_reason.clone(),
+							logs: info.logs.clone(),
 						});
-						e
-					})?;
-			if info.exit_reason.is_succeed() {
-				NetworkContractIndex::<T>::mutate(|v| *v = v.saturating_add(One::one()));
+					}
 
-				Pallet::<T>::deposit_event(Event::<T>::Created {
-					from: source,
-					contract: info.value,
-					logs: info.logs.clone(),
-				});
-			} else {
-				Pallet::<T>::deposit_event(Event::<T>::CreatedFailed {
-					from: source,
-					contract: info.value,
-					exit_reason: info.exit_reason.clone(),
-					logs: info.logs.clone(),
-				});
+					let used_gas: u64 = info.used_gas.unique_saturated_into();
+
+					Ok(PostDispatchInfo {
+						actual_weight: Some(T::GasToWeight::convert(used_gas)),
+						pays_fee: Pays::Yes,
+					})
+				}
 			}
-
-			let used_gas: u64 = info.used_gas.unique_saturated_into();
-
-			Ok(PostDispatchInfo {
-				actual_weight: Some(T::GasToWeight::convert(used_gas)),
-				pays_fee: Pays::Yes,
-			})
 		}
 
 		/// Issue an EVM create operation. The address specified
@@ -878,7 +898,7 @@ pub mod module {
 
 			let source = T::NetworkContractSource::get();
 
-			let info = if init.is_empty() {
+			if init.is_empty() {
 				// deposit ED for mirrored token
 				T::Currency::transfer(
 					&T::TreasuryAccount::get(),
@@ -886,46 +906,57 @@ pub mod module {
 					T::Currency::minimum_balance(),
 					ExistenceRequirement::AllowDeath,
 				)?;
-				CreateInfo {
+				let info = CreateInfo {
 					exit_reason: ExitReason::Succeed(ExitSucceed::Stopped),
 					value: target,
 					used_gas: 0.into(),
 					used_storage: 0,
 					logs: vec![],
-				}
+				};
+
+				let used_gas: u64 = info.used_gas.unique_saturated_into();
+
+				Ok(PostDispatchInfo {
+					actual_weight: Some(T::GasToWeight::convert(used_gas)),
+					pays_fee: Pays::Yes,
+				})
 			} else {
-				T::Runner::create_at_address(source, target, init, value, gas_limit, storage_limit, T::config())
-					.map_err(|e| {
+				match T::Runner::create_at_address(source, target, init, value, gas_limit, storage_limit, T::config()) {
+					Err(e) => {
 						Pallet::<T>::deposit_event(Event::<T>::CreatedFailed {
 							from: source,
 							contract: H160::default(),
 							exit_reason: ExitReason::Error(ExitError::Other(Into::<&str>::into(e).into())),
 							logs: vec![],
 						});
-						e
-					})?
-			};
-			if info.exit_reason.is_succeed() {
-				Pallet::<T>::deposit_event(Event::<T>::Created {
-					from: source,
-					contract: info.value,
-					logs: info.logs.clone(),
-				});
-			} else {
-				Pallet::<T>::deposit_event(Event::<T>::CreatedFailed {
-					from: source,
-					contract: info.value,
-					exit_reason: info.exit_reason.clone(),
-					logs: info.logs.clone(),
-				});
+
+						Ok(().into())
+					}
+					Ok(info) => {
+						if info.exit_reason.is_succeed() {
+							Pallet::<T>::deposit_event(Event::<T>::Created {
+								from: source,
+								contract: info.value,
+								logs: info.logs.clone(),
+							});
+						} else {
+							Pallet::<T>::deposit_event(Event::<T>::CreatedFailed {
+								from: source,
+								contract: info.value,
+								exit_reason: info.exit_reason.clone(),
+								logs: info.logs.clone(),
+							});
+						}
+
+						let used_gas: u64 = info.used_gas.unique_saturated_into();
+
+						Ok(PostDispatchInfo {
+							actual_weight: Some(T::GasToWeight::convert(used_gas)),
+							pays_fee: Pays::Yes,
+						})
+					}
+				}
 			}
-
-			let used_gas: u64 = info.used_gas.unique_saturated_into();
-
-			Ok(PostDispatchInfo {
-				actual_weight: Some(T::GasToWeight::convert(used_gas)),
-				pays_fee: Pays::Yes,
-			})
 		}
 
 		/// Transfers Contract maintainership to a new EVM Address.
