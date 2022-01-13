@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2021 Acala Foundation.
+// Copyright (C) 2020-2022 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -218,6 +218,7 @@ fn parachain_subaccounts_are_unique() {
 			hex_literal::hex!["70617261d0070000000000000000000000000000000000000000000000000000"].into()
 		);
 
+		#[cfg(feature = "with-acala-runtime")]
 		assert_eq!(
 			RelayChainSovereignSubAccount::get(),
 			create_x2_parachain_multilocation(0)
@@ -392,7 +393,7 @@ mod mandala_only_tests {
 
 			// tips = 0
 			// operational extrinsic
-			let call = Call::Sudo(pallet_sudo::Call::sudo { call: Box::new(module_emergency_shutdown::Call::emergency_shutdown { }.into()) });
+			let call = Call::Sudo(pallet_sudo::Call::sudo { call: Box::new(module_emergency_shutdown::Call::open_collateral_refund { }.into()) });
 			let bytes = UncheckedExtrinsic::new(call.clone().into(), None).expect("This should not fail").encode();
 
 			assert_eq!(
@@ -403,7 +404,7 @@ mod mandala_only_tests {
 					bytes.len()
 				),
 				Ok(ValidTransaction {
-					priority: 43_824_742_400_000_000,
+					priority: 64_296_718_080_000_000,
 					requires: vec![],
 					provides: vec![],
 					longevity: 18_446_744_073_709_551_615,

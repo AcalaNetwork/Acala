@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2021 Acala Foundation.
+// Copyright (C) 2020-2022 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -41,7 +41,7 @@ runtime_benchmarks! {
 		);
 	}
 	verify {
-		assert_last_event(module_session_manager::Event::ScheduledSessionDuration(10,1,100).into());
+		assert_last_event(module_session_manager::Event::ScheduledSessionDuration{block_number: 10, session_index: 1, session_duration: 100}.into());
 	}
 
 	on_initialize_skip {

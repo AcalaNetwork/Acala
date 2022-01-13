@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2021 Acala Foundation.
+// Copyright (C) 2020-2022 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -62,11 +62,11 @@ fn homa_lite_mint_works() {
 
 			assert_ok!(HomaLite::mint(Origin::signed(alice()), amount));
 			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY, &alice()), liquid_amount_1);
-			System::assert_last_event(Event::HomaLite(module_homa_lite::Event::Minted(
-				alice(),
-				amount,
-				liquid_amount_1,
-			)));
+			System::assert_last_event(Event::HomaLite(module_homa_lite::Event::Minted {
+				who: alice(),
+				amount_staked: amount,
+				amount_minted: liquid_amount_1,
+			}));
 
 			// Total issuance for liquid currnecy increased.
 			let new_liquid_issuance = Currencies::total_issuance(LIQUID_CURRENCY);
@@ -86,11 +86,11 @@ fn homa_lite_mint_works() {
 			let liquid_amount_2 = 49_974_865_639_397;
 
 			assert_ok!(HomaLite::mint(Origin::signed(alice()), amount));
-			System::assert_last_event(Event::HomaLite(module_homa_lite::Event::Minted(
-				alice(),
-				amount,
-				liquid_amount_2,
-			)));
+			System::assert_last_event(Event::HomaLite(module_homa_lite::Event::Minted {
+				who: alice(),
+				amount_staked: amount,
+				amount_minted: liquid_amount_2,
+			}));
 			#[cfg(feature = "with-karura-runtime")]
 			assert_eq!(
 				Currencies::free_balance(LIQUID_CURRENCY, &alice()),

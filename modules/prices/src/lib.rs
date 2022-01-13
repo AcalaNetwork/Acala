@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2021 Acala Foundation.
+// Copyright (C) 2020-2022 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -103,10 +103,13 @@ pub mod module {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// Lock price. \[currency_id, locked_price\]
-		LockPrice(CurrencyId, Price),
-		/// Unlock price. \[currency_id\]
-		UnlockPrice(CurrencyId),
+		/// Lock price.
+		LockPrice {
+			currency_id: CurrencyId,
+			locked_price: Price,
+		},
+		/// Unlock price.
+		UnlockPrice { currency_id: CurrencyId },
 	}
 
 	/// Mapping from currency id to it's locked price
@@ -200,14 +203,17 @@ impl<T: Config> LockablePrice<CurrencyId> for Pallet<T> {
 	fn lock_price(currency_id: CurrencyId) -> DispatchResult {
 		let price = Self::access_price(currency_id).ok_or(Error::<T>::AccessPriceFailed)?;
 		LockedPrice::<T>::insert(currency_id, price);
-		Pallet::<T>::deposit_event(Event::LockPrice(currency_id, price));
+		Pallet::<T>::deposit_event(Event::LockPrice {
+			currency_id,
+			locked_price: price,
+		});
 		Ok(())
 	}
 
 	/// Unlock the locked price
 	fn unlock_price(currency_id: CurrencyId) -> DispatchResult {
 		let _ = LockedPrice::<T>::take(currency_id).ok_or(Error::<T>::NoLockedPrice)?;
-		Pallet::<T>::deposit_event(Event::UnlockPrice(currency_id));
+		Pallet::<T>::deposit_event(Event::UnlockPrice { currency_id });
 		Ok(())
 	}
 }

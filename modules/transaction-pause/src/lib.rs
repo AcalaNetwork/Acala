@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2021 Acala Foundation.
+// Copyright (C) 2020-2022 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -62,10 +62,16 @@ pub mod module {
 	#[pallet::event]
 	#[pallet::generate_deposit(fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// Paused transaction . \[pallet_name_bytes, function_name_bytes\]
-		TransactionPaused(Vec<u8>, Vec<u8>),
-		/// Unpaused transaction . \[pallet_name_bytes, function_name_bytes\]
-		TransactionUnpaused(Vec<u8>, Vec<u8>),
+		/// Paused transaction
+		TransactionPaused {
+			pallet_name_bytes: Vec<u8>,
+			function_name_bytes: Vec<u8>,
+		},
+		/// Unpaused transaction
+		TransactionUnpaused {
+			pallet_name_bytes: Vec<u8>,
+			function_name_bytes: Vec<u8>,
+		},
 	}
 
 	/// The paused transaction map
@@ -98,7 +104,10 @@ pub mod module {
 			PausedTransactions::<T>::mutate_exists((pallet_name.clone(), function_name.clone()), |maybe_paused| {
 				if maybe_paused.is_none() {
 					*maybe_paused = Some(());
-					Self::deposit_event(Event::TransactionPaused(pallet_name, function_name));
+					Self::deposit_event(Event::TransactionPaused {
+						pallet_name_bytes: pallet_name,
+						function_name_bytes: function_name,
+					});
 				}
 			});
 			Ok(())
@@ -113,7 +122,10 @@ pub mod module {
 		) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
 			if PausedTransactions::<T>::take((&pallet_name, &function_name)).is_some() {
-				Self::deposit_event(Event::TransactionUnpaused(pallet_name, function_name));
+				Self::deposit_event(Event::TransactionUnpaused {
+					pallet_name_bytes: pallet_name,
+					function_name_bytes: function_name,
+				});
 			};
 			Ok(())
 		}

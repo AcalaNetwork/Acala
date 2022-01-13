@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2021 Acala Foundation.
+// Copyright (C) 2020-2022 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -299,12 +299,12 @@ fn call_event_should_work() {
 			assert_ok!(Currencies::transfer(Some(alice()).into(), bob(), X_TOKEN_ID, 50));
 			assert_eq!(Currencies::free_balance(X_TOKEN_ID, &alice()), 50);
 			assert_eq!(Currencies::free_balance(X_TOKEN_ID, &bob()), 150);
-			System::assert_last_event(Event::Currencies(crate::Event::Transferred(
-				X_TOKEN_ID,
-				alice(),
-				bob(),
-				50,
-			)));
+			System::assert_last_event(Event::Currencies(crate::Event::Transferred {
+				currency_id: X_TOKEN_ID,
+				from: alice(),
+				to: bob(),
+				amount: 50,
+			}));
 
 			assert_ok!(<Currencies as MultiCurrency<AccountId>>::transfer(
 				X_TOKEN_ID,
@@ -314,12 +314,12 @@ fn call_event_should_work() {
 			));
 			assert_eq!(Currencies::free_balance(X_TOKEN_ID, &alice()), 40);
 			assert_eq!(Currencies::free_balance(X_TOKEN_ID, &bob()), 160);
-			System::assert_last_event(Event::Currencies(crate::Event::Transferred(
-				X_TOKEN_ID,
-				alice(),
-				bob(),
-				10,
-			)));
+			System::assert_last_event(Event::Currencies(crate::Event::Transferred {
+				currency_id: X_TOKEN_ID,
+				from: alice(),
+				to: bob(),
+				amount: 10,
+			}));
 
 			assert_ok!(<Currencies as MultiCurrency<AccountId>>::deposit(
 				X_TOKEN_ID,
@@ -327,7 +327,11 @@ fn call_event_should_work() {
 				100
 			));
 			assert_eq!(Currencies::free_balance(X_TOKEN_ID, &alice()), 140);
-			System::assert_last_event(Event::Currencies(crate::Event::Deposited(X_TOKEN_ID, alice(), 100)));
+			System::assert_last_event(Event::Currencies(crate::Event::Deposited {
+				currency_id: X_TOKEN_ID,
+				who: alice(),
+				amount: 100,
+			}));
 
 			assert_ok!(<Currencies as MultiCurrency<AccountId>>::withdraw(
 				X_TOKEN_ID,
@@ -335,7 +339,11 @@ fn call_event_should_work() {
 				20
 			));
 			assert_eq!(Currencies::free_balance(X_TOKEN_ID, &alice()), 120);
-			System::assert_last_event(Event::Currencies(crate::Event::Withdrawn(X_TOKEN_ID, alice(), 20)));
+			System::assert_last_event(Event::Currencies(crate::Event::Withdrawn {
+				currency_id: X_TOKEN_ID,
+				who: alice(),
+				amount: 20,
+			}));
 		});
 }
 
@@ -890,7 +898,11 @@ fn sweep_dust_tokens_works() {
 			DOT,
 			accounts
 		));
-		System::assert_last_event(Event::Currencies(crate::Event::DustSwept(DOT, bob(), 1)));
+		System::assert_last_event(Event::Currencies(crate::Event::DustSwept {
+			currency_id: DOT,
+			who: bob(),
+			amount: 1,
+		}));
 
 		// bob's account is gone
 		assert_eq!(tokens::Accounts::<Runtime>::contains_key(bob(), DOT), false);
@@ -965,7 +977,11 @@ fn sweep_dust_native_currency_works() {
 			NATIVE_CURRENCY_ID,
 			accounts
 		));
-		System::assert_last_event(Event::Currencies(crate::Event::DustSwept(NATIVE_CURRENCY_ID, bob(), 1)));
+		System::assert_last_event(Event::Currencies(crate::Event::DustSwept {
+			currency_id: NATIVE_CURRENCY_ID,
+			who: bob(),
+			amount: 1,
+		}));
 
 		// bob's account is gone
 		assert_eq!(System::account_exists(&bob()), false);

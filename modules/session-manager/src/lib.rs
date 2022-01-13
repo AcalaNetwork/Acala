@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2021 Acala Foundation.
+// Copyright (C) 2020-2022 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -70,8 +70,12 @@ pub mod module {
 	#[pallet::event]
 	#[pallet::generate_deposit(fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// Scheduled session duration. \[block_number, session_index, session_duration\]
-		ScheduledSessionDuration(T::BlockNumber, SessionIndex, T::BlockNumber),
+		/// Scheduled session duration.
+		ScheduledSessionDuration {
+			block_number: T::BlockNumber,
+			session_index: SessionIndex,
+			session_duration: T::BlockNumber,
+		},
 	}
 
 	/// The current session duration.
@@ -157,11 +161,11 @@ pub mod module {
 
 			let target_block_number = Self::do_schedule_session_duration(start_session, duration)?;
 
-			Self::deposit_event(Event::ScheduledSessionDuration(
-				target_block_number,
-				start_session,
-				duration,
-			));
+			Self::deposit_event(Event::ScheduledSessionDuration {
+				block_number: target_block_number,
+				session_index: start_session,
+				session_duration: duration,
+			});
 			Ok(())
 		}
 	}

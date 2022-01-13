@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2021 Acala Foundation.
+// Copyright (C) 2020-2022 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -35,7 +35,7 @@ use sp_runtime::{
 	DispatchError, FixedPointNumber,
 };
 use sp_std::cell::RefCell;
-use support::{mocks::MockErc20InfoMapping, ExchangeRate};
+use support::{mocks::MockErc20InfoMapping, ExchangeRate, SwapLimit};
 
 pub type AccountId = u128;
 pub type BlockNumber = u64;
@@ -146,29 +146,24 @@ impl DEXManager<AccountId, CurrencyId, Balance> for MockDEX {
 		unimplemented!()
 	}
 
-	fn get_swap_target_amount(_path: &[CurrencyId], _supply_amount: Balance) -> Option<Balance> {
+	fn get_swap_amount(_: &[CurrencyId], _: SwapLimit<Balance>) -> Option<(Balance, Balance)> {
 		unimplemented!()
 	}
 
-	fn get_swap_supply_amount(_path: &[CurrencyId], _target_amount: Balance) -> Option<Balance> {
+	fn get_best_price_swap_path(
+		_: CurrencyId,
+		_: CurrencyId,
+		_: SwapLimit<Balance>,
+		_: Vec<Vec<CurrencyId>>,
+	) -> Option<Vec<CurrencyId>> {
 		unimplemented!()
 	}
 
-	fn swap_with_exact_supply(
-		_who: &AccountId,
-		_path: &[CurrencyId],
-		_supply_amount: Balance,
-		_min_target_amount: Balance,
-	) -> sp_std::result::Result<Balance, DispatchError> {
-		unimplemented!()
-	}
-
-	fn swap_with_exact_target(
-		_who: &AccountId,
-		_path: &[CurrencyId],
-		_target_amount: Balance,
-		_max_supply_amount: Balance,
-	) -> sp_std::result::Result<Balance, DispatchError> {
+	fn swap_with_specific_path(
+		_: &AccountId,
+		_: &[CurrencyId],
+		_: SwapLimit<Balance>,
+	) -> sp_std::result::Result<(Balance, Balance), DispatchError> {
 		unimplemented!()
 	}
 

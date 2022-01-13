@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2021 Acala Foundation.
+// Copyright (C) 2020-2022 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -18,9 +18,9 @@
 
 use crate::{
 	dollar, AccountId, Address, Amount, Balance, CdpEngine, CdpTreasury, CollateralCurrencyIds, CurrencyId,
-	DefaultDebitExchangeRate, DefaultSwapParitalPathList, Dex, EmergencyShutdown, ExistentialDeposits,
-	GetLiquidCurrencyId, GetStableCurrencyId, GetStakingCurrencyId, MaxAuctionsCount, MinimumDebitValue, Price, Rate,
-	Ratio, Runtime, Timestamp, MILLISECS_PER_BLOCK,
+	DefaultDebitExchangeRate, Dex, EmergencyShutdown, ExistentialDeposits, GetLiquidCurrencyId, GetStableCurrencyId,
+	GetStakingCurrencyId, MaxAuctionsCount, MinimumDebitValue, Price, Rate, Ratio, Runtime, Timestamp,
+	MILLISECS_PER_BLOCK,
 };
 
 use super::utils::{feed_price, set_balance};
@@ -187,8 +187,6 @@ runtime_benchmarks! {
 		let owner: AccountId = account("owner", 0, SEED);
 		let owner_lookup = AccountIdLookup::unlookup(owner.clone());
 		let funder: AccountId = account("funder", 0, SEED);
-		let mut path: Vec<CurrencyId> = DefaultSwapParitalPathList::get().last().unwrap().clone();
-
 		let debit_value = 100 * dollar(STABLECOIN);
 		let debit_exchange_rate = CdpEngine::get_debit_exchange_rate(LIQUID);
 		let debit_amount = debit_exchange_rate.reciprocal().unwrap().saturating_mul_int(debit_value);
@@ -197,14 +195,9 @@ runtime_benchmarks! {
 		let collateral_amount = Price::saturating_from_rational(dollar(LIQUID), dollar(STABLECOIN)).saturating_mul_int(collateral_value);
 		let collateral_price = Price::one();		// 1 USD
 
-		path.insert(0, LIQUID);
-		for i in 0..path.len() {
-			if i != 0 {
-				inject_liquidity(funder.clone(), path[i], path[i-1], 10_000 * dollar(path[i]), 10_000 * dollar(path[i-1]))?;
-			}
-		}
-
 		set_balance(LIQUID, &owner, (10 * collateral_amount) + ExistentialDeposits::get(&LIQUID));
+		inject_liquidity(funder.clone(), LIQUID, STAKING, 10_000 * dollar(LIQUID), 10_000 * dollar(STAKING))?;
+		inject_liquidity(funder, STAKING, STABLECOIN, 10_000 * dollar(STAKING), 10_000 * dollar(STABLECOIN))?;
 
 		// feed price
 		feed_price(vec![(STAKING, collateral_price)])?;

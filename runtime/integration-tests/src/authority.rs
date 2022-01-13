@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2021 Acala Foundation.
+// Copyright (C) 2020-2022 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -104,13 +104,13 @@ fn test_authority_module() {
 				true,
 				Box::new(call.clone())
 			));
-			System::assert_last_event(Event::Authority(orml_authority::Event::Scheduled(
-				OriginCaller::Authority(DelayedOrigin {
+			System::assert_last_event(Event::Authority(orml_authority::Event::Scheduled {
+				origin: OriginCaller::Authority(DelayedOrigin {
 					delay: one_day_later - 1,
 					origin: Box::new(OriginCaller::system(RawOrigin::Root)),
 				}),
-				1,
-			)));
+				index: 1,
+			}));
 
 			run_to_block(one_day_later);
 
@@ -185,10 +185,10 @@ fn test_authority_module() {
 				false,
 				Box::new(call.clone())
 			));
-			System::assert_last_event(Event::Authority(orml_authority::Event::Scheduled(
-				OriginCaller::system(RawOrigin::Root),
-				3,
-			)));
+			System::assert_last_event(Event::Authority(orml_authority::Event::Scheduled {
+				origin: OriginCaller::system(RawOrigin::Root),
+				index: 3,
+			}));
 
 			run_to_block(seven_days_later + 1);
 			System::assert_last_event(Event::Scheduler(pallet_scheduler::Event::<Runtime>::Dispatched(
@@ -229,13 +229,13 @@ fn test_authority_module() {
 				true,
 				Box::new(call.clone())
 			));
-			System::assert_last_event(Event::Authority(orml_authority::Event::Scheduled(
-				OriginCaller::Authority(DelayedOrigin {
+			System::assert_last_event(Event::Authority(orml_authority::Event::Scheduled {
+				origin: OriginCaller::Authority(DelayedOrigin {
 					delay: 1,
 					origin: Box::new(OriginCaller::system(RawOrigin::Root)),
 				}),
-				5,
-			)));
+				index: 5,
+			}));
 
 			let schedule_origin = {
 				let origin: <Runtime as orml_authority::Config>::Origin = From::from(Origin::root());
@@ -251,13 +251,13 @@ fn test_authority_module() {
 
 			let pallets_origin = Box::new(schedule_origin.caller().clone());
 			assert_ok!(Authority::cancel_scheduled_dispatch(Origin::root(), pallets_origin, 5));
-			System::assert_last_event(Event::Authority(orml_authority::Event::Cancelled(
-				OriginCaller::Authority(DelayedOrigin {
+			System::assert_last_event(Event::Authority(orml_authority::Event::Cancelled {
+				origin: OriginCaller::Authority(DelayedOrigin {
 					delay: 1,
 					origin: Box::new(OriginCaller::system(RawOrigin::Root)),
 				}),
-				5,
-			)));
+				index: 5,
+			}));
 
 			assert_ok!(Authority::schedule_dispatch(
 				Origin::root(),
@@ -266,19 +266,78 @@ fn test_authority_module() {
 				false,
 				Box::new(call.clone())
 			));
-			System::assert_last_event(Event::Authority(orml_authority::Event::Scheduled(
-				OriginCaller::system(RawOrigin::Root),
-				6,
-			)));
+			System::assert_last_event(Event::Authority(orml_authority::Event::Scheduled {
+				origin: OriginCaller::system(RawOrigin::Root),
+				index: 6,
+			}));
 
 			assert_ok!(Authority::cancel_scheduled_dispatch(
 				Origin::root(),
 				Box::new(frame_system::RawOrigin::Root.into()),
 				6
 			));
-			System::assert_last_event(Event::Authority(orml_authority::Event::Cancelled(
-				OriginCaller::system(RawOrigin::Root),
-				6,
-			)));
+			System::assert_last_event(Event::Authority(orml_authority::Event::Cancelled {
+				origin: OriginCaller::system(RawOrigin::Root),
+				index: 6,
+			}));
 		});
+}
+
+#[test]
+fn cancel_schedule_test() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(FinancialCouncil::set_members(
+			Origin::root(),
+			vec![AccountId::from(ALICE), AccountId::from(BOB), AccountId::from(CHARLIE)],
+			None,
+			5,
+		));
+		let council_call = Call::CdpEngine(module_cdp_engine::Call::set_global_params {
+			global_interest_rate_per_sec: Rate::from(10),
+		});
+
+		assert_ok!(Authority::schedule_dispatch(
+			OriginCaller::FinancialCouncil(pallet_collective::RawOrigin::Members(2, 3)).into(),
+			DispatchTime::At(2),
+			0,
+			false,
+			Box::new(council_call.clone()),
+		));
+
+		// canceling will not work if yes vote is less than the scheduled call
+		assert_noop!(
+			Authority::cancel_scheduled_dispatch(
+				OriginCaller::FinancialCouncil(pallet_collective::RawOrigin::Members(1, 3)).into(),
+				Box::new(OriginCaller::FinancialCouncil(pallet_collective::RawOrigin::Members(
+					2, 3
+				))),
+				0,
+			),
+			BadOrigin
+		);
+		// canceling works when yes vote is greater than the scheduled call
+		assert_ok!(Authority::cancel_scheduled_dispatch(
+			OriginCaller::FinancialCouncil(pallet_collective::RawOrigin::Members(3, 3)).into(),
+			Box::new(OriginCaller::FinancialCouncil(pallet_collective::RawOrigin::Members(
+				2, 3
+			))),
+			0,
+		));
+
+		assert_ok!(Authority::schedule_dispatch(
+			OriginCaller::FinancialCouncil(pallet_collective::RawOrigin::Members(2, 3)).into(),
+			DispatchTime::At(2),
+			0,
+			false,
+			Box::new(council_call.clone()),
+		));
+		// canceling works when yes vote is equal to the scheduled call
+		assert_ok!(Authority::cancel_scheduled_dispatch(
+			OriginCaller::FinancialCouncil(pallet_collective::RawOrigin::Members(2, 3)).into(),
+			Box::new(OriginCaller::FinancialCouncil(pallet_collective::RawOrigin::Members(
+				2, 3
+			))),
+			1,
+		));
+	});
 }

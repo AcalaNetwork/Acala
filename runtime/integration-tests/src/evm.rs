@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2021 Acala Foundation.
+// Copyright (C) 2020-2022 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -55,10 +55,10 @@ pub fn deploy_erc20_contracts() {
 	let code = from_hex(include!("../../../modules/evm-bridge/src/erc20_demo_contract")).unwrap();
 	assert_ok!(EVM::create(Origin::signed(alice()), code.clone(), 0, 2100_000, 100000));
 
-	System::assert_last_event(Event::EVM(module_evm::Event::Created(
-		EvmAddress::from_str("0xbf0b5a4099f0bf6c8bc4252ebec548bae95602ea").unwrap(),
-		erc20_address_0(),
-		vec![module_evm::Log {
+	System::assert_last_event(Event::EVM(module_evm::Event::Created {
+		from: EvmAddress::from_str("0xbf0b5a4099f0bf6c8bc4252ebec548bae95602ea").unwrap(),
+		contract: erc20_address_0(),
+		logs: vec![module_evm::Log {
 			address: erc20_address_0(),
 			topics: vec![
 				H256::from_str("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef").unwrap(),
@@ -67,16 +67,21 @@ pub fn deploy_erc20_contracts() {
 			],
 			data: H256::from_low_u64_be(10000).as_bytes().to_vec(),
 		}],
-	)));
+	}));
 
 	assert_ok!(EVM::deploy_free(Origin::root(), erc20_address_0()));
+	assert_ok!(AssetRegistry::register_erc20_asset(
+		Origin::root(),
+		erc20_address_0(),
+		1
+	));
 
 	assert_ok!(EVM::create(Origin::signed(alice()), code, 0, 2100_000, 100000));
 
-	System::assert_last_event(Event::EVM(module_evm::Event::Created(
-		EvmAddress::from_str("0xbf0b5a4099f0bf6c8bc4252ebec548bae95602ea").unwrap(),
-		erc20_address_1(),
-		vec![module_evm::Log {
+	System::assert_last_event(Event::EVM(module_evm::Event::Created {
+		from: EvmAddress::from_str("0xbf0b5a4099f0bf6c8bc4252ebec548bae95602ea").unwrap(),
+		contract: erc20_address_1(),
+		logs: vec![module_evm::Log {
 			address: erc20_address_1(),
 			topics: vec![
 				H256::from_str("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef").unwrap(),
@@ -85,9 +90,14 @@ pub fn deploy_erc20_contracts() {
 			],
 			data: H256::from_low_u64_be(10000).as_bytes().to_vec(),
 		}],
-	)));
+	}));
 
 	assert_ok!(EVM::deploy_free(Origin::root(), erc20_address_1()));
+	assert_ok!(AssetRegistry::register_erc20_asset(
+		Origin::root(),
+		erc20_address_1(),
+		1
+	));
 }
 
 fn deploy_contract(account: AccountId) -> Result<H160, DispatchError> {
@@ -107,7 +117,12 @@ fn deploy_contract(account: AccountId) -> Result<H160, DispatchError> {
 
 	EVM::create(Origin::signed(account), contract, 0, 1000000000, 100000).map_or_else(|e| Err(e.error), |_| Ok(()))?;
 
-	if let Event::EVM(module_evm::Event::<Runtime>::Created(_, address, _)) = System::events().last().unwrap().event {
+	if let Event::EVM(module_evm::Event::<Runtime>::Created {
+		from: _,
+		contract: address,
+		logs: _,
+	}) = System::events().last().unwrap().event
+	{
 		Ok(address)
 	} else {
 		Err("deploy_contract failed".into())
@@ -148,7 +163,7 @@ fn dex_module_works_with_evm_contract() {
 			assert_ok!(EvmAccounts::claim_account(
 				Origin::signed(AccountId::from(ALICE)),
 				EvmAccounts::eth_address(&alice_key()),
-				EvmAccounts::eth_sign(&alice_key(), &AccountId::from(ALICE).encode(), &[][..])
+				EvmAccounts::eth_sign(&alice_key(), &AccountId::from(ALICE))
 			));
 
 			// CurrencyId::DexShare(Erc20, Erc20)
@@ -297,13 +312,17 @@ fn test_evm_module() {
 			let bob_address = EvmAccounts::eth_address(&bob_key());
 
 			let contract = deploy_contract(alice()).unwrap();
-			System::assert_last_event(Event::EVM(module_evm::Event::Created(alice_address, contract, vec![])));
+			System::assert_last_event(Event::EVM(module_evm::Event::Created {
+				from: alice_address,
+				contract,
+				logs: vec![],
+			}));
 
 			assert_ok!(EVM::transfer_maintainer(Origin::signed(alice()), contract, bob_address));
-			System::assert_last_event(Event::EVM(module_evm::Event::TransferredMaintainer(
+			System::assert_last_event(Event::EVM(module_evm::Event::TransferredMaintainer {
 				contract,
-				bob_address,
-			)));
+				new_maintainer: bob_address,
+			}));
 
 			// test EvmAccounts Lookup
 			#[cfg(feature = "with-mandala-runtime")]
@@ -359,7 +378,7 @@ fn test_multicurrency_precompile_module() {
 			assert_ok!(EvmAccounts::claim_account(
 				Origin::signed(AccountId::from(ALICE)),
 				EvmAccounts::eth_address(&alice_key()),
-				EvmAccounts::eth_sign(&alice_key(), &AccountId::from(ALICE).encode(), &[][..])
+				EvmAccounts::eth_sign(&alice_key(), &AccountId::from(ALICE))
 			));
 			assert_ok!(Dex::list_provisioning(
 				Origin::root(),
@@ -485,7 +504,7 @@ fn should_not_kill_contract_on_transfer_all() {
 
 			assert_ok!(EVM::create(Origin::signed(alice()), code, convert_decimals_to_evm(2 * dollar(NATIVE_CURRENCY)), 1000000000, 100000));
 
-			let contract = if let Event::EVM(module_evm::Event::Created(_, address, _)) = System::events().last().unwrap().event {
+			let contract = if let Event::EVM(module_evm::Event::Created{from: _, contract: address, logs: _}) = System::events().last().unwrap().event {
 				address
 			} else {
 				panic!("deploy contract failed");
@@ -548,7 +567,7 @@ fn should_not_kill_contract_on_transfer_all_tokens() {
 			let code = hex_literal::hex!("608060405260848060116000396000f3fe6080604052348015600f57600080fd5b506004361060285760003560e01c806341c0e1b514602d575b600080fd5b60336035565b005b600073ffffffffffffffffffffffffffffffffffffffff16fffea265627a7a72315820ed64a7551098c4afc823bee1663309079d9cb8798a6bdd71be2cd3ccee52d98e64736f6c63430005110032").to_vec();
 			assert_ok!(EVM::create(Origin::signed(alice()), code, 0, 1000000000, 100000));
 
-			let contract = if let Event::EVM(module_evm::Event::Created(_, address, _)) = System::events().last().unwrap().event {
+			let contract = if let Event::EVM(module_evm::Event::Created{from: _, contract: address, logs: _}) = System::events().last().unwrap().event {
 				address
 			} else {
 				panic!("deploy contract failed");
@@ -617,19 +636,19 @@ fn test_evm_accounts_module() {
 			assert_ok!(EvmAccounts::claim_account(
 				Origin::signed(AccountId::from(ALICE)),
 				EvmAccounts::eth_address(&alice_key()),
-				EvmAccounts::eth_sign(&alice_key(), &AccountId::from(ALICE).encode(), &[][..])
+				EvmAccounts::eth_sign(&alice_key(), &AccountId::from(ALICE))
 			));
-			System::assert_last_event(Event::EvmAccounts(module_evm_accounts::Event::ClaimAccount(
-				AccountId::from(ALICE),
-				EvmAccounts::eth_address(&alice_key()),
-			)));
+			System::assert_last_event(Event::EvmAccounts(module_evm_accounts::Event::ClaimAccount {
+				account_id: AccountId::from(ALICE),
+				evm_address: EvmAccounts::eth_address(&alice_key()),
+			}));
 
 			// claim another eth address
 			assert_noop!(
 				EvmAccounts::claim_account(
 					Origin::signed(AccountId::from(ALICE)),
 					EvmAccounts::eth_address(&alice_key()),
-					EvmAccounts::eth_sign(&alice_key(), &AccountId::from(ALICE).encode(), &[][..])
+					EvmAccounts::eth_sign(&alice_key(), &AccountId::from(ALICE))
 				),
 				module_evm_accounts::Error::<Runtime>::AccountIdHasMapped
 			);
@@ -637,7 +656,7 @@ fn test_evm_accounts_module() {
 				EvmAccounts::claim_account(
 					Origin::signed(AccountId::from(BOB)),
 					EvmAccounts::eth_address(&alice_key()),
-					EvmAccounts::eth_sign(&alice_key(), &AccountId::from(BOB).encode(), &[][..])
+					EvmAccounts::eth_sign(&alice_key(), &AccountId::from(BOB))
 				),
 				module_evm_accounts::Error::<Runtime>::EthAddressHasMapped
 			);
@@ -650,7 +669,7 @@ fn test_evm_accounts_module() {
 			assert_ok!(EvmAccounts::claim_account(
 				Origin::signed(AccountId::from(BOB)),
 				EvmAccounts::eth_address(&bob_key()),
-				EvmAccounts::eth_sign(&bob_key(), &AccountId::from(BOB).encode(), &[][..])
+				EvmAccounts::eth_sign(&bob_key(), &AccountId::from(BOB))
 			));
 			assert_eq!(System::providers(&bob()), 0);
 			assert_eq!(System::providers(&AccountId::from(BOB)), 1);

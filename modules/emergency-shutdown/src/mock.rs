@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2021 Acala Foundation.
+// Copyright (C) 2020-2022 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -199,6 +199,7 @@ parameter_types! {
 	pub const MaxAuctionsCount: u32 = 10_000;
 	pub const CDPTreasuryPalletId: PalletId = PalletId(*b"aca/cdpt");
 	pub TreasuryAccount: AccountId = PalletId(*b"aca/hztr").into_account();
+	pub AlternativeSwapPathJointList: Vec<Vec<CurrencyId>> = vec![];
 }
 
 impl cdp_treasury::Config for Runtime {
@@ -211,6 +212,7 @@ impl cdp_treasury::Config for Runtime {
 	type MaxAuctionsCount = MaxAuctionsCount;
 	type PalletId = CDPTreasuryPalletId;
 	type TreasuryAccount = TreasuryAccount;
+	type AlternativeSwapPathJointList = AlternativeSwapPathJointList;
 	type WeightInfo = ();
 }
 

@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2021 Acala Foundation.
+// Copyright (C) 2020-2022 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -90,7 +90,7 @@ runtime_benchmarks! {
 		}
 	}: _(RawOrigin::Root, trading_pair.first(), trading_pair.second())
 	verify {
-		assert_last_event(module_dex::Event::EnableTradingPair(trading_pair).into());
+		assert_last_event(module_dex::Event::EnableTradingPair{trading_pair: trading_pair}.into());
 	}
 
 	// disable a Enabled trading pair
@@ -101,7 +101,7 @@ runtime_benchmarks! {
 		}
 	}: _(RawOrigin::Root, trading_pair.first(), trading_pair.second())
 	verify {
-		assert_last_event(module_dex::Event::DisableTradingPair(trading_pair).into());
+		assert_last_event(module_dex::Event::DisableTradingPair{trading_pair}.into());
 	}
 
 	// list a Provisioning trading pair
@@ -112,7 +112,7 @@ runtime_benchmarks! {
 		}
 	}: _(RawOrigin::Root, trading_pair.first(), trading_pair.second(), dollar(trading_pair.first()), dollar(trading_pair.second()), dollar(trading_pair.first()), dollar(trading_pair.second()), 10)
 	verify {
-		assert_last_event(module_dex::Event::ListProvisioning(trading_pair).into());
+		assert_last_event(module_dex::Event::ListProvisioning{trading_pair: trading_pair}.into());
 	}
 
 	// update parameters of a Provisioning trading pair
@@ -165,7 +165,7 @@ runtime_benchmarks! {
 		)?;
 	}: _(RawOrigin::Signed(founder), trading_pair.first(), trading_pair.second())
 	verify {
-		assert_last_event(module_dex::Event::ProvisioningToEnabled(trading_pair, 100 * dollar(trading_pair.first()), 100 * dollar(trading_pair.second()), 200 * dollar(trading_pair.first())).into())
+		assert_last_event(module_dex::Event::ProvisioningToEnabled{trading_pair, pool_0: 100 * dollar(trading_pair.first()), pool_1: 100 * dollar(trading_pair.second()), share_amount: 200 * dollar(trading_pair.first())}.into())
 	}
 
 	add_provision {
@@ -190,7 +190,7 @@ runtime_benchmarks! {
 		<Currencies as MultiCurrencyExtended<_>>::update_balance(trading_pair.second(), &founder, (10 * dollar(trading_pair.second())).unique_saturated_into())?;
 	}: _(RawOrigin::Signed(founder.clone()), trading_pair.first(), trading_pair.second(), dollar(trading_pair.first()), dollar(trading_pair.second()))
 	verify{
-		assert_last_event(module_dex::Event::AddProvision(founder, trading_pair.first(), dollar(trading_pair.first()), trading_pair.second(), dollar(trading_pair.second())).into());
+		assert_last_event(module_dex::Event::AddProvision{who: founder, currency_0: trading_pair.first(), contribution_0: dollar(trading_pair.first()), currency_1: trading_pair.second(), contribution_1: dollar(trading_pair.second())}.into());
 	}
 
 	claim_dex_share {

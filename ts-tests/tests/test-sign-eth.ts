@@ -1,6 +1,6 @@
 import { expect } from "chai";
 
-import { describeWithAcala, nextBlock } from "./util";
+import { describeWithAcala, getEvmNonce } from "./util";
 import { Signer } from "@acala-network/bodhi";
 import { Wallet } from "@ethersproject/wallet";
 import { encodeAddress } from "@polkadot/keyring";
@@ -49,8 +49,9 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 	it("create should sign and verify", async function () {
 		this.timeout(150000);
 
-		const chanid = +context.provider.api.consts.evm.chainId.toString()
-		const nonce = (await context.provider.api.query.system.account(subAddr)).nonce.toNumber()
+		const chainId = +context.provider.api.consts.evm.chainId.toString()
+		const nonce = await getEvmNonce(context.provider, signer.address);
+
 		const validUntil = (await context.provider.api.rpc.chain.getHeader()).number.toNumber() + 100
 		const storageLimit = 20000;
 		const gasLimit = 2100000;
@@ -69,12 +70,12 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 
 		const value = {
 			// to: "0x0000000000000000000000000000000000000000",
-			nonce,
+			nonce: nonce,
 			gasLimit: tx_gas_limit.toNumber(),
 			gasPrice: tx_gas_price.toHexString(),
 			data: deploy.data,
 			value: 0,
-			chainId: chanid,
+			chainId: chainId,
 		}
 
 		const signedTx = await signer.signTransaction(value)
@@ -180,8 +181,9 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 	it("call should sign and verify", async function () {
 		this.timeout(150000);
 
-		const chanid = +context.provider.api.consts.evm.chainId.toString();
-		const nonce = (await context.provider.api.query.system.account(subAddr)).nonce.toNumber();
+		const chainId = +context.provider.api.consts.evm.chainId.toString();
+		const nonce = await getEvmNonce(context.provider, signer.address);
+
 		const validUntil = (await context.provider.api.rpc.chain.getHeader()).number.toNumber() + 100;
 		const storageLimit = 1000;
 		const gasLimit = 210000;
@@ -201,12 +203,12 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 
 		const value = {
 			to: contract,
-			nonce,
+			nonce: nonce,
 			gasLimit: tx_gas_limit.toNumber(),
 			gasPrice: tx_gas_price.toHexString(),
 			data: input.data,
 			value: 0,
-			chainId: chanid,
+			chainId: chainId,
 		}
 
 		const signedTx = await signer.signTransaction(value)

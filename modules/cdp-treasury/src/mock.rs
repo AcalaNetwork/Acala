@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2021 Acala Foundation.
+// Copyright (C) 2020-2022 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -39,6 +39,7 @@ pub type AuctionId = u32;
 
 pub const ALICE: AccountId = 0;
 pub const BOB: AccountId = 1;
+pub const CHARLIE: AccountId = 2;
 pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
 pub const BTC: CurrencyId = CurrencyId::Token(TokenSymbol::RENBTC);
@@ -192,6 +193,9 @@ ord_parameter_types! {
 parameter_types! {
 	pub const CDPTreasuryPalletId: PalletId = PalletId(*b"aca/cdpt");
 	pub const TreasuryAccount: AccountId = 10;
+	pub AlternativeSwapPathJointList: Vec<Vec<CurrencyId>> = vec![
+		vec![DOT],
+	];
 }
 
 thread_local! {
@@ -208,6 +212,7 @@ impl Config for Runtime {
 	type MaxAuctionsCount = MaxAuctionsCount;
 	type PalletId = CDPTreasuryPalletId;
 	type TreasuryAccount = TreasuryAccount;
+	type AlternativeSwapPathJointList = AlternativeSwapPathJointList;
 	type WeightInfo = ();
 }
 
@@ -243,6 +248,7 @@ impl Default for ExtBuilder {
 				(BOB, DOT, 1000),
 				(BOB, AUSD, 1000),
 				(BOB, BTC, 1000),
+				(CHARLIE, DOT, 1000),
 			],
 		}
 	}

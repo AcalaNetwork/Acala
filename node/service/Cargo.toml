@@ -1,6 +1,6 @@
 [package]
 name = "acala-service"
-version = "2.1.0"
+version = "2.1.3"
 authors = ["Acala Developers"]
 edition = "2021"
 
@@ -19,6 +19,7 @@ sp-api = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v
 sp-consensus = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.13" }
 sp-consensus-aura = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.13" }
 sc-consensus-aura = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.13" }
+sc-offchain = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.13" }
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.13" }
 sp-finality-grandpa = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.13" }
 sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.13" }
@@ -70,7 +71,6 @@ polkadot-service = { git = "https://github.com/paritytech/polkadot", branch = "r
 ecosystem-renvm-bridge = { path = "../../ecosystem-modules/ren/renvm-bridge" }
 module-collator-selection = { path = "../../modules/collator-selection" }
 module-evm = { path = "../../modules/evm" }
-module-staking-pool = { path = "../../modules/staking-pool" }
 module-nft = { path = "../../modules/nft" }
 orml-oracle-rpc = { path = "../../orml/oracle/rpc" }
 acala-primitives = { path = "../../primitives" }

@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2021 Acala Foundation.
+// Copyright (C) 2020-2022 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -202,6 +202,9 @@ parameter_types! {
 	pub const MaxAuctionsCount: u32 = 10_000;
 	pub const CDPTreasuryPalletId: PalletId = PalletId(*b"aca/cdpt");
 	pub TreasuryAccount: AccountId = PalletId(*b"aca/hztr").into_account();
+	pub AlternativeSwapPathJointList: Vec<Vec<CurrencyId>> = vec![
+		vec![ACA],
+	];
 }
 
 impl cdp_treasury::Config for Runtime {
@@ -214,6 +217,7 @@ impl cdp_treasury::Config for Runtime {
 	type MaxAuctionsCount = MaxAuctionsCount;
 	type PalletId = CDPTreasuryPalletId;
 	type TreasuryAccount = TreasuryAccount;
+	type AlternativeSwapPathJointList = AlternativeSwapPathJointList;
 	type WeightInfo = ();
 }
 
@@ -279,10 +283,6 @@ parameter_types! {
 	pub MaxSwapSlippageCompareToOracle: Ratio = Ratio::saturating_from_rational(50, 100);
 	pub const UnsignedPriority: u64 = 1 << 20;
 	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![BTC, DOT];
-	pub DefaultSwapParitalPathList: Vec<Vec<CurrencyId>> = vec![
-		vec![AUSD],
-		vec![ACA, AUSD],
-	];
 }
 
 impl Config for Runtime {
@@ -300,7 +300,6 @@ impl Config for Runtime {
 	type UnsignedPriority = UnsignedPriority;
 	type EmergencyShutdown = MockEmergencyShutdown;
 	type UnixTime = Timestamp;
-	type DefaultSwapParitalPathList = DefaultSwapParitalPathList;
 	type WeightInfo = ();
 }
 

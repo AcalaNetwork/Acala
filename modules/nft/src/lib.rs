@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2021 Acala Foundation.
+// Copyright (C) 2020-2022 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -196,18 +196,43 @@ pub mod module {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// Created NFT class. \[owner, class_id\]
-		CreatedClass(T::AccountId, ClassIdOf<T>),
-		/// Minted NFT token. \[from, to, class_id, quantity\]
-		MintedToken(T::AccountId, T::AccountId, ClassIdOf<T>, u32),
-		/// Transferred NFT token. \[from, to, class_id, token_id\]
-		TransferredToken(T::AccountId, T::AccountId, ClassIdOf<T>, TokenIdOf<T>),
-		/// Burned NFT token. \[owner, class_id, token_id\]
-		BurnedToken(T::AccountId, ClassIdOf<T>, TokenIdOf<T>),
-		/// Burned NFT token with remark. \[owner, class_id, token_id, remark_hash\]
-		BurnedTokenWithRemark(T::AccountId, ClassIdOf<T>, TokenIdOf<T>, T::Hash),
-		/// Destroyed NFT class. \[owner, class_id\]
-		DestroyedClass(T::AccountId, ClassIdOf<T>),
+		/// Created NFT class.
+		CreatedClass {
+			owner: T::AccountId,
+			class_id: ClassIdOf<T>,
+		},
+		/// Minted NFT token.
+		MintedToken {
+			from: T::AccountId,
+			to: T::AccountId,
+			class_id: ClassIdOf<T>,
+			quantity: u32,
+		},
+		/// Transferred NFT token.
+		TransferredToken {
+			from: T::AccountId,
+			to: T::AccountId,
+			class_id: ClassIdOf<T>,
+			token_id: TokenIdOf<T>,
+		},
+		/// Burned NFT token.
+		BurnedToken {
+			owner: T::AccountId,
+			class_id: ClassIdOf<T>,
+			token_id: TokenIdOf<T>,
+		},
+		/// Burned NFT token with remark.
+		BurnedTokenWithRemark {
+			owner: T::AccountId,
+			class_id: ClassIdOf<T>,
+			token_id: TokenIdOf<T>,
+			remark_hash: T::Hash,
+		},
+		/// Destroyed NFT class.
+		DestroyedClass {
+			owner: T::AccountId,
+			class_id: ClassIdOf<T>,
+		},
 	}
 
 	#[pallet::pallet]
@@ -255,7 +280,10 @@ pub mod module {
 			};
 			orml_nft::Pallet::<T>::create_class(&owner, metadata, data)?;
 
-			Self::deposit_event(Event::CreatedClass(owner, next_id));
+			Self::deposit_event(Event::CreatedClass {
+				owner,
+				class_id: next_id,
+			});
 			Ok(().into())
 		}
 
@@ -358,7 +386,7 @@ pub mod module {
 				AllowDeath,
 			)?;
 
-			Self::deposit_event(Event::DestroyedClass(who, class_id));
+			Self::deposit_event(Event::DestroyedClass { owner: who, class_id });
 			Ok(().into())
 		}
 
@@ -411,7 +439,12 @@ impl<T: Config> Pallet<T> {
 		<T as module::Config>::Currency::transfer(from, to, token_info.data.deposit, AllowDeath)?;
 		<T as module::Config>::Currency::reserve_named(&RESERVE_ID, to, token_info.data.deposit)?;
 
-		Self::deposit_event(Event::TransferredToken(from.clone(), to.clone(), token.0, token.1));
+		Self::deposit_event(Event::TransferredToken {
+			from: from.clone(),
+			to: to.clone(),
+			class_id: token.0,
+			token_id: token.1,
+		});
 		Ok(())
 	}
 
@@ -447,7 +480,12 @@ impl<T: Config> Pallet<T> {
 			orml_nft::Pallet::<T>::mint(&to, class_id, metadata.clone(), data.clone())?;
 		}
 
-		Self::deposit_event(Event::MintedToken(who, to, class_id, quantity));
+		Self::deposit_event(Event::MintedToken {
+			from: who,
+			to,
+			class_id,
+			quantity,
+		});
 		Ok(())
 	}
 
@@ -468,9 +506,18 @@ impl<T: Config> Pallet<T> {
 
 		if let Some(remark) = remark {
 			let hash = T::Hashing::hash(&remark[..]);
-			Self::deposit_event(Event::BurnedTokenWithRemark(who, token.0, token.1, hash));
+			Self::deposit_event(Event::BurnedTokenWithRemark {
+				owner: who,
+				class_id: token.0,
+				token_id: token.1,
+				remark_hash: hash,
+			});
 		} else {
-			Self::deposit_event(Event::BurnedToken(who, token.0, token.1));
+			Self::deposit_event(Event::BurnedToken {
+				owner: who,
+				class_id: token.0,
+				token_id: token.1,
+			});
 		}
 
 		Ok(())

@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2021 Acala Foundation.
+// Copyright (C) 2020-2022 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -50,20 +50,20 @@ use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 
 use frame_system::{EnsureRoot, RawOrigin};
-use module_asset_registry::{EvmErc20InfoMapping, FixedRateOfForeignAsset, XcmForeignAssetIdMapping};
+use module_asset_registry::{AssetIdMaps, EvmErc20InfoMapping, FixedRateOfForeignAsset};
 use module_currencies::BasicCurrencyAdapter;
 use module_evm::{CallInfo, CreateInfo, EvmTask, Runner};
 use module_evm_accounts::EvmAddressMapping;
 use module_relaychain::RelayChainCallBuilder;
-use module_support::{DispatchableTask, ForeignAssetIdMapping};
-use module_transaction_payment::{Multiplier, TargetedFeeAdjustment};
+use module_support::{AssetIdMapping, DispatchableTask};
+use module_transaction_payment::{Multiplier, TargetedFeeAdjustment, TransactionFeePoolTrader};
 use orml_traits::{
 	create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended, MultiCurrency,
 };
 use pallet_transaction_payment::RuntimeDispatchInfo;
 
 pub use cumulus_primitives_core::ParaId;
-pub use orml_xcm_support::{IsNativeConcrete, MultiCurrencyAdapter, MultiNativeAsset};
+pub use orml_xcm_support::{DepositToAlternative, IsNativeConcrete, MultiCurrencyAdapter, MultiNativeAsset};
 use pallet_xcm::XcmPassthrough;
 pub use polkadot_parachain::primitives::Sibling;
 pub use xcm::latest::prelude::*;
@@ -104,7 +104,7 @@ pub use primitives::{
 	EraIndex, Hash, Moment, Nonce, ReserveIdentifier, Share, Signature, TokenSymbol, TradingPair,
 };
 pub use runtime_common::{
-	cent, dollar, microcent, millicent, AcalaDropAssets, EnsureRootOrAllGeneralCouncil,
+	calculate_asset_ratio, cent, dollar, microcent, millicent, AcalaDropAssets, EnsureRootOrAllGeneralCouncil,
 	EnsureRootOrAllTechnicalCommittee, EnsureRootOrHalfFinancialCouncil, EnsureRootOrHalfGeneralCouncil,
 	EnsureRootOrHalfHomaCouncil, EnsureRootOrOneGeneralCouncil, EnsureRootOrOneThirdsTechnicalCommittee,
 	EnsureRootOrThreeFourthsGeneralCouncil, EnsureRootOrTwoThirdsGeneralCouncil,
@@ -127,7 +127,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("acala"),
 	impl_name: create_runtime_str!("acala"),
 	authoring_version: 1,
-	spec_version: 2001,
+	spec_version: 2012,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -164,6 +164,9 @@ parameter_types! {
 	pub const NftPalletId: PalletId = PalletId(*b"aca/aNFT");
 	// Vault all unrleased native token.
 	pub UnreleasedNativeVaultAccountId: AccountId = PalletId(*b"aca/urls").into_account();
+	// This Pallet is only used to payment fee pool, it's not added to whitelist by design.
+	// because transaction payment pallet will ensure the accounts always have enough ED.
+	pub const TransactionPaymentPalletId: PalletId = PalletId(*b"aca/fees");
 }
 
 pub fn get_all_module_accounts() -> Vec<AccountId> {
@@ -217,7 +220,8 @@ impl Contains<Call> for BaseCallFilter {
 			Call::HomaCouncil(_) | Call::HomaCouncilMembership(_) |
 			Call::TechnicalCommittee(_) | Call::TechnicalCommitteeMembership(_) | // governance
 			// Call::Democracy(_) | // democracy
-			Call::AcalaOracle(_) | Call::OperatorMembershipAcala(_) // oracle
+			Call::AcalaOracle(_) | Call::OperatorMembershipAcala(_) | // oracle
+			Call::Vesting(_) // vesting
 		);
 		if is_whitelisted {
 			// allow whitelisted calls
@@ -751,6 +755,7 @@ parameter_type_with_key! {
 				TokenSymbol::ACA |
 				TokenSymbol::KBTC |
 				TokenSymbol::KINT |
+				TokenSymbol::TAI |
 				TokenSymbol::CASH => Balance::max_value() // unsupported
 			},
 			CurrencyId::DexShare(dex_share_0, _) => {
@@ -760,18 +765,22 @@ parameter_type_with_key! {
 				// use the ED of currency_id_0 as the ED of lp token.
 				if currency_id_0 == GetNativeCurrencyId::get() {
 					NativeTokenExistentialDeposit::get()
-				} else if let CurrencyId::Erc20(_) = currency_id_0 {
+				} else if let CurrencyId::Erc20(address) = currency_id_0 {
 					// LP token with erc20
-					1
+					AssetIdMaps::<Runtime>::get_erc20_asset_metadata(address).
+						map_or(Balance::max_value(), |metatata| metatata.minimal_balance)
 				} else {
 					Self::get(&currency_id_0)
 				}
 			},
 			CurrencyId::Erc20(_) => Balance::max_value(), // not handled by orml-tokens
-			CurrencyId::StableAssetPoolToken(_) => Balance::max_value(), // TODO: update this before we enable StableAsset
+			CurrencyId::StableAssetPoolToken(stable_asset_id) => {
+				AssetIdMaps::<Runtime>::get_stable_asset_metadata(*stable_asset_id).
+					map_or(Balance::max_value(), |metatata| metatata.minimal_balance)
+			},
 			CurrencyId::LiquidCroadloan(_) => ExistentialDeposits::get(&CurrencyId::Token(TokenSymbol::DOT)), // the same as DOT
 			CurrencyId::ForeignAsset(foreign_asset_id) => {
-				XcmForeignAssetIdMapping::<Runtime>::get_asset_metadata(*foreign_asset_id).
+				AssetIdMaps::<Runtime>::get_foreign_asset_metadata(*foreign_asset_id).
 					map_or(Balance::max_value(), |metatata| metatata.minimal_balance)
 			},
 		}
@@ -908,10 +917,6 @@ parameter_types! {
 	pub MinimumIncrementSize: Rate = Rate::saturating_from_rational(2, 100);
 	pub const AuctionTimeToClose: BlockNumber = 15 * MINUTES;
 	pub const AuctionDurationSoftCap: BlockNumber = 2 * HOURS;
-	pub DefaultSwapParitalPathList: Vec<Vec<CurrencyId>> = vec![
-		vec![AUSD],
-		vec![DOT, AUSD],
-	];
 }
 
 impl module_auction_manager::Config for Runtime {
@@ -923,11 +928,9 @@ impl module_auction_manager::Config for Runtime {
 	type AuctionDurationSoftCap = AuctionDurationSoftCap;
 	type GetStableCurrencyId = GetStableCurrencyId;
 	type CDPTreasury = CdpTreasury;
-	type DEX = Dex;
 	type PriceSource = module_prices::PriorityLockedPriceProvider<Runtime>;
 	type UnsignedPriority = runtime_common::AuctionManagerUnsignedPriority;
 	type EmergencyShutdown = EmergencyShutdown;
-	type DefaultSwapParitalPathList = DefaultSwapParitalPathList;
 	type WeightInfo = weights::module_auction_manager::WeightInfo<Runtime>;
 }
 
@@ -1023,7 +1026,6 @@ impl module_cdp_engine::Config for Runtime {
 	type UnsignedPriority = runtime_common::CdpEngineUnsignedPriority;
 	type EmergencyShutdown = EmergencyShutdown;
 	type UnixTime = Timestamp;
-	type DefaultSwapParitalPathList = DefaultSwapParitalPathList;
 	type WeightInfo = weights::module_cdp_engine::WeightInfo<Runtime>;
 }
 
@@ -1068,6 +1070,10 @@ impl module_dex::Config for Runtime {
 parameter_types! {
 	pub const MaxAuctionsCount: u32 = 50;
 	pub HonzonTreasuryAccount: AccountId = HonzonTreasuryPalletId::get().into_account();
+	pub AlternativeSwapPathJointList: Vec<Vec<CurrencyId>> = vec![
+		vec![DOT],
+		vec![LDOT],
+	];
 }
 
 impl module_cdp_treasury::Config for Runtime {
@@ -1080,6 +1086,7 @@ impl module_cdp_treasury::Config for Runtime {
 	type MaxAuctionsCount = MaxAuctionsCount;
 	type PalletId = CDPTreasuryPalletId;
 	type TreasuryAccount = HonzonTreasuryAccount;
+	type AlternativeSwapPathJointList = AlternativeSwapPathJointList;
 	type WeightInfo = weights::module_cdp_treasury::WeightInfo<Runtime>;
 }
 
@@ -1109,11 +1116,13 @@ impl OnUnbalanced<NegativeImbalance> for DealWithFees {
 }
 
 impl module_transaction_payment::Config for Runtime {
+	type Event = Event;
 	type NativeCurrencyId = GetNativeCurrencyId;
 	type DefaultFeeSwapPathList = DefaultFeeSwapPathList;
 	type Currency = Balances;
 	type MultiCurrency = Currencies;
 	type OnTransactionPayment = DealWithFees;
+	type AlternativeFeeSwapDeposit = NativeTokenExistentialDeposit;
 	type TransactionByteFee = TransactionByteFee;
 	type OperationalFeeMultiplier = OperationalFeeMultiplier;
 	type TipPerWeightStep = TipPerWeightStep;
@@ -1125,6 +1134,9 @@ impl module_transaction_payment::Config for Runtime {
 	type TradingPathLimit = TradingPathLimit;
 	type PriceSource = module_prices::RealTimePriceProvider<Runtime>;
 	type WeightInfo = weights::module_transaction_payment::WeightInfo<Runtime>;
+	type PalletId = TransactionPaymentPalletId;
+	type TreasuryAccount = AcalaTreasuryAccount;
+	type UpdateOrigin = EnsureAcalaFoundation;
 }
 
 impl module_evm_accounts::Config for Runtime {
@@ -1132,12 +1144,14 @@ impl module_evm_accounts::Config for Runtime {
 	type Currency = Balances;
 	type AddressMapping = EvmAddressMapping<Runtime>;
 	type TransferAll = Currencies;
+	type ChainId = ChainId;
 	type WeightInfo = weights::module_evm_accounts::WeightInfo<Runtime>;
 }
 
 impl module_asset_registry::Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
+	type LiquidCroadloanCurrencyId = DOTCurrencyId;
 	type EVMBridge = module_evm_bridge::EVMBridge<Runtime>;
 	type RegisterOrigin = EnsureRootOrHalfGeneralCouncil;
 	type WeightInfo = weights::module_asset_registry::WeightInfo<Runtime>;
@@ -1397,22 +1411,6 @@ pub type XcmOriginToCallOrigin = (
 	XcmPassthrough<Origin>,
 );
 
-parameter_types! {
-	// One XCM operation is 200_000_000 weight, cross-chain transfer ~= 2x of transfer.
-	pub const UnitWeightCost: Weight = 200_000_000;
-	pub const MaxInstructions: u32 = 100;
-	pub DotPerSecond: (AssetId, u128) = (MultiLocation::parent().into(), dot_per_second());
-	pub AusdPerSecond: (AssetId, u128) = (
-		MultiLocation::new(
-			1,
-			X2(Parachain(u32::from(ParachainInfo::get())), GeneralKey(AUSD.encode())),
-		).into(),
-		// aUSD:DOT = 40:1
-		dot_per_second() * 40
-	);
-	pub ForeignAssetUnitsPerSecond: u128 = aca_per_second();
-}
-
 pub type Barrier = (
 	TakeWeightCredit,
 	AllowTopLevelPaidExecutionFrom<Everything>,
@@ -1431,7 +1429,8 @@ impl TakeRevenue for ToTreasury {
 		} = revenue
 		{
 			if let Some(currency_id) = CurrencyIdConvert::convert(location) {
-				// ensure AcalaTreasuryAccount have ed for all of the cross-chain asset.
+				// Ensure AcalaTreasuryAccount have ed requirement for native asset, but don't need
+				// ed requirement for cross-chain asset because it's one of whitelist accounts.
 				// Ignore the result.
 				let _ = Currencies::deposit(currency_id, &AcalaTreasuryAccount::get(), amount);
 			}
@@ -1439,7 +1438,32 @@ impl TakeRevenue for ToTreasury {
 	}
 }
 
+parameter_types! {
+	// One XCM operation is 200_000_000 weight, cross-chain transfer ~= 2x of transfer.
+	pub const UnitWeightCost: Weight = 200_000_000;
+	pub const MaxInstructions: u32 = 100;
+	pub DotPerSecond: (AssetId, u128) = (MultiLocation::parent().into(), dot_per_second());
+	pub AusdPerSecond: (AssetId, u128) = (
+		MultiLocation::new(
+			1,
+			X2(Parachain(u32::from(ParachainInfo::get())), GeneralKey(AUSD.encode())),
+		).into(),
+		// aUSD:DOT = 40:1
+		dot_per_second() * 40
+	);
+	pub AcaPerSecond: (AssetId, u128) = (
+		MultiLocation::new(
+			1,
+			X2(Parachain(u32::from(ParachainInfo::get())), GeneralKey(ACA.encode())),
+		).into(),
+		aca_per_second()
+	);
+	pub ForeignAssetUnitsPerSecond: u128 = aca_per_second();
+	pub AcaPerSecondAsBased: u128 = aca_per_second();
+}
+
 pub type Trader = (
+	TransactionFeePoolTrader<Runtime, CurrencyIdConvert, AcaPerSecondAsBased, ToTreasury>,
 	FixedRateOfFungible<DotPerSecond, ToTreasury>,
 	FixedRateOfFungible<AusdPerSecond, ToTreasury>,
 	FixedRateOfForeignAsset<Runtime, ForeignAssetUnitsPerSecond, ToTreasury>,
@@ -1588,6 +1612,7 @@ pub type LocalAssetTransactor = MultiCurrencyAdapter<
 	LocationToAccountId,
 	CurrencyId,
 	CurrencyIdConvert,
+	DepositToAlternative<AcalaTreasuryAccount, Currencies, CurrencyId, AccountId, Balance>,
 >;
 
 //TODO: use token registry currency type encoding
@@ -1603,9 +1628,7 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 		match id {
 			Token(DOT) => Some(MultiLocation::parent()),
 			Token(ACA) | Token(AUSD) | Token(LDOT) => Some(native_currency_location(id)),
-			CurrencyId::ForeignAsset(foreign_asset_id) => {
-				XcmForeignAssetIdMapping::<Runtime>::get_multi_location(foreign_asset_id)
-			}
+			CurrencyId::ForeignAsset(foreign_asset_id) => AssetIdMaps::<Runtime>::get_multi_location(foreign_asset_id),
 			_ => None,
 		}
 	}
@@ -1619,7 +1642,7 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 			return Some(Token(DOT));
 		}
 
-		if let Some(currency_id) = XcmForeignAssetIdMapping::<Runtime>::get_currency_id(location.clone()) {
+		if let Some(currency_id) = AssetIdMaps::<Runtime>::get_currency_id(location.clone()) {
 			return Some(currency_id);
 		}
 
@@ -1703,14 +1726,6 @@ impl orml_xcm::Config for Runtime {
 	type SovereignOrigin = EnsureRootOrThreeFourthsGeneralCouncil;
 }
 
-pub struct OnRuntimeUpgrade;
-impl frame_support::traits::OnRuntimeUpgrade for OnRuntimeUpgrade {
-	fn on_runtime_upgrade() -> u64 {
-		// no migration
-		0
-	}
-}
-
 define_combined_task! {
 	#[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo)]
 	pub enum ScheduledTasks {
@@ -1751,7 +1766,7 @@ construct_runtime!(
 		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>} = 11,
 		Currencies: module_currencies::{Pallet, Call, Event<T>} = 12,
 		Vesting: orml_vesting::{Pallet, Storage, Call, Event<T>, Config<T>} = 13,
-		TransactionPayment: module_transaction_payment::{Pallet, Call, Storage} = 14,
+		TransactionPayment: module_transaction_payment::{Pallet, Call, Storage, Event<T>} = 14,
 
 		// Treasury
 		Treasury: pallet_treasury::{Pallet, Call, Storage, Config, Event<T>} = 20,
@@ -1858,14 +1873,8 @@ pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExtra>;
 /// Executive: handles dispatch to the various modules.
-pub type Executive = frame_executive::Executive<
-	Runtime,
-	Block,
-	frame_system::ChainContext<Runtime>,
-	Runtime,
-	AllPallets,
-	OnRuntimeUpgrade,
->;
+pub type Executive =
+	frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllPallets, ()>;
 
 #[cfg(not(feature = "disable-runtime-api"))]
 impl_runtime_apis! {
@@ -2308,9 +2317,10 @@ mod tests {
 
 	#[test]
 	fn check_call_size() {
+		println!("{:?}", core::mem::size_of::<Call>());
 		assert!(
-			core::mem::size_of::<Call>() <= 230,
-			"size of Call is more than 230 bytes: some calls have too big arguments, use Box to \
+			core::mem::size_of::<Call>() <= 240,
+			"size of Call is more than 240 bytes: some calls have too big arguments, use Box to \
 			reduce the size of Call.
 			If the limit is too strong, maybe consider increasing the limit",
 		);

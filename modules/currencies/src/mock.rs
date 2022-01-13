@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2021 Acala Foundation.
+// Copyright (C) 2020-2022 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -254,10 +254,10 @@ pub fn deploy_contracts() {
 	let code = from_hex(include!("../../evm-bridge/src/erc20_demo_contract")).unwrap();
 	assert_ok!(EVM::create(Origin::signed(alice()), code, 0, 2_100_000, 10000));
 
-	System::assert_last_event(Event::EVM(module_evm::Event::Created(
-		alice_evm_addr(),
-		erc20_address(),
-		vec![module_evm::Log {
+	System::assert_last_event(Event::EVM(module_evm::Event::Created {
+		from: alice_evm_addr(),
+		contract: erc20_address(),
+		logs: vec![module_evm::Log {
 			address: H160::from_str("0x5dddfce53ee040d9eb21afbc0ae1bb4dbb0ba643").unwrap(),
 			topics: vec![
 				H256::from_str("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef").unwrap(),
@@ -266,7 +266,7 @@ pub fn deploy_contracts() {
 			],
 			data: H256::from_low_u64_be(10000).as_bytes().to_vec(),
 		}],
-	)));
+	}));
 
 	assert_ok!(EVM::deploy_free(Origin::signed(CouncilAccount::get()), erc20_address()));
 }

@@ -184,3 +184,7 @@ benchmark-acala:
 .PHONY: clippy-fix
 clippy-fix:
 	CARGO_INCREMENTAL=0 ./orml/scripts/run-clippy.sh --fix -Z unstable-options --broken-code --allow-dirty
+
+.PHONY: bench-evm
+bench-evm:
+	cargo bench -p module-evm --features bench | evm-bench/analyze_benches.js runtime/common/src/gas_to_weight_ratio.rs

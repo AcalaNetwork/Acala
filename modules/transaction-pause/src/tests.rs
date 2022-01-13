@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2021 Acala Foundation.
+// Copyright (C) 2020-2022 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -52,10 +52,10 @@ fn pause_transaction_work() {
 			b"Balances".to_vec(),
 			b"transfer".to_vec()
 		));
-		System::assert_last_event(Event::TransactionPause(crate::Event::TransactionPaused(
-			b"Balances".to_vec(),
-			b"transfer".to_vec(),
-		)));
+		System::assert_last_event(Event::TransactionPause(crate::Event::TransactionPaused {
+			pallet_name_bytes: b"Balances".to_vec(),
+			function_name_bytes: b"transfer".to_vec(),
+		}));
 		assert_eq!(
 			TransactionPause::paused_transactions((b"Balances".to_vec(), b"transfer".to_vec())),
 			Some(())
@@ -110,10 +110,10 @@ fn unpause_transaction_work() {
 			b"Balances".to_vec(),
 			b"transfer".to_vec()
 		));
-		System::assert_last_event(Event::TransactionPause(crate::Event::TransactionUnpaused(
-			b"Balances".to_vec(),
-			b"transfer".to_vec(),
-		)));
+		System::assert_last_event(Event::TransactionPause(crate::Event::TransactionUnpaused {
+			pallet_name_bytes: b"Balances".to_vec(),
+			function_name_bytes: b"transfer".to_vec(),
+		}));
 		assert_eq!(
 			TransactionPause::paused_transactions((b"Balances".to_vec(), b"transfer".to_vec())),
 			None

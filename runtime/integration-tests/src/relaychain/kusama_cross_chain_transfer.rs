@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2021 Acala Foundation.
+// Copyright (C) 2020-2022 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -154,6 +154,34 @@ fn transfer_to_sibling() {
 
 	Karura::execute_with(|| {
 		assert_eq!(Tokens::free_balance(BNC, &AccountId::from(ALICE)), 94_989_760_000_000);
+	});
+}
+
+#[test]
+fn transfer_from_relay_chain_deposit_to_treasury_if_below_ed() {
+	KusamaNet::execute_with(|| {
+		assert_ok!(kusama_runtime::XcmPallet::reserve_transfer_assets(
+			kusama_runtime::Origin::signed(ALICE.into()),
+			Box::new(Parachain(2000).into().into()),
+			Box::new(
+				Junction::AccountId32 {
+					id: BOB,
+					network: NetworkId::Any
+				}
+				.into()
+				.into()
+			),
+			Box::new((Here, 128_000_111).into()),
+			0
+		));
+	});
+
+	Karura::execute_with(|| {
+		assert_eq!(Tokens::free_balance(KSM, &AccountId::from(BOB)), 0);
+		assert_eq!(
+			Tokens::free_balance(KSM, &karura_runtime::KaruraTreasuryAccount::get()),
+			1_000_128_000_111
+		);
 	});
 }
 
@@ -637,7 +665,7 @@ fn trap_assets_larger_than_ed_works() {
 			.any(|r| matches!(r.event, Event::PolkadotXcm(pallet_xcm::Event::AssetsTrapped(_, _, _)))));
 
 		assert_eq!(
-			trader_weight_to_treasury,
+			trader_weight_to_treasury + dollar(KSM),
 			Currencies::free_balance(KSM, &KaruraTreasuryAccount::get())
 		);
 		assert_eq!(
@@ -693,7 +721,7 @@ fn trap_assets_lower_than_ed_works() {
 		);
 
 		assert_eq!(
-			ksm_asset_amount,
+			ksm_asset_amount + dollar(KSM),
 			Currencies::free_balance(KSM, &KaruraTreasuryAccount::get())
 		);
 		assert_eq!(

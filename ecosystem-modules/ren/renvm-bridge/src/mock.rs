@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2021 Acala Foundation.
+// Copyright (C) 2020-2022 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -168,10 +168,12 @@ impl ExtBuilder {
 			.build_storage::<Runtime>()
 			.unwrap();
 
-		renvm::GenesisConfig {
-			ren_vm_public_key: hex_literal::hex!["4b939fc8ade87cb50b78987b1dda927460dc456a"],
-		}
-		.assimilate_storage::<Runtime>(&mut t)
+		GenesisBuild::<Runtime>::assimilate_storage(
+			&renvm::GenesisConfig {
+				ren_vm_public_key: hex_literal::hex!["4b939fc8ade87cb50b78987b1dda927460dc456a"],
+			},
+			&mut t,
+		)
 		.unwrap();
 
 		t.into()

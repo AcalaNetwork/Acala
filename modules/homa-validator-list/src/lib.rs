@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2021 Acala Foundation.
+// Copyright (C) 2020-2022 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -209,12 +209,32 @@ pub mod module {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
-		FreezeValidator(T::RelaychainAccountId),
-		ThawValidator(T::RelaychainAccountId),
-		BondGuarantee(T::AccountId, T::RelaychainAccountId, Balance),
-		UnbondGuarantee(T::AccountId, T::RelaychainAccountId, Balance),
-		WithdrawnGuarantee(T::AccountId, T::RelaychainAccountId, Balance),
-		SlashGuarantee(T::AccountId, T::RelaychainAccountId, Balance),
+		FreezeValidator {
+			validator: T::RelaychainAccountId,
+		},
+		ThawValidator {
+			validator: T::RelaychainAccountId,
+		},
+		BondGuarantee {
+			who: T::AccountId,
+			validator: T::RelaychainAccountId,
+			bond: Balance,
+		},
+		UnbondGuarantee {
+			who: T::AccountId,
+			validator: T::RelaychainAccountId,
+			bond: Balance,
+		},
+		WithdrawnGuarantee {
+			who: T::AccountId,
+			validator: T::RelaychainAccountId,
+			bond: Balance,
+		},
+		SlashGuarantee {
+			who: T::AccountId,
+			validator: T::RelaychainAccountId,
+			bond: Balance,
+		},
 	}
 
 	/// The slash guarantee deposits for relaychain validators.
@@ -282,7 +302,11 @@ pub mod module {
 							guarantee.bonded >= T::MinBondAmount::get(),
 							Error::<T>::BelowMinBondAmount
 						);
-						Self::deposit_event(Event::BondGuarantee(guarantor.clone(), validator.clone(), amount));
+						Self::deposit_event(Event::BondGuarantee {
+							who: guarantor.clone(),
+							validator: validator.clone(),
+							bond: amount,
+						});
 						Ok(())
 					})?;
 				}
@@ -316,7 +340,11 @@ pub mod module {
 					let expired_block = T::BlockNumberProvider::current_block_number() + T::BondingDuration::get();
 					guarantee.unbonding = Some((amount, expired_block));
 
-					Self::deposit_event(Event::UnbondGuarantee(guarantor.clone(), validator.clone(), amount));
+					Self::deposit_event(Event::UnbondGuarantee {
+						who: guarantor.clone(),
+						validator: validator.clone(),
+						bond: amount,
+					});
 					Ok(())
 				})?;
 			}
@@ -365,11 +393,11 @@ pub mod module {
 					.saturating_add(guarantee.unbonding.unwrap_or_default().0);
 				if old_total != new_total {
 					guarantee.total = new_total;
-					Self::deposit_event(Event::WithdrawnGuarantee(
-						guarantor.clone(),
-						validator.clone(),
-						old_total.saturating_sub(new_total),
-					));
+					Self::deposit_event(Event::WithdrawnGuarantee {
+						who: guarantor.clone(),
+						validator: validator.clone(),
+						bond: old_total.saturating_sub(new_total),
+					});
 				}
 				Ok(())
 			})?;
@@ -389,7 +417,9 @@ pub mod module {
 					let mut v = maybe_validator.take().unwrap_or_default();
 					if !v.is_frozen {
 						v.is_frozen = true;
-						Self::deposit_event(Event::FreezeValidator(validator.clone()));
+						Self::deposit_event(Event::FreezeValidator {
+							validator: validator.clone(),
+						});
 					}
 					*maybe_validator = Some(v);
 				});
@@ -412,7 +442,9 @@ pub mod module {
 					let mut v = maybe_validator.take().unwrap_or_default();
 					if v.is_frozen {
 						v.is_frozen = false;
-						Self::deposit_event(Event::ThawValidator(validator.clone()));
+						Self::deposit_event(Event::ThawValidator {
+							validator: validator.clone(),
+						});
 					}
 					*maybe_validator = Some(v);
 				});
@@ -451,11 +483,11 @@ pub mod module {
 						let gap = T::LiquidTokenCurrency::slash(&guarantor, should_slashing);
 						let actual_slashing = should_slashing.saturating_sub(gap);
 						*guarantee = guarantee.slash(actual_slashing);
-						Self::deposit_event(Event::SlashGuarantee(
-							guarantor.clone(),
-							validator.clone(),
-							actual_slashing,
-						));
+						Self::deposit_event(Event::SlashGuarantee {
+							who: guarantor.clone(),
+							validator: validator.clone(),
+							bond: actual_slashing,
+						});
 						actual_total_slashing = actual_total_slashing.saturating_add(actual_slashing);
 						Ok(())
 					});

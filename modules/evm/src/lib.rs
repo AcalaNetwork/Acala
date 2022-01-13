@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2021 Acala Foundation.
+// Copyright (C) 2020-2022 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -92,6 +92,8 @@ use sp_std::{
 pub mod precompiles;
 pub mod runner;
 
+pub mod bench;
+
 mod mock;
 mod tests;
 pub mod weights;
@@ -153,6 +155,51 @@ static ACALA_CONFIG: EvmConfig = EvmConfig {
 	has_ext_code_hash: true,
 	estimate: false,
 };
+
+/// Create an empty contract `contract Empty { }`.
+pub const BASE_CREATE_GAS: u64 = 67_066;
+/// Call function that just set a storage `function store(uint256 num) public { number = num; }`.
+pub const BASE_CALL_GAS: u64 = 41_602;
+
+/// Helper method to calculate `create` weight.
+fn create_weight<T: Config>(gas: u64) -> Weight {
+	<T as Config>::WeightInfo::create()
+		// during `create` benchmark an additional of `BASE_CREATE_GAS` was used
+		// so user will be extra charged only for extra gas usage
+		.saturating_add(T::GasToWeight::convert(gas.saturating_sub(BASE_CREATE_GAS)))
+}
+
+/// Helper method to calculate `create2` weight.
+fn create2_weight<T: Config>(gas: u64) -> Weight {
+	<T as Config>::WeightInfo::create2()
+		// during `create2` benchmark an additional of `BASE_CREATE_GAS` was used
+		// so user will be extra charged only for extra gas usage
+		.saturating_add(T::GasToWeight::convert(gas.saturating_sub(BASE_CREATE_GAS)))
+}
+
+/// Helper method to calculate `create_predeploy_contract` weight.
+fn create_predeploy_contract<T: Config>(gas: u64) -> Weight {
+	<T as Config>::WeightInfo::create_predeploy_contract()
+		// during `create_predeploy_contract` benchmark an additional of `BASE_CREATE_GAS`
+		// was used so user will be extra charged only for extra gas usage
+		.saturating_add(T::GasToWeight::convert(gas.saturating_sub(BASE_CREATE_GAS)))
+}
+
+/// Helper method to calculate `create_nft_contract` weight.
+fn create_nft_contract<T: Config>(gas: u64) -> Weight {
+	<T as Config>::WeightInfo::create_nft_contract()
+		// during `create_nft_contract` benchmark an additional of `BASE_CREATE_GAS`
+		// was used so user will be extra charged only for extra gas usage
+		.saturating_add(T::GasToWeight::convert(gas.saturating_sub(BASE_CREATE_GAS)))
+}
+
+/// Helper method to calculate `call` weight.
+fn call_weight<T: Config>(gas: u64) -> Weight {
+	<T as Config>::WeightInfo::call()
+		// during `call` benchmark an additional of `BASE_CALL_GAS` was used
+		// so user will be extra charged only for extra gas usage
+		.saturating_add(T::GasToWeight::convert(gas.saturating_sub(BASE_CALL_GAS)))
+}
 
 #[frame_support::pallet]
 pub mod module {
@@ -272,7 +319,7 @@ pub mod module {
 		pub ref_count: u32,
 	}
 
-	#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]
+	#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Default)]
 	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 	/// Account definition used for genesis block construction.
 	pub struct GenesisAccount<Balance, Index> {
@@ -284,6 +331,8 @@ pub mod module {
 		pub storage: BTreeMap<H256, H256>,
 		/// Account code.
 		pub code: Vec<u8>,
+		/// If the account should enable contract development mode
+		pub enable_contract_development: bool,
 	}
 
 	/// The EVM accounts info.
@@ -342,7 +391,6 @@ pub mod module {
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
 		pub accounts: BTreeMap<EvmAddress, GenesisAccount<BalanceOf<T>, T::Index>>,
-		pub treasury: T::AccountId,
 	}
 
 	#[cfg(feature = "std")]
@@ -350,7 +398,6 @@ pub mod module {
 		fn default() -> Self {
 			GenesisConfig {
 				accounts: Default::default(),
-				treasury: Default::default(),
 			}
 		}
 	}
@@ -377,7 +424,18 @@ pub mod module {
 				};
 				T::Currency::deposit_creating(&account_id, amount);
 
+				if account.enable_contract_development {
+					T::Currency::ensure_reserved_named(
+						&RESERVE_ID_DEVELOPER_DEPOSIT,
+						&account_id,
+						T::DeveloperDeposit::get(),
+					)
+					.expect("Failed to reserve developer deposit. Please make sure the account have enough balance.");
+				}
+
 				if !account.code.is_empty() {
+					// init contract
+
 					// Transactions are not supported by BasicExternalities
 					// Use the EVM Runtime
 					let vicinity = Vicinity {
@@ -422,28 +480,49 @@ pub mod module {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// A contract has been created at given \[from, address, logs\].
-		Created(EvmAddress, EvmAddress, Vec<Log>),
+		/// A contract has been created at given
+		Created {
+			from: EvmAddress,
+			contract: EvmAddress,
+			logs: Vec<Log>,
+		},
 		/// A contract was attempted to be created, but the execution failed.
-		/// \[from, contract, exit_reason, logs\]
-		CreatedFailed(EvmAddress, EvmAddress, ExitReason, Vec<Log>),
-		/// A contract has been executed successfully with states applied. \[from, contract, logs\]
-		Executed(EvmAddress, EvmAddress, Vec<Log>),
+		CreatedFailed {
+			from: EvmAddress,
+			contract: EvmAddress,
+			exit_reason: ExitReason,
+			logs: Vec<Log>,
+		},
+		/// A contract has been executed successfully with states applied.
+		Executed {
+			from: EvmAddress,
+			contract: EvmAddress,
+			logs: Vec<Log>,
+		},
 		/// A contract has been executed with errors. States are reverted with
-		/// only gas fees applied. \[from, contract, exit_reason, output, logs\]
-		ExecutedFailed(EvmAddress, EvmAddress, ExitReason, Vec<u8>, Vec<Log>),
-		/// Transferred maintainer. \[contract, address\]
-		TransferredMaintainer(EvmAddress, EvmAddress),
-		/// Enabled contract development. \[who\]
-		ContractDevelopmentEnabled(T::AccountId),
-		/// Disabled contract development. \[who\]
-		ContractDevelopmentDisabled(T::AccountId),
-		/// Deployed contract. \[contract\]
-		ContractDeployed(EvmAddress),
-		/// Set contract code. \[contract\]
-		ContractSetCode(EvmAddress),
-		/// Selfdestructed contract code. \[contract\]
-		ContractSelfdestructed(EvmAddress),
+		/// only gas fees applied.
+		ExecutedFailed {
+			from: EvmAddress,
+			contract: EvmAddress,
+			exit_reason: ExitReason,
+			output: Vec<u8>,
+			logs: Vec<Log>,
+		},
+		/// Transferred maintainer.
+		TransferredMaintainer {
+			contract: EvmAddress,
+			new_maintainer: EvmAddress,
+		},
+		/// Enabled contract development.
+		ContractDevelopmentEnabled { who: T::AccountId },
+		/// Disabled contract development.
+		ContractDevelopmentDisabled { who: T::AccountId },
+		/// Deployed contract.
+		ContractDeployed { contract: EvmAddress },
+		/// Set contract code.
+		ContractSetCode { contract: EvmAddress },
+		/// Selfdestructed contract code.
+		ContractSelfdestructed { contract: EvmAddress },
 	}
 
 	#[pallet::error]
@@ -492,7 +571,10 @@ pub mod module {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		#[pallet::weight(T::GasToWeight::convert(*gas_limit))]
+		#[pallet::weight(match *action {
+			TransactionAction::Call(_) => call_weight::<T>(*gas_limit),
+			TransactionAction::Create => create_weight::<T>(*gas_limit)
+		})]
 		#[transactional]
 		pub fn eth_call(
 			origin: OriginFor<T>,
@@ -517,7 +599,7 @@ pub mod module {
 		/// - `value`: the amount sent for payable calls
 		/// - `gas_limit`: the maximum gas the call can use
 		/// - `storage_limit`: the total bytes the contract's storage can increase by
-		#[pallet::weight(T::GasToWeight::convert(*gas_limit))]
+		#[pallet::weight(call_weight::<T>(*gas_limit))]
 		#[transactional]
 		pub fn call(
 			origin: OriginFor<T>,
@@ -544,7 +626,7 @@ pub mod module {
 			let used_gas: u64 = info.used_gas.unique_saturated_into();
 
 			Ok(PostDispatchInfo {
-				actual_weight: Some(T::GasToWeight::convert(used_gas)),
+				actual_weight: Some(call_weight::<T>(used_gas)),
 				pays_fee: Pays::Yes,
 			})
 		}
@@ -560,6 +642,7 @@ pub mod module {
 		/// - `storage_limit`: the total bytes the contract's storage can increase by
 		#[pallet::weight(T::GasToWeight::convert(*gas_limit))]
 		#[transactional]
+		// TODO: create benchmark
 		pub fn scheduled_call(
 			origin: OriginFor<T>,
 			from: EvmAddress,
@@ -615,7 +698,7 @@ pub mod module {
 		/// - `value`: the amount sent to the contract upon creation
 		/// - `gas_limit`: the maximum gas the call can use
 		/// - `storage_limit`: the total bytes the contract's storage can increase by
-		#[pallet::weight(T::GasToWeight::convert(*gas_limit))]
+		#[pallet::weight(create_weight::<T>(*gas_limit))]
 		#[transactional]
 		pub fn create(
 			origin: OriginFor<T>,
@@ -632,7 +715,7 @@ pub mod module {
 			let used_gas: u64 = info.used_gas.unique_saturated_into();
 
 			Ok(PostDispatchInfo {
-				actual_weight: Some(T::GasToWeight::convert(used_gas)),
+				actual_weight: Some(create_weight::<T>(used_gas)),
 				pays_fee: Pays::Yes,
 			})
 		}
@@ -645,7 +728,7 @@ pub mod module {
 		/// - `value`: the amount sent for payable calls
 		/// - `gas_limit`: the maximum gas the call can use
 		/// - `storage_limit`: the total bytes the contract's storage can increase by
-		#[pallet::weight(T::GasToWeight::convert(*gas_limit))]
+		#[pallet::weight(create2_weight::<T>(*gas_limit))]
 		#[transactional]
 		pub fn create2(
 			origin: OriginFor<T>,
@@ -663,7 +746,7 @@ pub mod module {
 			let used_gas: u64 = info.used_gas.unique_saturated_into();
 
 			Ok(PostDispatchInfo {
-				actual_weight: Some(T::GasToWeight::convert(used_gas)),
+				actual_weight: Some(create2_weight::<T>(used_gas)),
 				pays_fee: Pays::Yes,
 			})
 		}
@@ -675,7 +758,7 @@ pub mod module {
 		/// - `value`: the amount sent for payable calls
 		/// - `gas_limit`: the maximum gas the call can use
 		/// - `storage_limit`: the total bytes the contract's storage can increase by
-		#[pallet::weight(T::GasToWeight::convert(*gas_limit))]
+		#[pallet::weight(create_nft_contract::<T>(*gas_limit))]
 		#[transactional]
 		pub fn create_nft_contract(
 			origin: OriginFor<T>,
@@ -696,7 +779,7 @@ pub mod module {
 			let used_gas: u64 = info.used_gas.unique_saturated_into();
 
 			Ok(PostDispatchInfo {
-				actual_weight: Some(T::GasToWeight::convert(used_gas)),
+				actual_weight: Some(create_nft_contract::<T>(used_gas)),
 				pays_fee: Pays::Yes,
 			})
 		}
@@ -709,7 +792,11 @@ pub mod module {
 		/// - `value`: the amount sent for payable calls
 		/// - `gas_limit`: the maximum gas the call can use
 		/// - `storage_limit`: the total bytes the contract's storage can increase by
-		#[pallet::weight(T::GasToWeight::convert(*gas_limit))]
+		#[pallet::weight(if init.is_empty() {
+			<T as Config>::WeightInfo::deposit_ed()
+		} else {
+			create_predeploy_contract::<T>(*gas_limit)
+		})]
 		#[transactional]
 		pub fn create_predeploy_contract(
 			origin: OriginFor<T>,
@@ -728,7 +815,7 @@ pub mod module {
 
 			let source = T::NetworkContractSource::get();
 
-			let info = if init.is_empty() {
+			if init.is_empty() {
 				// deposit ED for mirrored token
 				T::Currency::transfer(
 					&T::TreasuryAccount::get(),
@@ -736,23 +823,19 @@ pub mod module {
 					T::Currency::minimum_balance(),
 					ExistenceRequirement::AllowDeath,
 				)?;
-				CreateInfo {
-					value: target,
-					exit_reason: ExitReason::Succeed(ExitSucceed::Stopped),
-					used_gas: 0.into(),
-					used_storage: 0,
-					logs: vec![],
-				}
+				Ok(PostDispatchInfo {
+					actual_weight: Some(<T as Config>::WeightInfo::deposit_ed()),
+					pays_fee: Pays::Yes,
+				})
 			} else {
-				T::Runner::create_at_address(source, target, init, value, gas_limit, storage_limit, T::config())?
-			};
-
-			let used_gas: u64 = info.used_gas.unique_saturated_into();
-
-			Ok(PostDispatchInfo {
-				actual_weight: Some(T::GasToWeight::convert(used_gas)),
-				pays_fee: Pays::Yes,
-			})
+				let info =
+					T::Runner::create_at_address(source, target, init, value, gas_limit, storage_limit, T::config())?;
+				let used_gas: u64 = info.used_gas.unique_saturated_into();
+				Ok(PostDispatchInfo {
+					actual_weight: Some(create_predeploy_contract::<T>(used_gas)),
+					pays_fee: Pays::Yes,
+				})
+			}
 		}
 
 		/// Transfers Contract maintainership to a new EVM Address.
@@ -770,7 +853,10 @@ pub mod module {
 			let who = ensure_signed(origin)?;
 			Self::do_transfer_maintainer(who, contract, new_maintainer)?;
 
-			Pallet::<T>::deposit_event(Event::<T>::TransferredMaintainer(contract, new_maintainer));
+			Pallet::<T>::deposit_event(Event::<T>::TransferredMaintainer {
+				contract,
+				new_maintainer,
+			});
 
 			Ok(().into())
 		}
@@ -791,7 +877,7 @@ pub mod module {
 				ExistenceRequirement::AllowDeath,
 			)?;
 			Self::mark_deployed(contract, Some(address))?;
-			Pallet::<T>::deposit_event(Event::<T>::ContractDeployed(contract));
+			Pallet::<T>::deposit_event(Event::<T>::ContractDeployed { contract });
 			Ok(().into())
 		}
 
@@ -804,7 +890,7 @@ pub mod module {
 		pub fn deploy_free(origin: OriginFor<T>, contract: EvmAddress) -> DispatchResultWithPostInfo {
 			T::FreeDeploymentOrigin::ensure_origin(origin)?;
 			Self::mark_deployed(contract, None)?;
-			Pallet::<T>::deposit_event(Event::<T>::ContractDeployed(contract));
+			Pallet::<T>::deposit_event(Event::<T>::ContractDeployed { contract });
 			Ok(().into())
 		}
 
@@ -819,7 +905,7 @@ pub mod module {
 				Error::<T>::ContractDevelopmentAlreadyEnabled
 			);
 			T::Currency::ensure_reserved_named(&RESERVE_ID_DEVELOPER_DEPOSIT, &who, T::DeveloperDeposit::get())?;
-			Pallet::<T>::deposit_event(Event::<T>::ContractDevelopmentEnabled(who));
+			Pallet::<T>::deposit_event(Event::<T>::ContractDevelopmentEnabled { who });
 			Ok(().into())
 		}
 
@@ -834,7 +920,7 @@ pub mod module {
 				Error::<T>::ContractDevelopmentNotEnabled
 			);
 			T::Currency::unreserve_all_named(&RESERVE_ID_DEVELOPER_DEPOSIT, &who);
-			Pallet::<T>::deposit_event(Event::<T>::ContractDevelopmentDisabled(who));
+			Pallet::<T>::deposit_event(Event::<T>::ContractDevelopmentDisabled { who });
 			Ok(().into())
 		}
 
@@ -848,7 +934,7 @@ pub mod module {
 			let root_or_signed = Self::ensure_root_or_signed(origin)?;
 			Self::do_set_code(root_or_signed, contract, code)?;
 
-			Pallet::<T>::deposit_event(Event::<T>::ContractSetCode(contract));
+			Pallet::<T>::deposit_event(Event::<T>::ContractSetCode { contract });
 
 			Ok(().into())
 		}
@@ -863,7 +949,7 @@ pub mod module {
 			let caller = T::AddressMapping::get_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
 			Self::do_selfdestruct(&caller, &contract)?;
 
-			Pallet::<T>::deposit_event(Event::<T>::ContractSelfdestructed(contract));
+			Pallet::<T>::deposit_event(Event::<T>::ContractSelfdestructed { contract });
 
 			Ok(().into())
 		}
@@ -1240,7 +1326,9 @@ impl<T: Config> Pallet<T> {
 			..
 		}) = Accounts::<T>::get(address)
 		{
-			deployed || maintainer == *caller || Self::is_developer_or_contract(caller)
+			// https://github.com/AcalaNetwork/Acala/blob/af1c277/modules/evm/rpc/src/lib.rs#L176
+			// when rpc is called, from is empty, allowing the call
+			deployed || maintainer == *caller || Self::is_developer_or_contract(caller) || *caller == H160::default()
 		} else {
 			// contract non exist, we don't override defualt evm behaviour
 			true

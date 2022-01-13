@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2021 Acala Foundation.
+// Copyright (C) 2020-2022 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -34,16 +34,18 @@ use frame_support::{
 	transactional,
 };
 use frame_system::{ensure_signed, pallet_prelude::*};
+use module_evm_utiltity_macro::keccak256;
 use module_support::AddressMapping;
 use orml_traits::currency::TransferAll;
-use primitives::{evm::EvmAddress, AccountIndex};
-use sp_core::{crypto::AccountId32, ecdsa};
+use primitives::{evm::EvmAddress, to_bytes, AccountIndex};
+use sp_core::crypto::AccountId32;
+use sp_core::{H160, H256};
 use sp_io::{
 	crypto::secp256k1_ecdsa_recover,
 	hashing::{blake2_256, keccak_256},
 };
 use sp_runtime::{
-	traits::{LookupError, StaticLookup},
+	traits::{LookupError, StaticLookup, Zero},
 	MultiAddress,
 };
 use sp_std::{marker::PhantomData, vec::Vec};
@@ -55,7 +57,8 @@ pub mod weights;
 pub use module::*;
 pub use weights::WeightInfo;
 
-pub type EcdsaSignature = ecdsa::Signature;
+/// A signature (a 512-bit value, plus 8 bits for recovery ID).
+pub type Eip712Signature = [u8; 65];
 
 #[frame_support::pallet]
 pub mod module {
@@ -71,6 +74,10 @@ pub mod module {
 		/// Mapping from address to account id.
 		type AddressMapping: AddressMapping<Self::AccountId>;
 
+		/// Chain ID of EVM.
+		#[pallet::constant]
+		type ChainId: Get<u64>;
+
 		/// Merge free balance from source to dest.
 		type TransferAll: TransferAll<Self::AccountId>;
 
@@ -82,8 +89,11 @@ pub mod module {
 	#[pallet::generate_deposit(fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// Mapping between Substrate accounts and EVM accounts
-		/// claim account. \[account_id, evm_address\]
-		ClaimAccount(T::AccountId, EvmAddress),
+		/// claim account.
+		ClaimAccount {
+			account_id: T::AccountId,
+			evm_address: EvmAddress,
+		},
 	}
 
 	/// Error for evm accounts module.
@@ -133,7 +143,7 @@ pub mod module {
 		pub fn claim_account(
 			origin: OriginFor<T>,
 			eth_address: EvmAddress,
-			eth_signature: EcdsaSignature,
+			eth_signature: Eip712Signature,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
@@ -145,8 +155,7 @@ pub mod module {
 			);
 
 			// recover evm address from signature
-			let address = Self::eth_recover(&eth_signature, &who.using_encoded(to_ascii_hex), &[][..])
-				.ok_or(Error::<T>::BadSignature)?;
+			let address = Self::verify_eip712_signature(&who, &eth_signature).ok_or(Error::<T>::BadSignature)?;
 			ensure!(eth_address == address, Error::<T>::InvalidSignature);
 
 			// check if the evm padded address already exists
@@ -159,7 +168,10 @@ pub mod module {
 			Accounts::<T>::insert(eth_address, &who);
 			EvmAddresses::<T>::insert(&who, eth_address);
 
-			Self::deposit_event(Event::ClaimAccount(who, eth_address));
+			Self::deposit_event(Event::ClaimAccount {
+				account_id: who,
+				evm_address: eth_address,
+			});
 
 			Ok(())
 		}
@@ -176,7 +188,10 @@ pub mod module {
 
 			let eth_address = T::AddressMapping::get_or_create_evm_address(&who);
 
-			Self::deposit_event(Event::ClaimAccount(who, eth_address));
+			Self::deposit_event(Event::ClaimAccount {
+				account_id: who,
+				evm_address: eth_address,
+			});
 
 			Ok(())
 		}
@@ -184,34 +199,6 @@ pub mod module {
 }
 
 impl<T: Config> Pallet<T> {
-	// Constructs the message that Ethereum RPC's `personal_sign` and `eth_sign`
-	// would sign.
-	pub fn ethereum_signable_message(what: &[u8], extra: &[u8]) -> Vec<u8> {
-		let prefix = b"acala evm:";
-		let mut l = prefix.len() + what.len() + extra.len();
-		let mut rev = Vec::new();
-		while l > 0 {
-			rev.push(b'0' + (l % 10) as u8);
-			l /= 10;
-		}
-		let mut v = b"\x19Ethereum Signed Message:\n".to_vec();
-		v.extend(rev.into_iter().rev());
-		v.extend_from_slice(&prefix[..]);
-		v.extend_from_slice(what);
-		v.extend_from_slice(extra);
-		v
-	}
-
-	// Attempts to recover the Ethereum address from a message signature signed by
-	// using the Ethereum RPC's `personal_sign` and `eth_sign`.
-	pub fn eth_recover(s: &EcdsaSignature, what: &[u8], extra: &[u8]) -> Option<EvmAddress> {
-		let msg = keccak_256(&Self::ethereum_signable_message(what, extra));
-		let mut res = EvmAddress::default();
-		res.0
-			.copy_from_slice(&keccak_256(&secp256k1_ecdsa_recover(&s.0, &msg).ok()?[..])[12..]);
-		Some(res)
-	}
-
 	#[cfg(any(feature = "runtime-benchmarks", feature = "std"))]
 	// Returns an Etherum public key derived from an Ethereum secret key.
 	pub fn eth_public(secret: &libsecp256k1::SecretKey) -> libsecp256k1::PublicKey {
@@ -227,14 +214,55 @@ impl<T: Config> Pallet<T> {
 
 	#[cfg(any(feature = "runtime-benchmarks", feature = "std"))]
 	// Constructs a message and signs it.
-	pub fn eth_sign(secret: &libsecp256k1::SecretKey, what: &[u8], extra: &[u8]) -> EcdsaSignature {
-		let msg = keccak_256(&Self::ethereum_signable_message(&to_ascii_hex(what)[..], extra));
+	pub fn eth_sign(secret: &libsecp256k1::SecretKey, who: &T::AccountId) -> Eip712Signature {
+		let msg = keccak_256(&Self::eip712_signable_message(who));
 		let (sig, recovery_id) = libsecp256k1::sign(&libsecp256k1::Message::parse(&msg), secret);
 		let mut r = [0u8; 65];
 		r[0..64].copy_from_slice(&sig.serialize()[..]);
 		r[64] = recovery_id.serialize();
-		EcdsaSignature::from_slice(&r)
+		r
 	}
+
+	fn verify_eip712_signature(who: &T::AccountId, sig: &[u8; 65]) -> Option<H160> {
+		let msg = Self::eip712_signable_message(who);
+		let msg_hash = keccak_256(msg.as_slice());
+
+		recover_signer(sig, &msg_hash)
+	}
+
+	// Eip-712 message to be signed
+	fn eip712_signable_message(who: &T::AccountId) -> Vec<u8> {
+		let domain_separator = Self::evm_account_domain_separator();
+		let payload_hash = Self::evm_account_payload_hash(who);
+
+		let mut msg = b"\x19\x01".to_vec();
+		msg.extend_from_slice(&domain_separator);
+		msg.extend_from_slice(&payload_hash);
+		msg
+	}
+
+	fn evm_account_payload_hash(who: &T::AccountId) -> [u8; 32] {
+		let tx_type_hash = keccak256!("Transaction(bytes substrateAddress)");
+		let mut tx_msg = tx_type_hash.to_vec();
+		tx_msg.extend_from_slice(&keccak_256(&who.encode()));
+		keccak_256(tx_msg.as_slice())
+	}
+
+	fn evm_account_domain_separator() -> [u8; 32] {
+		let domain_hash = keccak256!("EIP712Domain(string name,string version,uint256 chainId,bytes32 salt)");
+		let mut domain_seperator_msg = domain_hash.to_vec();
+		domain_seperator_msg.extend_from_slice(keccak256!("Acala EVM claim")); // name
+		domain_seperator_msg.extend_from_slice(keccak256!("1")); // version
+		domain_seperator_msg.extend_from_slice(&to_bytes(T::ChainId::get())); // chain id
+		domain_seperator_msg.extend_from_slice(frame_system::Pallet::<T>::block_hash(T::BlockNumber::zero()).as_ref()); // genesis block hash
+		keccak_256(domain_seperator_msg.as_slice())
+	}
+}
+
+fn recover_signer(sig: &[u8; 65], msg_hash: &[u8; 32]) -> Option<H160> {
+	secp256k1_ecdsa_recover(sig, msg_hash)
+		.map(|pubkey| H160::from(H256::from_slice(&keccak_256(&pubkey))))
+		.ok()
 }
 
 // Creates a an EvmAddress from an AccountId by appending the bytes "evm:" to
@@ -335,16 +363,4 @@ impl<T: Config> StaticLookup for Pallet<T> {
 	fn unlookup(a: Self::Target) -> Self::Source {
 		MultiAddress::Id(a)
 	}
-}
-
-/// Converts the given binary data into ASCII-encoded hex. It will be twice
-/// the length.
-pub fn to_ascii_hex(data: &[u8]) -> Vec<u8> {
-	let mut r = Vec::with_capacity(data.len() * 2);
-	let mut push_nibble = |n| r.push(if n < 10 { b'0' + n } else { b'a' - 10 + n });
-	for &b in data.iter() {
-		push_nibble(b / 16);
-		push_nibble(b % 16);
-	}
-	r
 }

@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2021 Acala Foundation.
+// Copyright (C) 2020-2022 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -28,6 +28,7 @@ pub mod unchecked_extrinsic;
 
 use codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
+use sp_core::U256;
 use sp_runtime::{
 	generic,
 	traits::{BlakeTwo256, CheckedDiv, IdentifyAccount, Saturating, Verify, Zero},
@@ -125,8 +126,8 @@ pub struct TradingPair(CurrencyId, CurrencyId);
 
 impl TradingPair {
 	pub fn from_currency_ids(currency_id_a: CurrencyId, currency_id_b: CurrencyId) -> Option<Self> {
-		if (currency_id_a.is_token_currency_id() || currency_id_a.is_erc20_currency_id())
-			&& (currency_id_b.is_token_currency_id() || currency_id_b.is_erc20_currency_id())
+		if currency_id_a.is_trading_pair_currency_id()
+			&& currency_id_b.is_trading_pair_currency_id()
 			&& currency_id_a != currency_id_b
 		{
 			if currency_id_a > currency_id_b {
@@ -169,6 +170,7 @@ pub enum ReserveIdentifier {
 	Honzon,
 	Nft,
 	TransactionPayment,
+	TransactionPaymentDeposit,
 
 	// always the last, indicate number of variants
 	Count,
@@ -203,4 +205,9 @@ pub fn convert_decimals_from_evm<B: Zero + Saturating + CheckedDiv + PartialEq +
 	} else {
 		None
 	}
+}
+
+/// Convert any type that implements Into<U256> into byte representation ([u8, 32])
+pub fn to_bytes<T: Into<U256>>(value: T) -> [u8; 32] {
+	Into::<[u8; 32]>::into(value.into())
 }

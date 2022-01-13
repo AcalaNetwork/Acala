@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2021 Acala Foundation.
+// Copyright (C) 2020-2022 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -61,15 +61,6 @@ pub type CreateInfo = ExecutionInfo<H160>;
 
 #[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct Erc20Info {
-	pub address: EvmAddress,
-	pub name: Vec<u8>,
-	pub symbol: Vec<u8>,
-	pub decimals: u8,
-}
-
-#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct EstimateResourcesRequest {
 	/// From
 	pub from: Option<H160>,
@@ -88,6 +79,8 @@ pub struct EstimateResourcesRequest {
 #[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct EthereumTransactionMessage {
+	pub chain_id: u64,
+	pub genesis: H256,
 	pub nonce: Nonce,
 	pub tip: Balance,
 	pub gas_limit: u64,
@@ -95,8 +88,6 @@ pub struct EthereumTransactionMessage {
 	pub action: TransactionAction,
 	pub value: Balance,
 	pub input: Vec<u8>,
-	pub chain_id: u64,
-	pub genesis: H256,
 	pub valid_until: BlockNumber,
 }
 
@@ -187,9 +178,9 @@ impl TryFrom<CurrencyId> for EvmAddress {
 			CurrencyId::Erc20(erc20) => {
 				address[..].copy_from_slice(erc20.as_bytes());
 			}
-			CurrencyId::StableAssetPoolToken(_) => {
-				// Unsupported
-				return Err(());
+			CurrencyId::StableAssetPoolToken(stable_asset_id) => {
+				address[H160_POSITION_CURRENCY_ID_TYPE] = CurrencyIdType::StableAsset.into();
+				address[H160_POSITION_STABLE_ASSET].copy_from_slice(&stable_asset_id.to_be_bytes());
 			}
 			CurrencyId::LiquidCroadloan(lease) => {
 				address[H160_POSITION_CURRENCY_ID_TYPE] = CurrencyIdType::LiquidCroadloan.into();

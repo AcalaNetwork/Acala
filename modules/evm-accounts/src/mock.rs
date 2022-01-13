@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2021 Acala Foundation.
+// Copyright (C) 2020-2022 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -120,6 +120,7 @@ pub type AdaptedBasicCurrency = orml_currencies::BasicCurrencyAdapter<Runtime, B
 impl Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
+	type ChainId = ();
 	type AddressMapping = EvmAddressMapping<Runtime>;
 	type TransferAll = Currencies;
 	type WeightInfo = ();

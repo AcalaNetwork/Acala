@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2021 Acala Foundation.
+// Copyright (C) 2020-2022 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -60,7 +60,11 @@ fn lock_works() {
 		// Verify the event deposited for Gateway is correct.
 		assert_eq!(
 			System::events().iter().last().unwrap().event,
-			Event::Starport(crate::Event::AssetLockedTo(ACALA, INITIAL_BALANCE, ALICE))
+			Event::Starport(crate::Event::AssetLockedTo {
+				currency_id: ACALA,
+				amount: INITIAL_BALANCE,
+				user: ALICE
+			})
 		);
 
 		// Locked CASH assets are burned instead
@@ -79,7 +83,11 @@ fn lock_works() {
 		// Verify the event deposited for Gateway is correct.
 		assert_eq!(
 			System::events().iter().last().unwrap().event,
-			Event::Starport(crate::Event::AssetLockedTo(CASH, INITIAL_BALANCE, ALICE))
+			Event::Starport(crate::Event::AssetLockedTo {
+				currency_id: CASH,
+				amount: INITIAL_BALANCE,
+				user: ALICE
+			})
 		)
 	});
 }
@@ -105,7 +113,11 @@ fn lock_to_works() {
 		// Verify the event deposited for Gateway is correct.
 		assert_eq!(
 			System::events().iter().last().unwrap().event,
-			Event::Starport(crate::Event::AssetLockedTo(ACALA, INITIAL_BALANCE, BOB))
+			Event::Starport(crate::Event::AssetLockedTo {
+				currency_id: ACALA,
+				amount: INITIAL_BALANCE,
+				user: BOB
+			})
 		);
 	});
 }
@@ -153,7 +165,11 @@ fn invoke_can_set_supply_cap() {
 		// Verify the event deposited for Gateway is correct.
 		assert_eq!(
 			System::events().iter().last().unwrap().event,
-			Event::Starport(crate::Event::AssetLockedTo(ACALA, 100, ALICE))
+			Event::Starport(crate::Event::AssetLockedTo {
+				currency_id: ACALA,
+				amount: 100,
+				user: ALICE
+			})
 		);
 
 		// Lock fails due to insufficient Market cap
@@ -171,14 +187,21 @@ fn invoke_can_set_supply_cap() {
 		));
 		assert_eq!(
 			System::events().iter().last().unwrap().event,
-			Event::Starport(crate::Event::SupplyCapSet(ACALA, 100))
+			Event::Starport(crate::Event::SupplyCapSet {
+				currency_id: ACALA,
+				new_cap: 100
+			})
 		);
 
 		// Lock will now work
 		assert_ok!(Starport::lock(Origin::signed(ALICE), ACALA, 100));
 		assert_eq!(
 			System::events().iter().last().unwrap().event,
-			Event::Starport(crate::Event::AssetLockedTo(ACALA, 100, ALICE))
+			Event::Starport(crate::Event::AssetLockedTo {
+				currency_id: ACALA,
+				amount: 100,
+				user: ALICE
+			})
 		);
 	});
 }
@@ -194,7 +217,11 @@ fn invoke_can_set_authorities() {
 		// Verify the event deposited for Gateway is correct.
 		assert_eq!(
 			System::events().iter().last().unwrap().event,
-			Event::Starport(crate::Event::AssetLockedTo(ACALA, 100, ALICE))
+			Event::Starport(crate::Event::AssetLockedTo {
+				currency_id: ACALA,
+				amount: 100,
+				user: ALICE
+			})
 		);
 
 		let new_authorities = vec![AccountId::new([0xA0; 32]), AccountId::new([0xA1; 32])];
@@ -267,7 +294,11 @@ fn invoke_can_unlock_asset() {
 		// Verify the event deposited for Gateway is correct.
 		assert_eq!(
 			System::events().iter().last().unwrap().event,
-			Event::Starport(crate::Event::AssetLockedTo(ACALA, 500, ALICE))
+			Event::Starport(crate::Event::AssetLockedTo {
+				currency_id: ACALA,
+				amount: 500,
+				user: ALICE
+			})
 		);
 
 		// Unlock the locked asset
@@ -286,7 +317,11 @@ fn invoke_can_unlock_asset() {
 		));
 		assert_eq!(
 			System::events().iter().last().unwrap().event,
-			Event::Starport(crate::Event::AssetUnlocked(ACALA, 500, ALICE))
+			Event::Starport(crate::Event::AssetUnlocked {
+				currency_id: ACALA,
+				amount: 500,
+				user: ALICE
+			})
 		);
 
 		// Unlock will fail with insufficient asset
@@ -329,7 +364,11 @@ fn invoke_can_unlock_asset() {
 		));
 		assert_eq!(
 			System::events().iter().last().unwrap().event,
-			Event::Starport(crate::Event::AssetUnlocked(CASH, 100000, ALICE))
+			Event::Starport(crate::Event::AssetUnlocked {
+				currency_id: CASH,
+				amount: 100000,
+				user: ALICE
+			})
 		);
 	});
 }
@@ -352,7 +391,11 @@ fn invoke_can_set_future_cash_yield() {
 		));
 		assert_eq!(
 			System::events().iter().last().unwrap().event,
-			Event::Starport(crate::Event::FutureYieldSet(1000, 0, 0))
+			Event::Starport(crate::Event::FutureYieldSet {
+				yield_amount: 1000,
+				index: 0,
+				timestamp: 0
+			})
 		);
 	});
 }
@@ -375,7 +418,11 @@ fn notices_cannot_be_invoked_twice() {
 		));
 		assert_eq!(
 			System::events().iter().last().unwrap().event,
-			Event::Starport(crate::Event::FutureYieldSet(1000, 0, 0))
+			Event::Starport(crate::Event::FutureYieldSet {
+				yield_amount: 1000,
+				index: 0,
+				timestamp: 0
+			})
 		);
 
 		assert_noop!(
@@ -403,7 +450,11 @@ fn notices_are_invoked_by_any_account() {
 		));
 		assert_eq!(
 			System::events().iter().last().unwrap().event,
-			Event::Starport(crate::Event::FutureYieldSet(1000, 0, 0))
+			Event::Starport(crate::Event::FutureYieldSet {
+				yield_amount: 1000,
+				index: 0,
+				timestamp: 0
+			})
 		);
 
 		notice.id = 1;
@@ -414,7 +465,11 @@ fn notices_are_invoked_by_any_account() {
 		));
 		assert_eq!(
 			System::events().iter().last().unwrap().event,
-			Event::Starport(crate::Event::FutureYieldSet(1000, 0, 0))
+			Event::Starport(crate::Event::FutureYieldSet {
+				yield_amount: 1000,
+				index: 0,
+				timestamp: 0
+			})
 		);
 
 		notice.id = 2;
@@ -425,7 +480,11 @@ fn notices_are_invoked_by_any_account() {
 		));
 		assert_eq!(
 			System::events().iter().last().unwrap().event,
-			Event::Starport(crate::Event::FutureYieldSet(1000, 0, 0))
+			Event::Starport(crate::Event::FutureYieldSet {
+				yield_amount: 1000,
+				index: 0,
+				timestamp: 0
+			})
 		);
 	});
 }
@@ -452,7 +511,11 @@ fn notices_can_only_be_invoked_with_enough_signatures() {
 		));
 		assert_eq!(
 			System::events().iter().last().unwrap().event,
-			Event::Starport(crate::Event::FutureYieldSet(1000, 0, 0))
+			Event::Starport(crate::Event::FutureYieldSet {
+				yield_amount: 1000,
+				index: 0,
+				timestamp: 0
+			})
 		);
 
 		// 1 signer is insufficient authorisation

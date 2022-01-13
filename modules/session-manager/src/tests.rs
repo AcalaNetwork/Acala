@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2021 Acala Foundation.
+// Copyright (C) 2020-2022 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -41,9 +41,17 @@ fn schedule_session_duration_work() {
 		);
 
 		assert_ok!(SessionManager::schedule_session_duration(Origin::root(), 1, 10));
-		System::assert_last_event(Event::SessionManager(crate::Event::ScheduledSessionDuration(1, 1, 10)));
+		System::assert_last_event(Event::SessionManager(crate::Event::ScheduledSessionDuration {
+			block_number: 1,
+			session_index: 1,
+			session_duration: 10,
+		}));
 		assert_ok!(SessionManager::schedule_session_duration(Origin::root(), 1, 11));
-		System::assert_last_event(Event::SessionManager(crate::Event::ScheduledSessionDuration(10, 1, 11)));
+		System::assert_last_event(Event::SessionManager(crate::Event::ScheduledSessionDuration {
+			block_number: 10,
+			session_index: 1,
+			session_duration: 11,
+		}));
 
 		SessionDuration::<Runtime>::put(0);
 		assert_noop!(
@@ -61,7 +69,11 @@ fn on_initialize_work() {
 		assert_eq!(SessionManager::duration_offset(), 0);
 
 		assert_ok!(SessionManager::schedule_session_duration(Origin::root(), 1, 11));
-		System::assert_last_event(Event::SessionManager(crate::Event::ScheduledSessionDuration(10, 1, 11)));
+		System::assert_last_event(Event::SessionManager(crate::Event::ScheduledSessionDuration {
+			block_number: 10,
+			session_index: 1,
+			session_duration: 11,
+		}));
 		assert_eq!(SessionDurationChanges::<Runtime>::iter().count(), 1);
 
 		SessionManager::on_initialize(9);

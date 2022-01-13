@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2021 Acala Foundation.
+// Copyright (C) 2020-2022 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -56,7 +56,11 @@ pub mod module {
 	#[pallet::generate_deposit(pub fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// Set the future yield for the Cash asset.
-		FutureYieldSet(Balance, CashYieldIndex, Moment),
+		FutureYieldSet {
+			yield_amount: Balance,
+			index: CashYieldIndex,
+			timestamp: Moment,
+		},
 	}
 
 	/// Stores a history of yields that have already been consumed.
@@ -102,7 +106,11 @@ impl<T: Config> Pallet<T> {
 		);
 
 		FutureYield::<T>::insert(yield_index, (next_cash_yield, timestamp_effective));
-
+		Self::deposit_event(Event::FutureYieldSet {
+			yield_amount: next_cash_yield,
+			index: yield_index,
+			timestamp: timestamp_effective,
+		});
 		Ok(())
 	}
 }

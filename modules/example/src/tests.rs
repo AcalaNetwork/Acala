@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2021 Acala Foundation.
+// Copyright (C) 2020-2022 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -29,7 +29,7 @@ fn set_dummy_work() {
 		assert_eq!(Example::dummy(), None);
 		assert_ok!(Example::set_dummy(Origin::root(), 20));
 		assert_eq!(Example::dummy(), Some(20));
-		System::assert_last_event(Event::Example(crate::Event::Dummy(20)));
+		System::assert_last_event(Event::Example(crate::Event::Dummy { value: 20 }));
 	});
 }
 

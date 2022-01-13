@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2021 Acala Foundation.
+// Copyright (C) 2020-2022 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -45,7 +45,7 @@ pub use primitives::{
 };
 use sha3::{Digest, Keccak256};
 use sp_core::{H160, H256, U256};
-use sp_runtime::traits::UniqueSaturatedInto;
+use sp_runtime::traits::{UniqueSaturatedInto, Zero};
 use sp_std::{boxed::Box, collections::btree_set::BTreeSet, marker::PhantomData, mem, vec, vec::Vec};
 
 #[derive(Default)]
@@ -235,15 +235,19 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 		})?;
 
 		if info.exit_reason.is_succeed() {
-			Pallet::<T>::deposit_event(Event::<T>::Executed(source, target, info.logs.clone()));
+			Pallet::<T>::deposit_event(Event::<T>::Executed {
+				from: source,
+				contract: target,
+				logs: info.logs.clone(),
+			});
 		} else {
-			Pallet::<T>::deposit_event(Event::<T>::ExecutedFailed(
-				source,
-				target,
-				info.exit_reason.clone(),
-				info.value.clone(),
-				info.logs.clone(),
-			));
+			Pallet::<T>::deposit_event(Event::<T>::ExecutedFailed {
+				from: source,
+				contract: target,
+				exit_reason: info.exit_reason.clone(),
+				output: info.value.clone(),
+				logs: info.logs.clone(),
+			});
 		}
 
 		Ok(info)
@@ -270,14 +274,18 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 		})?;
 
 		if info.exit_reason.is_succeed() {
-			Pallet::<T>::deposit_event(Event::<T>::Created(source, info.value, info.logs.clone()));
+			Pallet::<T>::deposit_event(Event::<T>::Created {
+				from: source,
+				contract: info.value,
+				logs: info.logs.clone(),
+			});
 		} else {
-			Pallet::<T>::deposit_event(Event::<T>::CreatedFailed(
-				source,
-				info.value,
-				info.exit_reason.clone(),
-				info.logs.clone(),
-			));
+			Pallet::<T>::deposit_event(Event::<T>::CreatedFailed {
+				from: source,
+				contract: info.value,
+				exit_reason: info.exit_reason.clone(),
+				logs: info.logs.clone(),
+			});
 		}
 
 		Ok(info)
@@ -310,14 +318,18 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 		})?;
 
 		if info.exit_reason.is_succeed() {
-			Pallet::<T>::deposit_event(Event::<T>::Created(source, info.value, info.logs.clone()));
+			Pallet::<T>::deposit_event(Event::<T>::Created {
+				from: source,
+				contract: info.value,
+				logs: info.logs.clone(),
+			});
 		} else {
-			Pallet::<T>::deposit_event(Event::<T>::CreatedFailed(
-				source,
-				info.value,
-				info.exit_reason.clone(),
-				info.logs.clone(),
-			));
+			Pallet::<T>::deposit_event(Event::<T>::CreatedFailed {
+				from: source,
+				contract: info.value,
+				exit_reason: info.exit_reason.clone(),
+				logs: info.logs.clone(),
+			});
 		}
 
 		Ok(info)
@@ -342,14 +354,18 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 		})?;
 
 		if info.exit_reason.is_succeed() {
-			Pallet::<T>::deposit_event(Event::<T>::Created(source, info.value, info.logs.clone()));
+			Pallet::<T>::deposit_event(Event::<T>::Created {
+				from: source,
+				contract: info.value,
+				logs: info.logs.clone(),
+			});
 		} else {
-			Pallet::<T>::deposit_event(Event::<T>::CreatedFailed(
-				source,
-				info.value,
-				info.exit_reason.clone(),
-				info.logs.clone(),
-			));
+			Pallet::<T>::deposit_event(Event::<T>::CreatedFailed {
+				from: source,
+				contract: info.value,
+				exit_reason: info.exit_reason.clone(),
+				logs: info.logs.clone(),
+			});
 		}
 
 		Ok(info)
@@ -535,7 +551,15 @@ impl<'vicinity, 'config, T: Config> BackendT for SubstrateStackState<'vicinity, 
 	}
 
 	fn code(&self, address: H160) -> Vec<u8> {
-		Pallet::<T>::code_at_address(&address).into_inner()
+		let code = Pallet::<T>::code_at_address(&address).into_inner();
+		if code.len().is_zero() {
+			log::debug!(
+				target: "evm",
+				"contract does not exist, address: {:?}",
+				address
+			);
+		}
+		code
 	}
 
 	fn storage(&self, address: H160, index: H256) -> H256 {

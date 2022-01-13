@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2021 Acala Foundation.
+// Copyright (C) 2020-2022 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -93,12 +93,16 @@ pub mod module {
 	#[pallet::event]
 	#[pallet::generate_deposit(fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// Emergency shutdown occurs. \[block_number\]
-		Shutdown(T::BlockNumber),
-		/// The final redemption opened. \[block_number\]
-		OpenRefund(T::BlockNumber),
-		/// Refund info. \[caller, stable_coin_amount, refund_list\]
-		Refund(T::AccountId, Balance, Vec<(CurrencyId, Balance)>),
+		/// Emergency shutdown occurs.
+		Shutdown { block_number: T::BlockNumber },
+		/// The final redemption opened.
+		OpenRefund { block_number: T::BlockNumber },
+		/// Refund info.
+		Refund {
+			who: T::AccountId,
+			stable_coin_amount: Balance,
+			refund_list: Vec<(CurrencyId, Balance)>,
+		},
 	}
 
 	/// Emergency shutdown flag
@@ -142,7 +146,9 @@ pub mod module {
 			}
 
 			IsShutdown::<T>::put(true);
-			Self::deposit_event(Event::Shutdown(<frame_system::Pallet<T>>::block_number()));
+			Self::deposit_event(Event::Shutdown {
+				block_number: <frame_system::Pallet<T>>::block_number(),
+			});
 			Ok(())
 		}
 
@@ -175,7 +181,9 @@ pub mod module {
 
 			// Open refund stage
 			CanRefund::<T>::put(true);
-			Self::deposit_event(Event::OpenRefund(<frame_system::Pallet<T>>::block_number()));
+			Self::deposit_event(Event::OpenRefund {
+				block_number: <frame_system::Pallet<T>>::block_number(),
+			});
 			Ok(())
 		}
 
@@ -208,7 +216,11 @@ pub mod module {
 				}
 			}
 
-			Self::deposit_event(Event::Refund(who, amount, refund_assets));
+			Self::deposit_event(Event::Refund {
+				who,
+				stable_coin_amount: amount,
+				refund_list: refund_assets,
+			});
 			Ok(())
 		}
 	}

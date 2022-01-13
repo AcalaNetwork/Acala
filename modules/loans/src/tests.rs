@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2021 Acala Foundation.
+// Copyright (C) 2020-2022 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -106,7 +106,12 @@ fn adjust_position_should_work() {
 		assert_eq!(LoansModule::positions(BTC, &ALICE).debit, 300);
 		assert_eq!(LoansModule::positions(BTC, &ALICE).collateral, 500);
 		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 150);
-		System::assert_last_event(Event::LoansModule(crate::Event::PositionUpdated(ALICE, BTC, 500, 300)));
+		System::assert_last_event(Event::LoansModule(crate::Event::PositionUpdated {
+			owner: ALICE,
+			collateral_type: BTC,
+			collateral_adjustment: 500,
+			debit_adjustment: 300,
+		}));
 
 		// collateral_adjustment is negatives
 		assert_eq!(Currencies::total_balance(BTC, &LoansModule::account_id()), 500);
@@ -173,7 +178,11 @@ fn transfer_loan_should_work() {
 		assert_eq!(LoansModule::positions(BTC, &ALICE).collateral, 0);
 		assert_eq!(LoansModule::positions(BTC, &BOB).debit, 1100);
 		assert_eq!(LoansModule::positions(BTC, &BOB).collateral, 500);
-		System::assert_last_event(Event::LoansModule(crate::Event::TransferLoan(ALICE, BOB, BTC)));
+		System::assert_last_event(Event::LoansModule(crate::Event::TransferLoan {
+			from: ALICE,
+			to: BOB,
+			currency_id: BTC,
+		}));
 	});
 }
 
@@ -198,9 +207,12 @@ fn confiscate_collateral_and_debit_work() {
 		assert_eq!(CDPTreasuryModule::debit_pool(), 100);
 		assert_eq!(LoansModule::positions(BTC, &ALICE).debit, 100);
 		assert_eq!(LoansModule::positions(BTC, &ALICE).collateral, 200);
-		System::assert_last_event(Event::LoansModule(crate::Event::ConfiscateCollateralAndDebit(
-			ALICE, BTC, 300, 200,
-		)));
+		System::assert_last_event(Event::LoansModule(crate::Event::ConfiscateCollateralAndDebit {
+			owner: ALICE,
+			collateral_type: BTC,
+			confiscated_collateral_amount: 300,
+			deduct_debit_amount: 200,
+		}));
 	});
 }
 

@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2021 Acala Foundation.
+// Copyright (C) 2020-2022 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -92,10 +92,6 @@ pub struct ExportGenesisStateCommand {
 	/// Output file name or stdout if unspecified.
 	#[structopt(parse(from_os_str))]
 	pub output: Option<PathBuf>,
-
-	/// Id of the parachain this state is for.
-	#[structopt(long, default_value = "2000")]
-	pub parachain_id: u32,
 
 	/// Write output in binary. Default is to write in hex.
 	#[structopt(short, long)]
