@@ -211,7 +211,7 @@ impl Contains<Call> for BaseCallFilter {
 			Call::Scheduler(_) | Call::Utility(_) | Call::Multisig(_) | Call::Proxy(_) | // utility
 			Call::TransactionPause(_) | // transaction pause
 			Call::Treasury(_) | Call::Bounties(_) | Call::Tips(_) | // treasury
-			// Call::CollatorSelection(_) | Call::Session(_) | Call::SessionManager(_) | // collator
+			Call::CollatorSelection(_) | Call::Session(_) | Call::SessionManager(_) | // collator
 			Call::DmpQueue(_) | Call::OrmlXcm(_) | // xcm
 			// Call::PolkadotXcm(_) | Call::XTokens(_) | // not allow user to make xcm call
 			Call::Authority(_) |
@@ -219,7 +219,7 @@ impl Contains<Call> for BaseCallFilter {
 			Call::FinancialCouncil(_) | Call::FinancialCouncilMembership(_) |
 			Call::HomaCouncil(_) | Call::HomaCouncilMembership(_) |
 			Call::TechnicalCommittee(_) | Call::TechnicalCommitteeMembership(_) | // governance
-			// Call::Democracy(_) | // democracy
+			Call::Democracy(_) | // democracy
 			Call::AcalaOracle(_) | Call::OperatorMembershipAcala(_) | // oracle
 			Call::Vesting(_) // vesting
 		);
