@@ -30,7 +30,7 @@ pub use module_support::{
 pub use orml_traits::{location::RelativeLocations, Change, GetByKey, MultiCurrency};
 
 pub use primitives::currency::*;
-pub use sp_core::H160;
+pub use sp_core::{H160, H256};
 use sp_io::hashing::keccak_256;
 pub use sp_runtime::{
 	traits::{AccountIdConversion, BadOrigin, BlakeTwo256, Convert, Hash, Zero},
