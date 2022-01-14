@@ -53,10 +53,7 @@ fn should_calculate_contract_address() {
 	new_test_ext().execute_with(|| {
 		let addr = H160::from_str("bec02ff0cbf20042a37d964c33e89f1a2be7f068").unwrap();
 
-		let vicinity = Vicinity {
-			gas_price: U256::one(),
-			origin: Default::default(),
-		};
+		let vicinity = Vicinity::new(U256::one(), Default::default());
 		let metadata = StackSubstateMetadata::new(1000, 1000, &ACALA_CONFIG);
 		let state = SubstrateStackState::<Runtime>::new(&vicinity, metadata);
 		let mut executor = StackExecutor::new(state, &ACALA_CONFIG);

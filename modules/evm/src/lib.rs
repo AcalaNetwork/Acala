@@ -438,10 +438,7 @@ pub mod module {
 
 					// Transactions are not supported by BasicExternalities
 					// Use the EVM Runtime
-					let vicinity = Vicinity {
-						gas_price: U256::one(),
-						origin: Default::default(),
-					};
+					let vicinity = Vicinity::new(U256::one(), Default::default());
 					let context = Context {
 						caller: source,
 						address: *address,
@@ -1031,21 +1028,22 @@ impl<T: Config> Pallet<T> {
 	/// Removes an account from Accounts and AccountStorages.
 	pub fn remove_account(address: &EvmAddress) -> DispatchResult {
 		// Deref code, and remove it if ref count is zero.
-		if let Some(AccountInfo {
-			contract_info: Some(contract_info),
-			..
-		}) = Self::accounts(address)
-		{
-			CodeInfos::<T>::mutate_exists(&contract_info.code_hash, |maybe_code_info| {
-				if let Some(code_info) = maybe_code_info.as_mut() {
-					code_info.ref_count = code_info.ref_count.saturating_sub(1);
-					if code_info.ref_count == 0 {
-						Codes::<T>::remove(&contract_info.code_hash);
-						*maybe_code_info = None;
-					}
+		Accounts::<T>::mutate_exists(&address, |maybe_account| {
+			if let Some(account) = maybe_account {
+				if let Some(ContractInfo { code_hash, .. }) = account.contract_info {
+					CodeInfos::<T>::mutate_exists(&code_hash, |maybe_code_info| {
+						if let Some(code_info) = maybe_code_info {
+							code_info.ref_count = code_info.ref_count.saturating_sub(1);
+							if code_info.ref_count == 0 {
+								Codes::<T>::remove(&code_hash);
+								account.contract_info = None;
+								*maybe_code_info = None;
+							}
+						}
+					});
 				}
-			});
-		}
+			}
+		});
 
 		if let Some(AccountInfo {
 			contract_info: Some(_), ..

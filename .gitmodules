@@ -10,3 +10,7 @@
 [submodule "evm-bench"]
 	path = evm-bench
 	url = https://github.com/AcalaNetwork/evm-bench.git
+[submodule "evm-tests"]
+	path = evm-tests
+	url = https://github.com/AcalaNetwork/evm-tests.git
+	branch = acala-evm

@@ -87,3 +87,6 @@ bench = [
 	"hex",
 	"module-idle-scheduler"
 ]
+evm-tests = [
+	"primitives/evm-tests"
+]

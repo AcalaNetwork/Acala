@@ -184,6 +184,7 @@ pub type CashYieldIndex = u128;
 const DECIMALS_VALUE: u32 = 1_000_000u32;
 
 /// Convert decimal from native(KAR/ACA 12) to EVM(18).
+#[cfg(not(feature = "evm-tests"))]
 pub fn convert_decimals_to_evm<B: Zero + Saturating + From<u32>>(b: B) -> B {
 	if b.is_zero() {
 		return b;
@@ -192,6 +193,7 @@ pub fn convert_decimals_to_evm<B: Zero + Saturating + From<u32>>(b: B) -> B {
 }
 
 /// Convert decimal from EVM(18) to native(KAR/ACA 12).
+#[cfg(not(feature = "evm-tests"))]
 pub fn convert_decimals_from_evm<B: Zero + Saturating + CheckedDiv + PartialEq + Copy + From<u32>>(b: B) -> Option<B> {
 	if b.is_zero() {
 		return Some(b);
@@ -205,6 +207,16 @@ pub fn convert_decimals_from_evm<B: Zero + Saturating + CheckedDiv + PartialEq +
 	} else {
 		None
 	}
+}
+
+#[cfg(feature = "evm-tests")]
+pub fn convert_decimals_to_evm<B: Zero + Saturating + From<u32>>(b: B) -> B {
+	b
+}
+
+#[cfg(feature = "evm-tests")]
+pub fn convert_decimals_from_evm<B: Zero + Saturating + CheckedDiv + PartialEq + Copy + From<u32>>(b: B) -> Option<B> {
+	Some(b)
 }
 
 /// Convert any type that implements Into<U256> into byte representation ([u8, 32])

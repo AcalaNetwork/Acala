@@ -68,7 +68,7 @@ impl<T: Config> Runner<T> {
 		F: FnOnce(&mut StackExecutor<'config, SubstrateStackState<'_, 'config, T>>) -> (ExitReason, R),
 	{
 		let gas_price = U256::one();
-		let vicinity = Vicinity { gas_price, origin };
+		let vicinity = Vicinity::new(gas_price, origin);
 
 		let metadata = StackSubstateMetadata::new(gas_limit, storage_limit, config);
 		let state = SubstrateStackState::new(&vicinity, metadata);
@@ -517,7 +517,10 @@ impl<'vicinity, 'config, T: Config> BackendT for SubstrateStackState<'vicinity, 
 	}
 
 	fn block_coinbase(&self) -> H160 {
-		Pallet::<T>::find_author()
+		#[cfg(feature = "evm-tests")]
+		return self.vicinity.block_coinbase;
+		#[cfg(not(feature = "evm-tests"))]
+		return Pallet::<T>::find_author();
 	}
 
 	fn block_timestamp(&self) -> U256 {
@@ -526,19 +529,25 @@ impl<'vicinity, 'config, T: Config> BackendT for SubstrateStackState<'vicinity, 
 	}
 
 	fn block_difficulty(&self) -> U256 {
-		U256::zero()
+		#[cfg(feature = "evm-tests")]
+		return self.vicinity.block_difficulty;
+		#[cfg(not(feature = "evm-tests"))]
+		return U256::zero();
 	}
 
 	fn block_gas_limit(&self) -> U256 {
-		U256::zero()
+		#[cfg(feature = "evm-tests")]
+		return self.vicinity.block_gas_limit;
+		#[cfg(not(feature = "evm-tests"))]
+		return U256::zero();
 	}
 
 	fn chain_id(&self) -> U256 {
 		U256::from(T::ChainId::get())
 	}
 
-	fn exists(&self, _address: H160) -> bool {
-		true
+	fn exists(&self, address: H160) -> bool {
+		Accounts::<T>::contains_key(&address)
 	}
 
 	fn basic(&self, address: H160) -> evm::backend::Basic {
@@ -558,8 +567,12 @@ impl<'vicinity, 'config, T: Config> BackendT for SubstrateStackState<'vicinity, 
 		<AccountStorages<T>>::get(address, index)
 	}
 
-	fn original_storage(&self, _address: H160, _index: H256) -> Option<H256> {
-		None
+	fn original_storage(&self, address: H160, index: H256) -> Option<H256> {
+		let value = AccountStorages::<T>::get(&address, index);
+		if value == H256::default() {
+			return None;
+		}
+		Some(value)
 	}
 }
 
@@ -684,7 +697,13 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 			if let Some(c) = substate.metadata().caller() {
 				// the caller maybe is contract and not deployed.
 				// get the parent's maintainer.
+				#[cfg(not(feature = "evm-tests"))]
 				if !Pallet::<T>::is_account_empty(c) {
+					caller = *c;
+					break;
+				}
+				#[cfg(feature = "evm-tests")]
+				{
 					caller = *c;
 					break;
 				}
@@ -723,6 +742,10 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 			target,
 			amount
 		);
+
+		if T::Currency::free_balance(&source) < amount {
+			return Err(ExitError::OutOfFund);
+		}
 
 		T::Currency::transfer(&source, &target, amount, ExistenceRequirement::AllowDeath)
 			.map_err(|e| ExitError::Other(Into::<&str>::into(e).into()))
