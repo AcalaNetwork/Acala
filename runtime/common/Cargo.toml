@@ -12,6 +12,10 @@ codec = { package = "parity-scale-codec", version = "2.3.1", default-features = 
 ethabi = { version = "15.0.0", default-features = false }
 scale-info = { version = "1.0", default-features = false, features = ["derive"] }
 
+evm = { version = "0.33.0", default-features = false, features = [ "with-codec" ] }
+evm-gasometer = { version = "0.33.0", default-features = false }
+evm-runtime = { version = "0.33.0", default-features = false }
+
 frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.13", default-features = false }
 frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.13", default-features = false }
 pallet-scheduler  = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.13", default-features = false }
@@ -31,6 +35,7 @@ module-evm-utiltity-macro = { path = "../../modules/evm-utiltity/macro" }
 module-support = { path = "../../modules/support", default-features = false }
 module-idle-scheduler = { path = "../../modules/idle-scheduler", default-features = false }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
+primitives-evm-tracing = { package = "acala-primitives-evm-tracing", path = "../../primitives/evm-tracing", default-features = false}
 
 module-prices = { path = "../../modules/prices", default-features = false }
 module-transaction-payment = { path = "../../modules/transaction-payment", default-features = false }
@@ -69,6 +74,10 @@ std = [
 	"scale-info/std",
 	"ethabi/std",
 
+	"evm-gasometer/std",
+	"evm-runtime/std",
+	"evm/std",
+
 	"frame-support/std",
 	"frame-system/std",
 	"pallet-scheduler/std",
@@ -86,11 +95,12 @@ std = [
 	"module-evm/std",
 	"module-idle-scheduler/std",
 	"module-support/std",
-	"primitives/std",
 	"module-prices/std",
 	"module-transaction-payment/std",
 	"module-nft/std",
 	"module-dex/std",
+	"primitives/std",
+	"primitives-evm-tracing/std",
 
 	"xcm/std",
 	"xcm-executor/std",
@@ -99,3 +109,4 @@ std = [
 with-ethereum-compatibility = [
 	"module-evm/with-ethereum-compatibility",
 ]
+evm-tracing = [ "evm-gasometer/tracing", "evm-runtime/tracing", "evm/tracing", "primitives-evm-tracing/evm-tracing" ]

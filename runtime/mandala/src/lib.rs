@@ -2334,6 +2334,44 @@ impl_runtime_apis! {
 		}
 	}
 
+	impl primitives_evm_tracing::runtime_api::EvmTracingApi<Block> for Runtime {
+		#[allow(clippy::unused_variables)]
+		fn trace_transaction(extrinsic: <Block as BlockT>::Extrinsic) -> Result<(), sp_runtime::DispatchError> {
+			#[cfg(feature = "evm-tracing")]
+			{
+				runtime_common::evm_tracer::EvmTracer::new().trace(|| Executive::apply_extrinsic(extrinsic));
+				Ok(())
+			}
+			#[cfg(not(feature = "evm-tracing"))]
+			Err(sp_runtime::DispatchError::Other(
+				"Missing `evm-tracing` compile time feature flag.",
+			))
+		}
+
+		#[allow(clippy::unused_variables)]
+		fn trace_block(extrinsics: Vec<<Block as BlockT>::Extrinsic>) -> Result<(), sp_runtime::DispatchError> {
+			#[cfg(feature = "evm-tracing")]
+			{
+				use runtime_common::evm_tracer::EvmTracer;
+
+				let mut config = <Runtime as module_evm::Config>::config().clone();
+				config.estimate = true;
+
+				for ext in extrinsics.into_iter() {
+					// Each extrinsic is a new call stack.
+					EvmTracer::emit_new();
+					EvmTracer::new().trace(|| Executive::apply_extrinsic(ext));
+				}
+
+				Ok(())
+			}
+			#[cfg(not(feature = "evm-tracing"))]
+			Err(sp_runtime::DispatchError::Other(
+				"Missing `evm-tracing` compile time feature flag.",
+			))
+		}
+	}
+
 	impl cumulus_primitives_core::CollectCollationInfo<Block> for Runtime {
 		fn collect_collation_info() -> cumulus_primitives_core::CollationInfo {
 			ParachainSystem::collect_collation_info()

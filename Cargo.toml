@@ -11,6 +11,7 @@ members = [
 	"modules/evm-utiltity/macro",
 	"inspect",
 	"primitives",
+	"primitives/evm-tracing",
 	"rpc",
 
 	"runtime/common",

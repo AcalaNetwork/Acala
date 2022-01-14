@@ -89,6 +89,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "acala-primitives-evm-tracing"
+version = "2.1.3"
+dependencies = [
+ "environmental",
+ "ethereum",
+ "ethereum-types",
+ "evm 0.33.1",
+ "evm-gasometer 0.33.0",
+ "evm-runtime 0.33.0",
+ "parity-scale-codec",
+ "sp-api",
+ "sp-runtime",
+ "sp-runtime-interface",
+ "sp-std",
+]
+
+[[package]]
 name = "acala-rpc"
 version = "2.1.3"
 dependencies = [
@@ -655,6 +672,18 @@ dependencies = [
  "hermit-abi",
  "libc",
  "winapi 0.3.9",
+]
+
+[[package]]
+name = "auto_impl"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7862e21c893d65a1650125d157eaeec691439379a1cee17ee49031b79236ada4"
+dependencies = [
+ "proc-macro-error",
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
@@ -2504,9 +2533,30 @@ source = "git+https://github.com/rust-blockchain/evm?rev=966cf3abe4143451e408c3f
 dependencies = [
  "environmental",
  "ethereum",
- "evm-core",
- "evm-gasometer",
- "evm-runtime",
+ "evm-core 0.31.0",
+ "evm-gasometer 0.31.0",
+ "evm-runtime 0.31.0",
+ "log",
+ "parity-scale-codec",
+ "primitive-types",
+ "rlp",
+ "scale-info",
+ "serde",
+ "sha3 0.8.2",
+]
+
+[[package]]
+name = "evm"
+version = "0.33.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "408ffdd509e16de15ea9b51f5333748f6086601f29d445d2ba53dd7e95565574"
+dependencies = [
+ "auto_impl",
+ "environmental",
+ "ethereum",
+ "evm-core 0.33.0",
+ "evm-gasometer 0.33.0",
+ "evm-runtime 0.33.0",
  "log",
  "parity-scale-codec",
  "primitive-types",
@@ -2529,13 +2579,38 @@ dependencies = [
 ]
 
 [[package]]
+name = "evm-core"
+version = "0.33.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4dfe4f2a56c4c05a8107b8596380e2332fc2019ffcf56b8f2d01971393a30c4d"
+dependencies = [
+ "funty",
+ "parity-scale-codec",
+ "primitive-types",
+ "scale-info",
+ "serde",
+]
+
+[[package]]
 name = "evm-gasometer"
 version = "0.31.0"
 source = "git+https://github.com/rust-blockchain/evm?rev=966cf3abe4143451e408c3f586d51c6513d9a48e#966cf3abe4143451e408c3f586d51c6513d9a48e"
 dependencies = [
  "environmental",
- "evm-core",
- "evm-runtime",
+ "evm-core 0.31.0",
+ "evm-runtime 0.31.0",
+ "primitive-types",
+]
+
+[[package]]
+name = "evm-gasometer"
+version = "0.33.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c446679607eacac4e8c8738e20c97ea9b3c86eddd8b43666744b05f416037bd9"
+dependencies = [
+ "environmental",
+ "evm-core 0.33.0",
+ "evm-runtime 0.33.0",
  "primitive-types",
 ]
 
@@ -2569,7 +2644,19 @@ version = "0.31.0"
 source = "git+https://github.com/rust-blockchain/evm?rev=966cf3abe4143451e408c3f586d51c6513d9a48e#966cf3abe4143451e408c3f586d51c6513d9a48e"
 dependencies = [
  "environmental",
- "evm-core",
+ "evm-core 0.31.0",
+ "primitive-types",
+ "sha3 0.8.2",
+]
+
+[[package]]
+name = "evm-runtime"
+version = "0.33.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "419e8434ac6e850a8a4bc09a19406264582d1940913b2920be2af948f4ffc49b"
+dependencies = [
+ "environmental",
+ "evm-core 0.33.0",
  "primitive-types",
  "sha3 0.8.2",
 ]
@@ -4868,6 +4955,7 @@ name = "mandala-runtime"
 version = "2.1.3"
 dependencies = [
  "acala-primitives",
+ "acala-primitives-evm-tracing",
  "acala-service",
  "cumulus-pallet-aura-ext",
  "cumulus-pallet-dmp-queue",
@@ -5487,9 +5575,9 @@ name = "module-evm-utiltity"
 version = "2.1.3"
 dependencies = [
  "ethereum",
- "evm",
- "evm-gasometer",
- "evm-runtime",
+ "evm 0.31.1",
+ "evm-gasometer 0.31.0",
+ "evm-runtime 0.31.0",
  "sha3 0.9.1",
  "sp-std",
 ]
@@ -9785,9 +9873,13 @@ name = "runtime-common"
 version = "2.1.3"
 dependencies = [
  "acala-primitives",
+ "acala-primitives-evm-tracing",
  "acala-service",
  "cumulus-pallet-parachain-system",
  "ethabi",
+ "evm 0.33.1",
+ "evm-gasometer 0.33.0",
+ "evm-runtime 0.33.0",
  "frame-support",
  "frame-system",
  "hex-literal",

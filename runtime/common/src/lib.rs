@@ -47,6 +47,7 @@ use sp_runtime::{
 use static_assertions::const_assert;
 
 pub mod check_nonce;
+pub mod evm_tracer;
 pub mod precompile;
 
 #[cfg(test)]

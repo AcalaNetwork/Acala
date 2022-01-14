@@ -119,6 +119,7 @@ module-relaychain = { path = "../../modules/relaychain", default-features = fals
 module-idle-scheduler = { path = "../../modules/idle-scheduler", default-features = false }
 nutsfinance-stable-asset = { version = "0.1.0", default-features = false, path = "../../ecosystem-modules/stable-asset/lib/stable-asset", package = "nutsfinance-stable-asset" }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
+primitives-evm-tracing = { package = "acala-primitives-evm-tracing", path = "../../primitives/evm-tracing", default-features = false }
 runtime-common = { path = "../common", default-features = false }
 
 module-evm-rpc-runtime-api = { path = "../../modules/evm/rpc/runtime_api",  default-features = false }
@@ -250,6 +251,7 @@ std = [
 	"module-relaychain/std",
 	"module-idle-scheduler/std",
 	"primitives/std",
+	"primitives-evm-tracing/std",
 	"runtime-common/std",
 
 	"module-evm-rpc-runtime-api/std",
@@ -296,6 +298,7 @@ with-ethereum-compatibility = [
 	"module-evm/with-ethereum-compatibility",
 	"runtime-common/with-ethereum-compatibility",
 ]
+evm-tracing = [ "primitives-evm-tracing/evm-tracing", "runtime-common/evm-tracing" ]
 try-runtime = [
 	"frame-try-runtime",
 	"frame-executive/try-runtime",
