@@ -1,6 +1,6 @@
 [package]
 name = "module-homa-lite"
-version = "2.1.3"
+version = "2.2.0"
 authors = ["Acala Developers"]
 edition = "2021"
 
