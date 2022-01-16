@@ -13,6 +13,7 @@ members = [
 	"primitives",
 	"primitives/evm-tracing",
 	"rpc",
+	"rpc/evm-tracing",
 
 	"runtime/common",
 	"runtime/mandala",

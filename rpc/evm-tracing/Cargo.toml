@@ -1,0 +1,16 @@
+[package]
+name = "acala-rpc-evm-tracing"
+version = "2.1.3"
+authors = ["Acala Developers"]
+edition = "2021"
+
+[dependencies]
+codec = { package = "parity-scale-codec", version = "2.3.1" }
+serde = { version = "1.0", features = [ "derive" ] }
+serde_json = { version = "1.0" }
+hex = { version = "0.4", features = [ "serde" ] }
+ethereum-types = { version = "0.12.0" }
+
+sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.13" }
+
+primitives-evm-tracing = { package = "acala-primitives-evm-tracing", path = "../../primitives/evm-tracing" }

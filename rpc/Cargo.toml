@@ -22,3 +22,4 @@ pallet-transaction-payment-rpc = { git = "https://github.com/paritytech/substrat
 orml-oracle-rpc = { path = "../orml/oracle/rpc" }
 runtime-common = { path = "../runtime/common" }
 evm-rpc = { path = "../modules/evm/rpc" }
+rpc-evm-tracing = { package = "acala-rpc-evm-tracing", path = "./evm-tracing" }

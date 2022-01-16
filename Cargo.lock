@@ -110,6 +110,7 @@ name = "acala-rpc"
 version = "2.1.3"
 dependencies = [
  "acala-primitives",
+ "acala-rpc-evm-tracing",
  "evm-rpc",
  "jsonrpc-core",
  "orml-oracle-rpc",
@@ -125,6 +126,19 @@ dependencies = [
  "sp-blockchain",
  "sp-runtime",
  "substrate-frame-rpc-system",
+]
+
+[[package]]
+name = "acala-rpc-evm-tracing"
+version = "2.1.3"
+dependencies = [
+ "acala-primitives-evm-tracing",
+ "ethereum-types",
+ "hex",
+ "parity-scale-codec",
+ "serde",
+ "serde_json",
+ "sp-std",
 ]
 
 [[package]]
@@ -3357,6 +3371,9 @@ name = "hex"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "hex-literal"
