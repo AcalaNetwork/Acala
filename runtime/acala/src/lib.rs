@@ -749,12 +749,12 @@ parameter_type_with_key! {
 				TokenSymbol::KSM |
 				TokenSymbol::LKSM |
 				TokenSymbol::RENBTC |
-				TokenSymbol::BNC |
-				TokenSymbol::PHA |
-				TokenSymbol::VSKSM |
+				// TokenSymbol::BNC |
+				// TokenSymbol::PHA |
+				// TokenSymbol::VSKSM |
 				TokenSymbol::ACA |
-				TokenSymbol::KBTC |
-				TokenSymbol::KINT |
+				// TokenSymbol::KBTC |
+				// TokenSymbol::KINT |
 				TokenSymbol::TAI |
 				TokenSymbol::CASH => Balance::max_value() // unsupported
 			},

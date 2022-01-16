@@ -103,6 +103,7 @@ pub mod module {
 		pub symbol: Vec<u8>,
 		pub decimals: u8,
 		pub minimal_balance: Balance,
+		// pub units_per_second: Option<Balance>,
 	}
 
 	#[pallet::error]
@@ -324,7 +325,7 @@ impl<T: Config> Pallet<T> {
 		})
 	}
 
-	fn do_register_foreign_asset(
+	pub fn do_register_foreign_asset(
 		location: &MultiLocation,
 		metadata: &AssetMetadata<BalanceOf<T>>,
 	) -> Result<ForeignAssetId, DispatchError> {
