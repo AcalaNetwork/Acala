@@ -43,9 +43,6 @@ mod dex;
 ))]
 mod evm;
 
-#[cfg(feature = "with-acala-runtime")]
-mod homa_lite;
-
 #[cfg(feature = "with-karura-runtime")]
 mod homa_xcm;
 
