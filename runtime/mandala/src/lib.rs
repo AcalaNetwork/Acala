@@ -2335,7 +2335,7 @@ impl_runtime_apis! {
 	}
 
 	// TODO: runtime api tests
-	impl primitives_evm_tracing::runtime_api::EvmTracingApi<Block> for Runtime {
+	impl primitives_evm_tracing::runtime_api::EvmTracingRuntimeApi<Block> for Runtime {
 		#[allow(clippy::unused_variables)]
 		fn trace_transaction(extrinsic: <Block as BlockT>::Extrinsic) -> Result<(), sp_runtime::DispatchError> {
 			#[cfg(feature = "evm-tracing")]

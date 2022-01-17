@@ -20,6 +20,8 @@
 
 #![warn(missing_docs)]
 
+mod evm_tracing;
+
 use primitives::{AccountId, Balance, Block, CurrencyId, DataProviderId, Nonce};
 pub use sc_rpc_api::DenyUnsafe;
 use sc_transaction_pool_api::TransactionPool;
@@ -56,8 +58,10 @@ where
 	C::Api: orml_oracle_rpc::OracleRuntimeApi<Block, DataProviderId, CurrencyId, runtime_common::TimeStampedPrice>,
 	C::Api: EVMRuntimeRPCApi<Block, Balance>,
 	C::Api: BlockBuilder<Block>,
+	C::Api: primitives_evm_tracing::runtime_api::EvmTracingRuntimeApi<Block>,
 	P: TransactionPool + Sync + Send + 'static,
 {
+	use evm_tracing::{EvmTracing, EvmTracingApi};
 	use orml_oracle_rpc::{Oracle, OracleApi};
 	use pallet_transaction_payment_rpc::{TransactionPayment, TransactionPaymentApi};
 	use substrate_frame_rpc_system::{FullSystem, SystemApi};
@@ -81,7 +85,8 @@ where
 	// more context: https://github.com/paritytech/substrate/pull/3480
 	// These RPCs should use an asynchronous caller instead.
 	io.extend_with(OracleApi::to_delegate(Oracle::new(client.clone())));
-	io.extend_with(EVMApiServer::to_delegate(EVMApi::new(client, deny_unsafe)));
+	io.extend_with(EVMApiServer::to_delegate(EVMApi::new(client.clone(), deny_unsafe)));
+	io.extend_with(EvmTracingApi::to_delegate(EvmTracing::new(client)));
 
 	io
 }

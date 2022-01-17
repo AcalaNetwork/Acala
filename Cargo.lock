@@ -110,9 +110,11 @@ name = "acala-rpc"
 version = "2.1.3"
 dependencies = [
  "acala-primitives",
+ "acala-primitives-evm-tracing",
  "acala-rpc-evm-tracing",
  "evm-rpc",
  "jsonrpc-core",
+ "jsonrpc-derive",
  "orml-oracle-rpc",
  "pallet-transaction-payment-rpc",
  "parity-scale-codec",
@@ -121,9 +123,11 @@ dependencies = [
  "sc-rpc",
  "sc-rpc-api",
  "sc-transaction-pool-api",
+ "serde",
  "sp-api",
  "sp-block-builder",
  "sp-blockchain",
+ "sp-io",
  "sp-runtime",
  "substrate-frame-rpc-system",
 ]
@@ -253,6 +257,7 @@ name = "acala-service"
 version = "2.1.3"
 dependencies = [
  "acala-primitives",
+ "acala-primitives-evm-tracing",
  "acala-rpc",
  "acala-runtime",
  "async-trait",

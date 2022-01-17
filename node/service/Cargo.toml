@@ -76,6 +76,7 @@ orml-oracle-rpc = { path = "../../orml/oracle/rpc" }
 acala-primitives = { path = "../../primitives" }
 acala-rpc = { path = "../../rpc" }
 module-evm-rpc-runtime-api = { path = "../../modules/evm/rpc/runtime_api" }
+acala-primitives-evm-tracing = { path = "../../primitives/evm-tracing" }
 
 runtime-common = { path = "../../runtime/common" }
 mandala-runtime = { path = "../../runtime/mandala", optional = true }

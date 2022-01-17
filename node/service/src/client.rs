@@ -41,6 +41,7 @@ pub trait RuntimeApiCollection:
 	+ pallet_transaction_payment_rpc_runtime_api::TransactionPaymentApi<Block, Balance>
 	+ orml_oracle_rpc::OracleRuntimeApi<Block, DataProviderId, CurrencyId, TimeStampedPrice>
 	+ module_evm_rpc_runtime_api::EVMRuntimeRPCApi<Block, Balance>
+	+ acala_primitives_evm_tracing::runtime_api::EvmTracingRuntimeApi<Block>
 	+ sp_api::Metadata<Block>
 	+ sp_offchain::OffchainWorkerApi<Block>
 	+ sp_session::SessionKeys<Block>
@@ -59,6 +60,7 @@ where
 		+ pallet_transaction_payment_rpc_runtime_api::TransactionPaymentApi<Block, Balance>
 		+ orml_oracle_rpc::OracleRuntimeApi<Block, DataProviderId, CurrencyId, TimeStampedPrice>
 		+ module_evm_rpc_runtime_api::EVMRuntimeRPCApi<Block, Balance>
+		+ acala_primitives_evm_tracing::runtime_api::EvmTracingRuntimeApi<Block>
 		+ sp_api::Metadata<Block>
 		+ sp_offchain::OffchainWorkerApi<Block>
 		+ sp_session::SessionKeys<Block>

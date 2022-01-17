@@ -6,11 +6,14 @@ edition = "2021"
 
 [dependencies]
 jsonrpc-core = "18.0.0"
+jsonrpc-derive = "18.0.0"
+serde = { version = "1.0.124", features = ["derive"] }
 codec = { package = "parity-scale-codec", version = "2.3.1" }
 primitives = { package = "acala-primitives", path = "../primitives" }
 sp-api = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.13" }
 sp-blockchain = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.13" }
 sp-block-builder = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.13" }
+sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.13" }
 sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.13" }
 sc-transaction-pool-api = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.13" }
 sc-client-api = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.13" }
@@ -23,3 +26,4 @@ orml-oracle-rpc = { path = "../orml/oracle/rpc" }
 runtime-common = { path = "../runtime/common" }
 evm-rpc = { path = "../modules/evm/rpc" }
 rpc-evm-tracing = { package = "acala-rpc-evm-tracing", path = "./evm-tracing" }
+primitives-evm-tracing = { package = "acala-primitives-evm-tracing", path = "../primitives/evm-tracing" }
