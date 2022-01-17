@@ -57,7 +57,12 @@ impl Vicinity {
 		Self {
 			gas_price,
 			origin,
-			..Default::default()
+			#[cfg(feature = "evm-tests")]
+			block_gas_limit: U256::zero(),
+			#[cfg(feature = "evm-tests")]
+			block_coinbase: EvmAddress::default(),
+			#[cfg(feature = "evm-tests")]
+			block_difficulty: U256::zero(),
 		}
 	}
 }
