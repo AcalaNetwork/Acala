@@ -53,7 +53,7 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 
 		const types = {
 			AccessList: [
-				{ name: "addressKey", type: "address" },
+				{ name: "address", type: "address" },
 				{ name: "storageKeys", type: "uint256[]" },
 		    ],
 			Transaction: [
@@ -92,7 +92,7 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 			value.value,
 			value.gasLimit,
 			value.storageLimit,
-			value.accessList,
+			value.accessList.map(Object.values), // to `Vec<(H160,Vec<H256>)>`
 			value.validUntil,
 		);
 
@@ -177,7 +177,7 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 
 		const types = {
 			AccessList: [
-				{ name: "addressKey", type: "address" },
+				{ name: "address", type: "address" },
 				{ name: "storageKeys", type: "uint256[]" },
 		    ],
 			Transaction: [
@@ -217,7 +217,7 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 			value.value,
 			value.gasLimit,
 			value.storageLimit,
-			value.accessList,
+			value.accessList.map(Object.values), // to `Vec<(H160,Vec<H256>)>`
 			value.validUntil
 		);
 
