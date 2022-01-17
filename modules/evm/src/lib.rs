@@ -1036,14 +1036,8 @@ pub mod module {
 		#[transactional]
 		pub fn deploy(origin: OriginFor<T>, contract: EvmAddress) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
-			let address = T::AddressMapping::get_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
-			T::Currency::transfer(
-				&who,
-				&T::TreasuryAccount::get(),
-				T::DeploymentFee::get(),
-				ExistenceRequirement::AllowDeath,
-			)?;
-			Self::mark_deployed(contract, Some(address))?;
+			Self::do_deploy_contract(who, contract)?;
+
 			Pallet::<T>::deposit_event(Event::<T>::ContractDeployed { contract });
 			Ok(().into())
 		}
@@ -1067,11 +1061,8 @@ pub mod module {
 		#[transactional]
 		pub fn enable_contract_development(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
-			ensure!(
-				T::Currency::reserved_balance_named(&RESERVE_ID_DEVELOPER_DEPOSIT, &who).is_zero(),
-				Error::<T>::ContractDevelopmentAlreadyEnabled
-			);
-			T::Currency::ensure_reserved_named(&RESERVE_ID_DEVELOPER_DEPOSIT, &who, T::DeveloperDeposit::get())?;
+			Self::do_enable_contract_development(&who)?;
+
 			Pallet::<T>::deposit_event(Event::<T>::ContractDevelopmentEnabled { who });
 			Ok(().into())
 		}
@@ -1082,11 +1073,8 @@ pub mod module {
 		#[transactional]
 		pub fn disable_contract_development(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
-			ensure!(
-				!T::Currency::reserved_balance_named(&RESERVE_ID_DEVELOPER_DEPOSIT, &who).is_zero(),
-				Error::<T>::ContractDevelopmentNotEnabled
-			);
-			T::Currency::unreserve_all_named(&RESERVE_ID_DEVELOPER_DEPOSIT, &who);
+			Self::do_disable_contract_development(&who)?;
+
 			Pallet::<T>::deposit_event(Event::<T>::ContractDevelopmentDisabled { who });
 			Ok(().into())
 		}
@@ -1366,6 +1354,41 @@ impl<T: Config> Pallet<T> {
 			Ok(())
 		})?;
 
+		Ok(())
+	}
+
+	/// Puts a deposit down to allow account to interact with non-deployed contracts
+	fn do_enable_contract_development(who: &T::AccountId) -> DispatchResult {
+		ensure!(
+			T::Currency::reserved_balance_named(&RESERVE_ID_DEVELOPER_DEPOSIT, who).is_zero(),
+			Error::<T>::ContractDevelopmentAlreadyEnabled
+		);
+		T::Currency::ensure_reserved_named(&RESERVE_ID_DEVELOPER_DEPOSIT, who, T::DeveloperDeposit::get())?;
+		Ok(())
+	}
+
+	/// Returns deposit and disables account for contract development
+	fn do_disable_contract_development(who: &T::AccountId) -> DispatchResult {
+		ensure!(
+			!T::Currency::reserved_balance_named(&RESERVE_ID_DEVELOPER_DEPOSIT, who).is_zero(),
+			Error::<T>::ContractDevelopmentNotEnabled
+		);
+		T::Currency::unreserve_all_named(&RESERVE_ID_DEVELOPER_DEPOSIT, who);
+		Ok(())
+	}
+
+	/// Deploys the Contract
+	///
+	/// Checks that `who` is the contract maintainer and takes the deployment fee
+	fn do_deploy_contract(who: T::AccountId, contract: EvmAddress) -> DispatchResult {
+		let address = T::AddressMapping::get_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
+		T::Currency::transfer(
+			&who,
+			&T::TreasuryAccount::get(),
+			T::DeploymentFee::get(),
+			ExistenceRequirement::AllowDeath,
+		)?;
+		Self::mark_deployed(contract, Some(address))?;
 		Ok(())
 	}
 
@@ -1714,6 +1737,22 @@ impl<T: Config> EVMStateRentTrait<T::AccountId, BalanceOf<T>> for Pallet<T> {
 
 	fn transfer_maintainer(from: T::AccountId, contract: EvmAddress, new_maintainer: EvmAddress) -> DispatchResult {
 		Pallet::<T>::do_transfer_maintainer(from, contract, new_maintainer)
+	}
+
+	fn deploy_contract(who: T::AccountId, contract: H160) -> DispatchResult {
+		Pallet::<T>::do_deploy_contract(who, contract)
+	}
+
+	fn query_developer_status(who: T::AccountId) -> bool {
+		!T::Currency::reserved_balance_named(&RESERVE_ID_DEVELOPER_DEPOSIT, &who).is_zero()
+	}
+
+	fn enable_account_contract_development(who: T::AccountId) -> DispatchResult {
+		Pallet::<T>::do_enable_contract_development(&who)
+	}
+
+	fn disable_account_contract_development(who: T::AccountId) -> sp_runtime::DispatchResult {
+		Pallet::<T>::do_disable_contract_development(&who)
 	}
 }
 

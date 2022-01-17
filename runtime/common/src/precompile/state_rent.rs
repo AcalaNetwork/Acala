@@ -51,6 +51,10 @@ pub enum Action {
 	QueryDeveloperDeposit = "developerDeposit()",
 	QueryDeploymentFee = "deploymentFee()",
 	TransferMaintainer = "transferMaintainer(address,address,address)",
+	EnableDeveloperAccount = "developerEnable(address)",
+	DisableDeveloperAccount = "developerDisable(address)",
+	QueryDeveloperStatus = "developerStatus(address)",
+	DeployContract = "deployContract(address, address)",
 }
 
 impl<Runtime> Precompile for StateRentPrecompile<Runtime>
@@ -139,6 +143,53 @@ where
 					exit_status: ExitSucceed::Returned,
 					cost: 0,
 					output: vec![],
+					logs: Default::default(),
+				})
+			}
+			Action::DeployContract => {
+				let who = input.account_id_at(1)?;
+				let contract_address = input.evm_address_at(2)?;
+				<module_evm::Pallet<Runtime>>::deploy_contract(who, contract_address)
+					.map_err(|e| ExitError::Other(Cow::Borrowed(e.into())))?;
+
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: 0,
+					output: vec![],
+					logs: Default::default(),
+				})
+			}
+			Action::DisableDeveloperAccount => {
+				let who = input.account_id_at(1)?;
+				<module_evm::Pallet<Runtime>>::enable_account_contract_development(who)
+					.map_err(|e| ExitError::Other(Cow::Borrowed(e.into())))?;
+
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: 0,
+					output: vec![],
+					logs: Default::default(),
+				})
+			}
+			Action::EnableDeveloperAccount => {
+				let who = input.account_id_at(1)?;
+				<module_evm::Pallet<Runtime>>::disable_account_contract_development(who)
+					.map_err(|e| ExitError::Other(Cow::Borrowed(e.into())))?;
+
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: 0,
+					output: vec![],
+					logs: Default::default(),
+				})
+			}
+			Action::QueryDeveloperStatus => {
+				let who = input.account_id_at(1)?;
+				let developer_status = <module_evm::Pallet<Runtime>>::query_developer_status(who);
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: 0,
+					output: Output::default().encode_bool(developer_status),
 					logs: Default::default(),
 				})
 			}

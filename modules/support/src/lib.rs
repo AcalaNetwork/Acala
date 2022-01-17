@@ -408,6 +408,14 @@ pub trait EVMStateRentTrait<AccountId, Balance> {
 	fn query_deployment_fee() -> Balance;
 	/// Transfer the maintainer of the contract address.
 	fn transfer_maintainer(from: AccountId, contract: H160, new_maintainer: H160) -> DispatchResult;
+	/// Deploy contract
+	fn deploy_contract(who: AccountId, contract: H160) -> DispatchResult;
+	/// Query the developer status of an account
+	fn query_developer_status(who: AccountId) -> bool;
+	/// Enable developer mode
+	fn enable_account_contract_development(who: AccountId) -> DispatchResult;
+	/// Disable developer mode
+	fn disable_account_contract_development(who: AccountId) -> DispatchResult;
 }
 
 pub trait TransactionPayment<AccountId, Balance, NegativeImbalance> {
