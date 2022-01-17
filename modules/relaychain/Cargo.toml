@@ -14,7 +14,7 @@ frame-system = { git = "https://github.com/paritytech/substrate", branch = "polk
 module-support = { path = "../support", default-features = false }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 xcm = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.15", default-features = false }
-cumulus-primitives-core = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.13", default-features = false }
+cumulus-primitives-core = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.15", default-features = false }
 
 [dev-dependencies]
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.15" }
