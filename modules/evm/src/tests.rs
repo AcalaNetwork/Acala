@@ -966,14 +966,21 @@ fn should_deploy() {
 		));
 
 		// call method `multiply` will fail, not deployed yet
-		assert_noop!(EVM::call(
+		assert_eq!(EVM::call(
 			Origin::signed(bob_account_id.clone()),
 			contract_address,
 			multiply.clone(),
 			0,
 			1000000,
 			1000000,
-		), Error::<Runtime>::NoPermission);
+		), Ok(PostDispatchInfo { actual_weight: None, pays_fee: Pays::Yes }));
+		System::assert_last_event(Event::EVM(crate::Event::ExecutedFailed {
+			from: bob(),
+			contract: contract_address,
+			exit_reason: ExitReason::Error(ExitError::Other(Into::<&str>::into(Error::<Runtime>::NoPermission).into())),
+			output: vec![],
+			logs: vec![],
+		}));
 
 		// developer can call the undeployed contract
 		assert_ok!(EVM::enable_contract_development(Origin::signed(bob_account_id.clone())));
@@ -1043,14 +1050,21 @@ fn should_deploy_free() {
 
 		// call method `multiply` will fail, not deployed yet
 		let bob_account_id = <Runtime as Config>::AddressMapping::get_account_id(&bob());
-		assert_noop!(EVM::call(
+		assert_eq!(EVM::call(
 			Origin::signed(bob_account_id),
 			contract_address,
 			multiply.clone(),
 			0,
 			1000000,
 			1000000,
-		), Error::<Runtime>::NoPermission);
+		), Ok(PostDispatchInfo { actual_weight: None, pays_fee: Pays::Yes }));
+		System::assert_last_event(Event::EVM(crate::Event::ExecutedFailed {
+			from: bob(),
+			contract: contract_address,
+			exit_reason: ExitReason::Error(ExitError::Other(Into::<&str>::into(Error::<Runtime>::NoPermission).into())),
+			output: vec![],
+			logs: vec![],
+		}));
 
 		assert_ok!(EVM::deploy_free(Origin::signed(CouncilAccount::get()), contract_address));
 
@@ -1433,7 +1447,7 @@ fn storage_limit_should_work() {
 		let create_contract =
 			from_hex("0x9db8d7d50000000000000000000000000000000000000000000000000000000000000001").unwrap();
 		let alice_account_id = <Runtime as Config>::AddressMapping::get_account_id(&alice());
-		assert_noop!(
+		assert_eq!(
 			EVM::call(
 				Origin::signed(alice_account_id.clone()),
 				factory_contract_address,
@@ -1442,14 +1456,20 @@ fn storage_limit_should_work() {
 				1000000000,
 				0,
 			),
-			DispatchErrorWithPostInfo {
-				post_info: PostDispatchInfo {
-					actual_weight: None,
-					pays_fee: Pays::Yes,
-				},
-				error: Error::<Runtime>::OutOfStorage.into()
-			}
+			Ok(PostDispatchInfo {
+				actual_weight: None,
+				pays_fee: Pays::Yes
+			})
 		);
+		System::assert_last_event(Event::EVM(crate::Event::ExecutedFailed {
+			from: alice(),
+			contract: factory_contract_address,
+			exit_reason: ExitReason::Error(ExitError::Other(
+				Into::<&str>::into(Error::<Runtime>::OutOfStorage).into(),
+			)),
+			output: vec![],
+			logs: vec![],
+		}));
 
 		// Factory.createContract(1)
 		let amount = 1000000000;
@@ -1473,7 +1493,7 @@ fn storage_limit_should_work() {
 		let amount = 1000000000;
 		let create_contract =
 			from_hex("0x9db8d7d50000000000000000000000000000000000000000000000000000000000000002").unwrap();
-		assert_noop!(
+		assert_eq!(
 			EVM::call(
 				Origin::signed(alice_account_id),
 				factory_contract_address,
@@ -1482,14 +1502,20 @@ fn storage_limit_should_work() {
 				1000000000,
 				127,
 			),
-			DispatchErrorWithPostInfo {
-				post_info: PostDispatchInfo {
-					actual_weight: None,
-					pays_fee: Pays::Yes,
-				},
-				error: Error::<Runtime>::OutOfStorage.into()
-			}
+			Ok(PostDispatchInfo {
+				actual_weight: None,
+				pays_fee: Pays::Yes
+			})
 		);
+		System::assert_last_event(Event::EVM(crate::Event::ExecutedFailed {
+			from: alice(),
+			contract: factory_contract_address,
+			exit_reason: ExitReason::Error(ExitError::Other(
+				Into::<&str>::into(Error::<Runtime>::OutOfStorage).into(),
+			)),
+			output: vec![],
+			logs: vec![],
+		}));
 
 		// Factory.createContract(2)
 		let amount = 1000000000;
@@ -1717,7 +1743,7 @@ fn should_update_storage() {
 
 		// call method `set(123)`
 		let alice_account_id = <Runtime as Config>::AddressMapping::get_account_id(&alice());
-		assert_noop!(
+		assert_eq!(
 			EVM::call(
 				Origin::signed(alice_account_id),
 				contract_address,
@@ -1726,14 +1752,20 @@ fn should_update_storage() {
 				1000000,
 				0,
 			),
-			DispatchErrorWithPostInfo {
-				post_info: PostDispatchInfo {
-					actual_weight: None,
-					pays_fee: Pays::Yes,
-				},
-				error: Error::<Runtime>::OutOfStorage.into()
-			}
+			Ok(PostDispatchInfo {
+				actual_weight: None,
+				pays_fee: Pays::Yes
+			})
 		);
+		System::assert_last_event(Event::EVM(crate::Event::ExecutedFailed {
+			from: alice(),
+			contract: contract_address,
+			exit_reason: ExitReason::Error(ExitError::Other(
+				Into::<&str>::into(Error::<Runtime>::OutOfStorage).into(),
+			)),
+			output: vec![],
+			logs: vec![],
+		}));
 
 		// call method `set(123)`
 		let result = <Runtime as Config>::Runner::call(
@@ -1788,11 +1820,22 @@ fn convert_decimals_should_not_work() {
 	let alice_account_id = <Runtime as Config>::AddressMapping::get_account_id(&alice());
 
 	new_test_ext().execute_with(|| {
-		assert_noop!(
+		assert_eq!(
 			EVM::create(Origin::signed(alice_account_id.clone()), vec![], 1, 1000000, 1000000),
-			Error::<Runtime>::InvalidDecimals
+			Ok(PostDispatchInfo {
+				actual_weight: None,
+				pays_fee: Pays::Yes
+			})
 		);
-		assert_noop!(
+		System::assert_last_event(Event::EVM(crate::Event::CreatedFailed {
+			from: alice(),
+			contract: H160::default(),
+			exit_reason: ExitReason::Error(ExitError::Other(
+				Into::<&str>::into(Error::<Runtime>::InvalidDecimals).into(),
+			)),
+			logs: vec![],
+		}));
+		assert_eq!(
 			EVM::create2(
 				Origin::signed(alice_account_id.clone()),
 				vec![],
@@ -1801,9 +1844,20 @@ fn convert_decimals_should_not_work() {
 				1000000,
 				1000000
 			),
-			Error::<Runtime>::InvalidDecimals
+			Ok(PostDispatchInfo {
+				actual_weight: None,
+				pays_fee: Pays::Yes
+			})
 		);
-		assert_noop!(
+		System::assert_last_event(Event::EVM(crate::Event::CreatedFailed {
+			from: alice(),
+			contract: H160::default(),
+			exit_reason: ExitReason::Error(ExitError::Other(
+				Into::<&str>::into(Error::<Runtime>::InvalidDecimals).into(),
+			)),
+			logs: vec![],
+		}));
+		assert_eq!(
 			EVM::call(
 				Origin::signed(alice_account_id.clone()),
 				H160::default(),
@@ -1812,7 +1866,89 @@ fn convert_decimals_should_not_work() {
 				1000000,
 				1000000
 			),
-			Error::<Runtime>::InvalidDecimals
+			Ok(PostDispatchInfo {
+				actual_weight: None,
+				pays_fee: Pays::Yes
+			})
 		);
+		System::assert_last_event(Event::EVM(crate::Event::ExecutedFailed {
+			from: alice(),
+			contract: H160::default(),
+			exit_reason: ExitReason::Error(ExitError::Other(
+				Into::<&str>::into(Error::<Runtime>::InvalidDecimals).into(),
+			)),
+			output: vec![],
+			logs: vec![],
+		}));
+	});
+}
+
+#[test]
+fn remove_empty_account_works() {
+	new_test_ext().execute_with(|| {
+		let address = H160::from([1; 20]);
+		assert_ok!(Pallet::<Runtime>::remove_account(&address));
+	});
+}
+
+#[test]
+#[should_panic(expected = "removed account while is still linked to contract info")]
+fn remove_account_with_provides_should_panic() {
+	new_test_ext().execute_with(|| {
+		let address = H160::from([1; 20]);
+		let code = vec![0x00];
+		let code_hash = code_hash(&code);
+		Codes::<Runtime>::insert(&code_hash, BoundedVec::try_from(code).unwrap());
+		CodeInfos::<Runtime>::insert(
+			&code_hash,
+			CodeInfo {
+				code_size: 1,
+				ref_count: 2,
+			},
+		);
+		Accounts::<Runtime>::insert(
+			&address,
+			AccountInfo {
+				nonce: 0,
+				contract_info: Some(ContractInfo {
+					code_hash,
+					maintainer: Default::default(),
+					deployed: false,
+				}),
+			},
+		);
+		let _ = Pallet::<Runtime>::remove_account(&address);
+	});
+}
+
+#[test]
+fn remove_account_works() {
+	new_test_ext().execute_with(|| {
+		let address = H160::from([1; 20]);
+		let code = vec![0x00];
+		let code_hash = code_hash(&code);
+		Codes::<Runtime>::insert(&code_hash, BoundedVec::try_from(code).unwrap());
+		CodeInfos::<Runtime>::insert(
+			&code_hash,
+			CodeInfo {
+				code_size: 1,
+				ref_count: 1,
+			},
+		);
+		Accounts::<Runtime>::insert(
+			&address,
+			AccountInfo {
+				nonce: 0,
+				contract_info: Some(ContractInfo {
+					code_hash,
+					maintainer: Default::default(),
+					deployed: false,
+				}),
+			},
+		);
+		assert_ok!(Pallet::<Runtime>::remove_account(&address));
+		assert_eq!(Accounts::<Runtime>::contains_key(&address), false);
+		assert_eq!(CodeInfos::<Runtime>::contains_key(&code_hash), false);
+		assert_eq!(Codes::<Runtime>::contains_key(&code_hash), false);
 	});
 }

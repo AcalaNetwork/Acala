@@ -218,12 +218,6 @@ fn parachain_subaccounts_are_unique() {
 			hex_literal::hex!["70617261d0070000000000000000000000000000000000000000000000000000"].into()
 		);
 
-		#[cfg(feature = "with-acala-runtime")]
-		assert_eq!(
-			RelayChainSovereignSubAccount::get(),
-			create_x2_parachain_multilocation(0)
-		);
-
 		assert_eq!(
 			create_x2_parachain_multilocation(0),
 			MultiLocation::new(
