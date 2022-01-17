@@ -161,7 +161,7 @@ where
 			}
 			Action::DisableDeveloperAccount => {
 				let who = input.account_id_at(1)?;
-				<module_evm::Pallet<Runtime>>::enable_account_contract_development(who)
+				<module_evm::Pallet<Runtime>>::disable_account_contract_development(who)
 					.map_err(|e| ExitError::Other(Cow::Borrowed(e.into())))?;
 
 				Ok(PrecompileOutput {
@@ -173,7 +173,7 @@ where
 			}
 			Action::EnableDeveloperAccount => {
 				let who = input.account_id_at(1)?;
-				<module_evm::Pallet<Runtime>>::disable_account_contract_development(who)
+				<module_evm::Pallet<Runtime>>::enable_account_contract_development(who)
 					.map_err(|e| ExitError::Other(Cow::Borrowed(e.into())))?;
 
 				Ok(PrecompileOutput {

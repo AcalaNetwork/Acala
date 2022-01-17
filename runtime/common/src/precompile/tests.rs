@@ -916,7 +916,7 @@ fn contract_deploy_precompile_works() {
 
 		// call method `multiply` will fail, not deployed yet.
 		// The error is shown in the last event.
-		// The call extrinsic still suceeds, the evm emits a executed failed event
+		// The call extrinsic still succeeds, the evm emits a executed failed event
 		assert_ok!(EVMModule::call(
 			Origin::signed(bob()),
 			contract_address,
