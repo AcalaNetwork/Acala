@@ -127,7 +127,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("acala"),
 	impl_name: create_runtime_str!("acala"),
 	authoring_version: 1,
-	spec_version: 2020,
+	spec_version: 2021,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -205,31 +205,38 @@ impl Contains<Call> for BaseCallFilter {
 			return false;
 		}
 
-		let is_whitelisted = matches!(
+		let is_evm = matches!(
 			call,
-			Call::Sudo(_) | // sudo
-			Call::Scheduler(_) | Call::Utility(_) | Call::Multisig(_) | Call::Proxy(_) | // utility
-			Call::TransactionPause(_) | // transaction pause
-			Call::Treasury(_) | Call::Bounties(_) | Call::Tips(_) | // treasury
-			Call::CollatorSelection(_) | Call::Session(_) | Call::SessionManager(_) | // collator
-			Call::DmpQueue(_) | Call::OrmlXcm(_) | // xcm
-			// Call::PolkadotXcm(_) | Call::XTokens(_) | // not allow user to make xcm call
-			Call::Authority(_) |
-			Call::GeneralCouncil(_) | Call::GeneralCouncilMembership(_) |
-			Call::FinancialCouncil(_) | Call::FinancialCouncilMembership(_) |
-			Call::HomaCouncil(_) | Call::HomaCouncilMembership(_) |
-			Call::TechnicalCommittee(_) | Call::TechnicalCommitteeMembership(_) | // governance
-			Call::Democracy(_) | // democracy
-			Call::AcalaOracle(_) | Call::OperatorMembershipAcala(_) | // oracle
-			Call::Vesting(_) // vesting
+			Call::EVM(_) | Call::EvmAccounts(_) // EvmBridge / EvmManager does not have call
 		);
-		if is_whitelisted {
-			// allow whitelisted calls
-			return true;
+		if is_evm {
+			// no evm call
+			return false;
 		}
 
-		// disable everything else
-		false
+		if let Call::PolkadotXcm(xcm_method) = call {
+			match xcm_method {
+				pallet_xcm::Call::send { .. }
+				| pallet_xcm::Call::execute { .. }
+				| pallet_xcm::Call::teleport_assets { .. }
+				| pallet_xcm::Call::reserve_transfer_assets { .. }
+				| pallet_xcm::Call::limited_reserve_transfer_assets { .. }
+				| pallet_xcm::Call::limited_teleport_assets { .. } => {
+					return false;
+				}
+				pallet_xcm::Call::force_xcm_version { .. }
+				| pallet_xcm::Call::force_default_xcm_version { .. }
+				| pallet_xcm::Call::force_subscribe_version_notify { .. }
+				| pallet_xcm::Call::force_unsubscribe_version_notify { .. } => {
+					return true;
+				}
+				pallet_xcm::Call::__Ignore { .. } => {
+					unimplemented!()
+				}
+			}
+		}
+
+		true
 	}
 }
 
