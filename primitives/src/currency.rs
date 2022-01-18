@@ -254,7 +254,7 @@ impl CurrencyId {
 		matches!(self, CurrencyId::Erc20(_))
 	}
 
-	pub fn is_liquid_croadloan_currency_id(&self) -> bool {
+	pub fn is_liquid_crowdloan_currency_id(&self) -> bool {
 		matches!(self, CurrencyId::LiquidCrowdloan(_))
 	}
 

@@ -76,7 +76,7 @@ pub mod module {
 		/// Currency type for withdraw and balance storage.
 		type Currency: Currency<Self::AccountId>;
 
-		/// The Currency ID for the Liquid Croadloan asset
+		/// The Currency ID for the Liquid Crowdloan asset
 		#[pallet::constant]
 		type LiquidCrowdloanCurrencyId: Get<CurrencyId>;
 
