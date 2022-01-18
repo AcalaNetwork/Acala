@@ -54,7 +54,7 @@ pub enum Action {
 	EnableDeveloperAccount = "developerEnable(address)",
 	DisableDeveloperAccount = "developerDisable(address)",
 	QueryDeveloperStatus = "developerStatus(address)",
-	DeployContract = "deployContract(address, address)",
+	PublishContract = "publishContract(address, address)",
 }
 
 impl<Runtime> Precompile for StateRentPrecompile<Runtime>
@@ -146,7 +146,7 @@ where
 					logs: Default::default(),
 				})
 			}
-			Action::DeployContract => {
+			Action::PublishContract => {
 				let who = input.account_id_at(1)?;
 				let contract_address = input.evm_address_at(2)?;
 				<module_evm::Pallet<Runtime>>::deploy_contract(who, contract_address)
