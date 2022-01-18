@@ -148,6 +148,7 @@ pub struct Cli {
 	/// This will derive 10 funded accounts in the genesis
 	///
 	/// Can only be used with `--dev`
+	#[cfg(feature = "with-mandala-runtime")]
 	#[structopt(long = "mnemonic", requires = "dev")]
 	pub mnemonic: Option<String>,
 }
