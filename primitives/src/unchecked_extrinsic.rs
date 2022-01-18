@@ -346,7 +346,6 @@ fn verify_eip712_signature(eth_msg: EthereumTransactionMessage, sig: [u8; 65]) -
 
 	let msg_hash = keccak_256(msg.as_slice());
 
-	log::info!("before recover_signer: {:?}", msg_hash);
 	recover_signer(&sig, &msg_hash)
 }
 
