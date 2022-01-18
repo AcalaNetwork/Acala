@@ -877,13 +877,47 @@ fn developer_status_precompile_works() {
 			apparent_value: Default::default(),
 		};
 
-		// action + who + contract_address
-		let mut input = [0u8; 4 * 32];
+		// action + who
+		let mut input = [0u8; 36];
 
 		input[0..4].copy_from_slice(&Into::<u32>::into(state_rent::Action::QueryDeveloperStatus).to_be_bytes());
 		U256::from(alice_evm_addr().as_bytes()).to_big_endian(&mut input[4 + 0 * 32..4 + 1 * 32]);
 
 		// expect output is false as alice has not put a deposit down
+		let expected_output = [0u8; 32];
+		let res = StateRentPrecompile::execute(&input, None, &context).unwrap();
+		assert_eq!(res.exit_status, ExitSucceed::Returned);
+		assert_eq!(res.output, expected_output);
+
+		// enable account for developer mode
+		input[0..4].copy_from_slice(&Into::<u32>::into(state_rent::Action::EnableDeveloperAccount).to_be_bytes());
+		U256::from(alice_evm_addr().as_bytes()).to_big_endian(&mut input[4 + 0 * 32..4 + 1 * 32]);
+
+		let res = StateRentPrecompile::execute(&input, None, &context).unwrap();
+		assert_eq!(res.exit_status, ExitSucceed::Returned);
+
+		// query developer status again but this time it is enabled
+		input[0..4].copy_from_slice(&Into::<u32>::into(state_rent::Action::QueryDeveloperStatus).to_be_bytes());
+		U256::from(alice_evm_addr().as_bytes()).to_big_endian(&mut input[4 + 0 * 32..4 + 1 * 32]);
+
+		// expect output is now true as alice now is enabled for developer mode
+		let expected_output: [u8; 32] = U256::from(true as u8).into();
+		let res = StateRentPrecompile::execute(&input, None, &context).unwrap();
+		assert_eq!(res.exit_status, ExitSucceed::Returned);
+		assert_eq!(res.output, expected_output);
+
+		// disable alice account for developer mode
+		input[0..4].copy_from_slice(&Into::<u32>::into(state_rent::Action::DisableDeveloperAccount).to_be_bytes());
+		U256::from(alice_evm_addr().as_bytes()).to_big_endian(&mut input[4 + 0 * 32..4 + 1 * 32]);
+
+		let res = StateRentPrecompile::execute(&input, None, &context).unwrap();
+		assert_eq!(res.exit_status, ExitSucceed::Returned);
+
+		// query developer status
+		input[0..4].copy_from_slice(&Into::<u32>::into(state_rent::Action::QueryDeveloperStatus).to_be_bytes());
+		U256::from(alice_evm_addr().as_bytes()).to_big_endian(&mut input[4 + 0 * 32..4 + 1 * 32]);
+
+		// expect output is now false as alice now is disabled again for developer mode
 		let expected_output = [0u8; 32];
 		let res = StateRentPrecompile::execute(&input, None, &context).unwrap();
 		assert_eq!(res.exit_status, ExitSucceed::Returned);
