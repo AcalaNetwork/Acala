@@ -59,7 +59,7 @@ pub use precompile::{
 	StateRentPrecompile,
 };
 pub use primitives::{
-	currency::{TokenInfo, ACA, AUSD, BNC, DOT, KAR, KBTC, KINT, KSM, KUSD, LDOT, LKSM, PHA, RENBTC, VSKSM},
+	currency::{TokenInfo, ACA, AUSD, DOT, KAR, KSM, KUSD, LDOT, LKSM, RENBTC},
 	AccountId,
 };
 use sp_std::{marker::PhantomData, prelude::*};

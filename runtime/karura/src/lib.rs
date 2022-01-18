@@ -50,7 +50,7 @@ use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 
 use frame_system::{EnsureRoot, RawOrigin};
-use module_asset_registry::{AssetIdMaps, EvmErc20InfoMapping, FixedRateOfForeignAsset};
+use module_asset_registry::{AssetIdMaps, AssetMetadata, EvmErc20InfoMapping, FixedRateOfForeignAsset};
 use module_currencies::BasicCurrencyAdapter;
 use module_evm::{CallInfo, CreateInfo, EvmTask, Runner};
 use module_evm_accounts::EvmAddressMapping;
@@ -82,7 +82,7 @@ pub use xcm_executor::{traits::WeightTrader, Assets, Config, XcmExecutor};
 mod weights;
 
 pub use frame_support::{
-	construct_runtime, log, parameter_types,
+	assert_ok, construct_runtime, log, parameter_types,
 	traits::{
 		Contains, ContainsLengthBound, Currency as PalletCurrency, EnsureOrigin, EqualPrivilegeOnly, Everything, Get,
 		Imbalance, InstanceFilter, IsSubType, IsType, KeyOwnerProofSystem, LockIdentifier, Nothing, OnUnbalanced,
@@ -114,8 +114,7 @@ pub use runtime_common::{
 	HomaCouncilInstance, HomaCouncilMembershipInstance, MaxTipsOfPriority, OperationalFeeMultiplier,
 	OperatorMembershipInstanceAcala, Price, ProxyType, Rate, Ratio, RelayChainBlockNumberProvider,
 	RelayChainSubAccountId, RuntimeBlockLength, RuntimeBlockWeights, SystemContractsFilter, TechnicalCommitteeInstance,
-	TechnicalCommitteeMembershipInstance, TimeStampedPrice, TipPerWeightStep, BNC, KAR, KBTC, KINT, KSM, KUSD, LKSM,
-	PHA, RENBTC, VSKSM,
+	TechnicalCommitteeMembershipInstance, TimeStampedPrice, TipPerWeightStep, KAR, KSM, KUSD, LKSM, RENBTC,
 };
 
 mod authority;
@@ -754,11 +753,11 @@ parameter_type_with_key! {
 				TokenSymbol::KUSD => cent(*currency_id),
 				TokenSymbol::KSM => 10 * millicent(*currency_id),
 				TokenSymbol::LKSM => 50 * millicent(*currency_id),
-				TokenSymbol::BNC => 800 * millicent(*currency_id),  // 80BNC = 1KSM
-				TokenSymbol::VSKSM => 10 * millicent(*currency_id),  // 1VSKSM = 1KSM
-				TokenSymbol::PHA => 4000 * millicent(*currency_id), // 400PHA = 1KSM
-				TokenSymbol::KINT => 13333 * microcent(*currency_id), // 1.33 KINT = 1 KSM
-				TokenSymbol::KBTC => 66 * microcent(*currency_id), // 1KBTC = 150 KSM
+				// TokenSymbol::BNC => 800 * millicent(*currency_id),  // 80BNC = 1KSM
+				// TokenSymbol::VSKSM => 10 * millicent(*currency_id),  // 1VSKSM = 1KSM
+				// TokenSymbol::PHA => 4000 * millicent(*currency_id), // 400PHA = 1KSM
+				// TokenSymbol::KINT => 13333 * microcent(*currency_id), // 1.33 KINT = 1 KSM
+				// TokenSymbol::KBTC => 66 * microcent(*currency_id), // 1KBTC = 150 KSM
 
 				TokenSymbol::ACA |
 				TokenSymbol::AUSD |
@@ -1114,7 +1113,7 @@ parameter_types! {
 		vec![KUSD, KSM, KAR],
 		vec![KSM, KAR],
 		vec![LKSM, KSM, KAR],
-		vec![BNC, KUSD, KSM, KAR],
+		// vec![BNC, KUSD, KSM, KAR],
 	];
 }
 
@@ -1703,40 +1702,6 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 		match id {
 			Token(KSM) => Some(MultiLocation::parent()),
 			Token(KAR) | Token(KUSD) | Token(LKSM) => Some(native_currency_location(id)),
-			// Bifrost native token
-			Token(BNC) => Some(MultiLocation::new(
-				1,
-				X2(
-					Parachain(parachains::bifrost::ID),
-					GeneralKey(parachains::bifrost::BNC_KEY.to_vec()),
-				),
-			)),
-			// Bifrost Voucher Slot KSM
-			Token(VSKSM) => Some(MultiLocation::new(
-				1,
-				X2(
-					Parachain(parachains::bifrost::ID),
-					GeneralKey(parachains::bifrost::VSKSM_KEY.to_vec()),
-				),
-			)),
-			// Phala Native token
-			Token(PHA) => Some(MultiLocation::new(1, X1(Parachain(parachains::phala::ID)))),
-			// Kintsugi Native token
-			Token(KINT) => Some(MultiLocation::new(
-				1,
-				X2(
-					Parachain(parachains::kintsugi::ID),
-					GeneralKey(parachains::kintsugi::KINT_KEY.to_vec()),
-				),
-			)),
-			// Kintsugi wrapped BTC
-			Token(KBTC) => Some(MultiLocation::new(
-				1,
-				X2(
-					Parachain(parachains::kintsugi::ID),
-					GeneralKey(parachains::kintsugi::KBTC_KEY.to_vec()),
-				),
-			)),
 			CurrencyId::ForeignAsset(foreign_asset_id) => AssetIdMaps::<Runtime>::get_multi_location(foreign_asset_id),
 			_ => None,
 		}
@@ -1759,33 +1724,16 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 			MultiLocation {
 				parents: 1,
 				interior: X2(Parachain(para_id), GeneralKey(key)),
-			} => {
-				match (para_id, &key[..]) {
-					(parachains::bifrost::ID, parachains::bifrost::BNC_KEY) => Some(Token(BNC)),
-					(parachains::bifrost::ID, parachains::bifrost::VSKSM_KEY) => Some(Token(VSKSM)),
-					(parachains::kintsugi::ID, parachains::kintsugi::KINT_KEY) => Some(Token(KINT)),
-					(parachains::kintsugi::ID, parachains::kintsugi::KBTC_KEY) => Some(Token(KBTC)),
-
-					(id, key) if id == u32::from(ParachainInfo::get()) => {
-						// Karura
-						if let Ok(currency_id) = CurrencyId::decode(&mut &*key) {
-							// check `currency_id` is cross-chain asset
-							match currency_id {
-								Token(KAR) | Token(KUSD) | Token(LKSM) => Some(currency_id),
-								_ => None,
-							}
-						} else {
-							// invalid general key
-							None
-						}
+			} if ParaId::from(para_id) == ParachainInfo::get() => {
+				if let Ok(currency_id) = CurrencyId::decode(&mut &key[..]) {
+					match currency_id {
+						Token(KAR) | Token(KUSD) | Token(LKSM) => Some(currency_id),
+						_ => None,
 					}
-					_ => None,
+				} else {
+					None
 				}
 			}
-			MultiLocation {
-				parents: 1,
-				interior: X1(Parachain(parachains::phala::ID)),
-			} => Some(Token(PHA)),
 			_ => None,
 		}
 	}
@@ -1992,8 +1940,99 @@ pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExtra>;
 /// Executive: handles dispatch to the various modules.
-pub type Executive =
-	frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllPallets, ()>;
+pub type Executive = frame_executive::Executive<
+	Runtime,
+	Block,
+	frame_system::ChainContext<Runtime>,
+	Runtime,
+	AllPallets,
+	AssetRegistryUpgrade,
+>;
+
+pub struct AssetRegistryUpgrade;
+impl frame_support::traits::OnRuntimeUpgrade for AssetRegistryUpgrade {
+	fn on_runtime_upgrade() -> Weight {
+		// BNC
+		assert_ok!(module_asset_registry::Pallet::<Runtime>::do_register_foreign_asset(
+			&(
+				1,
+				X2(
+					Parachain(parachains::bifrost::ID),
+					GeneralKey(parachains::bifrost::BNC_KEY.to_vec()),
+				)
+			)
+				.into(),
+			&AssetMetadata {
+				name: "BNC".as_bytes().to_vec(),
+				symbol: "BNC".as_bytes().to_vec(),
+				decimals: 12,
+				minimal_balance: 800 * (10u128.saturating_pow(12))
+			}
+		));
+		assert_ok!(module_asset_registry::Pallet::<Runtime>::do_register_foreign_asset(
+			&(
+				1,
+				X2(
+					Parachain(parachains::bifrost::ID),
+					GeneralKey(parachains::bifrost::VSKSM_KEY.to_vec()),
+				)
+			)
+				.into(),
+			&AssetMetadata {
+				name: "VSKSM".as_bytes().to_vec(),
+				symbol: "VSKSM".as_bytes().to_vec(),
+				decimals: 12,
+				minimal_balance: 10 * (10u128.saturating_pow(12))
+			}
+		));
+
+		// PHA
+		assert_ok!(module_asset_registry::Pallet::<Runtime>::do_register_foreign_asset(
+			&(1, X1(Parachain(parachains::phala::ID))).into(),
+			&AssetMetadata {
+				name: "PHA".as_bytes().to_vec(),
+				symbol: "PHA".as_bytes().to_vec(),
+				decimals: 12,
+				minimal_balance: 4000 * (10u128.saturating_pow(12))
+			}
+		));
+
+		// kintsugi
+		assert_ok!(module_asset_registry::Pallet::<Runtime>::do_register_foreign_asset(
+			&(
+				1,
+				X2(
+					Parachain(parachains::kintsugi::ID),
+					GeneralKey(parachains::kintsugi::KINT_KEY.to_vec()),
+				)
+			)
+				.into(),
+			&AssetMetadata {
+				name: "KINT".as_bytes().to_vec(),
+				symbol: "KINT".as_bytes().to_vec(),
+				decimals: 12,
+				minimal_balance: 13333 * (10u128.saturating_pow(12))
+			}
+		));
+		assert_ok!(module_asset_registry::Pallet::<Runtime>::do_register_foreign_asset(
+			&(
+				1,
+				X2(
+					Parachain(parachains::kintsugi::ID),
+					GeneralKey(parachains::kintsugi::KBTC_KEY.to_vec()),
+				)
+			)
+				.into(),
+			&AssetMetadata {
+				name: "KBTC".as_bytes().to_vec(),
+				symbol: "KBTC".as_bytes().to_vec(),
+				decimals: 8,
+				minimal_balance: 66 * (10u128.saturating_pow(8))
+			}
+		));
+		0
+	}
+}
 
 #[cfg(not(feature = "disable-runtime-api"))]
 impl_runtime_apis! {

@@ -133,6 +133,9 @@ fn currency_id_convert() {
 				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(id, LDOT.encode())),
 				None
 			);
+
+			initiate_asset_registry();
+
 			assert_eq!(
 				CurrencyIdConvert::convert(MultiLocation::sibling_parachain_general_key(
 					parachains::bifrost::ID,
@@ -146,6 +149,10 @@ fn currency_id_convert() {
 					parachains::bifrost::VSKSM_KEY.to_vec()
 				)),
 				Some(VSKSM)
+			);
+			assert_eq!(
+				CurrencyIdConvert::convert(MultiLocation::new(1, X1(Parachain(parachains::phala::ID)))),
+				Some(PHA)
 			);
 
 			assert_eq!(
@@ -161,6 +168,10 @@ fn currency_id_convert() {
 					parachains::bifrost::ID,
 					parachains::bifrost::VSKSM_KEY.to_vec()
 				))
+			);
+			assert_eq!(
+				CurrencyIdConvert::convert(PHA),
+				Some(MultiLocation::new(1, X1(Parachain(parachains::phala::ID))))
 			);
 
 			let native_currency: MultiAsset = (

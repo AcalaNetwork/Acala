@@ -72,7 +72,7 @@ mod mandala_imports {
 pub use karura_imports::*;
 #[cfg(feature = "with-karura-runtime")]
 mod karura_imports {
-	pub use frame_support::{parameter_types, weights::Weight};
+	pub use frame_support::{assert_ok, parameter_types, weights::Weight};
 	pub use karura_runtime::{
 		constants::parachains, create_x2_parachain_multilocation, get_all_module_accounts, AcalaOracle, AccountId,
 		AssetRegistry, AuctionManager, Authority, AuthoritysOriginId, Balance, Balances, BlockNumber, BondingDuration,
@@ -86,9 +86,11 @@ mod karura_imports {
 		TipPerWeightStep, TokenSymbol, Tokens, TreasuryPalletId, Utility, Vesting, XTokens, XcmConfig, XcmExecutor,
 		EVM, NFT,
 	};
+	pub use module_asset_registry::AssetMetadata;
 	pub use primitives::TradingPair;
 	pub use runtime_common::{calculate_asset_ratio, cent, dollar, millicent, KAR, KSM, KUSD, LKSM};
 	pub use sp_runtime::{traits::AccountIdConversion, FixedPointNumber};
+	pub use xcm::latest::prelude::*;
 
 	parameter_types! {
 		pub EnabledTradingPairs: Vec<TradingPair> = vec![
@@ -123,6 +125,56 @@ mod karura_imports {
 			(LKSM, NativeTokenExistentialDeposit::get() - 1),
 		];
 	}
+
+	pub fn initiate_asset_registry() {
+		// BNC: ForeignAsset(0)
+		assert_ok!(module_asset_registry::Pallet::<Runtime>::do_register_foreign_asset(
+			&(
+				1,
+				X2(
+					Parachain(parachains::bifrost::ID),
+					GeneralKey(parachains::bifrost::BNC_KEY.to_vec()),
+				)
+			)
+				.into(),
+			&AssetMetadata {
+				name: "BNC".as_bytes().to_vec(),
+				symbol: "BNC".as_bytes().to_vec(),
+				decimals: 12,
+				minimal_balance: 800 * (10u128.saturating_pow(12))
+			}
+		));
+		// VSKSM: ForeignAsset(1)
+		assert_ok!(module_asset_registry::Pallet::<Runtime>::do_register_foreign_asset(
+			&(
+				1,
+				X2(
+					Parachain(parachains::bifrost::ID),
+					GeneralKey(parachains::bifrost::VSKSM_KEY.to_vec()),
+				)
+			)
+				.into(),
+			&AssetMetadata {
+				name: "VSKSM".as_bytes().to_vec(),
+				symbol: "VSKSM".as_bytes().to_vec(),
+				decimals: 12,
+				minimal_balance: 10 * (10u128.saturating_pow(12))
+			}
+		));
+		// PHA: ForeignAsset(2)
+		assert_ok!(module_asset_registry::Pallet::<Runtime>::do_register_foreign_asset(
+			&(1, X1(Parachain(parachains::phala::ID))).into(),
+			&AssetMetadata {
+				name: "PHA".as_bytes().to_vec(),
+				symbol: "PHA".as_bytes().to_vec(),
+				decimals: 12,
+				minimal_balance: 4000 * (10u128.saturating_pow(12))
+			}
+		));
+	}
+	pub const BNC: CurrencyId = CurrencyId::ForeignAsset(0);
+	pub const VSKSM: CurrencyId = CurrencyId::ForeignAsset(1);
+	pub const PHA: CurrencyId = CurrencyId::ForeignAsset(2);
 }
 
 #[cfg(feature = "with-acala-runtime")]
