@@ -1034,7 +1034,7 @@ pub mod module {
 		///   maintainer
 		#[pallet::weight(<T as Config>::WeightInfo::deploy())]
 		#[transactional]
-		pub fn deploy(origin: OriginFor<T>, contract: EvmAddress) -> DispatchResultWithPostInfo {
+		pub fn publish_contract(origin: OriginFor<T>, contract: EvmAddress) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 			Self::do_deploy_contract(who, contract)?;
 

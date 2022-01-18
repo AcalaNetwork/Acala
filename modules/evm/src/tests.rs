@@ -926,7 +926,7 @@ fn should_deploy() {
 		let bob_account_id = <Runtime as Config>::AddressMapping::get_account_id(&bob());
 
 		// contract not created yet
-		assert_noop!(EVM::deploy(Origin::signed(alice_account_id.clone()), H160::default()), Error::<Runtime>::ContractNotFound);
+		assert_noop!(EVM::publish_contract(Origin::signed(alice_account_id.clone()), H160::default()), Error::<Runtime>::ContractNotFound);
 
 		// if the contract not exists, evm will return ExitSucceed::Stopped.
 		let result = <Runtime as Config>::Runner::call(
@@ -999,9 +999,9 @@ fn should_deploy() {
 		));
 
 		// not maintainer
-		assert_noop!(EVM::deploy(Origin::signed(bob_account_id), contract_address), Error::<Runtime>::NoPermission);
+		assert_noop!(EVM::publish_contract(Origin::signed(bob_account_id), contract_address), Error::<Runtime>::NoPermission);
 
-		assert_ok!(EVM::deploy(Origin::signed(alice_account_id.clone()), contract_address));
+		assert_ok!(EVM::publish_contract(Origin::signed(alice_account_id.clone()), contract_address));
 		let code_size = Accounts::<Runtime>::get(contract_address).map_or(0, |account_info| -> u32 {
 			account_info.contract_info.map_or(0, |contract_info| CodeInfos::<Runtime>::get(contract_info.code_hash).map_or(0, |code_info| code_info.code_size))
 		});
@@ -1021,7 +1021,7 @@ fn should_deploy() {
 		));
 
 		// contract already deployed
-		assert_noop!(EVM::deploy(Origin::signed(alice_account_id), contract_address), Error::<Runtime>::ContractAlreadyDeployed);
+		assert_noop!(EVM::publish_contract(Origin::signed(alice_account_id), contract_address), Error::<Runtime>::ContractAlreadyDeployed);
 	});
 }
 
