@@ -30,7 +30,7 @@ use sp_core::{H160, H256};
 use sp_io::{crypto::secp256k1_ecdsa_recover, hashing::keccak_256};
 use sp_runtime::{
 	generic::{CheckedExtrinsic, UncheckedExtrinsic},
-	traits::{self, Checkable, Convert, Extrinsic, ExtrinsicMetadata, Member, SignedExtension},
+	traits::{self, Checkable, Convert, Extrinsic, ExtrinsicMetadata, Member, SignedExtension, Zero},
 	transaction_validity::{InvalidTransaction, TransactionValidityError},
 	AccountId32, RuntimeDebug,
 };
@@ -111,9 +111,17 @@ where
 				let function = self.0.function;
 
 				let (eth_msg, eth_extra) = ConvertTx::convert((function.clone(), extra))?;
+				log::trace!(
+					target: "evm", "Ethereum eth_msg: {:?}", eth_msg
+				);
 
-				if eth_msg.tip != 0 {
+				if !eth_msg.tip.is_zero() {
 					// Not yet supported, require zero tip
+					return Err(InvalidTransaction::BadProof.into());
+				}
+
+				if !eth_msg.access_list.len().is_zero() {
+					// Not yet supported, require empty
 					return Err(InvalidTransaction::BadProof.into());
 				}
 
@@ -139,11 +147,6 @@ where
 					.saturating_mul(storage_entry_limit.into())
 					.saturating_add(eth_msg.gas_limit.into());
 
-				log::trace!(
-					target: "evm", "eth_msg.tip: {:?}, eth_msg.gas_limit: {:?}, eth_msg.storage_limit: {:?}, tx_gas_limit: {:?}, tx_gas_price: {:?}",
-					eth_msg.tip, eth_msg.storage_limit, eth_msg.gas_limit, tx_gas_limit, tx_gas_price
-				);
-
 				let msg = LegacyTransactionMessage {
 					nonce: eth_msg.nonce.into(),
 					gas_price: tx_gas_price.into(),
@@ -153,6 +156,9 @@ where
 					input: eth_msg.input,
 					chain_id: Some(eth_msg.chain_id),
 				};
+				log::trace!(
+					target: "evm", "tx msg: {:?}", msg
+				);
 
 				let msg_hash = msg.hash(); // TODO: consider rewirte this to use `keccak_256` for hashing because it could be faster
 
@@ -173,6 +179,9 @@ where
 			Some((addr, AcalaMultiSignature::Eip1559(sig), extra)) => {
 				let function = self.0.function;
 				let (eth_msg, eth_extra) = ConvertTx::convert((function.clone(), extra))?;
+				log::trace!(
+					target: "evm", "Eip1559 eth_msg: {:?}", eth_msg
+				);
 
 				// tx_gas_price = tx_fee_per_gas + block_period << 16 + storage_entry_limit
 				// tx_gas_limit = gas_limit + storage_entry_deposit / tx_fee_per_gas * storage_entry_limit
@@ -199,11 +208,6 @@ where
 				// tip = priority_fee * gas_limit
 				let priority_fee = eth_msg.tip.checked_div(eth_msg.gas_limit.into()).unwrap_or_default();
 
-				log::trace!(
-					target: "evm", "eth_msg.tip: {:?}, eth_msg.gas_limit: {:?}, eth_msg.storage_limit: {:?}, tx_gas_limit: {:?}, tx_gas_price: {:?}",
-					eth_msg.tip, eth_msg.storage_limit, eth_msg.gas_limit, tx_gas_limit, tx_gas_price
-				);
-
 				let msg = EIP1559TransactionMessage {
 					chain_id: eth_msg.chain_id,
 					nonce: eth_msg.nonce.into(),
@@ -215,6 +219,9 @@ where
 					input: eth_msg.input,
 					access_list: eth_msg.access_list,
 				};
+				log::trace!(
+					target: "evm", "tx msg: {:?}", msg
+				);
 
 				let msg_hash = msg.hash(); // TODO: consider rewirte this to use `keccak_256` for hashing because it could be faster
 
@@ -236,6 +243,9 @@ where
 				let function = self.0.function;
 
 				let (eth_msg, eth_extra) = ConvertTx::convert((function.clone(), extra))?;
+				log::trace!(
+					target: "evm", "AcalaEip712 eth_msg: {:?}", eth_msg
+				);
 
 				let signer = verify_eip712_signature(eth_msg, sig).ok_or(InvalidTransaction::BadProof)?;
 
