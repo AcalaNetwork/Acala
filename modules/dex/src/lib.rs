@@ -518,7 +518,7 @@ pub mod module {
 				CurrencyId::Token(_)
 				| CurrencyId::DexShare(_, _)
 				| CurrencyId::StableAssetPoolToken(_)
-				| CurrencyId::LiquidCroadloan(_) => Ok(()), /* No registration required */
+				| CurrencyId::LiquidCrowdloan(_) => Ok(()), /* No registration required */
 			};
 			check_asset_registry(currency_id_a)?;
 			check_asset_registry(currency_id_b)?;
