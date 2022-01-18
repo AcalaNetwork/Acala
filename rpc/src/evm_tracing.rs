@@ -22,8 +22,9 @@ use serde::{Deserialize, Serialize};
 
 use std::{marker::PhantomData, sync::Arc};
 
+use sc_client_api::backend::Backend;
 use sp_api::{BlockId, Core, HeaderT, ProvideRuntimeApi};
-use sp_blockchain::HeaderBackend;
+use sp_blockchain::{Backend as BlockchainBackend, HeaderBackend};
 use sp_runtime::traits::Block as BlockT;
 
 use primitives_evm_tracing::runtime_api::{EvmTracingRuntimeApi, TracerInput};
@@ -55,12 +56,7 @@ pub trait EvmTracingApi<Extrinsic, BlockHash> {
 	) -> Result<Response>;
 
 	#[rpc(name = "evm_traceBlock")]
-	fn trace_block(
-		&self,
-		extrinsics: Vec<Extrinsic>,
-		block_hash: BlockHash,
-		params: Option<TraceParams>,
-	) -> Result<Response>;
+	fn trace_block(&self, block_hash: BlockHash, params: Option<TraceParams>) -> Result<Response>;
 }
 
 #[derive(Serialize)]
@@ -74,23 +70,27 @@ pub enum Response {
 // 2. add to json rpc io handler
 
 /// EVM tracing RPC.
-pub struct EvmTracing<C, B> {
+pub struct EvmTracing<C, B, BE> {
 	client: Arc<C>,
+	backend: Arc<BE>,
 	_marker: PhantomData<B>,
 }
 
-impl<C, B> EvmTracing<C, B> {
-	pub fn new(client: Arc<C>) -> Self {
+impl<C, B, BE> EvmTracing<C, B, BE> {
+	pub fn new(client: Arc<C>, backend: Arc<BE>) -> Self {
 		Self {
 			client,
+			backend,
 			_marker: Default::default(),
 		}
 	}
 }
 
-impl<C, B> EvmTracingApi<<B as BlockT>::Extrinsic, <B as BlockT>::Hash> for EvmTracing<C, B>
+impl<C, B, BE> EvmTracingApi<<B as BlockT>::Extrinsic, <B as BlockT>::Hash> for EvmTracing<C, B, BE>
 where
 	B: BlockT,
+	BE: Backend<B> + 'static,
+	BE::Blockchain: BlockchainBackend<B>,
 	C: ProvideRuntimeApi<B> + HeaderBackend<B> + Send + Sync + 'static,
 	C::Api: EvmTracingRuntimeApi<B>,
 {
@@ -157,21 +157,25 @@ where
 		};
 	}
 
-	fn trace_block(
-		&self,
-		extrinsics: Vec<B::Extrinsic>,
-		block_hash: B::Hash,
-		params: Option<TraceParams>,
-	) -> Result<Response> {
+	fn trace_block(&self, block_hash: B::Hash, params: Option<TraceParams>) -> Result<Response> {
 		let (tracer_input, trace_type) = parse_params(params)?;
 
-		let invalid_block_err = invalid_params_err(format!("invalid  block hash: {:?}", block_hash));
+		let block_id = BlockId::Hash(block_hash);
+		let invalid_block_err = invalid_params_err(format!("invalid block hash: {:?}", block_hash));
 		let header = self
 			.client
-			.header(BlockId::Hash(block_hash))
+			.header(block_id)
+			.map_err(|_| invalid_block_err.clone())?
+			.ok_or(invalid_block_err.clone())?;
+		let parent_block_id = BlockId::Hash(*header.parent_hash());
+
+		let extrinsics = self
+			.backend
+			.blockchain()
+			.body(block_id)
 			.map_err(|_| invalid_block_err.clone())?
 			.ok_or(invalid_block_err)?;
-		let parent_block_id = BlockId::Hash(*header.parent_hash());
+
 		let api = self.client.runtime_api();
 		let f = || -> Result<_> {
 			api.initialize_block(&parent_block_id, &header)

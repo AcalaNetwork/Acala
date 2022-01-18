@@ -23,11 +23,12 @@
 mod evm_tracing;
 
 use primitives::{AccountId, Balance, Block, CurrencyId, DataProviderId, Nonce};
+use sc_client_api::backend::Backend;
 pub use sc_rpc_api::DenyUnsafe;
 use sc_transaction_pool_api::TransactionPool;
 use sp_api::ProvideRuntimeApi;
 use sp_block_builder::BlockBuilder;
-use sp_blockchain::{Error as BlockChainError, HeaderBackend, HeaderMetadata};
+use sp_blockchain::{Backend as BlockchainBackend, Error as BlockChainError, HeaderBackend, HeaderMetadata};
 use std::sync::Arc;
 
 pub use sc_rpc::SubscriptionTaskExecutor;
@@ -38,9 +39,11 @@ pub use evm_rpc::{EVMApi, EVMApiServer, EVMRuntimeRPCApi};
 pub type RpcExtension = jsonrpc_core::IoHandler<sc_rpc::Metadata>;
 
 /// Full client dependencies.
-pub struct FullDeps<C, P> {
+pub struct FullDeps<C, P, BE> {
 	/// The client instance to use.
 	pub client: Arc<C>,
+	/// Backend
+	pub backend: Arc<BE>,
 	/// Transaction pool instance.
 	pub pool: Arc<P>,
 	/// Whether to deny unsafe calls
@@ -48,8 +51,10 @@ pub struct FullDeps<C, P> {
 }
 
 /// Instantiate all Full RPC extensions.
-pub fn create_full<C, P>(deps: FullDeps<C, P>) -> RpcExtension
+pub fn create_full<C, P, BE>(deps: FullDeps<C, P, BE>) -> RpcExtension
 where
+	BE: Backend<Block> + 'static,
+	BE::Blockchain: BlockchainBackend<Block>,
 	C: ProvideRuntimeApi<Block>,
 	C: HeaderBackend<Block> + HeaderMetadata<Block, Error = BlockChainError>,
 	C: Send + Sync + 'static,
@@ -69,6 +74,7 @@ where
 	let mut io = jsonrpc_core::IoHandler::default();
 	let FullDeps {
 		client,
+		backend,
 		pool,
 		deny_unsafe,
 	} = deps;
@@ -86,7 +92,7 @@ where
 	// These RPCs should use an asynchronous caller instead.
 	io.extend_with(OracleApi::to_delegate(Oracle::new(client.clone())));
 	io.extend_with(EVMApiServer::to_delegate(EVMApi::new(client.clone(), deny_unsafe)));
-	io.extend_with(EvmTracingApi::to_delegate(EvmTracing::new(client)));
+	io.extend_with(EvmTracingApi::to_delegate(EvmTracing::new(client, backend)));
 
 	io
 }

@@ -396,11 +396,13 @@ where
 
 	let rpc_extensions_builder = {
 		let client = client.clone();
+		let backend = backend.clone();
 		let transaction_pool = transaction_pool.clone();
 
 		Box::new(move |deny_unsafe, _| {
 			let deps = acala_rpc::FullDeps {
 				client: client.clone(),
+				backend: backend.clone(),
 				pool: transaction_pool.clone(),
 				deny_unsafe,
 			};
@@ -770,11 +772,13 @@ fn inner_mandala_dev(config: Configuration, instant_sealing: bool) -> Result<Tas
 
 	let rpc_extensions_builder = {
 		let client = client.clone();
+		let backend = backend.clone();
 		let transaction_pool = transaction_pool.clone();
 
 		Box::new(move |deny_unsafe, _| {
 			let deps = acala_rpc::FullDeps {
 				client: client.clone(),
+				backend: backend.clone(),
 				pool: transaction_pool.clone(),
 				deny_unsafe,
 			};
