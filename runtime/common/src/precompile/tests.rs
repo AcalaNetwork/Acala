@@ -976,7 +976,7 @@ fn contract_deploy_precompile_works() {
 		// action + who + contract_address
 		let mut input = [0u8; 4 * 32];
 
-		input[0..4].copy_from_slice(&Into::<u32>::into(state_rent::Action::DeployContract).to_be_bytes());
+		input[0..4].copy_from_slice(&Into::<u32>::into(state_rent::Action::PublishContract).to_be_bytes());
 		U256::from(alice_evm_addr().as_bytes()).to_big_endian(&mut input[4 + 0 * 32..4 + 1 * 32]);
 		U256::from(contract_address.as_bytes()).to_big_endian(&mut input[4 + 1 * 32..4 + 2 *32]);
 
