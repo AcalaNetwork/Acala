@@ -762,6 +762,7 @@ parameter_type_with_key! {
 				TokenSymbol::PHA => 4000 * millicent(*currency_id), // 400PHA = 1KSM
 				TokenSymbol::KINT => 13333 * microcent(*currency_id), // 1.33 KINT = 1 KSM
 				TokenSymbol::KBTC => 66 * microcent(*currency_id), // 1KBTC = 150 KSM
+				TokenSymbol::RMRK | TokenSymbol::RMRK_V2 => cent(*currency_id),
 
 				TokenSymbol::ACA |
 				TokenSymbol::AUSD |
@@ -1388,7 +1389,7 @@ parameter_types! {
 
 impl cumulus_pallet_parachain_system::Config for Runtime {
 	type Event = Event;
-	type OnValidationData = ();
+	type OnSystemEvent = ();
 	type SelfParaId = ParachainInfo;
 	type DmpMessageHandler = DmpQueue;
 	type ReservedDmpWeight = ReservedDmpWeight;
@@ -1562,6 +1563,7 @@ pub type Trader = (
 	FixedRateOfFungible<KsmPerSecond, ToTreasury>,
 	FixedRateOfFungible<KarPerSecond, ToTreasury>,
 	FixedRateOfFungible<KarPerSecond2, ToTreasury>,
+	// FixedRateOfFungible<KarPerSecond3, ToTreasury>,
 	FixedRateOfFungible<BncPerSecond, ToTreasury>,
 	FixedRateOfFungible<BncPerSecond2, ToTreasury>,
 	FixedRateOfForeignAsset<Runtime, ForeignAssetUnitsPerSecond, ToTreasury>,
@@ -1778,6 +1780,13 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 					GeneralKey(parachains::kintsugi::KBTC_KEY.to_vec()),
 				),
 			)),
+			#[cfg(feature = "only-integration-test")]
+			Token(RMRK) => Some(MultiLocation::new(1, X2(Parachain(2001), GeneralIndex(8)))),
+			#[cfg(feature = "only-integration-test")]
+			Token(RMRK_V2) => Some(MultiLocation::new(
+				1,
+				X3(Parachain(2001), PalletInstance(53), GeneralIndex(8)),
+			)),
 			CurrencyId::ForeignAsset(foreign_asset_id) => AssetIdMaps::<Runtime>::get_multi_location(foreign_asset_id),
 			_ => None,
 		}
@@ -1797,6 +1806,16 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 		}
 
 		match location {
+			#[cfg(feature = "only-integration-test")]
+			MultiLocation {
+				parents: 1,
+				interior: X2(Parachain(2001), GeneralIndex(8)),
+			} => Some(Token(RMRK)),
+			#[cfg(feature = "only-integration-test")]
+			MultiLocation {
+				parents: 1,
+				interior: X3(Parachain(2001), PalletInstance(53), GeneralIndex(8)),
+			} => Some(Token(RMRK)),
 			MultiLocation {
 				parents: 1,
 				interior: X2(Parachain(para_id), GeneralKey(key)),

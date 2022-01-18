@@ -793,6 +793,8 @@ parameter_type_with_key! {
 				TokenSymbol::TAI => 10 * millicent(*currency_id),
 				TokenSymbol::ACA |
 				TokenSymbol::KAR |
+				TokenSymbol::RMRK |
+				TokenSymbol::RMRK_V2 |
 				TokenSymbol::CASH => Balance::max_value() // unsupported
 			},
 			CurrencyId::DexShare(dex_share_0, _) => {
@@ -1540,7 +1542,7 @@ parameter_types! {
 
 impl cumulus_pallet_parachain_system::Config for Runtime {
 	type Event = Event;
-	type OnValidationData = ();
+	type OnSystemEvent = ();
 	type SelfParaId = ParachainInfo;
 	type DmpMessageHandler = DmpQueue;
 	type ReservedDmpWeight = ReservedDmpWeight;

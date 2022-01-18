@@ -31,7 +31,7 @@ use xcm_emulator::{decl_test_network, decl_test_parachain, decl_test_relay_chain
 decl_test_relay_chain! {
 	pub struct KusamaNet {
 		Runtime = kusama_runtime::Runtime,
-		XcmConfig = kusama_runtime::XcmConfig,
+		XcmConfig = kusama_runtime::xcm_config::XcmConfig,
 		new_ext = kusama_ext(),
 	}
 }
