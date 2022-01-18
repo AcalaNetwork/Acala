@@ -143,6 +143,13 @@ pub struct Cli {
 	/// Can only be used with `--dev`
 	#[structopt(long = "instant-sealing", requires = "dev")]
 	pub instant_sealing: bool,
+
+	/// Mnemonic for evm develop.from which we can derive funded accounts in the genesis
+	/// This will derive 10 funded accounts in the genesis
+	///
+	/// Can only be used with `--dev`
+	#[structopt(long = "mnemonic", requires = "dev")]
+	pub mnemonic: Option<String>,
 }
 
 /// Relay chain CLI.
