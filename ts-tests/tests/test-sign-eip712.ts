@@ -92,7 +92,7 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 			value.value,
 			value.gasLimit,
 			value.storageLimit,
-			value.accessList.map(Object.values), // to `Vec<(H160,Vec<H256>)>`
+			value.accessList.map(({ address, storageKeys }) => [address, storageKeys]), // to `Vec<(H160,Vec<H256>)>`
 			value.validUntil,
 		);
 
@@ -217,7 +217,7 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 			value.value,
 			value.gasLimit,
 			value.storageLimit,
-			value.accessList.map(Object.values), // to `Vec<(H160,Vec<H256>)>`
+			value.accessList.map(({ address, storageKeys }) => [address, storageKeys]), // to `Vec<(H160,Vec<H256>)>`
 			value.validUntil
 		);
 
