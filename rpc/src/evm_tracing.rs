@@ -65,10 +65,6 @@ pub enum Response {
 	Block(Vec<single::TransactionTrace>),
 }
 
-// TODO:
-// 1. impl `EvmTracingApi`
-// 2. add to json rpc io handler
-
 /// EVM tracing RPC.
 pub struct EvmTracing<C, B, BE> {
 	client: Arc<C>,
