@@ -75,11 +75,11 @@ mod karura_imports {
 	pub use frame_support::{parameter_types, weights::Weight};
 	pub use karura_runtime::{
 		constants::parachains, create_x2_parachain_multilocation, get_all_module_accounts, AcalaOracle, AccountId,
-		AssetRegistry, AuctionManager, Authority, AuthoritysOriginId, Balance, Balances, BlockNumber, Call, CdpEngine,
-		CdpTreasury, CreateClassDeposit, CreateTokenDeposit, Currencies, CurrencyId, CurrencyIdConvert,
-		DataDepositPerByte, DefaultExchangeRate, Dex, EmergencyShutdown, Event, EvmAccounts, ExistentialDeposits,
-		FinancialCouncil, Get, GetNativeCurrencyId, Homa, HomaXcm, Honzon, IdleScheduler, KarPerSecond,
-		KaruraFoundationAccounts, KsmPerSecond, KusamaBondingDuration, KusdPerSecond, Loans, MaxTipsOfPriority,
+		AssetRegistry, AuctionManager, Authority, AuthoritysOriginId, Balance, Balances, BlockNumber, BondingDuration,
+		Call, CdpEngine, CdpTreasury, CreateClassDeposit, CreateTokenDeposit, Currencies, CurrencyId,
+		CurrencyIdConvert, DataDepositPerByte, DefaultExchangeRate, Dex, EmergencyShutdown, Event, EvmAccounts,
+		ExistentialDeposits, FinancialCouncil, Get, GetNativeCurrencyId, Homa, HomaXcm, Honzon, IdleScheduler,
+		KarPerSecond, KaruraFoundationAccounts, KsmPerSecond, KusdPerSecond, Loans, MaxTipsOfPriority,
 		MinimumDebitValue, MultiLocation, NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, Origin,
 		OriginCaller, ParachainAccount, ParachainInfo, ParachainSystem, PolkadotXcm, Proxy, ProxyType, Ratio,
 		RelayChainBlockNumberProvider, Runtime, Scheduler, Session, SessionManager, SevenDays, System, Timestamp,
@@ -131,15 +131,15 @@ pub use acala_imports::*;
 mod acala_imports {
 	pub use acala_runtime::{
 		create_x2_parachain_multilocation, get_all_module_accounts, AcalaFoundationAccounts, AcalaOracle, AccountId,
-		AssetRegistry, AuctionManager, Authority, AuthoritysOriginId, Balance, Balances, BlockNumber, Call, CdpEngine,
-		CdpTreasury, CreateClassDeposit, CreateTokenDeposit, Currencies, CurrencyId, CurrencyIdConvert,
-		DataDepositPerByte, DefaultExchangeRate, Dex, EmergencyShutdown, Event, EvmAccounts, ExistentialDeposits,
-		FinancialCouncil, Get, GetNativeCurrencyId, HomaLite, Honzon, IdleScheduler, Loans, MaxTipsOfPriority,
-		MinimumDebitValue, MultiLocation, NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, Origin,
-		OriginCaller, ParachainAccount, ParachainInfo, ParachainSystem, PolkadotXcm, Proxy, ProxyType,
-		RelayChainBlockNumberProvider, RelayChainSovereignSubAccount, Runtime, Scheduler, Session, SessionManager,
-		SevenDays, System, Timestamp, TipPerWeightStep, TokenSymbol, Tokens, TreasuryPalletId, Utility, Vesting,
-		XTokens, XcmConfig, XcmExecutor, XcmUnbondFee, EVM, NFT,
+		AssetRegistry, AuctionManager, Authority, AuthoritysOriginId, Balance, Balances, BlockNumber, BondingDuration,
+		Call, CdpEngine, CdpTreasury, CreateClassDeposit, CreateTokenDeposit, Currencies, CurrencyId,
+		CurrencyIdConvert, DataDepositPerByte, DefaultExchangeRate, Dex, EmergencyShutdown, Event, EvmAccounts,
+		ExistentialDeposits, FinancialCouncil, Get, GetNativeCurrencyId, Homa, HomaXcm, Honzon, IdleScheduler, Loans,
+		MaxTipsOfPriority, MinimumDebitValue, MultiLocation, NativeTokenExistentialDeposit, NetworkId, NftPalletId,
+		OneDay, Origin, OriginCaller, ParachainAccount, ParachainInfo, ParachainSystem, PolkadotXcm, Proxy, ProxyType,
+		RelayChainBlockNumberProvider, Runtime, Scheduler, Session, SessionManager, SevenDays, System, Timestamp,
+		TipPerWeightStep, TokenSymbol, Tokens, TreasuryPalletId, Utility, Vesting, XTokens, XcmConfig, XcmExecutor,
+		EVM, NFT,
 	};
 	pub use frame_support::parameter_types;
 	pub use primitives::TradingPair;
