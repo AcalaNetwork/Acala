@@ -55,7 +55,7 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 			AccessList: [
 				{ name: "address", type: "address" },
 				{ name: "storageKeys", type: "uint256[]" },
-		    ],
+			],
 			Transaction: [
 				{ name: "action", type: "string" },
 				{ name: "to", type: "address" },
@@ -179,7 +179,7 @@ describeWithAcala("Acala RPC (Sign eip712)", (context) => {
 			AccessList: [
 				{ name: "address", type: "address" },
 				{ name: "storageKeys", type: "uint256[]" },
-		    ],
+			],
 			Transaction: [
 				{ name: "action", type: "string" },
 				{ name: "to", type: "address" },
