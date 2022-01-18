@@ -76,7 +76,10 @@ mod mandala_executor {
 
 	pub struct MandalaExecutorDispatch;
 	impl sc_executor::NativeExecutionDispatch for MandalaExecutorDispatch {
-		type ExtendHostFunctions = frame_benchmarking::benchmarking::HostFunctions;
+		type ExtendHostFunctions = (
+			frame_benchmarking::benchmarking::HostFunctions,
+			acala_primitives_evm_tracing::ext::ext::HostFunctions,
+		);
 
 		fn dispatch(method: &str, data: &[u8]) -> Option<Vec<u8>> {
 			mandala_runtime::api::dispatch(method, data)

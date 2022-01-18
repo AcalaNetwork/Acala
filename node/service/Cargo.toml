@@ -112,3 +112,6 @@ with-all-runtime = [
 	"with-karura-runtime",
 	"with-acala-runtime",
 ]
+with-mandala-evm-tracing = [
+	"mandala-runtime/evm-tracing",
+]
