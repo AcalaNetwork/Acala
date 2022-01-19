@@ -23,7 +23,7 @@ pub mod time {
 	use primitives::{Balance, BlockNumber, Moment};
 	use runtime_common::{dollar, millicent, ACA};
 
-	pub const SECS_PER_BLOCK: Moment = 12;
+	pub const SECS_PER_BLOCK: Moment = 2;
 	pub const MILLISECS_PER_BLOCK: Moment = SECS_PER_BLOCK * 1000;
 
 	// These time units are defined in number of blocks.

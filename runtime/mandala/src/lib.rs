@@ -51,7 +51,6 @@ use module_asset_registry::{AssetIdMaps, EvmErc20InfoMapping, FixedRateOfForeign
 use module_currencies::{BasicCurrencyAdapter, Currency};
 use module_evm::{CallInfo, CreateInfo, EvmTask, Runner};
 use module_evm_accounts::EvmAddressMapping;
-use module_evm_utiltity::ethereum::AccessListItem;
 use module_relaychain::RelayChainCallBuilder;
 use module_support::{AssetIdMapping, DispatchableTask, ExchangeRateProvider};
 use module_transaction_payment::{Multiplier, TargetedFeeAdjustment, TransactionFeePoolTrader};
@@ -63,7 +62,9 @@ use orml_traits::{
 };
 use pallet_transaction_payment::{FeeDetails, RuntimeDispatchInfo};
 use primitives::{
-	convert_decimals_to_evm, define_combined_task, evm::EthereumTransactionMessage, task::TaskResult,
+	convert_decimals_to_evm, define_combined_task,
+	evm::{AccessListItem, EthereumTransactionMessage},
+	task::TaskResult,
 	unchecked_extrinsic::AcalaUncheckedExtrinsic,
 };
 use sp_api::impl_runtime_apis;
@@ -1955,11 +1956,6 @@ impl Convert<(Call, SignedExtra), Result<(EthereumTransactionMessage, SignedExtr
 
 				extra.4.mark_as_ethereum_tx(valid_until);
 
-				let access_list = access_list
-					.into_iter()
-					.map(|(address, slots)| AccessListItem { address, slots })
-					.collect();
-
 				Ok((
 					EthereumTransactionMessage {
 						chain_id: ChainId::get(),
@@ -2259,6 +2255,7 @@ impl_runtime_apis! {
 			value: Balance,
 			gas_limit: u64,
 			storage_limit: u32,
+			access_list: Option<Vec<AccessListItem>>,
 			estimate: bool,
 		) -> Result<CallInfo, sp_runtime::DispatchError> {
 			let config = if estimate {
@@ -2277,7 +2274,7 @@ impl_runtime_apis! {
 				value,
 				gas_limit,
 				storage_limit,
-				Vec::new(),
+				access_list.unwrap_or_default().into_iter().map(|v| (v.address, v.slots)).collect(),
 				config.as_ref().unwrap_or(<Runtime as module_evm::Config>::config()),
 			)
 		}
@@ -2288,6 +2285,7 @@ impl_runtime_apis! {
 			value: Balance,
 			gas_limit: u64,
 			storage_limit: u32,
+			access_list: Option<Vec<AccessListItem>>,
 			estimate: bool,
 		) -> Result<CreateInfo, sp_runtime::DispatchError> {
 			let config = if estimate {
@@ -2304,7 +2302,7 @@ impl_runtime_apis! {
 				value,
 				gas_limit,
 				storage_limit,
-				Vec::new(),
+				access_list.unwrap_or_default().into_iter().map(|v| (v.address, v.slots)).collect(),
 				config.as_ref().unwrap_or(<Runtime as module_evm::Config>::config()),
 			)
 		}
@@ -2314,7 +2312,7 @@ impl_runtime_apis! {
 				.map_err(|_| sp_runtime::DispatchError::Other("Invalid parameter extrinsic, decode failed"))?;
 
 			let request = match utx.0.function {
-				Call::EVM(module_evm::Call::call{target, input, value, gas_limit, storage_limit, access_list: _}) => {
+				Call::EVM(module_evm::Call::call{target, input, value, gas_limit, storage_limit, access_list}) => {
 					// use MAX_VALUE for no limit
 					let gas_limit = if gas_limit < u64::MAX { Some(gas_limit) } else { None };
 					let storage_limit = if storage_limit < u32::MAX { Some(storage_limit) } else { None };
@@ -2325,9 +2323,10 @@ impl_runtime_apis! {
 						storage_limit,
 						value: Some(value),
 						data: Some(input),
+						access_list: Some(access_list)
 					})
 				}
-				Call::EVM(module_evm::Call::create{init, value, gas_limit, storage_limit, access_list: _}) => {
+				Call::EVM(module_evm::Call::create{init, value, gas_limit, storage_limit, access_list}) => {
 					// use MAX_VALUE for no limit
 					let gas_limit = if gas_limit < u64::MAX { Some(gas_limit) } else { None };
 					let storage_limit = if storage_limit < u32::MAX { Some(storage_limit) } else { None };
@@ -2338,6 +2337,7 @@ impl_runtime_apis! {
 						storage_limit,
 						value: Some(value),
 						data: Some(init),
+						access_list: Some(access_list)
 					})
 				}
 				_ => None,

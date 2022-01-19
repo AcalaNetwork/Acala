@@ -22,7 +22,7 @@ use crate::{
 };
 use codec::{Decode, Encode};
 use core::ops::Range;
-use module_evm_utiltity::{
+pub use module_evm_utiltity::{
 	ethereum::{AccessListItem, Log, TransactionAction},
 	evm::ExitReason,
 };
@@ -74,6 +74,8 @@ pub struct EstimateResourcesRequest {
 	pub value: Option<Balance>,
 	/// Data
 	pub data: Option<Vec<u8>>,
+	/// AccessList
+	pub access_list: Option<Vec<AccessListItem>>,
 }
 
 #[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]

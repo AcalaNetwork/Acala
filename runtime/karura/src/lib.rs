@@ -100,9 +100,11 @@ pub use sp_runtime::BuildStorage;
 pub use authority::AuthorityConfigImpl;
 pub use constants::{fee::*, parachains, time::*};
 pub use primitives::{
-	convert_decimals_to_evm, define_combined_task, evm::EstimateResourcesRequest, task::TaskResult, AccountId,
-	AccountIndex, Address, Amount, AuctionId, AuthoritysOriginId, Balance, BlockNumber, CurrencyId, DataProviderId,
-	EraIndex, Hash, Moment, Nonce, ReserveIdentifier, Share, Signature, TokenSymbol, TradingPair,
+	convert_decimals_to_evm, define_combined_task,
+	evm::{AccessListItem, EstimateResourcesRequest},
+	task::TaskResult,
+	AccountId, AccountIndex, Address, Amount, AuctionId, AuthoritysOriginId, Balance, BlockNumber, CurrencyId,
+	DataProviderId, EraIndex, Hash, Moment, Nonce, ReserveIdentifier, Share, Signature, TokenSymbol, TradingPair,
 };
 pub use runtime_common::{
 	calculate_asset_ratio, cent, dollar, microcent, millicent, AcalaDropAssets, EnsureRootOrAllGeneralCouncil,
@@ -2126,6 +2128,7 @@ impl_runtime_apis! {
 			value: Balance,
 			gas_limit: u64,
 			storage_limit: u32,
+			access_list: Option<Vec<AccessListItem>>,
 			estimate: bool,
 		) -> Result<CallInfo, sp_runtime::DispatchError> {
 			let config = if estimate {
@@ -2144,7 +2147,7 @@ impl_runtime_apis! {
 				value,
 				gas_limit,
 				storage_limit,
-				Vec::new(),
+				access_list.unwrap_or_default().into_iter().map(|v| (v.address, v.slots)).collect(),
 				config.as_ref().unwrap_or(<Runtime as module_evm::Config>::config()),
 			)
 		}
@@ -2155,6 +2158,7 @@ impl_runtime_apis! {
 			value: Balance,
 			gas_limit: u64,
 			storage_limit: u32,
+			access_list: Option<Vec<AccessListItem>>,
 			estimate: bool,
 		) -> Result<CreateInfo, sp_runtime::DispatchError> {
 			let config = if estimate {
@@ -2171,7 +2175,7 @@ impl_runtime_apis! {
 				value,
 				gas_limit,
 				storage_limit,
-				Vec::new(),
+				access_list.unwrap_or_default().into_iter().map(|v| (v.address, v.slots)).collect(),
 				config.as_ref().unwrap_or(<Runtime as module_evm::Config>::config()),
 			)
 		}
@@ -2181,7 +2185,7 @@ impl_runtime_apis! {
 				.map_err(|_| sp_runtime::DispatchError::Other("Invalid parameter extrinsic, decode failed"))?;
 
 			let request = match utx.function {
-				Call::EVM(module_evm::Call::call{target, input, value, gas_limit, storage_limit, access_list: _}) => {
+				Call::EVM(module_evm::Call::call{target, input, value, gas_limit, storage_limit, access_list}) => {
 					// use MAX_VALUE for no limit
 					let gas_limit = if gas_limit < u64::MAX { Some(gas_limit) } else { None };
 					let storage_limit = if storage_limit < u32::MAX { Some(storage_limit) } else { None };
@@ -2192,9 +2196,10 @@ impl_runtime_apis! {
 						storage_limit,
 						value: Some(value),
 						data: Some(input),
+						access_list: Some(access_list)
 					})
 				}
-				Call::EVM(module_evm::Call::create{init, value, gas_limit, storage_limit, access_list: _}) => {
+				Call::EVM(module_evm::Call::create{init, value, gas_limit, storage_limit, access_list}) => {
 					// use MAX_VALUE for no limit
 					let gas_limit = if gas_limit < u64::MAX { Some(gas_limit) } else { None };
 					let storage_limit = if storage_limit < u32::MAX { Some(storage_limit) } else { None };
@@ -2205,6 +2210,7 @@ impl_runtime_apis! {
 						storage_limit,
 						value: Some(value),
 						data: Some(init),
+						access_list: Some(access_list)
 					})
 				}
 				_ => None,

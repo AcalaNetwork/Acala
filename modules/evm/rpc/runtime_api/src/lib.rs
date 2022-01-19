@@ -19,7 +19,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::all)]
 
-use primitives::evm::{CallInfo, CreateInfo, EstimateResourcesRequest};
+use primitives::evm::{AccessListItem, CallInfo, CreateInfo, EstimateResourcesRequest};
 use sp_core::H160;
 use sp_runtime::{
 	codec::Codec,
@@ -38,6 +38,7 @@ sp_api::decl_runtime_apis! {
 			value: Balance,
 			gas_limit: u64,
 			storage_limit: u32,
+			access_list: Option<Vec<AccessListItem>>,
 			estimate: bool,
 		) -> Result<CallInfo, sp_runtime::DispatchError>;
 
@@ -47,6 +48,7 @@ sp_api::decl_runtime_apis! {
 			value: Balance,
 			gas_limit: u64,
 			storage_limit: u32,
+			access_list: Option<Vec<AccessListItem>>,
 			estimate: bool,
 		) -> Result<CreateInfo, sp_runtime::DispatchError>;
 

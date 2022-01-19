@@ -18,7 +18,6 @@
 
 #![allow(clippy::upper_case_acronyms)]
 
-use ethereum_types::{H160, U256};
 use frame_support::log;
 use jsonrpc_core::{Error, ErrorCode, Result, Value};
 use pallet_transaction_payment_rpc_runtime_api::TransactionPaymentApi;
@@ -26,7 +25,7 @@ use rustc_hex::ToHex;
 use sc_rpc_api::DenyUnsafe;
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
-use sp_core::{Bytes, Decode};
+use sp_core::{Bytes, Decode, H160, U256};
 use sp_rpc::number::NumberOrHex;
 use sp_runtime::{
 	codec::Codec,
@@ -148,6 +147,7 @@ where
 			storage_limit,
 			value,
 			data,
+			access_list,
 		} = request;
 
 		let gas_limit = gas_limit.unwrap_or(MAX_GAS_LIMIT);
@@ -179,6 +179,7 @@ where
 						balance_value,
 						gas_limit,
 						storage_limit,
+						access_list,
 						true,
 					)
 					.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
@@ -202,6 +203,7 @@ where
 						balance_value,
 						gas_limit,
 						storage_limit,
+						access_list,
 						true,
 					)
 					.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
@@ -244,12 +246,13 @@ where
 			storage_limit: request.storage_limit,
 			value: request.value.map(|v| NumberOrHex::Hex(U256::from(v))),
 			data: request.data.map(Bytes),
+			access_list: request.access_list,
 		};
 
 		log::debug!(
 			target: "evm",
-			"estimate_resources, from: {:?}, to: {:?}, gas_limit: {:?}, storage_limit: {:?}, value: {:?}, at_hash: {:?}",
-			request.from, request.to, request.gas_limit, request.storage_limit, request.value, hash
+			"estimate_resources, request: {:?}, hash: {:?}",
+			request, hash
 		);
 
 		struct ExecutableResult {
@@ -268,6 +271,7 @@ where
 				storage_limit,
 				value,
 				data,
+				access_list,
 			} = request;
 
 			// Use request gas limit only if it less than gas_limit parameter
@@ -300,6 +304,7 @@ where
 							balance_value,
 							gas_limit,
 							storage_limit,
+							access_list,
 							true,
 						)
 						.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
@@ -318,6 +323,7 @@ where
 							balance_value,
 							gas_limit,
 							storage_limit,
+							access_list,
 							true,
 						)
 						.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?

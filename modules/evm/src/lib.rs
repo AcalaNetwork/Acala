@@ -47,7 +47,7 @@ use frame_support::{
 use frame_system::{ensure_root, ensure_signed, pallet_prelude::*, EnsureOneOf, EnsureRoot, EnsureSigned};
 use hex_literal::hex;
 pub use module_evm_utiltity::{
-	ethereum::{Log, TransactionAction},
+	ethereum::{AccessListItem, Log, TransactionAction},
 	evm::{self, Config as EvmConfig, Context, ExitError, ExitFatal, ExitReason, ExitRevert, ExitSucceed},
 	Account,
 };
@@ -545,7 +545,7 @@ pub mod module {
 			#[pallet::compact] value: BalanceOf<T>,
 			#[pallet::compact] gas_limit: u64,
 			#[pallet::compact] storage_limit: u32,
-			access_list: Vec<(H160, Vec<H256>)>,
+			access_list: Vec<AccessListItem>,
 			#[pallet::compact] _valid_until: T::BlockNumber, // checked by tx validation logic
 		) -> DispatchResultWithPostInfo {
 			match action {
@@ -573,7 +573,7 @@ pub mod module {
 			#[pallet::compact] value: BalanceOf<T>,
 			#[pallet::compact] gas_limit: u64,
 			#[pallet::compact] storage_limit: u32,
-			access_list: Vec<(H160, Vec<H256>)>,
+			access_list: Vec<AccessListItem>,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 			let source = T::AddressMapping::get_or_create_evm_address(&who);
@@ -586,7 +586,7 @@ pub mod module {
 				value,
 				gas_limit,
 				storage_limit,
-				access_list,
+				access_list.into_iter().map(|v| (v.address, v.slots)).collect(),
 				T::config(),
 			) {
 				Err(e) => {
@@ -647,7 +647,7 @@ pub mod module {
 			#[pallet::compact] value: BalanceOf<T>,
 			#[pallet::compact] gas_limit: u64,
 			#[pallet::compact] storage_limit: u32,
-			access_list: Vec<(H160, Vec<H256>)>,
+			access_list: Vec<AccessListItem>,
 		) -> DispatchResultWithPostInfo {
 			ensure_root(origin)?;
 
@@ -670,7 +670,7 @@ pub mod module {
 				value,
 				gas_limit,
 				storage_limit,
-				access_list,
+				access_list.into_iter().map(|v| (v.address, v.slots)).collect(),
 				T::config(),
 			) {
 				Err(e) => {
@@ -742,12 +742,20 @@ pub mod module {
 			#[pallet::compact] value: BalanceOf<T>,
 			#[pallet::compact] gas_limit: u64,
 			#[pallet::compact] storage_limit: u32,
-			access_list: Vec<(H160, Vec<H256>)>,
+			access_list: Vec<AccessListItem>,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 			let source = T::AddressMapping::get_or_create_evm_address(&who);
 
-			match T::Runner::create(source, init, value, gas_limit, storage_limit, access_list, T::config()) {
+			match T::Runner::create(
+				source,
+				init,
+				value,
+				gas_limit,
+				storage_limit,
+				access_list.into_iter().map(|v| (v.address, v.slots)).collect(),
+				T::config(),
+			) {
 				Err(e) => {
 					Pallet::<T>::deposit_event(Event::<T>::CreatedFailed {
 						from: source,
@@ -801,7 +809,7 @@ pub mod module {
 			#[pallet::compact] value: BalanceOf<T>,
 			#[pallet::compact] gas_limit: u64,
 			#[pallet::compact] storage_limit: u32,
-			access_list: Vec<(H160, Vec<H256>)>,
+			access_list: Vec<AccessListItem>,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 			let source = T::AddressMapping::get_or_create_evm_address(&who);
@@ -813,7 +821,7 @@ pub mod module {
 				value,
 				gas_limit,
 				storage_limit,
-				access_list,
+				access_list.into_iter().map(|v| (v.address, v.slots)).collect(),
 				T::config(),
 			) {
 				Err(e) => {
@@ -867,7 +875,7 @@ pub mod module {
 			#[pallet::compact] value: BalanceOf<T>,
 			#[pallet::compact] gas_limit: u64,
 			#[pallet::compact] storage_limit: u32,
-			access_list: Vec<(H160, Vec<H256>)>,
+			access_list: Vec<AccessListItem>,
 		) -> DispatchResultWithPostInfo {
 			T::NetworkContractOrigin::ensure_origin(origin)?;
 
@@ -880,7 +888,7 @@ pub mod module {
 				value,
 				gas_limit,
 				storage_limit,
-				access_list,
+				access_list.into_iter().map(|v| (v.address, v.slots)).collect(),
 				T::config(),
 			) {
 				Err(e) => {
@@ -942,7 +950,7 @@ pub mod module {
 			#[pallet::compact] value: BalanceOf<T>,
 			#[pallet::compact] gas_limit: u64,
 			#[pallet::compact] storage_limit: u32,
-			access_list: Vec<(H160, Vec<H256>)>,
+			access_list: Vec<AccessListItem>,
 		) -> DispatchResultWithPostInfo {
 			T::NetworkContractOrigin::ensure_origin(origin)?;
 
@@ -974,7 +982,7 @@ pub mod module {
 					value,
 					gas_limit,
 					storage_limit,
-					access_list,
+					access_list.into_iter().map(|v| (v.address, v.slots)).collect(),
 					T::config(),
 				) {
 					Err(e) => {
