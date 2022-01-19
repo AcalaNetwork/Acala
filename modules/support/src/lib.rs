@@ -404,8 +404,8 @@ pub trait EVMStateRentTrait<AccountId, Balance> {
 	fn query_maintainer(contract: H160) -> Result<H160, DispatchError>;
 	/// Query the constants `DeveloperDeposit` value from evm module.
 	fn query_developer_deposit() -> Balance;
-	/// Query the constants `PublishingFee` value from evm module.
-	fn query_publishing_fee() -> Balance;
+	/// Query the constants `PublicationFee` value from evm module.
+	fn query_publication_fee() -> Balance;
 	/// Transfer the maintainer of the contract address.
 	fn transfer_maintainer(from: AccountId, contract: H160, new_maintainer: H160) -> DispatchResult;
 	/// Publish contract

@@ -178,7 +178,7 @@ ord_parameter_types! {
 	pub const StorageDepositPerByte: Balance = convert_decimals_to_evm(10);
 	pub const TxFeePerGas: Balance = 20_000_000;
 	pub const DeveloperDeposit: Balance = 1000;
-	pub const PublishingFee: Balance = 200;
+	pub const PublicationFee: Balance = 200;
 	pub const ChainId: u64 = 1;
 }
 
@@ -199,9 +199,9 @@ impl Config for Runtime {
 	type NetworkContractOrigin = EnsureSignedBy<NetworkContractAccount, AccountId32>;
 	type NetworkContractSource = NetworkContractSource;
 	type DeveloperDeposit = DeveloperDeposit;
-	type PublishingFee = PublishingFee;
+	type PublicationFee = PublicationFee;
 	type TreasuryAccount = TreasuryAccount;
-	type FreePublishingOrigin = EnsureSignedBy<CouncilAccount, AccountId32>;
+	type FreePublicationOrigin = EnsureSignedBy<CouncilAccount, AccountId32>;
 
 	type Runner = crate::runner::stack::Runner<Self>;
 	type FindAuthor = AuthorGiven;

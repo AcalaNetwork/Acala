@@ -271,12 +271,12 @@ pub mod module {
 
 		/// The fee for publishing the contract.
 		#[pallet::constant]
-		type PublishingFee: Get<BalanceOf<Self>>;
+		type PublicationFee: Get<BalanceOf<Self>>;
 
 		#[pallet::constant]
 		type TreasuryAccount: Get<Self::AccountId>;
 
-		type FreePublishingOrigin: EnsureOrigin<Self::Origin>;
+		type FreePublicationOrigin: EnsureOrigin<Self::Origin>;
 
 		/// EVM execution runner.
 		type Runner: Runner<Self>;
@@ -1042,14 +1042,14 @@ pub mod module {
 			Ok(().into())
 		}
 
-		/// Mark a given contract as published without paying the publishing fee
+		/// Mark a given contract as published without paying the publication fee
 		///
 		/// - `contract`: The contract to mark as published, the caller must be the contract's
 		///   maintainer.
 		#[pallet::weight(<T as Config>::WeightInfo::deploy_free())]
 		#[transactional]
 		pub fn publish_free(origin: OriginFor<T>, contract: EvmAddress) -> DispatchResultWithPostInfo {
-			T::FreePublishingOrigin::ensure_origin(origin)?;
+			T::FreePublicationOrigin::ensure_origin(origin)?;
 			Self::mark_published(contract, None)?;
 			Pallet::<T>::deposit_event(Event::<T>::ContractPublished { contract });
 			Ok(().into())
@@ -1380,13 +1380,13 @@ impl<T: Config> Pallet<T> {
 
 	/// Publishes the Contract
 	///
-	/// Checks that `who` is the contract maintainer and takes the publishing fee
+	/// Checks that `who` is the contract maintainer and takes the publication fee
 	fn do_publish_contract(who: T::AccountId, contract: EvmAddress) -> DispatchResult {
 		let address = T::AddressMapping::get_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
 		T::Currency::transfer(
 			&who,
 			&T::TreasuryAccount::get(),
-			T::PublishingFee::get(),
+			T::PublicationFee::get(),
 			ExistenceRequirement::AllowDeath,
 		)?;
 		Self::mark_published(contract, Some(address))?;
@@ -1732,8 +1732,8 @@ impl<T: Config> EVMStateRentTrait<T::AccountId, BalanceOf<T>> for Pallet<T> {
 		convert_decimals_to_evm(T::DeveloperDeposit::get())
 	}
 
-	fn query_publishing_fee() -> BalanceOf<T> {
-		convert_decimals_to_evm(T::PublishingFee::get())
+	fn query_publication_fee() -> BalanceOf<T> {
+		convert_decimals_to_evm(T::PublicationFee::get())
 	}
 
 	fn transfer_maintainer(from: T::AccountId, contract: EvmAddress, new_maintainer: EvmAddress) -> DispatchResult {

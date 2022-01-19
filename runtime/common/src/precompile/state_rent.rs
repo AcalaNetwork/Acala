@@ -37,7 +37,7 @@ use primitives::Balance;
 /// - QueryStorageDepositPerByte.
 /// - QueryMaintainer.
 /// - QueryDeveloperDeposit.
-/// - QueryPublishingFee.
+/// - QueryPublicationFee.
 /// - TransferMaintainer. Rest `input` bytes: `from`, `contract`, `new_maintainer`.
 pub struct StateRentPrecompile<R>(PhantomData<R>);
 
@@ -49,7 +49,7 @@ pub enum Action {
 	QueryStorageDepositPerByte = "storageDepositPerByte()",
 	QueryMaintainer = "maintainerOf(address)",
 	QueryDeveloperDeposit = "developerDeposit()",
-	QueryPublishingFee = "publishingFee()",
+	QueryPublicationFee = "publicationFee()",
 	TransferMaintainer = "transferMaintainer(address,address,address)",
 	EnableDeveloperAccount = "developerEnable(address)",
 	DisableDeveloperAccount = "developerDisable(address)",
@@ -112,8 +112,8 @@ where
 					logs: Default::default(),
 				})
 			}
-			Action::QueryPublishingFee => {
-				let fee = module_evm::Pallet::<Runtime>::query_publishing_fee();
+			Action::QueryPublicationFee => {
+				let fee = module_evm::Pallet::<Runtime>::query_publication_fee();
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: 0,

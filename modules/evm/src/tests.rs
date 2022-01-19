@@ -1005,8 +1005,8 @@ fn should_publish() {
 		let code_size = Accounts::<Runtime>::get(contract_address).map_or(0, |account_info| -> u32 {
 			account_info.contract_info.map_or(0, |contract_info| CodeInfos::<Runtime>::get(contract_info.code_hash).map_or(0, |code_info| code_info.code_size))
 		});
-		assert_eq!(balance(alice()), INITIAL_BALANCE - PublishingFee::get() - ((NewContractExtraBytes::get() + code_size) as u128* EVM::get_storage_deposit_per_byte()));
-		assert_eq!(Balances::free_balance(TreasuryAccount::get()), INITIAL_BALANCE + PublishingFee::get());
+		assert_eq!(balance(alice()), INITIAL_BALANCE - PublicationFee::get() - ((NewContractExtraBytes::get() + code_size) as u128* EVM::get_storage_deposit_per_byte()));
+		assert_eq!(Balances::free_balance(TreasuryAccount::get()), INITIAL_BALANCE + PublicationFee::get());
 
 		// call method `multiply` will work
 		assert_ok!(<Runtime as Config>::Runner::call(
