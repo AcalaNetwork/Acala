@@ -71,9 +71,11 @@ impl SubstrateCli for Cli {
 
 		Ok(match id {
 			#[cfg(feature = "with-mandala-runtime")]
-			"dev" => Box::new(chain_spec::mandala::dev_testnet_config()?),
+			"dev" => Box::new(chain_spec::mandala::dev_testnet_config(self.mnemonic.as_deref())?),
 			#[cfg(feature = "with-mandala-runtime")]
-			"pc-dev" => Box::new(chain_spec::mandala::parachain_dev_testnet_config()?),
+			"pc-dev" => Box::new(chain_spec::mandala::parachain_dev_testnet_config(
+				self.mnemonic.as_deref(),
+			)?),
 			#[cfg(feature = "with-mandala-runtime")]
 			"local" => Box::new(chain_spec::mandala::local_testnet_config()?),
 			#[cfg(feature = "with-mandala-runtime")]
