@@ -95,11 +95,26 @@ fn dev_testnet_config_from_chain_id(chain_id: &str, mnemonic: Option<&str>) -> R
 				get_account_id_from_seed::<sr25519::Public>("Alice"),
 				// Pre-funded accounts
 				vec![
-					get_account_id_from_seed::<sr25519::Public>("Alice"),
-					get_account_id_from_seed::<sr25519::Public>("Bob"),
-					get_account_id_from_seed::<sr25519::Public>("Alice//stash"),
-					get_account_id_from_seed::<sr25519::Public>("Bob//stash"),
-				],
+					vec![
+						get_account_id_from_seed::<sr25519::Public>("Alice"),
+						get_account_id_from_seed::<sr25519::Public>("Bob"),
+						get_account_id_from_seed::<sr25519::Public>("Alice//stash"),
+						get_account_id_from_seed::<sr25519::Public>("Bob//stash"),
+					],
+					// EVM dev accounts
+					evm_accounts
+						.iter()
+						.map(|v| {
+							let mut data: [u8; 32] = [0u8; 32];
+							data[0..4].copy_from_slice(b"evm:");
+							data[4..24].copy_from_slice(&v[..]);
+							AccountId::from(data)
+						})
+						.collect(),
+				]
+				.into_iter()
+				.flatten()
+				.collect(),
 				// EVM dev accounts
 				evm_accounts.clone(),
 			)
