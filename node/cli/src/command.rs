@@ -206,9 +206,10 @@ fn set_default_ss58_version(spec: &Box<dyn service::ChainSpec>) {
 	sp_core::crypto::set_default_ss58_version(ss58_version.into());
 }
 
-const DEV_ONLY_ERROR_PATTERN: &'static str =
-	"can only use subcommand with --chain [karura-dev, acala-dev, pc-dev, dev], got ";
+#[allow(dead_code)]
+const DEV_ONLY_ERROR_PATTERN: &str = "can only use subcommand with --chain [karura-dev, acala-dev, pc-dev, dev], got ";
 
+#[allow(dead_code)]
 fn ensure_dev(spec: &Box<dyn service::ChainSpec>) -> std::result::Result<(), String> {
 	if spec.is_dev() {
 		Ok(())
