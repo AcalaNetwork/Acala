@@ -36,7 +36,7 @@ use sp_runtime::{
 };
 use sp_std::prelude::*;
 
-pub use currency::{CurrencyId, DexShare, TokenSymbol};
+pub use currency::{CurrencyId, DexShare, Lease, TokenSymbol};
 
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};

@@ -31,12 +31,18 @@
 
 use frame_support::{pallet_prelude::*, transactional};
 use frame_system::pallet_prelude::*;
-use orml_traits::{DataFeeder, DataProvider, MultiCurrency};
-use primitives::{Balance, CurrencyId};
+use orml_traits::{DataFeeder, DataProvider, GetByKey, MultiCurrency};
+use primitives::{Balance, CurrencyId, Lease};
 use sp_core::U256;
-use sp_runtime::{traits::CheckedMul, FixedPointNumber};
+use sp_runtime::{
+	traits::{BlockNumberProvider, CheckedMul, One, Saturating, UniqueSaturatedInto},
+	FixedPointNumber,
+};
 use sp_std::marker::PhantomData;
-use support::{DEXManager, Erc20InfoMapping, ExchangeRateProvider, LockablePrice, Price, PriceProvider};
+use support::{
+	DEXManager, DEXPriceProvider, Erc20InfoMapping, ExchangeRate, ExchangeRateProvider, LockablePrice, Price,
+	PriceProvider, Rate,
+};
 
 mod mock;
 mod tests;
@@ -87,6 +93,17 @@ pub mod module {
 
 		/// Mapping between CurrencyId and ERC20 address so user can use Erc20.
 		type Erc20InfoMapping: Erc20InfoMapping;
+
+		/// Get the lease block number of relaychain for specific Lease
+		type LiquidCroadloanLeaseBlockNumber: GetByKey<Lease, Option<Self::BlockNumber>>;
+
+		/// Block number provider for the relaychain.
+		type RelayChainBlockNumber: BlockNumberProvider<BlockNumber = Self::BlockNumber>;
+
+		/// The staking reward rate per relaychain block for StakingCurrency.
+		/// In fact, the staking reward is not settled according to the block on relaychain.
+		#[pallet::constant]
+		type RewardRatePerRelaychainBlock: Get<Rate>;
 
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
@@ -168,6 +185,20 @@ impl<T: Config> Pallet<T> {
 			// directly return real-time the multiple of the price of StakingCurrencyId and the exchange rate
 			return Self::access_price(T::GetStakingCurrencyId::get())
 				.and_then(|n| n.checked_mul(&T::LiquidStakingExchangeRateProvider::get_exchange_rate()));
+		} else if let CurrencyId::LiquidCroadloan(lease) = currency_id {
+			// Note: For LiquidCroadloan, The reliable market price may not be available in the initial stage,
+			// the system simply discounts the price of StakingCurrency according to the StakingRewardRate and
+			// the remaining lease time.
+			let lease_block_number = T::LiquidCroadloanLeaseBlockNumber::get(&lease)?;
+			let current_relaychain_block = T::RelayChainBlockNumber::current_block_number();
+			let interval = lease_block_number.saturating_sub(current_relaychain_block);
+			let discount_rate = Rate::one()
+				.saturating_add(T::RewardRatePerRelaychainBlock::get())
+				.saturating_pow(interval.unique_saturated_into())
+				.reciprocal()
+				.expect("shouldn't fail");
+
+			return Self::access_price(T::GetStakingCurrencyId::get()).and_then(|n| n.checked_mul(&discount_rate));
 		} else if let CurrencyId::DexShare(symbol_0, symbol_1) = currency_id {
 			let token_0: CurrencyId = symbol_0.into();
 			let token_1: CurrencyId = symbol_1.into();
@@ -240,6 +271,26 @@ pub struct LockedPriceProvider<T>(PhantomData<T>);
 impl<T: Config> PriceProvider<CurrencyId> for LockedPriceProvider<T> {
 	fn get_price(currency_id: CurrencyId) -> Option<Price> {
 		Pallet::<T>::locked_price(currency_id)
+	}
+}
+
+/// DEXPriceProvider that always provider current exchange rate for currency_id_a to currency_id_b
+/// from DEX
+pub struct CurrentDEXPriceProvider<T>(PhantomData<T>);
+impl<T: Config> DEXPriceProvider<CurrencyId> for CurrentDEXPriceProvider<T> {
+	fn get_dex_price(currency_id_a: CurrencyId, currency_id_b: CurrencyId) -> Option<ExchangeRate> {
+		let (pool_a, pool_b) = T::DEX::get_liquidity_pool(currency_id_a, currency_id_b);
+		ExchangeRate::checked_from_rational(pool_b, pool_a)
+	}
+}
+
+/// DEXPriceProvider that always provider cumulative exchange rate for currency_id_a to
+/// currency_id_b from DEX
+pub struct CumulativeDEXPriceProvider<T>(PhantomData<T>);
+impl<T: Config> DEXPriceProvider<CurrencyId> for CumulativeDEXPriceProvider<T> {
+	fn get_dex_price(currency_id_a: CurrencyId, currency_id_b: CurrencyId) -> Option<ExchangeRate> {
+		let (pool_a, pool_b) = T::DEX::get_liquidity_pool(currency_id_a, currency_id_b);
+		ExchangeRate::checked_from_rational(pool_b, pool_a)
 	}
 }
 
