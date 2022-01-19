@@ -184,7 +184,7 @@ impl module_evm_bridge::Config for Test {
 impl module_asset_registry::Config for Test {
 	type Event = Event;
 	type Currency = Balances;
-	type LiquidCroadloanCurrencyId = GetStakingCurrencyId;
+	type LiquidCrowdloanCurrencyId = GetStakingCurrencyId;
 	type EVMBridge = module_evm_bridge::EVMBridge<Test>;
 	type RegisterOrigin = EnsureSignedBy<CouncilAccount, AccountId>;
 	type WeightInfo = ();
