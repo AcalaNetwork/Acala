@@ -1032,7 +1032,7 @@ pub mod module {
 		///
 		/// - `contract`: The contract to mark as published, the caller must the contract's
 		///   maintainer
-		#[pallet::weight(<T as Config>::WeightInfo::deploy())]
+		#[pallet::weight(<T as Config>::WeightInfo::publish_contract())]
 		#[transactional]
 		pub fn publish_contract(origin: OriginFor<T>, contract: EvmAddress) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
@@ -1046,7 +1046,7 @@ pub mod module {
 		///
 		/// - `contract`: The contract to mark as published, the caller must be the contract's
 		///   maintainer.
-		#[pallet::weight(<T as Config>::WeightInfo::deploy_free())]
+		#[pallet::weight(<T as Config>::WeightInfo::publish_free())]
 		#[transactional]
 		pub fn publish_free(origin: OriginFor<T>, contract: EvmAddress) -> DispatchResultWithPostInfo {
 			T::FreePublicationOrigin::ensure_origin(origin)?;
