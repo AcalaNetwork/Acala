@@ -37,7 +37,7 @@ use primitives::Balance;
 /// - QueryStorageDepositPerByte.
 /// - QueryMaintainer.
 /// - QueryDeveloperDeposit.
-/// - QueryDeploymentFee.
+/// - QueryPublishingFee.
 /// - TransferMaintainer. Rest `input` bytes: `from`, `contract`, `new_maintainer`.
 pub struct StateRentPrecompile<R>(PhantomData<R>);
 
@@ -49,7 +49,7 @@ pub enum Action {
 	QueryStorageDepositPerByte = "storageDepositPerByte()",
 	QueryMaintainer = "maintainerOf(address)",
 	QueryDeveloperDeposit = "developerDeposit()",
-	QueryDeploymentFee = "deploymentFee()",
+	QueryPublishingFee = "publishingFee()",
 	TransferMaintainer = "transferMaintainer(address,address,address)",
 	EnableDeveloperAccount = "developerEnable(address)",
 	DisableDeveloperAccount = "developerDisable(address)",
@@ -112,8 +112,8 @@ where
 					logs: Default::default(),
 				})
 			}
-			Action::QueryDeploymentFee => {
-				let fee = module_evm::Pallet::<Runtime>::query_deployment_fee();
+			Action::QueryPublishingFee => {
+				let fee = module_evm::Pallet::<Runtime>::query_publishing_fee();
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: 0,
@@ -149,7 +149,7 @@ where
 			Action::PublishContract => {
 				let who = input.account_id_at(1)?;
 				let contract_address = input.evm_address_at(2)?;
-				<module_evm::Pallet<Runtime>>::deploy_contract(who, contract_address)
+				<module_evm::Pallet<Runtime>>::publish_contract_precompile(who, contract_address)
 					.map_err(|e| ExitError::Other(Cow::Borrowed(e.into())))?;
 
 				Ok(PrecompileOutput {

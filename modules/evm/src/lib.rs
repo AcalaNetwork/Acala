@@ -269,14 +269,14 @@ pub mod module {
 		#[pallet::constant]
 		type DeveloperDeposit: Get<BalanceOf<Self>>;
 
-		/// The fee for deploying the contract.
+		/// The fee for publishing the contract.
 		#[pallet::constant]
-		type DeploymentFee: Get<BalanceOf<Self>>;
+		type PublishingFee: Get<BalanceOf<Self>>;
 
 		#[pallet::constant]
 		type TreasuryAccount: Get<Self::AccountId>;
 
-		type FreeDeploymentOrigin: EnsureOrigin<Self::Origin>;
+		type FreePublishingOrigin: EnsureOrigin<Self::Origin>;
 
 		/// EVM execution runner.
 		type Runner: Runner<Self>;
@@ -298,7 +298,7 @@ pub mod module {
 	pub struct ContractInfo {
 		pub code_hash: H256,
 		pub maintainer: EvmAddress,
-		pub deployed: bool,
+		pub published: bool,
 	}
 
 	#[derive(Clone, Eq, PartialEq, RuntimeDebug, Encode, Decode, TypeInfo)]
@@ -465,7 +465,7 @@ pub mod module {
 					<Pallet<T>>::create_contract(source, *address, out);
 
 					#[cfg(not(feature = "with-ethereum-compatibility"))]
-					<Pallet<T>>::mark_deployed(*address, None).expect("Genesis contract failed to deploy");
+					<Pallet<T>>::mark_published(*address, None).expect("Genesis contract failed to publish");
 
 					for (index, value) in &account.storage {
 						AccountStorages::<T>::insert(address, index, value);
@@ -517,8 +517,8 @@ pub mod module {
 		ContractDevelopmentEnabled { who: T::AccountId },
 		/// Disabled contract development.
 		ContractDevelopmentDisabled { who: T::AccountId },
-		/// Deployed contract.
-		ContractDeployed { contract: EvmAddress },
+		/// Published contract.
+		ContractPublished { contract: EvmAddress },
 		/// Set contract code.
 		ContractSetCode { contract: EvmAddress },
 		/// Selfdestructed contract code.
@@ -537,8 +537,8 @@ pub mod module {
 		ContractDevelopmentNotEnabled,
 		/// Contract development is already enabled
 		ContractDevelopmentAlreadyEnabled,
-		/// Contract already deployed
-		ContractAlreadyDeployed,
+		/// Contract already published
+		ContractAlreadyPublished,
 		/// Contract exceeds max code size
 		ContractExceedsMaxCodeSize,
 		/// Contract already existed
@@ -1028,35 +1028,35 @@ pub mod module {
 			Ok(().into())
 		}
 
-		/// Mark a given contract as deployed.
+		/// Mark a given contract as published.
 		///
-		/// - `contract`: The contract to mark as deployed, the caller must the contract's
+		/// - `contract`: The contract to mark as published, the caller must the contract's
 		///   maintainer
 		#[pallet::weight(<T as Config>::WeightInfo::deploy())]
 		#[transactional]
 		pub fn publish_contract(origin: OriginFor<T>, contract: EvmAddress) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
-			Self::do_deploy_contract(who, contract)?;
+			Self::do_publish_contract(who, contract)?;
 
-			Pallet::<T>::deposit_event(Event::<T>::ContractDeployed { contract });
+			Pallet::<T>::deposit_event(Event::<T>::ContractPublished { contract });
 			Ok(().into())
 		}
 
-		/// Mark a given contract as deployed without paying the deployment fee
+		/// Mark a given contract as published without paying the publishing fee
 		///
-		/// - `contract`: The contract to mark as deployed, the caller must be the contract's
+		/// - `contract`: The contract to mark as published, the caller must be the contract's
 		///   maintainer.
 		#[pallet::weight(<T as Config>::WeightInfo::deploy_free())]
 		#[transactional]
-		pub fn deploy_free(origin: OriginFor<T>, contract: EvmAddress) -> DispatchResultWithPostInfo {
-			T::FreeDeploymentOrigin::ensure_origin(origin)?;
-			Self::mark_deployed(contract, None)?;
-			Pallet::<T>::deposit_event(Event::<T>::ContractDeployed { contract });
+		pub fn publish_free(origin: OriginFor<T>, contract: EvmAddress) -> DispatchResultWithPostInfo {
+			T::FreePublishingOrigin::ensure_origin(origin)?;
+			Self::mark_published(contract, None)?;
+			Pallet::<T>::deposit_event(Event::<T>::ContractPublished { contract });
 			Ok(().into())
 		}
 
 		/// Mark the caller's address to allow contract development.
-		/// This allows the address to interact with non-deployed contracts.
+		/// This allows the address to interact with non-published contracts.
 		#[pallet::weight(<T as Config>::WeightInfo::enable_contract_development())]
 		#[transactional]
 		pub fn enable_contract_development(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
@@ -1068,7 +1068,7 @@ pub mod module {
 		}
 
 		/// Mark the caller's address to disable contract development.
-		/// This disallows the address to interact with non-deployed contracts.
+		/// This disallows the address to interact with non-published contracts.
 		#[pallet::weight(<T as Config>::WeightInfo::disable_contract_development())]
 		#[transactional]
 		pub fn disable_contract_development(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
@@ -1081,7 +1081,7 @@ pub mod module {
 
 		/// Set the code of a contract at a given address.
 		///
-		/// - `contract`: The contract whose code is being set, must not be marked as deployed
+		/// - `contract`: The contract whose code is being set, must not be marked as published
 		/// - `code`: The new ABI bundle for the contract
 		#[pallet::weight(<T as Config>::WeightInfo::set_code(code.len() as u32))]
 		#[transactional]
@@ -1096,7 +1096,7 @@ pub mod module {
 
 		/// Remove a contract at a given address.
 		///
-		/// - `contract`: The contract to remove, must not be marked as deployed
+		/// - `contract`: The contract to remove, must not be marked as published
 		#[pallet::weight(<T as Config>::WeightInfo::selfdestruct())]
 		#[transactional]
 		pub fn selfdestruct(origin: OriginFor<T>, contract: EvmAddress) -> DispatchResultWithPostInfo {
@@ -1244,9 +1244,9 @@ impl<T: Config> Pallet<T> {
 			code_hash,
 			maintainer,
 			#[cfg(feature = "with-ethereum-compatibility")]
-			deployed: true,
+			published: true,
 			#[cfg(not(feature = "with-ethereum-compatibility"))]
-			deployed: false,
+			published: false,
 		};
 
 		CodeInfos::<T>::mutate_exists(&code_hash, |maybe_code_info| {
@@ -1358,7 +1358,7 @@ impl<T: Config> Pallet<T> {
 		Ok(())
 	}
 
-	/// Puts a deposit down to allow account to interact with non-deployed contracts
+	/// Puts a deposit down to allow account to interact with non-published contracts
 	fn do_enable_contract_development(who: &T::AccountId) -> DispatchResult {
 		ensure!(
 			T::Currency::reserved_balance_named(&RESERVE_ID_DEVELOPER_DEPOSIT, who).is_zero(),
@@ -1378,25 +1378,25 @@ impl<T: Config> Pallet<T> {
 		Ok(())
 	}
 
-	/// Deploys the Contract
+	/// Publishes the Contract
 	///
-	/// Checks that `who` is the contract maintainer and takes the deployment fee
-	fn do_deploy_contract(who: T::AccountId, contract: EvmAddress) -> DispatchResult {
+	/// Checks that `who` is the contract maintainer and takes the publishing fee
+	fn do_publish_contract(who: T::AccountId, contract: EvmAddress) -> DispatchResult {
 		let address = T::AddressMapping::get_evm_address(&who).ok_or(Error::<T>::AddressNotMapped)?;
 		T::Currency::transfer(
 			&who,
 			&T::TreasuryAccount::get(),
-			T::DeploymentFee::get(),
+			T::PublishingFee::get(),
 			ExistenceRequirement::AllowDeath,
 		)?;
-		Self::mark_deployed(contract, Some(address))?;
+		Self::mark_published(contract, Some(address))?;
 		Ok(())
 	}
 
-	/// Mark contract as deployed
+	/// Mark contract as published
 	///
 	/// If maintainer is provider then it will check maintainer
-	fn mark_deployed(contract: EvmAddress, maintainer: Option<EvmAddress>) -> DispatchResult {
+	fn mark_published(contract: EvmAddress, maintainer: Option<EvmAddress>) -> DispatchResult {
 		Accounts::<T>::mutate(contract, |maybe_account_info| -> DispatchResult {
 			if let Some(AccountInfo {
 				contract_info: Some(contract_info),
@@ -1406,8 +1406,8 @@ impl<T: Config> Pallet<T> {
 				if let Some(maintainer) = maintainer {
 					ensure!(contract_info.maintainer == maintainer, Error::<T>::NoPermission);
 				}
-				ensure!(!contract_info.deployed, Error::<T>::ContractAlreadyDeployed);
-				contract_info.deployed = true;
+				ensure!(!contract_info.published, Error::<T>::ContractAlreadyPublished);
+				contract_info.published = true;
 				Ok(())
 			} else {
 				Err(Error::<T>::ContractNotFound.into())
@@ -1431,7 +1431,7 @@ impl<T: Config> Pallet<T> {
 			let source = if let Either::Right(signer) = root_or_signed {
 				let maintainer = T::AddressMapping::get_evm_address(&signer).ok_or(Error::<T>::AddressNotMapped)?;
 				ensure!(contract_info.maintainer == maintainer, Error::<T>::NoPermission);
-				ensure!(!contract_info.deployed, Error::<T>::ContractAlreadyDeployed);
+				ensure!(!contract_info.published, Error::<T>::ContractAlreadyPublished);
 				maintainer
 			} else {
 				T::NetworkContractSource::get()
@@ -1499,7 +1499,7 @@ impl<T: Config> Pallet<T> {
 			.ok_or(Error::<T>::ContractNotFound)?;
 
 		ensure!(contract_info.maintainer == *caller, Error::<T>::NoPermission);
-		ensure!(!contract_info.deployed, Error::<T>::ContractAlreadyDeployed);
+		ensure!(!contract_info.published, Error::<T>::ContractAlreadyPublished);
 
 		Self::remove_contract(caller, contract)
 	}
@@ -1512,14 +1512,14 @@ impl<T: Config> Pallet<T> {
 	fn can_call_contract(address: &H160, caller: &H160) -> bool {
 		if let Some(AccountInfo {
 			contract_info: Some(ContractInfo {
-				deployed, maintainer, ..
+				published, maintainer, ..
 			}),
 			..
 		}) = Accounts::<T>::get(address)
 		{
 			// https://github.com/AcalaNetwork/Acala/blob/af1c277/modules/evm/rpc/src/lib.rs#L176
 			// when rpc is called, from is empty, allowing the call
-			deployed || maintainer == *caller || Self::is_developer_or_contract(caller) || *caller == H160::default()
+			published || maintainer == *caller || Self::is_developer_or_contract(caller) || *caller == H160::default()
 		} else {
 			// contract non exist, we don't override defualt evm behaviour
 			true
@@ -1732,16 +1732,16 @@ impl<T: Config> EVMStateRentTrait<T::AccountId, BalanceOf<T>> for Pallet<T> {
 		convert_decimals_to_evm(T::DeveloperDeposit::get())
 	}
 
-	fn query_deployment_fee() -> BalanceOf<T> {
-		convert_decimals_to_evm(T::DeploymentFee::get())
+	fn query_publishing_fee() -> BalanceOf<T> {
+		convert_decimals_to_evm(T::PublishingFee::get())
 	}
 
 	fn transfer_maintainer(from: T::AccountId, contract: EvmAddress, new_maintainer: EvmAddress) -> DispatchResult {
 		Pallet::<T>::do_transfer_maintainer(from, contract, new_maintainer)
 	}
 
-	fn deploy_contract(who: T::AccountId, contract: H160) -> DispatchResult {
-		Pallet::<T>::do_deploy_contract(who, contract)
+	fn publish_contract_precompile(who: T::AccountId, contract: H160) -> DispatchResult {
+		Pallet::<T>::do_publish_contract(who, contract)
 	}
 
 	fn query_developer_status(who: T::AccountId) -> bool {

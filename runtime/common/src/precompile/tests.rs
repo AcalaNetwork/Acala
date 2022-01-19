@@ -926,7 +926,7 @@ fn developer_status_precompile_works() {
 }
 
 #[test]
-fn contract_deploy_precompile_works() {
+fn publish_contract_precompile_works() {
 	new_test_ext().execute_with(|| {
 		// pragma solidity ^0.5.0;
 		//
@@ -948,7 +948,7 @@ fn contract_deploy_precompile_works() {
 			"0x165c4a1600000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000003"
 		).unwrap();
 
-		// call method `multiply` will fail, not deployed yet.
+		// call method `multiply` will fail, not published yet.
 		// The error is shown in the last event.
 		// The call extrinsic still succeeds, the evm emits a executed failed event
 		assert_ok!(EVMModule::call(
@@ -980,11 +980,11 @@ fn contract_deploy_precompile_works() {
 		U256::from(alice_evm_addr().as_bytes()).to_big_endian(&mut input[4 + 0 * 32..4 + 1 * 32]);
 		U256::from(contract_address.as_bytes()).to_big_endian(&mut input[4 + 1 * 32..4 + 2 *32]);
 
-		// deploy contract with precompile
+		// publish contract with precompile
 		let res = StateRentPrecompile::execute(&input, None, &context).unwrap();
 		assert_eq!(res.exit_status, ExitSucceed::Returned);
 
-		// Same call as above now works as contract is now deployed
+		// Same call as above now works as contract is now published
 		assert_ok!(EVMModule::call(
 			Origin::signed(bob()),
 			contract_address,
