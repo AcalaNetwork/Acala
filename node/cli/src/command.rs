@@ -208,6 +208,18 @@ fn set_default_ss58_version(spec: &Box<dyn service::ChainSpec>) {
 	sp_core::crypto::set_default_ss58_version(ss58_version.into());
 }
 
+#[allow(dead_code)]
+const DEV_ONLY_ERROR_PATTERN: &str = "can only use subcommand with --chain [karura-dev, acala-dev, pc-dev, dev], got ";
+
+#[allow(dead_code)]
+fn ensure_dev(spec: &Box<dyn service::ChainSpec>) -> std::result::Result<(), String> {
+	if spec.is_dev() {
+		Ok(())
+	} else {
+		Err(format!("{}{}", DEV_ONLY_ERROR_PATTERN, spec.id()))
+	}
+}
+
 fn extract_genesis_wasm(chain_spec: &Box<dyn service::ChainSpec>) -> Result<Vec<u8>> {
 	let mut storage = chain_spec.build_storage()?;
 
@@ -427,8 +439,9 @@ pub fn run() -> sc_cli::Result<()> {
 		Some(Subcommand::TryRuntime(cmd)) => {
 			let runner = cli.create_runner(cmd)?;
 			let chain_spec = &runner.config().chain_spec;
-
 			set_default_ss58_version(chain_spec);
+
+			ensure_dev(chain_spec).map_err(|err| format!("try-runtime error: {}", err))?;
 
 			with_runtime_or_err!(chain_spec, {
 				return runner.async_run(|config| {
