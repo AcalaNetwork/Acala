@@ -2711,8 +2711,8 @@ dependencies = [
 
 [[package]]
 name = "ethereum"
-version = "0.11.2"
-source = "git+https://github.com/zjb0807/ethereum?rev=7efc33a3f6e5af494c46101c8bf11843ee1bbea9#7efc33a3f6e5af494c46101c8bf11843ee1bbea9"
+version = "0.12.0"
+source = "git+https://github.com/zjb0807/ethereum?rev=58849281d029f2933dbd8c02eafa0488428702d1#58849281d029f2933dbd8c02eafa0488428702d1"
 dependencies = [
  "bytes 1.1.0",
  "ethereum-types",
@@ -6070,7 +6070,7 @@ dependencies = [
 name = "module-evm-utiltity"
 version = "2.2.1"
 dependencies = [
- "ethereum 0.11.2",
+ "ethereum 0.12.0",
  "evm",
  "evm-gasometer",
  "evm-runtime",

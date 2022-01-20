@@ -343,7 +343,7 @@ fn verify_eip712_signature(eth_msg: EthereumTransactionMessage, sig: [u8; 65]) -
 		let mut access_list_msg = access_list_type_hash.to_vec();
 		access_list_msg.extend_from_slice(&to_bytes(v.address.as_bytes()));
 		access_list_msg.extend_from_slice(&keccak_256(
-			&v.slots.iter().map(|v| v.as_bytes()).collect::<Vec<_>>().concat(),
+			&v.storage_keys.iter().map(|v| v.as_bytes()).collect::<Vec<_>>().concat(),
 		));
 		access_list.push(keccak_256(access_list_msg.as_slice()));
 	});

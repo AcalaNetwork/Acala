@@ -2147,7 +2147,7 @@ impl_runtime_apis! {
 				value,
 				gas_limit,
 				storage_limit,
-				access_list.unwrap_or_default().into_iter().map(|v| (v.address, v.slots)).collect(),
+				access_list.unwrap_or_default().into_iter().map(|v| (v.address, v.storage_keys)).collect(),
 				config.as_ref().unwrap_or(<Runtime as module_evm::Config>::config()),
 			)
 		}
@@ -2175,7 +2175,7 @@ impl_runtime_apis! {
 				value,
 				gas_limit,
 				storage_limit,
-				access_list.unwrap_or_default().into_iter().map(|v| (v.address, v.slots)).collect(),
+				access_list.unwrap_or_default().into_iter().map(|v| (v.address, v.storage_keys)).collect(),
 				config.as_ref().unwrap_or(<Runtime as module_evm::Config>::config()),
 			)
 		}

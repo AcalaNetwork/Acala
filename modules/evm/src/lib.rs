@@ -586,7 +586,7 @@ pub mod module {
 				value,
 				gas_limit,
 				storage_limit,
-				access_list.into_iter().map(|v| (v.address, v.slots)).collect(),
+				access_list.into_iter().map(|v| (v.address, v.storage_keys)).collect(),
 				T::config(),
 			) {
 				Err(e) => {
@@ -670,7 +670,7 @@ pub mod module {
 				value,
 				gas_limit,
 				storage_limit,
-				access_list.into_iter().map(|v| (v.address, v.slots)).collect(),
+				access_list.into_iter().map(|v| (v.address, v.storage_keys)).collect(),
 				T::config(),
 			) {
 				Err(e) => {
@@ -753,7 +753,7 @@ pub mod module {
 				value,
 				gas_limit,
 				storage_limit,
-				access_list.into_iter().map(|v| (v.address, v.slots)).collect(),
+				access_list.into_iter().map(|v| (v.address, v.storage_keys)).collect(),
 				T::config(),
 			) {
 				Err(e) => {
@@ -821,7 +821,7 @@ pub mod module {
 				value,
 				gas_limit,
 				storage_limit,
-				access_list.into_iter().map(|v| (v.address, v.slots)).collect(),
+				access_list.into_iter().map(|v| (v.address, v.storage_keys)).collect(),
 				T::config(),
 			) {
 				Err(e) => {
@@ -888,7 +888,7 @@ pub mod module {
 				value,
 				gas_limit,
 				storage_limit,
-				access_list.into_iter().map(|v| (v.address, v.slots)).collect(),
+				access_list.into_iter().map(|v| (v.address, v.storage_keys)).collect(),
 				T::config(),
 			) {
 				Err(e) => {
@@ -982,7 +982,7 @@ pub mod module {
 					value,
 					gas_limit,
 					storage_limit,
-					access_list.into_iter().map(|v| (v.address, v.slots)).collect(),
+					access_list.into_iter().map(|v| (v.address, v.storage_keys)).collect(),
 					T::config(),
 				) {
 					Err(e) => {
