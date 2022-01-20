@@ -37,7 +37,7 @@ use sp_runtime::traits::Convert;
 pub use sp_runtime::AccountId32;
 use sp_runtime::{
 	testing::Header,
-	traits::{BlakeTwo256, IdentityLookup},
+	traits::{BlakeTwo256, BlockNumberProvider, IdentityLookup, Zero},
 };
 use std::str::FromStr;
 
@@ -147,13 +147,26 @@ define_combined_task! {
 
 parameter_types!(
 	pub MinimumWeightRemainInBlock: Weight = u64::MIN;
+	pub DisableBlockThreshold: BlockNumber = u32::MAX;
 );
+
+pub struct MockBlockNumberProvider;
+
+impl BlockNumberProvider for MockBlockNumberProvider {
+	type BlockNumber = u32;
+
+	fn current_block_number() -> Self::BlockNumber {
+		Zero::zero()
+	}
+}
 
 impl module_idle_scheduler::Config for TestRuntime {
 	type Event = Event;
 	type WeightInfo = ();
 	type Task = ScheduledTasks;
 	type MinimumWeightRemainInBlock = MinimumWeightRemainInBlock;
+	type RelayChainBlockNumberProvider = MockBlockNumberProvider;
+	type DisableBlockThreshold = DisableBlockThreshold;
 }
 
 pub struct GasToWeight;
