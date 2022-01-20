@@ -1,10 +1,11 @@
 import { TestProvider } from "@acala-network/bodhi";
 import { WsProvider } from "@polkadot/api";
+import { Option } from '@polkadot/types/codec';
+import { EvmAccountInfo } from '@acala-network/types/interfaces';
 import { spawn, ChildProcess } from "child_process";
 import chaiAsPromised from "chai-as-promised";
 import chai from "chai";
 import getPort from 'get-port';
-import { Balance } from "@polkadot/types/interfaces";
 
 chai.use(chaiAsPromised);
 
@@ -133,4 +134,10 @@ export async function transfer(context: { provider: TestProvider }, from: string
 			}
 		});
 	});
+}
+
+export async function getEvmNonce(provider: TestProvider, address: string): Promise<number> {
+	const evm_account = await provider.api.query.evm.accounts<Option<EvmAccountInfo>>(address);
+	const nonce = evm_account.isEmpty ? 0 : evm_account.unwrap().nonce.toNumber();
+	return nonce;
 }

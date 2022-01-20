@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2021 Acala Foundation.
+// Copyright (C) 2020-2022 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -19,7 +19,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::upper_case_acronyms)]
 
-use codec::{Decode, Encode, FullCodec, HasCompact};
+use codec::{Decode, Encode, FullCodec};
 use frame_support::pallet_prelude::{DispatchClass, Pays, Weight};
 use primitives::{
 	evm::{CallInfo, EvmAddress},
@@ -40,12 +40,7 @@ use sp_std::{
 
 use xcm::latest::prelude::*;
 
-pub mod homa;
 pub mod mocks;
-pub use homa::{
-	HomaProtocol, NomineesProvider, OnCommission, OnNewEra, PolkadotBridge, PolkadotBridgeCall, PolkadotBridgeState,
-	PolkadotBridgeType, PolkadotStakingLedger, PolkadotUnlockChunk,
-};
 
 pub type Price = FixedU128;
 pub type ExchangeRate = FixedU128;
@@ -578,6 +573,16 @@ pub trait CallBuilder {
 	/// - index: The index of sub-account to be used as the new origin.
 	fn utility_as_derivative_call(call: Self::RelayChainCall, index: u16) -> Self::RelayChainCall;
 
+	/// Bond extra on relay-chain.
+	///  params:
+	/// - amount: The amount of staking currency to bond.
+	fn staking_bond_extra(amount: Self::Balance) -> Self::RelayChainCall;
+
+	/// Unbond on relay-chain.
+	///  params:
+	/// - amount: The amount of staking currency to unbond.
+	fn staking_unbond(amount: Self::Balance) -> Self::RelayChainCall;
+
 	/// Withdraw unbonded staking on the relay-chain.
 	///  params:
 	/// - num_slashing_spans: The number of slashing spans to withdraw from.
@@ -620,4 +625,27 @@ impl<Task> IdleScheduler<Task> for () {
 	fn schedule(_task: Task) -> DispatchResult {
 		unimplemented!()
 	}
+}
+
+#[impl_trait_for_tuples::impl_for_tuples(30)]
+pub trait OnNewEra<EraIndex> {
+	fn on_new_era(era: EraIndex);
+}
+
+pub trait NomineesProvider<AccountId> {
+	fn nominees() -> Vec<AccountId>;
+}
+
+pub trait HomaSubAccountXcm<AccountId, Balance> {
+	/// Cross-chain transfer staking currency to sub account on relaychain.
+	fn transfer_staking_to_sub_account(sender: &AccountId, sub_account_index: u16, amount: Balance) -> DispatchResult;
+	/// Send XCM message to the relaychain for sub account to withdraw_unbonded staking currency and
+	/// send it back.
+	fn withdraw_unbonded_from_sub_account(sub_account_index: u16, amount: Balance) -> DispatchResult;
+	/// Send XCM message to the relaychain for sub account to bond extra.
+	fn bond_extra_on_sub_account(sub_account_index: u16, amount: Balance) -> DispatchResult;
+	/// Send XCM message to the relaychain for sub account to unbond.
+	fn unbond_on_sub_account(sub_account_index: u16, amount: Balance) -> DispatchResult;
+	/// The fee of cross-chain transfer is deducted from the recipient.
+	fn get_xcm_transfer_fee() -> Balance;
 }

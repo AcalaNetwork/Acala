@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2021 Acala Foundation.
+// Copyright (C) 2020-2022 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -92,6 +92,8 @@ use sp_std::{
 pub mod precompiles;
 pub mod runner;
 
+pub mod bench;
+
 mod mock;
 mod tests;
 pub mod weights;
@@ -153,6 +155,51 @@ static ACALA_CONFIG: EvmConfig = EvmConfig {
 	has_ext_code_hash: true,
 	estimate: false,
 };
+
+/// Create an empty contract `contract Empty { }`.
+pub const BASE_CREATE_GAS: u64 = 67_066;
+/// Call function that just set a storage `function store(uint256 num) public { number = num; }`.
+pub const BASE_CALL_GAS: u64 = 41_602;
+
+/// Helper method to calculate `create` weight.
+fn create_weight<T: Config>(gas: u64) -> Weight {
+	<T as Config>::WeightInfo::create()
+		// during `create` benchmark an additional of `BASE_CREATE_GAS` was used
+		// so user will be extra charged only for extra gas usage
+		.saturating_add(T::GasToWeight::convert(gas.saturating_sub(BASE_CREATE_GAS)))
+}
+
+/// Helper method to calculate `create2` weight.
+fn create2_weight<T: Config>(gas: u64) -> Weight {
+	<T as Config>::WeightInfo::create2()
+		// during `create2` benchmark an additional of `BASE_CREATE_GAS` was used
+		// so user will be extra charged only for extra gas usage
+		.saturating_add(T::GasToWeight::convert(gas.saturating_sub(BASE_CREATE_GAS)))
+}
+
+/// Helper method to calculate `create_predeploy_contract` weight.
+fn create_predeploy_contract<T: Config>(gas: u64) -> Weight {
+	<T as Config>::WeightInfo::create_predeploy_contract()
+		// during `create_predeploy_contract` benchmark an additional of `BASE_CREATE_GAS`
+		// was used so user will be extra charged only for extra gas usage
+		.saturating_add(T::GasToWeight::convert(gas.saturating_sub(BASE_CREATE_GAS)))
+}
+
+/// Helper method to calculate `create_nft_contract` weight.
+fn create_nft_contract<T: Config>(gas: u64) -> Weight {
+	<T as Config>::WeightInfo::create_nft_contract()
+		// during `create_nft_contract` benchmark an additional of `BASE_CREATE_GAS`
+		// was used so user will be extra charged only for extra gas usage
+		.saturating_add(T::GasToWeight::convert(gas.saturating_sub(BASE_CREATE_GAS)))
+}
+
+/// Helper method to calculate `call` weight.
+fn call_weight<T: Config>(gas: u64) -> Weight {
+	<T as Config>::WeightInfo::call()
+		// during `call` benchmark an additional of `BASE_CALL_GAS` was used
+		// so user will be extra charged only for extra gas usage
+		.saturating_add(T::GasToWeight::convert(gas.saturating_sub(BASE_CALL_GAS)))
+}
 
 #[frame_support::pallet]
 pub mod module {
@@ -524,7 +571,10 @@ pub mod module {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		#[pallet::weight(T::GasToWeight::convert(*gas_limit))]
+		#[pallet::weight(match *action {
+			TransactionAction::Call(_) => call_weight::<T>(*gas_limit),
+			TransactionAction::Create => create_weight::<T>(*gas_limit)
+		})]
 		#[transactional]
 		pub fn eth_call(
 			origin: OriginFor<T>,
@@ -549,7 +599,7 @@ pub mod module {
 		/// - `value`: the amount sent for payable calls
 		/// - `gas_limit`: the maximum gas the call can use
 		/// - `storage_limit`: the total bytes the contract's storage can increase by
-		#[pallet::weight(T::GasToWeight::convert(*gas_limit))]
+		#[pallet::weight(call_weight::<T>(*gas_limit))]
 		#[transactional]
 		pub fn call(
 			origin: OriginFor<T>,
@@ -562,7 +612,7 @@ pub mod module {
 			let who = ensure_signed(origin)?;
 			let source = T::AddressMapping::get_or_create_evm_address(&who);
 
-			let info = T::Runner::call(
+			match T::Runner::call(
 				source,
 				source,
 				target,
@@ -571,14 +621,43 @@ pub mod module {
 				gas_limit,
 				storage_limit,
 				T::config(),
-			)?;
+			) {
+				Err(e) => {
+					Pallet::<T>::deposit_event(Event::<T>::ExecutedFailed {
+						from: source,
+						contract: target,
+						exit_reason: ExitReason::Error(ExitError::Other(Into::<&str>::into(e).into())),
+						output: vec![],
+						logs: vec![],
+					});
 
-			let used_gas: u64 = info.used_gas.unique_saturated_into();
+					Ok(().into())
+				}
+				Ok(info) => {
+					if info.exit_reason.is_succeed() {
+						Pallet::<T>::deposit_event(Event::<T>::Executed {
+							from: source,
+							contract: target,
+							logs: info.logs.clone(),
+						});
+					} else {
+						Pallet::<T>::deposit_event(Event::<T>::ExecutedFailed {
+							from: source,
+							contract: target,
+							exit_reason: info.exit_reason.clone(),
+							output: info.value.clone(),
+							logs: info.logs.clone(),
+						});
+					}
 
-			Ok(PostDispatchInfo {
-				actual_weight: Some(T::GasToWeight::convert(used_gas)),
-				pays_fee: Pays::Yes,
-			})
+					let used_gas: u64 = info.used_gas.unique_saturated_into();
+
+					Ok(PostDispatchInfo {
+						actual_weight: Some(call_weight::<T>(used_gas)),
+						pays_fee: Pays::Yes,
+					})
+				}
+			}
 		}
 
 		/// Issue an EVM call operation on a scheduled contract call, and
@@ -592,6 +671,7 @@ pub mod module {
 		/// - `storage_limit`: the total bytes the contract's storage can increase by
 		#[pallet::weight(T::GasToWeight::convert(*gas_limit))]
 		#[transactional]
+		// TODO: create benchmark
 		pub fn scheduled_call(
 			origin: OriginFor<T>,
 			from: EvmAddress,
@@ -614,30 +694,59 @@ pub mod module {
 				_payed = imbalance;
 			}
 
-			let info = T::Runner::call(from, from, target, input, value, gas_limit, storage_limit, T::config())?;
+			match T::Runner::call(from, from, target, input, value, gas_limit, storage_limit, T::config()) {
+				Err(e) => {
+					Pallet::<T>::deposit_event(Event::<T>::ExecutedFailed {
+						from,
+						contract: target,
+						exit_reason: ExitReason::Error(ExitError::Other(Into::<&str>::into(e).into())),
+						output: vec![],
+						logs: vec![],
+					});
 
-			let used_gas: u64 = info.used_gas.unique_saturated_into();
+					Ok(().into())
+				}
+				Ok(info) => {
+					if info.exit_reason.is_succeed() {
+						Pallet::<T>::deposit_event(Event::<T>::Executed {
+							from,
+							contract: target,
+							logs: info.logs.clone(),
+						});
+					} else {
+						Pallet::<T>::deposit_event(Event::<T>::ExecutedFailed {
+							from,
+							contract: target,
+							exit_reason: info.exit_reason.clone(),
+							output: info.value.clone(),
+							logs: info.logs.clone(),
+						});
+					}
 
-			#[cfg(not(feature = "with-ethereum-compatibility"))]
-			{
-				use sp_runtime::traits::Zero;
-				let refund_gas = gas_limit.saturating_sub(used_gas);
-				if !refund_gas.is_zero() {
-					// ignore the result to continue. if it fails, just the user will not
-					// be refunded, there will not increase user balance.
-					let res = T::ChargeTransactionPayment::refund_fee(
-						&_from_account,
-						T::GasToWeight::convert(refund_gas),
-						_payed,
-					);
-					debug_assert!(res.is_ok());
+					let used_gas: u64 = info.used_gas.unique_saturated_into();
+
+					#[cfg(not(feature = "with-ethereum-compatibility"))]
+					{
+						use sp_runtime::traits::Zero;
+						let refund_gas = gas_limit.saturating_sub(used_gas);
+						if !refund_gas.is_zero() {
+							// ignore the result to continue. if it fails, just the user will not
+							// be refunded, there will not increase user balance.
+							let res = T::ChargeTransactionPayment::refund_fee(
+								&_from_account,
+								T::GasToWeight::convert(refund_gas),
+								_payed,
+							);
+							debug_assert!(res.is_ok());
+						}
+					}
+
+					Ok(PostDispatchInfo {
+						actual_weight: Some(T::GasToWeight::convert(used_gas)),
+						pays_fee: Pays::Yes,
+					})
 				}
 			}
-
-			Ok(PostDispatchInfo {
-				actual_weight: Some(T::GasToWeight::convert(used_gas)),
-				pays_fee: Pays::Yes,
-			})
 		}
 
 		/// Issue an EVM create operation. This is similar to a contract
@@ -647,7 +756,7 @@ pub mod module {
 		/// - `value`: the amount sent to the contract upon creation
 		/// - `gas_limit`: the maximum gas the call can use
 		/// - `storage_limit`: the total bytes the contract's storage can increase by
-		#[pallet::weight(T::GasToWeight::convert(*gas_limit))]
+		#[pallet::weight(create_weight::<T>(*gas_limit))]
 		#[transactional]
 		pub fn create(
 			origin: OriginFor<T>,
@@ -659,14 +768,41 @@ pub mod module {
 			let who = ensure_signed(origin)?;
 			let source = T::AddressMapping::get_or_create_evm_address(&who);
 
-			let info = T::Runner::create(source, init, value, gas_limit, storage_limit, T::config())?;
+			match T::Runner::create(source, init, value, gas_limit, storage_limit, T::config()) {
+				Err(e) => {
+					Pallet::<T>::deposit_event(Event::<T>::CreatedFailed {
+						from: source,
+						contract: H160::default(),
+						exit_reason: ExitReason::Error(ExitError::Other(Into::<&str>::into(e).into())),
+						logs: vec![],
+					});
 
-			let used_gas: u64 = info.used_gas.unique_saturated_into();
+					Ok(().into())
+				}
+				Ok(info) => {
+					if info.exit_reason.is_succeed() {
+						Pallet::<T>::deposit_event(Event::<T>::Created {
+							from: source,
+							contract: info.value,
+							logs: info.logs.clone(),
+						});
+					} else {
+						Pallet::<T>::deposit_event(Event::<T>::CreatedFailed {
+							from: source,
+							contract: info.value,
+							exit_reason: info.exit_reason.clone(),
+							logs: info.logs.clone(),
+						});
+					}
 
-			Ok(PostDispatchInfo {
-				actual_weight: Some(T::GasToWeight::convert(used_gas)),
-				pays_fee: Pays::Yes,
-			})
+					let used_gas: u64 = info.used_gas.unique_saturated_into();
+
+					Ok(PostDispatchInfo {
+						actual_weight: Some(create_weight::<T>(used_gas)),
+						pays_fee: Pays::Yes,
+					})
+				}
+			}
 		}
 
 		/// Issue an EVM create2 operation.
@@ -677,7 +813,7 @@ pub mod module {
 		/// - `value`: the amount sent for payable calls
 		/// - `gas_limit`: the maximum gas the call can use
 		/// - `storage_limit`: the total bytes the contract's storage can increase by
-		#[pallet::weight(T::GasToWeight::convert(*gas_limit))]
+		#[pallet::weight(create2_weight::<T>(*gas_limit))]
 		#[transactional]
 		pub fn create2(
 			origin: OriginFor<T>,
@@ -690,14 +826,41 @@ pub mod module {
 			let who = ensure_signed(origin)?;
 			let source = T::AddressMapping::get_or_create_evm_address(&who);
 
-			let info = T::Runner::create2(source, init, salt, value, gas_limit, storage_limit, T::config())?;
+			match T::Runner::create2(source, init, salt, value, gas_limit, storage_limit, T::config()) {
+				Err(e) => {
+					Pallet::<T>::deposit_event(Event::<T>::CreatedFailed {
+						from: source,
+						contract: H160::default(),
+						exit_reason: ExitReason::Error(ExitError::Other(Into::<&str>::into(e).into())),
+						logs: vec![],
+					});
 
-			let used_gas: u64 = info.used_gas.unique_saturated_into();
+					Ok(().into())
+				}
+				Ok(info) => {
+					if info.exit_reason.is_succeed() {
+						Pallet::<T>::deposit_event(Event::<T>::Created {
+							from: source,
+							contract: info.value,
+							logs: info.logs.clone(),
+						});
+					} else {
+						Pallet::<T>::deposit_event(Event::<T>::CreatedFailed {
+							from: source,
+							contract: info.value,
+							exit_reason: info.exit_reason.clone(),
+							logs: info.logs.clone(),
+						});
+					}
 
-			Ok(PostDispatchInfo {
-				actual_weight: Some(T::GasToWeight::convert(used_gas)),
-				pays_fee: Pays::Yes,
-			})
+					let used_gas: u64 = info.used_gas.unique_saturated_into();
+
+					Ok(PostDispatchInfo {
+						actual_weight: Some(create2_weight::<T>(used_gas)),
+						pays_fee: Pays::Yes,
+					})
+				}
+			}
 		}
 
 		/// Create mirrored NFT contract. The next available system contract
@@ -707,7 +870,7 @@ pub mod module {
 		/// - `value`: the amount sent for payable calls
 		/// - `gas_limit`: the maximum gas the call can use
 		/// - `storage_limit`: the total bytes the contract's storage can increase by
-		#[pallet::weight(T::GasToWeight::convert(*gas_limit))]
+		#[pallet::weight(create_nft_contract::<T>(*gas_limit))]
 		#[transactional]
 		pub fn create_nft_contract(
 			origin: OriginFor<T>,
@@ -720,17 +883,43 @@ pub mod module {
 
 			let source = T::NetworkContractSource::get();
 			let address = MIRRORED_TOKENS_ADDRESS_START | EvmAddress::from_low_u64_be(Self::network_contract_index());
-			let info =
-				T::Runner::create_at_address(source, address, init, value, gas_limit, storage_limit, T::config())?;
+			match T::Runner::create_at_address(source, address, init, value, gas_limit, storage_limit, T::config()) {
+				Err(e) => {
+					Pallet::<T>::deposit_event(Event::<T>::CreatedFailed {
+						from: source,
+						contract: H160::default(),
+						exit_reason: ExitReason::Error(ExitError::Other(Into::<&str>::into(e).into())),
+						logs: vec![],
+					});
 
-			NetworkContractIndex::<T>::mutate(|v| *v = v.saturating_add(One::one()));
+					Ok(().into())
+				}
+				Ok(info) => {
+					if info.exit_reason.is_succeed() {
+						NetworkContractIndex::<T>::mutate(|v| *v = v.saturating_add(One::one()));
 
-			let used_gas: u64 = info.used_gas.unique_saturated_into();
+						Pallet::<T>::deposit_event(Event::<T>::Created {
+							from: source,
+							contract: info.value,
+							logs: info.logs.clone(),
+						});
+					} else {
+						Pallet::<T>::deposit_event(Event::<T>::CreatedFailed {
+							from: source,
+							contract: info.value,
+							exit_reason: info.exit_reason.clone(),
+							logs: info.logs.clone(),
+						});
+					}
 
-			Ok(PostDispatchInfo {
-				actual_weight: Some(T::GasToWeight::convert(used_gas)),
-				pays_fee: Pays::Yes,
-			})
+					let used_gas: u64 = info.used_gas.unique_saturated_into();
+
+					Ok(PostDispatchInfo {
+						actual_weight: Some(create_nft_contract::<T>(used_gas)),
+						pays_fee: Pays::Yes,
+					})
+				}
+			}
 		}
 
 		/// Issue an EVM create operation. The address specified
@@ -741,7 +930,11 @@ pub mod module {
 		/// - `value`: the amount sent for payable calls
 		/// - `gas_limit`: the maximum gas the call can use
 		/// - `storage_limit`: the total bytes the contract's storage can increase by
-		#[pallet::weight(T::GasToWeight::convert(*gas_limit))]
+		#[pallet::weight(if init.is_empty() {
+			<T as Config>::WeightInfo::deposit_ed()
+		} else {
+			create_predeploy_contract::<T>(*gas_limit)
+		})]
 		#[transactional]
 		pub fn create_predeploy_contract(
 			origin: OriginFor<T>,
@@ -760,7 +953,7 @@ pub mod module {
 
 			let source = T::NetworkContractSource::get();
 
-			let info = if init.is_empty() {
+			if init.is_empty() {
 				// deposit ED for mirrored token
 				T::Currency::transfer(
 					&T::TreasuryAccount::get(),
@@ -768,23 +961,48 @@ pub mod module {
 					T::Currency::minimum_balance(),
 					ExistenceRequirement::AllowDeath,
 				)?;
-				CreateInfo {
-					value: target,
-					exit_reason: ExitReason::Succeed(ExitSucceed::Stopped),
-					used_gas: 0.into(),
-					used_storage: 0,
-					logs: vec![],
-				}
+
+				Ok(PostDispatchInfo {
+					actual_weight: Some(<T as Config>::WeightInfo::deposit_ed()),
+					pays_fee: Pays::Yes,
+				})
 			} else {
-				T::Runner::create_at_address(source, target, init, value, gas_limit, storage_limit, T::config())?
-			};
+				match T::Runner::create_at_address(source, target, init, value, gas_limit, storage_limit, T::config()) {
+					Err(e) => {
+						Pallet::<T>::deposit_event(Event::<T>::CreatedFailed {
+							from: source,
+							contract: H160::default(),
+							exit_reason: ExitReason::Error(ExitError::Other(Into::<&str>::into(e).into())),
+							logs: vec![],
+						});
 
-			let used_gas: u64 = info.used_gas.unique_saturated_into();
+						Ok(().into())
+					}
+					Ok(info) => {
+						if info.exit_reason.is_succeed() {
+							Pallet::<T>::deposit_event(Event::<T>::Created {
+								from: source,
+								contract: info.value,
+								logs: info.logs.clone(),
+							});
+						} else {
+							Pallet::<T>::deposit_event(Event::<T>::CreatedFailed {
+								from: source,
+								contract: info.value,
+								exit_reason: info.exit_reason.clone(),
+								logs: info.logs.clone(),
+							});
+						}
 
-			Ok(PostDispatchInfo {
-				actual_weight: Some(T::GasToWeight::convert(used_gas)),
-				pays_fee: Pays::Yes,
-			})
+						let used_gas: u64 = info.used_gas.unique_saturated_into();
+
+						Ok(PostDispatchInfo {
+							actual_weight: Some(create_predeploy_contract::<T>(used_gas)),
+							pays_fee: Pays::Yes,
+						})
+					}
+				}
+			}
 		}
 
 		/// Transfers Contract maintainership to a new EVM Address.
@@ -980,21 +1198,22 @@ impl<T: Config> Pallet<T> {
 	/// Removes an account from Accounts and AccountStorages.
 	pub fn remove_account(address: &EvmAddress) -> DispatchResult {
 		// Deref code, and remove it if ref count is zero.
-		if let Some(AccountInfo {
-			contract_info: Some(contract_info),
-			..
-		}) = Self::accounts(address)
-		{
-			CodeInfos::<T>::mutate_exists(&contract_info.code_hash, |maybe_code_info| {
-				if let Some(code_info) = maybe_code_info.as_mut() {
-					code_info.ref_count = code_info.ref_count.saturating_sub(1);
-					if code_info.ref_count == 0 {
-						Codes::<T>::remove(&contract_info.code_hash);
-						*maybe_code_info = None;
-					}
+		Accounts::<T>::mutate_exists(&address, |maybe_account| {
+			if let Some(account) = maybe_account {
+				if let Some(ContractInfo { code_hash, .. }) = account.contract_info {
+					CodeInfos::<T>::mutate_exists(&code_hash, |maybe_code_info| {
+						if let Some(code_info) = maybe_code_info {
+							code_info.ref_count = code_info.ref_count.saturating_sub(1);
+							if code_info.ref_count == 0 {
+								Codes::<T>::remove(&code_hash);
+								account.contract_info = None;
+								*maybe_code_info = None;
+							}
+						}
+					});
 				}
-			});
-		}
+			}
+		});
 
 		if let Some(AccountInfo {
 			contract_info: Some(_), ..
@@ -1003,7 +1222,7 @@ impl<T: Config> Pallet<T> {
 			// remove_account can only be called when account is killed. i.e. providers == 0
 			// but contract_info should maintain a provider
 			// so this should never happen
-			debug_assert!(false);
+			debug_assert!(false, "removed account while is still linked to contract info");
 		}
 
 		Ok(())
@@ -1275,7 +1494,9 @@ impl<T: Config> Pallet<T> {
 			..
 		}) = Accounts::<T>::get(address)
 		{
-			deployed || maintainer == *caller || Self::is_developer_or_contract(caller)
+			// https://github.com/AcalaNetwork/Acala/blob/af1c277/modules/evm/rpc/src/lib.rs#L176
+			// when rpc is called, from is empty, allowing the call
+			deployed || maintainer == *caller || Self::is_developer_or_contract(caller) || *caller == H160::default()
 		} else {
 			// contract non exist, we don't override defualt evm behaviour
 			true
@@ -1431,8 +1652,20 @@ impl<T: Config> EVMTrait<T::AccountId> for Pallet<T> {
 				Ok(info) => match mode {
 					ExecutionMode::Execute => {
 						if info.exit_reason.is_succeed() {
+							Pallet::<T>::deposit_event(Event::<T>::Executed {
+								from: context.sender,
+								contract: context.contract,
+								logs: info.logs.clone(),
+							});
 							TransactionOutcome::Commit(Ok(info))
 						} else {
+							Pallet::<T>::deposit_event(Event::<T>::ExecutedFailed {
+								from: context.sender,
+								contract: context.contract,
+								exit_reason: info.exit_reason.clone(),
+								output: info.value.clone(),
+								logs: info.logs.clone(),
+							});
 							TransactionOutcome::Rollback(Ok(info))
 						}
 					}

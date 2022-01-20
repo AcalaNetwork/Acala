@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2021 Acala Foundation.
+// Copyright (C) 2020-2022 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -136,7 +136,10 @@ pub fn kusama_ext() -> sp_io::TestExternalities {
 
 pub fn para_ext(parachain_id: u32) -> sp_io::TestExternalities {
 	ExtBuilder::default()
-		.balances(vec![(AccountId::from(ALICE), KSM, 10 * dollar(KSM))])
+		.balances(vec![
+			(AccountId::from(ALICE), KSM, 10 * dollar(KSM)),
+			(karura_runtime::KaruraTreasuryAccount::get(), KSM, dollar(KSM)),
+		])
 		.parachain_id(parachain_id)
 		.build()
 }

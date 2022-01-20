@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2021 Acala Foundation.
+// Copyright (C) 2020-2022 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -39,7 +39,10 @@ use frame_system::Config;
 #[derive(Encode, Decode, RuntimeDebug)]
 pub enum BalancesCall<T: Config> {
 	#[codec(index = 3)]
-	TransferKeepAlive(<T::Lookup as StaticLookup>::Source, #[codec(compact)] Balance),
+	TransferKeepAlive(<T::Lookup as StaticLookup>::Source, #[codec(compact)] Balance), /* TODO: because param type
+	                                                                                    * in relaychain is u64,
+	                                                                                    * need to confirm
+	                                                                                    * Balance(u128) is work. */
 }
 
 #[derive(Encode, Decode, RuntimeDebug)]
@@ -52,6 +55,12 @@ pub enum UtilityCall<RelayChainCall> {
 
 #[derive(Encode, Decode, RuntimeDebug)]
 pub enum StakingCall {
+	#[codec(index = 1)]
+	BondExtra(#[codec(compact)] Balance), /* TODO: because param type in relaychain is u64, need to confirm
+	                                       * Balance(u128) is work. */
+	#[codec(index = 2)]
+	Unbond(#[codec(compact)] Balance), /* TODO: because param type in relaychain is u64, need to confirm
+	                                    * Balance(u128) is work. */
 	#[codec(index = 3)]
 	WithdrawUnbonded(u32),
 }
@@ -113,6 +122,14 @@ where
 
 	fn utility_as_derivative_call(call: Self::RelayChainCall, index: u16) -> Self::RelayChainCall {
 		RelayChainCall::Utility(Box::new(UtilityCall::AsDerivative(index, call)))
+	}
+
+	fn staking_bond_extra(amount: Self::Balance) -> Self::RelayChainCall {
+		RelayChainCall::Staking(StakingCall::BondExtra(amount))
+	}
+
+	fn staking_unbond(amount: Self::Balance) -> Self::RelayChainCall {
+		RelayChainCall::Staking(StakingCall::Unbond(amount))
 	}
 
 	fn staking_withdraw_unbonded(num_slashing_spans: u32) -> Self::RelayChainCall {

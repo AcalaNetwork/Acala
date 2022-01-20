@@ -31,6 +31,9 @@ pub trait WeightInfo {
 /// Default weights.
 impl WeightInfo for () {
 	{{#each benchmarks as |benchmark|}}
+	{{#each benchmark.comments as |comment|}}
+	// {{comment}}
+	{{/each}}
 	fn {{benchmark.name~}}
 	(
 		{{~#each benchmark.components as |c| ~}}

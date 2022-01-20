@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2021 Acala Foundation.
+// Copyright (C) 2020-2022 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -90,9 +90,9 @@ fn test_update_liquid_currency_price() {
 
 			set_oracle_price(vec![(RELAY_CHAIN_CURRENCY, relaychain_price)]);
 
-			assert_ok!(HomaLite::set_total_staking_currency(
+			assert_ok!(Homa::reset_ledgers(
 				Origin::root(),
-				100 * dollar(RELAY_CHAIN_CURRENCY)
+				vec![(0, Some(100 * dollar(RELAY_CHAIN_CURRENCY)), None)]
 			));
 
 			assert_eq!(
@@ -100,17 +100,11 @@ fn test_update_liquid_currency_price() {
 				Some(Ratio::saturating_from_rational(100, 1000))
 			);
 
-			assert_ok!(HomaLite::set_total_staking_currency(
+			assert_ok!(Homa::reset_ledgers(
 				Origin::root(),
-				110 * dollar(RELAY_CHAIN_CURRENCY)
+				vec![(0, Some(110 * dollar(RELAY_CHAIN_CURRENCY)), None)]
 			));
 
-			#[cfg(feature = "with-mandala-runtime")]
-			assert_eq!(
-				RealTimePriceProvider::<Runtime>::get_relative_price(LIQUID_CURRENCY, RELAY_CHAIN_CURRENCY),
-				Some(Ratio::saturating_from_rational(100, 1000))
-			);
-			#[cfg(any(feature = "with-karura-runtime", feature = "with-acala-runtime"))]
 			assert_eq!(
 				RealTimePriceProvider::<Runtime>::get_relative_price(LIQUID_CURRENCY, RELAY_CHAIN_CURRENCY),
 				Some(Ratio::saturating_from_rational(110, 1000))

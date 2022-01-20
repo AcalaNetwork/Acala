@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2021 Acala Foundation.
+// Copyright (C) 2020-2022 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -68,7 +68,9 @@ impl ChainInfo for NodeTemplateChainInfo {
 			frame_system::CheckTxVersion::<Self::Runtime>::new(),
 			frame_system::CheckGenesis::<Self::Runtime>::new(),
 			frame_system::CheckMortality::<Self::Runtime>::from(Era::Immortal),
-			frame_system::CheckNonce::<Self::Runtime>::from(frame_system::Pallet::<Self::Runtime>::account_nonce(from)),
+			runtime_common::CheckNonce::<Self::Runtime>::from(frame_system::Pallet::<Self::Runtime>::account_nonce(
+				from,
+			)),
 			frame_system::CheckWeight::<Self::Runtime>::new(),
 			module_transaction_payment::ChargeTransactionPayment::<Self::Runtime>::from(0),
 			module_evm::SetEvmOrigin::<Self::Runtime>::new(),
