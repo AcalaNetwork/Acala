@@ -272,7 +272,7 @@ impl<T: Config> DEXPriceProvider<CurrencyId> for PriorityCumulativeDEXPriceProvi
 	fn get_relative_price(base: CurrencyId, quote: CurrencyId) -> Option<ExchangeRate> {
 		let trading_pair = TradingPair::from_currency_ids(base, quote)?;
 		Pallet::<T>::get_cumulative_price(&trading_pair)
-			.or(Pallet::<T>::get_current_price(&trading_pair))
+			.or_else(|| Pallet::<T>::get_current_price(&trading_pair))
 			.map(
 				|(price_0, price_1)| {
 					if base == trading_pair.first() {

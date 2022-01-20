@@ -745,7 +745,7 @@ impl<T: Config> Pallet<T> {
 			let old_pool_1 = *pool_1;
 			f((pool_0, pool_1)).map(move |result| {
 				if *pool_0 != old_pool_0 || *pool_1 != old_pool_1 {
-					T::OnLiquidityPoolUpdated::happened(&(trading_pair.clone(), *pool_0, *pool_1));
+					T::OnLiquidityPoolUpdated::happened(&(*trading_pair, *pool_0, *pool_1));
 				}
 
 				result
