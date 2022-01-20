@@ -277,7 +277,7 @@ pub trait PriceProvider<CurrencyId> {
 }
 
 pub trait DEXPriceProvider<CurrencyId> {
-	fn get_dex_price(currency_id_a: CurrencyId, currency_id_b: CurrencyId) -> Option<ExchangeRate>;
+	fn get_relative_price(base: CurrencyId, quote: CurrencyId) -> Option<ExchangeRate>;
 }
 
 pub trait LockablePrice<CurrencyId> {

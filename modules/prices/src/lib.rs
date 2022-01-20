@@ -39,10 +39,7 @@ use sp_runtime::{
 	FixedPointNumber,
 };
 use sp_std::marker::PhantomData;
-use support::{
-	DEXManager, DEXPriceProvider, Erc20InfoMapping, ExchangeRate, ExchangeRateProvider, LockablePrice, Price,
-	PriceProvider, Rate,
-};
+use support::{DEXManager, Erc20InfoMapping, ExchangeRateProvider, LockablePrice, Price, PriceProvider, Rate};
 
 mod mock;
 mod tests;
@@ -271,26 +268,6 @@ pub struct LockedPriceProvider<T>(PhantomData<T>);
 impl<T: Config> PriceProvider<CurrencyId> for LockedPriceProvider<T> {
 	fn get_price(currency_id: CurrencyId) -> Option<Price> {
 		Pallet::<T>::locked_price(currency_id)
-	}
-}
-
-/// DEXPriceProvider that always provider current exchange rate for currency_id_a to currency_id_b
-/// from DEX
-pub struct CurrentDEXPriceProvider<T>(PhantomData<T>);
-impl<T: Config> DEXPriceProvider<CurrencyId> for CurrentDEXPriceProvider<T> {
-	fn get_dex_price(currency_id_a: CurrencyId, currency_id_b: CurrencyId) -> Option<ExchangeRate> {
-		let (pool_a, pool_b) = T::DEX::get_liquidity_pool(currency_id_a, currency_id_b);
-		ExchangeRate::checked_from_rational(pool_b, pool_a)
-	}
-}
-
-/// DEXPriceProvider that always provider cumulative exchange rate for currency_id_a to
-/// currency_id_b from DEX
-pub struct CumulativeDEXPriceProvider<T>(PhantomData<T>);
-impl<T: Config> DEXPriceProvider<CurrencyId> for CumulativeDEXPriceProvider<T> {
-	fn get_dex_price(currency_id_a: CurrencyId, currency_id_b: CurrencyId) -> Option<ExchangeRate> {
-		let (pool_a, pool_b) = T::DEX::get_liquidity_pool(currency_id_a, currency_id_b);
-		ExchangeRate::checked_from_rational(pool_b, pool_a)
 	}
 }
 
