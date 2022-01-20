@@ -43,7 +43,7 @@ pub use primitives::{
 use scale_info::TypeInfo;
 use sp_core::{crypto::AccountId32, H160, H256};
 use sp_runtime::{
-	traits::{AccountIdConversion, BlakeTwo256, Convert, IdentityLookup, One as OneT},
+	traits::{AccountIdConversion, BlakeTwo256, BlockNumberProvider, Convert, IdentityLookup, One as OneT, Zero},
 	DispatchResult, FixedPointNumber, FixedU128, Perbill,
 };
 use sp_std::{collections::btree_map::BTreeMap, str::FromStr};
@@ -199,13 +199,26 @@ define_combined_task! {
 
 parameter_types!(
 	pub MinimumWeightRemainInBlock: Weight = u64::MIN;
+	pub DisableBlockThreshold: BlockNumber = u32::MAX;
 );
+
+pub struct MockBlockNumberProvider;
+
+impl BlockNumberProvider for MockBlockNumberProvider {
+	type BlockNumber = u32;
+
+	fn current_block_number() -> Self::BlockNumber {
+		Zero::zero()
+	}
+}
 
 impl module_idle_scheduler::Config for Test {
 	type Event = Event;
 	type WeightInfo = ();
 	type Task = ScheduledTasks;
 	type MinimumWeightRemainInBlock = MinimumWeightRemainInBlock;
+	type RelayChainBlockNumberProvider = MockBlockNumberProvider;
+	type DisableBlockThreshold = DisableBlockThreshold;
 }
 
 parameter_types! {

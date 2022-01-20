@@ -139,7 +139,7 @@ define_combined_task! {
 
 parameter_types!(
 	pub MinimumWeightRemainInBlock: Weight = u64::MIN;
-	pub SkipRelayBlocks: BlockNumber = u32::MAX;
+	pub DisableBlockThreshold: BlockNumber = u32::MAX;
 );
 
 pub struct MockBlockNumberProvider;
@@ -158,7 +158,7 @@ impl module_idle_scheduler::Config for Runtime {
 	type Task = ScheduledTasks;
 	type MinimumWeightRemainInBlock = MinimumWeightRemainInBlock;
 	type RelayChainBlockNumberProvider = MockBlockNumberProvider;
-	type SkipRelayBlocks = SkipRelayBlocks;
+	type DisableBlockThreshold = DisableBlockThreshold;
 }
 
 pub struct GasToWeight;

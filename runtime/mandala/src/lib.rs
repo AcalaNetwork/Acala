@@ -1971,7 +1971,7 @@ parameter_types!(
 	pub MinimumWeightRemainInBlock: Weight = RuntimeBlockWeights::get().max_block / 50;
 	// Number of relay chain blocks produced with no parachain blocks finalized,
 	// once this number is reached idle scheduler is disabled as block  production is slow
-	pub SkipRelayBlocks: BlockNumber = 6;
+	pub DisableBlockThreshold: BlockNumber = 6;
 );
 
 impl module_idle_scheduler::Config for Runtime {
@@ -1980,7 +1980,7 @@ impl module_idle_scheduler::Config for Runtime {
 	type Task = ScheduledTasks;
 	type MinimumWeightRemainInBlock = MinimumWeightRemainInBlock;
 	type RelayChainBlockNumberProvider = cumulus_pallet_parachain_system::RelaychainBlockNumberProvider<Runtime>;
-	type SkipRelayBlocks = SkipRelayBlocks;
+	type DisableBlockThreshold = DisableBlockThreshold;
 }
 
 impl cumulus_pallet_aura_ext::Config for Runtime {}
@@ -2171,14 +2171,14 @@ construct_runtime! {
 		NFT: module_nft::{Pallet, Call, Event<T>} = 141,
 		AssetRegistry: module_asset_registry::{Pallet, Call, Storage, Event<T>} = 142,
 
-		// Parachain
-		ParachainSystem: cumulus_pallet_parachain_system::{Pallet, Call, Storage, Inherent, Config, Event<T>} = 160,
-		ParachainInfo: parachain_info::{Pallet, Storage, Config} = 161,
-
 		// Ecosystem modules
 		RenVmBridge: ecosystem_renvm_bridge::{Pallet, Call, Config, Storage, Event<T>, ValidateUnsigned} = 150,
 		Starport: ecosystem_starport::{Pallet, Call, Storage, Event<T>, Config} = 151,
 		CompoundCash: ecosystem_compound_cash::{Pallet, Storage, Event<T>} = 152,
+
+		// Parachain
+		ParachainSystem: cumulus_pallet_parachain_system::{Pallet, Call, Storage, Inherent, Config, Event<T>} = 160,
+		ParachainInfo: parachain_info::{Pallet, Storage, Config} = 161,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 170,

@@ -67,7 +67,7 @@ pub mod module {
 		/// this shuts down idle-scheduler when block production is slower than this number of
 		/// relaychain blocks
 		#[pallet::constant]
-		type SkipRelayBlocks: Get<BlockNumber>;
+		type DisableBlockThreshold: Get<BlockNumber>;
 	}
 
 	#[pallet::event]
@@ -114,7 +114,8 @@ pub mod module {
 				.try_into()
 				.unwrap_or_default();
 			let previous_relay_block_number = PreviousRelayBlockNumber::<T>::take();
-			if current_relay_block_number.saturating_sub(previous_relay_block_number) >= T::SkipRelayBlocks::get() {
+			if current_relay_block_number.saturating_sub(previous_relay_block_number) >= T::DisableBlockThreshold::get()
+			{
 				log::warn!(
 					target: "idle-scheduler",
 					"Relaychain produced blocks without finalizing parachain blocks. Idle-scheduler will not execute.\ncurrent relay block number: {:?}\nprevious relay block number: {:?}",

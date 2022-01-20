@@ -65,7 +65,7 @@ impl frame_system::Config for Runtime {
 
 parameter_types!(
 	pub const MinimumWeightRemainInBlock: Weight = 100_000_000_000;
-	pub const SkipRelayBlocks: BlockNumber = 6;
+	pub const DisableBlockThreshold: BlockNumber = 6;
 );
 
 pub struct MockBlockNumberProvider;
@@ -84,7 +84,7 @@ impl module_idle_scheduler::Config for Runtime {
 	type Task = ScheduledTasks;
 	type MinimumWeightRemainInBlock = MinimumWeightRemainInBlock;
 	type RelayChainBlockNumberProvider = MockBlockNumberProvider;
-	type SkipRelayBlocks = SkipRelayBlocks;
+	type DisableBlockThreshold = DisableBlockThreshold;
 }
 
 // Mock dispatachable tasks
