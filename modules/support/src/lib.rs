@@ -404,10 +404,18 @@ pub trait EVMStateRentTrait<AccountId, Balance> {
 	fn query_maintainer(contract: H160) -> Result<H160, DispatchError>;
 	/// Query the constants `DeveloperDeposit` value from evm module.
 	fn query_developer_deposit() -> Balance;
-	/// Query the constants `DeploymentFee` value from evm module.
-	fn query_deployment_fee() -> Balance;
+	/// Query the constants `PublicationFee` value from evm module.
+	fn query_publication_fee() -> Balance;
 	/// Transfer the maintainer of the contract address.
 	fn transfer_maintainer(from: AccountId, contract: H160, new_maintainer: H160) -> DispatchResult;
+	/// Publish contract
+	fn publish_contract_precompile(who: AccountId, contract: H160) -> DispatchResult;
+	/// Query the developer status of an account
+	fn query_developer_status(who: AccountId) -> bool;
+	/// Enable developer mode
+	fn enable_account_contract_development(who: AccountId) -> DispatchResult;
+	/// Disable developer mode
+	fn disable_account_contract_development(who: AccountId) -> DispatchResult;
 }
 
 pub trait TransactionPayment<AccountId, Balance, NegativeImbalance> {
