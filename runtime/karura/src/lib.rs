@@ -1091,6 +1091,18 @@ impl module_dex::Config for Runtime {
 }
 
 parameter_types! {
+	pub const IntervalToUpdateCumulativePrice: Moment = 1000 * 60 * 60 * 6; // 6 hours
+}
+
+impl module_dex_oracle::Config for Runtime {
+	type DEX = Dex;
+	type Time = Timestamp;
+	type UpdateOrigin = EnsureRootOrHalfGeneralCouncil;
+	type IntervalToUpdateCumulativePrice = IntervalToUpdateCumulativePrice;
+	type WeightInfo = weights::module_dex_oracle::WeightInfo<Runtime>;
+}
+
+parameter_types! {
 	pub const MaxAuctionsCount: u32 = 50;
 	pub HonzonTreasuryAccount: AccountId = HonzonTreasuryPalletId::get().into_account();
 	pub AlternativeSwapPathJointList: Vec<Vec<CurrencyId>> = vec![
@@ -1949,6 +1961,7 @@ construct_runtime!(
 		// Karura Core
 		Prices: module_prices::{Pallet, Storage, Call, Event<T>} = 90,
 		Dex: module_dex::{Pallet, Storage, Call, Event<T>, Config<T>} = 91,
+		DexOracle: module_dex_oracle::{Pallet, Storage, Call} = 92,
 
 		// Honzon
 		AuctionManager: module_auction_manager::{Pallet, Storage, Call, Event<T>, ValidateUnsigned} = 100,
@@ -2259,6 +2272,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, module_nft, NftBench::<Runtime>);
 
 			orml_list_benchmark!(list, extra, module_dex, benchmarking::dex);
+			orml_list_benchmark!(list, extra, module_dex_oracle, benchmarking::dex_oracle);
 			orml_list_benchmark!(list, extra, module_asset_registry, benchmarking::asset_registry);
 			orml_list_benchmark!(list, extra, module_auction_manager, benchmarking::auction_manager);
 			orml_list_benchmark!(list, extra, module_cdp_engine, benchmarking::cdp_engine);
@@ -2316,6 +2330,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, module_nft, NftBench::<Runtime>);
 
 			orml_add_benchmark!(params, batches, module_dex, benchmarking::dex);
+			orml_add_benchmark!(params, batches, module_dex_oracle, benchmarking::dex_oracle);
 			orml_add_benchmark!(params, batches, module_asset_registry, benchmarking::asset_registry);
 			orml_add_benchmark!(params, batches, module_auction_manager, benchmarking::auction_manager);
 			orml_add_benchmark!(params, batches, module_cdp_engine, benchmarking::cdp_engine);

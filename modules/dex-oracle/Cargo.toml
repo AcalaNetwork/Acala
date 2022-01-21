@@ -21,6 +21,7 @@ primitives = { package = "acala-primitives", path = "../../primitives", default-
 [dev-dependencies]
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.13" }
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.13" }
+pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.13" }
 
 [features]
 default = ["std"]

@@ -32,10 +32,10 @@ use support::{DEXManager, DEXPriceProvider, ExchangeRate};
 
 mod mock;
 mod tests;
-//pub mod weights;
+pub mod weights;
 
 pub use module::*;
-//pub use weights::WeightInfo;
+pub use weights::WeightInfo;
 
 #[frame_support::pallet]
 pub mod module {
@@ -58,14 +58,14 @@ pub mod module {
 		#[pallet::constant]
 		type IntervalToUpdateCumulativePrice: Get<MomentOf<Self>>;
 
-		// /// Weight information for the extrinsics in this module.
-		// type WeightInfo: WeightInfo;
+		/// Weight information for the extrinsics in this module.
+		type WeightInfo: WeightInfo;
 	}
 
 	#[pallet::error]
 	pub enum Error<T> {
-		CumulativePricesAlreadyExisted,
-		CumulativePricesNotExists,
+		CumulativePriceAlreadyEnabled,
+		CumulativePriceMustBeEnabled,
 		InvalidPool,
 		InvalidCurrencyId,
 	}
@@ -94,6 +94,7 @@ pub mod module {
 			let interval = now.saturating_sub(last_price_updated_time);
 
 			if interval >= T::IntervalToUpdateCumulativePrice::get() {
+				let mut count: u32 = 0;
 				for (trading_pair, (_, _, last_cumulative_0, last_cumulative_1)) in CumulativePrices::<T>::iter() {
 					// update cumulative before calculate cumulative price.
 					let (pool_0, pool_1) = T::DEX::get_liquidity_pool(trading_pair.first(), trading_pair.second());
@@ -120,20 +121,24 @@ pub mod module {
 						&trading_pair,
 						(cumulative_price_0, cumulative_price_1, cumulative_0, cumulative_1),
 					);
+
+					count += 1;
 				}
 
 				LastPriceUpdatedTime::<T>::put(now);
-			}
 
-			0
+				<T as Config>::WeightInfo::on_initialize_with_cumulative_prices(count)
+			} else {
+				<T as Config>::WeightInfo::on_initialize()
+			}
 		}
 	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		#[pallet::weight(10_000)]
+		#[pallet::weight(<T as Config>::WeightInfo::enable_cumulative_price())]
 		#[transactional]
-		pub fn enable_cumulative(
+		pub fn enable_cumulative_price(
 			origin: OriginFor<T>,
 			currency_id_a: CurrencyId,
 			currency_id_b: CurrencyId,
@@ -144,14 +149,20 @@ pub mod module {
 				TradingPair::from_currency_ids(currency_id_a, currency_id_b).ok_or(Error::<T>::InvalidCurrencyId)?;
 			ensure!(
 				Self::cumulative_prices(&trading_pair).is_none(),
-				Error::<T>::CumulativePricesAlreadyExisted
+				Error::<T>::CumulativePriceAlreadyEnabled
 			);
 
+			let now = T::Time::now();
 			let (initial_price_0, initial_price_1) =
 				Self::get_current_price(&trading_pair).ok_or(Error::<T>::InvalidPool)?;
-			let initial_cumulative_0 = U256::zero();
-			let initial_cumulative_1 = U256::zero();
-			let now = T::Time::now();
+			let elapsed_last_update_price: U256 = now
+				.saturating_sub(Self::last_price_updated_time())
+				.saturated_into::<u128>()
+				.into();
+			let initial_cumulative_0 =
+				U256::from(initial_price_0.into_inner()).saturating_mul(elapsed_last_update_price);
+			let initial_cumulative_1 =
+				U256::from(initial_price_1.into_inner()).saturating_mul(elapsed_last_update_price);
 
 			CumulativePrices::<T>::insert(
 				&trading_pair,
@@ -167,9 +178,9 @@ pub mod module {
 			Ok(())
 		}
 
-		#[pallet::weight(10_000)]
+		#[pallet::weight(<T as Config>::WeightInfo::disable_cumulative_price())]
 		#[transactional]
-		pub fn disable_cumulative(
+		pub fn disable_cumulative_price(
 			origin: OriginFor<T>,
 			currency_id_a: CurrencyId,
 			currency_id_b: CurrencyId,
@@ -178,7 +189,7 @@ pub mod module {
 
 			let trading_pair =
 				TradingPair::from_currency_ids(currency_id_a, currency_id_b).ok_or(Error::<T>::InvalidCurrencyId)?;
-			let _ = CumulativePrices::<T>::take(&trading_pair).ok_or(Error::<T>::CumulativePricesNotExists)?;
+			CumulativePrices::<T>::take(&trading_pair).ok_or(Error::<T>::CumulativePriceMustBeEnabled)?;
 			Cumulatives::<T>::remove(&trading_pair);
 
 			Ok(())
@@ -187,14 +198,14 @@ pub mod module {
 }
 
 impl<T: Config> Pallet<T> {
-	fn try_update_cumulative(trading_pair: &TradingPair, pool_0: Balance, pool_1: Balance) {
+	pub fn try_update_cumulative(trading_pair: &TradingPair, pool_0: Balance, pool_1: Balance) {
 		// try updating enabled cumulative
 		if CumulativePrices::<T>::contains_key(trading_pair) {
 			Cumulatives::<T>::mutate(trading_pair, |(cumulative_0, cumulative_1, last_timestamp)| {
 				let now = T::Time::now();
 				// update cumulative only occurs once in one block
 				if *last_timestamp != now {
-					let interval: U256 = now.saturating_sub(*last_timestamp).saturated_into::<Balance>().into();
+					let interval: U256 = now.saturating_sub(*last_timestamp).saturated_into::<u128>().into();
 					let pool_0_cumulative: U256 = U256::from(
 						ExchangeRate::checked_from_rational(pool_1, pool_0)
 							.unwrap_or_default()
