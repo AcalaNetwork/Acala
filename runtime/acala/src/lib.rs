@@ -155,6 +155,7 @@ parameter_types! {
 	pub const LoansPalletId: PalletId = PalletId(*b"aca/loan");
 	pub const DEXPalletId: PalletId = PalletId(*b"aca/dexm");
 	pub const CDPTreasuryPalletId: PalletId = PalletId(*b"aca/cdpt");
+	pub const HomaPalletId: PalletId = PalletId(*b"aca/homa");
 	pub const HonzonTreasuryPalletId: PalletId = PalletId(*b"aca/hztr");
 	pub const HomaTreasuryPalletId: PalletId = PalletId(*b"aca/hmtr");
 	pub const IncentivesPalletId: PalletId = PalletId(*b"aca/inct");
@@ -175,6 +176,7 @@ pub fn get_all_module_accounts() -> Vec<AccountId> {
 		CDPTreasuryPalletId::get().into_account(),
 		CollatorPotId::get().into_account(),
 		DEXPalletId::get().into_account(),
+		HomaPalletId::get().into_account(),
 		HomaTreasuryPalletId::get().into_account(),
 		HonzonTreasuryPalletId::get().into_account(),
 		IncentivesPalletId::get().into_account(),
@@ -785,7 +787,7 @@ parameter_type_with_key! {
 				AssetIdMaps::<Runtime>::get_stable_asset_metadata(*stable_asset_id).
 					map_or(Balance::max_value(), |metatata| metatata.minimal_balance)
 			},
-			CurrencyId::LiquidCroadloan(_) => ExistentialDeposits::get(&CurrencyId::Token(TokenSymbol::DOT)), // the same as DOT
+			CurrencyId::LiquidCrowdloan(_) => ExistentialDeposits::get(&CurrencyId::Token(TokenSymbol::DOT)), // the same as DOT
 			CurrencyId::ForeignAsset(foreign_asset_id) => {
 				AssetIdMaps::<Runtime>::get_foreign_asset_metadata(*foreign_asset_id).
 					map_or(Balance::max_value(), |metatata| metatata.minimal_balance)
@@ -818,7 +820,7 @@ impl orml_tokens::Config for Runtime {
 }
 
 parameter_type_with_key! {
-	pub LiquidCroadloanLeaseBlockNumber: |lease: Lease| -> Option<BlockNumber> {
+	pub LiquidCrowdloanLeaseBlockNumber: |lease: Lease| -> Option<BlockNumber> {
 		match lease {
 			13 => Some(17_856_000),
 			_ => None
@@ -839,11 +841,11 @@ impl module_prices::Config for Runtime {
 	type GetStakingCurrencyId = GetStakingCurrencyId;
 	type GetLiquidCurrencyId = GetLiquidCurrencyId;
 	type LockOrigin = EnsureRootOrTwoThirdsGeneralCouncil;
-	type LiquidStakingExchangeRateProvider = HomaLite;
+	type LiquidStakingExchangeRateProvider = Homa;
 	type DEX = Dex;
 	type Currency = Currencies;
 	type Erc20InfoMapping = EvmErc20InfoMapping<Runtime>;
-	type LiquidCroadloanLeaseBlockNumber = LiquidCroadloanLeaseBlockNumber;
+	type LiquidCrowdloanLeaseBlockNumber = LiquidCrowdloanLeaseBlockNumber;
 	type RelayChainBlockNumber = RelayChainBlockNumberProvider<Runtime>;
 	type RewardRatePerRelaychainBlock = RewardRatePerRelaychainBlock;
 	type WeightInfo = weights::module_prices::WeightInfo<Runtime>;
@@ -1184,7 +1186,7 @@ impl module_evm_accounts::Config for Runtime {
 impl module_asset_registry::Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
-	type LiquidCroadloanCurrencyId = DOTCurrencyId;
+	type LiquidCrowdloanCurrencyId = GetStakingCurrencyId;
 	type EVMBridge = module_evm_bridge::EVMBridge<Runtime>;
 	type RegisterOrigin = EnsureRootOrHalfGeneralCouncil;
 	type WeightInfo = weights::module_asset_registry::WeightInfo<Runtime>;
@@ -1590,51 +1592,53 @@ pub fn create_x2_parachain_multilocation(index: u16) -> MultiLocation {
 }
 
 parameter_types! {
-	pub const DOTCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
-	pub const LDOTCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
-	pub MinimumMintThreshold: Balance = 5 * dollar(DOT);
-	pub MinimumRedeemThreshold: Balance = 50 * dollar(LDOT);
-	pub RelayChainSovereignSubAccount: MultiLocation = create_x2_parachain_multilocation(RelayChainSubAccountId::HomaLite as u16);
-	pub RelayChainSovereignSubAccountId: AccountId = Utility::derivative_account_id(
-		ParachainInfo::get().into_account(),
-		RelayChainSubAccountId::HomaLite as u16
-	);
-	pub MaxRewardPerEra: Permill = Permill::from_rational(500u32, 1_000_000u32); // 1.2 ^ (1/365) = 1.0004996359
-	pub MintFee: Balance = 20 * millicent(DOT); // 2x XCM fee on Polkadot TODO: identify xcm fee
 	pub DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
-	pub BaseWithdrawFee: Permill = Permill::from_rational(14_085u32, 1_000_000u32); // 20% yield per year, unbounding period = 28 days. 1.2^(28/365) = 1.014085
-	pub MaximumRedeemRequestMatchesForMint: u32 = 20;
-	pub RelayChainUnbondingSlashingSpans: u32 = 5;
-	pub MaxScheduledUnbonds: u32 = 35;
-	pub ParachainAccount: AccountId = ParachainInfo::get().into_account();
-	pub SubAccountIndex: u16 = RelayChainSubAccountId::HomaLite as u16;
-	pub XcmUnbondFee: Balance = 60 * millicent(DOT); // TODO identify unbond fee
+	pub HomaTreasuryAccount: AccountId = HomaTreasuryPalletId::get().into_account();
+	pub ActiveSubAccountsIndexList: Vec<u16> = vec![RelayChainSubAccountId::HomaLite as u16];
+	pub BondingDuration: EraIndex = 28;
+	pub MintThreshold: Balance = 5 * dollar(DOT);
+	pub RedeemThreshold: Balance = 50 * dollar(LDOT);
 }
 
-impl module_homa_lite::Config for Runtime {
+impl module_homa::Config for Runtime {
 	type Event = Event;
-	type WeightInfo = weights::module_homa_lite::WeightInfo<Runtime>;
 	type Currency = Currencies;
-	type StakingCurrencyId = DOTCurrencyId;
-	type LiquidCurrencyId = LDOTCurrencyId;
 	type GovernanceOrigin = EnsureRootOrHalfGeneralCouncil;
-	type MinimumMintThreshold = MinimumMintThreshold;
-	type MinimumRedeemThreshold = MinimumRedeemThreshold;
-	type XcmTransfer = XTokens;
-	type SovereignSubAccountLocation = RelayChainSovereignSubAccount;
-	type SubAccountIndex = SubAccountIndex;
+	type StakingCurrencyId = GetStakingCurrencyId;
+	type LiquidCurrencyId = GetLiquidCurrencyId;
+	type PalletId = HomaPalletId;
+	type TreasuryAccount = HomaTreasuryAccount;
 	type DefaultExchangeRate = DefaultExchangeRate;
-	type MaxRewardPerEra = MaxRewardPerEra;
-	type MintFee = MintFee;
-	type RelayChainCallBuilder = RelayChainCallBuilder<Runtime, ParachainInfo>;
-	type BaseWithdrawFee = BaseWithdrawFee;
-	type XcmUnbondFee = XcmUnbondFee;
+	type ActiveSubAccountsIndexList = ActiveSubAccountsIndexList;
+	type BondingDuration = BondingDuration;
+	type MintThreshold = MintThreshold;
+	type RedeemThreshold = RedeemThreshold;
 	type RelayChainBlockNumber = RelayChainBlockNumberProvider<Runtime>;
+	type HomaXcm = HomaXcm;
+	type WeightInfo = weights::module_homa::WeightInfo<Runtime>;
+}
+
+pub struct SubAccountIndexMultiLocationConvertor;
+impl Convert<u16, MultiLocation> for SubAccountIndexMultiLocationConvertor {
+	fn convert(sub_account_index: u16) -> MultiLocation {
+		create_x2_parachain_multilocation(sub_account_index)
+	}
+}
+
+parameter_types! {
+	pub RelayChainUnbondingSlashingSpans: u32 = 5;
+	pub ParachainAccount: AccountId = ParachainInfo::get().into_account();
+}
+
+impl module_homa_xcm::Config for Runtime {
+	type Event = Event;
+	type UpdateOrigin = EnsureRootOrHalfGeneralCouncil;
+	type StakingCurrencyId = GetStakingCurrencyId;
 	type ParachainAccount = ParachainAccount;
-	type MaximumRedeemRequestMatchesForMint = MaximumRedeemRequestMatchesForMint;
 	type RelayChainUnbondingSlashingSpans = RelayChainUnbondingSlashingSpans;
-	type MaxScheduledUnbonds = MaxScheduledUnbonds;
-	type StakingUpdateFrequency = OneDay;
+	type SovereignSubAccountLocationConvert = SubAccountIndexMultiLocationConvertor;
+	type RelayChainCallBuilder = RelayChainCallBuilder<Runtime, ParachainInfo>;
+	type XcmTransfer = XTokens;
 }
 
 pub type LocalAssetTransactor = MultiCurrencyAdapter<
@@ -1864,7 +1868,8 @@ construct_runtime!(
 		EmergencyShutdown: module_emergency_shutdown::{Pallet, Storage, Call, Event<T>} = 105,
 
 		// Homa
-		HomaLite: module_homa_lite::{Pallet, Call, Storage, Event<T>} = 115,
+		Homa: module_homa::{Pallet, Call, Storage, Event<T>} = 116,
+		HomaXcm: module_homa_xcm::{Pallet, Call, Storage, Event<T>} = 117,
 
 		// Acala Other
 		Incentives: module_incentives::{Pallet, Storage, Call, Event<T>} = 120,
@@ -1908,7 +1913,7 @@ pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExtra>;
 /// Executive: handles dispatch to the various modules.
 pub type Executive =
-	frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllPallets, ()>;
+	frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllPalletsWithSystem, ()>;
 
 #[cfg(not(feature = "disable-runtime-api"))]
 impl_runtime_apis! {
@@ -2156,14 +2161,11 @@ impl_runtime_apis! {
 			use frame_benchmarking::{list_benchmark, Benchmarking, BenchmarkList};
 			use frame_support::traits::StorageInfoTrait;
 			use orml_benchmarking::list_benchmark as orml_list_benchmark;
-
 			use module_nft::benchmarking::Pallet as NftBench;
-			use module_homa_lite::benchmarking::Pallet as HomaLiteBench;
 
 			let mut list = Vec::<BenchmarkList>::new();
 
 			list_benchmark!(list, extra, module_nft, NftBench::<Runtime>);
-			list_benchmark!(list, extra, module_homa_lite, HomaLiteBench::<Runtime>);
 
 			orml_list_benchmark!(list, extra, module_dex, benchmarking::dex);
 			orml_list_benchmark!(list, extra, module_dex_oracle, benchmarking::dex_oracle);
@@ -2172,6 +2174,7 @@ impl_runtime_apis! {
 			orml_list_benchmark!(list, extra, module_cdp_engine, benchmarking::cdp_engine);
 			orml_list_benchmark!(list, extra, module_emergency_shutdown, benchmarking::emergency_shutdown);
 			orml_list_benchmark!(list, extra, module_evm, benchmarking::evm);
+			orml_list_benchmark!(list, extra, module_homa, benchmarking::homa);
 			orml_list_benchmark!(list, extra, module_honzon, benchmarking::honzon);
 			orml_list_benchmark!(list, extra, module_cdp_treasury, benchmarking::cdp_treasury);
 			orml_list_benchmark!(list, extra, module_collator_selection, benchmarking::collator_selection);
@@ -2198,9 +2201,7 @@ impl_runtime_apis! {
 		) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString> {
 			use frame_benchmarking::{Benchmarking, BenchmarkBatch, add_benchmark, TrackedStorageKey};
 			use orml_benchmarking::{add_benchmark as orml_add_benchmark};
-
 			use module_nft::benchmarking::Pallet as NftBench;
-			use module_homa_lite::benchmarking::Pallet as HomaLiteBench;
 
 			let whitelist: Vec<TrackedStorageKey> = vec![
 				// Block Number
@@ -2223,7 +2224,6 @@ impl_runtime_apis! {
 			let params = (&config, &whitelist);
 
 			add_benchmark!(params, batches, module_nft, NftBench::<Runtime>);
-			add_benchmark!(params, batches, module_homa_lite, HomaLiteBench::<Runtime>);
 
 			orml_add_benchmark!(params, batches, module_dex, benchmarking::dex);
 			orml_add_benchmark!(params, batches, module_dex_oracle, benchmarking::dex_oracle);
@@ -2232,6 +2232,7 @@ impl_runtime_apis! {
 			orml_add_benchmark!(params, batches, module_cdp_engine, benchmarking::cdp_engine);
 			orml_add_benchmark!(params, batches, module_emergency_shutdown, benchmarking::emergency_shutdown);
 			orml_add_benchmark!(params, batches, module_evm, benchmarking::evm);
+			orml_add_benchmark!(params, batches, module_homa, benchmarking::homa);
 			orml_add_benchmark!(params, batches, module_honzon, benchmarking::honzon);
 			orml_add_benchmark!(params, batches, module_cdp_treasury, benchmarking::cdp_treasury);
 			orml_add_benchmark!(params, batches, module_collator_selection, benchmarking::collator_selection);

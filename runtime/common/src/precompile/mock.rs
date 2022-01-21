@@ -185,7 +185,7 @@ impl module_evm_bridge::Config for Test {
 impl module_asset_registry::Config for Test {
 	type Event = Event;
 	type Currency = Balances;
-	type LiquidCroadloanCurrencyId = GetStakingCurrencyId;
+	type LiquidCrowdloanCurrencyId = GetStakingCurrencyId;
 	type EVMBridge = module_evm_bridge::EVMBridge<Test>;
 	type RegisterOrigin = EnsureSignedBy<CouncilAccount, AccountId>;
 	type WeightInfo = ();
@@ -454,7 +454,7 @@ impl BlockNumberProvider for MockRelayBlockNumberProvider {
 }
 
 parameter_type_with_key! {
-	pub LiquidCroadloanLeaseBlockNumber: |_lease: Lease| -> Option<BlockNumber> {
+	pub LiquidCrowdloanLeaseBlockNumber: |_lease: Lease| -> Option<BlockNumber> {
 		None
 	};
 }
@@ -483,7 +483,7 @@ impl module_prices::Config for Test {
 	type DEX = DexModule;
 	type Currency = Currencies;
 	type Erc20InfoMapping = EvmErc20InfoMapping;
-	type LiquidCroadloanLeaseBlockNumber = LiquidCroadloanLeaseBlockNumber;
+	type LiquidCrowdloanLeaseBlockNumber = LiquidCrowdloanLeaseBlockNumber;
 	type RelayChainBlockNumber = MockRelayBlockNumberProvider;
 	type RewardRatePerRelaychainBlock = RewardRatePerRelaychainBlock;
 	type WeightInfo = ();

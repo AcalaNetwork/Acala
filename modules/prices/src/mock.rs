@@ -48,9 +48,9 @@ pub const LDOT: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
 pub const KSM: CurrencyId = CurrencyId::Token(TokenSymbol::KSM);
 pub const LP_AUSD_DOT: CurrencyId =
 	CurrencyId::DexShare(DexShare::Token(TokenSymbol::AUSD), DexShare::Token(TokenSymbol::DOT));
-pub const LIQUID_CROWDLOAN_LEASE_1: CurrencyId = CurrencyId::LiquidCroadloan(1);
-pub const LIQUID_CROWDLOAN_LEASE_2: CurrencyId = CurrencyId::LiquidCroadloan(2);
-pub const LIQUID_CROWDLOAN_LEASE_3: CurrencyId = CurrencyId::LiquidCroadloan(3);
+pub const LIQUID_CROWDLOAN_LEASE_1: CurrencyId = CurrencyId::LiquidCrowdloan(1);
+pub const LIQUID_CROWDLOAN_LEASE_2: CurrencyId = CurrencyId::LiquidCrowdloan(2);
+pub const LIQUID_CROWDLOAN_LEASE_3: CurrencyId = CurrencyId::LiquidCrowdloan(3);
 
 mod prices {
 	pub use super::super::*;
@@ -222,7 +222,7 @@ impl BlockNumberProvider for MockRelayBlockNumberProvider {
 }
 
 parameter_type_with_key! {
-	pub LiquidCroadloanLeaseBlockNumber: |lease: Lease| -> Option<BlockNumber> {
+	pub LiquidCrowdloanLeaseBlockNumber: |lease: Lease| -> Option<BlockNumber> {
 		#[allow(clippy::match_ref_pats)] // false positive
 		match lease {
 			&1 => Some(100),
@@ -257,7 +257,7 @@ impl Config for Runtime {
 	type DEX = MockDEX;
 	type Currency = Tokens;
 	type Erc20InfoMapping = MockErc20InfoMapping;
-	type LiquidCroadloanLeaseBlockNumber = LiquidCroadloanLeaseBlockNumber;
+	type LiquidCrowdloanLeaseBlockNumber = LiquidCrowdloanLeaseBlockNumber;
 	type RelayChainBlockNumber = MockRelayBlockNumberProvider;
 	type RewardRatePerRelaychainBlock = RewardRatePerRelaychainBlock;
 	type WeightInfo = ();

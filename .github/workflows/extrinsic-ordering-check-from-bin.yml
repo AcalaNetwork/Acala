@@ -67,7 +67,7 @@ jobs:
           sed -z -i 's/\n\n/\n/g' output.txt
 
       - name: Stop our local node
-        run: kill $pid
+        run: kill -s KILL $pid
 
       - name: Show result
         run: cat output.txt

@@ -92,7 +92,7 @@ pub mod module {
 		type Erc20InfoMapping: Erc20InfoMapping;
 
 		/// Get the lease block number of relaychain for specific Lease
-		type LiquidCroadloanLeaseBlockNumber: GetByKey<Lease, Option<Self::BlockNumber>>;
+		type LiquidCrowdloanLeaseBlockNumber: GetByKey<Lease, Option<Self::BlockNumber>>;
 
 		/// Block number provider for the relaychain.
 		type RelayChainBlockNumber: BlockNumberProvider<BlockNumber = Self::BlockNumber>;
@@ -182,11 +182,11 @@ impl<T: Config> Pallet<T> {
 			// directly return real-time the multiple of the price of StakingCurrencyId and the exchange rate
 			return Self::access_price(T::GetStakingCurrencyId::get())
 				.and_then(|n| n.checked_mul(&T::LiquidStakingExchangeRateProvider::get_exchange_rate()));
-		} else if let CurrencyId::LiquidCroadloan(lease) = currency_id {
-			// Note: For LiquidCroadloan, The reliable market price may not be available in the initial stage,
+		} else if let CurrencyId::LiquidCrowdloan(lease) = currency_id {
+			// Note: For LiquidCrowdloan, The reliable market price may not be available in the initial stage,
 			// the system simply discounts the price of StakingCurrency according to the StakingRewardRate and
 			// the remaining lease time.
-			let lease_block_number = T::LiquidCroadloanLeaseBlockNumber::get(&lease)?;
+			let lease_block_number = T::LiquidCrowdloanLeaseBlockNumber::get(&lease)?;
 			let current_relaychain_block = T::RelayChainBlockNumber::current_block_number();
 			let interval = lease_block_number.saturating_sub(current_relaychain_block);
 			let discount_rate = Rate::one()
