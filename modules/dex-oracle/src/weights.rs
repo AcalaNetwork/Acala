@@ -58,53 +58,53 @@ pub trait WeightInfo {
 pub struct AcalaWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	fn on_initialize() -> Weight {
-		(53_000_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(11 as Weight))
-			.saturating_add(T::DbWeight::get().writes(3 as Weight))
+		(6_000_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 	}
 	fn on_initialize_with_cumulative_prices(n: u32,) -> Weight {
-		(7_163_000 as Weight)
-			.saturating_add((101_229_000 as Weight).saturating_mul(n as Weight))
-			.saturating_add(T::DbWeight::get().reads(8 as Weight))
+		(21_467_000 as Weight)
+			// Standard Error: 324_000
+			.saturating_add((25_650_000 as Weight).saturating_mul(n as Weight))
+			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().reads((3 as Weight).saturating_mul(n as Weight)))
-			.saturating_add(T::DbWeight::get().writes(5 as Weight))
-			.saturating_add(T::DbWeight::get().writes((3 as Weight).saturating_mul(n as Weight)))
+			.saturating_add(T::DbWeight::get().writes(2 as Weight))
+			.saturating_add(T::DbWeight::get().writes((2 as Weight).saturating_mul(n as Weight)))
 	}
 	fn enable_cumulative_price() -> Weight {
-		(53_000_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(11 as Weight))
-			.saturating_add(T::DbWeight::get().writes(3 as Weight))
+		(27_000_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(4 as Weight))
+			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
 	fn disable_cumulative_price() -> Weight {
-		(53_000_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(11 as Weight))
-			.saturating_add(T::DbWeight::get().writes(3 as Weight))
+		(11_000_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(1 as Weight))
+			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
 }
 
 // For backwards compatibility and tests
 impl WeightInfo for () {
 	fn on_initialize() -> Weight {
-		(53_000_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(11 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(3 as Weight))
+		(6_000_000 as Weight)
+			.saturating_add(RocksDbWeight::get().reads(2 as Weight))
 	}
 	fn on_initialize_with_cumulative_prices(n: u32,) -> Weight {
-		(7_163_000 as Weight)
-			.saturating_add((101_229_000 as Weight).saturating_mul(n as Weight))
-			.saturating_add(RocksDbWeight::get().reads(8 as Weight))
+		(21_467_000 as Weight)
+			// Standard Error: 324_000
+			.saturating_add((25_650_000 as Weight).saturating_mul(n as Weight))
+			.saturating_add(RocksDbWeight::get().reads(2 as Weight))
 			.saturating_add(RocksDbWeight::get().reads((3 as Weight).saturating_mul(n as Weight)))
-			.saturating_add(RocksDbWeight::get().writes(5 as Weight))
-			.saturating_add(RocksDbWeight::get().writes((3 as Weight).saturating_mul(n as Weight)))
+			.saturating_add(RocksDbWeight::get().writes(2 as Weight))
+			.saturating_add(RocksDbWeight::get().writes((2 as Weight).saturating_mul(n as Weight)))
 	}
 	fn enable_cumulative_price() -> Weight {
-		(53_000_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(11 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(3 as Weight))
+		(27_000_000 as Weight)
+			.saturating_add(RocksDbWeight::get().reads(4 as Weight))
+			.saturating_add(RocksDbWeight::get().writes(2 as Weight))
 	}
 	fn disable_cumulative_price() -> Weight {
-		(53_000_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(11 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(3 as Weight))
+		(11_000_000 as Weight)
+			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
+			.saturating_add(RocksDbWeight::get().writes(2 as Weight))
 	}
 }
