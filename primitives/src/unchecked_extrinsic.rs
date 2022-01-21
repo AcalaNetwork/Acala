@@ -387,7 +387,7 @@ mod tests {
 		let sign = hex!("c30a85ee9218af4e2892c82d65a8a7fbeee75c010973d42cee2e52309449d687056c09cf486a16d58d23b0ebfed63a0276d5fb1a464f645dc7607147a37f7a211c");
 		assert_eq!(verify_eip712_signature(msg.clone(), sign), sender);
 
-		// access_list.slots = vec![]
+		// access_list.storage_keys = vec![]
 		let msg = EthereumTransactionMessage {
 			chain_id: 595,
 			genesis: H256::from_str("0xafb55f3937d1377c23b8f351315b2792f5d2753bb95420c191d2dc70ad7196e8").unwrap(),
@@ -401,7 +401,7 @@ mod tests {
 			valid_until: 105,
 			access_list: vec![AccessListItem {
 				address: hex!("0000000000000000000000000000000000000000").into(),
-				slots: vec![],
+				storage_keys: vec![],
 			}],
 		};
 		let sign = hex!("a94da7159e29f2a0c9aec08eb62cbb6eefd6ee277960a3c96b183b53201687ce19f1fd9c2cfdace8730fd5249ea11e57701cd0cc20386bbd9d3df5092fe218851c");
@@ -420,7 +420,7 @@ mod tests {
 			valid_until: 105,
 			access_list: vec![AccessListItem {
 				address: hex!("0000000000000000000000000000000000000000").into(),
-				slots: vec![
+				storage_keys: vec![
 					H256::from_str("0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef").unwrap(),
 					H256::from_str("0x0000000000111111111122222222223333333333444444444455555555556666").unwrap(),
 					H256::from_str("0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef").unwrap(),
@@ -469,7 +469,7 @@ mod tests {
 		let mut new_msg = msg.clone();
 		new_msg.access_list = vec![AccessListItem {
 			address: hex!("bb9bc244d798123fde783fcc1c72d3bb8c189413").into(),
-			slots: vec![],
+			storage_keys: vec![],
 		}];
 		assert_ne!(verify_eip712_signature(new_msg, sign), sender);
 
@@ -578,7 +578,7 @@ mod tests {
 		let mut new_msg = msg;
 		new_msg.access_list = vec![AccessListItem {
 			address: hex!("bb9bc244d798123fde783fcc1c72d3bb8c189413").into(),
-			slots: vec![],
+			storage_keys: vec![],
 		}];
 		assert_ne!(recover_signer(&sign, new_msg.hash().as_fixed_bytes()), sender);
 	}
