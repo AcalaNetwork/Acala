@@ -29,14 +29,14 @@ describeWithAcala("Acala RPC (bodhi.js)", (context) => {
 
 	step("should get gas price", async function () {
 		const gasPrice = await context.provider.getGasPrice();
-		expect(gasPrice.toString()).to.be.equal("1");
+		expect(gasPrice.toString()).to.be.equal("200000274442");
 	});
 
 	step("should get fee data ", async function () {
 		expect(await context.provider.getFeeData()).to.deep.include({
 			maxFeePerGas: BigNumber.from("1"),
 			maxPriorityFeePerGas: BigNumber.from("1"),
-			gasPrice: BigNumber.from("1"),
+			gasPrice: BigNumber.from("200000274442"),
 		});
 	});
 
@@ -82,7 +82,7 @@ describeWithAcala("Acala RPC (bodhi.js)", (context) => {
 	step("should estimateGas", async function () {
 		expect(await context.provider.estimateGas(
 			await contract.populateTransaction.multiply(3)
-		)).to.deep.equal(BigNumber.from("22409"));
+		)).to.deep.equal(BigNumber.from("342409"));
 	});
 
 	step("should estimateResources", async function () {

@@ -79,6 +79,7 @@ describeWithAcala("Acala RPC (Sign eip1559)", (context) => {
 			chainId: chain_id,
 			maxPriorityFeePerGas: priorityFee.toHexString(),
 			maxFeePerGas: tx_gas_price.toHexString(),
+			accessList: [],
 		}
 
 		const signedTx = await signer.signTransaction(value)
@@ -116,6 +117,7 @@ describeWithAcala("Acala RPC (Sign eip1559)", (context) => {
 			value.value,
 			input_gas_limit.toNumber(),
 			input_storage_limit.toNumber(),
+			value.accessList,
 			input_valid_until
 		);
 
@@ -157,6 +159,7 @@ describeWithAcala("Acala RPC (Sign eip1559)", (context) => {
 					"value": 0,
 					"gas_limit": 2100000,
 					"storage_limit": 20032,
+					"access_list": [],
 					"valid_until": 120
 				  }
 				}
@@ -218,6 +221,7 @@ describeWithAcala("Acala RPC (Sign eip1559)", (context) => {
 			chainId: chain_id,
 			maxPriorityFeePerGas: priorityFee.toHexString(),
 			maxFeePerGas: tx_gas_price.toHexString(),
+			accessList: [],
 		}
 
 		const signedTx = await signer.signTransaction(value)
@@ -255,6 +259,7 @@ describeWithAcala("Acala RPC (Sign eip1559)", (context) => {
 			value.value,
 			input_gas_limit.toNumber(),
 			input_storage_limit.toNumber(),
+			value.accessList,
 			input_valid_until
 		);
 
@@ -296,6 +301,7 @@ describeWithAcala("Acala RPC (Sign eip1559)", (context) => {
 					"value": 0,
 					"gas_limit": 210000,
 					"storage_limit": 1024,
+					"access_list": [],
 					"valid_until": 120
 				  }
 				}

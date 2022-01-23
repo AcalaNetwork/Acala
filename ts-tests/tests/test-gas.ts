@@ -19,7 +19,7 @@ describeWithAcala("Acala RPC (Gas)", (context) => {
 				from: alice.getAddress(),
 				data: "0x" + Block.bytecode,
 			})
-		).to.deep.equal(BigNumber.from("273373"));
+		).to.deep.equal(BigNumber.from("593373"));
 	});
 
 	it("eth_estimateResources for contract creation", async function () {
@@ -36,7 +36,7 @@ describeWithAcala("Acala RPC (Gas)", (context) => {
 	it("eth_estimateGas for contract call", async function () {
 		const contract = await deployContract(alice as any, Block);
 
-		expect(await contract.estimateGas.multiply(3)).to.deep.equal(BigNumber.from("22409"));
+		expect(await contract.estimateGas.multiply(3)).to.deep.equal(BigNumber.from("342409"));
 	});
 
 	it("eth_estimateResources for contract call", async function () {
