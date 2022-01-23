@@ -401,7 +401,7 @@ ord_parameter_types! {
 	pub const StorageDepositPerByte: u128 = convert_decimals_to_evm(10);
 	pub const TxFeePerGas: u64 = 10;
 	pub const DeveloperDeposit: u64 = 1000;
-	pub const DeploymentFee: u64 = 200;
+	pub const PublicationFee: u64 = 200;
 	pub const ChainId: u64 = 1;
 }
 
@@ -428,9 +428,9 @@ impl module_evm::Config for Test {
 	type NetworkContractOrigin = EnsureSignedBy<NetworkContractAccount, AccountId>;
 	type NetworkContractSource = NetworkContractSource;
 	type DeveloperDeposit = DeveloperDeposit;
-	type DeploymentFee = DeploymentFee;
+	type PublicationFee = PublicationFee;
 	type TreasuryAccount = TreasuryAccount;
-	type FreeDeploymentOrigin = EnsureSignedBy<CouncilAccount, AccountId>;
+	type FreePublicationOrigin = EnsureSignedBy<CouncilAccount, AccountId>;
 	type Runner = module_evm::runner::stack::Runner<Self>;
 	type FindAuthor = ();
 	type Task = ScheduledTasks;

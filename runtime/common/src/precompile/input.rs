@@ -199,6 +199,11 @@ where
 pub struct Output;
 
 impl Output {
+	pub fn encode_bool(&self, b: bool) -> Vec<u8> {
+		let out = Token::Bool(b);
+		ethabi::encode(&[out])
+	}
+
 	pub fn encode_u8(&self, b: u8) -> Vec<u8> {
 		let out = Token::Uint(U256::from(b));
 		ethabi::encode(&[out])

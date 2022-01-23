@@ -54,7 +54,9 @@ jobs:
       # Build WASM with Substrate Runtime Tool
       - name: Srtool build
         id: srtool_build
-        uses: chevdor/srtool-actions@v0.3.0
+        uses: AcalaNetwork/srtool-actions@build_opts_env
+        env:
+          BUILD_OPTS: "--features on-chain-release-build"
         with:
           chain: ${{ github.event.inputs.chain }}
           tag: ${{ github.event.inputs.srtool_image }}
@@ -128,4 +130,4 @@ jobs:
           service: pinata
           pinataKey: ${{ secrets.PINATA_KEY }}
           pinataSecret: ${{ secrets.PINATA_SECRET }}
-          
+

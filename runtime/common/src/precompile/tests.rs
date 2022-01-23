@@ -23,22 +23,22 @@ use crate::precompile::{
 	mock::{
 		aca_evm_address, alice, alice_evm_addr, ausd_evm_address, bob, bob_evm_addr, erc20_address_not_exists,
 		get_task_id, lp_aca_ausd_evm_address, new_test_ext, renbtc_evm_address, run_to_block, Balances, DexModule,
-		Event as TestEvent, Oracle, Origin, PrecompilesValue, Price, System, Test, ALICE, AUSD, INITIAL_BALANCE,
-		RENBTC,
+		EVMModule, Event as TestEvent, Oracle, Origin, PrecompilesValue, Price, System, Test, ALICE, AUSD,
+		INITIAL_BALANCE, RENBTC,
 	},
 	schedule_call::TaskInfo,
 };
 use codec::Encode;
 use frame_support::{assert_noop, assert_ok};
 use hex_literal::hex;
-use module_evm::{Context, ExitRevert, ExitSucceed};
+use module_evm::{Context, ExitError, ExitReason, ExitRevert, ExitSucceed, Runner};
 use module_support::AddressMapping;
 use orml_traits::DataFeeder;
 use primitives::{
 	evm::{PRECOMPILE_ADDRESS_START, PREDEPLOY_ADDRESS_START},
 	Balance,
 };
-use sp_core::{H160, U256};
+use sp_core::{bytes::from_hex, H160, U256};
 use sp_runtime::FixedPointNumber;
 use std::str::FromStr;
 
@@ -46,6 +46,7 @@ type MultiCurrencyPrecompile = crate::MultiCurrencyPrecompile<Test>;
 type OraclePrecompile = crate::OraclePrecompile<Test>;
 type DexPrecompile = crate::DexPrecompile<Test>;
 type ScheduleCallPrecompile = crate::ScheduleCallPrecompile<Test>;
+type StateRentPrecompile = crate::StateRentPrecompile<Test>;
 
 #[test]
 fn precompile_filter_works_on_acala_precompiles() {
@@ -899,6 +900,141 @@ fn dex_precompile_swap_with_exact_target_should_work() {
 		assert_eq!(resp.exit_status, ExitSucceed::Returned);
 		assert_eq!(resp.output, expected_output);
 		assert_eq!(resp.cost, 0);
+	});
+}
+
+#[test]
+fn developer_status_precompile_works() {
+	new_test_ext().execute_with(|| {
+		let context = Context {
+			address: Default::default(),
+			caller: alice_evm_addr(),
+			apparent_value: Default::default(),
+		};
+
+		// action + who
+		let mut input = [0u8; 36];
+
+		input[0..4].copy_from_slice(&Into::<u32>::into(state_rent::Action::QueryDeveloperStatus).to_be_bytes());
+		U256::from(alice_evm_addr().as_bytes()).to_big_endian(&mut input[4 + 0 * 32..4 + 1 * 32]);
+
+		// expect output is false as alice has not put a deposit down
+		let expected_output = [0u8; 32];
+		let res = StateRentPrecompile::execute(&input, None, &context, false).unwrap();
+		assert_eq!(res.exit_status, ExitSucceed::Returned);
+		assert_eq!(res.output, expected_output);
+
+		// enable account for developer mode
+		input[0..4].copy_from_slice(&Into::<u32>::into(state_rent::Action::EnableDeveloperAccount).to_be_bytes());
+		U256::from(alice_evm_addr().as_bytes()).to_big_endian(&mut input[4 + 0 * 32..4 + 1 * 32]);
+
+		let res = StateRentPrecompile::execute(&input, None, &context, false).unwrap();
+		assert_eq!(res.exit_status, ExitSucceed::Returned);
+
+		// query developer status again but this time it is enabled
+		input[0..4].copy_from_slice(&Into::<u32>::into(state_rent::Action::QueryDeveloperStatus).to_be_bytes());
+		U256::from(alice_evm_addr().as_bytes()).to_big_endian(&mut input[4 + 0 * 32..4 + 1 * 32]);
+
+		// expect output is now true as alice now is enabled for developer mode
+		let expected_output: [u8; 32] = U256::from(true as u8).into();
+		let res = StateRentPrecompile::execute(&input, None, &context, false).unwrap();
+		assert_eq!(res.exit_status, ExitSucceed::Returned);
+		assert_eq!(res.output, expected_output);
+
+		// disable alice account for developer mode
+		input[0..4].copy_from_slice(&Into::<u32>::into(state_rent::Action::DisableDeveloperAccount).to_be_bytes());
+		U256::from(alice_evm_addr().as_bytes()).to_big_endian(&mut input[4 + 0 * 32..4 + 1 * 32]);
+
+		let res = StateRentPrecompile::execute(&input, None, &context, false).unwrap();
+		assert_eq!(res.exit_status, ExitSucceed::Returned);
+
+		// query developer status
+		input[0..4].copy_from_slice(&Into::<u32>::into(state_rent::Action::QueryDeveloperStatus).to_be_bytes());
+		U256::from(alice_evm_addr().as_bytes()).to_big_endian(&mut input[4 + 0 * 32..4 + 1 * 32]);
+
+		// expect output is now false as alice now is disabled again for developer mode
+		let expected_output = [0u8; 32];
+		let res = StateRentPrecompile::execute(&input, None, &context, false).unwrap();
+		assert_eq!(res.exit_status, ExitSucceed::Returned);
+		assert_eq!(res.output, expected_output);
+	});
+}
+
+#[test]
+fn publish_contract_precompile_works() {
+	new_test_ext().execute_with(|| {
+		// pragma solidity ^0.5.0;
+		//
+		// contract Test {
+		//	 function multiply(uint a, uint b) public pure returns(uint) {
+		// 	 	return a * b;
+		// 	 }
+		// }
+		let contract = from_hex(
+			"0x608060405234801561001057600080fd5b5060b88061001f6000396000f3fe6080604052348015600f57600080fd5b506004361060285760003560e01c8063165c4a1614602d575b600080fd5b606060048036036040811015604157600080fd5b8101908080359060200190929190803590602001909291905050506076565b6040518082815260200191505060405180910390f35b600081830290509291505056fea265627a7a723158201f3db7301354b88b310868daf4395a6ab6cd42d16b1d8e68cdf4fdd9d34fffbf64736f6c63430005110032"
+		).unwrap();
+
+		// create contract
+		let info = <Test as module_evm::Config>::Runner::create(alice_evm_addr(), contract.clone(), 0, 21_000_000, 21_000_000, vec![], <Test as module_evm::Config>::config()).unwrap();
+		let contract_address = info.value;
+
+		// multiply(2, 3)
+		let multiply = from_hex(
+			"0x165c4a1600000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000003"
+		).unwrap();
+
+		// call method `multiply` will fail, not published yet.
+		// The error is shown in the last event.
+		// The call extrinsic still succeeds, the evm emits a executed failed event
+		assert_ok!(EVMModule::call(
+			Origin::signed(bob()),
+			contract_address,
+			multiply.clone(),
+			0,
+			1000000,
+			1000000,
+			vec![],
+		));
+		System::assert_last_event(TestEvent::EVMModule(module_evm::Event::ExecutedFailed {
+			from: bob_evm_addr(),
+			contract: contract_address,
+			exit_reason: ExitReason::Error(ExitError::Other(Into::<&str>::into(module_evm::Error::<Test>::NoPermission).into())),
+			output: vec![],
+			logs: vec![],
+		}));
+
+		let context = Context {
+			address: Default::default(),
+			caller: alice_evm_addr(),
+			apparent_value: Default::default(),
+		};
+
+		// action + who + contract_address
+		let mut input = [0u8; 4 * 32];
+
+		input[0..4].copy_from_slice(&Into::<u32>::into(state_rent::Action::PublishContract).to_be_bytes());
+		U256::from(alice_evm_addr().as_bytes()).to_big_endian(&mut input[4 + 0 * 32..4 + 1 * 32]);
+		U256::from(contract_address.as_bytes()).to_big_endian(&mut input[4 + 1 * 32..4 + 2 *32]);
+
+		// publish contract with precompile
+		let res = StateRentPrecompile::execute(&input, None, &context, false).unwrap();
+		assert_eq!(res.exit_status, ExitSucceed::Returned);
+
+		// Same call as above now works as contract is now published
+		assert_ok!(EVMModule::call(
+			Origin::signed(bob()),
+			contract_address,
+			multiply.clone(),
+			0,
+			1000000,
+			1000000,
+			vec![],
+		));
+		System::assert_last_event(TestEvent::EVMModule(module_evm::Event::Executed {
+			from: bob_evm_addr(),
+			contract: contract_address,
+			logs: vec![],
+		}));
 	});
 }
 

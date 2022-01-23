@@ -76,7 +76,7 @@ pub fn deploy_erc20_contracts() {
 		}],
 	}));
 
-	assert_ok!(EVM::deploy_free(Origin::root(), erc20_address_0()));
+	assert_ok!(EVM::publish_free(Origin::root(), erc20_address_0()));
 	assert_ok!(AssetRegistry::register_erc20_asset(
 		Origin::root(),
 		erc20_address_0(),
@@ -99,7 +99,7 @@ pub fn deploy_erc20_contracts() {
 		}],
 	}));
 
-	assert_ok!(EVM::deploy_free(Origin::root(), erc20_address_1()));
+	assert_ok!(EVM::publish_free(Origin::root(), erc20_address_1()));
 	assert_ok!(AssetRegistry::register_erc20_asset(
 		Origin::root(),
 		erc20_address_1(),

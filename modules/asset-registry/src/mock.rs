@@ -102,7 +102,7 @@ ord_parameter_types! {
 	pub const StorageDepositPerByte: u128 = convert_decimals_to_evm(10);
 	pub const TxFeePerGas: u128 = 10;
 	pub const DeveloperDeposit: u64 = 1000;
-	pub const DeploymentFee: u64 = 200;
+	pub const PublicationFee: u64 = 200;
 }
 
 impl module_evm::Config for Runtime {
@@ -122,9 +122,9 @@ impl module_evm::Config for Runtime {
 	type NetworkContractSource = NetworkContractSource;
 
 	type DeveloperDeposit = DeveloperDeposit;
-	type DeploymentFee = DeploymentFee;
+	type PublicationFee = PublicationFee;
 	type TreasuryAccount = TreasuryAccount;
-	type FreeDeploymentOrigin = EnsureSignedBy<CouncilAccount, AccountId>;
+	type FreePublicationOrigin = EnsureSignedBy<CouncilAccount, AccountId>;
 
 	type Runner = module_evm::runner::stack::Runner<Self>;
 	type FindAuthor = ();
@@ -204,7 +204,10 @@ pub fn deploy_contracts() {
 		}],
 	}));
 
-	assert_ok!(EVM::deploy_free(Origin::signed(CouncilAccount::get()), erc20_address()));
+	assert_ok!(EVM::publish_free(
+		Origin::signed(CouncilAccount::get()),
+		erc20_address()
+	));
 }
 
 // Specify contract address
@@ -234,7 +237,7 @@ pub fn deploy_contracts_same_prefix() {
 		}],
 	}));
 
-	assert_ok!(EVM::deploy_free(
+	assert_ok!(EVM::publish_free(
 		Origin::signed(CouncilAccount::get()),
 		erc20_address_same_prefix()
 	));

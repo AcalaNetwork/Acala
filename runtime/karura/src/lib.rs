@@ -1313,7 +1313,7 @@ parameter_types! {
 	pub const NewContractExtraBytes: u32 = 10_000;
 	pub NetworkContractSource: H160 = H160::from_low_u64_be(0);
 	pub DeveloperDeposit: Balance = 100 * dollar(KAR);
-	pub DeploymentFee: Balance = 10000 * dollar(KAR);
+	pub PublicationFee: Balance = 10000 * dollar(KAR);
 	pub PrecompilesValue: EvmPrecompiles<Runtime> = EvmPrecompiles::<_>::new();
 }
 
@@ -1352,9 +1352,9 @@ impl module_evm::Config for Runtime {
 	type NetworkContractOrigin = EnsureRootOrTwoThirdsTechnicalCommittee;
 	type NetworkContractSource = NetworkContractSource;
 	type DeveloperDeposit = DeveloperDeposit;
-	type DeploymentFee = DeploymentFee;
+	type PublicationFee = PublicationFee;
 	type TreasuryAccount = KaruraTreasuryAccount;
-	type FreeDeploymentOrigin = EnsureRootOrHalfGeneralCouncil;
+	type FreePublicationOrigin = EnsureRootOrHalfGeneralCouncil;
 	type Runner = module_evm::runner::stack::Runner<Self>;
 	type FindAuthor = pallet_session::FindAccountFromAuthorIndex<Self, Aura>;
 	type Task = ScheduledTasks;
