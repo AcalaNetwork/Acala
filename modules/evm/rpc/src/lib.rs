@@ -67,19 +67,22 @@ fn error_on_execution_failure(reason: &ExitReason, data: &[u8]) -> Result<()> {
 			}
 			Err(Error {
 				code: ErrorCode::InternalError,
-				message: format!("execution error: {:?}", e),
+				message: format!("evm error: {:?}", e),
 				data: Some(Value::String("0x".to_string())),
 			})
 		}
-		ExitReason::Revert(_) => Err(Error {
-			code: ErrorCode::InternalError,
-			message: decode_revert_message(data)
-				.map_or("execution revert".into(), |data| format!("execution revert: {}", data)),
-			data: Some(Value::String(format!("0x{}", data.to_hex::<String>()))),
-		}),
+		ExitReason::Revert(_) => {
+			let message = "VM Exception while processing transaction: revert".to_string();
+			Err(Error {
+				code: ErrorCode::InternalError,
+				message: decode_revert_message(data)
+					.map_or(message.clone(), |reason| format!("{} {}", message, reason)),
+				data: Some(Value::String(data.to_hex())),
+			})
+		}
 		ExitReason::Fatal(e) => Err(Error {
 			code: ErrorCode::InternalError,
-			message: format!("execution fatal: {:?}", e),
+			message: format!("evm fatal: {:?}", e),
 			data: Some(Value::String("0x".to_string())),
 		}),
 	}

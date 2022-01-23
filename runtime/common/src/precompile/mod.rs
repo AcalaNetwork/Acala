@@ -103,7 +103,7 @@ where
 		if !self.is_precompile(address) {
 			return None;
 		}
-		log::debug!(target: "evm", "Precompile begin, address: {:?}, input: {:?}, target_gas: {:?}, context: {:?}", address, input, target_gas, context);
+		log::trace!(target: "evm", "Precompile begin, address: {:?}, input: {:?}, target_gas: {:?}, context: {:?}", address, input, target_gas, context);
 
 		// https://github.com/ethereum/go-ethereum/blob/9357280fce5c5d57111d690a336cca5f89e34da6/core/vm/contracts.go#L83
 		let result = if address == H160::from_low_u64_be(1) {
@@ -155,7 +155,10 @@ where
 			}
 		};
 
-		log::debug!(target: "evm", "Precompile end, address: {:?}, input: {:?}, target_gas: {:?}, context: {:?}, result: {:?}", address, input, target_gas, context, result);
+		log::trace!(target: "evm", "Precompile end, address: {:?}, input: {:?}, target_gas: {:?}, context: {:?}, result: {:?}", address, input, target_gas, context, result);
+		if let Some(Err(PrecompileFailure::Revert { ref output, .. })) = result {
+			log::debug!(target: "evm", "Precompile failed: {:?}", core::str::from_utf8(&output.to_vec()));
+		};
 		result
 	}
 
