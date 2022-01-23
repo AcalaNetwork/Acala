@@ -20,11 +20,11 @@ use frame_support::log;
 use module_evm::{
 	precompiles::Precompile,
 	runner::state::{PrecompileFailure, PrecompileOutput, PrecompileResult},
-	Context, ExitError, ExitSucceed,
+	Context, ExitRevert, ExitSucceed,
 };
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use sp_runtime::RuntimeDebug;
-use sp_std::{borrow::Cow, marker::PhantomData, prelude::*};
+use sp_std::{marker::PhantomData, prelude::*};
 
 use module_support::EVMStateRentTrait;
 
@@ -89,8 +89,10 @@ where
 				let contract = input.evm_address_at(1)?;
 
 				let maintainer = module_evm::Pallet::<Runtime>::query_maintainer(contract).map_err(|e| {
-					PrecompileFailure::Error {
-						exit_status: ExitError::Other(Cow::Borrowed(e.into())),
+					PrecompileFailure::Revert {
+						exit_status: ExitRevert::Reverted,
+						output: Into::<&str>::into(e).as_bytes().to_vec(),
+						cost: 0,
 					}
 				})?;
 
@@ -135,8 +137,10 @@ where
 					contract,
 					new_maintainer,
 				)
-				.map_err(|e| PrecompileFailure::Error {
-					exit_status: ExitError::Other(Cow::Borrowed(e.into())),
+				.map_err(|e| PrecompileFailure::Revert {
+					exit_status: ExitRevert::Reverted,
+					output: Into::<&str>::into(e).as_bytes().to_vec(),
+					cost: 0,
 				})?;
 
 				Ok(PrecompileOutput {

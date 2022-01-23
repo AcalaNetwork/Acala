@@ -20,12 +20,12 @@ use frame_support::log;
 use module_evm::{
 	precompiles::Precompile,
 	runner::state::{PrecompileFailure, PrecompileOutput, PrecompileResult},
-	Context, ExitError, ExitSucceed,
+	Context, ExitRevert, ExitSucceed,
 };
 use module_support::AddressMapping;
 use sp_core::H160;
 use sp_runtime::RuntimeDebug;
-use sp_std::{borrow::Cow, marker::PhantomData, prelude::*};
+use sp_std::{marker::PhantomData, prelude::*};
 
 use orml_traits::NFT as NFTT;
 
@@ -107,8 +107,10 @@ where
 				log::debug!(target: "evm", "nft: transfer from: {:?}, to: {:?}, class_id: {:?}, token_id: {:?}", from, to, class_id, token_id);
 
 				<module_nft::Pallet<Runtime> as NFTT<Runtime::AccountId>>::transfer(&from, &to, (class_id, token_id))
-					.map_err(|e| PrecompileFailure::Error {
-					exit_status: ExitError::Other(Cow::Borrowed(e.into())),
+					.map_err(|e| PrecompileFailure::Revert {
+					exit_status: ExitRevert::Reverted,
+					output: Into::<&str>::into(e).as_bytes().to_vec(),
+					cost: 0,
 				})?;
 
 				Ok(PrecompileOutput {

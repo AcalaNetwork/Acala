@@ -28,7 +28,7 @@ use frame_support::log;
 use module_evm::{
 	precompiles::{ECRecover, ECRecoverPublicKey, Identity, Precompile, Ripemd160, Sha256, Sha3FIPS256, Sha3FIPS512},
 	runner::state::{PrecompileFailure, PrecompileResult, PrecompileSet},
-	Context, ExitError,
+	Context, ExitRevert,
 };
 use module_support::PrecompileCallerFilter as PrecompileCallerFilterT;
 use primitives::evm::PRECOMPILE_ADDRESS_START;
@@ -126,9 +126,11 @@ where
 		// Acala precompile
 		else {
 			if !SystemContractsFilter::is_allowed(context.caller) {
-				log::debug!(target: "evm", "Precompile no permission");
-				return Some(Err(PrecompileFailure::Error {
-					exit_status: ExitError::Other("no permission".into()),
+				log::debug!(target: "evm", "Precompile no permission: {:?}", context.caller);
+				return Some(Err(PrecompileFailure::Revert {
+					exit_status: ExitRevert::Reverted,
+					output: "NoPermission".into(),
+					cost: 0,
 				}));
 			}
 

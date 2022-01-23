@@ -30,13 +30,13 @@ use frame_support::{
 use module_evm::{
 	precompiles::Precompile,
 	runner::state::{PrecompileFailure, PrecompileOutput, PrecompileResult},
-	Context, ExitError, ExitSucceed,
+	Context, ExitRevert, ExitSucceed,
 };
 use module_support::{AddressMapping, TransactionPayment};
 use primitives::{Balance, BlockNumber};
 use sp_core::H160;
 use sp_runtime::RuntimeDebug;
-use sp_std::{borrow::Cow, fmt::Debug, marker::PhantomData, prelude::*};
+use sp_std::{fmt::Debug, marker::PhantomData, prelude::*};
 
 use super::input::{Input, InputT, Output};
 use codec::{Decode, Encode};
@@ -148,8 +148,10 @@ where
 						&from_account,
 						weight,
 					)
-					.map_err(|e| PrecompileFailure::Error {
-						exit_status: ExitError::Other(Cow::Borrowed(e.into())),
+					.map_err(|e| PrecompileFailure::Revert {
+						exit_status: ExitRevert::Reverted,
+						output: Into::<&str>::into(e).as_bytes().to_vec(),
+						cost: 0,
 					})?;
 				}
 
@@ -165,8 +167,10 @@ where
 				.into();
 
 				let current_id = EvmSchedulerNextID::get();
-				let next_id = current_id.checked_add(1).ok_or_else(|| PrecompileFailure::Error {
-					exit_status: ExitError::Other("Scheduler next id overflow".into()),
+				let next_id = current_id.checked_add(1).ok_or_else(|| PrecompileFailure::Revert {
+					exit_status: ExitRevert::Reverted,
+					output: "Scheduler next id overflow".into(),
+					cost: 0,
 				})?;
 				EvmSchedulerNextID::set(&next_id);
 
@@ -198,8 +202,10 @@ where
 						.clone(),
 					call,
 				)
-				.map_err(|_| PrecompileFailure::Error {
-					exit_status: ExitError::Other("Schedule failed".into()),
+				.map_err(|_| PrecompileFailure::Revert {
+					exit_status: ExitRevert::Reverted,
+					output: "Schedule failed".into(),
+					cost: 0,
 				})?;
 
 				Ok(PrecompileOutput {
@@ -222,13 +228,17 @@ where
 					task_id,
 				);
 
-				let task_info = TaskInfo::decode(&mut &task_id[..]).map_err(|_| PrecompileFailure::Error {
-					exit_status: ExitError::Other("Decode task_id failed".into()),
+				let task_info = TaskInfo::decode(&mut &task_id[..]).map_err(|_| PrecompileFailure::Revert {
+					exit_status: ExitRevert::Reverted,
+					output: "Decode task_id failed".into(),
+					cost: 0,
 				})?;
 				ensure!(
 					task_info.sender == from,
-					PrecompileFailure::Error {
-						exit_status: ExitError::Other("NoPermission".into())
+					PrecompileFailure::Revert {
+						exit_status: ExitRevert::Reverted,
+						output: "NoPermission".into(),
+						cost: 0,
 					}
 				);
 
@@ -237,8 +247,10 @@ where
 					<Runtime as pallet_scheduler::Config>::Call,
 					<Runtime as pallet_scheduler::Config>::PalletsOrigin,
 				>>::cancel_named(task_id)
-				.map_err(|_| PrecompileFailure::Error {
-					exit_status: ExitError::Other("Cancel schedule failed".into()),
+				.map_err(|_| PrecompileFailure::Revert {
+					exit_status: ExitRevert::Reverted,
+					output: "Cancel schedule failed".into(),
+					cost: 0,
 				})?;
 
 				#[cfg(not(feature = "with-ethereum-compatibility"))]
@@ -273,13 +285,17 @@ where
 					min_delay,
 				);
 
-				let task_info = TaskInfo::decode(&mut &task_id[..]).map_err(|_| PrecompileFailure::Error {
-					exit_status: ExitError::Other("Decode task_id failed".into()),
+				let task_info = TaskInfo::decode(&mut &task_id[..]).map_err(|_| PrecompileFailure::Revert {
+					exit_status: ExitRevert::Reverted,
+					output: "Decode task_id failed".into(),
+					cost: 0,
 				})?;
 				ensure!(
 					task_info.sender == from,
-					PrecompileFailure::Error {
-						exit_status: ExitError::Other("NoPermission".into())
+					PrecompileFailure::Revert {
+						exit_status: ExitRevert::Reverted,
+						output: "NoPermission".into(),
+						cost: 0,
 					}
 				);
 
@@ -288,8 +304,10 @@ where
 					<Runtime as pallet_scheduler::Config>::Call,
 					<Runtime as pallet_scheduler::Config>::PalletsOrigin,
 				>>::reschedule_named(task_id, DispatchTime::After(min_delay))
-				.map_err(|e| PrecompileFailure::Error {
-					exit_status: ExitError::Other(Cow::Borrowed(e.into())),
+				.map_err(|e| PrecompileFailure::Revert {
+					exit_status: ExitRevert::Reverted,
+					output: Into::<&str>::into(e).as_bytes().to_vec(),
+					cost: 0,
 				})?;
 
 				Ok(PrecompileOutput {

@@ -20,11 +20,11 @@ use frame_support::log;
 use module_evm::{
 	precompiles::Precompile,
 	runner::state::{PrecompileFailure, PrecompileOutput, PrecompileResult},
-	Context, ExitError, ExitSucceed,
+	Context, ExitRevert, ExitSucceed,
 };
 use module_support::Erc20InfoMapping as Erc20InfoMappingT;
 use sp_runtime::RuntimeDebug;
-use sp_std::{borrow::Cow, marker::PhantomData, prelude::*};
+use sp_std::{marker::PhantomData, prelude::*};
 
 use orml_traits::MultiCurrency as MultiCurrencyT;
 
@@ -63,16 +63,20 @@ where
 
 		let action = input.action()?;
 		let currency_id =
-			Runtime::Erc20InfoMapping::decode_evm_address(context.caller).ok_or_else(|| PrecompileFailure::Error {
-				exit_status: ExitError::Other("invalid currency id".into()),
+			Runtime::Erc20InfoMapping::decode_evm_address(context.caller).ok_or_else(|| PrecompileFailure::Revert {
+				exit_status: ExitRevert::Reverted,
+				output: "invalid currency id".into(),
+				cost: 0,
 			})?;
 
 		log::debug!(target: "evm", "multicurrency: currency id: {:?}", currency_id);
 
 		match action {
 			Action::QueryName => {
-				let name = Runtime::Erc20InfoMapping::name(currency_id).ok_or_else(|| PrecompileFailure::Error {
-					exit_status: ExitError::Other("Get name failed".into()),
+				let name = Runtime::Erc20InfoMapping::name(currency_id).ok_or_else(|| PrecompileFailure::Revert {
+					exit_status: ExitRevert::Reverted,
+					output: "Get name failed".into(),
+					cost: 0,
 				})?;
 				log::debug!(target: "evm", "multicurrency: name: {:?}", name);
 
@@ -85,8 +89,10 @@ where
 			}
 			Action::QuerySymbol => {
 				let symbol =
-					Runtime::Erc20InfoMapping::symbol(currency_id).ok_or_else(|| PrecompileFailure::Error {
-						exit_status: ExitError::Other("Get symbol failed".into()),
+					Runtime::Erc20InfoMapping::symbol(currency_id).ok_or_else(|| PrecompileFailure::Revert {
+						exit_status: ExitRevert::Reverted,
+						output: "Get symbol failed".into(),
+						cost: 0,
 					})?;
 				log::debug!(target: "evm", "multicurrency: symbol: {:?}", symbol);
 
@@ -99,8 +105,10 @@ where
 			}
 			Action::QueryDecimals => {
 				let decimals =
-					Runtime::Erc20InfoMapping::decimals(currency_id).ok_or_else(|| PrecompileFailure::Error {
-						exit_status: ExitError::Other("Get decimals failed".into()),
+					Runtime::Erc20InfoMapping::decimals(currency_id).ok_or_else(|| PrecompileFailure::Revert {
+						exit_status: ExitRevert::Reverted,
+						output: "Get decimals failed".into(),
+						cost: 0,
 					})?;
 				log::debug!(target: "evm", "multicurrency: decimals: {:?}", decimals);
 
@@ -141,8 +149,10 @@ where
 				log::debug!(target: "evm", "multicurrency: transfer from: {:?}, to: {:?}, amount: {:?}", from, to, amount);
 
 				Runtime::MultiCurrency::transfer(currency_id, &from, &to, amount).map_err(|e| {
-					PrecompileFailure::Error {
-						exit_status: ExitError::Other(Cow::Borrowed(e.into())),
+					PrecompileFailure::Revert {
+						exit_status: ExitRevert::Reverted,
+						output: Into::<&str>::into(e).as_bytes().to_vec(),
+						cost: 0,
 					}
 				})?;
 

@@ -1754,7 +1754,7 @@ pub fn code_hash(code: &[u8]) -> H256 {
 }
 
 #[allow(dead_code)]
-fn encode_revert_message(e: &ExitError) -> Vec<u8> {
+fn encode_revert_message(e: &Vec<u8>) -> Vec<u8> {
 	// A minimum size of error function selector (4) + offset (32) + string length
 	// (32) should contain a utf-8 encoded revert reason.
 

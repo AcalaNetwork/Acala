@@ -31,7 +31,7 @@ use crate::precompile::{
 use codec::Encode;
 use frame_support::{assert_noop, assert_ok};
 use hex_literal::hex;
-use module_evm::{Context, ExitError, ExitSucceed};
+use module_evm::{Context, ExitRevert, ExitSucceed};
 use module_support::AddressMapping;
 use orml_traits::DataFeeder;
 use primitives::{
@@ -61,8 +61,10 @@ fn precompile_filter_works_on_acala_precompiles() {
 	};
 	assert_eq!(
 		PrecompilesValue::get().execute(precompile, &[0u8; 1], None, &non_system_caller_context, false),
-		Some(Err(PrecompileFailure::Error {
-			exit_status: ExitError::Other("no permission".into())
+		Some(Err(PrecompileFailure::Revert {
+			exit_status: ExitRevert::Reverted,
+			output: "NoPermission".into(),
+			cost: 0,
 		})),
 	);
 }
@@ -117,8 +119,10 @@ fn multicurrency_precompile_should_work() {
 		input[0..4].copy_from_slice(&Into::<u32>::into(multicurrency::Action::QuerySymbol).to_be_bytes());
 		assert_noop!(
 			MultiCurrencyPrecompile::execute(&input, None, &context, false),
-			PrecompileFailure::Error {
-				exit_status: ExitError::Other("invalid currency id".into())
+			PrecompileFailure::Revert {
+				exit_status: ExitRevert::Reverted,
+				output: "invalid currency id".into(),
+				cost: 0,
 			}
 		);
 
@@ -280,8 +284,10 @@ fn multicurrency_precompile_should_work() {
 		context.caller = lp_aca_ausd_evm_address();
 		assert_noop!(
 			MultiCurrencyPrecompile::execute(&input, None, &context, false),
-			PrecompileFailure::Error {
-				exit_status: ExitError::Other("BalanceTooLow".into())
+			PrecompileFailure::Revert {
+				exit_status: ExitRevert::Reverted,
+				output: "BalanceTooLow".into(),
+				cost: 0,
 			}
 		);
 	});
@@ -345,8 +351,10 @@ fn oracle_precompile_should_handle_invalid_input() {
 				},
 				false
 			),
-			PrecompileFailure::Error {
-				exit_status: ExitError::Other("invalid input".into())
+			PrecompileFailure::Revert {
+				exit_status: ExitRevert::Reverted,
+				output: "invalid input".into(),
+				cost: 0,
 			}
 		);
 
@@ -361,8 +369,10 @@ fn oracle_precompile_should_handle_invalid_input() {
 				},
 				false
 			),
-			PrecompileFailure::Error {
-				exit_status: ExitError::Other("invalid input".into())
+			PrecompileFailure::Revert {
+				exit_status: ExitRevert::Reverted,
+				output: "invalid input".into(),
+				cost: 0,
 			}
 		);
 
@@ -377,8 +387,10 @@ fn oracle_precompile_should_handle_invalid_input() {
 				},
 				false
 			),
-			PrecompileFailure::Error {
-				exit_status: ExitError::Other("invalid action".into())
+			PrecompileFailure::Revert {
+				exit_status: ExitRevert::Reverted,
+				output: "invalid action".into(),
+				cost: 0,
 			}
 		);
 	});
@@ -573,8 +585,10 @@ fn schedule_call_precompile_should_handle_invalid_input() {
 
 		assert_eq!(
 			ScheduleCallPrecompile::execute(&cancel_input, None, &context, false),
-			Err(PrecompileFailure::Error {
-				exit_status: ExitError::Other("NoPermission".into())
+			Err(PrecompileFailure::Revert {
+				exit_status: ExitRevert::Reverted,
+				output: "NoPermission".into(),
+				cost: 0,
 			})
 		);
 
@@ -683,8 +697,10 @@ fn dex_precompile_get_liquidity_token_address_should_work() {
 		U256::from_big_endian(&id.to_vec()).to_big_endian(&mut input[4 + 1 * 32..4 + 2 * 32]);
 		assert_noop!(
 			DexPrecompile::execute(&input, None, &context, false),
-			PrecompileFailure::Error {
-				exit_status: ExitError::Other("invalid currency id".into())
+			PrecompileFailure::Revert {
+				exit_status: ExitRevert::Reverted,
+				output: "invalid currency id".into(),
+				cost: 0,
 			}
 		);
 	});

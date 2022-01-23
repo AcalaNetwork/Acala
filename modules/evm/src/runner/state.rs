@@ -18,7 +18,7 @@
 
 // Synchronize with https://github.com/rust-blockchain/evm/blob/9ac4d47b5e/src/executor/stack/executor.rs
 
-use crate::StorageMeter;
+use crate::{encode_revert_message, StorageMeter};
 use core::{cmp::min, convert::Infallible};
 use frame_support::log;
 use module_evm_utiltity::{
@@ -1059,7 +1059,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 				}) => {
 					let _ = self.state.metadata_mut().gasometer.record_cost(cost);
 					let _ = self.exit_substate(StackExitKind::Reverted);
-					Capture::Exit((ExitReason::Revert(exit_status), output))
+					Capture::Exit((ExitReason::Revert(exit_status), encode_revert_message(&output)))
 				}
 				Err(PrecompileFailure::Fatal { exit_status }) => {
 					self.state.metadata_mut().gasometer.fail();
