@@ -127,7 +127,7 @@ pub mod module {
 
 		/// The fixed cost of withdrawing Staking currency via redeem. In Staking currency.
 		#[pallet::constant]
-		type XcmUnbondFee: Get<Balance>;
+		type HomaUnbondFee: Get<Balance>;
 
 		/// Block number provider for the relaychain.
 		type RelayChainBlockNumber: BlockNumberProvider<BlockNumber = Self::BlockNumber>;
@@ -354,7 +354,7 @@ pub mod module {
 				sp_io::TestExternalities::new_empty().execute_with(||
 					assert!(
 						Permill::one().saturating_sub(T::BaseWithdrawFee::get()).mul(
-						T::MinimumRedeemThreshold::get()) > T::XcmUnbondFee::get()
+						T::MinimumRedeemThreshold::get()) > T::HomaUnbondFee::get()
 					));
 			}
 		}
@@ -961,8 +961,8 @@ pub mod module {
 
 				Self::update_total_staking_currency_storage(|total| Ok(total.saturating_sub(actual_staking_amount)))?;
 
-				//Actual deposit amount has `T::XcmUnbondFee` deducted.
-				let actual_staking_amount_deposited = actual_staking_amount.saturating_sub(T::XcmUnbondFee::get());
+				//Actual deposit amount has `T::HomaUnbondFee` deducted.
+				let actual_staking_amount_deposited = actual_staking_amount.saturating_sub(T::HomaUnbondFee::get());
 				T::Currency::deposit(T::StakingCurrencyId::get(), redeemer, actual_staking_amount_deposited)?;
 
 				// Burn the corresponding amount of Liquid currency from the user.
@@ -1022,7 +1022,7 @@ pub mod module {
 			);
 			T::RelayChainCallBuilder::finalize_call_into_xcm_message(
 				xcm_message,
-				T::XcmUnbondFee::get(),
+				T::HomaUnbondFee::get(),
 				Self::xcm_dest_weight(),
 			)
 		}

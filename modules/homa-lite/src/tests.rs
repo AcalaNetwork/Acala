@@ -491,7 +491,7 @@ fn new_available_staking_currency_can_handle_redeem_requests() {
 
 		HomaLite::on_idle(MockRelayBlockNumberProvider::get(), 5_000_000_000);
 
-		// All available staking currency should be redeemed, paying the `XcmUnbondFee`
+		// All available staking currency should be redeemed, paying the `HomaUnbondFee`
 		assert_eq!(AvailableStakingBalance::<Runtime>::get(), 1); // rounding error
 		assert_eq!(Currencies::free_balance(KSM, &DAVE), dollar(999) - 1); // rounding error
 		assert_eq!(Currencies::free_balance(LKSM, &DAVE), dollar(989_000));
@@ -1340,7 +1340,7 @@ fn staking_and_liquid_conversion_works() {
 fn redeem_can_handle_dust_available_staking_currency() {
 	ExtBuilder::default().build().execute_with(|| {
 		// If AvailableStakingBalance is not enough to pay for the unbonding fee, ignore it.
-		// pub XcmUnbondFee: Balance = dollar(1);
+		// pub HomaUnbondFee: Balance = dollar(1);
 		assert_ok!(HomaLite::adjust_available_staking_balance(
 			Origin::root(),
 			999_000_000,

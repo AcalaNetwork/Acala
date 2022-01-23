@@ -22,6 +22,7 @@
 
 pub mod currency;
 pub mod evm;
+pub mod nft;
 pub mod signature;
 pub mod task;
 pub mod unchecked_extrinsic;
@@ -175,8 +176,6 @@ pub enum ReserveIdentifier {
 	// always the last, indicate number of variants
 	Count,
 }
-
-pub type NFTBalance = u128;
 
 pub type CashYieldIndex = u128;
 

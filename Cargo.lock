@@ -70,6 +70,7 @@ name = "acala-primitives"
 version = "2.2.1"
 dependencies = [
  "bstringify",
+ "enumflags2",
  "frame-support",
  "hex-literal",
  "module-evm-utiltity",
@@ -144,7 +145,6 @@ dependencies = [
  "module-evm-bridge",
  "module-evm-rpc-runtime-api",
  "module-homa",
- "module-homa-xcm",
  "module-honzon",
  "module-idle-scheduler",
  "module-incentives",
@@ -152,6 +152,7 @@ dependencies = [
  "module-nft",
  "module-prices",
  "module-relaychain",
+ "module-relaychain-interface",
  "module-session-manager",
  "module-support",
  "module-transaction-pause",
@@ -3844,7 +3845,6 @@ dependencies = [
  "module-evm-bridge",
  "module-evm-rpc-runtime-api",
  "module-homa",
- "module-homa-xcm",
  "module-honzon",
  "module-idle-scheduler",
  "module-incentives",
@@ -3852,6 +3852,7 @@ dependencies = [
  "module-nft",
  "module-prices",
  "module-relaychain",
+ "module-relaychain-interface",
  "module-session-manager",
  "module-support",
  "module-transaction-pause",
@@ -4860,7 +4861,6 @@ dependencies = [
  "module-evm-rpc-runtime-api",
  "module-evm-utiltity",
  "module-homa",
- "module-homa-xcm",
  "module-honzon",
  "module-idle-scheduler",
  "module-incentives",
@@ -4869,6 +4869,7 @@ dependencies = [
  "module-nominees-election",
  "module-prices",
  "module-relaychain",
+ "module-relaychain-interface",
  "module-session-manager",
  "module-support",
  "module-transaction-pause",
@@ -5549,32 +5550,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "module-homa-xcm"
-version = "2.0.3"
-dependencies = [
- "acala-primitives",
- "cumulus-primitives-core",
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "module-currencies",
- "module-relaychain",
- "module-support",
- "orml-tokens",
- "orml-traits",
- "pallet-balances",
- "pallet-xcm",
- "parity-scale-codec",
- "scale-info",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
- "xcm",
- "xcm-executor",
-]
-
-[[package]]
 name = "module-honzon"
 version = "2.2.1"
 dependencies = [
@@ -5726,6 +5701,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "module-prt"
+version = "2.2.1"
+dependencies = [
+ "acala-primitives",
+ "frame-support",
+ "frame-system",
+ "module-support",
+ "orml-nft",
+ "orml-traits",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+]
+
+[[package]]
 name = "module-relaychain"
 version = "2.2.1"
 dependencies = [
@@ -5741,6 +5734,32 @@ dependencies = [
  "sp-runtime",
  "sp-std",
  "xcm",
+]
+
+[[package]]
+name = "module-relaychain-interface"
+version = "2.0.3"
+dependencies = [
+ "acala-primitives",
+ "cumulus-primitives-core",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "module-currencies",
+ "module-relaychain",
+ "module-support",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "pallet-xcm",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "xcm",
+ "xcm-executor",
 ]
 
 [[package]]
@@ -9832,13 +9851,13 @@ dependencies = [
  "module-evm-rpc-runtime-api",
  "module-homa",
  "module-homa-lite",
- "module-homa-xcm",
  "module-honzon",
  "module-incentives",
  "module-loans",
  "module-nft",
  "module-prices",
  "module-relaychain",
+ "module-relaychain-interface",
  "module-session-manager",
  "module-support",
  "module-transaction-payment",

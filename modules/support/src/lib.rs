@@ -594,6 +594,23 @@ pub trait CallBuilder {
 	/// - amount: The amount of staking currency to be transferred.
 	fn balances_transfer_keep_alive(to: Self::AccountId, amount: Self::Balance) -> Self::RelayChainCall;
 
+	/// Place a bid to freeze Relaychain currency to mint Gilt.
+	///  params:
+	/// - amount: The amount of relaychain currency to freeze.
+	/// - duration: Minimum length of the freeze in no. of periods.
+	fn gilt_place_bid(amount: Self::Balance, duration: u32) -> Self::RelayChainCall;
+
+	/// Retract the bid to mint Gilt.
+	///  params:
+	/// - amount: The amount of relaychain currency in the bid.
+	/// - duration: The duration in the bid.
+	fn gilt_retract_bid(amount: Self::Balance, duration: u32) -> Self::RelayChainCall;
+
+	/// Trade in the gilt to thaw the frozen Relaychain currency.
+	///  params:
+	/// - index: The active_index the currency was frozen in.
+	fn gilt_thaw(index: u32) -> Self::RelayChainCall;
+
 	/// Wrap the final calls into the Xcm format.
 	///  params:
 	/// - call: The call to be executed
@@ -648,4 +665,13 @@ pub trait HomaSubAccountXcm<AccountId, Balance> {
 	fn unbond_on_sub_account(sub_account_index: u16, amount: Balance) -> DispatchResult;
 	/// The fee of cross-chain transfer is deducted from the recipient.
 	fn get_xcm_transfer_fee() -> Balance;
+}
+
+pub trait GiltXcm<Balance> {
+	// Send XCM message to the relaychain to place a bid to buy Gilt via pallet-gilt.
+	fn gilt_place_bid(amount: Balance, duration: u32) -> DispatchResult;
+	// Send XCM message to retract a bid to buy Gilt.
+	fn gilt_retract_bid(amount: Balance, duration: u32) -> DispatchResult;
+	// Send XCM message to exchange Gilt in order to thaw frozen assets.
+	fn gilt_thaw(index: u32) -> DispatchResult;
 }

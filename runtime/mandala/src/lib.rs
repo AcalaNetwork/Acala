@@ -1248,7 +1248,7 @@ impl module_homa::Config for Runtime {
 	type MintThreshold = MintThreshold;
 	type RedeemThreshold = RedeemThreshold;
 	type RelayChainBlockNumber = RelayChainBlockNumberProvider<Runtime>;
-	type HomaXcm = HomaXcm;
+	type RelaychainInterface = RelaychainInterface;
 	type WeightInfo = weights::module_homa::WeightInfo<Runtime>;
 }
 
@@ -1264,7 +1264,7 @@ impl Convert<u16, MultiLocation> for SubAccountIndexMultiLocationConvertor {
 	}
 }
 
-impl module_homa_xcm::Config for Runtime {
+impl module_relaychain_interface::Config for Runtime {
 	type Event = Event;
 	type UpdateOrigin = EnsureRootOrHalfGeneralCouncil;
 	type StakingCurrencyId = GetStakingCurrencyId;
@@ -2075,7 +2075,7 @@ construct_runtime! {
 		// Homa
 		NomineesElection: module_nominees_election::{Pallet, Call, Storage, Event<T>} = 131,
 		Homa: module_homa::{Pallet, Call, Storage, Event<T>} = 136,
-		HomaXcm: module_homa_xcm::{Pallet, Call, Storage, Event<T>} = 137,
+		RelaychainInterface: module_relaychain_interface::{Pallet, Call, Storage, Event<T>} = 137,
 
 		// Acala Other
 		Incentives: module_incentives::{Pallet, Storage, Call, Event<T>} = 140,

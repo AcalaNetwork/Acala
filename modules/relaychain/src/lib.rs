@@ -42,7 +42,7 @@ pub enum BalancesCall<T: Config> {
 	TransferKeepAlive(<T::Lookup as StaticLookup>::Source, #[codec(compact)] Balance), /* TODO: because param type
 	                                                                                    * in relaychain is u64,
 	                                                                                    * need to confirm
-	                                                                                    * Balance(u128) is work. */
+	                                                                                    * Balance(u128) is working. */
 }
 
 #[derive(Encode, Decode, RuntimeDebug)]
@@ -57,12 +57,22 @@ pub enum UtilityCall<RelayChainCall> {
 pub enum StakingCall {
 	#[codec(index = 1)]
 	BondExtra(#[codec(compact)] Balance), /* TODO: because param type in relaychain is u64, need to confirm
-	                                       * Balance(u128) is work. */
+	                                       * Balance(u128) is working. */
 	#[codec(index = 2)]
 	Unbond(#[codec(compact)] Balance), /* TODO: because param type in relaychain is u64, need to confirm
-	                                    * Balance(u128) is work. */
+	                                    * Balance(u128) is working. */
 	#[codec(index = 3)]
 	WithdrawUnbonded(u32),
+}
+
+#[derive(Encode, Decode, RuntimeDebug)]
+pub enum GiltCall {
+	#[codec(index = 0)]
+	PlaceBid(#[codec(compact)] Balance, u32),
+	#[codec(index = 1)]
+	RetractBid(#[codec(compact)] Balance, u32),
+	#[codec(index = 3)]
+	Thaw(#[codec(compact)] u32),
 }
 
 #[cfg(feature = "kusama")]
@@ -79,6 +89,8 @@ mod kusama {
 		Staking(StakingCall),
 		#[codec(index = 24)]
 		Utility(Box<UtilityCall<Self>>),
+		#[codec(index = 38)]
+		Gilt(GiltCall),
 	}
 }
 
@@ -96,6 +108,8 @@ mod polkadot {
 		Staking(StakingCall),
 		#[codec(index = 26)]
 		Utility(Box<UtilityCall<Self>>),
+		#[codec(index = 38)] // Polkadot does not support Gilt at the moment.
+		Gilt(GiltCall), // TODO: Double check this after polkadot support is added.
 	}
 }
 
@@ -134,6 +148,18 @@ where
 
 	fn staking_withdraw_unbonded(num_slashing_spans: u32) -> Self::RelayChainCall {
 		RelayChainCall::Staking(StakingCall::WithdrawUnbonded(num_slashing_spans))
+	}
+
+	fn gilt_place_bid(amount: Self::Balance, duration: u32) -> Self::RelayChainCall {
+		RelayChainCall::Gilt(GiltCall::PlaceBid(amount, duration))
+	}
+
+	fn gilt_retract_bid(amount: Self::Balance, duration: u32) -> Self::RelayChainCall {
+		RelayChainCall::Gilt(GiltCall::RetractBid(amount, duration))
+	}
+
+	fn gilt_thaw(index: u32) -> Self::RelayChainCall {
+		RelayChainCall::Gilt(GiltCall::Thaw(index))
 	}
 
 	fn balances_transfer_keep_alive(to: Self::AccountId, amount: Self::Balance) -> Self::RelayChainCall {

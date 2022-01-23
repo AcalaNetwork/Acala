@@ -28,7 +28,7 @@ use orml_traits::NFT as NFTT;
 
 use super::input::{Input, InputT, Output};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
-use primitives::NFTBalance;
+use primitives::nft::NFTBalance;
 
 /// The `NFT` impl precompile.
 ///
