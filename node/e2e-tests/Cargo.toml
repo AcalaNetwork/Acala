@@ -37,7 +37,7 @@ sp-api = { git = "https://github.com/paritytech/substrate", branch = "master" }
 sp-inherents = { git = "https://github.com/paritytech/substrate", branch = "master" }
 sp-keystore = { git = "https://github.com/paritytech/substrate", branch = "master" }
 
-test-runner = { path = "./test-runner" }
+test-service = { path = "./test-service" }
 
 module-evm = { path = "../../modules/evm" }
 module-transaction-payment = { path = "../../modules/transaction-payment" }

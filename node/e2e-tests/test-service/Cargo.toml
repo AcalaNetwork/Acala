@@ -1,0 +1,65 @@
+[package]
+name = "test-service"
+version = "0.1.0"
+authors = ["Parity Technologies <admin@parity.io>"]
+edition = "2021"
+
+[dependencies]
+codec = { package = "parity-scale-codec", version = "2.3.0" }
+rand = "0.7.3"
+serde = { version = "1.0.132", features = ["derive"] }
+async-trait = "0.1.42"
+tokio = { version = "1.10", features = ["macros"] }
+criterion = { version = "0.3.5", features = [ "async_tokio" ] }
+parking_lot = "0.11.1"
+jsonrpc-core = "18.0.0"
+
+# Substrate dependencies
+frame-system = { git = "https://github.com/paritytech/substrate", branch = "master" }
+frame-system-rpc-runtime-api = { git = "https://github.com/paritytech/substrate", branch = "master" }
+pallet-transaction-payment = { git = "https://github.com/paritytech/substrate", branch = "master" }
+sc-basic-authorship = { git = "https://github.com/paritytech/substrate", branch = "master" }
+sc-chain-spec = { git = "https://github.com/paritytech/substrate", branch = "master" }
+sc-client-api = { git = "https://github.com/paritytech/substrate", branch = "master" }
+sc-transaction-pool-api = { git = "https://github.com/paritytech/substrate", branch = "master" }
+sc-consensus = { git = "https://github.com/paritytech/substrate", branch = "master" }
+sc-executor = { git = "https://github.com/paritytech/substrate", branch = "master" }
+sc-network = { git = "https://github.com/paritytech/substrate", branch = "master" }
+sc-rpc = { git = "https://github.com/paritytech/substrate", branch = "master" }
+sc-service = { git = "https://github.com/paritytech/substrate", branch = "master", features = [ "wasmtime" ] }
+sc-tracing = { git = "https://github.com/paritytech/substrate", branch = "master" }
+sc-transaction-pool = { git = "https://github.com/paritytech/substrate", branch = "master" }
+sp-arithmetic = { git = "https://github.com/paritytech/substrate", branch = "master" }
+sp-blockchain = { git = "https://github.com/paritytech/substrate", branch = "master" }
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "master" }
+sp-io = { git = "https://github.com/paritytech/substrate", branch = "master" }
+sp-keyring = { git = "https://github.com/paritytech/substrate", branch = "master" }
+sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "master" }
+sp-state-machine = { git = "https://github.com/paritytech/substrate", branch = "master" }
+sp-timestamp = { git = "https://github.com/paritytech/substrate", branch = "master" }
+sp-trie = { git = "https://github.com/paritytech/substrate", branch = "master" }
+sp-tracing = { git = "https://github.com/paritytech/substrate", branch = "master" }
+substrate-test-client = { git = "https://github.com/paritytech/substrate", branch = "master" }
+
+# Polkadot dependencies
+polkadot-primitives = { git = "https://github.com/paritytech/polkadot", branch = "master" }
+polkadot-service = { git = "https://github.com/paritytech/polkadot", branch = "master" }
+polkadot-test-service = { git = "https://github.com/paritytech/polkadot", branch = "master" }
+
+# Cumulus dependencies
+cumulus-client-consensus-relay-chain = { git = "https://github.com/paritytech/cumulus", branch = "master" }
+cumulus-client-network = { git = "https://github.com/paritytech/cumulus", branch = "master" }
+cumulus-client-service = { git = "https://github.com/paritytech/cumulus", branch = "master" }
+cumulus-client-consensus-common = { git = "https://github.com/paritytech/cumulus", branch = "master" }
+cumulus-primitives-core = { git = "https://github.com/paritytech/cumulus", branch = "master" }
+cumulus-primitives-parachain-inherent = { git = "https://github.com/paritytech/cumulus", branch = "master" }
+cumulus-test-runtime = { git = "https://github.com/paritytech/cumulus", branch = "master" }
+cumulus-test-relay-validation-worker-provider = { git = "https://github.com/paritytech/cumulus", branch = "master" }
+cumulus-relay-chain-local = { git = "https://github.com/paritytech/cumulus", branch = "master" }
+
+[dev-dependencies]
+futures = "0.3.5"
+
+# Substrate dependencies
+sc-cli = { git = "https://github.com/paritytech/substrate", branch = "master" }
+substrate-test-utils = { git = "https://github.com/paritytech/substrate", branch = "master" }
