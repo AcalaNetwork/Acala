@@ -21,11 +21,15 @@ use test_service::{initial_head_data, run_relay_chain_validator_node, Keyring::*
 #[substrate_test_utils::test]
 #[ignore]
 async fn test_full_node_catching_up() {
-	let mut builder = sc_cli::LoggerBuilder::new("");
-	builder.with_colors(false);
+	// let mut builder =
+	// sc_cli::LoggerBuilder::new("parachain::candidate-selection=trace,parachain::pvf=trace,parachain::
+	// collator-protocol=trace,parachain::provisioner=trace,test-service=info"); let mut builder =
+	// sc_cli::LoggerBuilder::new("debug,wasmtime=info,afg=info,db=info,wasm_overrides=info,sync=info");
+	let mut builder = sc_cli::LoggerBuilder::new("parachain=debug");
+	builder.with_colors(true);
 	let _ = builder.init();
 
-	let para_id = ParaId::from(100);
+	let para_id = ParaId::from(2000);
 
 	let tokio_handle = tokio::runtime::Handle::current();
 
@@ -39,7 +43,7 @@ async fn test_full_node_catching_up() {
 	alice
 		.register_parachain(
 			para_id,
-			cumulus_test_runtime::WASM_BINARY
+			node_runtime::WASM_BINARY
 				.expect("You need to build the WASM binary to run this test!")
 				.to_vec(),
 			initial_head_data(para_id),

@@ -18,7 +18,7 @@
 #![allow(missing_docs)]
 
 use cumulus_primitives_core::ParaId;
-use cumulus_test_runtime::{AccountId, Signature};
+use node_runtime::{AccountId, Signature};
 use sc_chain_spec::{ChainSpecExtension, ChainSpecGroup};
 use sc_service::ChainType;
 use serde::{Deserialize, Serialize};
@@ -32,7 +32,7 @@ pub type ChainSpec = sc_service::GenericChainSpec<GenesisExt, Extensions>;
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct GenesisExt {
 	/// The runtime genesis config.
-	runtime_genesis_config: cumulus_test_runtime::GenesisConfig,
+	runtime_genesis_config: node_runtime::GenesisConfig,
 	/// The parachain id.
 	para_id: ParaId,
 }
@@ -40,8 +40,8 @@ pub struct GenesisExt {
 impl sp_runtime::BuildStorage for GenesisExt {
 	fn assimilate_storage(&self, storage: &mut sp_core::storage::Storage) -> Result<(), String> {
 		sp_state_machine::BasicExternalities::execute_with_storage(storage, || {
-			sp_io::storage::set(cumulus_test_runtime::TEST_RUNTIME_UPGRADE_KEY, &vec![1, 2, 3, 4]);
-			cumulus_test_runtime::ParachainId::set(&self.para_id);
+			sp_io::storage::set(node_runtime::TEST_RUNTIME_UPGRADE_KEY, &vec![1, 2, 3, 4]);
+			node_runtime::ParachainId::set(&self.para_id);
 		});
 
 		self.runtime_genesis_config.assimilate_storage(storage)
@@ -100,7 +100,7 @@ pub fn get_chain_spec(id: ParaId) -> ChainSpec {
 }
 
 /// Local testnet genesis for testing.
-pub fn local_testnet_genesis() -> cumulus_test_runtime::GenesisConfig {
+pub fn local_testnet_genesis() -> node_runtime::GenesisConfig {
 	testnet_genesis(
 		get_account_id_from_seed::<sr25519::Public>("Alice"),
 		vec![
@@ -120,19 +120,19 @@ pub fn local_testnet_genesis() -> cumulus_test_runtime::GenesisConfig {
 	)
 }
 
-fn testnet_genesis(root_key: AccountId, endowed_accounts: Vec<AccountId>) -> cumulus_test_runtime::GenesisConfig {
-	cumulus_test_runtime::GenesisConfig {
-		system: cumulus_test_runtime::SystemConfig {
-			code: cumulus_test_runtime::WASM_BINARY
+fn testnet_genesis(root_key: AccountId, endowed_accounts: Vec<AccountId>) -> node_runtime::GenesisConfig {
+	node_runtime::GenesisConfig {
+		system: node_runtime::SystemConfig {
+			code: node_runtime::WASM_BINARY
 				.expect("WASM binary was not build, please build it!")
 				.to_vec(),
 			..Default::default()
 		},
 		parachain_system: Default::default(),
-		balances: cumulus_test_runtime::BalancesConfig {
+		balances: node_runtime::BalancesConfig {
 			balances: endowed_accounts.iter().cloned().map(|k| (k, 1 << 60)).collect(),
 		},
-		sudo: cumulus_test_runtime::SudoConfig { key: Some(root_key) },
+		sudo: node_runtime::SudoConfig { key: Some(root_key) },
 		transaction_payment: Default::default(),
 	}
 }

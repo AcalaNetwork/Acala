@@ -53,7 +53,7 @@ async fn test_migrate_solo_to_para() {
 	alice
 		.register_parachain(
 			para_id,
-			cumulus_test_runtime::WASM_BINARY
+			node_runtime::WASM_BINARY
 				.expect("You need to build the WASM binary to run this test!")
 				.to_vec(),
 			initial_head_data(para_id),
@@ -93,7 +93,7 @@ async fn test_migrate_solo_to_para() {
 	// Send the transaction to set the custom header, aka the header of the solo chain.
 	parachain
 		.send_extrinsic(
-			cumulus_test_runtime::TestPalletCall::set_custom_validation_head_data {
+			node_runtime::TestPalletCall::set_custom_validation_head_data {
 				custom_header: solo_chain_header.encode(),
 			},
 			Alice,

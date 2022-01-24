@@ -19,7 +19,7 @@
 
 #![warn(missing_docs)]
 
-mod chain_spec;
+// mod chain_spec;
 mod genesis;
 
 use std::{future::Future, time::Duration};
@@ -31,13 +31,15 @@ use cumulus_client_service::{
 };
 use cumulus_primitives_core::ParaId;
 use cumulus_relay_chain_local::RelayChainLocal;
-use cumulus_test_runtime::{Hash, Header, NodeBlock as Block, RuntimeApi};
+use node_runtime::{Block, Hash, Header, Runtime, RuntimeApi, SignedExtra};
 
+use cumulus_client_consensus_aura::{AuraConsensus, BuildAuraConsensusParams, SlotProportion};
 use frame_system_rpc_runtime_api::AccountNonceApi;
 use parking_lot::Mutex;
 use polkadot_primitives::v1::{CollatorPair, Hash as PHash, PersistedValidationData};
 use polkadot_service::ProvideRuntimeApi;
 use sc_client_api::execution_extensions::ExecutionStrategies;
+use sc_client_api::ExecutorProvider;
 use sc_network::{config::TransportConfig, multiaddr, NetworkService};
 use sc_service::{
 	config::{
@@ -51,16 +53,25 @@ use sp_arithmetic::traits::SaturatedConversion;
 use sp_blockchain::HeaderBackend;
 use sp_core::{Pair, H256};
 use sp_keyring::Sr25519Keyring;
-use sp_runtime::{codec::Encode, generic, traits::BlakeTwo256};
+use sp_runtime::{
+	codec::Encode,
+	generic,
+	traits::{BlakeTwo256, Extrinsic},
+};
 use sp_state_machine::BasicExternalities;
 use sp_trie::PrefixedMemoryDB;
 use std::sync::Arc;
 use substrate_test_client::{BlockchainEventsExt, RpcHandlersExt, RpcTransactionError, RpcTransactionOutput};
 
-pub use chain_spec::*;
-pub use cumulus_test_runtime as runtime;
+// pub use chain_spec::*;
 pub use genesis::*;
+use node_primitives::signature::AcalaMultiSignature;
+use node_primitives::{AccountId, Address, Signature};
+pub use node_runtime as runtime;
+use node_service::chain_spec::mandala::dev_testnet_config;
 pub use sp_keyring::Sr25519Keyring as Keyring;
+use sp_runtime::generic::Era;
+use substrate_test_client::sp_consensus::SlotData;
 
 /// A consensus that will never produce any block.
 #[derive(Clone)]
@@ -88,17 +99,17 @@ impl sc_executor::NativeExecutionDispatch for RuntimeExecutor {
 	type ExtendHostFunctions = ();
 
 	fn dispatch(method: &str, data: &[u8]) -> Option<Vec<u8>> {
-		cumulus_test_runtime::api::dispatch(method, data)
+		node_runtime::api::dispatch(method, data)
 	}
 
 	fn native_version() -> sc_executor::NativeVersion {
-		cumulus_test_runtime::native_version()
+		node_runtime::native_version()
 	}
 }
 
 /// The client type being used by the test service.
 pub type Client =
-	TFullClient<runtime::NodeBlock, runtime::RuntimeApi, sc_executor::NativeElseWasmExecutor<RuntimeExecutor>>;
+	TFullClient<runtime::Block, runtime::RuntimeApi, sc_executor::NativeElseWasmExecutor<RuntimeExecutor>>;
 
 /// Transaction pool type used by the test service
 pub type TransactionPool = Arc<sc_transaction_pool::FullPool<Block, Client>>;
@@ -192,6 +203,8 @@ where
 	let mut parachain_config = prepare_node_config(parachain_config);
 
 	let params = new_partial(&mut parachain_config)?;
+	let keystore = params.keystore_container.sync_keystore();
+	let force_authoring = parachain_config.force_authoring;
 
 	let transaction_pool = params.transaction_pool.clone();
 	let mut task_manager = params.task_manager;
@@ -225,6 +238,30 @@ where
 	let block_announce_validator_builder = move |_| Box::new(block_announce_validator) as Box<_>;
 
 	let prometheus_registry = parachain_config.prometheus_registry().cloned();
+	// let import_queue = {
+	// 	let slot_duration = cumulus_client_consensus_aura::slot_duration(&*client)?;
+	// 	cumulus_client_consensus_aura::import_queue::<sp_consensus_aura::sr25519::AuthorityPair, _, _, _,
+	// _, _, _>( 		cumulus_client_consensus_aura::ImportQueueParams {
+	// 			block_import: client.clone(),
+	// 			client: client.clone(),
+	// 			create_inherent_data_providers: move |_, _| async move {
+	// 				let time = sp_timestamp::InherentDataProvider::from_system_time();
+	//
+	// 				let slot = sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_duration(
+	// 					*time,
+	// 					slot_duration.slot_duration(),
+	// 				);
+	//
+	// 				Ok((time, slot))
+	// 			},
+	// 			registry: None,
+	// 			can_author_with: sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone()),
+	// 			spawner: &task_manager.spawn_essential_handle(),
+	// 			telemetry: None,
+	// 		},
+	// 	)?
+	// };
+	// let import_queue = cumulus_client_service::SharedImportQueue::new(import_queue);
 	let import_queue = cumulus_client_service::SharedImportQueue::new(params.import_queue);
 	let (network, system_rpc_tx, start_network) = sc_service::build_network(sc_service::BuildNetworkParams {
 		config: &parachain_config,
@@ -265,6 +302,7 @@ where
 		.unwrap_or_else(|| announce_block);
 
 	let relay_chain_interface_for_closure = relay_chain_interface.clone();
+
 	if let Some(collator_key) = collator_key {
 		let parachain_consensus: Box<dyn ParachainConsensus<Block>> = match consensus {
 			Consensus::RelayChain => {
@@ -302,6 +340,60 @@ where
 				))
 			}
 			Consensus::Null => Box::new(NullConsensus),
+			Consensus::Aura => {
+				let slot_duration = cumulus_client_consensus_aura::slot_duration(&*client)?;
+
+				let proposer_factory = sc_basic_authorship::ProposerFactory::with_proof_recording(
+					task_manager.spawn_handle(),
+					client.clone(),
+					transaction_pool.clone(),
+					prometheus_registry.as_ref(),
+					None,
+				);
+
+				AuraConsensus::build::<sp_consensus_aura::sr25519::AuthorityPair, _, _, _, _, _, _>(
+					BuildAuraConsensusParams {
+						proposer_factory,
+						create_inherent_data_providers: move |_, (relay_parent, validation_data)| {
+							let parachain_inherent =
+								cumulus_primitives_parachain_inherent::ParachainInherentData::create_at(
+									relay_parent,
+									&relay_chain_interface_for_closure,
+									&validation_data,
+									para_id,
+								);
+							async move {
+								let time = sp_timestamp::InherentDataProvider::from_system_time();
+
+								let slot =
+									sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_duration(
+										*time,
+										slot_duration.slot_duration(),
+									);
+
+								let parachain_inherent = parachain_inherent.ok_or_else(|| {
+									Box::<dyn std::error::Error + Send + Sync>::from(
+										"Failed to create parachain inherent",
+									)
+								})?;
+								Ok((time, slot, parachain_inherent))
+							}
+						},
+						block_import: client.clone(),
+						para_client: client.clone(),
+						backoff_authoring_blocks: Option::<()>::None,
+						sync_oracle: network.clone(),
+						keystore,
+						force_authoring,
+						slot_duration,
+						// We got around 500ms for proposing
+						block_proposal_slot_portion: SlotProportion::new(1f32 / 24f32),
+						// And a maximum of 750ms if slots are skipped
+						max_block_proposal_slot_portion: Some(SlotProportion::new(1f32 / 16f32)),
+						telemetry: None,
+					},
+				)
+			}
 		};
 
 		let params = StartCollatorParams {
@@ -363,6 +455,7 @@ enum Consensus {
 	RelayChain,
 	/// Use the null consensus that will never produce any block.
 	Null,
+	Aura,
 }
 
 /// A builder to create a [`TestNode`].
@@ -399,7 +492,7 @@ impl TestNodeBuilder {
 			wrap_announce_block: None,
 			storage_update_func_parachain: None,
 			storage_update_func_relay_chain: None,
-			consensus: Consensus::RelayChain,
+			consensus: Consensus::Aura,
 		}
 	}
 
@@ -494,6 +587,9 @@ impl TestNodeBuilder {
 			self.collator_key.is_some(),
 		)
 		.expect("could not generate Configuration");
+
+		log::info!(target: "test-service", "collator key:{} -> {:?}", self.key, self.collator_key.is_some());
+
 		let mut relay_chain_config = polkadot_test_service::node_config(
 			self.storage_update_func_relay_chain.unwrap_or_else(|| Box::new(|| ())),
 			self.tokio_handle,
@@ -550,7 +646,7 @@ pub fn node_config(
 	let root = base_path.path().to_path_buf();
 	let role = if is_collator { Role::Authority } else { Role::Full };
 	let key_seed = key.to_seed();
-	let mut spec = Box::new(chain_spec::get_chain_spec(para_id));
+	let mut spec = Box::new(dev_testnet_config(None).unwrap());
 
 	let mut storage = spec
 		.as_storage_builder()
@@ -655,7 +751,7 @@ impl TestNode {
 	) -> Result<RpcTransactionOutput, RpcTransactionError> {
 		let extrinsic = construct_extrinsic(&*self.client, function, caller.pair(), Some(0));
 
-		self.rpc_handlers.send_transaction(extrinsic.into()).await
+		self.rpc_handlers.send_transaction(extrinsic.0.into()).await
 	}
 
 	/// Register a parachain at this relay chain.
@@ -663,7 +759,7 @@ impl TestNode {
 		let call = frame_system::Call::set_code { code: validation };
 
 		self.send_extrinsic(
-			runtime::SudoCall::sudo_unchecked_weight {
+			pallet_sudo::Call::sudo_unchecked_weight {
 				call: Box::new(call.into()),
 				weight: 1_000,
 			},
@@ -701,34 +797,29 @@ pub fn construct_extrinsic(
 		.unwrap_or(2) as u64;
 	let tip = 0;
 	let extra: runtime::SignedExtra = (
-		frame_system::CheckNonZeroSender::<runtime::Runtime>::new(),
-		frame_system::CheckSpecVersion::<runtime::Runtime>::new(),
-		frame_system::CheckGenesis::<runtime::Runtime>::new(),
-		frame_system::CheckEra::<runtime::Runtime>::from(generic::Era::mortal(period, current_block)),
-		frame_system::CheckNonce::<runtime::Runtime>::from(nonce),
-		frame_system::CheckWeight::<runtime::Runtime>::new(),
-		pallet_transaction_payment::ChargeTransactionPayment::<runtime::Runtime>::from(tip),
+		frame_system::CheckSpecVersion::<Runtime>::new(),
+		frame_system::CheckTxVersion::<Runtime>::new(),
+		frame_system::CheckGenesis::<Runtime>::new(),
+		frame_system::CheckEra::<Runtime>::from(Era::mortal(period, current_block)),
+		runtime_common::CheckNonce::<Runtime>::from(nonce),
+		frame_system::CheckWeight::<Runtime>::new(),
+		module_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip),
+		module_evm::SetEvmOrigin::<Runtime>::new(),
 	);
-	let raw_payload = runtime::SignedPayload::from_raw(
-		function.clone(),
-		extra.clone(),
-		(
-			(),
-			runtime::VERSION.spec_version,
-			genesis_block,
-			current_block_hash,
-			(),
-			(),
-			(),
-		),
-	);
+	let raw_payload = runtime::SignedPayload::new(function, extra)
+		.map_err(|e| {
+			log::warn!(target: "test-service", "Unable to create signed payload: {:?}", e);
+		})
+		.unwrap();
 	let signature = raw_payload.using_encoded(|e| caller.sign(e));
-	runtime::UncheckedExtrinsic::new_signed(
-		function.clone(),
-		caller.public().into(),
-		runtime::Signature::Sr25519(signature.clone()),
-		extra.clone(),
-	)
+	let account: AccountId = caller.public().into();
+	let address: Address = account.into();
+	let (call, extra, _) = raw_payload.deconstruct();
+	let signed_data: (Address, AcalaMultiSignature, SignedExtra) =
+		(address, Signature::Sr25519(signature.clone()), extra.clone());
+	let ext = runtime::UncheckedExtrinsic::new(call, Some(signed_data)).unwrap();
+	log::info!(target: "test-service", "extrinsic:{:?}", ext);
+	ext
 }
 
 /// Run a relay-chain validator node.

@@ -18,13 +18,14 @@
 use codec::Encode;
 use cumulus_client_service::genesis::generate_genesis_block;
 use cumulus_primitives_core::ParaId;
-use cumulus_test_runtime::Block;
+use node_runtime::Block;
+use node_service::chain_spec::mandala::dev_testnet_config;
 use polkadot_primitives::v0::HeadData;
 use sp_runtime::traits::Block as BlockT;
 
 /// Returns the initial head data for a parachain ID.
 pub fn initial_head_data(para_id: ParaId) -> HeadData {
-	let spec = Box::new(crate::chain_spec::get_chain_spec(para_id));
+	let spec = Box::new(dev_testnet_config(None).unwrap());
 	let block: Block = generate_genesis_block(&(spec as Box<_>), sp_runtime::StateVersion::V1).unwrap();
 	let genesis_state = block.header().encode();
 	genesis_state.into()
