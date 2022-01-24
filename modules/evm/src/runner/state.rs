@@ -820,10 +820,6 @@ impl<'config, S: StackState<'config>> Handler for StackExecutor<'config, S> {
 	type CallFeedback = Infallible;
 
 	fn balance(&self, address: H160) -> U256 {
-		#[cfg(feature = "evm-tests")]
-		if self.deleted(address) {
-			return U256::zero();
-		}
 		self.state.basic(address).balance
 	}
 

@@ -46,7 +46,7 @@ pub use primitives::{
 };
 use sha3::{Digest, Keccak256};
 use sp_core::{H160, H256, U256};
-use sp_runtime::traits::UniqueSaturatedInto;
+use sp_runtime::traits::{UniqueSaturatedInto, Zero};
 use sp_std::{boxed::Box, collections::btree_set::BTreeSet, marker::PhantomData, mem, vec, vec::Vec};
 
 #[derive(Default)]
@@ -681,12 +681,25 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 			.map_err(|e| ExitError::Other(Into::<&str>::into(e).into()))
 	}
 
-	fn reset_balance(&mut self, _address: H160) {
-		// Do nothing on reset balance in Substrate.
-		//
-		// This function exists in EVM because a design issue
-		// (arguably a bug) in SELFDESTRUCT that can cause total
-		// issurance to be reduced. We do not need to replicate this.
+	fn reset_balance(&mut self, address: H160) {
+		// Address and target can be the same during SELFDESTRUCT. In that case we transfer the
+		// remaining balance to treasury
+		let source = T::AddressMapping::get_account_id(&address);
+		let balance = T::Currency::free_balance(&source);
+		if !balance.is_zero() {
+			if let Err(e) = T::Currency::transfer(
+				&source,
+				&T::TreasuryAccount::get(),
+				balance,
+				ExistenceRequirement::AllowDeath,
+			) {
+				debug_assert!(
+					false,
+					"Failed to transfer remaining balance to treasury with error: {:?}",
+					e
+				);
+			}
+		}
 	}
 
 	fn touch(&mut self, _address: H160) {
