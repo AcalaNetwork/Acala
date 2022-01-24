@@ -299,7 +299,7 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 		});
 
 		await new Promise(async (resolve) => {
-			context.provider.api.tx.sudo.sudo(context.provider.api.tx.evm.deployFree(contract)).signAndSend(await alice.getSubstrateAddress(), ((result) => {
+			context.provider.api.tx.sudo.sudo(context.provider.api.tx.evm.publishFree(contract)).signAndSend(await alice.getSubstrateAddress(), ((result) => {
 				if (result.status.isFinalized || result.status.isInBlock) {
 					resolve(undefined);
 				}

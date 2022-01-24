@@ -787,7 +787,7 @@ parameter_type_with_key! {
 				AssetIdMaps::<Runtime>::get_stable_asset_metadata(*stable_asset_id).
 					map_or(Balance::max_value(), |metatata| metatata.minimal_balance)
 			},
-			CurrencyId::LiquidCroadloan(_) => ExistentialDeposits::get(&CurrencyId::Token(TokenSymbol::DOT)), // the same as DOT
+			CurrencyId::LiquidCrowdloan(_) => ExistentialDeposits::get(&CurrencyId::Token(TokenSymbol::DOT)), // the same as DOT
 			CurrencyId::ForeignAsset(foreign_asset_id) => {
 				AssetIdMaps::<Runtime>::get_foreign_asset_metadata(*foreign_asset_id).
 					map_or(Balance::max_value(), |metatata| metatata.minimal_balance)
@@ -1160,7 +1160,7 @@ impl module_evm_accounts::Config for Runtime {
 impl module_asset_registry::Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
-	type LiquidCroadloanCurrencyId = GetStakingCurrencyId;
+	type LiquidCrowdloanCurrencyId = GetStakingCurrencyId;
 	type EVMBridge = module_evm_bridge::EVMBridge<Runtime>;
 	type RegisterOrigin = EnsureRootOrHalfGeneralCouncil;
 	type WeightInfo = weights::module_asset_registry::WeightInfo<Runtime>;
@@ -1303,7 +1303,7 @@ parameter_types! {
 	pub const NewContractExtraBytes: u32 = 10_000;
 	pub NetworkContractSource: H160 = H160::from_low_u64_be(0);
 	pub DeveloperDeposit: Balance = 100 * dollar(ACA);
-	pub DeploymentFee: Balance = 10000 * dollar(ACA);
+	pub PublicationFee: Balance = 10000 * dollar(ACA);
 }
 
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, TypeInfo)]
@@ -1340,9 +1340,9 @@ impl module_evm::Config for Runtime {
 	type NetworkContractOrigin = EnsureRootOrTwoThirdsTechnicalCommittee;
 	type NetworkContractSource = NetworkContractSource;
 	type DeveloperDeposit = DeveloperDeposit;
-	type DeploymentFee = DeploymentFee;
+	type PublicationFee = PublicationFee;
 	type TreasuryAccount = AcalaTreasuryAccount;
-	type FreeDeploymentOrigin = EnsureRootOrHalfGeneralCouncil;
+	type FreePublicationOrigin = EnsureRootOrHalfGeneralCouncil;
 	type Runner = module_evm::runner::stack::Runner<Self>;
 	type FindAuthor = pallet_session::FindAccountFromAuthorIndex<Self, Aura>;
 	type Task = ScheduledTasks;
@@ -1886,7 +1886,7 @@ pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExtra>;
 /// Executive: handles dispatch to the various modules.
 pub type Executive =
-	frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllPallets, ()>;
+	frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllPalletsWithSystem, ()>;
 
 #[cfg(not(feature = "disable-runtime-api"))]
 impl_runtime_apis! {

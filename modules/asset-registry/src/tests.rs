@@ -650,8 +650,8 @@ fn name_works() {
 			);
 
 			assert_eq!(
-				from_utf8(&EvmErc20InfoMapping::<Runtime>::name(CurrencyId::LiquidCroadloan(0)).unwrap()),
-				Ok("LiquidCroadloan-Kusama-0")
+				from_utf8(&EvmErc20InfoMapping::<Runtime>::name(CurrencyId::LiquidCrowdloan(0)).unwrap()),
+				Ok("LiquidCrowdloan-Kusama-0")
 			);
 		});
 }
@@ -723,7 +723,7 @@ fn symbol_works() {
 			);
 
 			assert_eq!(
-				from_utf8(&EvmErc20InfoMapping::<Runtime>::symbol(CurrencyId::LiquidCroadloan(0)).unwrap()),
+				from_utf8(&EvmErc20InfoMapping::<Runtime>::symbol(CurrencyId::LiquidCrowdloan(0)).unwrap()),
 				Ok("LCKSM-0")
 			);
 		});
@@ -788,7 +788,7 @@ fn decimals_works() {
 			);
 
 			assert_eq!(
-				EvmErc20InfoMapping::<Runtime>::decimals(CurrencyId::LiquidCroadloan(0)),
+				EvmErc20InfoMapping::<Runtime>::decimals(CurrencyId::LiquidCrowdloan(0)),
 				Some(12)
 			);
 		});
@@ -875,7 +875,7 @@ fn encode_evm_address_works() {
 
 			assert_eq!(
 				EvmErc20InfoMapping::<Runtime>::encode_evm_address(CurrencyId::DexShare(
-					DexShare::LiquidCroadloan(1),
+					DexShare::LiquidCrowdloan(1),
 					DexShare::ForeignAsset(2)
 				)),
 				H160::from_str("0x0000000000000000000202000000010300000002").ok()
@@ -883,7 +883,7 @@ fn encode_evm_address_works() {
 			assert_eq!(
 				EvmErc20InfoMapping::<Runtime>::encode_evm_address(CurrencyId::DexShare(
 					DexShare::ForeignAsset(2),
-					DexShare::LiquidCroadloan(1)
+					DexShare::LiquidCrowdloan(1)
 				)),
 				H160::from_str("0x0000000000000000000203000000020200000001").ok()
 			);
@@ -894,9 +894,9 @@ fn encode_evm_address_works() {
 				H160::from_str("0x0000000000000000000300000000000000000001").ok()
 			);
 
-			// LiquidCroadloan
+			// LiquidCrowdloan
 			assert_eq!(
-				EvmErc20InfoMapping::<Runtime>::encode_evm_address(CurrencyId::LiquidCroadloan(1)),
+				EvmErc20InfoMapping::<Runtime>::encode_evm_address(CurrencyId::LiquidCrowdloan(1)),
 				H160::from_str("0x0000000000000000000400000000000000000001").ok()
 			);
 
@@ -1018,13 +1018,13 @@ fn decode_evm_address_works() {
 			assert_eq!(
 				EvmErc20InfoMapping::<Runtime>::decode_evm_address(
 					EvmErc20InfoMapping::<Runtime>::encode_evm_address(CurrencyId::DexShare(
-						DexShare::LiquidCroadloan(1),
+						DexShare::LiquidCrowdloan(1),
 						DexShare::ForeignAsset(2)
 					))
 					.unwrap()
 				),
 				Some(CurrencyId::DexShare(
-					DexShare::LiquidCroadloan(1),
+					DexShare::LiquidCrowdloan(1),
 					DexShare::ForeignAsset(2)
 				))
 			);
@@ -1033,13 +1033,13 @@ fn decode_evm_address_works() {
 				EvmErc20InfoMapping::<Runtime>::decode_evm_address(
 					EvmErc20InfoMapping::<Runtime>::encode_evm_address(CurrencyId::DexShare(
 						DexShare::ForeignAsset(2),
-						DexShare::LiquidCroadloan(1),
+						DexShare::LiquidCrowdloan(1),
 					))
 					.unwrap()
 				),
 				Some(CurrencyId::DexShare(
 					DexShare::ForeignAsset(2),
-					DexShare::LiquidCroadloan(1)
+					DexShare::LiquidCrowdloan(1)
 				))
 			);
 
@@ -1050,12 +1050,12 @@ fn decode_evm_address_works() {
 				),
 				Some(CurrencyId::StableAssetPoolToken(1))
 			);
-			// LiquidCroadloan
+			// LiquidCrowdloan
 			assert_eq!(
 				EvmErc20InfoMapping::<Runtime>::decode_evm_address(
-					EvmErc20InfoMapping::<Runtime>::encode_evm_address(CurrencyId::LiquidCroadloan(1)).unwrap()
+					EvmErc20InfoMapping::<Runtime>::encode_evm_address(CurrencyId::LiquidCrowdloan(1)).unwrap()
 				),
-				Some(CurrencyId::LiquidCroadloan(1))
+				Some(CurrencyId::LiquidCrowdloan(1))
 			);
 
 			// ForeignAsset

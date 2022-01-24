@@ -203,7 +203,7 @@ runtime_benchmarks! {
 		whitelist_account!(alice_account);
 	}: _(RawOrigin::Signed(alice_account_id()), contract, bob_address)
 
-	deploy {
+	publish_contract {
 		let alice_account = alice_account_id();
 
 		set_balance(NATIVE, &alice_account, 1_000_000 * dollar(NATIVE));
@@ -213,7 +213,7 @@ runtime_benchmarks! {
 		whitelist_account!(alice_account);
 	}: _(RawOrigin::Signed(alice_account_id()), contract)
 
-	deploy_free {
+	publish_free {
 		let alice_account = alice_account_id();
 
 		set_balance(NATIVE, &alice_account, 1_000_000 * dollar(NATIVE));

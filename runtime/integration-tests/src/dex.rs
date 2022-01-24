@@ -193,11 +193,11 @@ fn test_trading_pair() {
 			assert_eq!(Currencies::total_issuance(LPTOKEN), 0);
 			assert_eq!(Currencies::free_balance(LPTOKEN, &AccountId::from(ALICE)), 0);
 
-			// CurrencyId::DexShare(Token, LiquidCroadloan)
+			// CurrencyId::DexShare(Token, LiquidCrowdloan)
 			assert_ok!(Dex::list_provisioning(
 				Origin::root(),
 				USD_CURRENCY,
-				CurrencyId::LiquidCroadloan(1),
+				CurrencyId::LiquidCrowdloan(1),
 				10,
 				100,
 				100,
@@ -205,10 +205,10 @@ fn test_trading_pair() {
 				0,
 			));
 
-			// CurrencyId::DexShare(LiquidCroadloan, Token)
+			// CurrencyId::DexShare(LiquidCrowdloan, Token)
 			assert_ok!(Dex::list_provisioning(
 				Origin::root(),
-				CurrencyId::LiquidCroadloan(2),
+				CurrencyId::LiquidCrowdloan(2),
 				USD_CURRENCY,
 				10,
 				100,

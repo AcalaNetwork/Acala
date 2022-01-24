@@ -145,6 +145,9 @@ pub trait IdentifyVariant {
 
 	/// Returns `true` if this is a configuration for the `Mandala` dev network.
 	fn is_mandala_dev(&self) -> bool;
+
+	/// Returns `true` if this is a configuration for the dev network.
+	fn is_dev(&self) -> bool;
 }
 
 impl IdentifyVariant for Box<dyn ChainSpec> {
@@ -162,6 +165,10 @@ impl IdentifyVariant for Box<dyn ChainSpec> {
 
 	fn is_mandala_dev(&self) -> bool {
 		self.id().starts_with("mandala-dev")
+	}
+
+	fn is_dev(&self) -> bool {
+		self.id().ends_with("dev")
 	}
 }
 

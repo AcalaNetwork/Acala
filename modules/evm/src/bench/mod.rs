@@ -195,7 +195,7 @@ macro_rules! evm_call {
 				result.exit_reason
 			);
 			assert_eq!(contract_address, result.value);
-			assert_ok!(EVM::deploy_free(
+			assert_ok!(EVM::publish_free(
 				Origin::signed(CouncilAccount::get()),
 				contract_address
 			));

@@ -229,7 +229,7 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 		storage_limit: u32,
 		config: &evm::Config,
 	) -> Result<CallInfo, DispatchError> {
-		// if the contract not deployed, the caller must be developer or contract or maintainer.
+		// if the contract not published, the caller must be developer or contract or maintainer.
 		// if the contract not exists, let evm try to execute it and handle the error.
 		ensure!(
 			Pallet::<T>::can_call_contract(&target, &source),
@@ -633,7 +633,7 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 			substate = substate.parent.as_ref().expect("has checked; qed");
 
 			if let Some(c) = substate.metadata().caller() {
-				// the caller maybe is contract and not deployed.
+				// the caller maybe is contract and not published.
 				// get the parent's maintainer.
 				if !Pallet::<T>::is_account_empty(c) {
 					caller = *c;
