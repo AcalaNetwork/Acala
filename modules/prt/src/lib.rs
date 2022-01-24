@@ -28,7 +28,8 @@
 
 use frame_support::{pallet_prelude::*, transactional};
 use frame_system::pallet_prelude::*;
-use sp_runtime::traits::BlockNumberProvider;
+use sp_runtime::traits::{BlockNumberProvider, Saturating, Zero};
+use sp_std::cmp::min;
 
 use orml_traits::{ManageNFT, MultiCurrencyExtended, MultiReservableCurrency, NFT};
 
@@ -49,6 +50,13 @@ pub mod module {
 
 	pub type ActiveIndex = u32;
 	pub type ClassIdOf<T> = <T as orml_nft::Config>::ClassId;
+
+	#[derive(Encode, Decode, Clone, Default, Debug, Eq, PartialEq)]
+	pub struct PrtMetadata<T: Config> {
+		pub index: ActiveIndex,
+		pub expiry: T::BlockNumber,
+		pub amount: Balance,
+	}
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config + orml_nft::Config {
@@ -73,7 +81,7 @@ pub mod module {
 		type RelayChainBlockNumber: BlockNumberProvider<BlockNumber = Self::BlockNumber>;
 
 		/// Origin used by Oracles. Used to confirm operations on the Relaychain.
-		type OracleOrigin: EnsureOrigin<<Self as frame_system::Config>::Origin>;
+		type OracleOrigin: EnsureOrigin<Self::Origin>;
 
 		type NFTInterface: ManageNFT<Self::AccountId, CID, Attributes, ClassId = Self::ClassId> + NFT<Self::AccountId>;
 	}
@@ -86,6 +94,14 @@ pub mod module {
 		PrtClassIdNotSet,
 		/// The PRT is already issued to the user.
 		PrtAlreadyIssued,
+		/// Insufficient amount of relaychain currency placed in bids.
+		InsufficientBidAmount,
+		/// The specific PRT was not issued.
+		PrtNotIssued,
+		/// The PRT token has not expired yet.
+		PrtNotExpired,
+		/// The caller is unauthorized to make this transaction
+		CallerUnauthorized,
 	}
 
 	#[pallet::event]
@@ -96,40 +112,39 @@ pub mod module {
 		/// A bid to mint PRT is placed. Duration is in number of Periods.
 		BidPlaced {
 			who: T::AccountId,
-			amount: Balance,
 			duration: u32,
+			amount: Balance,
 		},
 		/// User requested to retract the Gilt bid.
 		RetractBidRequested {
 			who: T::AccountId,
-			amount: Balance,
 			duration: u32,
+			amount: Balance,
 		},
 		/// a bid to mint PRT is retracted.
 		BidRetracted {
 			who: T::AccountId,
-			amount: Balance,
 			duration: u32,
+			amount: Balance,
 		},
 		/// PRT is issued
 		PrtIssued {
 			who: T::AccountId,
-			relaychain_currency_amount: Balance,
-			prt_amount: Balance,
-			expiry: T::BlockNumber,
 			active_index: ActiveIndex,
+			expiry: T::BlockNumber,
+			amount: Balance,
 		},
 		/// Request to thaw PRT
 		ThawRequested {
+			index: ActiveIndex,
 			who: T::AccountId,
 			amount: Balance,
-			duration: u32,
 		},
 		/// PRT is traded in and Relaychain currency thawed.
 		PrtThawed {
 			who: T::AccountId,
-			relaychain_currency_amount: Balance,
-			prt_amount: Balance,
+			active_index: ActiveIndex,
+			amount: Balance,
 		},
 	}
 
@@ -141,15 +156,14 @@ pub mod module {
 	/// Stores confirmed Gilt tokens that are issued on the Relaychain.
 	#[pallet::storage]
 	#[pallet::getter(fn issued_gilt)]
-	type IssuedGilt<T: Config> = StorageDoubleMap<
-		_,
-		Twox64Concat,
-		T::AccountId,
-		Twox64Concat,
-		ActiveIndex,
-		(T::BlockNumber, Balance),
-		OptionQuery,
-	>;
+	type IssuedGilt<T: Config> =
+		StorageMap<_, Twox64Concat, ActiveIndex, (T::AccountId, T::BlockNumber, Balance), OptionQuery>;
+
+	/// Stores bids for Gilt tokens on the Relaychain.
+	#[pallet::storage]
+	#[pallet::getter(fn placed_bids)]
+	type PlacedBids<T: Config> =
+		StorageDoubleMap<_, Twox64Concat, T::AccountId, Twox64Concat, u32, Balance, ValueQuery>;
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
@@ -181,14 +195,16 @@ pub mod module {
 				Error::<T>::InsufficientBalance
 			);
 
-			// Reserve DOT & reserve this bid
+			// Reserve relaychain currency needed for this bid
 			T::Currency::reserve(T::RelaychainCurrency::get(), &who, amount)?;
 
 			// Place this bid on relaychain via XCM
 			T::RelaychainInterface::gilt_place_bid(amount, duration)?;
 
-			Self::deposit_event(Event::BidPlaced { who, amount, duration });
+			// Put the user's bid into storage
+			PlacedBids::<T>::mutate(&who, duration, |current| *current = current.saturating_add(amount));
 
+			Self::deposit_event(Event::BidPlaced { who, duration, amount });
 			Ok(())
 		}
 
@@ -210,23 +226,41 @@ pub mod module {
 			ensure!(prt_class_id.is_some(), Error::<T>::PrtClassIdNotSet);
 
 			// Put the Gilt record into storage to prevent double-minting
-			ensure!(
-				Self::issued_gilt(user.clone(), index).is_none(),
-				Error::<T>::PrtAlreadyIssued
-			);
-			IssuedGilt::<T>::insert(user.clone(), index, (expiry.clone(), amount));
+			ensure!(Self::issued_gilt(index).is_none(), Error::<T>::PrtAlreadyIssued);
+			IssuedGilt::<T>::insert(index, (user.clone(), expiry.clone(), amount));
 
-			// Mint PRT into the user's account.
-			let metadata = Self::encode_prt_metadata(index, expiry.clone(), amount);
-			T::NFTInterface::mint(
-				T::PalletAccount::get(),
-				user.clone(),
-				prt_class_id.unwrap(),
-				metadata,
-				Default::default(),
-				1u32,
-			)?;
+			// Remove current bid from record and mint the NFT that represents the PRT.
+			PlacedBids::<T>::mutate_exists(&user, expiry, |current| {
+				let current_amount = current.unwrap_or_default();
+				let actual = min(current_amount, amount);
+				let remaining = current_amount.saturating_sub(actual);
+				*current = if remaining.is_zero() { None } else { Some(remaining) };
 
+				// Mint PRT into the user's account.
+				// Only mint as much as the user bid using this module.
+				let metadata = PrtMetadata::<T> {
+					index,
+					expiry,
+					amount: actual,
+				}
+				.encode();
+				T::NFTInterface::mint(
+					T::PalletAccount::get(),
+					user.clone(),
+					prt_class_id.unwrap(),
+					metadata,
+					Default::default(),
+					1u32,
+				)?;
+
+				Self::deposit_event(Event::PrtIssued {
+					who: user,
+					active_index: index,
+					expiry,
+					amount: actual,
+				});
+				Ok(())
+			});
 			Ok(())
 		}
 
@@ -237,19 +271,84 @@ pub mod module {
 		pub fn retract_bid(origin: OriginFor<T>, #[pallet::compact] amount: Balance, duration: u32) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			// Place this bid on relaychain via XCM
+			// Only bids placed from this module can be retracted here.
+			// This is to ensure the consistency of reserved assets.
+			ensure!(
+				Self::placed_bids(&who, duration) >= amount,
+				Error::<T>::InsufficientBidAmount
+			);
+
+			// Retract this bid on relaychain via XCM
 			T::RelaychainInterface::gilt_retract_bid(amount, duration)?;
 
-			Self::deposit_event(Event::RetractBidRequested { who, amount, duration });
-
+			Self::deposit_event(Event::RetractBidRequested { who, duration, amount });
 			Ok(())
 		}
 
-		// confirm retraction
+		/// Confirm that a specific user's bid on Gilt has been retracted on the relaychain.
+		/// Only Callable by authorised oracles origin.
+		/// This is the get around the async nature of cross-chain communications.
+		#[pallet::weight(0)]
+		#[transactional]
+		pub fn confirm_bid_retracted(
+			origin: OriginFor<T>,
+			user: T::AccountId,
+			duration: u32,
+			amount: Balance,
+		) -> DispatchResult {
+			T::OracleOrigin::ensure_origin(origin)?;
+
+			PlacedBids::<T>::mutate_exists(&user, duration, |current| {
+				let current_amount = current.unwrap_or_default();
+				let actual = min(current_amount, amount);
+				let remaining = current_amount.saturating_sub(actual);
+				*current = if remaining.is_zero() { None } else { Some(remaining) };
+
+				// Unreserve user's relaychain currency
+				let unreserved = T::Currency::unreserve(T::RelaychainCurrency::get(), &user, actual);
+				ensure!(unreserved >= actual, Error::<T>::InsufficientBalance);
+
+				//deposit event
+				Self::deposit_event(Event::BidRetracted {
+					who: user,
+					duration,
+					amount: actual,
+				});
+				Ok(())
+			});
+			Ok(())
+		}
+
+		/// Sends a request to the relaychain to thaw frozen Relaychain currency and consumes the
+		/// PRT/minted Gilts. The user's PRT must have already expired.
+		///
+		/// The PRT will not be thawed until it is confirmed by the Relaychain.
+		#[pallet::weight(0)]
+		#[transactional]
+		pub fn request_thaw(origin: OriginFor<T>, index: ActiveIndex) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+
+			// Ensure PRT's class ID has been set.
+			ensure!(Self::prt_class_id().is_some(), Error::<T>::PrtClassIdNotSet);
+
+			// Ensure the PRT exists.
+			let prt_issued = Self::issued_gilt(index);
+			ensure!(prt_issued.is_some(), Error::<T>::PrtNotIssued);
+			let Some((owner, expiry, amount)) = prt_issued; // Guanranteed to be Some()
+			ensure!(owner == who, Error::<T>::CallerUnauthorized);
+			ensure!(
+				T::RelayChainBlockNumber::current_block_number() >= expiry,
+				Error::<T>::PrtNotExpired
+			);
+
+			// Send the XCM to the relaychain to request thaw.
+			T::RelaychainInterface::gilt_thaw(index)?;
+
+			Self::deposit_event(Event::ThawRequested { index, who, amount });
+			Ok(())
+		}
 
 		// confirm thaw
-
-		// thaw
 	}
 }
 
