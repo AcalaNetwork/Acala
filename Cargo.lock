@@ -4443,6 +4443,7 @@ dependencies = [
  "module-support",
  "module-transaction-pause",
  "module-transaction-payment",
+ "nutsfinance-stable-asset",
  "orml-auction",
  "orml-authority",
  "orml-benchmarking",
