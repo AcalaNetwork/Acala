@@ -90,17 +90,32 @@ impl pallet_timestamp::Config for Runtime {
 }
 
 thread_local! {
-	static POOL: RefCell<(Balance, Balance)> = RefCell::new((Zero::zero(), Zero::zero()));
+	static AUSD_DOT_POOL: RefCell<(Balance, Balance)> = RefCell::new((Zero::zero(), Zero::zero()));
+	static ACA_DOT_POOL: RefCell<(Balance, Balance)> = RefCell::new((Zero::zero(), Zero::zero()));
 }
 
-pub fn set_pool(pool_0: Balance, pool_1: Balance) {
-	POOL.with(|v| *v.borrow_mut() = (pool_0, pool_1));
+pub fn set_pool(trading_pair: &TradingPair, pool_0: Balance, pool_1: Balance) {
+	if *trading_pair == AUSDDOTPair::get() {
+		AUSD_DOT_POOL.with(|v| *v.borrow_mut() = (pool_0, pool_1));
+	} else if *trading_pair == ACADOTPair::get() {
+		ACA_DOT_POOL.with(|v| *v.borrow_mut() = (pool_0, pool_1));
+	}
 }
 
 pub struct MockDEX;
 impl DEXManager<AccountId, CurrencyId, Balance> for MockDEX {
-	fn get_liquidity_pool(_: CurrencyId, _: CurrencyId) -> (Balance, Balance) {
-		POOL.with(|v| *v.borrow())
+	fn get_liquidity_pool(currency_id_0: CurrencyId, currency_id_1: CurrencyId) -> (Balance, Balance) {
+		TradingPair::from_currency_ids(currency_id_0, currency_id_1)
+			.map(|trading_pair| {
+				if trading_pair == AUSDDOTPair::get() {
+					AUSD_DOT_POOL.with(|v| *v.borrow())
+				} else if trading_pair == ACADOTPair::get() {
+					ACA_DOT_POOL.with(|v| *v.borrow())
+				} else {
+					(0, 0)
+				}
+			})
+			.unwrap_or_else(|| (0, 0))
 	}
 
 	fn get_liquidity_token_address(_currency_id_a: CurrencyId, _currency_id_b: CurrencyId) -> Option<H160> {
@@ -157,15 +172,10 @@ ord_parameter_types! {
 	pub const One: AccountId = 1;
 }
 
-parameter_types! {
-	pub const IntervalToUpdateCumulativePrice: Moment = 1_000;
-}
-
 impl Config for Runtime {
 	type DEX = MockDEX;
 	type Time = Timestamp;
 	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
-	type IntervalToUpdateCumulativePrice = IntervalToUpdateCumulativePrice;
 	type WeightInfo = ();
 }
 

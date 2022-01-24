@@ -26,7 +26,10 @@ use frame_system::pallet_prelude::*;
 use orml_traits::Happened;
 use primitives::{Balance, CurrencyId, TradingPair};
 use sp_core::U256;
-use sp_runtime::{traits::Saturating, FixedPointNumber, SaturatedConversion};
+use sp_runtime::{
+	traits::{Saturating, Zero},
+	FixedPointNumber, SaturatedConversion,
+};
 use sp_std::marker::PhantomData;
 use support::{DEXManager, DEXPriceProvider, ExchangeRate};
 
@@ -54,20 +57,17 @@ pub mod module {
 		/// The origin which may manage dex oracle.
 		type UpdateOrigin: EnsureOrigin<Self::Origin>;
 
-		/// The time interval in millisecond for updating the cumulative prices.
-		#[pallet::constant]
-		type IntervalToUpdateCumulativePrice: Get<MomentOf<Self>>;
-
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
 	}
 
 	#[pallet::error]
 	pub enum Error<T> {
-		CumulativePriceAlreadyEnabled,
-		CumulativePriceMustBeEnabled,
+		AveragePriceAlreadyEnabled,
+		AveragePriceMustBeEnabled,
 		InvalidPool,
 		InvalidCurrencyId,
+		IntervalIsZero,
 	}
 
 	#[pallet::storage]
@@ -75,13 +75,14 @@ pub mod module {
 	pub type Cumulatives<T: Config> = StorageMap<_, Twox64Concat, TradingPair, (U256, U256, MomentOf<T>), ValueQuery>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn cumulative_prices)]
-	pub type CumulativePrices<T: Config> =
-		StorageMap<_, Twox64Concat, TradingPair, (ExchangeRate, ExchangeRate, U256, U256), OptionQuery>;
-
-	#[pallet::storage]
-	#[pallet::getter(fn last_price_updated_time)]
-	pub type LastPriceUpdatedTime<T: Config> = StorageValue<_, MomentOf<T>, ValueQuery>;
+	#[pallet::getter(fn average_prices)]
+	pub type AveragePrices<T: Config> = StorageMap<
+		_,
+		Twox64Concat,
+		TradingPair,
+		(ExchangeRate, ExchangeRate, U256, U256, MomentOf<T>, MomentOf<T>),
+		OptionQuery,
+	>;
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
@@ -90,87 +91,92 @@ pub mod module {
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
 		fn on_initialize(_n: T::BlockNumber) -> Weight {
 			let now = T::Time::now();
-			let last_price_updated_time = Self::last_price_updated_time();
-			let interval = now.saturating_sub(last_price_updated_time);
+			let mut iterate_count: u32 = 0;
+			let mut update_count: u32 = 0;
 
-			if interval >= T::IntervalToUpdateCumulativePrice::get() {
-				let mut count: u32 = 0;
-				for (trading_pair, (_, _, last_cumulative_0, last_cumulative_1)) in CumulativePrices::<T>::iter() {
-					// update cumulative before calculate cumulative price.
+			for (trading_pair, (_, _, last_cumulative_0, last_cumulative_1, last_update_price_time, update_interval)) in
+				AveragePrices::<T>::iter()
+			{
+				iterate_count += 1;
+				let elapsed_time = now.saturating_sub(last_update_price_time);
+
+				if elapsed_time >= update_interval {
+					// try update cumulative before calculate average price.
 					let (pool_0, pool_1) = T::DEX::get_liquidity_pool(trading_pair.first(), trading_pair.second());
 					Self::try_update_cumulative(&trading_pair, pool_0, pool_1);
 
 					let (cumulative_0, cumulative_1, _) = Self::cumulatives(&trading_pair);
-					let u256_interval: U256 = interval.saturated_into::<Balance>().into();
-					let cumulative_price_0 = ExchangeRate::from_inner(
+					let u256_elapsed_time: U256 = elapsed_time.saturated_into::<u128>().into();
+					let average_price_0 = ExchangeRate::from_inner(
 						cumulative_0
 							.saturating_sub(last_cumulative_0)
-							.checked_div(u256_interval)
-							.expect("shouldn't fail because interval is not zero")
-							.saturated_into::<Balance>(),
+							.checked_div(u256_elapsed_time)
+							.expect("shouldn't fail because elapsed_time is not zero")
+							.saturated_into::<u128>(),
 					);
-					let cumulative_price_1 = ExchangeRate::from_inner(
+					let average_price_1 = ExchangeRate::from_inner(
 						cumulative_1
 							.saturating_sub(last_cumulative_1)
-							.checked_div(u256_interval)
-							.expect("shouldn't fail because interval is not zero")
-							.saturated_into::<Balance>(),
+							.checked_div(u256_elapsed_time)
+							.expect("shouldn't fail because elapsed_time is not zero")
+							.saturated_into::<u128>(),
 					);
 
-					CumulativePrices::<T>::insert(
+					AveragePrices::<T>::insert(
 						&trading_pair,
-						(cumulative_price_0, cumulative_price_1, cumulative_0, cumulative_1),
+						(
+							average_price_0,
+							average_price_1,
+							cumulative_0,
+							cumulative_1,
+							now,
+							update_interval,
+						),
 					);
 
-					count += 1;
+					update_count += 1;
 				}
-
-				LastPriceUpdatedTime::<T>::put(now);
-
-				<T as Config>::WeightInfo::on_initialize_with_cumulative_prices(count)
-			} else {
-				<T as Config>::WeightInfo::on_initialize()
 			}
+
+			<T as Config>::WeightInfo::on_initialize_with_update_average_prices(iterate_count, update_count)
 		}
 	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		#[pallet::weight(<T as Config>::WeightInfo::enable_cumulative_price())]
+		#[pallet::weight(<T as Config>::WeightInfo::enable_average_price())]
 		#[transactional]
-		pub fn enable_cumulative_price(
+		pub fn enable_average_price(
 			origin: OriginFor<T>,
 			currency_id_a: CurrencyId,
 			currency_id_b: CurrencyId,
+			interval: MomentOf<T>,
 		) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
 
 			let trading_pair =
 				TradingPair::from_currency_ids(currency_id_a, currency_id_b).ok_or(Error::<T>::InvalidCurrencyId)?;
 			ensure!(
-				Self::cumulative_prices(&trading_pair).is_none(),
-				Error::<T>::CumulativePriceAlreadyEnabled
+				Self::average_prices(&trading_pair).is_none(),
+				Error::<T>::AveragePriceAlreadyEnabled
 			);
+			ensure!(!interval.is_zero(), Error::<T>::IntervalIsZero,);
 
-			let now = T::Time::now();
 			let (initial_price_0, initial_price_1) =
 				Self::get_current_price(&trading_pair).ok_or(Error::<T>::InvalidPool)?;
-			let elapsed_last_update_price: U256 = now
-				.saturating_sub(Self::last_price_updated_time())
-				.saturated_into::<u128>()
-				.into();
-			let initial_cumulative_0 =
-				U256::from(initial_price_0.into_inner()).saturating_mul(elapsed_last_update_price);
-			let initial_cumulative_1 =
-				U256::from(initial_price_1.into_inner()).saturating_mul(elapsed_last_update_price);
+			let now = T::Time::now();
+			let initial_cumulative_0 = U256::zero();
+			let initial_cumulative_1 = U256::zero();
 
-			CumulativePrices::<T>::insert(
+			AveragePrices::<T>::insert(
 				&trading_pair,
 				(
 					initial_price_0,
 					initial_price_1,
 					initial_cumulative_0,
 					initial_cumulative_1,
+					now,
+					interval,
 				),
 			);
 			Cumulatives::<T>::insert(&trading_pair, (initial_cumulative_0, initial_cumulative_1, now));
@@ -178,9 +184,9 @@ pub mod module {
 			Ok(())
 		}
 
-		#[pallet::weight(<T as Config>::WeightInfo::disable_cumulative_price())]
+		#[pallet::weight(<T as Config>::WeightInfo::disable_average_price())]
 		#[transactional]
-		pub fn disable_cumulative_price(
+		pub fn disable_average_price(
 			origin: OriginFor<T>,
 			currency_id_a: CurrencyId,
 			currency_id_b: CurrencyId,
@@ -189,10 +195,30 @@ pub mod module {
 
 			let trading_pair =
 				TradingPair::from_currency_ids(currency_id_a, currency_id_b).ok_or(Error::<T>::InvalidCurrencyId)?;
-			CumulativePrices::<T>::take(&trading_pair).ok_or(Error::<T>::CumulativePriceMustBeEnabled)?;
+			AveragePrices::<T>::take(&trading_pair).ok_or(Error::<T>::AveragePriceMustBeEnabled)?;
 			Cumulatives::<T>::remove(&trading_pair);
 
 			Ok(())
+		}
+
+		#[pallet::weight(<T as Config>::WeightInfo::disable_average_price())]
+		#[transactional]
+		pub fn update_average_price_interval(
+			origin: OriginFor<T>,
+			currency_id_a: CurrencyId,
+			currency_id_b: CurrencyId,
+			new_interval: MomentOf<T>,
+		) -> DispatchResult {
+			T::UpdateOrigin::ensure_origin(origin)?;
+			let trading_pair =
+				TradingPair::from_currency_ids(currency_id_a, currency_id_b).ok_or(Error::<T>::InvalidCurrencyId)?;
+
+			AveragePrices::<T>::try_mutate_exists(&trading_pair, |maybe| -> DispatchResult {
+				let (_, _, _, _, _, update_interval) = maybe.as_mut().ok_or(Error::<T>::AveragePriceMustBeEnabled)?;
+				ensure!(!new_interval.is_zero(), Error::<T>::IntervalIsZero);
+				*update_interval = new_interval;
+				Ok(())
+			})
 		}
 	}
 }
@@ -200,30 +226,36 @@ pub mod module {
 impl<T: Config> Pallet<T> {
 	pub fn try_update_cumulative(trading_pair: &TradingPair, pool_0: Balance, pool_1: Balance) {
 		// try updating enabled cumulative
-		if CumulativePrices::<T>::contains_key(trading_pair) {
-			Cumulatives::<T>::mutate(trading_pair, |(cumulative_0, cumulative_1, last_timestamp)| {
-				let now = T::Time::now();
-				// update cumulative only occurs once in one block
-				if *last_timestamp != now {
-					let interval: U256 = now.saturating_sub(*last_timestamp).saturated_into::<u128>().into();
-					let pool_0_cumulative: U256 = U256::from(
-						ExchangeRate::checked_from_rational(pool_1, pool_0)
-							.unwrap_or_default()
-							.into_inner(),
-					)
-					.saturating_mul(interval);
-					let pool_1_cumulative: U256 = U256::from(
-						ExchangeRate::checked_from_rational(pool_0, pool_1)
-							.unwrap_or_default()
-							.into_inner(),
-					)
-					.saturating_mul(interval);
+		if AveragePrices::<T>::contains_key(trading_pair) {
+			Cumulatives::<T>::mutate(
+				trading_pair,
+				|(cumulative_0, cumulative_1, last_cumulative_timestamp)| {
+					let now = T::Time::now();
+					// update cumulative only occurs once in one block
+					if *last_cumulative_timestamp != now {
+						let elapsed_time: U256 = now
+							.saturating_sub(*last_cumulative_timestamp)
+							.saturated_into::<u128>()
+							.into();
+						let increased_cumulative_0: U256 = U256::from(
+							ExchangeRate::checked_from_rational(pool_1, pool_0)
+								.unwrap_or_default()
+								.into_inner(),
+						)
+						.saturating_mul(elapsed_time);
+						let increased_cumulative_1: U256 = U256::from(
+							ExchangeRate::checked_from_rational(pool_0, pool_1)
+								.unwrap_or_default()
+								.into_inner(),
+						)
+						.saturating_mul(elapsed_time);
 
-					*cumulative_0 = cumulative_0.saturating_add(pool_0_cumulative);
-					*cumulative_1 = cumulative_1.saturating_add(pool_1_cumulative);
-					*last_timestamp = now;
-				}
-			});
+						*cumulative_0 = cumulative_0.saturating_add(increased_cumulative_0);
+						*cumulative_1 = cumulative_1.saturating_add(increased_cumulative_1);
+						*last_cumulative_timestamp = now;
+					}
+				},
+			);
 		}
 	}
 
@@ -232,8 +264,8 @@ impl<T: Config> Pallet<T> {
 		ExchangeRate::checked_from_rational(pool_1, pool_0).zip(ExchangeRate::checked_from_rational(pool_0, pool_1))
 	}
 
-	fn get_cumulative_price(trading_pair: &TradingPair) -> Option<(ExchangeRate, ExchangeRate)> {
-		Self::cumulative_prices(trading_pair).map(|(price_0, price_1, _, _)| (price_0, price_1))
+	fn get_average_price(trading_pair: &TradingPair) -> Option<(ExchangeRate, ExchangeRate)> {
+		Self::average_prices(trading_pair).map(|(price_0, price_1, _, _, _, _)| (price_0, price_1))
 	}
 }
 
@@ -261,28 +293,30 @@ impl<T: Config> DEXPriceProvider<CurrencyId> for CurrentDEXPriceProvider<T> {
 	}
 }
 
-/// CumulativeDEXPriceProvider that always provider cumulative prices.
-pub struct CumulativeDEXPriceProvider<T>(PhantomData<T>);
-impl<T: Config> DEXPriceProvider<CurrencyId> for CumulativeDEXPriceProvider<T> {
+/// AverageDEXPriceProvider that always provider average price.
+pub struct AverageDEXPriceProvider<T>(PhantomData<T>);
+impl<T: Config> DEXPriceProvider<CurrencyId> for AverageDEXPriceProvider<T> {
 	fn get_relative_price(base: CurrencyId, quote: CurrencyId) -> Option<ExchangeRate> {
 		let trading_pair = TradingPair::from_currency_ids(base, quote)?;
-		Pallet::<T>::get_cumulative_price(&trading_pair).map(|(price_0, price_1)| {
-			if base == trading_pair.first() {
-				price_0
-			} else {
-				price_1
-			}
-		})
+		Pallet::<T>::get_average_price(&trading_pair).map(
+			|(price_0, price_1)| {
+				if base == trading_pair.first() {
+					price_0
+				} else {
+					price_1
+				}
+			},
+		)
 	}
 }
 
-/// PriorityCumulativeDEXPriceProvider that priority access to the cumulative price, if it is none,
+/// PriorityAverageDEXPriceProvider that priority access to the average price, if it is none,
 /// will access to real-time price from dex.
-pub struct PriorityCumulativeDEXPriceProvider<T>(PhantomData<T>);
-impl<T: Config> DEXPriceProvider<CurrencyId> for PriorityCumulativeDEXPriceProvider<T> {
+pub struct PriorityAverageDEXPriceProvider<T>(PhantomData<T>);
+impl<T: Config> DEXPriceProvider<CurrencyId> for PriorityAverageDEXPriceProvider<T> {
 	fn get_relative_price(base: CurrencyId, quote: CurrencyId) -> Option<ExchangeRate> {
 		let trading_pair = TradingPair::from_currency_ids(base, quote)?;
-		Pallet::<T>::get_cumulative_price(&trading_pair)
+		Pallet::<T>::get_average_price(&trading_pair)
 			.or_else(|| Pallet::<T>::get_current_price(&trading_pair))
 			.map(
 				|(price_0, price_1)| {

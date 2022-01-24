@@ -1090,15 +1090,10 @@ impl module_dex::Config for Runtime {
 	type OnLiquidityPoolUpdated = ();
 }
 
-parameter_types! {
-	pub const IntervalToUpdateCumulativePrice: Moment = 1000 * 60 * 60 * 6; // 6 hours
-}
-
 impl module_dex_oracle::Config for Runtime {
 	type DEX = Dex;
 	type Time = Timestamp;
 	type UpdateOrigin = EnsureRootOrHalfGeneralCouncil;
-	type IntervalToUpdateCumulativePrice = IntervalToUpdateCumulativePrice;
 	type WeightInfo = weights::module_dex_oracle::WeightInfo<Runtime>;
 }
 

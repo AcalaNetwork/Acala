@@ -18,7 +18,7 @@
 
 use crate::{
 	dollar, AccountId, Balance, Currencies, CurrencyId, Dex, DexOracle, GetNativeCurrencyId, GetStableCurrencyId,
-	GetStakingCurrencyId, IntervalToUpdateCumulativePrice, Runtime, Timestamp,
+	GetStakingCurrencyId, Runtime, Timestamp,
 };
 
 use frame_benchmarking::whitelisted_caller;
@@ -72,14 +72,9 @@ fn inject_liquidity(
 runtime_benchmarks! {
 	{ Runtime, module_dex_oracle }
 
-	// these's no cumulative price to be updated
-	on_initialize {
-	}: {
-		let _ = DexOracle::on_initialize(1);
-	}
-
-	on_initialize_with_cumulative_prices {
-		let n in 1 .. 3;
+	on_initialize_with_update_average_prices {
+		let n in 0 .. 3;
+		let u in 0 .. 3;
 		let caller: AccountId = whitelisted_caller();
 		let trading_pair_list = vec![
 			TradingPair::from_currency_ids(NATIVE, STABLECOIN).unwrap(),
@@ -87,31 +82,37 @@ runtime_benchmarks! {
 			TradingPair::from_currency_ids(STAKING, STABLECOIN).unwrap(),
 		];
 
-		Timestamp::set_timestamp(Timestamp::now() + 12_000);
-		let _ = DexOracle::on_initialize(1);
 		for i in 0 .. n {
 			let trading_pair = trading_pair_list[i as usize];
 			inject_liquidity(caller.clone(), trading_pair.first(), trading_pair.second(), dollar(trading_pair.first()) * 100, dollar(trading_pair.second()) * 1000, false)?;
-			DexOracle::enable_cumulative_price(RawOrigin::Root.into(), trading_pair.first(), trading_pair.second())?;
+			DexOracle::enable_average_price(RawOrigin::Root.into(), trading_pair.first(), trading_pair.second(), 240000)?;
+		}
+		for j in 0 .. u.min(n) {
+			let update_pair = trading_pair_list[j as usize];
+			DexOracle::update_average_price_interval(RawOrigin::Root.into(), update_pair.first(), update_pair.second(), 24000)?;
 		}
 	}: {
-		Timestamp::set_timestamp(DexOracle::last_price_updated_time() + IntervalToUpdateCumulativePrice::get());
-		let _ = DexOracle::on_initialize(2);
+		Timestamp::set_timestamp(24000);
+		let _ = DexOracle::on_initialize(1);
 	}
 
-	enable_cumulative_price {
+	enable_average_price {
 		let caller: AccountId = whitelisted_caller();
 		inject_liquidity(caller, NATIVE, STABLECOIN, dollar(NATIVE), dollar(STABLECOIN), false)?;
-		Timestamp::set_timestamp(Timestamp::now() + 12_000);
-	}: _(RawOrigin::Root, NATIVE, STABLECOIN)
+	}: _(RawOrigin::Root, NATIVE, STABLECOIN, 24000)
 
 
-	disable_cumulative_price {
+	disable_average_price {
 		let caller: AccountId = whitelisted_caller();
 		inject_liquidity(caller, NATIVE, STABLECOIN, dollar(NATIVE) * 100, dollar(STABLECOIN) * 1000, false)?;
-		Timestamp::set_timestamp(Timestamp::now() + 12_000);
-		DexOracle::enable_cumulative_price(RawOrigin::Root.into(), NATIVE, STABLECOIN)?;
+		DexOracle::enable_average_price(RawOrigin::Root.into(), NATIVE, STABLECOIN, 24000)?;
 	}: _(RawOrigin::Root, NATIVE, STABLECOIN)
+
+	update_average_price_interval {
+		let caller: AccountId = whitelisted_caller();
+		inject_liquidity(caller, NATIVE, STABLECOIN, dollar(NATIVE) * 100, dollar(STABLECOIN) * 1000, false)?;
+		DexOracle::enable_average_price(RawOrigin::Root.into(), NATIVE, STABLECOIN, 24000)?;
+	}: _(RawOrigin::Root, NATIVE, STABLECOIN, 240000)
 }
 
 #[cfg(test)]
