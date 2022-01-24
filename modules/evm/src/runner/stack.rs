@@ -633,13 +633,7 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 			if let Some(c) = substate.metadata().caller() {
 				// the caller maybe is contract and not deployed.
 				// get the parent's maintainer.
-				#[cfg(not(feature = "evm-tests"))]
 				if !Pallet::<T>::is_account_empty(c) {
-					caller = *c;
-					break;
-				}
-				#[cfg(feature = "evm-tests")]
-				{
 					caller = *c;
 					break;
 				}
