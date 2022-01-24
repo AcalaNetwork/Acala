@@ -44,25 +44,12 @@ pub struct Vicinity {
 	pub gas_price: U256,
 	/// Origin of the transaction.
 	pub origin: EvmAddress,
+	/// Environmental coinbase.
 	pub block_coinbase: EvmAddress,
-	#[cfg(feature = "evm-tests")]
+	/// Environmental block gas limit. Used only for testing
 	pub block_gas_limit: U256,
-	#[cfg(feature = "evm-tests")]
+	/// Environmental block difficulty. Used only for testing
 	pub block_difficulty: U256,
-}
-
-impl Vicinity {
-	pub fn new(gas_price: U256, origin: EvmAddress, block_coinbase: EvmAddress) -> Self {
-		Self {
-			gas_price,
-			origin,
-			block_coinbase,
-			#[cfg(feature = "evm-tests")]
-			block_gas_limit: U256::zero(),
-			#[cfg(feature = "evm-tests")]
-			block_difficulty: U256::zero(),
-		}
-	}
 }
 
 #[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]

@@ -438,7 +438,11 @@ pub mod module {
 
 					// Transactions are not supported by BasicExternalities
 					// Use the EVM Runtime
-					let vicinity = Vicinity::new(U256::one(), Default::default(), Pallet::<T>::find_author());
+					let vicinity = Vicinity {
+						gas_price: U256::one(),
+						block_coinbase: Pallet::<T>::find_author(),
+						..Default::default()
+					};
 					let context = Context {
 						caller: source,
 						address: *address,

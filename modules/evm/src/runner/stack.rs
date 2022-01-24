@@ -69,7 +69,12 @@ impl<T: Config> Runner<T> {
 		F: FnOnce(&mut StackExecutor<'config, SubstrateStackState<'_, 'config, T>>) -> (ExitReason, R),
 	{
 		let gas_price = U256::one();
-		let vicinity = Vicinity::new(gas_price, origin, Pallet::<T>::find_author());
+		let vicinity = Vicinity {
+			gas_price,
+			origin,
+			block_coinbase: Pallet::<T>::find_author(),
+			..Default::default()
+		};
 
 		let metadata = StackSubstateMetadata::new(gas_limit, storage_limit, config);
 		let state = SubstrateStackState::new(&vicinity, metadata);
@@ -465,24 +470,12 @@ impl<'vicinity, 'config, T: Config> BackendT for SubstrateStackState<'vicinity, 
 		U256::from(now / 1000)
 	}
 
-	#[cfg(feature = "evm-tests")]
 	fn block_difficulty(&self) -> U256 {
 		self.vicinity.block_difficulty
 	}
 
-	#[cfg(not(feature = "evm-tests"))]
-	fn block_difficulty(&self) -> U256 {
-		U256::zero()
-	}
-
-	#[cfg(feature = "evm-tests")]
 	fn block_gas_limit(&self) -> U256 {
 		self.vicinity.block_gas_limit
-	}
-
-	#[cfg(not(feature = "evm-tests"))]
-	fn block_gas_limit(&self) -> U256 {
-		U256::zero()
 	}
 
 	fn chain_id(&self) -> U256 {
