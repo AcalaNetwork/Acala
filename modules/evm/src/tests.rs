@@ -55,6 +55,7 @@ fn should_calculate_contract_address() {
 
 		let vicinity = Vicinity {
 			gas_price: U256::one(),
+			block_coinbase: Pallet::<Runtime>::find_author(),
 			..Default::default()
 		};
 		let metadata = StackSubstateMetadata::new(1000, 1000, &ACALA_CONFIG);

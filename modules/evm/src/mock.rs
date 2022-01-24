@@ -162,7 +162,9 @@ impl FindAuthor<AccountId32> for AuthorGiven {
 	where
 		I: 'a + IntoIterator<Item = (ConsensusEngineId, &'a [u8])>,
 	{
-		Some(AccountId32::from_str("1234500000000000000000000000000000000000").unwrap())
+		Some(<Runtime as Config>::AddressMapping::get_account_id(
+			&H160::from_str("1234500000000000000000000000000000000000").unwrap(),
+		))
 	}
 }
 
