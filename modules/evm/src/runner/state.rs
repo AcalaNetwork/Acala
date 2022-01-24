@@ -428,10 +428,13 @@ impl<'config, S: StackState<'config>> StackExecutor<'config, S> {
 		self.state.basic(address).nonce
 	}
 
+	#[cfg(feature = "evm-tests")]
 	pub fn handle_mirrored_token(&self, address: H160) -> H160 {
-		#[cfg(feature = "evm-tests")]
-		return address;
+		address
+	}
 
+	#[cfg(not(feature = "evm-tests"))]
+	pub fn handle_mirrored_token(&self, address: H160) -> H160 {
 		log::debug!(
 			target: "evm",
 			"handle_mirrored_token: address: {:?}",

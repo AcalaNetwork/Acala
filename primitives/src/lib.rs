@@ -181,6 +181,7 @@ pub type NFTBalance = u128;
 pub type CashYieldIndex = u128;
 
 /// Convert decimal between native(12) and EVM(18) and therefore the 1_000_000 conversion.
+#[cfg(not(feature = "evm-tests"))]
 const DECIMALS_VALUE: u32 = 1_000_000u32;
 
 /// Convert decimal from native(KAR/ACA 12) to EVM(18).

@@ -504,15 +504,11 @@ impl<'vicinity, 'config, T: Config> BackendT for SubstrateStackState<'vicinity, 
 	}
 
 	fn storage(&self, address: H160, index: H256) -> H256 {
-		<AccountStorages<T>>::get(address, index)
+		AccountStorages::<T>::get(&address, index)
 	}
 
 	fn original_storage(&self, address: H160, index: H256) -> Option<H256> {
-		let value = AccountStorages::<T>::get(&address, index);
-		if value == H256::default() {
-			return None;
-		}
-		Some(value)
+		Some(self.storage(address, index))
 	}
 }
 
