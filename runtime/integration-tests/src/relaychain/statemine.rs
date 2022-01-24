@@ -50,26 +50,6 @@ mod statemine_tests {
 
 			let para_acc: AccountId = Sibling::from(2000).into_account();
 
-			// KSM is used to pay for xcm execution
-			let multi_asset: VersionedMultiAssets = VersionedMultiAssets::V1(
-				vec![
-					MultiAsset {
-						id: Concrete(MultiLocation::here()),
-						fun: Fungibility::Fungible(dollar(KSM)),
-					},
-					MultiAsset {
-						id: Concrete(MultiLocation {
-							parents: 0,
-							interior: Junctions::X1(Junction::GeneralIndex(0)),
-						}),
-						fun: Fungibility::Fungible(100),
-					},
-				]
-				.into(),
-			);
-			// !todo : Figure out how to represent GeneralIndex(0) in MultiAsset so the transaction can go
-			// through
-
 			assert_ok!(PolkadotXcm::reserve_transfer_assets(
 				origin.clone(),
 				Box::new(MultiLocation::new(1, X1(Parachain(2000))).into()),
@@ -81,10 +61,10 @@ mod statemine_tests {
 					.into()
 					.into()
 				),
-				Box::new(multi_asset),
+				Box::new((GeneralIndex(0), 100).into()),
 				0
 			));
-			assert_eq!(Balances::free_balance(&ALICE.into()), 9 * dollar(KSM));
+
 			assert_eq!(Assets::balance(0, &para_acc), 100);
 		});
 
