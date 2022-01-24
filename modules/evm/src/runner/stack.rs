@@ -486,8 +486,14 @@ impl<'vicinity, 'config, T: Config> BackendT for SubstrateStackState<'vicinity, 
 		U256::from(T::ChainId::get())
 	}
 
+	#[cfg(feature = "evm-tests")]
 	fn exists(&self, address: H160) -> bool {
 		Accounts::<T>::contains_key(&address)
+	}
+
+	#[cfg(not(feature = "evm-tests"))]
+	fn exists(&self, _address: H160) -> bool {
+		true
 	}
 
 	fn basic(&self, address: H160) -> evm::backend::Basic {
