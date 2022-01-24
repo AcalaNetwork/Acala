@@ -63,17 +63,29 @@ pub mod module {
 
 	#[pallet::error]
 	pub enum Error<T> {
+		/// Already enabled average price for this trading pair.
 		AveragePriceAlreadyEnabled,
+		/// The trading pair must be enabled average price.
 		AveragePriceMustBeEnabled,
+		/// The liquidity pool is invalid.
 		InvalidPool,
+		/// The currency id is invalid.
 		InvalidCurrencyId,
+		/// The interval is zero.
 		IntervalIsZero,
 	}
 
+	/// Price cumulatives for TradingPair.
+	///
+	/// Cumulatives: map TradingPair => (Cumulative0, Cumulative1, LastUpdateTimestamp)
 	#[pallet::storage]
 	#[pallet::getter(fn cumulatives)]
 	pub type Cumulatives<T: Config> = StorageMap<_, Twox64Concat, TradingPair, (U256, U256, MomentOf<T>), ValueQuery>;
 
+	/// Average prices for TradingPair.
+	///
+	/// AveragePrices: map TradingPair => (AveragePrice0, AveragePrice1, LastCumulative0,
+	/// LastCumulative1, LastUpdatePriceTimestamp, InteralToUpdatePrice)
 	#[pallet::storage]
 	#[pallet::getter(fn average_prices)]
 	pub type AveragePrices<T: Config> = StorageMap<
@@ -144,6 +156,13 @@ pub mod module {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
+		/// Enabled average price for trading pair.
+		///
+		/// Requires `UpdateOrigin`
+		///
+		/// - `currency_id_a`: one currency_id that forms a trading pair
+		/// - `currency_id_b`: another currency_id that forms a trading pair
+		/// - `interval`: the timestamp interval to update average price.
 		#[pallet::weight(<T as Config>::WeightInfo::enable_average_price())]
 		#[transactional]
 		pub fn enable_average_price(
@@ -184,6 +203,12 @@ pub mod module {
 			Ok(())
 		}
 
+		/// Disable average price for trading pair.
+		///
+		/// Requires `UpdateOrigin`
+		///
+		/// - `currency_id_a`: one currency_id that forms a trading pair
+		/// - `currency_id_b`: another currency_id that forms a trading pair
 		#[pallet::weight(<T as Config>::WeightInfo::disable_average_price())]
 		#[transactional]
 		pub fn disable_average_price(
@@ -201,6 +226,13 @@ pub mod module {
 			Ok(())
 		}
 
+		/// Update the interval of the trading pair that enabled average price.
+		///
+		/// Requires `UpdateOrigin`
+		///
+		/// - `currency_id_a`: one currency_id that forms a trading pair
+		/// - `currency_id_b`: another currency_id that forms a trading pair
+		/// - `new_interval`: the new interval.
 		#[pallet::weight(<T as Config>::WeightInfo::update_average_price_interval())]
 		#[transactional]
 		pub fn update_average_price_interval(
