@@ -1,7 +1,7 @@
 [package]
 name = "test-service"
-version = "0.1.0"
-authors = ["Parity Technologies <admin@parity.io>"]
+version = "2.2.1"
+authors = ["Acala Developers"]
 edition = "2021"
 
 [dependencies]

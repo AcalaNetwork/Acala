@@ -14,6 +14,7 @@
 // GNU General Public License for more details.
 
 // You should have received a copy of the GNU General Public License
+// along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use cumulus_primitives_core::ParaId;
 use test_service::{initial_head_data, run_relay_chain_validator_node, Keyring::*};

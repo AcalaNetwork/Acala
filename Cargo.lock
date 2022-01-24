@@ -13925,7 +13925,7 @@ dependencies = [
 
 [[package]]
 name = "test-service"
-version = "0.1.0"
+version = "2.2.1"
 dependencies = [
  "acala-cli",
  "acala-primitives",
