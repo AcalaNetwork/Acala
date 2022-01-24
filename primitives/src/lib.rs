@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2021 Acala Foundation.
+// Copyright (C) 2020-2022 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -28,6 +28,7 @@ pub mod unchecked_extrinsic;
 
 use codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
+use sp_core::U256;
 use sp_runtime::{
 	generic,
 	traits::{BlakeTwo256, CheckedDiv, IdentifyAccount, Saturating, Verify, Zero},
@@ -204,4 +205,9 @@ pub fn convert_decimals_from_evm<B: Zero + Saturating + CheckedDiv + PartialEq +
 	} else {
 		None
 	}
+}
+
+/// Convert any type that implements Into<U256> into byte representation ([u8, 32])
+pub fn to_bytes<T: Into<U256>>(value: T) -> [u8; 32] {
+	Into::<[u8; 32]>::into(value.into())
 }

@@ -1,8 +1,13 @@
 [package]
 name = "module-evm"
-version = "2.1.3"
+version = "2.2.1"
 authors = ["Acala Developers"]
 edition = "2021"
+
+[[bench]]
+name = "orml_benches"
+harness = false
+required-features = ["bench"]
 
 [dependencies]
 codec = { package = "parity-scale-codec", version = "2.3.1", default-features = false }
@@ -15,27 +20,30 @@ serde = { version = "1.0.124", optional = true, features = ["derive"] }
 sha3 = { version = "0.9.1", default-features = false }
 tiny-keccak = { version = "2.0", features = ["fips202"] }
 scale-info = { version = "1.0", default-features = false, features = ["derive"] }
+serde_json = { version = "1.0", default-features = false, features = ["alloc"], optional = true }
+hex = { version = "0.4", default-features = false, features = ["alloc"], optional = true }
 
 frame-support = { git = "https://github.com/paritytech/substrate", branch = "master", default-features = false }
 frame-system = { git = "https://github.com/paritytech/substrate", branch = "master", default-features = false }
 pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "master", default-features = false }
+pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "master", default-features = false, optional = true }
 
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "master", default-features = false }
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "master", default-features = false }
 sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "master", default-features = false }
 sp-std = { git = "https://github.com/paritytech/substrate", branch = "master", default-features = false }
 orml-traits = { path = "../../orml/traits", default-features = false }
+orml-bencher = { path = "../../orml/bencher", default-features = false, optional = true }
+orml-currencies = { path = "../../orml/currencies", default-features = false, optional = true }
+orml-tokens = { path = "../../orml/tokens", default-features = false, optional = true }
 
 module-support = { path = "../support", default-features = false }
 module-evm-utiltity = { path = "../evm-utiltity", default-features = false }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
+module-idle-scheduler = { path = "../idle-scheduler", default-features = false, optional = true }
 
 [dev-dependencies]
 env_logger = "0.9.0"
-pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "master" }
-orml-currencies = { path = "../../orml/currencies" }
-orml-tokens = { path = "../../orml/tokens" }
-module-idle-scheduler = { path = "../idle-scheduler" }
 
 [features]
 default = ["std"]
@@ -54,11 +62,28 @@ std = [
 	"module-evm-utiltity/std",
 	"primitive-types/std",
 	"pallet-timestamp/std",
+	"pallet-balances/std",
 	"ripemd160/std",
 	"primitives/std",
 	"orml-traits/std",
 	"module-support/std",
+	"orml-bencher/std",
+	"orml-currencies/std",
+	"orml-tokens/std",
+	"module-idle-scheduler/std"
 ]
 with-ethereum-compatibility = []
 try-runtime = ["frame-support/try-runtime"]
 tracing = ["module-evm-utiltity/tracing"]
+bench = [
+	"pallet-balances",
+	"orml-currencies",
+	"orml-tokens",
+	"orml-bencher/bench",
+	"frame-support/runtime-benchmarks",
+	"sp-runtime/runtime-benchmarks",
+	"frame-system/runtime-benchmarks",
+	"serde_json",
+	"hex",
+	"module-idle-scheduler"
+]

@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2021 Acala Foundation.
+// Copyright (C) 2020-2022 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -37,7 +37,7 @@ use primitives::Balance;
 /// - QueryStorageDepositPerByte.
 /// - QueryMaintainer.
 /// - QueryDeveloperDeposit.
-/// - QueryDeploymentFee.
+/// - QueryPublicationFee.
 /// - TransferMaintainer. Rest `input` bytes: `from`, `contract`, `new_maintainer`.
 pub struct StateRentPrecompile<R>(PhantomData<R>);
 
@@ -49,8 +49,12 @@ pub enum Action {
 	QueryStorageDepositPerByte = "storageDepositPerByte()",
 	QueryMaintainer = "maintainerOf(address)",
 	QueryDeveloperDeposit = "developerDeposit()",
-	QueryDeploymentFee = "deploymentFee()",
+	QueryPublicationFee = "publicationFee()",
 	TransferMaintainer = "transferMaintainer(address,address,address)",
+	EnableDeveloperAccount = "developerEnable(address)",
+	DisableDeveloperAccount = "developerDisable(address)",
+	QueryDeveloperStatus = "developerStatus(address)",
+	PublishContract = "publishContract(address, address)",
 }
 
 impl<Runtime> Precompile for StateRentPrecompile<Runtime>
@@ -108,8 +112,8 @@ where
 					logs: Default::default(),
 				})
 			}
-			Action::QueryDeploymentFee => {
-				let fee = module_evm::Pallet::<Runtime>::query_deployment_fee();
+			Action::QueryPublicationFee => {
+				let fee = module_evm::Pallet::<Runtime>::query_publication_fee();
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
 					cost: 0,
@@ -139,6 +143,53 @@ where
 					exit_status: ExitSucceed::Returned,
 					cost: 0,
 					output: vec![],
+					logs: Default::default(),
+				})
+			}
+			Action::PublishContract => {
+				let who = input.account_id_at(1)?;
+				let contract_address = input.evm_address_at(2)?;
+				<module_evm::Pallet<Runtime>>::publish_contract_precompile(who, contract_address)
+					.map_err(|e| ExitError::Other(Cow::Borrowed(e.into())))?;
+
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: 0,
+					output: vec![],
+					logs: Default::default(),
+				})
+			}
+			Action::DisableDeveloperAccount => {
+				let who = input.account_id_at(1)?;
+				<module_evm::Pallet<Runtime>>::disable_account_contract_development(who)
+					.map_err(|e| ExitError::Other(Cow::Borrowed(e.into())))?;
+
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: 0,
+					output: vec![],
+					logs: Default::default(),
+				})
+			}
+			Action::EnableDeveloperAccount => {
+				let who = input.account_id_at(1)?;
+				<module_evm::Pallet<Runtime>>::enable_account_contract_development(who)
+					.map_err(|e| ExitError::Other(Cow::Borrowed(e.into())))?;
+
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: 0,
+					output: vec![],
+					logs: Default::default(),
+				})
+			}
+			Action::QueryDeveloperStatus => {
+				let who = input.account_id_at(1)?;
+				let developer_status = <module_evm::Pallet<Runtime>>::query_developer_status(who);
+				Ok(PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: 0,
+					output: Output::default().encode_bool(developer_status),
 					logs: Default::default(),
 				})
 			}

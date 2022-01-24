@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2021 Acala Foundation.
+// Copyright (C) 2020-2022 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -416,6 +416,8 @@ fn homa_mint_and_redeem_works() {
 	let homa_lite_sub_account: AccountId =
 		hex_literal::hex!["d7b8926b326dd349355a9a7cca6606c1e0eb6fd2b506066b518c7155ff0d8297"].into();
 	let mut parachain_account: AccountId = AccountId::default();
+	let bonding_duration = BondingDuration::get();
+
 	Karura::execute_with(|| {
 		parachain_account = ParachainAccount::get();
 	});
@@ -552,7 +554,7 @@ fn homa_mint_and_redeem_works() {
 
 		// Unbonds the tokens on the Relay chain.
 		assert_ok!(Homa::bump_current_era(1));
-		let unbonding_era = Homa::relay_chain_current_era() + KusamaBondingDuration::get();
+		let unbonding_era = Homa::relay_chain_current_era() + bonding_duration;
 		assert_eq!(unbonding_era, 30);
 
 		assert_eq!(Homa::unbondings(&alice(), unbonding_era), 999_995_000_000_000);
@@ -594,7 +596,7 @@ fn homa_mint_and_redeem_works() {
 		));
 
 		// Wait for the chunk to unlock
-		for _ in 0..KusamaBondingDuration::get() + 1 {
+		for _ in 0..bonding_duration + 1 {
 			assert_ok!(Homa::bump_current_era(1));
 		}
 

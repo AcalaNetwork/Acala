@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2021 Acala Foundation.
+// Copyright (C) 2020-2022 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -193,11 +193,11 @@ fn test_trading_pair() {
 			assert_eq!(Currencies::total_issuance(LPTOKEN), 0);
 			assert_eq!(Currencies::free_balance(LPTOKEN, &AccountId::from(ALICE)), 0);
 
-			// CurrencyId::DexShare(Token, LiquidCroadloan)
+			// CurrencyId::DexShare(Token, LiquidCrowdloan)
 			assert_ok!(Dex::list_provisioning(
 				Origin::root(),
 				USD_CURRENCY,
-				CurrencyId::LiquidCroadloan(1),
+				CurrencyId::LiquidCrowdloan(1),
 				10,
 				100,
 				100,
@@ -205,10 +205,10 @@ fn test_trading_pair() {
 				0,
 			));
 
-			// CurrencyId::DexShare(LiquidCroadloan, Token)
+			// CurrencyId::DexShare(LiquidCrowdloan, Token)
 			assert_ok!(Dex::list_provisioning(
 				Origin::root(),
-				CurrencyId::LiquidCroadloan(2),
+				CurrencyId::LiquidCrowdloan(2),
 				USD_CURRENCY,
 				10,
 				100,

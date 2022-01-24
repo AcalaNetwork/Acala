@@ -1,6 +1,6 @@
 import { expect } from "chai";
 
-import { describeWithAcala, nextBlock } from "./util";
+import { describeWithAcala, getEvmNonce } from "./util";
 import { Signer } from "@acala-network/bodhi";
 import { Wallet } from "@ethersproject/wallet";
 import { encodeAddress } from "@polkadot/keyring";
@@ -50,7 +50,7 @@ describeWithAcala("Acala RPC (Sign eip1559)", (context) => {
 		this.timeout(150000);
 
 		const chain_id = +context.provider.api.consts.evm.chainId.toString()
-		const nonce = (await context.provider.api.query.system.account(subAddr)).nonce.toNumber()
+		const nonce = await getEvmNonce(context.provider, signer.address);
 		const validUntil = (await context.provider.api.rpc.chain.getHeader()).number.toNumber() + 100
 		const storageLimit = 20000;
 		const gasLimit = 2100000;
@@ -72,7 +72,7 @@ describeWithAcala("Acala RPC (Sign eip1559)", (context) => {
 		const value = {
 			type: 2, // EIP-1559
 			// to: "0x0000000000000000000000000000000000000000",
-			nonce,
+			nonce: nonce,
 			gasLimit: tx_gas_limit.toNumber(),
 			data: deploy.data,
 			value: 0,
@@ -188,7 +188,7 @@ describeWithAcala("Acala RPC (Sign eip1559)", (context) => {
 		this.timeout(150000);
 
 		const chain_id = +context.provider.api.consts.evm.chainId.toString();
-		const nonce = (await context.provider.api.query.system.account(subAddr)).nonce.toNumber();
+		const nonce = await getEvmNonce(context.provider, signer.address);
 		const validUntil = (await context.provider.api.rpc.chain.getHeader()).number.toNumber() + 100;
 		const storageLimit = 1000;
 		const gasLimit = 210000;
@@ -211,7 +211,7 @@ describeWithAcala("Acala RPC (Sign eip1559)", (context) => {
 		const value = {
 			type: 2, // EIP-1559
 			to: contract,
-			nonce,
+			nonce: nonce,
 			gasLimit: tx_gas_limit.toNumber(),
 			data: input.data,
 			value: 0,
@@ -311,7 +311,7 @@ describeWithAcala("Acala RPC (Sign eip1559)", (context) => {
 		});
 
 		await new Promise(async (resolve) => {
-			context.provider.api.tx.sudo.sudo(context.provider.api.tx.evm.deployFree(contract)).signAndSend(await alice.getSubstrateAddress(), ((result) => {
+			context.provider.api.tx.sudo.sudo(context.provider.api.tx.evm.publishFree(contract)).signAndSend(await alice.getSubstrateAddress(), ((result) => {
 				if (result.status.isFinalized || result.status.isInBlock) {
 					resolve(undefined);
 				}

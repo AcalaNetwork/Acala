@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2021 Acala Foundation.
+// Copyright (C) 2020-2022 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -184,6 +184,11 @@ where
 pub struct Output;
 
 impl Output {
+	pub fn encode_bool(&self, b: bool) -> Vec<u8> {
+		let out = Token::Bool(b);
+		ethabi::encode(&[out])
+	}
+
 	pub fn encode_u8(&self, b: u8) -> Vec<u8> {
 		let out = Token::Uint(U256::from(b));
 		ethabi::encode(&[out])

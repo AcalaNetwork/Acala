@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2021 Acala Foundation.
+// Copyright (C) 2020-2022 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -108,7 +108,7 @@ ord_parameter_types! {
 	pub const StorageDepositPerByte: u128 = convert_decimals_to_evm(10);
 	pub const TxFeePerGas: u128 = 10;
 	pub const DeveloperDeposit: u64 = 1000;
-	pub const DeploymentFee: u64 = 200;
+	pub const PublicationFee: u64 = 200;
 }
 
 impl module_evm::Config for Runtime {
@@ -127,9 +127,9 @@ impl module_evm::Config for Runtime {
 	type NetworkContractSource = NetworkContractSource;
 
 	type DeveloperDeposit = DeveloperDeposit;
-	type DeploymentFee = DeploymentFee;
+	type PublicationFee = PublicationFee;
 	type TreasuryAccount = TreasuryAccount;
-	type FreeDeploymentOrigin = EnsureSignedBy<CouncilAccount, AccountId32>;
+	type FreePublicationOrigin = EnsureSignedBy<CouncilAccount, AccountId32>;
 
 	type Runner = module_evm::runner::stack::Runner<Self>;
 	type FindAuthor = ();
@@ -206,7 +206,10 @@ pub fn deploy_contracts() {
 		}],
 	}));
 
-	assert_ok!(EVM::deploy_free(Origin::signed(CouncilAccount::get()), erc20_address()));
+	assert_ok!(EVM::publish_free(
+		Origin::signed(CouncilAccount::get()),
+		erc20_address()
+	));
 }
 
 impl ExtBuilder {

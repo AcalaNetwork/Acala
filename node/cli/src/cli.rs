@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2021 Acala Foundation.
+// Copyright (C) 2020-2022 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -143,6 +143,14 @@ pub struct Cli {
 	/// Can only be used with `--dev`
 	#[structopt(long = "instant-sealing", requires = "dev")]
 	pub instant_sealing: bool,
+
+	/// Mnemonic for evm development.
+	/// This will derive 10 funded accounts in the genesis
+	///
+	/// Can only be used with `--dev`
+	#[cfg(feature = "with-mandala-runtime")]
+	#[structopt(long = "mnemonic", requires = "dev")]
+	pub mnemonic: Option<String>,
 }
 
 /// Relay chain CLI.

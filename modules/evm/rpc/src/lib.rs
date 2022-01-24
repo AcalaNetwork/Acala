@@ -1,6 +1,6 @@
 // This file is part of Acala.
 
-// Copyright (C) 2020-2021 Acala Foundation.
+// Copyright (C) 2020-2022 Acala Foundation.
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -193,11 +193,29 @@ where
 
 				Ok(Bytes(info.value))
 			}
-			None => Err(Error {
-				code: ErrorCode::InternalError,
-				message: "Not supported".into(),
-				data: None,
-			}),
+			None => {
+				let info = api
+					.create(
+						&BlockId::Hash(hash),
+						from.unwrap_or_default(),
+						data,
+						balance_value,
+						gas_limit,
+						storage_limit,
+						true,
+					)
+					.map_err(|err| internal_err(format!("runtime error: {:?}", err)))?
+					.map_err(|err| internal_err(format!("execution fatal: {:?}", err)))?;
+
+				log::debug!(
+					target: "evm",
+					"rpc create, info.exit_reason: {:?}, info.value: {:?}",
+					info.exit_reason, info.value,
+				);
+				error_on_execution_failure(&info.exit_reason, &[])?;
+
+				Ok(Bytes(info.value[..].to_vec()))
+			}
 		}
 	}
 
