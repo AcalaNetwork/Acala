@@ -46,41 +46,40 @@ use sp_std::marker::PhantomData;
 /// Weight functions for module_dex_oracle.
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> module_dex_oracle::WeightInfo for WeightInfo<T> {
-	// Storage: Timestamp Now (r:1 w:0)
-	// Storage: DexOracle LastPriceUpdatedTime (r:1 w:0)
-	fn on_initialize() -> Weight {
-		(6_000_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
-	}
-	// Storage: DexOracle LastPriceUpdatedTime (r:1 w:1)
-	// Storage: DexOracle AveragePrices (r:2 w:1)
+	// Storage: DexOracle AveragePrices (r:1 w:0)
+	// Storage: Timestamp Now (r:0 w:1)
 	// Storage: Dex LiquidityPool (r:1 w:0)
 	// Storage: DexOracle Cumulatives (r:1 w:1)
-	// Storage: Timestamp Now (r:0 w:1)
-	fn on_initialize_with_update_average_prices(n: u32, u: u32,) -> Weight {
-		(21_467_000 as Weight)
-			// Standard Error: 324_000
-			.saturating_add((25_650_000 as Weight).saturating_mul(n as Weight))
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
-			.saturating_add(T::DbWeight::get().reads((3 as Weight).saturating_mul(n as Weight)))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
-			.saturating_add(T::DbWeight::get().writes((2 as Weight).saturating_mul(n as Weight)))
+	fn on_initialize_with_update_average_prices(n: u32, u: u32, ) -> Weight {
+		(0 as Weight)
+			// Standard Error: 162_000
+			.saturating_add((32_749_000 as Weight).saturating_mul(n as Weight))
+			// Standard Error: 162_000
+			.saturating_add((22_671_000 as Weight).saturating_mul(u as Weight))
+			.saturating_add(T::DbWeight::get().reads((2 as Weight).saturating_mul(n as Weight)))
+			.saturating_add(T::DbWeight::get().reads((2 as Weight).saturating_mul(u as Weight)))
+			.saturating_add(T::DbWeight::get().writes((2 as Weight).saturating_mul(u as Weight)))
 	}
 	// Storage: DexOracle AveragePrices (r:1 w:1)
-	// Storage: Timestamp Now (r:1 w:0)
 	// Storage: Dex LiquidityPool (r:1 w:0)
-	// Storage: DexOracle LastPriceUpdatedTime (r:1 w:0)
+	// Storage: Timestamp Now (r:1 w:0)
 	// Storage: DexOracle Cumulatives (r:0 w:1)
 	fn enable_average_price() -> Weight {
-		(27_000_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(4 as Weight))
+		(24_000_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
 	// Storage: DexOracle AveragePrices (r:1 w:1)
 	// Storage: DexOracle Cumulatives (r:0 w:1)
 	fn disable_average_price() -> Weight {
-		(11_000_000 as Weight)
+		(13_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
+	}
+	// Storage: DexOracle AveragePrices (r:1 w:1)
+	fn update_average_price_interval() -> Weight {
+		(12_000_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(1 as Weight))
+			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 }

@@ -201,7 +201,7 @@ pub mod module {
 			Ok(())
 		}
 
-		#[pallet::weight(<T as Config>::WeightInfo::disable_average_price())]
+		#[pallet::weight(<T as Config>::WeightInfo::update_average_price_interval())]
 		#[transactional]
 		pub fn update_average_price_interval(
 			origin: OriginFor<T>,

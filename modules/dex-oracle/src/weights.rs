@@ -48,27 +48,24 @@ use sp_std::marker::PhantomData;
 
 /// Weight functions needed for module_dex_oracle.
 pub trait WeightInfo {
-	fn on_initialize() -> Weight;
 	fn on_initialize_with_update_average_prices(n: u32, u: u32,) -> Weight;
 	fn enable_average_price() -> Weight;
 	fn disable_average_price() -> Weight;
+	fn update_average_price_interval() -> Weight;
 }
 
 /// Weights for module_dex_oracle using the Acala node and recommended hardware.
 pub struct AcalaWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
-	fn on_initialize() -> Weight {
-		(6_000_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
-	}
 	fn on_initialize_with_update_average_prices(n: u32, u: u32,) -> Weight {
-		(21_467_000 as Weight)
-			// Standard Error: 324_000
-			.saturating_add((25_650_000 as Weight).saturating_mul(n as Weight))
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
-			.saturating_add(T::DbWeight::get().reads((3 as Weight).saturating_mul(n as Weight)))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
-			.saturating_add(T::DbWeight::get().writes((2 as Weight).saturating_mul(n as Weight)))
+		(0 as Weight)
+			// Standard Error: 162_000
+			.saturating_add((32_749_000 as Weight).saturating_mul(n as Weight))
+			// Standard Error: 162_000
+			.saturating_add((22_671_000 as Weight).saturating_mul(u as Weight))
+			.saturating_add(T::DbWeight::get().reads((2 as Weight).saturating_mul(n as Weight)))
+			.saturating_add(T::DbWeight::get().reads((2 as Weight).saturating_mul(u as Weight)))
+			.saturating_add(T::DbWeight::get().writes((2 as Weight).saturating_mul(u as Weight)))
 	}
 	fn enable_average_price() -> Weight {
 		(27_000_000 as Weight)
@@ -80,22 +77,24 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
+	fn update_average_price_interval() -> Weight {
+		(12_000_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(1 as Weight))
+			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+	}
 }
 
 // For backwards compatibility and tests
 impl WeightInfo for () {
-	fn on_initialize() -> Weight {
-		(6_000_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(2 as Weight))
-	}
 	fn on_initialize_with_update_average_prices(n: u32, u: u32,) -> Weight {
-		(21_467_000 as Weight)
-			// Standard Error: 324_000
-			.saturating_add((25_650_000 as Weight).saturating_mul(n as Weight))
-			.saturating_add(RocksDbWeight::get().reads(2 as Weight))
-			.saturating_add(RocksDbWeight::get().reads((3 as Weight).saturating_mul(n as Weight)))
-			.saturating_add(RocksDbWeight::get().writes(2 as Weight))
-			.saturating_add(RocksDbWeight::get().writes((2 as Weight).saturating_mul(n as Weight)))
+		(0 as Weight)
+			// Standard Error: 162_000
+			.saturating_add((32_749_000 as Weight).saturating_mul(n as Weight))
+			// Standard Error: 162_000
+			.saturating_add((22_671_000 as Weight).saturating_mul(u as Weight))
+			.saturating_add(RocksDbWeight::get().reads((2 as Weight).saturating_mul(n as Weight)))
+			.saturating_add(RocksDbWeight::get().reads((2 as Weight).saturating_mul(u as Weight)))
+			.saturating_add(RocksDbWeight::get().writes((2 as Weight).saturating_mul(u as Weight)))
 	}
 	fn enable_average_price() -> Weight {
 		(27_000_000 as Weight)
@@ -106,5 +105,10 @@ impl WeightInfo for () {
 		(11_000_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(2 as Weight))
+	}
+	fn update_average_price_interval() -> Weight {
+		(12_000_000 as Weight)
+			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
+			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
 }
