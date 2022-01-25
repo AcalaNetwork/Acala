@@ -6348,6 +6348,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "module-relaychain-oracle"
+version = "2.2.1"
+dependencies = [
+ "acala-primitives",
+ "frame-support",
+ "frame-system",
+ "module-support",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "module-session-manager"
 version = "2.2.1"
 dependencies = [
