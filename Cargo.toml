@@ -44,6 +44,11 @@ members = [
 	"ecosystem-modules/starport",
 	"ecosystem-modules/compound-cash",
 	"ecosystem-modules/stable-asset/lib/stable-asset",
+
+]
+
+exclude = [
+	"evm-tests",
 ]
 
 resolver = "2"
