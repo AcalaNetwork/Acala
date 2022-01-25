@@ -407,6 +407,7 @@ where
 				client: client.clone(),
 				pool: transaction_pool.clone(),
 				deny_unsafe,
+				command_sink: None,
 			};
 
 			Ok(acala_rpc::create_full(deps))
@@ -689,7 +690,7 @@ fn inner_mandala_dev(config: Configuration, instant_sealing: bool) -> Result<Tas
 	let select_chain =
 		maybe_select_chain.expect("In mandala dev mode, `new_partial` will return some `select_chain`; qed");
 
-	if role.is_authority() {
+	let command_sink = if role.is_authority() {
 		let proposer_factory = sc_basic_authorship::ProposerFactory::new(
 			task_manager.spawn_handle(),
 			client.clone(),
@@ -699,8 +700,11 @@ fn inner_mandala_dev(config: Configuration, instant_sealing: bool) -> Result<Tas
 		);
 
 		if instant_sealing {
+			// Channel for the rpc handler to communicate with the authorship task.
+			let (command_sink, commands_stream) = futures::channel::mpsc::channel(1024);
+
 			let pool = transaction_pool.pool().clone();
-			let commands_stream = pool.validated_pool().import_notification_stream().map(|_| {
+			let import_stream = pool.validated_pool().import_notification_stream().map(|_| {
 				sc_consensus_manual_seal::rpc::EngineCommand::SealNewBlock {
 					create_empty: false,
 					finalize: true,
@@ -715,7 +719,7 @@ fn inner_mandala_dev(config: Configuration, instant_sealing: bool) -> Result<Tas
 					env: proposer_factory,
 					client: client.clone(),
 					pool: transaction_pool.clone(),
-					commands_stream,
+					commands_stream: futures::stream_select!(commands_stream, import_stream),
 					select_chain,
 					consensus_data_provider: None,
 					create_inherent_data_providers: |_, _| async {
@@ -731,6 +735,7 @@ fn inner_mandala_dev(config: Configuration, instant_sealing: bool) -> Result<Tas
 				Some("block-authoring"),
 				authorship_future,
 			);
+			Some(command_sink)
 		} else {
 			// aura
 			let can_author_with = sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone());
@@ -769,8 +774,12 @@ fn inner_mandala_dev(config: Configuration, instant_sealing: bool) -> Result<Tas
 			task_manager
 				.spawn_essential_handle()
 				.spawn_blocking("aura", Some("block-authoring"), aura);
+
+			None
 		}
-	}
+	} else {
+		None
+	};
 
 	let rpc_extensions_builder = {
 		let client = client.clone();
@@ -781,6 +790,7 @@ fn inner_mandala_dev(config: Configuration, instant_sealing: bool) -> Result<Tas
 				client: client.clone(),
 				pool: transaction_pool.clone(),
 				deny_unsafe,
+				command_sink: command_sink.clone(),
 			};
 
 			Ok(acala_rpc::create_full(deps))

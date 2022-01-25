@@ -100,6 +100,7 @@ dependencies = [
  "parity-scale-codec",
  "runtime-common",
  "sc-client-api",
+ "sc-consensus-manual-seal",
  "sc-rpc",
  "sc-rpc-api",
  "sc-transaction-pool-api",
