@@ -45,11 +45,11 @@ pub struct Vicinity {
 	/// Origin of the transaction.
 	pub origin: EvmAddress,
 	/// Environmental coinbase.
-	pub block_coinbase: EvmAddress,
+	pub block_coinbase: Option<EvmAddress>,
 	/// Environmental block gas limit. Used only for testing
-	pub block_gas_limit: U256,
+	pub block_gas_limit: Option<U256>,
 	/// Environmental block difficulty. Used only for testing
-	pub block_difficulty: U256,
+	pub block_difficulty: Option<U256>,
 }
 
 #[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]

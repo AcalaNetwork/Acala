@@ -440,7 +440,6 @@ pub mod module {
 					// Use the EVM Runtime
 					let vicinity = Vicinity {
 						gas_price: U256::one(),
-						block_coinbase: Pallet::<T>::find_author(),
 						..Default::default()
 					};
 					let context = Context {

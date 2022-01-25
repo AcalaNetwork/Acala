@@ -72,7 +72,6 @@ impl<T: Config> Runner<T> {
 		let vicinity = Vicinity {
 			gas_price,
 			origin,
-			block_coinbase: Pallet::<T>::find_author(),
 			..Default::default()
 		};
 
@@ -462,7 +461,7 @@ impl<'vicinity, 'config, T: Config> BackendT for SubstrateStackState<'vicinity, 
 	}
 
 	fn block_coinbase(&self) -> H160 {
-		self.vicinity.block_coinbase
+		self.vicinity.block_coinbase.unwrap_or(Pallet::<T>::find_author())
 	}
 
 	fn block_timestamp(&self) -> U256 {
@@ -471,11 +470,11 @@ impl<'vicinity, 'config, T: Config> BackendT for SubstrateStackState<'vicinity, 
 	}
 
 	fn block_difficulty(&self) -> U256 {
-		self.vicinity.block_difficulty
+		self.vicinity.block_difficulty.unwrap_or_default()
 	}
 
 	fn block_gas_limit(&self) -> U256 {
-		self.vicinity.block_gas_limit
+		self.vicinity.block_gas_limit.unwrap_or_default()
 	}
 
 	fn chain_id(&self) -> U256 {

@@ -70,8 +70,6 @@ fn whitelist_keys(b: &mut Bencher, from: H160, code: Vec<u8>) -> H160 {
 	let address = H160::from_str("2000000000000000000000000000000000000001").unwrap();
 	let vicinity = Vicinity {
 		gas_price: U256::one(),
-		origin: Default::default(),
-		block_coinbase: Pallet::<Runtime>::find_author(),
 		..Default::default()
 	};
 	let context = Context {
