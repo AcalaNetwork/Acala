@@ -29,7 +29,6 @@
 use frame_support::{pallet_prelude::*, transactional};
 use frame_system::pallet_prelude::*;
 use sp_runtime::traits::{BlockNumberProvider, Saturating, Zero};
-use sp_std::cmp::min;
 
 use orml_traits::{ManageNFT, MultiCurrencyExtended, MultiReservableCurrency, NFT};
 
@@ -70,6 +69,10 @@ pub mod module {
 		#[pallet::constant]
 		type PalletAccount: Get<Self::AccountId>;
 
+		/// Minimum amount of relaychian currency allowed to bid.
+		#[pallet::constant]
+		type MinimumBidAmount: Get<Balance>;
+
 		/// Multi-currency support for asset management.
 		type Currency: MultiReservableCurrency<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>
 			+ MultiCurrencyExtended<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
@@ -88,6 +91,10 @@ pub mod module {
 
 	#[pallet::error]
 	pub enum Error<T> {
+		/// The amount of relaychain currency to be bid is too low.
+		BidAmountBelowMinimum,
+		/// Too many bids with the same Amount and Duration in the current queue.
+		BidNotFound,
 		/// The user does not have enough Relaychain Currency.
 		InsufficientBalance,
 		/// The Prt's NFT class ID as not yet been set.
@@ -134,6 +141,12 @@ pub mod module {
 			expiry: T::BlockNumber,
 			amount: Balance,
 		},
+		PrtIssueConfirmed {
+			duration: u32,
+			amount: Balance,
+			index: ActiveIndex,
+			expiry: T::BlockNumber,
+		},
 		/// Request to thaw PRT
 		ThawRequested {
 			index: ActiveIndex,
@@ -155,21 +168,22 @@ pub mod module {
 
 	/// Stores confirmed Gilt tokens that are issued on the Relaychain.
 	#[pallet::storage]
-	#[pallet::getter(fn issued_gilt)]
-	type IssuedGilt<T: Config> =
-		StorageMap<_, Twox64Concat, ActiveIndex, (T::AccountId, T::BlockNumber, Balance), OptionQuery>;
+	#[pallet::getter(fn issued_prt)]
+	type IssuedPrt<T: Config> =
+		StorageMap<_, Twox64Concat, ActiveIndex, (T::BlockNumber, Vec<(T::AccountId, Balance)>), OptionQuery>;
 
 	/// Stores bids for Gilt tokens on the Relaychain.
 	#[pallet::storage]
 	#[pallet::getter(fn placed_bids)]
-	type PlacedBids<T: Config> =
-		StorageDoubleMap<_, Twox64Concat, T::AccountId, Twox64Concat, u32, Balance, ValueQuery>;
+	type PlacedBids<T: Config> = StorageMap<_, Identity, u32, Vec<(T::AccountId, Balance)>, ValueQuery>;
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
+		/// Sets the class ID of the NFT that will be representing PRT.
+		/// Only callable by authorized Oracles.
 		#[pallet::weight(0)]
 		pub fn set_nft_id(origin: OriginFor<T>, nft_id: ClassIdOf<T>) -> DispatchResult {
 			T::OracleOrigin::ensure_origin(origin)?;
@@ -180,7 +194,7 @@ pub mod module {
 
 		/// Sends a request to the relaychain to place a bid to freeze some Relaychain currency to
 		/// mint some Gilts. The relaychain tokens are reserved, but no PRT will be minted until the
-		/// relaychian confirms that the bid is accepted and Gilts issued.
+		/// relaychain confirms that the bid is accepted and Gilts issued.
 		#[pallet::weight(0)]
 		#[transactional]
 		pub fn place_bid(origin: OriginFor<T>, #[pallet::compact] amount: Balance, duration: u32) -> DispatchResult {
@@ -188,6 +202,8 @@ pub mod module {
 
 			// Ensure PRT's class ID has been set.
 			ensure!(Self::prt_class_id().is_some(), Error::<T>::PrtClassIdNotSet);
+
+			ensure!(amount >= T::MinimumBidAmount::get(), Error::<T>::BidAmountBelowMinimum);
 
 			// Ensure user has enough funds.
 			ensure!(
@@ -202,68 +218,109 @@ pub mod module {
 			T::RelaychainInterface::gilt_place_bid(amount, duration)?;
 
 			// Put the user's bid into storage
-			PlacedBids::<T>::mutate(&who, duration, |current| *current = current.saturating_add(amount));
+			PlacedBids::<T>::mutate(duration, |bids_in_storage| {
+				let maybe_position = bids_in_storage.iter().position(|(user, _)| *user == who);
+				match maybe_position {
+					// Add to the user's existing bid.
+					Some(i) => bids_in_storage[i].1 = bids_in_storage[i].1.saturating_add(amount),
+					// Insert the user's bid to index 0.
+					None => bids_in_storage.insert(0, (who.clone(), amount)),
+				}
+			});
 
 			Self::deposit_event(Event::BidPlaced { who, duration, amount });
 			Ok(())
 		}
 
-		/// This should be called only by oracles to confirm that a specific user's Gilt has been
-		/// successfully minted on the relaychain.
+		/// This should be called only by oracles to confirm when bid has been accepted and Gilts'
+		/// been minted on the relaychain. This function will then mint as much PRT as allowed.
 		/// This is the get around the async nature of cross-chain communications.
 		#[pallet::weight(0)]
 		#[transactional]
 		pub fn confirm_gilt_issued(
 			origin: OriginFor<T>,
-			user: T::AccountId,
+			duration: u32,
+			#[pallet::compact] amount: Balance,
 			index: ActiveIndex,
 			expiry: T::BlockNumber,
-			#[pallet::compact] amount: Balance,
 		) -> DispatchResult {
 			T::OracleOrigin::ensure_origin(origin)?;
 			let prt_class_id = Self::prt_class_id();
+
 			// Ensure PRT's class ID has been set.
 			ensure!(prt_class_id.is_some(), Error::<T>::PrtClassIdNotSet);
 
-			// Put the Gilt record into storage to prevent double-minting
-			ensure!(Self::issued_gilt(index).is_none(), Error::<T>::PrtAlreadyIssued);
-			IssuedGilt::<T>::insert(index, (user.clone(), expiry.clone(), amount));
+			// Ensure we do not double-issue
+			ensure!(Self::issued_prt(index).is_none(), Error::<T>::PrtAlreadyIssued);
 
-			// Remove current bid from record and mint the NFT that represents the PRT.
-			PlacedBids::<T>::mutate_exists(&user, expiry, |current| {
-				let current_amount = current.unwrap_or_default();
-				let actual = min(current_amount, amount);
-				let remaining = current_amount.saturating_sub(actual);
-				*current = if remaining.is_zero() { None } else { Some(remaining) };
+			// Consume bids in order and mint the NFT that represents the PRT.
+			PlacedBids::<T>::try_mutate_exists(duration, |maybe_current_bids| -> DispatchResult {
+				let mut current_bids = maybe_current_bids.take().unwrap_or_default();
+				let mut issue_amount_remaining = amount;
+				let mut issued_prt = vec![];
+				while let Some((bidder, mut bid_amount)) = current_bids.pop() {
+					// Deduct minted amount from Total and user's bid.
+					if issue_amount_remaining < bid_amount {
+						let bid_amount_remaining = bid_amount.saturating_sub(issue_amount_remaining);
+						bid_amount = issue_amount_remaining;
+						current_bids.push((bidder.clone(), bid_amount_remaining));
+					}
 
-				// Mint PRT into the user's account.
-				// Only mint as much as the user bid using this module.
-				let metadata = PrtMetadata::<T> {
-					index,
-					expiry,
-					amount: actual,
+					issue_amount_remaining = issue_amount_remaining.saturating_sub(bid_amount);
+
+					issued_prt.push((bidder.clone(), bid_amount));
+
+					// Mint `bid_amount` amount of PRT into the user's account.
+					let metadata = PrtMetadata::<T> {
+						index,
+						expiry,
+						amount: bid_amount,
+					}
+					.encode();
+					T::NFTInterface::mint(
+						T::PalletAccount::get(),
+						bidder.clone(),
+						prt_class_id.unwrap(),
+						metadata,
+						Default::default(),
+						1u32,
+					)?;
+
+					Self::deposit_event(Event::PrtIssued {
+						who: bidder.clone(),
+						active_index: index,
+						expiry,
+						amount: bid_amount,
+					});
+
+					// Break if we run out of PRT to issue.
+					if issue_amount_remaining.is_zero() {
+						break;
+					}
 				}
-				.encode();
-				T::NFTInterface::mint(
-					T::PalletAccount::get(),
-					user.clone(),
-					prt_class_id.unwrap(),
-					metadata,
-					Default::default(),
-					1u32,
-				)?;
 
-				Self::deposit_event(Event::PrtIssued {
-					who: user,
-					active_index: index,
-					expiry,
-					amount: actual,
-				});
+				// Put the updated bids into storage.
+				*maybe_current_bids = match current_bids.len() {
+					0 => None,
+					_ => Some(current_bids),
+				};
+
+				// Insert the issued PRT into storage to prevent double-minting.
+				IssuedPrt::<T>::insert(index, (expiry, issued_prt));
+
 				Ok(())
+			})?;
+
+			Self::deposit_event(Event::<T>::PrtIssueConfirmed {
+				duration,
+				amount,
+				index,
+				expiry,
 			});
 			Ok(())
 		}
 
+		/*
 		/// Sends a request to the relaychain to retract the bid for Gilts. The relaychain tokens
 		/// stays reserved until the relaychain confirms that the bid is successfully retracted.
 		#[pallet::weight(0)]
@@ -271,6 +328,24 @@ pub mod module {
 		pub fn retract_bid(origin: OriginFor<T>, #[pallet::compact] amount: Balance, duration: u32) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
+			// Consume bids in order and mint the NFT that represents the PRT.
+			PlacedBids::<T>::try_mutate_exists(duration, |maybe_current_bids| -> DispatchResult {
+				let mut current_bids = maybe_current_bids.take().unwrap_or_default();
+				let maybe_position = current_bids.iter().position(|(_, bid_amount)| *bid_amount == amount );
+				match maybe_position {
+					Some(i) => {
+						// Deduct amount from the user's existing bid.
+						bids_in_storage[i].1 = bids_in_storage[i].1.saturating_add(amount);
+						Ok(())
+					},
+					None => {
+						// Append the user's bid to the back of the queue.
+						//ensure!(bids_in_storage.len() <= T::MaxBidsPerDuration::get() as usize, Error::<T>::MaxBidsPerDurationExceeded);
+						bids_in_storage.try_insert(bids_in_storage.len(), (who.clone(), amount)).map_err(|_|Error::<T>::MaxBidsPerDurationExceeded)?;
+						Ok(())
+					},
+				}
+			})?;
 			// Only bids placed from this module can be retracted here.
 			// This is to ensure the consistency of reserved assets.
 			ensure!(
@@ -284,6 +359,7 @@ pub mod module {
 			Self::deposit_event(Event::RetractBidRequested { who, duration, amount });
 			Ok(())
 		}
+
 
 		/// Confirm that a specific user's bid on Gilt has been retracted on the relaychain.
 		/// Only Callable by authorised oracles origin.
@@ -347,7 +423,7 @@ pub mod module {
 			Self::deposit_event(Event::ThawRequested { index, who, amount });
 			Ok(())
 		}
-
+		*/
 		// confirm thaw
 	}
 }
