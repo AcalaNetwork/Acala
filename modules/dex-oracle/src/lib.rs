@@ -20,6 +20,7 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
+#![allow(clippy::type_complexity)]
 
 use frame_support::{pallet_prelude::*, traits::Time, transactional};
 use frame_system::pallet_prelude::*;
@@ -256,6 +257,9 @@ pub mod module {
 }
 
 impl<T: Config> Pallet<T> {
+	/// For same trading pair, if now is gt last update cumulative timestamp, update it's
+	/// cumulative, otherwise do nothing. It means that in one block, the cumulative of a trading
+	/// pair may be updated only once.
 	pub fn try_update_cumulative(trading_pair: &TradingPair, pool_0: Balance, pool_1: Balance) {
 		// try updating enabled cumulative
 		if AveragePrices::<T>::contains_key(trading_pair) {
