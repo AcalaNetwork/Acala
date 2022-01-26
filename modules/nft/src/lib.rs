@@ -290,7 +290,7 @@ pub mod module {
 			metadata: CID,
 			attributes: Attributes,
 			#[pallet::compact] quantity: u32,
-		) -> DispatchResult {
+		) -> Result<Vec<TokenId>, DispatchError> {
 			let who = ensure_signed(origin)?;
 			let to = T::Lookup::lookup(to)?;
 			Self::do_mint(who, to, class_id, metadata, attributes, quantity)
@@ -444,7 +444,7 @@ impl<T: Config> Pallet<T> {
 		metadata: CID,
 		attributes: Attributes,
 		quantity: u32,
-	) -> DispatchResult {
+	) -> Result<Vec<TokenId>, DispatchError> {
 		ensure!(quantity >= 1, Error::<T>::InvalidQuantity);
 		let class_info = orml_nft::Pallet::<T>::classes(class_id).ok_or(Error::<T>::ClassIdNotFound)?;
 		ensure!(who == class_info.owner, Error::<T>::NoPermission);
@@ -463,9 +463,15 @@ impl<T: Config> Pallet<T> {
 		<T as module::Config>::Currency::transfer(&who, &to, total_deposit, KeepAlive)?;
 		<T as module::Config>::Currency::reserve_named(&RESERVE_ID, &to, total_deposit)?;
 
+		let mut token_ids = vec![];
 		let data = TokenData { deposit, attributes };
 		for _ in 0..quantity {
-			orml_nft::Pallet::<T>::mint(&to, class_id, metadata.clone(), data.clone())?;
+			token_ids.push(orml_nft::Pallet::<T>::mint(
+				&to,
+				class_id,
+				metadata.clone(),
+				data.clone(),
+			)?);
 		}
 
 		Self::deposit_event(Event::MintedToken {
@@ -474,7 +480,7 @@ impl<T: Config> Pallet<T> {
 			class_id,
 			quantity,
 		});
-		Ok(())
+		Ok(token_ids)
 	}
 
 	fn do_burn(who: T::AccountId, token: (ClassIdOf<T>, TokenIdOf<T>), remark: Option<Vec<u8>>) -> DispatchResult {
@@ -557,7 +563,7 @@ impl<T: Config> ManageNFT<T::AccountId, CID, Attributes> for Pallet<T> {
 		metadata: CID,
 		attributes: Attributes,
 		quantity: u32,
-	) -> DispatchResult {
+	) -> Result<Vec<TokenId>, DispatchError> {
 		Self::do_mint(who, to, class_id, metadata, attributes, quantity)
 	}
 

@@ -500,8 +500,8 @@ pub mod module {
 				// If the amount is zero, cancel previous redeem request.
 				if let Some((request_amount, _)) = RedeemRequests::<T>::take(&who) {
 					// Unreserve the liquid fee and remove the redeem request.
-					let unreserved = T::Currency::unreserve(T::LiquidCurrencyId::get(), &who, request_amount);
-					ensure!(unreserved.is_zero(), Error::<T>::InsufficientReservedBalances);
+					let remaining = T::Currency::unreserve(T::LiquidCurrencyId::get(), &who, request_amount);
+					ensure!(remaining.is_zero(), Error::<T>::InsufficientReservedBalances);
 
 					Self::deposit_event(Event::<T>::RedeemRequestCancelled {
 						who,
@@ -543,12 +543,12 @@ pub mod module {
 					),
 					Ordering::Less => {
 						// If the new amount is less, unlock the difference.
-						let unserved_leftover = T::Currency::unreserve(
+						let remaining = T::Currency::unreserve(
 							T::LiquidCurrencyId::get(),
 							&who,
 							old_amount.saturating_sub(liquid_amount),
 						);
-						ensure!(unserved_leftover.is_zero(), Error::<T>::InsufficientLiquidBalance);
+						ensure!(remaining.is_zero(), Error::<T>::InsufficientLiquidBalance);
 						Ok(())
 					}
 					_ => Ok(()),
@@ -987,8 +987,8 @@ pub mod module {
 				} else {
 					// Unlock the dust and remove the request.
 					if !new_amount.is_zero() {
-						let unreserved = T::Currency::unreserve(T::LiquidCurrencyId::get(), redeemer, new_amount);
-						debug_assert!(unreserved.is_zero());
+						let remaining = T::Currency::unreserve(T::LiquidCurrencyId::get(), redeemer, new_amount);
+						debug_assert!(remaining.is_zero());
 					}
 					*request = None;
 				}
