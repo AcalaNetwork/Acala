@@ -372,3 +372,6 @@ impl Into<DexShareType> for DexShare {
 		}
 	}
 }
+
+/// The first batch of lcDOT that expires at end of least 13
+pub const LCDOT: CurrencyId = CurrencyId::LiquidCrowdloan(13);
