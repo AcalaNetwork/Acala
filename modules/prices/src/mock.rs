@@ -48,6 +48,9 @@ pub const LDOT: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
 pub const KSM: CurrencyId = CurrencyId::Token(TokenSymbol::KSM);
 pub const LP_AUSD_DOT: CurrencyId =
 	CurrencyId::DexShare(DexShare::Token(TokenSymbol::AUSD), DexShare::Token(TokenSymbol::DOT));
+pub const LIQUID_CROWDLOAN_LEASE_1: CurrencyId = CurrencyId::LiquidCrowdloan(1);
+pub const LIQUID_CROWDLOAN_LEASE_2: CurrencyId = CurrencyId::LiquidCrowdloan(2);
+pub const LIQUID_CROWDLOAN_LEASE_3: CurrencyId = CurrencyId::LiquidCrowdloan(3);
 
 mod prices {
 	pub use super::super::*;
@@ -210,6 +213,25 @@ impl orml_tokens::Config for Runtime {
 	type DustRemovalWhitelist = Nothing;
 }
 
+impl BlockNumberProvider for MockRelayBlockNumberProvider {
+	type BlockNumber = BlockNumber;
+
+	fn current_block_number() -> Self::BlockNumber {
+		Self::get()
+	}
+}
+
+parameter_type_with_key! {
+	pub LiquidCrowdloanLeaseBlockNumber: |lease: Lease| -> Option<BlockNumber> {
+		#[allow(clippy::match_ref_pats)] // false positive
+		match lease {
+			&1 => Some(100),
+			&2 => Some(200),
+			_ => None,
+		}
+	};
+}
+
 ord_parameter_types! {
 	pub const One: AccountId = 1;
 }
@@ -219,6 +241,8 @@ parameter_types! {
 	pub const GetStakingCurrencyId: CurrencyId = DOT;
 	pub const GetLiquidCurrencyId: CurrencyId = LDOT;
 	pub StableCurrencyFixedPrice: Price = Price::one();
+	pub static MockRelayBlockNumberProvider: BlockNumber = 0;
+	pub RewardRatePerRelaychainBlock: Rate = Rate::saturating_from_rational(1, 1000);
 }
 
 impl Config for Runtime {
@@ -233,6 +257,9 @@ impl Config for Runtime {
 	type DEX = MockDEX;
 	type Currency = Tokens;
 	type Erc20InfoMapping = MockErc20InfoMapping;
+	type LiquidCrowdloanLeaseBlockNumber = LiquidCrowdloanLeaseBlockNumber;
+	type RelayChainBlockNumber = MockRelayBlockNumberProvider;
+	type RewardRatePerRelaychainBlock = RewardRatePerRelaychainBlock;
 	type WeightInfo = ();
 }
 

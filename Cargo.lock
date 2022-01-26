@@ -139,6 +139,7 @@ dependencies = [
  "module-collator-selection",
  "module-currencies",
  "module-dex",
+ "module-dex-oracle",
  "module-emergency-shutdown",
  "module-evm",
  "module-evm-accounts",
@@ -4426,6 +4427,7 @@ dependencies = [
  "module-collator-selection",
  "module-currencies",
  "module-dex",
+ "module-dex-oracle",
  "module-emergency-shutdown",
  "module-evm",
  "module-evm-accounts",
@@ -5441,6 +5443,7 @@ dependencies = [
  "module-collator-selection",
  "module-currencies",
  "module-dex",
+ "module-dex-oracle",
  "module-emergency-shutdown",
  "module-evm",
  "module-evm-accounts",
@@ -5912,13 +5915,32 @@ name = "module-dex"
 version = "2.2.1"
 dependencies = [
  "acala-primitives",
- "frame-benchmarking",
  "frame-support",
  "frame-system",
  "module-support",
  "orml-tokens",
  "orml-traits",
  "pallet-balances",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "module-dex-oracle"
+version = "2.2.1"
+dependencies = [
+ "acala-primitives",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "module-support",
+ "orml-traits",
+ "pallet-timestamp",
  "parity-scale-codec",
  "scale-info",
  "serde",
@@ -10556,6 +10578,7 @@ dependencies = [
  "module-collator-selection",
  "module-currencies",
  "module-dex",
+ "module-dex-oracle",
  "module-emergency-shutdown",
  "module-evm",
  "module-evm-accounts",
