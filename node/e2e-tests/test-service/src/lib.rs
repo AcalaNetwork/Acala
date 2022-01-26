@@ -32,7 +32,7 @@ use cumulus_client_service::{
 };
 use cumulus_primitives_core::ParaId;
 use cumulus_relay_chain_local::RelayChainLocal;
-use node_runtime::{Block, Hash, Header, Runtime, RuntimeApi, SignedExtra};
+use node_runtime::{Block, BlockId, Hash, Header, Runtime, RuntimeApi, SignedExtra};
 
 use cumulus_client_consensus_aura::{AuraConsensus, BuildAuraConsensusParams, SlotProportion};
 use frame_system_rpc_runtime_api::AccountNonceApi;
@@ -40,24 +40,27 @@ use parking_lot::Mutex;
 use polkadot_primitives::v1::{CollatorPair, Hash as PHash, PersistedValidationData};
 use polkadot_service::ProvideRuntimeApi;
 use sc_client_api::execution_extensions::ExecutionStrategies;
-use sc_client_api::ExecutorProvider;
+use sc_client_api::{Backend, CallExecutor, ExecutorProvider};
+use sc_executor::NativeElseWasmExecutor;
 use sc_network::{config::TransportConfig, multiaddr, NetworkService};
 use sc_service::{
 	config::{
 		DatabaseSource, KeepBlocks, KeystoreConfig, MultiaddrWithPeerId, NetworkConfiguration, OffchainWorkerConfig,
 		PruningMode, TransactionStorageMode, WasmExecutionMethod,
 	},
-	BasePath, ChainSpec, Configuration, Error as ServiceError, PartialComponents, Role, RpcHandlers, TFullBackend,
+	BasePath, ChainSpec, Configuration, PartialComponents, Role, RpcHandlers, TFullBackend, TFullCallExecutor,
 	TFullClient, TaskManager,
 };
+use sc_transaction_pool_api::TransactionPool;
 use sp_arithmetic::traits::SaturatedConversion;
 use sp_blockchain::HeaderBackend;
-use sp_core::{Pair, H256};
+use sp_core::{ExecutionContext, Pair, H256};
 use sp_keyring::Sr25519Keyring;
 use sp_runtime::{
 	codec::Encode,
 	generic,
 	traits::{BlakeTwo256, Extrinsic},
+	MultiAddress,
 };
 use sp_state_machine::BasicExternalities;
 use sp_trie::PrefixedMemoryDB;
@@ -67,11 +70,15 @@ use substrate_test_client::{BlockchainEventsExt, RpcHandlersExt, RpcTransactionE
 // pub use chain_spec::*;
 pub use genesis::*;
 use node_primitives::signature::AcalaMultiSignature;
-use node_primitives::{AccountId, Address, Signature};
+use node_primitives::{AccountId, Address, Balance, Signature};
 pub use node_runtime as runtime;
 use node_service::chain_spec::mandala::dev_testnet_config;
+use sp_api::{OverlayedChanges, StorageTransactionCache};
 pub use sp_keyring::Sr25519Keyring as Keyring;
 use sp_runtime::generic::Era;
+use sp_runtime::traits::IdentifyAccount;
+use sp_runtime::transaction_validity::TransactionSource;
+use sp_state_machine::Ext;
 use substrate_test_client::sp_consensus::SlotData;
 
 /// A consensus that will never produce any block.
@@ -109,11 +116,10 @@ impl sc_executor::NativeExecutionDispatch for RuntimeExecutor {
 }
 
 /// The client type being used by the test service.
-pub type Client =
-	TFullClient<runtime::Block, runtime::RuntimeApi, sc_executor::NativeElseWasmExecutor<RuntimeExecutor>>;
+pub type Client = TFullClient<runtime::Block, runtime::RuntimeApi, NativeElseWasmExecutor<RuntimeExecutor>>;
 
 /// Transaction pool type used by the test service
-pub type TransactionPool = Arc<sc_transaction_pool::FullPool<Block, Client>>;
+pub type TxPool = Arc<sc_transaction_pool::FullPool<Block, Client>>;
 
 /// Starts a `ServiceBuilder` for a full service.
 ///
@@ -132,7 +138,7 @@ pub fn new_partial(
 	>,
 	sc_service::Error,
 > {
-	let executor = sc_executor::NativeElseWasmExecutor::<RuntimeExecutor>::new(
+	let executor = NativeElseWasmExecutor::<RuntimeExecutor>::new(
 		config.wasm_method,
 		config.default_heap_pages,
 		config.max_runtime_instances,
@@ -153,13 +159,30 @@ pub fn new_partial(
 		client.clone(),
 	);
 
-	let import_queue = cumulus_client_consensus_relay_chain::import_queue(
-		client.clone(),
-		client.clone(),
-		|_, _| async { Ok(sp_timestamp::InherentDataProvider::from_system_time()) },
-		&task_manager.spawn_essential_handle(),
-		registry.clone(),
-	)?;
+	let slot_duration = cumulus_client_consensus_aura::slot_duration(&*client)?;
+	let create_inherent_data_providers = Box::new(move |_, _| async move {
+		let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
+
+		let slot = sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_duration(
+			*timestamp,
+			slot_duration.slot_duration(),
+		);
+
+		Ok((timestamp, slot))
+	});
+
+	let import_queue =
+		cumulus_client_consensus_aura::import_queue::<sp_consensus_aura::sr25519::AuthorityPair, _, _, _, _, _, _>(
+			cumulus_client_consensus_aura::ImportQueueParams {
+				block_import: client.clone(),
+				client: client.clone(),
+				create_inherent_data_providers,
+				registry,
+				can_author_with: sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone()),
+				spawner: &task_manager.spawn_essential_handle(),
+				telemetry: None,
+			},
+		)?;
 
 	let params = PartialComponents {
 		backend,
@@ -192,7 +215,8 @@ async fn start_node_impl<RB>(
 	Arc<Client>,
 	Arc<NetworkService<Block, H256>>,
 	RpcHandlers,
-	TransactionPool,
+	TxPool,
+	Arc<TFullBackend<Block>>,
 )>
 where
 	RB: Fn(Arc<Client>) -> Result<jsonrpc_core::IoHandler<sc_rpc::Metadata>, sc_service::Error> + Send + 'static,
@@ -226,6 +250,7 @@ where
 
 	let client = params.client.clone();
 	let backend = params.backend.clone();
+	let backend_for_node = backend.clone();
 
 	let relay_chain_interface = Arc::new(RelayChainLocal::new(
 		relay_chain_full_node.client.clone(),
@@ -239,30 +264,7 @@ where
 	let block_announce_validator_builder = move |_| Box::new(block_announce_validator) as Box<_>;
 
 	let prometheus_registry = parachain_config.prometheus_registry().cloned();
-	// let import_queue = {
-	// 	let slot_duration = cumulus_client_consensus_aura::slot_duration(&*client)?;
-	// 	cumulus_client_consensus_aura::import_queue::<sp_consensus_aura::sr25519::AuthorityPair, _, _, _,
-	// _, _, _>( 		cumulus_client_consensus_aura::ImportQueueParams {
-	// 			block_import: client.clone(),
-	// 			client: client.clone(),
-	// 			create_inherent_data_providers: move |_, _| async move {
-	// 				let time = sp_timestamp::InherentDataProvider::from_system_time();
-	//
-	// 				let slot = sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_duration(
-	// 					*time,
-	// 					slot_duration.slot_duration(),
-	// 				);
-	//
-	// 				Ok((time, slot))
-	// 			},
-	// 			registry: None,
-	// 			can_author_with: sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone()),
-	// 			spawner: &task_manager.spawn_essential_handle(),
-	// 			telemetry: None,
-	// 		},
-	// 	)?
-	// };
-	// let import_queue = cumulus_client_service::SharedImportQueue::new(import_queue);
+
 	let import_queue = cumulus_client_service::SharedImportQueue::new(params.import_queue);
 	let (network, system_rpc_tx, start_network) = sc_service::build_network(sc_service::BuildNetworkParams {
 		config: &parachain_config,
@@ -431,7 +433,14 @@ where
 
 	start_network.start_network();
 
-	Ok((task_manager, client, network, rpc_handlers, transaction_pool))
+	Ok((
+		task_manager,
+		client,
+		network,
+		rpc_handlers,
+		transaction_pool,
+		backend_for_node,
+	))
 }
 
 /// A Cumulus test node instance used for testing.
@@ -448,7 +457,9 @@ pub struct TestNode {
 	/// RPCHandlers to make RPC queries.
 	pub rpc_handlers: RpcHandlers,
 	/// Node's transaction pool
-	pub transaction_pool: TransactionPool,
+	pub transaction_pool: TxPool,
+	/// Nodes' backend
+	pub backend: Arc<TFullBackend<Block>>,
 }
 
 enum Consensus {
@@ -576,6 +587,12 @@ impl TestNodeBuilder {
 		self
 	}
 
+	/// Use the relay-chain consensus.
+	pub fn use_relay_consensus(mut self) -> Self {
+		self.consensus = Consensus::RelayChain;
+		self
+	}
+
 	/// Build the [`TestNode`].
 	pub async fn build(self) -> TestNode {
 		let parachain_config = node_config(
@@ -584,13 +601,11 @@ impl TestNodeBuilder {
 			self.key.clone(),
 			self.parachain_nodes,
 			self.parachain_nodes_exclusive,
-			self.para_id,
 			self.collator_key.is_some(),
 		)
 		.expect("could not generate Configuration");
 
-		log::info!(target: "test-service", "collator key:{} -> {:?}", self.key, self.collator_key.is_some());
-
+		// start relay-chain full node inside para-chain
 		let mut relay_chain_config = polkadot_test_service::node_config(
 			self.storage_update_func_relay_chain.unwrap_or_else(|| Box::new(|| ())),
 			self.tokio_handle,
@@ -602,7 +617,7 @@ impl TestNodeBuilder {
 		relay_chain_config.network.node_name = format!("{} (relay chain)", relay_chain_config.network.node_name);
 
 		let multiaddr = parachain_config.network.listen_addresses[0].clone();
-		let (task_manager, client, network, rpc_handlers, transaction_pool) = start_node_impl(
+		let (task_manager, client, network, rpc_handlers, transaction_pool, backend) = start_node_impl(
 			parachain_config,
 			self.collator_key,
 			relay_chain_config,
@@ -624,6 +639,7 @@ impl TestNodeBuilder {
 			addr,
 			rpc_handlers,
 			transaction_pool,
+			backend,
 		}
 	}
 }
@@ -640,9 +656,8 @@ pub fn node_config(
 	key: Sr25519Keyring,
 	nodes: Vec<MultiaddrWithPeerId>,
 	nodes_exlusive: bool,
-	para_id: ParaId,
 	is_collator: bool,
-) -> Result<Configuration, ServiceError> {
+) -> Result<Configuration, sc_service::Error> {
 	let base_path = BasePath::new_temp_dir()?;
 	let root = base_path.path().to_path_buf();
 	let role = if is_collator { Role::Authority } else { Role::Full };
@@ -744,6 +759,42 @@ impl TestNode {
 		self.client.wait_for_blocks(count)
 	}
 
+	/// Submit an extrinsic to transaction pool.
+	pub async fn submit_extrinsic(
+		&self,
+		function: impl Into<runtime::Call>,
+		caller: Sr25519Keyring,
+	) -> Result<H256, sc_transaction_pool::error::Error> {
+		let extrinsic = construct_extrinsic(&*self.client, function, caller.pair(), Some(0));
+		let at = self.client.info().best_hash;
+
+		self.transaction_pool
+			.submit_one(&BlockId::Hash(at), TransactionSource::Local, extrinsic.into())
+			.await
+	}
+
+	/// Executes closure in an externalities provided environment.
+	pub fn with_state<R>(&self, closure: impl FnOnce() -> R) -> R
+	where
+		<TFullCallExecutor<Block, NativeElseWasmExecutor<RuntimeExecutor>> as CallExecutor<Block>>::Error:
+			std::fmt::Debug,
+	{
+		let id = BlockId::Hash(self.client.info().best_hash);
+		let mut overlay = OverlayedChanges::default();
+		let mut cache = StorageTransactionCache::<Block, <TFullBackend<Block> as Backend<Block>>::State>::default();
+		let mut extensions = self
+			.client
+			.execution_extensions()
+			.extensions(&id, ExecutionContext::BlockConstruction);
+		let state_backend = self
+			.backend
+			.state_at(id.clone())
+			.expect(&format!("State at block {} not found", id));
+
+		let mut ext = Ext::new(&mut overlay, &mut cache, &state_backend, Some(&mut extensions));
+		sp_externalities::set_and_run_with_externalities(&mut ext, closure)
+	}
+
 	/// Send an extrinsic to this node.
 	pub async fn send_extrinsic(
 		&self,
@@ -769,6 +820,21 @@ impl TestNode {
 		.await
 		.map(drop)
 	}
+
+	/// Transfer some token from one account to another using a provided test [`Client`].
+	pub async fn transfer(
+		&self,
+		origin: sp_keyring::AccountKeyring,
+		dest: sp_keyring::AccountKeyring,
+		value: Balance,
+	) -> Result<(), RpcTransactionError> {
+		let function = node_runtime::Call::Balances(pallet_balances::Call::transfer_keep_alive {
+			dest: MultiAddress::Id(dest.public().into_account().into()),
+			value,
+		});
+
+		self.send_extrinsic(function, origin).await.map(drop)
+	}
 }
 
 /// Fetch account nonce for key pair
@@ -788,9 +854,9 @@ pub fn construct_extrinsic(
 	nonce: Option<u32>,
 ) -> runtime::UncheckedExtrinsic {
 	let function = function.into();
-	let current_block_hash = client.info().best_hash;
 	let current_block = client.info().best_number.saturated_into();
 	let genesis_block = client.hash(0).unwrap().unwrap();
+	let current_block_hash = client.info().best_hash;
 	let nonce = nonce.unwrap_or_else(|| fetch_nonce(client, caller.public()));
 	let period = runtime::BlockHashCount::get()
 		.checked_next_power_of_two()
@@ -807,11 +873,20 @@ pub fn construct_extrinsic(
 		module_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip),
 		module_evm::SetEvmOrigin::<Runtime>::new(),
 	);
-	let raw_payload = runtime::SignedPayload::new(function, extra)
-		.map_err(|e| {
-			log::warn!(target: "test-service", "Unable to create signed payload: {:?}", e);
-		})
-		.unwrap();
+	let raw_payload = runtime::SignedPayload::from_raw(
+		function,
+		extra,
+		(
+			runtime::VERSION.spec_version,
+			runtime::VERSION.transaction_version,
+			genesis_block,
+			current_block_hash,
+			(),
+			(),
+			(),
+			(),
+		),
+	);
 	let signature = raw_payload.using_encoded(|e| caller.sign(e));
 	let account: AccountId = caller.public().into();
 	let address: Address = account.into();
