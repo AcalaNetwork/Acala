@@ -17,11 +17,14 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use codec::{Decode, Encode};
+use scale_info::{build::Fields, meta_type, Path, Type, TypeInfo, TypeParameter};
+#[cfg(feature = "std")]
+use serde::{Deserialize, Serialize};
+
 use frame_support::RuntimeDebug;
 use sp_std::{collections::btree_map::BTreeMap, prelude::*};
 
 use enumflags2::BitFlags;
-use scale_info::TypeInfo;
 
 pub type NFTBalance = u128;
 pub type CID = Vec<u8>;
@@ -38,4 +41,34 @@ pub enum ClassProperty {
 	Mintable = 0b00000100,
 	/// Is class properties mutable
 	ClassPropertiesMutable = 0b00001000,
+}
+
+#[derive(Clone, Copy, PartialEq, Default, RuntimeDebug)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub struct Properties(pub BitFlags<ClassProperty>);
+
+impl Eq for Properties {}
+impl Encode for Properties {
+	fn using_encoded<R, F: FnOnce(&[u8]) -> R>(&self, f: F) -> R {
+		self.0.bits().using_encoded(f)
+	}
+}
+impl Decode for Properties {
+	fn decode<I: codec::Input>(input: &mut I) -> sp_std::result::Result<Self, codec::Error> {
+		let field = u8::decode(input)?;
+		Ok(Self(
+			<BitFlags<ClassProperty>>::from_bits(field as u8).map_err(|_| "invalid value")?,
+		))
+	}
+}
+
+impl TypeInfo for Properties {
+	type Identity = Self;
+
+	fn type_info() -> Type {
+		Type::builder()
+			.path(Path::new("BitFlags", module_path!()))
+			.type_params(vec![TypeParameter::new("T", Some(meta_type::<ClassProperty>()))])
+			.composite(Fields::unnamed().field(|f| f.ty::<u8>().type_name("ClassProperty")))
+	}
 }

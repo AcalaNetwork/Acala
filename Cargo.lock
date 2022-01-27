@@ -6266,7 +6266,6 @@ name = "module-nft"
 version = "2.2.2"
 dependencies = [
  "acala-primitives",
- "enumflags2",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -7727,7 +7726,7 @@ dependencies = [
 [[package]]
 name = "pallet-gilt"
 version = "4.0.0-dev"
-source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.15#d36550a8da62fc968fac415c3379ad95d85105d1"
+source = "git+https://github.com/paritytech//substrate?rev=d36550a8da62fc968fac415c3379ad95d85105d1#d36550a8da62fc968fac415c3379ad95d85105d1"
 dependencies = [
  "frame-benchmarking",
  "frame-support",

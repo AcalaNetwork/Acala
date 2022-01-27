@@ -21,7 +21,6 @@
 #![allow(clippy::unused_unit)]
 #![allow(clippy::upper_case_acronyms)]
 
-use enumflags2::BitFlags;
 use frame_support::{
 	pallet_prelude::*,
 	require_transactional,
@@ -33,12 +32,12 @@ use frame_support::{
 	transactional, PalletId,
 };
 use frame_system::pallet_prelude::*;
-use orml_traits::{ManageNFT, NFT};
+use orml_traits::{BurnNFT, MintNFT, NFT};
 use primitives::{
-	nft::{Attributes, ClassProperty, NFTBalance, CID},
+	nft::{Attributes, ClassProperty, NFTBalance, Properties, CID},
 	ReserveIdentifier,
 };
-use scale_info::{build::Fields, meta_type, Path, Type, TypeInfo, TypeParameter};
+use scale_info::TypeInfo;
 
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
@@ -55,36 +54,6 @@ pub mod weights;
 
 pub use module::*;
 pub use weights::WeightInfo;
-
-#[derive(Clone, Copy, PartialEq, Default, RuntimeDebug)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct Properties(pub BitFlags<ClassProperty>);
-
-impl Eq for Properties {}
-impl Encode for Properties {
-	fn using_encoded<R, F: FnOnce(&[u8]) -> R>(&self, f: F) -> R {
-		self.0.bits().using_encoded(f)
-	}
-}
-impl Decode for Properties {
-	fn decode<I: codec::Input>(input: &mut I) -> sp_std::result::Result<Self, codec::Error> {
-		let field = u8::decode(input)?;
-		Ok(Self(
-			<BitFlags<ClassProperty>>::from_bits(field as u8).map_err(|_| "invalid value")?,
-		))
-	}
-}
-
-impl TypeInfo for Properties {
-	type Identity = Self;
-
-	fn type_info() -> Type {
-		Type::builder()
-			.path(Path::new("BitFlags", module_path!()))
-			.type_params(vec![TypeParameter::new("T", Some(meta_type::<ClassProperty>()))])
-			.composite(Fields::unnamed().field(|f| f.ty::<u8>().type_name("ClassProperty")))
-	}
-}
 
 #[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
@@ -552,12 +521,22 @@ impl<T: Config> NFT<T::AccountId> for Pallet<T> {
 	}
 }
 
-impl<T: Config> ManageNFT<T::AccountId, CID, Attributes> for Pallet<T> {
-	type ClassId = ClassIdOf<T>;
-	type TokenId = TokenIdOf<T>;
+impl<T: Config> MintNFT<T::AccountId, CID, Attributes> for Pallet<T> {
+	/// To mint a single new NFT tokens.
+	fn mint(
+		who: T::AccountId,
+		to: T::AccountId,
+		class_id: Self::ClassId,
+		metadata: CID,
+		attributes: Attributes,
+	) -> Result<Self::TokenId, DispatchError> {
+		let token_id = Self::do_mint(who, to, class_id, metadata, attributes, 1u32)?;
+		ensure!(token_id.len() == 1, Error::<T>::NonMintable);
+		Ok(token_id[0])
+	}
 
 	/// To mint new NFT tokens.
-	fn mint(
+	fn batch_mint(
 		who: T::AccountId,
 		to: T::AccountId,
 		class_id: Self::ClassId,
@@ -567,7 +546,9 @@ impl<T: Config> ManageNFT<T::AccountId, CID, Attributes> for Pallet<T> {
 	) -> Result<Vec<Self::TokenId>, DispatchError> {
 		Self::do_mint(who, to, class_id, metadata, attributes, quantity)
 	}
+}
 
+impl<T: Config> BurnNFT<T::AccountId, CID, Attributes> for Pallet<T> {
 	/// To burn a NFT token.
 	fn burn(who: T::AccountId, token: (Self::ClassId, Self::TokenId), remark: Option<Vec<u8>>) -> DispatchResult {
 		Self::do_burn(who, token, remark)

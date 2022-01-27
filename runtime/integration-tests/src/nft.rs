@@ -17,7 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::setup::*;
-use primitives::nft::ClassProperty;
+use primitives::nft::{ClassProperty, Properties};
 
 #[test]
 fn test_nft_module() {
@@ -38,7 +38,7 @@ fn test_nft_module() {
 			assert_ok!(NFT::create_class(
 				Origin::signed(AccountId::from(ALICE)),
 				metadata.clone(),
-				module_nft::Properties(ClassProperty::Transferable | ClassProperty::Burnable | ClassProperty::Mintable),
+				Properties(ClassProperty::Transferable | ClassProperty::Burnable | ClassProperty::Mintable),
 				Default::default(),
 			));
 			let deposit =
