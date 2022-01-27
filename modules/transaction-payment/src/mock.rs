@@ -183,6 +183,7 @@ impl module_dex::Config for Runtime {
 	type DEXIncentives = ();
 	type WeightInfo = ();
 	type ListingOrigin = frame_system::EnsureSignedBy<Zero, AccountId>;
+	type OnLiquidityPoolUpdated = ();
 }
 
 parameter_types! {

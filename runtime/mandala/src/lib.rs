@@ -109,7 +109,7 @@ pub use authority::AuthorityConfigImpl;
 pub use constants::{fee::*, time::*};
 pub use primitives::{
 	evm::EstimateResourcesRequest, AccountId, AccountIndex, Address, Amount, AuctionId, AuthoritysOriginId, Balance,
-	BlockNumber, CurrencyId, DataProviderId, EraIndex, Hash, Moment, Nonce, ReserveIdentifier, Share, Signature,
+	BlockNumber, CurrencyId, DataProviderId, EraIndex, Hash, Lease, Moment, Nonce, ReserveIdentifier, Share, Signature,
 	TokenSymbol, TradingPair,
 };
 pub use runtime_common::{
@@ -139,7 +139,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("mandala"),
 	impl_name: create_runtime_str!("mandala"),
 	authoring_version: 1,
-	spec_version: 2021,
+	spec_version: 2022,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -844,8 +844,15 @@ impl orml_tokens::Config for Runtime {
 	type DustRemovalWhitelist = DustRemovalWhitelist;
 }
 
+parameter_type_with_key! {
+	pub LiquidCrowdloanLeaseBlockNumber: |_lease: Lease| -> Option<BlockNumber> {
+		None
+	};
+}
+
 parameter_types! {
 	pub StableCurrencyFixedPrice: Price = Price::saturating_from_rational(1, 1);
+	pub RewardRatePerRelaychainBlock: Rate = Rate::saturating_from_rational(2_492, 100_000_000_000u128);	// 14% annual staking reward rate of Polkadot
 }
 
 impl module_prices::Config for Runtime {
@@ -860,6 +867,9 @@ impl module_prices::Config for Runtime {
 	type DEX = Dex;
 	type Currency = Currencies;
 	type Erc20InfoMapping = EvmErc20InfoMapping<Runtime>;
+	type LiquidCrowdloanLeaseBlockNumber = LiquidCrowdloanLeaseBlockNumber;
+	type RelayChainBlockNumber = RelayChainBlockNumberProvider<Runtime>;
+	type RewardRatePerRelaychainBlock = RewardRatePerRelaychainBlock;
 	type WeightInfo = weights::module_prices::WeightInfo<Runtime>;
 }
 
@@ -1099,6 +1109,14 @@ impl module_dex::Config for Runtime {
 	type DEXIncentives = Incentives;
 	type WeightInfo = weights::module_dex::WeightInfo<Runtime>;
 	type ListingOrigin = EnsureRootOrHalfGeneralCouncil;
+	type OnLiquidityPoolUpdated = ();
+}
+
+impl module_dex_oracle::Config for Runtime {
+	type DEX = Dex;
+	type Time = Timestamp;
+	type UpdateOrigin = EnsureRootOrHalfGeneralCouncil;
+	type WeightInfo = weights::module_dex_oracle::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -1189,7 +1207,7 @@ impl module_evm_accounts::Config for Runtime {
 impl module_asset_registry::Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
-	type LiquidCrowdloanCurrencyId = GetStakingCurrencyId;
+	type StakingCurrencyId = GetStakingCurrencyId;
 	type EVMBridge = module_evm_bridge::EVMBridge<Runtime>;
 	type RegisterOrigin = EnsureRootOrHalfGeneralCouncil;
 	type WeightInfo = weights::module_asset_registry::WeightInfo<Runtime>;
@@ -2075,6 +2093,7 @@ construct_runtime! {
 		// Acala Core
 		Prices: module_prices::{Pallet, Storage, Call, Event<T>} = 110,
 		Dex: module_dex::{Pallet, Storage, Call, Event<T>, Config<T>} = 111,
+		DexOracle: module_dex_oracle::{Pallet, Storage, Call} = 112,
 
 		// Honzon
 		AuctionManager: module_auction_manager::{Pallet, Storage, Call, Event<T>, ValidateUnsigned} = 120,
@@ -2386,6 +2405,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, module_nft, NftBench::<Runtime>);
 
 			orml_list_benchmark!(list, extra, module_dex, benchmarking::dex);
+			orml_list_benchmark!(list, extra, module_dex_oracle, benchmarking::dex_oracle);
 			orml_list_benchmark!(list, extra, module_asset_registry, benchmarking::asset_registry);
 			orml_list_benchmark!(list, extra, module_auction_manager, benchmarking::auction_manager);
 			orml_list_benchmark!(list, extra, module_cdp_engine, benchmarking::cdp_engine);
@@ -2446,6 +2466,7 @@ impl_runtime_apis! {
 
 			add_benchmark!(params, batches, module_nft, NftBench::<Runtime>);
 			orml_add_benchmark!(params, batches, module_dex, benchmarking::dex);
+			orml_add_benchmark!(params, batches, module_dex_oracle, benchmarking::dex_oracle);
 			orml_add_benchmark!(params, batches, module_asset_registry, benchmarking::asset_registry);
 			orml_add_benchmark!(params, batches, module_auction_manager, benchmarking::auction_manager);
 			orml_add_benchmark!(params, batches, module_cdp_engine, benchmarking::cdp_engine);

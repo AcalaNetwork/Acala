@@ -440,7 +440,7 @@ pub mod module {
 					// Use the EVM Runtime
 					let vicinity = Vicinity {
 						gas_price: U256::one(),
-						origin: Default::default(),
+						..Default::default()
 					};
 					let context = Context {
 						caller: source,

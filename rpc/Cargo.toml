@@ -1,6 +1,6 @@
 [package]
 name = "acala-rpc"
-version = "2.2.1"
+version = "2.2.2"
 authors = ["Acala Developers"]
 edition = "2021"
 
@@ -18,6 +18,7 @@ sc-rpc = { git = "https://github.com/paritytech/substrate", branch = "master" }
 sc-rpc-api = { git = "https://github.com/paritytech/substrate", branch = "master" }
 substrate-frame-rpc-system = { git = "https://github.com/paritytech/substrate", branch = "master" }
 pallet-transaction-payment-rpc = { git = "https://github.com/paritytech/substrate", branch = "master" }
+sc-consensus-manual-seal = { git = "https://github.com/paritytech/substrate", branch = "master" }
 
 orml-oracle-rpc = { path = "../orml/oracle/rpc" }
 runtime-common = { path = "../runtime/common" }
