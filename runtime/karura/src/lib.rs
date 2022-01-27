@@ -1503,13 +1503,6 @@ parameter_types! {
 		).into(),
 		kar_per_second()
 	);
-	pub KarPerSecond2: (AssetId, u128) = (
-		MultiLocation::new(
-			0,
-			X1(GeneralKey(KAR.encode())),
-		).into(),
-		kar_per_second()
-	);
 	pub LksmPerSecond: (AssetId, u128) = (
 		MultiLocation::new(
 			1,
@@ -1530,14 +1523,6 @@ parameter_types! {
 		MultiLocation::new(
 			1,
 			X2(Parachain(parachains::bifrost::ID), GeneralKey(parachains::bifrost::BNC_KEY.to_vec())),
-		).into(),
-		// BNC:KSM = 80:1
-		ksm_per_second() * 80
-	);
-	pub BncPerSecond2: (AssetId, u128) = (
-		MultiLocation::new(
-			0,
-			X1(GeneralKey(parachains::bifrost::BNC_KEY.to_vec())),
 		).into(),
 		// BNC:KSM = 80:1
 		ksm_per_second() * 80
@@ -1570,6 +1555,24 @@ parameter_types! {
 	pub ForeignAssetUnitsPerSecond: u128 = kar_per_second();
 	pub KarPerSecondAsBased: u128 = kar_per_second();
 }
+#[cfg(feature = "only-integration-test")]
+parameter_types! {
+	pub KarPerSecond2: (AssetId, u128) = (
+		MultiLocation::new(
+			0,
+			X1(GeneralKey(KAR.encode())),
+		).into(),
+		kar_per_second()
+	);
+	pub BncPerSecond2: (AssetId, u128) = (
+		MultiLocation::new(
+			0,
+			X1(GeneralKey(parachains::bifrost::BNC_KEY.to_vec())),
+		).into(),
+		// BNC:KSM = 80:1
+		ksm_per_second() * 80
+	);
+}
 
 #[cfg(feature = "only-integration-test")]
 pub type Trader = (
@@ -1577,7 +1580,6 @@ pub type Trader = (
 	FixedRateOfFungible<KsmPerSecond, ToTreasury>,
 	FixedRateOfFungible<KarPerSecond, ToTreasury>,
 	FixedRateOfFungible<KarPerSecond2, ToTreasury>,
-	// FixedRateOfFungible<KarPerSecond3, ToTreasury>,
 	FixedRateOfFungible<BncPerSecond, ToTreasury>,
 	FixedRateOfFungible<BncPerSecond2, ToTreasury>,
 	FixedRateOfForeignAsset<Runtime, ForeignAssetUnitsPerSecond, ToTreasury>,

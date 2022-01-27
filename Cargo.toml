@@ -199,7 +199,6 @@ sc-informant = { git = "https://github.com/paritytech//substrate", rev = "32b718
 sc-keystore = { git = "https://github.com/paritytech//substrate", rev = "32b71896df8a832e7c139a842e46710e4d3f70cd" }
 sc-network = { git = "https://github.com/paritytech//substrate", rev = "32b71896df8a832e7c139a842e46710e4d3f70cd" }
 sc-network-gossip = { git = "https://github.com/paritytech//substrate", rev = "32b71896df8a832e7c139a842e46710e4d3f70cd" }
-sc-network-test = { git = "https://github.com/paritytech//substrate", rev = "32b71896df8a832e7c139a842e46710e4d3f70cd" }
 sc-offchain = { git = "https://github.com/paritytech//substrate", rev = "32b71896df8a832e7c139a842e46710e4d3f70cd" }
 sc-rpc = { git = "https://github.com/paritytech//substrate", rev = "32b71896df8a832e7c139a842e46710e4d3f70cd" }
 sc-rpc-api = { git = "https://github.com/paritytech//substrate", rev = "32b71896df8a832e7c139a842e46710e4d3f70cd" }
@@ -253,8 +252,6 @@ sp-wasm-interface = { git = "https://github.com/paritytech//substrate", rev = "3
 substrate-build-script-utils = { git = "https://github.com/paritytech//substrate", rev = "32b71896df8a832e7c139a842e46710e4d3f70cd" }
 substrate-frame-rpc-system = { git = "https://github.com/paritytech//substrate", rev = "32b71896df8a832e7c139a842e46710e4d3f70cd" }
 substrate-prometheus-endpoint = { git = "https://github.com/paritytech//substrate", rev = "32b71896df8a832e7c139a842e46710e4d3f70cd" }
-substrate-test-runtime = { git = "https://github.com/paritytech//substrate", rev = "32b71896df8a832e7c139a842e46710e4d3f70cd" }
-substrate-test-runtime-client = { git = "https://github.com/paritytech//substrate", rev = "32b71896df8a832e7c139a842e46710e4d3f70cd" }
 substrate-wasm-builder = { git = "https://github.com/paritytech//substrate", rev = "32b71896df8a832e7c139a842e46710e4d3f70cd" }
 try-runtime-cli = { git = "https://github.com/paritytech//substrate", rev = "32b71896df8a832e7c139a842e46710e4d3f70cd" }
 

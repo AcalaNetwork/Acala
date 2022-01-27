@@ -22,6 +22,8 @@ use crate::relaychain::kusama_test_net::*;
 use crate::setup::*;
 
 use frame_support::assert_ok;
+use sp_runtime::traits::TrailingZeroInput;
+use xcm_builder::ParentIsPreset;
 
 use karura_runtime::parachains::bifrost::BNC_KEY;
 use karura_runtime::{AssetRegistry, KaruraTreasuryAccount};
@@ -30,6 +32,7 @@ use module_relaychain::RelayChainCallBuilder;
 use module_support::CallBuilder;
 use orml_traits::MultiCurrency;
 use xcm_emulator::TestExt;
+use xcm_executor::traits::Convert;
 
 #[test]
 fn transfer_from_relay_chain() {
@@ -627,7 +630,7 @@ fn asset_registry_location_update_works() {
 
 #[test]
 fn unspent_xcm_fee_is_returned_correctly() {
-	let mut parachain_account: AccountId = AccountId::default();
+	let mut parachain_account: AccountId = AccountId::new([0u8; 32]);
 	let homa_lite_sub_account: AccountId =
 		hex_literal::hex!["d7b8926b326dd349355a9a7cca6606c1e0eb6fd2b506066b518c7155ff0d8297"].into();
 	Karura::execute_with(|| {
@@ -749,9 +752,11 @@ fn trap_assets_larger_than_ed_works() {
 	let (ksm_asset_amount, kar_asset_amount) = (dollar(KSM), dollar(KAR));
 	let trader_weight_to_treasury: u128 = 96_000_000;
 
+	let parent_account: AccountId = ParentIsPreset::<AccountId>::convert(Parent.into()).unwrap();
+
 	Karura::execute_with(|| {
-		assert_ok!(Tokens::deposit(KSM, &AccountId::from(DEFAULT), 100 * dollar(KSM)));
-		let _ = pallet_balances::Pallet::<Runtime>::deposit_creating(&AccountId::from(DEFAULT), 100 * dollar(KAR));
+		assert_ok!(Tokens::deposit(KSM, &parent_account, 100 * dollar(KSM)));
+		let _ = pallet_balances::Pallet::<Runtime>::deposit_creating(&parent_account, 100 * dollar(KAR));
 
 		kar_treasury_amount = Currencies::free_balance(KAR, &KaruraTreasuryAccount::get());
 	});
@@ -766,7 +771,8 @@ fn trap_assets_larger_than_ed_works() {
 			},
 			WithdrawAsset(
 				(
-					(Parent, X2(Parachain(2000), GeneralKey(KAR.encode()))),
+					// (Parent, X2(Parachain(2000), GeneralKey(KAR.encode()))),
+					(0, GeneralKey(KAR.encode())),
 					kar_asset_amount,
 				)
 					.into(),
@@ -801,9 +807,11 @@ fn trap_assets_lower_than_ed_works() {
 	let mut kar_treasury_amount = 0;
 	let (ksm_asset_amount, kar_asset_amount) = (cent(KSM) / 100, cent(KAR));
 
+	let parent_account: AccountId = ParentIsPreset::<AccountId>::convert(Parent.into()).unwrap();
+
 	Karura::execute_with(|| {
-		assert_ok!(Tokens::deposit(KSM, &AccountId::from(DEFAULT), dollar(KSM)));
-		let _ = pallet_balances::Pallet::<Runtime>::deposit_creating(&AccountId::from(DEFAULT), dollar(KAR));
+		assert_ok!(Tokens::deposit(KSM, &parent_account, dollar(KSM)));
+		let _ = pallet_balances::Pallet::<Runtime>::deposit_creating(&parent_account, dollar(KAR));
 		kar_treasury_amount = Currencies::free_balance(KAR, &KaruraTreasuryAccount::get());
 	});
 

@@ -83,7 +83,7 @@ fn configure_homa_and_homa_xcm() {
 fn homa_xcm_transfer_staking_to_sub_account_works() {
 	let homa_lite_sub_account: AccountId =
 		hex_literal::hex!["d7b8926b326dd349355a9a7cca6606c1e0eb6fd2b506066b518c7155ff0d8297"].into();
-	let mut parachain_account: AccountId = AccountId::default();
+	let mut parachain_account: AccountId = AccountId::new([0u8; 32]);
 	Karura::execute_with(|| {
 		parachain_account = ParachainAccount::get();
 	});
@@ -145,7 +145,7 @@ fn homa_xcm_transfer_staking_to_sub_account_works() {
 fn homa_xcm_withdraw_unbonded_from_sub_account_works() {
 	let homa_lite_sub_account: AccountId =
 		hex_literal::hex!["d7b8926b326dd349355a9a7cca6606c1e0eb6fd2b506066b518c7155ff0d8297"].into();
-	let mut parachain_account: AccountId = AccountId::default();
+	let mut parachain_account: AccountId = AccountId::new([0u8; 32]);
 	Karura::execute_with(|| {
 		parachain_account = ParachainAccount::get();
 	});
@@ -241,7 +241,7 @@ fn homa_xcm_withdraw_unbonded_from_sub_account_works() {
 fn homa_xcm_bond_extra_on_sub_account_works() {
 	let homa_lite_sub_account: AccountId =
 		hex_literal::hex!["d7b8926b326dd349355a9a7cca6606c1e0eb6fd2b506066b518c7155ff0d8297"].into();
-	let mut parachain_account: AccountId = AccountId::default();
+	let mut parachain_account: AccountId = AccountId::new([0u8; 32]);
 	Karura::execute_with(|| {
 		parachain_account = ParachainAccount::get();
 	});
@@ -324,7 +324,7 @@ fn homa_xcm_bond_extra_on_sub_account_works() {
 fn homa_xcm_unbond_on_sub_account_works() {
 	let homa_lite_sub_account: AccountId =
 		hex_literal::hex!["d7b8926b326dd349355a9a7cca6606c1e0eb6fd2b506066b518c7155ff0d8297"].into();
-	let mut parachain_account: AccountId = AccountId::default();
+	let mut parachain_account: AccountId = AccountId::new([0u8; 32]);
 	Karura::execute_with(|| {
 		parachain_account = ParachainAccount::get();
 	});
@@ -415,7 +415,7 @@ fn homa_xcm_unbond_on_sub_account_works() {
 fn homa_mint_and_redeem_works() {
 	let homa_lite_sub_account: AccountId =
 		hex_literal::hex!["d7b8926b326dd349355a9a7cca6606c1e0eb6fd2b506066b518c7155ff0d8297"].into();
-	let mut parachain_account: AccountId = AccountId::default();
+	let mut parachain_account: AccountId = AccountId::new([0u8; 32]);
 	let bonding_duration = BondingDuration::get();
 
 	Karura::execute_with(|| {

@@ -15290,18 +15290,3 @@ dependencies = [
  "cc",
  "libc",
 ]
-
-[[patch.unused]]
-name = "sc-network-test"
-version = "0.8.0"
-source = "git+https://github.com/paritytech//substrate?rev=32b71896df8a832e7c139a842e46710e4d3f70cd#32b71896df8a832e7c139a842e46710e4d3f70cd"
-
-[[patch.unused]]
-name = "substrate-test-runtime"
-version = "2.0.0"
-source = "git+https://github.com/paritytech//substrate?rev=32b71896df8a832e7c139a842e46710e4d3f70cd#32b71896df8a832e7c139a842e46710e4d3f70cd"
-
-[[patch.unused]]
-name = "substrate-test-runtime-client"
-version = "2.0.0"
-source = "git+https://github.com/paritytech//substrate?rev=32b71896df8a832e7c139a842e46710e4d3f70cd#32b71896df8a832e7c139a842e46710e4d3f70cd"
