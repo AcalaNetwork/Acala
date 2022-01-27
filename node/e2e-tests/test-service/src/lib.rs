@@ -16,13 +16,10 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-//! Crate used for testing with Cumulus.
-
-#![warn(missing_docs)]
-
-// mod chain_spec;
+//! Crate used for testing with acala.
 mod genesis;
 
+use futures::channel::{mpsc, oneshot};
 use std::{future::Future, time::Duration};
 
 use cumulus_client_consensus_common::{ParachainCandidate, ParachainConsensus};
@@ -36,11 +33,17 @@ use node_runtime::{Block, BlockId, Hash, Header, Runtime, RuntimeApi, SignedExtr
 
 use cumulus_client_consensus_aura::{AuraConsensus, BuildAuraConsensusParams, SlotProportion};
 use frame_system_rpc_runtime_api::AccountNonceApi;
+use futures::channel::mpsc::Sender;
+use futures::SinkExt;
 use parking_lot::Mutex;
 use polkadot_primitives::v1::{CollatorPair, Hash as PHash, PersistedValidationData};
 use polkadot_service::ProvideRuntimeApi;
 use sc_client_api::execution_extensions::ExecutionStrategies;
 use sc_client_api::{Backend, CallExecutor, ExecutorProvider};
+use sc_consensus::LongestChain;
+use sc_consensus_aura::{ImportQueueParams, StartAuraParams};
+use sc_consensus_manual_seal::rpc::{ManualSeal, ManualSealApi};
+use sc_consensus_manual_seal::EngineCommand;
 use sc_executor::NativeElseWasmExecutor;
 use sc_network::{config::TransportConfig, multiaddr, NetworkService};
 use sc_service::{
@@ -48,8 +51,8 @@ use sc_service::{
 		DatabaseSource, KeepBlocks, KeystoreConfig, MultiaddrWithPeerId, NetworkConfiguration, OffchainWorkerConfig,
 		PruningMode, TransactionStorageMode, WasmExecutionMethod,
 	},
-	BasePath, ChainSpec, Configuration, PartialComponents, Role, RpcHandlers, TFullBackend, TFullCallExecutor,
-	TFullClient, TaskManager,
+	BasePath, ChainSpec, Configuration, PartialComponents, Role, RpcHandlers, SpawnTasksParams, TFullBackend,
+	TFullCallExecutor, TFullClient, TaskManager,
 };
 use sc_transaction_pool_api::TransactionPool;
 use sp_arithmetic::traits::SaturatedConversion;
@@ -67,7 +70,6 @@ use sp_trie::PrefixedMemoryDB;
 use std::sync::Arc;
 use substrate_test_client::{BlockchainEventsExt, RpcHandlersExt, RpcTransactionError, RpcTransactionOutput};
 
-// pub use chain_spec::*;
 pub use genesis::*;
 use node_primitives::signature::AcalaMultiSignature;
 use node_primitives::{AccountId, Address, Balance, Signature};
@@ -121,17 +123,21 @@ pub type Client = TFullClient<runtime::Block, runtime::RuntimeApi, NativeElseWas
 /// Transaction pool type used by the test service
 pub type TxPool = Arc<sc_transaction_pool::FullPool<Block, Client>>;
 
+/// Maybe Mandala Dev full select chain.
+type MaybeFullSelectChain = Option<LongestChain<TFullBackend<Block>, Block>>;
+
 /// Starts a `ServiceBuilder` for a full service.
 ///
 /// Use this macro if you don't actually need the full service, but just the builder in order to
 /// be able to perform chain operations.
 pub fn new_partial(
-	config: &mut Configuration,
+	config: &Configuration,
+	seal_mode: SealMode,
 ) -> Result<
 	PartialComponents<
 		Client,
 		TFullBackend<Block>,
-		(),
+		MaybeFullSelectChain,
 		sc_consensus::import_queue::BasicQueue<Block, PrefixedMemoryDB<BlakeTwo256>>,
 		sc_transaction_pool::FullPool<Block, Client>,
 		(),
@@ -159,30 +165,87 @@ pub fn new_partial(
 		client.clone(),
 	);
 
-	let slot_duration = cumulus_client_consensus_aura::slot_duration(&*client)?;
-	let create_inherent_data_providers = Box::new(move |_, _| async move {
-		let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
+	let (import_queue, select_chain) = match seal_mode {
+		SealMode::DevInstantSeal => {
+			// instance sealing
+			(
+				sc_consensus_manual_seal::import_queue(
+					Box::new(client.clone()),
+					&task_manager.spawn_essential_handle(),
+					registry,
+				),
+				Some(LongestChain::new(backend.clone())),
+			)
+		}
+		SealMode::DevAuraSeal => {
+			// aura import queue
+			let slot_duration = sc_consensus_aura::slot_duration(&*client)?.slot_duration();
 
-		let slot = sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_duration(
-			*timestamp,
-			slot_duration.slot_duration(),
-		);
+			(
+				sc_consensus_aura::import_queue::<sp_consensus_aura::sr25519::AuthorityPair, _, _, _, _, _, _>(
+					ImportQueueParams {
+						block_import: client.clone(),
+						justification_import: None,
+						client: client.clone(),
+						create_inherent_data_providers: move |_, ()| async move {
+							let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
 
-		Ok((timestamp, slot))
-	});
+							let slot = sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_duration(
+								*timestamp,
+								slot_duration,
+							);
 
-	let import_queue =
-		cumulus_client_consensus_aura::import_queue::<sp_consensus_aura::sr25519::AuthorityPair, _, _, _, _, _, _>(
-			cumulus_client_consensus_aura::ImportQueueParams {
-				block_import: client.clone(),
-				client: client.clone(),
-				create_inherent_data_providers,
-				registry,
-				can_author_with: sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone()),
-				spawner: &task_manager.spawn_essential_handle(),
-				telemetry: None,
-			},
-		)?;
+							Ok((
+								timestamp,
+								slot,
+								node_service::default_mock_parachain_inherent_data_provider(),
+							))
+						},
+						spawner: &task_manager.spawn_essential_handle(),
+						registry,
+						can_author_with: sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone()),
+						check_for_equivocation: Default::default(),
+						telemetry: None,
+					},
+				)?,
+				None,
+			)
+		}
+		SealMode::ParaSeal => {
+			let slot_duration = cumulus_client_consensus_aura::slot_duration(&*client)?;
+			let create_inherent_data_providers = Box::new(move |_, _| async move {
+				let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
+
+				let slot = sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_duration(
+					*timestamp,
+					slot_duration.slot_duration(),
+				);
+
+				Ok((timestamp, slot))
+			});
+
+			(
+				cumulus_client_consensus_aura::import_queue::<
+					sp_consensus_aura::sr25519::AuthorityPair,
+					_,
+					_,
+					_,
+					_,
+					_,
+					_,
+				>(cumulus_client_consensus_aura::ImportQueueParams {
+					block_import: client.clone(),
+					client: client.clone(),
+					create_inherent_data_providers,
+					registry,
+					can_author_with: sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone()),
+					spawner: &task_manager.spawn_essential_handle(),
+					telemetry: None,
+				})?,
+				None,
+			)
+		}
+	};
 
 	let params = PartialComponents {
 		backend,
@@ -191,11 +254,187 @@ pub fn new_partial(
 		keystore_container,
 		task_manager,
 		transaction_pool,
-		select_chain: (),
+		select_chain,
 		other: (),
 	};
 
 	Ok(params)
+}
+
+async fn start_dev_node(
+	config: Configuration,
+	seal_mode: SealMode,
+) -> sc_service::error::Result<(
+	TaskManager,
+	Arc<Client>,
+	Arc<NetworkService<Block, H256>>,
+	RpcHandlers,
+	TxPool,
+	Arc<TFullBackend<Block>>,
+	Sender<EngineCommand<H256>>,
+)> {
+	let sc_service::PartialComponents {
+		client,
+		backend,
+		mut task_manager,
+		import_queue,
+		keystore_container,
+		select_chain: maybe_select_chain,
+		transaction_pool,
+		other: (),
+	} = new_partial(&config, SealMode::DevInstantSeal)?;
+
+	let (network, system_rpc_tx, network_starter) = sc_service::build_network(sc_service::BuildNetworkParams {
+		config: &config,
+		client: client.clone(),
+		transaction_pool: transaction_pool.clone(),
+		spawn_handle: task_manager.spawn_handle(),
+		import_queue,
+		block_announce_validator_builder: None,
+		warp_sync: None,
+	})?;
+
+	// offchain workers
+	sc_service::build_offchain_workers(&config, task_manager.spawn_handle(), client.clone(), network.clone());
+
+	let force_authoring = config.force_authoring;
+	let backoff_authoring_blocks: Option<()> = None;
+	let select_chain =
+		maybe_select_chain.expect("In mandala dev mode, `new_partial` will return some `select_chain`; qed");
+
+	let proposer_factory = sc_basic_authorship::ProposerFactory::new(
+		task_manager.spawn_handle(),
+		client.clone(),
+		transaction_pool.clone(),
+		config.prometheus_registry(),
+		None,
+	);
+	// Channel for the rpc handler to communicate with the authorship task.
+	let (command_sink, commands_stream) = mpsc::channel(10);
+	let rpc_sink = command_sink.clone();
+
+	match seal_mode {
+		SealMode::DevInstantSeal => {
+			let slot_duration = sc_consensus_aura::slot_duration(&*client)?.slot_duration();
+			let create_inherent_data_providers = Box::new(move |_, _| async move {
+				let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
+
+				let slot = sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_duration(
+					*timestamp,
+					slot_duration,
+				);
+
+				Ok((timestamp, slot))
+				// Ok(timestamp)
+			});
+			let authorship_future =
+				sc_consensus_manual_seal::run_manual_seal(sc_consensus_manual_seal::ManualSealParams {
+					block_import: client.clone(),
+					env: proposer_factory,
+					client: client.clone(),
+					pool: transaction_pool.clone(),
+					commands_stream,
+					select_chain,
+					consensus_data_provider: None,
+					create_inherent_data_providers,
+				});
+			// we spawn the future on a background thread managed by service.
+			task_manager.spawn_essential_handle().spawn_blocking(
+				"instant-seal",
+				Some("block-authoring"),
+				authorship_future,
+			);
+		}
+		SealMode::DevAuraSeal => {
+			// aura
+			let can_author_with = sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone());
+			let slot_duration = sc_consensus_aura::slot_duration(&*client)?.slot_duration();
+			let aura = sc_consensus_aura::start_aura::<
+				sp_consensus_aura::sr25519::AuthorityPair,
+				_,
+				_,
+				_,
+				_,
+				_,
+				_,
+				_,
+				_,
+				_,
+				_,
+				_,
+			>(StartAuraParams {
+				slot_duration: sc_consensus_aura::slot_duration(&*client)?,
+				client: client.clone(),
+				select_chain,
+				// block_import: instant_finalize::InstantFinalizeBlockImport::new(client.clone()),
+				block_import: client.clone(),
+				proposer_factory,
+				create_inherent_data_providers: move |_, ()| async move {
+					let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
+
+					let slot = sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_duration(
+						*timestamp,
+						slot_duration,
+					);
+
+					Ok((
+						timestamp,
+						slot,
+						node_service::default_mock_parachain_inherent_data_provider(),
+					))
+				},
+				force_authoring,
+				backoff_authoring_blocks,
+				keystore: keystore_container.sync_keystore(),
+				can_author_with,
+				sync_oracle: network.clone(),
+				justification_sync_link: network.clone(),
+				// We got around 500ms for proposing
+				block_proposal_slot_portion: SlotProportion::new(1f32 / 24f32),
+				// And a maximum of 750ms if slots are skipped
+				max_block_proposal_slot_portion: Some(SlotProportion::new(1f32 / 16f32)),
+				telemetry: None,
+			})?;
+
+			// the AURA authoring task is considered essential, i.e. if it
+			// fails we take down the service with it.
+			task_manager
+				.spawn_essential_handle()
+				.spawn_blocking("aura", Some("block-authoring"), aura);
+		}
+		_ => {
+			panic!("dev mode do not support parachain consensus")
+		}
+	}
+
+	let rpc_handlers = sc_service::spawn_tasks(SpawnTasksParams {
+		config,
+		client: client.clone(),
+		backend: backend.clone(),
+		task_manager: &mut task_manager,
+		keystore: keystore_container.sync_keystore(),
+		transaction_pool: transaction_pool.clone(),
+		rpc_extensions_builder: Box::new(move |_, _| {
+			let mut io = jsonrpc_core::IoHandler::default();
+			io.extend_with(ManualSealApi::to_delegate(ManualSeal::new(rpc_sink.clone())));
+			Ok(io)
+		}),
+		network: network.clone(),
+		system_rpc_tx,
+		telemetry: None,
+	})?;
+
+	network_starter.start_network();
+
+	Ok((
+		task_manager,
+		client,
+		network,
+		rpc_handlers,
+		transaction_pool,
+		backend,
+		command_sink,
+	))
 }
 
 /// Start a node with the given parachain `Configuration` and relay chain `Configuration`.
@@ -210,6 +449,7 @@ async fn start_node_impl<RB>(
 	wrap_announce_block: Option<Box<dyn FnOnce(AnnounceBlockFn) -> AnnounceBlockFn>>,
 	rpc_ext_builder: RB,
 	consensus: Consensus,
+	seal_mode: SealMode,
 ) -> sc_service::error::Result<(
 	TaskManager,
 	Arc<Client>,
@@ -217,6 +457,7 @@ async fn start_node_impl<RB>(
 	RpcHandlers,
 	TxPool,
 	Arc<TFullBackend<Block>>,
+	Sender<EngineCommand<H256>>,
 )>
 where
 	RB: Fn(Arc<Client>) -> Result<jsonrpc_core::IoHandler<sc_rpc::Metadata>, sc_service::Error> + Send + 'static,
@@ -225,9 +466,9 @@ where
 		return Err("Light client not supported!".into());
 	}
 
-	let mut parachain_config = prepare_node_config(parachain_config);
+	let parachain_config = prepare_node_config(parachain_config);
 
-	let params = new_partial(&mut parachain_config)?;
+	let params = new_partial(&parachain_config, seal_mode.clone())?;
 	let keystore = params.keystore_container.sync_keystore();
 	let force_authoring = parachain_config.force_authoring;
 
@@ -432,6 +673,7 @@ where
 	}
 
 	start_network.start_network();
+	let (command_sink, _) = mpsc::channel(1);
 
 	Ok((
 		task_manager,
@@ -440,6 +682,7 @@ where
 		rpc_handlers,
 		transaction_pool,
 		backend_for_node,
+		command_sink,
 	))
 }
 
@@ -460,6 +703,8 @@ pub struct TestNode {
 	pub transaction_pool: TxPool,
 	/// Nodes' backend
 	pub backend: Arc<TFullBackend<Block>>,
+	/// manual instant seal sink command
+	pub seal_sink: Sender<EngineCommand<H256>>,
 }
 
 enum Consensus {
@@ -467,7 +712,18 @@ enum Consensus {
 	RelayChain,
 	/// Use the null consensus that will never produce any block.
 	Null,
+	/// Use Aura consensus
 	Aura,
+}
+
+#[derive(Clone, Copy)]
+pub enum SealMode {
+	/// Dev instant seal
+	DevInstantSeal,
+	/// Dev aura seal
+	DevAuraSeal,
+	/// Parachain aura seal
+	ParaSeal,
 }
 
 /// A builder to create a [`TestNode`].
@@ -483,6 +739,7 @@ pub struct TestNodeBuilder {
 	storage_update_func_parachain: Option<Box<dyn Fn()>>,
 	storage_update_func_relay_chain: Option<Box<dyn Fn()>>,
 	consensus: Consensus,
+	seal_mode: SealMode,
 }
 
 impl TestNodeBuilder {
@@ -505,6 +762,7 @@ impl TestNodeBuilder {
 			storage_update_func_parachain: None,
 			storage_update_func_relay_chain: None,
 			consensus: Consensus::Aura,
+			seal_mode: SealMode::ParaSeal,
 		}
 	}
 
@@ -593,6 +851,12 @@ impl TestNodeBuilder {
 		self
 	}
 
+	/// Enable collator for this node.
+	pub fn with_seal_mode(mut self, seal_mode: SealMode) -> Self {
+		self.seal_mode = seal_mode;
+		self
+	}
+
 	/// Build the [`TestNode`].
 	pub async fn build(self) -> TestNode {
 		let parachain_config = node_config(
@@ -617,17 +881,29 @@ impl TestNodeBuilder {
 		relay_chain_config.network.node_name = format!("{} (relay chain)", relay_chain_config.network.node_name);
 
 		let multiaddr = parachain_config.network.listen_addresses[0].clone();
-		let (task_manager, client, network, rpc_handlers, transaction_pool, backend) = start_node_impl(
-			parachain_config,
-			self.collator_key,
-			relay_chain_config,
-			self.para_id,
-			self.wrap_announce_block,
-			|_| Ok(Default::default()),
-			self.consensus,
-		)
-		.await
-		.expect("could not create Cumulus test service");
+		let (task_manager, client, network, rpc_handlers, transaction_pool, backend, seal_sink) = match self.seal_mode {
+			SealMode::DevInstantSeal | SealMode::DevAuraSeal => {
+				log::info!("start as standalone dev node.");
+				start_dev_node(parachain_config, self.seal_mode)
+					.await
+					.expect("could not start dev node!")
+			}
+			SealMode::ParaSeal => {
+				log::info!("start as parachain node.");
+				start_node_impl(
+					parachain_config,
+					self.collator_key,
+					relay_chain_config,
+					self.para_id,
+					self.wrap_announce_block,
+					|_| Ok(Default::default()),
+					self.consensus,
+					self.seal_mode,
+				)
+				.await
+				.expect("could not create collator!")
+			}
+		};
 
 		let peer_id = network.local_peer_id().clone();
 		let addr = MultiaddrWithPeerId { multiaddr, peer_id };
@@ -640,6 +916,7 @@ impl TestNodeBuilder {
 			rpc_handlers,
 			transaction_pool,
 			backend,
+			seal_sink,
 		}
 	}
 }
@@ -759,13 +1036,43 @@ impl TestNode {
 		self.client.wait_for_blocks(count)
 	}
 
+	/// Instructs manual seal to seal new, possibly empty blocks.
+	pub async fn seal_blocks(&self, num: usize) {
+		let mut sink = self.seal_sink.clone();
+
+		for count in 0..num {
+			let (sender, future_block) = oneshot::channel();
+			let future = sink.send(EngineCommand::SealNewBlock {
+				create_empty: true,
+				finalize: false,
+				parent_hash: None,
+				sender: Some(sender),
+			});
+
+			const ERROR: &'static str = "manual-seal authorship task is shutting down";
+			future.await.expect(ERROR);
+
+			match future_block.await.expect(ERROR) {
+				Ok(block) => {
+					log::info!("sealed {} (hash: {}) of {} blocks", count + 1, block.hash, num)
+				}
+				Err(err) => {
+					log::error!("failed to seal block {} of {}, error: {:?}", count + 1, num, err)
+				}
+			}
+		}
+	}
+
 	/// Submit an extrinsic to transaction pool.
 	pub async fn submit_extrinsic(
 		&self,
 		function: impl Into<runtime::Call>,
-		caller: Sr25519Keyring,
+		caller: Option<Sr25519Keyring>,
 	) -> Result<H256, sc_transaction_pool::error::Error> {
-		let extrinsic = construct_extrinsic(&*self.client, function, caller.pair(), Some(0));
+		let extrinsic = match caller {
+			Some(caller) => construct_extrinsic(&*self.client, function, caller.pair(), Some(0)),
+			None => runtime::UncheckedExtrinsic::new(function.into(), None).unwrap(),
+		};
 		let at = self.client.info().best_hash;
 
 		self.transaction_pool
@@ -893,9 +1200,7 @@ pub fn construct_extrinsic(
 	let (call, extra, _) = raw_payload.deconstruct();
 	let signed_data: (Address, AcalaMultiSignature, SignedExtra) =
 		(address, Signature::Sr25519(signature.clone()), extra.clone());
-	let ext = runtime::UncheckedExtrinsic::new(call, Some(signed_data)).unwrap();
-	log::info!(target: "test-service", "extrinsic:{:?}", ext);
-	ext
+	runtime::UncheckedExtrinsic::new(call, Some(signed_data)).unwrap()
 }
 
 /// Run a relay-chain validator node.

@@ -206,7 +206,7 @@ create_currency_id! {
 		KINT("Kintsugi Native Token", 12) = 171,
 		KBTC("Kintsugi Wrapped BTC", 8) = 172,
 		RMRK("Rmrk", 10) = 173,
-		RMRK_V2("Rmrk V2", 10) = 174,
+		RMRKV2("Rmrk V2", 10) = 174,
 	}
 }
 

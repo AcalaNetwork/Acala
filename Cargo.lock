@@ -2546,45 +2546,6 @@ checksum = "ee2626afccd7561a06cf1367e2950c4718ea04565e20fb5029b6c7d8ad09abcf"
 name = "e2e-tests"
 version = "2.2.1"
 dependencies = [
- "acala-cli",
- "acala-primitives",
- "acala-service",
- "cumulus-primitives-parachain-inherent",
- "ecosystem-renvm-bridge",
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "hex-literal",
- "log",
- "mandala-runtime",
- "module-cdp-engine",
- "module-emergency-shutdown",
- "module-evm",
- "module-transaction-payment",
- "pallet-balances",
- "pallet-sudo",
- "runtime-common",
- "sc-client-api",
- "sc-consensus",
- "sc-consensus-aura",
- "sc-consensus-babe",
- "sc-consensus-manual-seal",
- "sc-executor",
- "sc-finality-grandpa",
- "sc-informant",
- "sc-network",
- "sc-network-test",
- "sc-service",
- "sp-api",
- "sp-consensus",
- "sp-consensus-aura",
- "sp-consensus-babe",
- "sp-core",
- "sp-inherents",
- "sp-keyring",
- "sp-keystore",
- "sp-runtime",
- "sp-timestamp",
  "test-service",
 ]
 
@@ -5791,17 +5752,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5aa361d4faea93603064a027415f07bd8e1d5c88c9fbf68bf56a285428fd79ce"
 dependencies = [
  "autocfg",
-]
-
-[[package]]
-name = "memory-db"
-version = "0.27.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "de006e09d04fc301a5f7e817b75aa49801c4479a8af753764416b085337ddcc5"
-dependencies = [
- "hash-db",
- "hashbrown",
- "parity-util-mem",
 ]
 
 [[package]]
@@ -10219,7 +10169,7 @@ dependencies = [
  "sp-keyring",
  "sp-runtime",
  "sp-state-machine",
- "substrate-test-client 2.0.1 (git+https://github.com/paritytech/substrate?branch=master)",
+ "substrate-test-client",
  "tempfile",
  "test-runtime-constants",
  "tokio",
@@ -11908,34 +11858,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "sc-network-test"
-version = "0.8.0"
-source = "git+https://github.com/paritytech//substrate?rev=32b71896df8a832e7c139a842e46710e4d3f70cd#32b71896df8a832e7c139a842e46710e4d3f70cd"
-dependencies = [
- "async-std",
- "async-trait",
- "futures 0.3.19",
- "futures-timer",
- "libp2p",
- "log",
- "parking_lot 0.11.2",
- "rand 0.7.3",
- "sc-block-builder",
- "sc-client-api",
- "sc-consensus",
- "sc-network",
- "sc-service",
- "sp-blockchain",
- "sp-consensus",
- "sp-consensus-babe",
- "sp-core",
- "sp-runtime",
- "sp-tracing",
- "substrate-test-runtime",
- "substrate-test-runtime-client",
-]
-
-[[package]]
 name = "sc-offchain"
 version = "4.0.0-dev"
 source = "git+https://github.com/paritytech//substrate?rev=32b71896df8a832e7c139a842e46710e4d3f70cd#32b71896df8a832e7c139a842e46710e4d3f70cd"
@@ -13439,7 +13361,7 @@ version = "4.0.0"
 source = "git+https://github.com/paritytech//substrate?rev=32b71896df8a832e7c139a842e46710e4d3f70cd#32b71896df8a832e7c139a842e46710e4d3f70cd"
 dependencies = [
  "hash-db",
- "memory-db 0.28.0",
+ "memory-db",
  "parity-scale-codec",
  "scale-info",
  "sp-core",
@@ -13725,93 +13647,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "substrate-test-client"
-version = "2.0.1"
-source = "git+https://github.com/paritytech//substrate?rev=32b71896df8a832e7c139a842e46710e4d3f70cd#32b71896df8a832e7c139a842e46710e4d3f70cd"
-dependencies = [
- "async-trait",
- "futures 0.3.19",
- "hex",
- "parity-scale-codec",
- "sc-client-api",
- "sc-client-db",
- "sc-consensus",
- "sc-executor",
- "sc-offchain",
- "sc-service",
- "serde",
- "serde_json",
- "sp-blockchain",
- "sp-consensus",
- "sp-core",
- "sp-keyring",
- "sp-keystore",
- "sp-runtime",
- "sp-state-machine",
-]
-
-[[package]]
-name = "substrate-test-runtime"
-version = "2.0.0"
-source = "git+https://github.com/paritytech//substrate?rev=32b71896df8a832e7c139a842e46710e4d3f70cd#32b71896df8a832e7c139a842e46710e4d3f70cd"
-dependencies = [
- "cfg-if 1.0.0",
- "frame-support",
- "frame-system",
- "frame-system-rpc-runtime-api",
- "log",
- "memory-db 0.27.0",
- "pallet-babe",
- "pallet-timestamp",
- "parity-scale-codec",
- "parity-util-mem",
- "sc-service",
- "scale-info",
- "serde",
- "sp-api",
- "sp-application-crypto",
- "sp-block-builder",
- "sp-consensus-aura",
- "sp-consensus-babe",
- "sp-core",
- "sp-externalities",
- "sp-finality-grandpa",
- "sp-inherents",
- "sp-io",
- "sp-keyring",
- "sp-offchain",
- "sp-runtime",
- "sp-runtime-interface",
- "sp-session",
- "sp-state-machine",
- "sp-std",
- "sp-transaction-pool",
- "sp-trie",
- "sp-version",
- "substrate-wasm-builder",
- "trie-db",
-]
-
-[[package]]
-name = "substrate-test-runtime-client"
-version = "2.0.0"
-source = "git+https://github.com/paritytech//substrate?rev=32b71896df8a832e7c139a842e46710e4d3f70cd#32b71896df8a832e7c139a842e46710e4d3f70cd"
-dependencies = [
- "futures 0.3.19",
- "parity-scale-codec",
- "sc-block-builder",
- "sc-client-api",
- "sc-consensus",
- "sp-api",
- "sp-blockchain",
- "sp-consensus",
- "sp-core",
- "sp-runtime",
- "substrate-test-client 2.0.1 (git+https://github.com/paritytech//substrate?rev=32b71896df8a832e7c139a842e46710e4d3f70cd)",
- "substrate-test-runtime",
-]
-
-[[package]]
 name = "substrate-test-utils"
 version = "4.0.0-dev"
 source = "git+https://github.com/paritytech/substrate?branch=master#542a8585339d2581e641df339d254d7dd22b1456"
@@ -13942,12 +13777,15 @@ dependencies = [
  "cumulus-relay-chain-interface",
  "cumulus-relay-chain-local",
  "cumulus-test-relay-validation-worker-provider",
+ "ecosystem-renvm-bridge",
  "frame-system",
  "frame-system-rpc-runtime-api",
  "futures 0.3.19",
+ "hex-literal",
  "jsonrpc-core",
  "log",
  "mandala-runtime",
+ "module-emergency-shutdown",
  "module-evm",
  "module-transaction-payment",
  "pallet-balances",
@@ -13966,9 +13804,11 @@ dependencies = [
  "sc-client-api",
  "sc-consensus",
  "sc-consensus-aura",
+ "sc-consensus-manual-seal",
  "sc-executor",
  "sc-network",
  "sc-rpc",
+ "sc-rpc-server",
  "sc-service",
  "sc-tracing",
  "sc-transaction-pool",
@@ -13988,7 +13828,7 @@ dependencies = [
  "sp-timestamp",
  "sp-tracing",
  "sp-trie",
- "substrate-test-client 2.0.1 (git+https://github.com/paritytech/substrate?branch=master)",
+ "substrate-test-client",
  "substrate-test-utils",
  "tokio",
 ]
@@ -15426,3 +15266,18 @@ dependencies = [
  "cc",
  "libc",
 ]
+
+[[patch.unused]]
+name = "sc-network-test"
+version = "0.8.0"
+source = "git+https://github.com/paritytech//substrate?rev=32b71896df8a832e7c139a842e46710e4d3f70cd#32b71896df8a832e7c139a842e46710e4d3f70cd"
+
+[[patch.unused]]
+name = "substrate-test-runtime"
+version = "2.0.0"
+source = "git+https://github.com/paritytech//substrate?rev=32b71896df8a832e7c139a842e46710e4d3f70cd#32b71896df8a832e7c139a842e46710e4d3f70cd"
+
+[[patch.unused]]
+name = "substrate-test-runtime-client"
+version = "2.0.0"
+source = "git+https://github.com/paritytech//substrate?rev=32b71896df8a832e7c139a842e46710e4d3f70cd#32b71896df8a832e7c139a842e46710e4d3f70cd"

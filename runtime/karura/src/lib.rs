@@ -765,7 +765,7 @@ parameter_type_with_key! {
 				TokenSymbol::KINT => 13333 * microcent(*currency_id), // 1.33 KINT = 1 KSM
 				TokenSymbol::KBTC => 66 * microcent(*currency_id), // 1KBTC = 150 KSM
 				TokenSymbol::TAI => dollar(*currency_id), // 1 KUSD = 100 TAI
-				TokenSymbol::RMRK | TokenSymbol::RMRK_V2 => cent(*currency_id),
+				TokenSymbol::RMRK | TokenSymbol::RMRKV2 => cent(*currency_id),
 
 				TokenSymbol::ACA |
 				TokenSymbol::AUSD |
@@ -1779,7 +1779,7 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 			#[cfg(feature = "only-integration-test")]
 			Token(RMRK) => Some(MultiLocation::new(1, X2(Parachain(2001), GeneralIndex(8)))),
 			#[cfg(feature = "only-integration-test")]
-			Token(RMRK_V2) => Some(MultiLocation::new(
+			Token(RMRKV2) => Some(MultiLocation::new(
 				1,
 				X3(Parachain(2001), PalletInstance(53), GeneralIndex(8)),
 			)),

@@ -582,10 +582,10 @@ fn asset_registry_location_update_works() {
 	});
 
 	Sibling::execute_with(|| {
-		// Sibling will convert RMRK_V2 to location: (1, 2001, 53, 8)
+		// Sibling will convert RMRKV2 to location: (1, 2001, 53, 8)
 		assert_ok!(XTokens::transfer(
 			Origin::signed(BOB.into()),
-			RMRK_V2,
+			RMRKV2,
 			5_000_000_000_000,
 			Box::new(
 				MultiLocation::new(

@@ -771,7 +771,7 @@ parameter_type_with_key! {
 				TokenSymbol::KINT |
 				TokenSymbol::TAI |
 				TokenSymbol::RMRK |
-				TokenSymbol::RMRK_V2 |
+				TokenSymbol::RMRKV2 |
 				TokenSymbol::CASH => Balance::max_value() // unsupported
 			},
 			CurrencyId::DexShare(dex_share_0, _) => {
