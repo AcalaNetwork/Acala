@@ -1006,6 +1006,7 @@ where
 			.saturating_sub(1);
 		let tip = 0;
 		let extra: SignedExtra = (
+			frame_system::CheckNonZeroSender::<Runtime>::new(),
 			frame_system::CheckSpecVersion::<Runtime>::new(),
 			frame_system::CheckTxVersion::<Runtime>::new(),
 			frame_system::CheckGenesis::<Runtime>::new(),
@@ -1969,7 +1970,7 @@ impl Convert<(Call, SignedExtra), Result<(EthereumTransactionMessage, SignedExtr
 					return Err(InvalidTransaction::Stale);
 				}
 
-				let (_, _, _, mortality, check_nonce, _, charge, ..) = extra.clone();
+				let (_, _, _, _, mortality, check_nonce, _, charge, ..) = extra.clone();
 
 				if mortality != frame_system::CheckEra::from(sp_runtime::generic::Era::Immortal) {
 					// require immortal
@@ -1979,7 +1980,7 @@ impl Convert<(Call, SignedExtra), Result<(EthereumTransactionMessage, SignedExtr
 				let nonce = check_nonce.nonce;
 				let tip = charge.0;
 
-				extra.4.mark_as_ethereum_tx(valid_until);
+				extra.5.mark_as_ethereum_tx(valid_until);
 
 				Ok((
 					EthereumTransactionMessage {
@@ -2012,6 +2013,7 @@ pub type SignedBlock = generic::SignedBlock<Block>;
 pub type BlockId = generic::BlockId<Block>;
 /// The SignedExtension to the basic transaction logic.
 pub type SignedExtra = (
+	frame_system::CheckNonZeroSender<Runtime>,
 	frame_system::CheckSpecVersion<Runtime>,
 	frame_system::CheckTxVersion<Runtime>,
 	frame_system::CheckGenesis<Runtime>,
@@ -2610,6 +2612,7 @@ mod tests {
 			});
 
 			let extra: SignedExtra = (
+				frame_system::CheckNonZeroSender::<Runtime>::new(),
 				frame_system::CheckSpecVersion::<Runtime>::new(),
 				frame_system::CheckTxVersion::<Runtime>::new(),
 				frame_system::CheckGenesis::<Runtime>::new(),
