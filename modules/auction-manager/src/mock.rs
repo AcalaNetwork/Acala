@@ -178,6 +178,7 @@ impl module_dex::Config for Runtime {
 	type DEXIncentives = ();
 	type WeightInfo = ();
 	type ListingOrigin = EnsureSignedBy<One, AccountId>;
+	type OnLiquidityPoolUpdated = ();
 }
 
 thread_local! {

@@ -34,16 +34,17 @@ use module_evm::EvmTask;
 use module_support::DispatchableTask;
 use module_support::{
 	mocks::MockAddressMapping, AddressMapping as AddressMappingT, DEXIncentives, ExchangeRate, ExchangeRateProvider,
+	Rate,
 };
 use orml_traits::{parameter_type_with_key, MultiReservableCurrency};
 pub use primitives::{
 	convert_decimals_to_evm, define_combined_task, evm::EvmAddress, task::TaskResult, Amount, BlockNumber, CurrencyId,
-	DexShare, Header, Nonce, ReserveIdentifier, TokenSymbol, TradingPair,
+	DexShare, Header, Lease, Nonce, ReserveIdentifier, TokenSymbol, TradingPair,
 };
 use scale_info::TypeInfo;
 use sp_core::{crypto::AccountId32, H160, H256};
 use sp_runtime::{
-	traits::{AccountIdConversion, BlakeTwo256, Convert, IdentityLookup, One as OneT},
+	traits::{AccountIdConversion, BlakeTwo256, BlockNumberProvider, Convert, IdentityLookup, One as OneT, Zero},
 	DispatchResult, FixedPointNumber, FixedU128, Perbill,
 };
 use sp_std::{collections::btree_map::BTreeMap, str::FromStr};
@@ -184,7 +185,7 @@ impl module_evm_bridge::Config for Test {
 impl module_asset_registry::Config for Test {
 	type Event = Event;
 	type Currency = Balances;
-	type LiquidCrowdloanCurrencyId = GetStakingCurrencyId;
+	type StakingCurrencyId = GetStakingCurrencyId;
 	type EVMBridge = module_evm_bridge::EVMBridge<Test>;
 	type RegisterOrigin = EnsureSignedBy<CouncilAccount, AccountId>;
 	type WeightInfo = ();
@@ -382,6 +383,7 @@ impl module_dex::Config for Test {
 	type WeightInfo = ();
 	type DEXIncentives = MockDEXIncentives;
 	type ListingOrigin = EnsureSignedBy<ListingOrigin, AccountId>;
+	type OnLiquidityPoolUpdated = ();
 }
 
 pub type AdaptedBasicCurrency = module_currencies::BasicCurrencyAdapter<Test, Balances, Amount, BlockNumber>;
@@ -443,10 +445,26 @@ impl ExchangeRateProvider for MockLiquidStakingExchangeProvider {
 	}
 }
 
+impl BlockNumberProvider for MockRelayBlockNumberProvider {
+	type BlockNumber = BlockNumber;
+
+	fn current_block_number() -> Self::BlockNumber {
+		Self::get()
+	}
+}
+
+parameter_type_with_key! {
+	pub LiquidCrowdloanLeaseBlockNumber: |_lease: Lease| -> Option<BlockNumber> {
+		None
+	};
+}
+
 parameter_types! {
 	pub StableCurrencyFixedPrice: Price = Price::saturating_from_rational(1, 1);
 	pub const GetStakingCurrencyId: CurrencyId = DOT;
 	pub const GetLiquidCurrencyId: CurrencyId = LDOT;
+	pub static MockRelayBlockNumberProvider: BlockNumber = 0;
+	pub RewardRatePerRelaychainBlock: Rate = Rate::zero();
 }
 
 ord_parameter_types! {
@@ -465,6 +483,9 @@ impl module_prices::Config for Test {
 	type DEX = DexModule;
 	type Currency = Currencies;
 	type Erc20InfoMapping = EvmErc20InfoMapping;
+	type LiquidCrowdloanLeaseBlockNumber = LiquidCrowdloanLeaseBlockNumber;
+	type RelayChainBlockNumber = MockRelayBlockNumberProvider;
+	type RewardRatePerRelaychainBlock = RewardRatePerRelaychainBlock;
 	type WeightInfo = ();
 }
 
