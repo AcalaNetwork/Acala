@@ -224,6 +224,8 @@ pub mod module {
 			auction_id: AuctionId,
 			collateral_type: CurrencyId,
 			collateral_amount: Balance,
+			target_stable_amount: Balance,
+			refund_recipient: T::AccountId,
 		},
 	}
 
@@ -700,6 +702,8 @@ impl<T: Config> Pallet<T> {
 				auction_id,
 				collateral_type: collateral_auction.currency_id,
 				collateral_amount: collateral_auction.amount,
+				target_stable_amount: collateral_auction.target,
+				refund_recipient: collateral_auction.refund_recipient.clone(),
 			});
 		}
 
