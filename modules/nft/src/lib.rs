@@ -262,7 +262,7 @@ pub mod module {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			let to = T::Lookup::lookup(to)?;
-			Self::do_mint(who, to, class_id, metadata, attributes, quantity)?;
+			let _ = Self::do_mint(who, to, class_id, metadata, attributes, quantity)?;
 			Ok(())
 		}
 
