@@ -547,7 +547,7 @@ impl<'vicinity, 'config, T: Config> BackendT for SubstrateStackState<'vicinity, 
 	}
 
 	fn block_base_fee_per_gas(&self) -> sp_core::U256 {
-		U256::one()
+		self.vicinity.block_base_fee_per_gas.unwrap_or(U256::one())
 	}
 }
 

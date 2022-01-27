@@ -50,6 +50,8 @@ pub struct Vicinity {
 	pub block_gas_limit: Option<U256>,
 	/// Environmental block difficulty. Used only for testing
 	pub block_difficulty: Option<U256>,
+	/// Environmental base fee per gas.
+	pub block_base_fee_per_gas: Option<U256>,
 }
 
 #[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]
