@@ -21,108 +21,9 @@ use ecosystem_renvm_bridge::EcdsaSignature;
 use hex_literal::hex;
 use sc_transaction_pool_api::TransactionPool;
 use sp_core::crypto::AccountId32;
+use sp_keyring::Sr25519Keyring::*;
 use sp_runtime::{traits::IdentifyAccount, MultiAddress, MultiSigner};
-use test_service::{initial_head_data, run_relay_chain_validator_node, Keyring::*, SealMode};
-
-#[substrate_test_utils::test]
-#[ignore]
-async fn test_full_node_catching_up() {
-	let mut builder = sc_cli::LoggerBuilder::new("");
-	builder.with_colors(true);
-	let _ = builder.init();
-
-	let para_id = ParaId::from(2000);
-
-	let tokio_handle = tokio::runtime::Handle::current();
-
-	// start alice
-	let alice = run_relay_chain_validator_node(tokio_handle.clone(), Alice, || {}, Vec::new());
-
-	// start bob
-	let bob = run_relay_chain_validator_node(tokio_handle.clone(), Bob, || {}, vec![alice.addr.clone()]);
-
-	// register parachain
-	alice
-		.register_parachain(
-			para_id,
-			node_runtime::WASM_BINARY
-				.expect("You need to build the WASM binary to run this test!")
-				.to_vec(),
-			initial_head_data(),
-		)
-		.await
-		.unwrap();
-
-	// run cumulus charlie (a parachain collator)
-	let para_collator = test_service::TestNodeBuilder::new(para_id, tokio_handle.clone(), Alice)
-		.enable_collator()
-		.connect_to_relay_chain_nodes(vec![&alice, &bob])
-		.build()
-		.await;
-	para_collator.wait_for_blocks(5).await;
-
-	// run cumulus dave (a parachain full node) and wait for it to sync some blocks
-	let para_full = test_service::TestNodeBuilder::new(para_id, tokio_handle, Dave)
-		.connect_to_parachain_node(&para_collator)
-		.connect_to_relay_chain_nodes(vec![&alice, &bob])
-		.build()
-		.await;
-	para_full.wait_for_blocks(7).await;
-}
-
-#[substrate_test_utils::test]
-#[ignore]
-async fn simple_balances_test() {
-	let mut builder = sc_cli::LoggerBuilder::new("");
-	builder.with_colors(true);
-	let _ = builder.init();
-
-	let para_id = ParaId::from(2000);
-
-	let tokio_handle = tokio::runtime::Handle::current();
-
-	// start alice
-	let alice = run_relay_chain_validator_node(tokio_handle.clone(), Alice, || {}, Vec::new());
-
-	// start bob
-	let bob = run_relay_chain_validator_node(tokio_handle.clone(), Bob, || {}, vec![alice.addr.clone()]);
-
-	// register parachain
-	alice
-		.register_parachain(
-			para_id,
-			node_runtime::WASM_BINARY
-				.expect("You need to build the WASM binary to run this test!")
-				.to_vec(),
-			initial_head_data(),
-		)
-		.await
-		.unwrap();
-
-	// run cumulus charlie (a parachain collator)
-	let node = test_service::TestNodeBuilder::new(para_id, tokio_handle.clone(), Alice)
-		.enable_collator()
-		.connect_to_relay_chain_nodes(vec![&alice, &bob])
-		.build()
-		.await;
-	node.wait_for_blocks(2).await;
-
-	let bob = MultiSigner::from(Bob.public());
-	let bob_account_id = bob.into_account();
-	let amount = 1_000_000_000_000;
-
-	type Balances = pallet_balances::Pallet<node_runtime::Runtime>;
-
-	// the function with_state allows us to read state, pretty cool right? :D
-	let old_balance = node.with_state(|| Balances::free_balance(bob_account_id.clone()));
-
-	node.transfer(Alice, Bob, amount).await.unwrap();
-
-	node.wait_for_blocks(3).await;
-	// we can check the new state :D
-	let new_balance = node.with_state(|| Balances::free_balance(bob_account_id));
-	assert_eq!(old_balance + amount, new_balance);
-}
+use test_service::SealMode;
 
 #[substrate_test_utils::test]
 async fn simple_balances_dev_test() {
@@ -151,7 +52,6 @@ async fn simple_balances_dev_test() {
 	node.transfer(Alice, Bob, amount).await.unwrap();
 
 	node.wait_for_blocks(1).await;
-	// node.seal_blocks(1).await;
 
 	// we can check the new state :D
 	let new_balance = node.with_state(|| Balances::free_balance(bob_account_id));

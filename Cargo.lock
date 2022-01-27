@@ -2546,7 +2546,7 @@ checksum = "ee2626afccd7561a06cf1367e2950c4718ea04565e20fb5029b6c7d8ad09abcf"
 
 [[package]]
 name = "e2e-tests"
-version = "2.2.1"
+version = "2.2.2"
 dependencies = [
  "test-service",
 ]
