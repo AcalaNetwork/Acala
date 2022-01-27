@@ -105,7 +105,7 @@ module-prices = { path = "../../modules/prices", default-features = false }
 module-incentives = { path = "../../modules/incentives", default-features = false }
 module-support = { path = "../../modules/support", default-features = false }
 module-homa = { path = "../../modules/homa", default-features = false }
-module-homa-xcm = { path = "../../modules/homa-xcm", default-features = false }
+module-relaychain-interface = { path = "../../modules/relaychain-interface", default-features = false }
 module-session-manager = { path = "../../modules/session-manager", default-features = false }
 module-relaychain = { path = "../../modules/relaychain", default-features = false, features = ["kusama"] }
 module-idle-scheduler = { path = "../../modules/idle-scheduler", default-features = false }
@@ -223,7 +223,7 @@ std = [
 	"module-incentives/std",
 	"module-support/std",
 	"module-homa/std",
-	"module-homa-xcm/std",
+	"module-relaychain-interface/std",
 	"module-session-manager/std",
 	"module-relaychain/std",
 	"module-idle-scheduler/std",
@@ -320,6 +320,6 @@ try-runtime = [
 	"module-prices/try-runtime",
 	"module-incentives/try-runtime",
 	"module-homa/try-runtime",
-	"module-homa-xcm/try-runtime",
+	"module-relaychain-interface/try-runtime",
 	"module-session-manager/try-runtime",
 ]

@@ -33,16 +33,20 @@ use frame_support::{
 	transactional, PalletId,
 };
 use frame_system::pallet_prelude::*;
-use orml_traits::NFT;
-use primitives::{NFTBalance, ReserveIdentifier};
+use orml_traits::{ManageNFT, NFT};
+use primitives::{
+	nft::{Attributes, ClassProperty, NFTBalance, CID},
+	ReserveIdentifier,
+};
 use scale_info::{build::Fields, meta_type, Path, Type, TypeInfo, TypeParameter};
+
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_runtime::{
 	traits::{AccountIdConversion, Hash, Saturating, StaticLookup, Zero},
 	DispatchResult, RuntimeDebug,
 };
-use sp_std::{collections::btree_map::BTreeMap, prelude::*};
+use sp_std::prelude::*;
 
 pub mod benchmarking;
 mod mock;
@@ -51,22 +55,6 @@ pub mod weights;
 
 pub use module::*;
 pub use weights::WeightInfo;
-
-pub type CID = Vec<u8>;
-pub type Attributes = BTreeMap<Vec<u8>, Vec<u8>>;
-
-#[repr(u8)]
-#[derive(Encode, Decode, Clone, Copy, BitFlags, RuntimeDebug, PartialEq, Eq, TypeInfo)]
-pub enum ClassProperty {
-	/// Is token transferable
-	Transferable = 0b00000001,
-	/// Is token burnable
-	Burnable = 0b00000010,
-	/// Is minting new tokens allowed
-	Mintable = 0b00000100,
-	/// Is class properties mutable
-	ClassPropertiesMutable = 0b00001000,
-}
 
 #[derive(Clone, Copy, PartialEq, Default, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
@@ -305,7 +293,8 @@ pub mod module {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			let to = T::Lookup::lookup(to)?;
-			Self::do_mint(who, to, class_id, metadata, attributes, quantity)
+			Self::do_mint(who, to, class_id, metadata, attributes, quantity)?;
+			Ok(())
 		}
 
 		/// Transfer NFT token to another account
@@ -456,7 +445,7 @@ impl<T: Config> Pallet<T> {
 		metadata: CID,
 		attributes: Attributes,
 		quantity: u32,
-	) -> DispatchResult {
+	) -> Result<Vec<TokenIdOf<T>>, DispatchError> {
 		ensure!(quantity >= 1, Error::<T>::InvalidQuantity);
 		let class_info = orml_nft::Pallet::<T>::classes(class_id).ok_or(Error::<T>::ClassIdNotFound)?;
 		ensure!(who == class_info.owner, Error::<T>::NoPermission);
@@ -475,9 +464,15 @@ impl<T: Config> Pallet<T> {
 		<T as module::Config>::Currency::transfer(&who, &to, total_deposit, KeepAlive)?;
 		<T as module::Config>::Currency::reserve_named(&RESERVE_ID, &to, total_deposit)?;
 
+		let mut token_ids = vec![];
 		let data = TokenData { deposit, attributes };
 		for _ in 0..quantity {
-			orml_nft::Pallet::<T>::mint(&to, class_id, metadata.clone(), data.clone())?;
+			token_ids.push(orml_nft::Pallet::<T>::mint(
+				&to,
+				class_id,
+				metadata.clone(),
+				data.clone(),
+			)?);
 		}
 
 		Self::deposit_event(Event::MintedToken {
@@ -486,7 +481,7 @@ impl<T: Config> Pallet<T> {
 			class_id,
 			quantity,
 		});
-		Ok(())
+		Ok(token_ids)
 	}
 
 	fn do_burn(who: T::AccountId, token: (ClassIdOf<T>, TokenIdOf<T>), remark: Option<Vec<u8>>) -> DispatchResult {
@@ -554,5 +549,27 @@ impl<T: Config> NFT<T::AccountId> for Pallet<T> {
 
 	fn transfer(from: &T::AccountId, to: &T::AccountId, token: (Self::ClassId, Self::TokenId)) -> DispatchResult {
 		Self::do_transfer(from, to, token)
+	}
+}
+
+impl<T: Config> ManageNFT<T::AccountId, CID, Attributes> for Pallet<T> {
+	type ClassId = ClassIdOf<T>;
+	type TokenId = TokenIdOf<T>;
+
+	/// To mint new NFT tokens.
+	fn mint(
+		who: T::AccountId,
+		to: T::AccountId,
+		class_id: Self::ClassId,
+		metadata: CID,
+		attributes: Attributes,
+		quantity: u32,
+	) -> Result<Vec<Self::TokenId>, DispatchError> {
+		Self::do_mint(who, to, class_id, metadata, attributes, quantity)
+	}
+
+	/// To burn a NFT token.
+	fn burn(who: T::AccountId, token: (Self::ClassId, Self::TokenId), remark: Option<Vec<u8>>) -> DispatchResult {
+		Self::do_burn(who, token, remark)
 	}
 }

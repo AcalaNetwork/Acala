@@ -1,5 +1,5 @@
 [package]
-name = "module-homa-xcm"
+name = "module-relaychain-interface"
 version = "2.0.3"
 authors = ["Acala Developers"]
 edition = "2018"
