@@ -76,9 +76,9 @@ pub mod module {
 		/// Currency type for withdraw and balance storage.
 		type Currency: Currency<Self::AccountId>;
 
-		/// The Currency ID for the Liquid Crowdloan asset
+		/// The Currency ID for the staking currency
 		#[pallet::constant]
-		type LiquidCrowdloanCurrencyId: Get<CurrencyId>;
+		type StakingCurrencyId: Get<CurrencyId>;
 
 		/// Evm Bridge for getting info of contracts from the EVM.
 		type EVMBridge: EVMBridge<Self::AccountId, BalanceOf<Self>>;
@@ -623,9 +623,7 @@ impl<T: Config> Erc20InfoMapping for EvmErc20InfoMapping<T> {
 					DexShare::LiquidCrowdloan(lease) => Some(
 						format!(
 							"LiquidCrowdloan-{}-{}",
-							T::LiquidCrowdloanCurrencyId::get()
-								.name()
-								.expect("constant never failed; qed"),
+							T::StakingCurrencyId::get().name().expect("constant never failed; qed"),
 							lease
 						)
 						.into_bytes(),
@@ -640,9 +638,7 @@ impl<T: Config> Erc20InfoMapping for EvmErc20InfoMapping<T> {
 					DexShare::LiquidCrowdloan(lease) => Some(
 						format!(
 							"LiquidCrowdloan-{}-{}",
-							T::LiquidCrowdloanCurrencyId::get()
-								.name()
-								.expect("constant never failed; qed"),
+							T::StakingCurrencyId::get().name().expect("constant never failed; qed"),
 							lease
 						)
 						.into_bytes(),
@@ -666,9 +662,7 @@ impl<T: Config> Erc20InfoMapping for EvmErc20InfoMapping<T> {
 			CurrencyId::LiquidCrowdloan(lease) => Some(
 				format!(
 					"LiquidCrowdloan-{}-{}",
-					T::LiquidCrowdloanCurrencyId::get()
-						.name()
-						.expect("constant never failed; qed"),
+					T::StakingCurrencyId::get().name().expect("constant never failed; qed"),
 					lease
 				)
 				.into_bytes(),
@@ -699,7 +693,7 @@ impl<T: Config> Erc20InfoMapping for EvmErc20InfoMapping<T> {
 					DexShare::LiquidCrowdloan(lease) => Some(
 						format!(
 							"LC{}-{}",
-							T::LiquidCrowdloanCurrencyId::get()
+							T::StakingCurrencyId::get()
 								.symbol()
 								.expect("constant never failed; qed"),
 							lease
@@ -716,7 +710,7 @@ impl<T: Config> Erc20InfoMapping for EvmErc20InfoMapping<T> {
 					DexShare::LiquidCrowdloan(lease) => Some(
 						format!(
 							"LC{}-{}",
-							T::LiquidCrowdloanCurrencyId::get()
+							T::StakingCurrencyId::get()
 								.symbol()
 								.expect("constant never failed; qed"),
 							lease
@@ -742,7 +736,7 @@ impl<T: Config> Erc20InfoMapping for EvmErc20InfoMapping<T> {
 			CurrencyId::LiquidCrowdloan(lease) => Some(
 				format!(
 					"LC{}-{}",
-					T::LiquidCrowdloanCurrencyId::get()
+					T::StakingCurrencyId::get()
 						.symbol()
 						.expect("constant never failed; qed"),
 					lease
@@ -774,7 +768,7 @@ impl<T: Config> Erc20InfoMapping for EvmErc20InfoMapping<T> {
 				match symbol_0 {
 					DexShare::Token(symbol) => CurrencyId::Token(symbol).decimals(),
 					DexShare::Erc20(address) => AssetMetadatas::<T>::get(AssetIds::Erc20(address)).map(|v| v.decimals),
-					DexShare::LiquidCrowdloan(_) => T::LiquidCrowdloanCurrencyId::get().decimals(),
+					DexShare::LiquidCrowdloan(_) => T::StakingCurrencyId::get().decimals(),
 					DexShare::ForeignAsset(foreign_asset_id) => {
 						AssetMetadatas::<T>::get(AssetIds::ForeignAssetId(foreign_asset_id)).map(|v| v.decimals)
 					}
@@ -784,7 +778,7 @@ impl<T: Config> Erc20InfoMapping for EvmErc20InfoMapping<T> {
 			CurrencyId::StableAssetPoolToken(stable_asset_id) => {
 				AssetMetadatas::<T>::get(AssetIds::StableAssetId(stable_asset_id)).map(|v| v.decimals)
 			}
-			CurrencyId::LiquidCrowdloan(_) => T::LiquidCrowdloanCurrencyId::get().decimals(),
+			CurrencyId::LiquidCrowdloan(_) => T::StakingCurrencyId::get().decimals(),
 			CurrencyId::ForeignAsset(foreign_asset_id) => {
 				AssetMetadatas::<T>::get(AssetIds::ForeignAssetId(foreign_asset_id)).map(|v| v.decimals)
 			}

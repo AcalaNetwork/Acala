@@ -24,7 +24,7 @@ use super::*;
 use frame_support::{assert_noop, assert_ok};
 use mock::{
 	AUSDBTCPair, AUSDDOTPair, DOTBTCPair, DexModule, Event, ExtBuilder, ListingOrigin, Origin, Runtime, System, Tokens,
-	ACA, ALICE, AUSD, BOB, BTC, DOT,
+	ACA, ALICE, AUSD, AUSD_DOT_POOL_RECORD, BOB, BTC, DOT,
 };
 use orml_traits::MultiReservableCurrency;
 use sp_runtime::traits::BadOrigin;
@@ -459,6 +459,39 @@ fn disable_trading_pair_work() {
 			Error::<Runtime>::MustBeEnabled
 		);
 	});
+}
+
+#[test]
+fn on_liquidity_pool_updated_work() {
+	ExtBuilder::default()
+		.initialize_enabled_trading_pairs()
+		.build()
+		.execute_with(|| {
+			assert_ok!(DexModule::add_liquidity(
+				Origin::signed(ALICE),
+				AUSD,
+				BTC,
+				5_000_000_000_000,
+				1_000_000_000_000,
+				0,
+				false,
+			));
+			assert_eq!(AUSD_DOT_POOL_RECORD.with(|v| *v.borrow()), (0, 0));
+
+			assert_ok!(DexModule::add_liquidity(
+				Origin::signed(ALICE),
+				AUSD,
+				DOT,
+				5_000_000_000_000,
+				1_000_000_000_000,
+				0,
+				false,
+			));
+			assert_eq!(
+				AUSD_DOT_POOL_RECORD.with(|v| *v.borrow()),
+				(5000000000000, 1000000000000)
+			);
+		});
 }
 
 #[test]

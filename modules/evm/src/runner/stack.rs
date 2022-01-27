@@ -45,7 +45,7 @@ pub use primitives::{
 };
 use sha3::{Digest, Keccak256};
 use sp_core::{H160, H256, U256};
-use sp_runtime::traits::UniqueSaturatedInto;
+use sp_runtime::traits::{UniqueSaturatedInto, Zero};
 use sp_std::{boxed::Box, collections::btree_set::BTreeSet, marker::PhantomData, mem, vec::Vec};
 
 #[derive(Default)]
@@ -70,9 +70,11 @@ impl<T: Config> Runner<T> {
 			&mut StackExecutor<'config, 'precompiles, SubstrateStackState<'_, 'config, T>, T::PrecompilesType>,
 		) -> (ExitReason, R),
 	{
+		let gas_price = U256::one();
 		let vicinity = Vicinity {
-			gas_price: U256::one(),
+			gas_price,
 			origin,
+			..Default::default()
 		};
 
 		let metadata = StackSubstateMetadata::new(gas_limit, storage_limit, config);
@@ -493,7 +495,7 @@ impl<'vicinity, 'config, T: Config> BackendT for SubstrateStackState<'vicinity, 
 	}
 
 	fn block_coinbase(&self) -> H160 {
-		Pallet::<T>::find_author()
+		self.vicinity.block_coinbase.unwrap_or(Pallet::<T>::find_author())
 	}
 
 	fn block_timestamp(&self) -> U256 {
@@ -502,17 +504,23 @@ impl<'vicinity, 'config, T: Config> BackendT for SubstrateStackState<'vicinity, 
 	}
 
 	fn block_difficulty(&self) -> U256 {
-		U256::zero()
+		self.vicinity.block_difficulty.unwrap_or_default()
 	}
 
 	fn block_gas_limit(&self) -> U256 {
-		U256::zero()
+		self.vicinity.block_gas_limit.unwrap_or_default()
 	}
 
 	fn chain_id(&self) -> U256 {
 		U256::from(T::ChainId::get())
 	}
 
+	#[cfg(feature = "evm-tests")]
+	fn exists(&self, address: H160) -> bool {
+		Accounts::<T>::contains_key(&address)
+	}
+
+	#[cfg(not(feature = "evm-tests"))]
 	fn exists(&self, _address: H160) -> bool {
 		true
 	}
@@ -531,11 +539,11 @@ impl<'vicinity, 'config, T: Config> BackendT for SubstrateStackState<'vicinity, 
 	}
 
 	fn storage(&self, address: H160, index: H256) -> H256 {
-		<AccountStorages<T>>::get(address, index)
+		AccountStorages::<T>::get(&address, index)
 	}
 
-	fn original_storage(&self, _address: H160, _index: H256) -> Option<H256> {
-		None
+	fn original_storage(&self, address: H160, index: H256) -> Option<H256> {
+		Some(self.storage(address, index))
 	}
 
 	fn block_base_fee_per_gas(&self) -> sp_core::U256 {
@@ -694,16 +702,33 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 			amount
 		);
 
+		if T::Currency::free_balance(&source) < amount {
+			return Err(ExitError::OutOfFund);
+		}
+
 		T::Currency::transfer(&source, &target, amount, ExistenceRequirement::AllowDeath)
 			.map_err(|e| ExitError::Other(Into::<&str>::into(e).into()))
 	}
 
-	fn reset_balance(&mut self, _address: H160) {
-		// Do nothing on reset balance in Substrate.
-		//
-		// This function exists in EVM because a design issue
-		// (arguably a bug) in SELFDESTRUCT that can cause total
-		// issurance to be reduced. We do not need to replicate this.
+	fn reset_balance(&mut self, address: H160) {
+		// Address and target can be the same during SELFDESTRUCT. In that case we transfer the
+		// remaining balance to treasury
+		let source = T::AddressMapping::get_account_id(&address);
+		let balance = T::Currency::free_balance(&source);
+		if !balance.is_zero() {
+			if let Err(e) = T::Currency::transfer(
+				&source,
+				&T::TreasuryAccount::get(),
+				balance,
+				ExistenceRequirement::AllowDeath,
+			) {
+				debug_assert!(
+					false,
+					"Failed to transfer remaining balance to treasury with error: {:?}",
+					e
+				);
+			}
+		}
 	}
 
 	fn touch(&mut self, _address: H160) {

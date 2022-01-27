@@ -62,7 +62,7 @@ fn should_calculate_contract_address() {
 
 		let vicinity = Vicinity {
 			gas_price: U256::one(),
-			origin: Default::default(),
+			..Default::default()
 		};
 		let metadata = StackSubstateMetadata::new(1000, 1000, &ACALA_CONFIG);
 		let state = SubstrateStackState::<Runtime>::new(&vicinity, metadata);

@@ -676,6 +676,12 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 		self.state.basic(address).nonce
 	}
 
+	#[cfg(feature = "evm-tests")]
+	pub fn handle_mirrored_token(&self, address: H160) -> H160 {
+		address
+	}
+
+	#[cfg(not(feature = "evm-tests"))]
 	pub fn handle_mirrored_token(&self, address: H160) -> H160 {
 		log::debug!(
 			target: "evm",
@@ -1037,8 +1043,8 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 					for Log { address, topics, data } in logs {
 						match self.log(address, topics, data) {
 							Ok(_) => continue,
-							Err(e) => {
-								return Capture::Exit((ExitReason::Error(e), output));
+							Err(error) => {
+								return Capture::Exit((ExitReason::Error(error), output));
 							}
 						}
 					}
