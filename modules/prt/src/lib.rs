@@ -26,6 +26,8 @@
 #![allow(clippy::unused_unit)]
 #![allow(clippy::upper_case_acronyms)]
 
+use scale_info::TypeInfo;
+
 use frame_support::{
 	pallet_prelude::*,
 	traits::tokens::nonfungibles::{Inspect, Mutate},
@@ -37,10 +39,7 @@ use sp_runtime::traits::{BlockNumberProvider, Zero};
 use orml_traits::{MultiCurrencyExtended, MultiReservableCurrency, NFT};
 
 use module_support::GiltXcm;
-use primitives::{
-	nft::{Attributes, CID},
-	Balance, CurrencyId,
-};
+use primitives::{Balance, CurrencyId};
 
 // mod mock;
 // mod tests;
@@ -54,11 +53,11 @@ pub mod module {
 	pub type ActiveIndex = u32;
 	pub type ClassIdOf<T> = <T as orml_nft::Config>::ClassId;
 
-	#[derive(Encode, Decode, Clone, Default, Debug, Eq, PartialEq)]
+	#[derive(Encode, Decode, Clone, Default, Debug, Eq, PartialEq, TypeInfo)]
 	pub struct PrtMetadata<T: Config> {
-		pub index: ActiveIndex,
 		pub expiry: T::BlockNumber,
 		pub amount: Balance,
+		pub token_id: T::TokenId,
 	}
 
 	#[pallet::config]
@@ -90,8 +89,8 @@ pub mod module {
 		/// Origin used by Oracles. Used to confirm operations on the Relaychain.
 		type OracleOrigin: EnsureOrigin<Self::Origin>;
 
-		type NFTInterface: Inspect<Self::AccountId, ClassId = Self::ClassId, TokenId = Self::TokenId>
-			+ Mutate<AccountId, ClassId = Self::ClassId, TokenId = Self::TokenId>
+		type NFTInterface: Inspect<Self::AccountId, ClassId = Self::ClassId, InstanceId = Self::TokenId>
+			+ Mutate<Self::AccountId>
 			+ NFT<Self::AccountId>;
 	}
 
@@ -174,8 +173,7 @@ pub mod module {
 	/// Stores confirmed Gilt tokens that are issued on the Relaychain.
 	#[pallet::storage]
 	#[pallet::getter(fn issued_prt)]
-	type IssuedPrt<T: Config> =
-		StorageMap<_, Twox64Concat, ActiveIndex, (T::AccountId, Balance, T::BlockNumber, T::TokenId), OptionQuery>;
+	type IssuedPrt<T: Config> = StorageMap<_, Twox64Concat, ActiveIndex, PrtMetadata<T>, OptionQuery>;
 
 	/// Stores bids for Gilt tokens on the Relaychain.
 	#[pallet::storage]
@@ -347,19 +345,18 @@ pub mod module {
 				}
 			};
 
-			// Mint `bid_amount` amount of PRT into the user's account.
-			let metadata = PrtMetadata::<T> { index, expiry, amount }.encode();
-			let token_id = T::NFTInterface::mint(
-				T::PalletAccount::get(),
-				bidder.clone(),
-				prt_class_id.unwrap(),
-				metadata,
-				Default::default(),
-				1u32,
-			)?[0];
+			let token_id = T::NFTInterface::next_token_id(Self::prt_class_id());
+			T::NftInterface::mint_into(Self::prt_class_id(), token_id, &bidder)?;
 
-			// Update record storage
-			IssuedPrt::<T>::insert(index, (bidder.clone(), amount, expiry, token_id));
+			// Create a record of the PRT and insert it into storage
+			let metadata = IssuedPrt::<T>::insert(
+				index,
+				PrtMetadata {
+					expiry,
+					amount,
+					token_id,
+				},
+			);
 
 			Self::deposit_event(Event::PrtIssued {
 				who: bidder.clone(),
@@ -384,19 +381,27 @@ pub mod module {
 			ensure!(Self::prt_class_id().is_some(), Error::<T>::PrtClassIdNotSet);
 
 			// Ensure the PRT exists.
-			let prt_issued = Self::issued_prt(index);
-			ensure!(prt_issued.is_some(), Error::<T>::PrtNotIssued);
-			let (owner, amount, expiry, _) = prt_issued.unwrap(); // Guaranteed to be valid
-			ensure!(owner == who, Error::<T>::CallerUnauthorized);
+			let maybe_prt_issued = Self::issued_prt(index);
+			ensure!(maybe_prt_issued.is_some(), Error::<T>::PrtNotIssued);
+
+			// Ensure the caller is the owner of the PRT.
+			let prt_issued = maybe_prt_issued.unwrap(); // Guaranteed to be some
+			let maybe_owner = T::NFTInterface::owner(Self::prt_class_id(), prt_issued.token_id);
+			ensure!(maybe_owner.is_some(), Error::<T>::PrtNotIssued);
+			ensure!(maybe_owner.unwrap() == who, Error::<T>::CallerUnauthorized);
 			ensure!(
-				T::RelayChainBlockNumber::current_block_number() >= expiry,
+				T::RelayChainBlockNumber::current_block_number() >= prt_issued.expiry,
 				Error::<T>::PrtNotExpired
 			);
 
 			// Send the XCM to the relaychain to request thaw.
 			T::RelaychainInterface::gilt_thaw(index)?;
 
-			Self::deposit_event(Event::ThawRequested { index, who, amount });
+			Self::deposit_event(Event::ThawRequested {
+				index,
+				who,
+				amount: prt_issued.amount,
+			});
 			Ok(())
 		}
 
@@ -411,34 +416,29 @@ pub mod module {
 			ensure!(Self::prt_class_id().is_some(), Error::<T>::PrtClassIdNotSet);
 
 			// Ensure the PRT exists.
-			let prt_issued = Self::issued_prt(index);
-			ensure!(prt_issued.is_some(), Error::<T>::PrtNotIssued);
-			let (owner, amount, _, token_id) = prt_issued.unwrap(); // Guaranteed to be valid.
+			let maybe_prt_issued = Self::issued_prt(index);
+			ensure!(maybe_prt_issued.is_some(), Error::<T>::PrtNotIssued);
 
-			// Find the NFT and burn it
-			T::NFTInterface::burn(owner.clone(), (Self::prt_class_id().unwrap(), token_id), None)?;
+			// Ensure the caller is the owner of the PRT.
+			let prt_issued = maybe_prt_issued.unwrap(); // Guaranteed to be Some()
+			let maybe_owner = T::NFTInterface::owner(Self::prt_class_id(), prt_issued.token_id);
+			ensure!(maybe_owner.is_some(), Error::<T>::PrtNotIssued);
+			let owner = maybe_owner.unwrap(); // Guaranteed to be Some()
+								  // Find the NFT and burn it
+			T::NFTInterface::burn_from(Self::prt_class_id(), prt_issued.token_id)?;
 
 			// Unreserve the user's locked relaychain currencies.
-			let remaining = T::Currency::unreserve(T::RelaychainCurrency::get(), &owner, amount);
+			let remaining = T::Currency::unreserve(T::RelaychainCurrency::get(), &owner, prt_issued.amount);
 			ensure!(remaining.is_zero(), Error::<T>::InsufficientBalance);
 
 			Self::deposit_event(Event::PrtThawed {
 				who: owner,
 				active_index: index,
-				amount: amount,
+				amount: prt_issued.amount,
 			});
 			Ok(())
 		}
 	}
 }
 
-impl<T: Config> Pallet<T> {
-	pub fn encode_prt_metadata(index: ActiveIndex, expiry: T::BlockNumber, amount: Balance) -> Vec<u8> {
-		let mut encoded = vec![];
-		encoded.append(&mut index.encode());
-		encoded.append(&mut expiry.encode());
-		encoded.append(&mut amount.encode());
-
-		encoded
-	}
-}
+impl<T: Config> Pallet<T> {}

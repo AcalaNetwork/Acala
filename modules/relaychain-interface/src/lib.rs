@@ -29,7 +29,7 @@
 
 use frame_support::{log, pallet_prelude::*, transactional, weights::Weight};
 use frame_system::pallet_prelude::*;
-use module_support::{CallBuilder, HomaSubAccountXcm};
+use module_support::{CallBuilder, GiltXcm, HomaSubAccountXcm};
 use orml_traits::XcmTransfer;
 use primitives::{Balance, CurrencyId, EraIndex};
 use scale_info::TypeInfo;
@@ -51,6 +51,10 @@ pub mod module {
 		HomaWithdrawUnbonded,
 		HomaBondExtra,
 		HomaUnbond,
+		// PRT + Gilt
+		GiltPlaceBid,
+		GiltRetractBid,
+		GiltThaw,
 	}
 
 	#[pallet::config]
@@ -236,6 +240,65 @@ pub mod module {
 		/// The fee of cross-chain transfer is deducted from the recipient.
 		fn get_xcm_transfer_fee() -> Balance {
 			Self::xcm_dest_weight_and_fee(RelaychainInterfaceOperation::XtokensTransfer).1
+		}
+	}
+
+	impl<T: Config> GiltXcm<Balance> for Pallet<T> {
+		// Send XCM message to the relaychain to place a bid to buy Gilt via pallet-gilt.
+		fn gilt_place_bid(amount: Balance, duration: u32) -> DispatchResult {
+			let (xcm_dest_weight, xcm_fee) = Self::xcm_dest_weight_and_fee(RelaychainInterfaceOperation::GiltPlaceBid);
+			let xcm_message = T::RelayChainCallBuilder::finalize_call_into_xcm_message(
+				T::RelayChainCallBuilder::gilt_place_bid(amount, duration),
+				xcm_fee,
+				xcm_dest_weight,
+			);
+			let result = pallet_xcm::Pallet::<T>::send_xcm(Here, Parent, xcm_message);
+			log::debug!(
+				target: "relaychain-interface",
+				"Gilt bid placed: amount: {:?}, duration: {:?}, result: {:?}",
+				amount, duration, result
+			);
+
+			ensure!(result.is_ok(), Error::<T>::XcmFailed);
+			Ok(())
+		}
+
+		// Send XCM me	ssage to retract a bid to buy Gilt.
+		fn gilt_retract_bid(amount: Balance, duration: u32) -> DispatchResult {
+			let (xcm_dest_weight, xcm_fee) =
+				Self::xcm_dest_weight_and_fee(RelaychainInterfaceOperation::GiltRetractBid);
+			let xcm_message = T::RelayChainCallBuilder::finalize_call_into_xcm_message(
+				T::RelayChainCallBuilder::gilt_retract_bid(amount, duration),
+				xcm_fee,
+				xcm_dest_weight,
+			);
+			let result = pallet_xcm::Pallet::<T>::send_xcm(Here, Parent, xcm_message);
+			log::debug!(
+				target: "relaychain-interface",
+				"Gilt bid retracted: amount: {:?}, duration: {:?}, result: {:?}",
+				amount, duration, result
+			);
+
+			ensure!(result.is_ok(), Error::<T>::XcmFailed);
+			Ok(())
+		}
+		// Send XCM message to exchange Gilt in order to thaw frozen assets.
+		fn gilt_thaw(index: u32) -> DispatchResult {
+			let (xcm_dest_weight, xcm_fee) = Self::xcm_dest_weight_and_fee(RelaychainInterfaceOperation::GiltThaw);
+			let xcm_message = T::RelayChainCallBuilder::finalize_call_into_xcm_message(
+				T::RelayChainCallBuilder::gilt_thaw(index),
+				xcm_fee,
+				xcm_dest_weight,
+			);
+			let result = pallet_xcm::Pallet::<T>::send_xcm(Here, Parent, xcm_message);
+			log::debug!(
+				target: "relaychain-interface",
+				"Gilt thaw requested: index: {:?}, result: {:?}",
+				index, result
+			);
+
+			ensure!(result.is_ok(), Error::<T>::XcmFailed);
+			Ok(())
 		}
 	}
 }

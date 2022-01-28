@@ -661,3 +661,12 @@ pub trait HomaSubAccountXcm<AccountId, Balance> {
 	/// The fee of cross-chain transfer is deducted from the recipient.
 	fn get_xcm_transfer_fee() -> Balance;
 }
+
+pub trait GiltXcm<Balance> {
+	// Send XCM message to the relaychain to place a bid to buy Gilt via pallet-gilt.
+	fn gilt_place_bid(amount: Balance, duration: u32) -> DispatchResult;
+	// Send XCM message to retract a bid to buy Gilt.
+	fn gilt_retract_bid(amount: Balance, duration: u32) -> DispatchResult;
+	// Send XCM message to exchange Gilt in order to thaw frozen assets.
+	fn gilt_thaw(index: u32) -> DispatchResult;
+}
