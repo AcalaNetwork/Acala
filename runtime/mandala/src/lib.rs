@@ -1795,6 +1795,21 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 					None
 				}
 			}
+			// adapt for reanchor canonical location: https://github.com/paritytech/polkadot/pull/4470
+			MultiLocation {
+				parents: 0,
+				interior: X1(GeneralKey(key)),
+			} => {
+				let key = &key[..];
+				if let Ok(currency_id) = CurrencyId::decode(&mut &*key) {
+					match currency_id {
+						Token(ACA) | Token(AUSD) | Token(LDOT) | Token(RENBTC) => Some(currency_id),
+						_ => None,
+					}
+				} else {
+					None
+				}
+			}
 			_ => None,
 		}
 	}

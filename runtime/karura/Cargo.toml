@@ -324,4 +324,4 @@ try-runtime = [
 	"module-session-manager/try-runtime",
 ]
 
-only-integration-test = []
+integration-tests = []

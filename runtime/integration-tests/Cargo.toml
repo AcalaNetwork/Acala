@@ -113,7 +113,7 @@ primitives = { package = "acala-primitives", path = "../../primitives" }
 runtime-common = { path = "../common" }
 
 mandala-runtime = { path = "../mandala" }
-karura-runtime = { path = "../karura", features = ["only-integration-test"] }
+karura-runtime = { path = "../karura", features = ["integration-tests"] }
 acala-runtime = { path = "../acala" }
 
 module-evm-rpc-runtime-api = { path = "../../modules/evm/rpc/runtime_api",  default-features = false }

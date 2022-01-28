@@ -1556,7 +1556,7 @@ parameter_types! {
 	pub ForeignAssetUnitsPerSecond: u128 = kar_per_second();
 	pub KarPerSecondAsBased: u128 = kar_per_second();
 }
-#[cfg(feature = "only-integration-test")]
+#[cfg(feature = "integration-tests")]
 parameter_types! {
 	pub const ParachainIdForTest: u32 = 2000;
 	pub KarPerSecondOfCanonicalLocation: (AssetId, u128) = (
@@ -1583,7 +1583,7 @@ parameter_types! {
 	);
 }
 
-#[cfg(feature = "only-integration-test")]
+#[cfg(feature = "integration-tests")]
 pub type Trader = (
 	TransactionFeePoolTrader<Runtime, CurrencyIdConvert, KarPerSecondAsBased, ToTreasury>,
 	FixedRateOfFungible<KsmPerSecond, ToTreasury>,
@@ -1595,7 +1595,7 @@ pub type Trader = (
 	FixedRateOfForeignAsset<Runtime, ForeignAssetUnitsPerSecond, ToTreasury>,
 );
 
-#[cfg(not(feature = "only-integration-test"))]
+#[cfg(not(feature = "integration-tests"))]
 pub type Trader = (
 	TransactionFeePoolTrader<Runtime, CurrencyIdConvert, KarPerSecondAsBased, ToTreasury>,
 	FixedRateOfFungible<KsmPerSecond, ToTreasury>,
@@ -1761,7 +1761,7 @@ pub type LocalAssetTransactor = MultiCurrencyAdapter<
 
 //TODO: use token registry currency type encoding
 fn native_currency_location(id: CurrencyId) -> MultiLocation {
-	if cfg!(feature = "only-integration-test") {
+	if cfg!(feature = "integration-tests") {
 		MultiLocation::new(1, X2(Parachain(ParachainIdForTest::get()), GeneralKey(id.encode())))
 	} else {
 		MultiLocation::new(1, X2(Parachain(ParachainInfo::get().into()), GeneralKey(id.encode())))
@@ -1810,9 +1810,9 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 					GeneralKey(parachains::kintsugi::KBTC_KEY.to_vec()),
 				),
 			)),
-			#[cfg(feature = "only-integration-test")]
+			#[cfg(feature = "integration-tests")]
 			Token(RMRK) => Some(MultiLocation::new(1, X2(Parachain(2001), GeneralIndex(8)))),
-			#[cfg(feature = "only-integration-test")]
+			#[cfg(feature = "integration-tests")]
 			Token(RMRKV2) => Some(MultiLocation::new(
 				1,
 				X3(Parachain(2001), PalletInstance(53), GeneralIndex(8)),
@@ -1836,12 +1836,12 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 		}
 
 		match location {
-			#[cfg(feature = "only-integration-test")]
+			#[cfg(feature = "integration-tests")]
 			MultiLocation {
 				parents: 1,
 				interior: X2(Parachain(2001), GeneralIndex(8)),
 			} => Some(Token(RMRK)),
-			#[cfg(feature = "only-integration-test")]
+			#[cfg(feature = "integration-tests")]
 			MultiLocation {
 				parents: 1,
 				interior: X3(Parachain(2001), PalletInstance(53), GeneralIndex(8)),
@@ -1869,7 +1869,7 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 							None
 						}
 					}
-					#[cfg(feature = "only-integration-test")]
+					#[cfg(feature = "integration-tests")]
 					(id, key) if id == ParachainIdForTest::get() => {
 						if let Ok(currency_id) = CurrencyId::decode(&mut &*key) {
 							match currency_id {
@@ -1887,17 +1887,17 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 				parents: 1,
 				interior: X1(Parachain(parachains::phala::ID)),
 			} => Some(Token(PHA)),
+			// adapt for reanchor canonical location: https://github.com/paritytech/polkadot/pull/4470
 			MultiLocation {
 				parents: 0,
 				interior: X1(GeneralKey(key)),
 			} => match &key[..] {
-				#[cfg(feature = "only-integration-test")]
+				#[cfg(feature = "integration-tests")]
 				parachains::bifrost::BNC_KEY => Some(Token(BNC)),
 				key => {
 					if let Ok(currency_id) = CurrencyId::decode(&mut &*key) {
 						match currency_id {
 							Token(KAR) | Token(KUSD) | Token(LKSM) => Some(currency_id),
-							Token(BNC) => Some(currency_id),
 							_ => None,
 						}
 					} else {
