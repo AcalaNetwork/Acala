@@ -585,10 +585,8 @@ impl<T: Config> Mutate<T::AccountId> for Pallet<T> {
 	/// By default, this is not a supported operation.
 	fn burn_from(class: &Self::ClassId, instance: &Self::InstanceId) -> DispatchResult {
 		// Get the owner of the token
-		let maybe_class_info = orml_nft::Pallet::<T>::tokens(class, instance);
-		ensure!(maybe_class_info.is_some(), Error::<T>::TokenIdNotFound);
-		let owner = maybe_class_info.unwrap().owner;
-
-		Self::do_burn(owner, (*class, *instance), None)
+		let maybe_owner = <Self as Inspect<T::AccountId>>::owner(class, instance);
+		ensure!(maybe_owner.is_some(), Error::<T>::TokenIdNotFound);
+		Self::do_burn(maybe_owner.unwrap(), (*class, *instance), None)
 	}
 }
