@@ -72,7 +72,7 @@ pub use xcm::latest::prelude::*;
 pub use xcm_builder::{
 	AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom, AllowTopLevelPaidExecutionFrom,
 	AllowUnpaidExecutionFrom, EnsureXcmOrigin, FixedRateOfFungible, FixedWeightBounds, IsConcrete, LocationInverter,
-	NativeAsset, ParentAsSuperuser, ParentIsPreset, RelayChainAsNative, SiblingParachainAsNative,
+	NativeAsset, ParentAsSuperuser, ParentIsDefault, RelayChainAsNative, SiblingParachainAsNative,
 	SiblingParachainConvertsVia, SignedAccountId32AsNative, SignedToAccountId32, SovereignSignedViaLocation,
 	TakeRevenue, TakeWeightCredit,
 };
@@ -1444,7 +1444,7 @@ parameter_types! {
 /// `Transact` in order to determine the dispatch Origin.
 pub type LocationToAccountId = (
 	// The parent (Relay-chain) origin converts to the default `AccountId`.
-	ParentIsPreset<AccountId>,
+	ParentIsDefault<AccountId>,
 	// Sibling parachain origins convert to AccountId via the `ParaId::into`.
 	SiblingParachainConvertsVia<Sibling, AccountId>,
 	// Straight up local `AccountId32` origins just alias directly to `AccountId`.
@@ -1954,6 +1954,7 @@ impl Convert<AccountId, MultiLocation> for AccountIdToMultiLocation {
 
 parameter_types! {
 	pub const BaseXcmWeight: Weight = 100_000_000;
+	pub const MaxAssetsForTransfer: usize = 2;
 }
 
 impl orml_xtokens::Config for Runtime {
@@ -1967,6 +1968,7 @@ impl orml_xtokens::Config for Runtime {
 	type Weigher = FixedWeightBounds<UnitWeightCost, Call, MaxInstructions>;
 	type BaseXcmWeight = BaseXcmWeight;
 	type LocationInverter = LocationInverter<Ancestry>;
+	type MaxAssetsForTransfer = MaxAssetsForTransfer;
 }
 
 impl orml_unknown_tokens::Config for Runtime {

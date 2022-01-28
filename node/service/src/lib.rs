@@ -540,13 +540,17 @@ where
 			>(BuildAuraConsensusParams {
 				proposer_factory,
 				create_inherent_data_providers: move |_, (relay_parent, validation_data)| {
-					let parachain_inherent = cumulus_primitives_parachain_inherent::ParachainInherentData::create_at(
-						relay_parent,
-						&relay_chain_interface,
-						&validation_data,
-						id,
-					);
+					let relay_chain_interface = relay_chain_interface.clone();
 					async move {
+						let parachain_inherent =
+							cumulus_primitives_parachain_inherent::ParachainInherentData::create_at(
+								relay_parent,
+								&relay_chain_interface,
+								&validation_data,
+								id,
+							)
+							.await;
+
 						let time = sp_timestamp::InherentDataProvider::from_system_time();
 
 						let slot = sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_duration(
