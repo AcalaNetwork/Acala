@@ -214,7 +214,6 @@ pub mod module {
 			metadata: CID,
 			properties: Properties,
 			attributes: Attributes,
-			delegate: Option<T::AccountId>,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 			let next_id = orml_nft::Pallet::<T>::next_class_id();
@@ -233,10 +232,6 @@ pub mod module {
 
 			// owner add proxy delegate to origin
 			<pallet_proxy::Pallet<T>>::add_proxy_delegate(&owner, who, Default::default(), Zero::zero())?;
-
-			if let Some(co_owner) = delegate {
-				<pallet_proxy::Pallet<T>>::add_proxy_delegate(&owner, co_owner, Default::default(), Zero::zero())?;
-			}
 
 			let data = ClassData {
 				deposit,
