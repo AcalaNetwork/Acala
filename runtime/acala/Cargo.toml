@@ -37,6 +37,7 @@ pallet-transaction-payment = { git = "https://github.com/paritytech/substrate", 
 pallet-transaction-payment-rpc-runtime-api = { git = "https://github.com/paritytech/substrate", branch = "master", default-features = false }
 pallet-treasury = { git = "https://github.com/paritytech/substrate", branch = "master", default-features = false }
 pallet-utility = { git = "https://github.com/paritytech/substrate", branch = "master", default-features = false }
+pallet-preimage = { git = "https://github.com/paritytech/substrate", branch = "master", default-features = false }
 sp-api = { git = "https://github.com/paritytech/substrate", branch = "master", default-features = false }
 sp-application-crypto = { git = "https://github.com/paritytech/substrate", branch = "master", default-features = false }
 sp-block-builder = { git = "https://github.com/paritytech/substrate", branch = "master", default-features = false }
@@ -157,6 +158,7 @@ std = [
 	"pallet-transaction-payment-rpc-runtime-api/std",
 	"pallet-treasury/std",
 	"pallet-utility/std",
+	"pallet-preimage/std",
 	"sp-api/std",
 	"sp-block-builder/std",
 	"sp-consensus-aura/std",
@@ -291,6 +293,7 @@ try-runtime = [
 	"pallet-utility/try-runtime",
 	"pallet-bounties/try-runtime",
 	"pallet-tips/try-runtime",
+	"pallet-preimage/try-runtime",
 
 	"orml-auction/try-runtime",
 	"orml-authority/try-runtime",
