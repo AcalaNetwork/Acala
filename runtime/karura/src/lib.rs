@@ -1558,14 +1558,22 @@ parameter_types! {
 }
 #[cfg(feature = "only-integration-test")]
 parameter_types! {
-	pub KarPerSecond2: (AssetId, u128) = (
+	pub const ParachainIdForTest: u32 = 2000;
+	pub KarPerSecondOfCanonicalLocation: (AssetId, u128) = (
 		MultiLocation::new(
 			0,
 			X1(GeneralKey(KAR.encode())),
 		).into(),
 		kar_per_second()
 	);
-	pub BncPerSecond2: (AssetId, u128) = (
+	pub KarPerSecondForNativeAssetTest: (AssetId, u128) = (
+		MultiLocation::new(
+			1,
+			X2(Parachain(ParachainIdForTest::get()), GeneralKey(KAR.encode())),
+		).into(),
+		kar_per_second()
+	);
+	pub BncPerSecondOfCanonicalLocation: (AssetId, u128) = (
 		MultiLocation::new(
 			0,
 			X1(GeneralKey(parachains::bifrost::BNC_KEY.to_vec())),
@@ -1580,9 +1588,10 @@ pub type Trader = (
 	TransactionFeePoolTrader<Runtime, CurrencyIdConvert, KarPerSecondAsBased, ToTreasury>,
 	FixedRateOfFungible<KsmPerSecond, ToTreasury>,
 	FixedRateOfFungible<KarPerSecond, ToTreasury>,
-	FixedRateOfFungible<KarPerSecond2, ToTreasury>,
+	FixedRateOfFungible<KarPerSecondForNativeAssetTest, ToTreasury>,
+	FixedRateOfFungible<KarPerSecondOfCanonicalLocation, ToTreasury>,
 	FixedRateOfFungible<BncPerSecond, ToTreasury>,
-	FixedRateOfFungible<BncPerSecond2, ToTreasury>,
+	FixedRateOfFungible<BncPerSecondOfCanonicalLocation, ToTreasury>,
 	FixedRateOfForeignAsset<Runtime, ForeignAssetUnitsPerSecond, ToTreasury>,
 );
 
@@ -1752,7 +1761,11 @@ pub type LocalAssetTransactor = MultiCurrencyAdapter<
 
 //TODO: use token registry currency type encoding
 fn native_currency_location(id: CurrencyId) -> MultiLocation {
-	MultiLocation::new(1, X2(Parachain(ParachainInfo::get().into()), GeneralKey(id.encode())))
+	if cfg!(feature = "only-integration-test") {
+		MultiLocation::new(1, X2(Parachain(ParachainIdForTest::get()), GeneralKey(id.encode())))
+	} else {
+		MultiLocation::new(1, X2(Parachain(ParachainInfo::get().into()), GeneralKey(id.encode())))
+	}
 }
 
 pub struct CurrencyIdConvert;
@@ -1853,6 +1866,17 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 							}
 						} else {
 							// invalid general key
+							None
+						}
+					}
+					#[cfg(feature = "only-integration-test")]
+					(id, key) if id == ParachainIdForTest::get() => {
+						if let Ok(currency_id) = CurrencyId::decode(&mut &*key) {
+							match currency_id {
+								Token(KAR) | Token(KUSD) | Token(LKSM) => Some(currency_id),
+								_ => None,
+							}
+						} else {
 							None
 						}
 					}
