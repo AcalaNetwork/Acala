@@ -1,0 +1,41 @@
+[package]
+name = "module-prt"
+version = "2.2.1"
+authors = ["Acala Developers"]
+edition = "2021"
+
+[dependencies]
+serde = { version = "1.0.124", optional = true }
+scale-info = { version = "1.0", default-features = false, features = ["derive"] }
+codec = { package = "parity-scale-codec", version = "2.3.1", default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.13", default-features = false }
+sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.13", default-features = false }
+frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.13", default-features = false }
+frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.13", default-features = false }
+
+orml-nft = { path = "../../orml/nft", default-features = false }
+orml-traits = { path = "../../orml/traits", default-features = false }
+
+primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
+module-support = { path = "../../modules/support", default-features = false }
+
+[dev-dependencies]
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.13" }
+sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.13" }
+
+[features]
+default = ["std"]
+std = [
+	"serde",
+	"scale-info/std",
+	"codec/std",
+	"sp-runtime/std",
+	"sp-std/std",
+	"frame-support/std",
+	"frame-system/std",
+	"orml-nft/std",
+	"orml-traits/std",
+	"primitives/std",
+	"module-support/std",
+]
+try-runtime = ["frame-support/try-runtime"]
