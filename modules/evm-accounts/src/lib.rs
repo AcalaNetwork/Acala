@@ -126,7 +126,6 @@ pub mod module {
 	pub type EvmAddresses<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, EvmAddress, OptionQuery>;
 
 	#[pallet::pallet]
-	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
 	#[pallet::hooks]
