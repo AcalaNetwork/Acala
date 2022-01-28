@@ -25,6 +25,7 @@ use frame_support::{
 	pallet_prelude::*,
 	require_transactional,
 	traits::{
+		tokens::nonfungibles::{Inspect, Mutate},
 		Currency,
 		ExistenceRequirement::{AllowDeath, KeepAlive},
 		NamedReservableCurrency,
@@ -32,7 +33,7 @@ use frame_support::{
 	transactional, PalletId,
 };
 use frame_system::pallet_prelude::*;
-use orml_traits::{BurnNFT, MintNFT, NFT};
+use orml_traits::NFT;
 use primitives::{
 	nft::{Attributes, ClassProperty, NFTBalance, Properties, CID},
 	ReserveIdentifier,
@@ -148,6 +149,8 @@ pub mod module {
 		Immutable,
 		/// Attributes too large
 		AttributesTooLarge,
+		/// The given token ID is not correct
+		IncorrectTokenId,
 	}
 
 	#[pallet::event]
@@ -211,6 +214,7 @@ pub mod module {
 			metadata: CID,
 			properties: Properties,
 			attributes: Attributes,
+			delegate: Option<T::AccountId>,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 			let next_id = orml_nft::Pallet::<T>::next_class_id();
@@ -229,6 +233,10 @@ pub mod module {
 
 			// owner add proxy delegate to origin
 			<pallet_proxy::Pallet<T>>::add_proxy_delegate(&owner, who, Default::default(), Zero::zero())?;
+
+			if let Some(co_owner) = delegate {
+				<pallet_proxy::Pallet<T>>::add_proxy_delegate(&owner, co_owner, Default::default(), Zero::zero())?;
+			}
 
 			let data = ClassData {
 				deposit,
@@ -519,38 +527,73 @@ impl<T: Config> NFT<T::AccountId> for Pallet<T> {
 	fn transfer(from: &T::AccountId, to: &T::AccountId, token: (Self::ClassId, Self::TokenId)) -> DispatchResult {
 		Self::do_transfer(from, to, token)
 	}
-}
 
-impl<T: Config> MintNFT<T::AccountId, CID, Attributes> for Pallet<T> {
-	/// To mint a single new NFT tokens.
-	fn mint(
-		who: T::AccountId,
-		to: T::AccountId,
-		class_id: Self::ClassId,
-		metadata: CID,
-		attributes: Attributes,
-	) -> Result<Self::TokenId, DispatchError> {
-		let token_id = Self::do_mint(who, to, class_id, metadata, attributes, 1u32)?;
-		ensure!(token_id.len() == 1, Error::<T>::NonMintable);
-		Ok(token_id[0])
-	}
-
-	/// To mint new NFT tokens.
-	fn batch_mint(
-		who: T::AccountId,
-		to: T::AccountId,
-		class_id: Self::ClassId,
-		metadata: CID,
-		attributes: Attributes,
-		quantity: u32,
-	) -> Result<Vec<Self::TokenId>, DispatchError> {
-		Self::do_mint(who, to, class_id, metadata, attributes, quantity)
+	fn next_token_id(class: Self::ClassId) -> Self::TokenId {
+		// Ensure the next token ID is correct
+		orml_nft::Pallet::<T>::next_token_id(class)
 	}
 }
 
-impl<T: Config> BurnNFT<T::AccountId, CID, Attributes> for Pallet<T> {
-	/// To burn a NFT token.
-	fn burn(who: T::AccountId, token: (Self::ClassId, Self::TokenId), remark: Option<Vec<u8>>) -> DispatchResult {
-		Self::do_burn(who, token, remark)
+impl<T: Config> Inspect<T::AccountId> for Pallet<T> {
+	type InstanceId = TokenIdOf<T>;
+	type ClassId = ClassIdOf<T>;
+
+	fn owner(class: &Self::ClassId, instance: &Self::InstanceId) -> Option<T::AccountId> {
+		orml_nft::Pallet::<T>::tokens(class, instance).map(|t| t.owner)
+	}
+
+	fn class_owner(class: &Self::ClassId) -> Option<T::AccountId> {
+		if let Some(class_info) = orml_nft::Pallet::<T>::classes(class) {
+			return Some(class_info.owner);
+		}
+		None
+	}
+
+	/// Returns `true` if the asset `instance` of `class` may be transferred.
+	///
+	/// Default implementation is that all assets are transferable.
+	fn can_transfer(class: &Self::ClassId, _: &Self::InstanceId) -> bool {
+		if let Some(class_info) = orml_nft::Pallet::<T>::classes(class) {
+			return class_info.data.properties.0.contains(ClassProperty::Transferable);
+		}
+		false
+	}
+}
+
+impl<T: Config> Mutate<T::AccountId> for Pallet<T> {
+	/// Mint some asset `instance` of `class` to be owned by `who`.
+	///
+	/// By default, this is not a supported operation.
+	fn mint_into(class: &Self::ClassId, instance: &Self::InstanceId, who: &T::AccountId) -> DispatchResult {
+		// Ensure the next token ID is correct
+		ensure!(
+			orml_nft::Pallet::<T>::next_token_id(class) == *instance,
+			Error::<T>::IncorrectTokenId
+		);
+
+		// Get the owner of the class and call do_mint
+		let class_info = orml_nft::Pallet::<T>::classes(class).ok_or(Error::<T>::ClassIdNotFound)?;
+
+		Self::do_mint(
+			class_info.owner,
+			who.clone(),
+			*class,
+			Default::default(),
+			Default::default(),
+			1u32,
+		)?;
+		Ok(())
+	}
+
+	/// Burn some asset `instance` of `class`.
+	///
+	/// By default, this is not a supported operation.
+	fn burn_from(class: &Self::ClassId, instance: &Self::InstanceId) -> DispatchResult {
+		// Get the owner of the token
+		let maybe_class_info = orml_nft::Pallet::<T>::tokens(class, instance);
+		ensure!(maybe_class_info.is_some(), Error::<T>::TokenIdNotFound);
+		let owner = maybe_class_info.unwrap().owner;
+
+		Self::do_burn(owner, (*class, *instance), None)
 	}
 }
