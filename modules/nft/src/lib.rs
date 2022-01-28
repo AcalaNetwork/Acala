@@ -25,7 +25,7 @@ use frame_support::{
 	pallet_prelude::*,
 	require_transactional,
 	traits::{
-		tokens::nonfungibles::{Inspect, Mutate},
+		tokens::nonfungibles::{Inspect, Mutate, Transfer},
 		Currency,
 		ExistenceRequirement::{AllowDeath, KeepAlive},
 		NamedReservableCurrency,
@@ -515,14 +515,6 @@ impl<T: Config> NFT<T::AccountId> for Pallet<T> {
 		orml_nft::TokensByOwner::<T>::iter_prefix((who,)).count() as u128
 	}
 
-	fn owner(token: (Self::ClassId, Self::TokenId)) -> Option<T::AccountId> {
-		orml_nft::Pallet::<T>::tokens(token.0, token.1).map(|t| t.owner)
-	}
-
-	fn transfer(from: &T::AccountId, to: &T::AccountId, token: (Self::ClassId, Self::TokenId)) -> DispatchResult {
-		Self::do_transfer(from, to, token)
-	}
-
 	fn next_token_id(class: Self::ClassId) -> Self::TokenId {
 		// Ensure the next token ID is correct
 		orml_nft::Pallet::<T>::next_token_id(class)
@@ -585,8 +577,18 @@ impl<T: Config> Mutate<T::AccountId> for Pallet<T> {
 	/// By default, this is not a supported operation.
 	fn burn_from(class: &Self::ClassId, instance: &Self::InstanceId) -> DispatchResult {
 		// Get the owner of the token
-		let maybe_owner = <Self as Inspect<T::AccountId>>::owner(class, instance);
+		let maybe_owner = Self::owner(class, instance);
 		ensure!(maybe_owner.is_some(), Error::<T>::TokenIdNotFound);
 		Self::do_burn(maybe_owner.unwrap(), (*class, *instance), None)
+	}
+}
+
+/// Trait for providing a non-fungible sets of assets which can only be transferred.
+impl<T: Config> Transfer<T::AccountId> for Pallet<T> {
+	/// Transfer asset `instance` of `class` into `destination` account.
+	fn transfer(class: &Self::ClassId, instance: &Self::InstanceId, destination: &T::AccountId) -> DispatchResult {
+		let maybe_owner = Self::owner(class, instance);
+		ensure!(maybe_owner.is_some(), Error::<T>::TokenIdNotFound);
+		Self::do_transfer(&maybe_owner.unwrap(), destination, (*class, *instance))
 	}
 }
