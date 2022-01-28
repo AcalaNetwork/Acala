@@ -446,6 +446,29 @@ impl<'config> SubstrateStackSubstate<'config> {
 			self.parent.as_ref().map(|p| p.recursive_is_cold(f)).unwrap_or(true)
 		}
 	}
+
+	#[cfg(feature = "evm-tests")]
+	fn original_storage(&self, address: H160, index: H256) -> Option<H256> {
+		if let Some(parent) = self.parent.as_ref() {
+			return parent.original_storage(address, index);
+		}
+		self.metadata
+			.original_storage
+			.borrow()
+			.get(&(address, index))
+			.map(|x| *x)
+	}
+
+	#[cfg(feature = "evm-tests")]
+	fn set_original_storage(&self, address: H160, index: H256, value: H256) {
+		if let Some(parent) = self.parent.as_ref() {
+			return parent.set_original_storage(address, index, value);
+		}
+		self.metadata
+			.original_storage
+			.borrow_mut()
+			.insert((address, index), value);
+	}
 }
 
 /// Substrate backend for EVM.
@@ -542,8 +565,20 @@ impl<'vicinity, 'config, T: Config> BackendT for SubstrateStackState<'vicinity, 
 		AccountStorages::<T>::get(&address, index)
 	}
 
+	#[cfg(not(feature = "evm-tests"))]
+	fn original_storage(&self, _address: H160, _index: H256) -> Option<H256> {
+		None
+	}
+
+	#[cfg(feature = "evm-tests")]
 	fn original_storage(&self, address: H160, index: H256) -> Option<H256> {
-		Some(self.storage(address, index))
+		if let Some(value) = self.substate.original_storage(address, index) {
+			Some(value)
+		} else {
+			let value = self.storage(address, index);
+			self.substate.set_original_storage(address, index, value);
+			Some(value)
+		}
 	}
 
 	fn block_base_fee_per_gas(&self) -> sp_core::U256 {
