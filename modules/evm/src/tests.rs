@@ -1925,6 +1925,7 @@ fn remove_account_with_provides_should_panic() {
 }
 
 #[test]
+#[should_panic(expected = "removed account while is still linked to contract info")]
 fn remove_account_works() {
 	new_test_ext().execute_with(|| {
 		let address = H160::from([1; 20]);
