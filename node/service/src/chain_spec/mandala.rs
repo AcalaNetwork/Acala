@@ -19,7 +19,7 @@
 use acala_primitives::{AccountId, Balance, Nonce, TokenSymbol};
 use ethers::signers::{coins_bip39::English, MnemonicBuilder, Signer};
 use hex_literal::hex;
-use module_evm::GenesisAccount;
+use module_evm::{AccountRole, GenesisAccount};
 use sc_chain_spec::ChainType;
 use sc_telemetry::TelemetryEndpoints;
 use serde_json::map::Map;
@@ -649,7 +649,7 @@ pub fn evm_genesis(evm_accounts: Vec<H160>) -> BTreeMap<H160, GenesisAccount<Bal
 			} else {
 				Bytes::from_str(&code_string).unwrap().0
 			},
-			enable_contract_development: false,
+			role: AccountRole::Contract,
 		};
 
 		let addr = H160::from_slice(
@@ -666,7 +666,7 @@ pub fn evm_genesis(evm_accounts: Vec<H160>) -> BTreeMap<H160, GenesisAccount<Bal
 			balance: 1000 * mandala_runtime::dollar(mandala_runtime::ACA),
 			storage: BTreeMap::new(),
 			code: vec![],
-			enable_contract_development: true,
+			role: AccountRole::Developer,
 		};
 		accounts.insert(dev_acc, account);
 	}

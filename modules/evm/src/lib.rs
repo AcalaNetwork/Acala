@@ -64,7 +64,7 @@ pub use primitives::{
 	convert_decimals_from_evm, convert_decimals_to_evm,
 	evm::{
 		CallInfo, CreateInfo, EvmAddress, ExecutionInfo, Vicinity, MIRRORED_NFT_ADDRESS_START,
-		MIRRORED_TOKENS_ADDRESS_START,
+		MIRRORED_TOKENS_ADDRESS_START, PREDEPLOY_ADDRESS_START,
 	},
 	task::TaskResult,
 	ReserveIdentifier,
@@ -319,6 +319,20 @@ pub mod module {
 		pub ref_count: u32,
 	}
 
+	#[derive(Clone, Copy, Eq, PartialEq, RuntimeDebug, Encode, Decode, MaxEncodedLen, TypeInfo)]
+	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+	pub enum AccountRole {
+		Account,
+		Contract,
+		Developer,
+	}
+
+	impl Default for AccountRole {
+		fn default() -> AccountRole {
+			AccountRole::Account
+		}
+	}
+
 	#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Default)]
 	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 	/// Account definition used for genesis block construction.
@@ -331,8 +345,8 @@ pub mod module {
 		pub storage: BTreeMap<H256, H256>,
 		/// Account code.
 		pub code: Vec<u8>,
-		/// If the account should enable contract development mode
-		pub enable_contract_development: bool,
+		/// The role of the account.
+		pub role: AccountRole,
 	}
 
 	/// The EVM accounts info.
@@ -424,17 +438,25 @@ pub mod module {
 				};
 				T::Currency::deposit_creating(&account_id, amount);
 
-				if account.enable_contract_development {
+				if account.role == AccountRole::Developer {
 					T::Currency::ensure_reserved_named(
 						&RESERVE_ID_DEVELOPER_DEPOSIT,
 						&account_id,
 						T::DeveloperDeposit::get(),
 					)
 					.expect("Failed to reserve developer deposit. Please make sure the account have enough balance.");
-				}
-
-				if !account.code.is_empty() {
+				} else if account.role == AccountRole::Contract {
 					// init contract
+					let code = if account.code.is_empty() {
+						// This is mirror token, get the code of token predeployed contract.
+						self.accounts
+							.get(&PREDEPLOY_ADDRESS_START)
+							.expect("Failed to get token predeployed code")
+							.code
+							.clone()
+					} else {
+						account.code.clone()
+					};
 
 					// Transactions are not supported by BasicExternalities
 					// Use the EVM Runtime
@@ -451,8 +473,7 @@ pub mod module {
 					let state = SubstrateStackState::<T>::new(&vicinity, metadata);
 					let mut executor = StackExecutor::new(state, T::config());
 
-					let mut runtime =
-						evm::Runtime::new(Rc::new(account.code.clone()), Rc::new(Vec::new()), context, T::config());
+					let mut runtime = evm::Runtime::new(Rc::new(code), Rc::new(Vec::new()), context, T::config());
 					let reason = executor.execute(&mut runtime);
 
 					assert!(
