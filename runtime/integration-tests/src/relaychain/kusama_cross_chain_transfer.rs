@@ -22,7 +22,7 @@ use crate::relaychain::kusama_test_net::*;
 use crate::setup::*;
 
 use frame_support::assert_ok;
-use sp_runtime::traits::{AccountIdConversion, TrailingZeroInput};
+use sp_runtime::traits::AccountIdConversion;
 use xcm_builder::ParentIsDefault;
 
 use karura_runtime::parachains::bifrost::BNC_KEY;
@@ -84,74 +84,6 @@ fn transfer_to_relay_chain() {
 			kusama_runtime::Balances::free_balance(&AccountId::from(BOB)),
 			999_893_333_340
 		);
-	});
-}
-
-#[test]
-fn transfer_self_chain_asset() {
-	TestNet::reset();
-
-	fn sibling_reserve_account() -> AccountId {
-		polkadot_parachain::primitives::Sibling::from(2001).into_account()
-	}
-
-	Karura::execute_with(|| {
-		let _ = Balances::deposit_creating(&AccountId::from(ALICE), 100_000_000_000_000);
-
-		assert_ok!(XTokens::transfer(
-			Origin::signed(ALICE.into()),
-			KAR,
-			10_000_000_000_000,
-			Box::new(
-				MultiLocation::new(
-					1,
-					X2(
-						Parachain(2001),
-						Junction::AccountId32 {
-							network: NetworkId::Any,
-							id: BOB.into(),
-						}
-					)
-				)
-				.into()
-			),
-			1_000_000_000_000,
-		));
-
-		assert_eq!(90_000_000_000_000, Balances::free_balance(&AccountId::from(ALICE)));
-		assert_eq!(10_000_000_000_000, Balances::free_balance(&sibling_reserve_account()));
-	});
-
-	Sibling::execute_with(|| {
-		assert_eq!(0, Tokens::free_balance(KAR, &AccountId::from(BOB)));
-		assert_eq!(9_993_600_000_000, Balances::free_balance(&AccountId::from(BOB)));
-
-		assert_ok!(XTokens::transfer(
-			Origin::signed(BOB.into()),
-			KAR,
-			1_000_000_000_000,
-			Box::new(
-				MultiLocation::new(
-					1,
-					X2(
-						Parachain(2000),
-						Junction::AccountId32 {
-							network: NetworkId::Any,
-							id: ALICE.into(),
-						}
-					)
-				)
-				.into()
-			),
-			1_000_000_000,
-		));
-
-		assert_eq!(8_993_600_000_000, Balances::free_balance(&AccountId::from(BOB)));
-	});
-
-	Karura::execute_with(|| {
-		assert_eq!(90_993_600_000_000, Balances::free_balance(&AccountId::from(ALICE)));
-		assert_eq!(9_000_000_000_000, Balances::free_balance(&sibling_reserve_account()));
 	});
 }
 
@@ -572,123 +504,6 @@ fn test_asset_registry_module() {
 		assert_eq!(
 			Tokens::free_balance(CurrencyId::ForeignAsset(0), &TreasuryAccount::get()),
 			20_480_000_000
-		);
-	});
-}
-
-#[test]
-fn asset_registry_location_update_prefix_works() {
-	TestNet::reset();
-
-	fn karura_reserve_account() -> AccountId {
-		polkadot_parachain::primitives::Sibling::from(2000).into_account()
-	}
-
-	Karura::execute_with(|| {
-		// register foreign asset
-		assert_ok!(AssetRegistry::register_foreign_asset(
-			Origin::root(),
-			// we use parachain 20001 mock as statemine
-			Box::new(MultiLocation::new(1, X2(Parachain(2001), GeneralIndex(8))).into()),
-			Box::new(AssetMetadata {
-				name: b"Statemine Asset".to_vec(),
-				symbol: b"RMRK".to_vec(),
-				decimals: 12,
-				minimal_balance: Balances::minimum_balance() / 10, // 10%
-			})
-		));
-	});
-
-	Sibling::execute_with(|| {
-		// the native asset of Sibling is KAR, so RMRK is consider as Token
-		assert_ok!(Tokens::deposit(RMRK, &AccountId::from(BOB), 100_000_000_000_000));
-
-		// Sibling will convert RMRK to location: (1, 2001, 8)
-		assert_ok!(XTokens::transfer(
-			Origin::signed(BOB.into()),
-			RMRK,
-			5_000_000_000_000,
-			Box::new(
-				MultiLocation::new(
-					1,
-					X2(
-						Parachain(2000),
-						Junction::AccountId32 {
-							network: NetworkId::Any,
-							id: ALICE.into(),
-						}
-					)
-				)
-				.into()
-			),
-			1_000_000_000,
-		));
-
-		assert_eq!(Tokens::free_balance(RMRK, &karura_reserve_account()), 5_000_000_000_000);
-		assert_eq!(Tokens::free_balance(RMRK, &AccountId::from(BOB)), 95_000_000_000_000);
-	});
-
-	Karura::execute_with(|| {
-		// Karura received (1, 2001, 8) and regard it as ForeignAsset(0)
-		assert_eq!(
-			Tokens::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(ALICE)),
-			4_999_360_000_000
-		);
-
-		// update foreign asset location with PalletInstance prefix before asset
-		assert_ok!(AssetRegistry::update_foreign_asset(
-			Origin::root(),
-			0,
-			Box::new(MultiLocation::new(1, X3(Parachain(2001), PalletInstance(53), GeneralIndex(8))).into()),
-			Box::new(AssetMetadata {
-				name: b"Statemine Token".to_vec(),
-				symbol: b"RMRK".to_vec(),
-				decimals: 12,
-				minimal_balance: Balances::minimum_balance() / 10, // 10%
-			})
-		));
-	});
-
-	Sibling::execute_with(|| {
-		// Sibling will convert RMRKV2 to location: (1, 2001, 53, 8)
-		assert_ok!(XTokens::transfer(
-			Origin::signed(BOB.into()),
-			RMRKV2,
-			5_000_000_000_000,
-			Box::new(
-				MultiLocation::new(
-					1,
-					X2(
-						Parachain(2000),
-						Junction::AccountId32 {
-							network: NetworkId::Any,
-							id: ALICE.into(),
-						}
-					)
-				)
-				.into()
-			),
-			1_000_000_000,
-		));
-
-		assert_eq!(
-			10_000_000_000_000,
-			Tokens::free_balance(RMRK, &karura_reserve_account())
-		);
-		assert_eq!(90_000_000_000_000, Tokens::free_balance(RMRK, &AccountId::from(BOB)));
-	});
-
-	Karura::execute_with(|| {
-		// Karura received (1, 2001, 53, 8) and also regard it as ForeignAsset(0)
-		assert_eq!(
-			Tokens::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(ALICE)),
-			4_999_360_000_000 * 2
-		);
-
-		// ToTreasury
-		assert_eq!(
-			Tokens::free_balance(CurrencyId::ForeignAsset(0), &TreasuryAccount::get()),
-			640_000_000 * 2
 		);
 	});
 }

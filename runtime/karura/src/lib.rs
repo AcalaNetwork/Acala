@@ -122,6 +122,11 @@ mod authority;
 mod benchmarking;
 pub mod constants;
 
+#[cfg(feature = "integration-tests")]
+mod integration_tests_config;
+#[cfg(feature = "integration-tests")]
+use integration_tests_config::*;
+
 /// This runtime version.
 #[sp_version::runtime_version]
 pub const VERSION: RuntimeVersion = RuntimeVersion {
@@ -764,7 +769,6 @@ parameter_type_with_key! {
 				TokenSymbol::KINT => 13333 * microcent(*currency_id), // 1.33 KINT = 1 KSM
 				TokenSymbol::KBTC => 66 * microcent(*currency_id), // 1KBTC = 150 KSM
 				TokenSymbol::TAI => dollar(*currency_id), // 1 KUSD = 100 TAI
-				TokenSymbol::RMRK | TokenSymbol::RMRKV2 => cent(*currency_id),
 
 				TokenSymbol::ACA |
 				TokenSymbol::AUSD |
@@ -925,8 +929,8 @@ impl orml_vesting::Config for Runtime {
 parameter_types! {
 	pub MaximumSchedulerWeight: Weight = Perbill::from_percent(10) * RuntimeBlockWeights::get().max_block;
 	pub const MaxScheduledPerBlock: u32 = 10;
-	// Retry a scheduled item every 10 blocks (1 minute) until the preimage exists.
-	pub const NoPreimagePostponement: Option<u32> = Some(10);
+	// Retry a scheduled item every 25 blocks (5 minute) until the preimage exists.
+	pub const NoPreimagePostponement: Option<u32> = Some(25);
 }
 
 impl pallet_scheduler::Config for Runtime {
@@ -1571,44 +1575,6 @@ parameter_types! {
 	pub ForeignAssetUnitsPerSecond: u128 = kar_per_second();
 	pub KarPerSecondAsBased: u128 = kar_per_second();
 }
-#[cfg(feature = "integration-tests")]
-parameter_types! {
-	pub const ParachainIdForTest: u32 = 2000;
-	pub KarPerSecondOfCanonicalLocation: (AssetId, u128) = (
-		MultiLocation::new(
-			0,
-			X1(GeneralKey(KAR.encode())),
-		).into(),
-		kar_per_second()
-	);
-	pub KarPerSecondForNativeAssetTest: (AssetId, u128) = (
-		MultiLocation::new(
-			1,
-			X2(Parachain(ParachainIdForTest::get()), GeneralKey(KAR.encode())),
-		).into(),
-		kar_per_second()
-	);
-	pub BncPerSecondOfCanonicalLocation: (AssetId, u128) = (
-		MultiLocation::new(
-			0,
-			X1(GeneralKey(parachains::bifrost::BNC_KEY.to_vec())),
-		).into(),
-		// BNC:KSM = 80:1
-		ksm_per_second() * 80
-	);
-}
-
-#[cfg(feature = "integration-tests")]
-pub type Trader = (
-	TransactionFeePoolTrader<Runtime, CurrencyIdConvert, KarPerSecondAsBased, ToTreasury>,
-	FixedRateOfFungible<KsmPerSecond, ToTreasury>,
-	FixedRateOfFungible<KarPerSecond, ToTreasury>,
-	FixedRateOfFungible<KarPerSecondForNativeAssetTest, ToTreasury>,
-	FixedRateOfFungible<KarPerSecondOfCanonicalLocation, ToTreasury>,
-	FixedRateOfFungible<BncPerSecond, ToTreasury>,
-	FixedRateOfFungible<BncPerSecondOfCanonicalLocation, ToTreasury>,
-	FixedRateOfForeignAsset<Runtime, ForeignAssetUnitsPerSecond, ToTreasury>,
-);
 
 #[cfg(not(feature = "integration-tests"))]
 pub type Trader = (
@@ -1774,16 +1740,12 @@ pub type LocalAssetTransactor = MultiCurrencyAdapter<
 	DepositToAlternative<KaruraTreasuryAccount, Currencies, CurrencyId, AccountId, Balance>,
 >;
 
-//TODO: use token registry currency type encoding
 fn native_currency_location(id: CurrencyId) -> MultiLocation {
-	if cfg!(feature = "integration-tests") {
-		MultiLocation::new(1, X2(Parachain(ParachainIdForTest::get()), GeneralKey(id.encode())))
-	} else {
-		MultiLocation::new(1, X2(Parachain(ParachainInfo::get().into()), GeneralKey(id.encode())))
-	}
+	MultiLocation::new(1, X2(Parachain(ParachainInfo::get().into()), GeneralKey(id.encode())))
 }
 
 pub struct CurrencyIdConvert;
+
 impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 	fn convert(id: CurrencyId) -> Option<MultiLocation> {
 		use CurrencyId::Token;
@@ -1825,18 +1787,12 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 					GeneralKey(parachains::kintsugi::KBTC_KEY.to_vec()),
 				),
 			)),
-			#[cfg(feature = "integration-tests")]
-			Token(RMRK) => Some(MultiLocation::new(1, X2(Parachain(2001), GeneralIndex(8)))),
-			#[cfg(feature = "integration-tests")]
-			Token(RMRKV2) => Some(MultiLocation::new(
-				1,
-				X3(Parachain(2001), PalletInstance(53), GeneralIndex(8)),
-			)),
 			CurrencyId::ForeignAsset(foreign_asset_id) => AssetIdMaps::<Runtime>::get_multi_location(foreign_asset_id),
 			_ => None,
 		}
 	}
 }
+
 impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 	fn convert(location: MultiLocation) -> Option<CurrencyId> {
 		use CurrencyId::Token;
@@ -1851,16 +1807,6 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 		}
 
 		match location {
-			#[cfg(feature = "integration-tests")]
-			MultiLocation {
-				parents: 1,
-				interior: X2(Parachain(2001), GeneralIndex(8)),
-			} => Some(Token(RMRK)),
-			#[cfg(feature = "integration-tests")]
-			MultiLocation {
-				parents: 1,
-				interior: X3(Parachain(2001), PalletInstance(53), GeneralIndex(8)),
-			} => Some(Token(RMRK)),
 			MultiLocation {
 				parents: 1,
 				interior: X2(Parachain(para_id), GeneralKey(key)),
@@ -1881,17 +1827,6 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 							}
 						} else {
 							// invalid general key
-							None
-						}
-					}
-					#[cfg(feature = "integration-tests")]
-					(id, key) if id == ParachainIdForTest::get() => {
-						if let Ok(currency_id) = CurrencyId::decode(&mut &*key) {
-							match currency_id {
-								Token(KAR) | Token(KUSD) | Token(LKSM) => Some(currency_id),
-								_ => None,
-							}
-						} else {
 							None
 						}
 					}
@@ -1924,6 +1859,7 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 		}
 	}
 }
+
 impl Convert<MultiAsset, Option<CurrencyId>> for CurrencyIdConvert {
 	fn convert(asset: MultiAsset) -> Option<CurrencyId> {
 		if let MultiAsset {
@@ -2144,7 +2080,8 @@ pub type Executive = frame_executive::Executive<
 pub struct SchedulerMigrationV3;
 impl frame_support::traits::OnRuntimeUpgrade for SchedulerMigrationV3 {
 	fn on_runtime_upgrade() -> frame_support::weights::Weight {
-		Scheduler::migrate_v2_to_v3()
+		Scheduler::migrate_v1_to_v3();
+		<Runtime as frame_system::Config>::BlockWeights::get().max_block
 	}
 
 	#[cfg(feature = "try-runtime")]

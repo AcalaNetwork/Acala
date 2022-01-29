@@ -794,8 +794,6 @@ parameter_type_with_key! {
 				TokenSymbol::TAI => 10 * millicent(*currency_id),
 				TokenSymbol::ACA |
 				TokenSymbol::KAR |
-				TokenSymbol::RMRK |
-				TokenSymbol::RMRKV2 |
 				TokenSymbol::CASH => Balance::max_value() // unsupported
 			},
 			CurrencyId::DexShare(dex_share_0, _) => {
@@ -931,8 +929,8 @@ impl orml_vesting::Config for Runtime {
 parameter_types! {
 	pub MaximumSchedulerWeight: Weight = Perbill::from_percent(10) * RuntimeBlockWeights::get().max_block;
 	pub const MaxScheduledPerBlock: u32 = 50;
-	// Retry a scheduled item every 10 blocks (1 minute) until the preimage exists.
-	pub const NoPreimagePostponement: Option<u32> = Some(10);
+	// Retry a scheduled item every 25 blocks (5 minute) until the preimage exists.
+	pub const NoPreimagePostponement: Option<u32> = Some(25);
 }
 
 impl pallet_scheduler::Config for Runtime {
@@ -2076,7 +2074,8 @@ pub type Executive = frame_executive::Executive<
 pub struct SchedulerMigrationV3;
 impl frame_support::traits::OnRuntimeUpgrade for SchedulerMigrationV3 {
 	fn on_runtime_upgrade() -> frame_support::weights::Weight {
-		Scheduler::migrate_v2_to_v3()
+		Scheduler::migrate_v1_to_v3();
+		<Runtime as frame_system::Config>::BlockWeights::get().max_block
 	}
 
 	#[cfg(feature = "try-runtime")]
