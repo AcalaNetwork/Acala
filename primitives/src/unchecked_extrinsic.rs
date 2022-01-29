@@ -317,15 +317,15 @@ fn recover_sign_data(
 		.ok()?;
 	let storage_entry_deposit = storage_deposit_per_byte.saturating_mul(64);
 	let tx_gas_price = ts_fee_per_gas
-		.saturating_add(Into::<u128>::into(block_period) << 16)
-		.saturating_add(storage_entry_limit.into());
+		.checked_add(Into::<u128>::into(block_period).checked_shl(16)?)?
+		.checked_add(storage_entry_limit.into())?;
 	// There is a loss of precision here, so the order of calculation must be guaranteed
 	// must ensure storage_deposit / tx_fee_per_gas * storage_limit
 	let tx_gas_limit = storage_entry_deposit
 		.checked_div(ts_fee_per_gas)
 		.expect("divisor is non-zero; qed")
-		.saturating_mul(storage_entry_limit.into())
-		.saturating_add(eth_msg.gas_limit.into());
+		.checked_mul(storage_entry_limit.into())?
+		.checked_add(eth_msg.gas_limit.into())?;
 
 	Some((tx_gas_price, tx_gas_limit))
 }
