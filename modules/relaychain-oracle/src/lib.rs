@@ -20,15 +20,51 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use frame_support::{
+	pallet_prelude::*,
+	traits::{SortedMembers, Time},
+};
+use frame_system::pallet_prelude::*;
+
 pub use module::*;
+
+/// The unique identifier for a query
+pub type QueryNonce = u64;
+
+pub type QueryResult = Vec<u8>;
+
+pub enum QueryState<BlockNumber> {
+	Pending { timeout: BlockNumber },
+	Ready { response: u64, block: BlockNumber },
+}
 
 #[frame_support::pallet]
 pub mod module {
 	use super::*;
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config {}
+	pub trait Config: frame_system::Config {
+		type Time: Time;
+
+		type Members: SortedMembers<Self::AccountId>;
+	}
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
+
+	#[pallet::storage]
+	#[pallet::getter(fn raw_state)]
+	pub type RelayState<T: Config> = StorageMap<_, Twox64Concat, T::Hash, Vec<u8>, OptionQuery>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn query_index)]
+	pub type QueryIndex<T: Config> = StorageValue<_, QueryNonce, ValueQuery>;
+
+	#[pallet::call]
+	impl<T: Config> Pallet<T> {
+		#[pallet::weight(0)]
+		pub fn feed_values(origin: OriginFor<T>) -> DispatchResult {
+			Ok(())
+		}
+	}
 }
