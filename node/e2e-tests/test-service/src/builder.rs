@@ -154,7 +154,7 @@ impl TestNodeBuilder {
 		let parachain_config = node_config(
 			self.storage_update_func_parachain.unwrap_or_else(|| Box::new(|| ())),
 			self.tokio_handle.clone(),
-			self.key.clone(),
+			self.key,
 			self.parachain_nodes,
 			self.parachain_nodes_exclusive,
 			self.collator_key.is_some(),
@@ -197,8 +197,11 @@ impl TestNodeBuilder {
 			}
 		};
 
-		let peer_id = network.local_peer_id().clone();
-		let addr = MultiaddrWithPeerId { multiaddr, peer_id };
+		let peer_id = network.local_peer_id();
+		let addr = MultiaddrWithPeerId {
+			multiaddr,
+			peer_id: *peer_id,
+		};
 
 		TestNode {
 			task_manager,
@@ -242,7 +245,7 @@ pub fn node_config(
 	spec.set_storage(storage);
 
 	let mut network_config = NetworkConfiguration::new(
-		format!("{} (parachain)", key_seed.to_string()),
+		format!("{} (parachain)", key_seed),
 		"network/test/0.1",
 		Default::default(),
 		None,

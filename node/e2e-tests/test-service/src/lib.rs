@@ -204,8 +204,7 @@ pub fn construct_extrinsic(
 	let account: AccountId = caller.public().into();
 	let address: Address = account.into();
 	let (call, extra, _) = raw_payload.deconstruct();
-	let signed_data: (Address, AcalaMultiSignature, SignedExtra) =
-		(address, Signature::Sr25519(signature.clone()), extra.clone());
+	let signed_data: (Address, AcalaMultiSignature, SignedExtra) = (address, Signature::Sr25519(signature), extra);
 	runtime::UncheckedExtrinsic::new(call, Some(signed_data)).unwrap()
 }
 
