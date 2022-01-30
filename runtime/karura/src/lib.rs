@@ -1980,7 +1980,7 @@ construct_runtime!(
 		EvmAccounts: module_evm_accounts::{Pallet, Call, Storage, Event<T>} = 132,
 
 		// Parachain System, always put it at the end
-		ParachainSystem: cumulus_pallet_parachain_system::{Pallet, Call, Storage, Inherent, Config, Event<T>} = 254,
+		ParachainSystem: cumulus_pallet_parachain_system::{Pallet, Call, Storage, Inherent, Config, Event<T>} = 30,
 
 		// Temporary
 		Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>} = 255,
