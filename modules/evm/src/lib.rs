@@ -903,7 +903,20 @@ pub mod module {
 			T::NetworkContractOrigin::ensure_origin(origin)?;
 
 			let source = T::NetworkContractSource::get();
+			let source_account = T::AddressMapping::get_account_id(&source);
 			let address = MIRRORED_TOKENS_ADDRESS_START | EvmAddress::from_low_u64_be(Self::network_contract_index());
+
+			// ensure source have more than 10 KAR/ACA to deploy the contract.
+			let amount = T::Currency::minimum_balance().saturating_mul(100u32.into());
+			if T::Currency::free_balance(&source_account) < amount {
+				T::Currency::transfer(
+					&T::TreasuryAccount::get(),
+					&source_account,
+					amount,
+					ExistenceRequirement::AllowDeath,
+				)?;
+			}
+
 			match T::Runner::create_at_address(source, address, init, value, gas_limit, storage_limit, T::config()) {
 				Err(e) => {
 					Pallet::<T>::deposit_event(Event::<T>::CreatedFailed {
@@ -937,7 +950,7 @@ pub mod module {
 
 					Ok(PostDispatchInfo {
 						actual_weight: Some(create_nft_contract::<T>(used_gas)),
-						pays_fee: Pays::Yes,
+						pays_fee: Pays::No,
 					})
 				}
 			}
@@ -952,7 +965,7 @@ pub mod module {
 		/// - `gas_limit`: the maximum gas the call can use
 		/// - `storage_limit`: the total bytes the contract's storage can increase by
 		#[pallet::weight(if init.is_empty() {
-			<T as Config>::WeightInfo::deposit_ed()
+			<T as Config>::WeightInfo::create_predeploy_mirror_token_contract()
 		} else {
 			create_predeploy_contract::<T>(*gas_limit)
 		})]
@@ -973,8 +986,23 @@ pub mod module {
 			);
 
 			let source = T::NetworkContractSource::get();
+			let source_account = T::AddressMapping::get_account_id(&source);
+			// ensure source have more than 10 KAR/ACA to deploy the contract.
+			let amount = T::Currency::minimum_balance().saturating_mul(100u32.into());
+			if T::Currency::free_balance(&source_account) < amount {
+				T::Currency::transfer(
+					&T::TreasuryAccount::get(),
+					&source_account,
+					amount,
+					ExistenceRequirement::AllowDeath,
+				)?;
+			}
 
 			if init.is_empty() {
+				// This is mirror token, get the code of token predeployed contract.
+				let code = Self::code_at_address(&PREDEPLOY_ADDRESS_START);
+				ensure!(!code.is_empty(), Error::<T>::ContractNotFound);
+
 				// deposit ED for mirrored token
 				T::Currency::transfer(
 					&T::TreasuryAccount::get(),
@@ -983,9 +1011,16 @@ pub mod module {
 					ExistenceRequirement::AllowDeath,
 				)?;
 
+				<Pallet<T>>::create_contract(source, target, code.to_vec());
+				Pallet::<T>::deposit_event(Event::<T>::Created {
+					from: source,
+					contract: target,
+					logs: vec![],
+				});
+
 				Ok(PostDispatchInfo {
-					actual_weight: Some(<T as Config>::WeightInfo::deposit_ed()),
-					pays_fee: Pays::Yes,
+					actual_weight: Some(<T as Config>::WeightInfo::create_predeploy_mirror_token_contract()),
+					pays_fee: Pays::No,
 				})
 			} else {
 				match T::Runner::create_at_address(source, target, init, value, gas_limit, storage_limit, T::config()) {
@@ -1019,7 +1054,7 @@ pub mod module {
 
 						Ok(PostDispatchInfo {
 							actual_weight: Some(create_predeploy_contract::<T>(used_gas)),
-							pays_fee: Pays::Yes,
+							pays_fee: Pays::No,
 						})
 					}
 				}

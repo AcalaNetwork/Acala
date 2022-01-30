@@ -435,11 +435,37 @@ fn test_multicurrency_precompile_module() {
 				200
 			);
 
+			assert_ok!(Currencies::transfer(
+				Origin::signed(AccountId::from(ALICE)),
+				sp_runtime::MultiAddress::Id( TreasuryAccount::get()),
+				NATIVE_CURRENCY,
+				10 * dollar(NATIVE_CURRENCY)
+			));
+			// deploy mirrored token of the LP
+			assert_ok!(EVM::create_predeploy_contract(
+				Origin::root(),
+				lp_erc20_evm_address(),
+				vec![],
+				0,
+				1000000,
+				1000000,
+			));
+
 			let invoke_context = module_support::InvokeContext {
 				contract: lp_erc20_evm_address(),
 				sender: alice_evm_addr(),
 				origin: alice_evm_addr(),
 			};
+
+			assert_noop!(
+				EVMBridge::<Runtime>::name(invoke_context),
+				module_evm::Error::<Runtime>::NoPermission
+			);
+
+			assert_ok!(EVM::publish_free(
+				Origin::root(),
+				lp_erc20_evm_address(),
+			));
 
 			assert_eq!(
 				EVMBridge::<Runtime>::name(invoke_context),
