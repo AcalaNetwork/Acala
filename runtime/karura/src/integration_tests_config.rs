@@ -19,7 +19,6 @@
 use super::*;
 
 parameter_types! {
-	pub const ParachainIdForTest: u32 = 2000;
 	pub KarPerSecondOfCanonicalLocation: (AssetId, u128) = (
 		MultiLocation::new(
 			0,
