@@ -30,7 +30,6 @@ mod setup;
 	feature = "with-karura-runtime",
 	feature = "with-acala-runtime"
 ))]
-#[cfg(any(feature = "with-mandala-runtime", feature = "with-karura-runtime"))]
 mod authority;
 
 #[cfg(any(
@@ -76,7 +75,6 @@ mod prices;
 	feature = "with-karura-runtime",
 	feature = "with-acala-runtime"
 ))]
-#[cfg(any(feature = "with-mandala-runtime", feature = "with-karura-runtime"))]
 mod proxy;
 
 #[cfg(any(
