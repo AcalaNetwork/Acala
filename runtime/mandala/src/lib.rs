@@ -2107,7 +2107,6 @@ construct_runtime! {
 		CompoundCash: ecosystem_compound_cash::{Pallet, Storage, Event<T>} = 152,
 
 		// Parachain
-		ParachainSystem: cumulus_pallet_parachain_system::{Pallet, Call, Storage, Inherent, Config, Event<T>} = 160,
 		ParachainInfo: parachain_info::{Pallet, Storage, Config} = 161,
 
 		// XCM
@@ -2134,6 +2133,9 @@ construct_runtime! {
 
 		// Stable asset
 		StableAsset: nutsfinance_stable_asset::{Pallet, Call, Storage, Event<T>} = 200,
+
+		// Parachain System, always put it at the end
+		ParachainSystem: cumulus_pallet_parachain_system::{Pallet, Call, Storage, Inherent, Config, Event<T>} = 160,
 
 		// Dev
 		Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>} = 255,
