@@ -130,7 +130,7 @@ where
 					.ok_or_else(||
 								PrecompileFailure::Revert {
 									exit_status: ExitRevert::Reverted,
-									output: "Dex get_liquidity_token_address failed".into(),
+									output: "Dex get_swap_target_amount failed".into(),
 									cost: 0,
 								})?;
 

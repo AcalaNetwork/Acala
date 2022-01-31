@@ -72,7 +72,7 @@ fn error_on_execution_failure(reason: &ExitReason, data: &[u8]) -> Result<()> {
 			})
 		}
 		ExitReason::Revert(_) => {
-			let message = "VM Exception while processing transaction: revert".to_string();
+			let message = "VM Exception while processing transaction: execution revert:".to_string();
 			Err(Error {
 				code: ErrorCode::InternalError,
 				message: decode_revert_message(data)
