@@ -23,7 +23,8 @@ use crate::precompile::{
 	mock::{
 		aca_evm_address, alice, alice_evm_addr, ausd_evm_address, bob, bob_evm_addr, erc20_address_not_exists,
 		get_task_id, lp_aca_ausd_evm_address, new_test_ext, renbtc_evm_address, run_to_block, Balances, DexModule,
-		EVMModule, Event as TestEvent, Oracle, Origin, Price, System, Test, ALICE, AUSD, INITIAL_BALANCE, RENBTC,
+		EVMModule, Event as TestEvent, ExistentialDeposit, Oracle, Origin, Price, System, Test, ALICE, AUSD,
+		INITIAL_BALANCE, RENBTC,
 	},
 	schedule_call::TaskInfo,
 };
@@ -238,7 +239,7 @@ fn multicurrency_precompile_should_work() {
 		let resp = MultiCurrencyPrecompile::execute(&input, None, &context).unwrap();
 		assert_eq!(resp.exit_status, ExitSucceed::Returned);
 		let mut expected_output = [0u8; 32];
-		expected_output[16..32].copy_from_slice(&INITIAL_BALANCE.to_be_bytes()[..]);
+		expected_output[16..32].copy_from_slice(&(INITIAL_BALANCE - ExistentialDeposit::get()).to_be_bytes()[..]);
 		assert_eq!(resp.output, expected_output);
 		assert_eq!(resp.cost, 0);
 
