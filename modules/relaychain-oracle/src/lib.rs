@@ -26,6 +26,9 @@ use frame_support::{
 };
 use frame_system::pallet_prelude::*;
 
+mod mock;
+mod tests;
+
 pub use module::*;
 
 /// The unique identifier for a query
@@ -33,9 +36,16 @@ pub type QueryNonce = u64;
 
 pub type QueryResult = Vec<u8>;
 
+#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]
+pub struct Feed<AccountId> {
+	pub creator: AccountId,
+	pub value: QueryResult,
+}
+
+#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]
 pub enum QueryState<BlockNumber> {
 	Pending { timeout: BlockNumber },
-	Ready { response: u64, block: BlockNumber },
+	Ready { response: QueryResult, block: BlockNumber },
 }
 
 #[frame_support::pallet]
@@ -53,12 +63,13 @@ pub mod module {
 	pub struct Pallet<T>(_);
 
 	#[pallet::storage]
-	#[pallet::getter(fn raw_state)]
-	pub type RelayState<T: Config> = StorageMap<_, Twox64Concat, T::Hash, Vec<u8>, OptionQuery>;
-
-	#[pallet::storage]
 	#[pallet::getter(fn query_index)]
 	pub type QueryIndex<T: Config> = StorageValue<_, QueryNonce, ValueQuery>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn query)]
+	pub type ActiveQueries<T: Config> =
+		StorageMap<_, Blake2_128Concat, QueryNonce, QueryState<T::BlockNumber>, OptionQuery>;
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
@@ -66,5 +77,12 @@ pub mod module {
 		pub fn feed_values(origin: OriginFor<T>) -> DispatchResult {
 			Ok(())
 		}
+
+		#[pallet::weight(0)]
+		pub fn create_feed(origin: OriginFor<T>, feed: Feed<T::AccountId>) -> DispatchResult {
+			Ok(())
+		}
 	}
 }
+
+impl<T: Config> Pallet<T> {}
