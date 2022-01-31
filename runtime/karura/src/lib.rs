@@ -131,7 +131,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("karura"),
 	impl_name: create_runtime_str!("karura"),
 	authoring_version: 1,
-	spec_version: 2022,
+	spec_version: 2023,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -1915,7 +1915,6 @@ construct_runtime!(
 		Tips: pallet_tips::{Pallet, Call, Storage, Event<T>} = 22,
 
 		// Parachain
-		ParachainSystem: cumulus_pallet_parachain_system::{Pallet, Call, Storage, Inherent, Config, Event<T>} = 30,
 		ParachainInfo: parachain_info::{Pallet, Storage, Config} = 31,
 
 		// Collator. The order of the 4 below are important and shall not change.
@@ -1984,6 +1983,9 @@ construct_runtime!(
 		EVM: module_evm::{Pallet, Config<T>, Call, Storage, Event<T>} = 130,
 		EVMBridge: module_evm_bridge::{Pallet} = 131,
 		EvmAccounts: module_evm_accounts::{Pallet, Call, Storage, Event<T>} = 132,
+
+		// Parachain System, always put it at the end
+		ParachainSystem: cumulus_pallet_parachain_system::{Pallet, Call, Storage, Inherent, Config, Event<T>} = 30,
 
 		// Temporary
 		Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>} = 255,
