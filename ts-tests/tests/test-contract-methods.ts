@@ -63,9 +63,9 @@ describeWithAcala("Acala RPC (Contract Methods)", (context) => {
 		expect((await contract.chainId()).toString()).to.eq('595');
 	});
 
-	it("should get correct environmental coinbase", async function () {
-		expect((await contract.coinbase()).toString()).to.not.eq('0x0000000000000000000000000000000000000000');
-	});
+	// it("should get correct environmental coinbase", async function () {
+	// 	expect((await contract.coinbase()).toString()).to.not.eq('0x0000000000000000000000000000000000000000');
+	// });
 
 	it("should get correct environmental block timestamp", async function () {
 		expect((await contract.timestamp()).toString()).to.eq((parseInt(await context.provider.api.query.timestamp.now() / 1000)).toString());
