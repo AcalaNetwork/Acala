@@ -117,28 +117,9 @@ where
 					return Err(InvalidTransaction::BadProof.into());
 				}
 
-				// tx_gas_price = tx_fee_per_gas + block_period << 16 + storage_entry_limit
-				// tx_gas_limit = gas_limit + storage_entry_deposit / tx_fee_per_gas * storage_entry_limit
-				let block_period = eth_msg.valid_until.checked_div(30).expect("divisor is non-zero; qed");
-				// u16: max value 0xffff * 64 = 4194240 bytes = 4MB
-				let storage_entry_limit: u16 = eth_msg
-					.storage_limit
-					.checked_div(64)
-					.expect("divisor is non-zero; qed")
-					.try_into()
-					.map_err(|_| InvalidTransaction::BadProof)?;
-				let storage_entry_deposit = StorageDepositPerByte::get().saturating_mul(64);
-				let tx_gas_price = TxFeePerGas::get()
-					.saturating_add((block_period << 16).into())
-					.saturating_add(storage_entry_limit.into());
-				// There is a loss of precision here, so the order of calculation must be guaranteed
-				// must ensure storage_deposit / tx_fee_per_gas * storage_limit
-				let tx_gas_limit = storage_entry_deposit
-					.checked_div(TxFeePerGas::get())
-					.expect("divisor is non-zero; qed")
-					.saturating_mul(storage_entry_limit.into())
-					.saturating_add(eth_msg.gas_limit.into());
-
+				let (tx_gas_price, tx_gas_limit) =
+					recover_sign_data(&eth_msg, TxFeePerGas::get(), StorageDepositPerByte::get())
+						.ok_or(InvalidTransaction::BadProof)?;
 				log::trace!(
 					target: "evm", "eth_msg.tip: {:?}, eth_msg.gas_limit: {:?}, eth_msg.storage_limit: {:?}, tx_gas_limit: {:?}, tx_gas_price: {:?}",
 					eth_msg.tip, eth_msg.storage_limit, eth_msg.gas_limit, tx_gas_limit, tx_gas_price
@@ -174,27 +155,9 @@ where
 				let function = self.0.function;
 				let (eth_msg, eth_extra) = ConvertTx::convert((function.clone(), extra))?;
 
-				// tx_gas_price = tx_fee_per_gas + block_period << 16 + storage_entry_limit
-				// tx_gas_limit = gas_limit + storage_entry_deposit / tx_fee_per_gas * storage_entry_limit
-				let block_period = eth_msg.valid_until.checked_div(30).expect("divisor is non-zero; qed");
-				// u16: max value 0xffff * 64 = 4194240 bytes = 4MB
-				let storage_entry_limit: u16 = eth_msg
-					.storage_limit
-					.checked_div(64)
-					.expect("divisor is non-zero; qed")
-					.try_into()
-					.map_err(|_| InvalidTransaction::BadProof)?;
-				let storage_entry_deposit = StorageDepositPerByte::get().saturating_mul(64);
-				let tx_gas_price = TxFeePerGas::get()
-					.saturating_add((block_period << 16).into())
-					.saturating_add(storage_entry_limit.into());
-				// There is a loss of precision here, so the order of calculation must be guaranteed
-				// must ensure storage_deposit / tx_fee_per_gas * storage_limit
-				let tx_gas_limit = storage_entry_deposit
-					.checked_div(TxFeePerGas::get())
-					.expect("divisor is non-zero; qed")
-					.saturating_mul(storage_entry_limit.into())
-					.saturating_add(eth_msg.gas_limit.into());
+				let (tx_gas_price, tx_gas_limit) =
+					recover_sign_data(&eth_msg, TxFeePerGas::get(), StorageDepositPerByte::get())
+						.ok_or(InvalidTransaction::BadProof)?;
 
 				// tip = priority_fee * gas_limit
 				let priority_fee = eth_msg.tip.checked_div(eth_msg.gas_limit.into()).unwrap_or_default();
@@ -335,6 +298,36 @@ fn verify_eip712_signature(eth_msg: EthereumTransactionMessage, sig: [u8; 65]) -
 	let msg_hash = keccak_256(msg.as_slice());
 
 	recover_signer(&sig, &msg_hash)
+}
+
+fn recover_sign_data(
+	eth_msg: &EthereumTransactionMessage,
+	ts_fee_per_gas: u128,
+	storage_deposit_per_byte: u128,
+) -> Option<(u128, u128)> {
+	// tx_gas_price = tx_fee_per_gas + block_period << 16 + storage_entry_limit
+	// tx_gas_limit = gas_limit + storage_entry_deposit / tx_fee_per_gas * storage_entry_limit
+	let block_period = eth_msg.valid_until.checked_div(30).expect("divisor is non-zero; qed");
+	// u16: max value 0xffff * 64 = 4194240 bytes = 4MB
+	let storage_entry_limit: u16 = eth_msg
+		.storage_limit
+		.checked_div(64)
+		.expect("divisor is non-zero; qed")
+		.try_into()
+		.ok()?;
+	let storage_entry_deposit = storage_deposit_per_byte.saturating_mul(64);
+	let tx_gas_price = ts_fee_per_gas
+		.checked_add(Into::<u128>::into(block_period).checked_shl(16)?)?
+		.checked_add(storage_entry_limit.into())?;
+	// There is a loss of precision here, so the order of calculation must be guaranteed
+	// must ensure storage_deposit / tx_fee_per_gas * storage_limit
+	let tx_gas_limit = storage_entry_deposit
+		.checked_div(ts_fee_per_gas)
+		.expect("divisor is non-zero; qed")
+		.checked_mul(storage_entry_limit.into())?
+		.checked_add(eth_msg.gas_limit.into())?;
+
+	Some((tx_gas_price, tx_gas_limit))
 }
 
 #[cfg(test)]
@@ -508,5 +501,58 @@ mod tests {
 			slots: vec![],
 		}];
 		assert_ne!(recover_signer(&sign, new_msg.hash().as_fixed_bytes()), sender);
+	}
+
+	#[test]
+	fn recover_sign_data_should_works() {
+		let mut msg = EthereumTransactionMessage {
+			chain_id: 595,
+			genesis: Default::default(),
+			nonce: 1,
+			tip: 0,
+			gas_limit: 2100000,
+			storage_limit: 64000,
+			action: TransactionAction::Call(H160::from_str("0x1111111111222222222233333333334444444444").unwrap()),
+			value: 0,
+			input: vec![],
+			valid_until: 30,
+		};
+
+		let ts_fee_per_gas = 200u128.saturating_mul(10u128.saturating_pow(9)) & !0xffff;
+		let storage_deposit_per_byte = 100_000_000_000_000u128;
+
+		assert_eq!(
+			recover_sign_data(&msg, ts_fee_per_gas, storage_deposit_per_byte),
+			Some((200000013288, 34100000))
+		);
+		msg.valid_until = 3600030;
+		assert_eq!(
+			recover_sign_data(&msg, ts_fee_per_gas, storage_deposit_per_byte),
+			Some((207864333288, 34100000))
+		);
+		msg.valid_until = u32::MAX;
+		assert_eq!(
+			recover_sign_data(&msg, ts_fee_per_gas, storage_deposit_per_byte),
+			Some((9582499136488, 34100000))
+		);
+
+		msg.storage_limit = 0xffff * 64;
+		assert_eq!(
+			recover_sign_data(&msg, ts_fee_per_gas, storage_deposit_per_byte),
+			Some((9582499201023, 2099220000))
+		);
+		// check storage_limit max is 0xffff * 64
+		msg.storage_limit = 0xffff * 65;
+		assert_eq!(recover_sign_data(&msg, ts_fee_per_gas, storage_deposit_per_byte), None);
+
+		msg.storage_limit = 0xffff * 64;
+		assert_eq!(
+			recover_sign_data(&msg, ts_fee_per_gas, u128::MAX),
+			Some((9582499201023, 111502054267125439094838181151820))
+		);
+
+		assert_eq!(recover_sign_data(&msg, u128::MAX, storage_deposit_per_byte), None);
+
+		assert_eq!(recover_sign_data(&msg, u128::MAX, u128::MAX), None);
 	}
 }

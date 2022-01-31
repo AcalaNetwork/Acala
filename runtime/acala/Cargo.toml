@@ -1,6 +1,6 @@
 [package]
 name = "acala-runtime"
-version = "2.2.1"
+version = "2.2.3"
 authors = ["Acala Developers"]
 edition = "2021"
 build = "build.rs"
@@ -93,6 +93,7 @@ module-cdp-treasury = { path = "../../modules/cdp-treasury", default-features = 
 module-collator-selection = { path = "../../modules/collator-selection", default-features = false }
 module-currencies = { path = "../../modules/currencies", default-features = false }
 module-dex = { path = "../../modules/dex", default-features = false }
+module-dex-oracle = { path = "../../modules/dex-oracle", default-features = false }
 module-emergency-shutdown = { path = "../../modules/emergency-shutdown", default-features = false }
 module-evm = { path = "../../modules/evm", default-features = false }
 module-evm-accounts = { path = "../../modules/evm-accounts", default-features = false }
@@ -210,6 +211,7 @@ std = [
 	"module-collator-selection/std",
 	"module-currencies/std",
 	"module-dex/std",
+	"module-dex-oracle/std",
 	"module-emergency-shutdown/std",
 	"module-evm/std",
 	"module-evm-accounts/std",
@@ -307,6 +309,7 @@ try-runtime = [
 	"module-collator-selection/try-runtime",
 	"module-currencies/try-runtime",
 	"module-dex/try-runtime",
+	"module-dex-oracle/try-runtime",
 	"module-emergency-shutdown/try-runtime",
 	"module-evm/try-runtime",
 	"module-evm-accounts/try-runtime",

@@ -1,6 +1,6 @@
 [package]
 name = "acala-primitives"
-version = "2.2.1"
+version = "2.2.3"
 authors = ["Acala Developers"]
 edition = "2021"
 
@@ -48,3 +48,4 @@ std = [
 	"module-evm-utiltity/std",
 	"nutsfinance-stable-asset/std",
 ]
+evm-tests = []

@@ -26,6 +26,7 @@ pub mod module_cdp_treasury;
 pub mod module_collator_selection;
 pub mod module_currencies;
 pub mod module_dex;
+pub mod module_dex_oracle;
 pub mod module_emergency_shutdown;
 pub mod module_evm;
 pub mod module_evm_accounts;

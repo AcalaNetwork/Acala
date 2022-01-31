@@ -1,6 +1,6 @@
 [package]
 name = "module-transaction-pause"
-version = "2.2.1"
+version = "2.2.3"
 authors = ["Acala Developers"]
 edition = "2021"
 
