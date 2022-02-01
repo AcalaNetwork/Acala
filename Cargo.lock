@@ -11066,6 +11066,7 @@ dependencies = [
  "sp-core",
  "sp-inherents",
  "sp-io",
+ "sp-keyring",
  "sp-offchain",
  "sp-runtime",
  "sp-session",
@@ -15165,7 +15166,7 @@ dependencies = [
 [[package]]
 name = "xcm-emulator"
 version = "0.1.0"
-source = "git+https://github.com/zqhxuyuan/xcm-simulator?branch=v0.9.15_master#2004a1d6d7150c1d518b8dd20ab43613a6ca5f1f"
+source = "git+https://github.com/shaunxw/xcm-simulator?rev=a250ffc998bac4831c5692c591dee7bc13f3aead#a250ffc998bac4831c5692c591dee7bc13f3aead"
 dependencies = [
  "cumulus-pallet-dmp-queue",
  "cumulus-pallet-parachain-system",
