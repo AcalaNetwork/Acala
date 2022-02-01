@@ -208,7 +208,7 @@ fn register_as_candidate_works() {
 		assert_eq!(CollatorSelection::candidacy_bond(), 10);
 		assert_eq!(
 			CollatorSelection::candidates(),
-			BoundedBTreeSet::<u64, ConstU32<1>>::new()
+			BoundedBTreeSet::<u64, ConstU32<4>>::new()
 		);
 		assert_eq!(CollatorSelection::invulnerables(), vec![1, 2]);
 
@@ -248,7 +248,7 @@ fn register_candidate_works() {
 		assert_eq!(CollatorSelection::candidacy_bond(), 10);
 		assert_eq!(
 			CollatorSelection::candidates(),
-			BoundedBTreeSet::<u64, ConstU32<1>>::new()
+			BoundedBTreeSet::<u64, ConstU32<4>>::new()
 		);
 		assert_eq!(CollatorSelection::invulnerables(), vec![1, 2]);
 
@@ -411,7 +411,7 @@ fn fees_edgecases() {
 		// triggers `note_author`
 		Authorship::on_initialize(1);
 
-		let mut collators = BoundedBTreeSet::<u64, ConstU32<1>>::new();
+		let mut collators = BoundedBTreeSet::<u64, ConstU32<4>>::new();
 		assert_ok!(collators.try_insert(4));
 		assert_eq!(CollatorSelection::candidates(), collators);
 		assert_eq!(Balances::reserved_balance_named(&RESERVE_ID, &4), 10);
@@ -532,7 +532,7 @@ fn kick_mechanism() {
 		assert_eq!(SessionChangeBlock::get(), 20);
 		assert_eq!(CollatorSelection::candidates().len(), 2);
 		assert_eq!(SessionHandlerCollators::get(), vec![1, 2, 3, 4]);
-		let mut collators = BoundedBTreeSet::<u64, ConstU32<1>>::new();
+		let mut collators = BoundedBTreeSet::<u64, ConstU32<4>>::new();
 		assert_ok!(collators.try_insert(3));
 		assert_ok!(collators.try_insert(4));
 		assert_eq!(CollatorSelection::candidates(), collators);
@@ -544,7 +544,7 @@ fn kick_mechanism() {
 		assert_eq!(SessionChangeBlock::get(), 30);
 		assert_eq!(CollatorSelection::candidates().len(), 1);
 		assert_eq!(SessionHandlerCollators::get(), vec![1, 2, 3, 4]);
-		let mut collators = BoundedBTreeSet::<u64, ConstU32<1>>::new();
+		let mut collators = BoundedBTreeSet::<u64, ConstU32<4>>::new();
 		assert_ok!(collators.try_insert(4));
 		assert_eq!(CollatorSelection::candidates(), collators);
 		// kicked collator without funds back

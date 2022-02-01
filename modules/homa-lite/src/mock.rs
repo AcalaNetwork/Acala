@@ -105,6 +105,10 @@ impl XcmTransfer<AccountId, Balance, CurrencyId> for MockXcm {
 	}
 }
 impl InvertLocation for MockXcm {
+	fn ancestry() -> MultiLocation {
+		todo!()
+	}
+
 	fn invert_location(l: &MultiLocation) -> Result<MultiLocation, ()> {
 		Ok(l.clone())
 	}

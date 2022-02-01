@@ -2680,7 +2680,7 @@ mod tests {
 			);
 
 			let mut expected_extra = extra.clone();
-			expected_extra.4.mark_as_ethereum_tx(30);
+			expected_extra.5.mark_as_ethereum_tx(30);
 
 			assert_eq!(
 				ConvertEthereumTx::convert((call.clone(), extra.clone())).unwrap(),
@@ -2705,7 +2705,7 @@ mod tests {
 
 			// valid tx in future
 			assert_eq!(
-				extra.4.validate(&alice, &call, &info, 0),
+				extra.5.validate(&alice, &call, &info, 0),
 				Ok(sp_runtime::transaction_validity::ValidTransaction {
 					priority: 0,
 					requires: vec![Encode::encode(&(alice.clone(), 2u32))],
@@ -2716,7 +2716,7 @@ mod tests {
 			);
 			// valid evm tx
 			assert_eq!(
-				expected_extra.4.validate(&alice, &call, &info, 0),
+				expected_extra.5.validate(&alice, &call, &info, 0),
 				Ok(sp_runtime::transaction_validity::ValidTransaction {
 					priority: 0,
 					requires: vec![],
@@ -2727,9 +2727,9 @@ mod tests {
 			);
 
 			// valid evm tx in future
-			expected_extra.4.nonce = 4;
+			expected_extra.5.nonce = 4;
 			assert_eq!(
-				expected_extra.4.validate(&alice, &call, &info, 0),
+				expected_extra.5.validate(&alice, &call, &info, 0),
 				Ok(sp_runtime::transaction_validity::ValidTransaction {
 					priority: 0,
 					requires: vec![Encode::encode(&(address, 3u32))],

@@ -350,6 +350,8 @@ impl pallet_scheduler::Config for Test {
 	type MaxScheduledPerBlock = MaxScheduledPerBlock;
 	type WeightInfo = ();
 	type OriginPrivilegeCmp = EqualPrivilegeOnly;
+	type PreimageProvider = ();
+	type NoPreimagePostponement = ();
 }
 
 pub struct MockDEXIncentives;
