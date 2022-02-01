@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-//! Relaychain Interface module.
+//! Xcm Interface module.
 //!
 //! This module interfaces Acala native modules with the Relaychain / parachains via the use of XCM.
 //! Functions in this module will create XCM messages that performs the requested functions and
@@ -44,7 +44,7 @@ pub mod module {
 	use super::*;
 
 	#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, TypeInfo)]
-	pub enum RelaychainInterfaceOperation {
+	pub enum XcmInterfaceOperation {
 		// XTokens
 		XtokensTransfer,
 		// Homa
@@ -93,19 +93,19 @@ pub mod module {
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// Xcm dest weight has been updated. \[xcm_operation, new_xcm_dest_weight\]
-		XcmDestWeightUpdated(RelaychainInterfaceOperation, Weight),
+		XcmDestWeightUpdated(XcmInterfaceOperation, Weight),
 		/// Xcm dest weight has been updated. \[xcm_operation, new_xcm_dest_weight\]
-		XcmFeeUpdated(RelaychainInterfaceOperation, Balance),
+		XcmFeeUpdated(XcmInterfaceOperation, Balance),
 	}
 
-	/// The dest weight limit and fee for execution XCM msg sended by RelaychainInterface. Must be
+	/// The dest weight limit and fee for execution XCM msg sended by XcmInterface. Must be
 	/// sufficient, otherwise the execution of XCM msg on relaychain will fail.
 	///
-	/// XcmDestWeightAndFee: map: RelaychainInterfaceOperation => (Weight, Balance)
+	/// XcmDestWeightAndFee: map: XcmInterfaceOperation => (Weight, Balance)
 	#[pallet::storage]
 	#[pallet::getter(fn xcm_dest_weight_and_fee)]
 	pub type XcmDestWeightAndFee<T: Config> =
-		StorageMap<_, Twox64Concat, RelaychainInterfaceOperation, (Weight, Balance), ValueQuery>;
+		StorageMap<_, Twox64Concat, XcmInterfaceOperation, (Weight, Balance), ValueQuery>;
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
@@ -115,15 +115,15 @@ pub mod module {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		/// Sets the xcm_dest_weight and fee for XCM operation of RelaychainInterface.
+		/// Sets the xcm_dest_weight and fee for XCM operation of XcmInterface.
 		///
 		/// Parameters:
-		/// - `updates`: vec of tuple: (RelaychainInterfaceOperation, WeightChange, FeeChange).
+		/// - `updates`: vec of tuple: (XcmInterfaceOperation, WeightChange, FeeChange).
 		#[pallet::weight(10_000_000)]
 		#[transactional]
 		pub fn update_xcm_dest_weight_and_fee(
 			origin: OriginFor<T>,
-			updates: Vec<(RelaychainInterfaceOperation, Option<Weight>, Option<Balance>)>,
+			updates: Vec<(XcmInterfaceOperation, Option<Weight>, Option<Balance>)>,
 		) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
 
@@ -158,15 +158,14 @@ pub mod module {
 				T::StakingCurrencyId::get(),
 				amount,
 				T::SovereignSubAccountLocationConvert::convert(sub_account_index),
-				Self::xcm_dest_weight_and_fee(RelaychainInterfaceOperation::XtokensTransfer).0,
+				Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::XtokensTransfer).0,
 			)
 		}
 
 		/// Send XCM message to the relaychain for sub account to withdraw_unbonded staking currency
 		/// and send it back.
 		fn withdraw_unbonded_from_sub_account(sub_account_index: u16, amount: Balance) -> DispatchResult {
-			let (xcm_dest_weight, xcm_fee) =
-				Self::xcm_dest_weight_and_fee(RelaychainInterfaceOperation::HomaWithdrawUnbonded);
+			let (xcm_dest_weight, xcm_fee) = Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::HomaWithdrawUnbonded);
 			let xcm_message = T::RelayChainCallBuilder::finalize_call_into_xcm_message(
 				T::RelayChainCallBuilder::utility_as_derivative_call(
 					T::RelayChainCallBuilder::utility_batch_call(vec![
@@ -180,7 +179,7 @@ pub mod module {
 			);
 			let result = pallet_xcm::Pallet::<T>::send_xcm(Here, Parent, xcm_message);
 			log::debug!(
-				target: "relaychain-interface",
+				target: "xcm-interface",
 				"subaccount {:?} send XCM to withdraw unbonded {:?}, result: {:?}",
 				sub_account_index, amount, result
 			);
@@ -191,7 +190,7 @@ pub mod module {
 
 		/// Send XCM message to the relaychain for sub account to bond extra.
 		fn bond_extra_on_sub_account(sub_account_index: u16, amount: Balance) -> DispatchResult {
-			let (xcm_dest_weight, xcm_fee) = Self::xcm_dest_weight_and_fee(RelaychainInterfaceOperation::HomaBondExtra);
+			let (xcm_dest_weight, xcm_fee) = Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::HomaBondExtra);
 			let xcm_message = T::RelayChainCallBuilder::finalize_call_into_xcm_message(
 				T::RelayChainCallBuilder::utility_as_derivative_call(
 					T::RelayChainCallBuilder::staking_bond_extra(amount),
@@ -202,7 +201,7 @@ pub mod module {
 			);
 			let result = pallet_xcm::Pallet::<T>::send_xcm(Here, Parent, xcm_message);
 			log::debug!(
-				target: "relaychain-interface",
+				target: "xcm-interface",
 				"subaccount {:?} send XCM to bond {:?}, result: {:?}",
 				sub_account_index, amount, result,
 			);
@@ -213,7 +212,7 @@ pub mod module {
 
 		/// Send XCM message to the relaychain for sub account to unbond.
 		fn unbond_on_sub_account(sub_account_index: u16, amount: Balance) -> DispatchResult {
-			let (xcm_dest_weight, xcm_fee) = Self::xcm_dest_weight_and_fee(RelaychainInterfaceOperation::HomaUnbond);
+			let (xcm_dest_weight, xcm_fee) = Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::HomaUnbond);
 			let xcm_message = T::RelayChainCallBuilder::finalize_call_into_xcm_message(
 				T::RelayChainCallBuilder::utility_as_derivative_call(
 					T::RelayChainCallBuilder::staking_unbond(amount),
@@ -224,7 +223,7 @@ pub mod module {
 			);
 			let result = pallet_xcm::Pallet::<T>::send_xcm(Here, Parent, xcm_message);
 			log::debug!(
-				target: "relaychain-interface",
+				target: "xcm-interface",
 				"subaccount {:?} send XCM to unbond {:?}, result: {:?}",
 				sub_account_index, amount, result
 			);
@@ -235,7 +234,7 @@ pub mod module {
 
 		/// The fee of cross-chain transfer is deducted from the recipient.
 		fn get_xcm_transfer_fee() -> Balance {
-			Self::xcm_dest_weight_and_fee(RelaychainInterfaceOperation::XtokensTransfer).1
+			Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::XtokensTransfer).1
 		}
 	}
 }

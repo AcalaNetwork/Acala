@@ -51,10 +51,10 @@ mod mandala_imports {
 		EnabledTradingPairs, Event, EvmAccounts, ExistentialDeposits, FinancialCouncil, Get, GetNativeCurrencyId, Homa,
 		Honzon, IdleScheduler, Loans, MaxTipsOfPriority, MinRewardDistributeAmount, MinimumDebitValue, MultiLocation,
 		NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, Origin, OriginCaller, PalletCurrency,
-		ParachainInfo, ParachainSystem, Proxy, ProxyType, RelaychainInterface, Runtime, Scheduler, Session,
-		SessionKeys, SessionManager, SevenDays, StableAsset, StableAssetPalletId, System, Timestamp, TipPerWeightStep,
-		TokenSymbol, Tokens, TransactionPayment, TreasuryAccount, TreasuryPalletId, UncheckedExtrinsic, Utility,
-		Vesting, XcmConfig, XcmExecutor, EVM, NFT,
+		ParachainInfo, ParachainSystem, Proxy, ProxyType, Runtime, Scheduler, Session, SessionKeys, SessionManager,
+		SevenDays, StableAsset, StableAssetPalletId, System, Timestamp, TipPerWeightStep, TokenSymbol, Tokens,
+		TransactionPayment, TreasuryAccount, TreasuryPalletId, UncheckedExtrinsic, Utility, Vesting, XcmConfig,
+		XcmExecutor, XcmInterface, EVM, NFT,
 	};
 
 	pub use runtime_common::{cent, dollar, millicent, ACA, AUSD, DOT, KSM, LDOT, LKSM};
@@ -82,9 +82,9 @@ mod karura_imports {
 		KaruraFoundationAccounts, KsmPerSecond, KusdPerSecond, Loans, MaxTipsOfPriority, MinimumDebitValue,
 		MultiLocation, NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, Origin, OriginCaller,
 		ParachainAccount, ParachainInfo, ParachainSystem, PolkadotXcm, Proxy, ProxyType, Ratio,
-		RelayChainBlockNumberProvider, RelaychainInterface, Runtime, Scheduler, Session, SessionManager, SevenDays,
-		System, Timestamp, TipPerWeightStep, TokenSymbol, Tokens, TreasuryPalletId, Utility, Vesting, XTokens,
-		XcmConfig, XcmExecutor, EVM, NFT,
+		RelayChainBlockNumberProvider, Runtime, Scheduler, Session, SessionManager, SevenDays, System, Timestamp,
+		TipPerWeightStep, TokenSymbol, Tokens, TreasuryPalletId, Utility, Vesting, XTokens, XcmConfig, XcmExecutor,
+		XcmInterface, EVM, NFT,
 	};
 	pub use primitives::TradingPair;
 	pub use runtime_common::{calculate_asset_ratio, cent, dollar, millicent, KAR, KSM, KUSD, LKSM};
@@ -137,9 +137,9 @@ mod acala_imports {
 		ExistentialDeposits, FinancialCouncil, Get, GetNativeCurrencyId, Homa, Honzon, IdleScheduler, Loans,
 		MaxTipsOfPriority, MinimumDebitValue, MultiLocation, NativeTokenExistentialDeposit, NetworkId, NftPalletId,
 		OneDay, Origin, OriginCaller, ParachainAccount, ParachainInfo, ParachainSystem, PolkadotXcm, Proxy, ProxyType,
-		RelayChainBlockNumberProvider, RelaychainInterface, Runtime, Scheduler, Session, SessionManager, SevenDays,
-		System, Timestamp, TipPerWeightStep, TokenSymbol, Tokens, TreasuryPalletId, Utility, Vesting, XTokens,
-		XcmConfig, XcmExecutor, EVM, NFT,
+		RelayChainBlockNumberProvider, Runtime, Scheduler, Session, SessionManager, SevenDays, System, Timestamp,
+		TipPerWeightStep, TokenSymbol, Tokens, TreasuryPalletId, Utility, Vesting, XTokens, XcmConfig, XcmExecutor,
+		XcmInterface, EVM, NFT,
 	};
 	pub use frame_support::parameter_types;
 	pub use primitives::TradingPair;

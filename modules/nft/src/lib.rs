@@ -516,7 +516,6 @@ impl<T: Config> NFT<T::AccountId> for Pallet<T> {
 	}
 
 	fn next_token_id(class: Self::ClassId) -> Self::TokenId {
-		// Ensure the next token ID is correct
 		orml_nft::Pallet::<T>::next_token_id(class)
 	}
 }
