@@ -193,7 +193,7 @@ impl Config for Runtime {
 	type MintThreshold = MintThreshold;
 	type RedeemThreshold = RedeemThreshold;
 	type RelayChainBlockNumber = MockRelayBlockNumberProvider;
-	type RelaychainInterface = MockHomaSubAccountXcm;
+	type XcmInterface = MockHomaSubAccountXcm;
 	type WeightInfo = ();
 }
 
