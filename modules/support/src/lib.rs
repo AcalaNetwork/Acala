@@ -606,6 +606,23 @@ pub trait CallBuilder {
 	/// - amount: The amount of staking currency to be transferred.
 	fn balances_transfer_keep_alive(to: Self::AccountId, amount: Self::Balance) -> Self::RelayChainCall;
 
+	// Calls the `place_bid` function in pallet-gilt.
+	///  params:
+	/// - amount: The amount of relaychain currency to be transferred.
+	/// - duration: The number of periods the currencies are locked for.
+	fn gilt_place_bid(amount: Self::Balance, duration: u32) -> Self::RelayChainCall;
+
+	// Calls the `retract_bid` function in pallet-gilt.
+	///  params:
+	/// - amount: The bid amount to be retracted.
+	/// - duration: The number of periods the currencies are locked for.
+	fn gilt_retract_bid(amount: Self::Balance, duration: u32) -> Self::RelayChainCall;
+
+	// Calls the `thaw` function in pallet-gilt.
+	///  params:
+	/// - index: the index of the issued Gilts.
+	fn gilt_thaw(index: u32) -> Self::RelayChainCall;
+
 	/// Wrap the final calls into the Xcm format.
 	///  params:
 	/// - call: The call to be executed

@@ -245,7 +245,7 @@ pub mod module {
 	impl<T: Config> GiltXcm<Balance> for Pallet<T> {
 		// Send XCM message to the relaychain to place a bid to buy Gilt via pallet-gilt.
 		fn gilt_place_bid(amount: Balance, duration: u32) -> DispatchResult {
-			let (xcm_dest_weight, xcm_fee) = Self::xcm_dest_weight_and_fee(RelaychainInterfaceOperation::GiltPlaceBid);
+			let (xcm_dest_weight, xcm_fee) = Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::GiltPlaceBid);
 			let xcm_message = T::RelayChainCallBuilder::finalize_call_into_xcm_message(
 				T::RelayChainCallBuilder::gilt_place_bid(amount, duration),
 				xcm_fee,
@@ -264,8 +264,7 @@ pub mod module {
 
 		// Send XCM me	ssage to retract a bid to buy Gilt.
 		fn gilt_retract_bid(amount: Balance, duration: u32) -> DispatchResult {
-			let (xcm_dest_weight, xcm_fee) =
-				Self::xcm_dest_weight_and_fee(RelaychainInterfaceOperation::GiltRetractBid);
+			let (xcm_dest_weight, xcm_fee) = Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::GiltRetractBid);
 			let xcm_message = T::RelayChainCallBuilder::finalize_call_into_xcm_message(
 				T::RelayChainCallBuilder::gilt_retract_bid(amount, duration),
 				xcm_fee,
@@ -283,7 +282,7 @@ pub mod module {
 		}
 		// Send XCM message to exchange Gilt in order to thaw frozen assets.
 		fn gilt_thaw(index: u32) -> DispatchResult {
-			let (xcm_dest_weight, xcm_fee) = Self::xcm_dest_weight_and_fee(RelaychainInterfaceOperation::GiltThaw);
+			let (xcm_dest_weight, xcm_fee) = Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::GiltThaw);
 			let xcm_message = T::RelayChainCallBuilder::finalize_call_into_xcm_message(
 				T::RelayChainCallBuilder::gilt_thaw(index),
 				xcm_fee,

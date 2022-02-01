@@ -65,6 +65,16 @@ pub enum StakingCall {
 	WithdrawUnbonded(u32),
 }
 
+#[derive(Encode, Decode, RuntimeDebug)]
+pub enum GiltCall {
+	#[codec(index = 0)]
+	PlaceBid(#[codec(compact)] Balance, u32),
+	#[codec(index = 1)]
+	RetractBid(#[codec(compact)] Balance, u32),
+	#[codec(index = 3)]
+	Thaw(u32),
+}
+
 #[cfg(feature = "kusama")]
 mod kusama {
 	use crate::*;
@@ -79,6 +89,8 @@ mod kusama {
 		Staking(StakingCall),
 		#[codec(index = 24)]
 		Utility(Box<UtilityCall<Self>>),
+		#[codec(index = 38)]
+		Gilt(GiltCall),
 	}
 }
 
@@ -96,6 +108,8 @@ mod polkadot {
 		Staking(StakingCall),
 		#[codec(index = 26)]
 		Utility(Box<UtilityCall<Self>>),
+		#[codec(index = 38)]
+		Gilt(GiltCall), // Not yet supported by Polkadot. Update the index
 	}
 }
 
@@ -138,6 +152,18 @@ where
 
 	fn balances_transfer_keep_alive(to: Self::AccountId, amount: Self::Balance) -> Self::RelayChainCall {
 		RelayChainCall::Balances(BalancesCall::TransferKeepAlive(T::Lookup::unlookup(to), amount))
+	}
+
+	fn gilt_place_bid(amount: Self::Balance, duration: u32) -> Self::RelayChainCall {
+		RelayChainCall::Gilt(GiltCall::PlaceBid(amount, duration))
+	}
+
+	fn gilt_retract_bid(amount: Self::Balance, duration: u32) -> Self::RelayChainCall {
+		RelayChainCall::Gilt(GiltCall::RetractBid(amount, duration))
+	}
+
+	fn gilt_thaw(index: u32) -> Self::RelayChainCall {
+		RelayChainCall::Gilt(GiltCall::Thaw(index))
 	}
 
 	fn finalize_call_into_xcm_message(call: Self::RelayChainCall, extra_fee: Self::Balance, weight: Weight) -> Xcm<()> {

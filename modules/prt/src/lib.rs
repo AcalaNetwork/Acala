@@ -80,8 +80,8 @@ pub mod module {
 		type Currency: MultiReservableCurrency<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>
 			+ MultiCurrencyExtended<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
 
-		/// The RelaychainInterface to communicate with the relaychain via XCM.
-		type RelaychainInterface: GiltXcm<Balance>;
+		/// The XcmInterface to communicate with the relaychain via XCM.
+		type XcmInterface: GiltXcm<Balance>;
 
 		/// Block number provider for the relaychain.
 		type RelayChainBlockNumber: BlockNumberProvider<BlockNumber = Self::BlockNumber>;
@@ -197,7 +197,7 @@ pub mod module {
 		#[pallet::weight(0)]
 		pub fn set_nft_id(origin: OriginFor<T>, nft_id: ClassIdOf<T>) -> DispatchResult {
 			T::OracleOrigin::ensure_origin(origin)?;
-			PrtClassId::<T>::put(nft_id.clone());
+			PrtClassId::<T>::put(nft_id);
 			Self::deposit_event(Event::<T>::PrtClassIdSet { class_id: nft_id });
 			Ok(())
 		}
@@ -225,7 +225,7 @@ pub mod module {
 			T::Currency::reserve(T::RelaychainCurrency::get(), &who, amount)?;
 
 			// Place this bid on relaychain via XCM
-			T::RelaychainInterface::gilt_place_bid(amount, duration)?;
+			T::XcmInterface::gilt_place_bid(amount, duration)?;
 
 			// Put the user's bid into a queue.
 			PlacedBids::<T>::mutate(duration, amount, |bidders| {
@@ -262,7 +262,7 @@ pub mod module {
 			});
 
 			// Retract this bid on relaychain via XCM
-			T::RelaychainInterface::gilt_retract_bid(amount, duration)?;
+			T::XcmInterface::gilt_retract_bid(amount, duration)?;
 
 			Self::deposit_event(Event::RetractBidRequested { who, duration, amount });
 			Ok(())
@@ -352,7 +352,7 @@ pub mod module {
 			);
 
 			Self::deposit_event(Event::PrtIssued {
-				who: bidder.clone(),
+				who: bidder,
 				active_index: index,
 				expiry,
 				amount,
@@ -388,7 +388,7 @@ pub mod module {
 			);
 
 			// Send the XCM to the relaychain to request thaw.
-			T::RelaychainInterface::gilt_thaw(index)?;
+			T::XcmInterface::gilt_thaw(index)?;
 
 			Self::deposit_event(Event::ThawRequested {
 				index,
