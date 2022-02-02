@@ -944,6 +944,7 @@ impl pallet_scheduler::Config for Runtime {
 }
 
 parameter_types! {
+	/// Max size 4MB allowed for a preimage.
 	pub const PreimageMaxSize: u32 = 4096 * 1024;
 	pub PreimageBaseDeposit: Balance = deposit(2, 64);
 	pub PreimageByteDeposit: Balance = deposit(0, 1);

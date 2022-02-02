@@ -40,8 +40,8 @@ use frame_support::{
 	pallet_prelude::*,
 	parameter_types,
 	traits::{
-		tokens::fungible::Inspect, BalanceStatus, Currency, EnsureOneOf, EnsureOrigin, ExistenceRequirement, FindAuthor, Get,
-		NamedReservableCurrency, OnKilledAccount,
+		tokens::fungible::Inspect, BalanceStatus, Currency, EnsureOneOf, EnsureOrigin, ExistenceRequirement,
+		FindAuthor, Get, NamedReservableCurrency, OnKilledAccount,
 	},
 	transactional,
 	weights::{Pays, PostDispatchInfo, Weight},
