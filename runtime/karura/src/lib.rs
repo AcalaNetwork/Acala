@@ -1845,13 +1845,10 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 				#[cfg(feature = "integration-tests")]
 				parachains::bifrost::BNC_KEY => Some(Token(BNC)),
 				key => {
-					if let Ok(currency_id) = CurrencyId::decode(&mut &*key) {
-						match currency_id {
-							Token(KAR) | Token(KUSD) | Token(LKSM) => Some(currency_id),
-							_ => None,
-						}
-					} else {
-						None
+					let currency_id = CurrencyId::decode(&mut &*key).ok()?;
+					match currency_id {
+						Token(KAR) | Token(KUSD) | Token(LKSM) => Some(currency_id),
+						_ => None,
 					}
 				}
 			},

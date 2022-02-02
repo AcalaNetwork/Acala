@@ -1737,13 +1737,10 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 				interior: X1(GeneralKey(key)),
 			} => {
 				let key = &key[..];
-				if let Ok(currency_id) = CurrencyId::decode(&mut &*key) {
-					match currency_id {
-						Token(ACA) | Token(AUSD) | Token(LDOT) => Some(currency_id),
-						_ => None,
-					}
-				} else {
-					None
+				let currency_id = CurrencyId::decode(&mut &*key).ok()?;
+				match currency_id {
+					Token(ACA) | Token(AUSD) | Token(LDOT) => Some(currency_id),
+					_ => None,
 				}
 			}
 			_ => None,

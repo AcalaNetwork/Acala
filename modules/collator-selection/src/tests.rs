@@ -26,6 +26,8 @@ use frame_support::{
 use pallet_balances::Error as BalancesError;
 use sp_runtime::{testing::UintAuthorityId, traits::BadOrigin};
 
+type Collators = BoundedBTreeSet<u64, ConstU32<4>>;
+
 #[test]
 fn basic_setup_works() {
 	new_test_ext().execute_with(|| {
@@ -150,7 +152,7 @@ fn cannot_register_dupe_candidate() {
 		));
 		// can add 3 as candidate
 		assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(3)));
-		let mut collators = BoundedBTreeSet::<u64, ConstU32<4>>::new();
+		let mut collators = Collators::new();
 		assert_ok!(collators.try_insert(3));
 		assert_eq!(CollatorSelection::candidates(), collators);
 		assert_eq!(Balances::free_balance(3), 90);
@@ -206,10 +208,7 @@ fn register_as_candidate_works() {
 		// given
 		assert_eq!(CollatorSelection::desired_candidates(), 2);
 		assert_eq!(CollatorSelection::candidacy_bond(), 10);
-		assert_eq!(
-			CollatorSelection::candidates(),
-			BoundedBTreeSet::<u64, ConstU32<4>>::new()
-		);
+		assert_eq!(CollatorSelection::candidates(), Collators::new());
 		assert_eq!(CollatorSelection::invulnerables(), vec![1, 2]);
 
 		// take two endowed, non-invulnerables accounts.
@@ -246,10 +245,7 @@ fn register_candidate_works() {
 		// given
 		assert_eq!(CollatorSelection::desired_candidates(), 2);
 		assert_eq!(CollatorSelection::candidacy_bond(), 10);
-		assert_eq!(
-			CollatorSelection::candidates(),
-			BoundedBTreeSet::<u64, ConstU32<4>>::new()
-		);
+		assert_eq!(CollatorSelection::candidates(), Collators::new());
 		assert_eq!(CollatorSelection::invulnerables(), vec![1, 2]);
 
 		// take two endowed, non-invulnerables accounts.
@@ -411,7 +407,7 @@ fn fees_edgecases() {
 		// triggers `note_author`
 		Authorship::on_initialize(1);
 
-		let mut collators = BoundedBTreeSet::<u64, ConstU32<4>>::new();
+		let mut collators = Collators::new();
 		assert_ok!(collators.try_insert(4));
 		assert_eq!(CollatorSelection::candidates(), collators);
 		assert_eq!(Balances::reserved_balance_named(&RESERVE_ID, &4), 10);
@@ -532,7 +528,7 @@ fn kick_mechanism() {
 		assert_eq!(SessionChangeBlock::get(), 20);
 		assert_eq!(CollatorSelection::candidates().len(), 2);
 		assert_eq!(SessionHandlerCollators::get(), vec![1, 2, 3, 4]);
-		let mut collators = BoundedBTreeSet::<u64, ConstU32<4>>::new();
+		let mut collators = Collators::new();
 		assert_ok!(collators.try_insert(3));
 		assert_ok!(collators.try_insert(4));
 		assert_eq!(CollatorSelection::candidates(), collators);
@@ -544,7 +540,7 @@ fn kick_mechanism() {
 		assert_eq!(SessionChangeBlock::get(), 30);
 		assert_eq!(CollatorSelection::candidates().len(), 1);
 		assert_eq!(SessionHandlerCollators::get(), vec![1, 2, 3, 4]);
-		let mut collators = BoundedBTreeSet::<u64, ConstU32<4>>::new();
+		let mut collators = Collators::new();
 		assert_ok!(collators.try_insert(4));
 		assert_eq!(CollatorSelection::candidates(), collators);
 		// kicked collator without funds back

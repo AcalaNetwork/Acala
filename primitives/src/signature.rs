@@ -94,24 +94,22 @@ impl TryFrom<AcalaMultiSignature> for ecdsa::Signature {
 	}
 }
 
-// impl Default for AcalaMultiSignature {
-// 	fn default() -> Self {
-// 		Self::Ed25519(Default::default())
-// 	}
-// }
+impl Default for AcalaMultiSignature {
+	fn default() -> Self {
+		Self::Ed25519(ed25519::Signature([0u8; 64]))
+	}
+}
 
 impl Verify for AcalaMultiSignature {
 	type Signer = MultiSigner;
 	fn verify<L: Lazy<[u8]>>(&self, mut msg: L, signer: &AccountId32) -> bool {
 		match (self, signer) {
-			(Self::Ed25519(ref sig), who) => match ed25519::Public::from_slice(who.as_ref()) {
-				Ok(signer) => sig.verify(msg, &signer),
-				Err(()) => false,
-			},
-			(Self::Sr25519(ref sig), who) => match sr25519::Public::from_slice(who.as_ref()) {
-				Ok(signer) => sig.verify(msg, &signer),
-				Err(()) => false,
-			},
+			(Self::Ed25519(ref sig), who) => {
+				ed25519::Public::from_slice(who.as_ref()).map_or(false, |signer| sig.verify(msg, &signer))
+			}
+			(Self::Sr25519(ref sig), who) => {
+				sr25519::Public::from_slice(who.as_ref()).map_or(false, |signer| sig.verify(msg, &signer))
+			}
 			(Self::Ecdsa(ref sig), who) => {
 				let m = sp_io::hashing::blake2_256(msg.get());
 				match sp_io::crypto::secp256k1_ecdsa_recover_compressed(sig.as_ref(), &m) {
