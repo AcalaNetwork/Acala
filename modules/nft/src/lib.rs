@@ -265,7 +265,7 @@ pub mod module {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			let to = T::Lookup::lookup(to)?;
-			let _ = Self::do_mint(who, to, class_id, metadata, attributes, quantity)?;
+			Self::do_mint(&who, &to, class_id, metadata, attributes, quantity)?;
 			Ok(())
 		}
 
@@ -411,8 +411,8 @@ impl<T: Config> Pallet<T> {
 
 	#[require_transactional]
 	fn do_mint(
-		who: T::AccountId,
-		to: T::AccountId,
+		who: &T::AccountId,
+		to: &T::AccountId,
 		class_id: ClassIdOf<T>,
 		metadata: CID,
 		attributes: Attributes,
@@ -420,7 +420,7 @@ impl<T: Config> Pallet<T> {
 	) -> Result<Vec<TokenIdOf<T>>, DispatchError> {
 		ensure!(quantity >= 1, Error::<T>::InvalidQuantity);
 		let class_info = orml_nft::Pallet::<T>::classes(class_id).ok_or(Error::<T>::ClassIdNotFound)?;
-		ensure!(who == class_info.owner, Error::<T>::NoPermission);
+		ensure!(*who == class_info.owner, Error::<T>::NoPermission);
 
 		ensure!(
 			class_info.data.properties.0.contains(ClassProperty::Mintable),
@@ -433,14 +433,14 @@ impl<T: Config> Pallet<T> {
 
 		// `repatriate_reserved` will check `to` account exist and may return
 		// `DeadAccount`.
-		<T as module::Config>::Currency::transfer(&who, &to, total_deposit, KeepAlive)?;
-		<T as module::Config>::Currency::reserve_named(&RESERVE_ID, &to, total_deposit)?;
+		<T as module::Config>::Currency::transfer(who, to, total_deposit, KeepAlive)?;
+		<T as module::Config>::Currency::reserve_named(&RESERVE_ID, to, total_deposit)?;
 
-		let mut token_ids = vec![];
+		let mut token_ids = Vec::with_capacity(quantity as usize);
 		let data = TokenData { deposit, attributes };
 		for _ in 0..quantity {
 			token_ids.push(orml_nft::Pallet::<T>::mint(
-				&to,
+				to,
 				class_id,
 				metadata.clone(),
 				data.clone(),
@@ -448,8 +448,8 @@ impl<T: Config> Pallet<T> {
 		}
 
 		Self::deposit_event(Event::MintedToken {
-			from: who,
-			to,
+			from: who.clone(),
+			to: to.clone(),
 			class_id,
 			quantity,
 		});
@@ -532,9 +532,6 @@ impl<T: Config> Inspect<T::AccountId> for Pallet<T> {
 		orml_nft::Pallet::<T>::classes(class).map(|c| c.owner)
 	}
 
-	/// Returns `true` if the asset `instance` of `class` may be transferred.
-	///
-	/// Default implementation is that all assets are transferable.
 	fn can_transfer(class: &Self::ClassId, _: &Self::InstanceId) -> bool {
 		orml_nft::Pallet::<T>::classes(class).map_or(false, |class_info| {
 			class_info.data.properties.0.contains(ClassProperty::Transferable)
@@ -544,8 +541,6 @@ impl<T: Config> Inspect<T::AccountId> for Pallet<T> {
 
 impl<T: Config> Mutate<T::AccountId> for Pallet<T> {
 	/// Mint some asset `instance` of `class` to be owned by `who`.
-	///
-	/// By default, this is not a supported operation.
 	fn mint_into(class: &Self::ClassId, instance: &Self::InstanceId, who: &T::AccountId) -> DispatchResult {
 		// Ensure the next token ID is correct
 		ensure!(
@@ -554,27 +549,17 @@ impl<T: Config> Mutate<T::AccountId> for Pallet<T> {
 		);
 
 		let class_owner = <Self as Inspect<T::AccountId>>::class_owner(class).ok_or(Error::<T>::ClassIdNotFound)?;
-		Self::do_mint(
-			class_owner,
-			who.clone(),
-			*class,
-			Default::default(),
-			Default::default(),
-			1u32,
-		)?;
+		Self::do_mint(&class_owner, who, *class, Default::default(), Default::default(), 1u32)?;
 		Ok(())
 	}
 
 	/// Burn some asset `instance` of `class`.
-	///
-	/// By default, this is not a supported operation.
 	fn burn_from(class: &Self::ClassId, instance: &Self::InstanceId) -> DispatchResult {
 		let owner = <Self as Inspect<T::AccountId>>::owner(class, instance).ok_or(Error::<T>::TokenIdNotFound)?;
 		Self::do_burn(owner, (*class, *instance), None)
 	}
 }
 
-/// Trait for providing a non-fungible sets of assets which can only be transferred.
 impl<T: Config> Transfer<T::AccountId> for Pallet<T> {
 	/// Transfer asset `instance` of `class` into `destination` account.
 	fn transfer(class: &Self::ClassId, instance: &Self::InstanceId, destination: &T::AccountId) -> DispatchResult {
