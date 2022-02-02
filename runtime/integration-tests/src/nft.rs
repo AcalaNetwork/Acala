@@ -40,6 +40,7 @@ fn test_nft_module() {
 				metadata.clone(),
 				Properties(ClassProperty::Transferable | ClassProperty::Burnable | ClassProperty::Mintable),
 				Default::default(),
+				None,
 			));
 			let deposit =
 				Proxy::deposit(1u32) + CreateClassDeposit::get() + DataDepositPerByte::get() * (metadata.len() as u128);

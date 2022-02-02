@@ -63,6 +63,7 @@ fn create_token_class<T: Config>(caller: T::AccountId) -> Result<T::AccountId, D
 				| ClassProperty::ClassPropertiesMutable,
 		),
 		test_attr(),
+		None,
 	)?;
 
 	<T as module::Config>::Currency::make_free_balance_be(

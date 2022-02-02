@@ -22,22 +22,37 @@
 
 use crate::mock::*;
 use frame_support::assert_ok;
+use primitives::nft::{ClassProperty, Properties};
 
-#[test]
-fn set_dummy_work() {
-	new_test_ext().execute_with(|| {
-		assert_eq!(Example::dummy(), None);
-		assert_ok!(Example::set_dummy(Origin::root(), 20));
-		assert_eq!(Example::dummy(), Some(20));
-		System::assert_last_event(Event::Example(crate::Event::Dummy { value: 20 }));
-	});
+fn setup_nft() {
+	assert_ok!(ModuleNFT::create_class(
+		Origin::signed(ALICE),
+		Default::default(),
+		Properties(ClassProperty::Transferable | ClassProperty::Burnable | ClassProperty::Mintable),
+		Default::default(),
+		Some(PrtPalletAccount::get()),
+	));
+
+	if let Event::ModuleNFT(module_nft::Event::CreatedClass { owner: _, class_id }) =
+		System::events().last().unwrap().event.clone()
+	{
+		assert_ok!(PRT::set_nft_id(Origin::root(), class_id));
+	}
 }
 
 #[test]
-fn do_set_bar_work() {
-	new_test_ext().execute_with(|| {
-		assert_eq!(Example::bar(2), 200);
-		Example::do_set_bar(&2, 10);
-		assert_eq!(Example::bar(2), 10);
-	});
+fn place_bid_works() {
+	ExtBuilder::default()
+		.balances(vec![
+			(ALICE, NATIVE_CURRENCY, dollar(1_000)),
+			(ALICE, RELAYCHAIN_CURRENCY, dollar(1_000)),
+			(BOB, NATIVE_CURRENCY, dollar(1_000)),
+			(BOB, RELAYCHAIN_CURRENCY, dollar(1_000)),
+		])
+		.build()
+		.execute_with(|| {
+			setup_nft();
+
+			assert_ok!(PRT::place_bid(Origin::signed(ALICE), dollar(100), 1));
+		});
 }

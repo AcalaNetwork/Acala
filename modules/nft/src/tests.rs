@@ -60,6 +60,7 @@ fn create_class_should_work() {
 			metadata.clone(),
 			Default::default(),
 			test_attr(1),
+			None,
 		));
 		System::assert_last_event(Event::NFTModule(crate::Event::CreatedClass {
 			owner: class_id_account(),
@@ -95,6 +96,7 @@ fn create_class_should_fail() {
 				metadata.clone(),
 				Properties(ClassProperty::Transferable | ClassProperty::Burnable),
 				Default::default(),
+				None,
 			),
 			pallet_balances::Error::<Runtime, _>::InsufficientBalance
 		);
@@ -108,6 +110,7 @@ fn create_class_should_fail() {
 				metadata,
 				Properties(ClassProperty::Transferable | ClassProperty::Burnable),
 				large_attr,
+				None,
 			),
 			Error::<Runtime>::AttributesTooLarge
 		);
@@ -124,6 +127,7 @@ fn mint_should_work() {
 			metadata.clone(),
 			Properties(ClassProperty::Transferable | ClassProperty::Burnable | ClassProperty::Mintable),
 			test_attr(1),
+			None,
 		));
 		System::assert_last_event(Event::NFTModule(crate::Event::CreatedClass {
 			owner: class_id_account(),
@@ -197,6 +201,7 @@ fn mint_should_fail() {
 			metadata.clone(),
 			Properties(ClassProperty::Transferable | ClassProperty::Burnable | ClassProperty::Mintable),
 			Default::default(),
+			None,
 		));
 		assert_noop!(
 			NFTModule::mint(
@@ -264,6 +269,7 @@ fn mint_should_fail_without_mintable() {
 			metadata.clone(),
 			Default::default(),
 			Default::default(),
+			None,
 		));
 
 		assert_noop!(
@@ -289,6 +295,7 @@ fn transfer_should_work() {
 			metadata.clone(),
 			Properties(ClassProperty::Transferable | ClassProperty::Burnable | ClassProperty::Mintable),
 			Default::default(),
+			None,
 		));
 		assert_ok!(Balances::deposit_into_existing(
 			&class_id_account(),
@@ -348,6 +355,7 @@ fn transfer_should_fail() {
 			metadata.clone(),
 			Properties(ClassProperty::Transferable | ClassProperty::Burnable | ClassProperty::Mintable),
 			Default::default(),
+			None,
 		));
 		assert_ok!(Balances::deposit_into_existing(
 			&class_id_account(),
@@ -382,6 +390,7 @@ fn transfer_should_fail() {
 			metadata.clone(),
 			Properties(ClassProperty::Mintable.into()),
 			Default::default(),
+			None,
 		));
 		assert_ok!(Balances::deposit_into_existing(
 			&class_id_account(),
@@ -411,6 +420,7 @@ fn burn_should_work() {
 			metadata.clone(),
 			Properties(ClassProperty::Transferable | ClassProperty::Burnable | ClassProperty::Mintable),
 			Default::default(),
+			None,
 		));
 		assert_ok!(Balances::deposit_into_existing(
 			&class_id_account(),
@@ -446,6 +456,7 @@ fn burn_should_fail() {
 			metadata.clone(),
 			Properties(ClassProperty::Transferable | ClassProperty::Burnable | ClassProperty::Mintable),
 			Default::default(),
+			None,
 		));
 		assert_ok!(Balances::deposit_into_existing(
 			&class_id_account(),
@@ -485,6 +496,7 @@ fn burn_should_fail() {
 			metadata.clone(),
 			Properties(ClassProperty::Mintable.into()),
 			Default::default(),
+			None,
 		));
 		assert_ok!(Balances::deposit_into_existing(
 			&class_id_account(),
@@ -514,6 +526,7 @@ fn burn_with_remark_should_work() {
 			metadata.clone(),
 			Properties(ClassProperty::Transferable | ClassProperty::Burnable | ClassProperty::Mintable),
 			Default::default(),
+			None,
 		));
 		assert_ok!(Balances::deposit_into_existing(
 			&class_id_account(),
@@ -558,6 +571,7 @@ fn destroy_class_should_work() {
 			metadata.clone(),
 			Properties(ClassProperty::Transferable | ClassProperty::Burnable | ClassProperty::Mintable),
 			Default::default(),
+			None,
 		));
 
 		let deposit =
@@ -611,6 +625,7 @@ fn destroy_class_should_fail() {
 			metadata.clone(),
 			Properties(ClassProperty::Transferable | ClassProperty::Burnable | ClassProperty::Mintable),
 			Default::default(),
+			None,
 		));
 		assert_ok!(Balances::deposit_into_existing(
 			&class_id_account(),
@@ -664,6 +679,7 @@ fn update_class_properties_should_work() {
 			metadata.clone(),
 			Properties(ClassProperty::Transferable | ClassProperty::ClassPropertiesMutable | ClassProperty::Mintable),
 			Default::default(),
+			None,
 		));
 
 		assert_ok!(Balances::deposit_into_existing(

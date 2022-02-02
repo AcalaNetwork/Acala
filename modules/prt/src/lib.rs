@@ -41,8 +41,8 @@ use orml_traits::{MultiCurrencyExtended, MultiReservableCurrency, NFT};
 use module_support::GiltXcm;
 use primitives::{Balance, CurrencyId};
 
-// mod mock;
-// mod tests;
+mod mock;
+mod tests;
 
 pub use module::*;
 
