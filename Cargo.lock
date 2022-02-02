@@ -6355,6 +6355,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "module-support",
+ "pallet-collective",
  "parity-scale-codec",
  "scale-info",
  "serde",
