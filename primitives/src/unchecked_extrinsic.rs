@@ -536,16 +536,16 @@ mod tests {
 			Some((9582499136488, 34100000))
 		);
 
-		msg.storage_limit = 0xffff * 64;
+		// check storage_limit max is 0xffff * 64 + 63
+		msg.storage_limit = 0xffff * 64 + 64;
+		assert_eq!(recover_sign_data(&msg, ts_fee_per_gas, storage_deposit_per_byte), None);
+
+		msg.storage_limit = 0xffff * 64 + 63;
 		assert_eq!(
 			recover_sign_data(&msg, ts_fee_per_gas, storage_deposit_per_byte),
 			Some((9582499201023, 2099220000))
 		);
-		// check storage_limit max is 0xffff * 64
-		msg.storage_limit = 0xffff * 65;
-		assert_eq!(recover_sign_data(&msg, ts_fee_per_gas, storage_deposit_per_byte), None);
 
-		msg.storage_limit = 0xffff * 64;
 		assert_eq!(
 			recover_sign_data(&msg, ts_fee_per_gas, u128::MAX),
 			Some((9582499201023, 111502054267125439094838181151820))
