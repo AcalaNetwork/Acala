@@ -371,7 +371,7 @@ pub mod module {
 			let who = ensure_signed(origin)?;
 
 			// Ensure PRT's class ID has been set.
-			let _ = Self::prt_class_id().ok_or(Error::<T>::PrtClassIdNotSet)?;
+			Self::prt_class_id().ok_or(Error::<T>::PrtClassIdNotSet)?;
 
 			// Ensure the PRT exists.
 			let prt_issued = Self::issued_prt(index).ok_or(Error::<T>::PrtNotIssued)?;
