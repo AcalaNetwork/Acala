@@ -1,6 +1,6 @@
 [package]
 name = "runtime-integration-tests"
-version = "2.2.1"
+version = "2.2.3"
 authors = ["Acala Developers"]
 edition = "2021"
 
@@ -93,6 +93,7 @@ module-cdp-treasury = { path = "../../modules/cdp-treasury" }
 module-collator-selection = { path = "../../modules/collator-selection" }
 module-currencies = { path = "../../modules/currencies" }
 module-dex = { path = "../../modules/dex" }
+module-dex-oracle = { path = "../../modules/dex-oracle" }
 module-emergency-shutdown = { path = "../../modules/emergency-shutdown" }
 module-evm = { path = "../../modules/evm" }
 module-evm-accounts = { path = "../../modules/evm-accounts" }

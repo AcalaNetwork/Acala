@@ -31,12 +31,15 @@
 
 use frame_support::{pallet_prelude::*, transactional};
 use frame_system::pallet_prelude::*;
-use orml_traits::{DataFeeder, DataProvider, MultiCurrency};
-use primitives::{Balance, CurrencyId};
+use orml_traits::{DataFeeder, DataProvider, GetByKey, MultiCurrency};
+use primitives::{Balance, CurrencyId, Lease};
 use sp_core::U256;
-use sp_runtime::{traits::CheckedMul, FixedPointNumber};
+use sp_runtime::{
+	traits::{BlockNumberProvider, CheckedMul, One, Saturating, UniqueSaturatedInto},
+	FixedPointNumber,
+};
 use sp_std::marker::PhantomData;
-use support::{DEXManager, Erc20InfoMapping, ExchangeRateProvider, LockablePrice, Price, PriceProvider};
+use support::{DEXManager, Erc20InfoMapping, ExchangeRateProvider, LockablePrice, Price, PriceProvider, Rate};
 
 mod mock;
 mod tests;
@@ -87,6 +90,17 @@ pub mod module {
 
 		/// Mapping between CurrencyId and ERC20 address so user can use Erc20.
 		type Erc20InfoMapping: Erc20InfoMapping;
+
+		/// Get the lease block number of relaychain for specific Lease
+		type LiquidCrowdloanLeaseBlockNumber: GetByKey<Lease, Option<Self::BlockNumber>>;
+
+		/// Block number provider for the relaychain.
+		type RelayChainBlockNumber: BlockNumberProvider<BlockNumber = Self::BlockNumber>;
+
+		/// The staking reward rate per relaychain block for StakingCurrency.
+		/// In fact, the staking reward is not settled according to the block on relaychain.
+		#[pallet::constant]
+		type RewardRatePerRelaychainBlock: Get<Rate>;
 
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
@@ -168,6 +182,20 @@ impl<T: Config> Pallet<T> {
 			// directly return real-time the multiple of the price of StakingCurrencyId and the exchange rate
 			return Self::access_price(T::GetStakingCurrencyId::get())
 				.and_then(|n| n.checked_mul(&T::LiquidStakingExchangeRateProvider::get_exchange_rate()));
+		} else if let CurrencyId::LiquidCrowdloan(lease) = currency_id {
+			// Note: For LiquidCrowdloan, The reliable market price may not be available in the initial stage,
+			// the system simply discounts the price of StakingCurrency according to the StakingRewardRate and
+			// the remaining lease time.
+			let lease_block_number = T::LiquidCrowdloanLeaseBlockNumber::get(&lease)?;
+			let current_relaychain_block = T::RelayChainBlockNumber::current_block_number();
+			let interval = lease_block_number.saturating_sub(current_relaychain_block);
+			let discount_rate = Rate::one()
+				.saturating_add(T::RewardRatePerRelaychainBlock::get())
+				.saturating_pow(interval.unique_saturated_into())
+				.reciprocal()
+				.expect("shouldn't fail");
+
+			return Self::access_price(T::GetStakingCurrencyId::get()).and_then(|n| n.checked_mul(&discount_rate));
 		} else if let CurrencyId::DexShare(symbol_0, symbol_1) = currency_id {
 			let token_0: CurrencyId = symbol_0.into();
 			let token_1: CurrencyId = symbol_1.into();

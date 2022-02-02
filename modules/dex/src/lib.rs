@@ -36,7 +36,7 @@
 use codec::MaxEncodedLen;
 use frame_support::{log, pallet_prelude::*, transactional, PalletId};
 use frame_system::pallet_prelude::*;
-use orml_traits::{MultiCurrency, MultiCurrencyExtended};
+use orml_traits::{Happened, MultiCurrency, MultiCurrencyExtended};
 use primitives::{Balance, CurrencyId, TradingPair};
 use scale_info::TypeInfo;
 use sp_core::{H160, U256};
@@ -126,6 +126,9 @@ pub mod module {
 
 		/// The origin which may list, enable or disable trading pairs.
 		type ListingOrigin: EnsureOrigin<Self::Origin>;
+
+		/// Event handler which calls when update liquidity pool.
+		type OnLiquidityPoolUpdated: Happened<(TradingPair, Balance, Balance)>;
 	}
 
 	#[pallet::error]
@@ -644,7 +647,7 @@ pub mod module {
 					)?;
 
 					// inject provision to liquidity pool
-					LiquidityPool::<T>::try_mutate(trading_pair, |(pool_0, pool_1)| -> DispatchResult {
+					Self::try_mutate_liquidity_pool(&trading_pair, |(pool_0, pool_1)| -> DispatchResult {
 						*pool_0 = pool_0.checked_add(total_provision_0).ok_or(ArithmeticError::Overflow)?;
 						*pool_1 = pool_1.checked_add(total_provision_1).ok_or(ArithmeticError::Overflow)?;
 						Ok(())
@@ -731,6 +734,23 @@ pub mod module {
 impl<T: Config> Pallet<T> {
 	fn account_id() -> T::AccountId {
 		T::PalletId::get().into_account()
+	}
+
+	fn try_mutate_liquidity_pool<R, E>(
+		trading_pair: &TradingPair,
+		f: impl FnOnce((&mut Balance, &mut Balance)) -> sp_std::result::Result<R, E>,
+	) -> sp_std::result::Result<R, E> {
+		LiquidityPool::<T>::try_mutate(trading_pair, |(pool_0, pool_1)| -> sp_std::result::Result<R, E> {
+			let old_pool_0 = *pool_0;
+			let old_pool_1 = *pool_1;
+			f((pool_0, pool_1)).map(move |result| {
+				if *pool_0 != old_pool_0 || *pool_1 != old_pool_1 {
+					T::OnLiquidityPoolUpdated::happened(&(*trading_pair, *pool_0, *pool_1));
+				}
+
+				result
+			})
+		})
 	}
 
 	fn do_claim_dex_share(who: &T::AccountId, currency_id_a: CurrencyId, currency_id_b: CurrencyId) -> DispatchResult {
@@ -878,7 +898,7 @@ impl<T: Config> Pallet<T> {
 			Error::<T>::InvalidLiquidityIncrement
 		);
 
-		LiquidityPool::<T>::try_mutate(trading_pair, |(pool_0, pool_1)| -> DispatchResult {
+		Self::try_mutate_liquidity_pool(&trading_pair, |(pool_0, pool_1)| -> DispatchResult {
 			let dex_share_currency_id = trading_pair.dex_share_currency_id();
 			let total_shares = T::Currency::total_issuance(dex_share_currency_id);
 			let (max_amount_0, max_amount_1) = if currency_id_a == trading_pair.first() {
@@ -985,7 +1005,7 @@ impl<T: Config> Pallet<T> {
 			TradingPair::from_currency_ids(currency_id_a, currency_id_b).ok_or(Error::<T>::InvalidCurrencyId)?;
 		let dex_share_currency_id = trading_pair.dex_share_currency_id();
 
-		LiquidityPool::<T>::try_mutate(trading_pair, |(pool_0, pool_1)| -> DispatchResult {
+		Self::try_mutate_liquidity_pool(&trading_pair, |(pool_0, pool_1)| -> DispatchResult {
 			let (min_withdrawn_0, min_withdrawn_1) = if currency_id_a == trading_pair.first() {
 				(min_withdrawn_a, min_withdrawn_b)
 			} else {
@@ -1162,7 +1182,7 @@ impl<T: Config> Pallet<T> {
 		target_decrement: Balance,
 	) -> DispatchResult {
 		if let Some(trading_pair) = TradingPair::from_currency_ids(supply_currency_id, target_currency_id) {
-			LiquidityPool::<T>::try_mutate(trading_pair, |(pool_0, pool_1)| -> DispatchResult {
+			Self::try_mutate_liquidity_pool(&trading_pair, |(pool_0, pool_1)| -> DispatchResult {
 				let invariant_before_swap: U256 = U256::from(*pool_0).saturating_mul(U256::from(*pool_1));
 
 				if supply_currency_id == trading_pair.first() {

@@ -42,6 +42,9 @@ pub mod currencies {
 pub mod dex {
 	include!("../../../mandala/src/benchmarking/dex.rs");
 }
+pub mod dex_oracle {
+	include!("../../../mandala/src/benchmarking/dex_oracle.rs");
+}
 pub mod emergency_shutdown {
 	include!("../../../mandala/src/benchmarking/emergency_shutdown.rs");
 }

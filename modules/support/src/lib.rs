@@ -276,6 +276,10 @@ pub trait PriceProvider<CurrencyId> {
 	}
 }
 
+pub trait DEXPriceProvider<CurrencyId> {
+	fn get_relative_price(base: CurrencyId, quote: CurrencyId) -> Option<ExchangeRate>;
+}
+
 pub trait LockablePrice<CurrencyId> {
 	fn lock_price(currency_id: CurrencyId) -> DispatchResult;
 	fn unlock_price(currency_id: CurrencyId) -> DispatchResult;

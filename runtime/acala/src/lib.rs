@@ -101,7 +101,7 @@ pub use constants::{fee::*, time::*};
 pub use primitives::{
 	convert_decimals_to_evm, define_combined_task, evm::EstimateResourcesRequest, task::TaskResult, AccountId,
 	AccountIndex, Address, Amount, AuctionId, AuthoritysOriginId, Balance, BlockNumber, CurrencyId, DataProviderId,
-	EraIndex, Hash, Moment, Nonce, ReserveIdentifier, Share, Signature, TokenSymbol, TradingPair,
+	EraIndex, Hash, Lease, Moment, Nonce, ReserveIdentifier, Share, Signature, TokenSymbol, TradingPair,
 };
 pub use runtime_common::{
 	calculate_asset_ratio, cent, dollar, microcent, millicent, AcalaDropAssets, EnsureRootOrAllGeneralCouncil,
@@ -114,7 +114,7 @@ pub use runtime_common::{
 	OperationalFeeMultiplier, OperatorMembershipInstanceAcala, Price, ProxyType, Rate, Ratio,
 	RelayChainBlockNumberProvider, RelayChainSubAccountId, RuntimeBlockLength, RuntimeBlockWeights,
 	SystemContractsFilter, TechnicalCommitteeInstance, TechnicalCommitteeMembershipInstance, TimeStampedPrice,
-	TipPerWeightStep, ACA, AUSD, DOT, LDOT, RENBTC,
+	TipPerWeightStep, ACA, AUSD, DOT, LCDOT, LDOT, RENBTC,
 };
 
 mod authority;
@@ -127,7 +127,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("acala"),
 	impl_name: create_runtime_str!("acala"),
 	authoring_version: 1,
-	spec_version: 2021,
+	spec_version: 2023,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -819,8 +819,18 @@ impl orml_tokens::Config for Runtime {
 	type DustRemovalWhitelist = DustRemovalWhitelist;
 }
 
+parameter_type_with_key! {
+	pub LiquidCrowdloanLeaseBlockNumber: |lease: Lease| -> Option<BlockNumber> {
+		match lease {
+			13 => Some(17_856_000),
+			_ => None
+		}
+	};
+}
+
 parameter_types! {
 	pub StableCurrencyFixedPrice: Price = Price::saturating_from_rational(1, 1);
+	pub RewardRatePerRelaychainBlock: Rate = Rate::saturating_from_rational(2_492, 100_000_000_000u128);	// 14% annual staking reward rate of Polkadot
 }
 
 impl module_prices::Config for Runtime {
@@ -835,6 +845,9 @@ impl module_prices::Config for Runtime {
 	type DEX = Dex;
 	type Currency = Currencies;
 	type Erc20InfoMapping = EvmErc20InfoMapping<Runtime>;
+	type LiquidCrowdloanLeaseBlockNumber = LiquidCrowdloanLeaseBlockNumber;
+	type RelayChainBlockNumber = RelayChainBlockNumberProvider<Runtime>;
+	type RewardRatePerRelaychainBlock = RewardRatePerRelaychainBlock;
 	type WeightInfo = weights::module_prices::WeightInfo<Runtime>;
 }
 
@@ -1012,7 +1025,7 @@ where
 }
 
 parameter_types! {
-	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![DOT, LDOT];
+	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![DOT, LDOT, LCDOT];
 	pub DefaultLiquidationRatio: Ratio = Ratio::saturating_from_rational(150, 100);
 	pub DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
 	pub DefaultLiquidationPenalty: Rate = Rate::saturating_from_rational(8, 100);
@@ -1074,12 +1087,21 @@ impl module_dex::Config for Runtime {
 	type DEXIncentives = Incentives;
 	type WeightInfo = weights::module_dex::WeightInfo<Runtime>;
 	type ListingOrigin = EnsureRootOrHalfGeneralCouncil;
+	type OnLiquidityPoolUpdated = ();
+}
+
+impl module_dex_oracle::Config for Runtime {
+	type DEX = Dex;
+	type Time = Timestamp;
+	type UpdateOrigin = EnsureRootOrHalfGeneralCouncil;
+	type WeightInfo = weights::module_dex_oracle::WeightInfo<Runtime>;
 }
 
 parameter_types! {
 	pub const MaxAuctionsCount: u32 = 50;
 	pub HonzonTreasuryAccount: AccountId = HonzonTreasuryPalletId::get().into_account();
 	pub AlternativeSwapPathJointList: Vec<Vec<CurrencyId>> = vec![
+		vec![LCDOT],
 		vec![DOT],
 		vec![LDOT],
 	];
@@ -1107,7 +1129,11 @@ impl module_transaction_pause::Config for Runtime {
 
 parameter_types! {
 	// Sort by fee charge order
-	pub DefaultFeeSwapPathList: Vec<Vec<CurrencyId>> = vec![vec![AUSD, DOT, ACA], vec![DOT, ACA], vec![LDOT, DOT, ACA]];
+	pub DefaultFeeSwapPathList: Vec<Vec<CurrencyId>> = vec![
+		vec![AUSD, ACA],
+		vec![LCDOT, AUSD, ACA],
+		vec![DOT, LCDOT, AUSD, ACA]
+	];
 }
 
 type NegativeImbalance = <Balances as PalletCurrency<AccountId>>::NegativeImbalance;
@@ -1160,7 +1186,7 @@ impl module_evm_accounts::Config for Runtime {
 impl module_asset_registry::Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
-	type LiquidCrowdloanCurrencyId = GetStakingCurrencyId;
+	type StakingCurrencyId = GetStakingCurrencyId;
 	type EVMBridge = module_evm_bridge::EVMBridge<Runtime>;
 	type RegisterOrigin = EnsureRootOrHalfGeneralCouncil;
 	type WeightInfo = weights::module_asset_registry::WeightInfo<Runtime>;
@@ -1785,7 +1811,6 @@ construct_runtime!(
 		Tips: pallet_tips::{Pallet, Call, Storage, Event<T>} = 22,
 
 		// Parachain
-		ParachainSystem: cumulus_pallet_parachain_system::{Pallet, Call, Storage, Inherent, Config, Event<T>} = 30,
 		ParachainInfo: parachain_info::{Pallet, Storage, Config} = 31,
 
 		// Collator. The order of the 4 below are important and shall not change.
@@ -1831,6 +1856,7 @@ construct_runtime!(
 		// Acala Core
 		Prices: module_prices::{Pallet, Storage, Call, Event<T>} = 90,
 		Dex: module_dex::{Pallet, Storage, Call, Event<T>, Config<T>} = 91,
+		DexOracle: module_dex_oracle::{Pallet, Storage, Call} = 92,
 
 		// Honzon
 		AuctionManager: module_auction_manager::{Pallet, Storage, Call, Event<T>, ValidateUnsigned} = 100,
@@ -1853,6 +1879,9 @@ construct_runtime!(
 		EVM: module_evm::{Pallet, Config<T>, Call, Storage, Event<T>} = 130,
 		EVMBridge: module_evm_bridge::{Pallet} = 131,
 		EvmAccounts: module_evm_accounts::{Pallet, Call, Storage, Event<T>} = 132,
+
+		// Parachain System, always put it at the end
+		ParachainSystem: cumulus_pallet_parachain_system::{Pallet, Call, Storage, Inherent, Config, Event<T>} = 30,
 
 		// Temporary
 		Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>} = 255,
@@ -2141,6 +2170,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, module_nft, NftBench::<Runtime>);
 
 			orml_list_benchmark!(list, extra, module_dex, benchmarking::dex);
+			orml_list_benchmark!(list, extra, module_dex_oracle, benchmarking::dex_oracle);
 			orml_list_benchmark!(list, extra, module_asset_registry, benchmarking::asset_registry);
 			orml_list_benchmark!(list, extra, module_auction_manager, benchmarking::auction_manager);
 			orml_list_benchmark!(list, extra, module_cdp_engine, benchmarking::cdp_engine);
@@ -2198,6 +2228,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, module_nft, NftBench::<Runtime>);
 
 			orml_add_benchmark!(params, batches, module_dex, benchmarking::dex);
+			orml_add_benchmark!(params, batches, module_dex_oracle, benchmarking::dex_oracle);
 			orml_add_benchmark!(params, batches, module_asset_registry, benchmarking::asset_registry);
 			orml_add_benchmark!(params, batches, module_auction_manager, benchmarking::auction_manager);
 			orml_add_benchmark!(params, batches, module_cdp_engine, benchmarking::cdp_engine);

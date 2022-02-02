@@ -40,8 +40,8 @@ use frame_support::{
 	pallet_prelude::*,
 	parameter_types,
 	traits::{
-		BalanceStatus, Currency, EnsureOrigin, ExistenceRequirement, FindAuthor, Get, NamedReservableCurrency,
-		OnKilledAccount,
+		tokens::fungible::Inspect, BalanceStatus, Currency, EnsureOrigin, ExistenceRequirement, FindAuthor, Get,
+		NamedReservableCurrency, OnKilledAccount,
 	},
 	transactional,
 	weights::{Pays, PostDispatchInfo, Weight},
@@ -58,7 +58,7 @@ pub use module_support::{
 	AddressMapping, DispatchableTask, EVMStateRentTrait, ExecutionMode, IdleScheduler, InvokeContext,
 	TransactionPayment, EVM as EVMTrait,
 };
-pub use orml_traits::currency::TransferAll;
+pub use orml_traits::{currency::TransferAll, MultiCurrency};
 use primitive_types::{H160, H256, U256};
 pub use primitives::{
 	convert_decimals_from_evm, convert_decimals_to_evm,
@@ -67,7 +67,7 @@ pub use primitives::{
 		MIRRORED_TOKENS_ADDRESS_START,
 	},
 	task::TaskResult,
-	ReserveIdentifier,
+	Balance, CurrencyId, ReserveIdentifier,
 };
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
@@ -75,9 +75,7 @@ use serde::{Deserialize, Serialize};
 use sha3::{Digest, Keccak256};
 use sp_io::KillStorageResult::{AllRemoved, SomeRemaining};
 use sp_runtime::{
-	traits::{
-		Convert, DispatchInfoOf, One, PostDispatchInfoOf, Saturating, SignedExtension, UniqueSaturatedInto, Zero,
-	},
+	traits::{Convert, DispatchInfoOf, One, PostDispatchInfoOf, SignedExtension, UniqueSaturatedInto, Zero},
 	transaction_validity::TransactionValidityError,
 	Either, TransactionOutcome,
 };
@@ -217,7 +215,8 @@ pub mod module {
 		type AddressMapping: AddressMapping<Self::AccountId>;
 
 		/// Currency type for withdraw and balance storage.
-		type Currency: Currency<Self::AccountId>
+		type Currency: Currency<Self::AccountId, Balance = Balance>
+			+ Inspect<Self::AccountId, Balance = Balance>
 			+ NamedReservableCurrency<Self::AccountId, ReserveIdentifier = ReserveIdentifier>;
 
 		/// Merge free balance from source to dest.
@@ -418,7 +417,7 @@ pub mod module {
 				<Accounts<T>>::insert(address, account_info);
 
 				let amount = if account.balance.is_zero() {
-					T::Currency::minimum_balance()
+					<T::Currency as Currency<T::AccountId>>::minimum_balance()
 				} else {
 					account.balance
 				};
@@ -440,7 +439,7 @@ pub mod module {
 					// Use the EVM Runtime
 					let vicinity = Vicinity {
 						gas_price: U256::one(),
-						origin: Default::default(),
+						..Default::default()
 					};
 					let context = Context {
 						caller: source,
@@ -958,7 +957,7 @@ pub mod module {
 				T::Currency::transfer(
 					&T::TreasuryAccount::get(),
 					&T::AddressMapping::get_account_id(&target),
-					T::Currency::minimum_balance(),
+					<T::Currency as Currency<T::AccountId>>::minimum_balance(),
 					ExistenceRequirement::AllowDeath,
 				)?;
 
@@ -1280,7 +1279,7 @@ impl<T: Config> Pallet<T> {
 		let account_id = T::AddressMapping::get_account_id(address);
 
 		let nonce = Self::accounts(address).map_or(Default::default(), |account_info| account_info.nonce);
-		let balance = T::Currency::free_balance(&account_id);
+		let balance = T::Currency::reducible_balance(&account_id, true);
 
 		Account {
 			nonce: U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(nonce)),

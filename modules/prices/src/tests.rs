@@ -117,6 +117,35 @@ fn lp_token_fair_price_works() {
 }
 
 #[test]
+fn access_price_of_liquid_crowdloan() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_eq!(
+			PricesModule::access_price(DOT),
+			Some(Price::from_inner(10_000_000_000_000_000_000_000_000_000u128))
+		); // 100 USD, right shift the decimal point (18-12) places
+		assert_eq!(
+			PricesModule::access_price(LIQUID_CROWDLOAN_LEASE_1),
+			Some(Price::from_inner(9_048_826_308_977_761_170_000_000_000u128))
+		); // 90.48 USD, right shift the decimal point (18-12) places
+		assert_eq!(
+			PricesModule::access_price(LIQUID_CROWDLOAN_LEASE_2),
+			Some(Price::from_inner(8_188_125_757_004_809_280_000_000_000u128))
+		); //81.88 USD, right shift the decimal point (18-12) places
+		assert_eq!(PricesModule::access_price(LIQUID_CROWDLOAN_LEASE_3), None);
+
+		MockRelayBlockNumberProvider::set(100);
+		assert_eq!(
+			PricesModule::access_price(LIQUID_CROWDLOAN_LEASE_1),
+			PricesModule::access_price(DOT)
+		); // same as DOT when lease expire
+		assert_eq!(
+			PricesModule::access_price(LIQUID_CROWDLOAN_LEASE_2),
+			Some(Price::from_inner(9_048_826_308_977_761_170_000_000_000u128))
+		); // 90.48 USD, right shift the decimal point (18-12) places
+	});
+}
+
+#[test]
 fn access_price_of_stable_currency() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_eq!(

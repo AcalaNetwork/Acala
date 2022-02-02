@@ -162,7 +162,9 @@ impl FindAuthor<AccountId32> for AuthorGiven {
 	where
 		I: 'a + IntoIterator<Item = (ConsensusEngineId, &'a [u8])>,
 	{
-		Some(AccountId32::from_str("1234500000000000000000000000000000000000").unwrap())
+		Some(<Runtime as Config>::AddressMapping::get_account_id(
+			&H160::from_str("1234500000000000000000000000000000000000").unwrap(),
+		))
 	}
 }
 
@@ -306,6 +308,11 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 pub fn balance(address: H160) -> Balance {
 	let account_id = <Runtime as Config>::AddressMapping::get_account_id(&address);
 	Balances::free_balance(account_id)
+}
+
+pub fn reducible_balance(address: H160) -> Balance {
+	let account_id = <Runtime as Config>::AddressMapping::get_account_id(&address);
+	Balances::reducible_balance(&account_id, true)
 }
 
 pub fn eth_balance(address: H160) -> U256 {

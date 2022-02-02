@@ -1,6 +1,6 @@
 [package]
 name = "module-evm"
-version = "2.2.1"
+version = "2.2.3"
 authors = ["Acala Developers"]
 edition = "2021"
 
@@ -86,4 +86,7 @@ bench = [
 	"serde_json",
 	"hex",
 	"module-idle-scheduler"
+]
+evm-tests = [
+	"primitives/evm-tests"
 ]
