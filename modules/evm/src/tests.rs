@@ -1906,7 +1906,7 @@ fn remove_account_with_provides_should_panic() {
 			&code_hash,
 			CodeInfo {
 				code_size: 1,
-				ref_count: 2,
+				ref_count: 1,
 			},
 		);
 		Accounts::<Runtime>::insert(
@@ -1925,34 +1925,17 @@ fn remove_account_with_provides_should_panic() {
 }
 
 #[test]
-#[should_panic(expected = "removed account while is still linked to contract info")]
 fn remove_account_works() {
 	new_test_ext().execute_with(|| {
 		let address = H160::from([1; 20]);
-		let code = vec![0x00];
-		let code_hash = code_hash(&code);
-		Codes::<Runtime>::insert(&code_hash, BoundedVec::try_from(code).unwrap());
-		CodeInfos::<Runtime>::insert(
-			&code_hash,
-			CodeInfo {
-				code_size: 1,
-				ref_count: 1,
-			},
-		);
 		Accounts::<Runtime>::insert(
 			&address,
 			AccountInfo {
 				nonce: 0,
-				contract_info: Some(ContractInfo {
-					code_hash,
-					maintainer: Default::default(),
-					published: false,
-				}),
+				contract_info: None,
 			},
 		);
 		assert_ok!(Pallet::<Runtime>::remove_account(&address));
 		assert_eq!(Accounts::<Runtime>::contains_key(&address), false);
-		assert_eq!(CodeInfos::<Runtime>::contains_key(&code_hash), false);
-		assert_eq!(Codes::<Runtime>::contains_key(&code_hash), false);
 	});
 }
