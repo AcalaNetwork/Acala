@@ -1,8 +1,8 @@
 [package]
-name = "module-homa-xcm"
+name = "module-xcm-interface"
 version = "2.0.3"
 authors = ["Acala Developers"]
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 codec = { package = "parity-scale-codec", version = "2.3.1", default-features = false, features = ["derive"] }
