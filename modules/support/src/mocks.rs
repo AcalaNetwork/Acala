@@ -20,7 +20,7 @@ use crate::{AddressMapping, CurrencyId, Erc20InfoMapping};
 use codec::Encode;
 use primitives::{
 	currency::TokenInfo,
-	evm::{is_mirrored_tokens_address_prefix, EvmAddress, H160_POSITION_TOKEN},
+	evm::{EvmAddress, H160_POSITION_TOKEN},
 };
 use sp_core::{crypto::AccountId32, H160};
 use sp_io::hashing::blake2_256;
@@ -82,10 +82,12 @@ impl Erc20InfoMapping for MockErc20InfoMapping {
 	}
 
 	fn decode_evm_address(v: EvmAddress) -> Option<CurrencyId> {
-		if is_mirrored_tokens_address_prefix(v) {
-			v.as_bytes()[H160_POSITION_TOKEN].try_into().map(CurrencyId::Token).ok()
-		} else {
-			None
-		}
+		let token = v.as_bytes()[H160_POSITION_TOKEN]
+			.try_into()
+			.map(CurrencyId::Token)
+			.ok()?;
+		EvmAddress::try_from(token)
+			.map(|addr| if addr == v { Some(token) } else { None })
+			.ok()?
 	}
 }
