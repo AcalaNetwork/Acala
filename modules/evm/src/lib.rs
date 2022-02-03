@@ -37,8 +37,8 @@ use frame_support::{
 	pallet_prelude::*,
 	parameter_types,
 	traits::{
-		BalanceStatus, Currency, EnsureOrigin, ExistenceRequirement, FindAuthor, Get, NamedReservableCurrency,
-		OnKilledAccount,
+		tokens::fungible::Inspect, BalanceStatus, Currency, EnsureOrigin, ExistenceRequirement, FindAuthor, Get,
+		NamedReservableCurrency, OnKilledAccount,
 	},
 	transactional,
 	weights::{Pays, PostDispatchInfo, Weight},
@@ -55,7 +55,7 @@ pub use module_support::{
 	AddressMapping, DispatchableTask, EVMStateRentTrait, ExecutionMode, IdleScheduler, InvokeContext,
 	TransactionPayment, EVM as EVMTrait,
 };
-pub use orml_traits::currency::TransferAll;
+pub use orml_traits::{currency::TransferAll, MultiCurrency};
 use primitive_types::{H160, H256, U256};
 pub use primitives::{
 	convert_decimals_from_evm, convert_decimals_to_evm,
@@ -64,7 +64,7 @@ pub use primitives::{
 		MIRRORED_TOKENS_ADDRESS_START,
 	},
 	task::TaskResult,
-	ReserveIdentifier,
+	Balance, CurrencyId, ReserveIdentifier,
 };
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
@@ -72,9 +72,7 @@ use serde::{Deserialize, Serialize};
 use sha3::{Digest, Keccak256};
 use sp_io::KillStorageResult::{AllRemoved, SomeRemaining};
 use sp_runtime::{
-	traits::{
-		Convert, DispatchInfoOf, One, PostDispatchInfoOf, Saturating, SignedExtension, UniqueSaturatedInto, Zero,
-	},
+	traits::{Convert, DispatchInfoOf, One, PostDispatchInfoOf, SignedExtension, UniqueSaturatedInto, Zero},
 	transaction_validity::TransactionValidityError,
 	Either, TransactionOutcome,
 };
@@ -172,7 +170,8 @@ pub mod module {
 		type AddressMapping: AddressMapping<Self::AccountId>;
 
 		/// Currency type for withdraw and balance storage.
-		type Currency: Currency<Self::AccountId>
+		type Currency: Currency<Self::AccountId, Balance = Balance>
+			+ Inspect<Self::AccountId, Balance = Balance>
 			+ NamedReservableCurrency<Self::AccountId, ReserveIdentifier = ReserveIdentifier>;
 
 		/// Merge free balance from source to dest.
@@ -374,7 +373,7 @@ pub mod module {
 				<Accounts<T>>::insert(address, account_info);
 
 				let amount = if account.balance.is_zero() {
-					T::Currency::minimum_balance()
+					<T::Currency as Currency<T::AccountId>>::minimum_balance()
 				} else {
 					account.balance
 				};
@@ -960,7 +959,7 @@ pub mod module {
 				T::Currency::transfer(
 					&T::TreasuryAccount::get(),
 					&T::AddressMapping::get_account_id(&target),
-					T::Currency::minimum_balance(),
+					<T::Currency as Currency<T::AccountId>>::minimum_balance(),
 					ExistenceRequirement::AllowDeath,
 				)?;
 
@@ -1205,24 +1204,25 @@ impl<T: Config> Pallet<T> {
 							code_info.ref_count = code_info.ref_count.saturating_sub(1);
 							if code_info.ref_count == 0 {
 								Codes::<T>::remove(&code_hash);
-								account.contract_info = None;
 								*maybe_code_info = None;
 							}
 						}
 					});
+
+					// remove_account can only be called when account is killed. i.e. providers == 0
+					// but contract_info should maintain a provider
+					// so this should never happen
+					log::warn!(
+						target: "evm",
+						"remove_account: removed account {:?} while is still linked to contract info",
+						address
+					);
+					debug_assert!(false, "removed account while is still linked to contract info");
 				}
+
+				*maybe_account = None;
 			}
 		});
-
-		if let Some(AccountInfo {
-			contract_info: Some(_), ..
-		}) = Accounts::<T>::take(address)
-		{
-			// remove_account can only be called when account is killed. i.e. providers == 0
-			// but contract_info should maintain a provider
-			// so this should never happen
-			debug_assert!(false, "removed account while is still linked to contract info");
-		}
 
 		Ok(())
 	}
@@ -1291,7 +1291,7 @@ impl<T: Config> Pallet<T> {
 		let account_id = T::AddressMapping::get_account_id(address);
 
 		let nonce = Self::accounts(address).map_or(Default::default(), |account_info| account_info.nonce);
-		let balance = T::Currency::free_balance(&account_id);
+		let balance = T::Currency::reducible_balance(&account_id, true);
 
 		Account {
 			nonce: U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(nonce)),
@@ -1346,12 +1346,6 @@ impl<T: Config> Pallet<T> {
 
 	/// Sets a given contract's contract info to a new maintainer.
 	fn do_transfer_maintainer(who: T::AccountId, contract: EvmAddress, new_maintainer: EvmAddress) -> DispatchResult {
-		Accounts::<T>::get(contract).map_or(Err(Error::<T>::ContractNotFound), |account_info| {
-			account_info
-				.contract_info
-				.map_or(Err(Error::<T>::ContractNotFound), |_| Ok(()))
-		})?;
-
 		Accounts::<T>::mutate(contract, |maybe_account_info| -> DispatchResult {
 			let account_info = maybe_account_info.as_mut().ok_or(Error::<T>::ContractNotFound)?;
 			let contract_info = account_info

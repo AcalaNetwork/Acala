@@ -159,7 +159,7 @@ where
 					from,
 					target,
 					input: input_data,
-					value: value.into(),
+					value,
 					gas_limit,
 					storage_limit,
 					access_list: vec![],
@@ -178,7 +178,7 @@ where
 					prefix: b"ScheduleCall".to_vec(),
 					id: current_id,
 					sender: from,
-					fee: _fee.into(),
+					fee: _fee,
 				}
 				.encode();
 
@@ -259,7 +259,7 @@ where
 					let from_account = Runtime::AddressMapping::get_account_id(&from);
 					<module_transaction_payment::ChargeTransactionPayment<Runtime>>::unreserve_fee(
 						&from_account,
-						task_info.fee.into(),
+						task_info.fee,
 					);
 				}
 

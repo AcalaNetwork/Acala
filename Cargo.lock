@@ -70,6 +70,7 @@ name = "acala-primitives"
 version = "2.2.3"
 dependencies = [
  "bstringify",
+ "enumflags2",
  "frame-support",
  "hex-literal",
  "module-evm-utiltity",
@@ -146,7 +147,6 @@ dependencies = [
  "module-evm-bridge",
  "module-evm-rpc-runtime-api",
  "module-homa",
- "module-homa-xcm",
  "module-honzon",
  "module-idle-scheduler",
  "module-incentives",
@@ -158,6 +158,7 @@ dependencies = [
  "module-support",
  "module-transaction-pause",
  "module-transaction-payment",
+ "module-xcm-interface",
  "orml-auction",
  "orml-authority",
  "orml-benchmarking",
@@ -4454,7 +4455,6 @@ dependencies = [
  "module-evm-bridge",
  "module-evm-rpc-runtime-api",
  "module-homa",
- "module-homa-xcm",
  "module-honzon",
  "module-idle-scheduler",
  "module-incentives",
@@ -4466,6 +4466,7 @@ dependencies = [
  "module-support",
  "module-transaction-pause",
  "module-transaction-payment",
+ "module-xcm-interface",
  "orml-auction",
  "orml-authority",
  "orml-benchmarking",
@@ -5471,7 +5472,6 @@ dependencies = [
  "module-evm-rpc-runtime-api",
  "module-evm-utiltity",
  "module-homa",
- "module-homa-xcm",
  "module-honzon",
  "module-idle-scheduler",
  "module-incentives",
@@ -5484,6 +5484,7 @@ dependencies = [
  "module-support",
  "module-transaction-pause",
  "module-transaction-payment",
+ "module-xcm-interface",
  "nutsfinance-stable-asset",
  "orml-auction",
  "orml-authority",
@@ -6194,32 +6195,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "module-homa-xcm"
-version = "2.0.3"
-dependencies = [
- "acala-primitives",
- "cumulus-primitives-core",
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "module-currencies",
- "module-relaychain",
- "module-support",
- "orml-tokens",
- "orml-traits",
- "pallet-balances",
- "pallet-xcm",
- "parity-scale-codec",
- "scale-info",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
- "xcm",
- "xcm-executor",
-]
-
-[[package]]
 name = "module-honzon"
 version = "2.2.3"
 dependencies = [
@@ -6309,7 +6284,6 @@ name = "module-nft"
 version = "2.2.3"
 dependencies = [
  "acala-primitives",
- "enumflags2",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -6464,6 +6438,32 @@ dependencies = [
  "sp-std",
  "xcm",
  "xcm-builder",
+ "xcm-executor",
+]
+
+[[package]]
+name = "module-xcm-interface"
+version = "2.0.3"
+dependencies = [
+ "acala-primitives",
+ "cumulus-primitives-core",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "module-currencies",
+ "module-relaychain",
+ "module-support",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "pallet-xcm",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "xcm",
  "xcm-executor",
 ]
 
@@ -10604,7 +10604,6 @@ dependencies = [
  "module-evm-rpc-runtime-api",
  "module-homa",
  "module-homa-lite",
- "module-homa-xcm",
  "module-honzon",
  "module-incentives",
  "module-loans",
@@ -10614,6 +10613,7 @@ dependencies = [
  "module-session-manager",
  "module-support",
  "module-transaction-payment",
+ "module-xcm-interface",
  "orml-auction",
  "orml-authority",
  "orml-benchmarking",

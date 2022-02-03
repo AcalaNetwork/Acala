@@ -16,7 +16,10 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use frame_support::log;
+use frame_support::{
+	log,
+	traits::{tokens::fungible::Inspect, Get},
+};
 use module_evm::{
 	precompiles::Precompile,
 	runner::state::{PrecompileFailure, PrecompileOutput, PrecompileResult},
@@ -120,7 +123,8 @@ where
 				})
 			}
 			Action::QueryTotalIssuance => {
-				let total_issuance = Runtime::MultiCurrency::total_issuance(currency_id);
+				let total_issuance =
+					<Runtime as module_transaction_payment::Config>::MultiCurrency::total_issuance(currency_id);
 				log::debug!(target: "evm", "multicurrency: total issuance: {:?}", total_issuance);
 
 				Ok(PrecompileOutput {
@@ -132,7 +136,12 @@ where
 			}
 			Action::QueryBalance => {
 				let who = input.account_id_at(1)?;
-				let balance = Runtime::MultiCurrency::total_balance(currency_id, &who);
+				let balance = if currency_id == <Runtime as module_transaction_payment::Config>::NativeCurrencyId::get()
+				{
+					<Runtime as module_evm::Config>::Currency::reducible_balance(&who, true)
+				} else {
+					<Runtime as module_transaction_payment::Config>::MultiCurrency::total_balance(currency_id, &who)
+				};
 				log::debug!(target: "evm", "multicurrency: who: {:?}, balance: {:?}", who, balance);
 
 				Ok(PrecompileOutput {
