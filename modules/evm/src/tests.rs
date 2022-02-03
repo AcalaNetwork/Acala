@@ -802,7 +802,7 @@ fn create_predeploy_contract_works() {
 		assert_ok!(EVM::create_predeploy_contract(
 			Origin::signed(NetworkContractAccount::get()),
 			addr,
-			contract,
+			contract.clone(),
 			0,
 			1000000,
 			1000000,
@@ -830,6 +830,37 @@ fn create_predeploy_contract_works() {
 
 		// deploy mirrored token
 		let addr = H160::from_str("2222222222222222222222222222222222222222").unwrap();
+		assert_noop!(
+			EVM::create_predeploy_contract(
+				Origin::signed(NetworkContractAccount::get()),
+				addr,
+				vec![],
+				0,
+				1000000,
+				1000000,
+			),
+			Error::<Runtime>::ContractNotFound
+		);
+
+		// deploy token contract
+		assert_ok!(EVM::create_predeploy_contract(
+			Origin::signed(NetworkContractAccount::get()),
+			PREDEPLOY_ADDRESS_START,
+			contract,
+			0,
+			1000000,
+			1000000,
+		));
+
+		assert_eq!(
+			CodeInfos::<Runtime>::get(&EVM::code_hash_at_address(&PREDEPLOY_ADDRESS_START)),
+			Some(CodeInfo {
+				code_size: 184,
+				ref_count: 2,
+			})
+		);
+
+		// deploy mirrored token
 		assert_ok!(EVM::create_predeploy_contract(
 			Origin::signed(NetworkContractAccount::get()),
 			addr,
@@ -838,6 +869,13 @@ fn create_predeploy_contract_works() {
 			1000000,
 			1000000,
 		));
+		assert_eq!(
+			CodeInfos::<Runtime>::get(&EVM::code_hash_at_address(&PREDEPLOY_ADDRESS_START)),
+			Some(CodeInfo {
+				code_size: 184,
+				ref_count: 3,
+			})
+		);
 		let account_id = <Runtime as Config>::AddressMapping::get_account_id(&addr);
 		assert_eq!(
 			Balances::free_balance(account_id),
@@ -1398,7 +1436,7 @@ fn should_selfdestruct() {
 		assert_ok!(EVM::create_predeploy_contract(
 			Origin::signed(NetworkContractAccount::get()),
 			contract_address,
-			vec![],
+			vec![0x01],
 			0,
 			1000000,
 			1000000,
