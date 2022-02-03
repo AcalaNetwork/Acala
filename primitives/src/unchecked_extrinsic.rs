@@ -593,6 +593,7 @@ mod tests {
 			action: TransactionAction::Call(H160::from_str("0x1111111111222222222233333333334444444444").unwrap()),
 			value: 0,
 			input: vec![],
+			access_list: vec![],
 			valid_until: 30,
 		};
 
