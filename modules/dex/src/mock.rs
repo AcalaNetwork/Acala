@@ -31,6 +31,7 @@ use primitives::{Amount, TokenSymbol};
 use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup};
 use sp_std::cell::RefCell;
+use support::mocks::MockErc20InfoMapping;
 
 pub type BlockNumber = u64;
 pub type AccountId = u128;
@@ -142,7 +143,7 @@ impl Config for Runtime {
 	type GetExchangeFee = GetExchangeFee;
 	type TradingPathLimit = TradingPathLimit;
 	type PalletId = DEXPalletId;
-	type Erc20InfoMapping = ();
+	type Erc20InfoMapping = MockErc20InfoMapping;
 	type WeightInfo = ();
 	type DEXIncentives = MockDEXIncentives;
 	type ListingOrigin = EnsureSignedBy<ListingOrigin, AccountId>;
