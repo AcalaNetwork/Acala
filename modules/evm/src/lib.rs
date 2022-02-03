@@ -40,8 +40,8 @@ use frame_support::{
 	pallet_prelude::*,
 	parameter_types,
 	traits::{
-		tokens::fungible::Inspect, BalanceStatus, Currency, EnsureOrigin, ExistenceRequirement, FindAuthor, Get,
-		NamedReservableCurrency, OnKilledAccount,
+		BalanceStatus, Currency, EnsureOrigin, ExistenceRequirement, FindAuthor, Get, NamedReservableCurrency,
+		OnKilledAccount,
 	},
 	transactional,
 	weights::{Pays, PostDispatchInfo, Weight},
@@ -216,7 +216,6 @@ pub mod module {
 
 		/// Currency type for withdraw and balance storage.
 		type Currency: Currency<Self::AccountId, Balance = Balance>
-			+ Inspect<Self::AccountId, Balance = Balance>
 			+ NamedReservableCurrency<Self::AccountId, ReserveIdentifier = ReserveIdentifier>;
 
 		/// Merge free balance from source to dest.
@@ -1280,7 +1279,7 @@ impl<T: Config> Pallet<T> {
 		let account_id = T::AddressMapping::get_account_id(address);
 
 		let nonce = Self::accounts(address).map_or(Default::default(), |account_info| account_info.nonce);
-		let balance = T::Currency::reducible_balance(&account_id, true);
+		let balance = T::Currency::free_balance(&account_id);
 
 		Account {
 			nonce: U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(nonce)),
