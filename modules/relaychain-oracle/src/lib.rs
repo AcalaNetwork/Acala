@@ -21,13 +21,16 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use frame_support::{
-	dispatch::{Dispatchable, GetDispatchInfo},
+	dispatch::{Dispatchable, GetDispatchInfo, PostDispatchInfo},
 	pallet_prelude::*,
 	traits::{SortedMembers, Time},
 };
 use frame_system::pallet_prelude::*;
 use primitives::Balance;
-use sp_runtime::{traits::One, ArithmeticError};
+use sp_runtime::{
+	traits::{BlockNumberProvider, Hash, One},
+	ArithmeticError,
+};
 
 mod mock;
 mod tests;
@@ -40,7 +43,9 @@ pub type QueryIndex = u64;
 /// Type used in gilts pallet for indexing
 pub type ActiveIndex = u32;
 
-#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, MaxEncodedLen)]
+pub type OracleCount = u32;
+
+#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]
 pub enum QueryResult<AccountId, Balance, BlockNumber> {
 	Thaw {
 		index: ActiveIndex,
@@ -59,10 +64,36 @@ pub enum QueryResult<AccountId, Balance, BlockNumber> {
 	},
 }
 
-#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, MaxEncodedLen)]
+#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]
 pub struct QueryState<AccountId, Balance, BlockNumber> {
 	timeout: BlockNumber,
-	response: QueryResult<AccountId, Balance, BlockNumber>,
+	oracle_response: QueryResult<AccountId, Balance, BlockNumber>,
+	votes: OracleVotes<AccountId>,
+}
+
+impl<AccountId, Balance, BlockNumber> QueryState<AccountId, Balance, BlockNumber> {
+	fn new_query(
+		timeout: BlockNumber,
+		oracle_response: QueryResult<AccountId, Balance, BlockNumber>,
+		votes: OracleVotes<AccountId>,
+	) -> Self {
+		Self {
+			timeout,
+			oracle_response,
+			votes,
+		}
+	}
+}
+
+#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]
+pub struct OracleVotes<AccountId> {
+	yes: Vec<AccountId>,
+	no: Vec<AccountId>,
+}
+
+#[derive(PartialEq, Eq, Clone, RuntimeDebug, Encode, Decode, TypeInfo)]
+pub enum RawOrigin {
+	Members(OracleCount, OracleCount),
 }
 
 #[frame_support::pallet]
@@ -78,21 +109,27 @@ pub mod module {
 		/// The overarching event type.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
-		type Call: Parameter + Dispatchable + GetDispatchInfo + From<frame_system::Call<Self>>;
-
 		type Time: Time;
 
 		type Members: SortedMembers<Self::AccountId>;
+
+		type MaxMembers: Get<OracleCount>;
+
+		type Origin: From<RawOrigin>;
+
+		type Callback: Parameter
+			+ Dispatchable<Origin = <Self as Config>::Origin, PostInfo = PostDispatchInfo>
+			+ From<frame_system::Call<Self>>
+			+ GetDispatchInfo;
 	}
 
 	#[pallet::pallet]
-	#[pallet::generate_storage_info]
 	pub struct Pallet<T>(_);
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		CreateActiveQuery(QueryIndex),
+		CreateActiveQuery { index: QueryIndex },
 	}
 
 	#[pallet::storage]
@@ -101,30 +138,59 @@ pub mod module {
 
 	#[pallet::storage]
 	#[pallet::getter(fn query)]
-	pub type ActiveQueries<T: Config> = StorageMap<_, Blake2_128Concat, QueryIndex, QueryStateOf<T>, OptionQuery>;
+	pub type ActiveQueries<T: Config> = StorageMap<_, Identity, QueryIndex, QueryStateOf<T>, OptionQuery>;
+
+	#[pallet::storage]
+	pub type Callback<T: Config> = StorageMap<_, Identity, QueryIndex, T::Callback, OptionQuery>;
+
+	#[pallet::origin]
+	pub type Origin = RawOrigin;
+
+	#[pallet::error]
+	pub enum Error<T> {
+		NotMember,
+	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight(0)]
-		pub fn create_motion(
+		pub fn create_feed(
 			origin: OriginFor<T>,
-			query_result: QueryStateOf<T>,
+			query_result: QueryResult<T::AccountId, Balance, T::BlockNumber>,
 			timeout: T::BlockNumber,
+			callback: Box<T::Callback>,
 		) -> DispatchResult {
-			let owner = ensure_signed(origin)?;
+			let who = ensure_signed(origin)?;
+			ensure!(T::Members::contains(&who), Error::<T>::NotMember);
 
 			let query_index = QueryCounter::<T>::get();
 			let increment = query_index.checked_add(One::one()).ok_or(ArithmeticError::Overflow)?;
 			QueryCounter::<T>::put(increment);
 
-			ActiveQueries::<T>::insert(query_index, query_result);
+			if T::Members::count() == 1 {
+				let result = *callback.dispatch(RawOrigin::Members(One::one(), One::one()));
+			} else {
+				let pending_result = QueryState::new_query(
+					timeout,
+					query_result,
+					OracleVotes {
+						yes: vec![who],
+						no: vec![],
+					},
+				);
+				ActiveQueries::<T>::insert(query_index, pending_result);
+				Callback::<T>::insert(query_index, *callback);
+			}
 
-			Self::deposit_event(Event::CreateActiveQuery(query_index));
+			Self::deposit_event(Event::CreateActiveQuery { index: query_index });
 			Ok(())
 		}
 
 		#[pallet::weight(0)]
-		pub fn vote_motion(origin: OriginFor<T>, query_index: QueryIndex) -> DispatchResult {
+		pub fn verify_feed(origin: OriginFor<T>, query_index: QueryIndex, verify: bool) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+			ensure!(T::Members::contains(&who), Error::<T>::NotMember);
+
 			Ok(())
 		}
 	}
