@@ -112,7 +112,11 @@ where
 				log::debug!(target: "evm", "nft: transfer from: {:?}, to: {:?}, class_id: {:?}, token_id: {:?}", from, to, class_id, token_id);
 
 				<module_nft::Pallet<Runtime> as Transfer<Runtime::AccountId>>::transfer(&class_id, &token_id, &to)
-					.map_err(|e| ExitError::Other(Cow::Borrowed(e.into())))?;
+					.map_err(|e| PrecompileFailure::Revert {
+						exit_status: ExitRevert::Reverted,
+						output: Into::<&str>::into(e).as_bytes().to_vec(),
+						cost: 0,
+					})?;
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
