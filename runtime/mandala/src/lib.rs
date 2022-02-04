@@ -2075,7 +2075,7 @@ pub type Executive = frame_executive::Executive<
 pub struct SchedulerMigrationV3;
 impl frame_support::traits::OnRuntimeUpgrade for SchedulerMigrationV3 {
 	fn on_runtime_upgrade() -> frame_support::weights::Weight {
-		Scheduler::migrate_v1_to_v3();
+		Scheduler::migrate_v2_to_v3();
 		<Runtime as frame_system::Config>::BlockWeights::get().max_block
 	}
 
