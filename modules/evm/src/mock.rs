@@ -310,11 +310,6 @@ pub fn balance(address: H160) -> Balance {
 	Balances::free_balance(account_id)
 }
 
-pub fn reducible_balance(address: H160) -> Balance {
-	let account_id = <Runtime as Config>::AddressMapping::get_account_id(&address);
-	Balances::reducible_balance(&account_id, true)
-}
-
 pub fn eth_balance(address: H160) -> U256 {
 	EVM::account_basic(&address).balance
 }
