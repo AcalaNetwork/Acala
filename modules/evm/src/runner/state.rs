@@ -149,6 +149,8 @@ pub struct StackSubstateMetadata<'config> {
 	target: Option<H160>,
 	#[cfg(feature = "evm-tests")]
 	pub original_storage: std::cell::RefCell<BTreeMap<(H160, H256), H256>>,
+	#[cfg(feature = "evm-tests")]
+	pub dirty_accounts: std::cell::RefCell<BTreeSet<H160>>,
 }
 
 impl<'config> StackSubstateMetadata<'config> {
@@ -168,6 +170,8 @@ impl<'config> StackSubstateMetadata<'config> {
 			target: None,
 			#[cfg(feature = "evm-tests")]
 			original_storage: std::cell::RefCell::new(BTreeMap::new()),
+			#[cfg(feature = "evm-tests")]
+			dirty_accounts: std::cell::RefCell::new(BTreeSet::new()),
 		}
 	}
 
@@ -193,10 +197,16 @@ impl<'config> StackSubstateMetadata<'config> {
 	pub fn swallow_revert(&mut self, other: Self) -> Result<(), ExitError> {
 		self.gasometer.record_stipend(other.gasometer.gas())?;
 
+		#[cfg(feature = "evm-tests")]
+		self.dirty_accounts.borrow_mut().clear();
+
 		Ok(())
 	}
 
 	pub fn swallow_discard(&mut self, _other: Self) -> Result<(), ExitError> {
+		#[cfg(feature = "evm-tests")]
+		self.dirty_accounts.borrow_mut().clear();
+
 		Ok(())
 	}
 
@@ -214,6 +224,8 @@ impl<'config> StackSubstateMetadata<'config> {
 			target: None,
 			#[cfg(feature = "evm-tests")]
 			original_storage: std::cell::RefCell::new(BTreeMap::new()),
+			#[cfg(feature = "evm-tests")]
+			dirty_accounts: std::cell::RefCell::new(BTreeSet::new()),
 		}
 	}
 

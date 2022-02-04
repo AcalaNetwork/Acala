@@ -469,6 +469,14 @@ impl<'config> SubstrateStackSubstate<'config> {
 			.borrow_mut()
 			.insert((address, index), value);
 	}
+
+	#[cfg(feature = "evm-tests")]
+	fn mark_account_dirty(&self, address: H160) {
+		if let Some(parent) = self.parent.as_ref() {
+			return parent.mark_account_dirty(address);
+		}
+		self.metadata.dirty_accounts.borrow_mut().insert(address);
+	}
 }
 
 /// Substrate backend for EVM.
@@ -492,6 +500,11 @@ impl<'vicinity, 'config, T: Config> SubstrateStackState<'vicinity, 'config, T> {
 			},
 			_marker: PhantomData,
 		}
+	}
+
+	#[cfg(feature = "evm-tests")]
+	pub fn deleted_accounts(&self) -> &BTreeSet<H160> {
+		&self.substate.deletes
 	}
 }
 
@@ -720,6 +733,9 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 	}
 
 	fn transfer(&mut self, transfer: Transfer) -> Result<(), ExitError> {
+		#[cfg(feature = "evm-tests")]
+		self.touch(transfer.target);
+
 		if transfer.value.is_zero() {
 			return Ok(());
 		}
@@ -766,12 +782,18 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 		}
 	}
 
+	#[cfg(not(feature = "evm-tests"))]
 	fn touch(&mut self, _address: H160) {
 		// Do nothing on touch in Substrate.
 		//
 		// EVM pallet considers all accounts to exist, and distinguish
 		// only empty and non-empty accounts. This avoids many of the
 		// subtle issues in EIP-161.
+	}
+
+	#[cfg(feature = "evm-tests")]
+	fn touch(&mut self, address: H160) {
+		self.substate.mark_account_dirty(address);
 	}
 
 	fn is_cold(&self, address: H160) -> bool {

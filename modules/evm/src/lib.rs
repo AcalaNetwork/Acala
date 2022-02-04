@@ -1168,9 +1168,6 @@ impl<T: Config> Pallet<T> {
 						Codes::<T>::remove(&contract_info.code_hash);
 						*maybe_code_info = None;
 					}
-				} else {
-					// code info removed while still having reference to it?
-					debug_assert!(false);
 				}
 			});
 
