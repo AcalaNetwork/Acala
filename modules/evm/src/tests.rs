@@ -25,11 +25,7 @@ use crate::runner::{
 	stack::SubstrateStackState,
 	state::{StackExecutor, StackState, StackSubstateMetadata},
 };
-use frame_support::{
-	assert_noop, assert_ok,
-	dispatch::DispatchErrorWithPostInfo,
-	traits::{LockIdentifier, LockableCurrency, WithdrawReasons},
-};
+use frame_support::{assert_noop, assert_ok, dispatch::DispatchErrorWithPostInfo};
 use module_support::AddressMapping;
 use sp_core::{
 	bytes::{from_hex, to_hex},
@@ -409,7 +405,7 @@ fn should_transfer_from_contract() {
 		assert_eq!(balance(alice()), alice_balance);
 		assert_eq!(
 			eth_balance(alice()),
-			U256::from(convert_decimals_to_evm(reducible_balance(alice())))
+			U256::from(convert_decimals_to_evm(balance(alice())))
 		);
 
 		let contract_address = result.value;
@@ -438,12 +434,12 @@ fn should_transfer_from_contract() {
 		assert_eq!(balance(alice()), alice_balance - amount);
 		assert_eq!(
 			eth_balance(alice()),
-			U256::from(convert_decimals_to_evm(reducible_balance(alice())))
+			U256::from(convert_decimals_to_evm(balance(alice())))
 		);
 		assert_eq!(balance(charlie()), amount);
 		assert_eq!(
 			eth_balance(charlie()),
-			U256::from(convert_decimals_to_evm(reducible_balance(charlie())))
+			U256::from(convert_decimals_to_evm(balance(charlie())))
 		);
 
 		// send via send
@@ -467,12 +463,12 @@ fn should_transfer_from_contract() {
 		assert_eq!(balance(charlie()), 2 * amount);
 		assert_eq!(
 			eth_balance(charlie()),
-			U256::from(convert_decimals_to_evm(reducible_balance(charlie())))
+			U256::from(convert_decimals_to_evm(balance(charlie())))
 		);
 		assert_eq!(balance(alice()), alice_balance - 2 * amount);
 		assert_eq!(
 			eth_balance(alice()),
-			U256::from(convert_decimals_to_evm(reducible_balance(alice())))
+			U256::from(convert_decimals_to_evm(balance(alice())))
 		);
 
 		// send via call
@@ -496,12 +492,12 @@ fn should_transfer_from_contract() {
 		assert_eq!(balance(charlie()), 3 * amount);
 		assert_eq!(
 			eth_balance(charlie()),
-			U256::from(convert_decimals_to_evm(reducible_balance(charlie())))
+			U256::from(convert_decimals_to_evm(balance(charlie())))
 		);
 		assert_eq!(balance(alice()), alice_balance - 3 * amount);
 		assert_eq!(
 			eth_balance(alice()),
-			U256::from(convert_decimals_to_evm(reducible_balance(alice())))
+			U256::from(convert_decimals_to_evm(balance(alice())))
 		);
 
 		// send 1 eth via transfer
@@ -526,12 +522,12 @@ fn should_transfer_from_contract() {
 		assert_eq!(balance(charlie()), 3 * amount + dollar_aca);
 		assert_eq!(
 			eth_balance(charlie()),
-			U256::from(convert_decimals_to_evm(reducible_balance(charlie())))
+			U256::from(convert_decimals_to_evm(balance(charlie())))
 		);
 		assert_eq!(balance(alice()), alice_balance - 3 * amount - dollar_aca);
 		assert_eq!(
 			eth_balance(alice()),
-			U256::from(convert_decimals_to_evm(reducible_balance(alice())))
+			U256::from(convert_decimals_to_evm(balance(alice())))
 		);
 
 		// balanceOf
@@ -553,7 +549,7 @@ fn should_transfer_from_contract() {
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
 		assert_eq!(
 			U256::from(result.value.as_slice()),
-			U256::from(convert_decimals_to_evm(reducible_balance(charlie())))
+			U256::from(convert_decimals_to_evm(balance(charlie())))
 		);
 	})
 }
@@ -835,7 +831,7 @@ fn create_predeploy_contract_works() {
 		assert_ok!(EVM::create_predeploy_contract(
 			Origin::signed(NetworkContractAccount::get()),
 			addr,
-			contract,
+			contract.clone(),
 			0,
 			1000000,
 			1000000,
@@ -865,6 +861,37 @@ fn create_predeploy_contract_works() {
 
 		// deploy mirrored token
 		let addr = H160::from_str("2222222222222222222222222222222222222222").unwrap();
+		assert_noop!(
+			EVM::create_predeploy_contract(
+				Origin::signed(NetworkContractAccount::get()),
+				addr,
+				vec![],
+				0,
+				1000000,
+				1000000,
+			),
+			Error::<Runtime>::ContractNotFound
+		);
+
+		// deploy token contract
+		assert_ok!(EVM::create_predeploy_contract(
+			Origin::signed(NetworkContractAccount::get()),
+			PREDEPLOY_ADDRESS_START,
+			contract,
+			0,
+			1000000,
+			1000000,
+		));
+
+		assert_eq!(
+			CodeInfos::<Runtime>::get(&EVM::code_hash_at_address(&PREDEPLOY_ADDRESS_START)),
+			Some(CodeInfo {
+				code_size: 184,
+				ref_count: 2,
+			})
+		);
+
+		// deploy mirrored token
 		assert_ok!(EVM::create_predeploy_contract(
 			Origin::signed(NetworkContractAccount::get()),
 			addr,
@@ -874,14 +901,18 @@ fn create_predeploy_contract_works() {
 			1000000,
 			vec![],
 		));
-		let account_id = <Runtime as Config>::AddressMapping::get_account_id(&addr);
 		assert_eq!(
-			Balances::free_balance(account_id),
-			<Balances as Inspect<<Runtime as frame_system::Config>::AccountId>>::minimum_balance()
+			CodeInfos::<Runtime>::get(&EVM::code_hash_at_address(&PREDEPLOY_ADDRESS_START)),
+			Some(CodeInfo {
+				code_size: 184,
+				ref_count: 3,
+			})
 		);
+		let account_id = <Runtime as Config>::AddressMapping::get_account_id(&addr);
+		assert_eq!(Balances::free_balance(account_id), Balances::minimum_balance());
 		assert_eq!(
 			Balances::free_balance(TreasuryAccount::get()),
-			INITIAL_BALANCE - <Balances as Inspect<<Runtime as frame_system::Config>::AccountId>>::minimum_balance()
+			INITIAL_BALANCE - Balances::minimum_balance()
 		);
 	});
 }
@@ -1445,7 +1476,7 @@ fn should_selfdestruct() {
 		assert_ok!(EVM::create_predeploy_contract(
 			Origin::signed(NetworkContractAccount::get()),
 			contract_address,
-			vec![],
+			vec![0x01],
 			0,
 			1000000,
 			1000000,
@@ -2017,36 +2048,5 @@ fn remove_account_works() {
 		);
 		assert_ok!(Pallet::<Runtime>::remove_account(&address));
 		assert_eq!(Accounts::<Runtime>::contains_key(&address), false);
-	});
-}
-
-#[test]
-fn reducible_balance_works() {
-	new_test_ext().execute_with(|| {
-		let account_id = <Runtime as Config>::AddressMapping::get_account_id(&alice());
-		assert_eq!(Balances::total_balance(&account_id), 1_000_000_000_000_000);
-		assert_eq!(Balances::free_balance(&account_id), 1_000_000_000_000_000);
-		// total balance - existential
-		assert_eq!(Balances::reducible_balance(&account_id, true), 999_999_999_999_999);
-
-		let balance = EVM::account_basic(&alice()).balance;
-
-		// Lock identifier.
-		let lock_id: LockIdentifier = *b"te/stlok";
-		// Reserve some funds.
-		let to_lock = 1000;
-		Balances::set_lock(lock_id, &account_id, to_lock, WithdrawReasons::RESERVE);
-
-		assert_eq!(Balances::total_balance(&account_id), 1_000_000_000_000_000);
-		assert_eq!(Balances::free_balance(&account_id), 1_000_000_000_000_000);
-		// total balance - existential
-		assert_eq!(Balances::reducible_balance(&account_id, true), 999_999_999_999_000);
-
-		// Reducible is, as currently configured in `account_basic`, (balance - (lock - existential)).
-		let reducible_balance = EVM::account_basic(&alice()).balance;
-		assert_eq!(
-			reducible_balance,
-			balance - convert_decimals_to_evm(to_lock) + convert_decimals_to_evm(ExistentialDeposit::get())
-		);
 	});
 }

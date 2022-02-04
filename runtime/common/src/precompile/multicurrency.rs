@@ -18,7 +18,7 @@
 
 use frame_support::{
 	log,
-	traits::{tokens::fungible::Inspect, Get},
+	traits::{Currency, Get},
 };
 use module_evm::{
 	precompiles::Precompile,
@@ -138,7 +138,7 @@ where
 				let who = input.account_id_at(1)?;
 				let balance = if currency_id == <Runtime as module_transaction_payment::Config>::NativeCurrencyId::get()
 				{
-					<Runtime as module_evm::Config>::Currency::reducible_balance(&who, true)
+					<Runtime as module_evm::Config>::Currency::free_balance(&who)
 				} else {
 					<Runtime as module_transaction_payment::Config>::MultiCurrency::total_balance(currency_id, &who)
 				};

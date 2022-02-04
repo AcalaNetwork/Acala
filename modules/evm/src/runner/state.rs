@@ -34,8 +34,8 @@ use primitive_types::{H160, H256, U256};
 pub use primitives::{
 	currency::CurrencyIdType,
 	evm::{
-		is_mirrored_tokens_address_prefix, EvmAddress, Vicinity, H160_POSITION_CURRENCY_ID_TYPE,
-		H160_POSITION_TOKEN_NFT, MIRRORED_NFT_ADDRESS_START, PREDEPLOY_ADDRESS_START, SYSTEM_CONTRACT_ADDRESS_PREFIX,
+		EvmAddress, Vicinity, H160_POSITION_CURRENCY_ID_TYPE, H160_POSITION_TOKEN_NFT, MIRRORED_NFT_ADDRESS_START,
+		PREDEPLOY_ADDRESS_START, SYSTEM_CONTRACT_ADDRESS_PREFIX,
 	},
 	ReserveIdentifier,
 };
@@ -694,52 +694,6 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 		self.state.basic(address).nonce
 	}
 
-	#[cfg(feature = "evm-tests")]
-	pub fn handle_mirrored_token(&self, address: H160) -> H160 {
-		address
-	}
-
-	#[cfg(not(feature = "evm-tests"))]
-	pub fn handle_mirrored_token(&self, address: H160) -> H160 {
-		log::debug!(
-			target: "evm",
-			"handle_mirrored_token: address: {:?}",
-			address,
-		);
-
-		if is_mirrored_tokens_address_prefix(address) {
-			let token_address = match CurrencyIdType::try_from(address[H160_POSITION_CURRENCY_ID_TYPE])
-				.expect("is_mirrored_tokens_address_prefix checked; qed")
-			{
-				CurrencyIdType::Token => {
-					let mut suffix = [0u8; 4];
-					suffix.copy_from_slice(&address[H160_POSITION_TOKEN_NFT]);
-
-					if (u32::from_be_bytes(suffix) as u64) < MIRRORED_NFT_ADDRESS_START {
-						// `Token` predeploy contract.
-						PREDEPLOY_ADDRESS_START
-					} else {
-						// `NFT` predeploy contract.
-						// TODO: implement EIP721. Return dummy address.
-						PREDEPLOY_ADDRESS_START | H160::from_low_u64_be(100)
-					}
-				}
-				// `Token` predeploy contract.
-				_ => PREDEPLOY_ADDRESS_START,
-			};
-
-			log::debug!(
-				target: "evm",
-				"handle_mirrored_token: origin address: {:?}, token address: {:?}",
-				address,
-				token_address
-			);
-			token_address
-		} else {
-			address
-		}
-	}
-
 	/// Get the create address from given scheme.
 	pub fn create_address(&self, scheme: CreateScheme) -> Result<H160, ExitError> {
 		let address = match scheme {
@@ -1141,8 +1095,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> Handler
 	}
 
 	fn code_size(&self, address: H160) -> U256 {
-		let addr = self.handle_mirrored_token(address);
-		U256::from(self.state.code(addr).len())
+		U256::from(self.state.code(address).len())
 	}
 
 	fn code_hash(&self, address: H160) -> H256 {
@@ -1150,21 +1103,11 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> Handler
 			return H256::default();
 		}
 
-		let addr = self.handle_mirrored_token(address);
-		H256::from_slice(Keccak256::digest(&self.state.code(addr)).as_slice())
+		H256::from_slice(Keccak256::digest(&self.state.code(address)).as_slice())
 	}
 
 	fn code(&self, address: H160) -> Vec<u8> {
-		let addr = self.handle_mirrored_token(address);
-		let code = self.state.code(addr);
-		if code.len().is_zero() {
-			log::debug!(
-				target: "evm",
-				"contract does not exist, address: {:?}",
-				address
-			);
-		}
-		code
+		self.state.code(address)
 	}
 
 	fn storage(&self, address: H160, index: H256) -> H256 {
