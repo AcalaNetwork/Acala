@@ -27,7 +27,7 @@ use sp_core::H160;
 use sp_runtime::RuntimeDebug;
 use sp_std::{borrow::Cow, marker::PhantomData, prelude::*, result};
 
-use orml_traits::NFT as NFTT;
+use orml_traits::InspectExtended;
 
 use super::input::{Input, InputT, Output};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
@@ -55,7 +55,7 @@ pub enum Action {
 impl<Runtime> Precompile for NFTPrecompile<Runtime>
 where
 	Runtime: module_evm::Config + module_prices::Config + module_nft::Config,
-	module_nft::Pallet<Runtime>: NFTT<Runtime::AccountId, Balance = NFTBalance, ClassId = u32, TokenId = u64>
+	module_nft::Pallet<Runtime>: InspectExtended<Runtime::AccountId, Balance = NFTBalance>
 		+ Inspect<Runtime::AccountId, InstanceId = u64, ClassId = u32>
 		+ Transfer<Runtime::AccountId>,
 {
