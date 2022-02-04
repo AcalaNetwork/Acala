@@ -1166,6 +1166,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	/// Remove an account if its empty.
+	/// Unused now.
 	pub fn remove_account_if_empty(address: &H160) {
 		if Self::is_account_empty(address) {
 			let res = Self::remove_account(address);
@@ -1788,10 +1789,12 @@ pub struct CallKillAccount<T>(PhantomData<T>);
 impl<T: Config> OnKilledAccount<T::AccountId> for CallKillAccount<T> {
 	fn on_killed_account(who: &T::AccountId) {
 		if let Some(address) = T::AddressMapping::get_evm_address(who) {
-			Pallet::<T>::remove_account_if_empty(&address);
+			let res = Pallet::<T>::remove_account(&address);
+			debug_assert!(res.is_ok());
 		}
 		let address = T::AddressMapping::get_default_evm_address(who);
-		Pallet::<T>::remove_account_if_empty(&address);
+		let res = Pallet::<T>::remove_account(&address);
+		debug_assert!(res.is_ok());
 	}
 }
 
