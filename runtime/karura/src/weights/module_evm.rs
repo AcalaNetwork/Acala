@@ -67,7 +67,7 @@ impl<T: frame_system::Config> module_evm::WeightInfo for WeightInfo<T> {
 			.saturating_add(T::DbWeight::get().reads(12 as Weight))
 			.saturating_add(T::DbWeight::get().writes(9 as Weight))
 	}
-	fn deposit_ed() -> Weight {
+	fn create_predeploy_mirror_token_contract() -> Weight {
 		(41_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(4 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))

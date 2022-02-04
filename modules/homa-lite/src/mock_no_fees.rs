@@ -217,7 +217,7 @@ parameter_types! {
 	pub const MaxRewardPerEra: Permill = Permill::zero();
 	pub MintFee: Balance = 0;
 	pub BaseWithdrawFee: Permill = Permill::zero(); // 0.1%
-	pub XcmUnbondFee: Balance = 0;
+	pub HomaUnbondFee: Balance = 0;
 	pub const ParachainAccount: AccountId = DAVE;
 	pub const MaximumRedeemRequestMatchesForMint: u32 = 100;
 	pub static MockRelayBlockNumberProvider: u64 = 0;
@@ -257,7 +257,7 @@ impl Config for NoFeeRuntime {
 	type MintFee = MintFee;
 	type RelayChainCallBuilder = RelayChainCallBuilder<NoFeeRuntime, ParachainId>;
 	type BaseWithdrawFee = BaseWithdrawFee;
-	type XcmUnbondFee = XcmUnbondFee;
+	type HomaUnbondFee = HomaUnbondFee;
 	type RelayChainBlockNumber = MockRelayBlockNumberProvider;
 	type ParachainAccount = ParachainAccount;
 	type MaximumRedeemRequestMatchesForMint = MaximumRedeemRequestMatchesForMint;

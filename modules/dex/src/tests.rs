@@ -27,7 +27,9 @@ use mock::{
 	ACA, ALICE, AUSD, AUSD_DOT_POOL_RECORD, BOB, BTC, DOT,
 };
 use orml_traits::MultiReservableCurrency;
+use sp_core::H160;
 use sp_runtime::traits::BadOrigin;
+use std::str::FromStr;
 
 #[test]
 fn list_provisioning_work() {
@@ -1568,4 +1570,55 @@ fn swap_with_specific_path_work() {
 				liquidity_changes: vec![253_794_223_643_471, 100_000_000_000_000],
 			}));
 		});
+}
+
+#[test]
+fn get_liquidity_token_address_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(1);
+
+		assert_eq!(
+			DexModule::trading_pair_statuses(AUSDDOTPair::get()),
+			TradingPairStatus::<_, _>::Disabled
+		);
+		assert_eq!(DexModule::get_liquidity_token_address(AUSD, DOT), None);
+
+		assert_ok!(DexModule::list_provisioning(
+			Origin::signed(ListingOrigin::get()),
+			AUSD,
+			DOT,
+			1_000_000_000_000u128,
+			1_000_000_000_000u128,
+			5_000_000_000_000u128,
+			2_000_000_000_000u128,
+			10,
+		));
+		assert_eq!(
+			DexModule::trading_pair_statuses(AUSDDOTPair::get()),
+			TradingPairStatus::<_, _>::Provisioning(ProvisioningParameters {
+				min_contribution: (1_000_000_000_000u128, 1_000_000_000_000u128),
+				target_provision: (5_000_000_000_000u128, 2_000_000_000_000u128),
+				accumulated_provision: (0, 0),
+				not_before: 10,
+			})
+		);
+		assert_eq!(
+			DexModule::get_liquidity_token_address(AUSD, DOT),
+			Some(H160::from_str("0x0000000000000000000200000000010000000002").unwrap())
+		);
+
+		assert_ok!(DexModule::enable_trading_pair(
+			Origin::signed(ListingOrigin::get()),
+			AUSD,
+			DOT
+		));
+		assert_eq!(
+			DexModule::trading_pair_statuses(AUSDDOTPair::get()),
+			TradingPairStatus::<_, _>::Enabled
+		);
+		assert_eq!(
+			DexModule::get_liquidity_token_address(AUSD, DOT),
+			Some(H160::from_str("0x0000000000000000000200000000010000000002").unwrap())
+		);
+	});
 }
