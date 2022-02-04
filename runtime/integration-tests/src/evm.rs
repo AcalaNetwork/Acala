@@ -457,6 +457,7 @@ fn test_multicurrency_precompile_module() {
 				0,
 				1000000,
 				1000000,
+				vec![],
 			));
 
 			let invoke_context = module_support::InvokeContext {

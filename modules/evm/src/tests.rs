@@ -869,6 +869,7 @@ fn create_predeploy_contract_works() {
 				0,
 				1000000,
 				1000000,
+				vec![],
 			),
 			Error::<Runtime>::ContractNotFound
 		);
@@ -881,6 +882,7 @@ fn create_predeploy_contract_works() {
 			0,
 			1000000,
 			1000000,
+			vec![],
 		));
 
 		assert_eq!(

@@ -77,6 +77,7 @@ fn deploy_token_contract() -> DispatchResult {
 			0,
 			1_000_000,
 			15_000,
+			vec![],
 		)
 		.map_or_else(|e| Err(e.error), |_| Ok(()))?;
 

@@ -40,7 +40,6 @@ pub use primitives::{
 	ReserveIdentifier,
 };
 use sha3::{Digest, Keccak256};
-use sp_runtime::traits::Zero;
 use sp_std::{
 	collections::{btree_map::BTreeMap, btree_set::BTreeSet},
 	rc::Rc,
