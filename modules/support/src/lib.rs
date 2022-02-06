@@ -663,6 +663,6 @@ pub trait HomaSubAccountXcm<AccountId, Balance> {
 }
 
 pub trait ForeignChainStateQuery<Call, Hash> {
-	/// adds call to be validated by foreign state oracle
+	/// Call to be validated by foreign state oracle
 	fn query_task(call: Call, state_hash: Hash);
 }

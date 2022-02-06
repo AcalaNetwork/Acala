@@ -41,7 +41,7 @@ pub enum RawOrigin {
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
 pub struct VerifiableCall<Call, Hash> {
 	dispatchable_call: Call,
-	verify_state: Hash,
+	state_hash: Hash,
 }
 
 #[frame_support::pallet]
@@ -77,7 +77,7 @@ pub mod module {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		CreateActiveQuery { query_hash: T::Hash },
+		CreateActiveQuery { query_hash: T::Hash, state_hash: T::Hash },
 		CallDispatched { task_result: PostDispatchInfo },
 		CallDispatchFailed,
 	}
@@ -101,10 +101,7 @@ pub mod module {
 				T::OracleOrigin::ensure_origin(origin)?;
 
 				let verifiable_call = maybe_verifiable_call.clone().ok_or(Error::<T>::NoMatchingCall)?;
-				ensure!(
-					state_hash == verifiable_call.verify_state,
-					Error::<T>::IncorrectStateHash
-				);
+				ensure!(state_hash == verifiable_call.state_hash, Error::<T>::IncorrectStateHash);
 
 				let result = verifiable_call
 					.dispatchable_call
@@ -127,10 +124,13 @@ impl<T: Config> ForeignChainStateQuery<T::VerifiableTask, T::Hash> for Pallet<T>
 		let call_hash = T::Hashing::hash_of(&call);
 		let verifiable_call = VerifiableCall {
 			dispatchable_call: call,
-			verify_state: state_hash,
+			state_hash: state_hash,
 		};
 
 		ValidateTask::<T>::insert(call_hash, verifiable_call);
-		Self::deposit_event(Event::CreateActiveQuery { query_hash: call_hash });
+		Self::deposit_event(Event::CreateActiveQuery {
+			query_hash: call_hash,
+			state_hash,
+		});
 	}
 }
