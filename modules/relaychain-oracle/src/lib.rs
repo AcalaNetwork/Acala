@@ -23,177 +23,114 @@
 use frame_support::{
 	dispatch::{Dispatchable, GetDispatchInfo, PostDispatchInfo},
 	pallet_prelude::*,
-	traits::{SortedMembers, Time},
 };
 use frame_system::pallet_prelude::*;
-use primitives::Balance;
-use sp_runtime::{
-	traits::{BlockNumberProvider, Hash, One},
-	ArithmeticError,
-};
+use module_support::ForeignChainStateQuery;
+use sp_runtime::traits::Hash;
 
 mod mock;
 mod tests;
 
 pub use module::*;
 
-/// The unique identifier for a query
-pub type QueryIndex = u64;
-
-/// Type used in gilts pallet for indexing
-pub type ActiveIndex = u32;
-
-pub type OracleCount = u32;
-
-#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]
-pub enum QueryResult<AccountId, Balance, BlockNumber> {
-	Thaw {
-		index: ActiveIndex,
-	},
-	Bid {
-		who: AccountId,
-		duration: u32,
-		amount: Balance,
-		index: ActiveIndex,
-		expiry: BlockNumber,
-	},
-	Retract {
-		who: AccountId,
-		duration: u32,
-		amount: Balance,
-	},
-}
-
-#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]
-pub struct QueryState<AccountId, Balance, BlockNumber> {
-	timeout: BlockNumber,
-	oracle_response: QueryResult<AccountId, Balance, BlockNumber>,
-	votes: OracleVotes<AccountId>,
-}
-
-impl<AccountId, Balance, BlockNumber> QueryState<AccountId, Balance, BlockNumber> {
-	fn new_query(
-		timeout: BlockNumber,
-		oracle_response: QueryResult<AccountId, Balance, BlockNumber>,
-		votes: OracleVotes<AccountId>,
-	) -> Self {
-		Self {
-			timeout,
-			oracle_response,
-			votes,
-		}
-	}
-}
-
-#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]
-pub struct OracleVotes<AccountId> {
-	yes: Vec<AccountId>,
-	no: Vec<AccountId>,
-}
-
 #[derive(PartialEq, Eq, Clone, RuntimeDebug, Encode, Decode, TypeInfo)]
 pub enum RawOrigin {
-	Members(OracleCount, OracleCount),
+	RelaychainOracle,
+}
+
+#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
+pub struct VerifiableCall<Call, Hash> {
+	dispatchable_call: Call,
+	verify_state: Hash,
 }
 
 #[frame_support::pallet]
 pub mod module {
 	use super::*;
 
-	// export for ease of use
-	pub type QueryStateOf<T> =
-		QueryState<<T as frame_system::Config>::AccountId, Balance, <T as frame_system::Config>::BlockNumber>;
+	pub type VerifiableCallOf<T> = VerifiableCall<<T as Config>::VerifiableTask, <T as frame_system::Config>::Hash>;
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config + pallet_collective::Config {
+	pub trait Config: frame_system::Config {
 		/// The overarching event type.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
-		type Time: Time;
-
-		type Members: SortedMembers<Self::AccountId>;
-
-		type MaxMembers: Get<OracleCount>;
-
+		/// The outer origin type.
 		type Origin: From<RawOrigin>;
 
-		type Callback: Parameter
+		/// Dispatchable task that needs to be verified by oracle for dispatch
+		type VerifiableTask: Parameter
 			+ Dispatchable<Origin = <Self as Config>::Origin, PostInfo = PostDispatchInfo>
 			+ From<frame_system::Call<Self>>
 			+ GetDispatchInfo;
+
+		/// Origin that can dispatch calls that have been verified with foreign state
+		type OracleOrigin: EnsureOrigin<<Self as frame_system::Config>::Origin>;
 	}
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
 
-	#[pallet::event]
-	#[pallet::generate_deposit(pub(super) fn deposit_event)]
-	pub enum Event<T: Config> {
-		CreateActiveQuery { index: QueryIndex },
-	}
-
-	#[pallet::storage]
-	#[pallet::getter(fn query_index)]
-	pub type QueryCounter<T: Config> = StorageValue<_, QueryIndex, ValueQuery>;
-
-	#[pallet::storage]
-	#[pallet::getter(fn query)]
-	pub type ActiveQueries<T: Config> = StorageMap<_, Identity, QueryIndex, QueryStateOf<T>, OptionQuery>;
-
-	#[pallet::storage]
-	pub type Callback<T: Config> = StorageMap<_, Identity, QueryIndex, T::Callback, OptionQuery>;
-
 	#[pallet::origin]
 	pub type Origin = RawOrigin;
 
+	#[pallet::event]
+	#[pallet::generate_deposit(pub(super) fn deposit_event)]
+	pub enum Event<T: Config> {
+		CreateActiveQuery { query_hash: T::Hash },
+		CallDispatched { task_result: PostDispatchInfo },
+		CallDispatchFailed,
+	}
+
+	// Tasks to be dispatched if foriegn chain state is valid
+	#[pallet::storage]
+	#[pallet::getter(fn query)]
+	pub type ValidateTask<T: Config> = StorageMap<_, Blake2_128Concat, T::Hash, VerifiableCallOf<T>, OptionQuery>;
+
 	#[pallet::error]
 	pub enum Error<T> {
-		NotMember,
+		IncorrectStateHash,
+		NoMatchingCall,
 	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight(0)]
-		pub fn create_feed(
-			origin: OriginFor<T>,
-			query_result: QueryResult<T::AccountId, Balance, T::BlockNumber>,
-			timeout: T::BlockNumber,
-			callback: Box<T::Callback>,
-		) -> DispatchResult {
-			let who = ensure_signed(origin)?;
-			ensure!(T::Members::contains(&who), Error::<T>::NotMember);
+		pub fn dispatch_task(origin: OriginFor<T>, call_hash: T::Hash, state_hash: T::Hash) -> DispatchResult {
+			ValidateTask::<T>::try_mutate_exists(call_hash, |maybe_verifiable_call| -> DispatchResult {
+				T::OracleOrigin::ensure_origin(origin)?;
 
-			let query_index = QueryCounter::<T>::get();
-			let increment = query_index.checked_add(One::one()).ok_or(ArithmeticError::Overflow)?;
-			QueryCounter::<T>::put(increment);
-
-			if T::Members::count() == 1 {
-				let result = *callback.dispatch(RawOrigin::Members(One::one(), One::one()));
-			} else {
-				let pending_result = QueryState::new_query(
-					timeout,
-					query_result,
-					OracleVotes {
-						yes: vec![who],
-						no: vec![],
-					},
+				let verifiable_call = maybe_verifiable_call.clone().ok_or(Error::<T>::NoMatchingCall)?;
+				ensure!(
+					state_hash == verifiable_call.verify_state,
+					Error::<T>::IncorrectStateHash
 				);
-				ActiveQueries::<T>::insert(query_index, pending_result);
-				Callback::<T>::insert(query_index, *callback);
-			}
 
-			Self::deposit_event(Event::CreateActiveQuery { index: query_index });
-			Ok(())
-		}
-
-		#[pallet::weight(0)]
-		pub fn verify_feed(origin: OriginFor<T>, query_index: QueryIndex, verify: bool) -> DispatchResult {
-			let who = ensure_signed(origin)?;
-			ensure!(T::Members::contains(&who), Error::<T>::NotMember);
-
-			Ok(())
+				let result = verifiable_call
+					.dispatchable_call
+					.dispatch(RawOrigin::RelaychainOracle.into());
+				*maybe_verifiable_call = None;
+				match result {
+					Ok(res) => Self::deposit_event(Event::CallDispatched { task_result: res }),
+					Err(_) => Self::deposit_event(Event::CallDispatchFailed),
+				}
+				Ok(())
+			})
 		}
 	}
 }
 
 impl<T: Config> Pallet<T> {}
+
+impl<T: Config> ForeignChainStateQuery<T::VerifiableTask, T::Hash> for Pallet<T> {
+	fn query_task(call: T::VerifiableTask, state_hash: T::Hash) {
+		let call_hash = T::Hashing::hash_of(&call);
+		let verifiable_call = VerifiableCall {
+			dispatchable_call: call,
+			verify_state: state_hash,
+		};
+
+		ValidateTask::<T>::insert(call_hash, verifiable_call);
+		Self::deposit_event(Event::CreateActiveQuery { query_hash: call_hash });
+	}
+}

@@ -21,11 +21,15 @@
 #![cfg(test)]
 
 use super::*;
-use mock::{Event, *};
+use mock::*;
+use sp_runtime::traits::Keccak256;
 
+//let call = frame_system::Pallet::Call{};
+
+//let hashed_value = Keccak256::hash(b"1");
 #[test]
-fn test_test() {
+fn dispatch_call_test() {
 	ExtBuilder::default().build().execute_with(|| {
-		assert!(true);
+		//Pallet::<Runtime>::query_task(call.clone(), )
 	});
 }

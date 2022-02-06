@@ -661,3 +661,8 @@ pub trait HomaSubAccountXcm<AccountId, Balance> {
 	/// The fee of cross-chain transfer is deducted from the recipient.
 	fn get_xcm_transfer_fee() -> Balance;
 }
+
+pub trait ForeignChainStateQuery<Call, Hash> {
+	/// adds call to be validated by foreign state oracle
+	fn query_task(call: Call, state_hash: Hash);
+}

@@ -21,15 +21,17 @@
 #![cfg(test)]
 
 use super::*;
-use frame_support::{
-	construct_runtime, parameter_types,
-	traits::{Everything, Nothing},
-};
+use frame_support::{construct_runtime, ord_parameter_types, parameter_types, traits::Everything};
+use frame_system::EnsureSignedBy;
 use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup};
 
 pub type AccountId = u128;
 pub type BlockNumber = u64;
+
+ord_parameter_types! {
+	pub const One: AccountId = 1;
+}
 
 parameter_types! {
 	pub const BlockHashCount: u64 = 250;
@@ -61,6 +63,13 @@ impl frame_system::Config for Runtime {
 	type OnSetCode = ();
 }
 
+impl Config for Runtime {
+	type Event = Event;
+	type Origin = Origin;
+	type VerifiableTask = Call;
+	type OracleOrigin = EnsureSignedBy<One, AccountId>;
+}
+
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
@@ -71,6 +80,7 @@ construct_runtime!(
 		UncheckedExtrinsic = UncheckedExtrinsic
 	{
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+		RelaychainOracle: module::{Pallet, Call, Storage, Event<T>, Origin},
 	}
 );
 
