@@ -19,13 +19,6 @@
 use super::*;
 
 parameter_types! {
-	pub KarPerSecondOfCanonicalLocation: (AssetId, u128) = (
-		MultiLocation::new(
-			0,
-			X1(GeneralKey(KAR.encode())),
-		).into(),
-		kar_per_second()
-	);
 	pub BncPerSecondOfCanonicalLocation: (AssetId, u128) = (
 		MultiLocation::new(
 			0,
