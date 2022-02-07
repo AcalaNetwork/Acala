@@ -167,7 +167,7 @@ runtime_benchmarks! {
 		let account_id = <Runtime as module_evm::Config>::TreasuryAccount::get();
 		set_balance(NATIVE, &account_id, 1_000_000 * dollar(NATIVE));
 		let address = primitives::evm::MIRRORED_TOKENS_ADDRESS_START | H160::from_low_u64_be(EVM::network_contract_index());
-	}: _(RawOrigin::Root, EMPTY_CONTRACT.to_vec(), 0, 21_000_000, 100_000, vec![])
+	}: _(RawOrigin::Root, EMPTY_CONTRACT.to_vec(), 0, 2_100_000, 15_000, vec![])
 	verify {
 		let code_hash = EVM::code_hash_at_address(&address);
 		assert!(module_evm::Codes::<Runtime>::contains_key(code_hash));
@@ -177,7 +177,7 @@ runtime_benchmarks! {
 		let account_id = <Runtime as module_evm::Config>::TreasuryAccount::get();
 		set_balance(NATIVE, &account_id, 1_000_000 * dollar(NATIVE));
 		let address = H160::from_low_u64_be(1);
-	}: _(RawOrigin::Root, address, EMPTY_CONTRACT.to_vec(), 0, 21_000_000, 100_000, vec![])
+	}: _(RawOrigin::Root, address, EMPTY_CONTRACT.to_vec(), 0, 2_100_000, 15_000, vec![])
 	verify {
 		let code_hash = EVM::code_hash_at_address(&address);
 		assert!(module_evm::Codes::<Runtime>::contains_key(code_hash));
