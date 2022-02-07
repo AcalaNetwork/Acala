@@ -71,6 +71,7 @@ impl frame_system::Config for Runtime {
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
 	type OnSetCode = ();
+	type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
 
 parameter_types! {
@@ -308,11 +309,6 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 pub fn balance(address: H160) -> Balance {
 	let account_id = <Runtime as Config>::AddressMapping::get_account_id(&address);
 	Balances::free_balance(account_id)
-}
-
-pub fn reducible_balance(address: H160) -> Balance {
-	let account_id = <Runtime as Config>::AddressMapping::get_account_id(&address);
-	Balances::reducible_balance(&account_id, true)
 }
 
 pub fn eth_balance(address: H160) -> U256 {

@@ -17,18 +17,21 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::precompile::PrecompileOutput;
-use frame_support::log;
+use frame_support::{
+	log,
+	traits::tokens::nonfungibles::{Inspect, Transfer},
+};
 use module_evm::{Context, ExitError, ExitSucceed, Precompile};
 use module_support::AddressMapping;
 use sp_core::H160;
 use sp_runtime::RuntimeDebug;
 use sp_std::{borrow::Cow, marker::PhantomData, prelude::*, result};
 
-use orml_traits::NFT as NFTT;
+use orml_traits::InspectExtended;
 
 use super::input::{Input, InputT, Output};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
-use primitives::NFTBalance;
+use primitives::nft::NFTBalance;
 
 /// The `NFT` impl precompile.
 ///
@@ -52,7 +55,9 @@ pub enum Action {
 impl<Runtime> Precompile for NFTPrecompile<Runtime>
 where
 	Runtime: module_evm::Config + module_prices::Config + module_nft::Config,
-	module_nft::Pallet<Runtime>: NFTT<Runtime::AccountId, Balance = NFTBalance, ClassId = u32, TokenId = u64>,
+	module_nft::Pallet<Runtime>: InspectExtended<Runtime::AccountId, Balance = NFTBalance>
+		+ Inspect<Runtime::AccountId, InstanceId = u64, ClassId = u32>
+		+ Transfer<Runtime::AccountId>,
 {
 	fn execute(
 		input: &[u8],
@@ -84,7 +89,7 @@ where
 
 				log::debug!(target: "evm", "nft: query_owner class_id: {:?}, token_id: {:?}", class_id, token_id);
 
-				let owner: H160 = if let Some(o) = module_nft::Pallet::<Runtime>::owner((class_id, token_id)) {
+				let owner: H160 = if let Some(o) = module_nft::Pallet::<Runtime>::owner(&class_id, &token_id) {
 					Runtime::AddressMapping::get_evm_address(&o)
 						.unwrap_or_else(|| Runtime::AddressMapping::get_default_evm_address(&o))
 				} else {
@@ -107,7 +112,7 @@ where
 
 				log::debug!(target: "evm", "nft: transfer from: {:?}, to: {:?}, class_id: {:?}, token_id: {:?}", from, to, class_id, token_id);
 
-				<module_nft::Pallet<Runtime> as NFTT<Runtime::AccountId>>::transfer(&from, &to, (class_id, token_id))
+				<module_nft::Pallet<Runtime> as Transfer<Runtime::AccountId>>::transfer(&class_id, &token_id, &to)
 					.map_err(|e| ExitError::Other(Cow::Borrowed(e.into())))?;
 
 				Ok(PrecompileOutput {

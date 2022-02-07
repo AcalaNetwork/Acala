@@ -25,8 +25,11 @@
 ))]
 mod setup;
 
-// TODO: blocked by BaseCallFilter on acala-runtime
-#[cfg(any(feature = "with-mandala-runtime", feature = "with-karura-runtime"))]
+#[cfg(any(
+	feature = "with-mandala-runtime",
+	feature = "with-karura-runtime",
+	feature = "with-acala-runtime"
+))]
 mod authority;
 
 #[cfg(any(
@@ -67,8 +70,11 @@ mod nft;
 ))]
 mod prices;
 
-// TODO: blocked by BaseCallFilter on acala-runtime
-#[cfg(any(feature = "with-mandala-runtime", feature = "with-karura-runtime"))]
+#[cfg(any(
+	feature = "with-mandala-runtime",
+	feature = "with-karura-runtime",
+	feature = "with-acala-runtime"
+))]
 mod proxy;
 
 #[cfg(any(

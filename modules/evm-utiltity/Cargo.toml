@@ -1,13 +1,13 @@
 [package]
 name = "module-evm-utiltity"
-version = "2.2.3"
+version = "2.3.0"
 authors = ["Acala Developers"]
 edition = "2021"
 
 [dependencies]
 sha3 = { version = "0.9.1", default-features = false }
 
-sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.15", default-features = false }
+sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.16", default-features = false }
 
 evm = { git = "https://github.com/rust-blockchain/evm", rev = "966cf3abe4143451e408c3f586d51c6513d9a48e", default-features = false, features = ["with-codec"] }
 evm-gasometer = { git = "https://github.com/rust-blockchain/evm", rev = "966cf3abe4143451e408c3f586d51c6513d9a48e", default-features = false }

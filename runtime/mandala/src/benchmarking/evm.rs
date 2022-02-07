@@ -22,12 +22,13 @@ use crate::{
 };
 
 use super::utils::set_balance;
-use frame_support::dispatch::DispatchError;
+use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_system::RawOrigin;
 use module_evm::MaxCodeSize;
 use module_support::AddressMapping;
 use orml_benchmarking::{runtime_benchmarks, whitelist_account};
 use orml_traits::MultiCurrency;
+use primitives::evm::PREDEPLOY_ADDRESS_START;
 use sp_core::{H160, H256};
 use sp_io::hashing::keccak_256;
 use sp_std::{str::FromStr, vec};
@@ -63,6 +64,28 @@ fn deploy_contract(caller: AccountId) -> Result<H160, DispatchError> {
 		logs: vec![],
 	}));
 	Ok(contract_addr())
+}
+
+fn deploy_token_contract() -> DispatchResult {
+	System::set_block_number(1);
+	if EVM::is_account_empty(&PREDEPLOY_ADDRESS_START) {
+		EVM::create_predeploy_contract(
+			RawOrigin::Root.into(),
+			PREDEPLOY_ADDRESS_START,
+			STORAGE_CONTRACT.to_vec(),
+			0,
+			1_000_000,
+			15_000,
+		)
+		.map_or_else(|e| Err(e.error), |_| Ok(()))?;
+
+		System::assert_last_event(Event::EVM(module_evm::Event::Created {
+			from: NetworkContractSource::get(),
+			contract: PREDEPLOY_ADDRESS_START,
+			logs: vec![],
+		}));
+	}
+	Ok(())
 }
 
 pub fn alice_account_id() -> AccountId {
@@ -139,28 +162,30 @@ runtime_benchmarks! {
 	}
 
 	create_nft_contract {
-		let account_id = evm_to_account_id(NetworkContractSource::get());
+		let account_id = <Runtime as module_evm::Config>::TreasuryAccount::get();
 		set_balance(NATIVE, &account_id, 1_000_000 * dollar(NATIVE));
-	}: _(RawOrigin::Root, EMPTY_CONTRACT.to_vec(), 0, 21_000_000, 100_000)
+		let address = primitives::evm::MIRRORED_TOKENS_ADDRESS_START | H160::from_low_u64_be(EVM::network_contract_index());
+	}: _(RawOrigin::Root, EMPTY_CONTRACT.to_vec(), 0, 1_000_000, 15_000)
 	verify {
-		let code_hash = H256::from(hex_literal::hex!("6383e491a074f53be137d996a7075aae9d8707a89ce2656f2e9260525b4ec7bb"));
+		let code_hash = EVM::code_hash_at_address(&address);
 		assert!(module_evm::Codes::<Runtime>::contains_key(code_hash));
 	}
 
 	create_predeploy_contract {
-		let contract_address = primitives::evm::MIRRORED_TOKENS_ADDRESS_START | H160::from_low_u64_be(EVM::network_contract_index());
-		let account_id = evm_to_account_id(NetworkContractSource::get());
+		let account_id = <Runtime as module_evm::Config>::TreasuryAccount::get();
 		set_balance(NATIVE, &account_id, 1_000_000 * dollar(NATIVE));
-	}: _(RawOrigin::Root, contract_address, EMPTY_CONTRACT.to_vec(), 0, 21_000_000, 100_000)
+		let address = H160::from_low_u64_be(1);
+	}: _(RawOrigin::Root, address, EMPTY_CONTRACT.to_vec(), 0, 1_000_000, 15_000)
 	verify {
-		let code_hash = H256::from(hex_literal::hex!("6383e491a074f53be137d996a7075aae9d8707a89ce2656f2e9260525b4ec7bb"));
+		let code_hash = EVM::code_hash_at_address(&address);
 		assert!(module_evm::Codes::<Runtime>::contains_key(code_hash));
 	}
 
-	deposit_ed {
+	create_predeploy_mirror_token_contract {
 		let account_id = <Runtime as module_evm::Config>::TreasuryAccount::get();
 		set_balance(NATIVE, &account_id, 1_000_000 * dollar(NATIVE));
-		let address = H160::from_low_u64_be(0);
+		let address = H160::from_low_u64_be(2);
+		deploy_token_contract()?;
 	}: create_predeploy_contract(RawOrigin::Root, address, vec![], 0, 0, 0)
 	verify {
 		assert_eq!(

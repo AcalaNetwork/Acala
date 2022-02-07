@@ -145,10 +145,6 @@ pub fn is_acala_precompile(address: EvmAddress) -> bool {
 	address >= PRECOMPILE_ADDRESS_START && address < PREDEPLOY_ADDRESS_START
 }
 
-pub fn is_mirrored_tokens_address_prefix(address: EvmAddress) -> bool {
-	is_system_contract(address) && CurrencyIdType::try_from(address.as_bytes()[H160_POSITION_CURRENCY_ID_TYPE]).is_ok()
-}
-
 pub const H160_POSITION_CURRENCY_ID_TYPE: usize = 9;
 pub const H160_POSITION_TOKEN: usize = 19;
 pub const H160_POSITION_TOKEN_NFT: Range<usize> = 16..20;

@@ -146,8 +146,8 @@ pub mod module {
 		/// Block number provider for the relaychain.
 		type RelayChainBlockNumber: BlockNumberProvider<BlockNumber = Self::BlockNumber>;
 
-		/// The HomaXcm to manage the staking of sub-account on relaychain.
-		type HomaXcm: HomaSubAccountXcm<Self::AccountId, Balance>;
+		/// The XcmInterface to manage the staking of sub-account on relaychain.
+		type XcmInterface: HomaSubAccountXcm<Self::AccountId, Balance>;
 
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
@@ -318,6 +318,7 @@ pub mod module {
 	pub type BumpEraFrequency<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
 
 	#[pallet::pallet]
+	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
 	#[pallet::hooks]
@@ -836,7 +837,7 @@ pub mod module {
 				let (new_ledger, expired_unlocking) = ledger.consolidate_unlocked(new_era);
 
 				if !expired_unlocking.is_zero() {
-					T::HomaXcm::withdraw_unbonded_from_sub_account(sub_account_index, expired_unlocking)?;
+					T::XcmInterface::withdraw_unbonded_from_sub_account(sub_account_index, expired_unlocking)?;
 
 					// update ledger
 					Self::do_update_ledger(sub_account_index, |before| -> DispatchResult {
@@ -866,7 +867,7 @@ pub mod module {
 
 			// if to_bond is gte than MintThreshold, try to bond_extra on relaychain
 			if to_bond_pool >= T::MintThreshold::get() {
-				let xcm_transfer_fee = T::HomaXcm::get_xcm_transfer_fee();
+				let xcm_transfer_fee = T::XcmInterface::get_xcm_transfer_fee();
 				let bonded_list: Vec<(u16, Balance)> = T::ActiveSubAccountsIndexList::get()
 					.iter()
 					.map(|index| (*index, Self::staking_ledgers(index).unwrap_or_default().bonded))
@@ -881,10 +882,14 @@ pub mod module {
 				// subaccounts execute the distribution
 				for (sub_account_index, amount) in distribution {
 					if !amount.is_zero() {
-						T::HomaXcm::transfer_staking_to_sub_account(&Self::account_id(), sub_account_index, amount)?;
+						T::XcmInterface::transfer_staking_to_sub_account(
+							&Self::account_id(),
+							sub_account_index,
+							amount,
+						)?;
 
 						let bond_amount = amount.saturating_sub(xcm_transfer_fee);
-						T::HomaXcm::bond_extra_on_sub_account(sub_account_index, bond_amount)?;
+						T::XcmInterface::bond_extra_on_sub_account(sub_account_index, bond_amount)?;
 
 						// update ledger
 						Self::do_update_ledger(sub_account_index, |ledger| -> DispatchResult {
@@ -942,7 +947,7 @@ pub mod module {
 			// subaccounts execute the distribution
 			for (sub_account_index, unbond_amount) in distribution {
 				if !unbond_amount.is_zero() {
-					T::HomaXcm::unbond_on_sub_account(sub_account_index, unbond_amount)?;
+					T::XcmInterface::unbond_on_sub_account(sub_account_index, unbond_amount)?;
 
 					// update ledger
 					Self::do_update_ledger(sub_account_index, |ledger| -> DispatchResult {

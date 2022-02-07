@@ -213,7 +213,7 @@ fn signed_extension_transaction_payment_work() {
 			.unwrap();
 		assert_eq!(Currencies::free_balance(ACA, &ALICE), 100000 - fee);
 		assert_ok!(ChargeTransactionPayment::<Runtime>::post_dispatch(
-			pre,
+			Some(pre),
 			&INFO,
 			&POST_INFO,
 			23,
@@ -232,7 +232,7 @@ fn signed_extension_transaction_payment_work() {
 			.unwrap();
 		assert_eq!(Currencies::free_balance(ACA, &CHARLIE), 100000 - fee - 5);
 		assert_ok!(ChargeTransactionPayment::<Runtime>::post_dispatch(
-			pre,
+			Some(pre),
 			&INFO,
 			&POST_INFO,
 			23,
@@ -265,7 +265,7 @@ fn refund_fee_according_to_actual_when_post_dispatch_and_native_currency_is_enou
 		assert_eq!(Currencies::free_balance(ACA, &ALICE), 100000 - fee);
 
 		let refund = 200; // 1000 - 800
-		assert!(ChargeTransactionPayment::<Runtime>::post_dispatch(pre, &INFO, &POST_INFO, 23, &Ok(())).is_ok());
+		assert!(ChargeTransactionPayment::<Runtime>::post_dispatch(Some(pre), &INFO, &POST_INFO, 23, &Ok(())).is_ok());
 		assert_eq!(Currencies::free_balance(ACA, &ALICE), 100000 - fee + refund);
 	});
 }
@@ -281,7 +281,7 @@ fn refund_tip_according_to_actual_when_post_dispatch_and_native_currency_is_enou
 		assert_eq!(Currencies::free_balance(ACA, &ALICE), 100000 - fee);
 
 		let refund = 200; // 1000 - 800
-		assert!(ChargeTransactionPayment::<Runtime>::post_dispatch(pre, &INFO, &POST_INFO, 23, &Ok(())).is_ok());
+		assert!(ChargeTransactionPayment::<Runtime>::post_dispatch(Some(pre), &INFO, &POST_INFO, 23, &Ok(())).is_ok());
 		assert_eq!(Currencies::free_balance(ACA, &ALICE), 100000 - fee + refund);
 
 		// tip = 1000
@@ -294,7 +294,7 @@ fn refund_tip_according_to_actual_when_post_dispatch_and_native_currency_is_enou
 
 		let refund_fee = 200; // 1000 - 800
 		let refund_tip = 200; // 1000 - 800
-		assert!(ChargeTransactionPayment::<Runtime>::post_dispatch(pre, &INFO, &POST_INFO, 23, &Ok(())).is_ok());
+		assert!(ChargeTransactionPayment::<Runtime>::post_dispatch(Some(pre), &INFO, &POST_INFO, 23, &Ok(())).is_ok());
 		assert_eq!(
 			Currencies::free_balance(ACA, &CHARLIE),
 			100000 - fee - tip + refund_fee + refund_tip
@@ -318,7 +318,7 @@ fn refund_should_not_works() {
 			pays_fee: Pays::Yes,
 		};
 
-		assert!(ChargeTransactionPayment::<Runtime>::post_dispatch(pre, &INFO, &POST_INFO, 23, &Ok(())).is_ok());
+		assert!(ChargeTransactionPayment::<Runtime>::post_dispatch(Some(pre), &INFO, &POST_INFO, 23, &Ok(())).is_ok());
 		assert_eq!(Currencies::free_balance(ACA, &ALICE), 100000 - fee - tip);
 	});
 }
