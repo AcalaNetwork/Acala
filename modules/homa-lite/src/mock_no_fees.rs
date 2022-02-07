@@ -53,6 +53,10 @@ impl XcmTransfer<AccountId, Balance, CurrencyId> for MockXcm {
 	}
 }
 impl InvertLocation for MockXcm {
+	fn ancestry() -> MultiLocation {
+		Parachain(2000).into()
+	}
+
 	fn invert_location(l: &MultiLocation) -> Result<MultiLocation, ()> {
 		Ok(l.clone())
 	}
@@ -146,6 +150,7 @@ impl frame_system::Config for NoFeeRuntime {
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
 	type OnSetCode = ();
+	type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
 
 parameter_type_with_key! {

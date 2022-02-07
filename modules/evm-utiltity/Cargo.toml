@@ -1,13 +1,13 @@
 [package]
 name = "module-evm-utiltity"
-version = "2.2.3"
+version = "2.3.0"
 authors = ["Acala Developers"]
 edition = "2021"
 
 [dependencies]
 sha3 = { version = "0.9.1", default-features = false }
 
-sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.15", default-features = false }
+sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.16", default-features = false }
 
 # TODO: https://github.com/rust-blockchain/evm/pull/90
 evm = { git = "https://github.com/zjb0807/evm", rev = "5fef44713eb2ff403581fc193e2d4c316b72f6f8", default-features = false, features = ["with-codec"] }

@@ -77,6 +77,7 @@ pub mod module {
 	pub type NextTaskId<T: Config> = StorageValue<_, Nonce, ValueQuery>;
 
 	#[pallet::pallet]
+	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
 	#[pallet::hooks]
