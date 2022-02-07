@@ -33,7 +33,7 @@ use frame_support::{
 	transactional, PalletId,
 };
 use frame_system::pallet_prelude::*;
-use orml_traits::NFT;
+use orml_traits::InspectExtended;
 use primitives::{
 	nft::{Attributes, ClassProperty, NFTBalance, Properties, CID},
 	ReserveIdentifier,
@@ -196,6 +196,7 @@ pub mod module {
 	}
 
 	#[pallet::pallet]
+	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
 	#[pallet::hooks]
@@ -506,16 +507,14 @@ impl<T: Config> Pallet<T> {
 	}
 }
 
-impl<T: Config> NFT<T::AccountId> for Pallet<T> {
-	type ClassId = ClassIdOf<T>;
-	type TokenId = TokenIdOf<T>;
+impl<T: Config> InspectExtended<T::AccountId> for Pallet<T> {
 	type Balance = NFTBalance;
 
 	fn balance(who: &T::AccountId) -> Self::Balance {
 		orml_nft::TokensByOwner::<T>::iter_prefix((who,)).count() as u128
 	}
 
-	fn next_token_id(class: Self::ClassId) -> Self::TokenId {
+	fn next_token_id(class: Self::ClassId) -> Self::InstanceId {
 		orml_nft::Pallet::<T>::next_token_id(class)
 	}
 }

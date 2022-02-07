@@ -40,14 +40,14 @@ use frame_support::{
 	pallet_prelude::*,
 	parameter_types,
 	traits::{
-		BalanceStatus, Currency, EnsureOrigin, ExistenceRequirement, FindAuthor, Get, NamedReservableCurrency,
-		OnKilledAccount,
+		BalanceStatus, Currency, EnsureOneOf, EnsureOrigin, ExistenceRequirement, FindAuthor, Get,
+		NamedReservableCurrency, OnKilledAccount,
 	},
 	transactional,
 	weights::{Pays, PostDispatchInfo, Weight},
 	BoundedVec, RuntimeDebug,
 };
-use frame_system::{ensure_root, ensure_signed, pallet_prelude::*, EnsureOneOf, EnsureRoot, EnsureSigned};
+use frame_system::{ensure_root, ensure_signed, pallet_prelude::*, EnsureRoot, EnsureSigned};
 use hex_literal::hex;
 pub use module_evm_utiltity::{
 	ethereum::{Log, TransactionAction},
@@ -558,6 +558,7 @@ pub mod module {
 	}
 
 	#[pallet::pallet]
+	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
 	#[pallet::hooks]
@@ -1329,8 +1330,11 @@ impl<T: Config> Pallet<T> {
 		let digest = <frame_system::Pallet<T>>::digest();
 		let pre_runtime_digests = digest.logs.iter().filter_map(|d| d.as_pre_runtime());
 
-		let author = T::FindAuthor::find_author(pre_runtime_digests).unwrap_or_default();
-		T::AddressMapping::get_default_evm_address(&author)
+		if let Some(author) = T::FindAuthor::find_author(pre_runtime_digests) {
+			T::AddressMapping::get_default_evm_address(&author)
+		} else {
+			H160::default()
+		}
 	}
 
 	/// Get code hash at given address.
@@ -1533,8 +1537,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	fn ensure_root_or_signed(o: T::Origin) -> Result<Either<(), T::AccountId>, BadOrigin> {
-		EnsureOneOf::<T::AccountId, EnsureRoot<T::AccountId>, EnsureSigned<T::AccountId>>::try_origin(o)
-			.map_or(Err(BadOrigin), Ok)
+		EnsureOneOf::<EnsureRoot<T::AccountId>, EnsureSigned<T::AccountId>>::try_origin(o).map_or(Err(BadOrigin), Ok)
 	}
 
 	fn can_call_contract(address: &H160, caller: &H160) -> bool {
@@ -1868,7 +1871,7 @@ impl<T: Config + Send + Sync> SignedExtension for SetEvmOrigin<T> {
 	}
 
 	fn post_dispatch(
-		_pre: Self::Pre,
+		_pre: Option<Self::Pre>,
 		_info: &DispatchInfoOf<Self::Call>,
 		_post_info: &PostDispatchInfoOf<Self::Call>,
 		_len: usize,
