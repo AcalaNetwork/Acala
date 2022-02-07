@@ -10,3 +10,6 @@
 [submodule "evm-bench"]
 	path = evm-bench
 	url = https://github.com/AcalaNetwork/evm-bench.git
+[submodule "ecosystem-modules/aquadao"]
+	path = ecosystem-modules/aquadao
+	url = https://github.com/AcalaNetwork/aquadao.git
