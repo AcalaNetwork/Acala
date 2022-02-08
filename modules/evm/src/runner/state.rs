@@ -146,8 +146,7 @@ pub struct StackSubstateMetadata<'config> {
 	caller: Option<H160>,
 	// save the contract to charge storage
 	target: Option<H160>,
-	#[cfg(feature = "evm-tests")]
-	pub original_storage: std::cell::RefCell<BTreeMap<(H160, H256), H256>>,
+	// this is needed only for evm-tests to keep track of dirty accounts
 	#[cfg(feature = "evm-tests")]
 	pub dirty_accounts: std::cell::RefCell<BTreeSet<H160>>,
 }
@@ -167,8 +166,6 @@ impl<'config> StackSubstateMetadata<'config> {
 			accessed,
 			caller: None,
 			target: None,
-			#[cfg(feature = "evm-tests")]
-			original_storage: std::cell::RefCell::new(BTreeMap::new()),
 			#[cfg(feature = "evm-tests")]
 			dirty_accounts: std::cell::RefCell::new(BTreeSet::new()),
 		}
@@ -196,6 +193,7 @@ impl<'config> StackSubstateMetadata<'config> {
 	pub fn swallow_revert(&mut self, other: Self) -> Result<(), ExitError> {
 		self.gasometer.record_stipend(other.gasometer.gas())?;
 
+		// this is needed only for evm-tests to keep track of dirty accounts
 		#[cfg(feature = "evm-tests")]
 		self.dirty_accounts.borrow_mut().clear();
 
@@ -203,6 +201,7 @@ impl<'config> StackSubstateMetadata<'config> {
 	}
 
 	pub fn swallow_discard(&mut self, _other: Self) -> Result<(), ExitError> {
+		// this is needed only for evm-tests to keep track of dirty accounts
 		#[cfg(feature = "evm-tests")]
 		self.dirty_accounts.borrow_mut().clear();
 
@@ -221,8 +220,6 @@ impl<'config> StackSubstateMetadata<'config> {
 			accessed: self.accessed.as_ref().map(|_| Accessed::default()),
 			caller: None,
 			target: None,
-			#[cfg(feature = "evm-tests")]
-			original_storage: std::cell::RefCell::new(BTreeMap::new()),
 			#[cfg(feature = "evm-tests")]
 			dirty_accounts: std::cell::RefCell::new(BTreeSet::new()),
 		}

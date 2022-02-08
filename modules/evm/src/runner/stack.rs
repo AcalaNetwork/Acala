@@ -46,7 +46,13 @@ pub use primitives::{
 use sha3::{Digest, Keccak256};
 use sp_core::{H160, H256, U256};
 use sp_runtime::traits::{UniqueSaturatedInto, Zero};
-use sp_std::{boxed::Box, collections::btree_set::BTreeSet, marker::PhantomData, mem, vec::Vec};
+use sp_std::{
+	boxed::Box,
+	collections::{btree_map::BTreeMap, btree_set::BTreeSet},
+	marker::PhantomData,
+	mem,
+	vec::Vec,
+};
 
 #[derive(Default)]
 pub struct Runner<T: Config> {
@@ -347,6 +353,7 @@ struct SubstrateStackSubstate<'config> {
 	logs: Vec<Log>,
 	storage_logs: Vec<(H160, i32)>,
 	parent: Option<Box<SubstrateStackSubstate<'config>>>,
+	known_original_storage: BTreeMap<(H160, H256), H256>,
 }
 
 impl<'config> SubstrateStackSubstate<'config> {
@@ -365,6 +372,7 @@ impl<'config> SubstrateStackSubstate<'config> {
 			deletes: BTreeSet::new(),
 			logs: Vec::new(),
 			storage_logs: Vec::new(),
+			known_original_storage: BTreeMap::new(),
 		};
 		mem::swap(&mut entering, self);
 
@@ -447,35 +455,28 @@ impl<'config> SubstrateStackSubstate<'config> {
 		}
 	}
 
-	#[cfg(feature = "evm-tests")]
-	fn original_storage(&self, address: H160, index: H256) -> Option<H256> {
+	pub fn known_original_storage(&self, address: H160, index: H256) -> Option<H256> {
 		if let Some(parent) = self.parent.as_ref() {
-			return parent.original_storage(address, index);
+			return parent.known_original_storage(address, index);
 		}
-		self.metadata
-			.original_storage
-			.borrow()
-			.get(&(address, index))
-			.map(|x| *x)
+		self.known_original_storage.get(&(address, index)).map(|x| *x)
 	}
 
-	#[cfg(feature = "evm-tests")]
-	fn set_original_storage(&self, address: H160, index: H256, value: H256) {
-		if let Some(parent) = self.parent.as_ref() {
-			return parent.set_original_storage(address, index, value);
+	pub fn set_known_original_storage(&mut self, address: H160, index: H256, value: H256) {
+		if let Some(ref mut parent) = self.parent {
+			return parent.set_known_original_storage(address, index, value);
 		}
-		self.metadata
-			.original_storage
-			.borrow_mut()
-			.insert((address, index), value);
+		self.known_original_storage.insert((address, index), value);
 	}
+}
 
-	#[cfg(feature = "evm-tests")]
-	fn mark_account_dirty(&self, address: H160) {
+#[cfg(feature = "evm-tests")]
+impl<'config> SubstrateStackSubstate<'config> {
+	pub fn mark_account_dirty(&self, address: H160) {
 		if let Some(parent) = self.parent.as_ref() {
 			return parent.mark_account_dirty(address);
 		}
-		self.metadata.dirty_accounts.borrow_mut().insert(address);
+		self.metadata().dirty_accounts.borrow_mut().insert(address);
 	}
 }
 
@@ -497,14 +498,27 @@ impl<'vicinity, 'config, T: Config> SubstrateStackState<'vicinity, 'config, T> {
 				logs: Vec::new(),
 				storage_logs: Vec::new(),
 				parent: None,
+				known_original_storage: BTreeMap::new(),
 			},
 			_marker: PhantomData,
 		}
 	}
+}
 
-	#[cfg(feature = "evm-tests")]
-	pub fn deleted_accounts(&self) -> &BTreeSet<H160> {
-		&self.substate.deletes
+#[cfg(feature = "evm-tests")]
+impl<'vicinity, 'config, T: Config> SubstrateStackState<'vicinity, 'config, T> {
+	pub fn deleted_accounts(&self) -> Vec<H160> {
+		self.substate.deletes.iter().map(|x| *x).collect()
+	}
+
+	pub fn empty_accounts(&self) -> Vec<H160> {
+		self.metadata()
+			.dirty_accounts
+			.borrow()
+			.iter()
+			.filter(|x| self.is_empty(**x))
+			.map(|x| *x)
+			.collect()
 	}
 }
 
@@ -578,19 +592,11 @@ impl<'vicinity, 'config, T: Config> BackendT for SubstrateStackState<'vicinity, 
 		AccountStorages::<T>::get(&address, index)
 	}
 
-	#[cfg(not(feature = "evm-tests"))]
-	fn original_storage(&self, _address: H160, _index: H256) -> Option<H256> {
-		None
-	}
-
-	#[cfg(feature = "evm-tests")]
 	fn original_storage(&self, address: H160, index: H256) -> Option<H256> {
-		if let Some(value) = self.substate.original_storage(address, index) {
+		if let Some(value) = self.substate.known_original_storage(address, index) {
 			Some(value)
 		} else {
-			let value = self.storage(address, index);
-			self.substate.set_original_storage(address, index, value);
-			Some(value)
+			Some(self.storage(address, index))
 		}
 	}
 
@@ -645,6 +651,12 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 	}
 
 	fn set_storage(&mut self, address: H160, index: H256, value: H256) {
+		// keep track of original storage
+		if self.substate.known_original_storage(address, index).is_none() {
+			let original = <AccountStorages<T>>::get(address, index);
+			self.substate.set_known_original_storage(address, index, original);
+		}
+
 		if value == H256::default() {
 			log::debug!(
 				target: "evm",
@@ -733,6 +745,7 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 	}
 
 	fn transfer(&mut self, transfer: Transfer) -> Result<(), ExitError> {
+		// this is needed only for evm-tests to keep track of dirty accounts
 		#[cfg(feature = "evm-tests")]
 		self.touch(transfer.target);
 
@@ -782,18 +795,16 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 		}
 	}
 
-	#[cfg(not(feature = "evm-tests"))]
 	fn touch(&mut self, _address: H160) {
 		// Do nothing on touch in Substrate.
 		//
 		// EVM pallet considers all accounts to exist, and distinguish
 		// only empty and non-empty accounts. This avoids many of the
 		// subtle issues in EIP-161.
-	}
 
-	#[cfg(feature = "evm-tests")]
-	fn touch(&mut self, address: H160) {
-		self.substate.mark_account_dirty(address);
+		// this is needed only for evm-tests to keep track of dirty accounts
+		#[cfg(feature = "evm-tests")]
+		self.substate.mark_account_dirty(_address);
 	}
 
 	fn is_cold(&self, address: H160) -> bool {
