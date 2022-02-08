@@ -820,8 +820,7 @@ where
 
 	/// Initiate a charge fee swap pool. Usually used in `on_runtime_upgrade` or manual
 	/// `enable_charge_fee_pool` dispatch call.
-	#[transactional]
-	pub fn initialize_pool(currency_id: CurrencyId, pool_size: Balance, swap_threshold: Balance) -> DispatchResult {
+	fn initialize_pool(currency_id: CurrencyId, pool_size: Balance, swap_threshold: Balance) -> DispatchResult {
 		let treasury_account = T::TreasuryAccount::get();
 		let sub_account = Self::sub_account_id(currency_id);
 		let native_existential_deposit = <T as Config>::Currency::minimum_balance();
