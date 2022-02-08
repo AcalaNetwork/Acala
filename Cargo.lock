@@ -2331,7 +2331,7 @@ dependencies = [
 [[package]]
 name = "cumulus-test-relay-validation-worker-provider"
 version = "0.1.0"
-source = "git+https://github.com/paritytech/cumulus?branch=polkadot-v0.9.16#867bfcd8f87cc986d1a3e9eeaf16c8b4e9a27790"
+source = "git+https://github.com/paritytech//cumulus?rev=867bfcd8f87cc986d1a3e9eeaf16c8b4e9a27790#867bfcd8f87cc986d1a3e9eeaf16c8b4e9a27790"
 dependencies = [
  "polkadot-node-core-pvf",
 ]
@@ -9701,37 +9701,6 @@ dependencies = [
 [[package]]
 name = "polkadot-rpc"
 version = "0.9.16"
-source = "git+https://github.com/paritytech/polkadot?branch=release-v0.9.16#192586a2c8e7a742f38522c7f2425badc73d5966"
-dependencies = [
- "beefy-gadget",
- "beefy-gadget-rpc",
- "jsonrpc-core",
- "pallet-mmr-rpc",
- "pallet-transaction-payment-rpc",
- "polkadot-primitives",
- "sc-chain-spec",
- "sc-client-api",
- "sc-consensus-babe",
- "sc-consensus-babe-rpc",
- "sc-consensus-epochs",
- "sc-finality-grandpa",
- "sc-finality-grandpa-rpc",
- "sc-rpc",
- "sc-sync-state-rpc",
- "sc-transaction-pool-api",
- "sp-api",
- "sp-block-builder",
- "sp-blockchain",
- "sp-consensus",
- "sp-consensus-babe",
- "sp-keystore",
- "sp-runtime",
- "substrate-frame-rpc-system",
-]
-
-[[package]]
-name = "polkadot-rpc"
-version = "0.9.16"
 source = "git+https://github.com/paritytech//polkadot?rev=41ab002d7451766324a9f314fee11c9c53314350#41ab002d7451766324a9f314fee11c9c53314350"
 dependencies = [
  "beefy-gadget",
@@ -10005,7 +9974,7 @@ dependencies = [
  "polkadot-overseer",
  "polkadot-parachain",
  "polkadot-primitives",
- "polkadot-rpc 0.9.16 (git+https://github.com/paritytech//polkadot?rev=41ab002d7451766324a9f314fee11c9c53314350)",
+ "polkadot-rpc",
  "polkadot-runtime",
  "polkadot-runtime-constants",
  "polkadot-runtime-parachains",
@@ -10091,7 +10060,7 @@ dependencies = [
 [[package]]
 name = "polkadot-test-runtime"
 version = "0.9.16"
-source = "git+https://github.com/paritytech/polkadot?branch=release-v0.9.16#192586a2c8e7a742f38522c7f2425badc73d5966"
+source = "git+https://github.com/paritytech//polkadot?rev=41ab002d7451766324a9f314fee11c9c53314350#41ab002d7451766324a9f314fee11c9c53314350"
 dependencies = [
  "beefy-primitives",
  "bitvec 0.20.4",
@@ -10153,7 +10122,7 @@ dependencies = [
 [[package]]
 name = "polkadot-test-service"
 version = "0.9.16"
-source = "git+https://github.com/paritytech/polkadot?branch=release-v0.9.16#192586a2c8e7a742f38522c7f2425badc73d5966"
+source = "git+https://github.com/paritytech//polkadot?rev=41ab002d7451766324a9f314fee11c9c53314350#41ab002d7451766324a9f314fee11c9c53314350"
 dependencies = [
  "frame-benchmarking",
  "frame-system",
@@ -10168,7 +10137,7 @@ dependencies = [
  "polkadot-overseer",
  "polkadot-parachain",
  "polkadot-primitives",
- "polkadot-rpc 0.9.16 (git+https://github.com/paritytech/polkadot?branch=release-v0.9.16)",
+ "polkadot-rpc",
  "polkadot-runtime-common",
  "polkadot-runtime-parachains",
  "polkadot-service",
@@ -13779,7 +13748,7 @@ dependencies = [
 [[package]]
 name = "test-runtime-constants"
 version = "0.9.16"
-source = "git+https://github.com/paritytech/polkadot?branch=release-v0.9.16#192586a2c8e7a742f38522c7f2425badc73d5966"
+source = "git+https://github.com/paritytech//polkadot?rev=41ab002d7451766324a9f314fee11c9c53314350#41ab002d7451766324a9f314fee11c9c53314350"
 dependencies = [
  "frame-support",
  "polkadot-primitives",
