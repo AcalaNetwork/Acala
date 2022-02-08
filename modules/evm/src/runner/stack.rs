@@ -459,7 +459,7 @@ impl<'config> SubstrateStackSubstate<'config> {
 		if let Some(parent) = self.parent.as_ref() {
 			return parent.known_original_storage(address, index);
 		}
-		self.known_original_storage.get(&(address, index)).map(|x| *x)
+		self.known_original_storage.get(&(address, index)).copied()
 	}
 
 	pub fn set_known_original_storage(&mut self, address: H160, index: H256, value: H256) {
@@ -508,7 +508,7 @@ impl<'vicinity, 'config, T: Config> SubstrateStackState<'vicinity, 'config, T> {
 #[cfg(feature = "evm-tests")]
 impl<'vicinity, 'config, T: Config> SubstrateStackState<'vicinity, 'config, T> {
 	pub fn deleted_accounts(&self) -> Vec<H160> {
-		self.substate.deletes.iter().map(|x| *x).collect()
+		self.substate.deletes.iter().copied().collect()
 	}
 
 	pub fn empty_accounts(&self) -> Vec<H160> {
@@ -517,7 +517,7 @@ impl<'vicinity, 'config, T: Config> SubstrateStackState<'vicinity, 'config, T> {
 			.borrow()
 			.iter()
 			.filter(|x| self.is_empty(**x))
-			.map(|x| *x)
+			.copied()
 			.collect()
 	}
 }
