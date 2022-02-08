@@ -472,6 +472,7 @@ pub mod module {
 	impl<T: Config> Pallet<T> {
 		/// Set fee swap path
 		#[pallet::weight(<T as Config>::WeightInfo::set_alternative_fee_swap_path())]
+		#[transactional]
 		pub fn set_alternative_fee_swap_path(
 			origin: OriginFor<T>,
 			fee_swap_path: Option<Vec<CurrencyId>>,
@@ -487,8 +488,8 @@ pub mod module {
 						&& path[path.len() - 1] == T::NativeCurrencyId::get(),
 					Error::<T>::InvalidSwapPath
 				);
-				AlternativeFeeSwapPath::<T>::insert(&who, &path);
 				T::Currency::ensure_reserved_named(&DEPOSIT_ID, &who, T::AlternativeFeeSwapDeposit::get())?;
+				AlternativeFeeSwapPath::<T>::insert(&who, &path);
 			} else {
 				AlternativeFeeSwapPath::<T>::remove(&who);
 				T::Currency::unreserve_all_named(&DEPOSIT_ID, &who);
@@ -498,6 +499,7 @@ pub mod module {
 
 		/// Set swap balance threshold of native asset
 		#[pallet::weight(<T as Config>::WeightInfo::set_swap_balance_threshold())]
+		#[transactional]
 		pub fn set_swap_balance_threshold(
 			origin: OriginFor<T>,
 			currency_id: CurrencyId,
@@ -518,6 +520,7 @@ pub mod module {
 
 		/// Enable and initialize charge fee pool.
 		#[pallet::weight(<T as Config>::WeightInfo::enable_charge_fee_pool())]
+		#[transactional]
 		pub fn enable_charge_fee_pool(
 			origin: OriginFor<T>,
 			currency_id: CurrencyId,
