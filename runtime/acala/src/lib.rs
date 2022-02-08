@@ -1512,10 +1512,25 @@ parameter_types! {
 		// aUSD:DOT = 40:1
 		dot_per_second() * 40
 	);
+	pub AusdPerSecondOfCanonicalLocation: (AssetId, u128) = (
+		MultiLocation::new(
+			0,
+			X1(GeneralKey(AUSD.encode())),
+		).into(),
+		// aUSD:DOT = 40:1
+		dot_per_second() * 40
+	);
 	pub AcaPerSecond: (AssetId, u128) = (
 		MultiLocation::new(
 			1,
 			X2(Parachain(u32::from(ParachainInfo::get())), GeneralKey(ACA.encode())),
+		).into(),
+		aca_per_second()
+	);
+	pub AcaPerSecondOfCanonicalLocation: (AssetId, u128) = (
+		MultiLocation::new(
+			0,
+			X1(GeneralKey(ACA.encode())),
 		).into(),
 		aca_per_second()
 	);
@@ -1527,6 +1542,9 @@ pub type Trader = (
 	TransactionFeePoolTrader<Runtime, CurrencyIdConvert, AcaPerSecondAsBased, ToTreasury>,
 	FixedRateOfFungible<DotPerSecond, ToTreasury>,
 	FixedRateOfFungible<AusdPerSecond, ToTreasury>,
+	FixedRateOfFungible<AusdPerSecondOfCanonicalLocation, ToTreasury>,
+	FixedRateOfFungible<AcaPerSecond, ToTreasury>,
+	FixedRateOfFungible<AcaPerSecondOfCanonicalLocation, ToTreasury>,
 	FixedRateOfForeignAsset<Runtime, ForeignAssetUnitsPerSecond, ToTreasury>,
 );
 

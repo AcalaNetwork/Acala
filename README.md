@@ -177,20 +177,23 @@ If modify the storage, should test the data migration before upgrade the runtime
 
 ## Try testing runtime
 
+try-runtime on karura
+
 ```bash
 # Use a live chain to run the migration test and save state snapshot to file `snapshot.bin`.
 # Add `-m module_name` can specify the module.
-cargo run --features with-mandala-runtime --features try-runtime -- try-runtime --wasm-execution=compiled --block-at=0x9def608d5674f6d16574f53849218fe13d80ec1042ef7c2d4de7d4c50abab806 --url="wss://karura.api.onfinality.io/public-ws" on-runtime-upgrade live -s snapshot.bin
+cargo run --features with-karura-runtime --features try-runtime -- try-runtime --chain=karura-dev --wasm-execution=compiled on-runtime-upgrade live --uri wss://karura.api.onfinality.io:443/public-ws --at=0x9def608d5674f6d16574f53849218fe13d80ec1042ef7c2d4de7d4c50abab806 -s /tmp/snapshot.bin
 
  # Use a state snapshot to run the migration test.
-cargo run --features with-mandala-runtime --features try-runtime -- try-runtime --wasm-execution=compiled --block-at=0x9def608d5674f6d16574f53849218fe13d80ec1042ef7c2d4de7d4c50abab806 on-runtime-upgrade snap -s snapshot.bin
+cargo run --features with-karura-runtime --features try-runtime -- try-runtime --chain=karura-dev --wasm-execution=compiled on-runtime-upgrade snap -s /tmp/snapshot.bin
+```
 
-# Off-Chain worker
-# Use a live chain to run the off-chain migration test and save state snapshot to file `snapshot.bin`.
-cargo run --features with-mandala-runtime --features try-runtime -- try-runtime --wasm-execution=compiled --block-at=0x9def608d5674f6d16574f53849218fe13d80ec1042ef7c2d4de7d4c50abab806 --url="wss://karura.api.onfinality.io/public-ws" offchain-worker live -s snapshot.bin
+try-runtime on acala
 
- # Use a state snapshot to run the offchain migration test.
-cargo run --features with-mandala-runtime --features try-runtime -- try-runtime --wasm-execution=compiled --block-at=0x9def608d5674f6d16574f53849218fe13d80ec1042ef7c2d4de7d4c50abab806 --url="wss://karura.api.onfinality.io/public-ws" offchain-worker snap -s snapshot.bin
+```bash
+cargo run --features with-acala-runtime --features try-runtime -- try-runtime --chain=acala-dev on-runtime-upgrade live --uri wss://acala-polkadot.api.onfinality.io:443/public-ws -s /tmp/snapshot.bin
+
+cargo run --features with-acala-runtime --features try-runtime -- try-runtime --chain=acala-dev on-runtime-upgrade snap -s /tmp/snapshot.bin
 ```
 
 # 9. Run local testnet with `RelayChain` and `Parachain`
