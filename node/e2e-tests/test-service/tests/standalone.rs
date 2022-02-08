@@ -26,7 +26,6 @@ use sp_runtime::{traits::IdentifyAccount, MultiAddress, MultiSigner};
 use test_service::SealMode;
 
 #[substrate_test_utils::test]
-#[ignore] // TODO: Wasm binary must be built for testing, polkadot/node/test/service/src/chain_spec.rs:117:40
 async fn simple_balances_dev_test() {
 	let mut builder = sc_cli::LoggerBuilder::new("");
 	builder.with_colors(true);
@@ -60,7 +59,6 @@ async fn simple_balances_dev_test() {
 }
 
 #[substrate_test_utils::test]
-#[ignore]
 async fn transaction_pool_priority_order_test() {
 	let mut builder = sc_cli::LoggerBuilder::new("");
 	builder.with_colors(true);
