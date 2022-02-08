@@ -1111,6 +1111,7 @@ parameter_types! {
 		TradingPair::from_currency_ids(AUSD, DOT).unwrap(),
 		TradingPair::from_currency_ids(AUSD, LDOT).unwrap(),
 		TradingPair::from_currency_ids(AUSD, RENBTC).unwrap(),
+		TradingPair::from_currency_ids(DOT, ACA).unwrap(),
 	];
 }
 
@@ -1162,7 +1163,12 @@ impl module_transaction_pause::Config for Runtime {
 
 parameter_types! {
 	// Sort by fee charge order
-	pub DefaultFeeSwapPathList: Vec<Vec<CurrencyId>> = vec![vec![AUSD, ACA], vec![AUSD, LDOT, ACA], vec![AUSD, DOT, ACA], vec![AUSD, RENBTC, ACA]];
+	pub DefaultFeeSwapPathList: Vec<Vec<CurrencyId>> = vec![
+		vec![AUSD, DOT, ACA],
+		vec![DOT, ACA],
+		vec![LDOT, DOT, ACA],
+		vec![RENBTC, AUSD, ACA]
+	];
 }
 
 type NegativeImbalance = <Balances as PalletCurrency<AccountId>>::NegativeImbalance;
