@@ -329,7 +329,7 @@ pub mod module {
 		type TreasuryAccount: Get<Self::AccountId>;
 
 		/// The origin which change swap balance threshold or enable charge fee pool.
-		type UpdateOrigin: EnsureOrigin<Self::Origin, Success = Self::AccountId>;
+		type UpdateOrigin: EnsureOrigin<Self::Origin>;
 	}
 
 	#[pallet::extra_constants]
