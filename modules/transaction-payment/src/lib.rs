@@ -831,39 +831,39 @@ where
 			Error::<T>::ChargeFeePoolAlreadyExisted
 		);
 
-		let trading_path = Self::get_trading_path_by_currency(&sub_account, currency_id);
-		if let Some(trading_path) = trading_path {
-			let (supply_amount, _) = T::DEX::get_swap_amount(
-				&trading_path,
-				SwapLimit::ExactTarget(Balance::MAX, native_existential_deposit),
-			)
-			.ok_or(Error::<T>::DexNotAvailable)?;
-			let exchange_rate = Ratio::saturating_from_rational(supply_amount, native_existential_deposit);
+		let trading_path =
+			Self::get_trading_path_by_currency(&sub_account, currency_id).ok_or(Error::<T>::DexNotAvailable)?;
+		let (supply_amount, _) = T::DEX::get_swap_amount(
+			&trading_path,
+			SwapLimit::ExactTarget(Balance::MAX, native_existential_deposit),
+		)
+		.ok_or(Error::<T>::DexNotAvailable)?;
+		let exchange_rate = Ratio::saturating_from_rational(supply_amount, native_existential_deposit);
 
-			T::MultiCurrency::transfer(
-				currency_id,
-				&treasury_account,
-				&sub_account,
-				T::MultiCurrency::minimum_balance(currency_id),
-			)?;
-			T::Currency::transfer(
-				&treasury_account,
-				&sub_account,
-				pool_size,
-				ExistenceRequirement::KeepAlive,
-			)?;
+		T::MultiCurrency::transfer(
+			currency_id,
+			&treasury_account,
+			&sub_account,
+			T::MultiCurrency::minimum_balance(currency_id),
+		)?;
+		T::Currency::transfer(
+			&treasury_account,
+			&sub_account,
+			pool_size,
+			ExistenceRequirement::KeepAlive,
+		)?;
 
-			SwapBalanceThreshold::<T>::insert(currency_id, swap_threshold);
-			TokenExchangeRate::<T>::insert(currency_id, exchange_rate);
-			PoolSize::<T>::insert(currency_id, pool_size);
-			Self::deposit_event(Event::ChargeFeePoolEnabled {
-				sub_account,
-				currency_id,
-				exchange_rate,
-				pool_size,
-				swap_threshold,
-			});
-		}
+		SwapBalanceThreshold::<T>::insert(currency_id, swap_threshold);
+		TokenExchangeRate::<T>::insert(currency_id, exchange_rate);
+		PoolSize::<T>::insert(currency_id, pool_size);
+		Self::deposit_event(Event::ChargeFeePoolEnabled {
+			sub_account,
+			currency_id,
+			exchange_rate,
+			pool_size,
+			swap_threshold,
+		});
+
 		Ok(())
 	}
 }

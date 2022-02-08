@@ -117,7 +117,11 @@ fn do_runtime_upgrade_and_init_balance() {
 	));
 
 	for asset in crate::mock::FeePoolExchangeTokens::get() {
-		let _ = Pallet::<Runtime>::initialize_pool(asset, FeePoolSize::get(), crate::mock::SwapThreshold::get());
+		assert_ok!(Pallet::<Runtime>::initialize_pool(
+			asset,
+			FeePoolSize::get(),
+			crate::mock::SwapThreshold::get()
+		));
 	}
 	// MockTransactionPaymentUpgrade::on_runtime_upgrade();
 
@@ -967,7 +971,7 @@ fn swap_from_pool_with_enough_balance() {
 		let expect_treasury_aca = (pool_size - fee) as u128; // 500 ACA
 		let expect_user_aca = fee; // 500 ACA
 
-		let _ = Pallet::<Runtime>::swap_from_pool_or_dex(&BOB, fee, DOT);
+		assert_ok!(Pallet::<Runtime>::swap_from_pool_or_dex(&BOB, fee, DOT));
 		assert_eq!(expect_user_dot, Currencies::free_balance(DOT, &BOB));
 		assert_eq!(
 			expect_treasury_dot,
@@ -992,7 +996,7 @@ fn swap_from_pool_with_enough_balance() {
 		let expect_treasury_aca = pool_size - fee; // 1000 ACA - 500 ACA
 		let expect_user_aca = expect_user_aca + fee; // 500 ACA
 
-		let _ = Pallet::<Runtime>::swap_from_pool_or_dex(&BOB, fee, AUSD);
+		assert_ok!(Pallet::<Runtime>::swap_from_pool_or_dex(&BOB, fee, AUSD));
 		assert_eq!(expect_user_ausd, Currencies::free_balance(AUSD, &BOB));
 		assert_eq!(
 			expect_treasury_ausd,
@@ -1052,7 +1056,7 @@ fn swap_from_pool_and_dex_update_rate() {
 
 		// the sub account has 9200 ACA, 80 DOT, use 80 DOT to swap out some ACA
 		let balance2 = 300 as u128;
-		let _ = Pallet::<Runtime>::swap_from_pool_or_dex(&BOB, balance2, DOT);
+		assert_ok!(Pallet::<Runtime>::swap_from_pool_or_dex(&BOB, balance2, DOT));
 		assert_eq!(TokenExchangeRate::<Runtime>::get(DOT).unwrap(), rate);
 		assert_eq!(PoolSize::<Runtime>::get(DOT), current_native_balance);
 	});
@@ -1156,7 +1160,7 @@ fn charge_fee_failed_when_disable_dex() {
 		assert_eq!(fee_balance - 200, Currencies::free_balance(ACA, &fee_account));
 
 		// this tx failed because when execute balance lt threshold, the swap failed
-		let _ = ChargeTransactionPayment::<Runtime>::from(0).validate(&BOB, CALL2, &INFO2, 50);
+		assert_ok!(ChargeTransactionPayment::<Runtime>::from(0).validate(&BOB, CALL2, &INFO2, 50));
 	});
 }
 
@@ -1216,13 +1220,23 @@ fn enable_init_pool_works() {
 			(usd_ed * 2).unique_saturated_into(),
 		));
 
-		let _ = Pallet::<Runtime>::enable_charge_fee_pool(Origin::signed(ALICE), AUSD, pool_size, 35);
+		assert_ok!(Pallet::<Runtime>::enable_charge_fee_pool(
+			Origin::signed(ALICE),
+			AUSD,
+			pool_size,
+			35
+		));
 		let rate = TokenExchangeRate::<Runtime>::get(AUSD);
 		assert_eq!(rate, Some(Ratio::saturating_from_rational(2, 10)));
 
 		assert_noop!(
 			Pallet::<Runtime>::enable_charge_fee_pool(Origin::signed(ALICE), AUSD, pool_size, 35),
 			Error::<Runtime>::ChargeFeePoolAlreadyExisted
+		);
+
+		assert_noop!(
+			Pallet::<Runtime>::enable_charge_fee_pool(Origin::signed(ALICE), KSM, pool_size, 35),
+			Error::<Runtime>::DexNotAvailable
 		);
 	});
 }
