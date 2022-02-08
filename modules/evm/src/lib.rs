@@ -112,7 +112,7 @@ static ACALA_CONFIG: EvmConfig = EvmConfig {
 /// Create an empty contract `contract Empty { }`.
 pub const BASE_CREATE_GAS: u64 = 67_066;
 /// Call function that just set a storage `function store(uint256 num) public { number = num; }`.
-pub const BASE_CALL_GAS: u64 = 43_702;
+pub const BASE_CALL_GAS: u64 = 41_602;
 
 /// Helper method to calculate `create` weight.
 fn create_weight<T: Config>(gas: u64) -> Weight {
