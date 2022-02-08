@@ -1661,6 +1661,13 @@ parameter_types! {
 		).into(),
 		aca_per_second()
 	);
+	pub AcaPerSecondOfCanonicalLocation: (AssetId, u128) = (
+		MultiLocation::new(
+			0,
+			X1(GeneralKey(ACA.encode())),
+		).into(),
+		aca_per_second()
+	);
 	pub ForeignAssetUnitsPerSecond: u128 = aca_per_second();
 	pub AcaPerSecondAsBased: u128 = aca_per_second();
 }
@@ -1668,6 +1675,8 @@ parameter_types! {
 pub type Trader = (
 	TransactionFeePoolTrader<Runtime, CurrencyIdConvert, AcaPerSecondAsBased, ToTreasury>,
 	FixedRateOfFungible<DotPerSecond, ToTreasury>,
+	FixedRateOfFungible<AcaPerSecond, ToTreasury>,
+	FixedRateOfFungible<AcaPerSecondOfCanonicalLocation, ToTreasury>,
 	FixedRateOfForeignAsset<Runtime, ForeignAssetUnitsPerSecond, ToTreasury>,
 );
 
