@@ -104,6 +104,10 @@ test-runtimes:
 	SKIP_WASM_BUILD= cargo test -p runtime-integration-tests --features=with-karura-runtime
 	SKIP_WASM_BUILD= cargo test -p runtime-integration-tests --features=with-acala-runtime
 
+.PHONY: test-e2e
+test-e2e:
+	cargo test --package test-service -- --include-ignored
+
 .PHONY: test-ts
 test-ts:
 	cargo build --release --features with-mandala-runtime
