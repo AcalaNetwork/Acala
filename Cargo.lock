@@ -5761,6 +5761,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "module-account-tokenizer"
+version = "2.2.1"
+dependencies = [
+ "acala-primitives",
+ "frame-support",
+ "frame-system",
+ "module-nft",
+ "module-support",
+ "orml-nft",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "pallet-proxy",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "module-asset-registry"
 version = "2.2.3"
 dependencies = [

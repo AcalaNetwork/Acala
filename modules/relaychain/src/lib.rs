@@ -23,7 +23,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
 
-use codec::{Decode, Encode, FullCodec};
+use codec::{Codec, Decode, Encode, Error, FullCodec, Input, Output};
 use sp_runtime::traits::StaticLookup;
 
 use frame_support::{traits::Get, weights::Weight, RuntimeDebug};
@@ -35,6 +35,12 @@ pub use cumulus_primitives_core::ParaId;
 use xcm::latest::prelude::*;
 
 use frame_system::Config;
+
+#[derive(Encode, Decode, RuntimeDebug)]
+pub enum ProxyType {
+	#[codec(index = 0)]
+	Any, // Only Any is used. Add more when needed.
+}
 
 #[derive(Encode, Decode, RuntimeDebug)]
 pub enum BalancesCall<T: Config> {
@@ -65,12 +71,137 @@ pub enum StakingCall {
 	WithdrawUnbonded(u32),
 }
 
+#[derive(RuntimeDebug)]
+pub enum ProxyCall<T: Config, RelayChainCall: Codec> {
+	Proxy(T::AccountId, Option<ProxyType>, Box<RelayChainCall>),
+	AddProxy(T::AccountId, ProxyType, T::BlockNumber),
+	RemoveProxy(T::AccountId, ProxyType, T::BlockNumber),
+}
+
+/// Manual implementation of Encode and Decode to get around infinite recursion when using "derive".
+impl<T: Config, RelayChainCall: Codec> Encode for ProxyCall<T, RelayChainCall> {
+	fn encode_to<O: Output + ?Sized>(&self, dest: &mut O) {
+		match *self {
+			ProxyCall::Proxy(ref real, ref proxy_type, ref call) => {
+				dest.push_byte(0u8 as ::core::primitive::u8);
+				::codec::Encode::encode_to(real, dest);
+				::codec::Encode::encode_to(proxy_type, dest);
+				::codec::Encode::encode_to(call, dest);
+			}
+			ProxyCall::AddProxy(ref delegate, ref proxy_type, ref delay) => {
+				dest.push_byte(1u8 as ::core::primitive::u8);
+				::codec::Encode::encode_to(delegate, dest);
+				::codec::Encode::encode_to(proxy_type, dest);
+				::codec::Encode::encode_to(delay, dest);
+			}
+			ProxyCall::RemoveProxy(ref delegate, ref proxy_type, ref delay) => {
+				dest.push_byte(2u8 as ::core::primitive::u8);
+				::codec::Encode::encode_to(delegate, dest);
+				::codec::Encode::encode_to(proxy_type, dest);
+				::codec::Encode::encode_to(delay, dest);
+			}
+			_ => (),
+		}
+	}
+}
+
+impl<T: Config, RelayChainCall: Codec> Decode for ProxyCall<T, RelayChainCall> {
+	fn decode<I: Input>(input: &mut I) -> Result<Self, Error> {
+		match input
+			.read_byte()
+			.map_err(|e| e.chain("Could not decode `ProxyCall`, failed to read variant byte"))?
+		{
+			0u8 => Ok(ProxyCall::<T, RelayChainCall>::Proxy(
+				{
+					let maybe_result = <T::AccountId>::decode(input);
+					match maybe_result {
+						::core::result::Result::Err(e) => {
+							return ::core::result::Result::Err(e.chain("Could not decode `ProxyCall::Proxy.0`"))
+						}
+						::core::result::Result::Ok(real) => real,
+					}
+				},
+				{
+					let maybe_result = <RelayChainCall<T>>::decode(input);
+					match maybe_result {
+						::core::result::Result::Err(e) => {
+							return ::core::result::Result::Err(e.chain("Could not decode `ProxyCall::Proxy.1`"))
+						}
+						::core::result::Result::Ok(call) => call,
+					}
+				},
+			)),
+			1u8 => Ok(ProxyCall::<T, RelayChainCall>::AddProxy(
+				{
+					let maybe_result = <T::AccountId>::decode(input);
+					match maybe_result {
+						::core::result::Result::Err(e) => {
+							return ::core::result::Result::Err(e.chain("Could not decode `ProxyCall::AddProxy.0`"))
+						}
+						::core::result::Result::Ok(delegate) => delegate,
+					}
+				},
+				{
+					let maybe_result = <ProxyType>::decode(input);
+					match maybe_result {
+						::core::result::Result::Err(e) => {
+							return ::core::result::Result::Err(e.chain("Could not decode `ProxyCall::AddProxy.1`"))
+						}
+						::core::result::Result::Ok(proxy_type) => proxy_type,
+					}
+				},
+				{
+					let maybe_result = <T::BlockNumber>::decode(input);
+					match maybe_result {
+						::core::result::Result::Err(e) => {
+							return ::core::result::Result::Err(e.chain("Could not decode `ProxyCall::AddProxy.2`"))
+						}
+						::core::result::Result::Ok(delay) => delay,
+					}
+				},
+			)),
+			2u8 => Ok(ProxyCall::<T, RelayChainCall>::RemoveProxy(
+				{
+					let maybe_result = <T::AccountId>::decode(input);
+					match maybe_result {
+						::core::result::Result::Err(e) => {
+							return ::core::result::Result::Err(e.chain("Could not decode `ProxyCall::RemoveProxy.0`"))
+						}
+						::core::result::Result::Ok(delegate) => delegate,
+					}
+				},
+				{
+					let maybe_result = <ProxyType>::decode(input);
+					match maybe_result {
+						::core::result::Result::Err(e) => {
+							return ::core::result::Result::Err(e.chain("Could not decode `ProxyCall::RemoveProxy.1`"))
+						}
+						::core::result::Result::Ok(proxy_type) => proxy_type,
+					}
+				},
+				{
+					let maybe_result = <T::BlockNumber>::decode(input);
+					match maybe_result {
+						::core::result::Result::Err(e) => {
+							return ::core::result::Result::Err(e.chain("Could not decode `ProxyCall::RemoveProxy.2`"))
+						}
+						::core::result::Result::Ok(delay) => delay,
+					}
+				},
+			)),
+			_ => ::core::result::Result::Err(<_ as ::core::convert::Into<_>>::into(
+				"Could not decode `ProxyCall`, variant doesn\'t exist",
+			)),
+		}
+	}
+}
+
 #[cfg(feature = "kusama")]
 mod kusama {
 	use crate::*;
 
-	/// The encoded index correspondes to Kusama's Runtime module configuration.
-	/// https://github.com/paritytech/polkadot/blob/444e96ae34bcec8362f0f947a07bd912b32ca48f/runtime/kusama/src/lib.rs#L1379
+	/// The encoded index corresponds to Kusama's Runtime module configuration.
+	/// https://github.com/paritytech/polkadot/blob/master/runtime/kusama/src/lib.rs#L1361
 	#[derive(Encode, Decode, RuntimeDebug)]
 	pub enum RelayChainCall<T: Config> {
 		#[codec(index = 4)]
@@ -79,6 +210,8 @@ mod kusama {
 		Staking(StakingCall),
 		#[codec(index = 24)]
 		Utility(Box<UtilityCall<Self>>),
+		#[codec(index = 30)]
+		Proxy(Box<ProxyCall<T, Self>>),
 	}
 }
 
@@ -86,8 +219,8 @@ mod kusama {
 mod polkadot {
 	use crate::*;
 
-	/// The encoded index correspondes to Polkadot's Runtime module configuration.
-	/// https://github.com/paritytech/polkadot/blob/84a3962e76151ac5ed3afa4ef1e0af829531ab42/runtime/polkadot/src/lib.rs#L1040
+	/// The encoded index corresponds to Polkadot's Runtime module configuration.
+	/// https://github.com/paritytech/polkadot/blob/master/runtime/polkadot/src/lib.rs#L1325
 	#[derive(Encode, Decode, RuntimeDebug)]
 	pub enum RelayChainCall<T: Config> {
 		#[codec(index = 5)]
@@ -96,6 +229,8 @@ mod polkadot {
 		Staking(StakingCall),
 		#[codec(index = 26)]
 		Utility(Box<UtilityCall<Self>>),
+		#[codec(index = 29)]
+		Proxy(Box<ProxyCall<T, Self>>),
 	}
 }
 
@@ -138,6 +273,26 @@ where
 
 	fn balances_transfer_keep_alive(to: Self::AccountId, amount: Self::Balance) -> Self::RelayChainCall {
 		RelayChainCall::Balances(BalancesCall::TransferKeepAlive(T::Lookup::unlookup(to), amount))
+	}
+
+	fn proxy_add_proxy(delegate: Self::AccountId) -> Self::RelayChainCall {
+		RelayChainCall::Proxy(Box::new(ProxyCall::AddProxy(
+			delegate,
+			ProxyType::Any,
+			Default::default(),
+		)))
+	}
+
+	fn proxy_remove_proxy(delegate: Self::AccountId) -> Self::RelayChainCall {
+		RelayChainCall::Proxy(Box::new(ProxyCall::RemoveProxy(
+			delegate,
+			ProxyType::Any,
+			Default::default(),
+		)))
+	}
+
+	fn proxy_call_via_proxy(real: Self::AccountId, call: Self::RelayChainCall) -> Self::RelayChainCall {
+		RelayChainCall::Proxy(Box::new(ProxyCall::Proxy(real, Some(ProxyType::Any), Box::new(call))))
 	}
 
 	fn finalize_call_into_xcm_message(call: Self::RelayChainCall, extra_fee: Self::Balance, weight: Weight) -> Xcm<()> {

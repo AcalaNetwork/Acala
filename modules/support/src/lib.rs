@@ -606,6 +606,21 @@ pub trait CallBuilder {
 	/// - amount: The amount of staking currency to be transferred.
 	fn balances_transfer_keep_alive(to: Self::AccountId, amount: Self::Balance) -> Self::RelayChainCall;
 
+	/// Add a proxy to an account.
+	///  params:
+	/// - delegate: The account Id of the new proxy
+	fn proxy_add_proxy(delegate: Self::AccountId) -> Self::RelayChainCall;
+
+	/// Remove a proxy to an account.
+	///  params:
+	/// - delegate: The account Id of the proxy
+	fn proxy_remove_proxy(delegate: Self::AccountId) -> Self::RelayChainCall;
+
+	/// Make a `call` by the proxy, on the owner's behalf
+	///  params:
+	/// - real: The real account's Id the proxy is callling on behalf of.
+	fn proxy_call_via_proxy(real: Self::AccountId, call: Self::RelayChainCall) -> Self::RelayChainCall;
+
 	/// Wrap the final calls into the Xcm format.
 	///  params:
 	/// - call: The call to be executed
@@ -660,4 +675,9 @@ pub trait HomaSubAccountXcm<AccountId, Balance> {
 	fn unbond_on_sub_account(sub_account_index: u16, amount: Balance) -> DispatchResult;
 	/// The fee of cross-chain transfer is deducted from the recipient.
 	fn get_xcm_transfer_fee() -> Balance;
+}
+
+pub trait ProxyXcm<AccountId> {
+	/// Cross-chain transfer staking currency to sub account on relaychain.
+	fn transfer_proxy(real: AccountId, new_owner: AccountId) -> DispatchResult;
 }

@@ -29,7 +29,7 @@
 
 use frame_support::{log, pallet_prelude::*, transactional, weights::Weight};
 use frame_system::pallet_prelude::*;
-use module_support::{CallBuilder, HomaSubAccountXcm};
+use module_support::{CallBuilder, HomaSubAccountXcm, ProxyXcm};
 use orml_traits::XcmTransfer;
 use primitives::{Balance, CurrencyId, EraIndex};
 use scale_info::TypeInfo;
@@ -51,6 +51,8 @@ pub mod module {
 		HomaWithdrawUnbonded,
 		HomaBondExtra,
 		HomaUnbond,
+		// Proxy
+		ProxyTransferProxy,
 	}
 
 	#[pallet::config]
@@ -235,6 +237,36 @@ pub mod module {
 		/// The fee of cross-chain transfer is deducted from the recipient.
 		fn get_xcm_transfer_fee() -> Balance {
 			Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::XtokensTransfer).1
+		}
+	}
+
+	impl<T: Config> ProxyXcm<T::AccountId> for Pallet<T> {
+		/// Cross-chain transfer staking currency to sub account on relaychain.
+		fn transfer_proxy(real: T::AccountId, new_owner: T::AccountId) -> DispatchResult {
+			let (xcm_dest_weight, xcm_fee) = Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::ProxyTransferProxy);
+
+			// Create xcm message that transfers proxy to another account.
+			let proxy_message = T::RelayChainCallBuilder::proxy_call_via_proxy(
+				real.clone(),
+				T::RelayChainCallBuilder::utility_batch_call(vec![
+					T::RelayChainCallBuilder::proxy_add_proxy(new_owner.clone()),
+					T::RelayChainCallBuilder::proxy_remove_proxy(T::ParachainAccount::get()),
+				]),
+			);
+
+			// Finalize the proxy message into a XCM message
+			let xcm_message =
+				T::RelayChainCallBuilder::finalize_call_into_xcm_message(proxy_message, xcm_fee, xcm_dest_weight);
+
+			let result = pallet_xcm::Pallet::<T>::send_xcm(Here, Parent, xcm_message);
+			log::debug!(
+				target: "xcm-interface",
+				"Proxy: Account {:?}. Proxy transferred to {:?}. Result:{:?}",
+				real, new_owner, result,
+			);
+
+			ensure!(result.is_ok(), Error::<T>::XcmFailed);
+			Ok(())
 		}
 	}
 }
