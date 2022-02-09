@@ -572,7 +572,7 @@ fn test_increase_staking_match_from_previous_redeem_requests(
 		// Ensure `LastRedeemRequestKeyIterated` is setup correctly.
 		assert_eq!(
 			HomaLite::last_redeem_request_key_iterated(),
-			RedeemRequests::<NoFeeRuntime>::hashed_key_for(AccountId::default().clone())
+			RedeemRequests::<NoFeeRuntime>::hashed_key_for(AccountId::new([0u8; 32]))
 		);
 
 		assert_eq!(HomaLite::total_staking_currency(), dollar(901));

@@ -141,7 +141,7 @@ pub mod module {
 	pub trait Config<I: 'static = ()>: frame_system::Config {
 		type Event: From<Event<Self, I>> + IsType<<Self as frame_system::Config>::Event>;
 		type Currency: BasicLockableCurrency<Self::AccountId, Moment = Self::BlockNumber, Balance = Balance>;
-		type NomineeId: Parameter + Member + MaybeSerializeDeserialize + Debug + MaybeDisplay + Ord + Default;
+		type NomineeId: Parameter + Member + MaybeSerializeDeserialize + Debug + MaybeDisplay + Ord;
 		#[pallet::constant]
 		type PalletId: Get<LockIdentifier>;
 		#[pallet::constant]
@@ -219,6 +219,7 @@ pub mod module {
 	pub type CurrentEra<T: Config<I>, I: 'static = ()> = StorageValue<_, EraIndex, ValueQuery>;
 
 	#[pallet::pallet]
+	#[pallet::without_storage_info]
 	pub struct Pallet<T, I = ()>(PhantomData<(T, I)>);
 
 	#[pallet::hooks]

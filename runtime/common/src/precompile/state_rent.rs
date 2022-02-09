@@ -54,7 +54,7 @@ pub enum Action {
 	EnableDeveloperAccount = "developerEnable(address)",
 	DisableDeveloperAccount = "developerDisable(address)",
 	QueryDeveloperStatus = "developerStatus(address)",
-	PublishContract = "publishContract(address, address)",
+	PublishContract = "publishContract(address,address)",
 }
 
 impl<Runtime> Precompile for StateRentPrecompile<Runtime>

@@ -60,6 +60,7 @@ pub type CompoundAuthoritySignature = AccountId32;
 #[frame_support::pallet]
 pub mod module {
 	use super::*;
+	use primitives::AccountId;
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
@@ -204,7 +205,7 @@ pub mod module {
 	impl Default for GenesisConfig {
 		fn default() -> Self {
 			GenesisConfig {
-				initial_authorities: vec![AccountId32::default()],
+				initial_authorities: vec![AccountId::new([0; 32])],
 			}
 		}
 	}
@@ -227,6 +228,7 @@ pub mod module {
 	}
 
 	#[pallet::pallet]
+	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
 	#[pallet::call]

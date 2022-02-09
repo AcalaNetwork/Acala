@@ -322,6 +322,7 @@ pub mod module {
 	}
 
 	#[pallet::pallet]
+	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
 	#[pallet::hooks]
@@ -1282,7 +1283,12 @@ impl<T: Config> DEXManager<T::AccountId, CurrencyId, Balance> for Pallet<T> {
 
 	fn get_liquidity_token_address(currency_id_a: CurrencyId, currency_id_b: CurrencyId) -> Option<H160> {
 		let trading_pair = TradingPair::from_currency_ids(currency_id_a, currency_id_b)?;
-		T::Erc20InfoMapping::encode_evm_address(trading_pair.dex_share_currency_id())
+		match Self::trading_pair_statuses(trading_pair) {
+			TradingPairStatus::<_, _>::Disabled => None,
+			TradingPairStatus::<_, _>::Provisioning(_) | TradingPairStatus::<_, _>::Enabled => {
+				T::Erc20InfoMapping::encode_evm_address(trading_pair.dex_share_currency_id())
+			}
+		}
 	}
 
 	fn get_swap_amount(path: &[CurrencyId], limit: SwapLimit<Balance>) -> Option<(Balance, Balance)> {
