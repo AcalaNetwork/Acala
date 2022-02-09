@@ -359,7 +359,7 @@ pub mod module {
 		DexNotAvailable,
 		/// Charge fee pool is already exist
 		ChargeFeePoolAlreadyExisted,
-		/// Charge fee pool is already exist
+		/// The swap path not exists.
 		SwapPathNotExists,
 	}
 
@@ -371,9 +371,8 @@ pub mod module {
 			old_fee_swap_path: Option<Vec<CurrencyId>>,
 			new_fee_swap_path: Vec<CurrencyId>,
 		},
-		GlobalFeeSwapPathRemoved {
-			fee_swap_path: Vec<CurrencyId>,
-		},
+		/// The global fee swap path was removed.
+		GlobalFeeSwapPathRemoved { fee_swap_path: Vec<CurrencyId> },
 		/// The threshold balance that trigger swap from dex was updated.
 		SwapBalanceThresholdUpdated {
 			currency_id: CurrencyId,
@@ -515,8 +514,8 @@ pub mod module {
 			Ok(())
 		}
 
-		/// Set fee swap path
-		#[pallet::weight(<T as Config>::WeightInfo::set_alternative_fee_swap_path())]
+		/// Set global fee swap path
+		#[pallet::weight(<T as Config>::WeightInfo::set_global_fee_swap_path())]
 		#[transactional]
 		pub fn set_global_fee_swap_path(origin: OriginFor<T>, fee_swap_path: Vec<CurrencyId>) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
@@ -545,8 +544,8 @@ pub mod module {
 			})
 		}
 
-		/// Set fee swap path
-		#[pallet::weight(<T as Config>::WeightInfo::set_alternative_fee_swap_path())]
+		/// Unset global fee swap path
+		#[pallet::weight(<T as Config>::WeightInfo::unset_global_fee_swap_path())]
 		#[transactional]
 		pub fn unset_global_fee_swap_path(origin: OriginFor<T>, currency_id: CurrencyId) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
@@ -805,7 +804,7 @@ where
 		for trading_path in Self::get_trading_path(who) {
 			if trading_path.last() == Some(&native_currency_id) {
 				let supply_currency_id = *trading_path.first().expect("should match a non native asset");
-				if T::MultiCurrency::free_balance(supply_currency_id, &who).is_zero() {
+				if T::MultiCurrency::free_balance(supply_currency_id, who).is_zero() {
 					continue;
 				}
 				if Self::swap_from_pool_or_dex(who, amount, supply_currency_id).is_ok() {
