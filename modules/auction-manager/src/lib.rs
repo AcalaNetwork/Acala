@@ -609,7 +609,7 @@ impl<T: Config> Pallet<T> {
 		};
 
 		// if DEX give a price no less than the last_bidder for swap target
-		if let Ok((acutal_supply_amount, acutal_target_amount)) =
+		if let Ok((actual_supply_amount, actual_target_amount)) =
 			T::CDPTreasury::swap_collateral_to_stable(collateral_auction.currency_id, swap_limit, true)
 		{
 			Self::try_refund_collateral(
