@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-//! Relaychain Oracle.
+//! Foreign State Oracle.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
@@ -156,6 +156,7 @@ impl<T: Config> ForeignChainStateQuery<T::AccountId, T::VerifiableTask> for Pall
 	fn query_task(who: &T::AccountId, length_bound: u32, dispatchable_call: T::VerifiableTask) -> DispatchResult {
 		let call_len = dispatchable_call.using_encoded(|x| x.len());
 		ensure!(call_len <= length_bound as usize, Error::<T>::TooLargeVerifiableCall);
+		T::Currency::reserve_named(&RESERVE_ID_QUERY_DEPOSIT, who, T::QueryFee::get())?;
 
 		let expiry = frame_system::Pallet::<T>::current_block_number().saturating_add(T::QueryDuration::get());
 		let verifiable_call = VerifiableCall {

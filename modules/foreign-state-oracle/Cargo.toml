@@ -20,7 +20,6 @@ primitives = { package = "acala-primitives", path = "../../primitives", default-
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.16"}
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.16" }
 
-
 [features]
 default = ["std"]
 std = [

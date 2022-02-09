@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-//! Mock for relaychain oracle
+//! Mock for foreign state oracle
 
 #![cfg(test)]
 
