@@ -23,7 +23,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
 
-use codec::{Codec, Decode, Encode, Error, FullCodec, Input, Output};
+use codec::{Decode, Encode, FullCodec};
 use sp_runtime::traits::StaticLookup;
 
 use frame_support::{traits::Get, weights::Weight, RuntimeDebug};
@@ -71,129 +71,14 @@ pub enum StakingCall {
 	WithdrawUnbonded(u32),
 }
 
-#[derive(RuntimeDebug)]
-pub enum ProxyCall<T: Config, RelayChainCall: Codec> {
-	Proxy(T::AccountId, Option<ProxyType>, Box<RelayChainCall>),
+#[derive(Encode, Decode, RuntimeDebug)]
+pub enum ProxyCall<T: Config, Call> {
+	#[codec(index = 0)]
+	Proxy(T::AccountId, Option<ProxyType>, Box<Call>),
+	#[codec(index = 1)]
 	AddProxy(T::AccountId, ProxyType, T::BlockNumber),
+	#[codec(index = 2)]
 	RemoveProxy(T::AccountId, ProxyType, T::BlockNumber),
-}
-
-/// Manual implementation of Encode and Decode to get around infinite recursion when using "derive".
-impl<T: Config, RelayChainCall: Codec> Encode for ProxyCall<T, RelayChainCall> {
-	fn encode_to<O: Output + ?Sized>(&self, dest: &mut O) {
-		match *self {
-			ProxyCall::Proxy(ref real, ref proxy_type, ref call) => {
-				dest.push_byte(0u8 as ::core::primitive::u8);
-				::codec::Encode::encode_to(real, dest);
-				::codec::Encode::encode_to(proxy_type, dest);
-				::codec::Encode::encode_to(call, dest);
-			}
-			ProxyCall::AddProxy(ref delegate, ref proxy_type, ref delay) => {
-				dest.push_byte(1u8 as ::core::primitive::u8);
-				::codec::Encode::encode_to(delegate, dest);
-				::codec::Encode::encode_to(proxy_type, dest);
-				::codec::Encode::encode_to(delay, dest);
-			}
-			ProxyCall::RemoveProxy(ref delegate, ref proxy_type, ref delay) => {
-				dest.push_byte(2u8 as ::core::primitive::u8);
-				::codec::Encode::encode_to(delegate, dest);
-				::codec::Encode::encode_to(proxy_type, dest);
-				::codec::Encode::encode_to(delay, dest);
-			}
-			_ => (),
-		}
-	}
-}
-
-impl<T: Config, RelayChainCall: Codec> Decode for ProxyCall<T, RelayChainCall> {
-	fn decode<I: Input>(input: &mut I) -> Result<Self, Error> {
-		match input
-			.read_byte()
-			.map_err(|e| e.chain("Could not decode `ProxyCall`, failed to read variant byte"))?
-		{
-			0u8 => Ok(ProxyCall::<T, RelayChainCall>::Proxy(
-				{
-					let maybe_result = <T::AccountId>::decode(input);
-					match maybe_result {
-						::core::result::Result::Err(e) => {
-							return ::core::result::Result::Err(e.chain("Could not decode `ProxyCall::Proxy.0`"))
-						}
-						::core::result::Result::Ok(real) => real,
-					}
-				},
-				{
-					let maybe_result = <RelayChainCall<T>>::decode(input);
-					match maybe_result {
-						::core::result::Result::Err(e) => {
-							return ::core::result::Result::Err(e.chain("Could not decode `ProxyCall::Proxy.1`"))
-						}
-						::core::result::Result::Ok(call) => call,
-					}
-				},
-			)),
-			1u8 => Ok(ProxyCall::<T, RelayChainCall>::AddProxy(
-				{
-					let maybe_result = <T::AccountId>::decode(input);
-					match maybe_result {
-						::core::result::Result::Err(e) => {
-							return ::core::result::Result::Err(e.chain("Could not decode `ProxyCall::AddProxy.0`"))
-						}
-						::core::result::Result::Ok(delegate) => delegate,
-					}
-				},
-				{
-					let maybe_result = <ProxyType>::decode(input);
-					match maybe_result {
-						::core::result::Result::Err(e) => {
-							return ::core::result::Result::Err(e.chain("Could not decode `ProxyCall::AddProxy.1`"))
-						}
-						::core::result::Result::Ok(proxy_type) => proxy_type,
-					}
-				},
-				{
-					let maybe_result = <T::BlockNumber>::decode(input);
-					match maybe_result {
-						::core::result::Result::Err(e) => {
-							return ::core::result::Result::Err(e.chain("Could not decode `ProxyCall::AddProxy.2`"))
-						}
-						::core::result::Result::Ok(delay) => delay,
-					}
-				},
-			)),
-			2u8 => Ok(ProxyCall::<T, RelayChainCall>::RemoveProxy(
-				{
-					let maybe_result = <T::AccountId>::decode(input);
-					match maybe_result {
-						::core::result::Result::Err(e) => {
-							return ::core::result::Result::Err(e.chain("Could not decode `ProxyCall::RemoveProxy.0`"))
-						}
-						::core::result::Result::Ok(delegate) => delegate,
-					}
-				},
-				{
-					let maybe_result = <ProxyType>::decode(input);
-					match maybe_result {
-						::core::result::Result::Err(e) => {
-							return ::core::result::Result::Err(e.chain("Could not decode `ProxyCall::RemoveProxy.1`"))
-						}
-						::core::result::Result::Ok(proxy_type) => proxy_type,
-					}
-				},
-				{
-					let maybe_result = <T::BlockNumber>::decode(input);
-					match maybe_result {
-						::core::result::Result::Err(e) => {
-							return ::core::result::Result::Err(e.chain("Could not decode `ProxyCall::RemoveProxy.2`"))
-						}
-						::core::result::Result::Ok(delay) => delay,
-					}
-				},
-			)),
-			_ => ::core::result::Result::Err(<_ as ::core::convert::Into<_>>::into(
-				"Could not decode `ProxyCall`, variant doesn\'t exist",
-			)),
-		}
-	}
 }
 
 #[cfg(feature = "kusama")]
@@ -209,9 +94,9 @@ mod kusama {
 		#[codec(index = 6)]
 		Staking(StakingCall),
 		#[codec(index = 24)]
-		Utility(Box<UtilityCall<Self>>),
+		Utility(Box<UtilityCall<RelayChainCall<T>>>),
 		#[codec(index = 30)]
-		Proxy(Box<ProxyCall<T, Self>>),
+		Proxy(Box<ProxyCall<T, RelayChainCall<T>>>),
 	}
 }
 
@@ -228,9 +113,9 @@ mod polkadot {
 		#[codec(index = 7)]
 		Staking(StakingCall),
 		#[codec(index = 26)]
-		Utility(Box<UtilityCall<Self>>),
+		Utility(Box<UtilityCall<RelayChainCall<T>>>),
 		#[codec(index = 29)]
-		Proxy(Box<ProxyCall<T, Self>>),
+		Proxy(Box<ProxyCall<T>>),
 	}
 }
 

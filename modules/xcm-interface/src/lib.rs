@@ -268,5 +268,10 @@ pub mod module {
 			ensure!(result.is_ok(), Error::<T>::XcmFailed);
 			Ok(())
 		}
+
+		/// The cost of XCM operation to transfer proxy ownership.
+		fn get_transfer_proxy_xcm_fee() -> Balance {
+			Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::ProxyTransferProxy).1
+		}
 	}
 }

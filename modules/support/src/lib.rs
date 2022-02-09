@@ -24,7 +24,7 @@ use frame_support::pallet_prelude::{DispatchClass, Pays, Weight};
 use primitives::{
 	evm::{CallInfo, EvmAddress},
 	task::TaskResult,
-	CurrencyId,
+	Balance, CurrencyId,
 };
 use sp_core::H160;
 use sp_runtime::{
@@ -680,4 +680,6 @@ pub trait HomaSubAccountXcm<AccountId, Balance> {
 pub trait ProxyXcm<AccountId> {
 	/// Cross-chain transfer staking currency to sub account on relaychain.
 	fn transfer_proxy(real: AccountId, new_owner: AccountId) -> DispatchResult;
+	/// The cost of XCM operation to transfer proxy ownership.
+	fn get_transfer_proxy_xcm_fee() -> Balance;
 }
