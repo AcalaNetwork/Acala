@@ -2404,30 +2404,6 @@ impl_runtime_apis! {
 			let mut list = Vec::<BenchmarkList>::new();
 
 			frame_list_benchmark!(list, extra, module_nft, NftBench::<Runtime>);
-
-			// orml_list_benchmark!(list, extra, module_dex, benchmarking::dex);
-			// orml_list_benchmark!(list, extra, module_dex_oracle, benchmarking::dex_oracle);
-			// orml_list_benchmark!(list, extra, module_asset_registry, benchmarking::asset_registry);
-			// orml_list_benchmark!(list, extra, module_auction_manager, benchmarking::auction_manager);
-			// orml_list_benchmark!(list, extra, module_cdp_engine, benchmarking::cdp_engine);
-			// orml_list_benchmark!(list, extra, module_emergency_shutdown, benchmarking::emergency_shutdown);
-			// orml_list_benchmark!(list, extra, module_evm, benchmarking::evm);
-			// orml_list_benchmark!(list, extra, module_homa, benchmarking::homa);
-			// orml_list_benchmark!(list, extra, module_honzon, benchmarking::honzon);
-			// orml_list_benchmark!(list, extra, module_cdp_treasury, benchmarking::cdp_treasury);
-			// orml_list_benchmark!(list, extra, module_collator_selection, benchmarking::collator_selection);
-			// orml_list_benchmark!(list, extra, module_transaction_pause, benchmarking::transaction_pause);
-			// orml_list_benchmark!(list, extra, module_transaction_payment, benchmarking::transaction_payment);
-			// orml_list_benchmark!(list, extra, module_incentives, benchmarking::incentives);
-			// orml_list_benchmark!(list, extra, module_prices, benchmarking::prices);
-			// orml_list_benchmark!(list, extra, module_evm_accounts, benchmarking::evm_accounts);
-			// orml_list_benchmark!(list, extra, module_currencies, benchmarking::currencies);
-			// orml_list_benchmark!(list, extra, module_session_manager, benchmarking::session_manager);
-			// orml_list_benchmark!(list, extra, orml_tokens, benchmarking::tokens);
-			// orml_list_benchmark!(list, extra, orml_vesting, benchmarking::vesting);
-			// orml_list_benchmark!(list, extra, orml_auction, benchmarking::auction);
-			// orml_list_benchmark!(list, extra, orml_authority, benchmarking::authority);
-			// orml_list_benchmark!(list, extra, orml_oracle, benchmarking::oracle);
 			list_benchmarks!(list, extra);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
@@ -2464,29 +2440,6 @@ impl_runtime_apis! {
 
 			frame_add_benchmark!(params, batches, module_nft, NftBench::<Runtime>);
 			add_benchmarks!(params, batches);
-			// orml_add_benchmark!(params, batches, module_dex, benchmarking::dex);
-			// orml_add_benchmark!(params, batches, module_dex_oracle, benchmarking::dex_oracle);
-			// orml_add_benchmark!(params, batches, module_asset_registry, benchmarking::asset_registry);
-			// orml_add_benchmark!(params, batches, module_auction_manager, benchmarking::auction_manager);
-			// orml_add_benchmark!(params, batches, module_cdp_engine, benchmarking::cdp_engine);
-			// orml_add_benchmark!(params, batches, module_emergency_shutdown, benchmarking::emergency_shutdown);
-			// orml_add_benchmark!(params, batches, module_evm, benchmarking::evm);
-			// orml_add_benchmark!(params, batches, module_homa, benchmarking::homa);
-			// orml_add_benchmark!(params, batches, module_honzon, benchmarking::honzon);
-			// orml_add_benchmark!(params, batches, module_cdp_treasury, benchmarking::cdp_treasury);
-			// orml_add_benchmark!(params, batches, module_collator_selection, benchmarking::collator_selection);
-			// orml_add_benchmark!(params, batches, module_transaction_pause, benchmarking::transaction_pause);
-			// orml_add_benchmark!(params, batches, module_transaction_payment, benchmarking::transaction_payment);
-			// orml_add_benchmark!(params, batches, module_incentives, benchmarking::incentives);
-			// orml_add_benchmark!(params, batches, module_prices, benchmarking::prices);
-			// orml_add_benchmark!(params, batches, module_evm_accounts, benchmarking::evm_accounts);
-			// orml_add_benchmark!(params, batches, module_currencies, benchmarking::currencies);
-			// orml_add_benchmark!(params, batches, module_session_manager, benchmarking::session_manager);
-			// orml_add_benchmark!(params, batches, orml_tokens, benchmarking::tokens);
-			// orml_add_benchmark!(params, batches, orml_vesting, benchmarking::vesting);
-			// orml_add_benchmark!(params, batches, orml_auction, benchmarking::auction);
-			// orml_add_benchmark!(params, batches, orml_authority, benchmarking::authority);
-			// orml_add_benchmark!(params, batches, orml_oracle, benchmarking::oracle);
 
 			if batches.is_empty() { return Err("Benchmark not found for this module.".into()) }
 			Ok(batches)
