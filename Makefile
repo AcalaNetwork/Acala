@@ -106,7 +106,7 @@ test-runtimes:
 
 .PHONY: test-e2e
 test-e2e:
-	cargo test --package test-service -- --include-ignored
+	cargo test --package test-service -- --include-ignored --skip test_full_node_catching_up --skip simple_balances_test
 
 .PHONY: test-ts
 test-ts:
