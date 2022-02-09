@@ -2415,7 +2415,6 @@ impl_runtime_apis! {
 			config: frame_benchmarking::BenchmarkConfig
 		) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString> {
 			use frame_benchmarking::{Benchmarking, BenchmarkBatch, add_benchmark as frame_add_benchmark, TrackedStorageKey};
-			// use orml_benchmarking::{add_benchmark as orml_add_benchmark};
 			use module_nft::benchmarking::Pallet as NftBench;
 
 			let whitelist: Vec<TrackedStorageKey> = vec![
