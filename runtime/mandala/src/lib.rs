@@ -141,7 +141,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("mandala"),
 	impl_name: create_runtime_str!("mandala"),
 	authoring_version: 1,
-	spec_version: 2030,
+	spec_version: 2031,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -1113,6 +1113,7 @@ parameter_types! {
 		TradingPair::from_currency_ids(AUSD, DOT).unwrap(),
 		TradingPair::from_currency_ids(AUSD, LDOT).unwrap(),
 		TradingPair::from_currency_ids(AUSD, RENBTC).unwrap(),
+		TradingPair::from_currency_ids(DOT, ACA).unwrap(),
 	];
 }
 
@@ -1164,7 +1165,12 @@ impl module_transaction_pause::Config for Runtime {
 
 parameter_types! {
 	// Sort by fee charge order
-	pub DefaultFeeSwapPathList: Vec<Vec<CurrencyId>> = vec![vec![AUSD, ACA], vec![AUSD, LDOT, ACA], vec![AUSD, DOT, ACA], vec![AUSD, RENBTC, ACA]];
+	pub DefaultFeeSwapPathList: Vec<Vec<CurrencyId>> = vec![
+		vec![AUSD, DOT, ACA],
+		vec![DOT, ACA],
+		vec![LDOT, DOT, ACA],
+		vec![RENBTC, AUSD, ACA]
+	];
 }
 
 type NegativeImbalance = <Balances as PalletCurrency<AccountId>>::NegativeImbalance;
@@ -1209,7 +1215,7 @@ impl module_transaction_payment::Config for Runtime {
 	type WeightInfo = weights::module_transaction_payment::WeightInfo<Runtime>;
 	type PalletId = TransactionPaymentPalletId;
 	type TreasuryAccount = TreasuryAccount;
-	type UpdateOrigin = EnsureRootOrTreasury;
+	type UpdateOrigin = EnsureRootOrHalfGeneralCouncil;
 }
 
 impl module_evm_accounts::Config for Runtime {
@@ -1665,6 +1671,13 @@ parameter_types! {
 		).into(),
 		aca_per_second()
 	);
+	pub AcaPerSecondOfCanonicalLocation: (AssetId, u128) = (
+		MultiLocation::new(
+			0,
+			X1(GeneralKey(ACA.encode())),
+		).into(),
+		aca_per_second()
+	);
 	pub ForeignAssetUnitsPerSecond: u128 = aca_per_second();
 	pub AcaPerSecondAsBased: u128 = aca_per_second();
 }
@@ -1672,6 +1685,8 @@ parameter_types! {
 pub type Trader = (
 	TransactionFeePoolTrader<Runtime, CurrencyIdConvert, AcaPerSecondAsBased, ToTreasury>,
 	FixedRateOfFungible<DotPerSecond, ToTreasury>,
+	FixedRateOfFungible<AcaPerSecond, ToTreasury>,
+	FixedRateOfFungible<AcaPerSecondOfCanonicalLocation, ToTreasury>,
 	FixedRateOfForeignAsset<Runtime, ForeignAssetUnitsPerSecond, ToTreasury>,
 );
 

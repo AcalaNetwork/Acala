@@ -38,7 +38,7 @@ runtime_benchmarks! {
 
 	on_initialize {
 	}: {
-		let _ = Homa::on_initialize(1);
+		Homa::on_initialize(1)
 	}
 
 	on_initialize_with_bump_era {
@@ -65,7 +65,7 @@ runtime_benchmarks! {
 		Homa::mint(RawOrigin::Signed(minter).into(), 100_000_000_000_000)?;
 		Homa::request_redeem(RawOrigin::Signed(redeemer).into(), 5_000_000_000_000_000, true)?;
 	}: {
-		let _ = Homa::on_initialize(1);
+		Homa::on_initialize(1)
 	}
 
 	mint {

@@ -136,7 +136,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("karura"),
 	impl_name: create_runtime_str!("karura"),
 	authoring_version: 1,
-	spec_version: 2030,
+	spec_version: 2031,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -1205,7 +1205,7 @@ impl module_transaction_payment::Config for Runtime {
 	type WeightInfo = weights::module_transaction_payment::WeightInfo<Runtime>;
 	type PalletId = TransactionPaymentPalletId;
 	type TreasuryAccount = KaruraTreasuryAccount;
-	type UpdateOrigin = EnsureKaruraFoundation;
+	type UpdateOrigin = EnsureRootOrHalfGeneralCouncil;
 }
 
 impl module_evm_accounts::Config for Runtime {

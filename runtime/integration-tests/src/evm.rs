@@ -445,7 +445,7 @@ fn test_multicurrency_precompile_module() {
 
 			assert_ok!(Currencies::transfer(
 				Origin::signed(AccountId::from(ALICE)),
-				sp_runtime::MultiAddress::Id( TreasuryAccount::get()),
+				sp_runtime::MultiAddress::Id(TreasuryAccount::get()),
 				NATIVE_CURRENCY,
 				10 * dollar(NATIVE_CURRENCY)
 			));

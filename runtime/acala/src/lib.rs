@@ -130,7 +130,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("acala"),
 	impl_name: create_runtime_str!("acala"),
 	authoring_version: 1,
-	spec_version: 2030,
+	spec_version: 2031,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -1200,7 +1200,7 @@ impl module_transaction_payment::Config for Runtime {
 	type WeightInfo = weights::module_transaction_payment::WeightInfo<Runtime>;
 	type PalletId = TransactionPaymentPalletId;
 	type TreasuryAccount = AcalaTreasuryAccount;
-	type UpdateOrigin = EnsureAcalaFoundation;
+	type UpdateOrigin = EnsureRootOrHalfGeneralCouncil;
 }
 
 impl module_evm_accounts::Config for Runtime {
@@ -1517,10 +1517,25 @@ parameter_types! {
 		// aUSD:DOT = 40:1
 		dot_per_second() * 40
 	);
+	pub AusdPerSecondOfCanonicalLocation: (AssetId, u128) = (
+		MultiLocation::new(
+			0,
+			X1(GeneralKey(AUSD.encode())),
+		).into(),
+		// aUSD:DOT = 40:1
+		dot_per_second() * 40
+	);
 	pub AcaPerSecond: (AssetId, u128) = (
 		MultiLocation::new(
 			1,
 			X2(Parachain(u32::from(ParachainInfo::get())), GeneralKey(ACA.encode())),
+		).into(),
+		aca_per_second()
+	);
+	pub AcaPerSecondOfCanonicalLocation: (AssetId, u128) = (
+		MultiLocation::new(
+			0,
+			X1(GeneralKey(ACA.encode())),
 		).into(),
 		aca_per_second()
 	);
@@ -1532,6 +1547,9 @@ pub type Trader = (
 	TransactionFeePoolTrader<Runtime, CurrencyIdConvert, AcaPerSecondAsBased, ToTreasury>,
 	FixedRateOfFungible<DotPerSecond, ToTreasury>,
 	FixedRateOfFungible<AusdPerSecond, ToTreasury>,
+	FixedRateOfFungible<AusdPerSecondOfCanonicalLocation, ToTreasury>,
+	FixedRateOfFungible<AcaPerSecond, ToTreasury>,
+	FixedRateOfFungible<AcaPerSecondOfCanonicalLocation, ToTreasury>,
 	FixedRateOfForeignAsset<Runtime, ForeignAssetUnitsPerSecond, ToTreasury>,
 );
 
