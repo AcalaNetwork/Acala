@@ -67,7 +67,7 @@ fn error_on_execution_failure(reason: &ExitReason, data: &[u8]) -> Result<()> {
 			}
 			Err(Error {
 				code: ErrorCode::InternalError,
-				message: format!("evm error: {:?}", e),
+				message: format!("execution error: {:?}", e),
 				data: Some(Value::String("0x".to_string())),
 			})
 		}
@@ -82,7 +82,7 @@ fn error_on_execution_failure(reason: &ExitReason, data: &[u8]) -> Result<()> {
 		}
 		ExitReason::Fatal(e) => Err(Error {
 			code: ErrorCode::InternalError,
-			message: format!("evm fatal: {:?}", e),
+			message: format!("execution fatal: {:?}", e),
 			data: Some(Value::String("0x".to_string())),
 		}),
 	}
