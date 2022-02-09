@@ -40,6 +40,7 @@ pub use primitives::{
 	ReserveIdentifier,
 };
 use sha3::{Digest, Keccak256};
+use sp_runtime::traits::Zero;
 use sp_std::{
 	collections::{btree_map::BTreeMap, btree_set::BTreeSet},
 	rc::Rc,
@@ -1103,7 +1104,15 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> Handler
 	}
 
 	fn code(&self, address: H160) -> Vec<u8> {
-		self.state.code(address)
+		let code = self.state.code(address);
+		if code.len().is_zero() {
+			log::debug!(
+				target: "evm",
+				"contract does not exist, address: {:?}",
+				address
+			);
+		}
+		code
 	}
 
 	fn storage(&self, address: H160, index: H256) -> H256 {

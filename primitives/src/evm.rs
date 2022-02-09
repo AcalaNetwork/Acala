@@ -146,10 +146,6 @@ pub fn is_system_contract(address: EvmAddress) -> bool {
 	address.as_bytes().starts_with(&SYSTEM_CONTRACT_ADDRESS_PREFIX)
 }
 
-pub fn is_acala_precompile(address: EvmAddress) -> bool {
-	address >= PRECOMPILE_ADDRESS_START && address < PREDEPLOY_ADDRESS_START
-}
-
 pub const H160_POSITION_CURRENCY_ID_TYPE: usize = 9;
 pub const H160_POSITION_TOKEN: usize = 19;
 pub const H160_POSITION_TOKEN_NFT: Range<usize> = 16..20;

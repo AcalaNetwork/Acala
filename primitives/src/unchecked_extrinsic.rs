@@ -128,10 +128,6 @@ where
 				let (tx_gas_price, tx_gas_limit) =
 					recover_sign_data(&eth_msg, TxFeePerGas::get(), StorageDepositPerByte::get())
 						.ok_or(InvalidTransaction::BadProof)?;
-				log::trace!(
-					target: "evm", "eth_msg.tip: {:?}, eth_msg.gas_limit: {:?}, eth_msg.storage_limit: {:?}, tx_gas_limit: {:?}, tx_gas_price: {:?}",
-					eth_msg.tip, eth_msg.storage_limit, eth_msg.gas_limit, tx_gas_limit, tx_gas_price
-				);
 
 				let msg = LegacyTransactionMessage {
 					nonce: eth_msg.nonce.into(),
