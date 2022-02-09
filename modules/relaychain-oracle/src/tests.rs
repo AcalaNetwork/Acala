@@ -22,14 +22,15 @@
 
 use super::*;
 use mock::*;
-use sp_runtime::traits::Keccak256;
+use sp_runtime::traits::BlakeTwo256;
 
-//let call = frame_system::Pallet::Call{};
-
-//let hashed_value = Keccak256::hash(b"1");
 #[test]
 fn dispatch_call_test() {
 	ExtBuilder::default().build().execute_with(|| {
+		let hashed_value = BlakeTwo256::hash(b"1");
+
+		//let call = frame_system::Pallet::Call{};
+
 		//Pallet::<Runtime>::query_task(call.clone(), )
 	});
 }

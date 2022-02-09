@@ -38,7 +38,7 @@ pub enum RawOrigin {
 	RelaychainOracle,
 }
 
-#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
+#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub struct VerifiableCall<Call, Hash> {
 	dispatchable_call: Call,
 	state_hash: Hash,
@@ -69,6 +69,7 @@ pub mod module {
 	}
 
 	#[pallet::pallet]
+	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
 	#[pallet::origin]
@@ -120,11 +121,11 @@ pub mod module {
 impl<T: Config> Pallet<T> {}
 
 impl<T: Config> ForeignChainStateQuery<T::VerifiableTask, T::Hash> for Pallet<T> {
-	fn query_task(call: T::VerifiableTask, state_hash: T::Hash) {
-		let call_hash = T::Hashing::hash_of(&call);
+	fn query_task(dispatchable_call: T::VerifiableTask, state_hash: T::Hash) {
+		let call_hash = T::Hashing::hash_of(&dispatchable_call);
 		let verifiable_call = VerifiableCall {
-			dispatchable_call: call,
-			state_hash: state_hash,
+			dispatchable_call,
+			state_hash,
 		};
 
 		ValidateTask::<T>::insert(call_hash, verifiable_call);

@@ -24,7 +24,10 @@ use super::*;
 use frame_support::{construct_runtime, ord_parameter_types, parameter_types, traits::Everything};
 use frame_system::EnsureSignedBy;
 use sp_core::H256;
-use sp_runtime::{testing::Header, traits::IdentityLookup};
+use sp_runtime::{
+	testing::Header,
+	traits::{BlakeTwo256, IdentityLookup},
+};
 
 pub type AccountId = u128;
 pub type BlockNumber = u64;
@@ -43,7 +46,7 @@ impl frame_system::Config for Runtime {
 	type BlockNumber = BlockNumber;
 	type Call = Call;
 	type Hash = H256;
-	type Hashing = ::sp_runtime::traits::BlakeTwo256;
+	type Hashing = BlakeTwo256;
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
@@ -61,6 +64,7 @@ impl frame_system::Config for Runtime {
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
 	type OnSetCode = ();
+	type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
 
 impl Config for Runtime {
