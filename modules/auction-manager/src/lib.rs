@@ -628,7 +628,7 @@ impl<T: Config> Pallet<T> {
 			});
 		} else if last_bidder.is_some() && bid_price >= collateral_auction.target {
 			// if these's bid which is gte target, auction should dealt by the last bidder.
-			let winner = last_bidder.expect("guaranteed by previous check");
+			let winner = last_bidder.expect("ensured last bidder not empty; qed");
 
 			Self::try_refund_collateral(collateral_auction.currency_id, &winner, collateral_auction.amount);
 			let payment_amount = collateral_auction.payment_amount(bid_price);
