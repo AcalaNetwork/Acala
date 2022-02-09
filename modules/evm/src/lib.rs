@@ -1203,6 +1203,11 @@ impl<T: Config> Pallet<T> {
 						Codes::<T>::remove(&contract_info.code_hash);
 						*maybe_code_info = None;
 					}
+				} else {
+					// TODO: this is temporarily, investigate why an invalid address evm-test will hit this
+					#[cfg(not(feature = "evm-tests"))]
+					// code info removed while still having reference to it?
+					debug_assert!(false);
 				}
 			});
 
