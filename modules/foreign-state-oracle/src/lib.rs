@@ -21,12 +21,13 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use frame_support::{
-	dispatch::{Dispatchable, GetDispatchInfo, PostDispatchInfo},
+	dispatch::{DispatchErrorWithPostInfo, Dispatchable, GetDispatchInfo, PostDispatchInfo},
 	pallet_prelude::*,
+	transactional,
 };
 use frame_system::pallet_prelude::*;
 use module_support::ForeignChainStateQuery;
-use sp_runtime::traits::Hash;
+use sp_runtime::traits::{BlockNumberProvider, Hash, One, Saturating};
 
 mod mock;
 mod tests;
@@ -39,16 +40,19 @@ pub enum RawOrigin {
 }
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo, MaxEncodedLen)]
-pub struct VerifiableCall<Call, Hash> {
+pub struct VerifiableCall<Call, BlockNumber> {
 	dispatchable_call: Call,
-	state_hash: Hash,
+	expiry: BlockNumber,
 }
+
+pub type QueryIndex = u64;
 
 #[frame_support::pallet]
 pub mod module {
 	use super::*;
 
-	pub type VerifiableCallOf<T> = VerifiableCall<<T as Config>::VerifiableTask, <T as frame_system::Config>::Hash>;
+	pub type VerifiableCallOf<T> =
+		VerifiableCall<<T as Config>::VerifiableTask, <T as frame_system::Config>::BlockNumber>;
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
@@ -57,6 +61,9 @@ pub mod module {
 
 		/// The outer origin type.
 		type Origin: From<RawOrigin>;
+
+		/// Timeout for query requests
+		type QueryDuration: Get<Self::BlockNumber>;
 
 		/// Dispatchable task that needs to be verified by oracle for dispatch
 		type VerifiableTask: Parameter
@@ -78,60 +85,77 @@ pub mod module {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		CreateActiveQuery { query_hash: T::Hash, state_hash: T::Hash },
-		CallDispatched { task_result: PostDispatchInfo },
-		CallDispatchFailed,
+		CreateActiveQuery { index: QueryIndex },
+		CallDispatched { task_result: DispatchResult },
+		StaleQueryRemoved { query_index: QueryIndex },
 	}
+
+	#[pallet::storage]
+	#[pallet::getter(fn query_index)]
+	pub type QueryCounter<T: Config> = StorageValue<_, QueryIndex, ValueQuery>;
 
 	// Tasks to be dispatched if foriegn chain state is valid
 	#[pallet::storage]
-	#[pallet::getter(fn query)]
-	pub type ValidateTask<T: Config> = StorageMap<_, Blake2_128Concat, T::Hash, VerifiableCallOf<T>, OptionQuery>;
+	#[pallet::getter(fn active_query)]
+	pub type ActiveQuery<T: Config> = StorageMap<_, Identity, QueryIndex, VerifiableCallOf<T>, OptionQuery>;
 
 	#[pallet::error]
 	pub enum Error<T> {
 		IncorrectStateHash,
 		NoMatchingCall,
+		TooLargeVerifiableCall,
 	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight(0)]
-		pub fn dispatch_task(origin: OriginFor<T>, call_hash: T::Hash, state_hash: T::Hash) -> DispatchResult {
-			ValidateTask::<T>::try_mutate_exists(call_hash, |maybe_verifiable_call| -> DispatchResult {
-				T::OracleOrigin::ensure_origin(origin)?;
+		#[transactional]
+		pub fn dispatch_task(origin: OriginFor<T>, query_index: QueryIndex) -> DispatchResult {
+			T::OracleOrigin::ensure_origin(origin)?;
 
-				let verifiable_call = maybe_verifiable_call.clone().ok_or(Error::<T>::NoMatchingCall)?;
-				ensure!(state_hash == verifiable_call.state_hash, Error::<T>::IncorrectStateHash);
+			let verifiable_call = ActiveQuery::<T>::take(query_index).ok_or(Error::<T>::NoMatchingCall)?;
 
-				let result = verifiable_call
-					.dispatchable_call
-					.dispatch(RawOrigin::RelaychainOracle.into());
-				*maybe_verifiable_call = None;
-				match result {
-					Ok(res) => Self::deposit_event(Event::CallDispatched { task_result: res }),
-					Err(_) => Self::deposit_event(Event::CallDispatchFailed),
-				}
-				Ok(())
-			})
+			let result = verifiable_call
+				.dispatchable_call
+				.dispatch(RawOrigin::RelaychainOracle.into());
+
+			Self::deposit_event(Event::CallDispatched {
+				task_result: result.map(|_| ()).map_err(|e| e.error),
+			});
+
+			Ok(())
+		}
+
+		#[pallet::weight(0)]
+		pub fn remove_expired_call(origin: OriginFor<T>, query_index: QueryIndex) -> DispatchResult {
+			ensure_signed(origin)?;
+
+			Self::deposit_event(Event::<T>::StaleQueryRemoved { query_index });
+			Ok(())
 		}
 	}
 }
 
 impl<T: Config> Pallet<T> {}
 
-impl<T: Config> ForeignChainStateQuery<T::VerifiableTask, T::Hash> for Pallet<T> {
-	fn query_task(dispatchable_call: T::VerifiableTask, state_hash: T::Hash) {
-		let call_hash = T::Hashing::hash_of(&dispatchable_call);
+impl<T: Config> ForeignChainStateQuery<T::AccountId, T::VerifiableTask> for Pallet<T> {
+	fn query_task(who: &T::AccountId, length_bound: u32, dispatchable_call: T::VerifiableTask) -> DispatchResult {
+		let call_len = dispatchable_call.using_encoded(|x| x.len());
+		ensure!(call_len <= length_bound as usize, Error::<T>::TooLargeVerifiableCall);
+
+		let expiry = frame_system::Pallet::<T>::current_block_number().saturating_add(T::QueryDuration::get());
 		let verifiable_call = VerifiableCall {
 			dispatchable_call,
-			state_hash,
+			expiry,
 		};
 
-		ValidateTask::<T>::insert(call_hash, verifiable_call);
-		Self::deposit_event(Event::CreateActiveQuery {
-			query_hash: call_hash,
-			state_hash,
-		});
+		let index = QueryCounter::<T>::get();
+		// Increment counter
+		QueryCounter::<T>::put(index + 1);
+
+		ActiveQuery::<T>::insert(index, verifiable_call);
+		Self::deposit_event(Event::CreateActiveQuery { index });
+
+		Ok(())
 	}
 }

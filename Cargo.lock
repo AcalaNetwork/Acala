@@ -6259,6 +6259,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "module-foreign-state-oracle"
+version = "2.2.1"
+dependencies = [
+ "acala-primitives",
+ "frame-support",
+ "frame-system",
+ "module-support",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "module-homa"
 version = "2.3.0"
 dependencies = [
@@ -6495,23 +6512,6 @@ dependencies = [
  "sp-runtime",
  "sp-std",
  "xcm",
-]
-
-[[package]]
-name = "module-relaychain-oracle"
-version = "2.2.1"
-dependencies = [
- "acala-primitives",
- "frame-support",
- "frame-system",
- "module-support",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
 ]
 
 [[package]]

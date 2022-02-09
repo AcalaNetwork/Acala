@@ -67,11 +67,16 @@ impl frame_system::Config for Runtime {
 	type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
 
+parameter_types! {
+	pub const QueryDuration: BlockNumber = 10;
+}
+
 impl Config for Runtime {
 	type Event = Event;
 	type Origin = Origin;
 	type VerifiableTask = Call;
 	type OracleOrigin = EnsureSignedBy<One, AccountId>;
+	type QueryDuration = QueryDuration;
 }
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;

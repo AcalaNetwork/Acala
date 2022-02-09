@@ -1,5 +1,5 @@
 [package]
-name = "module-relaychain-oracle"
+name = "module-foreign-state-oracle"
 version = "2.2.1"
 authors = ["Acala Developers"]
 edition = "2021"

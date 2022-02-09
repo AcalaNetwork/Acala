@@ -662,7 +662,10 @@ pub trait HomaSubAccountXcm<AccountId, Balance> {
 	fn get_xcm_transfer_fee() -> Balance;
 }
 
-pub trait ForeignChainStateQuery<Call, Hash> {
+pub trait ForeignChainStateQuery<AccountId, Call> {
 	/// Call to be validated by foreign state oracle
-	fn query_task(dispatchaable_call: Call, state_hash: Hash);
+	/// params:
+	/// - who: Account that is requesting the query,
+	/// - dispatchable_call: Call to be dispatched on the condition of a foreign chain state
+	fn query_task(who: &AccountId, length_bound: u32, dispatchable_call: Call) -> DispatchResult;
 }
