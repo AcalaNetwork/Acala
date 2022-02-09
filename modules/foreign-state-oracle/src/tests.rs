@@ -22,7 +22,7 @@
 
 use super::*;
 use mock::*;
-use sp_runtime::traits::BlakeTwo256;
+use sp_runtime::traits::{BlakeTwo256, Hash};
 
 #[test]
 fn dispatch_call_test() {

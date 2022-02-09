@@ -56,7 +56,7 @@ impl frame_system::Config for Runtime {
 	type BlockLength = ();
 	type Version = ();
 	type PalletInfo = PalletInfo;
-	type AccountData = ();
+	type AccountData = pallet_balances::AccountData<Balance>;
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
 	type DbWeight = ();
@@ -68,15 +68,35 @@ impl frame_system::Config for Runtime {
 }
 
 parameter_types! {
+	pub const ExistentialDeposit: Balance = 1;
+	pub const MaxReserves: u32 = 50;
+}
+
+impl pallet_balances::Config for Runtime {
+	type Balance = Balance;
+	type DustRemoval = ();
+	type Event = Event;
+	type ExistentialDeposit = ExistentialDeposit;
+	type AccountStore = frame_system::Pallet<Runtime>;
+	type MaxLocks = ();
+	type MaxReserves = MaxReserves;
+	type ReserveIdentifier = ReserveIdentifier;
+	type WeightInfo = ();
+}
+
+parameter_types! {
 	pub const QueryDuration: BlockNumber = 10;
+	pub const QueryFee: Balance = 100;
 }
 
 impl Config for Runtime {
 	type Event = Event;
 	type Origin = Origin;
 	type VerifiableTask = Call;
+	type QueryFee = QueryFee;
 	type OracleOrigin = EnsureSignedBy<One, AccountId>;
 	type QueryDuration = QueryDuration;
+	type Currency = Balances;
 }
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
@@ -89,6 +109,7 @@ construct_runtime!(
 		UncheckedExtrinsic = UncheckedExtrinsic
 	{
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+		Balances: pallet_balances::{Pallet, Call, Config<T>, Storage, Event<T>},
 		RelaychainOracle: module::{Pallet, Call, Storage, Event<T>, Origin},
 	}
 );

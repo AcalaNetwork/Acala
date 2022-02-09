@@ -21,22 +21,28 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use frame_support::{
-	dispatch::{DispatchErrorWithPostInfo, Dispatchable, GetDispatchInfo, PostDispatchInfo},
+	dispatch::{Dispatchable, GetDispatchInfo, PostDispatchInfo},
 	pallet_prelude::*,
+	traits::NamedReservableCurrency,
 	transactional,
 };
 use frame_system::pallet_prelude::*;
 use module_support::ForeignChainStateQuery;
-use sp_runtime::traits::{BlockNumberProvider, Hash, One, Saturating};
+use primitives::{Balance, ReserveIdentifier};
+use sp_runtime::traits::{BlockNumberProvider, Saturating};
 
 mod mock;
 mod tests;
 
 pub use module::*;
 
+// Unique Identifier for each query
+pub type QueryIndex = u64;
+pub const RESERVE_ID_QUERY_DEPOSIT: ReserveIdentifier = ReserveIdentifier::ForeignStateQueryDeposit;
+
 #[derive(PartialEq, Eq, Clone, RuntimeDebug, Encode, Decode, TypeInfo)]
 pub enum RawOrigin {
-	RelaychainOracle,
+	RelaychainOracle { data: Vec<u8> },
 }
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo, MaxEncodedLen)]
@@ -44,8 +50,6 @@ pub struct VerifiableCall<Call, BlockNumber> {
 	dispatchable_call: Call,
 	expiry: BlockNumber,
 }
-
-pub type QueryIndex = u64;
 
 #[frame_support::pallet]
 pub mod module {
@@ -61,6 +65,16 @@ pub mod module {
 
 		/// The outer origin type.
 		type Origin: From<RawOrigin>;
+
+		/// Currency for query payments
+		type Currency: NamedReservableCurrency<
+			Self::AccountId,
+			Balance = Balance,
+			ReserveIdentifier = ReserveIdentifier,
+		>;
+
+		/// Fee to be paid to oracles for servicing query
+		type QueryFee: Get<Balance>;
 
 		/// Timeout for query requests
 		type QueryDuration: Get<Self::BlockNumber>;
@@ -110,14 +124,14 @@ pub mod module {
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight(0)]
 		#[transactional]
-		pub fn dispatch_task(origin: OriginFor<T>, query_index: QueryIndex) -> DispatchResult {
+		pub fn dispatch_task(origin: OriginFor<T>, query_index: QueryIndex, data: Vec<u8>) -> DispatchResult {
 			T::OracleOrigin::ensure_origin(origin)?;
 
 			let verifiable_call = ActiveQuery::<T>::take(query_index).ok_or(Error::<T>::NoMatchingCall)?;
 
 			let result = verifiable_call
 				.dispatchable_call
-				.dispatch(RawOrigin::RelaychainOracle.into());
+				.dispatch(RawOrigin::RelaychainOracle { data }.into());
 
 			Self::deposit_event(Event::CallDispatched {
 				task_result: result.map(|_| ()).map_err(|e| e.error),
