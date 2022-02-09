@@ -23,13 +23,13 @@
 use frame_support::{
 	dispatch::{Dispatchable, GetDispatchInfo, PostDispatchInfo},
 	pallet_prelude::*,
-	traits::NamedReservableCurrency,
-	transactional,
+	traits::{Currency, ExistenceRequirement, NamedReservableCurrency},
+	transactional, PalletId,
 };
 use frame_system::pallet_prelude::*;
 use module_support::ForeignChainStateQuery;
 use primitives::{Balance, ReserveIdentifier};
-use sp_runtime::traits::{BlockNumberProvider, Saturating};
+use sp_runtime::traits::{AccountIdConversion, BlockNumberProvider, Saturating};
 
 mod mock;
 mod tests;
@@ -38,7 +38,6 @@ pub use module::*;
 
 // Unique Identifier for each query
 pub type QueryIndex = u64;
-pub const RESERVE_ID_QUERY_DEPOSIT: ReserveIdentifier = ReserveIdentifier::ForeignStateQueryDeposit;
 
 #[derive(PartialEq, Eq, Clone, RuntimeDebug, Encode, Decode, TypeInfo)]
 pub enum RawOrigin {
@@ -46,9 +45,10 @@ pub enum RawOrigin {
 }
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo, MaxEncodedLen)]
-pub struct VerifiableCall<Call, BlockNumber> {
+pub struct VerifiableCall<Call, BlockNumber, Balance> {
 	dispatchable_call: Call,
 	expiry: BlockNumber,
+	oracle_reward: Balance,
 }
 
 #[frame_support::pallet]
@@ -56,7 +56,7 @@ pub mod module {
 	use super::*;
 
 	pub type VerifiableCallOf<T> =
-		VerifiableCall<<T as Config>::VerifiableTask, <T as frame_system::Config>::BlockNumber>;
+		VerifiableCall<<T as Config>::VerifiableTask, <T as frame_system::Config>::BlockNumber, Balance>;
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
@@ -73,10 +73,16 @@ pub mod module {
 			ReserveIdentifier = ReserveIdentifier,
 		>;
 
+		/// The foreign state oracle module id, keeps expired queries deposits
+		#[pallet::constant]
+		type PalletId: Get<PalletId>;
+
 		/// Fee to be paid to oracles for servicing query
+		#[pallet::constant]
 		type QueryFee: Get<Balance>;
 
 		/// Timeout for query requests
+		#[pallet::constant]
 		type QueryDuration: Get<Self::BlockNumber>;
 
 		/// Dispatchable task that needs to be verified by oracle for dispatch
@@ -104,11 +110,12 @@ pub mod module {
 		StaleQueryRemoved { query_index: QueryIndex },
 	}
 
+	/// Index of Queries, each query gets unique number
 	#[pallet::storage]
 	#[pallet::getter(fn query_index)]
 	pub type QueryCounter<T: Config> = StorageValue<_, QueryIndex, ValueQuery>;
 
-	// Tasks to be dispatched if foriegn chain state is valid
+	///  The tasks to be dispatched with foriegn chain state
 	#[pallet::storage]
 	#[pallet::getter(fn active_query)]
 	pub type ActiveQuery<T: Config> = StorageMap<_, Identity, QueryIndex, VerifiableCallOf<T>, OptionQuery>;
@@ -118,6 +125,8 @@ pub mod module {
 		IncorrectStateHash,
 		NoMatchingCall,
 		TooLargeVerifiableCall,
+		QueryExpired,
+		QueryNotExpired,
 	}
 
 	#[pallet::call]
@@ -128,6 +137,11 @@ pub mod module {
 			T::OracleOrigin::ensure_origin(origin)?;
 
 			let verifiable_call = ActiveQuery::<T>::take(query_index).ok_or(Error::<T>::NoMatchingCall)?;
+			// check that query has not expired
+			ensure!(
+				verifiable_call.expiry < frame_system::Pallet::<T>::current_block_number(),
+				Error::<T>::QueryExpired
+			);
 
 			let result = verifiable_call
 				.dispatchable_call
@@ -141,8 +155,16 @@ pub mod module {
 		}
 
 		#[pallet::weight(0)]
+		#[transactional]
 		pub fn remove_expired_call(origin: OriginFor<T>, query_index: QueryIndex) -> DispatchResult {
-			ensure_signed(origin)?;
+			ensure_none(origin)?;
+
+			let verifiable_call = ActiveQuery::<T>::take(query_index).ok_or(Error::<T>::NoMatchingCall)?;
+			// make sure query is expired
+			ensure!(
+				verifiable_call.expiry >= frame_system::Pallet::<T>::current_block_number(),
+				Error::<T>::QueryNotExpired
+			);
 
 			Self::deposit_event(Event::<T>::StaleQueryRemoved { query_index });
 			Ok(())
@@ -150,18 +172,28 @@ pub mod module {
 	}
 }
 
-impl<T: Config> Pallet<T> {}
+impl<T: Config> Pallet<T> {
+	pub fn account_id() -> T::AccountId {
+		T::PalletId::get().into_account()
+	}
+}
 
 impl<T: Config> ForeignChainStateQuery<T::AccountId, T::VerifiableTask> for Pallet<T> {
 	fn query_task(who: &T::AccountId, length_bound: u32, dispatchable_call: T::VerifiableTask) -> DispatchResult {
 		let call_len = dispatchable_call.using_encoded(|x| x.len());
 		ensure!(call_len <= length_bound as usize, Error::<T>::TooLargeVerifiableCall);
-		T::Currency::reserve_named(&RESERVE_ID_QUERY_DEPOSIT, who, T::QueryFee::get())?;
+		T::Currency::transfer(
+			who,
+			&Self::account_id(),
+			T::QueryFee::get(),
+			ExistenceRequirement::KeepAlive,
+		)?;
 
 		let expiry = frame_system::Pallet::<T>::current_block_number().saturating_add(T::QueryDuration::get());
 		let verifiable_call = VerifiableCall {
 			dispatchable_call,
 			expiry,
+			oracle_reward: T::QueryFee::get(),
 		};
 
 		let index = QueryCounter::<T>::get();

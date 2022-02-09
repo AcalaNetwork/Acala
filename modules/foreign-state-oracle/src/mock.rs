@@ -85,8 +85,9 @@ impl pallet_balances::Config for Runtime {
 }
 
 parameter_types! {
+	pub const ForeignOraclePalletId: PalletId = PalletId(*b"aca/fsto");
 	pub const QueryDuration: BlockNumber = 10;
-	pub const QueryFee: Balance = 100;
+	pub const QueryFee: Balance = 0;
 }
 
 impl Config for Runtime {
@@ -97,6 +98,7 @@ impl Config for Runtime {
 	type OracleOrigin = EnsureSignedBy<One, AccountId>;
 	type QueryDuration = QueryDuration;
 	type Currency = Balances;
+	type PalletId = ForeignOraclePalletId;
 }
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
