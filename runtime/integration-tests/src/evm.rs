@@ -971,7 +971,12 @@ fn transaction_payment_module_works_with_evm_contract() {
 				pays_fee: Pays::Yes,
 			};
 			let fee = module_transaction_payment::Pallet::<Runtime>::compute_fee(len, &info, 0);
+			#[cfg(feature = "with-mandala-runtime")]
 			assert_eq!(fee, 16000000800);
+			#[cfg(feature = "with-karura-runtime")]
+			assert_eq!(fee, 2500000800);
+			#[cfg(feature = "with-acala-runtime")]
+			assert_eq!(fee, 2500000800);
 
 			// empty_account
 			assert_eq!(
@@ -986,17 +991,20 @@ fn transaction_payment_module_works_with_evm_contract() {
 					len as usize,
 				)
 			);
-			assert_eq!(
-				Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &sub_account),
-				11612667389
-			);
+			let erc20_fee = Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &sub_account);
+			#[cfg(feature = "with-mandala-runtime")]
+			assert_eq!(erc20_fee, 11612667389);
+			#[cfg(feature = "with-karura-runtime")]
+			assert_eq!(erc20_fee, 10281777315);
+			#[cfg(feature = "with-acala-runtime")]
+			assert_eq!(erc20_fee, 10281777315);
 			assert_eq!(
 				Currencies::free_balance(NATIVE_CURRENCY, &sub_account),
 				5 * dollar(NATIVE_CURRENCY) - (fee + NativeTokenExistentialDeposit::get())
 			);
 			assert_eq!(
 				Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &empty_account),
-				5 * dollar(NATIVE_CURRENCY) + 1 - 11612667389
+				5 * dollar(NATIVE_CURRENCY) + 1 - erc20_fee
 			);
 			assert_eq!(
 				Currencies::free_balance(NATIVE_CURRENCY, &empty_account),
@@ -1014,7 +1022,7 @@ fn transaction_payment_module_works_with_evm_contract() {
 			);
 			assert_eq!(
 				Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &sub_account),
-				11612667389 * 2
+				erc20_fee * 2
 			);
 			assert_eq!(
 				Currencies::free_balance(NATIVE_CURRENCY, &sub_account),
@@ -1025,7 +1033,7 @@ fn transaction_payment_module_works_with_evm_contract() {
 					CurrencyId::Erc20(erc20_address_0()),
 					&EvmAddressMapping::<Runtime>::get_account_id(&empty_address)
 				),
-				5 * dollar(NATIVE_CURRENCY) + 1 - 11612667389
+				5 * dollar(NATIVE_CURRENCY) + 1 - erc20_fee
 			);
 			assert_eq!(
 				Currencies::free_balance(
