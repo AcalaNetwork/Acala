@@ -2046,7 +2046,7 @@ construct_runtime!(
 
 		// Homa
 		Homa: module_homa::{Pallet, Call, Storage, Event<T>} = 116,
-		XcmInterface: module_xcm_interface::{Pallet, Call, Storage, Event<T>} = 117,
+		HomaXcm: module_xcm_interface::{Pallet, Call, Storage, Event<T>} = 117,
 
 		// Karura Other
 		Incentives: module_incentives::{Pallet, Storage, Call, Event<T>} = 120,

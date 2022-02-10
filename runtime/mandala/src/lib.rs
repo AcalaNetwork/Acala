@@ -2180,7 +2180,7 @@ construct_runtime! {
 		// Homa
 		NomineesElection: module_nominees_election::{Pallet, Call, Storage, Event<T>} = 131,
 		Homa: module_homa::{Pallet, Call, Storage, Event<T>} = 136,
-		XcmInterface: module_xcm_interface::{Pallet, Call, Storage, Event<T>} = 137,
+		HomaXcm: module_xcm_interface::{Pallet, Call, Storage, Event<T>} = 137,
 
 		// Acala Other
 		Incentives: module_incentives::{Pallet, Storage, Call, Event<T>} = 140,
