@@ -1659,7 +1659,7 @@ impl module_homa::Config for Runtime {
 	type MintThreshold = MintThreshold;
 	type RedeemThreshold = RedeemThreshold;
 	type RelayChainBlockNumber = RelayChainBlockNumberProvider<Runtime>;
-	type XcmInterface = XcmInterface;
+	type XcmInterface = HomaXcm;
 	type WeightInfo = weights::module_homa::WeightInfo<Runtime>;
 }
 
