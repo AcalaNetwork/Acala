@@ -792,7 +792,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 		});
 
 		if let Some(depth) = self.state.metadata().depth {
-			if depth > self.config.call_stack_limit {
+			if depth >= self.config.call_stack_limit {
 				return Capture::Exit((ExitError::CallTooDeep.into(), None, Vec::new()));
 			}
 		}
