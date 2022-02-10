@@ -396,6 +396,8 @@ pub mod module {
 	pub type NextFeeMultiplier<T: Config> = StorageValue<_, Multiplier, ValueQuery, DefaultFeeMultiplier>;
 
 	/// The alternative fee swap path of accounts.
+	///
+	/// AlternativeFeeSwapPath: map AccountId => Option<Vec<CurrencyId>>
 	#[pallet::storage]
 	#[pallet::getter(fn alternative_fee_swap_path)]
 	pub type AlternativeFeeSwapPath<T: Config> =
@@ -403,7 +405,7 @@ pub mod module {
 
 	/// The global fee swap path.
 	///
-	/// GlobalFeeSwapPath: Option<Vec<Vec<CurrencyId>>
+	/// GlobalFeeSwapPath: map CurrencyId => Option<Vec<CurrencyId>>
 	#[pallet::storage]
 	#[pallet::getter(fn global_fee_swap_path)]
 	pub type GlobalFeeSwapPath<T: Config> =
@@ -411,17 +413,23 @@ pub mod module {
 
 	/// The size of fee pool in native token. During `initialize_pool` this amount of native token
 	/// will be transferred from `TreasuryAccount` to sub account of `PalletId`.
+	///
+	/// PoolSize: map CurrencyId => Balance
 	#[pallet::storage]
 	#[pallet::getter(fn pool_size)]
 	pub type PoolSize<T: Config> = StorageMap<_, Twox64Concat, CurrencyId, Balance, ValueQuery>;
 
 	/// The exchange rate between the given currency and native token.
 	/// This value is updated when upon swap from dex.
+	///
+	/// TokenExchangeRate: map CurrencyId => Ratio
 	#[pallet::storage]
 	#[pallet::getter(fn token_exchange_rate)]
 	pub type TokenExchangeRate<T: Config> = StorageMap<_, Twox64Concat, CurrencyId, Ratio, OptionQuery>;
 
 	/// The balance threshold to trigger swap from dex, normally the value is gt ED of native asset.
+	///
+	/// SwapBalanceThreshold: map CurrencyId => Balance
 	#[pallet::storage]
 	#[pallet::getter(fn swap_balance_threshold)]
 	pub type SwapBalanceThreshold<T: Config> = StorageMap<_, Twox64Concat, CurrencyId, Balance, ValueQuery>;
