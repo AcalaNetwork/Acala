@@ -1,6 +1,6 @@
 [package]
 name = "module-idle-scheduler"
-version = "2.3.0"
+version = "2.3.2"
 authors = ["Acala Developers"]
 edition = "2021"
 
