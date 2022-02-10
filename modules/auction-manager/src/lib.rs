@@ -616,7 +616,7 @@ impl<T: Config> Pallet<T> {
 			Self::try_refund_collateral(
 				collateral_auction.currency_id,
 				&collateral_auction.refund_recipient,
-				collateral_auction.amount.saturating_sub(acutal_supply_amount),
+				collateral_auction.amount.saturating_sub(actual_supply_amount),
 			);
 			Self::try_refund_bid(&collateral_auction, last_bid);
 
@@ -624,8 +624,8 @@ impl<T: Config> Pallet<T> {
 				auction_id,
 				collateral_type: collateral_auction.currency_id,
 				collateral_amount: collateral_auction.amount,
-				supply_collateral_amount: acutal_supply_amount,
-				target_stable_amount: acutal_target_amount,
+				supply_collateral_amount: actual_supply_amount,
+				target_stable_amount: actual_target_amount,
 			});
 		} else if last_bidder.is_some() && bid_price >= collateral_auction.target {
 			// if these's bid which is gte target, auction should dealt by the last bidder.
