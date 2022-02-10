@@ -21,16 +21,21 @@
 #![cfg(test)]
 
 use super::*;
-use mock::*;
+use frame_support::{assert_noop, assert_ok};
+use mock::{Call as CallOf, Origin as OriginOf, *};
 use sp_runtime::traits::{BlakeTwo256, Hash};
 
 #[test]
 fn dispatch_call_test() {
 	ExtBuilder::default().build().execute_with(|| {
-		let hashed_value = BlakeTwo256::hash(b"1");
+		let call = CallOf::QueryExample(query_example::Call::injected_call {});
 
-		//let call = frame_system::Pallet::Call{};
+		assert_ok!(query_example::Pallet::<Runtime>::example_query_call(&ALICE));
 
-		//Pallet::<Runtime>::query_task(call.clone(), )
+		assert_ok!(RelaychainOracle::dispatch_task(
+			OriginOf::signed(ALICE),
+			0,
+			b"hello".to_vec()
+		));
 	});
 }

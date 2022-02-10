@@ -113,19 +113,22 @@ pub mod module {
 	/// Index of Queries, each query gets unique number
 	#[pallet::storage]
 	#[pallet::getter(fn query_index)]
-	pub type QueryCounter<T: Config> = StorageValue<_, QueryIndex, ValueQuery>;
+	pub(super) type QueryCounter<T: Config> = StorageValue<_, QueryIndex, ValueQuery>;
 
 	///  The tasks to be dispatched with foriegn chain state
 	#[pallet::storage]
 	#[pallet::getter(fn active_query)]
-	pub type ActiveQuery<T: Config> = StorageMap<_, Identity, QueryIndex, VerifiableCallOf<T>, OptionQuery>;
+	pub(super) type ActiveQuery<T: Config> = StorageMap<_, Identity, QueryIndex, VerifiableCallOf<T>, OptionQuery>;
 
 	#[pallet::error]
 	pub enum Error<T> {
-		IncorrectStateHash,
+		/// Index key does not have an active query currently
 		NoMatchingCall,
+		/// Verifiable Call is too large
 		TooLargeVerifiableCall,
+		/// Query has expired
 		QueryExpired,
+		/// Query has not yet expired
 		QueryNotExpired,
 	}
 
@@ -139,7 +142,7 @@ pub mod module {
 			let verifiable_call = ActiveQuery::<T>::take(query_index).ok_or(Error::<T>::NoMatchingCall)?;
 			// check that query has not expired
 			ensure!(
-				verifiable_call.expiry < frame_system::Pallet::<T>::current_block_number(),
+				verifiable_call.expiry > frame_system::Pallet::<T>::current_block_number(),
 				Error::<T>::QueryExpired
 			);
 
@@ -154,6 +157,7 @@ pub mod module {
 			Ok(())
 		}
 
+		// TODO: Change to use idle scheduler
 		#[pallet::weight(0)]
 		#[transactional]
 		pub fn remove_expired_call(origin: OriginFor<T>, query_index: QueryIndex) -> DispatchResult {
@@ -162,7 +166,7 @@ pub mod module {
 			let verifiable_call = ActiveQuery::<T>::take(query_index).ok_or(Error::<T>::NoMatchingCall)?;
 			// make sure query is expired
 			ensure!(
-				verifiable_call.expiry >= frame_system::Pallet::<T>::current_block_number(),
+				verifiable_call.expiry <= frame_system::Pallet::<T>::current_block_number(),
 				Error::<T>::QueryNotExpired
 			);
 

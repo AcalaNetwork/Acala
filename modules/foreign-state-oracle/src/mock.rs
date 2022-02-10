@@ -21,7 +21,10 @@
 #![cfg(test)]
 
 use super::*;
-use frame_support::{construct_runtime, ord_parameter_types, parameter_types, traits::Everything};
+use frame_support::{
+	construct_runtime, ord_parameter_types, parameter_types,
+	traits::{Everything, IsType},
+};
 use frame_system::EnsureSignedBy;
 use sp_core::H256;
 use sp_runtime::{
@@ -29,6 +32,58 @@ use sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup},
 };
 
+// example module using foreign state query
+#[frame_support::pallet]
+pub mod query_example {
+	use super::*;
+
+	#[pallet::pallet]
+	pub struct Pallet<T>(_);
+
+	#[pallet::config]
+	pub trait Config: frame_system::Config {
+		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+
+		/// The overarching call type.
+		type Call: Parameter
+			+ Dispatchable<Origin = Self::Origin>
+			+ GetDispatchInfo
+			+ From<frame_system::Call<Self>>
+			+ From<Call<Self>>
+			+ IsType<<Self as frame_system::Config>::Call>;
+
+		type ForeignStateQuery: ForeignChainStateQuery<Self::AccountId, <Self as Config>::Call>;
+	}
+
+	#[pallet::event]
+	#[pallet::generate_deposit(pub(super) fn deposit_event)]
+	pub enum Event<T: Config> {
+		CallDispatched,
+	}
+
+	#[pallet::call]
+	impl<T: Config> Pallet<T> {
+		#[pallet::weight(0)]
+		pub fn injected_call(origin: OriginFor<T>) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+			Self::deposit_event(Event::<T>::CallDispatched);
+			Ok(())
+		}
+	}
+
+	impl<T: Config> Pallet<T> {
+		pub fn example_query_call(who: &T::AccountId) -> DispatchResult {
+			let call: <T as Config>::Call = Call::<T>::injected_call {}.into();
+			let len = call.using_encoded(|x| x.len()) as u32;
+			T::ForeignStateQuery::query_task(who, len, call)?;
+
+			Ok(())
+		}
+	}
+}
+
+pub const ALICE: AccountId = 1;
+pub const BOB: AccountId = 2;
 pub type AccountId = u128;
 pub type BlockNumber = u64;
 
@@ -84,6 +139,12 @@ impl pallet_balances::Config for Runtime {
 	type WeightInfo = ();
 }
 
+impl query_example::Config for Runtime {
+	type Event = Event;
+	type Call = Call;
+	type ForeignStateQuery = RelaychainOracle;
+}
+
 parameter_types! {
 	pub const ForeignOraclePalletId: PalletId = PalletId(*b"aca/fsto");
 	pub const QueryDuration: BlockNumber = 10;
@@ -113,22 +174,33 @@ construct_runtime!(
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
 		Balances: pallet_balances::{Pallet, Call, Config<T>, Storage, Event<T>},
 		RelaychainOracle: module::{Pallet, Call, Storage, Event<T>, Origin},
+		QueryExample: query_example::{Pallet, Call, Event<T>},
 	}
 );
 
-pub struct ExtBuilder;
+pub struct ExtBuilder {
+	endowed_native: Vec<(AccountId, Balance)>,
+}
 
 impl Default for ExtBuilder {
 	fn default() -> Self {
-		ExtBuilder
+		Self {
+			endowed_native: vec![(ALICE, 1000)],
+		}
 	}
 }
 
 impl ExtBuilder {
 	pub fn build(self) -> sp_io::TestExternalities {
-		let t = frame_system::GenesisConfig::default()
+		let mut t = frame_system::GenesisConfig::default()
 			.build_storage::<Runtime>()
 			.unwrap();
+
+		pallet_balances::GenesisConfig::<Runtime> {
+			balances: self.endowed_native,
+		}
+		.assimilate_storage(&mut t)
+		.unwrap();
 
 		t.into()
 	}
