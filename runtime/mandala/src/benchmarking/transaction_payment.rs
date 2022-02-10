@@ -19,11 +19,12 @@
 use super::utils::set_balance;
 use crate::{
 	dollar, AccountId, Balance, Currencies, CurrencyId, Dex, Event, GetNativeCurrencyId, GetStableCurrencyId,
-	NativeTokenExistentialDeposit, Origin, Runtime, System, TransactionPayment, TreasuryPalletId,
+	NativeTokenExistentialDeposit, Origin, Runtime, System, TradingPair, TransactionPayment, TreasuryPalletId,
 };
 use frame_benchmarking::{account, whitelisted_caller};
 use frame_support::traits::OnFinalize;
 use frame_system::RawOrigin;
+use module_dex::TradingPairStatus;
 use module_support::{DEXManager, SwapLimit};
 use orml_benchmarking::runtime_benchmarks;
 use orml_traits::MultiCurrency;
@@ -51,7 +52,10 @@ fn inject_liquidity(
 	set_balance(currency_id_a, &maker, max_amount_a.unique_saturated_into());
 	set_balance(currency_id_b, &maker, max_amount_b.unique_saturated_into());
 
-	Dex::enable_trading_pair(RawOrigin::Root.into(), currency_id_a, currency_id_b)?;
+	let trading_pair = TradingPair::from_currency_ids(currency_id_a, currency_id_b).unwrap();
+	if Dex::trading_pair_statuses(trading_pair) == TradingPairStatus::<_, _>::Disabled {
+		Dex::enable_trading_pair(RawOrigin::Root.into(), currency_id_a, currency_id_b)?;
+	}
 
 	Dex::add_liquidity(
 		RawOrigin::Signed(maker.clone()).into(),
