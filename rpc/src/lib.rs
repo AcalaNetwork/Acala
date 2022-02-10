@@ -57,11 +57,13 @@ where
 	C::Api: substrate_frame_rpc_system::AccountNonceApi<Block, AccountId, Nonce>,
 	C::Api: pallet_transaction_payment_rpc::TransactionPaymentRuntimeApi<Block, Balance>,
 	C::Api: orml_oracle_rpc::OracleRuntimeApi<Block, DataProviderId, CurrencyId, runtime_common::TimeStampedPrice>,
+	C::Api: orml_tokens_rpc::TokensRuntimeApi<Block, CurrencyId, Balance>,
 	C::Api: EVMRuntimeRPCApi<Block, Balance>,
 	C::Api: BlockBuilder<Block>,
 	P: TransactionPool + Sync + Send + 'static,
 {
 	use orml_oracle_rpc::{Oracle, OracleApi};
+	use orml_tokens_rpc::{Tokens, TokensApi};
 	use pallet_transaction_payment_rpc::{TransactionPayment, TransactionPaymentApi};
 	use substrate_frame_rpc_system::{FullSystem, SystemApi};
 
@@ -85,6 +87,7 @@ where
 	// more context: https://github.com/paritytech/substrate/pull/3480
 	// These RPCs should use an asynchronous caller instead.
 	io.extend_with(OracleApi::to_delegate(Oracle::new(client.clone())));
+	io.extend_with(TokensApi::to_delegate(Tokens::new(client.clone())));
 	io.extend_with(EVMApiServer::to_delegate(EVMApi::new(client, deny_unsafe)));
 
 	if let Some(command_sink) = command_sink {

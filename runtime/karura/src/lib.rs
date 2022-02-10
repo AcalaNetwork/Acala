@@ -59,7 +59,8 @@ use module_support::{AssetIdMapping, DispatchableTask};
 use module_transaction_payment::{Multiplier, TargetedFeeAdjustment, TransactionFeePoolTrader};
 
 use orml_traits::{
-	create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended, MultiCurrency,
+	create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended, GetByKey,
+	MultiCurrency,
 };
 use pallet_transaction_payment::RuntimeDispatchInfo;
 
@@ -2239,6 +2240,16 @@ impl_runtime_apis! {
 				DataProviderId::Acala => AcalaOracle::get_all_values(),
 				DataProviderId::Aggregated => <AggregatedDataProvider as DataProviderExtended<_, _>>::get_all_values()
 			}
+		}
+	}
+
+	impl orml_tokens_rpc_runtime_api::TokensApi<
+		Block,
+		CurrencyId,
+		Balance,
+	> for Runtime {
+		fn query_existential_deposit(key: CurrencyId) -> Balance {
+			ExistentialDeposits::get(&key)
 		}
 	}
 
