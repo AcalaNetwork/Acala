@@ -11,6 +11,6 @@ contract Erc20DemoContract2 is ERC20 {
     }
 
     function decimals() public view virtual override returns (uint8) {
-		return 17;
+        return 17;
     }
 }
