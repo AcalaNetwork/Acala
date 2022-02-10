@@ -98,7 +98,7 @@ pub mod module {
 		type XcmTransfer: XcmTransfer<Self::AccountId, Balance, CurrencyId>;
 
 		/// The Call builder for communicating with RelayChain via XCM messaging.
-		type RelayChainCallBuilder: CallBuilder<AccountId = Self::AccountId>;
+		type RelayChainCallBuilder: CallBuilder<AccountId = Self::AccountId, Balance = Balance>;
 
 		/// The MultiLocation of the sovereign sub-account for where the staking currencies are sent
 		/// to.

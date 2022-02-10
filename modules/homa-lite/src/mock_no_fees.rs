@@ -250,7 +250,7 @@ impl Config for NoFeeRuntime {
 	type DefaultExchangeRate = DefaultExchangeRate;
 	type MaxRewardPerEra = MaxRewardPerEra;
 	type MintFee = MintFee;
-	type RelayChainCallBuilder = RelayChainCallBuilder<NoFeeRuntime, ParachainId>;
+	type RelayChainCallBuilder = RelayChainCallBuilder<Self::Lookup, ParachainId>;
 	type BaseWithdrawFee = BaseWithdrawFee;
 	type HomaUnbondFee = HomaUnbondFee;
 	type RelayChainBlockNumber = MockRelayBlockNumberProvider;

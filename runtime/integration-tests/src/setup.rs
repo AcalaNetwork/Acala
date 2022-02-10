@@ -16,6 +16,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+#![allow(dead_code)]
+
 use acala_service::chain_spec::mandala::evm_genesis;
 pub use codec::Encode;
 use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
@@ -171,7 +173,6 @@ const ORACLE3: [u8; 32] = [2u8; 32];
 const ORACLE4: [u8; 32] = [3u8; 32];
 const ORACLE5: [u8; 32] = [4u8; 32];
 
-#[allow(dead_code)]
 pub const DEFAULT: [u8; 32] = [0u8; 32];
 
 pub const ALICE: [u8; 32] = [4u8; 32];
@@ -237,7 +238,6 @@ impl ExtBuilder {
 		self
 	}
 
-	#[allow(dead_code)]
 	pub fn parachain_id(mut self, parachain_id: u32) -> Self {
 		self.parachain_id = parachain_id;
 		self

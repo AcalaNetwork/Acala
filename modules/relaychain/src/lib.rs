@@ -28,13 +28,11 @@ use sp_runtime::traits::StaticLookup;
 
 use frame_support::{traits::Get, weights::Weight, RuntimeDebug};
 use module_support::CallBuilder;
-use primitives::Balance;
+use primitives::{AccountId, Balance, BlockNumber};
 use sp_std::{boxed::Box, marker::PhantomData, prelude::*};
 
 pub use cumulus_primitives_core::ParaId;
 use xcm::latest::prelude::*;
-
-use frame_system::Config;
 
 #[derive(Encode, Decode, RuntimeDebug)]
 pub enum ProxyType {
@@ -43,12 +41,12 @@ pub enum ProxyType {
 }
 
 #[derive(Encode, Decode, RuntimeDebug)]
-pub enum BalancesCall<T: Config> {
+pub enum BalancesCall<Lookup: StaticLookup> {
 	#[codec(index = 3)]
-	TransferKeepAlive(<T::Lookup as StaticLookup>::Source, #[codec(compact)] Balance), /* TODO: because param type
-	                                                                                    * in relaychain is u64,
-	                                                                                    * need to confirm
-	                                                                                    * Balance(u128) is working. */
+	TransferKeepAlive(<Lookup as StaticLookup>::Source, #[codec(compact)] Balance), /* TODO: because param type
+	                                                                                 * in relaychain is u64,
+	                                                                                 * need to confirm
+	                                                                                 * Balance(u128) is working. */
 }
 
 #[derive(Encode, Decode, RuntimeDebug)]
@@ -72,13 +70,13 @@ pub enum StakingCall {
 }
 
 #[derive(Encode, Decode, RuntimeDebug)]
-pub enum ProxyCall<T: Config, Call> {
+pub enum ProxyCall<Call> {
 	#[codec(index = 0)]
-	Proxy(T::AccountId, Option<ProxyType>, Box<Call>),
+	Proxy(AccountId, Option<ProxyType>, Box<Call>),
 	#[codec(index = 1)]
-	AddProxy(T::AccountId, ProxyType, T::BlockNumber),
+	AddProxy(AccountId, ProxyType, BlockNumber),
 	#[codec(index = 2)]
-	RemoveProxy(T::AccountId, ProxyType, T::BlockNumber),
+	RemoveProxy(AccountId, ProxyType, BlockNumber),
 }
 
 #[cfg(feature = "kusama")]
@@ -88,15 +86,15 @@ mod kusama {
 	/// The encoded index corresponds to Kusama's Runtime module configuration.
 	/// https://github.com/paritytech/polkadot/blob/master/runtime/kusama/src/lib.rs#L1361
 	#[derive(Encode, Decode, RuntimeDebug)]
-	pub enum RelayChainCall<T: Config> {
+	pub enum RelayChainCall<Lookup: StaticLookup> {
 		#[codec(index = 4)]
-		Balances(BalancesCall<T>),
+		Balances(BalancesCall<Lookup>),
 		#[codec(index = 6)]
 		Staking(StakingCall),
 		#[codec(index = 24)]
-		Utility(Box<UtilityCall<RelayChainCall<T>>>),
+		Utility(Box<UtilityCall<Self>>),
 		#[codec(index = 30)]
-		Proxy(Box<ProxyCall<T, RelayChainCall<T>>>),
+		Proxy(Box<ProxyCall<Self>>),
 	}
 }
 
@@ -107,15 +105,15 @@ mod polkadot {
 	/// The encoded index corresponds to Polkadot's Runtime module configuration.
 	/// https://github.com/paritytech/polkadot/blob/master/runtime/polkadot/src/lib.rs#L1325
 	#[derive(Encode, Decode, RuntimeDebug)]
-	pub enum RelayChainCall<T: Config> {
+	pub enum RelayChainCall<Lookup: StaticLookup> {
 		#[codec(index = 5)]
-		Balances(BalancesCall<T>),
+		Balances(BalancesCall<Lookup>),
 		#[codec(index = 7)]
 		Staking(StakingCall),
 		#[codec(index = 26)]
-		Utility(Box<UtilityCall<RelayChainCall<T>>>),
+		Utility(Box<UtilityCall<Self>>),
 		#[codec(index = 29)]
-		Proxy(Box<ProxyCall<T>>),
+		Proxy(Box<ProxyCall<Self>>),
 	}
 }
 
@@ -125,16 +123,16 @@ pub use kusama::*;
 #[cfg(feature = "polkadot")]
 pub use polkadot::*;
 
-pub struct RelayChainCallBuilder<T: Config, ParachainId: Get<ParaId>>(PhantomData<(T, ParachainId)>);
+pub struct RelayChainCallBuilder<Lookup: StaticLookup, ParachainId: Get<ParaId>>(PhantomData<(Lookup, ParachainId)>);
 
-impl<T: Config, ParachainId: Get<ParaId>> CallBuilder for RelayChainCallBuilder<T, ParachainId>
+impl<Lookup, ParachainId: Get<ParaId>> CallBuilder for RelayChainCallBuilder<Lookup, ParachainId>
 where
-	T::AccountId: FullCodec,
-	RelayChainCall<T>: FullCodec,
+	Lookup: StaticLookup<Target = AccountId>,
+	RelayChainCall<Lookup>: FullCodec,
 {
-	type AccountId = T::AccountId;
+	type AccountId = AccountId;
 	type Balance = Balance;
-	type RelayChainCall = RelayChainCall<T>;
+	type RelayChainCall = RelayChainCall<Lookup>;
 
 	fn utility_batch_call(calls: Vec<Self::RelayChainCall>) -> Self::RelayChainCall {
 		RelayChainCall::Utility(Box::new(UtilityCall::BatchAll(calls)))
@@ -157,7 +155,7 @@ where
 	}
 
 	fn balances_transfer_keep_alive(to: Self::AccountId, amount: Self::Balance) -> Self::RelayChainCall {
-		RelayChainCall::Balances(BalancesCall::TransferKeepAlive(T::Lookup::unlookup(to), amount))
+		RelayChainCall::Balances(BalancesCall::TransferKeepAlive(Lookup::unlookup(to), amount))
 	}
 
 	fn proxy_add_proxy(delegate: Self::AccountId) -> Self::RelayChainCall {

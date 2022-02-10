@@ -30,6 +30,8 @@ use module_support::CallBuilder;
 use orml_traits::MultiCurrency;
 use xcm_emulator::TestExt;
 
+type KaruraCallBuilder = RelayChainCallBuilder<<Runtime as frame_system::Config>::Lookup, ParachainInfo>;
+
 #[test]
 fn transfer_from_relay_chain() {
 	KusamaNet::execute_with(|| {
@@ -542,11 +544,9 @@ fn unspent_xcm_fee_is_returned_correctly() {
 
 	Karura::execute_with(|| {
 		// Construct a transfer XCM call with returning the deposit
-		let transfer_call = RelayChainCallBuilder::<Runtime, ParachainInfo>::balances_transfer_keep_alive(
-			AccountId::from(BOB),
-			dollar(NATIVE_CURRENCY),
-		);
-		let batch_call = RelayChainCallBuilder::<Runtime, ParachainInfo>::utility_as_derivative_call(transfer_call, 0);
+		let transfer_call =
+			KaruraCallBuilder::balances_transfer_keep_alive(AccountId::from(BOB), dollar(NATIVE_CURRENCY));
+		let batch_call = KaruraCallBuilder::utility_as_derivative_call(transfer_call, 0);
 		let weight = 10_000_000_000;
 		// Fee to transfer into the hold register
 		let asset = MultiAsset {
@@ -589,16 +589,11 @@ fn unspent_xcm_fee_is_returned_correctly() {
 
 	Karura::execute_with(|| {
 		// Construct a transfer using the RelaychainCallBuilder
-		let transfer_call = RelayChainCallBuilder::<Runtime, ParachainInfo>::balances_transfer_keep_alive(
-			AccountId::from(BOB),
-			dollar(NATIVE_CURRENCY),
-		);
-		let batch_call = RelayChainCallBuilder::<Runtime, ParachainInfo>::utility_as_derivative_call(transfer_call, 0);
-		let finalized_call = RelayChainCallBuilder::<Runtime, ParachainInfo>::finalize_call_into_xcm_message(
-			batch_call,
-			dollar(NATIVE_CURRENCY),
-			10_000_000_000,
-		);
+		let transfer_call =
+			KaruraCallBuilder::balances_transfer_keep_alive(AccountId::from(BOB), dollar(NATIVE_CURRENCY));
+		let batch_call = KaruraCallBuilder::utility_as_derivative_call(transfer_call, 0);
+		let finalized_call =
+			KaruraCallBuilder::finalize_call_into_xcm_message(batch_call, dollar(NATIVE_CURRENCY), 10_000_000_000);
 
 		let res = PolkadotXcm::send_xcm(Here, Parent, finalized_call);
 		assert!(res.is_ok());

@@ -300,7 +300,7 @@ impl Config for Runtime {
 	type DefaultExchangeRate = DefaultExchangeRate;
 	type MaxRewardPerEra = MaxRewardPerEra;
 	type MintFee = MintFee;
-	type RelayChainCallBuilder = RelayChainCallBuilder<Runtime, ParachainId>;
+	type RelayChainCallBuilder = RelayChainCallBuilder<Self::Lookup, ParachainId>;
 	type BaseWithdrawFee = BaseWithdrawFee;
 	type HomaUnbondFee = HomaUnbondFee;
 	type RelayChainBlockNumber = MockRelayBlockNumberProvider;

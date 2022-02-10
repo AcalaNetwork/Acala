@@ -77,7 +77,7 @@ pub mod module {
 		type TreasuryAccount: Get<Self::AccountId>;
 
 		/// The XcmInterface to communicate with the relaychain via XCM.
-		type XcmInterface: ProxyXcm<Self::AccountId, Balance>;
+		type XcmInterface: ProxyXcm<Self::AccountId>;
 
 		/// Origin used by Oracles. Used to relay information from the Relaychain.
 		type OracleOrigin: EnsureOrigin<Self::Origin>;
