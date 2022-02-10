@@ -14,6 +14,7 @@ on:
         required: true
       image:
         description: The docker image.
+        default: acala/karura-node:latest
         required: true
 
 jobs:
@@ -47,7 +48,7 @@ jobs:
           echo "-------------------------------------------" >> output.txt
 
       - name: Start local node
-        run: docker run --name extrinsic-ordering-check-from-bin --rm $IMAGE --chain=${{ env.CHAIN }}-dev --rpc-cors=all --ws-external --tmp -- --dev &
+        run: docker run --name extrinsic-ordering-check-from-bin -p 9944:9944 --rm $IMAGE --chain=${{ env.CHAIN }}-dev --rpc-cors=all --ws-external --tmp -- --dev &
 
       - name: Compare the metadata
         run: |
