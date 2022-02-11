@@ -217,8 +217,8 @@ impl<O: Into<Result<RawOrigin, O>> + From<RawOrigin>> EnsureOrigin<O> for Ensure
 	type Success = Vec<u8>;
 
 	fn try_origin(o: O) -> Result<Self::Success, O> {
-		o.into().and_then(|o| match o {
-			RawOrigin::ForeignStateOracle { data } => Ok(data),
+		o.into().map(|o| match o {
+			RawOrigin::ForeignStateOracle { data } => data,
 		})
 	}
 

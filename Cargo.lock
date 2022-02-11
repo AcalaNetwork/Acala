@@ -6263,6 +6263,7 @@ name = "module-foreign-state-oracle"
 version = "2.3.0"
 dependencies = [
  "acala-primitives",
+ "frame-benchmarking",
  "frame-support",
  "frame-system",
  "module-support",
