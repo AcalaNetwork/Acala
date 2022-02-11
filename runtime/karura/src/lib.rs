@@ -2249,7 +2249,11 @@ impl_runtime_apis! {
 		Balance,
 	> for Runtime {
 		fn query_existential_deposit(key: CurrencyId) -> Balance {
-			ExistentialDeposits::get(&key)
+			if key == GetNativeCurrencyId::get() {
+				NativeTokenExistentialDeposit::get()
+			} else {
+				ExistentialDeposits::get(&key)
+			}
 		}
 	}
 
