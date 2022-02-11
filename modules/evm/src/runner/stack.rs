@@ -478,6 +478,13 @@ impl<'config> SubstrateStackSubstate<'config> {
 		}
 		self.metadata().dirty_accounts.borrow_mut().insert(address);
 	}
+
+	pub fn is_account_dirty(&self, address: H160) -> bool {
+		if let Some(parent) = self.parent.as_ref() {
+			return parent.is_account_dirty(address);
+		}
+		self.metadata().dirty_accounts.borrow().contains(&address)
+	}
 }
 
 /// Substrate backend for EVM.
@@ -567,7 +574,7 @@ impl<'vicinity, 'config, T: Config> BackendT for SubstrateStackState<'vicinity, 
 
 	#[cfg(feature = "evm-tests")]
 	fn exists(&self, address: H160) -> bool {
-		Accounts::<T>::contains_key(&address)
+		Accounts::<T>::contains_key(&address) || self.substate.is_account_dirty(address)
 	}
 
 	#[cfg(not(feature = "evm-tests"))]
@@ -745,10 +752,6 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 	}
 
 	fn transfer(&mut self, transfer: Transfer) -> Result<(), ExitError> {
-		// this is needed only for evm-tests to keep track of dirty accounts
-		#[cfg(feature = "evm-tests")]
-		self.touch(transfer.target);
-
 		if transfer.value.is_zero() {
 			return Ok(());
 		}
