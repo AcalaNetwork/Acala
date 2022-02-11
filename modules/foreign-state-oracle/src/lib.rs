@@ -41,7 +41,7 @@ pub type QueryIndex = u64;
 
 #[derive(PartialEq, Eq, Clone, RuntimeDebug, Encode, Decode, TypeInfo)]
 pub enum RawOrigin {
-	RelaychainOracle { data: Vec<u8> },
+	ForeignStateOracle { data: Vec<u8> },
 }
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo, MaxEncodedLen)]
@@ -148,7 +148,7 @@ pub mod module {
 
 			let result = verifiable_call
 				.dispatchable_call
-				.dispatch(RawOrigin::RelaychainOracle { data }.into());
+				.dispatch(RawOrigin::ForeignStateOracle { data }.into());
 
 			Self::deposit_event(Event::CallDispatched {
 				task_result: result.map(|_| ()).map_err(|e| e.error),
@@ -208,5 +208,23 @@ impl<T: Config> ForeignChainStateQuery<T::AccountId, T::VerifiableTask> for Pall
 		Self::deposit_event(Event::CreateActiveQuery { index });
 
 		Ok(())
+	}
+}
+
+pub struct EnsureForeignStateOracle;
+
+impl<O: Into<Result<RawOrigin, O>> + From<RawOrigin>> EnsureOrigin<O> for EnsureForeignStateOracle {
+	type Success = Vec<u8>;
+
+	fn try_origin(o: O) -> Result<Self::Success, O> {
+		o.into().and_then(|o| match o {
+			RawOrigin::ForeignStateOracle { data } => Ok(data),
+			r => Err(O::from(r)),
+		})
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	fn successful_origin() -> O {
+		O::from(RawOrigin::ForeignStateOracle { data })
 	}
 }

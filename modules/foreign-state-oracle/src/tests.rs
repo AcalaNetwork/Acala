@@ -22,20 +22,22 @@
 
 use super::*;
 use frame_support::{assert_noop, assert_ok};
-use mock::{Call as CallOf, Origin as OriginOf, *};
-use sp_runtime::traits::{BlakeTwo256, Hash};
+use mock::{Call as MockCall, Event as MockEvent, Origin as MockOrigin, *};
 
 #[test]
 fn dispatch_call_test() {
 	ExtBuilder::default().build().execute_with(|| {
-		let call = CallOf::QueryExample(query_example::Call::injected_call {});
+		System::set_block_number(1);
+		let _ = MockCall::QueryExample(query_example::Call::injected_call {});
 
 		assert_ok!(query_example::Pallet::<Runtime>::example_query_call(&ALICE));
 
-		assert_ok!(RelaychainOracle::dispatch_task(
-			OriginOf::signed(ALICE),
+		assert_ok!(ForeignStateOracle::dispatch_task(
+			MockOrigin::signed(1),
 			0,
 			b"hello".to_vec()
 		));
+		println!("{:?}", System::events());
+		panic!();
 	});
 }

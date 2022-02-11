@@ -53,20 +53,22 @@ pub mod query_example {
 			+ IsType<<Self as frame_system::Config>::Call>;
 
 		type ForeignStateQuery: ForeignChainStateQuery<Self::AccountId, <Self as Config>::Call>;
+
+		type OracleOrigin: EnsureOrigin<Self::Origin>;
 	}
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		CallDispatched,
+		OriginInjected,
 	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight(0)]
 		pub fn injected_call(origin: OriginFor<T>) -> DispatchResult {
-			let who = ensure_signed(origin)?;
-			Self::deposit_event(Event::<T>::CallDispatched);
+			let data = T::OracleOrigin::ensure_origin(origin)?;
+			Self::deposit_event(Event::<T>::OriginInjected);
 			Ok(())
 		}
 	}
@@ -142,7 +144,8 @@ impl pallet_balances::Config for Runtime {
 impl query_example::Config for Runtime {
 	type Event = Event;
 	type Call = Call;
-	type ForeignStateQuery = RelaychainOracle;
+	type ForeignStateQuery = ForeignStateOracle;
+	type OracleOrigin = EnsureForeignStateOracle;
 }
 
 parameter_types! {
@@ -173,7 +176,7 @@ construct_runtime!(
 	{
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
 		Balances: pallet_balances::{Pallet, Call, Config<T>, Storage, Event<T>},
-		RelaychainOracle: module::{Pallet, Call, Storage, Event<T>, Origin},
+		ForeignStateOracle: module::{Pallet, Call, Storage, Event<T>, Origin},
 		QueryExample: query_example::{Pallet, Call, Event<T>},
 	}
 );
