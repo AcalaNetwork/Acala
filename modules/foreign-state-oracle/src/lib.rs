@@ -219,7 +219,6 @@ impl<O: Into<Result<RawOrigin, O>> + From<RawOrigin>> EnsureOrigin<O> for Ensure
 	fn try_origin(o: O) -> Result<Self::Success, O> {
 		o.into().and_then(|o| match o {
 			RawOrigin::ForeignStateOracle { data } => Ok(data),
-			r => Err(O::from(r)),
 		})
 	}
 

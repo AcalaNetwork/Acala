@@ -38,6 +38,6 @@ fn dispatch_call_test() {
 			b"hello".to_vec()
 		));
 		println!("{:?}", System::events());
-		panic!();
+		//panic!();
 	});
 }

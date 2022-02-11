@@ -54,13 +54,13 @@ pub mod query_example {
 
 		type ForeignStateQuery: ForeignChainStateQuery<Self::AccountId, <Self as Config>::Call>;
 
-		type OracleOrigin: EnsureOrigin<Self::Origin>;
+		type OracleOrigin: EnsureOrigin<Self::Origin, Success = Vec<u8>>;
 	}
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		OriginInjected,
+		OriginInjected { origin_data: Vec<u8> },
 	}
 
 	#[pallet::call]
@@ -68,7 +68,7 @@ pub mod query_example {
 		#[pallet::weight(0)]
 		pub fn injected_call(origin: OriginFor<T>) -> DispatchResult {
 			let data = T::OracleOrigin::ensure_origin(origin)?;
-			Self::deposit_event(Event::<T>::OriginInjected);
+			Self::deposit_event(Event::<T>::OriginInjected { origin_data: data });
 			Ok(())
 		}
 	}
