@@ -625,7 +625,7 @@ pub mod module {
 			Ok(())
 		}
 
-		#[pallet::weight(< T as Config >::WeightInfo::reset_current_era())]
+		#[pallet::weight(< T as Config >::WeightInfo::on_initialize_with_bump_era())]
 		pub fn force_bump_current_era(origin: OriginFor<T>, bump_amount: EraIndex) -> DispatchResult {
 			T::GovernanceOrigin::ensure_origin(origin)?;
 			Self::bump_current_era(bump_amount)
