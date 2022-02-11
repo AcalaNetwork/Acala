@@ -12,7 +12,6 @@ relaychain:
     - --rpc-methods=unsafe
     - --wasm-execution=compiled
     - --execution=wasm
-    - --beefy
   nodes:
     - name: alice
     - name: bob
@@ -37,7 +36,6 @@ parachains:
   relaychainFlags:
     - --wasm-execution=compiled
     - --execution=wasm
-    - --beefy
   env:
     RUST_LOG: sc_basic_authorship=trace,cumulus-consensus=trace,cumulus-collator=trace,collator_protocol=trace,collation_generation=trace,aura=debug
   volumePath: /acala/data
