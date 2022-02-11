@@ -1979,7 +1979,7 @@ construct_runtime!(
 
 		// Tokens & Related
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 10,
-		Tokens: orml_tokens::{Pallet, Call, Storage, Event<T>, Config<T>} = 11,
+		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>} = 11,
 		Currencies: module_currencies::{Pallet, Call, Event<T>} = 12,
 		Vesting: orml_vesting::{Pallet, Storage, Call, Event<T>, Config<T>} = 13,
 		TransactionPayment: module_transaction_payment::{Pallet, Call, Storage, Event<T>} = 14,
@@ -2228,7 +2228,7 @@ impl_runtime_apis! {
 		CurrencyId,
 		TimeStampedPrice,
 	> for Runtime {
-		fn get_value(provider_id: DataProviderId ,key: CurrencyId) -> Option<TimeStampedPrice> {
+		fn get_value(provider_id: DataProviderId, key: CurrencyId) -> Option<TimeStampedPrice> {
 			match provider_id {
 				DataProviderId::Acala => AcalaOracle::get_no_op(&key),
 				DataProviderId::Aggregated => <AggregatedDataProvider as DataProviderExtended<_, _>>::get_no_op(&key)
