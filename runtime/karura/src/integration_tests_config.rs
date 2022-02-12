@@ -31,9 +31,17 @@ parameter_types! {
 pub type Trader = (
 	TransactionFeePoolTrader<Runtime, CurrencyIdConvert, KarPerSecondAsBased, ToTreasury>,
 	FixedRateOfFungible<KsmPerSecond, ToTreasury>,
+	FixedRateOfFungible<KusdPerSecond, ToTreasury>,
+	FixedRateOfFungible<KusdPerSecondOfCanonicalLocation, ToTreasury>,
 	FixedRateOfFungible<KarPerSecond, ToTreasury>,
 	FixedRateOfFungible<KarPerSecondOfCanonicalLocation, ToTreasury>,
+	FixedRateOfFungible<LksmPerSecond, ToTreasury>,
+	FixedRateOfFungible<LksmPerSecondOfCanonicalLocation, ToTreasury>,
 	FixedRateOfFungible<BncPerSecond, ToTreasury>,
 	FixedRateOfFungible<BncPerSecondOfCanonicalLocation, ToTreasury>,
+	FixedRateOfFungible<VsksmPerSecond, ToTreasury>,
+	FixedRateOfFungible<PHAPerSecond, ToTreasury>,
+	FixedRateOfFungible<KbtcPerSecond, ToTreasury>,
+	FixedRateOfFungible<KintPerSecond, ToTreasury>,
 	FixedRateOfForeignAsset<Runtime, ForeignAssetUnitsPerSecond, ToTreasury>,
 );
