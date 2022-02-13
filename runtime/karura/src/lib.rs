@@ -1060,7 +1060,7 @@ parameter_types! {
 	pub DefaultLiquidationRatio: Ratio = Ratio::saturating_from_rational(150, 100);
 	pub DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
 	pub DefaultLiquidationPenalty: Rate = Rate::saturating_from_rational(8, 100);
-	pub MinimumDebitValue: Balance = 20 * dollar(KUSD);
+	pub MinimumDebitValue: Balance = 50 * dollar(KUSD);
 	pub MaxSwapSlippageCompareToOracle: Ratio = Ratio::saturating_from_rational(15, 100);
 }
 
