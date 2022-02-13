@@ -32,7 +32,19 @@ build-all:
 
 .PHONY: build-release
 build-release:
-	CARGO_PROFILE_RELEASE_LTO=true RUSTFLAGS="-C codegen-units=1" cargo build --locked --features with-all-runtime --release
+	CARGO_PROFILE_RELEASE_LTO=true RUSTFLAGS="-C codegen-units=1" cargo build --locked --features with-all-runtime --release --workspace --exclude runtime-integration-tests
+
+.PHONY: build-mandala-release
+build-mandala-release:
+	CARGO_PROFILE_RELEASE_LTO=true RUSTFLAGS="-C codegen-units=1" cargo build --locked --features with-mandala-runtime --release --workspace --exclude runtime-integration-tests
+
+.PHONY: build-karura-release
+build-karura-release:
+	CARGO_PROFILE_RELEASE_LTO=true RUSTFLAGS="-C codegen-units=1" cargo build --locked --features with-karura-runtime --release --workspace --exclude runtime-integration-tests
+
+.PHONY: build-acala-release
+build-acala-release:
+	CARGO_PROFILE_RELEASE_LTO=true RUSTFLAGS="-C codegen-units=1" cargo build --locked --features with-acala-runtime --release --workspace --exclude runtime-integration-tests
 
 .PHONY: check
 check: githooks
@@ -159,15 +171,15 @@ cargo-update:
 
 .PHONY: build-wasm-mandala
 build-wasm-mandala:
-	./scripts/build-only-wasm.sh -p mandala-runtime --features=on-chain-release-build
+	./scripts/build-only-wasm.sh -p mandala-runtime --features=on-chain-release-build --workspace --exclude runtime-integration-tests
 
 .PHONY: build-wasm-karura
 build-wasm-karura:
-	./scripts/build-only-wasm.sh -p karura-runtime --features=on-chain-release-build
+	./scripts/build-only-wasm.sh -p karura-runtime --features=on-chain-release-build --workspace --exclude runtime-integration-tests
 
 .PHONY: build-wasm-acala
 build-wasm-acala:
-	./scripts/build-only-wasm.sh -p acala-runtime --features=on-chain-release-build
+	./scripts/build-only-wasm.sh -p acala-runtime --features=on-chain-release-build --workspace --exclude runtime-integration-tests
 
 .PHONY: srtool-build-wasm-mandala
 srtool-build-wasm-mandala:
