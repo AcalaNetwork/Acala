@@ -56,15 +56,15 @@ pub struct TaskInfo {
 	pub fee: Balance,
 }
 
-/// The `ScheduleCall` impl precompile.
+/// The `Schedule` impl precompile.
 ///
 ///
 /// `input` data starts with `action`.
 ///
 /// Actions:
-/// - ScheduleCall. Rest `input` bytes: `from`, `target`, `value`, `gas_limit`, `storage_limit`,
+/// - Schedule. Rest `input` bytes: `from`, `target`, `value`, `gas_limit`, `storage_limit`,
 ///   `min_delay`, `input_len`, `input_data`.
-pub struct ScheduleCallPrecompile<Runtime>(PhantomData<Runtime>);
+pub struct SchedulePrecompile<Runtime>(PhantomData<Runtime>);
 
 #[module_evm_utiltity_macro::generate_function_selector]
 #[derive(RuntimeDebug, Eq, PartialEq, TryFromPrimitive, IntoPrimitive)]
@@ -80,7 +80,7 @@ type PalletBalanceOf<T> =
 type NegativeImbalanceOf<T> =
 	<<T as module_evm::Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::NegativeImbalance;
 
-impl<Runtime> Precompile for ScheduleCallPrecompile<Runtime>
+impl<Runtime> Precompile for SchedulePrecompile<Runtime>
 where
 	PalletBalanceOf<Runtime>: IsType<Balance>,
 	module_transaction_payment::ChargeTransactionPayment<Runtime>:

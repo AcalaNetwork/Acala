@@ -36,25 +36,25 @@ use sp_core::H160;
 use sp_std::marker::PhantomData;
 
 pub mod dex;
+pub mod evm;
 pub mod input;
 pub mod multicurrency;
 pub mod nft;
 pub mod oracle;
-pub mod schedule_call;
-pub mod state_rent;
+pub mod schedule;
 
 use crate::SystemContractsFilter;
-pub use dex::DexPrecompile;
+pub use dex::DEXPrecompile;
+pub use evm::EVMPrecompile;
 pub use multicurrency::MultiCurrencyPrecompile;
 pub use nft::NFTPrecompile;
 pub use oracle::OraclePrecompile;
-pub use schedule_call::ScheduleCallPrecompile;
-pub use state_rent::StateRentPrecompile;
+pub use schedule::SchedulePrecompile;
 
 #[derive(Default)]
-pub struct EvmPrecompiles<R>(PhantomData<R>);
+pub struct AllPrecompiles<R>(PhantomData<R>);
 
-impl<R> EvmPrecompiles<R>
+impl<R> AllPrecompiles<R>
 where
 	R: module_evm::Config,
 {
@@ -82,15 +82,15 @@ where
 	}
 }
 
-impl<R> PrecompileSet for EvmPrecompiles<R>
+impl<R> PrecompileSet for AllPrecompiles<R>
 where
 	R: module_evm::Config,
 	MultiCurrencyPrecompile<R>: Precompile,
 	NFTPrecompile<R>: Precompile,
-	StateRentPrecompile<R>: Precompile,
+	EVMPrecompile<R>: Precompile,
 	OraclePrecompile<R>: Precompile,
-	DexPrecompile<R>: Precompile,
-	ScheduleCallPrecompile<R>: Precompile,
+	DEXPrecompile<R>: Precompile,
+	SchedulePrecompile<R>: Precompile,
 {
 	fn execute(
 		&self,
@@ -141,15 +141,13 @@ where
 			} else if address == PRECOMPILE_ADDRESS_START | H160::from_low_u64_be(1) {
 				Some(NFTPrecompile::<R>::execute(input, target_gas, context, is_static))
 			} else if address == PRECOMPILE_ADDRESS_START | H160::from_low_u64_be(2) {
-				Some(StateRentPrecompile::<R>::execute(input, target_gas, context, is_static))
+				Some(EVMPrecompile::<R>::execute(input, target_gas, context, is_static))
 			} else if address == PRECOMPILE_ADDRESS_START | H160::from_low_u64_be(3) {
 				Some(OraclePrecompile::<R>::execute(input, target_gas, context, is_static))
 			} else if address == PRECOMPILE_ADDRESS_START | H160::from_low_u64_be(4) {
-				Some(ScheduleCallPrecompile::<R>::execute(
-					input, target_gas, context, is_static,
-				))
+				Some(SchedulePrecompile::<R>::execute(input, target_gas, context, is_static))
 			} else if address == PRECOMPILE_ADDRESS_START | H160::from_low_u64_be(5) {
-				Some(DexPrecompile::<R>::execute(input, target_gas, context, is_static))
+				Some(DEXPrecompile::<R>::execute(input, target_gas, context, is_static))
 			} else {
 				None
 			}
