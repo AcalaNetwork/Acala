@@ -110,16 +110,6 @@ type ChangeOptionRate = Change<Option<Rate>>;
 type ChangeOptionRatio = Change<Option<Ratio>>;
 type ChangeBalance = Change<Balance>;
 
-/// Liquidation strategy available
-#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, TypeInfo)]
-pub enum LiquidationStrategy {
-	/// Liquidation CDP's collateral by create collateral auction, auction_count
-	/// being the number of new auctions created
-	Auction { auction_count: u32 },
-	/// Liquidation CDP's collateral by swap with DEX
-	Exchange,
-}
-
 /// Status of CDP
 #[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, TypeInfo)]
 pub enum CDPStatus {
@@ -230,7 +220,7 @@ pub mod module {
 			owner: T::AccountId,
 			collateral_amount: Balance,
 			bad_debt_value: Balance,
-			liquidation_strategy: LiquidationStrategy,
+			target_amount: Balance,
 		},
 		/// Settle the CDP has debit.
 		SettleCDPInDebit {
@@ -654,8 +644,6 @@ impl<T: Config> Pallet<T> {
 		let lock_expiration = Duration::from_millis(LOCK_DURATION);
 		let mut lock = StorageLock::<'_, Time>::with_deadline(OFFCHAIN_WORKER_LOCK, lock_expiration);
 		let mut guard = lock.try_lock().map_err(|_| OffchainErr::OffchainLock)?;
-
-		let collateral_currency_ids = T::CollateralCurrencyIds::get();
 		let to_be_continue = StorageValueRef::persistent(OFFCHAIN_WORKER_DATA);
 
 		// get to_be_continue record
@@ -911,62 +899,111 @@ impl<T: Config> Pallet<T> {
 
 		let bad_debt_value = Self::get_debit_value(currency_id, debit);
 		let target_stable_amount = Self::get_liquidation_penalty(currency_id).saturating_mul_acc_int(bad_debt_value);
-		let liquidation_strategy = (|| -> Result<LiquidationStrategy, DispatchError> {
-			// calculate the supply limit by slippage limit for the price of oracle,
-			let max_supply_limit = Ratio::one()
-				.saturating_sub(T::MaxSwapSlippageCompareToOracle::get())
-				.reciprocal()
-				.unwrap_or_else(Ratio::max_value)
-				.saturating_mul_int(
-					T::PriceSource::get_relative_price(T::GetStableCurrencyId::get(), currency_id)
-						.expect("the oracle price should be avalible because liquidation are triggered by it.")
-						.saturating_mul_int(target_stable_amount),
-				);
-			let collateral_supply = collateral.min(max_supply_limit);
 
-			// try swap collateral to stable to settle debit swap succeed.
-			if let Ok((actual_supply_collateral, _)) = <T as Config>::CDPTreasury::swap_collateral_to_stable(
-				currency_id,
-				SwapLimit::ExactTarget(collateral_supply, target_stable_amount),
-				false,
-			) {
-				let refund_collateral_amount = collateral
-					.checked_sub(actual_supply_collateral)
-					.expect("swap succecced means collateral >= actual_supply_collateral; qed");
+		match currency_id {
+			CurrencyId::DexShare(dex_share_0, dex_share_1) => {
+				let token_0: CurrencyId = dex_share_0.into();
+				let token_1: CurrencyId = dex_share_1.into();
 
-				// refund remain collateral to CDP owner
-				if !refund_collateral_amount.is_zero() {
-					<T as Config>::CDPTreasury::withdraw_collateral(&who, currency_id, refund_collateral_amount)?;
+				// remove liqudity first
+				let (amount_0, amount_1) =
+					<T as Config>::CDPTreasury::remove_liquidity_for_lp_collateral(currency_id, collateral)?;
+
+				// if these's stable
+				let stable_currency_id = T::GetStableCurrencyId::get();
+				if token_0 == stable_currency_id || token_1 == stable_currency_id {
+					let (existing_stable, need_handle_currency, handle_amount) = if token_0 == stable_currency_id {
+						(amount_0, token_1, amount_1)
+					} else {
+						(amount_1, token_0, amount_0)
+					};
+
+					// these's stable refund
+					if existing_stable > target_stable_amount {
+						<T as Config>::CDPTreasury::withdraw_collateral(
+							&who,
+							stable_currency_id,
+							existing_stable - target_stable_amount,
+						)?;
+					}
+
+					let remain_target = target_stable_amount.saturating_sub(existing_stable);
+					Self::handle_liquidated_collateral(&who, need_handle_currency, handle_amount, remain_target)?;
+				} else {
+					// token_0 and token_1 each take half target_stable
+					let target_0 = target_stable_amount / 2;
+					let target_1 = target_stable_amount.saturating_sub(target_0);
+					Self::handle_liquidated_collateral(&who, token_0, amount_0, target_0)?;
+					Self::handle_liquidated_collateral(&who, token_1, amount_1, target_1)?;
 				}
-
-				return Ok(LiquidationStrategy::Exchange);
 			}
-
-			// if cannot liquidate by swap, create collateral auctions by cdp treasury
-			let created_auctions = <T as Config>::CDPTreasury::create_collateral_auctions(
-				currency_id,
-				collateral,
-				target_stable_amount,
-				who.clone(),
-				true,
-			)?;
-
-			Ok(LiquidationStrategy::Auction {
-				auction_count: created_auctions,
-			})
-		})()?;
+			_ => {
+				Self::handle_liquidated_collateral(&who, currency_id, collateral, target_stable_amount)?;
+			}
+		}
 
 		Self::deposit_event(Event::LiquidateUnsafeCDP {
 			collateral_type: currency_id,
 			owner: who,
 			collateral_amount: collateral,
 			bad_debt_value,
-			liquidation_strategy: liquidation_strategy.clone(),
+			target_amount: target_stable_amount,
 		});
-		match liquidation_strategy {
-			LiquidationStrategy::Auction { auction_count } => Ok(T::WeightInfo::liquidate_by_auction(auction_count)),
-			LiquidationStrategy::Exchange => Ok(T::WeightInfo::liquidate_by_dex()),
+		Ok(T::WeightInfo::liquidate_by_dex())
+	}
+
+	pub fn handle_liquidated_collateral(
+		who: &T::AccountId,
+		currency_id: CurrencyId,
+		amount: Balance,
+		target_stable_amount: Balance,
+	) -> DispatchResult {
+		if target_stable_amount.is_zero() {
+			// refund collateral to CDP owner
+			if !amount.is_zero() {
+				<T as Config>::CDPTreasury::withdraw_collateral(who, currency_id, amount)?;
+			}
+			return Ok(());
 		}
+
+		// calculate the supply limit by slippage limit for the price of oracle,
+		let max_supply_limit = Ratio::one()
+			.saturating_sub(T::MaxSwapSlippageCompareToOracle::get())
+			.reciprocal()
+			.unwrap_or_else(Ratio::max_value)
+			.saturating_mul_int(
+				T::PriceSource::get_relative_price(T::GetStableCurrencyId::get(), currency_id)
+					.expect("the oracle price should be avalible because liquidation are triggered by it.")
+					.saturating_mul_int(target_stable_amount),
+			);
+		let collateral_supply = amount.min(max_supply_limit);
+
+		// try swap collateral to stable to settle debit swap succeed.
+		if let Ok((actual_supply_collateral, _)) = <T as Config>::CDPTreasury::swap_collateral_to_stable(
+			currency_id,
+			SwapLimit::ExactTarget(collateral_supply, target_stable_amount),
+			false,
+		) {
+			let refund_collateral_amount = amount
+				.checked_sub(actual_supply_collateral)
+				.expect("swap succecced means collateral >= actual_supply_collateral; qed");
+
+			// refund remain collateral to CDP owner
+			if !refund_collateral_amount.is_zero() {
+				<T as Config>::CDPTreasury::withdraw_collateral(who, currency_id, refund_collateral_amount)?;
+			}
+		} else {
+			// if cannot liquidate by swap, create collateral auctions by cdp treasury
+			<T as Config>::CDPTreasury::create_collateral_auctions(
+				currency_id,
+				amount,
+				target_stable_amount,
+				who.clone(),
+				true,
+			)?;
+		}
+
+		Ok(())
 	}
 }
 

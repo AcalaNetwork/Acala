@@ -998,52 +998,60 @@ impl<T: Config> Pallet<T> {
 		min_withdrawn_a: Balance,
 		min_withdrawn_b: Balance,
 		by_unstake: bool,
-	) -> DispatchResult {
+	) -> sp_std::result::Result<(Balance, Balance), DispatchError> {
 		if remove_share.is_zero() {
-			return Ok(());
+			return Ok((Zero::zero(), Zero::zero()));
 		}
 		let trading_pair =
 			TradingPair::from_currency_ids(currency_id_a, currency_id_b).ok_or(Error::<T>::InvalidCurrencyId)?;
 		let dex_share_currency_id = trading_pair.dex_share_currency_id();
 
-		Self::try_mutate_liquidity_pool(&trading_pair, |(pool_0, pool_1)| -> DispatchResult {
-			let (min_withdrawn_0, min_withdrawn_1) = if currency_id_a == trading_pair.first() {
-				(min_withdrawn_a, min_withdrawn_b)
-			} else {
-				(min_withdrawn_b, min_withdrawn_a)
-			};
-			let total_shares = T::Currency::total_issuance(dex_share_currency_id);
-			let proportion =
-				Ratio::checked_from_rational(remove_share, total_shares).ok_or(ArithmeticError::Overflow)?;
-			let pool_0_decrement = proportion.checked_mul_int(*pool_0).ok_or(ArithmeticError::Overflow)?;
-			let pool_1_decrement = proportion.checked_mul_int(*pool_1).ok_or(ArithmeticError::Overflow)?;
-			let module_account_id = Self::account_id();
+		Self::try_mutate_liquidity_pool(
+			&trading_pair,
+			|(pool_0, pool_1)| -> sp_std::result::Result<(Balance, Balance), DispatchError> {
+				let (min_withdrawn_0, min_withdrawn_1) = if currency_id_a == trading_pair.first() {
+					(min_withdrawn_a, min_withdrawn_b)
+				} else {
+					(min_withdrawn_b, min_withdrawn_a)
+				};
+				let total_shares = T::Currency::total_issuance(dex_share_currency_id);
+				let proportion =
+					Ratio::checked_from_rational(remove_share, total_shares).ok_or(ArithmeticError::Overflow)?;
+				let pool_0_decrement = proportion.checked_mul_int(*pool_0).ok_or(ArithmeticError::Overflow)?;
+				let pool_1_decrement = proportion.checked_mul_int(*pool_1).ok_or(ArithmeticError::Overflow)?;
+				let module_account_id = Self::account_id();
 
-			ensure!(
-				pool_0_decrement >= min_withdrawn_0 && pool_1_decrement >= min_withdrawn_1,
-				Error::<T>::UnacceptableLiquidityWithdrawn,
-			);
+				ensure!(
+					pool_0_decrement >= min_withdrawn_0 && pool_1_decrement >= min_withdrawn_1,
+					Error::<T>::UnacceptableLiquidityWithdrawn,
+				);
 
-			if by_unstake {
-				T::DEXIncentives::do_withdraw_dex_share(who, dex_share_currency_id, remove_share)?;
-			}
-			T::Currency::withdraw(dex_share_currency_id, who, remove_share)?;
-			T::Currency::transfer(trading_pair.first(), &module_account_id, who, pool_0_decrement)?;
-			T::Currency::transfer(trading_pair.second(), &module_account_id, who, pool_1_decrement)?;
+				if by_unstake {
+					T::DEXIncentives::do_withdraw_dex_share(who, dex_share_currency_id, remove_share)?;
+				}
+				T::Currency::withdraw(dex_share_currency_id, who, remove_share)?;
+				T::Currency::transfer(trading_pair.first(), &module_account_id, who, pool_0_decrement)?;
+				T::Currency::transfer(trading_pair.second(), &module_account_id, who, pool_1_decrement)?;
 
-			*pool_0 = pool_0.checked_sub(pool_0_decrement).ok_or(ArithmeticError::Underflow)?;
-			*pool_1 = pool_1.checked_sub(pool_1_decrement).ok_or(ArithmeticError::Underflow)?;
+				*pool_0 = pool_0.checked_sub(pool_0_decrement).ok_or(ArithmeticError::Underflow)?;
+				*pool_1 = pool_1.checked_sub(pool_1_decrement).ok_or(ArithmeticError::Underflow)?;
 
-			Self::deposit_event(Event::RemoveLiquidity {
-				who: who.clone(),
-				currency_0: trading_pair.first(),
-				pool_0: pool_0_decrement,
-				currency_1: trading_pair.second(),
-				pool_1: pool_1_decrement,
-				share_decrement: remove_share,
-			});
-			Ok(())
-		})
+				Self::deposit_event(Event::RemoveLiquidity {
+					who: who.clone(),
+					currency_0: trading_pair.first(),
+					pool_0: pool_0_decrement,
+					currency_1: trading_pair.second(),
+					pool_1: pool_1_decrement,
+					share_decrement: remove_share,
+				});
+
+				if currency_id_a == trading_pair.first() {
+					Ok((pool_0_decrement, pool_1_decrement))
+				} else {
+					Ok((pool_1_decrement, pool_0_decrement))
+				}
+			},
+		)
 	}
 
 	fn get_liquidity(currency_id_a: CurrencyId, currency_id_b: CurrencyId) -> (Balance, Balance) {
@@ -1407,7 +1415,7 @@ impl<T: Config> DEXManager<T::AccountId, CurrencyId, Balance> for Pallet<T> {
 		min_withdrawn_a: Balance,
 		min_withdrawn_b: Balance,
 		by_unstake: bool,
-	) -> DispatchResult {
+	) -> sp_std::result::Result<(Balance, Balance), DispatchError> {
 		Self::do_remove_liquidity(
 			who,
 			currency_id_a,

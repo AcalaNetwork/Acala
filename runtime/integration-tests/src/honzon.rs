@@ -17,7 +17,6 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::setup::*;
-use module_cdp_engine::LiquidationStrategy;
 
 #[test]
 fn emergency_shutdown_and_cdp_treasury() {
@@ -188,13 +187,12 @@ fn liquidate_cdp() {
 				owner: AccountId::from(ALICE),
 				collateral_amount: 50 * dollar(RELAY_CHAIN_CURRENCY),
 				bad_debt_value: 250_000 * dollar(USD_CURRENCY),
-				liquidation_strategy: LiquidationStrategy::Auction { auction_count: 1 },
+				target_amount: Rate::saturating_from_rational(20, 100)
+					.saturating_mul_acc_int(250_000 * dollar(USD_CURRENCY)),
 			});
-
 			assert!(System::events()
 				.iter()
 				.any(|record| record.event == liquidate_alice_xbtc_cdp_event));
-
 			assert_eq!(Loans::positions(RELAY_CHAIN_CURRENCY, AccountId::from(ALICE)).debit, 0);
 			assert_eq!(
 				Loans::positions(RELAY_CHAIN_CURRENCY, AccountId::from(ALICE)).collateral,
@@ -213,7 +211,8 @@ fn liquidate_cdp() {
 				owner: AccountId::from(BOB),
 				collateral_amount: dollar(RELAY_CHAIN_CURRENCY),
 				bad_debt_value: 5_000 * dollar(USD_CURRENCY),
-				liquidation_strategy: LiquidationStrategy::Exchange,
+				target_amount: Rate::saturating_from_rational(20, 100)
+					.saturating_mul_acc_int(5_000 * dollar(USD_CURRENCY)),
 			});
 
 			assert!(System::events()

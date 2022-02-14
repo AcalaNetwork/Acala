@@ -191,7 +191,7 @@ impl DEXManager<AccountId, CurrencyId, Balance> for MockDEX {
 		_min_withdrawn_a: Balance,
 		_min_withdrawn_b: Balance,
 		_by_unstake: bool,
-	) -> DispatchResult {
+	) -> sp_std::result::Result<(Balance, Balance), DispatchError> {
 		unimplemented!()
 	}
 }
