@@ -173,6 +173,8 @@ pub mod module {
 		StillProvisioning,
 		/// The Asset unregistered.
 		AssetUnregistered,
+		/// The trading path is invalid
+		InvalidTradingPath,
 	}
 
 	#[pallet::event]
@@ -1104,11 +1106,9 @@ impl<T: Config> Pallet<T> {
 		path: &[CurrencyId],
 		supply_amount: Balance,
 	) -> sp_std::result::Result<Vec<Balance>, DispatchError> {
+		Self::validate_path(path)?;
+
 		let path_length = path.len();
-		ensure!(
-			path_length >= 2 && path_length <= T::TradingPathLimit::get().saturated_into(),
-			Error::<T>::InvalidTradingPathLength
-		);
 		let mut target_amounts: Vec<Balance> = vec![Zero::zero(); path_length];
 		target_amounts[0] = supply_amount;
 
@@ -1142,11 +1142,9 @@ impl<T: Config> Pallet<T> {
 		path: &[CurrencyId],
 		target_amount: Balance,
 	) -> sp_std::result::Result<Vec<Balance>, DispatchError> {
+		Self::validate_path(path)?;
+
 		let path_length = path.len();
-		ensure!(
-			path_length >= 2 && path_length <= T::TradingPathLimit::get().saturated_into(),
-			Error::<T>::InvalidTradingPathLength
-		);
 		let mut supply_amounts: Vec<Balance> = vec![Zero::zero(); path_length];
 		supply_amounts[path_length - 1] = target_amount;
 
@@ -1174,6 +1172,17 @@ impl<T: Config> Pallet<T> {
 		}
 
 		Ok(supply_amounts)
+	}
+
+	fn validate_path(path: &[CurrencyId]) -> DispatchResult {
+		let path_length = path.len();
+		ensure!(
+			path_length >= 2 && path_length <= T::TradingPathLimit::get().saturated_into(),
+			Error::<T>::InvalidTradingPathLength
+		);
+		ensure!(path[0] != path[path_length - 1], Error::<T>::InvalidTradingPath);
+
+		Ok(())
 	}
 
 	fn _swap(
