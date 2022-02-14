@@ -30,7 +30,7 @@ fn dispatch_call_test() {
 		System::set_block_number(1);
 		let _ = MockCall::QueryExample(query_example::Call::injected_call {});
 
-		assert_ok!(query_example::Pallet::<Runtime>::example_query_call(&ALICE));
+		assert_ok!(query_example::Pallet::<Runtime>::example_query_call(ALICE));
 
 		assert_ok!(ForeignStateOracle::dispatch_task(
 			MockOrigin::signed(1),

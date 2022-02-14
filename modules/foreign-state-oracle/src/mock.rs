@@ -74,7 +74,7 @@ pub mod query_example {
 	}
 
 	impl<T: Config> Pallet<T> {
-		pub fn example_query_call(who: &T::AccountId) -> DispatchResult {
+		pub fn example_query_call(who: T::AccountId) -> DispatchResult {
 			let call: <T as Config>::Call = Call::<T>::injected_call {}.into();
 			let len = call.using_encoded(|x| x.len()) as u32;
 			T::ForeignStateQuery::query_task(who, len, call)?;
@@ -151,7 +151,8 @@ impl query_example::Config for Runtime {
 parameter_types! {
 	pub const ForeignOraclePalletId: PalletId = PalletId(*b"aca/fsto");
 	pub const QueryDuration: BlockNumber = 10;
-	pub const QueryFee: Balance = 0;
+	pub const QueryFee: Balance = 100;
+	pub const CancelFee: Balance = 10;
 }
 
 impl Config for Runtime {
@@ -159,6 +160,7 @@ impl Config for Runtime {
 	type Origin = Origin;
 	type VerifiableTask = Call;
 	type QueryFee = QueryFee;
+	type CancelFee = CancelFee;
 	type OracleOrigin = EnsureSignedBy<One, AccountId>;
 	type QueryDuration = QueryDuration;
 	type Currency = Balances;
