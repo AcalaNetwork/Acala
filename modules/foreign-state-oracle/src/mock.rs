@@ -163,6 +163,7 @@ impl Config for Runtime {
 	type QueryDuration = QueryDuration;
 	type Currency = Balances;
 	type PalletId = ForeignOraclePalletId;
+	type BlockNumberProvider = System;
 }
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;

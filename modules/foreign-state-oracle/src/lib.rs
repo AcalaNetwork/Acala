@@ -29,7 +29,10 @@ use frame_support::{
 use frame_system::pallet_prelude::*;
 use module_support::ForeignChainStateQuery;
 use primitives::{Balance, ReserveIdentifier};
-use sp_runtime::traits::{AccountIdConversion, BlockNumberProvider, Saturating};
+use sp_runtime::{
+	traits::{AccountIdConversion, BlockNumberProvider, One, Saturating},
+	ArithmeticError,
+};
 
 mod mock;
 mod tests;
@@ -40,11 +43,11 @@ pub use module::*;
 pub type QueryIndex = u64;
 
 #[derive(PartialEq, Eq, Clone, RuntimeDebug, Encode, Decode, TypeInfo)]
-pub enum RawOrigin {
-	ForeignStateOracle { data: Vec<u8> },
+pub struct RawOrigin {
+	data: Vec<u8>,
 }
 
-#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo, MaxEncodedLen)]
+#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
 pub struct VerifiableCall<Call, BlockNumber, Balance> {
 	dispatchable_call: Call,
 	expiry: BlockNumber,
@@ -93,6 +96,9 @@ pub mod module {
 
 		/// Origin that can dispatch calls that have been verified with foreign state
 		type OracleOrigin: EnsureOrigin<<Self as frame_system::Config>::Origin>;
+
+		/// Provides current blocknumber
+		type BlockNumberProvider: BlockNumberProvider<BlockNumber = Self::BlockNumber>;
 	}
 
 	#[pallet::pallet]
@@ -142,13 +148,11 @@ pub mod module {
 			let verifiable_call = ActiveQuery::<T>::take(query_index).ok_or(Error::<T>::NoMatchingCall)?;
 			// check that query has not expired
 			ensure!(
-				verifiable_call.expiry > frame_system::Pallet::<T>::current_block_number(),
+				verifiable_call.expiry > T::BlockNumberProvider::current_block_number(),
 				Error::<T>::QueryExpired
 			);
 
-			let result = verifiable_call
-				.dispatchable_call
-				.dispatch(RawOrigin::ForeignStateOracle { data }.into());
+			let result = verifiable_call.dispatchable_call.dispatch(RawOrigin { data }.into());
 
 			Self::deposit_event(Event::CallDispatched {
 				task_result: result.map(|_| ()).map_err(|e| e.error),
@@ -166,7 +170,7 @@ pub mod module {
 			let verifiable_call = ActiveQuery::<T>::take(query_index).ok_or(Error::<T>::NoMatchingCall)?;
 			// make sure query is expired
 			ensure!(
-				verifiable_call.expiry <= frame_system::Pallet::<T>::current_block_number(),
+				verifiable_call.expiry <= T::BlockNumberProvider::current_block_number(),
 				Error::<T>::QueryNotExpired
 			);
 
@@ -193,7 +197,7 @@ impl<T: Config> ForeignChainStateQuery<T::AccountId, T::VerifiableTask> for Pall
 			ExistenceRequirement::KeepAlive,
 		)?;
 
-		let expiry = frame_system::Pallet::<T>::current_block_number().saturating_add(T::QueryDuration::get());
+		let expiry = T::BlockNumberProvider::current_block_number().saturating_add(T::QueryDuration::get());
 		let verifiable_call = VerifiableCall {
 			dispatchable_call,
 			expiry,
@@ -201,8 +205,8 @@ impl<T: Config> ForeignChainStateQuery<T::AccountId, T::VerifiableTask> for Pall
 		};
 
 		let index = QueryCounter::<T>::get();
-		// Increment counter
-		QueryCounter::<T>::put(index + 1);
+		// Increment counter by one
+		QueryCounter::<T>::put(index.checked_add(One::one()).ok_or(ArithmeticError::Overflow)?);
 
 		ActiveQuery::<T>::insert(index, verifiable_call);
 		Self::deposit_event(Event::CreateActiveQuery { index });
@@ -217,13 +221,14 @@ impl<O: Into<Result<RawOrigin, O>> + From<RawOrigin>> EnsureOrigin<O> for Ensure
 	type Success = Vec<u8>;
 
 	fn try_origin(o: O) -> Result<Self::Success, O> {
-		o.into().map(|o| match o {
-			RawOrigin::ForeignStateOracle { data } => data,
+		o.into().map(|o| {
+			let RawOrigin { data } = o;
+			data
 		})
 	}
 
 	#[cfg(feature = "runtime-benchmarks")]
 	fn successful_origin() -> O {
-		O::from(RawOrigin::ForeignStateOracle { data })
+		O::from(RawOrigin { data: vec![] })
 	}
 }
