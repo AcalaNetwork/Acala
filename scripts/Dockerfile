@@ -14,7 +14,7 @@ ARG BUILD_ARGS
 
 COPY . .
 
-RUN CARGO_PROFILE_RELEASE_LTO=true RUSTFLAGS="-C codegen-units=1" cargo build --release $BUILD_ARGS --workspace --exclude runtime-integration-tests
+RUN CARGO_PROFILE_RELEASE_LTO=true RUSTFLAGS="-C codegen-units=1" cargo build --release $BUILD_ARGS --workspace --exclude runtime-integration-tests --exclude e2e-tests
 
 # =============
 
