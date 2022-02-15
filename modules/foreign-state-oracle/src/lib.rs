@@ -30,7 +30,7 @@ use frame_system::pallet_prelude::*;
 use module_support::ForeignChainStateQuery;
 use primitives::{Balance, ReserveIdentifier};
 use sp_runtime::{
-	traits::{AccountIdConversion, BlockNumberProvider, One, Saturating},
+	traits::{AccountIdConversion, BlockNumberProvider, One, Saturating, Scale},
 	ArithmeticError,
 };
 
@@ -127,6 +127,7 @@ pub mod module {
 		CreateActiveQuery { index: QueryIndex },
 		CallDispatched { task_result: DispatchResult },
 		StaleQueryRemoved { query_index: QueryIndex },
+		QueryCanceled { index: QueryIndex },
 	}
 
 	/// Index of Queries, each query gets unique number
@@ -161,7 +162,7 @@ pub mod module {
 			T::OracleOrigin::ensure_origin(origin)?;
 
 			let verifiable_call = ActiveQuery::<T>::take(query_index).ok_or(Error::<T>::NoMatchingCall)?;
-			// check that query has not expired
+			// Check that query has not expired
 			ensure!(
 				verifiable_call.expiry > T::BlockNumberProvider::current_block_number(),
 				Error::<T>::QueryExpired
@@ -177,16 +178,28 @@ pub mod module {
 		#[pallet::weight(0)]
 		#[transactional]
 		pub fn remove_expired_call(origin: OriginFor<T>, query_index: QueryIndex) -> DispatchResult {
-			ensure_none(origin)?;
+			let who = ensure_signed(origin)?;
 
 			let verifiable_call = ActiveQuery::<T>::take(query_index).ok_or(Error::<T>::NoMatchingCall)?;
-			// make sure query is expired
+			// Make sure query is expired
 			ensure!(
 				verifiable_call.expiry <= T::BlockNumberProvider::current_block_number(),
 				Error::<T>::QueryNotExpired
 			);
 
+			// Gives half of reward for clearing expired query from storage
+			let reward: Balance = verifiable_call.oracle_reward.div(2u32);
+			T::Currency::transfer(&Self::account_id(), &who, reward, ExistenceRequirement::KeepAlive)?;
+
 			Self::deposit_event(Event::<T>::StaleQueryRemoved { query_index });
+			Ok(())
+		}
+
+		#[pallet::weight(0)]
+		#[transactional]
+		pub fn cancel_query(origin: OriginFor<T>, query_index: QueryIndex) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+			Self::cancel_task(who, query_index)?;
 			Ok(())
 		}
 	}
@@ -237,8 +250,9 @@ impl<T: Config> ForeignChainStateQuery<T::AccountId, T::VerifiableTask> for Pall
 			&Self::account_id(),
 			&who,
 			task.oracle_reward.saturating_sub(T::CancelFee::get()),
-			ExistenceRequirement::AllowDeath,
+			ExistenceRequirement::KeepAlive,
 		)?;
+		Self::deposit_event(Event::QueryCanceled { index });
 		Ok(())
 	}
 }
