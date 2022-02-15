@@ -28,7 +28,7 @@
 // --chain=karura-dev
 // --steps=50
 // --repeat=20
-// --pallet=nutsfinance_stable_asset
+// --pallet=*
 // --extrinsic=*
 // --execution=wasm
 // --wasm-execution=compiled
@@ -50,13 +50,13 @@ impl<T: frame_system::Config> nutsfinance_stable_asset::WeightInfo for WeightInf
 	// Storage: StableAsset Pools (r:1 w:1)
 	// Storage: System Account (r:1 w:1)
 	fn create_pool() -> Weight {
-		(37_852_000 as Weight)
+		(41_824_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes(3 as Weight))
 	}
 	// Storage: StableAsset Pools (r:1 w:1)
 	fn modify_a() -> Weight {
-		(25_329_000 as Weight)
+		(27_564_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
@@ -66,9 +66,9 @@ impl<T: frame_system::Config> nutsfinance_stable_asset::WeightInfo for WeightInf
 	// Storage: Tokens TotalIssuance (r:1 w:1)
 	// Storage: AssetRegistry AssetMetadatas (r:1 w:0)
 	fn mint(u: u32, ) -> Weight {
-		(114_516_000 as Weight)
-			// Standard Error: 146_000
-			.saturating_add((29_855_000 as Weight).saturating_mul(u as Weight))
+		(129_080_000 as Weight)
+			// Standard Error: 359_000
+			.saturating_add((31_507_000 as Weight).saturating_mul(u as Weight))
 			.saturating_add(T::DbWeight::get().reads(7 as Weight))
 			.saturating_add(T::DbWeight::get().reads((2 as Weight).saturating_mul(u as Weight)))
 			.saturating_add(T::DbWeight::get().writes(6 as Weight))
@@ -80,9 +80,9 @@ impl<T: frame_system::Config> nutsfinance_stable_asset::WeightInfo for WeightInf
 	// Storage: Tokens TotalIssuance (r:1 w:1)
 	// Storage: AssetRegistry AssetMetadatas (r:1 w:0)
 	fn swap(u: u32, ) -> Weight {
-		(110_505_000 as Weight)
-			// Standard Error: 151_000
-			.saturating_add((8_676_000 as Weight).saturating_mul(u as Weight))
+		(120_747_000 as Weight)
+			// Standard Error: 595_000
+			.saturating_add((9_467_000 as Weight).saturating_mul(u as Weight))
 			.saturating_add(T::DbWeight::get().reads(7 as Weight))
 			.saturating_add(T::DbWeight::get().reads((1 as Weight).saturating_mul(u as Weight)))
 			.saturating_add(T::DbWeight::get().writes(7 as Weight))
@@ -93,9 +93,9 @@ impl<T: frame_system::Config> nutsfinance_stable_asset::WeightInfo for WeightInf
 	// Storage: AssetRegistry AssetMetadatas (r:1 w:0)
 	// Storage: Tokens TotalIssuance (r:1 w:1)
 	fn redeem_proportion(u: u32, ) -> Weight {
-		(113_896_000 as Weight)
-			// Standard Error: 130_000
-			.saturating_add((24_072_000 as Weight).saturating_mul(u as Weight))
+		(125_827_000 as Weight)
+			// Standard Error: 305_000
+			.saturating_add((25_415_000 as Weight).saturating_mul(u as Weight))
 			.saturating_add(T::DbWeight::get().reads(6 as Weight))
 			.saturating_add(T::DbWeight::get().reads((2 as Weight).saturating_mul(u as Weight)))
 			.saturating_add(T::DbWeight::get().writes(4 as Weight))
@@ -107,9 +107,9 @@ impl<T: frame_system::Config> nutsfinance_stable_asset::WeightInfo for WeightInf
 	// Storage: System Account (r:1 w:0)
 	// Storage: Tokens TotalIssuance (r:1 w:1)
 	fn redeem_single(u: u32, ) -> Weight {
-		(135_063_000 as Weight)
-			// Standard Error: 1_405_000
-			.saturating_add((4_339_000 as Weight).saturating_mul(u as Weight))
+		(147_474_000 as Weight)
+			// Standard Error: 1_437_000
+			.saturating_add((4_283_000 as Weight).saturating_mul(u as Weight))
 			.saturating_add(T::DbWeight::get().reads(7 as Weight))
 			.saturating_add(T::DbWeight::get().reads((1 as Weight).saturating_mul(u as Weight)))
 			.saturating_add(T::DbWeight::get().writes(6 as Weight))
@@ -120,9 +120,9 @@ impl<T: frame_system::Config> nutsfinance_stable_asset::WeightInfo for WeightInf
 	// Storage: System Account (r:1 w:0)
 	// Storage: Tokens TotalIssuance (r:1 w:1)
 	fn redeem_multi(u: u32, ) -> Weight {
-		(96_045_000 as Weight)
-			// Standard Error: 140_000
-			.saturating_add((23_579_000 as Weight).saturating_mul(u as Weight))
+		(102_626_000 as Weight)
+			// Standard Error: 203_000
+			.saturating_add((26_300_000 as Weight).saturating_mul(u as Weight))
 			.saturating_add(T::DbWeight::get().reads(6 as Weight))
 			.saturating_add(T::DbWeight::get().reads((2 as Weight).saturating_mul(u as Weight)))
 			.saturating_add(T::DbWeight::get().writes(4 as Weight))
