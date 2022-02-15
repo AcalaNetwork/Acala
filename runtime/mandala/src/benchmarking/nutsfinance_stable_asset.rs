@@ -23,11 +23,18 @@ use frame_benchmarking::{account, whitelisted_caller};
 use frame_system::RawOrigin;
 use module_asset_registry::AssetMetadata;
 use orml_benchmarking::runtime_benchmarks;
-use primitives::currency::{CurrencyId, AUSD, BNC, DOT, LDOT, VSKSM};
+use primitives::currency::{CurrencyId, AUSD, BNC, LDOT, VSKSM};
+use primitives::{DexShare, TokenSymbol};
 use sp_std::prelude::*;
 
 const SEED: u32 = 0;
-const CURRENCY_LIST: [CurrencyId; 5] = [LDOT, AUSD, DOT, BNC, VSKSM];
+const CURRENCY_LIST: [CurrencyId; 5] = [
+	CurrencyId::DexShare(DexShare::Token(TokenSymbol::BNC), DexShare::Token(TokenSymbol::VSKSM)),
+	CurrencyId::DexShare(DexShare::Token(TokenSymbol::VSKSM), DexShare::Token(TokenSymbol::LDOT)),
+	CurrencyId::DexShare(DexShare::Token(TokenSymbol::VSKSM), DexShare::Token(TokenSymbol::AUSD)),
+	BNC,
+	VSKSM,
+];
 
 fn register_stable_asset() -> DispatchResult {
 	let asset_metadata = AssetMetadata {
