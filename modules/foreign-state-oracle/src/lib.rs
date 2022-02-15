@@ -42,6 +42,7 @@ pub use module::*;
 // Unique Identifier for each query
 pub type QueryIndex = u64;
 
+// Origin with arbitrary bytes included
 #[derive(PartialEq, Eq, Clone, RuntimeDebug, Encode, Decode, TypeInfo)]
 pub struct RawOrigin {
 	data: Vec<u8>,
@@ -124,9 +125,13 @@ pub mod module {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
+		/// Active Query is created, under the index as the key
 		CreateActiveQuery { index: QueryIndex },
+		/// Call is dispatched with data, includes the result of the extrinsic
 		CallDispatched { task_result: DispatchResult },
+		/// Query that has expired is removed from storage, includes index
 		StaleQueryRemoved { query_index: QueryIndex },
+		/// Query is canceled, includes index
 		QueryCanceled { index: QueryIndex },
 	}
 
@@ -135,7 +140,9 @@ pub mod module {
 	#[pallet::getter(fn query_index)]
 	pub(super) type QueryCounter<T: Config> = StorageValue<_, QueryIndex, ValueQuery>;
 
-	///  The tasks to be dispatched with foriegn chain state
+	/// The tasks to be dispatched with data provideed by foreign state oracle
+	///
+	/// ActiveQuery: map QueryIndex => Option<VerifiableCallOF<T>>
 	#[pallet::storage]
 	#[pallet::getter(fn active_query)]
 	pub(super) type ActiveQuery<T: Config> = StorageMap<_, Identity, QueryIndex, VerifiableCallOf<T>, OptionQuery>;
@@ -156,6 +163,10 @@ pub mod module {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
+		/// Dispatch task with arbitrary data in origin.
+		///
+		/// - `query_index`: Unique index mapped to a particular query
+		/// - `data`: Aribtrary data to be injected into the call via origin
 		#[pallet::weight(0)]
 		#[transactional]
 		pub fn dispatch_task(origin: OriginFor<T>, query_index: QueryIndex, data: Vec<u8>) -> DispatchResult {
@@ -175,6 +186,10 @@ pub mod module {
 			Ok(())
 		}
 
+		/// Remove Query that has expired so chain state does not bloat. This rewards the oracle
+		/// with half the query fee
+		///
+		/// - `query_index`: Unique index that is mapped to a particular query
 		#[pallet::weight(0)]
 		#[transactional]
 		pub fn remove_expired_call(origin: OriginFor<T>, query_index: QueryIndex) -> DispatchResult {
@@ -195,6 +210,10 @@ pub mod module {
 			Ok(())
 		}
 
+		/// Cancel query before it has been serviced, only the account that created the query can
+		/// cancel it.
+		///
+		/// - `query_index`: Unique index mapped to a particular query
 		#[pallet::weight(0)]
 		#[transactional]
 		pub fn cancel_query(origin: OriginFor<T>, query_index: QueryIndex) -> DispatchResult {
@@ -206,6 +225,7 @@ pub mod module {
 }
 
 impl<T: Config> Pallet<T> {
+	// Returns pallet account
 	pub fn account_id() -> T::AccountId {
 		T::PalletId::get().into_account()
 	}
