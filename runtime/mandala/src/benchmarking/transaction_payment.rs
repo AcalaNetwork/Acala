@@ -135,7 +135,12 @@ runtime_benchmarks! {
 		module_transaction_payment::TokenExchangeRate::<Runtime>::insert(STABLECOIN, Ratio::one());
 	}: _(RawOrigin::Root, STABLECOIN)
 	verify {
-
+		assert_last_event(module_transaction_payment::Event::ChargeFeePoolDisabled {
+			currency_id: STABLECOIN,
+			foreign_amount: stable_ed * 9,
+			native_amount: native_ed * 9,
+		}.into());
+		assert_eq!(module_transaction_payment::TokenExchangeRate::<Runtime>::get(STABLECOIN), None);
 	}
 
 	on_finalize {

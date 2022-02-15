@@ -380,14 +380,14 @@ pub mod module {
 			swap_threshold: Balance,
 		},
 		/// The charge fee pool is swapped
-		FeePoolSwapped {
+		ChargeFeePoolSwapped {
 			old_exchange_rate: Ratio,
 			swap_exchange_rate: Ratio,
 			new_exchange_rate: Ratio,
 			new_pool_size: Balance,
 		},
 		/// The charge fee pool is disabled
-		FeePoolDisabled {
+		ChargeFeePoolDisabled {
 			currency_id: CurrencyId,
 			foreign_amount: Balance,
 			native_amount: Balance,
@@ -546,6 +546,7 @@ pub mod module {
 			Self::initialize_pool(currency_id, pool_size, swap_threshold)
 		}
 
+		/// Disable charge fee pool.
 		#[pallet::weight(<T as Config>::WeightInfo::disable_charge_fee_pool())]
 		#[transactional]
 		pub fn disable_charge_fee_pool(origin: OriginFor<T>, currency_id: CurrencyId) -> DispatchResult {
@@ -572,7 +573,8 @@ pub mod module {
 			// remove map entry, then `swap_from_pool_or_dex` method will throw error.
 			TokenExchangeRate::<T>::remove(currency_id);
 			PoolSize::<T>::remove(currency_id);
-			Self::deposit_event(Event::FeePoolDisabled {
+			SwapBalanceThreshold::<T>::remove(currency_id);
+			Self::deposit_event(Event::ChargeFeePoolDisabled {
 				currency_id,
 				foreign_amount,
 				native_amount,
@@ -834,7 +836,7 @@ where
 					let new_pool_size = swap_native_balance.saturating_add(native_balance);
 					TokenExchangeRate::<T>::insert(supply_currency_id, new_exchange_rate);
 					PoolSize::<T>::insert(supply_currency_id, new_pool_size);
-					Pallet::<T>::deposit_event(Event::<T>::FeePoolSwapped {
+					Pallet::<T>::deposit_event(Event::<T>::ChargeFeePoolSwapped {
 						old_exchange_rate: rate,
 						swap_exchange_rate,
 						new_exchange_rate,

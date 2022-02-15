@@ -1066,12 +1066,14 @@ fn swap_from_pool_and_dex_update_rate() {
 		// the sub account has 9200 ACA, 80 DOT, use 80 DOT to swap out some ACA
 		let balance2 = 300 as u128;
 		assert_ok!(Pallet::<Runtime>::swap_from_pool_or_dex(&BOB, balance2, DOT));
-		System::assert_has_event(crate::mock::Event::TransactionPayment(crate::Event::FeePoolSwapped {
-			old_exchange_rate,
-			swap_exchange_rate,
-			new_exchange_rate,
-			new_pool_size,
-		}));
+		System::assert_has_event(crate::mock::Event::TransactionPayment(
+			crate::Event::ChargeFeePoolSwapped {
+				old_exchange_rate,
+				swap_exchange_rate,
+				new_exchange_rate,
+				new_pool_size,
+			},
+		));
 
 		let new_rate = TokenExchangeRate::<Runtime>::get(DOT).unwrap();
 		assert_eq!(new_exchange_rate, new_rate);
@@ -1276,11 +1278,13 @@ fn charge_fee_pool_operation_works() {
 		let aca_amount1 = crate::mock::PalletBalances::free_balance(&sub_account);
 		assert_ok!(Pallet::<Runtime>::disable_charge_fee_pool(Origin::signed(ALICE), AUSD));
 		assert_eq!(TokenExchangeRate::<Runtime>::get(AUSD), None);
-		System::assert_has_event(crate::mock::Event::TransactionPayment(crate::Event::FeePoolDisabled {
-			currency_id: AUSD,
-			foreign_amount: ausd_amount1 - usd_ed,
-			native_amount: aca_amount1 - native_ed,
-		}));
+		System::assert_has_event(crate::mock::Event::TransactionPayment(
+			crate::Event::ChargeFeePoolDisabled {
+				currency_id: AUSD,
+				foreign_amount: ausd_amount1 - usd_ed,
+				native_amount: aca_amount1 - native_ed,
+			},
+		));
 		let ausd_amount2 = <Currencies as MultiCurrency<AccountId>>::free_balance(AUSD, &sub_account);
 		let aca_amount2 = crate::mock::PalletBalances::free_balance(&sub_account);
 		assert_eq!(aca_amount2, native_ed);
