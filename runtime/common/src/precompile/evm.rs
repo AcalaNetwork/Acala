@@ -26,7 +26,7 @@ use num_enum::{IntoPrimitive, TryFromPrimitive};
 use sp_runtime::RuntimeDebug;
 use sp_std::{marker::PhantomData, prelude::*};
 
-use module_support::EVMStateRentTrait;
+use module_support::EVMManager;
 
 use super::input::{Input, InputT, Output};
 use primitives::Balance;
@@ -42,7 +42,7 @@ use primitives::Balance;
 /// - QueryDeveloperDeposit.
 /// - QueryPublicationFee.
 /// - TransferMaintainer. Rest `input` bytes: `from`, `contract`, `new_maintainer`.
-pub struct StateRentPrecompile<R>(PhantomData<R>);
+pub struct EVMPrecompile<R>(PhantomData<R>);
 
 #[module_evm_utiltity_macro::generate_function_selector]
 #[derive(RuntimeDebug, Eq, PartialEq, TryFromPrimitive, IntoPrimitive)]
@@ -60,10 +60,10 @@ pub enum Action {
 	PublishContract = "publishContract(address,address)",
 }
 
-impl<Runtime> Precompile for StateRentPrecompile<Runtime>
+impl<Runtime> Precompile for EVMPrecompile<Runtime>
 where
 	Runtime: module_evm::Config + module_prices::Config,
-	module_evm::Pallet<Runtime>: EVMStateRentTrait<Runtime::AccountId, Balance>,
+	module_evm::Pallet<Runtime>: EVMManager<Runtime::AccountId, Balance>,
 {
 	fn execute(input: &[u8], _target_gas: Option<u64>, _context: &Context, _is_static: bool) -> PrecompileResult {
 		let input = Input::<Action, Runtime::AccountId, Runtime::AddressMapping, Runtime::Erc20InfoMapping>::new(input);
@@ -132,11 +132,11 @@ where
 
 				log::debug!(
 					target: "evm",
-					"state_rent: from: {:?}, contract: {:?}, new_maintainer: {:?}",
+					"evm: from: {:?}, contract: {:?}, new_maintainer: {:?}",
 					from, contract, new_maintainer,
 				);
 
-				<module_evm::Pallet<Runtime> as EVMStateRentTrait<Runtime::AccountId, Balance>>::transfer_maintainer(
+				<module_evm::Pallet<Runtime> as EVMManager<Runtime::AccountId, Balance>>::transfer_maintainer(
 					from,
 					contract,
 					new_maintainer,

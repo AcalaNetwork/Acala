@@ -38,7 +38,7 @@ use sp_std::{marker::PhantomData, prelude::*};
 /// - Get liquidity. Rest `input` bytes: `currency_id_a`, `currency_id_b`.
 /// - Swap with exact supply. Rest `input` bytes: `who`, `currency_id_a`, `currency_id_b`,
 ///   `supply_amount`, `min_target_amount`.
-pub struct DexPrecompile<R>(PhantomData<R>);
+pub struct DEXPrecompile<R>(PhantomData<R>);
 
 #[module_evm_utiltity_macro::generate_function_selector]
 #[derive(RuntimeDebug, Eq, PartialEq, TryFromPrimitive, IntoPrimitive)]
@@ -54,7 +54,7 @@ pub enum Action {
 	RemoveLiquidity = "removeLiquidity(address,address,address,uint256,uint256,uint256)",
 }
 
-impl<Runtime> Precompile for DexPrecompile<Runtime>
+impl<Runtime> Precompile for DEXPrecompile<Runtime>
 where
 	Runtime: module_evm::Config + module_prices::Config,
 	module_dex::Pallet<Runtime>: DEXManager<Runtime::AccountId, CurrencyId, Balance>,

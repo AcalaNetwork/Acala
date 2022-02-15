@@ -115,15 +115,15 @@ pub use primitives::{
 	TokenSymbol, TradingPair,
 };
 pub use runtime_common::{
-	calculate_asset_ratio, cent, dollar, microcent, millicent, AcalaDropAssets, EnsureRootOrAllGeneralCouncil,
-	EnsureRootOrAllTechnicalCommittee, EnsureRootOrHalfFinancialCouncil, EnsureRootOrHalfGeneralCouncil,
-	EnsureRootOrHalfHomaCouncil, EnsureRootOrOneGeneralCouncil, EnsureRootOrOneThirdsTechnicalCommittee,
-	EnsureRootOrThreeFourthsGeneralCouncil, EnsureRootOrTwoThirdsGeneralCouncil,
-	EnsureRootOrTwoThirdsTechnicalCommittee, EvmPrecompiles, ExchangeRate, FinancialCouncilInstance,
-	FinancialCouncilMembershipInstance, GasToWeight, GeneralCouncilInstance, GeneralCouncilMembershipInstance,
-	HomaCouncilInstance, HomaCouncilMembershipInstance, MaxTipsOfPriority, OffchainSolutionWeightLimit,
-	OperationalFeeMultiplier, OperatorMembershipInstanceAcala, Price, ProxyType, Rate, Ratio,
-	RelayChainBlockNumberProvider, RelayChainSubAccountId, RuntimeBlockLength, RuntimeBlockWeights,
+	calculate_asset_ratio, cent, dollar, microcent, millicent, AcalaDropAssets, AllPrecompiles,
+	EnsureRootOrAllGeneralCouncil, EnsureRootOrAllTechnicalCommittee, EnsureRootOrHalfFinancialCouncil,
+	EnsureRootOrHalfGeneralCouncil, EnsureRootOrHalfHomaCouncil, EnsureRootOrOneGeneralCouncil,
+	EnsureRootOrOneThirdsTechnicalCommittee, EnsureRootOrThreeFourthsGeneralCouncil,
+	EnsureRootOrTwoThirdsGeneralCouncil, EnsureRootOrTwoThirdsTechnicalCommittee, ExchangeRate,
+	FinancialCouncilInstance, FinancialCouncilMembershipInstance, GasToWeight, GeneralCouncilInstance,
+	GeneralCouncilMembershipInstance, HomaCouncilInstance, HomaCouncilMembershipInstance, MaxTipsOfPriority,
+	OffchainSolutionWeightLimit, OperationalFeeMultiplier, OperatorMembershipInstanceAcala, Price, ProxyType, Rate,
+	Ratio, RelayChainBlockNumberProvider, RelayChainSubAccountId, RuntimeBlockLength, RuntimeBlockWeights,
 	SystemContractsFilter, TechnicalCommitteeInstance, TechnicalCommitteeMembershipInstance, TimeStampedPrice,
 	TipPerWeightStep, ACA, AUSD, DOT, LDOT, RENBTC,
 };
@@ -1491,7 +1491,7 @@ impl ecosystem_compound_cash::Config for Runtime {
 parameter_types! {
 	pub const ChainId: u64 = 595;
 	pub NetworkContractSource: H160 = H160::from_low_u64_be(0);
-	pub PrecompilesValue: EvmPrecompiles<Runtime> = EvmPrecompiles::<_>::new();
+	pub PrecompilesValue: AllPrecompiles<Runtime> = AllPrecompiles::<_>::new();
 }
 
 #[cfg(feature = "with-ethereum-compatibility")]
@@ -1541,7 +1541,7 @@ impl module_evm::Config for Runtime {
 	type StorageDepositPerByte = StorageDepositPerByte;
 	type TxFeePerGas = TxFeePerGas;
 	type Event = Event;
-	type PrecompilesType = EvmPrecompiles<Self>;
+	type PrecompilesType = AllPrecompiles<Self>;
 	type PrecompilesValue = PrecompilesValue;
 	type ChainId = ChainId;
 	type GasToWeight = GasToWeight;
