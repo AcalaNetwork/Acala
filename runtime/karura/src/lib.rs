@@ -55,7 +55,7 @@ use module_currencies::BasicCurrencyAdapter;
 use module_evm::{CallInfo, CreateInfo, EvmTask, Runner};
 use module_evm_accounts::EvmAddressMapping;
 use module_relaychain::RelayChainCallBuilder;
-use module_support::{AssetIdMapping, DispatchableTask};
+use module_support::{AssetIdMapping, DispatchableTask, ExchangeRateProvider};
 use module_transaction_payment::{Multiplier, TargetedFeeAdjustment, TransactionFeePoolTrader};
 
 use orml_traits::{
@@ -118,6 +118,9 @@ pub use runtime_common::{
 	PHA, RENBTC, VSKSM,
 };
 
+/// Import the stable_asset pallet.
+pub use nutsfinance_stable_asset;
+
 mod authority;
 mod benchmarking;
 pub mod constants;
@@ -175,6 +178,8 @@ parameter_types! {
 	// This Pallet is only used to payment fee pool, it's not added to whitelist by design.
 	// because transaction payment pallet will ensure the accounts always have enough ED.
 	pub const TransactionPaymentPalletId: PalletId = PalletId(*b"aca/fees");
+	// Ecosystem modules
+	pub const StableAssetPalletId: PalletId = PalletId(*b"nuts/sta");
 }
 
 pub fn get_all_module_accounts() -> Vec<AccountId> {
@@ -190,6 +195,7 @@ pub fn get_all_module_accounts() -> Vec<AccountId> {
 		TreasuryPalletId::get().into_account(),
 		TreasuryReservePalletId::get().into_account(),
 		UnreleasedNativeVaultAccountId::get(),
+		StableAssetPalletId::get().into_account(),
 	]
 }
 
@@ -1056,11 +1062,11 @@ where
 }
 
 parameter_types! {
-	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![KSM, LKSM, KAR];
+	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![KSM, LKSM, KAR, CurrencyId::StableAssetPoolToken(0)];
 	pub DefaultLiquidationRatio: Ratio = Ratio::saturating_from_rational(150, 100);
 	pub DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
 	pub DefaultLiquidationPenalty: Rate = Rate::saturating_from_rational(8, 100);
-	pub MinimumDebitValue: Balance = 20 * dollar(KUSD);
+	pub MinimumDebitValue: Balance = 50 * dollar(KUSD);
 	pub MaxSwapSlippageCompareToOracle: Ratio = Ratio::saturating_from_rational(15, 100);
 }
 
@@ -1959,6 +1965,73 @@ impl module_idle_scheduler::Config for Runtime {
 	type MinimumWeightRemainInBlock = MinimumWeightRemainInBlock;
 }
 
+parameter_types! {
+	pub const FeePrecision: u128 = 10_000_000_000u128; // 10 decimals
+	pub const APrecision: u128 = 100u128; // 2 decimals
+	pub const PoolAssetLimit: u32 = 5u32;
+}
+
+pub struct EnsurePoolAssetId;
+impl nutsfinance_stable_asset::traits::ValidateAssetId<CurrencyId> for EnsurePoolAssetId {
+	fn validate(currency_id: CurrencyId) -> bool {
+		matches!(currency_id, CurrencyId::StableAssetPoolToken(_))
+	}
+}
+
+pub struct ConvertBalanceHoma;
+impl orml_tokens::ConvertBalance<Balance, Balance> for ConvertBalanceHoma {
+	type AssetId = CurrencyId;
+
+	fn convert_balance(balance: Balance, asset_id: CurrencyId) -> Balance {
+		match asset_id {
+			CurrencyId::Token(TokenSymbol::LKSM) => {
+				Homa::get_exchange_rate().checked_mul_int(balance).unwrap_or_default()
+			}
+			_ => balance,
+		}
+	}
+
+	fn convert_balance_back(balance: Balance, asset_id: CurrencyId) -> Balance {
+		match asset_id {
+			CurrencyId::Token(TokenSymbol::LKSM) => Homa::get_exchange_rate()
+				.reciprocal()
+				.and_then(|x| x.checked_mul_int(balance))
+				.unwrap_or_default(),
+			_ => balance,
+		}
+	}
+}
+
+pub struct IsLiquidToken;
+impl Contains<CurrencyId> for IsLiquidToken {
+	fn contains(currency_id: &CurrencyId) -> bool {
+		matches!(currency_id, CurrencyId::Token(TokenSymbol::LKSM))
+	}
+}
+
+type RebaseTokens = orml_tokens::Combiner<
+	AccountId,
+	IsLiquidToken,
+	orml_tokens::Mapper<AccountId, Tokens, ConvertBalanceHoma, Balance, GetLiquidCurrencyId>,
+	Tokens,
+>;
+
+impl nutsfinance_stable_asset::Config for Runtime {
+	type Event = Event;
+	type AssetId = CurrencyId;
+	type Balance = Balance;
+	type Assets = RebaseTokens;
+	type PalletId = StableAssetPalletId;
+
+	type AtLeast64BitUnsigned = u128;
+	type FeePrecision = FeePrecision;
+	type APrecision = APrecision;
+	type PoolAssetLimit = PoolAssetLimit;
+	type WeightInfo = weights::nutsfinance_stable_asset::WeightInfo<Runtime>;
+	type ListingOrigin = EnsureRootOrHalfGeneralCouncil;
+	type EnsurePoolAssetId = EnsurePoolAssetId;
+}
+
 construct_runtime!(
 	pub enum Runtime where
 		Block = Block,
@@ -2058,6 +2131,9 @@ construct_runtime!(
 		EVMBridge: module_evm_bridge::{Pallet} = 131,
 		EvmAccounts: module_evm_accounts::{Pallet, Call, Storage, Event<T>} = 132,
 
+		// Stable asset
+		StableAsset: nutsfinance_stable_asset::{Pallet, Call, Storage, Event<T>} = 200,
+
 		// Parachain System, always put it at the end
 		ParachainSystem: cumulus_pallet_parachain_system::{Pallet, Call, Storage, Inherent, Config, Event<T>} = 30,
 
@@ -2093,33 +2169,8 @@ pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExtra>;
 /// Executive: handles dispatch to the various modules.
-pub type Executive = frame_executive::Executive<
-	Runtime,
-	Block,
-	frame_system::ChainContext<Runtime>,
-	Runtime,
-	AllPalletsWithSystem,
-	SchedulerMigrationV3,
->;
-
-// Migration for scheduler pallet to move from a plain Call to a CallOrHash.
-pub struct SchedulerMigrationV3;
-impl frame_support::traits::OnRuntimeUpgrade for SchedulerMigrationV3 {
-	fn on_runtime_upgrade() -> frame_support::weights::Weight {
-		Scheduler::migrate_v2_to_v3();
-		<Runtime as frame_system::Config>::BlockWeights::get().max_block
-	}
-
-	#[cfg(feature = "try-runtime")]
-	fn pre_upgrade() -> Result<(), &'static str> {
-		Scheduler::pre_migrate_to_v3()
-	}
-
-	#[cfg(feature = "try-runtime")]
-	fn post_upgrade() -> Result<(), &'static str> {
-		Scheduler::post_migrate_to_v3()
-	}
-}
+pub type Executive =
+	frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllPalletsWithSystem, ()>;
 
 #[cfg(feature = "runtime-benchmarks")]
 #[macro_use]
@@ -2151,6 +2202,7 @@ mod benches {
 		[orml_auction, benchmarking::auction]
 		[orml_authority, benchmarking::authority]
 		[orml_oracle, benchmarking::oracle]
+		[nutsfinance_stable_asset, benchmarking::nutsfinance_stable_asset]
 	);
 }
 
@@ -2546,8 +2598,8 @@ mod tests {
 	#[test]
 	fn check_call_size() {
 		assert!(
-			core::mem::size_of::<Call>() <= 240,
-			"size of Call is more than 240 bytes: some calls have too big arguments, use Box to \
+			core::mem::size_of::<Call>() <= 260,
+			"size of Call is more than 260 bytes: some calls have too big arguments, use Box to \
 			reduce the size of Call.
 			If the limit is too strong, maybe consider increasing the limit",
 		);
