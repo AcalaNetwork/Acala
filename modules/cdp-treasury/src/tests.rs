@@ -339,3 +339,91 @@ fn extract_surplus_to_treasury_work() {
 		assert_eq!(Currencies::free_balance(AUSD, &TreasuryAccount::get()), 200);
 	});
 }
+
+#[test]
+fn auction_collateral_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(Currencies::deposit(BTC, &CDPTreasuryModule::account_id(), 10000));
+		assert_eq!(CDPTreasuryModule::expected_collateral_auction_size(BTC), 0);
+		assert_eq!(CDPTreasuryModule::total_collaterals(BTC), 10000);
+		assert_eq!(CDPTreasuryModule::total_collaterals_not_in_auction(BTC), 10000);
+		assert_noop!(
+			CDPTreasuryModule::auction_collateral(Origin::signed(5), BTC, 10000, 1000, false),
+			BadOrigin,
+		);
+		assert_noop!(
+			CDPTreasuryModule::auction_collateral(Origin::signed(1), BTC, 10001, 1000, false),
+			Error::<Runtime>::CollateralNotEnough,
+		);
+
+		assert_ok!(CDPTreasuryModule::auction_collateral(
+			Origin::signed(1),
+			BTC,
+			1000,
+			1000,
+			false
+		));
+		assert_eq!(TOTAL_COLLATERAL_AUCTION.with(|v| *v.borrow_mut()), 1);
+		assert_eq!(TOTAL_COLLATERAL_IN_AUCTION.with(|v| *v.borrow_mut()), 1000);
+
+		assert_eq!(CDPTreasuryModule::total_collaterals(BTC), 10000);
+		assert_eq!(CDPTreasuryModule::total_collaterals_not_in_auction(BTC), 9000);
+		assert_noop!(
+			CDPTreasuryModule::auction_collateral(Origin::signed(1), BTC, 9001, 1000, false),
+			Error::<Runtime>::CollateralNotEnough,
+		);
+	});
+}
+
+#[test]
+fn exchange_collateral_to_stable_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(DEXModule::add_liquidity(
+			Origin::signed(BOB),
+			BTC,
+			AUSD,
+			200,
+			1000,
+			0,
+			false
+		));
+
+		assert_ok!(Currencies::deposit(BTC, &CDPTreasuryModule::account_id(), 1000));
+		assert_ok!(CDPTreasuryModule::auction_collateral(
+			Origin::signed(1),
+			BTC,
+			800,
+			1000,
+			false
+		));
+		assert_eq!(CDPTreasuryModule::total_collaterals(BTC), 1000);
+		assert_eq!(CDPTreasuryModule::total_collaterals_not_in_auction(BTC), 200);
+		assert_eq!(CDPTreasuryModule::surplus_pool(), 0);
+
+		assert_noop!(
+			CDPTreasuryModule::exchange_collateral_to_stable(Origin::signed(5), BTC, SwapLimit::ExactTarget(200, 200)),
+			BadOrigin,
+		);
+		assert_noop!(
+			CDPTreasuryModule::exchange_collateral_to_stable(Origin::signed(1), BTC, SwapLimit::ExactTarget(201, 200)),
+			Error::<Runtime>::CollateralNotEnough,
+		);
+		assert_noop!(
+			CDPTreasuryModule::exchange_collateral_to_stable(Origin::signed(1), BTC, SwapLimit::ExactSupply(201, 0)),
+			Error::<Runtime>::CollateralNotEnough,
+		);
+		assert_noop!(
+			CDPTreasuryModule::exchange_collateral_to_stable(Origin::signed(1), BTC, SwapLimit::ExactTarget(200, 1000)),
+			Error::<Runtime>::CannotSwap
+		);
+
+		assert_ok!(CDPTreasuryModule::exchange_collateral_to_stable(
+			Origin::signed(1),
+			BTC,
+			SwapLimit::ExactTarget(200, 399)
+		));
+		assert_eq!(CDPTreasuryModule::surplus_pool(), 399);
+		assert_eq!(CDPTreasuryModule::total_collaterals(BTC), 867);
+		assert_eq!(CDPTreasuryModule::total_collaterals_not_in_auction(BTC), 67);
+	});
+}
