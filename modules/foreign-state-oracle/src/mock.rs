@@ -191,7 +191,7 @@ pub struct ExtBuilder {
 impl Default for ExtBuilder {
 	fn default() -> Self {
 		Self {
-			endowed_native: vec![(ALICE, 1000)],
+			endowed_native: vec![(ALICE, 1_000_000)],
 		}
 	}
 }

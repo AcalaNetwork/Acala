@@ -22,22 +22,87 @@
 
 use super::*;
 use frame_support::{assert_noop, assert_ok};
-use mock::{Call as MockCall, Event as MockEvent, Origin as MockOrigin, *};
+use mock::{Call, Event, Origin, *};
+use sp_std::ops::{Add, Sub};
 
 #[test]
-fn dispatch_call_test() {
+fn dispatch_and_remove_works() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
-		let _ = MockCall::QueryExample(query_example::Call::injected_call {});
 
 		assert_ok!(query_example::Pallet::<Runtime>::example_query_call(ALICE));
+		assert!(ActiveQuery::<Runtime>::get(0).is_some());
+		assert_ok!(ForeignStateOracle::cancel_task(&ALICE, 0));
+		assert!(ActiveQuery::<Runtime>::get(0).is_none());
 
+		assert_ok!(query_example::Pallet::<Runtime>::example_query_call(ALICE));
+		assert_noop!(
+			ForeignStateOracle::dispatch_task(Origin::signed(1), 0, b"hello".to_vec()),
+			Error::<Runtime>::NoMatchingCall
+		);
+		// Cannot remove active query
+		assert_noop!(
+			ForeignStateOracle::remove_expired_call(Origin::signed(BOB), 1),
+			Error::<Runtime>::QueryNotExpired
+		);
+
+		// Call is sucessfully dispatched with bytes injected into origin
 		assert_ok!(ForeignStateOracle::dispatch_task(
-			MockOrigin::signed(1),
-			0,
+			Origin::signed(1),
+			1,
 			b"hello".to_vec()
 		));
-		println!("{:?}", System::events());
-		//panic!();
+		System::assert_last_event(Event::ForeignStateOracle(crate::Event::CallDispatched {
+			task_result: Ok(()),
+		}));
+		System::assert_has_event(Event::QueryExample(mock::query_example::Event::OriginInjected {
+			origin_data: b"hello".to_vec(),
+		}));
+
+		assert_ok!(query_example::Pallet::<Runtime>::example_query_call(ALICE));
+		System::set_block_number(11);
+		assert_noop!(
+			ForeignStateOracle::dispatch_task(Origin::signed(1), 2, b"hello".to_vec()),
+			Error::<Runtime>::QueryExpired
+		);
+
+		let bob_before = Balances::free_balance(BOB);
+		assert_ok!(ForeignStateOracle::remove_expired_call(Origin::signed(BOB), 2));
+		assert_eq!(bob_before.add(QueryFee::get().div(2u32)), Balances::free_balance(BOB))
+	});
+}
+
+#[test]
+fn query_and_cancel_works() {
+	ExtBuilder::default().build().execute_with(|| {
+		let call = Call::QueryExample(query_example::Call::injected_call {});
+		// Bound can't be smaller than encoded call length
+		assert_noop!(
+			ForeignStateOracle::query_task(ALICE, 1, call.clone()),
+			Error::<Runtime>::TooLargeVerifiableCall
+		);
+		// Need native token to query the oracle
+		assert_noop!(
+			ForeignStateOracle::query_task(BOB, call.using_encoded(|x| x.len()) as u32, call.clone()),
+			pallet_balances::Error::<Runtime>::InsufficientBalance
+		);
+
+		let alice_before = Balances::free_balance(ALICE);
+		assert_ok!(ForeignStateOracle::query_task(
+			ALICE,
+			call.using_encoded(|x| x.len()) as u32,
+			call.clone()
+		));
+		// Takes the query fee
+		assert_eq!(alice_before, Balances::free_balance(ALICE).add(QueryFee::get()));
+
+		// Bob cannot cancel alices query
+		assert_noop!(
+			ForeignStateOracle::cancel_task(&BOB, 0),
+			Error::<Runtime>::NotQueryAccount
+		);
+		assert_ok!(ForeignStateOracle::cancel_task(&ALICE, 0));
+		// Balance is restored other than the cancel fee
+		assert_eq!(alice_before.sub(CancelFee::get()), Balances::free_balance(ALICE));
 	});
 }

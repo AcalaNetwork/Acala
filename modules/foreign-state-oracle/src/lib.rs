@@ -199,7 +199,7 @@ pub mod module {
 		#[transactional]
 		pub fn cancel_query(origin: OriginFor<T>, query_index: QueryIndex) -> DispatchResult {
 			let who = ensure_signed(origin)?;
-			Self::cancel_task(who, query_index)?;
+			Self::cancel_task(&who, query_index)?;
 			Ok(())
 		}
 	}
@@ -241,14 +241,14 @@ impl<T: Config> ForeignChainStateQuery<T::AccountId, T::VerifiableTask> for Pall
 	}
 
 	#[transactional]
-	fn cancel_task(who: T::AccountId, index: QueryIndex) -> DispatchResult {
+	fn cancel_task(who: &T::AccountId, index: QueryIndex) -> DispatchResult {
 		let task = ActiveQuery::<T>::take(index).ok_or(Error::<T>::NoMatchingCall)?;
-		ensure!(who == task.account_id, Error::<T>::NotQueryAccount);
+		ensure!(who == &task.account_id, Error::<T>::NotQueryAccount);
 
 		// Reimbursts (query fee - cancel fee) to account.
 		T::Currency::transfer(
 			&Self::account_id(),
-			&who,
+			who,
 			task.oracle_reward.saturating_sub(T::CancelFee::get()),
 			ExistenceRequirement::KeepAlive,
 		)?;

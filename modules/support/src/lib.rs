@@ -674,5 +674,5 @@ pub trait ForeignChainStateQuery<AccountId, Call> {
 	/// params:
 	/// - who: Account that is canceling the query.
 	/// - index: Index of stored call to be canceled
-	fn cancel_task(who: AccountId, index: u64) -> DispatchResult;
+	fn cancel_task(who: &AccountId, index: u64) -> DispatchResult;
 }
