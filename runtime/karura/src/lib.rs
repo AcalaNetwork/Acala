@@ -129,6 +129,7 @@ pub mod constants;
 mod integration_tests_config;
 #[cfg(feature = "integration-tests")]
 use integration_tests_config::*;
+use module_evm::bench::mock::TreasuryAccount;
 
 /// This runtime version.
 #[sp_version::runtime_version]
@@ -2169,8 +2170,67 @@ pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExtra>;
 /// Executive: handles dispatch to the various modules.
-pub type Executive =
-	frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllPalletsWithSystem, ()>;
+pub type Executive = frame_executive::Executive<
+	Runtime,
+	Block,
+	frame_system::ChainContext<Runtime>,
+	Runtime,
+	AllPalletsWithSystem,
+	TransactionPaymentMigration,
+>;
+
+parameter_types! {
+	pub FeePoolSize: Balance = 5 * dollar(KAR);
+	// one extrinsic fee=0.0025KAR, one block=100 extrinsics, threshold=0.25+0.1=0.35KAR
+	pub SwapBalanceThreshold: Balance = Ratio::saturating_from_rational(35, 100).saturating_mul_int(dollar(KAR));
+}
+
+pub struct TransactionPaymentMigration;
+impl frame_support::traits::OnRuntimeUpgrade for TransactionPaymentMigration {
+	fn on_runtime_upgrade() -> frame_support::weights::Weight {
+		module_transaction_payment::Pallet::<Runtime>::disable_charge_fee_pool(
+			Origin::signed(TreasuryAccount::get()),
+			KUSD,
+		);
+		module_transaction_payment::Pallet::<Runtime>::enable_charge_fee_pool(
+			Origin::signed(TreasuryAccount::get()),
+			KUSD,
+			FeePoolSize::get(),
+			SwapBalanceThreshold::get(),
+		);
+		module_transaction_payment::Pallet::<Runtime>::disable_charge_fee_pool(
+			Origin::signed(TreasuryAccount::get()),
+			KSM,
+		);
+		module_transaction_payment::Pallet::<Runtime>::enable_charge_fee_pool(
+			Origin::signed(TreasuryAccount::get()),
+			KSM,
+			FeePoolSize::get(),
+			SwapBalanceThreshold::get(),
+		);
+		module_transaction_payment::Pallet::<Runtime>::disable_charge_fee_pool(
+			Origin::signed(TreasuryAccount::get()),
+			LKSM,
+		);
+		module_transaction_payment::Pallet::<Runtime>::enable_charge_fee_pool(
+			Origin::signed(TreasuryAccount::get()),
+			LKSM,
+			FeePoolSize::get(),
+			SwapBalanceThreshold::get(),
+		);
+		<Runtime as frame_system::Config>::BlockWeights::get().max_block
+	}
+
+	#[cfg(feature = "try-runtime")]
+	fn pre_upgrade() -> Result<(), &'static str> {
+		Ok(())
+	}
+
+	#[cfg(feature = "try-runtime")]
+	fn post_upgrade() -> Result<(), &'static str> {
+		Ok(())
+	}
+}
 
 #[cfg(feature = "runtime-benchmarks")]
 #[macro_use]

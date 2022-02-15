@@ -570,6 +570,7 @@ pub mod module {
 			)?;
 			// remove map entry, then `swap_from_pool_or_dex` method will throw error.
 			TokenExchangeRate::<T>::remove(currency_id);
+			PoolSize::<T>::remove(currency_id);
 			Self::deposit_event(Event::FeePoolDisabled {
 				currency_id,
 				foreign_amount,

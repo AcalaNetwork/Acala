@@ -1279,5 +1279,12 @@ fn charge_fee_pool_operation_works() {
 		let aca_amount2 = crate::mock::PalletBalances::free_balance(&sub_account);
 		assert_eq!(aca_amount2, native_ed);
 		assert_eq!(ausd_amount2, usd_ed);
+
+		assert_ok!(Pallet::<Runtime>::enable_charge_fee_pool(
+			Origin::signed(ALICE),
+			AUSD,
+			pool_size,
+			swap_threshold
+		));
 	});
 }
