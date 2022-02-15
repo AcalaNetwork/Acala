@@ -129,7 +129,6 @@ pub mod constants;
 mod integration_tests_config;
 #[cfg(feature = "integration-tests")]
 use integration_tests_config::*;
-use module_evm::bench::mock::TreasuryAccount;
 
 /// This runtime version.
 #[sp_version::runtime_version]
@@ -2181,39 +2180,38 @@ pub type Executive = frame_executive::Executive<
 
 parameter_types! {
 	pub FeePoolSize: Balance = 5 * dollar(KAR);
-	// one extrinsic fee=0.0025KAR, one block=100 extrinsics, threshold=0.25+0.1=0.35KAR
 	pub SwapBalanceThreshold: Balance = Ratio::saturating_from_rational(35, 100).saturating_mul_int(dollar(KAR));
 }
 
 pub struct TransactionPaymentMigration;
 impl frame_support::traits::OnRuntimeUpgrade for TransactionPaymentMigration {
 	fn on_runtime_upgrade() -> frame_support::weights::Weight {
-		module_transaction_payment::Pallet::<Runtime>::disable_charge_fee_pool(
-			Origin::signed(TreasuryAccount::get()),
+		let _ = module_transaction_payment::Pallet::<Runtime>::disable_charge_fee_pool(
+			Origin::signed(KaruraTreasuryAccount::get()),
 			KUSD,
 		);
-		module_transaction_payment::Pallet::<Runtime>::enable_charge_fee_pool(
-			Origin::signed(TreasuryAccount::get()),
+		let _ = module_transaction_payment::Pallet::<Runtime>::enable_charge_fee_pool(
+			Origin::signed(KaruraTreasuryAccount::get()),
 			KUSD,
 			FeePoolSize::get(),
 			SwapBalanceThreshold::get(),
 		);
-		module_transaction_payment::Pallet::<Runtime>::disable_charge_fee_pool(
-			Origin::signed(TreasuryAccount::get()),
+		let _ = module_transaction_payment::Pallet::<Runtime>::disable_charge_fee_pool(
+			Origin::signed(KaruraTreasuryAccount::get()),
 			KSM,
 		);
-		module_transaction_payment::Pallet::<Runtime>::enable_charge_fee_pool(
-			Origin::signed(TreasuryAccount::get()),
+		let _ = module_transaction_payment::Pallet::<Runtime>::enable_charge_fee_pool(
+			Origin::signed(KaruraTreasuryAccount::get()),
 			KSM,
 			FeePoolSize::get(),
 			SwapBalanceThreshold::get(),
 		);
-		module_transaction_payment::Pallet::<Runtime>::disable_charge_fee_pool(
-			Origin::signed(TreasuryAccount::get()),
+		let _ = module_transaction_payment::Pallet::<Runtime>::disable_charge_fee_pool(
+			Origin::signed(KaruraTreasuryAccount::get()),
 			LKSM,
 		);
-		module_transaction_payment::Pallet::<Runtime>::enable_charge_fee_pool(
-			Origin::signed(TreasuryAccount::get()),
+		let _ = module_transaction_payment::Pallet::<Runtime>::enable_charge_fee_pool(
+			Origin::signed(KaruraTreasuryAccount::get()),
 			LKSM,
 			FeePoolSize::get(),
 			SwapBalanceThreshold::get(),

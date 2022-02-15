@@ -546,7 +546,7 @@ pub mod module {
 			Self::initialize_pool(currency_id, pool_size, swap_threshold)
 		}
 
-		#[pallet::weight(<T as Config>::WeightInfo::enable_charge_fee_pool())]
+		#[pallet::weight(<T as Config>::WeightInfo::disable_charge_fee_pool())]
 		#[transactional]
 		pub fn disable_charge_fee_pool(origin: OriginFor<T>, currency_id: CurrencyId) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
@@ -558,8 +558,9 @@ pub mod module {
 			let sub_account = Self::sub_account_id(currency_id);
 			let native_ed: Balance = T::Currency::minimum_balance();
 			let foreign_ed: Balance = T::MultiCurrency::minimum_balance(currency_id);
-			let foreign_amount: Balance = T::MultiCurrency::free_balance(currency_id, &sub_account) - foreign_ed;
-			let native_amount: Balance = T::Currency::free_balance(&sub_account) - native_ed;
+			let foreign_amount: Balance =
+				T::MultiCurrency::free_balance(currency_id, &sub_account).saturating_sub(foreign_ed);
+			let native_amount: Balance = T::Currency::free_balance(&sub_account).saturating_sub(native_ed);
 
 			T::MultiCurrency::transfer(currency_id, &sub_account, &treasury_account, foreign_amount)?;
 			T::Currency::transfer(

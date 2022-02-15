@@ -24,10 +24,10 @@ use crate::{
 use frame_benchmarking::{account, whitelisted_caller};
 use frame_support::traits::OnFinalize;
 use frame_system::RawOrigin;
-use module_support::{DEXManager, SwapLimit};
+use module_support::{DEXManager, Ratio, SwapLimit};
 use orml_benchmarking::runtime_benchmarks;
 use orml_traits::MultiCurrency;
-use sp_runtime::traits::{AccountIdConversion, UniqueSaturatedInto};
+use sp_runtime::traits::{AccountIdConversion, One, UniqueSaturatedInto};
 
 use sp_std::prelude::*;
 
@@ -120,6 +120,22 @@ runtime_benchmarks! {
 			pool_size,
 			swap_threshold
 		}.into());
+	}
+
+	disable_charge_fee_pool {
+		let treasury_account: AccountId = TreasuryPalletId::get().into_account();
+		let sub_account: AccountId = <Runtime as module_transaction_payment::Config>::PalletId::get().into_sub_account(STABLECOIN);
+		let native_ed: Balance = <Currencies as MultiCurrency<AccountId>>::minimum_balance(NATIVECOIN);
+		let stable_ed: Balance = <Currencies as MultiCurrency<AccountId>>::minimum_balance(STABLECOIN);
+		let pool_size: Balance = native_ed * 50;
+
+		set_balance(NATIVECOIN, &sub_account, native_ed * 10);
+		set_balance(STABLECOIN, &sub_account, stable_ed * 10);
+
+		module_transaction_payment::TokenExchangeRate::<Runtime>::insert(STABLECOIN, Ratio::one());
+	}: _(RawOrigin::Root, STABLECOIN)
+	verify {
+
 	}
 
 	on_finalize {
