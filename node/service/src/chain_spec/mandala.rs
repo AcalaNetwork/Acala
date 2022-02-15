@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use acala_primitives::{AccountId, Balance, Nonce, TokenSymbol};
+use acala_primitives::{evm::PREDEPLOY_ADDRESS_START, AccountId, Balance, Nonce, TokenSymbol};
 use ethers::signers::{coins_bip39::English, MnemonicBuilder, Signer};
 use hex_literal::hex;
 use module_evm::GenesisAccount;
@@ -122,6 +122,7 @@ fn dev_testnet_config_from_chain_id(chain_id: &str, mnemonic: Option<&str>) -> R
 		vec![],
 		None,
 		None,
+		None,
 		Some(properties),
 		Extensions {
 			relay_chain: "rococo-local".into(),
@@ -175,6 +176,7 @@ pub fn local_testnet_config() -> Result<ChainSpec, String> {
 			)
 		},
 		vec![],
+		None,
 		None,
 		None,
 		Some(properties),
@@ -258,6 +260,7 @@ pub fn latest_mandala_testnet_config() -> Result<ChainSpec, String> {
 		],
 		TelemetryEndpoints::new(vec![(TELEMETRY_URL.into(), 0)]).ok(),
 		Some("mandala-dev-tc7"),
+		None,
 		Some(properties),
 		Extensions {
 			relay_chain: "dev".into(),
@@ -328,7 +331,9 @@ fn testnet_genesis(
 		},
 		indices: IndicesConfig { indices: vec![] },
 		balances: BalancesConfig { balances },
-		sudo: SudoConfig { key: root_key.clone() },
+		sudo: SudoConfig {
+			key: Some(root_key.clone()),
+		},
 		general_council: Default::default(),
 		general_council_membership: GeneralCouncilMembershipConfig {
 			members: vec![root_key.clone()],
@@ -518,7 +523,9 @@ fn mandala_genesis(
 		},
 		indices: IndicesConfig { indices: vec![] },
 		balances: BalancesConfig { balances },
-		sudo: SudoConfig { key: root_key.clone() },
+		sudo: SudoConfig {
+			key: Some(root_key.clone()),
+		},
 		general_council: Default::default(),
 		general_council_membership: GeneralCouncilMembershipConfig {
 			members: vec![root_key.clone()],
@@ -659,6 +666,17 @@ pub fn evm_genesis(evm_accounts: Vec<H160>) -> BTreeMap<H160, GenesisAccount<Bal
 		);
 		accounts.insert(addr, account);
 	}
+
+	// Replace mirrored token contract code.
+	let token = accounts
+		.get(&PREDEPLOY_ADDRESS_START)
+		.expect("the token predeployed contract must exist")
+		.clone();
+	accounts.iter_mut().for_each(|v| {
+		if v.1.code.is_empty() {
+			v.1.code = token.code.clone();
+		}
+	});
 
 	for dev_acc in evm_accounts {
 		let account = GenesisAccount {

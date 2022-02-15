@@ -329,7 +329,7 @@ pub mod module {
 		type TreasuryAccount: Get<Self::AccountId>;
 
 		/// The origin which change swap balance threshold or enable charge fee pool.
-		type UpdateOrigin: EnsureOrigin<Self::Origin, Success = Self::AccountId>;
+		type UpdateOrigin: EnsureOrigin<Self::Origin>;
 	}
 
 	#[pallet::extra_constants]
@@ -410,6 +410,7 @@ pub mod module {
 	pub type SwapBalanceThreshold<T: Config> = StorageMap<_, Twox64Concat, CurrencyId, Balance, ValueQuery>;
 
 	#[pallet::pallet]
+	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
 	#[pallet::hooks]
@@ -471,6 +472,7 @@ pub mod module {
 	impl<T: Config> Pallet<T> {
 		/// Set fee swap path
 		#[pallet::weight(<T as Config>::WeightInfo::set_alternative_fee_swap_path())]
+		#[transactional]
 		pub fn set_alternative_fee_swap_path(
 			origin: OriginFor<T>,
 			fee_swap_path: Option<Vec<CurrencyId>>,
@@ -486,8 +488,8 @@ pub mod module {
 						&& path[path.len() - 1] == T::NativeCurrencyId::get(),
 					Error::<T>::InvalidSwapPath
 				);
-				AlternativeFeeSwapPath::<T>::insert(&who, &path);
 				T::Currency::ensure_reserved_named(&DEPOSIT_ID, &who, T::AlternativeFeeSwapDeposit::get())?;
+				AlternativeFeeSwapPath::<T>::insert(&who, &path);
 			} else {
 				AlternativeFeeSwapPath::<T>::remove(&who);
 				T::Currency::unreserve_all_named(&DEPOSIT_ID, &who);
@@ -497,6 +499,7 @@ pub mod module {
 
 		/// Set swap balance threshold of native asset
 		#[pallet::weight(<T as Config>::WeightInfo::set_swap_balance_threshold())]
+		#[transactional]
 		pub fn set_swap_balance_threshold(
 			origin: OriginFor<T>,
 			currency_id: CurrencyId,
@@ -517,6 +520,7 @@ pub mod module {
 
 		/// Enable and initialize charge fee pool.
 		#[pallet::weight(<T as Config>::WeightInfo::enable_charge_fee_pool())]
+		#[transactional]
 		pub fn enable_charge_fee_pool(
 			origin: OriginFor<T>,
 			currency_id: CurrencyId,
@@ -816,8 +820,7 @@ where
 
 	/// Initiate a charge fee swap pool. Usually used in `on_runtime_upgrade` or manual
 	/// `enable_charge_fee_pool` dispatch call.
-	#[transactional]
-	pub fn initialize_pool(currency_id: CurrencyId, pool_size: Balance, swap_threshold: Balance) -> DispatchResult {
+	fn initialize_pool(currency_id: CurrencyId, pool_size: Balance, swap_threshold: Balance) -> DispatchResult {
 		let treasury_account = T::TreasuryAccount::get();
 		let sub_account = Self::sub_account_id(currency_id);
 		let native_existential_deposit = <T as Config>::Currency::minimum_balance();
@@ -830,39 +833,39 @@ where
 			Error::<T>::ChargeFeePoolAlreadyExisted
 		);
 
-		let trading_path = Self::get_trading_path_by_currency(&sub_account, currency_id);
-		if let Some(trading_path) = trading_path {
-			let (supply_amount, _) = T::DEX::get_swap_amount(
-				&trading_path,
-				SwapLimit::ExactTarget(Balance::MAX, native_existential_deposit),
-			)
-			.ok_or(Error::<T>::DexNotAvailable)?;
-			let exchange_rate = Ratio::saturating_from_rational(supply_amount, native_existential_deposit);
+		let trading_path =
+			Self::get_trading_path_by_currency(&sub_account, currency_id).ok_or(Error::<T>::DexNotAvailable)?;
+		let (supply_amount, _) = T::DEX::get_swap_amount(
+			&trading_path,
+			SwapLimit::ExactTarget(Balance::MAX, native_existential_deposit),
+		)
+		.ok_or(Error::<T>::DexNotAvailable)?;
+		let exchange_rate = Ratio::saturating_from_rational(supply_amount, native_existential_deposit);
 
-			T::MultiCurrency::transfer(
-				currency_id,
-				&treasury_account,
-				&sub_account,
-				T::MultiCurrency::minimum_balance(currency_id),
-			)?;
-			T::Currency::transfer(
-				&treasury_account,
-				&sub_account,
-				pool_size,
-				ExistenceRequirement::KeepAlive,
-			)?;
+		T::MultiCurrency::transfer(
+			currency_id,
+			&treasury_account,
+			&sub_account,
+			T::MultiCurrency::minimum_balance(currency_id),
+		)?;
+		T::Currency::transfer(
+			&treasury_account,
+			&sub_account,
+			pool_size,
+			ExistenceRequirement::KeepAlive,
+		)?;
 
-			SwapBalanceThreshold::<T>::insert(currency_id, swap_threshold);
-			TokenExchangeRate::<T>::insert(currency_id, exchange_rate);
-			PoolSize::<T>::insert(currency_id, pool_size);
-			Self::deposit_event(Event::ChargeFeePoolEnabled {
-				sub_account,
-				currency_id,
-				exchange_rate,
-				pool_size,
-				swap_threshold,
-			});
-		}
+		SwapBalanceThreshold::<T>::insert(currency_id, swap_threshold);
+		TokenExchangeRate::<T>::insert(currency_id, exchange_rate);
+		PoolSize::<T>::insert(currency_id, pool_size);
+		Self::deposit_event(Event::ChargeFeePoolEnabled {
+			sub_account,
+			currency_id,
+			exchange_rate,
+			pool_size,
+			swap_threshold,
+		});
+
 		Ok(())
 	}
 }
@@ -1163,14 +1166,13 @@ where
 	}
 
 	fn post_dispatch(
-		pre: Self::Pre,
+		pre: Option<Self::Pre>,
 		info: &DispatchInfoOf<Self::Call>,
 		post_info: &PostDispatchInfoOf<Self::Call>,
 		len: usize,
 		_result: &DispatchResult,
 	) -> Result<(), TransactionValidityError> {
-		let (tip, who, imbalance, fee) = pre;
-		if let Some(payed) = imbalance {
+		if let Some((tip, who, Some(payed), fee)) = pre {
 			let actual_fee = Pallet::<T>::compute_actual_fee(len as u32, info, post_info, tip);
 			let refund_fee = fee.saturating_sub(actual_fee);
 			let mut refund = refund_fee;

@@ -71,6 +71,18 @@ check-debug:
 check-try-runtime:
 	SKIP_WASM_BUILD= cargo check --features try-runtime --features with-all-runtime
 
+.PHONY: try-runtime-karura
+try-runtime-karura:
+	SKIP_WASM_BUILD= cargo run --features with-karura-runtime --features try-runtime -- try-runtime --chain=karura-dev --wasm-execution=compiled on-runtime-upgrade live --uri wss://karura.api.onfinality.io:443/public-ws -s /tmp/snapshot.bin
+
+.PHONY: try-runtime-mandala
+try-runtime-mandala:
+	SKIP_WASM_BUILD= cargo run --features with-mandala-runtime --features try-runtime -- try-runtime --chain=dev --wasm-execution=compiled on-runtime-upgrade live --uri wss://mandala.polkawallet.io:443 -s /tmp/snapshot.bin
+
+.PHONY: try-runtime-acala
+try-runtime-acala:
+	SKIP_WASM_BUILD= cargo run --features with-acala-runtime --features try-runtime -- try-runtime --chain=acala-dev --wasm-execution=compiled on-runtime-upgrade live --uri wss://acala-polkadot.api.onfinality.io:443/public-ws -s /tmp/snapshot.bin
+
 .PHONY: test
 test: githooks
 	SKIP_WASM_BUILD= cargo test --features with-mandala-runtime --all

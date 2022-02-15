@@ -54,7 +54,7 @@ fn inject_liquidity(
 		max_amount_b.unique_saturated_into(),
 	)?;
 
-	let _ = Dex::enable_trading_pair(RawOrigin::Root.into(), currency_id_a, currency_id_b);
+	Dex::enable_trading_pair(RawOrigin::Root.into(), currency_id_a, currency_id_b)?;
 
 	Dex::add_liquidity(
 		RawOrigin::Signed(maker.clone()).into(),
@@ -93,7 +93,7 @@ runtime_benchmarks! {
 		}
 	}: {
 		Timestamp::set_timestamp(24000);
-		let _ = DexOracle::on_initialize(1);
+		DexOracle::on_initialize(1)
 	}
 
 	enable_average_price {

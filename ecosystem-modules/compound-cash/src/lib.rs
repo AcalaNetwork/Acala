@@ -79,6 +79,7 @@ pub mod module {
 	pub type CurrentYield<T: Config> = StorageValue<_, (CashYieldIndex, Balance, Moment), ValueQuery>;
 
 	#[pallet::pallet]
+	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
 	#[pallet::hooks]

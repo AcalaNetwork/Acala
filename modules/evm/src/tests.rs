@@ -798,7 +798,7 @@ fn create_predeploy_contract_works() {
 		assert_ok!(EVM::create_predeploy_contract(
 			Origin::signed(NetworkContractAccount::get()),
 			addr,
-			contract,
+			contract.clone(),
 			0,
 			1000000,
 			1000000,
@@ -826,6 +826,37 @@ fn create_predeploy_contract_works() {
 
 		// deploy mirrored token
 		let addr = H160::from_str("2222222222222222222222222222222222222222").unwrap();
+		assert_noop!(
+			EVM::create_predeploy_contract(
+				Origin::signed(NetworkContractAccount::get()),
+				addr,
+				vec![],
+				0,
+				1000000,
+				1000000,
+			),
+			Error::<Runtime>::ContractNotFound
+		);
+
+		// deploy token contract
+		assert_ok!(EVM::create_predeploy_contract(
+			Origin::signed(NetworkContractAccount::get()),
+			PREDEPLOY_ADDRESS_START,
+			contract,
+			0,
+			1000000,
+			1000000,
+		));
+
+		assert_eq!(
+			CodeInfos::<Runtime>::get(&EVM::code_hash_at_address(&PREDEPLOY_ADDRESS_START)),
+			Some(CodeInfo {
+				code_size: 184,
+				ref_count: 2,
+			})
+		);
+
+		// deploy mirrored token
 		assert_ok!(EVM::create_predeploy_contract(
 			Origin::signed(NetworkContractAccount::get()),
 			addr,
@@ -834,6 +865,13 @@ fn create_predeploy_contract_works() {
 			1000000,
 			1000000,
 		));
+		assert_eq!(
+			CodeInfos::<Runtime>::get(&EVM::code_hash_at_address(&PREDEPLOY_ADDRESS_START)),
+			Some(CodeInfo {
+				code_size: 184,
+				ref_count: 3,
+			})
+		);
 		let account_id = <Runtime as Config>::AddressMapping::get_account_id(&addr);
 		assert_eq!(Balances::free_balance(account_id), Balances::minimum_balance());
 		assert_eq!(
@@ -1391,7 +1429,7 @@ fn should_selfdestruct() {
 		assert_ok!(EVM::create_predeploy_contract(
 			Origin::signed(NetworkContractAccount::get()),
 			contract_address,
-			vec![],
+			vec![0x01],
 			0,
 			1000000,
 			1000000,
@@ -1906,7 +1944,7 @@ fn remove_account_with_provides_should_panic() {
 			&code_hash,
 			CodeInfo {
 				code_size: 1,
-				ref_count: 2,
+				ref_count: 1,
 			},
 		);
 		Accounts::<Runtime>::insert(
@@ -1928,30 +1966,14 @@ fn remove_account_with_provides_should_panic() {
 fn remove_account_works() {
 	new_test_ext().execute_with(|| {
 		let address = H160::from([1; 20]);
-		let code = vec![0x00];
-		let code_hash = code_hash(&code);
-		Codes::<Runtime>::insert(&code_hash, BoundedVec::try_from(code).unwrap());
-		CodeInfos::<Runtime>::insert(
-			&code_hash,
-			CodeInfo {
-				code_size: 1,
-				ref_count: 1,
-			},
-		);
 		Accounts::<Runtime>::insert(
 			&address,
 			AccountInfo {
 				nonce: 0,
-				contract_info: Some(ContractInfo {
-					code_hash,
-					maintainer: Default::default(),
-					published: false,
-				}),
+				contract_info: None,
 			},
 		);
 		assert_ok!(Pallet::<Runtime>::remove_account(&address));
 		assert_eq!(Accounts::<Runtime>::contains_key(&address), false);
-		assert_eq!(CodeInfos::<Runtime>::contains_key(&code_hash), false);
-		assert_eq!(Codes::<Runtime>::contains_key(&code_hash), false);
 	});
 }

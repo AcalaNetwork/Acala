@@ -42,7 +42,7 @@ pub enum BalancesCall<T: Config> {
 	TransferKeepAlive(<T::Lookup as StaticLookup>::Source, #[codec(compact)] Balance), /* TODO: because param type
 	                                                                                    * in relaychain is u64,
 	                                                                                    * need to confirm
-	                                                                                    * Balance(u128) is work. */
+	                                                                                    * Balance(u128) is working. */
 }
 
 #[derive(Encode, Decode, RuntimeDebug)]
@@ -57,10 +57,10 @@ pub enum UtilityCall<RelayChainCall> {
 pub enum StakingCall {
 	#[codec(index = 1)]
 	BondExtra(#[codec(compact)] Balance), /* TODO: because param type in relaychain is u64, need to confirm
-	                                       * Balance(u128) is work. */
+	                                       * Balance(u128) is working. */
 	#[codec(index = 2)]
 	Unbond(#[codec(compact)] Balance), /* TODO: because param type in relaychain is u64, need to confirm
-	                                    * Balance(u128) is work. */
+	                                    * Balance(u128) is working. */
 	#[codec(index = 3)]
 	WithdrawUnbonded(u32),
 }
