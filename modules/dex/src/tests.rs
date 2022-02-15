@@ -733,6 +733,14 @@ fn get_target_amounts_work() {
 				Error::<Runtime>::InvalidTradingPathLength,
 			);
 			assert_noop!(
+				DexModule::get_target_amounts(&[DOT, DOT], 10000),
+				Error::<Runtime>::InvalidTradingPath,
+			);
+			assert_noop!(
+				DexModule::get_target_amounts(&[DOT, AUSD, DOT], 10000),
+				Error::<Runtime>::InvalidTradingPath,
+			);
+			assert_noop!(
 				DexModule::get_target_amounts(&[DOT, AUSD, ACA], 10000),
 				Error::<Runtime>::MustBeEnabled,
 			);
@@ -796,6 +804,14 @@ fn get_supply_amounts_work() {
 			assert_noop!(
 				DexModule::get_supply_amounts(&[DOT, AUSD, BTC, DOT], 10000),
 				Error::<Runtime>::InvalidTradingPathLength,
+			);
+			assert_noop!(
+				DexModule::get_supply_amounts(&[DOT, DOT], 10000),
+				Error::<Runtime>::InvalidTradingPath,
+			);
+			assert_noop!(
+				DexModule::get_supply_amounts(&[DOT, AUSD, DOT], 10000),
+				Error::<Runtime>::InvalidTradingPath,
 			);
 			assert_noop!(
 				DexModule::get_supply_amounts(&[DOT, AUSD, ACA], 10000),
@@ -1203,6 +1219,10 @@ fn do_swap_with_exact_supply_work() {
 				Error::<Runtime>::InvalidTradingPathLength,
 			);
 			assert_noop!(
+				DexModule::do_swap_with_exact_supply(&BOB, &[DOT, AUSD, DOT], 100_000_000_000_000, 0),
+				Error::<Runtime>::InvalidTradingPath,
+			);
+			assert_noop!(
 				DexModule::do_swap_with_exact_supply(&BOB, &[DOT, ACA], 100_000_000_000_000, 0),
 				Error::<Runtime>::MustBeEnabled,
 			);
@@ -1324,6 +1344,10 @@ fn do_swap_with_exact_target_work() {
 					200_000_000_000_000,
 				),
 				Error::<Runtime>::InvalidTradingPathLength,
+			);
+			assert_noop!(
+				DexModule::do_swap_with_exact_target(&BOB, &[DOT, AUSD, DOT], 250_000_000_000_000, 200_000_000_000_000,),
+				Error::<Runtime>::InvalidTradingPath,
 			);
 			assert_noop!(
 				DexModule::do_swap_with_exact_target(&BOB, &[DOT, ACA], 250_000_000_000_000, 200_000_000_000_000),
