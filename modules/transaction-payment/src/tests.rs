@@ -27,8 +27,8 @@ use frame_support::{
 };
 use mock::{
 	AccountId, AlternativeFeeSwapDeposit, BlockWeights, Call, Currencies, DEXModule, ExtBuilder, FeePoolSize,
-	MockPriceSource, Origin, Runtime, TransactionPayment, ACA, ALICE, AUSD, BOB, CHARLIE, DOT, FEE_UNBALANCED_AMOUNT,
-	TIP_UNBALANCED_AMOUNT,
+	MockPriceSource, Origin, Runtime, System, TransactionPayment, ACA, ALICE, AUSD, BOB, CHARLIE, DOT,
+	FEE_UNBALANCED_AMOUNT, TIP_UNBALANCED_AMOUNT,
 };
 use orml_traits::MultiCurrency;
 use primitives::currency::*;
@@ -123,7 +123,6 @@ fn do_runtime_upgrade_and_init_balance() {
 			crate::mock::SwapThreshold::get()
 		));
 	}
-	// MockTransactionPaymentUpgrade::on_runtime_upgrade();
 
 	vec![AUSD, DOT].iter().for_each(|token| {
 		let ed = (<Currencies as MultiCurrency<AccountId>>::minimum_balance(token.clone())).unique_saturated_into();
@@ -1033,6 +1032,9 @@ fn swap_from_pool_and_dex_update_rate() {
 		assert_eq!(fee_dot + dot_ed, Currencies::free_balance(DOT, &dot_fee_account));
 		assert_eq!(pool_size - balance, Currencies::free_balance(ACA, &dot_fee_account));
 
+		let old_rate = TokenExchangeRate::<Runtime>::get(DOT).unwrap();
+		assert_eq!(old_rate, Ratio::saturating_from_rational(fee_dot, balance));
+
 		// Set threshold(init-500) gt sub account balance(init-800), trigger swap from dex.
 		let swap_balance_threshold = (pool_size - 500) as u128;
 		Pallet::<Runtime>::set_swap_balance_threshold(Origin::signed(ALICE), DOT, swap_balance_threshold).unwrap();
@@ -1041,23 +1043,32 @@ fn swap_from_pool_and_dex_update_rate() {
 		// swap 80 DOT out 3074 ACA
 		let trading_path = Pallet::<Runtime>::get_trading_path_by_currency(&ALICE, DOT).unwrap();
 		let supply_amount = Currencies::free_balance(DOT, &dot_fee_account) - dot_ed;
-		let (_, swap_native) =
+		// here just get swap out amount, the swap not happened
+		let (supply_in_amount, swap_out_native) =
 			module_dex::Pallet::<Runtime>::get_swap_amount(&trading_path, SwapLimit::ExactSupply(supply_amount, 0))
 				.unwrap();
-		assert_eq!(3074, swap_native);
-		// calculate the new balance of ACA = 3074+(init-800)=3074+9200=12270
+		assert_eq!(3074, swap_out_native);
+		assert_eq!(supply_in_amount, supply_amount);
 		let current_native_balance =
-			(swap_native + Currencies::free_balance(ACA, &dot_fee_account)).saturated_into::<u128>();
-		let base_native: u128 = current_native_balance / 10;
-		assert_eq!(1227, base_native);
-		// compare to the old balance:10000 and rate:1/10, the new rate is (12270/10000)*(1/10)=0.1227
-		let rate = Ratio::saturating_from_rational(base_native, pool_size);
-		assert_eq!(Ratio::saturating_from_rational(1227, 10000), rate);
+			(swap_out_native + Currencies::free_balance(ACA, &dot_fee_account)).saturated_into::<u128>();
+
+		// the swap also has it's own exchange rate by input_amount divide output_amount
+		let swap_exchange_rate = Ratio::saturating_from_rational(supply_in_amount, swap_out_native);
+		assert_eq!(swap_exchange_rate, Ratio::saturating_from_rational(80, 3074));
+
+		let old_threshold_rate = Ratio::saturating_from_rational(swap_balance_threshold, pool_size);
+		let new_threshold_rate = Ratio::one().saturating_sub(old_threshold_rate);
+
+		let new_exchange_rate = old_rate
+			.saturating_mul(old_threshold_rate)
+			.saturating_add(swap_exchange_rate.saturating_mul(new_threshold_rate));
 
 		// the sub account has 9200 ACA, 80 DOT, use 80 DOT to swap out some ACA
 		let balance2 = 300 as u128;
 		assert_ok!(Pallet::<Runtime>::swap_from_pool_or_dex(&BOB, balance2, DOT));
-		assert_eq!(TokenExchangeRate::<Runtime>::get(DOT).unwrap(), rate);
+
+		let new_rate = TokenExchangeRate::<Runtime>::get(DOT).unwrap();
+		assert_eq!(new_exchange_rate, new_rate);
 		assert_eq!(PoolSize::<Runtime>::get(DOT), current_native_balance);
 	});
 }
@@ -1165,7 +1176,7 @@ fn charge_fee_failed_when_disable_dex() {
 }
 
 #[test]
-fn enable_init_pool_works() {
+fn charge_fee_pool_operation_works() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(Currencies::update_balance(
 			Origin::root(),
@@ -1204,8 +1215,11 @@ fn enable_init_pool_works() {
 		assert!(dex_available.is_some());
 
 		let treasury_account: AccountId = <Runtime as Config>::TreasuryAccount::get();
+		let sub_account: AccountId = <Runtime as Config>::PalletId::get().into_sub_account(AUSD);
+		let native_ed = crate::mock::NativeTokenExistentialDeposit::get();
 		let usd_ed = <Currencies as MultiCurrency<AccountId>>::minimum_balance(AUSD);
 		let pool_size = FeePoolSize::get();
+		let swap_threshold = crate::mock::SwapThreshold::get();
 
 		assert_ok!(Currencies::update_balance(
 			Origin::root(),
@@ -1224,19 +1238,46 @@ fn enable_init_pool_works() {
 			Origin::signed(ALICE),
 			AUSD,
 			pool_size,
-			35
+			swap_threshold
 		));
 		let rate = TokenExchangeRate::<Runtime>::get(AUSD);
 		assert_eq!(rate, Some(Ratio::saturating_from_rational(2, 10)));
+		System::assert_has_event(crate::mock::Event::TransactionPayment(
+			crate::Event::ChargeFeePoolEnabled {
+				sub_account: sub_account.clone(),
+				currency_id: AUSD,
+				exchange_rate: Ratio::saturating_from_rational(2, 10),
+				pool_size,
+				swap_threshold,
+			},
+		));
 
 		assert_noop!(
-			Pallet::<Runtime>::enable_charge_fee_pool(Origin::signed(ALICE), AUSD, pool_size, 35),
+			Pallet::<Runtime>::enable_charge_fee_pool(Origin::signed(ALICE), AUSD, pool_size, swap_threshold),
 			Error::<Runtime>::ChargeFeePoolAlreadyExisted
 		);
 
 		assert_noop!(
-			Pallet::<Runtime>::enable_charge_fee_pool(Origin::signed(ALICE), KSM, pool_size, 35),
+			Pallet::<Runtime>::enable_charge_fee_pool(Origin::signed(ALICE), KSM, pool_size, swap_threshold),
 			Error::<Runtime>::DexNotAvailable
 		);
+		assert_noop!(
+			Pallet::<Runtime>::disable_charge_fee_pool(Origin::signed(ALICE), KSM),
+			Error::<Runtime>::InvalidToken
+		);
+
+		let ausd_amount1 = <Currencies as MultiCurrency<AccountId>>::free_balance(AUSD, &sub_account);
+		let aca_amount1 = crate::mock::PalletBalances::free_balance(&sub_account);
+		assert_ok!(Pallet::<Runtime>::disable_charge_fee_pool(Origin::signed(ALICE), AUSD));
+		assert_eq!(TokenExchangeRate::<Runtime>::get(AUSD), None);
+		System::assert_has_event(crate::mock::Event::TransactionPayment(crate::Event::FeePoolDisabled {
+			currency_id: AUSD,
+			foreign_amount: ausd_amount1 - usd_ed,
+			native_amount: aca_amount1 - native_ed,
+		}));
+		let ausd_amount2 = <Currencies as MultiCurrency<AccountId>>::free_balance(AUSD, &sub_account);
+		let aca_amount2 = crate::mock::PalletBalances::free_balance(&sub_account);
+		assert_eq!(aca_amount2, native_ed);
+		assert_eq!(ausd_amount2, usd_ed);
 	});
 }
