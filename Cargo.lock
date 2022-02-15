@@ -6210,7 +6210,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "hex",
- "impl-trait-for-tuples 0.2.2",
+ "impl-trait-for-tuples 0.2.1",
  "module-evm",
  "module-evm-utiltity-macro",
  "module-support",
