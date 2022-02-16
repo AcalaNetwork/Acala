@@ -53,9 +53,6 @@ pub use module::*;
 pub mod module {
 	use super::*;
 
-	pub type TokenIdOf<T> = <T as orml_nft::Config>::TokenId;
-	pub type ClassIdOf<T> = <T as orml_nft::Config>::ClassId;
-
 	#[pallet::config]
 	pub trait Config: frame_system::Config + orml_nft::Config {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
@@ -110,7 +107,7 @@ pub mod module {
 	pub enum Event<T: Config> {
 		/// The class ID of Account Tokens has been set
 		NFTClassIdSet {
-			class_id: ClassIdOf<T>,
+			class_id: T::ClassId,
 		},
 		/// The mint fee has been set
 		MintFeeSet {
@@ -152,7 +149,7 @@ pub mod module {
 	/// Stores the NFT's class ID. Settable by authorized Oracle. Used to mint and burn PRTs.
 	#[pallet::storage]
 	#[pallet::getter(fn nft_class_id)]
-	type NFTClassId<T: Config> = StorageValue<_, ClassIdOf<T>, OptionQuery>;
+	type NFTClassId<T: Config> = StorageValue<_, T::ClassId, OptionQuery>;
 
 	/// Stores accounts that are already minted as an NFT.
 	/// Storage Map: Tokenized Account Id  => NFT Token ID
@@ -183,6 +180,7 @@ pub mod module {
 	type RequestMintDeposit<T: Config> = StorageValue<_, Balance, ValueQuery>;
 
 	#[pallet::pallet]
+	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
 	#[pallet::call]
@@ -190,7 +188,7 @@ pub mod module {
 		/// Sets the class ID of the Account Token NFT.
 		/// Only callable by authorized Oracles.
 		#[pallet::weight(0)]
-		pub fn set_nft_id(origin: OriginFor<T>, nft_id: ClassIdOf<T>) -> DispatchResult {
+		pub fn set_nft_id(origin: OriginFor<T>, nft_id: T::ClassId) -> DispatchResult {
 			T::OracleOrigin::ensure_origin(origin)?;
 			NFTClassId::<T>::put(nft_id);
 			Self::deposit_event(Event::<T>::NFTClassIdSet { class_id: nft_id });
