@@ -17,30 +17,45 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 // This file is used for initial migration from HomaXcm into XcmInterface, due to name change.
-use frame_support::weights::Weight;
+use frame_support::{
+	traits::{Get, GetStorageVersion, PalletInfoAccess, StorageVersion},
+	weights::Weight,
+};
 
 pub mod v1 {
 	use super::*;
 	use crate::*;
 
 	/// Migrate the entire storage of previously named "module-homa-xcm" pallet to here.
-	pub fn migrate<T: frame_system::Config>() -> Weight {
+	pub fn migrate<T: frame_system::Config, P: GetStorageVersion + PalletInfoAccess>() -> Weight {
 		let old_prefix = "HomaXcm";
 		let new_prefix = "XcmInterface";
 
-		log::info!(
-			target: "runtime::xcm-interface",
-			"Running migration from HomaXcm to XcmInterface. Old prefix: {:?}, New prefix: {:?}",
-			old_prefix, new_prefix,
-		);
-
-		frame_support::storage::migration::move_pallet(old_prefix.as_bytes(), new_prefix.as_bytes());
+		let on_chain_storage_version = <P as GetStorageVersion>::on_chain_storage_version();
 
 		log::info!(
 			target: "runtime::xcm-interface",
-			"Storage migrated from HomaXcm to XcmInterface.",
+			"Running migration from HomaXcm to XcmInterface. \n
+			Old prefix: {:?}, New prefix: {:?} \n
+			Current version: {:?}, New version: 1",
+			old_prefix, new_prefix, on_chain_storage_version,
 		);
 
-		<T as frame_system::Config>::BlockWeights::get().max_block
+		if on_chain_storage_version < 1 {
+			frame_support::storage::migration::move_pallet(old_prefix.as_bytes(), new_prefix.as_bytes());
+			StorageVersion::new(1).put::<P>();
+			log::info!(
+				target: "runtime::xcm-interface",
+				"Storage migrated from HomaXcm to XcmInterface.",
+			);
+			<T as frame_system::Config>::BlockWeights::get().max_block
+		} else {
+			log::warn!(
+				target: "runtime::xcm-interface",
+				"Attempted to apply migration to v1 but failed because storage version is {:?}",
+				on_chain_storage_version,
+			);
+			0
+		}
 	}
 }
