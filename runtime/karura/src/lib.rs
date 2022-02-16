@@ -1735,7 +1735,7 @@ impl module_homa::Config for Runtime {
 	type MintThreshold = MintThreshold;
 	type RedeemThreshold = RedeemThreshold;
 	type RelayChainBlockNumber = RelayChainBlockNumberProvider<Runtime>;
-	type XcmInterface = HomaXcm;
+	type XcmInterface = XcmInterface;
 	type WeightInfo = weights::module_homa::WeightInfo<Runtime>;
 }
 
@@ -2119,7 +2119,7 @@ construct_runtime!(
 
 		// Homa
 		Homa: module_homa::{Pallet, Call, Storage, Event<T>} = 116,
-		HomaXcm: module_xcm_interface::{Pallet, Call, Storage, Event<T>} = 117,
+		XcmInterface: module_xcm_interface::{Pallet, Call, Storage, Event<T>} = 117,
 
 		// Karura Other
 		Incentives: module_incentives::{Pallet, Storage, Call, Event<T>} = 120,
