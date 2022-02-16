@@ -552,13 +552,11 @@ pub mod module {
 		pub fn disable_charge_fee_pool(origin: OriginFor<T>, currency_id: CurrencyId) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
 			ensure!(
-				TokenExchangeRate::<T>::get(currency_id).is_some(),
+				TokenExchangeRate::<T>::contains_key(currency_id),
 				Error::<T>::InvalidToken
 			);
 			let treasury_account = T::TreasuryAccount::get();
 			let sub_account = Self::sub_account_id(currency_id);
-			// let native_ed: Balance = T::Currency::minimum_balance();
-			// let foreign_ed: Balance = T::MultiCurrency::minimum_balance(currency_id);
 			let foreign_amount: Balance = T::MultiCurrency::free_balance(currency_id, &sub_account);
 			let native_amount: Balance = T::Currency::free_balance(&sub_account);
 
