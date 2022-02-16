@@ -28,7 +28,7 @@
 // --chain=acala-latest
 // --steps=50
 // --repeat=20
-// --pallet=*
+// --pallet=module_transaction_payment
 // --extrinsic=*
 // --execution=wasm
 // --wasm-execution=compiled
@@ -49,26 +49,26 @@ impl<T: frame_system::Config> module_transaction_payment::WeightInfo for WeightI
 	// Storage: Balances Reserves (r:1 w:1)
 	// Storage: TransactionPayment AlternativeFeeSwapPath (r:0 w:1)
 	fn set_alternative_fee_swap_path() -> Weight {
-		(39_519_000 as Weight)
+		(37_857_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
 	// Storage: TransactionPayment GlobalFeeSwapPath (r:1 w:1)
 	fn set_global_fee_swap_path() -> Weight {
-		(21_675_000 as Weight)
+		(19_967_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	// Storage: TransactionPayment GlobalFeeSwapPath (r:1 w:1)
 	fn remove_global_fee_swap_path() -> Weight {
-		(22_425_000 as Weight)
+		(20_261_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	// Storage: TransactionPayment PoolSize (r:1 w:0)
 	// Storage: TransactionPayment SwapBalanceThreshold (r:0 w:1)
 	fn set_swap_balance_threshold() -> Weight {
-		(23_384_000 as Weight)
+		(20_757_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
@@ -81,14 +81,14 @@ impl<T: frame_system::Config> module_transaction_payment::WeightInfo for WeightI
 	// Storage: TransactionPayment TokenExchangeRate (r:0 w:1)
 	// Storage: TransactionPayment SwapBalanceThreshold (r:0 w:1)
 	fn enable_charge_fee_pool() -> Weight {
-		(114_524_000 as Weight)
+		(109_411_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(8 as Weight))
 			.saturating_add(T::DbWeight::get().writes(7 as Weight))
 	}
 	// Storage: TransactionPayment NextFeeMultiplier (r:1 w:1)
 	// Storage: System BlockWeight (r:1 w:0)
 	fn on_finalize() -> Weight {
-		(12_381_000 as Weight)
+		(11_586_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
