@@ -1,6 +1,6 @@
 [package]
 name = "acala-runtime"
-version = "2.3.0"
+version = "2.3.3"
 authors = ["Acala Developers"]
 edition = "2021"
 build = "build.rs"
@@ -76,6 +76,7 @@ orml-benchmarking = { path = "../../orml/benchmarking", default-features = false
 orml-oracle = { path = "../../orml/oracle", default-features = false }
 orml-oracle-rpc-runtime-api = { path = "../../orml/oracle/rpc/runtime-api", default-features = false }
 orml-tokens = { path = "../../orml/tokens", default-features = false }
+orml-tokens-rpc-runtime-api = { path = "../../orml/tokens/rpc/runtime-api", default-features = false }
 orml-traits = { path = "../../orml/traits", default-features = false }
 orml-vesting = { path = "../../orml/vesting", default-features = false }
 orml-rewards = { path = "../../orml/rewards", default-features = false }
@@ -195,6 +196,7 @@ std = [
 	"orml-oracle-rpc-runtime-api/std",
 	"orml-oracle/std",
 	"orml-tokens/std",
+	"orml-tokens-rpc-runtime-api/std",
 	"orml-traits/std",
 	"orml-vesting/std",
 	"orml-rewards/std",

@@ -1,6 +1,6 @@
 [package]
 name = "acala-service"
-version = "2.3.0"
+version = "2.3.3"
 authors = ["Acala Developers"]
 edition = "2021"
 
@@ -17,7 +17,6 @@ codec = { package = "parity-scale-codec", version = "2.3.1" }
 
 jsonrpc-core = "18.0.0"
 
-node-executor = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.16" }
 sp-api = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.16" }
 sp-consensus = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.16" }
 sp-consensus-aura = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.16" }
@@ -78,6 +77,7 @@ module-collator-selection = { path = "../../modules/collator-selection" }
 module-evm = { path = "../../modules/evm" }
 module-nft = { path = "../../modules/nft" }
 orml-oracle-rpc = { path = "../../orml/oracle/rpc" }
+orml-tokens-rpc = { path = "../../orml/tokens/rpc" }
 acala-primitives = { path = "../../primitives" }
 acala-rpc = { path = "../../rpc" }
 module-evm-rpc-runtime-api = { path = "../../modules/evm/rpc/runtime_api" }

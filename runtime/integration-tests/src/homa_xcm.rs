@@ -69,7 +69,7 @@ impl Default for HomaParams {
 // Helper function to setup config. Called within Karura Externalities.
 fn configure_homa_and_xcm_interface() {
 	// Configure Homa and XcmInterface
-	assert_ok!(XcmInterface::update_xcm_dest_weight_and_fee(
+	assert_ok!(HomaXcm::update_xcm_dest_weight_and_fee(
 		Origin::root(),
 		get_xcm_weight()
 	));

@@ -12,14 +12,19 @@ on:
         description: The name of the chain under test.
         default: karura
         required: true
+      image:
+        description: The docker image.
+        default: acala/karura-node:latest
+        required: true
 
 jobs:
   check:
     name: Run check
-    runs-on: [self-hosted, linux]
+    runs-on: ubuntu-latest
     env:
       CHAIN: ${{ github.event.inputs.chain }}
       REF_URL: ${{ github.event.inputs.reference_url }}
+      IMAGE: ${{ github.event.inputs.image }}
 
     steps:
       - uses: actions/checkout@v2
@@ -33,21 +38,9 @@ jobs:
       - name: Install Yarn
         run: npm install -g yarn
 
-      - name: Install toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: nightly-2021-11-07
-          components: rustfmt
-          target: wasm32-unknown-unknown
-          default: true
-
-      - name: Build
-        run: cargo build --release --features=with-${{ env.CHAIN }}-runtime --features=rococo-native
-
       - name: Prepare output
         run: |
-          VERSION=$(./target/release/acala --version)
+          VERSION=$(docker run --rm $IMAGE --version)
           echo "Metadata comparison:" >> output.txt
           echo "Date: $(date)" >> output.txt
           echo "Reference: $REF_URL" >> output.txt
@@ -55,7 +48,7 @@ jobs:
           echo "-------------------------------------------" >> output.txt
 
       - name: Start local node
-        run: ./target/release/acala --chain=${{ env.CHAIN }}-dev --rpc-cors=all --ws-external --tmp & pid=$!
+        run: docker run --name extrinsic-ordering-check-from-bin -d -p 9944:9944 --rm $IMAGE --chain=${{ env.CHAIN }}-dev --rpc-cors=all --ws-external --tmp -- --dev
 
       - name: Compare the metadata
         run: |
@@ -67,7 +60,7 @@ jobs:
           sed -z -i 's/\n\n/\n/g' output.txt
 
       - name: Stop our local node
-        run: kill -s KILL $pid
+        run: docker stop extrinsic-ordering-check-from-bin
 
       - name: Show result
         run: cat output.txt

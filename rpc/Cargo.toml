@@ -1,6 +1,6 @@
 [package]
 name = "acala-rpc"
-version = "2.3.0"
+version = "2.3.3"
 authors = ["Acala Developers"]
 edition = "2021"
 
@@ -23,3 +23,4 @@ sc-consensus-manual-seal = { git = "https://github.com/paritytech/substrate", br
 orml-oracle-rpc = { path = "../orml/oracle/rpc" }
 runtime-common = { path = "../runtime/common" }
 evm-rpc = { path = "../modules/evm/rpc" }
+orml-tokens-rpc = {path = "../orml/tokens/rpc" }
