@@ -1281,14 +1281,14 @@ fn charge_fee_pool_operation_works() {
 		System::assert_has_event(crate::mock::Event::TransactionPayment(
 			crate::Event::ChargeFeePoolDisabled {
 				currency_id: AUSD,
-				foreign_amount: ausd_amount1 - usd_ed,
-				native_amount: aca_amount1 - native_ed,
+				foreign_amount: ausd_amount1,
+				native_amount: aca_amount1,
 			},
 		));
 		let ausd_amount2 = <Currencies as MultiCurrency<AccountId>>::free_balance(AUSD, &sub_account);
 		let aca_amount2 = crate::mock::PalletBalances::free_balance(&sub_account);
-		assert_eq!(aca_amount2, native_ed);
-		assert_eq!(ausd_amount2, usd_ed);
+		assert_eq!(aca_amount2, 0);
+		assert_eq!(ausd_amount2, 0);
 
 		assert_ok!(Pallet::<Runtime>::enable_charge_fee_pool(
 			Origin::signed(ALICE),

@@ -137,8 +137,8 @@ runtime_benchmarks! {
 	verify {
 		assert_last_event(module_transaction_payment::Event::ChargeFeePoolDisabled {
 			currency_id: STABLECOIN,
-			foreign_amount: stable_ed * 9,
-			native_amount: native_ed * 9,
+			foreign_amount: stable_ed * 10,
+			native_amount: native_ed * 10,
 		}.into());
 		assert_eq!(module_transaction_payment::TokenExchangeRate::<Runtime>::get(STABLECOIN), None);
 	}

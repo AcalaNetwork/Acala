@@ -557,18 +557,17 @@ pub mod module {
 			);
 			let treasury_account = T::TreasuryAccount::get();
 			let sub_account = Self::sub_account_id(currency_id);
-			let native_ed: Balance = T::Currency::minimum_balance();
-			let foreign_ed: Balance = T::MultiCurrency::minimum_balance(currency_id);
-			let foreign_amount: Balance =
-				T::MultiCurrency::free_balance(currency_id, &sub_account).saturating_sub(foreign_ed);
-			let native_amount: Balance = T::Currency::free_balance(&sub_account).saturating_sub(native_ed);
+			// let native_ed: Balance = T::Currency::minimum_balance();
+			// let foreign_ed: Balance = T::MultiCurrency::minimum_balance(currency_id);
+			let foreign_amount: Balance = T::MultiCurrency::free_balance(currency_id, &sub_account);
+			let native_amount: Balance = T::Currency::free_balance(&sub_account);
 
 			T::MultiCurrency::transfer(currency_id, &sub_account, &treasury_account, foreign_amount)?;
 			T::Currency::transfer(
 				&sub_account,
 				&treasury_account,
 				native_amount,
-				ExistenceRequirement::KeepAlive,
+				ExistenceRequirement::AllowDeath,
 			)?;
 			// remove map entry, then `swap_from_pool_or_dex` method will throw error.
 			TokenExchangeRate::<T>::remove(currency_id);
