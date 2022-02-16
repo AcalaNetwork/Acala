@@ -2613,8 +2613,8 @@ mod tests {
 	#[test]
 	fn check_call_size() {
 		assert!(
-			core::mem::size_of::<Call>() <= 260,
-			"size of Call is more than 260 bytes: some calls have too big arguments, use Box to \
+			core::mem::size_of::<Call>() <= 280,
+			"size of Call is more than 280 bytes: some calls have too big arguments, use Box to \
 			reduce the size of Call.
 			If the limit is too strong, maybe consider increasing the limit",
 		);
