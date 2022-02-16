@@ -31,6 +31,8 @@ members = [
  	"orml/oracle/rpc/runtime-api",
 	"orml/rewards",
 	"orml/tokens",
+	"orml/tokens/rpc",
+	"orml/tokens/rpc/runtime-api",
 	"orml/traits",
 	"orml/utilities",
 	"orml/vesting",

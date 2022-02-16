@@ -58,7 +58,8 @@ use module_relaychain::RelayChainCallBuilder;
 use module_support::{AssetIdMapping, DispatchableTask};
 use module_transaction_payment::{Multiplier, TargetedFeeAdjustment, TransactionFeePoolTrader};
 use orml_traits::{
-	create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended, MultiCurrency,
+	create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended, GetByKey,
+	MultiCurrency,
 };
 use pallet_transaction_payment::RuntimeDispatchInfo;
 
@@ -127,7 +128,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("acala"),
 	impl_name: create_runtime_str!("acala"),
 	authoring_version: 1,
-	spec_version: 2032,
+	spec_version: 2033,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -2128,6 +2129,20 @@ impl_runtime_apis! {
 			match provider_id {
 				DataProviderId::Acala => AcalaOracle::get_all_values(),
 				DataProviderId::Aggregated => <AggregatedDataProvider as DataProviderExtended<_, _>>::get_all_values()
+			}
+		}
+	}
+
+	impl orml_tokens_rpc_runtime_api::TokensApi<
+		Block,
+		CurrencyId,
+		Balance,
+	> for Runtime {
+		fn query_existential_deposit(key: CurrencyId) -> Balance {
+			if key == GetNativeCurrencyId::get() {
+				NativeTokenExistentialDeposit::get()
+			} else {
+				ExistentialDeposits::get(&key)
 			}
 		}
 	}
