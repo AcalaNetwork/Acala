@@ -97,6 +97,7 @@ dependencies = [
  "evm-rpc",
  "jsonrpc-core",
  "orml-oracle-rpc",
+ "orml-tokens-rpc",
  "pallet-transaction-payment-rpc",
  "parity-scale-codec",
  "runtime-common",
@@ -167,6 +168,7 @@ dependencies = [
  "orml-oracle-rpc-runtime-api",
  "orml-rewards",
  "orml-tokens",
+ "orml-tokens-rpc-runtime-api",
  "orml-traits",
  "orml-unknown-tokens",
  "orml-vesting",
@@ -257,6 +259,7 @@ dependencies = [
  "module-evm-rpc-runtime-api",
  "module-nft",
  "orml-oracle-rpc",
+ "orml-tokens-rpc",
  "pallet-transaction-payment-rpc-runtime-api",
  "parity-scale-codec",
  "polkadot-primitives",
@@ -4600,6 +4603,7 @@ dependencies = [
  "orml-oracle-rpc-runtime-api",
  "orml-rewards",
  "orml-tokens",
+ "orml-tokens-rpc-runtime-api",
  "orml-traits",
  "orml-unknown-tokens",
  "orml-vesting",
@@ -5634,6 +5638,7 @@ dependencies = [
  "orml-oracle-rpc-runtime-api",
  "orml-rewards",
  "orml-tokens",
+ "orml-tokens-rpc-runtime-api",
  "orml-traits",
  "orml-unknown-tokens",
  "orml-vesting",
@@ -7235,6 +7240,34 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
+]
+
+[[package]]
+name = "orml-tokens-rpc"
+version = "0.4.1-dev"
+dependencies = [
+ "frame-support",
+ "jsonrpc-core",
+ "jsonrpc-core-client",
+ "jsonrpc-derive",
+ "orml-tokens-rpc-runtime-api",
+ "parity-scale-codec",
+ "sp-api",
+ "sp-blockchain",
+ "sp-core",
+ "sp-rpc",
+ "sp-runtime",
+]
+
+[[package]]
+name = "orml-tokens-rpc-runtime-api"
+version = "0.4.1-dev"
+dependencies = [
+ "frame-support",
+ "orml-tokens",
+ "parity-scale-codec",
+ "sp-api",
+ "sp-runtime",
 ]
 
 [[package]]
