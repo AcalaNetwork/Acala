@@ -1002,10 +1002,6 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 			.precompile_set
 			.execute(code_address, &input, Some(gas_limit), &context, is_static)
 		{
-			// this is needed only for evm-tests to keep track of dirty accounts
-			#[cfg(feature = "evm-tests")]
-			self.state.touch(code_address);
-
 			return match result {
 				Ok(PrecompileOutput {
 					exit_status,
