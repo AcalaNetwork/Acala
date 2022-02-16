@@ -188,24 +188,21 @@ impl<'config> StackSubstateMetadata<'config> {
 		// merge child meter into parent meter
 		self.storage_meter.merge(&other.storage_meter);
 
+		#[cfg(feature = "evm-tests")]
+		self.dirty_accounts
+			.borrow_mut()
+			.append(&mut other.dirty_accounts.borrow().iter().copied().collect());
+
 		Ok(())
 	}
 
 	pub fn swallow_revert(&mut self, other: Self) -> Result<(), ExitError> {
 		self.gasometer.record_stipend(other.gasometer.gas())?;
 
-		// this is needed only for evm-tests to keep track of dirty accounts
-		#[cfg(feature = "evm-tests")]
-		self.dirty_accounts.borrow_mut().clear();
-
 		Ok(())
 	}
 
 	pub fn swallow_discard(&mut self, _other: Self) -> Result<(), ExitError> {
-		// this is needed only for evm-tests to keep track of dirty accounts
-		#[cfg(feature = "evm-tests")]
-		self.dirty_accounts.borrow_mut().clear();
-
 		Ok(())
 	}
 

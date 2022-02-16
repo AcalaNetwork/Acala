@@ -473,17 +473,17 @@ impl<'config> SubstrateStackSubstate<'config> {
 #[cfg(feature = "evm-tests")]
 impl<'config> SubstrateStackSubstate<'config> {
 	pub fn mark_account_dirty(&self, address: H160) {
-		if let Some(parent) = self.parent.as_ref() {
-			return parent.mark_account_dirty(address);
-		}
 		self.metadata().dirty_accounts.borrow_mut().insert(address);
 	}
 
 	pub fn is_account_dirty(&self, address: H160) -> bool {
+		if self.metadata().dirty_accounts.borrow().contains(&address) {
+			return true;
+		}
 		if let Some(parent) = self.parent.as_ref() {
 			return parent.is_account_dirty(address);
 		}
-		self.metadata().dirty_accounts.borrow().contains(&address)
+		false
 	}
 }
 
