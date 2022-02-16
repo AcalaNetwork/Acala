@@ -536,21 +536,24 @@ pub mod module {
 				Error::<T>::InvalidSwapPath
 			);
 
-			GlobalFeeSwapPath::<T>::try_mutate(fee_swap_path.get(0).expect("ensured path not empty; qed"), |maybe_path| -> DispatchResult {
-				let path: BoundedVec<CurrencyId, T::TradingPathLimit> = fee_swap_path
-					.clone()
-					.try_into()
-					.map_err(|_| Error::<T>::InvalidSwapPath)?;
+			GlobalFeeSwapPath::<T>::try_mutate(
+				fee_swap_path.get(0).expect("ensured path not empty; qed"),
+				|maybe_path| -> DispatchResult {
+					let path: BoundedVec<CurrencyId, T::TradingPathLimit> = fee_swap_path
+						.clone()
+						.try_into()
+						.map_err(|_| Error::<T>::InvalidSwapPath)?;
 
-				let old_fee_swap_path = maybe_path.clone().map(|v| v.to_vec());
-				*maybe_path = Some(path);
+					let old_fee_swap_path = maybe_path.clone().map(|v| v.to_vec());
+					*maybe_path = Some(path);
 
-				Self::deposit_event(Event::GlobalFeeSwapPathUpdated {
-					old_fee_swap_path,
-					new_fee_swap_path: fee_swap_path,
-				});
-				Ok(())
-			})
+					Self::deposit_event(Event::GlobalFeeSwapPathUpdated {
+						old_fee_swap_path,
+						new_fee_swap_path: fee_swap_path,
+					});
+					Ok(())
+				},
+			)
 		}
 
 		/// Remove global fee swap path
