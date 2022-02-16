@@ -532,12 +532,12 @@ pub mod module {
 			ensure!(
 				fee_swap_path.len() > 1
 					&& fee_swap_path.get(0) != Some(&T::NativeCurrencyId::get())
-					&& fee_swap_path.get(fee_swap_path.len() - 1) == Some(&T::NativeCurrencyId::get()),
+					&& fee_swap_path.last() == Some(&T::NativeCurrencyId::get()),
 				Error::<T>::InvalidSwapPath
 			);
 
 			GlobalFeeSwapPath::<T>::try_mutate(
-				fee_swap_path.get(0).expect("ensured path not empty; qed"),
+				*fee_swap_path.get(0).expect("ensured path not empty; qed"),
 				|maybe_path| -> DispatchResult {
 					let path: BoundedVec<CurrencyId, T::TradingPathLimit> = fee_swap_path
 						.clone()
