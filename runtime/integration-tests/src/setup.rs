@@ -67,6 +67,7 @@ mod mandala_imports {
 		primitives::DexShare::Token(TokenSymbol::AUSD),
 		primitives::DexShare::Token(TokenSymbol::DOT),
 	);
+	pub const NATIVE_TOKEN_SYMBOL: TokenSymbol = TokenSymbol::ACA;
 	pub type Trader = FixedRateOfFungible<DotPerSecond, ()>;
 	pub type PeriodTrader =
 		module_transaction_payment::TransactionFeePoolTrader<Runtime, CurrencyIdConvert, AcaPerSecondAsBased, ()>;
@@ -112,6 +113,7 @@ mod karura_imports {
 		primitives::DexShare::Token(TokenSymbol::KUSD),
 		primitives::DexShare::Token(TokenSymbol::KSM),
 	);
+	pub const NATIVE_TOKEN_SYMBOL: TokenSymbol = TokenSymbol::KAR;
 	pub type Trader = FixedRateOfFungible<KsmPerSecond, ()>;
 	pub type PeriodTrader =
 		module_transaction_payment::TransactionFeePoolTrader<Runtime, CurrencyIdConvert, KarPerSecondAsBased, ()>;
@@ -159,6 +161,7 @@ mod acala_imports {
 		primitives::DexShare::Token(TokenSymbol::AUSD),
 		primitives::DexShare::Token(TokenSymbol::DOT),
 	);
+	pub const NATIVE_TOKEN_SYMBOL: TokenSymbol = TokenSymbol::ACA;
 	pub type Trader = FixedRateOfFungible<DotPerSecond, ()>;
 	pub type PeriodTrader =
 		module_transaction_payment::TransactionFeePoolTrader<Runtime, CurrencyIdConvert, AcaPerSecondAsBased, ()>;
