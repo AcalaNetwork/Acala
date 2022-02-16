@@ -536,7 +536,7 @@ pub mod module {
 				Error::<T>::InvalidSwapPath
 			);
 
-			GlobalFeeSwapPath::<T>::try_mutate(fee_swap_path[0], |maybe_path| -> DispatchResult {
+			GlobalFeeSwapPath::<T>::try_mutate(fee_swap_path.get(0).expect("ensured path not empty; qed"), |maybe_path| -> DispatchResult {
 				let path: BoundedVec<CurrencyId, T::TradingPathLimit> = fee_swap_path
 					.clone()
 					.try_into()
