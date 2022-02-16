@@ -473,6 +473,13 @@ impl<'config> SubstrateStackSubstate<'config> {
 #[cfg(feature = "evm-tests")]
 impl<'config> SubstrateStackSubstate<'config> {
 	pub fn mark_account_dirty(&self, address: H160) {
+		// https://github.com/ethereum/go-ethereum/blob/v1.10.16/core/state/state_object.go#L143
+		// insert in parent to make sure it doesn't get discarded
+		if address == H160::from_low_u64_be(3) {
+			if let Some(parent) = self.parent.as_ref() {
+				parent.mark_account_dirty(address);
+			}
+		}
 		self.metadata().dirty_accounts.borrow_mut().insert(address);
 	}
 
