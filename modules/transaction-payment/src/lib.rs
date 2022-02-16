@@ -510,8 +510,8 @@ pub mod module {
 					path.try_into().map_err(|_| Error::<T>::InvalidSwapPath)?;
 				ensure!(
 					path.len() > 1
-						&& path.get(0) != Some(&T::NativeCurrencyId::get())
-						&& path.get(path.len() - 1) == Some(&T::NativeCurrencyId::get()),
+						&& path.first() != Some(&T::NativeCurrencyId::get())
+						&& path.last() == Some(&T::NativeCurrencyId::get()),
 					Error::<T>::InvalidSwapPath
 				);
 				T::Currency::ensure_reserved_named(&DEPOSIT_ID, &who, T::AlternativeFeeSwapDeposit::get())?;
@@ -531,7 +531,7 @@ pub mod module {
 
 			ensure!(
 				fee_swap_path.len() > 1
-					&& fee_swap_path.get(0) != Some(&T::NativeCurrencyId::get())
+					&& fee_swap_path.first() != Some(&T::NativeCurrencyId::get())
 					&& fee_swap_path.last() == Some(&T::NativeCurrencyId::get()),
 				Error::<T>::InvalidSwapPath
 			);
