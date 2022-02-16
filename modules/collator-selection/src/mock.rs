@@ -23,7 +23,6 @@ use frame_support::{
 	traits::{Everything, FindAuthor, GenesisBuild},
 	PalletId,
 };
-use frame_system as system;
 use frame_system::EnsureSignedBy;
 use primitives::ReserveIdentifier;
 use sp_core::H256;
@@ -58,7 +57,7 @@ parameter_types! {
 	pub const SS58Prefix: u8 = 42;
 }
 
-impl system::Config for Test {
+impl frame_system::Config for Test {
 	type BaseCallFilter = Everything;
 	type BlockWeights = ();
 	type BlockLength = ();
@@ -82,6 +81,7 @@ impl system::Config for Test {
 	type SystemWeightInfo = ();
 	type SS58Prefix = SS58Prefix;
 	type OnSetCode = ();
+	type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
 
 parameter_types! {

@@ -838,7 +838,8 @@ where
 		+ Copy
 		+ MaybeSerializeDeserialize
 		+ Debug
-		+ Default,
+		+ Default
+		+ MaxEncodedLen,
 	Currency: PalletCurrency<AccountId>,
 	T: Config,
 {

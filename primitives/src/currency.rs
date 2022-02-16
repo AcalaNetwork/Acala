@@ -20,7 +20,7 @@
 
 use crate::{evm::EvmAddress, *};
 use bstringify::bstringify;
-use codec::{Decode, Encode};
+use codec::{Decode, Encode, MaxEncodedLen};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 pub use nutsfinance_stable_asset::StableAssetPoolId;
 use scale_info::TypeInfo;
@@ -176,7 +176,7 @@ create_currency_id! {
 	// 128 - 147: Karura & Kusama native tokens
 	// 148 - 167: External tokens (e.g. bridged)
 	// 168 - 255: Kusama parachain tokens
-	#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord, TypeInfo)]
+	#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord, TypeInfo, MaxEncodedLen)]
 	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 	#[repr(u8)]
 	pub enum TokenSymbol {
@@ -219,7 +219,7 @@ pub type ForeignAssetId = u16;
 pub type Erc20Id = u32;
 pub type Lease = BlockNumber;
 
-#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord, TypeInfo)]
+#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord, TypeInfo, MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 pub enum DexShare {
@@ -229,7 +229,7 @@ pub enum DexShare {
 	ForeignAsset(ForeignAssetId),
 }
 
-#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord, TypeInfo)]
+#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord, TypeInfo, MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 pub enum CurrencyId {

@@ -128,7 +128,7 @@ mod karura_tests {
 	#[test]
 	/// Tests transfer_keep_alive call
 	fn relaychain_transfer_keep_alive_works() {
-		let mut parachain_account: AccountId = AccountId::default();
+		let mut parachain_account: AccountId = AccountId::new([0u8; 32]);
 		Karura::execute_with(|| {
 			parachain_account = ParachainAccount::get();
 		});

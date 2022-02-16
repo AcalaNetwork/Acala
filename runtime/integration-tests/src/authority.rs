@@ -125,23 +125,23 @@ fn test_authority_module() {
 
 			// delay < SevenDays
 			#[cfg(feature = "with-mandala-runtime")]
-			System::assert_last_event(Event::Scheduler(pallet_scheduler::Event::<Runtime>::Dispatched(
-				(OneDay::get() + 1, 1),
-				Some([AUTHORITY_ORIGIN_ID, 32, 28, 0, 0, 0, 0, 1, 0, 0, 0].to_vec()),
-				Err(DispatchError::BadOrigin),
-			)));
+			System::assert_last_event(Event::Scheduler(pallet_scheduler::Event::<Runtime>::Dispatched {
+				task: (OneDay::get() + 1, 1),
+				id: Some([AUTHORITY_ORIGIN_ID, 32, 28, 0, 0, 0, 0, 1, 0, 0, 0].to_vec()),
+				result: Err(DispatchError::BadOrigin),
+			}));
 			#[cfg(feature = "with-karura-runtime")]
-			System::assert_last_event(Event::Scheduler(pallet_scheduler::Event::<Runtime>::Dispatched(
-				(OneDay::get() + 1, 1),
-				Some([AUTHORITY_ORIGIN_ID, 32, 28, 0, 0, 0, 0, 1, 0, 0, 0].to_vec()),
-				Err(DispatchError::BadOrigin),
-			)));
+			System::assert_last_event(Event::Scheduler(pallet_scheduler::Event::<Runtime>::Dispatched {
+				task: (OneDay::get() + 1, 1),
+				id: Some([AUTHORITY_ORIGIN_ID, 32, 28, 0, 0, 0, 0, 1, 0, 0, 0].to_vec()),
+				result: Err(DispatchError::BadOrigin),
+			}));
 			#[cfg(feature = "with-acala-runtime")]
-			System::assert_last_event(Event::Scheduler(pallet_scheduler::Event::<Runtime>::Dispatched(
-				(OneDay::get() + 1, 1),
-				Some([AUTHORITY_ORIGIN_ID, 32, 28, 0, 0, 0, 0, 1, 0, 0, 0].to_vec()),
-				Err(DispatchError::BadOrigin),
-			)));
+			System::assert_last_event(Event::Scheduler(pallet_scheduler::Event::<Runtime>::Dispatched {
+				task: (OneDay::get() + 1, 1),
+				id: Some([AUTHORITY_ORIGIN_ID, 32, 28, 0, 0, 0, 0, 1, 0, 0, 0].to_vec()),
+				result: Err(DispatchError::BadOrigin),
+			}));
 
 			let seven_days_later = one_day_later + SevenDays::get() + 1;
 
@@ -157,25 +157,25 @@ fn test_authority_module() {
 			run_to_block(seven_days_later);
 
 			#[cfg(feature = "with-mandala-runtime")]
-			System::assert_last_event(Event::Scheduler(pallet_scheduler::Event::<Runtime>::Dispatched(
-				(seven_days_later, 0),
-				Some([AUTHORITY_ORIGIN_ID, 225, 196, 0, 0, 0, 0, 2, 0, 0, 0].to_vec()),
-				Ok(()),
-			)));
+			System::assert_last_event(Event::Scheduler(pallet_scheduler::Event::<Runtime>::Dispatched {
+				task: (seven_days_later, 0),
+				id: Some([AUTHORITY_ORIGIN_ID, 225, 196, 0, 0, 0, 0, 2, 0, 0, 0].to_vec()),
+				result: Ok(()),
+			}));
 
 			#[cfg(feature = "with-karura-runtime")]
-			System::assert_last_event(Event::Scheduler(pallet_scheduler::Event::<Runtime>::Dispatched(
-				(seven_days_later, 0),
-				Some([AUTHORITY_ORIGIN_ID, 225, 196, 0, 0, 0, 0, 2, 0, 0, 0].to_vec()),
-				Ok(()),
-			)));
+			System::assert_last_event(Event::Scheduler(pallet_scheduler::Event::<Runtime>::Dispatched {
+				task: (seven_days_later, 0),
+				id: Some([AUTHORITY_ORIGIN_ID, 225, 196, 0, 0, 0, 0, 2, 0, 0, 0].to_vec()),
+				result: Ok(()),
+			}));
 
 			#[cfg(feature = "with-acala-runtime")]
-			System::assert_last_event(Event::Scheduler(pallet_scheduler::Event::<Runtime>::Dispatched(
-				(seven_days_later, 0),
-				Some([AUTHORITY_ORIGIN_ID, 225, 196, 0, 0, 0, 0, 2, 0, 0, 0].to_vec()),
-				Ok(()),
-			)));
+			System::assert_last_event(Event::Scheduler(pallet_scheduler::Event::<Runtime>::Dispatched {
+				task: (seven_days_later, 0),
+				id: Some([AUTHORITY_ORIGIN_ID, 225, 196, 0, 0, 0, 0, 2, 0, 0, 0].to_vec()),
+				result: Ok(()),
+			}));
 
 			// with_delayed_origin = false
 			assert_ok!(Authority::schedule_dispatch(
@@ -191,11 +191,11 @@ fn test_authority_module() {
 			}));
 
 			run_to_block(seven_days_later + 1);
-			System::assert_last_event(Event::Scheduler(pallet_scheduler::Event::<Runtime>::Dispatched(
-				(seven_days_later + 1, 0),
-				Some([0, 0, 3, 0, 0, 0].to_vec()),
-				Ok(()),
-			)));
+			System::assert_last_event(Event::Scheduler(pallet_scheduler::Event::<Runtime>::Dispatched {
+				task: (seven_days_later + 1, 0),
+				id: Some([0, 0, 3, 0, 0, 0].to_vec()),
+				result: Ok(()),
+			}));
 
 			assert_ok!(Authority::schedule_dispatch(
 				Origin::root(),

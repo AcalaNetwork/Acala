@@ -170,6 +170,7 @@ pub fn latest_acala_config() -> Result<ChainSpec, String> {
 		],
 		TelemetryEndpoints::new(vec![(TELEMETRY_URL.into(), 0)]).ok(),
 		Some("acala"),
+		None,
 		Some(acala_properties()),
 		Extensions {
 			relay_chain: "polkadot".into(),
@@ -208,6 +209,7 @@ pub fn acala_dev_config() -> Result<ChainSpec, String> {
 		vec![],
 		None,
 		None,
+		None,
 		Some(acala_properties()),
 		Extensions {
 			relay_chain: "rococo-local".into(),
@@ -233,7 +235,7 @@ fn acala_genesis(
 		balances: BalancesConfig {
 			balances: initial_allocation,
 		},
-		sudo: SudoConfig { key: root_key },
+		sudo: SudoConfig { key: Some(root_key) },
 		general_council: Default::default(),
 		general_council_membership: GeneralCouncilMembershipConfig {
 			members: general_councils,

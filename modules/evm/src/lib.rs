@@ -40,14 +40,14 @@ use frame_support::{
 	pallet_prelude::*,
 	parameter_types,
 	traits::{
-		tokens::fungible::Inspect, BalanceStatus, Currency, EnsureOrigin, ExistenceRequirement, FindAuthor, Get,
+		BalanceStatus, Currency, EnsureOneOf, EnsureOrigin, ExistenceRequirement, FindAuthor, Get,
 		NamedReservableCurrency, OnKilledAccount,
 	},
 	transactional,
 	weights::{Pays, PostDispatchInfo, Weight},
 	BoundedVec, RuntimeDebug,
 };
-use frame_system::{ensure_root, ensure_signed, pallet_prelude::*, EnsureOneOf, EnsureRoot, EnsureSigned};
+use frame_system::{ensure_root, ensure_signed, pallet_prelude::*, EnsureRoot, EnsureSigned};
 use hex_literal::hex;
 pub use module_evm_utiltity::{
 	ethereum::{Log, TransactionAction},
@@ -64,7 +64,7 @@ pub use primitives::{
 	convert_decimals_from_evm, convert_decimals_to_evm,
 	evm::{
 		CallInfo, CreateInfo, EvmAddress, ExecutionInfo, Vicinity, MIRRORED_NFT_ADDRESS_START,
-		MIRRORED_TOKENS_ADDRESS_START,
+		MIRRORED_TOKENS_ADDRESS_START, PREDEPLOY_ADDRESS_START,
 	},
 	task::TaskResult,
 	Balance, CurrencyId, ReserveIdentifier,
@@ -216,7 +216,6 @@ pub mod module {
 
 		/// Currency type for withdraw and balance storage.
 		type Currency: Currency<Self::AccountId, Balance = Balance>
-			+ Inspect<Self::AccountId, Balance = Balance>
 			+ NamedReservableCurrency<Self::AccountId, ReserveIdentifier = ReserveIdentifier>;
 
 		/// Merge free balance from source to dest.
@@ -559,6 +558,7 @@ pub mod module {
 	}
 
 	#[pallet::pallet]
+	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
 	#[pallet::hooks]
@@ -881,7 +881,20 @@ pub mod module {
 			T::NetworkContractOrigin::ensure_origin(origin)?;
 
 			let source = T::NetworkContractSource::get();
+			let source_account = T::AddressMapping::get_account_id(&source);
 			let address = MIRRORED_TOKENS_ADDRESS_START | EvmAddress::from_low_u64_be(Self::network_contract_index());
+
+			// ensure source have more than 10 KAR/ACA to deploy the contract.
+			let amount = T::Currency::minimum_balance().saturating_mul(100u32.into());
+			if T::Currency::free_balance(&source_account) < amount {
+				T::Currency::transfer(
+					&T::TreasuryAccount::get(),
+					&source_account,
+					amount,
+					ExistenceRequirement::AllowDeath,
+				)?;
+			}
+
 			match T::Runner::create_at_address(source, address, init, value, gas_limit, storage_limit, T::config()) {
 				Err(e) => {
 					Pallet::<T>::deposit_event(Event::<T>::CreatedFailed {
@@ -915,7 +928,7 @@ pub mod module {
 
 					Ok(PostDispatchInfo {
 						actual_weight: Some(create_nft_contract::<T>(used_gas)),
-						pays_fee: Pays::Yes,
+						pays_fee: Pays::No,
 					})
 				}
 			}
@@ -930,7 +943,7 @@ pub mod module {
 		/// - `gas_limit`: the maximum gas the call can use
 		/// - `storage_limit`: the total bytes the contract's storage can increase by
 		#[pallet::weight(if init.is_empty() {
-			<T as Config>::WeightInfo::deposit_ed()
+			<T as Config>::WeightInfo::create_predeploy_mirror_token_contract()
 		} else {
 			create_predeploy_contract::<T>(*gas_limit)
 		})]
@@ -951,8 +964,23 @@ pub mod module {
 			);
 
 			let source = T::NetworkContractSource::get();
+			let source_account = T::AddressMapping::get_account_id(&source);
+			// ensure source have more than 10 KAR/ACA to deploy the contract.
+			let amount = T::Currency::minimum_balance().saturating_mul(100u32.into());
+			if T::Currency::free_balance(&source_account) < amount {
+				T::Currency::transfer(
+					&T::TreasuryAccount::get(),
+					&source_account,
+					amount,
+					ExistenceRequirement::AllowDeath,
+				)?;
+			}
 
 			if init.is_empty() {
+				// This is mirror token, get the code of token predeployed contract.
+				let code = Self::code_at_address(&PREDEPLOY_ADDRESS_START);
+				ensure!(!code.is_empty(), Error::<T>::ContractNotFound);
+
 				// deposit ED for mirrored token
 				T::Currency::transfer(
 					&T::TreasuryAccount::get(),
@@ -961,9 +989,16 @@ pub mod module {
 					ExistenceRequirement::AllowDeath,
 				)?;
 
+				<Pallet<T>>::create_contract(source, target, code.to_vec());
+				Pallet::<T>::deposit_event(Event::<T>::Created {
+					from: source,
+					contract: target,
+					logs: vec![],
+				});
+
 				Ok(PostDispatchInfo {
-					actual_weight: Some(<T as Config>::WeightInfo::deposit_ed()),
-					pays_fee: Pays::Yes,
+					actual_weight: Some(<T as Config>::WeightInfo::create_predeploy_mirror_token_contract()),
+					pays_fee: Pays::No,
 				})
 			} else {
 				match T::Runner::create_at_address(source, target, init, value, gas_limit, storage_limit, T::config()) {
@@ -997,7 +1032,7 @@ pub mod module {
 
 						Ok(PostDispatchInfo {
 							actual_weight: Some(create_predeploy_contract::<T>(used_gas)),
-							pays_fee: Pays::Yes,
+							pays_fee: Pays::No,
 						})
 					}
 				}
@@ -1193,24 +1228,25 @@ impl<T: Config> Pallet<T> {
 							code_info.ref_count = code_info.ref_count.saturating_sub(1);
 							if code_info.ref_count == 0 {
 								Codes::<T>::remove(&code_hash);
-								account.contract_info = None;
 								*maybe_code_info = None;
 							}
 						}
 					});
+
+					// remove_account can only be called when account is killed. i.e. providers == 0
+					// but contract_info should maintain a provider
+					// so this should never happen
+					log::warn!(
+						target: "evm",
+						"remove_account: removed account {:?} while is still linked to contract info",
+						address
+					);
+					debug_assert!(false, "removed account while is still linked to contract info");
 				}
+
+				*maybe_account = None;
 			}
 		});
-
-		if let Some(AccountInfo {
-			contract_info: Some(_), ..
-		}) = Accounts::<T>::take(address)
-		{
-			// remove_account can only be called when account is killed. i.e. providers == 0
-			// but contract_info should maintain a provider
-			// so this should never happen
-			debug_assert!(false, "removed account while is still linked to contract info");
-		}
 
 		Ok(())
 	}
@@ -1279,7 +1315,7 @@ impl<T: Config> Pallet<T> {
 		let account_id = T::AddressMapping::get_account_id(address);
 
 		let nonce = Self::accounts(address).map_or(Default::default(), |account_info| account_info.nonce);
-		let balance = T::Currency::reducible_balance(&account_id, true);
+		let balance = T::Currency::free_balance(&account_id);
 
 		Account {
 			nonce: U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(nonce)),
@@ -1294,8 +1330,11 @@ impl<T: Config> Pallet<T> {
 		let digest = <frame_system::Pallet<T>>::digest();
 		let pre_runtime_digests = digest.logs.iter().filter_map(|d| d.as_pre_runtime());
 
-		let author = T::FindAuthor::find_author(pre_runtime_digests).unwrap_or_default();
-		T::AddressMapping::get_default_evm_address(&author)
+		if let Some(author) = T::FindAuthor::find_author(pre_runtime_digests) {
+			T::AddressMapping::get_default_evm_address(&author)
+		} else {
+			H160::default()
+		}
 	}
 
 	/// Get code hash at given address.
@@ -1334,12 +1373,6 @@ impl<T: Config> Pallet<T> {
 
 	/// Sets a given contract's contract info to a new maintainer.
 	fn do_transfer_maintainer(who: T::AccountId, contract: EvmAddress, new_maintainer: EvmAddress) -> DispatchResult {
-		Accounts::<T>::get(contract).map_or(Err(Error::<T>::ContractNotFound), |account_info| {
-			account_info
-				.contract_info
-				.map_or(Err(Error::<T>::ContractNotFound), |_| Ok(()))
-		})?;
-
 		Accounts::<T>::mutate(contract, |maybe_account_info| -> DispatchResult {
 			let account_info = maybe_account_info.as_mut().ok_or(Error::<T>::ContractNotFound)?;
 			let contract_info = account_info
@@ -1504,8 +1537,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	fn ensure_root_or_signed(o: T::Origin) -> Result<Either<(), T::AccountId>, BadOrigin> {
-		EnsureOneOf::<T::AccountId, EnsureRoot<T::AccountId>, EnsureSigned<T::AccountId>>::try_origin(o)
-			.map_or(Err(BadOrigin), Ok)
+		EnsureOneOf::<EnsureRoot<T::AccountId>, EnsureSigned<T::AccountId>>::try_origin(o).map_or(Err(BadOrigin), Ok)
 	}
 
 	fn can_call_contract(address: &H160, caller: &H160) -> bool {
@@ -1839,7 +1871,7 @@ impl<T: Config + Send + Sync> SignedExtension for SetEvmOrigin<T> {
 	}
 
 	fn post_dispatch(
-		_pre: Self::Pre,
+		_pre: Option<Self::Pre>,
 		_info: &DispatchInfoOf<Self::Call>,
 		_post_info: &PostDispatchInfoOf<Self::Call>,
 		_len: usize,
