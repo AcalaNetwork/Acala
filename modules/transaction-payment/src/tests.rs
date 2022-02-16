@@ -134,6 +134,8 @@ fn do_runtime_upgrade_and_init_balance() {
 
 	// manual set the exchange rate for simplify calculation
 	TokenExchangeRate::<Runtime>::insert(AUSD, Ratio::saturating_from_rational(10, 1));
+	let dot_rate = TokenExchangeRate::<Runtime>::get(DOT).unwrap();
+	assert_eq!(dot_rate, Ratio::saturating_from_rational(1, 10));
 }
 
 fn builder_with_upgraded_executed(enable_dex: bool) -> TestExternalities {
@@ -1007,7 +1009,7 @@ fn swap_from_pool_with_enough_balance() {
 }
 
 #[test]
-fn swap_from_pool_and_dex_update_rate() {
+fn swap_from_pool_and_dex_with_higher_threshold() {
 	builder_with_upgraded_executed(true).execute_with(|| {
 		let pool_size = FeePoolSize::get();
 		let dot_fee_account = Pallet::<Runtime>::sub_account_id(DOT);
@@ -1036,9 +1038,18 @@ fn swap_from_pool_and_dex_update_rate() {
 		assert_eq!(old_exchange_rate, Ratio::saturating_from_rational(fee_dot, balance));
 
 		// Set threshold(init-500) gt sub account balance(init-800), trigger swap from dex.
-		let swap_balance_threshold = (pool_size - 500) as u128;
-		Pallet::<Runtime>::set_swap_balance_threshold(Origin::signed(ALICE), DOT, swap_balance_threshold).unwrap();
-		Pallet::<Runtime>::set_swap_balance_threshold(Origin::signed(ALICE), AUSD, swap_balance_threshold).unwrap();
+		Pallet::<Runtime>::set_swap_balance_threshold(
+			Origin::signed(ALICE),
+			DOT,
+			crate::mock::HigerSwapThreshold::get(),
+		)
+		.unwrap();
+		Pallet::<Runtime>::set_swap_balance_threshold(
+			Origin::signed(ALICE),
+			AUSD,
+			crate::mock::HigerSwapThreshold::get(),
+		)
+		.unwrap();
 
 		// swap 80 DOT out 3074 ACA
 		let trading_path = Pallet::<Runtime>::get_trading_path_by_currency(&ALICE, DOT).unwrap();
@@ -1056,7 +1067,10 @@ fn swap_from_pool_and_dex_update_rate() {
 		let swap_exchange_rate = Ratio::saturating_from_rational(supply_in_amount, swap_out_native);
 		assert_eq!(swap_exchange_rate, Ratio::saturating_from_rational(80, 3074));
 
-		let new_exchange_rate = Pallet::<Runtime>::calculate_exchange_rate(DOT, swap_exchange_rate).unwrap();
+		// swap_rate=80/3074, threshold=9500, pool_size=10000, threshold_rate=0.95, old_rate=1/10
+		// new_rate = 1/10 * 0.95 + 80/3074 * 0.05 = 0.095 + 0.001301236174365 = 0.096301236174365
+		let new_exchange_rate_val =
+			Ratio::saturating_from_rational(9_630_123_6174_365_647 as u128, 1_000_000_000_000_000_000 as u128);
 
 		// the sub account has 9200 ACA, 80 DOT, use 80 DOT to swap out some ACA
 		let balance2 = 300 as u128;
@@ -1065,14 +1079,98 @@ fn swap_from_pool_and_dex_update_rate() {
 			crate::Event::ChargeFeePoolSwapped {
 				old_exchange_rate,
 				swap_exchange_rate,
-				new_exchange_rate,
+				new_exchange_rate: new_exchange_rate_val,
 				new_pool_size,
 			},
 		));
 
 		let new_rate = TokenExchangeRate::<Runtime>::get(DOT).unwrap();
-		assert_eq!(new_exchange_rate, new_rate);
+		assert_eq!(new_exchange_rate_val, new_rate);
 		assert_eq!(PoolSize::<Runtime>::get(DOT), new_pool_size);
+	});
+}
+
+#[test]
+fn swap_from_pool_and_dex_with_midd_threshold() {
+	builder_with_upgraded_executed(true).execute_with(|| {
+		let sub_account: AccountId = <Runtime as Config>::PalletId::get().into_sub_account(DOT);
+		let dot_ed = <Currencies as MultiCurrency<AccountId>>::minimum_balance(DOT);
+		let trading_path = Pallet::<Runtime>::get_trading_path_by_currency(&ALICE, DOT).unwrap();
+
+		// the pool size has 10000 ACA, and set threshold to half of pool size: 5000 ACA
+		let balance = 3000 as u128;
+		assert_ok!(Currencies::update_balance(
+			Origin::root(),
+			BOB,
+			DOT,
+			balance.unique_saturated_into(),
+		));
+
+		Pallet::<Runtime>::set_swap_balance_threshold(
+			Origin::signed(ALICE),
+			DOT,
+			crate::mock::MiddSwapThreshold::get(),
+		)
+		.unwrap();
+		Pallet::<Runtime>::set_swap_balance_threshold(
+			Origin::signed(ALICE),
+			AUSD,
+			crate::mock::MiddSwapThreshold::get(),
+		)
+		.unwrap();
+
+		// After tx#1, ACA balance of sub account is large than threshold(5000 ACA)
+		Pallet::<Runtime>::swap_from_pool_or_dex(&BOB, balance, DOT).unwrap();
+		assert_eq!(Currencies::free_balance(ACA, &sub_account), 7000);
+		assert_eq!(Currencies::free_balance(DOT, &sub_account), 301);
+
+		// After tx#2, ACA balance of sub account is less than threshold(5000 ACA)
+		Pallet::<Runtime>::swap_from_pool_or_dex(&BOB, balance, DOT).unwrap();
+		assert_eq!(Currencies::free_balance(ACA, &sub_account), 4000);
+		assert_eq!(Currencies::free_balance(DOT, &sub_account), 601);
+
+		let supply_amount = Currencies::free_balance(DOT, &sub_account) - dot_ed;
+		// Given different DOT, get the swap out ACA
+		// DOT | ACA  | SwapRate
+		// 001 | 0089 | FixedU128(0.011235955056179775)
+		// 050 | 2498 | FixedU128(0.020016012810248198)
+		// 100 | 3333 | FixedU128(0.030003000300030003)
+		// 200 | 3997 | FixedU128(0.050037528146109582)
+		// 300 | 4285 | FixedU128(0.070011668611435239)
+		// 500 | 4544 | FixedU128(0.110035211267605633)
+		// 600 | 4614 | FixedU128(0.130039011703511053) <- this case hit here
+		let (supply_in_amount, swap_out_native) =
+			module_dex::Pallet::<Runtime>::get_swap_amount(&trading_path, SwapLimit::ExactSupply(supply_amount, 0))
+				.unwrap();
+		assert_eq!(600, supply_in_amount);
+		assert_eq!(4614, swap_out_native);
+		// new pool size = swap_out_native + ACA balance of sub account
+		let new_pool_size = swap_out_native + 4000;
+
+		// When execute tx#3, trigger swap from dex, but this tx still use old rate(1/10)
+		Pallet::<Runtime>::swap_from_pool_or_dex(&BOB, balance, DOT).unwrap();
+		assert_eq!(Currencies::free_balance(ACA, &sub_account), 5614); // 4000+4614-3000=5614
+		assert_eq!(Currencies::free_balance(DOT, &sub_account), 301);
+
+		let old_exchange_rate = Ratio::saturating_from_rational(1, 10);
+		let swap_exchange_rate = Ratio::saturating_from_rational(supply_in_amount, swap_out_native);
+		// (0.1 + 0.130039011703511053)/2 = 0.230039011703511053/2 = 0.115019505851755526
+		let new_exchange_rate_val =
+			Ratio::saturating_from_rational(115_019_505_851_755_526 as u128, 1_000_000_000_000_000_000 as u128);
+
+		System::assert_has_event(crate::mock::Event::TransactionPayment(
+			crate::Event::ChargeFeePoolSwapped {
+				old_exchange_rate,
+				swap_exchange_rate,
+				new_exchange_rate: new_exchange_rate_val,
+				new_pool_size,
+			},
+		));
+
+		// tx#3 use new exchange rate
+		Pallet::<Runtime>::swap_from_pool_or_dex(&BOB, balance, DOT).unwrap();
+		assert_eq!(Currencies::free_balance(ACA, &sub_account), 2614);
+		assert_eq!(Currencies::free_balance(DOT, &sub_account), 301 + 3 * 115);
 	});
 }
 
