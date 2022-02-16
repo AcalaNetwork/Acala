@@ -752,6 +752,7 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 	}
 
 	fn transfer(&mut self, transfer: Transfer) -> Result<(), ExitError> {
+		self.touch(transfer.target);
 		if transfer.value.is_zero() {
 			return Ok(());
 		}

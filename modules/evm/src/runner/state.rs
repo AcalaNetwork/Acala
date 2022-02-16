@@ -1185,10 +1185,6 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> Handler
 	}
 
 	fn mark_delete(&mut self, address: H160, target: H160) -> Result<(), ExitError> {
-		// this is needed only for evm-tests to keep track of dirty accounts
-		#[cfg(feature = "evm-tests")]
-		self.state.touch(target);
-
 		let balance = self.balance(address);
 
 		event!(Suicide {
