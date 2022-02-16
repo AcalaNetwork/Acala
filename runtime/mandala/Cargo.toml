@@ -9,8 +9,8 @@ build = "build.rs"
 smallvec = "1.4.0"
 codec = { package = "parity-scale-codec", version = "2.3.1", default-features = false, features = ["derive", "max-encoded-len"] }
 serde = { version = "1.0.124", optional = true, default-features = false }
-serde_json = "1.0.68"
-hex = { version = "0.4", default-features = false, optional = true }
+serde_json = { version = "1.0.68", default-features = false, features = ["alloc"] }
+hex = { version = "0.4", default-features = false }
 hex-literal = { version = "0.3.1" }
 scale-info = { version = "1.0", default-features = false, features = ["derive"] }
 
@@ -134,8 +134,6 @@ ecosystem-compound-cash = { path = "../../ecosystem-modules/compound-cash", defa
 substrate-wasm-builder = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.16" }
 
 [dev-dependencies]
-hex = "0.4.0"
-
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.16" }
 sp-trie = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.16" }
 
@@ -151,6 +149,7 @@ std = [
 	"codec/std",
 	"serde",
 	"hex/std",
+	"serde_json/std",
 
 	"scale-info/std",
 	"frame-benchmarking/std",
