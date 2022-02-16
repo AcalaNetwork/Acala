@@ -28,7 +28,7 @@
 // --chain=karura-dev
 // --steps=50
 // --repeat=20
-// --pallet=module_transaction_payment
+// --pallet=*
 // --extrinsic=*
 // --execution=wasm
 // --wasm-execution=compiled
