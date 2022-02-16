@@ -87,7 +87,7 @@ runtime_benchmarks! {
 		assert_eq!(TransactionPayment::global_fee_swap_path(STABLECOIN).unwrap().into_inner(), vec![STABLECOIN, NATIVECOIN]);
 	}
 
-	unset_global_fee_swap_path {
+	remove_global_fee_swap_path {
 		TransactionPayment::set_global_fee_swap_path(RawOrigin::Root.into(), vec![STABLECOIN, NATIVECOIN])?;
 	}: _(RawOrigin::Root, STABLECOIN)
 	verify {
