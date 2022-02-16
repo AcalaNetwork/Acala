@@ -1335,17 +1335,17 @@ fn set_global_fee_swap_path_work() {
 }
 
 #[test]
-fn unset_global_fee_swap_path_work() {
+fn remove_global_fee_swap_path_work() {
 	ExtBuilder::default()
 		.one_hundred_thousand_for_alice_n_charlie()
 		.build()
 		.execute_with(|| {
 			assert_noop!(
-				TransactionPayment::unset_global_fee_swap_path(Origin::signed(ALICE), ACA),
+				TransactionPayment::remove_global_fee_swap_path(Origin::signed(ALICE), ACA),
 				Error::<Runtime>::InvalidSwapPath
 			);
 			assert_noop!(
-				TransactionPayment::unset_global_fee_swap_path(Origin::signed(ALICE), AUSD),
+				TransactionPayment::remove_global_fee_swap_path(Origin::signed(ALICE), AUSD),
 				Error::<Runtime>::SwapPathNotExists
 			);
 
@@ -1368,7 +1368,7 @@ fn unset_global_fee_swap_path_work() {
 				vec![AUSD, DOT, ACA]
 			);
 
-			assert_ok!(TransactionPayment::unset_global_fee_swap_path(
+			assert_ok!(TransactionPayment::remove_global_fee_swap_path(
 				Origin::signed(ALICE),
 				AUSD
 			));

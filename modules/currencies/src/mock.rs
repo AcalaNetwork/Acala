@@ -251,9 +251,7 @@ pub fn erc20_address() -> EvmAddress {
 	EvmAddress::from_str("0x5dddfce53ee040d9eb21afbc0ae1bb4dbb0ba643").unwrap()
 }
 
-pub fn alice_balance() -> u128 {
-	100_000_000_000_000_000_000_000u128
-}
+pub const ALICE_BALANCE: u128 = 100_000_000_000_000_000_000_000u128;
 
 pub fn deploy_contracts() {
 	let json: serde_json::Value =
@@ -273,7 +271,7 @@ pub fn deploy_contracts() {
 			],
 			data: {
 				let mut buf = [0u8; 32];
-				U256::from(alice_balance()).to_big_endian(&mut buf);
+				U256::from(ALICE_BALANCE).to_big_endian(&mut buf);
 				H256::from_slice(&buf).as_bytes().to_vec()
 			},
 		}],

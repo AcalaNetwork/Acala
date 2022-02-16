@@ -404,6 +404,7 @@ pub mod module {
 		StorageMap<_, Twox64Concat, T::AccountId, BoundedVec<CurrencyId, T::TradingPathLimit>, OptionQuery>;
 
 	/// The global fee swap path.
+	/// The path priorities: alternative > global > default
 	///
 	/// GlobalFeeSwapPath: map CurrencyId => Option<Vec<CurrencyId>>
 	#[pallet::storage]
@@ -422,7 +423,7 @@ pub mod module {
 	/// The exchange rate between the given currency and native token.
 	/// This value is updated when upon swap from dex.
 	///
-	/// TokenExchangeRate: map CurrencyId => Ratio
+	/// TokenExchangeRate: map CurrencyId => Option<Ratio>
 	#[pallet::storage]
 	#[pallet::getter(fn token_exchange_rate)]
 	pub type TokenExchangeRate<T: Config> = StorageMap<_, Twox64Concat, CurrencyId, Ratio, OptionQuery>;
@@ -509,8 +510,8 @@ pub mod module {
 					path.try_into().map_err(|_| Error::<T>::InvalidSwapPath)?;
 				ensure!(
 					path.len() > 1
-						&& path[0] != T::NativeCurrencyId::get()
-						&& path[path.len() - 1] == T::NativeCurrencyId::get(),
+						&& path.get(0) != Some(&T::NativeCurrencyId::get())
+						&& path.get(path.len() - 1) == Some(&T::NativeCurrencyId::get()),
 					Error::<T>::InvalidSwapPath
 				);
 				T::Currency::ensure_reserved_named(&DEPOSIT_ID, &who, T::AlternativeFeeSwapDeposit::get())?;
@@ -530,8 +531,8 @@ pub mod module {
 
 			ensure!(
 				fee_swap_path.len() > 1
-					&& fee_swap_path[0] != T::NativeCurrencyId::get()
-					&& fee_swap_path[fee_swap_path.len() - 1] == T::NativeCurrencyId::get(),
+					&& fee_swap_path.get(0) != Some(&T::NativeCurrencyId::get())
+					&& fee_swap_path.get(fee_swap_path.len() - 1) == Some(&T::NativeCurrencyId::get()),
 				Error::<T>::InvalidSwapPath
 			);
 
@@ -552,10 +553,10 @@ pub mod module {
 			})
 		}
 
-		/// Unset global fee swap path
-		#[pallet::weight(<T as Config>::WeightInfo::unset_global_fee_swap_path())]
+		/// Remove global fee swap path
+		#[pallet::weight(<T as Config>::WeightInfo::remove_global_fee_swap_path())]
 		#[transactional]
-		pub fn unset_global_fee_swap_path(origin: OriginFor<T>, currency_id: CurrencyId) -> DispatchResult {
+		pub fn remove_global_fee_swap_path(origin: OriginFor<T>, currency_id: CurrencyId) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
 
 			ensure!(currency_id != T::NativeCurrencyId::get(), Error::<T>::InvalidSwapPath);
@@ -870,17 +871,17 @@ where
 		let mut trading_path: Vec<Vec<CurrencyId>> = Vec::new();
 
 		if let Some(path) = AlternativeFeeSwapPath::<T>::get(who) {
-			trading_path.insert(0, path.into_inner());
+			trading_path.push(path.into_inner());
 		}
 
 		let global_fee_swap_path = GlobalFeeSwapPath::<T>::iter_values()
 			.map(|v| v.into_inner())
 			.collect::<Vec<_>>();
 		if !global_fee_swap_path.len().is_zero() {
-			trading_path.extend_from_slice(&global_fee_swap_path);
+			trading_path.extend(global_fee_swap_path);
 		}
 
-		trading_path.extend_from_slice(&T::DefaultFeeSwapPathList::get());
+		trading_path.extend(T::DefaultFeeSwapPathList::get());
 		trading_path
 	}
 
