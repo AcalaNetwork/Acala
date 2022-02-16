@@ -551,32 +551,7 @@ pub mod module {
 		#[transactional]
 		pub fn disable_charge_fee_pool(origin: OriginFor<T>, currency_id: CurrencyId) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
-			ensure!(
-				TokenExchangeRate::<T>::contains_key(currency_id),
-				Error::<T>::InvalidToken
-			);
-			let treasury_account = T::TreasuryAccount::get();
-			let sub_account = Self::sub_account_id(currency_id);
-			let foreign_amount: Balance = T::MultiCurrency::free_balance(currency_id, &sub_account);
-			let native_amount: Balance = T::Currency::free_balance(&sub_account);
-
-			T::MultiCurrency::transfer(currency_id, &sub_account, &treasury_account, foreign_amount)?;
-			T::Currency::transfer(
-				&sub_account,
-				&treasury_account,
-				native_amount,
-				ExistenceRequirement::AllowDeath,
-			)?;
-			// remove map entry, then `swap_from_pool_or_dex` method will throw error.
-			TokenExchangeRate::<T>::remove(currency_id);
-			PoolSize::<T>::remove(currency_id);
-			SwapBalanceThreshold::<T>::remove(currency_id);
-			Self::deposit_event(Event::ChargeFeePoolDisabled {
-				currency_id,
-				foreign_amount,
-				native_amount,
-			});
-			Ok(())
+			Self::disable_pool(currency_id)
 		}
 	}
 }
@@ -821,16 +796,10 @@ where
 					SwapLimit::ExactSupply(supply_amount, 0),
 				) {
 					// calculate and update new rate, also update the pool size
-					// old_rate * old_threshold_rate + swap_rate * (1-old_threshold_rate)
 					let swap_exchange_rate = Ratio::saturating_from_rational(supply_amount, swap_native_balance);
-					let old_threshold_rate =
-						Ratio::saturating_from_rational(threshold_balance, PoolSize::<T>::get(supply_currency_id));
-					let new_threshold_rate = Ratio::one().saturating_sub(old_threshold_rate);
-					let old_parts = rate.saturating_mul(old_threshold_rate);
-					let new_parts = swap_exchange_rate.saturating_mul(new_threshold_rate);
-					let new_exchange_rate = old_parts.saturating_add(new_parts);
-
 					let new_pool_size = swap_native_balance.saturating_add(native_balance);
+					let new_exchange_rate = Self::calculate_exchange_rate(supply_currency_id, swap_exchange_rate)?;
+
 					TokenExchangeRate::<T>::insert(supply_currency_id, new_exchange_rate);
 					PoolSize::<T>::insert(supply_currency_id, new_pool_size);
 					Pallet::<T>::deposit_event(Event::<T>::ChargeFeePoolSwapped {
@@ -879,8 +848,21 @@ where
 		T::PalletId::get().into_sub_account(id)
 	}
 
-	/// Initiate a charge fee swap pool. Usually used in `on_runtime_upgrade` or manual
-	/// `enable_charge_fee_pool` dispatch call.
+	/// Calculate the new exchange rate.
+	/// old_rate * (threshold/poolSize) + swap_exchange_rate * (1-threshold/poolSize)
+	fn calculate_exchange_rate(currency_id: CurrencyId, swap_exchange_rate: Ratio) -> Result<Ratio, Error<T>> {
+		let threshold_balance = SwapBalanceThreshold::<T>::get(currency_id);
+		let old_threshold_rate = Ratio::saturating_from_rational(threshold_balance, PoolSize::<T>::get(currency_id));
+		let new_threshold_rate = Ratio::one().saturating_sub(old_threshold_rate);
+
+		let rate = TokenExchangeRate::<T>::get(currency_id).ok_or(Error::<T>::InvalidRate)?;
+		let old_parts = rate.saturating_mul(old_threshold_rate);
+		let new_parts = swap_exchange_rate.saturating_mul(new_threshold_rate);
+		let new_exchange_rate = old_parts.saturating_add(new_parts);
+		Ok(new_exchange_rate)
+	}
+
+	/// Initiate a charge fee pool, transfer token from treasury account to sub account.
 	fn initialize_pool(currency_id: CurrencyId, pool_size: Balance, swap_threshold: Balance) -> DispatchResult {
 		let treasury_account = T::TreasuryAccount::get();
 		let sub_account = Self::sub_account_id(currency_id);
@@ -927,6 +909,36 @@ where
 			swap_threshold,
 		});
 
+		Ok(())
+	}
+
+	/// Disable a charge fee pool, return token from sub account to treasury account.
+	fn disable_pool(currency_id: CurrencyId) -> DispatchResult {
+		ensure!(
+			TokenExchangeRate::<T>::contains_key(currency_id),
+			Error::<T>::InvalidToken
+		);
+		let treasury_account = T::TreasuryAccount::get();
+		let sub_account = Self::sub_account_id(currency_id);
+		let foreign_amount: Balance = T::MultiCurrency::free_balance(currency_id, &sub_account);
+		let native_amount: Balance = T::Currency::free_balance(&sub_account);
+
+		T::MultiCurrency::transfer(currency_id, &sub_account, &treasury_account, foreign_amount)?;
+		T::Currency::transfer(
+			&sub_account,
+			&treasury_account,
+			native_amount,
+			ExistenceRequirement::AllowDeath,
+		)?;
+		// remove map entry, then `swap_from_pool_or_dex` method will throw error.
+		TokenExchangeRate::<T>::remove(currency_id);
+		PoolSize::<T>::remove(currency_id);
+		SwapBalanceThreshold::<T>::remove(currency_id);
+		Self::deposit_event(Event::ChargeFeePoolDisabled {
+			currency_id,
+			foreign_amount,
+			native_amount,
+		});
 		Ok(())
 	}
 }

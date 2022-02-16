@@ -1056,12 +1056,7 @@ fn swap_from_pool_and_dex_update_rate() {
 		let swap_exchange_rate = Ratio::saturating_from_rational(supply_in_amount, swap_out_native);
 		assert_eq!(swap_exchange_rate, Ratio::saturating_from_rational(80, 3074));
 
-		let old_threshold_rate = Ratio::saturating_from_rational(swap_balance_threshold, pool_size);
-		let new_threshold_rate = Ratio::one().saturating_sub(old_threshold_rate);
-
-		let new_exchange_rate = old_exchange_rate
-			.saturating_mul(old_threshold_rate)
-			.saturating_add(swap_exchange_rate.saturating_mul(new_threshold_rate));
+		let new_exchange_rate = Pallet::<Runtime>::calculate_exchange_rate(DOT, swap_exchange_rate).unwrap();
 
 		// the sub account has 9200 ACA, 80 DOT, use 80 DOT to swap out some ACA
 		let balance2 = 300 as u128;
