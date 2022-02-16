@@ -196,7 +196,7 @@ cargo run --features with-acala-runtime --features try-runtime -- try-runtime --
 cargo run --features with-acala-runtime --features try-runtime -- try-runtime --chain=acala-dev on-runtime-upgrade snap -s /tmp/snapshot.bin
 ```
 
-# 9. Run local testnet with `RelayChain` and `Parachain`
+# 9. Run local testnet with [parachain-launch](https://github.com/open-web3-stack/parachain-launch)
 Build RelayChain and Parachain local testnet to develop.
 
 ```bash
@@ -235,7 +235,33 @@ docker volume rm [volume_name]
 docker volume prune
 ```
 
-# 10. Build For Release
+# 10. Run local testnet with [polkadot-launch](https://github.com/paritytech/polkadot-launch)
+
+build polkadot:
+
+```bash
+git clone -n https://github.com/paritytech/polkadot.git
+cargo build --release
+cp target/release/polkadot /tmp/polkadot
+```
+
+build karura:
+
+```bash
+make build-karura-release
+```
+
+launch polkadot and parachain with json config file:
+
+```bash
+polkadot-launch scripts/acala-launch.json
+```
+
+there're other json file that will run both karura and other parachain.
+- scripts/acala-statemine.json: run karura and statemine
+- scripts/acala-bifrost.json: run karura and bifrost
+
+# 11. Build For Release
 
 For release artifacts, a more optimized build config is used.
 This config takes around 2x to 3x longer to build, but produces an more optimized binary to run.
