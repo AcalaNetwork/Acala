@@ -49,26 +49,26 @@ impl<T: frame_system::Config> module_transaction_payment::WeightInfo for WeightI
 	// Storage: Balances Reserves (r:1 w:1)
 	// Storage: TransactionPayment AlternativeFeeSwapPath (r:0 w:1)
 	fn set_alternative_fee_swap_path() -> Weight {
-		(36_992_000 as Weight)
+		(34_312_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
 	// Storage: TransactionPayment GlobalFeeSwapPath (r:1 w:1)
 	fn set_global_fee_swap_path() -> Weight {
-		(21_035_000 as Weight)
+		(19_420_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	// Storage: TransactionPayment GlobalFeeSwapPath (r:1 w:1)
 	fn remove_global_fee_swap_path() -> Weight {
-		(21_384_000 as Weight)
+		(19_280_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	// Storage: TransactionPayment PoolSize (r:1 w:0)
 	// Storage: TransactionPayment SwapBalanceThreshold (r:0 w:1)
 	fn set_swap_balance_threshold() -> Weight {
-		(22_468_000 as Weight)
+		(20_069_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
@@ -81,14 +81,27 @@ impl<T: frame_system::Config> module_transaction_payment::WeightInfo for WeightI
 	// Storage: TransactionPayment TokenExchangeRate (r:0 w:1)
 	// Storage: TransactionPayment SwapBalanceThreshold (r:0 w:1)
 	fn enable_charge_fee_pool() -> Weight {
-		(105_452_000 as Weight)
+		(98_681_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(8 as Weight))
 			.saturating_add(T::DbWeight::get().writes(7 as Weight))
+	}
+	// Storage: TransactionPayment TokenExchangeRate (r:1 w:1)
+	// Storage: Tokens Accounts (r:2 w:2)
+	// Storage: System Account (r:2 w:2)
+	// Storage: EvmAccounts EvmAddresses (r:1 w:0)
+	// Storage: EVM Accounts (r:1 w:1)
+	// Storage: TransactionPayment SwapBalanceThreshold (r:0 w:1)
+	// Storage: TransactionPayment PoolSize (r:0 w:1)
+	// Storage: EvmAccounts Accounts (r:0 w:1)
+	fn disable_charge_fee_pool() -> Weight {
+		(105_817_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(7 as Weight))
+			.saturating_add(T::DbWeight::get().writes(9 as Weight))
 	}
 	// Storage: TransactionPayment NextFeeMultiplier (r:1 w:1)
 	// Storage: System BlockWeight (r:1 w:0)
 	fn on_finalize() -> Weight {
-		(11_867_000 as Weight)
+		(10_840_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}

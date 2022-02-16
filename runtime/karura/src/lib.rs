@@ -2170,8 +2170,51 @@ pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExtra>;
 /// Executive: handles dispatch to the various modules.
-pub type Executive =
-	frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllPalletsWithSystem, ()>;
+pub type Executive = frame_executive::Executive<
+	Runtime,
+	Block,
+	frame_system::ChainContext<Runtime>,
+	Runtime,
+	AllPalletsWithSystem,
+	TransactionPaymentMigration,
+>;
+
+parameter_types! {
+	pub FeePoolSize: Balance = 5 * dollar(KAR);
+	pub SwapBalanceThreshold: Balance = Ratio::saturating_from_rational(25, 10).saturating_mul_int(dollar(KAR));
+}
+
+pub struct TransactionPaymentMigration;
+impl frame_support::traits::OnRuntimeUpgrade for TransactionPaymentMigration {
+	fn on_runtime_upgrade() -> frame_support::weights::Weight {
+		let poo_size = FeePoolSize::get();
+		let threshold = SwapBalanceThreshold::get();
+		let tokens = vec![KUSD, KSM, LKSM, BNC];
+		for token in tokens {
+			let _ = module_transaction_payment::Pallet::<Runtime>::disable_charge_fee_pool(
+				Origin::signed(KaruraTreasuryAccount::get()),
+				token,
+			);
+			let _ = module_transaction_payment::Pallet::<Runtime>::enable_charge_fee_pool(
+				Origin::signed(KaruraTreasuryAccount::get()),
+				token,
+				poo_size,
+				threshold,
+			);
+		}
+		<Runtime as frame_system::Config>::BlockWeights::get().max_block
+	}
+
+	#[cfg(feature = "try-runtime")]
+	fn pre_upgrade() -> Result<(), &'static str> {
+		Ok(())
+	}
+
+	#[cfg(feature = "try-runtime")]
+	fn post_upgrade() -> Result<(), &'static str> {
+		Ok(())
+	}
+}
 
 #[cfg(feature = "runtime-benchmarks")]
 #[macro_use]
