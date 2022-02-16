@@ -901,6 +901,7 @@ where
 		SwapBalanceThreshold::<T>::insert(currency_id, swap_threshold);
 		TokenExchangeRate::<T>::insert(currency_id, exchange_rate);
 		PoolSize::<T>::insert(currency_id, pool_size);
+
 		Self::deposit_event(Event::ChargeFeePoolEnabled {
 			sub_account,
 			currency_id,
@@ -908,7 +909,6 @@ where
 			pool_size,
 			swap_threshold,
 		});
-
 		Ok(())
 	}
 
@@ -930,10 +930,12 @@ where
 			native_amount,
 			ExistenceRequirement::AllowDeath,
 		)?;
+
 		// remove map entry, then `swap_from_pool_or_dex` method will throw error.
 		TokenExchangeRate::<T>::remove(currency_id);
 		PoolSize::<T>::remove(currency_id);
 		SwapBalanceThreshold::<T>::remove(currency_id);
+
 		Self::deposit_event(Event::ChargeFeePoolDisabled {
 			currency_id,
 			foreign_amount,

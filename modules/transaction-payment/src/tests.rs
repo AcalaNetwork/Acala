@@ -116,11 +116,11 @@ fn do_runtime_upgrade_and_init_balance() {
 		false
 	));
 
-	for asset in crate::mock::FeePoolExchangeTokens::get() {
+	for asset in vec![AUSD, DOT] {
 		assert_ok!(Pallet::<Runtime>::initialize_pool(
 			asset,
 			FeePoolSize::get(),
-			crate::mock::SwapThreshold::get()
+			crate::mock::LowerSwapThreshold::get()
 		));
 	}
 
@@ -1219,10 +1219,9 @@ fn charge_fee_pool_operation_works() {
 
 		let treasury_account: AccountId = <Runtime as Config>::TreasuryAccount::get();
 		let sub_account: AccountId = <Runtime as Config>::PalletId::get().into_sub_account(AUSD);
-		let native_ed = crate::mock::NativeTokenExistentialDeposit::get();
 		let usd_ed = <Currencies as MultiCurrency<AccountId>>::minimum_balance(AUSD);
 		let pool_size = FeePoolSize::get();
-		let swap_threshold = crate::mock::SwapThreshold::get();
+		let swap_threshold = crate::mock::MiddSwapThreshold::get();
 
 		assert_ok!(Currencies::update_balance(
 			Origin::root(),
