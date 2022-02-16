@@ -15,7 +15,7 @@ on:
 
 env:
   TARPAULIN_VERSION: 0.18.5
-  LIBCLANG_PATH: "/usr/lib/llvm-11/lib"
+  LIBCLANG_PATH: "/usr/lib/llvm-10/lib:/usr/lib/llvm-11/lib"
   # SCCACHE_CACHE_SIZE: "100G"
   CARGO_INCREMENTAL: 0
 jobs:
