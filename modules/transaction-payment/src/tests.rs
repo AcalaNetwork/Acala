@@ -27,8 +27,8 @@ use frame_support::{
 };
 use mock::{
 	AccountId, AlternativeFeeSwapDeposit, BlockWeights, Call, Currencies, DEXModule, ExtBuilder, FeePoolSize,
-	MockPriceSource, Origin, Runtime, TransactionPayment, ACA, ALICE, AUSD, BOB, CHARLIE, DOT, FEE_UNBALANCED_AMOUNT,
-	TIP_UNBALANCED_AMOUNT,
+	MockPriceSource, Origin, Runtime, System, TransactionPayment, ACA, ALICE, AUSD, BOB, CHARLIE, DOT,
+	FEE_UNBALANCED_AMOUNT, TIP_UNBALANCED_AMOUNT,
 };
 use orml_traits::MultiCurrency;
 use primitives::currency::*;
@@ -1239,4 +1239,154 @@ fn enable_init_pool_works() {
 			Error::<Runtime>::DexNotAvailable
 		);
 	});
+}
+
+#[test]
+fn set_global_fee_swap_path_work() {
+	ExtBuilder::default()
+		.one_hundred_thousand_for_alice_n_charlie()
+		.build()
+		.execute_with(|| {
+			assert_noop!(
+				TransactionPayment::set_global_fee_swap_path(Origin::signed(ALICE), vec![]),
+				Error::<Runtime>::InvalidSwapPath
+			);
+			assert_noop!(
+				TransactionPayment::set_global_fee_swap_path(Origin::signed(ALICE), vec![ACA]),
+				Error::<Runtime>::InvalidSwapPath
+			);
+			assert_noop!(
+				TransactionPayment::set_global_fee_swap_path(Origin::signed(ALICE), vec![AUSD]),
+				Error::<Runtime>::InvalidSwapPath
+			);
+			assert_noop!(
+				TransactionPayment::set_global_fee_swap_path(Origin::signed(ALICE), vec![ACA, AUSD]),
+				Error::<Runtime>::InvalidSwapPath
+			);
+			assert_noop!(
+				TransactionPayment::set_global_fee_swap_path(Origin::signed(ALICE), vec![AUSD, AUSD]),
+				Error::<Runtime>::InvalidSwapPath
+			);
+
+			// DefaultFeeSwapPathList
+			assert_eq!(
+				TransactionPayment::get_trading_path(&ALICE),
+				vec![vec![AUSD, ACA], vec![DOT, AUSD, ACA]]
+			);
+			assert_eq!(
+				TransactionPayment::get_trading_path_by_currency(&ALICE, DOT),
+				Some(vec![DOT, AUSD, ACA])
+			);
+
+			assert_ok!(TransactionPayment::set_global_fee_swap_path(
+				Origin::signed(ALICE),
+				vec![AUSD, DOT, ACA]
+			));
+			System::assert_last_event(mock::Event::TransactionPayment(
+				crate::Event::GlobalFeeSwapPathUpdated {
+					old_fee_swap_path: None,
+					new_fee_swap_path: vec![AUSD, DOT, ACA],
+				},
+			));
+			assert_ok!(TransactionPayment::set_global_fee_swap_path(
+				Origin::signed(ALICE),
+				vec![AUSD, DOT, ACA]
+			));
+			System::assert_last_event(mock::Event::TransactionPayment(
+				crate::Event::GlobalFeeSwapPathUpdated {
+					old_fee_swap_path: Some(vec![AUSD, DOT, ACA]),
+					new_fee_swap_path: vec![AUSD, DOT, ACA],
+				},
+			));
+			assert_eq!(
+				TransactionPayment::global_fee_swap_path(AUSD).unwrap(),
+				vec![AUSD, DOT, ACA]
+			);
+
+			// GlobalFeeSwapPath > DefaultFeeSwapPathList
+			assert_eq!(
+				TransactionPayment::get_trading_path(&ALICE),
+				vec![vec![AUSD, DOT, ACA], vec![AUSD, ACA], vec![DOT, AUSD, ACA]]
+			);
+			assert_eq!(
+				TransactionPayment::get_trading_path_by_currency(&ALICE, AUSD),
+				Some(vec![AUSD, DOT, ACA])
+			);
+
+			// AlternativeFeeSwapPath > GlobalFeeSwapPath
+			assert_ok!(TransactionPayment::set_alternative_fee_swap_path(
+				Origin::signed(ALICE),
+				Some(vec![AUSD, ACA])
+			));
+			assert_eq!(
+				TransactionPayment::get_trading_path(&ALICE),
+				vec![
+					vec![AUSD, ACA],
+					vec![AUSD, DOT, ACA],
+					vec![AUSD, ACA],
+					vec![DOT, AUSD, ACA]
+				]
+			);
+			assert_eq!(
+				TransactionPayment::get_trading_path_by_currency(&ALICE, AUSD),
+				Some(vec![AUSD, ACA])
+			);
+		});
+}
+
+#[test]
+fn remove_global_fee_swap_path_work() {
+	ExtBuilder::default()
+		.one_hundred_thousand_for_alice_n_charlie()
+		.build()
+		.execute_with(|| {
+			assert_noop!(
+				TransactionPayment::remove_global_fee_swap_path(Origin::signed(ALICE), ACA),
+				Error::<Runtime>::InvalidSwapPath
+			);
+			assert_noop!(
+				TransactionPayment::remove_global_fee_swap_path(Origin::signed(ALICE), AUSD),
+				Error::<Runtime>::SwapPathNotExists
+			);
+
+			assert_ok!(TransactionPayment::set_global_fee_swap_path(
+				Origin::signed(ALICE),
+				vec![AUSD, DOT, ACA]
+			));
+
+			// DefaultFeeSwapPathList
+			assert_eq!(
+				TransactionPayment::get_trading_path(&ALICE),
+				vec![vec![AUSD, DOT, ACA], vec![AUSD, ACA], vec![DOT, AUSD, ACA]]
+			);
+			assert_eq!(
+				TransactionPayment::get_trading_path_by_currency(&ALICE, AUSD),
+				Some(vec![AUSD, DOT, ACA])
+			);
+			assert_eq!(
+				TransactionPayment::global_fee_swap_path(AUSD).unwrap(),
+				vec![AUSD, DOT, ACA]
+			);
+
+			assert_ok!(TransactionPayment::remove_global_fee_swap_path(
+				Origin::signed(ALICE),
+				AUSD
+			));
+			System::assert_last_event(mock::Event::TransactionPayment(
+				crate::Event::GlobalFeeSwapPathRemoved {
+					fee_swap_path: vec![AUSD, DOT, ACA],
+				},
+			));
+
+			// DefaultFeeSwapPathList
+			assert_eq!(
+				TransactionPayment::get_trading_path(&ALICE),
+				vec![vec![AUSD, ACA], vec![DOT, AUSD, ACA]]
+			);
+			assert_eq!(
+				TransactionPayment::get_trading_path_by_currency(&ALICE, AUSD),
+				Some(vec![AUSD, ACA])
+			);
+			assert_eq!(TransactionPayment::global_fee_swap_path(AUSD), None);
+		});
 }

@@ -22,7 +22,9 @@
 
 use super::*;
 use frame_support::{assert_err, assert_ok};
-use mock::{alice, alice_evm_addr, bob, bob_evm_addr, deploy_contracts, erc20_address, ExtBuilder, Runtime};
+use mock::{
+	alice, alice_evm_addr, bob, bob_evm_addr, deploy_contracts, erc20_address, ExtBuilder, Runtime, ALICE_BALANCE,
+};
 
 #[test]
 fn should_read_name() {
@@ -94,7 +96,7 @@ fn should_read_total_supply() {
 					sender: Default::default(),
 					origin: Default::default(),
 				}),
-				Ok(10000)
+				Ok(ALICE_BALANCE)
 			);
 		});
 }
@@ -114,7 +116,10 @@ fn should_read_balance_of() {
 
 			assert_eq!(EVMBridge::<Runtime>::balance_of(context, bob_evm_addr()), Ok(0));
 
-			assert_eq!(EVMBridge::<Runtime>::balance_of(context, alice_evm_addr()), Ok(10000));
+			assert_eq!(
+				EVMBridge::<Runtime>::balance_of(context, alice_evm_addr()),
+				Ok(ALICE_BALANCE)
+			);
 
 			assert_eq!(EVMBridge::<Runtime>::balance_of(context, bob_evm_addr()), Ok(0));
 		});

@@ -1110,7 +1110,7 @@ parameter_types! {
 	pub EnabledTradingPairs: Vec<TradingPair> = vec![
 		TradingPair::from_currency_ids(AUSD, ACA).unwrap(),
 		TradingPair::from_currency_ids(AUSD, DOT).unwrap(),
-		TradingPair::from_currency_ids(AUSD, LDOT).unwrap(),
+		TradingPair::from_currency_ids(DOT, LDOT).unwrap(),
 		TradingPair::from_currency_ids(AUSD, RENBTC).unwrap(),
 		TradingPair::from_currency_ids(DOT, ACA).unwrap(),
 	];
