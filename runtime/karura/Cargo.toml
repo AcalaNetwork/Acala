@@ -1,6 +1,6 @@
 [package]
 name = "karura-runtime"
-version = "2.3.1"
+version = "2.3.3"
 authors = ["Acala Developers"]
 edition = "2021"
 build = "build.rs"
@@ -10,6 +10,8 @@ smallvec = "1.4.0"
 codec = { package = "parity-scale-codec", version = "2.3.1", default-features = false, features = ["derive", "max-encoded-len"] }
 scale-info = { version = "1.0", default-features = false, features = ["derive"] }
 serde = { version = "1.0.124", optional = true }
+serde_json = { version = "1.0.68", default-features = false, features = ["alloc"] }
+hex = { version = "0.4", default-features = false }
 hex-literal = { version = "0.3.1" }
 
 frame-executive = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.16", default-features = false }
@@ -76,6 +78,7 @@ orml-benchmarking = { path = "../../orml/benchmarking", default-features = false
 orml-oracle = { path = "../../orml/oracle", default-features = false }
 orml-oracle-rpc-runtime-api = { path = "../../orml/oracle/rpc/runtime-api", default-features = false }
 orml-tokens = { path = "../../orml/tokens", default-features = false }
+orml-tokens-rpc-runtime-api = { path = "../../orml/tokens/rpc/runtime-api", default-features = false }
 orml-traits = { path = "../../orml/traits", default-features = false }
 orml-vesting = { path = "../../orml/vesting", default-features = false }
 orml-rewards = { path = "../../orml/rewards", default-features = false }
@@ -110,6 +113,7 @@ module-xcm-interface = { path = "../../modules/xcm-interface", default-features 
 module-session-manager = { path = "../../modules/session-manager", default-features = false }
 module-relaychain = { path = "../../modules/relaychain", default-features = false, features = ["kusama"] }
 module-idle-scheduler = { path = "../../modules/idle-scheduler", default-features = false }
+nutsfinance-stable-asset = { version = "0.1.0", default-features = false, path = "../../ecosystem-modules/stable-asset/lib/stable-asset", package = "nutsfinance-stable-asset" }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 runtime-common = { path = "../common", default-features = false }
 
@@ -132,6 +136,8 @@ std = [
 	"codec/std",
 	"scale-info/std",
 	"serde",
+	"hex/std",
+	"serde_json/std",
 
 	"frame-benchmarking/std",
 	"frame-executive/std",
@@ -195,6 +201,7 @@ std = [
 	"orml-oracle-rpc-runtime-api/std",
 	"orml-oracle/std",
 	"orml-tokens/std",
+	"orml-tokens-rpc-runtime-api/std",
 	"orml-traits/std",
 	"orml-vesting/std",
 	"orml-rewards/std",

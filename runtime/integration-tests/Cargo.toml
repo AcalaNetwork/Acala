@@ -1,6 +1,6 @@
 [package]
 name = "runtime-integration-tests"
-version = "2.3.1"
+version = "2.3.3"
 authors = ["Acala Developers"]
 edition = "2021"
 
@@ -113,9 +113,9 @@ module-relaychain = {path = "../../modules/relaychain" }
 primitives = { package = "acala-primitives", path = "../../primitives" }
 runtime-common = { path = "../common" }
 
-mandala-runtime = { path = "../mandala" }
-karura-runtime = { path = "../karura", features = ["integration-tests"] }
-acala-runtime = { path = "../acala" }
+mandala-runtime = { path = "../mandala", optional = true }
+karura-runtime = { path = "../karura", optional = true }
+acala-runtime = { path = "../acala", optional = true }
 
 module-evm-rpc-runtime-api = { path = "../../modules/evm/rpc/runtime_api",  default-features = false }
 
@@ -143,17 +143,23 @@ acala-service = { path = "../../node/service", features = ["with-all-runtime"] }
 default = ["std"]
 no_std = []
 with-mandala-runtime = [
+	"mandala-runtime",
 	"acala-service/with-mandala-runtime",
+	"module-relaychain/polkadot"
 ]
 with-karura-runtime = [
+	"karura-runtime",
+	"karura-runtime/integration-tests",
 	"acala-service/with-karura-runtime",
 	"module-relaychain/kusama"
 ]
 with-acala-runtime = [
+	"acala-runtime",
 	"acala-service/with-acala-runtime",
 	"module-relaychain/polkadot"
 ]
 with-ethereum-compatibility = [
+	"mandala-runtime",
 	"mandala-runtime/with-ethereum-compatibility",
 	"module-evm/with-ethereum-compatibility",
 ]

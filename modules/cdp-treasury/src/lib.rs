@@ -179,7 +179,21 @@ pub mod module {
 			Ok(())
 		}
 
-		#[pallet::weight(T::WeightInfo::auction_collateral(T::MaxAuctionsCount::get()))]
+		/// Auction the collateral not occupied by the auction.
+		///
+		/// The dispatch origin of this call must be `UpdateOrigin`.
+		///
+		/// - `currency_id`: collateral type
+		/// - `amount`: collateral amount
+		/// - `target`: target amount
+		/// - `splited`: splite collateral to multiple auction according to the config size
+		#[pallet::weight(
+			if *splited {
+				T::WeightInfo::auction_collateral(T::MaxAuctionsCount::get())
+			} else {
+				T::WeightInfo::auction_collateral(1)
+			}
+		)]
 		#[transactional]
 		pub fn auction_collateral(
 			origin: OriginFor<T>,
@@ -197,6 +211,25 @@ pub mod module {
 				splited,
 			)?;
 			Ok(Some(T::WeightInfo::auction_collateral(created_auctions)).into())
+		}
+
+		/// Swap the collateral not occupied by the auction to stable.
+		///
+		/// The dispatch origin of this call must be `UpdateOrigin`.
+		///
+		/// - `currency_id`: collateral type
+		/// - `swap_limit`: target amount
+		#[pallet::weight(T::WeightInfo::exchange_collateral_to_stable())]
+		#[transactional]
+		pub fn exchange_collateral_to_stable(
+			origin: OriginFor<T>,
+			currency_id: CurrencyId,
+			swap_limit: SwapLimit<Balance>,
+		) -> DispatchResult {
+			T::UpdateOrigin::ensure_origin(origin)?;
+			// the supply collateral must not be occupied by the auction.
+			Self::swap_collateral_to_stable(currency_id, swap_limit, false)?;
+			Ok(())
 		}
 
 		/// Update parameters related to collateral auction under specific

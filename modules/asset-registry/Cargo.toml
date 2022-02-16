@@ -1,6 +1,6 @@
 [package]
 name = "module-asset-registry"
-version = "2.3.1"
+version = "2.3.3"
 authors = ["Acala Developers"]
 edition = "2021"
 
@@ -22,6 +22,8 @@ xcm-executor = { git = "https://github.com/paritytech/polkadot", branch = "relea
 module-support = { path = "../support", default-features = false }
 
 [dev-dependencies]
+serde_json = "1.0.68"
+hex = { version = "0.4" }
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.16" }
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.16" }
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.16" }

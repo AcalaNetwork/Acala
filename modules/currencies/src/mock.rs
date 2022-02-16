@@ -37,7 +37,7 @@ use support::{mocks::MockAddressMapping, AddressMapping};
 
 use super::*;
 use frame_system::EnsureSignedBy;
-use sp_core::{bytes::from_hex, H160};
+use sp_core::{H160, U256};
 use sp_std::str::FromStr;
 
 pub use crate as currencies;
@@ -252,8 +252,12 @@ pub fn erc20_address() -> EvmAddress {
 	EvmAddress::from_str("0x5dddfce53ee040d9eb21afbc0ae1bb4dbb0ba643").unwrap()
 }
 
+pub const ALICE_BALANCE: u128 = 100_000_000_000_000_000_000_000u128;
+
 pub fn deploy_contracts() {
-	let code = from_hex(include!("../../evm-bridge/src/erc20_demo_contract")).unwrap();
+	let json: serde_json::Value =
+		serde_json::from_str(include_str!("../../../ts-tests/build/Erc20DemoContract2.json")).unwrap();
+	let code = hex::decode(json.get("bytecode").unwrap().as_str().unwrap()).unwrap();
 	assert_ok!(EVM::create(Origin::signed(alice()), code, 0, 2_100_000, 10000, vec![]));
 
 	System::assert_last_event(Event::EVM(module_evm::Event::Created {
@@ -266,7 +270,11 @@ pub fn deploy_contracts() {
 				H256::from_str("0x0000000000000000000000000000000000000000000000000000000000000000").unwrap(),
 				H256::from_str("0x0000000000000000000000001000000000000000000000000000000000000001").unwrap(),
 			],
-			data: H256::from_low_u64_be(10000).as_bytes().to_vec(),
+			data: {
+				let mut buf = [0u8; 32];
+				U256::from(ALICE_BALANCE).to_big_endian(&mut buf);
+				H256::from_slice(&buf).as_bytes().to_vec()
+			},
 		}],
 	}));
 
