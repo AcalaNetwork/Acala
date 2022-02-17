@@ -140,7 +140,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("mandala"),
 	impl_name: create_runtime_str!("mandala"),
 	authoring_version: 1,
-	spec_version: 2032,
+	spec_version: 2033,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -1110,7 +1110,7 @@ parameter_types! {
 	pub EnabledTradingPairs: Vec<TradingPair> = vec![
 		TradingPair::from_currency_ids(AUSD, ACA).unwrap(),
 		TradingPair::from_currency_ids(AUSD, DOT).unwrap(),
-		TradingPair::from_currency_ids(AUSD, LDOT).unwrap(),
+		TradingPair::from_currency_ids(DOT, LDOT).unwrap(),
 		TradingPair::from_currency_ids(AUSD, RENBTC).unwrap(),
 		TradingPair::from_currency_ids(DOT, ACA).unwrap(),
 	];

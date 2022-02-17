@@ -137,7 +137,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("karura"),
 	impl_name: create_runtime_str!("karura"),
 	authoring_version: 1,
-	spec_version: 2032,
+	spec_version: 2033,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -2176,15 +2176,51 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	XcmInterfaceMigrationV1,
+	(TransactionPaymentMigration, XcmInterfaceMigrationV1),
 >;
 
 // Migration for scheduler pallet to move from a plain Call to a CallOrHash.
 pub struct XcmInterfaceMigrationV1;
-
 impl OnRuntimeUpgrade for XcmInterfaceMigrationV1 {
 	fn on_runtime_upgrade() -> frame_support::weights::Weight {
 		module_xcm_interface::migrations::v1::migrate::<Runtime, XcmInterface>()
+	}
+}
+
+parameter_types! {
+	pub FeePoolSize: Balance = 5 * dollar(KAR);
+	pub SwapBalanceThreshold: Balance = Ratio::saturating_from_rational(25, 10).saturating_mul_int(dollar(KAR));
+}
+
+pub struct TransactionPaymentMigration;
+impl frame_support::traits::OnRuntimeUpgrade for TransactionPaymentMigration {
+	fn on_runtime_upgrade() -> frame_support::weights::Weight {
+		let poo_size = FeePoolSize::get();
+		let threshold = SwapBalanceThreshold::get();
+		let tokens = vec![KUSD, KSM, LKSM, BNC];
+		for token in tokens {
+			let _ = module_transaction_payment::Pallet::<Runtime>::disable_charge_fee_pool(
+				Origin::signed(KaruraTreasuryAccount::get()),
+				token,
+			);
+			let _ = module_transaction_payment::Pallet::<Runtime>::enable_charge_fee_pool(
+				Origin::signed(KaruraTreasuryAccount::get()),
+				token,
+				poo_size,
+				threshold,
+			);
+		}
+		<Runtime as frame_system::Config>::BlockWeights::get().max_block
+	}
+
+	#[cfg(feature = "try-runtime")]
+	fn pre_upgrade() -> Result<(), &'static str> {
+		Ok(())
+	}
+
+	#[cfg(feature = "try-runtime")]
+	fn post_upgrade() -> Result<(), &'static str> {
+		Ok(())
 	}
 }
 
