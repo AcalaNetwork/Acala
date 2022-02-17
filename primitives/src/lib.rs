@@ -172,6 +172,7 @@ pub enum ReserveIdentifier {
 	Nft,
 	TransactionPayment,
 	TransactionPaymentDeposit,
+	AccountTokenizer,
 
 	// always the last, indicate number of variants
 	Count,

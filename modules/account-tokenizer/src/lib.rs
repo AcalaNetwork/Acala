@@ -34,15 +34,19 @@ use frame_support::{
 	pallet_prelude::*,
 	traits::{
 		tokens::nonfungibles::{Inspect, Mutate},
-		BalanceStatus,
+		BalanceStatus, Currency,
+		ExistenceRequirement::KeepAlive,
+		NamedReservableCurrency, WithdrawReasons,
 	},
 	transactional,
 };
 use frame_system::pallet_prelude::*;
-use orml_traits::{InspectExtended, MultiCurrency, MultiReservableCurrency};
+use orml_traits::{arithmetic::Zero, InspectExtended};
 
 use module_support::ProxyXcm;
-use primitives::{Balance, CurrencyId};
+use primitives::{Balance, ReserveIdentifier};
+
+pub const RESERVE_ID: ReserveIdentifier = ReserveIdentifier::AccountTokenizer;
 
 // mod mock;
 // mod tests;
@@ -57,13 +61,9 @@ pub mod module {
 	pub trait Config: frame_system::Config + orml_nft::Config {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
-		/// Multi-currency support for asset management
-		type Currency: MultiReservableCurrency<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>
-			+ MultiCurrency<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
-
-		/// The native currency's ID.
-		#[pallet::constant]
-		type NativeCurrencyId: Get<CurrencyId>;
+		/// The currency mechanism.
+		type Currency: NamedReservableCurrency<Self::AccountId, ReserveIdentifier = ReserveIdentifier>
+			+ Currency<Self::AccountId, Balance = Balance>;
 
 		/// Pallet's account - used to mint and burn NFT.
 		#[pallet::constant]
@@ -73,12 +73,22 @@ pub mod module {
 		#[pallet::constant]
 		type TreasuryAccount: Get<Self::AccountId>;
 
+		/// The amount of deposit required to create a mint request.
+		/// The fund is confiscated if the request is invalid.
+		#[pallet::constant]
+		type MintRequestDeposit: Get<Balance>;
+
+		/// Fee for minting an account Token NFT.
+		#[pallet::constant]
+		type MintFee: Get<Balance>;
+
 		/// The XcmInterface to communicate with the relaychain via XCM.
 		type XcmInterface: ProxyXcm<Self::AccountId>;
 
 		/// Origin used by Oracles. Used to relay information from the Relaychain.
 		type OracleOrigin: EnsureOrigin<Self::Origin>;
 
+		/// Interface used to communicate with the NFT module.
 		type NFTInterface: Inspect<Self::AccountId, ClassId = Self::ClassId, InstanceId = Self::TokenId>
 			+ Mutate<Self::AccountId>
 			+ InspectExtended<Self::AccountId>;
@@ -86,8 +96,6 @@ pub mod module {
 
 	#[pallet::error]
 	pub enum Error<T> {
-		/// The AccountToken's NFT class ID as not yet been set.
-		NFTClassIdNotSet,
 		/// The given account's NFT is already issued.
 		AccountTokenAlreadyMinted,
 		/// The given account's already been requested to mint.
@@ -100,27 +108,13 @@ pub mod module {
 		AccountTokenNotFound,
 		/// The caller is unauthorized to make this transaction.
 		CallerUnauthorized,
+		/// The owner of the NFT has insufficient reserve balance.
+		InsufficientReservedBalance,
 	}
 
 	#[pallet::event]
 	#[pallet::generate_deposit(fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// The class ID of Account Tokens has been set
-		NFTClassIdSet {
-			class_id: T::ClassId,
-		},
-		/// The mint fee has been set
-		MintFeeSet {
-			mint_fee: Balance,
-		},
-		/// The burn fee has been set
-		BurnFeeSet {
-			burn_fee: Balance,
-		},
-		/// The deposit amount for request_mint has been set
-		RequestMintDepositSet {
-			deposit: Balance,
-		},
 		/// The user has requested to mint a Account Token NFT.
 		MintRequested {
 			account: T::AccountId,
@@ -149,7 +143,7 @@ pub mod module {
 	/// Stores the NFT's class ID. Settable by authorized Oracle. Used to mint and burn PRTs.
 	#[pallet::storage]
 	#[pallet::getter(fn nft_class_id)]
-	type NFTClassId<T: Config> = StorageValue<_, T::ClassId, OptionQuery>;
+	type NFTClassId<T: Config> = StorageValue<_, T::ClassId, ValueQuery>;
 
 	/// Stores accounts that are already minted as an NFT.
 	/// Storage Map: Tokenized Account Id  => NFT Token ID
@@ -163,21 +157,15 @@ pub mod module {
 	#[pallet::getter(fn mint_requests)]
 	type MintRequests<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, T::AccountId, OptionQuery>;
 
-	/// The amount of fee paid when minting a Account Token
-	#[pallet::storage]
-	#[pallet::getter(fn mint_fee)]
-	type MintFee<T: Config> = StorageValue<_, Balance, ValueQuery>;
-
-	/// The amount of fee paid when burning a Account Token, in additional to the XCM cost.
-	#[pallet::storage]
-	#[pallet::getter(fn burn_fee)]
-	type BurnFee<T: Config> = StorageValue<_, Balance, ValueQuery>;
-
-	/// Deposit locked when requesting to mint. If the mint request is successful, it is returned.
-	/// Otherwise the deposit is confiscated as penalty.
-	#[pallet::storage]
-	#[pallet::getter(fn request_mint_deposit)]
-	type RequestMintDeposit<T: Config> = StorageValue<_, Balance, ValueQuery>;
+	#[pallet::hooks]
+	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+		fn on_runtime_upgrade() -> Weight {
+			if Self::nft_class_id() != Default::default() {
+				// Create a NFT class
+			}
+			0
+		}
+	}
 
 	#[pallet::pallet]
 	#[pallet::without_storage_info]
@@ -185,54 +173,12 @@ pub mod module {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		/// Sets the class ID of the Account Token NFT.
-		/// Only callable by authorized Oracles.
-		#[pallet::weight(0)]
-		pub fn set_nft_id(origin: OriginFor<T>, nft_id: T::ClassId) -> DispatchResult {
-			T::OracleOrigin::ensure_origin(origin)?;
-			NFTClassId::<T>::put(nft_id);
-			Self::deposit_event(Event::<T>::NFTClassIdSet { class_id: nft_id });
-			Ok(())
-		}
-
-		/// Sets the Mint Fee.
-		/// Only callable by authorized Oracles.
-		#[pallet::weight(0)]
-		pub fn set_mint_fee(origin: OriginFor<T>, mint_fee: Balance) -> DispatchResult {
-			T::OracleOrigin::ensure_origin(origin)?;
-			MintFee::<T>::put(mint_fee);
-			Self::deposit_event(Event::<T>::MintFeeSet { mint_fee });
-			Ok(())
-		}
-
-		/// Sets the Burn Fee.
-		/// Only callable by authorized Oracles.
-		#[pallet::weight(0)]
-		pub fn set_burn_fee(origin: OriginFor<T>, burn_fee: Balance) -> DispatchResult {
-			T::OracleOrigin::ensure_origin(origin)?;
-			BurnFee::<T>::put(burn_fee);
-			Self::deposit_event(Event::<T>::BurnFeeSet { burn_fee });
-			Ok(())
-		}
-
-		/// Sets the Deposit amount for request_mint.
-		/// Only callable by authorized Oracles.
-		#[pallet::weight(0)]
-		pub fn set_request_mint_deposit(origin: OriginFor<T>, deposit: Balance) -> DispatchResult {
-			T::OracleOrigin::ensure_origin(origin)?;
-			RequestMintDeposit::<T>::put(deposit);
-			Self::deposit_event(Event::<T>::RequestMintDepositSet { deposit });
-			Ok(())
-		}
-
 		/// Request to mint an Account Token. Called after the user of the same Account Id has given
 		/// the proxy control of an account to the parachain account.
 		#[pallet::weight(0)]
 		#[transactional]
 		pub fn request_mint(origin: OriginFor<T>, account: T::AccountId) -> DispatchResult {
 			let who = ensure_signed(origin)?;
-
-			Self::nft_class_id().ok_or(Error::<T>::NFTClassIdNotSet)?;
 
 			// An account can only have a single "requester".
 			ensure!(
@@ -247,13 +193,9 @@ pub mod module {
 			);
 
 			// Charge the user fee and lock the deposit.
-			T::Currency::transfer(
-				T::NativeCurrencyId::get(),
-				&who,
-				&T::TreasuryAccount::get(),
-				Self::mint_fee(),
-			)?;
-			T::Currency::reserve(T::NativeCurrencyId::get(), &who, Self::request_mint_deposit())?;
+			T::Currency::transfer(&who, &T::TreasuryAccount::get(), T::MintFee::get(), KeepAlive)?;
+
+			T::Currency::reserve_named(&RESERVE_ID, &who, T::MintRequestDeposit::get())?;
 
 			// Add a record of the request.
 			MintRequests::<T>::insert(account.clone(), who.clone());
@@ -273,7 +215,7 @@ pub mod module {
 		) -> DispatchResult {
 			T::OracleOrigin::ensure_origin(origin)?;
 
-			let nft_class_id = Self::nft_class_id().ok_or(Error::<T>::NFTClassIdNotSet)?;
+			let nft_class_id = Self::nft_class_id();
 
 			// The confirmed owner and the mint requester is the same.
 			let requester = MintRequests::<T>::take(account.clone()).ok_or(Error::<T>::MintRequestNotFound)?;
@@ -293,7 +235,8 @@ pub mod module {
 			MintedAccount::<T>::insert(account.clone(), token_id);
 
 			// Release the deposit from the requester
-			T::Currency::unreserve(T::NativeCurrencyId::get(), &owner, Self::request_mint_deposit());
+			let remaining = T::Currency::unreserve_named(&RESERVE_ID, &owner, T::MintRequestDeposit::get());
+			ensure!(remaining.is_zero(), Error::<T>::InsufficientReservedBalance);
 
 			Self::deposit_event(Event::AccountTokenMinted {
 				account,
@@ -315,11 +258,11 @@ pub mod module {
 			ensure!(requester == owner, Error::<T>::MintRequestDifferentFromOwner);
 
 			// Release the deposit from the requester
-			T::Currency::repatriate_reserved(
-				T::NativeCurrencyId::get(),
+			T::Currency::repatriate_reserved_named(
+				&RESERVE_ID,
 				&requester,
 				&T::TreasuryAccount::get(),
-				Self::request_mint_deposit(),
+				T::MintRequestDeposit::get(),
 				BalanceStatus::Free,
 			)?;
 
@@ -341,7 +284,7 @@ pub mod module {
 			new_owner: T::AccountId,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
-			let nft_class_id = Self::nft_class_id().ok_or(Error::<T>::NFTClassIdNotSet)?;
+			let nft_class_id = Self::nft_class_id();
 
 			// Obtain info about the account token.
 			let token_id = Self::minted_account(&account).ok_or(Error::<T>::AccountTokenNotFound)?;
@@ -350,17 +293,12 @@ pub mod module {
 			// Ensure that only the owner of the NFT can burn.
 			ensure!(who == owner, Error::<T>::CallerUnauthorized);
 
-			// Burn fee goes to the treasury, and the XCM fee is burned.
-			T::Currency::transfer(
-				T::NativeCurrencyId::get(),
-				&who,
-				&T::TreasuryAccount::get(),
-				Self::burn_fee(),
-			)?;
+			// The XCM fee is burned.
 			T::Currency::withdraw(
-				T::NativeCurrencyId::get(),
 				&who,
 				T::XcmInterface::get_transfer_proxy_xcm_fee(),
+				WithdrawReasons::FEE,
+				KeepAlive,
 			)?;
 
 			// Find the NFT and burn it
