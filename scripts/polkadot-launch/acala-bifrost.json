@@ -39,7 +39,7 @@
   },
   "parachains": [
     {
-      "bin": "../target/release/acala",
+      "bin": "/tmp/acala",
       "id": "2000",
       "chain": "karura-dev",
       "nodes": [
@@ -61,10 +61,45 @@
           ]
         }
       ]
+    },
+    {
+      "bin": "/tmp/bifrost",
+      "id": "2001",
+      "chain": "bifrost-local",
+      "nodes": [
+        {
+          "wsPort": 9999,
+          "port": 31300,
+          "name": "alice",
+          "flags": [
+            "--unsafe-ws-external",
+            "--unsafe-rpc-external",
+            "--rpc-external",
+            "--ws-external",
+            "--rpc-cors=all",
+            "--rpc-methods=Unsafe",
+            "--force-authoring",
+            "--",
+            "--execution=wasm"
+          ]
+        }
+      ]
     }
   ],
   "simpleParachains": [],
   "hrmpChannels": [
+    {
+      "sender": 2000,
+      "recipient": 2001,
+      "maxCapacity": 8,
+      "maxMessageSize": 512
+    },
+    {
+      "sender": 2001,
+      "recipient": 2000,
+      "maxCapacity": 8,
+      "maxMessageSize": 512
+    }
   ],
   "types": {},
   "finalization": false

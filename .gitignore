@@ -8,6 +8,9 @@
 .idea
 *.wasm
 *.state
+# exclude file generate by polkadot-launch
+*.log
+*.json
 
 .vscode/launch.json
 

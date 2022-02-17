@@ -39,7 +39,7 @@
   },
   "parachains": [
     {
-      "bin": "../target/release/acala",
+      "bin": "/tmp/acala",
       "id": "2000",
       "chain": "karura-dev",
       "nodes": [
@@ -63,9 +63,9 @@
       ]
     },
     {
-      "bin": "/tmp/bifrost",
-      "id": "2001",
-      "chain": "bifrost-local",
+      "bin": "/tmp/polkadot-collator",
+      "id": "1000",
+      "chain": "westmint-dev",
       "nodes": [
         {
           "wsPort": 9999,
@@ -79,6 +79,7 @@
             "--rpc-cors=all",
             "--rpc-methods=Unsafe",
             "--force-authoring",
+            "--log=xcm=trace,pallet-assets=trace",
             "--",
             "--execution=wasm"
           ]
@@ -90,12 +91,12 @@
   "hrmpChannels": [
     {
       "sender": 2000,
-      "recipient": 2001,
+      "recipient": 1000,
       "maxCapacity": 8,
       "maxMessageSize": 512
     },
     {
-      "sender": 2001,
+      "sender": 1000,
       "recipient": 2000,
       "maxCapacity": 8,
       "maxMessageSize": 512

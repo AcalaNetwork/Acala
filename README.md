@@ -254,12 +254,12 @@ make build-karura-release
 launch polkadot and parachain with json config file:
 
 ```bash
-polkadot-launch scripts/acala-launch.json
+polkadot-launch scripts/polkadot-launch/acala-launch.json
 ```
 
 there're other json file that will run both karura and other parachain.
-- scripts/acala-statemine.json: run karura and statemine
-- scripts/acala-bifrost.json: run karura and bifrost
+- scripts/polkadot-launch/acala-statemine.json: run karura and statemine
+- scripts/polkadot-launch/acala-bifrost.json: run karura and bifrost
 
 # 11. Build For Release
 
