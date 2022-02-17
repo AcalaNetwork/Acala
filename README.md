@@ -237,6 +237,13 @@ docker volume prune
 
 # 10. Run local testnet with [polkadot-launch](https://github.com/paritytech/polkadot-launch)
 
+copy acala related launch json to polkadot-launch:
+
+```bash
+# $polkadot-launch is the home of polkadot-launch
+cp scripts/polkadot-launch/*.json $polkadot-launch/
+```
+
 build polkadot:
 
 ```bash
@@ -251,10 +258,10 @@ build karura:
 make build-karura-release
 ```
 
-launch polkadot and parachain with json config file:
+launch polkadot and parachain with json config file in polkadot-launch:
 
 ```bash
-polkadot-launch scripts/polkadot-launch/acala-launch.json
+polkadot-launch acala-launch.json
 ```
 
 there're other json file that will run both karura and other parachain.
