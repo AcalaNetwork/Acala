@@ -5615,6 +5615,7 @@ dependencies = [
  "module-evm-bridge",
  "module-evm-rpc-runtime-api",
  "module-evm-utiltity",
+ "module-foreign-state-oracle",
  "module-homa",
  "module-honzon",
  "module-idle-scheduler",

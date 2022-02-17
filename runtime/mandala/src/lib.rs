@@ -1346,6 +1346,26 @@ impl module_nominees_election::Config for Runtime {
 }
 
 parameter_types! {
+	pub const ForeignOraclePalletId: PalletId = PalletId(*b"aca/fsto");
+	pub const QueryDuration: BlockNumber = 10;
+	pub QueryFee: Balance = 10 * cent(ACA);
+	pub CancelFee: Balance = 5 * cent(ACA);
+}
+
+impl module_foreign_state_oracle::Config for Runtime {
+	type Event = Event;
+	type Origin = Origin;
+	type VerifiableTask = Call;
+	type Currency = Balances;
+	type PalletId = ForeignOraclePalletId;
+	type QueryFee = QueryFee;
+	type CancelFee = CancelFee;
+	type QueryDuration = QueryDuration;
+	type BlockNumberProvider = System;
+	type OracleOrigin = EnsureRoot<AccountId>;
+}
+
+parameter_types! {
 	pub CreateClassDeposit: Balance = 20 * dollar(ACA);
 	pub CreateTokenDeposit: Balance = 2 * dollar(ACA);
 	pub MaxAttributesBytes: u32 = 2048;
@@ -2162,6 +2182,7 @@ construct_runtime! {
 		Incentives: module_incentives::{Pallet, Storage, Call, Event<T>} = 140,
 		NFT: module_nft::{Pallet, Call, Event<T>} = 141,
 		AssetRegistry: module_asset_registry::{Pallet, Call, Storage, Event<T>} = 142,
+		ForeignStateOracle: module_foreign_state_oracle::{Pallet, Call, Storage, Event<T>, Origin} = 143,
 
 		// Ecosystem modules
 		RenVmBridge: ecosystem_renvm_bridge::{Pallet, Call, Config, Storage, Event<T>, ValidateUnsigned} = 150,

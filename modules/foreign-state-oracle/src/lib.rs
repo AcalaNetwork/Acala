@@ -33,6 +33,7 @@ use sp_runtime::{
 	traits::{AccountIdConversion, BlockNumberProvider, One, Saturating, Scale},
 	ArithmeticError,
 };
+use sp_std::vec::Vec;
 
 mod mock;
 mod tests;
@@ -126,7 +127,7 @@ pub mod module {
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// Active Query is created, under the index as the key
-		CreateActiveQuery { index: QueryIndex },
+		CreateActiveQuery { index: QueryIndex, expiry: T::BlockNumber },
 		/// Call is dispatched with data, includes the result of the extrinsic
 		CallDispatched { task_result: DispatchResult },
 		/// Query that has expired is removed from storage, includes index
@@ -256,7 +257,7 @@ impl<T: Config> ForeignChainStateQuery<T::AccountId, T::VerifiableTask> for Pall
 		QueryCounter::<T>::put(index.checked_add(One::one()).ok_or(ArithmeticError::Overflow)?);
 
 		ActiveQuery::<T>::insert(index, verifiable_call);
-		Self::deposit_event(Event::CreateActiveQuery { index });
+		Self::deposit_event(Event::CreateActiveQuery { index, expiry });
 		Ok(())
 	}
 

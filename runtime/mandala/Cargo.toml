@@ -108,6 +108,7 @@ module-evm = { path = "../../modules/evm", default-features = false }
 module-evm-accounts = { path = "../../modules/evm-accounts", default-features = false }
 module-evm-bridge = { path = "../../modules/evm-bridge", default-features = false }
 module-evm-utiltity = { path = "../../modules/evm-utiltity", default-features = false }
+module-foreign-state-oracle = { path = "../../modules/foreign-state-oracle", default-features = false }
 module-honzon = { path = "../../modules/honzon", default-features = false }
 module-loans = { path = "../../modules/loans", default-features = false }
 module-nft = { path = "../../modules/nft", default-features = false }
@@ -242,6 +243,7 @@ std = [
 	"module-evm-accounts/std",
 	"module-evm-bridge/std",
 	"module-evm-utiltity/std",
+	"module-foreign-state-oracle/std",
 	"module-honzon/std",
 	"module-loans/std",
 	"module-nft/std",
@@ -281,6 +283,7 @@ runtime-benchmarks = [
 
 	"module-nft/runtime-benchmarks",
 	"module-evm-accounts/runtime-benchmarks",
+	"module-foreign-state-oracle/runtime-benchmarks",
 
 	"sp-api/disable-logging",
 ]
