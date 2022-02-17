@@ -32,19 +32,19 @@ build-all:
 
 .PHONY: build-release
 build-release:
-	CARGO_PROFILE_RELEASE_LTO=true RUSTFLAGS="-C codegen-units=1" cargo build --locked --features with-all-runtime --release --workspace --exclude runtime-integration-tests --exclude e2e-tests
+	CARGO_PROFILE_RELEASE_LTO=true RUSTFLAGS="-C codegen-units=1" cargo build --locked --features with-all-runtime --release --workspace --exclude runtime-integration-tests --exclude e2e-tests --exclude test-service
 
 .PHONY: build-mandala-release
 build-mandala-release:
-	CARGO_PROFILE_RELEASE_LTO=true RUSTFLAGS="-C codegen-units=1" cargo build --locked --features with-mandala-runtime --release --workspace --exclude runtime-integration-tests --exclude e2e-tests
+	CARGO_PROFILE_RELEASE_LTO=true RUSTFLAGS="-C codegen-units=1" cargo build --locked --features with-mandala-runtime --release --workspace --exclude runtime-integration-tests --exclude e2e-tests --exclude test-service
 
 .PHONY: build-karura-release
 build-karura-release:
-	CARGO_PROFILE_RELEASE_LTO=true RUSTFLAGS="-C codegen-units=1" cargo build --locked --features with-karura-runtime --release --workspace --exclude runtime-integration-tests --exclude e2e-tests
+	CARGO_PROFILE_RELEASE_LTO=true RUSTFLAGS="-C codegen-units=1" cargo build --locked --features with-karura-runtime --release --workspace --exclude runtime-integration-tests --exclude e2e-tests --exclude test-service
 
 .PHONY: build-acala-release
 build-acala-release:
-	CARGO_PROFILE_RELEASE_LTO=true RUSTFLAGS="-C codegen-units=1" cargo build --locked --features with-acala-runtime --release --workspace --exclude runtime-integration-tests --exclude e2e-tests
+	CARGO_PROFILE_RELEASE_LTO=true RUSTFLAGS="-C codegen-units=1" cargo build --locked --features with-acala-runtime --release --workspace --exclude runtime-integration-tests --exclude e2e-tests --exclude test-service
 
 .PHONY: check
 check: githooks
