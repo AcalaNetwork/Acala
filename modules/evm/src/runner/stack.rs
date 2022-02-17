@@ -477,7 +477,7 @@ impl<'config> SubstrateStackSubstate<'config> {
 		// insert in parent to make sure it doesn't get discarded
 		if address == H160::from_low_u64_be(3) {
 			if let Some(parent) = self.parent.as_ref() {
-				parent.mark_account_dirty(address);
+				return parent.mark_account_dirty(address);
 			}
 		}
 		self.metadata().dirty_accounts.borrow_mut().insert(address);
