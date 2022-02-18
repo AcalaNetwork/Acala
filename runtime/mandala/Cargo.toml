@@ -129,6 +129,8 @@ module-evm-rpc-runtime-api = { path = "../../modules/evm/rpc/runtime_api",  defa
 ecosystem-renvm-bridge = { path = "../../ecosystem-modules/ren/renvm-bridge", default-features = false }
 ecosystem-starport = { path = "../../ecosystem-modules/starport", default-features = false }
 ecosystem-compound-cash = { path = "../../ecosystem-modules/compound-cash", default-features = false }
+ecosystem-aqua-dao = { path = "../../ecosystem-modules/aquadao/dao", default-features = false }
+ecosystem-aqua-staked-token = { path = "../../ecosystem-modules/aquadao/staked-token", default-features = false }
 
 [build-dependencies]
 substrate-wasm-builder = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.16" }
@@ -261,6 +263,8 @@ std = [
 	"ecosystem-renvm-bridge/std",
 	"ecosystem-starport/std",
 	"ecosystem-compound-cash/std",
+	"ecosystem-aqua-dao/std",
+	"ecosystem-aqua-staked-token/std",
 ]
 runtime-benchmarks = [
 	"orml-benchmarking",

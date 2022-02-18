@@ -2573,6 +2573,52 @@ dependencies = [
 ]
 
 [[package]]
+name = "ecosystem-aqua-dao"
+version = "0.1.0"
+dependencies = [
+ "acala-primitives",
+ "frame-support",
+ "frame-system",
+ "module-support",
+ "orml-traits",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "ecosystem-aqua-staked-token"
+version = "0.1.0"
+dependencies = [
+ "acala-primitives",
+ "ecosystem-aqua-dao",
+ "frame-support",
+ "frame-system",
+ "module-support",
+ "orml-traits",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "ecosystem-aqua-treasury-staking"
+version = "0.1.0"
+dependencies = [
+ "acala-primitives",
+ "frame-support",
+ "frame-system",
+ "module-support",
+ "orml-traits",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "ecosystem-compound-cash"
 version = "2.3.3"
 dependencies = [
@@ -5572,6 +5618,8 @@ dependencies = [
  "cumulus-primitives-timestamp",
  "cumulus-primitives-utility",
  "cumulus-test-relay-sproof-builder",
+ "ecosystem-aqua-dao",
+ "ecosystem-aqua-staked-token",
  "ecosystem-compound-cash",
  "ecosystem-renvm-bridge",
  "ecosystem-starport",
@@ -7651,21 +7699,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pallet-dao"
-version = "0.1.0"
-dependencies = [
- "acala-primitives",
- "frame-support",
- "frame-system",
- "module-support",
- "orml-traits",
- "parity-scale-codec",
- "scale-info",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
 name = "pallet-democracy"
 version = "4.0.0-dev"
 source = "git+https://github.com/paritytech//substrate?rev=19162e43be45817b44c7d48e50d03f074f60fbf4#19162e43be45817b44c7d48e50d03f074f60fbf4"
@@ -8064,22 +8097,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pallet-staked-token"
-version = "0.1.0"
-dependencies = [
- "acala-primitives",
- "frame-support",
- "frame-system",
- "module-support",
- "orml-traits",
- "pallet-dao",
- "parity-scale-codec",
- "scale-info",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
 name = "pallet-staking"
 version = "4.0.0-dev"
 source = "git+https://github.com/paritytech//substrate?rev=19162e43be45817b44c7d48e50d03f074f60fbf4#19162e43be45817b44c7d48e50d03f074f60fbf4"
@@ -8231,21 +8248,6 @@ dependencies = [
  "parity-scale-codec",
  "scale-info",
  "serde",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "pallet-treasury-staking"
-version = "0.1.0"
-dependencies = [
- "acala-primitives",
- "frame-support",
- "frame-system",
- "module-support",
- "orml-traits",
- "parity-scale-codec",
- "scale-info",
  "sp-runtime",
  "sp-std",
 ]

@@ -72,7 +72,7 @@ use sp_core::{crypto::KeyTypeId, OpaqueMetadata, H160};
 use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{
-		AccountIdConversion, BadOrigin, BlakeTwo256, Block as BlockT, Convert, SaturatedConversion, StaticLookup,
+		AccountIdConversion, BadOrigin, BlakeTwo256, Block as BlockT, Convert, One, SaturatedConversion, StaticLookup,
 	},
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, DispatchResult, FixedPointNumber,
@@ -1997,6 +1997,38 @@ impl module_idle_scheduler::Config for Runtime {
 
 impl cumulus_pallet_aura_ext::Config for Runtime {}
 
+parameter_types!(
+	pub StableTokenSymbol: TokenSymbol = TokenSymbol::AUSD;
+	pub TreasuryShare: Ratio = Ratio::saturating_from_rational(10, 100);
+	pub DaoShare: Ratio = Ratio::saturating_from_rational(10, 100);
+	pub DaoDefaultExchangeRate: Rate = Rate::one();
+	pub AquaStakedTokenPalletId: PalletId = PalletId(*b"dao/sttk");
+	pub AquaDaoPalletId: PalletId = PalletId(*b"dao/daoo");
+	pub DaoAccount: AccountId = AquaDaoPalletId::get().into_account();
+);
+
+impl ecosystem_aqua_staked_token::Config for Runtime {
+	type Event = Event;
+	type Currency = Currencies;
+	type UpdateParamsOrigin = EnsureRootOrHalfGeneralCouncil;
+	type TreasuryShare = TreasuryShare;
+	type DaoShare = DaoShare;
+	type DefaultExchangeRate = DaoDefaultExchangeRate;
+	type PalletId = AquaStakedTokenPalletId;
+	type TreasuryAccount = TreasuryAccount;
+	type DaoAccount = DaoAccount;
+}
+
+impl ecosystem_aqua_dao::Config for Runtime {
+	type Event = Event;
+	type Currency = Currencies;
+	type StableTokenSymbol = StableTokenSymbol;
+	type CreatingOrigin = EnsureRootOrHalfGeneralCouncil;
+	type Oracle = module_dex_oracle::AverageDEXPriceProvider<Runtime>;
+	type StakedToken = AquaStakedToken;
+	type PalletId = AquaDaoPalletId;
+}
+
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
 pub struct ConvertEthereumTx;
 
@@ -2212,6 +2244,10 @@ construct_runtime! {
 
 		// Stable asset
 		StableAsset: nutsfinance_stable_asset::{Pallet, Call, Storage, Event<T>} = 200,
+
+		// Aqua DAO
+		AquaDao: ecosystem_aqua_dao::{Pallet, Call, Storage, Event<T>} = 210,
+		AquaStakedToken: ecosystem_aqua_staked_token::{Pallet, Call, Storage, Event<T>} = 211,
 
 		// Parachain System, always put it at the end
 		ParachainSystem: cumulus_pallet_parachain_system::{Pallet, Call, Storage, Inherent, Config, Event<T>} = 160,
