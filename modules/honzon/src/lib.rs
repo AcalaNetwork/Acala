@@ -268,7 +268,7 @@ pub mod module {
 		/// - `currency_id`: collateral currency id.
 		/// - `increase_debit_value`: the specific increased debit value for CDP
 		/// - `min_increase_collateral`: the minimal increased collateral amount for CDP
-		#[pallet::weight(<T as Config>::WeightInfo::adjust_loan())]
+		#[pallet::weight(<T as Config>::WeightInfo::expand_position_collateral())]
 		#[transactional]
 		pub fn expand_position_collateral(
 			origin: OriginFor<T>,
@@ -291,7 +291,7 @@ pub mod module {
 		/// - `currency_id`: collateral currency id.
 		/// - `decrease_collateral`: the specific decreased collateral amount for CDP
 		/// - `min_decrease_debit_value`: the minimal decreased debit value for CDP
-		#[pallet::weight(<T as Config>::WeightInfo::adjust_loan())]
+		#[pallet::weight(<T as Config>::WeightInfo::shrink_position_debit())]
 		#[transactional]
 		pub fn shrink_position_debit(
 			origin: OriginFor<T>,

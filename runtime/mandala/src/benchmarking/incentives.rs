@@ -22,7 +22,7 @@ use crate::{
 };
 
 use super::utils::set_balance;
-use frame_benchmarking::{account, whitelisted_caller, BenchmarkError};
+use frame_benchmarking::{account, whitelisted_caller};
 use frame_support::traits::OnInitialize;
 use frame_system::RawOrigin;
 use module_incentives::PoolId;
@@ -108,13 +108,13 @@ runtime_benchmarks! {
 
 		for i in 0 .. c {
 			let currency_id = currency_ids[i as usize];
-			let lp_share_currency_id = match (currency_id, base_currency_id) {
+			match (currency_id, base_currency_id) {
 				(CurrencyId::Token(other_currency_symbol), CurrencyId::Token(base_currency_symbol)) => {
-					CurrencyId::DexShare(DexShare::Token(other_currency_symbol), DexShare::Token(base_currency_symbol))
+					let lp_share_currency_id = CurrencyId::DexShare(DexShare::Token(other_currency_symbol), DexShare::Token(base_currency_symbol));
+					updates.push((PoolId::Dex(lp_share_currency_id), Rate::default()));
 				}
-				_ => return Err(BenchmarkError::Stop("invalid currency id")),
+				_ => {},
 			};
-			updates.push((PoolId::Dex(lp_share_currency_id), Rate::default()));
 		}
 	}: _(RawOrigin::Root, updates)
 

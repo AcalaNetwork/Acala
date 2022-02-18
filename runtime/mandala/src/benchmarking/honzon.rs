@@ -60,7 +60,7 @@ fn inject_liquidity(
 		max_amount_b.unique_saturated_into(),
 	)?;
 
-	Dex::enable_trading_pair(RawOrigin::Root.into(), currency_id_a, currency_id_b)?;
+	let _ = Dex::enable_trading_pair(RawOrigin::Root.into(), currency_id_a, currency_id_b);
 
 	Dex::add_liquidity(
 		RawOrigin::Signed(maker.clone()).into(),
@@ -245,7 +245,7 @@ runtime_benchmarks! {
 		let debit_value = 100 * dollar(STABLECOIN);
 		let debit_exchange_rate = CdpEngine::get_debit_exchange_rate(currency_id);
 		let debit_amount = debit_exchange_rate.reciprocal().unwrap().saturating_mul_int(debit_value);
-		let collateral_value = 2 * debit_value;
+		let collateral_value = 10 * debit_value;
 		let collateral_amount = Price::saturating_from_rational(dollar(currency_id), dollar(STABLECOIN)).saturating_mul_int(collateral_value);
 
 		// set balance and inject liquidity
@@ -272,7 +272,7 @@ runtime_benchmarks! {
 			collateral_amount.try_into().unwrap(),
 			debit_amount.try_into().unwrap(),
 		)?;
-	}: _(RawOrigin::Signed(sender), currency_id, debit_value, collateral_value / 10)
+	}: _(RawOrigin::Signed(sender), currency_id, debit_value, 0)
 
 	shrink_position_debit {
 		let currency_id: CurrencyId = STAKING;
@@ -281,7 +281,7 @@ runtime_benchmarks! {
 		let debit_value = 100 * dollar(STABLECOIN);
 		let debit_exchange_rate = CdpEngine::get_debit_exchange_rate(currency_id);
 		let debit_amount = debit_exchange_rate.reciprocal().unwrap().saturating_mul_int(debit_value);
-		let collateral_value = 2 * debit_value;
+		let collateral_value = 10 * debit_value;
 		let collateral_amount = Price::saturating_from_rational(dollar(currency_id), dollar(STABLECOIN)).saturating_mul_int(collateral_value);
 
 		// set balance and inject liquidity
@@ -308,7 +308,7 @@ runtime_benchmarks! {
 			collateral_amount.try_into().unwrap(),
 			debit_amount.try_into().unwrap(),
 		)?;
-	}: _(RawOrigin::Signed(sender), currency_id, collateral_amount / 5, debit_value / 5)
+	}: _(RawOrigin::Signed(sender), currency_id, collateral_amount / 5, 0)
 }
 
 #[cfg(test)]
