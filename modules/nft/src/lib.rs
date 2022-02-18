@@ -341,20 +341,7 @@ pub mod module {
 			properties: Properties,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
-			orml_nft::Classes::<T>::try_mutate(class_id, |class_info| {
-				let class_info = class_info.as_mut().ok_or(Error::<T>::ClassIdNotFound)?;
-				ensure!(who == class_info.owner, Error::<T>::NoPermission);
-
-				let mut data = &mut class_info.data;
-				ensure!(
-					data.properties.0.contains(ClassProperty::ClassPropertiesMutable),
-					Error::<T>::Immutable
-				);
-
-				data.properties = properties;
-
-				Ok(())
-			})
+			Self::do_update_class_properties(&who, &class_id, properties)
 		}
 	}
 }
@@ -520,6 +507,27 @@ impl<T: Config> Pallet<T> {
 		let total_data_len = attributes_len.saturating_add(metadata.len() as u32);
 		Ok(T::DataDepositPerByte::get().saturating_mul(total_data_len.into()))
 	}
+
+	pub fn do_update_class_properties(
+		caller: &T::AccountId,
+		class_id: &ClassIdOf<T>,
+		properties: Properties,
+	) -> DispatchResult {
+		orml_nft::Classes::<T>::try_mutate(class_id, |class_info| {
+			let class_info = class_info.as_mut().ok_or(Error::<T>::ClassIdNotFound)?;
+			ensure!(*caller == class_info.owner, Error::<T>::NoPermission);
+
+			let mut data = &mut class_info.data;
+			ensure!(
+				data.properties.0.contains(ClassProperty::ClassPropertiesMutable),
+				Error::<T>::Immutable
+			);
+
+			data.properties = properties;
+
+			Ok(())
+		})
+	}
 }
 
 impl<T: Config> InspectExtended<T::AccountId> for Pallet<T> {
@@ -587,13 +595,17 @@ impl<T: Config> Create<T::AccountId> for Pallet<T> {
 	/// Note: All NFT is owned by this module, so the `_who` field is not used.
 	fn create_class(class: &Self::ClassId, _who: &T::AccountId, admin: &T::AccountId) -> DispatchResult {
 		// Check if the class id is correct
-		ensure!(*class == Self::next_class_id(), Error::<T>::IncorrectClassId);
+		ensure!(*class != Self::next_class_id(), Error::<T>::IncorrectClassId);
 		Self::do_create_class(admin, Default::default(), Default::default(), Default::default())
 	}
 }
 
-impl<T: Config> CreateExtended<T::AccountId> for Pallet<T> {
+impl<T: Config> CreateExtended<T::AccountId, Properties> for Pallet<T> {
 	fn next_class_id() -> Self::ClassId {
 		orml_nft::Pallet::<T>::next_class_id()
+	}
+
+	fn set_class_properties(class: &Self::ClassId, properties: Properties) -> DispatchResult {
+		Self::do_update_class_properties(&T::PalletId::get().into_sub_account(class), class, properties)
 	}
 }

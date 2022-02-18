@@ -43,7 +43,7 @@ pub enum ClassProperty {
 	ClassPropertiesMutable = 0b00001000,
 }
 
-#[derive(Clone, Copy, PartialEq, Default, RuntimeDebug)]
+#[derive(Clone, Copy, PartialEq, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct Properties(pub BitFlags<ClassProperty>);
 
@@ -70,5 +70,12 @@ impl TypeInfo for Properties {
 			.path(Path::new("BitFlags", module_path!()))
 			.type_params(vec![TypeParameter::new("T", Some(meta_type::<ClassProperty>()))])
 			.composite(Fields::unnamed().field(|f| f.ty::<u8>().type_name("ClassProperty")))
+	}
+}
+
+impl Default for Properties {
+	// By default, the class properties is mutable.
+	fn default() -> Self {
+		Properties(ClassProperty::ClassPropertiesMutable.into())
 	}
 }

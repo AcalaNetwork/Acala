@@ -31,20 +31,25 @@
 #![allow(clippy::upper_case_acronyms)]
 
 use frame_support::{
+	log,
 	pallet_prelude::*,
 	traits::{
-		tokens::nonfungibles::{Inspect, Mutate},
+		tokens::nonfungibles::{Create, Inspect, Mutate},
 		BalanceStatus, Currency,
 		ExistenceRequirement::KeepAlive,
-		NamedReservableCurrency, WithdrawReasons,
+		GetStorageVersion, NamedReservableCurrency, StorageVersion, WithdrawReasons,
 	},
 	transactional,
 };
+
 use frame_system::pallet_prelude::*;
-use orml_traits::{arithmetic::Zero, InspectExtended};
+use orml_traits::{arithmetic::Zero, CreateExtended, InspectExtended};
 
 use module_support::ProxyXcm;
-use primitives::{Balance, ReserveIdentifier};
+use primitives::{
+	nft::{ClassProperty, Properties},
+	Balance, ReserveIdentifier,
+};
 
 pub const RESERVE_ID: ReserveIdentifier = ReserveIdentifier::AccountTokenizer;
 
@@ -91,17 +96,13 @@ pub mod module {
 		/// Interface used to communicate with the NFT module.
 		type NFTInterface: Inspect<Self::AccountId, ClassId = Self::ClassId, InstanceId = Self::TokenId>
 			+ Mutate<Self::AccountId>
-			+ InspectExtended<Self::AccountId>;
+			+ InspectExtended<Self::AccountId>
+			+ Create<Self::AccountId>
+			+ CreateExtended<Self::AccountId, Properties>;
 	}
 
 	#[pallet::error]
 	pub enum Error<T> {
-		/// The given account's NFT is already issued.
-		AccountTokenAlreadyMinted,
-		/// The given account's already been requested to mint.
-		AccountAlreadyRequestedMinted,
-		/// The mint request for the given account is not found.
-		MintRequestNotFound,
 		/// The confirmed owner and the mint requester isn't the same.
 		MintRequestDifferentFromOwner,
 		/// The account's NFT token cannot be found.
@@ -113,7 +114,7 @@ pub mod module {
 	}
 
 	#[pallet::event]
-	#[pallet::generate_deposit(fn deposit_event)]
+	#[pallet::generate_deposit(pub fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// The user has requested to mint a Account Token NFT.
 		MintRequested {
@@ -121,13 +122,12 @@ pub mod module {
 			who: T::AccountId,
 		},
 		MintRequestRejected {
-			account: T::AccountId,
-			who: T::AccountId,
+			requester: T::AccountId,
 		},
 		/// A NFT is minted to the owner of an account on the Relaychain.
 		AccountTokenMinted {
+			requester: T::AccountId,
 			account: T::AccountId,
-			owner: T::AccountId,
 			token_id: T::TokenId,
 		},
 		/// The account token is burned, the control of the `account` on the relaychain is
@@ -143,25 +143,40 @@ pub mod module {
 	/// Stores the NFT's class ID. Settable by authorized Oracle. Used to mint and burn PRTs.
 	#[pallet::storage]
 	#[pallet::getter(fn nft_class_id)]
-	type NFTClassId<T: Config> = StorageValue<_, T::ClassId, ValueQuery>;
+	pub type NFTClassId<T: Config> = StorageValue<_, T::ClassId, ValueQuery>;
 
 	/// Stores accounts that are already minted as an NFT.
 	/// Storage Map: Tokenized Account Id  => NFT Token ID
 	#[pallet::storage]
 	#[pallet::getter(fn minted_account)]
-	type MintedAccount<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, T::TokenId, OptionQuery>;
-
-	/// Stores mint requests.
-	/// Storage Map: Account to be tokenized  => Requester's Account Id
-	#[pallet::storage]
-	#[pallet::getter(fn mint_requests)]
-	type MintRequests<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, T::AccountId, OptionQuery>;
+	pub type MintedAccount<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, T::TokenId, OptionQuery>;
 
 	#[pallet::hooks]
 	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
 		fn on_runtime_upgrade() -> Weight {
 			if Self::nft_class_id() != Default::default() {
-				// Create a NFT class
+				let on_chain_storage_version = <Self as GetStorageVersion>::on_chain_storage_version();
+				if on_chain_storage_version == 0 {
+					// Use storage version to ensure we only register NFT class once.
+					let class_id = T::NFTInterface::next_class_id();
+					let res =
+						T::NFTInterface::create_class(&class_id, &T::PalletAccount::get(), &T::PalletAccount::get());
+					log::debug!("Account Tokenizer: Created NFT class. result: {:?}", res);
+
+					let res = T::NFTInterface::set_class_properties(
+						&class_id,
+						Properties(
+							ClassProperty::Transferable
+								| ClassProperty::Burnable | ClassProperty::Mintable
+								| ClassProperty::ClassPropertiesMutable,
+						)
+						.into(),
+					);
+					log::debug!("Account Tokenizer: Set NFT class property. result: {:?}", res);
+
+					NFTClassId::<T>::put(class_id);
+					StorageVersion::new(1).put::<Self>();
+				}
 			}
 			0
 		}
@@ -180,97 +195,29 @@ pub mod module {
 		pub fn request_mint(origin: OriginFor<T>, account: T::AccountId) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			// An account can only have a single "requester".
-			ensure!(
-				Self::mint_requests(&account).is_none(),
-				Error::<T>::AccountAlreadyRequestedMinted
-			);
-
-			// Ensure the account token hasn't already been minted
-			ensure!(
-				Self::minted_account(&account).is_none(),
-				Error::<T>::AccountTokenAlreadyMinted
-			);
-
 			// Charge the user fee and lock the deposit.
 			T::Currency::transfer(&who, &T::TreasuryAccount::get(), T::MintFee::get(), KeepAlive)?;
 
 			T::Currency::reserve_named(&RESERVE_ID, &who, T::MintRequestDeposit::get())?;
 
-			// Add a record of the request.
-			MintRequests::<T>::insert(account.clone(), who.clone());
-
 			Self::deposit_event(Event::MintRequested { account, who });
 			Ok(())
 		}
 
-		/// Confirms that the Mint request is valid. Mint a NFT that represents an Account Token.
-		/// Only callable by authorized Oracles.
 		#[pallet::weight(0)]
-		#[transactional]
 		pub fn confirm_mint_request(
 			origin: OriginFor<T>,
 			account: T::AccountId,
 			owner: T::AccountId,
 		) -> DispatchResult {
+			// let (confirm, owner, account) = T::OracleOrigin::ensure_origin(origin)?;
 			T::OracleOrigin::ensure_origin(origin)?;
-
-			let nft_class_id = Self::nft_class_id();
-
-			// The confirmed owner and the mint requester is the same.
-			let requester = MintRequests::<T>::take(account.clone()).ok_or(Error::<T>::MintRequestNotFound)?;
-			ensure!(requester == owner, Error::<T>::MintRequestDifferentFromOwner);
-
-			// Ensure we do not double-mint
-			ensure!(
-				Self::minted_account(&account).is_none(),
-				Error::<T>::AccountTokenAlreadyMinted
-			);
-
-			// Mint the Account Token's NFT.
-			let token_id = T::NFTInterface::next_token_id(nft_class_id);
-			T::NFTInterface::mint_into(&nft_class_id, &token_id, &owner)?;
-
-			// Create a record of the Mint and insert it into storage
-			MintedAccount::<T>::insert(account.clone(), token_id);
-
-			// Release the deposit from the requester
-			let remaining = T::Currency::unreserve_named(&RESERVE_ID, &owner, T::MintRequestDeposit::get());
-			ensure!(remaining.is_zero(), Error::<T>::InsufficientReservedBalance);
-
-			Self::deposit_event(Event::AccountTokenMinted {
-				account,
-				owner,
-				token_id,
-			});
-			Ok(())
-		}
-
-		/// Reject the Mint request. The deposit by the minter is confiscated.
-		/// Only callable by authorized Oracles.
-		#[pallet::weight(0)]
-		#[transactional]
-		pub fn reject_mint_request(origin: OriginFor<T>, account: T::AccountId, owner: T::AccountId) -> DispatchResult {
-			T::OracleOrigin::ensure_origin(origin)?;
-
-			// The confirmed owner and the mint requester is the same.
-			let requester = MintRequests::<T>::take(&account).ok_or(Error::<T>::MintRequestNotFound)?;
-			ensure!(requester == owner, Error::<T>::MintRequestDifferentFromOwner);
-
-			// Release the deposit from the requester
-			T::Currency::repatriate_reserved_named(
-				&RESERVE_ID,
-				&requester,
-				&T::TreasuryAccount::get(),
-				T::MintRequestDeposit::get(),
-				BalanceStatus::Free,
-			)?;
-
-			Self::deposit_event(Event::MintRequestRejected {
-				account,
-				who: requester,
-			});
-			Ok(())
+			// if confirm {
+			Self::accept_mint_request(owner, account)
+			// }
+			// else {
+			// 	Self::reject_mint_request(owner)
+			// }
 		}
 
 		/// Burn the account's token to relinquish the control of the account on the relaychain
@@ -318,4 +265,46 @@ pub mod module {
 	}
 }
 
-impl<T: Config> Pallet<T> {}
+impl<T: Config> Pallet<T> {
+	/// Confirms that the Mint request is valid. Mint a NFT that represents an Account Token.
+	/// Only callable by authorized Oracles.
+	#[transactional]
+	pub fn accept_mint_request(account: T::AccountId, requester: T::AccountId) -> DispatchResult {
+		let nft_class_id = Self::nft_class_id();
+
+		// Mint the Account Token's NFT.
+		let token_id = T::NFTInterface::next_token_id(nft_class_id);
+		T::NFTInterface::mint_into(&nft_class_id, &token_id, &requester)?;
+
+		// Create a record of the Mint and insert it into storage
+		MintedAccount::<T>::insert(account.clone(), token_id);
+
+		// Release the deposit from the requester
+		let remaining = T::Currency::unreserve_named(&RESERVE_ID, &requester, T::MintRequestDeposit::get());
+		ensure!(remaining.is_zero(), Error::<T>::InsufficientReservedBalance);
+
+		Self::deposit_event(Event::AccountTokenMinted {
+			requester,
+			account,
+			token_id,
+		});
+		Ok(())
+	}
+
+	/// Reject the Mint request. The deposit by the minter is confiscated.
+	/// Only callable by authorized Oracles.
+	#[transactional]
+	pub fn reject_mint_request(requester: T::AccountId) -> DispatchResult {
+		// Release the deposit from the requester
+		T::Currency::repatriate_reserved_named(
+			&RESERVE_ID,
+			&requester,
+			&T::TreasuryAccount::get(),
+			T::MintRequestDeposit::get(),
+			BalanceStatus::Free,
+		)?;
+
+		Self::deposit_event(Event::MintRequestRejected { requester: requester });
+		Ok(())
+	}
+}
