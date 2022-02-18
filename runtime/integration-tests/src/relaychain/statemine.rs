@@ -17,67 +17,83 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 //! Tests parachain to parachain xcm communication between Statemine and Karura.
+use crate::relaychain::kusama_test_net::*;
+use crate::setup::*;
+
+use frame_support::assert_ok;
+use module_asset_registry::AssetMetadata;
+use polkadot_parachain::primitives::Sibling;
+use xcm::v1::{Junction, MultiLocation};
+use xcm_emulator::TestExt;
 
 #[cfg(feature = "with-karura-runtime")]
-mod statemine_tests {
-	use crate::relaychain::kusama_test_net::*;
-	use crate::setup::*;
+#[test]
+fn can_transfer_custom_asset_into_karura() {
+	env_logger::init();
 
-	use frame_support::{assert_ok, traits::Hooks};
-	use polkadot_parachain::primitives::Sibling;
-	use xcm::{
-		v1::{Junction, Junctions, MultiAsset, MultiAssets, MultiLocation},
-		VersionedMultiAssets, VersionedMultiLocation,
-	};
-	use xcm_builder::AccountId32Aliases;
-	use xcm_emulator::TestExt;
-	use xcm_executor::traits::Convert;
+	Karura::execute_with(|| {
+		// register foreign asset
+		assert_ok!(AssetRegistry::register_foreign_asset(
+			Origin::root(),
+			Box::new(MultiLocation::new(1, X3(Parachain(1000), PalletInstance(50), GeneralIndex(0))).into()),
+			Box::new(AssetMetadata {
+				name: b"Sibling Token".to_vec(),
+				symbol: b"ST".to_vec(),
+				decimals: 12,
+				minimal_balance: Balances::minimum_balance() / 10, // 10%
+			})
+		));
+	});
 
-	#[test]
-	fn can_transfer_custom_asset_into_karura() {
-		env_logger::init();
-		Statemine::execute_with(|| {
-			use westmint_runtime::*;
+	Statemine::execute_with(|| {
+		use westmint_runtime::*;
 
-			let origin = Origin::signed(ALICE.into());
-			Balances::make_free_balance_be(&ALICE.into(), 10 * dollar(KSM));
+		let origin = Origin::signed(ALICE.into());
+		Balances::make_free_balance_be(&ALICE.into(), 10 * dollar(KSM));
 
-			// need to have some KSM to be able to receive user assets
-			Balances::make_free_balance_be(&Sibling::from(2000).into_account(), 10 * dollar(KSM));
+		// need to have some KSM to be able to receive user assets
+		Balances::make_free_balance_be(&Sibling::from(2000).into_account(), 10 * dollar(KSM));
 
-			assert_ok!(Assets::create(origin.clone(), 0, MultiAddress::Id(ALICE.into()), 10,));
-			assert_ok!(Assets::mint(origin.clone(), 0, MultiAddress::Id(ALICE.into()), 1000));
+		assert_ok!(Assets::create(
+			origin.clone(),
+			0,
+			MultiAddress::Id(ALICE.into()),
+			cent(KSM)
+		));
+		assert_ok!(Assets::mint(
+			origin.clone(),
+			0,
+			MultiAddress::Id(ALICE.into()),
+			1000 * dollar(KSM)
+		));
 
-			let para_acc: AccountId = Sibling::from(2000).into_account();
+		let para_acc: AccountId = Sibling::from(2000).into_account();
 
-			assert_ok!(PolkadotXcm::reserve_transfer_assets(
-				origin.clone(),
-				Box::new(MultiLocation::new(1, X1(Parachain(2000))).into()),
-				Box::new(
-					Junction::AccountId32 {
-						id: BOB,
-						network: NetworkId::Any
-					}
-					.into()
-					.into()
-				),
-				Box::new((GeneralIndex(0), 100).into()),
-				0
-			));
+		assert_ok!(PolkadotXcm::reserve_transfer_assets(
+			origin.clone(),
+			Box::new(MultiLocation::new(1, X1(Parachain(2000))).into()),
+			Box::new(
+				Junction::AccountId32 {
+					id: BOB,
+					network: NetworkId::Any
+				}
+				.into()
+				.into()
+			),
+			Box::new((X2(PalletInstance(50), GeneralIndex(0)), dollar(KSM)).into()),
+			0
+		));
 
-			assert_eq!(Assets::balance(0, &para_acc), 100);
-		});
+		assert_eq!(Assets::balance(0, &para_acc), dollar(KSM));
+	});
 
-		// Rerun the Statemine::execute to actually send the egress message via XCM
-		Statemine::execute_with(|| {
-			let para_acc: AccountId = Sibling::from(2000).into_account();
-			assert_eq!(westmint_runtime::Assets::balance(0, &para_acc), 100);
-			println!("Westmint: {:?}", westmint_runtime::System::events());
-		});
+	// Rerun the Statemine::execute to actually send the egress message via XCM
+	Statemine::execute_with(|| {});
 
-		Karura::execute_with(|| {
-			println!("Karura: {:?}", karura_runtime::System::events());
-			// assert_eq!(Tokens::free_balance(KSM, &AccountId::from(BOB)), 0);
-		});
-	}
+	Karura::execute_with(|| {
+		assert_eq!(
+			999_360_000_000,
+			Tokens::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(BOB))
+		);
+	});
 }
