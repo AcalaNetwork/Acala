@@ -44,6 +44,12 @@ pub struct Vicinity {
 	pub gas_price: U256,
 	/// Origin of the transaction.
 	pub origin: EvmAddress,
+	/// Environmental coinbase.
+	pub block_coinbase: Option<EvmAddress>,
+	/// Environmental block gas limit. Used only for testing
+	pub block_gas_limit: Option<U256>,
+	/// Environmental block difficulty. Used only for testing
+	pub block_difficulty: Option<U256>,
 }
 
 #[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]
@@ -137,10 +143,6 @@ pub fn is_system_contract(address: EvmAddress) -> bool {
 
 pub fn is_acala_precompile(address: EvmAddress) -> bool {
 	address >= PRECOMPILE_ADDRESS_START && address < PREDEPLOY_ADDRESS_START
-}
-
-pub fn is_mirrored_tokens_address_prefix(address: EvmAddress) -> bool {
-	is_system_contract(address) && CurrencyIdType::try_from(address.as_bytes()[H160_POSITION_CURRENCY_ID_TYPE]).is_ok()
 }
 
 pub const H160_POSITION_CURRENCY_ID_TYPE: usize = 9;

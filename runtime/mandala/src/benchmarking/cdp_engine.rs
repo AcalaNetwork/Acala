@@ -18,9 +18,9 @@
 
 use crate::{
 	dollar, AccountId, Address, Amount, Balance, CdpEngine, CdpTreasury, CollateralCurrencyIds, CurrencyId,
-	DefaultDebitExchangeRate, Dex, EmergencyShutdown, ExistentialDeposits, GetLiquidCurrencyId, GetStableCurrencyId,
-	GetStakingCurrencyId, MaxAuctionsCount, MinimumDebitValue, Price, Rate, Ratio, Runtime, Timestamp,
-	MILLISECS_PER_BLOCK,
+	DefaultDebitExchangeRate, Dex, EmergencyShutdown, ExistentialDeposits, GetLiquidCurrencyId, GetNativeCurrencyId,
+	GetStableCurrencyId, GetStakingCurrencyId, MaxAuctionsCount, MinimumDebitValue, NativeTokenExistentialDeposit,
+	Price, Rate, Ratio, Runtime, Timestamp, MILLISECS_PER_BLOCK,
 };
 
 use super::utils::{feed_price, set_balance};
@@ -53,7 +53,7 @@ fn inject_liquidity(
 	set_balance(currency_id_a, &maker, amount_a.unique_saturated_into());
 	set_balance(currency_id_b, &maker, amount_b.unique_saturated_into());
 
-	let _ = Dex::enable_trading_pair(RawOrigin::Root.into(), currency_id_a, currency_id_b);
+	Dex::enable_trading_pair(RawOrigin::Root.into(), currency_id_a, currency_id_b)?;
 
 	Dex::add_liquidity(
 		RawOrigin::Signed(maker.clone()).into(),
@@ -95,8 +95,14 @@ runtime_benchmarks! {
 			let currency_id = currency_ids[i as usize];
 			let collateral_amount = Price::saturating_from_rational(dollar(currency_id), dollar(STABLECOIN)).saturating_mul_int(collateral_value);
 
+			let ed = if currency_id == GetNativeCurrencyId::get() {
+				NativeTokenExistentialDeposit::get()
+			} else {
+				ExistentialDeposits::get(&currency_id)
+			};
+
 			// set balance
-			set_balance(currency_id, &owner, collateral_amount + ExistentialDeposits::get(&currency_id));
+			set_balance(currency_id, &owner, collateral_amount + ed);
 
 			CdpEngine::set_collateral_params(
 				RawOrigin::Root.into(),

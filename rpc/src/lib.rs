@@ -20,7 +20,8 @@
 
 #![warn(missing_docs)]
 
-use primitives::{AccountId, Balance, Block, CurrencyId, DataProviderId, Nonce};
+use primitives::{AccountId, Balance, Block, CurrencyId, DataProviderId, Hash, Nonce};
+use sc_consensus_manual_seal::rpc::{EngineCommand, ManualSeal, ManualSealApi};
 pub use sc_rpc_api::DenyUnsafe;
 use sc_transaction_pool_api::TransactionPool;
 use sp_api::ProvideRuntimeApi;
@@ -43,6 +44,8 @@ pub struct FullDeps<C, P> {
 	pub pool: Arc<P>,
 	/// Whether to deny unsafe calls
 	pub deny_unsafe: DenyUnsafe,
+	/// Manual seal command sink
+	pub command_sink: Option<jsonrpc_core::futures::channel::mpsc::Sender<EngineCommand<Hash>>>,
 }
 
 /// Instantiate all Full RPC extensions.
@@ -54,11 +57,13 @@ where
 	C::Api: substrate_frame_rpc_system::AccountNonceApi<Block, AccountId, Nonce>,
 	C::Api: pallet_transaction_payment_rpc::TransactionPaymentRuntimeApi<Block, Balance>,
 	C::Api: orml_oracle_rpc::OracleRuntimeApi<Block, DataProviderId, CurrencyId, runtime_common::TimeStampedPrice>,
+	C::Api: orml_tokens_rpc::TokensRuntimeApi<Block, CurrencyId, Balance>,
 	C::Api: EVMRuntimeRPCApi<Block, Balance>,
 	C::Api: BlockBuilder<Block>,
 	P: TransactionPool + Sync + Send + 'static,
 {
 	use orml_oracle_rpc::{Oracle, OracleApi};
+	use orml_tokens_rpc::{Tokens, TokensApi};
 	use pallet_transaction_payment_rpc::{TransactionPayment, TransactionPaymentApi};
 	use substrate_frame_rpc_system::{FullSystem, SystemApi};
 
@@ -67,6 +72,7 @@ where
 		client,
 		pool,
 		deny_unsafe,
+		command_sink,
 	} = deps;
 
 	io.extend_with(SystemApi::to_delegate(FullSystem::new(
@@ -81,7 +87,16 @@ where
 	// more context: https://github.com/paritytech/substrate/pull/3480
 	// These RPCs should use an asynchronous caller instead.
 	io.extend_with(OracleApi::to_delegate(Oracle::new(client.clone())));
+	io.extend_with(TokensApi::to_delegate(Tokens::new(client.clone())));
 	io.extend_with(EVMApiServer::to_delegate(EVMApi::new(client, deny_unsafe)));
+
+	if let Some(command_sink) = command_sink {
+		io.extend_with(
+			// We provide the rpc handler with the sending end of the channel to allow the rpc
+			// send EngineCommands to the background block authorship task.
+			ManualSealApi::to_delegate(ManualSeal::new(command_sink)),
+		);
+	}
 
 	io
 }

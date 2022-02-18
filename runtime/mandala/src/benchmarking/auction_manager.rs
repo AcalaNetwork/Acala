@@ -57,7 +57,7 @@ runtime_benchmarks! {
 		let auction_id: AuctionId = Default::default();
 
 		// bid collateral auction
-		let _ = AuctionManager::collateral_auction_bid_handler(1, auction_id, (bidder, 80 * dollar(STABLECOIN)), None);
+		AuctionManager::collateral_auction_bid_handler(1, auction_id, (bidder, 80 * dollar(STABLECOIN)), None)?;
 
 		// shutdown
 		EmergencyShutdown::emergency_shutdown(RawOrigin::Root.into())?;

@@ -21,13 +21,15 @@
 
 //! Acala service. Specialized wrapper over substrate service.
 
-use cumulus_client_consensus_aura::{build_aura_consensus, BuildAuraConsensusParams, SlotProportion};
+use cumulus_client_consensus_aura::{AuraConsensus, BuildAuraConsensusParams, SlotProportion};
 use cumulus_client_consensus_common::ParachainConsensus;
-use cumulus_client_network::build_block_announce_validator;
+use cumulus_client_network::BlockAnnounceValidator;
 use cumulus_client_service::{
 	prepare_node_config, start_collator, start_full_node, StartCollatorParams, StartFullNodeParams,
 };
 use cumulus_primitives_core::ParaId;
+use cumulus_relay_chain_interface::RelayChainInterface;
+use cumulus_relay_chain_local::build_relay_chain_interface;
 
 use acala_primitives::{Block, Hash};
 use cumulus_primitives_parachain_inherent::MockValidationDataInherentDataProvider;
@@ -45,7 +47,7 @@ use sp_runtime::traits::BlakeTwo256;
 use sp_trie::PrefixedMemoryDB;
 use substrate_prometheus_endpoint::Registry;
 
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
 pub use client::*;
 
@@ -65,6 +67,9 @@ pub fn default_mock_parachain_inherent_data_provider() -> MockValidationDataInhe
 		current_para_block: 0,
 		relay_offset: 1000,
 		relay_blocks_per_para_block: 2,
+		xcm_config: Default::default(),
+		raw_downward_messages: vec![],
+		raw_horizontal_messages: vec![],
 	}
 }
 
@@ -218,6 +223,7 @@ where
 		config.wasm_method,
 		config.default_heap_pages,
 		config.max_runtime_instances,
+		config.runtime_cache_size,
 	);
 
 	let (client, backend, keystore_container, task_manager) =
@@ -349,7 +355,7 @@ where
 		Option<&Registry>,
 		Option<TelemetryHandle>,
 		&TaskManager,
-		&polkadot_service::NewFull<polkadot_service::Client>,
+		Arc<dyn RelayChainInterface>,
 		Arc<sc_transaction_pool::FullPool<Block, FullClient<RuntimeApi, Executor>>>,
 		Arc<NetworkService<Block, Hash>>,
 		SyncCryptoStorePtr,
@@ -365,28 +371,23 @@ where
 	let params = new_partial(&parachain_config, false, false)?;
 	let (mut telemetry, telemetry_worker_handle) = params.other;
 
-	let relay_chain_full_node =
-		cumulus_client_service::build_polkadot_full_node(polkadot_config, telemetry_worker_handle).map_err(
+	let client = params.client.clone();
+	let backend = params.backend.clone();
+	let mut task_manager = params.task_manager;
+
+	let (relay_chain_interface, collator_key) =
+		build_relay_chain_interface(polkadot_config, telemetry_worker_handle, &mut task_manager).map_err(
 			|e| match e {
 				polkadot_service::Error::Sub(x) => x,
 				s => format!("{}", s).into(),
 			},
 		)?;
-
-	let client = params.client.clone();
-	let backend = params.backend.clone();
-	let block_announce_validator = build_block_announce_validator(
-		relay_chain_full_node.client.clone(),
-		id,
-		Box::new(relay_chain_full_node.network.clone()),
-		relay_chain_full_node.backend.clone(),
-	);
+	let block_announce_validator = BlockAnnounceValidator::new(relay_chain_interface.clone(), id);
 
 	let force_authoring = parachain_config.force_authoring;
 	let validator = parachain_config.role.is_authority();
 	let prometheus_registry = parachain_config.prometheus_registry().cloned();
 	let transaction_pool = params.transaction_pool.clone();
-	let mut task_manager = params.task_manager;
 	let import_queue = cumulus_client_service::SharedImportQueue::new(params.import_queue);
 	let (network, system_rpc_tx, start_network) = sc_service::build_network(sc_service::BuildNetworkParams {
 		config: &parachain_config,
@@ -394,7 +395,7 @@ where
 		transaction_pool: transaction_pool.clone(),
 		spawn_handle: task_manager.spawn_handle(),
 		import_queue: import_queue.clone(),
-		block_announce_validator_builder: Some(Box::new(|_| block_announce_validator)),
+		block_announce_validator_builder: Some(Box::new(|_| Box::new(block_announce_validator))),
 		warp_sync: None,
 	})?;
 
@@ -407,6 +408,7 @@ where
 				client: client.clone(),
 				pool: transaction_pool.clone(),
 				deny_unsafe,
+				command_sink: None,
 			};
 
 			Ok(acala_rpc::create_full(deps))
@@ -440,13 +442,15 @@ where
 		Arc::new(move |hash, data| network.announce_block(hash, data))
 	};
 
+	let relay_chain_slot_duration = Duration::from_secs(6);
+
 	if validator {
 		let parachain_consensus = build_consensus(
 			client.clone(),
 			prometheus_registry.as_ref(),
 			telemetry.as_ref().map(|t| t.handle()),
 			&task_manager,
-			&relay_chain_full_node,
+			relay_chain_interface.clone(),
 			transaction_pool,
 			network,
 			params.keystore_container.sync_keystore(),
@@ -461,10 +465,12 @@ where
 			announce_block,
 			client: client.clone(),
 			task_manager: &mut task_manager,
-			relay_chain_full_node,
+			relay_chain_interface,
 			spawner,
 			parachain_consensus,
 			import_queue,
+			collator_key,
+			relay_chain_slot_duration,
 		};
 
 		start_collator(params).await?;
@@ -474,7 +480,9 @@ where
 			announce_block,
 			task_manager: &mut task_manager,
 			para_id: id,
-			relay_chain_full_node,
+			relay_chain_interface,
+			import_queue,
+			relay_chain_slot_duration,
 		};
 
 		start_full_node(params)?;
@@ -506,7 +514,7 @@ where
 		 prometheus_registry,
 		 telemetry,
 		 task_manager,
-		 relay_chain_node,
+		 relay_chain_interface,
 		 transaction_pool,
 		 sync_oracle,
 		 keystore,
@@ -521,50 +529,54 @@ where
 				telemetry.clone(),
 			);
 
-			let relay_chain_backend = relay_chain_node.backend.clone();
-			let relay_chain_client = relay_chain_node.client.clone();
-			Ok(build_aura_consensus::<AuraPair, _, _, _, _, _, _, _, _, _>(
-				BuildAuraConsensusParams {
-					proposer_factory,
-					create_inherent_data_providers: move |_, (relay_parent, validation_data)| {
+			Ok(AuraConsensus::build::<
+				sp_consensus_aura::sr25519::AuthorityPair,
+				_,
+				_,
+				_,
+				_,
+				_,
+				_,
+			>(BuildAuraConsensusParams {
+				proposer_factory,
+				create_inherent_data_providers: move |_, (relay_parent, validation_data)| {
+					let relay_chain_interface = relay_chain_interface.clone();
+					async move {
 						let parachain_inherent =
-							cumulus_primitives_parachain_inherent::ParachainInherentData::create_at_with_client(
+							cumulus_primitives_parachain_inherent::ParachainInherentData::create_at(
 								relay_parent,
-								&relay_chain_client,
-								&*relay_chain_backend,
+								&relay_chain_interface,
 								&validation_data,
 								id,
-							);
-						async move {
-							let time = sp_timestamp::InherentDataProvider::from_system_time();
+							)
+							.await;
 
-							let slot = sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_duration(
-								*time,
-								slot_duration.slot_duration(),
-							);
+						let time = sp_timestamp::InherentDataProvider::from_system_time();
 
-							let parachain_inherent = parachain_inherent.ok_or_else(|| {
-								Box::<dyn std::error::Error + Send + Sync>::from("Failed to create parachain inherent")
-							})?;
-							Ok((time, slot, parachain_inherent))
-						}
-					},
-					block_import: client.clone(),
-					relay_chain_client: relay_chain_node.client.clone(),
-					relay_chain_backend: relay_chain_node.backend.clone(),
-					para_client: client,
-					backoff_authoring_blocks: Option::<()>::None,
-					sync_oracle,
-					keystore,
-					force_authoring,
-					slot_duration,
-					// We got around 500ms for proposing
-					block_proposal_slot_portion: SlotProportion::new(1f32 / 24f32),
-					// And a maximum of 750ms if slots are skipped
-					max_block_proposal_slot_portion: Some(SlotProportion::new(1f32 / 16f32)),
-					telemetry,
+						let slot = sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_duration(
+							*time,
+							slot_duration.slot_duration(),
+						);
+
+						let parachain_inherent = parachain_inherent.ok_or_else(|| {
+							Box::<dyn std::error::Error + Send + Sync>::from("Failed to create parachain inherent")
+						})?;
+						Ok((time, slot, parachain_inherent))
+					}
 				},
-			))
+				block_import: client.clone(),
+				para_client: client,
+				backoff_authoring_blocks: Option::<()>::None,
+				sync_oracle,
+				keystore,
+				force_authoring,
+				slot_duration,
+				// We got around 500ms for proposing
+				block_proposal_slot_portion: SlotProportion::new(1f32 / 24f32),
+				// And a maximum of 750ms if slots are skipped
+				max_block_proposal_slot_portion: Some(SlotProportion::new(1f32 / 16f32)),
+				telemetry,
+			}))
 		},
 	)
 	.await
@@ -689,7 +701,7 @@ fn inner_mandala_dev(config: Configuration, instant_sealing: bool) -> Result<Tas
 	let select_chain =
 		maybe_select_chain.expect("In mandala dev mode, `new_partial` will return some `select_chain`; qed");
 
-	if role.is_authority() {
+	let command_sink = if role.is_authority() {
 		let proposer_factory = sc_basic_authorship::ProposerFactory::new(
 			task_manager.spawn_handle(),
 			client.clone(),
@@ -699,8 +711,11 @@ fn inner_mandala_dev(config: Configuration, instant_sealing: bool) -> Result<Tas
 		);
 
 		if instant_sealing {
+			// Channel for the rpc handler to communicate with the authorship task.
+			let (command_sink, commands_stream) = futures::channel::mpsc::channel(1024);
+
 			let pool = transaction_pool.pool().clone();
-			let commands_stream = pool.validated_pool().import_notification_stream().map(|_| {
+			let import_stream = pool.validated_pool().import_notification_stream().map(|_| {
 				sc_consensus_manual_seal::rpc::EngineCommand::SealNewBlock {
 					create_empty: false,
 					finalize: true,
@@ -715,7 +730,7 @@ fn inner_mandala_dev(config: Configuration, instant_sealing: bool) -> Result<Tas
 					env: proposer_factory,
 					client: client.clone(),
 					pool: transaction_pool.clone(),
-					commands_stream,
+					commands_stream: futures::stream_select!(commands_stream, import_stream),
 					select_chain,
 					consensus_data_provider: None,
 					create_inherent_data_providers: |_, _| async {
@@ -731,6 +746,7 @@ fn inner_mandala_dev(config: Configuration, instant_sealing: bool) -> Result<Tas
 				Some("block-authoring"),
 				authorship_future,
 			);
+			Some(command_sink)
 		} else {
 			// aura
 			let can_author_with = sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone());
@@ -769,8 +785,12 @@ fn inner_mandala_dev(config: Configuration, instant_sealing: bool) -> Result<Tas
 			task_manager
 				.spawn_essential_handle()
 				.spawn_blocking("aura", Some("block-authoring"), aura);
+
+			None
 		}
-	}
+	} else {
+		None
+	};
 
 	let rpc_extensions_builder = {
 		let client = client.clone();
@@ -781,6 +801,7 @@ fn inner_mandala_dev(config: Configuration, instant_sealing: bool) -> Result<Tas
 				client: client.clone(),
 				pool: transaction_pool.clone(),
 				deny_unsafe,
+				command_sink: command_sink.clone(),
 			};
 
 			Ok(acala_rpc::create_full(deps))

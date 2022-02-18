@@ -95,6 +95,7 @@ impl frame_system::Config for Runtime {
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
 	type OnSetCode = ();
+	type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
 
 parameter_type_with_key! {
@@ -182,6 +183,7 @@ impl module_dex::Config for Runtime {
 	type DEXIncentives = ();
 	type WeightInfo = ();
 	type ListingOrigin = frame_system::EnsureSignedBy<Zero, AccountId>;
+	type OnLiquidityPoolUpdated = ();
 }
 
 parameter_types! {
@@ -234,11 +236,12 @@ impl PriceProvider<CurrencyId> for MockPriceSource {
 parameter_types! {
 	// DO NOT CHANGE THIS VALUE, AS IT EFFECT THE TESTCASES.
 	pub const FeePoolSize: Balance = 10_000;
-	pub const SwapThreshold: Balance = 20;
+	pub const LowerSwapThreshold: Balance = 20;
+	pub const MiddSwapThreshold: Balance = 5000;
+	pub const HigerSwapThreshold: Balance = 9500;
 	pub const TransactionPaymentPalletId: PalletId = PalletId(*b"aca/fees");
 	pub const TreasuryPalletId: PalletId = PalletId(*b"aca/trsy");
 	pub KaruraTreasuryAccount: AccountId = TreasuryPalletId::get().into_account();
-	pub FeePoolExchangeTokens: Vec<CurrencyId> = vec![AUSD, DOT];
 }
 ord_parameter_types! {
 	pub const ListingOrigin: AccountId = ALICE;
@@ -379,6 +382,8 @@ impl ExtBuilder {
 		.assimilate_storage(&mut t)
 		.unwrap();
 
-		t.into()
+		let mut ext = sp_io::TestExternalities::new(t);
+		ext.execute_with(|| System::set_block_number(1));
+		ext
 	}
 }

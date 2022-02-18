@@ -26,6 +26,7 @@ pub mod module_cdp_treasury;
 pub mod module_collator_selection;
 pub mod module_currencies;
 pub mod module_dex;
+pub mod module_dex_oracle;
 pub mod module_emergency_shutdown;
 pub mod module_evm;
 pub mod module_evm_accounts;
@@ -43,3 +44,5 @@ pub mod orml_authority;
 pub mod orml_oracle;
 pub mod orml_tokens;
 pub mod orml_vesting;
+
+pub mod nutsfinance_stable_asset;

@@ -16,13 +16,13 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-//! Tests the Homa and HomaXcm module - cross-chain functionalities for the Homa module.
+//! Tests the Homa and XcmInterface module - cross-chain functionalities for the Homa module.
 
 use crate::relaychain::kusama_test_net::*;
 use crate::setup::*;
 use frame_support::{assert_ok, weights::Weight};
 use module_homa::UnlockChunk;
-use module_homa_xcm::HomaXcmOperation;
+use module_xcm_interface::XcmInterfaceOperation;
 use pallet_staking::StakingLedger;
 use sp_runtime::MultiAddress;
 use xcm_emulator::TestExt;
@@ -32,16 +32,20 @@ const XCM_WEIGHT: Weight = 20_000_000_000;
 const XCM_FEE: Balance = 10_000_000_000;
 const ACTUAL_XCM_FEE: Balance = 639_999_960;
 
-fn get_xcm_weight() -> Vec<(HomaXcmOperation, Option<Weight>, Option<Balance>)> {
+fn get_xcm_weight() -> Vec<(XcmInterfaceOperation, Option<Weight>, Option<Balance>)> {
 	vec![
 		// Xcm weight = 400_000_000, fee = ACTUAL_XCM_FEE
-		(HomaXcmOperation::XtokensTransfer, Some(XCM_WEIGHT), Some(XCM_FEE)),
+		(XcmInterfaceOperation::XtokensTransfer, Some(XCM_WEIGHT), Some(XCM_FEE)),
 		// Xcm weight = 14_000_000_000, fee = ACTUAL_XCM_FEE
-		(HomaXcmOperation::XcmWithdrawUnbonded, Some(XCM_WEIGHT), Some(XCM_FEE)),
+		(
+			XcmInterfaceOperation::HomaWithdrawUnbonded,
+			Some(XCM_WEIGHT),
+			Some(XCM_FEE),
+		),
 		// Xcm weight = 14_000_000_000, fee = ACTUAL_XCM_FEE
-		(HomaXcmOperation::XcmBondExtra, Some(XCM_WEIGHT), Some(XCM_FEE)),
+		(XcmInterfaceOperation::HomaBondExtra, Some(XCM_WEIGHT), Some(XCM_FEE)),
 		// Xcm weight = 14_000_000_000, fee = ACTUAL_XCM_FEE
-		(HomaXcmOperation::XcmUnbond, Some(XCM_WEIGHT), Some(XCM_FEE)),
+		(XcmInterfaceOperation::HomaUnbond, Some(XCM_WEIGHT), Some(XCM_FEE)),
 	]
 }
 
@@ -63,9 +67,9 @@ impl Default for HomaParams {
 }
 
 // Helper function to setup config. Called within Karura Externalities.
-fn configure_homa_and_homa_xcm() {
-	// Configure Homa and HomaXcm
-	assert_ok!(HomaXcm::update_xcm_dest_weight_and_fee(
+fn configure_homa_and_xcm_interface() {
+	// Configure Homa and XcmInterface
+	assert_ok!(XcmInterface::update_xcm_dest_weight_and_fee(
 		Origin::root(),
 		get_xcm_weight()
 	));
@@ -80,10 +84,10 @@ fn configure_homa_and_homa_xcm() {
 }
 
 #[test]
-fn homa_xcm_transfer_staking_to_sub_account_works() {
+fn xcm_interface_transfer_staking_to_sub_account_works() {
 	let homa_lite_sub_account: AccountId =
 		hex_literal::hex!["d7b8926b326dd349355a9a7cca6606c1e0eb6fd2b506066b518c7155ff0d8297"].into();
-	let mut parachain_account: AccountId = AccountId::default();
+	let mut parachain_account: AccountId = AccountId::new([0u8; 32]);
 	Karura::execute_with(|| {
 		parachain_account = ParachainAccount::get();
 	});
@@ -120,7 +124,7 @@ fn homa_xcm_transfer_staking_to_sub_account_works() {
 			0
 		));
 
-		configure_homa_and_homa_xcm();
+		configure_homa_and_xcm_interface();
 
 		// Transfer fund via XCM by Mint
 		assert_ok!(Homa::mint(Origin::signed(bob()), 1_000 * dollar(RELAY_CHAIN_CURRENCY)));
@@ -142,10 +146,10 @@ fn homa_xcm_transfer_staking_to_sub_account_works() {
 }
 
 #[test]
-fn homa_xcm_withdraw_unbonded_from_sub_account_works() {
+fn xcm_interface_withdraw_unbonded_from_sub_account_works() {
 	let homa_lite_sub_account: AccountId =
 		hex_literal::hex!["d7b8926b326dd349355a9a7cca6606c1e0eb6fd2b506066b518c7155ff0d8297"].into();
-	let mut parachain_account: AccountId = AccountId::default();
+	let mut parachain_account: AccountId = AccountId::new([0u8; 32]);
 	Karura::execute_with(|| {
 		parachain_account = ParachainAccount::get();
 	});
@@ -204,7 +208,7 @@ fn homa_xcm_withdraw_unbonded_from_sub_account_works() {
 			0
 		));
 
-		configure_homa_and_homa_xcm();
+		configure_homa_and_xcm_interface();
 
 		// Add an unlock chunk to the ledger
 		assert_ok!(Homa::reset_ledgers(
@@ -238,10 +242,10 @@ fn homa_xcm_withdraw_unbonded_from_sub_account_works() {
 }
 
 #[test]
-fn homa_xcm_bond_extra_on_sub_account_works() {
+fn xcm_interface_bond_extra_on_sub_account_works() {
 	let homa_lite_sub_account: AccountId =
 		hex_literal::hex!["d7b8926b326dd349355a9a7cca6606c1e0eb6fd2b506066b518c7155ff0d8297"].into();
-	let mut parachain_account: AccountId = AccountId::default();
+	let mut parachain_account: AccountId = AccountId::new([0u8; 32]);
 	Karura::execute_with(|| {
 		parachain_account = ParachainAccount::get();
 	});
@@ -290,7 +294,7 @@ fn homa_xcm_bond_extra_on_sub_account_works() {
 			0
 		));
 
-		configure_homa_and_homa_xcm();
+		configure_homa_and_xcm_interface();
 
 		// Use Mint to bond more.
 		assert_ok!(Homa::mint(Origin::signed(bob()), 500 * dollar(RELAY_CHAIN_CURRENCY)));
@@ -321,10 +325,10 @@ fn homa_xcm_bond_extra_on_sub_account_works() {
 }
 
 #[test]
-fn homa_xcm_unbond_on_sub_account_works() {
+fn xcm_interface_unbond_on_sub_account_works() {
 	let homa_lite_sub_account: AccountId =
 		hex_literal::hex!["d7b8926b326dd349355a9a7cca6606c1e0eb6fd2b506066b518c7155ff0d8297"].into();
-	let mut parachain_account: AccountId = AccountId::default();
+	let mut parachain_account: AccountId = AccountId::new([0u8; 32]);
 	Karura::execute_with(|| {
 		parachain_account = ParachainAccount::get();
 	});
@@ -373,7 +377,7 @@ fn homa_xcm_unbond_on_sub_account_works() {
 			0
 		));
 
-		configure_homa_and_homa_xcm();
+		configure_homa_and_xcm_interface();
 
 		// Bond more using Mint
 		// Amount bonded = $1000 - XCM_FEE = 999_990_000_000_000
@@ -415,7 +419,7 @@ fn homa_xcm_unbond_on_sub_account_works() {
 fn homa_mint_and_redeem_works() {
 	let homa_lite_sub_account: AccountId =
 		hex_literal::hex!["d7b8926b326dd349355a9a7cca6606c1e0eb6fd2b506066b518c7155ff0d8297"].into();
-	let mut parachain_account: AccountId = AccountId::default();
+	let mut parachain_account: AccountId = AccountId::new([0u8; 32]);
 	let bonding_duration = BondingDuration::get();
 
 	Karura::execute_with(|| {
@@ -477,7 +481,7 @@ fn homa_mint_and_redeem_works() {
 			0
 		));
 
-		configure_homa_and_homa_xcm();
+		configure_homa_and_xcm_interface();
 
 		// Test mint works
 		// Amount bonded = $1000 - XCM_FEE = 999_990_000_000_000

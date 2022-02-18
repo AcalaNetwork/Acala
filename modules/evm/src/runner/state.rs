@@ -34,8 +34,8 @@ use primitive_types::{H160, H256, U256};
 pub use primitives::{
 	currency::CurrencyIdType,
 	evm::{
-		is_mirrored_tokens_address_prefix, EvmAddress, Vicinity, H160_POSITION_CURRENCY_ID_TYPE,
-		H160_POSITION_TOKEN_NFT, MIRRORED_NFT_ADDRESS_START, PREDEPLOY_ADDRESS_START, SYSTEM_CONTRACT_ADDRESS_PREFIX,
+		EvmAddress, Vicinity, H160_POSITION_CURRENCY_ID_TYPE, H160_POSITION_TOKEN_NFT, MIRRORED_NFT_ADDRESS_START,
+		PREDEPLOY_ADDRESS_START, SYSTEM_CONTRACT_ADDRESS_PREFIX,
 	},
 	ReserveIdentifier,
 };
@@ -244,10 +244,7 @@ impl<'config, S: StackState<'config>> StackExecutor<'config, S> {
 	/// Execute the runtime until it returns.
 	pub fn execute(&mut self, runtime: &mut Runtime) -> ExitReason {
 		match runtime.run(self) {
-			Capture::Exit(s) => {
-				log::debug!(target: "evm", "runtime.run exit: {:?}", s);
-				s
-			}
+			Capture::Exit(s) => s,
 			Capture::Trap(_) => unreachable!("Trap is Infallible"),
 		}
 	}
@@ -431,46 +428,6 @@ impl<'config, S: StackState<'config>> StackExecutor<'config, S> {
 		self.state.basic(address).nonce
 	}
 
-	pub fn handle_mirrored_token(&self, address: H160) -> H160 {
-		log::debug!(
-			target: "evm",
-			"handle_mirrored_token: address: {:?}",
-			address,
-		);
-
-		if is_mirrored_tokens_address_prefix(address) {
-			let token_address = match CurrencyIdType::try_from(address[H160_POSITION_CURRENCY_ID_TYPE])
-				.expect("is_mirrored_tokens_address_prefix checked; qed")
-			{
-				CurrencyIdType::Token => {
-					let mut suffix = [0u8; 4];
-					suffix.copy_from_slice(&address[H160_POSITION_TOKEN_NFT]);
-
-					if (u32::from_be_bytes(suffix) as u64) < MIRRORED_NFT_ADDRESS_START {
-						// `Token` predeploy contract.
-						PREDEPLOY_ADDRESS_START
-					} else {
-						// `NFT` predeploy contract.
-						// TODO: implement EIP721. Return dummy address.
-						PREDEPLOY_ADDRESS_START | H160::from_low_u64_be(100)
-					}
-				}
-				// `Token` predeploy contract.
-				_ => PREDEPLOY_ADDRESS_START,
-			};
-
-			log::debug!(
-				target: "evm",
-				"handle_mirrored_token: origin address: {:?}, token address: {:?}",
-				address,
-				token_address
-			);
-			token_address
-		} else {
-			address
-		}
-	}
-
 	/// Get the create address from given scheme.
 	pub fn create_address(&self, scheme: CreateScheme) -> Result<H160, ExitError> {
 		let address = match scheme {
@@ -532,11 +489,7 @@ impl<'config, S: StackState<'config>> StackExecutor<'config, S> {
 
 		let address = match self.create_address(scheme) {
 			Err(e) => {
-				return Capture::Exit((
-					ExitReason::Revert(ExitRevert::Reverted),
-					None,
-					encode_revert_message(&e),
-				));
+				return Capture::Exit((ExitReason::Error(e), None, Vec::new()));
 			}
 			Ok(address) => address,
 		};
@@ -555,20 +508,12 @@ impl<'config, S: StackState<'config>> StackExecutor<'config, S> {
 
 		if let Some(depth) = self.state.metadata().depth() {
 			if depth > self.config.call_stack_limit {
-				return Capture::Exit((
-					ExitReason::Revert(ExitRevert::Reverted),
-					None,
-					encode_revert_message(&ExitError::CallTooDeep),
-				));
+				return Capture::Exit((ExitError::CallTooDeep.into(), None, Vec::new()));
 			}
 		}
 
 		if self.balance(caller) < value {
-			return Capture::Exit((
-				ExitReason::Revert(ExitRevert::Reverted),
-				None,
-				encode_revert_message(&ExitError::OutOfFund),
-			));
+			return Capture::Exit((ExitError::OutOfFund.into(), None, Vec::new()));
 		}
 
 		let after_gas = if take_l64 && self.config.call_l64_after_gas {
@@ -596,21 +541,13 @@ impl<'config, S: StackState<'config>> StackExecutor<'config, S> {
 		{
 			if self.code_size(address) != U256::zero() {
 				let _ = self.exit_substate(StackExitKind::Failed);
-				return Capture::Exit((
-					ExitReason::Revert(ExitRevert::Reverted),
-					None,
-					encode_revert_message(&ExitError::CreateCollision),
-				));
+				return Capture::Exit((ExitError::CreateCollision.into(), None, Vec::new()));
 			}
 
 			// We will keep the nonce until the storages are cleared.
 			if self.nonce(address) > U256::zero() {
 				let _ = self.exit_substate(StackExitKind::Failed);
-				return Capture::Exit((
-					ExitReason::Revert(ExitRevert::Reverted),
-					None,
-					encode_revert_message(&ExitError::CreateCollision),
-				));
+				return Capture::Exit((ExitError::CreateCollision.into(), None, Vec::new()));
 			}
 
 			// Still do this, although it is superfluous.
@@ -631,11 +568,7 @@ impl<'config, S: StackState<'config>> StackExecutor<'config, S> {
 			Ok(()) => (),
 			Err(e) => {
 				let _ = self.exit_substate(StackExitKind::Reverted);
-				return Capture::Exit((
-					ExitReason::Revert(ExitRevert::Reverted),
-					None,
-					encode_revert_message(&e),
-				));
+				return Capture::Exit((ExitReason::Error(e), None, Vec::new()));
 			}
 		}
 
@@ -656,11 +589,7 @@ impl<'config, S: StackState<'config>> StackExecutor<'config, S> {
 					if out.len() > limit {
 						self.state.metadata_mut().gasometer_mut().fail();
 						let _ = self.exit_substate(StackExitKind::Failed);
-						return Capture::Exit((
-							ExitReason::Revert(ExitRevert::Reverted),
-							None,
-							encode_revert_message(&ExitError::CreateContractLimit),
-						));
+						return Capture::Exit((ExitError::CreateContractLimit.into(), None, Vec::new()));
 					}
 				}
 
@@ -673,22 +602,14 @@ impl<'config, S: StackState<'config>> StackExecutor<'config, S> {
 					}
 					Err(e) => {
 						let _ = self.exit_substate(StackExitKind::Failed);
-						Capture::Exit((
-							ExitReason::Revert(ExitRevert::Reverted),
-							None,
-							encode_revert_message(&e),
-						))
+						Capture::Exit((ExitReason::Error(e), None, Vec::new()))
 					}
 				}
 			}
 			ExitReason::Error(e) => {
 				self.state.metadata_mut().gasometer_mut().fail();
 				let _ = self.exit_substate(StackExitKind::Failed);
-				Capture::Exit((
-					ExitReason::Revert(ExitRevert::Reverted),
-					None,
-					encode_revert_message(&e),
-				))
+				Capture::Exit((ExitReason::Error(e), None, Vec::new()))
 			}
 			ExitReason::Revert(e) => {
 				let _ = self.exit_substate(StackExitKind::Reverted);
@@ -770,10 +691,7 @@ impl<'config, S: StackState<'config>> StackExecutor<'config, S> {
 		if let Some(depth) = self.state.metadata().depth() {
 			if depth > self.config.call_stack_limit {
 				let _ = self.exit_substate(StackExitKind::Reverted);
-				return Capture::Exit((
-					ExitReason::Revert(ExitRevert::Reverted),
-					encode_revert_message(&ExitError::CallTooDeep),
-				));
+				return Capture::Exit((ExitError::CallTooDeep.into(), Vec::new()));
 			}
 		}
 
@@ -782,7 +700,7 @@ impl<'config, S: StackState<'config>> StackExecutor<'config, S> {
 				Ok(()) => (),
 				Err(e) => {
 					let _ = self.exit_substate(StackExitKind::Reverted);
-					return Capture::Exit((ExitReason::Revert(ExitRevert::Reverted), encode_revert_message(&e)));
+					return Capture::Exit((ExitReason::Error(e), Vec::new()));
 				}
 			}
 		}
@@ -798,12 +716,8 @@ impl<'config, S: StackState<'config>> StackExecutor<'config, S> {
 					for Log { address, topics, data } in logs {
 						match self.log(address, topics, data) {
 							Ok(_) => continue,
-							Err(e) => {
-								// this should not happen
-								return Capture::Exit((
-									ExitReason::Revert(ExitRevert::Reverted),
-									encode_revert_message(&e),
-								));
+							Err(error) => {
+								return Capture::Exit((ExitReason::Error(error), output));
 							}
 						}
 					}
@@ -838,7 +752,7 @@ impl<'config, S: StackState<'config>> StackExecutor<'config, S> {
 			}
 			ExitReason::Error(e) => {
 				let _ = self.exit_substate(StackExitKind::Failed);
-				Capture::Exit((ExitReason::Revert(ExitRevert::Reverted), encode_revert_message(&e)))
+				Capture::Exit((ExitReason::Error(e), Vec::new()))
 			}
 			ExitReason::Revert(e) => {
 				let _ = self.exit_substate(StackExitKind::Reverted);
@@ -864,8 +778,7 @@ impl<'config, S: StackState<'config>> Handler for StackExecutor<'config, S> {
 	}
 
 	fn code_size(&self, address: H160) -> U256 {
-		let addr = self.handle_mirrored_token(address);
-		U256::from(self.state.code(addr).len())
+		U256::from(self.state.code(address).len())
 	}
 
 	fn code_hash(&self, address: H160) -> H256 {
@@ -873,13 +786,11 @@ impl<'config, S: StackState<'config>> Handler for StackExecutor<'config, S> {
 			return H256::default();
 		}
 
-		let addr = self.handle_mirrored_token(address);
-		H256::from_slice(Keccak256::digest(&self.state.code(addr)).as_slice())
+		H256::from_slice(Keccak256::digest(&self.state.code(address)).as_slice())
 	}
 
 	fn code(&self, address: H160) -> Vec<u8> {
-		let addr = self.handle_mirrored_token(address);
-		self.state.code(addr)
+		self.state.code(address)
 	}
 
 	fn storage(&self, address: H160, index: H256) -> H256 {

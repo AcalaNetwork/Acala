@@ -13,3 +13,7 @@
 [submodule "ecosystem-modules/aquadao"]
 	path = ecosystem-modules/aquadao
 	url = https://github.com/AcalaNetwork/aquadao.git
+[submodule "evm-tests"]
+	path = evm-tests
+	url = https://github.com/AcalaNetwork/evm-tests.git
+	branch = acala-evm

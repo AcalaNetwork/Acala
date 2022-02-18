@@ -118,6 +118,8 @@ jobs:
           components: rustfmt
           target: wasm32-unknown-unknown
           default: true
+      - name: Run e2e tests
+        run: make test-e2e
       - name: Use Node.js
         uses: actions/setup-node@v2
         with:

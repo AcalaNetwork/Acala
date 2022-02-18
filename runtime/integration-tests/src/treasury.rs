@@ -234,7 +234,7 @@ fn treasury_handles_dust_correctly() {
 mod mandala_only_tests {
 	use super::*;
 	type NegativeImbalance = <Balances as PalletCurrency<AccountId>>::NegativeImbalance;
-	use frame_support::traits::OnUnbalanced;
+	use frame_support::{pallet_prelude::Decode, traits::OnUnbalanced};
 	use pallet_authorship::EventHandler;
 
 	#[test]
@@ -243,11 +243,8 @@ mod mandala_only_tests {
 			.balances(vec![(AccountId::from(ALICE), NATIVE_CURRENCY, dollar(NATIVE_CURRENCY))])
 			.build()
 			.execute_with(|| {
-				assert_ok!(Session::set_keys(
-					Origin::signed(AccountId::from(ALICE)),
-					SessionKeys::default(),
-					vec![]
-				));
+				let keys: SessionKeys = Decode::decode(&mut &[0u8; 128][..]).unwrap();
+				assert_ok!(Session::set_keys(Origin::signed(AccountId::from(ALICE)), keys, vec![]));
 				assert_ok!(CollatorSelection::set_desired_candidates(Origin::root(), 1));
 				assert_ok!(CollatorSelection::register_as_candidate(Origin::signed(
 					AccountId::from(ALICE)

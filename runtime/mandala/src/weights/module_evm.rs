@@ -100,7 +100,7 @@ impl<T: frame_system::Config> module_evm::WeightInfo for WeightInfo<T> {
 	// Storage: EvmAccounts Accounts (r:1 w:0)
 	// Storage: System Account (r:2 w:2)
 	// Storage: EVM Accounts (r:1 w:0)
-	fn deposit_ed() -> Weight {
+	fn create_predeploy_mirror_token_contract() -> Weight {
 		(79_239_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(4 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))

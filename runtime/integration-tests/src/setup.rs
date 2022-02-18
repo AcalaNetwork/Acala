@@ -44,20 +44,21 @@ pub use mandala_imports::*;
 #[cfg(feature = "with-mandala-runtime")]
 mod mandala_imports {
 	pub use mandala_runtime::{
-		create_x2_parachain_multilocation, get_all_module_accounts, AcalaOracle, AccountId, AssetRegistry,
-		AuctionManager, Authority, AuthoritysOriginId, Authorship, Balance, Balances, BlockNumber, Call, CdpEngine,
-		CdpTreasury, CollatorSelection, CreateClassDeposit, CreateTokenDeposit, Currencies, CurrencyId,
-		CurrencyIdConvert, DataDepositPerByte, DealWithFees, DefaultExchangeRate, Dex, EmergencyShutdown,
-		EnabledTradingPairs, Event, EvmAccounts, ExistentialDeposits, FinancialCouncil, Get, GetNativeCurrencyId, Homa,
-		HomaXcm, Honzon, IdleScheduler, Loans, MaxTipsOfPriority, MinRewardDistributeAmount, MinimumDebitValue,
-		MultiLocation, NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, Origin, OriginCaller,
-		PalletCurrency, ParachainInfo, ParachainSystem, Proxy, ProxyType, Runtime, Scheduler, Session, SessionKeys,
-		SessionManager, SevenDays, StableAsset, StableAssetPalletId, System, Timestamp, TipPerWeightStep, TokenSymbol,
-		Tokens, TransactionPayment, TreasuryAccount, TreasuryPalletId, UncheckedExtrinsic, Utility, Vesting, XcmConfig,
-		XcmExecutor, EVM, NFT,
+		create_x2_parachain_multilocation, get_all_module_accounts, AcaPerSecondAsBased, AcalaOracle, AccountId,
+		AssetRegistry, AuctionManager, Authority, AuthoritysOriginId, Authorship, Balance, Balances, BlockNumber, Call,
+		CdpEngine, CdpTreasury, CollatorSelection, CreateClassDeposit, CreateTokenDeposit, Currencies, CurrencyId,
+		CurrencyIdConvert, DataDepositPerByte, DealWithFees, DefaultExchangeRate, Dex, DotPerSecond, EmergencyShutdown,
+		EnabledTradingPairs, Event, EvmAccounts, ExistentialDeposits, FinancialCouncil, FixedRateOfFungible, Get,
+		GetNativeCurrencyId, Homa, Honzon, IdleScheduler, Loans, MaxTipsOfPriority, MinRewardDistributeAmount,
+		MinimumDebitValue, MultiLocation, NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, Origin,
+		OriginCaller, PalletCurrency, ParachainInfo, ParachainSystem, Proxy, ProxyType, Ratio, Runtime, Scheduler,
+		Session, SessionKeys, SessionManager, SevenDays, StableAsset, StableAssetPalletId, System, Timestamp,
+		TipPerWeightStep, TokenSymbol, Tokens, TransactionPayment, TransactionPaymentPalletId, TreasuryAccount,
+		TreasuryPalletId, UncheckedExtrinsic, Utility, Vesting, XcmConfig, XcmExecutor, XcmInterface, EVM, NFT,
 	};
 
 	pub use runtime_common::{cent, dollar, millicent, ACA, AUSD, DOT, KSM, LDOT, LKSM};
+	pub use sp_runtime::traits::AccountIdConversion;
 	pub const NATIVE_CURRENCY: CurrencyId = ACA;
 	pub const LIQUID_CURRENCY: CurrencyId = LDOT;
 	pub const RELAY_CHAIN_CURRENCY: CurrencyId = DOT;
@@ -66,29 +67,33 @@ mod mandala_imports {
 		primitives::DexShare::Token(TokenSymbol::AUSD),
 		primitives::DexShare::Token(TokenSymbol::DOT),
 	);
+	pub const NATIVE_TOKEN_SYMBOL: TokenSymbol = TokenSymbol::ACA;
+	pub type Trader = FixedRateOfFungible<DotPerSecond, ()>;
+	pub type PeriodTrader =
+		module_transaction_payment::TransactionFeePoolTrader<Runtime, CurrencyIdConvert, AcaPerSecondAsBased, ()>;
 }
 
 #[cfg(feature = "with-karura-runtime")]
 pub use karura_imports::*;
 #[cfg(feature = "with-karura-runtime")]
 mod karura_imports {
-	pub use frame_support::{parameter_types, weights::Weight};
+	pub use frame_support::parameter_types;
 	pub use karura_runtime::{
 		constants::parachains, create_x2_parachain_multilocation, get_all_module_accounts, AcalaOracle, AccountId,
 		AssetRegistry, AuctionManager, Authority, AuthoritysOriginId, Balance, Balances, BlockNumber, BondingDuration,
 		Call, CdpEngine, CdpTreasury, CreateClassDeposit, CreateTokenDeposit, Currencies, CurrencyId,
 		CurrencyIdConvert, DataDepositPerByte, DefaultExchangeRate, Dex, EmergencyShutdown, Event, EvmAccounts,
-		ExistentialDeposits, FinancialCouncil, Get, GetNativeCurrencyId, Homa, HomaXcm, Honzon, IdleScheduler,
-		KarPerSecond, KaruraFoundationAccounts, KsmPerSecond, KusdPerSecond, Loans, MaxTipsOfPriority,
-		MinimumDebitValue, MultiLocation, NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, Origin,
-		OriginCaller, ParachainAccount, ParachainInfo, ParachainSystem, PolkadotXcm, Proxy, ProxyType, Ratio,
-		RelayChainBlockNumberProvider, Runtime, Scheduler, Session, SessionManager, SevenDays, System, Timestamp,
-		TipPerWeightStep, TokenSymbol, Tokens, TreasuryPalletId, Utility, Vesting, XTokens, XcmConfig, XcmExecutor,
-		EVM, NFT,
+		ExistentialDeposits, FinancialCouncil, FixedRateOfFungible, Get, GetNativeCurrencyId, Homa, Honzon,
+		IdleScheduler, KarPerSecond, KarPerSecondAsBased, KaruraFoundationAccounts, KsmPerSecond, KusdPerSecond, Loans,
+		MaxTipsOfPriority, MinimumDebitValue, MultiLocation, NativeTokenExistentialDeposit, NetworkId, NftPalletId,
+		OneDay, Origin, OriginCaller, ParachainAccount, ParachainInfo, ParachainSystem, PolkadotXcm, Proxy, ProxyType,
+		Ratio, RelayChainBlockNumberProvider, Runtime, Scheduler, Session, SessionManager, SevenDays, System,
+		Timestamp, TipPerWeightStep, TokenSymbol, Tokens, TransactionPayment, TransactionPaymentPalletId,
+		TreasuryPalletId, Utility, Vesting, XTokens, XcmConfig, XcmExecutor, XcmInterface, EVM, NFT,
 	};
 	pub use primitives::TradingPair;
 	pub use runtime_common::{calculate_asset_ratio, cent, dollar, millicent, KAR, KSM, KUSD, LKSM};
-	pub use sp_runtime::{traits::AccountIdConversion, FixedPointNumber};
+	pub use sp_runtime::traits::AccountIdConversion;
 
 	parameter_types! {
 		pub EnabledTradingPairs: Vec<TradingPair> = vec![
@@ -108,21 +113,10 @@ mod karura_imports {
 		primitives::DexShare::Token(TokenSymbol::KUSD),
 		primitives::DexShare::Token(TokenSymbol::KSM),
 	);
-
-	parameter_types! {
-		// Initial fee pool size. one extrinsic=0.0025 KAR, one block=100 extrinsics.
-		// 20 blocks trigger an swap, so total balance=0.0025*100*20=5 KAR
-		pub FeePoolSize: Balance = 5 * dollar(KAR);
-		// one extrinsic fee=0.0025KAR, one block=100 extrinsics, threshold=0.25+0.1=0.35KAR
-		pub SwapBalanceThreshold: Balance = Ratio::saturating_from_rational(35, 100).saturating_mul_int(dollar(KAR));
-		// tokens used as fee charge. the token should have corresponding dex swap pool enabled.
-		pub InitialTokenFeePool: Vec<(CurrencyId, Balance)> = vec![
-			(KSM, FeePoolSize::get()),
-			(KUSD, FeePoolSize::get()),
-			// this one is to simulate not enough native asset so wouldn't take effect
-			(LKSM, NativeTokenExistentialDeposit::get() - 1),
-		];
-	}
+	pub const NATIVE_TOKEN_SYMBOL: TokenSymbol = TokenSymbol::KAR;
+	pub type Trader = FixedRateOfFungible<KsmPerSecond, ()>;
+	pub type PeriodTrader =
+		module_transaction_payment::TransactionFeePoolTrader<Runtime, CurrencyIdConvert, KarPerSecondAsBased, ()>;
 }
 
 #[cfg(feature = "with-acala-runtime")]
@@ -130,16 +124,17 @@ pub use acala_imports::*;
 #[cfg(feature = "with-acala-runtime")]
 mod acala_imports {
 	pub use acala_runtime::{
-		create_x2_parachain_multilocation, get_all_module_accounts, AcalaFoundationAccounts, AcalaOracle, AccountId,
-		AssetRegistry, AuctionManager, Authority, AuthoritysOriginId, Balance, Balances, BlockNumber, BondingDuration,
-		Call, CdpEngine, CdpTreasury, CreateClassDeposit, CreateTokenDeposit, Currencies, CurrencyId,
-		CurrencyIdConvert, DataDepositPerByte, DefaultExchangeRate, Dex, EmergencyShutdown, Event, EvmAccounts,
-		ExistentialDeposits, FinancialCouncil, Get, GetNativeCurrencyId, Homa, HomaXcm, Honzon, IdleScheduler, Loans,
-		MaxTipsOfPriority, MinimumDebitValue, MultiLocation, NativeTokenExistentialDeposit, NetworkId, NftPalletId,
-		OneDay, Origin, OriginCaller, ParachainAccount, ParachainInfo, ParachainSystem, PolkadotXcm, Proxy, ProxyType,
-		RelayChainBlockNumberProvider, Runtime, Scheduler, Session, SessionManager, SevenDays, System, Timestamp,
-		TipPerWeightStep, TokenSymbol, Tokens, TreasuryPalletId, Utility, Vesting, XTokens, XcmConfig, XcmExecutor,
-		EVM, NFT,
+		create_x2_parachain_multilocation, get_all_module_accounts, AcaPerSecondAsBased, AcalaFoundationAccounts,
+		AcalaOracle, AccountId, AssetRegistry, AuctionManager, Authority, AuthoritysOriginId, Balance, Balances,
+		BlockNumber, BondingDuration, Call, CdpEngine, CdpTreasury, CreateClassDeposit, CreateTokenDeposit, Currencies,
+		CurrencyId, CurrencyIdConvert, DataDepositPerByte, DefaultExchangeRate, Dex, DotPerSecond, EmergencyShutdown,
+		Event, EvmAccounts, ExistentialDeposits, FinancialCouncil, FixedRateOfFungible, Get, GetNativeCurrencyId, Homa,
+		Honzon, IdleScheduler, Loans, MaxTipsOfPriority, MinimumDebitValue, MultiLocation,
+		NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, Origin, OriginCaller, ParachainAccount,
+		ParachainInfo, ParachainSystem, PolkadotXcm, Proxy, ProxyType, Ratio, RelayChainBlockNumberProvider, Runtime,
+		Scheduler, Session, SessionManager, SevenDays, System, Timestamp, TipPerWeightStep, TokenSymbol, Tokens,
+		TransactionPayment, TransactionPaymentPalletId, TreasuryPalletId, Utility, Vesting, XTokens, XcmConfig,
+		XcmExecutor, XcmInterface, EVM, LCDOT, NFT,
 	};
 	pub use frame_support::parameter_types;
 	pub use primitives::TradingPair;
@@ -151,6 +146,9 @@ mod acala_imports {
 			TradingPair::from_currency_ids(USD_CURRENCY, NATIVE_CURRENCY).unwrap(),
 			TradingPair::from_currency_ids(USD_CURRENCY, RELAY_CHAIN_CURRENCY).unwrap(),
 			TradingPair::from_currency_ids(USD_CURRENCY, LIQUID_CURRENCY).unwrap(),
+			TradingPair::from_currency_ids(USD_CURRENCY, LCDOT).unwrap(),
+			TradingPair::from_currency_ids(RELAY_CHAIN_CURRENCY, NATIVE_CURRENCY).unwrap(),
+			TradingPair::from_currency_ids(RELAY_CHAIN_CURRENCY, LCDOT).unwrap(),
 		];
 		pub TreasuryAccount: AccountId = TreasuryPalletId::get().into_account();
 	}
@@ -163,6 +161,10 @@ mod acala_imports {
 		primitives::DexShare::Token(TokenSymbol::AUSD),
 		primitives::DexShare::Token(TokenSymbol::DOT),
 	);
+	pub const NATIVE_TOKEN_SYMBOL: TokenSymbol = TokenSymbol::ACA;
+	pub type Trader = FixedRateOfFungible<DotPerSecond, ()>;
+	pub type PeriodTrader =
+		module_transaction_payment::TransactionFeePoolTrader<Runtime, CurrencyIdConvert, AcaPerSecondAsBased, ()>;
 }
 
 const ORACLE1: [u8; 32] = [0u8; 32];
@@ -171,12 +173,10 @@ const ORACLE3: [u8; 32] = [2u8; 32];
 const ORACLE4: [u8; 32] = [3u8; 32];
 const ORACLE5: [u8; 32] = [4u8; 32];
 
-#[allow(dead_code)]
-pub const DEFAULT: [u8; 32] = [0u8; 32];
-
 pub const ALICE: [u8; 32] = [4u8; 32];
 pub const BOB: [u8; 32] = [5u8; 32];
 pub const CHARLIE: [u8; 32] = [6u8; 32];
+#[allow(dead_code)]
 pub const DAVE: [u8; 32] = [7u8; 32];
 
 pub const INIT_TIMESTAMP: u64 = 30_000;

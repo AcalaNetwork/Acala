@@ -26,6 +26,7 @@ use primitives::{
 	task::TaskResult,
 	CurrencyId,
 };
+use scale_info::TypeInfo;
 use sp_core::H160;
 use sp_runtime::{
 	traits::{AtLeast32BitUnsigned, CheckedDiv, MaybeSerializeDeserialize},
@@ -98,7 +99,7 @@ pub trait AuctionManager<AccountId> {
 	fn get_total_target_in_auction() -> Self::Balance;
 }
 
-#[derive(RuntimeDebug, Clone, Copy, PartialEq)]
+#[derive(RuntimeDebug, Encode, Decode, Clone, Copy, PartialEq, TypeInfo)]
 pub enum SwapLimit<Balance> {
 	/// use exact amount supply amount to swap. (exact_supply_amount, minimum_target_amount)
 	ExactSupply(Balance, Balance),
@@ -274,6 +275,10 @@ pub trait PriceProvider<CurrencyId> {
 			None
 		}
 	}
+}
+
+pub trait DEXPriceProvider<CurrencyId> {
+	fn get_relative_price(base: CurrencyId, quote: CurrencyId) -> Option<ExchangeRate>;
 }
 
 pub trait LockablePrice<CurrencyId> {
