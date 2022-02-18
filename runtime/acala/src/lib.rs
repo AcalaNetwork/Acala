@@ -62,16 +62,6 @@ use orml_traits::{
 };
 use pallet_transaction_payment::RuntimeDispatchInfo;
 
-// pub use cumulus_primitives_core::ParaId;
-// pub use xcm_builder::{
-// 	AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom,
-// AllowTopLevelPaidExecutionFrom, 	AllowUnpaidExecutionFrom, EnsureXcmOrigin, FixedRateOfFungible,
-// FixedWeightBounds, IsConcrete, LocationInverter, 	NativeAsset, ParentAsSuperuser, ParentIsDefault,
-// RelayChainAsNative, SiblingParachainAsNative, 	SiblingParachainConvertsVia,
-// SignedAccountId32AsNative, SignedToAccountId32, SovereignSignedViaLocation, 	TakeRevenue,
-// TakeWeightCredit, };
-// pub use xcm_executor::{traits::WeightTrader, Assets, Config, XcmExecutor};
-
 /// Weights for pallets used in the runtime.
 mod weights;
 
