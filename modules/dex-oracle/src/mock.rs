@@ -152,7 +152,7 @@ impl DEXManager<AccountId, CurrencyId, Balance> for MockDEX {
 		_max_amount_b: Balance,
 		_min_share_increment: Balance,
 		_stake_increment_share: bool,
-	) -> DispatchResult {
+	) -> sp_std::result::Result<(Balance, Balance, Balance), DispatchError> {
 		unimplemented!()
 	}
 

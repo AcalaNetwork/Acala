@@ -987,7 +987,6 @@ impl module_auction_manager::Config for Runtime {
 
 impl module_loans::Config for Runtime {
 	type Event = Event;
-	type Convert = module_cdp_engine::DebitExchangeRateConvertor<Runtime>;
 	type Currency = Currencies;
 	type RiskManager = CdpEngine;
 	type CDPTreasury = CdpTreasury;
@@ -1056,7 +1055,7 @@ where
 }
 
 parameter_types! {
-	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![DOT, LDOT, RENBTC, CurrencyId::StableAssetPoolToken(0)];
+	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![DOT, LDOT, RENBTC, CurrencyId::StableAssetPoolToken(0), ACA];
 	pub DefaultLiquidationRatio: Ratio = Ratio::saturating_from_rational(110, 100);
 	pub DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
 	pub DefaultLiquidationPenalty: Rate = Rate::saturating_from_rational(5, 100);
@@ -1079,6 +1078,9 @@ impl module_cdp_engine::Config for Runtime {
 	type UnsignedPriority = runtime_common::CdpEngineUnsignedPriority;
 	type EmergencyShutdown = EmergencyShutdown;
 	type UnixTime = Timestamp;
+	type Currency = Currencies;
+	type AlternativeSwapPathJointList = AlternativeSwapPathJointList;
+	type DEX = Dex;
 	type WeightInfo = weights::module_cdp_engine::WeightInfo<Runtime>;
 }
 

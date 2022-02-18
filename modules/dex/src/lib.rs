@@ -883,7 +883,7 @@ impl<T: Config> Pallet<T> {
 		max_amount_b: Balance,
 		min_share_increment: Balance,
 		stake_increment_share: bool,
-	) -> DispatchResult {
+	) -> sp_std::result::Result<(Balance, Balance, Balance), DispatchError> {
 		let trading_pair =
 			TradingPair::from_currency_ids(currency_id_a, currency_id_b).ok_or(Error::<T>::InvalidCurrencyId)?;
 		ensure!(
@@ -899,94 +899,102 @@ impl<T: Config> Pallet<T> {
 			Error::<T>::InvalidLiquidityIncrement
 		);
 
-		Self::try_mutate_liquidity_pool(&trading_pair, |(pool_0, pool_1)| -> DispatchResult {
-			let dex_share_currency_id = trading_pair.dex_share_currency_id();
-			let total_shares = T::Currency::total_issuance(dex_share_currency_id);
-			let (max_amount_0, max_amount_1) = if currency_id_a == trading_pair.first() {
-				(max_amount_a, max_amount_b)
-			} else {
-				(max_amount_b, max_amount_a)
-			};
-			let (pool_0_increment, pool_1_increment, share_increment): (Balance, Balance, Balance) = if total_shares
-				.is_zero()
-			{
-				// directly use token_0 as base to calculate initial dex share amount.
-				let (exchange_rate_0, exchange_rate_1) = (
-					ExchangeRate::one(),
-					ExchangeRate::checked_from_rational(max_amount_0, max_amount_1).ok_or(ArithmeticError::Overflow)?,
+		Self::try_mutate_liquidity_pool(
+			&trading_pair,
+			|(pool_0, pool_1)| -> sp_std::result::Result<(Balance, Balance, Balance), DispatchError> {
+				let dex_share_currency_id = trading_pair.dex_share_currency_id();
+				let total_shares = T::Currency::total_issuance(dex_share_currency_id);
+				let (max_amount_0, max_amount_1) = if currency_id_a == trading_pair.first() {
+					(max_amount_a, max_amount_b)
+				} else {
+					(max_amount_b, max_amount_a)
+				};
+				let (pool_0_increment, pool_1_increment, share_increment): (Balance, Balance, Balance) =
+					if total_shares.is_zero() {
+						// directly use token_0 as base to calculate initial dex share amount.
+						let (exchange_rate_0, exchange_rate_1) = (
+							ExchangeRate::one(),
+							ExchangeRate::checked_from_rational(max_amount_0, max_amount_1)
+								.ok_or(ArithmeticError::Overflow)?,
+						);
+
+						let shares_from_token_0 = exchange_rate_0
+							.checked_mul_int(max_amount_0)
+							.ok_or(ArithmeticError::Overflow)?;
+						let shares_from_token_1 = exchange_rate_1
+							.checked_mul_int(max_amount_1)
+							.ok_or(ArithmeticError::Overflow)?;
+						let initial_shares = shares_from_token_0
+							.checked_add(shares_from_token_1)
+							.ok_or(ArithmeticError::Overflow)?;
+
+						(max_amount_0, max_amount_1, initial_shares)
+					} else {
+						let exchange_rate_0_1 =
+							ExchangeRate::checked_from_rational(*pool_1, *pool_0).ok_or(ArithmeticError::Overflow)?;
+						let input_exchange_rate_0_1 = ExchangeRate::checked_from_rational(max_amount_1, max_amount_0)
+							.ok_or(ArithmeticError::Overflow)?;
+
+						if input_exchange_rate_0_1 <= exchange_rate_0_1 {
+							// max_amount_0 may be too much, calculate the actual amount_0
+							let exchange_rate_1_0 = ExchangeRate::checked_from_rational(*pool_0, *pool_1)
+								.ok_or(ArithmeticError::Overflow)?;
+							let amount_0 = exchange_rate_1_0
+								.checked_mul_int(max_amount_1)
+								.ok_or(ArithmeticError::Overflow)?;
+							let share_increment = Ratio::checked_from_rational(amount_0, *pool_0)
+								.and_then(|n| n.checked_mul_int(total_shares))
+								.ok_or(ArithmeticError::Overflow)?;
+							(amount_0, max_amount_1, share_increment)
+						} else {
+							// max_amount_1 is too much, calculate the actual amount_1
+							let amount_1 = exchange_rate_0_1
+								.checked_mul_int(max_amount_0)
+								.ok_or(ArithmeticError::Overflow)?;
+							let share_increment = Ratio::checked_from_rational(amount_1, *pool_1)
+								.and_then(|n| n.checked_mul_int(total_shares))
+								.ok_or(ArithmeticError::Overflow)?;
+							(max_amount_0, amount_1, share_increment)
+						}
+					};
+
+				ensure!(
+					!share_increment.is_zero() && !pool_0_increment.is_zero() && !pool_1_increment.is_zero(),
+					Error::<T>::InvalidLiquidityIncrement,
+				);
+				ensure!(
+					share_increment >= min_share_increment,
+					Error::<T>::UnacceptableShareIncrement
 				);
 
-				let shares_from_token_0 = exchange_rate_0
-					.checked_mul_int(max_amount_0)
-					.ok_or(ArithmeticError::Overflow)?;
-				let shares_from_token_1 = exchange_rate_1
-					.checked_mul_int(max_amount_1)
-					.ok_or(ArithmeticError::Overflow)?;
-				let initial_shares = shares_from_token_0
-					.checked_add(shares_from_token_1)
-					.ok_or(ArithmeticError::Overflow)?;
+				let module_account_id = Self::account_id();
+				T::Currency::transfer(trading_pair.first(), who, &module_account_id, pool_0_increment)?;
+				T::Currency::transfer(trading_pair.second(), who, &module_account_id, pool_1_increment)?;
+				T::Currency::deposit(dex_share_currency_id, who, share_increment)?;
 
-				(max_amount_0, max_amount_1, initial_shares)
-			} else {
-				let exchange_rate_0_1 =
-					ExchangeRate::checked_from_rational(*pool_1, *pool_0).ok_or(ArithmeticError::Overflow)?;
-				let input_exchange_rate_0_1 =
-					ExchangeRate::checked_from_rational(max_amount_1, max_amount_0).ok_or(ArithmeticError::Overflow)?;
+				*pool_0 = pool_0.checked_add(pool_0_increment).ok_or(ArithmeticError::Overflow)?;
+				*pool_1 = pool_1.checked_add(pool_1_increment).ok_or(ArithmeticError::Overflow)?;
 
-				if input_exchange_rate_0_1 <= exchange_rate_0_1 {
-					// max_amount_0 may be too much, calculate the actual amount_0
-					let exchange_rate_1_0 =
-						ExchangeRate::checked_from_rational(*pool_0, *pool_1).ok_or(ArithmeticError::Overflow)?;
-					let amount_0 = exchange_rate_1_0
-						.checked_mul_int(max_amount_1)
-						.ok_or(ArithmeticError::Overflow)?;
-					let share_increment = Ratio::checked_from_rational(amount_0, *pool_0)
-						.and_then(|n| n.checked_mul_int(total_shares))
-						.ok_or(ArithmeticError::Overflow)?;
-					(amount_0, max_amount_1, share_increment)
-				} else {
-					// max_amount_1 is too much, calculate the actual amount_1
-					let amount_1 = exchange_rate_0_1
-						.checked_mul_int(max_amount_0)
-						.ok_or(ArithmeticError::Overflow)?;
-					let share_increment = Ratio::checked_from_rational(amount_1, *pool_1)
-						.and_then(|n| n.checked_mul_int(total_shares))
-						.ok_or(ArithmeticError::Overflow)?;
-					(max_amount_0, amount_1, share_increment)
+				if stake_increment_share {
+					T::DEXIncentives::do_deposit_dex_share(who, dex_share_currency_id, share_increment)?;
 				}
-			};
 
-			ensure!(
-				!share_increment.is_zero() && !pool_0_increment.is_zero() && !pool_1_increment.is_zero(),
-				Error::<T>::InvalidLiquidityIncrement,
-			);
-			ensure!(
-				share_increment >= min_share_increment,
-				Error::<T>::UnacceptableShareIncrement
-			);
+				Self::deposit_event(Event::AddLiquidity {
+					who: who.clone(),
+					currency_0: trading_pair.first(),
+					pool_0: pool_0_increment,
+					currency_1: trading_pair.second(),
+					pool_1: pool_1_increment,
+					share_increment,
+				});
 
-			let module_account_id = Self::account_id();
-			T::Currency::transfer(trading_pair.first(), who, &module_account_id, pool_0_increment)?;
-			T::Currency::transfer(trading_pair.second(), who, &module_account_id, pool_1_increment)?;
-			T::Currency::deposit(dex_share_currency_id, who, share_increment)?;
-
-			*pool_0 = pool_0.checked_add(pool_0_increment).ok_or(ArithmeticError::Overflow)?;
-			*pool_1 = pool_1.checked_add(pool_1_increment).ok_or(ArithmeticError::Overflow)?;
-
-			if stake_increment_share {
-				T::DEXIncentives::do_deposit_dex_share(who, dex_share_currency_id, share_increment)?;
-			}
-
-			Self::deposit_event(Event::AddLiquidity {
-				who: who.clone(),
-				currency_0: trading_pair.first(),
-				pool_0: pool_0_increment,
-				currency_1: trading_pair.second(),
-				pool_1: pool_1_increment,
-				share_increment,
-			});
-			Ok(())
-		})
+				if currency_id_a == trading_pair.first() {
+					Ok((pool_0_increment, pool_1_increment, share_increment))
+				} else {
+					Ok((pool_1_increment, pool_0_increment, share_increment))
+				}
+			},
+		)
 	}
 
 	#[transactional]
@@ -1395,7 +1403,7 @@ impl<T: Config> DEXManager<T::AccountId, CurrencyId, Balance> for Pallet<T> {
 		max_amount_b: Balance,
 		min_share_increment: Balance,
 		stake_increment_share: bool,
-	) -> DispatchResult {
+	) -> sp_std::result::Result<(Balance, Balance, Balance), DispatchError> {
 		Self::do_add_liquidity(
 			who,
 			currency_id_a,
