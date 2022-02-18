@@ -177,23 +177,26 @@ If modify the storage, should test the data migration before upgrade the runtime
 
 ## Try testing runtime
 
+try-runtime on karura
+
 ```bash
 # Use a live chain to run the migration test and save state snapshot to file `snapshot.bin`.
 # Add `-m module_name` can specify the module.
-cargo run --features with-mandala-runtime --features try-runtime -- try-runtime --wasm-execution=compiled --block-at=0x9def608d5674f6d16574f53849218fe13d80ec1042ef7c2d4de7d4c50abab806 --url="wss://karura.api.onfinality.io/public-ws" on-runtime-upgrade live -s snapshot.bin
+cargo run --features with-karura-runtime --features try-runtime -- try-runtime --chain=karura-dev --wasm-execution=compiled on-runtime-upgrade live --uri wss://karura.api.onfinality.io:443/public-ws --at=0x9def608d5674f6d16574f53849218fe13d80ec1042ef7c2d4de7d4c50abab806 -s /tmp/snapshot.bin
 
  # Use a state snapshot to run the migration test.
-cargo run --features with-mandala-runtime --features try-runtime -- try-runtime --wasm-execution=compiled --block-at=0x9def608d5674f6d16574f53849218fe13d80ec1042ef7c2d4de7d4c50abab806 on-runtime-upgrade snap -s snapshot.bin
-
-# Off-Chain worker
-# Use a live chain to run the off-chain migration test and save state snapshot to file `snapshot.bin`.
-cargo run --features with-mandala-runtime --features try-runtime -- try-runtime --wasm-execution=compiled --block-at=0x9def608d5674f6d16574f53849218fe13d80ec1042ef7c2d4de7d4c50abab806 --url="wss://karura.api.onfinality.io/public-ws" offchain-worker live -s snapshot.bin
-
- # Use a state snapshot to run the offchain migration test.
-cargo run --features with-mandala-runtime --features try-runtime -- try-runtime --wasm-execution=compiled --block-at=0x9def608d5674f6d16574f53849218fe13d80ec1042ef7c2d4de7d4c50abab806 --url="wss://karura.api.onfinality.io/public-ws" offchain-worker snap -s snapshot.bin
+cargo run --features with-karura-runtime --features try-runtime -- try-runtime --chain=karura-dev --wasm-execution=compiled on-runtime-upgrade snap -s /tmp/snapshot.bin
 ```
 
-# 9. Run local testnet with `RelayChain` and `Parachain`
+try-runtime on acala
+
+```bash
+cargo run --features with-acala-runtime --features try-runtime -- try-runtime --chain=acala-dev on-runtime-upgrade live --uri wss://acala-polkadot.api.onfinality.io:443/public-ws -s /tmp/snapshot.bin
+
+cargo run --features with-acala-runtime --features try-runtime -- try-runtime --chain=acala-dev on-runtime-upgrade snap -s /tmp/snapshot.bin
+```
+
+# 9. Run local testnet with [parachain-launch](https://github.com/open-web3-stack/parachain-launch)
 Build RelayChain and Parachain local testnet to develop.
 
 ```bash
@@ -232,7 +235,40 @@ docker volume rm [volume_name]
 docker volume prune
 ```
 
-# 10. Build For Release
+# 10. Run local testnet with [polkadot-launch](https://github.com/paritytech/polkadot-launch)
+
+copy acala related launch json to polkadot-launch:
+
+```bash
+# $polkadot-launch is the home of polkadot-launch
+cp scripts/polkadot-launch/*.json $polkadot-launch/
+```
+
+build polkadot:
+
+```bash
+git clone -n https://github.com/paritytech/polkadot.git
+cargo build --release
+cp target/release/polkadot /tmp/polkadot
+```
+
+build karura:
+
+```bash
+make build-karura-release
+```
+
+launch polkadot and parachain with json config file in polkadot-launch:
+
+```bash
+polkadot-launch acala-launch.json
+```
+
+there're other json file that will run both karura and other parachain.
+- scripts/polkadot-launch/acala-statemine.json: run karura and statemine
+- scripts/polkadot-launch/acala-bifrost.json: run karura and bifrost
+
+# 11. Build For Release
 
 For release artifacts, a more optimized build config is used.
 This config takes around 2x to 3x longer to build, but produces an more optimized binary to run.

@@ -77,6 +77,7 @@ impl frame_system::Config for TestRuntime {
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
 	type OnSetCode = ();
+	type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
 
 parameter_types! {
@@ -186,7 +187,7 @@ ord_parameter_types! {
 	pub const StorageDepositPerByte: Balance = convert_decimals_to_evm(10);
 	pub const TxFeePerGas: Balance = 20_000_000;
 	pub const DeveloperDeposit: Balance = 1000;
-	pub const DeploymentFee: Balance = 200;
+	pub const PublicationFee: Balance = 200;
 	pub const ChainId: u64 = 1;
 }
 
@@ -216,9 +217,9 @@ impl module_evm::Config for TestRuntime {
 	type NetworkContractOrigin = frame_system::EnsureSignedBy<NetworkContractAccount, AccountId32>;
 	type NetworkContractSource = NetworkContractSource;
 	type DeveloperDeposit = DeveloperDeposit;
-	type DeploymentFee = DeploymentFee;
+	type PublicationFee = PublicationFee;
 	type TreasuryAccount = TreasuryAccount;
-	type FreeDeploymentOrigin = frame_system::EnsureSignedBy<CouncilAccount, AccountId32>;
+	type FreePublicationOrigin = frame_system::EnsureSignedBy<CouncilAccount, AccountId32>;
 
 	type Runner = module_evm::runner::stack::Runner<Self>;
 	type FindAuthor = AuthorGiven;

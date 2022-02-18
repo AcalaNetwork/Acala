@@ -4,7 +4,7 @@ set -e
 
 VERSION=$1
 NODE_NAME=acala/acala-node
-BUILD_ARGS="--features with-acala-runtime"
+BUILD_ARGS="build-acala-release"
 
 if [[ -z "$1" ]] ; then
     VERSION=$(git rev-parse --short HEAD)

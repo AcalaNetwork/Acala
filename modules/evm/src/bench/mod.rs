@@ -70,7 +70,7 @@ fn whitelist_keys(b: &mut Bencher, from: H160, code: Vec<u8>) -> H160 {
 	let address = H160::from_str("2000000000000000000000000000000000000001").unwrap();
 	let vicinity = Vicinity {
 		gas_price: U256::one(),
-		origin: Default::default(),
+		..Default::default()
 	};
 	let context = Context {
 		caller: from,
@@ -193,7 +193,7 @@ macro_rules! evm_call {
 				result.exit_reason
 			);
 			assert_eq!(contract_address, result.value);
-			assert_ok!(EVM::deploy_free(
+			assert_ok!(EVM::publish_free(
 				Origin::signed(CouncilAccount::get()),
 				contract_address
 			));

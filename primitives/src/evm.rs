@@ -44,6 +44,12 @@ pub struct Vicinity {
 	pub gas_price: U256,
 	/// Origin of the transaction.
 	pub origin: EvmAddress,
+	/// Environmental coinbase.
+	pub block_coinbase: Option<EvmAddress>,
+	/// Environmental block gas limit. Used only for testing
+	pub block_gas_limit: Option<U256>,
+	/// Environmental block difficulty. Used only for testing
+	pub block_difficulty: Option<U256>,
 }
 
 #[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]
@@ -114,18 +120,18 @@ pub const SYSTEM_CONTRACT_ADDRESS_PREFIX: [u8; 9] = [0u8; 9];
 ///    0 1 2 3 4 5 6 7 8 910111213141516171819 index
 ///   ^^^^^^^^^^^^^^^^^^                       System contract address prefix
 ///                     ^^                     CurrencyId Type: 1-Token 2-DexShare 3-StableAsset
-///                                                             4-LiquidCroadloan
+///                                                             4-LiquidCrowdloan
 ///                                                             5-ForeignAsset(ignore Erc20, without the prefix of system contracts)
 ///                                         ^^ CurrencyId Type is 1-Token, Token
 ///                                   ^^^^^^^^ CurrencyId Type is 1-Token, NFT
 ///                       ^^                   CurrencyId Type is 2-DexShare, DexShare Left Type:
-///                                                             0-Token 1-Erc20 2-LiquidCroadloan 3-ForeignAsset
+///                                                             0-Token 1-Erc20 2-LiquidCrowdloan 3-ForeignAsset
 ///                         ^^^^^^^^           CurrencyId Type is 2-DexShare, DexShare left field
 ///                                 ^^         CurrencyId Type is 2-DexShare, DexShare Right Type:
 ///                                                             the same as DexShare Left Type
 ///                                   ^^^^^^^^ CurrencyId Type is 2-DexShare, DexShare right field
 ///                                   ^^^^^^^^ CurrencyId Type is 3-StableAsset, StableAssetPoolId
-///                                   ^^^^^^^^ CurrencyId Type is 4-LiquidCroadloan, Lease
+///                                   ^^^^^^^^ CurrencyId Type is 4-LiquidCrowdloan, Lease
 ///                                       ^^^^ CurrencyId Type is 5-ForeignAsset, ForeignAssetId
 
 /// Check if the given `address` is a system contract.
@@ -137,10 +143,6 @@ pub fn is_system_contract(address: EvmAddress) -> bool {
 
 pub fn is_acala_precompile(address: EvmAddress) -> bool {
 	address >= PRECOMPILE_ADDRESS_START && address < PREDEPLOY_ADDRESS_START
-}
-
-pub fn is_mirrored_tokens_address_prefix(address: EvmAddress) -> bool {
-	is_system_contract(address) && CurrencyIdType::try_from(address.as_bytes()[H160_POSITION_CURRENCY_ID_TYPE]).is_ok()
 }
 
 pub const H160_POSITION_CURRENCY_ID_TYPE: usize = 9;
@@ -182,8 +184,8 @@ impl TryFrom<CurrencyId> for EvmAddress {
 				address[H160_POSITION_CURRENCY_ID_TYPE] = CurrencyIdType::StableAsset.into();
 				address[H160_POSITION_STABLE_ASSET].copy_from_slice(&stable_asset_id.to_be_bytes());
 			}
-			CurrencyId::LiquidCroadloan(lease) => {
-				address[H160_POSITION_CURRENCY_ID_TYPE] = CurrencyIdType::LiquidCroadloan.into();
+			CurrencyId::LiquidCrowdloan(lease) => {
+				address[H160_POSITION_CURRENCY_ID_TYPE] = CurrencyIdType::LiquidCrowdloan.into();
 				address[H160_POSITION_LIQUID_CROADLOAN].copy_from_slice(&lease.to_be_bytes());
 			}
 			CurrencyId::ForeignAsset(foreign_asset_id) => {

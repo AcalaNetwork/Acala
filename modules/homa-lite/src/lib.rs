@@ -127,7 +127,7 @@ pub mod module {
 
 		/// The fixed cost of withdrawing Staking currency via redeem. In Staking currency.
 		#[pallet::constant]
-		type XcmUnbondFee: Get<Balance>;
+		type HomaUnbondFee: Get<Balance>;
 
 		/// Block number provider for the relaychain.
 		type RelayChainBlockNumber: BlockNumberProvider<BlockNumber = Self::BlockNumber>;
@@ -283,6 +283,7 @@ pub mod module {
 	pub type LastRedeemRequestKeyIterated<T: Config> = StorageValue<_, Vec<u8>, ValueQuery>;
 
 	#[pallet::pallet]
+	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
 	#[pallet::hooks]
@@ -354,7 +355,7 @@ pub mod module {
 				sp_io::TestExternalities::new_empty().execute_with(||
 					assert!(
 						Permill::one().saturating_sub(T::BaseWithdrawFee::get()).mul(
-						T::MinimumRedeemThreshold::get()) > T::XcmUnbondFee::get()
+						T::MinimumRedeemThreshold::get()) > T::HomaUnbondFee::get()
 					));
 			}
 		}
@@ -500,8 +501,8 @@ pub mod module {
 				// If the amount is zero, cancel previous redeem request.
 				if let Some((request_amount, _)) = RedeemRequests::<T>::take(&who) {
 					// Unreserve the liquid fee and remove the redeem request.
-					let unreserved = T::Currency::unreserve(T::LiquidCurrencyId::get(), &who, request_amount);
-					ensure!(unreserved.is_zero(), Error::<T>::InsufficientReservedBalances);
+					let remaining = T::Currency::unreserve(T::LiquidCurrencyId::get(), &who, request_amount);
+					ensure!(remaining.is_zero(), Error::<T>::InsufficientReservedBalances);
 
 					Self::deposit_event(Event::<T>::RedeemRequestCancelled {
 						who,
@@ -543,12 +544,12 @@ pub mod module {
 					),
 					Ordering::Less => {
 						// If the new amount is less, unlock the difference.
-						let unserved_leftover = T::Currency::unreserve(
+						let remaining = T::Currency::unreserve(
 							T::LiquidCurrencyId::get(),
 							&who,
 							old_amount.saturating_sub(liquid_amount),
 						);
-						ensure!(unserved_leftover.is_zero(), Error::<T>::InsufficientLiquidBalance);
+						ensure!(remaining.is_zero(), Error::<T>::InsufficientLiquidBalance);
 						Ok(())
 					}
 					_ => Ok(()),
@@ -961,8 +962,8 @@ pub mod module {
 
 				Self::update_total_staking_currency_storage(|total| Ok(total.saturating_sub(actual_staking_amount)))?;
 
-				//Actual deposit amount has `T::XcmUnbondFee` deducted.
-				let actual_staking_amount_deposited = actual_staking_amount.saturating_sub(T::XcmUnbondFee::get());
+				//Actual deposit amount has `T::HomaUnbondFee` deducted.
+				let actual_staking_amount_deposited = actual_staking_amount.saturating_sub(T::HomaUnbondFee::get());
 				T::Currency::deposit(T::StakingCurrencyId::get(), redeemer, actual_staking_amount_deposited)?;
 
 				// Burn the corresponding amount of Liquid currency from the user.
@@ -987,8 +988,8 @@ pub mod module {
 				} else {
 					// Unlock the dust and remove the request.
 					if !new_amount.is_zero() {
-						let unreserved = T::Currency::unreserve(T::LiquidCurrencyId::get(), redeemer, new_amount);
-						debug_assert!(unreserved.is_zero());
+						let remaining = T::Currency::unreserve(T::LiquidCurrencyId::get(), redeemer, new_amount);
+						debug_assert!(remaining.is_zero());
 					}
 					*request = None;
 				}
@@ -1022,7 +1023,7 @@ pub mod module {
 			);
 			T::RelayChainCallBuilder::finalize_call_into_xcm_message(
 				xcm_message,
-				T::XcmUnbondFee::get(),
+				T::HomaUnbondFee::get(),
 				Self::xcm_dest_weight(),
 			)
 		}

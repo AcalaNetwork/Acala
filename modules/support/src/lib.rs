@@ -26,6 +26,7 @@ use primitives::{
 	task::TaskResult,
 	CurrencyId,
 };
+use scale_info::TypeInfo;
 use sp_core::H160;
 use sp_runtime::{
 	traits::{AtLeast32BitUnsigned, CheckedDiv, MaybeSerializeDeserialize},
@@ -98,7 +99,7 @@ pub trait AuctionManager<AccountId> {
 	fn get_total_target_in_auction() -> Self::Balance;
 }
 
-#[derive(RuntimeDebug, Clone, Copy, PartialEq)]
+#[derive(RuntimeDebug, Encode, Decode, Clone, Copy, PartialEq, TypeInfo)]
 pub enum SwapLimit<Balance> {
 	/// use exact amount supply amount to swap. (exact_supply_amount, minimum_target_amount)
 	ExactSupply(Balance, Balance),
@@ -276,6 +277,10 @@ pub trait PriceProvider<CurrencyId> {
 	}
 }
 
+pub trait DEXPriceProvider<CurrencyId> {
+	fn get_relative_price(base: CurrencyId, quote: CurrencyId) -> Option<ExchangeRate>;
+}
+
 pub trait LockablePrice<CurrencyId> {
 	fn lock_price(currency_id: CurrencyId) -> DispatchResult;
 	fn unlock_price(currency_id: CurrencyId) -> DispatchResult;
@@ -404,10 +409,18 @@ pub trait EVMStateRentTrait<AccountId, Balance> {
 	fn query_maintainer(contract: H160) -> Result<H160, DispatchError>;
 	/// Query the constants `DeveloperDeposit` value from evm module.
 	fn query_developer_deposit() -> Balance;
-	/// Query the constants `DeploymentFee` value from evm module.
-	fn query_deployment_fee() -> Balance;
+	/// Query the constants `PublicationFee` value from evm module.
+	fn query_publication_fee() -> Balance;
 	/// Transfer the maintainer of the contract address.
 	fn transfer_maintainer(from: AccountId, contract: H160, new_maintainer: H160) -> DispatchResult;
+	/// Publish contract
+	fn publish_contract_precompile(who: AccountId, contract: H160) -> DispatchResult;
+	/// Query the developer status of an account
+	fn query_developer_status(who: AccountId) -> bool;
+	/// Enable developer mode
+	fn enable_account_contract_development(who: AccountId) -> DispatchResult;
+	/// Disable developer mode
+	fn disable_account_contract_development(who: AccountId) -> DispatchResult;
 }
 
 pub trait TransactionPayment<AccountId, Balance, NegativeImbalance> {

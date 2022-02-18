@@ -42,6 +42,9 @@ pub mod currencies {
 pub mod dex {
 	include!("../../../mandala/src/benchmarking/dex.rs");
 }
+pub mod dex_oracle {
+	include!("../../../mandala/src/benchmarking/dex_oracle.rs");
+}
 pub mod emergency_shutdown {
 	include!("../../../mandala/src/benchmarking/emergency_shutdown.rs");
 }
@@ -50,6 +53,9 @@ pub mod evm {
 }
 pub mod evm_accounts {
 	include!("../../../mandala/src/benchmarking/evm_accounts.rs");
+}
+pub mod homa {
+	include!("../../../mandala/src/benchmarking/homa.rs");
 }
 pub mod honzon {
 	include!("../../../mandala/src/benchmarking/honzon.rs");

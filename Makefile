@@ -32,7 +32,19 @@ build-all:
 
 .PHONY: build-release
 build-release:
-	CARGO_PROFILE_RELEASE_LTO=true RUSTFLAGS="-C codegen-units=1" cargo build --locked --features with-all-runtime --release
+	CARGO_PROFILE_RELEASE_LTO=true RUSTFLAGS="-C codegen-units=1" cargo build --locked --features with-all-runtime --release --workspace --exclude runtime-integration-tests --exclude e2e-tests --exclude test-service
+
+.PHONY: build-mandala-release
+build-mandala-release:
+	CARGO_PROFILE_RELEASE_LTO=true RUSTFLAGS="-C codegen-units=1" cargo build --locked --features with-mandala-runtime --release --workspace --exclude runtime-integration-tests --exclude e2e-tests --exclude test-service
+
+.PHONY: build-karura-release
+build-karura-release:
+	CARGO_PROFILE_RELEASE_LTO=true RUSTFLAGS="-C codegen-units=1" cargo build --locked --features with-karura-runtime --release --workspace --exclude runtime-integration-tests --exclude e2e-tests --exclude test-service
+
+.PHONY: build-acala-release
+build-acala-release:
+	CARGO_PROFILE_RELEASE_LTO=true RUSTFLAGS="-C codegen-units=1" cargo build --locked --features with-acala-runtime --release --workspace --exclude runtime-integration-tests --exclude e2e-tests --exclude test-service
 
 .PHONY: check
 check: githooks
@@ -71,15 +83,31 @@ check-debug:
 check-try-runtime:
 	SKIP_WASM_BUILD= cargo check --features try-runtime --features with-all-runtime
 
+.PHONY: try-runtime-karura
+try-runtime-karura:
+	SKIP_WASM_BUILD= cargo run --features with-karura-runtime --features try-runtime -- try-runtime --chain=karura-dev --wasm-execution=compiled on-runtime-upgrade live --uri wss://karura.api.onfinality.io:443/public-ws -s /tmp/snapshot.bin
+
+.PHONY: try-runtime-mandala
+try-runtime-mandala:
+	SKIP_WASM_BUILD= cargo run --features with-mandala-runtime --features try-runtime -- try-runtime --chain=dev --wasm-execution=compiled on-runtime-upgrade live --uri wss://mandala.polkawallet.io:443 -s /tmp/snapshot.bin
+
+.PHONY: try-runtime-acala
+try-runtime-acala:
+	SKIP_WASM_BUILD= cargo run --features with-acala-runtime --features try-runtime -- try-runtime --chain=acala-dev --wasm-execution=compiled on-runtime-upgrade live --uri wss://acala-polkadot.api.onfinality.io:443/public-ws -s /tmp/snapshot.bin
+
 .PHONY: test
 test: githooks
 	SKIP_WASM_BUILD= cargo test --features with-mandala-runtime --all
 
 .PHONY: test-eth
-test-eth: githooks
+test-eth: githooks test-evm
 	SKIP_WASM_BUILD= cargo test -p runtime-common --features with-ethereum-compatibility schedule_call_precompile_should_work
 	SKIP_WASM_BUILD= cargo test -p runtime-integration-tests --features with-mandala-runtime --features with-ethereum-compatibility should_not_kill_contract_on_transfer_all
 	SKIP_WASM_BUILD= cargo test -p runtime-integration-tests --features with-mandala-runtime --features with-ethereum-compatibility schedule_call_precompile_should_handle_invalid_input
+
+.PHONY: test-evm
+test-evm: githooks
+	cargo test --manifest-path evm-tests/jsontests/Cargo.toml
 
 .PHONY: test-runtimes
 test-runtimes:
@@ -87,6 +115,10 @@ test-runtimes:
 	SKIP_WASM_BUILD= cargo test -p runtime-integration-tests --features=with-mandala-runtime
 	SKIP_WASM_BUILD= cargo test -p runtime-integration-tests --features=with-karura-runtime
 	SKIP_WASM_BUILD= cargo test -p runtime-integration-tests --features=with-acala-runtime
+
+.PHONY: test-e2e
+test-e2e:
+	cargo test --package test-service -- --include-ignored --skip test_full_node_catching_up --skip simple_balances_test
 
 .PHONY: test-ts
 test-ts:
@@ -143,15 +175,15 @@ cargo-update:
 
 .PHONY: build-wasm-mandala
 build-wasm-mandala:
-	./scripts/build-only-wasm.sh -p mandala-runtime --features=on-chain-release-build
+	./scripts/build-only-wasm.sh -p mandala-runtime --features=on-chain-release-build --workspace --exclude runtime-integration-tests --exclude e2e-tests
 
 .PHONY: build-wasm-karura
 build-wasm-karura:
-	./scripts/build-only-wasm.sh -p karura-runtime --features=on-chain-release-build
+	./scripts/build-only-wasm.sh -p karura-runtime --features=on-chain-release-build --workspace --exclude runtime-integration-tests --exclude e2e-tests
 
 .PHONY: build-wasm-acala
 build-wasm-acala:
-	./scripts/build-only-wasm.sh -p acala-runtime --features=on-chain-release-build
+	./scripts/build-only-wasm.sh -p acala-runtime --features=on-chain-release-build --workspace --exclude runtime-integration-tests --exclude e2e-tests
 
 .PHONY: srtool-build-wasm-mandala
 srtool-build-wasm-mandala:

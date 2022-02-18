@@ -42,6 +42,9 @@ pub mod currencies {
 pub mod dex {
 	include!("../../../mandala/src/benchmarking/dex.rs");
 }
+pub mod dex_oracle {
+	include!("../../../mandala/src/benchmarking/dex_oracle.rs");
+}
 pub mod emergency_shutdown {
 	include!("../../../mandala/src/benchmarking/emergency_shutdown.rs");
 }
@@ -71,6 +74,9 @@ pub mod transaction_payment {
 }
 pub mod session_manager {
 	include!("../../../mandala/src/benchmarking/session_manager.rs");
+}
+pub mod nutsfinance_stable_asset {
+	include!("../../../mandala/src/benchmarking/nutsfinance_stable_asset.rs");
 }
 
 // orml benchmarking

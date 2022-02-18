@@ -111,8 +111,9 @@ runtime_benchmarks! {
 		let caller: AccountId = whitelisted_caller();
 		let bond: Balance = Balances::minimum_balance().checked_mul(2u32.into()).unwrap();
 		Balances::make_free_balance_be(&caller, bond.clone());
+		let keys: SessionKeys = Decode::decode(&mut &[0u8; 128][..]).unwrap();
 
-		Session::set_keys(RawOrigin::Signed(caller.clone()).into(), SessionKeys::default(), vec![]).unwrap();
+		Session::set_keys(RawOrigin::Signed(caller.clone()).into(), keys, vec![]).unwrap();
 	}: _(RawOrigin::Signed(caller.clone()))
 	verify {
 		assert_last_event(module_collator_selection::Event::CandidateAdded{who: caller, bond: bond.checked_div(2u32.into()).unwrap()}.into());
@@ -128,8 +129,9 @@ runtime_benchmarks! {
 		let caller: AccountId = whitelisted_caller();
 		let bond: Balance = Balances::minimum_balance().checked_mul(2u32.into()).unwrap();
 		Balances::make_free_balance_be(&caller, bond.clone());
+		let keys: SessionKeys = Decode::decode(&mut &[0u8; 128][..]).unwrap();
 
-		Session::set_keys(RawOrigin::Signed(caller.clone()).into(), SessionKeys::default(), vec![]).unwrap();
+		Session::set_keys(RawOrigin::Signed(caller.clone()).into(), keys, vec![]).unwrap();
 	}: _(RawOrigin::Root, caller.clone())
 	verify {
 		assert_last_event(module_collator_selection::Event::CandidateAdded{who: caller, bond: 0}.into());

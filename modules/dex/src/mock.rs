@@ -30,6 +30,8 @@ use orml_traits::{parameter_type_with_key, MultiReservableCurrency};
 use primitives::{Amount, TokenSymbol};
 use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup};
+use sp_std::cell::RefCell;
+use support::mocks::MockErc20InfoMapping;
 
 pub type BlockNumber = u64;
 pub type AccountId = u128;
@@ -79,6 +81,7 @@ impl frame_system::Config for Runtime {
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
 	type OnSetCode = ();
+	type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
 
 parameter_type_with_key! {
@@ -121,16 +124,31 @@ parameter_types! {
 	pub const DEXPalletId: PalletId = PalletId(*b"aca/dexm");
 }
 
+thread_local! {
+	pub static AUSD_DOT_POOL_RECORD: RefCell<(Balance, Balance)> = RefCell::new((0, 0));
+}
+
+pub struct MockOnLiquidityPoolUpdated;
+impl Happened<(TradingPair, Balance, Balance)> for MockOnLiquidityPoolUpdated {
+	fn happened(info: &(TradingPair, Balance, Balance)) {
+		let (trading_pair, new_pool_0, new_pool_1) = info;
+		if *trading_pair == AUSDDOTPair::get() {
+			AUSD_DOT_POOL_RECORD.with(|v| *v.borrow_mut() = (*new_pool_0, *new_pool_1));
+		}
+	}
+}
+
 impl Config for Runtime {
 	type Event = Event;
 	type Currency = Tokens;
 	type GetExchangeFee = GetExchangeFee;
 	type TradingPathLimit = TradingPathLimit;
 	type PalletId = DEXPalletId;
-	type Erc20InfoMapping = ();
+	type Erc20InfoMapping = MockErc20InfoMapping;
 	type WeightInfo = ();
 	type DEXIncentives = MockDEXIncentives;
 	type ListingOrigin = EnsureSignedBy<ListingOrigin, AccountId>;
+	type OnLiquidityPoolUpdated = MockOnLiquidityPoolUpdated;
 }
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;

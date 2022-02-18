@@ -16,7 +16,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use acala_primitives::{AccountId, Balance, Nonce, TokenSymbol};
+use acala_primitives::{evm::PREDEPLOY_ADDRESS_START, AccountId, Balance, Nonce, TokenSymbol};
+use ethers::signers::{coins_bip39::English, MnemonicBuilder, Signer};
 use hex_literal::hex;
 use module_evm::GenesisAccount;
 use sc_chain_spec::ChainType;
@@ -35,16 +36,39 @@ pub type ChainSpec = sc_service::GenericChainSpec<mandala_runtime::GenesisConfig
 pub const PARA_ID: u32 = 2000;
 
 /// Development testnet config (single validator Alice), non-parachain
-pub fn dev_testnet_config() -> Result<ChainSpec, String> {
-	dev_testnet_config_from_chain_id("mandala-dev")
+pub fn dev_testnet_config(mnemonic: Option<&str>) -> Result<ChainSpec, String> {
+	dev_testnet_config_from_chain_id("mandala-dev", mnemonic)
 }
 
 /// Parachain development testnet config (single collator Alice)
-pub fn parachain_dev_testnet_config() -> Result<ChainSpec, String> {
-	dev_testnet_config_from_chain_id("mandala-pc-dev")
+pub fn parachain_dev_testnet_config(mnemonic: Option<&str>) -> Result<ChainSpec, String> {
+	dev_testnet_config_from_chain_id("mandala-pc-dev", mnemonic)
 }
 
-fn dev_testnet_config_from_chain_id(chain_id: &str) -> Result<ChainSpec, String> {
+fn get_evm_accounts(mnemonic: Option<&str>) -> Vec<H160> {
+	let phrase = mnemonic.unwrap_or("fox sight canyon orphan hotel grow hedgehog build bless august weather swarm");
+
+	let mut evm_accounts = Vec::new();
+	// Child key at derivation path: m/44'/60'/0'/0/{index}
+	for index in 0..10u32 {
+		let wallet = MnemonicBuilder::<English>::default()
+			.phrase(phrase)
+			.index(index)
+			.unwrap()
+			.build()
+			.unwrap();
+		evm_accounts.push(wallet.address());
+		log::info!(
+			"index: {:?}, private_key: {:x?} address: {:?}",
+			index,
+			hex::encode(wallet.signer().to_bytes()),
+			wallet.address()
+		);
+	}
+	evm_accounts
+}
+
+fn dev_testnet_config_from_chain_id(chain_id: &str, mnemonic: Option<&str>) -> Result<ChainSpec, String> {
 	let mut properties = Map::new();
 	let mut token_symbol: Vec<String> = vec![];
 	let mut token_decimals: Vec<u32> = vec![];
@@ -55,6 +79,7 @@ fn dev_testnet_config_from_chain_id(chain_id: &str) -> Result<ChainSpec, String>
 	properties.insert("tokenSymbol".into(), token_symbol.into());
 	properties.insert("tokenDecimals".into(), token_decimals.into());
 
+	let evm_accounts = get_evm_accounts(mnemonic);
 	let wasm_binary = mandala_runtime::WASM_BINARY.unwrap_or_default();
 
 	Ok(ChainSpec::from_genesis(
@@ -70,29 +95,32 @@ fn dev_testnet_config_from_chain_id(chain_id: &str) -> Result<ChainSpec, String>
 				get_account_id_from_seed::<sr25519::Public>("Alice"),
 				// Pre-funded accounts
 				vec![
-					get_account_id_from_seed::<sr25519::Public>("Alice"),
-					get_account_id_from_seed::<sr25519::Public>("Bob"),
-					get_account_id_from_seed::<sr25519::Public>("Alice//stash"),
-					get_account_id_from_seed::<sr25519::Public>("Bob//stash"),
-				],
+					vec![
+						get_account_id_from_seed::<sr25519::Public>("Alice"),
+						get_account_id_from_seed::<sr25519::Public>("Bob"),
+						get_account_id_from_seed::<sr25519::Public>("Alice//stash"),
+						get_account_id_from_seed::<sr25519::Public>("Bob//stash"),
+					],
+					// EVM dev accounts
+					evm_accounts
+						.iter()
+						.map(|v| {
+							let mut data: [u8; 32] = [0u8; 32];
+							data[0..4].copy_from_slice(b"evm:");
+							data[4..24].copy_from_slice(&v[..]);
+							AccountId::from(data)
+						})
+						.collect(),
+				]
+				.into_iter()
+				.flatten()
+				.collect(),
 				// EVM dev accounts
-				// mnemonic: 'fox sight canyon orphan hotel grow hedgehog build bless august weather swarm',
-				vec![
-					// 5EMjsczjoEZaNbWzoXDcZtZDSHN1SLmu4ArJcEJVorNDfUH3
-					hex!["75e480db528101a381ce68544611c169ad7eb342"].into(),
-					hex!["0085560b24769dac4ed057f1b2ae40746aa9aab6"].into(),
-					hex!["0294350d7cf2c145446358b6461c1610927b3a87"].into(),
-					hex!["a76f290c490c70f2d816d286efe47fd64a35800b"].into(),
-					hex!["4f9c798553d207536b79e886b54f169264a7a155"].into(),
-					hex!["a1b04c9cbb449d13c4fc29c7e6be1f810e6f35e9"].into(),
-					hex!["ad9fbd38281f615e7df3def2aad18935a9e0ffee"].into(),
-					hex!["0783094aadfb8ae9915fd712d28664c8d7d26afa"].into(),
-					hex!["e860947813c207abf9bf6722c49cda515d24971a"].into(),
-					hex!["8bffc896d42f07776561a5814d6e4240950d6d3a"].into(),
-				],
+				evm_accounts.clone(),
 			)
 		},
 		vec![],
+		None,
 		None,
 		None,
 		Some(properties),
@@ -148,6 +176,7 @@ pub fn local_testnet_config() -> Result<ChainSpec, String> {
 			)
 		},
 		vec![],
+		None,
 		None,
 		None,
 		Some(properties),
@@ -231,6 +260,7 @@ pub fn latest_mandala_testnet_config() -> Result<ChainSpec, String> {
 		],
 		TelemetryEndpoints::new(vec![(TELEMETRY_URL.into(), 0)]).ok(),
 		Some("mandala-dev-tc7"),
+		None,
 		Some(properties),
 		Extensions {
 			relay_chain: "dev".into(),
@@ -301,7 +331,9 @@ fn testnet_genesis(
 		},
 		indices: IndicesConfig { indices: vec![] },
 		balances: BalancesConfig { balances },
-		sudo: SudoConfig { key: root_key.clone() },
+		sudo: SudoConfig {
+			key: Some(root_key.clone()),
+		},
 		general_council: Default::default(),
 		general_council_membership: GeneralCouncilMembershipConfig {
 			members: vec![root_key.clone()],
@@ -491,7 +523,9 @@ fn mandala_genesis(
 		},
 		indices: IndicesConfig { indices: vec![] },
 		balances: BalancesConfig { balances },
-		sudo: SudoConfig { key: root_key.clone() },
+		sudo: SudoConfig {
+			key: Some(root_key.clone()),
+		},
 		general_council: Default::default(),
 		general_council_membership: GeneralCouncilMembershipConfig {
 			members: vec![root_key.clone()],
@@ -632,6 +666,17 @@ pub fn evm_genesis(evm_accounts: Vec<H160>) -> BTreeMap<H160, GenesisAccount<Bal
 		);
 		accounts.insert(addr, account);
 	}
+
+	// Replace mirrored token contract code.
+	let token = accounts
+		.get(&PREDEPLOY_ADDRESS_START)
+		.expect("the token predeployed contract must exist")
+		.clone();
+	accounts.iter_mut().for_each(|v| {
+		if v.1.code.is_empty() {
+			v.1.code = token.code.clone();
+		}
+	});
 
 	for dev_acc in evm_accounts {
 		let account = GenesisAccount {
