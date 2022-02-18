@@ -22,6 +22,7 @@ use crate::setup::*;
 
 use frame_support::assert_ok;
 use module_asset_registry::AssetMetadata;
+use orml_traits::location::Reserve;
 use polkadot_parachain::primitives::Sibling;
 use xcm::v1::{Junction, MultiLocation};
 use xcm_emulator::TestExt;
@@ -45,6 +46,8 @@ fn can_transfer_custom_asset_into_karura() {
 		));
 	});
 
+	let para_acc: AccountId = Sibling::from(2000).into_account();
+
 	Statemine::execute_with(|| {
 		use westmint_runtime::*;
 
@@ -67,8 +70,6 @@ fn can_transfer_custom_asset_into_karura() {
 			1000 * dollar(KSM)
 		));
 
-		let para_acc: AccountId = Sibling::from(2000).into_account();
-
 		assert_ok!(PolkadotXcm::reserve_transfer_assets(
 			origin.clone(),
 			Box::new(MultiLocation::new(1, X1(Parachain(2000))).into()),
@@ -80,11 +81,11 @@ fn can_transfer_custom_asset_into_karura() {
 				.into()
 				.into()
 			),
-			Box::new((X2(PalletInstance(50), GeneralIndex(0)), dollar(KSM)).into()),
+			Box::new((X2(PalletInstance(50), GeneralIndex(0)), 10 * dollar(KSM)).into()),
 			0
 		));
 
-		assert_eq!(Assets::balance(0, &para_acc), dollar(KSM));
+		assert_eq!(Assets::balance(0, &para_acc), 10 * dollar(KSM));
 	});
 
 	// Rerun the Statemine::execute to actually send the egress message via XCM
@@ -92,8 +93,91 @@ fn can_transfer_custom_asset_into_karura() {
 
 	Karura::execute_with(|| {
 		assert_eq!(
-			999_360_000_000,
+			9_999_360_000_000,
 			Tokens::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(BOB))
 		);
+		// Transfer statemine asset back to Statemine
+
+		// Error: TooExpensive because Statemine trader not matched
+		// 1. westmint/statemine use `Parent` as AssetId
+		//    https://github.com/paritytech/cumulus/blob/master/polkadot-parachains/westmint/src/xcm_config.rs#L159
+		// 2. trader required is (Parent, amount)
+		//    https://github.com/paritytech/polkadot/blob/release-v0.9.16/xcm/xcm-builder/src/weight.rs#L270
+		// 3. the asset sent to statemine is (PalletInstance(50), GeneralIndex(0)) not matched `required`
+		//    so when excecute `BuyExecution`, throw TooExpensive error making xcm failed
+		assert_ok!(XTokens::transfer(
+			Origin::signed(BOB.into()),
+			CurrencyId::ForeignAsset(0),
+			dollar(KSM),
+			Box::new(
+				MultiLocation::new(
+					1,
+					X2(
+						Parachain(2001),
+						Junction::AccountId32 {
+							network: NetworkId::Any,
+							id: BOB.into(),
+						}
+					)
+				)
+				.into()
+			),
+			5_000_000_000,
+		));
+
+		// for matching with `required` => (Parent, amount), we should use KSM as fee
+		// Error: DistinctReserveForAssetAndFee in orml-xTokens check
+		let statemine_asset = MultiAsset {
+			id: AssetId::Concrete(MultiLocation::new(
+				1,
+				Junctions::X3(
+					Junction::Parachain(1000),
+					Junction::PalletInstance(50),
+					Junction::GeneralIndex(0),
+				),
+			)),
+			fun: Fungibility::Fungible(dollar(KSM)),
+		};
+		let fee_asset = MultiAsset {
+			id: AssetId::Concrete(MultiLocation::new(1, Junctions::Here)),
+			fun: Fungibility::Fungible(5_000_000_000),
+		};
+		// current not support different reserve
+		// statemine_asset.reserve() == (Parent, Parachain(1000))
+		// fee_asset.reserve() = (Parent)
+		assert_ok!(XTokens::transfer_multiasset_with_fee(
+			Origin::signed(BOB.into()),
+			Box::new(statemine_asset.into()),
+			Box::new(fee_asset.into()),
+			Box::new(
+				MultiLocation::new(
+					1,
+					X2(
+						Parachain(1000),
+						Junction::AccountId32 {
+							network: NetworkId::Any,
+							id: BOB.into(),
+						}
+					)
+				)
+				.into()
+			),
+			5_000_000_000,
+		));
+		assert_eq!(
+			8_999_360_000_000,
+			Tokens::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(BOB))
+		);
+		println!(
+			"Karura - Bob: {}",
+			Tokens::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(BOB))
+		);
+	});
+
+	Statemine::execute_with(|| {
+		use westmint_runtime::*;
+
+		println!("Statemine - para: {}", Assets::balance(0, &para_acc));
+		println!("Statemine - Bob: {}", Assets::balance(0, &AccountId::from(BOB)));
 	});
 }
