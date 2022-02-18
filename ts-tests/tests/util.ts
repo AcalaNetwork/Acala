@@ -84,7 +84,6 @@ export async function startAcalaNode(): Promise<{ provider: TestProvider; binary
 					}
 					resolve();
 				} catch(e) {
-					console.error(e);
 					binary.kill();
 					reject(e);
 				}
