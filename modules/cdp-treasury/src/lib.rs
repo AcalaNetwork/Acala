@@ -30,6 +30,8 @@
 
 use frame_support::{log, pallet_prelude::*, transactional, PalletId};
 use frame_system::pallet_prelude::*;
+use nutsfinance_stable_asset::traits::StableAsset;
+use nutsfinance_stable_asset::RedeemProportionResult;
 use orml_traits::{MultiCurrency, MultiCurrencyExtended};
 use primitives::{Balance, CurrencyId};
 use sp_runtime::{
@@ -71,6 +73,14 @@ pub mod module {
 		/// Dex manager is used to swap confiscated collateral assets to stable
 		/// currency
 		type DEX: DEXManager<Self::AccountId, CurrencyId, Balance>;
+
+		type StableAsset: StableAsset<
+			AssetId = CurrencyId,
+			AtLeast64BitUnsigned = Balance,
+			Balance = Balance,
+			AccountId = Self::AccountId,
+			BlockNumber = Self::BlockNumber,
+		>;
 
 		/// The cap of lots number when create collateral auction on a
 		/// liquidation or to create debit/surplus auction on block end.
@@ -374,6 +384,11 @@ impl<T: Config> CDPTreasuryExtended<T::AccountId> for Pallet<T> {
 			SwapLimit::ExactSupply(supply_amount, _) => supply_amount,
 			SwapLimit::ExactTarget(max_supply_amount, _) => max_supply_amount,
 		};
+		let target_limit = match limit {
+			SwapLimit::ExactSupply(_, minimum_target_amount) => minimum_target_amount,
+			SwapLimit::ExactTarget(_, exact_target_amount) => exact_target_amount,
+		};
+
 		if collateral_in_auction {
 			ensure!(
 				Self::total_collaterals(currency_id) >= supply_limit
@@ -387,14 +402,72 @@ impl<T: Config> CDPTreasuryExtended<T::AccountId> for Pallet<T> {
 			);
 		}
 
-		let swap_path = T::DEX::get_best_price_swap_path(
-			currency_id,
-			T::GetStableCurrencyId::get(),
-			limit,
-			T::AlternativeSwapPathJointList::get(),
-		)
-		.ok_or(Error::<T>::CannotSwap)?;
-		T::DEX::swap_with_specific_path(&Self::account_id(), &swap_path, limit)
+		match currency_id {
+			CurrencyId::StableAssetPoolToken(stable_asset_id) => {
+				let pool_info = T::StableAsset::pool(stable_asset_id).ok_or(Error::<T>::CannotSwap)?;
+				let updated_balance_info =
+					T::StableAsset::get_balance_update_amount(&pool_info).ok_or(Error::<T>::CannotSwap)?;
+				let yield_info =
+					T::StableAsset::get_collect_yield_amount(&updated_balance_info).ok_or(Error::<T>::CannotSwap)?;
+				ensure!(
+					yield_info.total_supply >= pool_info.total_supply,
+					Error::<T>::CannotSwap,
+				);
+				let RedeemProportionResult {
+					amounts,
+					balances: _,
+					fee_amount: _,
+					total_supply: _,
+					redeem_amount: _,
+				} = T::StableAsset::get_redeem_proportion_amount(&yield_info, supply_limit)
+					.ok_or(Error::<T>::CannotSwap)?;
+
+				let mut sum = 0;
+				let mut swap_paths = vec![];
+				let mut redeem_limits = vec![];
+				let mut swap_limits = vec![];
+
+				for i in 0..amounts.len() {
+					let currency = pool_info.assets[i];
+					let amount = amounts[i];
+					let swap_limit = SwapLimit::ExactSupply(amount, target_limit);
+					swap_limits.push(swap_limit);
+					let swap_path = T::DEX::get_best_price_swap_path(
+						currency,
+						T::GetStableCurrencyId::get(),
+						swap_limit,
+						T::AlternativeSwapPathJointList::get(),
+					)
+					.ok_or(Error::<T>::CannotSwap)?;
+					let swap_amount = T::DEX::get_swap_amount(&swap_path, swap_limit).ok_or(Error::<T>::CannotSwap)?;
+					swap_paths.push(swap_path);
+					redeem_limits.push(0);
+					sum += swap_amount.1;
+				}
+				ensure!(sum >= target_limit, Error::<T>::CannotSwap,);
+				T::StableAsset::redeem_proportion(&Self::account_id(), stable_asset_id, supply_limit, redeem_limits)?;
+
+				let mut supply_sum = 0;
+				let mut target_sum = 0;
+				for i in 0..amounts.len() {
+					let response =
+						T::DEX::swap_with_specific_path(&Self::account_id(), &swap_paths[i], swap_limits[i])?;
+					supply_sum += response.0;
+					target_sum += response.1;
+				}
+				Ok((supply_sum, target_sum))
+			}
+			_ => {
+				let swap_path = T::DEX::get_best_price_swap_path(
+					currency_id,
+					T::GetStableCurrencyId::get(),
+					limit,
+					T::AlternativeSwapPathJointList::get(),
+				)
+				.ok_or(Error::<T>::CannotSwap)?;
+				T::DEX::swap_with_specific_path(&Self::account_id(), &swap_path, limit)
+			}
+		}
 	}
 
 	fn create_collateral_auctions(

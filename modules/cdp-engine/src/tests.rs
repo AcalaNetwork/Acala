@@ -523,11 +523,11 @@ fn liquidate_unsafe_cdp_by_collateral_auction_when_limited_by_slippage() {
 		// pool is enough, but slippage limit the swap
 		MockPriceSource::set_relative_price(Some(Price::saturating_from_rational(1, 2)));
 		assert_eq!(
-			DEXModule::get_swap_amount(&vec![BTC, AUSD], SwapLimit::ExactTarget(Balance::MAX, 60)),
+			DEXModule::get_swap_amount(&[BTC, AUSD], SwapLimit::ExactTarget(Balance::MAX, 60)),
 			Some((99, 60))
 		);
 		assert_eq!(
-			DEXModule::get_swap_amount(&vec![BTC, AUSD], SwapLimit::ExactSupply(100, 0)),
+			DEXModule::get_swap_amount(&[BTC, AUSD], SwapLimit::ExactSupply(100, 0)),
 			Some((100, 60))
 		);
 		assert_ok!(CDPEngineModule::liquidate_unsafe_cdp(ALICE, BTC));

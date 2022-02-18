@@ -31,6 +31,7 @@ use primitives::{TokenSymbol, TradingPair};
 use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup};
 use sp_std::cell::RefCell;
+use support::mocks::MockStableAsset;
 
 pub type AccountId = u128;
 pub type BlockNumber = u64;
@@ -216,6 +217,7 @@ impl Config for Runtime {
 	type TreasuryAccount = TreasuryAccount;
 	type AlternativeSwapPathJointList = AlternativeSwapPathJointList;
 	type WeightInfo = ();
+	type StableAsset = MockStableAsset<CurrencyId, Balance, AccountId, BlockNumber>;
 }
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
