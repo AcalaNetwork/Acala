@@ -72,12 +72,12 @@ fn error_on_execution_failure(reason: &ExitReason, data: &[u8]) -> Result<()> {
 			})
 		}
 		ExitReason::Revert(_) => {
-			let message = "VM Exception while processing transaction: execution revert:".to_string();
+			let message = "VM Exception while processing transaction: execution revert".to_string();
 			Err(Error {
 				code: ErrorCode::InternalError,
 				message: decode_revert_message(data)
 					.map_or(message.clone(), |reason| format!("{} {}", message, reason)),
-				data: Some(Value::String(data.to_hex())),
+				data: Some(Value::String(format!("0x{}", data.to_hex::<String>()))),
 			})
 		}
 		ExitReason::Fatal(e) => Err(Error {

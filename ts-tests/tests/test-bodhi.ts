@@ -34,8 +34,6 @@ describeWithAcala("Acala RPC (bodhi.js)", (context) => {
 
 	step("should get fee data ", async function () {
 		expect(await context.provider.getFeeData()).to.deep.include({
-			maxFeePerGas: BigNumber.from("1"),
-			maxPriorityFeePerGas: BigNumber.from("1"),
 			gasPrice: BigNumber.from("200000274442"),
 		});
 	});
