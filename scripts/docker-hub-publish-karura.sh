@@ -4,7 +4,7 @@ set -e
 
 VERSION=$1
 NODE_NAME=acala/karura-node
-BUILD_ARGS="--features with-karura-runtime"
+BUILD_ARGS="build-karura-release"
 
 if [[ -z "$1" ]] ; then
     VERSION=$(git rev-parse --short HEAD)

@@ -55,11 +55,12 @@ use module_currencies::BasicCurrencyAdapter;
 use module_evm::{CallInfo, CreateInfo, EvmTask, Runner};
 use module_evm_accounts::EvmAddressMapping;
 use module_relaychain::RelayChainCallBuilder;
-use module_support::{AssetIdMapping, DispatchableTask};
+use module_support::{AssetIdMapping, DispatchableTask, ExchangeRateProvider};
 use module_transaction_payment::{Multiplier, TargetedFeeAdjustment, TransactionFeePoolTrader};
 
 use orml_traits::{
-	create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended, MultiCurrency,
+	create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended, GetByKey,
+	MultiCurrency,
 };
 use pallet_transaction_payment::RuntimeDispatchInfo;
 
@@ -85,8 +86,8 @@ pub use frame_support::{
 	construct_runtime, log, parameter_types,
 	traits::{
 		Contains, ContainsLengthBound, Currency as PalletCurrency, EnsureOrigin, EqualPrivilegeOnly, Everything, Get,
-		Imbalance, InstanceFilter, IsSubType, IsType, KeyOwnerProofSystem, LockIdentifier, Nothing, OnUnbalanced,
-		Randomness, SortedMembers, U128CurrencyToVote,
+		Imbalance, InstanceFilter, IsSubType, IsType, KeyOwnerProofSystem, LockIdentifier, Nothing, OnRuntimeUpgrade,
+		OnUnbalanced, Randomness, SortedMembers, U128CurrencyToVote,
 	},
 	weights::{constants::RocksDbWeight, IdentityFee, Weight},
 	PalletId, RuntimeDebug, StorageValue,
@@ -118,6 +119,9 @@ pub use runtime_common::{
 	PHA, RENBTC, VSKSM,
 };
 
+/// Import the stable_asset pallet.
+pub use nutsfinance_stable_asset;
+
 mod authority;
 mod benchmarking;
 pub mod constants;
@@ -133,7 +137,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("karura"),
 	impl_name: create_runtime_str!("karura"),
 	authoring_version: 1,
-	spec_version: 2032,
+	spec_version: 2033,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -175,6 +179,8 @@ parameter_types! {
 	// This Pallet is only used to payment fee pool, it's not added to whitelist by design.
 	// because transaction payment pallet will ensure the accounts always have enough ED.
 	pub const TransactionPaymentPalletId: PalletId = PalletId(*b"aca/fees");
+	// Ecosystem modules
+	pub const StableAssetPalletId: PalletId = PalletId(*b"nuts/sta");
 }
 
 pub fn get_all_module_accounts() -> Vec<AccountId> {
@@ -190,6 +196,7 @@ pub fn get_all_module_accounts() -> Vec<AccountId> {
 		TreasuryPalletId::get().into_account(),
 		TreasuryReservePalletId::get().into_account(),
 		UnreleasedNativeVaultAccountId::get(),
+		StableAssetPalletId::get().into_account(),
 	]
 }
 
@@ -1055,11 +1062,11 @@ where
 }
 
 parameter_types! {
-	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![KSM, LKSM, KAR];
+	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![KSM, LKSM, KAR, CurrencyId::StableAssetPoolToken(0)];
 	pub DefaultLiquidationRatio: Ratio = Ratio::saturating_from_rational(150, 100);
 	pub DefaultDebitExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
 	pub DefaultLiquidationPenalty: Rate = Rate::saturating_from_rational(8, 100);
-	pub MinimumDebitValue: Balance = 20 * dollar(KUSD);
+	pub MinimumDebitValue: Balance = 50 * dollar(KUSD);
 	pub MaxSwapSlippageCompareToOracle: Ratio = Ratio::saturating_from_rational(15, 100);
 }
 
@@ -1731,7 +1738,7 @@ impl module_homa::Config for Runtime {
 	type MintThreshold = MintThreshold;
 	type RedeemThreshold = RedeemThreshold;
 	type RelayChainBlockNumber = RelayChainBlockNumberProvider<Runtime>;
-	type XcmInterface = HomaXcm;
+	type XcmInterface = XcmInterface;
 	type WeightInfo = weights::module_homa::WeightInfo<Runtime>;
 }
 
@@ -1961,6 +1968,73 @@ impl module_idle_scheduler::Config for Runtime {
 	type MinimumWeightRemainInBlock = MinimumWeightRemainInBlock;
 }
 
+parameter_types! {
+	pub const FeePrecision: u128 = 10_000_000_000u128; // 10 decimals
+	pub const APrecision: u128 = 100u128; // 2 decimals
+	pub const PoolAssetLimit: u32 = 5u32;
+}
+
+pub struct EnsurePoolAssetId;
+impl nutsfinance_stable_asset::traits::ValidateAssetId<CurrencyId> for EnsurePoolAssetId {
+	fn validate(currency_id: CurrencyId) -> bool {
+		matches!(currency_id, CurrencyId::StableAssetPoolToken(_))
+	}
+}
+
+pub struct ConvertBalanceHoma;
+impl orml_tokens::ConvertBalance<Balance, Balance> for ConvertBalanceHoma {
+	type AssetId = CurrencyId;
+
+	fn convert_balance(balance: Balance, asset_id: CurrencyId) -> Balance {
+		match asset_id {
+			CurrencyId::Token(TokenSymbol::LKSM) => {
+				Homa::get_exchange_rate().checked_mul_int(balance).unwrap_or_default()
+			}
+			_ => balance,
+		}
+	}
+
+	fn convert_balance_back(balance: Balance, asset_id: CurrencyId) -> Balance {
+		match asset_id {
+			CurrencyId::Token(TokenSymbol::LKSM) => Homa::get_exchange_rate()
+				.reciprocal()
+				.and_then(|x| x.checked_mul_int(balance))
+				.unwrap_or_default(),
+			_ => balance,
+		}
+	}
+}
+
+pub struct IsLiquidToken;
+impl Contains<CurrencyId> for IsLiquidToken {
+	fn contains(currency_id: &CurrencyId) -> bool {
+		matches!(currency_id, CurrencyId::Token(TokenSymbol::LKSM))
+	}
+}
+
+type RebaseTokens = orml_tokens::Combiner<
+	AccountId,
+	IsLiquidToken,
+	orml_tokens::Mapper<AccountId, Tokens, ConvertBalanceHoma, Balance, GetLiquidCurrencyId>,
+	Tokens,
+>;
+
+impl nutsfinance_stable_asset::Config for Runtime {
+	type Event = Event;
+	type AssetId = CurrencyId;
+	type Balance = Balance;
+	type Assets = RebaseTokens;
+	type PalletId = StableAssetPalletId;
+
+	type AtLeast64BitUnsigned = u128;
+	type FeePrecision = FeePrecision;
+	type APrecision = APrecision;
+	type PoolAssetLimit = PoolAssetLimit;
+	type WeightInfo = weights::nutsfinance_stable_asset::WeightInfo<Runtime>;
+	type ListingOrigin = EnsureRootOrHalfGeneralCouncil;
+	type EnsurePoolAssetId = EnsurePoolAssetId;
+}
+
 construct_runtime!(
 	pub enum Runtime where
 		Block = Block,
@@ -2048,7 +2122,7 @@ construct_runtime!(
 
 		// Homa
 		Homa: module_homa::{Pallet, Call, Storage, Event<T>} = 116,
-		HomaXcm: module_xcm_interface::{Pallet, Call, Storage, Event<T>} = 117,
+		XcmInterface: module_xcm_interface::{Pallet, Call, Storage, Event<T>} = 117,
 
 		// Karura Other
 		Incentives: module_incentives::{Pallet, Storage, Call, Event<T>} = 120,
@@ -2059,6 +2133,9 @@ construct_runtime!(
 		EVM: module_evm::{Pallet, Config<T>, Call, Storage, Event<T>} = 130,
 		EVMBridge: module_evm_bridge::{Pallet} = 131,
 		EvmAccounts: module_evm_accounts::{Pallet, Call, Storage, Event<T>} = 132,
+
+		// Stable asset
+		StableAsset: nutsfinance_stable_asset::{Pallet, Call, Storage, Event<T>} = 200,
 
 		// Parachain System, always put it at the end
 		ParachainSystem: cumulus_pallet_parachain_system::{Pallet, Call, Storage, Inherent, Config, Event<T>} = 30,
@@ -2101,26 +2178,86 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	SchedulerMigrationV3,
+	(TransactionPaymentMigration, XcmInterfaceMigrationV1),
 >;
 
 // Migration for scheduler pallet to move from a plain Call to a CallOrHash.
-pub struct SchedulerMigrationV3;
-impl frame_support::traits::OnRuntimeUpgrade for SchedulerMigrationV3 {
+pub struct XcmInterfaceMigrationV1;
+impl OnRuntimeUpgrade for XcmInterfaceMigrationV1 {
 	fn on_runtime_upgrade() -> frame_support::weights::Weight {
-		Scheduler::migrate_v2_to_v3();
+		module_xcm_interface::migrations::v1::migrate::<Runtime, XcmInterface>()
+	}
+}
+
+parameter_types! {
+	pub FeePoolSize: Balance = 5 * dollar(KAR);
+	pub SwapBalanceThreshold: Balance = Ratio::saturating_from_rational(25, 10).saturating_mul_int(dollar(KAR));
+}
+
+pub struct TransactionPaymentMigration;
+impl frame_support::traits::OnRuntimeUpgrade for TransactionPaymentMigration {
+	fn on_runtime_upgrade() -> frame_support::weights::Weight {
+		let poo_size = FeePoolSize::get();
+		let threshold = SwapBalanceThreshold::get();
+		let tokens = vec![KUSD, KSM, LKSM, BNC];
+		for token in tokens {
+			let _ = module_transaction_payment::Pallet::<Runtime>::disable_charge_fee_pool(
+				Origin::signed(KaruraTreasuryAccount::get()),
+				token,
+			);
+			let _ = module_transaction_payment::Pallet::<Runtime>::enable_charge_fee_pool(
+				Origin::signed(KaruraTreasuryAccount::get()),
+				token,
+				poo_size,
+				threshold,
+			);
+		}
 		<Runtime as frame_system::Config>::BlockWeights::get().max_block
 	}
 
 	#[cfg(feature = "try-runtime")]
 	fn pre_upgrade() -> Result<(), &'static str> {
-		Scheduler::pre_migrate_to_v3()
+		Ok(())
 	}
 
 	#[cfg(feature = "try-runtime")]
 	fn post_upgrade() -> Result<(), &'static str> {
-		Scheduler::post_migrate_to_v3()
+		Ok(())
 	}
+}
+
+#[cfg(feature = "runtime-benchmarks")]
+#[macro_use]
+extern crate orml_benchmarking;
+
+#[cfg(feature = "runtime-benchmarks")]
+mod benches {
+	define_benchmarks!(
+		[module_dex, benchmarking::dex]
+		[module_dex_oracle, benchmarking::dex_oracle]
+		[module_asset_registry, benchmarking::asset_registry]
+		[module_auction_manager, benchmarking::auction_manager]
+		[module_cdp_engine, benchmarking::cdp_engine]
+		[module_emergency_shutdown, benchmarking::emergency_shutdown]
+		[module_evm, benchmarking::evm]
+		[module_homa, benchmarking::homa]
+		[module_honzon, benchmarking::honzon]
+		[module_cdp_treasury, benchmarking::cdp_treasury]
+		[module_collator_selection, benchmarking::collator_selection]
+		[module_transaction_pause, benchmarking::transaction_pause]
+		[module_transaction_payment, benchmarking::transaction_payment]
+		[module_incentives, benchmarking::incentives]
+		[module_prices, benchmarking::prices]
+		[module_evm_accounts, benchmarking::evm_accounts]
+		[module_currencies, benchmarking::currencies]
+		[module_session_manager, benchmarking::session_manager]
+		[orml_tokens, benchmarking::tokens]
+		[orml_vesting, benchmarking::vesting]
+		[orml_auction, benchmarking::auction]
+		[orml_authority, benchmarking::authority]
+		[orml_oracle, benchmarking::oracle]
+		[nutsfinance_stable_asset, benchmarking::nutsfinance_stable_asset]
+	);
 }
 
 #[cfg(not(feature = "disable-runtime-api"))]
@@ -2229,7 +2366,7 @@ impl_runtime_apis! {
 		CurrencyId,
 		TimeStampedPrice,
 	> for Runtime {
-		fn get_value(provider_id: DataProviderId ,key: CurrencyId) -> Option<TimeStampedPrice> {
+		fn get_value(provider_id: DataProviderId, key: CurrencyId) -> Option<TimeStampedPrice> {
 			match provider_id {
 				DataProviderId::Acala => AcalaOracle::get_no_op(&key),
 				DataProviderId::Aggregated => <AggregatedDataProvider as DataProviderExtended<_, _>>::get_no_op(&key)
@@ -2240,6 +2377,20 @@ impl_runtime_apis! {
 			match provider_id {
 				DataProviderId::Acala => AcalaOracle::get_all_values(),
 				DataProviderId::Aggregated => <AggregatedDataProvider as DataProviderExtended<_, _>>::get_all_values()
+			}
+		}
+	}
+
+	impl orml_tokens_rpc_runtime_api::TokensApi<
+		Block,
+		CurrencyId,
+		Balance,
+	> for Runtime {
+		fn query_existential_deposit(key: CurrencyId) -> Balance {
+			if key == GetNativeCurrencyId::get() {
+				NativeTokenExistentialDeposit::get()
+			} else {
+				ExistentialDeposits::get(&key)
 			}
 		}
 	}
@@ -2366,38 +2517,14 @@ impl_runtime_apis! {
 			Vec<frame_benchmarking::BenchmarkList>,
 			Vec<frame_support::traits::StorageInfo>,
 		) {
-			use frame_benchmarking::{list_benchmark, Benchmarking, BenchmarkList};
+			use frame_benchmarking::{list_benchmark as frame_list_benchmark, Benchmarking, BenchmarkList};
 			use frame_support::traits::StorageInfoTrait;
-			use orml_benchmarking::list_benchmark as orml_list_benchmark;
 			use module_nft::benchmarking::Pallet as NftBench;
 
 			let mut list = Vec::<BenchmarkList>::new();
 
-			list_benchmark!(list, extra, module_nft, NftBench::<Runtime>);
-
-			orml_list_benchmark!(list, extra, module_dex, benchmarking::dex);
-			orml_list_benchmark!(list, extra, module_dex_oracle, benchmarking::dex_oracle);
-			orml_list_benchmark!(list, extra, module_asset_registry, benchmarking::asset_registry);
-			orml_list_benchmark!(list, extra, module_auction_manager, benchmarking::auction_manager);
-			orml_list_benchmark!(list, extra, module_cdp_engine, benchmarking::cdp_engine);
-			orml_list_benchmark!(list, extra, module_emergency_shutdown, benchmarking::emergency_shutdown);
-			orml_list_benchmark!(list, extra, module_evm, benchmarking::evm);
-			orml_list_benchmark!(list, extra, module_homa, benchmarking::homa);
-			orml_list_benchmark!(list, extra, module_honzon, benchmarking::honzon);
-			orml_list_benchmark!(list, extra, module_cdp_treasury, benchmarking::cdp_treasury);
-			orml_list_benchmark!(list, extra, module_collator_selection, benchmarking::collator_selection);
-			orml_list_benchmark!(list, extra, module_transaction_pause, benchmarking::transaction_pause);
-			orml_list_benchmark!(list, extra, module_transaction_payment, benchmarking::transaction_payment);
-			orml_list_benchmark!(list, extra, module_incentives, benchmarking::incentives);
-			orml_list_benchmark!(list, extra, module_prices, benchmarking::prices);
-			orml_list_benchmark!(list, extra, module_evm_accounts, benchmarking::evm_accounts);
-			orml_list_benchmark!(list, extra, module_currencies, benchmarking::currencies);
-			orml_list_benchmark!(list, extra, module_session_manager, benchmarking::session_manager);
-			orml_list_benchmark!(list, extra, orml_tokens, benchmarking::tokens);
-			orml_list_benchmark!(list, extra, orml_vesting, benchmarking::vesting);
-			orml_list_benchmark!(list, extra, orml_auction, benchmarking::auction);
-			orml_list_benchmark!(list, extra, orml_authority, benchmarking::authority);
-			orml_list_benchmark!(list, extra, orml_oracle, benchmarking::oracle);
+			frame_list_benchmark!(list, extra, module_nft, NftBench::<Runtime>);
+			list_benchmarks!(list, extra);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -2407,8 +2534,7 @@ impl_runtime_apis! {
 		fn dispatch_benchmark(
 			config: frame_benchmarking::BenchmarkConfig
 		) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString> {
-			use frame_benchmarking::{Benchmarking, BenchmarkBatch, add_benchmark, TrackedStorageKey};
-			use orml_benchmarking::{add_benchmark as orml_add_benchmark};
+			use frame_benchmarking::{Benchmarking, BenchmarkBatch, add_benchmark as frame_add_benchmark, TrackedStorageKey};
 			use module_nft::benchmarking::Pallet as NftBench;
 
 			let whitelist: Vec<TrackedStorageKey> = vec![
@@ -2431,31 +2557,8 @@ impl_runtime_apis! {
 			let mut batches = Vec::<BenchmarkBatch>::new();
 			let params = (&config, &whitelist);
 
-			add_benchmark!(params, batches, module_nft, NftBench::<Runtime>);
-
-			orml_add_benchmark!(params, batches, module_dex, benchmarking::dex);
-			orml_add_benchmark!(params, batches, module_dex_oracle, benchmarking::dex_oracle);
-			orml_add_benchmark!(params, batches, module_asset_registry, benchmarking::asset_registry);
-			orml_add_benchmark!(params, batches, module_auction_manager, benchmarking::auction_manager);
-			orml_add_benchmark!(params, batches, module_cdp_engine, benchmarking::cdp_engine);
-			orml_add_benchmark!(params, batches, module_emergency_shutdown, benchmarking::emergency_shutdown);
-			orml_add_benchmark!(params, batches, module_evm, benchmarking::evm);
-			orml_add_benchmark!(params, batches, module_homa, benchmarking::homa);
-			orml_add_benchmark!(params, batches, module_honzon, benchmarking::honzon);
-			orml_add_benchmark!(params, batches, module_cdp_treasury, benchmarking::cdp_treasury);
-			orml_add_benchmark!(params, batches, module_collator_selection, benchmarking::collator_selection);
-			orml_add_benchmark!(params, batches, module_transaction_pause, benchmarking::transaction_pause);
-			orml_add_benchmark!(params, batches, module_transaction_payment, benchmarking::transaction_payment);
-			orml_add_benchmark!(params, batches, module_incentives, benchmarking::incentives);
-			orml_add_benchmark!(params, batches, module_prices, benchmarking::prices);
-			orml_add_benchmark!(params, batches, module_evm_accounts, benchmarking::evm_accounts);
-			orml_add_benchmark!(params, batches, module_currencies, benchmarking::currencies);
-			orml_add_benchmark!(params, batches, module_session_manager, benchmarking::session_manager);
-			orml_add_benchmark!(params, batches, orml_tokens, benchmarking::tokens);
-			orml_add_benchmark!(params, batches, orml_vesting, benchmarking::vesting);
-			orml_add_benchmark!(params, batches, orml_auction, benchmarking::auction);
-			orml_add_benchmark!(params, batches, orml_authority, benchmarking::authority);
-			orml_add_benchmark!(params, batches, orml_oracle, benchmarking::oracle);
+			frame_add_benchmark!(params, batches, module_nft, NftBench::<Runtime>);
+			add_benchmarks!(params, batches);
 
 			if batches.is_empty() { return Err("Benchmark not found for this module.".into()) }
 			Ok(batches)
@@ -2563,8 +2666,8 @@ mod tests {
 	#[test]
 	fn check_call_size() {
 		assert!(
-			core::mem::size_of::<Call>() <= 240,
-			"size of Call is more than 240 bytes: some calls have too big arguments, use Box to \
+			core::mem::size_of::<Call>() <= 260,
+			"size of Call is more than 260 bytes: some calls have too big arguments, use Box to \
 			reduce the size of Call.
 			If the limit is too strong, maybe consider increasing the limit",
 		);
