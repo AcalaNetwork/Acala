@@ -19,7 +19,6 @@
 // Disable the following lints
 #![allow(clippy::type_complexity)]
 
-use crate::precompile::PrecompileOutput;
 use frame_support::{
 	dispatch::Dispatchable,
 	ensure, log, parameter_types,
@@ -28,12 +27,16 @@ use frame_support::{
 		Currency, IsType, OriginTrait,
 	},
 };
-use module_evm::{Context, ExitError, ExitSucceed, Precompile};
+use module_evm::{
+	precompiles::Precompile,
+	runner::state::{PrecompileFailure, PrecompileOutput, PrecompileResult},
+	Context, ExitRevert, ExitSucceed,
+};
 use module_support::{AddressMapping, TransactionPayment};
 use primitives::{Balance, BlockNumber};
 use sp_core::H160;
 use sp_runtime::RuntimeDebug;
-use sp_std::{fmt::Debug, marker::PhantomData, prelude::*, result};
+use sp_std::{fmt::Debug, marker::PhantomData, prelude::*};
 
 use super::input::{Input, InputT, Output};
 use codec::{Decode, Encode};
@@ -53,15 +56,15 @@ pub struct TaskInfo {
 	pub fee: Balance,
 }
 
-/// The `ScheduleCall` impl precompile.
+/// The `Schedule` impl precompile.
 ///
 ///
 /// `input` data starts with `action`.
 ///
 /// Actions:
-/// - ScheduleCall. Rest `input` bytes: `from`, `target`, `value`, `gas_limit`, `storage_limit`,
+/// - Schedule. Rest `input` bytes: `from`, `target`, `value`, `gas_limit`, `storage_limit`,
 ///   `min_delay`, `input_len`, `input_data`.
-pub struct ScheduleCallPrecompile<Runtime>(PhantomData<Runtime>);
+pub struct SchedulePrecompile<Runtime>(PhantomData<Runtime>);
 
 #[module_evm_utiltity_macro::generate_function_selector]
 #[derive(RuntimeDebug, Eq, PartialEq, TryFromPrimitive, IntoPrimitive)]
@@ -77,7 +80,7 @@ type PalletBalanceOf<T> =
 type NegativeImbalanceOf<T> =
 	<<T as module_evm::Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::NegativeImbalance;
 
-impl<Runtime> Precompile for ScheduleCallPrecompile<Runtime>
+impl<Runtime> Precompile for SchedulePrecompile<Runtime>
 where
 	PalletBalanceOf<Runtime>: IsType<Balance>,
 	module_transaction_payment::ChargeTransactionPayment<Runtime>:
@@ -101,11 +104,7 @@ where
 		Address = TaskAddress<BlockNumber>,
 	>,
 {
-	fn execute(
-		input: &[u8],
-		_target_gas: Option<u64>,
-		_context: &Context,
-	) -> result::Result<PrecompileOutput, ExitError> {
+	fn execute(input: &[u8], _target_gas: Option<u64>, _context: &Context, _is_static: bool) -> PrecompileResult {
 		let input = Input::<Action, Runtime::AccountId, Runtime::AddressMapping, Runtime::Erc20InfoMapping>::new(input);
 
 		let action = input.action()?;
@@ -149,9 +148,10 @@ where
 						&from_account,
 						weight,
 					)
-					.map_err(|e| {
-						let err_msg: &str = e.into();
-						ExitError::Other(err_msg.into())
+					.map_err(|e| PrecompileFailure::Revert {
+						exit_status: ExitRevert::Reverted,
+						output: Into::<&str>::into(e).as_bytes().to_vec(),
+						cost: 0,
 					})?;
 				}
 
@@ -162,13 +162,16 @@ where
 					value,
 					gas_limit,
 					storage_limit,
+					access_list: vec![],
 				}
 				.into();
 
 				let current_id = EvmSchedulerNextID::get();
-				let next_id = current_id
-					.checked_add(1)
-					.ok_or_else(|| ExitError::Other("Scheduler next id overflow".into()))?;
+				let next_id = current_id.checked_add(1).ok_or_else(|| PrecompileFailure::Revert {
+					exit_status: ExitRevert::Reverted,
+					output: "Scheduler next id overflow".into(),
+					cost: 0,
+				})?;
 				EvmSchedulerNextID::set(&next_id);
 
 				let task_id = TaskInfo {
@@ -199,7 +202,11 @@ where
 						.clone(),
 					call,
 				)
-				.map_err(|_| ExitError::Other("Schedule failed".into()))?;
+				.map_err(|_| PrecompileFailure::Revert {
+					exit_status: ExitRevert::Reverted,
+					output: "Schedule failed".into(),
+					cost: 0,
+				})?;
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
@@ -221,16 +228,30 @@ where
 					task_id,
 				);
 
-				let task_info = TaskInfo::decode(&mut &task_id[..])
-					.map_err(|_| ExitError::Other("Decode task_id failed".into()))?;
-				ensure!(task_info.sender == from, ExitError::Other("NoPermission".into()));
+				let task_info = TaskInfo::decode(&mut &task_id[..]).map_err(|_| PrecompileFailure::Revert {
+					exit_status: ExitRevert::Reverted,
+					output: "Decode task_id failed".into(),
+					cost: 0,
+				})?;
+				ensure!(
+					task_info.sender == from,
+					PrecompileFailure::Revert {
+						exit_status: ExitRevert::Reverted,
+						output: "NoPermission".into(),
+						cost: 0,
+					}
+				);
 
 				<pallet_scheduler::Pallet<Runtime> as ScheduleNamed<
 					BlockNumber,
 					<Runtime as pallet_scheduler::Config>::Call,
 					<Runtime as pallet_scheduler::Config>::PalletsOrigin,
 				>>::cancel_named(task_id)
-				.map_err(|_| ExitError::Other("Cancel schedule failed".into()))?;
+				.map_err(|_| PrecompileFailure::Revert {
+					exit_status: ExitRevert::Reverted,
+					output: "Cancel schedule failed".into(),
+					cost: 0,
+				})?;
 
 				#[cfg(not(feature = "with-ethereum-compatibility"))]
 				{
@@ -264,18 +285,29 @@ where
 					min_delay,
 				);
 
-				let task_info = TaskInfo::decode(&mut &task_id[..])
-					.map_err(|_| ExitError::Other("Decode task_id failed".into()))?;
-				ensure!(task_info.sender == from, ExitError::Other("NoPermission".into()));
+				let task_info = TaskInfo::decode(&mut &task_id[..]).map_err(|_| PrecompileFailure::Revert {
+					exit_status: ExitRevert::Reverted,
+					output: "Decode task_id failed".into(),
+					cost: 0,
+				})?;
+				ensure!(
+					task_info.sender == from,
+					PrecompileFailure::Revert {
+						exit_status: ExitRevert::Reverted,
+						output: "NoPermission".into(),
+						cost: 0,
+					}
+				);
 
 				<pallet_scheduler::Pallet<Runtime> as ScheduleNamed<
 					BlockNumber,
 					<Runtime as pallet_scheduler::Config>::Call,
 					<Runtime as pallet_scheduler::Config>::PalletsOrigin,
 				>>::reschedule_named(task_id, DispatchTime::After(min_delay))
-				.map_err(|e| {
-					let err_msg: &str = e.into();
-					ExitError::Other(err_msg.into())
+				.map_err(|e| PrecompileFailure::Revert {
+					exit_status: ExitRevert::Reverted,
+					output: Into::<&str>::into(e).as_bytes().to_vec(),
+					cost: 0,
 				})?;
 
 				Ok(PrecompileOutput {

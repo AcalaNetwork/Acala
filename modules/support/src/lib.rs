@@ -399,8 +399,8 @@ impl<AccountId, Balance: Default> EVMBridge<AccountId, Balance> for () {
 	fn set_origin(_origin: AccountId) {}
 }
 
-/// An abstraction of EVMStateRentTrait
-pub trait EVMStateRentTrait<AccountId, Balance> {
+/// An abstraction of EVMManager
+pub trait EVMManager<AccountId, Balance> {
 	/// Query the constants `NewContractExtraBytes` value from evm module.
 	fn query_new_contract_extra_bytes() -> u32;
 	/// Query the constants `StorageDepositPerByte` value from evm module.
