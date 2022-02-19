@@ -25,7 +25,7 @@ use module_asset_registry::AssetMetadata;
 use module_evm::EvmAddress;
 use module_support::AddressMapping;
 use orml_benchmarking::runtime_benchmarks;
-use sp_std::{boxed::Box, str::FromStr};
+use sp_std::{boxed::Box, str::FromStr, vec};
 use xcm::{v1::MultiLocation, VersionedMultiLocation};
 
 const NATIVE: CurrencyId = GetNativeCurrencyId::get();
@@ -49,7 +49,14 @@ pub fn deploy_contract() {
 		serde_json::from_str(include_str!("../../../../ts-tests/build/Erc20DemoContract2.json")).unwrap();
 	let code = hex::decode(json.get("bytecode").unwrap().as_str().unwrap()).unwrap();
 
-	assert_ok!(EVM::create(Origin::signed(alice()), code, 0, 2_100_000, 1_000_000));
+	assert_ok!(EVM::create(
+		Origin::signed(alice()),
+		code,
+		0,
+		2_100_000,
+		1_000_000,
+		vec![]
+	));
 	assert_ok!(EVM::publish_free(Origin::root(), erc20_address()));
 }
 

@@ -16,9 +16,9 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use ethereum_types::{H160, U256};
+use primitives::evm::AccessListItem;
 use serde::{Deserialize, Serialize};
-use sp_core::Bytes;
+use sp_core::{Bytes, H160, U256};
 use sp_rpc::number::NumberOrHex;
 
 /// Call request
@@ -38,6 +38,8 @@ pub struct CallRequest {
 	pub value: Option<NumberOrHex>,
 	/// Data
 	pub data: Option<Bytes>,
+	/// AccessList
+	pub access_list: Option<Vec<AccessListItem>>,
 }
 
 /// EstimateResources response

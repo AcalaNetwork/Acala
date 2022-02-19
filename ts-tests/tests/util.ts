@@ -52,9 +52,9 @@ export async function startAcalaNode(): Promise<{ provider: TestProvider; binary
 		process.exit(1);
 	});
 
-	let provider = null;
+	let provider: TestProvider;
 	const binaryLogs = [];
-	await new Promise<void>((resolve) => {
+	await new Promise<void>((resolve, reject) => {
 		const timer = setTimeout(() => {
 			console.error(`\x1b[31m Failed to start Acala Node.\x1b[0m`);
 			console.error(`Command: ${cmd} ${args.join(" ")}`);
@@ -69,20 +69,24 @@ export async function startAcalaNode(): Promise<{ provider: TestProvider; binary
 			}
 			binaryLogs.push(chunk);
 			if (chunk.toString().match(/Listening for new connections on/)) {
-				provider = new TestProvider({
-					provider: new WsProvider(`ws://localhost:${WS_PORT}`),
-				});
+				try {
+					provider = new TestProvider({
+						provider: new WsProvider(`ws://localhost:${WS_PORT}`),
+					});
 
-				// This is needed as the EVM runtime needs to warmup with a first call
-				await provider.getNetwork();
+					// This is needed as the EVM runtime needs to warmup with a first call
+					await provider.getNetwork();
 
-				clearTimeout(timer);
-				if (!DISPLAY_LOG) {
-					binary.stderr.off("data", onData);
-					binary.stdout.off("data", onData);
+					clearTimeout(timer);
+					if (!DISPLAY_LOG) {
+						binary.stderr.off("data", onData);
+						binary.stdout.off("data", onData);
+					}
+					resolve();
+				} catch(e) {
+					binary.kill();
+					reject(e);
 				}
-				// console.log(`\x1b[31m Starting RPC\x1b[0m`);
-				resolve();
 			}
 		};
 		binary.stderr.on("data", onData);

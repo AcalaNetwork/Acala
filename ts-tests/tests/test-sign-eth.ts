@@ -33,7 +33,7 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 
 		expect(subAddr).to.equal("5EMjsczQH4R2WZaB5Svau8HWZp1aAfMqjxfv3GeLWotYSkLc");
 
-		await context.provider.api.tx.balances.transfer(subAddr, "10_000_000_000_000")
+		await context.provider.api.tx.balances.transfer(subAddr, "10000000000000")
 			.signAndSend(await alice.getSubstrateAddress());
 
 		factory = new ethers.ContractFactory(Erc20DemoContract.abi, Erc20DemoContract.bytecode);
@@ -110,6 +110,7 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 			value.value,
 			input_gas_limit.toNumber(),
 			input_storage_limit.toNumber(),
+			[], // accessList
 			input_valid_until
 		);
 
@@ -151,6 +152,7 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 					"value": 0,
 					"gas_limit": 2100000,
 					"storage_limit": 20032,
+					"access_list": [],
 					"valid_until": 120
 				  }
 				}
@@ -243,6 +245,7 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 			value.value,
 			input_gas_limit.toNumber(),
 			input_storage_limit.toNumber(),
+			[], // accessList
 			input_valid_until
 		);
 
@@ -284,6 +287,7 @@ describeWithAcala("Acala RPC (Sign eth)", (context) => {
 					"value": 0,
 					"gas_limit": 210000,
 					"storage_limit": 1024,
+					"access_list": [],
 					"valid_until": 120
 				  }
 				}
