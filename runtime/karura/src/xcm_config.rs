@@ -18,9 +18,8 @@
 use super::{
 	constants::{fee::*, parachains},
 	AccountId, AssetIdMapping, AssetIdMaps, Balance, Call, Convert, Currencies, CurrencyId, Event, ExistentialDeposits,
-	FixedRateOfForeignAsset, GetNativeCurrencyId, KaruraTreasuryAccount, NativeTokenExistentialDeposit, Origin,
-	ParachainInfo, ParachainSystem, PolkadotXcm, Runtime, RuntimeBlockWeights, TransactionFeePoolTrader, UnknownTokens,
-	XcmExecutor, XcmpQueue, KAR, KUSD, LKSM,
+	GetNativeCurrencyId, KaruraTreasuryAccount, NativeTokenExistentialDeposit, Origin, ParachainInfo, ParachainSystem,
+	PolkadotXcm, Runtime, RuntimeBlockWeights, UnknownTokens, XcmExecutor, XcmpQueue, KAR, KUSD, LKSM,
 };
 use codec::{Decode, Encode};
 pub use cumulus_primitives_core::ParaId;
@@ -43,6 +42,8 @@ pub use xcm_builder::{
 	TakeRevenue, TakeWeightCredit,
 };
 
+#[cfg(not(feature = "integration-tests"))]
+use super::{FixedRateOfForeignAsset, TransactionFeePoolTrader};
 #[cfg(feature = "integration-tests")]
 use crate::integration_tests_config::*;
 
