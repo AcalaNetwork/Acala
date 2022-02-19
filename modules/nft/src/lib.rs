@@ -25,7 +25,7 @@ use frame_support::{
 	pallet_prelude::*,
 	require_transactional,
 	traits::{
-		tokens::nonfungibles::{Inspect, Mutate, Transfer},
+		tokens::nonfungibles::{Create, Inspect, Mutate, Transfer},
 		Currency,
 		ExistenceRequirement::{AllowDeath, KeepAlive},
 		NamedReservableCurrency,
@@ -33,7 +33,7 @@ use frame_support::{
 	transactional, PalletId,
 };
 use frame_system::pallet_prelude::*;
-use orml_traits::InspectExtended;
+use orml_traits::{CreateExtended, InspectExtended};
 use primitives::{
 	nft::{Attributes, ClassProperty, NFTBalance, Properties, CID},
 	ReserveIdentifier,
@@ -149,6 +149,8 @@ pub mod module {
 		Immutable,
 		/// Attributes too large
 		AttributesTooLarge,
+		/// The given class ID is not correct
+		IncorrectClassId,
 		/// The given token ID is not correct
 		IncorrectTokenId,
 	}
@@ -159,6 +161,7 @@ pub mod module {
 		/// Created NFT class.
 		CreatedClass {
 			owner: T::AccountId,
+			admin: T::AccountId,
 			class_id: ClassIdOf<T>,
 		},
 		/// Minted NFT token.
@@ -217,34 +220,7 @@ pub mod module {
 			attributes: Attributes,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
-			let next_id = orml_nft::Pallet::<T>::next_class_id();
-			let owner: T::AccountId = T::PalletId::get().into_sub_account(next_id);
-			let class_deposit = T::CreateClassDeposit::get();
-
-			let data_deposit = Self::data_deposit(&metadata, &attributes)?;
-			let proxy_deposit = <pallet_proxy::Pallet<T>>::deposit(1u32);
-			let deposit = class_deposit.saturating_add(data_deposit);
-			let total_deposit = proxy_deposit.saturating_add(deposit);
-
-			// ensure enough token for proxy deposit + class deposit + data deposit
-			<T as module::Config>::Currency::transfer(&who, &owner, total_deposit, KeepAlive)?;
-
-			<T as module::Config>::Currency::reserve_named(&RESERVE_ID, &owner, deposit)?;
-
-			// owner add proxy delegate to origin
-			<pallet_proxy::Pallet<T>>::add_proxy_delegate(&owner, who, Default::default(), Zero::zero())?;
-
-			let data = ClassData {
-				deposit,
-				properties,
-				attributes,
-			};
-			orml_nft::Pallet::<T>::create_class(&owner, metadata, data)?;
-
-			Self::deposit_event(Event::CreatedClass {
-				owner,
-				class_id: next_id,
-			});
+			Self::do_create_class(&who, metadata, properties, attributes)?;
 			Ok(().into())
 		}
 
@@ -365,25 +341,51 @@ pub mod module {
 			properties: Properties,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
-			orml_nft::Classes::<T>::try_mutate(class_id, |class_info| {
-				let class_info = class_info.as_mut().ok_or(Error::<T>::ClassIdNotFound)?;
-				ensure!(who == class_info.owner, Error::<T>::NoPermission);
-
-				let mut data = &mut class_info.data;
-				ensure!(
-					data.properties.0.contains(ClassProperty::ClassPropertiesMutable),
-					Error::<T>::Immutable
-				);
-
-				data.properties = properties;
-
-				Ok(())
-			})
+			Self::do_update_class_properties(&who, &class_id, properties)
 		}
 	}
 }
 
 impl<T: Config> Pallet<T> {
+	#[require_transactional]
+	pub fn do_create_class(
+		admin: &T::AccountId,
+		metadata: CID,
+		properties: Properties,
+		attributes: Attributes,
+	) -> DispatchResult {
+		let next_id = orml_nft::Pallet::<T>::next_class_id();
+		let owner: T::AccountId = T::PalletId::get().into_sub_account(next_id);
+		let class_deposit = T::CreateClassDeposit::get();
+
+		let data_deposit = Self::data_deposit(&metadata, &attributes)?;
+		let proxy_deposit = <pallet_proxy::Pallet<T>>::deposit(1u32);
+		let deposit = class_deposit.saturating_add(data_deposit);
+		let total_deposit = proxy_deposit.saturating_add(deposit);
+
+		// ensure enough token for proxy deposit + class deposit + data deposit
+		<T as module::Config>::Currency::transfer(&admin, &owner, total_deposit, KeepAlive)?;
+
+		<T as module::Config>::Currency::reserve_named(&RESERVE_ID, &owner, deposit)?;
+
+		// owner add proxy delegate to origin
+		<pallet_proxy::Pallet<T>>::add_proxy_delegate(&owner, admin.clone(), Default::default(), Zero::zero())?;
+
+		let data = ClassData {
+			deposit,
+			properties,
+			attributes,
+		};
+		orml_nft::Pallet::<T>::create_class(&owner, metadata, data)?;
+
+		Self::deposit_event(Event::CreatedClass {
+			owner,
+			admin: admin.clone(),
+			class_id: next_id,
+		});
+		Ok(())
+	}
+
 	#[require_transactional]
 	fn do_transfer(from: &T::AccountId, to: &T::AccountId, token: (ClassIdOf<T>, TokenIdOf<T>)) -> DispatchResult {
 		let class_info = orml_nft::Pallet::<T>::classes(token.0).ok_or(Error::<T>::ClassIdNotFound)?;
@@ -505,6 +507,27 @@ impl<T: Config> Pallet<T> {
 		let total_data_len = attributes_len.saturating_add(metadata.len() as u32);
 		Ok(T::DataDepositPerByte::get().saturating_mul(total_data_len.into()))
 	}
+
+	pub fn do_update_class_properties(
+		caller: &T::AccountId,
+		class_id: &ClassIdOf<T>,
+		properties: Properties,
+	) -> DispatchResult {
+		orml_nft::Classes::<T>::try_mutate(class_id, |class_info| {
+			let class_info = class_info.as_mut().ok_or(Error::<T>::ClassIdNotFound)?;
+			ensure!(*caller == class_info.owner, Error::<T>::NoPermission);
+
+			let mut data = &mut class_info.data;
+			ensure!(
+				data.properties.0.contains(ClassProperty::ClassPropertiesMutable),
+				Error::<T>::Immutable
+			);
+
+			data.properties = properties;
+
+			Ok(())
+		})
+	}
 }
 
 impl<T: Config> InspectExtended<T::AccountId> for Pallet<T> {
@@ -564,5 +587,25 @@ impl<T: Config> Transfer<T::AccountId> for Pallet<T> {
 	fn transfer(class: &Self::ClassId, instance: &Self::InstanceId, destination: &T::AccountId) -> DispatchResult {
 		let owner = <Self as Inspect<T::AccountId>>::owner(class, instance).ok_or(Error::<T>::TokenIdNotFound)?;
 		Self::do_transfer(&owner, destination, (*class, *instance))
+	}
+}
+
+impl<T: Config> Create<T::AccountId> for Pallet<T> {
+	/// Create a NFT `class` of NFT.
+	/// Note: All NFT is owned by this module, so the `_who` field is not used.
+	fn create_class(class: &Self::ClassId, _who: &T::AccountId, admin: &T::AccountId) -> DispatchResult {
+		// Check if the class id is correct
+		ensure!(*class != Self::next_class_id(), Error::<T>::IncorrectClassId);
+		Self::do_create_class(admin, Default::default(), Default::default(), Default::default())
+	}
+}
+
+impl<T: Config> CreateExtended<T::AccountId, Properties> for Pallet<T> {
+	fn next_class_id() -> Self::ClassId {
+		orml_nft::Pallet::<T>::next_class_id()
+	}
+
+	fn set_class_properties(class: &Self::ClassId, properties: Properties) -> DispatchResult {
+		Self::do_update_class_properties(&T::PalletId::get().into_sub_account(class), class, properties)
 	}
 }

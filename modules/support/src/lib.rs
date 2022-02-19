@@ -18,7 +18,6 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::upper_case_acronyms)]
-
 use codec::{Decode, Encode, FullCodec};
 use frame_support::pallet_prelude::{DispatchClass, Pays, Weight};
 use primitives::{
@@ -569,7 +568,6 @@ impl Erc20InfoMapping for () {
 pub trait CompoundCashTrait<Balance, Moment> {
 	fn set_future_yield(next_cash_yield: Balance, yield_index: u128, timestamp_effective: Moment) -> DispatchResult;
 }
-
 pub trait CallBuilder {
 	type AccountId: FullCodec;
 	type Balance: FullCodec;
