@@ -8,11 +8,15 @@
 		"build": "waffle waffle.json",
 		"run-test": "yarn mocha -r ts-node/register/transpile-only --timeout 50000 --no-warnings"
 	},
+	"resolutions": {
+		"@acala-network/api": "4.0.2-15",
+		"@acala-network/types": "4.0.2-15",
+		"@polkadot/api": "7.8.1",
+		"@polkadot/types": "7.8.1"
+	},
 	"dependencies": {
-		"@acala-network/api": "^4.0.1",
 		"@acala-network/bodhi": "^2.2.0",
 		"@openzeppelin/contracts": "4.4.2",
-		"@polkadot/api": "~6.11.1",
 		"@types/chai": "^4.2.22",
 		"@types/chai-as-promised": "^7.1.4",
 		"@types/mocha": "^9.0.0",
