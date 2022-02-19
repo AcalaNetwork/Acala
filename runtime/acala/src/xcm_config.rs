@@ -286,7 +286,7 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 					_ => None,
 				}
 			}
-			// adapt for reanchor canonical location: https://github.com/paritytech/polkadot/pull/4470
+			// adapt for re-anchor canonical location: https://github.com/paritytech/polkadot/pull/4470
 			MultiLocation {
 				parents: 0,
 				interior: X1(GeneralKey(key)),

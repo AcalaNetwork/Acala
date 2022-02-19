@@ -62,9 +62,6 @@ use orml_traits::{
 };
 use pallet_transaction_payment::RuntimeDispatchInfo;
 
-/// Weights for pallets used in the runtime.
-mod weights;
-
 pub use frame_support::{
 	construct_runtime, log, parameter_types,
 	traits::{
@@ -76,7 +73,6 @@ pub use frame_support::{
 	PalletId, RuntimeDebug, StorageValue,
 };
 
-pub use pallet_staking::StakerStatus;
 pub use pallet_timestamp::Call as TimestampCall;
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
@@ -101,15 +97,16 @@ pub use runtime_common::{
 	SystemContractsFilter, TechnicalCommitteeInstance, TechnicalCommitteeMembershipInstance, TimeStampedPrice,
 	TipPerWeightStep, ACA, AUSD, DOT, LCDOT, LDOT, RENBTC,
 };
+pub use xcm::latest::prelude::*;
+use xcm_config::XcmConfig;
+pub use xcm_executor::{Assets, Config, XcmExecutor};
 
 mod authority;
 mod benchmarking;
 pub mod constants;
+/// Weights for pallets used in the runtime.
+mod weights;
 pub mod xcm_config;
-
-pub use xcm::latest::prelude::*;
-use xcm_config::XcmConfig;
-pub use xcm_executor::{traits::WeightTrader, Assets, Config, XcmExecutor};
 
 /// This runtime version.
 #[sp_version::runtime_version]

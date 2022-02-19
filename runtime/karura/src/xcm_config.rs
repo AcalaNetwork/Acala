@@ -434,7 +434,7 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 				parents: 1,
 				interior: X1(Parachain(parachains::phala::ID)),
 			} => Some(Token(PHA)),
-			// adapt for reanchor canonical location: https://github.com/paritytech/polkadot/pull/4470
+			// adapt for re-anchor canonical location: https://github.com/paritytech/polkadot/pull/4470
 			MultiLocation {
 				parents: 0,
 				interior: X1(GeneralKey(key)),

@@ -63,9 +63,6 @@ use orml_traits::{
 };
 use pallet_transaction_payment::RuntimeDispatchInfo;
 
-/// Weights for pallets used in the runtime.
-mod weights;
-
 pub use frame_support::{
 	construct_runtime, log, parameter_types,
 	traits::{
@@ -102,21 +99,22 @@ pub use runtime_common::{
 	TechnicalCommitteeMembershipInstance, TimeStampedPrice, TipPerWeightStep, BNC, KAR, KBTC, KINT, KSM, KUSD, LKSM,
 	PHA, RENBTC, VSKSM,
 };
+pub use xcm::latest::prelude::*;
+use xcm_config::XcmConfig;
+pub use xcm_executor::{Assets, Config, XcmExecutor};
 
 /// Import the stable_asset pallet.
 pub use nutsfinance_stable_asset;
 
-mod authority;
-mod benchmarking;
-pub mod constants;
-pub mod xcm_config;
-
 #[cfg(feature = "integration-tests")]
 mod integration_tests_config;
 
-pub use xcm::latest::prelude::*;
-use xcm_config::XcmConfig;
-pub use xcm_executor::{traits::WeightTrader, Assets, Config, XcmExecutor};
+mod authority;
+mod benchmarking;
+pub mod constants;
+/// Weights for pallets used in the runtime.
+mod weights;
+pub mod xcm_config;
 
 /// This runtime version.
 #[sp_version::runtime_version]
