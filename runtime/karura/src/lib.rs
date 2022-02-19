@@ -1324,6 +1324,13 @@ impl InstanceFilter<Call> for ProxyType {
 			ProxyType::Auction => {
 				matches!(c, Call::Auction(orml_auction::Call::bid { .. }))
 			}
+			ProxyType::DexLiquidity => {
+				matches!(
+					c,
+					Call::Dex(module_dex::Call::add_liquidity { .. })
+						| Call::Dex(module_dex::Call::remove_liquidity { .. })
+				)
+			}
 			ProxyType::Swap => {
 				matches!(
 					c,

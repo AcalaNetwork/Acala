@@ -319,6 +319,7 @@ pub enum ProxyType {
 	CancelProxy,
 	Governance,
 	Auction,
+	DexLiquidity,
 	Swap,
 	Loan,
 }
