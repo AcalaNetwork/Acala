@@ -12,8 +12,7 @@ sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v
 evm = { git = "https://github.com/rust-blockchain/evm", rev = "52d5fe5d1fd665a495ea34cc67c5f0c6bc6dd23e", default-features = false, features = ["with-codec"] }
 evm-gasometer = { git = "https://github.com/rust-blockchain/evm", rev = "52d5fe5d1fd665a495ea34cc67c5f0c6bc6dd23e", default-features = false }
 evm-runtime = { git = "https://github.com/rust-blockchain/evm", rev = "52d5fe5d1fd665a495ea34cc67c5f0c6bc6dd23e", default-features = false }
-# TODO: https://github.com/rust-blockchain/ethereum/pull/36
-ethereum = { git = "https://github.com/zjb0807/ethereum", rev = "58849281d029f2933dbd8c02eafa0488428702d1", default-features = false, features = ["with-codec"] }
+ethereum = { git = "https://github.com/rust-blockchain/ethereum", rev = "34fd1fed1fb0261fef9c8a36acb6ecf5082036ad", default-features = false, features = ["with-codec"] }
 
 [features]
 default = ["std"]
