@@ -858,21 +858,25 @@ impl<T: Config> Pallet<T> {
 		// issue stable coin in advance
 		<T as Config>::CDPTreasury::issue_debit(&loans_module_account, increase_debit_value, true)?;
 
+		// get the actual increased collateral amount
 		let increase_collateral = match currency_id {
 			CurrencyId::DexShare(dex_share_0, dex_share_1) => {
 				let token_0: CurrencyId = dex_share_0.into();
 				let token_1: CurrencyId = dex_share_1.into();
 
-				// NOTE: distribute half of the new issued stable coin to each components of lp token
+				// NOTE: distribute half of the new issued stable coin to each components of lp token,
+				// need better distribution methods to avoid unused component tokens.
 				let stable_for_token_0 = increase_debit_value / 2;
 				let stable_for_token_1 = increase_debit_value.saturating_sub(stable_for_token_0);
 				let stable_currency_id = T::GetStableCurrencyId::get();
 				let stable_to_lp_component = |token: CurrencyId,
 				                              stable_amount: Balance|
 				 -> sp_std::result::Result<Balance, DispatchError> {
+					// do nothing if component token is stable coin
 					if token == stable_currency_id {
 						Ok(stable_amount)
 					} else {
+						// swap compnent token in DEX
 						let limit = SwapLimit::ExactSupply(stable_amount, Zero::zero());
 						let swap_path = T::DEX::get_best_price_swap_path(
 							stable_currency_id,
@@ -886,7 +890,7 @@ impl<T: Config> Pallet<T> {
 					}
 				};
 
-				// swap stable coin to lp component token.
+				// swap stable coin to lp component tokens.
 				let available_0 = stable_to_lp_component(token_0, stable_for_token_0)?;
 				let available_1 = stable_to_lp_component(token_1, stable_for_token_1)?;
 				let (consumption_0, consumption_1, actual_increase_lp) = T::DEX::add_liquidity(
@@ -910,6 +914,7 @@ impl<T: Config> Pallet<T> {
 				actual_increase_lp
 			}
 			_ => {
+				// swap stable coin to collateral
 				let limit = SwapLimit::ExactSupply(increase_debit_value, min_increase_collateral);
 				let swap_path = T::DEX::get_best_price_swap_path(
 					T::GetStableCurrencyId::get(),
@@ -931,9 +936,10 @@ impl<T: Config> Pallet<T> {
 		let debit_adjustment = <LoansOf<T>>::amount_try_from_balance(increase_debit_balance)?;
 		<LoansOf<T>>::update_loan(who, currency_id, collateral_adjustment, debit_adjustment)?;
 
-		// check the CDP if is still at valid risk.
 		let Position { collateral, debit } = <LoansOf<T>>::positions(currency_id, &who);
+		// check the CDP if is still at valid risk
 		Self::check_position_valid(currency_id, collateral, debit, true)?;
+		// debit cap check due to new issued stable coin
 		Self::check_debit_cap(currency_id, <LoansOf<T>>::total_positions(currency_id).debit)?;
 		Ok(())
 	}
@@ -959,6 +965,8 @@ impl<T: Config> Pallet<T> {
 		let loans_module_account = <LoansOf<T>>::account_id();
 		let stable_currency_id = T::GetStableCurrencyId::get();
 		let Position { collateral, debit } = <LoansOf<T>>::positions(currency_id, &who);
+
+		// ensure collateral of CDP is enough
 		ensure!(decrease_collateral <= collateral, Error::<T>::CollateralNotEnough);
 
 		let actual_stable_amount = match currency_id {
@@ -966,6 +974,7 @@ impl<T: Config> Pallet<T> {
 				let token_0: CurrencyId = dex_share_0.into();
 				let token_1: CurrencyId = dex_share_1.into();
 
+				// remove liquidity to get component tokens of lp token
 				let (available_0, available_1) = T::DEX::remove_liquidity(
 					&loans_module_account,
 					token_0,
@@ -978,9 +987,11 @@ impl<T: Config> Pallet<T> {
 				let component_to_stable = |token: CurrencyId,
 				                           amount: Balance|
 				 -> sp_std::result::Result<Balance, DispatchError> {
+					// do nothing if component token is stable coin
 					if token == stable_currency_id {
 						Ok(amount)
 					} else {
+						// swap component token to stable coin
 						let limit = SwapLimit::ExactSupply(amount, Zero::zero());
 						let swap_path = T::DEX::get_best_price_swap_path(
 							token,
@@ -1007,6 +1018,7 @@ impl<T: Config> Pallet<T> {
 				total_stable
 			}
 			_ => {
+				// swap collateral to stable coin
 				let limit = SwapLimit::ExactSupply(decrease_collateral, min_decrease_debit_value);
 				let swap_path = T::DEX::get_best_price_swap_path(
 					currency_id,
