@@ -319,9 +319,9 @@ pub enum ProxyType {
 	CancelProxy,
 	Governance,
 	Auction,
-	DexLiquidity,
 	Swap,
 	Loan,
+	DexLiquidity,
 }
 impl Default for ProxyType {
 	fn default() -> Self {

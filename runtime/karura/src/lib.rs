@@ -1324,13 +1324,6 @@ impl InstanceFilter<Call> for ProxyType {
 			ProxyType::Auction => {
 				matches!(c, Call::Auction(orml_auction::Call::bid { .. }))
 			}
-			ProxyType::DexLiquidity => {
-				matches!(
-					c,
-					Call::Dex(module_dex::Call::add_liquidity { .. })
-						| Call::Dex(module_dex::Call::remove_liquidity { .. })
-				)
-			}
 			ProxyType::Swap => {
 				matches!(
 					c,
@@ -1343,6 +1336,13 @@ impl InstanceFilter<Call> for ProxyType {
 					c,
 					Call::Honzon(module_honzon::Call::adjust_loan { .. })
 						| Call::Honzon(module_honzon::Call::close_loan_has_debit_by_dex { .. })
+				)
+			}
+			ProxyType::DexLiquidity => {
+				matches!(
+					c,
+					Call::Dex(module_dex::Call::add_liquidity { .. })
+						| Call::Dex(module_dex::Call::remove_liquidity { .. })
 				)
 			}
 		}
