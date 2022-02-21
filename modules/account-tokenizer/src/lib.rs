@@ -63,11 +63,6 @@ pub use module::*;
 pub mod module {
 	use super::*;
 
-	#[derive(RuntimeDebug, Encode, Decode, TypeInfo)]
-	pub struct MintRequestResult {
-		pub accepted: bool,
-	}
-
 	#[pallet::config]
 	pub trait Config: frame_system::Config + orml_nft::Config {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
@@ -237,13 +232,12 @@ pub mod module {
 		) -> DispatchResult {
 			// Extract confirmation info from Origin.
 			let data = T::OracleOrigin::ensure_origin(origin)?;
-			let result = MintRequestResult::decode(&mut &data[..]).map_err(|_| Error::<T>::MintRequestResultInvalid)?;
 
 			// Accept or reject the mint request.
-			if result.accepted {
-				Self::accept_mint_request(owner, account)
-			} else {
+			if data[0] == 0 {
 				Self::reject_mint_request(owner)
+			} else {
+				Self::accept_mint_request(owner, account)
 			}
 		}
 
