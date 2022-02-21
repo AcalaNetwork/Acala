@@ -1,4 +1,4 @@
-name: Test
+name: Docker Image
 on:
   pull_request:
     branches:
@@ -25,9 +25,9 @@ jobs:
   build-image:
     runs-on: ubuntu-latest
     needs: clean-up-actions
-    strategy:
-      matrix:
-        network: [mandala]
+    # strategy:
+    #   matrix:
+    #     network: [mandala, karura, acala]
     steps:
       - uses: actions/checkout@v2
         with:
@@ -46,8 +46,6 @@ jobs:
         with:
           context: .
           push: true
-          tags: AcalaNetwork/{{ matrix.network }}-runtime:{{ steps.vars.commit }}
-          build-args: BUILD_ARGS=build-{{ matrix.network }}-release,GIT_COMMIT={{ steps.vars.commit }}
-          tag_with_ref: true
-          tag_with_sha: true
+          tags: acalanetwork/mandala-runtime:{{ steps.vars.commit }}
+          build-args: BUILD_ARGS=build-mandala-release,GIT_COMMIT={{ steps.vars.commit }}
 
