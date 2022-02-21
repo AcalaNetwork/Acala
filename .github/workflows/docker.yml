@@ -2,7 +2,6 @@ name: Docker Image
 on:
   push:
     branches:
-      - master
       - release-**
     paths-ignore:
       - '**/README.md'
