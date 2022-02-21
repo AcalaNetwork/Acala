@@ -59,7 +59,9 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          build-args: BUILD_ARGS=build-mandala-release,GIT_COMMIT=test
+          build-args: |
+            BUILD_ARGS=build-mandala-release
+            GIT_COMMIT={{ env.GITHUB_SHA }}
           file: scripts/Dockerfile
           cache-from: type=gha
           cache-to: type=gha,mode=max
