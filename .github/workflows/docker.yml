@@ -46,6 +46,6 @@ jobs:
         with:
           context: .
           push: true
-          tags: acalanetwork/mandala-runtime:{{ steps.vars.commit }}
-          build-args: BUILD_ARGS=build-mandala-release,GIT_COMMIT={{ steps.vars.commit }}
+          tags: acalanetwork/mandala-runtime:{{ jobs.build-image.steps.vars.commit }}
+          build-args: BUILD_ARGS=build-mandala-release,GIT_COMMIT={{ jobs.build-image.steps.vars.commit }}
 
