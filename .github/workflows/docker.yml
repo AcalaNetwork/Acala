@@ -46,7 +46,7 @@ jobs:
         with:
           # list of Docker images to use as base name for tags
           images: |
-            ghcr.io/acalanetwork/{{ matrix.network }}-runtime
+            ghcr.io/acalanetwork/${{ matrix.network }}-runtime
           # generate Docker tags based on the following events/attributes
           tags: |
             type=ref,event=branch
@@ -60,8 +60,8 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            BUILD_ARGS=build-{{ matrix.network }}-release
-            GIT_COMMIT={{ env.GITHUB_SHA }}
+            BUILD_ARGS=build-${{ matrix.network }}-release
+            GIT_COMMIT=${{ env.GITHUB_SHA }}
           file: scripts/Dockerfile
           cache-from: type=gha
           cache-to: type=gha,mode=max
