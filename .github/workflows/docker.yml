@@ -43,6 +43,6 @@ jobs:
         with:
           context: .
           push: true
-          tags: acalanetwork/mandala-runtime:{{ env.GITHUB_SHA }}
-          build-args: BUILD_ARGS=build-mandala-release,GIT_COMMIT={{ env.GITHUB_SHA }}
+          tags: acalanetwork/mandala-runtime:test
+          build-args: BUILD_ARGS=build-mandala-release,GIT_COMMIT=test
 
