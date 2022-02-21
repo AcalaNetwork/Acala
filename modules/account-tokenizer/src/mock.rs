@@ -16,20 +16,18 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-//! Mocks for the PRT module
+//! Mocks for the Account Tokenizer module
 
 #![cfg(test)]
 
 use super::*;
 use frame_support::{
 	parameter_types,
-	traits::{Everything, InstanceFilter, Nothing},
+	traits::{Everything, InstanceFilter},
 	PalletId,
 };
-use frame_system::EnsureRoot;
-use module_support::{mocks::MockAddressMapping, GiltXcm};
-use orml_traits::parameter_type_with_key;
-use primitives::{Amount, ReserveIdentifier, TokenSymbol};
+use module_support::ProxyXcm;
+use primitives::ReserveIdentifier;
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
@@ -37,37 +35,33 @@ use sp_runtime::{
 	AccountId32,
 };
 
+use module_foreign_state_oracle::EnsureForeignStateOracle;
 use module_nft::{ClassData, TokenData};
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
 
-mod prt {
+mod account_tokenizer {
 	pub use super::super::*;
 }
 
 pub const ALICE: AccountId = AccountId32::new([1u8; 32]);
 pub const BOB: AccountId = AccountId32::new([2u8; 32]);
-pub const NATIVE_CURRENCY: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
-pub const RELAYCHAIN_CURRENCY: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
+pub const TREASURY: AccountId = AccountId32::new([255u8; 32]);
 
 pub fn dollar(b: Balance) -> Balance {
 	b * 1_000_000_000_000
 }
 
 /// mock XCM transfer.
-pub struct MockGiltXcm;
-impl GiltXcm<Balance> for MockGiltXcm {
-	fn gilt_place_bid(_amount: Balance, _duration: u32) -> DispatchResult {
-		Ok(())
-	}
-	// Send XCM message to retract a bid to buy Gilt.
-	fn gilt_retract_bid(_amount: Balance, _duration: u32) -> DispatchResult {
+pub struct MockProxyXcm;
+impl ProxyXcm<AccountId> for MockProxyXcm {
+	fn transfer_proxy(_real: AccountId, _new_owner: AccountId) -> DispatchResult {
 		Ok(())
 	}
 
-	fn gilt_thaw(_index: u32) -> DispatchResult {
-		Ok(())
+	fn get_transfer_proxy_xcm_fee() -> Balance {
+		0
 	}
 }
 
@@ -99,24 +93,7 @@ impl frame_system::Config for Runtime {
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
 	type OnSetCode = ();
-}
-
-parameter_type_with_key! {
-	pub ExistentialDeposits: |_currency_id: CurrencyId| -> Balance {
-		Default::default()
-	};
-}
-
-impl orml_tokens::Config for Runtime {
-	type Event = Event;
-	type Balance = Balance;
-	type Amount = Amount;
-	type CurrencyId = CurrencyId;
-	type WeightInfo = ();
-	type ExistentialDeposits = ExistentialDeposits;
-	type OnDust = ();
-	type MaxLocks = ();
-	type DustRemovalWhitelist = Nothing;
+	type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
 
 parameter_types! {
@@ -133,32 +110,6 @@ impl pallet_balances::Config for Runtime {
 	type WeightInfo = ();
 	type MaxReserves = ();
 	type ReserveIdentifier = ReserveIdentifier;
-}
-
-pub type AdaptedBasicCurrency = module_currencies::BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
-
-parameter_types! {
-	pub const GetNativeCurrencyId: CurrencyId = NATIVE_CURRENCY;
-}
-
-impl module_currencies::Config for Runtime {
-	type Event = Event;
-	type MultiCurrency = Tokens;
-	type NativeCurrency = AdaptedBasicCurrency;
-	type GetNativeCurrencyId = GetNativeCurrencyId;
-	type WeightInfo = ();
-	type AddressMapping = MockAddressMapping;
-	type EVMBridge = ();
-	type SweepOrigin = EnsureRoot<AccountId>;
-	type OnDust = ();
-}
-
-impl BlockNumberProvider for MockRelayBlockNumberProvider {
-	type BlockNumber = BlockNumber;
-
-	fn current_block_number() -> Self::BlockNumber {
-		Self::get()
-	}
 }
 
 parameter_types! {
@@ -237,23 +188,23 @@ impl pallet_proxy::Config for Runtime {
 }
 
 parameter_types! {
-	pub const RelaychainCurrency: CurrencyId = RELAYCHAIN_CURRENCY;
-	pub const PrtPalletId: PalletId = PalletId(*b"aca/mprt");
-	pub PrtPalletAccount: AccountId = PrtPalletId::get().into_account();
-	pub MinimumBidAmount: Balance = dollar(1);
-	pub static MockRelayBlockNumberProvider: BlockNumber = 0;
+	pub const AcccountTokenizerPalletId: PalletId = PalletId(*b"aca/atnz");
+	pub AccountTokenizerPalletAccount: AccountId = AcccountTokenizerPalletId::get().into_account();
+	pub TreasuryAccount: AccountId = TREASURY;
+	pub MintRequestDeposit: Balance = dollar(1);
+	pub MintFee: Balance = dollar(1);
 }
 
 impl Config for Runtime {
 	type Event = Event;
-	type RelaychainCurrency = RelaychainCurrency;
-	type PalletAccount = PrtPalletAccount;
-	type MinimumBidAmount = MinimumBidAmount;
-	type Currency = Currencies;
-	type XcmInterface = MockGiltXcm;
-	type RelayChainBlockNumber = MockRelayBlockNumberProvider;
-	type OracleOrigin = EnsureRoot<AccountId>;
+	type PalletAccount = AccountTokenizerPalletAccount;
+	type Currency = Balances;
+	type XcmInterface = MockProxyXcm;
+	type OracleOrigin = EnsureForeignStateOracle;
 	type NFTInterface = ModuleNFT;
+	type TreasuryAccount = TreasuryAccount;
+	type MintRequestDeposit = MintRequestDeposit;
+	type MintFee = MintFee;
 }
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
@@ -267,18 +218,16 @@ frame_support::construct_runtime!(
 	{
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
-		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
-		Currencies: module_currencies::{Pallet, Call, Event<T>},
 
 		ModuleNFT: module_nft::{Pallet, Call, Event<T>},
 		OrmlNFT: orml_nft::{Pallet, Storage, Config<T>},
 		Proxy: pallet_proxy::{Pallet, Call, Storage, Event<T>},
-		PRT: prt::{Pallet, Call, Storage, Event<T>},
+		AccountTokenizer: account_tokenizer::{Pallet, Call, Storage, Event<T>, Origin},
 	}
 );
 
 pub struct ExtBuilder {
-	balances: Vec<(AccountId, CurrencyId, Balance)>,
+	balances: Vec<(AccountId, Balance)>,
 }
 
 impl Default for ExtBuilder {
@@ -288,7 +237,7 @@ impl Default for ExtBuilder {
 }
 
 impl ExtBuilder {
-	pub fn balances(mut self, balances: Vec<(AccountId, CurrencyId, Balance)>) -> Self {
+	pub fn balances(mut self, balances: Vec<(AccountId, Balance)>) -> Self {
 		self.balances = balances;
 		self
 	}
@@ -303,18 +252,7 @@ impl ExtBuilder {
 				.balances
 				.clone()
 				.into_iter()
-				.filter(|(_, currency_id, _)| *currency_id == NATIVE_CURRENCY)
-				.map(|(account_id, _, initial_balance)| (account_id, initial_balance))
-				.collect::<Vec<_>>(),
-		}
-		.assimilate_storage(&mut t)
-		.unwrap();
-
-		orml_tokens::GenesisConfig::<Runtime> {
-			balances: self
-				.balances
-				.into_iter()
-				.filter(|(_, currency_id, _)| *currency_id != NATIVE_CURRENCY)
+				.map(|(account_id, initial_balance)| (account_id, initial_balance))
 				.collect::<Vec<_>>(),
 		}
 		.assimilate_storage(&mut t)

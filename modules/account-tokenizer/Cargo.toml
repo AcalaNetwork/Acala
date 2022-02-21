@@ -18,6 +18,7 @@ orml-traits = { path = "../../orml/traits", default-features = false }
 
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 module-support = { path = "../../modules/support", default-features = false }
+module-foreign-state-oracle = { path = "../../modules/foreign-state-oracle", default-features = false }
 
 [dev-dependencies]
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.16" }
@@ -43,5 +44,6 @@ std = [
 	"orml-traits/std",
 	"primitives/std",
 	"module-support/std",
+	"module-foreign-state-oracle/std",
 ]
 try-runtime = ["frame-support/try-runtime"]
