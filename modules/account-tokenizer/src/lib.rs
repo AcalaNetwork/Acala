@@ -53,7 +53,7 @@ use primitives::{
 
 pub const RESERVE_ID: ReserveIdentifier = ReserveIdentifier::AccountTokenizer;
 
-// mod mock;
+mod mock;
 // mod tests;
 
 pub use module::*;
@@ -91,7 +91,7 @@ pub mod module {
 		type XcmInterface: ProxyXcm<Self::AccountId>;
 
 		/// Origin used by Oracles. Used to relay information from the Relaychain.
-		type OracleOrigin: EnsureOrigin<Self::Origin>;
+		type OracleOrigin: EnsureOrigin<Self::Origin, Success = Vec<u8>>;
 
 		/// Interface used to communicate with the NFT module.
 		type NFTInterface: Inspect<Self::AccountId, ClassId = Self::ClassId, InstanceId = Self::TokenId>
@@ -186,6 +186,9 @@ pub mod module {
 	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
+	#[pallet::origin]
+	pub type Origin = module_foreign_state_oracle::RawOrigin;
+
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		/// Request to mint an Account Token. Called after the user of the same Account Id has given
@@ -210,8 +213,8 @@ pub mod module {
 			account: T::AccountId,
 			owner: T::AccountId,
 		) -> DispatchResult {
+			let _ = T::OracleOrigin::ensure_origin(origin)?;
 			// let (confirm, owner, account) = T::OracleOrigin::ensure_origin(origin)?;
-			T::OracleOrigin::ensure_origin(origin)?;
 			// if confirm {
 			Self::accept_mint_request(owner, account)
 			// }

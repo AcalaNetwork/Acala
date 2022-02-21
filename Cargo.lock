@@ -5933,6 +5933,7 @@ dependencies = [
  "acala-primitives",
  "frame-support",
  "frame-system",
+ "module-foreign-state-oracle",
  "module-nft",
  "module-support",
  "orml-nft",
