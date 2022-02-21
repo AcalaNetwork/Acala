@@ -1,17 +1,13 @@
 name: Docker Image
 on:
-  pull_request:
-    branches:
-      - master
-      - release-**
-    paths-ignore:
-      - '**/README.md'
   push:
     branches:
       - master
       - release-**
     paths-ignore:
       - '**/README.md'
+  workflow_dispatch:
+
 jobs:
   clean-up-actions:
     runs-on: ubuntu-latest
@@ -60,7 +56,7 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            BUILD_ARGS=build-${{ matrix.network }}-release
+            BUILD_ARGS=build-${{ matrix.network }}-internal-release
             GIT_COMMIT=${{ env.GITHUB_SHA }}
           file: scripts/Dockerfile
           cache-from: type=gha
