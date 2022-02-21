@@ -234,9 +234,9 @@ impl<T: Config> Pallet<T> {
 
 impl<T: Config> ForeignChainStateQuery<T::AccountId, T::VerifiableTask> for Pallet<T> {
 	#[transactional]
-	fn query_task(who: T::AccountId, length_bound: u32, dispatchable_call: T::VerifiableTask) -> DispatchResult {
+	fn query_task(who: T::AccountId, length_bound: usize, dispatchable_call: T::VerifiableTask) -> DispatchResult {
 		let call_len = dispatchable_call.using_encoded(|x| x.len());
-		ensure!(call_len <= length_bound as usize, Error::<T>::TooLargeVerifiableCall);
+		ensure!(call_len <= length_bound, Error::<T>::TooLargeVerifiableCall);
 		T::Currency::transfer(
 			&who,
 			&Self::account_id(),
