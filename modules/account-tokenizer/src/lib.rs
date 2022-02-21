@@ -62,6 +62,13 @@ pub use module::*;
 pub mod module {
 	use super::*;
 
+	#[derive(RuntimeDebug, Encode, Decode, TypeInfo)]
+	pub struct MintRequestResult<T: Config> {
+		pub accepted: bool,
+		pub owner: T::AccountId,
+		pub account: T::AccountId,
+	}
+
 	#[pallet::config]
 	pub trait Config: frame_system::Config + orml_nft::Config {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
@@ -111,6 +118,8 @@ pub mod module {
 		CallerUnauthorized,
 		/// The owner of the NFT has insufficient reserve balance.
 		InsufficientReservedBalance,
+		/// The response to mint request has invalid encoding.
+		MintRequestResultInvalid,
 	}
 
 	#[pallet::event]
@@ -205,19 +214,16 @@ pub mod module {
 		}
 
 		#[pallet::weight(0)]
-		pub fn confirm_mint_request(
-			origin: OriginFor<T>,
-			account: T::AccountId,
-			owner: T::AccountId,
-		) -> DispatchResult {
-			let _ = T::OracleOrigin::ensure_origin(origin)?;
-			// let (confirm, owner, account) = T::OracleOrigin::ensure_origin(origin)?;
-			// if confirm {
-			Self::accept_mint_request(owner, account)
-			// }
-			// else {
-			// 	Self::reject_mint_request(owner)
-			// }
+		pub fn confirm_mint_request(origin: OriginFor<T>) -> DispatchResult {
+			// let _ = T::OracleOrigin::ensure_origin(origin)?;
+			let mut data = T::OracleOrigin::ensure_origin(origin)?;
+			let result =
+				MintRequestResult::<T>::decode(&mut &data[..]).map_err(|_| Error::<T>::MintRequestResultInvalid)?;
+			if result.accepted {
+				Self::accept_mint_request(result.owner, result.account)
+			} else {
+				Self::reject_mint_request(result.owner)
+			}
 		}
 
 		/// Burn the account's token to relinquish the control of the account on the relaychain
