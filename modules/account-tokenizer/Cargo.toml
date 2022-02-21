@@ -27,6 +27,7 @@ sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.16" }
 pallet-proxy = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.16" }
 
+module-foreign-state-oracle = { path = "../../modules/foreign-state-oracle" }
 module-nft = { path = "../../modules/nft" }
 orml-tokens = { path = "../../orml/tokens" }
 
@@ -44,6 +45,5 @@ std = [
 	"orml-traits/std",
 	"primitives/std",
 	"module-support/std",
-	"module-foreign-state-oracle/std",
 ]
 try-runtime = ["frame-support/try-runtime"]

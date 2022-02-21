@@ -22,10 +22,11 @@
 
 use super::*;
 use frame_support::{
-	parameter_types,
+	ord_parameter_types, parameter_types,
 	traits::{Everything, InstanceFilter},
 	PalletId,
 };
+use frame_system::EnsureSignedBy;
 use module_support::ProxyXcm;
 use primitives::ReserveIdentifier;
 use sp_core::H256;
@@ -188,6 +189,30 @@ impl pallet_proxy::Config for Runtime {
 }
 
 parameter_types! {
+	pub const ForeignOraclePalletId: PalletId = PalletId(*b"aca/fsto");
+	pub const QueryDuration: BlockNumber = 10;
+	pub const QueryFee: Balance = 100;
+	pub const CancelFee: Balance = 10;
+}
+
+ord_parameter_types! {
+	pub const One: AccountId = AccountId32::new([1; 32]);
+}
+
+impl module_foreign_state_oracle::Config for Runtime {
+	type Event = Event;
+	type Origin = Origin;
+	type VerifiableTask = Call;
+	type QueryFee = QueryFee;
+	type CancelFee = CancelFee;
+	type OracleOrigin = EnsureSignedBy<One, AccountId>;
+	type QueryDuration = QueryDuration;
+	type Currency = Balances;
+	type PalletId = ForeignOraclePalletId;
+	type BlockNumberProvider = System;
+}
+
+parameter_types! {
 	pub const AcccountTokenizerPalletId: PalletId = PalletId(*b"aca/atnz");
 	pub AccountTokenizerPalletAccount: AccountId = AcccountTokenizerPalletId::get().into_account();
 	pub TreasuryAccount: AccountId = TREASURY;
@@ -222,7 +247,8 @@ frame_support::construct_runtime!(
 		ModuleNFT: module_nft::{Pallet, Call, Event<T>},
 		OrmlNFT: orml_nft::{Pallet, Storage, Config<T>},
 		Proxy: pallet_proxy::{Pallet, Call, Storage, Event<T>},
-		AccountTokenizer: account_tokenizer::{Pallet, Call, Storage, Event<T>, Origin},
+		ForeignStateOracle: module_foreign_state_oracle::{Pallet, Call, Storage, Event<T>, Origin},
+		AccountTokenizer: account_tokenizer::{Pallet, Call, Storage, Event<T>},
 	}
 );
 

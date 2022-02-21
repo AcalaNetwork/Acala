@@ -186,9 +186,6 @@ pub mod module {
 	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
-	#[pallet::origin]
-	pub type Origin = module_foreign_state_oracle::RawOrigin;
-
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		/// Request to mint an Account Token. Called after the user of the same Account Id has given
