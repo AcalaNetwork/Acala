@@ -64,10 +64,8 @@ pub mod module {
 	use super::*;
 
 	#[derive(RuntimeDebug, Encode, Decode, TypeInfo)]
-	pub struct MintRequestResult<T: Config> {
+	pub struct MintRequestResult {
 		pub accepted: bool,
-		pub owner: T::AccountId,
-		pub account: T::AccountId,
 	}
 
 	#[pallet::config]
@@ -220,7 +218,11 @@ pub mod module {
 			T::Currency::reserve_named(&RESERVE_ID, &who, T::MintRequestDeposit::get())?;
 
 			// Submit confiramtion call to be serviced by foreign state oracle
-			let call: <T as Config>::Call = Call::<T>::confirm_mint_request {}.into();
+			let call: <T as Config>::Call = Call::<T>::confirm_mint_request {
+				owner: who.clone(),
+				account: account.clone(),
+			}
+			.into();
 			T::ForeignStateQuery::query_task(who.clone(), call.using_encoded(|x| x.len()), call)?;
 
 			Self::deposit_event(Event::MintRequested { account, who });
@@ -228,17 +230,20 @@ pub mod module {
 		}
 
 		#[pallet::weight(0)]
-		pub fn confirm_mint_request(origin: OriginFor<T>) -> DispatchResult {
+		pub fn confirm_mint_request(
+			origin: OriginFor<T>,
+			owner: T::AccountId,
+			account: T::AccountId,
+		) -> DispatchResult {
 			// Extract confirmation info from Origin.
 			let data = T::OracleOrigin::ensure_origin(origin)?;
-			let result =
-				MintRequestResult::<T>::decode(&mut &data[..]).map_err(|_| Error::<T>::MintRequestResultInvalid)?;
+			let result = MintRequestResult::decode(&mut &data[..]).map_err(|_| Error::<T>::MintRequestResultInvalid)?;
 
 			// Accept or reject the mint request.
 			if result.accepted {
-				Self::accept_mint_request(result.owner, result.account)
+				Self::accept_mint_request(owner, account)
 			} else {
-				Self::reject_mint_request(result.owner)
+				Self::reject_mint_request(owner)
 			}
 		}
 
