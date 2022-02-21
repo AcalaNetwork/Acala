@@ -25,9 +25,9 @@ jobs:
   build-image:
     runs-on: ubuntu-latest
     needs: clean-up-actions
-    # strategy:
-    #   matrix:
-    #     network: [mandala, karura, acala]
+    strategy:
+      matrix:
+        network: [mandala, karura, acala]
     steps:
       - uses: actions/checkout@v2
         with:
@@ -46,7 +46,7 @@ jobs:
         with:
           # list of Docker images to use as base name for tags
           images: |
-            ghcr.io/acalanetwork/mandala-runtime
+            ghcr.io/acalanetwork/{{ matrix.network }}-runtime
           # generate Docker tags based on the following events/attributes
           tags: |
             type=ref,event=branch
@@ -60,7 +60,7 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            BUILD_ARGS=build-mandala-release
+            BUILD_ARGS=build-{{ matrix.network }}-release
             GIT_COMMIT={{ env.GITHUB_SHA }}
           file: scripts/Dockerfile
           cache-from: type=gha
