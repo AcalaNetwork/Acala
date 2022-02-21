@@ -83,14 +83,14 @@ fn query_and_cancel_works() {
 		);
 		// Need native token to query the oracle
 		assert_noop!(
-			ForeignStateOracle::query_task(BOB, call.using_encoded(|x| x.len()) as u32, call.clone()),
+			ForeignStateOracle::query_task(BOB, call.using_encoded(|x| x.len()), call.clone()),
 			pallet_balances::Error::<Runtime>::InsufficientBalance
 		);
 
 		let alice_before = Balances::free_balance(ALICE);
 		assert_ok!(ForeignStateOracle::query_task(
 			ALICE,
-			call.using_encoded(|x| x.len()) as u32,
+			call.using_encoded(|x| x.len()),
 			call.clone()
 		));
 		// Takes the query fee

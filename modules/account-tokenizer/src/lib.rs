@@ -31,6 +31,7 @@
 #![allow(clippy::upper_case_acronyms)]
 
 use frame_support::{
+	dispatch::{Dispatchable, GetDispatchInfo},
 	log,
 	pallet_prelude::*,
 	traits::{
@@ -45,7 +46,7 @@ use frame_support::{
 use frame_system::pallet_prelude::*;
 use orml_traits::{arithmetic::Zero, CreateExtended, InspectExtended};
 
-use module_support::ProxyXcm;
+use module_support::{ForeignChainStateQuery, ProxyXcm};
 use primitives::{
 	nft::{ClassProperty, Properties},
 	Balance, ReserveIdentifier,
@@ -99,6 +100,16 @@ pub mod module {
 
 		/// Origin used by Oracles. Used to relay information from the Relaychain.
 		type OracleOrigin: EnsureOrigin<Self::Origin, Success = Vec<u8>>;
+
+		/// The overarching call type.
+		type Call: Parameter
+			+ Dispatchable<Origin = Self::Origin>
+			+ GetDispatchInfo
+			+ From<frame_system::Call<Self>>
+			+ From<Call<Self>>
+			+ IsType<<Self as frame_system::Config>::Call>;
+
+		type ForeignStateQuery: ForeignChainStateQuery<Self::AccountId, <Self as Config>::Call>;
 
 		/// Interface used to communicate with the NFT module.
 		type NFTInterface: Inspect<Self::AccountId, ClassId = Self::ClassId, InstanceId = Self::TokenId>
@@ -206,8 +217,11 @@ pub mod module {
 
 			// Charge the user fee and lock the deposit.
 			T::Currency::transfer(&who, &T::TreasuryAccount::get(), T::MintFee::get(), KeepAlive)?;
-
 			T::Currency::reserve_named(&RESERVE_ID, &who, T::MintRequestDeposit::get())?;
+
+			// Submit confiramtion call to be serviced by foreign state oracle
+			let call: <T as Config>::Call = Call::<T>::confirm_mint_request {}.into();
+			T::ForeignStateQuery::query_task(who.clone(), call.using_encoded(|x| x.len()), call)?;
 
 			Self::deposit_event(Event::MintRequested { account, who });
 			Ok(())
@@ -215,10 +229,12 @@ pub mod module {
 
 		#[pallet::weight(0)]
 		pub fn confirm_mint_request(origin: OriginFor<T>) -> DispatchResult {
-			// let _ = T::OracleOrigin::ensure_origin(origin)?;
-			let mut data = T::OracleOrigin::ensure_origin(origin)?;
+			// Extract confirmation info from Origin.
+			let data = T::OracleOrigin::ensure_origin(origin)?;
 			let result =
 				MintRequestResult::<T>::decode(&mut &data[..]).map_err(|_| Error::<T>::MintRequestResultInvalid)?;
+
+			// Accept or reject the mint request.
 			if result.accepted {
 				Self::accept_mint_request(result.owner, result.account)
 			} else {

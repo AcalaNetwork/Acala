@@ -222,6 +222,7 @@ parameter_types! {
 
 impl Config for Runtime {
 	type Event = Event;
+	type Call = Call;
 	type PalletAccount = AccountTokenizerPalletAccount;
 	type Currency = Balances;
 	type XcmInterface = MockProxyXcm;
@@ -230,6 +231,7 @@ impl Config for Runtime {
 	type TreasuryAccount = TreasuryAccount;
 	type MintRequestDeposit = MintRequestDeposit;
 	type MintFee = MintFee;
+	type ForeignStateQuery = ForeignStateOracle;
 }
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;

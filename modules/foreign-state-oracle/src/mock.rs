@@ -76,7 +76,7 @@ pub mod query_example {
 	impl<T: Config> Pallet<T> {
 		pub fn example_query_call(who: T::AccountId) -> DispatchResult {
 			let call: <T as Config>::Call = Call::<T>::injected_call {}.into();
-			let len = call.using_encoded(|x| x.len()) as u32;
+			let len = call.using_encoded(|x| x.len());
 			T::ForeignStateQuery::query_task(who, len, call)?;
 
 			Ok(())
