@@ -28,9 +28,7 @@ use xcm_emulator::TestExt;
 
 #[cfg(feature = "with-karura-runtime")]
 #[test]
-fn can_transfer_custom_asset_into_karura() {
-	env_logger::init();
-
+fn transfer_custom_asset_works() {
 	Karura::execute_with(|| {
 		// register foreign asset
 		assert_ok!(AssetRegistry::register_foreign_asset(
