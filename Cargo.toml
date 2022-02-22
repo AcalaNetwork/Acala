@@ -317,5 +317,5 @@ parachain-info = { git = "https://github.com/paritytech//cumulus", rev = "867bfc
 cumulus-relay-chain-interface = { git = "https://github.com/paritytech//cumulus", rev = "867bfcd8f87cc986d1a3e9eeaf16c8b4e9a27790" }
 cumulus-relay-chain-local = { git = "https://github.com/paritytech//cumulus", rev = "867bfcd8f87cc986d1a3e9eeaf16c8b4e9a27790" }
 cumulus-test-relay-validation-worker-provider = { git = "https://github.com/paritytech//cumulus", rev = "867bfcd8f87cc986d1a3e9eeaf16c8b4e9a27790" }
-westmint-runtime  = { git = "https://github.com/paritytech//cumulus", rev = "867bfcd8f87cc986d1a3e9eeaf16c8b4e9a27790" }
+statemine-runtime  = { git = "https://github.com/paritytech//cumulus", rev = "867bfcd8f87cc986d1a3e9eeaf16c8b4e9a27790" }
 parachains-common  = { git = "https://github.com/paritytech//cumulus", rev = "867bfcd8f87cc986d1a3e9eeaf16c8b4e9a27790" }

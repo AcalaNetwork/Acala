@@ -58,10 +58,10 @@ decl_test_parachain! {
 
 decl_test_parachain! {
 	pub struct Statemine {
-		Runtime = westmint_runtime::Runtime,
-		Origin = westmint_runtime::Origin,
-		XcmpMessageHandler = westmint_runtime::XcmpQueue,
-		DmpMessageHandler = westmint_runtime::DmpQueue,
+		Runtime = statemine_runtime::Runtime,
+		Origin = statemine_runtime::Origin,
+		XcmpMessageHandler = statemine_runtime::XcmpQueue,
+		DmpMessageHandler = statemine_runtime::DmpQueue,
 		new_ext = para_ext(1000),
 	}
 }
