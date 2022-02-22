@@ -16,11 +16,11 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+use super::utils::dollar;
 use crate::{
-	dollar, AccountId, Balance, Currencies, CurrencyId, Dex, DexOracle, GetNativeCurrencyId, GetStableCurrencyId,
+	AccountId, Balance, Currencies, CurrencyId, Dex, DexOracle, GetNativeCurrencyId, GetStableCurrencyId,
 	GetStakingCurrencyId, Runtime, Timestamp,
 };
-
 use frame_benchmarking::whitelisted_caller;
 use frame_support::traits::OnInitialize;
 use frame_system::RawOrigin;

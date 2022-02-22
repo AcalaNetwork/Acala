@@ -17,12 +17,12 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-	dollar, AccountId, Amount, Balance, CdpEngine, CollateralCurrencyIds, Currencies, CurrencyId,
-	DepositPerAuthorization, Dex, ExistentialDeposits, GetLiquidCurrencyId, GetNativeCurrencyId, GetStableCurrencyId,
-	GetStakingCurrencyId, Honzon, Price, Rate, Ratio, Runtime,
+	AccountId, Amount, Balance, CdpEngine, CollateralCurrencyIds, Currencies, CurrencyId, DepositPerAuthorization, Dex,
+	ExistentialDeposits, GetLiquidCurrencyId, GetNativeCurrencyId, GetStableCurrencyId, GetStakingCurrencyId, Honzon,
+	Price, Rate, Ratio, Runtime,
 };
 
-use super::utils::{feed_price, set_balance};
+use super::utils::{dollar, feed_price, set_balance};
 use frame_benchmarking::{account, whitelisted_caller};
 use frame_system::RawOrigin;
 use orml_benchmarking::runtime_benchmarks;
@@ -102,7 +102,7 @@ runtime_benchmarks! {
 	}: _(RawOrigin::Signed(caller), STAKING, to_lookup)
 
 	unauthorize_all {
-		let c in 0 .. CollateralCurrencyIds::get().len().saturating_sub(1) as u32;
+		let c in 0 .. CollateralCurrencyIds::get().len() as u32;
 
 		let caller: AccountId = whitelisted_caller();
 		let currency_ids = CollateralCurrencyIds::get();

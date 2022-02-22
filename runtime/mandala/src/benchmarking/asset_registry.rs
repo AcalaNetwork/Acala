@@ -16,9 +16,9 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{dollar, AccountId, AssetRegistry, CurrencyId, GetNativeCurrencyId, Origin, Runtime, EVM};
+use crate::{AccountId, AssetRegistry, CurrencyId, GetNativeCurrencyId, Origin, Runtime, EVM};
 
-use super::utils::set_balance;
+use super::utils::{dollar, set_balance};
 use frame_support::assert_ok;
 use frame_system::RawOrigin;
 use module_asset_registry::AssetMetadata;

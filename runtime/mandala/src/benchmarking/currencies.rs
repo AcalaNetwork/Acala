@@ -16,9 +16,9 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use super::utils::{lookup_of_account, set_balance};
+use super::utils::{dollar, lookup_of_account, set_balance};
 use crate::{
-	dollar, AccountId, Amount, Balance, Currencies, CurrencyId, GetNativeCurrencyId, GetStakingCurrencyId,
+	AccountId, Amount, Balance, Currencies, CurrencyId, GetNativeCurrencyId, GetStakingCurrencyId,
 	NativeTokenExistentialDeposit, Runtime, Tokens, TreasuryPalletId,
 };
 
