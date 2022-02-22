@@ -48,6 +48,8 @@ mod account_tokenizer {
 
 pub const ALICE: AccountId = AccountId32::new([1u8; 32]);
 pub const BOB: AccountId = AccountId32::new([2u8; 32]);
+pub const PROXY: AccountId = AccountId32::new([10u8; 32]);
+pub const ORACLE: AccountId = AccountId32::new([254u8; 32]);
 pub const TREASURY: AccountId = AccountId32::new([255u8; 32]);
 
 pub fn dollar(b: Balance) -> Balance {
@@ -99,6 +101,7 @@ impl frame_system::Config for Runtime {
 
 parameter_types! {
 	pub const NativeTokenExistentialDeposit: Balance = 0;
+	pub const MaxReserves: u32 = 10;
 }
 
 impl pallet_balances::Config for Runtime {
@@ -109,7 +112,7 @@ impl pallet_balances::Config for Runtime {
 	type AccountStore = frame_system::Pallet<Runtime>;
 	type MaxLocks = ();
 	type WeightInfo = ();
-	type MaxReserves = ();
+	type MaxReserves = MaxReserves;
 	type ReserveIdentifier = ReserveIdentifier;
 }
 
@@ -196,7 +199,7 @@ parameter_types! {
 }
 
 ord_parameter_types! {
-	pub const One: AccountId = AccountId32::new([1; 32]);
+	pub const Oracle: AccountId = ORACLE;
 }
 
 impl module_foreign_state_oracle::Config for Runtime {
@@ -205,7 +208,7 @@ impl module_foreign_state_oracle::Config for Runtime {
 	type VerifiableTask = Call;
 	type QueryFee = QueryFee;
 	type CancelFee = CancelFee;
-	type OracleOrigin = EnsureSignedBy<One, AccountId>;
+	type OracleOrigin = EnsureSignedBy<Oracle, AccountId>;
 	type QueryDuration = QueryDuration;
 	type Currency = Balances;
 	type PalletId = ForeignOraclePalletId;
@@ -216,7 +219,7 @@ parameter_types! {
 	pub const AcccountTokenizerPalletId: PalletId = PalletId(*b"aca/atnz");
 	pub AccountTokenizerPalletAccount: AccountId = AcccountTokenizerPalletId::get().into_account();
 	pub TreasuryAccount: AccountId = TREASURY;
-	pub MintRequestDeposit: Balance = dollar(1);
+	pub MintRequestDeposit: Balance = dollar(10);
 	pub MintFee: Balance = dollar(1);
 }
 

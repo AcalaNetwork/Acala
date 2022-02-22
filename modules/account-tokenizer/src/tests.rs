@@ -21,94 +21,100 @@
 #![cfg(test)]
 
 use crate::mock::*;
-use frame_support::{assert_noop, assert_ok};
+use frame_support::{
+	assert_noop, assert_ok,
+	traits::{tokens::nonfungibles::Inspect, Hooks},
+};
+use orml_traits::CreateExtended;
+
 use primitives::nft::{ClassProperty, Properties};
-use sp_runtime::traits::BadOrigin;
-
-fn setup_nft() {
-	assert_ok!(ModuleNFT::create_class(
-		Origin::signed(ALICE),
-		Default::default(),
-		Properties(ClassProperty::Transferable | ClassProperty::Burnable | ClassProperty::Mintable),
-		Default::default(),
-		Some(PrtPalletAccount::get()),
-	));
-
-	if let Event::ModuleNFT(module_nft::Event::CreatedClass { owner: _, class_id }) =
-		System::events().last().unwrap().event.clone()
-	{
-		assert_ok!(PRT::set_nft_id(Origin::root(), class_id));
-	}
-}
+use sp_runtime::traits::{AccountIdConversion, BadOrigin};
 
 #[test]
-fn set_prt_class_id_works() {
+fn can_create_nft() {
 	ExtBuilder::default()
-		.balances(vec![(ALICE, NATIVE_CURRENCY, dollar(1_000))])
+		.balances(vec![(ALICE, dollar(1_000))])
 		.build()
 		.execute_with(|| {
-			assert_noop!(PRT::set_nft_id(Origin::signed(ALICE), 1), BadOrigin);
+			// create a NFT so the class ID isn't 0
+			assert_ok!(ModuleNFT::create_class(
+				Origin::signed(ALICE),
+				Default::default(),
+				Default::default(),
+				Default::default(),
+			));
 
-			assert_ok!(PRT::set_nft_id(Origin::root(), 1));
-			assert_eq!(PRT::prt_class_id(), Some(1));
-			System::assert_last_event(Event::PRT(crate::Event::PrtClassIdSet { class_id: 1 }));
+			assert_eq!(ModuleNFT::next_class_id(), 1);
+			let event = Event::ModuleNFT(module_nft::Event::CreatedClass {
+				owner: NftPalletId::get().into_sub_account(1),
+				admin: AccountTokenizerPalletAccount::get(),
+				class_id: 1,
+			});
 
-			assert_ok!(PRT::set_nft_id(Origin::root(), 324));
-			assert_eq!(PRT::prt_class_id(), Some(324));
-			System::assert_last_event(Event::PRT(crate::Event::PrtClassIdSet { class_id: 324 }));
+			// on runtime upgrade can create new NFT class
+			AccountTokenizer::on_runtime_upgrade();
+
+			assert_eq!(AccountTokenizer::nft_class_id(), 1);
+			System::assert_last_event(event.clone());
+
+			// Will not re-create the runtime NFT class.
+			AccountTokenizer::on_runtime_upgrade();
+
+			assert_eq!(AccountTokenizer::nft_class_id(), 1);
+			System::assert_last_event(event);
 		});
 }
 
 #[test]
-fn place_bid_works() {
+fn can_send_mint_request() {
 	ExtBuilder::default()
-		.balances(vec![
-			(ALICE, NATIVE_CURRENCY, dollar(1_000)),
-			(ALICE, RELAYCHAIN_CURRENCY, dollar(1_000)),
-			(BOB, NATIVE_CURRENCY, dollar(1_000)),
-			(BOB, RELAYCHAIN_CURRENCY, dollar(1_000)),
-		])
+		.balances(vec![(ALICE, dollar(1_000))])
 		.build()
 		.execute_with(|| {
-			setup_nft();
+			// on runtime upgrade can create new NFT class
+			AccountTokenizer::on_runtime_upgrade();
 
-			assert_ok!(PRT::place_bid(Origin::signed(ALICE), dollar(100), 1));
+			assert_eq!(ForeignStateOracle::query_index(), 0);
+			assert_ok!(AccountTokenizer::request_mint(Origin::signed(ALICE), ALICE));
+			System::assert_last_event(Event::AccountTokenizer(crate::Event::MintRequested {
+				account: ALICE,
+				who: ALICE,
+			}));
+
+			assert_eq!(ForeignStateOracle::query_index(), 1);
+
+			assert!(ForeignStateOracle::active_query(0).is_some());
 		});
 }
 
-// can place bid
-// cannot bid below minimum
-// Require prt class id set
-// cannot bid with insufficient balance
+// can mint NFT
 
-// can retract bid
-// Require prt class id set
-// balance unchanged when retract is requested
-// cannot retract if bid is not found
+#[test]
+fn can_mint_account_token_nft() {
+	ExtBuilder::default()
+		.balances(vec![(ALICE, dollar(1_000))])
+		.build()
+		.execute_with(|| {
+			AccountTokenizer::on_runtime_upgrade();
 
-// can confirm retraction
-// require Oracle origin
-// cannot confirm if bid doesn't exist
-// cannot confirm if user does not have enough reserved balance
+			// Send a mint request.
+			assert_ok!(AccountTokenizer::request_mint(Origin::signed(ALICE), PROXY));
+			assert!(ForeignStateOracle::active_query(0).is_some());
 
-// can confirm issue
-// Require prt class id set
-// correct NFT is issued
-// require oracle origin
-// cannot confirm if bid doesn't exist
-// cannot confirm if bidder does not have enough reserved balance
-// cannot double issue.
+			// Dispatch the request to accept the mint.
+			assert_ok!(ForeignStateOracle::dispatch_task(Origin::signed(ORACLE), 0, vec![1]));
 
-// can handle racing conditions
-// Issue can cancel retraction
+			assert_eq!(ModuleNFT::owner(0, 0), ALICE);
+			assert_eq!(AccountTokenizer::MintedAccount(PROXY), Some(0));
 
-// can request_thaw
-// Require prt class id set
-// PRT must be found
-// require owner of NFT
-// Require PRT expired
+			System::assert_last_event(Event::AccountTokenizer(crate::Event::AccountTokenMinted {
+				requester: ALICE,
+				account: PROXY,
+				token_id: 0,
+			}));
+		});
+}
 
-// can confirm thaw
-// NFT is burned, and found unreserved.
-// require Oracle origin
-// require PRT is found
+// can reject mint request
+
+// can burn NFT

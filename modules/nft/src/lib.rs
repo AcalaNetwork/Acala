@@ -347,7 +347,6 @@ pub mod module {
 }
 
 impl<T: Config> Pallet<T> {
-	#[require_transactional]
 	pub fn do_create_class(
 		admin: &T::AccountId,
 		metadata: CID,
@@ -412,7 +411,6 @@ impl<T: Config> Pallet<T> {
 		Ok(())
 	}
 
-	#[require_transactional]
 	fn do_mint(
 		who: &T::AccountId,
 		to: &T::AccountId,
@@ -595,7 +593,7 @@ impl<T: Config> Create<T::AccountId> for Pallet<T> {
 	/// Note: All NFT is owned by this module, so the `_who` field is not used.
 	fn create_class(class: &Self::ClassId, _who: &T::AccountId, admin: &T::AccountId) -> DispatchResult {
 		// Check if the class id is correct
-		ensure!(*class != Self::next_class_id(), Error::<T>::IncorrectClassId);
+		ensure!(*class == Self::next_class_id(), Error::<T>::IncorrectClassId);
 		Self::do_create_class(admin, Default::default(), Default::default(), Default::default())
 	}
 }

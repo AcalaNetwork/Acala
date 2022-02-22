@@ -55,7 +55,7 @@ use primitives::{
 pub const RESERVE_ID: ReserveIdentifier = ReserveIdentifier::AccountTokenizer;
 
 mod mock;
-// mod tests;
+mod tests;
 
 pub use module::*;
 
@@ -167,29 +167,26 @@ pub mod module {
 	#[pallet::hooks]
 	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
 		fn on_runtime_upgrade() -> Weight {
-			if Self::nft_class_id() != Default::default() {
-				let on_chain_storage_version = <Self as GetStorageVersion>::on_chain_storage_version();
-				if on_chain_storage_version == 0 {
-					// Use storage version to ensure we only register NFT class once.
-					let class_id = T::NFTInterface::next_class_id();
-					let res =
-						T::NFTInterface::create_class(&class_id, &T::PalletAccount::get(), &T::PalletAccount::get());
-					log::debug!("Account Tokenizer: Created NFT class. result: {:?}", res);
+			let on_chain_storage_version = <Self as GetStorageVersion>::on_chain_storage_version();
+			if on_chain_storage_version == 0 {
+				// Use storage version to ensure we only register NFT class once.
+				let class_id = T::NFTInterface::next_class_id();
+				let res = T::NFTInterface::create_class(&class_id, &T::PalletAccount::get(), &T::PalletAccount::get());
+				log::debug!("Account Tokenizer: Created NFT class. result: {:?}", res);
 
-					let res = T::NFTInterface::set_class_properties(
-						&class_id,
-						Properties(
-							ClassProperty::Transferable
-								| ClassProperty::Burnable | ClassProperty::Mintable
-								| ClassProperty::ClassPropertiesMutable,
-						)
-						.into(),
-					);
-					log::debug!("Account Tokenizer: Set NFT class property. result: {:?}", res);
+				let res = T::NFTInterface::set_class_properties(
+					&class_id,
+					Properties(
+						ClassProperty::Transferable
+							| ClassProperty::Burnable | ClassProperty::Mintable
+							| ClassProperty::ClassPropertiesMutable,
+					)
+					.into(),
+				);
+				log::debug!("Account Tokenizer: Set NFT class property. result: {:?}", res);
 
-					NFTClassId::<T>::put(class_id);
-					StorageVersion::new(1).put::<Self>();
-				}
+				NFTClassId::<T>::put(class_id);
+				StorageVersion::new(1).put::<Self>();
 			}
 			0
 		}
