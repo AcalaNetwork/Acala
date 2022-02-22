@@ -124,6 +124,8 @@ pub mod module {
 		InsufficientReservedBalance,
 		/// The response to mint request has invalid encoding.
 		MintRequestResultInvalid,
+		/// Cannot decode data from oracle
+		BadOracleData,
 	}
 
 	#[pallet::event]
@@ -229,9 +231,10 @@ pub mod module {
 		) -> DispatchResult {
 			// Extract confirmation info from Origin.
 			let data = T::OracleOrigin::ensure_origin(origin)?;
+			let rejected = data.get(0).ok_or(Error::<T>::BadOracleData)?.is_zero();
 
 			// Accept or reject the mint request.
-			if data[0] == 0 {
+			if rejected {
 				Self::reject_mint_request(owner)
 			} else {
 				Self::accept_mint_request(owner, account)
