@@ -60,27 +60,8 @@ use module_transaction_payment::{Multiplier, TargetedFeeAdjustment, TransactionF
 
 use orml_traits::{
 	create_median_value_data_provider, parameter_type_with_key, DataFeeder, DataProviderExtended, GetByKey,
-	MultiCurrency,
 };
 use pallet_transaction_payment::RuntimeDispatchInfo;
-
-pub use cumulus_primitives_core::ParaId;
-pub use orml_xcm_support::{DepositToAlternative, IsNativeConcrete, MultiCurrencyAdapter, MultiNativeAsset};
-use pallet_xcm::XcmPassthrough;
-pub use polkadot_parachain::primitives::Sibling;
-pub use xcm::latest::prelude::*;
-
-pub use xcm_builder::{
-	AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom, AllowTopLevelPaidExecutionFrom,
-	AllowUnpaidExecutionFrom, EnsureXcmOrigin, FixedRateOfFungible, FixedWeightBounds, IsConcrete, LocationInverter,
-	NativeAsset, ParentAsSuperuser, ParentIsDefault, RelayChainAsNative, SiblingParachainAsNative,
-	SiblingParachainConvertsVia, SignedAccountId32AsNative, SignedToAccountId32, SovereignSignedViaLocation,
-	TakeRevenue, TakeWeightCredit,
-};
-pub use xcm_executor::{traits::WeightTrader, Assets, Config, XcmExecutor};
-
-/// Weights for pallets used in the runtime.
-mod weights;
 
 pub use frame_support::{
 	construct_runtime, log, parameter_types,
@@ -101,35 +82,42 @@ pub use sp_runtime::BuildStorage;
 pub use authority::AuthorityConfigImpl;
 pub use constants::{fee::*, parachains, time::*};
 pub use primitives::{
-	convert_decimals_to_evm, define_combined_task, evm::EstimateResourcesRequest, task::TaskResult, AccountId,
-	AccountIndex, Address, Amount, AuctionId, AuthoritysOriginId, Balance, BlockNumber, CurrencyId, DataProviderId,
-	EraIndex, Hash, Lease, Moment, Nonce, ReserveIdentifier, Share, Signature, TokenSymbol, TradingPair,
+	convert_decimals_to_evm, define_combined_task,
+	evm::{AccessListItem, EstimateResourcesRequest},
+	task::TaskResult,
+	AccountId, AccountIndex, Address, Amount, AuctionId, AuthoritysOriginId, Balance, BlockNumber, CurrencyId,
+	DataProviderId, EraIndex, Hash, Lease, Moment, Nonce, ReserveIdentifier, Share, Signature, TokenSymbol,
+	TradingPair,
 };
 pub use runtime_common::{
-	calculate_asset_ratio, cent, dollar, microcent, millicent, AcalaDropAssets, EnsureRootOrAllGeneralCouncil,
-	EnsureRootOrAllTechnicalCommittee, EnsureRootOrHalfFinancialCouncil, EnsureRootOrHalfGeneralCouncil,
-	EnsureRootOrHalfHomaCouncil, EnsureRootOrOneGeneralCouncil, EnsureRootOrOneThirdsTechnicalCommittee,
-	EnsureRootOrThreeFourthsGeneralCouncil, EnsureRootOrTwoThirdsGeneralCouncil,
-	EnsureRootOrTwoThirdsTechnicalCommittee, ExchangeRate, FinancialCouncilInstance,
-	FinancialCouncilMembershipInstance, GasToWeight, GeneralCouncilInstance, GeneralCouncilMembershipInstance,
-	HomaCouncilInstance, HomaCouncilMembershipInstance, MaxTipsOfPriority, OperationalFeeMultiplier,
-	OperatorMembershipInstanceAcala, Price, ProxyType, Rate, Ratio, RelayChainBlockNumberProvider,
-	RelayChainSubAccountId, RuntimeBlockLength, RuntimeBlockWeights, SystemContractsFilter, TechnicalCommitteeInstance,
-	TechnicalCommitteeMembershipInstance, TimeStampedPrice, TipPerWeightStep, BNC, KAR, KBTC, KINT, KSM, KUSD, LKSM,
-	PHA, RENBTC, VSKSM,
+	calculate_asset_ratio, cent, dollar, microcent, millicent, AcalaDropAssets, AllPrecompiles,
+	EnsureRootOrAllGeneralCouncil, EnsureRootOrAllTechnicalCommittee, EnsureRootOrHalfFinancialCouncil,
+	EnsureRootOrHalfGeneralCouncil, EnsureRootOrHalfHomaCouncil, EnsureRootOrOneGeneralCouncil,
+	EnsureRootOrOneThirdsTechnicalCommittee, EnsureRootOrThreeFourthsGeneralCouncil,
+	EnsureRootOrTwoThirdsGeneralCouncil, EnsureRootOrTwoThirdsTechnicalCommittee, ExchangeRate,
+	FinancialCouncilInstance, FinancialCouncilMembershipInstance, GasToWeight, GeneralCouncilInstance,
+	GeneralCouncilMembershipInstance, HomaCouncilInstance, HomaCouncilMembershipInstance, MaxTipsOfPriority,
+	OperationalFeeMultiplier, OperatorMembershipInstanceAcala, Price, ProxyType, Rate, Ratio,
+	RelayChainBlockNumberProvider, RelayChainSubAccountId, RuntimeBlockLength, RuntimeBlockWeights,
+	SystemContractsFilter, TechnicalCommitteeInstance, TechnicalCommitteeMembershipInstance, TimeStampedPrice,
+	TipPerWeightStep, BNC, KAR, KBTC, KINT, KSM, KUSD, LKSM, PHA, RENBTC, VSKSM,
 };
+pub use xcm::latest::prelude::*;
+use xcm_config::XcmConfig;
+pub use xcm_executor::{Assets, Config, XcmExecutor};
 
 /// Import the stable_asset pallet.
 pub use nutsfinance_stable_asset;
 
+#[cfg(feature = "integration-tests")]
+mod integration_tests_config;
+
 mod authority;
 mod benchmarking;
 pub mod constants;
-
-#[cfg(feature = "integration-tests")]
-mod integration_tests_config;
-#[cfg(feature = "integration-tests")]
-use integration_tests_config::*;
+/// Weights for pallets used in the runtime.
+mod weights;
+pub mod xcm_config;
 
 /// This runtime version.
 #[sp_version::runtime_version]
@@ -1337,6 +1325,13 @@ impl InstanceFilter<Call> for ProxyType {
 						| Call::Honzon(module_honzon::Call::close_loan_has_debit_by_dex { .. })
 				)
 			}
+			ProxyType::DexLiquidity => {
+				matches!(
+					c,
+					Call::Dex(module_dex::Call::add_liquidity { .. })
+						| Call::Dex(module_dex::Call::remove_liquidity { .. })
+				)
+			}
 		}
 	}
 	fn is_superset(&self, o: &Self) -> bool {
@@ -1370,6 +1365,7 @@ parameter_types! {
 	pub NetworkContractSource: H160 = H160::from_low_u64_be(0);
 	pub DeveloperDeposit: Balance = 100 * dollar(KAR);
 	pub PublicationFee: Balance = 10000 * dollar(KAR);
+	pub PrecompilesValue: AllPrecompiles<Runtime> = AllPrecompiles::<_>::new();
 }
 
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, TypeInfo)]
@@ -1399,7 +1395,8 @@ impl module_evm::Config for Runtime {
 	type StorageDepositPerByte = StorageDepositPerByte;
 	type TxFeePerGas = TxFeePerGas;
 	type Event = Event;
-	type Precompiles = runtime_common::AllPrecompiles<Self>;
+	type PrecompilesType = AllPrecompiles<Self>;
+	type PrecompilesValue = PrecompilesValue;
 	type ChainId = ChainId;
 	type GasToWeight = GasToWeight;
 	type ChargeTransactionPayment = module_transaction_payment::ChargeTransactionPayment<Runtime>;
@@ -1446,251 +1443,6 @@ impl parachain_info::Config for Runtime {}
 
 impl cumulus_pallet_aura_ext::Config for Runtime {}
 
-parameter_types! {
-	pub KsmLocation: MultiLocation = MultiLocation::parent();
-	pub const RelayNetwork: NetworkId = NetworkId::Kusama;
-	pub RelayChainOrigin: Origin = cumulus_pallet_xcm::Origin::Relay.into();
-	pub Ancestry: MultiLocation = Parachain(ParachainInfo::parachain_id().into()).into();
-}
-
-/// Type for specifying how a `MultiLocation` can be converted into an `AccountId`. This is used
-/// when determining ownership of accounts for asset transacting and when attempting to use XCM
-/// `Transact` in order to determine the dispatch Origin.
-pub type LocationToAccountId = (
-	// The parent (Relay-chain) origin converts to the default `AccountId`.
-	ParentIsDefault<AccountId>,
-	// Sibling parachain origins convert to AccountId via the `ParaId::into`.
-	SiblingParachainConvertsVia<Sibling, AccountId>,
-	// Straight up local `AccountId32` origins just alias directly to `AccountId`.
-	AccountId32Aliases<RelayNetwork, AccountId>,
-);
-
-/// This is the type we use to convert an (incoming) XCM origin into a local `Origin` instance,
-/// ready for dispatching a transaction with Xcm's `Transact`. There is an `OriginKind` which can
-/// biases the kind of local `Origin` it will become.
-pub type XcmOriginToCallOrigin = (
-	// Sovereign account converter; this attempts to derive an `AccountId` from the origin location
-	// using `LocationToAccountId` and then turn that into the usual `Signed` origin. Useful for
-	// foreign chains who want to have a local sovereign account on this chain which they control.
-	SovereignSignedViaLocation<LocationToAccountId, Origin>,
-	// Native converter for Relay-chain (Parent) location; will converts to a `Relay` origin when
-	// recognized.
-	RelayChainAsNative<RelayChainOrigin, Origin>,
-	// Native converter for sibling Parachains; will convert to a `SiblingPara` origin when
-	// recognized.
-	SiblingParachainAsNative<cumulus_pallet_xcm::Origin, Origin>,
-	// Native signed account converter; this just converts an `AccountId32` origin into a normal
-	// `Origin::Signed` origin of the same 32-byte value.
-	SignedAccountId32AsNative<RelayNetwork, Origin>,
-	// Xcm origins can be represented natively under the Xcm pallet's Xcm origin.
-	XcmPassthrough<Origin>,
-);
-
-pub type Barrier = (
-	TakeWeightCredit,
-	AllowTopLevelPaidExecutionFrom<Everything>,
-	// Expected responses are OK.
-	AllowKnownQueryResponses<PolkadotXcm>,
-	// Subscriptions for version tracking are OK.
-	AllowSubscriptionsFrom<Everything>,
-);
-
-pub struct ToTreasury;
-impl TakeRevenue for ToTreasury {
-	fn take_revenue(revenue: MultiAsset) {
-		if let MultiAsset {
-			id: Concrete(location),
-			fun: Fungible(amount),
-		} = revenue
-		{
-			if let Some(currency_id) = CurrencyIdConvert::convert(location) {
-				// Ensure KaruraTreasuryAccount have ed requirement for native asset, but don't need
-				// ed requirement for cross-chain asset because it's one of whitelist accounts.
-				// Ignore the result.
-				let _ = Currencies::deposit(currency_id, &KaruraTreasuryAccount::get(), amount);
-			}
-		}
-	}
-}
-
-parameter_types! {
-	// One XCM operation is 200_000_000 weight, cross-chain transfer ~= 2x of transfer.
-	pub const UnitWeightCost: Weight = 200_000_000;
-	pub const MaxInstructions: u32 = 100;
-	pub KsmPerSecond: (AssetId, u128) = (MultiLocation::parent().into(), ksm_per_second());
-	pub KusdPerSecond: (AssetId, u128) = (
-		MultiLocation::new(
-			1,
-			X2(Parachain(u32::from(ParachainInfo::get())), GeneralKey(KUSD.encode())),
-		).into(),
-		// kUSD:KSM = 400:1
-		ksm_per_second() * 400
-	);
-	pub KusdPerSecondOfCanonicalLocation: (AssetId, u128) = (
-		MultiLocation::new(
-			0,
-			X1(GeneralKey(KUSD.encode())),
-		).into(),
-		// kUSD:KSM = 400:1
-		ksm_per_second() * 400
-	);
-	pub KarPerSecond: (AssetId, u128) = (
-		MultiLocation::new(
-			1,
-			X2(Parachain(u32::from(ParachainInfo::get())), GeneralKey(KAR.encode())),
-		).into(),
-		kar_per_second()
-	);
-	pub KarPerSecondOfCanonicalLocation: (AssetId, u128) = (
-		MultiLocation::new(
-			0,
-			X1(GeneralKey(KAR.encode())),
-		).into(),
-		kar_per_second()
-	);
-	pub LksmPerSecond: (AssetId, u128) = (
-		MultiLocation::new(
-			1,
-			X2(Parachain(u32::from(ParachainInfo::get())), GeneralKey(LKSM.encode())),
-		).into(),
-		// LKSM:KSM = 10:1
-		ksm_per_second() * 10
-	);
-	pub LksmPerSecondOfCanonicalLocation: (AssetId, u128) = (
-		MultiLocation::new(
-			0,
-			X1(GeneralKey(LKSM.encode())),
-		).into(),
-		// LKSM:KSM = 10:1
-		ksm_per_second() * 10
-	);
-	pub PHAPerSecond: (AssetId, u128) = (
-		MultiLocation::new(
-			1,
-			X1(Parachain(parachains::phala::ID)),
-		).into(),
-		// PHA:KSM = 400:1
-		ksm_per_second() * 400
-	);
-	pub BncPerSecond: (AssetId, u128) = (
-		MultiLocation::new(
-			1,
-			X2(Parachain(parachains::bifrost::ID), GeneralKey(parachains::bifrost::BNC_KEY.to_vec())),
-		).into(),
-		// BNC:KSM = 80:1
-		ksm_per_second() * 80
-	);
-	pub VsksmPerSecond: (AssetId, u128) = (
-		MultiLocation::new(
-			1,
-			X2(Parachain(parachains::bifrost::ID), GeneralKey(parachains::bifrost::VSKSM_KEY.to_vec())),
-		).into(),
-		// VSKSM:KSM = 1:1
-		ksm_per_second()
-	);
-	pub KbtcPerSecond: (AssetId, u128) = (
-		MultiLocation::new(
-			1,
-			X2(Parachain(parachains::kintsugi::ID), GeneralKey(parachains::kintsugi::KBTC_KEY.to_vec())),
-		).into(),
-		// KBTC:KSM = 1:150 & Satoshi:Planck = 1:10_000
-		ksm_per_second() / 1_500_000
-	);
-	pub KintPerSecond: (AssetId, u128) = (
-		MultiLocation::new(
-			1,
-			X2(Parachain(parachains::kintsugi::ID), GeneralKey(parachains::kintsugi::KINT_KEY.to_vec())),
-		).into(),
-		// KINT:KSM = 4:3
-		(ksm_per_second() * 4) / 3
-	);
-
-	pub ForeignAssetUnitsPerSecond: u128 = kar_per_second();
-	pub KarPerSecondAsBased: u128 = kar_per_second();
-}
-
-#[cfg(not(feature = "integration-tests"))]
-pub type Trader = (
-	TransactionFeePoolTrader<Runtime, CurrencyIdConvert, KarPerSecondAsBased, ToTreasury>,
-	FixedRateOfFungible<KsmPerSecond, ToTreasury>,
-	FixedRateOfFungible<KusdPerSecond, ToTreasury>,
-	FixedRateOfFungible<KusdPerSecondOfCanonicalLocation, ToTreasury>,
-	FixedRateOfFungible<KarPerSecond, ToTreasury>,
-	FixedRateOfFungible<KarPerSecondOfCanonicalLocation, ToTreasury>,
-	FixedRateOfFungible<LksmPerSecond, ToTreasury>,
-	FixedRateOfFungible<LksmPerSecondOfCanonicalLocation, ToTreasury>,
-	FixedRateOfFungible<BncPerSecond, ToTreasury>,
-	FixedRateOfFungible<VsksmPerSecond, ToTreasury>,
-	FixedRateOfFungible<PHAPerSecond, ToTreasury>,
-	FixedRateOfFungible<KbtcPerSecond, ToTreasury>,
-	FixedRateOfFungible<KintPerSecond, ToTreasury>,
-	FixedRateOfForeignAsset<Runtime, ForeignAssetUnitsPerSecond, ToTreasury>,
-);
-
-pub struct XcmConfig;
-impl xcm_executor::Config for XcmConfig {
-	type Call = Call;
-	type XcmSender = XcmRouter;
-	// How to withdraw and deposit an asset.
-	type AssetTransactor = LocalAssetTransactor;
-	type OriginConverter = XcmOriginToCallOrigin;
-	type IsReserve = MultiNativeAsset;
-	// Teleporting is disabled.
-	type IsTeleporter = ();
-	type LocationInverter = LocationInverter<Ancestry>;
-	type Barrier = Barrier;
-	type Weigher = FixedWeightBounds<UnitWeightCost, Call, MaxInstructions>;
-	type Trader = Trader;
-	type ResponseHandler = PolkadotXcm;
-	type AssetTrap = AcalaDropAssets<
-		PolkadotXcm,
-		ToTreasury,
-		CurrencyIdConvert,
-		GetNativeCurrencyId,
-		NativeTokenExistentialDeposit,
-		ExistentialDeposits,
-	>;
-	type AssetClaims = PolkadotXcm;
-	type SubscriptionService = PolkadotXcm;
-}
-
-parameter_types! {
-	pub MaxDownwardMessageWeight: Weight = RuntimeBlockWeights::get().max_block / 10;
-}
-
-pub type LocalOriginToLocation = SignedToAccountId32<Origin, AccountId, RelayNetwork>;
-
-/// The means for routing XCM messages which are not for local execution into the right message
-/// queues.
-pub type XcmRouter = (
-	// Two routers - use UMP to communicate with the relay chain:
-	cumulus_primitives_utility::ParentAsUmp<ParachainSystem, PolkadotXcm>,
-	// ..and XCMP to communicate with the sibling chains.
-	XcmpQueue,
-);
-
-impl pallet_xcm::Config for Runtime {
-	type Event = Event;
-	type SendXcmOrigin = EnsureXcmOrigin<Origin, LocalOriginToLocation>;
-	type XcmRouter = XcmRouter;
-	type ExecuteXcmOrigin = EnsureXcmOrigin<Origin, LocalOriginToLocation>;
-	type XcmExecuteFilter = Nothing;
-	type XcmExecutor = XcmExecutor<XcmConfig>;
-	type XcmTeleportFilter = Nothing;
-	type XcmReserveTransferFilter = Everything;
-	type Weigher = FixedWeightBounds<UnitWeightCost, Call, MaxInstructions>;
-	type LocationInverter = LocationInverter<Ancestry>;
-	type Origin = Origin;
-	type Call = Call;
-	const VERSION_DISCOVERY_QUEUE_SIZE: u32 = 100;
-	type AdvertisedXcmVersion = pallet_xcm::CurrentXcmVersion;
-}
-
-impl cumulus_pallet_xcm::Config for Runtime {
-	type Event = Event;
-	type XcmExecutor = XcmExecutor<XcmConfig>;
-}
-
 impl cumulus_pallet_xcmp_queue::Config for Runtime {
 	type Event = Event;
 	type XcmExecutor = XcmExecutor<XcmConfig>;
@@ -1703,16 +1455,6 @@ impl cumulus_pallet_dmp_queue::Config for Runtime {
 	type Event = Event;
 	type XcmExecutor = XcmExecutor<XcmConfig>;
 	type ExecuteOverweightOrigin = EnsureRoot<AccountId>;
-}
-
-pub fn create_x2_parachain_multilocation(index: u16) -> MultiLocation {
-	MultiLocation::new(
-		1,
-		X1(AccountId32 {
-			network: NetworkId::Any,
-			id: Utility::derivative_account_id(ParachainInfo::get().into_account(), index).into(),
-		}),
-	)
 }
 
 parameter_types! {
@@ -1742,6 +1484,16 @@ impl module_homa::Config for Runtime {
 	type WeightInfo = weights::module_homa::WeightInfo<Runtime>;
 }
 
+pub fn create_x2_parachain_multilocation(index: u16) -> MultiLocation {
+	MultiLocation::new(
+		1,
+		X1(AccountId32 {
+			network: NetworkId::Any,
+			id: Utility::derivative_account_id(ParachainInfo::get().into_account(), index).into(),
+		}),
+	)
+}
+
 pub struct SubAccountIndexMultiLocationConvertor;
 impl Convert<u16, MultiLocation> for SubAccountIndexMultiLocationConvertor {
 	fn convert(sub_account_index: u16) -> MultiLocation {
@@ -1763,181 +1515,6 @@ impl module_xcm_interface::Config for Runtime {
 	type SovereignSubAccountLocationConvert = SubAccountIndexMultiLocationConvertor;
 	type RelayChainCallBuilder = RelayChainCallBuilder<Runtime, ParachainInfo>;
 	type XcmTransfer = XTokens;
-}
-
-pub type LocalAssetTransactor = MultiCurrencyAdapter<
-	Currencies,
-	UnknownTokens,
-	IsNativeConcrete<CurrencyId, CurrencyIdConvert>,
-	AccountId,
-	LocationToAccountId,
-	CurrencyId,
-	CurrencyIdConvert,
-	DepositToAlternative<KaruraTreasuryAccount, Currencies, CurrencyId, AccountId, Balance>,
->;
-
-fn native_currency_location(id: CurrencyId) -> MultiLocation {
-	MultiLocation::new(1, X2(Parachain(ParachainInfo::get().into()), GeneralKey(id.encode())))
-}
-
-pub struct CurrencyIdConvert;
-
-impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
-	fn convert(id: CurrencyId) -> Option<MultiLocation> {
-		use CurrencyId::Token;
-		use TokenSymbol::*;
-		match id {
-			Token(KSM) => Some(MultiLocation::parent()),
-			Token(KAR) | Token(KUSD) | Token(LKSM) => Some(native_currency_location(id)),
-			// Bifrost native token
-			Token(BNC) => Some(MultiLocation::new(
-				1,
-				X2(
-					Parachain(parachains::bifrost::ID),
-					GeneralKey(parachains::bifrost::BNC_KEY.to_vec()),
-				),
-			)),
-			// Bifrost Voucher Slot KSM
-			Token(VSKSM) => Some(MultiLocation::new(
-				1,
-				X2(
-					Parachain(parachains::bifrost::ID),
-					GeneralKey(parachains::bifrost::VSKSM_KEY.to_vec()),
-				),
-			)),
-			// Phala Native token
-			Token(PHA) => Some(MultiLocation::new(1, X1(Parachain(parachains::phala::ID)))),
-			// Kintsugi Native token
-			Token(KINT) => Some(MultiLocation::new(
-				1,
-				X2(
-					Parachain(parachains::kintsugi::ID),
-					GeneralKey(parachains::kintsugi::KINT_KEY.to_vec()),
-				),
-			)),
-			// Kintsugi wrapped BTC
-			Token(KBTC) => Some(MultiLocation::new(
-				1,
-				X2(
-					Parachain(parachains::kintsugi::ID),
-					GeneralKey(parachains::kintsugi::KBTC_KEY.to_vec()),
-				),
-			)),
-			CurrencyId::ForeignAsset(foreign_asset_id) => AssetIdMaps::<Runtime>::get_multi_location(foreign_asset_id),
-			_ => None,
-		}
-	}
-}
-
-impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
-	fn convert(location: MultiLocation) -> Option<CurrencyId> {
-		use CurrencyId::Token;
-		use TokenSymbol::*;
-
-		if location == MultiLocation::parent() {
-			return Some(Token(KSM));
-		}
-
-		if let Some(currency_id) = AssetIdMaps::<Runtime>::get_currency_id(location.clone()) {
-			return Some(currency_id);
-		}
-
-		match location {
-			MultiLocation {
-				parents: 1,
-				interior: X2(Parachain(para_id), GeneralKey(key)),
-			} => {
-				match (para_id, &key[..]) {
-					(parachains::bifrost::ID, parachains::bifrost::BNC_KEY) => Some(Token(BNC)),
-					(parachains::bifrost::ID, parachains::bifrost::VSKSM_KEY) => Some(Token(VSKSM)),
-					(parachains::kintsugi::ID, parachains::kintsugi::KINT_KEY) => Some(Token(KINT)),
-					(parachains::kintsugi::ID, parachains::kintsugi::KBTC_KEY) => Some(Token(KBTC)),
-
-					(id, key) if id == u32::from(ParachainInfo::get()) => {
-						// Karura
-						if let Ok(currency_id) = CurrencyId::decode(&mut &*key) {
-							// check `currency_id` is cross-chain asset
-							match currency_id {
-								Token(KAR) | Token(KUSD) | Token(LKSM) => Some(currency_id),
-								_ => None,
-							}
-						} else {
-							// invalid general key
-							None
-						}
-					}
-					_ => None,
-				}
-			}
-			MultiLocation {
-				parents: 1,
-				interior: X1(Parachain(parachains::phala::ID)),
-			} => Some(Token(PHA)),
-			// adapt for reanchor canonical location: https://github.com/paritytech/polkadot/pull/4470
-			MultiLocation {
-				parents: 0,
-				interior: X1(GeneralKey(key)),
-			} => match &key[..] {
-				#[cfg(feature = "integration-tests")]
-				parachains::bifrost::BNC_KEY => Some(Token(BNC)),
-				key => {
-					let currency_id = CurrencyId::decode(&mut &*key).ok()?;
-					match currency_id {
-						Token(KAR) | Token(KUSD) | Token(LKSM) => Some(currency_id),
-						_ => None,
-					}
-				}
-			},
-			_ => None,
-		}
-	}
-}
-
-impl Convert<MultiAsset, Option<CurrencyId>> for CurrencyIdConvert {
-	fn convert(asset: MultiAsset) -> Option<CurrencyId> {
-		if let MultiAsset {
-			id: Concrete(location), ..
-		} = asset
-		{
-			Self::convert(location)
-		} else {
-			None
-		}
-	}
-}
-
-parameter_types! {
-	pub SelfLocation: MultiLocation = MultiLocation::new(1, X1(Parachain(ParachainInfo::get().into())));
-}
-
-pub struct AccountIdToMultiLocation;
-impl Convert<AccountId, MultiLocation> for AccountIdToMultiLocation {
-	fn convert(account: AccountId) -> MultiLocation {
-		X1(AccountId32 {
-			network: NetworkId::Any,
-			id: account.into(),
-		})
-		.into()
-	}
-}
-
-parameter_types! {
-	pub const BaseXcmWeight: Weight = 100_000_000;
-	pub const MaxAssetsForTransfer: usize = 2;
-}
-
-impl orml_xtokens::Config for Runtime {
-	type Event = Event;
-	type Balance = Balance;
-	type CurrencyId = CurrencyId;
-	type CurrencyIdConvert = CurrencyIdConvert;
-	type AccountIdToMultiLocation = AccountIdToMultiLocation;
-	type SelfLocation = SelfLocation;
-	type XcmExecutor = XcmExecutor<XcmConfig>;
-	type Weigher = FixedWeightBounds<UnitWeightCost, Call, MaxInstructions>;
-	type BaseXcmWeight = BaseXcmWeight;
-	type LocationInverter = LocationInverter<Ancestry>;
-	type MaxAssetsForTransfer = MaxAssetsForTransfer;
 }
 
 impl orml_unknown_tokens::Config for Runtime {
@@ -2178,7 +1755,7 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	(TransactionPaymentMigration, XcmInterfaceMigrationV1),
+	XcmInterfaceMigrationV1,
 >;
 
 // Migration for scheduler pallet to move from a plain Call to a CallOrHash.
@@ -2186,43 +1763,6 @@ pub struct XcmInterfaceMigrationV1;
 impl OnRuntimeUpgrade for XcmInterfaceMigrationV1 {
 	fn on_runtime_upgrade() -> frame_support::weights::Weight {
 		module_xcm_interface::migrations::v1::migrate::<Runtime, XcmInterface>()
-	}
-}
-
-parameter_types! {
-	pub FeePoolSize: Balance = 5 * dollar(KAR);
-	pub SwapBalanceThreshold: Balance = Ratio::saturating_from_rational(25, 10).saturating_mul_int(dollar(KAR));
-}
-
-pub struct TransactionPaymentMigration;
-impl frame_support::traits::OnRuntimeUpgrade for TransactionPaymentMigration {
-	fn on_runtime_upgrade() -> frame_support::weights::Weight {
-		let poo_size = FeePoolSize::get();
-		let threshold = SwapBalanceThreshold::get();
-		let tokens = vec![KUSD, KSM, LKSM, BNC];
-		for token in tokens {
-			let _ = module_transaction_payment::Pallet::<Runtime>::disable_charge_fee_pool(
-				Origin::signed(KaruraTreasuryAccount::get()),
-				token,
-			);
-			let _ = module_transaction_payment::Pallet::<Runtime>::enable_charge_fee_pool(
-				Origin::signed(KaruraTreasuryAccount::get()),
-				token,
-				poo_size,
-				threshold,
-			);
-		}
-		<Runtime as frame_system::Config>::BlockWeights::get().max_block
-	}
-
-	#[cfg(feature = "try-runtime")]
-	fn pre_upgrade() -> Result<(), &'static str> {
-		Ok(())
-	}
-
-	#[cfg(feature = "try-runtime")]
-	fn post_upgrade() -> Result<(), &'static str> {
-		Ok(())
 	}
 }
 
@@ -2403,6 +1943,7 @@ impl_runtime_apis! {
 			value: Balance,
 			gas_limit: u64,
 			storage_limit: u32,
+			access_list: Option<Vec<AccessListItem>>,
 			estimate: bool,
 		) -> Result<CallInfo, sp_runtime::DispatchError> {
 			let config = if estimate {
@@ -2421,6 +1962,7 @@ impl_runtime_apis! {
 				value,
 				gas_limit,
 				storage_limit,
+				access_list.unwrap_or_default().into_iter().map(|v| (v.address, v.storage_keys)).collect(),
 				config.as_ref().unwrap_or(<Runtime as module_evm::Config>::config()),
 			)
 		}
@@ -2431,6 +1973,7 @@ impl_runtime_apis! {
 			value: Balance,
 			gas_limit: u64,
 			storage_limit: u32,
+			access_list: Option<Vec<AccessListItem>>,
 			estimate: bool,
 		) -> Result<CreateInfo, sp_runtime::DispatchError> {
 			let config = if estimate {
@@ -2447,6 +1990,7 @@ impl_runtime_apis! {
 				value,
 				gas_limit,
 				storage_limit,
+				access_list.unwrap_or_default().into_iter().map(|v| (v.address, v.storage_keys)).collect(),
 				config.as_ref().unwrap_or(<Runtime as module_evm::Config>::config()),
 			)
 		}
@@ -2456,7 +2000,7 @@ impl_runtime_apis! {
 				.map_err(|_| sp_runtime::DispatchError::Other("Invalid parameter extrinsic, decode failed"))?;
 
 			let request = match utx.function {
-				Call::EVM(module_evm::Call::call{target, input, value, gas_limit, storage_limit}) => {
+				Call::EVM(module_evm::Call::call{target, input, value, gas_limit, storage_limit, access_list}) => {
 					// use MAX_VALUE for no limit
 					let gas_limit = if gas_limit < u64::MAX { Some(gas_limit) } else { None };
 					let storage_limit = if storage_limit < u32::MAX { Some(storage_limit) } else { None };
@@ -2467,9 +2011,10 @@ impl_runtime_apis! {
 						storage_limit,
 						value: Some(value),
 						data: Some(input),
+						access_list: Some(access_list)
 					})
 				}
-				Call::EVM(module_evm::Call::create{init, value, gas_limit, storage_limit}) => {
+				Call::EVM(module_evm::Call::create{init, value, gas_limit, storage_limit, access_list}) => {
 					// use MAX_VALUE for no limit
 					let gas_limit = if gas_limit < u64::MAX { Some(gas_limit) } else { None };
 					let storage_limit = if storage_limit < u32::MAX { Some(storage_limit) } else { None };
@@ -2480,6 +2025,7 @@ impl_runtime_apis! {
 						storage_limit,
 						value: Some(value),
 						data: Some(init),
+						access_list: Some(access_list)
 					})
 				}
 				_ => None,

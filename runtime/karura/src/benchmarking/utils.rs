@@ -24,6 +24,7 @@ use frame_benchmarking::account;
 use frame_support::traits::tokens::fungibles;
 use frame_support::{assert_ok, traits::Contains};
 use frame_system::RawOrigin;
+use module_support::Erc20InfoMapping;
 use orml_traits::MultiCurrencyExtended;
 use sp_runtime::{
 	traits::{SaturatedConversion, StaticLookup},
@@ -58,6 +59,14 @@ pub fn feed_price(prices: Vec<(CurrencyId, Price)>) -> DispatchResult {
 
 pub fn set_balance_fungibles(currency_id: CurrencyId, who: &AccountId, balance: Balance) {
 	assert_ok!(<orml_tokens::Pallet<Runtime> as fungibles::Mutate<AccountId>>::mint_into(currency_id, who, balance));
+}
+
+pub fn dollar(currency_id: CurrencyId) -> Balance {
+	if let Some(decimals) = module_asset_registry::EvmErc20InfoMapping::<Runtime>::decimals(currency_id) {
+		10u128.saturating_pow(decimals.into())
+	} else {
+		panic!("{:?} not support decimals", currency_id);
+	}
 }
 
 #[cfg(test)]

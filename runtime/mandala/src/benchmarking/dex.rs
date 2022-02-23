@@ -16,11 +16,11 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+use super::utils::dollar;
 use crate::{
-	dollar, AccountId, Balance, Currencies, CurrencyId, Dex, Event, GetLiquidCurrencyId, GetNativeCurrencyId,
+	AccountId, Balance, Currencies, CurrencyId, Dex, Event, GetLiquidCurrencyId, GetNativeCurrencyId,
 	GetStableCurrencyId, GetStakingCurrencyId, Runtime, System, TradingPathLimit,
 };
-
 use frame_benchmarking::{account, whitelisted_caller};
 use frame_system::RawOrigin;
 use module_dex::TradingPairStatus;
