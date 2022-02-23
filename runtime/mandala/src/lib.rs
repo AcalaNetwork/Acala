@@ -2011,6 +2011,7 @@ impl ecosystem_aqua_staked_token::Config for Runtime {
 	type Event = Event;
 	type Currency = Currencies;
 	type UpdateParamsOrigin = EnsureRootOrHalfGeneralCouncil;
+	type BlockNumberProvider = RelayChainBlockNumberProvider<Runtime>;
 	type TreasuryShare = TreasuryShare;
 	type DaoShare = DaoShare;
 	type DefaultExchangeRate = DaoDefaultExchangeRate;
