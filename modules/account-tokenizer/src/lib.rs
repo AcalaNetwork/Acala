@@ -45,6 +45,7 @@ use frame_support::{
 
 use frame_system::pallet_prelude::*;
 use orml_traits::{arithmetic::Zero, CreateExtended, InspectExtended};
+use sp_std::vec::Vec;
 
 use module_support::{ForeignChainStateQuery, ProxyXcm};
 use primitives::{

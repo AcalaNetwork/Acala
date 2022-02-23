@@ -95,6 +95,7 @@ orml-xcm = { path = "../../orml/xcm", default-features = false }
 
 module-transaction-pause = { path = "../../modules/transaction-pause", default-features = false }
 module-transaction-payment = { path = "../../modules/transaction-payment", default-features = false }
+module-account-tokenizer = { path = "../../modules/account-tokenizer", default-features = false }
 module-asset-registry = { path = "../../modules/asset-registry", default-features = false }
 module-auction-manager = { path = "../../modules/auction-manager", default-features = false }
 module-cdp-engine = { path = "../../modules/cdp-engine", default-features = false }
@@ -229,6 +230,7 @@ std = [
 
 	"module-transaction-pause/std",
 	"module-transaction-payment/std",
+	"module-account-tokenizer/std",
 	"module-asset-registry/std",
 	"module-auction-manager/std",
 	"module-cdp-engine/std",
