@@ -122,14 +122,6 @@ parameter_types! {
 	pub KsmPerSecond: (AssetId, u128) = (MultiLocation::parent().into(), ksm_per_second());
 	pub KusdPerSecond: (AssetId, u128) = (
 		MultiLocation::new(
-			1,
-			X2(Parachain(u32::from(ParachainInfo::get())), GeneralKey(KUSD.encode())),
-		).into(),
-		// kUSD:KSM = 400:1
-		ksm_per_second() * 400
-	);
-	pub KusdPerSecondOfCanonicalLocation: (AssetId, u128) = (
-		MultiLocation::new(
 			0,
 			X1(GeneralKey(KUSD.encode())),
 		).into(),
@@ -138,27 +130,12 @@ parameter_types! {
 	);
 	pub KarPerSecond: (AssetId, u128) = (
 		MultiLocation::new(
-			1,
-			X2(Parachain(u32::from(ParachainInfo::get())), GeneralKey(KAR.encode())),
-		).into(),
-		kar_per_second()
-	);
-	pub KarPerSecondOfCanonicalLocation: (AssetId, u128) = (
-		MultiLocation::new(
 			0,
 			X1(GeneralKey(KAR.encode())),
 		).into(),
 		kar_per_second()
 	);
 	pub LksmPerSecond: (AssetId, u128) = (
-		MultiLocation::new(
-			1,
-			X2(Parachain(u32::from(ParachainInfo::get())), GeneralKey(LKSM.encode())),
-		).into(),
-		// LKSM:KSM = 10:1
-		ksm_per_second() * 10
-	);
-	pub LksmPerSecondOfCanonicalLocation: (AssetId, u128) = (
 		MultiLocation::new(
 			0,
 			X1(GeneralKey(LKSM.encode())),
@@ -216,11 +193,8 @@ pub type Trader = (
 	TransactionFeePoolTrader<Runtime, CurrencyIdConvert, KarPerSecondAsBased, ToTreasury>,
 	FixedRateOfFungible<KsmPerSecond, ToTreasury>,
 	FixedRateOfFungible<KusdPerSecond, ToTreasury>,
-	FixedRateOfFungible<KusdPerSecondOfCanonicalLocation, ToTreasury>,
 	FixedRateOfFungible<KarPerSecond, ToTreasury>,
-	FixedRateOfFungible<KarPerSecondOfCanonicalLocation, ToTreasury>,
 	FixedRateOfFungible<LksmPerSecond, ToTreasury>,
-	FixedRateOfFungible<LksmPerSecondOfCanonicalLocation, ToTreasury>,
 	FixedRateOfFungible<BncPerSecond, ToTreasury>,
 	FixedRateOfFungible<VsksmPerSecond, ToTreasury>,
 	FixedRateOfFungible<PHAPerSecond, ToTreasury>,
