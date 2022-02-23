@@ -47,7 +47,6 @@ mod account_tokenizer {
 }
 
 pub const ALICE: AccountId = AccountId32::new([1u8; 32]);
-pub const BOB: AccountId = AccountId32::new([2u8; 32]);
 pub const PROXY: AccountId = AccountId32::new([10u8; 32]);
 pub const ORACLE: AccountId = AccountId32::new([254u8; 32]);
 pub const TREASURY: AccountId = AccountId32::new([255u8; 32]);
@@ -64,7 +63,7 @@ impl ProxyXcm<AccountId> for MockProxyXcm {
 	}
 
 	fn get_transfer_proxy_xcm_fee() -> Balance {
-		0
+		dollar(5)
 	}
 }
 
@@ -194,7 +193,7 @@ impl pallet_proxy::Config for Runtime {
 parameter_types! {
 	pub const ForeignOraclePalletId: PalletId = PalletId(*b"aca/fsto");
 	pub const QueryDuration: BlockNumber = 10;
-	pub const QueryFee: Balance = 100;
+	pub QueryFee: Balance = dollar(1);
 	pub const CancelFee: Balance = 10;
 }
 

@@ -63,6 +63,7 @@ fn create_class_should_work() {
 		));
 		System::assert_last_event(Event::NFTModule(crate::Event::CreatedClass {
 			owner: class_id_account(),
+			admin: ALICE,
 			class_id: CLASS_ID,
 		}));
 
@@ -127,6 +128,7 @@ fn mint_should_work() {
 		));
 		System::assert_last_event(Event::NFTModule(crate::Event::CreatedClass {
 			owner: class_id_account(),
+			admin: ALICE,
 			class_id: CLASS_ID,
 		}));
 		assert_ok!(Balances::deposit_into_existing(

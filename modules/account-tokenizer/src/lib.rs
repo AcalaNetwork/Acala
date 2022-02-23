@@ -114,16 +114,12 @@ pub mod module {
 
 	#[pallet::error]
 	pub enum Error<T> {
-		/// The confirmed owner and the mint requester isn't the same.
-		MintRequestDifferentFromOwner,
 		/// The account's NFT token cannot be found.
 		AccountTokenNotFound,
 		/// The caller is unauthorized to make this transaction.
 		CallerUnauthorized,
 		/// The owner of the NFT has insufficient reserve balance.
 		InsufficientReservedBalance,
-		/// The response to mint request has invalid encoding.
-		MintRequestResultInvalid,
 		/// Cannot decode data from oracle
 		BadOracleData,
 	}
@@ -141,7 +137,7 @@ pub mod module {
 		},
 		/// A NFT is minted to the owner of an account on the Relaychain.
 		AccountTokenMinted {
-			requester: T::AccountId,
+			owner: T::AccountId,
 			account: T::AccountId,
 			token_id: T::TokenId,
 		},
@@ -255,7 +251,7 @@ pub mod module {
 			let nft_class_id = Self::nft_class_id();
 
 			// Obtain info about the account token.
-			let token_id = Self::minted_account(&account).ok_or(Error::<T>::AccountTokenNotFound)?;
+			let token_id = MintedAccount::<T>::take(&account).ok_or(Error::<T>::AccountTokenNotFound)?;
 			let owner = T::NFTInterface::owner(&nft_class_id, &token_id).ok_or(Error::<T>::AccountTokenNotFound)?;
 
 			// Ensure that only the owner of the NFT can burn.
@@ -290,22 +286,22 @@ impl<T: Config> Pallet<T> {
 	/// Confirms that the Mint request is valid. Mint a NFT that represents an Account Token.
 	/// Only callable by authorized Oracles.
 	#[transactional]
-	pub fn accept_mint_request(account: T::AccountId, requester: T::AccountId) -> DispatchResult {
+	pub fn accept_mint_request(owner: T::AccountId, account: T::AccountId) -> DispatchResult {
 		let nft_class_id = Self::nft_class_id();
 
 		// Mint the Account Token's NFT.
 		let token_id = T::NFTInterface::next_token_id(nft_class_id);
-		T::NFTInterface::mint_into(&nft_class_id, &token_id, &requester)?;
+		T::NFTInterface::mint_into(&nft_class_id, &token_id, &owner)?;
 
 		// Create a record of the Mint and insert it into storage
 		MintedAccount::<T>::insert(account.clone(), token_id);
 
-		// Release the deposit from the requester
-		let remaining = T::Currency::unreserve_named(&RESERVE_ID, &requester, T::MintRequestDeposit::get());
+		// Release the deposit from the owner
+		let remaining = T::Currency::unreserve_named(&RESERVE_ID, &owner, T::MintRequestDeposit::get());
 		ensure!(remaining.is_zero(), Error::<T>::InsufficientReservedBalance);
 
 		Self::deposit_event(Event::AccountTokenMinted {
-			requester,
+			owner,
 			account,
 			token_id,
 		});
