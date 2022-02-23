@@ -82,7 +82,7 @@ pub use sp_runtime::BuildStorage;
 pub use authority::AuthorityConfigImpl;
 pub use constants::{fee::*, parachains, time::*};
 pub use primitives::{
-	convert_decimals_to_evm, define_combined_task,
+	define_combined_task,
 	evm::{AccessListItem, EstimateResourcesRequest},
 	task::TaskResult,
 	AccountId, AccountIndex, Address, Amount, AuctionId, AuthoritysOriginId, Balance, BlockNumber, CurrencyId,
@@ -1371,7 +1371,8 @@ pub struct StorageDepositPerByte;
 impl<I: From<Balance>> frame_support::traits::Get<I> for StorageDepositPerByte {
 	fn get() -> I {
 		// NOTE: KAR decimals is 12, convert to 18.
-		I::from(convert_decimals_to_evm(deposit(0, 1)))
+		// 10 * millicent(KCA) * 10^6
+		I::from(100_000_000_000_000)
 	}
 }
 
