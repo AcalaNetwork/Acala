@@ -16,7 +16,12 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use super::*;
+use super::xcm_config::*;
+use super::{
+	constants::{fee::*, parachains},
+	FixedRateOfForeignAsset, Runtime, TransactionFeePoolTrader,
+};
+use xcm::latest::prelude::*;
 
 parameter_types! {
 	pub BncPerSecondOfCanonicalLocation: (AssetId, u128) = (
