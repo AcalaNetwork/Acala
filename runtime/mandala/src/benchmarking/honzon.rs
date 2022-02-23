@@ -134,7 +134,7 @@ runtime_benchmarks! {
 		let collateral_amount = Price::saturating_from_rational(dollar(currency_id), dollar(STABLECOIN)).saturating_mul_int(collateral_value);
 
 		// set balance
-		set_balance(currency_id, &caller, collateral_amount + ExistentialDeposits::get(&currency_id));
+		set_balance(currency_id, &caller, collateral_amount * 2);
 
 		// feed price
 		feed_price(vec![(currency_id, collateral_price)])?;
@@ -166,7 +166,7 @@ runtime_benchmarks! {
 		let collateral_amount = Price::saturating_from_rational(dollar(currency_id), dollar(STABLECOIN)).saturating_mul_int(collateral_value);
 
 		// set balance
-		set_balance(currency_id, &sender, collateral_amount + ExistentialDeposits::get(&currency_id));
+		set_balance(currency_id, &sender, collateral_amount * 2);
 		set_balance(NATIVE, &sender, DepositPerAuthorization::get());
 
 		// feed price
