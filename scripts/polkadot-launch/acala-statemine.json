@@ -1,0 +1,107 @@
+{
+  "relaychain": {
+    "bin": "/tmp/polkadot",
+    "chain": "rococo-local",
+    "nodes": [
+      {
+        "name": "alice",
+        "wsPort": 9944,
+        "port": 30444
+      },
+      {
+        "name": "bob",
+        "wsPort": 9955,
+        "port": 30555
+      },
+      {
+        "name": "charlie",
+        "wsPort": 9966,
+        "port": 30666
+      },
+      {
+        "name": "dave",
+        "wsPort": 9977,
+        "port": 30777
+      }
+    ],
+    "genesis": {
+      "runtime": {
+        "runtime_genesis_config": {
+          "configuration": {
+            "config": {
+              "validation_upgrade_frequency": 1,
+              "validation_upgrade_delay": 10
+            }
+          }
+        }
+      }
+    }
+  },
+  "parachains": [
+    {
+      "bin": "/tmp/acala",
+      "id": "2000",
+      "chain": "karura-dev",
+      "nodes": [
+        {
+          "wsPort": 9988,
+          "port": 31200,
+          "name": "alice",
+          "flags": [
+            "--unsafe-ws-external",
+            "--unsafe-rpc-external",
+            "--rpc-external",
+            "--ws-external",
+            "--rpc-cors=all",
+            "--rpc-methods=Unsafe",
+            "--force-authoring",
+            "--log=xcm=trace",
+            "--",
+            "--execution=wasm"
+          ]
+        }
+      ]
+    },
+    {
+      "bin": "/tmp/polkadot-collator",
+      "id": "1000",
+      "chain": "westmint-dev",
+      "nodes": [
+        {
+          "wsPort": 9999,
+          "port": 31300,
+          "name": "alice",
+          "flags": [
+            "--unsafe-ws-external",
+            "--unsafe-rpc-external",
+            "--rpc-external",
+            "--ws-external",
+            "--rpc-cors=all",
+            "--rpc-methods=Unsafe",
+            "--force-authoring",
+            "--log=xcm=trace,pallet-assets=trace",
+            "--",
+            "--execution=wasm"
+          ]
+        }
+      ]
+    }
+  ],
+  "simpleParachains": [],
+  "hrmpChannels": [
+    {
+      "sender": 2000,
+      "recipient": 1000,
+      "maxCapacity": 8,
+      "maxMessageSize": 512
+    },
+    {
+      "sender": 1000,
+      "recipient": 2000,
+      "maxCapacity": 8,
+      "maxMessageSize": 512
+    }
+  ],
+  "types": {},
+  "finalization": false
+}

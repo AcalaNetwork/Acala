@@ -51,12 +51,12 @@ mod mandala_imports {
 		CdpEngine, CdpTreasury, CollatorSelection, CreateClassDeposit, CreateTokenDeposit, Currencies, CurrencyId,
 		CurrencyIdConvert, DataDepositPerByte, DealWithFees, DefaultExchangeRate, Dex, DotPerSecond, EmergencyShutdown,
 		EnabledTradingPairs, Event, EvmAccounts, ExistentialDeposits, FinancialCouncil, FixedRateOfFungible, Get,
-		GetNativeCurrencyId, Homa, HomaXcm, Honzon, IdleScheduler, Loans, MaxTipsOfPriority, MinRewardDistributeAmount,
+		GetNativeCurrencyId, Homa, Honzon, IdleScheduler, Loans, MaxTipsOfPriority, MinRewardDistributeAmount,
 		MinimumDebitValue, MultiLocation, NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, Origin,
 		OriginCaller, PalletCurrency, ParachainInfo, ParachainSystem, Proxy, ProxyType, Ratio, Runtime, Scheduler,
 		Session, SessionKeys, SessionManager, SevenDays, StableAsset, StableAssetPalletId, System, Timestamp,
 		TipPerWeightStep, TokenSymbol, Tokens, TransactionPayment, TransactionPaymentPalletId, TreasuryAccount,
-		TreasuryPalletId, UncheckedExtrinsic, Utility, Vesting, XcmConfig, XcmExecutor, EVM, NFT,
+		TreasuryPalletId, UncheckedExtrinsic, Utility, Vesting, XcmConfig, XcmExecutor, XcmInterface, EVM, NFT,
 	};
 
 	pub use runtime_common::{cent, dollar, millicent, ACA, AUSD, DOT, KSM, LDOT, LKSM};
@@ -69,6 +69,7 @@ mod mandala_imports {
 		primitives::DexShare::Token(TokenSymbol::AUSD),
 		primitives::DexShare::Token(TokenSymbol::DOT),
 	);
+	pub const NATIVE_TOKEN_SYMBOL: TokenSymbol = TokenSymbol::ACA;
 	pub type Trader = FixedRateOfFungible<DotPerSecond, ()>;
 	pub type PeriodTrader =
 		module_transaction_payment::TransactionFeePoolTrader<Runtime, CurrencyIdConvert, AcaPerSecondAsBased, ()>;
@@ -84,13 +85,13 @@ mod karura_imports {
 		AssetRegistry, AuctionManager, Authority, AuthoritysOriginId, Balance, Balances, BlockNumber, BondingDuration,
 		Call, CdpEngine, CdpTreasury, CreateClassDeposit, CreateTokenDeposit, Currencies, CurrencyId,
 		CurrencyIdConvert, DataDepositPerByte, DefaultExchangeRate, Dex, EmergencyShutdown, Event, EvmAccounts,
-		ExistentialDeposits, FinancialCouncil, FixedRateOfFungible, Get, GetNativeCurrencyId, Homa, HomaXcm, Honzon,
+		ExistentialDeposits, FinancialCouncil, FixedRateOfFungible, Get, GetNativeCurrencyId, Homa, Honzon,
 		IdleScheduler, KarPerSecond, KarPerSecondAsBased, KaruraFoundationAccounts, KsmPerSecond, KusdPerSecond, Loans,
 		MaxTipsOfPriority, MinimumDebitValue, MultiLocation, NativeTokenExistentialDeposit, NetworkId, NftPalletId,
 		OneDay, Origin, OriginCaller, ParachainAccount, ParachainInfo, ParachainSystem, PolkadotXcm, Proxy, ProxyType,
 		Ratio, RelayChainBlockNumberProvider, Runtime, Scheduler, Session, SessionManager, SevenDays, System,
 		Timestamp, TipPerWeightStep, TokenSymbol, Tokens, TransactionPayment, TransactionPaymentPalletId,
-		TreasuryPalletId, Utility, Vesting, XTokens, XcmConfig, XcmExecutor, EVM, NFT,
+		TreasuryPalletId, Utility, Vesting, XTokens, XcmConfig, XcmExecutor, XcmInterface, EVM, NFT,
 	};
 	pub use primitives::TradingPair;
 	pub use runtime_common::{calculate_asset_ratio, cent, dollar, millicent, KAR, KSM, KUSD, LKSM};
@@ -114,6 +115,7 @@ mod karura_imports {
 		primitives::DexShare::Token(TokenSymbol::KUSD),
 		primitives::DexShare::Token(TokenSymbol::KSM),
 	);
+	pub const NATIVE_TOKEN_SYMBOL: TokenSymbol = TokenSymbol::KAR;
 	pub type Trader = FixedRateOfFungible<KsmPerSecond, ()>;
 	pub type PeriodTrader =
 		module_transaction_payment::TransactionFeePoolTrader<Runtime, CurrencyIdConvert, KarPerSecondAsBased, ()>;
@@ -129,12 +131,12 @@ mod acala_imports {
 		BlockNumber, BondingDuration, Call, CdpEngine, CdpTreasury, CreateClassDeposit, CreateTokenDeposit, Currencies,
 		CurrencyId, CurrencyIdConvert, DataDepositPerByte, DefaultExchangeRate, Dex, DotPerSecond, EmergencyShutdown,
 		Event, EvmAccounts, ExistentialDeposits, FinancialCouncil, FixedRateOfFungible, Get, GetNativeCurrencyId, Homa,
-		HomaXcm, Honzon, IdleScheduler, Loans, MaxTipsOfPriority, MinimumDebitValue, MultiLocation,
+		Honzon, IdleScheduler, Loans, MaxTipsOfPriority, MinimumDebitValue, MultiLocation,
 		NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, Origin, OriginCaller, ParachainAccount,
 		ParachainInfo, ParachainSystem, PolkadotXcm, Proxy, ProxyType, Ratio, RelayChainBlockNumberProvider, Runtime,
 		Scheduler, Session, SessionManager, SevenDays, System, Timestamp, TipPerWeightStep, TokenSymbol, Tokens,
 		TransactionPayment, TransactionPaymentPalletId, TreasuryPalletId, Utility, Vesting, XTokens, XcmConfig,
-		XcmExecutor, EVM, LCDOT, NFT,
+		XcmExecutor, XcmInterface, EVM, LCDOT, NFT,
 	};
 	pub use frame_support::parameter_types;
 	pub use primitives::TradingPair;
@@ -161,6 +163,7 @@ mod acala_imports {
 		primitives::DexShare::Token(TokenSymbol::AUSD),
 		primitives::DexShare::Token(TokenSymbol::DOT),
 	);
+	pub const NATIVE_TOKEN_SYMBOL: TokenSymbol = TokenSymbol::ACA;
 	pub type Trader = FixedRateOfFungible<DotPerSecond, ()>;
 	pub type PeriodTrader =
 		module_transaction_payment::TransactionFeePoolTrader<Runtime, CurrencyIdConvert, AcaPerSecondAsBased, ()>;

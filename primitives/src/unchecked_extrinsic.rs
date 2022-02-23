@@ -30,7 +30,7 @@ use sp_core::{H160, H256};
 use sp_io::{crypto::secp256k1_ecdsa_recover, hashing::keccak_256};
 use sp_runtime::{
 	generic::{CheckedExtrinsic, UncheckedExtrinsic},
-	traits::{self, Checkable, Convert, Extrinsic, ExtrinsicMetadata, Member, SignedExtension},
+	traits::{self, Checkable, Convert, Extrinsic, ExtrinsicMetadata, Member, SignedExtension, Zero},
 	transaction_validity::{InvalidTransaction, TransactionValidityError},
 	AccountId32, RuntimeDebug,
 };
@@ -111,19 +111,23 @@ where
 				let function = self.0.function;
 
 				let (eth_msg, eth_extra) = ConvertTx::convert((function.clone(), extra))?;
+				log::trace!(
+					target: "evm", "Ethereum eth_msg: {:?}", eth_msg
+				);
 
-				if eth_msg.tip != 0 {
+				if !eth_msg.tip.is_zero() {
 					// Not yet supported, require zero tip
+					return Err(InvalidTransaction::BadProof.into());
+				}
+
+				if !eth_msg.access_list.len().is_zero() {
+					// Not yet supported, require empty
 					return Err(InvalidTransaction::BadProof.into());
 				}
 
 				let (tx_gas_price, tx_gas_limit) =
 					recover_sign_data(&eth_msg, TxFeePerGas::get(), StorageDepositPerByte::get())
 						.ok_or(InvalidTransaction::BadProof)?;
-				log::trace!(
-					target: "evm", "eth_msg.tip: {:?}, eth_msg.gas_limit: {:?}, eth_msg.storage_limit: {:?}, tx_gas_limit: {:?}, tx_gas_price: {:?}",
-					eth_msg.tip, eth_msg.storage_limit, eth_msg.gas_limit, tx_gas_limit, tx_gas_price
-				);
 
 				let msg = LegacyTransactionMessage {
 					nonce: eth_msg.nonce.into(),
@@ -134,6 +138,9 @@ where
 					input: eth_msg.input,
 					chain_id: Some(eth_msg.chain_id),
 				};
+				log::trace!(
+					target: "evm", "tx msg: {:?}", msg
+				);
 
 				let msg_hash = msg.hash(); // TODO: consider rewirte this to use `keccak_256` for hashing because it could be faster
 
@@ -154,6 +161,9 @@ where
 			Some((addr, AcalaMultiSignature::Eip1559(sig), extra)) => {
 				let function = self.0.function;
 				let (eth_msg, eth_extra) = ConvertTx::convert((function.clone(), extra))?;
+				log::trace!(
+					target: "evm", "Eip1559 eth_msg: {:?}", eth_msg
+				);
 
 				let (tx_gas_price, tx_gas_limit) =
 					recover_sign_data(&eth_msg, TxFeePerGas::get(), StorageDepositPerByte::get())
@@ -161,11 +171,6 @@ where
 
 				// tip = priority_fee * gas_limit
 				let priority_fee = eth_msg.tip.checked_div(eth_msg.gas_limit.into()).unwrap_or_default();
-
-				log::trace!(
-					target: "evm", "eth_msg.tip: {:?}, eth_msg.gas_limit: {:?}, eth_msg.storage_limit: {:?}, tx_gas_limit: {:?}, tx_gas_price: {:?}",
-					eth_msg.tip, eth_msg.storage_limit, eth_msg.gas_limit, tx_gas_limit, tx_gas_price
-				);
 
 				let msg = EIP1559TransactionMessage {
 					chain_id: eth_msg.chain_id,
@@ -176,8 +181,11 @@ where
 					action: eth_msg.action,
 					value: eth_msg.value.into(),
 					input: eth_msg.input,
-					access_list: vec![],
+					access_list: eth_msg.access_list,
 				};
+				log::trace!(
+					target: "evm", "tx msg: {:?}", msg
+				);
 
 				let msg_hash = msg.hash(); // TODO: consider rewirte this to use `keccak_256` for hashing because it could be faster
 
@@ -199,6 +207,9 @@ where
 				let function = self.0.function;
 
 				let (eth_msg, eth_extra) = ConvertTx::convert((function.clone(), extra))?;
+				log::trace!(
+					target: "evm", "AcalaEip712 eth_msg: {:?}", eth_msg
+				);
 
 				let signer = verify_eip712_signature(eth_msg, sig).ok_or(InvalidTransaction::BadProof)?;
 
@@ -263,7 +274,8 @@ fn recover_signer(sig: &[u8; 65], msg_hash: &[u8; 32]) -> Option<H160> {
 
 fn verify_eip712_signature(eth_msg: EthereumTransactionMessage, sig: [u8; 65]) -> Option<H160> {
 	let domain_hash = keccak256!("EIP712Domain(string name,string version,uint256 chainId,bytes32 salt)");
-	let tx_type_hash = keccak256!("Transaction(string action,address to,uint256 nonce,uint256 tip,bytes data,uint256 value,uint256 gasLimit,uint256 storageLimit,uint256 validUntil)");
+	let access_list_type_hash = keccak256!("AccessList(address address,uint256[] storageKeys)");
+	let tx_type_hash = keccak256!("Transaction(string action,address to,uint256 nonce,uint256 tip,bytes data,uint256 value,uint256 gasLimit,uint256 storageLimit,AccessList[] accessList,uint256 validUntil)AccessList(address address,uint256[] storageKeys)");
 
 	let mut domain_seperator_msg = domain_hash.to_vec();
 	domain_seperator_msg.extend_from_slice(keccak256!("Acala EVM")); // name
@@ -289,6 +301,17 @@ fn verify_eip712_signature(eth_msg: EthereumTransactionMessage, sig: [u8; 65]) -
 	tx_msg.extend_from_slice(&to_bytes(eth_msg.value));
 	tx_msg.extend_from_slice(&to_bytes(eth_msg.gas_limit));
 	tx_msg.extend_from_slice(&to_bytes(eth_msg.storage_limit));
+
+	let mut access_list: Vec<[u8; 32]> = Vec::new();
+	eth_msg.access_list.iter().for_each(|v| {
+		let mut access_list_msg = access_list_type_hash.to_vec();
+		access_list_msg.extend_from_slice(&to_bytes(v.address.as_bytes()));
+		access_list_msg.extend_from_slice(&keccak_256(
+			&v.storage_keys.iter().map(|v| v.as_bytes()).collect::<Vec<_>>().concat(),
+		));
+		access_list.push(keccak_256(access_list_msg.as_slice()));
+	});
+	tx_msg.extend_from_slice(&keccak_256(&access_list.concat()));
 	tx_msg.extend_from_slice(&to_bytes(eth_msg.valid_until));
 
 	let mut msg = b"\x19\x01".to_vec();
@@ -340,21 +363,65 @@ mod tests {
 
 	#[test]
 	fn verify_eip712_should_works() {
+		let sender = Some(H160::from_str("0x14791697260E4c9A71f18484C9f997B308e59325").unwrap());
+		// access_list = vec![]
 		let msg = EthereumTransactionMessage {
 			chain_id: 595,
-			genesis: H256::from_str("0xc3751fc073ec83e6aa13e2be395d21b05dce0692618a129324261c80ede07d4c").unwrap(),
-			nonce: 1,
+			genesis: H256::from_str("0xafb55f3937d1377c23b8f351315b2792f5d2753bb95420c191d2dc70ad7196e8").unwrap(),
+			nonce: 0,
 			tip: 2,
-			gas_limit: 222,
-			storage_limit: 333,
-			action: TransactionAction::Call(H160::from_str("0x1111111111222222222233333333334444444444").unwrap()),
-			value: 111,
-			input: vec![],
-			valid_until: 444,
+			gas_limit: 2100000,
+			storage_limit: 20000,
+			action: TransactionAction::Create,
+			value: 0,
+			input: vec![0x01],
+			valid_until: 105,
+			access_list: vec![],
 		};
-		let sign = hex!("acb56f12b407bd0bc8f7abefe2e2585affe28009abcb6980aa33aecb815c56b324ab60a41eff339a88631c4b0e5183427be1fcfde3c05fb9b6c71a691e977c4a1b");
-		let sender = Some(H160::from_str("0x14791697260E4c9A71f18484C9f997B308e59325").unwrap());
+		let sign = hex!("c30a85ee9218af4e2892c82d65a8a7fbeee75c010973d42cee2e52309449d687056c09cf486a16d58d23b0ebfed63a0276d5fb1a464f645dc7607147a37f7a211c");
+		assert_eq!(verify_eip712_signature(msg.clone(), sign), sender);
 
+		// access_list.storage_keys = vec![]
+		let msg = EthereumTransactionMessage {
+			chain_id: 595,
+			genesis: H256::from_str("0xafb55f3937d1377c23b8f351315b2792f5d2753bb95420c191d2dc70ad7196e8").unwrap(),
+			nonce: 0,
+			tip: 2,
+			gas_limit: 2100000,
+			storage_limit: 20000,
+			action: TransactionAction::Create,
+			value: 0,
+			input: vec![0x01],
+			valid_until: 105,
+			access_list: vec![AccessListItem {
+				address: hex!("0000000000000000000000000000000000000000").into(),
+				storage_keys: vec![],
+			}],
+		};
+		let sign = hex!("a94da7159e29f2a0c9aec08eb62cbb6eefd6ee277960a3c96b183b53201687ce19f1fd9c2cfdace8730fd5249ea11e57701cd0cc20386bbd9d3df5092fe218851c");
+		assert_eq!(verify_eip712_signature(msg.clone(), sign), sender);
+
+		let msg = EthereumTransactionMessage {
+			chain_id: 595,
+			genesis: H256::from_str("0xafb55f3937d1377c23b8f351315b2792f5d2753bb95420c191d2dc70ad7196e8").unwrap(),
+			nonce: 0,
+			tip: 2,
+			gas_limit: 2100000,
+			storage_limit: 20000,
+			action: TransactionAction::Create,
+			value: 0,
+			input: vec![0x01],
+			valid_until: 105,
+			access_list: vec![AccessListItem {
+				address: hex!("0000000000000000000000000000000000000000").into(),
+				storage_keys: vec![
+					H256::from_str("0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef").unwrap(),
+					H256::from_str("0x0000000000111111111122222222223333333333444444444455555555556666").unwrap(),
+					H256::from_str("0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef").unwrap(),
+				],
+			}],
+		};
+		let sign = hex!("dca9701b77bac69e5a88c7f040a6fa0a051f97305619e66e9182bf3416ca2d0e7b730cb732e2f747754f6b9307d78ce611aabb3692ea48314670a6a8c447dc9b1c");
 		assert_eq!(verify_eip712_signature(msg.clone(), sign), sender);
 
 		let mut new_msg = msg.clone();
@@ -374,7 +441,7 @@ mod tests {
 		assert_ne!(verify_eip712_signature(new_msg, sign), sender);
 
 		let mut new_msg = msg.clone();
-		new_msg.action = TransactionAction::Create;
+		new_msg.action = TransactionAction::Call(H160::from_str("0x1111111111222222222233333333334444444444").unwrap());
 		assert_ne!(verify_eip712_signature(new_msg, sign), sender);
 
 		let mut new_msg = msg.clone();
@@ -391,6 +458,13 @@ mod tests {
 
 		let mut new_msg = msg.clone();
 		new_msg.genesis = Default::default();
+		assert_ne!(verify_eip712_signature(new_msg, sign), sender);
+
+		let mut new_msg = msg.clone();
+		new_msg.access_list = vec![AccessListItem {
+			address: hex!("bb9bc244d798123fde783fcc1c72d3bb8c189413").into(),
+			storage_keys: vec![],
+		}];
 		assert_ne!(verify_eip712_signature(new_msg, sign), sender);
 
 		let mut new_msg = msg;
@@ -498,7 +572,7 @@ mod tests {
 		let mut new_msg = msg;
 		new_msg.access_list = vec![AccessListItem {
 			address: hex!("bb9bc244d798123fde783fcc1c72d3bb8c189413").into(),
-			slots: vec![],
+			storage_keys: vec![],
 		}];
 		assert_ne!(recover_signer(&sign, new_msg.hash().as_fixed_bytes()), sender);
 	}
@@ -515,6 +589,7 @@ mod tests {
 			action: TransactionAction::Call(H160::from_str("0x1111111111222222222233333333334444444444").unwrap()),
 			value: 0,
 			input: vec![],
+			access_list: vec![],
 			valid_until: 30,
 		};
 

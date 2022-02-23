@@ -37,6 +37,7 @@ use sp_runtime::traits::Convert;
 use sp_std::{convert::From, prelude::*, vec, vec::Vec};
 use xcm::latest::prelude::*;
 
+pub mod migrations;
 pub use module::*;
 
 #[frame_support::pallet]
