@@ -1371,7 +1371,7 @@ pub struct StorageDepositPerByte;
 impl<I: From<Balance>> frame_support::traits::Get<I> for StorageDepositPerByte {
 	fn get() -> I {
 		// NOTE: KAR decimals is 12, convert to 18.
-		// 10 * millicent(KCA) * 10^6
+		// 10 * millicent(KAR) * 10^6
 		I::from(100_000_000_000_000)
 	}
 }
