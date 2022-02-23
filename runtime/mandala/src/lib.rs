@@ -62,7 +62,7 @@ use orml_traits::{
 };
 use pallet_transaction_payment::{FeeDetails, RuntimeDispatchInfo};
 use primitives::{
-	convert_decimals_to_evm, define_combined_task,
+	define_combined_task,
 	evm::{AccessListItem, EthereumTransactionMessage},
 	task::TaskResult,
 	unchecked_extrinsic::AcalaUncheckedExtrinsic,
@@ -1509,7 +1509,8 @@ impl<I: From<Balance>> frame_support::traits::Get<I> for StorageDepositPerByte {
 	fn get() -> I {
 		#[cfg(not(feature = "with-ethereum-compatibility"))]
 		// NOTE: ACA decimals is 12, convert to 18.
-		return I::from(convert_decimals_to_evm(deposit(0, 1)));
+		// 10 * millicent(ACA) * 10^6
+		return I::from(100_000_000_000_000);
 		#[cfg(feature = "with-ethereum-compatibility")]
 		return I::from(0);
 	}

@@ -80,7 +80,7 @@ pub use sp_runtime::BuildStorage;
 pub use authority::AuthorityConfigImpl;
 pub use constants::{fee::*, time::*};
 pub use primitives::{
-	convert_decimals_to_evm, define_combined_task,
+	define_combined_task,
 	evm::{AccessListItem, EstimateResourcesRequest},
 	task::TaskResult,
 	AccountId, AccountIndex, Address, Amount, AuctionId, AuthoritysOriginId, Balance, BlockNumber, CurrencyId,
@@ -1361,7 +1361,8 @@ pub struct StorageDepositPerByte;
 impl<I: From<Balance>> frame_support::traits::Get<I> for StorageDepositPerByte {
 	fn get() -> I {
 		// NOTE: ACA decimals is 12, convert to 18.
-		I::from(convert_decimals_to_evm(deposit(0, 1)))
+		// 30 * millicent(ACA) * 10^6
+		I::from(300_000_000_000_000)
 	}
 }
 
