@@ -17,12 +17,12 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-	dollar, AccountId, Amount, Balance, CdpEngine, CollateralCurrencyIds, Currencies, CurrencyId,
-	DepositPerAuthorization, Dex, ExistentialDeposits, GetLiquidCurrencyId, GetNativeCurrencyId, GetStableCurrencyId,
-	GetStakingCurrencyId, Honzon, Price, Rate, Ratio, Runtime,
+	AccountId, Amount, Balance, CdpEngine, CollateralCurrencyIds, Currencies, CurrencyId, DepositPerAuthorization, Dex,
+	ExistentialDeposits, GetLiquidCurrencyId, GetNativeCurrencyId, GetStableCurrencyId, GetStakingCurrencyId, Honzon,
+	Price, Rate, Ratio, Runtime,
 };
 
-use super::utils::{feed_price, set_balance};
+use super::utils::{dollar, feed_price, set_balance};
 use frame_benchmarking::{account, whitelisted_caller};
 use frame_system::RawOrigin;
 use orml_benchmarking::runtime_benchmarks;
@@ -102,7 +102,7 @@ runtime_benchmarks! {
 	}: _(RawOrigin::Signed(caller), STAKING, to_lookup)
 
 	unauthorize_all {
-		let c in 0 .. CollateralCurrencyIds::get().len().saturating_sub(1) as u32;
+		let c in 0 .. CollateralCurrencyIds::get().len() as u32;
 
 		let caller: AccountId = whitelisted_caller();
 		let currency_ids = CollateralCurrencyIds::get();
@@ -134,7 +134,7 @@ runtime_benchmarks! {
 		let collateral_amount = Price::saturating_from_rational(dollar(currency_id), dollar(STABLECOIN)).saturating_mul_int(collateral_value);
 
 		// set balance
-		set_balance(currency_id, &caller, collateral_amount + ExistentialDeposits::get(&currency_id));
+		set_balance(currency_id, &caller, collateral_amount * 2);
 
 		// feed price
 		feed_price(vec![(currency_id, collateral_price)])?;
@@ -166,7 +166,7 @@ runtime_benchmarks! {
 		let collateral_amount = Price::saturating_from_rational(dollar(currency_id), dollar(STABLECOIN)).saturating_mul_int(collateral_value);
 
 		// set balance
-		set_balance(currency_id, &sender, collateral_amount + ExistentialDeposits::get(&currency_id));
+		set_balance(currency_id, &sender, collateral_amount * 2);
 		set_balance(NATIVE, &sender, DepositPerAuthorization::get());
 
 		// feed price
