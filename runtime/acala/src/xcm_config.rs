@@ -15,6 +15,7 @@
 
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
+
 use super::{
 	constants::fee::*, AcalaTreasuryAccount, AccountId, AssetIdMapping, AssetIdMaps, Balance, Call, Convert,
 	Currencies, CurrencyId, Event, ExistentialDeposits, FixedRateOfForeignAsset, GetNativeCurrencyId,
