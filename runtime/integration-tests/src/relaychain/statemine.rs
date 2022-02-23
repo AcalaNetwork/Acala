@@ -53,7 +53,7 @@ fn transfer_custom_asset_works() {
 		Balances::make_free_balance_be(&ALICE.into(), 10 * dollar(KSM));
 		Balances::make_free_balance_be(&BOB.into(), dollar(KSM));
 
-		// create asset cost 1 KSM
+		// create custom asset cost 1 KSM
 		assert_ok!(Assets::create(
 			origin.clone(),
 			0,
@@ -88,6 +88,8 @@ fn transfer_custom_asset_works() {
 		));
 
 		assert_eq!(Assets::balance(0, &para_acc), 10 * asset_units);
+
+		// the KSM balance of sibling parachain sovereign account is not changed
 		assert_eq!(10 * asset_units, Balances::free_balance(&para_acc));
 	});
 
@@ -99,13 +101,14 @@ fn transfer_custom_asset_works() {
 			9_999_936_000_000,
 			Tokens::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(BOB))
 		);
+		// ensure sender has enough KSM balance to be charged as fee
 		assert_ok!(Tokens::deposit(KSM, &AccountId::from(BOB), 10 * asset_units));
 
 		// Transfer statemine asset back to Statemine
-		assert_ok!(XTokens::transfer_using_relaychain_as_fee(
+		assert_ok!(XTokens::transfer_multicurrencies(
 			Origin::signed(BOB.into()),
-			CurrencyId::ForeignAsset(0),
-			asset_units,
+			vec![(CurrencyId::ForeignAsset(0), asset_units), (KSM, 4_000_000_000)],
+			1,
 			Box::new(
 				MultiLocation::new(
 					1,
@@ -131,7 +134,10 @@ fn transfer_custom_asset_works() {
 
 	Statemine::execute_with(|| {
 		use statemine_runtime::*;
-		assert_eq!(Assets::balance(0, &para_acc), 9 * asset_units);
+		// Karura send back custom asset to Statemine, ensure recipient got custom asset
 		assert_eq!(asset_units, Assets::balance(0, &AccountId::from(BOB)));
+		// KSM and custom asset balance of sibling parachain sovereign account also changed
+		assert_eq!(9 * asset_units, Assets::balance(0, &para_acc));
+		assert_eq!(9_996_000_000_000, Balances::free_balance(&para_acc));
 	});
 }
