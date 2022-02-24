@@ -1997,6 +1997,7 @@ impl module_idle_scheduler::Config for Runtime {
 
 impl cumulus_pallet_aura_ext::Config for Runtime {}
 
+//TODO: finalize aqua dao runtime config
 parameter_types!(
 	pub StableTokenSymbol: TokenSymbol = TokenSymbol::AUSD;
 	pub TreasuryShare: Ratio = Ratio::saturating_from_rational(10, 100);
@@ -2005,6 +2006,7 @@ parameter_types!(
 	pub AquaStakedTokenPalletId: PalletId = PalletId(*b"dao/sttk");
 	pub AquaDaoPalletId: PalletId = PalletId(*b"dao/daoo");
 	pub DaoAccount: AccountId = AquaDaoPalletId::get().into_account();
+	pub InflationRatePerNBlock: (BlockNumber, Rate) = (DAYS, Rate::saturating_from_rational(30, 365_00));
 );
 
 impl ecosystem_aqua_staked_token::Config for Runtime {
@@ -2012,6 +2014,7 @@ impl ecosystem_aqua_staked_token::Config for Runtime {
 	type Currency = Currencies;
 	type UpdateParamsOrigin = EnsureRootOrHalfGeneralCouncil;
 	type BlockNumberProvider = RelayChainBlockNumberProvider<Runtime>;
+	type InflationRatePerNBlock = InflationRatePerNBlock;
 	type TreasuryShare = TreasuryShare;
 	type DaoShare = DaoShare;
 	type DefaultExchangeRate = DaoDefaultExchangeRate;
