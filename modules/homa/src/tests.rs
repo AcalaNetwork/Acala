@@ -596,12 +596,12 @@ fn do_fast_match_redeem_works() {
 
 			// Charlie's redeem request is not allowed to be fast matched.
 			assert_noop!(
-				Homa::do_fast_match_redeem(&CHARLIE),
+				Homa::do_fast_match_redeem(&CHARLIE, true),
 				Error::<Runtime>::FastMatchIsNotAllowed
 			);
 
 			// Alice's redeem request is able to be fast matched fully.
-			assert_ok!(Homa::do_fast_match_redeem(&ALICE));
+			assert_ok!(Homa::do_fast_match_redeem(&ALICE, false));
 			System::assert_last_event(Event::Homa(crate::Event::RedeemedByFastMatch(
 				ALICE, 5_000_000, 500_000, 450_000,
 			)));
@@ -625,7 +625,12 @@ fn do_fast_match_redeem_works() {
 
 			// Bob's redeem request is able to be fast matched partially,
 			// because must remain `RedeemThreshold` even if `ToBondPool` is enough.
-			assert_ok!(Homa::do_fast_match_redeem(&BOB));
+			assert_noop!(
+				Homa::do_fast_match_redeem(&BOB, false),
+				Error::<Runtime>::CannotCompletelyFastMatch,
+			);
+
+			assert_ok!(Homa::do_fast_match_redeem(&BOB, true));
 			System::assert_last_event(Event::Homa(crate::Event::RedeemedByFastMatch(
 				BOB, 5_500_000, 550_000, 500_499,
 			)));
