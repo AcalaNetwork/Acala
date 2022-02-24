@@ -224,6 +224,8 @@ pub mod module {
 		CollateralNotEnough,
 		/// debit value decrement is not enough
 		NotEnoughDebitDecrement,
+		/// convert debit value to debit balance failed
+		ConvertDebitBalanceFailed,
 	}
 
 	#[pallet::event]
@@ -804,11 +806,10 @@ impl<T: Config> Pallet<T> {
 		Self::get_debit_exchange_rate(currency_id).saturating_mul_int(debit_balance)
 	}
 
-	pub fn convert_to_debit_balance(currency_id: CurrencyId, debit_value: Balance) -> Balance {
+	pub fn try_convert_to_debit_balance(currency_id: CurrencyId, debit_value: Balance) -> Option<Balance> {
 		Self::get_debit_exchange_rate(currency_id)
 			.reciprocal()
-			.unwrap_or_default()
-			.saturating_mul_int(debit_value)
+			.map(|n| n.saturating_mul_int(debit_value))
 	}
 
 	pub fn calculate_collateral_ratio(
@@ -924,7 +925,7 @@ impl<T: Config> Pallet<T> {
 				)
 				.ok_or(Error::<T>::CannotSwap)?;
 				let (_, actual_increase_collateral) =
-					T::DEX::swap_with_specific_path(&<LoansOf<T>>::account_id(), &swap_path, limit)?;
+					T::DEX::swap_with_specific_path(&loans_module_account, &swap_path, limit)?;
 
 				actual_increase_collateral
 			}
@@ -932,7 +933,8 @@ impl<T: Config> Pallet<T> {
 
 		// update CDP state
 		let collateral_adjustment = <LoansOf<T>>::amount_try_from_balance(increase_collateral)?;
-		let increase_debit_balance = Self::convert_to_debit_balance(currency_id, increase_debit_value);
+		let increase_debit_balance = Self::try_convert_to_debit_balance(currency_id, increase_debit_value)
+			.ok_or(Error::<T>::ConvertDebitBalanceFailed)?;
 		let debit_adjustment = <LoansOf<T>>::amount_try_from_balance(increase_debit_balance)?;
 		<LoansOf<T>>::update_loan(who, currency_id, collateral_adjustment, debit_adjustment)?;
 
@@ -948,8 +950,8 @@ impl<T: Config> Pallet<T> {
 	/// and the collateral ratio will be increased. For single token collateral,
 	/// try to swap stable coin by DEX. For lp token collateral, try to remove liquidity
 	/// for lp token first, then swap the non-stable coin to get stable coin. If all
-	/// debti are repaid, the extra stable coin will be transferred directly back to
-	/// the CDP owner.
+	/// debit are repaid, the extra stable coin will be transferred back to the CDP
+	/// owner directly.
 	#[transactional]
 	pub fn shrink_position_debit(
 		who: &T::AccountId,
@@ -1023,7 +1025,7 @@ impl<T: Config> Pallet<T> {
 				let swap_path = T::DEX::get_best_price_swap_path(
 					currency_id,
 					stable_currency_id,
-					SwapLimit::ExactSupply(decrease_collateral, min_decrease_debit_value),
+					limit,
 					T::AlternativeSwapPathJointList::get(),
 				)
 				.ok_or(Error::<T>::CannotSwap)?;
@@ -1038,7 +1040,8 @@ impl<T: Config> Pallet<T> {
 		let previous_debit_value = Self::get_debit_value(currency_id, debit);
 		let decrease_debit_value = actual_stable_amount.min(previous_debit_value);
 		let refund_stable = actual_stable_amount.saturating_sub(decrease_debit_value);
-		let decrease_debit_balance = Self::convert_to_debit_balance(currency_id, decrease_debit_value);
+		let decrease_debit_balance = Self::try_convert_to_debit_balance(currency_id, decrease_debit_value)
+			.ok_or(Error::<T>::ConvertDebitBalanceFailed)?;
 		let debit_adjustment = <LoansOf<T>>::amount_try_from_balance(decrease_debit_balance)?.saturating_neg();
 		<LoansOf<T>>::update_loan(who, currency_id, collateral_adjustment, debit_adjustment)?;
 
@@ -1166,7 +1169,9 @@ impl<T: Config> Pallet<T> {
 						<T as Config>::CDPTreasury::withdraw_collateral(
 							&who,
 							stable_currency_id,
-							existing_stable - target_stable_amount,
+							existing_stable
+								.checked_sub(target_stable_amount)
+								.expect("ensured existing stable amount greater than target; qed"),
 						)?;
 					}
 
