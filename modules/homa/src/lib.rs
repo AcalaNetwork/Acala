@@ -167,6 +167,8 @@ pub mod module {
 		OutdatedEraIndex,
 		/// Redeem request is not allowed to be fast matched.
 		FastMatchIsNotAllowed,
+		/// The fast match cannot be matched completely.
+		CannotCompletelyFastMatch,
 	}
 
 	#[pallet::event]
@@ -455,7 +457,7 @@ pub mod module {
 			let _ = ensure_signed(origin)?;
 
 			for redeemer in redeemer_list {
-				Self::do_fast_match_redeem(&redeemer)?;
+				Self::do_fast_match_redeem(&redeemer, true)?;
 			}
 
 			Ok(())
@@ -630,6 +632,22 @@ pub mod module {
 			T::GovernanceOrigin::ensure_origin(origin)?;
 			Self::bump_current_era(bump_amount)
 		}
+
+		/// Execute fast match for specific redeem requests, require completely matched.
+		///
+		/// Parameters:
+		/// - `redeemer_list`: The list of redeem requests to execute fast redeem.
+		#[pallet::weight(< T as Config >::WeightInfo::fast_match_redeems(redeemer_list.len() as u32))]
+		#[transactional]
+		pub fn fast_match_redeems_completely(origin: OriginFor<T>, redeemer_list: Vec<T::AccountId>) -> DispatchResult {
+			let _ = ensure_signed(origin)?;
+
+			for redeemer in redeemer_list {
+				Self::do_fast_match_redeem(&redeemer, false)?;
+			}
+
+			Ok(())
+		}
 	}
 
 	impl<T: Config> Pallet<T> {
@@ -713,7 +731,7 @@ pub mod module {
 		}
 
 		#[transactional]
-		pub fn do_fast_match_redeem(redeemer: &T::AccountId) -> DispatchResult {
+		pub fn do_fast_match_redeem(redeemer: &T::AccountId, allow_partially: bool) -> DispatchResult {
 			RedeemRequests::<T>::try_mutate_exists(redeemer, |maybe_request| -> DispatchResult {
 				if let Some((request_amount, allow_fast_match)) = maybe_request.take() {
 					ensure!(allow_fast_match, Error::<T>::FastMatchIsNotAllowed);
@@ -768,6 +786,7 @@ pub mod module {
 					// update request amount
 					let remainder_request_amount = request_amount.saturating_sub(actual_liquid_to_redeem);
 					if !remainder_request_amount.is_zero() {
+						ensure!(allow_partially, Error::<T>::CannotCompletelyFastMatch);
 						*maybe_request = Some((remainder_request_amount, allow_fast_match));
 					}
 				}
