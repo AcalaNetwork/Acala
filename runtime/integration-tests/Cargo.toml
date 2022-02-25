@@ -110,6 +110,8 @@ module-xcm-interface = {path = "../../modules/xcm-interface" }
 module-homa = {path = "../../modules/homa" }
 module-session-manager = { path = "../../modules/session-manager" }
 module-relaychain = {path = "../../modules/relaychain" }
+module-foreign-state-oracle = { path = "../../modules/foreign-state-oracle" }
+module-account-tokenizer = { path = "../../modules/account-tokenizer" }
 primitives = { package = "acala-primitives", path = "../../primitives" }
 runtime-common = { path = "../common" }
 
@@ -140,7 +142,7 @@ xcm-emulator = { git = "https://github.com/shaunxw/xcm-simulator", rev = "a250ff
 acala-service = { path = "../../node/service", features = ["with-all-runtime"] }
 
 [features]
-default = ["std"]
+default = ["std", "with-karura-runtime"]
 no_std = []
 with-mandala-runtime = [
 	"mandala-runtime",

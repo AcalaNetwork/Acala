@@ -184,7 +184,7 @@ fn can_reject_mint_request() {
 				module_foreign_state_oracle::Event::CallDispatched { task_result: Ok(()) },
 			));
 
-			// Deposit is repatriated to the treassury due to the rejection of the request.
+			// Deposit is repatriated to the treasury due to the rejection of the request.
 			assert_eq!(Balances::free_balance(&ALICE), dollar(988));
 			assert_eq!(Balances::reserved_balance(&ALICE), 0);
 			assert_eq!(Balances::free_balance(&TREASURY), dollar(11));

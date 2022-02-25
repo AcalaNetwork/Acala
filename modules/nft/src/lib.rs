@@ -599,11 +599,25 @@ impl<T: Config> Create<T::AccountId> for Pallet<T> {
 }
 
 impl<T: Config> CreateExtended<T::AccountId, Properties> for Pallet<T> {
+	type Balance = BalanceOf<T>;
 	fn next_class_id() -> Self::ClassId {
 		orml_nft::Pallet::<T>::next_class_id()
 	}
 
 	fn set_class_properties(class: &Self::ClassId, properties: Properties) -> DispatchResult {
 		Self::do_update_class_properties(&T::PalletId::get().into_sub_account(class), class, properties)
+	}
+	fn pay_mint_fee(payer: &T::AccountId, class: &Self::ClassId, quantity: u32) -> DispatchResult {
+		let total_fee = T::CreateTokenDeposit::get().saturating_mul(quantity.into());
+		let class_owner = Self::class_owner(class).ok_or(Error::<T>::ClassIdNotFound)?;
+		<T as module::Config>::Currency::transfer(payer, &class_owner, total_fee, KeepAlive)
+	}
+	fn base_mint_fee() -> Self::Balance {
+		T::CreateTokenDeposit::get()
+	}
+	fn base_create_class_fee() -> Self::Balance {
+		let class_deposit = T::CreateClassDeposit::get();
+		let proxy_deposit = <pallet_proxy::Pallet<T>>::deposit(1u32);
+		class_deposit.saturating_add(proxy_deposit)
 	}
 }

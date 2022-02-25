@@ -110,7 +110,7 @@ pub mod module {
 			+ Mutate<Self::AccountId>
 			+ InspectExtended<Self::AccountId>
 			+ Create<Self::AccountId>
-			+ CreateExtended<Self::AccountId, Properties>;
+			+ CreateExtended<Self::AccountId, Properties, Balance = Balance>;
 	}
 
 	#[pallet::error]
@@ -168,6 +168,15 @@ pub mod module {
 		fn on_runtime_upgrade() -> Weight {
 			let on_chain_storage_version = <Self as GetStorageVersion>::on_chain_storage_version();
 			if on_chain_storage_version == 0 {
+				let amount = T::NFTInterface::base_create_class_fee();
+				// Transfer some fund from the treasury to pay for the class creation.
+				let res =
+					T::Currency::transfer(&T::TreasuryAccount::get(), &T::PalletAccount::get(), amount, KeepAlive);
+				log::debug!(
+					"Account Tokenizer: Transferred funds from treasury to create class. result: {:?}",
+					res
+				);
+
 				// Use storage version to ensure we only register NFT class once.
 				let class_id = T::NFTInterface::next_class_id();
 				let res = T::NFTInterface::create_class(&class_id, &T::PalletAccount::get(), &T::PalletAccount::get());
@@ -188,6 +197,16 @@ pub mod module {
 				StorageVersion::new(1).put::<Self>();
 			}
 			0
+		}
+
+		// ensure that MintFee is >= NFT's mint fee.
+		fn integrity_test() {
+			sp_std::if_std! {
+				sp_io::TestExternalities::new_empty().execute_with(||
+					assert!(
+						T::MintFee::get() >= T::NFTInterface::base_mint_fee()
+					));
+			}
 		}
 	}
 
@@ -289,6 +308,9 @@ impl<T: Config> Pallet<T> {
 	#[transactional]
 	pub fn accept_mint_request(owner: T::AccountId, account: T::AccountId) -> DispatchResult {
 		let nft_class_id = Self::nft_class_id();
+
+		// Pay for minting the token
+		T::NFTInterface::pay_mint_fee(&T::TreasuryAccount::get(), &Self::nft_class_id(), 1u32)?;
 
 		// Mint the Account Token's NFT.
 		let token_id = T::NFTInterface::next_token_id(nft_class_id);

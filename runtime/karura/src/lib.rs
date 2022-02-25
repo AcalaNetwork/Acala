@@ -174,6 +174,8 @@ parameter_types! {
 	pub const HomaTreasuryPalletId: PalletId = PalletId(*b"aca/hmtr");
 	pub const IncentivesPalletId: PalletId = PalletId(*b"aca/inct");
 	pub const CollatorPotId: PalletId = PalletId(*b"aca/cpot");
+	pub const ForeignOraclePalletId: PalletId = PalletId(*b"aca/fsto");
+	pub const AccountTokenizerPalletId: PalletId = PalletId(*b"aca/atnz");
 	// Treasury reserve
 	pub const TreasuryReservePalletId: PalletId = PalletId(*b"aca/reve");
 	pub const NftPalletId: PalletId = PalletId(*b"aca/aNFT");
@@ -200,6 +202,7 @@ pub fn get_all_module_accounts() -> Vec<AccountId> {
 		TreasuryReservePalletId::get().into_account(),
 		UnreleasedNativeVaultAccountId::get(),
 		StableAssetPalletId::get().into_account(),
+		AccountTokenizerPalletId::get().into_account(),
 	]
 }
 
@@ -2045,6 +2048,44 @@ impl nutsfinance_stable_asset::Config for Runtime {
 	type EnsurePoolAssetId = EnsurePoolAssetId;
 }
 
+parameter_types! {
+	pub const QueryDuration: BlockNumber = 10;
+	pub QueryFee: Balance = 10 * cent(KAR);
+	pub CancelFee: Balance = 5 * cent(KAR);
+}
+
+impl module_foreign_state_oracle::Config for Runtime {
+	type Event = Event;
+	type Origin = Origin;
+	type VerifiableTask = Call;
+	type Currency = Balances;
+	type PalletId = ForeignOraclePalletId;
+	type QueryFee = QueryFee;
+	type CancelFee = CancelFee;
+	type QueryDuration = QueryDuration;
+	type BlockNumberProvider = System;
+	type OracleOrigin = EnsureRoot<AccountId>;
+}
+
+parameter_types! {
+	pub AccountTokenizerPalletAccount: AccountId = AccountTokenizerPalletId::get().into_account();
+	pub AccountTokenizerMintRequestDeposit: Balance = 10 * dollar(KAR);
+	pub AccountTokenizerMintFee: Balance = dollar(KAR);
+}
+
+impl module_account_tokenizer::Config for Runtime {
+	type Event = Event;
+	type Call = Call;
+	type PalletAccount = AccountTokenizerPalletAccount;
+	type Currency = Balances;
+	type XcmInterface = XcmInterface;
+	type OracleOrigin = module_foreign_state_oracle::EnsureForeignStateOracle;
+	type NFTInterface = NFT;
+	type TreasuryAccount = KaruraTreasuryAccount;
+	type MintRequestDeposit = AccountTokenizerMintRequestDeposit;
+	type MintFee = AccountTokenizerMintFee;
+	type ForeignStateQuery = ForeignStateOracle;
+}
 construct_runtime!(
 	pub enum Runtime where
 		Block = Block,
@@ -2068,6 +2109,7 @@ construct_runtime!(
 		Currencies: module_currencies::{Pallet, Call, Event<T>} = 12,
 		Vesting: orml_vesting::{Pallet, Storage, Call, Event<T>, Config<T>} = 13,
 		TransactionPayment: module_transaction_payment::{Pallet, Call, Storage, Event<T>} = 14,
+		AccountTokenizer: module_account_tokenizer::{Pallet, Call, Storage, Event<T>} = 15,
 
 		// Treasury
 		Treasury: pallet_treasury::{Pallet, Call, Storage, Config, Event<T>} = 20,
@@ -2138,6 +2180,7 @@ construct_runtime!(
 		Incentives: module_incentives::{Pallet, Storage, Call, Event<T>} = 120,
 		NFT: module_nft::{Pallet, Call, Event<T>} = 121,
 		AssetRegistry: module_asset_registry::{Pallet, Call, Storage, Event<T>} = 122,
+		ForeignStateOracle: module_foreign_state_oracle::{Pallet, Call, Storage, Event<T>, Origin} = 123,
 
 		// Smart contracts
 		EVM: module_evm::{Pallet, Config<T>, Call, Storage, Event<T>} = 130,

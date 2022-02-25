@@ -215,8 +215,8 @@ impl module_foreign_state_oracle::Config for Runtime {
 }
 
 parameter_types! {
-	pub const AcccountTokenizerPalletId: PalletId = PalletId(*b"aca/atnz");
-	pub AccountTokenizerPalletAccount: AccountId = AcccountTokenizerPalletId::get().into_account();
+	pub const AccountTokenizerPalletId: PalletId = PalletId(*b"aca/atnz");
+	pub AccountTokenizerPalletAccount: AccountId = AccountTokenizerPalletId::get().into_account();
 	pub TreasuryAccount: AccountId = TREASURY;
 	pub MintRequestDeposit: Balance = dollar(10);
 	pub MintFee: Balance = dollar(1);
