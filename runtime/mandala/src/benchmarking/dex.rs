@@ -64,7 +64,7 @@ fn inject_liquidity(
 		max_amount_b.unique_saturated_into(),
 	)?;
 
-	Dex::enable_trading_pair(RawOrigin::Root.into(), currency_id_a, currency_id_b)?;
+	let _ = Dex::enable_trading_pair(RawOrigin::Root.into(), currency_id_a, currency_id_b);
 
 	Dex::add_liquidity(
 		RawOrigin::Signed(maker.clone()).into(),
@@ -86,7 +86,7 @@ runtime_benchmarks! {
 	enable_trading_pair {
 		let trading_pair = TradingPair::from_currency_ids(STABLECOIN, NATIVE).unwrap();
 		if let TradingPairStatus::Enabled = Dex::trading_pair_statuses(trading_pair) {
-			Dex::disable_trading_pair(RawOrigin::Root.into(), trading_pair.first(), trading_pair.second())?;
+			let _ = Dex::disable_trading_pair(RawOrigin::Root.into(), trading_pair.first(), trading_pair.second());
 		}
 	}: _(RawOrigin::Root, trading_pair.first(), trading_pair.second())
 	verify {
@@ -97,7 +97,7 @@ runtime_benchmarks! {
 	disable_trading_pair {
 		let trading_pair = TradingPair::from_currency_ids(STABLECOIN, NATIVE).unwrap();
 		if let TradingPairStatus::Disabled = Dex::trading_pair_statuses(trading_pair) {
-			Dex::enable_trading_pair(RawOrigin::Root.into(), trading_pair.first(), trading_pair.second())?;
+			let _ = Dex::enable_trading_pair(RawOrigin::Root.into(), trading_pair.first(), trading_pair.second());
 		}
 	}: _(RawOrigin::Root, trading_pair.first(), trading_pair.second())
 	verify {

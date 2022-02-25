@@ -49,7 +49,7 @@ pub type Ratio = FixedU128;
 pub type Rate = FixedU128;
 
 pub trait RiskManager<AccountId, CurrencyId, Balance, DebitBalance> {
-	fn get_bad_debt_value(currency_id: CurrencyId, debit_balance: DebitBalance) -> Balance;
+	fn get_debit_value(currency_id: CurrencyId, debit_balance: DebitBalance) -> Balance;
 
 	fn check_position_valid(
 		currency_id: CurrencyId,
@@ -65,7 +65,7 @@ pub trait RiskManager<AccountId, CurrencyId, Balance, DebitBalance> {
 impl<AccountId, CurrencyId, Balance: Default, DebitBalance> RiskManager<AccountId, CurrencyId, Balance, DebitBalance>
 	for ()
 {
-	fn get_bad_debt_value(_currency_id: CurrencyId, _debit_balance: DebitBalance) -> Balance {
+	fn get_debit_value(_currency_id: CurrencyId, _debit_balance: DebitBalance) -> Balance {
 		Default::default()
 	}
 
@@ -135,7 +135,7 @@ pub trait DEXManager<AccountId, CurrencyId, Balance> {
 		max_amount_b: Balance,
 		min_share_increment: Balance,
 		stake_increment_share: bool,
-	) -> DispatchResult;
+	) -> sp_std::result::Result<(Balance, Balance, Balance), DispatchError>;
 
 	fn remove_liquidity(
 		who: &AccountId,
@@ -145,7 +145,7 @@ pub trait DEXManager<AccountId, CurrencyId, Balance> {
 		min_withdrawn_a: Balance,
 		min_withdrawn_b: Balance,
 		by_unstake: bool,
-	) -> DispatchResult;
+	) -> sp_std::result::Result<(Balance, Balance), DispatchError>;
 }
 
 #[cfg(feature = "std")]
@@ -190,8 +190,8 @@ where
 		_max_amount_b: Balance,
 		_min_share_increment: Balance,
 		_stake_increment_share: bool,
-	) -> DispatchResult {
-		Ok(())
+	) -> sp_std::result::Result<(Balance, Balance, Balance), DispatchError> {
+		Ok(Default::default())
 	}
 
 	fn remove_liquidity(
@@ -202,8 +202,8 @@ where
 		_min_withdrawn_a: Balance,
 		_min_withdrawn_b: Balance,
 		_by_unstake: bool,
-	) -> DispatchResult {
-		Ok(())
+	) -> sp_std::result::Result<(Balance, Balance), DispatchError> {
+		Ok(Default::default())
 	}
 }
 
@@ -262,6 +262,11 @@ pub trait CDPTreasuryExtended<AccountId>: CDPTreasury<AccountId> {
 		refund_receiver: AccountId,
 		splited: bool,
 	) -> sp_std::result::Result<u32, DispatchError>;
+
+	fn remove_liquidity_for_lp_collateral(
+		currency_id: Self::CurrencyId,
+		amount: Self::Balance,
+	) -> sp_std::result::Result<(Self::Balance, Self::Balance), DispatchError>;
 
 	fn max_auction() -> u32;
 }

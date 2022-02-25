@@ -100,7 +100,7 @@ pub mod module {
 		/// CDP treasury to issue rewards in stable token
 		type CDPTreasury: CDPTreasury<Self::AccountId, Balance = Balance, CurrencyId = CurrencyId>;
 
-		/// Currency for transfer/issue assets
+		/// Currency for transfer assets
 		type Currency: MultiCurrency<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
 
 		/// DEX to supply liquidity info

@@ -52,10 +52,7 @@ fn inject_liquidity(
 	set_balance(currency_id_a, &maker, max_amount_a.unique_saturated_into());
 	set_balance(currency_id_b, &maker, max_amount_b.unique_saturated_into());
 
-	let trading_pair = TradingPair::from_currency_ids(currency_id_a, currency_id_b).unwrap();
-	if Dex::trading_pair_statuses(trading_pair) == TradingPairStatus::<_, _>::Disabled {
-		Dex::enable_trading_pair(RawOrigin::Root.into(), currency_id_a, currency_id_b)?;
-	}
+	let _ = Dex::enable_trading_pair(RawOrigin::Root.into(), currency_id_a, currency_id_b);
 
 	Dex::add_liquidity(
 		RawOrigin::Signed(maker.clone()).into(),

@@ -53,6 +53,8 @@ pub trait WeightInfo {
 	fn adjust_loan() -> Weight;
 	fn transfer_loan_from() -> Weight;
 	fn close_loan_has_debit_by_dex() -> Weight;
+	fn expand_position_collateral() -> Weight;
+	fn shrink_position_debit() -> Weight;
 }
 
 /// Weights for module_honzon using the Acala node and recommended hardware.
@@ -90,6 +92,16 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(32 as Weight))
 			.saturating_add(T::DbWeight::get().writes(14 as Weight))
 	}
+	fn expand_position_collateral() -> Weight {
+		(183_000_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(20 as Weight))
+			.saturating_add(T::DbWeight::get().writes(11 as Weight))
+	}
+	fn shrink_position_debit() -> Weight {
+		(186_000_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(16 as Weight))
+			.saturating_add(T::DbWeight::get().writes(12 as Weight))
+	}
 }
 
 // For backwards compatibility and tests
@@ -125,5 +137,15 @@ impl WeightInfo for () {
 		(369_989_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(32 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(14 as Weight))
+	}
+	fn expand_position_collateral() -> Weight {
+		(183_000_000 as Weight)
+			.saturating_add(RocksDbWeight::get().reads(20 as Weight))
+			.saturating_add(RocksDbWeight::get().writes(11 as Weight))
+	}
+	fn shrink_position_debit() -> Weight {
+		(186_000_000 as Weight)
+			.saturating_add(RocksDbWeight::get().reads(16 as Weight))
+			.saturating_add(RocksDbWeight::get().writes(12 as Weight))
 	}
 }
