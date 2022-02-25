@@ -22,7 +22,6 @@ module-support = { path = "../../modules/support", default-features = false }
 
 [dev-dependencies]
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.16" }
-sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.16" }
 
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.16" }
 pallet-proxy = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.16" }
