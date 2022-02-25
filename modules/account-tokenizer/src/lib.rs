@@ -45,6 +45,8 @@ use frame_support::{
 
 use frame_system::pallet_prelude::*;
 use orml_traits::{arithmetic::Zero, CreateExtended, InspectExtended};
+use sp_io::hashing::blake2_256;
+use sp_runtime::traits::TrailingZeroInput;
 use sp_std::vec::Vec;
 
 use module_support::{ForeignChainStateQuery, ProxyXcm};
@@ -54,6 +56,8 @@ use primitives::{
 };
 
 pub const RESERVE_ID: ReserveIdentifier = ReserveIdentifier::AccountTokenizer;
+// Represents `ProxyType::Any` on relaychain.
+pub const PROXYTYPE_ANY: [u8; 1] = [0_u8];
 
 mod mock;
 mod tests;
@@ -123,6 +127,8 @@ pub mod module {
 		InsufficientReservedBalance,
 		/// Cannot decode data from oracle
 		BadOracleData,
+		/// Failed to prove account spawned anonymous proxy
+		FailedAnonymousCheck,
 	}
 
 	#[pallet::event]
@@ -201,8 +207,22 @@ pub mod module {
 		/// the proxy control of an account to the parachain account.
 		#[pallet::weight(0)]
 		#[transactional]
-		pub fn request_mint(origin: OriginFor<T>, account: T::AccountId) -> DispatchResult {
+		pub fn request_mint(
+			origin: OriginFor<T>,
+			account: T::AccountId,
+			height: T::BlockNumber,
+			ext_index: u32,
+			index: u16,
+		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
+
+			// hard coded for `ProxyType::Any`. No other proxy type is allowed
+			let entropy =
+				(b"modlpy/proxy____", &who, height, ext_index, &PROXYTYPE_ANY, index).using_encoded(blake2_256);
+			let derived_account: T::AccountId = Decode::decode(&mut TrailingZeroInput::new(entropy.as_ref()))
+				.expect("infinite length input; no invalid inputs for type; qed");
+			// ensures signer also spawned anonymous proxy
+			ensure!(&account == &derived_account, Error::<T>::FailedAnonymousCheck);
 
 			// Charge the user fee and lock the deposit.
 			T::Currency::transfer(&who, &T::TreasuryAccount::get(), T::MintFee::get(), KeepAlive)?;
