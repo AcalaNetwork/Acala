@@ -247,3 +247,170 @@ impl Precompile for Bn128Pairing {
 		})
 	}
 }
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+	use hex_literal::hex;
+
+	fn get_context() -> Context {
+		Context {
+			address: Default::default(),
+			caller: Default::default(),
+			apparent_value: U256::zero(),
+		}
+	}
+
+	#[test]
+	fn bn128_add() {
+		// zero-points additions
+		{
+			let input = hex! {"
+				0000000000000000000000000000000000000000000000000000000000000000
+				0000000000000000000000000000000000000000000000000000000000000000
+				0000000000000000000000000000000000000000000000000000000000000000
+				0000000000000000000000000000000000000000000000000000000000000000
+			"};
+
+			let expected = hex! {"
+				0000000000000000000000000000000000000000000000000000000000000000
+				0000000000000000000000000000000000000000000000000000000000000000
+			"};
+
+			assert_eq!(
+				Bn128Add::execute(&input[..], None, &get_context(), false)
+					.unwrap()
+					.output,
+				expected
+			);
+		}
+
+		// no input, should not fail
+		{
+			let input = [0u8; 0];
+
+			let expected = hex! {"
+				0000000000000000000000000000000000000000000000000000000000000000
+				0000000000000000000000000000000000000000000000000000000000000000
+			"};
+
+			assert_eq!(
+				Bn128Add::execute(&input[..], None, &get_context(), false)
+					.unwrap()
+					.output,
+				expected
+			);
+		}
+
+		// should fail - point not on curve
+		{
+			let input = hex! {"
+				1111111111111111111111111111111111111111111111111111111111111111
+				1111111111111111111111111111111111111111111111111111111111111111
+				1111111111111111111111111111111111111111111111111111111111111111
+				1111111111111111111111111111111111111111111111111111111111111111
+			"};
+
+			assert_eq!(
+				Bn128Add::execute(&input[..], None, &get_context(), false),
+				Err(PrecompileFailure::Error {
+					exit_status: ExitError::Other("Invalid curve point".into())
+				})
+			);
+		}
+	}
+
+	#[test]
+	fn bn128_mul() {
+		// zero-point multiplication
+		{
+			let input = hex! {"
+				0000000000000000000000000000000000000000000000000000000000000000
+				0000000000000000000000000000000000000000000000000000000000000000
+				0200000000000000000000000000000000000000000000000000000000000000
+			"};
+
+			let expected = hex! {"
+				0000000000000000000000000000000000000000000000000000000000000000
+				0000000000000000000000000000000000000000000000000000000000000000
+			"};
+
+			assert_eq!(
+				Bn128Mul::execute(&input[..], None, &get_context(), false)
+					.unwrap()
+					.output,
+				expected
+			);
+		}
+
+		// should fail - point not on curve
+		{
+			let input = hex! {"
+				1111111111111111111111111111111111111111111111111111111111111111
+				1111111111111111111111111111111111111111111111111111111111111111
+				0f00000000000000000000000000000000000000000000000000000000000000
+			"};
+
+			assert_eq!(
+				Bn128Mul::execute(&input[..], None, &get_context(), false),
+				Err(PrecompileFailure::Error {
+					exit_status: ExitError::Other("Invalid curve point".into())
+				})
+			);
+		}
+	}
+
+	#[test]
+	fn bn128_pairing_empty() {
+		// should not fail, because empty input is a valid input of 0 elements
+		let input = [0u8; 0];
+
+		let expected = hex! {"
+			0000000000000000000000000000000000000000000000000000000000000001
+		"};
+
+		assert_eq!(
+			Bn128Pairing::execute(&input[..], None, &get_context(), false)
+				.unwrap()
+				.output,
+			expected
+		);
+	}
+
+	#[test]
+	fn bn128_pairing_notcurve() {
+		// should fail - point not on curve
+		let input = hex! {"
+			1111111111111111111111111111111111111111111111111111111111111111
+			1111111111111111111111111111111111111111111111111111111111111111
+			1111111111111111111111111111111111111111111111111111111111111111
+			1111111111111111111111111111111111111111111111111111111111111111
+			1111111111111111111111111111111111111111111111111111111111111111
+			1111111111111111111111111111111111111111111111111111111111111111
+		"};
+
+		assert_eq!(
+			Bn128Pairing::execute(&input[..], None, &get_context(), false),
+			Err(PrecompileFailure::Error {
+				exit_status: ExitError::Other("Invalid b argument - not on curve".into())
+			})
+		);
+	}
+
+	#[test]
+	fn bn128_pairing_fragmented() {
+		// should fail - input length is invalid
+		let input = hex! {"
+			1111111111111111111111111111111111111111111111111111111111111111
+			1111111111111111111111111111111111111111111111111111111111111111
+			111111111111111111111111111111
+		"};
+
+		assert_eq!(
+			Bn128Pairing::execute(&input[..], None, &get_context(), false),
+			Err(PrecompileFailure::Error {
+				exit_status: ExitError::Other("Invalid input length, must be multiple of 192 (3 * (32*2))".into())
+			})
+		);
+	}
+}

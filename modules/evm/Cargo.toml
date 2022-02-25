@@ -60,7 +60,6 @@ std = [
 	"sp-std/std",
 	"sha3/std",
 	"rlp/std",
-	"hex",
 	"num/std",
 	"module-evm-utiltity/std",
 	"primitive-types/std",
