@@ -26,24 +26,22 @@ use sp_std::{
 	vec::Vec,
 };
 
+const MAX_LENGTH: u64 = 1024;
 const MIN_GAS_COST: u64 = 200;
 
 struct ModexpPricer;
 
 impl ModexpPricer {
-	fn adjusted_exp_len(len: usize, exp_low: &BigUint) -> u64 {
+	fn adjusted_exp_len(len: u64, exp_low: U256) -> u64 {
 		let bit_index = if exp_low.is_zero() {
 			0
 		} else {
-			let bytes = exp_low.to_bytes_be();
-			let length = min(32, bytes.len());
-			let zeros = U256::from_big_endian(&bytes[..length]).leading_zeros() as u64;
-			255 - zeros
+			(255 - exp_low.leading_zeros()) as u64
 		};
 		if len <= 32 {
 			bit_index
 		} else {
-			8 * (len as u64 - 32) + bit_index
+			8 * (len - 32) + bit_index
 		}
 	}
 
@@ -55,42 +53,80 @@ impl ModexpPricer {
 		}
 	}
 
-	fn cost(
-		is_eip_2565: bool,
-		divisor: u64,
-		base_len: usize,
-		exp_len: usize,
-		mod_len: usize,
-		exponent: &BigUint,
-		target_gas: Option<u64>,
-	) -> u64 {
-		if is_eip_2565 {
-			return Self::eip_2565_cost(divisor, base_len, mod_len, exp_len, exponent);
+	fn read_lengths(input: &[u8]) -> (U256, U256, U256) {
+		let mut input = Vec::from(input);
+		if input.len() < 96 {
+			input.resize_with(96, Default::default);
 		}
+		let base_len = U256::from_big_endian(&input[..32]);
+		let exp_len = U256::from_big_endian(&input[32..64]);
+		let mod_len = U256::from_big_endian(&input[64..96]);
+		(base_len, exp_len, mod_len)
+	}
+
+	fn read_exp(input: &[u8], base_len: U256, exp_len: U256) -> U256 {
+		let input_len = input.len();
+		let base_len = if base_len > U256::from(u32::MAX) {
+			return U256::zero();
+		} else {
+			base_len.low_u64()
+		};
+		if base_len + 96 >= input_len as u64 {
+			U256::zero()
+		} else {
+			let exp_start = 96 + base_len as usize;
+			let remaining_len = input_len - exp_start;
+			let mut reader = Vec::from(&input[exp_start..exp_start + remaining_len]);
+			let len = if exp_len < U256::from(32) {
+				exp_len.low_u32() as usize
+			} else {
+				32
+			};
+
+			if reader.len() < len {
+				reader.resize_with(len, Default::default);
+			}
+
+			let mut buf: Vec<u8> = Vec::new();
+			buf.resize_with(32 - len, Default::default);
+			buf.extend(&reader[..min(len, remaining_len)]);
+			buf.resize_with(32, Default::default);
+			U256::from_big_endian(&buf[..])
+		}
+	}
+
+	fn cost(divisor: u64, input: &[u8]) -> U256 {
+		// read lengths as U256 here for accurate gas calculation.
+		let (base_len, exp_len, mod_len) = Self::read_lengths(input);
 
 		if mod_len.is_zero() && base_len.is_zero() {
-			return 0;
+			return U256::zero();
 		}
 
-		let max_len = (u32::max_value() / 2) as usize;
+		let max_len = U256::from(MAX_LENGTH - 96);
 		if base_len > max_len || mod_len > max_len || exp_len > max_len {
-			return target_gas.unwrap_or(u64::MAX);
+			return U256::max_value();
 		}
+
+		// read fist 32-byte word of the exponent.
+		let exp_low = Self::read_exp(input, base_len, exp_len);
+
+		let (base_len, exp_len, mod_len) = (base_len.low_u64(), exp_len.low_u64(), mod_len.low_u64());
 
 		let m = max(mod_len, base_len);
 
-		let adjusted_exp_len = Self::adjusted_exp_len(exp_len, exponent);
+		let adjusted_exp_len = Self::adjusted_exp_len(exp_len, exp_low);
 
-		let (gas, overflow) = Self::mult_complexity(m as u64).overflowing_mul(max(adjusted_exp_len, 1));
+		let (gas, overflow) = Self::mult_complexity(m).overflowing_mul(max(adjusted_exp_len, 1));
 		if overflow {
-			return target_gas.unwrap_or(u64::MAX);
+			return U256::max_value();
 		}
 
-		gas / divisor
+		(gas / divisor).into()
 	}
 
-	fn eip_2565_mul_complexity(base_length: usize, modulus_length: usize) -> u64 {
-		let max_length = max(base_length, modulus_length) as u64;
+	fn eip_2565_mul_complexity(base_length: U256, modulus_length: U256) -> U256 {
+		let max_length = max(base_length, modulus_length);
 		let words = {
 			// div_ceil(max_length, 8);
 			let tmp = max_length / 8;
@@ -103,34 +139,32 @@ impl ModexpPricer {
 		words.saturating_mul(words)
 	}
 
-	fn eip_2565_iter_count(exponent_length: usize, exponent: &BigUint) -> u64 {
-		let bytes = exponent.to_bytes_be();
-		let length = min(32, bytes.len());
-		let exponent = U256::from_big_endian(&bytes[..length]);
-
-		let it = if exponent_length <= 32 && exponent.is_zero() {
-			0
-		} else if exponent_length <= 32 {
-			(exponent.bits() - 1) as u64
+	fn eip_2565_iter_count(exponent_length: U256, exponent: U256) -> U256 {
+		let thirty_two = U256::from(32);
+		let it = if exponent_length <= thirty_two && exponent.is_zero() {
+			U256::zero()
+		} else if exponent_length <= thirty_two {
+			U256::from(exponent.bits()) - U256::from(1)
 		} else {
 			// else > 32
-			8u64.saturating_mul(exponent_length as u64 - 32)
-				.saturating_add(exponent.bits().saturating_sub(1) as u64)
+			U256::from(8)
+				.saturating_mul(exponent_length - thirty_two)
+				.saturating_add(U256::from(exponent.bits()).saturating_sub(U256::from(1)))
 		};
-		max(it, 1)
+		max(it, U256::one())
 	}
 
 	fn eip_2565_cost(
-		divisor: u64,
-		base_length: usize,
-		modulus_length: usize,
-		exponent_length: usize,
-		exponent: &BigUint,
-	) -> u64 {
+		divisor: U256,
+		base_length: U256,
+		modulus_length: U256,
+		exponent_length: U256,
+		exponent: U256,
+	) -> U256 {
 		let multiplication_complexity = Self::eip_2565_mul_complexity(base_length, modulus_length);
 		let iteration_count = Self::eip_2565_iter_count(exponent_length, exponent);
 		max(
-			MIN_GAS_COST,
+			U256::from(MIN_GAS_COST),
 			multiplication_complexity.saturating_mul(iteration_count) / divisor,
 		)
 	}
@@ -156,129 +190,65 @@ pub trait ModexpImpl {
 	const DIVISOR: u64;
 	const EIP_2565: bool;
 
-	fn execute_modexp(input: &[u8], target_gas: Option<u64>) -> PrecompileResult {
-		if let Some(gas_left) = target_gas {
-			if Self::EIP_2565 && gas_left < MIN_GAS_COST {
-				return Err(PrecompileFailure::Error {
-					exit_status: ExitError::OutOfGas,
-				});
-			}
-		};
-
-		let mut input = Vec::from(input);
-		if input.len() < 96 {
-			// fill with zeros
-			input.resize_with(96, Default::default);
+	fn execute_modexp(input: &[u8]) -> Vec<u8> {
+		let mut reader = Vec::from(input);
+		if reader.len() < 96 {
+			reader.resize_with(96, Default::default);
 		}
-
-		let max_len = U256::from(u32::max_value() / 2);
-
-		let mut buf = [0u8; 32];
-
-		let base_len = {
-			buf.copy_from_slice(&input[0..32]);
-			let base_len = U256::from(&buf);
-			if base_len > max_len {
-				return Err(PrecompileFailure::Error {
-					exit_status: ExitError::OutOfGas,
-				});
-			}
-			base_len.as_usize()
-		};
-
-		let mod_len = {
-			buf.copy_from_slice(&input[64..96]);
-			let mod_len = U256::from(&buf);
-			if mod_len > max_len {
-				return Err(PrecompileFailure::Error {
-					exit_status: ExitError::OutOfGas,
-				});
-			}
-			mod_len.as_usize()
-		};
+		// read lengths as u64.
+		// ignoring the first 24 bytes might technically lead us to fall out of consensus,
+		// but so would running out of addressable memory!
+		let mut buf = [0u8; 8];
+		buf.copy_from_slice(&reader[24..32]);
+		let base_len = u64::from_be_bytes(buf);
+		buf.copy_from_slice(&reader[32 + 24..64]);
+		let exp_len = u64::from_be_bytes(buf);
+		buf.copy_from_slice(&reader[64 + 24..96]);
+		let mod_len = u64::from_be_bytes(buf);
 
 		// Gas formula allows arbitrary large exp_len when base and modulus are empty, so we need to handle
 		// empty base first.
-		if mod_len.is_zero() && base_len.is_zero() {
-			return Ok(PrecompileOutput {
-				exit_status: ExitSucceed::Returned,
-				cost: if Self::EIP_2565 { MIN_GAS_COST } else { 0 },
-				output: [0u8; 1].to_vec(),
-				logs: Default::default(),
-			});
-		}
-
-		let exp_len = {
-			buf.copy_from_slice(&input[32..64]);
-			let exp_len = U256::from(&buf);
-			if exp_len > max_len {
-				return Err(PrecompileFailure::Error {
-					exit_status: ExitError::OutOfGas,
-				});
-			}
-			exp_len.as_usize()
-		};
-
-		// input length should be at least 96 + user-specified length of base + exp + mod
-		let total_len = base_len + exp_len + mod_len + 96;
-		if input.len() < total_len {
-			// fill with zeros
-			input.resize_with(total_len, Default::default);
-		}
-
-		// read the numbers themselves.
-		let base_start = 96; // previous 3 32-byte fields
-		let base = BigUint::from_bytes_be(&input[base_start..base_start + base_len]);
-
-		let exp_start = base_start + base_len;
-		let exponent = BigUint::from_bytes_be(&input[exp_start..exp_start + exp_len]);
-
-		// do our gas accounting
-		let gas_cost = ModexpPricer::cost(
-			Self::EIP_2565,
-			Self::DIVISOR,
-			base_len,
-			exp_len,
-			mod_len,
-			&exponent,
-			target_gas,
-		);
-		if let Some(gas_left) = target_gas {
-			if gas_left < gas_cost {
-				return Err(PrecompileFailure::Error {
-					exit_status: ExitError::OutOfGas,
-				});
-			}
-		};
-
-		let mod_start = exp_start + exp_len;
-		let modulus = BigUint::from_bytes_be(&input[mod_start..mod_start + mod_len]);
-
-		let bytes = if modulus.is_zero() || modulus.is_one() {
-			[0u8; 1].to_vec()
+		let r = if base_len == 0 && mod_len == 0 {
+			BigUint::zero()
 		} else {
-			base.modpow(&exponent, &modulus).to_bytes_be()
+			let total_len = 96 + base_len + exp_len + mod_len;
+			if total_len > MAX_LENGTH {
+				return [0u8; 1].to_vec();
+			}
+			let mut reader = Vec::from(input);
+			if reader.len() < total_len as usize {
+				reader.resize_with(total_len as usize, Default::default);
+			}
+			// read the numbers themselves.
+			let base_end = 96 + base_len as usize;
+			let base = BigUint::from_bytes_be(&reader[96..base_end]);
+			let exp_end = base_end + exp_len as usize;
+			let exponent = BigUint::from_bytes_be(&reader[base_end..exp_end]);
+			let mod_end = exp_end + mod_len as usize;
+			let modulus = BigUint::from_bytes_be(&reader[exp_end..mod_end]);
+
+			if modulus.is_zero() || modulus.is_one() {
+				BigUint::zero()
+			} else {
+				base.modpow(&exponent, &modulus)
+			}
 		};
+
+		// write output to given memory, left padded and same length as the modulus.
+		let bytes = r.to_bytes_be();
 
 		// always true except in the case of zero-length modulus, which leads to
 		// output of length and value 1.
-		let output = match bytes.len() {
-			len if len < mod_len => {
-				let mut output = Vec::with_capacity(mod_len);
-				output.extend(core::iter::repeat(0).take(mod_len - len));
-				output.extend_from_slice(&bytes[..]);
-				output
-			}
-			len if len == mod_len => bytes,
-			_ => [0u8; 0].to_vec(),
-		};
-
-		Ok(PrecompileOutput {
-			exit_status: ExitSucceed::Returned,
-			cost: gas_cost,
-			output,
-			logs: Default::default(),
-		})
+		if bytes.len() == mod_len as usize {
+			bytes.to_vec()
+		} else if bytes.len() < mod_len as usize {
+			let mut ret = Vec::with_capacity(mod_len as usize);
+			ret.extend(core::iter::repeat(0).take(mod_len as usize - bytes.len()));
+			ret.extend_from_slice(&bytes[..]);
+			ret.to_vec()
+		} else {
+			[0u8; 0].to_vec()
+		}
 	}
 }
 
@@ -297,44 +267,93 @@ impl ModexpImpl for Modexp {
 
 impl Precompile for IstanbulModexp {
 	fn execute(input: &[u8], target_gas: Option<u64>, _context: &Context, _is_static: bool) -> PrecompileResult {
-		Self::execute_modexp(input, target_gas)
+		if input.len() as u64 > MAX_LENGTH {
+			return Err(PrecompileFailure::Error {
+				exit_status: ExitError::OutOfGas,
+			});
+		}
+		let cost = ModexpPricer::cost(Self::DIVISOR, input);
+		if let Some(target_gas) = target_gas {
+			if cost > U256::from(u64::MAX) || target_gas < cost.as_u64() {
+				return Err(PrecompileFailure::Error {
+					exit_status: ExitError::OutOfGas,
+				});
+			}
+		}
+
+		Ok(PrecompileOutput {
+			exit_status: ExitSucceed::Returned,
+			cost: cost.as_u64(),
+			output: Self::execute_modexp(input),
+			logs: Default::default(),
+		})
 	}
 }
 
 impl Precompile for Modexp {
 	fn execute(input: &[u8], target_gas: Option<u64>, _context: &Context, _is_static: bool) -> PrecompileResult {
-		Self::execute_modexp(input, target_gas)
+		if input.len() as u64 > MAX_LENGTH {
+			return Err(PrecompileFailure::Error {
+				exit_status: ExitError::OutOfGas,
+			});
+		}
+
+		if let Some(target_gas) = target_gas {
+			if target_gas < MIN_GAS_COST {
+				return Err(PrecompileFailure::Error {
+					exit_status: ExitError::OutOfGas,
+				});
+			}
+		}
+
+		let (base_len, exp_len, mod_len) = ModexpPricer::read_lengths(input);
+		let exp = ModexpPricer::read_exp(input, base_len, exp_len);
+		let cost = ModexpPricer::eip_2565_cost(U256::from(Self::DIVISOR), base_len, mod_len, exp_len, exp);
+		if let Some(target_gas) = target_gas {
+			if cost > U256::from(u64::MAX) || target_gas < cost.as_u64() {
+				return Err(PrecompileFailure::Error {
+					exit_status: ExitError::OutOfGas,
+				});
+			}
+		}
+
+		Ok(PrecompileOutput {
+			exit_status: ExitSucceed::Returned,
+			cost: cost.as_u64(),
+			output: Self::execute_modexp(input),
+			logs: Default::default(),
+		})
 	}
 }
 
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use sp_core::H256;
+	use hex_literal::hex;
 
-	#[test]
-	fn handle_min_gas() {
-		let input: [u8; 0] = [];
-
-		let context: Context = Context {
+	fn get_context() -> Context {
+		Context {
 			address: Default::default(),
 			caller: Default::default(),
 			apparent_value: U256::zero(),
-		};
+		}
+	}
 
+	#[test]
+	fn handle_min_gas() {
 		assert_eq!(
-			Modexp::execute(&input, Some(199), &context, false),
+			Modexp::execute(&[], Some(199), &get_context(), false),
 			Err(PrecompileFailure::Error {
 				exit_status: ExitError::OutOfGas
 			})
 		);
 
 		assert_eq!(
-			Modexp::execute(&input, Some(200), &context, false),
+			Modexp::execute(&[], Some(200), &get_context(), false),
 			Ok(PrecompileOutput {
 				exit_status: ExitSucceed::Returned,
 				cost: 200,
-				output: [0u8; 1].to_vec(),
+				output: [0u8; 0].to_vec(),
 				logs: Default::default(),
 			})
 		);
@@ -342,20 +361,12 @@ mod tests {
 
 	#[test]
 	fn test_empty_input() {
-		let input: [u8; 0] = [];
-
-		let context: Context = Context {
-			address: Default::default(),
-			caller: Default::default(),
-			apparent_value: U256::zero(),
-		};
-
 		assert_eq!(
-			Modexp::execute(&input, None, &context, false),
+			Modexp::execute(&[], None, &get_context(), false),
 			Ok(PrecompileOutput {
 				exit_status: ExitSucceed::Returned,
 				cost: 200,
-				output: [0u8; 1].to_vec(),
+				output: [0u8; 0].to_vec(),
 				logs: Default::default(),
 			})
 		);
@@ -363,21 +374,14 @@ mod tests {
 
 	#[test]
 	fn test_insufficient_input() {
-		let input = hex::decode(
-			"0000000000000000000000000000000000000000000000000000000000000001\
-            0000000000000000000000000000000000000000000000000000000000000001\
-            0000000000000000000000000000000000000000000000000000000000000001",
-		)
-		.expect("Decode failed");
-
-		let context: Context = Context {
-			address: Default::default(),
-			caller: Default::default(),
-			apparent_value: U256::zero(),
-		};
+		let input = hex! {"
+			0000000000000000000000000000000000000000000000000000000000000001
+            0000000000000000000000000000000000000000000000000000000000000001
+            0000000000000000000000000000000000000000000000000000000000000001
+		"};
 
 		assert_eq!(
-			Modexp::execute(&input, None, &context, false),
+			Modexp::execute(&input, None, &get_context(), false),
 			Ok(PrecompileOutput {
 				exit_status: ExitSucceed::Returned,
 				cost: 200,
@@ -389,21 +393,45 @@ mod tests {
 
 	#[test]
 	fn test_excessive_input() {
-		let input = hex::decode(
-			"1000000000000000000000000000000000000000000000000000000000000001\
-            0000000000000000000000000000000000000000000000000000000000000001\
-            0000000000000000000000000000000000000000000000000000000000000001",
-		)
-		.expect("Decode failed");
-
-		let context: Context = Context {
-			address: Default::default(),
-			caller: Default::default(),
-			apparent_value: From::from(0),
-		};
+		let input = hex! {"
+			1000000000000000000000000000000000000000000000000000000000000001
+            0000000000000000000000000000000000000000000000000000000000000001
+            0000000000000000000000000000000000000000000000000000000000000001
+		"};
 
 		assert_eq!(
-			IstanbulModexp::execute(&input, None, &context, false),
+			Modexp::execute(&input, Some(100_000), &get_context(), false),
+			Err(PrecompileFailure::Error {
+				exit_status: ExitError::OutOfGas,
+			})
+		);
+	}
+
+	#[test]
+	fn exp_len_overflow() {
+		let input = hex! {"
+			00000000000000000000000000000000000000000000000000000000000000ff
+            2a1e530000000000000000000000000000000000000000000000000000000000
+            0000000000000000000000000000000000000000000000000000000000000000
+		"};
+
+		assert_eq!(
+			Modexp::execute(&input, Some(100_000), &get_context(), false),
+			Err(PrecompileFailure::Error {
+				exit_status: ExitError::OutOfGas,
+			})
+		);
+	}
+
+	#[test]
+	fn gas_cost_multiplication_overflow() {
+		let input = hex! {"
+			0000000000000000000000000000000000000000000000000000000000000001
+			000000000000000000000000000000000000000000000000000000003b27bafd
+			00000000000000000000000000000000000000000000000000000000503c8ac3
+		"};
+		assert_eq!(
+			Modexp::execute(&input, Some(100_000), &get_context(), false),
 			Err(PrecompileFailure::Error {
 				exit_status: ExitError::OutOfGas,
 			})
@@ -412,28 +440,19 @@ mod tests {
 
 	#[test]
 	fn test_simple_inputs() {
-		let input = hex::decode(
-			"0000000000000000000000000000000000000000000000000000000000000001\
-            0000000000000000000000000000000000000000000000000000000000000001\
-            0000000000000000000000000000000000000000000000000000000000000001\
-            03\
-            05\
-            07",
-		)
-		.expect("Decode failed");
+		let input = hex! {"
+			0000000000000000000000000000000000000000000000000000000000000001
+            0000000000000000000000000000000000000000000000000000000000000001
+            0000000000000000000000000000000000000000000000000000000000000001
+            03
+            05
+            07
+		"};
 
 		// 3 ^ 5 % 7 == 5
 
-		let cost: u64 = 100000;
-
-		let context: Context = Context {
-			address: Default::default(),
-			caller: Default::default(),
-			apparent_value: U256::zero(),
-		};
-
 		assert_eq!(
-			Modexp::execute(&input, Some(cost), &context, false),
+			Modexp::execute(&input, Some(100_000), &get_context(), false),
 			Ok(PrecompileOutput {
 				exit_status: ExitSucceed::Returned,
 				cost: 200,
@@ -445,32 +464,36 @@ mod tests {
 
 	#[test]
 	fn test_large_inputs() {
-		let input = hex::decode(
-			"0000000000000000000000000000000000000000000000000000000000000020\
-            0000000000000000000000000000000000000000000000000000000000000020\
-            0000000000000000000000000000000000000000000000000000000000000020\
-            000000000000000000000000000000000000000000000000000000000000EA5F\
-            0000000000000000000000000000000000000000000000000000000000000015\
-            0000000000000000000000000000000000000000000000000000000000003874",
-		)
-		.expect("Decode failed");
+		let input = hex! {"
+			0000000000000000000000000000000000000000000000000000000000000020
+            0000000000000000000000000000000000000000000000000000000000000020
+            0000000000000000000000000000000000000000000000000000000000000020
+            000000000000000000000000000000000000000000000000000000000000EA5F
+            0000000000000000000000000000000000000000000000000000000000000015
+            0000000000000000000000000000000000000000000000000000000000003874
+		"};
 
 		// 59999 ^ 21 % 14452 = 10055
 
-		let cost: u64 = 100000;
-
-		let context: Context = Context {
-			address: Default::default(),
-			caller: Default::default(),
-			apparent_value: U256::zero(),
-		};
+		let mut output = [0u8; 32];
+		U256::from(10055u64).to_big_endian(&mut output);
 
 		assert_eq!(
-			IstanbulModexp::execute(&input, Some(cost), &context, false),
+			IstanbulModexp::execute(&input, Some(100_000), &get_context(), false),
 			Ok(PrecompileOutput {
 				exit_status: ExitSucceed::Returned,
 				cost: 204,
-				output: H256::from_low_u64_be(10055).as_bytes().to_vec(),
+				output: output.to_vec(),
+				logs: Default::default(),
+			})
+		);
+
+		assert_eq!(
+			Modexp::execute(&input, Some(100_000), &get_context(), false),
+			Ok(PrecompileOutput {
+				exit_status: ExitSucceed::Returned,
+				cost: 200,
+				output: output.to_vec(),
 				logs: Default::default(),
 			})
 		);
@@ -478,30 +501,89 @@ mod tests {
 
 	#[test]
 	fn test_large_computation() {
-		let input = hex::decode(
-			"0000000000000000000000000000000000000000000000000000000000000001\
-            0000000000000000000000000000000000000000000000000000000000000020\
-            0000000000000000000000000000000000000000000000000000000000000020\
-            03\
-            fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2e\
-            fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f",
-		)
-		.expect("Decode failed");
+		let input = hex! {"
+			0000000000000000000000000000000000000000000000000000000000000001
+            0000000000000000000000000000000000000000000000000000000000000020
+            0000000000000000000000000000000000000000000000000000000000000020
+            03
+            fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2e
+            fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f
+		"};
 
-		let cost: u64 = 100000;
-
-		let context: Context = Context {
-			address: Default::default(),
-			caller: Default::default(),
-			apparent_value: U256::zero(),
-		};
+		let mut output = [0u8; 32];
+		U256::from(1u64).to_big_endian(&mut output);
 
 		assert_eq!(
-			IstanbulModexp::execute(&input, Some(cost), &context, false),
+			IstanbulModexp::execute(&input, Some(100_000), &get_context(), false),
 			Ok(PrecompileOutput {
 				exit_status: ExitSucceed::Returned,
 				cost: 13056,
-				output: H256::from_low_u64_be(1).as_bytes().to_vec(),
+				output: output.to_vec(),
+				logs: Default::default(),
+			})
+		);
+
+		assert_eq!(
+			Modexp::execute(&input, Some(100_000), &get_context(), false),
+			Ok(PrecompileOutput {
+				exit_status: ExitSucceed::Returned,
+				cost: 1360,
+				output: output.to_vec(),
+				logs: Default::default(),
+			})
+		);
+	}
+
+	#[test]
+	fn zero_padding() {
+		let input = hex! {"
+			0000000000000000000000000000000000000000000000000000000000000001
+            0000000000000000000000000000000000000000000000000000000000000002
+            0000000000000000000000000000000000000000000000000000000000000020
+            03
+            ffff
+            80
+		"};
+
+		let expected = hex!("3b01b01ac41f2d6e917c6d6a221ce793802469026d9ab7578fa2e79e4da6aaab");
+
+		assert_eq!(
+			IstanbulModexp::execute(&input, Some(100_000), &get_context(), false),
+			Ok(PrecompileOutput {
+				exit_status: ExitSucceed::Returned,
+				cost: 768,
+				output: expected.to_vec(),
+				logs: Default::default(),
+			})
+		);
+
+		assert_eq!(
+			Modexp::execute(&input, Some(100_000), &get_context(), false),
+			Ok(PrecompileOutput {
+				exit_status: ExitSucceed::Returned,
+				cost: 200,
+				output: expected.to_vec(),
+				logs: Default::default(),
+			})
+		);
+	}
+
+	#[test]
+	fn zero_length_modulus() {
+		let input = hex! {"
+			0000000000000000000000000000000000000000000000000000000000000001
+            0000000000000000000000000000000000000000000000000000000000000020
+            0000000000000000000000000000000000000000000000000000000000000000
+            03
+            ffff
+		"};
+
+		assert_eq!(
+			Modexp::execute(&input, Some(100_000), &get_context(), false),
+			Ok(PrecompileOutput {
+				exit_status: ExitSucceed::Returned,
+				cost: 200,
+				output: [0u8; 0].to_vec(),
 				logs: Default::default(),
 			})
 		);
@@ -524,21 +606,52 @@ mod tests {
 			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
 		];
 
-		let cost: u64 = 100000;
-
-		let context: Context = Context {
-			address: Default::default(),
-			caller: Default::default(),
-			apparent_value: U256::zero(),
-		};
-
 		assert_eq!(
-			Modexp::execute(&input, Some(cost), &context, false),
+			Modexp::execute(&input, Some(100_000), &get_context(), false),
 			Ok(PrecompileOutput {
 				exit_status: ExitSucceed::Returned,
 				cost: 200,
 				output: [0u8; 1].to_vec(),
 				logs: Default::default(),
+			})
+		);
+	}
+
+	#[test]
+	fn large_input() {
+		let input = vec![0u8; 1025];
+
+		assert_eq!(
+			IstanbulModexp::execute(&input[..1024], Some(100_000), &get_context(), false),
+			Ok(PrecompileOutput {
+				exit_status: ExitSucceed::Returned,
+				cost: 0,
+				output: [0u8; 0].to_vec(),
+				logs: Default::default(),
+			})
+		);
+
+		assert_eq!(
+			Modexp::execute(&input[..1024], Some(100_000), &get_context(), false),
+			Ok(PrecompileOutput {
+				exit_status: ExitSucceed::Returned,
+				cost: 200,
+				output: [0u8; 0].to_vec(),
+				logs: Default::default(),
+			})
+		);
+
+		assert_eq!(
+			IstanbulModexp::execute(&input, Some(100_000), &get_context(), false),
+			Err(PrecompileFailure::Error {
+				exit_status: ExitError::OutOfGas,
+			})
+		);
+
+		assert_eq!(
+			Modexp::execute(&input, Some(100_000), &get_context(), false),
+			Err(PrecompileFailure::Error {
+				exit_status: ExitError::OutOfGas,
 			})
 		);
 	}
