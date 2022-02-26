@@ -10838,6 +10838,7 @@ dependencies = [
  "karura-runtime",
  "kusama-runtime",
  "libsecp256k1 0.6.0",
+ "log",
  "mandala-runtime",
  "module-asset-registry",
  "module-auction-manager",
@@ -15037,7 +15038,7 @@ dependencies = [
 [[package]]
 name = "xcm-emulator"
 version = "0.1.0"
-source = "git+https://github.com/shaunxw/xcm-simulator?rev=a250ffc998bac4831c5692c591dee7bc13f3aead#a250ffc998bac4831c5692c591dee7bc13f3aead"
+source = "git+https://github.com/zqhxuyuan/xcm-simulator?rev=65832f73b21f55b10dcb09460f8c8ad6ac8083f9#65832f73b21f55b10dcb09460f8c8ad6ac8083f9"
 dependencies = [
  "cumulus-pallet-dmp-queue",
  "cumulus-pallet-parachain-system",
@@ -15047,6 +15048,7 @@ dependencies = [
  "cumulus-test-relay-sproof-builder",
  "frame-support",
  "frame-system",
+ "log",
  "parachain-info",
  "parity-scale-codec",
  "paste",
