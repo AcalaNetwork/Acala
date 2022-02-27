@@ -649,14 +649,7 @@ fn trap_assets_larger_than_ed_works() {
 				fees: assets,
 				weight_limit: Limited(dollar(KSM) as u64),
 			},
-			WithdrawAsset(
-				(
-					// (Parent, X2(Parachain(2000), GeneralKey(KAR.encode()))),
-					(0, GeneralKey(KAR.encode())),
-					kar_asset_amount,
-				)
-					.into(),
-			),
+			WithdrawAsset(((0, GeneralKey(KAR.encode())), kar_asset_amount).into()),
 		];
 		assert_ok!(pallet_xcm::Pallet::<kusama_runtime::Runtime>::send_xcm(
 			Here,
@@ -703,13 +696,7 @@ fn trap_assets_lower_than_ed_works() {
 				fees: assets,
 				weight_limit: Limited(dollar(KSM) as u64),
 			},
-			WithdrawAsset(
-				(
-					(Parent, X2(Parachain(2000), GeneralKey(KAR.encode()))),
-					kar_asset_amount,
-				)
-					.into(),
-			),
+			WithdrawAsset(((0, X1(GeneralKey(KAR.encode()))), kar_asset_amount).into()),
 			// two asset left in holding register, they both lower than ED, so goes to treasury.
 		];
 		assert_ok!(pallet_xcm::Pallet::<kusama_runtime::Runtime>::send_xcm(
@@ -756,11 +743,7 @@ fn sibling_trap_assets_works() {
 	});
 
 	Sibling::execute_with(|| {
-		let assets: MultiAsset = (
-			(Parent, X2(Parachain(2000), GeneralKey(KAR.encode()))),
-			kar_asset_amount,
-		)
-			.into();
+		let assets: MultiAsset = ((0, X1(GeneralKey(KAR.encode()))), kar_asset_amount).into();
 		let xcm = vec![
 			WithdrawAsset(assets.clone().into()),
 			BuyExecution {
