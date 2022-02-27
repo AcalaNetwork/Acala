@@ -7212,7 +7212,7 @@ dependencies = [
  "hash-db",
  "linregress",
  "parity-scale-codec",
- "parking_lot 0.11.2",
+ "parking_lot 0.12.0",
  "paste",
  "rand 0.8.5",
  "sc-client-db",
