@@ -390,6 +390,8 @@ pub mod module {
 		},
 		/// The charge fee pool is swapped
 		ChargeFeePoolSwapped {
+			sub_account: T::AccountId,
+			supply_currency_id: CurrencyId,
 			old_exchange_rate: Ratio,
 			swap_exchange_rate: Ratio,
 			new_exchange_rate: Ratio,
@@ -881,6 +883,8 @@ where
 					TokenExchangeRate::<T>::insert(supply_currency_id, new_exchange_rate);
 					PoolSize::<T>::insert(supply_currency_id, new_pool_size);
 					Pallet::<T>::deposit_event(Event::<T>::ChargeFeePoolSwapped {
+						sub_account,
+						supply_currency_id,
 						old_exchange_rate: rate,
 						swap_exchange_rate,
 						new_exchange_rate,
