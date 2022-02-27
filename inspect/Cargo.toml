@@ -14,4 +14,4 @@ sc-service = { git = "https://github.com/paritytech/substrate", branch = "polkad
 sp-blockchain = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17" }
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17" }
 sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17" }
-structopt = "0.3.25"
+clap = { version = "3.0", features = ["derive"] }
