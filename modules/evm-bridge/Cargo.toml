@@ -18,7 +18,7 @@ sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkad
 sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17", default-features = false }
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17", default-features = false }
 primitive-types = { version = "0.10.1", default-features = false, features = ["rlp", "byteorder"] }
-impl-trait-for-tuples = "0.2.1"
+impl-trait-for-tuples = "0.2.2"
 ethereum-types = { version = "0.12.0", default-features = false }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 support = { package = "module-support", path = "../support", default-features = false }

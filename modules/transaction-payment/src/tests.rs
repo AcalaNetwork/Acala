@@ -1162,7 +1162,7 @@ fn swap_from_pool_and_dex_with_midd_threshold() {
 
 		System::assert_has_event(crate::mock::Event::TransactionPayment(
 			crate::Event::ChargeFeePoolSwapped {
-				sub_account,
+				sub_account: sub_account.clone(),
 				supply_currency_id: DOT,
 				old_exchange_rate,
 				swap_exchange_rate,

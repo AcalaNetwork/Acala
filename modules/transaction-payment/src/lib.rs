@@ -883,7 +883,7 @@ where
 					TokenExchangeRate::<T>::insert(supply_currency_id, new_exchange_rate);
 					PoolSize::<T>::insert(supply_currency_id, new_pool_size);
 					Pallet::<T>::deposit_event(Event::<T>::ChargeFeePoolSwapped {
-						sub_account,
+						sub_account: sub_account.clone(),
 						supply_currency_id,
 						old_exchange_rate: rate,
 						swap_exchange_rate,
