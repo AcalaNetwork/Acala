@@ -18,7 +18,7 @@
 
 //! Acala CLI library.
 
-use clap::{AppSettings::*, Parser};
+use clap::Parser;
 use sc_cli::{KeySubcommand, SignCmd, VanityCmd, VerifyCmd};
 use std::path::PathBuf;
 
@@ -121,11 +121,6 @@ pub struct ExportGenesisWasmCommand {
 
 /// An overarching CLI command definition.
 #[derive(Debug, Parser)]
-#[clap(settings = &[
-	clap::AppSettings::GlobalVersion,
-	clap::AppSettings::ArgsNegateSubcommands,
-	clap::AppSettings::SubcommandsNegateReqs,
-])]
 pub struct Cli {
 	/// Possible subcommand with parameters.
 	#[clap(subcommand)]
