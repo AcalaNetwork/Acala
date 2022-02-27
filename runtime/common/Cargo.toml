@@ -7,7 +7,7 @@ edition = "2021"
 [dependencies]
 static_assertions = "1.1.0"
 num_enum = { version = "0.5.1", default-features = false }
-serde = { version = "1.0.124", optional = true, default-features = false }
+serde = { version = "1.0.136", optional = true, default-features = false }
 codec = { package = "parity-scale-codec", version = "2.3.1", default-features = false, features = ["max-encoded-len"] }
 ethabi = { version = "15.0.0", default-features = false }
 scale-info = { version = "1.0", default-features = false, features = ["derive"] }

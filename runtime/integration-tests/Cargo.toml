@@ -7,7 +7,7 @@ edition = "2021"
 [dependencies]
 smallvec = "1.4.0"
 codec = { package = "parity-scale-codec", version = "2.3.1", features = ["derive", "max-encoded-len"] }
-serde = { version = "1.0.124" }
+serde = { version = "1.0.136" }
 serde_json = "1.0.68"
 hex = { version = "0.4" }
 hex-literal = { version = "0.3.1" }

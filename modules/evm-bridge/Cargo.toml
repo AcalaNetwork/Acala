@@ -8,7 +8,7 @@ edition = "2021"
 targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
-serde = { version = "1.0.124", optional = true, features = ["derive"] }
+serde = { version = "1.0.136", optional = true, features = ["derive"] }
 codec = { package = "parity-scale-codec", version = "2.3.1", default-features = false }
 scale-info = { version = "1.0", default-features = false, features = ["derive"] }
 frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17", default-features = false }
