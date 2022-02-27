@@ -26,7 +26,10 @@ mod tests;
 
 use frame_support::log;
 use module_evm::{
-	precompiles::{ECRecover, ECRecoverPublicKey, Identity, Precompile, Ripemd160, Sha256, Sha3FIPS256, Sha3FIPS512},
+	precompiles::{
+		Blake2F, Bn128Add, Bn128Mul, Bn128Pairing, ECRecover, ECRecoverPublicKey, Identity, IstanbulModexp, Modexp,
+		Precompile, Ripemd160, Sha256, Sha3FIPS256, Sha3FIPS512,
+	},
 	runner::state::{PrecompileFailure, PrecompileResult, PrecompileSet},
 	Context, ExitRevert,
 };
@@ -67,6 +70,11 @@ where
 			H160::from_low_u64_be(2),
 			H160::from_low_u64_be(3),
 			H160::from_low_u64_be(4),
+			H160::from_low_u64_be(5),
+			H160::from_low_u64_be(6),
+			H160::from_low_u64_be(7),
+			H160::from_low_u64_be(8),
+			H160::from_low_u64_be(9),
 			// Non-standard precompile starts with 128
 			H160::from_low_u64_be(128),
 			H160::from_low_u64_be(129),
@@ -114,6 +122,20 @@ where
 			Some(Ripemd160::execute(input, target_gas, context, is_static))
 		} else if address == H160::from_low_u64_be(4) {
 			Some(Identity::execute(input, target_gas, context, is_static))
+		} else if address == H160::from_low_u64_be(5) {
+			if R::config().increase_state_access_gas {
+				Some(Modexp::execute(input, target_gas, context, is_static))
+			} else {
+				Some(IstanbulModexp::execute(input, target_gas, context, is_static))
+			}
+		} else if address == H160::from_low_u64_be(6) {
+			Some(Bn128Add::execute(input, target_gas, context, is_static))
+		} else if address == H160::from_low_u64_be(7) {
+			Some(Bn128Mul::execute(input, target_gas, context, is_static))
+		} else if address == H160::from_low_u64_be(8) {
+			Some(Bn128Pairing::execute(input, target_gas, context, is_static))
+		} else if address == H160::from_low_u64_be(9) {
+			Some(Blake2F::execute(input, target_gas, context, is_static))
 		}
 		// Non-standard precompile starts with 128
 		else if address == H160::from_low_u64_be(128) {
