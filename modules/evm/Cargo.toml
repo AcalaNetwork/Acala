@@ -12,7 +12,6 @@ required-features = ["bench"]
 [dependencies]
 codec = { package = "parity-scale-codec", version = "2.3.1", default-features = false }
 hex-literal = { version = "0.3.1" }
-impl-trait-for-tuples = "0.1"
 primitive-types = { version = "0.10.1", default-features = false, features = ["rlp", "byteorder"] }
 ripemd160 = { version = "0.9", default-features = false }
 rlp = { version = "0.5", default-features = false }
@@ -22,6 +21,8 @@ tiny-keccak = { version = "2.0", features = ["fips202"] }
 scale-info = { version = "1.0", default-features = false, features = ["derive"] }
 serde_json = { version = "1.0", default-features = false, features = ["alloc"], optional = true }
 hex = { version = "0.4", default-features = false, features = ["alloc"], optional = true }
+num = { version = "0.4", features = ["alloc"], default-features = false }
+bn = { package = "substrate-bn", version = "0.6", default-features = false }
 
 frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.16", default-features = false }
 frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.16", default-features = false }
@@ -59,6 +60,7 @@ std = [
 	"sp-std/std",
 	"sha3/std",
 	"rlp/std",
+	"num/std",
 	"module-evm-utiltity/std",
 	"primitive-types/std",
 	"pallet-timestamp/std",

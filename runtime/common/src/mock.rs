@@ -209,7 +209,8 @@ impl module_evm::Config for TestRuntime {
 	type TxFeePerGas = TxFeePerGas;
 
 	type Event = Event;
-	type Precompiles = ();
+	type PrecompilesType = ();
+	type PrecompilesValue = ();
 	type ChainId = ChainId;
 	type GasToWeight = GasToWeight;
 	type ChargeTransactionPayment = ();

@@ -84,7 +84,7 @@ describeWithAcala("Acala RPC (Contract Methods)", (context) => {
 			}
 		], alice);
 
-		await expect(mock.multiply()).to.be.rejectedWith('-32603: execution revert: 0x');
+		await expect(mock.multiply()).to.be.rejectedWith('-32603: VM Exception while processing transaction: execution revert: 0x');
 	});
 
 	// Requires error handling
@@ -99,7 +99,7 @@ describeWithAcala("Acala RPC (Contract Methods)", (context) => {
 			}
 		], alice);
 
-		await expect(mock.multiply(3, 4)).to.be.rejectedWith('-32603: execution revert: 0x');
+		await expect(mock.multiply(3, 4)).to.be.rejectedWith('-32603: VM Exception while processing transaction: execution revert: 0x');
 	});
 
 	// Requires error handling
@@ -113,6 +113,6 @@ describeWithAcala("Acala RPC (Contract Methods)", (context) => {
 			}
 		], alice);
 
-		await expect(mock.multiply("0x0123456789012345678901234567890123456789")).to.be.rejectedWith('-32603: execution revert: 0x');
+		await expect(mock.multiply("0x0123456789012345678901234567890123456789")).to.be.rejectedWith('-32603: VM Exception while processing transaction: execution revert: 0x');
 	});
 });

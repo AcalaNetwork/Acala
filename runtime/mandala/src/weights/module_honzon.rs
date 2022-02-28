@@ -78,4 +78,14 @@ impl<T: frame_system::Config> module_honzon::WeightInfo for WeightInfo<T> {
 			.saturating_add(T::DbWeight::get().reads(30 as Weight))
 			.saturating_add(T::DbWeight::get().writes(15 as Weight))
 	}
+	fn expand_position_collateral() -> Weight {
+		(183_000_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(20 as Weight))
+			.saturating_add(T::DbWeight::get().writes(11 as Weight))
+	}
+	fn shrink_position_debit() -> Weight {
+		(186_000_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(16 as Weight))
+			.saturating_add(T::DbWeight::get().writes(12 as Weight))
+	}
 }

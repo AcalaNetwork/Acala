@@ -197,9 +197,9 @@ impl<T: Config> Pallet<T> {
 				.expect("shouldn't fail");
 
 			return Self::access_price(T::GetStakingCurrencyId::get()).and_then(|n| n.checked_mul(&discount_rate));
-		} else if let CurrencyId::DexShare(symbol_0, symbol_1) = currency_id {
-			let token_0: CurrencyId = symbol_0.into();
-			let token_1: CurrencyId = symbol_1.into();
+		} else if let CurrencyId::DexShare(dex_share_0, dex_share_1) = currency_id {
+			let token_0: CurrencyId = dex_share_0.into();
+			let token_1: CurrencyId = dex_share_1.into();
 
 			// directly return the fair price
 			return {

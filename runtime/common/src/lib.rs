@@ -55,8 +55,8 @@ mod mock;
 pub use check_nonce::CheckNonce;
 use orml_traits::GetByKey;
 pub use precompile::{
-	AllPrecompiles, DexPrecompile, MultiCurrencyPrecompile, NFTPrecompile, OraclePrecompile, ScheduleCallPrecompile,
-	StateRentPrecompile,
+	AllPrecompiles, DEXPrecompile, EVMPrecompile, MultiCurrencyPrecompile, NFTPrecompile, OraclePrecompile,
+	SchedulePrecompile,
 };
 pub use primitives::{
 	currency::{TokenInfo, ACA, AUSD, BNC, DOT, KAR, KBTC, KINT, KSM, KUSD, LCDOT, LDOT, LKSM, PHA, RENBTC, VSKSM},
@@ -321,6 +321,7 @@ pub enum ProxyType {
 	Auction,
 	Swap,
 	Loan,
+	DexLiquidity,
 }
 impl Default for ProxyType {
 	fn default() -> Self {

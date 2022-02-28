@@ -114,7 +114,8 @@ impl module_evm::Config for Runtime {
 	type StorageDepositPerByte = StorageDepositPerByte;
 	type TxFeePerGas = TxFeePerGas;
 	type Event = Event;
-	type Precompiles = ();
+	type PrecompilesType = ();
+	type PrecompilesValue = ();
 	type ChainId = ();
 	type GasToWeight = ();
 	type ChargeTransactionPayment = ();
@@ -192,7 +193,7 @@ pub fn deploy_contracts() {
 	let json: serde_json::Value =
 		serde_json::from_str(include_str!("../../../ts-tests/build/Erc20DemoContract2.json")).unwrap();
 	let code = hex::decode(json.get("bytecode").unwrap().as_str().unwrap()).unwrap();
-	assert_ok!(EVM::create(Origin::signed(alice()), code, 0, 2_100_000, 10000));
+	assert_ok!(EVM::create(Origin::signed(alice()), code, 0, 2_100_000, 10000, vec![]));
 
 	System::assert_last_event(Event::EVM(module_evm::Event::Created {
 		from: alice_evm_addr(),
@@ -229,7 +230,8 @@ pub fn deploy_contracts_same_prefix() {
 		code,
 		0,
 		2_100_000,
-		10000
+		10000,
+		vec![]
 	));
 
 	System::assert_last_event(Event::EVM(module_evm::Event::Created {

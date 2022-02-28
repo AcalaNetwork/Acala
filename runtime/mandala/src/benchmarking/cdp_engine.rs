@@ -17,13 +17,13 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-	dollar, AccountId, Address, Amount, Balance, CdpEngine, CdpTreasury, CollateralCurrencyIds, CurrencyId,
+	AccountId, Address, Amount, Balance, CdpEngine, CdpTreasury, CollateralCurrencyIds, CurrencyId,
 	DefaultDebitExchangeRate, Dex, EmergencyShutdown, ExistentialDeposits, GetLiquidCurrencyId, GetNativeCurrencyId,
 	GetStableCurrencyId, GetStakingCurrencyId, MaxAuctionsCount, MinimumDebitValue, NativeTokenExistentialDeposit,
 	Price, Rate, Ratio, Runtime, Timestamp, MILLISECS_PER_BLOCK,
 };
 
-use super::utils::{feed_price, set_balance};
+use super::utils::{dollar, feed_price, set_balance};
 use frame_benchmarking::account;
 use frame_support::traits::OnInitialize;
 use frame_system::RawOrigin;
@@ -53,7 +53,7 @@ fn inject_liquidity(
 	set_balance(currency_id_a, &maker, amount_a.unique_saturated_into());
 	set_balance(currency_id_b, &maker, amount_b.unique_saturated_into());
 
-	Dex::enable_trading_pair(RawOrigin::Root.into(), currency_id_a, currency_id_b)?;
+	let _ = Dex::enable_trading_pair(RawOrigin::Root.into(), currency_id_a, currency_id_b);
 
 	Dex::add_liquidity(
 		RawOrigin::Signed(maker.clone()).into(),
@@ -72,7 +72,7 @@ runtime_benchmarks! {
 	{ Runtime, module_cdp_engine }
 
 	on_initialize {
-		let c in 0 .. CollateralCurrencyIds::get().len().saturating_sub(1) as u32;
+		let c in 0 .. CollateralCurrencyIds::get().len() as u32;
 		let owner: AccountId = account("owner", 0, SEED);
 		let owner_lookup: Address = AccountIdLookup::unlookup(owner.clone());
 		let currency_ids = CollateralCurrencyIds::get();
@@ -93,6 +93,9 @@ runtime_benchmarks! {
 
 		for i in 0 .. c {
 			let currency_id = currency_ids[i as usize];
+			if matches!(currency_id, CurrencyId::StableAssetPoolToken(_)) {
+				continue;
+			}
 			let collateral_amount = Price::saturating_from_rational(dollar(currency_id), dollar(STABLECOIN)).saturating_mul_int(collateral_value);
 
 			let ed = if currency_id == GetNativeCurrencyId::get() {

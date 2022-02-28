@@ -262,6 +262,52 @@ pub mod module {
 			Self::deposit_event(Event::UnAuthorizationAll { authorizer: from });
 			Ok(())
 		}
+
+		/// Generate new debit in advance, buy collateral and deposit it into CDP.
+		///
+		/// - `currency_id`: collateral currency id.
+		/// - `increase_debit_value`: the specific increased debit value for CDP
+		/// - `min_increase_collateral`: the minimal increased collateral amount for CDP
+		#[pallet::weight(<T as Config>::WeightInfo::expand_position_collateral())]
+		#[transactional]
+		pub fn expand_position_collateral(
+			origin: OriginFor<T>,
+			currency_id: CurrencyId,
+			increase_debit_value: Balance,
+			min_increase_collateral: Balance,
+		) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+			<cdp_engine::Pallet<T>>::expand_position_collateral(
+				&who,
+				currency_id,
+				increase_debit_value,
+				min_increase_collateral,
+			)?;
+			Ok(())
+		}
+
+		/// Sell ​​the collateral locked in CDP to get stable coin to repay the debit.
+		///
+		/// - `currency_id`: collateral currency id.
+		/// - `decrease_collateral`: the specific decreased collateral amount for CDP
+		/// - `min_decrease_debit_value`: the minimal decreased debit value for CDP
+		#[pallet::weight(<T as Config>::WeightInfo::shrink_position_debit())]
+		#[transactional]
+		pub fn shrink_position_debit(
+			origin: OriginFor<T>,
+			currency_id: CurrencyId,
+			decrease_collateral: Balance,
+			min_decrease_debit_value: Balance,
+		) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+			<cdp_engine::Pallet<T>>::shrink_position_debit(
+				&who,
+				currency_id,
+				decrease_collateral,
+				min_decrease_debit_value,
+			)?;
+			Ok(())
+		}
 	}
 }
 
