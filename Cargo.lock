@@ -13374,7 +13374,7 @@ dependencies = [
  "byteorder",
  "crunchy",
  "lazy_static",
- "rand 0.8.4",
+ "rand 0.8.5",
  "rustc-hex",
 ]
 
