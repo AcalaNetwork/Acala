@@ -1716,11 +1716,23 @@ parameter_types!(
 	pub TreasuryShare: Ratio = Ratio::saturating_from_rational(10, 100);
 	pub DaoShare: Ratio = Ratio::saturating_from_rational(10, 100);
 	pub DaoDefaultExchangeRate: Rate = Rate::one();
-	pub AquaStakedTokenPalletId: PalletId = PalletId(*b"dao/sttk");
-	pub AquaDaoPalletId: PalletId = PalletId(*b"dao/daoo");
+	/// AquaDao DAO pallet
+	pub AquaDaoPalletId: PalletId = PalletId(*b"aqua/dao");
+	/// AquaDao Staked Token pallet
+	pub AquaStakedTokenPalletId: PalletId = PalletId(*b"aqua/stt");
 	pub DaoAccount: AccountId = AquaDaoPalletId::get().into_account();
 	pub InflationRatePerNBlock: (BlockNumber, Rate) = (DAYS, Rate::saturating_from_rational(30, 365_00));
 );
+
+impl ecosystem_aqua_dao::Config for Runtime {
+	type Event = Event;
+	type Currency = Currencies;
+	type StableTokenSymbol = StableTokenSymbol;
+	type CreatingOrigin = EnsureRootOrHalfGeneralCouncil;
+	type Oracle = module_dex_oracle::AverageDEXPriceProvider<Runtime>;
+	type StakedToken = AquaStakedToken;
+	type PalletId = AquaDaoPalletId;
+}
 
 impl ecosystem_aqua_staked_token::Config for Runtime {
 	type Event = Event;
@@ -1732,18 +1744,9 @@ impl ecosystem_aqua_staked_token::Config for Runtime {
 	type DaoShare = DaoShare;
 	type DefaultExchangeRate = DaoDefaultExchangeRate;
 	type PalletId = AquaStakedTokenPalletId;
+	//FIX: use aqua dao treasury staking pallet
 	type TreasuryAccount = TreasuryAccount;
 	type DaoAccount = DaoAccount;
-}
-
-impl ecosystem_aqua_dao::Config for Runtime {
-	type Event = Event;
-	type Currency = Currencies;
-	type StableTokenSymbol = StableTokenSymbol;
-	type CreatingOrigin = EnsureRootOrHalfGeneralCouncil;
-	type Oracle = module_dex_oracle::AverageDEXPriceProvider<Runtime>;
-	type StakedToken = AquaStakedToken;
-	type PalletId = AquaDaoPalletId;
 }
 
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
