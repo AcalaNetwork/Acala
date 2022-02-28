@@ -224,6 +224,13 @@ pub mod module {
 	impl<T: Config> Pallet<T> {
 		/// Request to mint an Account Token. Called after the user of the same Account Id has given
 		/// the proxy control of an account to the parachain account.
+		///
+		/// Params:
+		/// 	- `account`: The account ID of the anonymous proxy.
+		/// 	- `height`: The block number in which the anonymous proxy is generated.
+		/// 	- `ext_index`: The index,  in the block, of the extrinsics that generated the anonymous
+		///    proxy.
+		/// 	- `index`: The index of the anonymous proxy.
 		#[pallet::weight(0)]
 		#[transactional]
 		pub fn request_mint(

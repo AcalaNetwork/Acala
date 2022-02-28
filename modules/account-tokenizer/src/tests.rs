@@ -26,6 +26,7 @@ use frame_support::{
 	dispatch::DispatchError,
 	traits::{tokens::nonfungibles::Inspect, Hooks},
 };
+use hex_literal::hex;
 use orml_traits::CreateExtended;
 
 use sp_runtime::traits::{AccountIdConversion, BadOrigin};
@@ -74,10 +75,27 @@ fn can_send_mint_request() {
 			// on runtime upgrade can create new NFT class
 			AccountTokenizer::on_runtime_upgrade();
 
+			// Spawn a anonymous proxy account.
+			assert_ok!(Proxy::anonymous(Origin::signed(ALICE), Default::default(), 0, 0u16,));
+			let proxy = AccountId::new(hex!["7342619566cac76247062ffd59cd3fb3ffa3350dc6a5087938b9d1c46b286da3"]);
+			System::assert_last_event(Event::Proxy(pallet_proxy::Event::AnonymousCreated {
+				anonymous: proxy.clone(),
+				who: ALICE,
+				proxy_type: Default::default(),
+				disambiguation_index: 0,
+			}));
+
 			assert_eq!(ForeignStateOracle::query_index(), 0);
-			assert_ok!(AccountTokenizer::request_mint(Origin::signed(ALICE), ALICE));
+			assert_ok!(AccountTokenizer::request_mint(
+				Origin::signed(ALICE),
+				proxy.clone(),
+				1,
+				0,
+				0
+			));
+
 			System::assert_last_event(Event::AccountTokenizer(crate::Event::MintRequested {
-				account: ALICE,
+				account: proxy,
 				who: ALICE,
 			}));
 			// free_balance = 1000 - 1(mint fee) - 1(query fee) - 10 (deposit)
@@ -98,22 +116,31 @@ fn can_mint_account_token_nft() {
 		.build()
 		.execute_with(|| {
 			AccountTokenizer::on_runtime_upgrade();
+			// Spawn a anonymous proxy account.
+			assert_ok!(Proxy::anonymous(Origin::signed(ALICE), Default::default(), 0, 0u16,));
+			let proxy = AccountId::new(hex!["7342619566cac76247062ffd59cd3fb3ffa3350dc6a5087938b9d1c46b286da3"]);
 
 			// Send a mint request.
-			assert_ok!(AccountTokenizer::request_mint(Origin::signed(ALICE), PROXY));
+			assert_ok!(AccountTokenizer::request_mint(
+				Origin::signed(ALICE),
+				proxy.clone(),
+				1,
+				0,
+				0
+			));
 			assert!(ForeignStateOracle::active_query(0).is_some());
 
 			// Dispatch the request to accept the mint.
 			assert_ok!(ForeignStateOracle::dispatch_task(Origin::signed(ORACLE), 0, vec![1]));
 
 			assert_eq!(ModuleNFT::owner(&0, &0), Some(ALICE));
-			assert_eq!(AccountTokenizer::minted_account(PROXY), Some(0));
+			assert_eq!(AccountTokenizer::minted_account(proxy.clone()), Some(0));
 			let events = System::events();
 			assert_eq!(
 				events[events.len() - 2].event,
 				Event::AccountTokenizer(crate::Event::AccountTokenMinted {
 					owner: ALICE,
-					account: PROXY,
+					account: proxy,
 					token_id: 0,
 				})
 			);
@@ -137,8 +164,12 @@ fn can_handle_bad_oracle_data() {
 		.execute_with(|| {
 			AccountTokenizer::on_runtime_upgrade();
 
+			// Spawn a anonymous proxy account.
+			assert_ok!(Proxy::anonymous(Origin::signed(ALICE), Default::default(), 0, 0u16,));
+			let proxy = AccountId::new(hex!["7342619566cac76247062ffd59cd3fb3ffa3350dc6a5087938b9d1c46b286da3"]);
+
 			// Send a mint request.
-			assert_ok!(AccountTokenizer::request_mint(Origin::signed(ALICE), PROXY));
+			assert_ok!(AccountTokenizer::request_mint(Origin::signed(ALICE), proxy, 1, 0, 0));
 			assert!(ForeignStateOracle::active_query(0).is_some());
 
 			// Dispatch the request to accept the mint.
@@ -163,16 +194,25 @@ fn can_reject_mint_request() {
 		.build()
 		.execute_with(|| {
 			AccountTokenizer::on_runtime_upgrade();
+			// Spawn a anonymous proxy account.
+			assert_ok!(Proxy::anonymous(Origin::signed(ALICE), Default::default(), 0, 0u16,));
+			let proxy = AccountId::new(hex!["7342619566cac76247062ffd59cd3fb3ffa3350dc6a5087938b9d1c46b286da3"]);
 
 			// Send a mint request.
-			assert_ok!(AccountTokenizer::request_mint(Origin::signed(ALICE), PROXY));
+			assert_ok!(AccountTokenizer::request_mint(
+				Origin::signed(ALICE),
+				proxy.clone(),
+				1,
+				0,
+				0
+			));
 			assert!(ForeignStateOracle::active_query(0).is_some());
 
 			// Dispatch the request to accept the mint.
 			assert_ok!(ForeignStateOracle::dispatch_task(Origin::signed(ORACLE), 0, vec![0]));
 
 			assert_eq!(ModuleNFT::owner(&0, &0), None);
-			assert_eq!(AccountTokenizer::minted_account(PROXY), None);
+			assert_eq!(AccountTokenizer::minted_account(proxy), None);
 
 			let events = System::events();
 			assert_eq!(
@@ -218,32 +258,41 @@ fn can_burn_account_token_nft() {
 		.build()
 		.execute_with(|| {
 			AccountTokenizer::on_runtime_upgrade();
+			// Spawn a anonymous proxy account.
+			assert_ok!(Proxy::anonymous(Origin::signed(ALICE), Default::default(), 0, 0u16,));
+			let proxy = AccountId::new(hex!["7342619566cac76247062ffd59cd3fb3ffa3350dc6a5087938b9d1c46b286da3"]);
 
 			// Mint the NFT.
-			assert_ok!(AccountTokenizer::request_mint(Origin::signed(ALICE), PROXY));
+			assert_ok!(AccountTokenizer::request_mint(
+				Origin::signed(ALICE),
+				proxy.clone(),
+				1,
+				0,
+				0
+			));
 			assert_ok!(ForeignStateOracle::dispatch_task(Origin::signed(ORACLE), 0, vec![1]));
 
 			assert_eq!(ModuleNFT::owner(&0, &0), Some(ALICE));
-			assert_eq!(AccountTokenizer::minted_account(PROXY), Some(0));
+			assert_eq!(AccountTokenizer::minted_account(proxy.clone()), Some(0));
 
 			// Burn the NFT
 			// only the owner of the NFT can burn the token
 			assert_noop!(
-				AccountTokenizer::burn_account_token(Origin::signed(PROXY), PROXY, ALICE),
+				AccountTokenizer::burn_account_token(Origin::signed(proxy.clone()), proxy.clone(), ALICE),
 				crate::Error::<Runtime>::CallerUnauthorized
 			);
 
 			assert_ok!(AccountTokenizer::burn_account_token(
 				Origin::signed(ALICE),
-				PROXY,
+				proxy.clone(),
 				ALICE
 			));
 
 			assert_eq!(ModuleNFT::owner(&0, &0), None);
-			assert_eq!(AccountTokenizer::minted_account(PROXY), None);
+			assert_eq!(AccountTokenizer::minted_account(proxy.clone()), None);
 
 			System::assert_last_event(Event::AccountTokenizer(crate::Event::AccountTokenBurned {
-				account: PROXY,
+				account: proxy.clone(),
 				owner: ALICE,
 				token_id: 0,
 				new_owner: ALICE,
@@ -256,7 +305,7 @@ fn can_burn_account_token_nft() {
 
 			// cannot burn the same nft again
 			assert_noop!(
-				AccountTokenizer::burn_account_token(Origin::signed(ALICE), PROXY, ALICE),
+				AccountTokenizer::burn_account_token(Origin::signed(ALICE), proxy, ALICE),
 				crate::Error::<Runtime>::AccountTokenNotFound
 			);
 		});

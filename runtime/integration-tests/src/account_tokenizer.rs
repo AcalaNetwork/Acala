@@ -51,9 +51,16 @@ fn can_mint_account_token() {
 		.execute_with(|| {
 			Balances::make_free_balance_be(&KaruraTreasuryAccount::get(), 1_000 * dollar(NATIVE_CURRENCY));
 			AccountTokenizer::on_runtime_upgrade();
+			let alice_proxy = AccountId::new(hex!["b99bbff5de2888225d1b0fcdba9c4e79117f910ae30b042618fecf87bd860316"]);
 
 			// Send a mint request.
-			assert_ok!(AccountTokenizer::request_mint(Origin::signed(alice()), bob()));
+			assert_ok!(AccountTokenizer::request_mint(
+				Origin::signed(alice()),
+				alice_proxy.clone(),
+				1,
+				0,
+				0
+			));
 			assert!(ForeignStateOracle::active_query(0).is_some());
 			// Deposit is reserved when mint is requested.
 			assert_eq!(
@@ -72,13 +79,13 @@ fn can_mint_account_token() {
 			assert_ok!(ForeignStateOracle::dispatch_task(Origin::root(), 0, vec![1]));
 
 			assert_eq!(NFT::owner(&AccountTokenizer::nft_class_id(), &0), Some(alice()));
-			assert_eq!(AccountTokenizer::minted_account(bob()), Some(0));
+			assert_eq!(AccountTokenizer::minted_account(&alice_proxy), Some(0));
 			let events = System::events();
 			assert_eq!(
 				events[events.len() - 2].event,
 				Event::AccountTokenizer(module_account_tokenizer::Event::AccountTokenMinted {
 					owner: alice(),
-					account: bob(),
+					account: alice_proxy.clone(),
 					token_id: 0,
 				})
 			);
@@ -113,16 +120,23 @@ fn can_reject_mint_request() {
 		.execute_with(|| {
 			Balances::make_free_balance_be(&KaruraTreasuryAccount::get(), 1_000 * dollar(NATIVE_CURRENCY));
 			AccountTokenizer::on_runtime_upgrade();
+			let alice_proxy = AccountId::new(hex!["b99bbff5de2888225d1b0fcdba9c4e79117f910ae30b042618fecf87bd860316"]);
 
 			// Send a mint request.
-			assert_ok!(AccountTokenizer::request_mint(Origin::signed(alice()), bob()));
+			assert_ok!(AccountTokenizer::request_mint(
+				Origin::signed(alice()),
+				alice_proxy.clone(),
+				1,
+				0,
+				0
+			));
 
 			// Dispatch the request to reject the mint.
 			assert_ok!(ForeignStateOracle::dispatch_task(Origin::root(), 0, vec![0]));
 
 			// NFT token is NOT minted
 			assert_eq!(NFT::owner(&AccountTokenizer::nft_class_id(), &0), None);
-			assert_eq!(AccountTokenizer::minted_account(bob()), None);
+			assert_eq!(AccountTokenizer::minted_account(alice_proxy.clone()), None);
 
 			let events = System::events();
 			assert_eq!(
@@ -166,40 +180,46 @@ fn can_burn_account_token_nft() {
 		])
 		.build()
 		.execute_with(|| {
-			let proxy = AccountId::from([0u8; 32]);
 			Balances::make_free_balance_be(&KaruraTreasuryAccount::get(), 1_000 * dollar(NATIVE_CURRENCY));
 			AccountTokenizer::on_runtime_upgrade();
+			let alice_proxy = AccountId::new(hex!["b99bbff5de2888225d1b0fcdba9c4e79117f910ae30b042618fecf87bd860316"]);
 
 			// Send a mint request.
-			assert_ok!(AccountTokenizer::request_mint(Origin::signed(alice()), proxy.clone()));
+			assert_ok!(AccountTokenizer::request_mint(
+				Origin::signed(alice()),
+				alice_proxy.clone(),
+				1,
+				0,
+				0
+			));
 
 			// Dispatch the request to accept the mint.
 			assert_ok!(ForeignStateOracle::dispatch_task(Origin::root(), 0, vec![1]));
 
 			assert_eq!(AccountTokenizer::nft_class_id(), 0);
-			assert_eq!(AccountTokenizer::minted_account(&proxy), Some(0));
+			assert_eq!(AccountTokenizer::minted_account(&alice_proxy), Some(0));
 			// Transfer the token to bob
 			assert_ok!(NFT::transfer(Origin::signed(alice()), bob().into(), (0, 0),));
 
 			// Only the owner is allowed to burn the token
 			assert_noop!(
-				AccountTokenizer::burn_account_token(Origin::signed(alice()), proxy.clone(), bob(),),
+				AccountTokenizer::burn_account_token(Origin::signed(alice()), alice_proxy.clone(), bob(),),
 				module_account_tokenizer::Error::<Runtime>::CallerUnauthorized
 			);
 
 			assert_eq!(NFT::owner(&AccountTokenizer::nft_class_id(), &0), Some(bob()));
-			assert_eq!(AccountTokenizer::minted_account(&proxy), Some(0));
+			assert_eq!(AccountTokenizer::minted_account(&alice_proxy), Some(0));
 
 			// Burn the token by the token owner
 			assert_ok!(AccountTokenizer::burn_account_token(
 				Origin::signed(bob()),
-				proxy.clone(),
+				alice_proxy.clone(),
 				bob(),
 			));
 
 			System::assert_last_event(Event::AccountTokenizer(
 				module_account_tokenizer::Event::AccountTokenBurned {
-					account: proxy,
+					account: alice_proxy,
 					owner: bob(),
 					token_id: 0,
 					new_owner: bob(),
@@ -210,7 +230,7 @@ fn can_burn_account_token_nft() {
 
 #[test]
 fn xcm_transfer_proxy_for_burn_works() {
-	let mut proxy = AccountId::new([0u8; 32]);
+	let mut alice_proxy = AccountId::new([0u8; 32]);
 	let mut parachain_account: AccountId = AccountId::new([0u8; 32]);
 
 	Karura::execute_with(|| {
@@ -222,46 +242,88 @@ fn xcm_transfer_proxy_for_burn_works() {
 		assert_ok!(kusama_runtime::Balances::transfer(
 			kusama_runtime::Origin::signed(ALICE.into()),
 			MultiAddress::Id(parachain_account.clone()),
-			1_000 * dollar(RELAY_CHAIN_CURRENCY)
+			500 * dollar(RELAY_CHAIN_CURRENCY)
+		));
+		assert_ok!(kusama_runtime::Balances::transfer(
+			kusama_runtime::Origin::signed(ALICE.into()),
+			MultiAddress::Id(alice()),
+			500 * dollar(RELAY_CHAIN_CURRENCY)
+		));
+		assert_ok!(kusama_runtime::Balances::transfer(
+			kusama_runtime::Origin::signed(ALICE.into()),
+			MultiAddress::Id(bob()),
+			500 * dollar(RELAY_CHAIN_CURRENCY)
 		));
 
 		// Spawn a anonymous proxy account.
 		assert_ok!(kusama_runtime::Proxy::anonymous(
-			kusama_runtime::Origin::signed(ALICE.into()),
+			kusama_runtime::Origin::signed(alice()),
 			Default::default(),
 			0,
 			0u16,
 		));
-		proxy = AccountId::new(hex!["a09745e940e6170996c8d0d5961dacdbf551546fbb394e0ea59841a18be7f1eb"]);
+		alice_proxy = AccountId::new(hex!["b99bbff5de2888225d1b0fcdba9c4e79117f910ae30b042618fecf87bd860316"]);
 		kusama_runtime::System::assert_last_event(kusama_runtime::Event::Proxy(
 			pallet_proxy::Event::AnonymousCreated {
-				anonymous: proxy.clone(),
-				who: ALICE.into(),
+				anonymous: alice_proxy.clone(),
+				who: alice(),
 				proxy_type: Default::default(),
 				disambiguation_index: 0,
 			},
 		));
 
 		assert_ok!(kusama_runtime::Balances::transfer(
-			kusama_runtime::Origin::signed(ALICE.into()),
-			MultiAddress::Id(proxy.clone()),
+			kusama_runtime::Origin::signed(alice()),
+			MultiAddress::Id(alice_proxy.clone()),
 			dollar(RELAY_CHAIN_CURRENCY)
 		));
 
 		// Transfer the proxy control to parachain account.
 		assert_ok!(kusama_runtime::Proxy::add_proxy(
-			kusama_runtime::Origin::signed(proxy.clone().into()),
-			parachain_account,
+			kusama_runtime::Origin::signed(alice_proxy.clone().into()),
+			parachain_account.clone(),
 			Default::default(),
 			0,
 		));
 
 		assert_ok!(kusama_runtime::Proxy::remove_proxy(
-			kusama_runtime::Origin::signed(proxy.clone().into()),
-			ALICE.into(),
+			kusama_runtime::Origin::signed(alice_proxy.clone().into()),
+			alice(),
 			Default::default(),
 			0,
 		));
+
+		assert_eq!(
+			kusama_runtime::Proxy::proxies(alice_proxy.clone()).0.into_inner(),
+			vec![pallet_proxy::ProxyDefinition {
+				delegate: parachain_account.clone(),
+				proxy_type: Default::default(),
+				delay: 0u32
+			}]
+		);
+
+		// Test the transfer of proxy can be done on the relaychain
+		let transfer_proxy_call = vec![
+			kusama_runtime::Call::Proxy(pallet_proxy::Call::add_proxy {
+				delegate: alice(),
+				proxy_type: Default::default(),
+				delay: 0,
+			}),
+			kusama_runtime::Call::Proxy(pallet_proxy::Call::remove_proxy {
+				delegate: parachain_account.clone(),
+				proxy_type: Default::default(),
+				delay: 0,
+			}),
+		];
+
+		assert_ok!(kusama_runtime::Utility::batch(
+			kusama_runtime::Origin::signed(parachain_account.clone().into()),
+			transfer_proxy_call
+		));
+
+		//assert_eq!(kusama_runtime::Proxy::proxies(alice_proxy.clone()).0.into_inner(),
+		// vec![pallet_proxy::ProxyDefinition { delegate: alice(), proxy_type: Default::default(),
+		// delay: 0u32 }]);
 	});
 
 	Karura::execute_with(|| {
@@ -273,9 +335,14 @@ fn xcm_transfer_proxy_for_burn_works() {
 			get_xcm_weight()
 		));
 		AccountTokenizer::on_runtime_upgrade();
-
 		// Mint an Account Token.
-		assert_ok!(AccountTokenizer::request_mint(Origin::signed(alice()), proxy.clone()));
+		assert_ok!(AccountTokenizer::request_mint(
+			Origin::signed(alice()),
+			alice_proxy.clone(),
+			1,
+			0,
+			0
+		));
 		assert_ok!(ForeignStateOracle::dispatch_task(Origin::root(), 0, vec![1]));
 
 		// Transfer the token to bob
@@ -284,7 +351,7 @@ fn xcm_transfer_proxy_for_burn_works() {
 		// Burn the token by the token owner
 		assert_ok!(AccountTokenizer::burn_account_token(
 			Origin::signed(bob()),
-			proxy.clone(),
+			alice_proxy.clone(),
 			bob(),
 		));
 	});
