@@ -1,5 +1,5 @@
 [package]
-name = "module-evm-utiltity"
+name = "module-evm-utility"
 version = "2.3.4"
 authors = ["Acala Developers"]
 edition = "2021"

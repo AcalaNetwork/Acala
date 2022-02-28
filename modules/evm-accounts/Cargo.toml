@@ -21,7 +21,7 @@ orml-traits = { path = "../../orml/traits", default-features = false }
 
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 module-support = { path = "../support", default-features = false }
-module-evm-utiltity-macro = { path = "../evm-utiltity/macro" }
+module-evm-utility-macro = { path = "../evm-utility/macro" }
 
 [dev-dependencies]
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.16" }

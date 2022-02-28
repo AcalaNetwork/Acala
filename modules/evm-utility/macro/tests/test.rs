@@ -20,7 +20,7 @@
 mod tests {
 	#[test]
 	fn generate_function_selector_works() {
-		#[module_evm_utiltity_macro::generate_function_selector]
+		#[module_evm_utility_macro::generate_function_selector]
 		#[derive(Debug, Eq, PartialEq)]
 		#[repr(u32)]
 		pub enum Action {
@@ -43,12 +43,12 @@ mod tests {
 	#[test]
 	fn keccak256_works() {
 		assert_eq!(
-			module_evm_utiltity_macro::keccak256!(""),
-			&module_evm_utiltity::sha3_256("")
+			module_evm_utility_macro::keccak256!(""),
+			&module_evm_utility::sha3_256("")
 		);
 		assert_eq!(
-			module_evm_utiltity_macro::keccak256!("keccak256"),
-			&module_evm_utiltity::sha3_256("keccak256")
+			module_evm_utility_macro::keccak256!("keccak256"),
+			&module_evm_utility::sha3_256("keccak256")
 		);
 	}
 }

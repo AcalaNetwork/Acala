@@ -1,5 +1,5 @@
 [package]
-name = "module-evm-utiltity-macro"
+name = "module-evm-utility-macro"
 version = "2.3.4"
 authors = ["Acala Developers"]
 edition = "2021"
@@ -11,4 +11,4 @@ proc-macro = true
 quote = "1.0.10"
 syn = { version = "1.0.80", features = ["full", "fold", "extra-traits", "visit"] }
 proc-macro2 = "1.0.30"
-module-evm-utiltity = { path = ".." }
+module-evm-utility = { path = ".." }

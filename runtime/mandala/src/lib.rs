@@ -1529,7 +1529,7 @@ impl<I: From<Balance>> frame_support::traits::Get<I> for TxFeePerGas {
 }
 
 #[cfg(feature = "with-ethereum-compatibility")]
-static ISTANBUL_CONFIG: module_evm_utiltity::evm::Config = module_evm_utiltity::evm::Config::istanbul();
+static ISTANBUL_CONFIG: module_evm_utility::evm::Config = module_evm_utility::evm::Config::istanbul();
 
 impl module_evm::Config for Runtime {
 	type AddressMapping = EvmAddressMapping<Runtime>;
@@ -1557,7 +1557,7 @@ impl module_evm::Config for Runtime {
 	type WeightInfo = weights::module_evm::WeightInfo<Runtime>;
 
 	#[cfg(feature = "with-ethereum-compatibility")]
-	fn config() -> &'static module_evm_utiltity::evm::Config {
+	fn config() -> &'static module_evm_utility::evm::Config {
 		&ISTANBUL_CONFIG
 	}
 }

@@ -8,7 +8,7 @@ members = [
 	"node/e2e-tests",
 
 	"modules/*",
-	"modules/evm-utiltity/macro",
+	"modules/evm-utility/macro",
 	"inspect",
 	"primitives",
 	"rpc",

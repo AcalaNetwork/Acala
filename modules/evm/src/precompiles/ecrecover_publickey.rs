@@ -18,7 +18,7 @@
 
 use super::LinearCostPrecompile;
 use crate::runner::state::PrecompileFailure;
-use module_evm_utiltity::evm::{ExitError, ExitSucceed};
+use module_evm_utility::evm::{ExitError, ExitSucceed};
 use sp_std::{cmp::min, vec::Vec};
 
 /// The ecrecover precompile.

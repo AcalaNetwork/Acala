@@ -73,8 +73,8 @@ dependencies = [
  "enumflags2",
  "frame-support",
  "hex-literal",
- "module-evm-utiltity",
- "module-evm-utiltity-macro",
+ "module-evm-utility",
+ "module-evm-utility-macro",
  "num_enum",
  "nutsfinance-stable-asset",
  "parity-scale-codec",
@@ -5641,7 +5641,7 @@ dependencies = [
  "module-evm-accounts",
  "module-evm-bridge",
  "module-evm-rpc-runtime-api",
- "module-evm-utiltity",
+ "module-evm-utility",
  "module-homa",
  "module-honzon",
  "module-idle-scheduler",
@@ -6181,7 +6181,7 @@ dependencies = [
  "frame-system",
  "hex",
  "hex-literal",
- "module-evm-utiltity",
+ "module-evm-utility",
  "module-idle-scheduler",
  "module-support",
  "num",
@@ -6215,7 +6215,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "libsecp256k1 0.6.0",
- "module-evm-utiltity-macro",
+ "module-evm-utility-macro",
  "module-support",
  "orml-currencies",
  "orml-tokens",
@@ -6241,7 +6241,7 @@ dependencies = [
  "hex",
  "impl-trait-for-tuples 0.2.1",
  "module-evm",
- "module-evm-utiltity-macro",
+ "module-evm-utility-macro",
  "module-support",
  "num_enum",
  "pallet-balances",
@@ -6269,7 +6269,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "module-evm-utiltity"
+name = "module-evm-utility"
 version = "2.3.4"
 dependencies = [
  "ethereum 0.12.0",
@@ -6281,10 +6281,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "module-evm-utiltity-macro"
+name = "module-evm-utility-macro"
 version = "2.3.4"
 dependencies = [
- "module-evm-utiltity",
+ "module-evm-utility",
  "proc-macro2",
  "quote",
  "syn",
@@ -10720,7 +10720,7 @@ dependencies = [
  "module-evm",
  "module-evm-accounts",
  "module-evm-bridge",
- "module-evm-utiltity-macro",
+ "module-evm-utility-macro",
  "module-idle-scheduler",
  "module-nft",
  "module-prices",

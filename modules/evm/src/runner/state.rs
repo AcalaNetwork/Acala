@@ -21,7 +21,7 @@
 use crate::{encode_revert_message, StorageMeter};
 use core::{cmp::min, convert::Infallible};
 use frame_support::log;
-use module_evm_utiltity::{
+use module_evm_utility::{
 	ethereum::Log,
 	evm::{
 		backend::Backend, Capture, Config, Context, CreateScheme, ExitError, ExitFatal, ExitReason, ExitRevert,
@@ -54,22 +54,22 @@ macro_rules! event {
 #[cfg(feature = "tracing")]
 mod tracing {
 	pub struct Tracer;
-	impl module_evm_utiltity::evm::tracing::EventListener for Tracer {
-		fn event(&mut self, event: module_evm_utiltity::evm::tracing::Event) {
+	impl module_evm_utility::evm::tracing::EventListener for Tracer {
+		fn event(&mut self, event: module_evm_utility::evm::tracing::Event) {
 			frame_support::log::debug!(
 				target: "evm", "evm tracing: {:?}", event
 			);
 		}
 	}
-	impl module_evm_utiltity::evm_runtime::tracing::EventListener for Tracer {
-		fn event(&mut self, event: module_evm_utiltity::evm_runtime::tracing::Event) {
+	impl module_evm_utility::evm_runtime::tracing::EventListener for Tracer {
+		fn event(&mut self, event: module_evm_utility::evm_runtime::tracing::Event) {
 			frame_support::log::debug!(
 				target: "evm", "evm_runtime tracing: {:?}", event
 			);
 		}
 	}
-	impl module_evm_utiltity::evm_gasometer::tracing::EventListener for Tracer {
-		fn event(&mut self, event: module_evm_utiltity::evm_gasometer::tracing::Event) {
+	impl module_evm_utility::evm_gasometer::tracing::EventListener for Tracer {
+		fn event(&mut self, event: module_evm_utility::evm_gasometer::tracing::Event) {
 			frame_support::log::debug!(
 				target: "evm", "evm_gasometer tracing: {:?}", event
 			);
@@ -1046,9 +1046,9 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> StackExecu
 		#[cfg(not(feature = "tracing"))]
 		let reason = self.execute(&mut runtime);
 		#[cfg(feature = "tracing")]
-		//let reason = module_evm_utiltity::evm::tracing::using(&mut Tracer, || self.execute(&mut runtime));
-		let reason = module_evm_utiltity::evm_runtime::tracing::using(&mut Tracer, || self.execute(&mut runtime));
-		//let reason = module_evm_utiltity::evm_gasometer::tracing::using(&mut Tracer, || self.execute(&mut
+		//let reason = module_evm_utility::evm::tracing::using(&mut Tracer, || self.execute(&mut runtime));
+		let reason = module_evm_utility::evm_runtime::tracing::using(&mut Tracer, || self.execute(&mut runtime));
+		//let reason = module_evm_utility::evm_gasometer::tracing::using(&mut Tracer, || self.execute(&mut
 		// runtime));
 
 		log::debug!(target: "evm", "Call execution using address {}: {:?}", code_address, reason);

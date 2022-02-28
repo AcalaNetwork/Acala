@@ -46,7 +46,7 @@ use primitives::nft::NFTBalance;
 /// - Transfer. Rest `input`bytes: `from`, `to`, `class_id`, `token_id`.
 pub struct NFTPrecompile<R>(PhantomData<R>);
 
-#[module_evm_utiltity_macro::generate_function_selector]
+#[module_evm_utility_macro::generate_function_selector]
 #[derive(RuntimeDebug, Eq, PartialEq, TryFromPrimitive, IntoPrimitive)]
 #[repr(u32)]
 pub enum Action {

@@ -39,7 +39,7 @@ pub fn generate_function_selector(_: TokenStream, input: TokenStream) -> TokenSt
 	for variant in variants {
 		if let Some((_, Expr::Lit(ExprLit { lit, .. }))) = variant.discriminant {
 			if let Lit::Str(token) = lit {
-				let selector = module_evm_utiltity::get_function_selector(&token.value());
+				let selector = module_evm_utility::get_function_selector(&token.value());
 				// println!("method: {:?}, selector: {:?}", token.value(), selector);
 				ident_expressions.push(variant.ident);
 				variant_expressions.push(Expr::Lit(ExprLit {
@@ -69,7 +69,7 @@ pub fn generate_function_selector(_: TokenStream, input: TokenStream) -> TokenSt
 pub fn keccak256(input: TokenStream) -> TokenStream {
 	let lit_str = parse_macro_input!(input as LitStr);
 
-	let result = module_evm_utiltity::sha3_256(&lit_str.value());
+	let result = module_evm_utility::sha3_256(&lit_str.value());
 
 	let eval = Lit::ByteStr(LitByteStr::new(&result.to_vec(), proc_macro2::Span::call_site()));
 

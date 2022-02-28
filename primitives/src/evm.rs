@@ -22,7 +22,7 @@ use crate::{
 };
 use codec::{Decode, Encode};
 use core::ops::Range;
-pub use module_evm_utiltity::{
+pub use module_evm_utility::{
 	ethereum::{AccessListItem, Log, TransactionAction},
 	evm::ExitReason,
 };
