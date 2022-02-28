@@ -16,7 +16,12 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use super::*;
+use super::xcm_config::*;
+use super::{
+	constants::{fee::*, parachains},
+	FixedRateOfForeignAsset, Runtime, TransactionFeePoolTrader,
+};
+use xcm::latest::prelude::*;
 
 parameter_types! {
 	pub BncPerSecondOfCanonicalLocation: (AssetId, u128) = (
@@ -32,11 +37,8 @@ pub type Trader = (
 	TransactionFeePoolTrader<Runtime, CurrencyIdConvert, KarPerSecondAsBased, ToTreasury>,
 	FixedRateOfFungible<KsmPerSecond, ToTreasury>,
 	FixedRateOfFungible<KusdPerSecond, ToTreasury>,
-	FixedRateOfFungible<KusdPerSecondOfCanonicalLocation, ToTreasury>,
 	FixedRateOfFungible<KarPerSecond, ToTreasury>,
-	FixedRateOfFungible<KarPerSecondOfCanonicalLocation, ToTreasury>,
 	FixedRateOfFungible<LksmPerSecond, ToTreasury>,
-	FixedRateOfFungible<LksmPerSecondOfCanonicalLocation, ToTreasury>,
 	FixedRateOfFungible<BncPerSecond, ToTreasury>,
 	FixedRateOfFungible<BncPerSecondOfCanonicalLocation, ToTreasury>,
 	FixedRateOfFungible<VsksmPerSecond, ToTreasury>,

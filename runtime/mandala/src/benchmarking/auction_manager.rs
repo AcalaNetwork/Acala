@@ -17,11 +17,11 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-	dollar, AccountId, AuctionId, AuctionManager, CdpTreasury, Currencies, CurrencyId, EmergencyShutdown,
-	GetStableCurrencyId, GetStakingCurrencyId, Price, Runtime,
+	AccountId, AuctionId, AuctionManager, CdpTreasury, Currencies, CurrencyId, EmergencyShutdown, GetStableCurrencyId,
+	GetStakingCurrencyId, Price, Runtime,
 };
 
-use super::utils::feed_price;
+use super::utils::{dollar, feed_price};
 use frame_benchmarking::account;
 use frame_system::RawOrigin;
 use module_support::{AuctionManager as AuctionManagerTrait, CDPTreasury};

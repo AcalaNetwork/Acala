@@ -16,14 +16,17 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::precompile::PrecompileOutput;
 use frame_support::log;
-use module_evm::{Context, ExitError, ExitSucceed, Precompile};
+use module_evm::{
+	precompiles::Precompile,
+	runner::state::{PrecompileFailure, PrecompileOutput, PrecompileResult},
+	Context, ExitRevert, ExitSucceed,
+};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use sp_runtime::RuntimeDebug;
-use sp_std::{borrow::Cow, marker::PhantomData, prelude::*, result};
+use sp_std::{marker::PhantomData, prelude::*};
 
-use module_support::EVMStateRentTrait;
+use module_support::EVMManager;
 
 use super::input::{Input, InputT, Output};
 use primitives::Balance;
@@ -39,7 +42,7 @@ use primitives::Balance;
 /// - QueryDeveloperDeposit.
 /// - QueryPublicationFee.
 /// - TransferMaintainer. Rest `input` bytes: `from`, `contract`, `new_maintainer`.
-pub struct StateRentPrecompile<R>(PhantomData<R>);
+pub struct EVMPrecompile<R>(PhantomData<R>);
 
 #[module_evm_utiltity_macro::generate_function_selector]
 #[derive(RuntimeDebug, Eq, PartialEq, TryFromPrimitive, IntoPrimitive)]
@@ -57,16 +60,12 @@ pub enum Action {
 	PublishContract = "publishContract(address,address)",
 }
 
-impl<Runtime> Precompile for StateRentPrecompile<Runtime>
+impl<Runtime> Precompile for EVMPrecompile<Runtime>
 where
 	Runtime: module_evm::Config + module_prices::Config,
-	module_evm::Pallet<Runtime>: EVMStateRentTrait<Runtime::AccountId, Balance>,
+	module_evm::Pallet<Runtime>: EVMManager<Runtime::AccountId, Balance>,
 {
-	fn execute(
-		input: &[u8],
-		_target_gas: Option<u64>,
-		_context: &Context,
-	) -> result::Result<PrecompileOutput, ExitError> {
+	fn execute(input: &[u8], _target_gas: Option<u64>, _context: &Context, _is_static: bool) -> PrecompileResult {
 		let input = Input::<Action, Runtime::AccountId, Runtime::AddressMapping, Runtime::Erc20InfoMapping>::new(input);
 
 		let action = input.action()?;
@@ -93,8 +92,13 @@ where
 			Action::QueryMaintainer => {
 				let contract = input.evm_address_at(1)?;
 
-				let maintainer = module_evm::Pallet::<Runtime>::query_maintainer(contract)
-					.map_err(|e| ExitError::Other(Cow::Borrowed(e.into())))?;
+				let maintainer = module_evm::Pallet::<Runtime>::query_maintainer(contract).map_err(|e| {
+					PrecompileFailure::Revert {
+						exit_status: ExitRevert::Reverted,
+						output: Into::<&str>::into(e).as_bytes().to_vec(),
+						cost: 0,
+					}
+				})?;
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
@@ -128,16 +132,20 @@ where
 
 				log::debug!(
 					target: "evm",
-					"state_rent: from: {:?}, contract: {:?}, new_maintainer: {:?}",
+					"evm: from: {:?}, contract: {:?}, new_maintainer: {:?}",
 					from, contract, new_maintainer,
 				);
 
-				<module_evm::Pallet<Runtime> as EVMStateRentTrait<Runtime::AccountId, Balance>>::transfer_maintainer(
+				<module_evm::Pallet<Runtime> as EVMManager<Runtime::AccountId, Balance>>::transfer_maintainer(
 					from,
 					contract,
 					new_maintainer,
 				)
-				.map_err(|e| ExitError::Other(Cow::Borrowed(e.into())))?;
+				.map_err(|e| PrecompileFailure::Revert {
+					exit_status: ExitRevert::Reverted,
+					output: Into::<&str>::into(e).as_bytes().to_vec(),
+					cost: 0,
+				})?;
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
@@ -149,8 +157,13 @@ where
 			Action::PublishContract => {
 				let who = input.account_id_at(1)?;
 				let contract_address = input.evm_address_at(2)?;
-				<module_evm::Pallet<Runtime>>::publish_contract_precompile(who, contract_address)
-					.map_err(|e| ExitError::Other(Cow::Borrowed(e.into())))?;
+				<module_evm::Pallet<Runtime>>::publish_contract_precompile(who, contract_address).map_err(|e| {
+					PrecompileFailure::Revert {
+						exit_status: ExitRevert::Reverted,
+						output: Into::<&str>::into(e).as_bytes().to_vec(),
+						cost: 0,
+					}
+				})?;
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
@@ -161,8 +174,13 @@ where
 			}
 			Action::DisableDeveloperAccount => {
 				let who = input.account_id_at(1)?;
-				<module_evm::Pallet<Runtime>>::disable_account_contract_development(who)
-					.map_err(|e| ExitError::Other(Cow::Borrowed(e.into())))?;
+				<module_evm::Pallet<Runtime>>::disable_account_contract_development(who).map_err(|e| {
+					PrecompileFailure::Revert {
+						exit_status: ExitRevert::Reverted,
+						output: Into::<&str>::into(e).as_bytes().to_vec(),
+						cost: 0,
+					}
+				})?;
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
@@ -173,8 +191,13 @@ where
 			}
 			Action::EnableDeveloperAccount => {
 				let who = input.account_id_at(1)?;
-				<module_evm::Pallet<Runtime>>::enable_account_contract_development(who)
-					.map_err(|e| ExitError::Other(Cow::Borrowed(e.into())))?;
+				<module_evm::Pallet<Runtime>>::enable_account_contract_development(who).map_err(|e| {
+					PrecompileFailure::Revert {
+						exit_status: ExitRevert::Reverted,
+						output: Into::<&str>::into(e).as_bytes().to_vec(),
+						cost: 0,
+					}
+				})?;
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,

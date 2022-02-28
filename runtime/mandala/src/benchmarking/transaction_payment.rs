@@ -16,9 +16,9 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use super::utils::set_balance;
+use super::utils::{dollar, set_balance};
 use crate::{
-	dollar, AccountId, Balance, Currencies, CurrencyId, Dex, Event, GetNativeCurrencyId, GetStableCurrencyId,
+	AccountId, Balance, Currencies, CurrencyId, Dex, Event, GetNativeCurrencyId, GetStableCurrencyId,
 	NativeTokenExistentialDeposit, Origin, Runtime, System, TradingPair, TransactionPayment, TreasuryPalletId,
 };
 use frame_benchmarking::{account, whitelisted_caller};
@@ -52,10 +52,7 @@ fn inject_liquidity(
 	set_balance(currency_id_a, &maker, max_amount_a.unique_saturated_into());
 	set_balance(currency_id_b, &maker, max_amount_b.unique_saturated_into());
 
-	let trading_pair = TradingPair::from_currency_ids(currency_id_a, currency_id_b).unwrap();
-	if Dex::trading_pair_statuses(trading_pair) == TradingPairStatus::<_, _>::Disabled {
-		Dex::enable_trading_pair(RawOrigin::Root.into(), currency_id_a, currency_id_b)?;
-	}
+	let _ = Dex::enable_trading_pair(RawOrigin::Root.into(), currency_id_a, currency_id_b);
 
 	Dex::add_liquidity(
 		RawOrigin::Signed(maker.clone()).into(),

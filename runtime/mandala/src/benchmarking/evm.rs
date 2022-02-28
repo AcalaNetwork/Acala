@@ -17,11 +17,11 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-	dollar, AccountId, Currencies, CurrencyId, Event, EvmAccounts, GetNativeCurrencyId, NetworkContractSource, Origin,
-	Runtime, System, EVM,
+	AccountId, Currencies, CurrencyId, Event, EvmAccounts, GetNativeCurrencyId, NetworkContractSource, Origin, Runtime,
+	System, EVM,
 };
 
-use super::utils::set_balance;
+use super::utils::{dollar, set_balance};
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_system::RawOrigin;
 use module_evm::MaxCodeSize;
@@ -55,6 +55,7 @@ fn deploy_contract(caller: AccountId) -> Result<H160, DispatchError> {
 		0,
 		1000000000,
 		1000000000,
+		vec![],
 	)
 	.map_or_else(|e| Err(e.error), |_| Ok(()))?;
 
@@ -76,6 +77,7 @@ fn deploy_token_contract() -> DispatchResult {
 			0,
 			1_000_000,
 			15_000,
+			vec![],
 		)
 		.map_or_else(|e| Err(e.error), |_| Ok(()))?;
 
@@ -141,7 +143,7 @@ runtime_benchmarks! {
 	create {
 		let alice_account = alice_account_id();
 		set_balance(NATIVE, &alice_account, 1_000_000 * dollar(NATIVE));
-	}: _(RawOrigin::Signed(alice_account), EMPTY_CONTRACT.to_vec(), 0, 21_000_000, 100_000)
+	}: _(RawOrigin::Signed(alice_account), EMPTY_CONTRACT.to_vec(), 0, 21_000_000, 100_000, vec![])
 	verify {
 		// contract address when it gets deployed
 		let contract_address = H160::from(hex_literal::hex!("5e0b4bfa0b55932a3587e648c3552a6515ba56b1"));
@@ -153,7 +155,7 @@ runtime_benchmarks! {
 		let salt = H256::repeat_byte(1);
 		let alice_account = alice_account_id();
 		set_balance(NATIVE, &alice_account, 1_000_000 * dollar(NATIVE));
-	}: _(RawOrigin::Signed(alice_account), EMPTY_CONTRACT.to_vec(), salt, 0, 21_000_000, 100_000)
+	}: _(RawOrigin::Signed(alice_account), EMPTY_CONTRACT.to_vec(), salt, 0, 21_000_000, 100_000, vec![])
 	verify {
 		// contract address when it gets deployed
 		let contract_address = H160::from(hex_literal::hex!("f6930000a8679e0c96af73e73c02f163e34b9d70"));
@@ -165,7 +167,7 @@ runtime_benchmarks! {
 		let account_id = <Runtime as module_evm::Config>::TreasuryAccount::get();
 		set_balance(NATIVE, &account_id, 1_000_000 * dollar(NATIVE));
 		let address = primitives::evm::MIRRORED_TOKENS_ADDRESS_START | H160::from_low_u64_be(EVM::network_contract_index());
-	}: _(RawOrigin::Root, EMPTY_CONTRACT.to_vec(), 0, 1_000_000, 15_000)
+	}: _(RawOrigin::Root, EMPTY_CONTRACT.to_vec(), 0, 2_100_000, 15_000, vec![])
 	verify {
 		let code_hash = EVM::code_hash_at_address(&address);
 		assert!(module_evm::Codes::<Runtime>::contains_key(code_hash));
@@ -175,7 +177,7 @@ runtime_benchmarks! {
 		let account_id = <Runtime as module_evm::Config>::TreasuryAccount::get();
 		set_balance(NATIVE, &account_id, 1_000_000 * dollar(NATIVE));
 		let address = H160::from_low_u64_be(1);
-	}: _(RawOrigin::Root, address, EMPTY_CONTRACT.to_vec(), 0, 1_000_000, 15_000)
+	}: _(RawOrigin::Root, address, EMPTY_CONTRACT.to_vec(), 0, 2_100_000, 15_000, vec![])
 	verify {
 		let code_hash = EVM::code_hash_at_address(&address);
 		assert!(module_evm::Codes::<Runtime>::contains_key(code_hash));
@@ -186,7 +188,7 @@ runtime_benchmarks! {
 		set_balance(NATIVE, &account_id, 1_000_000 * dollar(NATIVE));
 		let address = H160::from_low_u64_be(2);
 		deploy_token_contract()?;
-	}: create_predeploy_contract(RawOrigin::Root, address, vec![], 0, 0, 0)
+	}: create_predeploy_contract(RawOrigin::Root, address, vec![], 0, 0, 0, vec![])
 	verify {
 		assert_eq!(
 			Currencies::free_balance(NATIVE, &evm_to_account_id(address)),
@@ -203,7 +205,7 @@ runtime_benchmarks! {
 		// contract address when it gets deployed
 		let contract_address = H160::from(hex_literal::hex!("5e0b4bfa0b55932a3587e648c3552a6515ba56b1"));
 
-		frame_support::assert_ok!(EVM::create(Origin::signed(alice_account.clone()), STORAGE_CONTRACT.to_vec(), 0, 21_000_000, 100_000));
+		frame_support::assert_ok!(EVM::create(Origin::signed(alice_account.clone()), STORAGE_CONTRACT.to_vec(), 0, 21_000_000, 100_000, vec![]));
 
 		let code_hash = EVM::code_hash_at_address(&contract_address);
 		assert!(module_evm::Codes::<Runtime>::contains_key(code_hash));
@@ -212,7 +214,7 @@ runtime_benchmarks! {
 		let hashed_key = module_evm::AccountStorages::<Runtime>::hashed_key_for(&contract_address, H256::zero());
 		frame_benchmarking::benchmarking::add_to_whitelist(hashed_key.into());
 
-	}: _(RawOrigin::Signed(alice_account), contract_address, input, 0, 21_000_000, 100_000)
+	}: _(RawOrigin::Signed(alice_account), contract_address, input, 0, 21_000_000, 100_000, vec![])
 	verify {
 		assert_eq!(module_evm::AccountStorages::<Runtime>::get(&contract_address, H256::zero()), H256::from_low_u64_be(1));
 	}
@@ -307,6 +309,7 @@ mod tests {
 				0,
 				1_000_000,
 				100_000,
+				vec![],
 				config,
 			)
 			.unwrap();
@@ -332,6 +335,7 @@ mod tests {
 				0,
 				1_000_000,
 				100_000,
+				vec![],
 				config,
 			)
 			.unwrap();
@@ -342,7 +346,15 @@ mod tests {
 			let input =
 				hex_literal::hex!("6057361d0000000000000000000000000000000000000000000000000000000000000001").to_vec();
 			let result = <Runtime as module_evm::Config>::Runner::call(
-				caller, caller, address, input, 0, 1_000_000, 100_000, config,
+				caller,
+				caller,
+				address,
+				input,
+				0,
+				1_000_000,
+				100_000,
+				vec![],
+				config,
 			)
 			.unwrap();
 			assert!(result.exit_reason.is_succeed());

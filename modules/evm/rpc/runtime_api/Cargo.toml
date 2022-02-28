@@ -1,6 +1,6 @@
 [package]
 name = "module-evm-rpc-runtime-api"
-version = "2.3.3"
+version = "2.3.4"
 authors = ["Acala Developers"]
 edition = "2021"
 
@@ -9,7 +9,6 @@ sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkad
 sp-api = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.16", default-features = false }
 sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.16", default-features = false }
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.16", default-features = false }
-ethereum-types = { version = "0.12", default-features = false }
 primitives = { package = "acala-primitives", path = "../../../../primitives", default-features = false }
 
 [features]
@@ -19,6 +18,5 @@ std = [
 	"sp-api/std",
 	"sp-std/std",
 	"sp-core/std",
-	"ethereum-types/std",
 	"primitives/std",
 ]

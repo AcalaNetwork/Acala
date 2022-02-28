@@ -14,7 +14,7 @@ dependencies = [
 
 [[package]]
 name = "acala"
-version = "2.3.3"
+version = "2.3.4"
 dependencies = [
  "acala-cli",
  "acala-service",
@@ -24,7 +24,7 @@ dependencies = [
 
 [[package]]
 name = "acala-cli"
-version = "2.3.3"
+version = "2.3.4"
 dependencies = [
  "acala-inspect",
  "acala-service",
@@ -51,7 +51,7 @@ dependencies = [
 
 [[package]]
 name = "acala-inspect"
-version = "2.3.3"
+version = "2.3.4"
 dependencies = [
  "derive_more",
  "log",
@@ -67,7 +67,7 @@ dependencies = [
 
 [[package]]
 name = "acala-primitives"
-version = "2.3.3"
+version = "2.3.4"
 dependencies = [
  "bstringify",
  "enumflags2",
@@ -91,7 +91,7 @@ dependencies = [
 
 [[package]]
 name = "acala-rpc"
-version = "2.3.3"
+version = "2.3.4"
 dependencies = [
  "acala-primitives",
  "evm-rpc",
@@ -115,7 +115,7 @@ dependencies = [
 
 [[package]]
 name = "acala-runtime"
-version = "2.3.3"
+version = "2.3.4"
 dependencies = [
  "acala-primitives",
  "cumulus-pallet-aura-ext",
@@ -228,7 +228,7 @@ dependencies = [
 
 [[package]]
 name = "acala-service"
-version = "2.3.3"
+version = "2.3.4"
 dependencies = [
  "acala-primitives",
  "acala-rpc",
@@ -2585,7 +2585,7 @@ checksum = "ee2626afccd7561a06cf1367e2950c4718ea04565e20fb5029b6c7d8ad09abcf"
 
 [[package]]
 name = "e2e-tests"
-version = "2.3.3"
+version = "2.3.4"
 dependencies = [
  "test-service",
 ]
@@ -2604,7 +2604,7 @@ dependencies = [
 
 [[package]]
 name = "ecosystem-compound-cash"
-version = "2.3.3"
+version = "2.3.4"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -2621,7 +2621,7 @@ dependencies = [
 
 [[package]]
 name = "ecosystem-renvm-bridge"
-version = "2.3.3"
+version = "2.3.4"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -2643,7 +2643,7 @@ dependencies = [
 
 [[package]]
 name = "ecosystem-starport"
-version = "2.3.3"
+version = "2.3.4"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -2872,6 +2872,24 @@ name = "ethereum"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "81fb916554a4dba293ea69c69ad5653e21d770a9d0c2496b5fa0a1f5a3946d87"
+dependencies = [
+ "bytes 1.1.0",
+ "ethereum-types",
+ "hash-db",
+ "hash256-std-hasher",
+ "parity-scale-codec",
+ "rlp",
+ "rlp-derive",
+ "scale-info",
+ "serde",
+ "sha3 0.9.1",
+ "triehash",
+]
+
+[[package]]
+name = "ethereum"
+version = "0.12.0"
+source = "git+https://github.com/rust-blockchain/ethereum?rev=34fd1fed1fb0261fef9c8a36acb6ecf5082036ad#34fd1fed1fb0261fef9c8a36acb6ecf5082036ad"
 dependencies = [
  "bytes 1.1.0",
  "ethereum-types",
@@ -3123,11 +3141,12 @@ checksum = "77f3309417938f28bf8228fcff79a4a37103981e3e186d2ccd19c74b38f4eb71"
 
 [[package]]
 name = "evm"
-version = "0.31.1"
-source = "git+https://github.com/rust-blockchain/evm?rev=966cf3abe4143451e408c3f586d51c6513d9a48e#966cf3abe4143451e408c3f586d51c6513d9a48e"
+version = "0.33.1"
+source = "git+https://github.com/rust-blockchain/evm?rev=52d5fe5d1fd665a495ea34cc67c5f0c6bc6dd23e#52d5fe5d1fd665a495ea34cc67c5f0c6bc6dd23e"
 dependencies = [
+ "auto_impl",
  "environmental",
- "ethereum",
+ "ethereum 0.10.0",
  "evm-core",
  "evm-gasometer",
  "evm-runtime",
@@ -3142,8 +3161,8 @@ dependencies = [
 
 [[package]]
 name = "evm-core"
-version = "0.31.0"
-source = "git+https://github.com/rust-blockchain/evm?rev=966cf3abe4143451e408c3f586d51c6513d9a48e#966cf3abe4143451e408c3f586d51c6513d9a48e"
+version = "0.33.0"
+source = "git+https://github.com/rust-blockchain/evm?rev=52d5fe5d1fd665a495ea34cc67c5f0c6bc6dd23e#52d5fe5d1fd665a495ea34cc67c5f0c6bc6dd23e"
 dependencies = [
  "funty",
  "parity-scale-codec",
@@ -3154,8 +3173,8 @@ dependencies = [
 
 [[package]]
 name = "evm-gasometer"
-version = "0.31.0"
-source = "git+https://github.com/rust-blockchain/evm?rev=966cf3abe4143451e408c3f586d51c6513d9a48e#966cf3abe4143451e408c3f586d51c6513d9a48e"
+version = "0.33.0"
+source = "git+https://github.com/rust-blockchain/evm?rev=52d5fe5d1fd665a495ea34cc67c5f0c6bc6dd23e#52d5fe5d1fd665a495ea34cc67c5f0c6bc6dd23e"
 dependencies = [
  "environmental",
  "evm-core",
@@ -3165,9 +3184,9 @@ dependencies = [
 
 [[package]]
 name = "evm-rpc"
-version = "2.3.3"
+version = "2.3.4"
 dependencies = [
- "ethereum-types",
+ "acala-primitives",
  "frame-support",
  "jsonrpc-core",
  "jsonrpc-derive",
@@ -3189,9 +3208,10 @@ dependencies = [
 
 [[package]]
 name = "evm-runtime"
-version = "0.31.0"
-source = "git+https://github.com/rust-blockchain/evm?rev=966cf3abe4143451e408c3f586d51c6513d9a48e#966cf3abe4143451e408c3f586d51c6513d9a48e"
+version = "0.33.0"
+source = "git+https://github.com/rust-blockchain/evm?rev=52d5fe5d1fd665a495ea34cc67c5f0c6bc6dd23e#52d5fe5d1fd665a495ea34cc67c5f0c6bc6dd23e"
 dependencies = [
+ "auto_impl",
  "environmental",
  "evm-core",
  "primitive-types",
@@ -4559,7 +4579,7 @@ dependencies = [
 
 [[package]]
 name = "karura-runtime"
-version = "2.3.3"
+version = "2.3.4"
 dependencies = [
  "acala-primitives",
  "cumulus-pallet-aura-ext",
@@ -4852,6 +4872,9 @@ name = "lazy_static"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
+dependencies = [
+ "spin",
+]
 
 [[package]]
 name = "lazycell"
@@ -5600,7 +5623,7 @@ dependencies = [
 
 [[package]]
 name = "mandala-runtime"
-version = "2.3.3"
+version = "2.3.4"
 dependencies = [
  "acala-primitives",
  "acala-service",
@@ -5953,7 +5976,7 @@ dependencies = [
 
 [[package]]
 name = "module-asset-registry"
-version = "2.3.3"
+version = "2.3.4"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -5981,7 +6004,7 @@ dependencies = [
 
 [[package]]
 name = "module-auction-manager"
-version = "2.3.3"
+version = "2.3.4"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -6005,7 +6028,7 @@ dependencies = [
 
 [[package]]
 name = "module-cdp-engine"
-version = "2.3.3"
+version = "2.3.4"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -6033,7 +6056,7 @@ dependencies = [
 
 [[package]]
 name = "module-cdp-treasury"
-version = "2.3.3"
+version = "2.3.4"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -6056,7 +6079,7 @@ dependencies = [
 
 [[package]]
 name = "module-collator-selection"
-version = "2.3.3"
+version = "2.3.4"
 dependencies = [
  "acala-primitives",
  "frame-benchmarking",
@@ -6082,7 +6105,7 @@ dependencies = [
 
 [[package]]
 name = "module-currencies"
-version = "2.3.3"
+version = "2.3.4"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -6108,7 +6131,7 @@ dependencies = [
 
 [[package]]
 name = "module-dex"
-version = "2.3.3"
+version = "2.3.4"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -6128,7 +6151,7 @@ dependencies = [
 
 [[package]]
 name = "module-dex-oracle"
-version = "2.3.3"
+version = "2.3.4"
 dependencies = [
  "acala-primitives",
  "frame-benchmarking",
@@ -6148,7 +6171,7 @@ dependencies = [
 
 [[package]]
 name = "module-emergency-shutdown"
-version = "2.3.3"
+version = "2.3.4"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -6171,7 +6194,7 @@ dependencies = [
 
 [[package]]
 name = "module-evm"
-version = "2.3.3"
+version = "2.3.4"
 dependencies = [
  "acala-primitives",
  "env_logger",
@@ -6179,10 +6202,10 @@ dependencies = [
  "frame-system",
  "hex",
  "hex-literal",
- "impl-trait-for-tuples 0.1.3",
  "module-evm-utiltity",
  "module-idle-scheduler",
  "module-support",
+ "num",
  "orml-bencher",
  "orml-currencies",
  "orml-tokens",
@@ -6201,12 +6224,13 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
+ "substrate-bn",
  "tiny-keccak",
 ]
 
 [[package]]
 name = "module-evm-accounts"
-version = "2.3.3"
+version = "2.3.4"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -6229,7 +6253,7 @@ dependencies = [
 
 [[package]]
 name = "module-evm-bridge"
-version = "2.3.3"
+version = "2.3.4"
 dependencies = [
  "acala-primitives",
  "ethereum-types",
@@ -6256,10 +6280,9 @@ dependencies = [
 
 [[package]]
 name = "module-evm-rpc-runtime-api"
-version = "2.3.3"
+version = "2.3.4"
 dependencies = [
  "acala-primitives",
- "ethereum-types",
  "sp-api",
  "sp-core",
  "sp-runtime",
@@ -6268,9 +6291,9 @@ dependencies = [
 
 [[package]]
 name = "module-evm-utiltity"
-version = "2.3.3"
+version = "2.3.4"
 dependencies = [
- "ethereum",
+ "ethereum 0.12.0",
  "evm",
  "evm-gasometer",
  "evm-runtime",
@@ -6280,7 +6303,7 @@ dependencies = [
 
 [[package]]
 name = "module-evm-utiltity-macro"
-version = "2.3.3"
+version = "2.3.4"
 dependencies = [
  "module-evm-utiltity",
  "proc-macro2",
@@ -6290,7 +6313,7 @@ dependencies = [
 
 [[package]]
 name = "module-example"
-version = "2.3.3"
+version = "2.3.4"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -6304,7 +6327,7 @@ dependencies = [
 
 [[package]]
 name = "module-homa"
-version = "2.3.3"
+version = "2.3.4"
 dependencies = [
  "acala-primitives",
  "frame-benchmarking",
@@ -6326,7 +6349,7 @@ dependencies = [
 
 [[package]]
 name = "module-homa-lite"
-version = "2.3.3"
+version = "2.3.4"
 dependencies = [
  "acala-primitives",
  "cumulus-primitives-core",
@@ -6353,7 +6376,7 @@ dependencies = [
 
 [[package]]
 name = "module-homa-validator-list"
-version = "2.3.3"
+version = "2.3.4"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -6375,7 +6398,7 @@ dependencies = [
 
 [[package]]
 name = "module-honzon"
-version = "2.3.3"
+version = "2.3.4"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -6400,7 +6423,7 @@ dependencies = [
 
 [[package]]
 name = "module-idle-scheduler"
-version = "2.3.3"
+version = "2.3.4"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -6417,7 +6440,7 @@ dependencies = [
 
 [[package]]
 name = "module-incentives"
-version = "2.3.3"
+version = "2.3.4"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -6438,7 +6461,7 @@ dependencies = [
 
 [[package]]
 name = "module-loans"
-version = "2.3.3"
+version = "2.3.4"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -6460,7 +6483,7 @@ dependencies = [
 
 [[package]]
 name = "module-nft"
-version = "2.3.3"
+version = "2.3.4"
 dependencies = [
  "acala-primitives",
  "frame-benchmarking",
@@ -6485,7 +6508,7 @@ dependencies = [
 
 [[package]]
 name = "module-nominees-election"
-version = "2.3.3"
+version = "2.3.4"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -6506,7 +6529,7 @@ dependencies = [
 
 [[package]]
 name = "module-prices"
-version = "2.3.3"
+version = "2.3.4"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -6525,7 +6548,7 @@ dependencies = [
 
 [[package]]
 name = "module-relaychain"
-version = "2.3.3"
+version = "2.3.4"
 dependencies = [
  "acala-primitives",
  "cumulus-primitives-core",
@@ -6543,7 +6566,7 @@ dependencies = [
 
 [[package]]
 name = "module-session-manager"
-version = "2.3.3"
+version = "2.3.4"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -6560,7 +6583,7 @@ dependencies = [
 
 [[package]]
 name = "module-support"
-version = "2.3.3"
+version = "2.3.4"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -6576,7 +6599,7 @@ dependencies = [
 
 [[package]]
 name = "module-transaction-pause"
-version = "2.3.3"
+version = "2.3.4"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -6595,7 +6618,7 @@ dependencies = [
 
 [[package]]
 name = "module-transaction-payment"
-version = "2.3.3"
+version = "2.3.4"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -6859,10 +6882,35 @@ dependencies = [
 ]
 
 [[package]]
+name = "num"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "43db66d1170d347f9a065114077f7dccb00c1b9478c89384490a3425279a4606"
+dependencies = [
+ "num-bigint 0.4.3",
+ "num-complex",
+ "num-integer",
+ "num-iter",
+ "num-rational 0.4.0",
+ "num-traits",
+]
+
+[[package]]
 name = "num-bigint"
 version = "0.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "090c7f9998ee0ff65aa5b723e4009f7b217707f1fb5ea551329cc4d6231fb304"
+dependencies = [
+ "autocfg",
+ "num-integer",
+ "num-traits",
+]
+
+[[package]]
+name = "num-bigint"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f93ab6289c7b344a8a9f60f88d80aa20032336fe78da341afc91c8a2341fc75f"
 dependencies = [
  "autocfg",
  "num-integer",
@@ -6889,13 +6937,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "num-iter"
+version = "0.1.42"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b2021c8337a54d21aca0d59a92577a029af9431cb59b909b03252b9c164fad59"
+dependencies = [
+ "autocfg",
+ "num-integer",
+ "num-traits",
+]
+
+[[package]]
 name = "num-rational"
 version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5c000134b5dbf44adc5cb772486d335293351644b801551abe8f75c84cfa4aef"
 dependencies = [
  "autocfg",
- "num-bigint",
+ "num-bigint 0.2.6",
  "num-integer",
  "num-traits",
 ]
@@ -6907,6 +6966,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d41702bd167c2df5520b384281bc111a4b5efcf7fbc4c9c222c815b07e0a6a6a"
 dependencies = [
  "autocfg",
+ "num-bigint 0.4.3",
  "num-integer",
  "num-traits",
 ]
@@ -10785,7 +10845,7 @@ dependencies = [
 
 [[package]]
 name = "runtime-common"
-version = "2.3.3"
+version = "2.3.4"
 dependencies = [
  "acala-primitives",
  "acala-service",
@@ -10835,7 +10895,7 @@ dependencies = [
 
 [[package]]
 name = "runtime-integration-tests"
-version = "2.3.3"
+version = "2.3.4"
 dependencies = [
  "acala-primitives",
  "acala-runtime",
@@ -11364,7 +11424,7 @@ dependencies = [
  "futures 0.3.21",
  "log",
  "merlin",
- "num-bigint",
+ "num-bigint 0.2.6",
  "num-rational 0.2.4",
  "num-traits",
  "parity-scale-codec",
@@ -13492,6 +13552,19 @@ dependencies = [
  "schnorrkel",
  "sha2 0.9.9",
  "zeroize",
+]
+
+[[package]]
+name = "substrate-bn"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "72b5bbfa79abbae15dd642ea8176a21a635ff3c00059961d1ea27ad04e5b441c"
+dependencies = [
+ "byteorder",
+ "crunchy",
+ "lazy_static",
+ "rand 0.8.4",
+ "rustc-hex",
 ]
 
 [[package]]

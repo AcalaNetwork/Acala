@@ -22,8 +22,8 @@ use crate::{
 };
 use codec::{Decode, Encode};
 use core::ops::Range;
-use module_evm_utiltity::{
-	ethereum::{Log, TransactionAction},
+pub use module_evm_utiltity::{
+	ethereum::{AccessListItem, Log, TransactionAction},
 	evm::ExitReason,
 };
 use scale_info::TypeInfo;
@@ -50,6 +50,8 @@ pub struct Vicinity {
 	pub block_gas_limit: Option<U256>,
 	/// Environmental block difficulty. Used only for testing
 	pub block_difficulty: Option<U256>,
+	/// Environmental base fee per gas.
+	pub block_base_fee_per_gas: Option<U256>,
 }
 
 #[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]
@@ -80,6 +82,8 @@ pub struct EstimateResourcesRequest {
 	pub value: Option<Balance>,
 	/// Data
 	pub data: Option<Vec<u8>>,
+	/// AccessList
+	pub access_list: Option<Vec<AccessListItem>>,
 }
 
 #[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]
@@ -95,6 +99,7 @@ pub struct EthereumTransactionMessage {
 	pub value: Balance,
 	pub input: Vec<u8>,
 	pub valid_until: BlockNumber,
+	pub access_list: Vec<AccessListItem>,
 }
 
 /// Ethereum precompiles
@@ -139,10 +144,6 @@ pub const SYSTEM_CONTRACT_ADDRESS_PREFIX: [u8; 9] = [0u8; 9];
 /// It's system contract if the address starts with SYSTEM_CONTRACT_ADDRESS_PREFIX.
 pub fn is_system_contract(address: EvmAddress) -> bool {
 	address.as_bytes().starts_with(&SYSTEM_CONTRACT_ADDRESS_PREFIX)
-}
-
-pub fn is_acala_precompile(address: EvmAddress) -> bool {
-	address >= PRECOMPILE_ADDRESS_START && address < PREDEPLOY_ADDRESS_START
 }
 
 pub const H160_POSITION_CURRENCY_ID_TYPE: usize = 9;

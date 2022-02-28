@@ -46,6 +46,18 @@ build-karura-release:
 build-acala-release:
 	CARGO_PROFILE_RELEASE_LTO=true RUSTFLAGS="-C codegen-units=1" cargo build --locked --features with-acala-runtime --release --workspace --exclude runtime-integration-tests --exclude e2e-tests --exclude test-service
 
+.PHONY: build-mandala-internal-release
+build-mandala-internal-release:
+	cargo build --locked --features with-mandala-runtime --release --workspace --exclude runtime-integration-tests --exclude e2e-tests --exclude test-service
+
+.PHONY: build-karura-internal-release
+build-karura-internal-release:
+	cargo build --locked --features with-karura-runtime --release --workspace --exclude runtime-integration-tests --exclude e2e-tests --exclude test-service
+
+.PHONY: build-acala-internal-release
+build-acala-internal-release:
+	cargo build --locked --features with-acala-runtime --release --workspace --exclude runtime-integration-tests --exclude e2e-tests --exclude test-service
+
 .PHONY: check
 check: githooks
 	SKIP_WASM_BUILD= cargo check --features with-mandala-runtime
@@ -71,6 +83,7 @@ check-runtimes:
 
 .PHONY: check-benchmarks
 check-benchmarks:
+	SKIP_WASM_BUILD= cargo check --features bench --package module-evm
 	SKIP_WASM_BUILD= cargo check --features runtime-benchmarks --no-default-features --target=wasm32-unknown-unknown -p mandala-runtime
 	SKIP_WASM_BUILD= cargo check --features runtime-benchmarks --no-default-features --target=wasm32-unknown-unknown -p karura-runtime
 	SKIP_WASM_BUILD= cargo check --features runtime-benchmarks --no-default-features --target=wasm32-unknown-unknown -p acala-runtime
@@ -127,6 +140,7 @@ test-ts:
 
 .PHONY: test-benchmarking
 test-benchmarking:
+	cargo test --features bench --package module-evm
 	cargo test --features runtime-benchmarks --features with-all-runtime --features --all benchmarking
 
 .PHONY: test-all

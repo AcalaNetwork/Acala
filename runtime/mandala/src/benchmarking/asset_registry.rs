@@ -16,16 +16,16 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{dollar, AccountId, AssetRegistry, CurrencyId, GetNativeCurrencyId, Origin, Runtime, EVM};
+use crate::{AccountId, AssetRegistry, CurrencyId, GetNativeCurrencyId, Origin, Runtime, EVM};
 
-use super::utils::set_balance;
+use super::utils::{dollar, set_balance};
 use frame_support::assert_ok;
 use frame_system::RawOrigin;
 use module_asset_registry::AssetMetadata;
 use module_evm::EvmAddress;
 use module_support::AddressMapping;
 use orml_benchmarking::runtime_benchmarks;
-use sp_std::{boxed::Box, str::FromStr};
+use sp_std::{boxed::Box, str::FromStr, vec};
 use xcm::{v1::MultiLocation, VersionedMultiLocation};
 
 const NATIVE: CurrencyId = GetNativeCurrencyId::get();
@@ -49,7 +49,14 @@ pub fn deploy_contract() {
 		serde_json::from_str(include_str!("../../../../ts-tests/build/Erc20DemoContract2.json")).unwrap();
 	let code = hex::decode(json.get("bytecode").unwrap().as_str().unwrap()).unwrap();
 
-	assert_ok!(EVM::create(Origin::signed(alice()), code, 0, 2_100_000, 1_000_000));
+	assert_ok!(EVM::create(
+		Origin::signed(alice()),
+		code,
+		0,
+		2_100_000,
+		1_000_000,
+		vec![]
+	));
 	assert_ok!(EVM::publish_free(Origin::root(), erc20_address()));
 }
 

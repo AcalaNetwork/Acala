@@ -16,18 +16,19 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use super::*;
-use primitives::{Balance, CurrencyId};
-use sp_runtime::traits::Convert;
-use sp_runtime::FixedPointNumber;
+use super::LinearCostPrecompile;
+use crate::runner::state::PrecompileFailure;
+use module_evm_utiltity::evm::ExitSucceed;
+use sp_std::vec::Vec;
 
-pub struct DebitExchangeRateConvertor<T>(sp_std::marker::PhantomData<T>);
+/// The identity precompile.
+pub struct Identity;
 
-impl<T> Convert<(CurrencyId, Balance), Balance> for DebitExchangeRateConvertor<T>
-where
-	T: Config,
-{
-	fn convert((currency_id, balance): (CurrencyId, Balance)) -> Balance {
-		<Pallet<T>>::get_debit_exchange_rate(currency_id).saturating_mul_int(balance)
+impl LinearCostPrecompile for Identity {
+	const BASE: u64 = 15;
+	const WORD: u64 = 3;
+
+	fn execute(input: &[u8], _: u64) -> core::result::Result<(ExitSucceed, Vec<u8>), PrecompileFailure> {
+		Ok((ExitSucceed::Returned, input.to_vec()))
 	}
 }
