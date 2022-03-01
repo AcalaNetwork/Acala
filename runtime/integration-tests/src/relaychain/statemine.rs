@@ -94,39 +94,45 @@ fn user_different_ksm_fee() {
 #[cfg(feature = "with-karura-runtime")]
 #[test]
 fn user_large_fee_fund_to_sovereign_account_works() {
-	statemine_side();
 	let para_2000: AccountId = Sibling::from(2000).into_account();
 	let child_2000: AccountId = ParaId::from(2000).into_account();
 	let child_1000: AccountId = ParaId::from(1000).into_account();
 
-	KusamaNet::execute_with(|| {
-		let _ = kusama_runtime::Balances::make_free_balance_be(&child_2000, TEN);
-	});
+	let assets: Vec<(u128, u128, u128, u128)> = vec![
+		(9 * UNIT + FEE_STATEMINE, UNIT, 8_999_893_333_340, 9_991_893_333_340),
+		(UNIT, 9_004_000_000_000, 995_893_333_340, 1_987_893_333_340),
+	];
 
-	karura_side(9 * UNIT + FEE_STATEMINE);
+	for (asset, c_2000, c_1000, p_2000) in assets {
+		TestNet::reset();
 
-	KusamaNet::execute_with(|| {
-		// first xcm send to relaychain with 9 KSM. 10 KSM - 9 KSM = 1 KSM
-		assert_eq!(UNIT, kusama_runtime::Balances::free_balance(&child_2000));
-		// 9 KSM - fee on relaychain = 9 KSM - 106_666_660
-		assert_eq!(8_999_893_333_340, kusama_runtime::Balances::free_balance(&child_1000));
-	});
+		statemine_side();
 
-	Statemine::execute_with(|| {
-		use statemine_runtime::*;
-		// Karura send back custom asset to Statemine, ensure recipient got custom asset
-		assert_eq!(UNIT, Assets::balance(0, &AccountId::from(BOB)));
-		// the recipient's ksm not changed
-		assert_eq!(UNIT, Balances::free_balance(&AccountId::from(BOB)));
-		// and withdraw sibling parachain sovereign account
-		assert_eq!(9 * UNIT, Assets::balance(0, &para_2000));
+		KusamaNet::execute_with(|| {
+			let _ = kusama_runtime::Balances::make_free_balance_be(&child_2000, TEN);
+		});
 
-		// before karura transfer asset back to Statemine, para_2000 already have 1 KSM.
-		// after second xcm executed, para_2000 balance - xcm_weight
-		// after first xcm executed, para_2000 balance + (8_999_893_333_340 - xcm_weight)
-		// the result of para_2000 balance = 1KSM-4_000_000_000+8_999_893_333_340-4_000_000_000
-		assert_eq!(9_991_893_333_340, Balances::free_balance(&para_2000));
-	});
+		karura_side(asset);
+
+		KusamaNet::execute_with(|| {
+			// first xcm send to relaychain with 9 KSM. 10 KSM - 9 KSM = 1 KSM
+			assert_eq!(c_2000, kusama_runtime::Balances::free_balance(&child_2000));
+			// 9 KSM - fee on relaychain = 9 KSM - 106_666_660
+			assert_eq!(c_1000, kusama_runtime::Balances::free_balance(&child_1000));
+		});
+
+		Statemine::execute_with(|| {
+			use statemine_runtime::*;
+			// Karura send back custom asset to Statemine, ensure recipient got custom asset
+			assert_eq!(UNIT, Assets::balance(0, &AccountId::from(BOB)));
+			// the recipient's ksm not changed
+			assert_eq!(UNIT, Balances::free_balance(&AccountId::from(BOB)));
+			// and withdraw sibling parachain sovereign account
+			assert_eq!(9 * UNIT, Assets::balance(0, &para_2000));
+
+			assert_eq!(p_2000, Balances::free_balance(&para_2000));
+		});
+	}
 }
 
 // transfer custom asset from Karura to Statemine
