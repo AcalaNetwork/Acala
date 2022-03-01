@@ -1727,9 +1727,10 @@ parameter_types!(
 impl ecosystem_aqua_dao::Config for Runtime {
 	type Event = Event;
 	type Currency = Currencies;
-	type StableTokenSymbol = StableTokenSymbol;
+	type StableCurrencyId = GetStableCurrencyId;
 	type CreatingOrigin = EnsureRootOrHalfGeneralCouncil;
-	type Oracle = module_dex_oracle::AverageDEXPriceProvider<Runtime>;
+	type Oracle = module_prices::PriorityLockedPriceProvider<Runtime>;
+	type DexOracle = module_dex_oracle::AverageDEXPriceProvider<Runtime>;
 	type StakedToken = AquaStakedToken;
 	type PalletId = AquaDaoPalletId;
 	type WeightInfo = weights::ecosystem_aqua_dao::WeightInfo<Runtime>;
