@@ -51,6 +51,10 @@ pub mod oracle;
 pub mod tokens;
 pub mod vesting;
 
+// Aqua DAO
+pub mod aqua_dao;
+pub mod aqua_staked_token;
+
 pub fn get_vesting_account() -> super::AccountId {
 	super::TreasuryPalletId::get().into_account()
 }

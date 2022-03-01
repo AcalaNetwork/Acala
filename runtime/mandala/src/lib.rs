@@ -1732,6 +1732,7 @@ impl ecosystem_aqua_dao::Config for Runtime {
 	type Oracle = module_dex_oracle::AverageDEXPriceProvider<Runtime>;
 	type StakedToken = AquaStakedToken;
 	type PalletId = AquaDaoPalletId;
+	type WeightInfo = weights::ecosystem_aqua_dao::WeightInfo<Runtime>;
 }
 
 impl ecosystem_aqua_staked_token::Config for Runtime {
@@ -1747,6 +1748,7 @@ impl ecosystem_aqua_staked_token::Config for Runtime {
 	//FIX: use aqua dao treasury staking pallet
 	type TreasuryAccount = TreasuryAccount;
 	type DaoAccount = DaoAccount;
+	type WeightInfo = weights::ecosystem_aqua_staked_token::WeightInfo<Runtime>;
 }
 
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
@@ -2010,6 +2012,8 @@ mod benches {
 		[orml_auction, benchmarking::auction]
 		[orml_authority, benchmarking::authority]
 		[orml_oracle, benchmarking::oracle]
+		[ecosystem_aqua_dao, benchmarking::aqua_dao]
+		[ecosystem_aqua_staked_token, benchmarking::aqua_staked_token]
 		[nutsfinance_stable_asset, benchmarking::nutsfinance_stable_asset]
 	);
 }
