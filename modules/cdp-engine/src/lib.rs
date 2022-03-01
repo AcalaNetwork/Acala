@@ -1038,18 +1038,29 @@ impl<T: Config> Pallet<T> {
 		// update CDP state
 		let collateral_adjustment = <LoansOf<T>>::amount_try_from_balance(decrease_collateral)?.saturating_neg();
 		let previous_debit_value = Self::get_debit_value(currency_id, debit);
-		let decrease_debit_value = actual_stable_amount.min(previous_debit_value);
-		let refund_stable = actual_stable_amount.saturating_sub(decrease_debit_value);
-		let decrease_debit_balance = Self::try_convert_to_debit_balance(currency_id, decrease_debit_value)
-			.ok_or(Error::<T>::ConvertDebitBalanceFailed)?;
+		let (decrease_debit_value, decrease_debit_balance) = if actual_stable_amount >= previous_debit_value {
+			// refund extra stable coin to the CDP owner
+			<T as Config>::Currency::transfer(
+				stable_currency_id,
+				&loans_module_account,
+				who,
+				actual_stable_amount.saturating_sub(previous_debit_value),
+			)?;
+
+			(previous_debit_value, debit)
+		} else {
+			(
+				actual_stable_amount,
+				Self::try_convert_to_debit_balance(currency_id, actual_stable_amount)
+					.ok_or(Error::<T>::ConvertDebitBalanceFailed)?,
+			)
+		};
+
 		let debit_adjustment = <LoansOf<T>>::amount_try_from_balance(decrease_debit_balance)?.saturating_neg();
 		<LoansOf<T>>::update_loan(who, currency_id, collateral_adjustment, debit_adjustment)?;
 
 		// repay the debit of CDP
 		<T as Config>::CDPTreasury::burn_debit(&loans_module_account, decrease_debit_value)?;
-
-		// refund extra stable coin to the CDP owner
-		<T as Config>::Currency::transfer(stable_currency_id, &loans_module_account, who, refund_stable)?;
 
 		// check the CDP if is still at valid risk.
 		Self::check_position_valid(
