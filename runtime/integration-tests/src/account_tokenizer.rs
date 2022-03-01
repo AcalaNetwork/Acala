@@ -31,9 +31,9 @@ use xcm_emulator::TestExt;
 use hex_literal::hex;
 
 // Weight and fee cost is related to the XCM_WEIGHT passed in.
-const XCM_WEIGHT: Weight = 20_000_000_000;
-const XCM_FEE: Balance = 10_000_000_000;
-const ACTUAL_XCM_FEE: Balance = 639_999_960;
+const XCM_WEIGHT: Weight = 30_000_000_000;
+const XCM_FEE: Balance = 1_500_000_000;
+const ACTUAL_XCM_FEE: Balance = 906_666_610;
 
 fn get_xcm_weight() -> Vec<(XcmInterfaceOperation, Option<Weight>, Option<Balance>)> {
 	vec![(
@@ -255,6 +255,11 @@ fn xcm_transfer_proxy_for_burn_works() {
 			500 * dollar(RELAY_CHAIN_CURRENCY)
 		));
 
+		assert_eq!(
+			kusama_runtime::Balances::free_balance(parachain_account.clone()),
+			502 * dollar(RELAY_CHAIN_CURRENCY)
+		);
+
 		// Spawn a anonymous proxy account.
 		assert_ok!(kusama_runtime::Proxy::anonymous(
 			kusama_runtime::Origin::signed(alice()),
@@ -302,26 +307,30 @@ fn xcm_transfer_proxy_for_burn_works() {
 			}]
 		);
 
-		// Test the transfer of proxy can be done on the relaychain
-		let transfer_proxy_call = vec![
-			kusama_runtime::Call::Proxy(pallet_proxy::Call::add_proxy {
-				delegate: alice(),
-				proxy_type: Default::default(),
-				delay: 0,
-			}),
-			kusama_runtime::Call::Proxy(pallet_proxy::Call::remove_proxy {
-				delegate: parachain_account.clone(),
-				proxy_type: Default::default(),
-				delay: 0,
-			}),
-		];
+		// Uncomment this test the transfer of proxy can be done on the relaychain
+		// let transfer_proxy_call = kusama_runtime::Call::Utility(pallet_utility::Call::batch {
+		// 	calls: vec![
+		// 		kusama_runtime::Call::Proxy(pallet_proxy::Call::add_proxy {
+		// 			delegate: alice(),
+		// 			proxy_type: Default::default(),
+		// 			delay: 0u32,
+		// 		}),
+		// 		kusama_runtime::Call::Proxy(pallet_proxy::Call::remove_proxy {
+		// 			delegate: parachain_account.clone(),
+		// 			proxy_type: Default::default(),
+		// 			delay: 0u32,
+		// 		}),
+		// 	]
+		// });
 
-		assert_ok!(kusama_runtime::Utility::batch(
-			kusama_runtime::Origin::signed(parachain_account.clone().into()),
-			transfer_proxy_call
-		));
+		// assert_ok!(kusama_runtime::Proxy::proxy(
+		// 	kusama_runtime::Origin::signed(parachain_account.clone().into()),
+		// 	alice_proxy.clone(),
+		// 	None,
+		// 	Box::new(transfer_proxy_call),
+		// ));
 
-		//assert_eq!(kusama_runtime::Proxy::proxies(alice_proxy.clone()).0.into_inner(),
+		// assert_eq!(kusama_runtime::Proxy::proxies(alice_proxy.clone()).0.into_inner(),
 		// vec![pallet_proxy::ProxyDefinition { delegate: alice(), proxy_type: Default::default(),
 		// delay: 0u32 }]);
 	});
@@ -354,5 +363,20 @@ fn xcm_transfer_proxy_for_burn_works() {
 			alice_proxy.clone(),
 			bob(),
 		));
+	});
+
+	KusamaNet::execute_with(|| {
+		assert_eq!(
+			kusama_runtime::Proxy::proxies(alice_proxy.clone()).0.into_inner(),
+			vec![pallet_proxy::ProxyDefinition {
+				delegate: bob(),
+				proxy_type: Default::default(),
+				delay: 0u32
+			}]
+		);
+		assert_eq!(
+			kusama_runtime::Balances::free_balance(parachain_account.clone()),
+			502 * dollar(RELAY_CHAIN_CURRENCY) - ACTUAL_XCM_FEE
+		);
 	});
 }
