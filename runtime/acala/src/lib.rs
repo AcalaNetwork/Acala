@@ -1355,7 +1355,7 @@ parameter_types! {
 	pub NetworkContractSource: H160 = H160::from_low_u64_be(0);
 	pub DeveloperDeposit: Balance = 100 * dollar(ACA);
 	pub PublicationFee: Balance = 10000 * dollar(ACA);
-	pub PrecompilesValue: AllPrecompiles<Runtime> = AllPrecompiles::<_>::new();
+	pub PrecompilesValue: AllPrecompiles<Runtime> = AllPrecompiles::<_>::acala();
 }
 
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, TypeInfo)]
