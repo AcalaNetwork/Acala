@@ -172,7 +172,7 @@ fn can_handle_bad_oracle_data() {
 			assert_ok!(AccountTokenizer::request_mint(Origin::signed(ALICE), proxy, 1, 0, 0));
 			assert!(ForeignStateOracle::active_query(0).is_some());
 
-			// Dispatch the request to accept the mint.
+			// Dispatch the request to accept the burn.
 			assert_ok!(ForeignStateOracle::dispatch_task(Origin::signed(ORACLE), 0, vec![]));
 
 			System::assert_last_event(Event::ForeignStateOracle(
@@ -208,7 +208,7 @@ fn can_reject_mint_request() {
 			));
 			assert!(ForeignStateOracle::active_query(0).is_some());
 
-			// Dispatch the request to accept the mint.
+			// Dispatch the request to reject the mint.
 			assert_ok!(ForeignStateOracle::dispatch_task(Origin::signed(ORACLE), 0, vec![0]));
 
 			assert_eq!(ModuleNFT::owner(&0, &0), None);
@@ -278,34 +278,48 @@ fn can_burn_account_token_nft() {
 			// Burn the NFT
 			// only the owner of the NFT can burn the token
 			assert_noop!(
-				AccountTokenizer::burn_account_token(Origin::signed(proxy.clone()), proxy.clone(), ALICE),
+				AccountTokenizer::request_burn(Origin::signed(proxy.clone()), proxy.clone(), ALICE),
 				crate::Error::<Runtime>::CallerUnauthorized
 			);
 
-			assert_ok!(AccountTokenizer::burn_account_token(
+			assert_ok!(AccountTokenizer::request_burn(
 				Origin::signed(ALICE),
 				proxy.clone(),
 				ALICE
 			));
 
+			// Token is not burned until confirmed by the oracle
+			assert_eq!(ModuleNFT::owner(&0, &0), Some(ALICE));
+			assert_eq!(AccountTokenizer::minted_account(proxy.clone()), Some(0));
+
+			// Confirm the burn
+			assert_ok!(ForeignStateOracle::dispatch_task(Origin::signed(ORACLE), 1, vec![]));
+
 			assert_eq!(ModuleNFT::owner(&0, &0), None);
 			assert_eq!(AccountTokenizer::minted_account(proxy.clone()), None);
 
-			System::assert_last_event(Event::AccountTokenizer(crate::Event::AccountTokenBurned {
-				account: proxy.clone(),
-				owner: ALICE,
-				token_id: 0,
-				new_owner: ALICE,
-			}));
+			let events = System::events();
+			assert_eq!(
+				events[events.len() - 2].event,
+				Event::AccountTokenizer(crate::Event::AccountTokenBurned {
+					account: proxy.clone(),
+					owner: ALICE,
+					token_id: 0,
+					new_owner: ALICE,
+				})
+			);
+			System::assert_last_event(Event::ForeignStateOracle(
+				module_foreign_state_oracle::Event::CallDispatched { task_result: Ok(()) },
+			));
 
 			// XCM fee is burned.
-			assert_eq!(Balances::free_balance(&ALICE), dollar(993));
+			assert_eq!(Balances::free_balance(&ALICE), dollar(992));
 			assert_eq!(Balances::reserved_balance(&ALICE), 0);
 			assert_eq!(Balances::free_balance(&TREASURY), dollar(1));
 
 			// cannot burn the same nft again
 			assert_noop!(
-				AccountTokenizer::burn_account_token(Origin::signed(ALICE), proxy, ALICE),
+				AccountTokenizer::request_burn(Origin::signed(ALICE), proxy, ALICE),
 				crate::Error::<Runtime>::AccountTokenNotFound
 			);
 		});

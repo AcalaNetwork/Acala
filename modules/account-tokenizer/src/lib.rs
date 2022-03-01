@@ -148,6 +148,14 @@ pub mod module {
 			account: T::AccountId,
 			token_id: T::TokenId,
 		},
+		/// An request to burn the account token is submitted. XCM message is sent to the
+		/// relaychain. Actual NFT is burned after confirmed by Oracle.
+		BurnRequested {
+			account: T::AccountId,
+			owner: T::AccountId,
+			token_id: T::TokenId,
+			new_owner: T::AccountId,
+		},
 		/// The account token is burned, the control of the `account` on the relaychain is
 		/// relinquished to `new_owner`.
 		AccountTokenBurned {
@@ -284,21 +292,16 @@ pub mod module {
 			}
 		}
 
-		/// Burn the account's token to relinquish the control of the account on the relaychain
-		/// to the `new_owner`.
-		/// Only callable by the owner of the NFT token.
+		// Requests to burn an Account Token. Sends XCM message to the relaychain to transfer the
+		// control of the account.
+		// No storage change is done, until confirmed by the Oracle.
 		#[pallet::weight(0)]
-		#[transactional]
-		pub fn burn_account_token(
-			origin: OriginFor<T>,
-			account: T::AccountId,
-			new_owner: T::AccountId,
-		) -> DispatchResult {
+		pub fn request_burn(origin: OriginFor<T>, account: T::AccountId, new_owner: T::AccountId) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			let nft_class_id = Self::nft_class_id();
 
 			// Obtain info about the account token.
-			let token_id = MintedAccount::<T>::take(&account).ok_or(Error::<T>::AccountTokenNotFound)?;
+			let token_id = Self::minted_account(&account).ok_or(Error::<T>::AccountTokenNotFound)?;
 			let owner = T::NFTInterface::owner(&nft_class_id, &token_id).ok_or(Error::<T>::AccountTokenNotFound)?;
 
 			// Ensure that only the owner of the NFT can burn.
@@ -312,11 +315,47 @@ pub mod module {
 				KeepAlive,
 			)?;
 
-			// Find the NFT and burn it
-			T::NFTInterface::burn_from(&nft_class_id, &token_id)?;
-
 			// Send an XCM to relaychain to relinquish the control of the `account` to `new_owner`.
 			T::XcmInterface::transfer_proxy(account.clone(), new_owner.clone())?;
+
+			// Submit confiramtion call to be serviced by foreign state oracle
+			let call: <T as Config>::Call = Call::<T>::confirm_burn_account_token {
+				account: account.clone(),
+				new_owner: new_owner.clone(),
+			}
+			.into();
+			T::ForeignStateQuery::query_task(who.clone(), call.using_encoded(|x| x.len()), call)?;
+
+			Self::deposit_event(Event::BurnRequested {
+				account,
+				owner,
+				token_id,
+				new_owner,
+			});
+			Ok(())
+		}
+
+		/// Confirm the parachain account has relinquished the control of the account on the
+		/// relaychain to the `new_owner`. The NFT can now be burned.
+		///
+		/// Only callable by the Oracle.
+		#[pallet::weight(0)]
+		#[transactional]
+		pub fn confirm_burn_account_token(
+			origin: OriginFor<T>,
+			account: T::AccountId,
+			new_owner: T::AccountId,
+		) -> DispatchResult {
+			T::OracleOrigin::ensure_origin(origin)?;
+
+			let nft_class_id = Self::nft_class_id();
+
+			// Obtain info about the account token.
+			let token_id = MintedAccount::<T>::take(&account).ok_or(Error::<T>::AccountTokenNotFound)?;
+			let owner = T::NFTInterface::owner(&nft_class_id, &token_id).ok_or(Error::<T>::AccountTokenNotFound)?;
+
+			// Find the NFT and burn it
+			T::NFTInterface::burn_from(&nft_class_id, &token_id)?;
 
 			Self::deposit_event(Event::AccountTokenBurned {
 				account,
@@ -324,6 +363,7 @@ pub mod module {
 				token_id,
 				new_owner,
 			});
+
 			Ok(())
 		}
 	}

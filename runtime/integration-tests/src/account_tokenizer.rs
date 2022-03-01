@@ -203,7 +203,7 @@ fn can_burn_account_token_nft() {
 
 			// Only the owner is allowed to burn the token
 			assert_noop!(
-				AccountTokenizer::burn_account_token(Origin::signed(alice()), alice_proxy.clone(), bob(),),
+				AccountTokenizer::request_burn(Origin::signed(alice()), alice_proxy.clone(), bob(),),
 				module_account_tokenizer::Error::<Runtime>::CallerUnauthorized
 			);
 
@@ -211,19 +211,28 @@ fn can_burn_account_token_nft() {
 			assert_eq!(AccountTokenizer::minted_account(&alice_proxy), Some(0));
 
 			// Burn the token by the token owner
-			assert_ok!(AccountTokenizer::burn_account_token(
+			assert_ok!(AccountTokenizer::request_burn(
 				Origin::signed(bob()),
 				alice_proxy.clone(),
 				bob(),
 			));
 
-			System::assert_last_event(Event::AccountTokenizer(
-				module_account_tokenizer::Event::AccountTokenBurned {
+			// Dispatch the request to accept the burn.
+			assert_ok!(ForeignStateOracle::dispatch_task(Origin::root(), 1, vec![]));
+
+			let events = System::events();
+			assert_eq!(
+				events[events.len() - 2].event,
+				Event::AccountTokenizer(module_account_tokenizer::Event::AccountTokenBurned {
 					account: alice_proxy,
 					owner: bob(),
 					token_id: 0,
 					new_owner: bob(),
-				},
+				})
+			);
+
+			System::assert_last_event(Event::ForeignStateOracle(
+				module_foreign_state_oracle::Event::CallDispatched { task_result: Ok(()) },
 			));
 		});
 }
@@ -308,31 +317,33 @@ fn xcm_transfer_proxy_for_burn_works() {
 		);
 
 		// Uncomment this test the transfer of proxy can be done on the relaychain
-		// let transfer_proxy_call = kusama_runtime::Call::Utility(pallet_utility::Call::batch {
-		// 	calls: vec![
-		// 		kusama_runtime::Call::Proxy(pallet_proxy::Call::add_proxy {
-		// 			delegate: alice(),
-		// 			proxy_type: Default::default(),
-		// 			delay: 0u32,
-		// 		}),
-		// 		kusama_runtime::Call::Proxy(pallet_proxy::Call::remove_proxy {
-		// 			delegate: parachain_account.clone(),
-		// 			proxy_type: Default::default(),
-		// 			delay: 0u32,
-		// 		}),
-		// 	]
-		// });
+		/*
+		let transfer_proxy_call = kusama_runtime::Call::Utility(pallet_utility::Call::batch {
+			calls: vec![
+				kusama_runtime::Call::Proxy(pallet_proxy::Call::add_proxy {
+					delegate: alice(),
+					proxy_type: Default::default(),
+					delay: 0u32,
+				}),
+				kusama_runtime::Call::Proxy(pallet_proxy::Call::remove_proxy {
+					delegate: parachain_account.clone(),
+					proxy_type: Default::default(),
+					delay: 0u32,
+				}),
+			]
+		});
 
-		// assert_ok!(kusama_runtime::Proxy::proxy(
-		// 	kusama_runtime::Origin::signed(parachain_account.clone().into()),
-		// 	alice_proxy.clone(),
-		// 	None,
-		// 	Box::new(transfer_proxy_call),
-		// ));
+		assert_ok!(kusama_runtime::Proxy::proxy(
+			kusama_runtime::Origin::signed(parachain_account.clone().into()),
+			alice_proxy.clone(),
+			None,
+			Box::new(transfer_proxy_call),
+		));
 
-		// assert_eq!(kusama_runtime::Proxy::proxies(alice_proxy.clone()).0.into_inner(),
-		// vec![pallet_proxy::ProxyDefinition { delegate: alice(), proxy_type: Default::default(),
-		// delay: 0u32 }]);
+		assert_eq!(kusama_runtime::Proxy::proxies(alice_proxy.clone()).0.into_inner(),
+		vec![pallet_proxy::ProxyDefinition { delegate: alice(), proxy_type: Default::default(),
+		delay: 0u32 }]);
+		*/
 	});
 
 	Karura::execute_with(|| {
@@ -358,11 +369,12 @@ fn xcm_transfer_proxy_for_burn_works() {
 		assert_ok!(NFT::transfer(Origin::signed(alice()), bob().into(), (0, 0),));
 
 		// Burn the token by the token owner
-		assert_ok!(AccountTokenizer::burn_account_token(
+		assert_ok!(AccountTokenizer::request_burn(
 			Origin::signed(bob()),
 			alice_proxy.clone(),
 			bob(),
 		));
+		assert_ok!(ForeignStateOracle::dispatch_task(Origin::root(), 1, vec![]));
 	});
 
 	KusamaNet::execute_with(|| {
