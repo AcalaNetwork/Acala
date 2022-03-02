@@ -1,6 +1,6 @@
 [package]
 name = "module-evm"
-version = "2.3.4"
+version = "2.4.0"
 authors = ["Acala Developers"]
 edition = "2021"
 
@@ -15,7 +15,7 @@ hex-literal = { version = "0.3.1" }
 primitive-types = { version = "0.10.1", default-features = false, features = ["rlp", "byteorder"] }
 ripemd160 = { version = "0.9", default-features = false }
 rlp = { version = "0.5", default-features = false }
-serde = { version = "1.0.124", optional = true, features = ["derive"] }
+serde = { version = "1.0.136", optional = true, features = ["derive"] }
 sha3 = { version = "0.9.1", default-features = false }
 tiny-keccak = { version = "2.0", features = ["fips202"] }
 scale-info = { version = "1.0", default-features = false, features = ["derive"] }
@@ -24,15 +24,15 @@ hex = { version = "0.4", default-features = false, features = ["alloc"], optiona
 num = { version = "0.4", features = ["alloc"], default-features = false }
 bn = { package = "substrate-bn", version = "0.6", default-features = false }
 
-frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.16", default-features = false }
-frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.16", default-features = false }
-pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.16", default-features = false }
-pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.16", default-features = false, optional = true }
+frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17", default-features = false }
+frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17", default-features = false }
+pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17", default-features = false }
+pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17", default-features = false, optional = true }
 
-sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.16", default-features = false }
-sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.16", default-features = false }
-sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.16", default-features = false }
-sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.16", default-features = false }
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17", default-features = false }
+sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17", default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17", default-features = false }
+sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17", default-features = false }
 orml-traits = { path = "../../orml/traits", default-features = false }
 orml-bencher = { path = "../../orml/bencher", default-features = false, optional = true }
 orml-currencies = { path = "../../orml/currencies", default-features = false, optional = true }

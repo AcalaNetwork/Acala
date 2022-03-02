@@ -241,10 +241,11 @@ pub mod module {
 		type DefaultFeeSwapPathList: Get<Vec<Vec<CurrencyId>>>;
 
 		/// The currency type in which fees will be paid.
-		type Currency: Currency<Self::AccountId, Balance = Balance>
-			+ NamedReservableCurrency<Self::AccountId, ReserveIdentifier = ReserveIdentifier>
-			+ Send
-			+ Sync;
+		type Currency: NamedReservableCurrency<
+			Self::AccountId,
+			ReserveIdentifier = ReserveIdentifier,
+			Balance = Balance,
+		>;
 
 		/// Currency to transfer, reserve/unreserve, lock/unlock assets
 		type MultiCurrency: MultiCurrency<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
@@ -390,6 +391,8 @@ pub mod module {
 		},
 		/// The charge fee pool is swapped
 		ChargeFeePoolSwapped {
+			sub_account: T::AccountId,
+			supply_currency_id: CurrencyId,
 			old_exchange_rate: Ratio,
 			swap_exchange_rate: Ratio,
 			new_exchange_rate: Ratio,
@@ -881,6 +884,8 @@ where
 					TokenExchangeRate::<T>::insert(supply_currency_id, new_exchange_rate);
 					PoolSize::<T>::insert(supply_currency_id, new_pool_size);
 					Pallet::<T>::deposit_event(Event::<T>::ChargeFeePoolSwapped {
+						sub_account: sub_account.clone(),
+						supply_currency_id,
 						old_exchange_rate: rate,
 						swap_exchange_rate,
 						new_exchange_rate,
