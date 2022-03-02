@@ -10787,6 +10787,7 @@ dependencies = [
  "cumulus-primitives-timestamp",
  "cumulus-primitives-utility",
  "cumulus-test-relay-sproof-builder",
+ "ecosystem-aqua-dao",
  "ecosystem-compound-cash",
  "ecosystem-renvm-bridge",
  "ecosystem-starport",

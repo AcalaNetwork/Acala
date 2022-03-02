@@ -45,7 +45,7 @@ pub use mandala_imports::*;
 mod mandala_imports {
 	pub use mandala_runtime::xcm_config::*;
 	pub use mandala_runtime::{
-		create_x2_parachain_multilocation, get_all_module_accounts, AcalaOracle, AccountId, AssetRegistry,
+		create_x2_parachain_multilocation, get_all_module_accounts, AcalaOracle, AccountId, AquaDao, AssetRegistry,
 		AuctionManager, Authority, AuthoritysOriginId, Authorship, Balance, Balances, BlockNumber, Call, CdpEngine,
 		CdpTreasury, CollatorSelection, CreateClassDeposit, CreateTokenDeposit, Currencies, CurrencyId,
 		DataDepositPerByte, DealWithFees, DefaultExchangeRate, Dex, EmergencyShutdown, EnabledTradingPairs, Event,

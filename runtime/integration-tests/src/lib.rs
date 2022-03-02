@@ -129,3 +129,6 @@ mod payment;
 // TODO: polkadot_runtime not support XCM
 #[cfg(feature = "with-karura-runtime")]
 mod relaychain;
+
+#[cfg(feature = "with-mandala-runtime")]
+mod aquadao;

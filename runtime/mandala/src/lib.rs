@@ -1106,6 +1106,7 @@ parameter_types! {
 		TradingPair::from_currency_ids(DOT, LDOT).unwrap(),
 		TradingPair::from_currency_ids(AUSD, RENBTC).unwrap(),
 		TradingPair::from_currency_ids(DOT, ACA).unwrap(),
+		TradingPair::from_currency_ids(AUSD, CurrencyId::Token(TokenSymbol::ADAO)).unwrap(),
 	];
 }
 

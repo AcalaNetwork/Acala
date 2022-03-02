@@ -122,6 +122,7 @@ module-evm-rpc-runtime-api = { path = "../../modules/evm/rpc/runtime_api",  defa
 ecosystem-renvm-bridge = { path = "../../ecosystem-modules/ren/renvm-bridge" }
 ecosystem-starport = { path = "../../ecosystem-modules/starport" }
 ecosystem-compound-cash = { path = "../../ecosystem-modules/compound-cash" }
+ecosystem-aqua-dao = { path = "../../ecosystem-modules/aquadao/dao" }
 
 [dev-dependencies]
 env_logger = "0.9.0"

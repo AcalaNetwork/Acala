@@ -185,8 +185,8 @@ create_currency_id! {
 		AUSD("Acala Dollar", 12) = 1,
 		DOT("Polkadot", 10) = 2,
 		LDOT("Liquid DOT", 10) = 3,
-		ADAO("AquaDAO", 10) = 4,
-		SADAO("Staked AquaDAO", 10) = 5,
+		ADAO("AquaDAO", 12) = 4,
+		SADAO("Staked AquaDAO", 12) = 5,
 		// 20 - 39: External tokens (e.g. bridged)
 		RENBTC("Ren Protocol BTC", 8) = 20,
 		CASH("Compound CASH", 8) = 21,
