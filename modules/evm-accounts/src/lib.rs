@@ -34,7 +34,7 @@ use frame_support::{
 	transactional,
 };
 use frame_system::{ensure_signed, pallet_prelude::*};
-use module_evm_utiltity_macro::keccak256;
+use module_evm_utility_macro::keccak256;
 use module_support::AddressMapping;
 use orml_traits::currency::TransferAll;
 use primitives::{evm::EvmAddress, to_bytes, AccountIndex};
