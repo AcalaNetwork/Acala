@@ -5,6 +5,7 @@ authors = ["Acala Developers"]
 edition = "2021"
 
 [dependencies]
+hex-literal = "0.3.1"
 static_assertions = "1.1.0"
 num_enum = { version = "0.5.1", default-features = false }
 serde = { version = "1.0.124", optional = true, default-features = false }
@@ -43,7 +44,6 @@ xcm-builder = { git = "https://github.com/paritytech/polkadot", branch = "releas
 
 [dev-dependencies]
 serde_json = "1.0.68"
-hex-literal = "0.3.1"
 
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.16" }
 pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.16" }

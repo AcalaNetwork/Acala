@@ -1488,7 +1488,7 @@ impl ecosystem_compound_cash::Config for Runtime {
 parameter_types! {
 	pub const ChainId: u64 = 595;
 	pub NetworkContractSource: H160 = H160::from_low_u64_be(0);
-	pub PrecompilesValue: AllPrecompiles<Runtime> = AllPrecompiles::<_>::new();
+	pub PrecompilesValue: AllPrecompiles<Runtime> = AllPrecompiles::<_>::mandala();
 }
 
 #[cfg(feature = "with-ethereum-compatibility")]
