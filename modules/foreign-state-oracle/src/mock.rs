@@ -77,7 +77,7 @@ pub mod query_example {
 		pub fn example_query_call(who: T::AccountId) -> DispatchResult {
 			let call: <T as Config>::Call = Call::<T>::injected_call {}.into();
 			let len = call.using_encoded(|x| x.len());
-			T::ForeignStateQuery::query_task(who, len, call)?;
+			T::ForeignStateQuery::query_task(&who, len, call)?;
 
 			Ok(())
 		}
