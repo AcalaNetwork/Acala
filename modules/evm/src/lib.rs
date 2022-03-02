@@ -170,8 +170,11 @@ pub mod module {
 		type AddressMapping: AddressMapping<Self::AccountId>;
 
 		/// Currency type for withdraw and balance storage.
-		type Currency: Currency<Self::AccountId, Balance = Balance>
-			+ NamedReservableCurrency<Self::AccountId, ReserveIdentifier = ReserveIdentifier>;
+		type Currency: NamedReservableCurrency<
+			Self::AccountId,
+			ReserveIdentifier = ReserveIdentifier,
+			Balance = Balance,
+		>;
 
 		/// Merge free balance from source to dest.
 		type TransferAll: TransferAll<Self::AccountId>;

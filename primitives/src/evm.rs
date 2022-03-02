@@ -22,6 +22,7 @@ use crate::{
 };
 use codec::{Decode, Encode};
 use core::ops::Range;
+use hex_literal::hex;
 pub use module_evm_utility::{
 	ethereum::{AccessListItem, Log, TransactionAction},
 	evm::ExitReason,
@@ -106,12 +107,11 @@ pub struct EthereumTransactionMessage {
 /// 0 - 0x0000000000000000000000000000000000000400
 /// Acala precompiles
 /// 0x0000000000000000000000000000000000000400 - 0x0000000000000000000000000000000000000800
-pub const PRECOMPILE_ADDRESS_START: EvmAddress = H160([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0]);
+pub const PRECOMPILE_ADDRESS_START: EvmAddress = H160(hex!("0000000000000000000000000000000000000400"));
 /// Predeployed system contracts (except Mirrored ERC20)
 /// 0x0000000000000000000000000000000000000800 - 0x0000000000000000000000000000000000001000
-pub const PREDEPLOY_ADDRESS_START: EvmAddress = H160([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 0]);
-pub const MIRRORED_TOKENS_ADDRESS_START: EvmAddress =
-	H160([0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+pub const PREDEPLOY_ADDRESS_START: EvmAddress = H160(hex!("0000000000000000000000000000000000000800"));
+pub const MIRRORED_TOKENS_ADDRESS_START: EvmAddress = H160(hex!("0000000000000000000100000000000000000000"));
 pub const MIRRORED_NFT_ADDRESS_START: u64 = 0x2000000;
 /// System contract address prefix
 pub const SYSTEM_CONTRACT_ADDRESS_PREFIX: [u8; 9] = [0u8; 9];

@@ -395,7 +395,7 @@ pub type EvmErc20InfoMapping = module_asset_registry::EvmErc20InfoMapping<Test>;
 
 parameter_types! {
 	pub NetworkContractSource: H160 = alice_evm_addr();
-	pub PrecompilesValue: AllPrecompiles<Test> = AllPrecompiles::<_>::new();
+	pub PrecompilesValue: AllPrecompiles<Test> = AllPrecompiles::<_>::mandala();
 }
 
 ord_parameter_types! {
