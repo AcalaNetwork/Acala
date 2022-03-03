@@ -46,7 +46,7 @@ use frame_support::{
 };
 use frame_system::{ensure_root, ensure_signed, pallet_prelude::*, EnsureRoot, EnsureSigned};
 use hex_literal::hex;
-pub use module_evm_utiltity::{
+pub use module_evm_utility::{
 	ethereum::{AccessListItem, Log, TransactionAction},
 	evm::{self, Config as EvmConfig, Context, ExitError, ExitFatal, ExitReason, ExitRevert, ExitSucceed},
 	Account,
@@ -106,7 +106,7 @@ static ACALA_CONFIG: EvmConfig = EvmConfig {
 	sstore_gas_metering: false,         // no gas refund
 	sstore_revert_under_stipend: false, // ignored
 	create_contract_limit: Some(MaxCodeSize::get() as usize),
-	..module_evm_utiltity::evm::Config::istanbul()
+	..module_evm_utility::evm::Config::istanbul()
 };
 
 /// Create an empty contract `contract Empty { }`.
@@ -170,8 +170,11 @@ pub mod module {
 		type AddressMapping: AddressMapping<Self::AccountId>;
 
 		/// Currency type for withdraw and balance storage.
-		type Currency: Currency<Self::AccountId, Balance = Balance>
-			+ NamedReservableCurrency<Self::AccountId, ReserveIdentifier = ReserveIdentifier>;
+		type Currency: NamedReservableCurrency<
+			Self::AccountId,
+			ReserveIdentifier = ReserveIdentifier,
+			Balance = Balance,
+		>;
 
 		/// Merge free balance from source to dest.
 		type TransferAll: TransferAll<Self::AccountId>;
