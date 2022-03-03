@@ -2075,6 +2075,7 @@ parameter_types! {
 
 impl module_account_tokenizer::Config for Runtime {
 	type Event = Event;
+	type WeightInfo = weights::module_account_tokenizer::WeightInfo<Runtime>;
 	type Call = Call;
 	type PalletAccount = AccountTokenizerPalletAccount;
 	type Currency = Balances;

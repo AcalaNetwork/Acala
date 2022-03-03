@@ -280,6 +280,9 @@ impl<T: Config> ForeignChainStateQuery<T::AccountId, T::VerifiableTask> for Pall
 
 pub struct EnsureForeignStateOracle;
 
+#[cfg(feature = "runtime-benchmarks")]
+use frame_benchmarking::vec;
+
 impl<O: Into<Result<RawOrigin, O>> + From<RawOrigin>> EnsureOrigin<O> for EnsureForeignStateOracle {
 	type Success = Vec<u8>;
 

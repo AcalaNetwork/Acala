@@ -224,6 +224,7 @@ parameter_types! {
 
 impl Config for Runtime {
 	type Event = Event;
+	type WeightInfo = ();
 	type Call = Call;
 	type PalletAccount = AccountTokenizerPalletAccount;
 	type Currency = Balances;

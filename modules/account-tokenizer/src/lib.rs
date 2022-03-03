@@ -19,12 +19,15 @@
 //! # Account Tokenized module
 //!
 //! This module allows Accounts on the Relaychain to be "tokenized" into a
-//! Account Token, in the form of a NFT.
-//! Authorized oracles can mint NFT into an account on the local chain, when the
-//! corresponding account on the relaychain relinquishes its ownership to the parachain account.
-//!
-//! The owner of the NFT can then "Redeem" the NFT token to get back the control of the account on
-//! the Relaychain.
+//! Account Token, in the form of a NFT. The overall workflow is as follows:
+//! 1. User creates an anonymous account using the `Proxy` pallet
+//! 2. User transfers the control of the account to our Parachain account
+//! 3. `request_mint` is called. Foreign state oracles will confirm the mint request
+//! 4. An account token NFT is minted. The token is transferrable.
+//! 5. The owner of the NFT can call `request_burn` to burn the token. This will cause
+//!    the transfer of ownership of the anonymous account from the Parachain's account
+//!    to the user's nominated account.
+//! 6. Once the transfer is completed and confirmed by the Oracle, the NFT token is burned.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
@@ -61,7 +64,10 @@ pub const PROXYTYPE_ANY: [u8; 1] = [0_u8];
 
 mod mock;
 mod tests;
+pub mod weights;
 
+pub use weights::WeightInfo;
+pub mod benchmarking;
 pub use module::*;
 
 #[frame_support::pallet]
@@ -71,6 +77,9 @@ pub mod module {
 	#[pallet::config]
 	pub trait Config: frame_system::Config + orml_nft::Config {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+
+		/// Weight information for the extrinsics in this module.
+		type WeightInfo: WeightInfo;
 
 		/// The currency mechanism.
 		type Currency: NamedReservableCurrency<Self::AccountId, ReserveIdentifier = ReserveIdentifier>
@@ -89,7 +98,7 @@ pub mod module {
 		#[pallet::constant]
 		type MintRequestDeposit: Get<Balance>;
 
-		/// Fee for minting an account Token NFT.
+		/// Fee for minting an Account Token NFT.
 		#[pallet::constant]
 		type MintFee: Get<Balance>;
 
@@ -107,6 +116,7 @@ pub mod module {
 			+ From<Call<Self>>
 			+ IsType<<Self as frame_system::Config>::Call>;
 
+		// Used to interface with the Oracle.
 		type ForeignStateQuery: ForeignChainStateQuery<Self::AccountId, <Self as Config>::Call>;
 
 		/// Interface used to communicate with the NFT module.
@@ -135,21 +145,17 @@ pub mod module {
 	#[pallet::generate_deposit(pub fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// The user has requested to mint a Account Token NFT.
-		MintRequested {
-			account: T::AccountId,
-			who: T::AccountId,
-		},
-		MintRequestRejected {
-			requester: T::AccountId,
-		},
-		/// A NFT is minted to the owner of an account on the Relaychain.
+		MintRequested { account: T::AccountId, who: T::AccountId },
+		/// The mint request is deemed invalid by oracle.
+		MintRequestRejected { requester: T::AccountId },
+		/// A Account Token NFT is minted to an account.
 		AccountTokenMinted {
 			owner: T::AccountId,
 			account: T::AccountId,
 			token_id: T::TokenId,
 		},
 		/// An request to burn the account token is submitted. XCM message is sent to the
-		/// relaychain. Actual NFT is burned after confirmed by Oracle.
+		/// relaychain.
 		BurnRequested {
 			account: T::AccountId,
 			owner: T::AccountId,
@@ -166,12 +172,12 @@ pub mod module {
 		},
 	}
 
-	/// Stores the NFT's class ID. Settable by authorized Oracle. Used to mint and burn PRTs.
+	/// Stores the NFT's class ID. Created on RuntimeUpgrade. Used to mint and burn PRTs.
 	#[pallet::storage]
 	#[pallet::getter(fn nft_class_id)]
 	pub type NFTClassId<T: Config> = StorageValue<_, T::ClassId, ValueQuery>;
 
-	/// Stores accounts that are already minted as an NFT.
+	/// Stores proxy accounts that are already minted as an Account Token NFT.
 	/// Storage Map: Tokenized Account Id  => NFT Token ID
 	#[pallet::storage]
 	#[pallet::getter(fn minted_account)]
@@ -179,13 +185,19 @@ pub mod module {
 
 	#[pallet::hooks]
 	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+		/// Create the NFT class once.
 		fn on_runtime_upgrade() -> Weight {
 			let on_chain_storage_version = <Self as GetStorageVersion>::on_chain_storage_version();
 			if on_chain_storage_version == 0 {
-				let amount = T::NFTInterface::base_create_class_fee();
+				let create_class_cost = T::NFTInterface::base_create_class_fee();
+
 				// Transfer some fund from the treasury to pay for the class creation.
-				let res =
-					T::Currency::transfer(&T::TreasuryAccount::get(), &T::PalletAccount::get(), amount, KeepAlive);
+				let res = T::Currency::transfer(
+					&T::TreasuryAccount::get(),
+					&T::PalletAccount::get(),
+					create_class_cost,
+					KeepAlive,
+				);
 				log::debug!(
 					"Account Tokenizer: Transferred funds from treasury to create class. result: {:?}",
 					res
@@ -207,10 +219,15 @@ pub mod module {
 				);
 				log::debug!("Account Tokenizer: Set NFT class property. result: {:?}", res);
 
+				// Sets NFT class ID storage
 				NFTClassId::<T>::put(class_id);
+
+				// Upgrade storage versino so NFT class is only created once.
 				StorageVersion::new(1).put::<Self>();
+				<T as Config>::WeightInfo::initialize_nft_class()
+			} else {
+				0
 			}
-			0
 		}
 
 		// ensure that MintFee is >= NFT's mint fee.
@@ -236,10 +253,10 @@ pub mod module {
 		/// Params:
 		/// 	- `account`: The account ID of the anonymous proxy.
 		/// 	- `height`: The block number in which the anonymous proxy is generated.
-		/// 	- `ext_index`: The index,  in the block, of the extrinsics that generated the anonymous
+		/// 	- `ext_index`: The index, in the block, of the extrinsics that generated the anonymous
 		///    proxy.
 		/// 	- `index`: The index of the anonymous proxy.
-		#[pallet::weight(0)]
+		#[pallet::weight(< T as Config >::WeightInfo::request_mint())]
 		#[transactional]
 		pub fn request_mint(
 			origin: OriginFor<T>,
@@ -250,6 +267,7 @@ pub mod module {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
+			// Checks if the account is an anonymous proxy of the caller.
 			// hard coded for `ProxyType::Any`. No other proxy type is allowed
 			let entropy =
 				(b"modlpy/proxy____", &who, height, ext_index, &PROXYTYPE_ANY, index).using_encoded(blake2_256);
@@ -274,7 +292,16 @@ pub mod module {
 			Ok(())
 		}
 
-		#[pallet::weight(0)]
+		/// Confirm the mint request by rejecting or accepting.
+		/// On accept - Account Token NFT is minted into the user's account, deposit returned.
+		/// On reject - the deposit is confiscated.
+		///
+		/// Only callable by the Oracle.
+		///
+		/// Params:
+		/// 	- `owner`: The owner of the Account Token to be minted.
+		/// 	- `account`: Account ID of the anonymous proxy.
+		#[pallet::weight(< T as Config >::WeightInfo::confirm_mint_request())]
 		pub fn confirm_mint_request(
 			origin: OriginFor<T>,
 			owner: T::AccountId,
@@ -282,20 +309,21 @@ pub mod module {
 		) -> DispatchResult {
 			// Extract confirmation info from Origin.
 			let data = T::OracleOrigin::ensure_origin(origin)?;
-			let rejected = data.get(0).ok_or(Error::<T>::BadOracleData)?.is_zero();
-
-			// Accept or reject the mint request.
-			if rejected {
-				Self::reject_mint_request(owner)
-			} else {
+			if *data.get(0).ok_or(Error::<T>::BadOracleData)? == 1u8 {
 				Self::accept_mint_request(owner, account)
+			} else {
+				Self::reject_mint_request(owner)
 			}
 		}
 
-		// Requests to burn an Account Token. Sends XCM message to the relaychain to transfer the
-		// control of the account.
-		// No storage change is done, until confirmed by the Oracle.
-		#[pallet::weight(0)]
+		/// Requests to burn an Account Token. Sends XCM message to the relaychain to transfer the
+		/// control of the account.
+		/// No storage change is done, until confirmed by the Oracle.
+		///
+		/// Params:
+		/// 	- `account`: Account ID of the Account Token
+		/// 	- `new_owner`: The owner of the proxy account to be transferred to.
+		#[pallet::weight(< T as Config >::WeightInfo::request_burn())]
 		pub fn request_burn(origin: OriginFor<T>, account: T::AccountId, new_owner: T::AccountId) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			let nft_class_id = Self::nft_class_id();
@@ -335,11 +363,15 @@ pub mod module {
 			Ok(())
 		}
 
-		/// Confirm the parachain account has relinquished the control of the account on the
-		/// relaychain to the `new_owner`. The NFT can now be burned.
+		/// Confirm that the parachain account has relinquished the control of the account on the
+		/// relaychain to the `new_owner`. The NFT is burned and storage updated.
 		///
 		/// Only callable by the Oracle.
-		#[pallet::weight(0)]
+		///
+		/// Params:
+		/// 	- `account`: Account ID of the Account Token
+		/// 	- `new_owner`: The owner of the proxy account to be transferred to.
+		#[pallet::weight(< T as Config >::WeightInfo::confirm_burn_account_token())]
 		#[transactional]
 		pub fn confirm_burn_account_token(
 			origin: OriginFor<T>,

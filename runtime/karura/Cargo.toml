@@ -263,6 +263,7 @@ runtime-benchmarks = [
 
 	"module-nft/runtime-benchmarks",
 	"module-evm-accounts/runtime-benchmarks",
+	"module-foreign-state-oracle/runtime-benchmarks",
 
 	"sp-api/disable-logging",
 ]

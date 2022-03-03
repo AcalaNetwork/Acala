@@ -1374,20 +1374,6 @@ parameter_types! {
 	pub MintFee: Balance = dollar(ACA);
 }
 
-impl module_account_tokenizer::Config for Runtime {
-	type Event = Event;
-	type Call = Call;
-	type PalletAccount = AccountTokenizerPalletAccount;
-	type Currency = Balances;
-	type XcmInterface = XcmInterface;
-	type OracleOrigin = module_foreign_state_oracle::EnsureForeignStateOracle;
-	type NFTInterface = NFT;
-	type TreasuryAccount = AccountTokenizerPalletAccount;
-	type MintRequestDeposit = MintRequestDeposit;
-	type MintFee = MintFee;
-	type ForeignStateQuery = ForeignStateOracle;
-}
-
 parameter_types! {
 	pub CreateClassDeposit: Balance = 20 * dollar(ACA);
 	pub CreateTokenDeposit: Balance = 2 * dollar(ACA);
@@ -2232,7 +2218,6 @@ construct_runtime! {
 		NFT: module_nft::{Pallet, Call, Event<T>} = 141,
 		AssetRegistry: module_asset_registry::{Pallet, Call, Storage, Event<T>} = 142,
 		ForeignStateOracle: module_foreign_state_oracle::{Pallet, Call, Storage, Event<T>, Origin} = 143,
-		AccountTokenizer: module_account_tokenizer::{Pallet, Call, Storage, Event<T>} = 144,
 
 		// Ecosystem modules
 		RenVmBridge: ecosystem_renvm_bridge::{Pallet, Call, Config, Storage, Event<T>, ValidateUnsigned} = 150,
