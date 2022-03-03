@@ -23,6 +23,7 @@ use cumulus_primitives_core::ParaId;
 
 use frame_support::assert_ok;
 use module_asset_registry::AssetMetadata;
+pub use orml_traits::GetByKey;
 use polkadot_parachain::primitives::Sibling;
 use xcm::v1::{Junction, MultiLocation};
 use xcm_emulator::TestExt;
@@ -37,10 +38,26 @@ pub const EXISTENTIAL_DEPOSIT: Balance = CENTS / 10;
 pub const UNITS: Balance = 1_000_000_000_000;
 pub const CENTS: Balance = UNITS / 30_000;
 
-#[cfg(feature = "with-karura-runtime")]
+#[test]
+fn statemine_min_xcm_fee_matched() {
+	Statemine::execute_with(|| {
+		use frame_support::weights::{IdentityFee, WeightToFeePolynomial};
+		let weight = FEE_STATEMINE as u64;
+
+		let fee: Balance = IdentityFee::calc(&weight);
+		let statemine: MultiLocation = (1, Parachain(parachains::statemine::ID)).into();
+		let bifrost: MultiLocation = (1, Parachain(parachains::bifrost::ID)).into();
+
+		let statemine_fee: u128 = ParachainMinFee::get(&statemine);
+		assert_eq!(fee, statemine_fee);
+
+		let bifrost_fee: u128 = ParachainMinFee::get(&bifrost);
+		assert_eq!(u128::MAX, bifrost_fee);
+	});
+}
+
 #[test]
 fn user_different_ksm_fee() {
-	env_logger::init();
 	let para_2000: AccountId = Sibling::from(2000).into_account();
 	let child_2000: AccountId = ParaId::from(2000).into_account();
 	let child_1000: AccountId = ParaId::from(1000).into_account();
@@ -107,7 +124,6 @@ fn user_different_ksm_fee() {
 	}
 }
 
-#[cfg(feature = "with-karura-runtime")]
 #[test]
 fn user_large_fee_fund_to_sovereign_account_works() {
 	let para_2000: AccountId = Sibling::from(2000).into_account();
