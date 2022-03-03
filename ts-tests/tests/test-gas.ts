@@ -47,6 +47,6 @@ describeWithAcala("Acala RPC (Gas)", (context) => {
 
 		expect(data.gas.toNumber()).to.be.eq(22409);
 		expect(data.storage.toNumber()).to.be.eq(0);
-		expect(data.weightFee.toNumber()).to.be.eq(3999940939026);
+		expect(data.weightFee.toNumber()).to.be.eq(3999940905471);
 	});
 });

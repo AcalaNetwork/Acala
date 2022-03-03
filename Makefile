@@ -134,8 +134,7 @@ test-e2e:
 	cargo test --package test-service -- --include-ignored --skip test_full_node_catching_up --skip simple_balances_test
 
 .PHONY: test-ts
-test-ts:
-	cargo build --release --features with-mandala-runtime
+test-ts: build-mandala-internal-release
 	cd ts-tests && yarn && yarn run build && ACALA_BUILD=release yarn run test
 
 .PHONY: test-benchmarking
