@@ -50,27 +50,21 @@ pub struct RawOrigin {
 }
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
-pub struct VerifiableCall<Call, BlockNumber, Balance, AccountId> {
+pub struct VerifiableCall<Call, BlockNumber, Balance> {
 	// Call to be dispatched by oracle
 	dispatchable_call: Call,
 	// Blocknumber at which call will be expired
 	expiry: BlockNumber,
 	// Reward available for responding to this query
 	oracle_reward: Balance,
-	// Account that requested query
-	account_id: AccountId,
 }
 
 #[frame_support::pallet]
 pub mod module {
 	use super::*;
 
-	pub type VerifiableCallOf<T> = VerifiableCall<
-		<T as Config>::VerifiableTask,
-		<T as frame_system::Config>::BlockNumber,
-		Balance,
-		<T as frame_system::Config>::AccountId,
-	>;
+	pub type VerifiableCallOf<T> =
+		VerifiableCall<<T as Config>::VerifiableTask, <T as frame_system::Config>::BlockNumber, Balance>;
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
@@ -210,18 +204,6 @@ pub mod module {
 			Self::deposit_event(Event::<T>::StaleQueryRemoved { query_index });
 			Ok(())
 		}
-
-		/// Cancel query before it has been serviced, only the account that created the query can
-		/// cancel it.
-		///
-		/// - `query_index`: Unique index mapped to a particular query
-		#[pallet::weight(0)]
-		#[transactional]
-		pub fn cancel_query(origin: OriginFor<T>, query_index: QueryIndex) -> DispatchResult {
-			let who = ensure_signed(origin)?;
-			Self::cancel_task(&who, query_index)?;
-			Ok(())
-		}
 	}
 }
 
@@ -234,11 +216,11 @@ impl<T: Config> Pallet<T> {
 
 impl<T: Config> ForeignChainStateQuery<T::AccountId, T::VerifiableTask> for Pallet<T> {
 	#[transactional]
-	fn query_task(who: T::AccountId, length_bound: usize, dispatchable_call: T::VerifiableTask) -> DispatchResult {
-		let call_len = dispatchable_call.using_encoded(|x| x.len());
+	fn query_task(who: &T::AccountId, length_bound: usize, dispatchable_call: T::VerifiableTask) -> DispatchResult {
+		let call_len = dispatchable_call.encoded_size();
 		ensure!(call_len <= length_bound, Error::<T>::TooLargeVerifiableCall);
 		T::Currency::transfer(
-			&who,
+			who,
 			&Self::account_id(),
 			T::QueryFee::get(),
 			ExistenceRequirement::KeepAlive,
@@ -249,7 +231,6 @@ impl<T: Config> ForeignChainStateQuery<T::AccountId, T::VerifiableTask> for Pall
 			dispatchable_call,
 			expiry,
 			oracle_reward: T::QueryFee::get(),
-			account_id: who,
 		};
 
 		let index = QueryCounter::<T>::get();
@@ -264,7 +245,6 @@ impl<T: Config> ForeignChainStateQuery<T::AccountId, T::VerifiableTask> for Pall
 	#[transactional]
 	fn cancel_task(who: &T::AccountId, index: QueryIndex) -> DispatchResult {
 		let task = ActiveQuery::<T>::take(index).ok_or(Error::<T>::NoMatchingCall)?;
-		ensure!(who == &task.account_id, Error::<T>::NotQueryAccount);
 
 		// Reimbursts (query fee - cancel fee) to account.
 		T::Currency::transfer(

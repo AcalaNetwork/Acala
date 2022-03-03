@@ -286,7 +286,7 @@ pub mod module {
 				account: account.clone(),
 			}
 			.into();
-			T::ForeignStateQuery::query_task(who.clone(), call.using_encoded(|x| x.len()), call)?;
+			T::ForeignStateQuery::query_task(&who, call.using_encoded(|x| x.len()), call)?;
 
 			Self::deposit_event(Event::MintRequested { account, who });
 			Ok(())
@@ -352,7 +352,7 @@ pub mod module {
 				new_owner: new_owner.clone(),
 			}
 			.into();
-			T::ForeignStateQuery::query_task(who.clone(), call.using_encoded(|x| x.len()), call)?;
+			T::ForeignStateQuery::query_task(&who, call.using_encoded(|x| x.len()), call)?;
 
 			Self::deposit_event(Event::BurnRequested {
 				account,

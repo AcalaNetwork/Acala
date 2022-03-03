@@ -78,29 +78,24 @@ fn query_and_cancel_works() {
 		let call = Call::QueryExample(query_example::Call::injected_call {});
 		// Bound can't be smaller than encoded call length
 		assert_noop!(
-			ForeignStateOracle::query_task(ALICE, 1, call.clone()),
+			ForeignStateOracle::query_task(&ALICE, 1, call.clone()),
 			Error::<Runtime>::TooLargeVerifiableCall
 		);
 		// Need native token to query the oracle
 		assert_noop!(
-			ForeignStateOracle::query_task(BOB, call.using_encoded(|x| x.len()), call.clone()),
+			ForeignStateOracle::query_task(&BOB, call.using_encoded(|x| x.len()), call.clone()),
 			pallet_balances::Error::<Runtime>::InsufficientBalance
 		);
 
 		let alice_before = Balances::free_balance(ALICE);
 		assert_ok!(ForeignStateOracle::query_task(
-			ALICE,
+			&ALICE,
 			call.using_encoded(|x| x.len()),
 			call.clone()
 		));
 		// Takes the query fee
 		assert_eq!(alice_before, Balances::free_balance(ALICE).add(QueryFee::get()));
 
-		// Bob cannot cancel alices query
-		assert_noop!(
-			ForeignStateOracle::cancel_task(&BOB, 0),
-			Error::<Runtime>::NotQueryAccount
-		);
 		assert_ok!(ForeignStateOracle::cancel_task(&ALICE, 0));
 		// Balance is restored other than the cancel fee
 		assert_eq!(alice_before.sub(CancelFee::get()), Balances::free_balance(ALICE));
