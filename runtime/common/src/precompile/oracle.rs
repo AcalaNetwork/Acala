@@ -38,7 +38,7 @@ use module_support::{Erc20InfoMapping as Erc20InfoMappingT, PriceProvider as Pri
 /// - Get price. Rest `input` bytes: `currency_id`.
 pub struct OraclePrecompile<R>(PhantomData<R>);
 
-#[module_evm_utiltity_macro::generate_function_selector]
+#[module_evm_utility_macro::generate_function_selector]
 #[derive(RuntimeDebug, Eq, PartialEq, TryFromPrimitive, IntoPrimitive)]
 #[repr(u32)]
 pub enum Action {

@@ -19,7 +19,7 @@
 //! Builtin precompiles.
 
 use crate::runner::state::{PrecompileFailure, PrecompileOutput, PrecompileResult};
-use module_evm_utiltity::evm::{Context, ExitError, ExitSucceed};
+use module_evm_utility::evm::{Context, ExitError, ExitSucceed};
 use sp_std::vec::Vec;
 
 mod blake2;

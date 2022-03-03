@@ -121,6 +121,11 @@ pub struct ExportGenesisWasmCommand {
 
 /// An overarching CLI command definition.
 #[derive(Debug, Parser)]
+#[clap(
+	propagate_version = true,
+	args_conflicts_with_subcommands = true,
+	subcommand_negates_reqs = true
+)]
 pub struct Cli {
 	/// Possible subcommand with parameters.
 	#[clap(subcommand)]

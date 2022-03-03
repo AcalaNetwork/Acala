@@ -66,7 +66,7 @@ pub struct TaskInfo {
 ///   `min_delay`, `input_len`, `input_data`.
 pub struct SchedulePrecompile<Runtime>(PhantomData<Runtime>);
 
-#[module_evm_utiltity_macro::generate_function_selector]
+#[module_evm_utility_macro::generate_function_selector]
 #[derive(RuntimeDebug, Eq, PartialEq, TryFromPrimitive, IntoPrimitive)]
 #[repr(u32)]
 pub enum Action {

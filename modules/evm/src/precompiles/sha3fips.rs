@@ -18,7 +18,7 @@
 
 use super::LinearCostPrecompile;
 use crate::runner::state::PrecompileFailure;
-use module_evm_utiltity::evm::ExitSucceed;
+use module_evm_utility::evm::ExitSucceed;
 use sp_std::vec::Vec;
 use tiny_keccak::Hasher;
 
@@ -57,7 +57,7 @@ impl LinearCostPrecompile for Sha3FIPS512 {
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use module_evm_utiltity::evm::ExitError;
+	use module_evm_utility::evm::ExitError;
 
 	#[test]
 	fn test_empty_input() -> std::result::Result<(), ExitError> {
