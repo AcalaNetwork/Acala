@@ -25,15 +25,18 @@ mod mock;
 mod tests;
 
 use frame_support::log;
+use hex_literal::hex;
 use module_evm::{
-	precompiles::{ECRecover, ECRecoverPublicKey, Identity, Precompile, Ripemd160, Sha256, Sha3FIPS256, Sha3FIPS512},
+	precompiles::{
+		Blake2F, Bn128Add, Bn128Mul, Bn128Pairing, ECRecover, ECRecoverPublicKey, Identity, IstanbulModexp, Modexp,
+		Precompile, Ripemd160, Sha256, Sha3FIPS256, Sha3FIPS512,
+	},
 	runner::state::{PrecompileFailure, PrecompileResult, PrecompileSet},
 	Context, ExitRevert,
 };
 use module_support::PrecompileCallerFilter as PrecompileCallerFilterT;
-use primitives::evm::PRECOMPILE_ADDRESS_START;
 use sp_core::H160;
-use sp_std::marker::PhantomData;
+use sp_std::{collections::btree_set::BTreeSet, marker::PhantomData};
 
 pub mod dex;
 pub mod evm;
@@ -51,34 +54,118 @@ pub use nft::NFTPrecompile;
 pub use oracle::OraclePrecompile;
 pub use schedule::SchedulePrecompile;
 
-#[derive(Default)]
-pub struct AllPrecompiles<R>(PhantomData<R>);
+pub const ECRECOVER: H160 = H160(hex!("0000000000000000000000000000000000000001"));
+pub const SHA256: H160 = H160(hex!("0000000000000000000000000000000000000002"));
+pub const RIPEMD: H160 = H160(hex!("0000000000000000000000000000000000000003"));
+pub const IDENTITY: H160 = H160(hex!("0000000000000000000000000000000000000004"));
+pub const MODEXP: H160 = H160(hex!("0000000000000000000000000000000000000005"));
+pub const BN_ADD: H160 = H160(hex!("0000000000000000000000000000000000000006"));
+pub const BN_MUL: H160 = H160(hex!("0000000000000000000000000000000000000007"));
+pub const BN_PAIRING: H160 = H160(hex!("0000000000000000000000000000000000000008"));
+pub const BLAKE2F: H160 = H160(hex!("0000000000000000000000000000000000000009"));
+
+pub const ECRECOVER_PUBLICKEY: H160 = H160(hex!("0000000000000000000000000000000000000080"));
+pub const SHA3_256: H160 = H160(hex!("0000000000000000000000000000000000000081"));
+pub const SHA3_512: H160 = H160(hex!("0000000000000000000000000000000000000082"));
+
+pub const MULTI_CURRENCY: H160 = H160(hex!("0000000000000000000000000000000000000400"));
+pub const NFT: H160 = H160(hex!("0000000000000000000000000000000000000401"));
+pub const EVM: H160 = H160(hex!("0000000000000000000000000000000000000402"));
+pub const ORACLE: H160 = H160(hex!("0000000000000000000000000000000000000403"));
+pub const SCHEDULER: H160 = H160(hex!("0000000000000000000000000000000000000404"));
+pub const DEX: H160 = H160(hex!("0000000000000000000000000000000000000405"));
+
+pub struct AllPrecompiles<R> {
+	active: BTreeSet<H160>,
+	_marker: PhantomData<R>,
+}
 
 impl<R> AllPrecompiles<R>
 where
 	R: module_evm::Config,
 {
-	pub fn new() -> Self {
-		Self(Default::default())
+	pub fn acala() -> Self {
+		Self {
+			active: BTreeSet::from([
+				ECRECOVER,
+				SHA256,
+				RIPEMD,
+				IDENTITY,
+				MODEXP,
+				BN_ADD,
+				BN_MUL,
+				BN_PAIRING,
+				BLAKE2F,
+				// Non-standard precompile starts with 128
+				ECRECOVER_PUBLICKEY,
+				SHA3_256,
+				SHA3_512,
+				// Acala precompile
+				MULTI_CURRENCY,
+				NFT,
+				EVM,
+				ORACLE,
+				// SCHEDULER,
+				DEX,
+			]),
+			_marker: Default::default(),
+		}
 	}
-	pub fn used_addresses() -> sp_std::vec::Vec<H160> {
-		sp_std::vec![
-			H160::from_low_u64_be(1),
-			H160::from_low_u64_be(2),
-			H160::from_low_u64_be(3),
-			H160::from_low_u64_be(4),
-			// Non-standard precompile starts with 128
-			H160::from_low_u64_be(128),
-			H160::from_low_u64_be(129),
-			H160::from_low_u64_be(130),
-			// Acala precompile
-			PRECOMPILE_ADDRESS_START,
-			PRECOMPILE_ADDRESS_START | H160::from_low_u64_be(1),
-			PRECOMPILE_ADDRESS_START | H160::from_low_u64_be(2),
-			PRECOMPILE_ADDRESS_START | H160::from_low_u64_be(3),
-			PRECOMPILE_ADDRESS_START | H160::from_low_u64_be(4),
-			PRECOMPILE_ADDRESS_START | H160::from_low_u64_be(5),
-		]
+
+	pub fn karura() -> Self {
+		Self {
+			active: BTreeSet::from([
+				ECRECOVER,
+				SHA256,
+				RIPEMD,
+				IDENTITY,
+				MODEXP,
+				BN_ADD,
+				BN_MUL,
+				BN_PAIRING,
+				BLAKE2F,
+				// Non-standard precompile starts with 128
+				ECRECOVER_PUBLICKEY,
+				SHA3_256,
+				SHA3_512,
+				// Acala precompile
+				MULTI_CURRENCY,
+				NFT,
+				EVM,
+				ORACLE,
+				// SCHEDULER,
+				DEX,
+			]),
+			_marker: Default::default(),
+		}
+	}
+
+	pub fn mandala() -> Self {
+		Self {
+			active: BTreeSet::from([
+				ECRECOVER,
+				SHA256,
+				RIPEMD,
+				IDENTITY,
+				MODEXP,
+				BN_ADD,
+				BN_MUL,
+				BN_PAIRING,
+				BLAKE2F,
+				// Non-standard precompile starts with 128
+				ECRECOVER_PUBLICKEY,
+				SHA3_256,
+				SHA3_512,
+				// Acala precompile
+				MULTI_CURRENCY,
+				NFT,
+				EVM,
+				ORACLE,
+				SCHEDULER,
+				DEX,
+			]),
+			_marker: Default::default(),
+		}
 	}
 }
 
@@ -106,21 +193,35 @@ where
 		log::trace!(target: "evm", "Precompile begin, address: {:?}, input: {:?}, target_gas: {:?}, context: {:?}", address, input, target_gas, context);
 
 		// https://github.com/ethereum/go-ethereum/blob/9357280fce5c5d57111d690a336cca5f89e34da6/core/vm/contracts.go#L83
-		let result = if address == H160::from_low_u64_be(1) {
+		let result = if address == ECRECOVER {
 			Some(ECRecover::execute(input, target_gas, context, is_static))
-		} else if address == H160::from_low_u64_be(2) {
+		} else if address == SHA256 {
 			Some(Sha256::execute(input, target_gas, context, is_static))
-		} else if address == H160::from_low_u64_be(3) {
+		} else if address == RIPEMD {
 			Some(Ripemd160::execute(input, target_gas, context, is_static))
-		} else if address == H160::from_low_u64_be(4) {
+		} else if address == IDENTITY {
 			Some(Identity::execute(input, target_gas, context, is_static))
+		} else if address == MODEXP {
+			if R::config().increase_state_access_gas {
+				Some(Modexp::execute(input, target_gas, context, is_static))
+			} else {
+				Some(IstanbulModexp::execute(input, target_gas, context, is_static))
+			}
+		} else if address == BN_ADD {
+			Some(Bn128Add::execute(input, target_gas, context, is_static))
+		} else if address == BN_MUL {
+			Some(Bn128Mul::execute(input, target_gas, context, is_static))
+		} else if address == BN_PAIRING {
+			Some(Bn128Pairing::execute(input, target_gas, context, is_static))
+		} else if address == BLAKE2F {
+			Some(Blake2F::execute(input, target_gas, context, is_static))
 		}
 		// Non-standard precompile starts with 128
-		else if address == H160::from_low_u64_be(128) {
+		else if address == ECRECOVER_PUBLICKEY {
 			Some(ECRecoverPublicKey::execute(input, target_gas, context, is_static))
-		} else if address == H160::from_low_u64_be(129) {
+		} else if address == SHA3_256 {
 			Some(Sha3FIPS256::execute(input, target_gas, context, is_static))
-		} else if address == H160::from_low_u64_be(130) {
+		} else if address == SHA3_512 {
 			Some(Sha3FIPS512::execute(input, target_gas, context, is_static))
 		}
 		// Acala precompile
@@ -134,19 +235,19 @@ where
 				}));
 			}
 
-			if address == PRECOMPILE_ADDRESS_START {
+			if address == MULTI_CURRENCY {
 				Some(MultiCurrencyPrecompile::<R>::execute(
 					input, target_gas, context, is_static,
 				))
-			} else if address == PRECOMPILE_ADDRESS_START | H160::from_low_u64_be(1) {
+			} else if address == NFT {
 				Some(NFTPrecompile::<R>::execute(input, target_gas, context, is_static))
-			} else if address == PRECOMPILE_ADDRESS_START | H160::from_low_u64_be(2) {
+			} else if address == EVM {
 				Some(EVMPrecompile::<R>::execute(input, target_gas, context, is_static))
-			} else if address == PRECOMPILE_ADDRESS_START | H160::from_low_u64_be(3) {
+			} else if address == ORACLE {
 				Some(OraclePrecompile::<R>::execute(input, target_gas, context, is_static))
-			} else if address == PRECOMPILE_ADDRESS_START | H160::from_low_u64_be(4) {
+			} else if address == SCHEDULER {
 				Some(SchedulePrecompile::<R>::execute(input, target_gas, context, is_static))
-			} else if address == PRECOMPILE_ADDRESS_START | H160::from_low_u64_be(5) {
+			} else if address == DEX {
 				Some(DEXPrecompile::<R>::execute(input, target_gas, context, is_static))
 			} else {
 				None
@@ -161,6 +262,12 @@ where
 	}
 
 	fn is_precompile(&self, address: H160) -> bool {
-		Self::used_addresses().contains(&address)
+		self.active.contains(&address)
 	}
+}
+
+#[test]
+fn ensure_precompile_address_start() {
+	use primitives::evm::PRECOMPILE_ADDRESS_START;
+	assert_eq!(PRECOMPILE_ADDRESS_START, MULTI_CURRENCY);
 }

@@ -299,6 +299,48 @@ fn create_collateral_auctions_work() {
 }
 
 #[test]
+fn remove_liquidity_for_lp_collateral_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(DEXModule::add_liquidity(
+			Origin::signed(BOB),
+			AUSD,
+			DOT,
+			1000,
+			100,
+			0,
+			false
+		));
+		assert_ok!(CDPTreasuryModule::deposit_collateral(&BOB, LP_AUSD_DOT, 200));
+		assert_eq!(Currencies::total_issuance(LP_AUSD_DOT), 2000);
+		assert_eq!(DEXModule::get_liquidity_pool(AUSD, DOT), (1000, 100));
+		assert_eq!(
+			Currencies::free_balance(LP_AUSD_DOT, &CDPTreasuryModule::account_id()),
+			200
+		);
+		assert_eq!(Currencies::free_balance(AUSD, &CDPTreasuryModule::account_id()), 0);
+		assert_eq!(Currencies::free_balance(DOT, &CDPTreasuryModule::account_id()), 0);
+
+		assert_noop!(
+			CDPTreasuryModule::remove_liquidity_for_lp_collateral(DOT, 200),
+			Error::<Runtime>::NotDexShare
+		);
+
+		assert_eq!(
+			CDPTreasuryModule::remove_liquidity_for_lp_collateral(LP_AUSD_DOT, 120),
+			Ok((60, 6))
+		);
+		assert_eq!(Currencies::total_issuance(LP_AUSD_DOT), 1880);
+		assert_eq!(DEXModule::get_liquidity_pool(AUSD, DOT), (940, 94));
+		assert_eq!(
+			Currencies::free_balance(LP_AUSD_DOT, &CDPTreasuryModule::account_id()),
+			80
+		);
+		assert_eq!(Currencies::free_balance(AUSD, &CDPTreasuryModule::account_id()), 60);
+		assert_eq!(Currencies::free_balance(DOT, &CDPTreasuryModule::account_id()), 6);
+	});
+}
+
+#[test]
 fn set_expected_collateral_auction_size_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);

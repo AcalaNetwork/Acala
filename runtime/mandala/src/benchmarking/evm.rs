@@ -17,11 +17,11 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-	dollar, AccountId, Currencies, CurrencyId, Event, EvmAccounts, GetNativeCurrencyId, NetworkContractSource, Origin,
-	Runtime, System, EVM,
+	AccountId, Currencies, CurrencyId, Event, EvmAccounts, GetNativeCurrencyId, NetworkContractSource, Origin, Runtime,
+	System, EVM,
 };
 
-use super::utils::set_balance;
+use super::utils::{dollar, set_balance};
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_system::RawOrigin;
 use module_evm::MaxCodeSize;

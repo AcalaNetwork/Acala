@@ -23,6 +23,7 @@ use crate::{
 use frame_benchmarking::account;
 use frame_support::{assert_ok, traits::Contains};
 use frame_system::RawOrigin;
+use module_support::Erc20InfoMapping;
 use orml_traits::MultiCurrencyExtended;
 use sp_runtime::{
 	traits::{SaturatedConversion, StaticLookup},
@@ -53,6 +54,14 @@ pub fn feed_price(prices: Vec<(CurrencyId, Price)>) -> DispatchResult {
 	}
 
 	Ok(())
+}
+
+pub fn dollar(currency_id: CurrencyId) -> Balance {
+	if let Some(decimals) = module_asset_registry::EvmErc20InfoMapping::<Runtime>::decimals(currency_id) {
+		10u128.saturating_pow(decimals.into())
+	} else {
+		panic!("{:?} not support decimals", currency_id);
+	}
 }
 
 #[cfg(test)]

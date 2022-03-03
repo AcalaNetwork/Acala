@@ -23,8 +23,8 @@ use frame_support::{
 	traits::{ExtrinsicCall, Get},
 	weights::{DispatchInfo, GetDispatchInfo},
 };
-use module_evm_utiltity::ethereum::{EIP1559TransactionMessage, LegacyTransactionMessage, TransactionAction};
-use module_evm_utiltity_macro::keccak256;
+use module_evm_utility::ethereum::{EIP1559TransactionMessage, LegacyTransactionMessage, TransactionAction};
+use module_evm_utility_macro::keccak256;
 use scale_info::TypeInfo;
 use sp_core::{H160, H256};
 use sp_io::{crypto::secp256k1_ecdsa_recover, hashing::keccak_256};
@@ -357,7 +357,7 @@ fn recover_sign_data(
 mod tests {
 	use super::*;
 	use hex_literal::hex;
-	use module_evm_utiltity::ethereum::AccessListItem;
+	use module_evm_utility::ethereum::AccessListItem;
 	use sp_core::U256;
 	use std::{ops::Add, str::FromStr};
 

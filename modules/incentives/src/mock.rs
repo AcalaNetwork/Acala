@@ -205,7 +205,7 @@ impl DEXManager<AccountId, CurrencyId, Balance> for MockDEX {
 		_: Balance,
 		_: Balance,
 		_: bool,
-	) -> DispatchResult {
+	) -> sp_std::result::Result<(Balance, Balance, Balance), DispatchError> {
 		unimplemented!()
 	}
 
@@ -217,7 +217,7 @@ impl DEXManager<AccountId, CurrencyId, Balance> for MockDEX {
 		_: Balance,
 		_: Balance,
 		_: bool,
-	) -> DispatchResult {
+	) -> sp_std::result::Result<(Balance, Balance), DispatchError> {
 		unimplemented!()
 	}
 }

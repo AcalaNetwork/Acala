@@ -40,7 +40,7 @@ use sp_std::{marker::PhantomData, prelude::*};
 ///   `supply_amount`, `min_target_amount`.
 pub struct DEXPrecompile<R>(PhantomData<R>);
 
-#[module_evm_utiltity_macro::generate_function_selector]
+#[module_evm_utility_macro::generate_function_selector]
 #[derive(RuntimeDebug, Eq, PartialEq, TryFromPrimitive, IntoPrimitive)]
 #[repr(u32)]
 pub enum Action {

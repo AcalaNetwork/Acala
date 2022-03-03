@@ -17,11 +17,11 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-	dollar, AccountId, Auction, AuctionId, AuctionManager, AuctionTimeToClose, CdpTreasury, CurrencyId,
-	GetStableCurrencyId, GetStakingCurrencyId, Runtime, System,
+	AccountId, Auction, AuctionId, AuctionManager, AuctionTimeToClose, CdpTreasury, CurrencyId, GetStableCurrencyId,
+	GetStakingCurrencyId, Runtime, System,
 };
 
-use super::utils::set_balance;
+use super::utils::{dollar, set_balance};
 use frame_benchmarking::{account, whitelisted_caller};
 use frame_support::traits::OnFinalize;
 use frame_system::RawOrigin;
