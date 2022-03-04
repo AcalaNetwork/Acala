@@ -69,11 +69,11 @@ pub const SHA3_256: H160 = H160(hex!("0000000000000000000000000000000000000081")
 pub const SHA3_512: H160 = H160(hex!("0000000000000000000000000000000000000082"));
 
 pub const MULTI_CURRENCY: H160 = H160(hex!("0000000000000000000000000000000000000400"));
-pub const NFT: H160 = H160(hex!("0000000000000000000000000000000000000401"));
-pub const EVM: H160 = H160(hex!("0000000000000000000000000000000000000402"));
-pub const ORACLE: H160 = H160(hex!("0000000000000000000000000000000000000403"));
-pub const SCHEDULER: H160 = H160(hex!("0000000000000000000000000000000000000404"));
-pub const DEX: H160 = H160(hex!("0000000000000000000000000000000000000405"));
+pub const EVM: H160 = H160(hex!("0000000000000000000000000000000000000401"));
+pub const ORACLE: H160 = H160(hex!("0000000000000000000000000000000000000402"));
+pub const SCHEDULER: H160 = H160(hex!("0000000000000000000000000000000000000403"));
+pub const DEX: H160 = H160(hex!("0000000000000000000000000000000000000404"));
+pub const NFT: H160 = H160(hex!("0000000000000000000000000000000000000405"));
 
 pub struct AllPrecompiles<R> {
 	active: BTreeSet<H160>,
@@ -102,11 +102,11 @@ where
 				SHA3_512,
 				// Acala precompile
 				MULTI_CURRENCY,
-				NFT,
 				EVM,
 				ORACLE,
 				// SCHEDULER,
 				DEX,
+				NFT,
 			]),
 			_marker: Default::default(),
 		}
@@ -130,11 +130,11 @@ where
 				SHA3_512,
 				// Acala precompile
 				MULTI_CURRENCY,
-				NFT,
 				EVM,
 				ORACLE,
 				// SCHEDULER,
 				DEX,
+				NFT,
 			]),
 			_marker: Default::default(),
 		}
@@ -158,11 +158,11 @@ where
 				SHA3_512,
 				// Acala precompile
 				MULTI_CURRENCY,
-				NFT,
 				EVM,
 				ORACLE,
 				SCHEDULER,
 				DEX,
+				NFT,
 			]),
 			_marker: Default::default(),
 		}
@@ -239,8 +239,6 @@ where
 				Some(MultiCurrencyPrecompile::<R>::execute(
 					input, target_gas, context, is_static,
 				))
-			} else if address == NFT {
-				Some(NFTPrecompile::<R>::execute(input, target_gas, context, is_static))
 			} else if address == EVM {
 				Some(EVMPrecompile::<R>::execute(input, target_gas, context, is_static))
 			} else if address == ORACLE {
@@ -249,6 +247,8 @@ where
 				Some(SchedulePrecompile::<R>::execute(input, target_gas, context, is_static))
 			} else if address == DEX {
 				Some(DEXPrecompile::<R>::execute(input, target_gas, context, is_static))
+			} else if address == NFT {
+				Some(NFTPrecompile::<R>::execute(input, target_gas, context, is_static))
 			} else {
 				None
 			}
