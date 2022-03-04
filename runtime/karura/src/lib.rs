@@ -2268,6 +2268,7 @@ mod benches {
 		[module_evm_accounts, benchmarking::evm_accounts]
 		[module_currencies, benchmarking::currencies]
 		[module_session_manager, benchmarking::session_manager]
+		[module_account_tokenizer, benchmarking::account_tokenizer]
 		[orml_tokens, benchmarking::tokens]
 		[orml_vesting, benchmarking::vesting]
 		[orml_auction, benchmarking::auction]

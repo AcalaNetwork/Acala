@@ -176,6 +176,8 @@ parameter_types! {
 	pub const HomaTreasuryPalletId: PalletId = PalletId(*b"aca/hmtr");
 	pub const IncentivesPalletId: PalletId = PalletId(*b"aca/inct");
 	pub const CollatorPotId: PalletId = PalletId(*b"aca/cpot");
+	pub const AccountTokenizerPalletId: PalletId = PalletId(*b"aca/atnz");
+
 	// Treasury reserve
 	pub const TreasuryReservePalletId: PalletId = PalletId(*b"aca/reve");
 	pub const PhragmenElectionPalletId: LockIdentifier = *b"aca/phre";
@@ -204,6 +206,7 @@ pub fn get_all_module_accounts() -> Vec<AccountId> {
 		StarportPalletId::get().into_account(),
 		UnreleasedNativeVaultAccountId::get(),
 		StableAssetPalletId::get().into_account(),
+		AccountTokenizerPalletId::get().into_account(),
 	]
 }
 
@@ -1368,13 +1371,6 @@ impl module_foreign_state_oracle::Config for Runtime {
 }
 
 parameter_types! {
-	pub const AcccountTokenizerPalletId: PalletId = PalletId(*b"aca/atnz");
-	pub AccountTokenizerPalletAccount: AccountId = AcccountTokenizerPalletId::get().into_account();
-	pub MintRequestDeposit: Balance = dollar(ACA);
-	pub MintFee: Balance = dollar(ACA);
-}
-
-parameter_types! {
 	pub CreateClassDeposit: Balance = 20 * dollar(ACA);
 	pub CreateTokenDeposit: Balance = 2 * dollar(ACA);
 	pub MaxAttributesBytes: u32 = 2048;
@@ -2012,6 +2008,27 @@ impl nutsfinance_stable_asset::Config for Runtime {
 	type EnsurePoolAssetId = EnsurePoolAssetId;
 }
 
+parameter_types! {
+	pub AccountTokenizerPalletAccount: AccountId = AccountTokenizerPalletId::get().into_account();
+	pub AccountTokenizerMintRequestDeposit: Balance = 10 * dollar(ACA);
+	pub AccountTokenizerMintFee: Balance = dollar(ACA);
+}
+
+impl module_account_tokenizer::Config for Runtime {
+	type Event = Event;
+	type WeightInfo = weights::module_account_tokenizer::WeightInfo<Runtime>;
+	type Call = Call;
+	type PalletAccount = AccountTokenizerPalletAccount;
+	type Currency = Balances;
+	type XcmInterface = XcmInterface;
+	type OracleOrigin = module_foreign_state_oracle::EnsureForeignStateOracle;
+	type NFTInterface = NFT;
+	type TreasuryAccount = TreasuryAccount;
+	type MintRequestDeposit = AccountTokenizerMintRequestDeposit;
+	type MintFee = AccountTokenizerMintFee;
+	type ForeignStateQuery = ForeignStateOracle;
+}
+
 define_combined_task! {
 	#[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo)]
 	pub enum ScheduledTasks {
@@ -2155,6 +2172,7 @@ construct_runtime! {
 		Currencies: module_currencies::{Pallet, Call, Event<T>} = 12,
 		Vesting: orml_vesting::{Pallet, Storage, Call, Event<T>, Config<T>} = 13,
 		TransactionPayment: module_transaction_payment::{Pallet, Call, Storage, Event<T>} = 14,
+		AccountTokenizer: module_account_tokenizer::{Pallet, Call, Storage, Event<T>} = 15,
 
 		// Treasury
 		Treasury: pallet_treasury::{Pallet, Call, Storage, Config, Event<T>} = 20,

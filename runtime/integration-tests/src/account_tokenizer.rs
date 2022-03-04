@@ -52,7 +52,6 @@ fn can_mint_account_token() {
 			Balances::make_free_balance_be(&KaruraTreasuryAccount::get(), 1_000 * dollar(NATIVE_CURRENCY));
 			AccountTokenizer::on_runtime_upgrade();
 			let alice_proxy = AccountId::new(hex!["b99bbff5de2888225d1b0fcdba9c4e79117f910ae30b042618fecf87bd860316"]);
-
 			// Send a mint request.
 			assert_ok!(AccountTokenizer::request_mint(
 				Origin::signed(alice()),

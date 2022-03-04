@@ -75,6 +75,9 @@ pub mod transaction_payment {
 pub mod session_manager {
 	include!("../../../mandala/src/benchmarking/session_manager.rs");
 }
+pub mod account_tokenizer {
+	include!("../../../mandala/src/benchmarking/account_tokenizer.rs");
+}
 pub mod nutsfinance_stable_asset {
 	include!("../../../mandala/src/benchmarking/nutsfinance_stable_asset.rs");
 }

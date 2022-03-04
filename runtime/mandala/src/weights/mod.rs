@@ -19,6 +19,7 @@
 //! A list of the different weight modules for our runtime.
 #![allow(clippy::unnecessary_cast)]
 
+pub mod module_account_tokenizer;
 pub mod module_asset_registry;
 pub mod module_auction_manager;
 pub mod module_cdp_engine;
