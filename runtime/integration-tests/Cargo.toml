@@ -138,7 +138,7 @@ polkadot-runtime-parachains = { git = "https://github.com/paritytech/polkadot", 
 kusama-runtime = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.17" }
 
 #xcm-emulator = { git = "https://github.com/shaunxw/xcm-simulator", rev = "a250ffc998bac4831c5692c591dee7bc13f3aead" }
-xcm-emulator = { git = "https://github.com/zqhxuyuan/xcm-simulator", rev = "3119d273777be17d23683076dbfd30cb17e489d6" }
+xcm-emulator = { git = "https://github.com/zqhxuyuan/xcm-simulator", rev = "73245602cfeddc8ecf722321da4acb0aa63ad7e4" }
 
 acala-service = { path = "../../node/service", features = ["with-all-runtime"] }
 

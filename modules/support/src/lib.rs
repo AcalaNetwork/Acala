@@ -665,5 +665,5 @@ pub trait HomaSubAccountXcm<AccountId, Balance> {
 	/// Send XCM message to the relaychain for sub account to unbond.
 	fn unbond_on_sub_account(sub_account_index: u16, amount: Balance) -> DispatchResult;
 	/// The fee of cross-chain transfer is deducted from the recipient.
-	fn get_xcm_transfer_fee() -> Balance;
+	fn get_xcm_transfer_fee(location: MultiLocation) -> Balance;
 }
