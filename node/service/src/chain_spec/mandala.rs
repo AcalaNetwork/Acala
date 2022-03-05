@@ -358,6 +358,7 @@ fn testnet_genesis(
 			members: vec![root_key],
 			phantom: Default::default(),
 		},
+		foreign_state_oracle_committee: Default::default(),
 		democracy: Default::default(),
 		treasury: Default::default(),
 		tokens: TokensConfig {
@@ -550,6 +551,7 @@ fn mandala_genesis(
 			members: endowed_accounts,
 			phantom: Default::default(),
 		},
+		foreign_state_oracle_committee: Default::default(),
 		democracy: Default::default(),
 		treasury: Default::default(),
 		tokens: TokensConfig {

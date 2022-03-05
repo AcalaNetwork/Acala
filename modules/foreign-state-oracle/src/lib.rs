@@ -33,7 +33,7 @@ use sp_runtime::{
 	traits::{AccountIdConversion, BlockNumberProvider, One, Saturating, Scale},
 	ArithmeticError,
 };
-use sp_std::vec::Vec;
+use sp_std::{prelude::Vec, vec};
 
 mod mock;
 mod tests;
@@ -199,7 +199,7 @@ pub mod module {
 
 			// Gives half of reward for clearing expired query from storage
 			let reward: Balance = verifiable_call.oracle_reward.div(2u32);
-			T::Currency::transfer(&Self::account_id(), &who, reward, ExistenceRequirement::KeepAlive)?;
+			T::Currency::transfer(&Self::account_id(), &who, reward, ExistenceRequirement::AllowDeath)?;
 
 			Self::deposit_event(Event::<T>::StaleQueryRemoved { query_index });
 			Ok(())
@@ -251,7 +251,7 @@ impl<T: Config> ForeignChainStateQuery<T::AccountId, T::VerifiableTask> for Pall
 			&Self::account_id(),
 			who,
 			task.oracle_reward.saturating_sub(T::CancelFee::get()),
-			ExistenceRequirement::KeepAlive,
+			ExistenceRequirement::AllowDeath,
 		)?;
 		Self::deposit_event(Event::QueryCanceled { index });
 		Ok(())
@@ -259,9 +259,6 @@ impl<T: Config> ForeignChainStateQuery<T::AccountId, T::VerifiableTask> for Pall
 }
 
 pub struct EnsureForeignStateOracle;
-
-#[cfg(feature = "runtime-benchmarks")]
-use frame_benchmarking::vec;
 
 impl<O: Into<Result<RawOrigin, O>> + From<RawOrigin>> EnsureOrigin<O> for EnsureForeignStateOracle {
 	type Success = Vec<u8>;

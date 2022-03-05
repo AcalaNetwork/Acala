@@ -117,16 +117,16 @@ pub use primitives::{
 };
 pub use runtime_common::{
 	calculate_asset_ratio, cent, dollar, microcent, millicent, AcalaDropAssets, AllPrecompiles,
-	EnsureRootOrAllGeneralCouncil, EnsureRootOrAllTechnicalCommittee, EnsureRootOrHalfFinancialCouncil,
-	EnsureRootOrHalfGeneralCouncil, EnsureRootOrHalfHomaCouncil, EnsureRootOrOneGeneralCouncil,
-	EnsureRootOrOneThirdsTechnicalCommittee, EnsureRootOrThreeFourthsGeneralCouncil,
+	EnsureAllForeignStateOracle, EnsureRootOrAllGeneralCouncil, EnsureRootOrAllTechnicalCommittee,
+	EnsureRootOrHalfFinancialCouncil, EnsureRootOrHalfGeneralCouncil, EnsureRootOrHalfHomaCouncil,
+	EnsureRootOrOneGeneralCouncil, EnsureRootOrOneThirdsTechnicalCommittee, EnsureRootOrThreeFourthsGeneralCouncil,
 	EnsureRootOrTwoThirdsGeneralCouncil, EnsureRootOrTwoThirdsTechnicalCommittee, ExchangeRate,
-	FinancialCouncilInstance, FinancialCouncilMembershipInstance, GasToWeight, GeneralCouncilInstance,
-	GeneralCouncilMembershipInstance, HomaCouncilInstance, HomaCouncilMembershipInstance, MaxTipsOfPriority,
-	OffchainSolutionWeightLimit, OperationalFeeMultiplier, OperatorMembershipInstanceAcala, Price, ProxyType, Rate,
-	Ratio, RelayChainBlockNumberProvider, RelayChainSubAccountId, RuntimeBlockLength, RuntimeBlockWeights,
-	SystemContractsFilter, TechnicalCommitteeInstance, TechnicalCommitteeMembershipInstance, TimeStampedPrice,
-	TipPerWeightStep, ACA, AUSD, DOT, LDOT, RENBTC,
+	FinancialCouncilInstance, FinancialCouncilMembershipInstance, ForeignStateOracleInstance, GasToWeight,
+	GeneralCouncilInstance, GeneralCouncilMembershipInstance, HomaCouncilInstance, HomaCouncilMembershipInstance,
+	MaxTipsOfPriority, OffchainSolutionWeightLimit, OperationalFeeMultiplier, OperatorMembershipInstanceAcala, Price,
+	ProxyType, Rate, Ratio, RelayChainBlockNumberProvider, RelayChainSubAccountId, RuntimeBlockLength,
+	RuntimeBlockWeights, SystemContractsFilter, TechnicalCommitteeInstance, TechnicalCommitteeMembershipInstance,
+	TimeStampedPrice, TipPerWeightStep, ACA, AUSD, DOT, LDOT, RENBTC,
 };
 
 /// Import the stable_asset pallet.
@@ -177,6 +177,7 @@ parameter_types! {
 	pub const IncentivesPalletId: PalletId = PalletId(*b"aca/inct");
 	pub const CollatorPotId: PalletId = PalletId(*b"aca/cpot");
 	pub const AccountTokenizerPalletId: PalletId = PalletId(*b"aca/atnz");
+	pub const ForeignOraclePalletId: PalletId = PalletId(*b"aca/fsto");
 
 	// Treasury reserve
 	pub const TreasuryReservePalletId: PalletId = PalletId(*b"aca/reve");
@@ -207,6 +208,7 @@ pub fn get_all_module_accounts() -> Vec<AccountId> {
 		UnreleasedNativeVaultAccountId::get(),
 		StableAssetPalletId::get().into_account(),
 		AccountTokenizerPalletId::get().into_account(),
+		ForeignOraclePalletId::get().into_account(),
 	]
 }
 
@@ -479,6 +481,23 @@ impl pallet_collective::Config<TechnicalCommitteeInstance> for Runtime {
 	type MotionDuration = TechnicalCommitteeMotionDuration;
 	type MaxProposals = TechnicalCommitteeMaxProposals;
 	type MaxMembers = TechnicalCouncilMaxMembers;
+	type DefaultVote = pallet_collective::PrimeDefaultVote;
+	type WeightInfo = ();
+}
+
+parameter_types! {
+	pub const ForeignStateMotionDuration: BlockNumber = 7 * DAYS;
+	pub const ForeignStateMaxProposals: u32 = 100;
+	pub const ForeignStateMaxMembers: u32 = 100;
+}
+
+impl pallet_collective::Config<ForeignStateOracleInstance> for Runtime {
+	type Origin = Origin;
+	type Proposal = Call;
+	type Event = Event;
+	type MotionDuration = ForeignStateMotionDuration;
+	type MaxProposals = ForeignStateMaxProposals;
+	type MaxMembers = ForeignStateMaxMembers;
 	type DefaultVote = pallet_collective::PrimeDefaultVote;
 	type WeightInfo = ();
 }
@@ -1351,7 +1370,6 @@ impl module_nominees_election::Config for Runtime {
 }
 
 parameter_types! {
-	pub const ForeignOraclePalletId: PalletId = PalletId(*b"aca/fsto");
 	pub const QueryDuration: BlockNumber = 10;
 	pub QueryFee: Balance = 10 * cent(ACA);
 	pub CancelFee: Balance = 5 * cent(ACA);
@@ -1367,7 +1385,7 @@ impl module_foreign_state_oracle::Config for Runtime {
 	type CancelFee = CancelFee;
 	type QueryDuration = QueryDuration;
 	type BlockNumberProvider = System;
-	type OracleOrigin = EnsureRoot<AccountId>;
+	type OracleOrigin = EnsureAllForeignStateOracle;
 }
 
 parameter_types! {
@@ -2197,6 +2215,7 @@ construct_runtime! {
 		HomaCouncilMembership: pallet_membership::<Instance3>::{Pallet, Call, Storage, Event<T>, Config<T>} = 55,
 		TechnicalCommittee: pallet_collective::<Instance4>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 56,
 		TechnicalCommitteeMembership: pallet_membership::<Instance4>::{Pallet, Call, Storage, Event<T>, Config<T>} = 57,
+		ForeignStateOracleCommittee: pallet_collective::<Instance5>::{Pallet, Call, Origin<T>, Storage, Event<T>, Config<T>} = 58,
 
 		Authority: orml_authority::{Pallet, Call, Storage, Event<T>, Origin<T>} = 70,
 		PhragmenElection: pallet_elections_phragmen::{Pallet, Call, Storage, Event<T>} = 71,

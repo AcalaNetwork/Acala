@@ -54,6 +54,9 @@ pub mod evm {
 pub mod evm_accounts {
 	include!("../../../mandala/src/benchmarking/evm_accounts.rs");
 }
+pub mod foreign_state_oracle {
+	include!("../../../mandala/src/benchmarking/foreign_state_oracle.rs");
+}
 pub mod homa {
 	include!("../../../mandala/src/benchmarking/homa.rs");
 }

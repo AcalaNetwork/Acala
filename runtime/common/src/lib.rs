@@ -198,6 +198,7 @@ pub type GeneralCouncilInstance = pallet_collective::Instance1;
 pub type FinancialCouncilInstance = pallet_collective::Instance2;
 pub type HomaCouncilInstance = pallet_collective::Instance3;
 pub type TechnicalCommitteeInstance = pallet_collective::Instance4;
+pub type ForeignStateOracleInstance = pallet_collective::Instance5;
 
 pub type GeneralCouncilMembershipInstance = pallet_membership::Instance1;
 pub type FinancialCouncilMembershipInstance = pallet_membership::Instance2;
@@ -210,6 +211,9 @@ pub type EnsureRootOrAllGeneralCouncil = EnsureOneOf<
 	EnsureRoot<AccountId>,
 	pallet_collective::EnsureProportionAtLeast<_1, _1, AccountId, GeneralCouncilInstance>,
 >;
+
+pub type EnsureAllForeignStateOracle =
+	pallet_collective::EnsureProportionAtLeast<_1, _1, AccountId, ForeignStateOracleInstance>;
 
 pub type EnsureRootOrHalfGeneralCouncil = EnsureOneOf<
 	EnsureRoot<AccountId>,
