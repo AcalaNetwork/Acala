@@ -21,7 +21,7 @@
 #![cfg(test)]
 
 use super::*;
-use crate as transaction_payment;
+pub use crate as transaction_payment;
 use frame_support::{
 	construct_runtime, ord_parameter_types, parameter_types,
 	traits::{Everything, Nothing},
@@ -245,10 +245,13 @@ parameter_types! {
 }
 ord_parameter_types! {
 	pub const ListingOrigin: AccountId = ALICE;
+	pub const CustomFeeSurplus: Percent = Percent::from_percent(50);
+	pub const AlternativeFeeSurplus: Percent = Percent::from_percent(25);
 }
 
 impl Config for Runtime {
 	type Event = Event;
+	type Call = Call;
 	type NativeCurrencyId = GetNativeCurrencyId;
 	type DefaultFeeSwapPathList = DefaultFeeSwapPathList;
 	type AlternativeFeeSwapDeposit = AlternativeFeeSwapDeposit;
@@ -269,6 +272,8 @@ impl Config for Runtime {
 	type PalletId = TransactionPaymentPalletId;
 	type TreasuryAccount = KaruraTreasuryAccount;
 	type UpdateOrigin = EnsureSignedBy<ListingOrigin, AccountId>;
+	type CustomFeeSurplus = ();
+	type AlternativeFeeSurplus = ();
 }
 
 thread_local! {

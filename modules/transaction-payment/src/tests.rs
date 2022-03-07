@@ -48,6 +48,12 @@ const CALL: &<Runtime as frame_system::Config>::Call = &Call::Currencies(module_
 	amount: 12,
 });
 
+const CALL1: <Runtime as frame_system::Config>::Call = Call::Currencies(module_currencies::Call::transfer {
+	dest: BOB,
+	currency_id: AUSD,
+	amount: 100,
+});
+
 const CALL2: &<Runtime as frame_system::Config>::Call =
 	&Call::Currencies(module_currencies::Call::transfer_native_currency { dest: BOB, amount: 12 });
 
@@ -1542,5 +1548,60 @@ fn remove_global_fee_swap_path_work() {
 				Some(vec![AUSD, ACA])
 			);
 			assert_eq!(TransactionPayment::global_fee_swap_path(AUSD), None);
+		});
+}
+
+// fn with_fee_path_call(fee_swap_path: Vec<CurrencyId>) -> <Runtime as Config>::Call {
+// 	let fee_call: <Runtime as Config>::Call =
+// Call::TransactionPayment(crate::mock::transaction_payment::Call::with_fee_path { 		fee_swap_path,
+// 		call: Box::new(CALL1),
+// 	});
+// 	fee_call
+// }
+//
+// fn with_fee_currency_call(currency_id: CurrencyId) -> <Runtime as Config>::Call {
+// 	let fee_call: <Runtime as Config>::Call =
+// Call::TransactionPayment(crate::mock::transaction_payment::Call::with_fee_currency { 		currency_id,
+// 		call: Box::new(CALL1),
+// 	});
+// 	fee_call
+// }
+
+#[test]
+fn with_fee_path_currency_call_works() {
+	ExtBuilder::default()
+		.one_hundred_thousand_for_alice_n_charlie()
+		.build()
+		.execute_with(|| {
+			// empty fee_swap_path is not allowed
+			assert_noop!(
+				TransactionPayment::with_fee_path(Origin::signed(ALICE), vec![], Box::new(CALL1),),
+				Error::<Runtime>::InvalidSwapPath
+			);
+
+			// len of fee_swap_path should be large than 1
+			assert_noop!(
+				TransactionPayment::with_fee_path(Origin::signed(ALICE), vec![ACA], Box::new(CALL1),),
+				Error::<Runtime>::InvalidSwapPath
+			);
+
+			// token should enabled
+			assert_noop!(
+				TransactionPayment::with_fee_currency(Origin::signed(ALICE), DOT, Box::new(CALL1),),
+				Error::<Runtime>::InvalidToken
+			);
+
+			// make sure first is not native asset, and last is native asset
+			assert_ok!(TransactionPayment::with_fee_path(
+				Origin::signed(ALICE),
+				vec![DOT, ACA],
+				Box::new(CALL1),
+			));
+
+			assert_eq!(9900, Currencies::free_balance(AUSD, &ALICE));
+			assert_eq!(100, Currencies::free_balance(AUSD, &BOB));
+			System::assert_last_event(mock::Event::TransactionPayment(crate::Event::DispatchEvent {
+				result: Ok(()),
+			}));
 		});
 }

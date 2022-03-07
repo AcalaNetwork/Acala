@@ -6705,8 +6705,10 @@ name = "module-transaction-payment"
 version = "2.4.0"
 dependencies = [
  "acala-primitives",
+ "env_logger 0.9.0",
  "frame-support",
  "frame-system",
+ "log",
  "module-currencies",
  "module-dex",
  "module-support",

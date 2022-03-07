@@ -30,7 +30,8 @@ use frame_support::{
 	dispatch::{DispatchResult, Dispatchable},
 	pallet_prelude::*,
 	traits::{
-		Currency, ExistenceRequirement, Imbalance, NamedReservableCurrency, OnUnbalanced, SameOrOther, WithdrawReasons,
+		Currency, ExistenceRequirement, Imbalance, IsSubType, NamedReservableCurrency, OnUnbalanced, SameOrOther,
+		UnfilteredDispatchable, WithdrawReasons,
 	},
 	transactional,
 	weights::{
@@ -53,7 +54,7 @@ use sp_runtime::{
 	transaction_validity::{
 		InvalidTransaction, TransactionPriority, TransactionValidity, TransactionValidityError, ValidTransaction,
 	},
-	FixedPointNumber, FixedPointOperand, FixedU128, Perquintill,
+	FixedPointNumber, FixedPointOperand, FixedU128, Percent, Perquintill,
 };
 use sp_std::prelude::*;
 use support::{DEXManager, PriceProvider, Ratio, SwapLimit, TransactionPayment};
@@ -74,6 +75,7 @@ pub type Multiplier = FixedU128;
 type PalletBalanceOf<T> = <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 type NegativeImbalanceOf<T> =
 	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::NegativeImbalance;
+type CallOf<T> = <T as Config>::Call;
 
 /// A struct to update the weight multiplier per block. It implements
 /// `Convert<Multiplier, Multiplier>`, meaning that it can convert the
@@ -231,6 +233,15 @@ pub mod module {
 	pub trait Config: frame_system::Config {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
+		/// The aggregated call type.
+		type Call: Parameter
+			+ Dispatchable<Origin = Self::Origin, PostInfo = PostDispatchInfo, Info = DispatchInfo>
+			+ GetDispatchInfo
+			+ From<frame_system::Call<Self>>
+			+ UnfilteredDispatchable<Origin = Self::Origin>
+			+ IsSubType<Call<Self>>
+			+ IsType<<Self as frame_system::Config>::Call>;
+
 		/// Native currency id, the actual received currency type as fee for
 		/// treasury. Should be ACA
 		#[pallet::constant]
@@ -329,6 +340,12 @@ pub mod module {
 		#[pallet::constant]
 		type TreasuryAccount: Get<Self::AccountId>;
 
+		#[pallet::constant]
+		type CustomFeeSurplus: Get<Percent>;
+
+		#[pallet::constant]
+		type AlternativeFeeSurplus: Get<Percent>;
+
 		/// The origin which change swap balance threshold or enable charge fee pool.
 		type UpdateOrigin: EnsureOrigin<Self::Origin>;
 	}
@@ -375,7 +392,9 @@ pub mod module {
 			new_fee_swap_path: Vec<CurrencyId>,
 		},
 		/// The global fee swap path was removed.
-		GlobalFeeSwapPathRemoved { fee_swap_path: Vec<CurrencyId> },
+		GlobalFeeSwapPathRemoved {
+			fee_swap_path: Vec<CurrencyId>,
+		},
 		/// The threshold balance that trigger swap from dex was updated.
 		SwapBalanceThresholdUpdated {
 			currency_id: CurrencyId,
@@ -403,6 +422,9 @@ pub mod module {
 			currency_id: CurrencyId,
 			foreign_amount: Balance,
 			native_amount: Balance,
+		},
+		DispatchEvent {
+			result: DispatchResult,
 		},
 	}
 
@@ -514,6 +536,49 @@ pub mod module {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
+		#[pallet::weight(<T as Config>::WeightInfo::set_swap_balance_threshold())]
+		#[transactional]
+		pub fn with_fee_path(
+			origin: OriginFor<T>,
+			fee_swap_path: Vec<CurrencyId>,
+			call: Box<CallOf<T>>,
+		) -> DispatchResult {
+			let _ = ensure_signed(origin.clone())?;
+			ensure!(
+				fee_swap_path.len() > 1
+					&& fee_swap_path.first() != Some(&T::NativeCurrencyId::get())
+					&& fee_swap_path.last() == Some(&T::NativeCurrencyId::get()),
+				Error::<T>::InvalidSwapPath
+			);
+
+			let e = call.dispatch(origin);
+			Self::deposit_event(Event::DispatchEvent {
+				result: e.map(|_| ()).map_err(|e| e.error),
+			});
+			Ok(())
+		}
+
+		#[pallet::weight(<T as Config>::WeightInfo::set_swap_balance_threshold())]
+		#[transactional]
+		pub fn with_fee_currency(
+			origin: OriginFor<T>,
+			currency_id: CurrencyId,
+			call: Box<CallOf<T>>,
+		) -> DispatchResult {
+			let _ = ensure_signed(origin.clone())?;
+			// ensure supply currency_id is in tx fee pool
+			ensure!(
+				TokenExchangeRate::<T>::contains_key(currency_id),
+				Error::<T>::InvalidToken
+			);
+
+			let e = call.dispatch(origin);
+			Self::deposit_event(Event::DispatchEvent {
+				result: e.map(|_| ()).map_err(|e| e.error),
+			});
+			Ok(())
+		}
+
 		/// Set fee swap path
 		#[pallet::weight(<T as Config>::WeightInfo::set_alternative_fee_swap_path())]
 		#[transactional]
@@ -619,6 +684,7 @@ pub mod module {
 		pub fn enable_charge_fee_pool(
 			origin: OriginFor<T>,
 			currency_id: CurrencyId,
+			// swap_path: Vec<CurrencyId>,
 			pool_size: Balance,
 			swap_threshold: Balance,
 		) -> DispatchResult {
@@ -656,7 +722,7 @@ where
 	where
 		T: Send + Sync,
 		PalletBalanceOf<T>: Send + Sync,
-		<T as frame_system::Config>::Call: Dispatchable<Info = DispatchInfo>,
+		CallOf<T>: Dispatchable<Info = DispatchInfo>,
 	{
 		// NOTE: we can actually make it understand `ChargeTransactionPayment`, but
 		// would be some hassle for sure. We have to make it aware of the index of
@@ -682,7 +748,7 @@ where
 		len: u32,
 	) -> FeeDetails<PalletBalanceOf<T>>
 	where
-		T::Call: Dispatchable<Info = DispatchInfo>,
+		CallOf<T>: Dispatchable<Info = DispatchInfo>,
 	{
 		let dispatch_info = <Extrinsic as GetDispatchInfo>::get_dispatch_info(&unchecked_extrinsic);
 		Self::compute_fee_details(len, &dispatch_info, 0u32.into())
@@ -691,11 +757,11 @@ where
 	/// Compute the fee details for a particular transaction.
 	pub fn compute_fee_details(
 		len: u32,
-		info: &DispatchInfoOf<T::Call>,
+		info: &DispatchInfoOf<CallOf<T>>,
 		tip: PalletBalanceOf<T>,
 	) -> FeeDetails<PalletBalanceOf<T>>
 	where
-		T::Call: Dispatchable<Info = DispatchInfo>,
+		CallOf<T>: Dispatchable<Info = DispatchInfo>,
 	{
 		Self::compute_fee_raw(len, info.weight, tip, info.pays_fee, info.class)
 	}
@@ -722,13 +788,9 @@ where
 	/// inclusion_fee = base_fee + len_fee + [targeted_fee_adjustment * weight_fee];
 	/// final_fee = inclusion_fee + tip;
 	/// ```
-	pub fn compute_fee(
-		len: u32,
-		info: &DispatchInfoOf<<T as frame_system::Config>::Call>,
-		tip: PalletBalanceOf<T>,
-	) -> PalletBalanceOf<T>
+	pub fn compute_fee(len: u32, info: &DispatchInfoOf<CallOf<T>>, tip: PalletBalanceOf<T>) -> PalletBalanceOf<T>
 	where
-		<T as frame_system::Config>::Call: Dispatchable<Info = DispatchInfo>,
+		CallOf<T>: Dispatchable<Info = DispatchInfo>,
 	{
 		Self::compute_fee_details(len, info, tip).final_fee()
 	}
@@ -737,12 +799,12 @@ where
 	/// transaction.
 	pub fn compute_actual_fee_details(
 		len: u32,
-		info: &DispatchInfoOf<T::Call>,
-		post_info: &PostDispatchInfoOf<T::Call>,
+		info: &DispatchInfoOf<CallOf<T>>,
+		post_info: &PostDispatchInfoOf<CallOf<T>>,
 		tip: PalletBalanceOf<T>,
 	) -> FeeDetails<PalletBalanceOf<T>>
 	where
-		T::Call: Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo>,
+		CallOf<T>: Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo>,
 	{
 		Self::compute_fee_raw(
 			len,
@@ -759,12 +821,12 @@ where
 	/// dispatch corrected weight is used for the weight fee calculation.
 	pub fn compute_actual_fee(
 		len: u32,
-		info: &DispatchInfoOf<<T as frame_system::Config>::Call>,
-		post_info: &PostDispatchInfoOf<<T as frame_system::Config>::Call>,
+		info: &DispatchInfoOf<CallOf<T>>,
+		post_info: &PostDispatchInfoOf<CallOf<T>>,
 		tip: PalletBalanceOf<T>,
 	) -> PalletBalanceOf<T>
 	where
-		<T as frame_system::Config>::Call: Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo>,
+		CallOf<T>: Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo>,
 	{
 		Self::compute_actual_fee_details(len, info, post_info, tip).final_fee()
 	}
@@ -1173,7 +1235,7 @@ impl<T: Config + Send + Sync> sp_std::fmt::Debug for ChargeTransactionPayment<T>
 
 impl<T: Config + Send + Sync> ChargeTransactionPayment<T>
 where
-	<T as frame_system::Config>::Call: Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo>,
+	CallOf<T>: Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo>,
 	PalletBalanceOf<T>: Send + Sync + FixedPointOperand,
 {
 	/// utility constructor. Used only in client/factory code.
@@ -1184,8 +1246,8 @@ where
 	fn withdraw_fee(
 		&self,
 		who: &T::AccountId,
-		_call: &<T as frame_system::Config>::Call,
-		info: &DispatchInfoOf<<T as frame_system::Config>::Call>,
+		call: &CallOf<T>,
+		info: &DispatchInfoOf<CallOf<T>>,
 		len: usize,
 	) -> Result<(PalletBalanceOf<T>, Option<NegativeImbalanceOf<T>>), TransactionValidityError> {
 		let tip = self.0;
@@ -1202,7 +1264,29 @@ where
 			WithdrawReasons::TRANSACTION_PAYMENT | WithdrawReasons::TIP
 		};
 
-		Pallet::<T>::ensure_can_charge_fee(who, fee, reason);
+		// wrap call
+		match call.is_sub_type() {
+			Some(Call::with_fee_path { fee_swap_path, .. }) => {
+				// println!("with_fee_path {:?}", fee_swap_path);
+				// dex swap
+			}
+			Some(Call::with_fee_currency { currency_id, .. }) => {
+				// println!("with_fee_currency {:?}", currency_id);
+				// global
+			}
+			Some(Call::set_alternative_fee_swap_path { .. })
+			| Some(Call::set_global_fee_swap_path { .. })
+			| Some(Call::remove_global_fee_swap_path { .. })
+			| Some(Call::set_swap_balance_threshold { .. })
+			| Some(Call::enable_charge_fee_pool { .. })
+			| Some(Call::disable_charge_fee_pool { .. })
+			| Some(&_)
+			| None => {
+				log::info!("call:{:?}", call);
+				// native asset > alternative > default
+				Pallet::<T>::ensure_can_charge_fee(who, fee, reason);
+			}
+		}
 
 		// withdraw native currency as fee
 		match <T as Config>::Currency::withdraw(who, fee, reason, ExistenceRequirement::KeepAlive) {
@@ -1215,7 +1299,7 @@ where
 	/// and user-included tip.
 	///
 	/// The priority is based on the amount of `tip` the user is willing to pay per unit of either
-	/// `weight` or `length`, depending which one is more limitting. For `Operational` extrinsics
+	/// `weight` or `length`, depending which one is more limiting. For `Operational` extrinsics
 	/// we add a "virtual tip" to the calculations.
 	///
 	/// The formula should simply be `tip / bounded_{weight|length}`, but since we are using
@@ -1225,13 +1309,13 @@ where
 	/// state of-the-art blockchains, number of per-block transactions is expected to be in a
 	/// range reasonable enough to not saturate the `Balance` type while multiplying by the tip.
 	fn get_priority(
-		info: &DispatchInfoOf<<T as frame_system::Config>::Call>,
+		info: &DispatchInfoOf<CallOf<T>>,
 		len: usize,
 		tip: PalletBalanceOf<T>,
 		final_fee: PalletBalanceOf<T>,
 	) -> TransactionPriority {
 		// Calculate how many such extrinsics we could fit into an empty block and take
-		// the limitting factor.
+		// the limiting factor.
 		let max_block_weight = T::BlockWeights::get().max_block;
 		let max_block_length = *T::BlockLength::get().max.get(info.class) as u64;
 
@@ -1294,11 +1378,11 @@ where
 impl<T: Config + Send + Sync> SignedExtension for ChargeTransactionPayment<T>
 where
 	PalletBalanceOf<T>: Send + Sync + From<u64> + FixedPointOperand,
-	<T as frame_system::Config>::Call: Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo>,
+	CallOf<T>: Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo>,
 {
 	const IDENTIFIER: &'static str = "ChargeTransactionPayment";
 	type AccountId = T::AccountId;
-	type Call = <T as frame_system::Config>::Call;
+	type Call = CallOf<T>;
 	type AdditionalSigned = ();
 	type Pre = (
 		PalletBalanceOf<T>,
