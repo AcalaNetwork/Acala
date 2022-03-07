@@ -657,6 +657,7 @@ pub mod module {
 			})
 		}
 
+		/// TODO: removed, replaced with disable then enable.
 		/// Set swap balance threshold of native asset
 		#[pallet::weight(<T as Config>::WeightInfo::set_swap_balance_threshold())]
 		#[transactional]
@@ -875,7 +876,8 @@ where
 		T::WeightToFee::calc(&capped_weight)
 	}
 
-	pub fn ensure_can_charge_fee(who: &T::AccountId, fee: PalletBalanceOf<T>, reason: WithdrawReasons) {
+	/// If native asset is enough, return None, else return the fee should be withdrawn.
+	fn native_is_enough(who: &T::AccountId, fee: PalletBalanceOf<T>, reason: WithdrawReasons) -> Option<Balance> {
 		let native_existential_deposit = <T as Config>::Currency::minimum_balance();
 		let total_native = <T as Config>::Currency::total_balance(who);
 
@@ -887,13 +889,17 @@ where
 					<T as Config>::Currency::ensure_can_withdraw(who, fee, reason, new_free_balance).is_ok()
 				});
 		if native_is_enough {
-			return;
+			None
+		} else {
+			let amount = fee.saturating_add(native_existential_deposit.saturating_sub(total_native));
+			Some(amount)
 		}
+	}
 
-		// make sure add extra gap to keep alive after swap.
-		let amount = fee.saturating_add(native_existential_deposit.saturating_sub(total_native));
-		// native is not enough, try swap native from fee pool to pay fee and gap.
-		Self::swap_native_asset(who, amount);
+	fn ensure_can_charge_fee(who: &T::AccountId, fee: PalletBalanceOf<T>, reason: WithdrawReasons) {
+		if let Some(amount) = Self::native_is_enough(who, fee, reason) {
+			Self::swap_native_asset(who, amount);
+		}
 	}
 
 	/// Iterate order list, break if can swap out enough native asset amount with user's foreign
@@ -912,6 +918,47 @@ where
 				}
 			}
 		}
+	}
+
+	/// return fee surplus
+	fn native_then_alternative_or_default(
+		who: &T::AccountId,
+		fee: PalletBalanceOf<T>,
+		reason: WithdrawReasons,
+	) -> Result<Balance, DispatchError> {
+		// native asset is not enough
+		if let Some(amount) = Self::native_is_enough(who, fee, reason) {
+			let fee_surplus = T::AlternativeFeeSurplus::get().mul_ceil(amount);
+			let fee_amount = fee.saturating_add(fee_surplus);
+
+			// alter native fee swap path, swap from dex
+			if let Some(path) = AlternativeFeeSwapPath::<T>::get(who) {
+				let supply_currency_id = *path.first().expect("should match a non native asset");
+				let supply_balance = T::MultiCurrency::free_balance(supply_currency_id, who);
+				if !supply_balance.is_zero() {
+					if let Ok(_) =
+						T::DEX::swap_with_specific_path(who, &path, SwapLimit::ExactTarget(supply_balance, fee_amount))
+					{
+						return Ok(fee_surplus);
+					}
+				}
+			}
+
+			// default fee swap path, swap from tx fee pool
+			for path in T::DefaultFeeSwapPathList::get() {
+				let supply_currency_id = *path.first().expect("should match a non native asset");
+				if !T::MultiCurrency::free_balance(supply_currency_id, who).is_zero() {
+					if let Some(_) = TokenExchangeRate::<T>::get(supply_currency_id) {
+						if let Ok(_) = Self::swap_from_pool_or_dex(who, fee_amount, supply_currency_id) {
+							return Ok(fee_surplus);
+						}
+					}
+				}
+			}
+		}
+
+		// native asset is enough
+		Ok(0)
 	}
 
 	/// swap user's given asset with native asset. prior exchange from charge fee pool, if native
@@ -1264,33 +1311,55 @@ where
 			WithdrawReasons::TRANSACTION_PAYMENT | WithdrawReasons::TIP
 		};
 
-		// wrap call
+		log::info!("call:{:?}", call);
+
+		let mut fee_surplus: PalletBalanceOf<T> = 0;
+		let custom_fee_surplus = T::CustomFeeSurplus::get().mul_ceil(fee);
+		let custom_fee_amount = fee.saturating_add(custom_fee_surplus);
 		match call.is_sub_type() {
 			Some(Call::with_fee_path { fee_swap_path, .. }) => {
-				// println!("with_fee_path {:?}", fee_swap_path);
-				// dex swap
+				// direct dex swap
+				let supply_currency_id = *fee_swap_path.first().expect("should match a non native asset");
+				let supply_balance = T::MultiCurrency::free_balance(supply_currency_id, who);
+				if supply_balance.is_zero() {
+					return Err(InvalidTransaction::Payment.into());
+				}
+				if let Ok(_) = T::DEX::swap_with_specific_path(
+					who,
+					&fee_swap_path,
+					SwapLimit::ExactSupply(supply_balance, custom_fee_amount),
+				) {
+					fee_surplus = custom_fee_surplus;
+				} else {
+					return Err(InvalidTransaction::Payment.into());
+				}
 			}
 			Some(Call::with_fee_currency { currency_id, .. }) => {
-				// println!("with_fee_currency {:?}", currency_id);
-				// global
+				// custom use tx fee pool
+				let supply_balance = T::MultiCurrency::free_balance(currency_id.clone(), who);
+				if supply_balance.is_zero() {
+					return Err(InvalidTransaction::Payment.into());
+				}
+				if let Ok(_) = Pallet::<T>::swap_from_pool_or_dex(who, custom_fee_amount, currency_id.clone()) {
+					fee_surplus = custom_fee_surplus;
+				} else {
+					return Err(InvalidTransaction::Payment.into());
+				}
 			}
-			Some(Call::set_alternative_fee_swap_path { .. })
-			| Some(Call::set_global_fee_swap_path { .. })
-			| Some(Call::remove_global_fee_swap_path { .. })
-			| Some(Call::set_swap_balance_threshold { .. })
-			| Some(Call::enable_charge_fee_pool { .. })
-			| Some(Call::disable_charge_fee_pool { .. })
-			| Some(&_)
-			| None => {
-				log::info!("call:{:?}", call);
+			Some(_) | None => {
 				// native asset > alternative > default
-				Pallet::<T>::ensure_can_charge_fee(who, fee, reason);
+				// Pallet::<T>::ensure_can_charge_fee(who, fee, reason);
+				if let Ok(surplus) = Pallet::<T>::native_then_alternative_or_default(who, fee, reason) {
+					fee_surplus = surplus;
+				} else {
+					return Err(InvalidTransaction::Payment.into());
+				}
 			}
 		}
 
 		// withdraw native currency as fee
-		match <T as Config>::Currency::withdraw(who, fee, reason, ExistenceRequirement::KeepAlive) {
-			Ok(imbalance) => Ok((fee, Some(imbalance))),
+		match <T as Config>::Currency::withdraw(who, fee + fee_surplus, reason, ExistenceRequirement::KeepAlive) {
+			Ok(imbalance) => Ok((fee + fee_surplus, Some(imbalance))),
 			Err(_) => Err(InvalidTransaction::Payment.into()),
 		}
 	}
