@@ -363,7 +363,7 @@ impl<T: Config> Pallet<T> {
 		let total_deposit = proxy_deposit.saturating_add(deposit);
 
 		// ensure enough token for proxy deposit + class deposit + data deposit
-		<T as module::Config>::Currency::transfer(&admin, &owner, total_deposit, KeepAlive)?;
+		<T as module::Config>::Currency::transfer(admin, &owner, total_deposit, KeepAlive)?;
 
 		<T as module::Config>::Currency::reserve_named(&RESERVE_ID, &owner, deposit)?;
 

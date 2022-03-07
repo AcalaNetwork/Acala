@@ -2028,8 +2028,8 @@ impl nutsfinance_stable_asset::Config for Runtime {
 
 parameter_types! {
 	pub AccountTokenizerPalletAccount: AccountId = AccountTokenizerPalletId::get().into_account();
-	pub AccountTokenizerMintRequestDeposit: Balance = 10 * dollar(ACA);
-	pub AccountTokenizerMintFee: Balance = dollar(ACA);
+	pub AccountTokenizerMintRequestDeposit: Balance = 50 * dollar(ACA);
+	pub AccountTokenizerMintFee: Balance = 5 * dollar(ACA);
 }
 
 impl module_account_tokenizer::Config for Runtime {

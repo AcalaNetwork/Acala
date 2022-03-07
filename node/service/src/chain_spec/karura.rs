@@ -137,6 +137,7 @@ fn karura_genesis(
 			members: vec![],
 			phantom: Default::default(),
 		},
+		foreign_state_oracle_committee: Default::default(),
 		democracy: Default::default(),
 		treasury: Default::default(),
 		tokens: TokensConfig { balances: vec![] },

@@ -33,7 +33,7 @@ use sp_runtime::{
 	traits::{AccountIdConversion, BlockNumberProvider, One, Saturating, Scale},
 	ArithmeticError,
 };
-use sp_std::{prelude::Vec, vec};
+use sp_std::prelude::Vec;
 
 mod mock;
 mod tests;

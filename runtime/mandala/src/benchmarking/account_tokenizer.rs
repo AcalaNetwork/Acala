@@ -16,15 +16,20 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{dollar, AccountId, AccountTokenizer, Balances, ForeignStateOracle, GetNativeCurrencyId, Origin, Runtime};
+use crate::{
+	dollar, AccountId, AccountTokenizer, Balances, ForeignStateOracle, GetNativeCurrencyId, Origin, OriginCaller,
+	PolkadotXcm, Runtime,
+};
 
-pub use frame_benchmarking::{account, benchmarks, vec};
-pub use frame_support::{
+use hex_literal::hex;
+
+use frame_benchmarking::vec;
+use frame_support::{
 	assert_ok,
-	traits::{tokens::nonfungibles::Inspect, Currency, Get, Hooks},
+	traits::{Currency, Hooks},
 };
 use frame_system::RawOrigin;
-pub use hex_literal::hex;
+use xcm::latest::MultiLocation;
 
 fn setup_account_tokenizer_benchmark() -> (AccountId, AccountId) {
 	let caller = AccountId::new(hex!["65766d3abf0b5a4099f0bf6c8bc4252ebec548bae95602ea0000000000000000"]);
@@ -63,7 +68,7 @@ runtime_benchmarks! {
 			0
 		));
 	}: {
-		assert_ok!(ForeignStateOracle::dispatch_task(RawOrigin::Root.into(), 0, vec![1]));
+		assert_ok!(ForeignStateOracle::dispatch_task(OriginCaller::ForeignStateOracleCommittee(pallet_collective::RawOrigin::Members(1, 1)).into(), 0, vec![1]));
 	}
 
 	request_burn {
@@ -75,23 +80,36 @@ runtime_benchmarks! {
 			0,
 			0
 		);
+		assert_ok!(ForeignStateOracle::dispatch_task(OriginCaller::ForeignStateOracleCommittee(pallet_collective::RawOrigin::Members(1, 1)).into(), 0, vec![1]));
+		// Sets supported version on PolkadotXcm. This prevents XCM sending to fail.
+		assert_ok!(PolkadotXcm::force_xcm_version(
+			Origin::root(),
+			frame_benchmarking::Box::new(MultiLocation::parent()),
+			2,
+		));
 	}: _(RawOrigin::Signed(caller.clone()), proxy, caller.clone())
 
-	// confirm_burn_account_token {
-	// 	let (caller, proxy) = setup_account_tokenizer_benchmark();
+	confirm_burn_account_token {
+		let (caller, proxy) = setup_account_tokenizer_benchmark();
 
-	// 	let _ = AccountTokenizer::request_mint(
-	// 		Origin::signed(caller.clone()),
-	// 		proxy.clone(),
-	// 		1,
-	// 		0,
-	// 		0
-	// 	);
-	// 	let _ = ForeignStateOracle::dispatch_task(RawOrigin::Root.into(), 0, vec![1]);
-	// 	let _ = AccountTokenizer::request_burn(RawOrigin::Signed(caller.clone()).into(), proxy, caller.clone());
-	// }: {
-	// 	assert_ok!(ForeignStateOracle::dispatch_task(RawOrigin::Root.into(), 1, vec![]));
-	// }
+		assert_ok!(AccountTokenizer::request_mint(
+			Origin::signed(caller.clone()),
+			proxy.clone(),
+			1,
+			0,
+			0
+		));
+		assert_ok!(ForeignStateOracle::dispatch_task(OriginCaller::ForeignStateOracleCommittee(pallet_collective::RawOrigin::Members(1, 1)).into(), 0, vec![1]));
+		// Sets supported version on PolkadotXcm. This prevents XCM sending to fail.
+		assert_ok!(PolkadotXcm::force_xcm_version(
+			Origin::root(),
+			frame_benchmarking::Box::new(MultiLocation::parent()),
+			2,
+		));
+		assert_ok!(AccountTokenizer::request_burn(RawOrigin::Signed(caller.clone()).into(), proxy, caller.clone()));
+	}: {
+		assert_ok!(ForeignStateOracle::dispatch_task(OriginCaller::ForeignStateOracleCommittee(pallet_collective::RawOrigin::Members(1, 1)).into(), 1, vec![]));
+	}
 }
 
 #[cfg(test)]

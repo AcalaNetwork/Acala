@@ -213,8 +213,7 @@ pub mod module {
 						ClassProperty::Transferable
 							| ClassProperty::Burnable | ClassProperty::Mintable
 							| ClassProperty::ClassPropertiesMutable,
-					)
-					.into(),
+					),
 				);
 				log::debug!("Account Tokenizer: Set NFT class property. result: {:?}", res);
 
@@ -273,7 +272,7 @@ pub mod module {
 			let derived_account: T::AccountId = Decode::decode(&mut TrailingZeroInput::new(entropy.as_ref()))
 				.expect("infinite length input; no invalid inputs for type; qed");
 			// ensures signer also spawned anonymous proxy
-			ensure!(&account == &derived_account, Error::<T>::FailedAnonymousCheck);
+			ensure!(account == derived_account, Error::<T>::FailedAnonymousCheck);
 
 			// Charge the user fee and lock the deposit.
 			T::Currency::transfer(&who, &T::TreasuryAccount::get(), T::MintFee::get(), KeepAlive)?;
@@ -442,7 +441,7 @@ impl<T: Config> Pallet<T> {
 			BalanceStatus::Free,
 		)?;
 
-		Self::deposit_event(Event::MintRequestRejected { requester: requester });
+		Self::deposit_event(Event::MintRequestRejected { requester });
 		Ok(())
 	}
 }

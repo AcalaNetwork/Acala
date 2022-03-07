@@ -75,7 +75,11 @@ fn can_mint_account_token() {
 			);
 
 			// Dispatch the request to accept the mint.
-			assert_ok!(ForeignStateOracle::dispatch_task(Origin::root(), 0, vec![1]));
+			assert_ok!(ForeignStateOracle::dispatch_task(
+				OriginCaller::ForeignStateOracleCommittee(pallet_collective::RawOrigin::Members(1, 1)).into(),
+				0,
+				vec![1]
+			));
 
 			assert_eq!(NFT::owner(&AccountTokenizer::nft_class_id(), &0), Some(alice()));
 			assert_eq!(AccountTokenizer::minted_account(&alice_proxy), Some(0));
@@ -131,7 +135,11 @@ fn can_reject_mint_request() {
 			));
 
 			// Dispatch the request to reject the mint.
-			assert_ok!(ForeignStateOracle::dispatch_task(Origin::root(), 0, vec![0]));
+			assert_ok!(ForeignStateOracle::dispatch_task(
+				OriginCaller::ForeignStateOracleCommittee(pallet_collective::RawOrigin::Members(1, 1)).into(),
+				0,
+				vec![0]
+			));
 
 			// NFT token is NOT minted
 			assert_eq!(NFT::owner(&AccountTokenizer::nft_class_id(), &0), None);
@@ -193,7 +201,11 @@ fn can_burn_account_token_nft() {
 			));
 
 			// Dispatch the request to accept the mint.
-			assert_ok!(ForeignStateOracle::dispatch_task(Origin::root(), 0, vec![1]));
+			assert_ok!(ForeignStateOracle::dispatch_task(
+				OriginCaller::ForeignStateOracleCommittee(pallet_collective::RawOrigin::Members(1, 1)).into(),
+				0,
+				vec![1]
+			));
 
 			assert_eq!(AccountTokenizer::nft_class_id(), 0);
 			assert_eq!(AccountTokenizer::minted_account(&alice_proxy), Some(0));
@@ -217,7 +229,11 @@ fn can_burn_account_token_nft() {
 			));
 
 			// Dispatch the request to accept the burn.
-			assert_ok!(ForeignStateOracle::dispatch_task(Origin::root(), 1, vec![]));
+			assert_ok!(ForeignStateOracle::dispatch_task(
+				OriginCaller::ForeignStateOracleCommittee(pallet_collective::RawOrigin::Members(1, 1)).into(),
+				1,
+				vec![]
+			));
 
 			let events = System::events();
 			assert_eq!(
@@ -362,7 +378,11 @@ fn xcm_transfer_proxy_for_burn_works() {
 			0,
 			0
 		));
-		assert_ok!(ForeignStateOracle::dispatch_task(Origin::root(), 0, vec![1]));
+		assert_ok!(ForeignStateOracle::dispatch_task(
+			OriginCaller::ForeignStateOracleCommittee(pallet_collective::RawOrigin::Members(1, 1)).into(),
+			0,
+			vec![1]
+		));
 
 		// Transfer the token to bob
 		assert_ok!(NFT::transfer(Origin::signed(alice()), bob().into(), (0, 0),));
@@ -373,7 +393,11 @@ fn xcm_transfer_proxy_for_burn_works() {
 			alice_proxy.clone(),
 			bob(),
 		));
-		assert_ok!(ForeignStateOracle::dispatch_task(Origin::root(), 1, vec![]));
+		assert_ok!(ForeignStateOracle::dispatch_task(
+			OriginCaller::ForeignStateOracleCommittee(pallet_collective::RawOrigin::Members(1, 1)).into(),
+			1,
+			vec![]
+		));
 	});
 
 	KusamaNet::execute_with(|| {
