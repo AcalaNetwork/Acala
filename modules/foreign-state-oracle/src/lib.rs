@@ -20,7 +20,6 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use frame_benchmarking::vec;
 use frame_support::{
 	dispatch::{Dispatchable, GetDispatchInfo, PostDispatchInfo},
 	pallet_prelude::*,
@@ -258,6 +257,9 @@ impl<T: Config> ForeignChainStateQuery<T::AccountId, T::VerifiableTask> for Pall
 		Ok(())
 	}
 }
+
+#[cfg(feature = "runtime-benchmarks")]
+use frame_benchmarking::vec;
 
 pub struct EnsureForeignStateOracle;
 
