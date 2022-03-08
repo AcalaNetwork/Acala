@@ -891,8 +891,7 @@ where
 		if native_is_enough {
 			None
 		} else {
-			let amount = fee.saturating_add(native_existential_deposit.saturating_sub(total_native));
-			Some(amount)
+			Some(fee.saturating_add(native_existential_deposit.saturating_sub(total_native)))
 		}
 	}
 
@@ -928,8 +927,15 @@ where
 	) -> Result<Balance, DispatchError> {
 		// native asset is not enough
 		if let Some(amount) = Self::native_is_enough(who, fee, reason) {
-			let fee_surplus = T::AlternativeFeeSurplus::get().mul_ceil(amount);
-			let fee_amount = fee.saturating_add(fee_surplus);
+			let fee_surplus = T::AlternativeFeeSurplus::get().mul_ceil(fee);
+			let fee_amount = fee_surplus.saturating_add(amount);
+			log::info!(
+				"amount:{}, percent:{:?}, fee_surplus:{}, fee_amount:{}",
+				amount,
+				T::AlternativeFeeSurplus::get(),
+				fee_surplus,
+				fee_amount
+			);
 
 			// alter native fee swap path, swap from dex
 			if let Some(path) = AlternativeFeeSwapPath::<T>::get(who) {
@@ -948,10 +954,9 @@ where
 			for path in T::DefaultFeeSwapPathList::get() {
 				let supply_currency_id = *path.first().expect("should match a non native asset");
 				if !T::MultiCurrency::free_balance(supply_currency_id, who).is_zero() {
-					if let Some(_) = TokenExchangeRate::<T>::get(supply_currency_id) {
-						if let Ok(_) = Self::swap_from_pool_or_dex(who, fee_amount, supply_currency_id) {
-							return Ok(fee_surplus);
-						}
+					if let Ok(_) = Self::swap_from_pool_or_dex(who, fee_amount, supply_currency_id) {
+						// log::info!("swap_from_pool_or_dex: {}", fee_amount);
+						return Ok(fee_surplus);
 					}
 				}
 			}
@@ -985,6 +990,7 @@ where
 					&trading_path,
 					SwapLimit::ExactSupply(supply_amount, 0),
 				) {
+					// println!("swap {}, {}, {}", supply_amount, swap_native_balance, native_balance);
 					// calculate and update new rate, also update the pool size
 					let swap_exchange_rate = Ratio::saturating_from_rational(supply_amount, swap_native_balance);
 					let new_pool_size = swap_native_balance.saturating_add(native_balance);
@@ -1311,9 +1317,9 @@ where
 			WithdrawReasons::TRANSACTION_PAYMENT | WithdrawReasons::TIP
 		};
 
-		log::info!("call:{:?}", call);
+		// log::info!("call:{:?}", call);
 
-		let mut fee_surplus: PalletBalanceOf<T> = 0;
+		let mut fee_surplus: PalletBalanceOf<T> = fee;
 		let custom_fee_surplus = T::CustomFeeSurplus::get().mul_ceil(fee);
 		let custom_fee_amount = fee.saturating_add(custom_fee_surplus);
 		match call.is_sub_type() {
@@ -1356,6 +1362,8 @@ where
 				}
 			}
 		}
+		// log::info!("balance:{}, fee:{}, surplus:{}", <T as Config>::Currency::free_balance(who), fee,
+		// fee_surplus);
 
 		// withdraw native currency as fee
 		match <T as Config>::Currency::withdraw(who, fee + fee_surplus, reason, ExistenceRequirement::KeepAlive) {

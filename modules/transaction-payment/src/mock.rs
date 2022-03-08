@@ -272,8 +272,8 @@ impl Config for Runtime {
 	type PalletId = TransactionPaymentPalletId;
 	type TreasuryAccount = KaruraTreasuryAccount;
 	type UpdateOrigin = EnsureSignedBy<ListingOrigin, AccountId>;
-	type CustomFeeSurplus = ();
-	type AlternativeFeeSurplus = ();
+	type CustomFeeSurplus = CustomFeeSurplus;
+	type AlternativeFeeSurplus = AlternativeFeeSurplus;
 }
 
 thread_local! {
