@@ -24,7 +24,7 @@
 //! 2. User transfers the control of the account to our Parachain account
 //! 3. `request_mint` is called. Foreign state oracles will confirm the mint request
 //! 4. An account token NFT is minted. The token is transferrable.
-//! 5. The owner of the NFT can call `request_burn` to burn the token. This will cause
+//! 5. The owner of the NFT can call `request_redeem` to redeem the token. This will cause
 //!    the transfer of ownership of the anonymous account from the Parachain's account
 //!    to the user's nominated account.
 //! 6. Once the transfer is completed and confirmed by the Oracle, the NFT token is burned.
@@ -37,19 +37,20 @@ use frame_support::{
 	dispatch::{Dispatchable, GetDispatchInfo},
 	log,
 	pallet_prelude::*,
+	require_transactional,
 	traits::{
 		tokens::nonfungibles::{Create, Inspect, Mutate},
 		BalanceStatus, Currency,
 		ExistenceRequirement::KeepAlive,
 		GetStorageVersion, NamedReservableCurrency, StorageVersion, WithdrawReasons,
 	},
-	transactional,
+	transactional, PalletId,
 };
 
 use frame_system::pallet_prelude::*;
 use orml_traits::{arithmetic::Zero, CreateExtended, InspectExtended};
 use sp_io::hashing::blake2_256;
-use sp_runtime::traits::TrailingZeroInput;
+use sp_runtime::traits::{AccountIdConversion, TrailingZeroInput};
 use sp_std::vec::Vec;
 
 use module_support::{ForeignChainStateQuery, ProxyXcm};
@@ -81,12 +82,15 @@ pub mod module {
 		type WeightInfo: WeightInfo;
 
 		/// The currency mechanism.
-		type Currency: NamedReservableCurrency<Self::AccountId, ReserveIdentifier = ReserveIdentifier>
-			+ Currency<Self::AccountId, Balance = Balance>;
+		type Currency: NamedReservableCurrency<
+			Self::AccountId,
+			ReserveIdentifier = ReserveIdentifier,
+			Balance = Balance,
+		>;
 
 		/// Pallet's account - used to mint and burn NFT.
 		#[pallet::constant]
-		type PalletAccount: Get<Self::AccountId>;
+		type PalletId: Get<PalletId>;
 
 		/// Treasury's account. Fees and penalties are transferred to the treasury.
 		#[pallet::constant]
@@ -153,17 +157,17 @@ pub mod module {
 			account: T::AccountId,
 			token_id: T::TokenId,
 		},
-		/// An request to burn the account token is submitted. XCM message is sent to the
+		/// An request to redeem the account token is submitted. XCM message is sent to the
 		/// relaychain.
-		BurnRequested {
+		RedeemRequested {
 			account: T::AccountId,
 			owner: T::AccountId,
 			token_id: T::TokenId,
 			new_owner: T::AccountId,
 		},
-		/// The account token is burned, the control of the `account` on the relaychain is
+		/// The account token is redeemed, the control of the `account` on the relaychain is
 		/// relinquished to `new_owner`.
-		AccountTokenBurned {
+		AccountTokenRedeemed {
 			account: T::AccountId,
 			owner: T::AccountId,
 			token_id: T::TokenId,
@@ -182,6 +186,17 @@ pub mod module {
 	#[pallet::getter(fn minted_account)]
 	pub type MintedAccount<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, T::TokenId, OptionQuery>;
 
+	#[pallet::genesis_config]
+	#[cfg_attr(feature = "std", derive(Default))]
+	pub struct GenesisConfig;
+
+	#[pallet::genesis_build]
+	impl<T: Config> GenesisBuild<T> for GenesisConfig {
+		fn build(&self) {
+			Pallet::<T>::on_runtime_upgrade();
+		}
+	}
+
 	#[pallet::hooks]
 	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
 		/// Create the NFT class once.
@@ -193,7 +208,7 @@ pub mod module {
 				// Transfer some fund from the treasury to pay for the class creation.
 				let res = T::Currency::transfer(
 					&T::TreasuryAccount::get(),
-					&T::PalletAccount::get(),
+					&T::PalletId::get().into_account(),
 					create_class_cost,
 					KeepAlive,
 				);
@@ -204,7 +219,11 @@ pub mod module {
 
 				// Use storage version to ensure we only register NFT class once.
 				let class_id = T::NFTInterface::next_class_id();
-				let res = T::NFTInterface::create_class(&class_id, &T::PalletAccount::get(), &T::PalletAccount::get());
+				let res = T::NFTInterface::create_class(
+					&class_id,
+					&T::PalletId::get().into_account(),
+					&T::PalletId::get().into_account(),
+				);
 				log::debug!("Account Tokenizer: Created NFT class. result: {:?}", res);
 
 				let res = T::NFTInterface::set_class_properties(
@@ -284,7 +303,7 @@ pub mod module {
 				account: account.clone(),
 			}
 			.into();
-			T::ForeignStateQuery::query_task(&who, call.using_encoded(|x| x.len()), call)?;
+			T::ForeignStateQuery::query_task(&who, call.encoded_size(), call)?;
 
 			Self::deposit_event(Event::MintRequested { account, who });
 			Ok(())
@@ -314,15 +333,15 @@ pub mod module {
 			}
 		}
 
-		/// Requests to burn an Account Token. Sends XCM message to the relaychain to transfer the
+		/// Requests to redeem an Account Token. Sends XCM message to the relaychain to transfer the
 		/// control of the account.
 		/// No storage change is done, until confirmed by the Oracle.
 		///
 		/// Params:
 		/// 	- `account`: Account ID of the Account Token
 		/// 	- `new_owner`: The owner of the proxy account to be transferred to.
-		#[pallet::weight(< T as Config >::WeightInfo::request_burn())]
-		pub fn request_burn(origin: OriginFor<T>, account: T::AccountId, new_owner: T::AccountId) -> DispatchResult {
+		#[pallet::weight(< T as Config >::WeightInfo::request_redeem())]
+		pub fn request_redeem(origin: OriginFor<T>, account: T::AccountId, new_owner: T::AccountId) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			let nft_class_id = Self::nft_class_id();
 
@@ -330,7 +349,7 @@ pub mod module {
 			let token_id = Self::minted_account(&account).ok_or(Error::<T>::AccountTokenNotFound)?;
 			let owner = T::NFTInterface::owner(&nft_class_id, &token_id).ok_or(Error::<T>::AccountTokenNotFound)?;
 
-			// Ensure that only the owner of the NFT can burn.
+			// Ensure that only the owner of the NFT can redeem.
 			ensure!(who == owner, Error::<T>::CallerUnauthorized);
 
 			// The XCM fee is burned.
@@ -345,14 +364,14 @@ pub mod module {
 			T::XcmInterface::transfer_proxy(account.clone(), new_owner.clone())?;
 
 			// Submit confiramtion call to be serviced by foreign state oracle
-			let call: <T as Config>::Call = Call::<T>::confirm_burn_account_token {
+			let call: <T as Config>::Call = Call::<T>::confirm_redeem_account_token {
 				account: account.clone(),
 				new_owner: new_owner.clone(),
 			}
 			.into();
-			T::ForeignStateQuery::query_task(&who, call.using_encoded(|x| x.len()), call)?;
+			T::ForeignStateQuery::query_task(&who, call.encoded_size(), call)?;
 
-			Self::deposit_event(Event::BurnRequested {
+			Self::deposit_event(Event::RedeemRequested {
 				account,
 				owner,
 				token_id,
@@ -369,9 +388,9 @@ pub mod module {
 		/// Params:
 		/// 	- `account`: Account ID of the Account Token
 		/// 	- `new_owner`: The owner of the proxy account to be transferred to.
-		#[pallet::weight(< T as Config >::WeightInfo::confirm_burn_account_token())]
+		#[pallet::weight(< T as Config >::WeightInfo::confirm_redeem_account_token())]
 		#[transactional]
-		pub fn confirm_burn_account_token(
+		pub fn confirm_redeem_account_token(
 			origin: OriginFor<T>,
 			account: T::AccountId,
 			new_owner: T::AccountId,
@@ -387,7 +406,7 @@ pub mod module {
 			// Find the NFT and burn it
 			T::NFTInterface::burn_from(&nft_class_id, &token_id)?;
 
-			Self::deposit_event(Event::AccountTokenBurned {
+			Self::deposit_event(Event::AccountTokenRedeemed {
 				account,
 				owner,
 				token_id,
@@ -402,7 +421,7 @@ pub mod module {
 impl<T: Config> Pallet<T> {
 	/// Confirms that the Mint request is valid. Mint a NFT that represents an Account Token.
 	/// Only callable by authorized Oracles.
-	#[transactional]
+	#[require_transactional]
 	pub fn accept_mint_request(owner: T::AccountId, account: T::AccountId) -> DispatchResult {
 		let nft_class_id = Self::nft_class_id();
 
@@ -430,7 +449,7 @@ impl<T: Config> Pallet<T> {
 
 	/// Reject the Mint request. The deposit by the minter is confiscated.
 	/// Only callable by authorized Oracles.
-	#[transactional]
+	#[require_transactional]
 	pub fn reject_mint_request(requester: T::AccountId) -> DispatchResult {
 		// Release the deposit from the requester
 		T::Currency::repatriate_reserved_named(

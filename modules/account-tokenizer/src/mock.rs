@@ -32,7 +32,7 @@ use primitives::ReserveIdentifier;
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
-	traits::{AccountIdConversion, BlakeTwo256, IdentityLookup},
+	traits::{BlakeTwo256, IdentityLookup},
 	AccountId32,
 };
 
@@ -216,7 +216,6 @@ impl module_foreign_state_oracle::Config for Runtime {
 
 parameter_types! {
 	pub const AccountTokenizerPalletId: PalletId = PalletId(*b"aca/atnz");
-	pub AccountTokenizerPalletAccount: AccountId = AccountTokenizerPalletId::get().into_account();
 	pub TreasuryAccount: AccountId = TREASURY;
 	pub MintRequestDeposit: Balance = dollar(10);
 	pub MintFee: Balance = dollar(1);
@@ -226,7 +225,7 @@ impl Config for Runtime {
 	type Event = Event;
 	type WeightInfo = ();
 	type Call = Call;
-	type PalletAccount = AccountTokenizerPalletAccount;
+	type PalletId = AccountTokenizerPalletId;
 	type Currency = Balances;
 	type XcmInterface = MockProxyXcm;
 	type OracleOrigin = EnsureForeignStateOracle;
@@ -253,7 +252,7 @@ frame_support::construct_runtime!(
 		OrmlNFT: orml_nft::{Pallet, Storage, Config<T>},
 		Proxy: pallet_proxy::{Pallet, Call, Storage, Event<T>},
 		ForeignStateOracle: module_foreign_state_oracle::{Pallet, Call, Storage, Event<T>, Origin},
-		AccountTokenizer: account_tokenizer::{Pallet, Call, Storage, Event<T>},
+		AccountTokenizer: account_tokenizer::{Pallet, Call, Storage, Config, Event<T>},
 	}
 );
 

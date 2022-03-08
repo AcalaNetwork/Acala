@@ -188,5 +188,6 @@ fn karura_genesis(
 		polkadot_xcm: PolkadotXcmConfig {
 			safe_xcm_version: Some(2),
 		},
+		account_tokenizer: Default::default(),
 	}
 }

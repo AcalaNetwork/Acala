@@ -214,7 +214,7 @@ fn can_burn_account_token_nft() {
 
 			// Only the owner is allowed to burn the token
 			assert_noop!(
-				AccountTokenizer::request_burn(Origin::signed(alice()), alice_proxy.clone(), bob(),),
+				AccountTokenizer::request_redeem(Origin::signed(alice()), alice_proxy.clone(), bob(),),
 				module_account_tokenizer::Error::<Runtime>::CallerUnauthorized
 			);
 
@@ -222,7 +222,7 @@ fn can_burn_account_token_nft() {
 			assert_eq!(AccountTokenizer::minted_account(&alice_proxy), Some(0));
 
 			// Burn the token by the token owner
-			assert_ok!(AccountTokenizer::request_burn(
+			assert_ok!(AccountTokenizer::request_redeem(
 				Origin::signed(bob()),
 				alice_proxy.clone(),
 				bob(),
@@ -238,7 +238,7 @@ fn can_burn_account_token_nft() {
 			let events = System::events();
 			assert_eq!(
 				events[events.len() - 2].event,
-				Event::AccountTokenizer(module_account_tokenizer::Event::AccountTokenBurned {
+				Event::AccountTokenizer(module_account_tokenizer::Event::AccountTokenRedeemed {
 					account: alice_proxy,
 					owner: bob(),
 					token_id: 0,
@@ -388,7 +388,7 @@ fn xcm_transfer_proxy_for_burn_works() {
 		assert_ok!(NFT::transfer(Origin::signed(alice()), bob().into(), (0, 0),));
 
 		// Burn the token by the token owner
-		assert_ok!(AccountTokenizer::request_burn(
+		assert_ok!(AccountTokenizer::request_redeem(
 			Origin::signed(bob()),
 			alice_proxy.clone(),
 			bob(),

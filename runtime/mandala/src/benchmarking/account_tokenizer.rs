@@ -71,7 +71,7 @@ runtime_benchmarks! {
 		assert_ok!(ForeignStateOracle::dispatch_task(OriginCaller::ForeignStateOracleCommittee(pallet_collective::RawOrigin::Members(1, 1)).into(), 0, vec![1]));
 	}
 
-	request_burn {
+	request_redeem {
 		let (caller, proxy) = setup_account_tokenizer_benchmark();
 		let _ = AccountTokenizer::request_mint(
 			Origin::signed(caller.clone()),
@@ -89,7 +89,7 @@ runtime_benchmarks! {
 		));
 	}: _(RawOrigin::Signed(caller.clone()), proxy, caller.clone())
 
-	confirm_burn_account_token {
+	confirm_redeem_account_token {
 		let (caller, proxy) = setup_account_tokenizer_benchmark();
 
 		assert_ok!(AccountTokenizer::request_mint(
@@ -106,7 +106,7 @@ runtime_benchmarks! {
 			frame_benchmarking::Box::new(MultiLocation::parent()),
 			2,
 		));
-		assert_ok!(AccountTokenizer::request_burn(RawOrigin::Signed(caller.clone()).into(), proxy, caller.clone()));
+		assert_ok!(AccountTokenizer::request_redeem(RawOrigin::Signed(caller.clone()).into(), proxy, caller.clone()));
 	}: {
 		assert_ok!(ForeignStateOracle::dispatch_task(OriginCaller::ForeignStateOracleCommittee(pallet_collective::RawOrigin::Members(1, 1)).into(), 1, vec![]));
 	}

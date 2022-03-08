@@ -48,13 +48,12 @@ fn can_create_nft() {
 			assert_eq!(ModuleNFT::next_class_id(), 1);
 			let event = Event::ModuleNFT(module_nft::Event::CreatedClass {
 				owner: NftPalletId::get().into_sub_account(1),
-				admin: AccountTokenizerPalletAccount::get(),
+				admin: AccountTokenizerPalletId::get().into_account(),
 				class_id: 1,
 			});
 
 			// on runtime upgrade can create new NFT class
 			AccountTokenizer::on_runtime_upgrade();
-
 			assert_eq!(AccountTokenizer::nft_class_id(), 1);
 			System::assert_last_event(event.clone());
 
@@ -278,11 +277,11 @@ fn can_burn_account_token_nft() {
 			// Burn the NFT
 			// only the owner of the NFT can burn the token
 			assert_noop!(
-				AccountTokenizer::request_burn(Origin::signed(proxy.clone()), proxy.clone(), ALICE),
+				AccountTokenizer::request_redeem(Origin::signed(proxy.clone()), proxy.clone(), ALICE),
 				crate::Error::<Runtime>::CallerUnauthorized
 			);
 
-			assert_ok!(AccountTokenizer::request_burn(
+			assert_ok!(AccountTokenizer::request_redeem(
 				Origin::signed(ALICE),
 				proxy.clone(),
 				ALICE
@@ -301,7 +300,7 @@ fn can_burn_account_token_nft() {
 			let events = System::events();
 			assert_eq!(
 				events[events.len() - 2].event,
-				Event::AccountTokenizer(crate::Event::AccountTokenBurned {
+				Event::AccountTokenizer(crate::Event::AccountTokenRedeemed {
 					account: proxy.clone(),
 					owner: ALICE,
 					token_id: 0,
@@ -319,7 +318,7 @@ fn can_burn_account_token_nft() {
 
 			// cannot burn the same nft again
 			assert_noop!(
-				AccountTokenizer::request_burn(Origin::signed(ALICE), proxy, ALICE),
+				AccountTokenizer::request_redeem(Origin::signed(ALICE), proxy, ALICE),
 				crate::Error::<Runtime>::AccountTokenNotFound
 			);
 		});

@@ -2027,7 +2027,6 @@ impl nutsfinance_stable_asset::Config for Runtime {
 }
 
 parameter_types! {
-	pub AccountTokenizerPalletAccount: AccountId = AccountTokenizerPalletId::get().into_account();
 	pub AccountTokenizerMintRequestDeposit: Balance = 50 * dollar(ACA);
 	pub AccountTokenizerMintFee: Balance = 5 * dollar(ACA);
 }
@@ -2036,7 +2035,7 @@ impl module_account_tokenizer::Config for Runtime {
 	type Event = Event;
 	type WeightInfo = weights::module_account_tokenizer::WeightInfo<Runtime>;
 	type Call = Call;
-	type PalletAccount = AccountTokenizerPalletAccount;
+	type PalletId = AccountTokenizerPalletId;
 	type Currency = Balances;
 	type XcmInterface = XcmInterface;
 	type OracleOrigin = module_foreign_state_oracle::EnsureForeignStateOracle;
@@ -2190,7 +2189,7 @@ construct_runtime! {
 		Currencies: module_currencies::{Pallet, Call, Event<T>} = 12,
 		Vesting: orml_vesting::{Pallet, Storage, Call, Event<T>, Config<T>} = 13,
 		TransactionPayment: module_transaction_payment::{Pallet, Call, Storage, Event<T>} = 14,
-		AccountTokenizer: module_account_tokenizer::{Pallet, Call, Storage, Event<T>} = 15,
+		AccountTokenizer: module_account_tokenizer::{Pallet, Call, Storage, Config, Event<T>} = 15,
 
 		// Treasury
 		Treasury: pallet_treasury::{Pallet, Call, Storage, Config, Event<T>} = 20,

@@ -29,8 +29,8 @@ pub trait WeightInfo {
 	fn initialize_nft_class() -> Weight;
 	fn request_mint() -> Weight;
 	fn confirm_mint_request() -> Weight;
-	fn request_burn() -> Weight;
-	fn confirm_burn_account_token() -> Weight;	
+	fn request_redeem() -> Weight;
+	fn confirm_redeem_account_token() -> Weight;	
 }
 
 /// Weights for module_homa_lite using the Acala node and recommended hardware.
@@ -51,12 +51,12 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
-	fn request_burn() -> Weight {
+	fn request_redeem() -> Weight {
 		(13_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
-	fn confirm_burn_account_token() -> Weight {
+	fn confirm_redeem_account_token() -> Weight {
 		(13_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
@@ -80,12 +80,12 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().reads(2 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
-	fn request_burn() -> Weight {
+	fn request_redeem() -> Weight {
 		(13_000_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(2 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
-	fn confirm_burn_account_token() -> Weight {
+	fn confirm_redeem_account_token() -> Weight {
 		(13_000_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(2 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))

@@ -60,13 +60,13 @@ impl<T: frame_system::Config> module_account_tokenizer::WeightInfo for WeightInf
 			.saturating_add(T::DbWeight::get().writes(7 as Weight))
 	}
 
-	fn request_burn() -> Weight {
+	fn request_redeem() -> Weight {
 		(63_751_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(4 as Weight))
 			.saturating_add(T::DbWeight::get().writes(4 as Weight))
 	}
 
-	fn confirm_burn_account_token() -> Weight {
+	fn confirm_redeem_account_token() -> Weight {
 		(107_644_000 as Weight)
 	}
 }
