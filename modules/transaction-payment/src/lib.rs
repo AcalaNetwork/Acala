@@ -395,11 +395,6 @@ pub mod module {
 		GlobalFeeSwapPathRemoved {
 			fee_swap_path: Vec<CurrencyId>,
 		},
-		/// The threshold balance that trigger swap from dex was updated.
-		SwapBalanceThresholdUpdated {
-			currency_id: CurrencyId,
-			swap_threshold: Balance,
-		},
 		/// The charge fee pool is enabled
 		ChargeFeePoolEnabled {
 			sub_account: T::AccountId,
@@ -536,7 +531,7 @@ pub mod module {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		#[pallet::weight(<T as Config>::WeightInfo::set_swap_balance_threshold())]
+		#[pallet::weight(0)]
 		#[transactional]
 		pub fn with_fee_path(
 			origin: OriginFor<T>,
@@ -558,7 +553,7 @@ pub mod module {
 			Ok(())
 		}
 
-		#[pallet::weight(<T as Config>::WeightInfo::set_swap_balance_threshold())]
+		#[pallet::weight(0)]
 		#[transactional]
 		pub fn with_fee_currency(
 			origin: OriginFor<T>,
@@ -655,28 +650,6 @@ pub mod module {
 				});
 				Ok(())
 			})
-		}
-
-		/// TODO: removed, replaced with disable then enable.
-		/// Set swap balance threshold of native asset
-		#[pallet::weight(<T as Config>::WeightInfo::set_swap_balance_threshold())]
-		#[transactional]
-		pub fn set_swap_balance_threshold(
-			origin: OriginFor<T>,
-			currency_id: CurrencyId,
-			swap_threshold: Balance,
-		) -> DispatchResult {
-			T::UpdateOrigin::ensure_origin(origin)?;
-			ensure!(
-				swap_threshold < PoolSize::<T>::get(currency_id),
-				Error::<T>::InvalidBalance
-			);
-			SwapBalanceThreshold::<T>::insert(currency_id, swap_threshold);
-			Self::deposit_event(Event::SwapBalanceThresholdUpdated {
-				currency_id,
-				swap_threshold,
-			});
-			Ok(())
 		}
 
 		/// Enable and initialize charge fee pool.
@@ -876,7 +849,7 @@ where
 		T::WeightToFee::calc(&capped_weight)
 	}
 
-	/// If native asset is enough, return None, else return the fee should be withdrawn.
+	/// If native asset is enough, return `None`, else return the fee should be withdrawn.
 	fn native_is_enough(who: &T::AccountId, fee: PalletBalanceOf<T>, reason: WithdrawReasons) -> Option<Balance> {
 		let native_existential_deposit = <T as Config>::Currency::minimum_balance();
 		let total_native = <T as Config>::Currency::total_balance(who);
@@ -919,7 +892,11 @@ where
 		}
 	}
 
-	/// return fee surplus
+	/// If native is enough, do nothing, return `Ok(0)` means there are none extra surplus fee.
+	/// If native is not enough, try swap from tx fee pool or dex. As user can set his own
+	/// `AlternativeFeeSwapPath`, this will direct swap from dex. Sometimes, user setting of
+	/// `AlternativeFeeSwapPath` may be wrong or dex is not available, or user do not set any
+	/// `AlternativeFeeSwapPath`, then use the `DefaultFeeSwapPathList` to swap from tx fee pool.
 	fn native_then_alternative_or_default(
 		who: &T::AccountId,
 		fee: PalletBalanceOf<T>,
@@ -929,13 +906,6 @@ where
 		if let Some(amount) = Self::native_is_enough(who, fee, reason) {
 			let fee_surplus = T::AlternativeFeeSurplus::get().mul_ceil(fee);
 			let fee_amount = fee_surplus.saturating_add(amount);
-			// log::info!(
-			// 	"amount:{}, percent:{:?}, fee_surplus:{}, fee_amount:{}",
-			// 	amount,
-			// 	T::AlternativeFeeSurplus::get(),
-			// 	fee_surplus,
-			// 	fee_amount
-			// );
 
 			// alter native fee swap path, swap from dex
 			if let Some(path) = AlternativeFeeSwapPath::<T>::get(who) {
@@ -952,6 +922,19 @@ where
 
 			// default fee swap path, swap from tx fee pool
 			for path in T::DefaultFeeSwapPathList::get() {
+				let supply_currency_id = *path.first().expect("should match a non native asset");
+				if !T::MultiCurrency::free_balance(supply_currency_id, who).is_zero() {
+					if let Ok(_) = Self::swap_from_pool_or_dex(who, fee_amount, supply_currency_id) {
+						return Ok(fee_surplus);
+					}
+				}
+			}
+
+			// migration of `GlobalFeeSwapPath`. after Dapp using `with_fee_path`, we can delete this.
+			let global_fee_swap_path = GlobalFeeSwapPath::<T>::iter_values()
+				.map(|v| v.into_inner())
+				.collect::<Vec<_>>();
+			for path in global_fee_swap_path {
 				let supply_currency_id = *path.first().expect("should match a non native asset");
 				if !T::MultiCurrency::free_balance(supply_currency_id, who).is_zero() {
 					if let Ok(_) = Self::swap_from_pool_or_dex(who, fee_amount, supply_currency_id) {

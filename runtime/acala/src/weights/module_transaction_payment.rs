@@ -65,13 +65,6 @@ impl<T: frame_system::Config> module_transaction_payment::WeightInfo for WeightI
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
-	// Storage: TransactionPayment PoolSize (r:1 w:0)
-	// Storage: TransactionPayment SwapBalanceThreshold (r:0 w:1)
-	fn set_swap_balance_threshold() -> Weight {
-		(21_136_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
-	}
 	// Storage: TransactionPayment PoolSize (r:1 w:1)
 	// Storage: TransactionPayment AlternativeFeeSwapPath (r:1 w:0)
 	// Storage: Dex TradingPairStatuses (r:1 w:0)

@@ -1087,18 +1087,8 @@ fn swap_from_pool_and_dex_with_higher_threshold() {
 		assert_eq!(old_exchange_rate, Ratio::saturating_from_rational(fee_dot, balance));
 
 		// Set threshold(init-500) gt sub account balance(init-800), trigger swap from dex.
-		Pallet::<Runtime>::set_swap_balance_threshold(
-			Origin::signed(ALICE),
-			DOT,
-			crate::mock::HigerSwapThreshold::get(),
-		)
-		.unwrap();
-		Pallet::<Runtime>::set_swap_balance_threshold(
-			Origin::signed(ALICE),
-			AUSD,
-			crate::mock::HigerSwapThreshold::get(),
-		)
-		.unwrap();
+		SwapBalanceThreshold::<Runtime>::insert(DOT, crate::mock::HigerSwapThreshold::get());
+		SwapBalanceThreshold::<Runtime>::insert(AUSD, crate::mock::HigerSwapThreshold::get());
 
 		// swap 80 DOT out 3074 ACA
 		let trading_path = Pallet::<Runtime>::get_trading_path_by_currency(&ALICE, DOT).unwrap();
@@ -1157,18 +1147,8 @@ fn swap_from_pool_and_dex_with_midd_threshold() {
 			balance.unique_saturated_into(),
 		));
 
-		Pallet::<Runtime>::set_swap_balance_threshold(
-			Origin::signed(ALICE),
-			DOT,
-			crate::mock::MiddSwapThreshold::get(),
-		)
-		.unwrap();
-		Pallet::<Runtime>::set_swap_balance_threshold(
-			Origin::signed(ALICE),
-			AUSD,
-			crate::mock::MiddSwapThreshold::get(),
-		)
-		.unwrap();
+		SwapBalanceThreshold::<Runtime>::insert(DOT, crate::mock::MiddSwapThreshold::get());
+		SwapBalanceThreshold::<Runtime>::insert(AUSD, crate::mock::MiddSwapThreshold::get());
 
 		// After tx#1, ACA balance of sub account is large than threshold(5000 ACA)
 		Pallet::<Runtime>::swap_from_pool_or_dex(&BOB, balance, DOT).unwrap();
@@ -1266,11 +1246,7 @@ fn charge_fee_failed_when_disable_dex() {
 		assert_eq!(100000 - (210 + surplus) * 10, Currencies::free_balance(AUSD, &BOB));
 
 		// update threshold, next tx will trigger swap
-		assert_ok!(Pallet::<Runtime>::set_swap_balance_threshold(
-			Origin::signed(ALICE),
-			AUSD,
-			swap_balance_threshold
-		));
+		SwapBalanceThreshold::<Runtime>::insert(AUSD, swap_balance_threshold);
 
 		// trading pair is enabled
 		let pair = TradingPair::from_currency_ids(AUSD, ACA).unwrap();
@@ -1368,13 +1344,7 @@ fn charge_fee_failed_when_disable_dex() {
 		assert_eq!(fee_balance > swap_balance_threshold, true);
 		let swap_balance_threshold = (fee_balance - 199) as u128;
 
-		assert_ok!(Pallet::<Runtime>::set_swap_balance_threshold(
-			Origin::signed(ALICE),
-			AUSD,
-			swap_balance_threshold
-		));
-		let new_threshold = SwapBalanceThreshold::<Runtime>::get(AUSD);
-		assert_eq!(new_threshold, swap_balance_threshold);
+		SwapBalanceThreshold::<Runtime>::insert(AUSD, swap_balance_threshold);
 
 		// this tx success because before execution, native_balance > threshold
 		assert_ok!(ChargeTransactionPayment::<Runtime>::from(0).validate(&BOB, CALL2, &INFO2, 50));

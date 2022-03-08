@@ -196,15 +196,6 @@ fn initial_charge_fee_pool_works() {
 				),
 				0
 			);
-
-			// set_swap_balance_threshold should gt pool_size
-			let pool_size: Balance = module_transaction_payment::Pallet::<Runtime>::pool_size(RELAY_CHAIN_CURRENCY);
-			let swap_threshold = module_transaction_payment::Pallet::<Runtime>::set_swap_balance_threshold(
-				Origin::signed(treasury_account),
-				RELAY_CHAIN_CURRENCY,
-				pool_size.saturating_add(1),
-			);
-			assert!(swap_threshold.is_err());
 		});
 }
 
@@ -482,12 +473,9 @@ fn charge_transaction_payment_and_threshold_works() {
 			let relay1 = Currencies::free_balance(RELAY_CHAIN_CURRENCY, &sub_account1);
 
 			// set swap balance trigger, next tx will trigger swap from dex
-			assert_ok!(
-				<module_transaction_payment::Pallet<Runtime>>::set_swap_balance_threshold(
-					Origin::root(),
-					RELAY_CHAIN_CURRENCY,
-					pool_size - fee * 40,
-				)
+			module_transaction_payment::SwapBalanceThreshold::<Runtime>::insert(
+				RELAY_CHAIN_CURRENCY,
+				pool_size - fee * 40,
 			);
 
 			// 5 000 000 000 000

@@ -49,7 +49,6 @@ pub trait WeightInfo {
 	fn set_alternative_fee_swap_path() -> Weight;
 	fn set_global_fee_swap_path() -> Weight;
 	fn remove_global_fee_swap_path() -> Weight;
-	fn set_swap_balance_threshold() -> Weight;
 	fn enable_charge_fee_pool() -> Weight;
 	fn disable_charge_fee_pool() -> Weight;
 	fn on_finalize() -> Weight;
@@ -74,13 +73,6 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	// Storage: TransactionPayment GlobalFeeSwapPath (r:1 w:1)
 	fn remove_global_fee_swap_path() -> Weight {
 		(16_660_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
-	}
-	// Storage: TransactionPayment PoolSize (r:1 w:0)
-	// Storage: TransactionPayment SwapBalanceThreshold (r:0 w:1)
-	fn set_swap_balance_threshold() -> Weight {
-		(17_639_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
@@ -125,11 +117,6 @@ impl WeightInfo for () {
 	}
 	fn remove_global_fee_swap_path() -> Weight {
 		(16_660_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
-	}
-	fn set_swap_balance_threshold() -> Weight {
-		(17_639_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}

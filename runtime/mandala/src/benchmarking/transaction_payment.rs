@@ -90,14 +90,6 @@ runtime_benchmarks! {
 		assert_eq!(TransactionPayment::global_fee_swap_path(STABLECOIN), None);
 	}
 
-	set_swap_balance_threshold {
-		let treasury_account: AccountId = TreasuryPalletId::get().into_account();
-		module_transaction_payment::PoolSize::<Runtime>::insert(STABLECOIN, 10_000_000_000);
-	}: _(RawOrigin::Root, STABLECOIN, 1_000_000_000)
-	verify {
-		assert_eq!(TransactionPayment::swap_balance_threshold(STABLECOIN), 1_000_000_000);
-	}
-
 	enable_charge_fee_pool {
 		let funder: AccountId = account("funder", 0, SEED);
 		let treasury_account: AccountId = TreasuryPalletId::get().into_account();
