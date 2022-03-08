@@ -86,16 +86,16 @@ mod karura_imports {
 		constants::parachains, create_x2_parachain_multilocation, get_all_module_accounts, AcalaOracle, AccountId,
 		AccountTokenizer, AccountTokenizerMintFee, AccountTokenizerMintRequestDeposit, AssetRegistry, AuctionManager,
 		Authority, AuthoritysOriginId, Balance, Balances, BlockNumber, BondingDuration, Call, CdpEngine, CdpTreasury,
-		CreateClassDeposit, CreateTokenDeposit, Currencies, CurrencyId, CurrencyIdConvert, DataDepositPerByte,
-		DefaultExchangeRate, Dex, EmergencyShutdown, Event, EvmAccounts, ExistentialDeposits, FinancialCouncil,
-		FixedRateOfFungible, ForeignStateOracle, Get, GetNativeCurrencyId, Homa, Honzon, IdleScheduler, KarPerSecond,
-		KarPerSecondAsBased, KaruraFoundationAccounts, KaruraTreasuryAccount, KsmPerSecond, KusdPerSecond, Loans,
+		CreateClassDeposit, CreateTokenDeposit, Currencies, CurrencyId, DataDepositPerByte, DefaultExchangeRate, Dex,
+		EmergencyShutdown, Event, EvmAccounts, ExistentialDeposits, FinancialCouncil, ForeignStateOracle, Get,
+		GetNativeCurrencyId, Homa, Honzon, IdleScheduler, KaruraFoundationAccounts, KaruraTreasuryAccount, Loans,
 		MaxTipsOfPriority, MinimumDebitValue, MultiLocation, NativeTokenExistentialDeposit, NetworkId, NftPalletId,
 		OneDay, Origin, OriginCaller, ParachainAccount, ParachainInfo, ParachainSystem, PolkadotXcm, Proxy, ProxyType,
 		QueryFee, Ratio, RelayChainBlockNumberProvider, Runtime, Scheduler, Session, SessionManager, SevenDays, System,
 		Timestamp, TipPerWeightStep, TokenSymbol, Tokens, TransactionPayment, TransactionPaymentPalletId,
 		TreasuryPalletId, Utility, Vesting, XTokens, XcmExecutor, XcmInterface, EVM, NFT,
 	};
+
 	pub use primitives::TradingPair;
 	pub use runtime_common::{calculate_asset_ratio, cent, dollar, millicent, KAR, KSM, KUSD, LKSM};
 	pub use sp_runtime::traits::AccountIdConversion;
