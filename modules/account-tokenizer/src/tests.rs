@@ -29,7 +29,10 @@ use frame_support::{
 use hex_literal::hex;
 use orml_traits::CreateExtended;
 
-use sp_runtime::traits::{AccountIdConversion, BadOrigin};
+use sp_runtime::{
+	traits::{AccountIdConversion, BadOrigin},
+	ModuleError,
+};
 
 #[test]
 fn can_create_nft() {
@@ -176,11 +179,11 @@ fn can_handle_bad_oracle_data() {
 
 			System::assert_last_event(Event::ForeignStateOracle(
 				module_foreign_state_oracle::Event::CallDispatched {
-					task_result: Err(DispatchError::Module {
+					task_result: Err(DispatchError::Module(ModuleError {
 						index: 6u8,
 						error: 3u8,
 						message: None,
-					}),
+					})),
 				},
 			));
 		});

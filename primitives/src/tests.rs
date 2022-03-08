@@ -120,7 +120,7 @@ fn currency_id_try_into_evm_address_works() {
 
 #[test]
 fn generate_function_selector_works() {
-	#[module_evm_utiltity_macro::generate_function_selector]
+	#[module_evm_utility_macro::generate_function_selector]
 	#[derive(RuntimeDebug, Eq, PartialEq)]
 	#[repr(u32)]
 	pub enum Action {

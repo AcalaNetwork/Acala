@@ -17,11 +17,10 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-	dollar, AccountId, CdpTreasury, CollateralCurrencyIds, CurrencyId, EmergencyShutdown, GetStableCurrencyId, Price,
-	Runtime,
+	AccountId, CdpTreasury, CollateralCurrencyIds, CurrencyId, EmergencyShutdown, GetStableCurrencyId, Price, Runtime,
 };
 
-use super::utils::{feed_price, set_balance};
+use super::utils::{dollar, feed_price, set_balance};
 use frame_benchmarking::{account, whitelisted_caller};
 use frame_system::RawOrigin;
 use module_support::CDPTreasury;
@@ -37,7 +36,7 @@ runtime_benchmarks! {
 	{ Runtime, module_emergency_shutdown }
 
 	emergency_shutdown {
-		let c in 0 .. CollateralCurrencyIds::get().len().saturating_sub(1) as u32;
+		let c in 0 .. CollateralCurrencyIds::get().len() as u32;
 		let currency_ids = CollateralCurrencyIds::get();
 		let mut values = vec![];
 
@@ -52,7 +51,7 @@ runtime_benchmarks! {
 	}: _(RawOrigin::Root)
 
 	refund_collaterals {
-		let c in 0 .. CollateralCurrencyIds::get().len().saturating_sub(1) as u32;
+		let c in 0 .. CollateralCurrencyIds::get().len() as u32;
 		let currency_ids = CollateralCurrencyIds::get();
 		let funder: AccountId = account("funder", 0, SEED);
 		let caller: AccountId = whitelisted_caller();
@@ -60,6 +59,9 @@ runtime_benchmarks! {
 
 		for i in 0 .. c {
 			let currency_id = currency_ids[i as usize];
+			if matches!(currency_id, CurrencyId::StableAssetPoolToken(_)) {
+				continue;
+			}
 			values.push((currency_id, Price::one()));
 			set_balance(currency_id, &funder, 100 * dollar(currency_id));
 			CdpTreasury::deposit_collateral(&funder, currency_id, 100 * dollar(currency_id))?;

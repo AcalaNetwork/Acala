@@ -29,6 +29,7 @@ use frame_support::{
 	traits::{Currency, Hooks},
 };
 use frame_system::RawOrigin;
+use sp_runtime::traits::AccountIdConversion;
 use xcm::latest::MultiLocation;
 
 fn setup_account_tokenizer_benchmark() -> (AccountId, AccountId) {
@@ -39,7 +40,7 @@ fn setup_account_tokenizer_benchmark() -> (AccountId, AccountId) {
 	Balances::make_free_balance_be(&treasury, 1_000 * dollar(GetNativeCurrencyId::get()));
 	Balances::make_free_balance_be(&caller, 1_000 * dollar(GetNativeCurrencyId::get()));
 	Balances::make_free_balance_be(
-		&<Runtime as module_account_tokenizer::Config>::PalletAccount::get(),
+		&<Runtime as module_account_tokenizer::Config>::PalletId::get().into_account(),
 		1_000 * dollar(GetNativeCurrencyId::get()),
 	);
 	AccountTokenizer::on_runtime_upgrade();

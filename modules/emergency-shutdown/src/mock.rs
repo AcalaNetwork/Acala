@@ -32,10 +32,10 @@ use primitives::{Amount, TokenSymbol};
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
-	traits::{AccountIdConversion, Convert, IdentityLookup},
+	traits::{AccountIdConversion, IdentityLookup},
 	DispatchResult,
 };
-use support::{AuctionManager, LockablePrice};
+use support::{AuctionManager, LockablePrice, RiskManager};
 
 pub type AccountId = u128;
 pub type AuctionId = u32;
@@ -130,11 +130,23 @@ impl orml_currencies::Config for Runtime {
 	type WeightInfo = ();
 }
 
-// mock convert
-pub struct MockConvert;
-impl Convert<(CurrencyId, Balance), Balance> for MockConvert {
-	fn convert(a: (CurrencyId, Balance)) -> Balance {
-		a.1
+pub struct MockRiskManager;
+impl RiskManager<AccountId, CurrencyId, Balance, Balance> for MockRiskManager {
+	fn get_debit_value(_currency_id: CurrencyId, debit_balance: Balance) -> Balance {
+		debit_balance
+	}
+
+	fn check_position_valid(
+		_currency_id: CurrencyId,
+		_collateral_balance: Balance,
+		_debit_balance: Balance,
+		_check_required_ratio: bool,
+	) -> DispatchResult {
+		Ok(())
+	}
+
+	fn check_debit_cap(_currency_id: CurrencyId, _total_debit_balance: Balance) -> DispatchResult {
+		Ok(())
 	}
 }
 
@@ -144,9 +156,8 @@ parameter_types! {
 
 impl loans::Config for Runtime {
 	type Event = Event;
-	type Convert = MockConvert;
 	type Currency = Tokens;
-	type RiskManager = ();
+	type RiskManager = MockRiskManager;
 	type CDPTreasury = CDPTreasuryModule;
 	type PalletId = LoansPalletId;
 	type OnUpdateLoan = ();

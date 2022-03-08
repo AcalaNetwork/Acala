@@ -362,9 +362,9 @@ fn test_evm_module() {
 			#[cfg(feature = "with-mandala-runtime")]
 			assert_eq!(Balances::free_balance(alice()), 998_963_300_000_000);
 			#[cfg(feature = "with-karura-runtime")]
-			assert_eq!(Balances::free_balance(alice()), 996_889_900_000_000);
+			assert_eq!(Balances::free_balance(alice()), 998_963_300_000_000);
 			#[cfg(feature = "with-acala-runtime")]
-			assert_eq!(Balances::free_balance(alice()), 993_779_800_000_000);
+			assert_eq!(Balances::free_balance(alice()), 996_889_900_000_000);
 			assert_eq!(Balances::free_balance(bob()), 1_000 * dollar(NATIVE_CURRENCY));
 			let to = EvmAccounts::eth_address(&alice_key());
 			assert_ok!(Currencies::transfer(
@@ -376,9 +376,9 @@ fn test_evm_module() {
 			#[cfg(feature = "with-mandala-runtime")]
 			assert_eq!(Balances::free_balance(alice()), 1_008_963_300_000_000);
 			#[cfg(feature = "with-karura-runtime")]
-			assert_eq!(Balances::free_balance(alice()), 1_006_889_900_000_000);
+			assert_eq!(Balances::free_balance(alice()), 1_008_963_300_000_000);
 			#[cfg(feature = "with-acala-runtime")]
-			assert_eq!(Balances::free_balance(alice()), 1_003_779_800_000_000);
+			assert_eq!(Balances::free_balance(alice()), 1_006_889_900_000_000);
 			assert_eq!(
 				Balances::free_balance(bob()),
 				1_000 * dollar(NATIVE_CURRENCY) - 10 * dollar(NATIVE_CURRENCY)
@@ -577,9 +577,9 @@ fn should_not_kill_contract_on_transfer_all() {
 			#[cfg(all(not(feature = "with-ethereum-compatibility"), feature = "with-mandala-runtime"))]
 			assert_eq!(Balances::free_balance(alice()), 1_996_993_800_000_000);
 			#[cfg(feature = "with-karura-runtime")]
-			assert_eq!(Balances::free_balance(alice()), 1_994_981_400_000_000);
+			assert_eq!(Balances::free_balance(alice()), 1_996_993_800_000_000);
 			#[cfg(feature = "with-acala-runtime")]
-			assert_eq!(Balances::free_balance(alice()), 1_991_962_800_000_000);
+			assert_eq!(Balances::free_balance(alice()), 1_994_981_400_000_000);
 
 			assert_ok!(Currencies::transfer(
 				Origin::signed(EvmAddressMapping::<Runtime>::get_account_id(&contract)),
@@ -595,9 +595,9 @@ fn should_not_kill_contract_on_transfer_all() {
 			#[cfg(all(not(feature = "with-ethereum-compatibility"), feature = "with-mandala-runtime"))]
 			assert_eq!(Balances::free_balance(alice()), 1_998_993_800_000_000);
 			#[cfg(feature = "with-karura-runtime")]
-			assert_eq!(Balances::free_balance(alice()), 1_996_981_400_000_000);
+			assert_eq!(Balances::free_balance(alice()), 1_998_993_800_000_000);
 			#[cfg(feature = "with-acala-runtime")]
-			assert_eq!(Balances::free_balance(alice()), 1_993_962_800_000_000);
+			assert_eq!(Balances::free_balance(alice()), 1_996_981_400_000_000);
 
 			// assert the contract account is not purged
 			assert!(EVM::accounts(contract).is_some());

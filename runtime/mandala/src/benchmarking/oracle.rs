@@ -28,7 +28,7 @@ runtime_benchmarks_instance! {
 
 	// feed values
 	feed_values {
-		let c in 0 .. CollateralCurrencyIds::get().len().saturating_sub(1) as u32;
+		let c in 0 .. CollateralCurrencyIds::get().len() as u32;
 		let currency_ids = CollateralCurrencyIds::get();
 		let mut values = vec![];
 
