@@ -20,7 +20,7 @@ use crate::setup::*;
 use frame_support::weights::{DispatchClass, DispatchInfo, Pays, Weight};
 use sp_runtime::{
 	traits::{AccountIdConversion, SignedExtension, UniqueSaturatedInto},
-	MultiAddress,
+	MultiAddress, Percent,
 };
 use xcm_executor::{traits::*, Assets, Config};
 
@@ -364,7 +364,7 @@ fn charge_transaction_payment_and_threshold_works() {
 		])
 		.build()
 		.execute_with(|| {
-			// treasury account for on_runtime_upgrade
+			// before update, treasury account has native_ed amount of native token
 			assert_ok!(Currencies::update_balance(
 				Origin::root(),
 				MultiAddress::Id(treasury_account.clone()),
@@ -399,7 +399,9 @@ fn charge_transaction_payment_and_threshold_works() {
 			#[cfg(feature = "with-acala-runtime")]
 			add_liquidity_for_lcdot();
 
+			// before init_charge_fee_pool, treasury account has native_ed+pool_size of native token
 			assert_ok!(init_charge_fee_pool(RELAY_CHAIN_CURRENCY));
+			// init_charge_fee_pool will transfer pool_size to sub_account
 			assert_eq!(Currencies::free_balance(NATIVE_CURRENCY, &treasury_account), native_ed);
 			assert_eq!(Currencies::free_balance(NATIVE_CURRENCY, &sub_account1), pool_size);
 			assert_eq!(Currencies::free_balance(RELAY_CHAIN_CURRENCY, &sub_account1), relay_ed);
@@ -434,6 +436,9 @@ fn charge_transaction_payment_and_threshold_works() {
 				pays_fee: Pays::Yes,
 			};
 			let fee = module_transaction_payment::Pallet::<Runtime>::compute_fee(len, &info, 0);
+			let fee_alternative_surplus_percent: Percent = ALTERNATIVE_SURPLUS;
+			let surplus = fee_alternative_surplus_percent.mul_ceil(fee);
+			let fee = fee + surplus;
 
 			assert_ok!(
 				<module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0).validate(
@@ -459,7 +464,7 @@ fn charge_transaction_payment_and_threshold_works() {
 			assert_eq!(fee, balance1 - balance2);
 			assert_eq!(relay_exchange_rate.saturating_mul_int(fee), relay2 - relay1);
 
-			for _ in 0..38 {
+			for i in 0..38 {
 				assert_ok!(
 					<module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0).validate(
 						&AccountId::from(BOB),
@@ -467,6 +472,10 @@ fn charge_transaction_payment_and_threshold_works() {
 						&info,
 						len as usize,
 					)
+				);
+				assert_eq!(
+					pool_size - fee * (i + 3),
+					Currencies::free_balance(NATIVE_CURRENCY, &sub_account1)
 				);
 			}
 			let balance1 = Currencies::free_balance(NATIVE_CURRENCY, &sub_account1);
@@ -481,6 +490,8 @@ fn charge_transaction_payment_and_threshold_works() {
 				)
 			);
 
+			// 5 000 000 000 000
+			//   350 000 000 000
 			// before execute this tx, the balance of fee pool is equal to threshold,
 			// so it wouldn't trigger swap from dex.
 			assert_ok!(

@@ -44,6 +44,7 @@ pub use mandala_imports::*;
 #[cfg(feature = "with-mandala-runtime")]
 mod mandala_imports {
 	pub use mandala_runtime::xcm_config::*;
+	use mandala_runtime::AlternativeFeeSurplus;
 	pub use mandala_runtime::{
 		create_x2_parachain_multilocation, get_all_module_accounts, AcalaOracle, AccountId, AssetRegistry,
 		AuctionManager, Authority, AuthoritysOriginId, Authorship, Balance, Balances, BlockNumber, Call, CdpEngine,
@@ -59,6 +60,7 @@ mod mandala_imports {
 	};
 	pub use runtime_common::{cent, dollar, millicent, ACA, AUSD, DOT, KSM, LDOT, LKSM};
 	pub use sp_runtime::traits::AccountIdConversion;
+	use sp_runtime::Percent;
 
 	pub const NATIVE_CURRENCY: CurrencyId = ACA;
 	pub const LIQUID_CURRENCY: CurrencyId = LDOT;
@@ -72,6 +74,7 @@ mod mandala_imports {
 	pub type Trader = FixedRateOfFungible<DotPerSecond, ()>;
 	pub type PeriodTrader =
 		module_transaction_payment::TransactionFeePoolTrader<Runtime, CurrencyIdConvert, AcaPerSecondAsBased, ()>;
+	pub const ALTERNATIVE_SURPLUS: Percent = AlternativeFeeSurplus::get();
 }
 
 #[cfg(feature = "with-karura-runtime")]
@@ -80,6 +83,7 @@ pub use karura_imports::*;
 mod karura_imports {
 	pub use frame_support::parameter_types;
 	pub use karura_runtime::xcm_config::*;
+	use karura_runtime::AlternativeFeeSurplus;
 	pub use karura_runtime::{
 		constants::parachains, create_x2_parachain_multilocation, get_all_module_accounts, AcalaOracle, AccountId,
 		AssetRegistry, AuctionManager, Authority, AuthoritysOriginId, Balance, Balances, BlockNumber, BondingDuration,
@@ -95,6 +99,7 @@ mod karura_imports {
 	pub use primitives::TradingPair;
 	pub use runtime_common::{calculate_asset_ratio, cent, dollar, millicent, KAR, KSM, KUSD, LKSM};
 	pub use sp_runtime::traits::AccountIdConversion;
+	use sp_runtime::Percent;
 
 	parameter_types! {
 		pub EnabledTradingPairs: Vec<TradingPair> = vec![
@@ -118,6 +123,7 @@ mod karura_imports {
 	pub type Trader = FixedRateOfFungible<KsmPerSecond, ()>;
 	pub type PeriodTrader =
 		module_transaction_payment::TransactionFeePoolTrader<Runtime, CurrencyIdConvert, KarPerSecondAsBased, ()>;
+	pub const ALTERNATIVE_SURPLUS: Percent = AlternativeFeeSurplus::get();
 }
 
 #[cfg(feature = "with-acala-runtime")]
@@ -125,6 +131,7 @@ pub use acala_imports::*;
 #[cfg(feature = "with-acala-runtime")]
 mod acala_imports {
 	pub use acala_runtime::xcm_config::*;
+	use acala_runtime::AlternativeFeeSurplus;
 	pub use acala_runtime::{
 		create_x2_parachain_multilocation, get_all_module_accounts, AcalaFoundationAccounts, AcalaOracle, AccountId,
 		AssetRegistry, AuctionManager, Authority, AuthoritysOriginId, Balance, Balances, BlockNumber, BondingDuration,
@@ -141,6 +148,7 @@ mod acala_imports {
 	pub use primitives::TradingPair;
 	pub use runtime_common::{cent, dollar, millicent, ACA, AUSD, DOT, LDOT};
 	pub use sp_runtime::traits::AccountIdConversion;
+	use sp_runtime::Percent;
 
 	parameter_types! {
 		pub EnabledTradingPairs: Vec<TradingPair> = vec![
@@ -166,6 +174,7 @@ mod acala_imports {
 	pub type Trader = FixedRateOfFungible<DotPerSecond, ()>;
 	pub type PeriodTrader =
 		module_transaction_payment::TransactionFeePoolTrader<Runtime, CurrencyIdConvert, AcaPerSecondAsBased, ()>;
+	pub const ALTERNATIVE_SURPLUS: Percent = AlternativeFeeSurplus::get();
 }
 
 const ORACLE1: [u8; 32] = [0u8; 32];

@@ -10908,6 +10908,7 @@ dependencies = [
  "karura-runtime",
  "kusama-runtime",
  "libsecp256k1 0.6.0",
+ "log",
  "mandala-runtime",
  "module-asset-registry",
  "module-auction-manager",
