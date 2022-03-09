@@ -47,8 +47,6 @@ use sp_std::marker::PhantomData;
 /// Weight functions needed for module_transaction_payment.
 pub trait WeightInfo {
 	fn set_alternative_fee_swap_path() -> Weight;
-	fn set_global_fee_swap_path() -> Weight;
-	fn remove_global_fee_swap_path() -> Weight;
 	fn enable_charge_fee_pool() -> Weight;
 	fn disable_charge_fee_pool() -> Weight;
 	fn on_finalize() -> Weight;
@@ -65,18 +63,6 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 		(30_689_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
-	}
-	// Storage: TransactionPayment GlobalFeeSwapPath (r:1 w:1)
-	fn set_global_fee_swap_path() -> Weight {
-		(16_469_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
-	}
-	// Storage: TransactionPayment GlobalFeeSwapPath (r:1 w:1)
-	fn remove_global_fee_swap_path() -> Weight {
-		(16_660_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	// Storage: TransactionPayment PoolSize (r:1 w:1)
 	// Storage: TransactionPayment AlternativeFeeSwapPath (r:1 w:0)
@@ -118,16 +104,6 @@ impl WeightInfo for () {
 		(30_689_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(2 as Weight))
-	}
-	fn set_global_fee_swap_path() -> Weight {
-		(16_469_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
-	}
-	fn remove_global_fee_swap_path() -> Weight {
-		(16_660_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
 	fn enable_charge_fee_pool() -> Weight {
 		(87_586_000 as Weight)

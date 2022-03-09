@@ -392,13 +392,6 @@ pub mod module {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// The global fee swap path was updated.
-		GlobalFeeSwapPathUpdated {
-			old_fee_swap_path: Option<Vec<CurrencyId>>,
-			new_fee_swap_path: Vec<CurrencyId>,
-		},
-		/// The global fee swap path was removed.
-		GlobalFeeSwapPathRemoved { fee_swap_path: Vec<CurrencyId> },
 		/// The charge fee pool is enabled
 		ChargeFeePoolEnabled {
 			sub_account: T::AccountId,
@@ -610,57 +603,6 @@ pub mod module {
 				T::Currency::unreserve_all_named(&DEPOSIT_ID, &who);
 			}
 			Ok(())
-		}
-
-		/// Set global fee swap path
-		#[pallet::weight(<T as Config>::WeightInfo::set_global_fee_swap_path())]
-		#[transactional]
-		pub fn set_global_fee_swap_path(origin: OriginFor<T>, fee_swap_path: Vec<CurrencyId>) -> DispatchResult {
-			T::UpdateOrigin::ensure_origin(origin)?;
-
-			ensure!(
-				fee_swap_path.len() > 1
-					&& fee_swap_path.first() != Some(&T::NativeCurrencyId::get())
-					&& fee_swap_path.last() == Some(&T::NativeCurrencyId::get()),
-				Error::<T>::InvalidSwapPath
-			);
-
-			GlobalFeeSwapPath::<T>::try_mutate(
-				*fee_swap_path.get(0).expect("ensured path not empty; qed"),
-				|maybe_path| -> DispatchResult {
-					let path: BoundedVec<CurrencyId, T::TradingPathLimit> = fee_swap_path
-						.clone()
-						.try_into()
-						.map_err(|_| Error::<T>::InvalidSwapPath)?;
-
-					let old_fee_swap_path = maybe_path.clone().map(|v| v.to_vec());
-					*maybe_path = Some(path);
-
-					Self::deposit_event(Event::GlobalFeeSwapPathUpdated {
-						old_fee_swap_path,
-						new_fee_swap_path: fee_swap_path,
-					});
-					Ok(())
-				},
-			)
-		}
-
-		/// Remove global fee swap path
-		#[pallet::weight(<T as Config>::WeightInfo::remove_global_fee_swap_path())]
-		#[transactional]
-		pub fn remove_global_fee_swap_path(origin: OriginFor<T>, currency_id: CurrencyId) -> DispatchResult {
-			T::UpdateOrigin::ensure_origin(origin)?;
-
-			ensure!(currency_id != T::NativeCurrencyId::get(), Error::<T>::InvalidSwapPath);
-
-			GlobalFeeSwapPath::<T>::try_mutate(currency_id, |maybe_path| -> DispatchResult {
-				let old_path = maybe_path.take().ok_or(Error::<T>::SwapPathNotExists)?;
-
-				Self::deposit_event(Event::GlobalFeeSwapPathRemoved {
-					fee_swap_path: old_path.to_vec(),
-				});
-				Ok(())
-			})
 		}
 
 		/// Enable and initialize charge fee pool.
@@ -921,7 +863,7 @@ where
 	/// If native is not enough, try swap from tx fee pool or dex. As user can set his own
 	/// `AlternativeFeeSwapPath`, this will direct swap from dex. Sometimes, user setting of
 	/// `AlternativeFeeSwapPath` may be wrong or dex is not available, or user do not set any
-	/// `AlternativeFeeSwapPath`, then use the `DefaultFeeSwapPathList` to swap from tx fee pool.
+	/// `AlternativeFeeSwapPath`, then use the `DefaultFeeTokens` to swap from tx fee pool.
 	fn native_then_alternative_or_default(
 		who: &T::AccountId,
 		fee: PalletBalanceOf<T>,
@@ -1023,26 +965,6 @@ where
 		Ok(())
 	}
 
-	/// Get trading path by user.
-	#[cfg(test)]
-	fn get_trading_path(who: &T::AccountId) -> Vec<Vec<CurrencyId>> {
-		let mut trading_path: Vec<Vec<CurrencyId>> = Vec::new();
-
-		if let Some(path) = AlternativeFeeSwapPath::<T>::get(who) {
-			trading_path.push(path.into_inner());
-		}
-
-		let global_fee_swap_path = GlobalFeeSwapPath::<T>::iter_values()
-			.map(|v| v.into_inner())
-			.collect::<Vec<_>>();
-		if !global_fee_swap_path.len().is_zero() {
-			trading_path.extend(global_fee_swap_path);
-		}
-
-		trading_path.extend(T::DefaultFeeSwapPathList::get());
-		trading_path
-	}
-
 	/// Get trading path by user and supply asset.
 	fn get_trading_path_by_currency(who: &T::AccountId, supply_currency_id: CurrencyId) -> Option<Vec<CurrencyId>> {
 		if let Some(trading_path) = AlternativeFeeSwapPath::<T>::get(who) {
@@ -1051,14 +973,12 @@ where
 			}
 		}
 
+		// `DefaultFeeTokens` related trading path is also inside `GlobalFeeSwapPath`
 		if let Some(trading_path) = GlobalFeeSwapPath::<T>::get(supply_currency_id) {
 			return Some(trading_path.to_vec());
 		}
 
-		T::DefaultFeeSwapPathList::get()
-			.into_iter()
-			.find(|trading_path| trading_path.first() == Some(&supply_currency_id))
-		// None
+		None
 	}
 
 	/// The sub account derivated by `PalletId`.
@@ -1101,14 +1021,7 @@ where
 				.clone()
 				.try_into()
 				.map_err(|_| Error::<T>::InvalidSwapPath)?;
-
-			let old_fee_swap_path = maybe_path.clone().map(|v| v.to_vec());
 			*maybe_path = Some(path);
-
-			Self::deposit_event(Event::GlobalFeeSwapPathUpdated {
-				old_fee_swap_path,
-				new_fee_swap_path: fee_swap_path,
-			});
 			Ok(())
 		});
 		ensure!(global_mut.is_ok(), Error::<T>::InvalidSwapPath);

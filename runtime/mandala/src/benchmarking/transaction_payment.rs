@@ -89,19 +89,6 @@ runtime_benchmarks! {
 		assert_eq!(TransactionPayment::alternative_fee_swap_path(&caller).unwrap().into_inner(), vec![STABLECOIN, NATIVECOIN]);
 	}
 
-	set_global_fee_swap_path {
-	}: _(RawOrigin::Root, vec![STABLECOIN, NATIVECOIN])
-	verify {
-		assert_eq!(TransactionPayment::global_fee_swap_path(STABLECOIN).unwrap().into_inner(), vec![STABLECOIN, NATIVECOIN]);
-	}
-
-	remove_global_fee_swap_path {
-		TransactionPayment::set_global_fee_swap_path(RawOrigin::Root.into(), vec![STABLECOIN, NATIVECOIN])?;
-	}: _(RawOrigin::Root, STABLECOIN)
-	verify {
-		assert_eq!(TransactionPayment::global_fee_swap_path(STABLECOIN), None);
-	}
-
 	enable_charge_fee_pool {
 		let funder: AccountId = account("funder", 0, SEED);
 		let treasury_account: AccountId = TreasuryPalletId::get().into_account();

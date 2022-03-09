@@ -28,13 +28,26 @@ fn fee_pool_size() -> Balance {
 	5 * dollar(NATIVE_CURRENCY)
 }
 
-fn init_charge_fee_pool(currency_id: CurrencyId) -> DispatchResult {
+fn init_charge_fee_pool(currency_id: CurrencyId, path: Vec<CurrencyId>) -> DispatchResult {
 	TransactionPayment::enable_charge_fee_pool(
 		Origin::root(),
 		currency_id,
-		None,
+		path,
 		fee_pool_size(),
 		Ratio::saturating_from_rational(35, 100).saturating_mul_int(dollar(NATIVE_CURRENCY)),
+	)
+}
+
+fn init_charge_fee_pool_relay() -> DispatchResult {
+	init_charge_fee_pool(RELAY_CHAIN_CURRENCY, vec![RELAY_CHAIN_CURRENCY, NATIVE_CURRENCY])
+}
+fn init_charge_fee_pool_usd() -> DispatchResult {
+	init_charge_fee_pool(USD_CURRENCY, vec![USD_CURRENCY, RELAY_CHAIN_CURRENCY, NATIVE_CURRENCY])
+}
+fn init_charge_fee_pool_liquid() -> DispatchResult {
+	init_charge_fee_pool(
+		LIQUID_CURRENCY,
+		vec![LIQUID_CURRENCY, RELAY_CHAIN_CURRENCY, NATIVE_CURRENCY],
 	)
 }
 
@@ -144,22 +157,21 @@ fn initial_charge_fee_pool_works() {
 			#[cfg(feature = "with-acala-runtime")]
 			add_liquidity_for_lcdot();
 
-			vec![RELAY_CHAIN_CURRENCY, USD_CURRENCY].iter().for_each(|token| {
-				assert_ok!(init_charge_fee_pool(*token));
-			});
+			assert_ok!(init_charge_fee_pool_relay());
+			assert_ok!(init_charge_fee_pool_usd());
 			// balance lt ED
 			assert_noop!(
 				TransactionPayment::enable_charge_fee_pool(
 					Origin::root(),
 					LIQUID_CURRENCY,
-					None,
+					vec![LIQUID_CURRENCY, RELAY_CHAIN_CURRENCY, NATIVE_CURRENCY],
 					NativeTokenExistentialDeposit::get() - 1,
 					Ratio::saturating_from_rational(35, 100).saturating_mul_int(dollar(NATIVE_CURRENCY))
 				),
 				module_transaction_payment::Error::<Runtime>::InvalidBalance
 			);
 			assert_noop!(
-				init_charge_fee_pool(LIQUID_CURRENCY),
+				init_charge_fee_pool_liquid(),
 				module_transaction_payment::Error::<Runtime>::DexNotAvailable
 			);
 			assert_eq!(
@@ -308,7 +320,7 @@ fn trader_works() {
 			#[cfg(feature = "with-acala-runtime")]
 			add_liquidity_for_lcdot();
 
-			assert_ok!(init_charge_fee_pool(RELAY_CHAIN_CURRENCY));
+			assert_ok!(init_charge_fee_pool_relay());
 			assert_eq!(Currencies::free_balance(NATIVE_CURRENCY, &treasury_account), ed);
 			assert_eq!(Currencies::free_balance(NATIVE_CURRENCY, &fee_account1), pool_size);
 			assert_eq!(Currencies::free_balance(RELAY_CHAIN_CURRENCY, &fee_account1), relay_ed);
@@ -371,14 +383,18 @@ fn charge_transaction_payment_and_threshold_works() {
 				relay_ed.unique_saturated_into(),
 			));
 
-			vec![RELAY_CHAIN_CURRENCY, USD_CURRENCY, LIQUID_CURRENCY]
-				.iter()
-				.for_each(|token| {
-					assert_noop!(
-						init_charge_fee_pool(*token),
-						module_transaction_payment::Error::<Runtime>::DexNotAvailable
-					);
-				});
+			assert_noop!(
+				init_charge_fee_pool_relay(),
+				module_transaction_payment::Error::<Runtime>::DexNotAvailable
+			);
+			assert_noop!(
+				init_charge_fee_pool_usd(),
+				module_transaction_payment::Error::<Runtime>::DexNotAvailable
+			);
+			assert_noop!(
+				init_charge_fee_pool_liquid(),
+				module_transaction_payment::Error::<Runtime>::DexNotAvailable
+			);
 			assert_ok!(Dex::add_liquidity(
 				Origin::signed(AccountId::from(ALICE)),
 				RELAY_CHAIN_CURRENCY,
@@ -393,7 +409,7 @@ fn charge_transaction_payment_and_threshold_works() {
 			add_liquidity_for_lcdot();
 
 			// before init_charge_fee_pool, treasury account has native_ed+pool_size of native token
-			assert_ok!(init_charge_fee_pool(RELAY_CHAIN_CURRENCY));
+			assert_ok!(init_charge_fee_pool_relay());
 			// init_charge_fee_pool will transfer pool_size to sub_account
 			assert_eq!(Currencies::free_balance(NATIVE_CURRENCY, &treasury_account), native_ed);
 			assert_eq!(Currencies::free_balance(NATIVE_CURRENCY, &sub_account1), pool_size);

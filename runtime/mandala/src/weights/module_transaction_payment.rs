@@ -51,16 +51,6 @@ impl<T: frame_system::Config> module_transaction_payment::WeightInfo for WeightI
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
-	fn set_global_fee_swap_path() -> Weight {
-		(15_969_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
-	}
-	fn remove_global_fee_swap_path() -> Weight {
-		(17_079_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
-	}
 	fn enable_charge_fee_pool() -> Weight {
 		(152_343_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(8 as Weight))
