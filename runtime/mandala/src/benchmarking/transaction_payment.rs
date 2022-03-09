@@ -69,6 +69,18 @@ fn inject_liquidity(
 runtime_benchmarks! {
 	{ Runtime, module_transaction_payment }
 
+	with_fee_path {
+		let caller = whitelisted_caller();
+		let call = Box::new(frame_system::Call::remark { remark: vec![] }.into());
+		let path: Vec<CurrencyId> = vec![STABLECOIN, NATIVECOIN];
+	}: _(RawOrigin::Signed(caller), path, call)
+
+	with_fee_currency {
+		let caller: AccountId = whitelisted_caller();
+		let call = Box::new(frame_system::Call::remark { remark: vec![] }.into());
+		module_transaction_payment::TokenExchangeRate::<Runtime>::insert(STABLECOIN, Ratio::one());
+	}: _(RawOrigin::Signed(caller.clone()), STABLECOIN, call)
+
 	set_alternative_fee_swap_path {
 		let caller: AccountId = whitelisted_caller();
 		set_balance(NATIVECOIN, &caller, NativeTokenExistentialDeposit::get());

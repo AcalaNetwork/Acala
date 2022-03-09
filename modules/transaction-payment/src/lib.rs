@@ -25,6 +25,7 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
+#![allow(clippy::boxed_local)]
 
 use frame_support::{
 	dispatch::{DispatchResult, Dispatchable},
@@ -339,9 +340,11 @@ pub mod module {
 		#[pallet::constant]
 		type TreasuryAccount: Get<Self::AccountId>;
 
+		/// Custom fee surplus if not payed with native asset.
 		#[pallet::constant]
 		type CustomFeeSurplus: Get<Percent>;
 
+		/// Alternative fee surplus if not payed with native asset.
 		#[pallet::constant]
 		type AlternativeFeeSurplus: Get<Percent>;
 
@@ -529,13 +532,16 @@ pub mod module {
 	impl<T: Config> Pallet<T> {
 		/// Dapp wrap call, and user pay tx fee as provided trading path. this dispatch call should
 		/// make sure the trading path is valid.
-		#[pallet::weight(0)]
+		#[pallet::weight({
+			let dispatch_info = call.get_dispatch_info();
+			(T::WeightInfo::with_fee_path().saturating_add(dispatch_info.weight), dispatch_info.class,)
+		})]
 		pub fn with_fee_path(
 			origin: OriginFor<T>,
 			fee_swap_path: Vec<CurrencyId>,
 			call: Box<CallOf<T>>,
 		) -> DispatchResult {
-			let _ = ensure_signed(origin.clone())?;
+			ensure_signed(origin.clone())?;
 			ensure!(
 				fee_swap_path.len() > 1
 					&& fee_swap_path.first() != Some(&T::NativeCurrencyId::get())
@@ -552,20 +558,22 @@ pub mod module {
 
 		/// Dapp wrap call, and user pay tx fee as provided currency, this dispatch call should make
 		/// sure the currency is exist in tx fee pool.
-		#[pallet::weight(0)]
+		#[pallet::weight({
+			let dispatch_info = call.get_dispatch_info();
+			(T::WeightInfo::with_fee_currency().saturating_add(dispatch_info.weight), dispatch_info.class,)
+		})]
 		pub fn with_fee_currency(
 			origin: OriginFor<T>,
 			currency_id: CurrencyId,
 			call: Box<CallOf<T>>,
 		) -> DispatchResult {
-			let _ = ensure_signed(origin.clone())?;
-			// ensure supply currency_id is in tx fee pool
+			ensure_signed(origin.clone())?;
 			ensure!(
 				TokenExchangeRate::<T>::contains_key(currency_id),
 				Error::<T>::InvalidToken
 			);
 
-			let e = call.dispatch(origin);
+			let e = (*call).dispatch(origin);
 			Self::deposit_event(Event::DispatchEvent {
 				result: e.map(|_| ()).map_err(|e| e.error),
 			});
