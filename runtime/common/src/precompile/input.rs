@@ -242,9 +242,11 @@ mod tests {
 	use super::*;
 
 	use frame_support::{assert_err, assert_ok};
+	use hex_literal::hex;
 	use num_enum::TryFromPrimitive;
 	use sp_core::H160;
 	use sp_runtime::RuntimeDebug;
+	use std::str::FromStr;
 
 	use module_support::mocks::{MockAddressMapping, MockErc20InfoMapping};
 	use primitives::{AccountId, CurrencyId, TokenSymbol};
@@ -261,8 +263,16 @@ mod tests {
 
 	#[test]
 	fn nth_param_works() {
-		let input = TestInput::new(&[1u8; 36][..], Some(10));
-		assert_ok!(input.nth_param(1, None), &[1u8; 32][..]);
+		// extra bytes should be ignored
+		let data = hex_literal::hex! {"
+			00000000
+			ffffffffffffffffffffffffffffffff00000000000000000000000000000001
+		"};
+		let input = TestInput::new(&data[..], Some(10));
+		assert_ok!(
+			input.nth_param(1, None),
+			&hex!("ffffffffffffffffffffffffffffffff00000000000000000000000000000001")[..]
+		);
 		assert_err!(
 			input.nth_param(2, None),
 			PrecompileFailure::Revert {
@@ -275,22 +285,16 @@ mod tests {
 
 	#[test]
 	fn action_works() {
-		let input = TestInput::new(&[0u8; 36][..], None);
+		let input = TestInput::new(&hex!("00000000")[..], None);
 		assert_ok!(input.action(), Action::QueryBalance);
 
-		let mut raw_input = [0u8; 36];
-		raw_input[3] = 1;
-		let input = TestInput::new(&raw_input[..], None);
+		let input = TestInput::new(&hex!("00000001")[..], None);
 		assert_ok!(input.action(), Action::Transfer);
 
-		let mut raw_input = [0u8; 36];
-		raw_input[3] = 2;
-		let input = TestInput::new(&raw_input[..], None);
+		let input = TestInput::new(&hex!("00000002")[..], None);
 		assert_ok!(input.action(), Action::Unknown);
 
-		let mut raw_input = [0u8; 36];
-		raw_input[3] = 3;
-		let input = TestInput::new(&raw_input[..], Some(10));
+		let input = TestInput::new(&hex!("00000003")[..], Some(10));
 		assert_eq!(
 			input.action(),
 			Err(PrecompileFailure::Revert {
@@ -303,26 +307,51 @@ mod tests {
 
 	#[test]
 	fn account_id_works() {
-		let mut address = [0u8; 20];
-		address[19] = 1;
-		let account_id = MockAddressMapping::get_account_id(&address.into());
+		// extra bytes should be ignored
+		let data = hex_literal::hex! {"
+			00000000
+			000000000000000000000000 ff00000000000000000000000000000000000001
+			ffffffffffffffffffffffff 0000000000000000000000000000000000000002
+			ffffffffffffffffffffffff ff00000000000000000000000000000000000003
+		"};
 
-		let mut raw_input = [0u8; 36];
-		raw_input[35] = 1;
-		let input = TestInput::new(&raw_input[..], None);
-		assert_ok!(input.account_id_at(1), account_id);
+		let input = TestInput::new(&data[..], None);
+		assert_ok!(
+			input.account_id_at(1),
+			MockAddressMapping::get_account_id(&H160::from_str("ff00000000000000000000000000000000000001").unwrap())
+		);
+		assert_ok!(
+			input.account_id_at(2),
+			MockAddressMapping::get_account_id(&H160::from_str("0000000000000000000000000000000000000002").unwrap())
+		);
+		assert_ok!(
+			input.account_id_at(3),
+			MockAddressMapping::get_account_id(&H160::from_str("ff00000000000000000000000000000000000003").unwrap())
+		);
 	}
 
 	#[test]
 	fn evm_address_works() {
-		let mut address = [0u8; 20];
-		address[19] = 1;
-		let evm_address = H160::from_slice(&address);
-
-		let mut raw_input = [0u8; 36];
-		raw_input[35] = 1;
-		let input = TestInput::new(&raw_input[..], None);
-		assert_ok!(input.evm_address_at(1), evm_address);
+		// extra bytes should be ignored
+		let data = hex_literal::hex! {"
+			00000000
+			000000000000000000000000 ff00000000000000000000000000000000000001
+			ffffffffffffffffffffffff 0000000000000000000000000000000000000002
+			ffffffffffffffffffffffff ff00000000000000000000000000000000000003
+		"};
+		let input = TestInput::new(&data[..], None);
+		assert_ok!(
+			input.evm_address_at(1),
+			H160::from_str("ff00000000000000000000000000000000000001").unwrap()
+		);
+		assert_ok!(
+			input.evm_address_at(2),
+			H160::from_str("0000000000000000000000000000000000000002").unwrap()
+		);
+		assert_ok!(
+			input.evm_address_at(3),
+			H160::from_str("ff00000000000000000000000000000000000003").unwrap()
+		);
 	}
 
 	#[test]
@@ -337,46 +366,62 @@ mod tests {
 			}
 		);
 
-		let mut raw_input = [0u8; 36];
-		raw_input[25] = 1;
-		let input = TestInput::new(&raw_input[..], None);
-		assert_ok!(input.currency_id_at(1), CurrencyId::Token(TokenSymbol::ACA));
+		// extra bytes should be ignored
+		let data = hex_literal::hex! {"
+			00000000
+			000000000000000000000000 0000000000000000000100000000000000000000
+			000000000000000000000000 0000000000000000000100000000000000000001
+			ffffffffffffffffffffffff 0000000000000000000100000000000000000002
+		"};
 
-		raw_input[35] = 1;
-		let input = TestInput::new(&raw_input[..], None);
-		assert_ok!(input.currency_id_at(1), CurrencyId::Token(TokenSymbol::AUSD));
+		let input = TestInput::new(&data[..], None);
+		assert_ok!(input.currency_id_at(1), CurrencyId::Token(TokenSymbol::ACA));
+		assert_ok!(input.currency_id_at(2), CurrencyId::Token(TokenSymbol::AUSD));
+		assert_ok!(input.currency_id_at(3), CurrencyId::Token(TokenSymbol::DOT));
 	}
 
 	#[test]
 	fn balance_works() {
-		let balance = 127u128;
-		let balance_bytes = balance.to_be_bytes();
-
-		let mut raw_input = [0u8; 36];
-		raw_input[20..].copy_from_slice(&balance_bytes);
-		let input = TestInput::new(&raw_input[..], None);
-		assert_ok!(input.balance_at(1), balance);
+		// extra bytes should be ignored
+		let data = hex_literal::hex! {"
+			00000000
+			00000000000000000000000000000000 0000000000000000000000000000007f
+			00000000000000000000000000000000 ffffffffffffffffffffffffffffffff
+			ffffffffffffffffffffffffffffffff ffffffffffffffffffffffffffffffff
+		"};
+		let input = TestInput::new(&data[..], None);
+		assert_ok!(input.balance_at(1), 127u128);
+		assert_ok!(input.balance_at(2), u128::MAX);
+		assert_ok!(input.balance_at(3), u128::MAX);
 	}
 
 	#[test]
 	fn amount_works() {
-		let amount = 127i128;
-		let amount_bytes = amount.to_be_bytes();
-
-		let mut raw_input = [0u8; 36];
-		raw_input[20..].copy_from_slice(&amount_bytes);
-		let input = TestInput::new(&raw_input[..], None);
-		assert_ok!(input.amount_at(1), amount);
+		// extra bytes should be ignored
+		let data = hex_literal::hex! {"
+			00000000
+			00000000000000000000000000000000 0000000000000000000000000000007f
+			ffffffffffffffffffffffffffffffff 80000000000000000000000000000000
+			ffffffffffffffffffffffffffffffff 7fffffffffffffffffffffffffffffff
+		"};
+		let input = TestInput::new(&data[..], None);
+		assert_ok!(input.amount_at(1), 127i128);
+		assert_ok!(input.amount_at(2), i128::MIN);
+		assert_ok!(input.amount_at(3), i128::MAX);
 	}
 
 	#[test]
 	fn u64_works() {
-		let u64_num = 127u64;
-		let u64_bytes = u64_num.to_be_bytes();
-
-		let mut raw_input = [0u8; 36];
-		raw_input[28..].copy_from_slice(&u64_bytes);
-		let input = TestInput::new(&raw_input[..], None);
-		assert_ok!(input.u64_at(1), u64_num);
+		// extra bytes should be ignored
+		let data = hex_literal::hex! {"
+			00000000
+			000000000000000000000000000000000000000000000000 000000000000007f
+			000000000000000000000000000000000000000000000000 ffffffffffffffff
+			ffffffffffffffffffffffffffffffffffffffffffffffff ffffffffffffffff
+		"};
+		let input = TestInput::new(&data[..], None);
+		assert_ok!(input.u64_at(1), 127u64);
+		assert_ok!(input.u64_at(2), u64::MAX);
+		assert_ok!(input.u64_at(3), u64::MAX);
 	}
 }
