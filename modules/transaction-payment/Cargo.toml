@@ -30,7 +30,6 @@ orml-tokens = { path = "../../orml/tokens" }
 module-currencies = { path = "../../modules/currencies" }
 module-dex = { path = "../dex" }
 smallvec = "1.4.1"
-env_logger = "0.9.0"
 
 [features]
 default = ["std"]

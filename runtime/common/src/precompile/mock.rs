@@ -45,7 +45,7 @@ use scale_info::TypeInfo;
 use sp_core::{crypto::AccountId32, H160, H256};
 use sp_runtime::{
 	traits::{AccountIdConversion, BlakeTwo256, BlockNumberProvider, Convert, IdentityLookup, One as OneT, Zero},
-	DispatchResult, FixedPointNumber, FixedU128, Perbill,
+	DispatchResult, FixedPointNumber, FixedU128, Perbill, Percent,
 };
 use sp_std::{collections::btree_map::BTreeMap, str::FromStr};
 

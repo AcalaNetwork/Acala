@@ -884,19 +884,18 @@ where
 				ensure!(!supply_balance.is_zero(), Error::<T>::InvalidBalance);
 				T::DEX::swap_with_specific_path(
 					who,
-					&fee_swap_path,
+					fee_swap_path,
 					SwapLimit::ExactSupply(supply_balance, custom_fee_amount),
 				)
-				.and_then(|_| Ok(custom_fee_surplus))
+				.map(|_| custom_fee_surplus)
 			}
 			Some(Call::with_fee_currency { currency_id, .. }) => {
 				// custom use tx fee pool
 				ensure!(
-					!T::MultiCurrency::free_balance(currency_id.clone(), who).is_zero(),
+					!T::MultiCurrency::free_balance(*currency_id, who).is_zero(),
 					Error::<T>::InvalidBalance
 				);
-				Pallet::<T>::swap_from_pool_or_dex(who, custom_fee_amount, currency_id.clone())
-					.and_then(|_| Ok(custom_fee_surplus))
+				Pallet::<T>::swap_from_pool_or_dex(who, custom_fee_amount, *currency_id).map(|_| custom_fee_surplus)
 			}
 			Some(_) | None => Pallet::<T>::native_then_alternative_or_default(who, fee, reason),
 		};
@@ -927,8 +926,8 @@ where
 				let supply_currency_id = *path.first().expect("should match a non native asset");
 				let supply_balance = T::MultiCurrency::free_balance(supply_currency_id, who);
 				if !supply_balance.is_zero() {
-					if let Ok(_) =
-						T::DEX::swap_with_specific_path(who, &path, SwapLimit::ExactTarget(supply_balance, fee_amount))
+					if T::DEX::swap_with_specific_path(who, &path, SwapLimit::ExactTarget(supply_balance, fee_amount))
+						.is_ok()
 					{
 						return Ok(fee_surplus);
 					}
@@ -939,7 +938,7 @@ where
 			for path in T::DefaultFeeSwapPathList::get() {
 				let supply_currency_id = *path.first().expect("should match a non native asset");
 				if !T::MultiCurrency::free_balance(supply_currency_id, who).is_zero() {
-					if let Ok(_) = Self::swap_from_pool_or_dex(who, fee_amount, supply_currency_id) {
+					if Self::swap_from_pool_or_dex(who, fee_amount, supply_currency_id).is_ok() {
 						return Ok(fee_surplus);
 					}
 				}
@@ -952,7 +951,7 @@ where
 			for path in global_fee_swap_path {
 				let supply_currency_id = *path.first().expect("should match a non native asset");
 				if !T::MultiCurrency::free_balance(supply_currency_id, who).is_zero() {
-					if let Ok(_) = Self::swap_from_pool_or_dex(who, fee_amount, supply_currency_id) {
+					if Self::swap_from_pool_or_dex(who, fee_amount, supply_currency_id).is_ok() {
 						return Ok(fee_surplus);
 					}
 				}
@@ -987,7 +986,6 @@ where
 					&trading_path,
 					SwapLimit::ExactSupply(supply_amount, 0),
 				) {
-					// println!("swap {}, {}, {}", supply_amount, swap_native_balance, native_balance);
 					// calculate and update new rate, also update the pool size
 					let swap_exchange_rate = Ratio::saturating_from_rational(supply_amount, swap_native_balance);
 					let new_pool_size = swap_native_balance.saturating_add(native_balance);
