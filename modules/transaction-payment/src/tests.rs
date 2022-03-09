@@ -1625,24 +1625,8 @@ fn remove_global_fee_swap_path_work() {
 		});
 }
 
-// fn with_fee_path_call(fee_swap_path: Vec<CurrencyId>) -> <Runtime as Config>::Call {
-// 	let fee_call: <Runtime as Config>::Call =
-// Call::TransactionPayment(crate::mock::transaction_payment::Call::with_fee_path { 		fee_swap_path,
-// 		call: Box::new(CALL1),
-// 	});
-// 	fee_call
-// }
-//
-// fn with_fee_currency_call(currency_id: CurrencyId) -> <Runtime as Config>::Call {
-// 	let fee_call: <Runtime as Config>::Call =
-// Call::TransactionPayment(crate::mock::transaction_payment::Call::with_fee_currency { 		currency_id,
-// 		call: Box::new(CALL1),
-// 	});
-// 	fee_call
-// }
-
 #[test]
-fn with_fee_path_currency_call_works() {
+fn with_fee_path_currency_call_validation_works() {
 	ExtBuilder::default()
 		.one_hundred_thousand_for_alice_n_charlie()
 		.build()
@@ -1672,6 +1656,7 @@ fn with_fee_path_currency_call_works() {
 				Box::new(CALL1),
 			));
 
+			// call inside with_fee_path is dispatched and executed success
 			assert_eq!(9900, Currencies::free_balance(AUSD, &ALICE));
 			assert_eq!(100, Currencies::free_balance(AUSD, &BOB));
 			System::assert_last_event(mock::Event::TransactionPayment(crate::Event::DispatchEvent {
