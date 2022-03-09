@@ -1164,6 +1164,7 @@ parameter_types! {
 		vec![LDOT, DOT, ACA],
 		vec![RENBTC, AUSD, ACA]
 	];
+	pub DefaultFeeTokens: Vec<CurrencyId> = vec![AUSD, DOT, LDOT, RENBTC];
 	pub const CustomFeeSurplus: Percent = Percent::from_percent(50);
 	pub const AlternativeFeeSurplus: Percent = Percent::from_percent(25);
 }
@@ -1214,6 +1215,7 @@ impl module_transaction_payment::Config for Runtime {
 	type UpdateOrigin = EnsureRootOrHalfGeneralCouncil;
 	type CustomFeeSurplus = CustomFeeSurplus;
 	type AlternativeFeeSurplus = AlternativeFeeSurplus;
+	type DefaultFeeTokens = DefaultFeeTokens;
 }
 
 impl module_evm_accounts::Config for Runtime {

@@ -32,6 +32,7 @@ fn init_charge_fee_pool(currency_id: CurrencyId) -> DispatchResult {
 	TransactionPayment::enable_charge_fee_pool(
 		Origin::root(),
 		currency_id,
+		None,
 		fee_pool_size(),
 		Ratio::saturating_from_rational(35, 100).saturating_mul_int(dollar(NATIVE_CURRENCY)),
 	)
@@ -151,6 +152,7 @@ fn initial_charge_fee_pool_works() {
 				TransactionPayment::enable_charge_fee_pool(
 					Origin::root(),
 					LIQUID_CURRENCY,
+					None,
 					NativeTokenExistentialDeposit::get() - 1,
 					Ratio::saturating_from_rational(35, 100).saturating_mul_int(dollar(NATIVE_CURRENCY))
 				),

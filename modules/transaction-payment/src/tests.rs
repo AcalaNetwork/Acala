@@ -21,7 +21,7 @@
 #![cfg(test)]
 
 use super::*;
-use crate::mock::{AlternativeFeeSurplus, CustomFeeSurplus};
+use crate::mock::{AlternativeFeeSurplus, AusdFeeSwapPath, CustomFeeSurplus, DotFeeSwapPath};
 use frame_support::{
 	assert_noop, assert_ok, parameter_types,
 	weights::{DispatchClass, DispatchInfo, Pays},
@@ -137,13 +137,20 @@ fn enable_dex_and_tx_fee_pool() {
 	));
 
 	// enable tx fee pool
-	for asset in vec![AUSD, DOT] {
-		assert_ok!(Pallet::<Runtime>::initialize_pool(
-			asset,
-			FeePoolSize::get(),
-			crate::mock::LowerSwapThreshold::get()
-		));
-	}
+	assert_ok!(Pallet::<Runtime>::enable_charge_fee_pool(
+		Origin::signed(ALICE),
+		AUSD,
+		AusdFeeSwapPath::get(),
+		FeePoolSize::get(),
+		crate::mock::LowerSwapThreshold::get()
+	));
+	assert_ok!(Pallet::<Runtime>::enable_charge_fee_pool(
+		Origin::signed(ALICE),
+		DOT,
+		DotFeeSwapPath::get(),
+		FeePoolSize::get(),
+		crate::mock::LowerSwapThreshold::get()
+	));
 
 	// validate tx fee pool works
 	vec![AUSD, DOT].iter().for_each(|token| {
@@ -1528,6 +1535,7 @@ fn charge_fee_pool_operation_works() {
 		assert_ok!(Pallet::<Runtime>::enable_charge_fee_pool(
 			Origin::signed(ALICE),
 			AUSD,
+			AusdFeeSwapPath::get(),
 			pool_size,
 			swap_threshold
 		));
@@ -1537,6 +1545,7 @@ fn charge_fee_pool_operation_works() {
 			crate::Event::ChargeFeePoolEnabled {
 				sub_account: sub_account.clone(),
 				currency_id: AUSD,
+				fee_swap_path: AusdFeeSwapPath::get(),
 				exchange_rate: Ratio::saturating_from_rational(2, 10),
 				pool_size,
 				swap_threshold,
@@ -1544,12 +1553,24 @@ fn charge_fee_pool_operation_works() {
 		));
 
 		assert_noop!(
-			Pallet::<Runtime>::enable_charge_fee_pool(Origin::signed(ALICE), AUSD, pool_size, swap_threshold),
+			Pallet::<Runtime>::enable_charge_fee_pool(
+				Origin::signed(ALICE),
+				AUSD,
+				AusdFeeSwapPath::get(),
+				pool_size,
+				swap_threshold
+			),
 			Error::<Runtime>::ChargeFeePoolAlreadyExisted
 		);
 
 		assert_noop!(
-			Pallet::<Runtime>::enable_charge_fee_pool(Origin::signed(ALICE), KSM, pool_size, swap_threshold),
+			Pallet::<Runtime>::enable_charge_fee_pool(
+				Origin::signed(ALICE),
+				KSM,
+				vec![KSM, ACA],
+				pool_size,
+				swap_threshold
+			),
 			Error::<Runtime>::DexNotAvailable
 		);
 		assert_noop!(
@@ -1576,6 +1597,7 @@ fn charge_fee_pool_operation_works() {
 		assert_ok!(Pallet::<Runtime>::enable_charge_fee_pool(
 			Origin::signed(ALICE),
 			AUSD,
+			AusdFeeSwapPath::get(),
 			pool_size,
 			swap_threshold
 		));

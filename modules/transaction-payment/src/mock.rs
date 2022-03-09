@@ -193,6 +193,9 @@ parameter_types! {
 	pub static TipPerWeightStep: u128 = 1;
 	pub MaxTipsOfPriority: u128 = 1000;
 	pub DefaultFeeSwapPathList: Vec<Vec<CurrencyId>> = vec![vec![AUSD, ACA], vec![DOT, AUSD, ACA]];
+	pub DefaultFeeTokens: Vec<CurrencyId> = vec![AUSD, DOT];
+	pub AusdFeeSwapPath: Vec<CurrencyId> = vec![AUSD, ACA];
+	pub DotFeeSwapPath: Vec<CurrencyId> = vec![DOT, AUSD, ACA];
 	pub AlternativeFeeSwapDeposit: Balance = 1000;
 }
 
@@ -274,6 +277,7 @@ impl Config for Runtime {
 	type UpdateOrigin = EnsureSignedBy<ListingOrigin, AccountId>;
 	type CustomFeeSurplus = CustomFeeSurplus;
 	type AlternativeFeeSurplus = AlternativeFeeSurplus;
+	type DefaultFeeTokens = DefaultFeeTokens;
 }
 
 thread_local! {

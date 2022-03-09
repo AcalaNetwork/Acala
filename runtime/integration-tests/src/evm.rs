@@ -866,11 +866,6 @@ fn transaction_payment_module_works_with_evm_contract() {
 				2200 * dollar(NATIVE_CURRENCY)
 			);
 
-			// set_global_fee_swap_path
-			assert_ok!(TransactionPayment::set_global_fee_swap_path(
-				Origin::root(),
-				vec![CurrencyId::Erc20(erc20_address_0()), NATIVE_CURRENCY]
-			));
 			assert_ok!(Currencies::update_balance(
 				Origin::root(),
 				MultiAddress::Id(TreasuryAccount::get()),
@@ -887,6 +882,7 @@ fn transaction_payment_module_works_with_evm_contract() {
 			assert_ok!(TransactionPayment::enable_charge_fee_pool(
 				Origin::root(),
 				CurrencyId::Erc20(erc20_address_0()),
+				vec![CurrencyId::Erc20(erc20_address_0()), NATIVE_CURRENCY],
 				5 * dollar(NATIVE_CURRENCY),
 				Ratio::saturating_from_rational(35, 100).saturating_mul_int(dollar(NATIVE_CURRENCY)),
 			));

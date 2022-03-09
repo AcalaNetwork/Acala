@@ -244,8 +244,8 @@ impl orml_nft::Config for Test {
 
 parameter_types! {
 	pub const TransactionByteFee: Balance = 10;
-	pub const GetStableCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
-	pub DefaultFeeSwapPathList: Vec<Vec<CurrencyId>> = vec![vec![CurrencyId::Token(TokenSymbol::AUSD), CurrencyId::Token(TokenSymbol::ACA)]];
+	pub const GetStableCurrencyId: CurrencyId = AUSD;
+	pub DefaultFeeSwapPathList: Vec<Vec<CurrencyId>> = vec![vec![AUSD, ACA]];
 	pub MaxSwapSlippageCompareToOracle: Ratio = Ratio::one();
 	pub OperationalFeeMultiplier: u64 = 5;
 	pub TipPerWeightStep: Balance = 1;
@@ -255,6 +255,7 @@ parameter_types! {
 	pub KaruraTreasuryAccount: AccountId = TreasuryPalletId::get().into_account();
 	pub const CustomFeeSurplus: Percent = Percent::from_percent(50);
 	pub const AlternativeFeeSurplus: Percent = Percent::from_percent(25);
+	pub DefaultFeeTokens: Vec<CurrencyId> = vec![AUSD];
 }
 
 impl module_transaction_payment::Config for Test {
@@ -282,6 +283,7 @@ impl module_transaction_payment::Config for Test {
 	type UpdateOrigin = EnsureSignedBy<ListingOrigin, AccountId>;
 	type CustomFeeSurplus = CustomFeeSurplus;
 	type AlternativeFeeSurplus = AlternativeFeeSurplus;
+	type DefaultFeeTokens = DefaultFeeTokens;
 }
 pub type ChargeTransactionPayment = module_transaction_payment::ChargeTransactionPayment<Test>;
 

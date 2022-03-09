@@ -149,6 +149,6 @@ impl WeightInfo for () {
 	}
 	fn with_fee_currency() -> Weight {
 		(193_000_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
+			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
 	}
 }
