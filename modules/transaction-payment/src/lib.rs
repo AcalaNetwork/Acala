@@ -31,7 +31,7 @@ use frame_support::{
 	pallet_prelude::*,
 	traits::{
 		Currency, ExistenceRequirement, Imbalance, IsSubType, NamedReservableCurrency, OnUnbalanced, SameOrOther,
-		UnfilteredDispatchable, WithdrawReasons,
+		WithdrawReasons,
 	},
 	transactional,
 	weights::{
@@ -238,7 +238,6 @@ pub mod module {
 			+ Dispatchable<Origin = Self::Origin, PostInfo = PostDispatchInfo, Info = DispatchInfo>
 			+ GetDispatchInfo
 			+ From<frame_system::Call<Self>>
-			+ UnfilteredDispatchable<Origin = Self::Origin>
 			+ IsSubType<Call<Self>>
 			+ IsType<<Self as frame_system::Config>::Call>;
 
@@ -528,8 +527,9 @@ pub mod module {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
+		/// Dapp wrap call, and user pay tx fee as provided trading path. this dispatch call should
+		/// make sure the trading path is valid.
 		#[pallet::weight(0)]
-		#[transactional]
 		pub fn with_fee_path(
 			origin: OriginFor<T>,
 			fee_swap_path: Vec<CurrencyId>,
@@ -550,8 +550,9 @@ pub mod module {
 			Ok(())
 		}
 
+		/// Dapp wrap call, and user pay tx fee as provided currency, this dispatch call should make
+		/// sure the currency is exist in tx fee pool.
 		#[pallet::weight(0)]
-		#[transactional]
 		pub fn with_fee_currency(
 			origin: OriginFor<T>,
 			currency_id: CurrencyId,
