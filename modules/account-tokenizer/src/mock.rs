@@ -33,7 +33,7 @@ use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
-	AccountId32,
+	AccountId32, Permill,
 };
 
 use module_foreign_state_oracle::EnsureForeignStateOracle;
@@ -192,9 +192,10 @@ impl pallet_proxy::Config for Runtime {
 
 parameter_types! {
 	pub const ForeignOraclePalletId: PalletId = PalletId(*b"aca/fsto");
-	pub const QueryDuration: BlockNumber = 10;
+	pub const DefaultQueryDuration: BlockNumber = 10;
 	pub QueryFee: Balance = dollar(1);
 	pub const CancelFee: Balance = 10;
+	pub ExpiredCallPurgeReward: Permill = Permill::from_percent(50);
 }
 
 ord_parameter_types! {
@@ -204,11 +205,12 @@ ord_parameter_types! {
 impl module_foreign_state_oracle::Config for Runtime {
 	type Event = Event;
 	type Origin = Origin;
-	type VerifiableTask = Call;
+	type DispatchableCall = Call;
 	type QueryFee = QueryFee;
 	type CancelFee = CancelFee;
+	type ExpiredCallPurgeReward = ExpiredCallPurgeReward;
 	type OracleOrigin = EnsureSignedBy<Oracle, AccountId>;
-	type QueryDuration = QueryDuration;
+	type DefaultQueryDuration = DefaultQueryDuration;
 	type Currency = Balances;
 	type PalletId = ForeignOraclePalletId;
 	type BlockNumberProvider = System;

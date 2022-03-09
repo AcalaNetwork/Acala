@@ -23,6 +23,7 @@
 use super::*;
 use frame_support::{assert_noop, assert_ok};
 use mock::{Call, Event, Origin, *};
+use sp_runtime::traits::Scale;
 use sp_std::ops::{Add, Sub};
 
 #[test]
@@ -31,23 +32,23 @@ fn dispatch_and_remove_works() {
 		System::set_block_number(1);
 
 		assert_ok!(query_example::Pallet::<Runtime>::example_query_call(ALICE));
-		assert!(ActiveQuery::<Runtime>::get(0).is_some());
+		assert!(QueryRequests::<Runtime>::get(0).is_some());
 		assert_ok!(ForeignStateOracle::cancel_task(&ALICE, 0));
-		assert!(ActiveQuery::<Runtime>::get(0).is_none());
+		assert!(QueryRequests::<Runtime>::get(0).is_none());
 
 		assert_ok!(query_example::Pallet::<Runtime>::example_query_call(ALICE));
 		assert_noop!(
-			ForeignStateOracle::dispatch_task(Origin::signed(1), 0, b"hello".to_vec()),
+			ForeignStateOracle::respond_query_request(Origin::signed(1), 0, b"hello".to_vec()),
 			Error::<Runtime>::NoMatchingCall
 		);
 		// Cannot remove active query
 		assert_noop!(
-			ForeignStateOracle::remove_expired_call(Origin::signed(BOB), 1),
+			ForeignStateOracle::purge_expired_query(Origin::signed(BOB), 1),
 			Error::<Runtime>::QueryNotExpired
 		);
 
 		// Call is sucessfully dispatched with bytes injected into origin
-		assert_ok!(ForeignStateOracle::dispatch_task(
+		assert_ok!(ForeignStateOracle::respond_query_request(
 			Origin::signed(1),
 			1,
 			b"hello".to_vec()
@@ -62,12 +63,12 @@ fn dispatch_and_remove_works() {
 		assert_ok!(query_example::Pallet::<Runtime>::example_query_call(ALICE));
 		System::set_block_number(11);
 		assert_noop!(
-			ForeignStateOracle::dispatch_task(Origin::signed(1), 2, b"hello".to_vec()),
+			ForeignStateOracle::respond_query_request(Origin::signed(1), 2, b"hello".to_vec()),
 			Error::<Runtime>::QueryExpired
 		);
 
 		let bob_before = Balances::free_balance(BOB);
-		assert_ok!(ForeignStateOracle::remove_expired_call(Origin::signed(BOB), 2));
+		assert_ok!(ForeignStateOracle::purge_expired_query(Origin::signed(BOB), 2));
 		assert_eq!(bob_before.add(QueryFee::get().div(2u32)), Balances::free_balance(BOB))
 	});
 }
@@ -78,12 +79,12 @@ fn query_and_cancel_works() {
 		let call = Call::QueryExample(query_example::Call::injected_call {});
 		// Bound can't be smaller than encoded call length
 		assert_noop!(
-			ForeignStateOracle::query_task(&ALICE, 1, call.clone()),
-			Error::<Runtime>::TooLargeVerifiableCall
+			ForeignStateOracle::query_task(&ALICE, 1, call.clone(), None),
+			Error::<Runtime>::TooLargeRelayQueryRequest
 		);
 		// Need native token to query the oracle
 		assert_noop!(
-			ForeignStateOracle::query_task(&BOB, call.using_encoded(|x| x.len()), call.clone()),
+			ForeignStateOracle::query_task(&BOB, call.using_encoded(|x| x.len()), call.clone(), None),
 			pallet_balances::Error::<Runtime>::InsufficientBalance
 		);
 
@@ -91,7 +92,8 @@ fn query_and_cancel_works() {
 		assert_ok!(ForeignStateOracle::query_task(
 			&ALICE,
 			call.using_encoded(|x| x.len()),
-			call.clone()
+			call.clone(),
+			None,
 		));
 		// Takes the query fee
 		assert_eq!(alice_before, Balances::free_balance(ALICE).add(QueryFee::get()));

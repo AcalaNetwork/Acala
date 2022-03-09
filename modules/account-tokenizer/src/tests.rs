@@ -27,7 +27,7 @@ use frame_support::{
 	traits::{tokens::nonfungibles::Inspect, Hooks},
 };
 use hex_literal::hex;
-use orml_traits::CreateExtended;
+use module_support::CreateExtended;
 
 use sp_runtime::{
 	traits::{AccountIdConversion, BadOrigin},
@@ -87,7 +87,7 @@ fn can_send_mint_request() {
 				disambiguation_index: 0,
 			}));
 
-			assert_eq!(ForeignStateOracle::query_index(), 0);
+			assert_eq!(ForeignStateOracle::next_query_id(), 0);
 			assert_ok!(AccountTokenizer::request_mint(
 				Origin::signed(ALICE),
 				proxy.clone(),
@@ -105,9 +105,9 @@ fn can_send_mint_request() {
 			assert_eq!(Balances::reserved_balance(&ALICE), dollar(10));
 			assert_eq!(Balances::free_balance(&TREASURY), dollar(1));
 
-			assert_eq!(ForeignStateOracle::query_index(), 1);
+			assert_eq!(ForeignStateOracle::next_query_id(), 1);
 
-			assert!(ForeignStateOracle::active_query(0).is_some());
+			assert!(ForeignStateOracle::query_requests(0).is_some());
 		});
 }
 
@@ -130,10 +130,14 @@ fn can_mint_account_token_nft() {
 				0,
 				0
 			));
-			assert!(ForeignStateOracle::active_query(0).is_some());
+			assert!(ForeignStateOracle::query_requests(0).is_some());
 
 			// Dispatch the request to accept the mint.
-			assert_ok!(ForeignStateOracle::dispatch_task(Origin::signed(ORACLE), 0, vec![1]));
+			assert_ok!(ForeignStateOracle::respond_query_request(
+				Origin::signed(ORACLE),
+				0,
+				vec![1]
+			));
 
 			assert_eq!(ModuleNFT::owner(&0, &0), Some(ALICE));
 			assert_eq!(AccountTokenizer::minted_account(proxy.clone()), Some(0));
@@ -172,10 +176,14 @@ fn can_handle_bad_oracle_data() {
 
 			// Send a mint request.
 			assert_ok!(AccountTokenizer::request_mint(Origin::signed(ALICE), proxy, 1, 0, 0));
-			assert!(ForeignStateOracle::active_query(0).is_some());
+			assert!(ForeignStateOracle::query_requests(0).is_some());
 
 			// Dispatch the request to accept the burn.
-			assert_ok!(ForeignStateOracle::dispatch_task(Origin::signed(ORACLE), 0, vec![]));
+			assert_ok!(ForeignStateOracle::respond_query_request(
+				Origin::signed(ORACLE),
+				0,
+				vec![]
+			));
 
 			System::assert_last_event(Event::ForeignStateOracle(
 				module_foreign_state_oracle::Event::CallDispatched {
@@ -208,10 +216,14 @@ fn can_reject_mint_request() {
 				0,
 				0
 			));
-			assert!(ForeignStateOracle::active_query(0).is_some());
+			assert!(ForeignStateOracle::query_requests(0).is_some());
 
 			// Dispatch the request to reject the mint.
-			assert_ok!(ForeignStateOracle::dispatch_task(Origin::signed(ORACLE), 0, vec![0]));
+			assert_ok!(ForeignStateOracle::respond_query_request(
+				Origin::signed(ORACLE),
+				0,
+				vec![0]
+			));
 
 			assert_eq!(ModuleNFT::owner(&0, &0), None);
 			assert_eq!(AccountTokenizer::minted_account(proxy), None);
@@ -272,7 +284,11 @@ fn can_burn_account_token_nft() {
 				0,
 				0
 			));
-			assert_ok!(ForeignStateOracle::dispatch_task(Origin::signed(ORACLE), 0, vec![1]));
+			assert_ok!(ForeignStateOracle::respond_query_request(
+				Origin::signed(ORACLE),
+				0,
+				vec![1]
+			));
 
 			assert_eq!(ModuleNFT::owner(&0, &0), Some(ALICE));
 			assert_eq!(AccountTokenizer::minted_account(proxy.clone()), Some(0));
@@ -295,7 +311,11 @@ fn can_burn_account_token_nft() {
 			assert_eq!(AccountTokenizer::minted_account(proxy.clone()), Some(0));
 
 			// Confirm the burn
-			assert_ok!(ForeignStateOracle::dispatch_task(Origin::signed(ORACLE), 1, vec![]));
+			assert_ok!(ForeignStateOracle::respond_query_request(
+				Origin::signed(ORACLE),
+				1,
+				vec![]
+			));
 
 			assert_eq!(ModuleNFT::owner(&0, &0), None);
 			assert_eq!(AccountTokenizer::minted_account(proxy.clone()), None);

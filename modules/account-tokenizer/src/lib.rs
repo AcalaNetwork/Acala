@@ -48,12 +48,12 @@ use frame_support::{
 };
 
 use frame_system::pallet_prelude::*;
-use orml_traits::{arithmetic::Zero, CreateExtended, InspectExtended};
+use orml_traits::{arithmetic::Zero, InspectExtended};
 use sp_io::hashing::blake2_256;
 use sp_runtime::traits::{AccountIdConversion, TrailingZeroInput};
 use sp_std::vec::Vec;
 
-use module_support::{ForeignChainStateQuery, ProxyXcm};
+use module_support::{CreateExtended, ForeignChainStateQuery, ProxyXcm};
 use primitives::{
 	nft::{ClassProperty, Properties},
 	Balance, ReserveIdentifier,
@@ -72,6 +72,8 @@ pub use weights::WeightInfo;
 
 #[frame_support::pallet]
 pub mod module {
+	use frame_support::inherent::BlockT;
+
 	use super::*;
 
 	#[pallet::config]
@@ -120,7 +122,7 @@ pub mod module {
 			+ IsType<<Self as frame_system::Config>::Call>;
 
 		// Used to interface with the Oracle.
-		type ForeignStateQuery: ForeignChainStateQuery<Self::AccountId, <Self as Config>::Call>;
+		type ForeignStateQuery: ForeignChainStateQuery<Self::AccountId, <Self as Config>::Call, Self::BlockNumber>;
 
 		/// Interface used to communicate with the NFT module.
 		type NFTInterface: Inspect<Self::AccountId, ClassId = Self::ClassId, InstanceId = Self::TokenId>
@@ -303,7 +305,7 @@ pub mod module {
 				account: account.clone(),
 			}
 			.into();
-			T::ForeignStateQuery::query_task(&who, call.encoded_size(), call)?;
+			T::ForeignStateQuery::query_task(&who, call.encoded_size(), call, None)?;
 
 			Self::deposit_event(Event::MintRequested { account, who });
 			Ok(())
@@ -369,7 +371,7 @@ pub mod module {
 				new_owner: new_owner.clone(),
 			}
 			.into();
-			T::ForeignStateQuery::query_task(&who, call.encoded_size(), call)?;
+			T::ForeignStateQuery::query_task(&who, call.encoded_size(), call, None)?;
 
 			Self::deposit_event(Event::RedeemRequested {
 				account,

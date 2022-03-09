@@ -20,6 +20,7 @@
 #![allow(clippy::upper_case_acronyms)]
 use codec::{Decode, Encode, FullCodec};
 use frame_support::pallet_prelude::{DispatchClass, Pays, Weight};
+use frame_support::traits::tokens::nonfungibles::Create;
 use primitives::{
 	evm::{CallInfo, EvmAddress},
 	task::TaskResult,
@@ -688,17 +689,39 @@ pub trait ProxyXcm<AccountId> {
 	fn get_transfer_proxy_xcm_fee() -> Balance;
 }
 
-pub trait ForeignChainStateQuery<AccountId, Call> {
+pub trait ForeignChainStateQuery<AccountId, Call, BlockNumber> {
 	/// Call to be validated by foreign state oracle
 	/// params:
 	/// - who: Account that is requesting the query,
 	/// - length_bound: Size of encoded call, needed to bound call size
 	/// - dispatchable_call: Call to be dispatched on the condition of a foreign chain state
-	fn query_task(who: &AccountId, length_bound: usize, dispatchable_call: Call) -> DispatchResult;
+	fn query_task(
+		who: &AccountId,
+		length_bound: usize,
+		dispatchable_call: Call,
+		query_duration: Option<BlockNumber>,
+	) -> DispatchResult;
 
 	/// Cancels query, and refunds account the fee.
 	/// params:
 	/// - who: Account that is canceling the query.
 	/// - index: Index of stored call to be canceled
 	fn cancel_task(who: &AccountId, index: u64) -> DispatchResult;
+}
+
+// Supplement trait to the nonfungibles::Create trait
+pub trait CreateExtended<AccountId, ClassProperties>: Create<AccountId> {
+	/// The balance of account.
+	type Balance: AtLeast32BitUnsigned + FullCodec + Copy + MaybeSerializeDeserialize + Debug + Default;
+
+	// Returns the next class ID to be created.
+	fn next_class_id() -> Self::ClassId;
+	// Sets the property of the given class.
+	fn set_class_properties(class: &Self::ClassId, properties: ClassProperties) -> DispatchResult;
+	// Pays for the fee to mint tokens of a particular class.
+	fn pay_mint_fee(payer: &AccountId, class: &Self::ClassId, quantity: u32) -> DispatchResult;
+	// Gets the base cost of minting one token for a class with default attributes.
+	fn base_mint_fee() -> Self::Balance;
+	// Gets the base cost of creating a new Class with default attributes.
+	fn base_create_class_fee() -> Self::Balance;
 }

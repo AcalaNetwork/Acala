@@ -28,6 +28,7 @@ use frame_support::{
 	RuntimeDebug,
 };
 use frame_system::EnsureSignedBy;
+use module_support::mocks::MockAddressMapping;
 use orml_traits::parameter_type_with_key;
 use primitives::{Amount, Balance, BlockNumber, CurrencyId, ReserveIdentifier, TokenSymbol};
 use sp_core::{crypto::AccountId32, H256};
@@ -35,7 +36,6 @@ use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
 };
-use support::mocks::MockAddressMapping;
 
 parameter_types! {
 	pub const BlockHashCount: u64 = 250;

@@ -37,7 +37,7 @@ fn dummy_anonymous_account(who: &AccountId, height: BlockNumber, ext_index: u32,
 runtime_benchmarks! {
 	{Runtime, module_foreign_state_oracle}
 
-	remove_expired_call{
+	purge_expired_query{
 		let caller: AccountId = whitelisted_caller();
 		let anon_account = dummy_anonymous_account(&caller, 0, 0, 0);
 		set_balance(NATIVE, &caller, 10_000 * dollar(NATIVE));

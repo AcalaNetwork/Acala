@@ -23,8 +23,8 @@ use frame_support::{
 	traits::{tokens::nonfungibles::Inspect, Hooks},
 	weights::Weight,
 };
+use module_support::CreateExtended;
 use module_xcm_interface::XcmInterfaceOperation;
-use orml_traits::CreateExtended;
 use sp_runtime::MultiAddress;
 use xcm_emulator::TestExt;
 
@@ -60,7 +60,7 @@ fn can_mint_account_token() {
 				0,
 				0
 			));
-			assert!(ForeignStateOracle::active_query(0).is_some());
+			assert!(ForeignStateOracle::query_requests(0).is_some());
 			// Deposit is reserved when mint is requested.
 			assert_eq!(
 				Balances::reserved_balance(&alice()),
@@ -75,7 +75,7 @@ fn can_mint_account_token() {
 			);
 
 			// Dispatch the request to accept the mint.
-			assert_ok!(ForeignStateOracle::dispatch_task(
+			assert_ok!(ForeignStateOracle::respond_query_request(
 				OriginCaller::ForeignStateOracleCommittee(pallet_collective::RawOrigin::Members(1, 1)).into(),
 				0,
 				vec![1]
@@ -135,7 +135,7 @@ fn can_reject_mint_request() {
 			));
 
 			// Dispatch the request to reject the mint.
-			assert_ok!(ForeignStateOracle::dispatch_task(
+			assert_ok!(ForeignStateOracle::respond_query_request(
 				OriginCaller::ForeignStateOracleCommittee(pallet_collective::RawOrigin::Members(1, 1)).into(),
 				0,
 				vec![0]
@@ -201,7 +201,7 @@ fn can_burn_account_token_nft() {
 			));
 
 			// Dispatch the request to accept the mint.
-			assert_ok!(ForeignStateOracle::dispatch_task(
+			assert_ok!(ForeignStateOracle::respond_query_request(
 				OriginCaller::ForeignStateOracleCommittee(pallet_collective::RawOrigin::Members(1, 1)).into(),
 				0,
 				vec![1]
@@ -229,7 +229,7 @@ fn can_burn_account_token_nft() {
 			));
 
 			// Dispatch the request to accept the burn.
-			assert_ok!(ForeignStateOracle::dispatch_task(
+			assert_ok!(ForeignStateOracle::respond_query_request(
 				OriginCaller::ForeignStateOracleCommittee(pallet_collective::RawOrigin::Members(1, 1)).into(),
 				1,
 				vec![]
@@ -378,7 +378,7 @@ fn xcm_transfer_proxy_for_burn_works() {
 			0,
 			0
 		));
-		assert_ok!(ForeignStateOracle::dispatch_task(
+		assert_ok!(ForeignStateOracle::respond_query_request(
 			OriginCaller::ForeignStateOracleCommittee(pallet_collective::RawOrigin::Members(1, 1)).into(),
 			0,
 			vec![1]
@@ -393,7 +393,7 @@ fn xcm_transfer_proxy_for_burn_works() {
 			alice_proxy.clone(),
 			bob(),
 		));
-		assert_ok!(ForeignStateOracle::dispatch_task(
+		assert_ok!(ForeignStateOracle::respond_query_request(
 			OriginCaller::ForeignStateOracleCommittee(pallet_collective::RawOrigin::Members(1, 1)).into(),
 			1,
 			vec![]

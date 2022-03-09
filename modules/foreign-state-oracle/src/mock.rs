@@ -26,6 +26,7 @@ use frame_support::{
 	traits::{Everything, IsType},
 };
 use frame_system::EnsureSignedBy;
+use primitives::ReserveIdentifier;
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
@@ -52,7 +53,7 @@ pub mod query_example {
 			+ From<Call<Self>>
 			+ IsType<<Self as frame_system::Config>::Call>;
 
-		type ForeignStateQuery: ForeignChainStateQuery<Self::AccountId, <Self as Config>::Call>;
+		type ForeignStateQuery: ForeignChainStateQuery<Self::AccountId, <Self as Config>::Call, Self::BlockNumber>;
 
 		type OracleOrigin: EnsureOrigin<Self::Origin, Success = Vec<u8>>;
 	}
@@ -77,7 +78,7 @@ pub mod query_example {
 		pub fn example_query_call(who: T::AccountId) -> DispatchResult {
 			let call: <T as Config>::Call = Call::<T>::injected_call {}.into();
 			let len = call.using_encoded(|x| x.len());
-			T::ForeignStateQuery::query_task(&who, len, call)?;
+			T::ForeignStateQuery::query_task(&who, len, call, None)?;
 
 			Ok(())
 		}
@@ -150,19 +151,21 @@ impl query_example::Config for Runtime {
 
 parameter_types! {
 	pub const ForeignOraclePalletId: PalletId = PalletId(*b"aca/fsto");
-	pub const QueryDuration: BlockNumber = 10;
+	pub const DefaultQueryDuration: BlockNumber = 10;
 	pub const QueryFee: Balance = 100;
 	pub const CancelFee: Balance = 10;
+	pub ExpiredCallPurgeReward: Permill = Permill::from_percent(50);
 }
 
 impl Config for Runtime {
 	type Event = Event;
 	type Origin = Origin;
-	type VerifiableTask = Call;
+	type DispatchableCall = Call;
 	type QueryFee = QueryFee;
 	type CancelFee = CancelFee;
+	type ExpiredCallPurgeReward = ExpiredCallPurgeReward;
 	type OracleOrigin = EnsureSignedBy<One, AccountId>;
-	type QueryDuration = QueryDuration;
+	type DefaultQueryDuration = DefaultQueryDuration;
 	type Currency = Balances;
 	type PalletId = ForeignOraclePalletId;
 	type BlockNumberProvider = System;

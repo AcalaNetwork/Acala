@@ -33,7 +33,8 @@ use frame_support::{
 	transactional, PalletId,
 };
 use frame_system::pallet_prelude::*;
-use orml_traits::{CreateExtended, InspectExtended};
+use module_support::CreateExtended;
+use orml_traits::InspectExtended;
 use primitives::{
 	nft::{Attributes, ClassProperty, NFTBalance, Properties, CID},
 	ReserveIdentifier,

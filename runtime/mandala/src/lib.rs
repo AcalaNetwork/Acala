@@ -1362,20 +1362,22 @@ impl module_nominees_election::Config for Runtime {
 }
 
 parameter_types! {
-	pub const QueryDuration: BlockNumber = 10;
+	pub const DefaultQueryDuration: BlockNumber = 10;
 	pub QueryFee: Balance = 10 * cent(ACA);
 	pub CancelFee: Balance = 5 * cent(ACA);
+	pub ExpiredCallPurgeReward: Permill = Permill::from_percent(50);
 }
 
 impl module_foreign_state_oracle::Config for Runtime {
 	type Event = Event;
 	type Origin = Origin;
-	type VerifiableTask = Call;
+	type DispatchableCall = Call;
 	type Currency = Balances;
 	type PalletId = ForeignOraclePalletId;
 	type QueryFee = QueryFee;
 	type CancelFee = CancelFee;
-	type QueryDuration = QueryDuration;
+	type ExpiredCallPurgeReward = ExpiredCallPurgeReward;
+	type DefaultQueryDuration = DefaultQueryDuration;
 	type BlockNumberProvider = System;
 	type OracleOrigin = EnsureAllForeignStateOracle;
 }
