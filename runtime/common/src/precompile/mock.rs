@@ -72,7 +72,7 @@ impl frame_system::Config for Test {
 	type Header = Header;
 	type Event = Event;
 	type BlockHashCount = BlockHashCount;
-	type DbWeight = ();
+	type DbWeight = frame_support::weights::constants::RocksDbWeight;
 	type Version = ();
 	type PalletInfo = PalletInfo;
 	type AccountData = pallet_balances::AccountData<Balance>;

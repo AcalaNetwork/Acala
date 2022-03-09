@@ -27,6 +27,7 @@ cumulus-pallet-parachain-system = { git = "https://github.com/paritytech/cumulus
 orml-oracle = { path = "../../orml/oracle", default-features = false }
 orml-traits = { path = "../../orml/traits", default-features = false }
 
+module-currencies = { path = "../../modules/currencies", default-features = false }
 module-evm = { path = "../../modules/evm", default-features = false }
 module-evm-utility-macro = { path = "../../modules/evm-utility/macro" }
 module-support = { path = "../../modules/support", default-features = false }
@@ -56,7 +57,6 @@ orml-tokens = { path = "../../orml/tokens" }
 orml-nft = { path = "../../orml/nft" }
 orml-currencies = { path = "../../orml/currencies" }
 module-asset-registry = { path = "../../modules/asset-registry" }
-module-currencies = { path = "../../modules/currencies" }
 module-evm-bridge = { path = "../../modules/evm-bridge" }
 module-evm-accounts = { path = "../../modules/evm-accounts" }
 
@@ -91,6 +91,7 @@ std = [
 	"module-transaction-payment/std",
 	"module-nft/std",
 	"module-dex/std",
+	"module-currencies/std",
 
 	"xcm/std",
 	"xcm-executor/std",

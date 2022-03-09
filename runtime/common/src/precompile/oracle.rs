@@ -16,14 +16,16 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use frame_support::{log, sp_runtime::FixedPointNumber};
+use crate::WeightToGas;
+use frame_support::{log, sp_runtime::FixedPointNumber, traits::Get};
 use module_evm::{
 	precompiles::Precompile,
-	runner::state::{PrecompileOutput, PrecompileResult},
-	Context, ExitSucceed,
+	runner::state::{PrecompileFailure, PrecompileOutput, PrecompileResult},
+	Context, ExitError, ExitSucceed,
 };
 use num_enum::{IntoPrimitive, TryFromPrimitive};
-use sp_runtime::RuntimeDebug;
+use primitives::CurrencyId;
+use sp_runtime::{traits::Convert, RuntimeDebug};
 use sp_std::{marker::PhantomData, prelude::*};
 
 use super::input::{Input, InputT, Output};
@@ -49,8 +51,20 @@ impl<Runtime> Precompile for OraclePrecompile<Runtime>
 where
 	Runtime: module_evm::Config + module_prices::Config,
 {
-	fn execute(input: &[u8], _target_gas: Option<u64>, _context: &Context, _is_static: bool) -> PrecompileResult {
-		let input = Input::<Action, Runtime::AccountId, Runtime::AddressMapping, Runtime::Erc20InfoMapping>::new(input);
+	fn execute(input: &[u8], target_gas: Option<u64>, _context: &Context, _is_static: bool) -> PrecompileResult {
+		let input = Input::<Action, Runtime::AccountId, Runtime::AddressMapping, Runtime::Erc20InfoMapping>::new(
+			input, target_gas,
+		);
+
+		let gas_cost = Pricer::<Runtime>::cost(&input)?;
+
+		if let Some(gas_limit) = target_gas {
+			if gas_limit < gas_cost {
+				return Err(PrecompileFailure::Error {
+					exit_status: ExitError::OutOfGas,
+				});
+			}
+		}
 
 		let action = input.action()?;
 
@@ -87,11 +101,38 @@ where
 				log::debug!(target: "evm", "oracle: getPrice currency_id: {:?}, price: {:?}, adjustment_multiplier: {:?}, output: {:?}", currency_id, price, adjustment_multiplier, output);
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: 0,
+					cost: gas_cost,
 					output: Output::default().encode_u128(output),
 					logs: Default::default(),
 				})
 			}
 		}
+	}
+}
+
+pub struct Pricer<R>(PhantomData<R>);
+
+impl<Runtime> Pricer<Runtime>
+where
+	Runtime: module_evm::Config + module_prices::Config,
+{
+	pub const BASE_COST: u64 = 200;
+
+	fn cost(
+		input: &Input<Action, Runtime::AccountId, Runtime::AddressMapping, Runtime::Erc20InfoMapping>,
+	) -> Result<u64, PrecompileFailure> {
+		let action = input.action()?;
+
+		let cost = match action {
+			Action::GetPrice => {
+				let currency_id = input.currency_id_at(1)?;
+				let weight = match currency_id {
+					CurrencyId::DexShare(_, _) => <Runtime as frame_system::Config>::DbWeight::get().reads_writes(3, 1),
+					_ => <Runtime as frame_system::Config>::DbWeight::get().reads(1),
+				};
+				WeightToGas::convert(weight)
+			}
+		};
+		Ok(Self::BASE_COST.saturating_add(cost))
 	}
 }

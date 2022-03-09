@@ -19,19 +19,24 @@
 #![allow(clippy::erasing_op)]
 #![cfg(test)]
 use super::*;
-use crate::precompile::{
-	mock::{
-		aca_evm_address, alice, alice_evm_addr, ausd_evm_address, bob, bob_evm_addr, erc20_address_not_exists,
-		get_task_id, lp_aca_ausd_evm_address, new_test_ext, renbtc_evm_address, run_to_block, Balances, DexModule,
-		EVMModule, Event as TestEvent, Oracle, Origin, PrecompilesValue, Price, System, Test, ALICE, AUSD,
-		INITIAL_BALANCE, RENBTC,
+use crate::{
+	precompile::{
+		mock::{
+			aca_evm_address, alice, alice_evm_addr, ausd_evm_address, bob, bob_evm_addr, erc20_address_not_exists,
+			get_task_id, lp_aca_ausd_evm_address, new_test_ext, renbtc_evm_address, run_to_block, Balances, DexModule,
+			EVMModule, Event as TestEvent, Oracle, Origin, PrecompilesValue, Price, System, Test, ALICE, AUSD,
+			INITIAL_BALANCE, RENBTC,
+		},
+		schedule::TaskInfo,
 	},
-	schedule::TaskInfo,
+	WeightToGas,
 };
 use codec::Encode;
 use frame_support::{assert_noop, assert_ok};
 use hex_literal::hex;
-use module_evm::{Context, ExitError, ExitReason, ExitRevert, ExitSucceed, Runner};
+use module_currencies::WeightInfo;
+use module_dex::WeightInfo as DexWeight;
+use module_evm::{Context, ExitError, ExitReason, ExitRevert, ExitSucceed, Runner, WeightInfo as EvmWeight};
 use module_support::AddressMapping;
 use orml_traits::DataFeeder;
 use primitives::{
@@ -39,7 +44,7 @@ use primitives::{
 	Balance,
 };
 use sp_core::{bytes::from_hex, H160, U256};
-use sp_runtime::FixedPointNumber;
+use sp_runtime::{traits::Convert, FixedPointNumber};
 use std::str::FromStr;
 
 type MultiCurrencyPrecompile = crate::MultiCurrencyPrecompile<Test>;
@@ -61,11 +66,11 @@ fn precompile_filter_works_on_acala_precompiles() {
 		apparent_value: 0.into(),
 	};
 	assert_eq!(
-		PrecompilesValue::get().execute(precompile, &[0u8; 1], None, &non_system_caller_context, false),
+		PrecompilesValue::get().execute(precompile, &[0u8; 1], Some(10), &non_system_caller_context, false),
 		Some(Err(PrecompileFailure::Revert {
 			exit_status: ExitRevert::Reverted,
 			output: "NoPermission".into(),
-			cost: 0,
+			cost: 10,
 		})),
 	);
 }
@@ -119,11 +124,11 @@ fn multicurrency_precompile_should_work() {
 		// action
 		input[0..4].copy_from_slice(&Into::<u32>::into(multicurrency::Action::QuerySymbol).to_be_bytes());
 		assert_noop!(
-			MultiCurrencyPrecompile::execute(&input, None, &context, false),
+			MultiCurrencyPrecompile::execute(&input, Some(10), &context, false),
 			PrecompileFailure::Revert {
 				exit_status: ExitRevert::Reverted,
 				output: "invalid currency id".into(),
-				cost: 0,
+				cost: 10,
 			}
 		);
 
@@ -143,7 +148,7 @@ fn multicurrency_precompile_should_work() {
 		expected_output[63] = 5;
 		expected_output[64..64 + 5].copy_from_slice(&b"Acala"[..]);
 		assert_eq!(resp.output, expected_output);
-		assert_eq!(resp.cost, 0);
+		assert_eq!(resp.cost, multicurrency::Pricer::<Test>::BASE_COST * 2);
 
 		// DexShare
 		context.caller = lp_aca_ausd_evm_address();
@@ -156,7 +161,7 @@ fn multicurrency_precompile_should_work() {
 		expected_output[63] = 23;
 		expected_output[64..64 + 23].copy_from_slice(&b"LP Acala - Acala Dollar"[..]);
 		assert_eq!(resp.output, expected_output);
-		assert_eq!(resp.cost, 0);
+		assert_eq!(resp.cost, multicurrency::Pricer::<Test>::BASE_COST * 3);
 
 		// 2.QuerySymbol
 		let mut input = [0u8; 4];
@@ -174,7 +179,7 @@ fn multicurrency_precompile_should_work() {
 		expected_output[63] = 3;
 		expected_output[64..64 + 3].copy_from_slice(&b"ACA"[..]);
 		assert_eq!(resp.output, expected_output);
-		assert_eq!(resp.cost, 0);
+		assert_eq!(resp.cost, multicurrency::Pricer::<Test>::BASE_COST * 2);
 
 		// DexShare
 		context.caller = lp_aca_ausd_evm_address();
@@ -187,7 +192,7 @@ fn multicurrency_precompile_should_work() {
 		expected_output[63] = 11;
 		expected_output[64..64 + 11].copy_from_slice(&b"LP_ACA_AUSD"[..]);
 		assert_eq!(resp.output, expected_output);
-		assert_eq!(resp.cost, 0);
+		assert_eq!(resp.cost, multicurrency::Pricer::<Test>::BASE_COST * 3);
 
 		// 3.QueryDecimals
 		let mut input = [0u8; 4];
@@ -201,7 +206,7 @@ fn multicurrency_precompile_should_work() {
 		let mut expected_output = [0u8; 32];
 		expected_output[31] = 12;
 		assert_eq!(resp.output, expected_output);
-		assert_eq!(resp.cost, 0);
+		assert_eq!(resp.cost, multicurrency::Pricer::<Test>::BASE_COST * 2);
 
 		// DexShare
 		context.caller = lp_aca_ausd_evm_address();
@@ -210,7 +215,7 @@ fn multicurrency_precompile_should_work() {
 		let mut expected_output = [0u8; 32];
 		expected_output[31] = 12;
 		assert_eq!(resp.output, expected_output);
-		assert_eq!(resp.cost, 0);
+		assert_eq!(resp.cost, multicurrency::Pricer::<Test>::BASE_COST * 3);
 
 		// 4.QueryTotalIssuance
 		let mut input = [0u8; 4];
@@ -224,7 +229,7 @@ fn multicurrency_precompile_should_work() {
 		let mut expected_output = [0u8; 32];
 		expected_output[28..32].copy_from_slice(&1_000_000_000u32.to_be_bytes()[..]);
 		assert_eq!(resp.output, expected_output);
-		assert_eq!(resp.cost, 0);
+		assert_eq!(resp.cost, multicurrency::Pricer::<Test>::BASE_COST * 2);
 
 		// DexShare
 		context.caller = lp_aca_ausd_evm_address();
@@ -232,7 +237,7 @@ fn multicurrency_precompile_should_work() {
 		assert_eq!(resp.exit_status, ExitSucceed::Returned);
 		let expected_output = [0u8; 32];
 		assert_eq!(resp.output, expected_output);
-		assert_eq!(resp.cost, 0);
+		assert_eq!(resp.cost, multicurrency::Pricer::<Test>::BASE_COST * 3);
 
 		// 5.QueryBalance
 		let mut input = [0u8; 36];
@@ -248,7 +253,7 @@ fn multicurrency_precompile_should_work() {
 		let mut expected_output = [0u8; 32];
 		expected_output[16..32].copy_from_slice(&INITIAL_BALANCE.to_be_bytes()[..]);
 		assert_eq!(resp.output, expected_output);
-		assert_eq!(resp.cost, 0);
+		assert_eq!(resp.cost, multicurrency::Pricer::<Test>::BASE_COST * 2);
 
 		// DexShare
 		context.caller = lp_aca_ausd_evm_address();
@@ -256,7 +261,7 @@ fn multicurrency_precompile_should_work() {
 		assert_eq!(resp.exit_status, ExitSucceed::Returned);
 		let expected_output = [0u8; 32];
 		assert_eq!(resp.output, expected_output);
-		assert_eq!(resp.cost, 0);
+		assert_eq!(resp.cost, multicurrency::Pricer::<Test>::BASE_COST * 3);
 
 		// 6.Transfer
 		let mut input = [0u8; 4 + 3 * 32];
@@ -277,18 +282,22 @@ fn multicurrency_precompile_should_work() {
 		assert_eq!(resp.exit_status, ExitSucceed::Returned);
 		let expected_output: Vec<u8> = vec![];
 		assert_eq!(resp.output, expected_output);
-		assert_eq!(resp.cost, 0);
+		assert_eq!(
+			resp.cost,
+			multicurrency::Pricer::<Test>::BASE_COST
+				+ WeightToGas::convert(<Test as module_currencies::Config>::WeightInfo::transfer_native_currency())
+		);
 		assert_eq!(Balances::free_balance(alice()), from_balance - 1);
 		assert_eq!(Balances::free_balance(bob()), to_balance + 1);
 
 		// DexShare
 		context.caller = lp_aca_ausd_evm_address();
 		assert_noop!(
-			MultiCurrencyPrecompile::execute(&input, None, &context, false),
+			MultiCurrencyPrecompile::execute(&input, Some(100_000), &context, false),
 			PrecompileFailure::Revert {
 				exit_status: ExitRevert::Reverted,
 				output: "BalanceTooLow".into(),
-				cost: 0,
+				cost: 100_000,
 			}
 		);
 	});
@@ -316,7 +325,11 @@ fn oracle_precompile_should_work() {
 		let resp = OraclePrecompile::execute(&input, None, &context, false).unwrap();
 		assert_eq!(resp.exit_status, ExitSucceed::Returned);
 		assert_eq!(resp.output, [0u8; 32]);
-		assert_eq!(resp.cost, 0);
+		assert_eq!(
+			resp.cost,
+			WeightToGas::convert(<Test as frame_system::Config>::DbWeight::get().reads(1))
+				+ oracle::Pricer::<Test>::BASE_COST
+		);
 
 		assert_ok!(Oracle::feed_value(ALICE, RENBTC, price));
 		assert_eq!(
@@ -334,7 +347,11 @@ fn oracle_precompile_should_work() {
 		let resp = OraclePrecompile::execute(&input, None, &context, false).unwrap();
 		assert_eq!(resp.exit_status, ExitSucceed::Returned);
 		assert_eq!(resp.output, expected_output);
-		assert_eq!(resp.cost, 0);
+		assert_eq!(
+			resp.cost,
+			WeightToGas::convert(<Test as frame_system::Config>::DbWeight::get().reads(1))
+				+ oracle::Pricer::<Test>::BASE_COST
+		);
 	});
 }
 
@@ -344,7 +361,7 @@ fn oracle_precompile_should_handle_invalid_input() {
 		assert_noop!(
 			OraclePrecompile::execute(
 				&[0u8; 0],
-				None,
+				Some(10),
 				&Context {
 					address: Default::default(),
 					caller: alice_evm_addr(),
@@ -355,14 +372,14 @@ fn oracle_precompile_should_handle_invalid_input() {
 			PrecompileFailure::Revert {
 				exit_status: ExitRevert::Reverted,
 				output: "invalid input".into(),
-				cost: 0,
+				cost: 10,
 			}
 		);
 
 		assert_noop!(
 			OraclePrecompile::execute(
 				&[0u8; 3],
-				None,
+				Some(10),
 				&Context {
 					address: Default::default(),
 					caller: alice_evm_addr(),
@@ -373,14 +390,14 @@ fn oracle_precompile_should_handle_invalid_input() {
 			PrecompileFailure::Revert {
 				exit_status: ExitRevert::Reverted,
 				output: "invalid input".into(),
-				cost: 0,
+				cost: 10,
 			}
 		);
 
 		assert_noop!(
 			OraclePrecompile::execute(
 				&[1u8; 32],
-				None,
+				Some(10),
 				&Context {
 					address: Default::default(),
 					caller: alice_evm_addr(),
@@ -391,7 +408,7 @@ fn oracle_precompile_should_handle_invalid_input() {
 			PrecompileFailure::Revert {
 				exit_status: ExitRevert::Reverted,
 				output: "invalid action".into(),
-				cost: 0,
+				cost: 10,
 			}
 		);
 	});
@@ -508,7 +525,7 @@ fn schedule_precompile_should_work() {
 		run_to_block(5);
 		#[cfg(not(feature = "with-ethereum-compatibility"))]
 		{
-			assert_eq!(Balances::free_balance(from_account.clone()), 999999973153);
+			assert_eq!(Balances::free_balance(from_account.clone()), 999999934488);
 			assert_eq!(Balances::reserved_balance(from_account), 0);
 			assert_eq!(Balances::free_balance(to_account), 1000000001000);
 		}
@@ -585,11 +602,11 @@ fn schedule_precompile_should_handle_invalid_input() {
 		cancel_input[4 + 3 * 32..4 + 3 * 32 + task_id.len()].copy_from_slice(&task_id[..]);
 
 		assert_eq!(
-			SchedulePrecompile::execute(&cancel_input, None, &context, false),
+			SchedulePrecompile::execute(&cancel_input, Some(10_000), &context, false),
 			Err(PrecompileFailure::Revert {
 				exit_status: ExitRevert::Reverted,
 				output: "NoPermission".into(),
-				cost: 0,
+				cost: 10_000,
 			})
 		);
 
@@ -644,10 +661,13 @@ fn dex_precompile_get_liquidity_should_work() {
 		U256::from(1_000).to_big_endian(&mut expected_output[..32]);
 		U256::from(1_000_000).to_big_endian(&mut expected_output[32..64]);
 
-		let resp = DEXPrecompile::execute(&input, None, &context, false).unwrap();
+		let resp = DEXPrecompile::execute(&input, Some(10_000), &context, false).unwrap();
 		assert_eq!(resp.exit_status, ExitSucceed::Returned);
 		assert_eq!(resp.output, expected_output);
-		assert_eq!(resp.cost, 0);
+		assert_eq!(
+			resp.cost,
+			WeightToGas::convert(25_000_000 /* 1 read */) + dex::Pricer::<Test>::BASE_COST
+		);
 	});
 }
 
@@ -689,7 +709,10 @@ fn dex_precompile_get_liquidity_token_address_should_work() {
 		let resp = DEXPrecompile::execute(&input, None, &context, false).unwrap();
 		assert_eq!(resp.exit_status, ExitSucceed::Returned);
 		assert_eq!(resp.output, expected_output);
-		assert_eq!(resp.cost, 0);
+		assert_eq!(
+			resp.cost,
+			WeightToGas::convert(75_000_000 /* 3 reads */) + dex::Pricer::<Test>::BASE_COST
+		);
 
 		// unkonwn token
 		let mut id = [0u8; 32];
@@ -697,11 +720,11 @@ fn dex_precompile_get_liquidity_token_address_should_work() {
 		id[31] = u8::MAX; // not exists
 		U256::from_big_endian(&id.to_vec()).to_big_endian(&mut input[4 + 1 * 32..4 + 2 * 32]);
 		assert_noop!(
-			DEXPrecompile::execute(&input, None, &context, false),
+			DEXPrecompile::execute(&input, Some(10_000), &context, false),
 			PrecompileFailure::Revert {
 				exit_status: ExitRevert::Reverted,
 				output: "invalid currency id".into(),
-				cost: 0,
+				cost: 10000,
 			}
 		);
 	});
@@ -750,7 +773,10 @@ fn dex_precompile_get_swap_target_amount_should_work() {
 		let resp = DEXPrecompile::execute(&input, None, &context, false).unwrap();
 		assert_eq!(resp.exit_status, ExitSucceed::Returned);
 		assert_eq!(resp.output, expected_output);
-		assert_eq!(resp.cost, 0);
+		assert_eq!(
+			resp.cost,
+			WeightToGas::convert(50_000_000 /* 2 reads */) + dex::Pricer::<Test>::BASE_COST
+		);
 	});
 }
 
@@ -797,7 +823,10 @@ fn dex_precompile_get_swap_supply_amount_should_work() {
 		let resp = DEXPrecompile::execute(&input, None, &context, false).unwrap();
 		assert_eq!(resp.exit_status, ExitSucceed::Returned);
 		assert_eq!(resp.output, expected_output);
-		assert_eq!(resp.cost, 0);
+		assert_eq!(
+			resp.cost,
+			WeightToGas::convert(50_000_000 /* 2 reads */) + dex::Pricer::<Test>::BASE_COST
+		);
 	});
 }
 
@@ -848,7 +877,11 @@ fn dex_precompile_swap_with_exact_supply_should_work() {
 		let resp = DEXPrecompile::execute(&input, None, &context, false).unwrap();
 		assert_eq!(resp.exit_status, ExitSucceed::Returned);
 		assert_eq!(resp.output, expected_output);
-		assert_eq!(resp.cost, 0);
+		assert_eq!(
+			resp.cost,
+			WeightToGas::convert(<Test as module_dex::Config>::WeightInfo::swap_with_exact_supply(2))
+				+ dex::Pricer::<Test>::BASE_COST
+		);
 	});
 }
 
@@ -899,7 +932,11 @@ fn dex_precompile_swap_with_exact_target_should_work() {
 		let resp = DEXPrecompile::execute(&input, None, &context, false).unwrap();
 		assert_eq!(resp.exit_status, ExitSucceed::Returned);
 		assert_eq!(resp.output, expected_output);
-		assert_eq!(resp.cost, 0);
+		assert_eq!(
+			resp.cost,
+			WeightToGas::convert(<Test as module_dex::Config>::WeightInfo::swap_with_exact_target(2))
+				+ dex::Pricer::<Test>::BASE_COST
+		);
 	});
 }
 
@@ -912,6 +949,8 @@ fn developer_status_precompile_works() {
 			apparent_value: Default::default(),
 		};
 
+		const BASE_COST: u64 = evm::Pricer::<Test>::BASE_COST;
+
 		// action + who
 		let mut input = [0u8; 36];
 
@@ -920,9 +959,10 @@ fn developer_status_precompile_works() {
 
 		// expect output is false as alice has not put a deposit down
 		let expected_output = [0u8; 32];
-		let res = EVMPrecompile::execute(&input, None, &context, false).unwrap();
+		let res = EVMPrecompile::execute(&input, Some(10_000), &context, false).unwrap();
 		assert_eq!(res.exit_status, ExitSucceed::Returned);
 		assert_eq!(res.output, expected_output);
+		assert_eq!(res.cost, WeightToGas::convert(25_000_000 /* 1 read */) + BASE_COST);
 
 		// enable account for developer mode
 		input[0..4].copy_from_slice(&Into::<u32>::into(evm::Action::EnableDeveloperAccount).to_be_bytes());
@@ -930,6 +970,10 @@ fn developer_status_precompile_works() {
 
 		let res = EVMPrecompile::execute(&input, None, &context, false).unwrap();
 		assert_eq!(res.exit_status, ExitSucceed::Returned);
+		assert_eq!(
+			res.cost,
+			WeightToGas::convert(<Test as module_evm::Config>::WeightInfo::enable_contract_development()) + BASE_COST
+		);
 
 		// query developer status again but this time it is enabled
 		input[0..4].copy_from_slice(&Into::<u32>::into(evm::Action::QueryDeveloperStatus).to_be_bytes());

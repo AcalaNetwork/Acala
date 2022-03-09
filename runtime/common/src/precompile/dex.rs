@@ -17,16 +17,18 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use super::input::{Input, InputT, Output};
-use frame_support::log;
+use crate::WeightToGas;
+use frame_support::{log, traits::Get};
+use module_dex::WeightInfo;
 use module_evm::{
 	precompiles::Precompile,
 	runner::state::{PrecompileFailure, PrecompileOutput, PrecompileResult},
-	Context, ExitRevert, ExitSucceed,
+	Context, ExitError, ExitRevert, ExitSucceed,
 };
 use module_support::{DEXManager, SwapLimit};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use primitives::{Balance, CurrencyId};
-use sp_runtime::RuntimeDebug;
+use sp_runtime::{traits::Convert, RuntimeDebug};
 use sp_std::{marker::PhantomData, prelude::*};
 
 /// The `DEX` impl precompile.
@@ -56,11 +58,26 @@ pub enum Action {
 
 impl<Runtime> Precompile for DEXPrecompile<Runtime>
 where
-	Runtime: module_evm::Config + module_prices::Config,
+	Runtime: module_evm::Config + module_dex::Config + module_prices::Config,
 	module_dex::Pallet<Runtime>: DEXManager<Runtime::AccountId, CurrencyId, Balance>,
 {
-	fn execute(input: &[u8], _target_gas: Option<u64>, _context: &Context, _is_static: bool) -> PrecompileResult {
-		let input = Input::<Action, Runtime::AccountId, Runtime::AddressMapping, Runtime::Erc20InfoMapping>::new(input);
+	fn execute(input: &[u8], target_gas: Option<u64>, _context: &Context, _is_static: bool) -> PrecompileResult {
+		let input = Input::<
+			Action,
+			Runtime::AccountId,
+			Runtime::AddressMapping,
+			<Runtime as module_dex::Config>::Erc20InfoMapping,
+		>::new(input, target_gas);
+
+		let gas_cost = Pricer::<Runtime>::cost(&input)?;
+
+		if let Some(gas_limit) = target_gas {
+			if gas_limit < gas_cost {
+				return Err(PrecompileFailure::Error {
+					exit_status: ExitError::OutOfGas,
+				});
+			}
+		}
 
 		let action = input.action()?;
 
@@ -82,7 +99,7 @@ where
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: 0,
+					cost: gas_cost,
 					output: Output::default().encode_u128_tuple(balance_a, balance_b),
 					logs: Default::default(),
 				})
@@ -101,12 +118,12 @@ where
 								PrecompileFailure::Revert {
 									exit_status: ExitRevert::Reverted,
 									output: "Dex get_liquidity_token_address failed".into(),
-									cost: 0,
+									cost: target_gas.unwrap_or_default(),
 								})?;
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: 0,
+					cost: gas_cost,
 					output: Output::default().encode_address(&value),
 					logs: Default::default(),
 				})
@@ -131,12 +148,12 @@ where
 								PrecompileFailure::Revert {
 									exit_status: ExitRevert::Reverted,
 									output: "Dex get_swap_target_amount failed".into(),
-									cost: 0,
+									cost: target_gas.unwrap_or_default(),
 								})?;
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: 0,
+					cost: gas_cost,
 					output: Output::default().encode_u128(value),
 					logs: Default::default(),
 				})
@@ -161,12 +178,12 @@ where
 								PrecompileFailure::Revert {
 									exit_status: ExitRevert::Reverted,
 									output: "Dex get_swap_supply_amount failed".into(),
-									cost: 0,
+									cost: target_gas.unwrap_or_default(),
 								})?;
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: 0,
+					cost: gas_cost,
 					output: Output::default().encode_u128(value),
 					logs: Default::default(),
 				})
@@ -193,12 +210,12 @@ where
 							 PrecompileFailure::Revert {
 								 exit_status: ExitRevert::Reverted,
 								 output: Into::<&str>::into(e).as_bytes().to_vec(),
-								 cost: 0,
+								 cost: target_gas.unwrap_or_default(),
 							 })?;
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: 0,
+					cost: gas_cost,
 					output: Output::default().encode_u128(value),
 					logs: Default::default(),
 				})
@@ -225,12 +242,12 @@ where
 							 PrecompileFailure::Revert {
 								 exit_status: ExitRevert::Reverted,
 								 output: Into::<&str>::into(e).as_bytes().to_vec(),
-								 cost: 0,
+								 cost: target_gas.unwrap_or_default(),
 							 })?;
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: 0,
+					cost: gas_cost,
 					output: Output::default().encode_u128(value),
 					logs: Default::default(),
 				})
@@ -261,12 +278,12 @@ where
 				.map_err(|e| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: Into::<&str>::into(e).as_bytes().to_vec(),
-					cost: 0,
+					cost: target_gas.unwrap_or_default(),
 				})?;
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: 0,
+					cost: gas_cost,
 					output: vec![],
 					logs: Default::default(),
 				})
@@ -297,16 +314,87 @@ where
 				.map_err(|e| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: Into::<&str>::into(e).as_bytes().to_vec(),
-					cost: 0,
+					cost: target_gas.unwrap_or_default(),
 				})?;
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: 0,
+					cost: gas_cost,
 					output: vec![],
 					logs: Default::default(),
 				})
 			}
 		}
+	}
+}
+
+pub struct Pricer<R>(PhantomData<R>);
+
+impl<Runtime> Pricer<Runtime>
+where
+	Runtime: module_evm::Config + module_dex::Config,
+{
+	pub const BASE_COST: u64 = 200;
+
+	fn cost(
+		input: &Input<
+			Action,
+			Runtime::AccountId,
+			Runtime::AddressMapping,
+			<Runtime as module_dex::Config>::Erc20InfoMapping,
+		>,
+	) -> Result<u64, PrecompileFailure> {
+		let action = input.action()?;
+
+		let cost: u64 = match action {
+			Action::GetLiquidityPool => {
+				// DEX::LiquidityPool (r: 1)
+				let weight = <Runtime as frame_system::Config>::DbWeight::get().reads(1);
+				WeightToGas::convert(weight)
+			}
+			Action::GetLiquidityTokenAddress => {
+				// DEX::TradingPairStatuses (r: 1)
+				// AssetRegistry::AssetMetadatas (r: 2)
+				let weight = <Runtime as frame_system::Config>::DbWeight::get().reads(3);
+				WeightToGas::convert(weight)
+			}
+			Action::GetSwapTargetAmount => {
+				let path_len = input.u32_at(3)?;
+
+				// DEX::TradingPairStatuses (r: 1 * (path_len - 1))
+				// DEX::LiquidityPool (r: 1 * (path_len - 1))
+				let weight = <Runtime as frame_system::Config>::DbWeight::get()
+					.reads(path_len.saturating_sub(1).saturating_mul(2).into());
+				WeightToGas::convert(weight)
+			}
+			Action::GetSwapSupplyAmount => {
+				let path_len = input.u32_at(3)?;
+
+				// DEX::TradingPairStatuses (r: 1 * (path_len - 1))
+				// DEX::LiquidityPool (r: 1 * (path_len - 1))
+				let weight = <Runtime as frame_system::Config>::DbWeight::get()
+					.reads(path_len.saturating_sub(1).saturating_mul(2).into());
+				WeightToGas::convert(weight)
+			}
+			Action::SwapWithExactSupply => {
+				let path_len = input.u32_at(5)?;
+				let weight = <Runtime as module_dex::Config>::WeightInfo::swap_with_exact_supply(path_len);
+				WeightToGas::convert(weight)
+			}
+			Action::SwapWithExactTarget => {
+				let path_len = input.u32_at(5)?;
+				let weight = <Runtime as module_dex::Config>::WeightInfo::swap_with_exact_target(path_len);
+				WeightToGas::convert(weight)
+			}
+			Action::AddLiquidity => {
+				let weight = <Runtime as module_dex::Config>::WeightInfo::add_liquidity();
+				WeightToGas::convert(weight)
+			}
+			Action::RemoveLiquidity => {
+				let weight = <Runtime as module_dex::Config>::WeightInfo::remove_liquidity();
+				WeightToGas::convert(weight)
+			}
+		};
+		Ok(Self::BASE_COST.saturating_add(cost))
 	}
 }

@@ -108,6 +108,14 @@ impl Convert<u64, Weight> for GasToWeight {
 	}
 }
 
+/// Convert weight to gas
+pub struct WeightToGas;
+impl Convert<Weight, u64> for WeightToGas {
+	fn convert(weight: Weight) -> u64 {
+		weight.saturating_div(gas_to_weight_ratio::RATIO)
+	}
+}
+
 // TODO: somehow estimate this value. Start from a conservative value.
 pub const AVERAGE_ON_INITIALIZE_RATIO: Perbill = Perbill::from_percent(10);
 /// The ratio that `Normal` extrinsics should occupy. Start from a conservative value.

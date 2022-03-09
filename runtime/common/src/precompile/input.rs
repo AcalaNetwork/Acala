@@ -57,14 +57,16 @@ pub trait InputT {
 
 pub struct Input<'a, Action, AccountId, AddressMapping, Erc20InfoMapping> {
 	content: &'a [u8],
+	target_gas: Option<u64>,
 	_marker: PhantomData<(Action, AccountId, AddressMapping, Erc20InfoMapping)>,
 }
 impl<'a, Action, AccountId, AddressMapping, Erc20InfoMapping>
 	Input<'a, Action, AccountId, AddressMapping, Erc20InfoMapping>
 {
-	pub fn new(content: &'a [u8]) -> Self {
+	pub fn new(content: &'a [u8], target_gas: Option<u64>) -> Self {
 		Self {
 			content,
+			target_gas,
 			_marker: PhantomData,
 		}
 	}
@@ -98,7 +100,7 @@ where
 			PrecompileFailure::Revert {
 				exit_status: ExitRevert::Reverted,
 				output: "invalid input".into(),
-				cost: 0,
+				cost: self.target_gas.unwrap_or_default(),
 			}
 		);
 
@@ -110,13 +112,13 @@ where
 		let action = u32::from_be_bytes(param.try_into().map_err(|_| PrecompileFailure::Revert {
 			exit_status: ExitRevert::Reverted,
 			output: "invalid action".into(),
-			cost: 0,
+			cost: self.target_gas.unwrap_or_default(),
 		})?);
 
 		action.try_into().map_err(|_| PrecompileFailure::Revert {
 			exit_status: ExitRevert::Reverted,
 			output: "invalid action".into(),
-			cost: 0,
+			cost: self.target_gas.unwrap_or_default(),
 		})
 	}
 
@@ -144,7 +146,7 @@ where
 		Erc20InfoMapping::decode_evm_address(address).ok_or_else(|| PrecompileFailure::Revert {
 			exit_status: ExitRevert::Reverted,
 			output: "invalid currency id".into(),
-			cost: 0,
+			cost: self.target_gas.unwrap_or_default(),
 		})
 	}
 
@@ -259,42 +261,42 @@ mod tests {
 
 	#[test]
 	fn nth_param_works() {
-		let input = TestInput::new(&[1u8; 36][..]);
+		let input = TestInput::new(&[1u8; 36][..], Some(10));
 		assert_ok!(input.nth_param(1, None), &[1u8; 32][..]);
 		assert_err!(
 			input.nth_param(2, None),
 			PrecompileFailure::Revert {
 				exit_status: ExitRevert::Reverted,
 				output: "invalid input".into(),
-				cost: 0,
+				cost: 10,
 			}
 		);
 	}
 
 	#[test]
 	fn action_works() {
-		let input = TestInput::new(&[0u8; 36][..]);
+		let input = TestInput::new(&[0u8; 36][..], None);
 		assert_ok!(input.action(), Action::QueryBalance);
 
 		let mut raw_input = [0u8; 36];
 		raw_input[3] = 1;
-		let input = TestInput::new(&raw_input[..]);
+		let input = TestInput::new(&raw_input[..], None);
 		assert_ok!(input.action(), Action::Transfer);
 
 		let mut raw_input = [0u8; 36];
 		raw_input[3] = 2;
-		let input = TestInput::new(&raw_input[..]);
+		let input = TestInput::new(&raw_input[..], None);
 		assert_ok!(input.action(), Action::Unknown);
 
 		let mut raw_input = [0u8; 36];
 		raw_input[3] = 3;
-		let input = TestInput::new(&raw_input[..]);
+		let input = TestInput::new(&raw_input[..], Some(10));
 		assert_eq!(
 			input.action(),
 			Err(PrecompileFailure::Revert {
 				exit_status: ExitRevert::Reverted,
 				output: "invalid action".into(),
-				cost: 0,
+				cost: 10,
 			})
 		);
 	}
@@ -307,7 +309,7 @@ mod tests {
 
 		let mut raw_input = [0u8; 36];
 		raw_input[35] = 1;
-		let input = TestInput::new(&raw_input[..]);
+		let input = TestInput::new(&raw_input[..], None);
 		assert_ok!(input.account_id_at(1), account_id);
 	}
 
@@ -319,29 +321,29 @@ mod tests {
 
 		let mut raw_input = [0u8; 36];
 		raw_input[35] = 1;
-		let input = TestInput::new(&raw_input[..]);
+		let input = TestInput::new(&raw_input[..], None);
 		assert_ok!(input.evm_address_at(1), evm_address);
 	}
 
 	#[test]
 	fn currency_id_works() {
-		let input = TestInput::new(&[0u8; 100][..]);
+		let input = TestInput::new(&[0u8; 100][..], Some(10));
 		assert_err!(
 			input.currency_id_at(1),
 			PrecompileFailure::Revert {
 				exit_status: ExitRevert::Reverted,
 				output: "invalid currency id".into(),
-				cost: 0,
+				cost: 10,
 			}
 		);
 
 		let mut raw_input = [0u8; 36];
 		raw_input[25] = 1;
-		let input = TestInput::new(&raw_input[..]);
+		let input = TestInput::new(&raw_input[..], None);
 		assert_ok!(input.currency_id_at(1), CurrencyId::Token(TokenSymbol::ACA));
 
 		raw_input[35] = 1;
-		let input = TestInput::new(&raw_input[..]);
+		let input = TestInput::new(&raw_input[..], None);
 		assert_ok!(input.currency_id_at(1), CurrencyId::Token(TokenSymbol::AUSD));
 	}
 
@@ -352,7 +354,7 @@ mod tests {
 
 		let mut raw_input = [0u8; 36];
 		raw_input[20..].copy_from_slice(&balance_bytes);
-		let input = TestInput::new(&raw_input[..]);
+		let input = TestInput::new(&raw_input[..], None);
 		assert_ok!(input.balance_at(1), balance);
 	}
 
@@ -363,7 +365,7 @@ mod tests {
 
 		let mut raw_input = [0u8; 36];
 		raw_input[20..].copy_from_slice(&amount_bytes);
-		let input = TestInput::new(&raw_input[..]);
+		let input = TestInput::new(&raw_input[..], None);
 		assert_ok!(input.amount_at(1), amount);
 	}
 
@@ -374,7 +376,7 @@ mod tests {
 
 		let mut raw_input = [0u8; 36];
 		raw_input[28..].copy_from_slice(&u64_bytes);
-		let input = TestInput::new(&raw_input[..]);
+		let input = TestInput::new(&raw_input[..], None);
 		assert_ok!(input.u64_at(1), u64_num);
 	}
 }
