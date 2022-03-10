@@ -59,7 +59,9 @@ pub use precompile::{
 	SchedulePrecompile,
 };
 pub use primitives::{
-	currency::{TokenInfo, ACA, AUSD, BNC, CRU, DOT, KAR, KBTC, KINT, KSM, KUSD, LCDOT, LDOT, LKSM, PHA, RENBTC, VSKSM},
+	currency::{
+		TokenInfo, ACA, AUSD, BNC, CRU, DOT, KAR, KBTC, KINT, KSM, KUSD, LCDOT, LDOT, LKSM, PHA, RENBTC, VSKSM
+	},
 	AccountId,
 };
 use sp_std::{marker::PhantomData, prelude::*};
