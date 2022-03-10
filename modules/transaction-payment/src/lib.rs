@@ -416,8 +416,16 @@ pub mod module {
 			foreign_amount: Balance,
 			native_amount: Balance,
 		},
-		/// Dispatch call
-		DispatchEvent { result: DispatchResult },
+		/// Dispatch call from with_fee_path
+		WithFeePathDispatchEvent {
+			fee_swap_path: Vec<CurrencyId>,
+			result: DispatchResult,
+		},
+		/// Dispatch call from with_fee_currency
+		WithFeeCurrencyDispatchEvent {
+			currency_id: CurrencyId,
+			result: DispatchResult,
+		},
 	}
 
 	/// The next fee multiplier.
@@ -548,7 +556,8 @@ pub mod module {
 			);
 
 			let e = call.dispatch(origin);
-			Self::deposit_event(Event::DispatchEvent {
+			Self::deposit_event(Event::WithFeePathDispatchEvent {
+				fee_swap_path,
 				result: e.map(|_| ()).map_err(|e| e.error),
 			});
 			Ok(())
@@ -572,7 +581,8 @@ pub mod module {
 			);
 
 			let e = (*call).dispatch(origin);
-			Self::deposit_event(Event::DispatchEvent {
+			Self::deposit_event(Event::WithFeeCurrencyDispatchEvent {
+				currency_id,
 				result: e.map(|_| ()).map_err(|e| e.error),
 			});
 			Ok(())

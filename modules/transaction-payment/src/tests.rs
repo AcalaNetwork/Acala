@@ -1640,8 +1640,11 @@ fn with_fee_path_currency_call_validation_works() {
 			// call inside with_fee_path is dispatched and executed success
 			assert_eq!(9900, Currencies::free_balance(AUSD, &ALICE));
 			assert_eq!(100, Currencies::free_balance(AUSD, &BOB));
-			System::assert_last_event(mock::Event::TransactionPayment(crate::Event::DispatchEvent {
-				result: Ok(()),
-			}));
+			System::assert_last_event(mock::Event::TransactionPayment(
+				crate::Event::WithFeePathDispatchEvent {
+					fee_swap_path: vec![DOT, ACA],
+					result: Ok(()),
+				},
+			));
 		});
 }

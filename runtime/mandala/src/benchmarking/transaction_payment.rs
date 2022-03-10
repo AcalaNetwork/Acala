@@ -72,14 +72,26 @@ runtime_benchmarks! {
 	with_fee_path {
 		let caller = whitelisted_caller();
 		let call = Box::new(frame_system::Call::remark { remark: vec![] }.into());
-		let path: Vec<CurrencyId> = vec![STABLECOIN, NATIVECOIN];
-	}: _(RawOrigin::Signed(caller), path, call)
+		let fee_swap_path: Vec<CurrencyId> = vec![STABLECOIN, NATIVECOIN];
+	}: _(RawOrigin::Signed(caller), fee_swap_path.clone(), call)
+	verify {
+		assert_last_event(module_transaction_payment::Event::WithFeePathDispatchEvent {
+			fee_swap_path,
+			result: Ok(())
+		}.into());
+	}
 
 	with_fee_currency {
 		let caller: AccountId = whitelisted_caller();
 		let call = Box::new(frame_system::Call::remark { remark: vec![] }.into());
 		module_transaction_payment::TokenExchangeRate::<Runtime>::insert(STABLECOIN, Ratio::one());
 	}: _(RawOrigin::Signed(caller.clone()), STABLECOIN, call)
+	verify {
+		assert_last_event(module_transaction_payment::Event::WithFeeCurrencyDispatchEvent {
+			currency_id: STABLECOIN,
+			result: Ok(())
+		}.into());
+	}
 
 	set_alternative_fee_swap_path {
 		let caller: AccountId = whitelisted_caller();
@@ -111,7 +123,7 @@ runtime_benchmarks! {
 
 		set_balance(NATIVECOIN, &treasury_account, pool_size * 10);
 		set_balance(STABLECOIN, &treasury_account, stable_ed * 10);
-	}: _(RawOrigin::Root, STABLECOIN, fee_swap_path, pool_size, swap_threshold)
+	}: _(RawOrigin::Root, STABLECOIN, fee_swap_path.clone(), pool_size, swap_threshold)
 	verify {
 		let exchange_rate = TransactionPayment::token_exchange_rate(STABLECOIN).unwrap();
 		assert_eq!(TransactionPayment::pool_size(STABLECOIN), pool_size);
