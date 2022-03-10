@@ -242,7 +242,7 @@ fn charges_fee_when_validate_native_is_enough() {
 }
 
 #[test]
-fn signed_extension_pre_post_dispatch_and_refund() {
+fn pre_post_dispatch_and_refund_native_is_enough() {
 	builder_with_dex_and_fee_pool(false).execute_with(|| {
 		let fee = 23 * 2 + 1000; // len * byte + weight
 		let pre = ChargeTransactionPayment::<Runtime>::from(0)
@@ -284,6 +284,84 @@ fn signed_extension_pre_post_dispatch_and_refund() {
 			&Ok(())
 		));
 		assert_eq!(Currencies::free_balance(ACA, &CHARLIE), 100000 - fee - tip + refund);
+		assert_eq!(FEE_UNBALANCED_AMOUNT.with(|a| *a.borrow()), fee - refund);
+		assert_eq!(TIP_UNBALANCED_AMOUNT.with(|a| *a.borrow()), tip);
+	});
+}
+
+#[test]
+fn pre_post_dispatch_and_refund_with_fee_path_call() {
+	builder_with_dex_and_fee_pool(true).execute_with(|| {
+		// with_fee_path call will swap user's AUSD out of ACA, then withdraw ACA as fee
+		let fee = 500 * 2 + 1000; // len * byte + weight
+		let surplus = CustomFeeSurplus::get().mul_ceil(fee);
+		let fee_surplus = surplus + fee;
+		let aca_init = Currencies::free_balance(ACA, &ALICE);
+		let usd_init = Currencies::free_balance(AUSD, &ALICE);
+		let pre = ChargeTransactionPayment::<Runtime>::from(0)
+			.pre_dispatch(&ALICE, &with_fee_path_call(vec![AUSD, ACA]), &INFO, 500)
+			.unwrap();
+		assert_eq!(pre.2, Some(pallet_balances::NegativeImbalance::new(fee_surplus)));
+		assert_eq!(pre.3, fee_surplus);
+		System::assert_has_event(crate::mock::Event::DEXModule(module_dex::Event::Swap {
+			trader: ALICE,
+			path: vec![AUSD, ACA],
+			liquidity_changes: vec![429, fee_surplus], // 429 AUSD - 1569 ACA
+		}));
+		assert_eq!(Currencies::free_balance(ACA, &ALICE), aca_init); // ACA not changed
+		assert_eq!(Currencies::free_balance(AUSD, &ALICE), usd_init - 429); // AUSD decrements
+
+		// the actual fee not include fee surplus
+		let actual_fee = TransactionPayment::compute_actual_fee(500, &INFO, &POST_INFO, 0);
+		assert_eq!(actual_fee, 500 * 2 + 800);
+
+		assert_ok!(ChargeTransactionPayment::<Runtime>::post_dispatch(
+			Some(pre),
+			&INFO,
+			&POST_INFO,
+			500,
+			&Ok(())
+		));
+
+		let refund = 200; // 1000 - 800
+		assert_eq!(Currencies::free_balance(ACA, &ALICE), aca_init + surplus + refund);
+		assert_eq!(FEE_UNBALANCED_AMOUNT.with(|a| *a.borrow()), fee - refund);
+		assert_eq!(TIP_UNBALANCED_AMOUNT.with(|a| *a.borrow()), 0);
+
+		// reset and test refund with tip
+		FEE_UNBALANCED_AMOUNT.with(|a| *a.borrow_mut() = 0);
+
+		assert_ok!(Currencies::update_balance(
+			Origin::root(),
+			CHARLIE,
+			AUSD,
+			8000.unique_saturated_into(),
+		));
+		let aca_init = Currencies::free_balance(ACA, &CHARLIE);
+		let usd_init = Currencies::free_balance(AUSD, &CHARLIE);
+		let tip: Balance = 200;
+		let surplus = CustomFeeSurplus::get().mul_ceil(fee + tip);
+		let fee_surplus = surplus + fee + tip;
+		let pre = ChargeTransactionPayment::<Runtime>::from(tip)
+			.pre_dispatch(&CHARLIE, &with_fee_path_call(vec![AUSD, ACA]), &INFO, 500)
+			.unwrap();
+		System::assert_has_event(crate::mock::Event::DEXModule(module_dex::Event::Swap {
+			trader: CHARLIE,
+			path: vec![AUSD, ACA],
+			liquidity_changes: vec![1275, fee_surplus], // 1275 AUSD - 3300 ACA
+		}));
+		assert_eq!(Currencies::free_balance(ACA, &CHARLIE), aca_init);
+		assert_eq!(Currencies::free_balance(AUSD, &CHARLIE), usd_init - 1275);
+		let actual_fee = TransactionPayment::compute_actual_fee(500, &INFO, &POST_INFO, tip);
+		assert_eq!(actual_fee, 500 * 2 + 800 + 200);
+		assert_ok!(ChargeTransactionPayment::<Runtime>::post_dispatch(
+			Some(pre),
+			&INFO,
+			&POST_INFO,
+			500,
+			&Ok(())
+		));
+		assert_eq!(Currencies::free_balance(ACA, &CHARLIE), aca_init + surplus + refund);
 		assert_eq!(FEE_UNBALANCED_AMOUNT.with(|a| *a.borrow()), fee - refund);
 		assert_eq!(TIP_UNBALANCED_AMOUNT.with(|a| *a.borrow()), tip);
 	});

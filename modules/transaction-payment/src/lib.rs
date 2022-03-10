@@ -827,8 +827,7 @@ where
 		}
 	}
 
-	/// Determine the fee and surplus that should be withdraw from user. There are three kind of
-	/// Call:
+	/// Determine the fee and surplus that should be withdraw from user. There are three kind call:
 	/// - TransactionPayment::with_fee_path: swap with dex
 	/// - TransactionPayment::with_fee_currency: swap with tx fee pool
 	/// - others call: first use native asset, if not enough use alternative, or else use default.
@@ -1085,7 +1084,7 @@ where
 		Ok(())
 	}
 
-	/// Disable a charge fee pool, return token from sub account to treasury account.
+	/// Disable a charge fee pool, transfer token from sub account back to treasury account.
 	pub fn disable_pool(currency_id: CurrencyId) -> DispatchResult {
 		ensure!(
 			TokenExchangeRate::<T>::contains_key(currency_id),
@@ -1104,7 +1103,6 @@ where
 			ExistenceRequirement::AllowDeath,
 		)?;
 
-		// remove map entry, then `swap_from_pool_or_dex` method will throw error.
 		TokenExchangeRate::<T>::remove(currency_id);
 		PoolSize::<T>::remove(currency_id);
 		SwapBalanceThreshold::<T>::remove(currency_id);
