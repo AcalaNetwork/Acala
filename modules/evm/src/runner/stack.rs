@@ -33,7 +33,7 @@ use frame_support::{
 	traits::{Currency, ExistenceRequirement, Get},
 	transactional,
 };
-use module_evm_utiltity::{
+use module_evm_utility::{
 	ethereum::Log,
 	evm::{self, backend::Backend as BackendT, ExitError, ExitReason, Transfer},
 };

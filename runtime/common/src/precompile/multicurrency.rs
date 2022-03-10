@@ -45,7 +45,7 @@ use num_enum::{IntoPrimitive, TryFromPrimitive};
 /// - Transfer. Rest `input` bytes: `from`, `to`, `amount`.
 pub struct MultiCurrencyPrecompile<R>(PhantomData<R>);
 
-#[module_evm_utiltity_macro::generate_function_selector]
+#[module_evm_utility_macro::generate_function_selector]
 #[derive(RuntimeDebug, Eq, PartialEq, TryFromPrimitive, IntoPrimitive)]
 #[repr(u32)]
 pub enum Action {

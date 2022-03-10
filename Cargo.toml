@@ -8,7 +8,7 @@ members = [
 	"node/e2e-tests",
 
 	"modules/*",
-	"modules/evm-utiltity/macro",
+	"modules/evm-utility/macro",
 	"inspect",
 	"primitives",
 	"rpc",
@@ -317,3 +317,5 @@ parachain-info = { git = "https://github.com/paritytech//cumulus", rev = "76479e
 cumulus-relay-chain-interface = { git = "https://github.com/paritytech//cumulus", rev = "76479e7fef3af7c8828a44647847b01afd5fefe5" }
 cumulus-relay-chain-local = { git = "https://github.com/paritytech//cumulus", rev = "76479e7fef3af7c8828a44647847b01afd5fefe5" }
 cumulus-test-relay-validation-worker-provider = { git = "https://github.com/paritytech//cumulus", rev = "76479e7fef3af7c8828a44647847b01afd5fefe5" }
+statemine-runtime  = { git = "https://github.com/paritytech//cumulus", rev = "76479e7fef3af7c8828a44647847b01afd5fefe5" }
+parachains-common  = { git = "https://github.com/paritytech//cumulus", rev = "76479e7fef3af7c8828a44647847b01afd5fefe5" }

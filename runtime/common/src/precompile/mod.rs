@@ -102,7 +102,7 @@ where
 				SHA3_512,
 				// Acala precompile
 				MULTI_CURRENCY,
-				NFT,
+				// NFT,
 				EVM,
 				ORACLE,
 				// SCHEDULER,
@@ -130,7 +130,7 @@ where
 				SHA3_512,
 				// Acala precompile
 				MULTI_CURRENCY,
-				NFT,
+				// NFT,
 				EVM,
 				ORACLE,
 				// SCHEDULER,
