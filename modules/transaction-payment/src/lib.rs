@@ -440,7 +440,7 @@ pub mod module {
 		StorageMap<_, Twox64Concat, T::AccountId, BoundedVec<CurrencyId, T::TradingPathLimit>, OptionQuery>;
 
 	/// The global fee swap path.
-	/// The path priorities: alternative > global > default
+	/// The path includes `DefaultFeeTokens` trading path, and foreign asset trading path.
 	///
 	/// GlobalFeeSwapPath: map CurrencyId => Option<Vec<CurrencyId>>
 	#[pallet::storage]

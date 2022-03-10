@@ -1158,7 +1158,7 @@ impl module_transaction_pause::Config for Runtime {
 }
 
 parameter_types! {
-	pub DefaultFeeTokens: Vec<CurrencyId> = vec![KUSD, KSM, LKSM, BNC];
+	pub DefaultFeeTokens: Vec<CurrencyId> = vec![KUSD, KSM, LKSM];
 	pub const CustomFeeSurplus: Percent = Percent::from_percent(50);
 	pub const AlternativeFeeSurplus: Percent = Percent::from_percent(25);
 }
@@ -1779,6 +1779,7 @@ impl OnRuntimeUpgrade for TransactionPaymentMigration {
 			(KSM, vec![KSM, KAR]),
 			(LKSM, vec![LKSM, KSM, KAR]),
 			(BNC, vec![BNC, KUSD, KSM, KAR]),
+			(CurrencyId::ForeignAsset(0), vec![CurrencyId::ForeignAsset(0), KSM, KAR]),
 		];
 		for (token, path) in tokens {
 			let _ = module_transaction_payment::Pallet::<Runtime>::disable_pool(token);
