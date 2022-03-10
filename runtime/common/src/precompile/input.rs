@@ -17,22 +17,17 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use frame_support::ensure;
-use sp_std::{marker::PhantomData, mem, result::Result, vec, vec::Vec};
+use sp_std::{marker::PhantomData, result::Result, vec, vec::Vec};
 
 use ethabi::Token;
 use module_evm::{runner::state::PrecompileFailure, ExitRevert};
 use module_support::{AddressMapping as AddressMappingT, Erc20InfoMapping as Erc20InfoMappingT};
-use primitives::{Amount, Balance, CurrencyId};
+use primitives::{Balance, CurrencyId};
 use sp_core::{H160, U256};
 
 pub const FUNCTION_SELECTOR_LENGTH: usize = 4;
 pub const PER_PARAM_BYTES: usize = 32;
 pub const ACTION_INDEX: usize = 0;
-
-pub const BALANCE_BYTES: usize = mem::size_of::<Balance>();
-pub const AMOUNT_BYTES: usize = mem::size_of::<Amount>();
-pub const U64_BYTES: usize = mem::size_of::<u64>();
-pub const U32_BYTES: usize = mem::size_of::<u32>();
 
 pub trait InputT {
 	type Error;
@@ -46,8 +41,9 @@ pub trait InputT {
 	fn evm_address_at(&self, index: usize) -> Result<H160, Self::Error>;
 	fn currency_id_at(&self, index: usize) -> Result<CurrencyId, Self::Error>;
 
+	fn u256_at(&self, index: usize) -> Result<U256, Self::Error>;
+
 	fn balance_at(&self, index: usize) -> Result<Balance, Self::Error>;
-	fn amount_at(&self, index: usize) -> Result<Amount, Self::Error>;
 
 	fn u64_at(&self, index: usize) -> Result<u64, Self::Error>;
 	fn u32_at(&self, index: usize) -> Result<u32, Self::Error>;
@@ -150,44 +146,36 @@ where
 		})
 	}
 
-	fn balance_at(&self, index: usize) -> Result<Balance, Self::Error> {
+	fn u256_at(&self, index: usize) -> Result<U256, Self::Error> {
 		let param = self.nth_param(index, None)?;
-
-		let mut balance = [0u8; BALANCE_BYTES];
-		let start = PER_PARAM_BYTES - BALANCE_BYTES;
-		balance[..].copy_from_slice(&param[start..]);
-
-		Ok(Balance::from_be_bytes(balance))
+		Ok(U256::from_big_endian(&param[..]))
 	}
 
-	fn amount_at(&self, index: usize) -> Result<Amount, Self::Error> {
-		let param = self.nth_param(index, None)?;
-
-		let mut amount = [0u8; AMOUNT_BYTES];
-		let start = PER_PARAM_BYTES - AMOUNT_BYTES;
-		amount[..].copy_from_slice(&param[start..]);
-
-		Ok(Amount::from_be_bytes(amount))
+	fn balance_at(&self, index: usize) -> Result<Balance, Self::Error> {
+		let param = self.u256_at(index)?;
+		param.try_into().map_err(|_| PrecompileFailure::Revert {
+			exit_status: ExitRevert::Reverted,
+			output: "failed to convert uint256 into Balance".into(),
+			cost: self.target_gas.unwrap_or_default(),
+		})
 	}
 
 	fn u64_at(&self, index: usize) -> Result<u64, Self::Error> {
-		let param = self.nth_param(index, None)?;
-
-		let mut num = [0u8; U64_BYTES];
-		let start = PER_PARAM_BYTES - U64_BYTES;
-		num[..].copy_from_slice(&param[start..]);
-
-		Ok(u64::from_be_bytes(num))
+		let param = self.u256_at(index)?;
+		param.try_into().map_err(|_| PrecompileFailure::Revert {
+			exit_status: ExitRevert::Reverted,
+			output: "failed to convert uint256 into u64".into(),
+			cost: self.target_gas.unwrap_or_default(),
+		})
 	}
 
 	fn u32_at(&self, index: usize) -> Result<u32, Self::Error> {
-		let param = self.nth_param(index, None)?;
-
-		let mut num = [0u8; U32_BYTES];
-		let start = PER_PARAM_BYTES - U32_BYTES;
-		num[..].copy_from_slice(&param[start..]);
-
-		Ok(u32::from_be_bytes(num))
+		let param = self.u256_at(index)?;
+		param.try_into().map_err(|_| PrecompileFailure::Revert {
+			exit_status: ExitRevert::Reverted,
+			output: "failed to convert uint256 into u32".into(),
+			cost: self.target_gas.unwrap_or_default(),
+		})
 	}
 
 	fn bytes_at(&self, index: usize, len: usize) -> Result<Vec<u8>, Self::Error> {
@@ -381,47 +369,79 @@ mod tests {
 	}
 
 	#[test]
+	fn u256_works() {
+		let data = hex_literal::hex! {"
+			00000000
+			000000000000000000000000000000000000000000000000000000000000007f
+			00000000000000000000000000000000ffffffffffffffffffffffffffffffff
+			ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+		"};
+		let input = TestInput::new(&data[..], None);
+		assert_ok!(input.u256_at(1), U256::from(127u128));
+		assert_ok!(input.u256_at(2), U256::from(u128::MAX));
+		assert_ok!(input.u256_at(3), U256::MAX);
+	}
+
+	#[test]
 	fn balance_works() {
-		// extra bytes should be ignored
 		let data = hex_literal::hex! {"
 			00000000
 			00000000000000000000000000000000 0000000000000000000000000000007f
 			00000000000000000000000000000000 ffffffffffffffffffffffffffffffff
 			ffffffffffffffffffffffffffffffff ffffffffffffffffffffffffffffffff
 		"};
-		let input = TestInput::new(&data[..], None);
+		let input = TestInput::new(&data[..], Some(10));
 		assert_ok!(input.balance_at(1), 127u128);
 		assert_ok!(input.balance_at(2), u128::MAX);
-		assert_ok!(input.balance_at(3), u128::MAX);
-	}
-
-	#[test]
-	fn amount_works() {
-		// extra bytes should be ignored
-		let data = hex_literal::hex! {"
-			00000000
-			00000000000000000000000000000000 0000000000000000000000000000007f
-			ffffffffffffffffffffffffffffffff 80000000000000000000000000000000
-			ffffffffffffffffffffffffffffffff 7fffffffffffffffffffffffffffffff
-		"};
-		let input = TestInput::new(&data[..], None);
-		assert_ok!(input.amount_at(1), 127i128);
-		assert_ok!(input.amount_at(2), i128::MIN);
-		assert_ok!(input.amount_at(3), i128::MAX);
+		assert_eq!(
+			input.balance_at(3),
+			Err(PrecompileFailure::Revert {
+				exit_status: ExitRevert::Reverted,
+				output: "failed to convert uint256 into Balance".into(),
+				cost: 10,
+			})
+		);
 	}
 
 	#[test]
 	fn u64_works() {
-		// extra bytes should be ignored
 		let data = hex_literal::hex! {"
 			00000000
 			000000000000000000000000000000000000000000000000 000000000000007f
 			000000000000000000000000000000000000000000000000 ffffffffffffffff
-			ffffffffffffffffffffffffffffffffffffffffffffffff ffffffffffffffff
+			000000000000000000000000000000000000000000000001 ffffffffffffffff
 		"};
-		let input = TestInput::new(&data[..], None);
+		let input = TestInput::new(&data[..], Some(10));
 		assert_ok!(input.u64_at(1), 127u64);
 		assert_ok!(input.u64_at(2), u64::MAX);
-		assert_ok!(input.u64_at(3), u64::MAX);
+		assert_eq!(
+			input.u64_at(3),
+			Err(PrecompileFailure::Revert {
+				exit_status: ExitRevert::Reverted,
+				output: "failed to convert uint256 into u64".into(),
+				cost: 10,
+			})
+		);
+	}
+
+	#[test]
+	fn u32_works() {
+		let data = hex_literal::hex! {"
+			00000000
+			00000000000000000000000000000000000000000000000000000000 0000007f
+			00000000000000000000000000000000000000000000000000000000 ffffffff
+			00000000000000000000000000000000000000000000000000000001 ffffffff
+		"};
+		let input = TestInput::new(&data[..], Some(10));
+		assert_ok!(input.u32_at(1), 127u32);
+		assert_ok!(input.u32_at(2), u32::MAX);
+		assert_eq!(
+			input.u32_at(3),
+			Err(PrecompileFailure::Revert {
+				exit_status: ExitRevert::Reverted,
+				output: "failed to convert uint256 into u32".into(),
+				cost: 10,
+			})
+		);
 	}
 }
