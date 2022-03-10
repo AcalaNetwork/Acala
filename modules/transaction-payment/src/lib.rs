@@ -247,10 +247,6 @@ pub mod module {
 		#[pallet::constant]
 		type NativeCurrencyId: Get<CurrencyId>;
 
-		/// Default fee swap path list
-		#[pallet::constant]
-		type DefaultFeeSwapPathList: Get<Vec<Vec<CurrencyId>>>;
-
 		/// The currency type in which fees will be paid.
 		type Currency: NamedReservableCurrency<
 			Self::AccountId,
@@ -1011,7 +1007,7 @@ where
 	}
 
 	/// Initiate a charge fee pool, transfer token from treasury account to sub account.
-	fn initialize_pool(
+	pub fn initialize_pool(
 		currency_id: CurrencyId,
 		fee_swap_path: Vec<CurrencyId>,
 		pool_size: Balance,
@@ -1090,7 +1086,7 @@ where
 	}
 
 	/// Disable a charge fee pool, return token from sub account to treasury account.
-	fn disable_pool(currency_id: CurrencyId) -> DispatchResult {
+	pub fn disable_pool(currency_id: CurrencyId) -> DispatchResult {
 		ensure!(
 			TokenExchangeRate::<T>::contains_key(currency_id),
 			Error::<T>::InvalidToken

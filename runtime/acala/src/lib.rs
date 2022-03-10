@@ -1150,11 +1150,11 @@ impl module_transaction_pause::Config for Runtime {
 
 parameter_types! {
 	// Sort by fee charge order
-	pub DefaultFeeSwapPathList: Vec<Vec<CurrencyId>> = vec![
-		vec![AUSD, ACA],
-		vec![LCDOT, AUSD, ACA],
-		vec![DOT, LCDOT, AUSD, ACA]
-	];
+	// pub DefaultFeeSwapPathList: Vec<Vec<CurrencyId>> = vec![
+	// 	vec![AUSD, ACA],
+	// 	vec![LCDOT, AUSD, ACA],
+	// 	vec![DOT, LCDOT, AUSD, ACA]
+	// ];
 	pub const CustomFeeSurplus: Percent = Percent::from_percent(50);
 	pub const AlternativeFeeSurplus: Percent = Percent::from_percent(25);
 	pub DefaultFeeTokens: Vec<CurrencyId> = vec![AUSD, LCDOT, DOT];
@@ -1178,7 +1178,6 @@ impl module_transaction_payment::Config for Runtime {
 	type Event = Event;
 	type Call = Call;
 	type NativeCurrencyId = GetNativeCurrencyId;
-	type DefaultFeeSwapPathList = DefaultFeeSwapPathList;
 	type Currency = Balances;
 	type MultiCurrency = Currencies;
 	type OnTransactionPayment = DealWithFees;

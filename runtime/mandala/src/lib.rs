@@ -1158,12 +1158,12 @@ impl module_transaction_pause::Config for Runtime {
 
 parameter_types! {
 	// Sort by fee charge order
-	pub DefaultFeeSwapPathList: Vec<Vec<CurrencyId>> = vec![
-		vec![AUSD, DOT, ACA],
-		vec![DOT, ACA],
-		vec![LDOT, DOT, ACA],
-		vec![RENBTC, AUSD, ACA]
-	];
+	// pub DefaultFeeSwapPathList: Vec<Vec<CurrencyId>> = vec![
+	// 	vec![AUSD, DOT, ACA],
+	// 	vec![DOT, ACA],
+	// 	vec![LDOT, DOT, ACA],
+	// 	vec![RENBTC, AUSD, ACA]
+	// ];
 	pub DefaultFeeTokens: Vec<CurrencyId> = vec![AUSD, DOT, LDOT, RENBTC];
 	pub const CustomFeeSurplus: Percent = Percent::from_percent(50);
 	pub const AlternativeFeeSurplus: Percent = Percent::from_percent(25);
@@ -1194,7 +1194,6 @@ impl module_transaction_payment::Config for Runtime {
 	type Event = Event;
 	type Call = Call;
 	type NativeCurrencyId = GetNativeCurrencyId;
-	type DefaultFeeSwapPathList = DefaultFeeSwapPathList;
 	type Currency = Balances;
 	type MultiCurrency = Currencies;
 	type OnTransactionPayment = DealWithFees;
@@ -1811,15 +1810,32 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	XcmInterfaceMigrationV1,
+	TransactionPaymentMigration,
 >;
 
 // Migration for scheduler pallet to move from a plain Call to a CallOrHash.
-pub struct XcmInterfaceMigrationV1;
+pub struct TransactionPaymentMigration;
 
-impl OnRuntimeUpgrade for XcmInterfaceMigrationV1 {
+parameter_types! {
+	pub FeePoolSize: Balance = 5 * dollar(KAR);
+	pub SwapBalanceThreshold: Balance = Ratio::saturating_from_rational(25, 10).saturating_mul_int(dollar(KAR));
+}
+
+impl OnRuntimeUpgrade for TransactionPaymentMigration {
 	fn on_runtime_upgrade() -> frame_support::weights::Weight {
-		module_xcm_interface::migrations::v1::migrate::<Runtime, XcmInterface>()
+		let poo_size = FeePoolSize::get();
+		let threshold = SwapBalanceThreshold::get();
+		let tokens = vec![
+			(AUSD, vec![AUSD, DOT, ACA]),
+			(DOT, vec![DOT, ACA]),
+			(LDOT, vec![LDOT, DOT, ACA]),
+			(RENBTC, vec![RENBTC, AUSD, ACA]),
+		];
+		for (token, path) in tokens {
+			let _ = module_transaction_payment::Pallet::<Runtime>::disable_pool(token);
+			let _ = module_transaction_payment::Pallet::<Runtime>::initialize_pool(token, path, poo_size, threshold);
+		}
+		<Runtime as frame_system::Config>::BlockWeights::get().max_block
 	}
 }
 
