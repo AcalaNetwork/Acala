@@ -1157,13 +1157,6 @@ impl module_transaction_pause::Config for Runtime {
 }
 
 parameter_types! {
-	// Sort by fee charge order
-	// pub DefaultFeeSwapPathList: Vec<Vec<CurrencyId>> = vec![
-	// 	vec![AUSD, DOT, ACA],
-	// 	vec![DOT, ACA],
-	// 	vec![LDOT, DOT, ACA],
-	// 	vec![RENBTC, AUSD, ACA]
-	// ];
 	pub DefaultFeeTokens: Vec<CurrencyId> = vec![AUSD, DOT, LDOT, RENBTC];
 	pub const CustomFeeSurplus: Percent = Percent::from_percent(50);
 	pub const AlternativeFeeSurplus: Percent = Percent::from_percent(25);
@@ -1813,7 +1806,6 @@ pub type Executive = frame_executive::Executive<
 	TransactionPaymentMigration,
 >;
 
-// Migration for scheduler pallet to move from a plain Call to a CallOrHash.
 pub struct TransactionPaymentMigration;
 
 parameter_types! {

@@ -1158,13 +1158,6 @@ impl module_transaction_pause::Config for Runtime {
 }
 
 parameter_types! {
-	// Sort by fee charge order
-	// pub DefaultFeeSwapPathList: Vec<Vec<CurrencyId>> = vec![
-	// 	vec![KUSD, KSM, KAR],
-	// 	vec![KSM, KAR],
-	// 	vec![LKSM, KSM, KAR],
-	// 	vec![BNC, KUSD, KSM, KAR],
-	// ];
 	pub DefaultFeeTokens: Vec<CurrencyId> = vec![KUSD, KSM, LKSM, BNC];
 	pub const CustomFeeSurplus: Percent = Percent::from_percent(50);
 	pub const AlternativeFeeSurplus: Percent = Percent::from_percent(25);
@@ -1767,14 +1760,31 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	XcmInterfaceMigrationV1,
+	TransactionPaymentMigration,
 >;
 
-// Migration for scheduler pallet to move from a plain Call to a CallOrHash.
-pub struct XcmInterfaceMigrationV1;
-impl OnRuntimeUpgrade for XcmInterfaceMigrationV1 {
+pub struct TransactionPaymentMigration;
+
+parameter_types! {
+	pub FeePoolSize: Balance = 5 * dollar(KAR);
+	pub SwapBalanceThreshold: Balance = Ratio::saturating_from_rational(25, 10).saturating_mul_int(dollar(KAR));
+}
+
+impl OnRuntimeUpgrade for TransactionPaymentMigration {
 	fn on_runtime_upgrade() -> frame_support::weights::Weight {
-		module_xcm_interface::migrations::v1::migrate::<Runtime, XcmInterface>()
+		let poo_size = FeePoolSize::get();
+		let threshold = SwapBalanceThreshold::get();
+		let tokens = vec![
+			(KUSD, vec![KUSD, KSM, KAR]),
+			(KSM, vec![KSM, KAR]),
+			(LKSM, vec![LKSM, KSM, KAR]),
+			(BNC, vec![BNC, KUSD, KSM, KAR]),
+		];
+		for (token, path) in tokens {
+			let _ = module_transaction_payment::Pallet::<Runtime>::disable_pool(token);
+			let _ = module_transaction_payment::Pallet::<Runtime>::initialize_pool(token, path, poo_size, threshold);
+		}
+		<Runtime as frame_system::Config>::BlockWeights::get().max_block
 	}
 }
 
