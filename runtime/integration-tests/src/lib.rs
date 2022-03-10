@@ -91,11 +91,7 @@ mod runtime;
 ))]
 mod session_manager;
 
-#[cfg(any(
-	feature = "with-mandala-runtime",
-	feature = "with-karura-runtime",
-	feature = "with-acala-runtime"
-))]
+#[cfg(feature = "with-mandala-runtime")]
 mod stable_asset;
 
 #[cfg(any(
@@ -130,5 +126,9 @@ mod payment;
 #[cfg(feature = "with-karura-runtime")]
 mod relaychain;
 
-#[cfg(feature = "with-karura-runtime")]
+#[cfg(any(
+	feature = "with-mandala-runtime",
+	feature = "with-karura-runtime",
+	feature = "with-acala-runtime"
+))]
 mod account_tokenizer;

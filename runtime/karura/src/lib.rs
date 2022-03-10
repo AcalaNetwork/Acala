@@ -1644,6 +1644,7 @@ parameter_types! {
 	pub QueryFee: Balance = 10 * cent(KAR);
 	pub CancelFee: Balance = 5 * cent(KAR);
 	pub ExpiredCallPurgeReward: Permill = Permill::from_percent(50);
+	pub const MaxQueryCallSize: u32 = 200;
 }
 
 impl module_foreign_state_oracle::Config for Runtime {
@@ -1655,6 +1656,7 @@ impl module_foreign_state_oracle::Config for Runtime {
 	type QueryFee = QueryFee;
 	type CancelFee = CancelFee;
 	type ExpiredCallPurgeReward = ExpiredCallPurgeReward;
+	type MaxQueryCallSize = MaxQueryCallSize;
 	type DefaultQueryDuration = DefaultQueryDuration;
 	type BlockNumberProvider = System;
 	type OracleOrigin = EnsureAllForeignStateOracle;

@@ -90,16 +90,16 @@ pub use primitives::{
 };
 pub use runtime_common::{
 	calculate_asset_ratio, cent, dollar, microcent, millicent, AcalaDropAssets, AllPrecompiles,
-	EnsureRootOrAllGeneralCouncil, EnsureRootOrAllTechnicalCommittee, EnsureRootOrHalfFinancialCouncil,
-	EnsureRootOrHalfGeneralCouncil, EnsureRootOrHalfHomaCouncil, EnsureRootOrOneGeneralCouncil,
-	EnsureRootOrOneThirdsTechnicalCommittee, EnsureRootOrThreeFourthsGeneralCouncil,
+	EnsureAllForeignStateOracle, EnsureRootOrAllGeneralCouncil, EnsureRootOrAllTechnicalCommittee,
+	EnsureRootOrHalfFinancialCouncil, EnsureRootOrHalfGeneralCouncil, EnsureRootOrHalfHomaCouncil,
+	EnsureRootOrOneGeneralCouncil, EnsureRootOrOneThirdsTechnicalCommittee, EnsureRootOrThreeFourthsGeneralCouncil,
 	EnsureRootOrTwoThirdsGeneralCouncil, EnsureRootOrTwoThirdsTechnicalCommittee, ExchangeRate,
-	FinancialCouncilInstance, FinancialCouncilMembershipInstance, GasToWeight, GeneralCouncilInstance,
-	GeneralCouncilMembershipInstance, HomaCouncilInstance, HomaCouncilMembershipInstance, MaxTipsOfPriority,
-	OffchainSolutionWeightLimit, OperationalFeeMultiplier, OperatorMembershipInstanceAcala, Price, ProxyType, Rate,
-	Ratio, RelayChainBlockNumberProvider, RelayChainSubAccountId, RuntimeBlockLength, RuntimeBlockWeights,
-	SystemContractsFilter, TechnicalCommitteeInstance, TechnicalCommitteeMembershipInstance, TimeStampedPrice,
-	TipPerWeightStep, ACA, AUSD, DOT, LCDOT, LDOT, RENBTC,
+	FinancialCouncilInstance, FinancialCouncilMembershipInstance, ForeignStateOracleInstance, GasToWeight,
+	GeneralCouncilInstance, GeneralCouncilMembershipInstance, HomaCouncilInstance, HomaCouncilMembershipInstance,
+	MaxTipsOfPriority, OffchainSolutionWeightLimit, OperationalFeeMultiplier, OperatorMembershipInstanceAcala, Price,
+	ProxyType, Rate, Ratio, RelayChainBlockNumberProvider, RelayChainSubAccountId, RuntimeBlockLength,
+	RuntimeBlockWeights, SystemContractsFilter, TechnicalCommitteeInstance, TechnicalCommitteeMembershipInstance,
+	TimeStampedPrice, TipPerWeightStep, ACA, AUSD, DOT, LCDOT, LDOT, RENBTC,
 };
 pub use xcm::latest::prelude::*;
 use xcm_config::XcmConfig;
@@ -152,6 +152,8 @@ parameter_types! {
 	pub const HomaTreasuryPalletId: PalletId = PalletId(*b"aca/hmtr");
 	pub const IncentivesPalletId: PalletId = PalletId(*b"aca/inct");
 	pub const CollatorPotId: PalletId = PalletId(*b"aca/cpot");
+	pub const AccountTokenizerPalletId: PalletId = PalletId(*b"aca/atnz");
+	pub const ForeignOraclePalletId: PalletId = PalletId(*b"aca/fsto");
 	// Treasury reserve
 	pub const TreasuryReservePalletId: PalletId = PalletId(*b"aca/reve");
 	pub const NftPalletId: PalletId = PalletId(*b"aca/aNFT");
@@ -175,6 +177,8 @@ pub fn get_all_module_accounts() -> Vec<AccountId> {
 		TreasuryPalletId::get().into_account(),
 		TreasuryReservePalletId::get().into_account(),
 		UnreleasedNativeVaultAccountId::get(),
+		AccountTokenizerPalletId::get().into_account(),
+		ForeignOraclePalletId::get().into_account(),
 	]
 }
 
@@ -515,6 +519,23 @@ impl pallet_membership::Config<OperatorMembershipInstanceAcala> for Runtime {
 	type MembershipInitialized = ();
 	type MembershipChanged = AcalaOracle;
 	type MaxMembers = OracleMaxMembers;
+	type WeightInfo = ();
+}
+
+parameter_types! {
+	pub const ForeignStateMotionDuration: BlockNumber = 7 * DAYS;
+	pub const ForeignStateMaxProposals: u32 = 100;
+	pub const ForeignStateMaxMembers: u32 = 100;
+}
+
+impl pallet_collective::Config<ForeignStateOracleInstance> for Runtime {
+	type Origin = Origin;
+	type Proposal = Call;
+	type Event = Event;
+	type MotionDuration = ForeignStateMotionDuration;
+	type MaxProposals = ForeignStateMaxProposals;
+	type MaxMembers = ForeignStateMaxMembers;
+	type DefaultVote = pallet_collective::PrimeDefaultVote;
 	type WeightInfo = ();
 }
 
@@ -1541,6 +1562,49 @@ impl module_idle_scheduler::Config for Runtime {
 	type MinimumWeightRemainInBlock = MinimumWeightRemainInBlock;
 }
 
+parameter_types! {
+	pub const DefaultQueryDuration: BlockNumber = 10;
+	pub QueryFee: Balance = 10 * cent(ACA);
+	pub CancelFee: Balance = 5 * cent(ACA);
+	pub ExpiredCallPurgeReward: Permill = Permill::from_percent(50);
+	pub const MaxQueryCallSize: u32 = 200;
+}
+
+impl module_foreign_state_oracle::Config for Runtime {
+	type Event = Event;
+	type Origin = Origin;
+	type DispatchableCall = Call;
+	type Currency = Balances;
+	type PalletId = ForeignOraclePalletId;
+	type QueryFee = QueryFee;
+	type CancelFee = CancelFee;
+	type ExpiredCallPurgeReward = ExpiredCallPurgeReward;
+	type MaxQueryCallSize = MaxQueryCallSize;
+	type DefaultQueryDuration = DefaultQueryDuration;
+	type BlockNumberProvider = System;
+	type OracleOrigin = EnsureAllForeignStateOracle;
+}
+
+parameter_types! {
+	pub AccountTokenizerMintRequestDeposit: Balance = 50 * dollar(ACA);
+	pub AccountTokenizerMintFee: Balance = 5 * dollar(ACA);
+}
+
+impl module_account_tokenizer::Config for Runtime {
+	type Event = Event;
+	type WeightInfo = weights::module_account_tokenizer::WeightInfo<Runtime>;
+	type Call = Call;
+	type PalletId = AccountTokenizerPalletId;
+	type Currency = Balances;
+	type XcmInterface = XcmInterface;
+	type OracleOrigin = module_foreign_state_oracle::EnsureForeignStateOracle;
+	type NFTInterface = NFT;
+	type TreasuryAccount = AcalaTreasuryAccount;
+	type MintRequestDeposit = AccountTokenizerMintRequestDeposit;
+	type MintFee = AccountTokenizerMintFee;
+	type ForeignStateQuery = ForeignStateOracle;
+}
+
 construct_runtime!(
 	pub enum Runtime where
 		Block = Block,
@@ -1564,6 +1628,7 @@ construct_runtime!(
 		Currencies: module_currencies::{Pallet, Call, Event<T>} = 12,
 		Vesting: orml_vesting::{Pallet, Storage, Call, Event<T>, Config<T>} = 13,
 		TransactionPayment: module_transaction_payment::{Pallet, Call, Storage, Event<T>} = 14,
+		AccountTokenizer: module_account_tokenizer::{Pallet, Call, Storage, Config, Event<T>} = 15,
 
 		// Treasury
 		Treasury: pallet_treasury::{Pallet, Call, Storage, Config, Event<T>} = 20,
@@ -1601,6 +1666,7 @@ construct_runtime!(
 		TechnicalCommittee: pallet_collective::<Instance4>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 67,
 		TechnicalCommitteeMembership: pallet_membership::<Instance4>::{Pallet, Call, Storage, Event<T>, Config<T>} = 68,
 		Democracy: pallet_democracy::{Pallet, Call, Storage, Config<T>, Event<T>} = 69,
+		ForeignStateOracleCommittee: pallet_collective::<Instance5>::{Pallet, Call, Origin<T>, Storage, Event<T>, Config<T>} = 200,
 
 		// Oracle
 		//
@@ -1634,6 +1700,7 @@ construct_runtime!(
 		Incentives: module_incentives::{Pallet, Storage, Call, Event<T>} = 120,
 		NFT: module_nft::{Pallet, Call, Event<T>} = 121,
 		AssetRegistry: module_asset_registry::{Pallet, Call, Storage, Event<T>} = 122,
+		ForeignStateOracle: module_foreign_state_oracle::{Pallet, Call, Storage, Event<T>, Origin} = 123,
 
 		// Smart contracts
 		EVM: module_evm::{Pallet, Config<T>, Call, Storage, Event<T>} = 130,

@@ -260,6 +260,7 @@ fn acala_genesis(
 			members: vec![],
 			phantom: Default::default(),
 		},
+		foreign_state_oracle_committee: Default::default(),
 		democracy: Default::default(),
 		treasury: Default::default(),
 		tokens: TokensConfig { balances: vec![] },
@@ -310,5 +311,6 @@ fn acala_genesis(
 		polkadot_xcm: PolkadotXcmConfig {
 			safe_xcm_version: Some(2),
 		},
+		account_tokenizer: Default::default(),
 	}
 }

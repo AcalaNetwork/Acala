@@ -97,6 +97,9 @@ pub mod module {
 		#[pallet::constant]
 		type ExpiredCallPurgeReward: Get<Permill>;
 
+		#[pallet::constant]
+		type MaxQueryCallSize: Get<u32>;
+
 		/// Dispatchable task that needs to be verified by oracle for dispatch
 		type DispatchableCall: Parameter
 			+ Dispatchable<Origin = <Self as Config>::Origin, PostInfo = PostDispatchInfo>
@@ -215,15 +218,17 @@ impl<T: Config> Pallet<T> {
 }
 
 impl<T: Config> ForeignChainStateQuery<T::AccountId, T::DispatchableCall, T::BlockNumber> for Pallet<T> {
-	#[transactional]
-	fn query_task(
+	#[require_transactional]
+	fn create_query(
 		who: &T::AccountId,
-		length_bound: usize,
 		dispatchable_call: T::DispatchableCall,
 		query_duration: Option<T::BlockNumber>,
 	) -> DispatchResult {
 		let call_len = dispatchable_call.encoded_size();
-		ensure!(call_len <= length_bound, Error::<T>::TooLargeRelayQueryRequest);
+		ensure!(
+			call_len <= T::MaxQueryCallSize::get() as usize,
+			Error::<T>::TooLargeRelayQueryRequest
+		);
 		T::Currency::transfer(
 			who,
 			&Self::account_id(),
@@ -247,8 +252,8 @@ impl<T: Config> ForeignChainStateQuery<T::AccountId, T::DispatchableCall, T::Blo
 		Ok(())
 	}
 
-	#[transactional]
-	fn cancel_task(who: &T::AccountId, index: QueryIndex) -> DispatchResult {
+	#[require_transactional]
+	fn cancel_query(who: &T::AccountId, index: QueryIndex) -> DispatchResult {
 		let task = QueryRequests::<T>::take(index).ok_or(Error::<T>::NoMatchingCall)?;
 
 		// Reimbursts (query fee - cancel fee) to account.

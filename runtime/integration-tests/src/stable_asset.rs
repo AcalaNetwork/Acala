@@ -16,10 +16,6 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::setup::*;
-use module_asset_registry::AssetMetadata;
-
-#[cfg(feature = "with-mandala-runtime")]
 #[test]
 fn test_mint() {
 	use crate::setup::*;

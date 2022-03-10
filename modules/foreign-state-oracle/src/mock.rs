@@ -61,24 +61,39 @@ pub mod query_example {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		OriginInjected { origin_data: Vec<u8> },
+		OriginInjected { origin_data: Vec<u8>, call_data: Vec<u8> },
 	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight(0)]
-		pub fn injected_call(origin: OriginFor<T>) -> DispatchResult {
-			let data = T::OracleOrigin::ensure_origin(origin)?;
-			Self::deposit_event(Event::<T>::OriginInjected { origin_data: data });
+		pub fn injected_call(origin: OriginFor<T>, call_data: Vec<u8>) -> DispatchResult {
+			let origin_data = T::OracleOrigin::ensure_origin(origin)?;
+			Self::deposit_event(Event::<T>::OriginInjected { origin_data, call_data });
 			Ok(())
+		}
+		#[transactional]
+		#[pallet::weight(0)]
+		pub fn mock_create_query(
+			_origin: OriginFor<T>,
+			who: T::AccountId,
+			call_data: Vec<u8>,
+			duration: Option<T::BlockNumber>,
+		) -> DispatchResult {
+			T::ForeignStateQuery::create_query(&who, Call::<T>::injected_call { call_data }.into(), duration)
+		}
+		#[transactional]
+		#[pallet::weight(0)]
+		pub fn mock_cancel_query(_origin: OriginFor<T>, who: T::AccountId, index: QueryIndex) -> DispatchResult {
+			T::ForeignStateQuery::cancel_query(&who, index)
 		}
 	}
 
 	impl<T: Config> Pallet<T> {
+		#[transactional]
 		pub fn example_query_call(who: T::AccountId) -> DispatchResult {
-			let call: <T as Config>::Call = Call::<T>::injected_call {}.into();
-			let len = call.using_encoded(|x| x.len());
-			T::ForeignStateQuery::query_task(&who, len, call, None)?;
+			let call: <T as Config>::Call = Call::<T>::injected_call { call_data: vec![] }.into();
+			T::ForeignStateQuery::create_query(&who, call, None)?;
 
 			Ok(())
 		}
@@ -155,6 +170,7 @@ parameter_types! {
 	pub const QueryFee: Balance = 100;
 	pub const CancelFee: Balance = 10;
 	pub ExpiredCallPurgeReward: Permill = Permill::from_percent(50);
+	pub const MaxQueryCallSize: u32 = 200;
 }
 
 impl Config for Runtime {
@@ -164,6 +180,7 @@ impl Config for Runtime {
 	type QueryFee = QueryFee;
 	type CancelFee = CancelFee;
 	type ExpiredCallPurgeReward = ExpiredCallPurgeReward;
+	type MaxQueryCallSize = MaxQueryCallSize;
 	type OracleOrigin = EnsureSignedBy<One, AccountId>;
 	type DefaultQueryDuration = DefaultQueryDuration;
 	type Currency = Balances;

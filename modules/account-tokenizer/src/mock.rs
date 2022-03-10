@@ -196,6 +196,7 @@ parameter_types! {
 	pub QueryFee: Balance = dollar(1);
 	pub const CancelFee: Balance = 10;
 	pub ExpiredCallPurgeReward: Permill = Permill::from_percent(50);
+	pub const MaxQueryCallSize: u32 = 200;
 }
 
 ord_parameter_types! {
@@ -209,6 +210,7 @@ impl module_foreign_state_oracle::Config for Runtime {
 	type QueryFee = QueryFee;
 	type CancelFee = CancelFee;
 	type ExpiredCallPurgeReward = ExpiredCallPurgeReward;
+	type MaxQueryCallSize = MaxQueryCallSize;
 	type OracleOrigin = EnsureSignedBy<Oracle, AccountId>;
 	type DefaultQueryDuration = DefaultQueryDuration;
 	type Currency = Balances;

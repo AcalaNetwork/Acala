@@ -364,6 +364,8 @@ try-runtime = [
 	"module-xcm-interface/try-runtime",
 	"module-nominees-election/try-runtime",
 	"module-session-manager/try-runtime",
+	"module-foreign-state-oracle/try-runtime",
+	"module-account-tokenizer/try-runtime",
 
 	"ecosystem-renvm-bridge/try-runtime",
 	"ecosystem-starport/try-runtime",

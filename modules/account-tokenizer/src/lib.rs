@@ -72,7 +72,6 @@ pub use weights::WeightInfo;
 
 #[frame_support::pallet]
 pub mod module {
-	use frame_support::inherent::BlockT;
 
 	use super::*;
 
@@ -305,7 +304,7 @@ pub mod module {
 				account: account.clone(),
 			}
 			.into();
-			T::ForeignStateQuery::query_task(&who, call.encoded_size(), call, None)?;
+			T::ForeignStateQuery::create_query(&who, call, None)?;
 
 			Self::deposit_event(Event::MintRequested { account, who });
 			Ok(())
@@ -321,6 +320,7 @@ pub mod module {
 		/// 	- `owner`: The owner of the Account Token to be minted.
 		/// 	- `account`: Account ID of the anonymous proxy.
 		#[pallet::weight(< T as Config >::WeightInfo::confirm_mint_request())]
+		#[transactional]
 		pub fn confirm_mint_request(
 			origin: OriginFor<T>,
 			owner: T::AccountId,
@@ -343,6 +343,7 @@ pub mod module {
 		/// 	- `account`: Account ID of the Account Token
 		/// 	- `new_owner`: The owner of the proxy account to be transferred to.
 		#[pallet::weight(< T as Config >::WeightInfo::request_redeem())]
+		#[transactional]
 		pub fn request_redeem(origin: OriginFor<T>, account: T::AccountId, new_owner: T::AccountId) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			let nft_class_id = Self::nft_class_id();
@@ -371,7 +372,7 @@ pub mod module {
 				new_owner: new_owner.clone(),
 			}
 			.into();
-			T::ForeignStateQuery::query_task(&who, call.encoded_size(), call, None)?;
+			T::ForeignStateQuery::create_query(&who, call, None)?;
 
 			Self::deposit_event(Event::RedeemRequested {
 				account,
