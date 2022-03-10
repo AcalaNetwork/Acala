@@ -1262,13 +1262,20 @@ where
 		call: &CallOf<T>,
 		info: &DispatchInfoOf<CallOf<T>>,
 		len: usize,
-	) -> Result<(PalletBalanceOf<T>, Option<NegativeImbalanceOf<T>>), TransactionValidityError> {
+	) -> Result<
+		(
+			PalletBalanceOf<T>,
+			Option<NegativeImbalanceOf<T>>,
+			Option<PalletBalanceOf<T>>,
+		),
+		TransactionValidityError,
+	> {
 		let tip = self.0;
 		let fee = Pallet::<T>::compute_fee(len as u32, info, tip);
 
 		// Only mess with balances if fee is not zero.
 		if fee.is_zero() {
-			return Ok((fee, None));
+			return Ok((fee, None, None));
 		}
 
 		let reason = if tip.is_zero() {
@@ -1282,7 +1289,7 @@ where
 		if let Ok(fee_surplus) = fee_surplus {
 			// withdraw native currency as fee, also consider surplus when swap from dex or pool.
 			match <T as Config>::Currency::withdraw(who, fee + fee_surplus, reason, ExistenceRequirement::KeepAlive) {
-				Ok(imbalance) => Ok((fee + fee_surplus, Some(imbalance))),
+				Ok(imbalance) => Ok((fee + fee_surplus, Some(imbalance), Some(fee_surplus))),
 				Err(_) => Err(InvalidTransaction::Payment.into()),
 			}
 		} else {
@@ -1383,7 +1390,8 @@ where
 		PalletBalanceOf<T>,
 		Self::AccountId,
 		Option<NegativeImbalanceOf<T>>,
-		PalletBalanceOf<T>,
+		PalletBalanceOf<T>,         // fee includes surplus
+		Option<PalletBalanceOf<T>>, // surplus
 	);
 
 	fn additional_signed(&self) -> sp_std::result::Result<(), TransactionValidityError> {
@@ -1397,7 +1405,7 @@ where
 		info: &DispatchInfoOf<Self::Call>,
 		len: usize,
 	) -> TransactionValidity {
-		let (final_fee, _) = self.withdraw_fee(who, call, info, len)?;
+		let (final_fee, _, _) = self.withdraw_fee(who, call, info, len)?;
 		let tip = self.0;
 		Ok(ValidTransaction {
 			priority: Self::get_priority(info, len, tip, final_fee),
@@ -1412,8 +1420,8 @@ where
 		info: &DispatchInfoOf<Self::Call>,
 		len: usize,
 	) -> Result<Self::Pre, TransactionValidityError> {
-		let (fee, imbalance) = self.withdraw_fee(who, call, info, len)?;
-		Ok((self.0, who.clone(), imbalance, fee))
+		let (fee, imbalance, surplus) = self.withdraw_fee(who, call, info, len)?;
+		Ok((self.0, who.clone(), imbalance, fee, surplus))
 	}
 
 	fn post_dispatch(
@@ -1423,7 +1431,7 @@ where
 		len: usize,
 		_result: &DispatchResult,
 	) -> Result<(), TransactionValidityError> {
-		if let Some((tip, who, Some(payed), fee)) = pre {
+		if let Some((tip, who, Some(payed), fee, surplus)) = pre {
 			let actual_fee = Pallet::<T>::compute_actual_fee(len as u32, info, post_info, tip);
 			let refund_fee = fee.saturating_sub(actual_fee);
 			let mut refund = refund_fee;
@@ -1437,6 +1445,9 @@ where
 					.saturating_mul(post_info.calc_unspent(info).saturated_into::<PalletBalanceOf<T>>());
 				refund = refund_fee.saturating_add(refund_tip);
 				actual_tip = tip.saturating_sub(refund_tip);
+			}
+			if let Some(surplus) = surplus {
+				refund = refund.saturating_sub(surplus);
 			}
 			let actual_payment = match <T as Config>::Currency::deposit_into_existing(&who, refund) {
 				Ok(refund_imbalance) => {
