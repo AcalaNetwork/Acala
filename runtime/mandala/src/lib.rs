@@ -1809,8 +1809,8 @@ pub type Executive = frame_executive::Executive<
 pub struct TransactionPaymentMigration;
 
 parameter_types! {
-	pub FeePoolSize: Balance = 5 * dollar(KAR);
-	pub SwapBalanceThreshold: Balance = Ratio::saturating_from_rational(25, 10).saturating_mul_int(dollar(KAR));
+	pub FeePoolSize: Balance = 5 * dollar(ACA);
+	pub SwapBalanceThreshold: Balance = Ratio::saturating_from_rational(25, 10).saturating_mul_int(dollar(ACA));
 }
 
 impl OnRuntimeUpgrade for TransactionPaymentMigration {
