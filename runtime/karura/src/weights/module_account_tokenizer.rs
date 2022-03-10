@@ -20,12 +20,12 @@
 //!
 //! THIS FILE WAS AUTO-GENERATED USING THE SUBSTRATE BENCHMARK CLI VERSION 4.0.0-dev
 //! DATE: 2022-03-10, STEPS: `50`, REPEAT: 20, LOW RANGE: `[]`, HIGH RANGE: `[]`
-//! EXECUTION: Some(Wasm), WASM-EXECUTION: Compiled, CHAIN: Some("dev"), DB CACHE: 1024
+//! EXECUTION: Some(Wasm), WASM-EXECUTION: Compiled, CHAIN: Some("karura-dev"), DB CACHE: 1024
 
 // Executed Command:
 // target/release/acala
 // benchmark
-// --chain=dev
+// --chain=karura-dev
 // --steps=50
 // --repeat=20
 // --pallet=module-account-tokenizer
@@ -47,23 +47,21 @@ use sp_std::marker::PhantomData;
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> module_account_tokenizer::WeightInfo for WeightInfo<T> {
 	// Storage: unknown [0x313d68a8253b2369f4110c7a64e961de4e7b9012096b41c4eb3aaf947f6ea429] (r:1 w:1)
-	// Storage: System Account (r:3 w:3)
-	// Storage: OrmlNFT NextClassId (r:1 w:1)
-	// Storage: Balances Reserves (r:1 w:1)
-	// Storage: Proxy Proxies (r:1 w:1)
+	// Storage: System Account (r:3 w:2)
+	// Storage: OrmlNFT NextClassId (r:1 w:0)
+	// Storage: OrmlNFT Classes (r:1 w:0)
 	// Storage: AccountTokenizer NFTClassId (r:0 w:1)
-	// Storage: OrmlNFT Classes (r:0 w:1)
 	fn initialize_nft_class() -> Weight {
-		(67_000_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(7 as Weight))
-			.saturating_add(T::DbWeight::get().writes(9 as Weight))
+		(71_951_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(6 as Weight))
+			.saturating_add(T::DbWeight::get().writes(4 as Weight))
 	}
 	// Storage: System Account (r:3 w:3)
 	// Storage: Balances Reserves (r:1 w:1)
 	// Storage: ForeignStateOracle NextQueryId (r:1 w:1)
 	// Storage: ForeignStateOracle QueryRequests (r:0 w:1)
 	fn request_mint() -> Weight {
-		(50_000_000 as Weight)
+		(110_572_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(5 as Weight))
 			.saturating_add(T::DbWeight::get().writes(6 as Weight))
 	}
@@ -78,7 +76,7 @@ impl<T: frame_system::Config> module_account_tokenizer::WeightInfo for WeightInf
 	// Storage: OrmlNFT Tokens (r:0 w:1)
 	// Storage: OrmlNFT TokensByOwner (r:0 w:1)
 	fn confirm_mint_request() -> Weight {
-		(80_000_000 as Weight)
+		(161_218_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(9 as Weight))
 			.saturating_add(T::DbWeight::get().writes(10 as Weight))
 	}
@@ -87,14 +85,15 @@ impl<T: frame_system::Config> module_account_tokenizer::WeightInfo for WeightInf
 	// Storage: OrmlNFT Tokens (r:1 w:0)
 	// Storage: XcmInterface XcmDestWeightAndFee (r:1 w:0)
 	// Storage: ParachainInfo ParachainId (r:1 w:0)
+	// Storage: PolkadotXcm SupportedVersion (r:1 w:0)
 	// Storage: ParachainSystem HostConfiguration (r:1 w:0)
 	// Storage: ParachainSystem PendingUpwardMessages (r:1 w:1)
 	// Storage: System Account (r:2 w:2)
 	// Storage: ForeignStateOracle NextQueryId (r:1 w:1)
 	// Storage: ForeignStateOracle QueryRequests (r:0 w:1)
 	fn request_redeem() -> Weight {
-		(52_000_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(10 as Weight))
+		(111_698_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(11 as Weight))
 			.saturating_add(T::DbWeight::get().writes(5 as Weight))
 	}
 	// Storage: ForeignStateOracle QueryRequests (r:1 w:1)
@@ -107,7 +106,7 @@ impl<T: frame_system::Config> module_account_tokenizer::WeightInfo for WeightInf
 	// Storage: System Account (r:1 w:1)
 	// Storage: OrmlNFT TokensByOwner (r:0 w:1)
 	fn confirm_redeem_account_token() -> Weight {
-		(51_000_000 as Weight)
+		(104_102_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(8 as Weight))
 			.saturating_add(T::DbWeight::get().writes(7 as Weight))
 	}
