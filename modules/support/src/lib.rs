@@ -694,13 +694,14 @@ pub trait ForeignChainStateQuery<AccountId, Call, BlockNumber> {
 	/// params:
 	/// - who: Account that is requesting the query,
 	/// - dispatchable_call: Call to be dispatched on the condition of a foreign chain state
+	/// - query_duration: Number of blocks this query is valid. If None, default duration is used.
 	fn create_query(who: &AccountId, dispatchable_call: Call, query_duration: Option<BlockNumber>) -> DispatchResult;
 
 	/// Cancels query, and refunds account the fee.
 	/// params:
 	/// - who: Account that is canceling the query.
-	/// - index: Index of stored call to be canceled
-	fn cancel_query(who: &AccountId, index: u64) -> DispatchResult;
+	/// - query_id: Index of stored call to be canceled
+	fn cancel_query(who: &AccountId, query_id: u64) -> DispatchResult;
 }
 
 // Supplement trait to the nonfungibles::Create trait

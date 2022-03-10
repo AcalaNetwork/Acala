@@ -86,7 +86,10 @@ fn can_mint_account_token() {
 			);
 
 			System::assert_last_event(Event::ForeignStateOracle(
-				module_foreign_state_oracle::Event::CallDispatched { task_result: Ok(()) },
+				module_foreign_state_oracle::Event::CallDispatched {
+					query_id: 0,
+					task_result: Ok(()),
+				},
 			));
 
 			// Deposit is returned to the owner after mint is successful.
@@ -144,7 +147,10 @@ fn can_reject_mint_request() {
 			);
 
 			System::assert_last_event(Event::ForeignStateOracle(
-				module_foreign_state_oracle::Event::CallDispatched { task_result: Ok(()) },
+				module_foreign_state_oracle::Event::CallDispatched {
+					query_id: 0,
+					task_result: Ok(()),
+				},
 			));
 
 			// Deposit is repatriated to the treasury when mint is rejected.
@@ -239,7 +245,10 @@ fn can_burn_account_token_nft() {
 			);
 
 			System::assert_last_event(Event::ForeignStateOracle(
-				module_foreign_state_oracle::Event::CallDispatched { task_result: Ok(()) },
+				module_foreign_state_oracle::Event::CallDispatched {
+					query_id: 1,
+					task_result: Ok(()),
+				},
 			));
 		});
 }

@@ -249,14 +249,14 @@ frame_support::construct_runtime!(
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic
 	{
-		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
+		System: frame_system::{Pallet, Call, Config, Storage, Event<T>} = 0,
+		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 1,
 
-		ModuleNFT: module_nft::{Pallet, Call, Event<T>},
-		OrmlNFT: orml_nft::{Pallet, Storage, Config<T>},
-		Proxy: pallet_proxy::{Pallet, Call, Storage, Event<T>},
-		ForeignStateOracle: module_foreign_state_oracle::{Pallet, Call, Storage, Event<T>, Origin},
-		AccountTokenizer: account_tokenizer::{Pallet, Call, Storage, Config, Event<T>},
+		ModuleNFT: module_nft::{Pallet, Call, Event<T>} = 2,
+		OrmlNFT: orml_nft::{Pallet, Storage, Config<T>} = 3,
+		Proxy: pallet_proxy::{Pallet, Call, Storage, Event<T>} = 4,
+		ForeignStateOracle: module_foreign_state_oracle::{Pallet, Call, Storage, Event<T>, Origin} = 5,
+		AccountTokenizer: account_tokenizer::{Pallet, Call, Storage, Config, Event<T>} = 6,
 	}
 );
 

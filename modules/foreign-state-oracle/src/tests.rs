@@ -59,6 +59,7 @@ fn dispatch_and_remove_works() {
 			b"hello".to_vec()
 		));
 		System::assert_last_event(Event::ForeignStateOracle(crate::Event::CallDispatched {
+			query_id: 1,
 			task_result: Ok(()),
 		}));
 		System::assert_has_event(Event::QueryExample(mock::query_example::Event::OriginInjected {

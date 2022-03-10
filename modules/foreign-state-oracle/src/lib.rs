@@ -123,22 +123,28 @@ pub mod module {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// Active Query is created, under the index as the key
-		CreateQueryRequests { index: QueryIndex, expiry: T::BlockNumber },
-		/// Call is dispatched with data, includes the result of the extrinsic
-		CallDispatched { task_result: DispatchResult },
-		/// Query that has expired is removed from storage, includes index
-		StaleQueryRemoved { next_query_id: QueryIndex },
-		/// Query is canceled, includes index
-		QueryCanceled { index: QueryIndex },
+		/// An Query request is created, under the query_id as the key
+		QueryRequestCreated {
+			query_id: QueryIndex,
+			expiry: T::BlockNumber,
+		},
+		/// Call is dispatched with data
+		CallDispatched {
+			query_id: QueryIndex,
+			task_result: DispatchResult,
+		},
+		/// Query that has expired is removed from storage
+		StaleQueryRemoved { query_id: QueryIndex },
+		/// Query is canceled
+		QueryCanceled { query_id: QueryIndex },
 	}
 
-	/// Index of Queries, each query gets unique number
+	/// Index of Queries, each query gets an unique index.
 	#[pallet::storage]
 	#[pallet::getter(fn next_query_id)]
 	pub(super) type NextQueryId<T: Config> = StorageValue<_, QueryIndex, ValueQuery>;
 
-	/// The tasks to be dispatched with data provideed by foreign state oracle
+	/// The tasks to be dispatched with data provided by foreign state oracle
 	///
 	/// QueryRequests: map QueryIndex => Option<RelayQueryRequestOF<T>>
 	#[pallet::storage]
@@ -147,30 +153,29 @@ pub mod module {
 
 	#[pallet::error]
 	pub enum Error<T> {
-		/// Index key does not have an active query currently
+		/// No query request with the given index.
 		NoMatchingCall,
-		/// Request query is too large
+		/// Request query is larger than `MaxQueryCallSize`.
 		TooLargeRelayQueryRequest,
 		/// Query has expired
 		QueryExpired,
 		/// Query has not yet expired
 		QueryNotExpired,
-		/// Not account that requested query
-		NotQueryAccount,
 	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		/// Dispatch task with arbitrary data in origin.
+		/// Respond to a query request with information from the relay chain.
+		/// Dispatch the callback with response data in origin.
 		///
-		/// - `next_query_id`: Unique index mapped to a particular query
+		/// - `query_id`: Unique index mapped to a particular query
 		/// - `data`: Aribtrary data to be injected into the call via origin
 		#[pallet::weight(0)]
 		#[transactional]
-		pub fn respond_query_request(origin: OriginFor<T>, next_query_id: QueryIndex, data: Vec<u8>) -> DispatchResult {
+		pub fn respond_query_request(origin: OriginFor<T>, query_id: QueryIndex, data: Vec<u8>) -> DispatchResult {
 			T::OracleOrigin::ensure_origin(origin)?;
 
-			let verifiable_call = QueryRequests::<T>::take(next_query_id).ok_or(Error::<T>::NoMatchingCall)?;
+			let verifiable_call = QueryRequests::<T>::take(query_id).ok_or(Error::<T>::NoMatchingCall)?;
 			// Check that query has not expired
 			ensure!(
 				verifiable_call.expiry > T::BlockNumberProvider::current_block_number(),
@@ -179,21 +184,22 @@ pub mod module {
 			let result = verifiable_call.dispatchable_call.dispatch(RawOrigin { data }.into());
 
 			Self::deposit_event(Event::CallDispatched {
+				query_id,
 				task_result: result.map(|_| ()).map_err(|e| e.error),
 			});
 			Ok(())
 		}
 
 		/// Remove Query that has expired so chain state does not bloat. This rewards the oracle
-		/// with half the query fee
+		/// with a portion of the query fee
 		///
-		/// - `next_query_id`: Unique index that is mapped to a particular query
+		/// - `query_id`: Unique index that is mapped to a particular query
 		#[pallet::weight(0)]
 		#[transactional]
-		pub fn purge_expired_query(origin: OriginFor<T>, next_query_id: QueryIndex) -> DispatchResult {
+		pub fn purge_expired_query(origin: OriginFor<T>, query_id: QueryIndex) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			let verifiable_call = QueryRequests::<T>::take(next_query_id).ok_or(Error::<T>::NoMatchingCall)?;
+			let verifiable_call = QueryRequests::<T>::take(query_id).ok_or(Error::<T>::NoMatchingCall)?;
 			// Make sure query is expired
 			ensure!(
 				verifiable_call.expiry <= T::BlockNumberProvider::current_block_number(),
@@ -204,7 +210,7 @@ pub mod module {
 			let reward: Balance = T::ExpiredCallPurgeReward::get().mul(verifiable_call.oracle_reward);
 			T::Currency::transfer(&Self::account_id(), &who, reward, ExistenceRequirement::AllowDeath)?;
 
-			Self::deposit_event(Event::<T>::StaleQueryRemoved { next_query_id });
+			Self::deposit_event(Event::<T>::StaleQueryRemoved { query_id });
 			Ok(())
 		}
 	}
@@ -243,27 +249,27 @@ impl<T: Config> ForeignChainStateQuery<T::AccountId, T::DispatchableCall, T::Blo
 			oracle_reward: T::QueryFee::get(),
 		};
 
-		let index = NextQueryId::<T>::get();
+		let query_id = NextQueryId::<T>::get();
 		// Increment counter by one
-		NextQueryId::<T>::put(index.checked_add(One::one()).ok_or(ArithmeticError::Overflow)?);
+		NextQueryId::<T>::put(query_id.checked_add(One::one()).ok_or(ArithmeticError::Overflow)?);
 
-		QueryRequests::<T>::insert(index, verifiable_call);
-		Self::deposit_event(Event::CreateQueryRequests { index, expiry });
+		QueryRequests::<T>::insert(query_id, verifiable_call);
+		Self::deposit_event(Event::QueryRequestCreated { query_id, expiry });
 		Ok(())
 	}
 
 	#[require_transactional]
-	fn cancel_query(who: &T::AccountId, index: QueryIndex) -> DispatchResult {
-		let task = QueryRequests::<T>::take(index).ok_or(Error::<T>::NoMatchingCall)?;
+	fn cancel_query(who: &T::AccountId, query_id: QueryIndex) -> DispatchResult {
+		let task = QueryRequests::<T>::take(query_id).ok_or(Error::<T>::NoMatchingCall)?;
 
-		// Reimbursts (query fee - cancel fee) to account.
+		// Reimburse (query fee - cancel fee) to account.
 		T::Currency::transfer(
 			&Self::account_id(),
 			who,
 			task.oracle_reward.saturating_sub(T::CancelFee::get()),
 			ExistenceRequirement::AllowDeath,
 		)?;
-		Self::deposit_event(Event::QueryCanceled { index });
+		Self::deposit_event(Event::QueryCanceled { query_id });
 		Ok(())
 	}
 }

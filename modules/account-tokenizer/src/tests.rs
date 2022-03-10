@@ -152,7 +152,10 @@ fn can_mint_account_token_nft() {
 			);
 
 			System::assert_last_event(Event::ForeignStateOracle(
-				module_foreign_state_oracle::Event::CallDispatched { task_result: Ok(()) },
+				module_foreign_state_oracle::Event::CallDispatched {
+					query_id: 0,
+					task_result: Ok(()),
+				},
 			));
 
 			// Deposit is returned to the owner after mint is successful
@@ -187,9 +190,10 @@ fn can_handle_bad_oracle_data() {
 
 			System::assert_last_event(Event::ForeignStateOracle(
 				module_foreign_state_oracle::Event::CallDispatched {
+					query_id: 0,
 					task_result: Err(DispatchError::Module(ModuleError {
-						index: 6u8,
-						error: 3u8,
+						index: 6u8, // AccountTokenizer
+						error: 3u8, // BadOracleData
 						message: None,
 					})),
 				},
@@ -235,7 +239,10 @@ fn can_reject_mint_request() {
 			);
 
 			System::assert_last_event(Event::ForeignStateOracle(
-				module_foreign_state_oracle::Event::CallDispatched { task_result: Ok(()) },
+				module_foreign_state_oracle::Event::CallDispatched {
+					query_id: 0,
+					task_result: Ok(()),
+				},
 			));
 
 			// Deposit is repatriated to the treasury due to the rejection of the request.
@@ -331,7 +338,10 @@ fn can_burn_account_token_nft() {
 				})
 			);
 			System::assert_last_event(Event::ForeignStateOracle(
-				module_foreign_state_oracle::Event::CallDispatched { task_result: Ok(()) },
+				module_foreign_state_oracle::Event::CallDispatched {
+					query_id: 1,
+					task_result: Ok(()),
+				},
 			));
 
 			// XCM fee is burned.
