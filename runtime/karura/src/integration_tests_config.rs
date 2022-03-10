@@ -43,6 +43,7 @@ pub type Trader = (
 	FixedRateOfFungible<BncPerSecondOfCanonicalLocation, ToTreasury>,
 	FixedRateOfFungible<VsksmPerSecond, ToTreasury>,
 	FixedRateOfFungible<PHAPerSecond, ToTreasury>,
+	FixedRateOfFungible<CRUPerSecond, ToTreasury>,
 	FixedRateOfFungible<KbtcPerSecond, ToTreasury>,
 	FixedRateOfFungible<KintPerSecond, ToTreasury>,
 	FixedRateOfForeignAsset<Runtime, ForeignAssetUnitsPerSecond, ToTreasury>,

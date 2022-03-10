@@ -111,6 +111,10 @@ pub mod parachains {
 	pub mod statemine {
 		pub const ID: u32 = 1000;
 	}
+
+	pub mod crust {
+		pub const ID: u32 = 2012;
+	}
 }
 
 #[cfg(test)]

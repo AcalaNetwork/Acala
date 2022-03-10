@@ -151,6 +151,14 @@ parameter_types! {
 		// PHA:KSM = 400:1
 		ksm_per_second() * 400
 	);
+	pub CRUPerSecond: (AssetId, u128) = (
+		MultiLocation::new(
+			1,
+			X1(Parachain(parachains::crust::ID)),
+		).into(),
+		// CRU:KSM = 30:1
+		ksm_per_second() * 30
+	);
 	pub BncPerSecond: (AssetId, u128) = (
 		MultiLocation::new(
 			1,
@@ -198,6 +206,7 @@ pub type Trader = (
 	FixedRateOfFungible<BncPerSecond, ToTreasury>,
 	FixedRateOfFungible<VsksmPerSecond, ToTreasury>,
 	FixedRateOfFungible<PHAPerSecond, ToTreasury>,
+	FixedRateOfFungible<CRUPerSecond, ToTreasury>,
 	FixedRateOfFungible<KbtcPerSecond, ToTreasury>,
 	FixedRateOfFungible<KintPerSecond, ToTreasury>,
 	FixedRateOfForeignAsset<Runtime, ForeignAssetUnitsPerSecond, ToTreasury>,
@@ -354,6 +363,8 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 			)),
 			// Phala Native token
 			Token(PHA) => Some(MultiLocation::new(1, X1(Parachain(parachains::phala::ID)))),
+			// Crust Native token
+			Token(CRU) => Some(MultiLocation::new(1, X1(Parachain(parachains::crust::ID)))),
 			// Kintsugi Native token
 			Token(KINT) => Some(MultiLocation::new(
 				1,
@@ -420,6 +431,10 @@ impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 				parents: 1,
 				interior: X1(Parachain(parachains::phala::ID)),
 			} => Some(Token(PHA)),
+			MultiLocation {
+				parents: 1,
+				interior: X1(Parachain(parachains::crust::ID)),
+			} => Some(Token(CRU)),
 			// adapt for re-anchor canonical location: https://github.com/paritytech/polkadot/pull/4470
 			MultiLocation {
 				parents: 0,

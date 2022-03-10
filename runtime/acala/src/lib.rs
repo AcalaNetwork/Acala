@@ -760,6 +760,7 @@ parameter_type_with_key! {
 				TokenSymbol::KBTC |
 				TokenSymbol::KINT |
 				TokenSymbol::TAI |
+				TokenSymbol::CRU |
 				TokenSymbol::CASH => Balance::max_value() // unsupported
 			},
 			CurrencyId::DexShare(dex_share_0, _) => {

@@ -100,7 +100,7 @@ pub use runtime_common::{
 	OperationalFeeMultiplier, OperatorMembershipInstanceAcala, Price, ProxyType, Rate, Ratio,
 	RelayChainBlockNumberProvider, RelayChainSubAccountId, RuntimeBlockLength, RuntimeBlockWeights,
 	SystemContractsFilter, TechnicalCommitteeInstance, TechnicalCommitteeMembershipInstance, TimeStampedPrice,
-	TipPerWeightStep, BNC, KAR, KBTC, KINT, KSM, KUSD, LKSM, PHA, RENBTC, VSKSM,
+	TipPerWeightStep, BNC, CRU, KAR, KBTC, KINT, KSM, KUSD, LKSM, PHA, RENBTC, VSKSM,
 };
 pub use xcm::latest::prelude::*;
 use xcm_config::XcmConfig;
@@ -765,6 +765,7 @@ parameter_type_with_key! {
 				TokenSymbol::KINT => 13333 * microcent(*currency_id), // 1.33 KINT = 1 KSM
 				TokenSymbol::KBTC => 66 * microcent(*currency_id), // 1KBTC = 150 KSM
 				TokenSymbol::TAI => dollar(*currency_id), // 1 KUSD = 100 TAI
+				TokenSymbol::CRU => 300 * millicent(*currency_id),  // 30CRU = 1KSM
 
 				TokenSymbol::ACA |
 				TokenSymbol::AUSD |
