@@ -110,13 +110,13 @@ where
 	}
 }
 
-pub struct Pricer<R>(PhantomData<R>);
+struct Pricer<R>(PhantomData<R>);
 
 impl<Runtime> Pricer<Runtime>
 where
 	Runtime: module_evm::Config + module_prices::Config,
 {
-	pub const BASE_COST: u64 = 200;
+	const BASE_COST: u64 = 200;
 
 	fn cost(
 		input: &Input<Action, Runtime::AccountId, Runtime::AddressMapping, Runtime::Erc20InfoMapping>,
@@ -134,5 +134,145 @@ where
 			}
 		};
 		Ok(Self::BASE_COST.saturating_add(cost))
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	use crate::precompile::mock::{alice_evm_addr, new_test_ext, Oracle, Price, Test, ALICE, RENBTC};
+	use frame_support::{assert_noop, assert_ok};
+	use hex_literal::hex;
+	use module_evm::ExitRevert;
+	use orml_traits::DataFeeder;
+	use sp_runtime::traits::Convert;
+
+	type OraclePrecompile = crate::OraclePrecompile<Test>;
+
+	fn base_cost(i: u64) -> u64 {
+		i * Pricer::<Test>::BASE_COST
+	}
+
+	fn read_cost(i: u64) -> u64 {
+		WeightToGas::convert(<Test as frame_system::Config>::DbWeight::get().reads(i))
+	}
+
+	#[test]
+	fn get_price_work() {
+		new_test_ext().execute_with(|| {
+			let context = Context {
+				address: Default::default(),
+				caller: alice_evm_addr(),
+				apparent_value: Default::default(),
+			};
+
+			let price = Price::from(30_000);
+
+			// getPrice(address) -> 0x41976e09
+			// RENBTC
+			let input = hex! {"
+				41976e09
+				000000000000000000000000 0000000000000000000100000000000000000014
+			"};
+
+			// no price yet
+			let expected_output = hex! {"
+				00000000000000000000000000000000 00000000000000000000000000000000
+			"};
+
+			assert_ok!(
+				OraclePrecompile::execute(&input, None, &context, false),
+				PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: base_cost(1) + read_cost(1),
+					output: expected_output.to_vec(),
+					logs: Default::default(),
+				}
+			);
+
+			assert_ok!(Oracle::feed_value(ALICE, RENBTC, price));
+			assert_eq!(
+				Oracle::get_no_op(&RENBTC),
+				Some(orml_oracle::TimestampedValue {
+					value: price,
+					timestamp: 1
+				})
+			);
+
+			// returned price
+			let expected_output = hex! {"
+				00000000000000000000000000000000 000000000000065a4da25d3016c00000
+			"};
+
+			assert_ok!(
+				OraclePrecompile::execute(&input, None, &context, false),
+				PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: base_cost(1) + read_cost(1),
+					output: expected_output.to_vec(),
+					logs: Default::default(),
+				}
+			);
+		});
+	}
+
+	#[test]
+	fn oracle_precompile_should_handle_invalid_input() {
+		new_test_ext().execute_with(|| {
+			assert_noop!(
+				OraclePrecompile::execute(
+					&[0u8; 0],
+					Some(10),
+					&Context {
+						address: Default::default(),
+						caller: alice_evm_addr(),
+						apparent_value: Default::default()
+					},
+					false
+				),
+				PrecompileFailure::Revert {
+					exit_status: ExitRevert::Reverted,
+					output: "invalid input".into(),
+					cost: 10,
+				}
+			);
+
+			assert_noop!(
+				OraclePrecompile::execute(
+					&[0u8; 3],
+					Some(10),
+					&Context {
+						address: Default::default(),
+						caller: alice_evm_addr(),
+						apparent_value: Default::default()
+					},
+					false
+				),
+				PrecompileFailure::Revert {
+					exit_status: ExitRevert::Reverted,
+					output: "invalid input".into(),
+					cost: 10,
+				}
+			);
+
+			assert_noop!(
+				OraclePrecompile::execute(
+					&[1u8; 32],
+					Some(10),
+					&Context {
+						address: Default::default(),
+						caller: alice_evm_addr(),
+						apparent_value: Default::default()
+					},
+					false
+				),
+				PrecompileFailure::Revert {
+					exit_status: ExitRevert::Reverted,
+					output: "invalid action".into(),
+					cost: 10,
+				}
+			);
+		});
 	}
 }

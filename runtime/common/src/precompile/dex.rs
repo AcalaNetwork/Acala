@@ -328,13 +328,13 @@ where
 	}
 }
 
-pub struct Pricer<R>(PhantomData<R>);
+struct Pricer<R>(PhantomData<R>);
 
 impl<Runtime> Pricer<Runtime>
 where
 	Runtime: module_evm::Config + module_dex::Config,
 {
-	pub const BASE_COST: u64 = 200;
+	const BASE_COST: u64 = 200;
 
 	fn cost(
 		input: &Input<
@@ -396,5 +396,370 @@ where
 			}
 		};
 		Ok(Self::BASE_COST.saturating_add(cost))
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	use crate::precompile::mock::{alice_evm_addr, new_test_ext, DexModule, Origin, Test, ALICE, AUSD, RENBTC};
+	use frame_support::{assert_noop, assert_ok};
+	use hex_literal::hex;
+	use module_dex::WeightInfo;
+	use module_evm::ExitRevert;
+	use sp_runtime::traits::Convert;
+
+	type DEXPrecompile = crate::DEXPrecompile<Test>;
+
+	fn base_cost(i: u64) -> u64 {
+		i * Pricer::<Test>::BASE_COST
+	}
+
+	fn read_cost(i: u64) -> u64 {
+		WeightToGas::convert(<Test as frame_system::Config>::DbWeight::get().reads(i))
+	}
+
+	#[test]
+	fn get_liquidity_works() {
+		new_test_ext().execute_with(|| {
+			// enable RENBTC/AUSD
+			assert_ok!(DexModule::enable_trading_pair(Origin::signed(ALICE), RENBTC, AUSD,));
+
+			assert_ok!(DexModule::add_liquidity(
+				Origin::signed(ALICE),
+				RENBTC,
+				AUSD,
+				1_000,
+				1_000_000,
+				0,
+				true
+			));
+
+			let context = Context {
+				address: Default::default(),
+				caller: alice_evm_addr(),
+				apparent_value: Default::default(),
+			};
+
+			// getLiquidityPool(address,address) -> 0xf4f31ede
+			// RENBTC
+			// AUSD
+			let input = hex! {"
+				f4f31ede
+				000000000000000000000000 0000000000000000000100000000000000000014
+				000000000000000000000000 0000000000000000000100000000000000000001
+			"};
+
+			// 1_000
+			// 1_000_000
+			let expected_output = hex! {"
+				00000000000000000000000000000000 000000000000000000000000000003e8
+				00000000000000000000000000000000 000000000000000000000000000f4240
+			"};
+
+			assert_ok!(
+				DEXPrecompile::execute(&input, None, &context, false),
+				PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: read_cost(1) + base_cost(1),
+					output: expected_output.to_vec(),
+					logs: Default::default(),
+				}
+			);
+		});
+	}
+
+	#[test]
+	fn get_liquidity_token_address_works() {
+		new_test_ext().execute_with(|| {
+			// enable RENBTC/AUSD
+			assert_ok!(DexModule::enable_trading_pair(Origin::signed(ALICE), RENBTC, AUSD,));
+
+			assert_ok!(DexModule::add_liquidity(
+				Origin::signed(ALICE),
+				RENBTC,
+				AUSD,
+				1_000,
+				1_000_000,
+				0,
+				true
+			));
+
+			let context = Context {
+				address: Default::default(),
+				caller: alice_evm_addr(),
+				apparent_value: Default::default(),
+			};
+
+			// getLiquidityTokenAddress(address,address) -> 0xffd73c4a
+			// RENBTC
+			// AUSD
+			let input = hex! {"
+				ffd73c4a
+				000000000000000000000000 0000000000000000000100000000000000000014
+				000000000000000000000000 0000000000000000000100000000000000000001
+			"};
+
+			// 1_000
+			// 1_000_000
+			let expected_output = hex! {"
+				000000000000000000000000 0000000000000000000200000000010000000014
+			"};
+
+			assert_ok!(
+				DEXPrecompile::execute(&input, None, &context, false),
+				PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: read_cost(3) + base_cost(1),
+					output: expected_output.to_vec(),
+					logs: Default::default(),
+				}
+			);
+
+			// getLiquidityTokenAddress(address,address) -> 0xffd73c4a
+			// RENBTC
+			// unkonwn token
+			let input = hex! {"
+				ffd73c4a
+				000000000000000000000000 0000000000000000000100000000000000000014
+				000000000000000000000000 00000000000000000001000000000000000000ff
+			"};
+
+			assert_noop!(
+				DEXPrecompile::execute(&input, Some(10_000), &context, false),
+				PrecompileFailure::Revert {
+					exit_status: ExitRevert::Reverted,
+					output: "invalid currency id".into(),
+					cost: 10000,
+				}
+			);
+		});
+	}
+
+	#[test]
+	fn get_swap_target_amount_works() {
+		new_test_ext().execute_with(|| {
+			// enable RENBTC/AUSD
+			assert_ok!(DexModule::enable_trading_pair(Origin::signed(ALICE), RENBTC, AUSD,));
+
+			assert_ok!(DexModule::add_liquidity(
+				Origin::signed(ALICE),
+				RENBTC,
+				AUSD,
+				1_000,
+				1_000_000,
+				0,
+				true
+			));
+
+			let context = Context {
+				address: Default::default(),
+				caller: alice_evm_addr(),
+				apparent_value: Default::default(),
+			};
+
+			// getSwapTargetAmount(address[],uint256) -> 0x4d60beb1
+			// offset
+			// supply_amount
+			// path_len
+			// RENBTC
+			// AUSD
+			let input = hex! {"
+				4d60beb1
+				00000000000000000000000000000000 00000000000000000000000000000000
+				00000000000000000000000000000000 00000000000000000000000000000001
+				00000000000000000000000000000000000000000000000000000000 00000002
+				000000000000000000000000 0000000000000000000100000000000000000014
+				000000000000000000000000 0000000000000000000100000000000000000001
+			"};
+
+			// 989
+			let expected_output = hex! {"
+				00000000000000000000000000000000 000000000000000000000000000003dd
+			"};
+
+			assert_ok!(
+				DEXPrecompile::execute(&input, None, &context, false),
+				PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: read_cost(2) + base_cost(1),
+					output: expected_output.to_vec(),
+					logs: Default::default(),
+				}
+			);
+		});
+	}
+
+	#[test]
+	fn get_swap_supply_amount_works() {
+		new_test_ext().execute_with(|| {
+			// enable RENBTC/AUSD
+			assert_ok!(DexModule::enable_trading_pair(Origin::signed(ALICE), RENBTC, AUSD,));
+
+			assert_ok!(DexModule::add_liquidity(
+				Origin::signed(ALICE),
+				RENBTC,
+				AUSD,
+				1_000,
+				1_000_000,
+				0,
+				true
+			));
+
+			let context = Context {
+				address: Default::default(),
+				caller: alice_evm_addr(),
+				apparent_value: Default::default(),
+			};
+
+			// getSwapSupplyAmount(address[],uint256) -> 0xdbcd19a2
+			// offset
+			// target_amount
+			// path_len
+			// RENBTC
+			// AUSD
+			let input = hex! {"
+				dbcd19a2
+				00000000000000000000000000000000 00000000000000000000000000000000
+				00000000000000000000000000000000 00000000000000000000000000000001
+				00000000000000000000000000000000000000000000000000000000 00000002
+				000000000000000000000000 0000000000000000000100000000000000000014
+				000000000000000000000000 0000000000000000000100000000000000000001
+			"};
+
+			// 1
+			let expected_output = hex! {"
+				00000000000000000000000000000000 00000000000000000000000000000001
+			"};
+
+			assert_ok!(
+				DEXPrecompile::execute(&input, None, &context, false),
+				PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: read_cost(2) + base_cost(1),
+					output: expected_output.to_vec(),
+					logs: Default::default(),
+				}
+			);
+		});
+	}
+
+	#[test]
+	fn swap_with_exact_supply_works() {
+		new_test_ext().execute_with(|| {
+			// enable RENBTC/AUSD
+			assert_ok!(DexModule::enable_trading_pair(Origin::signed(ALICE), RENBTC, AUSD,));
+
+			assert_ok!(DexModule::add_liquidity(
+				Origin::signed(ALICE),
+				RENBTC,
+				AUSD,
+				1_000,
+				1_000_000,
+				0,
+				true
+			));
+
+			let context = Context {
+				address: Default::default(),
+				caller: alice_evm_addr(),
+				apparent_value: Default::default(),
+			};
+
+			// swapWithExactSupply(address,address[],uint256,uint256) -> 0x579baa18
+			// who
+			// offset
+			// supply_amount
+			// min_target_amount
+			// path_len
+			// RENBTC
+			// AUSD
+			let input = hex! {"
+				579baa18
+				000000000000000000000000 1000000000000000000000000000000000000001
+				00000000000000000000000000000000 00000000000000000000000000000000
+				00000000000000000000000000000000 00000000000000000000000000000001
+				00000000000000000000000000000000 00000000000000000000000000000000
+				00000000000000000000000000000000000000000000000000000000 00000002
+				000000000000000000000000 0000000000000000000100000000000000000014
+				000000000000000000000000 0000000000000000000100000000000000000001
+			"};
+
+			// 989
+			let expected_output = hex! {"
+				00000000000000000000000000000000 000000000000000000000000000003dd
+			"};
+
+			assert_ok!(
+				DEXPrecompile::execute(&input, None, &context, false),
+				PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: base_cost(1)
+						+ WeightToGas::convert(<Test as module_dex::Config>::WeightInfo::swap_with_exact_supply(2)),
+					output: expected_output.to_vec(),
+					logs: Default::default(),
+				}
+			);
+		});
+	}
+
+	#[test]
+	fn dex_precompile_swap_with_exact_target_should_work() {
+		new_test_ext().execute_with(|| {
+			// enable RENBTC/AUSD
+			assert_ok!(DexModule::enable_trading_pair(Origin::signed(ALICE), RENBTC, AUSD,));
+
+			assert_ok!(DexModule::add_liquidity(
+				Origin::signed(ALICE),
+				RENBTC,
+				AUSD,
+				1_000,
+				1_000_000,
+				0,
+				true
+			));
+
+			let context = Context {
+				address: Default::default(),
+				caller: alice_evm_addr(),
+				apparent_value: Default::default(),
+			};
+
+			// swapWithExactSupply(address,address[],uint256,uint256) -> 0x9782ac81
+			// who
+			// offset
+			// target_amount
+			// max_supply_amount
+			// path_len
+			// RENBTC
+			// AUSD
+			let input = hex! {"
+				9782ac81
+				000000000000000000000000 1000000000000000000000000000000000000001
+				00000000000000000000000000000000 00000000000000000000000000000000
+				00000000000000000000000000000000 00000000000000000000000000000001
+				00000000000000000000000000000000 00000000000000000000000000000001
+				00000000000000000000000000000000000000000000000000000000 00000002
+				000000000000000000000000 0000000000000000000100000000000000000014
+				000000000000000000000000 0000000000000000000100000000000000000001
+			"};
+
+			// 1
+			let expected_output = hex! {"
+				00000000000000000000000000000000 00000000000000000000000000000001
+			"};
+
+			assert_ok!(
+				DEXPrecompile::execute(&input, None, &context, false),
+				PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: base_cost(1)
+						+ WeightToGas::convert(<Test as module_dex::Config>::WeightInfo::swap_with_exact_target(2)),
+					output: expected_output.to_vec(),
+					logs: Default::default(),
+				}
+			);
+		});
 	}
 }

@@ -199,14 +199,14 @@ where
 	}
 }
 
-pub struct Pricer<R>(PhantomData<R>);
+struct Pricer<R>(PhantomData<R>);
 
 impl<Runtime> Pricer<Runtime>
 where
 	Runtime:
 		module_currencies::Config + module_evm::Config + module_prices::Config + module_transaction_payment::Config,
 {
-	pub const BASE_COST: u64 = 200;
+	const BASE_COST: u64 = 200;
 
 	fn cost(
 		input: &Input<
@@ -218,20 +218,26 @@ where
 		currency_id: CurrencyId,
 	) -> Result<u64, PrecompileFailure> {
 		let action = input.action()?;
+
+		// Decode CurrencyId from EvmAddress
+		let decode_cost = Self::decode_evm_address_cost(currency_id);
+
 		let cost = match action {
-			Action::QueryName | Action::QuerySymbol | Action::QueryDecimals => {
-				let cost = Self::read_cost(currency_id);
-				cost
-			}
+			Action::QueryName | Action::QuerySymbol | Action::QueryDecimals => Self::erc20_info(currency_id),
 			Action::QueryTotalIssuance => {
-				let cost = Self::read_cost(currency_id);
-				cost
+				// Currencies::TotalIssuance (r: 1)
+				WeightToGas::convert(<Runtime as frame_system::Config>::DbWeight::get().reads(1))
 			}
 			Action::QueryBalance => {
-				let cost = Self::read_cost(currency_id);
-				cost
+				// EvmAccounts::Accounts (r: 1)
+				// Currencies::Balance (r: 1)
+				WeightToGas::convert(<Runtime as frame_system::Config>::DbWeight::get().reads(2))
 			}
 			Action::Transfer => {
+				// EvmAccounts::Accounts (r: 2)
+				let cost = WeightToGas::convert(<Runtime as frame_system::Config>::DbWeight::get().reads(2));
+
+				// transfer weight
 				let weight = if currency_id == <Runtime as module_transaction_payment::Config>::NativeCurrencyId::get()
 				{
 					<Runtime as module_currencies::Config>::WeightInfo::transfer_native_currency()
@@ -239,12 +245,30 @@ where
 					<Runtime as module_currencies::Config>::WeightInfo::transfer_non_native_currency()
 				};
 
-				let cost = WeightToGas::convert(weight);
-				cost
+				cost.saturating_add(WeightToGas::convert(weight))
 			}
 		};
 
-		Ok(Self::BASE_COST.saturating_add(cost))
+		Ok(Self::BASE_COST.saturating_add(decode_cost).saturating_add(cost))
+	}
+
+	fn decode_evm_address_cost(currency_id: CurrencyId) -> u64 {
+		match currency_id {
+			CurrencyId::DexShare(a, b) => {
+				let cost_a = if matches!(a, DexShare::Erc20(_)) {
+					WeightToGas::convert(<Runtime as frame_system::Config>::DbWeight::get().reads(1))
+				} else {
+					Self::BASE_COST
+				};
+				let cost_b = if matches!(b, DexShare::Erc20(_)) {
+					WeightToGas::convert(<Runtime as frame_system::Config>::DbWeight::get().reads(1))
+				} else {
+					Self::BASE_COST
+				};
+				cost_a.saturating_add(cost_b)
+			}
+			_ => Self::BASE_COST,
+		}
 	}
 
 	fn dex_share_read_cost(share: DexShare) -> u64 {
@@ -254,7 +278,7 @@ where
 		}
 	}
 
-	fn read_cost(currency_id: CurrencyId) -> u64 {
+	fn erc20_info(currency_id: CurrencyId) -> u64 {
 		match currency_id {
 			CurrencyId::Erc20(_) | CurrencyId::StableAssetPoolToken(_) | CurrencyId::ForeignAsset(_) => {
 				WeightToGas::convert(Runtime::DbWeight::get().reads(1))
@@ -264,5 +288,372 @@ where
 			}
 			_ => Self::BASE_COST,
 		}
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	use crate::{
+		precompile::mock::{
+			aca_evm_address, alice, ausd_evm_address, bob, erc20_address_not_exists, lp_aca_ausd_evm_address,
+			new_test_ext, Balances, Test,
+		},
+		WeightToGas,
+	};
+	use frame_support::{assert_noop, assert_ok};
+	use hex_literal::hex;
+	use module_currencies::WeightInfo;
+	use sp_runtime::traits::Convert;
+
+	type MultiCurrencyPrecompile = crate::MultiCurrencyPrecompile<Test>;
+
+	fn base_cost(i: u64) -> u64 {
+		i * Pricer::<Test>::BASE_COST
+	}
+
+	fn read_cost(i: u64) -> u64 {
+		WeightToGas::convert(<Test as frame_system::Config>::DbWeight::get().reads(i))
+	}
+
+	#[test]
+	fn handles_invalid_currency_id() {
+		new_test_ext().execute_with(|| {
+			// call with not exists erc20
+			let context = Context {
+				address: Default::default(),
+				caller: erc20_address_not_exists(),
+				apparent_value: Default::default(),
+			};
+
+			// symbol() -> 0x95d89b41
+			let input = hex! {"
+				95d89b41
+			"};
+
+			assert_noop!(
+				MultiCurrencyPrecompile::execute(&input, Some(10_000), &context, false),
+				PrecompileFailure::Revert {
+					exit_status: ExitRevert::Reverted,
+					output: "invalid currency id".into(),
+					cost: 10_000,
+				}
+			);
+		});
+	}
+
+	#[test]
+	fn name_works() {
+		new_test_ext().execute_with(|| {
+			let mut context = Context {
+				address: Default::default(),
+				caller: Default::default(),
+				apparent_value: Default::default(),
+			};
+
+			// name() -> 0x06fdde03
+			let input = hex! {"
+				06fdde03
+			"};
+
+			// Token
+			context.caller = aca_evm_address();
+
+			let expected_output = hex! {"
+				0000000000000000000000000000000000000000000000000000000000000020
+				0000000000000000000000000000000000000000000000000000000000000005
+				4163616c61000000000000000000000000000000000000000000000000000000
+			"};
+
+			assert_ok!(
+				MultiCurrencyPrecompile::execute(&input, None, &context, false),
+				PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: base_cost(3),
+					output: expected_output.to_vec(),
+					logs: Default::default()
+				}
+			);
+
+			// DexShare
+			context.caller = lp_aca_ausd_evm_address();
+
+			let expected_output = hex! {"
+				0000000000000000000000000000000000000000000000000000000000000020
+				0000000000000000000000000000000000000000000000000000000000000017
+				4c50204163616c61202d204163616c6120446f6c6c6172000000000000000000
+			"};
+
+			assert_ok!(
+				MultiCurrencyPrecompile::execute(&input, None, &context, false),
+				PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: base_cost(5),
+					output: expected_output.to_vec(),
+					logs: Default::default()
+				}
+			);
+		});
+	}
+
+	#[test]
+	fn symbol_works() {
+		new_test_ext().execute_with(|| {
+			let mut context = Context {
+				address: Default::default(),
+				caller: Default::default(),
+				apparent_value: Default::default(),
+			};
+
+			// symbol() -> 0x95d89b41
+			let input = hex! {"
+				95d89b41
+			"};
+
+			// Token
+			context.caller = aca_evm_address();
+
+			let expected_output = hex! {"
+				0000000000000000000000000000000000000000000000000000000000000020
+				0000000000000000000000000000000000000000000000000000000000000003
+				4143410000000000000000000000000000000000000000000000000000000000
+			"};
+
+			assert_ok!(
+				MultiCurrencyPrecompile::execute(&input, None, &context, false),
+				PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: base_cost(3),
+					output: expected_output.to_vec(),
+					logs: Default::default()
+				}
+			);
+
+			// DexShare
+			context.caller = lp_aca_ausd_evm_address();
+
+			let expected_output = hex! {"
+				0000000000000000000000000000000000000000000000000000000000000020
+				000000000000000000000000000000000000000000000000000000000000000b
+				4c505f4143415f41555344000000000000000000000000000000000000000000
+			"};
+
+			assert_ok!(
+				MultiCurrencyPrecompile::execute(&input, None, &context, false),
+				PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: base_cost(5),
+					output: expected_output.to_vec(),
+					logs: Default::default()
+				}
+			);
+		});
+	}
+
+	#[test]
+	fn decimals_works() {
+		new_test_ext().execute_with(|| {
+			let mut context = Context {
+				address: Default::default(),
+				caller: Default::default(),
+				apparent_value: Default::default(),
+			};
+
+			// decimals() -> 0x313ce567
+			let input = hex! {"
+				313ce567
+			"};
+
+			// Token
+			context.caller = aca_evm_address();
+
+			let expected_output = hex! {"
+				00000000000000000000000000000000 0000000000000000000000000000000c
+			"};
+
+			assert_ok!(
+				MultiCurrencyPrecompile::execute(&input, None, &context, false),
+				PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: base_cost(3),
+					output: expected_output.to_vec(),
+					logs: Default::default()
+				}
+			);
+
+			// DexShare
+			context.caller = lp_aca_ausd_evm_address();
+
+			assert_ok!(
+				MultiCurrencyPrecompile::execute(&input, None, &context, false),
+				PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: base_cost(5),
+					output: expected_output.to_vec(),
+					logs: Default::default()
+				}
+			);
+		});
+	}
+
+	#[test]
+	fn total_supply_works() {
+		new_test_ext().execute_with(|| {
+			let mut context = Context {
+				address: Default::default(),
+				caller: Default::default(),
+				apparent_value: Default::default(),
+			};
+
+			// totalSupply() -> 0x18160ddd
+			let input = hex! {"
+				18160ddd
+			"};
+
+			// Token
+			context.caller = ausd_evm_address();
+
+			// 1_000_000_000
+			let expected_output = hex! {"
+				00000000000000000000000000000000 0000000000000000000000003b9aca00
+			"};
+
+			assert_ok!(
+				MultiCurrencyPrecompile::execute(&input, None, &context, false),
+				PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: base_cost(2) + read_cost(1),
+					output: expected_output.to_vec(),
+					logs: Default::default()
+				}
+			);
+
+			// DexShare
+			context.caller = lp_aca_ausd_evm_address();
+
+			let expected_output = hex! {"
+				00000000000000000000000000000000 00000000000000000000000000000000
+			"};
+
+			assert_ok!(
+				MultiCurrencyPrecompile::execute(&input, None, &context, false),
+				PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: base_cost(3) + read_cost(1),
+					output: expected_output.to_vec(),
+					logs: Default::default()
+				}
+			);
+		});
+	}
+
+	#[test]
+	fn balance_of_works() {
+		new_test_ext().execute_with(|| {
+			let mut context = Context {
+				address: Default::default(),
+				caller: Default::default(),
+				apparent_value: Default::default(),
+			};
+
+			// balanceOf(address) -> 0x70a08231
+			// account
+			let input = hex! {"
+				70a08231
+				000000000000000000000000 1000000000000000000000000000000000000001
+			"};
+
+			// Token
+			context.caller = aca_evm_address();
+
+			// INITIAL_BALANCE = 1_000_000_000_000
+			let expected_output = hex! {"
+				00000000000000000000000000000000 0000000000000000000000e8d4a51000
+			"};
+
+			assert_ok!(
+				MultiCurrencyPrecompile::execute(&input, None, &context, false),
+				PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: base_cost(2) + read_cost(2),
+					output: expected_output.to_vec(),
+					logs: Default::default()
+				}
+			);
+
+			// DexShare
+			context.caller = lp_aca_ausd_evm_address();
+
+			let expected_output = hex! {"
+				00000000000000000000000000000000 00000000000000000000000000000000
+			"};
+
+			assert_ok!(
+				MultiCurrencyPrecompile::execute(&input, None, &context, false),
+				PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: base_cost(3) + read_cost(2),
+					output: expected_output.to_vec(),
+					logs: Default::default()
+				}
+			);
+		})
+	}
+
+	#[test]
+	fn transfer_works() {
+		new_test_ext().execute_with(|| {
+			let mut context = Context {
+				address: Default::default(),
+				caller: Default::default(),
+				apparent_value: Default::default(),
+			};
+
+			// transfer(address,address,uint256) -> 0xbeabacc8
+			// from
+			// to
+			// amount
+			let input = hex! {"
+				beabacc8
+				000000000000000000000000 1000000000000000000000000000000000000001
+				000000000000000000000000 1000000000000000000000000000000000000002
+				00000000000000000000000000000000 00000000000000000000000000000001
+			"};
+
+			let from_balance = Balances::free_balance(alice());
+			let to_balance = Balances::free_balance(bob());
+
+			// Token
+			context.caller = aca_evm_address();
+
+			let expected_cost = base_cost(2)
+				+ WeightToGas::convert(<Test as module_currencies::Config>::WeightInfo::transfer_native_currency())
+				+ read_cost(2);
+
+			assert_ok!(
+				MultiCurrencyPrecompile::execute(&input, None, &context, false),
+				PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: expected_cost,
+					output: vec![],
+					logs: Default::default(),
+				}
+			);
+
+			assert_eq!(Balances::free_balance(alice()), from_balance - 1);
+			assert_eq!(Balances::free_balance(bob()), to_balance + 1);
+
+			// DexShare
+			context.caller = lp_aca_ausd_evm_address();
+			assert_noop!(
+				MultiCurrencyPrecompile::execute(&input, Some(100_000), &context, false),
+				PrecompileFailure::Revert {
+					exit_status: ExitRevert::Reverted,
+					output: "BalanceTooLow".into(),
+					cost: 100_000,
+				}
+			);
+		})
 	}
 }

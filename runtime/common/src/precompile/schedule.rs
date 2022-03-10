@@ -333,13 +333,13 @@ where
 	}
 }
 
-pub struct Pricer<R>(PhantomData<R>);
+struct Pricer<R>(PhantomData<R>);
 
 impl<Runtime> Pricer<Runtime>
 where
 	Runtime: module_evm::Config + module_prices::Config + module_transaction_payment::Config + pallet_scheduler::Config,
 {
-	pub const BASE_COST: u64 = 200;
+	const BASE_COST: u64 = 200;
 
 	fn cost(
 		input: &Input<Action, Runtime::AccountId, Runtime::AddressMapping, Runtime::Erc20InfoMapping>,
@@ -347,5 +347,244 @@ where
 		let _action = input.action()?;
 		// TODO: gas cost
 		Ok(Self::BASE_COST)
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	use crate::precompile::mock::{
+		aca_evm_address, alice_evm_addr, bob_evm_addr, get_task_id, new_test_ext, run_to_block, Balances,
+		Event as TestEvent, System, Test,
+	};
+	use hex_literal::hex;
+	use sp_core::{H160, U256};
+
+	type SchedulePrecompile = crate::SchedulePrecompile<Test>;
+
+	#[test]
+	fn schedule_precompile_should_work() {
+		new_test_ext().execute_with(|| {
+			let context = Context {
+				address: Default::default(),
+				caller: alice_evm_addr(),
+				apparent_value: Default::default(),
+			};
+
+			// scheduleCall(address,address,uint256,uint256,uint256,bytes) -> 0x64c91905
+			// from
+			// target
+			// value
+			// gas_limit
+			// storage_limit
+			// min_delay
+			// offset
+			// input_len
+			// transfer bytes4(keccak256(signature)) 0xa9059cbb
+			// to address
+			// amount
+			let input = hex! {"
+				64c91905
+				000000000000000000000000 1000000000000000000000000000000000000001
+				000000000000000000000000 0000000000000000000100000000000000000000
+				00000000000000000000000000000000 00000000000000000000000000000000
+				000000000000000000000000000000000000000000000000 00000000000493e0
+				00000000000000000000000000000000000000000000000000000000 00000064
+				00000000000000000000000000000000 00000000000000000000000000000001
+				00000000000000000000000000000000 00000000000000000000000000000000
+				00000000000000000000000000000000 00000000000000000000000000000044
+				a9059cbb
+				000000000000000000000000 1000000000000000000000000000000000000002
+				00000000000000000000000000000000 000000000000000000000000000003e8
+			"};
+
+			let resp = SchedulePrecompile::execute(&input, None, &context, false).unwrap();
+			assert_eq!(resp.exit_status, ExitSucceed::Returned);
+
+			let event = TestEvent::Scheduler(pallet_scheduler::Event::<Test>::Scheduled { when: 3, index: 0 });
+			assert!(System::events().iter().any(|record| record.event == event));
+
+			// cancel schedule
+			let task_id = get_task_id(resp.output);
+			let mut cancel_input = [0u8; 5 * 32];
+			// action
+			cancel_input[0..4].copy_from_slice(&Into::<u32>::into(Action::Cancel).to_be_bytes()); // from
+			U256::from(alice_evm_addr().as_bytes()).to_big_endian(&mut cancel_input[4 + 0 * 32..4 + 1 * 32]); // skip offset
+																								  // task_id_len
+			U256::from(task_id.len()).to_big_endian(&mut cancel_input[4 + 2 * 32..4 + 3 * 32]);
+			// task_id
+			cancel_input[4 + 3 * 32..4 + 3 * 32 + task_id.len()].copy_from_slice(&task_id[..]);
+
+			let resp = SchedulePrecompile::execute(&cancel_input, None, &context, false).unwrap();
+			assert_eq!(resp.exit_status, ExitSucceed::Returned);
+			assert_eq!(resp.cost, 0);
+			let event = TestEvent::Scheduler(pallet_scheduler::Event::<Test>::Canceled { when: 3, index: 0 });
+			assert!(System::events().iter().any(|record| record.event == event));
+
+			let resp = SchedulePrecompile::execute(&input, None, &context, false).unwrap();
+			assert_eq!(resp.exit_status, ExitSucceed::Returned);
+			assert_eq!(resp.cost, 0);
+
+			run_to_block(2);
+
+			// reschedule call
+			let task_id = get_task_id(resp.output);
+			let mut reschedule_input = [0u8; 6 * 32];
+			// action
+			reschedule_input[0..4].copy_from_slice(&Into::<u32>::into(Action::Reschedule).to_be_bytes()); // from
+			U256::from(alice_evm_addr().as_bytes()).to_big_endian(&mut reschedule_input[4 + 0 * 32..4 + 1 * 32]); // min_delay
+			U256::from(2u64).to_big_endian(&mut reschedule_input[4 + 1 * 32..4 + 2 * 32]);
+			// skip offset
+			// task_id_len
+			U256::from(task_id.len()).to_big_endian(&mut reschedule_input[4 + 3 * 32..4 + 4 * 32]); // task_id
+			reschedule_input[4 + 4 * 32..4 + 4 * 32 + task_id.len()].copy_from_slice(&task_id[..]);
+
+			let resp = SchedulePrecompile::execute(&reschedule_input, None, &context, false).unwrap();
+			assert_eq!(resp.exit_status, ExitSucceed::Returned);
+			assert_eq!(resp.cost, 0);
+			let event = TestEvent::Scheduler(pallet_scheduler::Event::<Test>::Scheduled { when: 5, index: 0 });
+			assert!(System::events().iter().any(|record| record.event == event));
+
+			let from_account = <Test as module_evm::Config>::AddressMapping::get_account_id(&alice_evm_addr());
+			let to_account = <Test as module_evm::Config>::AddressMapping::get_account_id(&bob_evm_addr());
+			#[cfg(not(feature = "with-ethereum-compatibility"))]
+			{
+				assert_eq!(Balances::free_balance(from_account.clone()), 999999700000);
+				assert_eq!(Balances::reserved_balance(from_account.clone()), 300000);
+				assert_eq!(Balances::free_balance(to_account.clone()), 1000000000000);
+			}
+			#[cfg(feature = "with-ethereum-compatibility")]
+			{
+				assert_eq!(Balances::free_balance(from_account.clone()), 1000000000000);
+				assert_eq!(Balances::reserved_balance(from_account.clone()), 0);
+				assert_eq!(Balances::free_balance(to_account.clone()), 1000000000000);
+			}
+
+			run_to_block(5);
+			#[cfg(not(feature = "with-ethereum-compatibility"))]
+			{
+				assert_eq!(Balances::free_balance(from_account.clone()), 999999928517);
+				assert_eq!(Balances::reserved_balance(from_account), 0);
+				assert_eq!(Balances::free_balance(to_account), 1000000001000);
+			}
+			#[cfg(feature = "with-ethereum-compatibility")]
+			{
+				assert_eq!(Balances::free_balance(from_account.clone()), 999999999000);
+				assert_eq!(Balances::reserved_balance(from_account), 0);
+				assert_eq!(Balances::free_balance(to_account), 1000000001000);
+			}
+		});
+	}
+
+	#[test]
+	fn schedule_precompile_should_handle_invalid_input() {
+		new_test_ext().execute_with(|| {
+			let context = Context {
+				address: Default::default(),
+				caller: alice_evm_addr(),
+				apparent_value: Default::default(),
+			};
+
+			let mut input = [0u8; 10 * 32];
+			// action
+			input[0..4].copy_from_slice(&Into::<u32>::into(Action::Schedule).to_be_bytes());
+			// from
+			U256::from(alice_evm_addr().as_bytes()).to_big_endian(&mut input[4 + 0 * 32..4 + 1 * 32]);
+			// target
+			U256::from(aca_evm_address().as_bytes()).to_big_endian(&mut input[4 + 1 * 32..4 + 2 * 32]);
+			// value
+			U256::from(0u64).to_big_endian(&mut input[4 + 2 * 32..4 + 3 * 32]);
+			// gas_limit
+			U256::from(300000u64).to_big_endian(&mut input[4 + 3 * 32..4 + 4 * 32]);
+			// storage_limit
+			U256::from(100u64).to_big_endian(&mut input[4 + 4 * 32..4 + 5 * 32]);
+			// min_delay
+			U256::from(1u64).to_big_endian(&mut input[4 + 5 * 32..4 + 6 * 32]);
+			// skip offset
+			// input_len
+			U256::from(1u64).to_big_endian(&mut input[4 + 7 * 32..4 + 8 * 32]);
+
+			// input_data = 0x12
+			input[4 + 9 * 32] = hex!("12")[0];
+
+			let resp = SchedulePrecompile::execute(&input, None, &context, false).unwrap();
+			assert_eq!(resp.exit_status, ExitSucceed::Returned);
+			assert_eq!(resp.cost, 0);
+
+			let from_account = <Test as module_evm::Config>::AddressMapping::get_account_id(&alice_evm_addr());
+			let to_account = <Test as module_evm::Config>::AddressMapping::get_account_id(&bob_evm_addr());
+			#[cfg(not(feature = "with-ethereum-compatibility"))]
+			{
+				assert_eq!(Balances::free_balance(from_account.clone()), 999999700000);
+				assert_eq!(Balances::reserved_balance(from_account.clone()), 300000);
+				assert_eq!(Balances::free_balance(to_account.clone()), 1000000000000);
+			}
+			#[cfg(feature = "with-ethereum-compatibility")]
+			{
+				assert_eq!(Balances::free_balance(from_account.clone()), 1000000000000);
+				assert_eq!(Balances::reserved_balance(from_account.clone()), 0);
+				assert_eq!(Balances::free_balance(to_account.clone()), 1000000000000);
+			}
+
+			// cancel schedule
+			let task_id = get_task_id(resp.output);
+			let mut cancel_input = [0u8; 6 * 32];
+			// action
+			cancel_input[0..4].copy_from_slice(&Into::<u32>::into(Action::Cancel).to_be_bytes());
+			// from
+			U256::from(bob_evm_addr().as_bytes()).to_big_endian(&mut cancel_input[4 + 0 * 32..4 + 1 * 32]);
+			// skip offset
+			// task_id_len
+			U256::from(task_id.len()).to_big_endian(&mut cancel_input[4 + 2 * 32..4 + 3 * 32]);
+			// task_id
+			cancel_input[4 + 3 * 32..4 + 3 * 32 + task_id.len()].copy_from_slice(&task_id[..]);
+
+			assert_eq!(
+				SchedulePrecompile::execute(&cancel_input, Some(10_000), &context, false),
+				Err(PrecompileFailure::Revert {
+					exit_status: ExitRevert::Reverted,
+					output: "NoPermission".into(),
+					cost: 10_000,
+				})
+			);
+
+			run_to_block(4);
+			#[cfg(not(feature = "with-ethereum-compatibility"))]
+			{
+				assert_eq!(Balances::free_balance(from_account.clone()), 999999978926);
+				assert_eq!(Balances::reserved_balance(from_account), 0);
+				assert_eq!(Balances::free_balance(to_account), 1000000000000);
+			}
+			#[cfg(feature = "with-ethereum-compatibility")]
+			{
+				assert_eq!(Balances::free_balance(from_account.clone()), 1000000000000);
+				assert_eq!(Balances::reserved_balance(from_account.clone()), 0);
+				assert_eq!(Balances::free_balance(to_account.clone()), 1000000000000);
+			}
+		});
+	}
+
+	#[test]
+	fn task_id_max_and_min() {
+		let task_id = TaskInfo {
+			prefix: b"ScheduleCall".to_vec(),
+			id: u32::MAX,
+			sender: H160::default(),
+			fee: Balance::MAX,
+		}
+		.encode();
+
+		assert_eq!(54, task_id.len());
+
+		let task_id = TaskInfo {
+			prefix: b"ScheduleCall".to_vec(),
+			id: u32::MIN,
+			sender: H160::default(),
+			fee: Balance::MIN,
+		}
+		.encode();
+
+		assert_eq!(38, task_id.len());
 	}
 }

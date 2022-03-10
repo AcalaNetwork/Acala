@@ -233,13 +233,13 @@ where
 	}
 }
 
-pub struct Pricer<R>(PhantomData<R>);
+struct Pricer<R>(PhantomData<R>);
 
 impl<Runtime> Pricer<Runtime>
 where
 	Runtime: module_evm::Config + module_prices::Config,
 {
-	pub const BASE_COST: u64 = 200;
+	const BASE_COST: u64 = 200;
 
 	fn cost(
 		input: &Input<Action, Runtime::AccountId, Runtime::AddressMapping, Runtime::Erc20InfoMapping>,
@@ -275,5 +275,260 @@ where
 			}
 		};
 		Ok(Self::BASE_COST.saturating_add(cost))
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	use crate::precompile::mock::{
+		alice_evm_addr, bob, bob_evm_addr, new_test_ext, EVMModule, Event as TestEvent, Origin, System, Test,
+	};
+	use frame_support::assert_ok;
+	use hex_literal::hex;
+	use module_evm::{ExitReason, Runner, WeightInfo};
+	use sp_core::H160;
+	use sp_runtime::traits::Convert;
+
+	type EVMPrecompile = crate::EVMPrecompile<Test>;
+
+	fn base_cost(i: u64) -> u64 {
+		i * Pricer::<Test>::BASE_COST
+	}
+
+	fn read_cost(i: u64) -> u64 {
+		WeightToGas::convert(<Test as frame_system::Config>::DbWeight::get().reads(i))
+	}
+
+	#[test]
+	fn developer_status_works() {
+		new_test_ext().execute_with(|| {
+			let context = Context {
+				address: Default::default(),
+				caller: alice_evm_addr(),
+				apparent_value: Default::default(),
+			};
+
+			// developerStatus(address) -> 0x710f50ff
+			// who
+			let input = hex! {"
+				710f50ff
+				000000000000000000000000 1000000000000000000000000000000000000001
+			"};
+
+			// expect output is false as alice has not put a deposit down
+			let expected_output = hex! {"
+				00000000000000000000000000000000 00000000000000000000000000000000
+			"};
+
+			assert_ok!(
+				EVMPrecompile::execute(&input, None, &context, false),
+				PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: base_cost(1) + read_cost(1),
+					output: expected_output.to_vec(),
+					logs: Default::default()
+				}
+			);
+
+			// developerEnable(address) -> 0x504eb6b5
+			// who
+			let input = hex! {"
+				504eb6b5
+				000000000000000000000000 1000000000000000000000000000000000000001
+			"};
+
+			assert_ok!(
+				EVMPrecompile::execute(&input, None, &context, false),
+				PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: base_cost(1)
+						+ WeightToGas::convert(<Test as module_evm::Config>::WeightInfo::enable_contract_development()),
+					output: [0u8; 0].to_vec(),
+					logs: Default::default()
+				}
+			);
+
+			// query developer status again but this time it is enabled
+
+			// developerStatus(address) -> 0x710f50ff
+			// who
+			let input = hex! {"
+				710f50ff
+				000000000000000000000000 1000000000000000000000000000000000000001
+			"};
+
+			// expect output is now true as alice now is enabled for developer mode
+			let expected_output = hex! {"
+				00000000000000000000000000000000 00000000000000000000000000000001
+			"};
+
+			assert_ok!(
+				EVMPrecompile::execute(&input, None, &context, false),
+				PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: base_cost(1) + read_cost(1),
+					output: expected_output.to_vec(),
+					logs: Default::default()
+				}
+			);
+
+			// disable alice account for developer mode
+
+			// developerDisable(address) -> 0x757c54c9
+			// who
+			let input = hex! {"
+				757c54c9
+				000000000000000000000000 1000000000000000000000000000000000000001
+			"};
+
+			assert_ok!(
+				EVMPrecompile::execute(&input, None, &context, false),
+				PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: base_cost(1)
+						+ WeightToGas::convert(<Test as module_evm::Config>::WeightInfo::disable_contract_development()),
+					output: [0u8; 0].to_vec(),
+					logs: Default::default()
+				}
+			);
+
+			// query developer status
+
+			// developerStatus(address) -> 0x710f50ff
+			// who
+			let input = hex! {"
+				710f50ff
+				000000000000000000000000 1000000000000000000000000000000000000001
+			"};
+
+			// expect output is now false as alice now is disabled again for developer mode
+			let expected_output = hex! {"
+				00000000000000000000000000000000 00000000000000000000000000000000
+			"};
+
+			assert_ok!(
+				EVMPrecompile::execute(&input, None, &context, false),
+				PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: base_cost(1) + read_cost(1),
+					output: expected_output.to_vec(),
+					logs: Default::default()
+				}
+			);
+		});
+	}
+
+	#[test]
+	fn publish_contract_works() {
+		new_test_ext().execute_with(|| {
+			// pragma solidity ^0.5.0;
+			//
+			// contract Test {
+			//	 function multiply(uint a, uint b) public pure returns(uint) {
+			// 	 	return a * b;
+			// 	 }
+			// }
+			let contract = hex! {"
+				608060405234801561001057600080fd5b5060b88061001f6000396000f3fe60
+				80604052348015600f57600080fd5b506004361060285760003560e01c806316
+				5c4a1614602d575b600080fd5b606060048036036040811015604157600080fd
+				5b8101908080359060200190929190803590602001909291905050506076565b
+				6040518082815260200191505060405180910390f35b60008183029050929150
+				5056fea265627a7a723158201f3db7301354b88b310868daf4395a6ab6cd42d1
+				6b1d8e68cdf4fdd9d34fffbf64736f6c63430005110032
+			"};
+
+			// create contract
+			let info = <Test as module_evm::Config>::Runner::create(
+				alice_evm_addr(),
+				contract.to_vec(),
+				0,
+				21_000_000,
+				21_000_000,
+				vec![],
+				<Test as module_evm::Config>::config(),
+			)
+			.unwrap();
+			let contract_address = info.value;
+
+			assert_eq!(
+				contract_address,
+				H160::from(hex!("5f8bd49cd9f0cb2bd5bb9d4320dfe9b61023249d"))
+			);
+
+			// multiply(2, 3)
+			let multiply = hex! {"
+				165c4a16
+				0000000000000000000000000000000000000000000000000000000000000002
+				0000000000000000000000000000000000000000000000000000000000000003
+			"};
+
+			// call method `multiply` will fail, not published yet.
+			// The error is shown in the last event.
+			// The call extrinsic still succeeds, the evm emits a executed failed event
+			assert_ok!(EVMModule::call(
+				Origin::signed(bob()),
+				contract_address,
+				multiply.to_vec(),
+				0,
+				1000000,
+				1000000,
+				vec![],
+			));
+			System::assert_last_event(TestEvent::EVMModule(module_evm::Event::ExecutedFailed {
+				from: bob_evm_addr(),
+				contract: contract_address,
+				exit_reason: ExitReason::Error(ExitError::Other(
+					Into::<&str>::into(module_evm::Error::<Test>::NoPermission).into(),
+				)),
+				output: vec![],
+				logs: vec![],
+			}));
+
+			let context = Context {
+				address: Default::default(),
+				caller: alice_evm_addr(),
+				apparent_value: Default::default(),
+			};
+
+			// publishContract(address,address) -> 0x3b594ce8
+			// maintainer
+			// contract_address
+			let input = hex! {"
+				3b594ce8
+				000000000000000000000000 1000000000000000000000000000000000000001
+				000000000000000000000000 5f8bd49cd9f0cb2bd5bb9d4320dfe9b61023249d
+			"};
+
+			// publish contract with precompile
+			assert_ok!(
+				EVMPrecompile::execute(&input, None, &context, false),
+				PrecompileOutput {
+					exit_status: ExitSucceed::Returned,
+					cost: base_cost(1)
+						+ WeightToGas::convert(<Test as module_evm::Config>::WeightInfo::publish_contract()),
+					output: [0u8; 0].to_vec(),
+					logs: Default::default(),
+				}
+			);
+
+			// Same call as above now works as contract is now published
+			assert_ok!(EVMModule::call(
+				Origin::signed(bob()),
+				contract_address,
+				multiply.to_vec(),
+				0,
+				1000000,
+				1000000,
+				vec![],
+			));
+			System::assert_last_event(TestEvent::EVMModule(module_evm::Event::Executed {
+				from: bob_evm_addr(),
+				contract: contract_address,
+				logs: vec![],
+			}));
+		});
 	}
 }

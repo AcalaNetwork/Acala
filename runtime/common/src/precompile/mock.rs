@@ -522,10 +522,6 @@ pub fn ausd_evm_address() -> EvmAddress {
 	EvmAddress::try_from(AUSD).unwrap()
 }
 
-pub fn renbtc_evm_address() -> EvmAddress {
-	EvmAddress::try_from(RENBTC).unwrap()
-}
-
 pub fn lp_aca_ausd_evm_address() -> EvmAddress {
 	EvmAddress::try_from(LP_ACA_AUSD).unwrap()
 }

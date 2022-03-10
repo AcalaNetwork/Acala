@@ -148,7 +148,7 @@ where
 
 	fn u256_at(&self, index: usize) -> Result<U256, Self::Error> {
 		let param = self.nth_param(index, None)?;
-		Ok(U256::from_big_endian(&param[..]))
+		Ok(U256::from_big_endian(param))
 	}
 
 	fn balance_at(&self, index: usize) -> Result<Balance, Self::Error> {
