@@ -60,7 +60,6 @@ pub type CompoundAuthoritySignature = AccountId32;
 #[frame_support::pallet]
 pub mod module {
 	use super::*;
-	use primitives::AccountId;
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
