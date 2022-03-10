@@ -54,7 +54,7 @@ impl<T: frame_system::Config> module_account_tokenizer::WeightInfo for WeightInf
 	// Storage: AccountTokenizer NFTClassId (r:0 w:1)
 	// Storage: OrmlNFT Classes (r:0 w:1)
 	fn initialize_nft_class() -> Weight {
-		(66_000_000 as Weight)
+		(127_885_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(7 as Weight))
 			.saturating_add(T::DbWeight::get().writes(9 as Weight))
 	}
@@ -63,7 +63,7 @@ impl<T: frame_system::Config> module_account_tokenizer::WeightInfo for WeightInf
 	// Storage: ForeignStateOracle NextQueryId (r:1 w:1)
 	// Storage: ForeignStateOracle QueryRequests (r:0 w:1)
 	fn request_mint() -> Weight {
-		(49_000_000 as Weight)
+		(96_356_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(5 as Weight))
 			.saturating_add(T::DbWeight::get().writes(6 as Weight))
 	}
@@ -78,7 +78,7 @@ impl<T: frame_system::Config> module_account_tokenizer::WeightInfo for WeightInf
 	// Storage: OrmlNFT Tokens (r:0 w:1)
 	// Storage: OrmlNFT TokensByOwner (r:0 w:1)
 	fn confirm_mint_request() -> Weight {
-		(81_000_000 as Weight)
+		(156_941_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(9 as Weight))
 			.saturating_add(T::DbWeight::get().writes(10 as Weight))
 	}
@@ -93,7 +93,7 @@ impl<T: frame_system::Config> module_account_tokenizer::WeightInfo for WeightInf
 	// Storage: ForeignStateOracle NextQueryId (r:1 w:1)
 	// Storage: ForeignStateOracle QueryRequests (r:0 w:1)
 	fn request_redeem() -> Weight {
-		(50_000_000 as Weight)
+		(101_174_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(10 as Weight))
 			.saturating_add(T::DbWeight::get().writes(5 as Weight))
 	}
@@ -107,7 +107,7 @@ impl<T: frame_system::Config> module_account_tokenizer::WeightInfo for WeightInf
 	// Storage: System Account (r:1 w:1)
 	// Storage: OrmlNFT TokensByOwner (r:0 w:1)
 	fn confirm_redeem_account_token() -> Weight {
-		(51_000_000 as Weight)
+		(99_263_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(8 as Weight))
 			.saturating_add(T::DbWeight::get().writes(7 as Weight))
 	}
