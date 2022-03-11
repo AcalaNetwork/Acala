@@ -47,6 +47,7 @@ mod account_tokenizer {
 }
 
 pub const ALICE: AccountId = AccountId32::new([1u8; 32]);
+pub const BOB: AccountId = AccountId32::new([2u8; 32]);
 pub const PROXY: AccountId = AccountId32::new([10u8; 32]);
 pub const ORACLE: AccountId = AccountId32::new([254u8; 32]);
 pub const TREASURY: AccountId = AccountId32::new([255u8; 32]);

@@ -367,3 +367,91 @@ fn can_burn_account_token_nft() {
 			);
 		});
 }
+
+#[test]
+fn can_remint_after_burn_token_nft() {
+	ExtBuilder::default()
+		.balances(vec![(ALICE, dollar(1_000)), (BOB, dollar(1_000))])
+		.build()
+		.execute_with(|| {
+			AccountTokenizer::on_runtime_upgrade();
+			// Spawn a anonymous proxy account.
+			assert_ok!(Proxy::anonymous(Origin::signed(ALICE), Default::default(), 0, 0u16,));
+			let proxy = AccountId::new(hex!["7342619566cac76247062ffd59cd3fb3ffa3350dc6a5087938b9d1c46b286da3"]);
+
+			// Mint the NFT.
+			assert_ok!(AccountTokenizer::request_mint(
+				Origin::signed(ALICE),
+				proxy.clone(),
+				ALICE.clone(),
+				1,
+				0,
+				0
+			));
+			assert_ok!(ForeignStateOracle::respond_query_request(
+				Origin::signed(ORACLE),
+				0,
+				vec![1]
+			));
+
+			// Transfer the NFT
+			assert_ok!(ModuleNFT::transfer(Origin::signed(ALICE), BOB, (0, 0)));
+
+			// Burn the NFT
+			assert_ok!(AccountTokenizer::request_redeem(
+				Origin::signed(BOB),
+				proxy.clone(),
+				BOB
+			));
+
+			// Confirm the burn
+			assert_ok!(ForeignStateOracle::respond_query_request(
+				Origin::signed(ORACLE),
+				1,
+				vec![]
+			));
+
+			// Bob can now re-mint the account
+			// Original owner of the proxy account must be passed in to verify.
+			assert_noop!(
+				AccountTokenizer::request_mint(Origin::signed(BOB), proxy.clone(), BOB.clone(), 1, 0, 0),
+				DispatchError::Module(ModuleError {
+					index: 6,
+					error: 4,
+					message: Some("FailedAnonymousProxyCheck",),
+				},)
+			);
+
+			// Pass in original owner to mint
+			assert_ok!(AccountTokenizer::request_mint(
+				Origin::signed(BOB),
+				proxy.clone(),
+				ALICE.clone(),
+				1,
+				0,
+				0
+			));
+			assert_ok!(ForeignStateOracle::respond_query_request(
+				Origin::signed(ORACLE),
+				2,
+				vec![1]
+			));
+
+			// Transfer the NFT back to alice
+			assert_ok!(ModuleNFT::transfer(Origin::signed(BOB), ALICE, (0, 1)));
+
+			// Burn the NFT
+			assert_ok!(AccountTokenizer::request_redeem(
+				Origin::signed(ALICE),
+				proxy.clone(),
+				ALICE
+			));
+
+			// Confirm the burn
+			assert_ok!(ForeignStateOracle::respond_query_request(
+				Origin::signed(ORACLE),
+				3,
+				vec![]
+			));
+		});
+}

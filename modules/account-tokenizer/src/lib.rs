@@ -142,7 +142,7 @@ pub mod module {
 		/// Cannot decode data from oracle
 		BadOracleData,
 		/// Failed to prove account spawned anonymous proxy
-		FailedAnonymousCheck,
+		FailedAnonymousProxyCheck,
 	}
 
 	#[pallet::event]
@@ -301,7 +301,7 @@ pub mod module {
 			let derived_account: T::AccountId = Decode::decode(&mut TrailingZeroInput::new(entropy.as_ref()))
 				.expect("infinite length input; no invalid inputs for type; qed");
 			// ensures signer also spawned anonymous proxy
-			ensure!(account == derived_account, Error::<T>::FailedAnonymousCheck);
+			ensure!(account == derived_account, Error::<T>::FailedAnonymousProxyCheck);
 
 			// Charge the user fee and lock the deposit.
 			T::Currency::transfer(&who, &T::TreasuryAccount::get(), T::MintFee::get(), KeepAlive)?;
