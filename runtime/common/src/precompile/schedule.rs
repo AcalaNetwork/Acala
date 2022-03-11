@@ -355,11 +355,10 @@ mod tests {
 	use super::*;
 
 	use crate::precompile::mock::{
-		aca_evm_address, alice_evm_addr, bob_evm_addr, get_task_id, new_test_ext, run_to_block, Balances,
-		Event as TestEvent, System, Test,
+		alice_evm_addr, bob_evm_addr, new_test_ext, run_to_block, Balances, Event as TestEvent, System, Test,
 	};
 	use hex_literal::hex;
-	use sp_core::{H160, U256};
+	use sp_core::H160;
 
 	type SchedulePrecompile = crate::SchedulePrecompile<Test>;
 
@@ -391,9 +390,9 @@ mod tests {
 				00000000000000000000000000000000 00000000000000000000000000000000
 				000000000000000000000000000000000000000000000000 00000000000493e0
 				00000000000000000000000000000000000000000000000000000000 00000064
-				00000000000000000000000000000000 00000000000000000000000000000001
-				00000000000000000000000000000000 00000000000000000000000000000000
-				00000000000000000000000000000000 00000000000000000000000000000044
+				00000000000000000000000000000000000000000000000000000000 00000001
+				00000000000000000000000000000000000000000000000000000000 00000000
+				00000000000000000000000000000000000000000000000000000000 00000044
 				a9059cbb
 				000000000000000000000000 1000000000000000000000000000000000000002
 				00000000000000000000000000000000 000000000000000000000000000003e8
@@ -401,20 +400,27 @@ mod tests {
 
 			let resp = SchedulePrecompile::execute(&input, None, &context, false).unwrap();
 			assert_eq!(resp.exit_status, ExitSucceed::Returned);
+			assert_eq!(sp_core::bytes::to_hex(&resp.output[..], false), "0x\
+				0000000000000000000000000000000000000000000000000000000000000020\
+				0000000000000000000000000000000000000000000000000000000000000029\
+				305363686564756c6543616c6c000000001000000000000000000000000000000000000001824f12000000000000000000000000000000000000000000000000\
+			");
 
 			let event = TestEvent::Scheduler(pallet_scheduler::Event::<Test>::Scheduled { when: 3, index: 0 });
 			assert!(System::events().iter().any(|record| record.event == event));
 
-			// cancel schedule
-			let task_id = get_task_id(resp.output);
-			let mut cancel_input = [0u8; 5 * 32];
-			// action
-			cancel_input[0..4].copy_from_slice(&Into::<u32>::into(Action::Cancel).to_be_bytes()); // from
-			U256::from(alice_evm_addr().as_bytes()).to_big_endian(&mut cancel_input[4 + 0 * 32..4 + 1 * 32]); // skip offset
-																								  // task_id_len
-			U256::from(task_id.len()).to_big_endian(&mut cancel_input[4 + 2 * 32..4 + 3 * 32]);
+			// cancelCall(address,bytes) -> 0x93e32661
+			// who
+			// offset
+			// task_id_len
 			// task_id
-			cancel_input[4 + 3 * 32..4 + 3 * 32 + task_id.len()].copy_from_slice(&task_id[..]);
+			let cancel_input = hex! {"
+				93e32661
+				000000000000000000000000 1000000000000000000000000000000000000001
+				00000000000000000000000000000000000000000000000000000000 00000000
+				00000000000000000000000000000000000000000000000000000000 00000029
+				305363686564756c6543616c6c000000001000000000000000000000000000000000000001824f1200
+			"};
 
 			let resp = SchedulePrecompile::execute(&cancel_input, None, &context, false).unwrap();
 			assert_eq!(resp.exit_status, ExitSucceed::Returned);
@@ -422,27 +428,38 @@ mod tests {
 			let event = TestEvent::Scheduler(pallet_scheduler::Event::<Test>::Canceled { when: 3, index: 0 });
 			assert!(System::events().iter().any(|record| record.event == event));
 
+			// schedule call again
 			let resp = SchedulePrecompile::execute(&input, None, &context, false).unwrap();
 			assert_eq!(resp.exit_status, ExitSucceed::Returned);
 			assert_eq!(resp.cost, 0);
+			assert_eq!(sp_core::bytes::to_hex(&resp.output[..], false), "0x\
+				0000000000000000000000000000000000000000000000000000000000000020\
+				0000000000000000000000000000000000000000000000000000000000000029\
+				305363686564756c6543616c6c010000001000000000000000000000000000000000000001824f12000000000000000000000000000000000000000000000000\
+			");
 
 			run_to_block(2);
 
-			// reschedule call
-			let task_id = get_task_id(resp.output);
-			let mut reschedule_input = [0u8; 6 * 32];
-			// action
-			reschedule_input[0..4].copy_from_slice(&Into::<u32>::into(Action::Reschedule).to_be_bytes()); // from
-			U256::from(alice_evm_addr().as_bytes()).to_big_endian(&mut reschedule_input[4 + 0 * 32..4 + 1 * 32]); // min_delay
-			U256::from(2u64).to_big_endian(&mut reschedule_input[4 + 1 * 32..4 + 2 * 32]);
-			// skip offset
+			// rescheduleCall(address,uint256,bytes) -> 0x28302f34
+			// who
+			// min_delay
+			// offset
 			// task_id_len
-			U256::from(task_id.len()).to_big_endian(&mut reschedule_input[4 + 3 * 32..4 + 4 * 32]); // task_id
-			reschedule_input[4 + 4 * 32..4 + 4 * 32 + task_id.len()].copy_from_slice(&task_id[..]);
+			// task_id
+			let reschedule_input = hex! {"
+				28302f34
+				000000000000000000000000 1000000000000000000000000000000000000001
+				00000000000000000000000000000000 00000000000000000000000000000002
+				00000000000000000000000000000000000000000000000000000000 00000000
+				00000000000000000000000000000000000000000000000000000000 00000029
+				305363686564756c6543616c6c010000001000000000000000000000000000000000000001824f1200
+			"};
 
 			let resp = SchedulePrecompile::execute(&reschedule_input, None, &context, false).unwrap();
 			assert_eq!(resp.exit_status, ExitSucceed::Returned);
 			assert_eq!(resp.cost, 0);
+			assert_eq!(resp.output, [0u8; 0].to_vec());
+
 			let event = TestEvent::Scheduler(pallet_scheduler::Event::<Test>::Scheduled { when: 5, index: 0 });
 			assert!(System::events().iter().any(|record| record.event == event));
 
@@ -486,31 +503,38 @@ mod tests {
 				apparent_value: Default::default(),
 			};
 
-			let mut input = [0u8; 10 * 32];
-			// action
-			input[0..4].copy_from_slice(&Into::<u32>::into(Action::Schedule).to_be_bytes());
+			// scheduleCall(address,address,uint256,uint256,uint256,bytes) -> 0x64c91905
 			// from
-			U256::from(alice_evm_addr().as_bytes()).to_big_endian(&mut input[4 + 0 * 32..4 + 1 * 32]);
 			// target
-			U256::from(aca_evm_address().as_bytes()).to_big_endian(&mut input[4 + 1 * 32..4 + 2 * 32]);
 			// value
-			U256::from(0u64).to_big_endian(&mut input[4 + 2 * 32..4 + 3 * 32]);
 			// gas_limit
-			U256::from(300000u64).to_big_endian(&mut input[4 + 3 * 32..4 + 4 * 32]);
 			// storage_limit
-			U256::from(100u64).to_big_endian(&mut input[4 + 4 * 32..4 + 5 * 32]);
 			// min_delay
-			U256::from(1u64).to_big_endian(&mut input[4 + 5 * 32..4 + 6 * 32]);
-			// skip offset
+			// offset
 			// input_len
-			U256::from(1u64).to_big_endian(&mut input[4 + 7 * 32..4 + 8 * 32]);
-
-			// input_data = 0x12
-			input[4 + 9 * 32] = hex!("12")[0];
+			// input_data
+			let input = hex! {"
+				64c91905
+				000000000000000000000000 1000000000000000000000000000000000000001
+				000000000000000000000000 0000000000000000000100000000000000000000
+				00000000000000000000000000000000 00000000000000000000000000000000
+				000000000000000000000000000000000000000000000000 00000000000493e0
+				00000000000000000000000000000000000000000000000000000000 00000064
+				00000000000000000000000000000000000000000000000000000000 00000001
+				00000000000000000000000000000000000000000000000000000000 00000000
+				00000000000000000000000000000000000000000000000000000000 00000001
+				00000000000000000000000000000000000000000000000000000000 00000000
+				12000000000000000000000000000000000000000000000000000000
+			"};
 
 			let resp = SchedulePrecompile::execute(&input, None, &context, false).unwrap();
 			assert_eq!(resp.exit_status, ExitSucceed::Returned);
 			assert_eq!(resp.cost, 0);
+			assert_eq!(sp_core::bytes::to_hex(&resp.output[..], false), "0x\
+				0000000000000000000000000000000000000000000000000000000000000020\
+				0000000000000000000000000000000000000000000000000000000000000029\
+				305363686564756c6543616c6c000000001000000000000000000000000000000000000001824f12000000000000000000000000000000000000000000000000\
+			");
 
 			let from_account = <Test as module_evm::Config>::AddressMapping::get_account_id(&alice_evm_addr());
 			let to_account = <Test as module_evm::Config>::AddressMapping::get_account_id(&bob_evm_addr());
@@ -527,19 +551,18 @@ mod tests {
 				assert_eq!(Balances::free_balance(to_account.clone()), 1000000000000);
 			}
 
-			// cancel schedule
-			let task_id = get_task_id(resp.output);
-			let mut cancel_input = [0u8; 6 * 32];
-			// action
-			cancel_input[0..4].copy_from_slice(&Into::<u32>::into(Action::Cancel).to_be_bytes());
-			// from
-			U256::from(bob_evm_addr().as_bytes()).to_big_endian(&mut cancel_input[4 + 0 * 32..4 + 1 * 32]);
-			// skip offset
+			// cancelCall(address,bytes) -> 0x93e32661
+			// who
+			// offset
 			// task_id_len
-			U256::from(task_id.len()).to_big_endian(&mut cancel_input[4 + 2 * 32..4 + 3 * 32]);
 			// task_id
-			cancel_input[4 + 3 * 32..4 + 3 * 32 + task_id.len()].copy_from_slice(&task_id[..]);
-
+			let cancel_input = hex! {"
+				93e32661
+				000000000000000000000000 1000000000000000000000000000000000000002
+				00000000000000000000000000000000000000000000000000000000 00000000
+				00000000000000000000000000000000000000000000000000000000 00000029
+				305363686564756c6543616c6c000000001000000000000000000000000000000000000001824f1200
+			"};
 			assert_eq!(
 				SchedulePrecompile::execute(&cancel_input, Some(10_000), &context, false),
 				Err(PrecompileFailure::Revert {

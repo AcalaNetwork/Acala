@@ -251,7 +251,6 @@ mod tests {
 
 	#[test]
 	fn nth_param_works() {
-		// extra bytes should be ignored
 		let data = hex_literal::hex! {"
 			00000000
 			ffffffffffffffffffffffffffffffff00000000000000000000000000000001
