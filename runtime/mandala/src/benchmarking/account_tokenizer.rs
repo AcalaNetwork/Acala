@@ -57,13 +57,14 @@ runtime_benchmarks! {
 
 	request_mint {
 		let (caller, proxy) = setup_account_tokenizer_benchmark();
-	}: _(RawOrigin::Signed(caller), proxy, 1, 0, 0)
+	}: _(RawOrigin::Signed(caller.clone()), proxy, caller.clone(), 1, 0, 0)
 
 	confirm_mint_request {
 		let (caller, proxy) = setup_account_tokenizer_benchmark();
 		assert_ok!(AccountTokenizer::request_mint(
 			Origin::signed(caller.clone()),
 			proxy.clone(),
+			caller.clone(),
 			1,
 			0,
 			0
@@ -77,6 +78,7 @@ runtime_benchmarks! {
 		let _ = AccountTokenizer::request_mint(
 			Origin::signed(caller.clone()),
 			proxy.clone(),
+			caller.clone(),
 			1,
 			0,
 			0
@@ -96,6 +98,7 @@ runtime_benchmarks! {
 		assert_ok!(AccountTokenizer::request_mint(
 			Origin::signed(caller.clone()),
 			proxy.clone(),
+			caller.clone(),
 			1,
 			0,
 			0

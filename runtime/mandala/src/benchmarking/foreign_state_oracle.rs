@@ -41,7 +41,7 @@ runtime_benchmarks! {
 		let caller: AccountId = whitelisted_caller();
 		let anon_account = dummy_anonymous_account(&caller, 0, 0, 0);
 		set_balance(NATIVE, &caller, 10_000 * dollar(NATIVE));
-		AccountTokenizer::request_mint(RawOrigin::Signed(caller.clone()).into(), anon_account, 0, 0, 0)?;
+		AccountTokenizer::request_mint(RawOrigin::Signed(caller.clone()).into(), anon_account, caller.clone(), 0, 0, 0)?;
 		System::set_block_number(100);
 	}: _(RawOrigin::Signed(caller), 0)
 }

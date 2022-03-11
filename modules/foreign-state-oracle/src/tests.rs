@@ -46,13 +46,13 @@ fn dispatch_and_remove_works() {
 			ForeignStateOracle::respond_query_request(Origin::signed(1), 0, b"hello".to_vec()),
 			Error::<Runtime>::NoMatchingCall
 		);
-		// Cannot remove active query
+		// Cannot remove active query that isn't expired
 		assert_noop!(
 			ForeignStateOracle::purge_expired_query(Origin::signed(BOB), 1),
 			Error::<Runtime>::QueryNotExpired
 		);
 
-		// Call is sucessfully dispatched with bytes injected into origin
+		// Call is successfully dispatched with bytes injected into origin
 		assert_ok!(ForeignStateOracle::respond_query_request(
 			Origin::signed(1),
 			1,
@@ -83,7 +83,7 @@ fn dispatch_and_remove_works() {
 #[test]
 fn query_and_cancel_works() {
 	ExtBuilder::default().build().execute_with(|| {
-		// Bound can't be smaller than encoded call length
+		// Encoded call must be smaller than max size allowed.
 		assert_noop!(
 			QueryExample::mock_create_query(
 				Origin::none(),

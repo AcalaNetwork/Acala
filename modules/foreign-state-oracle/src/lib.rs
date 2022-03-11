@@ -17,6 +17,13 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 //! Foreign State Oracle.
+//! This module provide interface for other internal modules to create a QueryRequest that
+//! requires Oracles to verify external states (such as states on the Relay Chain).
+//! Basic workflow:
+//! 1. Internal module will create a QueryRequest, providing a dispatchable "callback"
+//! 2. External oracles will then verify states and provide feedback
+//! 3. Feedback are tallied, depending on how `OracleOrigin` is configured
+//! 4. This module will dispatch the callback, injecting any response data into the Origin.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
@@ -51,13 +58,11 @@ pub struct RawOrigin {
 }
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
-pub struct RelayQueryRequest<Call, BlockNumber, Balance> {
+pub struct RelayQueryRequest<Call, BlockNumber> {
 	// Call to be dispatched by oracle
 	dispatchable_call: Call,
 	// Blocknumber at which call will be expired
 	expiry: BlockNumber,
-	// Reward available for responding to this query
-	oracle_reward: Balance,
 }
 
 #[frame_support::pallet]
@@ -65,7 +70,7 @@ pub mod module {
 	use super::*;
 
 	pub type RelayQueryRequestOf<T> =
-		RelayQueryRequest<<T as Config>::DispatchableCall, <T as frame_system::Config>::BlockNumber, Balance>;
+		RelayQueryRequest<<T as Config>::DispatchableCall, <T as frame_system::Config>::BlockNumber>;
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
@@ -207,7 +212,7 @@ pub mod module {
 			);
 
 			// Gives half of reward for clearing expired query from storage
-			let reward: Balance = T::ExpiredCallPurgeReward::get().mul(verifiable_call.oracle_reward);
+			let reward: Balance = T::ExpiredCallPurgeReward::get().mul(T::QueryFee::get());
 			T::Currency::transfer(&Self::account_id(), &who, reward, ExistenceRequirement::AllowDeath)?;
 
 			Self::deposit_event(Event::<T>::StaleQueryRemoved { query_id });
@@ -246,7 +251,6 @@ impl<T: Config> ForeignChainStateQuery<T::AccountId, T::DispatchableCall, T::Blo
 		let verifiable_call = RelayQueryRequest {
 			dispatchable_call,
 			expiry,
-			oracle_reward: T::QueryFee::get(),
 		};
 
 		let query_id = NextQueryId::<T>::get();
@@ -260,13 +264,13 @@ impl<T: Config> ForeignChainStateQuery<T::AccountId, T::DispatchableCall, T::Blo
 
 	#[require_transactional]
 	fn cancel_query(who: &T::AccountId, query_id: QueryIndex) -> DispatchResult {
-		let task = QueryRequests::<T>::take(query_id).ok_or(Error::<T>::NoMatchingCall)?;
+		QueryRequests::<T>::take(query_id).ok_or(Error::<T>::NoMatchingCall)?;
 
 		// Reimburse (query fee - cancel fee) to account.
 		T::Currency::transfer(
 			&Self::account_id(),
 			who,
-			task.oracle_reward.saturating_sub(T::CancelFee::get()),
+			T::QueryFee::get().saturating_sub(T::CancelFee::get()),
 			ExistenceRequirement::AllowDeath,
 		)?;
 		Self::deposit_event(Event::QueryCanceled { query_id });

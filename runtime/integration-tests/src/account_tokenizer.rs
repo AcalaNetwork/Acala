@@ -48,6 +48,7 @@ fn can_mint_account_token() {
 			assert_ok!(AccountTokenizer::request_mint(
 				Origin::signed(alice()),
 				alice_proxy.clone(),
+				alice(),
 				1,
 				0,
 				0
@@ -124,6 +125,7 @@ fn can_reject_mint_request() {
 			assert_ok!(AccountTokenizer::request_mint(
 				Origin::signed(alice()),
 				alice_proxy.clone(),
+				alice(),
 				1,
 				0,
 				0
@@ -193,6 +195,7 @@ fn can_burn_account_token_nft() {
 			assert_ok!(AccountTokenizer::request_mint(
 				Origin::signed(alice()),
 				alice_proxy.clone(),
+				alice(),
 				1,
 				0,
 				0
@@ -398,6 +401,7 @@ pub mod xcm_test {
 			assert_ok!(AccountTokenizer::request_mint(
 				Origin::signed(alice()),
 				alice_proxy.clone(),
+				alice(),
 				1,
 				0,
 				0

@@ -91,6 +91,7 @@ fn can_send_mint_request() {
 			assert_ok!(AccountTokenizer::request_mint(
 				Origin::signed(ALICE),
 				proxy.clone(),
+				ALICE.clone(),
 				1,
 				0,
 				0
@@ -126,6 +127,7 @@ fn can_mint_account_token_nft() {
 			assert_ok!(AccountTokenizer::request_mint(
 				Origin::signed(ALICE),
 				proxy.clone(),
+				ALICE.clone(),
 				1,
 				0,
 				0
@@ -178,7 +180,14 @@ fn can_handle_bad_oracle_data() {
 			let proxy = AccountId::new(hex!["7342619566cac76247062ffd59cd3fb3ffa3350dc6a5087938b9d1c46b286da3"]);
 
 			// Send a mint request.
-			assert_ok!(AccountTokenizer::request_mint(Origin::signed(ALICE), proxy, 1, 0, 0));
+			assert_ok!(AccountTokenizer::request_mint(
+				Origin::signed(ALICE),
+				proxy,
+				ALICE.clone(),
+				1,
+				0,
+				0
+			));
 			assert!(ForeignStateOracle::query_requests(0).is_some());
 
 			// Dispatch the request to accept the burn.
@@ -216,6 +225,7 @@ fn can_reject_mint_request() {
 			assert_ok!(AccountTokenizer::request_mint(
 				Origin::signed(ALICE),
 				proxy.clone(),
+				ALICE.clone(),
 				1,
 				0,
 				0
@@ -287,6 +297,7 @@ fn can_burn_account_token_nft() {
 			assert_ok!(AccountTokenizer::request_mint(
 				Origin::signed(ALICE),
 				proxy.clone(),
+				ALICE.clone(),
 				1,
 				0,
 				0

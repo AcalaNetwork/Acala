@@ -270,6 +270,7 @@ pub mod module {
 		///
 		/// Params:
 		/// 	- `account`: The account ID of the anonymous proxy.
+		/// 	- `original_owner`: The original owner's account ID. Used to verify anonymous proxy.
 		/// 	- `height`: The block number in which the anonymous proxy is generated.
 		/// 	- `ext_index`: The index, in the block, of the extrinsics that generated the anonymous
 		///    proxy.
@@ -279,16 +280,24 @@ pub mod module {
 		pub fn request_mint(
 			origin: OriginFor<T>,
 			account: T::AccountId,
+			original_owner: T::AccountId,
 			height: T::BlockNumber,
 			ext_index: u32,
 			index: u16,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			// Checks if the account is an anonymous proxy of the caller.
+			// Checks if the account is an anonymous proxy of the origin_owner.
 			// hard coded for `ProxyType::Any`. No other proxy type is allowed
-			let entropy =
-				(b"modlpy/proxy____", &who, height, ext_index, &PROXYTYPE_ANY, index).using_encoded(blake2_256);
+			let entropy = (
+				b"modlpy/proxy____",
+				&original_owner,
+				height,
+				ext_index,
+				&PROXYTYPE_ANY,
+				index,
+			)
+				.using_encoded(blake2_256);
 			let derived_account: T::AccountId = Decode::decode(&mut TrailingZeroInput::new(entropy.as_ref()))
 				.expect("infinite length input; no invalid inputs for type; qed");
 			// ensures signer also spawned anonymous proxy
