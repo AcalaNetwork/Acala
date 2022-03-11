@@ -776,7 +776,7 @@ where
 	}
 
 	/// If native asset is enough, return `None`, else return the fee should be withdrawn.
-	fn native_is_enough(who: &T::AccountId, fee: PalletBalanceOf<T>, reason: WithdrawReasons) -> Option<Balance> {
+	fn check_native_is_enough(who: &T::AccountId, fee: PalletBalanceOf<T>, reason: WithdrawReasons) -> Option<Balance> {
 		let native_existential_deposit = <T as Config>::Currency::minimum_balance();
 		let total_native = <T as Config>::Currency::total_balance(who);
 
@@ -806,7 +806,7 @@ where
 	) -> Result<Balance, DispatchError> {
 		let custom_fee_surplus = T::CustomFeeSurplus::get().mul_ceil(fee);
 		let custom_fee_amount = fee.saturating_add(custom_fee_surplus);
-		let fee_surplus: Result<Balance, DispatchError> = match call.is_sub_type() {
+		match call.is_sub_type() {
 			Some(Call::with_fee_path { fee_swap_path, .. }) => {
 				ensure!(
 					fee_swap_path.len() > 1
@@ -829,12 +829,7 @@ where
 				Self::swap_from_pool_or_dex(who, custom_fee_amount, *currency_id).map(|_| custom_fee_surplus)
 			}
 			Some(_) | None => Self::native_then_alternative_or_default(who, fee, reason),
-		};
-		fee_surplus
-	}
-
-	fn ensure_can_charge_fee(who: &T::AccountId, fee: PalletBalanceOf<T>, reason: WithdrawReasons) {
-		let _ = Pallet::<T>::native_then_alternative_or_default(who, fee, reason);
+		}
 	}
 
 	/// If native is enough, do nothing, return `Ok(0)` means there are none extra surplus fee.
@@ -847,7 +842,7 @@ where
 		fee: PalletBalanceOf<T>,
 		reason: WithdrawReasons,
 	) -> Result<Balance, DispatchError> {
-		if let Some(amount) = Self::native_is_enough(who, fee, reason) {
+		if let Some(amount) = Self::check_native_is_enough(who, fee, reason) {
 			// native asset is not enough
 			let fee_surplus = T::AlternativeFeeSurplus::get().mul_ceil(fee);
 			let fee_amount = fee_surplus.saturating_add(amount);
@@ -867,7 +862,7 @@ where
 				}
 			}
 
-			// migration of `GlobalFeeSwapPath`. after Dapp using `with_fee_path`, we can delete this.
+			// migration of `GlobalFeeSwapPath`. after Dapp using `with_fee_currency`, we can delete this.
 			let global_fee_swap_path = GlobalFeeSwapPath::<T>::iter_values()
 				.map(|v| v.into_inner())
 				.collect::<Vec<_>>();
@@ -1445,7 +1440,6 @@ where
 {
 	fn reserve_fee(who: &T::AccountId, weight: Weight) -> Result<PalletBalanceOf<T>, DispatchError> {
 		let fee = Pallet::<T>::weight_to_fee(weight);
-		Pallet::<T>::ensure_can_charge_fee(who, fee, WithdrawReasons::TRANSACTION_PAYMENT);
 		<T as Config>::Currency::reserve_named(&RESERVE_ID, who, fee)?;
 		Ok(fee)
 	}
@@ -1507,8 +1501,6 @@ where
 		class: DispatchClass,
 	) -> Result<(), TransactionValidityError> {
 		let fee = Pallet::<T>::compute_fee_raw(len, weight, tip, pays_fee, class).final_fee();
-
-		Pallet::<T>::ensure_can_charge_fee(who, fee, WithdrawReasons::TRANSACTION_PAYMENT);
 
 		// withdraw native currency as fee
 		let actual_payment = <T as Config>::Currency::withdraw(

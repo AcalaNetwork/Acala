@@ -69,30 +69,6 @@ fn inject_liquidity(
 runtime_benchmarks! {
 	{ Runtime, module_transaction_payment }
 
-	with_fee_path {
-		let caller = whitelisted_caller();
-		let call = Box::new(frame_system::Call::remark { remark: vec![] }.into());
-		let fee_swap_path: Vec<CurrencyId> = vec![STABLECOIN, NATIVECOIN];
-	}: _(RawOrigin::Signed(caller), fee_swap_path.clone(), call)
-	verify {
-		assert_last_event(module_transaction_payment::Event::WithFeePathDispatchEvent {
-			fee_swap_path,
-			result: Ok(())
-		}.into());
-	}
-
-	with_fee_currency {
-		let caller: AccountId = whitelisted_caller();
-		let call = Box::new(frame_system::Call::remark { remark: vec![] }.into());
-		module_transaction_payment::TokenExchangeRate::<Runtime>::insert(STABLECOIN, Ratio::one());
-	}: _(RawOrigin::Signed(caller.clone()), STABLECOIN, call)
-	verify {
-		assert_last_event(module_transaction_payment::Event::WithFeeCurrencyDispatchEvent {
-			currency_id: STABLECOIN,
-			result: Ok(())
-		}.into());
-	}
-
 	set_alternative_fee_swap_path {
 		let caller: AccountId = whitelisted_caller();
 		set_balance(NATIVECOIN, &caller, NativeTokenExistentialDeposit::get());
@@ -161,6 +137,18 @@ runtime_benchmarks! {
 		assert_eq!(module_transaction_payment::TokenExchangeRate::<Runtime>::get(STABLECOIN), None);
 		assert_eq!(module_transaction_payment::GlobalFeeSwapPath::<Runtime>::get(STABLECOIN), None);
 	}
+
+	with_fee_path {
+		let caller = whitelisted_caller();
+		let call = Box::new(frame_system::Call::remark { remark: vec![] }.into());
+		let fee_swap_path: Vec<CurrencyId> = vec![STABLECOIN, NATIVECOIN];
+	}: _(RawOrigin::Signed(caller), fee_swap_path.clone(), call)
+
+	with_fee_currency {
+		let caller: AccountId = whitelisted_caller();
+		let call = Box::new(frame_system::Call::remark { remark: vec![] }.into());
+		module_transaction_payment::TokenExchangeRate::<Runtime>::insert(STABLECOIN, Ratio::one());
+	}: _(RawOrigin::Signed(caller.clone()), STABLECOIN, call)
 
 	on_finalize {
 	}: {
