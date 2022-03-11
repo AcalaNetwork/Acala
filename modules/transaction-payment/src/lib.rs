@@ -238,7 +238,6 @@ pub mod module {
 		type Call: Parameter
 			+ Dispatchable<Origin = Self::Origin, PostInfo = PostDispatchInfo, Info = DispatchInfo>
 			+ GetDispatchInfo
-			+ From<frame_system::Call<Self>>
 			+ IsSubType<Call<Self>>
 			+ IsType<<Self as frame_system::Config>::Call>;
 
@@ -412,16 +411,6 @@ pub mod module {
 			foreign_amount: Balance,
 			native_amount: Balance,
 		},
-		/// Dispatch call from with_fee_path
-		WithFeePathDispatchEvent {
-			fee_swap_path: Vec<CurrencyId>,
-			result: DispatchResult,
-		},
-		/// Dispatch call from with_fee_currency
-		WithFeeCurrencyDispatchEvent {
-			currency_id: CurrencyId,
-			result: DispatchResult,
-		},
 	}
 
 	/// The next fee multiplier.
@@ -532,58 +521,6 @@ pub mod module {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		/// Dapp wrap call, and user pay tx fee as provided trading path. this dispatch call should
-		/// make sure the trading path is valid.
-		#[pallet::weight({
-			let dispatch_info = call.get_dispatch_info();
-			(T::WeightInfo::with_fee_path().saturating_add(dispatch_info.weight), dispatch_info.class,)
-		})]
-		pub fn with_fee_path(
-			origin: OriginFor<T>,
-			fee_swap_path: Vec<CurrencyId>,
-			call: Box<CallOf<T>>,
-		) -> DispatchResult {
-			ensure_signed(origin.clone())?;
-			ensure!(
-				fee_swap_path.len() > 1
-					&& fee_swap_path.first() != Some(&T::NativeCurrencyId::get())
-					&& fee_swap_path.last() == Some(&T::NativeCurrencyId::get()),
-				Error::<T>::InvalidSwapPath
-			);
-
-			let e = call.dispatch(origin);
-			Self::deposit_event(Event::WithFeePathDispatchEvent {
-				fee_swap_path,
-				result: e.map(|_| ()).map_err(|e| e.error),
-			});
-			Ok(())
-		}
-
-		/// Dapp wrap call, and user pay tx fee as provided currency, this dispatch call should make
-		/// sure the currency is exist in tx fee pool.
-		#[pallet::weight({
-			let dispatch_info = call.get_dispatch_info();
-			(T::WeightInfo::with_fee_currency().saturating_add(dispatch_info.weight), dispatch_info.class,)
-		})]
-		pub fn with_fee_currency(
-			origin: OriginFor<T>,
-			currency_id: CurrencyId,
-			call: Box<CallOf<T>>,
-		) -> DispatchResult {
-			ensure_signed(origin.clone())?;
-			ensure!(
-				TokenExchangeRate::<T>::contains_key(currency_id),
-				Error::<T>::InvalidToken
-			);
-
-			let e = (*call).dispatch(origin);
-			Self::deposit_event(Event::WithFeeCurrencyDispatchEvent {
-				currency_id,
-				result: e.map(|_| ()).map_err(|e| e.error),
-			});
-			Ok(())
-		}
-
 		/// Set fee swap path
 		#[pallet::weight(<T as Config>::WeightInfo::set_alternative_fee_swap_path())]
 		#[transactional]
@@ -631,6 +568,36 @@ pub mod module {
 		pub fn disable_charge_fee_pool(origin: OriginFor<T>, currency_id: CurrencyId) -> DispatchResult {
 			T::UpdateOrigin::ensure_origin(origin)?;
 			Self::disable_pool(currency_id)
+		}
+
+		/// Dapp wrap call, and user pay tx fee as provided trading path. this dispatch call should
+		/// make sure the trading path is valid.
+		#[pallet::weight({
+			let dispatch_info = call.get_dispatch_info();
+			(T::WeightInfo::with_fee_path().saturating_add(dispatch_info.weight), dispatch_info.class,)
+		})]
+		pub fn with_fee_path(
+			origin: OriginFor<T>,
+			_fee_swap_path: Vec<CurrencyId>,
+			call: Box<CallOf<T>>,
+		) -> DispatchResultWithPostInfo {
+			ensure_signed(origin.clone())?;
+			call.dispatch(origin)
+		}
+
+		/// Dapp wrap call, and user pay tx fee as provided currency, this dispatch call should make
+		/// sure the currency is exist in tx fee pool.
+		#[pallet::weight({
+			let dispatch_info = call.get_dispatch_info();
+			(T::WeightInfo::with_fee_currency().saturating_add(dispatch_info.weight), dispatch_info.class,)
+		})]
+		pub fn with_fee_currency(
+			origin: OriginFor<T>,
+			_currency_id: CurrencyId,
+			call: Box<CallOf<T>>,
+		) -> DispatchResultWithPostInfo {
+			ensure_signed(origin.clone())?;
+			call.dispatch(origin)
 		}
 	}
 }
@@ -841,18 +808,24 @@ where
 		let custom_fee_amount = fee.saturating_add(custom_fee_surplus);
 		let fee_surplus: Result<Balance, DispatchError> = match call.is_sub_type() {
 			Some(Call::with_fee_path { fee_swap_path, .. }) => {
-				let supply_currency_id = *fee_swap_path.first().expect("should match a non native asset");
+				ensure!(
+					fee_swap_path.len() > 1
+						&& fee_swap_path.first() != Some(&T::NativeCurrencyId::get())
+						&& fee_swap_path.last() == Some(&T::NativeCurrencyId::get()),
+					Error::<T>::InvalidSwapPath
+				);
 				T::DEX::swap_with_specific_path(
 					who,
 					fee_swap_path,
-					SwapLimit::ExactTarget(
-						T::MultiCurrency::free_balance(supply_currency_id, who),
-						custom_fee_amount,
-					),
+					SwapLimit::ExactTarget(Balance::MAX, custom_fee_amount),
 				)
 				.map(|_| custom_fee_surplus)
 			}
 			Some(Call::with_fee_currency { currency_id, .. }) => {
+				ensure!(
+					TokenExchangeRate::<T>::contains_key(currency_id),
+					Error::<T>::InvalidToken
+				);
 				Self::swap_from_pool_or_dex(who, custom_fee_amount, *currency_id).map(|_| custom_fee_surplus)
 			}
 			Some(_) | None => Self::native_then_alternative_or_default(who, fee, reason),
@@ -874,18 +847,14 @@ where
 		fee: PalletBalanceOf<T>,
 		reason: WithdrawReasons,
 	) -> Result<Balance, DispatchError> {
-		// native asset is not enough
 		if let Some(amount) = Self::native_is_enough(who, fee, reason) {
+			// native asset is not enough
 			let fee_surplus = T::AlternativeFeeSurplus::get().mul_ceil(fee);
 			let fee_amount = fee_surplus.saturating_add(amount);
 
 			// alter native fee swap path, swap from dex: O(1)
 			if let Some(path) = AlternativeFeeSwapPath::<T>::get(who) {
-				let supply_currency_id = *path.first().expect("should match a non native asset");
-				let supply_balance = T::MultiCurrency::free_balance(supply_currency_id, who);
-				if !supply_balance.is_zero()
-					&& T::DEX::swap_with_specific_path(who, &path, SwapLimit::ExactTarget(supply_balance, fee_amount))
-						.is_ok()
+				if T::DEX::swap_with_specific_path(who, &path, SwapLimit::ExactTarget(Balance::MAX, fee_amount)).is_ok()
 				{
 					return Ok(fee_surplus);
 				}
@@ -893,9 +862,7 @@ where
 
 			// default fee tokens, swap from tx fee pool: O(1)
 			for supply_currency_id in T::DefaultFeeTokens::get() {
-				if !T::MultiCurrency::free_balance(supply_currency_id, who).is_zero()
-					&& Self::swap_from_pool_or_dex(who, fee_amount, supply_currency_id).is_ok()
-				{
+				if Self::swap_from_pool_or_dex(who, fee_amount, supply_currency_id).is_ok() {
 					return Ok(fee_surplus);
 				}
 			}
@@ -905,11 +872,10 @@ where
 				.map(|v| v.into_inner())
 				.collect::<Vec<_>>();
 			for path in global_fee_swap_path {
-				let supply_currency_id = *path.first().expect("should match a non native asset");
-				if !T::MultiCurrency::free_balance(supply_currency_id, who).is_zero()
-					&& Self::swap_from_pool_or_dex(who, fee_amount, supply_currency_id).is_ok()
-				{
-					return Ok(fee_surplus);
+				if let Some(supply_currency_id) = path.first() {
+					if Self::swap_from_pool_or_dex(who, fee_amount, *supply_currency_id).is_ok() {
+						return Ok(fee_surplus);
+					}
 				}
 			}
 		}

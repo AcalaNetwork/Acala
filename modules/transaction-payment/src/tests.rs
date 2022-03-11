@@ -1694,39 +1694,67 @@ fn with_fee_path_currency_call_validation_works() {
 		.one_hundred_thousand_for_alice_n_charlie()
 		.build()
 		.execute_with(|| {
-			// empty fee_swap_path is not allowed
+			// fee swap path invalid
 			assert_noop!(
-				TransactionPayment::with_fee_path(Origin::signed(ALICE), vec![], Box::new(CALL),),
-				Error::<Runtime>::InvalidSwapPath
+				ChargeTransactionPayment::<Runtime>::from(0).pre_dispatch(
+					&ALICE,
+					&with_fee_path_call(vec![AUSD, DOT]),
+					&INFO,
+					500
+				),
+				TransactionValidityError::Invalid(InvalidTransaction::Payment)
+			);
+			assert_noop!(
+				ChargeTransactionPayment::<Runtime>::from(0).pre_dispatch(
+					&ALICE,
+					&with_fee_path_call(vec![ACA]),
+					&INFO,
+					500
+				),
+				TransactionValidityError::Invalid(InvalidTransaction::Payment)
+			);
+			// swap failed
+			assert_noop!(
+				ChargeTransactionPayment::<Runtime>::from(0).pre_dispatch(
+					&ALICE,
+					&with_fee_path_call(vec![AUSD, ACA]),
+					&INFO,
+					500
+				),
+				TransactionValidityError::Invalid(InvalidTransaction::Payment)
 			);
 
-			// len of fee_swap_path should be large than 1
-			assert_noop!(
-				TransactionPayment::with_fee_path(Origin::signed(ALICE), vec![ACA], Box::new(CALL),),
-				Error::<Runtime>::InvalidSwapPath
-			);
+			assert_ok!(TransactionPayment::with_fee_path(
+				Origin::signed(ALICE),
+				vec![],
+				Box::new(CALL),
+			),);
+			assert_eq!(9900, Currencies::free_balance(AUSD, &ALICE));
+			assert_eq!(100, Currencies::free_balance(AUSD, &BOB));
 
-			// token should enabled
-			assert_noop!(
-				TransactionPayment::with_fee_currency(Origin::signed(ALICE), DOT, Box::new(CALL),),
-				Error::<Runtime>::InvalidToken
-			);
-
-			// make sure first is not native asset, and last is native asset
 			assert_ok!(TransactionPayment::with_fee_path(
 				Origin::signed(ALICE),
 				vec![DOT, ACA],
 				Box::new(CALL),
 			));
+			assert_eq!(9800, Currencies::free_balance(AUSD, &ALICE));
+			assert_eq!(200, Currencies::free_balance(AUSD, &BOB));
 
-			// call inside with_fee_path is dispatched and executed success
-			assert_eq!(9900, Currencies::free_balance(AUSD, &ALICE));
-			assert_eq!(100, Currencies::free_balance(AUSD, &BOB));
-			System::assert_last_event(mock::Event::TransactionPayment(
-				crate::Event::WithFeePathDispatchEvent {
-					fee_swap_path: vec![DOT, ACA],
-					result: Ok(()),
-				},
-			));
+			assert_noop!(
+				ChargeTransactionPayment::<Runtime>::from(0).pre_dispatch(
+					&ALICE,
+					&with_fee_currency_call(DOT),
+					&INFO,
+					500
+				),
+				TransactionValidityError::Invalid(InvalidTransaction::Payment)
+			);
+			assert_ok!(TransactionPayment::with_fee_currency(
+				Origin::signed(ALICE),
+				DOT,
+				Box::new(CALL),
+			),);
+			assert_eq!(9700, Currencies::free_balance(AUSD, &ALICE));
+			assert_eq!(300, Currencies::free_balance(AUSD, &BOB));
 		});
 }
