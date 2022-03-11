@@ -707,6 +707,7 @@ fn charge_fee_by_default_swap_path() {
 		let sub_account = Pallet::<Runtime>::sub_account_id(DOT);
 		let init_balance = FeePoolSize::get();
 		let dot_ed = Currencies::minimum_balance(DOT);
+		let ed = Currencies::minimum_balance(ACA);
 
 		assert_eq!(DEXModule::get_liquidity_pool(ACA, AUSD), (10000, 1000));
 		assert_eq!(DEXModule::get_liquidity_pool(DOT, AUSD), (100, 1000));
@@ -716,6 +717,8 @@ fn charge_fee_by_default_swap_path() {
 			ACA,
 			AlternativeFeeSwapDeposit::get().try_into().unwrap(),
 		));
+
+		// the alter native swap path is invalid as there are no pool for DOT to ACA.
 		assert_ok!(TransactionPayment::set_alternative_fee_swap_path(
 			Origin::signed(BOB),
 			Some(vec![DOT, ACA])
@@ -724,13 +727,20 @@ fn charge_fee_by_default_swap_path() {
 			TransactionPayment::alternative_fee_swap_path(&BOB).unwrap(),
 			vec![DOT, ACA]
 		);
+		// the `AlternativeFeeSwapDeposit` amount balance is in user reserve balance,
+		// user reserve balance is not consider when check native is enough or not.
+		assert_eq!(AlternativeFeeSwapDeposit::get(), Currencies::total_balance(ACA, &BOB));
+
+		// charge fee token use `DefaultFeeTokens` as `AlternativeFeeSwapPath` condition is failed.
 		assert_ok!(<Currencies as MultiCurrency<_>>::transfer(DOT, &ALICE, &BOB, 300));
 		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(ACA, &BOB), 0);
 		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(AUSD, &BOB), 0);
 		assert_eq!(<Currencies as MultiCurrency<_>>::free_balance(DOT, &BOB), 300);
 
+		// use user's total_balance to check native is enough or not:
 		// fee=500*2+1000=2000ACA, surplus=2000*0.25=500ACA, fee_amount=2500ACA
-		// As Bob already has AlternativeFeeSwapDeposit ACA(>ED), no need consider ED, just use fee.
+		// use user's free_balance to check native is enough or not:
+		// fee=500*2+1000+10=2010ACA, surplus=2000*0.25=500ACA, fee_amount=2510ACA
 		let surplus: u128 = AlternativeFeeSurplus::get().mul_ceil(2000);
 		assert_eq!(
 			ChargeTransactionPayment::<Runtime>::from(0)
@@ -740,16 +750,19 @@ fn charge_fee_by_default_swap_path() {
 			1
 		);
 
-		assert_eq!(Currencies::free_balance(ACA, &BOB), 0);
+		assert_eq!(Currencies::free_balance(ACA, &BOB), ed);
 		assert_eq!(Currencies::free_balance(AUSD, &BOB), 0);
-		assert_eq!(Currencies::free_balance(DOT, &BOB), 300 - 200 - surplus / 10);
+		assert_eq!(Currencies::free_balance(DOT, &BOB), 300 - 200 - surplus / 10 - ed / 10);
 		assert_eq!(DEXModule::get_liquidity_pool(ACA, AUSD), (10000, 1000));
 		assert_eq!(DEXModule::get_liquidity_pool(DOT, AUSD), (100, 1000));
 		assert_eq!(
-			init_balance - 2000 - surplus,
-			Currencies::free_balance(ACA, &sub_account)
+			Currencies::free_balance(ACA, &sub_account),
+			init_balance - 2000 - surplus - ed,
 		);
-		assert_eq!(dot_ed + 200 + surplus / 10, Currencies::free_balance(DOT, &sub_account));
+		assert_eq!(
+			Currencies::free_balance(DOT, &sub_account),
+			dot_ed + 200 + surplus / 10 + ed / 10
+		);
 	});
 }
 
@@ -1426,7 +1439,7 @@ fn charge_fee_failed_when_disable_dex() {
 			100000.unique_saturated_into(),
 		));
 
-		// before runtime upgrade, tx failed because of dex not enabled
+		// tx failed because of dex not enabled even though user has enough AUSD
 		assert_noop!(
 			ChargeTransactionPayment::<Runtime>::from(0).validate(&BOB, &CALL2, &INFO2, 50),
 			TransactionValidityError::Invalid(InvalidTransaction::Payment)

@@ -26,6 +26,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
 #![allow(clippy::boxed_local)]
+#![allow(clippy::type_complexity)]
 
 use frame_support::{
 	dispatch::{DispatchResult, Dispatchable},
@@ -775,19 +776,11 @@ where
 		T::WeightToFee::calc(&capped_weight)
 	}
 
-	/// If native asset is enough, return `None`, else return the fee should be withdrawn.
-	fn check_native_is_enough(who: &T::AccountId, fee: PalletBalanceOf<T>, reason: WithdrawReasons) -> Option<Balance> {
+	/// If native asset is enough, return `None`, else return the fee amount should be swapped.
+	fn check_native_is_not_enough(who: &T::AccountId, fee: PalletBalanceOf<T>) -> Option<Balance> {
 		let native_existential_deposit = <T as Config>::Currency::minimum_balance();
-		let total_native = <T as Config>::Currency::total_balance(who);
-
-		// check native balance if is enough
-		let native_is_enough = fee.saturating_add(native_existential_deposit) <= total_native
-			&& <T as Config>::Currency::free_balance(who)
-				.checked_sub(fee)
-				.map_or(false, |new_free_balance| {
-					<T as Config>::Currency::ensure_can_withdraw(who, fee, reason, new_free_balance).is_ok()
-				});
-		if native_is_enough {
+		let total_native = <T as Config>::Currency::free_balance(who);
+		if fee.saturating_add(native_existential_deposit) <= total_native {
 			None
 		} else {
 			Some(fee.saturating_add(native_existential_deposit.saturating_sub(total_native)))
@@ -801,7 +794,6 @@ where
 	fn ensure_can_charge_fee_with_call(
 		who: &T::AccountId,
 		fee: PalletBalanceOf<T>,
-		reason: WithdrawReasons,
 		call: &CallOf<T>,
 	) -> Result<Balance, DispatchError> {
 		let custom_fee_surplus = T::CustomFeeSurplus::get().mul_ceil(fee);
@@ -828,7 +820,7 @@ where
 				);
 				Self::swap_from_pool_or_dex(who, custom_fee_amount, *currency_id).map(|_| custom_fee_surplus)
 			}
-			Some(_) | None => Self::native_then_alternative_or_default(who, fee, reason),
+			Some(_) | None => Self::native_then_alternative_or_default(who, fee),
 		}
 	}
 
@@ -840,9 +832,8 @@ where
 	fn native_then_alternative_or_default(
 		who: &T::AccountId,
 		fee: PalletBalanceOf<T>,
-		reason: WithdrawReasons,
 	) -> Result<Balance, DispatchError> {
-		if let Some(amount) = Self::check_native_is_enough(who, fee, reason) {
+		if let Some(amount) = Self::check_native_is_not_enough(who, fee) {
 			// native asset is not enough
 			let fee_surplus = T::AlternativeFeeSurplus::get().mul_ceil(fee);
 			let fee_amount = fee_surplus.saturating_add(amount);
@@ -858,6 +849,7 @@ where
 			// default fee tokens, swap from tx fee pool: O(1)
 			for supply_currency_id in T::DefaultFeeTokens::get() {
 				if Self::swap_from_pool_or_dex(who, fee_amount, supply_currency_id).is_ok() {
+					// println!("{}, {}, {}", fee, fee_surplus, fee_amount);
 					return Ok(fee_surplus);
 				}
 			}
@@ -1245,7 +1237,7 @@ where
 			WithdrawReasons::TRANSACTION_PAYMENT | WithdrawReasons::TIP
 		};
 
-		let fee_surplus = Pallet::<T>::ensure_can_charge_fee_with_call(who, fee, reason, call);
+		let fee_surplus = Pallet::<T>::ensure_can_charge_fee_with_call(who, fee, call);
 
 		if let Ok(fee_surplus) = fee_surplus {
 			// withdraw native currency as fee, also consider surplus when swap from dex or pool.
