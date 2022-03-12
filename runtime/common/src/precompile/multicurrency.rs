@@ -16,15 +16,18 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::precompile::PrecompileOutput;
 use frame_support::{
 	log,
 	traits::{Currency, Get},
 };
-use module_evm::{Context, ExitError, ExitSucceed, Precompile};
+use module_evm::{
+	precompiles::Precompile,
+	runner::state::{PrecompileFailure, PrecompileOutput, PrecompileResult},
+	Context, ExitRevert, ExitSucceed,
+};
 use module_support::Erc20InfoMapping as Erc20InfoMappingT;
 use sp_runtime::RuntimeDebug;
-use sp_std::{marker::PhantomData, prelude::*, result};
+use sp_std::{marker::PhantomData, prelude::*};
 
 use orml_traits::MultiCurrency as MultiCurrencyT;
 
@@ -42,7 +45,7 @@ use num_enum::{IntoPrimitive, TryFromPrimitive};
 /// - Transfer. Rest `input` bytes: `from`, `to`, `amount`.
 pub struct MultiCurrencyPrecompile<R>(PhantomData<R>);
 
-#[module_evm_utiltity_macro::generate_function_selector]
+#[module_evm_utility_macro::generate_function_selector]
 #[derive(RuntimeDebug, Eq, PartialEq, TryFromPrimitive, IntoPrimitive)]
 #[repr(u32)]
 pub enum Action {
@@ -58,23 +61,26 @@ impl<Runtime> Precompile for MultiCurrencyPrecompile<Runtime>
 where
 	Runtime: module_evm::Config + module_prices::Config + module_transaction_payment::Config,
 {
-	fn execute(
-		input: &[u8],
-		_target_gas: Option<u64>,
-		context: &Context,
-	) -> result::Result<PrecompileOutput, ExitError> {
+	fn execute(input: &[u8], _target_gas: Option<u64>, context: &Context, _is_static: bool) -> PrecompileResult {
 		let input = Input::<Action, Runtime::AccountId, Runtime::AddressMapping, Runtime::Erc20InfoMapping>::new(input);
 
 		let action = input.action()?;
-		let currency_id = Runtime::Erc20InfoMapping::decode_evm_address(context.caller)
-			.ok_or_else(|| ExitError::Other("invalid currency id".into()))?;
+		let currency_id =
+			Runtime::Erc20InfoMapping::decode_evm_address(context.caller).ok_or_else(|| PrecompileFailure::Revert {
+				exit_status: ExitRevert::Reverted,
+				output: "invalid currency id".into(),
+				cost: 0,
+			})?;
 
 		log::debug!(target: "evm", "multicurrency: currency id: {:?}", currency_id);
 
 		match action {
 			Action::QueryName => {
-				let name = Runtime::Erc20InfoMapping::name(currency_id)
-					.ok_or_else(|| ExitError::Other("Get name failed".into()))?;
+				let name = Runtime::Erc20InfoMapping::name(currency_id).ok_or_else(|| PrecompileFailure::Revert {
+					exit_status: ExitRevert::Reverted,
+					output: "Get name failed".into(),
+					cost: 0,
+				})?;
 				log::debug!(target: "evm", "multicurrency: name: {:?}", name);
 
 				Ok(PrecompileOutput {
@@ -85,8 +91,12 @@ where
 				})
 			}
 			Action::QuerySymbol => {
-				let symbol = Runtime::Erc20InfoMapping::symbol(currency_id)
-					.ok_or_else(|| ExitError::Other("Get symbol failed".into()))?;
+				let symbol =
+					Runtime::Erc20InfoMapping::symbol(currency_id).ok_or_else(|| PrecompileFailure::Revert {
+						exit_status: ExitRevert::Reverted,
+						output: "Get symbol failed".into(),
+						cost: 0,
+					})?;
 				log::debug!(target: "evm", "multicurrency: symbol: {:?}", symbol);
 
 				Ok(PrecompileOutput {
@@ -97,8 +107,12 @@ where
 				})
 			}
 			Action::QueryDecimals => {
-				let decimals = Runtime::Erc20InfoMapping::decimals(currency_id)
-					.ok_or_else(|| ExitError::Other("Get decimals failed".into()))?;
+				let decimals =
+					Runtime::Erc20InfoMapping::decimals(currency_id).ok_or_else(|| PrecompileFailure::Revert {
+						exit_status: ExitRevert::Reverted,
+						output: "Get decimals failed".into(),
+						cost: 0,
+					})?;
 				log::debug!(target: "evm", "multicurrency: decimals: {:?}", decimals);
 
 				Ok(PrecompileOutput {
@@ -144,8 +158,11 @@ where
 				log::debug!(target: "evm", "multicurrency: transfer from: {:?}, to: {:?}, amount: {:?}", from, to, amount);
 
 				Runtime::MultiCurrency::transfer(currency_id, &from, &to, amount).map_err(|e| {
-					let err_msg: &str = e.into();
-					ExitError::Other(err_msg.into())
+					PrecompileFailure::Revert {
+						exit_status: ExitRevert::Reverted,
+						output: Into::<&str>::into(e).as_bytes().to_vec(),
+						cost: 0,
+					}
 				})?;
 
 				Ok(PrecompileOutput {

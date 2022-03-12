@@ -187,19 +187,11 @@ impl cdp_treasury::Config for Runtime {
 	type StableAsset = MockStableAsset<CurrencyId, Balance, AccountId, BlockNumber>;
 }
 
-// mock convert
-pub struct MockConvert;
-impl Convert<(CurrencyId, Balance), Balance> for MockConvert {
-	fn convert(a: (CurrencyId, Balance)) -> Balance {
-		a.1 / Balance::from(2u64)
-	}
-}
-
 // mock risk manager
 pub struct MockRiskManager;
 impl RiskManager<AccountId, CurrencyId, Balance, Balance> for MockRiskManager {
-	fn get_bad_debt_value(currency_id: CurrencyId, debit_balance: Balance) -> Balance {
-		MockConvert::convert((currency_id, debit_balance))
+	fn get_debit_value(_currency_id: CurrencyId, debit_balance: Balance) -> Balance {
+		debit_balance / Balance::from(2u64)
 	}
 
 	fn check_position_valid(
@@ -263,7 +255,6 @@ parameter_types! {
 
 impl Config for Runtime {
 	type Event = Event;
-	type Convert = MockConvert;
 	type Currency = Currencies;
 	type RiskManager = MockRiskManager;
 	type CDPTreasury = CDPTreasuryModule;

@@ -71,7 +71,14 @@ pub fn deploy_erc20_contracts() {
 		serde_json::from_str(include_str!("../../../ts-tests/build/Erc20DemoContract2.json")).unwrap();
 	let code = hex::decode(json.get("bytecode").unwrap().as_str().unwrap()).unwrap();
 
-	assert_ok!(EVM::create(Origin::signed(alice()), code.clone(), 0, 2100_000, 100000));
+	assert_ok!(EVM::create(
+		Origin::signed(alice()),
+		code.clone(),
+		0,
+		2100_000,
+		100000,
+		vec![]
+	));
 
 	System::assert_last_event(Event::EVM(module_evm::Event::Created {
 		from: EvmAddress::from_str("0xbf0b5a4099f0bf6c8bc4252ebec548bae95602ea").unwrap(),
@@ -98,7 +105,7 @@ pub fn deploy_erc20_contracts() {
 		1
 	));
 
-	assert_ok!(EVM::create(Origin::signed(alice()), code, 0, 2100_000, 100000));
+	assert_ok!(EVM::create(Origin::signed(alice()), code, 0, 2100_000, 100000, vec![]));
 
 	System::assert_last_event(Event::EVM(module_evm::Event::Created {
 		from: EvmAddress::from_str("0xbf0b5a4099f0bf6c8bc4252ebec548bae95602ea").unwrap(),
@@ -141,7 +148,8 @@ fn deploy_contract(account: AccountId) -> Result<H160, DispatchError> {
 	// contract Contract {}
 	let contract = hex_literal::hex!("608060405234801561001057600080fd5b5061016f806100206000396000f3fe608060405260043610610041576000357c0100000000000000000000000000000000000000000000000000000000900463ffffffff168063412a5a6d14610046575b600080fd5b61004e610050565b005b600061005a6100e2565b604051809103906000f080158015610076573d6000803e3d6000fd5b50905060008190806001815401808255809150509060018203906000526020600020016000909192909190916101000a81548173ffffffffffffffffffffffffffffffffffffffff021916908373ffffffffffffffffffffffffffffffffffffffff1602179055505050565b6040516052806100f28339019056fe6080604052348015600f57600080fd5b50603580601d6000396000f3fe6080604052600080fdfea165627a7a7230582092dc1966a8880ddf11e067f9dd56a632c11a78a4afd4a9f05924d427367958cc0029a165627a7a723058202b2cc7384e11c452cdbf39b68dada2d5e10a632cc0174a354b8b8c83237e28a40029").to_vec();
 
-	EVM::create(Origin::signed(account), contract, 0, 1000000000, 100000).map_or_else(|e| Err(e.error), |_| Ok(()))?;
+	EVM::create(Origin::signed(account), contract, 0, 1000000000, 100000, vec![])
+		.map_or_else(|e| Err(e.error), |_| Ok(()))?;
 
 	if let Event::EVM(module_evm::Event::<Runtime>::Created {
 		from: _,
@@ -354,9 +362,9 @@ fn test_evm_module() {
 			#[cfg(feature = "with-mandala-runtime")]
 			assert_eq!(Balances::free_balance(alice()), 998_963_300_000_000);
 			#[cfg(feature = "with-karura-runtime")]
-			assert_eq!(Balances::free_balance(alice()), 996_889_900_000_000);
+			assert_eq!(Balances::free_balance(alice()), 998_963_300_000_000);
 			#[cfg(feature = "with-acala-runtime")]
-			assert_eq!(Balances::free_balance(alice()), 993_779_800_000_000);
+			assert_eq!(Balances::free_balance(alice()), 996_889_900_000_000);
 			assert_eq!(Balances::free_balance(bob()), 1_000 * dollar(NATIVE_CURRENCY));
 			let to = EvmAccounts::eth_address(&alice_key());
 			assert_ok!(Currencies::transfer(
@@ -368,9 +376,9 @@ fn test_evm_module() {
 			#[cfg(feature = "with-mandala-runtime")]
 			assert_eq!(Balances::free_balance(alice()), 1_008_963_300_000_000);
 			#[cfg(feature = "with-karura-runtime")]
-			assert_eq!(Balances::free_balance(alice()), 1_006_889_900_000_000);
+			assert_eq!(Balances::free_balance(alice()), 1_008_963_300_000_000);
 			#[cfg(feature = "with-acala-runtime")]
-			assert_eq!(Balances::free_balance(alice()), 1_003_779_800_000_000);
+			assert_eq!(Balances::free_balance(alice()), 1_006_889_900_000_000);
 			assert_eq!(
 				Balances::free_balance(bob()),
 				1_000 * dollar(NATIVE_CURRENCY) - 10 * dollar(NATIVE_CURRENCY)
@@ -475,6 +483,7 @@ fn test_multicurrency_precompile_module() {
 				0,
 				1000000,
 				1000000,
+				vec![],
 			));
 
 			let invoke_context = module_support::InvokeContext {
@@ -553,7 +562,7 @@ fn should_not_kill_contract_on_transfer_all() {
 			// }
 			let code = hex_literal::hex!("6080604052603e8060116000396000f3fe6080604052600080fdfea265627a7a72315820e816b34c9ce8a2446f3d059b4907b4572645fde734e31dabf5465c801dcb44a964736f6c63430005110032").to_vec();
 
-			assert_ok!(EVM::create(Origin::signed(alice()), code, convert_decimals_to_evm(2 * dollar(NATIVE_CURRENCY)), 1000000000, 100000));
+			assert_ok!(EVM::create(Origin::signed(alice()), code, convert_decimals_to_evm(2 * dollar(NATIVE_CURRENCY)), 1000000000, 100000, vec![]));
 
 			let contract = if let Event::EVM(module_evm::Event::Created{from: _, contract: address, logs: _}) = System::events().last().unwrap().event {
 				address
@@ -568,9 +577,9 @@ fn should_not_kill_contract_on_transfer_all() {
 			#[cfg(all(not(feature = "with-ethereum-compatibility"), feature = "with-mandala-runtime"))]
 			assert_eq!(Balances::free_balance(alice()), 1_996_993_800_000_000);
 			#[cfg(feature = "with-karura-runtime")]
-			assert_eq!(Balances::free_balance(alice()), 1_994_981_400_000_000);
+			assert_eq!(Balances::free_balance(alice()), 1_996_993_800_000_000);
 			#[cfg(feature = "with-acala-runtime")]
-			assert_eq!(Balances::free_balance(alice()), 1_991_962_800_000_000);
+			assert_eq!(Balances::free_balance(alice()), 1_994_981_400_000_000);
 
 			assert_ok!(Currencies::transfer(
 				Origin::signed(EvmAddressMapping::<Runtime>::get_account_id(&contract)),
@@ -586,9 +595,9 @@ fn should_not_kill_contract_on_transfer_all() {
 			#[cfg(all(not(feature = "with-ethereum-compatibility"), feature = "with-mandala-runtime"))]
 			assert_eq!(Balances::free_balance(alice()), 1_998_993_800_000_000);
 			#[cfg(feature = "with-karura-runtime")]
-			assert_eq!(Balances::free_balance(alice()), 1_996_981_400_000_000);
+			assert_eq!(Balances::free_balance(alice()), 1_998_993_800_000_000);
 			#[cfg(feature = "with-acala-runtime")]
-			assert_eq!(Balances::free_balance(alice()), 1_993_962_800_000_000);
+			assert_eq!(Balances::free_balance(alice()), 1_996_981_400_000_000);
 
 			// assert the contract account is not purged
 			assert!(EVM::accounts(contract).is_some());
@@ -616,7 +625,7 @@ fn should_not_kill_contract_on_transfer_all_tokens() {
 			// 	 }
 			// }
 			let code = hex_literal::hex!("608060405260848060116000396000f3fe6080604052348015600f57600080fd5b506004361060285760003560e01c806341c0e1b514602d575b600080fd5b60336035565b005b600073ffffffffffffffffffffffffffffffffffffffff16fffea265627a7a72315820ed64a7551098c4afc823bee1663309079d9cb8798a6bdd71be2cd3ccee52d98e64736f6c63430005110032").to_vec();
-			assert_ok!(EVM::create(Origin::signed(alice()), code, 0, 1000000000, 100000));
+			assert_ok!(EVM::create(Origin::signed(alice()), code, 0, 1000000000, 100000, vec![]));
 
 			let contract = if let Event::EVM(module_evm::Event::Created{from: _, contract: address, logs: _}) = System::events().last().unwrap().event {
 				address
@@ -653,7 +662,7 @@ fn should_not_kill_contract_on_transfer_all_tokens() {
 			assert_eq!(System::providers(&contract_account_id), 2);
 			assert!(EVM::accounts(contract).is_some());
 
-			assert_ok!(EVM::call(Origin::signed(alice()), contract.clone(), hex_literal::hex!("41c0e1b5").to_vec(), 0, 1000000000, 100000));
+			assert_ok!(EVM::call(Origin::signed(alice()), contract.clone(), hex_literal::hex!("41c0e1b5").to_vec(), 0, 1000000000, 100000, vec![]));
 
 			#[cfg(feature = "with-ethereum-compatibility")]
 			assert_eq!(System::providers(&contract_account_id), 0);

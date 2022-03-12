@@ -107,6 +107,10 @@ pub mod parachains {
 		pub const KBTC_KEY: &[u8] = &[0, 11];
 		pub const KINT_KEY: &[u8] = &[0, 12];
 	}
+
+	pub mod statemine {
+		pub const ID: u32 = 1000;
+	}
 }
 
 #[cfg(test)]

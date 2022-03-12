@@ -115,6 +115,8 @@ pub mod module {
 		DebitPoolNotEnough,
 		/// Cannot use collateral to swap stable
 		CannotSwap,
+		/// The currency id is not DexShare type
+		NotDexShare,
 	}
 
 	#[pallet::event]
@@ -530,6 +532,24 @@ impl<T: Config> CDPTreasuryExtended<T::AccountId> for Pallet<T> {
 		}
 		let created_auctions: u32 = created_lots.try_into().map_err(|_| ArithmeticError::Overflow)?;
 		Ok(created_auctions)
+	}
+
+	fn remove_liquidity_for_lp_collateral(
+		lp_currency_id: CurrencyId,
+		amount: Balance,
+	) -> sp_std::result::Result<(Balance, Balance), DispatchError> {
+		let (currency_id_0, currency_id_1) = lp_currency_id
+			.split_dex_share_currency_id()
+			.ok_or(Error::<T>::NotDexShare)?;
+		T::DEX::remove_liquidity(
+			&Self::account_id(),
+			currency_id_0,
+			currency_id_1,
+			amount,
+			Zero::zero(),
+			Zero::zero(),
+			false,
+		)
 	}
 
 	fn max_auction() -> u32 {

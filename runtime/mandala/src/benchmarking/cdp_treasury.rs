@@ -17,11 +17,11 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-	dollar, AccountId, CdpTreasury, Currencies, CurrencyId, Dex, GetStableCurrencyId, GetStakingCurrencyId,
-	MaxAuctionsCount, Runtime,
+	AccountId, CdpTreasury, Currencies, CurrencyId, Dex, GetStableCurrencyId, GetStakingCurrencyId, MaxAuctionsCount,
+	Runtime,
 };
 
-use super::utils::set_balance;
+use super::utils::{dollar, set_balance};
 use frame_benchmarking::whitelisted_caller;
 use frame_system::RawOrigin;
 use module_support::{CDPTreasury, SwapLimit};

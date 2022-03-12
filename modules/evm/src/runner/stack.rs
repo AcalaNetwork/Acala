@@ -17,13 +17,12 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 //! EVM stack-based runner.
-// Synchronize with https://github.com/paritytech/frontier/blob/master/frame/evm/src/runner/stack.rs
+// Synchronize with https://github.com/paritytech/frontier/blob/bcae569524/frame/evm/src/runner/stack.rs
 
 use crate::{
-	precompiles::PrecompileSet,
 	runner::{
-		state::{StackExecutor, StackSubstateMetadata},
-		Runner as RunnerT, StackState as StackStateT,
+		state::{Accessed, StackExecutor, StackState as StackStateT, StackSubstateMetadata},
+		Runner as RunnerT,
 	},
 	AccountInfo, AccountStorages, Accounts, BalanceOf, CallInfo, Config, CreateInfo, Error, ExecutionInfo, One, Pallet,
 	STORAGE_SIZE,
@@ -34,7 +33,7 @@ use frame_support::{
 	traits::{Currency, ExistenceRequirement, Get},
 	transactional,
 };
-use module_evm_utiltity::{
+use module_evm_utility::{
 	ethereum::Log,
 	evm::{self, backend::Backend as BackendT, ExitError, ExitReason, Transfer},
 };
@@ -47,7 +46,13 @@ pub use primitives::{
 use sha3::{Digest, Keccak256};
 use sp_core::{H160, H256, U256};
 use sp_runtime::traits::{UniqueSaturatedInto, Zero};
-use sp_std::{boxed::Box, collections::btree_set::BTreeSet, marker::PhantomData, mem, vec, vec::Vec};
+use sp_std::{
+	boxed::Box,
+	collections::{btree_map::BTreeMap, btree_set::BTreeSet},
+	marker::PhantomData,
+	mem,
+	vec::Vec,
+};
 
 #[derive(Default)]
 pub struct Runner<T: Config> {
@@ -56,17 +61,20 @@ pub struct Runner<T: Config> {
 
 impl<T: Config> Runner<T> {
 	/// Execute an EVM operation.
-	pub fn execute<'config, F, R>(
+	pub fn execute<'config, 'precompiles, F, R>(
 		source: H160,
 		origin: H160,
 		value: U256,
 		gas_limit: u64,
 		storage_limit: u32,
 		config: &'config evm::Config,
+		precompiles: &'precompiles T::PrecompilesType,
 		f: F,
 	) -> Result<ExecutionInfo<R>, sp_runtime::DispatchError>
 	where
-		F: FnOnce(&mut StackExecutor<'config, SubstrateStackState<'_, 'config, T>>) -> (ExitReason, R),
+		F: FnOnce(
+			&mut StackExecutor<'config, 'precompiles, SubstrateStackState<'_, 'config, T>, T::PrecompilesType>,
+		) -> (ExitReason, R),
 	{
 		let gas_price = U256::one();
 		let vicinity = Vicinity {
@@ -77,18 +85,8 @@ impl<T: Config> Runner<T> {
 
 		let metadata = StackSubstateMetadata::new(gas_limit, storage_limit, config);
 		let state = SubstrateStackState::new(&vicinity, metadata);
-		let mut executor = StackExecutor::new_with_precompile(state, config, T::Precompiles::execute);
+		let mut executor = StackExecutor::new_with_precompiles(state, config, precompiles);
 
-		// NOTE: charge from transaction-payment
-		// let total_fee = gas_price
-		// 	.checked_mul(U256::from(gas_limit))
-		// 	.ok_or(Error::<T>::FeeOverflow)?;
-		// let total_payment = value.checked_add(total_fee).ok_or(Error::<T>::PaymentOverflow)?;
-		// let source_account = Pallet::<T>::account_basic(&source);
-		// ensure!(source_account.balance >= total_payment, Error::<T>::BalanceLow);
-
-		// Deduct fee from the `source` account.
-		// let fee = T::ChargeTransactionPayment::withdraw_fee(&source, total_fee)?;
 		ensure!(
 			convert_decimals_from_evm(value.low_u128()).is_some(),
 			Error::<T>::InvalidDecimals
@@ -111,20 +109,15 @@ impl<T: Config> Runner<T> {
 		let (reason, retv) = f(&mut executor);
 
 		let used_gas = U256::from(executor.used_gas());
-		let actual_fee = executor.fee(gas_price);
 		log::debug!(
 			target: "evm",
-			"Execution {:?} [source: {:?}, value: {}, gas_limit: {}, actual_fee: {}]",
+			"Execution {:?} [source: {:?}, value: {}, gas_limit: {}, used_gas: {}]",
 			reason,
 			source,
 			value,
 			gas_limit,
-			actual_fee
+			used_gas,
 		);
-
-		// NOTE: refund from transaction-payment
-		// Refund fees to the `source` account if deducted more before,
-		// T::OnChargeTransaction::correct_and_deposit_fee(&source, actual_fee, fee)?;
 
 		let state = executor.into_state();
 
@@ -226,6 +219,7 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 		value: BalanceOf<T>,
 		gas_limit: u64,
 		storage_limit: u32,
+		access_list: Vec<(H160, Vec<H256>)>,
 		config: &evm::Config,
 	) -> Result<CallInfo, DispatchError> {
 		// if the contract not published, the caller must be developer or contract or maintainer.
@@ -235,11 +229,18 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 			Error::<T>::NoPermission
 		);
 
+		let precompiles = T::PrecompilesValue::get();
 		let value = U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(value));
-		Self::execute(source, origin, value, gas_limit, storage_limit, config, |executor| {
-			// TODO: EIP-2930
-			executor.transact_call(source, target, value, input, gas_limit, vec![])
-		})
+		Self::execute(
+			source,
+			origin,
+			value,
+			gas_limit,
+			storage_limit,
+			config,
+			&precompiles,
+			|executor| executor.transact_call(source, target, value, input, gas_limit, access_list),
+		)
 	}
 
 	/// Require transactional here. Always need to send events.
@@ -250,19 +251,29 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 		value: BalanceOf<T>,
 		gas_limit: u64,
 		storage_limit: u32,
+		access_list: Vec<(H160, Vec<H256>)>,
 		config: &evm::Config,
 	) -> Result<CreateInfo, DispatchError> {
+		let precompiles = T::PrecompilesValue::get();
 		let value = U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(value));
-		Self::execute(source, source, value, gas_limit, storage_limit, config, |executor| {
-			let address = executor
-				.create_address(evm::CreateScheme::Legacy { caller: source })
-				.unwrap_or_default(); // transact_create will check the address
-			(
-				// TODO: EIP-2930
-				executor.transact_create(source, value, init, gas_limit, vec![]),
-				address,
-			)
-		})
+		Self::execute(
+			source,
+			source,
+			value,
+			gas_limit,
+			storage_limit,
+			config,
+			&precompiles,
+			|executor| {
+				let address = executor
+					.create_address(evm::CreateScheme::Legacy { caller: source })
+					.unwrap_or_default(); // transact_create will check the address
+				(
+					executor.transact_create(source, value, init, gas_limit, access_list),
+					address,
+				)
+			},
+		)
 	}
 
 	/// Require transactional here. Always need to send events.
@@ -274,24 +285,34 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 		value: BalanceOf<T>,
 		gas_limit: u64,
 		storage_limit: u32,
+		access_list: Vec<(H160, Vec<H256>)>,
 		config: &evm::Config,
 	) -> Result<CreateInfo, DispatchError> {
+		let precompiles = T::PrecompilesValue::get();
 		let value = U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(value));
 		let code_hash = H256::from_slice(Keccak256::digest(&init).as_slice());
-		Self::execute(source, source, value, gas_limit, storage_limit, config, |executor| {
-			let address = executor
-				.create_address(evm::CreateScheme::Create2 {
-					caller: source,
-					code_hash,
-					salt,
-				})
-				.unwrap_or_default(); // transact_create2 will check the address
-			(
-				// TODO: EIP-2930
-				executor.transact_create2(source, value, init, salt, gas_limit, vec![]),
-				address,
-			)
-		})
+		Self::execute(
+			source,
+			source,
+			value,
+			gas_limit,
+			storage_limit,
+			config,
+			&precompiles,
+			|executor| {
+				let address = executor
+					.create_address(evm::CreateScheme::Create2 {
+						caller: source,
+						code_hash,
+						salt,
+					})
+					.unwrap_or_default(); // transact_create2 will check the address
+				(
+					executor.transact_create2(source, value, init, salt, gas_limit, access_list),
+					address,
+				)
+			},
+		)
 	}
 
 	/// Require transactional here. Always need to send events.
@@ -303,16 +324,26 @@ impl<T: Config> RunnerT<T> for Runner<T> {
 		value: BalanceOf<T>,
 		gas_limit: u64,
 		storage_limit: u32,
+		access_list: Vec<(H160, Vec<H256>)>,
 		config: &evm::Config,
 	) -> Result<CreateInfo, DispatchError> {
+		let precompiles = T::PrecompilesValue::get();
 		let value = U256::from(UniqueSaturatedInto::<u128>::unique_saturated_into(value));
-		Self::execute(source, source, value, gas_limit, storage_limit, config, |executor| {
-			(
-				// TODO: EIP-2930
-				executor.transact_create_at_address(source, address, value, init, gas_limit, vec![]),
-				address,
-			)
-		})
+		Self::execute(
+			source,
+			source,
+			value,
+			gas_limit,
+			storage_limit,
+			config,
+			&precompiles,
+			|executor| {
+				(
+					executor.transact_create_at_address(source, address, value, init, gas_limit, access_list),
+					address,
+				)
+			},
+		)
 	}
 }
 
@@ -322,6 +353,7 @@ struct SubstrateStackSubstate<'config> {
 	logs: Vec<Log>,
 	storage_logs: Vec<(H160, i32)>,
 	parent: Option<Box<SubstrateStackSubstate<'config>>>,
+	known_original_storage: BTreeMap<(H160, H256), H256>,
 }
 
 impl<'config> SubstrateStackSubstate<'config> {
@@ -340,6 +372,7 @@ impl<'config> SubstrateStackSubstate<'config> {
 			deletes: BTreeSet::new(),
 			logs: Vec::new(),
 			storage_logs: Vec::new(),
+			known_original_storage: BTreeMap::new(),
 		};
 		mem::swap(&mut entering, self);
 
@@ -412,6 +445,53 @@ impl<'config> SubstrateStackSubstate<'config> {
 	pub fn log(&mut self, address: H160, topics: Vec<H256>, data: Vec<u8>) {
 		self.logs.push(Log { address, topics, data });
 	}
+
+	fn recursive_is_cold<F: Fn(&Accessed) -> bool>(&self, f: &F) -> bool {
+		let local_is_accessed = self.metadata.accessed().as_ref().map(f).unwrap_or(false);
+		if local_is_accessed {
+			false
+		} else {
+			self.parent.as_ref().map(|p| p.recursive_is_cold(f)).unwrap_or(true)
+		}
+	}
+
+	pub fn known_original_storage(&self, address: H160, index: H256) -> Option<H256> {
+		if let Some(parent) = self.parent.as_ref() {
+			return parent.known_original_storage(address, index);
+		}
+		self.known_original_storage.get(&(address, index)).copied()
+	}
+
+	pub fn set_known_original_storage(&mut self, address: H160, index: H256, value: H256) {
+		if let Some(ref mut parent) = self.parent {
+			return parent.set_known_original_storage(address, index, value);
+		}
+		self.known_original_storage.insert((address, index), value);
+	}
+}
+
+#[cfg(feature = "evm-tests")]
+impl<'config> SubstrateStackSubstate<'config> {
+	pub fn mark_account_dirty(&self, address: H160) {
+		// https://github.com/ethereum/go-ethereum/blob/v1.10.16/core/state/state_object.go#L143
+		// insert in parent to make sure it doesn't get discarded
+		if address == H160::from_low_u64_be(3) {
+			if let Some(parent) = self.parent.as_ref() {
+				return parent.mark_account_dirty(address);
+			}
+		}
+		self.metadata().dirty_accounts.borrow_mut().insert(address);
+	}
+
+	pub fn is_account_dirty(&self, address: H160) -> bool {
+		if self.metadata().dirty_accounts.borrow().contains(&address) {
+			return true;
+		}
+		if let Some(parent) = self.parent.as_ref() {
+			return parent.is_account_dirty(address);
+		}
+		false
+	}
 }
 
 /// Substrate backend for EVM.
@@ -432,9 +512,27 @@ impl<'vicinity, 'config, T: Config> SubstrateStackState<'vicinity, 'config, T> {
 				logs: Vec::new(),
 				storage_logs: Vec::new(),
 				parent: None,
+				known_original_storage: BTreeMap::new(),
 			},
 			_marker: PhantomData,
 		}
+	}
+}
+
+#[cfg(feature = "evm-tests")]
+impl<'vicinity, 'config, T: Config> SubstrateStackState<'vicinity, 'config, T> {
+	pub fn deleted_accounts(&self) -> Vec<H160> {
+		self.substate.deletes.iter().copied().collect()
+	}
+
+	pub fn empty_accounts(&self) -> Vec<H160> {
+		self.metadata()
+			.dirty_accounts
+			.borrow()
+			.iter()
+			.filter(|x| self.is_empty(**x))
+			.copied()
+			.collect()
 	}
 }
 
@@ -483,7 +581,7 @@ impl<'vicinity, 'config, T: Config> BackendT for SubstrateStackState<'vicinity, 
 
 	#[cfg(feature = "evm-tests")]
 	fn exists(&self, address: H160) -> bool {
-		Accounts::<T>::contains_key(&address)
+		Accounts::<T>::contains_key(&address) || self.substate.is_account_dirty(address)
 	}
 
 	#[cfg(not(feature = "evm-tests"))]
@@ -509,7 +607,15 @@ impl<'vicinity, 'config, T: Config> BackendT for SubstrateStackState<'vicinity, 
 	}
 
 	fn original_storage(&self, address: H160, index: H256) -> Option<H256> {
-		Some(self.storage(address, index))
+		if let Some(value) = self.substate.known_original_storage(address, index) {
+			Some(value)
+		} else {
+			Some(self.storage(address, index))
+		}
+	}
+
+	fn block_base_fee_per_gas(&self) -> sp_core::U256 {
+		self.vicinity.block_base_fee_per_gas.unwrap_or(U256::one())
 	}
 }
 
@@ -546,16 +652,6 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 		self.substate.deleted(address)
 	}
 
-	fn is_cold(&self, _address: H160) -> bool {
-		// TODO: EIP-2930
-		false
-	}
-
-	fn is_storage_cold(&self, _address: H160, _key: H256) -> bool {
-		// TODO: EIP-2930
-		false
-	}
-
 	fn inc_nonce(&mut self, address: H160) {
 		Accounts::<T>::mutate(&address, |maybe_account| {
 			if let Some(account) = maybe_account.as_mut() {
@@ -569,6 +665,12 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 	}
 
 	fn set_storage(&mut self, address: H160, index: H256, value: H256) {
+		// keep track of original storage
+		if self.substate.known_original_storage(address, index).is_none() {
+			let original = <AccountStorages<T>>::get(address, index);
+			self.substate.set_known_original_storage(address, index, original);
+		}
+
 		if value == H256::default() {
 			log::debug!(
 				target: "evm",
@@ -602,7 +704,7 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 	}
 
 	fn set_deleted(&mut self, address: H160) {
-		self.substate.set_deleted(address);
+		self.substate.set_deleted(address)
 	}
 
 	fn set_code(&mut self, address: H160, code: Vec<u8>) {
@@ -657,6 +759,7 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 	}
 
 	fn transfer(&mut self, transfer: Transfer) -> Result<(), ExitError> {
+		self.touch(transfer.target);
 		if transfer.value.is_zero() {
 			return Ok(());
 		}
@@ -709,5 +812,19 @@ impl<'vicinity, 'config, T: Config> StackStateT<'config> for SubstrateStackState
 		// EVM pallet considers all accounts to exist, and distinguish
 		// only empty and non-empty accounts. This avoids many of the
 		// subtle issues in EIP-161.
+
+		// this is needed only for evm-tests to keep track of dirty accounts
+		#[cfg(feature = "evm-tests")]
+		self.substate.mark_account_dirty(_address);
+	}
+
+	fn is_cold(&self, address: H160) -> bool {
+		self.substate
+			.recursive_is_cold(&|a| a.accessed_addresses.contains(&address))
+	}
+
+	fn is_storage_cold(&self, address: H160, key: H256) -> bool {
+		self.substate
+			.recursive_is_cold(&|a: &Accessed| a.accessed_storage.contains(&(address, key)))
 	}
 }

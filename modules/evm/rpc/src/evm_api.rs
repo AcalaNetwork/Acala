@@ -18,10 +18,9 @@
 
 //! EVM rpc interface.
 
-use ethereum_types::H160;
 use jsonrpc_core::Result;
 use jsonrpc_derive::rpc;
-use sp_core::Bytes;
+use sp_core::{Bytes, H160};
 
 pub use rpc_impl_EVMApi::gen_server::EVMApi as EVMApiServer;
 

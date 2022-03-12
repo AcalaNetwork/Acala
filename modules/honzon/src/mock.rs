@@ -140,7 +140,6 @@ parameter_types! {
 
 impl loans::Config for Runtime {
 	type Event = Event;
-	type Convert = cdp_engine::DebitExchangeRateConvertor<Runtime>;
 	type Currency = Tokens;
 	type RiskManager = CDPEngineModule;
 	type CDPTreasury = CDPTreasuryModule;
@@ -266,6 +265,9 @@ impl cdp_engine::Config for Runtime {
 	type UnsignedPriority = UnsignedPriority;
 	type EmergencyShutdown = MockEmergencyShutdown;
 	type UnixTime = Timestamp;
+	type Currency = Currencies;
+	type AlternativeSwapPathJointList = AlternativeSwapPathJointList;
+	type DEX = ();
 	type WeightInfo = ();
 }
 
