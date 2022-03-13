@@ -172,7 +172,7 @@ pub mod module {
 		QueryExpired,
 		/// Query has not yet expired
 		QueryNotExpired,
-		/// Request query is dispatchable weight is greater than
+		/// Query request's `DispatchableCall` weight is greater than
 		/// the weight bound specified by caller
 		WrongRequestWeightBound,
 	}
@@ -212,7 +212,7 @@ pub mod module {
 				query_id,
 				task_result: result.map(|_| ()).map_err(|e| e.error),
 			});
-			Ok((Some(0), Pays::Yes).into())
+			Ok((Some(get_result_weight(result).unwrap_or(request_weight)), Pays::Yes).into())
 		}
 
 		/// Remove Query that has expired so chain state does not bloat. This rewards the oracle
@@ -295,6 +295,16 @@ impl<T: Config> ForeignChainStateQuery<T::AccountId, T::DispatchableCall, T::Blo
 		)?;
 		Self::deposit_event(Event::QueryCanceled { query_id });
 		Ok(())
+	}
+}
+
+/// Return the weight of a dispatch call result as an `Option`.
+///
+/// Will return the weight regardless of what the state of the result is.
+fn get_result_weight(result: DispatchResultWithPostInfo) -> Option<Weight> {
+	match result {
+		Ok(post_info) => post_info.actual_weight,
+		Err(err) => err.post_info.actual_weight,
 	}
 }
 

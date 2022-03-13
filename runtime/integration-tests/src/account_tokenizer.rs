@@ -23,6 +23,7 @@ use frame_support::{
 };
 use hex_literal::hex;
 use module_support::CreateExtended;
+use runtime_common::MAXIMUM_BLOCK_WEIGHT;
 
 fn get_treasury_account() -> AccountId {
 	#[cfg(feature = "with-mandala-runtime")]
@@ -71,7 +72,8 @@ fn can_mint_account_token() {
 			assert_ok!(ForeignStateOracle::respond_query_request(
 				OriginCaller::ForeignStateOracleCommittee(pallet_collective::RawOrigin::Members(1, 1)).into(),
 				0,
-				vec![1]
+				vec![1],
+				MAXIMUM_BLOCK_WEIGHT
 			));
 
 			assert_eq!(NFT::owner(&AccountTokenizer::nft_class_id(), &0), Some(alice()));
@@ -135,7 +137,8 @@ fn can_reject_mint_request() {
 			assert_ok!(ForeignStateOracle::respond_query_request(
 				OriginCaller::ForeignStateOracleCommittee(pallet_collective::RawOrigin::Members(1, 1)).into(),
 				0,
-				vec![0]
+				vec![0],
+				MAXIMUM_BLOCK_WEIGHT
 			));
 
 			// NFT token is NOT minted
@@ -205,7 +208,8 @@ fn can_burn_account_token_nft() {
 			assert_ok!(ForeignStateOracle::respond_query_request(
 				OriginCaller::ForeignStateOracleCommittee(pallet_collective::RawOrigin::Members(1, 1)).into(),
 				0,
-				vec![1]
+				vec![1],
+				MAXIMUM_BLOCK_WEIGHT
 			));
 
 			assert_eq!(AccountTokenizer::nft_class_id(), 0);
@@ -233,7 +237,8 @@ fn can_burn_account_token_nft() {
 			assert_ok!(ForeignStateOracle::respond_query_request(
 				OriginCaller::ForeignStateOracleCommittee(pallet_collective::RawOrigin::Members(1, 1)).into(),
 				1,
-				vec![]
+				vec![],
+				MAXIMUM_BLOCK_WEIGHT
 			));
 
 			let events = System::events();
@@ -409,7 +414,8 @@ pub mod xcm_test {
 			assert_ok!(ForeignStateOracle::respond_query_request(
 				OriginCaller::ForeignStateOracleCommittee(pallet_collective::RawOrigin::Members(1, 1)).into(),
 				0,
-				vec![1]
+				vec![1],
+				MAXIMUM_BLOCK_WEIGHT
 			));
 
 			// Transfer the token to bob
@@ -424,7 +430,8 @@ pub mod xcm_test {
 			assert_ok!(ForeignStateOracle::respond_query_request(
 				OriginCaller::ForeignStateOracleCommittee(pallet_collective::RawOrigin::Members(1, 1)).into(),
 				1,
-				vec![]
+				vec![],
+				MAXIMUM_BLOCK_WEIGHT
 			));
 		});
 
