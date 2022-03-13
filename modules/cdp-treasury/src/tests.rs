@@ -249,6 +249,120 @@ fn swap_collateral_to_stable_work() {
 }
 
 #[test]
+fn swap_collateral_to_stable_stable_asset_exact_target() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(CDPTreasuryModule::deposit_collateral(&BOB, STABLE_ASSET_LP, 200));
+		assert_ok!(CDPTreasuryModule::deposit_collateral(&CHARLIE, DOT, 1000));
+		assert_ok!(CDPTreasuryModule::deposit_collateral(&CHARLIE, BTC, 1000));
+		assert_eq!(
+			CDPTreasuryModule::total_collaterals_not_in_auction(STABLE_ASSET_LP),
+			200
+		);
+		assert_eq!(CDPTreasuryModule::surplus_pool(), 0);
+		assert_ok!(DEXModule::add_liquidity(
+			Origin::signed(BOB),
+			DOT,
+			AUSD,
+			1000,
+			1000,
+			0,
+			false
+		));
+		assert_ok!(DEXModule::add_liquidity(
+			Origin::signed(ALICE),
+			BTC,
+			AUSD,
+			1000,
+			1000,
+			0,
+			false
+		));
+		assert_eq!(
+			CDPTreasuryModule::swap_collateral_to_stable(STABLE_ASSET_LP, SwapLimit::ExactTarget(200, 100), false)
+				.unwrap(),
+			(200, 180)
+		);
+	});
+}
+
+#[test]
+fn swap_collateral_to_stable_stable_asset_exact_supply() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(CDPTreasuryModule::deposit_collateral(&BOB, STABLE_ASSET_LP, 200));
+		assert_ok!(CDPTreasuryModule::deposit_collateral(&CHARLIE, DOT, 1000));
+		assert_ok!(CDPTreasuryModule::deposit_collateral(&CHARLIE, BTC, 1000));
+		assert_eq!(
+			CDPTreasuryModule::total_collaterals_not_in_auction(STABLE_ASSET_LP),
+			200
+		);
+		assert_eq!(CDPTreasuryModule::surplus_pool(), 0);
+		assert_ok!(DEXModule::add_liquidity(
+			Origin::signed(BOB),
+			DOT,
+			AUSD,
+			1000,
+			1000,
+			0,
+			false
+		));
+		assert_ok!(DEXModule::add_liquidity(
+			Origin::signed(ALICE),
+			BTC,
+			AUSD,
+			1000,
+			1000,
+			0,
+			false
+		));
+		assert_eq!(
+			CDPTreasuryModule::swap_collateral_to_stable(STABLE_ASSET_LP, SwapLimit::ExactSupply(200, 100), false)
+				.unwrap(),
+			(200, 180)
+		);
+	});
+}
+
+#[test]
+fn swap_collateral_to_stable_stable_asset_failures() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(CDPTreasuryModule::deposit_collateral(&BOB, STABLE_ASSET_LP, 200));
+		assert_ok!(CDPTreasuryModule::deposit_collateral(&CHARLIE, DOT, 1000));
+		assert_ok!(CDPTreasuryModule::deposit_collateral(&CHARLIE, BTC, 1000));
+		assert_eq!(
+			CDPTreasuryModule::total_collaterals_not_in_auction(STABLE_ASSET_LP),
+			200
+		);
+		assert_eq!(CDPTreasuryModule::surplus_pool(), 0);
+		assert_ok!(DEXModule::add_liquidity(
+			Origin::signed(BOB),
+			DOT,
+			AUSD,
+			1000,
+			1000,
+			0,
+			false
+		));
+		assert_ok!(DEXModule::add_liquidity(
+			Origin::signed(ALICE),
+			BTC,
+			AUSD,
+			1000,
+			1000,
+			0,
+			false
+		));
+		assert_noop!(
+			CDPTreasuryModule::swap_collateral_to_stable(STABLE_ASSET_LP, SwapLimit::ExactTarget(200, 399), false),
+			Error::<Runtime>::CannotSwap
+		);
+		assert_noop!(
+			CDPTreasuryModule::swap_collateral_to_stable(STABLE_ASSET_LP, SwapLimit::ExactSupply(200, 399), false),
+			Error::<Runtime>::CannotSwap
+		);
+	});
+}
+
+#[test]
 fn create_collateral_auctions_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(Currencies::deposit(BTC, &CDPTreasuryModule::account_id(), 10000));

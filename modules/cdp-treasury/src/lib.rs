@@ -423,7 +423,6 @@ impl<T: Config> CDPTreasuryExtended<T::AccountId> for Pallet<T> {
 					redeem_amount: _,
 				} = T::StableAsset::get_redeem_proportion_amount(&yield_info, supply_limit)
 					.ok_or(Error::<T>::CannotSwap)?;
-
 				let mut sum = 0;
 				let mut swap_paths = vec![];
 				let mut redeem_limits = vec![];
@@ -432,7 +431,7 @@ impl<T: Config> CDPTreasuryExtended<T::AccountId> for Pallet<T> {
 				for i in 0..amounts.len() {
 					let currency = pool_info.assets[i];
 					let amount = amounts[i];
-					let swap_limit = SwapLimit::ExactSupply(amount, target_limit);
+					let swap_limit = SwapLimit::ExactSupply(amount, 0);
 					swap_limits.push(swap_limit);
 					let swap_path = T::DEX::get_best_price_swap_path(
 						currency,
