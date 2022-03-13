@@ -75,7 +75,7 @@ check-tests: githooks
 	SKIP_WASM_BUILD= cargo check --features with-all-runtime --tests --all
 
 .PHONY: check-all
-check-all: check-runtimes check-benchmarks
+check-all: check-runtimes check-benchmarks check-integration-tests
 
 .PHONY: check-runtimes
 check-runtimes:
@@ -87,6 +87,12 @@ check-benchmarks:
 	SKIP_WASM_BUILD= cargo check --features runtime-benchmarks --no-default-features --target=wasm32-unknown-unknown -p mandala-runtime
 	SKIP_WASM_BUILD= cargo check --features runtime-benchmarks --no-default-features --target=wasm32-unknown-unknown -p karura-runtime
 	SKIP_WASM_BUILD= cargo check --features runtime-benchmarks --no-default-features --target=wasm32-unknown-unknown -p acala-runtime
+
+.PHONY: check-integration-tests
+check-integration-tests:
+	SKIP_WASM_BUILD= cargo check -p runtime-integration-tests --features=with-mandala-runtime
+	SKIP_WASM_BUILD= cargo check -p runtime-integration-tests --features=with-karura-runtime
+	SKIP_WASM_BUILD= cargo check -p runtime-integration-tests --features=with-acala-runtime
 
 .PHONY: check-debug
 check-debug:
