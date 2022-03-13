@@ -975,7 +975,7 @@ fn publish_contract_precompile_works() {
 		).unwrap();
 
 		// create contract
-		let info = <Test as module_evm::Config>::Runner::create(alice_evm_addr(), contract.clone(), 0, 21_000_000, 21_000_000, vec![], <Test as module_evm::Config>::config()).unwrap();
+		let info = <Test as module_evm::Config>::Runner::create(alice_evm_addr(), contract, 0, 21_000_000, 21_000_000, vec![], <Test as module_evm::Config>::config()).unwrap();
 		let contract_address = info.value;
 
 		// multiply(2, 3)
@@ -1024,7 +1024,7 @@ fn publish_contract_precompile_works() {
 		assert_ok!(EVMModule::call(
 			Origin::signed(bob()),
 			contract_address,
-			multiply.clone(),
+			multiply,
 			0,
 			1000000,
 			1000000,

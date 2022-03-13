@@ -19,7 +19,6 @@
 #![allow(clippy::type_complexity)]
 use crate::{AddressMapping, CurrencyId, Erc20InfoMapping};
 use codec::Encode;
-use frame_support::dispatch::DispatchResult;
 use nutsfinance_stable_asset::traits::StableAsset;
 use nutsfinance_stable_asset::{PoolTokenIndex, RedeemProportionResult, StableAssetPoolId, StableAssetPoolInfo};
 use primitives::{
@@ -28,6 +27,7 @@ use primitives::{
 };
 use sp_core::{crypto::AccountId32, H160};
 use sp_io::hashing::blake2_256;
+use sp_runtime::DispatchResult;
 use sp_std::vec::Vec;
 
 pub struct MockAddressMapping;

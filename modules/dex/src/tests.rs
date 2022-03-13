@@ -1441,19 +1441,19 @@ fn get_swap_amount_work() {
 		.execute_with(|| {
 			LiquidityPool::<Runtime>::insert(AUSDDOTPair::get(), (50000, 10000));
 			assert_eq!(
-				DexModule::get_swap_amount(&vec![DOT, AUSD], SwapLimit::ExactSupply(10000, 0)),
+				DexModule::get_swap_amount(&[DOT, AUSD], SwapLimit::ExactSupply(10000, 0)),
 				Some((10000, 24874))
 			);
 			assert_eq!(
-				DexModule::get_swap_amount(&vec![DOT, AUSD], SwapLimit::ExactSupply(10000, 24875)),
+				DexModule::get_swap_amount(&[DOT, AUSD], SwapLimit::ExactSupply(10000, 24875)),
 				None
 			);
 			assert_eq!(
-				DexModule::get_swap_amount(&vec![DOT, AUSD], SwapLimit::ExactTarget(Balance::max_value(), 24874)),
+				DexModule::get_swap_amount(&[DOT, AUSD], SwapLimit::ExactTarget(Balance::max_value(), 24874)),
 				Some((10000, 24874))
 			);
 			assert_eq!(
-				DexModule::get_swap_amount(&vec![DOT, AUSD], SwapLimit::ExactTarget(9999, 24874)),
+				DexModule::get_swap_amount(&[DOT, AUSD], SwapLimit::ExactTarget(9999, 24874)),
 				None
 			);
 		});
@@ -1557,7 +1557,7 @@ fn swap_with_specific_path_work() {
 			assert_noop!(
 				DexModule::swap_with_specific_path(
 					&BOB,
-					&vec![DOT, AUSD],
+					&[DOT, AUSD],
 					SwapLimit::ExactSupply(100_000_000_000_000, 248_743_718_592_965)
 				),
 				Error::<Runtime>::InsufficientTargetAmount
@@ -1565,7 +1565,7 @@ fn swap_with_specific_path_work() {
 
 			assert_ok!(DexModule::swap_with_specific_path(
 				&BOB,
-				&vec![DOT, AUSD],
+				&[DOT, AUSD],
 				SwapLimit::ExactSupply(100_000_000_000_000, 200_000_000_000_000)
 			));
 			System::assert_last_event(Event::DexModule(crate::Event::Swap {
@@ -1577,7 +1577,7 @@ fn swap_with_specific_path_work() {
 			assert_noop!(
 				DexModule::swap_with_specific_path(
 					&BOB,
-					&vec![AUSD, DOT],
+					&[AUSD, DOT],
 					SwapLimit::ExactTarget(253_794_223_643_470, 100_000_000_000_000)
 				),
 				Error::<Runtime>::ExcessiveSupplyAmount
@@ -1585,7 +1585,7 @@ fn swap_with_specific_path_work() {
 
 			assert_ok!(DexModule::swap_with_specific_path(
 				&BOB,
-				&vec![AUSD, DOT],
+				&[AUSD, DOT],
 				SwapLimit::ExactTarget(300_000_000_000_000, 100_000_000_000_000)
 			));
 			System::assert_last_event(Event::DexModule(crate::Event::Swap {

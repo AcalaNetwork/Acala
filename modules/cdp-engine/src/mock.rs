@@ -197,7 +197,7 @@ impl AuctionManager<AccountId> for MockAuctionManager {
 		amount: Self::Balance,
 		target: Self::Balance,
 	) -> DispatchResult {
-		AUCTION.with(|v| *v.borrow_mut() = Some((refund_recipient.clone(), currency_id, amount, target)));
+		AUCTION.with(|v| *v.borrow_mut() = Some((*refund_recipient, currency_id, amount, target)));
 		Ok(())
 	}
 
