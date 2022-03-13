@@ -184,13 +184,13 @@ pub mod module {
 		///
 		/// - `query_id`: Unique index mapped to a particular query
 		/// - `data`: Aribtrary data to be injected into the call via origin
-		#[pallet::weight(T::WeightInfo::respond_query_request().saturating_add(*request_weight_bound))]
+		#[pallet::weight(T::WeightInfo::respond_query_request().saturating_add(*call_weight_bound))]
 		#[transactional]
 		pub fn respond_query_request(
 			origin: OriginFor<T>,
 			#[pallet::compact] query_id: QueryIndex,
 			data: Vec<u8>,
-			#[pallet::compact] request_weight_bound: Weight,
+			#[pallet::compact] call_weight_bound: Weight,
 		) -> DispatchResultWithPostInfo {
 			T::OracleOrigin::ensure_origin(origin)?;
 
@@ -201,10 +201,7 @@ pub mod module {
 				Error::<T>::QueryExpired
 			);
 			let request_weight = foreign_request.dispatchable_call.get_dispatch_info().weight;
-			ensure!(
-				request_weight <= request_weight_bound,
-				Error::<T>::WrongRequestWeightBound
-			);
+			ensure!(request_weight <= call_weight_bound, Error::<T>::WrongRequestWeightBound);
 
 			let result = foreign_request.dispatchable_call.dispatch(RawOrigin { data }.into());
 

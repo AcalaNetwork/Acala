@@ -18,11 +18,14 @@
 
 use super::utils::set_balance;
 pub use crate::{
-	dollar, AccountId, AccountTokenizer, BlockNumber, CurrencyId, GetNativeCurrencyId, Runtime, System, Weight,
+	dollar, AccountId, AccountTokenizer, BlockNumber, CurrencyId, ForeignStateOracle, GetNativeCurrencyId,
+	MaxQueryCallSize, Runtime, System, Weight,
 };
 use codec::{Decode, Encode};
 use frame_benchmarking::whitelisted_caller;
+use frame_support::{pallet_prelude::DispatchResult, transactional};
 use frame_system::RawOrigin;
+use module_support::ForeignChainStateQuery;
 use orml_benchmarking::runtime_benchmarks;
 use runtime_common::MAXIMUM_BLOCK_WEIGHT;
 use sp_io::hashing::blake2_256;
@@ -35,6 +38,12 @@ fn dummy_anonymous_account(who: &AccountId, height: BlockNumber, ext_index: u32,
 	let derived_account: AccountId = Decode::decode(&mut TrailingZeroInput::new(entropy.as_ref()))
 		.expect("infinite length input; no invalid inputs for type; qed");
 	derived_account
+}
+
+// needs transactional
+#[transactional]
+fn make_query(signer: &AccountId, call: frame_system::Call<Runtime>) -> DispatchResult {
+	ForeignStateOracle::create_query(&signer, call.into(), None)
 }
 
 runtime_benchmarks! {
@@ -50,9 +59,10 @@ runtime_benchmarks! {
 
 	respond_query_request{
 		let caller: AccountId = whitelisted_caller();
-		let anon_account = dummy_anonymous_account(&caller, 0, 0, 0);
 		set_balance(NATIVE, &caller, 10_000 * dollar(NATIVE));
-		AccountTokenizer::request_mint(RawOrigin::Signed(caller.clone()).into(), anon_account, caller.clone(), 0, 0, 0)?;
+		// uses remark as a dummy call to only measure the logic within foreign state oracle, the weight of the call in storage is checked with `call_weight_bound`
+		let call = frame_system::Call::remark{ remark: vec![0; MaxQueryCallSize::get() as usize] };
+		make_query(&caller, call)?;
 	}: _(RawOrigin::Root, 0, vec![1_u8], MAXIMUM_BLOCK_WEIGHT)
 }
 
