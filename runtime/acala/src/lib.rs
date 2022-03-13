@@ -1769,6 +1769,7 @@ mod benches {
 		[module_cdp_engine, benchmarking::cdp_engine]
 		[module_emergency_shutdown, benchmarking::emergency_shutdown]
 		[module_evm, benchmarking::evm]
+		[module_foreign_state_oracle, benchmarking::foreign_state_oracle]
 		[module_homa, benchmarking::homa]
 		[module_honzon, benchmarking::honzon]
 		[module_cdp_treasury, benchmarking::cdp_treasury]
