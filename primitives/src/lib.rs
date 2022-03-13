@@ -32,7 +32,7 @@ use scale_info::TypeInfo;
 use sp_core::U256;
 use sp_runtime::{
 	generic,
-	traits::{BlakeTwo256, IdentifyAccount, Saturating, Verify},
+	traits::{BlakeTwo256, IdentifyAccount, Verify},
 	RuntimeDebug,
 };
 use sp_std::prelude::*;
