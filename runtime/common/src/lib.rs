@@ -212,8 +212,10 @@ pub type EnsureRootOrAllGeneralCouncil = EnsureOneOf<
 	pallet_collective::EnsureProportionAtLeast<_1, _1, AccountId, GeneralCouncilInstance>,
 >;
 
-pub type EnsureAllForeignStateOracle =
-	pallet_collective::EnsureProportionAtLeast<_1, _1, AccountId, ForeignStateOracleInstance>;
+pub type EnsureRootOrAllForeignStateOracle = EnsureOneOf<
+	EnsureRoot<AccountId>,
+	pallet_collective::EnsureProportionAtLeast<_1, _1, AccountId, ForeignStateOracleInstance>,
+>;
 
 pub type EnsureRootOrHalfGeneralCouncil = EnsureOneOf<
 	EnsureRoot<AccountId>,

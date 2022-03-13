@@ -20,8 +20,8 @@ use crate::{
 	dollar, AccountId, AccountTokenizer, Balances, ForeignStateOracle, GetNativeCurrencyId, Origin, OriginCaller,
 	PolkadotXcm, Runtime,
 };
-
 use hex_literal::hex;
+use runtime_common::MAXIMUM_BLOCK_WEIGHT;
 
 use frame_benchmarking::vec;
 use frame_support::{
@@ -70,7 +70,7 @@ runtime_benchmarks! {
 			0
 		));
 	}: {
-		assert_ok!(ForeignStateOracle::respond_query_request(OriginCaller::ForeignStateOracleCommittee(pallet_collective::RawOrigin::Members(1, 1)).into(), 0, vec![1]));
+		assert_ok!(ForeignStateOracle::respond_query_request(OriginCaller::ForeignStateOracleCommittee(pallet_collective::RawOrigin::Members(1, 1)).into(), 0, vec![1], MAXIMUM_BLOCK_WEIGHT));
 	}
 
 	request_redeem {
@@ -83,7 +83,7 @@ runtime_benchmarks! {
 			0,
 			0
 		);
-		assert_ok!(ForeignStateOracle::respond_query_request(OriginCaller::ForeignStateOracleCommittee(pallet_collective::RawOrigin::Members(1, 1)).into(), 0, vec![1]));
+		assert_ok!(ForeignStateOracle::respond_query_request(OriginCaller::ForeignStateOracleCommittee(pallet_collective::RawOrigin::Members(1, 1)).into(), 0, vec![1], MAXIMUM_BLOCK_WEIGHT));
 		// Sets supported version on PolkadotXcm. This prevents XCM sending to fail.
 		assert_ok!(PolkadotXcm::force_xcm_version(
 			Origin::root(),
@@ -103,7 +103,7 @@ runtime_benchmarks! {
 			0,
 			0
 		));
-		assert_ok!(ForeignStateOracle::respond_query_request(OriginCaller::ForeignStateOracleCommittee(pallet_collective::RawOrigin::Members(1, 1)).into(), 0, vec![1]));
+		assert_ok!(ForeignStateOracle::respond_query_request(OriginCaller::ForeignStateOracleCommittee(pallet_collective::RawOrigin::Members(1, 1)).into(), 0, vec![1], MAXIMUM_BLOCK_WEIGHT));
 		// Sets supported version on PolkadotXcm. This prevents XCM sending to fail.
 		assert_ok!(PolkadotXcm::force_xcm_version(
 			Origin::root(),
@@ -112,7 +112,7 @@ runtime_benchmarks! {
 		));
 		assert_ok!(AccountTokenizer::request_redeem(RawOrigin::Signed(caller.clone()).into(), proxy, caller.clone()));
 	}: {
-		assert_ok!(ForeignStateOracle::respond_query_request(OriginCaller::ForeignStateOracleCommittee(pallet_collective::RawOrigin::Members(1, 1)).into(), 1, vec![]));
+		assert_ok!(ForeignStateOracle::respond_query_request(OriginCaller::ForeignStateOracleCommittee(pallet_collective::RawOrigin::Members(1, 1)).into(), 1, vec![], MAXIMUM_BLOCK_WEIGHT));
 	}
 }
 

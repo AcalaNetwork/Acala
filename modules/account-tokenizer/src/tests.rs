@@ -21,6 +21,7 @@
 #![cfg(test)]
 
 use crate::mock::*;
+use crate::Weight;
 use frame_support::{
 	assert_noop, assert_ok,
 	dispatch::DispatchError,
@@ -33,6 +34,8 @@ use sp_runtime::{
 	traits::{AccountIdConversion, BadOrigin},
 	ModuleError,
 };
+
+const CALL_WEIGHT: Weight = u64::MAX;
 
 #[test]
 fn can_create_nft() {
@@ -138,7 +141,8 @@ fn can_mint_account_token_nft() {
 			assert_ok!(ForeignStateOracle::respond_query_request(
 				Origin::signed(ORACLE),
 				0,
-				vec![1]
+				vec![1],
+				CALL_WEIGHT,
 			));
 
 			assert_eq!(ModuleNFT::owner(&0, &0), Some(ALICE));
@@ -194,7 +198,8 @@ fn can_handle_bad_oracle_data() {
 			assert_ok!(ForeignStateOracle::respond_query_request(
 				Origin::signed(ORACLE),
 				0,
-				vec![]
+				vec![],
+				CALL_WEIGHT,
 			));
 
 			System::assert_last_event(Event::ForeignStateOracle(
@@ -236,7 +241,8 @@ fn can_reject_mint_request() {
 			assert_ok!(ForeignStateOracle::respond_query_request(
 				Origin::signed(ORACLE),
 				0,
-				vec![0]
+				vec![0],
+				CALL_WEIGHT,
 			));
 
 			assert_eq!(ModuleNFT::owner(&0, &0), None);
@@ -305,7 +311,8 @@ fn can_burn_account_token_nft() {
 			assert_ok!(ForeignStateOracle::respond_query_request(
 				Origin::signed(ORACLE),
 				0,
-				vec![1]
+				vec![1],
+				CALL_WEIGHT,
 			));
 
 			assert_eq!(ModuleNFT::owner(&0, &0), Some(ALICE));
@@ -332,7 +339,8 @@ fn can_burn_account_token_nft() {
 			assert_ok!(ForeignStateOracle::respond_query_request(
 				Origin::signed(ORACLE),
 				1,
-				vec![]
+				vec![],
+				CALL_WEIGHT,
 			));
 
 			assert_eq!(ModuleNFT::owner(&0, &0), None);
@@ -391,7 +399,8 @@ fn can_remint_after_burn_token_nft() {
 			assert_ok!(ForeignStateOracle::respond_query_request(
 				Origin::signed(ORACLE),
 				0,
-				vec![1]
+				vec![1],
+				CALL_WEIGHT,
 			));
 
 			// Transfer the NFT
@@ -408,7 +417,8 @@ fn can_remint_after_burn_token_nft() {
 			assert_ok!(ForeignStateOracle::respond_query_request(
 				Origin::signed(ORACLE),
 				1,
-				vec![]
+				vec![],
+				CALL_WEIGHT,
 			));
 
 			// Bob can now re-mint the account
@@ -434,7 +444,8 @@ fn can_remint_after_burn_token_nft() {
 			assert_ok!(ForeignStateOracle::respond_query_request(
 				Origin::signed(ORACLE),
 				2,
-				vec![1]
+				vec![1],
+				CALL_WEIGHT,
 			));
 
 			// Transfer the NFT back to alice
@@ -451,7 +462,8 @@ fn can_remint_after_burn_token_nft() {
 			assert_ok!(ForeignStateOracle::respond_query_request(
 				Origin::signed(ORACLE),
 				3,
-				vec![]
+				vec![],
+				CALL_WEIGHT,
 			));
 		});
 }

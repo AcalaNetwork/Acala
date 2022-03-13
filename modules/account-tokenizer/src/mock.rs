@@ -217,6 +217,7 @@ impl module_foreign_state_oracle::Config for Runtime {
 	type Currency = Balances;
 	type PalletId = ForeignOraclePalletId;
 	type BlockNumberProvider = System;
+	type WeightInfo = ();
 }
 
 parameter_types! {

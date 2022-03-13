@@ -17,11 +17,14 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use super::utils::set_balance;
-pub use crate::{dollar, AccountId, AccountTokenizer, BlockNumber, CurrencyId, GetNativeCurrencyId, Runtime, System};
+pub use crate::{
+	dollar, AccountId, AccountTokenizer, BlockNumber, CurrencyId, GetNativeCurrencyId, Runtime, System, Weight,
+};
 use codec::{Decode, Encode};
 use frame_benchmarking::whitelisted_caller;
 use frame_system::RawOrigin;
 use orml_benchmarking::runtime_benchmarks;
+use runtime_common::MAXIMUM_BLOCK_WEIGHT;
 use sp_io::hashing::blake2_256;
 use sp_runtime::traits::TrailingZeroInput;
 
@@ -44,6 +47,13 @@ runtime_benchmarks! {
 		AccountTokenizer::request_mint(RawOrigin::Signed(caller.clone()).into(), anon_account, caller.clone(), 0, 0, 0)?;
 		System::set_block_number(100);
 	}: _(RawOrigin::Signed(caller), 0)
+
+	respond_query_request{
+		let caller: AccountId = whitelisted_caller();
+		let anon_account = dummy_anonymous_account(&caller, 0, 0, 0);
+		set_balance(NATIVE, &caller, 10_000 * dollar(NATIVE));
+		AccountTokenizer::request_mint(RawOrigin::Signed(caller.clone()).into(), anon_account, caller.clone(), 0, 0, 0)?;
+	}: _(RawOrigin::Root, 0, vec![1_u8], MAXIMUM_BLOCK_WEIGHT)
 }
 
 #[cfg(test)]

@@ -31,6 +31,7 @@ pub mod module_dex_oracle;
 pub mod module_emergency_shutdown;
 pub mod module_evm;
 pub mod module_evm_accounts;
+pub mod module_foreign_state_oracle;
 pub mod module_homa;
 pub mod module_honzon;
 pub mod module_incentives;

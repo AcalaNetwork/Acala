@@ -26,6 +26,8 @@ use mock::{Event, Origin, *};
 use sp_runtime::traits::Scale;
 use sp_std::ops::{Add, Sub};
 
+const CALL_WEIGHT: Weight = u64::MAX;
+
 #[test]
 fn dispatch_and_remove_works() {
 	ExtBuilder::default().build().execute_with(|| {
@@ -43,7 +45,7 @@ fn dispatch_and_remove_works() {
 			None
 		));
 		assert_noop!(
-			ForeignStateOracle::respond_query_request(Origin::signed(1), 0, b"hello".to_vec()),
+			ForeignStateOracle::respond_query_request(Origin::signed(1), 0, b"hello".to_vec(), CALL_WEIGHT),
 			Error::<Runtime>::NoMatchingCall
 		);
 		// Cannot remove active query that isn't expired
@@ -51,12 +53,18 @@ fn dispatch_and_remove_works() {
 			ForeignStateOracle::purge_expired_query(Origin::signed(BOB), 1),
 			Error::<Runtime>::QueryNotExpired
 		);
+		// Fails when weight bound too low
+		assert_noop!(
+			ForeignStateOracle::respond_query_request(Origin::signed(1), 1, b"hello".to_vec(), 0),
+			Error::<Runtime>::WrongRequestWeightBound
+		);
 
 		// Call is successfully dispatched with bytes injected into origin
 		assert_ok!(ForeignStateOracle::respond_query_request(
 			Origin::signed(1),
 			1,
-			b"hello".to_vec()
+			b"hello".to_vec(),
+			CALL_WEIGHT
 		));
 		System::assert_last_event(Event::ForeignStateOracle(crate::Event::CallDispatched {
 			query_id: 1,
@@ -70,7 +78,7 @@ fn dispatch_and_remove_works() {
 		assert_ok!(QueryExample::mock_create_query(Origin::none(), ALICE, vec![], None));
 		System::set_block_number(11);
 		assert_noop!(
-			ForeignStateOracle::respond_query_request(Origin::signed(1), 2, b"hello".to_vec()),
+			ForeignStateOracle::respond_query_request(Origin::signed(1), 2, b"hello".to_vec(), CALL_WEIGHT),
 			Error::<Runtime>::QueryExpired
 		);
 
@@ -91,7 +99,7 @@ fn query_and_cancel_works() {
 				[0u8; MaxQueryCallSize::get() as usize].to_vec(),
 				None
 			),
-			Error::<Runtime>::TooLargeRelayQueryRequest
+			Error::<Runtime>::TooLargeForeignQueryRequest
 		);
 		// Need native token to query the oracle
 		assert_noop!(

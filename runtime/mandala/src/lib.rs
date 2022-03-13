@@ -98,7 +98,7 @@ pub use primitives::{
 };
 pub use runtime_common::{
 	calculate_asset_ratio, cent, dollar, microcent, millicent, AcalaDropAssets, AllPrecompiles,
-	EnsureAllForeignStateOracle, EnsureRootOrAllGeneralCouncil, EnsureRootOrAllTechnicalCommittee,
+	EnsureRootOrAllForeignStateOracle, EnsureRootOrAllGeneralCouncil, EnsureRootOrAllTechnicalCommittee,
 	EnsureRootOrHalfFinancialCouncil, EnsureRootOrHalfGeneralCouncil, EnsureRootOrHalfHomaCouncil,
 	EnsureRootOrOneGeneralCouncil, EnsureRootOrOneThirdsTechnicalCommittee, EnsureRootOrThreeFourthsGeneralCouncil,
 	EnsureRootOrTwoThirdsGeneralCouncil, EnsureRootOrTwoThirdsTechnicalCommittee, ExchangeRate,
@@ -474,7 +474,7 @@ impl pallet_collective::Config<TechnicalCommitteeInstance> for Runtime {
 }
 
 parameter_types! {
-	pub const ForeignStateMotionDuration: BlockNumber = 7 * DAYS;
+	pub const ForeignStateMotionDuration: BlockNumber = 2 * MINUTES;
 	pub const ForeignStateMaxProposals: u32 = 100;
 	pub const ForeignStateMaxMembers: u32 = 100;
 }
@@ -1381,7 +1381,8 @@ impl module_foreign_state_oracle::Config for Runtime {
 	type MaxQueryCallSize = MaxQueryCallSize;
 	type DefaultQueryDuration = DefaultQueryDuration;
 	type BlockNumberProvider = System;
-	type OracleOrigin = EnsureAllForeignStateOracle;
+	type OracleOrigin = EnsureRootOrAllForeignStateOracle;
+	type WeightInfo = weights::module_foreign_state_oracle::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -2019,6 +2020,7 @@ mod benches {
 		[module_currencies, benchmarking::currencies]
 		[module_session_manager, benchmarking::session_manager]
 		[module_account_tokenizer, benchmarking::account_tokenizer]
+		[module_foreign_state_oracle, benchmarking::foreign_state_oracle]
 		[orml_tokens, benchmarking::tokens]
 		[orml_vesting, benchmarking::vesting]
 		[orml_auction, benchmarking::auction]

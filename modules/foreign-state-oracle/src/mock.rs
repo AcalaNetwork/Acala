@@ -66,7 +66,7 @@ pub mod query_example {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		#[pallet::weight(0)]
+		#[pallet::weight(100)]
 		pub fn injected_call(origin: OriginFor<T>, call_data: Vec<u8>) -> DispatchResult {
 			let origin_data = T::OracleOrigin::ensure_origin(origin)?;
 			Self::deposit_event(Event::<T>::OriginInjected { origin_data, call_data });
@@ -186,6 +186,7 @@ impl Config for Runtime {
 	type Currency = Balances;
 	type PalletId = ForeignOraclePalletId;
 	type BlockNumberProvider = System;
+	type WeightInfo = ();
 }
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;

@@ -90,7 +90,7 @@ pub use primitives::{
 };
 pub use runtime_common::{
 	calculate_asset_ratio, cent, dollar, microcent, millicent, AcalaDropAssets, AllPrecompiles,
-	EnsureAllForeignStateOracle, EnsureRootOrAllGeneralCouncil, EnsureRootOrAllTechnicalCommittee,
+	EnsureRootOrAllForeignStateOracle, EnsureRootOrAllGeneralCouncil, EnsureRootOrAllTechnicalCommittee,
 	EnsureRootOrHalfFinancialCouncil, EnsureRootOrHalfGeneralCouncil, EnsureRootOrHalfHomaCouncil,
 	EnsureRootOrOneGeneralCouncil, EnsureRootOrOneThirdsTechnicalCommittee, EnsureRootOrThreeFourthsGeneralCouncil,
 	EnsureRootOrTwoThirdsGeneralCouncil, EnsureRootOrTwoThirdsTechnicalCommittee, ExchangeRate,
@@ -1582,7 +1582,8 @@ impl module_foreign_state_oracle::Config for Runtime {
 	type MaxQueryCallSize = MaxQueryCallSize;
 	type DefaultQueryDuration = DefaultQueryDuration;
 	type BlockNumberProvider = System;
-	type OracleOrigin = EnsureAllForeignStateOracle;
+	type OracleOrigin = EnsureRootOrAllForeignStateOracle;
+	type WeightInfo = weights::module_foreign_state_oracle::WeightInfo<Runtime>;
 }
 
 parameter_types! {
