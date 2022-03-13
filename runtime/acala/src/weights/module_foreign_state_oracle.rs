@@ -20,12 +20,12 @@
 //!
 //! THIS FILE WAS AUTO-GENERATED USING THE SUBSTRATE BENCHMARK CLI VERSION 4.0.0-dev
 //! DATE: 2022-03-13, STEPS: `50`, REPEAT: 20, LOW RANGE: `[]`, HIGH RANGE: `[]`
-//! EXECUTION: Some(Wasm), WASM-EXECUTION: Compiled, CHAIN: Some("dev"), DB CACHE: 1024
+//! EXECUTION: Some(Wasm), WASM-EXECUTION: Compiled, CHAIN: Some("acala-latest"), DB CACHE: 1024
 
 // Executed Command:
 // target/release/acala
 // benchmark
-// --chain=dev
+// --chain=acala-latest
 // --steps=50
 // --repeat=20
 // --pallet=module-foreign-state-oracle
@@ -47,18 +47,21 @@ use sp_std::marker::PhantomData;
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> module_foreign_state_oracle::WeightInfo for WeightInfo<T> {
 	// Storage: ForeignStateOracle QueryRequests (r:1 w:1)
-	// Storage: System Account (r:1 w:1)
+	// Storage: System Account (r:2 w:2)
+	// Storage: EvmAccounts EvmAddresses (r:1 w:0)
+	// Storage: EVM Accounts (r:1 w:1)
+	// Storage: EvmAccounts Accounts (r:0 w:1)
 	fn purge_expired_query() -> Weight {
-		(33_481_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
+		(107_155_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(5 as Weight))
+			.saturating_add(T::DbWeight::get().writes(5 as Weight))
 	}
 	// Storage: ForeignStateOracle QueryRequests (r:1 w:1)
 	// Storage: TransactionPause PausedTransactions (r:1 w:0)
 	// Storage: AccountTokenizer NFTClassId (r:1 w:0)
 	// Storage: OrmlNFT Classes (r:1 w:0)
 	fn respond_query_request() -> Weight {
-		(23_809_000 as Weight)
+		(44_251_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(4 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
