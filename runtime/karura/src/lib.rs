@@ -1768,8 +1768,6 @@ pub type Executive = frame_executive::Executive<
 pub struct XcmInterfaceMigrationV1;
 impl OnRuntimeUpgrade for XcmInterfaceMigrationV1 {
 	fn on_runtime_upgrade() -> frame_support::weights::Weight {
-		// let weight: Weight = 4_000_000_000;
-		// let balance: Balance = 4_000_000_000;
 		module_xcm_interface::XcmDestWeightAndFee::<Runtime>::insert(
 			module_xcm_interface::XcmInterfaceOperation::ParachainFee(Box::new(
 				(1, Parachain(parachains::statemine::ID)).into(),
