@@ -161,6 +161,9 @@ fn enable_dex_and_tx_fee_pool() {
 		assert_eq!(Currencies::free_balance(ACA, &sub_account), init_balance);
 	});
 
+	assert_eq!(GlobalFeeSwapPath::<Runtime>::get(DOT).unwrap(), vec![DOT, AUSD, ACA]);
+	assert_eq!(GlobalFeeSwapPath::<Runtime>::get(AUSD).unwrap(), vec![AUSD, ACA]);
+
 	// manual set the exchange rate for simplify calculation
 	TokenExchangeRate::<Runtime>::insert(AUSD, Ratio::saturating_from_rational(10, 1));
 	let dot_rate = TokenExchangeRate::<Runtime>::get(DOT).unwrap();
@@ -752,7 +755,7 @@ fn charge_fee_by_alternative_swap_first_priority() {
 		System::assert_has_event(crate::mock::Event::DEXModule(module_dex::Event::Swap {
 			trader: BOB,
 			path: vec![DOT, AUSD, ACA],
-			liquidity_changes: vec![51, 336, fee_surplus], // 429 AUSD - 1569 ACA
+			liquidity_changes: vec![51, 336, fee_surplus],
 		}));
 
 		assert_eq!(Currencies::free_balance(ACA, &BOB), ed);

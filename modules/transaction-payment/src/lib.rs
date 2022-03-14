@@ -1236,16 +1236,13 @@ where
 			WithdrawReasons::TRANSACTION_PAYMENT | WithdrawReasons::TIP
 		};
 
-		let fee_surplus = Pallet::<T>::ensure_can_charge_fee_with_call(who, fee, call);
+		let fee_surplus =
+			Pallet::<T>::ensure_can_charge_fee_with_call(who, fee, call).map_err(|_| InvalidTransaction::Payment)?;
 
-		if let Ok(fee_surplus) = fee_surplus {
-			// withdraw native currency as fee, also consider surplus when swap from dex or pool.
-			match <T as Config>::Currency::withdraw(who, fee + fee_surplus, reason, ExistenceRequirement::KeepAlive) {
-				Ok(imbalance) => Ok((fee + fee_surplus, Some(imbalance), Some(fee_surplus))),
-				Err(_) => Err(InvalidTransaction::Payment.into()),
-			}
-		} else {
-			Err(InvalidTransaction::Payment.into())
+		// withdraw native currency as fee, also consider surplus when swap from dex or pool.
+		match <T as Config>::Currency::withdraw(who, fee + fee_surplus, reason, ExistenceRequirement::KeepAlive) {
+			Ok(imbalance) => Ok((fee + fee_surplus, Some(imbalance), Some(fee_surplus))),
+			Err(_) => Err(InvalidTransaction::Payment.into()),
 		}
 	}
 
@@ -1398,6 +1395,7 @@ where
 				refund = refund_fee.saturating_add(refund_tip);
 				actual_tip = tip.saturating_sub(refund_tip);
 			}
+			// fee surplus not included in refund
 			if let Some(surplus) = surplus {
 				refund = refund.saturating_sub(surplus);
 			}
