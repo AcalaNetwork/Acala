@@ -36,7 +36,7 @@ fn get_xcm_weight() -> Vec<(XcmInterfaceOperation, Option<Weight>, Option<Balanc
 	vec![
 		// Xcm weight = 400_000_000, fee = ACTUAL_XCM_FEE
 		(
-			XcmInterfaceOperation::XtokensTransfer(Parent.into()),
+			XcmInterfaceOperation::XtokensTransfer(Box::new(Parent.into())),
 			Some(XCM_WEIGHT),
 			Some(XCM_FEE),
 		),

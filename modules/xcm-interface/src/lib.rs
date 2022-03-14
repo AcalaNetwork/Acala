@@ -47,7 +47,7 @@ pub mod module {
 	#[derive(Encode, Decode, Eq, PartialEq, Clone, RuntimeDebug, TypeInfo)]
 	pub enum XcmInterfaceOperation {
 		// XTokens
-		XtokensTransfer(MultiLocation),
+		XtokensTransfer(Box<MultiLocation>),
 		// Homa
 		HomaWithdrawUnbonded,
 		HomaBondExtra,
@@ -160,7 +160,7 @@ pub mod module {
 				T::StakingCurrencyId::get(),
 				amount,
 				T::SovereignSubAccountLocationConvert::convert(sub_account_index),
-				Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::XtokensTransfer(Parent.into())).0,
+				Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::XtokensTransfer(Box::new(Parent.into()))).0,
 			)
 		}
 
@@ -236,7 +236,7 @@ pub mod module {
 
 		/// The fee of cross-chain transfer is deducted from the recipient.
 		fn get_xcm_transfer_fee(location: MultiLocation) -> Balance {
-			Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::XtokensTransfer(location)).1
+			Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::XtokensTransfer(Box::new(location))).1
 		}
 	}
 }
