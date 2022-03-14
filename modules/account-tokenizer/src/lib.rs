@@ -143,6 +143,8 @@ pub mod module {
 		BadOracleData,
 		/// Failed to prove account spawned anonymous proxy
 		FailedAnonymousProxyCheck,
+		/// The account has already had its NFT token minted.
+		AccountTokenAlreadyExists,
 	}
 
 	#[pallet::event]
@@ -303,6 +305,12 @@ pub mod module {
 			// ensures signer also spawned anonymous proxy
 			ensure!(account == derived_account, Error::<T>::FailedAnonymousProxyCheck);
 
+			// Ensure the token hasn't already been minted.
+			ensure!(
+				Self::minted_account(&account).is_none(),
+				Error::<T>::AccountTokenAlreadyExists
+			);
+
 			// Charge the user fee and lock the deposit.
 			T::Currency::transfer(&who, &T::TreasuryAccount::get(), T::MintFee::get(), KeepAlive)?;
 			T::Currency::reserve_named(&RESERVE_ID, &who, T::MintRequestDeposit::get())?;
@@ -436,6 +444,12 @@ impl<T: Config> Pallet<T> {
 	#[require_transactional]
 	pub fn accept_mint_request(owner: T::AccountId, account: T::AccountId) -> DispatchResult {
 		let nft_class_id = Self::nft_class_id();
+
+		// Ensure the token hasn't already been minted.
+		ensure!(
+			Self::minted_account(&account).is_none(),
+			Error::<T>::AccountTokenAlreadyExists
+		);
 
 		// Pay for minting the token
 		T::NFTInterface::pay_mint_fee(&T::TreasuryAccount::get(), &Self::nft_class_id(), 1u32)?;

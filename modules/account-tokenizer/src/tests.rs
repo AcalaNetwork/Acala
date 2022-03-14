@@ -206,9 +206,9 @@ fn can_handle_bad_oracle_data() {
 				module_foreign_state_oracle::Event::CallDispatched {
 					query_id: 0,
 					task_result: Err(DispatchError::Module(ModuleError {
-						index: 6u8, // AccountTokenizer
-						error: 3u8, // BadOracleData
-						message: None,
+						index: 6u8,
+						error: 3u8,
+						message: Some("BadOracleData"),
 					})),
 				},
 			));
@@ -465,5 +465,82 @@ fn can_remint_after_burn_token_nft() {
 				vec![],
 				CALL_WEIGHT,
 			));
+		});
+}
+
+#[test]
+fn cannot_double_mint() {
+	ExtBuilder::default()
+		.balances(vec![(ALICE, dollar(1_000))])
+		.build()
+		.execute_with(|| {
+			AccountTokenizer::on_runtime_upgrade();
+			// Spawn a anonymous proxy account.
+			assert_ok!(Proxy::anonymous(Origin::signed(ALICE), Default::default(), 0, 0u16,));
+			let proxy = AccountId::new(hex!["7342619566cac76247062ffd59cd3fb3ffa3350dc6a5087938b9d1c46b286da3"]);
+
+			// Send 2 minting requests.
+			assert_ok!(AccountTokenizer::request_mint(
+				Origin::signed(ALICE),
+				proxy.clone(),
+				ALICE.clone(),
+				1,
+				0,
+				0
+			));
+
+			assert_ok!(AccountTokenizer::request_mint(
+				Origin::signed(ALICE),
+				proxy.clone(),
+				ALICE.clone(),
+				1,
+				0,
+				0
+			));
+
+			// Accept the first mint.
+			assert_ok!(ForeignStateOracle::respond_query_request(
+				Origin::signed(ORACLE),
+				0,
+				vec![1],
+				CALL_WEIGHT,
+			));
+			System::assert_last_event(Event::ForeignStateOracle(
+				module_foreign_state_oracle::Event::CallDispatched {
+					query_id: 0,
+					task_result: Ok(()),
+				},
+			));
+
+			// Once minted, the second request cannot be accepted
+			assert_ok!(ForeignStateOracle::respond_query_request(
+				Origin::signed(ORACLE),
+				1,
+				vec![1],
+				CALL_WEIGHT,
+			));
+			System::assert_last_event(Event::ForeignStateOracle(
+				module_foreign_state_oracle::Event::CallDispatched {
+					query_id: 1,
+					task_result: Err(DispatchError::Module(ModuleError {
+						index: 6,
+						error: 5,
+						message: Some("AccountTokenAlreadyExists"),
+					})),
+				},
+			));
+
+			// Transfer the NFT
+			assert_ok!(ModuleNFT::transfer(Origin::signed(ALICE), BOB, (0, 0)));
+
+			// Minting again will fail
+			assert_noop!(
+				AccountTokenizer::request_mint(Origin::signed(ALICE), proxy.clone(), ALICE.clone(), 1, 0, 0),
+				DispatchError::Module(ModuleError {
+					index: 6,
+					error: 5,
+					message: Some("AccountTokenAlreadyExists",),
+				},)
+			);
 		});
 }
