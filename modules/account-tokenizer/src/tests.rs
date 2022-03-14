@@ -342,7 +342,7 @@ fn can_burn_account_token_nft() {
 				DispatchError::Module(ModuleError {
 					index: 3,
 					error: 4,
-					message: Some("NoPermission",),
+					message: Some("NoPermission"),
 				},)
 			);
 
