@@ -381,8 +381,6 @@ pub mod module {
 		DexNotAvailable,
 		/// Charge fee pool is already exist
 		ChargeFeePoolAlreadyExisted,
-		/// The swap path not exists.
-		SwapPathNotExists,
 	}
 
 	#[pallet::event]
@@ -884,8 +882,7 @@ where
 		let native_balance = T::Currency::free_balance(&sub_account);
 		let threshold_balance = SwapBalanceThreshold::<T>::get(supply_currency_id);
 		if native_balance < threshold_balance {
-			let trading_path = Self::get_trading_path_by_currency(&sub_account, supply_currency_id);
-			if let Some(trading_path) = trading_path {
+			if let Some(trading_path) = GlobalFeeSwapPath::<T>::get(supply_currency_id) {
 				let supply_balance = T::MultiCurrency::free_balance(supply_currency_id, &sub_account);
 				let supply_amount =
 					supply_balance.saturating_sub(T::MultiCurrency::minimum_balance(supply_currency_id));
@@ -920,22 +917,6 @@ where
 		T::MultiCurrency::transfer(supply_currency_id, who, &sub_account, supply_account)?;
 		T::Currency::transfer(&sub_account, who, amount, ExistenceRequirement::KeepAlive)?;
 		Ok(())
-	}
-
-	/// Get trading path by user and supply asset.
-	fn get_trading_path_by_currency(who: &T::AccountId, supply_currency_id: CurrencyId) -> Option<Vec<CurrencyId>> {
-		if let Some(trading_path) = AlternativeFeeSwapPath::<T>::get(who) {
-			if trading_path.first() == Some(&supply_currency_id) {
-				return Some(trading_path.to_vec());
-			}
-		}
-
-		// `DefaultFeeTokens` related trading path is also inside `GlobalFeeSwapPath`
-		if let Some(trading_path) = GlobalFeeSwapPath::<T>::get(supply_currency_id) {
-			return Some(trading_path.to_vec());
-		}
-
-		None
 	}
 
 	/// The sub account derivated by `PalletId`.
@@ -997,10 +978,8 @@ where
 		);
 
 		// make sure trading path is valid, and the trading path is valid when swap from dex
-		let trading_path =
-			Self::get_trading_path_by_currency(&sub_account, currency_id).ok_or(Error::<T>::DexNotAvailable)?;
 		let (supply_amount, _) = T::DEX::get_swap_amount(
-			&trading_path,
+			&fee_swap_path,
 			SwapLimit::ExactTarget(Balance::MAX, native_existential_deposit),
 		)
 		.ok_or(Error::<T>::DexNotAvailable)?;

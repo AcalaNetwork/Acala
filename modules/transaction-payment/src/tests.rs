@@ -1367,7 +1367,7 @@ fn swap_from_pool_and_dex_with_higher_threshold() {
 		SwapBalanceThreshold::<Runtime>::insert(AUSD, crate::mock::HigerSwapThreshold::get());
 
 		// swap 80 DOT out 3074 ACA
-		let trading_path = Pallet::<Runtime>::get_trading_path_by_currency(&ALICE, DOT).unwrap();
+		let trading_path = DotFeeSwapPath::get();
 		let supply_amount = Currencies::free_balance(DOT, &dot_fee_account) - dot_ed;
 		// here just get swap out amount, the swap not happened
 		let (supply_in_amount, swap_out_native) =
@@ -1412,7 +1412,7 @@ fn swap_from_pool_and_dex_with_midd_threshold() {
 	builder_with_dex_and_fee_pool(true).execute_with(|| {
 		let sub_account: AccountId = <Runtime as Config>::PalletId::get().into_sub_account(DOT);
 		let dot_ed = <Currencies as MultiCurrency<AccountId>>::minimum_balance(DOT);
-		let trading_path = Pallet::<Runtime>::get_trading_path_by_currency(&ALICE, DOT).unwrap();
+		let trading_path = vec![DOT, AUSD, ACA];
 
 		// the pool size has 10000 ACA, and set threshold to half of pool size: 5000 ACA
 		let balance = 3000 as u128;
@@ -1495,9 +1495,7 @@ fn charge_fee_failed_when_disable_dex() {
 		let swap_balance_threshold = (pool_size - 200) as u128;
 		let ausd_ed = <Currencies as MultiCurrency<AccountId>>::minimum_balance(AUSD);
 		let ed = <Currencies as MultiCurrency<AccountId>>::minimum_balance(ACA);
-
-		let trading_path = Pallet::<Runtime>::get_trading_path_by_currency(&ALICE, AUSD);
-		assert_eq!(trading_path, None);
+		let trading_path = AusdFeeSwapPath::get();
 
 		assert_ok!(Currencies::update_balance(
 			Origin::root(),
@@ -1513,9 +1511,6 @@ fn charge_fee_failed_when_disable_dex() {
 		);
 
 		enable_dex_and_tx_fee_pool();
-
-		let trading_path = Pallet::<Runtime>::get_trading_path_by_currency(&ALICE, AUSD).unwrap();
-		assert_eq!(trading_path, AusdFeeSwapPath::get());
 
 		// after runtime upgrade, tx success because of dex enabled and has enough token balance
 		// fee=50*2+100=200, ED=10, surplus=200*0.25=50, fee_amount=260, ausd_swap=260*10=2600
@@ -1672,10 +1667,6 @@ fn charge_fee_pool_operation_works() {
 			0,
 			false
 		));
-
-		let trading_path = Pallet::<Runtime>::get_trading_path_by_currency(&ALICE, AUSD).unwrap();
-		let dex_available = DEXModule::get_swap_amount(&trading_path, SwapLimit::ExactTarget(Balance::MAX, 10));
-		assert!(dex_available.is_some());
 
 		let treasury_account: AccountId = <Runtime as Config>::TreasuryAccount::get();
 		let sub_account: AccountId = <Runtime as Config>::PalletId::get().into_sub_account(AUSD);
