@@ -28,7 +28,7 @@ use frame_support::pallet_prelude::*;
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, MaxEncodedLen, TypeInfo)]
 pub struct UnlockChunk<Moment> {
 	/// Amount of funds to be unlocked.
-	value: Balance,
+	pub value: Balance,
 	/// Era number at which point it'll be unlocked.
 	unlock_at: Moment,
 }
@@ -82,6 +82,10 @@ where
 
 	pub fn total(&self) -> Balance {
 		self.total
+	}
+
+	pub fn unlocking(&self) -> &[UnlockChunk<Moment>] {
+		self.unlocking.as_slice()
 	}
 
 	pub fn unlocking_len(&self) -> usize {
