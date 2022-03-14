@@ -367,6 +367,10 @@ impl<T: Config> CDPTreasury<T::AccountId> for Pallet<T> {
 		T::Currency::transfer(T::GetStableCurrencyId::get(), from, &Self::account_id(), surplus)
 	}
 
+	fn withdraw_surplus(to: &T::AccountId, surplus: Self::Balance) -> DispatchResult {
+		T::Currency::transfer(T::GetStableCurrencyId::get(), &Self::account_id(), to, surplus)
+	}
+
 	fn deposit_collateral(from: &T::AccountId, currency_id: Self::CurrencyId, amount: Self::Balance) -> DispatchResult {
 		T::Currency::transfer(currency_id, from, &Self::account_id(), amount)
 	}

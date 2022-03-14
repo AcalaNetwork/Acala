@@ -151,6 +151,10 @@ impl CDPTreasury<AccountId> for MockCDPTreasury {
 		unimplemented!()
 	}
 
+	fn withdraw_surplus(_: &AccountId, _: Balance) -> DispatchResult {
+		unimplemented!()
+	}
+
 	fn deposit_collateral(_: &AccountId, _: CurrencyId, _: Balance) -> DispatchResult {
 		unimplemented!()
 	}

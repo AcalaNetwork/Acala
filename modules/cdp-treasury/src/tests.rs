@@ -140,6 +140,21 @@ fn deposit_surplus_work() {
 }
 
 #[test]
+fn withdraw_surplus_work() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(CDPTreasuryModule::deposit_surplus(&ALICE, 300));
+		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 700);
+		assert_eq!(Currencies::free_balance(AUSD, &CDPTreasuryModule::account_id()), 300);
+		assert_eq!(CDPTreasuryModule::surplus_pool(), 300);
+
+		assert_ok!(CDPTreasuryModule::withdraw_surplus(&ALICE, 200));
+		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 900);
+		assert_eq!(Currencies::free_balance(AUSD, &CDPTreasuryModule::account_id()), 100);
+		assert_eq!(CDPTreasuryModule::surplus_pool(), 100);
+	});
+}
+
+#[test]
 fn deposit_collateral_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_eq!(CDPTreasuryModule::total_collaterals(BTC), 0);
