@@ -44,7 +44,7 @@ pub use module::*;
 pub mod module {
 	use super::*;
 
-	#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, TypeInfo)]
+	#[derive(Encode, Decode, Eq, PartialEq, Clone, RuntimeDebug, TypeInfo)]
 	pub enum XcmInterfaceOperation {
 		// XTokens
 		XtokensTransfer,
@@ -131,14 +131,14 @@ pub mod module {
 			T::UpdateOrigin::ensure_origin(origin)?;
 
 			for (operation, weight_change, fee_change) in updates {
-				XcmDestWeightAndFee::<T>::mutate(operation, |(weight, fee)| {
+				XcmDestWeightAndFee::<T>::mutate(&operation, |(weight, fee)| {
 					if let Some(new_weight) = weight_change {
 						*weight = new_weight;
-						Self::deposit_event(Event::<T>::XcmDestWeightUpdated(operation, new_weight));
+						Self::deposit_event(Event::<T>::XcmDestWeightUpdated(operation.clone(), new_weight));
 					}
 					if let Some(new_fee) = fee_change {
 						*fee = new_fee;
-						Self::deposit_event(Event::<T>::XcmFeeUpdated(operation, new_fee));
+						Self::deposit_event(Event::<T>::XcmFeeUpdated(operation.clone(), new_fee));
 					}
 				});
 			}
