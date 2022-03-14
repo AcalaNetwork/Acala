@@ -27,7 +27,7 @@ use ecosystem_aqua_staked_token::Vesting;
 use orml_traits::MultiLockableCurrency;
 
 const ADAO: CurrencyId = CurrencyId::Token(TokenSymbol::ADAO);
-const SADAO: CurrencyId = CurrencyId::Token(TokenSymbol::SADAO);
+const SDAO: CurrencyId = CurrencyId::Token(TokenSymbol::SDAO);
 
 const VESTING_LOCK_ID: LockIdentifier = *b"aquavest";
 
@@ -60,16 +60,16 @@ runtime_benchmarks! {
 
 	unstake {
 		let alice = whitelisted_caller();
-		set_balance(SADAO, &alice, dollar(SADAO) * 1_000);
+		set_balance(SDAO, &alice, dollar(SDAO) * 1_000);
 		set_balance(ADAO, &AquaStakedToken::account_id(), dollar(ADAO) * 10_000);
-		let amount = dollar(SADAO) * 500;
+		let amount = dollar(SDAO) * 500;
 	}: _(RawOrigin::Signed(alice), amount)
 
 	claim {
 		let alice = whitelisted_caller();
-		let amount = dollar(SADAO) * 100;
-		set_balance(SADAO, &alice, amount);
-		Currencies::set_lock(VESTING_LOCK_ID, SADAO, &alice, amount)?;
+		let amount = dollar(SDAO) * 100;
+		set_balance(SDAO, &alice, amount);
+		Currencies::set_lock(VESTING_LOCK_ID, SDAO, &alice, amount)?;
 
 		let vesting = Vesting {
 			unlock_at: 0,

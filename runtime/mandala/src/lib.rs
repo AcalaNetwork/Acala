@@ -776,7 +776,7 @@ parameter_type_with_key! {
 				TokenSymbol::VSKSM => 10 * millicent(*currency_id),  // 1VSKSM = 1KSM
 				TokenSymbol::PHA => 4000 * millicent(*currency_id), // 400PHA = 1KSM
 				TokenSymbol::ADAO => 10 * millicent(*currency_id),  // 1ADAO = 1KSM
-				TokenSymbol::SADAO => 10 * millicent(*currency_id),  // 1SADAO = 1KSM
+				TokenSymbol::SDAO => 10 * millicent(*currency_id),  // 1SADAO = 1KSM
 				TokenSymbol::KUSD |
 				TokenSymbol::KSM |
 				TokenSymbol::LKSM |

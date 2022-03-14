@@ -761,7 +761,7 @@ parameter_type_with_key! {
 				TokenSymbol::TAI |
 				TokenSymbol::CASH |
 				TokenSymbol::ADAO |
-				TokenSymbol::SADAO => Balance::max_value() // unsupported
+				TokenSymbol::SDAO => Balance::max_value() // unsupported
 			},
 			CurrencyId::DexShare(dex_share_0, _) => {
 				let currency_id_0: CurrencyId = (*dex_share_0).into();

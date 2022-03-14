@@ -47,15 +47,15 @@ mod mandala_imports {
 	pub use mandala_runtime::{
 		create_x2_parachain_multilocation, get_all_module_accounts, AcalaOracle, AccountId, AquaDao, AssetRegistry,
 		AuctionManager, Authority, AuthoritysOriginId, Authorship, Balance, Balances, BlockNumber, Call, CdpEngine,
-		CdpTreasury, CollatorSelection, CreateClassDeposit, CreateTokenDeposit, Currencies, CurrencyId,
-		DataDepositPerByte, DealWithFees, DefaultExchangeRate, Dex, EmergencyShutdown, EnabledTradingPairs, Event,
-		EvmAccounts, ExistentialDeposits, FinancialCouncil, Get, GetNativeCurrencyId, Homa, Honzon, IdleScheduler,
-		Loans, MaxTipsOfPriority, MinRewardDistributeAmount, MinimumDebitValue, MultiLocation,
+		CdpTreasury, CollatorSelection, CreateClassDeposit, CreateTokenDeposit, Currencies, CurrencyId, DaoAccount,
+		DataDepositPerByte, DealWithFees, DefaultExchangeRate, Dex, DexOracle, EmergencyShutdown, EnabledTradingPairs,
+		Event, EvmAccounts, ExistentialDeposits, FinancialCouncil, Get, GetNativeCurrencyId, Homa, Honzon,
+		IdleScheduler, Loans, MaxTipsOfPriority, MinRewardDistributeAmount, MinimumDebitValue, MultiLocation,
 		NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, Origin, OriginCaller, PalletCurrency,
 		ParachainInfo, ParachainSystem, Proxy, ProxyType, Ratio, Runtime, Scheduler, Session, SessionKeys,
 		SessionManager, SevenDays, StableAsset, StableAssetPalletId, System, Timestamp, TipPerWeightStep, TokenSymbol,
 		Tokens, TransactionPayment, TransactionPaymentPalletId, TreasuryAccount, TreasuryPalletId, UncheckedExtrinsic,
-		Utility, Vesting, XcmExecutor, XcmInterface, EVM, NFT,
+		Utility, Vesting, XcmExecutor, XcmInterface, DAYS, EVM, NFT,
 	};
 	pub use runtime_common::{cent, dollar, millicent, ACA, AUSD, DOT, KSM, LDOT, LKSM};
 	pub use sp_runtime::traits::AccountIdConversion;
