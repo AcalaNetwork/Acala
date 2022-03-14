@@ -38,6 +38,7 @@ use sp_runtime::{
 use sp_std::prelude::*;
 
 pub use currency::{CurrencyId, DexShare, Lease, TokenSymbol};
+pub use evm::{convert_decimals_from_evm, convert_decimals_to_evm};
 
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
