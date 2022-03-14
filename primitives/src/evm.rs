@@ -235,13 +235,11 @@ mod convert {
 
 #[cfg(feature = "evm-tests")]
 mod convert {
-	pub fn convert_decimals_to_evm<B: Zero + Saturating + From<u32>>(b: B) -> B {
+	pub fn convert_decimals_to_evm<B>(b: B) -> B {
 		b
 	}
 
-	pub fn convert_decimals_from_evm<B: Zero + Saturating + CheckedDiv + PartialEq + Copy + From<u32>>(
-		b: B,
-	) -> Option<B> {
+	pub fn convert_decimals_from_evm<B>(b: B) -> Option<B> {
 		Some(b)
 	}
 }
