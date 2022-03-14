@@ -31,6 +31,7 @@ use orml_traits::parameter_type_with_key;
 use primitives::{Amount, TokenSymbol};
 use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, AccountId32};
+use xcm::latest::prelude::*;
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
@@ -71,7 +72,7 @@ impl HomaSubAccountXcm<AccountId, Balance> for MockHomaSubAccountXcm {
 		1_000_000
 	}
 
-	fn get_parachain_fee(_: xcm::v1::multilocation::MultiLocation) -> Balance {
+	fn get_parachain_fee(_: MultiLocation) -> Balance {
 		1_000_000
 	}
 }
