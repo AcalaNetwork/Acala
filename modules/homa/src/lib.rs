@@ -35,7 +35,6 @@ use sp_runtime::{
 	ArithmeticError, FixedPointNumber,
 };
 use sp_std::{cmp::Ordering, convert::From, prelude::*, vec, vec::Vec};
-use xcm::latest::prelude::*;
 
 pub use module::*;
 pub use weights::WeightInfo;
@@ -887,7 +886,7 @@ pub mod module {
 
 			// if to_bond is gte than MintThreshold, try to bond_extra on relaychain
 			if to_bond_pool >= T::MintThreshold::get() {
-				let xcm_transfer_fee = T::XcmInterface::get_xcm_transfer_fee(Parent.into());
+				let xcm_transfer_fee = T::XcmInterface::get_xcm_transfer_fee();
 				let bonded_list: Vec<(u16, Balance)> = T::ActiveSubAccountsIndexList::get()
 					.iter()
 					.map(|index| (*index, Self::staking_ledgers(index).unwrap_or_default().bonded))

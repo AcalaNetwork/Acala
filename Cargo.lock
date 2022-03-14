@@ -6450,7 +6450,6 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
- "xcm",
 ]
 
 [[package]]
@@ -15255,7 +15254,7 @@ dependencies = [
 [[package]]
 name = "xcm-emulator"
 version = "0.1.0"
-source = "git+https://github.com/zqhxuyuan/xcm-simulator?rev=73245602cfeddc8ecf722321da4acb0aa63ad7e4#73245602cfeddc8ecf722321da4acb0aa63ad7e4"
+source = "git+https://github.com/zqhxuyuan/xcm-simulator?rev=3119d273777be17d23683076dbfd30cb17e489d6#3119d273777be17d23683076dbfd30cb17e489d6"
 dependencies = [
  "cumulus-pallet-dmp-queue",
  "cumulus-pallet-parachain-system",
@@ -15265,6 +15264,7 @@ dependencies = [
  "cumulus-test-relay-sproof-builder",
  "frame-support",
  "frame-system",
+ "log",
  "parachain-info",
  "parity-scale-codec",
  "paste",

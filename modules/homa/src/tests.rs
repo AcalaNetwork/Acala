@@ -853,7 +853,7 @@ fn process_to_bond_pool_works() {
 				vec![(0, Some(1_000_000), None)]
 			));
 			assert_ok!(Homa::mint(Origin::signed(ALICE), 900_000));
-			assert_eq!(MockHomaSubAccountXcm::get_xcm_transfer_fee(Parent.into()), 1_000_000);
+			assert_eq!(MockHomaSubAccountXcm::get_xcm_transfer_fee(), 1_000_000);
 			assert_eq!(
 				Homa::staking_ledgers(0),
 				Some(StakingLedger {
