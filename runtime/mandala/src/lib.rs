@@ -1363,8 +1363,8 @@ impl module_nominees_election::Config for Runtime {
 
 parameter_types! {
 	pub const DefaultQueryDuration: BlockNumber = 10;
-	pub QueryFee: Balance = 10 * cent(ACA);
-	pub CancelFee: Balance = 5 * cent(ACA);
+	pub QueryFee: Balance = 20 * cent(ACA);
+	pub CancelFee: Balance = 10 * cent(ACA);
 	pub ExpiredCallPurgeReward: Permill = Permill::from_percent(50);
 	pub const MaxQueryCallSize: u32 = 200;
 }
