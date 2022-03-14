@@ -331,9 +331,20 @@ fn can_burn_account_token_nft() {
 				ALICE
 			));
 
-			// Token is not burned until confirmed by the oracle
-			assert_eq!(ModuleNFT::owner(&0, &0), Some(ALICE));
+			// Token is taken into the custodial of the module account,
+			// and will not be burned until confirmed by the oracle.
+			assert_eq!(ModuleNFT::owner(&0, &0), Some(AccountTokenizer::account_id()));
 			assert_eq!(AccountTokenizer::minted_account(proxy.clone()), Some(0));
+
+			// Original owner cannot transfer the NFT
+			assert_noop!(
+				ModuleNFT::transfer(Origin::signed(ALICE), BOB, (0, 0)),
+				DispatchError::Module(ModuleError {
+					index: 3,
+					error: 4,
+					message: Some("NoPermission",),
+				},)
+			);
 
 			// Confirm the burn
 			assert_ok!(ForeignStateOracle::respond_query_request(
@@ -351,7 +362,6 @@ fn can_burn_account_token_nft() {
 				events[events.len() - 2].event,
 				Event::AccountTokenizer(crate::Event::AccountTokenRedeemed {
 					account: proxy.clone(),
-					owner: ALICE,
 					token_id: 0,
 					new_owner: ALICE,
 				})

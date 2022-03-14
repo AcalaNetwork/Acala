@@ -246,7 +246,6 @@ fn can_burn_account_token_nft() {
 				events[events.len() - 2].event,
 				Event::AccountTokenizer(module_account_tokenizer::Event::AccountTokenRedeemed {
 					account: alice_proxy,
-					owner: bob(),
 					token_id: 0,
 					new_owner: bob(),
 				})

@@ -39,7 +39,7 @@ use frame_support::{
 	pallet_prelude::*,
 	require_transactional,
 	traits::{
-		tokens::nonfungibles::{Create, Inspect, Mutate},
+		tokens::nonfungibles::{Create, Inspect, Mutate, Transfer},
 		BalanceStatus, Currency,
 		ExistenceRequirement::KeepAlive,
 		GetStorageVersion, NamedReservableCurrency, StorageVersion, WithdrawReasons,
@@ -128,7 +128,8 @@ pub mod module {
 			+ Mutate<Self::AccountId>
 			+ InspectExtended<Self::AccountId>
 			+ Create<Self::AccountId>
-			+ CreateExtended<Self::AccountId, Properties, Balance = Balance>;
+			+ CreateExtended<Self::AccountId, Properties, Balance = Balance>
+			+ Transfer<Self::AccountId>;
 	}
 
 	#[pallet::error]
@@ -172,7 +173,6 @@ pub mod module {
 		/// relinquished to `new_owner`.
 		AccountTokenRedeemed {
 			account: T::AccountId,
-			owner: T::AccountId,
 			token_id: T::TokenId,
 			new_owner: T::AccountId,
 		},
@@ -211,7 +211,7 @@ pub mod module {
 				// Transfer some fund from the treasury to pay for the class creation.
 				let res = T::Currency::transfer(
 					&T::TreasuryAccount::get(),
-					&T::PalletId::get().into_account(),
+					&Self::account_id(),
 					create_class_cost,
 					KeepAlive,
 				);
@@ -222,11 +222,7 @@ pub mod module {
 
 				// Use storage version to ensure we only register NFT class once.
 				let class_id = T::NFTInterface::next_class_id();
-				let res = T::NFTInterface::create_class(
-					&class_id,
-					&T::PalletId::get().into_account(),
-					&T::PalletId::get().into_account(),
-				);
+				let res = T::NFTInterface::create_class(&class_id, &Self::account_id(), &Self::account_id());
 				log::debug!("Account Tokenizer: Created NFT class. result: {:?}", res);
 
 				let res = T::NFTInterface::set_class_properties(
@@ -354,7 +350,8 @@ pub mod module {
 
 		/// Requests to redeem an Account Token. Sends XCM message to the relaychain to transfer the
 		/// control of the account.
-		/// No storage change is done, until confirmed by the Oracle.
+		/// The NFT is taken into custodial by the module, and is not burned until confirmed by the
+		/// Oracle.
 		///
 		/// Params:
 		/// 	- `account`: Account ID of the Account Token
@@ -383,13 +380,16 @@ pub mod module {
 			// Send an XCM to relaychain to relinquish the control of the `account` to `new_owner`.
 			T::XcmInterface::transfer_proxy(account.clone(), new_owner.clone())?;
 
-			// Submit confiramtion call to be serviced by foreign state oracle
+			// Submit confirmation call to be serviced by foreign state oracle
 			let call: <T as Config>::Call = Call::<T>::confirm_redeem_account_token {
 				account: account.clone(),
 				new_owner: new_owner.clone(),
 			}
 			.into();
 			T::ForeignStateQuery::create_query(&who, call, None)?;
+
+			// Take custodial of the NFT token.
+			T::NFTInterface::transfer(&Self::nft_class_id(), &token_id, &Self::account_id())?;
 
 			Self::deposit_event(Event::RedeemRequested {
 				account,
@@ -421,14 +421,13 @@ pub mod module {
 
 			// Obtain info about the account token.
 			let token_id = MintedAccount::<T>::take(&account).ok_or(Error::<T>::AccountTokenNotFound)?;
-			let owner = T::NFTInterface::owner(&nft_class_id, &token_id).ok_or(Error::<T>::AccountTokenNotFound)?;
+			T::NFTInterface::owner(&nft_class_id, &token_id).ok_or(Error::<T>::AccountTokenNotFound)?;
 
 			// Find the NFT and burn it
 			T::NFTInterface::burn_from(&nft_class_id, &token_id)?;
 
 			Self::deposit_event(Event::AccountTokenRedeemed {
 				account,
-				owner,
 				token_id,
 				new_owner,
 			});
@@ -439,6 +438,11 @@ pub mod module {
 }
 
 impl<T: Config> Pallet<T> {
+	/// Returns the module's account ID.
+	pub fn account_id() -> T::AccountId {
+		T::PalletId::get().into_account()
+	}
+
 	/// Confirms that the Mint request is valid. Mint a NFT that represents an Account Token.
 	/// Only callable by authorized Oracles.
 	#[require_transactional]
@@ -446,6 +450,16 @@ impl<T: Config> Pallet<T> {
 		let nft_class_id = Self::nft_class_id();
 
 		// Ensure the token hasn't already been minted.
+		if Self::minted_account(&account).is_some() {
+			// NFT is already minted. Confiscate the deposit and return error.
+			T::Currency::repatriate_reserved_named(
+				&RESERVE_ID,
+				&owner,
+				&T::TreasuryAccount::get(),
+				T::MintRequestDeposit::get(),
+				BalanceStatus::Free,
+			)?;
+		};
 		ensure!(
 			Self::minted_account(&account).is_none(),
 			Error::<T>::AccountTokenAlreadyExists
