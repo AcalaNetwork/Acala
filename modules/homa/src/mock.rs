@@ -70,6 +70,10 @@ impl HomaSubAccountXcm<AccountId, Balance> for MockHomaSubAccountXcm {
 	fn get_xcm_transfer_fee() -> Balance {
 		1_000_000
 	}
+
+	fn get_parachain_fee(_: xcm::v1::multilocation::MultiLocation) -> Balance {
+		1_000_000
+	}
 }
 
 parameter_types! {
