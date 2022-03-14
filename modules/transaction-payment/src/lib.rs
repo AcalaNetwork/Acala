@@ -849,7 +849,6 @@ where
 			// default fee tokens, swap from tx fee pool: O(1)
 			for supply_currency_id in T::DefaultFeeTokens::get() {
 				if Self::swap_from_pool_or_dex(who, fee_amount, supply_currency_id).is_ok() {
-					// println!("{}, {}, {}", fee, fee_surplus, fee_amount);
 					return Ok(fee_surplus);
 				}
 			}
