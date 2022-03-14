@@ -61,7 +61,7 @@ runtime_benchmarks! {
 		let caller: AccountId = whitelisted_caller();
 		set_balance(NATIVE, &caller, 10_000 * dollar(NATIVE));
 		// uses remark as a dummy call to only measure the logic within foreign state oracle, the weight of the call in storage is checked with `call_weight_bound`
-		let call = frame_system::Call::remark{ remark: vec![0; MaxQueryCallSize::get() as usize] };
+		let call = frame_system::Call::remark{ remark: vec![0; (MaxQueryCallSize::get() - 32) as usize] };
 		make_query(&caller, call)?;
 	}: _(RawOrigin::Root, 0, vec![1_u8], MAXIMUM_BLOCK_WEIGHT)
 }

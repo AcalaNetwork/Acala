@@ -184,6 +184,8 @@ pub mod module {
 		///
 		/// - `query_id`: Unique index mapped to a particular query
 		/// - `data`: Aribtrary data to be injected into the call via origin
+		/// - `call_weight_bound`: The maximum amount of weight consumed by executing the
+		///   DispatchableCall
 		#[pallet::weight(T::WeightInfo::respond_query_request().saturating_add(*call_weight_bound))]
 		#[transactional]
 		pub fn respond_query_request(

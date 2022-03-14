@@ -52,17 +52,14 @@ impl<T: frame_system::Config> module_foreign_state_oracle::WeightInfo for Weight
 	// Storage: EVM Accounts (r:1 w:1)
 	// Storage: EvmAccounts Accounts (r:0 w:1)
 	fn purge_expired_query() -> Weight {
-		(95_144_000 as Weight)
+		(89_517_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(5 as Weight))
 			.saturating_add(T::DbWeight::get().writes(5 as Weight))
 	}
 	// Storage: ForeignStateOracle QueryRequests (r:1 w:1)
-	// Storage: TransactionPause PausedTransactions (r:1 w:0)
-	// Storage: AccountTokenizer NFTClassId (r:1 w:0)
-	// Storage: OrmlNFT Classes (r:1 w:0)
 	fn respond_query_request() -> Weight {
-		(40_547_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(4 as Weight))
+		(24_175_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 }
