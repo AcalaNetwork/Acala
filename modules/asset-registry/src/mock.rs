@@ -28,7 +28,7 @@ use frame_support::{
 use frame_system::EnsureSignedBy;
 use module_support::{mocks::MockAddressMapping, AddressMapping};
 use primitives::{
-	convert_decimals_to_evm, evm::EvmAddress, AccountId, Balance, CurrencyId, ReserveIdentifier, TokenSymbol,
+	evm::convert_decimals_to_evm, evm::EvmAddress, AccountId, Balance, CurrencyId, ReserveIdentifier, TokenSymbol,
 };
 use sp_core::{H160, H256, U256};
 use std::str::FromStr;
