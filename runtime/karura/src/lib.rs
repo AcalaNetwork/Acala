@@ -1641,8 +1641,8 @@ impl nutsfinance_stable_asset::Config for Runtime {
 
 parameter_types! {
 	pub const DefaultQueryDuration: BlockNumber = 10;
-	pub QueryFee: Balance = 10 * cent(KAR);
-	pub CancelFee: Balance = 5 * cent(KAR);
+	pub QueryFee: Balance = 20 * cent(KAR);
+	pub CancelFee: Balance = 10 * cent(KAR);
 	pub ExpiredCallPurgeReward: Permill = Permill::from_percent(50);
 	pub const MaxQueryCallSize: u32 = 200;
 }
@@ -2287,8 +2287,8 @@ mod tests {
 	#[test]
 	fn check_call_size() {
 		assert!(
-			core::mem::size_of::<Call>() <= 280,
-			"size of Call is more than 280 bytes: some calls have too big arguments, use Box to \
+			core::mem::size_of::<Call>() <= 260,
+			"size of Call is more than 260 bytes: some calls have too big arguments, use Box to \
 			reduce the size of Call.
 			If the limit is too strong, maybe consider increasing the limit",
 		);
