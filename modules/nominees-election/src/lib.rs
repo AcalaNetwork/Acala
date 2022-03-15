@@ -83,9 +83,9 @@ pub mod module {
 		NominateesCountExceeded,
 	}
 
-	impl<T, I> Into<Error<T, I>> for BondingError {
-		fn into(self) -> Error<T, I> {
-			match self {
+	impl<T, I> From<BondingError> for Error<T, I> {
+		fn from(value: BondingError) -> Self {
+			match value {
 				BondingError::BelowMinBondThreshold => Error::<T, I>::BelowMinBondThreshold,
 				BondingError::MaxUnlockChunksExceeded => Error::<T, I>::MaxUnlockChunksExceeded,
 				BondingError::NoBonded => Error::<T, I>::NoBonded,
