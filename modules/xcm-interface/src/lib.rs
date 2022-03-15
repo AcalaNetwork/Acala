@@ -48,11 +48,12 @@ pub mod module {
 	pub enum XcmInterfaceOperation {
 		// XTokens
 		XtokensTransfer,
-		ParachainFee(Box<MultiLocation>),
 		// Homa
 		HomaWithdrawUnbonded,
 		HomaBondExtra,
 		HomaUnbond,
+		// Parachain fee with location info
+		ParachainFee(Box<MultiLocation>),
 	}
 
 	#[pallet::config]
