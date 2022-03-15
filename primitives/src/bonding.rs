@@ -216,15 +216,11 @@ mod tests {
 	#[test]
 	fn bond_works() {
 		let ledger = Ledger::new();
-
 		assert!(ledger.is_empty());
-
 		assert_err!(ledger.clone().bond(9), Error::BelowMinBondThreshold);
 
 		let ledger = ledger.bond(10).unwrap();
-
 		assert!(!ledger.is_empty());
-
 		assert_eq!(
 			ledger,
 			Ledger {
@@ -236,7 +232,6 @@ mod tests {
 		);
 
 		let ledger = ledger.bond(100).unwrap();
-
 		assert_eq!(
 			ledger,
 			Ledger {
@@ -252,12 +247,10 @@ mod tests {
 	fn unbond_works() {
 		let ledger = Ledger::new();
 		let ledger = ledger.bond(100).unwrap();
-
 		assert_err!(ledger.clone().unbond(99, 2), Error::BelowMinBondThreshold);
 
 		let (ledger, actual) = ledger.unbond(20, 2).unwrap();
 		assert_eq!(actual, 20);
-
 		assert_eq!(
 			ledger,
 			Ledger {
@@ -273,7 +266,6 @@ mod tests {
 
 		let (ledger, actual) = ledger.unbond(10, 2).unwrap();
 		assert_eq!(actual, 10);
-
 		assert_eq!(
 			ledger,
 			Ledger {
@@ -289,7 +281,6 @@ mod tests {
 
 		let (ledger, actual) = ledger.unbond(5, 4).unwrap();
 		assert_eq!(actual, 5);
-
 		assert_eq!(
 			ledger,
 			Ledger {
@@ -307,7 +298,6 @@ mod tests {
 		);
 
 		let ledger = ledger.consolidate_unlocked(1);
-
 		assert_eq!(
 			ledger,
 			Ledger {
@@ -325,7 +315,6 @@ mod tests {
 		);
 
 		let ledger = ledger.consolidate_unlocked(2);
-
 		assert_eq!(
 			ledger,
 			Ledger {
@@ -338,7 +327,6 @@ mod tests {
 
 		let (ledger, actual) = ledger.unbond(100, 6).unwrap();
 		assert_eq!(actual, 65);
-
 		assert_eq!(
 			ledger,
 			Ledger {
@@ -356,7 +344,6 @@ mod tests {
 		);
 
 		let ledger = ledger.consolidate_unlocked(4);
-
 		assert_eq!(
 			ledger,
 			Ledger {
@@ -371,7 +358,6 @@ mod tests {
 		);
 
 		let ledger = ledger.consolidate_unlocked(6);
-
 		assert_eq!(
 			ledger,
 			Ledger {
@@ -381,14 +367,12 @@ mod tests {
 				_phantom: Default::default(),
 			}
 		);
-
 		assert!(ledger.is_empty());
 	}
 
 	#[test]
 	fn rebond_works() {
 		let ledger = Ledger::new();
-
 		assert_err!(ledger.clone().rebond(20), Error::NoUnlockChunk);
 
 		let (ledger, _) = ledger
@@ -398,7 +382,6 @@ mod tests {
 			.unwrap();
 
 		let (ledger, actual) = ledger.rebond(20).unwrap();
-
 		assert_eq!(actual, 20);
 		assert_eq!(
 			ledger,
@@ -420,7 +403,6 @@ mod tests {
 		);
 
 		let (ledger, actual) = ledger.rebond(40).unwrap();
-
 		assert_eq!(actual, 40);
 		assert_eq!(
 			ledger,
@@ -436,7 +418,6 @@ mod tests {
 		);
 
 		let (ledger, actual) = ledger.rebond(50).unwrap();
-
 		assert_eq!(actual, 40);
 		assert_eq!(
 			ledger,
