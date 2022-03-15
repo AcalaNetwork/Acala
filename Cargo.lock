@@ -6527,6 +6527,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "module-honzon-bridge"
+version = "2.4.0"
+dependencies = [
+ "acala-primitives",
+ "frame-support",
+ "frame-system",
+ "module-currencies",
+ "module-support",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+]
+
+[[package]]
 name = "module-idle-scheduler"
 version = "2.4.0"
 dependencies = [
