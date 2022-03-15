@@ -33,7 +33,7 @@ runtime_benchmarks! {
 			currency_id: STABLECOIN,
 			vesting_period: 1_000,
 			min_amount: dollar(STABLECOIN) * 10,
-			min_price: Price::one(),
+			min_ratio: Ratio::saturating_from_rational(1, 10),
 			amount: dollar(CurrencyId::Token(TokenSymbol::ADAO)) * 100_000,
 			discount: Discount {
 				max: DiscountRate::saturating_from_rational(8, 10),
@@ -54,7 +54,7 @@ runtime_benchmarks! {
 			currency_id: STABLECOIN,
 			vesting_period: 1_000,
 			min_amount: dollar(STABLECOIN) * 10,
-			min_price: Price::one(),
+			min_ratio: Ratio::saturating_from_rational(1, 10),
 			amount: dollar(CurrencyId::Token(TokenSymbol::ADAO)) * 100_000,
 			discount: Discount {
 				max: DiscountRate::saturating_from_rational(8, 10),
@@ -90,7 +90,7 @@ runtime_benchmarks! {
 			currency_id: STABLECOIN,
 			vesting_period: 1_000,
 			min_amount: dollar(STABLECOIN) * 10,
-			min_price: Price::one(),
+			min_ratio: Ratio::saturating_from_rational(1, 10),
 			amount: dollar(CurrencyId::Token(TokenSymbol::ADAO)) * 100_000,
 			discount: Discount {
 				max: DiscountRate::saturating_from_rational(8, 10),

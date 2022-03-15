@@ -60,7 +60,7 @@ fn subscription() {
 				currency_id: USD_CURRENCY,
 				vesting_period: 1_000,
 				min_amount: dollar(ADAO_CURRENCY) * 10,
-				min_price: Price::one(),
+				min_ratio: Ratio::saturating_from_rational(1, 10),
 				amount,
 				discount: Discount {
 					max: DiscountRate::saturating_from_rational(2, 10),
