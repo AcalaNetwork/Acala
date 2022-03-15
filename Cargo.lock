@@ -15254,7 +15254,7 @@ dependencies = [
 [[package]]
 name = "xcm-emulator"
 version = "0.1.0"
-source = "git+https://github.com/zqhxuyuan/xcm-simulator?rev=3119d273777be17d23683076dbfd30cb17e489d6#3119d273777be17d23683076dbfd30cb17e489d6"
+source = "git+https://github.com/shaunxw/xcm-simulator?rev=3a08026e16e4dfe23bce10e96639df325a85e6c5#3a08026e16e4dfe23bce10e96639df325a85e6c5"
 dependencies = [
  "cumulus-pallet-dmp-queue",
  "cumulus-pallet-parachain-system",
@@ -15264,7 +15264,6 @@ dependencies = [
  "cumulus-test-relay-sproof-builder",
  "frame-support",
  "frame-system",
- "log",
  "parachain-info",
  "parity-scale-codec",
  "paste",
