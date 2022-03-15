@@ -32,19 +32,19 @@ build-all:
 
 .PHONY: build-release
 build-release:
-	CARGO_PROFILE_RELEASE_LTO=true RUSTFLAGS="-C codegen-units=1" cargo build --locked --features with-all-runtime --release --workspace --exclude runtime-integration-tests --exclude e2e-tests --exclude test-service
+	cargo build --locked --features with-all-runtime --profile production --workspace --exclude runtime-integration-tests --exclude e2e-tests --exclude test-service
 
 .PHONY: build-mandala-release
 build-mandala-release:
-	CARGO_PROFILE_RELEASE_LTO=true RUSTFLAGS="-C codegen-units=1" cargo build --locked --features with-mandala-runtime --release --workspace --exclude runtime-integration-tests --exclude e2e-tests --exclude test-service
+	cargo build --locked --features with-mandala-runtime --profile production --workspace --exclude runtime-integration-tests --exclude e2e-tests --exclude test-service
 
 .PHONY: build-karura-release
 build-karura-release:
-	CARGO_PROFILE_RELEASE_LTO=true RUSTFLAGS="-C codegen-units=1" cargo build --locked --features with-karura-runtime --release --workspace --exclude runtime-integration-tests --exclude e2e-tests --exclude test-service
+	cargo build --locked --features with-karura-runtime --profile production --workspace --exclude runtime-integration-tests --exclude e2e-tests --exclude test-service
 
 .PHONY: build-acala-release
 build-acala-release:
-	CARGO_PROFILE_RELEASE_LTO=true RUSTFLAGS="-C codegen-units=1" cargo build --locked --features with-acala-runtime --release --workspace --exclude runtime-integration-tests --exclude e2e-tests --exclude test-service
+	cargo build --locked --features with-acala-runtime --profile production --workspace --exclude runtime-integration-tests --exclude e2e-tests --exclude test-service
 
 .PHONY: build-mandala-internal-release
 build-mandala-internal-release:
@@ -194,27 +194,27 @@ cargo-update:
 
 .PHONY: build-wasm-mandala
 build-wasm-mandala:
-	./scripts/build-only-wasm.sh -p mandala-runtime --features=on-chain-release-build --workspace --exclude runtime-integration-tests --exclude e2e-tests
+	./scripts/build-only-wasm.sh --profile production -p mandala-runtime --features=on-chain-release-build --workspace --exclude runtime-integration-tests --exclude e2e-tests
 
 .PHONY: build-wasm-karura
 build-wasm-karura:
-	./scripts/build-only-wasm.sh -p karura-runtime --features=on-chain-release-build --workspace --exclude runtime-integration-tests --exclude e2e-tests
+	./scripts/build-only-wasm.sh --profile production -p karura-runtime --features=on-chain-release-build --workspace --exclude runtime-integration-tests --exclude e2e-tests
 
 .PHONY: build-wasm-acala
 build-wasm-acala:
-	./scripts/build-only-wasm.sh -p acala-runtime --features=on-chain-release-build --workspace --exclude runtime-integration-tests --exclude e2e-tests
+	./scripts/build-only-wasm.sh --profile production -p acala-runtime --features=on-chain-release-build --workspace --exclude runtime-integration-tests --exclude e2e-tests
 
 .PHONY: srtool-build-wasm-mandala
 srtool-build-wasm-mandala:
-	PACKAGE=mandala-runtime BUILD_OPTS="--features on-chain-release-build" ./scripts/srtool-build.sh
+	PACKAGE=mandala-runtime PROFILE=production BUILD_OPTS="--features on-chain-release-build" ./scripts/srtool-build.sh
 
 .PHONY: srtool-build-wasm-karura
 srtool-build-wasm-karura:
-	PACKAGE=karura-runtime BUILD_OPTS="--features on-chain-release-build" ./scripts/srtool-build.sh
+	PACKAGE=karura-runtime PROFILE=production BUILD_OPTS="--features on-chain-release-build" ./scripts/srtool-build.sh
 
 .PHONY: srtool-build-wasm-acala
 srtool-build-wasm-acala:
-	PACKAGE=acala-runtime BUILD_OPTS="--features on-chain-release-build" ./scripts/srtool-build.sh
+	PACKAGE=acala-runtime PROFILE=production BUILD_OPTS="--features on-chain-release-build" ./scripts/srtool-build.sh
 
 .PHONY: generate-tokens
 generate-tokens:
@@ -222,15 +222,15 @@ generate-tokens:
 
 .PHONY: benchmark-mandala
 benchmark-mandala:
-	 cargo run --release --features=runtime-benchmarks --features=with-mandala-runtime -- benchmark --chain=mandala-latest --steps=50 --repeat=20 '--pallet=*' '--extrinsic=*' --execution=wasm --wasm-execution=compiled --heap-pages=4096 --template=./templates/runtime-weight-template.hbs --output=./runtime/mandala/src/weights/
+	 cargo run --profile production --features=runtime-benchmarks --features=with-mandala-runtime -- benchmark --chain=mandala-latest --steps=50 --repeat=20 '--pallet=*' '--extrinsic=*' --execution=wasm --wasm-execution=compiled --heap-pages=4096 --template=./templates/runtime-weight-template.hbs --output=./runtime/mandala/src/weights/
 
 .PHONY: benchmark-karura
 benchmark-karura:
-	 cargo run --release --features=runtime-benchmarks --features=with-karura-runtime -- benchmark --chain=karura-dev --steps=50 --repeat=20 '--pallet=*' '--extrinsic=*' --execution=wasm --wasm-execution=compiled --heap-pages=4096 --template=./templates/runtime-weight-template.hbs --output=./runtime/karura/src/weights/
+	 cargo run --profile production --features=runtime-benchmarks --features=with-karura-runtime -- benchmark --chain=karura-dev --steps=50 --repeat=20 '--pallet=*' '--extrinsic=*' --execution=wasm --wasm-execution=compiled --heap-pages=4096 --template=./templates/runtime-weight-template.hbs --output=./runtime/karura/src/weights/
 
 .PHONY: benchmark-acala
 benchmark-acala:
-	 cargo run --release --features=runtime-benchmarks --features=with-acala-runtime -- benchmark --chain=acala-dev --steps=50 --repeat=20 '--pallet=*' '--extrinsic=*' --execution=wasm --wasm-execution=compiled --heap-pages=4096 --template=./templates/runtime-weight-template.hbs --output=./runtime/acala/src/weights/
+	 cargo run --profile production --features=runtime-benchmarks --features=with-acala-runtime -- benchmark --chain=acala-dev --steps=50 --repeat=20 '--pallet=*' '--extrinsic=*' --execution=wasm --wasm-execution=compiled --heap-pages=4096 --template=./templates/runtime-weight-template.hbs --output=./runtime/acala/src/weights/
 
 .PHONY: clippy-fix
 clippy-fix:
