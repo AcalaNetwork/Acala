@@ -6087,7 +6087,7 @@ dependencies = [
 
 [[package]]
 name = "module-account-tokenizer"
-version = "2.2.1"
+version = "2.4.0"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -6463,7 +6463,7 @@ dependencies = [
 
 [[package]]
 name = "module-foreign-state-oracle"
-version = "2.3.0"
+version = "2.4.0"
 dependencies = [
  "acala-primitives",
  "frame-benchmarking",
