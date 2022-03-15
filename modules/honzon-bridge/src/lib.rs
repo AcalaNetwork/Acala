@@ -32,7 +32,7 @@ use primitives::{Balance, CurrencyId};
 use orml_traits::MultiCurrency;
 
 mod mock;
-// mod tests;
+mod tests;
 
 pub use module::*;
 
@@ -78,7 +78,7 @@ pub mod module {
 		///
 		/// Parameters:
 		/// - `amount`: The amount of stable coin to exchange.
-		#[pallet::weight(0)]
+		#[pallet::weight(< T as Config >::WeightInfo::to_bridged())]
 		#[transactional]
 		pub fn to_bridged(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResult {
 			let who = ensure_signed(origin)?;
@@ -97,7 +97,7 @@ pub mod module {
 		///
 		/// Parameters:
 		/// - `amount`: The amount of stable coin to exchange.
-		#[pallet::weight(0)]
+		#[pallet::weight(< T as Config >::WeightInfo::from_bridged())]
 		#[transactional]
 		pub fn from_bridged(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResult {
 			let who = ensure_signed(origin)?;
@@ -108,7 +108,7 @@ pub mod module {
 			// transfer amount of BridgedStableCoinCurrencyId from PalletId account to origin
 			T::Currency::transfer(T::StablecoinCurrencyId::get(), &Self::account_id(), &who, amount)?;
 
-			Self::deposit_event(Event::<T>::ToBridged { who, amount });
+			Self::deposit_event(Event::<T>::FromBridged { who, amount });
 			Ok(())
 		}
 	}

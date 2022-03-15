@@ -16,28 +16,57 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-//! Unit tests for example module.
+//! Unit tests for Honzon Bridge module.
 
 #![cfg(test)]
 
 use crate::mock::*;
 use frame_support::assert_ok;
 
+fn module_account() -> AccountId {
+	HonzonBridge::account_id()
+}
+
 #[test]
-fn set_dummy_work() {
-	new_test_ext().execute_with(|| {
-		assert_eq!(Example::dummy(), None);
-		assert_ok!(Example::set_dummy(Origin::root(), 20));
-		assert_eq!(Example::dummy(), Some(20));
-		System::assert_last_event(Event::Example(crate::Event::Dummy { value: 20 }));
+fn to_bridged_works() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_eq!(Currencies::free_balance(AUSD, &ALICE), dollar(1_000_000));
+		assert_eq!(Currencies::free_balance(KUSD, &ALICE), dollar(1_000_000));
+		assert_eq!(Currencies::free_balance(AUSD, &module_account()), dollar(1_000_000));
+		assert_eq!(Currencies::free_balance(KUSD, &module_account()), dollar(1_000_000));
+
+		assert_ok!(HonzonBridge::to_bridged(Origin::signed(ALICE), dollar(5_000)));
+
+		assert_eq!(Currencies::free_balance(AUSD, &ALICE), dollar(995_000));
+		assert_eq!(Currencies::free_balance(KUSD, &ALICE), dollar(1_005_000));
+		assert_eq!(Currencies::free_balance(AUSD, &module_account()), dollar(1_005_000));
+		assert_eq!(Currencies::free_balance(KUSD, &module_account()), dollar(995_000));
+
+		System::assert_last_event(Event::HonzonBridge(crate::Event::ToBridged {
+			who: ALICE,
+			amount: dollar(5000),
+		}));
 	});
 }
 
 #[test]
-fn do_set_bar_work() {
-	new_test_ext().execute_with(|| {
-		assert_eq!(Example::bar(2), 200);
-		Example::do_set_bar(&2, 10);
-		assert_eq!(Example::bar(2), 10);
+fn from_bridged_works() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_eq!(Currencies::free_balance(AUSD, &ALICE), dollar(1_000_000));
+		assert_eq!(Currencies::free_balance(KUSD, &ALICE), dollar(1_000_000));
+		assert_eq!(Currencies::free_balance(AUSD, &module_account()), dollar(1_000_000));
+		assert_eq!(Currencies::free_balance(KUSD, &module_account()), dollar(1_000_000));
+
+		assert_ok!(HonzonBridge::from_bridged(Origin::signed(ALICE), dollar(5_000)));
+
+		assert_eq!(Currencies::free_balance(AUSD, &ALICE), dollar(1_005_000));
+		assert_eq!(Currencies::free_balance(KUSD, &ALICE), dollar(995_000));
+		assert_eq!(Currencies::free_balance(AUSD, &module_account()), dollar(995_000));
+		assert_eq!(Currencies::free_balance(KUSD, &module_account()), dollar(1_005_000));
+
+		System::assert_last_event(Event::HonzonBridge(crate::Event::FromBridged {
+			who: ALICE,
+			amount: dollar(5000),
+		}));
 	});
 }

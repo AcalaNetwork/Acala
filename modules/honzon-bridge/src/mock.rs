@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-//! Mocks for example module.
+//! Mocks for Honzon Bridge module.
 
 #![cfg(test)]
 
@@ -187,5 +187,29 @@ impl Default for ExtBuilder {
 			],
 			native_balances: vec![(ALICE, initial), (HonzonBridge::account_id(), initial)],
 		}
+	}
+}
+
+impl ExtBuilder {
+	pub fn build(self) -> sp_io::TestExternalities {
+		let mut t = frame_system::GenesisConfig::default()
+			.build_storage::<Runtime>()
+			.unwrap();
+
+		pallet_balances::GenesisConfig::<Runtime> {
+			balances: self.native_balances,
+		}
+		.assimilate_storage(&mut t)
+		.unwrap();
+
+		orml_tokens::GenesisConfig::<Runtime> {
+			balances: self.tokens_balances,
+		}
+		.assimilate_storage(&mut t)
+		.unwrap();
+
+		let mut ext = sp_io::TestExternalities::new(t);
+		ext.execute_with(|| System::set_block_number(1));
+		ext
 	}
 }
