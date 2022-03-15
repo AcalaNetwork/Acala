@@ -158,14 +158,14 @@ pub mod module {
 		pub fn bond(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			let mut ledger = Self::ledger(&who);
+			let ledger = Self::ledger(&who);
 			let free_balance = T::Currency::free_balance(&who);
 			if let Some(extra) = free_balance.checked_sub(ledger.total()) {
 				let extra = extra.min(amount);
 
 				let old_active = ledger.active();
 
-				ledger.bond(extra).map_err(Into::<Error<T, I>>::into)?;
+				let ledger = ledger.bond(extra).map_err(Into::<Error<T, I>>::into)?;
 
 				let old_nominations = Self::nominations(&who);
 
@@ -180,13 +180,13 @@ pub mod module {
 		pub fn unbond(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			let mut ledger = Self::ledger(&who);
+			let ledger = Self::ledger(&who);
 
 			let old_active = ledger.active();
 
 			// Note: in case there is no current era it is fine to bond one era more.
 			let era = Self::current_era() + T::BondingDuration::get();
-			let amount = ledger.unbond(amount, era).map_err(Into::<Error<T, I>>::into)?;
+			let (ledger, amount) = ledger.unbond(amount, era).map_err(Into::<Error<T, I>>::into)?;
 
 			if !amount.is_zero() {
 				let old_nominations = Self::nominations(&who);
@@ -207,7 +207,7 @@ pub mod module {
 			let old_active = ledger.active();
 			let old_ledger_unlocking = ledger.unlocking_len();
 			let old_nominations = Self::nominations(&who);
-			let ledger = ledger.rebond(amount).map_err(Into::<Error<T, I>>::into)?;
+			let (ledger, amount) = ledger.rebond(amount).map_err(Into::<Error<T, I>>::into)?;
 
 			Self::update_votes(old_active, &old_nominations, ledger.active(), &old_nominations);
 			Self::update_ledger(&who, &ledger);
@@ -220,9 +220,9 @@ pub mod module {
 		#[transactional]
 		pub fn withdraw_unbonded(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
-			let mut ledger = Self::ledger(&who);
+			let ledger = Self::ledger(&who);
 			let old_ledger_unlocking = ledger.unlocking_len();
-			ledger.consolidate_unlocked(Self::current_era());
+			let ledger = ledger.consolidate_unlocked(Self::current_era());
 
 			if ledger.is_empty() {
 				Self::remove_ledger(&who);

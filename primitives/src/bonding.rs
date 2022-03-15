@@ -95,6 +95,7 @@ where
 	}
 
 	/// Bond more funds.
+	#[must_use]
 	pub fn bond(mut self, amount: Balance) -> Result<Self, Error> {
 		self.active = self.active.saturating_add(amount);
 		self.total = self.total.saturating_add(amount);
@@ -104,6 +105,7 @@ where
 
 	/// Start unbonding and create new UnlockChunk.
 	/// Note that if the `unlock_at` is same as the last UnlockChunk, they will be merged.
+	#[must_use]
 	pub fn unbond(mut self, amount: Balance, unlock_at: Moment) -> Result<(Self, Balance), Error> {
 		let amount = amount.min(self.active);
 		self.active = self.active.saturating_sub(amount);
@@ -130,6 +132,7 @@ where
 
 	/// Remove entries from `unlocking` that are sufficiently old and reduce
 	/// the total by the sum of their balances.
+	#[must_use]
 	pub fn consolidate_unlocked(mut self, now: Moment) -> Self {
 		let mut total = self.total;
 		self.unlocking.retain(|chunk| {
@@ -147,6 +150,7 @@ where
 	}
 
 	/// Re-bond funds that were scheduled for unlocking.
+	#[must_use]
 	pub fn rebond(mut self, value: Balance) -> Result<(Self, Balance), Error> {
 		if self.unlocking.is_empty() {
 			return Err(Error::NoUnlockChunk);
