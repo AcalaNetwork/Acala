@@ -86,10 +86,6 @@ where
 		self.total
 	}
 
-	pub fn unlocking(&self) -> &[UnlockChunk<Moment>] {
-		self.unlocking.as_slice()
-	}
-
 	pub fn unlocking_len(&self) -> usize {
 		self.unlocking.len()
 	}
