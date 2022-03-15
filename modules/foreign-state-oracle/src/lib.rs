@@ -133,7 +133,7 @@ pub mod module {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// An Query request is created, under the query_id as the key
+		/// A Query request is created, under the query_id as the key
 		QueryRequestCreated {
 			query_id: QueryIndex,
 			expiry: T::BlockNumber,

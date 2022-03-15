@@ -531,7 +531,7 @@ fn cannot_double_mint() {
 				CALL_WEIGHT,
 			));
 
-			// Request is rejeted
+			// Request is rejected
 			System::assert_last_event(Event::ForeignStateOracle(
 				module_foreign_state_oracle::Event::CallDispatched {
 					query_id: 1,
