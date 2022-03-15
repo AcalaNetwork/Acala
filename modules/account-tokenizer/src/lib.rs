@@ -342,7 +342,7 @@ pub mod module {
 			// Extract confirmation info from Origin.
 			let data = T::OracleOrigin::ensure_origin(origin)?;
 
-			// Checks oracle confirms or rejects mint request
+			// Checks whether oracle confirms or rejects the mint request
 			if data.get(0).ok_or(Error::<T>::BadOracleData)?.is_one() {
 				Self::accept_mint_request(owner, account)
 			} else {
