@@ -50,18 +50,18 @@ impl<T: frame_system::Config> ecosystem_aqua_staked_token::WeightInfo for Weight
 	// Storage: Tokens Accounts (r:3 w:3)
 	// Storage: System Account (r:3 w:3)
 	fn on_initialize() -> Weight {
-		(71_224_000 as Weight)
+		(71_905_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(8 as Weight))
 			.saturating_add(T::DbWeight::get().writes(8 as Weight))
 	}
 	fn on_initialize_without_inflation() -> Weight {
-		(230_000 as Weight)
+		(250_000 as Weight)
 	}
 	// Storage: Tokens Accounts (r:3 w:3)
 	// Storage: Tokens TotalIssuance (r:1 w:1)
 	// Storage: System Account (r:1 w:1)
 	fn stake() -> Weight {
-		(58_390_000 as Weight)
+		(58_090_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(5 as Weight))
 			.saturating_add(T::DbWeight::get().writes(5 as Weight))
 	}
@@ -70,7 +70,7 @@ impl<T: frame_system::Config> ecosystem_aqua_staked_token::WeightInfo for Weight
 	// Storage: AquaStakedToken UnstakeFeeRate (r:1 w:0)
 	// Storage: System Account (r:1 w:0)
 	fn unstake() -> Weight {
-		(55_545_000 as Weight)
+		(56_446_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(6 as Weight))
 			.saturating_add(T::DbWeight::get().writes(4 as Weight))
 	}
@@ -79,13 +79,13 @@ impl<T: frame_system::Config> ecosystem_aqua_staked_token::WeightInfo for Weight
 	// Storage: Tokens Locks (r:1 w:1)
 	// Storage: Tokens Accounts (r:1 w:1)
 	fn claim() -> Weight {
-		(38_833_000 as Weight)
+		(30_177_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(4 as Weight))
 			.saturating_add(T::DbWeight::get().writes(3 as Weight))
 	}
 	// Storage: AquaStakedToken UnstakeFeeRate (r:0 w:1)
 	fn update_unstake_fee_rate() -> Weight {
-		(10_429_000 as Weight)
+		(10_299_000 as Weight)
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 }

@@ -16,14 +16,17 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use super::utils::dollar;
+use super::utils::{dollar, set_balance};
 use crate::*;
 
+use frame_benchmarking::whitelisted_caller;
+use frame_support::traits::OnInitialize;
 use frame_system::RawOrigin;
 
 use ecosystem_aqua_dao::{Discount, DiscountRate, Subscription, SubscriptionState};
 
 const STABLECOIN: CurrencyId = GetStableCurrencyId::get();
+const ADAO_CURRENCY: CurrencyId = CurrencyId::Token(TokenSymbol::ADAO);
 
 runtime_benchmarks! {
 	{ Runtime, ecosystem_aqua_dao }
@@ -105,6 +108,53 @@ runtime_benchmarks! {
 		};
 		AquaDao::create_subscription(RawOrigin::Root.into(), subscription)?;
 	}: _(RawOrigin::Root, 0)
+
+	subscribe {
+		let alice = whitelisted_caller();
+		// setup balances
+		set_balance(STABLECOIN, &alice, 2_000_000 * dollar(STABLECOIN));
+		set_balance(ADAO_CURRENCY, &alice, 1_000_000 * dollar(ADAO_CURRENCY));
+		// setup DEX
+		Dex::add_liquidity(
+			Origin::signed(AccountId::from(alice.clone())),
+			ADAO_CURRENCY,
+			STABLECOIN,
+			1_000 * dollar(ADAO_CURRENCY),
+			10_000 * dollar(STABLECOIN),
+			0,
+			false,
+		)?;
+		DexOracle::enable_average_price(
+			Origin::root(),
+			ADAO_CURRENCY,
+			STABLECOIN,
+			1
+		)?;
+		DexOracle::on_initialize(1);
+
+		// create subscription
+		let units = 1_000_000;
+		let amount = dollar(CurrencyId::Token(TokenSymbol::ADAO)) * units;
+		let subscription = Subscription {
+			currency_id: STABLECOIN,
+			vesting_period: 1_000,
+			min_amount: dollar(ADAO_CURRENCY) * 10,
+			min_ratio: Ratio::saturating_from_rational(1, 10),
+			amount,
+			discount: Discount {
+				max: DiscountRate::saturating_from_rational(2, 10),
+				inc_on_idle: DiscountRate::saturating_from_rational(1, 1_000),
+				dec_per_unit: DiscountRate::saturating_from_rational(20, units * 100),
+			},
+			state: SubscriptionState {
+				total_sold: 0,
+				last_sold_at: 0,
+				last_discount: DiscountRate::saturating_from_rational(95, 100),
+			},
+		};
+		AquaDao::create_subscription(Origin::root(), subscription)?;
+		let payment_amount = dollar(STABLECOIN) * 100;
+	}: _(RawOrigin::Signed(alice), 0, payment_amount, 0)
 }
 
 #[cfg(test)]
