@@ -50,7 +50,7 @@ use frame_support::{
 use frame_system::pallet_prelude::*;
 use orml_traits::{arithmetic::Zero, InspectExtended};
 use sp_io::hashing::blake2_256;
-use sp_runtime::traits::{AccountIdConversion, TrailingZeroInput};
+use sp_runtime::traits::{AccountIdConversion, One, TrailingZeroInput};
 use sp_std::vec::Vec;
 
 use module_support::{CreateExtended, ForeignChainStateQuery, ProxyXcm};
@@ -341,7 +341,9 @@ pub mod module {
 		) -> DispatchResult {
 			// Extract confirmation info from Origin.
 			let data = T::OracleOrigin::ensure_origin(origin)?;
-			if *data.get(0).ok_or(Error::<T>::BadOracleData)? == 1u8 {
+
+			// Checks oracle confirms or rejects mint request
+			if data.get(0).ok_or(Error::<T>::BadOracleData)?.is_one() {
 				Self::accept_mint_request(owner, account)
 			} else {
 				Self::reject_mint_request(owner)
