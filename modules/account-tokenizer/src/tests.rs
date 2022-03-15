@@ -522,23 +522,30 @@ fn cannot_double_mint() {
 				},
 			));
 
-			// Once minted, the second request cannot be accepted
+			// Once minted, the second request will be rejected
+			let before_reject = Balances::free_balance(TreasuryAccount::get());
 			assert_ok!(ForeignStateOracle::respond_query_request(
 				Origin::signed(ORACLE),
 				1,
 				vec![1],
 				CALL_WEIGHT,
 			));
+
+			// Request is rejeted
 			System::assert_last_event(Event::ForeignStateOracle(
 				module_foreign_state_oracle::Event::CallDispatched {
 					query_id: 1,
-					task_result: Err(DispatchError::Module(ModuleError {
-						index: 6,
-						error: 5,
-						message: Some("AccountTokenAlreadyExists"),
-					})),
+					task_result: Ok(()),
 				},
 			));
+			System::assert_has_event(Event::AccountTokenizer(crate::Event::MintRequestRejected {
+				requester: ALICE,
+			}));
+			// Penalty is taken for double mint attempt
+			assert_eq!(
+				Balances::free_balance(TreasuryAccount::get()),
+				before_reject + MintRequestDeposit::get()
+			);
 
 			// Transfer the NFT
 			assert_ok!(ModuleNFT::transfer(Origin::signed(ALICE), BOB, (0, 0)));

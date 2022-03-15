@@ -307,9 +307,6 @@ fn get_result_weight(result: DispatchResultWithPostInfo) -> Option<Weight> {
 	}
 }
 
-#[cfg(feature = "runtime-benchmarks")]
-use frame_benchmarking::vec;
-
 pub struct EnsureForeignStateOracle;
 
 impl<O: Into<Result<RawOrigin, O>> + From<RawOrigin>> EnsureOrigin<O> for EnsureForeignStateOracle {
@@ -324,6 +321,6 @@ impl<O: Into<Result<RawOrigin, O>> + From<RawOrigin>> EnsureOrigin<O> for Ensure
 
 	#[cfg(feature = "runtime-benchmarks")]
 	fn successful_origin() -> O {
-		O::from(RawOrigin { data: vec![] })
+		O::from(RawOrigin { data: Vec::new() })
 	}
 }

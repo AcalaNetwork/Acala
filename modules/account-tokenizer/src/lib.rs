@@ -447,44 +447,34 @@ impl<T: Config> Pallet<T> {
 	/// Only callable by authorized Oracles.
 	#[require_transactional]
 	pub fn accept_mint_request(owner: T::AccountId, account: T::AccountId) -> DispatchResult {
-		let nft_class_id = Self::nft_class_id();
-
 		// Ensure the token hasn't already been minted.
 		if Self::minted_account(&account).is_some() {
-			// NFT is already minted. Confiscate the deposit and return error.
-			T::Currency::repatriate_reserved_named(
-				&RESERVE_ID,
-				&owner,
-				&T::TreasuryAccount::get(),
-				T::MintRequestDeposit::get(),
-				BalanceStatus::Free,
-			)?;
-		};
-		ensure!(
-			Self::minted_account(&account).is_none(),
-			Error::<T>::AccountTokenAlreadyExists
-		);
+			// NFT is already minted. Confiscate the deposit and reject request
+			Self::reject_mint_request(owner)
+		} else {
+			let nft_class_id = Self::nft_class_id();
 
-		// Pay for minting the token
-		T::NFTInterface::pay_mint_fee(&T::TreasuryAccount::get(), &Self::nft_class_id(), 1u32)?;
+			// Pay for minting the token
+			T::NFTInterface::pay_mint_fee(&T::TreasuryAccount::get(), &Self::nft_class_id(), 1u32)?;
 
-		// Mint the Account Token's NFT.
-		let token_id = T::NFTInterface::next_token_id(nft_class_id);
-		T::NFTInterface::mint_into(&nft_class_id, &token_id, &owner)?;
+			// Mint the Account Token's NFT.
+			let token_id = T::NFTInterface::next_token_id(nft_class_id);
+			T::NFTInterface::mint_into(&nft_class_id, &token_id, &owner)?;
 
-		// Create a record of the Mint and insert it into storage
-		MintedAccount::<T>::insert(account.clone(), token_id);
+			// Create a record of the Mint and insert it into storage
+			MintedAccount::<T>::insert(account.clone(), token_id);
 
-		// Release the deposit from the owner
-		let remaining = T::Currency::unreserve_named(&RESERVE_ID, &owner, T::MintRequestDeposit::get());
-		ensure!(remaining.is_zero(), Error::<T>::InsufficientReservedBalance);
+			// Release the deposit from the owner
+			let remaining = T::Currency::unreserve_named(&RESERVE_ID, &owner, T::MintRequestDeposit::get());
+			ensure!(remaining.is_zero(), Error::<T>::InsufficientReservedBalance);
 
-		Self::deposit_event(Event::AccountTokenMinted {
-			owner,
-			account,
-			token_id,
-		});
-		Ok(())
+			Self::deposit_event(Event::AccountTokenMinted {
+				owner,
+				account,
+				token_id,
+			});
+			Ok(())
+		}
 	}
 
 	/// Reject the Mint request. The deposit by the minter is confiscated.
