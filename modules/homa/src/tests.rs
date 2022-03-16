@@ -1228,7 +1228,7 @@ fn bump_current_era_works() {
 			// will process to_bond_pool.
 			MockRelayBlockNumberProvider::set(100);
 			assert_ok!(Homa::bump_current_era(1));
-			System::assert_has_event(Event::Homa(crate::Event::CurrentEraBumped(1)));
+			System::assert_has_event(Event::Homa(crate::Event::CurrentEraBumped { new_era_index: 1 }));
 			assert_eq!(Homa::last_era_bumped_block(), 100);
 			assert_eq!(Homa::relay_chain_current_era(), 1);
 			assert_eq!(
