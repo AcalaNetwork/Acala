@@ -54,7 +54,7 @@ pub mod module {
 		HomaUnbond,
 		// Parachain fee with location info
 		ParachainFee(Box<MultiLocation>),
-    // Proxy
+		// Proxy
 		ProxyTransferProxy,
 	}
 
