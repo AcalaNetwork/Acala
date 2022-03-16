@@ -846,10 +846,12 @@ where
 					}
 				}
 			}
-		}
 
-		// native asset is enough
-		Ok(0)
+			return Err(DispatchError::Other("charge fee failed!"));
+		} else {
+			// native asset is enough
+			return Ok(0);
+		}
 	}
 
 	/// swap user's given asset with native asset. prior exchange from charge fee pool, if native
@@ -1163,7 +1165,6 @@ impl<T: Config + Send + Sync> sp_std::fmt::Debug for ChargeTransactionPayment<T>
 
 impl<T: Config + Send + Sync> ChargeTransactionPayment<T>
 where
-	CallOf<T>: Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo>,
 	PalletBalanceOf<T>: Send + Sync + FixedPointOperand,
 {
 	/// utility constructor. Used only in client/factory code.
@@ -1292,7 +1293,6 @@ where
 impl<T: Config + Send + Sync> SignedExtension for ChargeTransactionPayment<T>
 where
 	PalletBalanceOf<T>: Send + Sync + From<u64> + FixedPointOperand,
-	CallOf<T>: Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo>,
 {
 	const IDENTIFIER: &'static str = "ChargeTransactionPayment";
 	type AccountId = T::AccountId;
