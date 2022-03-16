@@ -215,6 +215,7 @@ impl Contains<Call> for BaseCallFilter {
 		let is_evm = matches!(
 			call,
 			Call::EVM(_) | Call::EvmAccounts(_) // EvmBridge / EvmManager does not have call
+			| Call::HonzonBridge(_) // HonzonBridge isn't enabled until wAUSD is created. Issue #1967
 		);
 		if is_evm {
 			// no evm call
