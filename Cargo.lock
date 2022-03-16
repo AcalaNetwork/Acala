@@ -6275,6 +6275,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "module-earning"
+version = "2.4.0"
+dependencies = [
+ "acala-primitives",
+ "frame-support",
+ "frame-system",
+ "module-support",
+ "orml-tokens",
+ "orml-traits",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "module-emergency-shutdown"
 version = "2.4.0"
 dependencies = [
