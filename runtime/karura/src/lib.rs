@@ -1828,14 +1828,25 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	XcmInterfaceMigrationV1,
+	XcmInterfaceMigration,
 >;
 
-// Migration for scheduler pallet to move from a plain Call to a CallOrHash.
-pub struct XcmInterfaceMigrationV1;
-impl OnRuntimeUpgrade for XcmInterfaceMigrationV1 {
+// init Statemine location to its weight and fee, used by ParachainMinFee
+pub struct XcmInterfaceMigration;
+impl OnRuntimeUpgrade for XcmInterfaceMigration {
 	fn on_runtime_upgrade() -> frame_support::weights::Weight {
-		module_xcm_interface::migrations::v1::migrate::<Runtime, XcmInterface>()
+		// update_xcm_dest_weight_and_fee
+		let _ = <module_xcm_interface::Pallet<Runtime>>::update_xcm_dest_weight_and_fee(
+			Origin::root(),
+			vec![(
+				module_xcm_interface::XcmInterfaceOperation::ParachainFee(Box::new(
+					(1, Parachain(parachains::statemine::ID)).into(),
+				)),
+				Some(4_000_000_000),
+				Some(4_000_000_000),
+			)],
+		);
+		<Runtime as frame_system::Config>::BlockWeights::get().max_block
 	}
 }
 

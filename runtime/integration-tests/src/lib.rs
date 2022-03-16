@@ -47,7 +47,7 @@ mod dex;
 mod evm;
 
 #[cfg(feature = "with-karura-runtime")]
-mod homa_xcm;
+mod xcm_interface;
 
 #[cfg(any(
 	feature = "with-mandala-runtime",

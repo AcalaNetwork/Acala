@@ -13,4 +13,4 @@ fi
 
 export WASM_TARGET_DIRECTORY=$(pwd)
 
-cargo build --release $*
+cargo build $*

@@ -253,6 +253,8 @@ pub trait HomaSubAccountXcm<AccountId, Balance> {
 	fn unbond_on_sub_account(sub_account_index: u16, amount: Balance) -> DispatchResult;
 	/// The fee of cross-chain transfer is deducted from the recipient.
 	fn get_xcm_transfer_fee() -> Balance;
+	/// The fee of parachain
+	fn get_parachain_fee(location: MultiLocation) -> Balance;
 }
 
 pub trait ProxyXcm<AccountId> {
