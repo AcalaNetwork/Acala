@@ -1323,7 +1323,7 @@ impl module_xcm_interface::Config for Runtime {
 parameter_types! {
 	pub MinCouncilBondThreshold: Balance = dollar(LDOT);
 	pub const NominateesCount: u32 = 7;
-	pub const MaxUnlockingChunks: u32 = 7;
+	pub const MaxUnbondingChunks: u32 = 7;
 }
 
 impl module_nominees_election::Config for Runtime {
@@ -1331,10 +1331,10 @@ impl module_nominees_election::Config for Runtime {
 	type Currency = Currency<Runtime, GetLiquidCurrencyId>;
 	type NomineeId = AccountId;
 	type PalletId = NomineesElectionId;
-	type MinBondThreshold = MinCouncilBondThreshold;
+	type MinBond = MinCouncilBondThreshold;
 	type BondingDuration = RelayChainBondingDuration;
 	type NominateesCount = NominateesCount;
-	type MaxUnlockingChunks = MaxUnlockingChunks;
+	type MaxUnbondingChunks = MaxUnbondingChunks;
 	type NomineeFilter = runtime_common::DummyNomineeFilter;
 	type WeightInfo = weights::module_nominees_election::WeightInfo<Runtime>;
 }
