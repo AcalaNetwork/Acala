@@ -847,10 +847,10 @@ where
 				}
 			}
 
-			return Err(DispatchError::Other("charge fee failed!"));
+			Err(DispatchError::Other("charge fee failed!"))
 		} else {
 			// native asset is enough
-			return Ok(0);
+			Ok(0)
 		}
 	}
 
