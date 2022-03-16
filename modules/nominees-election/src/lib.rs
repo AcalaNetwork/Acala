@@ -318,8 +318,7 @@ impl<T: Config<I>, I: 'static> BondingController for Pallet<T, I> {
 	}
 
 	fn apply_ledger(who: &Self::AccountId, ledger: &BondingLedgerOf<T, I>) -> DispatchResult {
-		let total = ledger.total();
-		if total.is_zero() {
+		if ledger.is_empty() {
 			let res = T::Currency::remove_lock(T::PalletId::get(), who);
 			if let Err(e) = res {
 				log::warn!(

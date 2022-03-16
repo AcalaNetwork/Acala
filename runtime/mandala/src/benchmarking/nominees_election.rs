@@ -17,7 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-	AccountId, CurrencyId, GetLiquidCurrencyId, MaxUnlockingChunks, MinCouncilBondThreshold, NominateesCount,
+	AccountId, CurrencyId, GetLiquidCurrencyId, MaxUnbondingChunks, MinCouncilBondThreshold, NominateesCount,
 	NomineesElection, Runtime,
 };
 
@@ -47,7 +47,7 @@ runtime_benchmarks! {
 	}: _(RawOrigin::Signed(caller), MinCouncilBondThreshold::get())
 
 	rebond {
-		let c in 1 .. MaxUnlockingChunks::get();
+		let c in 1 .. MaxUnbondingChunks::get();
 
 		let caller: AccountId = whitelisted_caller();
 		set_balance(LIQUID, &caller, 2 * MinCouncilBondThreshold::get());
@@ -58,7 +58,7 @@ runtime_benchmarks! {
 	}: _(RawOrigin::Signed(caller), MinCouncilBondThreshold::get())
 
 	withdraw_unbonded {
-		let c in 1 .. MaxUnlockingChunks::get();
+		let c in 1 .. MaxUnbondingChunks::get();
 
 		let caller: AccountId = whitelisted_caller();
 		set_balance(LIQUID, &caller, 2 * MinCouncilBondThreshold::get());
