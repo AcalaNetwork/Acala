@@ -26,7 +26,10 @@ use module_asset_registry::EvmErc20InfoMapping;
 use module_evm_accounts::EvmAddressMapping;
 use module_evm_bridge::EVMBridge;
 use module_support::{EVMBridge as EVMBridgeT, Erc20InfoMapping, EVM as EVMTrait};
-use primitives::{convert_decimals_to_evm, evm::EvmAddress, TradingPair};
+use primitives::{
+	evm::{convert_decimals_to_evm, EvmAddress},
+	TradingPair,
+};
 use sp_core::{H256, U256};
 use sp_runtime::traits::SignedExtension;
 use sp_runtime::Percent;
