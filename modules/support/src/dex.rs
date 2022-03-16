@@ -70,6 +70,22 @@ pub trait DEXManager<AccountId, CurrencyId, Balance> {
 	) -> sp_std::result::Result<(Balance, Balance), DispatchError>;
 }
 
+pub trait StableAssetDEX<AccountId, Balance, CurrencyId, StableAssetPoolId, PoolTokenIndex> {
+	fn get_best_price_pool(
+		supply_currency_id: CurrencyId,
+		target_currency_id: CurrencyId,
+		limit: SwapLimit<Balance>,
+	) -> Option<(StableAssetPoolId, PoolTokenIndex, PoolTokenIndex)>;
+
+	fn swap(
+		who: &AccountId,
+		pool_id: StableAssetPoolId,
+		supply_asset_index: PoolTokenIndex,
+		target_asset_index: PoolTokenIndex,
+		limit: SwapLimit<Balance>,
+	) -> sp_std::result::Result<(Balance, Balance), DispatchError>;
+}
+
 #[cfg(feature = "std")]
 impl<AccountId, CurrencyId, Balance> DEXManager<AccountId, CurrencyId, Balance> for ()
 where
