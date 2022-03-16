@@ -28,7 +28,7 @@ use frame_support::{
 use frame_system::pallet_prelude::*;
 use orml_traits::{BasicCurrency, BasicLockableCurrency};
 use primitives::{
-	bonding::{BondingLedger, Error as BondingError},
+	bonding::{self, BondingController},
 	Balance, EraIndex,
 };
 use sp_runtime::{
@@ -57,41 +57,28 @@ pub mod module {
 		#[pallet::constant]
 		type PalletId: Get<LockIdentifier>;
 		#[pallet::constant]
-		type MinBondThreshold: Get<Balance>;
+		type MinBond: Get<Balance>;
 		#[pallet::constant]
 		type BondingDuration: Get<EraIndex>;
 		#[pallet::constant]
 		type NominateesCount: Get<u32>;
 		#[pallet::constant]
-		type MaxUnlockingChunks: Get<u32>;
+		type MaxUnbondingChunks: Get<u32>;
 		type NomineeFilter: Contains<Self::NomineeId>;
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
 	}
 
-	pub type BondingLedgerOf<T, I> =
-		BondingLedger<EraIndex, <T as Config<I>>::MaxUnlockingChunks, <T as Config<I>>::MinBondThreshold>;
+	pub type BondingLedgerOf<T, I> = bonding::BondingLedgerOf<Pallet<T, I>>;
 
 	#[pallet::error]
 	pub enum Error<T, I = ()> {
 		BelowMinBondThreshold,
 		InvalidTargetsLength,
 		MaxUnlockChunksExceeded,
-		NoBonded,
-		NoUnlockChunk,
 		InvalidNominee,
 		NominateesCountExceeded,
-	}
-
-	impl<T, I> From<BondingError> for Error<T, I> {
-		fn from(value: BondingError) -> Self {
-			match value {
-				BondingError::BelowMinBondThreshold => Error::<T, I>::BelowMinBondThreshold,
-				BondingError::MaxUnlockChunksExceeded => Error::<T, I>::MaxUnlockChunksExceeded,
-				BondingError::NoBonded => Error::<T, I>::NoBonded,
-				BondingError::NoUnlockChunk => Error::<T, I>::NoUnlockChunk,
-			}
-		}
+		NotBonded,
 	}
 
 	#[pallet::event]
@@ -119,7 +106,7 @@ pub mod module {
 	#[pallet::storage]
 	#[pallet::getter(fn ledger)]
 	pub type Ledger<T: Config<I>, I: 'static = ()> =
-		StorageMap<_, Twox64Concat, T::AccountId, BondingLedgerOf<T, I>, ValueQuery>;
+		StorageMap<_, Twox64Concat, T::AccountId, BondingLedgerOf<T, I>, OptionQuery>;
 
 	/// The total voting value for nominees.
 	///
@@ -158,19 +145,12 @@ pub mod module {
 		pub fn bond(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			let ledger = Self::ledger(&who);
-			let free_balance = T::Currency::free_balance(&who);
-			if let Some(extra) = free_balance.checked_sub(ledger.total()) {
-				let extra = extra.min(amount);
+			let change = <Self as BondingController>::bond(&who, amount)?;
 
-				let old_active = ledger.active();
-
-				let ledger = ledger.bond(extra).map_err(Into::<Error<T, I>>::into)?;
-
+			if let Some(change) = change {
 				let old_nominations = Self::nominations(&who);
 
-				Self::update_votes(old_active, &old_nominations, ledger.active(), &old_nominations);
-				Self::update_ledger(&who, &ledger);
+				Self::update_votes(change.old, &old_nominations, change.new, &old_nominations);
 			}
 			Ok(())
 		}
@@ -180,65 +160,54 @@ pub mod module {
 		pub fn unbond(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			let ledger = Self::ledger(&who);
+			let unbond_at = Self::current_era().saturating_add(T::BondingDuration::get());
+			let change = <Self as BondingController>::unbond(&who, amount, unbond_at)?;
 
-			let old_active = ledger.active();
-
-			// Note: in case there is no current era it is fine to bond one era more.
-			let era = Self::current_era() + T::BondingDuration::get();
-			let (ledger, amount) = ledger.unbond(amount, era).map_err(Into::<Error<T, I>>::into)?;
-
-			if !amount.is_zero() {
+			if let Some(change) = change {
 				let old_nominations = Self::nominations(&who);
 
-				Self::update_votes(old_active, &old_nominations, ledger.active(), &old_nominations);
-				Self::update_ledger(&who, &ledger);
+				Self::update_votes(change.old, &old_nominations, change.new, &old_nominations);
 			}
 
 			Ok(())
 		}
 
-		#[pallet::weight(T::WeightInfo::rebond(T::MaxUnlockingChunks::get()))]
+		#[pallet::weight(T::WeightInfo::rebond(T::MaxUnbondingChunks::get()))]
 		#[transactional]
-		pub fn rebond(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResultWithPostInfo {
+		pub fn rebond(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResult {
 			let who = ensure_signed(origin)?;
-			let ledger = Self::ledger(&who);
 
-			let old_active = ledger.active();
-			let old_ledger_unlocking = ledger.unlocking_len();
-			let old_nominations = Self::nominations(&who);
-			let (ledger, amount) = ledger.rebond(amount).map_err(Into::<Error<T, I>>::into)?;
+			let change = <Self as BondingController>::rebond(&who, amount)?;
 
-			Self::update_votes(old_active, &old_nominations, ledger.active(), &old_nominations);
-			Self::update_ledger(&who, &ledger);
-			Self::deposit_event(Event::Rebond { who, amount });
-			let removed_len = old_ledger_unlocking - ledger.unlocking_len();
-			Ok(Some(T::WeightInfo::rebond(removed_len as u32)).into())
+			if let Some(change) = change {
+				let old_nominations = Self::nominations(&who);
+
+				Self::update_votes(change.old, &old_nominations, change.new, &old_nominations);
+				Self::deposit_event(Event::Rebond {
+					who,
+					amount: change.change,
+				});
+			}
+
+			Ok(())
 		}
 
-		#[pallet::weight(T::WeightInfo::withdraw_unbonded(T::MaxUnlockingChunks::get()))]
+		#[pallet::weight(T::WeightInfo::withdraw_unbonded(T::MaxUnbondingChunks::get()))]
 		#[transactional]
-		pub fn withdraw_unbonded(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
+		pub fn withdraw_unbonded(origin: OriginFor<T>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
-			let ledger = Self::ledger(&who);
-			let old_ledger_unlocking = ledger.unlocking_len();
-			let ledger = ledger.consolidate_unlocked(Self::current_era());
 
-			if ledger.is_empty() {
-				Self::remove_ledger(&who);
-			} else {
-				// This was the consequence of a partial unbond. just update the ledger and move
-				// on.
-				Self::update_ledger(&who, &ledger);
-			}
-			let removed_len = old_ledger_unlocking - ledger.unlocking_len();
-			Ok(Some(T::WeightInfo::withdraw_unbonded(removed_len as u32)).into())
+			<Self as BondingController>::withdraw_unbonded(&who, Self::current_era())?;
+
+			Ok(())
 		}
 
 		#[pallet::weight(T::WeightInfo::nominate(targets.len() as u32))]
 		#[transactional]
 		pub fn nominate(origin: OriginFor<T>, targets: Vec<T::NomineeId>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
+
+			let ledger = Self::ledger(&who).ok_or(Error::<T, I>::NotBonded)?;
 
 			let bounded_targets: BoundedVec<<T as Config<I>>::NomineeId, <T as Config<I>>::NominateesCount> = {
 				if targets.is_empty() {
@@ -253,10 +222,7 @@ pub mod module {
 					targets.sort();
 					targets.dedup();
 				})
-				.ok_or(Error::<T, I>::InvalidTargetsLength)?;
-
-			let ledger = Self::ledger(&who);
-			ensure!(!ledger.active().is_zero(), Error::<T, I>::NoBonded);
+				.expect("This only reduce size of the vector; qed");
 
 			for validator in bounded_targets.iter() {
 				ensure!(T::NomineeFilter::contains(validator), Error::<T, I>::InvalidNominee);
@@ -272,51 +238,23 @@ pub mod module {
 
 		#[pallet::weight(T::WeightInfo::chill(T::NominateesCount::get()))]
 		#[transactional]
-		pub fn chill(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
+		pub fn chill(origin: OriginFor<T>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
+			let ledger = Self::ledger(&who).ok_or(Error::<T, I>::NotBonded)?;
+
 			let old_nominations = Self::nominations(&who);
-			let old_active = Self::ledger(&who).active();
+			let old_active = ledger.active();
 
 			Self::update_votes(old_active, &old_nominations, Zero::zero(), &[]);
 			Nominations::<T, I>::remove(&who);
-			Ok(Some(T::WeightInfo::chill(old_nominations.len() as u32)).into())
+
+			Ok(())
 		}
 	}
 }
 
 impl<T: Config<I>, I: 'static> Pallet<T, I> {
-	fn update_ledger(who: &T::AccountId, ledger: &BondingLedgerOf<T, I>) {
-		let res = T::Currency::set_lock(T::PalletId::get(), who, ledger.total());
-		if let Err(e) = res {
-			log::warn!(
-				target: "nominees-election",
-				"set_lock: failed to lock {:?} for {:?}: {:?}. \
-				This is unexpected but should be safe",
-				ledger.total(), &who, e
-			);
-			debug_assert!(false);
-		}
-
-		Ledger::<T, I>::insert(who, ledger);
-	}
-
-	fn remove_ledger(who: &T::AccountId) {
-		let res = T::Currency::remove_lock(T::PalletId::get(), who);
-		if let Err(e) = res {
-			log::warn!(
-				target: "nominees-election",
-				"remove_lock: failed to remove lock for {:?}: {:?}. \
-				This is unexpected but should be safe",
-				&who, e
-			);
-			debug_assert!(false);
-		}
-
-		Ledger::<T, I>::remove(who);
-		Nominations::<T, I>::remove(who);
-	}
-
 	fn update_votes(
 		old_active: Balance,
 		old_nominations: &[T::NomineeId],
@@ -363,5 +301,59 @@ impl<T: Config<I>, I: 'static> OnNewEra<EraIndex> for Pallet<T, I> {
 	fn on_new_era(era: EraIndex) {
 		CurrentEra::<T, I>::put(era);
 		Self::rebalance();
+	}
+}
+
+impl<T: Config<I>, I: 'static> BondingController for Pallet<T, I> {
+	type MinBond = T::MinBond;
+	type MaxUnbondingChunks = T::MaxUnbondingChunks;
+	type Moment = EraIndex;
+	type AccountId = T::AccountId;
+
+	type Ledger = Ledger<T, I>;
+
+	fn available_balance(who: &Self::AccountId, ledger: &BondingLedgerOf<T, I>) -> Balance {
+		let free_balance = T::Currency::free_balance(&who);
+		free_balance.saturating_sub(ledger.total())
+	}
+
+	fn apply_ledger(who: &Self::AccountId, ledger: &BondingLedgerOf<T, I>) -> DispatchResult {
+		let total = ledger.total();
+		if total.is_zero() {
+			let res = T::Currency::remove_lock(T::PalletId::get(), who);
+			if let Err(e) = res {
+				log::warn!(
+					target: "nominees-election",
+					"remove_lock: failed to remove lock for {:?}: {:?}. \
+					This is unexpected but should be safe",
+					&who, e
+				);
+				debug_assert!(false);
+			}
+
+			Nominations::<T, I>::remove(who);
+
+			res
+		} else {
+			let res = T::Currency::set_lock(T::PalletId::get(), who, ledger.total());
+			if let Err(e) = res {
+				log::warn!(
+					target: "nominees-election",
+					"set_lock: failed to lock {:?} for {:?}: {:?}. \
+					This is unexpected but should be safe",
+					ledger.total(), &who, e
+				);
+				debug_assert!(false);
+			}
+			res
+		}
+	}
+
+	fn convert_error(err: bonding::Error) -> DispatchError {
+		match err {
+			bonding::Error::BelowMinBondThreshold => Error::<T, I>::BelowMinBondThreshold.into(),
+			bonding::Error::MaxUnlockChunksExceeded => Error::<T, I>::MaxUnlockChunksExceeded.into(),
+			bonding::Error::NotBonded => Error::<T, I>::NotBonded.into(),
+		}
 	}
 }
