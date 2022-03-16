@@ -44,7 +44,7 @@ pub use module::*;
 pub mod module {
 	use super::*;
 
-	#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, TypeInfo)]
+	#[derive(Encode, Decode, Eq, PartialEq, Clone, RuntimeDebug, TypeInfo)]
 	pub enum XcmInterfaceOperation {
 		// XTokens
 		XtokensTransfer,
@@ -52,6 +52,8 @@ pub mod module {
 		HomaWithdrawUnbonded,
 		HomaBondExtra,
 		HomaUnbond,
+		// Parachain fee with location info
+		ParachainFee(Box<MultiLocation>),
 	}
 
 	#[pallet::config]
@@ -249,6 +251,11 @@ pub mod module {
 		/// The fee of cross-chain transfer is deducted from the recipient.
 		fn get_xcm_transfer_fee() -> Balance {
 			Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::XtokensTransfer).1
+		}
+
+		/// The fee of parachain transfer.
+		fn get_parachain_fee(location: MultiLocation) -> Balance {
+			Self::xcm_dest_weight_and_fee(XcmInterfaceOperation::ParachainFee(Box::new(location))).1
 		}
 	}
 }
