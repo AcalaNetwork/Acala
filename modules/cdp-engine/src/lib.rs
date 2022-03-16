@@ -1258,7 +1258,7 @@ impl<T: Config> Pallet<T> {
 			// need to be returned to the `who` from cdp treasury account.
 			if actual_target_amount > target_stable_amount {
 				<T as Config>::CDPTreasury::withdraw_surplus(
-					&who,
+					who,
 					actual_target_amount.saturating_sub(target_stable_amount),
 				)?;
 			}
