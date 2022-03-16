@@ -621,7 +621,6 @@ where
 	where
 		T: Send + Sync,
 		PalletBalanceOf<T>: Send + Sync,
-		CallOf<T>: Dispatchable<Info = DispatchInfo>,
 	{
 		// NOTE: we can actually make it understand `ChargeTransactionPayment`, but
 		// would be some hassle for sure. We have to make it aware of the index of
@@ -645,10 +644,7 @@ where
 	pub fn query_fee_details<Extrinsic: GetDispatchInfo>(
 		unchecked_extrinsic: Extrinsic,
 		len: u32,
-	) -> FeeDetails<PalletBalanceOf<T>>
-	where
-		CallOf<T>: Dispatchable<Info = DispatchInfo>,
-	{
+	) -> FeeDetails<PalletBalanceOf<T>> {
 		let dispatch_info = <Extrinsic as GetDispatchInfo>::get_dispatch_info(&unchecked_extrinsic);
 		Self::compute_fee_details(len, &dispatch_info, 0u32.into())
 	}
@@ -658,10 +654,7 @@ where
 		len: u32,
 		info: &DispatchInfoOf<CallOf<T>>,
 		tip: PalletBalanceOf<T>,
-	) -> FeeDetails<PalletBalanceOf<T>>
-	where
-		CallOf<T>: Dispatchable<Info = DispatchInfo>,
-	{
+	) -> FeeDetails<PalletBalanceOf<T>> {
 		Self::compute_fee_raw(len, info.weight, tip, info.pays_fee, info.class)
 	}
 
@@ -687,10 +680,7 @@ where
 	/// inclusion_fee = base_fee + len_fee + [targeted_fee_adjustment * weight_fee];
 	/// final_fee = inclusion_fee + tip;
 	/// ```
-	pub fn compute_fee(len: u32, info: &DispatchInfoOf<CallOf<T>>, tip: PalletBalanceOf<T>) -> PalletBalanceOf<T>
-	where
-		CallOf<T>: Dispatchable<Info = DispatchInfo>,
-	{
+	pub fn compute_fee(len: u32, info: &DispatchInfoOf<CallOf<T>>, tip: PalletBalanceOf<T>) -> PalletBalanceOf<T> {
 		Self::compute_fee_details(len, info, tip).final_fee()
 	}
 
@@ -701,10 +691,7 @@ where
 		info: &DispatchInfoOf<CallOf<T>>,
 		post_info: &PostDispatchInfoOf<CallOf<T>>,
 		tip: PalletBalanceOf<T>,
-	) -> FeeDetails<PalletBalanceOf<T>>
-	where
-		CallOf<T>: Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo>,
-	{
+	) -> FeeDetails<PalletBalanceOf<T>> {
 		Self::compute_fee_raw(
 			len,
 			post_info.calc_actual_weight(info),
@@ -723,10 +710,7 @@ where
 		info: &DispatchInfoOf<CallOf<T>>,
 		post_info: &PostDispatchInfoOf<CallOf<T>>,
 		tip: PalletBalanceOf<T>,
-	) -> PalletBalanceOf<T>
-	where
-		CallOf<T>: Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo>,
-	{
+	) -> PalletBalanceOf<T> {
 		Self::compute_actual_fee_details(len, info, post_info, tip).final_fee()
 	}
 
