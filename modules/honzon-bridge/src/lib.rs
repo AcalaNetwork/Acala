@@ -33,8 +33,10 @@ use orml_traits::MultiCurrency;
 
 mod mock;
 mod tests;
+pub mod weights;
 
 pub use module::*;
+pub use weights::WeightInfo;
 
 #[frame_support::pallet]
 pub mod module {
@@ -43,6 +45,9 @@ pub mod module {
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+
+		/// Weight information for the extrinsics in this module.
+		type WeightInfo: WeightInfo;
 
 		/// Multi-currency support for asset management
 		type Currency: MultiCurrency<Self::AccountId, CurrencyId = CurrencyId, Balance = Balance>;
@@ -71,6 +76,13 @@ pub mod module {
 	#[pallet::pallet]
 	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
+
+	#[pallet::hooks]
+	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
+		fn integrity_test() {
+			assert!(T::StablecoinCurrencyId::get() != T::BridgedStableCoinCurrencyId::get());
+		}
+	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {

@@ -4719,6 +4719,7 @@ dependencies = [
  "module-evm-rpc-runtime-api",
  "module-homa",
  "module-honzon",
+ "module-honzon-bridge",
  "module-idle-scheduler",
  "module-incentives",
  "module-loans",
@@ -6544,6 +6545,7 @@ dependencies = [
  "sp-core",
  "sp-io",
  "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]

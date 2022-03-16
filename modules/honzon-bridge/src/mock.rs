@@ -136,6 +136,7 @@ parameter_types! {
 
 impl Config for Runtime {
 	type Event = Event;
+	type WeightInfo = ();
 	type Currency = Currencies;
 	type StablecoinCurrencyId = StablecoinCurrencyId;
 	type BridgedStableCoinCurrencyId = BridgedStableCoinCurrencyId;

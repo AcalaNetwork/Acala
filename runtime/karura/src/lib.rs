@@ -83,7 +83,7 @@ pub use authority::AuthorityConfigImpl;
 pub use constants::{fee::*, parachains, time::*};
 pub use primitives::{
 	define_combined_task,
-	evm::{AccessListItem, EstimateResourcesRequest},
+	evm::{AccessListItem, EstimateResourcesRequest, EvmAddress},
 	task::TaskResult,
 	AccountId, AccountIndex, Address, Amount, AuctionId, AuthoritysOriginId, Balance, BlockNumber, CurrencyId,
 	DataProviderId, EraIndex, Hash, Lease, Moment, Nonce, ReserveIdentifier, Share, Signature, TokenSymbol,
@@ -160,6 +160,7 @@ parameter_types! {
 	pub const HomaTreasuryPalletId: PalletId = PalletId(*b"aca/hmtr");
 	pub const IncentivesPalletId: PalletId = PalletId(*b"aca/inct");
 	pub const CollatorPotId: PalletId = PalletId(*b"aca/cpot");
+	pub const HonzonBridgePalletId: PalletId = PalletId(*b"aca/hzbg");
 	// Treasury reserve
 	pub const TreasuryReservePalletId: PalletId = PalletId(*b"aca/reve");
 	pub const NftPalletId: PalletId = PalletId(*b"aca/aNFT");
@@ -186,6 +187,7 @@ pub fn get_all_module_accounts() -> Vec<AccountId> {
 		TreasuryReservePalletId::get().into_account(),
 		UnreleasedNativeVaultAccountId::get(),
 		StableAssetPalletId::get().into_account(),
+		HonzonBridgePalletId::get().into_account(),
 	]
 }
 
@@ -1552,6 +1554,20 @@ impl module_idle_scheduler::Config for Runtime {
 }
 
 parameter_types! {
+	pub WormholeAUSDCurrencyId: CurrencyId = CurrencyId::Erc20(EvmAddress::from(hex_literal::hex!["0000000000000000000100000000000000000001"]));
+	pub const StableCoinCurrencyId: CurrencyId = KUSD;
+}
+
+impl module_honzon_bridge::Config for Runtime {
+	type Event = Event;
+	type WeightInfo = weights::module_honzon_bridge::WeightInfo<Runtime>;
+	type Currency = Currencies;
+	type StablecoinCurrencyId = StableCoinCurrencyId;
+	type BridgedStableCoinCurrencyId = WormholeAUSDCurrencyId;
+	type PalletId = HonzonBridgePalletId;
+}
+
+parameter_types! {
 	pub const FeePrecision: u128 = 10_000_000_000u128; // 10 decimals
 	pub const APrecision: u128 = 100u128; // 2 decimals
 	pub const PoolAssetLimit: u32 = 5u32;
@@ -1702,6 +1718,7 @@ construct_runtime!(
 		CdpTreasury: module_cdp_treasury::{Pallet, Storage, Call, Config, Event<T>} = 103,
 		CdpEngine: module_cdp_engine::{Pallet, Storage, Call, Event<T>, Config, ValidateUnsigned} = 104,
 		EmergencyShutdown: module_emergency_shutdown::{Pallet, Storage, Call, Event<T>} = 105,
+		HonzonBridge: module_honzon_bridge::{Pallet, Call, Event<T>} = 106,
 
 		// Homa
 		Homa: module_homa::{Pallet, Call, Storage, Event<T>} = 116,
@@ -1797,6 +1814,7 @@ mod benches {
 		[module_evm_accounts, benchmarking::evm_accounts]
 		[module_currencies, benchmarking::currencies]
 		[module_session_manager, benchmarking::session_manager]
+		[module_honzon_bridge, benchmarking::honzon_bridge]
 		[orml_tokens, benchmarking::tokens]
 		[orml_vesting, benchmarking::vesting]
 		[orml_auction, benchmarking::auction]
@@ -2218,7 +2236,7 @@ mod tests {
 	#[test]
 	fn check_call_size() {
 		assert!(
-			core::mem::size_of::<Call>() <= 260,
+			core::mem::size_of::<Call>() <= 300,
 			"size of Call is more than 260 bytes: some calls have too big arguments, use Box to \
 			reduce the size of Call.
 			If the limit is too strong, maybe consider increasing the limit",
