@@ -136,18 +136,18 @@ pub mod module {
 			T::UpdateOrigin::ensure_origin(origin)?;
 
 			for (operation, weight_change, fee_change) in updates {
-				XcmDestWeightAndFee::<T>::mutate(operation, |(weight, fee)| {
+				XcmDestWeightAndFee::<T>::mutate(&operation, |(weight, fee)| {
 					if let Some(new_weight) = weight_change {
 						*weight = new_weight;
 						Self::deposit_event(Event::<T>::XcmDestWeightUpdated {
-							xcm_operation: operation,
+							xcm_operation: operation.clone(),
 							new_xcm_dest_weight: new_weight,
 						});
 					}
 					if let Some(new_fee) = fee_change {
 						*fee = new_fee;
 						Self::deposit_event(Event::<T>::XcmFeeUpdated {
-							xcm_operation: operation,
+							xcm_operation: operation.clone(),
 							new_xcm_dest_weight: new_fee,
 						});
 					}
