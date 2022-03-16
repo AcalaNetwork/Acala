@@ -20,6 +20,7 @@
 #![allow(clippy::unnecessary_cast)]
 #![allow(clippy::upper_case_acronyms)]
 
+pub mod bonding;
 pub mod currency;
 pub mod evm;
 pub mod nft;
