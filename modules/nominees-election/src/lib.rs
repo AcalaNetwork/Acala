@@ -313,7 +313,7 @@ impl<T: Config<I>, I: 'static> BondingController for Pallet<T, I> {
 	type Ledger = Ledger<T, I>;
 
 	fn available_balance(who: &Self::AccountId, ledger: &BondingLedgerOf<T, I>) -> Balance {
-		let free_balance = T::Currency::free_balance(&who);
+		let free_balance = T::Currency::free_balance(who);
 		free_balance.saturating_sub(ledger.total())
 	}
 
