@@ -70,12 +70,7 @@ where
 	MinBondThreshold: Get<Balance>,
 {
 	pub fn new() -> Self {
-		Self {
-			unlocking: Default::default(),
-			total: Default::default(),
-			active: Default::default(),
-			_phantom: Default::default(),
-		}
+		Default::default()
 	}
 
 	pub fn active(&self) -> Balance {
@@ -196,7 +191,12 @@ where
 	MinBondThreshold: Get<Balance>,
 {
 	fn default() -> Self {
-		Self::new()
+		Self {
+			unlocking: Default::default(),
+			total: Default::default(),
+			active: Default::default(),
+			_phantom: Default::default(),
+		}
 	}
 }
 
