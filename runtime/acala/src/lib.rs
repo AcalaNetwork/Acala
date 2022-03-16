@@ -1681,15 +1681,6 @@ pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExt
 pub type Executive =
 	frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllPalletsWithSystem, ()>;
 
-// Migration for scheduler pallet to move from a plain Call to a CallOrHash.
-pub struct XcmInterfaceMigrationV1;
-
-impl OnRuntimeUpgrade for XcmInterfaceMigrationV1 {
-	fn on_runtime_upgrade() -> frame_support::weights::Weight {
-		module_xcm_interface::migrations::v1::migrate::<Runtime, XcmInterface>()
-	}
-}
-
 #[cfg(feature = "runtime-benchmarks")]
 #[macro_use]
 extern crate orml_benchmarking;
