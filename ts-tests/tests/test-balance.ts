@@ -11,7 +11,7 @@ describeWithAcala("Acala RPC (Balance)", (context) => {
 	});
 
 	step("genesis balance is setup correctly", async function () {
-		expect((await context.provider.getBalance(alice.getAddress())).toString()).to.equal("8999999986279096000000000");
+		expect((await context.provider.getBalance(alice.getAddress())).toString()).to.equal("8999999986402744000000000");
 		expect((await context.provider.getBalance(alice.getAddress(), "latest")).toString()).to.equal("8999999986279096000000000");
 
 		expect((await context.provider.getBalance(alice.getAddress(), "latest")).toString())
