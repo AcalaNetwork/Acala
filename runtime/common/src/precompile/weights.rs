@@ -30,30 +30,30 @@ impl<T: frame_system::Config> PrecompileWeights<T> {
 	// Oracle::RawValues (r: 3, w: 0)
 	// Oracle::Values (r: 1, w: 1)
 	pub fn oracle_get_price() -> Weight {
-		(13_503_000 as Weight)
+		(26_031_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(5 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
 	pub fn evm_query_new_contract_extra_bytes() -> Weight {
-		(502_000 as Weight)
+		(1_112_000 as Weight)
 	}
 	pub fn evm_query_storage_deposit_per_byte() -> Weight {
-		(536_000 as Weight)
+		(1_082_000 as Weight)
 	}
 	// EVMModule::Accounts (r: 1, w: 0)
 	pub fn evm_query_maintainer() -> Weight {
-		(2_384_000 as Weight)
+		(4_281_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 	}
 	pub fn evm_query_developer_deposit() -> Weight {
-		(511_000 as Weight)
+		(1_063_000 as Weight)
 	}
 	pub fn evm_query_publication_fee() -> Weight {
-		(525_000 as Weight)
+		(1_040_000 as Weight)
 	}
 	// Balances::Reserves (r: 1, w: 0)
 	pub fn evm_query_developer_status() -> Weight {
-		(1_923_000 as Weight)
+		(3_235_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 	}
 }
