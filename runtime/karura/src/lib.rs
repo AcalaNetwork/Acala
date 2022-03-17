@@ -1106,6 +1106,7 @@ impl module_emergency_shutdown::Config for Runtime {
 parameter_types! {
 	pub const GetExchangeFee: (u32, u32) = (3, 1000);	// 0.3%
 	pub const TradingPathLimit: u32 = 4;
+	pub const ExtendedProvisioningBlocks: BlockNumber = 2 * DAYS;
 }
 
 impl module_dex::Config for Runtime {
@@ -1118,6 +1119,7 @@ impl module_dex::Config for Runtime {
 	type DEXIncentives = Incentives;
 	type WeightInfo = weights::module_dex::WeightInfo<Runtime>;
 	type ListingOrigin = EnsureRootOrHalfGeneralCouncil;
+	type ExtendedProvisioningBlocks = ExtendedProvisioningBlocks;
 	type OnLiquidityPoolUpdated = ();
 }
 
