@@ -97,14 +97,6 @@ impl<T: frame_system::Config> module_evm::WeightInfo for WeightInfo<T> {
 			.saturating_add(T::DbWeight::get().reads(12 as Weight))
 			.saturating_add(T::DbWeight::get().writes(9 as Weight))
 	}
-	// Storage: EvmAccounts Accounts (r:1 w:0)
-	// Storage: System Account (r:2 w:2)
-	// Storage: EVM Accounts (r:1 w:0)
-	fn create_predeploy_mirror_token_contract() -> Weight {
-		(79_239_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(4 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
-	}
 	// Storage: EvmAccounts EvmAddresses (r:1 w:0)
 	// Storage: EVM Accounts (r:2 w:1)
 	// Storage: EvmAccounts Accounts (r:2 w:0)
