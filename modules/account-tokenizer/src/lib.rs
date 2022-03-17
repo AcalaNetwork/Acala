@@ -155,13 +155,13 @@ pub mod module {
 		MintRequested { account: T::AccountId, who: T::AccountId },
 		/// The mint request is deemed invalid by oracle.
 		MintRequestRejected { requester: T::AccountId },
-		/// A Account Token NFT is minted to an account.
+		/// An account Token NFT is minted to an account.
 		AccountTokenMinted {
 			owner: T::AccountId,
 			account: T::AccountId,
 			token_id: T::TokenId,
 		},
-		/// An request to redeem the account token is submitted. XCM message is sent to the
+		/// A request to redeem the account token is submitted. XCM message is sent to the
 		/// relaychain.
 		RedeemRequested {
 			account: T::AccountId,
@@ -170,11 +170,10 @@ pub mod module {
 			new_owner: T::AccountId,
 		},
 		/// The account token is redeemed, the control of the `account` on the relaychain is
-		/// relinquished to `new_owner`.
+		/// relinquished from module account.
 		AccountTokenRedeemed {
 			account: T::AccountId,
 			token_id: T::TokenId,
-			new_owner: T::AccountId,
 		},
 	}
 
@@ -385,7 +384,6 @@ pub mod module {
 			// Submit confirmation call to be serviced by foreign state oracle
 			let call: <T as Config>::Call = Call::<T>::confirm_redeem_account_token {
 				account: account.clone(),
-				new_owner: new_owner.clone(),
 			}
 			.into();
 			T::ForeignStateQuery::create_query(&who, call, None)?;
@@ -412,11 +410,7 @@ pub mod module {
 		/// 	- `new_owner`: The owner of the proxy account to be transferred to.
 		#[pallet::weight(< T as Config >::WeightInfo::confirm_redeem_account_token())]
 		#[transactional]
-		pub fn confirm_redeem_account_token(
-			origin: OriginFor<T>,
-			account: T::AccountId,
-			new_owner: T::AccountId,
-		) -> DispatchResult {
+		pub fn confirm_redeem_account_token(origin: OriginFor<T>, account: T::AccountId) -> DispatchResult {
 			T::OracleOrigin::ensure_origin(origin)?;
 
 			let nft_class_id = Self::nft_class_id();
@@ -428,11 +422,7 @@ pub mod module {
 			// Find the NFT and burn it
 			T::NFTInterface::burn_from(&nft_class_id, &token_id)?;
 
-			Self::deposit_event(Event::AccountTokenRedeemed {
-				account,
-				token_id,
-				new_owner,
-			});
+			Self::deposit_event(Event::AccountTokenRedeemed { account, token_id });
 
 			Ok(())
 		}
