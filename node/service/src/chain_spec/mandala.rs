@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use acala_primitives::{evm::PREDEPLOY_ADDRESS_START, AccountId, Balance, Nonce, TokenSymbol};
+use acala_primitives::{AccountId, Balance, Nonce, TokenSymbol};
 use ethers::signers::{coins_bip39::English, MnemonicBuilder, Signer};
 use hex_literal::hex;
 use module_evm::GenesisAccount;

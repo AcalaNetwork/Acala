@@ -60,7 +60,7 @@ use primitive_types::{H160, H256, U256};
 pub use primitives::{
 	evm::{
 		convert_decimals_from_evm, convert_decimals_to_evm, CallInfo, CreateInfo, EvmAddress, ExecutionInfo, Vicinity,
-		MIRRORED_NFT_ADDRESS_START, MIRRORED_TOKENS_ADDRESS_START, PREDEPLOY_ADDRESS_START,
+		MIRRORED_NFT_ADDRESS_START, MIRRORED_TOKENS_ADDRESS_START,
 	},
 	task::TaskResult,
 	Balance, CurrencyId, ReserveIdentifier,
