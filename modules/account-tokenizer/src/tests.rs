@@ -363,6 +363,7 @@ fn can_burn_account_token_nft() {
 				Event::AccountTokenizer(crate::Event::AccountTokenRedeemed {
 					account: proxy.clone(),
 					token_id: 0,
+					new_owner: ALICE,
 				})
 			);
 			System::assert_last_event(Event::ForeignStateOracle(

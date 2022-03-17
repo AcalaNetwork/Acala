@@ -170,10 +170,11 @@ pub mod module {
 			new_owner: T::AccountId,
 		},
 		/// The account token is redeemed, the control of the `account` on the relaychain is
-		/// relinquished from module account.
+		/// relinquished to `new_owner`.
 		AccountTokenRedeemed {
 			account: T::AccountId,
 			token_id: T::TokenId,
+			new_owner: T::AccountId,
 		},
 	}
 
@@ -384,6 +385,7 @@ pub mod module {
 			// Submit confirmation call to be serviced by foreign state oracle
 			let call: <T as Config>::Call = Call::<T>::confirm_redeem_account_token {
 				account: account.clone(),
+				new_owner: new_owner.clone(),
 			}
 			.into();
 			T::ForeignStateQuery::create_query(&who, call, None)?;
@@ -410,7 +412,11 @@ pub mod module {
 		/// 	- `new_owner`: The owner of the proxy account to be transferred to.
 		#[pallet::weight(< T as Config >::WeightInfo::confirm_redeem_account_token())]
 		#[transactional]
-		pub fn confirm_redeem_account_token(origin: OriginFor<T>, account: T::AccountId) -> DispatchResult {
+		pub fn confirm_redeem_account_token(
+			origin: OriginFor<T>,
+			account: T::AccountId,
+			new_owner: T::AccountId,
+		) -> DispatchResult {
 			T::OracleOrigin::ensure_origin(origin)?;
 
 			let nft_class_id = Self::nft_class_id();
@@ -422,7 +428,11 @@ pub mod module {
 			// Find the NFT and burn it
 			T::NFTInterface::burn_from(&nft_class_id, &token_id)?;
 
-			Self::deposit_event(Event::AccountTokenRedeemed { account, token_id });
+			Self::deposit_event(Event::AccountTokenRedeemed {
+				account,
+				token_id,
+				new_owner,
+			});
 
 			Ok(())
 		}
