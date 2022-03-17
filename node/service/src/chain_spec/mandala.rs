@@ -651,11 +651,7 @@ pub fn evm_genesis(evm_accounts: Vec<H160>) -> BTreeMap<H160, GenesisAccount<Bal
 			nonce: 0u32,
 			balance: 0u128,
 			storage: BTreeMap::new(),
-			code: if code_string.len().is_zero() {
-				vec![]
-			} else {
-				Bytes::from_str(&code_string).unwrap().0
-			},
+			code: Bytes::from_str(&code_string).unwrap().0,
 			enable_contract_development: false,
 		};
 
@@ -666,17 +662,6 @@ pub fn evm_genesis(evm_accounts: Vec<H160>) -> BTreeMap<H160, GenesisAccount<Bal
 		);
 		accounts.insert(addr, account);
 	}
-
-	// Replace mirrored token contract code.
-	let token = accounts
-		.get(&PREDEPLOY_ADDRESS_START)
-		.expect("the token predeployed contract must exist")
-		.clone();
-	accounts.iter_mut().for_each(|v| {
-		if v.1.code.is_empty() {
-			v.1.code = token.code.clone();
-		}
-	});
 
 	for dev_acc in evm_accounts {
 		let account = GenesisAccount {
