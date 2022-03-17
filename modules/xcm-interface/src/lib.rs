@@ -97,10 +97,16 @@ pub mod module {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// Xcm dest weight has been updated. \[xcm_operation, new_xcm_dest_weight\]
-		XcmDestWeightUpdated(XcmInterfaceOperation, Weight),
-		/// Xcm dest weight has been updated. \[xcm_operation, new_xcm_dest_weight\]
-		XcmFeeUpdated(XcmInterfaceOperation, Balance),
+		/// Xcm dest weight has been updated.
+		XcmDestWeightUpdated {
+			xcm_operation: XcmInterfaceOperation,
+			new_xcm_dest_weight: Weight,
+		},
+		/// Xcm dest weight has been updated.
+		XcmFeeUpdated {
+			xcm_operation: XcmInterfaceOperation,
+			new_xcm_dest_weight: Balance,
+		},
 	}
 
 	/// The dest weight limit and fee for execution XCM msg sended by XcmInterface. Must be
@@ -137,11 +143,17 @@ pub mod module {
 				XcmDestWeightAndFee::<T>::mutate(&operation, |(weight, fee)| {
 					if let Some(new_weight) = weight_change {
 						*weight = new_weight;
-						Self::deposit_event(Event::<T>::XcmDestWeightUpdated(operation.clone(), new_weight));
+						Self::deposit_event(Event::<T>::XcmDestWeightUpdated {
+							xcm_operation: operation.clone(),
+							new_xcm_dest_weight: new_weight,
+						});
 					}
 					if let Some(new_fee) = fee_change {
 						*fee = new_fee;
-						Self::deposit_event(Event::<T>::XcmFeeUpdated(operation.clone(), new_fee));
+						Self::deposit_event(Event::<T>::XcmFeeUpdated {
+							xcm_operation: operation.clone(),
+							new_xcm_dest_weight: new_fee,
+						});
 					}
 				});
 			}

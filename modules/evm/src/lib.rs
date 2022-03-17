@@ -725,7 +725,7 @@ pub mod module {
 		/// Issue an EVM create operation. This is similar to a contract
 		/// creation transaction in Ethereum.
 		///
-		/// - `init`: the data supplied for the contract's constructor
+		/// - `input`: the data supplied for the contract's constructor
 		/// - `value`: the amount sent to the contract upon creation
 		/// - `gas_limit`: the maximum gas the call can use
 		/// - `storage_limit`: the total bytes the contract's storage can increase by
@@ -733,7 +733,7 @@ pub mod module {
 		#[transactional]
 		pub fn create(
 			origin: OriginFor<T>,
-			init: Vec<u8>,
+			input: Vec<u8>,
 			#[pallet::compact] value: BalanceOf<T>,
 			#[pallet::compact] gas_limit: u64,
 			#[pallet::compact] storage_limit: u32,
@@ -744,7 +744,7 @@ pub mod module {
 
 			match T::Runner::create(
 				source,
-				init,
+				input,
 				value,
 				gas_limit,
 				storage_limit,
@@ -790,7 +790,7 @@ pub mod module {
 		/// Issue an EVM create2 operation.
 		///
 		/// - `target`: the contract address to call
-		/// - `init`: the data supplied for the contract's constructor
+		/// - `input`: the data supplied for the contract's constructor
 		/// - `salt`: used for generating the new contract's address
 		/// - `value`: the amount sent for payable calls
 		/// - `gas_limit`: the maximum gas the call can use
@@ -799,7 +799,7 @@ pub mod module {
 		#[transactional]
 		pub fn create2(
 			origin: OriginFor<T>,
-			init: Vec<u8>,
+			input: Vec<u8>,
 			salt: H256,
 			#[pallet::compact] value: BalanceOf<T>,
 			#[pallet::compact] gas_limit: u64,
@@ -811,7 +811,7 @@ pub mod module {
 
 			match T::Runner::create2(
 				source,
-				init,
+				input,
 				salt,
 				value,
 				gas_limit,
@@ -858,7 +858,7 @@ pub mod module {
 		/// Create mirrored NFT contract. The next available system contract
 		/// address will be used as created contract address.
 		///
-		/// - `init`: the data supplied for the contract's constructor
+		/// - `input`: the data supplied for the contract's constructor
 		/// - `value`: the amount sent for payable calls
 		/// - `gas_limit`: the maximum gas the call can use
 		/// - `storage_limit`: the total bytes the contract's storage can increase by
@@ -866,7 +866,7 @@ pub mod module {
 		#[transactional]
 		pub fn create_nft_contract(
 			origin: OriginFor<T>,
-			init: Vec<u8>,
+			input: Vec<u8>,
 			#[pallet::compact] value: BalanceOf<T>,
 			#[pallet::compact] gas_limit: u64,
 			#[pallet::compact] storage_limit: u32,
@@ -892,7 +892,7 @@ pub mod module {
 			match T::Runner::create_at_address(
 				source,
 				address,
-				init,
+				input,
 				value,
 				gas_limit,
 				storage_limit,
@@ -941,11 +941,11 @@ pub mod module {
 		/// will be used as created contract address.
 		///
 		/// - `target`: the address specified by the contract
-		/// - `init`: the data supplied for the contract's constructor
+		/// - `input`: the data supplied for the contract's constructor
 		/// - `value`: the amount sent for payable calls
 		/// - `gas_limit`: the maximum gas the call can use
 		/// - `storage_limit`: the total bytes the contract's storage can increase by
-		#[pallet::weight(if init.is_empty() {
+		#[pallet::weight(if input.is_empty() {
 			<T as Config>::WeightInfo::create_predeploy_mirror_token_contract()
 		} else {
 			create_predeploy_contract::<T>(*gas_limit)
@@ -954,7 +954,7 @@ pub mod module {
 		pub fn create_predeploy_contract(
 			origin: OriginFor<T>,
 			target: EvmAddress,
-			init: Vec<u8>,
+			input: Vec<u8>,
 			#[pallet::compact] value: BalanceOf<T>,
 			#[pallet::compact] gas_limit: u64,
 			#[pallet::compact] storage_limit: u32,
@@ -980,7 +980,7 @@ pub mod module {
 				)?;
 			}
 
-			if init.is_empty() {
+			if input.is_empty() {
 				// This is mirror token, get the code of token predeployed contract.
 				let code = Self::code_at_address(&PREDEPLOY_ADDRESS_START);
 				ensure!(!code.is_empty(), Error::<T>::ContractNotFound);
@@ -1008,7 +1008,7 @@ pub mod module {
 				match T::Runner::create_at_address(
 					source,
 					target,
-					init,
+					input,
 					value,
 					gas_limit,
 					storage_limit,

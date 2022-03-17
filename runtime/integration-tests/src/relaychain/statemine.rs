@@ -39,12 +39,20 @@ pub const UNITS: Balance = 1_000_000_000_000;
 pub const CENTS: Balance = UNITS / 30_000;
 
 fn init_statemine_xcm_interface() {
-	module_xcm_interface::XcmDestWeightAndFee::<Runtime>::insert(
-		module_xcm_interface::XcmInterfaceOperation::ParachainFee(Box::new(
-			(1, Parachain(parachains::statemine::ID)).into(),
-		)),
-		(4_000_000_000, 4_000_000_000),
-	);
+	let xcm_operation =
+		module_xcm_interface::XcmInterfaceOperation::ParachainFee(Box::new((1, Parachain(1000)).into()));
+	assert_ok!(<module_xcm_interface::Pallet<Runtime>>::update_xcm_dest_weight_and_fee(
+		Origin::root(),
+		vec![(xcm_operation.clone(), Some(4_000_000_000), Some(4_000_000_000),)],
+	));
+	System::assert_has_event(Event::XcmInterface(module_xcm_interface::Event::XcmDestWeightUpdated {
+		xcm_operation: xcm_operation.clone(),
+		new_xcm_dest_weight: 4_000_000_000,
+	}));
+	System::assert_has_event(Event::XcmInterface(module_xcm_interface::Event::XcmFeeUpdated {
+		xcm_operation,
+		new_xcm_dest_weight: 4_000_000_000,
+	}));
 }
 
 #[test]

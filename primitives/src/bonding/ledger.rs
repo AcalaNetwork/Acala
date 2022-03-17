@@ -16,6 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+use super::error::Error;
 use crate::Balance;
 use codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
@@ -35,8 +36,8 @@ pub struct UnlockChunk<Moment> {
 
 /// The ledger of a (bonded) account.
 #[derive(PartialEqNoBound, EqNoBound, CloneNoBound, Encode, Decode, RuntimeDebug, MaxEncodedLen, TypeInfo)]
-#[scale_info(skip_type_params(MaxUnlockingChunks, MinBondThreshold))]
-pub struct BondingLedger<Moment, MaxUnlockingChunks, MinBondThreshold>
+#[scale_info(skip_type_params(MaxUnlockingChunks, MinBond))]
+pub struct BondingLedger<Moment, MaxUnlockingChunks, MinBond>
 where
 	Moment: Eq + Clone,
 	MaxUnlockingChunks: Get<u32>,
@@ -52,22 +53,14 @@ where
 	/// transferred out of the account.
 	unlocking: BoundedVec<UnlockChunk<Moment>, MaxUnlockingChunks>,
 
-	_phantom: PhantomData<MinBondThreshold>,
+	_phantom: PhantomData<MinBond>,
 }
 
-#[derive(PartialEq, Eq, RuntimeDebug)]
-pub enum Error {
-	BelowMinBondThreshold,
-	MaxUnlockChunksExceeded,
-	NoBonded,
-	NoUnlockChunk,
-}
-
-impl<Moment, MaxUnlockingChunks, MinBondThreshold> BondingLedger<Moment, MaxUnlockingChunks, MinBondThreshold>
+impl<Moment, MaxUnlockingChunks, MinBond> BondingLedger<Moment, MaxUnlockingChunks, MinBond>
 where
 	Moment: Ord + Eq + Copy,
 	MaxUnlockingChunks: Get<u32>,
-	MinBondThreshold: Get<Balance>,
+	MinBond: Get<Balance>,
 {
 	pub fn new() -> Self {
 		Default::default()
@@ -140,10 +133,6 @@ where
 
 	/// Re-bond funds that were scheduled for unlocking.
 	pub fn rebond(mut self, value: Balance) -> Result<(Self, Balance), Error> {
-		if self.unlocking.is_empty() {
-			return Err(Error::NoUnlockChunk);
-		}
-
 		let mut unlocking_balance: Balance = Zero::zero();
 
 		self.unlocking = self
@@ -176,19 +165,18 @@ where
 	}
 
 	fn check_min_bond(&self) -> Result<(), Error> {
-		if self.active > 0 && self.active < MinBondThreshold::get() {
+		if self.active > 0 && self.active < MinBond::get() {
 			return Err(Error::BelowMinBondThreshold);
 		}
 		Ok(())
 	}
 }
 
-impl<Moment, MaxUnlockingChunks, MinBondThreshold> Default
-	for BondingLedger<Moment, MaxUnlockingChunks, MinBondThreshold>
+impl<Moment, MaxUnlockingChunks, MinBond> Default for BondingLedger<Moment, MaxUnlockingChunks, MinBond>
 where
 	Moment: Ord + Eq + Copy,
 	MaxUnlockingChunks: Get<u32>,
-	MinBondThreshold: Get<Balance>,
+	MinBond: Get<Balance>,
 {
 	fn default() -> Self {
 		Self {
@@ -370,7 +358,6 @@ mod tests {
 	#[test]
 	fn rebond_works() {
 		let ledger = Ledger::new();
-		assert_err!(ledger.clone().rebond(20), Error::NoUnlockChunk);
 
 		let (ledger, _) = ledger
 			.bond(100)
