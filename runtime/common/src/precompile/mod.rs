@@ -21,8 +21,9 @@
 
 #![allow(clippy::upper_case_acronyms)]
 
-mod mock;
+pub mod mock;
 mod tests;
+mod weights;
 
 use frame_support::log;
 use hex_literal::hex;

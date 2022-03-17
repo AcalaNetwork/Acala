@@ -350,13 +350,13 @@ where
 			Action::GetLiquidityPool => {
 				// DEX::LiquidityPool (r: 1)
 				let weight = <Runtime as frame_system::Config>::DbWeight::get().reads(1);
-				WeightToGas::convert(weight)
+				Self::BASE_COST.saturating_add(WeightToGas::convert(weight))
 			}
 			Action::GetLiquidityTokenAddress => {
 				// DEX::TradingPairStatuses (r: 1)
 				// AssetRegistry::AssetMetadatas (r: 2)
 				let weight = <Runtime as frame_system::Config>::DbWeight::get().reads(3);
-				WeightToGas::convert(weight)
+				Self::BASE_COST.saturating_add(WeightToGas::convert(weight))
 			}
 			Action::GetSwapTargetAmount => {
 				let path_len = input.u32_at(3)?;
@@ -365,7 +365,7 @@ where
 				// DEX::LiquidityPool (r: 1 * (path_len - 1))
 				let weight = <Runtime as frame_system::Config>::DbWeight::get()
 					.reads(path_len.saturating_sub(1).saturating_mul(2).into());
-				WeightToGas::convert(weight)
+				Self::BASE_COST.saturating_add(WeightToGas::convert(weight))
 			}
 			Action::GetSwapSupplyAmount => {
 				let path_len = input.u32_at(3)?;
@@ -374,28 +374,28 @@ where
 				// DEX::LiquidityPool (r: 1 * (path_len - 1))
 				let weight = <Runtime as frame_system::Config>::DbWeight::get()
 					.reads(path_len.saturating_sub(1).saturating_mul(2).into());
-				WeightToGas::convert(weight)
+				Self::BASE_COST.saturating_add(WeightToGas::convert(weight))
 			}
 			Action::SwapWithExactSupply => {
 				let path_len = input.u32_at(5)?;
 				let weight = <Runtime as module_dex::Config>::WeightInfo::swap_with_exact_supply(path_len);
-				WeightToGas::convert(weight)
+				Self::BASE_COST.saturating_add(WeightToGas::convert(weight))
 			}
 			Action::SwapWithExactTarget => {
 				let path_len = input.u32_at(5)?;
 				let weight = <Runtime as module_dex::Config>::WeightInfo::swap_with_exact_target(path_len);
-				WeightToGas::convert(weight)
+				Self::BASE_COST.saturating_add(WeightToGas::convert(weight))
 			}
 			Action::AddLiquidity => {
 				let weight = <Runtime as module_dex::Config>::WeightInfo::add_liquidity();
-				WeightToGas::convert(weight)
+				Self::BASE_COST.saturating_add(WeightToGas::convert(weight))
 			}
 			Action::RemoveLiquidity => {
 				let weight = <Runtime as module_dex::Config>::WeightInfo::remove_liquidity();
-				WeightToGas::convert(weight)
+				Self::BASE_COST.saturating_add(WeightToGas::convert(weight))
 			}
 		};
-		Ok(Self::BASE_COST.saturating_add(cost))
+		Ok(cost)
 	}
 }
 

@@ -1,0 +1,27 @@
+{{header}}
+
+#![cfg_attr(rustfmt, rustfmt_skip)]
+#![allow(unused_parens)]
+#![allow(unused_imports)]
+#![allow(dead_code)]
+
+use frame_support::{traits::Get, weights::Weight};
+use sp_std::marker::PhantomData;
+
+pub struct PrecompileWeights<T>(PhantomData<T>);
+impl<T: frame_system::Config> PrecompileWeights<T> {
+	{{#each benchmarks as |benchmark|}}
+	{{#each benchmark.comments as |c|}}
+	// {{c}}
+	{{/each}}
+	pub fn {{benchmark.name~}} () -> Weight {
+		({{underscore benchmark.weight}} as Weight)
+			{{#if (ne benchmark.reads 0)}}
+			.saturating_add(T::DbWeight::get().reads({{benchmark.reads}} as Weight))
+			{{/if}}
+			{{#if (ne benchmark.writes 0)}}
+			.saturating_add(T::DbWeight::get().writes({{benchmark.writes}} as Weight))
+			{{/if}}
+	}
+	{{/each}}
+}

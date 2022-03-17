@@ -232,4 +232,5 @@ clippy-fix:
 
 .PHONY: bench-evm
 bench-evm:
+	cargo bench -p runtime-common --features bench | cargo run --bin weight-gen -- --template ./templates/precompile-weight-template.hbs --output runtime/common/src/precompile/weights.rs
 	cargo bench -p module-evm --features bench | evm-bench/analyze_benches.js runtime/common/src/gas_to_weight_ratio.rs

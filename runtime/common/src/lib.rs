@@ -46,6 +46,7 @@ use sp_runtime::{
 };
 use static_assertions::const_assert;
 
+pub mod bench;
 pub mod check_nonce;
 pub mod precompile;
 

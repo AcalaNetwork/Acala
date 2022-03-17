@@ -17,7 +17,6 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::WeightToGas;
-use frame_support::{log, traits::Get};
 use module_evm::{
 	precompiles::Precompile,
 	runner::state::{PrecompileFailure, PrecompileOutput, PrecompileResult},
@@ -29,7 +28,10 @@ use sp_std::{marker::PhantomData, prelude::*};
 
 use module_support::EVMManager;
 
-use super::input::{Input, InputT, Output};
+use super::{
+	input::{Input, InputT, Output},
+	weights::PrecompileWeights,
+};
 use primitives::Balance;
 
 /// The `EVM` impl precompile.
@@ -143,7 +145,7 @@ where
 				let contract = input.evm_address_at(2)?;
 				let new_maintainer = input.evm_address_at(3)?;
 
-				log::debug!(
+				frame_support::log::debug!(
 					target: "evm",
 					"evm: from: {:?}, contract: {:?}, new_maintainer: {:?}",
 					from, contract, new_maintainer,
@@ -246,35 +248,48 @@ where
 	) -> Result<u64, PrecompileFailure> {
 		let action = input.action()?;
 		let cost = match action {
-			Action::QueryNewContractExtraBytes | Action::QueryStorageDepositPerByte => Self::BASE_COST,
-			Action::QueryMaintainer => {
-				// EVM::Accounts
-				let weight = <Runtime as frame_system::Config>::DbWeight::get().reads(1);
+			Action::QueryNewContractExtraBytes => {
+				let weight = PrecompileWeights::<Runtime>::evm_query_new_contract_extra_bytes();
 				WeightToGas::convert(weight)
 			}
-			Action::QueryDeveloperDeposit | Action::QueryPublicationFee => Self::BASE_COST * 2,
+			Action::QueryStorageDepositPerByte => {
+				let weight = PrecompileWeights::<Runtime>::evm_query_storage_deposit_per_byte();
+				WeightToGas::convert(weight)
+			}
+			Action::QueryMaintainer => {
+				let weight = PrecompileWeights::<Runtime>::evm_query_maintainer();
+				WeightToGas::convert(weight)
+			}
+			Action::QueryDeveloperDeposit => {
+				let weight = PrecompileWeights::<Runtime>::evm_query_developer_deposit();
+				WeightToGas::convert(weight)
+			}
+			Action::QueryPublicationFee => {
+				let weight = PrecompileWeights::<Runtime>::evm_query_publication_fee();
+				WeightToGas::convert(weight)
+			}
 			Action::TransferMaintainer => {
 				let weight = <Runtime as module_evm::Config>::WeightInfo::transfer_maintainer();
-				WeightToGas::convert(weight)
+				Self::BASE_COST.saturating_add(WeightToGas::convert(weight))
 			}
 			Action::PublishContract => {
 				let weight = <Runtime as module_evm::Config>::WeightInfo::publish_contract();
-				WeightToGas::convert(weight)
+				Self::BASE_COST.saturating_add(WeightToGas::convert(weight))
 			}
 			Action::DisableDeveloperAccount => {
 				let weight = <Runtime as module_evm::Config>::WeightInfo::disable_contract_development();
-				WeightToGas::convert(weight)
+				Self::BASE_COST.saturating_add(WeightToGas::convert(weight))
 			}
 			Action::EnableDeveloperAccount => {
 				let weight = <Runtime as module_evm::Config>::WeightInfo::enable_contract_development();
-				WeightToGas::convert(weight)
+				Self::BASE_COST.saturating_add(WeightToGas::convert(weight))
 			}
 			Action::QueryDeveloperStatus => {
-				let weight = <Runtime as frame_system::Config>::DbWeight::get().reads(1);
+				let weight = PrecompileWeights::<Runtime>::evm_query_developer_status();
 				WeightToGas::convert(weight)
 			}
 		};
-		Ok(Self::BASE_COST.saturating_add(cost))
+		Ok(cost)
 	}
 }
 
@@ -295,10 +310,6 @@ mod tests {
 
 	fn base_cost(i: u64) -> u64 {
 		i * Pricer::<Test>::BASE_COST
-	}
-
-	fn read_cost(i: u64) -> u64 {
-		WeightToGas::convert(<Test as frame_system::Config>::DbWeight::get().reads(i))
 	}
 
 	#[test]
@@ -326,7 +337,7 @@ mod tests {
 				EVMPrecompile::execute(&input, None, &context, false),
 				PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: base_cost(1) + read_cost(1),
+					cost: WeightToGas::convert(PrecompileWeights::<Test>::evm_query_developer_status()),
 					output: expected_output.to_vec(),
 					logs: Default::default()
 				}
@@ -368,7 +379,7 @@ mod tests {
 				EVMPrecompile::execute(&input, None, &context, false),
 				PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: base_cost(1) + read_cost(1),
+					cost: WeightToGas::convert(PrecompileWeights::<Test>::evm_query_developer_status()),
 					output: expected_output.to_vec(),
 					logs: Default::default()
 				}
@@ -412,7 +423,7 @@ mod tests {
 				EVMPrecompile::execute(&input, None, &context, false),
 				PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: base_cost(1) + read_cost(1),
+					cost: WeightToGas::convert(PrecompileWeights::<Test>::evm_query_developer_status()),
 					output: expected_output.to_vec(),
 					logs: Default::default()
 				}

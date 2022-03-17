@@ -28,7 +28,10 @@ use primitives::CurrencyId;
 use sp_runtime::{traits::Convert, RuntimeDebug};
 use sp_std::{marker::PhantomData, prelude::*};
 
-use super::input::{Input, InputT, Output};
+use super::{
+	input::{Input, InputT, Output},
+	weights::PrecompileWeights,
+};
 use module_support::{Erc20InfoMapping as Erc20InfoMappingT, PriceProvider as PriceProviderT};
 
 /// The `Oracle` impl precompile.
@@ -126,11 +129,12 @@ where
 		let cost = match action {
 			Action::GetPrice => {
 				let currency_id = input.currency_id_at(1)?;
-				let weight = match currency_id {
+				let read_currency = match currency_id {
 					CurrencyId::DexShare(_, _) => <Runtime as frame_system::Config>::DbWeight::get().reads_writes(3, 1),
 					_ => <Runtime as frame_system::Config>::DbWeight::get().reads(1),
 				};
-				WeightToGas::convert(weight)
+				let read_price = WeightToGas::convert(PrecompileWeights::<Runtime>::oracle_get_price());
+				WeightToGas::convert(read_currency).saturating_add(read_price)
 			}
 		};
 		Ok(Self::BASE_COST.saturating_add(cost))
@@ -185,7 +189,8 @@ mod tests {
 				OraclePrecompile::execute(&input, None, &context, false),
 				PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: base_cost(1) + read_cost(1),
+					cost: base_cost(1)
+						+ read_cost(1) + WeightToGas::convert(PrecompileWeights::<Test>::oracle_get_price()),
 					output: expected_output.to_vec(),
 					logs: Default::default(),
 				}
@@ -209,7 +214,8 @@ mod tests {
 				OraclePrecompile::execute(&input, None, &context, false),
 				PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: base_cost(1) + read_cost(1),
+					cost: base_cost(1)
+						+ read_cost(1) + WeightToGas::convert(PrecompileWeights::<Test>::oracle_get_price()),
 					output: expected_output.to_vec(),
 					logs: Default::default(),
 				}

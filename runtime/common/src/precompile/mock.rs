@@ -16,16 +16,13 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-#![cfg(test)]
+#![cfg(any(test, feature = "bench"))]
 
 use crate::{AllPrecompiles, Ratio, RuntimeBlockWeights, Weight};
-use acala_service::chain_spec::mandala::evm_genesis;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
-	assert_ok, ord_parameter_types, parameter_types,
-	traits::{
-		EqualPrivilegeOnly, Everything, GenesisBuild, InstanceFilter, Nothing, OnFinalize, OnInitialize, SortedMembers,
-	},
+	ord_parameter_types, parameter_types,
+	traits::{EqualPrivilegeOnly, Everything, InstanceFilter, Nothing, OnFinalize, OnInitialize, SortedMembers},
 	weights::IdentityFee,
 	PalletId, RuntimeDebug,
 };
@@ -38,16 +35,16 @@ use module_support::{
 };
 use orml_traits::{parameter_type_with_key, MultiReservableCurrency};
 pub use primitives::{
-	convert_decimals_to_evm, define_combined_task, evm::EvmAddress, task::TaskResult, Amount, BlockNumber, CurrencyId,
-	DexShare, Header, Lease, Nonce, ReserveIdentifier, TokenSymbol, TradingPair,
+	convert_decimals_to_evm, define_combined_task, evm::EvmAddress, task::TaskResult, Address, Amount, BlockNumber,
+	CurrencyId, DexShare, Header, Lease, Nonce, ReserveIdentifier, Signature, TokenSymbol, TradingPair,
 };
 use scale_info::TypeInfo;
-use sp_core::{crypto::AccountId32, H160, H256};
+use sp_core::{H160, H256};
 use sp_runtime::{
 	traits::{AccountIdConversion, BlakeTwo256, BlockNumberProvider, Convert, IdentityLookup, One as OneT, Zero},
-	DispatchResult, FixedPointNumber, FixedU128, Perbill,
+	AccountId32, DispatchResult, FixedPointNumber, FixedU128, Perbill,
 };
-use sp_std::{collections::btree_map::BTreeMap, str::FromStr};
+use sp_std::prelude::*;
 
 pub type AccountId = AccountId32;
 type Key = CurrencyId;
@@ -63,7 +60,7 @@ impl frame_system::Config for Test {
 	type BlockLength = ();
 	type Origin = Origin;
 	type Call = Call;
-	type Index = u32;
+	type Index = Nonce;
 	type BlockNumber = BlockNumber;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
@@ -88,7 +85,7 @@ parameter_types! {
 	pub const MinimumCount: u32 = 1;
 	pub const ExpiresIn: u32 = 600;
 	pub const RootOperatorAccountId: AccountId = ALICE;
-	pub static OracleMembers: Vec<AccountId> = vec![ALICE, BOB, EVA];
+	pub OracleMembers: Vec<AccountId> = vec![ALICE, BOB, EVA];
 	pub const MaxHasDispatchedSize: u32 = 40;
 }
 
@@ -109,8 +106,8 @@ impl orml_oracle::Config for Test {
 	type OracleValue = Price;
 	type RootOperatorAccountId = RootOperatorAccountId;
 	type Members = Members;
-	type MaxHasDispatchedSize = MaxHasDispatchedSize;
 	type WeightInfo = ();
+	type MaxHasDispatchedSize = MaxHasDispatchedSize;
 }
 
 impl pallet_timestamp::Config for Test {
@@ -149,10 +146,10 @@ impl pallet_balances::Config for Test {
 	type Event = Event;
 	type ExistentialDeposit = ExistentialDeposit;
 	type AccountStore = System;
+	type WeightInfo = ();
 	type MaxLocks = ();
 	type MaxReserves = MaxReserves;
 	type ReserveIdentifier = ReserveIdentifier;
-	type WeightInfo = ();
 }
 
 pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
@@ -262,14 +259,14 @@ impl module_transaction_payment::Config for Test {
 	type Currency = Balances;
 	type MultiCurrency = Currencies;
 	type OnTransactionPayment = ();
-	type AlternativeFeeSwapDeposit = ExistentialDeposit;
 	type TransactionByteFee = TransactionByteFee;
 	type OperationalFeeMultiplier = OperationalFeeMultiplier;
 	type TipPerWeightStep = TipPerWeightStep;
 	type MaxTipsOfPriority = MaxTipsOfPriority;
+	type AlternativeFeeSwapDeposit = ExistentialDeposit;
 	type WeightToFee = IdentityFee<Balance>;
 	type FeeMultiplierUpdate = ();
-	type DEX = ();
+	type DEX = DexModule;
 	type MaxSwapSlippageCompareToOracle = MaxSwapSlippageCompareToOracle;
 	type TradingPathLimit = TradingPathLimit;
 	type PriceSource = module_prices::RealTimePriceProvider<Test>;
@@ -322,8 +319,8 @@ impl pallet_proxy::Config for Test {
 	type ProxyDepositFactor = ProxyDepositFactor;
 	type MaxProxies = MaxProxies;
 	type WeightInfo = ();
-	type CallHasher = BlakeTwo256;
 	type MaxPending = MaxPending;
+	type CallHasher = BlakeTwo256;
 	type AnnouncementDepositBase = AnnouncementDepositBase;
 	type AnnouncementDepositFactor = AnnouncementDepositFactor;
 }
@@ -347,9 +344,9 @@ impl pallet_scheduler::Config for Test {
 	type Call = Call;
 	type MaximumWeight = MaximumSchedulerWeight;
 	type ScheduleOrigin = EnsureRoot<AccountId>;
+	type OriginPrivilegeCmp = EqualPrivilegeOnly;
 	type MaxScheduledPerBlock = MaxScheduledPerBlock;
 	type WeightInfo = ();
-	type OriginPrivilegeCmp = EqualPrivilegeOnly;
 	type PreimageProvider = ();
 	type NoPreimagePostponement = ();
 }
@@ -468,7 +465,7 @@ parameter_types! {
 	pub StableCurrencyFixedPrice: Price = Price::saturating_from_rational(1, 1);
 	pub const GetStakingCurrencyId: CurrencyId = DOT;
 	pub const GetLiquidCurrencyId: CurrencyId = LDOT;
-	pub static MockRelayBlockNumberProvider: BlockNumber = 0;
+	pub MockRelayBlockNumberProvider: BlockNumber = 0;
 	pub RewardRatePerRelaychainBlock: Rate = Rate::zero();
 }
 
@@ -503,7 +500,7 @@ pub fn alice() -> AccountId {
 }
 
 pub fn alice_evm_addr() -> EvmAddress {
-	EvmAddress::from_str("1000000000000000000000000000000000000001").unwrap()
+	EvmAddress::from(hex_literal::hex!("1000000000000000000000000000000000000001"))
 }
 
 pub fn bob() -> AccountId {
@@ -511,7 +508,7 @@ pub fn bob() -> AccountId {
 }
 
 pub fn bob_evm_addr() -> EvmAddress {
-	EvmAddress::from_str("1000000000000000000000000000000000000002").unwrap()
+	EvmAddress::from(hex_literal::hex!("1000000000000000000000000000000000000002"))
 }
 
 pub fn aca_evm_address() -> EvmAddress {
@@ -527,13 +524,14 @@ pub fn lp_aca_ausd_evm_address() -> EvmAddress {
 }
 
 pub fn erc20_address_not_exists() -> EvmAddress {
-	EvmAddress::from_str("0000000000000000000000000000000200000001").unwrap()
+	EvmAddress::from(hex_literal::hex!("0000000000000000000000000000000200000001"))
 }
 
 pub const INITIAL_BALANCE: Balance = 1_000_000_000_000;
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
-type Block = frame_system::mocking::MockBlock<Test>;
+pub type SignedExtra = (frame_system::CheckWeight<Test>,);
+pub type UncheckedExtrinsic = sp_runtime::generic::UncheckedExtrinsic<Address, Call, Signature, SignedExtra>;
+pub type Block = sp_runtime::generic::Block<Header, UncheckedExtrinsic>;
 
 frame_support::construct_runtime!(
 	pub enum Test where
@@ -561,9 +559,66 @@ frame_support::construct_runtime!(
 	}
 );
 
+#[cfg(test)]
 // This function basically just builds a genesis storage key/value store
 // according to our desired mockup.
 pub fn new_test_ext() -> sp_io::TestExternalities {
+	use frame_support::{assert_ok, traits::GenesisBuild};
+	use module_evm::{GenesisAccount, PREDEPLOY_ADDRESS_START};
+	use sp_core::{bytes::from_hex, Bytes};
+	use sp_std::{collections::btree_map::BTreeMap, str::FromStr};
+
+	/// Returns `evm_genesis_accounts`
+	pub fn evm_genesis(evm_accounts: Vec<H160>) -> BTreeMap<H160, GenesisAccount<Balance, Nonce>> {
+		let contracts_json = &include_bytes!("../../../../predeploy-contracts/resources/bytecodes.json")[..];
+		let contracts: Vec<(String, String, String)> = serde_json::from_slice(contracts_json).unwrap();
+		let mut accounts = BTreeMap::new();
+		for (_, address, code_string) in contracts {
+			let account = GenesisAccount {
+				nonce: 0u32,
+				balance: 0u128,
+				storage: BTreeMap::new(),
+				code: if code_string.len().is_zero() {
+					vec![]
+				} else {
+					Bytes::from_str(&code_string).unwrap().0
+				},
+				enable_contract_development: false,
+			};
+
+			let addr = H160::from_slice(
+				from_hex(address.as_str())
+					.expect("predeploy-contracts must specify address")
+					.as_slice(),
+			);
+			accounts.insert(addr, account);
+		}
+
+		// Replace mirrored token contract code.
+		let token = accounts
+			.get(&PREDEPLOY_ADDRESS_START)
+			.expect("the token predeployed contract must exist")
+			.clone();
+		accounts.iter_mut().for_each(|v| {
+			if v.1.code.is_empty() {
+				v.1.code = token.code.clone();
+			}
+		});
+
+		for dev_acc in evm_accounts {
+			let account = GenesisAccount {
+				nonce: 0u32,
+				balance: 1000 * crate::dollar(ACA),
+				storage: BTreeMap::new(),
+				code: vec![],
+				enable_contract_development: true,
+			};
+			accounts.insert(dev_acc, account);
+		}
+
+		accounts
+	}
+
 	let mut storage = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
 
 	let mut accounts = BTreeMap::new();
