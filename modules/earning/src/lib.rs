@@ -92,6 +92,10 @@ pub mod module {
 		Unbonded {
 			who: T::AccountId,
 			amount: Balance,
+		},
+		InstantUnbonded {
+			who: T::AccountId,
+			amount: Balance,
 			fee: Balance,
 		},
 		Rebonded {
@@ -173,7 +177,7 @@ pub mod module {
 				T::OnUnstakeFee::on_unbalanced(unbalance);
 
 				T::OnUnbonded::happened(&(who.clone(), change.change));
-				Self::deposit_event(Event::Unbonded {
+				Self::deposit_event(Event::InstantUnbonded {
 					who,
 					amount: final_amount,
 					fee,
