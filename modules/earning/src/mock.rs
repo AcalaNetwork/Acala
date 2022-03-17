@@ -21,44 +21,17 @@
 #![cfg(test)]
 
 use super::*;
+use crate as earning;
 use frame_support::{
-	construct_runtime, ord_parameter_types, parameter_types,
-	traits::{Everything, Nothing},
+	construct_runtime, parameter_types,
+	traits::{ConstU128, ConstU32, ConstU64, Everything},
 };
-use frame_system::EnsureSignedBy;
-use orml_traits::{parameter_type_with_key, DataFeeder};
-use primitives::{currency::DexShare, Amount, TokenSymbol};
-use sp_core::{H160, H256};
-use sp_runtime::{
-	testing::Header,
-	traits::{IdentityLookup, One as OneT, Zero},
-	DispatchError, FixedPointNumber,
-};
-use sp_std::cell::RefCell;
-use support::{mocks::MockErc20InfoMapping, ExchangeRate, SwapLimit};
+
+use sp_core::H256;
+use sp_runtime::{testing::Header, traits::IdentityLookup};
 
 pub type AccountId = u128;
 pub type BlockNumber = u64;
-
-pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
-pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
-pub const BTC: CurrencyId = CurrencyId::Token(TokenSymbol::RENBTC);
-pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
-pub const LDOT: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
-pub const KSM: CurrencyId = CurrencyId::Token(TokenSymbol::KSM);
-pub const LP_AUSD_DOT: CurrencyId =
-	CurrencyId::DexShare(DexShare::Token(TokenSymbol::AUSD), DexShare::Token(TokenSymbol::DOT));
-pub const LIQUID_CROWDLOAN_LEASE_1: CurrencyId = CurrencyId::LiquidCrowdloan(1);
-pub const LIQUID_CROWDLOAN_LEASE_2: CurrencyId = CurrencyId::LiquidCrowdloan(2);
-pub const LIQUID_CROWDLOAN_LEASE_3: CurrencyId = CurrencyId::LiquidCrowdloan(3);
-
-mod prices {
-	pub use super::super::*;
-}
-
-parameter_types! {
-	pub const BlockHashCount: u64 = 250;
-}
 
 impl frame_system::Config for Runtime {
 	type Origin = Origin;
@@ -71,12 +44,12 @@ impl frame_system::Config for Runtime {
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
 	type Event = Event;
-	type BlockHashCount = BlockHashCount;
+	type BlockHashCount = ConstU64<250>;
 	type BlockWeights = ();
 	type BlockLength = ();
 	type Version = ();
 	type PalletInfo = PalletInfo;
-	type AccountData = ();
+	type AccountData = pallet_balances::AccountData<Balance>;
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
 	type DbWeight = ();
@@ -87,8 +60,35 @@ impl frame_system::Config for Runtime {
 	type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
 
+impl pallet_balances::Config for Runtime {
+	type Balance = Balance;
+	type DustRemoval = ();
+	type Event = Event;
+	type ExistentialDeposit = ConstU128<10>;
+	type AccountStore = System;
+	type MaxLocks = ();
+	type MaxReserves = ();
+	type ReserveIdentifier = [u8; 8];
+	type WeightInfo = ();
+}
+
+parameter_types! {
+	pub const InstantUnstakeFee: Permill = Permill::from_percent(10);
+	pub const EarningLockIdentifier: LockIdentifier = *b"12345678";
+}
+
 impl Config for Runtime {
 	type Event = Event;
+	type Currency = Balances;
+	type OnBonded = ();
+	type OnUnbonded = ();
+	type OnUnstakeFee = ();
+	type MinBond = ConstU128<100>;
+	type UnbondingPeriod = ConstU64<3>;
+	type InstantUnstakeFee = InstantUnstakeFee;
+	type MaxUnbondingChunks = ConstU32<3>;
+	type LockIdentifier = EarningLockIdentifier;
+	type WeightInfo = ();
 }
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
@@ -100,13 +100,15 @@ construct_runtime!(
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic
 	{
-		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-		PricesModule: prices::{Pallet, Storage, Call, Event<T>},
-		Tokens: orml_tokens::{Pallet, Call, Storage, Event<T>},
+		System: frame_system,
+		Balances: pallet_balances,
+		Earning: earning,
 	}
 );
 
 pub struct ExtBuilder;
+
+pub const ALICE: AccountId = 1;
 
 impl Default for ExtBuilder {
 	fn default() -> Self {
@@ -116,10 +118,22 @@ impl Default for ExtBuilder {
 
 impl ExtBuilder {
 	pub fn build(self) -> sp_io::TestExternalities {
-		let t = frame_system::GenesisConfig::default()
+		let mut t = frame_system::GenesisConfig::default()
 			.build_storage::<Runtime>()
 			.unwrap();
 
-		t.into()
+		pallet_balances::GenesisConfig::<Runtime> {
+			balances: vec![(ALICE, 1000)],
+		}
+		.assimilate_storage(&mut t)
+		.unwrap();
+
+		let mut t: sp_io::TestExternalities = t.into();
+
+		t.execute_with(|| {
+			System::set_block_number(1);
+		});
+
+		t
 	}
 }

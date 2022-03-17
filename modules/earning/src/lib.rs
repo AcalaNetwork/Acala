@@ -36,8 +36,8 @@ use sp_runtime::{traits::Saturating, Permill};
 
 pub use module::*;
 
-// mod mock;
-// mod tests;
+mod mock;
+mod tests;
 pub mod weights;
 
 pub use weights::WeightInfo;

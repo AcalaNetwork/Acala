@@ -21,9 +21,35 @@
 #![cfg(test)]
 
 use super::*;
-use frame_support::{assert_noop, assert_ok};
-use mock::{Event, *};
-use sp_runtime::{
-	traits::{BadOrigin, Bounded},
-	FixedPointNumber,
-};
+use frame_support::{assert_noop, assert_ok, traits::fungible::Inspect};
+use mock::*;
+
+#[test]
+fn bond_works() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_noop!(
+			Earning::bond(Origin::signed(ALICE), 10),
+			Error::<Runtime>::BelowMinBondThreshold,
+		);
+
+		assert_ok!(Earning::bond(Origin::signed(ALICE), 100));
+		System::assert_last_event(
+			Event::Bonded {
+				who: ALICE,
+				amount: 100,
+			}
+			.into(),
+		);
+		assert_eq!(Balances::reducible_balance(&ALICE, false), 900);
+
+		assert_ok!(Earning::bond(Origin::signed(ALICE), 1000));
+		System::assert_last_event(
+			Event::Bonded {
+				who: ALICE,
+				amount: 900,
+			}
+			.into(),
+		);
+		assert_eq!(Balances::reducible_balance(&ALICE, false), 0);
+	});
+}
