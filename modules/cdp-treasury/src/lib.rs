@@ -428,7 +428,6 @@ impl<T: Config> CDPTreasuryExtended<T::AccountId> for Pallet<T> {
 					redeem_amount: _,
 				} = T::StableAsset::get_redeem_proportion_amount(&yield_info, supply_limit)
 					.ok_or(Error::<T>::CannotSwap)?;
-				let mut sum = 0;
 				let mut swap_paths = vec![];
 				let mut redeem_limits = vec![];
 				let mut swap_limits = vec![];
@@ -445,12 +444,9 @@ impl<T: Config> CDPTreasuryExtended<T::AccountId> for Pallet<T> {
 						T::AlternativeSwapPathJointList::get(),
 					)
 					.ok_or(Error::<T>::CannotSwap)?;
-					let swap_amount = T::DEX::get_swap_amount(&swap_path, swap_limit).ok_or(Error::<T>::CannotSwap)?;
 					swap_paths.push(swap_path);
 					redeem_limits.push(0);
-					sum += swap_amount.1;
 				}
-				ensure!(sum >= target_limit, Error::<T>::CannotSwap,);
 				T::StableAsset::redeem_proportion(&Self::account_id(), stable_asset_id, supply_limit, redeem_limits)?;
 
 				let mut supply_sum = 0;
@@ -461,6 +457,7 @@ impl<T: Config> CDPTreasuryExtended<T::AccountId> for Pallet<T> {
 					supply_sum += response.0;
 					target_sum += response.1;
 				}
+				ensure!(target_sum >= target_limit, Error::<T>::CannotSwap,);
 				Ok((supply_sum, target_sum))
 			}
 			_ => {
