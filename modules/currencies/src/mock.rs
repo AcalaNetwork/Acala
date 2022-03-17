@@ -26,7 +26,7 @@ use frame_support::{
 	PalletId,
 };
 use orml_traits::parameter_type_with_key;
-use primitives::{convert_decimals_to_evm, CurrencyId, ReserveIdentifier, TokenSymbol};
+use primitives::{evm::convert_decimals_to_evm, CurrencyId, ReserveIdentifier, TokenSymbol};
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
