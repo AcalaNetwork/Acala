@@ -23,7 +23,7 @@
 
 use frame_support::{
 	pallet_prelude::*,
-	traits::{Currency, LockIdentifier, LockableCurrency, OnUnbalanced, WithdrawReasons},
+	traits::{Currency, ExistenceRequirement, LockIdentifier, LockableCurrency, OnUnbalanced, WithdrawReasons},
 	transactional,
 };
 use frame_system::pallet_prelude::*;
@@ -85,10 +85,23 @@ pub mod module {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
-		Bonded { who: T::AccountId, amount: Balance },
-		Unbonded { who: T::AccountId, amount: Balance },
-		Rebonded { who: T::AccountId, amount: Balance },
-		Withdrawn { who: T::AccountId, amount: Balance },
+		Bonded {
+			who: T::AccountId,
+			amount: Balance,
+		},
+		Unbonded {
+			who: T::AccountId,
+			amount: Balance,
+			fee: Balance,
+		},
+		Rebonded {
+			who: T::AccountId,
+			amount: Balance,
+		},
+		Withdrawn {
+			who: T::AccountId,
+			amount: Balance,
+		},
 	}
 
 	/// The nomination bonding ledger.
@@ -137,6 +150,33 @@ pub mod module {
 				Self::deposit_event(Event::Unbonded {
 					who,
 					amount: change.change,
+				});
+			}
+
+			Ok(())
+		}
+
+		#[pallet::weight(T::WeightInfo::unbond())]
+		#[transactional]
+		pub fn unbond_instant(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+
+			let change = <Self as BondingController>::unbond_instant(&who, amount)?;
+
+			if let Some(change) = change {
+				let amount = change.change;
+				let fee = T::InstantUnstakeFee::get().mul_ceil(amount);
+				let final_amount = amount.saturating_sub(fee);
+
+				let unbalance =
+					T::Currency::withdraw(&who, fee, WithdrawReasons::TRANSFER, ExistenceRequirement::KeepAlive)?;
+				T::OnUnstakeFee::on_unbalanced(unbalance);
+
+				T::OnUnbonded::happened(&(who.clone(), change.change));
+				Self::deposit_event(Event::Unbonded {
+					who,
+					amount: final_amount,
+					fee,
 				});
 			}
 

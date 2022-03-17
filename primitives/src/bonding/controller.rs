@@ -103,6 +103,26 @@ where
 		}))
 	}
 
+	fn unbond_instant(who: &Self::AccountId, amount: Balance) -> Result<Option<BondChange>, DispatchError> {
+		let ledger = Self::Ledger::get(who).ok_or_else(|| Self::convert_error(Error::NotBonded))?;
+		let old_active = ledger.active();
+
+		let (ledger, unbond_amount) = ledger.unbond_instant(amount).map_err(Self::convert_error)?;
+
+		if unbond_amount == 0 {
+			return Ok(None);
+		}
+
+		Self::Ledger::insert(&who, &ledger);
+		Self::apply_ledger(who, &ledger)?;
+
+		Ok(Some(BondChange {
+			old: old_active,
+			new: ledger.active(),
+			change: unbond_amount,
+		}))
+	}
+
 	fn rebond(who: &Self::AccountId, amount: Balance) -> Result<Option<BondChange>, DispatchError> {
 		let ledger = Self::Ledger::get(who).ok_or_else(|| Self::convert_error(Error::NotBonded))?;
 		let old_active = ledger.active();
