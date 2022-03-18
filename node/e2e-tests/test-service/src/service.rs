@@ -287,7 +287,7 @@ pub async fn start_dev_node(
 				// block_import: instant_finalize::InstantFinalizeBlockImport::new(client.clone()),
 				block_import: client.clone(),
 				proposer_factory,
-				create_inherent_data_providers: move |block: Hash_, ()| {
+				create_inherent_data_providers: move |block: Hash, ()| {
 					let current_para_block = client_for_cidp
 						.number(block)
 						.expect("Header lookup should succeed")
