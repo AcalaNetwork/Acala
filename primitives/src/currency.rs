@@ -265,7 +265,11 @@ impl CurrencyId {
 	pub fn is_trading_pair_currency_id(&self) -> bool {
 		matches!(
 			self,
-			CurrencyId::Token(_) | CurrencyId::Erc20(_) | CurrencyId::LiquidCrowdloan(_) | CurrencyId::ForeignAsset(_)
+			CurrencyId::Token(_)
+				| CurrencyId::Erc20(_)
+				| CurrencyId::LiquidCrowdloan(_)
+				| CurrencyId::ForeignAsset(_)
+				| CurrencyId::StableAssetPoolToken(_)
 		)
 	}
 
