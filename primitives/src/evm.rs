@@ -130,7 +130,7 @@ pub const SYSTEM_CONTRACT_ADDRESS_PREFIX: [u8; 9] = [0u8; 9];
 ///                                         ^^ CurrencyId Type is 1-Token, Token
 ///                                   ^^^^^^^^ CurrencyId Type is 1-Token, NFT
 ///                       ^^                   CurrencyId Type is 2-DexShare, DexShare Left Type:
-///                                                             0-Token 1-Erc20 2-LiquidCrowdloan 3-ForeignAsset
+///                                                             0-Token 1-Erc20 2-StableAsset 3-LiquidCrowdloan 4-ForeignAsset
 ///                         ^^^^^^^^           CurrencyId Type is 2-DexShare, DexShare left field
 ///                                 ^^         CurrencyId Type is 2-DexShare, DexShare Right Type:
 ///                                                             the same as DexShare Left Type
