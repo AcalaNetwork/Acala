@@ -53,3 +53,64 @@ fn bond_works() {
 		assert_eq!(Balances::reducible_balance(&ALICE, false), 0);
 	});
 }
+
+#[test]
+fn unbonding_works() {
+	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(0);
+		assert_noop!(
+			Earning::unbond(Origin::signed(ALICE), 1000),
+			Error::<Runtime>::NotBonded
+		);
+		assert_ok!(Earning::bond(Origin::signed(ALICE), 1000));
+
+		assert_noop!(
+			Earning::unbond(Origin::signed(ALICE), 999),
+			Error::<Runtime>::BelowMinBondThreshold
+		);
+
+		// Won't unbond before unbonding period passes
+		assert_ok!(Earning::unbond(Origin::signed(ALICE), 1001));
+		assert_ok!(Earning::withdraw_unbonded(Origin::signed(ALICE)));
+		assert_eq!(Balances::reducible_balance(&ALICE, false), 0);
+		System::set_block_number(<Runtime as Config>::UnbondingPeriod::get());
+
+		assert_ok!(Earning::withdraw_unbonded(Origin::signed(ALICE)));
+		assert_eq!(Balances::reducible_balance(&ALICE, false), 1000);
+
+		assert_noop!(
+			Earning::unbond_instant(Origin::signed(ALICE), 1000),
+			Error::<Runtime>::NotBonded
+		);
+		assert_ok!(Earning::bond(Origin::signed(ALICE), 1000));
+		assert_eq!(Balances::reducible_balance(&ALICE, false), 0);
+		assert_ok!(Earning::unbond(Origin::signed(ALICE), 1000));
+		// unbond instant will not work on pending unbond funds
+		assert_ok!(Earning::unbond_instant(Origin::signed(ALICE), 1001));
+		assert_ok!(Earning::rebond(Origin::signed(ALICE), 1000));
+		assert_eq!(Balances::reducible_balance(&ALICE, false), 0);
+
+		assert_noop!(
+			Earning::unbond_instant(Origin::signed(ALICE), 999),
+			Error::<Runtime>::BelowMinBondThreshold
+		);
+		assert_ok!(Earning::unbond_instant(Origin::signed(ALICE), 1001));
+		// takes instant unbonding fee
+		assert_eq!(Balances::reducible_balance(&ALICE, false), 900);
+	});
+}
+
+#[test]
+fn rebond_works() {
+	ExtBuilder::default().build().execute_with(|| {
+		System::set_block_number(0);
+		assert_ok!(Earning::bond(Origin::signed(ALICE), 1000));
+		assert_ok!(Earning::unbond(Origin::signed(ALICE), 1000));
+		assert_ok!(Earning::rebond(Origin::signed(ALICE), 10));
+
+		System::set_block_number(<Runtime as Config>::UnbondingPeriod::get());
+		// should not get in this state
+		assert_ok!(Earning::withdraw_unbonded(Origin::signed(ALICE)));
+		assert_eq!(Balances::reducible_balance(&ALICE, false), 990);
+	});
+}
