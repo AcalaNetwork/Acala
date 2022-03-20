@@ -1358,9 +1358,11 @@ where
 				refund = refund_fee.saturating_add(refund_tip);
 				actual_tip = tip.saturating_sub(refund_tip);
 			}
-			// fee surplus not included in refund
+			// the refund surplus also need to return back to user
 			if let Some(surplus) = surplus {
-				refund = refund.saturating_sub(surplus);
+				let percent = Percent::from_rational(surplus, fee.saturating_sub(surplus));
+				let actual_surplus = percent.mul_ceil(actual_fee);
+				refund = refund.saturating_sub(actual_surplus);
 			}
 			let actual_payment = match <T as Config>::Currency::deposit_into_existing(&who, refund) {
 				Ok(refund_imbalance) => {

@@ -328,8 +328,15 @@ fn pre_post_dispatch_and_refund_with_fee_path_call() {
 		));
 
 		let refund = 200; // 1000 - 800
-		assert_eq!(Currencies::free_balance(ACA, &ALICE), aca_init + refund);
-		assert_eq!(FEE_UNBALANCED_AMOUNT.with(|a| *a.borrow()), fee - refund + surplus);
+		let refund_surplus = 100;
+		assert_eq!(
+			Currencies::free_balance(ACA, &ALICE),
+			aca_init + refund + refund_surplus
+		);
+		assert_eq!(
+			FEE_UNBALANCED_AMOUNT.with(|a| *a.borrow()),
+			fee - refund + surplus - refund_surplus
+		);
 		assert_eq!(TIP_UNBALANCED_AMOUNT.with(|a| *a.borrow()), 0);
 
 		// reset and test refund with tip
@@ -368,8 +375,14 @@ fn pre_post_dispatch_and_refund_with_fee_path_call() {
 			500,
 			&Ok(())
 		));
-		assert_eq!(Currencies::free_balance(ACA, &CHARLIE), aca_init + refund);
-		assert_eq!(FEE_UNBALANCED_AMOUNT.with(|a| *a.borrow()), fee - refund + surplus);
+		assert_eq!(
+			Currencies::free_balance(ACA, &CHARLIE),
+			aca_init + refund + refund_surplus
+		);
+		assert_eq!(
+			FEE_UNBALANCED_AMOUNT.with(|a| *a.borrow()),
+			fee - refund + surplus - refund_surplus
+		);
 		assert_eq!(TIP_UNBALANCED_AMOUNT.with(|a| *a.borrow()), tip);
 	});
 }
