@@ -261,6 +261,24 @@ fn access_price_of_other_currency() {
 }
 
 #[test]
+fn access_price_of_pegged_currency() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_eq!(PricesModule::access_price(KSM), None);
+		assert_eq!(PricesModule::access_price(TAIKSM), None);
+
+		mock_oracle_update();
+		assert_eq!(
+			PricesModule::access_price(KSM),
+			Some(Price::saturating_from_integer(200000000u128))
+		); // 200 USD, right shift the decimal point (18-12) places
+		assert_eq!(
+			PricesModule::access_price(TAIKSM),
+			Some(Price::saturating_from_integer(200000000u128))
+		); // 200 USD, right shift the decimal point (18-12) places
+	});
+}
+
+#[test]
 fn lock_price_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);

@@ -70,6 +70,14 @@ pub fn lp_erc20_evm_address() -> EvmAddress {
 	EvmErc20InfoMapping::<Runtime>::encode_evm_address(lp_erc20()).unwrap()
 }
 
+pub fn predeploy_token_contract() -> Vec<u8> {
+	let json: serde_json::Value =
+		serde_json::from_str(include_str!("../../../predeploy-contracts/resources/bytecodes.json")).unwrap();
+	// get ACA contract
+	assert_eq!(json[0][0].as_str().unwrap(), "ACA");
+	hex::decode(json[0][2].as_str().unwrap().strip_prefix("0x").unwrap()).unwrap()
+}
+
 pub fn deploy_erc20_contracts() {
 	let json: serde_json::Value =
 		serde_json::from_str(include_str!("../../../ts-tests/build/Erc20DemoContract2.json")).unwrap();
@@ -483,10 +491,10 @@ fn test_multicurrency_precompile_module() {
 			assert_ok!(EVM::create_predeploy_contract(
 				Origin::root(),
 				lp_erc20_evm_address(),
-				vec![],
+				predeploy_token_contract(),
 				0,
-				1000000,
-				1000000,
+				21000000,
+				16500,
 				vec![],
 			));
 

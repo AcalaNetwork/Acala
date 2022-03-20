@@ -56,10 +56,11 @@ mod mandala_imports {
 		ParachainInfo, ParachainSystem, Proxy, ProxyType, Ratio, Runtime, Scheduler, Session, SessionKeys,
 		SessionManager, SevenDays, StableAsset, StableAssetPalletId, System, Timestamp, TipPerWeightStep, TokenSymbol,
 		Tokens, TransactionPayment, TransactionPaymentPalletId, TreasuryAccount, TreasuryPalletId, UncheckedExtrinsic,
-		Utility, Vesting, XcmExecutor, XcmInterface, EVM, NFT,
+		Utility, Vesting, XcmInterface, EVM, NFT,
 	};
 	pub use runtime_common::{cent, dollar, millicent, ACA, AUSD, DOT, KSM, LDOT, LKSM};
 	pub use sp_runtime::traits::AccountIdConversion;
+	pub use xcm_executor::XcmExecutor;
 	use sp_runtime::Percent;
 
 	pub const NATIVE_CURRENCY: CurrencyId = ACA;
@@ -94,14 +95,15 @@ mod karura_imports {
 		OneDay, Origin, OriginCaller, ParachainAccount, ParachainInfo, ParachainSystem, PolkadotXcm, Proxy, ProxyType,
 		Ratio, RelayChainBlockNumberProvider, Runtime, Scheduler, Session, SessionManager, SevenDays, System,
 		Timestamp, TipPerWeightStep, TokenSymbol, Tokens, TransactionPayment, TransactionPaymentPalletId,
-		TreasuryPalletId, Utility, Vesting, XTokens, XcmExecutor, XcmInterface, EVM, NFT,
+		TreasuryPalletId, Utility, Vesting, XTokens, XcmInterface, EVM, NFT,
 	};
 	pub use primitives::TradingPair;
 	pub use runtime_common::{calculate_asset_ratio, cent, dollar, millicent, KAR, KSM, KUSD, LKSM};
 	pub use sp_runtime::traits::AccountIdConversion;
+	pub use xcm_executor::XcmExecutor;
 	use sp_runtime::Percent;
 
-	parameter_types! {
+  parameter_types! {
 		pub EnabledTradingPairs: Vec<TradingPair> = vec![
 			TradingPair::from_currency_ids(USD_CURRENCY, NATIVE_CURRENCY).unwrap(),
 			TradingPair::from_currency_ids(USD_CURRENCY, RELAY_CHAIN_CURRENCY).unwrap(),
@@ -142,12 +144,13 @@ mod acala_imports {
 		OriginCaller, ParachainAccount, ParachainInfo, ParachainSystem, PolkadotXcm, Proxy, ProxyType, Ratio,
 		RelayChainBlockNumberProvider, Runtime, Scheduler, Session, SessionManager, SevenDays, System, Timestamp,
 		TipPerWeightStep, TokenSymbol, Tokens, TransactionPayment, TransactionPaymentPalletId, TreasuryPalletId,
-		Utility, Vesting, XTokens, XcmExecutor, XcmInterface, EVM, LCDOT, NFT,
+		Utility, Vesting, XTokens, XcmInterface, EVM, LCDOT, NFT,
 	};
 	pub use frame_support::parameter_types;
 	pub use primitives::TradingPair;
 	pub use runtime_common::{cent, dollar, millicent, ACA, AUSD, DOT, LDOT};
 	pub use sp_runtime::traits::AccountIdConversion;
+	pub use xcm_executor::XcmExecutor;
 	use sp_runtime::Percent;
 
 	parameter_types! {
