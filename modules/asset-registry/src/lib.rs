@@ -871,7 +871,7 @@ impl<T: Config> Erc20InfoMapping for EvmErc20InfoMapping<T> {
 					}
 					DexShareType::StableAssetPoolToken => {
 						let id = StableAssetPoolId::from_be_bytes(
-							address[H160_POSITION_DEXSHARE_LEFT_FIELD][2..].try_into().ok()?,
+							address[H160_POSITION_DEXSHARE_LEFT_FIELD][..].try_into().ok()?,
 						);
 						Some(DexShare::StableAssetPoolToken(id))
 					}
@@ -897,7 +897,7 @@ impl<T: Config> Erc20InfoMapping for EvmErc20InfoMapping<T> {
 					}
 					DexShareType::StableAssetPoolToken => {
 						let id = StableAssetPoolId::from_be_bytes(
-							address[H160_POSITION_DEXSHARE_RIGHT_FIELD][2..].try_into().ok()?,
+							address[H160_POSITION_DEXSHARE_RIGHT_FIELD][..].try_into().ok()?,
 						);
 						Some(DexShare::StableAssetPoolToken(id))
 					}

@@ -334,7 +334,7 @@ impl From<DexShare> for u32 {
 				bytes[2..].copy_from_slice(&foreign_asset_id.to_be_bytes());
 			}
 			DexShare::StableAssetPoolToken(stable_asset_pool_id) => {
-				bytes[2..].copy_from_slice(&stable_asset_pool_id.to_be_bytes());
+				bytes[..].copy_from_slice(&stable_asset_pool_id.to_be_bytes());
 			}
 		}
 		u32::from_be_bytes(bytes)
