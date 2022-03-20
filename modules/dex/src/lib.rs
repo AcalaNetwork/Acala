@@ -519,9 +519,9 @@ pub mod module {
 
 			let check_asset_registry = |currency_id: CurrencyId| match currency_id {
 				CurrencyId::Erc20(_)
-				| CurrencyId::StableAssetPoolToken(_)
 				| CurrencyId::LiquidCrowdloan(_)
-				| CurrencyId::ForeignAsset(_) => T::Erc20InfoMapping::name(currency_id)
+				| CurrencyId::ForeignAsset(_)
+				| CurrencyId::StableAssetPoolToken(_) => T::Erc20InfoMapping::name(currency_id)
 					.map(|_| ())
 					.ok_or(Error::<T>::AssetUnregistered),
 				CurrencyId::Token(_) | CurrencyId::DexShare(_, _) => Ok(()), /* No registration required */
