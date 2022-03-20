@@ -225,9 +225,9 @@ pub type Lease = BlockNumber;
 pub enum DexShare {
 	Token(TokenSymbol),
 	Erc20(EvmAddress),
-	StableAssetPoolToken(StableAssetPoolId),
 	LiquidCrowdloan(Lease),
 	ForeignAsset(ForeignAssetId),
+	StableAssetPoolToken(StableAssetPoolId),
 }
 
 #[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord, TypeInfo, MaxEncodedLen)]
@@ -268,9 +268,9 @@ impl CurrencyId {
 			self,
 			CurrencyId::Token(_)
 				| CurrencyId::Erc20(_)
-				| CurrencyId::StableAssetPoolToken(_)
 				| CurrencyId::LiquidCrowdloan(_)
 				| CurrencyId::ForeignAsset(_)
+				| CurrencyId::StableAssetPoolToken(_)
 		)
 	}
 
@@ -289,22 +289,22 @@ impl CurrencyId {
 		let dex_share_0 = match currency_id_0 {
 			CurrencyId::Token(symbol) => DexShare::Token(symbol),
 			CurrencyId::Erc20(address) => DexShare::Erc20(address),
+			CurrencyId::LiquidCrowdloan(lease) => DexShare::LiquidCrowdloan(lease),
+			CurrencyId::ForeignAsset(foreign_asset_id) => DexShare::ForeignAsset(foreign_asset_id),
 			CurrencyId::StableAssetPoolToken(stable_asset_pool_id) => {
 				DexShare::StableAssetPoolToken(stable_asset_pool_id)
 			}
-			CurrencyId::LiquidCrowdloan(lease) => DexShare::LiquidCrowdloan(lease),
-			CurrencyId::ForeignAsset(foreign_asset_id) => DexShare::ForeignAsset(foreign_asset_id),
 			// Unsupported
 			CurrencyId::DexShare(..) => return None,
 		};
 		let dex_share_1 = match currency_id_1 {
 			CurrencyId::Token(symbol) => DexShare::Token(symbol),
 			CurrencyId::Erc20(address) => DexShare::Erc20(address),
+			CurrencyId::LiquidCrowdloan(lease) => DexShare::LiquidCrowdloan(lease),
+			CurrencyId::ForeignAsset(foreign_asset_id) => DexShare::ForeignAsset(foreign_asset_id),
 			CurrencyId::StableAssetPoolToken(stable_asset_pool_id) => {
 				DexShare::StableAssetPoolToken(stable_asset_pool_id)
 			}
-			CurrencyId::LiquidCrowdloan(lease) => DexShare::LiquidCrowdloan(lease),
-			CurrencyId::ForeignAsset(foreign_asset_id) => DexShare::ForeignAsset(foreign_asset_id),
 			// Unsupported
 			CurrencyId::DexShare(..) => return None,
 		};
@@ -327,14 +327,14 @@ impl From<DexShare> for u32 {
 				let index = if leading_zeros > 16 { 16 } else { leading_zeros };
 				bytes[..].copy_from_slice(&address[index..index + 4][..]);
 			}
-			DexShare::StableAssetPoolToken(stable_asset_pool_id) => {
-				bytes[..].copy_from_slice(&stable_asset_pool_id.to_be_bytes());
-			}
 			DexShare::LiquidCrowdloan(lease) => {
 				bytes[..].copy_from_slice(&lease.to_be_bytes());
 			}
 			DexShare::ForeignAsset(foreign_asset_id) => {
 				bytes[2..].copy_from_slice(&foreign_asset_id.to_be_bytes());
+			}
+			DexShare::StableAssetPoolToken(stable_asset_pool_id) => {
+				bytes[..].copy_from_slice(&stable_asset_pool_id.to_be_bytes());
 			}
 		}
 		u32::from_be_bytes(bytes)
@@ -346,11 +346,11 @@ impl Into<CurrencyId> for DexShare {
 		match self {
 			DexShare::Token(token) => CurrencyId::Token(token),
 			DexShare::Erc20(address) => CurrencyId::Erc20(address),
+			DexShare::LiquidCrowdloan(lease) => CurrencyId::LiquidCrowdloan(lease),
+			DexShare::ForeignAsset(foreign_asset_id) => CurrencyId::ForeignAsset(foreign_asset_id),
 			DexShare::StableAssetPoolToken(stable_asset_pool_id) => {
 				CurrencyId::StableAssetPoolToken(stable_asset_pool_id)
 			}
-			DexShare::LiquidCrowdloan(lease) => CurrencyId::LiquidCrowdloan(lease),
-			DexShare::ForeignAsset(foreign_asset_id) => CurrencyId::ForeignAsset(foreign_asset_id),
 		}
 	}
 }
@@ -375,9 +375,9 @@ pub enum CurrencyIdType {
 pub enum DexShareType {
 	Token,
 	Erc20,
-	StableAssetPoolToken,
 	LiquidCrowdloan,
 	ForeignAsset,
+	StableAssetPoolToken,
 }
 
 impl Into<DexShareType> for DexShare {
@@ -385,9 +385,9 @@ impl Into<DexShareType> for DexShare {
 		match self {
 			DexShare::Token(_) => DexShareType::Token,
 			DexShare::Erc20(_) => DexShareType::Erc20,
-			DexShare::StableAssetPoolToken(_) => DexShareType::StableAssetPoolToken,
 			DexShare::LiquidCrowdloan(_) => DexShareType::LiquidCrowdloan,
 			DexShare::ForeignAsset(_) => DexShareType::ForeignAsset,
+			DexShare::StableAssetPoolToken(_) => DexShareType::StableAssetPoolToken,
 		}
 	}
 }
