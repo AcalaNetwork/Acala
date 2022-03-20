@@ -179,4 +179,14 @@ impl<T: frame_system::Config> module_dex::WeightInfo for WeightInfo<T> {
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(u as Weight)))
 	}
+	fn refund_provision() -> Weight {
+		(105_716_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(7 as Weight))
+			.saturating_add(T::DbWeight::get().writes(5 as Weight))
+	}
+	fn abort_provisioning() -> Weight {
+		(78_617_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(5 as Weight))
+			.saturating_add(T::DbWeight::get().writes(6 as Weight))
+	}
 }

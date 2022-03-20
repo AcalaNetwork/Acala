@@ -59,6 +59,8 @@ pub trait WeightInfo {
 	fn remove_liquidity_by_unstake() -> Weight;
 	fn swap_with_exact_supply(u: u32, ) -> Weight;
 	fn swap_with_exact_target(u: u32, ) -> Weight;
+	fn refund_provision() -> Weight;
+	fn abort_provisioning() -> Weight;
 }
 
 /// Weights for module_dex using the Acala node and recommended hardware.
@@ -137,6 +139,16 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(u as Weight)))
 	}
+	fn refund_provision() -> Weight {
+		(105_716_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(7 as Weight))
+			.saturating_add(T::DbWeight::get().writes(5 as Weight))
+	}
+	fn abort_provisioning() -> Weight {
+		(78_617_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(5 as Weight))
+			.saturating_add(T::DbWeight::get().writes(6 as Weight))
+	}
 }
 
 // For backwards compatibility and tests
@@ -213,5 +225,15 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().reads((2 as Weight).saturating_mul(u as Weight)))
 			.saturating_add(RocksDbWeight::get().writes(2 as Weight))
 			.saturating_add(RocksDbWeight::get().writes((1 as Weight).saturating_mul(u as Weight)))
+	}
+	fn refund_provision() -> Weight {
+		(105_716_000 as Weight)
+			.saturating_add(RocksDbWeight::get().reads(7 as Weight))
+			.saturating_add(RocksDbWeight::get().writes(5 as Weight))
+	}
+	fn abort_provisioning() -> Weight {
+		(78_617_000 as Weight)
+			.saturating_add(RocksDbWeight::get().reads(5 as Weight))
+			.saturating_add(RocksDbWeight::get().writes(6 as Weight))
 	}
 }

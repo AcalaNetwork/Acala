@@ -110,10 +110,7 @@ pub use runtime_common::{
 	TimeStampedPrice, TipPerWeightStep, ACA, AUSD, DOT, LDOT, RENBTC,
 };
 pub use xcm::latest::prelude::*;
-use xcm_config::XcmConfig;
-pub use xcm_executor::{traits::WeightTrader, Assets, Config, XcmExecutor};
 
-use crate::xcm_config::XcmOriginToCallOrigin;
 /// Import the stable_asset pallet.
 pub use nutsfinance_stable_asset;
 
@@ -1137,6 +1134,7 @@ parameter_types! {
 		TradingPair::from_currency_ids(AUSD, RENBTC).unwrap(),
 		TradingPair::from_currency_ids(DOT, ACA).unwrap(),
 	];
+	pub const ExtendedProvisioningBlocks: BlockNumber = 2 * DAYS;
 }
 
 impl module_dex::Config for Runtime {
@@ -1149,6 +1147,7 @@ impl module_dex::Config for Runtime {
 	type DEXIncentives = Incentives;
 	type WeightInfo = weights::module_dex::WeightInfo<Runtime>;
 	type ListingOrigin = EnsureRootOrHalfGeneralCouncil;
+	type ExtendedProvisioningBlocks = ExtendedProvisioningBlocks;
 	type OnLiquidityPoolUpdated = ();
 }
 
@@ -1645,22 +1644,6 @@ impl cumulus_pallet_parachain_system::Config for Runtime {
 }
 
 impl parachain_info::Config for Runtime {}
-
-impl cumulus_pallet_xcmp_queue::Config for Runtime {
-	type Event = Event;
-	type XcmExecutor = XcmExecutor<XcmConfig>;
-	type ChannelInfo = ParachainSystem;
-	type VersionWrapper = ();
-	type ExecuteOverweightOrigin = EnsureRootOrHalfGeneralCouncil;
-	type ControllerOrigin = EnsureRootOrHalfGeneralCouncil;
-	type ControllerOriginConverter = XcmOriginToCallOrigin;
-}
-
-impl cumulus_pallet_dmp_queue::Config for Runtime {
-	type Event = Event;
-	type XcmExecutor = XcmExecutor<XcmConfig>;
-	type ExecuteOverweightOrigin = EnsureRootOrHalfGeneralCouncil;
-}
 
 impl orml_unknown_tokens::Config for Runtime {
 	type Event = Event;
