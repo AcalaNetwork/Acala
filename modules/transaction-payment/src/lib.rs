@@ -802,7 +802,7 @@ where
 				);
 				Self::swap_from_pool_or_dex(who, custom_fee_amount, *currency_id).map(|_| custom_fee_surplus)
 			}
-			Some(_) | None => Self::native_then_alternative_or_default(who, fee),
+			_ => Self::native_then_alternative_or_default(who, fee),
 		}
 	}
 

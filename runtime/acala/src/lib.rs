@@ -1697,7 +1697,7 @@ impl OnRuntimeUpgrade for TransactionPaymentMigration {
 		let threshold = SwapBalanceThreshold::get();
 		let tokens = vec![
 			(AUSD, vec![AUSD, ACA]),
-			(LDOT, vec![LDOT, AUSD, ACA]),
+			(LCDOT, vec![LCDOT, AUSD, ACA]),
 			(DOT, vec![DOT, LCDOT, AUSD, ACA]),
 		];
 		for (token, path) in tokens {
