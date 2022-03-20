@@ -859,63 +859,19 @@ fn create_predeploy_contract_works() {
 			Error::<Runtime>::ContractAlreadyExisted
 		);
 
-		// deploy mirrored token
-		let addr = H160::from_str("2222222222222222222222222222222222222222").unwrap();
-		assert_noop!(
-			EVM::create_predeploy_contract(
-				Origin::signed(NetworkContractAccount::get()),
-				addr,
-				vec![],
-				0,
-				1000000,
-				1000000,
-				vec![],
-			),
-			Error::<Runtime>::ContractNotFound
-		);
-
-		// deploy token contract
+		// deploy empty contract
+		let token_addr = H160::from_str("2222222222222222222222222222222222222222").unwrap();
 		assert_ok!(EVM::create_predeploy_contract(
 			Origin::signed(NetworkContractAccount::get()),
-			PREDEPLOY_ADDRESS_START,
-			contract,
+			token_addr,
+			vec![],
 			0,
 			1000000,
 			1000000,
 			vec![],
 		));
 
-		assert_eq!(
-			CodeInfos::<Runtime>::get(&EVM::code_hash_at_address(&PREDEPLOY_ADDRESS_START)),
-			Some(CodeInfo {
-				code_size: 184,
-				ref_count: 2,
-			})
-		);
-
-		// deploy mirrored token
-		assert_ok!(EVM::create_predeploy_contract(
-			Origin::signed(NetworkContractAccount::get()),
-			addr,
-			vec![],
-			0,
-			1000000,
-			1000000,
-			vec![],
-		));
-		assert_eq!(
-			CodeInfos::<Runtime>::get(&EVM::code_hash_at_address(&PREDEPLOY_ADDRESS_START)),
-			Some(CodeInfo {
-				code_size: 184,
-				ref_count: 3,
-			})
-		);
-		let account_id = <Runtime as Config>::AddressMapping::get_account_id(&addr);
-		assert_eq!(Balances::free_balance(account_id), Balances::minimum_balance());
-		assert_eq!(
-			Balances::free_balance(TreasuryAccount::get()),
-			INITIAL_BALANCE - Balances::minimum_balance()
-		);
+		assert_eq!(CodeInfos::<Runtime>::get(&EVM::code_hash_at_address(&token_addr)), None);
 	});
 }
 

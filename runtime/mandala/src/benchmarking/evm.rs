@@ -183,19 +183,6 @@ runtime_benchmarks! {
 		assert!(module_evm::Codes::<Runtime>::contains_key(code_hash));
 	}
 
-	create_predeploy_mirror_token_contract {
-		let account_id = <Runtime as module_evm::Config>::TreasuryAccount::get();
-		set_balance(NATIVE, &account_id, 1_000_000 * dollar(NATIVE));
-		let address = H160::from_low_u64_be(2);
-		deploy_token_contract()?;
-	}: create_predeploy_contract(RawOrigin::Root, address, vec![], 0, 0, 0, vec![])
-	verify {
-		assert_eq!(
-			Currencies::free_balance(NATIVE, &evm_to_account_id(address)),
-			Currencies::minimum_balance(NATIVE)
-		);
-	}
-
 	call {
 		// Storage.store(1)
 		let input = hex_literal::hex!("6057361d0000000000000000000000000000000000000000000000000000000000000001").to_vec();

@@ -376,6 +376,7 @@ parameter_types! {
 	pub const GetExchangeFee: (u32, u32) = (1, 100);
 	pub const TradingPathLimit: u32 = 4;
 	pub const DEXPalletId: PalletId = PalletId(*b"aca/dexm");
+	pub const ExtendedProvisioningBlocks: BlockNumber = 0;
 }
 
 impl module_dex::Config for Test {
@@ -388,6 +389,7 @@ impl module_dex::Config for Test {
 	type WeightInfo = ();
 	type DEXIncentives = MockDEXIncentives;
 	type ListingOrigin = EnsureSignedBy<ListingOrigin, AccountId>;
+	type ExtendedProvisioningBlocks = ExtendedProvisioningBlocks;
 	type OnLiquidityPoolUpdated = ();
 }
 
@@ -466,6 +468,12 @@ parameter_type_with_key! {
 	};
 }
 
+parameter_type_with_key! {
+	pub PricingPegged: |_currency_id: CurrencyId| -> Option<CurrencyId> {
+		None
+	};
+}
+
 parameter_types! {
 	pub StableCurrencyFixedPrice: Price = Price::saturating_from_rational(1, 1);
 	pub const GetStakingCurrencyId: CurrencyId = DOT;
@@ -493,6 +501,7 @@ impl module_prices::Config for Test {
 	type LiquidCrowdloanLeaseBlockNumber = LiquidCrowdloanLeaseBlockNumber;
 	type RelayChainBlockNumber = MockRelayBlockNumberProvider;
 	type RewardRatePerRelaychainBlock = RewardRatePerRelaychainBlock;
+	type PricingPegged = PricingPegged;
 	type WeightInfo = ();
 }
 
