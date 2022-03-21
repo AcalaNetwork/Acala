@@ -27,6 +27,10 @@
       12,
       12,
       12,
+      12,
+	  12,
+      12,
+      8,
       12
     ],
     "tokenSymbol": [
@@ -41,7 +45,11 @@
       "KSM",
       "LKSM",
       "BNC",
-      "VSKSM"
+      "VSKSM",
+	  "PHA",
+      "KINT",
+      "KBTC",
+      "TAI"
     ]
   },
   "relayChain": "rococo-mandala",
