@@ -1,6 +1,6 @@
 {
   "name": "Rococo Mandala Testnet",
-  "id": "rococo_mandala_2",
+  "id": "roc_man_2",
   "chainType": "Local",
   "bootNodes": [
     "/dns4/node-6887672654273495040-0.p2p.onfinality.io/tcp/11436/p2p/12D3KooWBhTynm7HCD7co7BaQXXYmnNoChtWCjJ1HUoyntvbDmdk",
