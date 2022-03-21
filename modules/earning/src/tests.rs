@@ -57,7 +57,6 @@ fn bond_works() {
 #[test]
 fn unbonding_works() {
 	ExtBuilder::default().build().execute_with(|| {
-		System::set_block_number(0);
 		assert_noop!(
 			Earning::unbond(Origin::signed(ALICE), 1000),
 			Error::<Runtime>::NotBonded
@@ -71,11 +70,28 @@ fn unbonding_works() {
 
 		// Won't unbond before unbonding period passes
 		assert_ok!(Earning::unbond(Origin::signed(ALICE), 1001));
+		System::assert_last_event(
+			Event::Unbonded {
+				who: ALICE,
+				amount: 1000,
+			}
+			.into(),
+		);
+		System::reset_events();
 		assert_ok!(Earning::withdraw_unbonded(Origin::signed(ALICE)));
+		assert_eq!(System::events(), vec![]);
 		assert_eq!(Balances::reducible_balance(&ALICE, false), 0);
-		System::set_block_number(<Runtime as Config>::UnbondingPeriod::get());
+
+		System::set_block_number(4);
 
 		assert_ok!(Earning::withdraw_unbonded(Origin::signed(ALICE)));
+		System::assert_last_event(
+			Event::Withdrawn {
+				who: ALICE,
+				amount: 1000,
+			}
+			.into(),
+		);
 		assert_eq!(Balances::reducible_balance(&ALICE, false), 1000);
 
 		assert_noop!(
@@ -85,8 +101,12 @@ fn unbonding_works() {
 		assert_ok!(Earning::bond(Origin::signed(ALICE), 1000));
 		assert_eq!(Balances::reducible_balance(&ALICE, false), 0);
 		assert_ok!(Earning::unbond(Origin::signed(ALICE), 1000));
+		System::reset_events();
+
 		// unbond instant will not work on pending unbond funds
 		assert_ok!(Earning::unbond_instant(Origin::signed(ALICE), 1001));
+		assert_eq!(System::events(), vec![]);
+
 		assert_ok!(Earning::rebond(Origin::signed(ALICE), 1000));
 		assert_eq!(Balances::reducible_balance(&ALICE, false), 0);
 
@@ -95,6 +115,14 @@ fn unbonding_works() {
 			Error::<Runtime>::BelowMinBondThreshold
 		);
 		assert_ok!(Earning::unbond_instant(Origin::signed(ALICE), 1001));
+		System::assert_last_event(
+			Event::InstantUnbonded {
+				who: ALICE,
+				amount: 900,
+				fee: 100,
+			}
+			.into(),
+		);
 		// takes instant unbonding fee
 		assert_eq!(Balances::reducible_balance(&ALICE, false), 900);
 	});
@@ -103,12 +131,12 @@ fn unbonding_works() {
 #[test]
 fn rebond_works() {
 	ExtBuilder::default().build().execute_with(|| {
-		System::set_block_number(0);
 		assert_ok!(Earning::bond(Origin::signed(ALICE), 1000));
 		assert_ok!(Earning::unbond(Origin::signed(ALICE), 1000));
 		assert_ok!(Earning::rebond(Origin::signed(ALICE), 10));
+		System::assert_last_event(Event::Rebonded { who: ALICE, amount: 10 }.into());
 
-		System::set_block_number(<Runtime as Config>::UnbondingPeriod::get());
+		System::set_block_number(4);
 		// should not get in this state
 		assert_ok!(Earning::withdraw_unbonded(Origin::signed(ALICE)));
 		assert_eq!(Balances::reducible_balance(&ALICE, false), 990);

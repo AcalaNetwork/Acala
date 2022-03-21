@@ -153,6 +153,10 @@ where
 
 		let diff = old_total.saturating_sub(new_total);
 
+		if diff == 0 {
+			return Ok(None);
+		}
+
 		if new_total == 0 {
 			Self::Ledger::remove(&who);
 		} else {
