@@ -6,6 +6,7 @@ edition = "2021"
 
 [dependencies]
 codec = { package = "parity-scale-codec", version = "2.3.1" }
+clap = { version = "3.1.6", features = ["derive"] }
 derive_more = "0.99"
 log = "0.4.8"
 sc-cli = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17" }
@@ -14,4 +15,3 @@ sc-service = { git = "https://github.com/paritytech/substrate", branch = "polkad
 sp-blockchain = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17" }
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17" }
 sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17" }
-clap = { version = "3.0", features = ["derive"] }
