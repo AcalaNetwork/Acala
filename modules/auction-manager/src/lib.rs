@@ -30,6 +30,7 @@
 #![allow(clippy::upper_case_acronyms)]
 #![allow(clippy::unnecessary_unwrap)]
 
+use codec::MaxEncodedLen;
 use frame_support::{log, pallet_prelude::*, transactional};
 use frame_system::{
 	offchain::{SendTransactionTypes, SubmitTransaction},
@@ -69,7 +70,7 @@ pub const DEFAULT_MAX_ITERATIONS: u32 = 1000;
 
 /// Information of an collateral auction
 #[cfg_attr(feature = "std", derive(PartialEq, Eq))]
-#[derive(Encode, Decode, Clone, RuntimeDebug, TypeInfo)]
+#[derive(Encode, Decode, Clone, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub struct CollateralAuctionItem<AccountId, BlockNumber> {
 	/// Refund recipient for may receive refund
 	refund_recipient: AccountId,
@@ -254,7 +255,6 @@ pub mod module {
 	pub type TotalTargetInAuction<T: Config> = StorageValue<_, Balance, ValueQuery>;
 
 	#[pallet::pallet]
-	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
 	#[pallet::hooks]
