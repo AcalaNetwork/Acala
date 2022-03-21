@@ -35,9 +35,10 @@ use frame_support::pallet_prelude::InvalidTransaction;
 pub use frame_support::{
 	construct_runtime, log, parameter_types,
 	traits::{
-		Contains, ContainsLengthBound, Currency as PalletCurrency, EnsureOrigin, EqualPrivilegeOnly, Everything, Get,
-		Imbalance, InstanceFilter, IsSubType, IsType, KeyOwnerProofSystem, LockIdentifier, Nothing, OnRuntimeUpgrade,
-		OnUnbalanced, Randomness, SortedMembers, U128CurrencyToVote, WithdrawReasons,
+		ConstU128, ConstU32, Contains, ContainsLengthBound, Currency as PalletCurrency, EnsureOrigin,
+		EqualPrivilegeOnly, Everything, Get, Imbalance, InstanceFilter, IsSubType, IsType, KeyOwnerProofSystem,
+		LockIdentifier, Nothing, OnRuntimeUpgrade, OnUnbalanced, Randomness, SortedMembers, U128CurrencyToVote,
+		WithdrawReasons,
 	},
 	weights::{
 		constants::{BlockExecutionWeight, RocksDbWeight, WEIGHT_PER_SECOND},
@@ -176,6 +177,8 @@ parameter_types! {
 	// Ecosystem modules
 	pub const StarportPalletId: PalletId = PalletId(*b"aca/stpt");
 	pub const StableAssetPalletId: PalletId = PalletId(*b"nuts/sta");
+	// lock identifier for earning module
+	pub const EarningLockIdentifier: LockIdentifier = *b"aca/earn";
 }
 
 pub fn get_all_module_accounts() -> Vec<AccountId> {
@@ -1211,6 +1214,24 @@ impl module_transaction_payment::Config for Runtime {
 	type UpdateOrigin = EnsureRootOrHalfGeneralCouncil;
 }
 
+parameter_types! {
+	pub const InstantUnstakeFee: Permill = Permill::from_percent(10);
+}
+
+impl module_earning::Config for Runtime {
+	type Event = Event;
+	type Currency = Balances;
+	type OnBonded = ();
+	type OnUnbonded = ();
+	type OnUnstakeFee = ();
+	type MinBond = ConstU128<100>;
+	type UnbondingPeriod = ConstU32<3>;
+	type InstantUnstakeFee = InstantUnstakeFee;
+	type MaxUnbondingChunks = ConstU32<3>;
+	type LockIdentifier = EarningLockIdentifier;
+	type WeightInfo = ();
+}
+
 impl module_evm_accounts::Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
@@ -1916,6 +1937,9 @@ construct_runtime! {
 		// Stable asset
 		StableAsset: nutsfinance_stable_asset::{Pallet, Call, Storage, Event<T>} = 200,
 
+		// Staking related pallets
+		Earning: module_earning::{Pallet, Call, Storage, Event<T>} = 210,
+
 		// Parachain System, always put it at the end
 		ParachainSystem: cumulus_pallet_parachain_system::{Pallet, Call, Storage, Inherent, Config, Event<T>} = 160,
 
@@ -1936,6 +1960,7 @@ mod benches {
 		[module_asset_registry, benchmarking::asset_registry]
 		[module_auction_manager, benchmarking::auction_manager]
 		[module_cdp_engine, benchmarking::cdp_engine]
+		[module_earning, benchmarking::earning]
 		[module_emergency_shutdown, benchmarking::emergency_shutdown]
 		[module_evm, benchmarking::evm]
 		[module_homa, benchmarking::homa]

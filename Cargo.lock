@@ -5762,6 +5762,7 @@ dependencies = [
  "module-currencies",
  "module-dex",
  "module-dex-oracle",
+ "module-earning",
  "module-emergency-shutdown",
  "module-evm",
  "module-evm-accounts",
