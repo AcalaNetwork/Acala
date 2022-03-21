@@ -1,13 +1,13 @@
 {
   "name": "Rococo Mandala Testnet",
-  "id": "roc_man_2",
+  "id": "rococo_mandala",
   "chainType": "Local",
   "bootNodes": [
     "/dns4/node-6887672654273495040-0.p2p.onfinality.io/tcp/11436/p2p/12D3KooWBhTynm7HCD7co7BaQXXYmnNoChtWCjJ1HUoyntvbDmdk",
     "/dns4/node-6887673021598056448-0.p2p.onfinality.io/tcp/11007/p2p/12D3KooWNQgAfF67X72wLpWF4zWooQjNxig8FKiumsYKMKUfGdSA"
   ],
   "telemetryEndpoints": null,
-  "protocolId": "rocman2",
+  "protocolId": "roc-man",
   "properties": null,
   "forkBlocks": null,
   "badBlocks": null,
