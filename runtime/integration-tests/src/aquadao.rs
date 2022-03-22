@@ -20,10 +20,11 @@ use crate::setup::*;
 
 use ecosystem_aqua_dao::{Discount, DiscountRate, Subscription, SubscriptionState};
 use frame_support::traits::OnInitialize;
-use mandala_runtime::AquaStakedToken;
+use mandala_runtime::{AquaStakedToken, DAYS};
 use sp_runtime::traits::One;
 
 const ADAO_CURRENCY: CurrencyId = CurrencyId::Token(TokenSymbol::ADAO);
+const SDAO_CURRENCY: CurrencyId = CurrencyId::Token(TokenSymbol::SDAO);
 
 #[test]
 fn subscription() {
@@ -32,6 +33,12 @@ fn subscription() {
 			(AccountId::from(ALICE), USD_CURRENCY, 2_000_000 * dollar(USD_CURRENCY)),
 			(AccountId::from(BOB), USD_CURRENCY, 1_000_000 * dollar(USD_CURRENCY)),
 			(AccountId::from(BOB), ADAO_CURRENCY, 1_000_000 * dollar(ADAO_CURRENCY)),
+			(AccountId::from(BOB), SDAO_CURRENCY, 1_000_000 * dollar(SDAO_CURRENCY)),
+			(
+				AquaStakedToken::account_id(),
+				ADAO_CURRENCY,
+				1_000_000 * dollar(ADAO_CURRENCY),
+			),
 		])
 		.build()
 		.execute_with(|| {
@@ -99,6 +106,9 @@ fn subscription() {
 				ecosystem_aqua_staked_token::Error::<Runtime>::VestingNotExpired
 			);
 
+			// inflation
+			AquaStakedToken::on_initialize(DAYS);
+
 			// claim && unstake
 			set_relaychain_block_number(subscription.vesting_period + 1);
 			assert_ok!(AquaStakedToken::claim(Origin::signed(alice.clone())));
@@ -106,7 +116,7 @@ fn subscription() {
 				Origin::signed(alice.clone()),
 				subscription_amount
 			));
-			assert_eq!(Currencies::free_balance(ADAO, &alice), subscription_amount);
+			assert_eq!(Currencies::free_balance(ADAO, &alice), 125_203_375_719_934);
 		});
 }
 
