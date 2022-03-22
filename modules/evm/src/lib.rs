@@ -1749,7 +1749,7 @@ impl<T: Config> EVMTrait<T::AccountId> for Pallet<T> {
 								exit_reason: info.exit_reason.clone(),
 								output: info.value.clone(),
 								logs: info.logs.clone(),
-								used_gas: gas_limit,
+								used_gas: info.used_gas.unique_saturated_into(),
 								used_storage: Default::default(),
 							});
 							TransactionOutcome::Rollback(Ok(info))
