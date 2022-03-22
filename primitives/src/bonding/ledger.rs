@@ -165,6 +165,9 @@ where
 				}
 			})
 			.expect("Only popped elements from inner_vec");
+
+		self.check_min_bond()?;
+
 		Ok((self, unlocking_balance))
 	}
 
@@ -385,6 +388,8 @@ mod tests {
 			.and_then(|ledger| ledger.unbond(50, 2))
 			.and_then(|(ledger, _)| ledger.unbond(50, 3))
 			.unwrap();
+
+		assert_err!(ledger.clone().rebond(1), Error::BelowMinBondThreshold);
 
 		let (ledger, actual) = ledger.rebond(20).unwrap();
 		assert_eq!(actual, 20);

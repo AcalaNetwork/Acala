@@ -133,12 +133,24 @@ fn rebond_works() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(Earning::bond(Origin::signed(ALICE), 1000));
 		assert_ok!(Earning::unbond(Origin::signed(ALICE), 1000));
-		assert_ok!(Earning::rebond(Origin::signed(ALICE), 10));
-		System::assert_last_event(Event::Rebonded { who: ALICE, amount: 10 }.into());
+
+		assert_noop!(
+			Earning::rebond(Origin::signed(ALICE), 1),
+			Error::<Runtime>::BelowMinBondThreshold
+		);
+
+		assert_ok!(Earning::rebond(Origin::signed(ALICE), 100));
+		System::assert_last_event(
+			Event::Rebonded {
+				who: ALICE,
+				amount: 100,
+			}
+			.into(),
+		);
 
 		System::set_block_number(4);
 		// should not get in this state
 		assert_ok!(Earning::withdraw_unbonded(Origin::signed(ALICE)));
-		assert_eq!(Balances::reducible_balance(&ALICE, false), 990);
+		assert_eq!(Balances::reducible_balance(&ALICE, false), 900);
 	});
 }
