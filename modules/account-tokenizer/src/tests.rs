@@ -207,7 +207,7 @@ fn can_handle_bad_oracle_data() {
 					query_id: 0,
 					task_result: Err(DispatchError::Module(ModuleError {
 						index: 6u8,
-						error: 3u8,
+						error: 2u8,
 						message: Some("BadOracleData"),
 					})),
 				},
@@ -437,7 +437,7 @@ fn can_remint_after_burn_token_nft() {
 				AccountTokenizer::request_mint(Origin::signed(BOB), proxy.clone(), BOB.clone(), 1, 0, 0),
 				DispatchError::Module(ModuleError {
 					index: 6,
-					error: 4,
+					error: 3,
 					message: Some("FailedAnonymousProxyCheck",),
 				},)
 			);
@@ -555,7 +555,7 @@ fn cannot_double_mint() {
 				AccountTokenizer::request_mint(Origin::signed(ALICE), proxy.clone(), ALICE.clone(), 1, 0, 0),
 				DispatchError::Module(ModuleError {
 					index: 6,
-					error: 5,
+					error: 4,
 					message: Some("AccountTokenAlreadyExists",),
 				},)
 			);

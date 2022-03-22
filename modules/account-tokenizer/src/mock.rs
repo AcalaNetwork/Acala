@@ -240,6 +240,8 @@ impl Config for Runtime {
 	type MintRequestDeposit = MintRequestDeposit;
 	type MintFee = MintFee;
 	type ForeignStateQuery = ForeignStateOracle;
+	type ClassId = u32;
+	type TokenId = u64;
 }
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;

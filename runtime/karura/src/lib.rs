@@ -531,9 +531,9 @@ impl pallet_membership::Config<OperatorMembershipInstanceAcala> for Runtime {
 }
 
 parameter_types! {
-	pub const ForeignStateMotionDuration: BlockNumber = 7 * DAYS;
-	pub const ForeignStateMaxProposals: u32 = 100;
-	pub const ForeignStateMaxMembers: u32 = 100;
+	pub const ForeignStateMotionDuration: BlockNumber = 3 * DAYS;
+	pub const ForeignStateMaxProposals: u32 = 30;
+	pub const ForeignStateMaxMembers: u32 = 30;
 }
 
 impl pallet_collective::Config<ForeignStateOracleInstance> for Runtime {
@@ -1675,6 +1675,8 @@ impl module_account_tokenizer::Config for Runtime {
 	type MintRequestDeposit = AccountTokenizerMintRequestDeposit;
 	type MintFee = AccountTokenizerMintFee;
 	type ForeignStateQuery = ForeignStateOracle;
+	type ClassId = u32;
+	type TokenId = u64;
 }
 construct_runtime!(
 	pub enum Runtime where

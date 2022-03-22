@@ -33,6 +33,7 @@
 #![allow(clippy::unused_unit)]
 #![allow(clippy::upper_case_acronyms)]
 
+use codec::Decode;
 use frame_support::{
 	dispatch::{Dispatchable, GetDispatchInfo},
 	log,
@@ -46,11 +47,10 @@ use frame_support::{
 	},
 	transactional, PalletId,
 };
-
 use frame_system::pallet_prelude::*;
 use orml_traits::{arithmetic::Zero, InspectExtended};
 use sp_io::hashing::blake2_256;
-use sp_runtime::traits::{AccountIdConversion, One, TrailingZeroInput};
+use sp_runtime::traits::{AccountIdConversion, AtLeast32BitUnsigned, TrailingZeroInput};
 use sp_std::vec::Vec;
 
 use module_support::{CreateExtended, ForeignChainStateQuery, ProxyXcm};
@@ -76,7 +76,7 @@ pub mod module {
 	use super::*;
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config + orml_nft::Config {
+	pub trait Config: frame_system::Config {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
 		/// Weight information for the extrinsics in this module.
@@ -105,6 +105,12 @@ pub mod module {
 		/// Fee for minting an Account Token NFT.
 		#[pallet::constant]
 		type MintFee: Get<Balance>;
+
+		/// The class ID type
+		type ClassId: Parameter + Member + AtLeast32BitUnsigned + Default + Copy;
+
+		/// The token ID type
+		type TokenId: Parameter + Member + AtLeast32BitUnsigned + Default + Copy;
 
 		/// The XcmInterface to communicate with the relaychain via XCM.
 		type XcmInterface: ProxyXcm<Self::AccountId>;
@@ -138,10 +144,8 @@ pub mod module {
 		AccountTokenNotFound,
 		/// The caller is unauthorized to make this transaction.
 		CallerUnauthorized,
-		/// The owner of the NFT has insufficient reserve balance.
-		InsufficientReservedBalance,
 		/// Cannot decode data from oracle
-		BadOracleData,
+		InvalidQueryResponse,
 		/// Failed to prove account spawned anonymous proxy
 		FailedAnonymousProxyCheck,
 		/// The account has already had its NFT token minted.
@@ -303,7 +307,7 @@ pub mod module {
 
 			// Ensure the token hasn't already been minted.
 			ensure!(
-				Self::minted_account(&account).is_none(),
+				!MintedAccount::<T>::contains_key(&account),
 				Error::<T>::AccountTokenAlreadyExists
 			);
 
@@ -343,7 +347,9 @@ pub mod module {
 			let data = T::OracleOrigin::ensure_origin(origin)?;
 
 			// Checks whether oracle confirms or rejects the mint request
-			if data.get(0).ok_or(Error::<T>::BadOracleData)?.is_one() {
+			let success: bool = Decode::decode(&mut &data[..]).map_err(|_| Error::<T>::InvalidQueryResponse)?;
+
+			if success {
 				Self::accept_mint_request(owner, account)
 			} else {
 				Self::reject_mint_request(owner)
@@ -450,7 +456,7 @@ impl<T: Config> Pallet<T> {
 	#[require_transactional]
 	pub fn accept_mint_request(owner: T::AccountId, account: T::AccountId) -> DispatchResult {
 		// Ensure the token hasn't already been minted.
-		if Self::minted_account(&account).is_some() {
+		if MintedAccount::<T>::contains_key(&account) {
 			// NFT is already minted. Confiscate the deposit and reject request
 			Self::reject_mint_request(owner)
 		} else {
@@ -464,11 +470,11 @@ impl<T: Config> Pallet<T> {
 			T::NFTInterface::mint_into(&nft_class_id, &token_id, &owner)?;
 
 			// Create a record of the Mint and insert it into storage
-			MintedAccount::<T>::insert(account.clone(), token_id);
+			MintedAccount::<T>::insert(&account, token_id);
 
 			// Release the deposit from the owner
 			let remaining = T::Currency::unreserve_named(&RESERVE_ID, &owner, T::MintRequestDeposit::get());
-			ensure!(remaining.is_zero(), Error::<T>::InsufficientReservedBalance);
+			debug_assert!(remaining.is_zero());
 
 			Self::deposit_event(Event::AccountTokenMinted {
 				owner,

@@ -1746,6 +1746,8 @@ impl module_account_tokenizer::Config for Runtime {
 	type MintRequestDeposit = AccountTokenizerMintRequestDeposit;
 	type MintFee = AccountTokenizerMintFee;
 	type ForeignStateQuery = ForeignStateOracle;
+	type ClassId = u32;
+	type TokenId = u64;
 }
 
 define_combined_task! {
