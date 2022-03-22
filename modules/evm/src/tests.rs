@@ -776,6 +776,8 @@ fn create_nft_contract_works() {
 			from: NetworkContractSource::get(),
 			contract: MIRRORED_TOKENS_ADDRESS_START | H160::from_low_u64_be(MIRRORED_NFT_ADDRESS_START),
 			logs: vec![],
+			used_gas: 93183,
+			used_storage: 284,
 		}));
 		assert_eq!(EVM::network_contract_index(), MIRRORED_NFT_ADDRESS_START + 1);
 	});
@@ -844,6 +846,8 @@ fn create_predeploy_contract_works() {
 			from: NetworkContractSource::get(),
 			contract: addr,
 			logs: vec![],
+			used_gas: 93183,
+			used_storage: 284,
 		}));
 
 		assert_noop!(
@@ -1019,6 +1023,8 @@ fn should_publish() {
 			exit_reason: ExitReason::Error(ExitError::Other(Into::<&str>::into(Error::<Runtime>::NoPermission).into())),
 			output: vec![],
 			logs: vec![],
+			used_gas: 1000000,
+			used_storage: 0,
 		}));
 
 		// developer can call the unpublished contract
@@ -1106,6 +1112,8 @@ fn should_publish_free() {
 			exit_reason: ExitReason::Error(ExitError::Other(Into::<&str>::into(Error::<Runtime>::NoPermission).into())),
 			output: vec![],
 			logs: vec![],
+			used_gas: 1000000,
+			used_storage: 0,
 		}));
 
 		assert_ok!(EVM::publish_free(Origin::signed(CouncilAccount::get()), contract_address));
@@ -1518,6 +1526,8 @@ fn storage_limit_should_work() {
 			)),
 			output: vec![],
 			logs: vec![],
+			used_gas: 1000000000,
+			used_storage: 0,
 		}));
 
 		// Factory.createContract(1)
@@ -1566,6 +1576,8 @@ fn storage_limit_should_work() {
 			)),
 			output: vec![],
 			logs: vec![],
+			used_gas: 1000000000,
+			used_storage: 0,
 		}));
 
 		// Factory.createContract(2)
@@ -1826,6 +1838,8 @@ fn should_update_storage() {
 			)),
 			output: vec![],
 			logs: vec![],
+			used_gas: 1000000,
+			used_storage: 0,
 		}));
 
 		// call method `set(123)`
@@ -1904,6 +1918,8 @@ fn convert_decimals_should_not_work() {
 				Into::<&str>::into(Error::<Runtime>::InvalidDecimals).into(),
 			)),
 			logs: vec![],
+			used_gas: 1000000,
+			used_storage: 0,
 		}));
 		assert_eq!(
 			EVM::create2(
@@ -1927,6 +1943,8 @@ fn convert_decimals_should_not_work() {
 				Into::<&str>::into(Error::<Runtime>::InvalidDecimals).into(),
 			)),
 			logs: vec![],
+			used_gas: 1000000,
+			used_storage: 0,
 		}));
 		assert_eq!(
 			EVM::call(
@@ -1951,6 +1969,8 @@ fn convert_decimals_should_not_work() {
 			)),
 			output: vec![],
 			logs: vec![],
+			used_gas: 1000000,
+			used_storage: 0,
 		}));
 	});
 }
