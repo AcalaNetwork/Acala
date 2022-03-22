@@ -20,7 +20,7 @@
 #![allow(clippy::upper_case_acronyms)]
 
 use codec::FullCodec;
-use frame_support::pallet_prelude::{DispatchClass, Pays, Weight};
+use frame_support::pallet_prelude::{DispatchClass, EnsureOrigin, Pays, Weight};
 use frame_support::traits::tokens::nonfungibles::Create;
 use primitives::{task::TaskResult, Balance, CurrencyId};
 use sp_runtime::{
@@ -264,7 +264,12 @@ pub trait ProxyXcm<AccountId> {
 	fn get_transfer_proxy_xcm_fee() -> Balance;
 }
 
-pub trait ForeignChainStateQuery<AccountId, Call, BlockNumber> {
+pub trait ForeignChainStateQuery<AccountId, Call, BlockNumber, Origin> {
+	type OracleOrigin: EnsureOrigin<Origin, Success = Vec<u8>>;
+
+	/// Uses `ensure_origin` implemented from OracleOrigin
+	fn ensure_origin(o: Origin) -> Result<Vec<u8>, frame_support::error::BadOrigin>;
+
 	/// Create a query to be validated by foreign state oracle
 	/// params:
 	/// - who: Account that is requesting the query,

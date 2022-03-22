@@ -53,9 +53,12 @@ pub mod query_example {
 			+ From<Call<Self>>
 			+ IsType<<Self as frame_system::Config>::Call>;
 
-		type ForeignStateQuery: ForeignChainStateQuery<Self::AccountId, <Self as Config>::Call, Self::BlockNumber>;
-
-		type OracleOrigin: EnsureOrigin<Self::Origin, Success = Vec<u8>>;
+		type ForeignStateQuery: ForeignChainStateQuery<
+			Self::AccountId,
+			<Self as Config>::Call,
+			Self::BlockNumber,
+			Self::Origin,
+		>;
 	}
 
 	#[pallet::event]
@@ -68,7 +71,7 @@ pub mod query_example {
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight(100)]
 		pub fn injected_call(origin: OriginFor<T>, call_data: Vec<u8>) -> DispatchResult {
-			let origin_data = T::OracleOrigin::ensure_origin(origin)?;
+			let origin_data = T::ForeignStateQuery::ensure_origin(origin)?;
 			Self::deposit_event(Event::<T>::OriginInjected { origin_data, call_data });
 			Ok(())
 		}
@@ -161,12 +164,10 @@ impl query_example::Config for Runtime {
 	type Event = Event;
 	type Call = Call;
 	type ForeignStateQuery = ForeignStateOracle;
-	type OracleOrigin = EnsureForeignStateOracle;
 }
 
 parameter_types! {
 	pub const ForeignOraclePalletId: PalletId = PalletId(*b"aca/fsto");
-	pub const DefaultQueryDuration: BlockNumber = 10;
 	pub const QueryFee: Balance = 100;
 	pub const CancelFee: Balance = 10;
 	pub ExpiredCallPurgeReward: Permill = Permill::from_percent(50);
@@ -182,7 +183,6 @@ impl Config for Runtime {
 	type ExpiredCallPurgeReward = ExpiredCallPurgeReward;
 	type MaxQueryCallSize = MaxQueryCallSize;
 	type OracleOrigin = EnsureSignedBy<One, AccountId>;
-	type DefaultQueryDuration = DefaultQueryDuration;
 	type Currency = Balances;
 	type PalletId = ForeignOraclePalletId;
 	type BlockNumberProvider = System;

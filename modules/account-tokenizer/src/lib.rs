@@ -51,7 +51,6 @@ use frame_system::pallet_prelude::*;
 use orml_traits::{arithmetic::Zero, InspectExtended};
 use sp_io::hashing::blake2_256;
 use sp_runtime::traits::{AccountIdConversion, AtLeast32BitUnsigned, TrailingZeroInput};
-use sp_std::vec::Vec;
 
 use module_support::{CreateExtended, ForeignChainStateQuery, ProxyXcm};
 use primitives::{
@@ -107,16 +106,13 @@ pub mod module {
 		type MintFee: Get<Balance>;
 
 		/// The class ID type
-		type ClassId: Parameter + Member + AtLeast32BitUnsigned + Default + Copy;
+		type ClassId: Parameter + Member + AtLeast32BitUnsigned + Default + Copy + MaxEncodedLen;
 
 		/// The token ID type
-		type TokenId: Parameter + Member + AtLeast32BitUnsigned + Default + Copy;
+		type TokenId: Parameter + Member + AtLeast32BitUnsigned + Default + Copy + MaxEncodedLen;
 
 		/// The XcmInterface to communicate with the relaychain via XCM.
 		type XcmInterface: ProxyXcm<Self::AccountId>;
-
-		/// Origin used by Oracles. Used to relay information from the Relaychain.
-		type OracleOrigin: EnsureOrigin<Self::Origin, Success = Vec<u8>>;
 
 		/// The overarching call type.
 		type Call: Parameter
@@ -127,7 +123,12 @@ pub mod module {
 			+ IsType<<Self as frame_system::Config>::Call>;
 
 		// Used to interface with the Oracle.
-		type ForeignStateQuery: ForeignChainStateQuery<Self::AccountId, <Self as Config>::Call, Self::BlockNumber>;
+		type ForeignStateQuery: ForeignChainStateQuery<
+			Self::AccountId,
+			<Self as Config>::Call,
+			Self::BlockNumber,
+			Self::Origin,
+		>;
 
 		/// Interface used to communicate with the NFT module.
 		type NFTInterface: Inspect<Self::AccountId, ClassId = Self::ClassId, InstanceId = Self::TokenId>
@@ -262,7 +263,6 @@ pub mod module {
 	}
 
 	#[pallet::pallet]
-	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
 	#[pallet::call]
@@ -344,7 +344,7 @@ pub mod module {
 			account: T::AccountId,
 		) -> DispatchResult {
 			// Extract confirmation info from Origin.
-			let data = T::OracleOrigin::ensure_origin(origin)?;
+			let data = T::ForeignStateQuery::ensure_origin(origin)?;
 
 			// Checks whether oracle confirms or rejects the mint request
 			let success: bool = Decode::decode(&mut &data[..]).map_err(|_| Error::<T>::InvalidQueryResponse)?;
@@ -397,7 +397,7 @@ pub mod module {
 			T::ForeignStateQuery::create_query(&who, call, None)?;
 
 			// Take custodial of the NFT token.
-			T::NFTInterface::transfer(&Self::nft_class_id(), &token_id, &Self::account_id())?;
+			T::NFTInterface::transfer(&Self::nft_class_id(), &token_id, &T::TreasuryAccount::get())?;
 
 			Self::deposit_event(Event::RedeemRequested {
 				account,
@@ -423,7 +423,7 @@ pub mod module {
 			account: T::AccountId,
 			new_owner: T::AccountId,
 		) -> DispatchResult {
-			T::OracleOrigin::ensure_origin(origin)?;
+			T::ForeignStateQuery::ensure_origin(origin)?;
 
 			let nft_class_id = Self::nft_class_id();
 

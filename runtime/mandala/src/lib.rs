@@ -1368,7 +1368,6 @@ impl module_nominees_election::Config for Runtime {
 }
 
 parameter_types! {
-	pub const DefaultQueryDuration: BlockNumber = 10;
 	pub QueryFee: Balance = 20 * cent(ACA);
 	pub CancelFee: Balance = 10 * cent(ACA);
 	pub ExpiredCallPurgeReward: Permill = Permill::from_percent(50);
@@ -1385,7 +1384,6 @@ impl module_foreign_state_oracle::Config for Runtime {
 	type CancelFee = CancelFee;
 	type ExpiredCallPurgeReward = ExpiredCallPurgeReward;
 	type MaxQueryCallSize = MaxQueryCallSize;
-	type DefaultQueryDuration = DefaultQueryDuration;
 	type BlockNumberProvider = System;
 	type OracleOrigin = EnsureRootOrAllForeignStateOracle;
 	type WeightInfo = weights::module_foreign_state_oracle::WeightInfo<Runtime>;
@@ -1740,7 +1738,6 @@ impl module_account_tokenizer::Config for Runtime {
 	type PalletId = AccountTokenizerPalletId;
 	type Currency = Balances;
 	type XcmInterface = XcmInterface;
-	type OracleOrigin = module_foreign_state_oracle::EnsureForeignStateOracle;
 	type NFTInterface = NFT;
 	type TreasuryAccount = TreasuryAccount;
 	type MintRequestDeposit = AccountTokenizerMintRequestDeposit;

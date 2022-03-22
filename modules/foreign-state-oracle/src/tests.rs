@@ -75,7 +75,7 @@ fn dispatch_and_remove_works() {
 			call_data: b"world".to_vec(),
 		}));
 
-		assert_ok!(QueryExample::mock_create_query(Origin::none(), ALICE, vec![], None));
+		assert_ok!(QueryExample::mock_create_query(Origin::none(), ALICE, vec![], Some(10)));
 		System::set_block_number(11);
 		assert_noop!(
 			ForeignStateOracle::respond_query_request(Origin::signed(1), 2, b"hello".to_vec(), CALL_WEIGHT),

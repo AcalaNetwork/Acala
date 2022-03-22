@@ -29,6 +29,7 @@
 
 use frame_support::{
 	dispatch::{Dispatchable, GetDispatchInfo, PostDispatchInfo},
+	error::BadOrigin,
 	pallet_prelude::*,
 	require_transactional,
 	traits::{Currency, ExistenceRequirement},
@@ -63,8 +64,8 @@ pub struct RawOrigin {
 pub struct ForeignQueryRequest<Call, BlockNumber> {
 	// Call to be dispatched by oracle
 	dispatchable_call: Call,
-	// Blocknumber at which call will be expired
-	expiry: BlockNumber,
+	// Blocknumber at which call will be expired, None means request has no expiry
+	expiry: Option<BlockNumber>,
 }
 
 #[frame_support::pallet]
@@ -100,10 +101,6 @@ pub mod module {
 		#[pallet::constant]
 		type CancelFee: Get<Balance>;
 
-		/// Timeout for query requests
-		#[pallet::constant]
-		type DefaultQueryDuration: Get<Self::BlockNumber>;
-
 		#[pallet::constant]
 		type ExpiredCallPurgeReward: Get<Permill>;
 
@@ -136,7 +133,7 @@ pub mod module {
 		/// A Query request is created, under the query_id as the key
 		QueryRequestCreated {
 			query_id: QueryIndex,
-			expiry: T::BlockNumber,
+			expiry: Option<T::BlockNumber>,
 		},
 		/// Call is dispatched with data
 		CallDispatched {
@@ -197,9 +194,11 @@ pub mod module {
 			T::OracleOrigin::ensure_origin(origin)?;
 
 			let foreign_request = QueryRequests::<T>::take(query_id).ok_or(Error::<T>::NoMatchingCall)?;
-			// Check that query has not expired
+			// Check that query has not expired, `None` will never expire
 			ensure!(
-				foreign_request.expiry > T::BlockNumberProvider::current_block_number(),
+				foreign_request
+					.expiry
+					.map_or(true, |exp| exp > T::BlockNumberProvider::current_block_number()),
 				Error::<T>::QueryExpired
 			);
 			let request_weight = foreign_request.dispatchable_call.get_dispatch_info().weight;
@@ -226,7 +225,9 @@ pub mod module {
 			let foreign_request = QueryRequests::<T>::take(query_id).ok_or(Error::<T>::NoMatchingCall)?;
 			// Make sure query is expired
 			ensure!(
-				foreign_request.expiry <= T::BlockNumberProvider::current_block_number(),
+				foreign_request
+					.expiry
+					.map_or(false, |exp| exp <= T::BlockNumberProvider::current_block_number()),
 				Error::<T>::QueryNotExpired
 			);
 
@@ -247,7 +248,15 @@ impl<T: Config> Pallet<T> {
 	}
 }
 
-impl<T: Config> ForeignChainStateQuery<T::AccountId, T::DispatchableCall, T::BlockNumber> for Pallet<T> {
+impl<T: Config, O: Into<Result<RawOrigin, O>> + From<RawOrigin>>
+	ForeignChainStateQuery<T::AccountId, T::DispatchableCall, T::BlockNumber, O> for Pallet<T>
+{
+	type OracleOrigin = EnsureForeignStateOracle;
+
+	fn ensure_origin(o: O) -> Result<Vec<u8>, BadOrigin> {
+		Self::OracleOrigin::ensure_origin(o)
+	}
+
 	#[require_transactional]
 	fn create_query(
 		who: &T::AccountId,
@@ -265,8 +274,10 @@ impl<T: Config> ForeignChainStateQuery<T::AccountId, T::DispatchableCall, T::Blo
 			T::QueryFee::get(),
 			ExistenceRequirement::KeepAlive,
 		)?;
-		let duration = query_duration.unwrap_or_else(T::DefaultQueryDuration::get);
-		let expiry = T::BlockNumberProvider::current_block_number().saturating_add(duration);
+		let mut expiry = query_duration;
+		if let Some(duration) = expiry {
+			expiry = Some(T::BlockNumberProvider::current_block_number().saturating_add(duration));
+		}
 		let foreign_request = ForeignQueryRequest {
 			dispatchable_call,
 			expiry,

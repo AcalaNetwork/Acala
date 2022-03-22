@@ -333,7 +333,7 @@ fn can_burn_account_token_nft() {
 
 			// Token is taken into the custodial of the module account,
 			// and will not be burned until confirmed by the oracle.
-			assert_eq!(ModuleNFT::owner(&0, &0), Some(AccountTokenizer::account_id()));
+			assert_eq!(ModuleNFT::owner(&0, &0), Some(TreasuryAccount::get()));
 			assert_eq!(AccountTokenizer::minted_account(proxy.clone()), Some(0));
 
 			// Original owner cannot transfer the NFT

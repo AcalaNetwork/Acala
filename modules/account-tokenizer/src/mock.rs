@@ -36,7 +36,6 @@ use sp_runtime::{
 	AccountId32, Permill,
 };
 
-use module_foreign_state_oracle::EnsureForeignStateOracle;
 use module_nft::{ClassData, TokenData};
 
 pub type AccountId = AccountId32;
@@ -193,7 +192,6 @@ impl pallet_proxy::Config for Runtime {
 
 parameter_types! {
 	pub const ForeignOraclePalletId: PalletId = PalletId(*b"aca/fsto");
-	pub const DefaultQueryDuration: BlockNumber = 10;
 	pub QueryFee: Balance = dollar(1);
 	pub const CancelFee: Balance = 10;
 	pub ExpiredCallPurgeReward: Permill = Permill::from_percent(50);
@@ -213,7 +211,6 @@ impl module_foreign_state_oracle::Config for Runtime {
 	type ExpiredCallPurgeReward = ExpiredCallPurgeReward;
 	type MaxQueryCallSize = MaxQueryCallSize;
 	type OracleOrigin = EnsureSignedBy<Oracle, AccountId>;
-	type DefaultQueryDuration = DefaultQueryDuration;
 	type Currency = Balances;
 	type PalletId = ForeignOraclePalletId;
 	type BlockNumberProvider = System;
@@ -234,7 +231,6 @@ impl Config for Runtime {
 	type PalletId = AccountTokenizerPalletId;
 	type Currency = Balances;
 	type XcmInterface = MockProxyXcm;
-	type OracleOrigin = EnsureForeignStateOracle;
 	type NFTInterface = ModuleNFT;
 	type TreasuryAccount = TreasuryAccount;
 	type MintRequestDeposit = MintRequestDeposit;
