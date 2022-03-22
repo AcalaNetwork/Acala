@@ -95,11 +95,13 @@ pub mod module {
 		pub fn to_bridged(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
+			let pallet_account = Self::account_id();
+
 			// transfer amount of StablecoinCurrencyId to PalletId account
-			T::Currency::transfer(T::StablecoinCurrencyId::get(), &who, &Self::account_id(), amount)?;
+			T::Currency::transfer(T::StablecoinCurrencyId::get(), &who, &pallet_account, amount)?;
 
 			// transfer amount of BridgedStableCoinCurrencyId from PalletId account to origin
-			T::Currency::transfer(T::BridgedStableCoinCurrencyId::get(), &Self::account_id(), &who, amount)?;
+			T::Currency::transfer(T::BridgedStableCoinCurrencyId::get(), &pallet_account, &who, amount)?;
 
 			Self::deposit_event(Event::<T>::ToBridged { who, amount });
 			Ok(())
@@ -114,11 +116,12 @@ pub mod module {
 		pub fn from_bridged(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
+			let pallet_account = Self::account_id();
 			// transfer amount of StablecoinCurrencyId to PalletId account
-			T::Currency::transfer(T::BridgedStableCoinCurrencyId::get(), &who, &Self::account_id(), amount)?;
+			T::Currency::transfer(T::BridgedStableCoinCurrencyId::get(), &who, &pallet_account, amount)?;
 
 			// transfer amount of BridgedStableCoinCurrencyId from PalletId account to origin
-			T::Currency::transfer(T::StablecoinCurrencyId::get(), &Self::account_id(), &who, amount)?;
+			T::Currency::transfer(T::StablecoinCurrencyId::get(), &pallet_account, &who, amount)?;
 
 			Self::deposit_event(Event::<T>::FromBridged { who, amount });
 			Ok(())
