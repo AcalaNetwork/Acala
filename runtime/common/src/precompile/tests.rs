@@ -1001,6 +1001,8 @@ fn publish_contract_precompile_works() {
 			exit_reason: ExitReason::Error(ExitError::Other(Into::<&str>::into(module_evm::Error::<Test>::NoPermission).into())),
 			output: vec![],
 			logs: vec![],
+            used_gas: 1000000,
+            used_storage: 0,
 		}));
 
 		let context = Context {
@@ -1034,6 +1036,8 @@ fn publish_contract_precompile_works() {
 			from: bob_evm_addr(),
 			contract: contract_address,
 			logs: vec![],
+            used_gas: 21659,
+            used_storage: 0,
 		}));
 	});
 }

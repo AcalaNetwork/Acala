@@ -107,6 +107,8 @@ pub fn deploy_erc20_contracts() {
 				H256::from_slice(&buf).as_bytes().to_vec()
 			},
 		}],
+		used_gas: 1306611,
+		used_storage: 15461,
 	}));
 
 	assert_ok!(EVM::publish_free(Origin::root(), erc20_address_0()));
@@ -134,6 +136,8 @@ pub fn deploy_erc20_contracts() {
 				H256::from_slice(&buf).as_bytes().to_vec()
 			},
 		}],
+		used_gas: 1306611,
+		used_storage: 15461,
 	}));
 
 	assert_ok!(EVM::publish_free(Origin::root(), erc20_address_1()));
@@ -166,6 +170,8 @@ fn deploy_contract(account: AccountId) -> Result<H160, DispatchError> {
 		from: _,
 		contract: address,
 		logs: _,
+		used_gas: _,
+		used_storage: _,
 	}) = System::events().last().unwrap().event
 	{
 		Ok(address)
@@ -361,6 +367,8 @@ fn test_evm_module() {
 				from: alice_address,
 				contract,
 				logs: vec![],
+				used_gas: 132199,
+				used_storage: 10367,
 			}));
 
 			assert_ok!(EVM::transfer_maintainer(Origin::signed(alice()), contract, bob_address));
@@ -575,7 +583,7 @@ fn should_not_kill_contract_on_transfer_all() {
 
 			assert_ok!(EVM::create(Origin::signed(alice()), code, convert_decimals_to_evm(2 * dollar(NATIVE_CURRENCY)), 1000000000, 100000, vec![]));
 
-			let contract = if let Event::EVM(module_evm::Event::Created{from: _, contract: address, logs: _}) = System::events().last().unwrap().event {
+			let contract = if let Event::EVM(module_evm::Event::Created{from: _, contract: address, logs: _, used_gas: _, used_storage: _}) = System::events().last().unwrap().event {
 				address
 			} else {
 				panic!("deploy contract failed");
@@ -638,7 +646,7 @@ fn should_not_kill_contract_on_transfer_all_tokens() {
 			let code = hex_literal::hex!("608060405260848060116000396000f3fe6080604052348015600f57600080fd5b506004361060285760003560e01c806341c0e1b514602d575b600080fd5b60336035565b005b600073ffffffffffffffffffffffffffffffffffffffff16fffea265627a7a72315820ed64a7551098c4afc823bee1663309079d9cb8798a6bdd71be2cd3ccee52d98e64736f6c63430005110032").to_vec();
 			assert_ok!(EVM::create(Origin::signed(alice()), code, 0, 1000000000, 100000, vec![]));
 
-			let contract = if let Event::EVM(module_evm::Event::Created{from: _, contract: address, logs: _}) = System::events().last().unwrap().event {
+			let contract = if let Event::EVM(module_evm::Event::Created{from: _, contract: address, logs: _, used_gas: _, used_storage: _}) = System::events().last().unwrap().event {
 				address
 			} else {
 				panic!("deploy contract failed");

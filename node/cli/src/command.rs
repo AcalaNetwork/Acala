@@ -92,8 +92,6 @@ impl SubstrateCli for Cli {
 			"wendala" => Box::new(chain_spec::acala::wendala_config()?),
 			#[cfg(feature = "with-acala-runtime")]
 			"acala-dev" => Box::new(chain_spec::acala::acala_dev_config()?),
-			#[cfg(feature = "with-acala-runtime")]
-			"acala-latest" => Box::new(chain_spec::acala::latest_acala_config()?),
 			path => {
 				let path = std::path::PathBuf::from(path);
 

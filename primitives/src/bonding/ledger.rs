@@ -112,6 +112,14 @@ where
 		Ok((self, amount))
 	}
 
+	pub fn unbond_instant(mut self, amount: Balance) -> Result<(Self, Balance), Error> {
+		let amount = amount.min(self.active);
+		self.active = self.active.saturating_sub(amount);
+		self.total = self.total.saturating_sub(amount);
+		self.check_min_bond()?;
+		Ok((self, amount))
+	}
+
 	/// Remove entries from `unlocking` that are sufficiently old and reduce
 	/// the total by the sum of their balances.
 	#[must_use]
@@ -157,6 +165,9 @@ where
 				}
 			})
 			.expect("Only popped elements from inner_vec");
+
+		self.check_min_bond()?;
+
 		Ok((self, unlocking_balance))
 	}
 
@@ -356,6 +367,19 @@ mod tests {
 	}
 
 	#[test]
+	fn unbond_instant_works() {
+		let ledger = Ledger::new();
+		let ledger = ledger.bond(100).unwrap();
+		assert_err!(ledger.clone().unbond_instant(99), Error::BelowMinBondThreshold);
+
+		let (ledger, actual) = ledger.unbond_instant(20).unwrap();
+		assert_eq!(actual, 20);
+
+		let (_ledger, actual) = ledger.unbond_instant(100).unwrap();
+		assert_eq!(actual, 80);
+	}
+
+	#[test]
 	fn rebond_works() {
 		let ledger = Ledger::new();
 
@@ -364,6 +388,8 @@ mod tests {
 			.and_then(|ledger| ledger.unbond(50, 2))
 			.and_then(|(ledger, _)| ledger.unbond(50, 3))
 			.unwrap();
+
+		assert_err!(ledger.clone().rebond(1), Error::BelowMinBondThreshold);
 
 		let (ledger, actual) = ledger.rebond(20).unwrap();
 		assert_eq!(actual, 20);
