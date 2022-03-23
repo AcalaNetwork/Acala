@@ -508,7 +508,7 @@ fn schedule_precompile_should_work() {
 		run_to_block(5);
 		#[cfg(not(feature = "with-ethereum-compatibility"))]
 		{
-			assert_eq!(Balances::free_balance(from_account.clone()), 999999973153);
+			assert_eq!(Balances::free_balance(from_account.clone()), 999999973140);
 			assert_eq!(Balances::reserved_balance(from_account), 0);
 			assert_eq!(Balances::free_balance(to_account), 1000000001000);
 		}
@@ -1001,6 +1001,8 @@ fn publish_contract_precompile_works() {
 			exit_reason: ExitReason::Error(ExitError::Other(Into::<&str>::into(module_evm::Error::<Test>::NoPermission).into())),
 			output: vec![],
 			logs: vec![],
+            used_gas: 1000000,
+            used_storage: 0,
 		}));
 
 		let context = Context {
@@ -1034,6 +1036,8 @@ fn publish_contract_precompile_works() {
 			from: bob_evm_addr(),
 			contract: contract_address,
 			logs: vec![],
+            used_gas: 21659,
+            used_storage: 0,
 		}));
 	});
 }

@@ -23,7 +23,7 @@
 use super::*;
 use frame_support::{assert_ok, construct_runtime, ord_parameter_types, parameter_types, traits::Everything};
 use frame_system::EnsureSignedBy;
-use primitives::{convert_decimals_to_evm, evm::EvmAddress, ReserveIdentifier};
+use primitives::{evm::convert_decimals_to_evm, evm::EvmAddress, ReserveIdentifier};
 use sp_core::{crypto::AccountId32, H256};
 use sp_runtime::{testing::Header, traits::IdentityLookup};
 use sp_std::str::FromStr;
@@ -213,6 +213,8 @@ pub fn deploy_contracts() {
 				H256::from_slice(&buf).as_bytes().to_vec()
 			},
 		}],
+		used_gas: 1306611,
+		used_storage: 5462,
 	}));
 
 	assert_ok!(EVM::publish_free(

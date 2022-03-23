@@ -20,7 +20,7 @@ use super::{
 	constants::fee::*, AcalaTreasuryAccount, AccountId, AssetIdMapping, AssetIdMaps, Balance, Call, Convert,
 	Currencies, CurrencyId, Event, ExistentialDeposits, FixedRateOfForeignAsset, GetNativeCurrencyId,
 	NativeTokenExistentialDeposit, Origin, ParachainInfo, ParachainSystem, PolkadotXcm, Runtime, RuntimeBlockWeights,
-	TransactionFeePoolTrader, UnknownTokens, XcmExecutor, XcmpQueue, ACA, AUSD,
+	TransactionFeePoolTrader, UnknownTokens, XcmpQueue, ACA, AUSD,
 };
 use codec::{Decode, Encode};
 pub use cumulus_primitives_core::ParaId;
@@ -29,11 +29,11 @@ pub use frame_support::{
 	traits::{Everything, Get, Nothing},
 	weights::Weight,
 };
-use orml_traits::MultiCurrency;
+use orml_traits::{parameter_type_with_key, MultiCurrency};
 use orml_xcm_support::{DepositToAlternative, IsNativeConcrete, MultiCurrencyAdapter, MultiNativeAsset};
 use pallet_xcm::XcmPassthrough;
 use polkadot_parachain::primitives::Sibling;
-use runtime_common::AcalaDropAssets;
+use runtime_common::{AcalaDropAssets, EnsureRootOrHalfGeneralCouncil};
 use xcm::latest::prelude::*;
 pub use xcm_builder::{
 	AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom, AllowTopLevelPaidExecutionFrom,
@@ -42,6 +42,7 @@ pub use xcm_builder::{
 	SiblingParachainConvertsVia, SignedAccountId32AsNative, SignedToAccountId32, SovereignSignedViaLocation,
 	TakeRevenue, TakeWeightCredit,
 };
+use xcm_executor::XcmExecutor;
 
 parameter_types! {
 	pub DotLocation: MultiLocation = MultiLocation::parent();
@@ -206,6 +207,22 @@ impl cumulus_pallet_xcm::Config for Runtime {
 	type XcmExecutor = XcmExecutor<XcmConfig>;
 }
 
+impl cumulus_pallet_xcmp_queue::Config for Runtime {
+	type Event = Event;
+	type XcmExecutor = XcmExecutor<XcmConfig>;
+	type ChannelInfo = ParachainSystem;
+	type VersionWrapper = PolkadotXcm;
+	type ExecuteOverweightOrigin = EnsureRootOrHalfGeneralCouncil;
+	type ControllerOrigin = EnsureRootOrHalfGeneralCouncil;
+	type ControllerOriginConverter = XcmOriginToCallOrigin;
+}
+
+impl cumulus_pallet_dmp_queue::Config for Runtime {
+	type Event = Event;
+	type XcmExecutor = XcmExecutor<XcmConfig>;
+	type ExecuteOverweightOrigin = EnsureRootOrHalfGeneralCouncil;
+}
+
 pub type LocalAssetTransactor = MultiCurrencyAdapter<
 	Currencies,
 	UnknownTokens,
@@ -319,6 +336,12 @@ parameter_types! {
 	pub const MaxAssetsForTransfer: usize = 2;
 }
 
+parameter_type_with_key! {
+	pub ParachainMinFee: |_location: MultiLocation| -> u128 {
+		u128::MAX
+	};
+}
+
 impl orml_xtokens::Config for Runtime {
 	type Event = Event;
 	type Balance = Balance;
@@ -331,4 +354,5 @@ impl orml_xtokens::Config for Runtime {
 	type BaseXcmWeight = BaseXcmWeight;
 	type LocationInverter = LocationInverter<Ancestry>;
 	type MaxAssetsForTransfer = MaxAssetsForTransfer;
+	type MinXcmFee = ParachainMinFee;
 }

@@ -41,7 +41,7 @@ use primitives::{Balance, CurrencyId, TradingPair};
 use scale_info::TypeInfo;
 use sp_core::{H160, U256};
 use sp_runtime::{
-	traits::{AccountIdConversion, One, Zero},
+	traits::{AccountIdConversion, One, Saturating, Zero},
 	ArithmeticError, DispatchError, DispatchResult, FixedPointNumber, RuntimeDebug, SaturatedConversion,
 };
 use sp_std::{prelude::*, vec};
@@ -127,6 +127,10 @@ pub mod module {
 		/// The origin which may list, enable or disable trading pairs.
 		type ListingOrigin: EnsureOrigin<Self::Origin>;
 
+		/// The extended provisioning blocks since the `not_before` of provisioning.
+		#[pallet::constant]
+		type ExtendedProvisioningBlocks: Get<Self::BlockNumber>;
+
 		/// Event handler which calls when update liquidity pool.
 		type OnLiquidityPoolUpdated: Happened<(TradingPair, Balance, Balance)>;
 	}
@@ -175,6 +179,8 @@ pub mod module {
 		AssetUnregistered,
 		/// The trading path is invalid
 		InvalidTradingPath,
+		/// Not allowed to refund provision
+		NotAllowedRefund,
 	}
 
 	#[pallet::event]
@@ -224,6 +230,20 @@ pub mod module {
 			pool_0: Balance,
 			pool_1: Balance,
 			share_amount: Balance,
+		},
+		/// refund provision success
+		RefundProvision {
+			who: T::AccountId,
+			currency_0: CurrencyId,
+			contribution_0: Balance,
+			currency_1: CurrencyId,
+			contribution_1: Balance,
+		},
+		/// Provisioning trading pair aborted.
+		ProvisioningAborted {
+			trading_pair: TradingPair,
+			accumulated_provision_0: Balance,
+			accumulated_provision_1: Balance,
 		},
 	}
 
@@ -518,13 +538,12 @@ pub mod module {
 			);
 
 			let check_asset_registry = |currency_id: CurrencyId| match currency_id {
-				CurrencyId::Erc20(_) | CurrencyId::ForeignAsset(_) => T::Erc20InfoMapping::name(currency_id)
-					.map(|_| ())
-					.ok_or(Error::<T>::AssetUnregistered),
-				CurrencyId::Token(_)
-				| CurrencyId::DexShare(_, _)
-				| CurrencyId::StableAssetPoolToken(_)
-				| CurrencyId::LiquidCrowdloan(_) => Ok(()), /* No registration required */
+				CurrencyId::Erc20(_) | CurrencyId::ForeignAsset(_) | CurrencyId::StableAssetPoolToken(_) => {
+					T::Erc20InfoMapping::name(currency_id)
+						.map(|_| ())
+						.ok_or(Error::<T>::AssetUnregistered)
+				}
+				CurrencyId::Token(_) | CurrencyId::DexShare(_, _) | CurrencyId::LiquidCrowdloan(_) => Ok(()), /* No registration required */
 			};
 			check_asset_registry(currency_id_a)?;
 			check_asset_registry(currency_id_b)?;
@@ -729,6 +748,98 @@ pub mod module {
 
 			TradingPairStatuses::<T>::insert(trading_pair, TradingPairStatus::Disabled);
 			Self::deposit_event(Event::DisableTradingPair { trading_pair });
+			Ok(())
+		}
+
+		/// Refund provision if the provision has already aborted.
+		///
+		/// - `owner`: founder account.
+		/// - `currency_id_a`: currency id A.
+		/// - `currency_id_b`: currency id B.
+		#[pallet::weight(<T as Config>::WeightInfo::refund_provision())]
+		#[transactional]
+		pub fn refund_provision(
+			origin: OriginFor<T>,
+			owner: T::AccountId,
+			currency_id_a: CurrencyId,
+			currency_id_b: CurrencyId,
+		) -> DispatchResult {
+			let _ = ensure_signed(origin)?;
+			let trading_pair =
+				TradingPair::from_currency_ids(currency_id_a, currency_id_b).ok_or(Error::<T>::InvalidCurrencyId)?;
+			ensure!(
+				matches!(
+					Self::trading_pair_statuses(trading_pair),
+					TradingPairStatus::<_, _>::Disabled
+				),
+				Error::<T>::MustBeDisabled
+			);
+
+			// Make sure the trading pair has not been successfully ended provisioning.
+			ensure!(
+				InitialShareExchangeRates::<T>::get(trading_pair) == Default::default(),
+				Error::<T>::NotAllowedRefund
+			);
+
+			ProvisioningPool::<T>::try_mutate_exists(trading_pair, &owner, |maybe_contribution| -> DispatchResult {
+				if let Some((contribution_0, contribution_1)) = maybe_contribution.take() {
+					T::Currency::transfer(trading_pair.first(), &Self::account_id(), &owner, contribution_0)?;
+					T::Currency::transfer(trading_pair.second(), &Self::account_id(), &owner, contribution_1)?;
+
+					// decrease ref count
+					frame_system::Pallet::<T>::dec_consumers(&owner);
+
+					Self::deposit_event(Event::RefundProvision {
+						who: owner.clone(),
+						currency_0: trading_pair.first(),
+						contribution_0,
+						currency_1: trading_pair.second(),
+						contribution_1,
+					});
+				}
+				Ok(())
+			})
+		}
+
+		/// Abort provision when it's don't meet the target and expired.
+		#[pallet::weight((<T as Config>::WeightInfo::abort_provisioning(), DispatchClass::Operational))]
+		#[transactional]
+		pub fn abort_provisioning(
+			origin: OriginFor<T>,
+			currency_id_a: CurrencyId,
+			currency_id_b: CurrencyId,
+		) -> DispatchResult {
+			let _ = ensure_signed(origin)?;
+
+			let trading_pair =
+				TradingPair::from_currency_ids(currency_id_a, currency_id_b).ok_or(Error::<T>::InvalidCurrencyId)?;
+
+			match Self::trading_pair_statuses(trading_pair) {
+				TradingPairStatus::<_, _>::Provisioning(provisioning_parameters) => {
+					let (total_provision_0, total_provision_1) = provisioning_parameters.accumulated_provision;
+					let met_target = !total_provision_0.is_zero()
+						&& !total_provision_1.is_zero()
+						&& (total_provision_0 >= provisioning_parameters.target_provision.0
+							|| total_provision_1 >= provisioning_parameters.target_provision.1);
+					let expired = frame_system::Pallet::<T>::block_number()
+						> provisioning_parameters
+							.not_before
+							.saturating_add(T::ExtendedProvisioningBlocks::get());
+
+					if !met_target && expired {
+						// update trading_pair to disabled status
+						TradingPairStatuses::<T>::insert(trading_pair, TradingPairStatus::<_, _>::Disabled);
+
+						Self::deposit_event(Event::ProvisioningAborted {
+							trading_pair,
+							accumulated_provision_0: total_provision_0,
+							accumulated_provision_1: total_provision_1,
+						});
+					}
+				}
+				_ => return Err(Error::<T>::MustBeProvisioning.into()),
+			}
+
 			Ok(())
 		}
 	}

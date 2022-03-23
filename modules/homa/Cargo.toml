@@ -1,6 +1,6 @@
 [package]
 name = "module-homa"
-version = "2.4.0"
+version = "2.4.1"
 authors = ["Acala Developers"]
 edition = "2021"
 
@@ -23,6 +23,7 @@ sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17" }
 module-currencies = { path = "../../modules/currencies" }
 orml-tokens = { path = "../../orml/tokens" }
+xcm = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.17" }
 
 [features]
 default = ["std"]
