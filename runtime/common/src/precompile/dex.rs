@@ -17,6 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use super::input::{Input, InputT, Output};
+use crate::precompile::input::InputPricer;
 use crate::WeightToGas;
 use frame_support::{log, traits::Get};
 use module_dex::WeightInfo;
@@ -334,7 +335,7 @@ impl<Runtime> Pricer<Runtime>
 where
 	Runtime: module_evm::Config + module_dex::Config,
 {
-	const BASE_COST: u64 = 200;
+	const BASE_COST: u64 = 50;
 
 	fn cost(
 		input: &Input<
@@ -348,51 +349,137 @@ where
 
 		let cost: u64 = match action {
 			Action::GetLiquidityPool => {
+				let currency_id_a = input.currency_id_at(1)?;
+				let currency_id_b = input.currency_id_at(2)?;
+				let read_currency_a = InputPricer::<Runtime>::read_currency(currency_id_a);
+				let read_currency_b = InputPricer::<Runtime>::read_currency(currency_id_b);
+
 				// DEX::LiquidityPool (r: 1)
 				let weight = <Runtime as frame_system::Config>::DbWeight::get().reads(1);
-				Self::BASE_COST.saturating_add(WeightToGas::convert(weight))
+
+				Self::BASE_COST
+					.saturating_add(read_currency_a)
+					.saturating_add(read_currency_b)
+					.saturating_add(WeightToGas::convert(weight))
 			}
 			Action::GetLiquidityTokenAddress => {
+				let currency_id_a = input.currency_id_at(1)?;
+				let currency_id_b = input.currency_id_at(2)?;
+				let read_currency_a = InputPricer::<Runtime>::read_currency(currency_id_a);
+				let read_currency_b = InputPricer::<Runtime>::read_currency(currency_id_b);
+
 				// DEX::TradingPairStatuses (r: 1)
 				// AssetRegistry::AssetMetadatas (r: 2)
 				let weight = <Runtime as frame_system::Config>::DbWeight::get().reads(3);
-				Self::BASE_COST.saturating_add(WeightToGas::convert(weight))
+
+				Self::BASE_COST
+					.saturating_add(read_currency_a)
+					.saturating_add(read_currency_b)
+					.saturating_add(WeightToGas::convert(weight))
 			}
 			Action::GetSwapTargetAmount => {
 				let path_len = input.u32_at(3)?;
 
-				// DEX::TradingPairStatuses (r: 1 * (path_len - 1))
-				// DEX::LiquidityPool (r: 1 * (path_len - 1))
-				let weight = <Runtime as frame_system::Config>::DbWeight::get()
-					.reads(path_len.saturating_sub(1).saturating_mul(2).into());
-				Self::BASE_COST.saturating_add(WeightToGas::convert(weight))
-			}
-			Action::GetSwapSupplyAmount => {
-				let path_len = input.u32_at(3)?;
+				let mut read_currency = 0u64;
+				for i in 0..path_len {
+					let currency_id = input.currency_id_at((4 + i) as usize)?;
+					read_currency += InputPricer::<Runtime>::read_currency(currency_id);
+				}
 
 				// DEX::TradingPairStatuses (r: 1 * (path_len - 1))
 				// DEX::LiquidityPool (r: 1 * (path_len - 1))
 				let weight = <Runtime as frame_system::Config>::DbWeight::get()
 					.reads(path_len.saturating_sub(1).saturating_mul(2).into());
-				Self::BASE_COST.saturating_add(WeightToGas::convert(weight))
+
+				Self::BASE_COST
+					.saturating_add(read_currency)
+					.saturating_add(WeightToGas::convert(weight))
+			}
+			Action::GetSwapSupplyAmount => {
+				let path_len = input.u32_at(3)?;
+
+				let mut read_currency = 0u64;
+				for i in 0..path_len {
+					let currency_id = input.currency_id_at((4 + i) as usize)?;
+					read_currency += InputPricer::<Runtime>::read_currency(currency_id);
+				}
+
+				// DEX::TradingPairStatuses (r: 1 * (path_len - 1))
+				// DEX::LiquidityPool (r: 1 * (path_len - 1))
+				let weight = <Runtime as frame_system::Config>::DbWeight::get()
+					.reads(path_len.saturating_sub(1).saturating_mul(2).into());
+
+				Self::BASE_COST
+					.saturating_add(read_currency)
+					.saturating_add(WeightToGas::convert(weight))
 			}
 			Action::SwapWithExactSupply => {
 				let path_len = input.u32_at(5)?;
+
+				let mut read_currency = 0u64;
+				for i in 0..path_len {
+					let currency_id = input.currency_id_at((6 + i) as usize)?;
+					read_currency += InputPricer::<Runtime>::read_currency(currency_id);
+				}
+
+				let read_account = InputPricer::<Runtime>::read_accounts(1);
+
 				let weight = <Runtime as module_dex::Config>::WeightInfo::swap_with_exact_supply(path_len);
-				Self::BASE_COST.saturating_add(WeightToGas::convert(weight))
+
+				Self::BASE_COST
+					.saturating_add(read_currency)
+					.saturating_add(read_account)
+					.saturating_add(WeightToGas::convert(weight))
 			}
 			Action::SwapWithExactTarget => {
 				let path_len = input.u32_at(5)?;
+
+				let mut read_currency = 0u64;
+				for i in 0..path_len {
+					let currency_id = input.currency_id_at((6 + i) as usize)?;
+					read_currency += InputPricer::<Runtime>::read_currency(currency_id);
+				}
+
+				let read_account = InputPricer::<Runtime>::read_accounts(1);
+
 				let weight = <Runtime as module_dex::Config>::WeightInfo::swap_with_exact_target(path_len);
-				Self::BASE_COST.saturating_add(WeightToGas::convert(weight))
+
+				Self::BASE_COST
+					.saturating_add(read_currency)
+					.saturating_add(read_account)
+					.saturating_add(WeightToGas::convert(weight))
 			}
 			Action::AddLiquidity => {
+				let read_account = InputPricer::<Runtime>::read_accounts(1);
+				let currency_id_a = input.currency_id_at(2)?;
+				let currency_id_b = input.currency_id_at(3)?;
+
+				let read_currency_a = InputPricer::<Runtime>::read_currency(currency_id_a);
+				let read_currency_b = InputPricer::<Runtime>::read_currency(currency_id_b);
+
 				let weight = <Runtime as module_dex::Config>::WeightInfo::add_liquidity();
-				Self::BASE_COST.saturating_add(WeightToGas::convert(weight))
+
+				Self::BASE_COST
+					.saturating_add(read_account)
+					.saturating_add(read_currency_a)
+					.saturating_add(read_currency_b)
+					.saturating_add(WeightToGas::convert(weight))
 			}
 			Action::RemoveLiquidity => {
+				let read_account = InputPricer::<Runtime>::read_accounts(1);
+				let currency_id_a = input.currency_id_at(2)?;
+				let currency_id_b = input.currency_id_at(3)?;
+
+				let read_currency_a = InputPricer::<Runtime>::read_currency(currency_id_a);
+				let read_currency_b = InputPricer::<Runtime>::read_currency(currency_id_b);
+
 				let weight = <Runtime as module_dex::Config>::WeightInfo::remove_liquidity();
-				Self::BASE_COST.saturating_add(WeightToGas::convert(weight))
+
+				Self::BASE_COST
+					.saturating_add(read_account)
+					.saturating_add(read_currency_a)
+					.saturating_add(read_currency_b)
+					.saturating_add(WeightToGas::convert(weight))
 			}
 		};
 		Ok(cost)
@@ -406,19 +493,9 @@ mod tests {
 	use crate::precompile::mock::{alice_evm_addr, new_test_ext, DexModule, Origin, Test, ALICE, AUSD, RENBTC};
 	use frame_support::{assert_noop, assert_ok};
 	use hex_literal::hex;
-	use module_dex::WeightInfo;
 	use module_evm::ExitRevert;
-	use sp_runtime::traits::Convert;
 
 	type DEXPrecompile = crate::DEXPrecompile<Test>;
-
-	fn base_cost(i: u64) -> u64 {
-		i * Pricer::<Test>::BASE_COST
-	}
-
-	fn read_cost(i: u64) -> u64 {
-		WeightToGas::convert(<Test as frame_system::Config>::DbWeight::get().reads(i))
-	}
 
 	#[test]
 	fn get_liquidity_works() {
@@ -458,15 +535,9 @@ mod tests {
 				00000000000000000000000000000000 000000000000000000000000000f4240
 			"};
 
-			assert_ok!(
-				DEXPrecompile::execute(&input, None, &context, false),
-				PrecompileOutput {
-					exit_status: ExitSucceed::Returned,
-					cost: read_cost(1) + base_cost(1),
-					output: expected_output.to_vec(),
-					logs: Default::default(),
-				}
-			);
+			let resp = DEXPrecompile::execute(&input, None, &context, false).unwrap();
+			assert_eq!(resp.exit_status, ExitSucceed::Returned);
+			assert_eq!(resp.output, expected_output.to_vec());
 		});
 	}
 
@@ -506,15 +577,9 @@ mod tests {
 				000000000000000000000000 0000000000000000000200000000010000000014
 			"};
 
-			assert_ok!(
-				DEXPrecompile::execute(&input, None, &context, false),
-				PrecompileOutput {
-					exit_status: ExitSucceed::Returned,
-					cost: read_cost(3) + base_cost(1),
-					output: expected_output.to_vec(),
-					logs: Default::default(),
-				}
-			);
+			let resp = DEXPrecompile::execute(&input, None, &context, false).unwrap();
+			assert_eq!(resp.exit_status, ExitSucceed::Returned);
+			assert_eq!(resp.output, expected_output.to_vec());
 
 			// getLiquidityTokenAddress(address,address) -> 0xffd73c4a
 			// RENBTC
@@ -578,15 +643,9 @@ mod tests {
 				00000000000000000000000000000000 000000000000000000000000000003dd
 			"};
 
-			assert_ok!(
-				DEXPrecompile::execute(&input, None, &context, false),
-				PrecompileOutput {
-					exit_status: ExitSucceed::Returned,
-					cost: read_cost(2) + base_cost(1),
-					output: expected_output.to_vec(),
-					logs: Default::default(),
-				}
-			);
+			let resp = DEXPrecompile::execute(&input, None, &context, false).unwrap();
+			assert_eq!(resp.exit_status, ExitSucceed::Returned);
+			assert_eq!(resp.output, expected_output.to_vec());
 		});
 	}
 
@@ -632,15 +691,9 @@ mod tests {
 				00000000000000000000000000000000 00000000000000000000000000000001
 			"};
 
-			assert_ok!(
-				DEXPrecompile::execute(&input, None, &context, false),
-				PrecompileOutput {
-					exit_status: ExitSucceed::Returned,
-					cost: read_cost(2) + base_cost(1),
-					output: expected_output.to_vec(),
-					logs: Default::default(),
-				}
-			);
+			let resp = DEXPrecompile::execute(&input, None, &context, false).unwrap();
+			assert_eq!(resp.exit_status, ExitSucceed::Returned);
+			assert_eq!(resp.output, expected_output.to_vec());
 		});
 	}
 
@@ -690,16 +743,9 @@ mod tests {
 				00000000000000000000000000000000 000000000000000000000000000003dd
 			"};
 
-			assert_ok!(
-				DEXPrecompile::execute(&input, None, &context, false),
-				PrecompileOutput {
-					exit_status: ExitSucceed::Returned,
-					cost: base_cost(1)
-						+ WeightToGas::convert(<Test as module_dex::Config>::WeightInfo::swap_with_exact_supply(2)),
-					output: expected_output.to_vec(),
-					logs: Default::default(),
-				}
-			);
+			let resp = DEXPrecompile::execute(&input, None, &context, false).unwrap();
+			assert_eq!(resp.exit_status, ExitSucceed::Returned);
+			assert_eq!(resp.output, expected_output.to_vec());
 		});
 	}
 
@@ -749,16 +795,9 @@ mod tests {
 				00000000000000000000000000000000 00000000000000000000000000000001
 			"};
 
-			assert_ok!(
-				DEXPrecompile::execute(&input, None, &context, false),
-				PrecompileOutput {
-					exit_status: ExitSucceed::Returned,
-					cost: base_cost(1)
-						+ WeightToGas::convert(<Test as module_dex::Config>::WeightInfo::swap_with_exact_target(2)),
-					output: expected_output.to_vec(),
-					logs: Default::default(),
-				}
-			);
+			let resp = DEXPrecompile::execute(&input, None, &context, false).unwrap();
+			assert_eq!(resp.exit_status, ExitSucceed::Returned);
+			assert_eq!(resp.output, expected_output.to_vec());
 		});
 	}
 }

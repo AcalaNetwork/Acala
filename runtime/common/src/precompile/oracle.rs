@@ -16,15 +16,14 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::WeightToGas;
-use frame_support::{log, sp_runtime::FixedPointNumber, traits::Get};
+use crate::{precompile::input::InputPricer, WeightToGas};
+use frame_support::{log, sp_runtime::FixedPointNumber};
 use module_evm::{
 	precompiles::Precompile,
 	runner::state::{PrecompileFailure, PrecompileOutput, PrecompileResult},
 	Context, ExitError, ExitSucceed,
 };
 use num_enum::{IntoPrimitive, TryFromPrimitive};
-use primitives::CurrencyId;
 use sp_runtime::{traits::Convert, RuntimeDebug};
 use sp_std::{marker::PhantomData, prelude::*};
 
@@ -119,7 +118,7 @@ impl<Runtime> Pricer<Runtime>
 where
 	Runtime: module_evm::Config + module_prices::Config,
 {
-	const BASE_COST: u64 = 200;
+	const BASE_COST: u64 = 50;
 
 	fn cost(
 		input: &Input<Action, Runtime::AccountId, Runtime::AddressMapping, Runtime::Erc20InfoMapping>,
@@ -129,12 +128,9 @@ where
 		let cost = match action {
 			Action::GetPrice => {
 				let currency_id = input.currency_id_at(1)?;
-				let read_currency = match currency_id {
-					CurrencyId::DexShare(_, _) => <Runtime as frame_system::Config>::DbWeight::get().reads_writes(3, 1),
-					_ => <Runtime as frame_system::Config>::DbWeight::get().reads(1),
-				};
-				let read_price = WeightToGas::convert(PrecompileWeights::<Runtime>::oracle_get_price());
-				WeightToGas::convert(read_currency).saturating_add(read_price)
+				let read_currency = InputPricer::<Runtime>::read_currency(currency_id);
+				let get_price = WeightToGas::convert(PrecompileWeights::<Runtime>::oracle_get_price());
+				WeightToGas::convert(read_currency).saturating_add(get_price)
 			}
 		};
 		Ok(Self::BASE_COST.saturating_add(cost))
@@ -150,17 +146,8 @@ mod tests {
 	use hex_literal::hex;
 	use module_evm::ExitRevert;
 	use orml_traits::DataFeeder;
-	use sp_runtime::traits::Convert;
 
 	type OraclePrecompile = crate::OraclePrecompile<Test>;
-
-	fn base_cost(i: u64) -> u64 {
-		i * Pricer::<Test>::BASE_COST
-	}
-
-	fn read_cost(i: u64) -> u64 {
-		WeightToGas::convert(<Test as frame_system::Config>::DbWeight::get().reads(i))
-	}
 
 	#[test]
 	fn get_price_work() {
@@ -185,16 +172,9 @@ mod tests {
 				00000000000000000000000000000000 00000000000000000000000000000000
 			"};
 
-			assert_ok!(
-				OraclePrecompile::execute(&input, None, &context, false),
-				PrecompileOutput {
-					exit_status: ExitSucceed::Returned,
-					cost: base_cost(1)
-						+ read_cost(1) + WeightToGas::convert(PrecompileWeights::<Test>::oracle_get_price()),
-					output: expected_output.to_vec(),
-					logs: Default::default(),
-				}
-			);
+			let resp = OraclePrecompile::execute(&input, None, &context, false).unwrap();
+			assert_eq!(resp.exit_status, ExitSucceed::Returned);
+			assert_eq!(resp.output, expected_output.to_vec());
 
 			assert_ok!(Oracle::feed_value(ALICE, RENBTC, price));
 			assert_eq!(
@@ -210,16 +190,9 @@ mod tests {
 				00000000000000000000000000000000 000000000000065a4da25d3016c00000
 			"};
 
-			assert_ok!(
-				OraclePrecompile::execute(&input, None, &context, false),
-				PrecompileOutput {
-					exit_status: ExitSucceed::Returned,
-					cost: base_cost(1)
-						+ read_cost(1) + WeightToGas::convert(PrecompileWeights::<Test>::oracle_get_price()),
-					output: expected_output.to_vec(),
-					logs: Default::default(),
-				}
-			);
+			let resp = OraclePrecompile::execute(&input, None, &context, false).unwrap();
+			assert_eq!(resp.exit_status, ExitSucceed::Returned);
+			assert_eq!(resp.output, expected_output.to_vec());
 		});
 	}
 

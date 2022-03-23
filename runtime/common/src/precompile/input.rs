@@ -19,11 +19,14 @@
 use frame_support::ensure;
 use sp_std::{marker::PhantomData, result::Result, vec, vec::Vec};
 
+use crate::WeightToGas;
 use ethabi::Token;
+use frame_support::traits::Get;
 use module_evm::{runner::state::PrecompileFailure, ExitRevert};
 use module_support::{AddressMapping as AddressMappingT, Erc20InfoMapping as Erc20InfoMappingT};
-use primitives::{Balance, CurrencyId};
+use primitives::{Balance, CurrencyId, DexShare};
 use sp_core::{H160, U256};
+use sp_runtime::traits::Convert;
 
 pub const FUNCTION_SELECTOR_LENGTH: usize = 4;
 pub const PER_PARAM_BYTES: usize = 32;
@@ -222,6 +225,41 @@ impl Output {
 	pub fn encode_address(&self, b: &H160) -> Vec<u8> {
 		let out = Token::Address(H160::from_slice(b.as_bytes()));
 		ethabi::encode(&[out])
+	}
+}
+
+pub struct InputPricer<T>(PhantomData<T>);
+
+impl<T> InputPricer<T>
+where
+	T: frame_system::Config,
+{
+	const BASE_COST: u64 = 50;
+
+	pub(crate) fn read_currency(currency_id: CurrencyId) -> u64 {
+		match currency_id {
+			CurrencyId::DexShare(a, b) => {
+				let cost_a = if matches!(a, DexShare::Erc20(_)) {
+					// AssetRegistry::Erc20IdToAddress (r: 1)
+					WeightToGas::convert(T::DbWeight::get().reads(1))
+				} else {
+					Self::BASE_COST
+				};
+				let cost_b = if matches!(b, DexShare::Erc20(_)) {
+					// AssetRegistry::Erc20IdToAddress (r: 1)
+					WeightToGas::convert(T::DbWeight::get().reads(1))
+				} else {
+					Self::BASE_COST
+				};
+				cost_a.saturating_add(cost_b)
+			}
+			_ => Self::BASE_COST,
+		}
+	}
+
+	pub(crate) fn read_accounts(count: u64) -> u64 {
+		// EvmAccounts::Accounts
+		WeightToGas::convert(T::DbWeight::get().reads(count))
 	}
 }
 

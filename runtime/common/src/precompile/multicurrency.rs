@@ -17,7 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use super::input::{Input, InputT, Output};
-use crate::WeightToGas;
+use crate::{precompile::input::InputPricer, WeightToGas};
 use frame_support::{
 	log,
 	traits::{Currency, Get},
@@ -206,7 +206,7 @@ where
 	Runtime:
 		module_currencies::Config + module_evm::Config + module_prices::Config + module_transaction_payment::Config,
 {
-	const BASE_COST: u64 = 200;
+	const BASE_COST: u64 = 50;
 
 	fn cost(
 		input: &Input<
@@ -220,7 +220,7 @@ where
 		let action = input.action()?;
 
 		// Decode CurrencyId from EvmAddress
-		let decode_cost = Self::decode_evm_address_cost(currency_id);
+		let read_currency = InputPricer::<Runtime>::read_currency(currency_id);
 
 		let cost = match action {
 			Action::QueryName | Action::QuerySymbol | Action::QueryDecimals => Self::erc20_info(currency_id),
@@ -229,13 +229,14 @@ where
 				WeightToGas::convert(<Runtime as frame_system::Config>::DbWeight::get().reads(1))
 			}
 			Action::QueryBalance => {
-				// EvmAccounts::Accounts (r: 1)
+				let cost = InputPricer::<Runtime>::read_accounts(1);
 				// Currencies::Balance (r: 1)
-				WeightToGas::convert(<Runtime as frame_system::Config>::DbWeight::get().reads(2))
+				cost.saturating_add(WeightToGas::convert(
+					<Runtime as frame_system::Config>::DbWeight::get().reads(2),
+				))
 			}
 			Action::Transfer => {
-				// EvmAccounts::Accounts (r: 2)
-				let cost = WeightToGas::convert(<Runtime as frame_system::Config>::DbWeight::get().reads(2));
+				let cost = InputPricer::<Runtime>::read_accounts(2);
 
 				// transfer weight
 				let weight = if currency_id == <Runtime as module_transaction_payment::Config>::NativeCurrencyId::get()
@@ -249,26 +250,7 @@ where
 			}
 		};
 
-		Ok(Self::BASE_COST.saturating_add(decode_cost).saturating_add(cost))
-	}
-
-	fn decode_evm_address_cost(currency_id: CurrencyId) -> u64 {
-		match currency_id {
-			CurrencyId::DexShare(a, b) => {
-				let cost_a = if matches!(a, DexShare::Erc20(_)) {
-					WeightToGas::convert(<Runtime as frame_system::Config>::DbWeight::get().reads(1))
-				} else {
-					Self::BASE_COST
-				};
-				let cost_b = if matches!(b, DexShare::Erc20(_)) {
-					WeightToGas::convert(<Runtime as frame_system::Config>::DbWeight::get().reads(1))
-				} else {
-					Self::BASE_COST
-				};
-				cost_a.saturating_add(cost_b)
-			}
-			_ => Self::BASE_COST,
-		}
+		Ok(Self::BASE_COST.saturating_add(read_currency).saturating_add(cost))
 	}
 
 	fn dex_share_read_cost(share: DexShare) -> u64 {
@@ -295,27 +277,14 @@ where
 mod tests {
 	use super::*;
 
-	use crate::{
-		precompile::mock::{
-			aca_evm_address, alice, ausd_evm_address, bob, erc20_address_not_exists, lp_aca_ausd_evm_address,
-			new_test_ext, Balances, Test,
-		},
-		WeightToGas,
+	use crate::precompile::mock::{
+		aca_evm_address, alice, ausd_evm_address, bob, erc20_address_not_exists, lp_aca_ausd_evm_address, new_test_ext,
+		Balances, Test,
 	};
-	use frame_support::{assert_noop, assert_ok};
+	use frame_support::assert_noop;
 	use hex_literal::hex;
-	use module_currencies::WeightInfo;
-	use sp_runtime::traits::Convert;
 
 	type MultiCurrencyPrecompile = crate::MultiCurrencyPrecompile<Test>;
-
-	fn base_cost(i: u64) -> u64 {
-		i * Pricer::<Test>::BASE_COST
-	}
-
-	fn read_cost(i: u64) -> u64 {
-		WeightToGas::convert(<Test as frame_system::Config>::DbWeight::get().reads(i))
-	}
 
 	#[test]
 	fn handles_invalid_currency_id() {
@@ -366,15 +335,9 @@ mod tests {
 				4163616c61000000000000000000000000000000000000000000000000000000
 			"};
 
-			assert_ok!(
-				MultiCurrencyPrecompile::execute(&input, None, &context, false),
-				PrecompileOutput {
-					exit_status: ExitSucceed::Returned,
-					cost: base_cost(3),
-					output: expected_output.to_vec(),
-					logs: Default::default()
-				}
-			);
+			let resp = MultiCurrencyPrecompile::execute(&input, None, &context, false).unwrap();
+			assert_eq!(resp.exit_status, ExitSucceed::Returned);
+			assert_eq!(resp.output, expected_output.to_vec());
 
 			// DexShare
 			context.caller = lp_aca_ausd_evm_address();
@@ -385,15 +348,9 @@ mod tests {
 				4c50204163616c61202d204163616c6120446f6c6c6172000000000000000000
 			"};
 
-			assert_ok!(
-				MultiCurrencyPrecompile::execute(&input, None, &context, false),
-				PrecompileOutput {
-					exit_status: ExitSucceed::Returned,
-					cost: base_cost(5),
-					output: expected_output.to_vec(),
-					logs: Default::default()
-				}
-			);
+			let resp = MultiCurrencyPrecompile::execute(&input, None, &context, false).unwrap();
+			assert_eq!(resp.exit_status, ExitSucceed::Returned);
+			assert_eq!(resp.output, expected_output.to_vec());
 		});
 	}
 
@@ -420,15 +377,9 @@ mod tests {
 				4143410000000000000000000000000000000000000000000000000000000000
 			"};
 
-			assert_ok!(
-				MultiCurrencyPrecompile::execute(&input, None, &context, false),
-				PrecompileOutput {
-					exit_status: ExitSucceed::Returned,
-					cost: base_cost(3),
-					output: expected_output.to_vec(),
-					logs: Default::default()
-				}
-			);
+			let resp = MultiCurrencyPrecompile::execute(&input, None, &context, false).unwrap();
+			assert_eq!(resp.exit_status, ExitSucceed::Returned);
+			assert_eq!(resp.output, expected_output.to_vec());
 
 			// DexShare
 			context.caller = lp_aca_ausd_evm_address();
@@ -439,15 +390,9 @@ mod tests {
 				4c505f4143415f41555344000000000000000000000000000000000000000000
 			"};
 
-			assert_ok!(
-				MultiCurrencyPrecompile::execute(&input, None, &context, false),
-				PrecompileOutput {
-					exit_status: ExitSucceed::Returned,
-					cost: base_cost(5),
-					output: expected_output.to_vec(),
-					logs: Default::default()
-				}
-			);
+			let resp = MultiCurrencyPrecompile::execute(&input, None, &context, false).unwrap();
+			assert_eq!(resp.exit_status, ExitSucceed::Returned);
+			assert_eq!(resp.output, expected_output.to_vec());
 		});
 	}
 
@@ -472,28 +417,16 @@ mod tests {
 				00000000000000000000000000000000 0000000000000000000000000000000c
 			"};
 
-			assert_ok!(
-				MultiCurrencyPrecompile::execute(&input, None, &context, false),
-				PrecompileOutput {
-					exit_status: ExitSucceed::Returned,
-					cost: base_cost(3),
-					output: expected_output.to_vec(),
-					logs: Default::default()
-				}
-			);
+			let resp = MultiCurrencyPrecompile::execute(&input, None, &context, false).unwrap();
+			assert_eq!(resp.exit_status, ExitSucceed::Returned);
+			assert_eq!(resp.output, expected_output.to_vec());
 
 			// DexShare
 			context.caller = lp_aca_ausd_evm_address();
 
-			assert_ok!(
-				MultiCurrencyPrecompile::execute(&input, None, &context, false),
-				PrecompileOutput {
-					exit_status: ExitSucceed::Returned,
-					cost: base_cost(5),
-					output: expected_output.to_vec(),
-					logs: Default::default()
-				}
-			);
+			let resp = MultiCurrencyPrecompile::execute(&input, None, &context, false).unwrap();
+			assert_eq!(resp.exit_status, ExitSucceed::Returned);
+			assert_eq!(resp.output, expected_output.to_vec());
 		});
 	}
 
@@ -519,15 +452,9 @@ mod tests {
 				00000000000000000000000000000000 0000000000000000000000003b9aca00
 			"};
 
-			assert_ok!(
-				MultiCurrencyPrecompile::execute(&input, None, &context, false),
-				PrecompileOutput {
-					exit_status: ExitSucceed::Returned,
-					cost: base_cost(2) + read_cost(1),
-					output: expected_output.to_vec(),
-					logs: Default::default()
-				}
-			);
+			let resp = MultiCurrencyPrecompile::execute(&input, None, &context, false).unwrap();
+			assert_eq!(resp.exit_status, ExitSucceed::Returned);
+			assert_eq!(resp.output, expected_output.to_vec());
 
 			// DexShare
 			context.caller = lp_aca_ausd_evm_address();
@@ -536,15 +463,9 @@ mod tests {
 				00000000000000000000000000000000 00000000000000000000000000000000
 			"};
 
-			assert_ok!(
-				MultiCurrencyPrecompile::execute(&input, None, &context, false),
-				PrecompileOutput {
-					exit_status: ExitSucceed::Returned,
-					cost: base_cost(3) + read_cost(1),
-					output: expected_output.to_vec(),
-					logs: Default::default()
-				}
-			);
+			let resp = MultiCurrencyPrecompile::execute(&input, None, &context, false).unwrap();
+			assert_eq!(resp.exit_status, ExitSucceed::Returned);
+			assert_eq!(resp.output, expected_output.to_vec());
 		});
 	}
 
@@ -572,15 +493,9 @@ mod tests {
 				00000000000000000000000000000000 0000000000000000000000e8d4a51000
 			"};
 
-			assert_ok!(
-				MultiCurrencyPrecompile::execute(&input, None, &context, false),
-				PrecompileOutput {
-					exit_status: ExitSucceed::Returned,
-					cost: base_cost(2) + read_cost(2),
-					output: expected_output.to_vec(),
-					logs: Default::default()
-				}
-			);
+			let resp = MultiCurrencyPrecompile::execute(&input, None, &context, false).unwrap();
+			assert_eq!(resp.exit_status, ExitSucceed::Returned);
+			assert_eq!(resp.output, expected_output.to_vec());
 
 			// DexShare
 			context.caller = lp_aca_ausd_evm_address();
@@ -589,15 +504,9 @@ mod tests {
 				00000000000000000000000000000000 00000000000000000000000000000000
 			"};
 
-			assert_ok!(
-				MultiCurrencyPrecompile::execute(&input, None, &context, false),
-				PrecompileOutput {
-					exit_status: ExitSucceed::Returned,
-					cost: base_cost(3) + read_cost(2),
-					output: expected_output.to_vec(),
-					logs: Default::default()
-				}
-			);
+			let resp = MultiCurrencyPrecompile::execute(&input, None, &context, false).unwrap();
+			assert_eq!(resp.exit_status, ExitSucceed::Returned);
+			assert_eq!(resp.output, expected_output.to_vec());
 		})
 	}
 
@@ -627,19 +536,9 @@ mod tests {
 			// Token
 			context.caller = aca_evm_address();
 
-			let expected_cost = base_cost(2)
-				+ WeightToGas::convert(<Test as module_currencies::Config>::WeightInfo::transfer_native_currency())
-				+ read_cost(2);
-
-			assert_ok!(
-				MultiCurrencyPrecompile::execute(&input, None, &context, false),
-				PrecompileOutput {
-					exit_status: ExitSucceed::Returned,
-					cost: expected_cost,
-					output: vec![],
-					logs: Default::default(),
-				}
-			);
+			let resp = MultiCurrencyPrecompile::execute(&input, None, &context, false).unwrap();
+			assert_eq!(resp.exit_status, ExitSucceed::Returned);
+			assert_eq!(resp.output, [0u8; 0].to_vec());
 
 			assert_eq!(Balances::free_balance(alice()), from_balance - 1);
 			assert_eq!(Balances::free_balance(bob()), to_balance + 1);

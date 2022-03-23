@@ -32,6 +32,7 @@ use super::{
 	input::{Input, InputT, Output},
 	weights::PrecompileWeights,
 };
+use crate::precompile::input::InputPricer;
 use primitives::Balance;
 
 /// The `EVM` impl precompile.
@@ -241,7 +242,7 @@ impl<Runtime> Pricer<Runtime>
 where
 	Runtime: module_evm::Config + module_prices::Config,
 {
-	const BASE_COST: u64 = 200;
+	const BASE_COST: u64 = 50;
 
 	fn cost(
 		input: &Input<Action, Runtime::AccountId, Runtime::AddressMapping, Runtime::Erc20InfoMapping>,
@@ -269,24 +270,37 @@ where
 				WeightToGas::convert(weight)
 			}
 			Action::TransferMaintainer => {
+				let read_accounts = InputPricer::<Runtime>::read_accounts(1);
 				let weight = <Runtime as module_evm::Config>::WeightInfo::transfer_maintainer();
-				Self::BASE_COST.saturating_add(WeightToGas::convert(weight))
+				Self::BASE_COST
+					.saturating_add(read_accounts)
+					.saturating_add(WeightToGas::convert(weight))
 			}
 			Action::PublishContract => {
+				let read_accounts = InputPricer::<Runtime>::read_accounts(1);
 				let weight = <Runtime as module_evm::Config>::WeightInfo::publish_contract();
-				Self::BASE_COST.saturating_add(WeightToGas::convert(weight))
+				Self::BASE_COST
+					.saturating_add(read_accounts)
+					.saturating_add(WeightToGas::convert(weight))
 			}
 			Action::DisableDeveloperAccount => {
+				let read_accounts = InputPricer::<Runtime>::read_accounts(1);
 				let weight = <Runtime as module_evm::Config>::WeightInfo::disable_contract_development();
-				Self::BASE_COST.saturating_add(WeightToGas::convert(weight))
+				Self::BASE_COST
+					.saturating_add(read_accounts)
+					.saturating_add(WeightToGas::convert(weight))
 			}
 			Action::EnableDeveloperAccount => {
+				let read_accounts = InputPricer::<Runtime>::read_accounts(1);
 				let weight = <Runtime as module_evm::Config>::WeightInfo::enable_contract_development();
-				Self::BASE_COST.saturating_add(WeightToGas::convert(weight))
+				Self::BASE_COST
+					.saturating_add(read_accounts)
+					.saturating_add(WeightToGas::convert(weight))
 			}
 			Action::QueryDeveloperStatus => {
+				let read_accounts = InputPricer::<Runtime>::read_accounts(1);
 				let weight = PrecompileWeights::<Runtime>::evm_query_developer_status();
-				WeightToGas::convert(weight)
+				read_accounts.saturating_add(WeightToGas::convert(weight))
 			}
 		};
 		Ok(cost)
@@ -302,15 +316,10 @@ mod tests {
 	};
 	use frame_support::assert_ok;
 	use hex_literal::hex;
-	use module_evm::{ExitReason, Runner, WeightInfo};
+	use module_evm::{ExitReason, Runner};
 	use sp_core::H160;
-	use sp_runtime::traits::Convert;
 
 	type EVMPrecompile = crate::EVMPrecompile<Test>;
-
-	fn base_cost(i: u64) -> u64 {
-		i * Pricer::<Test>::BASE_COST
-	}
 
 	#[test]
 	fn developer_status_works() {
@@ -333,15 +342,9 @@ mod tests {
 				00000000000000000000000000000000 00000000000000000000000000000000
 			"};
 
-			assert_ok!(
-				EVMPrecompile::execute(&input, None, &context, false),
-				PrecompileOutput {
-					exit_status: ExitSucceed::Returned,
-					cost: WeightToGas::convert(PrecompileWeights::<Test>::evm_query_developer_status()),
-					output: expected_output.to_vec(),
-					logs: Default::default()
-				}
-			);
+			let resp = EVMPrecompile::execute(&input, None, &context, false).unwrap();
+			assert_eq!(resp.exit_status, ExitSucceed::Returned);
+			assert_eq!(resp.output, expected_output.to_vec());
 
 			// developerEnable(address) -> 0x504eb6b5
 			// who
@@ -350,16 +353,9 @@ mod tests {
 				000000000000000000000000 1000000000000000000000000000000000000001
 			"};
 
-			assert_ok!(
-				EVMPrecompile::execute(&input, None, &context, false),
-				PrecompileOutput {
-					exit_status: ExitSucceed::Returned,
-					cost: base_cost(1)
-						+ WeightToGas::convert(<Test as module_evm::Config>::WeightInfo::enable_contract_development()),
-					output: [0u8; 0].to_vec(),
-					logs: Default::default()
-				}
-			);
+			let resp = EVMPrecompile::execute(&input, None, &context, false).unwrap();
+			assert_eq!(resp.exit_status, ExitSucceed::Returned);
+			assert_eq!(resp.output, [0u8; 0].to_vec());
 
 			// query developer status again but this time it is enabled
 
@@ -375,15 +371,9 @@ mod tests {
 				00000000000000000000000000000000 00000000000000000000000000000001
 			"};
 
-			assert_ok!(
-				EVMPrecompile::execute(&input, None, &context, false),
-				PrecompileOutput {
-					exit_status: ExitSucceed::Returned,
-					cost: WeightToGas::convert(PrecompileWeights::<Test>::evm_query_developer_status()),
-					output: expected_output.to_vec(),
-					logs: Default::default()
-				}
-			);
+			let resp = EVMPrecompile::execute(&input, None, &context, false).unwrap();
+			assert_eq!(resp.exit_status, ExitSucceed::Returned);
+			assert_eq!(resp.output, expected_output.to_vec());
 
 			// disable alice account for developer mode
 
@@ -394,16 +384,9 @@ mod tests {
 				000000000000000000000000 1000000000000000000000000000000000000001
 			"};
 
-			assert_ok!(
-				EVMPrecompile::execute(&input, None, &context, false),
-				PrecompileOutput {
-					exit_status: ExitSucceed::Returned,
-					cost: base_cost(1)
-						+ WeightToGas::convert(<Test as module_evm::Config>::WeightInfo::disable_contract_development()),
-					output: [0u8; 0].to_vec(),
-					logs: Default::default()
-				}
-			);
+			let resp = EVMPrecompile::execute(&input, None, &context, false).unwrap();
+			assert_eq!(resp.exit_status, ExitSucceed::Returned);
+			assert_eq!(resp.output, [0u8; 0].to_vec());
 
 			// query developer status
 
@@ -419,15 +402,9 @@ mod tests {
 				00000000000000000000000000000000 00000000000000000000000000000000
 			"};
 
-			assert_ok!(
-				EVMPrecompile::execute(&input, None, &context, false),
-				PrecompileOutput {
-					exit_status: ExitSucceed::Returned,
-					cost: WeightToGas::convert(PrecompileWeights::<Test>::evm_query_developer_status()),
-					output: expected_output.to_vec(),
-					logs: Default::default()
-				}
-			);
+			let resp = EVMPrecompile::execute(&input, None, &context, false).unwrap();
+			assert_eq!(resp.exit_status, ExitSucceed::Returned);
+			assert_eq!(resp.output, expected_output.to_vec());
 		});
 	}
 
@@ -514,16 +491,9 @@ mod tests {
 			"};
 
 			// publish contract with precompile
-			assert_ok!(
-				EVMPrecompile::execute(&input, None, &context, false),
-				PrecompileOutput {
-					exit_status: ExitSucceed::Returned,
-					cost: base_cost(1)
-						+ WeightToGas::convert(<Test as module_evm::Config>::WeightInfo::publish_contract()),
-					output: [0u8; 0].to_vec(),
-					logs: Default::default(),
-				}
-			);
+			let resp = EVMPrecompile::execute(&input, None, &context, false).unwrap();
+			assert_eq!(resp.exit_status, ExitSucceed::Returned);
+			assert_eq!(resp.output, [0u8; 0].to_vec());
 
 			// Same call as above now works as contract is now published
 			assert_ok!(EVMModule::call(
