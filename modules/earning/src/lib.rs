@@ -160,7 +160,7 @@ pub mod module {
 			Ok(())
 		}
 
-		#[pallet::weight(T::WeightInfo::unbond())]
+		#[pallet::weight(T::WeightInfo::unbond_instant())]
 		#[transactional]
 		pub fn unbond_instant(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResult {
 			let who = ensure_signed(origin)?;
