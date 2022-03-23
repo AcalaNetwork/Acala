@@ -32,7 +32,7 @@ use cumulus_client_service::{
 	StartFullNodeParams,
 };
 use cumulus_primitives_core::ParaId;
-use cumulus_relay_chain_local::RelayChainLocal;
+use cumulus_relay_chain_inprocess_interface::RelayChainLocal;
 
 use frame_system_rpc_runtime_api::AccountNonceApi;
 use futures::{channel::mpsc::Sender, SinkExt};
