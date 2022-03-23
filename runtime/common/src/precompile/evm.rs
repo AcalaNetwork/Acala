@@ -298,9 +298,8 @@ where
 					.saturating_add(WeightToGas::convert(weight))
 			}
 			Action::QueryDeveloperStatus => {
-				let read_accounts = InputPricer::<Runtime>::read_accounts(1);
 				let weight = PrecompileWeights::<Runtime>::evm_query_developer_status();
-				read_accounts.saturating_add(WeightToGas::convert(weight))
+				WeightToGas::convert(weight)
 			}
 		};
 		Ok(cost)

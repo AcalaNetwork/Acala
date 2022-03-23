@@ -28,11 +28,9 @@ use frame_support::{
 };
 use frame_system::{EnsureRoot, EnsureSignedBy};
 use module_evm::EvmTask;
+use module_evm_accounts::EvmAddressMapping;
 use module_support::DispatchableTask;
-use module_support::{
-	mocks::MockAddressMapping, AddressMapping as AddressMappingT, DEXIncentives, ExchangeRate, ExchangeRateProvider,
-	Rate,
-};
+use module_support::{AddressMapping as AddressMappingT, DEXIncentives, ExchangeRate, ExchangeRateProvider, Rate};
 use orml_traits::{parameter_type_with_key, MultiReservableCurrency};
 pub use primitives::{
 	define_combined_task,
@@ -173,7 +171,7 @@ impl module_currencies::Config for Test {
 	type NativeCurrency = AdaptedBasicCurrency;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type WeightInfo = ();
-	type AddressMapping = MockAddressMapping;
+	type AddressMapping = EvmAddressMapping<Test>;
 	type EVMBridge = module_evm_bridge::EVMBridge<Test>;
 	type SweepOrigin = EnsureSignedBy<CouncilAccount, AccountId>;
 	type OnDust = ();
@@ -420,7 +418,7 @@ impl Convert<u64, Weight> for GasToWeight {
 }
 
 impl module_evm::Config for Test {
-	type AddressMapping = MockAddressMapping;
+	type AddressMapping = EvmAddressMapping<Test>;
 	type Currency = Balances;
 	type TransferAll = Currencies;
 	type NewContractExtraBytes = NewContractExtraBytes;
@@ -442,6 +440,15 @@ impl module_evm::Config for Test {
 	type FindAuthor = ();
 	type Task = ScheduledTasks;
 	type IdleScheduler = IdleScheduler;
+	type WeightInfo = ();
+}
+
+impl module_evm_accounts::Config for Test {
+	type Event = Event;
+	type Currency = Balances;
+	type AddressMapping = EvmAddressMapping<Test>;
+	type ChainId = ChainId;
+	type TransferAll = ();
 	type WeightInfo = ();
 }
 
@@ -567,6 +574,7 @@ frame_support::construct_runtime!(
 		Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>},
 		DexModule: module_dex::{Pallet, Storage, Call, Event<T>, Config<T>},
 		EVMModule: module_evm::{Pallet, Config<T>, Call, Storage, Event<T>},
+		EvmAccounts: module_evm_accounts::{Pallet, Call, Storage, Event<T>},
 		IdleScheduler: module_idle_scheduler::{Pallet, Call, Storage, Event<T>},
 	}
 );
@@ -677,7 +685,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 
 		assert_ok!(Currencies::update_balance(
 			Origin::root(),
-			MockAddressMapping::get_account_id(&alice_evm_addr()),
+			EvmAddressMapping::<Test>::get_account_id(&alice_evm_addr()),
 			RENBTC,
 			1_000
 		));

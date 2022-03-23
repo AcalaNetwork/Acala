@@ -52,8 +52,9 @@ impl<T: frame_system::Config> PrecompileWeights<T> {
 		(1_040_000 as Weight)
 	}
 	// Balances::Reserves (r: 1, w: 0)
+	// EvmAccounts::Accounts (r: 1, w: 0)
 	pub fn evm_query_developer_status() -> Weight {
 		(3_235_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
+			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 	}
 }

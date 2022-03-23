@@ -136,6 +136,7 @@ bench = [
 
 	"module-asset-registry",
 	"module-evm-bridge",
+	"module-evm-accounts",
 
 	"xcm/runtime-benchmarks",
 	"xcm-executor/runtime-benchmarks",
