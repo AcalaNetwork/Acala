@@ -24,9 +24,10 @@ use super::*;
 use crate as earning;
 use frame_support::{
 	construct_runtime, parameter_types,
-	traits::{ConstU128, ConstU32, ConstU64, Everything},
+	traits::{ConstU128, ConstU32, ConstU64, Everything, Imbalance},
 };
-
+use pallet_balances::NegativeImbalance;
+use primitives::mock_handler;
 use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup};
 
@@ -77,12 +78,24 @@ parameter_types! {
 	pub const EarningLockIdentifier: LockIdentifier = *b"12345678";
 }
 
+mock_handler! {
+	pub struct OnBonded<(AccountId, Balance)>;
+	pub struct OnUnbonded<(AccountId, Balance)>;
+	pub struct OnUnstakeFee<Balance>;
+}
+
+impl OnUnbalanced<NegativeImbalance<Runtime>> for OnUnstakeFee {
+	fn on_nonzero_unbalanced(amount: NegativeImbalance<Runtime>) {
+		Self::push(amount.peek());
+	}
+}
+
 impl Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
-	type OnBonded = ();
-	type OnUnbonded = ();
-	type OnUnstakeFee = ();
+	type OnBonded = OnBonded;
+	type OnUnbonded = OnUnbonded;
+	type OnUnstakeFee = OnUnstakeFee;
 	type MinBond = ConstU128<100>;
 	type UnbondingPeriod = ConstU64<3>;
 	type InstantUnstakeFee = InstantUnstakeFee;

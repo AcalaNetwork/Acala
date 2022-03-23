@@ -24,6 +24,18 @@ use super::*;
 use frame_support::{assert_noop, assert_ok, traits::fungible::Inspect};
 use mock::*;
 
+fn assert_no_handler_events() {
+	OnBonded::assert_empty();
+	OnUnbonded::assert_empty();
+	OnUnstakeFee::assert_empty();
+}
+
+fn clear_handler_events() {
+	OnBonded::clear();
+	OnUnbonded::clear();
+	OnUnstakeFee::clear();
+}
+
 #[test]
 fn bond_works() {
 	ExtBuilder::default().build().execute_with(|| {
@@ -40,6 +52,7 @@ fn bond_works() {
 			}
 			.into(),
 		);
+		OnBonded::assert_eq_and_clear(vec![(ALICE, 100)]);
 		assert_eq!(Balances::reducible_balance(&ALICE, false), 900);
 
 		assert_ok!(Earning::bond(Origin::signed(ALICE), 1000));
@@ -50,7 +63,10 @@ fn bond_works() {
 			}
 			.into(),
 		);
+		OnBonded::assert_eq_and_clear(vec![(ALICE, 900)]);
 		assert_eq!(Balances::reducible_balance(&ALICE, false), 0);
+
+		assert_no_handler_events();
 	});
 }
 
@@ -68,6 +84,8 @@ fn unbonding_works() {
 			Error::<Runtime>::BelowMinBondThreshold
 		);
 
+		clear_handler_events();
+
 		// Won't unbond before unbonding period passes
 		assert_ok!(Earning::unbond(Origin::signed(ALICE), 1001));
 		System::assert_last_event(
@@ -77,6 +95,7 @@ fn unbonding_works() {
 			}
 			.into(),
 		);
+		OnUnbonded::assert_eq_and_clear(vec![(ALICE, 1000)]);
 		System::reset_events();
 		assert_ok!(Earning::withdraw_unbonded(Origin::signed(ALICE)));
 		assert_eq!(System::events(), vec![]);
@@ -98,16 +117,23 @@ fn unbonding_works() {
 			Earning::unbond_instant(Origin::signed(ALICE), 1000),
 			Error::<Runtime>::NotBonded
 		);
+
+		assert_no_handler_events();
+
 		assert_ok!(Earning::bond(Origin::signed(ALICE), 1000));
 		assert_eq!(Balances::reducible_balance(&ALICE, false), 0);
 		assert_ok!(Earning::unbond(Origin::signed(ALICE), 1000));
+
 		System::reset_events();
+		clear_handler_events();
 
 		// unbond instant will not work on pending unbond funds
 		assert_ok!(Earning::unbond_instant(Origin::signed(ALICE), 1001));
 		assert_eq!(System::events(), vec![]);
+		clear_handler_events();
 
 		assert_ok!(Earning::rebond(Origin::signed(ALICE), 1000));
+		OnBonded::assert_eq_and_clear(vec![(ALICE, 1000)]);
 		assert_eq!(Balances::reducible_balance(&ALICE, false), 0);
 
 		assert_noop!(
@@ -123,8 +149,12 @@ fn unbonding_works() {
 			}
 			.into(),
 		);
+		OnUnbonded::assert_eq_and_clear(vec![(ALICE, 900)]);
+		OnUnstakeFee::assert_eq_and_clear(vec![100]);
 		// takes instant unbonding fee
 		assert_eq!(Balances::reducible_balance(&ALICE, false), 900);
+
+		assert_no_handler_events();
 	});
 }
 
@@ -139,6 +169,8 @@ fn rebond_works() {
 			Error::<Runtime>::BelowMinBondThreshold
 		);
 
+		clear_handler_events();
+
 		assert_ok!(Earning::rebond(Origin::signed(ALICE), 100));
 		System::assert_last_event(
 			Event::Rebonded {
@@ -147,10 +179,13 @@ fn rebond_works() {
 			}
 			.into(),
 		);
+		OnBonded::assert_eq_and_clear(vec![(ALICE, 100)]);
 
 		System::set_block_number(4);
-		// should not get in this state
+
 		assert_ok!(Earning::withdraw_unbonded(Origin::signed(ALICE)));
 		assert_eq!(Balances::reducible_balance(&ALICE, false), 900);
+
+		assert_no_handler_events();
 	});
 }

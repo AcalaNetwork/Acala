@@ -20,6 +20,7 @@ orml-traits = { package = "orml-traits", path = "../../orml/traits", default-fea
 support = { package = "module-support", path = "../support", default-features = false }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 
+paste = "1.0"
 [dev-dependencies]
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17" }
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17" }
