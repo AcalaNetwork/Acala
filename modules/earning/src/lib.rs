@@ -108,7 +108,7 @@ pub mod module {
 		},
 	}
 
-	/// The nomination bonding ledger.
+	/// The earning bonding ledger.
 	///
 	/// Ledger: map AccountId => Option<BondingLedger>
 	#[pallet::storage]
