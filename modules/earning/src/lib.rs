@@ -124,6 +124,9 @@ pub mod module {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
+		/// Bond tokens by locking them up to `amount`.
+		/// If user available balances is less than amount, then all the remaining balances will be
+		/// locked.
 		#[pallet::weight(T::WeightInfo::bond())]
 		#[transactional]
 		pub fn bond(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResult {
@@ -141,6 +144,9 @@ pub mod module {
 			Ok(())
 		}
 
+		/// Start unbonding tokens up to `amount`.
+		/// If bonded amount is less than `amount`, then all the remaining bonded tokens will start
+		/// unbonding. Token will finish unbonding after `UnbondingPeriod` blocks.
 		#[pallet::weight(T::WeightInfo::unbond())]
 		#[transactional]
 		pub fn unbond(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResult {
@@ -160,6 +166,9 @@ pub mod module {
 			Ok(())
 		}
 
+		/// Unbond up to `amount` tokens instantly by paying a `InstantUnstakeFee` fee.
+		/// If bonded amount is less than `amount`, then all the remaining bonded tokens will be
+		/// unbonded. This will not unbond tokens during unbonding period.
 		#[pallet::weight(T::WeightInfo::unbond_instant())]
 		#[transactional]
 		pub fn unbond_instant(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResult {
@@ -187,6 +196,9 @@ pub mod module {
 			Ok(())
 		}
 
+		/// Rebond up to `amount` tokens from unbonding period.
+		/// If unbonded amount is less than `amount`, then all the remaining unbonded tokens will be
+		/// rebonded.
 		#[pallet::weight(T::WeightInfo::rebond())]
 		#[transactional]
 		pub fn rebond(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResult {
@@ -205,6 +217,7 @@ pub mod module {
 			Ok(())
 		}
 
+		/// Withdraw all unbonded tokens.
 		#[pallet::weight(T::WeightInfo::withdraw_unbonded())]
 		#[transactional]
 		pub fn withdraw_unbonded(origin: OriginFor<T>) -> DispatchResult {
