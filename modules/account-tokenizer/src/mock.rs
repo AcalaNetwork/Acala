@@ -140,8 +140,8 @@ parameter_types! {
 }
 
 impl orml_nft::Config for Runtime {
-	type ClassId = u32;
-	type TokenId = u64;
+	type ClassId = ClassId;
+	type TokenId = TokenId;
 	type ClassData = ClassData<Balance>;
 	type TokenData = TokenData<Balance>;
 	type MaxClassMetadata = MaxClassMetadata;
@@ -236,8 +236,7 @@ impl Config for Runtime {
 	type MintRequestDeposit = MintRequestDeposit;
 	type MintFee = MintFee;
 	type ForeignStateQuery = ForeignStateOracle;
-	type ClassId = u32;
-	type TokenId = u64;
+	type AccountTokenizerGovernance = EnsureSignedBy<Oracle, AccountId>;
 }
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;

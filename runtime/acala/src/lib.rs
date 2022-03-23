@@ -82,6 +82,7 @@ pub use constants::{fee::*, time::*};
 pub use primitives::{
 	define_combined_task,
 	evm::{AccessListItem, EstimateResourcesRequest},
+	nft::{ClassId, TokenId},
 	task::TaskResult,
 	AccountId, AccountIndex, Address, Amount, AuctionId, AuthoritysOriginId, Balance, BlockNumber, CurrencyId,
 	DataProviderId, EraIndex, Hash, Lease, Moment, Nonce, ReserveIdentifier, Share, Signature, TokenSymbol,
@@ -1289,8 +1290,8 @@ parameter_types! {
 }
 
 impl orml_nft::Config for Runtime {
-	type ClassId = u32;
-	type TokenId = u64;
+	type ClassId = ClassId;
+	type TokenId = TokenId;
 	type ClassData = module_nft::ClassData<Balance>;
 	type TokenData = module_nft::TokenData<Balance>;
 	type MaxClassMetadata = MaxClassMetadata;
@@ -1586,14 +1587,12 @@ impl module_account_tokenizer::Config for Runtime {
 	type PalletId = AccountTokenizerPalletId;
 	type Currency = Balances;
 	type XcmInterface = XcmInterface;
-	type OracleOrigin = module_foreign_state_oracle::EnsureForeignStateOracle;
 	type NFTInterface = NFT;
 	type TreasuryAccount = AcalaTreasuryAccount;
 	type MintRequestDeposit = AccountTokenizerMintRequestDeposit;
 	type MintFee = AccountTokenizerMintFee;
 	type ForeignStateQuery = ForeignStateOracle;
-	type ClassId = u32;
-	type TokenId = u64;
+	type AccountTokenizerGovernance = EnsureRootOrHalfGeneralCouncil;
 }
 
 construct_runtime!(

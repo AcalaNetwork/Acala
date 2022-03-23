@@ -64,6 +64,7 @@ use pallet_transaction_payment::{FeeDetails, RuntimeDispatchInfo};
 use primitives::{
 	define_combined_task,
 	evm::{AccessListItem, EthereumTransactionMessage},
+	nft::{ClassId, TokenId},
 	task::TaskResult,
 	unchecked_extrinsic::AcalaUncheckedExtrinsic,
 };
@@ -1412,8 +1413,8 @@ parameter_types! {
 }
 
 impl orml_nft::Config for Runtime {
-	type ClassId = u32;
-	type TokenId = u64;
+	type ClassId = ClassId;
+	type TokenId = TokenId;
 	type ClassData = module_nft::ClassData<Balance>;
 	type TokenData = module_nft::TokenData<Balance>;
 	type MaxClassMetadata = MaxClassMetadata;
@@ -1743,8 +1744,7 @@ impl module_account_tokenizer::Config for Runtime {
 	type MintRequestDeposit = AccountTokenizerMintRequestDeposit;
 	type MintFee = AccountTokenizerMintFee;
 	type ForeignStateQuery = ForeignStateOracle;
-	type ClassId = u32;
-	type TokenId = u64;
+	type AccountTokenizerGovernance = EnsureRootOrHalfGeneralCouncil;
 }
 
 define_combined_task! {

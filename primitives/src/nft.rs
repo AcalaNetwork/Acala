@@ -29,6 +29,10 @@ use enumflags2::BitFlags;
 pub type NFTBalance = u128;
 pub type CID = Vec<u8>;
 pub type Attributes = BTreeMap<Vec<u8>, Vec<u8>>;
+/// Class ID for NFTs
+pub type ClassId = u32;
+/// Token Id for NFTs
+pub type TokenId = u64;
 
 #[repr(u8)]
 #[derive(Encode, Decode, Clone, Copy, BitFlags, RuntimeDebug, PartialEq, Eq, TypeInfo)]

@@ -350,7 +350,7 @@ fn can_burn_account_token_nft() {
 			assert_ok!(ForeignStateOracle::respond_query_request(
 				Origin::signed(ORACLE),
 				1,
-				vec![],
+				vec![1],
 				CALL_WEIGHT,
 			));
 
@@ -427,7 +427,7 @@ fn can_remint_after_burn_token_nft() {
 			assert_ok!(ForeignStateOracle::respond_query_request(
 				Origin::signed(ORACLE),
 				1,
-				vec![],
+				vec![1],
 				CALL_WEIGHT,
 			));
 
@@ -559,5 +559,94 @@ fn cannot_double_mint() {
 					message: Some("AccountTokenAlreadyExists",),
 				},)
 			);
+		});
+}
+
+#[test]
+fn redeem_request_rejected() {
+	ExtBuilder::default()
+		.balances(vec![(ALICE, dollar(1_000))])
+		.build()
+		.execute_with(|| {
+			AccountTokenizer::on_runtime_upgrade();
+			let proxy = AccountId::new(hex!["7342619566cac76247062ffd59cd3fb3ffa3350dc6a5087938b9d1c46b286da3"]);
+
+			// Mint the NFT.
+			assert_ok!(AccountTokenizer::request_mint(
+				Origin::signed(ALICE),
+				proxy.clone(),
+				ALICE.clone(),
+				1,
+				0,
+				0
+			));
+			assert_ok!(ForeignStateOracle::respond_query_request(
+				Origin::signed(ORACLE),
+				0,
+				vec![1],
+				CALL_WEIGHT,
+			));
+
+			// Governance can only transfer NFT owned by treasury
+			assert_noop!(
+				AccountTokenizer::transfer_nft(Origin::signed(ORACLE), proxy.clone(), BOB),
+				crate::Error::<Runtime>::CallerUnauthorized
+			);
+
+			assert_ok!(AccountTokenizer::request_redeem(
+				Origin::signed(ALICE),
+				proxy.clone(),
+				ALICE
+			));
+			// Reject the burn
+			assert_ok!(ForeignStateOracle::respond_query_request(
+				Origin::signed(ORACLE),
+				1,
+				vec![0],
+				CALL_WEIGHT,
+			));
+
+			// Nft is given to Treasury Account
+			assert_eq!(ModuleNFT::owner(&0, &0).unwrap(), TreasuryAccount::get());
+
+			let events = System::events();
+			assert_eq!(
+				events[events.len() - 2].event,
+				Event::AccountTokenizer(crate::Event::AccountTokenRedeemFailed { account: proxy.clone() })
+			);
+			System::assert_last_event(Event::ForeignStateOracle(
+				module_foreign_state_oracle::Event::CallDispatched {
+					query_id: 1,
+					task_result: Ok(()),
+				},
+			));
+
+			// Governance can return token back to Alice due to rejection
+			assert_ok!(AccountTokenizer::transfer_nft(
+				Origin::signed(ORACLE),
+				proxy.clone(),
+				ALICE
+			));
+		});
+}
+
+#[test]
+fn request_mint_oracle_fails() {
+	ExtBuilder::default()
+		.balances(vec![(ALICE, dollar(1_000))])
+		.build()
+		.execute_with(|| {
+			AccountTokenizer::on_runtime_upgrade();
+			let proxy = AccountId::new(hex!["7342619566cac76247062ffd59cd3fb3ffa3350dc6a5087938b9d1c46b286da3"]);
+
+			// Mint the NFT.
+			assert_ok!(AccountTokenizer::request_mint(
+				Origin::signed(ALICE),
+				proxy.clone(),
+				ALICE.clone(),
+				1,
+				0,
+				0
+			));
 		});
 }
