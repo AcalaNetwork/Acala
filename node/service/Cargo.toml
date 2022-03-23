@@ -57,6 +57,7 @@ sp-blockchain = { git = "https://github.com/paritytech/substrate", branch = "pol
 sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.18" }
 sp-keystore = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.18" }
 
+cumulus-client-cli = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.18" }
 cumulus-client-network = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.18" }
 cumulus-client-service = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.18" }
 cumulus-client-consensus-aura = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.18" }
@@ -68,6 +69,7 @@ cumulus-test-relay-sproof-builder = { git = "https://github.com/paritytech/cumul
 cumulus-pallet-parachain-system = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.18" }
 cumulus-relay-chain-interface = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.18" }
 cumulus-relay-chain-inprocess-interface = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.18" }
+cumulus-relay-chain-rpc-interface = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.18" }
 
 polkadot-primitives = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.18" }
 polkadot-service = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.18" }

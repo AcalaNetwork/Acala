@@ -50,21 +50,21 @@ fn get_evm_accounts(mnemonic: Option<&str>) -> Vec<H160> {
 
 	let mut evm_accounts = Vec::new();
 	// Child key at derivation path: m/44'/60'/0'/0/{index}
-	for index in 0..10u32 {
-		let wallet = MnemonicBuilder::<English>::default()
-			.phrase(phrase)
-			.index(index)
-			.unwrap()
-			.build()
-			.unwrap();
-		evm_accounts.push(wallet.address());
-		log::info!(
-			"index: {:?}, private_key: {:x?} address: {:?}",
-			index,
-			hex::encode(wallet.signer().to_bytes()),
-			wallet.address()
-		);
-	}
+	// for index in 0..10u32 {
+	// 	let wallet = MnemonicBuilder::<English>::default()
+	// 		.phrase(phrase)
+	// 		.index(index)
+	// 		.unwrap()
+	// 		.build()
+	// 		.unwrap();
+	// 	evm_accounts.push(wallet.address());
+	// 	log::info!(
+	// 		"index: {:?}, private_key: {:x?} address: {:?}",
+	// 		index,
+	// 		hex::encode(wallet.signer().to_bytes()),
+	// 		wallet.address()
+	// 	);
+	// }
 	evm_accounts
 }
 

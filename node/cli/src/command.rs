@@ -457,6 +457,7 @@ pub fn run() -> sc_cli::Result<()> {
 			let runner = cli.create_runner(&cli.run.normalize())?;
 			let chain_spec = &runner.config().chain_spec;
 			let is_mandala_dev = chain_spec.is_mandala_dev();
+			let collator_options = cli.run.collator_options();
 
 			set_default_ss58_version(chain_spec);
 
@@ -495,7 +496,7 @@ pub fn run() -> sc_cli::Result<()> {
 
 				with_runtime_or_err!(config.chain_spec, {
 					{
-						service::start_node::<RuntimeApi, Executor>(config, polkadot_config, id)
+						service::start_node::<RuntimeApi, Executor>(config, polkadot_config, collator_options, id)
 							.await
 							.map(|r| r.0)
 							.map_err(Into::into)

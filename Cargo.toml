@@ -320,6 +320,7 @@ cumulus-primitives-utility = { git = "https://github.com/paritytech//cumulus", r
 cumulus-test-relay-sproof-builder = { git = "https://github.com/paritytech//cumulus", rev = "b1e91afb7421309b203d7627b736d9bcf58260eb" }
 parachain-info = { git = "https://github.com/paritytech//cumulus", rev = "b1e91afb7421309b203d7627b736d9bcf58260eb" }
 cumulus-relay-chain-interface = { git = "https://github.com/paritytech//cumulus", rev = "b1e91afb7421309b203d7627b736d9bcf58260eb" }
+cumulus-relay-chain-rpc-interface = { git = "https://github.com/paritytech//cumulus", rev = "b1e91afb7421309b203d7627b736d9bcf58260eb" }
 cumulus-relay-chain-inprocess-interface = { git = "https://github.com/paritytech//cumulus", rev = "b1e91afb7421309b203d7627b736d9bcf58260eb" }
 cumulus-test-relay-validation-worker-provider = { git = "https://github.com/paritytech//cumulus", rev = "b1e91afb7421309b203d7627b736d9bcf58260eb" }
 statemine-runtime  = { git = "https://github.com/paritytech//cumulus", rev = "b1e91afb7421309b203d7627b736d9bcf58260eb" }
