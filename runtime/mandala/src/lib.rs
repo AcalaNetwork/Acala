@@ -1732,6 +1732,7 @@ impl ecosystem_aqua_dao::Config for Runtime {
 	type CreatingOrigin = EnsureRootOrHalfGeneralCouncil;
 	type AssetPriceProvider = module_prices::PriorityLockedPriceProvider<Runtime>;
 	type AdaoPriceProvider = module_dex_oracle::AverageDEXPriceProvider<Runtime>;
+	type BlockNumberProvider = RelayChainBlockNumberProvider<Runtime>;
 	type StakedToken = AquaStakedToken;
 	type PalletId = AquaDaoPalletId;
 	type WeightInfo = weights::ecosystem_aqua_dao::WeightInfo<Runtime>;
