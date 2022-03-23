@@ -16,8 +16,6 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-#![cfg(any(feature = "std", test))]
-
 #[doc(hidden)]
 pub use orml_traits;
 #[doc(hidden)]

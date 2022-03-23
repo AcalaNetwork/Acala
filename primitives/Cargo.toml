@@ -23,7 +23,7 @@ sp-api = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v
 
 frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17", default-features = false }
 
-orml-traits = { path = "../orml/traits" }
+orml-traits = { path = "../orml/traits", default-features = false }
 
 module-evm-utility = { path = "../modules/evm-utility", default-features = false }
 module-evm-utility-macro = { path = "../modules/evm-utility/macro" }
@@ -50,6 +50,7 @@ std = [
 
 	"frame-support/std",
 
+	"orml-traits/std",
 	"module-evm-utility/std",
 	"nutsfinance-stable-asset/std",
 ]
