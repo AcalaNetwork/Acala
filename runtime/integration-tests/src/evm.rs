@@ -26,7 +26,10 @@ use module_asset_registry::EvmErc20InfoMapping;
 use module_evm_accounts::EvmAddressMapping;
 use module_evm_bridge::EVMBridge;
 use module_support::{EVMBridge as EVMBridgeT, Erc20InfoMapping, EVM as EVMTrait};
-use primitives::{convert_decimals_to_evm, evm::EvmAddress, TradingPair};
+use primitives::{
+	evm::{convert_decimals_to_evm, EvmAddress},
+	TradingPair,
+};
 use sp_core::{H256, U256};
 use sp_runtime::traits::SignedExtension;
 use std::str::FromStr;
@@ -66,6 +69,14 @@ pub fn lp_erc20_evm_address() -> EvmAddress {
 	EvmErc20InfoMapping::<Runtime>::encode_evm_address(lp_erc20()).unwrap()
 }
 
+pub fn predeploy_token_contract() -> Vec<u8> {
+	let json: serde_json::Value =
+		serde_json::from_str(include_str!("../../../predeploy-contracts/resources/bytecodes.json")).unwrap();
+	// get ACA contract
+	assert_eq!(json[0][0].as_str().unwrap(), "ACA");
+	hex::decode(json[0][2].as_str().unwrap().strip_prefix("0x").unwrap()).unwrap()
+}
+
 pub fn deploy_erc20_contracts() {
 	let json: serde_json::Value =
 		serde_json::from_str(include_str!("../../../ts-tests/build/Erc20DemoContract2.json")).unwrap();
@@ -96,6 +107,8 @@ pub fn deploy_erc20_contracts() {
 				H256::from_slice(&buf).as_bytes().to_vec()
 			},
 		}],
+		used_gas: 1306611,
+		used_storage: 15461,
 	}));
 
 	assert_ok!(EVM::publish_free(Origin::root(), erc20_address_0()));
@@ -123,6 +136,8 @@ pub fn deploy_erc20_contracts() {
 				H256::from_slice(&buf).as_bytes().to_vec()
 			},
 		}],
+		used_gas: 1306611,
+		used_storage: 15461,
 	}));
 
 	assert_ok!(EVM::publish_free(Origin::root(), erc20_address_1()));
@@ -155,6 +170,8 @@ fn deploy_contract(account: AccountId) -> Result<H160, DispatchError> {
 		from: _,
 		contract: address,
 		logs: _,
+		used_gas: _,
+		used_storage: _,
 	}) = System::events().last().unwrap().event
 	{
 		Ok(address)
@@ -350,6 +367,8 @@ fn test_evm_module() {
 				from: alice_address,
 				contract,
 				logs: vec![],
+				used_gas: 132199,
+				used_storage: 10367,
 			}));
 
 			assert_ok!(EVM::transfer_maintainer(Origin::signed(alice()), contract, bob_address));
@@ -362,9 +381,9 @@ fn test_evm_module() {
 			#[cfg(feature = "with-mandala-runtime")]
 			assert_eq!(Balances::free_balance(alice()), 998_963_300_000_000);
 			#[cfg(feature = "with-karura-runtime")]
-			assert_eq!(Balances::free_balance(alice()), 996_889_900_000_000);
+			assert_eq!(Balances::free_balance(alice()), 998_963_300_000_000);
 			#[cfg(feature = "with-acala-runtime")]
-			assert_eq!(Balances::free_balance(alice()), 993_779_800_000_000);
+			assert_eq!(Balances::free_balance(alice()), 996_889_900_000_000);
 			assert_eq!(Balances::free_balance(bob()), 1_000 * dollar(NATIVE_CURRENCY));
 			let to = EvmAccounts::eth_address(&alice_key());
 			assert_ok!(Currencies::transfer(
@@ -376,9 +395,9 @@ fn test_evm_module() {
 			#[cfg(feature = "with-mandala-runtime")]
 			assert_eq!(Balances::free_balance(alice()), 1_008_963_300_000_000);
 			#[cfg(feature = "with-karura-runtime")]
-			assert_eq!(Balances::free_balance(alice()), 1_006_889_900_000_000);
+			assert_eq!(Balances::free_balance(alice()), 1_008_963_300_000_000);
 			#[cfg(feature = "with-acala-runtime")]
-			assert_eq!(Balances::free_balance(alice()), 1_003_779_800_000_000);
+			assert_eq!(Balances::free_balance(alice()), 1_006_889_900_000_000);
 			assert_eq!(
 				Balances::free_balance(bob()),
 				1_000 * dollar(NATIVE_CURRENCY) - 10 * dollar(NATIVE_CURRENCY)
@@ -479,10 +498,10 @@ fn test_multicurrency_precompile_module() {
 			assert_ok!(EVM::create_predeploy_contract(
 				Origin::root(),
 				lp_erc20_evm_address(),
-				vec![],
+				predeploy_token_contract(),
 				0,
-				1000000,
-				1000000,
+				21000000,
+				16500,
 				vec![],
 			));
 
@@ -564,7 +583,7 @@ fn should_not_kill_contract_on_transfer_all() {
 
 			assert_ok!(EVM::create(Origin::signed(alice()), code, convert_decimals_to_evm(2 * dollar(NATIVE_CURRENCY)), 1000000000, 100000, vec![]));
 
-			let contract = if let Event::EVM(module_evm::Event::Created{from: _, contract: address, logs: _}) = System::events().last().unwrap().event {
+			let contract = if let Event::EVM(module_evm::Event::Created{from: _, contract: address, logs: _, used_gas: _, used_storage: _}) = System::events().last().unwrap().event {
 				address
 			} else {
 				panic!("deploy contract failed");
@@ -577,9 +596,9 @@ fn should_not_kill_contract_on_transfer_all() {
 			#[cfg(all(not(feature = "with-ethereum-compatibility"), feature = "with-mandala-runtime"))]
 			assert_eq!(Balances::free_balance(alice()), 1_996_993_800_000_000);
 			#[cfg(feature = "with-karura-runtime")]
-			assert_eq!(Balances::free_balance(alice()), 1_994_981_400_000_000);
+			assert_eq!(Balances::free_balance(alice()), 1_996_993_800_000_000);
 			#[cfg(feature = "with-acala-runtime")]
-			assert_eq!(Balances::free_balance(alice()), 1_991_962_800_000_000);
+			assert_eq!(Balances::free_balance(alice()), 1_994_981_400_000_000);
 
 			assert_ok!(Currencies::transfer(
 				Origin::signed(EvmAddressMapping::<Runtime>::get_account_id(&contract)),
@@ -595,9 +614,9 @@ fn should_not_kill_contract_on_transfer_all() {
 			#[cfg(all(not(feature = "with-ethereum-compatibility"), feature = "with-mandala-runtime"))]
 			assert_eq!(Balances::free_balance(alice()), 1_998_993_800_000_000);
 			#[cfg(feature = "with-karura-runtime")]
-			assert_eq!(Balances::free_balance(alice()), 1_996_981_400_000_000);
+			assert_eq!(Balances::free_balance(alice()), 1_998_993_800_000_000);
 			#[cfg(feature = "with-acala-runtime")]
-			assert_eq!(Balances::free_balance(alice()), 1_993_962_800_000_000);
+			assert_eq!(Balances::free_balance(alice()), 1_996_981_400_000_000);
 
 			// assert the contract account is not purged
 			assert!(EVM::accounts(contract).is_some());
@@ -627,7 +646,7 @@ fn should_not_kill_contract_on_transfer_all_tokens() {
 			let code = hex_literal::hex!("608060405260848060116000396000f3fe6080604052348015600f57600080fd5b506004361060285760003560e01c806341c0e1b514602d575b600080fd5b60336035565b005b600073ffffffffffffffffffffffffffffffffffffffff16fffea265627a7a72315820ed64a7551098c4afc823bee1663309079d9cb8798a6bdd71be2cd3ccee52d98e64736f6c63430005110032").to_vec();
 			assert_ok!(EVM::create(Origin::signed(alice()), code, 0, 1000000000, 100000, vec![]));
 
-			let contract = if let Event::EVM(module_evm::Event::Created{from: _, contract: address, logs: _}) = System::events().last().unwrap().event {
+			let contract = if let Event::EVM(module_evm::Event::Created{from: _, contract: address, logs: _, used_gas: _, used_storage: _}) = System::events().last().unwrap().event {
 				address
 			} else {
 				panic!("deploy contract failed");

@@ -20,24 +20,28 @@
 #![allow(clippy::unnecessary_cast)]
 #![allow(clippy::upper_case_acronyms)]
 
+pub mod bonding;
 pub mod currency;
 pub mod evm;
 pub mod nft;
 pub mod signature;
 pub mod task;
+pub mod testing;
 pub mod unchecked_extrinsic;
+pub use testing::*;
 
 use codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_core::U256;
 use sp_runtime::{
 	generic,
-	traits::{BlakeTwo256, CheckedDiv, IdentifyAccount, Saturating, Verify, Zero},
+	traits::{BlakeTwo256, IdentifyAccount, Verify},
 	RuntimeDebug,
 };
 use sp_std::prelude::*;
 
 pub use currency::{CurrencyId, DexShare, Lease, TokenSymbol};
+pub use evm::{convert_decimals_from_evm, convert_decimals_to_evm};
 
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
@@ -178,46 +182,6 @@ pub enum ReserveIdentifier {
 }
 
 pub type CashYieldIndex = u128;
-
-/// Convert decimal between native(12) and EVM(18) and therefore the 1_000_000 conversion.
-#[cfg(not(feature = "evm-tests"))]
-const DECIMALS_VALUE: u32 = 1_000_000u32;
-
-/// Convert decimal from native(KAR/ACA 12) to EVM(18).
-#[cfg(not(feature = "evm-tests"))]
-pub fn convert_decimals_to_evm<B: Zero + Saturating + From<u32>>(b: B) -> B {
-	if b.is_zero() {
-		return b;
-	}
-	b.saturating_mul(DECIMALS_VALUE.into())
-}
-
-/// Convert decimal from EVM(18) to native(KAR/ACA 12).
-#[cfg(not(feature = "evm-tests"))]
-pub fn convert_decimals_from_evm<B: Zero + Saturating + CheckedDiv + PartialEq + Copy + From<u32>>(b: B) -> Option<B> {
-	if b.is_zero() {
-		return Some(b);
-	}
-	let res = b
-		.checked_div(&Into::<B>::into(DECIMALS_VALUE))
-		.expect("divisor is non-zero; qed");
-
-	if res.saturating_mul(DECIMALS_VALUE.into()) == b {
-		Some(res)
-	} else {
-		None
-	}
-}
-
-#[cfg(feature = "evm-tests")]
-pub fn convert_decimals_to_evm<B: Zero + Saturating + From<u32>>(b: B) -> B {
-	b
-}
-
-#[cfg(feature = "evm-tests")]
-pub fn convert_decimals_from_evm<B: Zero + Saturating + CheckedDiv + PartialEq + Copy + From<u32>>(b: B) -> Option<B> {
-	Some(b)
-}
 
 /// Convert any type that implements Into<U256> into byte representation ([u8, 32])
 pub fn to_bytes<T: Into<U256>>(value: T) -> [u8; 32] {

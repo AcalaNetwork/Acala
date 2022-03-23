@@ -26,7 +26,7 @@ use frame_support::{
 	PalletId,
 };
 use orml_traits::parameter_type_with_key;
-use primitives::{convert_decimals_to_evm, CurrencyId, ReserveIdentifier, TokenSymbol};
+use primitives::{evm::convert_decimals_to_evm, CurrencyId, ReserveIdentifier, TokenSymbol};
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
@@ -276,6 +276,8 @@ pub fn deploy_contracts() {
 				H256::from_slice(&buf).as_bytes().to_vec()
 			},
 		}],
+		used_gas: 1306611,
+		used_storage: 5462,
 	}));
 
 	assert_ok!(EVM::publish_free(

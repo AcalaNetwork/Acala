@@ -1,33 +1,37 @@
 [package]
 name = "acala-primitives"
-version = "2.3.3"
+version = "2.4.1"
 authors = ["Acala Developers"]
 edition = "2021"
 
 [dependencies]
+hex-literal = "0.3.1"
 bstringify = "0.1.2"
-serde = { version = "1.0.124", optional = true }
+serde = { version = "1.0.136", optional = true }
 codec = { package = "parity-scale-codec", version = "2.3.1", default-features = false, features = ["max-encoded-len"] }
 num_enum = { version = "0.5.1", default-features = false }
 parity-util-mem = { version = "0.10.0", default-features = false, features = ["primitive-types"] }
 scale-info = { version = "1.0", default-features = false, features = ["derive"] }
 enumflags2 = { version = "0.6.3" }
+paste = "1.0"
 
-sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.16", default-features = false }
-sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.16", default-features = false }
-sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.16", default-features = false }
-sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.16", default-features = false }
-sp-api = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.16", default-features = false }
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17", default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17", default-features = false }
+sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17", default-features = false }
+sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17", default-features = false }
+sp-api = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17", default-features = false }
 
-frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.16", default-features = false }
+frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17", default-features = false }
 
-module-evm-utiltity = { path = "../modules/evm-utiltity", default-features = false }
-module-evm-utiltity-macro = { path = "../modules/evm-utiltity/macro" }
+orml-traits = { path = "../orml/traits", default-features = false }
+
+module-evm-utility = { path = "../modules/evm-utility", default-features = false }
+module-evm-utility-macro = { path = "../modules/evm-utility/macro" }
 nutsfinance-stable-asset = { version = "0.1.0", default-features = false, path = "../ecosystem-modules/stable-asset/lib/stable-asset", package = "nutsfinance-stable-asset" }
 
 [dev-dependencies]
 serde_json = { version = "1.0.68" }
-hex-literal = "0.3.1"
+
 
 [features]
 default = ["std"]
@@ -46,7 +50,8 @@ std = [
 
 	"frame-support/std",
 
-	"module-evm-utiltity/std",
+	"orml-traits/std",
+	"module-evm-utility/std",
 	"nutsfinance-stable-asset/std",
 ]
 evm-tests = []

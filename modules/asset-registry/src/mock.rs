@@ -28,7 +28,7 @@ use frame_support::{
 use frame_system::EnsureSignedBy;
 use module_support::{mocks::MockAddressMapping, AddressMapping};
 use primitives::{
-	convert_decimals_to_evm, evm::EvmAddress, AccountId, Balance, CurrencyId, ReserveIdentifier, TokenSymbol,
+	evm::convert_decimals_to_evm, evm::EvmAddress, AccountId, Balance, CurrencyId, ReserveIdentifier, TokenSymbol,
 };
 use sp_core::{H160, H256, U256};
 use std::str::FromStr;
@@ -211,6 +211,8 @@ pub fn deploy_contracts() {
 				H256::from_slice(&buf).as_bytes().to_vec()
 			},
 		}],
+		used_gas: 1306611,
+		used_storage: 5462,
 	}));
 
 	assert_ok!(EVM::publish_free(
@@ -250,6 +252,8 @@ pub fn deploy_contracts_same_prefix() {
 				H256::from_slice(&buf).as_bytes().to_vec()
 			},
 		}],
+		used_gas: 1306611,
+		used_storage: 5462,
 	}));
 
 	assert_ok!(EVM::publish_free(

@@ -102,6 +102,10 @@ pub mod module {
 		#[pallet::constant]
 		type RewardRatePerRelaychainBlock: Get<Rate>;
 
+		/// If a currency is pegged to another currency in price, price of this currency is
+		/// equal to the price of another.
+		type PricingPegged: GetByKey<CurrencyId, Option<CurrencyId>>;
+
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
 	}
@@ -176,6 +180,13 @@ impl<T: Config> Pallet<T> {
 	///
 	/// Note: this returns the price for 1 basic unit
 	fn access_price(currency_id: CurrencyId) -> Option<Price> {
+		// if it's configured pegged to another currency id
+		let currency_id = if let Some(pegged_currency_id) = T::PricingPegged::get(&currency_id) {
+			pegged_currency_id
+		} else {
+			currency_id
+		};
+
 		let maybe_price = if currency_id == T::GetStableCurrencyId::get() {
 			// if is stable currency, use fixed price
 			Some(T::StableCurrencyFixedPrice::get())
@@ -197,9 +208,9 @@ impl<T: Config> Pallet<T> {
 				.expect("shouldn't fail");
 
 			return Self::access_price(T::GetStakingCurrencyId::get()).and_then(|n| n.checked_mul(&discount_rate));
-		} else if let CurrencyId::DexShare(symbol_0, symbol_1) = currency_id {
-			let token_0: CurrencyId = symbol_0.into();
-			let token_1: CurrencyId = symbol_1.into();
+		} else if let CurrencyId::DexShare(dex_share_0, dex_share_1) = currency_id {
+			let token_0: CurrencyId = dex_share_0.into();
+			let token_1: CurrencyId = dex_share_1.into();
 
 			// directly return the fair price
 			return {

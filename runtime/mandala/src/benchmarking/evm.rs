@@ -17,11 +17,11 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-	dollar, AccountId, Currencies, CurrencyId, Event, EvmAccounts, GetNativeCurrencyId, NetworkContractSource, Origin,
-	Runtime, System, EVM,
+	AccountId, Currencies, CurrencyId, Event, EvmAccounts, GetNativeCurrencyId, NetworkContractSource, Origin, Runtime,
+	System, EVM,
 };
 
-use super::utils::set_balance;
+use super::utils::{dollar, set_balance};
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_system::RawOrigin;
 use module_evm::MaxCodeSize;
@@ -63,6 +63,8 @@ fn deploy_contract(caller: AccountId) -> Result<H160, DispatchError> {
 		from: module_evm_accounts::EvmAddressMapping::<Runtime>::get_evm_address(&caller).unwrap(),
 		contract: contract_addr(),
 		logs: vec![],
+		used_gas: 132_199,
+		used_storage: 10_367,
 	}));
 	Ok(contract_addr())
 }
@@ -85,6 +87,8 @@ fn deploy_token_contract() -> DispatchResult {
 			from: NetworkContractSource::get(),
 			contract: PREDEPLOY_ADDRESS_START,
 			logs: vec![],
+			used_gas: 132_199,
+			used_storage: 10_367,
 		}));
 	}
 	Ok(())
@@ -181,19 +185,6 @@ runtime_benchmarks! {
 	verify {
 		let code_hash = EVM::code_hash_at_address(&address);
 		assert!(module_evm::Codes::<Runtime>::contains_key(code_hash));
-	}
-
-	create_predeploy_mirror_token_contract {
-		let account_id = <Runtime as module_evm::Config>::TreasuryAccount::get();
-		set_balance(NATIVE, &account_id, 1_000_000 * dollar(NATIVE));
-		let address = H160::from_low_u64_be(2);
-		deploy_token_contract()?;
-	}: create_predeploy_contract(RawOrigin::Root, address, vec![], 0, 0, 0, vec![])
-	verify {
-		assert_eq!(
-			Currencies::free_balance(NATIVE, &evm_to_account_id(address)),
-			Currencies::minimum_balance(NATIVE)
-		);
 	}
 
 	call {

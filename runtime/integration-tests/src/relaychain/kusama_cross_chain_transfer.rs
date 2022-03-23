@@ -23,7 +23,7 @@ use crate::setup::*;
 
 use frame_support::assert_ok;
 use sp_runtime::traits::AccountIdConversion;
-use xcm_builder::ParentIsDefault;
+use xcm_builder::ParentIsPreset;
 
 use karura_runtime::parachains::bifrost::BNC_KEY;
 use karura_runtime::{AssetRegistry, KaruraTreasuryAccount};
@@ -632,7 +632,7 @@ fn trap_assets_larger_than_ed_works() {
 	let (ksm_asset_amount, kar_asset_amount) = (dollar(KSM), dollar(KAR));
 	let trader_weight_to_treasury: u128 = 96_000_000;
 
-	let parent_account: AccountId = ParentIsDefault::<AccountId>::convert(Parent.into()).unwrap();
+	let parent_account: AccountId = ParentIsPreset::<AccountId>::convert(Parent.into()).unwrap();
 
 	Karura::execute_with(|| {
 		assert_ok!(Tokens::deposit(KSM, &parent_account, 100 * dollar(KSM)));
@@ -649,14 +649,7 @@ fn trap_assets_larger_than_ed_works() {
 				fees: assets,
 				weight_limit: Limited(dollar(KSM) as u64),
 			},
-			WithdrawAsset(
-				(
-					// (Parent, X2(Parachain(2000), GeneralKey(KAR.encode()))),
-					(0, GeneralKey(KAR.encode())),
-					kar_asset_amount,
-				)
-					.into(),
-			),
+			WithdrawAsset(((0, GeneralKey(KAR.encode())), kar_asset_amount).into()),
 		];
 		assert_ok!(pallet_xcm::Pallet::<kusama_runtime::Runtime>::send_xcm(
 			Here,
@@ -687,7 +680,7 @@ fn trap_assets_lower_than_ed_works() {
 	let mut kar_treasury_amount = 0;
 	let (ksm_asset_amount, kar_asset_amount) = (cent(KSM) / 100, cent(KAR));
 
-	let parent_account: AccountId = ParentIsDefault::<AccountId>::convert(Parent.into()).unwrap();
+	let parent_account: AccountId = ParentIsPreset::<AccountId>::convert(Parent.into()).unwrap();
 
 	Karura::execute_with(|| {
 		assert_ok!(Tokens::deposit(KSM, &parent_account, dollar(KSM)));
@@ -703,13 +696,7 @@ fn trap_assets_lower_than_ed_works() {
 				fees: assets,
 				weight_limit: Limited(dollar(KSM) as u64),
 			},
-			WithdrawAsset(
-				(
-					(Parent, X2(Parachain(2000), GeneralKey(KAR.encode()))),
-					kar_asset_amount,
-				)
-					.into(),
-			),
+			WithdrawAsset(((0, X1(GeneralKey(KAR.encode()))), kar_asset_amount).into()),
 			// two asset left in holding register, they both lower than ED, so goes to treasury.
 		];
 		assert_ok!(pallet_xcm::Pallet::<kusama_runtime::Runtime>::send_xcm(
@@ -756,11 +743,7 @@ fn sibling_trap_assets_works() {
 	});
 
 	Sibling::execute_with(|| {
-		let assets: MultiAsset = (
-			(Parent, X2(Parachain(2000), GeneralKey(KAR.encode()))),
-			kar_asset_amount,
-		)
-			.into();
+		let assets: MultiAsset = ((0, X1(GeneralKey(KAR.encode()))), kar_asset_amount).into();
 		let xcm = vec![
 			WithdrawAsset(assets.clone().into()),
 			BuyExecution {

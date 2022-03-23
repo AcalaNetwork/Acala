@@ -33,14 +33,13 @@ use frame_support::{
 	traits::{Currency, ExistenceRequirement, Get},
 	transactional,
 };
-use module_evm_utiltity::{
+use module_evm_utility::{
 	ethereum::Log,
 	evm::{self, backend::Backend as BackendT, ExitError, ExitReason, Transfer},
 };
 use module_support::AddressMapping;
 pub use primitives::{
-	convert_decimals_from_evm,
-	evm::{EvmAddress, Vicinity, MIRRORED_NFT_ADDRESS_START},
+	evm::{convert_decimals_from_evm, EvmAddress, Vicinity, MIRRORED_NFT_ADDRESS_START},
 	ReserveIdentifier,
 };
 use sha3::{Digest, Keccak256};

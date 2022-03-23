@@ -167,49 +167,76 @@ pub mod module {
 		OutdatedEraIndex,
 		/// Redeem request is not allowed to be fast matched.
 		FastMatchIsNotAllowed,
+		/// The fast match cannot be matched completely.
+		CannotCompletelyFastMatch,
 	}
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// The minter use staking currency to mint liquid currency. \[minter,
-		/// staking_currency_amount, liquid_amount_received, liquid_amount_added_to_void\]
-		Minted(T::AccountId, Balance, Balance, Balance),
-		/// Request redeem. \[redeemer, liquid_amount, allow_fast_match\]
-		RequestedRedeem(T::AccountId, Balance, bool),
-		/// Redeem request has been cancelled. \[redeemer, cancelled_liquid_amount\]
-		RedeemRequestCancelled(T::AccountId, Balance),
-		/// Redeem request is redeemed partially or fully by fast match. \[redeemer,
-		/// matched_liquid_amount, fee_in_liquid, redeemed_staking_amount\]
-		RedeemedByFastMatch(T::AccountId, Balance, Balance, Balance),
-		/// Redeem request is redeemed by unbond on relaychain. \[redeemer,
-		/// era_index_when_unbond, liquid_amount, unbonding_staking_amount\]
-		RedeemedByUnbond(T::AccountId, EraIndex, Balance, Balance),
-		/// The redeemer withdraw expired redemption. \[redeemer, redemption_amount\]
-		WithdrawRedemption(T::AccountId, Balance),
-		/// The current era has been bumped. \[new_era_index\]
-		CurrentEraBumped(EraIndex),
-		/// The current era has been reset. \[new_era_index\]
-		CurrentEraReset(EraIndex),
-		/// The bonded amount of subaccount's ledger has been reset. \[sub_account_index,
-		/// new_bonded_amount\]
-		LedgerBondedReset(u16, Balance),
-		/// The unlocking of subaccount's ledger has been reset. \[sub_account_index,
-		/// new_unlocking\]
-		LedgerUnlockingReset(u16, Vec<UnlockChunk>),
-		/// The soft bonded cap of per sub account has been updated. \[cap_amount\]
-		SoftBondedCapPerSubAccountUpdated(Balance),
+		/// The minter use staking currency to mint liquid currency.
+		Minted {
+			minter: T::AccountId,
+			staking_currency_amount: Balance,
+			liquid_amount_received: Balance,
+			liquid_amount_added_to_void: Balance,
+		},
+		/// Request redeem.
+		RequestedRedeem {
+			redeemer: T::AccountId,
+			liquid_amount: Balance,
+			allow_fast_match: bool,
+		},
+		/// Redeem request has been cancelled.
+		RedeemRequestCancelled {
+			redeemer: T::AccountId,
+			cancelled_liquid_amount: Balance,
+		},
+		/// Redeem request is redeemed partially or fully by fast match.
+		RedeemedByFastMatch {
+			redeemer: T::AccountId,
+			matched_liquid_amount: Balance,
+			fee_in_liquid: Balance,
+			redeemed_staking_amount: Balance,
+		},
+		/// Redeem request is redeemed by unbond on relaychain.
+		RedeemedByUnbond {
+			redeemer: T::AccountId,
+			era_index_when_unbond: EraIndex,
+			liquid_amount: Balance,
+			unbonding_staking_amount: Balance,
+		},
+		/// The redeemer withdraw expired redemption.
+		WithdrawRedemption {
+			redeemer: T::AccountId,
+			redemption_amount: Balance,
+		},
+		/// The current era has been bumped.
+		CurrentEraBumped { new_era_index: EraIndex },
+		/// The current era has been reset.
+		CurrentEraReset { new_era_index: EraIndex },
+		/// The bonded amount of subaccount's ledger has been reset.
+		LedgerBondedReset {
+			sub_account_index: u16,
+			new_bonded_amount: Balance,
+		},
+		/// The unlocking of subaccount's ledger has been reset.
+		LedgerUnlockingReset {
+			sub_account_index: u16,
+			new_unlocking: Vec<UnlockChunk>,
+		},
+		/// The soft bonded cap of per sub account has been updated.
+		SoftBondedCapPerSubAccountUpdated { cap_amount: Balance },
 		/// The estimated reward rate per era of relaychain staking has been updated.
-		/// \[reward_rate\]
-		EstimatedRewardRatePerEraUpdated(Rate),
-		/// The commission rate has been updated. \[commission_rate\]
-		CommissionRateUpdated(Rate),
-		/// The fast match fee rate has been updated. \[commission_rate\]
-		FastMatchFeeRateUpdated(Rate),
-		/// The relaychain block number of last era bumped updated. \[last_era_bumped_block\]
-		LastEraBumpedBlockUpdated(T::BlockNumber),
-		/// The frequency to bump era has been updated. \[frequency\]
-		BumpEraFrequencyUpdated(T::BlockNumber),
+		EstimatedRewardRatePerEraUpdated { reward_rate: Rate },
+		/// The commission rate has been updated.
+		CommissionRateUpdated { commission_rate: Rate },
+		/// The fast match fee rate has been updated.
+		FastMatchFeeRateUpdated { fast_match_fee_rate: Rate },
+		/// The relaychain block number of last era bumped updated.
+		LastEraBumpedBlockUpdated { last_era_bumped_block: T::BlockNumber },
+		/// The frequency to bump era has been updated.
+		BumpEraFrequencyUpdated { frequency: T::BlockNumber },
 	}
 
 	/// The current era of relaychain
@@ -369,12 +396,12 @@ pub mod module {
 			ToBondPool::<T>::mutate(|pool| *pool = pool.saturating_add(amount));
 			TotalVoidLiquid::<T>::mutate(|total| *total = total.saturating_add(liquid_add_to_void));
 
-			Self::deposit_event(Event::<T>::Minted(
+			Self::deposit_event(Event::<T>::Minted {
 				minter,
-				amount,
-				liquid_issue_to_minter,
-				liquid_add_to_void,
-			));
+				staking_currency_amount: amount,
+				liquid_amount_received: liquid_issue_to_minter,
+				liquid_amount_added_to_void: liquid_add_to_void,
+			});
 			Ok(())
 		}
 
@@ -434,12 +461,16 @@ pub mod module {
 
 				if !amount.is_zero() {
 					*maybe_request = Some((amount, allow_fast_match));
-					Self::deposit_event(Event::<T>::RequestedRedeem(redeemer.clone(), amount, allow_fast_match));
+					Self::deposit_event(Event::<T>::RequestedRedeem {
+						redeemer: redeemer.clone(),
+						liquid_amount: amount,
+						allow_fast_match,
+					});
 				} else if !previous_request_amount.is_zero() {
-					Self::deposit_event(Event::<T>::RedeemRequestCancelled(
-						redeemer.clone(),
-						previous_request_amount,
-					));
+					Self::deposit_event(Event::<T>::RedeemRequestCancelled {
+						redeemer: redeemer.clone(),
+						cancelled_liquid_amount: previous_request_amount,
+					});
 				}
 				Ok(())
 			})
@@ -455,7 +486,7 @@ pub mod module {
 			let _ = ensure_signed(origin)?;
 
 			for redeemer in redeemer_list {
-				Self::do_fast_match_redeem(&redeemer)?;
+				Self::do_fast_match_redeem(&redeemer, true)?;
 			}
 
 			Ok(())
@@ -493,7 +524,10 @@ pub mod module {
 					available_staking,
 				)?;
 
-				Self::deposit_event(Event::<T>::WithdrawRedemption(redeemer, available_staking));
+				Self::deposit_event(Event::<T>::WithdrawRedemption {
+					redeemer,
+					redemption_amount: available_staking,
+				});
 			}
 
 			Ok(())
@@ -521,21 +555,21 @@ pub mod module {
 		) -> DispatchResult {
 			T::GovernanceOrigin::ensure_origin(origin)?;
 
-			if let Some(change) = soft_bonded_cap_per_sub_account {
-				SoftBondedCapPerSubAccount::<T>::put(change);
-				Self::deposit_event(Event::<T>::SoftBondedCapPerSubAccountUpdated(change));
+			if let Some(cap_amount) = soft_bonded_cap_per_sub_account {
+				SoftBondedCapPerSubAccount::<T>::put(cap_amount);
+				Self::deposit_event(Event::<T>::SoftBondedCapPerSubAccountUpdated { cap_amount });
 			}
-			if let Some(change) = estimated_reward_rate_per_era {
-				EstimatedRewardRatePerEra::<T>::put(change);
-				Self::deposit_event(Event::<T>::EstimatedRewardRatePerEraUpdated(change));
+			if let Some(reward_rate) = estimated_reward_rate_per_era {
+				EstimatedRewardRatePerEra::<T>::put(reward_rate);
+				Self::deposit_event(Event::<T>::EstimatedRewardRatePerEraUpdated { reward_rate });
 			}
-			if let Some(change) = commission_rate {
-				CommissionRate::<T>::put(change);
-				Self::deposit_event(Event::<T>::CommissionRateUpdated(change));
+			if let Some(commission_rate) = commission_rate {
+				CommissionRate::<T>::put(commission_rate);
+				Self::deposit_event(Event::<T>::CommissionRateUpdated { commission_rate });
 			}
-			if let Some(change) = fast_match_fee_rate {
-				FastMatchFeeRate::<T>::put(change);
-				Self::deposit_event(Event::<T>::FastMatchFeeRateUpdated(change));
+			if let Some(fast_match_fee_rate) = fast_match_fee_rate {
+				FastMatchFeeRate::<T>::put(fast_match_fee_rate);
+				Self::deposit_event(Event::<T>::FastMatchFeeRateUpdated { fast_match_fee_rate });
 			}
 
 			Ok(())
@@ -558,11 +592,13 @@ pub mod module {
 
 			if let Some(change) = last_era_bumped_block {
 				LastEraBumpedBlock::<T>::put(change);
-				Self::deposit_event(Event::<T>::LastEraBumpedBlockUpdated(change));
+				Self::deposit_event(Event::<T>::LastEraBumpedBlockUpdated {
+					last_era_bumped_block: change,
+				});
 			}
 			if let Some(change) = frequency {
 				BumpEraFrequency::<T>::put(change);
-				Self::deposit_event(Event::<T>::BumpEraFrequencyUpdated(change));
+				Self::deposit_event(Event::<T>::BumpEraFrequencyUpdated { frequency: change });
 			}
 
 			Ok(())
@@ -586,13 +622,19 @@ pub mod module {
 					if let Some(change) = bonded_change {
 						if ledger.bonded != change {
 							ledger.bonded = change;
-							Self::deposit_event(Event::<T>::LedgerBondedReset(sub_account_index, change));
+							Self::deposit_event(Event::<T>::LedgerBondedReset {
+								sub_account_index,
+								new_bonded_amount: change,
+							});
 						}
 					}
 					if let Some(change) = unlocking_change {
 						if ledger.unlocking != change {
 							ledger.unlocking = change.clone();
-							Self::deposit_event(Event::<T>::LedgerUnlockingReset(sub_account_index, change));
+							Self::deposit_event(Event::<T>::LedgerUnlockingReset {
+								sub_account_index,
+								new_unlocking: change,
+							});
 						}
 					}
 					Ok(())
@@ -618,7 +660,9 @@ pub mod module {
 			RelayChainCurrentEra::<T>::mutate(|current_era| {
 				if *current_era != era_index {
 					*current_era = era_index;
-					Self::deposit_event(Event::<T>::CurrentEraReset(era_index));
+					Self::deposit_event(Event::<T>::CurrentEraReset {
+						new_era_index: era_index,
+					});
 				}
 			});
 
@@ -629,6 +673,22 @@ pub mod module {
 		pub fn force_bump_current_era(origin: OriginFor<T>, bump_amount: EraIndex) -> DispatchResult {
 			T::GovernanceOrigin::ensure_origin(origin)?;
 			Self::bump_current_era(bump_amount)
+		}
+
+		/// Execute fast match for specific redeem requests, require completely matched.
+		///
+		/// Parameters:
+		/// - `redeemer_list`: The list of redeem requests to execute fast redeem.
+		#[pallet::weight(< T as Config >::WeightInfo::fast_match_redeems(redeemer_list.len() as u32))]
+		#[transactional]
+		pub fn fast_match_redeems_completely(origin: OriginFor<T>, redeemer_list: Vec<T::AccountId>) -> DispatchResult {
+			let _ = ensure_signed(origin)?;
+
+			for redeemer in redeemer_list {
+				Self::do_fast_match_redeem(&redeemer, false)?;
+			}
+
+			Ok(())
 		}
 	}
 
@@ -713,7 +773,7 @@ pub mod module {
 		}
 
 		#[transactional]
-		pub fn do_fast_match_redeem(redeemer: &T::AccountId) -> DispatchResult {
+		pub fn do_fast_match_redeem(redeemer: &T::AccountId, allow_partially: bool) -> DispatchResult {
 			RedeemRequests::<T>::try_mutate_exists(redeemer, |maybe_request| -> DispatchResult {
 				if let Some((request_amount, allow_fast_match)) = maybe_request.take() {
 					ensure!(allow_fast_match, Error::<T>::FastMatchIsNotAllowed);
@@ -757,17 +817,18 @@ pub mod module {
 						)?;
 						ToBondPool::<T>::mutate(|pool| *pool = pool.saturating_sub(redeemed_staking));
 
-						Self::deposit_event(Event::<T>::RedeemedByFastMatch(
-							redeemer.clone(),
-							actual_liquid_to_redeem,
+						Self::deposit_event(Event::<T>::RedeemedByFastMatch {
+							redeemer: redeemer.clone(),
+							matched_liquid_amount: actual_liquid_to_redeem,
 							fee_in_liquid,
-							redeemed_staking,
-						));
+							redeemed_staking_amount: redeemed_staking,
+						});
 					}
 
 					// update request amount
 					let remainder_request_amount = request_amount.saturating_sub(actual_liquid_to_redeem);
 					if !remainder_request_amount.is_zero() {
+						ensure!(allow_partially, Error::<T>::CannotCompletelyFastMatch);
 						*maybe_request = Some((remainder_request_amount, allow_fast_match));
 					}
 				}
@@ -925,12 +986,12 @@ pub mod module {
 					Unbondings::<T>::mutate(&redeemer, era_index_to_expire, |n| {
 						*n = n.saturating_add(redemption_amount)
 					});
-					Self::deposit_event(Event::<T>::RedeemedByUnbond(
+					Self::deposit_event(Event::<T>::RedeemedByUnbond {
 						redeemer,
-						new_era,
-						redeem_amount,
-						redemption_amount,
-					));
+						era_index_when_unbond: new_era,
+						liquid_amount: redeem_amount,
+						unbonding_staking_amount: redemption_amount,
+					});
 				} else {
 					break;
 				}
@@ -982,7 +1043,7 @@ pub mod module {
 			let new_era = previous_era.saturating_add(amount);
 			RelayChainCurrentEra::<T>::put(new_era);
 			LastEraBumpedBlock::<T>::put(T::RelayChainBlockNumber::current_block_number());
-			Self::deposit_event(Event::<T>::CurrentEraBumped(new_era));
+			Self::deposit_event(Event::<T>::CurrentEraBumped { new_era_index: new_era });
 
 			// Rebalance:
 			let res = || -> DispatchResult {
