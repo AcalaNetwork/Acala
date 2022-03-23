@@ -374,6 +374,7 @@ parameter_types! {
 	pub const GetExchangeFee: (u32, u32) = (1, 100);
 	pub const TradingPathLimit: u32 = 4;
 	pub const DEXPalletId: PalletId = PalletId(*b"aca/dexm");
+	pub const ExtendedProvisioningBlocks: BlockNumber = 0;
 }
 
 impl module_dex::Config for Test {
@@ -386,6 +387,7 @@ impl module_dex::Config for Test {
 	type WeightInfo = ();
 	type DEXIncentives = MockDEXIncentives;
 	type ListingOrigin = EnsureSignedBy<ListingOrigin, AccountId>;
+	type ExtendedProvisioningBlocks = ExtendedProvisioningBlocks;
 	type OnLiquidityPoolUpdated = ();
 }
 
@@ -464,6 +466,12 @@ parameter_type_with_key! {
 	};
 }
 
+parameter_type_with_key! {
+	pub PricingPegged: |_currency_id: CurrencyId| -> Option<CurrencyId> {
+		None
+	};
+}
+
 parameter_types! {
 	pub StableCurrencyFixedPrice: Price = Price::saturating_from_rational(1, 1);
 	pub const GetStakingCurrencyId: CurrencyId = DOT;
@@ -491,6 +499,7 @@ impl module_prices::Config for Test {
 	type LiquidCrowdloanLeaseBlockNumber = LiquidCrowdloanLeaseBlockNumber;
 	type RelayChainBlockNumber = MockRelayBlockNumberProvider;
 	type RewardRatePerRelaychainBlock = RewardRatePerRelaychainBlock;
+	type PricingPegged = PricingPegged;
 	type WeightInfo = ();
 }
 
@@ -567,7 +576,8 @@ frame_support::construct_runtime!(
 // according to our desired mockup.
 pub fn new_test_ext() -> sp_io::TestExternalities {
 	use frame_support::{assert_ok, traits::GenesisBuild};
-	use module_evm::{GenesisAccount, PREDEPLOY_ADDRESS_START};
+	use module_evm::GenesisAccount;
+	use primitives::evm::PREDEPLOY_ADDRESS_START;
 	use sp_core::{bytes::from_hex, Bytes};
 	use sp_std::{collections::btree_map::BTreeMap, str::FromStr};
 

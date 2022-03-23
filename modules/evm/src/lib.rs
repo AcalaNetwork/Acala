@@ -60,7 +60,7 @@ use primitive_types::{H160, H256, U256};
 pub use primitives::{
 	evm::{
 		convert_decimals_from_evm, convert_decimals_to_evm, CallInfo, CreateInfo, EvmAddress, ExecutionInfo, Vicinity,
-		MIRRORED_NFT_ADDRESS_START, MIRRORED_TOKENS_ADDRESS_START, PREDEPLOY_ADDRESS_START,
+		MIRRORED_NFT_ADDRESS_START, MIRRORED_TOKENS_ADDRESS_START,
 	},
 	task::TaskResult,
 	Balance, CurrencyId, ReserveIdentifier,
@@ -441,6 +441,8 @@ pub mod module {
 			from: EvmAddress,
 			contract: EvmAddress,
 			logs: Vec<Log>,
+			used_gas: u64,
+			used_storage: i32,
 		},
 		/// A contract was attempted to be created, but the execution failed.
 		CreatedFailed {
@@ -448,12 +450,16 @@ pub mod module {
 			contract: EvmAddress,
 			exit_reason: ExitReason,
 			logs: Vec<Log>,
+			used_gas: u64,
+			used_storage: i32,
 		},
 		/// A contract has been executed successfully with states applied.
 		Executed {
 			from: EvmAddress,
 			contract: EvmAddress,
 			logs: Vec<Log>,
+			used_gas: u64,
+			used_storage: i32,
 		},
 		/// A contract has been executed with errors. States are reverted with
 		/// only gas fees applied.
@@ -463,6 +469,8 @@ pub mod module {
 			exit_reason: ExitReason,
 			output: Vec<u8>,
 			logs: Vec<Log>,
+			used_gas: u64,
+			used_storage: i32,
 		},
 		/// Transferred maintainer.
 		TransferredMaintainer {
@@ -591,16 +599,22 @@ pub mod module {
 						exit_reason: ExitReason::Error(ExitError::Other(Into::<&str>::into(e).into())),
 						output: vec![],
 						logs: vec![],
+						used_gas: gas_limit,
+						used_storage: Default::default(),
 					});
 
 					Ok(().into())
 				}
 				Ok(info) => {
+					let used_gas: u64 = info.used_gas.unique_saturated_into();
+
 					if info.exit_reason.is_succeed() {
 						Pallet::<T>::deposit_event(Event::<T>::Executed {
 							from: source,
 							contract: target,
-							logs: info.logs.clone(),
+							logs: info.logs,
+							used_gas,
+							used_storage: info.used_storage,
 						});
 					} else {
 						Pallet::<T>::deposit_event(Event::<T>::ExecutedFailed {
@@ -608,11 +622,11 @@ pub mod module {
 							contract: target,
 							exit_reason: info.exit_reason.clone(),
 							output: info.value.clone(),
-							logs: info.logs.clone(),
+							logs: info.logs,
+							used_gas,
+							used_storage: Default::default(),
 						});
 					}
-
-					let used_gas: u64 = info.used_gas.unique_saturated_into();
 
 					Ok(PostDispatchInfo {
 						actual_weight: Some(call_weight::<T>(used_gas)),
@@ -675,16 +689,22 @@ pub mod module {
 						exit_reason: ExitReason::Error(ExitError::Other(Into::<&str>::into(e).into())),
 						output: vec![],
 						logs: vec![],
+						used_gas: gas_limit,
+						used_storage: Default::default(),
 					});
 
 					Ok(().into())
 				}
 				Ok(info) => {
+					let used_gas: u64 = info.used_gas.unique_saturated_into();
+
 					if info.exit_reason.is_succeed() {
 						Pallet::<T>::deposit_event(Event::<T>::Executed {
 							from,
 							contract: target,
-							logs: info.logs.clone(),
+							logs: info.logs,
+							used_gas,
+							used_storage: info.used_storage,
 						});
 					} else {
 						Pallet::<T>::deposit_event(Event::<T>::ExecutedFailed {
@@ -692,11 +712,11 @@ pub mod module {
 							contract: target,
 							exit_reason: info.exit_reason.clone(),
 							output: info.value.clone(),
-							logs: info.logs.clone(),
+							logs: info.logs,
+							used_gas,
+							used_storage: Default::default(),
 						});
 					}
-
-					let used_gas: u64 = info.used_gas.unique_saturated_into();
 
 					#[cfg(not(feature = "with-ethereum-compatibility"))]
 					{
@@ -757,27 +777,33 @@ pub mod module {
 						contract: H160::default(),
 						exit_reason: ExitReason::Error(ExitError::Other(Into::<&str>::into(e).into())),
 						logs: vec![],
+						used_gas: gas_limit,
+						used_storage: Default::default(),
 					});
 
 					Ok(().into())
 				}
 				Ok(info) => {
+					let used_gas: u64 = info.used_gas.unique_saturated_into();
+
 					if info.exit_reason.is_succeed() {
 						Pallet::<T>::deposit_event(Event::<T>::Created {
 							from: source,
 							contract: info.value,
-							logs: info.logs.clone(),
+							logs: info.logs,
+							used_gas,
+							used_storage: info.used_storage,
 						});
 					} else {
 						Pallet::<T>::deposit_event(Event::<T>::CreatedFailed {
 							from: source,
 							contract: info.value,
 							exit_reason: info.exit_reason.clone(),
-							logs: info.logs.clone(),
+							logs: info.logs,
+							used_gas,
+							used_storage: Default::default(),
 						});
 					}
-
-					let used_gas: u64 = info.used_gas.unique_saturated_into();
 
 					Ok(PostDispatchInfo {
 						actual_weight: Some(create_weight::<T>(used_gas)),
@@ -825,27 +851,33 @@ pub mod module {
 						contract: H160::default(),
 						exit_reason: ExitReason::Error(ExitError::Other(Into::<&str>::into(e).into())),
 						logs: vec![],
+						used_gas: gas_limit,
+						used_storage: Default::default(),
 					});
 
 					Ok(().into())
 				}
 				Ok(info) => {
+					let used_gas: u64 = info.used_gas.unique_saturated_into();
+
 					if info.exit_reason.is_succeed() {
 						Pallet::<T>::deposit_event(Event::<T>::Created {
 							from: source,
 							contract: info.value,
-							logs: info.logs.clone(),
+							logs: info.logs,
+							used_gas,
+							used_storage: info.used_storage,
 						});
 					} else {
 						Pallet::<T>::deposit_event(Event::<T>::CreatedFailed {
 							from: source,
 							contract: info.value,
 							exit_reason: info.exit_reason.clone(),
-							logs: info.logs.clone(),
+							logs: info.logs,
+							used_gas,
+							used_storage: Default::default(),
 						});
 					}
-
-					let used_gas: u64 = info.used_gas.unique_saturated_into();
 
 					Ok(PostDispatchInfo {
 						actual_weight: Some(create2_weight::<T>(used_gas)),
@@ -905,29 +937,35 @@ pub mod module {
 						contract: H160::default(),
 						exit_reason: ExitReason::Error(ExitError::Other(Into::<&str>::into(e).into())),
 						logs: vec![],
+						used_gas: gas_limit,
+						used_storage: Default::default(),
 					});
 
 					Ok(().into())
 				}
 				Ok(info) => {
+					let used_gas: u64 = info.used_gas.unique_saturated_into();
+
 					if info.exit_reason.is_succeed() {
 						NetworkContractIndex::<T>::mutate(|v| *v = v.saturating_add(One::one()));
 
 						Pallet::<T>::deposit_event(Event::<T>::Created {
 							from: source,
 							contract: info.value,
-							logs: info.logs.clone(),
+							logs: info.logs,
+							used_gas,
+							used_storage: info.used_storage,
 						});
 					} else {
 						Pallet::<T>::deposit_event(Event::<T>::CreatedFailed {
 							from: source,
 							contract: info.value,
 							exit_reason: info.exit_reason.clone(),
-							logs: info.logs.clone(),
+							logs: info.logs,
+							used_gas,
+							used_storage: Default::default(),
 						});
 					}
-
-					let used_gas: u64 = info.used_gas.unique_saturated_into();
 
 					Ok(PostDispatchInfo {
 						actual_weight: Some(create_nft_contract::<T>(used_gas)),
@@ -945,11 +983,7 @@ pub mod module {
 		/// - `value`: the amount sent for payable calls
 		/// - `gas_limit`: the maximum gas the call can use
 		/// - `storage_limit`: the total bytes the contract's storage can increase by
-		#[pallet::weight(if input.is_empty() {
-			<T as Config>::WeightInfo::create_predeploy_mirror_token_contract()
-		} else {
-			create_predeploy_contract::<T>(*gas_limit)
-		})]
+		#[pallet::weight(create_predeploy_contract::<T>(*gas_limit))]
 		#[transactional]
 		pub fn create_predeploy_contract(
 			origin: OriginFor<T>,
@@ -980,74 +1014,54 @@ pub mod module {
 				)?;
 			}
 
-			if input.is_empty() {
-				// This is mirror token, get the code of token predeployed contract.
-				let code = Self::code_at_address(&PREDEPLOY_ADDRESS_START);
-				ensure!(!code.is_empty(), Error::<T>::ContractNotFound);
+			match T::Runner::create_at_address(
+				source,
+				target,
+				input,
+				value,
+				gas_limit,
+				storage_limit,
+				access_list.into_iter().map(|v| (v.address, v.storage_keys)).collect(),
+				T::config(),
+			) {
+				Err(e) => {
+					Pallet::<T>::deposit_event(Event::<T>::CreatedFailed {
+						from: source,
+						contract: H160::default(),
+						exit_reason: ExitReason::Error(ExitError::Other(Into::<&str>::into(e).into())),
+						logs: vec![],
+						used_gas: gas_limit,
+						used_storage: Default::default(),
+					});
 
-				// deposit ED for mirrored token
-				T::Currency::transfer(
-					&T::TreasuryAccount::get(),
-					&T::AddressMapping::get_account_id(&target),
-					<T::Currency as Currency<T::AccountId>>::minimum_balance(),
-					ExistenceRequirement::AllowDeath,
-				)?;
+					Ok(().into())
+				}
+				Ok(info) => {
+					let used_gas: u64 = info.used_gas.unique_saturated_into();
 
-				<Pallet<T>>::create_contract(source, target, code.to_vec());
-				Pallet::<T>::deposit_event(Event::<T>::Created {
-					from: source,
-					contract: target,
-					logs: vec![],
-				});
-
-				Ok(PostDispatchInfo {
-					actual_weight: Some(<T as Config>::WeightInfo::create_predeploy_mirror_token_contract()),
-					pays_fee: Pays::No,
-				})
-			} else {
-				match T::Runner::create_at_address(
-					source,
-					target,
-					input,
-					value,
-					gas_limit,
-					storage_limit,
-					access_list.into_iter().map(|v| (v.address, v.storage_keys)).collect(),
-					T::config(),
-				) {
-					Err(e) => {
+					if info.exit_reason.is_succeed() {
+						Pallet::<T>::deposit_event(Event::<T>::Created {
+							from: source,
+							contract: info.value,
+							logs: info.logs,
+							used_gas,
+							used_storage: info.used_storage,
+						});
+					} else {
 						Pallet::<T>::deposit_event(Event::<T>::CreatedFailed {
 							from: source,
-							contract: H160::default(),
-							exit_reason: ExitReason::Error(ExitError::Other(Into::<&str>::into(e).into())),
-							logs: vec![],
+							contract: info.value,
+							exit_reason: info.exit_reason.clone(),
+							logs: info.logs,
+							used_gas,
+							used_storage: Default::default(),
 						});
-
-						Ok(().into())
 					}
-					Ok(info) => {
-						if info.exit_reason.is_succeed() {
-							Pallet::<T>::deposit_event(Event::<T>::Created {
-								from: source,
-								contract: info.value,
-								logs: info.logs.clone(),
-							});
-						} else {
-							Pallet::<T>::deposit_event(Event::<T>::CreatedFailed {
-								from: source,
-								contract: info.value,
-								exit_reason: info.exit_reason.clone(),
-								logs: info.logs.clone(),
-							});
-						}
 
-						let used_gas: u64 = info.used_gas.unique_saturated_into();
-
-						Ok(PostDispatchInfo {
-							actual_weight: Some(create_predeploy_contract::<T>(used_gas)),
-							pays_fee: Pays::No,
-						})
-					}
+					Ok(PostDispatchInfo {
+						actual_weight: Some(create_predeploy_contract::<T>(used_gas)),
+						pays_fee: Pays::No,
+					})
 				}
 			}
 		}
@@ -1724,6 +1738,8 @@ impl<T: Config> EVMTrait<T::AccountId> for Pallet<T> {
 								from: context.sender,
 								contract: context.contract,
 								logs: info.logs.clone(),
+								used_gas: info.used_gas.unique_saturated_into(),
+								used_storage: info.used_storage,
 							});
 							TransactionOutcome::Commit(Ok(info))
 						} else {
@@ -1733,6 +1749,8 @@ impl<T: Config> EVMTrait<T::AccountId> for Pallet<T> {
 								exit_reason: info.exit_reason.clone(),
 								output: info.value.clone(),
 								logs: info.logs.clone(),
+								used_gas: info.used_gas.unique_saturated_into(),
+								used_storage: Default::default(),
 							});
 							TransactionOutcome::Rollback(Ok(info))
 						}

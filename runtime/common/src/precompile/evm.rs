@@ -473,6 +473,8 @@ mod tests {
 				)),
 				output: vec![],
 				logs: vec![],
+				used_gas: 1000000,
+				used_storage: 0,
 			}));
 
 			let context = Context {
@@ -509,6 +511,8 @@ mod tests {
 				from: bob_evm_addr(),
 				contract: contract_address,
 				logs: vec![],
+				used_gas: 21659,
+				used_storage: 0,
 			}));
 		});
 	}

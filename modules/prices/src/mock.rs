@@ -46,6 +46,7 @@ pub const BTC: CurrencyId = CurrencyId::Token(TokenSymbol::RENBTC);
 pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
 pub const LDOT: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
 pub const KSM: CurrencyId = CurrencyId::Token(TokenSymbol::KSM);
+pub const TAIKSM: CurrencyId = CurrencyId::StableAssetPoolToken(0);
 pub const LP_AUSD_DOT: CurrencyId =
 	CurrencyId::DexShare(DexShare::Token(TokenSymbol::AUSD), DexShare::Token(TokenSymbol::DOT));
 pub const LIQUID_CROWDLOAN_LEASE_1: CurrencyId = CurrencyId::LiquidCrowdloan(1);
@@ -233,6 +234,16 @@ parameter_type_with_key! {
 	};
 }
 
+parameter_type_with_key! {
+	pub PricingPegged: |currency_id: CurrencyId| -> Option<CurrencyId> {
+		#[allow(clippy::match_ref_pats)] // false positive
+		match currency_id {
+			&TAIKSM => Some(KSM),
+			_ => None,
+		}
+	};
+}
+
 ord_parameter_types! {
 	pub const One: AccountId = 1;
 }
@@ -261,6 +272,7 @@ impl Config for Runtime {
 	type LiquidCrowdloanLeaseBlockNumber = LiquidCrowdloanLeaseBlockNumber;
 	type RelayChainBlockNumber = MockRelayBlockNumberProvider;
 	type RewardRatePerRelaychainBlock = RewardRatePerRelaychainBlock;
+	type PricingPegged = PricingPegged;
 	type WeightInfo = ();
 }
 
