@@ -16,9 +16,12 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::chain_spec::{get_account_id_from_seed, get_authority_keys_from_seed, Extensions, TELEMETRY_URL};
 use acala_primitives::{AccountId, Balance, Nonce, TokenSymbol};
-use ethers::signers::{coins_bip39::English, MnemonicBuilder, Signer};
+use coins_bip39::{English, Mnemonic, Wordlist};
 use hex_literal::hex;
+use k256::ecdsa::SigningKey;
+use k256::EncodedPoint as K256PublicKey;
 use module_evm::GenesisAccount;
 use sc_chain_spec::ChainType;
 use sc_telemetry::TelemetryEndpoints;
@@ -28,12 +31,14 @@ use sp_core::{bytes::from_hex, crypto::UncheckedInto, sr25519, Bytes, H160};
 use sp_finality_grandpa::AuthorityId as GrandpaId;
 use sp_runtime::{traits::Zero, FixedPointNumber, FixedU128};
 use sp_std::{collections::btree_map::BTreeMap, str::FromStr};
-
-use crate::chain_spec::{get_account_id_from_seed, get_authority_keys_from_seed, Extensions, TELEMETRY_URL};
+use tiny_keccak::{Hasher, Keccak};
 
 pub type ChainSpec = sc_service::GenericChainSpec<mandala_runtime::GenesisConfig, Extensions>;
 
 pub const PARA_ID: u32 = 2000;
+
+// Child key at derivation path: m/44'/60'/0'/0/{index}
+const DEFAULT_DERIVATION_PATH_PREFIX: &str = "m/44'/60'/0'/0/";
 
 /// Development testnet config (single validator Alice), non-parachain
 pub fn dev_testnet_config(mnemonic: Option<&str>) -> Result<ChainSpec, String> {
@@ -45,26 +50,58 @@ pub fn parachain_dev_testnet_config(mnemonic: Option<&str>) -> Result<ChainSpec,
 	dev_testnet_config_from_chain_id("mandala-pc-dev", mnemonic)
 }
 
-fn get_evm_accounts(mnemonic: Option<&str>) -> Vec<H160> {
+fn generate_evm_address<W: Wordlist>(mnemonic: Option<&str>, index: u32) -> H160 {
 	let phrase = mnemonic.unwrap_or("fox sight canyon orphan hotel grow hedgehog build bless august weather swarm");
+	let derivation_path =
+		coins_bip32::path::DerivationPath::from_str(&format!("{}{}", DEFAULT_DERIVATION_PATH_PREFIX, index))
+			.expect("should parse the default derivation path");
+	let mnemonic = Mnemonic::<W>::new_from_phrase(&phrase).unwrap();
+
+	let derived_priv_key = mnemonic.derive_key(&derivation_path, None).unwrap();
+	let key: &SigningKey = derived_priv_key.as_ref();
+	let secret_key = SigningKey::from_bytes(&key.to_bytes()).unwrap();
+
+	// let uncompressed_pub_key = K256PublicKey::from(&secret_key.verifying_key()).decompress();
+	// let public_key = uncompressed_pub_key.unwrap().to_bytes();
+	let public_key = K256PublicKey::from(&secret_key.verifying_key()).to_bytes();
+	debug_assert_eq!(public_key[0], 0x04);
+	let hash = keccak256(&public_key[1..]);
+	H160::from_slice(&hash[12..])
+}
+
+fn keccak256<S>(bytes: S) -> [u8; 32]
+where
+	S: AsRef<[u8]>,
+{
+	let mut output = [0u8; 32];
+	let mut hasher = Keccak::v256();
+	hasher.update(bytes.as_ref());
+	hasher.finalize(&mut output);
+	output
+}
+
+fn get_evm_accounts(mnemonic: Option<&str>) -> Vec<H160> {
+	// let phrase = mnemonic.unwrap_or("fox sight canyon orphan hotel grow hedgehog build bless august
+	// weather swarm");
 
 	let mut evm_accounts = Vec::new();
-	// Child key at derivation path: m/44'/60'/0'/0/{index}
-	// for index in 0..10u32 {
-	// 	let wallet = MnemonicBuilder::<English>::default()
-	// 		.phrase(phrase)
-	// 		.index(index)
-	// 		.unwrap()
-	// 		.build()
-	// 		.unwrap();
-	// 	evm_accounts.push(wallet.address());
-	// 	log::info!(
-	// 		"index: {:?}, private_key: {:x?} address: {:?}",
-	// 		index,
-	// 		hex::encode(wallet.signer().to_bytes()),
-	// 		wallet.address()
-	// 	);
-	// }
+	for index in 0..10u32 {
+		// let wallet = MnemonicBuilder::<English>::default()
+		// 	.phrase(phrase)
+		// 	.index(index)
+		// 	.unwrap()
+		// 	.build()
+		// 	.unwrap();
+		// evm_accounts.push(wallet.address());
+		let addr = generate_evm_address::<English>(mnemonic, index);
+		evm_accounts.push(addr);
+		log::info!(
+			"index: {:?}, address: {:?}",
+			index,
+			// hex::encode(wallet.signer().to_bytes()),
+			addr
+		);
+	}
 	evm_accounts
 }
 

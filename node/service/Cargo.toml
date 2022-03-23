@@ -12,7 +12,11 @@ serde = { version = "1.0.136", features = ["derive"] }
 serde_json = "1.0.68"
 futures = "0.3.15"
 hex = "0.4.0"
-ethers = "0.6.2"
+coins-bip32 = "0.6.0"
+coins-bip39 = "0.6.0"
+elliptic-curve = { version = "0.11.12", default-features = false, features = ["hazmat", "sec1"] }
+k256 = { version = "0.10.4", default-features = false, features = ["keccak256", "ecdsa", "std"] }
+tiny-keccak = { version = "2.0", features = ["keccak"] }
 codec = { package = "parity-scale-codec", version = "3.0.0" }
 
 jsonrpc-core = "18.0.0"

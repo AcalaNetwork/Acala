@@ -405,13 +405,6 @@ where
 		RelayChainError::ServiceError(polkadot_service::Error::Sub(x)) => x,
 		s => s.to_string().into(),
 	})?;
-	// let (relay_chain_interface, collator_key) =
-	// 	build_relay_chain_interface(polkadot_config, telemetry_worker_handle, &mut task_manager).map_err(
-	// 		|e| match e {
-	// 			polkadot_service::Error::Sub(x) => x,
-	// 			s => format!("{}", s).into(),
-	// 		},
-	// 	)?;
 	let block_announce_validator = BlockAnnounceValidator::new(relay_chain_interface.clone(), id);
 
 	let force_authoring = parachain_config.force_authoring;
