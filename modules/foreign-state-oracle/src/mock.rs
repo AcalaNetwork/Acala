@@ -75,30 +75,21 @@ pub mod query_example {
 			Self::deposit_event(Event::<T>::OriginInjected { origin_data, call_data });
 			Ok(())
 		}
+
 		#[transactional]
 		#[pallet::weight(0)]
 		pub fn mock_create_query(
-			_origin: OriginFor<T>,
-			who: T::AccountId,
+			origin: OriginFor<T>,
 			call_data: Vec<u8>,
 			duration: Option<T::BlockNumber>,
 		) -> DispatchResult {
+			let who = ensure_signed(origin)?;
 			T::ForeignStateQuery::create_query(&who, Call::<T>::injected_call { call_data }.into(), duration)
 		}
 		#[transactional]
 		#[pallet::weight(0)]
 		pub fn mock_cancel_query(_origin: OriginFor<T>, who: T::AccountId, index: QueryIndex) -> DispatchResult {
 			T::ForeignStateQuery::cancel_query(&who, index)
-		}
-	}
-
-	impl<T: Config> Pallet<T> {
-		#[transactional]
-		pub fn example_query_call(who: T::AccountId) -> DispatchResult {
-			let call: <T as Config>::Call = Call::<T>::injected_call { call_data: vec![] }.into();
-			T::ForeignStateQuery::create_query(&who, call, None)?;
-
-			Ok(())
 		}
 	}
 }
@@ -229,6 +220,8 @@ impl ExtBuilder {
 		.assimilate_storage(&mut t)
 		.unwrap();
 
-		t.into()
+		let mut ext = sp_io::TestExternalities::new(t);
+		ext.execute_with(|| System::set_block_number(1));
+		ext
 	}
 }

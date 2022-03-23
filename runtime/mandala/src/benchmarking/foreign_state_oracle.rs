@@ -43,7 +43,7 @@ fn dummy_anonymous_account(who: &AccountId, height: BlockNumber, ext_index: u32,
 // needs transactional
 #[transactional]
 fn make_query(signer: &AccountId, call: frame_system::Call<Runtime>) -> DispatchResult {
-	ForeignStateOracle::create_query(&signer, call.into(), None)
+	ForeignStateOracle::create_query(&signer, call.into(), Some(10))
 }
 
 runtime_benchmarks! {
@@ -53,7 +53,9 @@ runtime_benchmarks! {
 		let caller: AccountId = whitelisted_caller();
 		let anon_account = dummy_anonymous_account(&caller, 0, 0, 0);
 		set_balance(NATIVE, &caller, 10_000 * dollar(NATIVE));
-		AccountTokenizer::request_mint(RawOrigin::Signed(caller.clone()).into(), anon_account, caller.clone(), 0, 0, 0)?;
+		// uses remark as a dummy call to only measure the logic within foreign state oracle, the weight of the call in storage is checked with `call_weight_bound`
+		let call = frame_system::Call::remark{ remark: vec![0; (MaxQueryCallSize::get() - 32) as usize] };
+		make_query(&caller, call)?;
 		System::set_block_number(100);
 	}: _(RawOrigin::Signed(caller), 0)
 

@@ -31,19 +31,21 @@ const CALL_WEIGHT: Weight = u64::MAX;
 #[test]
 fn dispatch_and_remove_works() {
 	ExtBuilder::default().build().execute_with(|| {
-		System::set_block_number(1);
-
-		assert_ok!(QueryExample::mock_create_query(Origin::none(), ALICE, vec![], None));
+		assert_ok!(QueryExample::mock_create_query(Origin::signed(ALICE), vec![], None));
 		assert!(QueryRequests::<Runtime>::get(0).is_some());
 		assert_ok!(QueryExample::mock_cancel_query(Origin::none(), ALICE, 0));
 		assert!(QueryRequests::<Runtime>::get(0).is_none());
 
 		assert_ok!(QueryExample::mock_create_query(
-			Origin::none(),
-			ALICE,
+			Origin::signed(ALICE),
 			b"world".to_vec(),
 			None
 		));
+		System::assert_last_event(Event::ForeignStateOracle(crate::Event::QueryRequestCreated {
+			expiry: None,
+			query_id: 1,
+		}));
+
 		assert_noop!(
 			ForeignStateOracle::respond_query_request(Origin::signed(1), 0, b"hello".to_vec(), CALL_WEIGHT),
 			Error::<Runtime>::NoMatchingCall
@@ -75,10 +77,10 @@ fn dispatch_and_remove_works() {
 			call_data: b"world".to_vec(),
 		}));
 
-		assert_ok!(QueryExample::mock_create_query(Origin::none(), ALICE, vec![], Some(10)));
-		System::set_block_number(11);
+		assert_ok!(QueryExample::mock_create_query(Origin::signed(ALICE), vec![], Some(10)));
+		System::set_block_number(100);
 		assert_noop!(
-			ForeignStateOracle::respond_query_request(Origin::signed(1), 2, b"hello".to_vec(), CALL_WEIGHT),
+			ForeignStateOracle::respond_query_request(Origin::signed(ALICE), 2, b"hello".to_vec(), CALL_WEIGHT),
 			Error::<Runtime>::QueryExpired
 		);
 
@@ -89,13 +91,38 @@ fn dispatch_and_remove_works() {
 }
 
 #[test]
+fn create_query_works() {
+	ExtBuilder::default().build().execute_with(|| {
+		// Correct event emitted when given expiry of None
+		assert_ok!(QueryExample::mock_create_query(
+			Origin::signed(ALICE),
+			b"hi".to_vec(),
+			None
+		));
+		System::assert_last_event(Event::ForeignStateOracle(crate::Event::QueryRequestCreated {
+			expiry: None,
+			query_id: 0,
+		}));
+		// Correct event emited when given expiry of Some()
+		assert_ok!(QueryExample::mock_create_query(
+			Origin::signed(ALICE),
+			b"hi".to_vec(),
+			Some(10)
+		));
+		System::assert_last_event(Event::ForeignStateOracle(crate::Event::QueryRequestCreated {
+			expiry: Some(11),
+			query_id: 1,
+		}));
+	});
+}
+
+#[test]
 fn query_and_cancel_works() {
 	ExtBuilder::default().build().execute_with(|| {
 		// Encoded call must be smaller than max size allowed.
 		assert_noop!(
 			QueryExample::mock_create_query(
-				Origin::none(),
-				ALICE,
+				Origin::signed(ALICE),
 				[0u8; MaxQueryCallSize::get() as usize].to_vec(),
 				None
 			),
@@ -103,12 +130,12 @@ fn query_and_cancel_works() {
 		);
 		// Need native token to query the oracle
 		assert_noop!(
-			QueryExample::mock_create_query(Origin::none(), BOB, vec![], None),
+			QueryExample::mock_create_query(Origin::signed(BOB), vec![], None),
 			pallet_balances::Error::<Runtime>::InsufficientBalance
 		);
 
 		let alice_before = Balances::free_balance(ALICE);
-		assert_ok!(QueryExample::mock_create_query(Origin::none(), ALICE, vec![], None,));
+		assert_ok!(QueryExample::mock_create_query(Origin::signed(ALICE), vec![], None,));
 		// Takes the query fee
 		assert_eq!(alice_before, Balances::free_balance(ALICE).add(QueryFee::get()));
 

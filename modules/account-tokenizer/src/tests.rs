@@ -627,6 +627,8 @@ fn redeem_request_rejected() {
 				proxy.clone(),
 				ALICE
 			));
+			// Nft is given to ALICE
+			assert_eq!(ModuleNFT::owner(&0, &0).unwrap(), ALICE);
 		});
 }
 

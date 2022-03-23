@@ -449,6 +449,7 @@ pub mod module {
 
 			Ok(())
 		}
+
 		/// Transfers NFT from treasury to user account. This should be used if Xcm sent to transfer
 		/// proxy fails.
 		///
@@ -474,13 +475,16 @@ pub mod module {
 			Ok(())
 		}
 
+		/// Burns nft, useful if oracle failed to respond but XCM was successful
+		///
+		/// Params:
+		/// 	- `token_id`: TokenId representing NFT to be burned
 		#[pallet::weight(0)]
 		#[transactional]
-		pub fn burn_nft(origin: OriginFor<T>, proxy_account: T::AccountId) -> DispatchResult {
+		pub fn burn_nft(origin: OriginFor<T>, token_id: TokenId) -> DispatchResult {
 			T::AccountTokenizerGovernance::ensure_origin(origin)?;
 
 			let nft_class_id = Self::nft_class_id();
-			let token_id = Self::minted_account(&proxy_account).ok_or(Error::<T>::AccountTokenNotFound)?;
 			let owner = T::NFTInterface::owner(&nft_class_id, &token_id).ok_or(Error::<T>::AccountTokenNotFound)?;
 			// Ensure that NFT is owned by treasury account
 			ensure!(T::TreasuryAccount::get() == owner, Error::<T>::CallerUnauthorized);
@@ -495,6 +499,7 @@ pub mod module {
 		/// 	- `to`: Account recieving funds
 		/// 	- `amount`: Amount of native token sent
 		#[pallet::weight(0)]
+		#[transactional]
 		pub fn transfer_treasury_funds(origin: OriginFor<T>, to: T::AccountId, amount: Balance) -> DispatchResult {
 			T::AccountTokenizerGovernance::ensure_origin(origin)?;
 			T::Currency::transfer(&T::TreasuryAccount::get(), &to, amount, AllowDeath)
@@ -534,7 +539,7 @@ pub mod module {
 		/// storage does not correspond to a existing nft (Because it was burned by user)
 		///
 		/// Params:
-		/// 		- `proxy_account`: Anonymous proxy that nft corresponds to
+		/// 	- `proxy_account`: Anonymous proxy that nft corresponds to
 		/// 	- `owner`: Account recieving reminted nft
 		#[pallet::weight(0)]
 		#[transactional]

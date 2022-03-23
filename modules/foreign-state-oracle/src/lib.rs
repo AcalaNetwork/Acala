@@ -81,7 +81,7 @@ pub mod module {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
 		/// The outer origin type.
-		type Origin: From<RawOrigin>;
+		type Origin: From<RawOrigin> + Into<Result<RawOrigin, <Self as module::Config>::Origin>>;
 
 		/// Weight Info
 		type WeightInfo: WeightInfo;
@@ -201,6 +201,7 @@ pub mod module {
 					.map_or(true, |exp| exp > T::BlockNumberProvider::current_block_number()),
 				Error::<T>::QueryExpired
 			);
+
 			let request_weight = foreign_request.dispatchable_call.get_dispatch_info().weight;
 			ensure!(request_weight <= call_weight_bound, Error::<T>::WrongRequestWeightBound);
 
@@ -223,7 +224,7 @@ pub mod module {
 			let who = ensure_signed(origin)?;
 
 			let foreign_request = QueryRequests::<T>::take(query_id).ok_or(Error::<T>::NoMatchingCall)?;
-			// Make sure query is expired
+			// Make sure query is expired, None can never expire
 			ensure!(
 				foreign_request
 					.expiry
@@ -248,12 +249,12 @@ impl<T: Config> Pallet<T> {
 	}
 }
 
-impl<T: Config, O: Into<Result<RawOrigin, O>> + From<RawOrigin>>
-	ForeignChainStateQuery<T::AccountId, T::DispatchableCall, T::BlockNumber, O> for Pallet<T>
+impl<T: Config> ForeignChainStateQuery<T::AccountId, T::DispatchableCall, T::BlockNumber, <T as module::Config>::Origin>
+	for Pallet<T>
 {
 	type OracleOrigin = EnsureForeignStateOracle;
 
-	fn ensure_origin(o: O) -> Result<Vec<u8>, BadOrigin> {
+	fn ensure_origin(o: <T as module::Config>::Origin) -> Result<Vec<u8>, BadOrigin> {
 		Self::OracleOrigin::ensure_origin(o)
 	}
 
@@ -274,10 +275,12 @@ impl<T: Config, O: Into<Result<RawOrigin, O>> + From<RawOrigin>>
 			T::QueryFee::get(),
 			ExistenceRequirement::KeepAlive,
 		)?;
-		let mut expiry = query_duration;
-		if let Some(duration) = expiry {
-			expiry = Some(T::BlockNumberProvider::current_block_number().saturating_add(duration));
-		}
+
+		let expiry = match query_duration {
+			Some(duration) => Some(T::BlockNumberProvider::current_block_number().saturating_add(duration)),
+			None => None,
+		};
+
 		let foreign_request = ForeignQueryRequest {
 			dispatchable_call,
 			expiry,
