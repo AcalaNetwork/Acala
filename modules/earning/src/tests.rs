@@ -159,6 +159,24 @@ fn unbonding_works() {
 }
 
 #[test]
+fn unbonding_max_unlock_chunks_works() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(Earning::bond(Origin::signed(ALICE), 1000));
+		System::set_block_number(1);
+		assert_ok!(Earning::unbond(Origin::signed(ALICE), 100));
+		System::set_block_number(2);
+		assert_ok!(Earning::unbond(Origin::signed(ALICE), 100));
+		System::set_block_number(3);
+		assert_ok!(Earning::unbond(Origin::signed(ALICE), 100));
+		System::set_block_number(4);
+		assert_noop!(
+			Earning::unbond(Origin::signed(ALICE), 100),
+			Error::<Runtime>::MaxUnlockChunksExceeded
+		);
+	});
+}
+
+#[test]
 fn rebond_works() {
 	ExtBuilder::default().build().execute_with(|| {
 		assert_ok!(Earning::bond(Origin::signed(ALICE), 1000));
