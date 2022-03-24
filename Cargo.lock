@@ -77,8 +77,10 @@ dependencies = [
  "module-evm-utility-macro",
  "num_enum",
  "nutsfinance-stable-asset",
+ "orml-traits",
  "parity-scale-codec",
  "parity-util-mem",
+ "paste",
  "scale-info",
  "serde",
  "serde_json",
@@ -4719,6 +4721,7 @@ dependencies = [
  "module-evm-rpc-runtime-api",
  "module-homa",
  "module-honzon",
+ "module-honzon-bridge",
  "module-idle-scheduler",
  "module-incentives",
  "module-loans",
@@ -5762,6 +5765,7 @@ dependencies = [
  "module-currencies",
  "module-dex",
  "module-dex-oracle",
+ "module-earning",
  "module-emergency-shutdown",
  "module-evm",
  "module-evm-accounts",
@@ -6275,6 +6279,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "module-earning"
+version = "2.4.0"
+dependencies = [
+ "acala-primitives",
+ "frame-support",
+ "frame-system",
+ "module-support",
+ "orml-traits",
+ "pallet-balances",
+ "parity-scale-codec",
+ "paste",
+ "scale-info",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "module-emergency-shutdown"
 version = "2.4.1"
 dependencies = [
@@ -6518,6 +6542,27 @@ dependencies = [
  "orml-traits",
  "pallet-balances",
  "pallet-timestamp",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "module-honzon-bridge"
+version = "2.4.0"
+dependencies = [
+ "acala-primitives",
+ "frame-support",
+ "frame-system",
+ "module-currencies",
+ "module-support",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
  "parity-scale-codec",
  "scale-info",
  "serde",

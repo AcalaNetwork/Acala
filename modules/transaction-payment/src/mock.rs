@@ -21,7 +21,7 @@
 #![cfg(test)]
 
 use super::*;
-use crate as transaction_payment;
+pub use crate as transaction_payment;
 use frame_support::{
 	construct_runtime, ord_parameter_types, parameter_types,
 	traits::{Everything, Nothing},
@@ -194,7 +194,9 @@ parameter_types! {
 	pub OperationalFeeMultiplier: u64 = 5;
 	pub static TipPerWeightStep: u128 = 1;
 	pub MaxTipsOfPriority: u128 = 1000;
-	pub DefaultFeeSwapPathList: Vec<Vec<CurrencyId>> = vec![vec![AUSD, ACA], vec![DOT, AUSD, ACA]];
+	pub DefaultFeeTokens: Vec<CurrencyId> = vec![AUSD, DOT];
+	pub AusdFeeSwapPath: Vec<CurrencyId> = vec![AUSD, ACA];
+	pub DotFeeSwapPath: Vec<CurrencyId> = vec![DOT, AUSD, ACA];
 	pub AlternativeFeeSwapDeposit: Balance = 1000;
 }
 
@@ -247,12 +249,14 @@ parameter_types! {
 }
 ord_parameter_types! {
 	pub const ListingOrigin: AccountId = ALICE;
+	pub const CustomFeeSurplus: Percent = Percent::from_percent(50);
+	pub const AlternativeFeeSurplus: Percent = Percent::from_percent(25);
 }
 
 impl Config for Runtime {
 	type Event = Event;
+	type Call = Call;
 	type NativeCurrencyId = GetNativeCurrencyId;
-	type DefaultFeeSwapPathList = DefaultFeeSwapPathList;
 	type AlternativeFeeSwapDeposit = AlternativeFeeSwapDeposit;
 	type Currency = PalletBalances;
 	type MultiCurrency = Currencies;
@@ -271,6 +275,9 @@ impl Config for Runtime {
 	type PalletId = TransactionPaymentPalletId;
 	type TreasuryAccount = KaruraTreasuryAccount;
 	type UpdateOrigin = EnsureSignedBy<ListingOrigin, AccountId>;
+	type CustomFeeSurplus = CustomFeeSurplus;
+	type AlternativeFeeSurplus = AlternativeFeeSurplus;
+	type DefaultFeeTokens = DefaultFeeTokens;
 }
 
 thread_local! {

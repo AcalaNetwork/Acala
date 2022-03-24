@@ -16,42 +16,29 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-#![cfg(feature = "runtime-benchmarks")]
+use crate::{AccountId, Runtime};
 
-use sp_runtime::traits::AccountIdConversion;
+use frame_benchmarking::account;
+use frame_system::RawOrigin;
+use orml_benchmarking::runtime_benchmarks;
+use sp_std::prelude::*;
 
-pub mod utils;
+runtime_benchmarks! {
+	{ Runtime, module_honzon_bridge }
+	to_bridged {
+		let caller: AccountId = account("caller", 0, 0);
+	}: _(RawOrigin::Signed(caller), 0)
 
-// module benchmarking
-pub mod asset_registry;
-pub mod auction_manager;
-pub mod cdp_engine;
-pub mod cdp_treasury;
-pub mod collator_selection;
-pub mod currencies;
-pub mod dex;
-pub mod dex_oracle;
-pub mod earning;
-pub mod emergency_shutdown;
-pub mod evm;
-pub mod evm_accounts;
-pub mod homa;
-pub mod honzon;
-pub mod incentives;
-pub mod nominees_election;
-pub mod nutsfinance_stable_asset;
-pub mod prices;
-pub mod session_manager;
-pub mod transaction_pause;
-pub mod transaction_payment;
+	from_bridged {
+		let caller: AccountId = account("caller", 0, 0);
+	}: _(RawOrigin::Signed(caller), 0)
+}
 
-// orml benchmarking
-pub mod auction;
-pub mod authority;
-pub mod oracle;
-pub mod tokens;
-pub mod vesting;
+#[cfg(test)]
+mod tests {
+	use super::*;
+	use crate::benchmarking::utils::tests::new_test_ext;
+	use orml_benchmarking::impl_benchmark_test_suite;
 
-pub fn get_vesting_account() -> super::AccountId {
-	super::TreasuryPalletId::get().into_account()
+	impl_benchmark_test_suite!(new_test_ext(),);
 }

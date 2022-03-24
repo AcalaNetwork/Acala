@@ -83,7 +83,7 @@ pub use authority::AuthorityConfigImpl;
 pub use constants::{fee::*, parachains, time::*};
 pub use primitives::{
 	define_combined_task,
-	evm::{AccessListItem, EstimateResourcesRequest},
+	evm::{AccessListItem, EstimateResourcesRequest, EvmAddress},
 	task::TaskResult,
 	AccountId, AccountIndex, Address, Amount, AuctionId, AuthoritysOriginId, Balance, BlockNumber, CurrencyId,
 	DataProviderId, EraIndex, Hash, Lease, Moment, Nonce, ReserveIdentifier, Share, Signature, TokenSymbol,
@@ -157,6 +157,7 @@ parameter_types! {
 	pub const HomaTreasuryPalletId: PalletId = PalletId(*b"aca/hmtr");
 	pub const IncentivesPalletId: PalletId = PalletId(*b"aca/inct");
 	pub const CollatorPotId: PalletId = PalletId(*b"aca/cpot");
+	pub const HonzonBridgePalletId: PalletId = PalletId(*b"aca/hzbg");
 	// Treasury reserve
 	pub const TreasuryReservePalletId: PalletId = PalletId(*b"aca/reve");
 	pub const NftPalletId: PalletId = PalletId(*b"aca/aNFT");
@@ -183,6 +184,7 @@ pub fn get_all_module_accounts() -> Vec<AccountId> {
 		TreasuryReservePalletId::get().into_account(),
 		UnreleasedNativeVaultAccountId::get(),
 		StableAssetPalletId::get().into_account(),
+		HonzonBridgePalletId::get().into_account(),
 	]
 }
 
@@ -210,6 +212,7 @@ impl Contains<Call> for BaseCallFilter {
 		let is_evm = matches!(
 			call,
 			Call::EVM(_) | Call::EvmAccounts(_) // EvmBridge / EvmManager does not have call
+			| Call::HonzonBridge(_) // HonzonBridge isn't enabled until wAUSD is created. Issue #1967
 		);
 		if is_evm {
 			// no evm call
@@ -1168,13 +1171,9 @@ impl module_transaction_pause::Config for Runtime {
 }
 
 parameter_types! {
-	// Sort by fee charge order
-	pub DefaultFeeSwapPathList: Vec<Vec<CurrencyId>> = vec![
-		vec![KUSD, KSM, KAR],
-		vec![KSM, KAR],
-		vec![LKSM, KSM, KAR],
-		vec![BNC, KUSD, KSM, KAR],
-	];
+	pub DefaultFeeTokens: Vec<CurrencyId> = vec![KUSD, KSM, LKSM];
+	pub const CustomFeeSurplus: Percent = Percent::from_percent(50);
+	pub const AlternativeFeeSurplus: Percent = Percent::from_percent(25);
 }
 
 type NegativeImbalance = <Balances as PalletCurrency<AccountId>>::NegativeImbalance;
@@ -1193,8 +1192,8 @@ impl OnUnbalanced<NegativeImbalance> for DealWithFees {
 
 impl module_transaction_payment::Config for Runtime {
 	type Event = Event;
+	type Call = Call;
 	type NativeCurrencyId = GetNativeCurrencyId;
-	type DefaultFeeSwapPathList = DefaultFeeSwapPathList;
 	type Currency = Balances;
 	type MultiCurrency = Currencies;
 	type OnTransactionPayment = DealWithFees;
@@ -1213,6 +1212,9 @@ impl module_transaction_payment::Config for Runtime {
 	type PalletId = TransactionPaymentPalletId;
 	type TreasuryAccount = KaruraTreasuryAccount;
 	type UpdateOrigin = EnsureRootOrHalfGeneralCouncil;
+	type CustomFeeSurplus = CustomFeeSurplus;
+	type AlternativeFeeSurplus = AlternativeFeeSurplus;
+	type DefaultFeeTokens = DefaultFeeTokens;
 }
 
 impl module_evm_accounts::Config for Runtime {
@@ -1546,6 +1548,20 @@ impl module_idle_scheduler::Config for Runtime {
 }
 
 parameter_types! {
+	pub WormholeAUSDCurrencyId: CurrencyId = CurrencyId::Erc20(EvmAddress::from(hex_literal::hex!["0000000000000000000100000000000000000001"]));
+	pub const StableCoinCurrencyId: CurrencyId = KUSD;
+}
+
+impl module_honzon_bridge::Config for Runtime {
+	type Event = Event;
+	type WeightInfo = weights::module_honzon_bridge::WeightInfo<Runtime>;
+	type Currency = Currencies;
+	type StablecoinCurrencyId = StableCoinCurrencyId;
+	type BridgedStableCoinCurrencyId = WormholeAUSDCurrencyId;
+	type PalletId = HonzonBridgePalletId;
+}
+
+parameter_types! {
 	pub const FeePrecision: u128 = 10_000_000_000u128; // 10 decimals
 	pub const APrecision: u128 = 100u128; // 2 decimals
 	pub const PoolAssetLimit: u32 = 5u32;
@@ -1696,6 +1712,7 @@ construct_runtime!(
 		CdpTreasury: module_cdp_treasury::{Pallet, Storage, Call, Config, Event<T>} = 103,
 		CdpEngine: module_cdp_engine::{Pallet, Storage, Call, Event<T>, Config, ValidateUnsigned} = 104,
 		EmergencyShutdown: module_emergency_shutdown::{Pallet, Storage, Call, Event<T>} = 105,
+		HonzonBridge: module_honzon_bridge::{Pallet, Call, Event<T>} = 106,
 
 		// Homa
 		Homa: module_homa::{Pallet, Call, Storage, Event<T>} = 116,
@@ -1755,14 +1772,39 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	XcmInterfaceMigration,
+	(XcmInterfaceMigration, TransactionPaymentMigration),
 >;
+
+pub struct TransactionPaymentMigration;
+
+parameter_types! {
+	pub FeePoolSize: Balance = 5 * dollar(KAR);
+	pub SwapBalanceThreshold: Balance = Ratio::saturating_from_rational(25, 10).saturating_mul_int(dollar(KAR));
+}
+
+impl OnRuntimeUpgrade for TransactionPaymentMigration {
+	fn on_runtime_upgrade() -> frame_support::weights::Weight {
+		let poo_size = FeePoolSize::get();
+		let threshold = SwapBalanceThreshold::get();
+		let tokens = vec![
+			(KUSD, vec![KUSD, KSM, KAR]),
+			(KSM, vec![KSM, KAR]),
+			(LKSM, vec![LKSM, KSM, KAR]),
+			(BNC, vec![BNC, KUSD, KSM, KAR]),
+			(CurrencyId::ForeignAsset(0), vec![CurrencyId::ForeignAsset(0), KSM, KAR]),
+		];
+		for (token, path) in tokens {
+			let _ = module_transaction_payment::Pallet::<Runtime>::disable_pool(token);
+			let _ = module_transaction_payment::Pallet::<Runtime>::initialize_pool(token, path, poo_size, threshold);
+		}
+		<Runtime as frame_system::Config>::BlockWeights::get().max_block
+	}
+}
 
 // init Statemine location to its weight and fee, used by ParachainMinFee
 pub struct XcmInterfaceMigration;
 impl OnRuntimeUpgrade for XcmInterfaceMigration {
 	fn on_runtime_upgrade() -> frame_support::weights::Weight {
-		// update_xcm_dest_weight_and_fee
 		let _ = <module_xcm_interface::Pallet<Runtime>>::update_xcm_dest_weight_and_fee(
 			Origin::root(),
 			vec![(
@@ -1802,6 +1844,7 @@ mod benches {
 		[module_evm_accounts, benchmarking::evm_accounts]
 		[module_currencies, benchmarking::currencies]
 		[module_session_manager, benchmarking::session_manager]
+		[module_honzon_bridge, benchmarking::honzon_bridge]
 		[orml_tokens, benchmarking::tokens]
 		[orml_vesting, benchmarking::vesting]
 		[orml_auction, benchmarking::auction]

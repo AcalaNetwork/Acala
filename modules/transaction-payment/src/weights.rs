@@ -47,12 +47,11 @@ use sp_std::marker::PhantomData;
 /// Weight functions needed for module_transaction_payment.
 pub trait WeightInfo {
 	fn set_alternative_fee_swap_path() -> Weight;
-	fn set_global_fee_swap_path() -> Weight;
-	fn remove_global_fee_swap_path() -> Weight;
-	fn set_swap_balance_threshold() -> Weight;
 	fn enable_charge_fee_pool() -> Weight;
 	fn disable_charge_fee_pool() -> Weight;
 	fn on_finalize() -> Weight;
+	fn with_fee_path() -> Weight;
+	fn with_fee_currency() -> Weight;
 }
 
 /// Weights for module_transaction_payment using the Acala node and recommended hardware.
@@ -64,25 +63,6 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 		(21_367_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
-	}
-	// Storage: TransactionPayment GlobalFeeSwapPath (r:1 w:1)
-	fn set_global_fee_swap_path() -> Weight {
-		(11_296_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
-	}
-	// Storage: TransactionPayment GlobalFeeSwapPath (r:1 w:1)
-	fn remove_global_fee_swap_path() -> Weight {
-		(11_233_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
-	}
-	// Storage: TransactionPayment PoolSize (r:1 w:0)
-	// Storage: TransactionPayment SwapBalanceThreshold (r:0 w:1)
-	fn set_swap_balance_threshold() -> Weight {
-		(11_693_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	// Storage: TransactionPayment PoolSize (r:1 w:1)
 	// Storage: TransactionPayment AlternativeFeeSwapPath (r:1 w:0)
@@ -110,6 +90,13 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(7 as Weight))
 			.saturating_add(T::DbWeight::get().writes(9 as Weight))
 	}
+	fn with_fee_path() -> Weight {
+		(156_000_000 as Weight)
+	}
+	fn with_fee_currency() -> Weight {
+		(193_000_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(1 as Weight))
+	}
 	// Storage: TransactionPayment NextFeeMultiplier (r:1 w:1)
 	// Storage: System BlockWeight (r:1 w:0)
 	fn on_finalize() -> Weight {
@@ -126,21 +113,6 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(2 as Weight))
 	}
-	fn set_global_fee_swap_path() -> Weight {
-		(11_296_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
-	}
-	fn remove_global_fee_swap_path() -> Weight {
-		(11_233_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
-	}
-	fn set_swap_balance_threshold() -> Weight {
-		(11_693_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
-	}
 	fn enable_charge_fee_pool() -> Weight {
 		(62_403_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(8 as Weight))
@@ -155,5 +127,12 @@ impl WeightInfo for () {
 		(6_779_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(2 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
+	}
+	fn with_fee_path() -> Weight {
+		(156_000_000 as Weight)
+	}
+	fn with_fee_currency() -> Weight {
+		(193_000_000 as Weight)
+			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
 	}
 }
