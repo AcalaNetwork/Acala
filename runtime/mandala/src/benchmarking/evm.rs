@@ -63,6 +63,8 @@ fn deploy_contract(caller: AccountId) -> Result<H160, DispatchError> {
 		from: module_evm_accounts::EvmAddressMapping::<Runtime>::get_evm_address(&caller).unwrap(),
 		contract: contract_addr(),
 		logs: vec![],
+		used_gas: 132_199,
+		used_storage: 10_367,
 	}));
 	Ok(contract_addr())
 }
@@ -85,6 +87,8 @@ fn deploy_token_contract() -> DispatchResult {
 			from: NetworkContractSource::get(),
 			contract: PREDEPLOY_ADDRESS_START,
 			logs: vec![],
+			used_gas: 132_199,
+			used_storage: 10_367,
 		}));
 	}
 	Ok(())

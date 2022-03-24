@@ -42,6 +42,10 @@ pub fn karura_config() -> Result<ChainSpec, String> {
 	ChainSpec::from_json_bytes(&include_bytes!("../../../../resources/karura-dist.json")[..])
 }
 
+pub fn karura_rococo_config() -> Result<ChainSpec, String> {
+	ChainSpec::from_json_bytes(&include_bytes!("../../../../resources/karura-rococo.json")[..])
+}
+
 fn karura_properties() -> Properties {
 	let mut properties = Map::new();
 	let mut token_symbol: Vec<String> = vec![];

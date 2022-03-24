@@ -1,6 +1,6 @@
 [package]
 name = "runtime-integration-tests"
-version = "2.4.0"
+version = "2.4.1"
 authors = ["Acala Developers"]
 edition = "2021"
 
@@ -139,8 +139,7 @@ polkadot-primitives = { git = "https://github.com/paritytech/polkadot", branch =
 polkadot-runtime-parachains = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.17" }
 kusama-runtime = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.17" }
 
-#xcm-emulator = { git = "https://github.com/shaunxw/xcm-simulator", rev = "a250ffc998bac4831c5692c591dee7bc13f3aead" }
-xcm-emulator = { git = "https://github.com/zqhxuyuan/xcm-simulator", rev = "3119d273777be17d23683076dbfd30cb17e489d6" }
+xcm-emulator = { git = "https://github.com/shaunxw/xcm-simulator", rev = "24ccbce563d1f99019b4cdfa2f3af4e99bac0dfc" }
 
 acala-service = { path = "../../node/service", features = ["with-all-runtime"] }
 

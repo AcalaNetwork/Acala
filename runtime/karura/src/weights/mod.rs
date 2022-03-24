@@ -34,6 +34,7 @@ pub mod module_evm_accounts;
 pub mod module_foreign_state_oracle;
 pub mod module_homa;
 pub mod module_honzon;
+pub mod module_honzon_bridge;
 pub mod module_incentives;
 pub mod module_nft;
 pub mod module_prices;

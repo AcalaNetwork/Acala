@@ -33,19 +33,26 @@ use frame_support::{
 };
 use frame_system::{limits, EnsureRoot};
 pub use module_support::{ExchangeRate, PrecompileCallerFilter, Price, Rate, Ratio};
-use primitives::{evm::is_system_contract, Balance, BlockNumber, CurrencyId};
+use primitives::{evm::is_system_contract, Balance, BlockNumber, CurrencyId, Nonce};
 use scale_info::TypeInfo;
 use sp_core::{
 	u32_trait::{_1, _2, _3, _4},
-	H160,
+	Bytes, H160,
 };
 use sp_runtime::{
 	traits::{BlockNumberProvider, Convert},
 	transaction_validity::TransactionPriority,
 	FixedPointNumber, Perbill,
 };
+use sp_std::collections::btree_map::BTreeMap;
 use static_assertions::const_assert;
 
+#[cfg(feature = "std")]
+use sp_core::bytes::from_hex;
+#[cfg(feature = "std")]
+use std::str::FromStr;
+
+pub mod bench;
 pub mod check_nonce;
 pub mod precompile;
 
@@ -53,6 +60,7 @@ pub mod precompile;
 mod mock;
 
 pub use check_nonce::CheckNonce;
+use module_evm::GenesisAccount;
 use orml_traits::GetByKey;
 pub use precompile::{
 	AllPrecompiles, DEXPrecompile, EVMPrecompile, MultiCurrencyPrecompile, NFTPrecompile, OraclePrecompile,
@@ -105,6 +113,14 @@ pub struct GasToWeight;
 impl Convert<u64, Weight> for GasToWeight {
 	fn convert(gas: u64) -> Weight {
 		gas.saturating_mul(gas_to_weight_ratio::RATIO)
+	}
+}
+
+/// Convert weight to gas
+pub struct WeightToGas;
+impl Convert<Weight, u64> for WeightToGas {
+	fn convert(weight: Weight) -> u64 {
+		weight.saturating_div(gas_to_weight_ratio::RATIO)
 	}
 }
 
@@ -405,6 +421,43 @@ where
 			GK::get(currency_id)
 		}
 	}
+}
+
+#[cfg(feature = "std")]
+/// Returns `evm_genesis_accounts`
+pub fn evm_genesis(evm_accounts: Vec<H160>) -> BTreeMap<H160, GenesisAccount<Balance, Nonce>> {
+	let contracts_json = &include_bytes!("../../../predeploy-contracts/resources/bytecodes.json")[..];
+	let contracts: Vec<(String, String, String)> = serde_json::from_slice(contracts_json).unwrap();
+	let mut accounts = BTreeMap::new();
+	for (_, address, code_string) in contracts {
+		let account = GenesisAccount {
+			nonce: 0u32,
+			balance: 0u128,
+			storage: BTreeMap::new(),
+			code: Bytes::from_str(&code_string).unwrap().0,
+			enable_contract_development: false,
+		};
+
+		let addr = H160::from_slice(
+			from_hex(address.as_str())
+				.expect("predeploy-contracts must specify address")
+				.as_slice(),
+		);
+		accounts.insert(addr, account);
+	}
+
+	for dev_acc in evm_accounts {
+		let account = GenesisAccount {
+			nonce: 0u32,
+			balance: 1000 * dollar(ACA),
+			storage: BTreeMap::new(),
+			code: vec![],
+			enable_contract_development: true,
+		};
+		accounts.insert(dev_acc, account);
+	}
+
+	accounts
 }
 
 #[cfg(test)]

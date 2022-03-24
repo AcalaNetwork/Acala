@@ -101,6 +101,7 @@ pub mod tokens {
 pub mod vesting {
 	include!("../../../mandala/src/benchmarking/vesting.rs");
 }
+pub mod honzon_bridge;
 
 pub fn get_vesting_account() -> super::AccountId {
 	super::KaruraFoundationAccounts::get()[0].clone()
