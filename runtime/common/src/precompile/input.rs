@@ -234,7 +234,7 @@ impl<T> InputPricer<T>
 where
 	T: frame_system::Config,
 {
-	const BASE_COST: u64 = 50;
+	const BASE_COST: u64 = 200;
 
 	pub(crate) fn read_currency(currency_id: CurrencyId) -> u64 {
 		match currency_id {

@@ -206,7 +206,7 @@ where
 	Runtime:
 		module_currencies::Config + module_evm::Config + module_prices::Config + module_transaction_payment::Config,
 {
-	const BASE_COST: u64 = 50;
+	const BASE_COST: u64 = 200;
 
 	fn cost(
 		input: &Input<

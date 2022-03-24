@@ -335,7 +335,7 @@ impl<Runtime> Pricer<Runtime>
 where
 	Runtime: module_evm::Config + module_dex::Config,
 {
-	const BASE_COST: u64 = 50;
+	const BASE_COST: u64 = 200;
 
 	fn cost(
 		input: &Input<
