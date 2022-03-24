@@ -106,7 +106,7 @@ impl<T: frame_system::Config> module_account_tokenizer::WeightInfo for WeightInf
 	// Storage: Balances Reserves (r:1 w:1)
 	// Storage: System Account (r:1 w:1)
 	// Storage: OrmlNFT TokensByOwner (r:0 w:1)
-	fn confirm_redeem_account_token() -> Weight {
+	fn confirm_redeem() -> Weight {
 		(99_263_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(8 as Weight))
 			.saturating_add(T::DbWeight::get().writes(7 as Weight))
@@ -118,7 +118,7 @@ impl<T: frame_system::Config> module_account_tokenizer::WeightInfo for WeightInf
 	// Storage: Balances Reserves (r:2 w:2)
 	// Storage: System Account (r:2 w:2)
 	// Storage: OrmlNFT TokensByOwner (r:0 w:2)
-	fn transfer_nft() -> Weight {
+	fn return_custodial_account_token() -> Weight {
 		(76_443_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(8 as Weight))
 			.saturating_add(T::DbWeight::get().writes(7 as Weight))
@@ -156,7 +156,7 @@ impl<T: frame_system::Config> module_account_tokenizer::WeightInfo for WeightInf
 	// Storage: OrmlNFT NextTokenId (r:1 w:1)
 	// Storage: Balances Reserves (r:1 w:1)
 	// Storage: OrmlNFT TokensByOwner (r:0 w:1)
-	fn remint_burned_nft() -> Weight {
+	fn remint_burnt_nft() -> Weight {
 		(77_283_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(8 as Weight))
 			.saturating_add(T::DbWeight::get().writes(8 as Weight))

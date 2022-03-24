@@ -50,12 +50,12 @@ pub trait WeightInfo {
 	fn request_mint() -> Weight;
 	fn confirm_mint_request() -> Weight;
 	fn request_redeem() -> Weight;
-	fn confirm_redeem_account_token() -> Weight;
-	fn transfer_nft() -> Weight;
+	fn confirm_redeem() -> Weight;
+	fn return_custodial_account_token() -> Weight;
 	fn burn_nft() -> Weight;
 	fn transfer_treasury_funds() -> Weight;
 	fn force_unreserve_funds() -> Weight;
-	fn remint_burned_nft() -> Weight;
+	fn remint_burnt_nft() -> Weight;
 }
 
 /// Weights for module_account_tokenizer using the Acala node and recommended hardware.
@@ -118,7 +118,7 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	}
 	// Storage: ForeignStateOracle QueryRequests (r:1 w:1)
 	// Storage: TransactionPause PausedTransactions (r:1 w:0)
-	fn confirm_redeem_account_token() -> Weight {
+	fn confirm_redeem() -> Weight {
 		(18_819_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
@@ -130,7 +130,7 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	// Storage: Balances Reserves (r:2 w:2)
 	// Storage: System Account (r:2 w:2)
 	// Storage: OrmlNFT TokensByOwner (r:0 w:2)
-	fn transfer_nft() -> Weight {
+	fn return_custodial_account_token() -> Weight {
 		(76_443_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(8 as Weight))
 			.saturating_add(T::DbWeight::get().writes(7 as Weight))
@@ -168,7 +168,7 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	// Storage: OrmlNFT NextTokenId (r:1 w:1)
 	// Storage: Balances Reserves (r:1 w:1)
 	// Storage: OrmlNFT TokensByOwner (r:0 w:1)
-	fn remint_burned_nft() -> Weight {
+	fn remint_burnt_nft() -> Weight {
 		(77_283_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(8 as Weight))
 			.saturating_add(T::DbWeight::get().writes(8 as Weight))
@@ -197,12 +197,12 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().reads(14 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(11 as Weight))
 	}
-	fn confirm_redeem_account_token() -> Weight {
+	fn confirm_redeem() -> Weight {
 		(18_819_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(2 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
-	fn transfer_nft() -> Weight {
+	fn return_custodial_account_token() -> Weight {
 		(76_443_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(8 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(7 as Weight))
@@ -222,7 +222,7 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().reads(3 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(3 as Weight))
 	}
-	fn remint_burned_nft() -> Weight {
+	fn remint_burnt_nft() -> Weight {
 		(77_283_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(8 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(8 as Weight))

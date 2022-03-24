@@ -180,8 +180,14 @@ pub mod module {
 		/// The XCM sent to foreign chain to redeem proxy failed, NFT is now in ownership of
 		/// `TreasuryAccount`, governance call can return NFT to owner
 		AccountTokenRedeemFailed { account: T::AccountId },
-		/// Account Tokenizer Governence transfered NFT owned by treasury
-		GovernanceNFTTransfer { token_id: TokenId, new_owner: T::AccountId },
+		/// Account Tokens in custody by the treasury is returned to the user.
+		CustodialAccountTokenReturned { token_id: TokenId, new_owner: T::AccountId },
+		/// Governence has reminted the NFT.
+		AccountTokenReminted {
+			owner: T::AccountId,
+			account: T::AccountId,
+			token_id: TokenId,
+		},
 	}
 
 	/// Stores the NFT's class ID. Created on RuntimeUpgrade. Used to mint and burn PRTs.
@@ -390,7 +396,7 @@ pub mod module {
 			T::XcmInterface::transfer_proxy(account.clone(), new_owner.clone())?;
 
 			// Submit confirmation call to be serviced by foreign state oracle
-			let call: <T as Config>::Call = Call::<T>::confirm_redeem_account_token {
+			let call: <T as Config>::Call = Call::<T>::confirm_redeem {
 				account: account.clone(),
 				new_owner: new_owner.clone(),
 			}
@@ -417,13 +423,9 @@ pub mod module {
 		/// Params:
 		/// 	- `account`: Account ID of the Account Token
 		/// 	- `new_owner`: The owner of the proxy account to be transferred to.
-		#[pallet::weight(< T as Config >::WeightInfo::confirm_redeem_account_token())]
+		#[pallet::weight(< T as Config >::WeightInfo::confirm_redeem())]
 		#[transactional]
-		pub fn confirm_redeem_account_token(
-			origin: OriginFor<T>,
-			account: T::AccountId,
-			new_owner: T::AccountId,
-		) -> DispatchResult {
+		pub fn confirm_redeem(origin: OriginFor<T>, account: T::AccountId, new_owner: T::AccountId) -> DispatchResult {
 			let data = T::ForeignStateQuery::ensure_origin(origin)?;
 			// Checks whether oracle confirms or rejects the mint request
 			let success: bool = Decode::decode(&mut &data[..]).map_err(|_| Error::<T>::InvalidQueryResponse)?;
@@ -450,15 +452,17 @@ pub mod module {
 			Ok(())
 		}
 
-		/// Transfers NFT from treasury to user account. This should be used if Xcm sent to transfer
-		/// proxy fails.
+		/// Transfers Account Token taken into custody by the treasury back to user account.
+		/// Used if Xcm sent to transfer proxy fails.
+		///
+		/// Requires Governance Origin.
 		///
 		/// Params:
 		/// 	- `proxy_account`: AccountId of anon proxy that is tokenized.
 		/// 	- `new_owner`: AccountId that NFT will be sent to.
-		#[pallet::weight(<T as Config>::WeightInfo::transfer_nft())]
+		#[pallet::weight(<T as Config>::WeightInfo::return_custodial_account_token())]
 		#[transactional]
-		pub fn transfer_nft(
+		pub fn return_custodial_account_token(
 			origin: OriginFor<T>,
 			proxy_account: T::AccountId,
 			new_owner: T::AccountId,
@@ -472,10 +476,16 @@ pub mod module {
 			ensure!(T::TreasuryAccount::get() == owner, Error::<T>::CallerUnauthorized);
 
 			T::NFTInterface::transfer(&nft_class_id, &token_id, &new_owner)?;
+
+			Self::deposit_event(Event::<T>::CustodialAccountTokenReturned { token_id, new_owner });
+
 			Ok(())
 		}
 
-		/// Burns nft, useful if oracle failed to respond but XCM was successful
+		/// Force burn an Account Token NFT. This is used to manually burn the token if the oracle
+		/// failed to burn it through confirm_redeem.
+		///
+		/// Requires Governance Origin.
 		///
 		/// Params:
 		/// 	- `token_id`: TokenId representing NFT to be burned
@@ -494,7 +504,9 @@ pub mod module {
 			Ok(())
 		}
 
-		/// Transfers funds from treasury, can be used to reimburse incorrect slashing
+		/// Transfers funds from treasury. Used to reimburse incorrect slashing.
+		///
+		/// Requires Governance Origin.
 		///
 		/// Params:
 		/// 	- `to`: Account recieving funds
@@ -506,8 +518,10 @@ pub mod module {
 			T::Currency::transfer(&T::TreasuryAccount::get(), &to, amount, AllowDeath)
 		}
 
-		/// Recovers stranded reserved tokens, This occurs when oracle fails to respond to
-		/// `request_mint`. Can either slash or unreserve
+		/// Recovers stranded reserved funds, This occurs when oracle fails to respond to
+		/// `request_mint`. Can either slash or unreserve.
+		///
+		/// Requires Governance Origin.
 		///
 		/// Params:
 		/// 	- `account`: Account that has stranded reserved funds
@@ -523,6 +537,7 @@ pub mod module {
 		) -> DispatchResult {
 			T::AccountTokenizerGovernance::ensure_origin(origin)?;
 			if slash {
+				// If slash, fund is repatriated to the Treasury.
 				T::Currency::repatriate_reserved_named(
 					&RESERVE_ID,
 					&account,
@@ -531,20 +546,23 @@ pub mod module {
 					BalanceStatus::Free,
 				)?;
 			} else {
+				// Otherwise the fund is unreserved.
 				T::Currency::unreserve_named(&RESERVE_ID, &account, amount);
 			}
 			Ok(())
 		}
 
-		/// This will remint nft if `MintedAccount` storage does not correspond
-		/// to a existing nft (This could occur if nft was burned by user)
+		/// If someone burned their anon proxy nft, this will remint nft if `MintedAccount`
+		/// storage does not correspond to a existing nft (Because it was burned by user)
+		///
+		/// Requires Governance Origin.
 		///
 		/// Params:
 		/// 	- `proxy_account`: Anonymous proxy that nft corresponds to
 		/// 	- `owner`: Account recieving reminted nft
-		#[pallet::weight(<T as Config>::WeightInfo::remint_burned_nft())]
+		#[pallet::weight(<T as Config>::WeightInfo::remint_burnt_nft())]
 		#[transactional]
-		pub fn remint_burned_nft(
+		pub fn remint_burnt_nft(
 			origin: OriginFor<T>,
 			proxy_account: T::AccountId,
 			owner: T::AccountId,
@@ -554,21 +572,29 @@ pub mod module {
 
 			// Check that record of minted account exists
 			let token_id = Self::minted_account(&proxy_account).ok_or(Error::<T>::AccountTokenNotFound)?;
+
 			// Checks that corresponding nft does not exist
-			if T::NFTInterface::owner(&nft_class_id, &token_id).is_none() {
-				// Pay for minting the token
-				T::NFTInterface::pay_mint_fee(&owner, &nft_class_id, 1u32)?;
+			ensure!(
+				T::NFTInterface::owner(&nft_class_id, &token_id).is_none(),
+				Error::<T>::AccountTokenAlreadyExists
+			);
 
-				// Mint the Account Token's NFT.
-				let token_id = T::NFTInterface::next_token_id(nft_class_id);
-				T::NFTInterface::mint_into(&nft_class_id, &token_id, &owner)?;
+			// Pay for minting the token
+			T::NFTInterface::pay_mint_fee(&owner, &nft_class_id, 1u32)?;
 
-				// Create a record of the Mint and insert it into storage
-				MintedAccount::<T>::insert(&proxy_account, token_id);
-				Ok(())
-			} else {
-				Err(Error::<T>::AccountTokenAlreadyExists.into())
-			}
+			// Mint the Account Token's NFT.
+			let token_id = T::NFTInterface::next_token_id(nft_class_id);
+			T::NFTInterface::mint_into(&nft_class_id, &token_id, &owner)?;
+
+			// Create a record of the Mint and insert it into storage
+			MintedAccount::<T>::insert(&proxy_account, token_id);
+
+			Self::deposit_event(Event::AccountTokenReminted {
+				owner,
+				account: proxy_account,
+				token_id,
+			});
+			Ok(())
 		}
 	}
 }

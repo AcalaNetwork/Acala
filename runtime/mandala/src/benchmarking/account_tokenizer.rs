@@ -94,7 +94,7 @@ runtime_benchmarks! {
 		));
 	}: _(RawOrigin::Signed(caller.clone()), proxy, caller.clone())
 
-	confirm_redeem_account_token {
+	confirm_redeem {
 		let (caller, proxy) = setup_account_tokenizer_benchmark();
 
 		assert_ok!(AccountTokenizer::request_mint(
@@ -117,7 +117,7 @@ runtime_benchmarks! {
 		assert_ok!(ForeignStateOracle::respond_query_request(OriginCaller::ForeignStateOracleCommittee(pallet_collective::RawOrigin::Members(1, 1)).into(), 1, vec![], MAXIMUM_BLOCK_WEIGHT));
 	}
 
-	transfer_nft {
+	return_custodial_account_token {
 		let (caller, proxy) = setup_account_tokenizer_benchmark();
 		assert_ok!(AccountTokenizer::request_mint(
 			Origin::signed(caller.clone()),
@@ -173,7 +173,7 @@ runtime_benchmarks! {
 		));
 	}: _(Origin::root(), caller, dollar(NATIVE), true)
 
-	remint_burned_nft {
+	remint_burnt_nft {
 		let (caller, proxy) = setup_account_tokenizer_benchmark();
 		assert_ok!(AccountTokenizer::request_mint(
 			Origin::signed(caller.clone()),

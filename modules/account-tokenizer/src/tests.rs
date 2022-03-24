@@ -25,7 +25,10 @@ use crate::Weight;
 use frame_support::{
 	assert_noop, assert_ok,
 	dispatch::DispatchError,
-	traits::{tokens::nonfungibles::Inspect, Hooks},
+	traits::{
+		tokens::nonfungibles::{Inspect, Mutate},
+		Hooks,
+	},
 };
 use hex_literal::hex;
 use module_support::CreateExtended;
@@ -589,7 +592,7 @@ fn redeem_request_rejected() {
 
 			// Governance can only transfer NFT owned by treasury
 			assert_noop!(
-				AccountTokenizer::transfer_nft(Origin::signed(ORACLE), proxy.clone(), BOB),
+				AccountTokenizer::return_custodial_account_token(Origin::signed(ORACLE), proxy.clone(), BOB),
 				crate::Error::<Runtime>::CallerUnauthorized
 			);
 
@@ -622,7 +625,7 @@ fn redeem_request_rejected() {
 			));
 
 			// Governance can return token back to Alice due to rejection
-			assert_ok!(AccountTokenizer::transfer_nft(
+			assert_ok!(AccountTokenizer::return_custodial_account_token(
 				Origin::signed(ORACLE),
 				proxy.clone(),
 				ALICE
@@ -633,7 +636,7 @@ fn redeem_request_rejected() {
 }
 
 #[test]
-fn request_mint_oracle_fails() {
+fn can_handle_when_request_mint_oracle_fails() {
 	ExtBuilder::default()
 		.balances(vec![(ALICE, dollar(1_000))])
 		.build()
@@ -650,5 +653,167 @@ fn request_mint_oracle_fails() {
 				0,
 				0
 			));
+
+			assert_eq!(Balances::free_balance(&ALICE), dollar(988));
+			assert_eq!(Balances::reserved_balance(&ALICE), dollar(10));
+
+			// can return user fund when oracle failed to respond to mint
+			assert_ok!(AccountTokenizer::force_unreserve_funds(
+				Origin::signed(ORACLE),
+				ALICE,
+				dollar(10),
+				false,
+			));
+
+			assert_eq!(Balances::free_balance(&ALICE), dollar(998));
+			assert_eq!(Balances::reserved_balance(&ALICE), 0);
+
+			assert_ok!(AccountTokenizer::request_mint(
+				Origin::signed(ALICE),
+				proxy.clone(),
+				ALICE.clone(),
+				1,
+				0,
+				0
+			));
+			assert_eq!(Balances::free_balance(&ALICE), dollar(986));
+			assert_eq!(Balances::reserved_balance(&ALICE), dollar(10));
+
+			// can slash the reserved fund
+			assert_ok!(AccountTokenizer::force_unreserve_funds(
+				Origin::signed(ORACLE),
+				ALICE,
+				dollar(10),
+				true,
+			));
+
+			assert_eq!(Balances::free_balance(&ALICE), dollar(986));
+			assert_eq!(Balances::free_balance(&TREASURY), dollar(12));
+			assert_eq!(Balances::reserved_balance(&ALICE), 0);
+
+			// If slashed by mistake, the fund can be re-imbursed by the treasury
+			assert_ok!(AccountTokenizer::transfer_treasury_funds(
+				Origin::signed(ORACLE),
+				ALICE,
+				dollar(10)
+			));
+			assert_eq!(Balances::free_balance(&ALICE), dollar(996));
+			assert_eq!(Balances::free_balance(&TREASURY), dollar(2));
+		});
+}
+
+#[test]
+fn can_remint_account_token() {
+	ExtBuilder::default()
+		.balances(vec![(ALICE, dollar(1_000))])
+		.build()
+		.execute_with(|| {
+			AccountTokenizer::on_runtime_upgrade();
+			let proxy = AccountId::new(hex!["7342619566cac76247062ffd59cd3fb3ffa3350dc6a5087938b9d1c46b286da3"]);
+
+			// Mint the NFT.
+			assert_ok!(AccountTokenizer::request_mint(
+				Origin::signed(ALICE),
+				proxy.clone(),
+				ALICE.clone(),
+				1,
+				0,
+				0
+			));
+
+			assert_ok!(ForeignStateOracle::respond_query_request(
+				Origin::signed(ORACLE),
+				0,
+				vec![1],
+				CALL_WEIGHT,
+			));
+			// Burn the NFT directly through the NFT module
+			assert_ok!(ModuleNFT::burn_from(&0, &0));
+
+			assert_eq!(AccountTokenizer::minted_account(&proxy), Some(0));
+			assert_eq!(ModuleNFT::owner(&0, &0), None);
+
+			// Can remint burned NFT
+			assert_ok!(AccountTokenizer::remint_burnt_nft(
+				Origin::signed(ORACLE),
+				proxy.clone(),
+				ALICE
+			));
+			assert_eq!(AccountTokenizer::minted_account(&proxy), Some(1));
+			assert_eq!(ModuleNFT::owner(&0, &1), Some(ALICE));
+
+			System::assert_last_event(Event::AccountTokenizer(crate::Event::AccountTokenReminted {
+				owner: ALICE,
+				account: proxy.clone(),
+				token_id: 1,
+			}));
+		});
+}
+
+#[test]
+fn can_handle_oracle_failed_to_confirm_redeem() {
+	ExtBuilder::default()
+		.balances(vec![(ALICE, dollar(1_000))])
+		.build()
+		.execute_with(|| {
+			AccountTokenizer::on_runtime_upgrade();
+			let proxy = AccountId::new(hex!["7342619566cac76247062ffd59cd3fb3ffa3350dc6a5087938b9d1c46b286da3"]);
+
+			// Mint the NFT.
+			assert_ok!(AccountTokenizer::request_mint(
+				Origin::signed(ALICE),
+				proxy.clone(),
+				ALICE.clone(),
+				1,
+				0,
+				0
+			));
+
+			assert_ok!(ForeignStateOracle::respond_query_request(
+				Origin::signed(ORACLE),
+				0,
+				vec![1],
+				CALL_WEIGHT,
+			));
+
+			assert_ok!(AccountTokenizer::request_redeem(
+				Origin::signed(ALICE),
+				proxy.clone(),
+				ALICE
+			));
+
+			// Token is taken into the custody of the treasury
+			assert_eq!(AccountTokenizer::minted_account(&proxy), Some(0));
+			assert_eq!(ModuleNFT::owner(&0, &0), Some(TREASURY));
+
+			// can return NFT tokens held in custody
+			assert_ok!(AccountTokenizer::return_custodial_account_token(
+				Origin::signed(ORACLE),
+				proxy.clone(),
+				ALICE
+			));
+
+			assert_eq!(AccountTokenizer::minted_account(&proxy), Some(0));
+			assert_eq!(ModuleNFT::owner(&0, &0), Some(ALICE));
+			System::assert_last_event(Event::AccountTokenizer(crate::Event::CustodialAccountTokenReturned {
+				token_id: 0,
+				new_owner: ALICE,
+			}));
+
+			// Alternatively, the NFT can be burned
+			assert_ok!(AccountTokenizer::request_redeem(
+				Origin::signed(ALICE),
+				proxy.clone(),
+				ALICE
+			));
+
+			assert_ok!(AccountTokenizer::burn_nft(Origin::signed(ORACLE), proxy.clone()));
+			assert_eq!(AccountTokenizer::minted_account(&proxy), None);
+			assert_eq!(ModuleNFT::owner(&0, &0), None);
+			System::assert_last_event(Event::ModuleNFT(module_nft::Event::BurnedToken {
+				owner: TREASURY,
+				class_id: 0,
+				token_id: 0,
+			}));
 		});
 }
