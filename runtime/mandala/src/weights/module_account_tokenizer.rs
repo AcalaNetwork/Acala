@@ -111,4 +111,54 @@ impl<T: frame_system::Config> module_account_tokenizer::WeightInfo for WeightInf
 			.saturating_add(T::DbWeight::get().reads(8 as Weight))
 			.saturating_add(T::DbWeight::get().writes(7 as Weight))
 	}
+	// Storage: AccountTokenizer NFTClassId (r:1 w:0)
+	// Storage: AccountTokenizer MintedAccount (r:1 w:0)
+	// Storage: OrmlNFT Tokens (r:1 w:1)
+	// Storage: OrmlNFT Classes (r:1 w:0)
+	// Storage: Balances Reserves (r:2 w:2)
+	// Storage: System Account (r:2 w:2)
+	// Storage: OrmlNFT TokensByOwner (r:0 w:2)
+	fn transfer_nft() -> Weight {
+		(76_443_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(8 as Weight))
+			.saturating_add(T::DbWeight::get().writes(7 as Weight))
+	}
+	// Storage: AccountTokenizer NFTClassId (r:1 w:0)
+	// Storage: AccountTokenizer MintedAccount (r:1 w:1)
+	// Storage: OrmlNFT Tokens (r:1 w:1)
+	// Storage: OrmlNFT Classes (r:1 w:1)
+	// Storage: Balances Reserves (r:1 w:1)
+	// Storage: System Account (r:1 w:1)
+	// Storage: OrmlNFT TokensByOwner (r:0 w:1)
+	fn burn_nft() -> Weight {
+		(49_403_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(6 as Weight))
+			.saturating_add(T::DbWeight::get().writes(6 as Weight))
+	}
+	// Storage: System Account (r:2 w:2)
+	fn transfer_treasury_funds() -> Weight {
+		(25_563_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(2 as Weight))
+			.saturating_add(T::DbWeight::get().writes(2 as Weight))
+	}
+	// Storage: Balances Reserves (r:1 w:1)
+	// Storage: System Account (r:2 w:2)
+	fn force_unreserve_funds() -> Weight {
+		(27_459_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(3 as Weight))
+			.saturating_add(T::DbWeight::get().writes(3 as Weight))
+	}
+	// Storage: AccountTokenizer NFTClassId (r:1 w:0)
+	// Storage: AccountTokenizer MintedAccount (r:1 w:1)
+	// Storage: OrmlNFT Tokens (r:1 w:1)
+	// Storage: OrmlNFT Classes (r:1 w:1)
+	// Storage: System Account (r:2 w:2)
+	// Storage: OrmlNFT NextTokenId (r:1 w:1)
+	// Storage: Balances Reserves (r:1 w:1)
+	// Storage: OrmlNFT TokensByOwner (r:0 w:1)
+	fn remint_burned_nft() -> Weight {
+		(77_283_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(8 as Weight))
+			.saturating_add(T::DbWeight::get().writes(8 as Weight))
+	}
 }

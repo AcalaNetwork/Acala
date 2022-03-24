@@ -237,7 +237,7 @@ fn can_burn_account_token_nft() {
 			assert_ok!(ForeignStateOracle::respond_query_request(
 				OriginCaller::ForeignStateOracleCommittee(pallet_collective::RawOrigin::Members(1, 1)).into(),
 				1,
-				vec![],
+				vec![1],
 				MAXIMUM_BLOCK_WEIGHT
 			));
 

@@ -303,7 +303,7 @@ pub mod module {
 				.using_encoded(blake2_256);
 			let derived_account: T::AccountId = Decode::decode(&mut TrailingZeroInput::new(entropy.as_ref()))
 				.expect("infinite length input; no invalid inputs for type; qed");
-			// ensures signer also spawned anonymous proxy
+			// ensures account is anonymous proxy
 			ensure!(account == derived_account, Error::<T>::FailedAnonymousProxyCheck);
 
 			// Ensure the token hasn't already been minted.
@@ -456,7 +456,7 @@ pub mod module {
 		/// Params:
 		/// 	- `proxy_account`: AccountId of anon proxy that is tokenized.
 		/// 	- `new_owner`: AccountId that NFT will be sent to.
-		#[pallet::weight(0)]
+		#[pallet::weight(<T as Config>::WeightInfo::transfer_nft())]
 		#[transactional]
 		pub fn transfer_nft(
 			origin: OriginFor<T>,
@@ -479,12 +479,13 @@ pub mod module {
 		///
 		/// Params:
 		/// 	- `token_id`: TokenId representing NFT to be burned
-		#[pallet::weight(0)]
+		#[pallet::weight(<T as Config>::WeightInfo::burn_nft())]
 		#[transactional]
-		pub fn burn_nft(origin: OriginFor<T>, token_id: TokenId) -> DispatchResult {
+		pub fn burn_nft(origin: OriginFor<T>, proxy_account: T::AccountId) -> DispatchResult {
 			T::AccountTokenizerGovernance::ensure_origin(origin)?;
 
 			let nft_class_id = Self::nft_class_id();
+			let token_id = MintedAccount::<T>::take(&proxy_account).ok_or(Error::<T>::AccountTokenNotFound)?;
 			let owner = T::NFTInterface::owner(&nft_class_id, &token_id).ok_or(Error::<T>::AccountTokenNotFound)?;
 			// Ensure that NFT is owned by treasury account
 			ensure!(T::TreasuryAccount::get() == owner, Error::<T>::CallerUnauthorized);
@@ -498,7 +499,7 @@ pub mod module {
 		/// Params:
 		/// 	- `to`: Account recieving funds
 		/// 	- `amount`: Amount of native token sent
-		#[pallet::weight(0)]
+		#[pallet::weight(<T as Config>::WeightInfo::transfer_treasury_funds())]
 		#[transactional]
 		pub fn transfer_treasury_funds(origin: OriginFor<T>, to: T::AccountId, amount: Balance) -> DispatchResult {
 			T::AccountTokenizerGovernance::ensure_origin(origin)?;
@@ -512,7 +513,7 @@ pub mod module {
 		/// 	- `account`: Account that has stranded reserved funds
 		/// 	- `amount`: Amount to unreserve/slash
 		/// 	- `slash`: Determines whether the funds will be returned or slashed
-		#[pallet::weight(0)]
+		#[pallet::weight(<T as Config>::WeightInfo::force_unreserve_funds())]
 		#[transactional]
 		pub fn force_unreserve_funds(
 			origin: OriginFor<T>,
@@ -535,13 +536,13 @@ pub mod module {
 			Ok(())
 		}
 
-		/// If someone burns their anon proxy nft, this will remint nft if `MintedAccount`
-		/// storage does not correspond to a existing nft (Because it was burned by user)
+		/// This will remint nft if `MintedAccount` storage does not correspond
+		/// to a existing nft (This could occur if nft was burned by user)
 		///
 		/// Params:
 		/// 	- `proxy_account`: Anonymous proxy that nft corresponds to
 		/// 	- `owner`: Account recieving reminted nft
-		#[pallet::weight(0)]
+		#[pallet::weight(<T as Config>::WeightInfo::remint_burned_nft())]
 		#[transactional]
 		pub fn remint_burned_nft(
 			origin: OriginFor<T>,

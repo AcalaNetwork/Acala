@@ -276,11 +276,8 @@ impl<T: Config> ForeignChainStateQuery<T::AccountId, T::DispatchableCall, T::Blo
 			ExistenceRequirement::KeepAlive,
 		)?;
 
-		let expiry = match query_duration {
-			Some(duration) => Some(T::BlockNumberProvider::current_block_number().saturating_add(duration)),
-			None => None,
-		};
-
+		let expiry =
+			query_duration.map(|duration| T::BlockNumberProvider::current_block_number().saturating_add(duration));
 		let foreign_request = ForeignQueryRequest {
 			dispatchable_call,
 			expiry,

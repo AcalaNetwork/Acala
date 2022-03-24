@@ -50,7 +50,7 @@ fn dispatch_and_remove_works() {
 			ForeignStateOracle::respond_query_request(Origin::signed(1), 0, b"hello".to_vec(), CALL_WEIGHT),
 			Error::<Runtime>::NoMatchingCall
 		);
-		// Cannot remove active query that isn't expired
+		// Cannot remove active query that isn't expired, None is never expired
 		assert_noop!(
 			ForeignStateOracle::purge_expired_query(Origin::signed(BOB), 1),
 			Error::<Runtime>::QueryNotExpired
@@ -78,6 +78,16 @@ fn dispatch_and_remove_works() {
 		}));
 
 		assert_ok!(QueryExample::mock_create_query(Origin::signed(ALICE), vec![], Some(10)));
+		System::assert_last_event(Event::ForeignStateOracle(crate::Event::QueryRequestCreated {
+			expiry: Some(11),
+			query_id: 2,
+		}));
+		// Cannot remove active query that isn't expired
+		assert_noop!(
+			ForeignStateOracle::purge_expired_query(Origin::signed(BOB), 2),
+			Error::<Runtime>::QueryNotExpired
+		);
+
 		System::set_block_number(100);
 		assert_noop!(
 			ForeignStateOracle::respond_query_request(Origin::signed(ALICE), 2, b"hello".to_vec(), CALL_WEIGHT),
@@ -86,32 +96,9 @@ fn dispatch_and_remove_works() {
 
 		let bob_before = Balances::free_balance(BOB);
 		assert_ok!(ForeignStateOracle::purge_expired_query(Origin::signed(BOB), 2));
-		assert_eq!(bob_before.add(QueryFee::get().div(2u32)), Balances::free_balance(BOB))
-	});
-}
-
-#[test]
-fn create_query_works() {
-	ExtBuilder::default().build().execute_with(|| {
-		// Correct event emitted when given expiry of None
-		assert_ok!(QueryExample::mock_create_query(
-			Origin::signed(ALICE),
-			b"hi".to_vec(),
-			None
-		));
-		System::assert_last_event(Event::ForeignStateOracle(crate::Event::QueryRequestCreated {
-			expiry: None,
-			query_id: 0,
-		}));
-		// Correct event emited when given expiry of Some()
-		assert_ok!(QueryExample::mock_create_query(
-			Origin::signed(ALICE),
-			b"hi".to_vec(),
-			Some(10)
-		));
-		System::assert_last_event(Event::ForeignStateOracle(crate::Event::QueryRequestCreated {
-			expiry: Some(11),
-			query_id: 1,
+		assert_eq!(bob_before.add(QueryFee::get().div(2u32)), Balances::free_balance(BOB));
+		System::assert_last_event(Event::ForeignStateOracle(crate::Event::StaleQueryRemoved {
+			query_id: 2,
 		}));
 	});
 }
@@ -142,5 +129,6 @@ fn query_and_cancel_works() {
 		assert_ok!(QueryExample::mock_cancel_query(Origin::none(), ALICE, 0));
 		// Balance is restored other than the cancel fee
 		assert_eq!(alice_before.sub(CancelFee::get()), Balances::free_balance(ALICE));
+		System::assert_last_event(Event::ForeignStateOracle(crate::Event::QueryCanceled { query_id: 0 }));
 	});
 }
