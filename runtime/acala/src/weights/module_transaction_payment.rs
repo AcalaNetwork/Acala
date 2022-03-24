@@ -53,25 +53,6 @@ impl<T: frame_system::Config> module_transaction_payment::WeightInfo for WeightI
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
-	// Storage: TransactionPayment GlobalFeeSwapPath (r:1 w:1)
-	fn set_global_fee_swap_path() -> Weight {
-		(11_851_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
-	}
-	// Storage: TransactionPayment GlobalFeeSwapPath (r:1 w:1)
-	fn remove_global_fee_swap_path() -> Weight {
-		(22_316_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
-	}
-	// Storage: TransactionPayment PoolSize (r:1 w:0)
-	// Storage: TransactionPayment SwapBalanceThreshold (r:0 w:1)
-	fn set_swap_balance_threshold() -> Weight {
-		(13_364_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
-	}
 	// Storage: TransactionPayment PoolSize (r:1 w:1)
 	// Storage: TransactionPayment AlternativeFeeSwapPath (r:1 w:0)
 	// Storage: Dex TradingPairStatuses (r:1 w:0)
@@ -104,5 +85,14 @@ impl<T: frame_system::Config> module_transaction_payment::WeightInfo for WeightI
 		(7_019_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+	}
+
+	fn with_fee_path() -> Weight {
+		(156_000_000 as Weight)
+	}
+
+	fn with_fee_currency() -> Weight {
+		(193_000_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 	}
 }

@@ -44,7 +44,7 @@ use frame_support::{
 use frame_system::{ensure_signed, pallet_prelude::*};
 use module_support::CompoundCashTrait;
 use orml_traits::MultiCurrency;
-use primitives::{Balance, CashYieldIndex, CurrencyId, Moment, TokenSymbol};
+use primitives::{AccountId, Balance, CashYieldIndex, CurrencyId, Moment, TokenSymbol};
 use scale_info::TypeInfo;
 use sp_core::H256;
 use sp_runtime::{
@@ -60,7 +60,6 @@ pub type CompoundAuthoritySignature = AccountId32;
 #[frame_support::pallet]
 pub mod module {
 	use super::*;
-	use primitives::AccountId;
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {

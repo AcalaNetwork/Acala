@@ -39,7 +39,7 @@
       "TAI"
     ]
   },
-  "relayChain": "rococo-local",
+  "relayChain": "rococo",
   "paraId": 2000,
   "badBlocks": null,
   "consensusEngine": null,

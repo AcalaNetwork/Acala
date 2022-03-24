@@ -43,7 +43,7 @@ use scale_info::TypeInfo;
 use sp_core::{H160, H256};
 use sp_runtime::{
 	traits::{AccountIdConversion, BlakeTwo256, BlockNumberProvider, Convert, IdentityLookup, One as OneT, Zero},
-	AccountId32, DispatchResult, FixedPointNumber, FixedU128, Perbill,
+	AccountId32, DispatchResult, FixedPointNumber, FixedU128, Perbill, Percent,
 };
 use sp_std::prelude::*;
 
@@ -242,8 +242,7 @@ impl orml_nft::Config for Test {
 
 parameter_types! {
 	pub const TransactionByteFee: Balance = 10;
-	pub const GetStableCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
-	pub DefaultFeeSwapPathList: Vec<Vec<CurrencyId>> = vec![vec![CurrencyId::Token(TokenSymbol::AUSD), CurrencyId::Token(TokenSymbol::ACA)]];
+	pub const GetStableCurrencyId: CurrencyId = AUSD;
 	pub MaxSwapSlippageCompareToOracle: Ratio = Ratio::one();
 	pub OperationalFeeMultiplier: u64 = 5;
 	pub TipPerWeightStep: Balance = 1;
@@ -251,12 +250,15 @@ parameter_types! {
 	pub const TreasuryPalletId: PalletId = PalletId(*b"aca/trsy");
 	pub const TransactionPaymentPalletId: PalletId = PalletId(*b"aca/fees");
 	pub KaruraTreasuryAccount: AccountId = TreasuryPalletId::get().into_account();
+	pub const CustomFeeSurplus: Percent = Percent::from_percent(50);
+	pub const AlternativeFeeSurplus: Percent = Percent::from_percent(25);
+	pub DefaultFeeTokens: Vec<CurrencyId> = vec![AUSD];
 }
 
 impl module_transaction_payment::Config for Test {
 	type Event = Event;
+	type Call = Call;
 	type NativeCurrencyId = GetNativeCurrencyId;
-	type DefaultFeeSwapPathList = DefaultFeeSwapPathList;
 	type Currency = Balances;
 	type MultiCurrency = Currencies;
 	type OnTransactionPayment = ();
@@ -275,6 +277,9 @@ impl module_transaction_payment::Config for Test {
 	type PalletId = TransactionPaymentPalletId;
 	type TreasuryAccount = KaruraTreasuryAccount;
 	type UpdateOrigin = EnsureSignedBy<ListingOrigin, AccountId>;
+	type CustomFeeSurplus = CustomFeeSurplus;
+	type AlternativeFeeSurplus = AlternativeFeeSurplus;
+	type DefaultFeeTokens = DefaultFeeTokens;
 }
 pub type ChargeTransactionPayment = module_transaction_payment::ChargeTransactionPayment<Test>;
 
