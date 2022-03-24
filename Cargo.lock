@@ -10993,7 +10993,6 @@ name = "runtime-common"
 version = "2.4.1"
 dependencies = [
  "acala-primitives",
- "acala-service",
  "cumulus-pallet-parachain-system",
  "ethabi",
  "frame-support",
@@ -11012,6 +11011,7 @@ dependencies = [
  "module-support",
  "module-transaction-payment",
  "num_enum",
+ "orml-bencher",
  "orml-currencies",
  "orml-nft",
  "orml-oracle",

@@ -16,12 +16,12 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use acala_service::chain_spec::mandala::evm_genesis;
 pub use codec::Encode;
 use cumulus_test_relay_sproof_builder::RelayStateSproofBuilder;
 use frame_support::traits::{GenesisBuild, OnFinalize, OnIdle, OnInitialize};
 pub use frame_support::{assert_noop, assert_ok, traits::Currency};
 pub use frame_system::RawOrigin;
+use runtime_common::evm_genesis;
 
 pub use module_support::{
 	mocks::MockAddressMapping, AddressMapping, CDPTreasury, DEXManager, Price, Rate, Ratio, RiskManager,
