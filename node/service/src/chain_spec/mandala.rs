@@ -19,15 +19,6 @@
 use crate::chain_spec::{get_account_id_from_seed, get_authority_keys_from_seed, Extensions, TELEMETRY_URL};
 use acala_primitives::{AccountId, Balance, Nonce, TokenSymbol};
 use hex_literal::hex;
-
-use coins_bip39::{English, Mnemonic, Wordlist};
-use elliptic_curve::sec1::ToEncodedPoint;
-use k256::{
-	ecdsa::{SigningKey, VerifyingKey},
-	EncodedPoint as K256PublicKey,
-};
-use tiny_keccak::{Hasher, Keccak};
-
 use module_evm::GenesisAccount;
 use sc_chain_spec::ChainType;
 use sc_telemetry::TelemetryEndpoints;
@@ -37,6 +28,14 @@ use sp_core::{bytes::from_hex, crypto::UncheckedInto, sr25519, Bytes, H160};
 use sp_finality_grandpa::AuthorityId as GrandpaId;
 use sp_runtime::{traits::Zero, FixedPointNumber, FixedU128};
 use sp_std::{collections::btree_map::BTreeMap, str::FromStr};
+
+use coins_bip39::{English, Mnemonic, Wordlist};
+use elliptic_curve::sec1::ToEncodedPoint;
+use k256::{
+	ecdsa::{SigningKey, VerifyingKey},
+	EncodedPoint as K256PublicKey,
+};
+use tiny_keccak::{Hasher, Keccak};
 
 pub type ChainSpec = sc_service::GenericChainSpec<mandala_runtime::GenesisConfig, Extensions>;
 
@@ -55,8 +54,7 @@ pub fn parachain_dev_testnet_config(mnemonic: Option<&str>) -> Result<ChainSpec,
 	dev_testnet_config_from_chain_id("mandala-pc-dev", mnemonic)
 }
 
-fn generate_evm_address<W: Wordlist>(mnemonic: Option<&str>, index: u32) -> H160 {
-	let phrase = mnemonic.unwrap_or("fox sight canyon orphan hotel grow hedgehog build bless august weather swarm");
+fn generate_evm_address<W: Wordlist>(phrase: &str, index: u32) -> H160 {
 	let derivation_path =
 		coins_bip32::path::DerivationPath::from_str(&format!("{}{}", DEFAULT_DERIVATION_PATH_PREFIX, index))
 			.expect("should parse the default derivation path");
@@ -86,11 +84,12 @@ where
 }
 
 fn get_evm_accounts(mnemonic: Option<&str>) -> Vec<H160> {
+	let phrase = mnemonic.unwrap_or("fox sight canyon orphan hotel grow hedgehog build bless august weather swarm");
 	let mut evm_accounts = Vec::new();
 	for index in 0..10u32 {
-		let addr = generate_evm_address::<English>(mnemonic, index);
+		let addr = generate_evm_address::<English>(phrase, index);
 		evm_accounts.push(addr);
-		println!("index: {:?}, evm address: {:?}", index, addr);
+		log::info!("index: {:?}, evm address: {:?}", index, addr);
 	}
 	evm_accounts
 }
