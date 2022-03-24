@@ -18,10 +18,16 @@
 
 use crate::chain_spec::{get_account_id_from_seed, get_authority_keys_from_seed, Extensions, TELEMETRY_URL};
 use acala_primitives::{AccountId, Balance, Nonce, TokenSymbol};
-use coins_bip39::{English, Mnemonic, Wordlist};
 use hex_literal::hex;
-use k256::ecdsa::SigningKey;
-use k256::EncodedPoint as K256PublicKey;
+
+use coins_bip39::{English, Mnemonic, Wordlist};
+use elliptic_curve::sec1::ToEncodedPoint;
+use k256::{
+	ecdsa::{SigningKey, VerifyingKey},
+	EncodedPoint as K256PublicKey,
+};
+use tiny_keccak::{Hasher, Keccak};
+
 use module_evm::GenesisAccount;
 use sc_chain_spec::ChainType;
 use sc_telemetry::TelemetryEndpoints;
@@ -31,7 +37,6 @@ use sp_core::{bytes::from_hex, crypto::UncheckedInto, sr25519, Bytes, H160};
 use sp_finality_grandpa::AuthorityId as GrandpaId;
 use sp_runtime::{traits::Zero, FixedPointNumber, FixedU128};
 use sp_std::{collections::btree_map::BTreeMap, str::FromStr};
-use tiny_keccak::{Hasher, Keccak};
 
 pub type ChainSpec = sc_service::GenericChainSpec<mandala_runtime::GenesisConfig, Extensions>;
 
@@ -59,12 +64,12 @@ fn generate_evm_address<W: Wordlist>(mnemonic: Option<&str>, index: u32) -> H160
 
 	let derived_priv_key = mnemonic.derive_key(&derivation_path, None).unwrap();
 	let key: &SigningKey = derived_priv_key.as_ref();
-	let secret_key = SigningKey::from_bytes(&key.to_bytes()).unwrap();
+	let secret_key: SigningKey = SigningKey::from_bytes(&key.to_bytes()).unwrap();
+	let verify_key: VerifyingKey = secret_key.verifying_key();
 
-	// let uncompressed_pub_key = K256PublicKey::from(&secret_key.verifying_key()).decompress();
-	// let public_key = uncompressed_pub_key.unwrap().to_bytes();
-	let public_key = K256PublicKey::from(&secret_key.verifying_key()).to_bytes();
-	debug_assert_eq!(public_key[0], 0x04);
+	let point: &K256PublicKey = &verify_key.to_encoded_point(false);
+	let public_key = point.to_bytes();
+
 	let hash = keccak256(&public_key[1..]);
 	H160::from_slice(&hash[12..])
 }
@@ -81,26 +86,11 @@ where
 }
 
 fn get_evm_accounts(mnemonic: Option<&str>) -> Vec<H160> {
-	// let phrase = mnemonic.unwrap_or("fox sight canyon orphan hotel grow hedgehog build bless august
-	// weather swarm");
-
 	let mut evm_accounts = Vec::new();
 	for index in 0..10u32 {
-		// let wallet = MnemonicBuilder::<English>::default()
-		// 	.phrase(phrase)
-		// 	.index(index)
-		// 	.unwrap()
-		// 	.build()
-		// 	.unwrap();
-		// evm_accounts.push(wallet.address());
 		let addr = generate_evm_address::<English>(mnemonic, index);
 		evm_accounts.push(addr);
-		log::info!(
-			"index: {:?}, address: {:?}",
-			index,
-			// hex::encode(wallet.signer().to_bytes()),
-			addr
-		);
+		println!("index: {:?}, evm address: {:?}", index, addr);
 	}
 	evm_accounts
 }
