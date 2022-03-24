@@ -1772,7 +1772,7 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	(XcmInterfaceMigration, TransactionPaymentMigration),
+	TransactionPaymentMigration,
 >;
 
 pub struct TransactionPaymentMigration;
@@ -1797,24 +1797,6 @@ impl OnRuntimeUpgrade for TransactionPaymentMigration {
 			let _ = module_transaction_payment::Pallet::<Runtime>::disable_pool(token);
 			let _ = module_transaction_payment::Pallet::<Runtime>::initialize_pool(token, path, poo_size, threshold);
 		}
-		<Runtime as frame_system::Config>::BlockWeights::get().max_block
-	}
-}
-
-// init Statemine location to its weight and fee, used by ParachainMinFee
-pub struct XcmInterfaceMigration;
-impl OnRuntimeUpgrade for XcmInterfaceMigration {
-	fn on_runtime_upgrade() -> frame_support::weights::Weight {
-		let _ = <module_xcm_interface::Pallet<Runtime>>::update_xcm_dest_weight_and_fee(
-			Origin::root(),
-			vec![(
-				module_xcm_interface::XcmInterfaceOperation::ParachainFee(Box::new(
-					(1, Parachain(parachains::statemine::ID)).into(),
-				)),
-				Some(4_000_000_000),
-				Some(4_000_000_000),
-			)],
-		);
 		<Runtime as frame_system::Config>::BlockWeights::get().max_block
 	}
 }
