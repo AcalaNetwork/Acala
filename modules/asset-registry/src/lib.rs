@@ -307,7 +307,7 @@ pub mod module {
 			Ok(())
 		}
 
-		#[pallet::weight(0)]
+		#[pallet::weight(T::WeightInfo::register_native_asset())]
 		#[transactional]
 		pub fn register_native_asset(
 			origin: OriginFor<T>,
@@ -325,7 +325,7 @@ pub mod module {
 			Ok(())
 		}
 
-		#[pallet::weight(0)]
+		#[pallet::weight(T::WeightInfo::update_native_asset())]
 		#[transactional]
 		pub fn update_native_asset(
 			origin: OriginFor<T>,
