@@ -584,66 +584,12 @@ frame_support::construct_runtime!(
 // according to our desired mockup.
 pub fn new_test_ext() -> sp_io::TestExternalities {
 	use frame_support::{assert_ok, traits::GenesisBuild};
-	use module_evm::GenesisAccount;
-	use primitives::evm::PREDEPLOY_ADDRESS_START;
-	use sp_core::{bytes::from_hex, Bytes};
-	use sp_std::{collections::btree_map::BTreeMap, str::FromStr};
-
-	/// Returns `evm_genesis_accounts`
-	pub fn evm_genesis(evm_accounts: Vec<H160>) -> BTreeMap<H160, GenesisAccount<Balance, Nonce>> {
-		let contracts_json = &include_bytes!("../../../../predeploy-contracts/resources/bytecodes.json")[..];
-		let contracts: Vec<(String, String, String)> = serde_json::from_slice(contracts_json).unwrap();
-		let mut accounts = BTreeMap::new();
-		for (_, address, code_string) in contracts {
-			let account = GenesisAccount {
-				nonce: 0u32,
-				balance: 0u128,
-				storage: BTreeMap::new(),
-				code: if code_string.len().is_zero() {
-					vec![]
-				} else {
-					Bytes::from_str(&code_string).unwrap().0
-				},
-				enable_contract_development: false,
-			};
-
-			let addr = H160::from_slice(
-				from_hex(address.as_str())
-					.expect("predeploy-contracts must specify address")
-					.as_slice(),
-			);
-			accounts.insert(addr, account);
-		}
-
-		// Replace mirrored token contract code.
-		let token = accounts
-			.get(&PREDEPLOY_ADDRESS_START)
-			.expect("the token predeployed contract must exist")
-			.clone();
-		accounts.iter_mut().for_each(|v| {
-			if v.1.code.is_empty() {
-				v.1.code = token.code.clone();
-			}
-		});
-
-		for dev_acc in evm_accounts {
-			let account = GenesisAccount {
-				nonce: 0u32,
-				balance: 1000 * crate::dollar(ACA),
-				storage: BTreeMap::new(),
-				code: vec![],
-				enable_contract_development: true,
-			};
-			accounts.insert(dev_acc, account);
-		}
-
-		accounts
-	}
+	use sp_std::collections::btree_map::BTreeMap;
 
 	let mut storage = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
 
 	let mut accounts = BTreeMap::new();
-	let mut evm_genesis_accounts = evm_genesis(vec![]);
+	let mut evm_genesis_accounts = crate::evm_genesis(vec![]);
 	accounts.append(&mut evm_genesis_accounts);
 
 	accounts.insert(
