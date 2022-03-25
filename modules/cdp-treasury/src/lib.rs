@@ -382,6 +382,7 @@ impl<T: Config> CDPTreasury<T::AccountId> for Pallet<T> {
 }
 
 impl<T: Config> CDPTreasuryExtended<T::AccountId> for Pallet<T> {
+	#[transactional]
 	fn swap_collateral_to_stable(
 		currency_id: CurrencyId,
 		limit: SwapLimit<Balance>,
@@ -428,9 +429,9 @@ impl<T: Config> CDPTreasuryExtended<T::AccountId> for Pallet<T> {
 					redeem_amount: _,
 				} = T::StableAsset::get_redeem_proportion_amount(&yield_info, supply_limit)
 					.ok_or(Error::<T>::CannotSwap)?;
-				let mut swap_paths = vec![];
-				let mut redeem_limits = vec![];
-				let mut swap_limits = vec![];
+				let mut swap_paths = Vec::with_capacity(amounts.len());
+				let mut redeem_limits = Vec::with_capacity(amounts.len());
+				let mut swap_limits = Vec::with_capacity(amounts.len());
 
 				for i in 0..amounts.len() {
 					let currency = pool_info.assets[i];
@@ -449,13 +450,13 @@ impl<T: Config> CDPTreasuryExtended<T::AccountId> for Pallet<T> {
 				}
 				T::StableAsset::redeem_proportion(&Self::account_id(), stable_asset_id, supply_limit, redeem_limits)?;
 
-				let mut supply_sum = 0;
-				let mut target_sum = 0;
+				let mut supply_sum: Balance = Zero::zero();
+				let mut target_sum: Balance = Zero::zero();
 				for i in 0..amounts.len() {
 					let response =
 						T::DEX::swap_with_specific_path(&Self::account_id(), &swap_paths[i], swap_limits[i])?;
-					supply_sum += response.0;
-					target_sum += response.1;
+					supply_sum = supply_sum.checked_add(response.0).ok_or(Error::<T>::CannotSwap)?;
+					target_sum = target_sum.checked_add(response.1).ok_or(Error::<T>::CannotSwap)?;
 				}
 				ensure!(target_sum >= target_limit, Error::<T>::CannotSwap,);
 				Ok((supply_sum, target_sum))

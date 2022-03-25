@@ -21,7 +21,7 @@
 #![cfg(test)]
 
 use super::*;
-use frame_support::{assert_err, assert_noop, assert_ok};
+use frame_support::{assert_noop, assert_ok};
 use mock::{Event, *};
 use sp_runtime::traits::BadOrigin;
 
@@ -366,11 +366,11 @@ fn swap_collateral_to_stable_stable_asset_failures() {
 			0,
 			false
 		));
-		assert_err!(
+		assert_noop!(
 			CDPTreasuryModule::swap_collateral_to_stable(STABLE_ASSET_LP, SwapLimit::ExactTarget(200, 399), false),
 			Error::<Runtime>::CannotSwap
 		);
-		assert_err!(
+		assert_noop!(
 			CDPTreasuryModule::swap_collateral_to_stable(STABLE_ASSET_LP, SwapLimit::ExactSupply(200, 3999), false),
 			Error::<Runtime>::CannotSwap
 		);
