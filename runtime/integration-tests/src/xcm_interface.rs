@@ -22,6 +22,7 @@ use crate::relaychain::kusama_test_net::*;
 use crate::setup::*;
 use frame_support::{assert_ok, weights::Weight};
 use module_homa::UnlockChunk;
+use module_support::HomaSubAccountXcm;
 use module_xcm_interface::XcmInterfaceOperation;
 use pallet_staking::StakingLedger;
 use sp_runtime::MultiAddress;
@@ -36,6 +37,11 @@ fn get_xcm_weight() -> Vec<(XcmInterfaceOperation, Option<Weight>, Option<Balanc
 	vec![
 		// Xcm weight = 400_000_000, fee = ACTUAL_XCM_FEE
 		(XcmInterfaceOperation::XtokensTransfer, Some(XCM_WEIGHT), Some(XCM_FEE)),
+		(
+			XcmInterfaceOperation::ParachainFee(Box::new((1, Parachain(1000)).into())),
+			Some(XCM_WEIGHT),
+			Some(XCM_FEE),
+		),
 		// Xcm weight = 14_000_000_000, fee = ACTUAL_XCM_FEE
 		(
 			XcmInterfaceOperation::HomaWithdrawUnbonded,
@@ -81,6 +87,7 @@ fn configure_homa_and_xcm_interface() {
 		param.commission_rate,
 		param.fast_match_fee_rate,
 	));
+	assert_eq!(XcmInterface::get_parachain_fee((1, Parachain(1000)).into()), XCM_FEE);
 }
 
 #[test]

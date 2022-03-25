@@ -35,9 +35,10 @@ use frame_support::pallet_prelude::InvalidTransaction;
 pub use frame_support::{
 	construct_runtime, log, parameter_types,
 	traits::{
-		Contains, ContainsLengthBound, Currency as PalletCurrency, EnsureOrigin, EqualPrivilegeOnly, Everything, Get,
-		Imbalance, InstanceFilter, IsSubType, IsType, KeyOwnerProofSystem, LockIdentifier, Nothing, OnRuntimeUpgrade,
-		OnUnbalanced, Randomness, SortedMembers, U128CurrencyToVote, WithdrawReasons,
+		ConstU128, ConstU32, Contains, ContainsLengthBound, Currency as PalletCurrency, EnsureOrigin,
+		EqualPrivilegeOnly, Everything, Get, Imbalance, InstanceFilter, IsSubType, IsType, KeyOwnerProofSystem,
+		LockIdentifier, Nothing, OnRuntimeUpgrade, OnUnbalanced, Randomness, SortedMembers, U128CurrencyToVote,
+		WithdrawReasons,
 	},
 	weights::{
 		constants::{BlockExecutionWeight, RocksDbWeight, WEIGHT_PER_SECOND},
@@ -110,10 +111,7 @@ pub use runtime_common::{
 	TipPerWeightStep, ACA, AUSD, DOT, LDOT, RENBTC,
 };
 pub use xcm::latest::prelude::*;
-use xcm_config::XcmConfig;
-pub use xcm_executor::{traits::WeightTrader, Assets, Config, XcmExecutor};
 
-use crate::xcm_config::XcmOriginToCallOrigin;
 /// Import the stable_asset pallet.
 pub use nutsfinance_stable_asset;
 
@@ -130,7 +128,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("mandala"),
 	impl_name: create_runtime_str!("mandala"),
 	authoring_version: 1,
-	spec_version: 2040,
+	spec_version: 2041,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -176,6 +174,8 @@ parameter_types! {
 	// Ecosystem modules
 	pub const StarportPalletId: PalletId = PalletId(*b"aca/stpt");
 	pub const StableAssetPalletId: PalletId = PalletId(*b"nuts/sta");
+	// lock identifier for earning module
+	pub const EarningLockIdentifier: LockIdentifier = *b"aca/earn";
 }
 
 pub fn get_all_module_accounts() -> Vec<AccountId> {
@@ -838,6 +838,12 @@ parameter_type_with_key! {
 	};
 }
 
+parameter_type_with_key! {
+	pub PricingPegged: |_currency_id: CurrencyId| -> Option<CurrencyId> {
+		None
+	};
+}
+
 parameter_types! {
 	pub StableCurrencyFixedPrice: Price = Price::saturating_from_rational(1, 1);
 	pub RewardRatePerRelaychainBlock: Rate = Rate::saturating_from_rational(2_492, 100_000_000_000u128);	// 14% annual staking reward rate of Polkadot
@@ -858,6 +864,7 @@ impl module_prices::Config for Runtime {
 	type LiquidCrowdloanLeaseBlockNumber = LiquidCrowdloanLeaseBlockNumber;
 	type RelayChainBlockNumber = RelayChainBlockNumberProvider<Runtime>;
 	type RewardRatePerRelaychainBlock = RewardRatePerRelaychainBlock;
+	type PricingPegged = PricingPegged;
 	type WeightInfo = weights::module_prices::WeightInfo<Runtime>;
 }
 
@@ -1108,6 +1115,7 @@ parameter_types! {
 		TradingPair::from_currency_ids(AUSD, RENBTC).unwrap(),
 		TradingPair::from_currency_ids(DOT, ACA).unwrap(),
 	];
+	pub const ExtendedProvisioningBlocks: BlockNumber = 2 * DAYS;
 }
 
 impl module_dex::Config for Runtime {
@@ -1120,6 +1128,7 @@ impl module_dex::Config for Runtime {
 	type DEXIncentives = Incentives;
 	type WeightInfo = weights::module_dex::WeightInfo<Runtime>;
 	type ListingOrigin = EnsureRootOrHalfGeneralCouncil;
+	type ExtendedProvisioningBlocks = ExtendedProvisioningBlocks;
 	type OnLiquidityPoolUpdated = ();
 }
 
@@ -1158,13 +1167,9 @@ impl module_transaction_pause::Config for Runtime {
 }
 
 parameter_types! {
-	// Sort by fee charge order
-	pub DefaultFeeSwapPathList: Vec<Vec<CurrencyId>> = vec![
-		vec![AUSD, DOT, ACA],
-		vec![DOT, ACA],
-		vec![LDOT, DOT, ACA],
-		vec![RENBTC, AUSD, ACA]
-	];
+	pub DefaultFeeTokens: Vec<CurrencyId> = vec![AUSD, DOT, LDOT, RENBTC];
+	pub const CustomFeeSurplus: Percent = Percent::from_percent(50);
+	pub const AlternativeFeeSurplus: Percent = Percent::from_percent(25);
 }
 
 type NegativeImbalance = <Balances as PalletCurrency<AccountId>>::NegativeImbalance;
@@ -1190,8 +1195,8 @@ impl OnUnbalanced<NegativeImbalance> for DealWithFees {
 
 impl module_transaction_payment::Config for Runtime {
 	type Event = Event;
+	type Call = Call;
 	type NativeCurrencyId = GetNativeCurrencyId;
-	type DefaultFeeSwapPathList = DefaultFeeSwapPathList;
 	type Currency = Balances;
 	type MultiCurrency = Currencies;
 	type OnTransactionPayment = DealWithFees;
@@ -1210,6 +1215,27 @@ impl module_transaction_payment::Config for Runtime {
 	type PalletId = TransactionPaymentPalletId;
 	type TreasuryAccount = TreasuryAccount;
 	type UpdateOrigin = EnsureRootOrHalfGeneralCouncil;
+	type CustomFeeSurplus = CustomFeeSurplus;
+	type AlternativeFeeSurplus = AlternativeFeeSurplus;
+	type DefaultFeeTokens = DefaultFeeTokens;
+}
+
+parameter_types! {
+	pub const InstantUnstakeFee: Permill = Permill::from_percent(10);
+}
+
+impl module_earning::Config for Runtime {
+	type Event = Event;
+	type Currency = Balances;
+	type OnBonded = ();
+	type OnUnbonded = ();
+	type OnUnstakeFee = ();
+	type MinBond = ConstU128<100>;
+	type UnbondingPeriod = ConstU32<3>;
+	type InstantUnstakeFee = InstantUnstakeFee;
+	type MaxUnbondingChunks = ConstU32<3>;
+	type LockIdentifier = EarningLockIdentifier;
+	type WeightInfo = ();
 }
 
 impl module_evm_accounts::Config for Runtime {
@@ -1324,7 +1350,7 @@ impl module_xcm_interface::Config for Runtime {
 parameter_types! {
 	pub MinCouncilBondThreshold: Balance = dollar(LDOT);
 	pub const NominateesCount: u32 = 7;
-	pub const MaxUnlockingChunks: u32 = 7;
+	pub const MaxUnbondingChunks: u32 = 7;
 }
 
 impl module_nominees_election::Config for Runtime {
@@ -1332,10 +1358,10 @@ impl module_nominees_election::Config for Runtime {
 	type Currency = Currency<Runtime, GetLiquidCurrencyId>;
 	type NomineeId = AccountId;
 	type PalletId = NomineesElectionId;
-	type MinBondThreshold = MinCouncilBondThreshold;
+	type MinBond = MinCouncilBondThreshold;
 	type BondingDuration = RelayChainBondingDuration;
 	type NominateesCount = NominateesCount;
-	type MaxUnlockingChunks = MaxUnlockingChunks;
+	type MaxUnbondingChunks = MaxUnbondingChunks;
 	type NomineeFilter = runtime_common::DummyNomineeFilter;
 	type WeightInfo = weights::module_nominees_election::WeightInfo<Runtime>;
 }
@@ -1594,22 +1620,6 @@ impl cumulus_pallet_parachain_system::Config for Runtime {
 
 impl parachain_info::Config for Runtime {}
 
-impl cumulus_pallet_xcmp_queue::Config for Runtime {
-	type Event = Event;
-	type XcmExecutor = XcmExecutor<XcmConfig>;
-	type ChannelInfo = ParachainSystem;
-	type VersionWrapper = ();
-	type ExecuteOverweightOrigin = EnsureRootOrHalfGeneralCouncil;
-	type ControllerOrigin = EnsureRootOrHalfGeneralCouncil;
-	type ControllerOriginConverter = XcmOriginToCallOrigin;
-}
-
-impl cumulus_pallet_dmp_queue::Config for Runtime {
-	type Event = Event;
-	type XcmExecutor = XcmExecutor<XcmConfig>;
-	type ExecuteOverweightOrigin = EnsureRootOrHalfGeneralCouncil;
-}
-
 impl orml_unknown_tokens::Config for Runtime {
 	type Event = Event;
 }
@@ -1799,8 +1809,39 @@ pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExtra>;
 /// Executive: handles dispatch to the various modules.
-pub type Executive =
-	frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllPalletsWithSystem, ()>;
+pub type Executive = frame_executive::Executive<
+	Runtime,
+	Block,
+	frame_system::ChainContext<Runtime>,
+	Runtime,
+	AllPalletsWithSystem,
+	TransactionPaymentMigration,
+>;
+
+pub struct TransactionPaymentMigration;
+
+parameter_types! {
+	pub FeePoolSize: Balance = 5 * dollar(ACA);
+	pub SwapBalanceThreshold: Balance = Ratio::saturating_from_rational(25, 10).saturating_mul_int(dollar(ACA));
+}
+
+impl OnRuntimeUpgrade for TransactionPaymentMigration {
+	fn on_runtime_upgrade() -> frame_support::weights::Weight {
+		let poo_size = FeePoolSize::get();
+		let threshold = SwapBalanceThreshold::get();
+		let tokens = vec![
+			(AUSD, vec![AUSD, DOT, ACA]),
+			(DOT, vec![DOT, ACA]),
+			(LDOT, vec![LDOT, DOT, ACA]),
+			(RENBTC, vec![RENBTC, AUSD, ACA]),
+		];
+		for (token, path) in tokens {
+			let _ = module_transaction_payment::Pallet::<Runtime>::disable_pool(token);
+			let _ = module_transaction_payment::Pallet::<Runtime>::initialize_pool(token, path, poo_size, threshold);
+		}
+		<Runtime as frame_system::Config>::BlockWeights::get().max_block
+	}
+}
 
 construct_runtime! {
 	pub enum Runtime where
@@ -1917,6 +1958,9 @@ construct_runtime! {
 		// Stable asset
 		StableAsset: nutsfinance_stable_asset::{Pallet, Call, Storage, Event<T>} = 200,
 
+		// Staking related pallets
+		Earning: module_earning::{Pallet, Call, Storage, Event<T>} = 210,
+
 		// Parachain System, always put it at the end
 		ParachainSystem: cumulus_pallet_parachain_system::{Pallet, Call, Storage, Inherent, Config, Event<T>} = 160,
 
@@ -1937,6 +1981,7 @@ mod benches {
 		[module_asset_registry, benchmarking::asset_registry]
 		[module_auction_manager, benchmarking::auction_manager]
 		[module_cdp_engine, benchmarking::cdp_engine]
+		[module_earning, benchmarking::earning]
 		[module_emergency_shutdown, benchmarking::emergency_shutdown]
 		[module_evm, benchmarking::evm]
 		[module_homa, benchmarking::homa]
@@ -2173,7 +2218,7 @@ impl_runtime_apis! {
 						access_list: Some(access_list)
 					})
 				}
-				Call::EVM(module_evm::Call::create{init, value, gas_limit, storage_limit, access_list}) => {
+				Call::EVM(module_evm::Call::create{input, value, gas_limit, storage_limit, access_list}) => {
 					// use MAX_VALUE for no limit
 					let gas_limit = if gas_limit < u64::MAX { Some(gas_limit) } else { None };
 					let storage_limit = if storage_limit < u32::MAX { Some(storage_limit) } else { None };
@@ -2183,7 +2228,7 @@ impl_runtime_apis! {
 						gas_limit,
 						storage_limit,
 						value: Some(value),
-						data: Some(init),
+						data: Some(input),
 						access_list: Some(access_list)
 					})
 				}

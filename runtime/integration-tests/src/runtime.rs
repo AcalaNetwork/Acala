@@ -398,7 +398,7 @@ mod mandala_only_tests {
 					bytes.len()
 				),
 				Ok(ValidTransaction {
-					priority: 64_296_718_080_000_000,
+					priority: 62_878_701_600_000_000,
 					requires: vec![],
 					provides: vec![],
 					longevity: 18_446_744_073_709_551_615,

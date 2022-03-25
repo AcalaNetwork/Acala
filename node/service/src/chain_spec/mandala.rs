@@ -16,18 +16,18 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use acala_primitives::{evm::PREDEPLOY_ADDRESS_START, AccountId, Balance, Nonce, TokenSymbol};
+use acala_primitives::{AccountId, Balance, TokenSymbol};
 use ethers::signers::{coins_bip39::English, MnemonicBuilder, Signer};
 use hex_literal::hex;
-use module_evm::GenesisAccount;
+use runtime_common::evm_genesis;
 use sc_chain_spec::ChainType;
 use sc_telemetry::TelemetryEndpoints;
 use serde_json::map::Map;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
-use sp_core::{bytes::from_hex, crypto::UncheckedInto, sr25519, Bytes, H160};
+use sp_core::{crypto::UncheckedInto, sr25519, H160};
 use sp_finality_grandpa::AuthorityId as GrandpaId;
 use sp_runtime::{traits::Zero, FixedPointNumber, FixedU128};
-use sp_std::{collections::btree_map::BTreeMap, str::FromStr};
+use sp_std::collections::btree_map::BTreeMap;
 
 use crate::chain_spec::{get_account_id_from_seed, get_authority_keys_from_seed, Extensions, TELEMETRY_URL};
 
@@ -639,55 +639,4 @@ fn mandala_genesis(
 			safe_xcm_version: Some(2),
 		},
 	}
-}
-
-/// Returns `evm_genesis_accounts`
-pub fn evm_genesis(evm_accounts: Vec<H160>) -> BTreeMap<H160, GenesisAccount<Balance, Nonce>> {
-	let contracts_json = &include_bytes!("../../../../predeploy-contracts/resources/bytecodes.json")[..];
-	let contracts: Vec<(String, String, String)> = serde_json::from_slice(contracts_json).unwrap();
-	let mut accounts = BTreeMap::new();
-	for (_, address, code_string) in contracts {
-		let account = GenesisAccount {
-			nonce: 0u32,
-			balance: 0u128,
-			storage: BTreeMap::new(),
-			code: if code_string.len().is_zero() {
-				vec![]
-			} else {
-				Bytes::from_str(&code_string).unwrap().0
-			},
-			enable_contract_development: false,
-		};
-
-		let addr = H160::from_slice(
-			from_hex(address.as_str())
-				.expect("predeploy-contracts must specify address")
-				.as_slice(),
-		);
-		accounts.insert(addr, account);
-	}
-
-	// Replace mirrored token contract code.
-	let token = accounts
-		.get(&PREDEPLOY_ADDRESS_START)
-		.expect("the token predeployed contract must exist")
-		.clone();
-	accounts.iter_mut().for_each(|v| {
-		if v.1.code.is_empty() {
-			v.1.code = token.code.clone();
-		}
-	});
-
-	for dev_acc in evm_accounts {
-		let account = GenesisAccount {
-			nonce: 0u32,
-			balance: 1000 * mandala_runtime::dollar(mandala_runtime::ACA),
-			storage: BTreeMap::new(),
-			code: vec![],
-			enable_contract_development: true,
-		};
-		accounts.insert(dev_acc, account);
-	}
-
-	accounts
 }

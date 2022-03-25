@@ -257,6 +257,7 @@ parameter_types! {
 		TradingPair::from_currency_ids(ACA, DOT).unwrap(),
 		TradingPair::from_currency_ids(ACA, AUSD).unwrap(),
 	];
+	pub const ExtendedProvisioningBlocks: BlockNumber = 0;
 }
 
 impl dex::Config for Runtime {
@@ -269,6 +270,7 @@ impl dex::Config for Runtime {
 	type DEXIncentives = ();
 	type WeightInfo = ();
 	type ListingOrigin = EnsureSignedBy<One, AccountId>;
+	type ExtendedProvisioningBlocks = ExtendedProvisioningBlocks;
 	type OnLiquidityPoolUpdated = ();
 }
 

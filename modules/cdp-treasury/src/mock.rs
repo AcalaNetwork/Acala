@@ -142,6 +142,7 @@ parameter_types! {
 		TradingPair::from_currency_ids(BTC, DOT).unwrap(),
 	];
 	pub const DEXPalletId: PalletId = PalletId(*b"aca/dexm");
+	pub const ExtendedProvisioningBlocks: BlockNumber = 0;
 }
 
 impl module_dex::Config for Runtime {
@@ -154,6 +155,7 @@ impl module_dex::Config for Runtime {
 	type DEXIncentives = ();
 	type WeightInfo = ();
 	type ListingOrigin = EnsureSignedBy<One, AccountId>;
+	type ExtendedProvisioningBlocks = ExtendedProvisioningBlocks;
 	type OnLiquidityPoolUpdated = ();
 }
 

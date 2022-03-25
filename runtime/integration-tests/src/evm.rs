@@ -32,6 +32,7 @@ use primitives::{
 };
 use sp_core::{H256, U256};
 use sp_runtime::traits::SignedExtension;
+use sp_runtime::Percent;
 use std::str::FromStr;
 
 pub fn erc20_address_0() -> EvmAddress {
@@ -69,6 +70,14 @@ pub fn lp_erc20_evm_address() -> EvmAddress {
 	EvmErc20InfoMapping::<Runtime>::encode_evm_address(lp_erc20()).unwrap()
 }
 
+pub fn predeploy_token_contract() -> Vec<u8> {
+	let json: serde_json::Value =
+		serde_json::from_str(include_str!("../../../predeploy-contracts/resources/bytecodes.json")).unwrap();
+	// get ACA contract
+	assert_eq!(json[0][0].as_str().unwrap(), "ACA");
+	hex::decode(json[0][2].as_str().unwrap().strip_prefix("0x").unwrap()).unwrap()
+}
+
 pub fn deploy_erc20_contracts() {
 	let json: serde_json::Value =
 		serde_json::from_str(include_str!("../../../ts-tests/build/Erc20DemoContract2.json")).unwrap();
@@ -99,6 +108,8 @@ pub fn deploy_erc20_contracts() {
 				H256::from_slice(&buf).as_bytes().to_vec()
 			},
 		}],
+		used_gas: 1306611,
+		used_storage: 15461,
 	}));
 
 	assert_ok!(EVM::publish_free(Origin::root(), erc20_address_0()));
@@ -126,6 +137,8 @@ pub fn deploy_erc20_contracts() {
 				H256::from_slice(&buf).as_bytes().to_vec()
 			},
 		}],
+		used_gas: 1306611,
+		used_storage: 15461,
 	}));
 
 	assert_ok!(EVM::publish_free(Origin::root(), erc20_address_1()));
@@ -158,6 +171,8 @@ fn deploy_contract(account: AccountId) -> Result<H160, DispatchError> {
 		from: _,
 		contract: address,
 		logs: _,
+		used_gas: _,
+		used_storage: _,
 	}) = System::events().last().unwrap().event
 	{
 		Ok(address)
@@ -353,6 +368,8 @@ fn test_evm_module() {
 				from: alice_address,
 				contract,
 				logs: vec![],
+				used_gas: 132199,
+				used_storage: 10367,
 			}));
 
 			assert_ok!(EVM::transfer_maintainer(Origin::signed(alice()), contract, bob_address));
@@ -482,10 +499,10 @@ fn test_multicurrency_precompile_module() {
 			assert_ok!(EVM::create_predeploy_contract(
 				Origin::root(),
 				lp_erc20_evm_address(),
-				vec![],
+				predeploy_token_contract(),
 				0,
-				1000000,
-				1000000,
+				21000000,
+				16500,
 				vec![],
 			));
 
@@ -567,7 +584,7 @@ fn should_not_kill_contract_on_transfer_all() {
 
 			assert_ok!(EVM::create(Origin::signed(alice()), code, convert_decimals_to_evm(2 * dollar(NATIVE_CURRENCY)), 1000000000, 100000, vec![]));
 
-			let contract = if let Event::EVM(module_evm::Event::Created{from: _, contract: address, logs: _}) = System::events().last().unwrap().event {
+			let contract = if let Event::EVM(module_evm::Event::Created{from: _, contract: address, logs: _, used_gas: _, used_storage: _}) = System::events().last().unwrap().event {
 				address
 			} else {
 				panic!("deploy contract failed");
@@ -630,7 +647,7 @@ fn should_not_kill_contract_on_transfer_all_tokens() {
 			let code = hex_literal::hex!("608060405260848060116000396000f3fe6080604052348015600f57600080fd5b506004361060285760003560e01c806341c0e1b514602d575b600080fd5b60336035565b005b600073ffffffffffffffffffffffffffffffffffffffff16fffea265627a7a72315820ed64a7551098c4afc823bee1663309079d9cb8798a6bdd71be2cd3ccee52d98e64736f6c63430005110032").to_vec();
 			assert_ok!(EVM::create(Origin::signed(alice()), code, 0, 1000000000, 100000, vec![]));
 
-			let contract = if let Event::EVM(module_evm::Event::Created{from: _, contract: address, logs: _}) = System::events().last().unwrap().event {
+			let contract = if let Event::EVM(module_evm::Event::Created{from: _, contract: address, logs: _, used_gas: _, used_storage: _}) = System::events().last().unwrap().event {
 				address
 			} else {
 				panic!("deploy contract failed");
@@ -868,11 +885,6 @@ fn transaction_payment_module_works_with_evm_contract() {
 				2200 * dollar(NATIVE_CURRENCY)
 			);
 
-			// set_global_fee_swap_path
-			assert_ok!(TransactionPayment::set_global_fee_swap_path(
-				Origin::root(),
-				vec![CurrencyId::Erc20(erc20_address_0()), NATIVE_CURRENCY]
-			));
 			assert_ok!(Currencies::update_balance(
 				Origin::root(),
 				MultiAddress::Id(TreasuryAccount::get()),
@@ -889,6 +901,7 @@ fn transaction_payment_module_works_with_evm_contract() {
 			assert_ok!(TransactionPayment::enable_charge_fee_pool(
 				Origin::root(),
 				CurrencyId::Erc20(erc20_address_0()),
+				vec![CurrencyId::Erc20(erc20_address_0()), NATIVE_CURRENCY],
 				5 * dollar(NATIVE_CURRENCY),
 				Ratio::saturating_from_rational(35, 100).saturating_mul_int(dollar(NATIVE_CURRENCY)),
 			));
@@ -990,6 +1003,10 @@ fn transaction_payment_module_works_with_evm_contract() {
 			#[cfg(feature = "with-acala-runtime")]
 			assert_eq!(fee, 2500000800);
 
+			let surplus_perc = Percent::from_percent(25);
+			let fee_surplus = surplus_perc.mul_ceil(fee);
+			let fee = fee + fee_surplus;
+
 			// empty_account
 			assert_eq!(
 				Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &sub_account),
@@ -1005,11 +1022,12 @@ fn transaction_payment_module_works_with_evm_contract() {
 			);
 			let erc20_fee = Currencies::free_balance(CurrencyId::Erc20(erc20_address_0()), &sub_account);
 			#[cfg(feature = "with-mandala-runtime")]
-			assert_eq!(erc20_fee, 11612667389);
+			assert_eq!(erc20_fee, 12013104212);
 			#[cfg(feature = "with-karura-runtime")]
-			assert_eq!(erc20_fee, 10281777315);
+			assert_eq!(erc20_fee, 10344471099);
 			#[cfg(feature = "with-acala-runtime")]
-			assert_eq!(erc20_fee, 10281777315);
+			assert_eq!(erc20_fee, 10344471099);
+
 			assert_eq!(
 				Currencies::free_balance(NATIVE_CURRENCY, &sub_account),
 				5 * dollar(NATIVE_CURRENCY) - (fee + NativeTokenExistentialDeposit::get())

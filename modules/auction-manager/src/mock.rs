@@ -169,6 +169,7 @@ parameter_types! {
 		TradingPair::from_currency_ids(DOT, BTC).unwrap(),
 		TradingPair::from_currency_ids(AUSD, DOT).unwrap()
 	];
+	pub const ExtendedProvisioningBlocks: BlockNumber = 0;
 }
 
 impl module_dex::Config for Runtime {
@@ -181,6 +182,7 @@ impl module_dex::Config for Runtime {
 	type DEXIncentives = ();
 	type WeightInfo = ();
 	type ListingOrigin = EnsureSignedBy<One, AccountId>;
+	type ExtendedProvisioningBlocks = ExtendedProvisioningBlocks;
 	type OnLiquidityPoolUpdated = ();
 }
 

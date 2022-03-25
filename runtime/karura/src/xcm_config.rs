@@ -20,7 +20,7 @@ use super::{
 	constants::{fee::*, parachains},
 	AccountId, AssetIdMapping, AssetIdMaps, Balance, Call, Convert, Currencies, CurrencyId, Event, ExistentialDeposits,
 	GetNativeCurrencyId, KaruraTreasuryAccount, NativeTokenExistentialDeposit, Origin, ParachainInfo, ParachainSystem,
-	PolkadotXcm, Runtime, RuntimeBlockWeights, UnknownTokens, XcmExecutor, XcmpQueue, KAR, KUSD, LKSM,
+	PolkadotXcm, Runtime, RuntimeBlockWeights, UnknownTokens, XcmInterface, XcmpQueue, KAR, KUSD, LKSM,
 };
 use codec::{Decode, Encode};
 pub use cumulus_primitives_core::ParaId;
@@ -29,11 +29,12 @@ pub use frame_support::{
 	traits::{Everything, Get, Nothing},
 	weights::Weight,
 };
-use orml_traits::{parameter_type_with_key, MultiCurrency};
+use module_support::HomaSubAccountXcm;
+use orml_traits::{location::AbsoluteReserveProvider, parameter_type_with_key, MultiCurrency};
 use orml_xcm_support::{DepositToAlternative, IsNativeConcrete, MultiCurrencyAdapter, MultiNativeAsset};
 use pallet_xcm::XcmPassthrough;
 use polkadot_parachain::primitives::Sibling;
-use runtime_common::AcalaDropAssets;
+use runtime_common::{AcalaDropAssets, EnsureRootOrHalfGeneralCouncil};
 use xcm::latest::prelude::*;
 pub use xcm_builder::{
 	AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom, AllowTopLevelPaidExecutionFrom,
@@ -42,6 +43,7 @@ pub use xcm_builder::{
 	SiblingParachainConvertsVia, SignedAccountId32AsNative, SignedToAccountId32, SovereignSignedViaLocation,
 	TakeRevenue, TakeWeightCredit,
 };
+use xcm_executor::XcmExecutor;
 
 #[cfg(not(feature = "integration-tests"))]
 use super::{FixedRateOfForeignAsset, TransactionFeePoolTrader};
@@ -210,7 +212,7 @@ impl xcm_executor::Config for XcmConfig {
 	// How to withdraw and deposit an asset.
 	type AssetTransactor = LocalAssetTransactor;
 	type OriginConverter = XcmOriginToCallOrigin;
-	type IsReserve = MultiNativeAsset;
+	type IsReserve = MultiNativeAsset<AbsoluteReserveProvider>;
 	// Teleporting is disabled.
 	type IsTeleporter = ();
 	type LocationInverter = LocationInverter<Ancestry>;
@@ -267,6 +269,22 @@ impl cumulus_pallet_xcm::Config for Runtime {
 	type XcmExecutor = XcmExecutor<XcmConfig>;
 }
 
+impl cumulus_pallet_xcmp_queue::Config for Runtime {
+	type Event = Event;
+	type XcmExecutor = XcmExecutor<XcmConfig>;
+	type ChannelInfo = ParachainSystem;
+	type VersionWrapper = PolkadotXcm;
+	type ExecuteOverweightOrigin = EnsureRootOrHalfGeneralCouncil;
+	type ControllerOrigin = EnsureRootOrHalfGeneralCouncil;
+	type ControllerOriginConverter = XcmOriginToCallOrigin;
+}
+
+impl cumulus_pallet_dmp_queue::Config for Runtime {
+	type Event = Event;
+	type XcmExecutor = XcmExecutor<XcmConfig>;
+	type ExecuteOverweightOrigin = EnsureRootOrHalfGeneralCouncil;
+}
+
 parameter_types! {
 	pub SelfLocation: MultiLocation = MultiLocation::new(1, X1(Parachain(ParachainInfo::get().into())));
 }
@@ -291,7 +309,7 @@ parameter_type_with_key! {
 	pub ParachainMinFee: |location: MultiLocation| -> u128 {
 		#[allow(clippy::match_ref_pats)] // false positive
 		match (location.parents, location.first_interior()) {
-			(1, Some(Parachain(parachains::statemine::ID))) => 4_000_000_000,
+			(1, Some(Parachain(parachains::statemine::ID))) => XcmInterface::get_parachain_fee(location.clone()),
 			_ => u128::MAX,
 		}
 	};
@@ -310,6 +328,8 @@ impl orml_xtokens::Config for Runtime {
 	type LocationInverter = LocationInverter<Ancestry>;
 	type MaxAssetsForTransfer = MaxAssetsForTransfer;
 	type MinXcmFee = ParachainMinFee;
+	type MultiLocationsFilter = Everything;
+	type ReserveProvider = AbsoluteReserveProvider;
 }
 
 pub type LocalAssetTransactor = MultiCurrencyAdapter<

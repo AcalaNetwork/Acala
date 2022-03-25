@@ -20,12 +20,15 @@
 #![allow(clippy::unnecessary_cast)]
 #![allow(clippy::upper_case_acronyms)]
 
+pub mod bonding;
 pub mod currency;
 pub mod evm;
 pub mod nft;
 pub mod signature;
 pub mod task;
+pub mod testing;
 pub mod unchecked_extrinsic;
+pub use testing::*;
 
 use codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;

@@ -20,6 +20,7 @@
 #![allow(clippy::too_many_arguments)]
 
 use super::*;
+use cumulus_primitives_parachain_inherent::{MockValidationDataInherentDataProvider, MockXcmConfig};
 
 /// Starts a `ServiceBuilder` for a full service.
 ///
@@ -75,6 +76,7 @@ pub fn new_partial(
 		SealMode::DevAuraSeal => {
 			// aura import queue
 			let slot_duration = sc_consensus_aura::slot_duration(&*client)?.slot_duration();
+			let client_for_cidp = client.clone();
 
 			(
 				sc_consensus_aura::import_queue::<sp_consensus_aura::sr25519::AuthorityPair, _, _, _, _, _, _>(
@@ -82,19 +84,38 @@ pub fn new_partial(
 						block_import: client.clone(),
 						justification_import: None,
 						client: client.clone(),
-						create_inherent_data_providers: move |_, ()| async move {
-							let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
+						create_inherent_data_providers: move |block: Hash, ()| {
+							let current_para_block = client_for_cidp
+								.number(block)
+								.expect("Header lookup should succeed")
+								.expect("Header passed in as parent should be present in backend.");
+							let client_for_xcm = client_for_cidp.clone();
 
-							let slot = sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_duration(
-								*timestamp,
-								slot_duration,
-							);
+							async move {
+								let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
 
-							Ok((
-								timestamp,
-								slot,
-								node_service::default_mock_parachain_inherent_data_provider(),
-							))
+								let slot =
+									sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_duration(
+										*timestamp,
+										slot_duration,
+									);
+
+								let mocked_parachain = MockValidationDataInherentDataProvider {
+									current_para_block,
+									relay_offset: 1000,
+									relay_blocks_per_para_block: 2,
+									xcm_config: MockXcmConfig::new(
+										&*client_for_xcm,
+										block,
+										Default::default(),
+										Default::default(),
+									),
+									raw_downward_messages: vec![],
+									raw_horizontal_messages: vec![],
+								};
+
+								Ok((timestamp, slot, mocked_parachain))
+							}
 						},
 						spawner: &task_manager.spawn_essential_handle(),
 						registry,
@@ -244,6 +265,8 @@ pub async fn start_dev_node(
 			// aura
 			let can_author_with = sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone());
 			let slot_duration = sc_consensus_aura::slot_duration(&*client)?.slot_duration();
+			let client_for_cidp = client.clone();
+
 			let aura = sc_consensus_aura::start_aura::<
 				sp_consensus_aura::sr25519::AuthorityPair,
 				_,
@@ -264,19 +287,37 @@ pub async fn start_dev_node(
 				// block_import: instant_finalize::InstantFinalizeBlockImport::new(client.clone()),
 				block_import: client.clone(),
 				proposer_factory,
-				create_inherent_data_providers: move |_, ()| async move {
-					let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
+				create_inherent_data_providers: move |block: Hash, ()| {
+					let current_para_block = client_for_cidp
+						.number(block)
+						.expect("Header lookup should succeed")
+						.expect("Header passed in as parent should be present in backend.");
+					let client_for_xcm = client_for_cidp.clone();
 
-					let slot = sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_duration(
-						*timestamp,
-						slot_duration,
-					);
+					async move {
+						let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
 
-					Ok((
-						timestamp,
-						slot,
-						node_service::default_mock_parachain_inherent_data_provider(),
-					))
+						let slot = sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_duration(
+							*timestamp,
+							slot_duration,
+						);
+
+						let mocked_parachain = MockValidationDataInherentDataProvider {
+							current_para_block,
+							relay_offset: 1000,
+							relay_blocks_per_para_block: 2,
+							xcm_config: MockXcmConfig::new(
+								&*client_for_xcm,
+								block,
+								Default::default(),
+								Default::default(),
+							),
+							raw_downward_messages: vec![],
+							raw_horizontal_messages: vec![],
+						};
+
+						Ok((timestamp, slot, mocked_parachain))
+					}
 				},
 				force_authoring,
 				backoff_authoring_blocks,

@@ -78,7 +78,6 @@ pub use pallet_timestamp::Call as TimestampCall;
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
 
-use crate::xcm_config::XcmOriginToCallOrigin;
 pub use authority::AuthorityConfigImpl;
 pub use constants::{fee::*, time::*};
 use module_support::mocks::MockStableAsset;
@@ -104,8 +103,6 @@ pub use runtime_common::{
 	TipPerWeightStep, ACA, AUSD, DOT, LCDOT, LDOT, RENBTC,
 };
 pub use xcm::latest::prelude::*;
-use xcm_config::XcmConfig;
-pub use xcm_executor::{Assets, Config, XcmExecutor};
 
 mod authority;
 mod benchmarking;
@@ -120,7 +117,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("acala"),
 	impl_name: create_runtime_str!("acala"),
 	authoring_version: 1,
-	spec_version: 2040,
+	spec_version: 2041,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -825,6 +822,12 @@ parameter_type_with_key! {
 	};
 }
 
+parameter_type_with_key! {
+	pub PricingPegged: |_currency_id: CurrencyId| -> Option<CurrencyId> {
+		None
+	};
+}
+
 parameter_types! {
 	pub StableCurrencyFixedPrice: Price = Price::saturating_from_rational(1, 1);
 	pub RewardRatePerRelaychainBlock: Rate = Rate::saturating_from_rational(2_492, 100_000_000_000u128);	// 14% annual staking reward rate of Polkadot
@@ -845,6 +848,7 @@ impl module_prices::Config for Runtime {
 	type LiquidCrowdloanLeaseBlockNumber = LiquidCrowdloanLeaseBlockNumber;
 	type RelayChainBlockNumber = RelayChainBlockNumberProvider<Runtime>;
 	type RewardRatePerRelaychainBlock = RewardRatePerRelaychainBlock;
+	type PricingPegged = PricingPegged;
 	type WeightInfo = weights::module_prices::WeightInfo<Runtime>;
 }
 
@@ -1098,6 +1102,7 @@ impl module_emergency_shutdown::Config for Runtime {
 parameter_types! {
 	pub const GetExchangeFee: (u32, u32) = (3, 1000);	// 0.3%
 	pub const TradingPathLimit: u32 = 4;
+	pub const ExtendedProvisioningBlocks: BlockNumber = 2 * DAYS;
 }
 
 impl module_dex::Config for Runtime {
@@ -1110,6 +1115,7 @@ impl module_dex::Config for Runtime {
 	type DEXIncentives = Incentives;
 	type WeightInfo = weights::module_dex::WeightInfo<Runtime>;
 	type ListingOrigin = EnsureRootOrHalfGeneralCouncil;
+	type ExtendedProvisioningBlocks = ExtendedProvisioningBlocks;
 	type OnLiquidityPoolUpdated = ();
 }
 
@@ -1152,12 +1158,9 @@ impl module_transaction_pause::Config for Runtime {
 }
 
 parameter_types! {
-	// Sort by fee charge order
-	pub DefaultFeeSwapPathList: Vec<Vec<CurrencyId>> = vec![
-		vec![AUSD, ACA],
-		vec![LCDOT, AUSD, ACA],
-		vec![DOT, LCDOT, AUSD, ACA]
-	];
+	pub const CustomFeeSurplus: Percent = Percent::from_percent(50);
+	pub const AlternativeFeeSurplus: Percent = Percent::from_percent(25);
+	pub DefaultFeeTokens: Vec<CurrencyId> = vec![AUSD, LCDOT, DOT];
 }
 
 type NegativeImbalance = <Balances as PalletCurrency<AccountId>>::NegativeImbalance;
@@ -1176,8 +1179,8 @@ impl OnUnbalanced<NegativeImbalance> for DealWithFees {
 
 impl module_transaction_payment::Config for Runtime {
 	type Event = Event;
+	type Call = Call;
 	type NativeCurrencyId = GetNativeCurrencyId;
-	type DefaultFeeSwapPathList = DefaultFeeSwapPathList;
 	type Currency = Balances;
 	type MultiCurrency = Currencies;
 	type OnTransactionPayment = DealWithFees;
@@ -1196,6 +1199,9 @@ impl module_transaction_payment::Config for Runtime {
 	type PalletId = TransactionPaymentPalletId;
 	type TreasuryAccount = AcalaTreasuryAccount;
 	type UpdateOrigin = EnsureRootOrHalfGeneralCouncil;
+	type CustomFeeSurplus = CustomFeeSurplus;
+	type AlternativeFeeSurplus = AlternativeFeeSurplus;
+	type DefaultFeeTokens = DefaultFeeTokens;
 }
 
 impl module_evm_accounts::Config for Runtime {
@@ -1440,22 +1446,6 @@ impl parachain_info::Config for Runtime {}
 
 impl cumulus_pallet_aura_ext::Config for Runtime {}
 
-impl cumulus_pallet_xcmp_queue::Config for Runtime {
-	type Event = Event;
-	type XcmExecutor = XcmExecutor<XcmConfig>;
-	type ChannelInfo = ParachainSystem;
-	type VersionWrapper = PolkadotXcm;
-	type ExecuteOverweightOrigin = EnsureRootOrHalfGeneralCouncil;
-	type ControllerOrigin = EnsureRootOrHalfGeneralCouncil;
-	type ControllerOriginConverter = XcmOriginToCallOrigin;
-}
-
-impl cumulus_pallet_dmp_queue::Config for Runtime {
-	type Event = Event;
-	type XcmExecutor = XcmExecutor<XcmConfig>;
-	type ExecuteOverweightOrigin = EnsureRootOrHalfGeneralCouncil;
-}
-
 parameter_types! {
 	pub DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
 	pub HomaTreasuryAccount: AccountId = HomaTreasuryPalletId::get().into_account();
@@ -1585,7 +1575,7 @@ construct_runtime!(
 		SessionManager: module_session_manager::{Pallet, Call, Storage, Event<T>, Config<T>} = 45,
 
 		// XCM
-		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Storage, Event<T>} = 50,
+		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 50,
 		PolkadotXcm: pallet_xcm::{Pallet, Storage, Call, Event<T>, Origin, Config} = 51,
 		CumulusXcm: cumulus_pallet_xcm::{Pallet, Event<T>, Origin} = 52,
 		DmpQueue: cumulus_pallet_dmp_queue::{Pallet, Call, Storage, Event<T>} = 53,
@@ -1678,8 +1668,38 @@ pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExtra>;
 /// Executive: handles dispatch to the various modules.
-pub type Executive =
-	frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllPalletsWithSystem, ()>;
+pub type Executive = frame_executive::Executive<
+	Runtime,
+	Block,
+	frame_system::ChainContext<Runtime>,
+	Runtime,
+	AllPalletsWithSystem,
+	TransactionPaymentMigration,
+>;
+
+pub struct TransactionPaymentMigration;
+
+parameter_types! {
+	pub FeePoolSize: Balance = 5 * dollar(ACA);
+	pub SwapBalanceThreshold: Balance = Ratio::saturating_from_rational(25, 10).saturating_mul_int(dollar(ACA));
+}
+
+impl OnRuntimeUpgrade for TransactionPaymentMigration {
+	fn on_runtime_upgrade() -> frame_support::weights::Weight {
+		let poo_size = FeePoolSize::get();
+		let threshold = SwapBalanceThreshold::get();
+		let tokens = vec![
+			(AUSD, vec![AUSD, ACA]),
+			(LCDOT, vec![LCDOT, AUSD, ACA]),
+			(DOT, vec![DOT, LCDOT, AUSD, ACA]),
+		];
+		for (token, path) in tokens {
+			let _ = module_transaction_payment::Pallet::<Runtime>::disable_pool(token);
+			let _ = module_transaction_payment::Pallet::<Runtime>::initialize_pool(token, path, poo_size, threshold);
+		}
+		<Runtime as frame_system::Config>::BlockWeights::get().max_block
+	}
+}
 
 #[cfg(feature = "runtime-benchmarks")]
 #[macro_use]
@@ -1928,7 +1948,7 @@ impl_runtime_apis! {
 						access_list: Some(access_list)
 					})
 				}
-				Call::EVM(module_evm::Call::create{init, value, gas_limit, storage_limit, access_list}) => {
+				Call::EVM(module_evm::Call::create{input, value, gas_limit, storage_limit, access_list}) => {
 					// use MAX_VALUE for no limit
 					let gas_limit = if gas_limit < u64::MAX { Some(gas_limit) } else { None };
 					let storage_limit = if storage_limit < u32::MAX { Some(storage_limit) } else { None };
@@ -1938,7 +1958,7 @@ impl_runtime_apis! {
 						gas_limit,
 						storage_limit,
 						value: Some(value),
-						data: Some(init),
+						data: Some(input),
 						access_list: Some(access_list)
 					})
 				}

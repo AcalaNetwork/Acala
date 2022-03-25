@@ -102,6 +102,10 @@ pub mod module {
 		#[pallet::constant]
 		type RewardRatePerRelaychainBlock: Get<Rate>;
 
+		/// If a currency is pegged to another currency in price, price of this currency is
+		/// equal to the price of another.
+		type PricingPegged: GetByKey<CurrencyId, Option<CurrencyId>>;
+
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
 	}
@@ -176,6 +180,13 @@ impl<T: Config> Pallet<T> {
 	///
 	/// Note: this returns the price for 1 basic unit
 	fn access_price(currency_id: CurrencyId) -> Option<Price> {
+		// if it's configured pegged to another currency id
+		let currency_id = if let Some(pegged_currency_id) = T::PricingPegged::get(&currency_id) {
+			pegged_currency_id
+		} else {
+			currency_id
+		};
+
 		let maybe_price = if currency_id == T::GetStableCurrencyId::get() {
 			// if is stable currency, use fixed price
 			Some(T::StableCurrencyFixedPrice::get())

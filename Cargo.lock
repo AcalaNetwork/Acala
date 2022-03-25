@@ -14,7 +14,7 @@ dependencies = [
 
 [[package]]
 name = "acala"
-version = "2.4.0"
+version = "2.4.1"
 dependencies = [
  "acala-cli",
  "acala-service",
@@ -24,11 +24,11 @@ dependencies = [
 
 [[package]]
 name = "acala-cli"
-version = "2.4.0"
+version = "2.4.1"
 dependencies = [
  "acala-inspect",
  "acala-service",
- "clap 3.1.3",
+ "clap 3.1.6",
  "cumulus-client-cli",
  "cumulus-client-service",
  "cumulus-primitives-core",
@@ -51,9 +51,9 @@ dependencies = [
 
 [[package]]
 name = "acala-inspect"
-version = "2.4.0"
+version = "2.4.1"
 dependencies = [
- "clap 3.1.3",
+ "clap 3.1.6",
  "derive_more",
  "log",
  "parity-scale-codec",
@@ -67,7 +67,7 @@ dependencies = [
 
 [[package]]
 name = "acala-primitives"
-version = "2.4.0"
+version = "2.4.1"
 dependencies = [
  "bstringify",
  "enumflags2",
@@ -77,8 +77,10 @@ dependencies = [
  "module-evm-utility-macro",
  "num_enum",
  "nutsfinance-stable-asset",
+ "orml-traits",
  "parity-scale-codec",
  "parity-util-mem",
+ "paste",
  "scale-info",
  "serde",
  "serde_json",
@@ -91,7 +93,7 @@ dependencies = [
 
 [[package]]
 name = "acala-rpc"
-version = "2.4.0"
+version = "2.4.1"
 dependencies = [
  "acala-primitives",
  "evm-rpc",
@@ -115,7 +117,7 @@ dependencies = [
 
 [[package]]
 name = "acala-runtime"
-version = "2.4.0"
+version = "2.4.1"
 dependencies = [
  "acala-primitives",
  "cumulus-pallet-aura-ext",
@@ -229,7 +231,7 @@ dependencies = [
 
 [[package]]
 name = "acala-service"
-version = "2.4.0"
+version = "2.4.1"
 dependencies = [
  "acala-primitives",
  "acala-rpc",
@@ -1446,9 +1448,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "3.1.3"
+version = "3.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "86f8c0e2a6b902acc18214e24a6935cdaf8a8e34231913d4404dcaee659f65a1"
+checksum = "d8c93436c21e4698bacadf42917db28b23017027a4deccb35dbe47a7e7840123"
 dependencies = [
  "atty",
  "bitflags",
@@ -1458,14 +1460,14 @@ dependencies = [
  "os_str_bytes",
  "strsim 0.10.0",
  "termcolor",
- "textwrap 0.14.2",
+ "textwrap 0.15.0",
 ]
 
 [[package]]
 name = "clap_derive"
-version = "3.1.2"
+version = "3.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "01d42c94ce7c2252681b5fed4d3627cc807b13dfc033246bd05d5b252399000e"
+checksum = "da95d038ede1a964ce99f49cbe27a7fb538d1da595e4b4f70b8c8f338d17bf16"
 dependencies = [
  "heck 0.4.0",
  "proc-macro-error",
@@ -1939,9 +1941,9 @@ dependencies = [
 [[package]]
 name = "cumulus-client-cli"
 version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?rev=76479e7fef3af7c8828a44647847b01afd5fefe5#76479e7fef3af7c8828a44647847b01afd5fefe5"
+source = "git+https://github.com/paritytech//cumulus?rev=db11baacc325537be74ad34517fcb28ed9ded6c6#db11baacc325537be74ad34517fcb28ed9ded6c6"
 dependencies = [
- "clap 3.1.3",
+ "clap 3.1.6",
  "sc-cli",
  "sc-service",
 ]
@@ -1949,7 +1951,7 @@ dependencies = [
 [[package]]
 name = "cumulus-client-collator"
 version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?rev=76479e7fef3af7c8828a44647847b01afd5fefe5#76479e7fef3af7c8828a44647847b01afd5fefe5"
+source = "git+https://github.com/paritytech//cumulus?rev=db11baacc325537be74ad34517fcb28ed9ded6c6#db11baacc325537be74ad34517fcb28ed9ded6c6"
 dependencies = [
  "cumulus-client-consensus-common",
  "cumulus-client-network",
@@ -1973,7 +1975,7 @@ dependencies = [
 [[package]]
 name = "cumulus-client-consensus-aura"
 version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?rev=76479e7fef3af7c8828a44647847b01afd5fefe5#76479e7fef3af7c8828a44647847b01afd5fefe5"
+source = "git+https://github.com/paritytech//cumulus?rev=db11baacc325537be74ad34517fcb28ed9ded6c6#db11baacc325537be74ad34517fcb28ed9ded6c6"
 dependencies = [
  "async-trait",
  "cumulus-client-consensus-common",
@@ -2002,7 +2004,7 @@ dependencies = [
 [[package]]
 name = "cumulus-client-consensus-common"
 version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?rev=76479e7fef3af7c8828a44647847b01afd5fefe5#76479e7fef3af7c8828a44647847b01afd5fefe5"
+source = "git+https://github.com/paritytech//cumulus?rev=db11baacc325537be74ad34517fcb28ed9ded6c6#db11baacc325537be74ad34517fcb28ed9ded6c6"
 dependencies = [
  "async-trait",
  "cumulus-relay-chain-interface",
@@ -2023,7 +2025,7 @@ dependencies = [
 [[package]]
 name = "cumulus-client-consensus-relay-chain"
 version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?rev=76479e7fef3af7c8828a44647847b01afd5fefe5#76479e7fef3af7c8828a44647847b01afd5fefe5"
+source = "git+https://github.com/paritytech//cumulus?rev=db11baacc325537be74ad34517fcb28ed9ded6c6#db11baacc325537be74ad34517fcb28ed9ded6c6"
 dependencies = [
  "async-trait",
  "cumulus-client-consensus-common",
@@ -2047,7 +2049,7 @@ dependencies = [
 [[package]]
 name = "cumulus-client-network"
 version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?rev=76479e7fef3af7c8828a44647847b01afd5fefe5#76479e7fef3af7c8828a44647847b01afd5fefe5"
+source = "git+https://github.com/paritytech//cumulus?rev=db11baacc325537be74ad34517fcb28ed9ded6c6#db11baacc325537be74ad34517fcb28ed9ded6c6"
 dependencies = [
  "async-trait",
  "cumulus-relay-chain-interface",
@@ -2072,7 +2074,7 @@ dependencies = [
 [[package]]
 name = "cumulus-client-pov-recovery"
 version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?rev=76479e7fef3af7c8828a44647847b01afd5fefe5#76479e7fef3af7c8828a44647847b01afd5fefe5"
+source = "git+https://github.com/paritytech//cumulus?rev=db11baacc325537be74ad34517fcb28ed9ded6c6#db11baacc325537be74ad34517fcb28ed9ded6c6"
 dependencies = [
  "cumulus-primitives-core",
  "cumulus-relay-chain-interface",
@@ -2096,7 +2098,7 @@ dependencies = [
 [[package]]
 name = "cumulus-client-service"
 version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?rev=76479e7fef3af7c8828a44647847b01afd5fefe5#76479e7fef3af7c8828a44647847b01afd5fefe5"
+source = "git+https://github.com/paritytech//cumulus?rev=db11baacc325537be74ad34517fcb28ed9ded6c6#db11baacc325537be74ad34517fcb28ed9ded6c6"
 dependencies = [
  "cumulus-client-collator",
  "cumulus-client-consensus-common",
@@ -2125,7 +2127,7 @@ dependencies = [
 [[package]]
 name = "cumulus-pallet-aura-ext"
 version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?rev=76479e7fef3af7c8828a44647847b01afd5fefe5#76479e7fef3af7c8828a44647847b01afd5fefe5"
+source = "git+https://github.com/paritytech//cumulus?rev=db11baacc325537be74ad34517fcb28ed9ded6c6#db11baacc325537be74ad34517fcb28ed9ded6c6"
 dependencies = [
  "frame-executive",
  "frame-support",
@@ -2143,7 +2145,7 @@ dependencies = [
 [[package]]
 name = "cumulus-pallet-dmp-queue"
 version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?rev=76479e7fef3af7c8828a44647847b01afd5fefe5#76479e7fef3af7c8828a44647847b01afd5fefe5"
+source = "git+https://github.com/paritytech//cumulus?rev=db11baacc325537be74ad34517fcb28ed9ded6c6#db11baacc325537be74ad34517fcb28ed9ded6c6"
 dependencies = [
  "cumulus-primitives-core",
  "frame-support",
@@ -2161,7 +2163,7 @@ dependencies = [
 [[package]]
 name = "cumulus-pallet-parachain-system"
 version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?rev=76479e7fef3af7c8828a44647847b01afd5fefe5#76479e7fef3af7c8828a44647847b01afd5fefe5"
+source = "git+https://github.com/paritytech//cumulus?rev=db11baacc325537be74ad34517fcb28ed9ded6c6#db11baacc325537be74ad34517fcb28ed9ded6c6"
 dependencies = [
  "cumulus-pallet-parachain-system-proc-macro",
  "cumulus-primitives-core",
@@ -2191,7 +2193,7 @@ dependencies = [
 [[package]]
 name = "cumulus-pallet-parachain-system-proc-macro"
 version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?rev=76479e7fef3af7c8828a44647847b01afd5fefe5#76479e7fef3af7c8828a44647847b01afd5fefe5"
+source = "git+https://github.com/paritytech//cumulus?rev=db11baacc325537be74ad34517fcb28ed9ded6c6#db11baacc325537be74ad34517fcb28ed9ded6c6"
 dependencies = [
  "proc-macro-crate 1.1.3",
  "proc-macro2",
@@ -2202,7 +2204,7 @@ dependencies = [
 [[package]]
 name = "cumulus-pallet-session-benchmarking"
 version = "3.0.0"
-source = "git+https://github.com/paritytech//cumulus?rev=76479e7fef3af7c8828a44647847b01afd5fefe5#76479e7fef3af7c8828a44647847b01afd5fefe5"
+source = "git+https://github.com/paritytech//cumulus?rev=db11baacc325537be74ad34517fcb28ed9ded6c6#db11baacc325537be74ad34517fcb28ed9ded6c6"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -2215,7 +2217,7 @@ dependencies = [
 [[package]]
 name = "cumulus-pallet-xcm"
 version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?rev=76479e7fef3af7c8828a44647847b01afd5fefe5#76479e7fef3af7c8828a44647847b01afd5fefe5"
+source = "git+https://github.com/paritytech//cumulus?rev=db11baacc325537be74ad34517fcb28ed9ded6c6#db11baacc325537be74ad34517fcb28ed9ded6c6"
 dependencies = [
  "cumulus-primitives-core",
  "frame-support",
@@ -2232,7 +2234,7 @@ dependencies = [
 [[package]]
 name = "cumulus-pallet-xcmp-queue"
 version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?rev=76479e7fef3af7c8828a44647847b01afd5fefe5#76479e7fef3af7c8828a44647847b01afd5fefe5"
+source = "git+https://github.com/paritytech//cumulus?rev=db11baacc325537be74ad34517fcb28ed9ded6c6#db11baacc325537be74ad34517fcb28ed9ded6c6"
 dependencies = [
  "cumulus-primitives-core",
  "frame-support",
@@ -2250,7 +2252,7 @@ dependencies = [
 [[package]]
 name = "cumulus-ping"
 version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?rev=76479e7fef3af7c8828a44647847b01afd5fefe5#76479e7fef3af7c8828a44647847b01afd5fefe5"
+source = "git+https://github.com/paritytech//cumulus?rev=db11baacc325537be74ad34517fcb28ed9ded6c6#db11baacc325537be74ad34517fcb28ed9ded6c6"
 dependencies = [
  "cumulus-pallet-xcm",
  "cumulus-primitives-core",
@@ -2267,7 +2269,7 @@ dependencies = [
 [[package]]
 name = "cumulus-primitives-core"
 version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?rev=76479e7fef3af7c8828a44647847b01afd5fefe5#76479e7fef3af7c8828a44647847b01afd5fefe5"
+source = "git+https://github.com/paritytech//cumulus?rev=db11baacc325537be74ad34517fcb28ed9ded6c6#db11baacc325537be74ad34517fcb28ed9ded6c6"
 dependencies = [
  "frame-support",
  "parity-scale-codec",
@@ -2283,7 +2285,7 @@ dependencies = [
 [[package]]
 name = "cumulus-primitives-parachain-inherent"
 version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?rev=76479e7fef3af7c8828a44647847b01afd5fefe5#76479e7fef3af7c8828a44647847b01afd5fefe5"
+source = "git+https://github.com/paritytech//cumulus?rev=db11baacc325537be74ad34517fcb28ed9ded6c6#db11baacc325537be74ad34517fcb28ed9ded6c6"
 dependencies = [
  "async-trait",
  "cumulus-primitives-core",
@@ -2306,7 +2308,7 @@ dependencies = [
 [[package]]
 name = "cumulus-primitives-timestamp"
 version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?rev=76479e7fef3af7c8828a44647847b01afd5fefe5#76479e7fef3af7c8828a44647847b01afd5fefe5"
+source = "git+https://github.com/paritytech//cumulus?rev=db11baacc325537be74ad34517fcb28ed9ded6c6#db11baacc325537be74ad34517fcb28ed9ded6c6"
 dependencies = [
  "cumulus-primitives-core",
  "sp-inherents",
@@ -2317,7 +2319,7 @@ dependencies = [
 [[package]]
 name = "cumulus-primitives-utility"
 version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?rev=76479e7fef3af7c8828a44647847b01afd5fefe5#76479e7fef3af7c8828a44647847b01afd5fefe5"
+source = "git+https://github.com/paritytech//cumulus?rev=db11baacc325537be74ad34517fcb28ed9ded6c6#db11baacc325537be74ad34517fcb28ed9ded6c6"
 dependencies = [
  "cumulus-primitives-core",
  "frame-support",
@@ -2334,7 +2336,7 @@ dependencies = [
 [[package]]
 name = "cumulus-relay-chain-interface"
 version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?rev=76479e7fef3af7c8828a44647847b01afd5fefe5#76479e7fef3af7c8828a44647847b01afd5fefe5"
+source = "git+https://github.com/paritytech//cumulus?rev=db11baacc325537be74ad34517fcb28ed9ded6c6#db11baacc325537be74ad34517fcb28ed9ded6c6"
 dependencies = [
  "async-trait",
  "cumulus-primitives-core",
@@ -2355,7 +2357,7 @@ dependencies = [
 [[package]]
 name = "cumulus-relay-chain-local"
 version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?rev=76479e7fef3af7c8828a44647847b01afd5fefe5#76479e7fef3af7c8828a44647847b01afd5fefe5"
+source = "git+https://github.com/paritytech//cumulus?rev=db11baacc325537be74ad34517fcb28ed9ded6c6#db11baacc325537be74ad34517fcb28ed9ded6c6"
 dependencies = [
  "async-trait",
  "cumulus-primitives-core",
@@ -2383,7 +2385,7 @@ dependencies = [
 [[package]]
 name = "cumulus-test-relay-sproof-builder"
 version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?rev=76479e7fef3af7c8828a44647847b01afd5fefe5#76479e7fef3af7c8828a44647847b01afd5fefe5"
+source = "git+https://github.com/paritytech//cumulus?rev=db11baacc325537be74ad34517fcb28ed9ded6c6#db11baacc325537be74ad34517fcb28ed9ded6c6"
 dependencies = [
  "cumulus-primitives-core",
  "parity-scale-codec",
@@ -2396,7 +2398,7 @@ dependencies = [
 [[package]]
 name = "cumulus-test-relay-validation-worker-provider"
 version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?rev=76479e7fef3af7c8828a44647847b01afd5fefe5#76479e7fef3af7c8828a44647847b01afd5fefe5"
+source = "git+https://github.com/paritytech//cumulus?rev=db11baacc325537be74ad34517fcb28ed9ded6c6#db11baacc325537be74ad34517fcb28ed9ded6c6"
 dependencies = [
  "polkadot-node-core-pvf",
 ]
@@ -2615,7 +2617,7 @@ checksum = "ee2626afccd7561a06cf1367e2950c4718ea04565e20fb5029b6c7d8ad09abcf"
 
 [[package]]
 name = "e2e-tests"
-version = "2.4.0"
+version = "2.4.1"
 dependencies = [
  "test-service",
 ]
@@ -2634,7 +2636,7 @@ dependencies = [
 
 [[package]]
 name = "ecosystem-compound-cash"
-version = "2.4.0"
+version = "2.4.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -2651,7 +2653,7 @@ dependencies = [
 
 [[package]]
 name = "ecosystem-renvm-bridge"
-version = "2.4.0"
+version = "2.4.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -2673,7 +2675,7 @@ dependencies = [
 
 [[package]]
 name = "ecosystem-starport"
-version = "2.4.0"
+version = "2.4.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -3214,7 +3216,7 @@ dependencies = [
 
 [[package]]
 name = "evm-rpc"
-version = "2.4.0"
+version = "2.4.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -3422,7 +3424,7 @@ source = "git+https://github.com/paritytech//substrate?rev=22d40c761a985482f93bb
 dependencies = [
  "Inflector",
  "chrono",
- "clap 3.1.3",
+ "clap 3.1.6",
  "frame-benchmarking",
  "frame-support",
  "handlebars",
@@ -4685,7 +4687,7 @@ dependencies = [
 
 [[package]]
 name = "karura-runtime"
-version = "2.4.0"
+version = "2.4.1"
 dependencies = [
  "acala-primitives",
  "cumulus-pallet-aura-ext",
@@ -4720,6 +4722,7 @@ dependencies = [
  "module-evm-rpc-runtime-api",
  "module-homa",
  "module-honzon",
+ "module-honzon-bridge",
  "module-idle-scheduler",
  "module-incentives",
  "module-loans",
@@ -5729,7 +5732,7 @@ dependencies = [
 
 [[package]]
 name = "mandala-runtime"
-version = "2.4.0"
+version = "2.4.1"
 dependencies = [
  "acala-primitives",
  "acala-service",
@@ -5763,6 +5766,7 @@ dependencies = [
  "module-currencies",
  "module-dex",
  "module-dex-oracle",
+ "module-earning",
  "module-emergency-shutdown",
  "module-evm",
  "module-evm-accounts",
@@ -6082,7 +6086,7 @@ dependencies = [
 
 [[package]]
 name = "module-asset-registry"
-version = "2.4.0"
+version = "2.4.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -6110,7 +6114,7 @@ dependencies = [
 
 [[package]]
 name = "module-auction-manager"
-version = "2.4.0"
+version = "2.4.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -6134,7 +6138,7 @@ dependencies = [
 
 [[package]]
 name = "module-cdp-engine"
-version = "2.4.0"
+version = "2.4.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -6163,7 +6167,7 @@ dependencies = [
 
 [[package]]
 name = "module-cdp-treasury"
-version = "2.4.0"
+version = "2.4.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -6187,7 +6191,7 @@ dependencies = [
 
 [[package]]
 name = "module-collator-selection"
-version = "2.4.0"
+version = "2.4.1"
 dependencies = [
  "acala-primitives",
  "frame-benchmarking",
@@ -6213,7 +6217,7 @@ dependencies = [
 
 [[package]]
 name = "module-currencies"
-version = "2.4.0"
+version = "2.4.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -6239,7 +6243,7 @@ dependencies = [
 
 [[package]]
 name = "module-dex"
-version = "2.4.0"
+version = "2.4.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -6259,7 +6263,7 @@ dependencies = [
 
 [[package]]
 name = "module-dex-oracle"
-version = "2.4.0"
+version = "2.4.1"
 dependencies = [
  "acala-primitives",
  "frame-benchmarking",
@@ -6278,8 +6282,28 @@ dependencies = [
 ]
 
 [[package]]
-name = "module-emergency-shutdown"
+name = "module-earning"
 version = "2.4.0"
+dependencies = [
+ "acala-primitives",
+ "frame-support",
+ "frame-system",
+ "module-support",
+ "orml-traits",
+ "pallet-balances",
+ "parity-scale-codec",
+ "paste",
+ "scale-info",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "module-emergency-shutdown"
+version = "2.4.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -6302,7 +6326,7 @@ dependencies = [
 
 [[package]]
 name = "module-evm"
-version = "2.4.0"
+version = "2.4.1"
 dependencies = [
  "acala-primitives",
  "env_logger",
@@ -6338,7 +6362,7 @@ dependencies = [
 
 [[package]]
 name = "module-evm-accounts"
-version = "2.4.0"
+version = "2.4.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -6361,7 +6385,7 @@ dependencies = [
 
 [[package]]
 name = "module-evm-bridge"
-version = "2.4.0"
+version = "2.4.1"
 dependencies = [
  "acala-primitives",
  "ethereum-types",
@@ -6388,7 +6412,7 @@ dependencies = [
 
 [[package]]
 name = "module-evm-rpc-runtime-api"
-version = "2.4.0"
+version = "2.4.1"
 dependencies = [
  "acala-primitives",
  "sp-api",
@@ -6399,7 +6423,7 @@ dependencies = [
 
 [[package]]
 name = "module-evm-utility"
-version = "2.4.0"
+version = "2.4.1"
 dependencies = [
  "ethereum 0.12.0",
  "evm",
@@ -6411,7 +6435,7 @@ dependencies = [
 
 [[package]]
 name = "module-evm-utility-macro"
-version = "2.4.0"
+version = "2.4.1"
 dependencies = [
  "module-evm-utility",
  "proc-macro2",
@@ -6421,7 +6445,7 @@ dependencies = [
 
 [[package]]
 name = "module-example"
-version = "2.4.0"
+version = "2.4.1"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -6435,7 +6459,7 @@ dependencies = [
 
 [[package]]
 name = "module-homa"
-version = "2.4.0"
+version = "2.4.1"
 dependencies = [
  "acala-primitives",
  "frame-benchmarking",
@@ -6453,11 +6477,12 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
+ "xcm",
 ]
 
 [[package]]
 name = "module-homa-lite"
-version = "2.4.0"
+version = "2.4.1"
 dependencies = [
  "acala-primitives",
  "cumulus-primitives-core",
@@ -6484,7 +6509,7 @@ dependencies = [
 
 [[package]]
 name = "module-homa-validator-list"
-version = "2.4.0"
+version = "2.4.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -6506,7 +6531,7 @@ dependencies = [
 
 [[package]]
 name = "module-honzon"
-version = "2.4.0"
+version = "2.4.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -6530,8 +6555,29 @@ dependencies = [
 ]
 
 [[package]]
-name = "module-idle-scheduler"
+name = "module-honzon-bridge"
 version = "2.4.0"
+dependencies = [
+ "acala-primitives",
+ "frame-support",
+ "frame-system",
+ "module-currencies",
+ "module-support",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "module-idle-scheduler"
+version = "2.4.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -6548,7 +6594,7 @@ dependencies = [
 
 [[package]]
 name = "module-incentives"
-version = "2.4.0"
+version = "2.4.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -6569,7 +6615,7 @@ dependencies = [
 
 [[package]]
 name = "module-loans"
-version = "2.4.0"
+version = "2.4.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -6591,7 +6637,7 @@ dependencies = [
 
 [[package]]
 name = "module-nft"
-version = "2.4.0"
+version = "2.4.1"
 dependencies = [
  "acala-primitives",
  "frame-benchmarking",
@@ -6616,7 +6662,7 @@ dependencies = [
 
 [[package]]
 name = "module-nominees-election"
-version = "2.4.0"
+version = "2.4.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -6637,7 +6683,7 @@ dependencies = [
 
 [[package]]
 name = "module-prices"
-version = "2.4.0"
+version = "2.4.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -6656,7 +6702,7 @@ dependencies = [
 
 [[package]]
 name = "module-relaychain"
-version = "2.4.0"
+version = "2.4.1"
 dependencies = [
  "acala-primitives",
  "cumulus-primitives-core",
@@ -6674,7 +6720,7 @@ dependencies = [
 
 [[package]]
 name = "module-session-manager"
-version = "2.4.0"
+version = "2.4.1"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -6691,7 +6737,7 @@ dependencies = [
 
 [[package]]
 name = "module-support"
-version = "2.4.0"
+version = "2.4.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -6708,7 +6754,7 @@ dependencies = [
 
 [[package]]
 name = "module-transaction-pause"
-version = "2.4.0"
+version = "2.4.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -6727,7 +6773,7 @@ dependencies = [
 
 [[package]]
 name = "module-transaction-payment"
-version = "2.4.0"
+version = "2.4.1"
 dependencies = [
  "acala-primitives",
  "frame-support",
@@ -7887,7 +7933,7 @@ dependencies = [
 [[package]]
 name = "pallet-collator-selection"
 version = "3.0.0"
-source = "git+https://github.com/paritytech//cumulus?rev=76479e7fef3af7c8828a44647847b01afd5fefe5#76479e7fef3af7c8828a44647847b01afd5fefe5"
+source = "git+https://github.com/paritytech//cumulus?rev=db11baacc325537be74ad34517fcb28ed9ded6c6#db11baacc325537be74ad34517fcb28ed9ded6c6"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -8558,7 +8604,7 @@ dependencies = [
 [[package]]
 name = "parachain-info"
 version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?rev=76479e7fef3af7c8828a44647847b01afd5fefe5#76479e7fef3af7c8828a44647847b01afd5fefe5"
+source = "git+https://github.com/paritytech//cumulus?rev=db11baacc325537be74ad34517fcb28ed9ded6c6#db11baacc325537be74ad34517fcb28ed9ded6c6"
 dependencies = [
  "cumulus-primitives-core",
  "frame-support",
@@ -8571,7 +8617,7 @@ dependencies = [
 [[package]]
 name = "parachains-common"
 version = "1.0.0"
-source = "git+https://github.com/paritytech//cumulus?rev=76479e7fef3af7c8828a44647847b01afd5fefe5#76479e7fef3af7c8828a44647847b01afd5fefe5"
+source = "git+https://github.com/paritytech//cumulus?rev=db11baacc325537be74ad34517fcb28ed9ded6c6#db11baacc325537be74ad34517fcb28ed9ded6c6"
 dependencies = [
  "frame-executive",
  "frame-support",
@@ -9108,7 +9154,7 @@ name = "polkadot-cli"
 version = "0.9.17"
 source = "git+https://github.com/paritytech//polkadot?rev=de0ecd4760b146ecf33f5e867d707d789e21e060#de0ecd4760b146ecf33f5e867d707d789e21e060"
 dependencies = [
- "clap 3.1.3",
+ "clap 3.1.6",
  "frame-benchmarking-cli",
  "futures 0.3.21",
  "log",
@@ -10948,10 +10994,9 @@ dependencies = [
 
 [[package]]
 name = "runtime-common"
-version = "2.4.0"
+version = "2.4.1"
 dependencies = [
  "acala-primitives",
- "acala-service",
  "cumulus-pallet-parachain-system",
  "ethabi",
  "frame-support",
@@ -10970,6 +11015,7 @@ dependencies = [
  "module-support",
  "module-transaction-payment",
  "num_enum",
+ "orml-bencher",
  "orml-currencies",
  "orml-nft",
  "orml-oracle",
@@ -10998,7 +11044,7 @@ dependencies = [
 
 [[package]]
 name = "runtime-integration-tests"
-version = "2.4.0"
+version = "2.4.1"
 dependencies = [
  "acala-primitives",
  "acala-runtime",
@@ -11390,7 +11436,7 @@ version = "0.10.0-dev"
 source = "git+https://github.com/paritytech//substrate?rev=22d40c761a985482f93bbbea5ba4199bdba74f8e#22d40c761a985482f93bbbea5ba4199bdba74f8e"
 dependencies = [
  "chrono",
- "clap 3.1.3",
+ "clap 3.1.6",
  "fdlimit",
  "futures 0.3.21",
  "hex",
@@ -13476,7 +13522,7 @@ checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
 [[package]]
 name = "statemine-runtime"
 version = "2.0.0"
-source = "git+https://github.com/paritytech//cumulus?rev=76479e7fef3af7c8828a44647847b01afd5fefe5#76479e7fef3af7c8828a44647847b01afd5fefe5"
+source = "git+https://github.com/paritytech//cumulus?rev=db11baacc325537be74ad34517fcb28ed9ded6c6#db11baacc325537be74ad34517fcb28ed9ded6c6"
 dependencies = [
  "cumulus-pallet-aura-ext",
  "cumulus-pallet-dmp-queue",
@@ -13910,9 +13956,9 @@ dependencies = [
 
 [[package]]
 name = "textwrap"
-version = "0.14.2"
+version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0066c8d12af8b5acd21e00547c3797fde4e8677254a7ee429176ccebbe93dd80"
+checksum = "b1141d4d61095b28419e22cb0bbf02755f5e54e0526f97f1e3d1d160e60885fb"
 
 [[package]]
 name = "thiserror"
@@ -14337,7 +14383,7 @@ name = "try-runtime-cli"
 version = "0.10.0-dev"
 source = "git+https://github.com/paritytech//substrate?rev=22d40c761a985482f93bbbea5ba4199bdba74f8e#22d40c761a985482f93bbbea5ba4199bdba74f8e"
 dependencies = [
- "clap 3.1.3",
+ "clap 3.1.6",
  "jsonrpsee 0.4.1",
  "log",
  "parity-scale-codec",
@@ -15258,7 +15304,7 @@ dependencies = [
 [[package]]
 name = "xcm-emulator"
 version = "0.1.0"
-source = "git+https://github.com/zqhxuyuan/xcm-simulator?rev=3119d273777be17d23683076dbfd30cb17e489d6#3119d273777be17d23683076dbfd30cb17e489d6"
+source = "git+https://github.com/shaunxw/xcm-simulator?rev=24ccbce563d1f99019b4cdfa2f3af4e99bac0dfc#24ccbce563d1f99019b4cdfa2f3af4e99bac0dfc"
 dependencies = [
  "cumulus-pallet-dmp-queue",
  "cumulus-pallet-parachain-system",
@@ -15268,7 +15314,6 @@ dependencies = [
  "cumulus-test-relay-sproof-builder",
  "frame-support",
  "frame-system",
- "log",
  "parachain-info",
  "parity-scale-codec",
  "paste",

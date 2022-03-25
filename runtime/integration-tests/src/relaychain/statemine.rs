@@ -38,10 +38,29 @@ pub const EXISTENTIAL_DEPOSIT: Balance = CENTS / 10;
 pub const UNITS: Balance = 1_000_000_000_000;
 pub const CENTS: Balance = UNITS / 30_000;
 
+fn init_statemine_xcm_interface() {
+	let xcm_operation =
+		module_xcm_interface::XcmInterfaceOperation::ParachainFee(Box::new((1, Parachain(1000)).into()));
+	assert_ok!(<module_xcm_interface::Pallet<Runtime>>::update_xcm_dest_weight_and_fee(
+		Origin::root(),
+		vec![(xcm_operation.clone(), Some(4_000_000_000), Some(4_000_000_000),)],
+	));
+	System::assert_has_event(Event::XcmInterface(module_xcm_interface::Event::XcmDestWeightUpdated {
+		xcm_operation: xcm_operation.clone(),
+		new_xcm_dest_weight: 4_000_000_000,
+	}));
+	System::assert_has_event(Event::XcmInterface(module_xcm_interface::Event::XcmFeeUpdated {
+		xcm_operation,
+		new_xcm_dest_weight: 4_000_000_000,
+	}));
+}
+
 #[test]
 fn statemine_min_xcm_fee_matched() {
 	Statemine::execute_with(|| {
 		use frame_support::weights::{IdentityFee, WeightToFeePolynomial};
+
+		init_statemine_xcm_interface();
 		let weight = FEE_STATEMINE as u64;
 
 		let fee: Balance = IdentityFee::calc(&weight);
@@ -170,6 +189,8 @@ fn user_large_fee_fund_to_sovereign_account_works() {
 // transfer custom asset from Karura to Statemine
 fn karura_side(fee_amount: u128) {
 	Karura::execute_with(|| {
+		init_statemine_xcm_interface();
+
 		assert_eq!(
 			9_999_936_000_000,
 			Tokens::free_balance(CurrencyId::ForeignAsset(0), &AccountId::from(BOB))
