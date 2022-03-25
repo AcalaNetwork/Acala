@@ -49,7 +49,7 @@ use primitives::{Amount, Balance, CurrencyId};
 use scale_info::TypeInfo;
 use sp_runtime::{
 	traits::{AccountIdConversion, One, UniqueSaturatedInto, Zero},
-	DispatchResult, FixedPointNumber, RuntimeDebug,
+	DispatchResult, FixedPointNumber, Permill, RuntimeDebug,
 };
 use sp_std::{collections::btree_map::BTreeMap, prelude::*};
 use support::{CDPTreasury, DEXIncentives, DEXManager, EmergencyShutdown, Rate};
@@ -86,6 +86,10 @@ pub mod module {
 		#[pallet::constant]
 		type AccumulatePeriod: Get<Self::BlockNumber>;
 
+		/// The native currency for earning staking
+		#[pallet::constant]
+		type NativeCurrencyId: Get<CurrencyId>;
+
 		/// The reward type for dex saving.
 		#[pallet::constant]
 		type StableCurrencyId: Get<CurrencyId>;
@@ -93,6 +97,10 @@ pub mod module {
 		/// The source account for native token rewards.
 		#[pallet::constant]
 		type RewardsSource: Get<Self::AccountId>;
+
+		/// Additional share amount from earning
+		#[pallet::constant]
+		type EarnShareBooster: Get<Permill>;
 
 		/// The origin which may update incentive related params
 		type UpdateOrigin: EnsureOrigin<Self::Origin>;
@@ -603,5 +611,21 @@ impl<T: Config> RewardHandler<T::AccountId, CurrencyId> for Pallet<T> {
 				.and_modify(|current| *current = current.saturating_add(payout_amount))
 				.or_insert(payout_amount);
 		});
+	}
+}
+
+pub struct OnEarningBonded<T>(sp_std::marker::PhantomData<T>);
+impl<T: Config> Happened<(T::AccountId, Balance)> for OnEarningBonded<T> {
+	fn happened((who, amount): &(T::AccountId, Balance)) {
+		let share = T::EarnShareBooster::get() * *amount;
+		<orml_rewards::Pallet<T>>::add_share(who, &PoolId::Loans(T::NativeCurrencyId::get()), share);
+	}
+}
+
+pub struct OnEarningUnbonded<T>(sp_std::marker::PhantomData<T>);
+impl<T: Config> Happened<(T::AccountId, Balance)> for OnEarningUnbonded<T> {
+	fn happened((who, amount): &(T::AccountId, Balance)) {
+		let share = T::EarnShareBooster::get() * *amount;
+		<orml_rewards::Pallet<T>>::remove_share(who, &PoolId::Loans(T::NativeCurrencyId::get()), share);
 	}
 }
