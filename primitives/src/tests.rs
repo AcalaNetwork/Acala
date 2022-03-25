@@ -116,11 +116,35 @@ fn currency_id_try_into_evm_address_works() {
 
 	let erc20 = EvmAddress::from_str("0x1111111111111111111111111111111111111111").unwrap();
 	assert_eq!(EvmAddress::try_from(CurrencyId::Erc20(erc20)), Ok(erc20));
+
+	assert_eq!(
+		EvmAddress::try_from(CurrencyId::DexShare(
+			DexShare::LiquidCrowdloan(Default::default()),
+			DexShare::LiquidCrowdloan(Default::default())
+		)),
+		Ok(EvmAddress::from_str("0x0000000000000000000202000000000200000000").unwrap())
+	);
+
+	assert_eq!(
+		EvmAddress::try_from(CurrencyId::DexShare(
+			DexShare::ForeignAsset(Default::default()),
+			DexShare::ForeignAsset(Default::default())
+		)),
+		Ok(EvmAddress::from_str("0x0000000000000000000203000000000300000000").unwrap())
+	);
+
+	assert_eq!(
+		EvmAddress::try_from(CurrencyId::DexShare(
+			DexShare::StableAssetPoolToken(Default::default()),
+			DexShare::StableAssetPoolToken(Default::default())
+		)),
+		Ok(EvmAddress::from_str("0x0000000000000000000204000000000400000000").unwrap())
+	);
 }
 
 #[test]
 fn generate_function_selector_works() {
-	#[module_evm_utiltity_macro::generate_function_selector]
+	#[module_evm_utility_macro::generate_function_selector]
 	#[derive(RuntimeDebug, Eq, PartialEq)]
 	#[repr(u32)]
 	pub enum Action {

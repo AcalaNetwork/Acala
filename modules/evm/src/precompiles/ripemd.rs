@@ -18,7 +18,7 @@
 
 use super::LinearCostPrecompile;
 use crate::runner::state::PrecompileFailure;
-use module_evm_utiltity::evm::ExitSucceed;
+use module_evm_utility::evm::ExitSucceed;
 use sha3::Digest;
 use sp_std::vec::Vec;
 

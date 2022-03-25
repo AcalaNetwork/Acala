@@ -18,35 +18,36 @@
 
 //! Acala CLI library.
 
+use clap::Parser;
 use sc_cli::{KeySubcommand, SignCmd, VanityCmd, VerifyCmd};
 use std::path::PathBuf;
-use structopt::StructOpt;
 
 use service::chain_spec;
 
 /// Possible subcommands of the main binary.
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 pub enum Subcommand {
 	/// Export the genesis state of the parachain.
-	#[structopt(name = "export-genesis-state")]
+	#[clap(name = "export-genesis-state")]
 	ExportGenesisState(ExportGenesisStateCommand),
 
 	/// Export the genesis wasm of the parachain.
-	#[structopt(name = "export-genesis-wasm")]
+	#[clap(name = "export-genesis-wasm")]
 	ExportGenesisWasm(ExportGenesisWasmCommand),
 
 	/// Key management cli utilities
+	#[clap(subcommand)]
 	Key(KeySubcommand),
 
 	/// The custom inspect subcommmand for decoding blocks and extrinsics.
-	#[structopt(
+	#[clap(
 		name = "inspect",
 		about = "Decode given block or extrinsic using current native runtime."
 	)]
 	Inspect(inspect::cli::InspectCmd),
 
 	/// The custom benchmark subcommmand benchmarking runtime modules.
-	#[structopt(name = "benchmark", about = "Benchmark runtime modules.")]
+	#[clap(name = "benchmark", about = "Benchmark runtime modules.")]
 	Benchmark(frame_benchmarking_cli::BenchmarkCmd),
 
 	/// Try some experimental command on the runtime. This includes migration and runtime-upgrade
@@ -87,61 +88,61 @@ pub enum Subcommand {
 }
 
 /// Command for exporting the genesis state of the parachain
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 pub struct ExportGenesisStateCommand {
 	/// Output file name or stdout if unspecified.
-	#[structopt(parse(from_os_str))]
+	#[clap(parse(from_os_str))]
 	pub output: Option<PathBuf>,
 
 	/// Write output in binary. Default is to write in hex.
-	#[structopt(short, long)]
+	#[clap(short, long)]
 	pub raw: bool,
 
 	/// The name of the chain for that the genesis state should be exported.
-	#[structopt(long)]
+	#[clap(long)]
 	pub chain: Option<String>,
 }
 
 /// Command for exporting the genesis wasm file.
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 pub struct ExportGenesisWasmCommand {
 	/// Output file name or stdout if unspecified.
-	#[structopt(parse(from_os_str))]
+	#[clap(parse(from_os_str))]
 	pub output: Option<PathBuf>,
 
 	/// Write output in binary. Default is to write in hex.
-	#[structopt(short, long)]
+	#[clap(short, long)]
 	pub raw: bool,
 
 	/// The name of the chain for that the genesis wasm file should be exported.
-	#[structopt(long)]
+	#[clap(long)]
 	pub chain: Option<String>,
 }
 
 /// An overarching CLI command definition.
-#[derive(Debug, StructOpt)]
-#[structopt(settings = &[
-	structopt::clap::AppSettings::GlobalVersion,
-	structopt::clap::AppSettings::ArgsNegateSubcommands,
-	structopt::clap::AppSettings::SubcommandsNegateReqs,
-])]
+#[derive(Debug, Parser)]
+#[clap(
+	propagate_version = true,
+	args_conflicts_with_subcommands = true,
+	subcommand_negates_reqs = true
+)]
 pub struct Cli {
 	/// Possible subcommand with parameters.
-	#[structopt(subcommand)]
+	#[clap(subcommand)]
 	pub subcommand: Option<Subcommand>,
 
 	#[allow(missing_docs)]
-	#[structopt(flatten)]
+	#[clap(flatten)]
 	pub run: cumulus_client_cli::RunCmd,
 
 	/// Relaychain arguments
-	#[structopt(raw = true)]
+	#[clap(raw = true)]
 	pub relaychain_args: Vec<String>,
 
 	/// Instant block sealing
 	///
 	/// Can only be used with `--dev`
-	#[structopt(long = "instant-sealing", requires = "dev")]
+	#[clap(long = "instant-sealing", requires = "dev")]
 	pub instant_sealing: bool,
 
 	/// Mnemonic for evm development.
@@ -149,7 +150,7 @@ pub struct Cli {
 	///
 	/// Can only be used with `--dev`
 	#[cfg(feature = "with-mandala-runtime")]
-	#[structopt(long = "mnemonic", requires = "dev")]
+	#[clap(long = "mnemonic", requires = "dev")]
 	pub mnemonic: Option<String>,
 }
 
@@ -178,7 +179,7 @@ impl RelayChainCli {
 		Self {
 			base_path,
 			chain_id,
-			base: polkadot_cli::RunCmd::from_iter(relay_chain_args),
+			base: polkadot_cli::RunCmd::parse_from(relay_chain_args),
 		}
 	}
 }

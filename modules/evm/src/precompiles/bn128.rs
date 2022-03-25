@@ -18,7 +18,7 @@
 
 use super::Precompile;
 use crate::runner::state::{PrecompileFailure, PrecompileOutput, PrecompileResult};
-use module_evm_utiltity::evm::{Context, ExitError, ExitSucceed};
+use module_evm_utility::evm::{Context, ExitError, ExitSucceed};
 use sp_core::U256;
 use sp_std::vec::Vec;
 

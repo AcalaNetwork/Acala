@@ -19,12 +19,11 @@
 use super::utils::{dollar, set_balance};
 use crate::{
 	AccountId, Balance, Currencies, CurrencyId, Dex, Event, GetNativeCurrencyId, GetStableCurrencyId,
-	NativeTokenExistentialDeposit, Origin, Runtime, System, TradingPair, TransactionPayment, TreasuryPalletId,
+	NativeTokenExistentialDeposit, Origin, Runtime, System, TransactionPayment, TreasuryPalletId,
 };
 use frame_benchmarking::{account, whitelisted_caller};
 use frame_support::traits::OnFinalize;
 use frame_system::RawOrigin;
-use module_dex::TradingPairStatus;
 use module_support::{DEXManager, Ratio, SwapLimit};
 use orml_benchmarking::runtime_benchmarks;
 use orml_traits::MultiCurrency;
@@ -78,27 +77,6 @@ runtime_benchmarks! {
 		assert_eq!(TransactionPayment::alternative_fee_swap_path(&caller).unwrap().into_inner(), vec![STABLECOIN, NATIVECOIN]);
 	}
 
-	set_global_fee_swap_path {
-	}: _(RawOrigin::Root, vec![STABLECOIN, NATIVECOIN])
-	verify {
-		assert_eq!(TransactionPayment::global_fee_swap_path(STABLECOIN).unwrap().into_inner(), vec![STABLECOIN, NATIVECOIN]);
-	}
-
-	remove_global_fee_swap_path {
-		TransactionPayment::set_global_fee_swap_path(RawOrigin::Root.into(), vec![STABLECOIN, NATIVECOIN])?;
-	}: _(RawOrigin::Root, STABLECOIN)
-	verify {
-		assert_eq!(TransactionPayment::global_fee_swap_path(STABLECOIN), None);
-	}
-
-	set_swap_balance_threshold {
-		let treasury_account: AccountId = TreasuryPalletId::get().into_account();
-		module_transaction_payment::PoolSize::<Runtime>::insert(STABLECOIN, 10_000_000_000);
-	}: _(RawOrigin::Root, STABLECOIN, 1_000_000_000)
-	verify {
-		assert_eq!(TransactionPayment::swap_balance_threshold(STABLECOIN), 1_000_000_000);
-	}
-
 	enable_charge_fee_pool {
 		let funder: AccountId = account("funder", 0, SEED);
 		let treasury_account: AccountId = TreasuryPalletId::get().into_account();
@@ -107,6 +85,7 @@ runtime_benchmarks! {
 		let stable_ed: Balance = <Currencies as MultiCurrency<AccountId>>::minimum_balance(STABLECOIN);
 		let pool_size: Balance = native_ed * 50;
 		let swap_threshold: Balance = native_ed * 2;
+		let fee_swap_path: Vec<CurrencyId> = vec![STABLECOIN, NATIVECOIN];
 
 		// set balance
 		set_balance(NATIVECOIN, &sub_account, NativeTokenExistentialDeposit::get());
@@ -120,7 +99,7 @@ runtime_benchmarks! {
 
 		set_balance(NATIVECOIN, &treasury_account, pool_size * 10);
 		set_balance(STABLECOIN, &treasury_account, stable_ed * 10);
-	}: _(RawOrigin::Root, STABLECOIN, pool_size, swap_threshold)
+	}: _(RawOrigin::Root, STABLECOIN, fee_swap_path.clone(), pool_size, swap_threshold)
 	verify {
 		let exchange_rate = TransactionPayment::token_exchange_rate(STABLECOIN).unwrap();
 		assert_eq!(TransactionPayment::pool_size(STABLECOIN), pool_size);
@@ -130,6 +109,7 @@ runtime_benchmarks! {
 		assert_last_event(module_transaction_payment::Event::ChargeFeePoolEnabled {
 			sub_account,
 			currency_id: STABLECOIN,
+			fee_swap_path,
 			exchange_rate,
 			pool_size,
 			swap_threshold
@@ -155,7 +135,20 @@ runtime_benchmarks! {
 			native_amount: native_ed * 10,
 		}.into());
 		assert_eq!(module_transaction_payment::TokenExchangeRate::<Runtime>::get(STABLECOIN), None);
+		assert_eq!(module_transaction_payment::GlobalFeeSwapPath::<Runtime>::get(STABLECOIN), None);
 	}
+
+	with_fee_path {
+		let caller = whitelisted_caller();
+		let call = Box::new(frame_system::Call::remark { remark: vec![] }.into());
+		let fee_swap_path: Vec<CurrencyId> = vec![STABLECOIN, NATIVECOIN];
+	}: _(RawOrigin::Signed(caller), fee_swap_path.clone(), call)
+
+	with_fee_currency {
+		let caller: AccountId = whitelisted_caller();
+		let call = Box::new(frame_system::Call::remark { remark: vec![] }.into());
+		module_transaction_payment::TokenExchangeRate::<Runtime>::insert(STABLECOIN, Ratio::one());
+	}: _(RawOrigin::Signed(caller.clone()), STABLECOIN, call)
 
 	on_finalize {
 	}: {

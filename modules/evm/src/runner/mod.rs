@@ -22,7 +22,7 @@ pub mod storage_meter;
 
 use crate::{BalanceOf, CallInfo, Config, CreateInfo};
 use frame_support::dispatch::DispatchError;
-use module_evm_utiltity::evm;
+use module_evm_utility::evm;
 pub use primitives::evm::{EvmAddress, Vicinity};
 use sp_core::{H160, H256};
 use sp_std::vec::Vec;

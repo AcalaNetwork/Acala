@@ -31,6 +31,7 @@ pub mod collator_selection;
 pub mod currencies;
 pub mod dex;
 pub mod dex_oracle;
+pub mod earning;
 pub mod emergency_shutdown;
 pub mod evm;
 pub mod evm_accounts;
