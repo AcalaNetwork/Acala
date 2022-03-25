@@ -422,10 +422,7 @@ impl<T: Config> CDPTreasuryExtended<T::AccountId> for Pallet<T> {
 				);
 				let RedeemProportionResult {
 					amounts,
-					balances: _,
-					fee_amount: _,
-					total_supply: _,
-					redeem_amount: _,
+					..
 				} = T::StableAsset::get_redeem_proportion_amount(&yield_info, supply_limit)
 					.ok_or(Error::<T>::CannotSwap)?;
 				let mut swap_paths = vec![];
