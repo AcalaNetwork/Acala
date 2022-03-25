@@ -421,11 +421,9 @@ impl<T: Config> CDPTreasuryExtended<T::AccountId> for Pallet<T> {
 					yield_info.total_supply >= pool_info.total_supply,
 					Error::<T>::CannotSwap,
 				);
-				let RedeemProportionResult {
-					amounts,
-					..
-				} = T::StableAsset::get_redeem_proportion_amount(&yield_info, supply_limit)
-					.ok_or(Error::<T>::CannotSwap)?;
+				let RedeemProportionResult { amounts, .. } =
+					T::StableAsset::get_redeem_proportion_amount(&yield_info, supply_limit)
+						.ok_or(Error::<T>::CannotSwap)?;
 				let mut swap_paths = Vec::with_capacity(amounts.len());
 				let mut redeem_limits = Vec::with_capacity(amounts.len());
 				let mut swap_limits = Vec::with_capacity(amounts.len());
