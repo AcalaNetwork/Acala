@@ -248,11 +248,13 @@ impl orml_rewards::Config for Runtime {
 parameter_types! {
 	pub const AccumulatePeriod: BlockNumber = 10;
 	pub const StableCurrencyId: CurrencyId = AUSD;
+	pub const GetNativeCurrencyId: CurrencyId = ACA;
 	pub const IncentivesPalletId: PalletId = PalletId(*b"aca/inct");
 }
 
 ord_parameter_types! {
 	pub const Root: AccountId = ROOT::get();
+	pub const EarnShareBooster: Permill = Permill::from_percent(30);
 }
 
 impl Config for Runtime {
@@ -260,6 +262,8 @@ impl Config for Runtime {
 	type RewardsSource = RewardsSource;
 	type AccumulatePeriod = AccumulatePeriod;
 	type StableCurrencyId = StableCurrencyId;
+	type NativeCurrencyId = GetNativeCurrencyId;
+	type EarnShareBooster = EarnShareBooster;
 	type UpdateOrigin = EnsureSignedBy<ROOT, AccountId>;
 	type CDPTreasury = MockCDPTreasury;
 	type Currency = TokensModule;
