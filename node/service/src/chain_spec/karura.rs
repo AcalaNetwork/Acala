@@ -141,7 +141,7 @@ fn karura_genesis(
 			members: vec![],
 			phantom: Default::default(),
 		},
-		foreign_state_oracle_committee: Default::default(),
+		//foreign_state_oracle_committee: Default::default(), TODO: https://github.com/AcalaNetwork/Acala/issues/1996
 		democracy: Default::default(),
 		treasury: Default::default(),
 		tokens: TokensConfig { balances: vec![] },
@@ -192,6 +192,6 @@ fn karura_genesis(
 		polkadot_xcm: PolkadotXcmConfig {
 			safe_xcm_version: Some(2),
 		},
-		account_tokenizer: Default::default(),
+		//account_tokenizer: Default::default(), TODO: https://github.com/AcalaNetwork/Acala/issues/1996
 	}
 }

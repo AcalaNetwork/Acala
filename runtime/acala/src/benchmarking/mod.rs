@@ -54,9 +54,6 @@ pub mod evm {
 pub mod evm_accounts {
 	include!("../../../mandala/src/benchmarking/evm_accounts.rs");
 }
-pub mod foreign_state_oracle {
-	include!("../../../mandala/src/benchmarking/foreign_state_oracle.rs");
-}
 pub mod homa {
 	include!("../../../mandala/src/benchmarking/homa.rs");
 }
@@ -78,9 +75,13 @@ pub mod transaction_payment {
 pub mod session_manager {
 	include!("../../../mandala/src/benchmarking/session_manager.rs");
 }
-pub mod account_tokenizer {
-	include!("../../../mandala/src/benchmarking/account_tokenizer.rs");
-}
+// TODO: https://github.com/AcalaNetwork/Acala/issues/1996
+// pub mod foreign_state_oracle {
+// 	include!("../../../mandala/src/benchmarking/foreign_state_oracle.rs");
+// }
+// pub mod account_tokenizer {
+// 	include!("../../../mandala/src/benchmarking/account_tokenizer.rs");
+// }
 
 // orml benchmarking
 pub mod auction {

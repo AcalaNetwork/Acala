@@ -534,22 +534,23 @@ impl pallet_membership::Config<OperatorMembershipInstanceAcala> for Runtime {
 	type WeightInfo = ();
 }
 
-parameter_types! {
-	pub const ForeignStateMotionDuration: BlockNumber = 3 * DAYS;
-	pub const ForeignStateMaxProposals: u32 = 30;
-	pub const ForeignStateMaxMembers: u32 = 30;
-}
+// TODO: https://github.com/AcalaNetwork/Acala/issues/1996
+// parameter_types! {
+// 	pub const ForeignStateMotionDuration: BlockNumber = 3 * DAYS;
+// 	pub const ForeignStateMaxProposals: u32 = 30;
+// 	pub const ForeignStateMaxMembers: u32 = 30;
+// }
 
-impl pallet_collective::Config<ForeignStateOracleInstance> for Runtime {
-	type Origin = Origin;
-	type Proposal = Call;
-	type Event = Event;
-	type MotionDuration = ForeignStateMotionDuration;
-	type MaxProposals = ForeignStateMaxProposals;
-	type MaxMembers = ForeignStateMaxMembers;
-	type DefaultVote = pallet_collective::PrimeDefaultVote;
-	type WeightInfo = ();
-}
+// impl pallet_collective::Config<ForeignStateOracleInstance> for Runtime {
+// 	type Origin = Origin;
+// 	type Proposal = Call;
+// 	type Event = Event;
+// 	type MotionDuration = ForeignStateMotionDuration;
+// 	type MaxProposals = ForeignStateMaxProposals;
+// 	type MaxMembers = ForeignStateMaxMembers;
+// 	type DefaultVote = pallet_collective::PrimeDefaultVote;
+// 	type WeightInfo = ();
+// }
 
 impl pallet_utility::Config for Runtime {
 	type Event = Event;
@@ -1650,47 +1651,48 @@ impl nutsfinance_stable_asset::Config for Runtime {
 	type EnsurePoolAssetId = EnsurePoolAssetId;
 }
 
-parameter_types! {
-	pub QueryFee: Balance = 20 * cent(KAR);
-	pub CancelFee: Balance = 10 * cent(KAR);
-	pub ExpiredCallPurgeReward: Permill = Permill::from_percent(50);
-	pub const MaxQueryCallSize: u32 = 200;
-}
+// TODO: https://github.com/AcalaNetwork/Acala/issues/1996
+// parameter_types! {
+// 	pub QueryFee: Balance = 20 * cent(KAR);
+// 	pub CancelFee: Balance = 10 * cent(KAR);
+// 	pub ExpiredCallPurgeReward: Permill = Permill::from_percent(50);
+// 	pub const MaxQueryCallSize: u32 = 200;
+// }
 
-impl module_foreign_state_oracle::Config for Runtime {
-	type Event = Event;
-	type Origin = Origin;
-	type DispatchableCall = Call;
-	type Currency = Balances;
-	type PalletId = ForeignOraclePalletId;
-	type QueryFee = QueryFee;
-	type CancelFee = CancelFee;
-	type ExpiredCallPurgeReward = ExpiredCallPurgeReward;
-	type MaxQueryCallSize = MaxQueryCallSize;
-	type BlockNumberProvider = System;
-	type OracleOrigin = EnsureRootOrAllForeignStateOracle;
-	type WeightInfo = weights::module_foreign_state_oracle::WeightInfo<Runtime>;
-}
+// impl module_foreign_state_oracle::Config for Runtime {
+// 	type Event = Event;
+// 	type Origin = Origin;
+// 	type DispatchableCall = Call;
+// 	type Currency = Balances;
+// 	type PalletId = ForeignOraclePalletId;
+// 	type QueryFee = QueryFee;
+// 	type CancelFee = CancelFee;
+// 	type ExpiredCallPurgeReward = ExpiredCallPurgeReward;
+// 	type MaxQueryCallSize = MaxQueryCallSize;
+// 	type BlockNumberProvider = System;
+// 	type OracleOrigin = EnsureRootOrAllForeignStateOracle;
+// 	type WeightInfo = weights::module_foreign_state_oracle::WeightInfo<Runtime>;
+// }
 
-parameter_types! {
-	pub AccountTokenizerMintRequestDeposit: Balance = 10 * dollar(KAR);
-	pub AccountTokenizerMintFee: Balance = dollar(KAR);
-}
+// parameter_types! {
+// 	pub AccountTokenizerMintRequestDeposit: Balance = 10 * dollar(KAR);
+// 	pub AccountTokenizerMintFee: Balance = dollar(KAR);
+// }
 
-impl module_account_tokenizer::Config for Runtime {
-	type Event = Event;
-	type WeightInfo = weights::module_account_tokenizer::WeightInfo<Runtime>;
-	type Call = Call;
-	type PalletId = AccountTokenizerPalletId;
-	type Currency = Balances;
-	type XcmInterface = XcmInterface;
-	type NFTInterface = NFT;
-	type TreasuryAccount = KaruraTreasuryAccount;
-	type MintRequestDeposit = AccountTokenizerMintRequestDeposit;
-	type MintFee = AccountTokenizerMintFee;
-	type ForeignStateQuery = ForeignStateOracle;
-	type AccountTokenizerGovernance = EnsureRootOrHalfGeneralCouncil;
-}
+// impl module_account_tokenizer::Config for Runtime {
+// 	type Event = Event;
+// 	type WeightInfo = weights::module_account_tokenizer::WeightInfo<Runtime>;
+// 	type Call = Call;
+// 	type PalletId = AccountTokenizerPalletId;
+// 	type Currency = Balances;
+// 	type XcmInterface = XcmInterface;
+// 	type NFTInterface = NFT;
+// 	type TreasuryAccount = KaruraTreasuryAccount;
+// 	type MintRequestDeposit = AccountTokenizerMintRequestDeposit;
+// 	type MintFee = AccountTokenizerMintFee;
+// 	type ForeignStateQuery = ForeignStateOracle;
+// 	type AccountTokenizerGovernance = EnsureRootOrHalfGeneralCouncil;
+// }
 construct_runtime!(
 	pub enum Runtime where
 		Block = Block,
@@ -1714,7 +1716,7 @@ construct_runtime!(
 		Currencies: module_currencies::{Pallet, Call, Event<T>} = 12,
 		Vesting: orml_vesting::{Pallet, Storage, Call, Event<T>, Config<T>} = 13,
 		TransactionPayment: module_transaction_payment::{Pallet, Call, Storage, Event<T>} = 14,
-		AccountTokenizer: module_account_tokenizer::{Pallet, Call, Storage, Config, Event<T>} = 15,
+		//AccountTokenizer: module_account_tokenizer::{Pallet, Call, Storage, Config, Event<T>} = 15,
 
 		// Treasury
 		Treasury: pallet_treasury::{Pallet, Call, Storage, Config, Event<T>} = 20,
@@ -1752,7 +1754,7 @@ construct_runtime!(
 		TechnicalCommittee: pallet_collective::<Instance4>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 67,
 		TechnicalCommitteeMembership: pallet_membership::<Instance4>::{Pallet, Call, Storage, Event<T>, Config<T>} = 68,
 		Democracy: pallet_democracy::{Pallet, Call, Storage, Config<T>, Event<T>} = 69,
-		ForeignStateOracleCommittee: pallet_collective::<Instance5>::{Pallet, Call, Origin<T>, Storage, Event<T>, Config<T>} = 79,
+		//ForeignStateOracleCommittee: pallet_collective::<Instance5>::{Pallet, Call, Origin<T>, Storage, Event<T>, Config<T>} = 79,
 
 		// Oracle
 		//
@@ -1787,7 +1789,7 @@ construct_runtime!(
 		Incentives: module_incentives::{Pallet, Storage, Call, Event<T>} = 120,
 		NFT: module_nft::{Pallet, Call, Event<T>} = 121,
 		AssetRegistry: module_asset_registry::{Pallet, Call, Storage, Event<T>} = 122,
-		ForeignStateOracle: module_foreign_state_oracle::{Pallet, Call, Storage, Event<T>, Origin} = 123,
+		//ForeignStateOracle: module_foreign_state_oracle::{Pallet, Call, Storage, Event<T>, Origin} = 123,
 
 		// Smart contracts
 		EVM: module_evm::{Pallet, Config<T>, Call, Storage, Event<T>} = 130,
@@ -1881,7 +1883,7 @@ mod benches {
 		[module_cdp_engine, benchmarking::cdp_engine]
 		[module_emergency_shutdown, benchmarking::emergency_shutdown]
 		[module_evm, benchmarking::evm]
-		[module_foreign_state_oracle, benchmarking::foreign_state_oracle]
+
 		[module_homa, benchmarking::homa]
 		[module_honzon, benchmarking::honzon]
 		[module_cdp_treasury, benchmarking::cdp_treasury]
@@ -1893,7 +1895,8 @@ mod benches {
 		[module_evm_accounts, benchmarking::evm_accounts]
 		[module_currencies, benchmarking::currencies]
 		[module_session_manager, benchmarking::session_manager]
-		[module_account_tokenizer, benchmarking::account_tokenizer]
+		//[module_account_tokenizer, benchmarking::account_tokenizer] TODO: https://github.com/AcalaNetwork/Acala/issues/1996
+		//[module_foreign_state_oracle, benchmarking::foreign_state_oracle]
 		[module_honzon_bridge, benchmarking::honzon_bridge]
 		[orml_tokens, benchmarking::tokens]
 		[orml_vesting, benchmarking::vesting]

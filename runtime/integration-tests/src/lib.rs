@@ -126,9 +126,5 @@ mod payment;
 #[cfg(feature = "with-karura-runtime")]
 mod relaychain;
 
-#[cfg(any(
-	feature = "with-mandala-runtime",
-	feature = "with-karura-runtime",
-	feature = "with-acala-runtime"
-))]
+#[cfg(any(feature = "with-mandala-runtime",))]
 mod account_tokenizer;
