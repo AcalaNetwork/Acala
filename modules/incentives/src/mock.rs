@@ -254,7 +254,7 @@ parameter_types! {
 
 ord_parameter_types! {
 	pub const Root: AccountId = ROOT::get();
-	pub const EarnShareBooster: Permill = Permill::from_percent(30);
+	pub const EarnShareBooster: Permill = Permill::from_percent(50);
 }
 
 impl Config for Runtime {

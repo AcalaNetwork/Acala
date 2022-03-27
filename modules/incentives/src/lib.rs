@@ -584,16 +584,14 @@ impl<T: Config> DEXIncentives<T::AccountId, CurrencyId, Balance> for Pallet<T> {
 pub struct OnUpdateLoan<T>(sp_std::marker::PhantomData<T>);
 impl<T: Config> Happened<(T::AccountId, CurrencyId, Amount, Balance)> for OnUpdateLoan<T> {
 	fn happened(info: &(T::AccountId, CurrencyId, Amount, Balance)) {
-		let (who, currency_id, adjustment, previous_amount) = info;
+		let (who, currency_id, adjustment, _previous_amount) = info;
 		let adjustment_abs = TryInto::<Balance>::try_into(adjustment.saturating_abs()).unwrap_or_default();
 
-		let new_share_amount = if adjustment.is_positive() {
-			previous_amount.saturating_add(adjustment_abs)
+		if adjustment.is_positive() {
+			<orml_rewards::Pallet<T>>::add_share(who, &PoolId::Loans(*currency_id), adjustment_abs);
 		} else {
-			previous_amount.saturating_sub(adjustment_abs)
+			<orml_rewards::Pallet<T>>::remove_share(who, &PoolId::Loans(*currency_id), adjustment_abs);
 		};
-
-		<orml_rewards::Pallet<T>>::set_share(who, &PoolId::Loans(*currency_id), new_share_amount);
 	}
 }
 
@@ -617,7 +615,7 @@ impl<T: Config> RewardHandler<T::AccountId, CurrencyId> for Pallet<T> {
 pub struct OnEarningBonded<T>(sp_std::marker::PhantomData<T>);
 impl<T: Config> Happened<(T::AccountId, Balance)> for OnEarningBonded<T> {
 	fn happened((who, amount): &(T::AccountId, Balance)) {
-		let share = T::EarnShareBooster::get() * *amount;
+		let share = amount.saturating_add(T::EarnShareBooster::get() * *amount);
 		<orml_rewards::Pallet<T>>::add_share(who, &PoolId::Loans(T::NativeCurrencyId::get()), share);
 	}
 }
@@ -625,7 +623,7 @@ impl<T: Config> Happened<(T::AccountId, Balance)> for OnEarningBonded<T> {
 pub struct OnEarningUnbonded<T>(sp_std::marker::PhantomData<T>);
 impl<T: Config> Happened<(T::AccountId, Balance)> for OnEarningUnbonded<T> {
 	fn happened((who, amount): &(T::AccountId, Balance)) {
-		let share = T::EarnShareBooster::get() * *amount;
+		let share = amount.saturating_add(T::EarnShareBooster::get() * *amount);
 		<orml_rewards::Pallet<T>>::remove_share(who, &PoolId::Loans(T::NativeCurrencyId::get()), share);
 	}
 }
