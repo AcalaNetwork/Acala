@@ -471,9 +471,6 @@ pub mod module {
 
 			let nft_class_id = Self::nft_class_id();
 			let token_id = Self::minted_account(&proxy_account).ok_or(Error::<T>::AccountTokenNotFound)?;
-			let owner = T::NFTInterface::owner(&nft_class_id, &token_id).ok_or(Error::<T>::AccountTokenNotFound)?;
-			// Ensure that NFT is owned by treasury account
-			ensure!(T::TreasuryAccount::get() == owner, Error::<T>::CallerUnauthorized);
 
 			T::NFTInterface::transfer(&nft_class_id, &token_id, &new_owner)?;
 
@@ -554,6 +551,7 @@ pub mod module {
 
 		/// If someone burned their anon proxy nft, this will remint nft if `MintedAccount`
 		/// storage does not correspond to a existing nft (Because it was burned by user)
+		///	*Warning* It will overwrite an existing proxy account nft
 		///
 		/// Requires Governance Origin.
 		///
@@ -570,15 +568,6 @@ pub mod module {
 			T::AccountTokenizerGovernance::ensure_origin(origin)?;
 			let nft_class_id = Self::nft_class_id();
 
-			// Check that record of minted account exists
-			let token_id = Self::minted_account(&proxy_account).ok_or(Error::<T>::AccountTokenNotFound)?;
-
-			// Checks that corresponding nft does not exist
-			ensure!(
-				T::NFTInterface::owner(&nft_class_id, &token_id).is_none(),
-				Error::<T>::AccountTokenAlreadyExists
-			);
-
 			// Pay for minting the token
 			T::NFTInterface::pay_mint_fee(&owner, &nft_class_id, 1u32)?;
 
@@ -586,7 +575,8 @@ pub mod module {
 			let token_id = T::NFTInterface::next_token_id(nft_class_id);
 			T::NFTInterface::mint_into(&nft_class_id, &token_id, &owner)?;
 
-			// Create a record of the Mint and insert it into storage
+			// Create a record of the Mint and insert it into storage.
+			// Note: will overwrite an existing record
 			MintedAccount::<T>::insert(&proxy_account, token_id);
 
 			Self::deposit_event(Event::AccountTokenReminted {

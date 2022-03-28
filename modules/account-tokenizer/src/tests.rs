@@ -590,12 +590,6 @@ fn redeem_request_rejected() {
 				CALL_WEIGHT,
 			));
 
-			// Governance can only transfer NFT owned by treasury
-			assert_noop!(
-				AccountTokenizer::return_custodial_account_token(Origin::signed(ORACLE), proxy.clone(), BOB),
-				crate::Error::<Runtime>::CallerUnauthorized
-			);
-
 			assert_ok!(AccountTokenizer::request_redeem(
 				Origin::signed(ALICE),
 				proxy.clone(),
