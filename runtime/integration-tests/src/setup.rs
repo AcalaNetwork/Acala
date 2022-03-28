@@ -94,10 +94,10 @@ mod karura_imports {
 		FinancialCouncil, Get, GetNativeCurrencyId, Homa, Honzon, IdleScheduler, KaruraFoundationAccounts,
 		KaruraTreasuryAccount, Loans, MaxTipsOfPriority, MinimumDebitValue, MultiLocation,
 		NativeTokenExistentialDeposit, NetworkId, NftPalletId, OneDay, Origin, OriginCaller, ParachainAccount,
-		ParachainInfo, ParachainSystem, PolkadotXcm, Proxy, ProxyType, QueryFee, Ratio, RelayChainBlockNumberProvider,
-		Runtime, Scheduler, Session, SessionManager, SevenDays, System, Timestamp, TipPerWeightStep, TokenSymbol,
-		Tokens, TransactionPayment, TransactionPaymentPalletId, TreasuryPalletId, Utility, Vesting, XTokens,
-		XcmInterface, EVM, NFT,
+		ParachainInfo, ParachainSystem, PolkadotXcm, Proxy, ProxyType, Ratio, RelayChainBlockNumberProvider, Runtime,
+		Scheduler, Session, SessionManager, SevenDays, System, Timestamp, TipPerWeightStep, TokenSymbol, Tokens,
+		TransactionPayment, TransactionPaymentPalletId, TreasuryPalletId, Utility, Vesting, XTokens, XcmInterface, EVM,
+		NFT,
 	};
 
 	pub use primitives::TradingPair;
@@ -145,7 +145,7 @@ mod acala_imports {
 		ExistentialDeposits, FinancialCouncil, Get, GetNativeCurrencyId, Homa, Honzon, IdleScheduler, Loans,
 		MaxTipsOfPriority, MinimumDebitValue, MultiLocation, NativeTokenExistentialDeposit, NetworkId, NftPalletId,
 		OneDay, Origin, OriginCaller, ParachainAccount, ParachainInfo, ParachainSystem, PolkadotXcm, Proxy, ProxyType,
-		QueryFee, Ratio, RelayChainBlockNumberProvider, Runtime, Scheduler, Session, SessionManager, SevenDays, System,
+		Ratio, RelayChainBlockNumberProvider, Runtime, Scheduler, Session, SessionManager, SevenDays, System,
 		Timestamp, TipPerWeightStep, TokenSymbol, Tokens, TransactionPayment, TransactionPaymentPalletId,
 		TreasuryPalletId, Utility, Vesting, XTokens, XcmInterface, EVM, LCDOT, NFT,
 	};
