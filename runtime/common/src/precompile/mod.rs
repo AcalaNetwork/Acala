@@ -21,8 +21,9 @@
 
 #![allow(clippy::upper_case_acronyms)]
 
-mod mock;
+pub mod mock;
 mod tests;
+mod weights;
 
 use frame_support::log;
 use hex_literal::hex;
@@ -231,7 +232,7 @@ where
 				return Some(Err(PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: "NoPermission".into(),
-					cost: 0,
+					cost: target_gas.unwrap_or_default(),
 				}));
 			}
 
