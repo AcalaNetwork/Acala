@@ -569,7 +569,7 @@ frame_support::construct_runtime!(
 		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
 		Balances: pallet_balances,
 		Currencies: module_currencies,
-		EVMBridge: module_evm_bridge,
+		EVMBridge: module_evm_bridge::{Pallet},
 		AssetRegistry: module_asset_registry,
 		NFTModule: module_nft,
 		TransactionPayment: module_transaction_payment,

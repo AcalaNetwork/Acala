@@ -1874,7 +1874,7 @@ construct_runtime! {
 		Proxy: pallet_proxy = 33,
 		IdleScheduler: module_idle_scheduler = 34,
 
-		Indices: pallet_indices::{Pallet, Call, Storage, Config<T>, Event<T>} = 40,
+		Indices: pallet_indices = 40,
 
 		// Governance
 		GeneralCouncil: pallet_collective::<Instance1> = 50,
@@ -1899,7 +1899,7 @@ construct_runtime! {
 		// ORML Core
 		Auction: orml_auction = 100,
 		Rewards: orml_rewards = 101,
-		OrmlNFT: orml_nft = 102,
+		OrmlNFT: orml_nft::{Pallet, Storage, Config<T>} = 102,
 
 		// Acala Core
 		Prices: module_prices = 110,
@@ -1927,23 +1927,23 @@ construct_runtime! {
 		// Ecosystem modules
 		RenVmBridge: ecosystem_renvm_bridge = 150,
 		Starport: ecosystem_starport = 151,
-		CompoundCash: ecosystem_compound_cash = 152,
+		CompoundCash: ecosystem_compound_cash::{Pallet, Storage, Event<T>} = 152,
 
 		// Parachain
-		ParachainInfo: parachain_info = 161,
+		ParachainInfo: parachain_info::{Pallet, Storage, Config} = 161,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue = 170,
 		PolkadotXcm: pallet_xcm = 171,
-		CumulusXcm: cumulus_pallet_xcm = 172,
+		CumulusXcm: cumulus_pallet_xcm::{Pallet, Event<T>, Origin} = 172,
 		DmpQueue: cumulus_pallet_dmp_queue = 173,
 		XTokens: orml_xtokens = 174,
-		UnknownTokens: orml_unknown_tokens = 175,
+		UnknownTokens: orml_unknown_tokens::{Pallet, Storage, Event} = 175,
 		OrmlXcm: orml_xcm = 176,
 
 		// Smart contracts
 		EVM: module_evm = 180,
-		EVMBridge: module_evm_bridge = 181,
+		EVMBridge: module_evm_bridge::{Pallet} = 181,
 		EvmAccounts: module_evm_accounts = 182,
 
 		// Collator support. the order of these 4 are important and shall not change.
@@ -1951,7 +1951,7 @@ construct_runtime! {
 		CollatorSelection: module_collator_selection = 191,
 		Session: pallet_session = 192,
 		Aura: pallet_aura = 193,
-		AuraExt: cumulus_pallet_aura_ext = 194,
+		AuraExt: cumulus_pallet_aura_ext::{Pallet, Storage, Config} = 194,
 		SessionManager: module_session_manager = 195,
 
 		// Stable asset

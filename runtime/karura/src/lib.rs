@@ -1658,23 +1658,23 @@ construct_runtime!(
 		Tips: pallet_tips = 22,
 
 		// Parachain
-		ParachainInfo: parachain_info = 31,
+		ParachainInfo: parachain_info::{Pallet, Storage, Config} = 31,
 
 		// Collator. The order of the 4 below are important and shall not change.
 		Authorship: pallet_authorship = 40,
 		CollatorSelection: module_collator_selection = 41,
 		Session: pallet_session = 42,
 		Aura: pallet_aura = 43,
-		AuraExt: cumulus_pallet_aura_ext = 44,
+		AuraExt: cumulus_pallet_aura_ext::{Pallet, Storage, Config} = 44,
 		SessionManager: module_session_manager = 45,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue = 50,
 		PolkadotXcm: pallet_xcm = 51,
-		CumulusXcm: cumulus_pallet_xcm = 52,
+		CumulusXcm: cumulus_pallet_xcm::{Pallet, Event<T>, Origin} = 52,
 		DmpQueue: cumulus_pallet_dmp_queue = 53,
 		XTokens: orml_xtokens = 54,
-		UnknownTokens: orml_unknown_tokens = 55,
+		UnknownTokens: orml_unknown_tokens::{Pallet, Storage, Event} = 55,
 		OrmlXcm: orml_xcm = 56,
 
 		// Governance
@@ -1698,7 +1698,7 @@ construct_runtime!(
 		// ORML Core
 		Auction: orml_auction = 80,
 		Rewards: orml_rewards = 81,
-		OrmlNFT: orml_nft = 82,
+		OrmlNFT: orml_nft::{Pallet, Storage, Config<T>} = 82,
 
 		// Karura Core
 		Prices: module_prices = 90,
@@ -1725,7 +1725,7 @@ construct_runtime!(
 
 		// Smart contracts
 		EVM: module_evm = 130,
-		EVMBridge: module_evm_bridge = 131,
+		EVMBridge: module_evm_bridge::{Pallet} = 131,
 		EvmAccounts: module_evm_accounts = 132,
 
 		// Stable asset
