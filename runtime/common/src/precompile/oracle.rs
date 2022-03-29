@@ -178,7 +178,7 @@ mod tests {
 
 			assert_ok!(Oracle::feed_value(ALICE, RENBTC, price));
 			assert_eq!(
-				Oracle::get_no_op(&RENBTC),
+				Oracle::get(&RENBTC),
 				Some(orml_oracle::TimestampedValue {
 					value: price,
 					timestamp: 1
