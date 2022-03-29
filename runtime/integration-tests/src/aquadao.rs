@@ -21,7 +21,6 @@ use crate::setup::*;
 use ecosystem_aqua_dao::{Discount, DiscountRate, Subscription, SubscriptionState};
 use frame_support::traits::OnInitialize;
 use mandala_runtime::{AquaStakedToken, DAYS};
-use sp_runtime::traits::One;
 
 const ADAO_CURRENCY: CurrencyId = CurrencyId::Token(TokenSymbol::ADAO);
 const SDAO_CURRENCY: CurrencyId = CurrencyId::Token(TokenSymbol::SDAO);
@@ -100,10 +99,16 @@ fn subscription() {
 			// default exchange rate: 1
 			assert_eq!(Currencies::free_balance(SDAO, &alice), subscription_amount);
 
-			// can't claim yet
+			// not claimable vesting yet
+			assert_ok!(AquaStakedToken::claim(Origin::signed(alice.clone())));
 			assert_noop!(
-				AquaStakedToken::claim(Origin::signed(alice.clone())),
-				ecosystem_aqua_staked_token::Error::<Runtime>::VestingNotExpired
+				Currencies::transfer(
+					Origin::signed(alice.clone()),
+					AccountId::from(BOB).into(),
+					SDAO_CURRENCY,
+					1
+				),
+				orml_tokens::Error::<Runtime>::LiquidityRestrictions
 			);
 
 			// inflation

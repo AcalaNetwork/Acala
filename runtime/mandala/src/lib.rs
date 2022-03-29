@@ -1738,6 +1738,8 @@ parameter_types!(
 	pub AquaStakedTokenPalletId: PalletId = PalletId(*b"aqua/stt");
 	pub DaoAccount: AccountId = AquaDaoPalletId::get().into_account();
 	pub InflationRatePerNBlock: (BlockNumber, Rate) = (DAYS, Rate::saturating_from_rational(30, 365_00));
+	pub AquaStakedTokenLockIdentifier: LockIdentifier = *b"aqu/vest";
+	pub AquaMaxVestingChunks: u32 = 10;
 );
 
 impl ecosystem_aqua_dao::Config for Runtime {
@@ -1766,6 +1768,8 @@ impl ecosystem_aqua_staked_token::Config for Runtime {
 	//FIX: use aqua dao treasury staking pallet
 	type TreasuryAccount = TreasuryAccount;
 	type DaoAccount = DaoAccount;
+	type LockIdentifier = AquaStakedTokenLockIdentifier;
+	type MaxVestingChunks = AquaMaxVestingChunks;
 	type WeightInfo = weights::ecosystem_aqua_staked_token::WeightInfo<Runtime>;
 }
 
