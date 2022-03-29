@@ -23,13 +23,10 @@ use frame_benchmarking::whitelisted_caller;
 use frame_support::traits::OnInitialize;
 use frame_system::RawOrigin;
 
-use ecosystem_aqua_staked_token::Vesting;
-use orml_traits::MultiLockableCurrency;
+use ecosystem_aqua_dao::StakedTokenManager;
 
 const ADAO: CurrencyId = CurrencyId::Token(TokenSymbol::ADAO);
 const SDAO: CurrencyId = CurrencyId::Token(TokenSymbol::SDAO);
-
-const VESTING_LOCK_ID: LockIdentifier = *b"aquavest";
 
 runtime_benchmarks! {
 	{ Runtime, ecosystem_aqua_staked_token }
@@ -68,15 +65,7 @@ runtime_benchmarks! {
 	claim {
 		let alice = whitelisted_caller();
 		let amount = dollar(SDAO) * 100;
-		set_balance(SDAO, &alice, amount);
-		Currencies::set_lock(VESTING_LOCK_ID, SDAO, &alice, amount)?;
-
-		let vesting = Vesting {
-			unlock_at: 0,
-			amount,
-		};
-		ecosystem_aqua_staked_token::Vestings::<Runtime>::insert(&alice, vesting);
-
+		AquaStakedToken::mint_for_subscription(&alice, amount, 10)?;
 		System::set_block_number(100);
 	}: _(RawOrigin::Signed(alice))
 
