@@ -1569,7 +1569,7 @@ construct_runtime!(
 		Session: pallet_session = 42,
 		Aura: pallet_aura = 43,
 		AuraExt: cumulus_pallet_aura_ext = 44,
-		SessionManager: module_session_manager  = 45,
+		SessionManager: module_session_manager = 45,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue = 50,

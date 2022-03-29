@@ -773,8 +773,8 @@ parameter_type_with_key! {
 				TokenSymbol::AUSD => cent(*currency_id),
 				TokenSymbol::DOT => 10 * millicent(*currency_id),
 				TokenSymbol::LDOT => 50 * millicent(*currency_id),
-				TokenSymbol::BNC => 800 * millicent(*currency_id),  // 80BNC = 1KSM
-				TokenSymbol::VSKSM => 10 * millicent(*currency_id),  // 1VSKSM = 1KSM
+				TokenSymbol::BNC => 800 * millicent(*currency_id), // 80BNC = 1KSM
+				TokenSymbol::VSKSM => 10 * millicent(*currency_id), // 1VSKSM = 1KSM
 				TokenSymbol::PHA => 4000 * millicent(*currency_id), // 400PHA = 1KSM
 				TokenSymbol::KUSD |
 				TokenSymbol::KSM |
@@ -1897,74 +1897,74 @@ construct_runtime! {
 		OperatorMembershipAcala: pallet_membership::<Instance5> = 82,
 
 		// ORML Core
-		Auction: orml_auction  = 100,
-		Rewards: orml_rewards  = 101,
+		Auction: orml_auction = 100,
+		Rewards: orml_rewards = 101,
 		OrmlNFT: orml_nft = 102,
 
 		// Acala Core
-		Prices: module_prices  = 110,
-		Dex: module_dex  = 111,
-		DexOracle: module_dex_oracle  = 112,
+		Prices: module_prices = 110,
+		Dex: module_dex = 111,
+		DexOracle: module_dex_oracle = 112,
 
 		// Honzon
-		AuctionManager: module_auction_manager  = 120,
-		Loans: module_loans  = 121,
-		Honzon: module_honzon  = 122,
-		CdpTreasury: module_cdp_treasury  = 123,
-		CdpEngine: module_cdp_engine  = 124,
-		EmergencyShutdown: module_emergency_shutdown  = 125,
+		AuctionManager: module_auction_manager = 120,
+		Loans: module_loans = 121,
+		Honzon: module_honzon = 122,
+		CdpTreasury: module_cdp_treasury = 123,
+		CdpEngine: module_cdp_engine = 124,
+		EmergencyShutdown: module_emergency_shutdown = 125,
 
 		// Homa
-		NomineesElection: module_nominees_election  = 131,
+		NomineesElection: module_nominees_election = 131,
 		Homa: module_homa = 136,
-		XcmInterface: module_xcm_interface  = 137,
+		XcmInterface: module_xcm_interface = 137,
 
 		// Acala Other
-		Incentives: module_incentives  = 140,
-		NFT: module_nft  = 141,
-		AssetRegistry: module_asset_registry  = 142,
+		Incentives: module_incentives = 140,
+		NFT: module_nft = 141,
+		AssetRegistry: module_asset_registry = 142,
 
 		// Ecosystem modules
-		RenVmBridge: ecosystem_renvm_bridge  = 150,
-		Starport: ecosystem_starport  = 151,
-		CompoundCash: ecosystem_compound_cash  = 152,
+		RenVmBridge: ecosystem_renvm_bridge = 150,
+		Starport: ecosystem_starport = 151,
+		CompoundCash: ecosystem_compound_cash = 152,
 
 		// Parachain
-		ParachainInfo: parachain_info  = 161,
+		ParachainInfo: parachain_info = 161,
 
 		// XCM
-		XcmpQueue: cumulus_pallet_xcmp_queue  = 170,
-		PolkadotXcm: pallet_xcm  = 171,
-		CumulusXcm: cumulus_pallet_xcm  = 172,
-		DmpQueue: cumulus_pallet_dmp_queue  = 173,
-		XTokens: orml_xtokens  = 174,
-		UnknownTokens: orml_unknown_tokens  = 175,
+		XcmpQueue: cumulus_pallet_xcmp_queue = 170,
+		PolkadotXcm: pallet_xcm = 171,
+		CumulusXcm: cumulus_pallet_xcm = 172,
+		DmpQueue: cumulus_pallet_dmp_queue = 173,
+		XTokens: orml_xtokens = 174,
+		UnknownTokens: orml_unknown_tokens = 175,
 		OrmlXcm: orml_xcm = 176,
 
 		// Smart contracts
-		EVM: module_evm  = 180,
-		EVMBridge: module_evm_bridge  = 181,
-		EvmAccounts: module_evm_accounts  = 182,
+		EVM: module_evm = 180,
+		EVMBridge: module_evm_bridge = 181,
+		EvmAccounts: module_evm_accounts = 182,
 
 		// Collator support. the order of these 4 are important and shall not change.
-		Authorship: pallet_authorship  = 190,
-		CollatorSelection: module_collator_selection  = 191,
+		Authorship: pallet_authorship = 190,
+		CollatorSelection: module_collator_selection = 191,
 		Session: pallet_session = 192,
-		Aura: pallet_aura  = 193,
-		AuraExt: cumulus_pallet_aura_ext  = 194,
-		SessionManager: module_session_manager  = 195,
+		Aura: pallet_aura = 193,
+		AuraExt: cumulus_pallet_aura_ext = 194,
+		SessionManager: module_session_manager = 195,
 
 		// Stable asset
-		StableAsset: nutsfinance_stable_asset  = 200,
+		StableAsset: nutsfinance_stable_asset = 200,
 
 		// Staking related pallets
-		Earning: module_earning  = 210,
+		Earning: module_earning = 210,
 
 		// Parachain System, always put it at the end
-		ParachainSystem: cumulus_pallet_parachain_system  = 160,
+		ParachainSystem: cumulus_pallet_parachain_system = 160,
 
 		// Dev
-		Sudo: pallet_sudo  = 255,
+		Sudo: pallet_sudo = 255,
 	}
 }
 

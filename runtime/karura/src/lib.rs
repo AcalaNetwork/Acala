@@ -759,8 +759,8 @@ parameter_type_with_key! {
 				TokenSymbol::KUSD => cent(*currency_id),
 				TokenSymbol::KSM => 10 * millicent(*currency_id),
 				TokenSymbol::LKSM => 50 * millicent(*currency_id),
-				TokenSymbol::BNC => 800 * millicent(*currency_id),  // 80BNC = 1KSM
-				TokenSymbol::VSKSM => 10 * millicent(*currency_id),  // 1VSKSM = 1KSM
+				TokenSymbol::BNC => 800 * millicent(*currency_id), // 80BNC = 1KSM
+				TokenSymbol::VSKSM => 10 * millicent(*currency_id), // 1VSKSM = 1KSM
 				TokenSymbol::PHA => 4000 * millicent(*currency_id), // 400PHA = 1KSM
 				TokenSymbol::KINT => 13333 * microcent(*currency_id), // 1.33 KINT = 1 KSM
 				TokenSymbol::KBTC => 66 * microcent(*currency_id), // 1KBTC = 150 KSM
