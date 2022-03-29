@@ -566,7 +566,7 @@ frame_support::construct_runtime!(
 		System: frame_system,
 		Oracle: orml_oracle,
 		Timestamp: pallet_timestamp,
-		Tokens: orml_tokens,
+		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
 		Balances: pallet_balances,
 		Currencies: module_currencies,
 		EVMBridge: module_evm_bridge,

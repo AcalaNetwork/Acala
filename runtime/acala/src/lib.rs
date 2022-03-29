@@ -1550,7 +1550,7 @@ construct_runtime!(
 
 		// Tokens & Related
 		Balances: pallet_balances = 10,
-		Tokens: orml_tokens = 11,
+		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>} = 11,
 		Currencies: module_currencies = 12,
 		Vesting: orml_vesting = 13,
 		TransactionPayment: module_transaction_payment = 14,
