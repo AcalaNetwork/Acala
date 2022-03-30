@@ -91,4 +91,16 @@ impl<T: frame_system::Config> module_asset_registry::WeightInfo for WeightInfo<T
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
+	// Storage: AssetRegistry AssetMetadatas (r:1 w:1)
+	fn register_native_asset() -> Weight {
+		(13_140_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(1 as Weight))
+			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+	}
+	// Storage: AssetRegistry AssetMetadatas (r:1 w:1)
+	fn update_native_asset() -> Weight {
+		(13_815_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(1 as Weight))
+			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+	}
 }
