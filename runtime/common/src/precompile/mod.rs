@@ -77,7 +77,7 @@ pub const SCHEDULER: H160 = H160(hex!("0000000000000000000000000000000000000404"
 pub const DEX: H160 = H160(hex!("0000000000000000000000000000000000000405"));
 
 pub fn target_gas_limit(target_gas: Option<u64>) -> Option<u64> {
-	target_gas.map(|x| ((x as u128) * 9 / 10) as u64)
+	target_gas.map(|x| x.saturating_div(10u64).saturating_mul(9u64) // 90%
 }
 
 pub struct AllPrecompiles<R> {
