@@ -19,6 +19,11 @@
 // Disable the following lints
 #![allow(clippy::type_complexity)]
 
+use super::{
+	input::{Input, InputT, Output},
+	target_gas_limit,
+};
+use codec::{Decode, Encode};
 use frame_support::{
 	dispatch::Dispatchable,
 	ensure, log, parameter_types,
@@ -33,15 +38,12 @@ use module_evm::{
 	Context, ExitError, ExitRevert, ExitSucceed,
 };
 use module_support::{AddressMapping, TransactionPayment};
+use num_enum::{IntoPrimitive, TryFromPrimitive};
+use pallet_scheduler::TaskAddress;
 use primitives::{Balance, BlockNumber};
 use sp_core::H160;
 use sp_runtime::RuntimeDebug;
 use sp_std::{fmt::Debug, marker::PhantomData, prelude::*};
-
-use super::input::{Input, InputT, Output};
-use codec::{Decode, Encode};
-use num_enum::{IntoPrimitive, TryFromPrimitive};
-use pallet_scheduler::TaskAddress;
 
 parameter_types! {
 	pub storage EvmSchedulerNextID: u32 = 0u32;
@@ -106,7 +108,8 @@ where
 {
 	fn execute(input: &[u8], target_gas: Option<u64>, _context: &Context, _is_static: bool) -> PrecompileResult {
 		let input = Input::<Action, Runtime::AccountId, Runtime::AddressMapping, Runtime::Erc20InfoMapping>::new(
-			input, target_gas,
+			input,
+			target_gas_limit(target_gas),
 		);
 
 		let gas_cost = Pricer::<Runtime>::cost(&input)?;
@@ -163,7 +166,7 @@ where
 					.map_err(|e| PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
 						output: Into::<&str>::into(e).as_bytes().to_vec(),
-						cost: target_gas.unwrap_or_default(),
+						cost: target_gas_limit(target_gas).unwrap_or_default(),
 					})?;
 				}
 
@@ -182,7 +185,7 @@ where
 				let next_id = current_id.checked_add(1).ok_or_else(|| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: "Scheduler next id overflow".into(),
-					cost: target_gas.unwrap_or_default(),
+					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 				EvmSchedulerNextID::set(&next_id);
 
@@ -217,7 +220,7 @@ where
 				.map_err(|_| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: "Schedule failed".into(),
-					cost: target_gas.unwrap_or_default(),
+					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 
 				Ok(PrecompileOutput {
@@ -243,14 +246,14 @@ where
 				let task_info = TaskInfo::decode(&mut &task_id[..]).map_err(|_| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: "Decode task_id failed".into(),
-					cost: target_gas.unwrap_or_default(),
+					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 				ensure!(
 					task_info.sender == from,
 					PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
 						output: "NoPermission".into(),
-						cost: target_gas.unwrap_or_default(),
+						cost: target_gas_limit(target_gas).unwrap_or_default(),
 					}
 				);
 
@@ -262,7 +265,7 @@ where
 				.map_err(|_| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: "Cancel schedule failed".into(),
-					cost: target_gas.unwrap_or_default(),
+					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 
 				#[cfg(not(feature = "with-ethereum-compatibility"))]
@@ -300,14 +303,14 @@ where
 				let task_info = TaskInfo::decode(&mut &task_id[..]).map_err(|_| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: "Decode task_id failed".into(),
-					cost: target_gas.unwrap_or_default(),
+					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 				ensure!(
 					task_info.sender == from,
 					PrecompileFailure::Revert {
 						exit_status: ExitRevert::Reverted,
 						output: "NoPermission".into(),
-						cost: target_gas.unwrap_or_default(),
+						cost: target_gas_limit(target_gas).unwrap_or_default(),
 					}
 				);
 
@@ -319,7 +322,7 @@ where
 				.map_err(|e| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: Into::<&str>::into(e).as_bytes().to_vec(),
-					cost: target_gas.unwrap_or_default(),
+					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 
 				Ok(PrecompileOutput {
@@ -568,7 +571,7 @@ mod tests {
 				Err(PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: "NoPermission".into(),
-					cost: 10_000,
+					cost: target_gas_limit(Some(10_000)).unwrap()
 				})
 			);
 

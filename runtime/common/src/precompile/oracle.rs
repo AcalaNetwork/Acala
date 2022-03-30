@@ -16,22 +16,22 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{precompile::input::InputPricer, WeightToGas};
+use super::{
+	input::{Input, InputPricer, InputT, Output},
+	target_gas_limit,
+	weights::PrecompileWeights,
+};
+use crate::WeightToGas;
 use frame_support::{log, sp_runtime::FixedPointNumber};
 use module_evm::{
 	precompiles::Precompile,
 	runner::state::{PrecompileFailure, PrecompileOutput, PrecompileResult},
 	Context, ExitError, ExitSucceed,
 };
+use module_support::{Erc20InfoMapping as Erc20InfoMappingT, PriceProvider as PriceProviderT};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use sp_runtime::{traits::Convert, RuntimeDebug};
 use sp_std::{marker::PhantomData, prelude::*};
-
-use super::{
-	input::{Input, InputT, Output},
-	weights::PrecompileWeights,
-};
-use module_support::{Erc20InfoMapping as Erc20InfoMappingT, PriceProvider as PriceProviderT};
 
 /// The `Oracle` impl precompile.
 ///
@@ -55,7 +55,8 @@ where
 {
 	fn execute(input: &[u8], target_gas: Option<u64>, _context: &Context, _is_static: bool) -> PrecompileResult {
 		let input = Input::<Action, Runtime::AccountId, Runtime::AddressMapping, Runtime::Erc20InfoMapping>::new(
-			input, target_gas,
+			input,
+			target_gas_limit(target_gas),
 		);
 
 		let gas_cost = Pricer::<Runtime>::cost(&input)?;
@@ -202,7 +203,7 @@ mod tests {
 			assert_noop!(
 				OraclePrecompile::execute(
 					&[0u8; 0],
-					Some(10),
+					Some(1000),
 					&Context {
 						address: Default::default(),
 						caller: alice_evm_addr(),
@@ -213,14 +214,14 @@ mod tests {
 				PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: "invalid input".into(),
-					cost: 10,
+					cost: target_gas_limit(Some(1000)).unwrap(),
 				}
 			);
 
 			assert_noop!(
 				OraclePrecompile::execute(
 					&[0u8; 3],
-					Some(10),
+					Some(1000),
 					&Context {
 						address: Default::default(),
 						caller: alice_evm_addr(),
@@ -231,14 +232,14 @@ mod tests {
 				PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: "invalid input".into(),
-					cost: 10,
+					cost: target_gas_limit(Some(1000)).unwrap(),
 				}
 			);
 
 			assert_noop!(
 				OraclePrecompile::execute(
 					&[1u8; 32],
-					Some(10),
+					Some(1000),
 					&Context {
 						address: Default::default(),
 						caller: alice_evm_addr(),
@@ -249,7 +250,7 @@ mod tests {
 				PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: "invalid action".into(),
-					cost: 10,
+					cost: target_gas_limit(Some(1000)).unwrap(),
 				}
 			);
 		});
