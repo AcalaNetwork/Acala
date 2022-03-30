@@ -15,12 +15,11 @@ on:
 
 env:
   TARPAULIN_VERSION: 0.18.5
-  LIBCLANG_PATH: "/usr/lib/llvm-10/lib"
-  SCCACHE_CACHE_SIZE: "100G"
+  # LIBCLANG_PATH: "/usr/lib/llvm-11/lib" # default `llvm-config --prefix`
+  # SCCACHE_CACHE_SIZE: "100G"
   CARGO_INCREMENTAL: 0
 jobs:
-  test:
-    name: Coverage Report
+  clean-up-actions:
     runs-on: ubuntu-latest
     steps:
       - name: Cancel Previous Runs
@@ -29,6 +28,11 @@ jobs:
         uses: styfle/cancel-workflow-action@0.9.0
         with:
           access_token: ${{ github.token }}
+  test:
+    name: Coverage Report
+    runs-on: [self-hosted, linux]
+    needs: clean-up-actions
+    steps:
       - name: Checkout repository
         uses: actions/checkout@v2
         with:
@@ -41,22 +45,23 @@ jobs:
           components: rustfmt
           target: wasm32-unknown-unknown
           default: true
-      - name: Install additional dependencies
-        run: |
-            sudo apt update -y &&
-            sudo apt install -y cmake pkg-config libssl-dev git gcc build-essential git clang libclang-dev
+      # - name: Install additional dependencies
+      #   run: |
+      #       sudo apt update -y &&
+      #       sudo apt install -y cmake pkg-config libssl-dev git gcc build-essential git clang libclang-dev
       - name: Run cargo-tarpaulin
         uses: actions-rs/tarpaulin@v0.1
         with:
           version: ${{ env.TARPAULIN_VERSION }}
           timeout: 900
           out-type: Xml
-          args: '--avoid-cfg-tarpaulin --no-fail-fast --workspace 
+          args: '--avoid-cfg-tarpaulin --no-fail-fast --workspace
             -e acala-inspect
-            acala acala-cli e2e-tests acala-service 
-            acala-primitives 
-            acala-rpc 
+            acala acala-cli e2e-tests acala-service
+            acala-primitives
+            acala-rpc
             acala-runtime runtime-common runtime-integration-tests karura-runtime mandala-runtime
+            test-service
             --exclude-files */mock.rs */weights.rs'
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v2

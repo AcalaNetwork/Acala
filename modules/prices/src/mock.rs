@@ -46,8 +46,12 @@ pub const BTC: CurrencyId = CurrencyId::Token(TokenSymbol::RENBTC);
 pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
 pub const LDOT: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
 pub const KSM: CurrencyId = CurrencyId::Token(TokenSymbol::KSM);
+pub const TAIKSM: CurrencyId = CurrencyId::StableAssetPoolToken(0);
 pub const LP_AUSD_DOT: CurrencyId =
 	CurrencyId::DexShare(DexShare::Token(TokenSymbol::AUSD), DexShare::Token(TokenSymbol::DOT));
+pub const LIQUID_CROWDLOAN_LEASE_1: CurrencyId = CurrencyId::LiquidCrowdloan(1);
+pub const LIQUID_CROWDLOAN_LEASE_2: CurrencyId = CurrencyId::LiquidCrowdloan(2);
+pub const LIQUID_CROWDLOAN_LEASE_3: CurrencyId = CurrencyId::LiquidCrowdloan(3);
 
 mod prices {
 	pub use super::super::*;
@@ -81,6 +85,7 @@ impl frame_system::Config for Runtime {
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
 	type OnSetCode = ();
+	type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
 
 thread_local! {
@@ -175,7 +180,7 @@ impl DEXManager<AccountId, CurrencyId, Balance> for MockDEX {
 		_max_amount_b: Balance,
 		_min_share_increment: Balance,
 		_stake_increment_share: bool,
-	) -> DispatchResult {
+	) -> sp_std::result::Result<(Balance, Balance, Balance), DispatchError> {
 		unimplemented!()
 	}
 
@@ -187,7 +192,7 @@ impl DEXManager<AccountId, CurrencyId, Balance> for MockDEX {
 		_min_withdrawn_a: Balance,
 		_min_withdrawn_b: Balance,
 		_by_unstake: bool,
-	) -> DispatchResult {
+	) -> sp_std::result::Result<(Balance, Balance), DispatchError> {
 		unimplemented!()
 	}
 }
@@ -210,6 +215,35 @@ impl orml_tokens::Config for Runtime {
 	type DustRemovalWhitelist = Nothing;
 }
 
+impl BlockNumberProvider for MockRelayBlockNumberProvider {
+	type BlockNumber = BlockNumber;
+
+	fn current_block_number() -> Self::BlockNumber {
+		Self::get()
+	}
+}
+
+parameter_type_with_key! {
+	pub LiquidCrowdloanLeaseBlockNumber: |lease: Lease| -> Option<BlockNumber> {
+		#[allow(clippy::match_ref_pats)] // false positive
+		match lease {
+			&1 => Some(100),
+			&2 => Some(200),
+			_ => None,
+		}
+	};
+}
+
+parameter_type_with_key! {
+	pub PricingPegged: |currency_id: CurrencyId| -> Option<CurrencyId> {
+		#[allow(clippy::match_ref_pats)] // false positive
+		match currency_id {
+			&TAIKSM => Some(KSM),
+			_ => None,
+		}
+	};
+}
+
 ord_parameter_types! {
 	pub const One: AccountId = 1;
 }
@@ -219,6 +253,8 @@ parameter_types! {
 	pub const GetStakingCurrencyId: CurrencyId = DOT;
 	pub const GetLiquidCurrencyId: CurrencyId = LDOT;
 	pub StableCurrencyFixedPrice: Price = Price::one();
+	pub static MockRelayBlockNumberProvider: BlockNumber = 0;
+	pub RewardRatePerRelaychainBlock: Rate = Rate::saturating_from_rational(1, 1000);
 }
 
 impl Config for Runtime {
@@ -233,6 +269,10 @@ impl Config for Runtime {
 	type DEX = MockDEX;
 	type Currency = Tokens;
 	type Erc20InfoMapping = MockErc20InfoMapping;
+	type LiquidCrowdloanLeaseBlockNumber = LiquidCrowdloanLeaseBlockNumber;
+	type RelayChainBlockNumber = MockRelayBlockNumberProvider;
+	type RewardRatePerRelaychainBlock = RewardRatePerRelaychainBlock;
+	type PricingPegged = PricingPegged;
 	type WeightInfo = ();
 }
 

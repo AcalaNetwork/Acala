@@ -22,8 +22,9 @@ use crate::{
 };
 use codec::{Decode, Encode};
 use core::ops::Range;
-use module_evm_utiltity::{
-	ethereum::{Log, TransactionAction},
+use hex_literal::hex;
+pub use module_evm_utility::{
+	ethereum::{AccessListItem, Log, TransactionAction},
 	evm::ExitReason,
 };
 use scale_info::TypeInfo;
@@ -44,6 +45,14 @@ pub struct Vicinity {
 	pub gas_price: U256,
 	/// Origin of the transaction.
 	pub origin: EvmAddress,
+	/// Environmental coinbase.
+	pub block_coinbase: Option<EvmAddress>,
+	/// Environmental block gas limit. Used only for testing
+	pub block_gas_limit: Option<U256>,
+	/// Environmental block difficulty. Used only for testing
+	pub block_difficulty: Option<U256>,
+	/// Environmental base fee per gas.
+	pub block_base_fee_per_gas: Option<U256>,
 }
 
 #[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]
@@ -74,6 +83,8 @@ pub struct EstimateResourcesRequest {
 	pub value: Option<Balance>,
 	/// Data
 	pub data: Option<Vec<u8>>,
+	/// AccessList
+	pub access_list: Option<Vec<AccessListItem>>,
 }
 
 #[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]
@@ -89,18 +100,18 @@ pub struct EthereumTransactionMessage {
 	pub value: Balance,
 	pub input: Vec<u8>,
 	pub valid_until: BlockNumber,
+	pub access_list: Vec<AccessListItem>,
 }
 
 /// Ethereum precompiles
 /// 0 - 0x0000000000000000000000000000000000000400
 /// Acala precompiles
 /// 0x0000000000000000000000000000000000000400 - 0x0000000000000000000000000000000000000800
-pub const PRECOMPILE_ADDRESS_START: EvmAddress = H160([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0]);
+pub const PRECOMPILE_ADDRESS_START: EvmAddress = H160(hex!("0000000000000000000000000000000000000400"));
 /// Predeployed system contracts (except Mirrored ERC20)
 /// 0x0000000000000000000000000000000000000800 - 0x0000000000000000000000000000000000001000
-pub const PREDEPLOY_ADDRESS_START: EvmAddress = H160([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 0]);
-pub const MIRRORED_TOKENS_ADDRESS_START: EvmAddress =
-	H160([0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+pub const PREDEPLOY_ADDRESS_START: EvmAddress = H160(hex!("0000000000000000000000000000000000000800"));
+pub const MIRRORED_TOKENS_ADDRESS_START: EvmAddress = H160(hex!("0000000000000000000100000000000000000000"));
 pub const MIRRORED_NFT_ADDRESS_START: u64 = 0x2000000;
 /// System contract address prefix
 pub const SYSTEM_CONTRACT_ADDRESS_PREFIX: [u8; 9] = [0u8; 9];
@@ -119,7 +130,7 @@ pub const SYSTEM_CONTRACT_ADDRESS_PREFIX: [u8; 9] = [0u8; 9];
 ///                                         ^^ CurrencyId Type is 1-Token, Token
 ///                                   ^^^^^^^^ CurrencyId Type is 1-Token, NFT
 ///                       ^^                   CurrencyId Type is 2-DexShare, DexShare Left Type:
-///                                                             0-Token 1-Erc20 2-LiquidCrowdloan 3-ForeignAsset
+///                                                             0-Token 1-Erc20 2-LiquidCrowdloan 3-ForeignAsset 4-StableAsset
 ///                         ^^^^^^^^           CurrencyId Type is 2-DexShare, DexShare left field
 ///                                 ^^         CurrencyId Type is 2-DexShare, DexShare Right Type:
 ///                                                             the same as DexShare Left Type
@@ -133,14 +144,6 @@ pub const SYSTEM_CONTRACT_ADDRESS_PREFIX: [u8; 9] = [0u8; 9];
 /// It's system contract if the address starts with SYSTEM_CONTRACT_ADDRESS_PREFIX.
 pub fn is_system_contract(address: EvmAddress) -> bool {
 	address.as_bytes().starts_with(&SYSTEM_CONTRACT_ADDRESS_PREFIX)
-}
-
-pub fn is_acala_precompile(address: EvmAddress) -> bool {
-	address >= PRECOMPILE_ADDRESS_START && address < PREDEPLOY_ADDRESS_START
-}
-
-pub fn is_mirrored_tokens_address_prefix(address: EvmAddress) -> bool {
-	is_system_contract(address) && CurrencyIdType::try_from(address.as_bytes()[H160_POSITION_CURRENCY_ID_TYPE]).is_ok()
 }
 
 pub const H160_POSITION_CURRENCY_ID_TYPE: usize = 9;
@@ -195,3 +198,50 @@ impl TryFrom<CurrencyId> for EvmAddress {
 		Ok(EvmAddress::from_slice(&address))
 	}
 }
+
+#[cfg(not(feature = "evm-tests"))]
+mod convert {
+	use sp_runtime::traits::{CheckedDiv, Saturating, Zero};
+
+	/// Convert decimal between native(12) and EVM(18) and therefore the 1_000_000 conversion.
+	const DECIMALS_VALUE: u32 = 1_000_000u32;
+
+	/// Convert decimal from native(KAR/ACA 12) to EVM(18).
+	pub fn convert_decimals_to_evm<B: Zero + Saturating + From<u32>>(b: B) -> B {
+		if b.is_zero() {
+			return b;
+		}
+		b.saturating_mul(DECIMALS_VALUE.into())
+	}
+
+	/// Convert decimal from EVM(18) to native(KAR/ACA 12).
+	pub fn convert_decimals_from_evm<B: Zero + Saturating + CheckedDiv + PartialEq + Copy + From<u32>>(
+		b: B,
+	) -> Option<B> {
+		if b.is_zero() {
+			return Some(b);
+		}
+		let res = b
+			.checked_div(&Into::<B>::into(DECIMALS_VALUE))
+			.expect("divisor is non-zero; qed");
+
+		if res.saturating_mul(DECIMALS_VALUE.into()) == b {
+			Some(res)
+		} else {
+			None
+		}
+	}
+}
+
+#[cfg(feature = "evm-tests")]
+mod convert {
+	pub fn convert_decimals_to_evm<B>(b: B) -> B {
+		b
+	}
+
+	pub fn convert_decimals_from_evm<B>(b: B) -> Option<B> {
+		Some(b)
+	}
+}
+
+pub use convert::*;

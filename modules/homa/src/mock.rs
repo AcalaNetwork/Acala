@@ -31,6 +31,7 @@ use orml_traits::parameter_type_with_key;
 use primitives::{Amount, TokenSymbol};
 use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup, AccountId32};
+use xcm::latest::prelude::*;
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
@@ -70,6 +71,10 @@ impl HomaSubAccountXcm<AccountId, Balance> for MockHomaSubAccountXcm {
 	fn get_xcm_transfer_fee() -> Balance {
 		1_000_000
 	}
+
+	fn get_parachain_fee(_: MultiLocation) -> Balance {
+		1_000_000
+	}
 }
 
 parameter_types! {
@@ -100,6 +105,7 @@ impl frame_system::Config for Runtime {
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
 	type OnSetCode = ();
+	type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
 
 parameter_type_with_key! {
@@ -193,7 +199,7 @@ impl Config for Runtime {
 	type MintThreshold = MintThreshold;
 	type RedeemThreshold = RedeemThreshold;
 	type RelayChainBlockNumber = MockRelayBlockNumberProvider;
-	type HomaXcm = MockHomaSubAccountXcm;
+	type XcmInterface = MockHomaSubAccountXcm;
 	type WeightInfo = ();
 }
 

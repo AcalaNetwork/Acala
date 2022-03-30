@@ -71,6 +71,7 @@ impl frame_system::Config for Runtime {
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
 	type OnSetCode = ();
+	type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
 
 parameter_types! {
@@ -175,7 +176,9 @@ impl FindAuthor<AccountId32> for AuthorGiven {
 	where
 		I: 'a + IntoIterator<Item = (ConsensusEngineId, &'a [u8])>,
 	{
-		Some(AccountId32::from_str("1234500000000000000000000000000000000000").unwrap())
+		Some(<Runtime as Config>::AddressMapping::get_account_id(
+			&H160::from_str("1234500000000000000000000000000000000000").unwrap(),
+		))
 	}
 }
 
@@ -191,7 +194,7 @@ ord_parameter_types! {
 	pub const StorageDepositPerByte: Balance = convert_decimals_to_evm(10);
 	pub const TxFeePerGas: Balance = 20_000_000;
 	pub const DeveloperDeposit: Balance = 1000;
-	pub const DeploymentFee: Balance = 200;
+	pub const PublicationFee: Balance = 200;
 	pub const ChainId: u64 = 1;
 }
 
@@ -204,7 +207,8 @@ impl Config for Runtime {
 	type TxFeePerGas = TxFeePerGas;
 
 	type Event = Event;
-	type Precompiles = ();
+	type PrecompilesType = ();
+	type PrecompilesValue = ();
 	type ChainId = ChainId;
 	type GasToWeight = GasToWeight;
 	type ChargeTransactionPayment = ();
@@ -212,9 +216,9 @@ impl Config for Runtime {
 	type NetworkContractOrigin = EnsureSignedBy<NetworkContractAccount, AccountId32>;
 	type NetworkContractSource = NetworkContractSource;
 	type DeveloperDeposit = DeveloperDeposit;
-	type DeploymentFee = DeploymentFee;
+	type PublicationFee = PublicationFee;
 	type TreasuryAccount = TreasuryAccount;
-	type FreeDeploymentOrigin = EnsureSignedBy<CouncilAccount, AccountId32>;
+	type FreePublicationOrigin = EnsureSignedBy<CouncilAccount, AccountId32>;
 
 	type Runner = crate::runner::stack::Runner<Self>;
 	type FindAuthor = AuthorGiven;
@@ -331,6 +335,6 @@ pub fn reserved_balance(address: H160) -> Balance {
 }
 
 #[cfg(not(feature = "with-ethereum-compatibility"))]
-pub fn deploy_free(contract: H160) {
-	let _ = EVM::deploy_free(Origin::signed(CouncilAccount::get()), contract);
+pub fn publish_free(contract: H160) {
+	let _ = EVM::publish_free(Origin::signed(CouncilAccount::get()), contract);
 }

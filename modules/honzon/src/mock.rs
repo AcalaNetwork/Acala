@@ -36,6 +36,7 @@ use sp_runtime::{
 	FixedPointNumber,
 };
 use sp_std::cell::RefCell;
+use support::mocks::MockStableAsset;
 use support::{AuctionManager, ExchangeRate, Price, PriceProvider, Rate, Ratio};
 
 mod honzon {
@@ -82,6 +83,7 @@ impl frame_system::Config for Runtime {
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
 	type OnSetCode = ();
+	type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
 
 parameter_type_with_key! {
@@ -138,7 +140,6 @@ parameter_types! {
 
 impl loans::Config for Runtime {
 	type Event = Event;
-	type Convert = cdp_engine::DebitExchangeRateConvertor<Runtime>;
 	type Currency = Tokens;
 	type RiskManager = CDPEngineModule;
 	type CDPTreasury = CDPTreasuryModule;
@@ -226,6 +227,7 @@ impl cdp_treasury::Config for Runtime {
 	type TreasuryAccount = TreasuryAccount;
 	type AlternativeSwapPathJointList = AlternativeSwapPathJointList;
 	type WeightInfo = ();
+	type StableAsset = MockStableAsset<CurrencyId, Balance, AccountId, BlockNumber>;
 }
 
 parameter_types! {
@@ -263,6 +265,9 @@ impl cdp_engine::Config for Runtime {
 	type UnsignedPriority = UnsignedPriority;
 	type EmergencyShutdown = MockEmergencyShutdown;
 	type UnixTime = Timestamp;
+	type Currency = Currencies;
+	type AlternativeSwapPathJointList = AlternativeSwapPathJointList;
+	type DEX = ();
 	type WeightInfo = ();
 }
 

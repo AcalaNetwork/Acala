@@ -1,25 +1,24 @@
 relaychain:
-  image: parity/polkadot:v0.9.13
+  image: parity/polkadot:v0.9.17
   chain: rococo-local
   runtimeGenesisConfig:
     configuration:
       config:
-        validation_upgrade_frequency: 1
-        validation_upgrade_delay: 1
+        validation_upgrade_cooldown: 10
+        validation_upgrade_delay: 10
   env:
     RUST_LOG: parachain::candidate-backing=trace,parachain::candidate-selection=trace,parachain::pvf=trace,parachain::collator-protocol=trace,parachain::provisioner=trace
   flags:
     - --rpc-methods=unsafe
     - --wasm-execution=compiled
     - --execution=wasm
-    - --no-beefy
   nodes:
     - name: alice
     - name: bob
     - name: charlie
 
 parachains:
-- image: acala/karura-node:2.1.0
+- image: acala/karura-node:2.3.1
   chain:
     base: karura-dev
     collators:
@@ -37,7 +36,6 @@ parachains:
   relaychainFlags:
     - --wasm-execution=compiled
     - --execution=wasm
-    - --no-beefy
   env:
     RUST_LOG: sc_basic_authorship=trace,cumulus-consensus=trace,cumulus-collator=trace,collator_protocol=trace,collation_generation=trace,aura=debug
   volumePath: /acala/data

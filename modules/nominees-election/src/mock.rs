@@ -68,6 +68,7 @@ impl frame_system::Config for Runtime {
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
 	type OnSetCode = ();
+	type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
 
 parameter_type_with_key! {
@@ -129,10 +130,10 @@ impl orml_currencies::Config for Runtime {
 }
 
 parameter_types! {
-	pub const MinBondThreshold: Balance = 5;
+	pub const MinBond: Balance = 5;
 	pub const BondingDuration: EraIndex = 4;
 	pub const NominateesCount: u32 = 5;
-	pub const MaxUnlockingChunks: u32 = 3;
+	pub const MaxUnbondingChunks: u32 = 3;
 	pub const PalletId: LockIdentifier = *b"1       ";
 }
 
@@ -148,10 +149,10 @@ impl Config for Runtime {
 	type Currency = LDOTCurrency;
 	type NomineeId = AccountId;
 	type PalletId = PalletId;
-	type MinBondThreshold = MinBondThreshold;
+	type MinBond = MinBond;
 	type BondingDuration = BondingDuration;
 	type NominateesCount = NominateesCount;
-	type MaxUnlockingChunks = MaxUnlockingChunks;
+	type MaxUnbondingChunks = MaxUnbondingChunks;
 	type NomineeFilter = MockNomineeFilter;
 	type WeightInfo = ();
 }

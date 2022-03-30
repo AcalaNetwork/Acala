@@ -18,96 +18,174 @@
 
 use crate::setup::*;
 use frame_support::weights::{DispatchClass, DispatchInfo, Pays, Weight};
-use karura_runtime::{
-	KarPerSecondAsBased, KaruraTreasuryAccount, KsmPerSecond, NativeTokenExistentialDeposit, TransactionPaymentPalletId,
-};
-use module_transaction_payment::TransactionFeePoolTrader;
-use sp_runtime::traits::SignedExtension;
 use sp_runtime::{
-	traits::{AccountIdConversion, UniqueSaturatedInto},
-	MultiAddress,
+	traits::{AccountIdConversion, SignedExtension, UniqueSaturatedInto},
+	MultiAddress, Percent,
 };
-use xcm_builder::FixedRateOfFungible;
 use xcm_executor::{traits::*, Assets, Config};
 
-#[cfg(feature = "with-karura-runtime")]
-fn init_charge_fee_pool() {
-	for asset in InitialTokenFeePool::get() {
-		let _ = <module_transaction_payment::Pallet<Runtime>>::initialize_pool(
-			asset.0,
-			asset.1,
-			SwapBalanceThreshold::get(),
-		);
-	}
+fn fee_pool_size() -> Balance {
+	5 * dollar(NATIVE_CURRENCY)
 }
 
-#[cfg(feature = "with-karura-runtime")]
+fn init_charge_fee_pool(currency_id: CurrencyId, path: Vec<CurrencyId>) -> DispatchResult {
+	TransactionPayment::enable_charge_fee_pool(
+		Origin::root(),
+		currency_id,
+		path,
+		fee_pool_size(),
+		Ratio::saturating_from_rational(35, 100).saturating_mul_int(dollar(NATIVE_CURRENCY)),
+	)
+}
+
+fn init_charge_fee_pool_relay() -> DispatchResult {
+	init_charge_fee_pool(RELAY_CHAIN_CURRENCY, vec![RELAY_CHAIN_CURRENCY, NATIVE_CURRENCY])
+}
+fn init_charge_fee_pool_usd() -> DispatchResult {
+	init_charge_fee_pool(USD_CURRENCY, vec![USD_CURRENCY, RELAY_CHAIN_CURRENCY, NATIVE_CURRENCY])
+}
+fn init_charge_fee_pool_liquid() -> DispatchResult {
+	init_charge_fee_pool(
+		LIQUID_CURRENCY,
+		vec![LIQUID_CURRENCY, RELAY_CHAIN_CURRENCY, NATIVE_CURRENCY],
+	)
+}
+
+#[cfg(feature = "with-acala-runtime")]
+fn add_liquidity_for_lcdot() {
+	assert_ok!(Dex::add_liquidity(
+		Origin::signed(AccountId::from(ALICE)),
+		USD_CURRENCY,
+		NATIVE_CURRENCY,
+		100 * dollar(USD_CURRENCY),
+		10000 * dollar(NATIVE_CURRENCY),
+		0,
+		false
+	));
+	assert_ok!(Dex::add_liquidity(
+		Origin::signed(AccountId::from(ALICE)),
+		RELAY_CHAIN_CURRENCY,
+		LCDOT,
+		100 * dollar(RELAY_CHAIN_CURRENCY),
+		100 * dollar(RELAY_CHAIN_CURRENCY),
+		0,
+		false
+	));
+	assert_ok!(Dex::add_liquidity(
+		Origin::signed(AccountId::from(ALICE)),
+		USD_CURRENCY,
+		LCDOT,
+		100 * dollar(USD_CURRENCY),
+		100 * dollar(RELAY_CHAIN_CURRENCY),
+		0,
+		false
+	));
+}
+
 #[test]
 fn initial_charge_fee_pool_works() {
 	ExtBuilder::default()
 		.balances(vec![
-			(AccountId::from(ALICE), KAR, 100000 * dollar(KAR)),
-			(AccountId::from(ALICE), KSM, 200 * dollar(KSM)),
-			(AccountId::from(ALICE), KUSD, 2000 * dollar(KSM)),
+			(
+				AccountId::from(ALICE),
+				NATIVE_CURRENCY,
+				100000 * dollar(NATIVE_CURRENCY),
+			),
+			(
+				AccountId::from(ALICE),
+				RELAY_CHAIN_CURRENCY,
+				1000 * dollar(RELAY_CHAIN_CURRENCY),
+			),
+			(AccountId::from(ALICE), USD_CURRENCY, 2000 * dollar(USD_CURRENCY)),
+			#[cfg(feature = "with-acala-runtime")]
+			(AccountId::from(ALICE), LCDOT, 2000 * dollar(RELAY_CHAIN_CURRENCY)),
 		])
 		.build()
 		.execute_with(|| {
-			let treasury_account = KaruraTreasuryAccount::get();
-			let fee_account1: AccountId = TransactionPaymentPalletId::get().into_sub_account(KSM);
+			let treasury_account = TreasuryAccount::get();
+			let fee_account1: AccountId = TransactionPaymentPalletId::get().into_sub_account(RELAY_CHAIN_CURRENCY);
 			// FeePoolSize set to 5 KAR = 50*ED, the treasury already got ED balance when startup.
 			let ed = NativeTokenExistentialDeposit::get();
-			let pool_size = FeePoolSize::get();
+			let pool_size = fee_pool_size();
 
-			// upgrade takes no effect
-			init_charge_fee_pool();
-			assert_eq!(Currencies::free_balance(KAR, &treasury_account), ed);
-			assert_eq!(Currencies::free_balance(KAR, &fee_account1), 0);
+			assert_eq!(Currencies::free_balance(NATIVE_CURRENCY, &treasury_account), ed);
+			assert_eq!(Currencies::free_balance(NATIVE_CURRENCY, &fee_account1), 0);
 
 			// treasury account: KAR=151*KAR_ED, and foreign asset=the ED of foreign asset
 			assert_ok!(Currencies::update_balance(
 				Origin::root(),
 				MultiAddress::Id(treasury_account.clone()),
-				KAR,
+				NATIVE_CURRENCY,
 				pool_size.saturating_mul(3).unique_saturated_into(),
 			));
-			assert_eq!(Currencies::free_balance(KAR, &treasury_account), ed + pool_size * 3);
-			vec![KSM, KUSD, LKSM].iter().for_each(|token| {
-				let ed =
-					(<Currencies as MultiCurrency<AccountId>>::minimum_balance(token.clone())).unique_saturated_into();
-				assert_ok!(Currencies::update_balance(
-					Origin::root(),
-					MultiAddress::Id(treasury_account.clone()),
-					token.clone(),
-					ed,
-				));
-			});
+			assert_eq!(
+				Currencies::free_balance(NATIVE_CURRENCY, &treasury_account),
+				ed + pool_size * 3
+			);
+			vec![RELAY_CHAIN_CURRENCY, USD_CURRENCY, LIQUID_CURRENCY]
+				.iter()
+				.for_each(|token| {
+					let ed = (<Currencies as MultiCurrency<AccountId>>::minimum_balance(token.clone()))
+						.unique_saturated_into();
+					assert_ok!(Currencies::update_balance(
+						Origin::root(),
+						MultiAddress::Id(treasury_account.clone()),
+						token.clone(),
+						ed,
+					));
+				});
 
-			// the last one failed because balance lt ED
 			assert_ok!(Dex::add_liquidity(
 				Origin::signed(AccountId::from(ALICE)),
-				KSM,
-				KAR,
-				100 * dollar(KSM),
-				10000 * dollar(KAR),
+				RELAY_CHAIN_CURRENCY,
+				NATIVE_CURRENCY,
+				100 * dollar(RELAY_CHAIN_CURRENCY),
+				10000 * dollar(NATIVE_CURRENCY),
 				0,
 				false
 			));
 			assert_ok!(Dex::add_liquidity(
 				Origin::signed(AccountId::from(ALICE)),
-				KSM,
-				KUSD,
-				100 * dollar(KSM),
-				1000 * dollar(KAR),
+				RELAY_CHAIN_CURRENCY,
+				USD_CURRENCY,
+				100 * dollar(RELAY_CHAIN_CURRENCY),
+				1000 * dollar(USD_CURRENCY),
 				0,
 				false
 			));
-			init_charge_fee_pool();
-			assert_eq!(Currencies::free_balance(KAR, &treasury_account), ed + pool_size);
-			vec![KSM, KUSD].iter().for_each(|token| {
+
+			#[cfg(feature = "with-acala-runtime")]
+			add_liquidity_for_lcdot();
+
+			assert_ok!(init_charge_fee_pool_relay());
+			assert_ok!(init_charge_fee_pool_usd());
+			// balance lt ED
+			assert_noop!(
+				TransactionPayment::enable_charge_fee_pool(
+					Origin::root(),
+					LIQUID_CURRENCY,
+					vec![LIQUID_CURRENCY, RELAY_CHAIN_CURRENCY, NATIVE_CURRENCY],
+					NativeTokenExistentialDeposit::get() - 1,
+					Ratio::saturating_from_rational(35, 100).saturating_mul_int(dollar(NATIVE_CURRENCY))
+				),
+				module_transaction_payment::Error::<Runtime>::InvalidBalance
+			);
+			assert_noop!(
+				init_charge_fee_pool_liquid(),
+				module_transaction_payment::Error::<Runtime>::DexNotAvailable
+			);
+			assert_eq!(
+				Currencies::free_balance(NATIVE_CURRENCY, &treasury_account),
+				ed + pool_size
+			);
+			vec![RELAY_CHAIN_CURRENCY, USD_CURRENCY].iter().for_each(|token| {
 				let ed =
 					(<Currencies as MultiCurrency<AccountId>>::minimum_balance(token.clone())).unique_saturated_into();
 				assert_eq!(
-					Currencies::free_balance(KAR, &TransactionPaymentPalletId::get().into_sub_account(token.clone())),
+					Currencies::free_balance(
+						NATIVE_CURRENCY,
+						&TransactionPaymentPalletId::get().into_sub_account(token.clone())
+					),
 					pool_size
 				);
 				assert_eq!(
@@ -119,26 +197,22 @@ fn initial_charge_fee_pool_works() {
 				);
 			});
 			assert_eq!(
-				Currencies::free_balance(KAR, &TransactionPaymentPalletId::get().into_sub_account(LKSM)),
+				Currencies::free_balance(
+					NATIVE_CURRENCY,
+					&TransactionPaymentPalletId::get().into_sub_account(LIQUID_CURRENCY)
+				),
 				0
 			);
 			assert_eq!(
-				Currencies::free_balance(LKSM, &TransactionPaymentPalletId::get().into_sub_account(LKSM)),
+				Currencies::free_balance(
+					LIQUID_CURRENCY,
+					&TransactionPaymentPalletId::get().into_sub_account(LIQUID_CURRENCY)
+				),
 				0
 			);
-
-			// set_swap_balance_threshold should gt pool_size
-			let pool_size: Balance = module_transaction_payment::Pallet::<Runtime>::pool_size(KSM);
-			let swap_threshold = module_transaction_payment::Pallet::<Runtime>::set_swap_balance_threshold(
-				Origin::signed(treasury_account),
-				KSM,
-				pool_size.saturating_add(1),
-			);
-			assert!(swap_threshold.is_err());
 		});
 }
 
-#[cfg(feature = "with-karura-runtime")]
 #[test]
 fn trader_works() {
 	// 4 instructions, each instruction cost 200_000_000
@@ -155,6 +229,11 @@ fn trader_works() {
 			beneficiary: Here.into(),
 		},
 	]);
+	#[cfg(feature = "with-mandala-runtime")]
+	let expect_weight: Weight = 4_000_000;
+	#[cfg(feature = "with-karura-runtime")]
+	let expect_weight: Weight = 800_000_000;
+	#[cfg(feature = "with-acala-runtime")]
 	let expect_weight: Weight = 800_000_000;
 	let xcm_weight: Weight = <XcmConfig as Config>::Weigher::weight(&mut message).unwrap();
 	assert_eq!(xcm_weight, expect_weight);
@@ -163,17 +242,22 @@ fn trader_works() {
 	// ksm_per_second = 0.16 * dollar(KAR), fee = 0.16 * weight = 0.16 * 800_000_000 = 128_000_000
 	let total_balance: Balance = 130_000_000;
 	let asset: MultiAsset = (Parent, total_balance).into();
+	#[cfg(feature = "with-mandala-runtime")]
+	let expect_unspent: MultiAsset = (Parent, 129_680_000).into();
+	#[cfg(feature = "with-karura-runtime")]
 	let expect_unspent: MultiAsset = (Parent, 2_000_000).into();
+	#[cfg(feature = "with-acala-runtime")]
+	let expect_unspent: MultiAsset = (Parent, 128_720_000).into();
 	let assets: Assets = asset.into();
 
 	// when no runtime upgrade, the newly `TransactionFeePoolTrader` will failed.
 	ExtBuilder::default().build().execute_with(|| {
-		let mut trader = FixedRateOfFungible::<KsmPerSecond, ()>::new();
+		let mut trader = Trader::new();
 		let result_assets = trader.buy_weight(xcm_weight, assets.clone()).unwrap();
 		let unspent: Vec<MultiAsset> = result_assets.into();
 		assert_eq!(vec![expect_unspent.clone()], unspent);
 
-		let mut period_trader = TransactionFeePoolTrader::<Runtime, CurrencyIdConvert, KarPerSecondAsBased, ()>::new();
+		let mut period_trader = PeriodTrader::new();
 		let result_assets = period_trader.buy_weight(xcm_weight, assets.clone());
 		assert!(result_assets.is_err());
 	});
@@ -181,124 +265,170 @@ fn trader_works() {
 	// do runtime upgrade
 	ExtBuilder::default()
 		.balances(vec![
-			(AccountId::from(ALICE), KAR, 100000 * dollar(KAR)),
-			(AccountId::from(ALICE), KSM, 200 * dollar(KSM)),
+			(
+				AccountId::from(ALICE),
+				NATIVE_CURRENCY,
+				100000 * dollar(NATIVE_CURRENCY),
+			),
+			(
+				AccountId::from(ALICE),
+				RELAY_CHAIN_CURRENCY,
+				1000 * dollar(RELAY_CHAIN_CURRENCY),
+			),
+			(AccountId::from(ALICE), USD_CURRENCY, 2000 * dollar(USD_CURRENCY)),
+			#[cfg(feature = "with-acala-runtime")]
+			(AccountId::from(ALICE), LCDOT, 2000 * dollar(RELAY_CHAIN_CURRENCY)),
 		])
 		.build()
 		.execute_with(|| {
-			let treasury_account = KaruraTreasuryAccount::get();
-			let fee_account1: AccountId = TransactionPaymentPalletId::get().into_sub_account(KSM);
+			let treasury_account = TreasuryAccount::get();
+			let fee_account1: AccountId = TransactionPaymentPalletId::get().into_sub_account(RELAY_CHAIN_CURRENCY);
 			// FeePoolSize set to 5 KAR = 50*ED, the treasury already got ED balance when startup.
 			let ed = NativeTokenExistentialDeposit::get();
-			let ksm_ed = <Currencies as MultiCurrency<AccountId>>::minimum_balance(KSM);
-			let pool_size = FeePoolSize::get();
+			let relay_ed = <Currencies as MultiCurrency<AccountId>>::minimum_balance(RELAY_CHAIN_CURRENCY);
+			let pool_size = fee_pool_size();
 
 			// treasury account: KAR=50*KAR_ED, KSM=KSM_ED, KUSD=KUSD_ED
 			assert_ok!(Currencies::update_balance(
 				Origin::root(),
 				MultiAddress::Id(treasury_account.clone()),
-				KAR,
+				NATIVE_CURRENCY,
 				pool_size.unique_saturated_into(),
 			));
-			assert_eq!(Currencies::free_balance(KAR, &treasury_account), ed + pool_size);
+			assert_eq!(
+				Currencies::free_balance(NATIVE_CURRENCY, &treasury_account),
+				ed + pool_size
+			);
 			assert_ok!(Currencies::update_balance(
 				Origin::root(),
 				MultiAddress::Id(treasury_account.clone()),
-				KSM,
-				ksm_ed.unique_saturated_into(),
+				RELAY_CHAIN_CURRENCY,
+				relay_ed.unique_saturated_into(),
 			));
 
 			// runtime upgrade
 			assert_ok!(Dex::add_liquidity(
 				Origin::signed(AccountId::from(ALICE)),
-				KSM,
-				KAR,
-				100 * dollar(KSM),
-				10000 * dollar(KAR),
+				RELAY_CHAIN_CURRENCY,
+				NATIVE_CURRENCY,
+				100 * dollar(RELAY_CHAIN_CURRENCY),
+				10000 * dollar(NATIVE_CURRENCY),
 				0,
 				false
 			));
-			init_charge_fee_pool();
-			assert_eq!(Currencies::free_balance(KAR, &treasury_account), ed);
-			assert_eq!(Currencies::free_balance(KAR, &fee_account1), pool_size);
-			assert_eq!(Currencies::free_balance(KSM, &fee_account1), ksm_ed);
 
-			let ksm_exchange_rate: Ratio =
-				module_transaction_payment::Pallet::<Runtime>::token_exchange_rate(KSM).unwrap();
-			let spent = ksm_exchange_rate.saturating_mul_int(8 * expect_weight);
+			#[cfg(feature = "with-acala-runtime")]
+			add_liquidity_for_lcdot();
+
+			assert_ok!(init_charge_fee_pool_relay());
+			assert_eq!(Currencies::free_balance(NATIVE_CURRENCY, &treasury_account), ed);
+			assert_eq!(Currencies::free_balance(NATIVE_CURRENCY, &fee_account1), pool_size);
+			assert_eq!(Currencies::free_balance(RELAY_CHAIN_CURRENCY, &fee_account1), relay_ed);
+
+			let relay_exchange_rate: Ratio =
+				module_transaction_payment::Pallet::<Runtime>::token_exchange_rate(RELAY_CHAIN_CURRENCY).unwrap();
+			let spent = relay_exchange_rate.saturating_mul_int(8 * expect_weight);
 			let expect_unspent: MultiAsset = (Parent, total_balance - spent as u128).into();
 
 			// the newly `TransactionFeePoolTrader` works fine as first priority
-			let mut period_trader =
-				TransactionFeePoolTrader::<Runtime, CurrencyIdConvert, KarPerSecondAsBased, ()>::new();
+			let mut period_trader = PeriodTrader::new();
 			let result_assets = period_trader.buy_weight(xcm_weight, assets);
 			let unspent: Vec<MultiAsset> = result_assets.unwrap().into();
 			assert_eq!(vec![expect_unspent.clone()], unspent);
 		});
 }
 
-#[cfg(feature = "with-karura-runtime")]
 #[test]
 fn charge_transaction_payment_and_threshold_works() {
 	let native_ed = NativeTokenExistentialDeposit::get();
-	let pool_size = FeePoolSize::get();
-	let ksm_ed = <Currencies as MultiCurrency<AccountId>>::minimum_balance(KSM);
+	let pool_size = fee_pool_size();
+	let relay_ed = <Currencies as MultiCurrency<AccountId>>::minimum_balance(RELAY_CHAIN_CURRENCY);
 
-	let treasury_account = KaruraTreasuryAccount::get();
-	let sub_account1: AccountId = TransactionPaymentPalletId::get().into_sub_account(KSM);
-	let bob_ksm_balance = 100 * dollar(KSM);
+	let treasury_account = TreasuryAccount::get();
+	let sub_account1: AccountId = TransactionPaymentPalletId::get().into_sub_account(RELAY_CHAIN_CURRENCY);
+	let bob_relay_balance = 100 * dollar(RELAY_CHAIN_CURRENCY);
 
 	ExtBuilder::default()
 		.balances(vec![
 			// Alice for Dex, Bob for transaction payment
-			(AccountId::from(ALICE), KAR, 100000 * dollar(KAR)),
-			(AccountId::from(ALICE), KSM, 200 * dollar(KSM)),
-			(AccountId::from(BOB), KAR, native_ed),
-			(AccountId::from(BOB), KSM, bob_ksm_balance),
+			(
+				AccountId::from(ALICE),
+				NATIVE_CURRENCY,
+				100000 * dollar(NATIVE_CURRENCY),
+			),
+			(
+				AccountId::from(ALICE),
+				RELAY_CHAIN_CURRENCY,
+				1000 * dollar(RELAY_CHAIN_CURRENCY),
+			),
+			(AccountId::from(ALICE), USD_CURRENCY, 2000 * dollar(USD_CURRENCY)),
+			(AccountId::from(BOB), NATIVE_CURRENCY, native_ed),
+			(AccountId::from(BOB), RELAY_CHAIN_CURRENCY, bob_relay_balance),
+			#[cfg(feature = "with-acala-runtime")]
+			(AccountId::from(ALICE), LCDOT, 2000 * dollar(RELAY_CHAIN_CURRENCY)),
 		])
 		.build()
 		.execute_with(|| {
-			// treasury account for on_runtime_upgrade
+			// before update, treasury account has native_ed amount of native token
 			assert_ok!(Currencies::update_balance(
 				Origin::root(),
 				MultiAddress::Id(treasury_account.clone()),
-				KAR,
+				NATIVE_CURRENCY,
 				pool_size.unique_saturated_into(),
 			));
 			assert_ok!(Currencies::update_balance(
 				Origin::root(),
 				MultiAddress::Id(treasury_account.clone()),
-				KSM,
-				ksm_ed.unique_saturated_into(),
+				RELAY_CHAIN_CURRENCY,
+				relay_ed.unique_saturated_into(),
 			));
 
+			assert_noop!(
+				init_charge_fee_pool_relay(),
+				module_transaction_payment::Error::<Runtime>::DexNotAvailable
+			);
+			assert_noop!(
+				init_charge_fee_pool_usd(),
+				module_transaction_payment::Error::<Runtime>::DexNotAvailable
+			);
+			assert_noop!(
+				init_charge_fee_pool_liquid(),
+				module_transaction_payment::Error::<Runtime>::DexNotAvailable
+			);
 			assert_ok!(Dex::add_liquidity(
 				Origin::signed(AccountId::from(ALICE)),
-				KSM,
-				KAR,
-				100 * dollar(KSM),
-				10000 * dollar(KAR),
+				RELAY_CHAIN_CURRENCY,
+				NATIVE_CURRENCY,
+				100 * dollar(RELAY_CHAIN_CURRENCY),
+				10000 * dollar(NATIVE_CURRENCY),
 				0,
 				false
 			));
-			init_charge_fee_pool();
-			assert_eq!(Currencies::free_balance(KAR, &treasury_account), native_ed);
-			assert_eq!(Currencies::free_balance(KAR, &sub_account1), pool_size);
-			assert_eq!(Currencies::free_balance(KSM, &sub_account1), ksm_ed);
 
-			let ksm_exchange_rate: Ratio =
-				module_transaction_payment::Pallet::<Runtime>::token_exchange_rate(KSM).unwrap();
+			#[cfg(feature = "with-acala-runtime")]
+			add_liquidity_for_lcdot();
 
-			let threshold: Balance = module_transaction_payment::Pallet::<Runtime>::swap_balance_threshold(KSM);
+			// before init_charge_fee_pool, treasury account has native_ed+pool_size of native token
+			assert_ok!(init_charge_fee_pool_relay());
+			// init_charge_fee_pool will transfer pool_size to sub_account
+			assert_eq!(Currencies::free_balance(NATIVE_CURRENCY, &treasury_account), native_ed);
+			assert_eq!(Currencies::free_balance(NATIVE_CURRENCY, &sub_account1), pool_size);
+			assert_eq!(Currencies::free_balance(RELAY_CHAIN_CURRENCY, &sub_account1), relay_ed);
+
+			let relay_exchange_rate: Ratio =
+				module_transaction_payment::Pallet::<Runtime>::token_exchange_rate(RELAY_CHAIN_CURRENCY).unwrap();
+
+			let threshold: Balance =
+				module_transaction_payment::Pallet::<Runtime>::swap_balance_threshold(RELAY_CHAIN_CURRENCY);
 			let expect_threshold = Ratio::saturating_from_rational(350, 100).saturating_mul_int(native_ed);
 			assert_eq!(threshold, expect_threshold); // 350 000 000 000
 
 			assert_ok!(Dex::add_liquidity(
 				Origin::signed(AccountId::from(ALICE)),
-				KSM,
-				KAR,
-				100 * dollar(KSM),
-				10000 * dollar(KAR),
+				RELAY_CHAIN_CURRENCY,
+				NATIVE_CURRENCY,
+				100 * dollar(RELAY_CHAIN_CURRENCY),
+				10000 * dollar(NATIVE_CURRENCY),
 				0,
 				false
 			));
@@ -306,7 +436,7 @@ fn charge_transaction_payment_and_threshold_works() {
 			let len = 150 as u32;
 			let call: &<Runtime as frame_system::Config>::Call = &Call::Currencies(module_currencies::Call::transfer {
 				dest: MultiAddress::Id(AccountId::from(BOB)),
-				currency_id: KUSD,
+				currency_id: USD_CURRENCY,
 				amount: 12,
 			});
 			let info: DispatchInfo = DispatchInfo {
@@ -315,83 +445,104 @@ fn charge_transaction_payment_and_threshold_works() {
 				pays_fee: Pays::Yes,
 			};
 			let fee = module_transaction_payment::Pallet::<Runtime>::compute_fee(len, &info, 0);
+			let fee_alternative_surplus_percent: Percent = ALTERNATIVE_SURPLUS;
+			let surplus = fee_alternative_surplus_percent.mul_ceil(fee);
+			let fee = fee + surplus;
 
-			let _ = <module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0).validate(
-				&AccountId::from(BOB),
-				call,
-				&info,
-				len as usize,
-			);
-			let kar1 = Currencies::free_balance(KAR, &sub_account1);
-			let ksm1 = Currencies::free_balance(KSM, &sub_account1);
-
-			let _ = <module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0).validate(
-				&AccountId::from(BOB),
-				call,
-				&info,
-				len as usize,
-			);
-			let kar2 = Currencies::free_balance(KAR, &sub_account1);
-			let ksm2 = Currencies::free_balance(KSM, &sub_account1);
-			assert_eq!(fee, kar1 - kar2);
-			assert_eq!(ksm_exchange_rate.saturating_mul_int(fee), ksm2 - ksm1);
-
-			for _ in 0..38 {
-				let _ = <module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0).validate(
+			assert_ok!(
+				<module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0).validate(
 					&AccountId::from(BOB),
 					call,
 					&info,
 					len as usize,
+				)
+			);
+			let balance1 = Currencies::free_balance(NATIVE_CURRENCY, &sub_account1);
+			let relay1 = Currencies::free_balance(RELAY_CHAIN_CURRENCY, &sub_account1);
+
+			assert_ok!(
+				<module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0).validate(
+					&AccountId::from(BOB),
+					call,
+					&info,
+					len as usize,
+				)
+			);
+			let balance2 = Currencies::free_balance(NATIVE_CURRENCY, &sub_account1);
+			let relay2 = Currencies::free_balance(RELAY_CHAIN_CURRENCY, &sub_account1);
+			assert_eq!(fee, balance1 - balance2);
+			assert_eq!(relay_exchange_rate.saturating_mul_int(fee), relay2 - relay1);
+
+			for i in 0..38 {
+				assert_ok!(
+					<module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0).validate(
+						&AccountId::from(BOB),
+						call,
+						&info,
+						len as usize,
+					)
+				);
+				assert_eq!(
+					pool_size - fee * (i + 3),
+					Currencies::free_balance(NATIVE_CURRENCY, &sub_account1)
 				);
 			}
-			let kar1 = Currencies::free_balance(KAR, &sub_account1);
-			let ksm1 = Currencies::free_balance(KSM, &sub_account1);
+			let balance1 = Currencies::free_balance(NATIVE_CURRENCY, &sub_account1);
+			let relay1 = Currencies::free_balance(RELAY_CHAIN_CURRENCY, &sub_account1);
 
 			// set swap balance trigger, next tx will trigger swap from dex
-			let _ = <module_transaction_payment::Pallet<Runtime>>::set_swap_balance_threshold(
-				Origin::signed(KaruraTreasuryAccount::get()),
-				KSM,
+			module_transaction_payment::SwapBalanceThreshold::<Runtime>::insert(
+				RELAY_CHAIN_CURRENCY,
 				pool_size - fee * 40,
 			);
 
+			// 5 000 000 000 000
+			//   350 000 000 000
 			// before execute this tx, the balance of fee pool is equal to threshold,
 			// so it wouldn't trigger swap from dex.
-			let _ = <module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0).validate(
-				&AccountId::from(BOB),
-				call,
-				&info,
-				len as usize,
+			assert_ok!(
+				<module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0).validate(
+					&AccountId::from(BOB),
+					call,
+					&info,
+					len as usize,
+				)
 			);
-			let kar2 = Currencies::free_balance(KAR, &sub_account1);
-			let ksm2 = Currencies::free_balance(KSM, &sub_account1);
-			assert_eq!(fee, kar1 - kar2);
-			assert_eq!(ksm_exchange_rate.saturating_mul_int(fee), ksm2 - ksm1);
+			let balance2 = Currencies::free_balance(NATIVE_CURRENCY, &sub_account1);
+			let relay2 = Currencies::free_balance(RELAY_CHAIN_CURRENCY, &sub_account1);
+			assert_eq!(fee, balance1 - balance2);
+			assert_eq!(relay_exchange_rate.saturating_mul_int(fee), relay2 - relay1);
 
 			// this tx cause swap from dex, but the fee calculation still use the old rate.
-			let _ = <module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0).validate(
-				&AccountId::from(BOB),
-				call,
-				&info,
-				len as usize,
+			assert_ok!(
+				<module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0).validate(
+					&AccountId::from(BOB),
+					call,
+					&info,
+					len as usize,
+				)
 			);
-			let kar1 = Currencies::free_balance(KAR, &sub_account1);
-			let ksm1 = Currencies::free_balance(KSM, &sub_account1);
-			assert_eq!(ksm_ed + ksm_exchange_rate.saturating_mul_int(fee), ksm1);
-			assert!(kar1 > kar2);
-			assert!(ksm2 > ksm1);
+			let balance1 = Currencies::free_balance(NATIVE_CURRENCY, &sub_account1);
+			let relay1 = Currencies::free_balance(RELAY_CHAIN_CURRENCY, &sub_account1);
+			assert_eq!(relay_ed + relay_exchange_rate.saturating_mul_int(fee), relay1);
+			assert!(balance1 > balance2);
+			assert!(relay2 > relay1);
 
 			// next tx use the new rate to calculate the fee to be transfer.
-			let new_rate: Ratio = module_transaction_payment::Pallet::<Runtime>::token_exchange_rate(KSM).unwrap();
+			let new_rate: Ratio =
+				module_transaction_payment::Pallet::<Runtime>::token_exchange_rate(RELAY_CHAIN_CURRENCY).unwrap();
 
-			let _ = <module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0).validate(
-				&AccountId::from(BOB),
-				call,
-				&info,
-				len as usize,
+			assert_ok!(
+				<module_transaction_payment::ChargeTransactionPayment<Runtime>>::from(0).validate(
+					&AccountId::from(BOB),
+					call,
+					&info,
+					len as usize,
+				)
 			);
-			let kar2 = Currencies::free_balance(KAR, &sub_account1);
-			let ksm2 = Currencies::free_balance(KSM, &sub_account1);
-			assert_eq!(fee, kar1 - kar2);
-			assert_eq!(new_rate.saturating_mul_int(fee), ksm2 - ksm1);
+			let balance2 = Currencies::free_balance(NATIVE_CURRENCY, &sub_account1);
+			let relay2 = Currencies::free_balance(RELAY_CHAIN_CURRENCY, &sub_account1);
+			assert_eq!(fee, balance1 - balance2);
+			assert_eq!(new_rate.saturating_mul_int(fee), relay2 - relay1);
 		});
 }

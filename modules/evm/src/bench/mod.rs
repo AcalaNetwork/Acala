@@ -70,7 +70,7 @@ fn whitelist_keys(b: &mut Bencher, from: H160, code: Vec<u8>) -> H160 {
 	let address = H160::from_str("2000000000000000000000000000000000000001").unwrap();
 	let vicinity = Vicinity {
 		gas_price: U256::one(),
-		origin: Default::default(),
+		..Default::default()
 	};
 	let context = Context {
 		caller: from,
@@ -80,7 +80,7 @@ fn whitelist_keys(b: &mut Bencher, from: H160, code: Vec<u8>) -> H160 {
 	let config = <Runtime as Config>::config();
 	let metadata = StackSubstateMetadata::new(21_000_000, 1_000_000, config);
 	let state = SubstrateStackState::<Runtime>::new(&vicinity, metadata);
-	let mut executor = StackExecutor::new(state, config);
+	let mut executor = StackExecutor::new_with_precompiles(state, config, &());
 
 	let mut runtime = EVMRuntime::new(Rc::new(code.clone()), Rc::new(Vec::new()), context, config);
 	let reason = executor.execute(&mut runtime);
@@ -154,6 +154,7 @@ macro_rules! evm_create {
 						0,
 						21_000_000,
 						1_000_000,
+						vec![],
 						<Runtime as Config>::config(),
 					)
 				})
@@ -183,6 +184,7 @@ macro_rules! evm_call {
 				0,
 				21_000_000,
 				1_000_000,
+				vec![],
 				<Runtime as Config>::config(),
 			)
 			.unwrap();
@@ -193,7 +195,7 @@ macro_rules! evm_call {
 				result.exit_reason
 			);
 			assert_eq!(contract_address, result.value);
-			assert_ok!(EVM::deploy_free(
+			assert_ok!(EVM::publish_free(
 				Origin::signed(CouncilAccount::get()),
 				contract_address
 			));
@@ -208,6 +210,7 @@ macro_rules! evm_call {
 						0,
 						21_000_000,
 						1_000_000,
+						vec![],
 						<Runtime as Config>::config(),
 					)
 				})

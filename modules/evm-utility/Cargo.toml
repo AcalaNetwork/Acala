@@ -1,0 +1,32 @@
+[package]
+name = "module-evm-utility"
+version = "2.4.1"
+authors = ["Acala Developers"]
+edition = "2021"
+
+[dependencies]
+sha3 = { version = "0.9.1", default-features = false }
+
+sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17", default-features = false }
+
+evm = { git = "https://github.com/rust-blockchain/evm", rev = "52d5fe5d1fd665a495ea34cc67c5f0c6bc6dd23e", default-features = false, features = ["with-codec"] }
+evm-gasometer = { git = "https://github.com/rust-blockchain/evm", rev = "52d5fe5d1fd665a495ea34cc67c5f0c6bc6dd23e", default-features = false }
+evm-runtime = { git = "https://github.com/rust-blockchain/evm", rev = "52d5fe5d1fd665a495ea34cc67c5f0c6bc6dd23e", default-features = false }
+ethereum = { git = "https://github.com/rust-blockchain/ethereum", rev = "34fd1fed1fb0261fef9c8a36acb6ecf5082036ad", default-features = false, features = ["with-codec"] }
+
+[features]
+default = ["std"]
+std = [
+	"sha3/std",
+	"sp-std/std",
+	"evm/std",
+	"evm/with-serde",
+	"evm-runtime/std",
+	"evm-gasometer/std",
+	"ethereum/with-serde",
+]
+tracing = [
+	"evm/tracing",
+	"evm-gasometer/tracing",
+	"evm-runtime/tracing",
+]

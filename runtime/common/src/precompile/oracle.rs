@@ -16,14 +16,21 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::precompile::PrecompileOutput;
+use crate::{precompile::input::InputPricer, WeightToGas};
 use frame_support::{log, sp_runtime::FixedPointNumber};
-use module_evm::{Context, ExitError, ExitSucceed, Precompile};
+use module_evm::{
+	precompiles::Precompile,
+	runner::state::{PrecompileFailure, PrecompileOutput, PrecompileResult},
+	Context, ExitError, ExitSucceed,
+};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
-use sp_runtime::RuntimeDebug;
-use sp_std::{marker::PhantomData, prelude::*, result};
+use sp_runtime::{traits::Convert, RuntimeDebug};
+use sp_std::{marker::PhantomData, prelude::*};
 
-use super::input::{Input, InputT, Output};
+use super::{
+	input::{Input, InputT, Output},
+	weights::PrecompileWeights,
+};
 use module_support::{Erc20InfoMapping as Erc20InfoMappingT, PriceProvider as PriceProviderT};
 
 /// The `Oracle` impl precompile.
@@ -35,7 +42,7 @@ use module_support::{Erc20InfoMapping as Erc20InfoMappingT, PriceProvider as Pri
 /// - Get price. Rest `input` bytes: `currency_id`.
 pub struct OraclePrecompile<R>(PhantomData<R>);
 
-#[module_evm_utiltity_macro::generate_function_selector]
+#[module_evm_utility_macro::generate_function_selector]
 #[derive(RuntimeDebug, Eq, PartialEq, TryFromPrimitive, IntoPrimitive)]
 #[repr(u32)]
 pub enum Action {
@@ -46,12 +53,20 @@ impl<Runtime> Precompile for OraclePrecompile<Runtime>
 where
 	Runtime: module_evm::Config + module_prices::Config,
 {
-	fn execute(
-		input: &[u8],
-		_target_gas: Option<u64>,
-		_context: &Context,
-	) -> result::Result<PrecompileOutput, ExitError> {
-		let input = Input::<Action, Runtime::AccountId, Runtime::AddressMapping, Runtime::Erc20InfoMapping>::new(input);
+	fn execute(input: &[u8], target_gas: Option<u64>, _context: &Context, _is_static: bool) -> PrecompileResult {
+		let input = Input::<Action, Runtime::AccountId, Runtime::AddressMapping, Runtime::Erc20InfoMapping>::new(
+			input, target_gas,
+		);
+
+		let gas_cost = Pricer::<Runtime>::cost(&input)?;
+
+		if let Some(gas_limit) = target_gas {
+			if gas_limit < gas_cost {
+				return Err(PrecompileFailure::Error {
+					exit_status: ExitError::OutOfGas,
+				});
+			}
+		}
 
 		let action = input.action()?;
 
@@ -88,11 +103,155 @@ where
 				log::debug!(target: "evm", "oracle: getPrice currency_id: {:?}, price: {:?}, adjustment_multiplier: {:?}, output: {:?}", currency_id, price, adjustment_multiplier, output);
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
-					cost: 0,
+					cost: gas_cost,
 					output: Output::default().encode_u128(output),
 					logs: Default::default(),
 				})
 			}
 		}
+	}
+}
+
+struct Pricer<R>(PhantomData<R>);
+
+impl<Runtime> Pricer<Runtime>
+where
+	Runtime: module_evm::Config + module_prices::Config,
+{
+	const BASE_COST: u64 = 200;
+
+	fn cost(
+		input: &Input<Action, Runtime::AccountId, Runtime::AddressMapping, Runtime::Erc20InfoMapping>,
+	) -> Result<u64, PrecompileFailure> {
+		let action = input.action()?;
+
+		let cost = match action {
+			Action::GetPrice => {
+				let currency_id = input.currency_id_at(1)?;
+				let read_currency = InputPricer::<Runtime>::read_currency(currency_id);
+				let get_price = WeightToGas::convert(PrecompileWeights::<Runtime>::oracle_get_price());
+				WeightToGas::convert(read_currency).saturating_add(get_price)
+			}
+		};
+		Ok(Self::BASE_COST.saturating_add(cost))
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	use crate::precompile::mock::{alice_evm_addr, new_test_ext, Oracle, Price, Test, ALICE, RENBTC};
+	use frame_support::{assert_noop, assert_ok};
+	use hex_literal::hex;
+	use module_evm::ExitRevert;
+	use orml_traits::DataFeeder;
+
+	type OraclePrecompile = crate::OraclePrecompile<Test>;
+
+	#[test]
+	fn get_price_work() {
+		new_test_ext().execute_with(|| {
+			let context = Context {
+				address: Default::default(),
+				caller: alice_evm_addr(),
+				apparent_value: Default::default(),
+			};
+
+			let price = Price::from(30_000);
+
+			// getPrice(address) -> 0x41976e09
+			// RENBTC
+			let input = hex! {"
+				41976e09
+				000000000000000000000000 0000000000000000000100000000000000000014
+			"};
+
+			// no price yet
+			let expected_output = hex! {"
+				00000000000000000000000000000000 00000000000000000000000000000000
+			"};
+
+			let resp = OraclePrecompile::execute(&input, None, &context, false).unwrap();
+			assert_eq!(resp.exit_status, ExitSucceed::Returned);
+			assert_eq!(resp.output, expected_output.to_vec());
+
+			assert_ok!(Oracle::feed_value(ALICE, RENBTC, price));
+			assert_eq!(
+				Oracle::get(&RENBTC),
+				Some(orml_oracle::TimestampedValue {
+					value: price,
+					timestamp: 1
+				})
+			);
+
+			// returned price
+			let expected_output = hex! {"
+				00000000000000000000000000000000 000000000000065a4da25d3016c00000
+			"};
+
+			let resp = OraclePrecompile::execute(&input, None, &context, false).unwrap();
+			assert_eq!(resp.exit_status, ExitSucceed::Returned);
+			assert_eq!(resp.output, expected_output.to_vec());
+		});
+	}
+
+	#[test]
+	fn oracle_precompile_should_handle_invalid_input() {
+		new_test_ext().execute_with(|| {
+			assert_noop!(
+				OraclePrecompile::execute(
+					&[0u8; 0],
+					Some(10),
+					&Context {
+						address: Default::default(),
+						caller: alice_evm_addr(),
+						apparent_value: Default::default()
+					},
+					false
+				),
+				PrecompileFailure::Revert {
+					exit_status: ExitRevert::Reverted,
+					output: "invalid input".into(),
+					cost: 10,
+				}
+			);
+
+			assert_noop!(
+				OraclePrecompile::execute(
+					&[0u8; 3],
+					Some(10),
+					&Context {
+						address: Default::default(),
+						caller: alice_evm_addr(),
+						apparent_value: Default::default()
+					},
+					false
+				),
+				PrecompileFailure::Revert {
+					exit_status: ExitRevert::Reverted,
+					output: "invalid input".into(),
+					cost: 10,
+				}
+			);
+
+			assert_noop!(
+				OraclePrecompile::execute(
+					&[1u8; 32],
+					Some(10),
+					&Context {
+						address: Default::default(),
+						caller: alice_evm_addr(),
+						apparent_value: Default::default()
+					},
+					false
+				),
+				PrecompileFailure::Revert {
+					exit_status: ExitRevert::Reverted,
+					output: "invalid action".into(),
+					cost: 10,
+				}
+			);
+		});
 	}
 }

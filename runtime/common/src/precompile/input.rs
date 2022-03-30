@@ -17,22 +17,20 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use frame_support::ensure;
-use sp_std::{marker::PhantomData, mem, result::Result, vec, vec::Vec};
+use sp_std::{marker::PhantomData, result::Result, vec, vec::Vec};
 
+use crate::WeightToGas;
 use ethabi::Token;
-use module_evm::ExitError;
+use frame_support::traits::Get;
+use module_evm::{runner::state::PrecompileFailure, ExitRevert};
 use module_support::{AddressMapping as AddressMappingT, Erc20InfoMapping as Erc20InfoMappingT};
-use primitives::{Amount, Balance, CurrencyId};
+use primitives::{Balance, CurrencyId, DexShare};
 use sp_core::{H160, U256};
+use sp_runtime::traits::Convert;
 
 pub const FUNCTION_SELECTOR_LENGTH: usize = 4;
 pub const PER_PARAM_BYTES: usize = 32;
 pub const ACTION_INDEX: usize = 0;
-
-pub const BALANCE_BYTES: usize = mem::size_of::<Balance>();
-pub const AMOUNT_BYTES: usize = mem::size_of::<Amount>();
-pub const U64_BYTES: usize = mem::size_of::<u64>();
-pub const U32_BYTES: usize = mem::size_of::<u32>();
 
 pub trait InputT {
 	type Error;
@@ -46,8 +44,9 @@ pub trait InputT {
 	fn evm_address_at(&self, index: usize) -> Result<H160, Self::Error>;
 	fn currency_id_at(&self, index: usize) -> Result<CurrencyId, Self::Error>;
 
+	fn u256_at(&self, index: usize) -> Result<U256, Self::Error>;
+
 	fn balance_at(&self, index: usize) -> Result<Balance, Self::Error>;
-	fn amount_at(&self, index: usize) -> Result<Amount, Self::Error>;
 
 	fn u64_at(&self, index: usize) -> Result<u64, Self::Error>;
 	fn u32_at(&self, index: usize) -> Result<u32, Self::Error>;
@@ -57,14 +56,16 @@ pub trait InputT {
 
 pub struct Input<'a, Action, AccountId, AddressMapping, Erc20InfoMapping> {
 	content: &'a [u8],
+	target_gas: Option<u64>,
 	_marker: PhantomData<(Action, AccountId, AddressMapping, Erc20InfoMapping)>,
 }
 impl<'a, Action, AccountId, AddressMapping, Erc20InfoMapping>
 	Input<'a, Action, AccountId, AddressMapping, Erc20InfoMapping>
 {
-	pub fn new(content: &'a [u8]) -> Self {
+	pub fn new(content: &'a [u8], target_gas: Option<u64>) -> Self {
 		Self {
 			content,
+			target_gas,
 			_marker: PhantomData,
 		}
 	}
@@ -77,7 +78,7 @@ where
 	AddressMapping: AddressMappingT<AccountId>,
 	Erc20InfoMapping: Erc20InfoMappingT,
 {
-	type Error = ExitError;
+	type Error = PrecompileFailure;
 	type Action = Action;
 	type AccountId = AccountId;
 
@@ -93,20 +94,31 @@ where
 			(start, end)
 		};
 
-		ensure!(end <= self.content.len(), ExitError::Other("invalid input".into()));
+		ensure!(
+			end <= self.content.len(),
+			PrecompileFailure::Revert {
+				exit_status: ExitRevert::Reverted,
+				output: "invalid input".into(),
+				cost: self.target_gas.unwrap_or_default(),
+			}
+		);
 
 		Ok(&self.content[start..end])
 	}
 
 	fn action(&self) -> Result<Self::Action, Self::Error> {
 		let param = self.nth_param(ACTION_INDEX, None)?;
-		let action = u32::from_be_bytes(
-			param
-				.try_into()
-				.map_err(|_| ExitError::Other("invalid action".into()))?,
-		);
+		let action = u32::from_be_bytes(param.try_into().map_err(|_| PrecompileFailure::Revert {
+			exit_status: ExitRevert::Reverted,
+			output: "invalid action".into(),
+			cost: self.target_gas.unwrap_or_default(),
+		})?);
 
-		action.try_into().map_err(|_| ExitError::Other("invalid action".into()))
+		action.try_into().map_err(|_| PrecompileFailure::Revert {
+			exit_status: ExitRevert::Reverted,
+			output: "invalid action".into(),
+			cost: self.target_gas.unwrap_or_default(),
+		})
 	}
 
 	fn account_id_at(&self, index: usize) -> Result<Self::AccountId, Self::Error> {
@@ -130,47 +142,43 @@ where
 	fn currency_id_at(&self, index: usize) -> Result<CurrencyId, Self::Error> {
 		let address = self.evm_address_at(index)?;
 
-		Erc20InfoMapping::decode_evm_address(address).ok_or_else(|| ExitError::Other("invalid currency id".into()))
+		Erc20InfoMapping::decode_evm_address(address).ok_or_else(|| PrecompileFailure::Revert {
+			exit_status: ExitRevert::Reverted,
+			output: "invalid currency id".into(),
+			cost: self.target_gas.unwrap_or_default(),
+		})
+	}
+
+	fn u256_at(&self, index: usize) -> Result<U256, Self::Error> {
+		let param = self.nth_param(index, None)?;
+		Ok(U256::from_big_endian(param))
 	}
 
 	fn balance_at(&self, index: usize) -> Result<Balance, Self::Error> {
-		let param = self.nth_param(index, None)?;
-
-		let mut balance = [0u8; BALANCE_BYTES];
-		let start = PER_PARAM_BYTES - BALANCE_BYTES;
-		balance[..].copy_from_slice(&param[start..]);
-
-		Ok(Balance::from_be_bytes(balance))
-	}
-
-	fn amount_at(&self, index: usize) -> Result<Amount, Self::Error> {
-		let param = self.nth_param(index, None)?;
-
-		let mut amount = [0u8; AMOUNT_BYTES];
-		let start = PER_PARAM_BYTES - AMOUNT_BYTES;
-		amount[..].copy_from_slice(&param[start..]);
-
-		Ok(Amount::from_be_bytes(amount))
+		let param = self.u256_at(index)?;
+		param.try_into().map_err(|_| PrecompileFailure::Revert {
+			exit_status: ExitRevert::Reverted,
+			output: "failed to convert uint256 into Balance".into(),
+			cost: self.target_gas.unwrap_or_default(),
+		})
 	}
 
 	fn u64_at(&self, index: usize) -> Result<u64, Self::Error> {
-		let param = self.nth_param(index, None)?;
-
-		let mut num = [0u8; U64_BYTES];
-		let start = PER_PARAM_BYTES - U64_BYTES;
-		num[..].copy_from_slice(&param[start..]);
-
-		Ok(u64::from_be_bytes(num))
+		let param = self.u256_at(index)?;
+		param.try_into().map_err(|_| PrecompileFailure::Revert {
+			exit_status: ExitRevert::Reverted,
+			output: "failed to convert uint256 into u64".into(),
+			cost: self.target_gas.unwrap_or_default(),
+		})
 	}
 
 	fn u32_at(&self, index: usize) -> Result<u32, Self::Error> {
-		let param = self.nth_param(index, None)?;
-
-		let mut num = [0u8; U32_BYTES];
-		let start = PER_PARAM_BYTES - U32_BYTES;
-		num[..].copy_from_slice(&param[start..]);
-
-		Ok(u32::from_be_bytes(num))
+		let param = self.u256_at(index)?;
+		param.try_into().map_err(|_| PrecompileFailure::Revert {
+			exit_status: ExitRevert::Reverted,
+			output: "failed to convert uint256 into u32".into(),
+			cost: self.target_gas.unwrap_or_default(),
+		})
 	}
 
 	fn bytes_at(&self, index: usize, len: usize) -> Result<Vec<u8>, Self::Error> {
@@ -184,6 +192,11 @@ where
 pub struct Output;
 
 impl Output {
+	pub fn encode_bool(&self, b: bool) -> Vec<u8> {
+		let out = Token::Bool(b);
+		ethabi::encode(&[out])
+	}
+
 	pub fn encode_u8(&self, b: u8) -> Vec<u8> {
 		let out = Token::Uint(U256::from(b));
 		ethabi::encode(&[out])
@@ -215,14 +228,51 @@ impl Output {
 	}
 }
 
+pub struct InputPricer<T>(PhantomData<T>);
+
+impl<T> InputPricer<T>
+where
+	T: frame_system::Config,
+{
+	const BASE_COST: u64 = 200;
+
+	pub(crate) fn read_currency(currency_id: CurrencyId) -> u64 {
+		match currency_id {
+			CurrencyId::DexShare(a, b) => {
+				let cost_a = if matches!(a, DexShare::Erc20(_)) {
+					// AssetRegistry::Erc20IdToAddress (r: 1)
+					WeightToGas::convert(T::DbWeight::get().reads(1))
+				} else {
+					Self::BASE_COST
+				};
+				let cost_b = if matches!(b, DexShare::Erc20(_)) {
+					// AssetRegistry::Erc20IdToAddress (r: 1)
+					WeightToGas::convert(T::DbWeight::get().reads(1))
+				} else {
+					Self::BASE_COST
+				};
+				cost_a.saturating_add(cost_b)
+			}
+			_ => Self::BASE_COST,
+		}
+	}
+
+	pub(crate) fn read_accounts(count: u64) -> u64 {
+		// EvmAccounts::Accounts
+		WeightToGas::convert(T::DbWeight::get().reads(count))
+	}
+}
+
 #[cfg(test)]
 mod tests {
 	use super::*;
 
 	use frame_support::{assert_err, assert_ok};
+	use hex_literal::hex;
 	use num_enum::TryFromPrimitive;
 	use sp_core::H160;
 	use sp_runtime::RuntimeDebug;
+	use std::str::FromStr;
 
 	use module_support::mocks::{MockAddressMapping, MockErc20InfoMapping};
 	use primitives::{AccountId, CurrencyId, TokenSymbol};
@@ -239,101 +289,196 @@ mod tests {
 
 	#[test]
 	fn nth_param_works() {
-		let input = TestInput::new(&[1u8; 36][..]);
-		assert_ok!(input.nth_param(1, None), &[1u8; 32][..]);
-		assert_err!(input.nth_param(2, None), ExitError::Other("invalid input".into()));
+		let data = hex_literal::hex! {"
+			00000000
+			ffffffffffffffffffffffffffffffff00000000000000000000000000000001
+		"};
+		let input = TestInput::new(&data[..], Some(10));
+		assert_ok!(
+			input.nth_param(1, None),
+			&hex!("ffffffffffffffffffffffffffffffff00000000000000000000000000000001")[..]
+		);
+		assert_err!(
+			input.nth_param(2, None),
+			PrecompileFailure::Revert {
+				exit_status: ExitRevert::Reverted,
+				output: "invalid input".into(),
+				cost: 10,
+			}
+		);
 	}
 
 	#[test]
 	fn action_works() {
-		let input = TestInput::new(&[0u8; 36][..]);
+		let input = TestInput::new(&hex!("00000000")[..], None);
 		assert_ok!(input.action(), Action::QueryBalance);
 
-		let mut raw_input = [0u8; 36];
-		raw_input[3] = 1;
-		let input = TestInput::new(&raw_input[..]);
+		let input = TestInput::new(&hex!("00000001")[..], None);
 		assert_ok!(input.action(), Action::Transfer);
 
-		let mut raw_input = [0u8; 36];
-		raw_input[3] = 2;
-		let input = TestInput::new(&raw_input[..]);
+		let input = TestInput::new(&hex!("00000002")[..], None);
 		assert_ok!(input.action(), Action::Unknown);
 
-		let mut raw_input = [0u8; 36];
-		raw_input[3] = 3;
-		let input = TestInput::new(&raw_input[..]);
-		assert_eq!(input.action(), Err(ExitError::Other("invalid action".into())));
+		let input = TestInput::new(&hex!("00000003")[..], Some(10));
+		assert_eq!(
+			input.action(),
+			Err(PrecompileFailure::Revert {
+				exit_status: ExitRevert::Reverted,
+				output: "invalid action".into(),
+				cost: 10,
+			})
+		);
 	}
 
 	#[test]
 	fn account_id_works() {
-		let mut address = [0u8; 20];
-		address[19] = 1;
-		let account_id = MockAddressMapping::get_account_id(&address.into());
+		// extra bytes should be ignored
+		let data = hex_literal::hex! {"
+			00000000
+			000000000000000000000000 ff00000000000000000000000000000000000001
+			ffffffffffffffffffffffff 0000000000000000000000000000000000000002
+			ffffffffffffffffffffffff ff00000000000000000000000000000000000003
+		"};
 
-		let mut raw_input = [0u8; 36];
-		raw_input[35] = 1;
-		let input = TestInput::new(&raw_input[..]);
-		assert_ok!(input.account_id_at(1), account_id);
+		let input = TestInput::new(&data[..], None);
+		assert_ok!(
+			input.account_id_at(1),
+			MockAddressMapping::get_account_id(&H160::from_str("ff00000000000000000000000000000000000001").unwrap())
+		);
+		assert_ok!(
+			input.account_id_at(2),
+			MockAddressMapping::get_account_id(&H160::from_str("0000000000000000000000000000000000000002").unwrap())
+		);
+		assert_ok!(
+			input.account_id_at(3),
+			MockAddressMapping::get_account_id(&H160::from_str("ff00000000000000000000000000000000000003").unwrap())
+		);
 	}
 
 	#[test]
 	fn evm_address_works() {
-		let mut address = [0u8; 20];
-		address[19] = 1;
-		let evm_address = H160::from_slice(&address);
-
-		let mut raw_input = [0u8; 36];
-		raw_input[35] = 1;
-		let input = TestInput::new(&raw_input[..]);
-		assert_ok!(input.evm_address_at(1), evm_address);
+		// extra bytes should be ignored
+		let data = hex_literal::hex! {"
+			00000000
+			000000000000000000000000 ff00000000000000000000000000000000000001
+			ffffffffffffffffffffffff 0000000000000000000000000000000000000002
+			ffffffffffffffffffffffff ff00000000000000000000000000000000000003
+		"};
+		let input = TestInput::new(&data[..], None);
+		assert_ok!(
+			input.evm_address_at(1),
+			H160::from_str("ff00000000000000000000000000000000000001").unwrap()
+		);
+		assert_ok!(
+			input.evm_address_at(2),
+			H160::from_str("0000000000000000000000000000000000000002").unwrap()
+		);
+		assert_ok!(
+			input.evm_address_at(3),
+			H160::from_str("ff00000000000000000000000000000000000003").unwrap()
+		);
 	}
 
 	#[test]
 	fn currency_id_works() {
-		let input = TestInput::new(&[0u8; 100][..]);
-		assert_err!(input.currency_id_at(1), ExitError::Other("invalid currency id".into()));
+		let input = TestInput::new(&[0u8; 100][..], Some(10));
+		assert_err!(
+			input.currency_id_at(1),
+			PrecompileFailure::Revert {
+				exit_status: ExitRevert::Reverted,
+				output: "invalid currency id".into(),
+				cost: 10,
+			}
+		);
 
-		let mut raw_input = [0u8; 36];
-		raw_input[25] = 1;
-		let input = TestInput::new(&raw_input[..]);
+		// extra bytes should be ignored
+		let data = hex_literal::hex! {"
+			00000000
+			000000000000000000000000 0000000000000000000100000000000000000000
+			000000000000000000000000 0000000000000000000100000000000000000001
+			ffffffffffffffffffffffff 0000000000000000000100000000000000000002
+		"};
+
+		let input = TestInput::new(&data[..], None);
 		assert_ok!(input.currency_id_at(1), CurrencyId::Token(TokenSymbol::ACA));
+		assert_ok!(input.currency_id_at(2), CurrencyId::Token(TokenSymbol::AUSD));
+		assert_ok!(input.currency_id_at(3), CurrencyId::Token(TokenSymbol::DOT));
+	}
 
-		raw_input[35] = 1;
-		let input = TestInput::new(&raw_input[..]);
-		assert_ok!(input.currency_id_at(1), CurrencyId::Token(TokenSymbol::AUSD));
+	#[test]
+	fn u256_works() {
+		let data = hex_literal::hex! {"
+			00000000
+			000000000000000000000000000000000000000000000000000000000000007f
+			00000000000000000000000000000000ffffffffffffffffffffffffffffffff
+			ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+		"};
+		let input = TestInput::new(&data[..], None);
+		assert_ok!(input.u256_at(1), U256::from(127u128));
+		assert_ok!(input.u256_at(2), U256::from(u128::MAX));
+		assert_ok!(input.u256_at(3), U256::MAX);
 	}
 
 	#[test]
 	fn balance_works() {
-		let balance = 127u128;
-		let balance_bytes = balance.to_be_bytes();
-
-		let mut raw_input = [0u8; 36];
-		raw_input[20..].copy_from_slice(&balance_bytes);
-		let input = TestInput::new(&raw_input[..]);
-		assert_ok!(input.balance_at(1), balance);
-	}
-
-	#[test]
-	fn amount_works() {
-		let amount = 127i128;
-		let amount_bytes = amount.to_be_bytes();
-
-		let mut raw_input = [0u8; 36];
-		raw_input[20..].copy_from_slice(&amount_bytes);
-		let input = TestInput::new(&raw_input[..]);
-		assert_ok!(input.amount_at(1), amount);
+		let data = hex_literal::hex! {"
+			00000000
+			00000000000000000000000000000000 0000000000000000000000000000007f
+			00000000000000000000000000000000 ffffffffffffffffffffffffffffffff
+			ffffffffffffffffffffffffffffffff ffffffffffffffffffffffffffffffff
+		"};
+		let input = TestInput::new(&data[..], Some(10));
+		assert_ok!(input.balance_at(1), 127u128);
+		assert_ok!(input.balance_at(2), u128::MAX);
+		assert_eq!(
+			input.balance_at(3),
+			Err(PrecompileFailure::Revert {
+				exit_status: ExitRevert::Reverted,
+				output: "failed to convert uint256 into Balance".into(),
+				cost: 10,
+			})
+		);
 	}
 
 	#[test]
 	fn u64_works() {
-		let u64_num = 127u64;
-		let u64_bytes = u64_num.to_be_bytes();
+		let data = hex_literal::hex! {"
+			00000000
+			000000000000000000000000000000000000000000000000 000000000000007f
+			000000000000000000000000000000000000000000000000 ffffffffffffffff
+			000000000000000000000000000000000000000000000001 ffffffffffffffff
+		"};
+		let input = TestInput::new(&data[..], Some(10));
+		assert_ok!(input.u64_at(1), 127u64);
+		assert_ok!(input.u64_at(2), u64::MAX);
+		assert_eq!(
+			input.u64_at(3),
+			Err(PrecompileFailure::Revert {
+				exit_status: ExitRevert::Reverted,
+				output: "failed to convert uint256 into u64".into(),
+				cost: 10,
+			})
+		);
+	}
 
-		let mut raw_input = [0u8; 36];
-		raw_input[28..].copy_from_slice(&u64_bytes);
-		let input = TestInput::new(&raw_input[..]);
-		assert_ok!(input.u64_at(1), u64_num);
+	#[test]
+	fn u32_works() {
+		let data = hex_literal::hex! {"
+			00000000
+			00000000000000000000000000000000000000000000000000000000 0000007f
+			00000000000000000000000000000000000000000000000000000000 ffffffff
+			00000000000000000000000000000000000000000000000000000001 ffffffff
+		"};
+		let input = TestInput::new(&data[..], Some(10));
+		assert_ok!(input.u32_at(1), 127u32);
+		assert_ok!(input.u32_at(2), u32::MAX);
+		assert_eq!(
+			input.u32_at(3),
+			Err(PrecompileFailure::Revert {
+				exit_status: ExitRevert::Reverted,
+				output: "failed to convert uint256 into u32".into(),
+				cost: 10,
+			})
+		);
 	}
 }

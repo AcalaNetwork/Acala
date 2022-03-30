@@ -24,8 +24,8 @@ use super::*;
 use frame_support::{assert_noop, assert_ok};
 use mock::{
 	alice, bob, deploy_contracts, erc20_address, eva, AccountId, AdaptedBasicCurrency, CouncilAccount, Currencies,
-	DustAccount, Event, ExtBuilder, NativeCurrency, Origin, PalletBalances, Runtime, System, Tokens, DOT, EVM, ID_1,
-	NATIVE_CURRENCY_ID, X_TOKEN_ID,
+	DustAccount, Event, ExtBuilder, NativeCurrency, Origin, PalletBalances, Runtime, System, Tokens, ALICE_BALANCE,
+	DOT, EVM, ID_1, NATIVE_CURRENCY_ID, X_TOKEN_ID,
 };
 use sp_core::H160;
 use sp_runtime::traits::BadOrigin;
@@ -354,7 +354,10 @@ fn erc20_total_issuance_should_work() {
 		.build()
 		.execute_with(|| {
 			deploy_contracts();
-			assert_eq!(Currencies::total_issuance(CurrencyId::Erc20(erc20_address())), 10000);
+			assert_eq!(
+				Currencies::total_issuance(CurrencyId::Erc20(erc20_address())),
+				ALICE_BALANCE
+			);
 		});
 }
 
@@ -374,7 +377,7 @@ fn erc20_free_balance_should_work() {
 
 			assert_eq!(
 				Currencies::free_balance(CurrencyId::Erc20(erc20_address()), &alice()),
-				10000
+				ALICE_BALANCE
 			);
 			assert_eq!(Currencies::free_balance(CurrencyId::Erc20(erc20_address()), &bob()), 0);
 		});
@@ -396,7 +399,7 @@ fn erc20_total_balance_should_work() {
 
 			assert_eq!(
 				Currencies::total_balance(CurrencyId::Erc20(erc20_address()), &alice()),
-				10000
+				ALICE_BALANCE
 			);
 			assert_eq!(Currencies::total_balance(CurrencyId::Erc20(erc20_address()), &bob()), 0);
 		});
@@ -447,7 +450,6 @@ fn erc20_transfer_should_work() {
 		.build()
 		.execute_with(|| {
 			deploy_contracts();
-			let alice_balance = 10000;
 			<EVM as EVMTrait<AccountId>>::set_origin(alice());
 			<EVM as EVMTrait<AccountId>>::set_origin(bob());
 			assert_ok!(Currencies::transfer(
@@ -468,11 +470,11 @@ fn erc20_transfer_should_work() {
 
 			assert_eq!(
 				Currencies::free_balance(CurrencyId::Erc20(erc20_address()), &alice()),
-				alice_balance - 100
+				ALICE_BALANCE - 100
 			);
 			assert_eq!(
 				Currencies::total_balance(CurrencyId::Erc20(erc20_address()), &alice()),
-				alice_balance - 100
+				ALICE_BALANCE - 100
 			);
 
 			assert_ok!(Currencies::transfer(
@@ -490,11 +492,11 @@ fn erc20_transfer_should_work() {
 
 			assert_eq!(
 				Currencies::free_balance(CurrencyId::Erc20(erc20_address()), &alice()),
-				alice_balance - 90
+				ALICE_BALANCE - 90
 			);
 			assert_eq!(
 				Currencies::total_balance(CurrencyId::Erc20(erc20_address()), &alice()),
-				alice_balance - 90
+				ALICE_BALANCE - 90
 			);
 		});
 }
@@ -568,14 +570,13 @@ fn erc20_reserve_should_work() {
 		.build()
 		.execute_with(|| {
 			deploy_contracts();
-			let alice_balance = 10000;
 			assert_eq!(
 				Currencies::reserved_balance(CurrencyId::Erc20(erc20_address()), &alice()),
 				0
 			);
 			assert_eq!(
 				Currencies::free_balance(CurrencyId::Erc20(erc20_address()), &alice()),
-				alice_balance
+				ALICE_BALANCE
 			);
 
 			assert_ok!(Currencies::reserve(CurrencyId::Erc20(erc20_address()), &alice(), 100));
@@ -586,7 +587,7 @@ fn erc20_reserve_should_work() {
 			);
 			assert_eq!(
 				Currencies::free_balance(CurrencyId::Erc20(erc20_address()), &alice()),
-				alice_balance - 100
+				ALICE_BALANCE - 100
 			);
 		});
 }
@@ -598,10 +599,9 @@ fn erc20_unreserve_should_work() {
 		.build()
 		.execute_with(|| {
 			deploy_contracts();
-			let alice_balance = 10000;
 			assert_eq!(
 				Currencies::free_balance(CurrencyId::Erc20(erc20_address()), &alice()),
-				alice_balance
+				ALICE_BALANCE
 			);
 			assert_eq!(
 				Currencies::reserved_balance(CurrencyId::Erc20(erc20_address()), &alice()),
@@ -618,7 +618,7 @@ fn erc20_unreserve_should_work() {
 			assert_ok!(Currencies::reserve(CurrencyId::Erc20(erc20_address()), &alice(), 30));
 			assert_eq!(
 				Currencies::free_balance(CurrencyId::Erc20(erc20_address()), &alice()),
-				alice_balance - 30
+				ALICE_BALANCE - 30
 			);
 			assert_eq!(
 				Currencies::reserved_balance(CurrencyId::Erc20(erc20_address()), &alice()),
@@ -630,7 +630,7 @@ fn erc20_unreserve_should_work() {
 			);
 			assert_eq!(
 				Currencies::free_balance(CurrencyId::Erc20(erc20_address()), &alice()),
-				alice_balance - 15
+				ALICE_BALANCE - 15
 			);
 			assert_eq!(
 				Currencies::reserved_balance(CurrencyId::Erc20(erc20_address()), &alice()),
@@ -642,7 +642,7 @@ fn erc20_unreserve_should_work() {
 			);
 			assert_eq!(
 				Currencies::free_balance(CurrencyId::Erc20(erc20_address()), &alice()),
-				alice_balance
+				ALICE_BALANCE
 			);
 			assert_eq!(
 				Currencies::reserved_balance(CurrencyId::Erc20(erc20_address()), &alice()),
@@ -697,7 +697,6 @@ fn erc20_repatriate_reserved_should_work() {
 		.execute_with(|| {
 			deploy_contracts();
 			let bob_balance = 100;
-			let alice_balance = 10000 - bob_balance;
 			<EVM as EVMTrait<AccountId>>::set_origin(alice());
 			assert_ok!(Currencies::transfer(
 				Origin::signed(alice()),
@@ -708,7 +707,7 @@ fn erc20_repatriate_reserved_should_work() {
 
 			assert_eq!(
 				Currencies::free_balance(CurrencyId::Erc20(erc20_address()), &alice()),
-				alice_balance
+				ALICE_BALANCE - bob_balance
 			);
 			assert_eq!(
 				Currencies::reserved_balance(CurrencyId::Erc20(erc20_address()), &alice()),
@@ -736,7 +735,7 @@ fn erc20_repatriate_reserved_should_work() {
 			);
 			assert_eq!(
 				Currencies::free_balance(CurrencyId::Erc20(erc20_address()), &alice()),
-				alice_balance
+				ALICE_BALANCE - bob_balance
 			);
 			assert_eq!(
 				Currencies::reserved_balance(CurrencyId::Erc20(erc20_address()), &alice()),
@@ -785,7 +784,7 @@ fn erc20_repatriate_reserved_should_work() {
 			);
 			assert_eq!(
 				Currencies::free_balance(CurrencyId::Erc20(erc20_address()), &alice()),
-				alice_balance
+				ALICE_BALANCE - bob_balance
 			);
 			assert_eq!(
 				Currencies::reserved_balance(CurrencyId::Erc20(erc20_address()), &alice()),
@@ -809,7 +808,7 @@ fn erc20_repatriate_reserved_should_work() {
 			);
 			assert_eq!(
 				Currencies::free_balance(CurrencyId::Erc20(erc20_address()), &alice()),
-				alice_balance + 20
+				ALICE_BALANCE - bob_balance + 20
 			);
 			assert_eq!(
 				Currencies::reserved_balance(CurrencyId::Erc20(erc20_address()), &alice()),

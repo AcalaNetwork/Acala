@@ -53,6 +53,10 @@ impl XcmTransfer<AccountId, Balance, CurrencyId> for MockXcm {
 	}
 }
 impl InvertLocation for MockXcm {
+	fn ancestry() -> MultiLocation {
+		Parachain(2000).into()
+	}
+
 	fn invert_location(l: &MultiLocation) -> Result<MultiLocation, ()> {
 		Ok(l.clone())
 	}
@@ -91,7 +95,9 @@ impl EnsureOrigin<Origin> for MockEnsureXcmOrigin {
 
 	#[cfg(feature = "runtime-benchmarks")]
 	fn successful_origin() -> Origin {
-		Origin::from(RawOrigin::Signed(Default::default()))
+		let zero_account_id = AccountId::decode(&mut sp_runtime::traits::TrailingZeroInput::zeroes())
+			.expect("infinite length input; no invalid inputs for type; qed");
+		Origin::from(RawOrigin::Signed(zero_account_id))
 	}
 }
 pub struct MockWeigher;
@@ -146,6 +152,7 @@ impl frame_system::Config for NoFeeRuntime {
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
 	type OnSetCode = ();
+	type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
 
 parameter_type_with_key! {
@@ -212,7 +219,7 @@ parameter_types! {
 	pub const MaxRewardPerEra: Permill = Permill::zero();
 	pub MintFee: Balance = 0;
 	pub BaseWithdrawFee: Permill = Permill::zero(); // 0.1%
-	pub XcmUnbondFee: Balance = 0;
+	pub HomaUnbondFee: Balance = 0;
 	pub const ParachainAccount: AccountId = DAVE;
 	pub const MaximumRedeemRequestMatchesForMint: u32 = 100;
 	pub static MockRelayBlockNumberProvider: u64 = 0;
@@ -252,7 +259,7 @@ impl Config for NoFeeRuntime {
 	type MintFee = MintFee;
 	type RelayChainCallBuilder = RelayChainCallBuilder<NoFeeRuntime, ParachainId>;
 	type BaseWithdrawFee = BaseWithdrawFee;
-	type XcmUnbondFee = XcmUnbondFee;
+	type HomaUnbondFee = HomaUnbondFee;
 	type RelayChainBlockNumber = MockRelayBlockNumberProvider;
 	type ParachainAccount = ParachainAccount;
 	type MaximumRedeemRequestMatchesForMint = MaximumRedeemRequestMatchesForMint;

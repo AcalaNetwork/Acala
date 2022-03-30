@@ -28,13 +28,14 @@ use frame_support::{
 };
 use frame_system::EnsureSignedBy;
 use orml_traits::parameter_type_with_key;
-use primitives::{Moment, TokenSymbol, TradingPair};
+use primitives::{DexShare, Moment, TokenSymbol, TradingPair};
 use sp_core::H256;
 use sp_runtime::{
 	testing::{Header, TestXt},
 	traits::{AccountIdConversion, IdentityLookup, One as OneT},
 };
 use sp_std::cell::RefCell;
+use support::mocks::MockStableAsset;
 use support::{AuctionManager, EmergencyShutdown};
 
 pub type AccountId = u128;
@@ -48,7 +49,10 @@ pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
 pub const BTC: CurrencyId = CurrencyId::Token(TokenSymbol::RENBTC);
 pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
-pub const LDOT: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
+pub const LP_AUSD_DOT: CurrencyId =
+	CurrencyId::DexShare(DexShare::Token(TokenSymbol::AUSD), DexShare::Token(TokenSymbol::DOT));
+pub const LP_DOT_BTC: CurrencyId =
+	CurrencyId::DexShare(DexShare::Token(TokenSymbol::RENBTC), DexShare::Token(TokenSymbol::DOT));
 
 mod cdp_engine {
 	pub use super::super::*;
@@ -82,6 +86,7 @@ impl frame_system::Config for Runtime {
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
 	type OnSetCode = ();
+	type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
 
 parameter_type_with_key! {
@@ -137,7 +142,6 @@ parameter_types! {
 
 impl loans::Config for Runtime {
 	type Event = Event;
-	type Convert = DebitExchangeRateConvertor<Runtime>;
 	type Currency = Currencies;
 	type RiskManager = CDPEngineModule;
 	type CDPTreasury = CDPTreasuryModule;
@@ -146,27 +150,39 @@ impl loans::Config for Runtime {
 }
 
 thread_local! {
-	static RELATIVE_PRICE: RefCell<Option<Price>> = RefCell::new(Some(Price::one()));
+	static BTC_PRICE: RefCell<Option<Price>> = RefCell::new(Some(Price::one()));
+	static DOT_PRICE: RefCell<Option<Price>> = RefCell::new(Some(Price::one()));
+	static LP_AUSD_DOT_PRICE: RefCell<Option<Price>> = RefCell::new(Some(Price::one()));
+	static LP_DOT_BTC_PRICE: RefCell<Option<Price>> = RefCell::new(Some(Price::one()));
 }
 
 pub struct MockPriceSource;
 impl MockPriceSource {
-	pub fn set_relative_price(price: Option<Price>) {
-		RELATIVE_PRICE.with(|v| *v.borrow_mut() = price);
+	pub fn set_price(currency_id: CurrencyId, price: Option<Price>) {
+		match currency_id {
+			BTC => BTC_PRICE.with(|v| *v.borrow_mut() = price),
+			DOT => DOT_PRICE.with(|v| *v.borrow_mut() = price),
+			LP_AUSD_DOT => LP_AUSD_DOT_PRICE.with(|v| *v.borrow_mut() = price),
+			LP_DOT_BTC => LP_DOT_BTC_PRICE.with(|v| *v.borrow_mut() = price),
+			_ => {}
+		}
 	}
 }
 impl PriceProvider<CurrencyId> for MockPriceSource {
-	fn get_relative_price(base: CurrencyId, quote: CurrencyId) -> Option<Price> {
-		match (base, quote) {
-			(AUSD, BTC) => RELATIVE_PRICE.with(|v| *v.borrow_mut()),
-			(BTC, AUSD) => RELATIVE_PRICE.with(|v| *v.borrow_mut()),
+	fn get_price(currency_id: CurrencyId) -> Option<Price> {
+		match currency_id {
+			BTC => BTC_PRICE.with(|v| *v.borrow()),
+			DOT => DOT_PRICE.with(|v| *v.borrow()),
+			AUSD => Some(Price::one()),
+			LP_AUSD_DOT => LP_AUSD_DOT_PRICE.with(|v| *v.borrow()),
+			LP_DOT_BTC => LP_DOT_BTC_PRICE.with(|v| *v.borrow()),
 			_ => None,
 		}
 	}
+}
 
-	fn get_price(_currency_id: CurrencyId) -> Option<Price> {
-		unimplemented!()
-	}
+thread_local! {
+	pub static AUCTION: RefCell<Option<(AccountId, CurrencyId, Balance, Balance)>> = RefCell::new(None);
 }
 
 pub struct MockAuctionManager;
@@ -176,24 +192,32 @@ impl AuctionManager<AccountId> for MockAuctionManager {
 	type AuctionId = AuctionId;
 
 	fn new_collateral_auction(
-		_refund_recipient: &AccountId,
-		_currency_id: Self::CurrencyId,
-		_amount: Self::Balance,
-		_target: Self::Balance,
+		refund_recipient: &AccountId,
+		currency_id: Self::CurrencyId,
+		amount: Self::Balance,
+		target: Self::Balance,
 	) -> DispatchResult {
+		AUCTION.with(|v| *v.borrow_mut() = Some((*refund_recipient, currency_id, amount, target)));
 		Ok(())
 	}
 
 	fn cancel_auction(_id: Self::AuctionId) -> DispatchResult {
+		AUCTION.with(|v| *v.borrow_mut() = None);
 		Ok(())
 	}
 
 	fn get_total_target_in_auction() -> Self::Balance {
-		Default::default()
+		AUCTION
+			.with(|v| *v.borrow())
+			.map(|auction| auction.3)
+			.unwrap_or_default()
 	}
 
 	fn get_total_collateral_in_auction(_id: Self::CurrencyId) -> Self::Balance {
-		Default::default()
+		AUCTION
+			.with(|v| *v.borrow())
+			.map(|auction| auction.2)
+			.unwrap_or_default()
 	}
 }
 
@@ -219,6 +243,7 @@ impl cdp_treasury::Config for Runtime {
 	type TreasuryAccount = TreasuryAccount;
 	type AlternativeSwapPathJointList = AlternativeSwapPathJointList;
 	type WeightInfo = ();
+	type StableAsset = MockStableAsset<CurrencyId, Balance, AccountId, BlockNumber>;
 }
 
 parameter_types! {
@@ -232,6 +257,7 @@ parameter_types! {
 		TradingPair::from_currency_ids(ACA, DOT).unwrap(),
 		TradingPair::from_currency_ids(ACA, AUSD).unwrap(),
 	];
+	pub const ExtendedProvisioningBlocks: BlockNumber = 0;
 }
 
 impl dex::Config for Runtime {
@@ -244,6 +270,8 @@ impl dex::Config for Runtime {
 	type DEXIncentives = ();
 	type WeightInfo = ();
 	type ListingOrigin = EnsureSignedBy<One, AccountId>;
+	type ExtendedProvisioningBlocks = ExtendedProvisioningBlocks;
+	type OnLiquidityPoolUpdated = ();
 }
 
 parameter_types! {
@@ -282,7 +310,7 @@ parameter_types! {
 	pub const MinimumDebitValue: Balance = 2;
 	pub MaxSwapSlippageCompareToOracle: Ratio = Ratio::saturating_from_rational(50, 100);
 	pub const UnsignedPriority: u64 = 1 << 20;
-	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![BTC, DOT];
+	pub CollateralCurrencyIds: Vec<CurrencyId> = vec![BTC, DOT, LP_AUSD_DOT];
 }
 
 impl Config for Runtime {
@@ -300,6 +328,9 @@ impl Config for Runtime {
 	type UnsignedPriority = UnsignedPriority;
 	type EmergencyShutdown = MockEmergencyShutdown;
 	type UnixTime = Timestamp;
+	type Currency = Currencies;
+	type AlternativeSwapPathJointList = AlternativeSwapPathJointList;
+	type DEX = DEXModule;
 	type WeightInfo = ();
 }
 

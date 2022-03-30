@@ -42,6 +42,10 @@ pub fn karura_config() -> Result<ChainSpec, String> {
 	ChainSpec::from_json_bytes(&include_bytes!("../../../../resources/karura-dist.json")[..])
 }
 
+pub fn karura_rococo_config() -> Result<ChainSpec, String> {
+	ChainSpec::from_json_bytes(&include_bytes!("../../../../resources/karura-rococo.json")[..])
+}
+
 fn karura_properties() -> Properties {
 	let mut properties = Map::new();
 	let mut token_symbol: Vec<String> = vec![];
@@ -86,6 +90,7 @@ pub fn karura_dev_config() -> Result<ChainSpec, String> {
 		vec![],
 		None,
 		None,
+		None,
 		Some(karura_properties()),
 		Extensions {
 			relay_chain: "rococo-local".into(),
@@ -111,7 +116,7 @@ fn karura_genesis(
 		balances: BalancesConfig {
 			balances: initial_allocation,
 		},
-		sudo: SudoConfig { key: root_key },
+		sudo: SudoConfig { key: Some(root_key) },
 		general_council: Default::default(),
 		general_council_membership: GeneralCouncilMembershipConfig {
 			members: general_councils,

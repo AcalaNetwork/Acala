@@ -31,12 +31,15 @@
 
 use frame_support::{pallet_prelude::*, transactional};
 use frame_system::pallet_prelude::*;
-use orml_traits::{DataFeeder, DataProvider, MultiCurrency};
-use primitives::{Balance, CurrencyId};
+use orml_traits::{DataFeeder, DataProvider, GetByKey, MultiCurrency};
+use primitives::{Balance, CurrencyId, Lease};
 use sp_core::U256;
-use sp_runtime::{traits::CheckedMul, FixedPointNumber};
+use sp_runtime::{
+	traits::{BlockNumberProvider, CheckedMul, One, Saturating, UniqueSaturatedInto},
+	FixedPointNumber,
+};
 use sp_std::marker::PhantomData;
-use support::{DEXManager, Erc20InfoMapping, ExchangeRateProvider, LockablePrice, Price, PriceProvider};
+use support::{DEXManager, Erc20InfoMapping, ExchangeRateProvider, LockablePrice, Price, PriceProvider, Rate};
 
 mod mock;
 mod tests;
@@ -88,6 +91,21 @@ pub mod module {
 		/// Mapping between CurrencyId and ERC20 address so user can use Erc20.
 		type Erc20InfoMapping: Erc20InfoMapping;
 
+		/// Get the lease block number of relaychain for specific Lease
+		type LiquidCrowdloanLeaseBlockNumber: GetByKey<Lease, Option<Self::BlockNumber>>;
+
+		/// Block number provider for the relaychain.
+		type RelayChainBlockNumber: BlockNumberProvider<BlockNumber = Self::BlockNumber>;
+
+		/// The staking reward rate per relaychain block for StakingCurrency.
+		/// In fact, the staking reward is not settled according to the block on relaychain.
+		#[pallet::constant]
+		type RewardRatePerRelaychainBlock: Get<Rate>;
+
+		/// If a currency is pegged to another currency in price, price of this currency is
+		/// equal to the price of another.
+		type PricingPegged: GetByKey<CurrencyId, Option<CurrencyId>>;
+
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
 	}
@@ -120,6 +138,7 @@ pub mod module {
 	pub type LockedPrice<T: Config> = StorageMap<_, Twox64Concat, CurrencyId, Price, OptionQuery>;
 
 	#[pallet::pallet]
+	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
 	#[pallet::hooks]
@@ -161,6 +180,13 @@ impl<T: Config> Pallet<T> {
 	///
 	/// Note: this returns the price for 1 basic unit
 	fn access_price(currency_id: CurrencyId) -> Option<Price> {
+		// if it's configured pegged to another currency id
+		let currency_id = if let Some(pegged_currency_id) = T::PricingPegged::get(&currency_id) {
+			pegged_currency_id
+		} else {
+			currency_id
+		};
+
 		let maybe_price = if currency_id == T::GetStableCurrencyId::get() {
 			// if is stable currency, use fixed price
 			Some(T::StableCurrencyFixedPrice::get())
@@ -168,9 +194,23 @@ impl<T: Config> Pallet<T> {
 			// directly return real-time the multiple of the price of StakingCurrencyId and the exchange rate
 			return Self::access_price(T::GetStakingCurrencyId::get())
 				.and_then(|n| n.checked_mul(&T::LiquidStakingExchangeRateProvider::get_exchange_rate()));
-		} else if let CurrencyId::DexShare(symbol_0, symbol_1) = currency_id {
-			let token_0: CurrencyId = symbol_0.into();
-			let token_1: CurrencyId = symbol_1.into();
+		} else if let CurrencyId::LiquidCrowdloan(lease) = currency_id {
+			// Note: For LiquidCrowdloan, The reliable market price may not be available in the initial stage,
+			// the system simply discounts the price of StakingCurrency according to the StakingRewardRate and
+			// the remaining lease time.
+			let lease_block_number = T::LiquidCrowdloanLeaseBlockNumber::get(&lease)?;
+			let current_relaychain_block = T::RelayChainBlockNumber::current_block_number();
+			let interval = lease_block_number.saturating_sub(current_relaychain_block);
+			let discount_rate = Rate::one()
+				.saturating_add(T::RewardRatePerRelaychainBlock::get())
+				.saturating_pow(interval.unique_saturated_into())
+				.reciprocal()
+				.expect("shouldn't fail");
+
+			return Self::access_price(T::GetStakingCurrencyId::get()).and_then(|n| n.checked_mul(&discount_rate));
+		} else if let CurrencyId::DexShare(dex_share_0, dex_share_1) = currency_id {
+			let token_0: CurrencyId = dex_share_0.into();
+			let token_1: CurrencyId = dex_share_1.into();
 
 			// directly return the fair price
 			return {

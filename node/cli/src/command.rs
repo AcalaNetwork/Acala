@@ -85,6 +85,8 @@ impl SubstrateCli for Cli {
 			#[cfg(feature = "with-karura-runtime")]
 			"karura" => Box::new(chain_spec::karura::karura_config()?),
 			#[cfg(feature = "with-karura-runtime")]
+			"karura-rococo" => Box::new(chain_spec::karura::karura_rococo_config()?),
+			#[cfg(feature = "with-karura-runtime")]
 			"karura-dev" => Box::new(chain_spec::karura::karura_dev_config()?),
 			#[cfg(feature = "with-acala-runtime")]
 			"acala" => Box::new(chain_spec::acala::acala_config()?),
@@ -92,8 +94,6 @@ impl SubstrateCli for Cli {
 			"wendala" => Box::new(chain_spec::acala::wendala_config()?),
 			#[cfg(feature = "with-acala-runtime")]
 			"acala-dev" => Box::new(chain_spec::acala::acala_dev_config()?),
-			#[cfg(feature = "with-acala-runtime")]
-			"acala-latest" => Box::new(chain_spec::acala::latest_acala_config()?),
 			path => {
 				let path = std::path::PathBuf::from(path);
 
@@ -392,9 +392,11 @@ pub fn run() -> sc_cli::Result<()> {
 			let _ = builder.init();
 
 			let chain_spec = cli.load_spec(&params.chain.clone().unwrap_or_default())?;
+			let state_version = Cli::native_runtime_version(&chain_spec).state_version();
 			let output_buf = with_runtime_or_err!(chain_spec, {
 				{
-					let block: Block = generate_genesis_block(&chain_spec).map_err(|e| format!("{:?}", e))?;
+					let block: Block =
+						generate_genesis_block(&chain_spec, state_version).map_err(|e| format!("{:?}", e))?;
 					let raw_header = block.header().encode();
 					let buf = if params.raw {
 						raw_header
@@ -560,11 +562,24 @@ impl CliConfiguration<Self> for RelayChainCli {
 		self.base.base.rpc_ws(default_listen_port)
 	}
 
-	fn prometheus_config(&self, default_listen_port: u16) -> Result<Option<PrometheusConfig>> {
-		self.base.base.prometheus_config(default_listen_port)
+	fn prometheus_config(
+		&self,
+		default_listen_port: u16,
+		chain_spec: &Box<dyn ChainSpec>,
+	) -> Result<Option<PrometheusConfig>> {
+		self.base.base.prometheus_config(default_listen_port, chain_spec)
 	}
 
-	fn init<C: SubstrateCli>(&self) -> Result<()> {
+	fn init<F>(
+		&self,
+		_support_url: &String,
+		_impl_version: &String,
+		_logger_hook: F,
+		_config: &sc_service::Configuration,
+	) -> Result<()>
+	where
+		F: FnOnce(&mut sc_cli::LoggerBuilder, &sc_service::Configuration),
+	{
 		unreachable!("PolkadotCli is never initialized; qed");
 	}
 

@@ -67,7 +67,12 @@ fn mint_works() {
 			assert_eq!(Currencies::free_balance(STAKING_CURRENCY_ID, &Homa::account_id()), 0);
 
 			assert_ok!(Homa::mint(Origin::signed(ALICE), 500_000));
-			System::assert_last_event(Event::Homa(crate::Event::Minted(ALICE, 500_000, 5_000_000, 0)));
+			System::assert_last_event(Event::Homa(crate::Event::Minted {
+				minter: ALICE,
+				staking_currency_amount: 500_000,
+				liquid_amount_received: 5_000_000,
+				liquid_amount_added_to_void: 0,
+			}));
 
 			assert_eq!(Currencies::total_issuance(LIQUID_CURRENCY_ID), 5_000_000);
 			assert_eq!(Homa::total_void_liquid(), 0);
@@ -92,7 +97,12 @@ fn mint_works() {
 			assert_eq!(Currencies::free_balance(STAKING_CURRENCY_ID, &BOB), 1_000_000);
 
 			assert_ok!(Homa::mint(Origin::signed(BOB), 100_000));
-			System::assert_last_event(Event::Homa(crate::Event::Minted(BOB, 100_000, 909_090, 90910)));
+			System::assert_last_event(Event::Homa(crate::Event::Minted {
+				minter: BOB,
+				staking_currency_amount: 100_000,
+				liquid_amount_received: 909_090,
+				liquid_amount_added_to_void: 90910,
+			}));
 
 			assert_eq!(Currencies::total_issuance(LIQUID_CURRENCY_ID), 5_909_090);
 			assert_eq!(Homa::total_void_liquid(), 90910);
@@ -131,7 +141,11 @@ fn request_redeem_works() {
 			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY_ID, &Homa::account_id()), 0);
 
 			assert_ok!(Homa::request_redeem(Origin::signed(ALICE), 1_000_000, false));
-			System::assert_last_event(Event::Homa(crate::Event::RequestedRedeem(ALICE, 1_000_000, false)));
+			System::assert_last_event(Event::Homa(crate::Event::RequestedRedeem {
+				redeemer: ALICE,
+				liquid_amount: 1_000_000,
+				allow_fast_match: false,
+			}));
 			assert_eq!(Homa::redeem_requests(&ALICE), Some((1_000_000, false)));
 			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY_ID, &ALICE), 9_000_000);
 			assert_eq!(
@@ -140,7 +154,11 @@ fn request_redeem_works() {
 			);
 
 			assert_ok!(Homa::request_redeem(Origin::signed(BOB), 10_000_000, true));
-			System::assert_last_event(Event::Homa(crate::Event::RequestedRedeem(BOB, 10_000_000, true)));
+			System::assert_last_event(Event::Homa(crate::Event::RequestedRedeem {
+				redeemer: BOB,
+				liquid_amount: 10_000_000,
+				allow_fast_match: true,
+			}));
 			assert_eq!(Homa::redeem_requests(&BOB), Some((10_000_000, true)));
 			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY_ID, &BOB), 0);
 			assert_eq!(
@@ -150,7 +168,11 @@ fn request_redeem_works() {
 
 			// Alice overwrite the redeem_request
 			assert_ok!(Homa::request_redeem(Origin::signed(ALICE), 2_000_000, true));
-			System::assert_last_event(Event::Homa(crate::Event::RequestedRedeem(ALICE, 2_000_000, true)));
+			System::assert_last_event(Event::Homa(crate::Event::RequestedRedeem {
+				redeemer: ALICE,
+				liquid_amount: 2_000_000,
+				allow_fast_match: true,
+			}));
 			assert_eq!(Homa::redeem_requests(&ALICE), Some((2_000_000, true)));
 			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY_ID, &ALICE), 8_000_000);
 			assert_eq!(
@@ -160,7 +182,10 @@ fn request_redeem_works() {
 
 			// Bob cancel the redeem_request
 			assert_ok!(Homa::request_redeem(Origin::signed(BOB), 0, false));
-			System::assert_last_event(Event::Homa(crate::Event::RedeemRequestCancelled(BOB, 10_000_000)));
+			System::assert_last_event(Event::Homa(crate::Event::RedeemRequestCancelled {
+				redeemer: BOB,
+				cancelled_liquid_amount: 10_000_000,
+			}));
 			assert_eq!(Homa::redeem_requests(&BOB), None);
 			assert_eq!(Currencies::free_balance(LIQUID_CURRENCY_ID, &BOB), 10_000_000);
 			assert_eq!(
@@ -243,18 +268,18 @@ fn update_homa_params_works() {
 			Some(Rate::saturating_from_rational(5, 100)),
 			Some(Rate::saturating_from_rational(1, 100)),
 		));
-		System::assert_has_event(Event::Homa(crate::Event::SoftBondedCapPerSubAccountUpdated(
-			1_000_000_000,
-		)));
-		System::assert_has_event(Event::Homa(crate::Event::EstimatedRewardRatePerEraUpdated(
-			Rate::saturating_from_rational(1, 10000),
-		)));
-		System::assert_has_event(Event::Homa(crate::Event::CommissionRateUpdated(
-			Rate::saturating_from_rational(5, 100),
-		)));
-		System::assert_has_event(Event::Homa(crate::Event::FastMatchFeeRateUpdated(
-			Rate::saturating_from_rational(1, 100),
-		)));
+		System::assert_has_event(Event::Homa(crate::Event::SoftBondedCapPerSubAccountUpdated {
+			cap_amount: 1_000_000_000,
+		}));
+		System::assert_has_event(Event::Homa(crate::Event::EstimatedRewardRatePerEraUpdated {
+			reward_rate: Rate::saturating_from_rational(1, 10000),
+		}));
+		System::assert_has_event(Event::Homa(crate::Event::CommissionRateUpdated {
+			commission_rate: Rate::saturating_from_rational(5, 100),
+		}));
+		System::assert_has_event(Event::Homa(crate::Event::FastMatchFeeRateUpdated {
+			fast_match_fee_rate: Rate::saturating_from_rational(1, 100),
+		}));
 		assert_eq!(Homa::soft_bonded_cap_per_sub_account(), 1_000_000_000);
 		assert_eq!(
 			Homa::estimated_reward_rate_per_era(),
@@ -280,8 +305,10 @@ fn update_bump_era_params_works() {
 			Some(10),
 			Some(7200),
 		));
-		System::assert_has_event(Event::Homa(crate::Event::LastEraBumpedBlockUpdated(10)));
-		System::assert_has_event(Event::Homa(crate::Event::BumpEraFrequencyUpdated(7200)));
+		System::assert_has_event(Event::Homa(crate::Event::LastEraBumpedBlockUpdated {
+			last_era_bumped_block: 10,
+		}));
+		System::assert_has_event(Event::Homa(crate::Event::BumpEraFrequencyUpdated { frequency: 7200 }));
 		assert_eq!(Homa::last_era_bumped_block(), 10);
 		assert_eq!(Homa::bump_era_frequency(), 7200);
 	});
@@ -309,18 +336,21 @@ fn reset_ledgers_works() {
 				(1, None, Some(vec![UnlockChunk { value: 2000, era: 10 },])),
 			]
 		));
-		System::assert_has_event(Event::Homa(crate::Event::LedgerBondedReset(0, 1_000_000)));
-		System::assert_has_event(Event::Homa(crate::Event::LedgerUnlockingReset(
-			0,
-			vec![
+		System::assert_has_event(Event::Homa(crate::Event::LedgerBondedReset {
+			sub_account_index: 0,
+			new_bonded_amount: 1_000_000,
+		}));
+		System::assert_has_event(Event::Homa(crate::Event::LedgerUnlockingReset {
+			sub_account_index: 0,
+			new_unlocking: vec![
 				UnlockChunk { value: 1000, era: 5 },
 				UnlockChunk { value: 20_000, era: 6 },
 			],
-		)));
-		System::assert_has_event(Event::Homa(crate::Event::LedgerUnlockingReset(
-			1,
-			vec![UnlockChunk { value: 2000, era: 10 }],
-		)));
+		}));
+		System::assert_has_event(Event::Homa(crate::Event::LedgerUnlockingReset {
+			sub_account_index: 1,
+			new_unlocking: vec![UnlockChunk { value: 2000, era: 10 }],
+		}));
 		assert_eq!(
 			Homa::staking_ledgers(0),
 			Some(StakingLedger {
@@ -346,11 +376,14 @@ fn reset_ledgers_works() {
 				(1, Some(0), Some(vec![])),
 			]
 		));
-		System::assert_has_event(Event::Homa(crate::Event::LedgerUnlockingReset(
-			0,
-			vec![UnlockChunk { value: 20_000, era: 6 }],
-		)));
-		System::assert_has_event(Event::Homa(crate::Event::LedgerUnlockingReset(1, vec![])));
+		System::assert_has_event(Event::Homa(crate::Event::LedgerUnlockingReset {
+			sub_account_index: 0,
+			new_unlocking: vec![UnlockChunk { value: 20_000, era: 6 }],
+		}));
+		System::assert_has_event(Event::Homa(crate::Event::LedgerUnlockingReset {
+			sub_account_index: 1,
+			new_unlocking: vec![],
+		}));
 		assert_eq!(
 			Homa::staking_ledgers(0),
 			Some(StakingLedger {
@@ -369,7 +402,7 @@ fn reset_current_era_works() {
 		assert_eq!(Homa::relay_chain_current_era(), 0);
 
 		assert_ok!(Homa::reset_current_era(Origin::signed(HomaAdmin::get()), 1));
-		System::assert_last_event(Event::Homa(crate::Event::CurrentEraReset(1)));
+		System::assert_last_event(Event::Homa(crate::Event::CurrentEraReset { new_era_index: 1 }));
 		assert_eq!(Homa::relay_chain_current_era(), 1);
 	});
 }
@@ -540,7 +573,7 @@ fn distribution_helpers_works() {
 			(vec![], 2_000_000)
 		);
 		assert_eq!(
-			distribute_decrement(bonded_list.clone(), 3_000_000, Some(1_000_000), Some(1_000_001)),
+			distribute_decrement(bonded_list, 3_000_000, Some(1_000_000), Some(1_000_001)),
 			(vec![(2, 2_000_000)], 1_000_000)
 		);
 	});
@@ -596,15 +629,18 @@ fn do_fast_match_redeem_works() {
 
 			// Charlie's redeem request is not allowed to be fast matched.
 			assert_noop!(
-				Homa::do_fast_match_redeem(&CHARLIE),
+				Homa::do_fast_match_redeem(&CHARLIE, true),
 				Error::<Runtime>::FastMatchIsNotAllowed
 			);
 
 			// Alice's redeem request is able to be fast matched fully.
-			assert_ok!(Homa::do_fast_match_redeem(&ALICE));
-			System::assert_last_event(Event::Homa(crate::Event::RedeemedByFastMatch(
-				ALICE, 5_000_000, 500_000, 450_000,
-			)));
+			assert_ok!(Homa::do_fast_match_redeem(&ALICE, false));
+			System::assert_last_event(Event::Homa(crate::Event::RedeemedByFastMatch {
+				redeemer: ALICE,
+				matched_liquid_amount: 5_000_000,
+				fee_in_liquid: 500_000,
+				redeemed_staking_amount: 450_000,
+			}));
 			assert_eq!(Homa::redeem_requests(&ALICE), None);
 			assert_eq!(Currencies::free_balance(STAKING_CURRENCY_ID, &ALICE), 450_000);
 			assert_eq!(
@@ -625,10 +661,18 @@ fn do_fast_match_redeem_works() {
 
 			// Bob's redeem request is able to be fast matched partially,
 			// because must remain `RedeemThreshold` even if `ToBondPool` is enough.
-			assert_ok!(Homa::do_fast_match_redeem(&BOB));
-			System::assert_last_event(Event::Homa(crate::Event::RedeemedByFastMatch(
-				BOB, 5_500_000, 550_000, 500_499,
-			)));
+			assert_noop!(
+				Homa::do_fast_match_redeem(&BOB, false),
+				Error::<Runtime>::CannotCompletelyFastMatch,
+			);
+
+			assert_ok!(Homa::do_fast_match_redeem(&BOB, true));
+			System::assert_last_event(Event::Homa(crate::Event::RedeemedByFastMatch {
+				redeemer: BOB,
+				matched_liquid_amount: 5_500_000,
+				fee_in_liquid: 550_000,
+				redeemed_staking_amount: 500_499,
+			}));
 			assert_eq!(Homa::redeem_requests(&BOB), Some((1_000_000, true)));
 			assert_eq!(Currencies::free_balance(STAKING_CURRENCY_ID, &BOB), 500_499);
 			assert_eq!(
@@ -1008,9 +1052,12 @@ fn process_redeem_requests_works() {
 
 			// total_bonded is enough to process all redeem requests
 			assert_ok!(Homa::process_redeem_requests(1));
-			System::assert_has_event(Event::Homa(crate::Event::RedeemedByUnbond(
-				ALICE, 1, 20_000_000, 2_000_000,
-			)));
+			System::assert_has_event(Event::Homa(crate::Event::RedeemedByUnbond {
+				redeemer: ALICE,
+				era_index_when_unbond: 1,
+				liquid_amount: 20_000_000,
+				unbonding_staking_amount: 2_000_000,
+			}));
 			assert_eq!(Homa::redeem_requests(&ALICE), None);
 			assert_eq!(Homa::unbondings(&ALICE, 1 + BondingDuration::get()), 2_000_000);
 			assert_eq!(Homa::get_total_bonded(), 3_000_000);
@@ -1050,12 +1097,18 @@ fn process_redeem_requests_works() {
 
 			// total_bonded is not enough to process all redeem requests
 			assert_ok!(Homa::process_redeem_requests(2));
-			System::assert_has_event(Event::Homa(crate::Event::RedeemedByUnbond(
-				BOB, 2, 20_000_000, 2_000_000,
-			)));
-			System::assert_has_event(Event::Homa(crate::Event::RedeemedByUnbond(
-				CHARLIE, 2, 10_000_000, 1_000_000,
-			)));
+			System::assert_has_event(Event::Homa(crate::Event::RedeemedByUnbond {
+				redeemer: BOB,
+				era_index_when_unbond: 2,
+				liquid_amount: 20_000_000,
+				unbonding_staking_amount: 2_000_000,
+			}));
+			System::assert_has_event(Event::Homa(crate::Event::RedeemedByUnbond {
+				redeemer: CHARLIE,
+				era_index_when_unbond: 2,
+				liquid_amount: 10_000_000,
+				unbonding_staking_amount: 1_000_000,
+			}));
 			assert_eq!(Homa::redeem_requests(&BOB), None);
 			assert_eq!(Homa::redeem_requests(&CHARLIE), None);
 			assert_eq!(Homa::redeem_requests(&DAVE), Some((10_000_000, false)));
@@ -1175,7 +1228,7 @@ fn bump_current_era_works() {
 			// will process to_bond_pool.
 			MockRelayBlockNumberProvider::set(100);
 			assert_ok!(Homa::bump_current_era(1));
-			System::assert_has_event(Event::Homa(crate::Event::CurrentEraBumped(1)));
+			System::assert_has_event(Event::Homa(crate::Event::CurrentEraBumped { new_era_index: 1 }));
 			assert_eq!(Homa::last_era_bumped_block(), 100);
 			assert_eq!(Homa::relay_chain_current_era(), 1);
 			assert_eq!(
@@ -1206,7 +1259,7 @@ fn bump_current_era_works() {
 			// accumulate staking reward and draw commission
 			MockRelayBlockNumberProvider::set(200);
 			assert_ok!(Homa::bump_current_era(1));
-			System::assert_has_event(Event::Homa(crate::Event::CurrentEraBumped(2)));
+			System::assert_has_event(Event::Homa(crate::Event::CurrentEraBumped { new_era_index: 2 }));
 			assert_eq!(Homa::last_era_bumped_block(), 200);
 			assert_eq!(Homa::relay_chain_current_era(), 2);
 			assert_eq!(
@@ -1256,13 +1309,13 @@ fn bump_current_era_works() {
 			// will process redeem requests
 			MockRelayBlockNumberProvider::set(300);
 			assert_ok!(Homa::bump_current_era(1));
-			System::assert_has_event(Event::Homa(crate::Event::CurrentEraBumped(3)));
-			System::assert_has_event(Event::Homa(crate::Event::RedeemedByUnbond(
-				ALICE,
-				3,
-				280_000_000,
-				26_605_824,
-			)));
+			System::assert_has_event(Event::Homa(crate::Event::CurrentEraBumped { new_era_index: 3 }));
+			System::assert_has_event(Event::Homa(crate::Event::RedeemedByUnbond {
+				redeemer: ALICE,
+				era_index_when_unbond: 3,
+				liquid_amount: 280_000_000,
+				unbonding_staking_amount: 26_605_824,
+			}));
 			assert_eq!(Homa::last_era_bumped_block(), 300);
 			assert_eq!(Homa::relay_chain_current_era(), 3);
 			assert_eq!(
@@ -1302,7 +1355,7 @@ fn bump_current_era_works() {
 			// will process scheduled unbonded
 			MockRelayBlockNumberProvider::set(3100);
 			assert_ok!(Homa::bump_current_era(28));
-			System::assert_has_event(Event::Homa(crate::Event::CurrentEraBumped(31)));
+			System::assert_has_event(Event::Homa(crate::Event::CurrentEraBumped { new_era_index: 31 }));
 			assert_eq!(Homa::last_era_bumped_block(), 3100);
 			assert_eq!(Homa::relay_chain_current_era(), 31);
 			assert_eq!(Homa::staking_ledgers(0), None);

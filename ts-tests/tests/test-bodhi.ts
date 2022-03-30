@@ -29,15 +29,13 @@ describeWithAcala("Acala RPC (bodhi.js)", (context) => {
 
 	step("should get gas price", async function () {
 		const gasPrice = await context.provider.getGasPrice();
-		expect(gasPrice.toString()).to.be.equal("1");
+		expect(gasPrice.toString()).to.be.equal("200000274442");
 	});
 
 	step("should get fee data ", async function () {
-		expect(await context.provider.getFeeData()).to.deep.include({
-			maxFeePerGas: BigNumber.from("1"),
-			maxPriorityFeePerGas: BigNumber.from("1"),
-			gasPrice: BigNumber.from("1"),
-		});
+		const data = await context.provider.getFeeData();
+
+		expect(data.gasPrice?.toNumber()).to.be.eq(200000274442);
 	});
 
 	step("should get transaction count", async function () {
@@ -80,18 +78,20 @@ describeWithAcala("Acala RPC (bodhi.js)", (context) => {
 	});
 
 	step("should estimateGas", async function () {
-		expect(await context.provider.estimateGas(
+		const gas = await context.provider.estimateGas(
 			await contract.populateTransaction.multiply(3)
-		)).to.deep.equal(BigNumber.from("22409"));
+		);
+
+		expect(gas.toNumber()).to.be.eq(342409);
 	});
 
 	step("should estimateResources", async function () {
-		expect(await context.provider.estimateResources(
+		const data = await context.provider.estimateResources(
 			await contract.populateTransaction.multiply(3)
-		)).to.deep.include({
-			gas: BigNumber.from("22409"),
-			storage: BigNumber.from(0),
-			weightFee: BigNumber.from("3999950555912"),
-		});
+		);
+
+		expect(data.gas.toNumber()).to.be.eq(22409);
+		expect(data.storage.toNumber()).to.be.eq(0);
+		expect(data.weightFee.toNumber()).to.be.eq(3999950521582);
 	});
 });

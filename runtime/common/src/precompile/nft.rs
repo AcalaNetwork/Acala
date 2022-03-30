@@ -16,19 +16,25 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::precompile::PrecompileOutput;
-use frame_support::log;
-use module_evm::{Context, ExitError, ExitSucceed, Precompile};
+use frame_support::{
+	log,
+	traits::tokens::nonfungibles::{Inspect, Transfer},
+};
+use module_evm::{
+	precompiles::Precompile,
+	runner::state::{PrecompileFailure, PrecompileOutput, PrecompileResult},
+	Context, ExitError, ExitRevert, ExitSucceed,
+};
 use module_support::AddressMapping;
 use sp_core::H160;
 use sp_runtime::RuntimeDebug;
-use sp_std::{borrow::Cow, marker::PhantomData, prelude::*, result};
+use sp_std::{marker::PhantomData, prelude::*};
 
-use orml_traits::NFT as NFTT;
+use orml_traits::InspectExtended;
 
 use super::input::{Input, InputT, Output};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
-use primitives::NFTBalance;
+use primitives::nft::NFTBalance;
 
 /// The `NFT` impl precompile.
 ///
@@ -40,7 +46,7 @@ use primitives::NFTBalance;
 /// - Transfer. Rest `input`bytes: `from`, `to`, `class_id`, `token_id`.
 pub struct NFTPrecompile<R>(PhantomData<R>);
 
-#[module_evm_utiltity_macro::generate_function_selector]
+#[module_evm_utility_macro::generate_function_selector]
 #[derive(RuntimeDebug, Eq, PartialEq, TryFromPrimitive, IntoPrimitive)]
 #[repr(u32)]
 pub enum Action {
@@ -52,14 +58,24 @@ pub enum Action {
 impl<Runtime> Precompile for NFTPrecompile<Runtime>
 where
 	Runtime: module_evm::Config + module_prices::Config + module_nft::Config,
-	module_nft::Pallet<Runtime>: NFTT<Runtime::AccountId, Balance = NFTBalance, ClassId = u32, TokenId = u64>,
+	module_nft::Pallet<Runtime>: InspectExtended<Runtime::AccountId, Balance = NFTBalance>
+		+ Inspect<Runtime::AccountId, InstanceId = u64, ClassId = u32>
+		+ Transfer<Runtime::AccountId>,
 {
-	fn execute(
-		input: &[u8],
-		_target_gas: Option<u64>,
-		_context: &Context,
-	) -> result::Result<PrecompileOutput, ExitError> {
-		let input = Input::<Action, Runtime::AccountId, Runtime::AddressMapping, Runtime::Erc20InfoMapping>::new(input);
+	fn execute(input: &[u8], target_gas: Option<u64>, _context: &Context, _is_static: bool) -> PrecompileResult {
+		let input = Input::<Action, Runtime::AccountId, Runtime::AddressMapping, Runtime::Erc20InfoMapping>::new(
+			input, target_gas,
+		);
+
+		let gas_cost = Pricer::<Runtime>::cost(&input)?;
+
+		if let Some(gas_limit) = target_gas {
+			if gas_limit < gas_cost {
+				return Err(PrecompileFailure::Error {
+					exit_status: ExitError::OutOfGas,
+				});
+			}
+		}
 
 		let action = input.action()?;
 
@@ -84,7 +100,7 @@ where
 
 				log::debug!(target: "evm", "nft: query_owner class_id: {:?}, token_id: {:?}", class_id, token_id);
 
-				let owner: H160 = if let Some(o) = module_nft::Pallet::<Runtime>::owner((class_id, token_id)) {
+				let owner: H160 = if let Some(o) = module_nft::Pallet::<Runtime>::owner(&class_id, &token_id) {
 					Runtime::AddressMapping::get_evm_address(&o)
 						.unwrap_or_else(|| Runtime::AddressMapping::get_default_evm_address(&o))
 				} else {
@@ -107,8 +123,12 @@ where
 
 				log::debug!(target: "evm", "nft: transfer from: {:?}, to: {:?}, class_id: {:?}, token_id: {:?}", from, to, class_id, token_id);
 
-				<module_nft::Pallet<Runtime> as NFTT<Runtime::AccountId>>::transfer(&from, &to, (class_id, token_id))
-					.map_err(|e| ExitError::Other(Cow::Borrowed(e.into())))?;
+				<module_nft::Pallet<Runtime> as Transfer<Runtime::AccountId>>::transfer(&class_id, &token_id, &to)
+					.map_err(|e| PrecompileFailure::Revert {
+						exit_status: ExitRevert::Reverted,
+						output: Into::<&str>::into(e).as_bytes().to_vec(),
+						cost: target_gas.unwrap_or_default(),
+					})?;
 
 				Ok(PrecompileOutput {
 					exit_status: ExitSucceed::Returned,
@@ -118,5 +138,22 @@ where
 				})
 			}
 		}
+	}
+}
+
+pub struct Pricer<R>(PhantomData<R>);
+
+impl<Runtime> Pricer<Runtime>
+where
+	Runtime: module_evm::Config + module_prices::Config + module_nft::Config,
+{
+	pub const BASE_COST: u64 = 200;
+
+	fn cost(
+		input: &Input<Action, Runtime::AccountId, Runtime::AddressMapping, Runtime::Erc20InfoMapping>,
+	) -> Result<u64, PrecompileFailure> {
+		let _action = input.action()?;
+		// TODO: gas cost
+		Ok(Self::BASE_COST)
 	}
 }

@@ -23,14 +23,14 @@ use frame_support::{
 	traits::{ExtrinsicCall, Get},
 	weights::{DispatchInfo, GetDispatchInfo},
 };
-use module_evm_utiltity::ethereum::{EIP1559TransactionMessage, LegacyTransactionMessage, TransactionAction};
-use module_evm_utiltity_macro::keccak256;
+use module_evm_utility::ethereum::{EIP1559TransactionMessage, LegacyTransactionMessage, TransactionAction};
+use module_evm_utility_macro::keccak256;
 use scale_info::TypeInfo;
 use sp_core::{H160, H256};
 use sp_io::{crypto::secp256k1_ecdsa_recover, hashing::keccak_256};
 use sp_runtime::{
 	generic::{CheckedExtrinsic, UncheckedExtrinsic},
-	traits::{self, Checkable, Convert, Extrinsic, ExtrinsicMetadata, Member, SignedExtension},
+	traits::{self, Checkable, Convert, Extrinsic, ExtrinsicMetadata, Member, SignedExtension, Zero},
 	transaction_validity::{InvalidTransaction, TransactionValidityError},
 	AccountId32, RuntimeDebug,
 };
@@ -111,38 +111,23 @@ where
 				let function = self.0.function;
 
 				let (eth_msg, eth_extra) = ConvertTx::convert((function.clone(), extra))?;
+				log::trace!(
+					target: "evm", "Ethereum eth_msg: {:?}", eth_msg
+				);
 
-				if eth_msg.tip != 0 {
+				if !eth_msg.tip.is_zero() {
 					// Not yet supported, require zero tip
 					return Err(InvalidTransaction::BadProof.into());
 				}
 
-				// tx_gas_price = tx_fee_per_gas + block_period << 16 + storage_entry_limit
-				// tx_gas_limit = gas_limit + storage_entry_deposit / tx_fee_per_gas * storage_entry_limit
-				let block_period = eth_msg.valid_until.checked_div(30).expect("divisor is non-zero; qed");
-				// u16: max value 0xffff * 64 = 4194240 bytes = 4MB
-				let storage_entry_limit: u16 = eth_msg
-					.storage_limit
-					.checked_div(64)
-					.expect("divisor is non-zero; qed")
-					.try_into()
-					.map_err(|_| InvalidTransaction::BadProof)?;
-				let storage_entry_deposit = StorageDepositPerByte::get().saturating_mul(64);
-				let tx_gas_price = TxFeePerGas::get()
-					.saturating_add((block_period << 16).into())
-					.saturating_add(storage_entry_limit.into());
-				// There is a loss of precision here, so the order of calculation must be guaranteed
-				// must ensure storage_deposit / tx_fee_per_gas * storage_limit
-				let tx_gas_limit = storage_entry_deposit
-					.checked_div(TxFeePerGas::get())
-					.expect("divisor is non-zero; qed")
-					.saturating_mul(storage_entry_limit.into())
-					.saturating_add(eth_msg.gas_limit.into());
+				if !eth_msg.access_list.len().is_zero() {
+					// Not yet supported, require empty
+					return Err(InvalidTransaction::BadProof.into());
+				}
 
-				log::trace!(
-					target: "evm", "eth_msg.tip: {:?}, eth_msg.gas_limit: {:?}, eth_msg.storage_limit: {:?}, tx_gas_limit: {:?}, tx_gas_price: {:?}",
-					eth_msg.tip, eth_msg.storage_limit, eth_msg.gas_limit, tx_gas_limit, tx_gas_price
-				);
+				let (tx_gas_price, tx_gas_limit) =
+					recover_sign_data(&eth_msg, TxFeePerGas::get(), StorageDepositPerByte::get())
+						.ok_or(InvalidTransaction::BadProof)?;
 
 				let msg = LegacyTransactionMessage {
 					nonce: eth_msg.nonce.into(),
@@ -153,6 +138,9 @@ where
 					input: eth_msg.input,
 					chain_id: Some(eth_msg.chain_id),
 				};
+				log::trace!(
+					target: "evm", "tx msg: {:?}", msg
+				);
 
 				let msg_hash = msg.hash(); // TODO: consider rewirte this to use `keccak_256` for hashing because it could be faster
 
@@ -173,36 +161,16 @@ where
 			Some((addr, AcalaMultiSignature::Eip1559(sig), extra)) => {
 				let function = self.0.function;
 				let (eth_msg, eth_extra) = ConvertTx::convert((function.clone(), extra))?;
+				log::trace!(
+					target: "evm", "Eip1559 eth_msg: {:?}", eth_msg
+				);
 
-				// tx_gas_price = tx_fee_per_gas + block_period << 16 + storage_entry_limit
-				// tx_gas_limit = gas_limit + storage_entry_deposit / tx_fee_per_gas * storage_entry_limit
-				let block_period = eth_msg.valid_until.checked_div(30).expect("divisor is non-zero; qed");
-				// u16: max value 0xffff * 64 = 4194240 bytes = 4MB
-				let storage_entry_limit: u16 = eth_msg
-					.storage_limit
-					.checked_div(64)
-					.expect("divisor is non-zero; qed")
-					.try_into()
-					.map_err(|_| InvalidTransaction::BadProof)?;
-				let storage_entry_deposit = StorageDepositPerByte::get().saturating_mul(64);
-				let tx_gas_price = TxFeePerGas::get()
-					.saturating_add((block_period << 16).into())
-					.saturating_add(storage_entry_limit.into());
-				// There is a loss of precision here, so the order of calculation must be guaranteed
-				// must ensure storage_deposit / tx_fee_per_gas * storage_limit
-				let tx_gas_limit = storage_entry_deposit
-					.checked_div(TxFeePerGas::get())
-					.expect("divisor is non-zero; qed")
-					.saturating_mul(storage_entry_limit.into())
-					.saturating_add(eth_msg.gas_limit.into());
+				let (tx_gas_price, tx_gas_limit) =
+					recover_sign_data(&eth_msg, TxFeePerGas::get(), StorageDepositPerByte::get())
+						.ok_or(InvalidTransaction::BadProof)?;
 
 				// tip = priority_fee * gas_limit
 				let priority_fee = eth_msg.tip.checked_div(eth_msg.gas_limit.into()).unwrap_or_default();
-
-				log::trace!(
-					target: "evm", "eth_msg.tip: {:?}, eth_msg.gas_limit: {:?}, eth_msg.storage_limit: {:?}, tx_gas_limit: {:?}, tx_gas_price: {:?}",
-					eth_msg.tip, eth_msg.storage_limit, eth_msg.gas_limit, tx_gas_limit, tx_gas_price
-				);
 
 				let msg = EIP1559TransactionMessage {
 					chain_id: eth_msg.chain_id,
@@ -213,8 +181,11 @@ where
 					action: eth_msg.action,
 					value: eth_msg.value.into(),
 					input: eth_msg.input,
-					access_list: vec![],
+					access_list: eth_msg.access_list,
 				};
+				log::trace!(
+					target: "evm", "tx msg: {:?}", msg
+				);
 
 				let msg_hash = msg.hash(); // TODO: consider rewirte this to use `keccak_256` for hashing because it could be faster
 
@@ -236,6 +207,9 @@ where
 				let function = self.0.function;
 
 				let (eth_msg, eth_extra) = ConvertTx::convert((function.clone(), extra))?;
+				log::trace!(
+					target: "evm", "AcalaEip712 eth_msg: {:?}", eth_msg
+				);
 
 				let signer = verify_eip712_signature(eth_msg, sig).ok_or(InvalidTransaction::BadProof)?;
 
@@ -300,7 +274,8 @@ fn recover_signer(sig: &[u8; 65], msg_hash: &[u8; 32]) -> Option<H160> {
 
 fn verify_eip712_signature(eth_msg: EthereumTransactionMessage, sig: [u8; 65]) -> Option<H160> {
 	let domain_hash = keccak256!("EIP712Domain(string name,string version,uint256 chainId,bytes32 salt)");
-	let tx_type_hash = keccak256!("Transaction(string action,address to,uint256 nonce,uint256 tip,bytes data,uint256 value,uint256 gasLimit,uint256 storageLimit,uint256 validUntil)");
+	let access_list_type_hash = keccak256!("AccessList(address address,uint256[] storageKeys)");
+	let tx_type_hash = keccak256!("Transaction(string action,address to,uint256 nonce,uint256 tip,bytes data,uint256 value,uint256 gasLimit,uint256 storageLimit,AccessList[] accessList,uint256 validUntil)AccessList(address address,uint256[] storageKeys)");
 
 	let mut domain_seperator_msg = domain_hash.to_vec();
 	domain_seperator_msg.extend_from_slice(keccak256!("Acala EVM")); // name
@@ -326,6 +301,17 @@ fn verify_eip712_signature(eth_msg: EthereumTransactionMessage, sig: [u8; 65]) -
 	tx_msg.extend_from_slice(&to_bytes(eth_msg.value));
 	tx_msg.extend_from_slice(&to_bytes(eth_msg.gas_limit));
 	tx_msg.extend_from_slice(&to_bytes(eth_msg.storage_limit));
+
+	let mut access_list: Vec<[u8; 32]> = Vec::new();
+	eth_msg.access_list.iter().for_each(|v| {
+		let mut access_list_msg = access_list_type_hash.to_vec();
+		access_list_msg.extend_from_slice(&to_bytes(v.address.as_bytes()));
+		access_list_msg.extend_from_slice(&keccak_256(
+			&v.storage_keys.iter().map(|v| v.as_bytes()).collect::<Vec<_>>().concat(),
+		));
+		access_list.push(keccak_256(access_list_msg.as_slice()));
+	});
+	tx_msg.extend_from_slice(&keccak_256(&access_list.concat()));
 	tx_msg.extend_from_slice(&to_bytes(eth_msg.valid_until));
 
 	let mut msg = b"\x19\x01".to_vec();
@@ -337,31 +323,105 @@ fn verify_eip712_signature(eth_msg: EthereumTransactionMessage, sig: [u8; 65]) -
 	recover_signer(&sig, &msg_hash)
 }
 
+fn recover_sign_data(
+	eth_msg: &EthereumTransactionMessage,
+	ts_fee_per_gas: u128,
+	storage_deposit_per_byte: u128,
+) -> Option<(u128, u128)> {
+	// tx_gas_price = tx_fee_per_gas + block_period << 16 + storage_entry_limit
+	// tx_gas_limit = gas_limit + storage_entry_deposit / tx_fee_per_gas * storage_entry_limit
+	let block_period = eth_msg.valid_until.checked_div(30).expect("divisor is non-zero; qed");
+	// u16: max value 0xffff * 64 = 4194240 bytes = 4MB
+	let storage_entry_limit: u16 = eth_msg
+		.storage_limit
+		.checked_div(64)
+		.expect("divisor is non-zero; qed")
+		.try_into()
+		.ok()?;
+	let storage_entry_deposit = storage_deposit_per_byte.saturating_mul(64);
+	let tx_gas_price = ts_fee_per_gas
+		.checked_add(Into::<u128>::into(block_period).checked_shl(16)?)?
+		.checked_add(storage_entry_limit.into())?;
+	// There is a loss of precision here, so the order of calculation must be guaranteed
+	// must ensure storage_deposit / tx_fee_per_gas * storage_limit
+	let tx_gas_limit = storage_entry_deposit
+		.checked_div(ts_fee_per_gas)
+		.expect("divisor is non-zero; qed")
+		.checked_mul(storage_entry_limit.into())?
+		.checked_add(eth_msg.gas_limit.into())?;
+
+	Some((tx_gas_price, tx_gas_limit))
+}
+
 #[cfg(test)]
 mod tests {
 	use super::*;
 	use hex_literal::hex;
-	use module_evm_utiltity::ethereum::AccessListItem;
+	use module_evm_utility::ethereum::AccessListItem;
 	use sp_core::U256;
 	use std::{ops::Add, str::FromStr};
 
 	#[test]
 	fn verify_eip712_should_works() {
+		let sender = Some(H160::from_str("0x14791697260E4c9A71f18484C9f997B308e59325").unwrap());
+		// access_list = vec![]
 		let msg = EthereumTransactionMessage {
 			chain_id: 595,
-			genesis: H256::from_str("0xc3751fc073ec83e6aa13e2be395d21b05dce0692618a129324261c80ede07d4c").unwrap(),
-			nonce: 1,
+			genesis: H256::from_str("0xafb55f3937d1377c23b8f351315b2792f5d2753bb95420c191d2dc70ad7196e8").unwrap(),
+			nonce: 0,
 			tip: 2,
-			gas_limit: 222,
-			storage_limit: 333,
-			action: TransactionAction::Call(H160::from_str("0x1111111111222222222233333333334444444444").unwrap()),
-			value: 111,
-			input: vec![],
-			valid_until: 444,
+			gas_limit: 2100000,
+			storage_limit: 20000,
+			action: TransactionAction::Create,
+			value: 0,
+			input: vec![0x01],
+			valid_until: 105,
+			access_list: vec![],
 		};
-		let sign = hex!("acb56f12b407bd0bc8f7abefe2e2585affe28009abcb6980aa33aecb815c56b324ab60a41eff339a88631c4b0e5183427be1fcfde3c05fb9b6c71a691e977c4a1b");
-		let sender = Some(H160::from_str("0x14791697260E4c9A71f18484C9f997B308e59325").unwrap());
+		let sign = hex!("c30a85ee9218af4e2892c82d65a8a7fbeee75c010973d42cee2e52309449d687056c09cf486a16d58d23b0ebfed63a0276d5fb1a464f645dc7607147a37f7a211c");
+		assert_eq!(verify_eip712_signature(msg, sign), sender);
 
+		// access_list.storage_keys = vec![]
+		let msg = EthereumTransactionMessage {
+			chain_id: 595,
+			genesis: H256::from_str("0xafb55f3937d1377c23b8f351315b2792f5d2753bb95420c191d2dc70ad7196e8").unwrap(),
+			nonce: 0,
+			tip: 2,
+			gas_limit: 2100000,
+			storage_limit: 20000,
+			action: TransactionAction::Create,
+			value: 0,
+			input: vec![0x01],
+			valid_until: 105,
+			access_list: vec![AccessListItem {
+				address: hex!("0000000000000000000000000000000000000000").into(),
+				storage_keys: vec![],
+			}],
+		};
+		let sign = hex!("a94da7159e29f2a0c9aec08eb62cbb6eefd6ee277960a3c96b183b53201687ce19f1fd9c2cfdace8730fd5249ea11e57701cd0cc20386bbd9d3df5092fe218851c");
+		assert_eq!(verify_eip712_signature(msg, sign), sender);
+
+		let msg = EthereumTransactionMessage {
+			chain_id: 595,
+			genesis: H256::from_str("0xafb55f3937d1377c23b8f351315b2792f5d2753bb95420c191d2dc70ad7196e8").unwrap(),
+			nonce: 0,
+			tip: 2,
+			gas_limit: 2100000,
+			storage_limit: 20000,
+			action: TransactionAction::Create,
+			value: 0,
+			input: vec![0x01],
+			valid_until: 105,
+			access_list: vec![AccessListItem {
+				address: hex!("0000000000000000000000000000000000000000").into(),
+				storage_keys: vec![
+					H256::from_str("0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef").unwrap(),
+					H256::from_str("0x0000000000111111111122222222223333333333444444444455555555556666").unwrap(),
+					H256::from_str("0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef").unwrap(),
+				],
+			}],
+		};
+		let sign = hex!("dca9701b77bac69e5a88c7f040a6fa0a051f97305619e66e9182bf3416ca2d0e7b730cb732e2f747754f6b9307d78ce611aabb3692ea48314670a6a8c447dc9b1c");
 		assert_eq!(verify_eip712_signature(msg.clone(), sign), sender);
 
 		let mut new_msg = msg.clone();
@@ -381,7 +441,7 @@ mod tests {
 		assert_ne!(verify_eip712_signature(new_msg, sign), sender);
 
 		let mut new_msg = msg.clone();
-		new_msg.action = TransactionAction::Create;
+		new_msg.action = TransactionAction::Call(H160::from_str("0x1111111111222222222233333333334444444444").unwrap());
 		assert_ne!(verify_eip712_signature(new_msg, sign), sender);
 
 		let mut new_msg = msg.clone();
@@ -398,6 +458,13 @@ mod tests {
 
 		let mut new_msg = msg.clone();
 		new_msg.genesis = Default::default();
+		assert_ne!(verify_eip712_signature(new_msg, sign), sender);
+
+		let mut new_msg = msg.clone();
+		new_msg.access_list = vec![AccessListItem {
+			address: hex!("bb9bc244d798123fde783fcc1c72d3bb8c189413").into(),
+			storage_keys: vec![],
+		}];
 		assert_ne!(verify_eip712_signature(new_msg, sign), sender);
 
 		let mut new_msg = msg;
@@ -505,8 +572,62 @@ mod tests {
 		let mut new_msg = msg;
 		new_msg.access_list = vec![AccessListItem {
 			address: hex!("bb9bc244d798123fde783fcc1c72d3bb8c189413").into(),
-			slots: vec![],
+			storage_keys: vec![],
 		}];
 		assert_ne!(recover_signer(&sign, new_msg.hash().as_fixed_bytes()), sender);
+	}
+
+	#[test]
+	fn recover_sign_data_should_works() {
+		let mut msg = EthereumTransactionMessage {
+			chain_id: 595,
+			genesis: Default::default(),
+			nonce: 1,
+			tip: 0,
+			gas_limit: 2100000,
+			storage_limit: 64000,
+			action: TransactionAction::Call(H160::from_str("0x1111111111222222222233333333334444444444").unwrap()),
+			value: 0,
+			input: vec![],
+			access_list: vec![],
+			valid_until: 30,
+		};
+
+		let ts_fee_per_gas = 200u128.saturating_mul(10u128.saturating_pow(9)) & !0xffff;
+		let storage_deposit_per_byte = 100_000_000_000_000u128;
+
+		assert_eq!(
+			recover_sign_data(&msg, ts_fee_per_gas, storage_deposit_per_byte),
+			Some((200000013288, 34100000))
+		);
+		msg.valid_until = 3600030;
+		assert_eq!(
+			recover_sign_data(&msg, ts_fee_per_gas, storage_deposit_per_byte),
+			Some((207864333288, 34100000))
+		);
+		msg.valid_until = u32::MAX;
+		assert_eq!(
+			recover_sign_data(&msg, ts_fee_per_gas, storage_deposit_per_byte),
+			Some((9582499136488, 34100000))
+		);
+
+		// check storage_limit max is 0xffff * 64 + 63
+		msg.storage_limit = 0xffff * 64 + 64;
+		assert_eq!(recover_sign_data(&msg, ts_fee_per_gas, storage_deposit_per_byte), None);
+
+		msg.storage_limit = 0xffff * 64 + 63;
+		assert_eq!(
+			recover_sign_data(&msg, ts_fee_per_gas, storage_deposit_per_byte),
+			Some((9582499201023, 2099220000))
+		);
+
+		assert_eq!(
+			recover_sign_data(&msg, ts_fee_per_gas, u128::MAX),
+			Some((9582499201023, 111502054267125439094838181151820))
+		);
+
+		assert_eq!(recover_sign_data(&msg, u128::MAX, storage_deposit_per_byte), None);
+
+		assert_eq!(recover_sign_data(&msg, u128::MAX, u128::MAX), None);
 	}
 }

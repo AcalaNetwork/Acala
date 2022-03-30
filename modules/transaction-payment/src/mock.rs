@@ -21,7 +21,7 @@
 #![cfg(test)]
 
 use super::*;
-use crate as transaction_payment;
+pub use crate as transaction_payment;
 use frame_support::{
 	construct_runtime, ord_parameter_types, parameter_types,
 	traits::{Everything, Nothing},
@@ -95,6 +95,7 @@ impl frame_system::Config for Runtime {
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
 	type OnSetCode = ();
+	type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
 
 parameter_type_with_key! {
@@ -170,6 +171,7 @@ parameter_types! {
 		TradingPair::from_currency_ids(AUSD, ACA).unwrap(),
 		TradingPair::from_currency_ids(AUSD, DOT).unwrap(),
 	];
+	pub const ExtendedProvisioningBlocks: BlockNumber = 0;
 }
 
 impl module_dex::Config for Runtime {
@@ -182,6 +184,8 @@ impl module_dex::Config for Runtime {
 	type DEXIncentives = ();
 	type WeightInfo = ();
 	type ListingOrigin = frame_system::EnsureSignedBy<Zero, AccountId>;
+	type ExtendedProvisioningBlocks = ExtendedProvisioningBlocks;
+	type OnLiquidityPoolUpdated = ();
 }
 
 parameter_types! {
@@ -190,7 +194,9 @@ parameter_types! {
 	pub OperationalFeeMultiplier: u64 = 5;
 	pub static TipPerWeightStep: u128 = 1;
 	pub MaxTipsOfPriority: u128 = 1000;
-	pub DefaultFeeSwapPathList: Vec<Vec<CurrencyId>> = vec![vec![AUSD, ACA], vec![DOT, AUSD, ACA]];
+	pub DefaultFeeTokens: Vec<CurrencyId> = vec![AUSD, DOT];
+	pub AusdFeeSwapPath: Vec<CurrencyId> = vec![AUSD, ACA];
+	pub DotFeeSwapPath: Vec<CurrencyId> = vec![DOT, AUSD, ACA];
 	pub AlternativeFeeSwapDeposit: Balance = 1000;
 }
 
@@ -234,20 +240,23 @@ impl PriceProvider<CurrencyId> for MockPriceSource {
 parameter_types! {
 	// DO NOT CHANGE THIS VALUE, AS IT EFFECT THE TESTCASES.
 	pub const FeePoolSize: Balance = 10_000;
-	pub const SwapThreshold: Balance = 20;
+	pub const LowerSwapThreshold: Balance = 20;
+	pub const MiddSwapThreshold: Balance = 5000;
+	pub const HigerSwapThreshold: Balance = 9500;
 	pub const TransactionPaymentPalletId: PalletId = PalletId(*b"aca/fees");
 	pub const TreasuryPalletId: PalletId = PalletId(*b"aca/trsy");
 	pub KaruraTreasuryAccount: AccountId = TreasuryPalletId::get().into_account();
-	pub FeePoolExchangeTokens: Vec<CurrencyId> = vec![AUSD, DOT];
 }
 ord_parameter_types! {
 	pub const ListingOrigin: AccountId = ALICE;
+	pub const CustomFeeSurplus: Percent = Percent::from_percent(50);
+	pub const AlternativeFeeSurplus: Percent = Percent::from_percent(25);
 }
 
 impl Config for Runtime {
 	type Event = Event;
+	type Call = Call;
 	type NativeCurrencyId = GetNativeCurrencyId;
-	type DefaultFeeSwapPathList = DefaultFeeSwapPathList;
 	type AlternativeFeeSwapDeposit = AlternativeFeeSwapDeposit;
 	type Currency = PalletBalances;
 	type MultiCurrency = Currencies;
@@ -266,6 +275,9 @@ impl Config for Runtime {
 	type PalletId = TransactionPaymentPalletId;
 	type TreasuryAccount = KaruraTreasuryAccount;
 	type UpdateOrigin = EnsureSignedBy<ListingOrigin, AccountId>;
+	type CustomFeeSurplus = CustomFeeSurplus;
+	type AlternativeFeeSurplus = AlternativeFeeSurplus;
+	type DefaultFeeTokens = DefaultFeeTokens;
 }
 
 thread_local! {
@@ -379,6 +391,8 @@ impl ExtBuilder {
 		.assimilate_storage(&mut t)
 		.unwrap();
 
-		t.into()
+		let mut ext = sp_io::TestExternalities::new(t);
+		ext.execute_with(|| System::set_block_number(1));
+		ext
 	}
 }

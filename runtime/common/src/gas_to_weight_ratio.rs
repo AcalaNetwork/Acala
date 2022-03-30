@@ -16,4 +16,4 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-pub const RATIO: u64 = 9478;
+pub const RATIO: u64 = 9000;

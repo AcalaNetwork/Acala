@@ -35,6 +35,7 @@ use sp_runtime::{
 	traits::{AccountIdConversion, IdentityLookup, One as OneT},
 };
 use sp_std::cell::RefCell;
+use support::mocks::MockStableAsset;
 pub use support::Price;
 
 pub type AccountId = u128;
@@ -81,6 +82,7 @@ impl frame_system::Config for Runtime {
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
 	type OnSetCode = ();
+	type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
 
 parameter_type_with_key! {
@@ -135,6 +137,7 @@ impl cdp_treasury::Config for Runtime {
 	type TreasuryAccount = TreasuryAccount;
 	type AlternativeSwapPathJointList = AlternativeSwapPathJointList;
 	type WeightInfo = ();
+	type StableAsset = MockStableAsset<CurrencyId, Balance, AccountId, BlockNumber>;
 }
 
 thread_local! {
@@ -166,6 +169,7 @@ parameter_types! {
 		TradingPair::from_currency_ids(DOT, BTC).unwrap(),
 		TradingPair::from_currency_ids(AUSD, DOT).unwrap()
 	];
+	pub const ExtendedProvisioningBlocks: BlockNumber = 0;
 }
 
 impl module_dex::Config for Runtime {
@@ -178,6 +182,8 @@ impl module_dex::Config for Runtime {
 	type DEXIncentives = ();
 	type WeightInfo = ();
 	type ListingOrigin = EnsureSignedBy<One, AccountId>;
+	type ExtendedProvisioningBlocks = ExtendedProvisioningBlocks;
+	type OnLiquidityPoolUpdated = ();
 }
 
 thread_local! {

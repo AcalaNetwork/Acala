@@ -14,40 +14,39 @@ describeWithAcala("Acala RPC (Gas)", (context) => {
 	});
 
 	it("eth_estimateGas for contract creation", async function () {
-		expect(
-			await context.provider.estimateGas({
-				from: alice.getAddress(),
-				data: "0x" + Block.bytecode,
-			})
-		).to.deep.equal(BigNumber.from("273373"));
+		const gas = await context.provider.estimateGas({
+			from: alice.getAddress(),
+			data: "0x" + Block.bytecode,
+		});
+		expect(gas.toNumber()).to.be.eq(593373);
 	});
 
 	it("eth_estimateResources for contract creation", async function () {
-		expect(await context.provider.estimateResources({
+		const data = await context.provider.estimateResources({
 			from: await alice.getAddress(),
 			data: "0x" + Block.bytecode,
-		})).to.deep.include({
-			gas: BigNumber.from("273373"),
-			storage: BigNumber.from("10921"),
-			weightFee: BigNumber.from("3999960172821")
 		});
+
+		expect(data.gas.toNumber()).to.be.eq(273373);
+		expect(data.storage.toNumber()).to.be.eq(10921);
+		expect(data.weightFee.toNumber()).to.be.eq(3999960165755);
 	});
 
 	it("eth_estimateGas for contract call", async function () {
 		const contract = await deployContract(alice as any, Block);
-
-		expect(await contract.estimateGas.multiply(3)).to.deep.equal(BigNumber.from("22409"));
+		const gas = await contract.estimateGas.multiply(3);
+		expect(gas.toNumber()).to.be.eq(342409);
 	});
 
 	it("eth_estimateResources for contract call", async function () {
 		const contract = await deployContract(alice as any, Block);
 
-		expect(await context.provider.estimateResources(
+		const data = await context.provider.estimateResources(
 			await contract.populateTransaction.multiply(3)
-		)).to.deep.include({
-			gas: BigNumber.from("22409"),
-			storage: BigNumber.from("0"),
-			weightFee: BigNumber.from("3999940939026")
-		});
+		);
+
+		expect(data.gas.toNumber()).to.be.eq(22409);
+		expect(data.storage.toNumber()).to.be.eq(0);
+		expect(data.weightFee.toNumber()).to.be.eq(3999940877431);
 	});
 });

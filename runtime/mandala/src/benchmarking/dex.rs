@@ -16,11 +16,11 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+use super::utils::dollar;
 use crate::{
-	dollar, AccountId, Balance, Currencies, CurrencyId, Dex, Event, GetLiquidCurrencyId, GetNativeCurrencyId,
-	GetStableCurrencyId, GetStakingCurrencyId, Runtime, System, TradingPathLimit,
+	AccountId, Balance, Currencies, CurrencyId, Dex, Event, ExtendedProvisioningBlocks, GetLiquidCurrencyId,
+	GetNativeCurrencyId, GetStableCurrencyId, GetStakingCurrencyId, Runtime, System, TradingPathLimit,
 };
-
 use frame_benchmarking::{account, whitelisted_caller};
 use frame_system::RawOrigin;
 use module_dex::TradingPairStatus;
@@ -86,7 +86,7 @@ runtime_benchmarks! {
 	enable_trading_pair {
 		let trading_pair = TradingPair::from_currency_ids(STABLECOIN, NATIVE).unwrap();
 		if let TradingPairStatus::Enabled = Dex::trading_pair_statuses(trading_pair) {
-			Dex::disable_trading_pair(RawOrigin::Root.into(), trading_pair.first(), trading_pair.second())?;
+			let _ = Dex::disable_trading_pair(RawOrigin::Root.into(), trading_pair.first(), trading_pair.second());
 		}
 	}: _(RawOrigin::Root, trading_pair.first(), trading_pair.second())
 	verify {
@@ -97,7 +97,7 @@ runtime_benchmarks! {
 	disable_trading_pair {
 		let trading_pair = TradingPair::from_currency_ids(STABLECOIN, NATIVE).unwrap();
 		if let TradingPairStatus::Disabled = Dex::trading_pair_statuses(trading_pair) {
-			Dex::enable_trading_pair(RawOrigin::Root.into(), trading_pair.first(), trading_pair.second())?;
+			let _ = Dex::enable_trading_pair(RawOrigin::Root.into(), trading_pair.first(), trading_pair.second());
 		}
 	}: _(RawOrigin::Root, trading_pair.first(), trading_pair.second())
 	verify {
@@ -330,6 +330,75 @@ runtime_benchmarks! {
 		// would panic the benchmark anyways, must add new currencies to CURRENCY_LIST for benchmarking to work
 		assert!(TradingPathLimit::get() < CURRENCY_LIST.len() as u32);
 	}
+
+	refund_provision {
+		let founder: AccountId = whitelisted_caller();
+		let trading_pair = TradingPair::from_currency_ids(STABLECOIN, NATIVE).unwrap();
+		if let TradingPairStatus::Enabled = Dex::trading_pair_statuses(trading_pair) {
+			Dex::disable_trading_pair(RawOrigin::Root.into(), trading_pair.first(), trading_pair.second())?;
+		}
+		Dex::list_provisioning(
+			RawOrigin::Root.into(),
+			trading_pair.first(),
+			trading_pair.second(),
+			dollar(trading_pair.first()),
+			dollar(trading_pair.second()),
+			10 * dollar(trading_pair.first()),
+			10 * dollar(trading_pair.second()),
+			0
+		)?;
+
+		// set balance
+		<Currencies as MultiCurrencyExtended<_>>::update_balance(trading_pair.first(), &founder, (100 * dollar(trading_pair.first())).unique_saturated_into())?;
+		<Currencies as MultiCurrencyExtended<_>>::update_balance(trading_pair.second(), &founder, (100 * dollar(trading_pair.second())).unique_saturated_into())?;
+
+		Dex::add_provision(
+			RawOrigin::Signed(founder.clone()).into(),
+			trading_pair.first(),
+			trading_pair.second(),
+			dollar(trading_pair.first()),
+			dollar(trading_pair.second())
+		)?;
+
+		System::set_block_number(ExtendedProvisioningBlocks::get() + 1);
+		Dex::abort_provisioning(
+			RawOrigin::Signed(founder.clone()).into(),
+			trading_pair.first(),
+			trading_pair.second(),
+		)?;
+	}: _(RawOrigin::Signed(founder.clone()), founder.clone(), trading_pair.first(), trading_pair.second())
+
+	abort_provisioning {
+		let founder: AccountId = whitelisted_caller();
+		let trading_pair = TradingPair::from_currency_ids(STABLECOIN, NATIVE).unwrap();
+		if let TradingPairStatus::Enabled = Dex::trading_pair_statuses(trading_pair) {
+			Dex::disable_trading_pair(RawOrigin::Root.into(), trading_pair.first(), trading_pair.second())?;
+		}
+		Dex::list_provisioning(
+			RawOrigin::Root.into(),
+			trading_pair.first(),
+			trading_pair.second(),
+			dollar(trading_pair.first()),
+			dollar(trading_pair.second()),
+			100 * dollar(trading_pair.first()),
+			100 * dollar(trading_pair.second()),
+			0
+		)?;
+
+		// set balance
+		<Currencies as MultiCurrencyExtended<_>>::update_balance(trading_pair.first(), &founder, (100 * dollar(trading_pair.first())).unique_saturated_into())?;
+		<Currencies as MultiCurrencyExtended<_>>::update_balance(trading_pair.second(), &founder, (100 * dollar(trading_pair.second())).unique_saturated_into())?;
+
+		Dex::add_provision(
+			RawOrigin::Signed(founder.clone()).into(),
+			trading_pair.first(),
+			trading_pair.second(),
+			10 * dollar(trading_pair.first()),
+			10 * dollar(trading_pair.second()),
+		)?;
+
+		System::set_block_number(ExtendedProvisioningBlocks::get() + 1);
+	}: _(RawOrigin::Signed(whitelisted_caller()), trading_pair.first(), trading_pair.second())
 }
 
 #[cfg(test)]
