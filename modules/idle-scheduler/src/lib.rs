@@ -116,7 +116,7 @@ pub mod module {
 			let previous_relay_block_number = PreviousRelayBlockNumber::<T>::take();
 			if current_relay_block_number.saturating_sub(previous_relay_block_number) >= T::DisableBlockThreshold::get()
 			{
-				log::warn!(
+				log::debug!(
 					target: "idle-scheduler",
 					"Relaychain produced blocks without finalizing parachain blocks. Idle-scheduler will not execute.\ncurrent relay block number: {:?}\nprevious relay block number: {:?}",
 					current_relay_block_number,
@@ -124,12 +124,6 @@ pub mod module {
 				);
 				0
 			} else {
-				log::warn!(
-					target: "idle-scheduler",
-					"Idle-scheduler dispatched!\ncurrent relay block number: {:?}\nprevious relay block number: {:?}",
-					current_relay_block_number,
-					previous_relay_block_number
-				);
 				Self::do_dispatch_tasks(remaining_weight)
 			}
 		}
