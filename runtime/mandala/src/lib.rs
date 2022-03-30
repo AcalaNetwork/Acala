@@ -1227,9 +1227,9 @@ parameter_types! {
 impl module_earning::Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
-	type OnBonded = ();
-	type OnUnbonded = ();
-	type OnUnstakeFee = ();
+	type OnBonded = module_incentives::OnEarningBonded<Runtime>;
+	type OnUnbonded = module_incentives::OnEarningUnbonded<Runtime>;
+	type OnUnstakeFee = Treasury; // fee goes to treasury
 	type MinBond = ConstU128<100>;
 	type UnbondingPeriod = ConstU32<3>;
 	type InstantUnstakeFee = InstantUnstakeFee;
@@ -1266,12 +1266,15 @@ impl orml_rewards::Config for Runtime {
 
 parameter_types! {
 	pub const AccumulatePeriod: BlockNumber = MINUTES;
+	pub const EarnShareBooster: Permill = Permill::from_percent(30);
 }
 
 impl module_incentives::Config for Runtime {
 	type Event = Event;
 	type RewardsSource = UnreleasedNativeVaultAccountId;
 	type StableCurrencyId = GetStableCurrencyId;
+	type NativeCurrencyId = GetNativeCurrencyId;
+	type EarnShareBooster = EarnShareBooster;
 	type AccumulatePeriod = AccumulatePeriod;
 	type UpdateOrigin = EnsureRootOrThreeFourthsGeneralCouncil;
 	type CDPTreasury = CdpTreasury;
