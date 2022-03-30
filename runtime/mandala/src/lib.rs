@@ -19,7 +19,7 @@
 //! The Dev runtime. This can be compiled with `#[no_std]`, ready for Wasm.
 
 #![cfg_attr(not(feature = "std"), no_std)]
-// `construct_runtime!` does a lot of recursion and requires us to increase the limit to 256.
+// `construct_runtime!` does a lot of recursion and requires us to increase the limit.
 #![recursion_limit = "512"]
 #![allow(clippy::unnecessary_mut_passed)]
 #![allow(clippy::or_fun_call)]
@@ -1842,7 +1842,7 @@ impl OnRuntimeUpgrade for TransactionPaymentMigration {
 	}
 }
 
-construct_runtime! {
+construct_runtime!(
 	pub enum Runtime where
 		Block = Block,
 		NodeBlock = primitives::Block,
@@ -1857,7 +1857,7 @@ construct_runtime! {
 
 		// Tokens & Related
 		Balances: pallet_balances = 10,
-		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>} = 11,
+		Tokens: orml_tokens exclude_parts { Call } = 11,
 		Currencies: module_currencies = 12,
 		Vesting: orml_vesting = 13,
 		TransactionPayment: module_transaction_payment = 14,
@@ -1899,7 +1899,7 @@ construct_runtime! {
 		// ORML Core
 		Auction: orml_auction = 100,
 		Rewards: orml_rewards = 101,
-		OrmlNFT: orml_nft::{Pallet, Storage, Config<T>} = 102,
+		OrmlNFT: orml_nft exclude_parts { Call } = 102,
 
 		// Acala Core
 		Prices: module_prices = 110,
@@ -1927,23 +1927,23 @@ construct_runtime! {
 		// Ecosystem modules
 		RenVmBridge: ecosystem_renvm_bridge = 150,
 		Starport: ecosystem_starport = 151,
-		CompoundCash: ecosystem_compound_cash::{Pallet, Storage, Event<T>} = 152,
+		CompoundCash: ecosystem_compound_cash exclude_parts { Call } = 152,
 
 		// Parachain
-		ParachainInfo: parachain_info::{Pallet, Storage, Config} = 161,
+		ParachainInfo: parachain_info exclude_parts { Call } = 161,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue = 170,
 		PolkadotXcm: pallet_xcm = 171,
-		CumulusXcm: cumulus_pallet_xcm::{Pallet, Event<T>, Origin} = 172,
+		CumulusXcm: cumulus_pallet_xcm exclude_parts { Call } = 172,
 		DmpQueue: cumulus_pallet_dmp_queue = 173,
 		XTokens: orml_xtokens = 174,
-		UnknownTokens: orml_unknown_tokens::{Pallet, Storage, Event} = 175,
+		UnknownTokens: orml_unknown_tokens exclude_parts { Call } = 175,
 		OrmlXcm: orml_xcm = 176,
 
 		// Smart contracts
 		EVM: module_evm = 180,
-		EVMBridge: module_evm_bridge::{Pallet} = 181,
+		EVMBridge: module_evm_bridge exclude_parts { Call } = 181,
 		EvmAccounts: module_evm_accounts = 182,
 
 		// Collator support. the order of these 4 are important and shall not change.
@@ -1951,7 +1951,7 @@ construct_runtime! {
 		CollatorSelection: module_collator_selection = 191,
 		Session: pallet_session = 192,
 		Aura: pallet_aura = 193,
-		AuraExt: cumulus_pallet_aura_ext::{Pallet, Storage, Config} = 194,
+		AuraExt: cumulus_pallet_aura_ext exclude_parts { Call } = 194,
 		SessionManager: module_session_manager = 195,
 
 		// Stable asset
@@ -1966,7 +1966,7 @@ construct_runtime! {
 		// Dev
 		Sudo: pallet_sudo = 255,
 	}
-}
+);
 
 #[cfg(feature = "runtime-benchmarks")]
 #[macro_use]

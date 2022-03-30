@@ -19,7 +19,7 @@
 //! The Dev runtime. This can be compiled with `#[no_std]`, ready for Wasm.
 
 #![cfg_attr(not(feature = "std"), no_std)]
-// `construct_runtime!` does a lot of recursion and requires us to increase the limit to 256.
+// `construct_runtime!` does a lot of recursion and requires us to increase the limit.
 #![recursion_limit = "512"]
 #![allow(clippy::unnecessary_mut_passed)]
 #![allow(clippy::or_fun_call)]
@@ -1647,7 +1647,7 @@ construct_runtime!(
 
 		// Tokens & Related
 		Balances: pallet_balances = 10,
-		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>} = 11,
+		Tokens: orml_tokens exclude_parts { Call } = 11,
 		Currencies: module_currencies = 12,
 		Vesting: orml_vesting = 13,
 		TransactionPayment: module_transaction_payment = 14,
@@ -1658,23 +1658,23 @@ construct_runtime!(
 		Tips: pallet_tips = 22,
 
 		// Parachain
-		ParachainInfo: parachain_info::{Pallet, Storage, Config} = 31,
+		ParachainInfo: parachain_info exclude_parts { Call } = 31,
 
 		// Collator. The order of the 4 below are important and shall not change.
 		Authorship: pallet_authorship = 40,
 		CollatorSelection: module_collator_selection = 41,
 		Session: pallet_session = 42,
 		Aura: pallet_aura = 43,
-		AuraExt: cumulus_pallet_aura_ext::{Pallet, Storage, Config} = 44,
+		AuraExt: cumulus_pallet_aura_ext exclude_parts { Call } = 44,
 		SessionManager: module_session_manager = 45,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue = 50,
 		PolkadotXcm: pallet_xcm = 51,
-		CumulusXcm: cumulus_pallet_xcm::{Pallet, Event<T>, Origin} = 52,
+		CumulusXcm: cumulus_pallet_xcm exclude_parts { Call } = 52,
 		DmpQueue: cumulus_pallet_dmp_queue = 53,
 		XTokens: orml_xtokens = 54,
-		UnknownTokens: orml_unknown_tokens::{Pallet, Storage, Event} = 55,
+		UnknownTokens: orml_unknown_tokens exclude_parts { Call } = 55,
 		OrmlXcm: orml_xcm = 56,
 
 		// Governance
@@ -1698,7 +1698,7 @@ construct_runtime!(
 		// ORML Core
 		Auction: orml_auction = 80,
 		Rewards: orml_rewards = 81,
-		OrmlNFT: orml_nft::{Pallet, Storage, Config<T>} = 82,
+		OrmlNFT: orml_nft exclude_parts { Call } = 82,
 
 		// Karura Core
 		Prices: module_prices = 90,
@@ -1725,7 +1725,7 @@ construct_runtime!(
 
 		// Smart contracts
 		EVM: module_evm = 130,
-		EVMBridge: module_evm_bridge::{Pallet} = 131,
+		EVMBridge: module_evm_bridge exclude_parts { Call } = 131,
 		EvmAccounts: module_evm_accounts = 132,
 
 		// Stable asset

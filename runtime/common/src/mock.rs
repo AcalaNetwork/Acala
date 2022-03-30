@@ -238,7 +238,7 @@ frame_support::construct_runtime!(
 		System: frame_system,
 		EVM: module_evm,
 		EvmAccounts: module_evm_accounts,
-		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
+		Tokens: orml_tokens exclude_parts { Call },
 		Balances: pallet_balances,
 		Currencies: orml_currencies,
 		IdleScheduler: module_idle_scheduler,
