@@ -279,7 +279,7 @@ where
 
 			// Use request gas limit only if it less than gas_limit parameter
 			let gas_limit = core::cmp::min(gas_limit.unwrap_or(gas), gas);
-			let storage_limit = storage_limit.unwrap_or_else(MAX_STROAGE_LIMIT);
+			let storage_limit = storage_limit.unwrap_or(MAX_STROAGE_LIMIT);
 			let data = data.map(|d| d.0).unwrap_or_default();
 
 			let balance_value = if let Some(value) = value {
