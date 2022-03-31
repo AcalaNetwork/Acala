@@ -69,22 +69,12 @@ parameter_types!(
 	pub const DisableBlockThreshold: BlockNumber = 6;
 );
 
-pub struct MockBlockNumberProvider;
-
-impl BlockNumberProvider for MockBlockNumberProvider {
-	type BlockNumber = u32;
-
-	fn current_block_number() -> Self::BlockNumber {
-		System::block_number().try_into().unwrap()
-	}
-}
-
 impl module_idle_scheduler::Config for Runtime {
 	type Event = Event;
 	type WeightInfo = ();
 	type Task = ScheduledTasks;
 	type MinimumWeightRemainInBlock = MinimumWeightRemainInBlock;
-	type RelayChainBlockNumberProvider = MockBlockNumberProvider;
+	type RelayChainBlockNumberProvider = System;
 	type DisableBlockThreshold = DisableBlockThreshold;
 }
 
