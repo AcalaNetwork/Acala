@@ -56,7 +56,7 @@ use sp_runtime::{
 	transaction_validity::{
 		InvalidTransaction, TransactionPriority, TransactionValidity, TransactionValidityError, ValidTransaction,
 	},
-	FixedPointNumber, FixedPointOperand, FixedU128, Percent, Perquintill,
+	FixedPointNumber, FixedPointOperand, FixedU128, MultiSignature, Percent, Perquintill,
 };
 use sp_std::prelude::*;
 use support::{DEXManager, PriceProvider, Ratio, SwapLimit, TransactionPayment};
@@ -598,6 +598,18 @@ pub mod module {
 			ensure_signed(origin.clone())?;
 			call.dispatch(origin)
 		}
+
+		/// Fee paid by other account
+		#[pallet::weight(<T as Config>::WeightInfo::disable_charge_fee_pool())]
+		pub fn with_fee_paid_by(
+			origin: OriginFor<T>,
+			call: Box<CallOf<T>>,
+			payer_addr: T::AccountId,
+			payer_sig: MultiSignature,
+		) -> DispatchResultWithPostInfo {
+			ensure_signed(origin.clone())?;
+			call.dispatch(origin)
+		}
 	}
 }
 
@@ -802,6 +814,9 @@ where
 				);
 				Self::swap_from_pool_or_dex(who, custom_fee_amount, *currency_id).map(|_| custom_fee_surplus)
 			}
+			// Some(Call::with_fee_paid_by(call, payer_addr, payer_sig)) => {
+			//
+			// }
 			_ => Self::native_then_alternative_or_default(who, fee),
 		}
 	}
