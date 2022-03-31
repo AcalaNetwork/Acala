@@ -105,7 +105,8 @@ pub mod module {
 				.try_into()
 				.unwrap_or_default();
 			PreviousRelayBlockNumber::<T>::put(previous_relay_block);
-			0
+			// One write and one read
+			T::DbWeight::get().reads_writes(One::one(), One::one())
 		}
 
 		fn on_idle(_n: T::BlockNumber, remaining_weight: Weight) -> Weight {
@@ -127,6 +128,11 @@ pub mod module {
 			} else {
 				Self::do_dispatch_tasks(remaining_weight)
 			}
+		}
+
+		fn on_finalize(_n: T::BlockNumber) {
+			// Don't commit to storage, needed for the case block is full and `on_idle` isn't called
+			PreviousRelayBlockNumber::<T>::kill();
 		}
 	}
 

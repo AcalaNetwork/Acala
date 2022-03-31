@@ -75,7 +75,7 @@ impl BlockNumberProvider for MockBlockNumberProvider {
 	type BlockNumber = u32;
 
 	fn current_block_number() -> Self::BlockNumber {
-		Zero::zero()
+		System::block_number().try_into().unwrap()
 	}
 }
 
