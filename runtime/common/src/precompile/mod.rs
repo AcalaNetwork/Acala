@@ -76,6 +76,10 @@ pub const ORACLE: H160 = H160(hex!("0000000000000000000000000000000000000403"));
 pub const SCHEDULER: H160 = H160(hex!("0000000000000000000000000000000000000404"));
 pub const DEX: H160 = H160(hex!("0000000000000000000000000000000000000405"));
 
+pub fn target_gas_limit(target_gas: Option<u64>) -> Option<u64> {
+	target_gas.map(|x| x.saturating_div(10).saturating_mul(9)) // 90%
+}
+
 pub struct AllPrecompiles<R> {
 	active: BTreeSet<H160>,
 	_marker: PhantomData<R>,
