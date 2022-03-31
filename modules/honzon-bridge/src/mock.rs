@@ -26,7 +26,7 @@ pub use frame_support::{
 	construct_runtime,
 	pallet_prelude::GenesisBuild,
 	parameter_types,
-	traits::{Everything, Nothing},
+	traits::{ConstU128, ConstU32, ConstU64, Everything, Nothing},
 };
 pub use frame_system::{EnsureRoot, EnsureSignedBy, RawOrigin};
 pub use module_honzon_bridge::*;
@@ -45,11 +45,6 @@ pub const ACALA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
 pub const KUSD: CurrencyId = CurrencyId::Token(TokenSymbol::KUSD);
 
-parameter_types!(
-	pub const SomeConst: u64 = 10;
-	pub const BlockHashCount: u32 = 250;
-);
-
 impl frame_system::Config for Runtime {
 	type BaseCallFilter = Everything;
 	type Origin = Origin;
@@ -62,7 +57,7 @@ impl frame_system::Config for Runtime {
 	type Lookup = sp_runtime::traits::IdentityLookup<Self::AccountId>;
 	type Header = sp_runtime::testing::Header;
 	type Event = Event;
-	type BlockHashCount = BlockHashCount;
+	type BlockHashCount = ConstU64<250>;
 	type BlockWeights = ();
 	type BlockLength = ();
 	type DbWeight = ();
@@ -94,15 +89,11 @@ impl orml_tokens::Config for Runtime {
 	type DustRemovalWhitelist = Nothing;
 }
 
-parameter_types! {
-	pub const NativeTokenExistentialDeposit: Balance = 0;
-}
-
 impl pallet_balances::Config for Runtime {
 	type Balance = Balance;
 	type DustRemoval = ();
 	type Event = Event;
-	type ExistentialDeposit = NativeTokenExistentialDeposit;
+	type ExistentialDeposit = ConstU128<0>;
 	type AccountStore = frame_system::Pallet<Runtime>;
 	type MaxLocks = ();
 	type WeightInfo = ();

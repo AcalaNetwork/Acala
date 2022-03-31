@@ -33,7 +33,7 @@ fn authorize_should_work() {
 		System::set_block_number(1);
 		assert_eq!(PalletBalances::reserved_balance(ALICE), 0);
 		assert_ok!(HonzonModule::authorize(Origin::signed(ALICE), BTC, BOB));
-		assert_eq!(PalletBalances::reserved_balance(ALICE), DepositPerAuthorization::get());
+		assert_eq!(PalletBalances::reserved_balance(ALICE), 100);
 		System::assert_last_event(Event::HonzonModule(crate::Event::Authorization {
 			authorizer: ALICE,
 			authorizee: BOB,

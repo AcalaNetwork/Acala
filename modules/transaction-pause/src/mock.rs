@@ -22,8 +22,8 @@
 
 use super::*;
 use frame_support::{
-	construct_runtime, ord_parameter_types, parameter_types,
-	traits::{Everything, Nothing},
+	construct_runtime, ord_parameter_types,
+	traits::{ConstU128, ConstU32, ConstU64, Everything, Nothing},
 };
 use frame_system::EnsureSignedBy;
 use orml_traits::parameter_type_with_key;
@@ -39,10 +39,6 @@ mod transaction_pause {
 	pub use super::super::*;
 }
 
-parameter_types! {
-	pub const BlockHashCount: u64 = 250;
-}
-
 impl frame_system::Config for Runtime {
 	type Origin = Origin;
 	type Index = u64;
@@ -54,7 +50,7 @@ impl frame_system::Config for Runtime {
 	type Lookup = IdentityLookup<AccountId>;
 	type Header = Header;
 	type Event = Event;
-	type BlockHashCount = BlockHashCount;
+	type BlockHashCount = ConstU64<250>;
 	type BlockWeights = ();
 	type BlockLength = ();
 	type Version = ();
@@ -70,19 +66,14 @@ impl frame_system::Config for Runtime {
 	type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
 
-parameter_types! {
-	pub const NativeTokenExistentialDeposit: Balance = 10;
-	pub const MaxReserves: u32 = 50;
-}
-
 impl pallet_balances::Config for Runtime {
 	type Balance = Balance;
 	type DustRemoval = ();
 	type Event = Event;
-	type ExistentialDeposit = NativeTokenExistentialDeposit;
+	type ExistentialDeposit = ConstU128<10>;
 	type AccountStore = System;
 	type MaxLocks = ();
-	type MaxReserves = MaxReserves;
+	type MaxReserves = ConstU32<50>;
 	type ReserveIdentifier = ();
 	type WeightInfo = ();
 }

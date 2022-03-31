@@ -173,15 +173,11 @@ impl orml_tokens::Config for NoFeeRuntime {
 	type DustRemovalWhitelist = Nothing;
 }
 
-parameter_types! {
-	pub const NativeTokenExistentialDeposit: Balance = 0;
-}
-
 impl pallet_balances::Config for NoFeeRuntime {
 	type Balance = Balance;
 	type DustRemoval = ();
 	type Event = Event;
-	type ExistentialDeposit = NativeTokenExistentialDeposit;
+	type ExistentialDeposit = ConstU128<0>;
 	type AccountStore = frame_system::Pallet<NoFeeRuntime>;
 	type MaxLocks = ();
 	type WeightInfo = ();
@@ -217,29 +213,13 @@ parameter_types! {
 	pub const MockXcmAccountId: AccountId = MOCK_XCM_ACCOUNT_ID;
 	pub DefaultExchangeRate: ExchangeRate = ExchangeRate::saturating_from_rational(1, 10);
 	pub const MaxRewardPerEra: Permill = Permill::zero();
-	pub MintFee: Balance = 0;
 	pub BaseWithdrawFee: Permill = Permill::zero(); // 0.1%
-	pub HomaUnbondFee: Balance = 0;
 	pub const ParachainAccount: AccountId = DAVE;
-	pub const MaximumRedeemRequestMatchesForMint: u32 = 100;
-	pub static MockRelayBlockNumberProvider: u64 = 0;
-	pub const RelayChainUnbondingSlashingSpans: u32 = 5;
-	pub const MaxScheduledUnbonds: u32 = 14;
-	pub const SubAccountIndex: u16 = 0;
 	pub ParachainId: ParaId = ParaId::from(PARACHAIN_ID);
-	pub const StakingUpdateFrequency: BlockNumber = 100;
 }
 
 ord_parameter_types! {
 	pub const Root: AccountId = DAVE;
-}
-
-impl BlockNumberProvider for MockRelayBlockNumberProvider {
-	type BlockNumber = BlockNumber;
-
-	fn current_block_number() -> Self::BlockNumber {
-		Self::get()
-	}
 }
 
 impl Config for NoFeeRuntime {
@@ -253,19 +233,19 @@ impl Config for NoFeeRuntime {
 	type MinimumRedeemThreshold = MinimumRedeemThreshold;
 	type XcmTransfer = MockXcm;
 	type SovereignSubAccountLocation = MockXcmDestination;
-	type SubAccountIndex = SubAccountIndex;
+	type SubAccountIndex = ConstU16<0>;
 	type DefaultExchangeRate = DefaultExchangeRate;
 	type MaxRewardPerEra = MaxRewardPerEra;
-	type MintFee = MintFee;
+	type MintFee = ConstU128<0>;
 	type RelayChainCallBuilder = RelayChainCallBuilder<NoFeeRuntime, ParachainId>;
 	type BaseWithdrawFee = BaseWithdrawFee;
-	type HomaUnbondFee = HomaUnbondFee;
+	type HomaUnbondFee = ConstU128<0>;
 	type RelayChainBlockNumber = MockRelayBlockNumberProvider;
 	type ParachainAccount = ParachainAccount;
-	type MaximumRedeemRequestMatchesForMint = MaximumRedeemRequestMatchesForMint;
-	type RelayChainUnbondingSlashingSpans = RelayChainUnbondingSlashingSpans;
-	type MaxScheduledUnbonds = MaxScheduledUnbonds;
-	type StakingUpdateFrequency = StakingUpdateFrequency;
+	type MaximumRedeemRequestMatchesForMint = ConstU32<100>;
+	type RelayChainUnbondingSlashingSpans = ConstU32<5>;
+	type MaxScheduledUnbonds = ConstU32<14>;
+	type StakingUpdateFrequency = ConstU64<100>;
 }
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<NoFeeRuntime>;
