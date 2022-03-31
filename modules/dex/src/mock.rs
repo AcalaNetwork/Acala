@@ -23,7 +23,7 @@
 use super::*;
 use frame_support::{
 	construct_runtime, ord_parameter_types, parameter_types,
-	traits::{Everything, Nothing},
+	traits::{ConstU32, ConstU64, Everything, Nothing},
 };
 use frame_system::EnsureSignedBy;
 use orml_traits::{parameter_type_with_key, MultiReservableCurrency};
@@ -53,10 +53,6 @@ mod dex {
 	pub use super::super::*;
 }
 
-parameter_types! {
-	pub const BlockHashCount: BlockNumber = 250;
-}
-
 impl frame_system::Config for Runtime {
 	type Origin = Origin;
 	type Index = u64;
@@ -68,7 +64,7 @@ impl frame_system::Config for Runtime {
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
 	type Event = Event;
-	type BlockHashCount = BlockHashCount;
+	type BlockHashCount = ConstU64<250>;
 	type BlockWeights = ();
 	type BlockLength = ();
 	type Version = ();
@@ -120,9 +116,7 @@ ord_parameter_types! {
 
 parameter_types! {
 	pub const GetExchangeFee: (u32, u32) = (1, 100);
-	pub const TradingPathLimit: u32 = 3;
 	pub const DEXPalletId: PalletId = PalletId(*b"aca/dexm");
-	pub const ExtendedProvisioningBlocks: BlockNumber = 2000;
 }
 
 thread_local! {
@@ -143,13 +137,13 @@ impl Config for Runtime {
 	type Event = Event;
 	type Currency = Tokens;
 	type GetExchangeFee = GetExchangeFee;
-	type TradingPathLimit = TradingPathLimit;
+	type TradingPathLimit = ConstU32<3>;
 	type PalletId = DEXPalletId;
 	type Erc20InfoMapping = MockErc20InfoMapping;
 	type WeightInfo = ();
 	type DEXIncentives = MockDEXIncentives;
 	type ListingOrigin = EnsureSignedBy<ListingOrigin, AccountId>;
-	type ExtendedProvisioningBlocks = ExtendedProvisioningBlocks;
+	type ExtendedProvisioningBlocks = ConstU64<2000>;
 	type OnLiquidityPoolUpdated = MockOnLiquidityPoolUpdated;
 }
 

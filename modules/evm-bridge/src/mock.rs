@@ -21,7 +21,10 @@
 #![cfg(test)]
 
 use super::*;
-use frame_support::{assert_ok, construct_runtime, ord_parameter_types, parameter_types, traits::Everything};
+use frame_support::{
+	assert_ok, construct_runtime, ord_parameter_types, parameter_types,
+	traits::{ConstU128, ConstU32, ConstU64, Everything},
+};
 use frame_system::EnsureSignedBy;
 use primitives::{evm::convert_decimals_to_evm, evm::EvmAddress, ReserveIdentifier};
 use sp_core::{crypto::AccountId32, H256};
@@ -37,10 +40,6 @@ mod evm_bridge {
 	pub use super::super::*;
 }
 
-parameter_types! {
-	pub const BlockHashCount: u64 = 250;
-}
-
 impl frame_system::Config for Runtime {
 	type BaseCallFilter = Everything;
 	type Origin = Origin;
@@ -53,7 +52,7 @@ impl frame_system::Config for Runtime {
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
 	type Event = Event;
-	type BlockHashCount = BlockHashCount;
+	type BlockHashCount = ConstU64<250>;
 	type DbWeight = ();
 	type BlockWeights = ();
 	type BlockLength = ();
@@ -68,36 +67,26 @@ impl frame_system::Config for Runtime {
 	type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
 
-parameter_types! {
-	pub const ExistentialDeposit: u64 = 1;
-	pub const MaxReserves: u32 = 50;
-}
-
 impl pallet_balances::Config for Runtime {
 	type Balance = Balance;
 	type DustRemoval = ();
 	type Event = Event;
-	type ExistentialDeposit = ExistentialDeposit;
+	type ExistentialDeposit = ConstU128<1>;
 	type AccountStore = System;
 	type MaxLocks = ();
-	type MaxReserves = MaxReserves;
+	type MaxReserves = ConstU32<50>;
 	type ReserveIdentifier = ReserveIdentifier;
 	type WeightInfo = ();
-}
-
-parameter_types! {
-	pub const MinimumPeriod: u64 = 1000;
 }
 
 impl pallet_timestamp::Config for Runtime {
 	type Moment = u64;
 	type OnTimestampSet = ();
-	type MinimumPeriod = MinimumPeriod;
+	type MinimumPeriod = ConstU64<1000>;
 	type WeightInfo = ();
 }
 
 parameter_types! {
-	pub const NewContractExtraBytes: u32 = 1;
 	pub NetworkContractSource: EvmAddress = alice_evm_addr();
 }
 
@@ -106,18 +95,15 @@ ord_parameter_types! {
 	pub const TreasuryAccount: AccountId32 = AccountId32::from([2u8; 32]);
 	pub const NetworkContractAccount: AccountId32 = AccountId32::from([0u8; 32]);
 	pub const StorageDepositPerByte: u128 = convert_decimals_to_evm(10);
-	pub const TxFeePerGas: u128 = 10;
-	pub const DeveloperDeposit: u64 = 1000;
-	pub const PublicationFee: u64 = 200;
 }
 
 impl module_evm::Config for Runtime {
 	type AddressMapping = MockAddressMapping;
 	type Currency = Balances;
 	type TransferAll = ();
-	type NewContractExtraBytes = NewContractExtraBytes;
+	type NewContractExtraBytes = ConstU32<1>;
 	type StorageDepositPerByte = StorageDepositPerByte;
-	type TxFeePerGas = TxFeePerGas;
+	type TxFeePerGas = ConstU128<10>;
 	type Event = Event;
 	type PrecompilesType = ();
 	type PrecompilesValue = ();
@@ -127,8 +113,8 @@ impl module_evm::Config for Runtime {
 	type NetworkContractOrigin = EnsureSignedBy<NetworkContractAccount, AccountId32>;
 	type NetworkContractSource = NetworkContractSource;
 
-	type DeveloperDeposit = DeveloperDeposit;
-	type PublicationFee = PublicationFee;
+	type DeveloperDeposit = ConstU128<1000>;
+	type PublicationFee = ConstU128<200>;
 	type TreasuryAccount = TreasuryAccount;
 	type FreePublicationOrigin = EnsureSignedBy<CouncilAccount, AccountId32>;
 

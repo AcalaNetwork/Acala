@@ -22,7 +22,7 @@
 
 use frame_support::{
 	assert_ok, ord_parameter_types, parameter_types,
-	traits::{Everything, GenesisBuild, Nothing},
+	traits::{ConstU128, ConstU32, ConstU64, Everything, GenesisBuild, Nothing},
 	PalletId,
 };
 use orml_traits::parameter_type_with_key;
@@ -31,7 +31,7 @@ use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
 	traits::{AccountIdConversion, IdentityLookup},
-	AccountId32, Perbill,
+	AccountId32,
 };
 use support::{mocks::MockAddressMapping, AddressMapping};
 
@@ -41,13 +41,6 @@ use sp_core::{H160, U256};
 use sp_std::str::FromStr;
 
 pub use crate as currencies;
-
-parameter_types! {
-	pub const BlockHashCount: u64 = 250;
-	pub const MaximumBlockWeight: u32 = 1024;
-	pub const MaximumBlockLength: u32 = 2 * 1024;
-	pub const AvailableBlockRatio: Perbill = Perbill::one();
-}
 
 pub type AccountId = AccountId32;
 impl frame_system::Config for Runtime {
@@ -61,7 +54,7 @@ impl frame_system::Config for Runtime {
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
 	type Event = Event;
-	type BlockHashCount = BlockHashCount;
+	type BlockHashCount = ConstU64<250>;
 	type BlockWeights = ();
 	type BlockLength = ();
 	type Version = ();
@@ -88,7 +81,6 @@ parameter_type_with_key! {
 
 parameter_types! {
 	pub DustAccount: AccountId = PalletId(*b"orml/dst").into_account();
-	pub const MaxLocks: u32 = 100;
 }
 
 impl tokens::Config for Runtime {
@@ -99,7 +91,7 @@ impl tokens::Config for Runtime {
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = tokens::TransferDust<Runtime, DustAccount>;
 	type WeightInfo = ();
-	type MaxLocks = MaxLocks;
+	type MaxLocks = ConstU32<100>;
 	type DustRemovalWhitelist = Nothing;
 }
 
@@ -111,37 +103,28 @@ parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = NATIVE_CURRENCY_ID;
 }
 
-parameter_types! {
-	pub const ExistentialDeposit: u64 = 2;
-	pub const MaxReserves: u32 = 50;
-}
-
 impl pallet_balances::Config for Runtime {
 	type Balance = Balance;
 	type DustRemoval = ();
 	type Event = Event;
-	type ExistentialDeposit = ExistentialDeposit;
+	type ExistentialDeposit = ConstU128<2>;
 	type AccountStore = System;
 	type MaxLocks = ();
-	type MaxReserves = MaxReserves;
+	type MaxReserves = ConstU32<50>;
 	type ReserveIdentifier = ReserveIdentifier;
 	type WeightInfo = ();
 }
 
 pub type PalletBalances = pallet_balances::Pallet<Runtime>;
 
-parameter_types! {
-	pub const MinimumPeriod: u64 = 1000;
-}
 impl pallet_timestamp::Config for Runtime {
 	type Moment = u64;
 	type OnTimestampSet = ();
-	type MinimumPeriod = MinimumPeriod;
+	type MinimumPeriod = ConstU64<1000>;
 	type WeightInfo = ();
 }
 
 parameter_types! {
-	pub const NewContractExtraBytes: u32 = 1;
 	pub NetworkContractSource: H160 = alice_evm_addr();
 }
 
@@ -159,7 +142,7 @@ impl module_evm::Config for Runtime {
 	type AddressMapping = MockAddressMapping;
 	type Currency = PalletBalances;
 	type TransferAll = ();
-	type NewContractExtraBytes = NewContractExtraBytes;
+	type NewContractExtraBytes = ConstU32<1>;
 	type StorageDepositPerByte = StorageDepositPerByte;
 	type TxFeePerGas = TxFeePerGas;
 	type Event = Event;
