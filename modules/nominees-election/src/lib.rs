@@ -50,8 +50,8 @@ pub mod module {
 	use super::*;
 
 	#[pallet::config]
-	pub trait Config<I: 'static = ()>: frame_system::Config {
-		type Event: From<Event<Self, I>> + IsType<<Self as frame_system::Config>::Event>;
+	pub trait Config: frame_system::Config {
+		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 		type Currency: BasicLockableCurrency<Self::AccountId, Moment = Self::BlockNumber, Balance = Balance>;
 		type NomineeId: Parameter + Member + MaybeSerializeDeserialize + Debug + MaybeDisplay + Ord;
 		#[pallet::constant]
@@ -69,10 +69,10 @@ pub mod module {
 		type WeightInfo: WeightInfo;
 	}
 
-	pub type BondingLedgerOf<T, I> = bonding::BondingLedgerOf<Pallet<T, I>>;
+	pub type BondingLedgerOf<T> = bonding::BondingLedgerOf<Pallet<T>>;
 
 	#[pallet::error]
-	pub enum Error<T, I = ()> {
+	pub enum Error<T> {
 		BelowMinBondThreshold,
 		InvalidTargetsLength,
 		MaxUnlockChunksExceeded,
@@ -83,7 +83,7 @@ pub mod module {
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
-	pub enum Event<T: Config<I>, I: 'static = ()> {
+	pub enum Event<T: Config> {
 		Rebond { who: T::AccountId, amount: Balance },
 	}
 
@@ -92,54 +92,47 @@ pub mod module {
 	/// Nominations: map AccountId => Vec<NomineeId>
 	#[pallet::storage]
 	#[pallet::getter(fn nominations)]
-	pub type Nominations<T: Config<I>, I: 'static = ()> = StorageMap<
-		_,
-		Twox64Concat,
-		T::AccountId,
-		BoundedVec<<T as Config<I>>::NomineeId, T::NominateesCount>,
-		ValueQuery,
-	>;
+	pub type Nominations<T: Config> =
+		StorageMap<_, Twox64Concat, T::AccountId, BoundedVec<<T as Config>::NomineeId, T::NominateesCount>, ValueQuery>;
 
 	/// The nomination bonding ledger.
 	///
 	/// Ledger: map AccountId => BondingLedger
 	#[pallet::storage]
 	#[pallet::getter(fn ledger)]
-	pub type Ledger<T: Config<I>, I: 'static = ()> =
-		StorageMap<_, Twox64Concat, T::AccountId, BondingLedgerOf<T, I>, OptionQuery>;
+	pub type Ledger<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, BondingLedgerOf<T>, OptionQuery>;
 
 	/// The total voting value for nominees.
 	///
 	/// Votes: map NomineeId => Balance
 	#[pallet::storage]
 	#[pallet::getter(fn votes)]
-	pub type Votes<T: Config<I>, I: 'static = ()> =
-		StorageMap<_, Twox64Concat, <T as Config<I>>::NomineeId, Balance, ValueQuery>;
+	pub type Votes<T: Config> = StorageMap<_, Twox64Concat, <T as Config>::NomineeId, Balance, ValueQuery>;
 
 	/// The elected nominees.
 	///
 	/// Nominees: Vec<NomineeId>
 	#[pallet::storage]
 	#[pallet::getter(fn nominees)]
-	pub type Nominees<T: Config<I>, I: 'static = ()> =
-		StorageValue<_, BoundedVec<<T as Config<I>>::NomineeId, T::NominateesCount>, ValueQuery>;
+	pub type Nominees<T: Config> =
+		StorageValue<_, BoundedVec<<T as Config>::NomineeId, T::NominateesCount>, ValueQuery>;
 
 	/// Current era index.
 	///
 	/// CurrentEra: EraIndex
 	#[pallet::storage]
 	#[pallet::getter(fn current_era)]
-	pub type CurrentEra<T: Config<I>, I: 'static = ()> = StorageValue<_, EraIndex, ValueQuery>;
+	pub type CurrentEra<T: Config> = StorageValue<_, EraIndex, ValueQuery>;
 
 	#[pallet::pallet]
 	#[pallet::without_storage_info]
-	pub struct Pallet<T, I = ()>(PhantomData<(T, I)>);
+	pub struct Pallet<T>(PhantomData<T>);
 
 	#[pallet::hooks]
-	impl<T: Config<I>, I: 'static> Hooks<T::BlockNumber> for Pallet<T, I> {}
+	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {}
 
 	#[pallet::call]
-	impl<T: Config<I>, I: 'static> Pallet<T, I> {
+	impl<T: Config> Pallet<T> {
 		#[pallet::weight(T::WeightInfo::bond())]
 		#[transactional]
 		pub fn bond(origin: OriginFor<T>, #[pallet::compact] amount: Balance) -> DispatchResult {
@@ -207,13 +200,13 @@ pub mod module {
 		pub fn nominate(origin: OriginFor<T>, targets: Vec<T::NomineeId>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			let ledger = Self::ledger(&who).ok_or(Error::<T, I>::NotBonded)?;
+			let ledger = Self::ledger(&who).ok_or(Error::<T>::NotBonded)?;
 
-			let bounded_targets: BoundedVec<<T as Config<I>>::NomineeId, <T as Config<I>>::NominateesCount> = {
+			let bounded_targets: BoundedVec<<T as Config>::NomineeId, <T as Config>::NominateesCount> = {
 				if targets.is_empty() {
-					Err(Error::<T, I>::InvalidTargetsLength)
+					Err(Error::<T>::InvalidTargetsLength)
 				} else {
-					targets.try_into().map_err(|_| Error::<T, I>::InvalidTargetsLength)
+					targets.try_into().map_err(|_| Error::<T>::InvalidTargetsLength)
 				}
 			}?;
 
@@ -225,14 +218,14 @@ pub mod module {
 				.expect("This only reduce size of the vector; qed");
 
 			for validator in bounded_targets.iter() {
-				ensure!(T::NomineeFilter::contains(validator), Error::<T, I>::InvalidNominee);
+				ensure!(T::NomineeFilter::contains(validator), Error::<T>::InvalidNominee);
 			}
 
 			let old_nominations = Self::nominations(&who);
 			let old_active = ledger.active();
 
 			Self::update_votes(old_active, &old_nominations, old_active, &bounded_targets);
-			Nominations::<T, I>::insert(&who, &bounded_targets);
+			Nominations::<T>::insert(&who, &bounded_targets);
 			Ok(())
 		}
 
@@ -241,20 +234,20 @@ pub mod module {
 		pub fn chill(origin: OriginFor<T>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			let ledger = Self::ledger(&who).ok_or(Error::<T, I>::NotBonded)?;
+			let ledger = Self::ledger(&who).ok_or(Error::<T>::NotBonded)?;
 
 			let old_nominations = Self::nominations(&who);
 			let old_active = ledger.active();
 
 			Self::update_votes(old_active, &old_nominations, Zero::zero(), &[]);
-			Nominations::<T, I>::remove(&who);
+			Nominations::<T>::remove(&who);
 
 			Ok(())
 		}
 	}
 }
 
-impl<T: Config<I>, I: 'static> Pallet<T, I> {
+impl<T: Config> Pallet<T> {
 	fn update_votes(
 		old_active: Balance,
 		old_nominations: &[T::NomineeId],
@@ -263,23 +256,23 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	) {
 		if !old_active.is_zero() && !old_nominations.is_empty() {
 			for account in old_nominations {
-				Votes::<T, I>::mutate(account, |balance| *balance = balance.saturating_sub(old_active));
+				Votes::<T>::mutate(account, |balance| *balance = balance.saturating_sub(old_active));
 			}
 		}
 
 		if !new_active.is_zero() && !new_nominations.is_empty() {
 			for account in new_nominations {
-				Votes::<T, I>::mutate(account, |balance| *balance = balance.saturating_add(new_active));
+				Votes::<T>::mutate(account, |balance| *balance = balance.saturating_add(new_active));
 			}
 		}
 	}
 
 	fn rebalance() {
-		let mut voters = Votes::<T, I>::iter().collect::<Vec<(T::NomineeId, Balance)>>();
+		let mut voters = Votes::<T>::iter().collect::<Vec<(T::NomineeId, Balance)>>();
 
 		voters.sort_by(|a, b| b.1.cmp(&a.1));
 
-		let new_nominees: BoundedVec<<T as Config<I>>::NomineeId, <T as Config<I>>::NominateesCount> = voters
+		let new_nominees: BoundedVec<<T as Config>::NomineeId, <T as Config>::NominateesCount> = voters
 			.into_iter()
 			.take(T::NominateesCount::get().saturated_into())
 			.map(|(nominee, _)| nominee)
@@ -287,37 +280,37 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			.try_into()
 			.expect("Only took from voters");
 
-		Nominees::<T, I>::put(new_nominees);
+		Nominees::<T>::put(new_nominees);
 	}
 }
 
-impl<T: Config<I>, I: 'static> NomineesProvider<T::NomineeId> for Pallet<T, I> {
+impl<T: Config> NomineesProvider<T::NomineeId> for Pallet<T> {
 	fn nominees() -> Vec<T::NomineeId> {
-		Nominees::<T, I>::get().into_inner()
+		Nominees::<T>::get().into_inner()
 	}
 }
 
-impl<T: Config<I>, I: 'static> OnNewEra<EraIndex> for Pallet<T, I> {
+impl<T: Config> OnNewEra<EraIndex> for Pallet<T> {
 	fn on_new_era(era: EraIndex) {
-		CurrentEra::<T, I>::put(era);
+		CurrentEra::<T>::put(era);
 		Self::rebalance();
 	}
 }
 
-impl<T: Config<I>, I: 'static> BondingController for Pallet<T, I> {
+impl<T: Config> BondingController for Pallet<T> {
 	type MinBond = T::MinBond;
 	type MaxUnbondingChunks = T::MaxUnbondingChunks;
 	type Moment = EraIndex;
 	type AccountId = T::AccountId;
 
-	type Ledger = Ledger<T, I>;
+	type Ledger = Ledger<T>;
 
-	fn available_balance(who: &Self::AccountId, ledger: &BondingLedgerOf<T, I>) -> Balance {
+	fn available_balance(who: &Self::AccountId, ledger: &BondingLedgerOf<T>) -> Balance {
 		let free_balance = T::Currency::free_balance(who);
 		free_balance.saturating_sub(ledger.total())
 	}
 
-	fn apply_ledger(who: &Self::AccountId, ledger: &BondingLedgerOf<T, I>) -> DispatchResult {
+	fn apply_ledger(who: &Self::AccountId, ledger: &BondingLedgerOf<T>) -> DispatchResult {
 		if ledger.is_empty() {
 			let res = T::Currency::remove_lock(T::PalletId::get(), who);
 			if let Err(e) = res {
@@ -330,7 +323,7 @@ impl<T: Config<I>, I: 'static> BondingController for Pallet<T, I> {
 				debug_assert!(false);
 			}
 
-			Nominations::<T, I>::remove(who);
+			Nominations::<T>::remove(who);
 
 			res
 		} else {
@@ -350,9 +343,9 @@ impl<T: Config<I>, I: 'static> BondingController for Pallet<T, I> {
 
 	fn convert_error(err: bonding::Error) -> DispatchError {
 		match err {
-			bonding::Error::BelowMinBondThreshold => Error::<T, I>::BelowMinBondThreshold.into(),
-			bonding::Error::MaxUnlockChunksExceeded => Error::<T, I>::MaxUnlockChunksExceeded.into(),
-			bonding::Error::NotBonded => Error::<T, I>::NotBonded.into(),
+			bonding::Error::BelowMinBondThreshold => Error::<T>::BelowMinBondThreshold.into(),
+			bonding::Error::MaxUnlockChunksExceeded => Error::<T>::MaxUnlockChunksExceeded.into(),
+			bonding::Error::NotBonded => Error::<T>::NotBonded.into(),
 		}
 	}
 }
