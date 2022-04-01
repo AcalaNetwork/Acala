@@ -1133,6 +1133,7 @@ impl module_dex::Config for Runtime {
 	type WeightInfo = weights::module_dex::WeightInfo<Runtime>;
 	type ListingOrigin = EnsureRootOrHalfGeneralCouncil;
 	type ExtendedProvisioningBlocks = ExtendedProvisioningBlocks;
+	type StableAsset = StableAsset;
 	type OnLiquidityPoolUpdated = ();
 }
 
@@ -1642,6 +1643,7 @@ parameter_types! {
 	pub const FeePrecision: u128 = 10000000000u128; // 10 decimals
 	pub const APrecision: u128 = 100u128; // 2 decimals
 	pub const PoolAssetLimit: u32 = 5u32;
+	pub const SwapExactOverAmount: u128 = 100u128;
 	pub const GetStableAssetStakingCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::LKSM);
 }
 
@@ -1707,6 +1709,7 @@ impl nutsfinance_stable_asset::Config for Runtime {
 	type FeePrecision = FeePrecision;
 	type APrecision = APrecision;
 	type PoolAssetLimit = PoolAssetLimit;
+	type SwapExactOverAmount = SwapExactOverAmount;
 	type WeightInfo = weights::nutsfinance_stable_asset::WeightInfo<Runtime>;
 	type ListingOrigin = EnsureRootOrHalfGeneralCouncil;
 	type EnsurePoolAssetId = EnsurePoolAssetId;

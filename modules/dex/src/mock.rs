@@ -32,6 +32,7 @@ use sp_core::H256;
 use sp_runtime::{testing::Header, traits::IdentityLookup};
 use sp_std::cell::RefCell;
 use support::mocks::MockErc20InfoMapping;
+use support::mocks::MockStableAsset;
 
 pub type BlockNumber = u64;
 pub type AccountId = u128;
@@ -151,6 +152,7 @@ impl Config for Runtime {
 	type ListingOrigin = EnsureSignedBy<ListingOrigin, AccountId>;
 	type ExtendedProvisioningBlocks = ExtendedProvisioningBlocks;
 	type OnLiquidityPoolUpdated = MockOnLiquidityPoolUpdated;
+	type StableAsset = MockStableAsset<CurrencyId, Balance, AccountId, BlockNumber>;
 }
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
