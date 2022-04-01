@@ -24,7 +24,7 @@ use crate as session_manager;
 use frame_support::{
 	construct_runtime,
 	pallet_prelude::GenesisBuild,
-	traits::{ConstU64, Everything},
+	traits::{ConstU32, ConstU64, Everything},
 };
 use sp_runtime::{testing::UintAuthorityId, traits::OpaqueKeys, RuntimeAppPublic};
 
@@ -52,7 +52,7 @@ impl frame_system::Config for Runtime {
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
 	type OnSetCode = ();
-	type MaxConsumers = frame_support::traits::ConstU32<16>;
+	type MaxConsumers = ConstU32<16>;
 }
 
 sp_runtime::impl_opaque_keys! {

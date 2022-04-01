@@ -22,7 +22,10 @@ use crate::{AllPrecompiles, Ratio, RuntimeBlockWeights, Weight};
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	ord_parameter_types, parameter_types,
-	traits::{EqualPrivilegeOnly, Everything, InstanceFilter, Nothing, OnFinalize, OnInitialize, SortedMembers},
+	traits::{
+		ConstU128, ConstU32, ConstU64, EqualPrivilegeOnly, Everything, InstanceFilter, Nothing, OnFinalize,
+		OnInitialize, SortedMembers,
+	},
 	weights::IdentityFee,
 	PalletId, RuntimeDebug,
 };
@@ -52,9 +55,6 @@ type Key = CurrencyId;
 pub type Price = FixedU128;
 type Balance = u128;
 
-parameter_types! {
-	pub const BlockHashCount: u32 = 250;
-}
 impl frame_system::Config for Test {
 	type BaseCallFilter = Everything;
 	type BlockWeights = RuntimeBlockWeights;
@@ -69,7 +69,7 @@ impl frame_system::Config for Test {
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
 	type Event = Event;
-	type BlockHashCount = BlockHashCount;
+	type BlockHashCount = ConstU32<250>;
 	type DbWeight = frame_support::weights::constants::RocksDbWeight;
 	type Version = ();
 	type PalletInfo = PalletInfo;
@@ -79,15 +79,12 @@ impl frame_system::Config for Test {
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
 	type OnSetCode = ();
-	type MaxConsumers = frame_support::traits::ConstU32<16>;
+	type MaxConsumers = ConstU32<16>;
 }
 
 parameter_types! {
-	pub const MinimumCount: u32 = 1;
-	pub const ExpiresIn: u32 = 600;
 	pub const RootOperatorAccountId: AccountId = ALICE;
 	pub OracleMembers: Vec<AccountId> = vec![ALICE, BOB, EVA];
-	pub const MaxHasDispatchedSize: u32 = 40;
 }
 
 pub struct Members;
@@ -101,14 +98,14 @@ impl SortedMembers<AccountId> for Members {
 impl orml_oracle::Config for Test {
 	type Event = Event;
 	type OnNewData = ();
-	type CombineData = orml_oracle::DefaultCombineData<Self, MinimumCount, ExpiresIn>;
+	type CombineData = orml_oracle::DefaultCombineData<Self, ConstU32<1>, ConstU64<600>>;
 	type Time = Timestamp;
 	type OracleKey = Key;
 	type OracleValue = Price;
 	type RootOperatorAccountId = RootOperatorAccountId;
 	type Members = Members;
 	type WeightInfo = ();
-	type MaxHasDispatchedSize = MaxHasDispatchedSize;
+	type MaxHasDispatchedSize = ConstU32<40>;
 }
 
 impl pallet_timestamp::Config for Test {
@@ -136,20 +133,15 @@ impl orml_tokens::Config for Test {
 	type DustRemovalWhitelist = Nothing;
 }
 
-parameter_types! {
-	pub const ExistentialDeposit: Balance = 1;
-	pub const MaxReserves: u32 = 50;
-}
-
 impl pallet_balances::Config for Test {
 	type Balance = Balance;
 	type DustRemoval = ();
 	type Event = Event;
-	type ExistentialDeposit = ExistentialDeposit;
+	type ExistentialDeposit = ConstU128<1>;
 	type AccountStore = System;
 	type WeightInfo = ();
 	type MaxLocks = ();
-	type MaxReserves = MaxReserves;
+	type MaxReserves = ConstU32<50>;
 	type ReserveIdentifier = ReserveIdentifier;
 }
 
@@ -197,38 +189,25 @@ define_combined_task! {
 	}
 }
 
-parameter_types!(
-	pub MinimumWeightRemainInBlock: Weight = u64::MIN;
-);
-
 impl module_idle_scheduler::Config for Test {
 	type Event = Event;
 	type WeightInfo = ();
 	type Task = ScheduledTasks;
-	type MinimumWeightRemainInBlock = MinimumWeightRemainInBlock;
+	type MinimumWeightRemainInBlock = ConstU64<0>;
 }
 
 parameter_types! {
-	pub const CreateClassDeposit: Balance = 200;
-	pub const CreateTokenDeposit: Balance = 100;
-	pub const DataDepositPerByte: Balance = 10;
 	pub const NftPalletId: PalletId = PalletId(*b"aca/aNFT");
-	pub MaxAttributesBytes: u32 = 2048;
 }
 impl module_nft::Config for Test {
 	type Event = Event;
 	type Currency = Balances;
-	type CreateClassDeposit = CreateClassDeposit;
-	type CreateTokenDeposit = CreateTokenDeposit;
-	type DataDepositPerByte = DataDepositPerByte;
+	type CreateClassDeposit = ConstU128<200>;
+	type CreateTokenDeposit = ConstU128<100>;
+	type DataDepositPerByte = ConstU128<10>;
 	type PalletId = NftPalletId;
-	type MaxAttributesBytes = MaxAttributesBytes;
+	type MaxAttributesBytes = ConstU32<2048>;
 	type WeightInfo = ();
-}
-
-parameter_types! {
-	pub MaxClassMetadata: u32 = 1024;
-	pub MaxTokenMetadata: u32 = 1024;
 }
 
 impl orml_nft::Config for Test {
@@ -236,17 +215,13 @@ impl orml_nft::Config for Test {
 	type TokenId = u64;
 	type ClassData = module_nft::ClassData<Balance>;
 	type TokenData = module_nft::TokenData<Balance>;
-	type MaxClassMetadata = MaxClassMetadata;
-	type MaxTokenMetadata = MaxTokenMetadata;
+	type MaxClassMetadata = ConstU32<1024>;
+	type MaxTokenMetadata = ConstU32<1024>;
 }
 
 parameter_types! {
-	pub const TransactionByteFee: Balance = 10;
 	pub const GetStableCurrencyId: CurrencyId = AUSD;
 	pub MaxSwapSlippageCompareToOracle: Ratio = Ratio::one();
-	pub OperationalFeeMultiplier: u64 = 5;
-	pub TipPerWeightStep: Balance = 1;
-	pub MaxTipsOfPriority: Balance = 1000;
 	pub const TreasuryPalletId: PalletId = PalletId(*b"aca/trsy");
 	pub const TransactionPaymentPalletId: PalletId = PalletId(*b"aca/fees");
 	pub KaruraTreasuryAccount: AccountId = TreasuryPalletId::get().into_account();
@@ -262,16 +237,16 @@ impl module_transaction_payment::Config for Test {
 	type Currency = Balances;
 	type MultiCurrency = Currencies;
 	type OnTransactionPayment = ();
-	type TransactionByteFee = TransactionByteFee;
-	type OperationalFeeMultiplier = OperationalFeeMultiplier;
-	type TipPerWeightStep = TipPerWeightStep;
-	type MaxTipsOfPriority = MaxTipsOfPriority;
-	type AlternativeFeeSwapDeposit = ExistentialDeposit;
+	type TransactionByteFee = ConstU128<10>;
+	type OperationalFeeMultiplier = ConstU64<5>;
+	type TipPerWeightStep = ConstU128<1>;
+	type MaxTipsOfPriority = ConstU128<1000>;
+	type AlternativeFeeSwapDeposit = ConstU128<1>;
 	type WeightToFee = IdentityFee<Balance>;
 	type FeeMultiplierUpdate = ();
 	type DEX = DexModule;
 	type MaxSwapSlippageCompareToOracle = MaxSwapSlippageCompareToOracle;
-	type TradingPathLimit = TradingPathLimit;
+	type TradingPathLimit = ConstU32<4>;
 	type PriceSource = module_prices::RealTimePriceProvider<Test>;
 	type WeightInfo = ();
 	type PalletId = TransactionPaymentPalletId;
@@ -282,15 +257,6 @@ impl module_transaction_payment::Config for Test {
 	type DefaultFeeTokens = DefaultFeeTokens;
 }
 pub type ChargeTransactionPayment = module_transaction_payment::ChargeTransactionPayment<Test>;
-
-parameter_types! {
-	pub const ProxyDepositBase: u64 = 1;
-	pub const ProxyDepositFactor: u64 = 1;
-	pub const MaxProxies: u16 = 4;
-	pub const MaxPending: u32 = 2;
-	pub const AnnouncementDepositBase: u64 = 1;
-	pub const AnnouncementDepositFactor: u64 = 1;
-}
 
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Encode, Decode, RuntimeDebug, MaxEncodedLen, TypeInfo)]
 pub enum ProxyType {
@@ -321,14 +287,14 @@ impl pallet_proxy::Config for Test {
 	type Call = Call;
 	type Currency = Balances;
 	type ProxyType = ProxyType;
-	type ProxyDepositBase = ProxyDepositBase;
-	type ProxyDepositFactor = ProxyDepositFactor;
-	type MaxProxies = MaxProxies;
+	type ProxyDepositBase = ConstU128<1>;
+	type ProxyDepositFactor = ConstU128<1>;
+	type MaxProxies = ConstU32<4>;
 	type WeightInfo = ();
-	type MaxPending = MaxPending;
+	type MaxPending = ConstU32<2>;
 	type CallHasher = BlakeTwo256;
-	type AnnouncementDepositBase = AnnouncementDepositBase;
-	type AnnouncementDepositFactor = AnnouncementDepositFactor;
+	type AnnouncementDepositBase = ConstU128<1>;
+	type AnnouncementDepositFactor = ConstU128<1>;
 }
 
 impl pallet_utility::Config for Test {
@@ -340,7 +306,6 @@ impl pallet_utility::Config for Test {
 
 parameter_types! {
 	pub MaximumSchedulerWeight: Weight = Perbill::from_percent(10) * RuntimeBlockWeights::get().max_block;
-	pub const MaxScheduledPerBlock: u32 = 50;
 }
 
 impl pallet_scheduler::Config for Test {
@@ -351,7 +316,7 @@ impl pallet_scheduler::Config for Test {
 	type MaximumWeight = MaximumSchedulerWeight;
 	type ScheduleOrigin = EnsureRoot<AccountId>;
 	type OriginPrivilegeCmp = EqualPrivilegeOnly;
-	type MaxScheduledPerBlock = MaxScheduledPerBlock;
+	type MaxScheduledPerBlock = ConstU32<50>;
 	type WeightInfo = ();
 	type PreimageProvider = ();
 	type NoPreimagePostponement = ();
@@ -375,22 +340,20 @@ ord_parameter_types! {
 
 parameter_types! {
 	pub const GetExchangeFee: (u32, u32) = (1, 100);
-	pub const TradingPathLimit: u32 = 4;
 	pub const DEXPalletId: PalletId = PalletId(*b"aca/dexm");
-	pub const ExtendedProvisioningBlocks: BlockNumber = 0;
 }
 
 impl module_dex::Config for Test {
 	type Event = Event;
 	type Currency = Tokens;
 	type GetExchangeFee = GetExchangeFee;
-	type TradingPathLimit = TradingPathLimit;
+	type TradingPathLimit = ConstU32<4>;
 	type PalletId = DEXPalletId;
 	type Erc20InfoMapping = EvmErc20InfoMapping;
 	type WeightInfo = ();
 	type DEXIncentives = MockDEXIncentives;
 	type ListingOrigin = EnsureSignedBy<ListingOrigin, AccountId>;
-	type ExtendedProvisioningBlocks = ExtendedProvisioningBlocks;
+	type ExtendedProvisioningBlocks = ConstU32<0>;
 	type OnLiquidityPoolUpdated = ();
 }
 
@@ -407,12 +370,7 @@ ord_parameter_types! {
 	pub const CouncilAccount: AccountId32 = AccountId32::from([1u8; 32]);
 	pub const TreasuryAccount: AccountId32 = AccountId32::from([2u8; 32]);
 	pub const NetworkContractAccount: AccountId32 = AccountId32::from([0u8; 32]);
-	pub const NewContractExtraBytes: u32 = 100;
 	pub const StorageDepositPerByte: u128 = convert_decimals_to_evm(10);
-	pub const TxFeePerGas: u64 = 10;
-	pub const DeveloperDeposit: u64 = 1000;
-	pub const PublicationFee: u64 = 200;
-	pub const ChainId: u64 = 1;
 }
 
 pub struct GasToWeight;
@@ -426,19 +384,19 @@ impl module_evm::Config for Test {
 	type AddressMapping = EvmAddressMapping<Test>;
 	type Currency = Balances;
 	type TransferAll = Currencies;
-	type NewContractExtraBytes = NewContractExtraBytes;
+	type NewContractExtraBytes = ConstU32<100>;
 	type StorageDepositPerByte = StorageDepositPerByte;
-	type TxFeePerGas = TxFeePerGas;
+	type TxFeePerGas = ConstU128<10>;
 	type Event = Event;
 	type PrecompilesType = AllPrecompiles<Self>;
 	type PrecompilesValue = PrecompilesValue;
-	type ChainId = ChainId;
+	type ChainId = ConstU64<1>;
 	type GasToWeight = GasToWeight;
 	type ChargeTransactionPayment = ChargeTransactionPayment;
 	type NetworkContractOrigin = EnsureSignedBy<NetworkContractAccount, AccountId>;
 	type NetworkContractSource = NetworkContractSource;
-	type DeveloperDeposit = DeveloperDeposit;
-	type PublicationFee = PublicationFee;
+	type DeveloperDeposit = ConstU128<1000>;
+	type PublicationFee = ConstU128<200>;
 	type TreasuryAccount = TreasuryAccount;
 	type FreePublicationOrigin = EnsureSignedBy<CouncilAccount, AccountId>;
 	type Runner = module_evm::runner::stack::Runner<Self>;
@@ -452,7 +410,7 @@ impl module_evm_accounts::Config for Test {
 	type Event = Event;
 	type Currency = Balances;
 	type AddressMapping = EvmAddressMapping<Test>;
-	type ChainId = ChainId;
+	type ChainId = ConstU64<1>;
 	type TransferAll = ();
 	type WeightInfo = ();
 }

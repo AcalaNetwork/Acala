@@ -24,7 +24,7 @@ use crate as example;
 use frame_support::{
 	construct_runtime,
 	pallet_prelude::GenesisBuild,
-	traits::{ConstU64, Everything},
+	traits::{ConstU32, ConstU64, Everything},
 };
 
 impl frame_system::Config for Runtime {
@@ -51,7 +51,7 @@ impl frame_system::Config for Runtime {
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
 	type OnSetCode = ();
-	type MaxConsumers = frame_support::traits::ConstU32<16>;
+	type MaxConsumers = ConstU32<16>;
 }
 
 impl example::Config for Runtime {

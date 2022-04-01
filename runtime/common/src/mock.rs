@@ -19,7 +19,7 @@
 use codec::{Decode, Encode};
 use frame_support::{
 	ord_parameter_types, parameter_types,
-	traits::{FindAuthor, Nothing},
+	traits::{ConstU32, FindAuthor, Nothing},
 	weights::Weight,
 	ConsensusEngineId, RuntimeDebug,
 };
@@ -77,7 +77,7 @@ impl frame_system::Config for TestRuntime {
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
 	type OnSetCode = ();
-	type MaxConsumers = frame_support::traits::ConstU32<16>;
+	type MaxConsumers = ConstU32<16>;
 }
 
 parameter_types! {

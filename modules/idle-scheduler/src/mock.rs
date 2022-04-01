@@ -25,7 +25,7 @@ use acala_primitives::{define_combined_task, task::TaskResult};
 use frame_support::weights::Weight;
 use frame_support::{
 	construct_runtime,
-	traits::{ConstU64, Everything},
+	traits::{ConstU32, ConstU64, Everything},
 };
 use module_support::DispatchableTask;
 
@@ -59,7 +59,7 @@ impl frame_system::Config for Runtime {
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
 	type OnSetCode = ();
-	type MaxConsumers = frame_support::traits::ConstU32<16>;
+	type MaxConsumers = ConstU32<16>;
 }
 
 impl module_idle_scheduler::Config for Runtime {
