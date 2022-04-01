@@ -6249,6 +6249,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "module-support",
+ "nutsfinance-stable-asset",
  "orml-tokens",
  "orml-traits",
  "pallet-balances",
