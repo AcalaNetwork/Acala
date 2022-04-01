@@ -19,8 +19,8 @@
 use super::{
 	constants::fee::*, AccountId, AssetIdMapping, AssetIdMaps, Balance, Call, Convert, Currencies, CurrencyId, Event,
 	ExistentialDeposits, FixedRateOfForeignAsset, GetNativeCurrencyId, NativeTokenExistentialDeposit, Origin,
-	ParachainInfo, ParachainSystem, PolkadotXcm, Runtime, RuntimeBlockWeights, TransactionFeePoolTrader,
-	TreasuryAccount, UnknownTokens, XcmpQueue, ACA,
+	ParachainInfo, ParachainSystem, PolkadotXcm, Runtime, TransactionFeePoolTrader, TreasuryAccount, UnknownTokens,
+	XcmpQueue, ACA,
 };
 use codec::{Decode, Encode};
 pub use cumulus_primitives_core::ParaId;
@@ -160,10 +160,6 @@ impl xcm_executor::Config for XcmConfig {
 	>;
 	type AssetClaims = ();
 	type SubscriptionService = PolkadotXcm;
-}
-
-parameter_types! {
-	pub MaxDownwardMessageWeight: Weight = RuntimeBlockWeights::get().max_block / 10;
 }
 
 /// No local origins on this chain are allowed to dispatch XCM sends/executions.
