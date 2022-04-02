@@ -398,7 +398,7 @@ async fn build_relay_chain_interface(
 		relay_chain_full_node.client.clone(),
 		relay_chain_full_node.backend.clone(),
 		Arc::new(Mutex::new(Box::new(relay_chain_full_node.network.clone()))),
-		relay_chain_full_node.overseer_handle.clone(),
+		relay_chain_full_node.overseer_handle,
 	)) as Arc<_>)
 }
 
