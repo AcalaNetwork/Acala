@@ -19,7 +19,7 @@
 use super::{
 	constants::fee::*, AcalaTreasuryAccount, AccountId, AssetIdMapping, AssetIdMaps, Balance, Call, Convert,
 	Currencies, CurrencyId, Event, ExistentialDeposits, FixedRateOfForeignAsset, GetNativeCurrencyId,
-	NativeTokenExistentialDeposit, Origin, ParachainInfo, ParachainSystem, PolkadotXcm, Runtime, RuntimeBlockWeights,
+	NativeTokenExistentialDeposit, Origin, ParachainInfo, ParachainSystem, PolkadotXcm, Runtime,
 	TransactionFeePoolTrader, UnknownTokens, XcmpQueue, ACA, AUSD,
 };
 use codec::{Decode, Encode};
@@ -168,10 +168,6 @@ impl xcm_executor::Config for XcmConfig {
 	>;
 	type AssetClaims = PolkadotXcm;
 	type SubscriptionService = PolkadotXcm;
-}
-
-parameter_types! {
-	pub MaxDownwardMessageWeight: Weight = RuntimeBlockWeights::get().max_block / 10;
 }
 
 pub type LocalOriginToLocation = SignedToAccountId32<Origin, AccountId, RelayNetwork>;

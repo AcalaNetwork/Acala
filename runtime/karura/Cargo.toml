@@ -1,6 +1,6 @@
 [package]
 name = "karura-runtime"
-version = "2.4.1"
+version = "2.4.2"
 authors = ["Acala Developers"]
 edition = "2021"
 build = "build.rs"
@@ -118,6 +118,7 @@ module-xcm-interface = { path = "../../modules/xcm-interface", default-features 
 module-session-manager = { path = "../../modules/session-manager", default-features = false }
 module-relaychain = { path = "../../modules/relaychain", default-features = false, features = ["kusama"] }
 module-idle-scheduler = { path = "../../modules/idle-scheduler", default-features = false }
+module-honzon-bridge = { path = "../../modules/honzon-bridge", default-features = false }
 nutsfinance-stable-asset = { version = "0.1.0", default-features = false, path = "../../ecosystem-modules/stable-asset/lib/stable-asset", package = "nutsfinance-stable-asset" }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
 runtime-common = { path = "../common", default-features = false }
@@ -239,6 +240,7 @@ std = [
 	"module-session-manager/std",
 	"module-relaychain/std",
 	"module-idle-scheduler/std",
+	"module-honzon-bridge/std",
 	"primitives/std",
 	"runtime-common/std",
 
@@ -335,6 +337,7 @@ try-runtime = [
 	"module-homa/try-runtime",
 	"module-xcm-interface/try-runtime",
 	"module-session-manager/try-runtime",
+	"module-honzon-bridge/try-runtime",
 ]
 
 integration-tests = []

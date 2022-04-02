@@ -108,7 +108,7 @@ pub use runtime_common::{
 	OffchainSolutionWeightLimit, OperationalFeeMultiplier, OperatorMembershipInstanceAcala, Price, ProxyType, Rate,
 	Ratio, RelayChainBlockNumberProvider, RelayChainSubAccountId, RuntimeBlockLength, RuntimeBlockWeights,
 	SystemContractsFilter, TechnicalCommitteeInstance, TechnicalCommitteeMembershipInstance, TimeStampedPrice,
-	TipPerWeightStep, ACA, AUSD, DOT, LDOT, RENBTC,
+	TipPerWeightStep, ACA, AUSD, DOT, KSM, LDOT, RENBTC,
 };
 pub use xcm::latest::prelude::*;
 
@@ -128,7 +128,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("mandala"),
 	impl_name: create_runtime_str!("mandala"),
 	authoring_version: 1,
-	spec_version: 2041,
+	spec_version: 2042,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -839,8 +839,12 @@ parameter_type_with_key! {
 }
 
 parameter_type_with_key! {
-	pub PricingPegged: |_currency_id: CurrencyId| -> Option<CurrencyId> {
-		None
+	pub PricingPegged: |currency_id: CurrencyId| -> Option<CurrencyId> {
+		match currency_id {
+			// taiKSM
+			CurrencyId::StableAssetPoolToken(0) => Some(KSM),
+			_ => None,
+		}
 	};
 }
 
@@ -1157,6 +1161,7 @@ impl module_cdp_treasury::Config for Runtime {
 	type TreasuryAccount = HonzonTreasuryAccount;
 	type AlternativeSwapPathJointList = AlternativeSwapPathJointList;
 	type WeightInfo = weights::module_cdp_treasury::WeightInfo<Runtime>;
+	type StableAsset = StableAsset;
 }
 
 impl module_transaction_pause::Config for Runtime {
@@ -1166,13 +1171,9 @@ impl module_transaction_pause::Config for Runtime {
 }
 
 parameter_types! {
-	// Sort by fee charge order
-	pub DefaultFeeSwapPathList: Vec<Vec<CurrencyId>> = vec![
-		vec![AUSD, DOT, ACA],
-		vec![DOT, ACA],
-		vec![LDOT, DOT, ACA],
-		vec![RENBTC, AUSD, ACA]
-	];
+	pub DefaultFeeTokens: Vec<CurrencyId> = vec![AUSD, DOT, LDOT, RENBTC];
+	pub const CustomFeeSurplus: Percent = Percent::from_percent(50);
+	pub const AlternativeFeeSurplus: Percent = Percent::from_percent(25);
 }
 
 type NegativeImbalance = <Balances as PalletCurrency<AccountId>>::NegativeImbalance;
@@ -1198,8 +1199,8 @@ impl OnUnbalanced<NegativeImbalance> for DealWithFees {
 
 impl module_transaction_payment::Config for Runtime {
 	type Event = Event;
+	type Call = Call;
 	type NativeCurrencyId = GetNativeCurrencyId;
-	type DefaultFeeSwapPathList = DefaultFeeSwapPathList;
 	type Currency = Balances;
 	type MultiCurrency = Currencies;
 	type OnTransactionPayment = DealWithFees;
@@ -1218,6 +1219,9 @@ impl module_transaction_payment::Config for Runtime {
 	type PalletId = TransactionPaymentPalletId;
 	type TreasuryAccount = TreasuryAccount;
 	type UpdateOrigin = EnsureRootOrHalfGeneralCouncil;
+	type CustomFeeSurplus = CustomFeeSurplus;
+	type AlternativeFeeSurplus = AlternativeFeeSurplus;
+	type DefaultFeeTokens = DefaultFeeTokens;
 }
 
 parameter_types! {
@@ -1227,9 +1231,9 @@ parameter_types! {
 impl module_earning::Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
-	type OnBonded = ();
-	type OnUnbonded = ();
-	type OnUnstakeFee = ();
+	type OnBonded = module_incentives::OnEarningBonded<Runtime>;
+	type OnUnbonded = module_incentives::OnEarningUnbonded<Runtime>;
+	type OnUnstakeFee = Treasury; // fee goes to treasury
 	type MinBond = ConstU128<100>;
 	type UnbondingPeriod = ConstU32<3>;
 	type InstantUnstakeFee = InstantUnstakeFee;
@@ -1266,12 +1270,15 @@ impl orml_rewards::Config for Runtime {
 
 parameter_types! {
 	pub const AccumulatePeriod: BlockNumber = MINUTES;
+	pub const EarnShareBooster: Permill = Permill::from_percent(30);
 }
 
 impl module_incentives::Config for Runtime {
 	type Event = Event;
 	type RewardsSource = UnreleasedNativeVaultAccountId;
 	type StableCurrencyId = GetStableCurrencyId;
+	type NativeCurrencyId = GetNativeCurrencyId;
+	type EarnShareBooster = EarnShareBooster;
 	type AccumulatePeriod = AccumulatePeriod;
 	type UpdateOrigin = EnsureRootOrThreeFourthsGeneralCouncil;
 	type CDPTreasury = CdpTreasury;
@@ -1809,8 +1816,39 @@ pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExtra>;
 /// Executive: handles dispatch to the various modules.
-pub type Executive =
-	frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllPalletsWithSystem, ()>;
+pub type Executive = frame_executive::Executive<
+	Runtime,
+	Block,
+	frame_system::ChainContext<Runtime>,
+	Runtime,
+	AllPalletsWithSystem,
+	TransactionPaymentMigration,
+>;
+
+pub struct TransactionPaymentMigration;
+
+parameter_types! {
+	pub FeePoolSize: Balance = 5 * dollar(ACA);
+	pub SwapBalanceThreshold: Balance = Ratio::saturating_from_rational(25, 10).saturating_mul_int(dollar(ACA));
+}
+
+impl OnRuntimeUpgrade for TransactionPaymentMigration {
+	fn on_runtime_upgrade() -> frame_support::weights::Weight {
+		let poo_size = FeePoolSize::get();
+		let threshold = SwapBalanceThreshold::get();
+		let tokens = vec![
+			(AUSD, vec![AUSD, DOT, ACA]),
+			(DOT, vec![DOT, ACA]),
+			(LDOT, vec![LDOT, DOT, ACA]),
+			(RENBTC, vec![RENBTC, AUSD, ACA]),
+		];
+		for (token, path) in tokens {
+			let _ = module_transaction_payment::Pallet::<Runtime>::disable_pool(token);
+			let _ = module_transaction_payment::Pallet::<Runtime>::initialize_pool(token, path, poo_size, threshold);
+		}
+		<Runtime as frame_system::Config>::BlockWeights::get().max_block
+	}
+}
 
 construct_runtime! {
 	pub enum Runtime where

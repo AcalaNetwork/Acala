@@ -36,6 +36,7 @@ use sp_runtime::{
 	FixedPointNumber,
 };
 use sp_std::cell::RefCell;
+use support::mocks::MockStableAsset;
 use support::{AuctionManager, ExchangeRate, Price, PriceProvider, Rate, Ratio};
 
 mod honzon {
@@ -226,6 +227,7 @@ impl cdp_treasury::Config for Runtime {
 	type TreasuryAccount = TreasuryAccount;
 	type AlternativeSwapPathJointList = AlternativeSwapPathJointList;
 	type WeightInfo = ();
+	type StableAsset = MockStableAsset<CurrencyId, Balance, AccountId, BlockNumber>;
 }
 
 parameter_types! {

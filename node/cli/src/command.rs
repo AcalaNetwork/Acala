@@ -85,6 +85,8 @@ impl SubstrateCli for Cli {
 			#[cfg(feature = "with-karura-runtime")]
 			"karura" => Box::new(chain_spec::karura::karura_config()?),
 			#[cfg(feature = "with-karura-runtime")]
+			"karura-rococo" => Box::new(chain_spec::karura::karura_rococo_config()?),
+			#[cfg(feature = "with-karura-runtime")]
 			"karura-dev" => Box::new(chain_spec::karura::karura_dev_config()?),
 			#[cfg(feature = "with-acala-runtime")]
 			"acala" => Box::new(chain_spec::acala::acala_config()?),

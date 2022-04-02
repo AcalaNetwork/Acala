@@ -21,8 +21,9 @@
 
 #![allow(clippy::upper_case_acronyms)]
 
-mod mock;
+pub mod mock;
 mod tests;
+mod weights;
 
 use frame_support::log;
 use hex_literal::hex;
@@ -74,6 +75,11 @@ pub const EVM: H160 = H160(hex!("0000000000000000000000000000000000000402"));
 pub const ORACLE: H160 = H160(hex!("0000000000000000000000000000000000000403"));
 pub const SCHEDULER: H160 = H160(hex!("0000000000000000000000000000000000000404"));
 pub const DEX: H160 = H160(hex!("0000000000000000000000000000000000000405"));
+
+pub fn target_gas_limit(target_gas: Option<u64>) -> Option<u64> {
+	// srtool support rust 1.57.0
+	target_gas.map(|x| x.checked_div(10).expect("divisor is non-zero; qed").saturating_mul(9)) // 90%
+}
 
 pub struct AllPrecompiles<R> {
 	active: BTreeSet<H160>,
@@ -231,7 +237,7 @@ where
 				return Some(Err(PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: "NoPermission".into(),
-					cost: 0,
+					cost: target_gas.unwrap_or_default(),
 				}));
 			}
 

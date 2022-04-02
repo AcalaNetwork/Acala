@@ -27,9 +27,12 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
+#![allow(clippy::needless_range_loop)]
 
 use frame_support::{log, pallet_prelude::*, transactional, PalletId};
 use frame_system::pallet_prelude::*;
+use nutsfinance_stable_asset::traits::StableAsset;
+use nutsfinance_stable_asset::RedeemProportionResult;
 use orml_traits::{MultiCurrency, MultiCurrencyExtended};
 use primitives::{Balance, CurrencyId};
 use sp_runtime::{
@@ -71,6 +74,14 @@ pub mod module {
 		/// Dex manager is used to swap confiscated collateral assets to stable
 		/// currency
 		type DEX: DEXManager<Self::AccountId, CurrencyId, Balance>;
+
+		type StableAsset: StableAsset<
+			AssetId = CurrencyId,
+			AtLeast64BitUnsigned = Balance,
+			Balance = Balance,
+			AccountId = Self::AccountId,
+			BlockNumber = Self::BlockNumber,
+		>;
 
 		/// The cap of lots number when create collateral auction on a
 		/// liquidation or to create debit/surplus auction on block end.
@@ -357,6 +368,10 @@ impl<T: Config> CDPTreasury<T::AccountId> for Pallet<T> {
 		T::Currency::transfer(T::GetStableCurrencyId::get(), from, &Self::account_id(), surplus)
 	}
 
+	fn withdraw_surplus(to: &T::AccountId, surplus: Self::Balance) -> DispatchResult {
+		T::Currency::transfer(T::GetStableCurrencyId::get(), &Self::account_id(), to, surplus)
+	}
+
 	fn deposit_collateral(from: &T::AccountId, currency_id: Self::CurrencyId, amount: Self::Balance) -> DispatchResult {
 		T::Currency::transfer(currency_id, from, &Self::account_id(), amount)
 	}
@@ -367,6 +382,7 @@ impl<T: Config> CDPTreasury<T::AccountId> for Pallet<T> {
 }
 
 impl<T: Config> CDPTreasuryExtended<T::AccountId> for Pallet<T> {
+	#[transactional]
 	fn swap_collateral_to_stable(
 		currency_id: CurrencyId,
 		limit: SwapLimit<Balance>,
@@ -376,6 +392,11 @@ impl<T: Config> CDPTreasuryExtended<T::AccountId> for Pallet<T> {
 			SwapLimit::ExactSupply(supply_amount, _) => supply_amount,
 			SwapLimit::ExactTarget(max_supply_amount, _) => max_supply_amount,
 		};
+		let target_limit = match limit {
+			SwapLimit::ExactSupply(_, minimum_target_amount) => minimum_target_amount,
+			SwapLimit::ExactTarget(_, exact_target_amount) => exact_target_amount,
+		};
+
 		if collateral_in_auction {
 			ensure!(
 				Self::total_collaterals(currency_id) >= supply_limit
@@ -389,14 +410,63 @@ impl<T: Config> CDPTreasuryExtended<T::AccountId> for Pallet<T> {
 			);
 		}
 
-		let swap_path = T::DEX::get_best_price_swap_path(
-			currency_id,
-			T::GetStableCurrencyId::get(),
-			limit,
-			T::AlternativeSwapPathJointList::get(),
-		)
-		.ok_or(Error::<T>::CannotSwap)?;
-		T::DEX::swap_with_specific_path(&Self::account_id(), &swap_path, limit)
+		match currency_id {
+			CurrencyId::StableAssetPoolToken(stable_asset_id) => {
+				let pool_info = T::StableAsset::pool(stable_asset_id).ok_or(Error::<T>::CannotSwap)?;
+				let updated_balance_info =
+					T::StableAsset::get_balance_update_amount(&pool_info).ok_or(Error::<T>::CannotSwap)?;
+				let yield_info =
+					T::StableAsset::get_collect_yield_amount(&updated_balance_info).ok_or(Error::<T>::CannotSwap)?;
+				ensure!(
+					yield_info.total_supply >= pool_info.total_supply,
+					Error::<T>::CannotSwap,
+				);
+				let RedeemProportionResult { amounts, .. } =
+					T::StableAsset::get_redeem_proportion_amount(&yield_info, supply_limit)
+						.ok_or(Error::<T>::CannotSwap)?;
+				let mut swap_paths = Vec::with_capacity(amounts.len());
+				let mut redeem_limits = Vec::with_capacity(amounts.len());
+				let mut swap_limits = Vec::with_capacity(amounts.len());
+
+				for i in 0..amounts.len() {
+					let currency = pool_info.assets[i];
+					let amount = amounts[i];
+					let swap_limit = SwapLimit::ExactSupply(amount, 0);
+					swap_limits.push(swap_limit);
+					let swap_path = T::DEX::get_best_price_swap_path(
+						currency,
+						T::GetStableCurrencyId::get(),
+						swap_limit,
+						T::AlternativeSwapPathJointList::get(),
+					)
+					.ok_or(Error::<T>::CannotSwap)?;
+					swap_paths.push(swap_path);
+					redeem_limits.push(0);
+				}
+				T::StableAsset::redeem_proportion(&Self::account_id(), stable_asset_id, supply_limit, redeem_limits)?;
+
+				let mut supply_sum: Balance = Zero::zero();
+				let mut target_sum: Balance = Zero::zero();
+				for i in 0..amounts.len() {
+					let response =
+						T::DEX::swap_with_specific_path(&Self::account_id(), &swap_paths[i], swap_limits[i])?;
+					supply_sum = supply_sum.checked_add(response.0).ok_or(Error::<T>::CannotSwap)?;
+					target_sum = target_sum.checked_add(response.1).ok_or(Error::<T>::CannotSwap)?;
+				}
+				ensure!(target_sum >= target_limit, Error::<T>::CannotSwap,);
+				Ok((supply_sum, target_sum))
+			}
+			_ => {
+				let swap_path = T::DEX::get_best_price_swap_path(
+					currency_id,
+					T::GetStableCurrencyId::get(),
+					limit,
+					T::AlternativeSwapPathJointList::get(),
+				)
+				.ok_or(Error::<T>::CannotSwap)?;
+				T::DEX::swap_with_specific_path(&Self::account_id(), &swap_path, limit)
+			}
+		}
 	}
 
 	fn create_collateral_auctions(

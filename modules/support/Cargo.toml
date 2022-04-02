@@ -1,6 +1,6 @@
 [package]
 name = "module-support"
-version = "2.4.1"
+version = "2.4.2"
 authors = ["Acala Developers"]
 edition = "2021"
 
@@ -14,6 +14,7 @@ sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.18", default-features = false }
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.18", default-features = false }
 primitives = { package = "acala-primitives", path = "../../primitives", default-features = false }
+nutsfinance-stable-asset = { version = "0.1.0", default-features = false, path = "../../ecosystem-modules/stable-asset/lib/stable-asset", package = "nutsfinance-stable-asset" }
 xcm = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.18", default-features = false }
 
 [features]
