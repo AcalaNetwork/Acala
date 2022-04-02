@@ -921,7 +921,7 @@ version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1489fcb93a5bb47da0462ca93ad252ad6af2145cce58d10d46a83931ba9f016b"
 dependencies = [
- "funty 2.0.0",
+ "funty",
  "radium 0.7.0",
  "tap",
  "wyz",
@@ -2933,8 +2933,8 @@ checksum = "77f3309417938f28bf8228fcff79a4a37103981e3e186d2ccd19c74b38f4eb71"
 
 [[package]]
 name = "evm"
-version = "0.33.2"
-source = "git+https://github.com/AcalaNetwork/evm?rev=a56d8af9787f0550cb4c4ab3955e81f1741d9e7c#a56d8af9787f0550cb4c4ab3955e81f1741d9e7c"
+version = "0.35.0"
+source = "git+https://github.com/rust-blockchain/evm?rev=0b686f8c2c83a52638917caa649dc23302fda80d#0b686f8c2c83a52638917caa649dc23302fda80d"
 dependencies = [
  "auto_impl",
  "environmental",
@@ -2948,15 +2948,14 @@ dependencies = [
  "rlp",
  "scale-info",
  "serde",
- "sha3 0.8.2",
+ "sha3 0.10.1",
 ]
 
 [[package]]
 name = "evm-core"
-version = "0.33.0"
-source = "git+https://github.com/AcalaNetwork/evm?rev=a56d8af9787f0550cb4c4ab3955e81f1741d9e7c#a56d8af9787f0550cb4c4ab3955e81f1741d9e7c"
+version = "0.35.0"
+source = "git+https://github.com/rust-blockchain/evm?rev=0b686f8c2c83a52638917caa649dc23302fda80d#0b686f8c2c83a52638917caa649dc23302fda80d"
 dependencies = [
- "funty 1.1.0",
  "parity-scale-codec",
  "primitive-types",
  "scale-info",
@@ -2965,8 +2964,8 @@ dependencies = [
 
 [[package]]
 name = "evm-gasometer"
-version = "0.33.0"
-source = "git+https://github.com/AcalaNetwork/evm?rev=a56d8af9787f0550cb4c4ab3955e81f1741d9e7c#a56d8af9787f0550cb4c4ab3955e81f1741d9e7c"
+version = "0.35.0"
+source = "git+https://github.com/rust-blockchain/evm?rev=0b686f8c2c83a52638917caa649dc23302fda80d#0b686f8c2c83a52638917caa649dc23302fda80d"
 dependencies = [
  "environmental",
  "evm-core",
@@ -3000,14 +2999,14 @@ dependencies = [
 
 [[package]]
 name = "evm-runtime"
-version = "0.33.0"
-source = "git+https://github.com/AcalaNetwork/evm?rev=a56d8af9787f0550cb4c4ab3955e81f1741d9e7c#a56d8af9787f0550cb4c4ab3955e81f1741d9e7c"
+version = "0.35.0"
+source = "git+https://github.com/rust-blockchain/evm?rev=0b686f8c2c83a52638917caa649dc23302fda80d#0b686f8c2c83a52638917caa649dc23302fda80d"
 dependencies = [
  "auto_impl",
  "environmental",
  "evm-core",
  "primitive-types",
- "sha3 0.8.2",
+ "sha3 0.10.1",
 ]
 
 [[package]]
@@ -3458,12 +3457,6 @@ name = "fuchsia-zircon-sys"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3dcaa9ae7725d12cdb85b3ad99a434db70b468c09ded17e012d86b5c1010f7a7"
-
-[[package]]
-name = "funty"
-version = "1.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fed34cd105917e91daa4da6b3728c47b068749d6a62c59811f06ed2ac71d9da7"
 
 [[package]]
 name = "funty"
@@ -12371,19 +12364,6 @@ dependencies = [
  "cfg-if 1.0.0",
  "cpufeatures 0.2.2",
  "digest 0.10.3",
-]
-
-[[package]]
-name = "sha3"
-version = "0.8.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dd26bc0e7a2e3a7c959bc494caf58b72ee0c71d67704e9520f736ca7e4853ecf"
-dependencies = [
- "block-buffer 0.7.3",
- "byte-tools",
- "digest 0.8.1",
- "keccak",
- "opaque-debug 0.2.3",
 ]
 
 [[package]]

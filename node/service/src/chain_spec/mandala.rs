@@ -58,7 +58,7 @@ fn generate_evm_address<W: Wordlist>(phrase: &str, index: u32) -> H160 {
 	let derivation_path =
 		coins_bip32::path::DerivationPath::from_str(&format!("{}{}", DEFAULT_DERIVATION_PATH_PREFIX, index))
 			.expect("should parse the default derivation path");
-	let mnemonic = Mnemonic::<W>::new_from_phrase(&phrase).unwrap();
+	let mnemonic = Mnemonic::<W>::new_from_phrase(phrase).unwrap();
 
 	let derived_priv_key = mnemonic.derive_key(&derivation_path, None).unwrap();
 	let key: &SigningKey = derived_priv_key.as_ref();
