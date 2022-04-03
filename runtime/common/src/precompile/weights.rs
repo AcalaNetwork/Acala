@@ -26,13 +26,11 @@ use sp_std::marker::PhantomData;
 
 pub struct PrecompileWeights<T>(PhantomData<T>);
 impl<T: frame_system::Config> PrecompileWeights<T> {
-	// Oracle::IsUpdated (r: 1, w: 1)
-	// Oracle::RawValues (r: 3, w: 0)
 	// Oracle::Values (r: 1, w: 1)
 	pub fn oracle_get_price() -> Weight {
 		(26_031_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(5 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
+			.saturating_add(T::DbWeight::get().reads(1 as Weight))
+			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	pub fn evm_query_new_contract_extra_bytes() -> Weight {
 		(1_112_000 as Weight)
