@@ -13,7 +13,7 @@ serde_json = { version = "1.0.68", default-features = false, features = ["alloc"
 hex = { version = "0.4", default-features = false }
 hex-literal = { version = "0.3.1" }
 scale-info = { version = "2.0.1", default-features = false, features = ["derive"] }
-libsecp256k1 = { version = "0.6", default-features = false, optional = true }
+libsecp256k1 = { version = "0.7", default-features = false, optional = true }
 
 # substrate
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.18", default-features = false, optional = true }
