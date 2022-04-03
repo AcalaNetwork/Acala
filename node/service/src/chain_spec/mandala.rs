@@ -16,9 +16,14 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::chain_spec::{get_account_id_from_seed, get_authority_keys_from_seed, Extensions, TELEMETRY_URL};
 use acala_primitives::{AccountId, Balance, TokenSymbol};
+use coins_bip39::{English, Mnemonic, Wordlist};
+use elliptic_curve::sec1::ToEncodedPoint;
 use hex_literal::hex;
+use k256::{
+	ecdsa::{SigningKey, VerifyingKey},
+	EncodedPoint as K256PublicKey,
+};
 use runtime_common::evm_genesis;
 use sc_chain_spec::ChainType;
 use sc_telemetry::TelemetryEndpoints;
@@ -28,14 +33,9 @@ use sp_core::{crypto::UncheckedInto, sr25519, H160};
 use sp_finality_grandpa::AuthorityId as GrandpaId;
 use sp_runtime::{traits::Zero, FixedPointNumber, FixedU128};
 use sp_std::{collections::btree_map::BTreeMap, str::FromStr};
-
-use coins_bip39::{English, Mnemonic, Wordlist};
-use elliptic_curve::sec1::ToEncodedPoint;
-use k256::{
-	ecdsa::{SigningKey, VerifyingKey},
-	EncodedPoint as K256PublicKey,
-};
 use tiny_keccak::{Hasher, Keccak};
+
+use crate::chain_spec::{get_account_id_from_seed, get_authority_keys_from_seed, Extensions, TELEMETRY_URL};
 
 pub type ChainSpec = sc_service::GenericChainSpec<mandala_runtime::GenesisConfig, Extensions>;
 
