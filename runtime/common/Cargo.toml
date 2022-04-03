@@ -14,7 +14,7 @@ hex-literal = "0.3.1"
 static_assertions = "1.1.0"
 num_enum = { version = "0.5.1", default-features = false }
 serde = { version = "1.0.136", optional = true, default-features = false }
-serde_json = { version = "1.0.68", default-features = false }
+serde_json = { version = "1.0.68", default-features = false, features = ["alloc"] }
 codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["max-encoded-len"] }
 ethabi = { version = "17.0.0", default-features = false }
 scale-info = { version = "2.0.1", default-features = false, features = ["derive"] }
@@ -62,6 +62,7 @@ module-evm-bridge = { path = "../../modules/evm-bridge", default-features = fals
 
 pallet-proxy = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.18", default-features = false, optional = true }
 pallet-utility = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.18", default-features = false, optional = true }
+pallet-xcm = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.18", default-features = false, optional = true }
 
 [features]
 default = ["std"]
@@ -124,6 +125,7 @@ bench = [
 	"pallet-timestamp/runtime-benchmarks",
 	"pallet-proxy/runtime-benchmarks",
 	"pallet-utility/runtime-benchmarks",
+	"pallet-xcm/runtime-benchmarks",
 
 	"sp-runtime/runtime-benchmarks",
 
@@ -137,6 +139,5 @@ bench = [
 	"module-evm-accounts",
 
 	"xcm/runtime-benchmarks",
-	"xcm-executor/runtime-benchmarks",
 	"xcm-builder/runtime-benchmarks",
 ]

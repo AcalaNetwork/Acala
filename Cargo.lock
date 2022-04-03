@@ -10751,6 +10751,7 @@ dependencies = [
  "pallet-scheduler",
  "pallet-timestamp",
  "pallet-utility",
+ "pallet-xcm",
  "parity-scale-codec",
  "scale-info",
  "serde",
