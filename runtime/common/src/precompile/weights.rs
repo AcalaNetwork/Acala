@@ -26,33 +26,32 @@ use sp_std::marker::PhantomData;
 
 pub struct PrecompileWeights<T>(PhantomData<T>);
 impl<T: frame_system::Config> PrecompileWeights<T> {
-	// Oracle::Values (r: 1, w: 1)
+	// Oracle::Values (r: 1, w: 0)
 	pub fn oracle_get_price() -> Weight {
-		(26_031_000 as Weight)
+		(5_734_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	pub fn evm_query_new_contract_extra_bytes() -> Weight {
-		(1_112_000 as Weight)
+		(1_010_000 as Weight)
 	}
 	pub fn evm_query_storage_deposit_per_byte() -> Weight {
-		(1_082_000 as Weight)
+		(1_001_000 as Weight)
 	}
 	// EVMModule::Accounts (r: 1, w: 0)
 	pub fn evm_query_maintainer() -> Weight {
-		(4_281_000 as Weight)
+		(4_461_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 	}
 	pub fn evm_query_developer_deposit() -> Weight {
-		(1_063_000 as Weight)
+		(1_003_000 as Weight)
 	}
 	pub fn evm_query_publication_fee() -> Weight {
-		(1_040_000 as Weight)
+		(1_008_000 as Weight)
 	}
 	// Balances::Reserves (r: 1, w: 0)
 	// EvmAccounts::Accounts (r: 1, w: 0)
 	pub fn evm_query_developer_status() -> Weight {
-		(3_235_000 as Weight)
+		(5_290_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 	}
 }
