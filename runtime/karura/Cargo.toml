@@ -124,7 +124,7 @@ primitives = { package = "acala-primitives", path = "../../primitives", default-
 runtime-common = { path = "../common", default-features = false }
 
 # benchmarking deps
-libsecp256k1 = { version = "0.6", default-features = false, optional = true }
+libsecp256k1 = { version = "0.7", default-features = false, optional = true }
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.18", default-features = false, optional = true }
 
 [build-dependencies]
