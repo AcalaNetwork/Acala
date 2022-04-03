@@ -14,7 +14,7 @@ hex-literal = "0.3.1"
 static_assertions = "1.1.0"
 num_enum = { version = "0.5.1", default-features = false }
 serde = { version = "1.0.136", optional = true, default-features = false }
-serde_json = { version = "1.0.68", default-features = false }
+serde_json = { version = "1.0.68", default-features = false, features = ["alloc"]  }
 codec = { package = "parity-scale-codec", version = "2.3.1", default-features = false, features = ["max-encoded-len"] }
 ethabi = { version = "15.0.0", default-features = false }
 scale-info = { version = "1.0", default-features = false, features = ["derive"] }
