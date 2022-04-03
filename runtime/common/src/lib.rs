@@ -120,7 +120,9 @@ impl Convert<u64, Weight> for GasToWeight {
 pub struct WeightToGas;
 impl Convert<Weight, u64> for WeightToGas {
 	fn convert(weight: Weight) -> u64 {
-		weight.saturating_div(gas_to_weight_ratio::RATIO)
+		weight
+			.checked_div(gas_to_weight_ratio::RATIO)
+			.expect("Compile-time constant is not zero; qed;")
 	}
 }
 
