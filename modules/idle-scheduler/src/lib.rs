@@ -31,7 +31,7 @@ use frame_system::pallet_prelude::*;
 pub use module_support::{DispatchableTask, IdleScheduler};
 use scale_info::TypeInfo;
 use sp_runtime::{
-	traits::{BlockNumberProvider, One, Zero},
+	traits::{BlockNumberProvider, One},
 	ArithmeticError,
 };
 use sp_std::{cmp::PartialEq, fmt::Debug, prelude::*};
@@ -170,7 +170,8 @@ impl<T: Config> Pallet<T> {
 	pub fn do_dispatch_tasks(total_weight: Weight) -> Weight {
 		let mut weight_remaining = total_weight.saturating_sub(T::WeightInfo::on_idle_base());
 		if weight_remaining <= T::MinimumWeightRemainInBlock::get() {
-			return Zero::zero();
+			// return total weight so no `on_idle` hook will execute after IdleScheduler
+			return total_weight;
 		}
 
 		let mut completed_tasks: Vec<(Nonce, TaskResult)> = vec![];
