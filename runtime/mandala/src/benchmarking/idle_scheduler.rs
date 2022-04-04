@@ -39,9 +39,8 @@ runtime_benchmarks! {
 		let call = ScheduledTasks::EvmTask(EvmTask::Remove{caller: H160::from(&dummy_hash), contract: H160::from(&dummy_hash), maintainer: H160::from(&dummy_hash)});
 		IdleScheduler::schedule_task(Origin::root(), call)?;
 		let completed_tasks = vec![(0, TaskResult{ result: Ok(()), used_weight: 0, finished: true })];
-		let mut remaining_weight = 1_000_000_000;
 	}: {
-		IdleScheduler::remove_completed_tasks(completed_tasks, &mut remaining_weight);
+		IdleScheduler::remove_completed_tasks(completed_tasks);
 	}
 
 	schedule_task {
