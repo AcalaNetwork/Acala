@@ -2634,6 +2634,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "ecosystem-aqua-adao-manager"
+version = "0.1.0"
+dependencies = [
+ "acala-primitives",
+ "frame-support",
+ "frame-system",
+ "module-currencies",
+ "module-support",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "ecosystem-aqua-dao"
 version = "0.1.0"
 dependencies = [
