@@ -181,6 +181,7 @@ impl<T: Config> Pallet<T> {
 			weight_remaining = weight_remaining.saturating_sub(result.used_weight);
 			if result.finished {
 				completed_tasks.push((id, result));
+				weight_remaining = weight_remaining.saturating_sub(T::WeightInfo::clear_tasks());
 			}
 
 			// If remaining weight falls below the minimmum, break from the loop.
@@ -189,13 +190,13 @@ impl<T: Config> Pallet<T> {
 			}
 		}
 
-		Self::remove_completed_tasks(completed_tasks, &mut weight_remaining);
+		Self::remove_completed_tasks(completed_tasks);
 
 		total_weight.saturating_sub(weight_remaining)
 	}
 
 	// Removes completed tasks and deposits events
-	pub fn remove_completed_tasks(completed_tasks: Vec<(Nonce, TaskResult)>, weight_remaining: &mut Weight) {
+	pub fn remove_completed_tasks(completed_tasks: Vec<(Nonce, TaskResult)>) {
 		// Deposit event and remove completed tasks.
 		for (id, result) in completed_tasks {
 			Self::deposit_event(Event::<T>::TaskDispatched {
@@ -203,7 +204,6 @@ impl<T: Config> Pallet<T> {
 				result: result.result,
 			});
 			Tasks::<T>::remove(id);
-			*weight_remaining = weight_remaining.saturating_sub(T::WeightInfo::clear_tasks());
 		}
 	}
 }
