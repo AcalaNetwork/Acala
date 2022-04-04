@@ -1741,6 +1741,7 @@ mod benches {
 		[orml_auction, benchmarking::auction]
 		[orml_authority, benchmarking::authority]
 		[orml_oracle, benchmarking::oracle]
+		[module_idle_scheduler, benchmarking::idle_scheduler]
 	);
 }
 

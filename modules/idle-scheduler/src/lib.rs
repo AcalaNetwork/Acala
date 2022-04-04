@@ -108,7 +108,7 @@ pub mod module {
 				PreviousRelayBlockNumber::<T>::put(block_number);
 			}
 			// One write and one read
-			T::DbWeight::get().reads_writes(One::one(), One::one())
+			T::WeightInfo::on_initialize()
 		}
 
 		fn on_idle(_n: T::BlockNumber, remaining_weight: Weight) -> Weight {

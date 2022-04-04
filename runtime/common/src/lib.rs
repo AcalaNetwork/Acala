@@ -33,17 +33,13 @@ use frame_support::{
 };
 use frame_system::{limits, EnsureRoot};
 pub use module_support::{ExchangeRate, PrecompileCallerFilter, Price, Rate, Ratio};
-use primitives::{evm::is_system_contract, Balance, BlockNumber, CurrencyId, Nonce};
+use primitives::{evm::is_system_contract, Balance, CurrencyId, Nonce};
 use scale_info::TypeInfo;
 use sp_core::{
 	u32_trait::{_1, _2, _3, _4},
 	Bytes, H160,
 };
-use sp_runtime::{
-	traits::{BlockNumberProvider, Convert},
-	transaction_validity::TransactionPriority,
-	FixedPointNumber, Perbill,
-};
+use sp_runtime::{traits::Convert, transaction_validity::TransactionPriority, FixedPointNumber, Perbill};
 use sp_std::collections::btree_map::BTreeMap;
 use static_assertions::const_assert;
 
