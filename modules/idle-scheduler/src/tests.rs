@@ -69,8 +69,9 @@ fn can_process_tasks_up_to_weight_limit() {
 			ScheduledTasks::HomaLiteTask(HomaLiteTask::OnIdle)
 		));
 
-		// Given enough weights for only 2 tasks: MinimumWeightRemainInBlock::get() + BASE_WEIGHT*2
-		IdleScheduler::on_idle(0, 100_002_000_000);
+		// Given enough weights for only 2 tasks: MinimumWeightRemainInBlock::get() + BASE_WEIGHT*2 +
+		// on_idle_base()
+		IdleScheduler::on_idle(0, 100_002_000_000 + <()>::on_idle_base());
 
 		// Due to hashing, excution is not guaranteed to be in order.
 		assert_eq!(
@@ -86,7 +87,7 @@ fn can_process_tasks_up_to_weight_limit() {
 			Some(ScheduledTasks::BalancesTask(BalancesTask::OnIdle))
 		);
 
-		IdleScheduler::on_idle(0, 100_001_000_000);
+		IdleScheduler::on_idle(0, 100_001_000_000 + <()>::on_idle_base());
 		assert_eq!(Tasks::<Runtime>::get(0), None);
 	});
 }
@@ -115,12 +116,15 @@ fn on_idle_works() {
 		));
 		// simulate relay block number jumping 10 blocks
 		sp_io::storage::set(&RELAY_BLOCK_KEY, &10_u32.encode());
-		assert_eq!(IdleScheduler::on_idle(System::block_number(), u64::MAX), 0);
+		assert_eq!(IdleScheduler::on_idle(System::block_number(), u64::MAX), u64::MAX);
 
 		System::set_block_number(1);
 		IdleScheduler::on_initialize(1);
 		// On_initialize is called it will execute, as now relay block number is the same
-		assert_eq!(IdleScheduler::on_idle(System::block_number(), u64::MAX), BASE_WEIGHT);
+		assert_eq!(
+			IdleScheduler::on_idle(System::block_number(), u64::MAX),
+			BASE_WEIGHT + <()>::on_idle_base() + <()>::clear_tasks()
+		);
 		assert!(!PreviousRelayBlockNumber::<Runtime>::exists());
 	});
 }
