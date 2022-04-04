@@ -17,8 +17,9 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{EvmTask, IdleScheduler, Origin, Runtime, ScheduledTasks, H160};
-use frame_support::traits::OnInitialize;
+use frame_support::traits::{OnIdle, OnInitialize};
 use orml_benchmarking::runtime_benchmarks;
+use primitives::task::TaskResult;
 
 runtime_benchmarks! {
 	{ Runtime, module_idle_scheduler}
@@ -26,6 +27,21 @@ runtime_benchmarks! {
 	on_initialize {
 	}: {
 		IdleScheduler::on_initialize(1);
+	}
+
+	on_idle_base {
+	}: {
+		IdleScheduler::on_idle(0, 1_000_000_000);
+	}
+
+	clear_tasks {
+		let dummy_hash = [0; 20];
+		let call = ScheduledTasks::EvmTask(EvmTask::Remove{caller: H160::from(&dummy_hash), contract: H160::from(&dummy_hash), maintainer: H160::from(&dummy_hash)});
+		IdleScheduler::schedule_task(Origin::root(), call)?;
+		let completed_tasks = vec![(0, TaskResult{ result: Ok(()), used_weight: 0, finished: true })];
+		let mut remaining_weight = 1_000_000_000;
+	}: {
+		IdleScheduler::remove_completed_tasks(completed_tasks, &mut remaining_weight);
 	}
 
 	schedule_task {

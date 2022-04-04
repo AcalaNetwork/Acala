@@ -107,7 +107,6 @@ pub mod module {
 			if let Some(block_number) = previous_relay_block {
 				PreviousRelayBlockNumber::<T>::put(block_number);
 			}
-			// One write and one read
 			T::WeightInfo::on_initialize()
 		}
 
@@ -126,7 +125,9 @@ pub mod module {
 					current_relay_block_number,
 					previous_relay_block_number
 				);
-				0
+				// something is not correct so exaust all remaining weight (note: any on_idle hooks after
+				// IdleScheduler won't execute)
+				remaining_weight
 			} else {
 				Self::do_dispatch_tasks(remaining_weight)
 			}
@@ -167,7 +168,7 @@ impl<T: Config> Pallet<T> {
 
 	/// Keep dispatching tasks in Storage, until insufficient weight remains.
 	pub fn do_dispatch_tasks(total_weight: Weight) -> Weight {
-		let mut weight_remaining = total_weight;
+		let mut weight_remaining = total_weight.saturating_sub(T::WeightInfo::on_idle_base());
 		if weight_remaining <= T::MinimumWeightRemainInBlock::get() {
 			return Zero::zero();
 		}
@@ -187,6 +188,13 @@ impl<T: Config> Pallet<T> {
 			}
 		}
 
+		Self::remove_completed_tasks(completed_tasks, &mut weight_remaining);
+
+		total_weight.saturating_sub(weight_remaining)
+	}
+
+	// Removes completed tasks and deposits events
+	pub fn remove_completed_tasks(completed_tasks: Vec<(Nonce, TaskResult)>, weight_remaining: &mut Weight) {
 		// Deposit event and remove completed tasks.
 		for (id, result) in completed_tasks {
 			Self::deposit_event(Event::<T>::TaskDispatched {
@@ -194,9 +202,8 @@ impl<T: Config> Pallet<T> {
 				result: result.result,
 			});
 			Tasks::<T>::remove(id);
+			*weight_remaining = weight_remaining.saturating_sub(T::WeightInfo::clear_tasks());
 		}
-
-		total_weight.saturating_sub(weight_remaining)
 	}
 }
 

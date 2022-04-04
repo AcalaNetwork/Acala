@@ -47,6 +47,8 @@ use sp_std::marker::PhantomData;
 /// Weight functions needed for module_idle_scheduler.
 pub trait WeightInfo {
 	fn on_initialize() -> Weight;
+	fn on_idle_base() -> Weight;
+	fn clear_tasks() -> Weight;
 	fn schedule_task() -> Weight;
 }
 
@@ -56,14 +58,25 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 	// Storage: ParachainSystem ValidationData (r:1 w:0)
 	// Storage: IdleScheduler PreviousRelayBlockNumber (r:0 w:1)
 	fn on_initialize() -> Weight {
-		(2_556_000 as Weight)
+		(2_545_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
+			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+	}
+	// Storage: ParachainSystem ValidationData (r:1 w:0)
+	// Storage: IdleScheduler PreviousRelayBlockNumber (r:1 w:0)
+	fn on_idle_base() -> Weight {
+		(3_627_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(2 as Weight))
+	}
+	// Storage: IdleScheduler Tasks (r:0 w:1)
+	fn clear_tasks() -> Weight {
+		(9_181_000 as Weight)
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	// Storage: IdleScheduler NextTaskId (r:1 w:1)
 	// Storage: IdleScheduler Tasks (r:0 w:1)
 	fn schedule_task() -> Weight {
-		(4_362_000 as Weight)
+		(4_103_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
@@ -72,12 +85,20 @@ impl<T: frame_system::Config> WeightInfo for AcalaWeight<T> {
 // For backwards compatibility and tests
 impl WeightInfo for () {
 	fn on_initialize() -> Weight {
-		(2_556_000 as Weight)
+		(2_545_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
+	fn on_idle_base() -> Weight {
+		(3_627_000 as Weight)
+			.saturating_add(RocksDbWeight::get().reads(2 as Weight))
+	}
+	fn clear_tasks() -> Weight {
+		(9_181_000 as Weight)
+			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
+	}
 	fn schedule_task() -> Weight {
-		(4_362_000 as Weight)
+		(4_103_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(2 as Weight))
 	}
