@@ -108,6 +108,7 @@ fn can_increment_next_task_id() {
 #[test]
 fn on_idle_works() {
 	ExtBuilder::default().build().execute_with(|| {
+		IdleScheduler::on_initialize(0);
 		assert_ok!(IdleScheduler::schedule_task(
 			Origin::root(),
 			ScheduledTasks::BalancesTask(BalancesTask::OnIdle)
@@ -116,8 +117,9 @@ fn on_idle_works() {
 		sp_io::storage::set(&RELAY_BLOCK_KEY, &10_u32.encode());
 		assert_eq!(IdleScheduler::on_idle(System::block_number(), u64::MAX), 0);
 
-		IdleScheduler::on_initialize(0);
-		// On_initialize is called it will execute
+		System::set_block_number(1);
+		IdleScheduler::on_initialize(1);
+		// On_initialize is called it will execute, as now relay block number is the same
 		assert_eq!(IdleScheduler::on_idle(System::block_number(), u64::MAX), BASE_WEIGHT);
 		assert!(!PreviousRelayBlockNumber::<Runtime>::exists());
 	});
