@@ -115,13 +115,14 @@ module-xcm-interface = {path = "../../modules/xcm-interface" }
 module-homa = {path = "../../modules/homa" }
 module-session-manager = { path = "../../modules/session-manager" }
 module-relaychain = {path = "../../modules/relaychain" }
+
 primitives = { package = "acala-primitives", path = "../../primitives" }
 runtime-common = { path = "../common" }
-
 mandala-runtime = { path = "../mandala", optional = true }
 karura-runtime = { path = "../karura", optional = true }
 acala-runtime = { path = "../acala", optional = true }
 
+# ecosystem
 ecosystem-renvm-bridge = { path = "../../ecosystem-modules/ren/renvm-bridge" }
 ecosystem-starport = { path = "../../ecosystem-modules/starport" }
 ecosystem-compound-cash = { path = "../../ecosystem-modules/compound-cash" }
@@ -140,8 +141,7 @@ polkadot-primitives = { git = "https://github.com/paritytech/polkadot", branch =
 polkadot-runtime-parachains = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.18" }
 kusama-runtime = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.18" }
 
-#xcm-emulator = { git = "https://github.com/shaunxw/xcm-simulator", rev = "24ccbce563d1f99019b4cdfa2f3af4e99bac0dfc" }
-xcm-emulator = { git = "https://github.com/zqhxuyuan/xcm-simulator", rev = "0e4574b0de910521962337b7539ace359fa1afed" }
+xcm-emulator = { git = "https://github.com/shaunxw/xcm-simulator", rev = "22d94e7754b7d8b956b20855b51891928ed0a2f5" }
 
 acala-service = { path = "../../node/service", features = ["with-all-runtime"] }
 
