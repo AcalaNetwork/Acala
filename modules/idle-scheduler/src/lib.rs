@@ -98,13 +98,15 @@ pub mod module {
 	#[pallet::hooks]
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
 		fn on_initialize(_n: T::BlockNumber) -> Weight {
-			// Unwrap shouldn't fail if it does defaults to 0
-			// This is the previous relay block because `on_initialize` is executed before
-			// the inherent that sets the new relay chain block number
-			let previous_relay_block: BlockNumber = T::RelayChainBlockNumberProvider::current_block_number()
-				.try_into()
-				.unwrap_or_default();
-			PreviousRelayBlockNumber::<T>::put(previous_relay_block);
+			// `try_into()` shouldn't fail, if it does, storage will be left empty which will return a value of
+			// zero as default when read. This is the previous relay block because `on_initialize` is executed
+			// before the inherent that sets the new relay chain block number
+			let previous_relay_block: Option<BlockNumber> =
+				T::RelayChainBlockNumberProvider::current_block_number().try_into().ok();
+
+			if let Some(block_number) = previous_relay_block {
+				PreviousRelayBlockNumber::<T>::put(block_number);
+			}
 			// One write and one read
 			T::DbWeight::get().reads_writes(One::one(), One::one())
 		}
