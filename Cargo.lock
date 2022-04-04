@@ -6224,6 +6224,7 @@ dependencies = [
 name = "module-evm-utility"
 version = "2.4.2"
 dependencies = [
+ "ethereum",
  "evm",
  "evm-gasometer",
  "evm-runtime",
