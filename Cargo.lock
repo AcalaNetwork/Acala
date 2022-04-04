@@ -2893,24 +2893,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ethereum"
-version = "0.12.0"
-source = "git+https://github.com/rust-blockchain/ethereum?rev=755dffaa4903fbec1269f50cde9863cf86269a14#755dffaa4903fbec1269f50cde9863cf86269a14"
-dependencies = [
- "bytes 1.1.0",
- "ethereum-types",
- "hash-db",
- "hash256-std-hasher",
- "parity-scale-codec",
- "rlp",
- "rlp-derive",
- "scale-info",
- "serde",
- "sha3 0.10.1",
- "triehash",
-]
-
-[[package]]
 name = "ethereum-types"
 version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2939,7 +2921,7 @@ source = "git+https://github.com/rust-blockchain/evm?rev=0b686f8c2c83a52638917ca
 dependencies = [
  "auto_impl",
  "environmental",
- "ethereum 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ethereum",
  "evm-core",
  "evm-gasometer",
  "evm-runtime",
@@ -6242,7 +6224,6 @@ dependencies = [
 name = "module-evm-utility"
 version = "2.4.2"
 dependencies = [
- "ethereum 0.12.0 (git+https://github.com/rust-blockchain/ethereum?rev=755dffaa4903fbec1269f50cde9863cf86269a14)",
  "evm",
  "evm-gasometer",
  "evm-runtime",
