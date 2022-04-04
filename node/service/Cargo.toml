@@ -22,6 +22,7 @@ k256 = { version = "0.10.4", default-features = false, features = ["keccak256", 
 tiny-keccak = { version = "2.0", features = ["keccak"] }
 
 sp-api = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.18" }
+sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.18" }
 sp-consensus = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.18" }
 sp-consensus-aura = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.18" }
 sc-consensus-aura = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.18" }

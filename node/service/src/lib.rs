@@ -34,16 +34,17 @@ use cumulus_primitives_parachain_inherent::{MockValidationDataInherentDataProvid
 use cumulus_relay_chain_inprocess_interface::build_inprocess_relay_chain;
 use cumulus_relay_chain_interface::{RelayChainError, RelayChainInterface, RelayChainResult};
 use cumulus_relay_chain_rpc_interface::RelayChainRPCInterface;
-use sc_client_api::ExecutorProvider;
 use sc_consensus::LongestChain;
 use sc_consensus_aura::ImportQueueParams;
-use sc_executor::NativeElseWasmExecutor;
+use sc_executor::WasmExecutor;
 use sc_network::NetworkService;
 pub use sc_service::{
 	config::{DatabaseSource, PrometheusConfig},
 	ChainSpec,
 };
-use sc_service::{error::Error as ServiceError, Configuration, PartialComponents, Role, TFullBackend, TaskManager};
+use sc_service::{
+	error::Error as ServiceError, Configuration, PartialComponents, Role, TFullBackend, TFullClient, TaskManager,
+};
 use sc_telemetry::{Telemetry, TelemetryHandle, TelemetryWorker, TelemetryWorkerHandle};
 pub use sp_api::ConstructRuntimeApi;
 use sp_blockchain::HeaderBackend;
@@ -63,16 +64,14 @@ mod client;
 #[cfg(feature = "with-mandala-runtime")]
 mod instant_finalize;
 
-pub fn default_mock_parachain_inherent_data_provider() -> MockValidationDataInherentDataProvider {
-	MockValidationDataInherentDataProvider {
-		current_para_block: 0,
-		relay_offset: 1000,
-		relay_blocks_per_para_block: 2,
-		xcm_config: Default::default(),
-		raw_downward_messages: vec![],
-		raw_horizontal_messages: vec![],
-	}
-}
+#[cfg(not(feature = "runtime-benchmarks"))]
+type HostFunctions = sp_io::SubstrateHostFunctions;
+
+#[cfg(feature = "runtime-benchmarks")]
+type HostFunctions = (
+	sp_io::SubstrateHostFunctions,
+	frame_benchmarking::benchmarking::HostFunctions,
+);
 
 #[cfg(feature = "with-mandala-runtime")]
 mod mandala_executor {
@@ -182,32 +181,30 @@ impl IdentifyVariant for Box<dyn ChainSpec> {
 type FullBackend = TFullBackend<Block>;
 
 /// Acala's full client.
-type FullClient<RuntimeApi, ExecutorDispatch> =
-	sc_service::TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<ExecutorDispatch>>;
+type FullClient<RuntimeApi> = TFullClient<Block, RuntimeApi, WasmExecutor<HostFunctions>>;
 
 /// Maybe Mandala Dev full select chain.
 type MaybeFullSelectChain = Option<LongestChain<FullBackend, Block>>;
 
-pub fn new_partial<RuntimeApi, Executor>(
+pub fn new_partial<RuntimeApi>(
 	config: &Configuration,
 	dev: bool,
 	instant_sealing: bool,
 ) -> Result<
 	PartialComponents<
-		FullClient<RuntimeApi, Executor>,
+		FullClient<RuntimeApi>,
 		FullBackend,
 		MaybeFullSelectChain,
 		sc_consensus::import_queue::BasicQueue<Block, PrefixedMemoryDB<BlakeTwo256>>,
-		sc_transaction_pool::FullPool<Block, FullClient<RuntimeApi, Executor>>,
+		sc_transaction_pool::FullPool<Block, FullClient<RuntimeApi>>,
 		(Option<Telemetry>, Option<TelemetryWorkerHandle>),
 	>,
 	sc_service::Error,
 >
 where
-	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi, Executor>> + Send + Sync + 'static,
+	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi>> + Send + Sync + 'static,
 	RuntimeApi::RuntimeApi: RuntimeApiCollection<StateBackend = sc_client_api::StateBackendFor<FullBackend, Block>>,
 	RuntimeApi::RuntimeApi: sp_consensus_aura::AuraApi<Block, AuraId>,
-	Executor: sc_executor::NativeExecutionDispatch + 'static,
 {
 	let telemetry = config
 		.telemetry_endpoints
@@ -220,19 +217,19 @@ where
 		})
 		.transpose()?;
 
-	let executor = NativeElseWasmExecutor::<Executor>::new(
+	let executor = WasmExecutor::<HostFunctions>::new(
 		config.wasm_method,
 		config.default_heap_pages,
 		config.max_runtime_instances,
+		None,
 		config.runtime_cache_size,
 	);
 
-	let (client, backend, keystore_container, task_manager) =
-		sc_service::new_full_parts::<Block, RuntimeApi, NativeElseWasmExecutor<Executor>>(
-			config,
-			telemetry.as_ref().map(|(_, telemetry)| telemetry.handle()),
-			executor,
-		)?;
+	let (client, backend, keystore_container, task_manager) = sc_service::new_full_parts::<Block, RuntimeApi, _>(
+		config,
+		telemetry.as_ref().map(|(_, telemetry)| telemetry.handle()),
+		executor,
+	)?;
 	let client = Arc::new(client);
 
 	let telemetry_worker_handle = telemetry.as_ref().map(|(worker, _)| worker.handle());
@@ -309,7 +306,7 @@ where
 				},
 				spawner: &task_manager.spawn_essential_handle(),
 				registry,
-				can_author_with: sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone()),
+				can_author_with: sp_consensus::AlwaysCanAuthor,
 				check_for_equivocation: Default::default(),
 				telemetry: telemetry.as_ref().map(|x| x.handle()),
 			})?
@@ -332,7 +329,7 @@ where
 					Ok((time, slot))
 				},
 				registry,
-				can_author_with: sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone()),
+				can_author_with: sp_consensus::AlwaysCanAuthor,
 				spawner: &task_manager.spawn_essential_handle(),
 				telemetry: telemetry.as_ref().map(|telemetry| telemetry.handle()),
 			},
@@ -373,31 +370,28 @@ async fn build_relay_chain_interface(
 /// This is the actual implementation that is abstract over the executor and the
 /// runtime api.
 #[sc_tracing::logging::prefix_logs_with("Parachain")]
-async fn start_node_impl<RB, RuntimeApi, Executor, BIC>(
+async fn start_node_impl<RB, RuntimeApi, BIC>(
 	parachain_config: Configuration,
 	polkadot_config: Configuration,
 	collator_options: CollatorOptions,
 	id: ParaId,
 	_rpc_ext_builder: RB,
 	build_consensus: BIC,
-) -> sc_service::error::Result<(TaskManager, Arc<FullClient<RuntimeApi, Executor>>)>
+) -> sc_service::error::Result<(TaskManager, Arc<FullClient<RuntimeApi>>)>
 where
-	RB: Fn(
-			Arc<FullClient<RuntimeApi, Executor>>,
-		) -> Result<jsonrpc_core::IoHandler<sc_rpc::Metadata>, sc_service::Error>
+	RB: Fn(Arc<FullClient<RuntimeApi>>) -> Result<jsonrpc_core::IoHandler<sc_rpc::Metadata>, sc_service::Error>
 		+ Send
 		+ 'static,
-	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi, Executor>> + Send + Sync + 'static,
+	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi>> + Send + Sync + 'static,
 	RuntimeApi::RuntimeApi: RuntimeApiCollection<StateBackend = sc_client_api::StateBackendFor<FullBackend, Block>>,
 	RuntimeApi::RuntimeApi: sp_consensus_aura::AuraApi<Block, AuraId>,
-	Executor: sc_executor::NativeExecutionDispatch + 'static,
 	BIC: FnOnce(
-		Arc<FullClient<RuntimeApi, Executor>>,
+		Arc<FullClient<RuntimeApi>>,
 		Option<&Registry>,
 		Option<TelemetryHandle>,
 		&TaskManager,
 		Arc<dyn RelayChainInterface>,
-		Arc<sc_transaction_pool::FullPool<Block, FullClient<RuntimeApi, Executor>>>,
+		Arc<sc_transaction_pool::FullPool<Block, FullClient<RuntimeApi>>>,
 		Arc<NetworkService<Block, Hash>>,
 		SyncCryptoStorePtr,
 		bool,
@@ -546,12 +540,11 @@ pub async fn start_node<RuntimeApi, Executor>(
 	polkadot_config: Configuration,
 	collator_options: CollatorOptions,
 	id: ParaId,
-) -> sc_service::error::Result<(TaskManager, Arc<FullClient<RuntimeApi, Executor>>)>
+) -> sc_service::error::Result<(TaskManager, Arc<FullClient<RuntimeApi>>)>
 where
-	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi, Executor>> + Send + Sync + 'static,
+	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi>> + Send + Sync + 'static,
 	RuntimeApi::RuntimeApi: RuntimeApiCollection<StateBackend = sc_client_api::StateBackendFor<FullBackend, Block>>,
 	RuntimeApi::RuntimeApi: sp_consensus_aura::AuraApi<Block, AuraId>,
-	Executor: sc_executor::NativeExecutionDispatch + 'static,
 {
 	start_node_impl(
 		parachain_config,
@@ -674,7 +667,7 @@ pub fn new_chain_ops(
 				import_queue,
 				task_manager,
 				..
-			} = new_partial::<karura_runtime::RuntimeApi, KaruraExecutorDispatch>(config, false, false)?;
+			} = new_partial::<karura_runtime::RuntimeApi>(config, false, false)?;
 			Ok((Arc::new(Client::Karura(client)), backend, import_queue, task_manager))
 		}
 		#[cfg(not(feature = "with-karura-runtime"))]
@@ -688,7 +681,7 @@ pub fn new_chain_ops(
 				import_queue,
 				task_manager,
 				..
-			} = new_partial::<acala_runtime::RuntimeApi, AcalaExecutorDispatch>(config, false, false)?;
+			} = new_partial::<acala_runtime::RuntimeApi>(config, false, false)?;
 			Ok((Arc::new(Client::Acala(client)), backend, import_queue, task_manager))
 		}
 		#[cfg(not(feature = "with-acala-runtime"))]
@@ -707,7 +700,7 @@ fn inner_mandala_dev(config: Configuration, instant_sealing: bool) -> Result<Tas
 		select_chain: maybe_select_chain,
 		transaction_pool,
 		other: (mut telemetry, _),
-	} = new_partial::<mandala_runtime::RuntimeApi, MandalaExecutorDispatch>(&config, true, instant_sealing)?;
+	} = new_partial::<mandala_runtime::RuntimeApi>(&config, true, instant_sealing)?;
 
 	let (network, system_rpc_tx, network_starter) = sc_service::build_network(sc_service::BuildNetworkParams {
 		config: &config,
@@ -817,7 +810,6 @@ fn inner_mandala_dev(config: Configuration, instant_sealing: bool) -> Result<Tas
 			Some(command_sink)
 		} else {
 			// aura
-			let can_author_with = sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone());
 			let slot_duration = sc_consensus_aura::slot_duration(&*client)?;
 			let client_for_cidp = client.clone();
 
@@ -862,7 +854,7 @@ fn inner_mandala_dev(config: Configuration, instant_sealing: bool) -> Result<Tas
 				force_authoring,
 				backoff_authoring_blocks,
 				keystore: keystore_container.sync_keystore(),
-				can_author_with,
+				can_author_with: sp_consensus::AlwaysCanAuthor,
 				sync_oracle: network.clone(),
 				justification_sync_link: network.clone(),
 				// We got around 500ms for proposing
