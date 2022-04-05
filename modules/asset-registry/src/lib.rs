@@ -95,6 +95,7 @@ pub mod module {
 		Erc20(EvmAddress),
 		StableAssetId(StableAssetPoolId),
 		ForeignAssetId(ForeignAssetId),
+		NativeAssetId(CurrencyId),
 	}
 
 	#[derive(Clone, Eq, PartialEq, RuntimeDebug, Encode, Decode, TypeInfo)]
@@ -305,6 +306,42 @@ pub mod module {
 			});
 			Ok(())
 		}
+
+		#[pallet::weight(T::WeightInfo::register_native_asset())]
+		#[transactional]
+		pub fn register_native_asset(
+			origin: OriginFor<T>,
+			currency_id: CurrencyId,
+			metadata: Box<AssetMetadata<BalanceOf<T>>>,
+		) -> DispatchResult {
+			T::RegisterOrigin::ensure_origin(origin)?;
+
+			Self::do_register_native_asset(currency_id, &metadata)?;
+
+			Self::deposit_event(Event::<T>::AssetRegistered {
+				asset_id: AssetIds::NativeAssetId(currency_id),
+				metadata: *metadata,
+			});
+			Ok(())
+		}
+
+		#[pallet::weight(T::WeightInfo::update_native_asset())]
+		#[transactional]
+		pub fn update_native_asset(
+			origin: OriginFor<T>,
+			currency_id: CurrencyId,
+			metadata: Box<AssetMetadata<BalanceOf<T>>>,
+		) -> DispatchResult {
+			T::RegisterOrigin::ensure_origin(origin)?;
+
+			Self::do_update_native_asset(currency_id, &metadata)?;
+
+			Self::deposit_event(Event::<T>::AssetUpdated {
+				asset_id: AssetIds::NativeAssetId(currency_id),
+				metadata: *metadata,
+			});
+			Ok(())
+		}
 	}
 }
 
@@ -456,6 +493,32 @@ impl<T: Config> Pallet<T> {
 			*maybe_asset_metadatas = Some(metadata.clone());
 			Ok(())
 		})
+	}
+
+	fn do_register_native_asset(asset: CurrencyId, metadata: &AssetMetadata<BalanceOf<T>>) -> DispatchResult {
+		AssetMetadatas::<T>::try_mutate(
+			AssetIds::NativeAssetId(asset),
+			|maybe_asset_metadatas| -> DispatchResult {
+				ensure!(maybe_asset_metadatas.is_none(), Error::<T>::AssetIdExisted);
+
+				*maybe_asset_metadatas = Some(metadata.clone());
+				Ok(())
+			},
+		)?;
+
+		Ok(())
+	}
+
+	fn do_update_native_asset(currency_id: CurrencyId, metadata: &AssetMetadata<BalanceOf<T>>) -> DispatchResult {
+		AssetMetadatas::<T>::try_mutate(
+			AssetIds::NativeAssetId(currency_id),
+			|maybe_asset_metadatas| -> DispatchResult {
+				ensure!(maybe_asset_metadatas.is_some(), Error::<T>::AssetIdNotExists);
+
+				*maybe_asset_metadatas = Some(metadata.clone());
+				Ok(())
+			},
+		)
 	}
 }
 

@@ -36,6 +36,7 @@ use sp_runtime::{
 };
 use sp_std::cell::RefCell;
 use std::collections::HashMap;
+use support::mocks::MockStableAsset;
 use support::{AuctionManager, RiskManager};
 
 pub type AccountId = u128;
@@ -174,6 +175,7 @@ impl cdp_treasury::Config for Runtime {
 	type TreasuryAccount = TreasuryAccount;
 	type AlternativeSwapPathJointList = AlternativeSwapPathJointList;
 	type WeightInfo = ();
+	type StableAsset = MockStableAsset<CurrencyId, Balance, AccountId, BlockNumber>;
 }
 
 // mock risk manager

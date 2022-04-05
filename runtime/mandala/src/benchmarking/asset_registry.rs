@@ -25,6 +25,7 @@ use module_asset_registry::AssetMetadata;
 use module_evm::EvmAddress;
 use module_support::AddressMapping;
 use orml_benchmarking::runtime_benchmarks;
+use primitives::TokenSymbol;
 use sp_std::{boxed::Box, str::FromStr, vec};
 use xcm::{v1::MultiLocation, VersionedMultiLocation};
 
@@ -126,6 +127,27 @@ runtime_benchmarks! {
 		deploy_contract();
 		AssetRegistry::register_erc20_asset(RawOrigin::Root.into(), erc20_address(), 1)?;
 	}: _(RawOrigin::Root, erc20_address(), Box::new(asset_metadata))
+
+	register_native_asset {
+		let asset_metadata = AssetMetadata {
+			name: b"Token Name".to_vec(),
+			symbol: b"TN".to_vec(),
+			decimals: 12,
+			minimal_balance: 1,
+		};
+	}: _(RawOrigin::Root, CurrencyId::Token(TokenSymbol::DOT), Box::new(asset_metadata))
+
+	update_native_asset {
+		let currency_id = CurrencyId::Token(TokenSymbol::DOT);
+		let asset_metadata = AssetMetadata {
+			name: b"Token Name".to_vec(),
+			symbol: b"TN".to_vec(),
+			decimals: 12,
+			minimal_balance: 1,
+		};
+
+		AssetRegistry::register_native_asset(RawOrigin::Root.into(), currency_id, Box::new(asset_metadata.clone()))?;
+	}: _(RawOrigin::Root, currency_id, Box::new(asset_metadata))
 }
 
 #[cfg(test)]

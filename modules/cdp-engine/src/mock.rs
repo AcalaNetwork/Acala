@@ -35,6 +35,7 @@ use sp_runtime::{
 	traits::{AccountIdConversion, IdentityLookup, One as OneT},
 };
 use sp_std::cell::RefCell;
+use support::mocks::MockStableAsset;
 use support::{AuctionManager, EmergencyShutdown};
 
 pub type AccountId = u128;
@@ -188,7 +189,7 @@ impl AuctionManager<AccountId> for MockAuctionManager {
 		amount: Self::Balance,
 		target: Self::Balance,
 	) -> DispatchResult {
-		AUCTION.with(|v| *v.borrow_mut() = Some((refund_recipient.clone(), currency_id, amount, target)));
+		AUCTION.with(|v| *v.borrow_mut() = Some((*refund_recipient, currency_id, amount, target)));
 		Ok(())
 	}
 
@@ -233,6 +234,7 @@ impl cdp_treasury::Config for Runtime {
 	type TreasuryAccount = TreasuryAccount;
 	type AlternativeSwapPathJointList = AlternativeSwapPathJointList;
 	type WeightInfo = ();
+	type StableAsset = MockStableAsset<CurrencyId, Balance, AccountId, BlockNumber>;
 }
 
 parameter_types! {
