@@ -27,7 +27,9 @@ use frame_support::{
 };
 use frame_system::{EnsureRoot, EnsureSignedBy};
 use nutsfinance_stable_asset::traits::StableAsset;
-use nutsfinance_stable_asset::{PoolTokenIndex, RedeemProportionResult, StableAssetPoolId, StableAssetPoolInfo};
+use nutsfinance_stable_asset::{
+	PoolTokenIndex, RedeemProportionResult, StableAssetPoolId, StableAssetPoolInfo, SwapResult,
+};
 use orml_traits::parameter_type_with_key;
 use primitives::{DexShare, TokenSymbol, TradingPair};
 use sp_core::H256;
@@ -351,7 +353,7 @@ impl StableAsset for MockStableAsset {
 		_dx: Self::Balance,
 		_min_dy: Self::Balance,
 		_asset_length: u32,
-	) -> DispatchResult {
+	) -> sp_std::result::Result<(Self::Balance, Self::Balance), DispatchError> {
 		unimplemented!()
 	}
 
@@ -508,5 +510,30 @@ impl StableAsset for MockStableAsset {
 			total_supply: 0,
 			redeem_amount: 0,
 		})
+	}
+
+	fn get_best_route(
+		input_asset: Self::AssetId,
+		output_asset: Self::AssetId,
+		limit: Self::Balance,
+	) -> Option<
+		StableAssetPoolInfo<
+			Self::AssetId,
+			Self::AtLeast64BitUnsigned,
+			Self::Balance,
+			Self::AccountId,
+			Self::BlockNumber,
+		>,
+	> {
+		unimplemented!()
+	}
+
+	fn get_swap_amount_exact(
+		pool_id: StableAssetPoolId,
+		input_index: PoolTokenIndex,
+		output_index: PoolTokenIndex,
+		dy_bal: Self::Balance,
+	) -> Option<SwapResult<Self::Balance>> {
+		unimplemented!()
 	}
 }
