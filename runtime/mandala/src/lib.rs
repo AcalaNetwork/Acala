@@ -695,6 +695,8 @@ impl pallet_elections_phragmen::Config for Runtime {
 }
 
 parameter_types! {
+	pub const MinimumCount: u32 = 1;
+	pub const ExpiresIn: Moment = 1000 * 60 * 60; // 1 hours
 	pub RootOperatorAccountId: AccountId = AccountId::from([0xffu8; 32]);
 }
 
@@ -702,7 +704,7 @@ type AcalaDataProvider = orml_oracle::Instance1;
 impl orml_oracle::Config<AcalaDataProvider> for Runtime {
 	type Event = Event;
 	type OnNewData = ();
-	type CombineData = orml_oracle::DefaultCombineData<Runtime, ConstU32<1>, ConstU64<3_600_000>, AcalaDataProvider>;
+	type CombineData = orml_oracle::DefaultCombineData<Runtime, MinimumCount, ExpiresIn, AcalaDataProvider>;
 	type Time = Timestamp;
 	type OracleKey = CurrencyId;
 	type OracleValue = Price;
@@ -1204,7 +1206,7 @@ impl module_evm_accounts::Config for Runtime {
 	type Currency = Balances;
 	type AddressMapping = EvmAddressMapping<Runtime>;
 	type TransferAll = Currencies;
-	type ChainId = ConstU64<595>;
+	type ChainId = ChainId;
 	type WeightInfo = weights::module_evm_accounts::WeightInfo<Runtime>;
 }
 
@@ -1467,6 +1469,7 @@ impl ecosystem_compound_cash::Config for Runtime {
 }
 
 parameter_types! {
+	pub const ChainId: u64 = 595;
 	pub NetworkContractSource: H160 = H160::from_low_u64_be(0);
 	pub PrecompilesValue: AllPrecompiles<Runtime> = AllPrecompiles::<_>::mandala();
 }
@@ -1521,7 +1524,7 @@ impl module_evm::Config for Runtime {
 	type Event = Event;
 	type PrecompilesType = AllPrecompiles<Self>;
 	type PrecompilesValue = PrecompilesValue;
-	type ChainId = ConstU64<595>;
+	type ChainId = ChainId;
 	type GasToWeight = GasToWeight;
 	type ChargeTransactionPayment = module_transaction_payment::ChargeTransactionPayment<Runtime>;
 	type NetworkContractOrigin = EnsureRootOrTwoThirdsTechnicalCommittee;
@@ -1645,7 +1648,6 @@ impl nutsfinance_stable_asset::Config for Runtime {
 	type FeePrecision = ConstU128<10_000_000_000>; // 10 decimals
 	type APrecision = ConstU128<100>; // 2 decimals
 	type PoolAssetLimit = ConstU32<5>;
-	type SwapExactOverAmount = ConstU128<100>;
 	type WeightInfo = weights::nutsfinance_stable_asset::WeightInfo<Runtime>;
 	type ListingOrigin = EnsureRootOrHalfGeneralCouncil;
 	type EnsurePoolAssetId = EnsurePoolAssetId;

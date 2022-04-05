@@ -39,7 +39,7 @@ pub use primitives::{
 	define_combined_task,
 	evm::{convert_decimals_to_evm, EvmAddress},
 	task::TaskResult,
-	Address, Amount, BlockNumber, CurrencyId, DexShare, Header, Lease, Nonce, ReserveIdentifier, Signature,
+	Address, Amount, BlockNumber, CurrencyId, DexShare, Header, Lease, Moment, Nonce, ReserveIdentifier, Signature,
 	TokenSymbol, TradingPair,
 };
 use scale_info::TypeInfo;
@@ -83,6 +83,8 @@ impl frame_system::Config for Test {
 }
 
 parameter_types! {
+	pub const MinimumCount: u32 = 5;
+	pub const ExpiresIn: Moment = 1000 * 60 * 60; // 1 hours
 	pub const RootOperatorAccountId: AccountId = ALICE;
 	pub OracleMembers: Vec<AccountId> = vec![ALICE, BOB, EVA];
 }
