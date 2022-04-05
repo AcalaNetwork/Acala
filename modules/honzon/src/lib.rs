@@ -34,7 +34,7 @@ use frame_system::pallet_prelude::*;
 use primitives::{Amount, Balance, CurrencyId, ReserveIdentifier};
 use sp_runtime::{
 	traits::{StaticLookup, Zero},
-	DispatchResult,
+	ArithmeticError, DispatchResult,
 };
 use support::EmergencyShutdown;
 
@@ -306,6 +306,22 @@ pub mod module {
 				decrease_collateral,
 				min_decrease_debit_value,
 			)?;
+			Ok(())
+		}
+
+		#[pallet::weight(0)]
+		#[transactional]
+		pub fn transfer_debit(
+			origin: OriginFor<T>,
+			from_currency: CurrencyId,
+			to_currency: CurrencyId,
+			debit_transfer: Balance,
+		) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+			let debit_amount: Amount = debit_transfer.try_into().map_err(|_| ArithmeticError::Overflow)?;
+			let negative_debit = debit_amount.checked_neg().ok_or(ArithmeticError::Overflow)?;
+			<cdp_engine::Pallet<T>>::adjust_position(&who, from_currency, Zero::zero(), negative_debit)?;
+			<cdp_engine::Pallet<T>>::adjust_position(&who, to_currency, Zero::zero(), debit_amount)?;
 			Ok(())
 		}
 	}

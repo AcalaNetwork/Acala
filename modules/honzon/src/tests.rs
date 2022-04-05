@@ -189,3 +189,36 @@ fn close_loan_has_debit_by_dex_work() {
 		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 0);
 	});
 }
+
+#[test]
+fn transfer_debit() {
+	ExtBuilder::default().build().execute_with(|| {
+		assert_ok!(CDPEngineModule::set_collateral_params(
+			Origin::signed(1),
+			BTC,
+			Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
+			Change::NewValue(Some(Rate::saturating_from_rational(2, 10))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
+			Change::NewValue(10000),
+		));
+		assert_ok!(CDPEngineModule::set_collateral_params(
+			Origin::signed(1),
+			DOT,
+			Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
+			Change::NewValue(Some(Rate::saturating_from_rational(2, 10))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
+			Change::NewValue(10000),
+		));
+
+		// set up two loans
+		assert_ok!(HonzonModule::adjust_loan(Origin::signed(ALICE), BTC, 100, 50));
+		assert_eq!(LoansModule::positions(BTC, ALICE).collateral, 100);
+		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 50);
+
+		assert_ok!(HonzonModule::adjust_loan(Origin::signed(ALICE), DOT, 100, 50));
+		assert_eq!(LoansModule::positions(DOT, ALICE).collateral, 100);
+		assert_eq!(LoansModule::positions(DOT, ALICE).debit, 50);
+	});
+}
