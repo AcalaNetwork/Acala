@@ -16,13 +16,11 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-	AccountId, CurrencyId, GetLiquidCurrencyId, MaxUnbondingChunks, MinCouncilBondThreshold, NominateesCount,
-	NomineesElection, Runtime,
-};
+use crate::{AccountId, CurrencyId, GetLiquidCurrencyId, MinCouncilBondThreshold, NomineesElection, Runtime};
 
 use super::utils::set_balance;
 use frame_benchmarking::{account, whitelisted_caller};
+use frame_support::traits::Get;
 use frame_system::RawOrigin;
 use module_support::OnNewEra;
 use orml_benchmarking::runtime_benchmarks;
@@ -47,7 +45,7 @@ runtime_benchmarks! {
 	}: _(RawOrigin::Signed(caller), MinCouncilBondThreshold::get())
 
 	rebond {
-		let c in 1 .. MaxUnbondingChunks::get();
+		let c in 1 .. <Runtime as module_nominees_election::Config>::MaxUnbondingChunks::get();
 
 		let caller: AccountId = whitelisted_caller();
 		set_balance(LIQUID, &caller, 2 * MinCouncilBondThreshold::get());
@@ -58,7 +56,7 @@ runtime_benchmarks! {
 	}: _(RawOrigin::Signed(caller), MinCouncilBondThreshold::get())
 
 	withdraw_unbonded {
-		let c in 1 .. MaxUnbondingChunks::get();
+		let c in 1 .. <Runtime as module_nominees_election::Config>::MaxUnbondingChunks::get();
 
 		let caller: AccountId = whitelisted_caller();
 		set_balance(LIQUID, &caller, 2 * MinCouncilBondThreshold::get());
@@ -70,7 +68,7 @@ runtime_benchmarks! {
 	}: _(RawOrigin::Signed(caller))
 
 	nominate {
-		let c in 1 .. NominateesCount::get();
+		let c in 1 .. <Runtime as module_nominees_election::Config>::NominateesCount::get();
 		let targets = (0..c).map(|c| account("nominatees", c, SEED)).collect::<Vec<_>>();
 
 		let caller: AccountId = whitelisted_caller();
@@ -79,7 +77,7 @@ runtime_benchmarks! {
 	}: _(RawOrigin::Signed(caller), targets)
 
 	chill {
-		let c in 1 .. NominateesCount::get();
+		let c in 1 .. <Runtime as module_nominees_election::Config>::NominateesCount::get();
 		let targets = (0..c).map(|c| account("nominatees", c, SEED)).collect::<Vec<_>>();
 
 		let caller: AccountId = whitelisted_caller();

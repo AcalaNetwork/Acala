@@ -16,9 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-	AcalaOracle, AccountId, Balance, Currencies, CurrencyId, MinimumCount, OperatorMembershipAcala, Price, Runtime,
-};
+use crate::{AcalaOracle, AccountId, Balance, Currencies, CurrencyId, OperatorMembershipAcala, Price, Runtime};
 
 use frame_benchmarking::account;
 use frame_support::traits::tokens::fungibles;
@@ -45,7 +43,7 @@ pub fn set_balance(currency_id: CurrencyId, who: &AccountId, balance: Balance) {
 }
 
 pub fn feed_price(prices: Vec<(CurrencyId, Price)>) -> DispatchResult {
-	for i in 0..MinimumCount::get() {
+	for i in 0..5 {
 		let oracle: AccountId = account("oracle", 0, i);
 		if !OperatorMembershipAcala::contains(&oracle) {
 			OperatorMembershipAcala::add_member(RawOrigin::Root.into(), oracle.clone())?;

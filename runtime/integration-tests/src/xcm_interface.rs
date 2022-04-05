@@ -20,7 +20,7 @@
 
 use crate::relaychain::kusama_test_net::*;
 use crate::setup::*;
-use frame_support::{assert_ok, weights::Weight};
+use frame_support::{assert_ok, traits::Get, weights::Weight};
 use module_homa::UnlockChunk;
 use module_support::HomaSubAccountXcm;
 use module_xcm_interface::XcmInterfaceOperation;
@@ -427,7 +427,7 @@ fn homa_mint_and_redeem_works() {
 	let homa_lite_sub_account: AccountId =
 		hex_literal::hex!["d7b8926b326dd349355a9a7cca6606c1e0eb6fd2b506066b518c7155ff0d8297"].into();
 	let mut parachain_account: AccountId = AccountId::new([0u8; 32]);
-	let bonding_duration = BondingDuration::get();
+	let bonding_duration = <Runtime as module_homa::Config>::BondingDuration::get(); // Defined in Runtime
 
 	Karura::execute_with(|| {
 		parachain_account = ParachainAccount::get();
