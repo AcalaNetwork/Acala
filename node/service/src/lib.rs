@@ -21,6 +21,8 @@
 
 //! Acala service. Specialized wrapper over substrate service.
 
+use acala_primitives::{Block, Hash};
+use cumulus_client_cli::CollatorOptions;
 use cumulus_client_consensus_aura::{AuraConsensus, BuildAuraConsensusParams, SlotProportion};
 use cumulus_client_consensus_common::ParachainConsensus;
 use cumulus_client_network::BlockAnnounceValidator;
@@ -28,51 +30,48 @@ use cumulus_client_service::{
 	prepare_node_config, start_collator, start_full_node, StartCollatorParams, StartFullNodeParams,
 };
 use cumulus_primitives_core::ParaId;
-use cumulus_relay_chain_interface::RelayChainInterface;
-use cumulus_relay_chain_local::build_relay_chain_interface;
-
-use acala_primitives::{Block, Hash};
 use cumulus_primitives_parachain_inherent::{MockValidationDataInherentDataProvider, MockXcmConfig};
-use sc_client_api::ExecutorProvider;
+use cumulus_relay_chain_inprocess_interface::build_inprocess_relay_chain;
+use cumulus_relay_chain_interface::{RelayChainError, RelayChainInterface, RelayChainResult};
+use cumulus_relay_chain_rpc_interface::RelayChainRPCInterface;
 use sc_consensus::LongestChain;
 use sc_consensus_aura::ImportQueueParams;
-use sc_executor::NativeElseWasmExecutor;
+use sc_executor::WasmExecutor;
 use sc_network::NetworkService;
-use sc_service::{error::Error as ServiceError, Configuration, PartialComponents, Role, TFullBackend, TaskManager};
-use sc_telemetry::{Telemetry, TelemetryHandle, TelemetryWorker, TelemetryWorkerHandle};
-use sp_consensus::SlotData;
-use sp_consensus_aura::sr25519::{AuthorityId as AuraId, AuthorityPair as AuraPair};
-use sp_keystore::SyncCryptoStorePtr;
-use sp_runtime::traits::BlakeTwo256;
-use sp_trie::PrefixedMemoryDB;
-use substrate_prometheus_endpoint::Registry;
-
-use std::{sync::Arc, time::Duration};
-
-pub use client::*;
-
 pub use sc_service::{
 	config::{DatabaseSource, PrometheusConfig},
 	ChainSpec,
 };
+use sc_service::{
+	error::Error as ServiceError, Configuration, PartialComponents, Role, TFullBackend, TFullClient, TaskManager,
+};
+use sc_telemetry::{Telemetry, TelemetryHandle, TelemetryWorker, TelemetryWorkerHandle};
 pub use sp_api::ConstructRuntimeApi;
 use sp_blockchain::HeaderBackend;
+use sp_consensus_aura::sr25519::{AuthorityId as AuraId, AuthorityPair as AuraPair};
+use sp_keystore::SyncCryptoStorePtr;
+use sp_runtime::traits::BlakeTwo256;
+use sp_trie::PrefixedMemoryDB;
+use std::{sync::Arc, time::Duration};
+use substrate_prometheus_endpoint::Registry;
+
+pub use client::*;
+
+use polkadot_service::CollatorPair;
 
 pub mod chain_spec;
 mod client;
 #[cfg(feature = "with-mandala-runtime")]
 mod instant_finalize;
 
-pub fn default_mock_parachain_inherent_data_provider() -> MockValidationDataInherentDataProvider {
-	MockValidationDataInherentDataProvider {
-		current_para_block: 0,
-		relay_offset: 1000,
-		relay_blocks_per_para_block: 2,
-		xcm_config: Default::default(),
-		raw_downward_messages: vec![],
-		raw_horizontal_messages: vec![],
-	}
-}
+#[cfg(not(feature = "runtime-benchmarks"))]
+type HostFunctions = sp_io::SubstrateHostFunctions;
+
+#[cfg(feature = "runtime-benchmarks")]
+type HostFunctions = (
+	sp_io::SubstrateHostFunctions,
+	frame_benchmarking::benchmarking::HostFunctions,
+);
 
 #[cfg(feature = "with-mandala-runtime")]
 mod mandala_executor {
@@ -182,32 +181,30 @@ impl IdentifyVariant for Box<dyn ChainSpec> {
 type FullBackend = TFullBackend<Block>;
 
 /// Acala's full client.
-type FullClient<RuntimeApi, ExecutorDispatch> =
-	sc_service::TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<ExecutorDispatch>>;
+type FullClient<RuntimeApi> = TFullClient<Block, RuntimeApi, WasmExecutor<HostFunctions>>;
 
 /// Maybe Mandala Dev full select chain.
 type MaybeFullSelectChain = Option<LongestChain<FullBackend, Block>>;
 
-pub fn new_partial<RuntimeApi, Executor>(
+pub fn new_partial<RuntimeApi>(
 	config: &Configuration,
 	dev: bool,
 	instant_sealing: bool,
 ) -> Result<
 	PartialComponents<
-		FullClient<RuntimeApi, Executor>,
+		FullClient<RuntimeApi>,
 		FullBackend,
 		MaybeFullSelectChain,
 		sc_consensus::import_queue::BasicQueue<Block, PrefixedMemoryDB<BlakeTwo256>>,
-		sc_transaction_pool::FullPool<Block, FullClient<RuntimeApi, Executor>>,
+		sc_transaction_pool::FullPool<Block, FullClient<RuntimeApi>>,
 		(Option<Telemetry>, Option<TelemetryWorkerHandle>),
 	>,
 	sc_service::Error,
 >
 where
-	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi, Executor>> + Send + Sync + 'static,
+	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi>> + Send + Sync + 'static,
 	RuntimeApi::RuntimeApi: RuntimeApiCollection<StateBackend = sc_client_api::StateBackendFor<FullBackend, Block>>,
 	RuntimeApi::RuntimeApi: sp_consensus_aura::AuraApi<Block, AuraId>,
-	Executor: sc_executor::NativeExecutionDispatch + 'static,
 {
 	let telemetry = config
 		.telemetry_endpoints
@@ -220,19 +217,19 @@ where
 		})
 		.transpose()?;
 
-	let executor = NativeElseWasmExecutor::<Executor>::new(
+	let executor = WasmExecutor::<HostFunctions>::new(
 		config.wasm_method,
 		config.default_heap_pages,
 		config.max_runtime_instances,
+		None,
 		config.runtime_cache_size,
 	);
 
-	let (client, backend, keystore_container, task_manager) =
-		sc_service::new_full_parts::<Block, RuntimeApi, NativeElseWasmExecutor<Executor>>(
-			config,
-			telemetry.as_ref().map(|(_, telemetry)| telemetry.handle()),
-			executor,
-		)?;
+	let (client, backend, keystore_container, task_manager) = sc_service::new_full_parts::<Block, RuntimeApi, _>(
+		config,
+		telemetry.as_ref().map(|(_, telemetry)| telemetry.handle()),
+		executor,
+	)?;
 	let client = Arc::new(client);
 
 	let telemetry_worker_handle = telemetry.as_ref().map(|(worker, _)| worker.handle());
@@ -268,7 +265,7 @@ where
 			)
 		} else {
 			// aura import queue
-			let slot_duration = sc_consensus_aura::slot_duration(&*client)?.slot_duration();
+			let slot_duration = sc_consensus_aura::slot_duration(&*client)?;
 			let client_for_cidp = client.clone();
 
 			sc_consensus_aura::import_queue::<AuraPair, _, _, _, _, _, _>(ImportQueueParams {
@@ -285,7 +282,7 @@ where
 					async move {
 						let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
 
-						let slot = sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_duration(
+						let slot = sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
 							*timestamp,
 							slot_duration,
 						);
@@ -309,7 +306,7 @@ where
 				},
 				spawner: &task_manager.spawn_essential_handle(),
 				registry,
-				can_author_with: sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone()),
+				can_author_with: sp_consensus::AlwaysCanAuthor,
 				check_for_equivocation: Default::default(),
 				telemetry: telemetry.as_ref().map(|x| x.handle()),
 			})?
@@ -324,15 +321,15 @@ where
 				create_inherent_data_providers: move |_, _| async move {
 					let time = sp_timestamp::InherentDataProvider::from_system_time();
 
-					let slot = sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_duration(
+					let slot = sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
 						*time,
-						slot_duration.slot_duration(),
+						slot_duration,
 					);
 
 					Ok((time, slot))
 				},
 				registry,
-				can_author_with: sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone()),
+				can_author_with: sp_consensus::AlwaysCanAuthor,
 				spawner: &task_manager.spawn_essential_handle(),
 				telemetry: telemetry.as_ref().map(|telemetry| telemetry.handle()),
 			},
@@ -351,36 +348,50 @@ where
 	})
 }
 
+async fn build_relay_chain_interface(
+	polkadot_config: Configuration,
+	parachain_config: &Configuration,
+	telemetry_worker_handle: Option<TelemetryWorkerHandle>,
+	task_manager: &mut TaskManager,
+	collator_options: CollatorOptions,
+) -> RelayChainResult<(Arc<(dyn RelayChainInterface + 'static)>, Option<CollatorPair>)> {
+	match collator_options.relay_chain_rpc_url {
+		Some(relay_chain_url) => Ok((
+			Arc::new(RelayChainRPCInterface::new(relay_chain_url).await?) as Arc<_>,
+			None,
+		)),
+		None => build_inprocess_relay_chain(polkadot_config, parachain_config, telemetry_worker_handle, task_manager),
+	}
+}
+
 /// Start a node with the given parachain `Configuration` and relay chain
 /// `Configuration`.
 ///
 /// This is the actual implementation that is abstract over the executor and the
 /// runtime api.
 #[sc_tracing::logging::prefix_logs_with("Parachain")]
-async fn start_node_impl<RB, RuntimeApi, Executor, BIC>(
+async fn start_node_impl<RB, RuntimeApi, BIC>(
 	parachain_config: Configuration,
 	polkadot_config: Configuration,
+	collator_options: CollatorOptions,
 	id: ParaId,
 	_rpc_ext_builder: RB,
 	build_consensus: BIC,
-) -> sc_service::error::Result<(TaskManager, Arc<FullClient<RuntimeApi, Executor>>)>
+) -> sc_service::error::Result<(TaskManager, Arc<FullClient<RuntimeApi>>)>
 where
-	RB: Fn(
-			Arc<FullClient<RuntimeApi, Executor>>,
-		) -> Result<jsonrpc_core::IoHandler<sc_rpc::Metadata>, sc_service::Error>
+	RB: Fn(Arc<FullClient<RuntimeApi>>) -> Result<jsonrpc_core::IoHandler<sc_rpc::Metadata>, sc_service::Error>
 		+ Send
 		+ 'static,
-	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi, Executor>> + Send + Sync + 'static,
+	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi>> + Send + Sync + 'static,
 	RuntimeApi::RuntimeApi: RuntimeApiCollection<StateBackend = sc_client_api::StateBackendFor<FullBackend, Block>>,
 	RuntimeApi::RuntimeApi: sp_consensus_aura::AuraApi<Block, AuraId>,
-	Executor: sc_executor::NativeExecutionDispatch + 'static,
 	BIC: FnOnce(
-		Arc<FullClient<RuntimeApi, Executor>>,
+		Arc<FullClient<RuntimeApi>>,
 		Option<&Registry>,
 		Option<TelemetryHandle>,
 		&TaskManager,
 		Arc<dyn RelayChainInterface>,
-		Arc<sc_transaction_pool::FullPool<Block, FullClient<RuntimeApi, Executor>>>,
+		Arc<sc_transaction_pool::FullPool<Block, FullClient<RuntimeApi>>>,
 		Arc<NetworkService<Block, Hash>>,
 		SyncCryptoStorePtr,
 		bool,
@@ -399,13 +410,18 @@ where
 	let backend = params.backend.clone();
 	let mut task_manager = params.task_manager;
 
-	let (relay_chain_interface, collator_key) =
-		build_relay_chain_interface(polkadot_config, telemetry_worker_handle, &mut task_manager).map_err(
-			|e| match e {
-				polkadot_service::Error::Sub(x) => x,
-				s => format!("{}", s).into(),
-			},
-		)?;
+	let (relay_chain_interface, collator_key) = build_relay_chain_interface(
+		polkadot_config,
+		&parachain_config,
+		telemetry_worker_handle,
+		&mut task_manager,
+		collator_options.clone(),
+	)
+	.await
+	.map_err(|e| match e {
+		RelayChainError::ServiceError(polkadot_service::Error::Sub(x)) => x,
+		s => s.to_string().into(),
+	})?;
 	let block_announce_validator = BlockAnnounceValidator::new(relay_chain_interface.clone(), id);
 
 	let force_authoring = parachain_config.force_authoring;
@@ -493,7 +509,7 @@ where
 			spawner,
 			parachain_consensus,
 			import_queue,
-			collator_key,
+			collator_key: collator_key.expect("Command line arguments do not allow this. qed"),
 			relay_chain_slot_duration,
 		};
 
@@ -507,6 +523,7 @@ where
 			relay_chain_interface,
 			import_queue,
 			relay_chain_slot_duration,
+			collator_options,
 		};
 
 		start_full_node(params)?;
@@ -518,20 +535,21 @@ where
 }
 
 /// Start a normal parachain node.
-pub async fn start_node<RuntimeApi, Executor>(
+pub async fn start_node<RuntimeApi>(
 	parachain_config: Configuration,
 	polkadot_config: Configuration,
+	collator_options: CollatorOptions,
 	id: ParaId,
-) -> sc_service::error::Result<(TaskManager, Arc<FullClient<RuntimeApi, Executor>>)>
+) -> sc_service::error::Result<(TaskManager, Arc<FullClient<RuntimeApi>>)>
 where
-	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi, Executor>> + Send + Sync + 'static,
+	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi>> + Send + Sync + 'static,
 	RuntimeApi::RuntimeApi: RuntimeApiCollection<StateBackend = sc_client_api::StateBackendFor<FullBackend, Block>>,
 	RuntimeApi::RuntimeApi: sp_consensus_aura::AuraApi<Block, AuraId>,
-	Executor: sc_executor::NativeExecutionDispatch + 'static,
 {
 	start_node_impl(
 		parachain_config,
 		polkadot_config,
+		collator_options,
 		id,
 		|_| Ok(Default::default()),
 		|client,
@@ -577,9 +595,9 @@ where
 
 						let time = sp_timestamp::InherentDataProvider::from_system_time();
 
-						let slot = sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_duration(
+						let slot = sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
 							*time,
-							slot_duration.slot_duration(),
+							slot_duration,
 						);
 
 						let parachain_inherent = parachain_inherent.ok_or_else(|| {
@@ -649,7 +667,7 @@ pub fn new_chain_ops(
 				import_queue,
 				task_manager,
 				..
-			} = new_partial::<karura_runtime::RuntimeApi, KaruraExecutorDispatch>(config, false, false)?;
+			} = new_partial::<karura_runtime::RuntimeApi>(config, false, false)?;
 			Ok((Arc::new(Client::Karura(client)), backend, import_queue, task_manager))
 		}
 		#[cfg(not(feature = "with-karura-runtime"))]
@@ -663,7 +681,7 @@ pub fn new_chain_ops(
 				import_queue,
 				task_manager,
 				..
-			} = new_partial::<acala_runtime::RuntimeApi, AcalaExecutorDispatch>(config, false, false)?;
+			} = new_partial::<acala_runtime::RuntimeApi>(config, false, false)?;
 			Ok((Arc::new(Client::Acala(client)), backend, import_queue, task_manager))
 		}
 		#[cfg(not(feature = "with-acala-runtime"))]
@@ -682,7 +700,7 @@ fn inner_mandala_dev(config: Configuration, instant_sealing: bool) -> Result<Tas
 		select_chain: maybe_select_chain,
 		transaction_pool,
 		other: (mut telemetry, _),
-	} = new_partial::<mandala_runtime::RuntimeApi, MandalaExecutorDispatch>(&config, true, instant_sealing)?;
+	} = new_partial::<mandala_runtime::RuntimeApi>(&config, true, instant_sealing)?;
 
 	let (network, system_rpc_tx, network_starter) = sc_service::build_network(sc_service::BuildNetworkParams {
 		config: &config,
@@ -792,8 +810,7 @@ fn inner_mandala_dev(config: Configuration, instant_sealing: bool) -> Result<Tas
 			Some(command_sink)
 		} else {
 			// aura
-			let can_author_with = sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone());
-			let slot_duration = sc_consensus_aura::slot_duration(&*client)?.slot_duration();
+			let slot_duration = sc_consensus_aura::slot_duration(&*client)?;
 			let client_for_cidp = client.clone();
 
 			let aura = sc_consensus_aura::start_aura::<AuraPair, _, _, _, _, _, _, _, _, _, _, _>(StartAuraParams {
@@ -812,7 +829,7 @@ fn inner_mandala_dev(config: Configuration, instant_sealing: bool) -> Result<Tas
 					async move {
 						let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
 
-						let slot = sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_duration(
+						let slot = sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
 							*timestamp,
 							slot_duration,
 						);
@@ -837,7 +854,7 @@ fn inner_mandala_dev(config: Configuration, instant_sealing: bool) -> Result<Tas
 				force_authoring,
 				backoff_authoring_blocks,
 				keystore: keystore_container.sync_keystore(),
-				can_author_with,
+				can_author_with: sp_consensus::AlwaysCanAuthor,
 				sync_oracle: network.clone(),
 				justification_sync_link: network.clone(),
 				// We got around 500ms for proposing

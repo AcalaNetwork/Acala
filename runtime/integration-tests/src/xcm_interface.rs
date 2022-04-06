@@ -20,7 +20,7 @@
 
 use crate::relaychain::kusama_test_net::*;
 use crate::setup::*;
-use frame_support::{assert_ok, traits::Get, weights::Weight};
+use frame_support::{assert_ok, traits::Get, weights::Weight, BoundedVec};
 use module_homa::UnlockChunk;
 use module_support::HomaSubAccountXcm;
 use module_xcm_interface::XcmInterfaceOperation;
@@ -278,7 +278,7 @@ fn xcm_interface_bond_extra_on_sub_account_works() {
 				stash: homa_lite_sub_account.clone(),
 				total: 500 * dollar(RELAY_CHAIN_CURRENCY),
 				active: 500 * dollar(RELAY_CHAIN_CURRENCY),
-				unlocking: vec![],
+				unlocking: BoundedVec::default(),
 				claimed_rewards: vec![],
 			})
 		);
@@ -316,7 +316,7 @@ fn xcm_interface_bond_extra_on_sub_account_works() {
 				stash: homa_lite_sub_account.clone(),
 				total: 1000 * dollar(RELAY_CHAIN_CURRENCY) - XCM_FEE,
 				active: 1000 * dollar(RELAY_CHAIN_CURRENCY) - XCM_FEE,
-				unlocking: vec![],
+				unlocking: BoundedVec::default(),
 				claimed_rewards: vec![],
 			})
 		);
@@ -361,7 +361,7 @@ fn xcm_interface_unbond_on_sub_account_works() {
 				stash: homa_lite_sub_account.clone(),
 				total: dollar(RELAY_CHAIN_CURRENCY),
 				active: dollar(RELAY_CHAIN_CURRENCY),
-				unlocking: vec![],
+				unlocking: BoundedVec::default(),
 				claimed_rewards: vec![],
 			})
 		);
