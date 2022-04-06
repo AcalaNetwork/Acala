@@ -126,7 +126,7 @@ test-eth: githooks test-evm
 
 .PHONY: test-evm
 test-evm: githooks
-	cargo test --manifest-path evm-tests/jsontests/Cargo.toml
+	SKIP_WASM_BUILD= cargo test --manifest-path evm-tests/jsontests/Cargo.toml
 
 .PHONY: test-runtimes
 test-runtimes:

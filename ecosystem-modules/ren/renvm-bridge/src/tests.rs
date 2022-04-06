@@ -70,7 +70,7 @@ fn burn_works() {
 				hex!["4fe557069c2424260b9d0cca31049e70ede95c49964578044d80c74f3a118505"],
 				93802,
 				hex!["64c1212efd301721c9343fdf299f022778ea336608c1ae089136045b8d6f3e5c"],
-				EcdsaSignature::from_slice(&hex!["5566d8eb9fec05a6636381302ad7dd6b28a0ec62e6e45038fbb095c6503ee08a69a450c566ce60ccca1233d32c24a366176d189bbe5613ae633ce3ae4b6b9a7e1b"]),
+				EcdsaSignature::from_slice(&hex!["5566d8eb9fec05a6636381302ad7dd6b28a0ec62e6e45038fbb095c6503ee08a69a450c566ce60ccca1233d32c24a366176d189bbe5613ae633ce3ae4b6b9a7e1b"]).unwrap(),
 			)
 		);
 		assert_eq!(Balances::free_balance(issuer), 93802);
@@ -157,7 +157,7 @@ fn mint_works() {
 				hex!["67028f26328144de6ef80b8cd3b05e0cefb488762c340d1574c0542f752996cb"],
 				93963,
 				hex!["f6a75cc370a2dda6dfc8d016529766bb6099d7fa0d787d9fe5d3a7e60c9ac2a0"],
-				EcdsaSignature::from_slice(&hex!["defda6eef01da2e2a90ce30ba73e90d32204ae84cae782b485f01d16b69061e0381a69cafed3deb6112af044c42ed0f7c73ee0eec7b533334d31a06db50fc40e1b"]),
+				EcdsaSignature::from_slice(&hex!["defda6eef01da2e2a90ce30ba73e90d32204ae84cae782b485f01d16b69061e0381a69cafed3deb6112af044c42ed0f7c73ee0eec7b533334d31a06db50fc40e1b"]).unwrap(),
 			)
 		);
 
@@ -169,7 +169,7 @@ fn mint_works() {
 				hex!["425673f98610064b76dbd334783f45ea192f0e954db75ba2ae6b6058a8143d67"],
 				87266,
 				hex!["fe125f912d2de05e3e34b96a0ce8a8e35d9ed883e830b978871f3e1f5d393726"],
-				EcdsaSignature::from_slice(&hex!["acd463fa396c54995e444234e96d793d3977e75f445da219c10bc4947c22622f325f24dfc31e8e56ec21f04fc7669e91db861778a8367444bde6dfb5f95e15ed1b"]),
+				EcdsaSignature::from_slice(&hex!["acd463fa396c54995e444234e96d793d3977e75f445da219c10bc4947c22622f325f24dfc31e8e56ec21f04fc7669e91db861778a8367444bde6dfb5f95e15ed1b"]).unwrap(),
 			)
 		);
 
@@ -181,7 +181,7 @@ fn mint_works() {
 				hex!["425673f98610064b76dbd334783f45ea192f0e954db75ba2ae6b6058a8143d67"],
 				87266,
 				hex!["fe125f912d2de05e3e34b96a0ce8a8e35d9ed883e830b978871f3e1f5d393726"],
-				EcdsaSignature::from_slice(&hex!["acd463fa396c54995e444234e96d793d3977e75f445da219c10bc4947c22622f325f24dfc31e8e56ec21f04fc7669e91db861778a8367444bde6dfb5f95e15ed1b"]),
+				EcdsaSignature::from_slice(&hex!["acd463fa396c54995e444234e96d793d3977e75f445da219c10bc4947c22622f325f24dfc31e8e56ec21f04fc7669e91db861778a8367444bde6dfb5f95e15ed1b"]).unwrap(),
 			),
 			TransactionValidityError::Invalid(InvalidTransaction::Stale)
 		);
@@ -192,7 +192,7 @@ fn mint_works() {
 				hex!["425673f98610064b76dbd334783f45ea192f0e954db75ba2ae6b6058a8143d67"],
 				87266,
 				hex!["fe125f912d2de05e3e34b96a0ce8a8e35d9ed883e830b978871f3e1f5d393726"],
-				EcdsaSignature::from_slice(&hex!["000463fa396c54995e444234e96d793d3977e75f445da219c10bc4947c22622f325f24dfc31e8e56ec21f04fc7669e91db861778a8367444bde6dfb5f95e15ed1b"]),
+				EcdsaSignature::from_slice(&hex!["000463fa396c54995e444234e96d793d3977e75f445da219c10bc4947c22622f325f24dfc31e8e56ec21f04fc7669e91db861778a8367444bde6dfb5f95e15ed1b"]).unwrap(),
 			),
 			TransactionValidityError::Invalid(InvalidTransaction::BadProof)
 		);
@@ -207,7 +207,7 @@ fn rotate_key_works() {
 		assert_noop!(
 			rotate_key(
 				new_key,
-				EcdsaSignature::from_slice(&hex!["defda6eef01da2e2a90ce30ba73e90d32204ae84cae782b485f01d16b69061e0381a69cafed3deb6112af044c42ed0f7c73ee0eec7b533334d31a06db50fc40e1b"]),
+				EcdsaSignature::from_slice(&hex!["defda6eef01da2e2a90ce30ba73e90d32204ae84cae782b485f01d16b69061e0381a69cafed3deb6112af044c42ed0f7c73ee0eec7b533334d31a06db50fc40e1b"]).unwrap(),
 			),
 			TransactionValidityError::Invalid(InvalidTransaction::BadProof)
 		);
@@ -223,7 +223,7 @@ fn transaction_length_of_mint() {
 			p_hash: hex!["425673f98610064b76dbd334783f45ea192f0e954db75ba2ae6b6058a8143d67"],
 			amount: 10000 * 10u128.saturating_pow(8),  // 10000 BTC
 			n_hash: hex!["fe125f912d2de05e3e34b96a0ce8a8e35d9ed883e830b978871f3e1f5d393726"],
-			sig: EcdsaSignature::from_slice(&hex!["000463fa396c54995e444234e96d793d3977e75f445da219c10bc4947c22622f325f24dfc31e8e56ec21f04fc7669e91db861778a8367444bde6dfb5f95e15ed1b"])
+			sig: EcdsaSignature::from_slice(&hex!["000463fa396c54995e444234e96d793d3977e75f445da219c10bc4947c22622f325f24dfc31e8e56ec21f04fc7669e91db861778a8367444bde6dfb5f95e15ed1b"]).unwrap()
 		};
 
 		let call_len = call.using_encoded(|c| c.len());
