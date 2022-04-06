@@ -83,8 +83,8 @@ impl frame_system::Config for Test {
 }
 
 parameter_types! {
-	pub const MinimumCount: u32 = 5;
-	pub const ExpiresIn: Moment = 1000 * 60 * 60; // 1 hours
+	pub const MinimumCount: u32 = 1;
+	pub const ExpiresIn: u32 = 600;
 	pub const RootOperatorAccountId: AccountId = ALICE;
 	pub OracleMembers: Vec<AccountId> = vec![ALICE, BOB, EVA];
 }
@@ -100,7 +100,7 @@ impl SortedMembers<AccountId> for Members {
 impl orml_oracle::Config for Test {
 	type Event = Event;
 	type OnNewData = ();
-	type CombineData = orml_oracle::DefaultCombineData<Self, ConstU32<1>, ConstU64<600>>;
+	type CombineData = orml_oracle::DefaultCombineData<Self, MinimumCount, ExpiresIn>;
 	type Time = Timestamp;
 	type OracleKey = Key;
 	type OracleValue = Price;

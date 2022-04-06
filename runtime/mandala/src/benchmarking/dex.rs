@@ -301,8 +301,9 @@ runtime_benchmarks! {
 		<Currencies as MultiCurrencyExtended<_>>::update_balance(path[0], &taker, (10_000 * dollar(path[0])).unique_saturated_into())?;
 	}: swap_with_exact_supply(RawOrigin::Signed(taker.clone()), path.clone(), 100 * dollar(path[0]), 0)
 	verify {
+		let path_limit: u32 = <Runtime as module_dex::Config>::TradingPathLimit::get();
 		// would panic the benchmark anyways, must add new currencies to CURRENCY_LIST for benchmarking to work
-		assert!(4 < CURRENCY_LIST.len() as u32);
+		assert!( path_limit < CURRENCY_LIST.len() as u32);
 	}
 
 	swap_with_exact_target {
@@ -328,8 +329,9 @@ runtime_benchmarks! {
 		<Currencies as MultiCurrencyExtended<_>>::update_balance(path[0], &taker, (10_000 * dollar(path[0])).unique_saturated_into())?;
 	}: swap_with_exact_target(RawOrigin::Signed(taker.clone()), path.clone(), 10 * dollar(path[path.len() - 1]), 100 * dollar(path[0]))
 	verify {
+		let path_limit: u32 = <Runtime as module_dex::Config>::TradingPathLimit::get();
 		// would panic the benchmark anyways, must add new currencies to CURRENCY_LIST for benchmarking to work
-		assert!(4 < CURRENCY_LIST.len() as u32);
+		assert!(path_limit < CURRENCY_LIST.len() as u32);
 	}
 
 	refund_provision {

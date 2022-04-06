@@ -723,6 +723,7 @@ fn charge_fee_by_alternative_swap_first_priority() {
 		let init_balance = FeePoolSize::get();
 		let dot_ed = Currencies::minimum_balance(DOT);
 		let ed = Currencies::minimum_balance(ACA);
+		let alternative_fee_swap_deposit: u128 = <Runtime as Config>::AlternativeFeeSwapDeposit::get();
 
 		assert_eq!(DEXModule::get_liquidity_pool(ACA, AUSD), (10000, 1000));
 		assert_eq!(DEXModule::get_liquidity_pool(DOT, AUSD), (100, 1000));
@@ -730,7 +731,7 @@ fn charge_fee_by_alternative_swap_first_priority() {
 			Origin::root(),
 			BOB,
 			ACA,
-			1000u128.try_into().unwrap(),
+			alternative_fee_swap_deposit.try_into().unwrap(),
 		));
 
 		assert_ok!(TransactionPayment::set_alternative_fee_swap_path(
@@ -743,7 +744,7 @@ fn charge_fee_by_alternative_swap_first_priority() {
 		);
 		// the `AlternativeFeeSwapDeposit` amount balance is in user reserve balance,
 		// user reserve balance is not consider when check native is enough or not.
-		assert_eq!(1000u128, Currencies::total_balance(ACA, &BOB));
+		assert_eq!(alternative_fee_swap_deposit, Currencies::total_balance(ACA, &BOB));
 
 		// charge fee token use `DefaultFeeTokens` as `AlternativeFeeSwapPath` condition is failed.
 		assert_ok!(<Currencies as MultiCurrency<_>>::transfer(DOT, &ALICE, &BOB, 300));
@@ -787,6 +788,7 @@ fn charge_fee_by_default_fee_tokens_second_priority() {
 		let init_balance = FeePoolSize::get();
 		let dot_ed = Currencies::minimum_balance(DOT);
 		let ed = Currencies::minimum_balance(ACA);
+		let alternative_fee_swap_deposit: u128 = <Runtime as Config>::AlternativeFeeSwapDeposit::get();
 
 		assert_eq!(DEXModule::get_liquidity_pool(ACA, AUSD), (10000, 1000));
 		assert_eq!(DEXModule::get_liquidity_pool(DOT, AUSD), (100, 1000));
@@ -794,7 +796,7 @@ fn charge_fee_by_default_fee_tokens_second_priority() {
 			Origin::root(),
 			BOB,
 			ACA,
-			1000u128.try_into().unwrap(),
+			alternative_fee_swap_deposit.try_into().unwrap(),
 		));
 
 		// the alter native swap path is invalid as there are no pool for DOT to ACA.
@@ -808,7 +810,7 @@ fn charge_fee_by_default_fee_tokens_second_priority() {
 		);
 		// the `AlternativeFeeSwapDeposit` amount balance is in user reserve balance,
 		// user reserve balance is not consider when check native is enough or not.
-		assert_eq!(1000u128, Currencies::total_balance(ACA, &BOB));
+		assert_eq!(alternative_fee_swap_deposit, Currencies::total_balance(ACA, &BOB));
 
 		// charge fee token use `DefaultFeeTokens` as `AlternativeFeeSwapPath` condition is failed.
 		assert_ok!(<Currencies as MultiCurrency<_>>::transfer(DOT, &ALICE, &BOB, 300));
@@ -1648,11 +1650,12 @@ fn charge_fee_failed_when_disable_dex() {
 #[test]
 fn charge_fee_pool_operation_works() {
 	ExtBuilder::default().build().execute_with(|| {
+		let alternative_fee_swap_deposit: u128 = <Runtime as Config>::AlternativeFeeSwapDeposit::get();
 		assert_ok!(Currencies::update_balance(
 			Origin::root(),
 			ALICE,
 			ACA,
-			1000u128.try_into().unwrap(),
+			alternative_fee_swap_deposit.try_into().unwrap(),
 		));
 		assert_ok!(TransactionPayment::set_alternative_fee_swap_path(
 			Origin::signed(ALICE),

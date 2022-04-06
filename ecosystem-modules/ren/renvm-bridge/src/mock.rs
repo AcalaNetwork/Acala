@@ -122,7 +122,7 @@ impl Config for Runtime {
 	type Currency = Balances;
 	type BridgedTokenCurrency = BasicCurrencyAdapter<Runtime, Balances, i128, BlockNumber>;
 	type CurrencyIdentifier = RENBTCIdentifier;
-	type UnsignedPriority = ConstU64<1048576>;
+	type UnsignedPriority = ConstU64<1048576>; // 1 << 20
 	type ChargeTransactionPayment = ();
 }
 

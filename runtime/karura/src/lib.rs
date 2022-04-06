@@ -341,8 +341,6 @@ impl pallet_timestamp::Config for Runtime {
 
 parameter_types! {
 	pub NativeTokenExistentialDeposit: Balance = 10 * cent(KAR);	// 0.1 KAR
-	// For weight estimation, we assume that the most locks on an individual account will be 50.
-	// This number may need to be adjusted in the future if this assumption no longer holds true.
 	pub const MaxReserves: u32 = ReserveIdentifier::Count as u32;
 }
 
