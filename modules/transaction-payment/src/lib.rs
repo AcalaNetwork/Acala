@@ -604,8 +604,8 @@ pub mod module {
 		pub fn with_fee_paid_by(
 			origin: OriginFor<T>,
 			call: Box<CallOf<T>>,
-			payer_addr: T::AccountId,
-			payer_sig: MultiSignature,
+			_payer_addr: T::AccountId,
+			_payer_sig: MultiSignature,
 		) -> DispatchResultWithPostInfo {
 			ensure_signed(origin.clone())?;
 			call.dispatch(origin)
@@ -814,9 +814,9 @@ where
 				);
 				Self::swap_from_pool_or_dex(who, custom_fee_amount, *currency_id).map(|_| custom_fee_surplus)
 			}
-			// Some(Call::with_fee_paid_by(call, payer_addr, payer_sig)) => {
-			//
-			// }
+			Some(Call::with_fee_paid_by {
+				call: _, payer_addr, ..
+			}) => Self::native_then_alternative_or_default(payer_addr, fee),
 			_ => Self::native_then_alternative_or_default(who, fee),
 		}
 	}
