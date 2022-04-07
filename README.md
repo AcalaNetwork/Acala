@@ -172,6 +172,11 @@ To generate weights for all modules just pass `*` as `module_name` i.e: `/bench 
 
 Bench bot will do the benchmarking, generate weights file push changes into your branch.
 
+## Bench Acala EVM+
+
+Comment on a PR `/bench evm` to benchmark Acala EVM+ and bench bot will generate precompile weights and GasToWeight ratio.
+
+
 # 8. Migration testing runtime
 If modify the storage, should test the data migration before upgrade the runtime.
 

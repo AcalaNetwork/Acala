@@ -1238,11 +1238,12 @@ impl<T: Config> Pallet<T> {
 		let collateral_supply = amount.min(max_supply_limit);
 
 		// try swap collateral to stable to settle debit swap succeed.
-		if let Ok((actual_supply_collateral, _)) = <T as Config>::CDPTreasury::swap_collateral_to_stable(
-			currency_id,
-			SwapLimit::ExactTarget(collateral_supply, target_stable_amount),
-			false,
-		) {
+		if let Ok((actual_supply_collateral, actual_target_amount)) =
+			<T as Config>::CDPTreasury::swap_collateral_to_stable(
+				currency_id,
+				SwapLimit::ExactTarget(collateral_supply, target_stable_amount),
+				false,
+			) {
 			let refund_collateral_amount = amount
 				.checked_sub(actual_supply_collateral)
 				.expect("swap succecced means collateral >= actual_supply_collateral; qed");
@@ -1250,6 +1251,16 @@ impl<T: Config> Pallet<T> {
 			// refund remain collateral to CDP owner
 			if !refund_collateral_amount.is_zero() {
 				<T as Config>::CDPTreasury::withdraw_collateral(who, currency_id, refund_collateral_amount)?;
+			}
+
+			// Note: for StableAsset, the swap of cdp treasury is always on `ExactSupply`
+			// regardless of this swap_limit params. There will be excess stablecoins that
+			// need to be returned to the `who` from cdp treasury account.
+			if actual_target_amount > target_stable_amount {
+				<T as Config>::CDPTreasury::withdraw_surplus(
+					who,
+					actual_target_amount.saturating_sub(target_stable_amount),
+				)?;
 			}
 		} else {
 			// if cannot liquidate by swap, create collateral auctions by cdp treasury

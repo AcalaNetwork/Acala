@@ -379,7 +379,7 @@ mod tests {
 			access_list: vec![],
 		};
 		let sign = hex!("c30a85ee9218af4e2892c82d65a8a7fbeee75c010973d42cee2e52309449d687056c09cf486a16d58d23b0ebfed63a0276d5fb1a464f645dc7607147a37f7a211c");
-		assert_eq!(verify_eip712_signature(msg.clone(), sign), sender);
+		assert_eq!(verify_eip712_signature(msg, sign), sender);
 
 		// access_list.storage_keys = vec![]
 		let msg = EthereumTransactionMessage {
@@ -399,7 +399,7 @@ mod tests {
 			}],
 		};
 		let sign = hex!("a94da7159e29f2a0c9aec08eb62cbb6eefd6ee277960a3c96b183b53201687ce19f1fd9c2cfdace8730fd5249ea11e57701cd0cc20386bbd9d3df5092fe218851c");
-		assert_eq!(verify_eip712_signature(msg.clone(), sign), sender);
+		assert_eq!(verify_eip712_signature(msg, sign), sender);
 
 		let msg = EthereumTransactionMessage {
 			chain_id: 595,

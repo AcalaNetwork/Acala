@@ -35,6 +35,7 @@ use sp_runtime::{
 	traits::{AccountIdConversion, IdentityLookup},
 	DispatchResult,
 };
+use support::mocks::MockStableAsset;
 use support::{AuctionManager, LockablePrice, RiskManager};
 
 pub type AccountId = u128;
@@ -226,6 +227,7 @@ impl cdp_treasury::Config for Runtime {
 	type TreasuryAccount = TreasuryAccount;
 	type AlternativeSwapPathJointList = AlternativeSwapPathJointList;
 	type WeightInfo = ();
+	type StableAsset = MockStableAsset<CurrencyId, Balance, AccountId, BlockNumber>;
 }
 
 ord_parameter_types! {

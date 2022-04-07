@@ -20,6 +20,7 @@
 #![allow(clippy::too_many_arguments)]
 
 use super::*;
+use cumulus_primitives_parachain_inherent::{MockValidationDataInherentDataProvider, MockXcmConfig};
 
 /// Starts a `ServiceBuilder` for a full service.
 ///
@@ -74,7 +75,8 @@ pub fn new_partial(
 		}
 		SealMode::DevAuraSeal => {
 			// aura import queue
-			let slot_duration = sc_consensus_aura::slot_duration(&*client)?.slot_duration();
+			let slot_duration = sc_consensus_aura::slot_duration(&*client)?;
+			let client_for_cidp = client.clone();
 
 			(
 				sc_consensus_aura::import_queue::<sp_consensus_aura::sr25519::AuthorityPair, _, _, _, _, _, _>(
@@ -82,19 +84,38 @@ pub fn new_partial(
 						block_import: client.clone(),
 						justification_import: None,
 						client: client.clone(),
-						create_inherent_data_providers: move |_, ()| async move {
-							let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
+						create_inherent_data_providers: move |block: Hash, ()| {
+							let current_para_block = client_for_cidp
+								.number(block)
+								.expect("Header lookup should succeed")
+								.expect("Header passed in as parent should be present in backend.");
+							let client_for_xcm = client_for_cidp.clone();
 
-							let slot = sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_duration(
-								*timestamp,
-								slot_duration,
-							);
+							async move {
+								let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
 
-							Ok((
-								timestamp,
-								slot,
-								node_service::default_mock_parachain_inherent_data_provider(),
-							))
+								let slot =
+									sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
+										*timestamp,
+										slot_duration,
+									);
+
+								let mocked_parachain = MockValidationDataInherentDataProvider {
+									current_para_block,
+									relay_offset: 1000,
+									relay_blocks_per_para_block: 2,
+									xcm_config: MockXcmConfig::new(
+										&*client_for_xcm,
+										block,
+										Default::default(),
+										Default::default(),
+									),
+									raw_downward_messages: vec![],
+									raw_horizontal_messages: vec![],
+								};
+
+								Ok((timestamp, slot, mocked_parachain))
+							}
 						},
 						spawner: &task_manager.spawn_essential_handle(),
 						registry,
@@ -111,9 +132,9 @@ pub fn new_partial(
 			let create_inherent_data_providers = Box::new(move |_, _| async move {
 				let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
 
-				let slot = sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_duration(
+				let slot = sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
 					*timestamp,
-					slot_duration.slot_duration(),
+					slot_duration,
 				);
 
 				Ok((timestamp, slot))
@@ -210,11 +231,11 @@ pub async fn start_dev_node(
 
 	match seal_mode {
 		SealMode::DevInstantSeal => {
-			let slot_duration = sc_consensus_aura::slot_duration(&*client)?.slot_duration();
+			let slot_duration = sc_consensus_aura::slot_duration(&*client)?;
 			let create_inherent_data_providers = Box::new(move |_, _| async move {
 				let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
 
-				let slot = sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_duration(
+				let slot = sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
 					*timestamp,
 					slot_duration,
 				);
@@ -243,7 +264,9 @@ pub async fn start_dev_node(
 		SealMode::DevAuraSeal => {
 			// aura
 			let can_author_with = sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone());
-			let slot_duration = sc_consensus_aura::slot_duration(&*client)?.slot_duration();
+			let slot_duration = sc_consensus_aura::slot_duration(&*client)?;
+			let client_for_cidp = client.clone();
+
 			let aura = sc_consensus_aura::start_aura::<
 				sp_consensus_aura::sr25519::AuthorityPair,
 				_,
@@ -264,19 +287,37 @@ pub async fn start_dev_node(
 				// block_import: instant_finalize::InstantFinalizeBlockImport::new(client.clone()),
 				block_import: client.clone(),
 				proposer_factory,
-				create_inherent_data_providers: move |_, ()| async move {
-					let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
+				create_inherent_data_providers: move |block: Hash, ()| {
+					let current_para_block = client_for_cidp
+						.number(block)
+						.expect("Header lookup should succeed")
+						.expect("Header passed in as parent should be present in backend.");
+					let client_for_xcm = client_for_cidp.clone();
 
-					let slot = sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_duration(
-						*timestamp,
-						slot_duration,
-					);
+					async move {
+						let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
 
-					Ok((
-						timestamp,
-						slot,
-						node_service::default_mock_parachain_inherent_data_provider(),
-					))
+						let slot = sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
+							*timestamp,
+							slot_duration,
+						);
+
+						let mocked_parachain = MockValidationDataInherentDataProvider {
+							current_para_block,
+							relay_offset: 1000,
+							relay_blocks_per_para_block: 2,
+							xcm_config: MockXcmConfig::new(
+								&*client_for_xcm,
+								block,
+								Default::default(),
+								Default::default(),
+							),
+							raw_downward_messages: vec![],
+							raw_horizontal_messages: vec![],
+						};
+
+						Ok((timestamp, slot, mocked_parachain))
+					}
 				},
 				force_authoring,
 				backoff_authoring_blocks,
@@ -332,6 +373,35 @@ pub async fn start_dev_node(
 	))
 }
 
+async fn build_relay_chain_interface(
+	relay_chain_config: Configuration,
+	collator_key: Option<CollatorPair>,
+	collator_options: CollatorOptions,
+	task_manager: &mut TaskManager,
+) -> RelayChainResult<Arc<dyn RelayChainInterface + 'static>> {
+	if let Some(relay_chain_url) = collator_options.relay_chain_rpc_url {
+		return Ok(Arc::new(RelayChainRPCInterface::new(relay_chain_url).await?) as Arc<_>);
+	}
+
+	let relay_chain_full_node = polkadot_test_service::new_full(
+		relay_chain_config,
+		if let Some(ref key) = collator_key {
+			polkadot_service::IsCollator::Yes(key.clone())
+		} else {
+			polkadot_service::IsCollator::Yes(CollatorPair::generate().0)
+		},
+		None,
+	)?;
+
+	task_manager.add_child(relay_chain_full_node.task_manager);
+	Ok(Arc::new(RelayChainInProcessInterface::new(
+		relay_chain_full_node.client.clone(),
+		relay_chain_full_node.backend.clone(),
+		Arc::new(Mutex::new(Box::new(relay_chain_full_node.network.clone()))),
+		relay_chain_full_node.overseer_handle,
+	)) as Arc<_>)
+}
+
 /// Start a node with the given parachain `Configuration` and relay chain `Configuration`.
 ///
 /// This is the actual implementation that is abstract over the executor and the runtime api.
@@ -340,6 +410,7 @@ pub async fn start_node_impl<RB>(
 	parachain_config: Configuration,
 	collator_key: Option<CollatorPair>,
 	relay_chain_config: Configuration,
+	collator_options: CollatorOptions,
 	para_id: ParaId,
 	wrap_announce_block: Option<Box<dyn FnOnce(AnnounceBlockFn) -> AnnounceBlockFn>>,
 	rpc_ext_builder: RB,
@@ -370,31 +441,21 @@ where
 	let transaction_pool = params.transaction_pool.clone();
 	let mut task_manager = params.task_manager;
 
-	let relay_chain_full_node = polkadot_test_service::new_full(
-		relay_chain_config,
-		if let Some(ref key) = collator_key {
-			polkadot_service::IsCollator::Yes(key.clone())
-		} else {
-			polkadot_service::IsCollator::Yes(CollatorPair::generate().0)
-		},
-		None,
-	)
-	.map_err(|e| match e {
-		polkadot_service::Error::Sub(x) => x,
-		s => s.to_string().into(),
-	})?;
-
 	let client = params.client.clone();
 	let backend = params.backend.clone();
 	let backend_for_node = backend.clone();
 
-	let relay_chain_interface = Arc::new(RelayChainLocal::new(
-		relay_chain_full_node.client.clone(),
-		relay_chain_full_node.backend.clone(),
-		Arc::new(Mutex::new(Box::new(relay_chain_full_node.network.clone()))),
-		relay_chain_full_node.overseer_handle.clone(),
-	));
-	task_manager.add_child(relay_chain_full_node.task_manager);
+	let relay_chain_interface = build_relay_chain_interface(
+		relay_chain_config,
+		collator_key.clone(),
+		collator_options.clone(),
+		&mut task_manager,
+	)
+	.await
+	.map_err(|e| match e {
+		RelayChainError::ServiceError(polkadot_service::Error::Sub(x)) => x,
+		s => s.to_string().into(),
+	})?;
 
 	let block_announce_validator = BlockAnnounceValidator::new(relay_chain_interface.clone(), para_id);
 	let block_announce_validator_builder = move |_| Box::new(block_announce_validator) as Box<_>;
@@ -510,9 +571,9 @@ where
 								let time = sp_timestamp::InherentDataProvider::from_system_time();
 
 								let slot =
-									sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_duration(
+									sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
 										*time,
-										slot_duration.slot_duration(),
+										slot_duration,
 									);
 
 								let parachain_inherent = parachain_inherent.ok_or_else(|| {
@@ -567,6 +628,7 @@ where
 			// the recovery delay of pov-recovery. We don't want to wait for too
 			// long on the full node to recover, so we reduce this time here.
 			relay_chain_slot_duration: Duration::from_millis(6),
+			collator_options,
 		};
 
 		start_full_node(params)?;

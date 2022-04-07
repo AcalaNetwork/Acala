@@ -620,6 +620,18 @@ impl<T: Config> Pallet<T> {
 			);
 			Self::try_refund_bid(&collateral_auction, last_bid);
 
+			// Note: for StableAsset, the swap of cdp treasury is always on `ExactSupply`
+			// regardless of this swap_limit params. There will be excess stablecoins that
+			// need to be returned to the refund_recipient from cdp treasury account.
+			if let SwapLimit::ExactTarget(_, target_limit) = swap_limit {
+				if actual_target_amount > target_limit {
+					let _ = T::CDPTreasury::withdraw_surplus(
+						&collateral_auction.refund_recipient,
+						actual_target_amount.saturating_sub(target_limit),
+					);
+				}
+			}
+
 			Self::deposit_event(Event::DEXTakeCollateralAuction {
 				auction_id,
 				collateral_type: collateral_auction.currency_id,
