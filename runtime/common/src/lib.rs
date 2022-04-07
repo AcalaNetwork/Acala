@@ -328,11 +328,6 @@ impl Default for ProxyType {
 	}
 }
 
-#[repr(u16)]
-pub enum RelayChainSubAccountId {
-	HomaLite = 0,
-}
-
 /// `DropAssets` implementation support asset amount lower thant ED handled by `TakeRevenue`.
 ///
 /// parameters type:
