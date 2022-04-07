@@ -330,6 +330,8 @@ impl pallet_timestamp::Config for Runtime {
 parameter_types! {
 	pub NativeTokenExistentialDeposit: Balance = 10 * cent(ACA);	// 0.1 ACA
 	pub const MaxReserves: u32 = ReserveIdentifier::Count as u32;
+	// For weight estimation, we assume that the most locks on an individual account will be 50.
+	// This number may need to be adjusted in the future if this assumption no longer holds true.
 	pub const MaxLocks: u32 = 50;
 }
 
@@ -692,7 +694,7 @@ impl orml_oracle::Config<AcalaDataProvider> for Runtime {
 	type OracleValue = Price;
 	type RootOperatorAccountId = RootOperatorAccountId;
 	type Members = OperatorMembershipAcala;
-	type MaxHasDispatchedSize = CouncilDefaultMaxProposals;
+	type MaxHasDispatchedSize = ConstU32<20>;
 	type WeightInfo = ();
 }
 

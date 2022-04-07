@@ -342,6 +342,8 @@ impl pallet_timestamp::Config for Runtime {
 parameter_types! {
 	pub NativeTokenExistentialDeposit: Balance = 10 * cent(KAR);	// 0.1 KAR
 	pub const MaxReserves: u32 = ReserveIdentifier::Count as u32;
+	// For weight estimation, we assume that the most locks on an individual account will be 50.
+	// This number may need to be adjusted in the future if this assumption no longer holds true.
 	pub const MaxLocks: u32 = 50;
 }
 
@@ -693,7 +695,6 @@ parameter_types! {
 	pub const MinimumCount: u32 = 5;
 	pub const ExpiresIn: Moment = 1000 * 60 * 60; // 1 hours
 	pub RootOperatorAccountId: AccountId = AccountId::from([0xffu8; 32]);
-	pub const MaxHasDispatchedSize: u32 = 20;
 }
 
 type AcalaDataProvider = orml_oracle::Instance1;
@@ -706,7 +707,7 @@ impl orml_oracle::Config<AcalaDataProvider> for Runtime {
 	type OracleValue = Price;
 	type RootOperatorAccountId = RootOperatorAccountId;
 	type Members = OperatorMembershipAcala;
-	type MaxHasDispatchedSize = MaxHasDispatchedSize;
+	type MaxHasDispatchedSize = ConstU32<20>;
 	type WeightInfo = ();
 }
 
@@ -1571,8 +1572,8 @@ impl nutsfinance_stable_asset::Config for Runtime {
 	type PalletId = StableAssetPalletId;
 
 	type AtLeast64BitUnsigned = u128;
-	type FeePrecision = ConstU128<10_000_000_000>;
-	type APrecision = ConstU128<100>;
+	type FeePrecision = ConstU128<10_000_000_000>; // 10 decimals
+	type APrecision = ConstU128<100>; // 2 decimals
 	type PoolAssetLimit = ConstU32<5>;
 	type WeightInfo = weights::nutsfinance_stable_asset::WeightInfo<Runtime>;
 	type ListingOrigin = EnsureRootOrHalfGeneralCouncil;

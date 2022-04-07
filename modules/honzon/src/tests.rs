@@ -33,7 +33,10 @@ fn authorize_should_work() {
 		System::set_block_number(1);
 		assert_eq!(PalletBalances::reserved_balance(ALICE), 0);
 		assert_ok!(HonzonModule::authorize(Origin::signed(ALICE), BTC, BOB));
-		assert_eq!(PalletBalances::reserved_balance(ALICE), 100);
+		assert_eq!(
+			PalletBalances::reserved_balance(ALICE),
+			<Runtime as Config>::DepositPerAuthorization::get()
+		);
 		System::assert_last_event(Event::HonzonModule(crate::Event::Authorization {
 			authorizer: ALICE,
 			authorizee: BOB,
@@ -52,7 +55,10 @@ fn unauthorize_should_work() {
 	ExtBuilder::default().build().execute_with(|| {
 		System::set_block_number(1);
 		assert_ok!(HonzonModule::authorize(Origin::signed(ALICE), BTC, BOB));
-		assert_eq!(PalletBalances::reserved_balance(ALICE), 100);
+		assert_eq!(
+			PalletBalances::reserved_balance(ALICE),
+			<Runtime as Config>::DepositPerAuthorization::get()
+		);
 		assert_ok!(HonzonModule::check_authorization(&ALICE, &BOB, BTC));
 
 		assert_ok!(HonzonModule::unauthorize(Origin::signed(ALICE), BTC, BOB));

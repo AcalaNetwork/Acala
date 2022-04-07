@@ -83,6 +83,7 @@ impl frame_system::Config for Test {
 }
 
 parameter_types! {
+	pub const ExistenceRequirement: u128 = 1;
 	pub const MinimumCount: u32 = 1;
 	pub const ExpiresIn: u32 = 600;
 	pub const RootOperatorAccountId: AccountId = ALICE;
@@ -139,7 +140,7 @@ impl pallet_balances::Config for Test {
 	type Balance = Balance;
 	type DustRemoval = ();
 	type Event = Event;
-	type ExistentialDeposit = ConstU128<1>;
+	type ExistentialDeposit = ExistenceRequirement;
 	type AccountStore = System;
 	type WeightInfo = ();
 	type MaxLocks = ();
@@ -230,7 +231,6 @@ parameter_types! {
 	pub const CustomFeeSurplus: Percent = Percent::from_percent(50);
 	pub const AlternativeFeeSurplus: Percent = Percent::from_percent(25);
 	pub DefaultFeeTokens: Vec<CurrencyId> = vec![AUSD];
-	pub const TradingPathLimit: u32 = 4;
 }
 
 impl module_transaction_payment::Config for Test {
@@ -244,7 +244,7 @@ impl module_transaction_payment::Config for Test {
 	type OperationalFeeMultiplier = ConstU64<5>;
 	type TipPerWeightStep = ConstU128<1>;
 	type MaxTipsOfPriority = ConstU128<1000>;
-	type AlternativeFeeSwapDeposit = ConstU128<1>;
+	type AlternativeFeeSwapDeposit = ExistenceRequirement;
 	type WeightToFee = IdentityFee<Balance>;
 	type FeeMultiplierUpdate = ();
 	type DEX = DexModule;
@@ -343,6 +343,7 @@ ord_parameter_types! {
 
 parameter_types! {
 	pub const GetExchangeFee: (u32, u32) = (1, 100);
+	pub const TradingPathLimit: u32 = 4;
 	pub const DEXPalletId: PalletId = PalletId(*b"aca/dexm");
 }
 
