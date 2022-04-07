@@ -16,8 +16,10 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use super::input::{Input, InputT, Output};
-use crate::precompile::input::InputPricer;
+use super::{
+	input::{Input, InputPricer, InputT, Output},
+	target_gas_limit,
+};
 use crate::WeightToGas;
 use frame_support::{log, traits::Get};
 use module_dex::WeightInfo;
@@ -68,7 +70,7 @@ where
 			Runtime::AccountId,
 			Runtime::AddressMapping,
 			<Runtime as module_dex::Config>::Erc20InfoMapping,
-		>::new(input, target_gas);
+		>::new(input, target_gas_limit(target_gas));
 
 		let gas_cost = Pricer::<Runtime>::cost(&input)?;
 
@@ -119,7 +121,7 @@ where
 								PrecompileFailure::Revert {
 									exit_status: ExitRevert::Reverted,
 									output: "Dex get_liquidity_token_address failed".into(),
-									cost: target_gas.unwrap_or_default(),
+									cost: target_gas_limit(target_gas).unwrap_or_default(),
 								})?;
 
 				Ok(PrecompileOutput {
@@ -149,7 +151,7 @@ where
 								PrecompileFailure::Revert {
 									exit_status: ExitRevert::Reverted,
 									output: "Dex get_swap_target_amount failed".into(),
-									cost: target_gas.unwrap_or_default(),
+									cost: target_gas_limit(target_gas).unwrap_or_default(),
 								})?;
 
 				Ok(PrecompileOutput {
@@ -179,7 +181,7 @@ where
 								PrecompileFailure::Revert {
 									exit_status: ExitRevert::Reverted,
 									output: "Dex get_swap_supply_amount failed".into(),
-									cost: target_gas.unwrap_or_default(),
+									cost: target_gas_limit(target_gas).unwrap_or_default(),
 								})?;
 
 				Ok(PrecompileOutput {
@@ -211,7 +213,7 @@ where
 							 PrecompileFailure::Revert {
 								 exit_status: ExitRevert::Reverted,
 								 output: Into::<&str>::into(e).as_bytes().to_vec(),
-								 cost: target_gas.unwrap_or_default(),
+								 cost: target_gas_limit(target_gas).unwrap_or_default(),
 							 })?;
 
 				Ok(PrecompileOutput {
@@ -243,7 +245,7 @@ where
 							 PrecompileFailure::Revert {
 								 exit_status: ExitRevert::Reverted,
 								 output: Into::<&str>::into(e).as_bytes().to_vec(),
-								 cost: target_gas.unwrap_or_default(),
+								 cost: target_gas_limit(target_gas).unwrap_or_default(),
 							 })?;
 
 				Ok(PrecompileOutput {
@@ -279,7 +281,7 @@ where
 				.map_err(|e| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: Into::<&str>::into(e).as_bytes().to_vec(),
-					cost: target_gas.unwrap_or_default(),
+					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 
 				Ok(PrecompileOutput {
@@ -315,7 +317,7 @@ where
 				.map_err(|e| PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: Into::<&str>::into(e).as_bytes().to_vec(),
-					cost: target_gas.unwrap_or_default(),
+					cost: target_gas_limit(target_gas).unwrap_or_default(),
 				})?;
 
 				Ok(PrecompileOutput {
@@ -595,7 +597,7 @@ mod tests {
 				PrecompileFailure::Revert {
 					exit_status: ExitRevert::Reverted,
 					output: "invalid currency id".into(),
-					cost: 10000,
+					cost: target_gas_limit(Some(10_000)).unwrap(),
 				}
 			);
 		});
