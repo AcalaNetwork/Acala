@@ -106,9 +106,9 @@ pub use runtime_common::{
 	FinancialCouncilInstance, FinancialCouncilMembershipInstance, GasToWeight, GeneralCouncilInstance,
 	GeneralCouncilMembershipInstance, HomaCouncilInstance, HomaCouncilMembershipInstance, MaxTipsOfPriority,
 	OffchainSolutionWeightLimit, OperationalFeeMultiplier, OperatorMembershipInstanceAcala, Price, ProxyType, Rate,
-	Ratio, RelayChainBlockNumberProvider, RelayChainSubAccountId, RuntimeBlockLength, RuntimeBlockWeights,
-	SystemContractsFilter, TechnicalCommitteeInstance, TechnicalCommitteeMembershipInstance, TimeStampedPrice,
-	TipPerWeightStep, ACA, AUSD, DOT, KSM, LDOT, RENBTC,
+	Ratio, RelayChainBlockNumberProvider, RuntimeBlockLength, RuntimeBlockWeights, SystemContractsFilter,
+	TechnicalCommitteeInstance, TechnicalCommitteeMembershipInstance, TimeStampedPrice, TipPerWeightStep, ACA, AUSD,
+	DOT, KSM, LDOT, RENBTC,
 };
 pub use xcm::latest::prelude::*;
 
@@ -1307,7 +1307,9 @@ pub fn create_x2_parachain_multilocation(index: u16) -> MultiLocation {
 
 parameter_types! {
 	pub HomaTreasuryAccount: AccountId = HomaTreasuryPalletId::get().into_account();
-	pub ActiveSubAccountsIndexList: Vec<u16> = vec![RelayChainSubAccountId::HomaLite as u16];
+	pub ActiveSubAccountsIndexList: Vec<u16> = vec![
+		0,  // 15sr8Dvq3AT3Z2Z1y8FnQ4VipekAHhmQnrkgzegUr1tNgbcn
+	];
 	pub RelayChainBondingDuration: EraIndex = 28;
 	pub MintThreshold: Balance = dollar(DOT);
 	pub RedeemThreshold: Balance = 10 * dollar(LDOT);
