@@ -61,7 +61,7 @@ pub mod module {
 		type MinimumWeightRemainInBlock: Get<Weight>;
 
 		/// Gets RelayChain Block Number
-		type RelayChainBlockNumberProvider: BlockNumberProvider;
+		type RelayChainBlockNumberProvider: BlockNumberProvider<BlockNumber = BlockNumber>;
 
 		/// Number of Relay Chain blocks skipped to disable `on_idle` dispatching scheduled tasks
 		/// this shuts down idle-scheduler when block production is slower than this number of
@@ -98,24 +98,18 @@ pub mod module {
 	#[pallet::hooks]
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
 		fn on_initialize(_n: T::BlockNumber) -> Weight {
-			// `try_into()` shouldn't fail, if it does, storage will be left empty which will return a value of
-			// zero as default when read. This is the previous relay block because `on_initialize` is executed
+			// This is the previous relay block because `on_initialize` is executed
 			// before the inherent that sets the new relay chain block number
-			let previous_relay_block: Option<BlockNumber> =
-				T::RelayChainBlockNumberProvider::current_block_number().try_into().ok();
+			let previous_relay_block: BlockNumber = T::RelayChainBlockNumberProvider::current_block_number();
 
-			if let Some(block_number) = previous_relay_block {
-				PreviousRelayBlockNumber::<T>::put(block_number);
-			}
+			PreviousRelayBlockNumber::<T>::put(previous_relay_block);
 			T::WeightInfo::on_initialize()
 		}
 
 		fn on_idle(_n: T::BlockNumber, remaining_weight: Weight) -> Weight {
 			// Checks if we have skipped enough relay blocks without block production to skip dispatching
 			// scheduled tasks
-			let current_relay_block_number: BlockNumber = T::RelayChainBlockNumberProvider::current_block_number()
-				.try_into()
-				.unwrap_or_default();
+			let current_relay_block_number: BlockNumber = T::RelayChainBlockNumberProvider::current_block_number();
 			let previous_relay_block_number = PreviousRelayBlockNumber::<T>::take();
 			if current_relay_block_number.saturating_sub(previous_relay_block_number) >= T::DisableBlockThreshold::get()
 			{
