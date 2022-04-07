@@ -24,6 +24,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
 
+use codec::MaxEncodedLen;
 use frame_support::pallet_prelude::*;
 use frame_system::pallet_prelude::*;
 
@@ -38,7 +39,13 @@ pub mod module {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
-		type Balance: Parameter + codec::HasCompact + From<u32> + Into<Weight> + Default + MaybeSerializeDeserialize;
+		type Balance: Parameter
+			+ codec::HasCompact
+			+ From<u32>
+			+ Into<Weight>
+			+ Default
+			+ MaybeSerializeDeserialize
+			+ MaxEncodedLen;
 		#[pallet::constant]
 		type SomeConst: Get<Self::Balance>;
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
@@ -108,7 +115,6 @@ pub mod module {
 	}
 
 	#[pallet::pallet]
-	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
 	#[pallet::hooks]
